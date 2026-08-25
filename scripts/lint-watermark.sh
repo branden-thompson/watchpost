@@ -14,8 +14,8 @@ if [ "${1:-}" = "--self-test" ]; then
 fi
 bad=$(git ls-files -z | grep -zv -e '^06_docs/' -e '^_a2dh/' -e '^scripts/lint-watermark.sh$' | xargs -0 grep -lInE "$PAT" 2>/dev/null || true)
 # Branch range when it exists; last 20 commits as the post-merge fallback (H-4).
-range=$(git log --format=%B main..HEAD 2>/dev/null)
-[ -z "$range" ] && range=$(git log --format=%B -n 20 2>/dev/null)
+range=$(git log --format=%B main..HEAD 2>/dev/null || true) # a tag checkout has no 'main' ref: fall through (set -e would otherwise exit 128 here)
+[ -z "$range" ] && range=$(git log --format=%B -n 20 2>/dev/null || true)
 msgs=$(echo "$range" | grep -nE "$PAT" || true)
 if [ -n "$bad" ] || [ -n "$msgs" ]; then
   echo "lint-watermark: AI watermark found:"; [ -n "$bad" ] && echo "$bad"; [ -n "$msgs" ] && echo "commit messages: $msgs"
