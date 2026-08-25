@@ -296,26 +296,51 @@ func (d *radioDeck) voice() (synth.Voice, error) {
 		}
 		return synth.SayVoice{Voice: name}, nil
 	}
-	if inst, ok := synth.FindPiper(d.voiceDir); ok {
+	spec := d.piperSpec()
+	if inst, ok := synth.FindPiperVoice(d.voiceDir, spec); ok {
 		return synth.PiperVoice{Install: inst}, nil
 	}
 	if !synth.PiperSupported() {
 		return nil, fmt.Errorf("no voice for %s/%s: install Piper or use a relayed location", runtime.GOOS, runtime.GOARCH)
 	}
+	inst, err := d.installVoice(spec) // first use of a voice downloads it, progress in the player (UAT 118)
+	if err != nil {
+		return nil, err
+	}
+	return synth.PiperVoice{Install: inst}, nil
+}
+
+// piperSpec is the chosen catalogue voice (Linux/Windows): the [V] pick by
+// name, else the first installed voice, else the catalogue default.
+func (d *radioDeck) piperSpec() synth.VoiceSpec {
+	d.mu.Lock()
+	name := d.voiceID
+	d.mu.Unlock()
+	if v, ok := synth.VoiceByName(name); ok {
+		return v
+	}
+	if installed := synth.InstalledVoices(d.voiceDir); len(installed) > 0 {
+		return installed[0]
+	}
+	return synth.DefaultVoice()
+}
+
+// installVoice downloads Piper (once) and one catalogue voice, reporting
+// progress in the player's detail line; a failure is actionable.
+func (d *radioDeck) installVoice(spec synth.VoiceSpec) (synth.Install, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
-	inst, err := synth.EnsurePiper(ctx, d.voiceDir, UserAgent, func(what string, done, total int64) {
+	inst, err := synth.EnsureVoice(ctx, d.voiceDir, spec, UserAgent, func(what string, done, total int64) {
 		pct := 0
 		if total > 0 {
 			pct = int(done * 100 / total)
 		}
-		d.setDetail(fmt.Sprintf("installing the %s voice… %d%% (%d MB)", what, pct, done/1e6))
+		d.setDetail(fmt.Sprintf("installing %s… %d%% (%d MB)", what, pct, done/1e6))
 	})
 	if err != nil {
-		return nil, fmt.Errorf("voice install failed: %w", err)
+		return synth.Install{}, fmt.Errorf("voice install failed: %w", err)
 	}
-	go d.listVoices() // the chooser learns the new voice without a restart (Linux F3)
-	return synth.PiperVoice{Install: inst}, nil
+	return inst, nil
 }
 
 // segments composes one broadcast cycle: the location's current
@@ -414,10 +439,17 @@ func (d *radioDeck) PreviewVoice(name string) {
 	}
 	var v synth.Voice = synth.SayVoice{Voice: name}
 	if runtime.GOOS != "darwin" {
-		inst, ok := synth.FindPiper(d.voiceDir)
+		spec, ok := synth.VoiceByName(name)
 		if !ok {
-			d.setDetail("no voice installed yet — tune in with [space] to install it") // Linux F7: never silent
-			return
+			spec = d.piperSpec()
+		}
+		inst, ok := synth.FindPiperVoice(d.voiceDir, spec)
+		if !ok { // a preview of an uninstalled voice downloads it first (UAT 118) — never silent (Linux F7)
+			var err error
+			if inst, err = d.installVoice(spec); err != nil {
+				d.setDetail(err.Error())
+				return
+			}
 		}
 		v = synth.PiperVoice{Install: inst}
 	}
@@ -458,7 +490,9 @@ func (d *radioDeck) Voices() []string {
 }
 
 // discoverVoices lists the correspondents available on this host: macOS
-// voices from `say -v ?` (argv only), else the installed Piper voice.
+// voices from `say -v ?` (argv only); elsewhere the curated Piper catalogue
+// (UAT 118) — every entry can be chosen, an uninstalled one downloads on
+// first use (~63 MB) with progress in the player.
 func (d *radioDeck) discoverVoices() []string {
 	if runtime.GOOS == "darwin" {
 		out, err := exec.Command("say", "-v", "?").Output()
@@ -467,10 +501,20 @@ func (d *radioDeck) discoverVoices() []string {
 		}
 		return []string{defaultMacVoice}
 	}
-	if inst, ok := synth.FindPiper(d.voiceDir); ok {
-		return []string{synth.PiperVoice{Install: inst}.Name()}
+	if !synth.PiperSupported() {
+		return nil
 	}
-	return nil
+	return piperVoiceNames()
+}
+
+// piperVoiceNames is the catalogue in chooser order.
+func piperVoiceNames() []string {
+	cat := synth.VoiceCatalog()
+	names := make([]string, 0, len(cat))
+	for _, v := range cat {
+		names = append(names, v.Name)
+	}
+	return names
 }
 
 // systemVoice is the Mac's own selected voice — `say` with no -v. On
@@ -580,14 +624,8 @@ func (d *radioDeck) defaultVoice() string {
 	if runtime.GOOS == "darwin" {
 		return systemVoice
 	}
-	d.mu.Lock()
-	list := d.voices
-	d.mu.Unlock()
-	if len(list) > 0 {
-		return list[0]
-	}
-	if inst, ok := synth.FindPiper(d.voiceDir); ok {
-		return synth.PiperVoice{Install: inst}.Name()
+	if installed := synth.InstalledVoices(d.voiceDir); len(installed) > 0 {
+		return installed[0].Name // the voice that will actually speak
 	}
 	return "" // no voice yet (Linux before Piper installs): the chip shows "—", never a Mac voice name (Linux F3)
 }

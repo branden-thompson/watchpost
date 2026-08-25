@@ -71,7 +71,11 @@ Launch `WATCHPOST_DEBUG_TIMING=1 watchpost`; on quit it prints the launch→full
 - The lead names the covering NWR transmitter, its frequency read digit by digit, then the
   forecast, then (when fire data is known) the **Fire and Hotspot report**, then the sign-off;
   two seconds of air between reports, one before the sign-off. The marquee follows the voice;
-  `v` shows the bars; `V` lists the installed voice; `+`/`-` work.
+  `v` shows the bars; `+`/`-` work.
+- `V` lists six correspondents (Lessac, Amy, Ryan, Joe, Alan, Alba) whether or not they are
+  installed; `p` previews, `enter` picks. Picking Amy downloads her (~63 MB) with
+  `installing Amy voice… NN%` in the player, then the broadcast hands over mid-sentence. Record
+  `ls ~/.cache/watchpost/piper/voices` afterwards (two files per voice).
 - `m` → Nearest Relay → a live relay plays (LIVE RADIO), or Synth with the reason line if none.
 - `r` twice → Watchlist; wait for a cycle to end → the next favourite tunes (row mark moves).
 - Stop, then `q` → the process exits at once (no lingering audio thread).

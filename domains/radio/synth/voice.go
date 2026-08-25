@@ -145,8 +145,12 @@ type PiperVoice struct {
 	Install Install // from EnsurePiper / FindPiper
 }
 
-// Name implements Voice: the voice's given name ("en_US-lessac-medium" -> "Lessac").
+// Name implements Voice: the catalogue name, else the voice's given name
+// from the model file ("en_US-lessac-medium" -> "Lessac").
 func (p PiperVoice) Name() string {
+	if p.Install.Voice != "" {
+		return p.Install.Voice
+	}
 	parts := strings.Split(strings.TrimSuffix(filepath.Base(p.Install.Model), ".onnx"), "-")
 	if len(parts) < 2 || parts[1] == "" {
 		return "Piper"

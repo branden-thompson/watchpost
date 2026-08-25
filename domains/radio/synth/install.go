@@ -30,6 +30,7 @@ type Install struct {
 	Binary     string // piper executable
 	Model      string // voice .onnx (the .onnx.json sits beside it)
 	SampleRate int    // model sample rate
+	Voice      string // the catalogue name ("Amy"); "" = derive from the model file
 }
 
 // Asset is one pinned download.
@@ -54,18 +55,62 @@ func piperAssets() map[string]Asset {
 	}
 }
 
-// Voice model: en_US-lessac-medium (MIT-licensed voice; 22.05 kHz).
-const (
-	voiceName = "en_US-lessac-medium"
-	voiceRate = 22050
-)
+// VoiceSpec is one curated Piper voice (UAT 118: the Linux voice
+// profiles). Models come from the pinned rhasspy/piper-voices v1.0.0
+// release (MIT-licensed voices; 22.05 kHz medium quality, ~63 MB each) and
+// are verified by SHA-256 before use; checksums computed from the
+// artifacts on 2026-08-24 (Lessac) and 2026-08-25 (the rest).
+type VoiceSpec struct {
+	Key   string // "en_US-amy-medium" — the file stem
+	Name  string // "Amy" — what the chooser and the sign-off say
+	Model Asset  // .onnx
+	JSON  Asset  // .onnx.json
+	Rate  int
+}
 
-func voiceAssets() [2]Asset {
-	base := "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/"
-	return [2]Asset{
-		{base + voiceName + ".onnx", "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f", 63201294},
-		{base + voiceName + ".onnx.json", "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0", 0},
+// voiceRate is the medium models' sample rate.
+const voiceRate = 22050
+
+// VoiceCatalog lists the voices in chooser order; the first is the default.
+func VoiceCatalog() []VoiceSpec {
+	base := "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/"
+	mk := func(key, name, path, modelSHA, jsonSHA string) VoiceSpec {
+		return VoiceSpec{Key: key, Name: name, Rate: voiceRate,
+			Model: Asset{base + path + key + ".onnx", modelSHA, 63201294},
+			JSON:  Asset{base + path + key + ".onnx.json", jsonSHA, 0}}
 	}
+	return []VoiceSpec{
+		mk("en_US-lessac-medium", "Lessac", "en_US/lessac/medium/", "5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f", "efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0"),
+		mk("en_US-amy-medium", "Amy", "en_US/amy/medium/", "b3a6e47b57b8c7fbe6a0ce2518161a50f59a9cdd8a50835c02cb02bdd6206c18", "95a23eb4d42909d38df73bb9ac7f45f597dbfcde2d1bf9526fdeaf5466977d77"),
+		mk("en_US-ryan-medium", "Ryan", "en_US/ryan/medium/", "abf4c274862564ed647ba0d2c47f8ee7c9b717d27bdad9219100eb310db4047a", "44034c056cb15681b2ad494307c7f3f2e4499d1253c700c711fa0a4607ffe78d"),
+		mk("en_US-joe-medium", "Joe", "en_US/joe/medium/", "58afce0321b8d9c46d7cdf9c16500cc55a793b4220212dba6b70fb788b3baf06", "3d6d5410b3795cb1950595247ef8f06190719e6fdbfa3a2356d8ec368e1aad33"),
+		mk("en_GB-alan-medium", "Alan", "en_GB/alan/medium/", "0a309668932205e762801f1efc2736cd4b0120329622adf62be09e56339d3330", "c0f0d124e5895c00e7c03b35dcc8287f319a6998a365b182deb5c8e752ee8c1e"),
+		mk("en_GB-alba-medium", "Alba", "en_GB/alba/medium/", "401369c4a81d09fdd86c32c5c864440811dbdcc66466cde2d64f7133a66ad03b", "aa965a2f02ecced632c2694e1fc72bbff6d65f265fab567ca945918c73dd89f4"),
+	}
+}
+
+// DefaultVoice is the catalogue's first entry (Lessac).
+func DefaultVoice() VoiceSpec { return VoiceCatalog()[0] }
+
+// VoiceByName finds a catalogue voice by chooser name or key (case-insensitive).
+func VoiceByName(name string) (VoiceSpec, bool) {
+	for _, v := range VoiceCatalog() {
+		if strings.EqualFold(v.Name, name) || strings.EqualFold(v.Key, name) {
+			return v, true
+		}
+	}
+	return VoiceSpec{}, false
+}
+
+// InstalledVoices lists the catalogue voices present under dir, catalogue order.
+func InstalledVoices(dir string) []VoiceSpec {
+	var out []VoiceSpec
+	for _, v := range VoiceCatalog() {
+		if _, ok := FindPiperVoice(dir, v); ok {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // Progress reports download progress: which artifact, bytes so far, total.
@@ -77,22 +122,40 @@ func PiperSupported() bool {
 	return ok
 }
 
-// FindPiper returns an existing install under dir, if complete.
+// FindPiper returns an existing install under dir with any catalogue voice
+// present (the default first), if complete.
 func FindPiper(dir string) (Install, bool) {
-	if dir == "" || !filepath.IsAbs(dir) {
-		return Install{}, false // never a CWD-relative binary (red-team 0.9.0 S-F5: $HOME unset must not exec ./piper/piper)
+	for _, v := range VoiceCatalog() {
+		if inst, ok := FindPiperVoice(dir, v); ok {
+			return inst, true
+		}
 	}
+	return Install{}, false
+}
+
+// piperBinary is the executable's path under dir.
+func piperBinary(dir string) string {
 	bin := filepath.Join(dir, "piper", "piper")
 	if runtime.GOOS == "windows" {
 		bin += ".exe"
 	}
-	model := filepath.Join(dir, "voices", voiceName+".onnx")
+	return bin
+}
+
+// FindPiperVoice returns the install for one catalogue voice, if the binary
+// and that voice's files are all present under dir.
+func FindPiperVoice(dir string, v VoiceSpec) (Install, bool) {
+	if dir == "" || !filepath.IsAbs(dir) {
+		return Install{}, false // never a CWD-relative binary (red-team 0.9.0 S-F5: $HOME unset must not exec ./piper/piper)
+	}
+	bin := piperBinary(dir)
+	model := filepath.Join(dir, "voices", v.Key+".onnx")
 	for _, p := range []string{bin, model, model + ".json"} {
 		if _, err := os.Stat(p); err != nil {
 			return Install{}, false
 		}
 	}
-	return Install{Binary: bin, Model: model, SampleRate: voiceRate}, true
+	return Install{Binary: bin, Model: model, SampleRate: v.Rate, Voice: v.Name}, true
 }
 
 // EnsurePiper installs Piper and the voice under dir when missing,
@@ -101,68 +164,79 @@ func FindPiper(dir string) (Install, bool) {
 var installMu sync.Mutex
 
 func EnsurePiper(ctx context.Context, dir, userAgent string, progress Progress) (Install, error) {
+	return EnsureVoice(ctx, dir, DefaultVoice(), userAgent, progress)
+}
+
+// EnsureVoice installs Piper (when missing) and one catalogue voice (when
+// missing) under dir, verifying every artifact against the manifest;
+// progress may be nil. installMu serializes installs (one download at a
+// time, C-9).
+func EnsureVoice(ctx context.Context, dir string, v VoiceSpec, userAgent string, progress Progress) (Install, error) {
 	if dir == "" || !filepath.IsAbs(dir) {
 		return Install{}, fmt.Errorf("synth: no cache directory for the voice (set XDG_CACHE_HOME or HOME to an absolute path)") // round 2 N-5: never download into a relative dir FindPiper will refuse
 	}
-	if inst, ok := FindPiper(dir); ok {
+	if inst, ok := FindPiperVoice(dir, v); ok {
 		return inst, nil
 	}
 	// One install at a time (red-team 0.9.0 C-9): two overlapping tune-ins
 	// on a fresh host must not write the same .part file.
 	installMu.Lock()
 	defer installMu.Unlock()
-	if inst, ok := FindPiper(dir); ok {
+	if inst, ok := FindPiperVoice(dir, v); ok {
 		return inst, nil // the other caller finished it
-	}
-	asset, ok := piperAssets()[runtime.GOOS+"/"+runtime.GOARCH]
-	if !ok {
-		return Install{}, fmt.Errorf("synth: no Piper build for %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 	if progress == nil {
 		progress = func(string, int64, int64) {}
 	}
-	if err := installArtifacts(ctx, dir, asset, userAgent, progress); err != nil {
+	if _, err := os.Stat(piperBinary(dir)); err != nil {
+		asset, ok := piperAssets()[runtime.GOOS+"/"+runtime.GOARCH]
+		if !ok {
+			return Install{}, fmt.Errorf("synth: no Piper build for %s/%s", runtime.GOOS, runtime.GOARCH)
+		}
+		if err := installBinary(ctx, dir, asset, userAgent, progress); err != nil {
+			return Install{}, err
+		}
+	}
+	if err := installVoiceFiles(ctx, dir, v, userAgent, progress); err != nil {
 		return Install{}, err
 	}
-	inst, ok := FindPiper(dir)
+	inst, ok := FindPiperVoice(dir, v)
 	if !ok {
 		return Install{}, errors.New("synth: Piper archive did not contain the expected files")
 	}
 	return inst, nil
 }
 
-// installArtifacts fetches and unpacks the Piper archive and the voice
-// files under dir (split from EnsurePiper, P10-04); every artifact is
-// verified by download before extract touches it.
-func installArtifacts(ctx context.Context, dir string, asset Asset, userAgent string, progress Progress) error {
+// installBinary fetches and unpacks the Piper archive under dir; the
+// artifact is verified by download before extract touches it.
+func installBinary(ctx context.Context, dir string, asset Asset, userAgent string, progress Progress) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	for _, stale := range []string{filepath.Join(dir, "piper-archive.part"), filepath.Join(dir, "voices", voiceName+".onnx.part"), filepath.Join(dir, "voices", voiceName+".onnx.json.part")} {
-		_ = os.Remove(stale) // an interrupted earlier install (Ctrl-C) leaves nothing behind (Linux F8)
-	}
+	_ = os.Remove(filepath.Join(dir, "piper-archive.part")) // an interrupted earlier install (Ctrl-C) leaves nothing behind (Linux F8)
 	archive, err := download(ctx, asset, userAgent, filepath.Join(dir, "piper-archive"), "Piper", progress)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = os.Remove(archive) }()
-	if err := extract(archive, dir); err != nil {
-		return err
-	}
+	return extract(archive, dir)
+}
+
+// installVoiceFiles fetches one voice's model and config under dir/voices.
+func installVoiceFiles(ctx context.Context, dir string, v VoiceSpec, userAgent string, progress Progress) error {
 	voices := filepath.Join(dir, "voices")
 	if err := os.MkdirAll(voices, 0o755); err != nil {
 		return err
 	}
-	for i, a := range voiceAssets() {
-		name := voiceName + ".onnx"
-		if i == 1 {
-			name += ".json"
-		}
-		if _, err := download(ctx, a, userAgent, filepath.Join(voices, name), "voice", progress); err != nil {
-			return err
-		}
+	for _, name := range []string{v.Key + ".onnx.part", v.Key + ".onnx.json.part"} {
+		_ = os.Remove(filepath.Join(voices, name)) // Linux F8
 	}
-	return nil
+	what := v.Name + " voice"
+	if _, err := download(ctx, v.Model, userAgent, filepath.Join(voices, v.Key+".onnx"), what, progress); err != nil {
+		return err
+	}
+	_, err := download(ctx, v.JSON, userAgent, filepath.Join(voices, v.Key+".onnx.json"), what, progress)
+	return err
 }
 
 // download streams an asset to dest (via a temp file) while hashing;

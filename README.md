@@ -37,7 +37,9 @@ Setup is a window like every other: both questions are on screen — your defaul
 NASA FIRMS key (paste it, masked, `ctrl+r` reveals; leave it empty for the default data set — an
 empty key also keeps a stored one). `tab` moves between the questions; `enter` on the key line
 saves. `s` opens it again any time; `watchpost setup` starts the dashboard with it open. On
-Linux/Windows the radio voice installs itself the first time you tune in.
+Linux/Windows the radio voice (Piper) installs itself the first time you tune in; `V` lists six
+correspondents — Lessac, Amy, Ryan, Joe (US), Alan, Alba (GB) — and picking one you have not used
+yet downloads it (~63 MB, verified) with progress in the player.
 
 Config lives in `$XDG_CONFIG_HOME/watchpost/config.toml` (`~/.config/…`), written 0600. The HTTP
 cache and the voice live under `$XDG_CACHE_HOME/watchpost/` (`~/.cache/…`, `~/Library/Caches/…` on

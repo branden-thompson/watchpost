@@ -2,6 +2,19 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.9.1] — 2026-08-25
+
+### Added
+- **Linux/Windows voice profiles**: `V` lists a curated Piper catalogue — Lessac, Amy, Ryan, Joe
+  (US), Alan, Alba (GB), medium quality, pinned SHA-256s from rhasspy/piper-voices v1.0.0. A voice
+  you have not used yet downloads on first use (~63 MB) with progress in the player; the preview
+  (`p`) does the same. The chooser used to show only the one voice that happened to be installed
+  (Arch/CachyOS validation, UAT 118).
+
+### Fixed
+- Release job: a darwin-only test expectation, `lint-watermark` on a tag checkout, and the
+  type-ahead budget under the race detector (CI-only; the v0.9.0 release itself is unaffected).
+
 ## [0.9.0] — 2026-08-25 — first public release (pre-1.0)
 
 The first tagged build: everything from B0 (scaffold) through B5 (fire), driven UX-first through

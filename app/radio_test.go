@@ -87,3 +87,29 @@ func TestVoiceChipLabelIsTheChooserLabel(t *testing.T) {
 		t.Fatal("chosen voice labels the chip")
 	}
 }
+
+func TestPiperVoiceChooserListsTheCatalogue(t *testing.T) {
+	// UAT 118: on Linux/Windows the [V] chooser lists every curated voice,
+	// installed or not — a pick downloads on first use; the chip reads the
+	// installed voice (empty before any install, Linux F3), and the chosen
+	// name resolves to its catalogue entry.
+	if runtime.GOOS == "darwin" {
+		t.Skip("macOS lists `say -v ?` voices")
+	}
+	d := &radioDeck{voiceDir: t.TempDir()}
+	names := d.discoverVoices()
+	if len(names) != 6 || names[0] != "Lessac" || names[1] != "Amy" {
+		t.Fatalf("catalogue in the chooser: %v", names)
+	}
+	if d.defaultVoice() != "" {
+		t.Fatal("nothing installed: no default name yet")
+	}
+	d.voiceID = "Alan"
+	if d.piperSpec().Key != "en_GB-alan-medium" {
+		t.Fatal("the pick resolves to its catalogue voice")
+	}
+	d.voiceID = "not-a-voice"
+	if d.piperSpec().Key != "en_US-lessac-medium" {
+		t.Fatal("an unknown pick falls back to the default")
+	}
+}
