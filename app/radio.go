@@ -303,7 +303,7 @@ func (d *radioDeck) voice() (synth.Voice, error) {
 	if !synth.PiperSupported() {
 		return nil, fmt.Errorf("no voice for %s/%s: install Piper or use a relayed location", runtime.GOOS, runtime.GOARCH)
 	}
-	inst, err := d.installVoice(spec) // first use of a voice downloads it, progress in the player (UAT 118)
+	inst, err := d.installVoice(spec, d.setDetail) // first use of a voice downloads it, progress in the player (UAT 118)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func (d *radioDeck) piperSpec() synth.VoiceSpec {
 
 // installVoice downloads Piper (once) and one catalogue voice, reporting
 // progress in the player's detail line; a failure is actionable.
-func (d *radioDeck) installVoice(spec synth.VoiceSpec) (synth.Install, error) {
+func (d *radioDeck) installVoice(spec synth.VoiceSpec, report func(string)) (synth.Install, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
 	inst, err := synth.EnsureVoice(ctx, d.voiceDir, spec, UserAgent, func(what string, done, total int64) {
@@ -335,7 +335,7 @@ func (d *radioDeck) installVoice(spec synth.VoiceSpec) (synth.Install, error) {
 		if total > 0 {
 			pct = int(done * 100 / total)
 		}
-		d.setDetail(fmt.Sprintf("installing %s… %d%% (%d MB)", what, pct, done/1e6))
+		report(fmt.Sprintf("installing %s… %d%% (%d MB)", what, pct, done/1e6))
 	})
 	if err != nil {
 		return synth.Install{}, fmt.Errorf("voice install failed: %w", err)
@@ -444,23 +444,33 @@ func (d *radioDeck) PreviewVoice(name string) {
 			spec = d.piperSpec()
 		}
 		inst, ok := synth.FindPiperVoice(d.voiceDir, spec)
-		if !ok { // a preview of an uninstalled voice downloads it first (UAT 118) — never silent (Linux F7)
+		if !ok { // a preview of an uninstalled voice downloads it first (UAT 118) — the chooser shows the progress (UAT 119)
 			var err error
-			if inst, err = d.installVoice(spec); err != nil {
-				d.setDetail(err.Error())
+			if inst, err = d.installVoice(spec, d.voiceNote); err != nil {
+				d.voiceNote(err.Error())
 				return
 			}
 		}
 		v = synth.PiperVoice{Install: inst}
+		d.voiceNote("loading " + spec.Name + "…") // Piper reads the model on every run: a few seconds (UAT 119)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	pcm, err := synth.SamplePCM(ctx, v)
 	if err != nil {
-		d.setDetail("preview failed: " + err.Error())
+		d.voiceNote("preview failed: " + err.Error())
 		return
 	}
+	d.voiceNote("") // sound is on its way: the line clears
 	_ = d.engine.Preview(v.Rate(), bytes.NewReader(pcm))
+}
+
+// voiceNote tells the Voice chooser what the deck is doing (UAT 119); nil
+// program (tests) is a no-op.
+func (d *radioDeck) voiceNote(text string) {
+	if d.p != nil {
+		d.p.Send(tty.VoiceNoteMsg{Text: text})
+	}
 }
 
 // VoiceName is the correspondent's chooser label — the [V] chip (UAT 91:

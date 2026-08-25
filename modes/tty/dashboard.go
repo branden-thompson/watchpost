@@ -150,6 +150,12 @@ func (m RepeatMode) String() string {
 func (m RepeatMode) next() RepeatMode { return (m + 1) % 3 }
 
 // RadioStatusMsg reports the player's condition (B4).
+// VoiceNoteMsg is the radio deck's word to the Voice chooser (UAT 119):
+// what is happening between a preview or pick and the first sound — a
+// download with its progress, the model loading — so a ten-second wait on
+// Linux never reads as "broken". "" clears the line.
+type VoiceNoteMsg struct{ Text string }
+
 type RadioStatusMsg struct {
 	State    string // stopped | connecting | playing | reconnecting | failed
 	Station  string // "KEC49 Monterey CA 162.550 MHz · 78 mi (nearest relayed)"
@@ -214,6 +220,7 @@ type Dashboard struct {
 	showStatus   bool   // S: API status/diagnostics modal (UAT 24.2)
 	showAbout    bool   // a: About window (UAT 68)
 	showSetup    bool   // s: Setup window (UAT 100) — the first-run questions, over the dashboard like every other modal
+	voiceNote    string // the Voice chooser's progress line (UAT 119): set by VoiceNoteMsg, "" when nothing is pending
 	setup        setupState
 	showTheme    bool // t: theme chooser (UAT 53)
 	themeIdx     int  // chooser cursor
@@ -318,6 +325,9 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyCommitted(v), nil
 	case RadioStatusMsg: // B4
 		return d.applyRadioStatus(v).armViz().takeCmd()
+	case VoiceNoteMsg: // UAT 119
+		d.voiceNote = v.Text
+		return d, nil
 	case tickMsg:
 		d.frame++
 		return d, tick()
@@ -666,7 +676,7 @@ func (d Dashboard) openTheme() Dashboard {
 // The list is read from the hook ONCE here (UAT 85): rendering must never
 // run it — on macOS it shells out to `say -v ?`.
 func (d Dashboard) openVoice() Dashboard {
-	d.showVoice, d.showHelp, d.showDetails, d.showAlerts, d.showStatus, d.showTheme, d.voiceErr = !d.showVoice, false, false, false, false, false, ""
+	d.showVoice, d.showHelp, d.showDetails, d.showAlerts, d.showStatus, d.showTheme, d.voiceErr, d.voiceNote = !d.showVoice, false, false, false, false, false, "", ""
 	if !d.showVoice {
 		return d
 	}
@@ -710,6 +720,7 @@ func (d Dashboard) handleVoiceKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "p":
 		if len(names) > 0 && d.cfg.PreviewVoice != nil {
 			preview, name := d.cfg.PreviewVoice, names[d.voiceIdx]
+			d.voiceNote = "preparing " + name + "… (a first use downloads the voice, ~63 MB; loading takes a few seconds)" // UAT 119: said at once, before the deck reports
 			return d, func() tea.Msg { preview(name); return nil }
 		}
 	case "enter":
@@ -756,6 +767,9 @@ func (d Dashboard) voiceLines(o render.Opts) []string {
 	}
 	if d.voiceErr != "" {
 		lines = append(lines, "", "  ⚠ "+d.voiceErr)
+	}
+	if d.voiceNote != "" { // UAT 119: the wait explained — download progress, model loading
+		lines = append(lines, "", "  … "+render.Tint(d.voiceNote, render.Tok(render.TextBright)))
 	}
 	lines = append(lines, "", "  Your correspondent for the synthesized broadcast; the choice is saved.")
 	return append(lines, "", "  "+o.KeyCap("↑↓")+" Move  "+o.KeyCap("p")+" Preview  "+o.KeyCap("enter")+" Select Voice  "+o.KeyCap("esc")+" Cancel")

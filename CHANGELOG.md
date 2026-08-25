@@ -2,6 +2,14 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.9.2] — 2026-08-25
+
+### Fixed
+- Voice chooser (Linux/Windows): the wait between `p` and the first sound is explained in the
+  window — `preparing Amy…`, then `installing Amy voice… 40% (25 MB)` while a voice downloads,
+  `loading Amy…` while Piper reads the model (a few seconds on every run), cleared when the sound
+  starts. Preview timeout 60 s.
+
 ## [0.9.1] — 2026-08-25
 
 ### Added

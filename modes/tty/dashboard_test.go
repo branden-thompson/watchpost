@@ -2499,3 +2499,39 @@ func TestSetupFormShowsAStoredFIRMSKeyAndItsHealth(t *testing.T) {
 		t.Fatalf("rejected key must be said in the window:\n%s", view)
 	}
 }
+
+func TestVoiceChooserShowsTheWaitAndItsProgress(t *testing.T) {
+	// UAT 119: p says at once what is about to happen; the deck's notes
+	// (download progress, loading) replace it; "" clears; opening the
+	// chooser starts clean.
+	previewed := ""
+	m, err := NewDashboard(Config{Version: "t", Voices: func() []string { return []string{"Lessac", "Amy"} }, PreviewVoice: func(n string) { previewed = n }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'V', Text: "V"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
+	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "… preparing Amy… (a first use downloads the voice") {
+		t.Fatalf("the wait must be explained at once:\n%s", view)
+	}
+	_ = drain(t, model, cmd)
+	if previewed != "Amy" {
+		t.Fatalf("preview hook called with %q", previewed)
+	}
+	model, _ = model.Update(VoiceNoteMsg{Text: "installing Amy voice… 40% (25 MB)"})
+	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "… installing Amy voice… 40% (25 MB)") || strings.Contains(view, "preparing Amy") {
+		t.Fatalf("the deck's progress replaces the first line:\n%s", view)
+	}
+	model, _ = model.Update(VoiceNoteMsg{Text: ""})
+	if strings.Contains(stripANSITest(model.(Dashboard).View().Content), "… ") {
+		t.Fatal("an empty note clears the line")
+	}
+	model, _ = model.Update(VoiceNoteMsg{Text: "loading Amy…"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'V', Text: "V"})
+	if strings.Contains(stripANSITest(model.(Dashboard).View().Content), "loading Amy") {
+		t.Fatal("reopening the chooser starts clean")
+	}
+}
