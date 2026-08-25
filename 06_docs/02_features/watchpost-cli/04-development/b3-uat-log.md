@@ -833,3 +833,10 @@ Mock saved: `09-view-mocks/location-detail-mock.txt`.
 | # | Item | Disposition |
 |---|---|---|
 | 120.1 | "'SWY S-2' → 'State Highway S-2', not 'es double-u why'; 'Palomar Mountain Rd.' → 'Road', not 'ar-dee'" | **Done** (voice only; the marquee keeps the product's text): the word table expands the road and highway abbreviations NWS products use — SWY/SR/Hwy/Fwy, Rd/Ave/Blvd/St/Dr/Ln/Ct/Pkwy/Trl, Mt/Mtn/Cyn/Jct/Rte — and numbered routes keep their number ("US-101" → "U S 101", "I-15" → "Interstate 15", "SR-78" → "State Route 78"). Pinned. |
+
+### Session 121 (README screenshots)
+
+| # | Item | Disposition |
+|---|---|---|
+| 121.1 | "Add some screenshots to the README" | **Done**: five frames rendered from the real dashboard model at 133×44 with live data (Oceanside, Mineral Wells TX, Portland ME, Grand View ID, Seattle; RECENT: El Cajon, Boise, Austin, Denver), colour forced on, radio state staged as PLAYING with the lead in the marquee and the visualizer sampled once; Location Details (fire), the Setup window mid type-ahead with a stored key, the Voice chooser with a download in progress, and Synthwave '84. ANSI → SVG via charmbracelet/freeze (window chrome, #131313); ~400 KB each under `docs/img/`, referenced from a "What it looks like" section. Procedure: a throwaway `tools/_shots` program (not kept — it stages radio state); re-run it when the UI changes. Glyphs the embedded font lacks were substituted for the frames only (see 121.2). |
+| 121.2 | freeze's embedded JetBrains Mono lacks `✔ ✘ ♪` (boxes in the first render) | For the frames only: `✔→✓`, `✘→✗`, `♪→»`; the app itself is unchanged (the terminal's own font renders them). |

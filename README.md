@@ -4,6 +4,20 @@ A terminal-native live weather station: a watchlist dashboard of NWS observation
 alerts, marine conditions and tides where you are near the coast, and NOAA Weather Radio — the
 real relays where they exist, or your location's own forecast read aloud where they don't.
 
+## What it looks like
+
+Real data, 133×44, the default theme. Rendered from the dashboard itself (UAT 121).
+
+![The dashboard: masthead, radio player with the visualizer, an alert, the watchlist and the RECENT list with fire (◆) and alert (⚠) marks](docs/img/dashboard.svg)
+
+![Location Details for a location near a wildfire: forecast, FIRE section with hotspots and named incidents, alerts](docs/img/details-fire.svg)
+
+![The Setup window on a re-run: current default, type-ahead hints, the stored FIRMS key and its health](docs/img/setup.svg)
+
+![The Voice chooser on Linux: six Piper correspondents, one downloading with progress](docs/img/voices.svg)
+
+![The Synthwave '84 theme](docs/img/synthwave.svg)
+
 ## Install
 
 macOS and Linux (amd64 / arm64):

@@ -2181,9 +2181,9 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	joined := stripANSITest(raw)
 	for _, want := range []string{
 		"FIRE │ Hotspots      2 hotspots nearby",
-		"▲ 6 mi N    62 MW · GOES-WEST",
+		"◆ 6 mi N    62 MW · GOES-WEST",
 		"2h 00m",
-		"▲ 11 mi E   8 MW · NOAA-20",
+		"◆ 11 mi E   8 MW · NOAA-20",
 		"Timber      19 mi · 12,915 ac",
 		"26% contained",
 		"Fire Wx       Red Flag Warning",

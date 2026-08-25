@@ -1342,12 +1342,13 @@ func ellipsize(s string, n int, ascii bool) string {
 	return string(r[:n-1]) + "…"
 }
 
-// fireGlyph is the fire mark for the current glyph set (▲, or ^ under --ascii).
+// fireGlyph is the fire mark for the current glyph set (◆ like the row
+// mark — UAT 110/121 — or * under --ascii).
 func fireGlyph(o render.Opts) string {
 	if o.ASCII {
-		return "^"
+		return "*"
 	}
-	return "▲"
+	return "◆"
 }
 
 // thousands groups an acreage ("12,915").
