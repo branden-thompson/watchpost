@@ -2,6 +2,12 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.9.4] — 2026-08-25
+
+### Changed
+- Location Details: the FIRE rows use the same `◆` mark as the watchlist (was `▲`). README gains
+  screenshots rendered from the dashboard with live data.
+
 ## [0.9.3] — 2026-08-25
 
 ### Fixed
