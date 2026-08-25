@@ -11,7 +11,12 @@ VALIDATE report. Budget: ~30 minutes. Bring: the laptop, a terminal with a Unico
 uname -a; head -2 /etc/os-release; echo $TERM; locale | grep LANG; fc-list | wc -l
 pactl info 2>/dev/null | head -3 || echo "no pulse/pipewire"; aplay -l 2>/dev/null | head -3 || echo "no alsa"
 ldd --version | head -1
+# Arch / CachyOS: the binary needs glibc (present) and ALSA for audio — pipewire-alsa routes it through PipeWire
+pacman -Q glibc alsa-lib pipewire-alsa 2>/dev/null || dpkg -l libasound2 2>/dev/null | tail -1
 ```
+Supported: any glibc Linux on amd64/arm64 — Debian/Ubuntu, Fedora, Arch/CachyOS. Not Alpine/musl.
+Audio: the player loads `libasound.so.2` at runtime (ALSA; PipeWire/Pulse via their ALSA plugin) —
+without it the player reads FAILED with the reason and the dashboard keeps running.
 
 ## 1. Install (the thing that must work)
 

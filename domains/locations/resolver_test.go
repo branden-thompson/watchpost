@@ -132,11 +132,15 @@ func TestTypeAheadSingleCallBudget(t *testing.T) {
 	// exercised TypeAhead's zip-adornment path. Enforce the <10ms budget on
 	// single cold-ish TypeAhead calls including qualifier filtering.
 	r := testResolver(t, nil)
+	budget := 10 * time.Millisecond
+	if raceEnabled {
+		budget = 60 * time.Millisecond // the detector alone is a 5–10× slowdown; shared CI runners add jitter (release job, 2026-08-25: 13.9 ms)
+	}
 	for _, q := range []string{"New", "San", "Spring", "Portland, ME", "a"} {
 		start := time.Now()
 		_ = r.TypeAhead(q, 5)
-		if el := time.Since(start); el > 10*time.Millisecond {
-			t.Fatalf("TypeAhead(%q) took %v (>10ms budget)", q, el)
+		if el := time.Since(start); el > budget {
+			t.Fatalf("TypeAhead(%q) took %v (>%v budget)", q, el, budget)
 		}
 	}
 }
