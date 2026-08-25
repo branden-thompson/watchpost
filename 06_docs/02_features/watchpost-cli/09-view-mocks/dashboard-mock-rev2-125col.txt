@@ -1,0 +1,39 @@
+
+
+
+W A T C H P O S T   │  v 0.1.0-releaselabel                                                         ✔ NWS   ✔ FIRS   ✔ {api}
+[a] About / Info                                                                  DATA LAST UPDATED: 12/31/2026 23:59:59 PDT
+
+╭── ⚠ WEATHER ADVISORY STATEMENT / TITLE  ─────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                          │
+│  THIS AREA IS RESERVED FOR ALERTS SPECIFICALLY TIED TO YOUR USER-SUPPLIED AND/OR CURRENT LOCATION. IT SHOULD ONLY BE     │
+│  FOR IMMEDIATE ALERTS - EITHER SEVERE WEATHER STATEMENTS OR EVACUATION NOTICES TIED TO YOUR AREA. THIS TEXT WILL EITHER  │
+│  BE BRIGHT YELLOW (FOR STATEMENTS AND WARNINGS) OR RED (FOR EVACUATION ALERTS).                                          │
+│                                                                                                                          │
+│  01 / 88 Alerts                                                     [Shift + A] Alert Details   [←] Previous  [→] Next   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭── Watchpost Weather Radio ───────────────────────────────────────────────────────────────────────────────────────────────╮
+│  ♪ San Diego NOAA Maritime Forecast  Station: <station-id>                              VOL ███████████░░░░░░░░░ -18dB   │
+│  00:00 / 00:00                                                                                               ▶ PLAYING   │
+│  [                                                                                                                   ]   │
+│  [ VISUALIZER AREA - LIKE CLI AMP                                                                                    ]   │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  [p]in Selected Location                                                                [Shift + t] Toggle Player Size   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+      PRIORITY LOCATIONS                                                                                          03/10 Used
+
+      [   L O C A T I O N   /   S T A T I O N    ]     [           T O D A Y             ]     [    T O M O R R O W     ]
+  ♪   ###. NAME                      LABEL    ZIP      CONDITIONS    NOW       HI     LOW      CONDITIONS    HI      LOW
+  ▶ ⚠ 001. Oceanside, CA             OSIDE   92057     CLEAR        888ºF↗   889ºF   840ºF     RAIN         888ºF   888ºF
+
+      ────────────────────────────────────────── RECENT / SEARCHED LOCATIONS ────────────────────────────────────────────
+
+      [   L O C A T I O N   /   S T A T I O N    ]     [           T O D A Y             ]     [    T O M O R R O W     ]
+  ♪   ###. NAME                      LABEL    ZIP      CONDITIONS    NOW       HI     LOW      CONDITIONS    HI      LOW   ▲
+› ▶ ⚠ 004. Oceanside, CA             OSIDE   92057     CLEAR        888ºF↗   889ºF   840ºF     RAIN         888ºF   888ºF  │
+                                                                                                                           │
+                                                                                          Showing 1-10 of 15000 locations  ▼
+
+[↑↓] Navigate Locations [tab] Navigate Sections [enter] Location Weather Details [+/-] Adjust Radio Volume
+[space] Play/Pause Radio Forecast (if available) [Shift+A] Add Location [t] Choose Color Theme [?] Help [q] Quit

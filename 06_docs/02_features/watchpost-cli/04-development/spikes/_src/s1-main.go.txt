@@ -1,0 +1,141 @@
+// spike-s1: measure CPU/RSS of Icecast->ICY strip->go-mp3->oto pipeline.
+package main
+
+import (
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"runtime"
+	"time"
+
+	"github.com/ebitengine/oto/v3"
+	mp3 "github.com/hajimehoshi/go-mp3"
+)
+
+// icyReader strips ICY metadata blocks every metaint bytes.
+type icyReader struct {
+	r       io.Reader
+	metaint int
+	left    int // audio bytes until next metadata block
+}
+
+func (ir *icyReader) Read(p []byte) (int, error) {
+	if ir.metaint <= 0 {
+		return ir.r.Read(p)
+	}
+	if ir.left == 0 {
+		var lb [1]byte
+		if _, err := io.ReadFull(ir.r, lb[:]); err != nil {
+			return 0, err
+		}
+		mlen := int(lb[0]) * 16
+		if mlen > 0 {
+			meta := make([]byte, mlen)
+			if _, err := io.ReadFull(ir.r, meta); err != nil {
+				return 0, err
+			}
+			fmt.Fprintf(os.Stderr, "META: %q\n", string(meta))
+		}
+		ir.left = ir.metaint
+	}
+	if len(p) > ir.left {
+		p = p[:ir.left]
+	}
+	n, err := ir.r.Read(p)
+	ir.left -= n
+	return n, err
+}
+
+func main() {
+	url := flag.String("url", "", "stream URL")
+	mode := flag.String("mode", "full", "full|decode")
+	dur := flag.Int("dur", 120, "seconds to run")
+	flag.Parse()
+
+	fmt.Printf("PID %d mode=%s url=%s\n", os.Getpid(), *mode, *url)
+
+	req, err := http.NewRequest("GET", *url, nil)
+	if err != nil {
+		fatal(err)
+	}
+	req.Header.Set("Icy-MetaData", "1")
+	req.Header.Set("User-Agent", "watchpost-spike/0.1")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fatal(err)
+	}
+	defer resp.Body.Close()
+	metaint := 0
+	fmt.Sscanf(resp.Header.Get("icy-metaint"), "%d", &metaint)
+	fmt.Printf("HTTP %s icy-metaint=%d content-type=%s icy-name=%q icy-br=%s\n",
+		resp.Status, metaint, resp.Header.Get("Content-Type"),
+		resp.Header.Get("icy-name"), resp.Header.Get("icy-br"))
+
+	dec, err := mp3.NewDecoder(&icyReader{r: resp.Body, metaint: metaint, left: metaint})
+	if err != nil {
+		fatal(err)
+	}
+	fmt.Printf("mp3 samplerate=%d\n", dec.SampleRate())
+
+	// MemStats sampler.
+	go func() {
+		var m runtime.MemStats
+		for {
+			time.Sleep(10 * time.Second)
+			runtime.ReadMemStats(&m)
+			fmt.Printf("MEMSTATS t=%ds HeapAlloc=%d Sys=%d NumGC=%d\n",
+				int(time.Since(start).Seconds()), m.HeapAlloc, m.Sys, m.NumGC)
+		}
+	}()
+
+	deadline := time.After(time.Duration(*dur) * time.Second)
+	done := make(chan error, 1)
+
+	switch *mode {
+	case "decode":
+		go func() {
+			_, err := io.Copy(io.Discard, dec)
+			done <- err
+		}()
+	case "full":
+		op := &oto.NewContextOptions{
+			SampleRate:   dec.SampleRate(),
+			ChannelCount: 2, // go-mp3 always outputs 16-bit stereo
+			Format:       oto.FormatSignedInt16LE,
+		}
+		ctx, ready, err := oto.NewContext(op)
+		if err != nil {
+			fatal(err)
+		}
+		<-ready
+		p := ctx.NewPlayer(dec)
+		p.SetVolume(0) // SILENT
+		p.Play()
+		go func() {
+			for p.IsPlaying() {
+				time.Sleep(time.Second)
+			}
+			done <- errors.New("player stopped")
+		}()
+	default:
+		fatal(fmt.Errorf("bad mode %q", *mode))
+	}
+
+	select {
+	case <-deadline:
+		fmt.Println("DONE: duration reached")
+	case err := <-done:
+		fmt.Printf("DONE early: %v\n", err)
+		os.Exit(2)
+	}
+}
+
+var start = time.Now()
+
+func fatal(err error) {
+	fmt.Fprintf(os.Stderr, "FATAL: %v\n", err)
+	os.Exit(1)
+}

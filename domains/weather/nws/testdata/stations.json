@@ -1,0 +1,30 @@
+{
+  "features": [
+    {
+      "properties": {
+        "stationIdentifier": "KOKB",
+        "name": "Oceanside Municipal Airport"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.3517,
+          33.2172
+        ]
+      }
+    },
+    {
+      "properties": {
+        "stationIdentifier": "KCRQ",
+        "name": "Carlsbad"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -117.2797,
+          33.1283
+        ]
+      }
+    }
+  ]
+}

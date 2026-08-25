@@ -1,0 +1,30 @@
+#!/usr/bin/expect -f
+# B2 outcome-based PTY verification of `watchpost setup` (D-21 mechanics leg).
+# PRECONDITIONS (JD1): run from the REPO ROOT with a built ./dist/watchpost
+# (make build), and ALWAYS set XDG_CONFIG_HOME to a sandbox first — without
+# it this script OVERWRITES your real ~/.config/watchpost/config.toml:
+#   export XDG_CONFIG_HOME=$(mktemp -d) && ./06_docs/.../b2-setup-pty.expect
+# Afterward assert the artifact: grep zip "$XDG_CONFIG_HOME/watchpost/config.toml"
+# (expects 92057) and `stat -f %Sp` shows -rw------- (0600).
+# NOTE: literal prompt-matching fails under the bubbletea v2 cell renderer
+# (text fragments between cursor moves) — this script is OUTCOME-based.
+if {![info exists ::env(XDG_CONFIG_HOME)] || $::env(XDG_CONFIG_HOME) eq ""} {
+  puts "REFUSING: set XDG_CONFIG_HOME to a sandbox dir first (protects your real config)"
+  exit 1
+}
+set timeout 20
+spawn ./dist/watchpost setup
+sleep 2
+send "92057"
+sleep 1
+send "\r"
+sleep 1
+send "\r"
+sleep 1
+send "\r"
+# "Setup saved" prints AFTER the TUI exits — plain text, literal-matchable.
+expect {
+  "Setup saved" { puts "\nPTY-OUTCOME-OK" }
+  timeout { puts "\nFAIL: no save confirmation"; exit 1 }
+}
+expect eof

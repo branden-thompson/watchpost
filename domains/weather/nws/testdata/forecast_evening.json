@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "periods": [
+      {
+        "number": 2,
+        "name": "Tonight",
+        "startTime": "2026-08-23T18:00:00-07:00",
+        "endTime": "2026-08-24T06:00:00-07:00",
+        "isDaytime": false,
+        "temperature": 63,
+        "temperatureUnit": "F",
+        "probabilityOfPrecipitation": {
+          "unitCode": "wmoUnit:percent",
+          "value": null
+        },
+        "windSpeed": "5 mph",
+        "windDirection": "WSW",
+        "shortForecast": "Mostly Clear",
+        "icon": "x"
+      }
+    ]
+  }
+}

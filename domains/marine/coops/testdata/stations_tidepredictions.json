@@ -1,0 +1,101 @@
+{
+ "count": 12,
+ "stations": [
+  {
+   "id": "9410135",
+   "name": "South San Diego Bay",
+   "lat": 32.62910079956055,
+   "lng": -117.10780334472656,
+   "state": "CA",
+   "type": "R"
+  },
+  {
+   "id": "9410152",
+   "name": "National City, San Diego Bay",
+   "lat": 32.665,
+   "lng": -117.118,
+   "state": "CA",
+   "type": "S"
+  },
+  {
+   "id": "9410166",
+   "name": "San Diego, Quarantine Station",
+   "lat": 32.7033,
+   "lng": -117.235,
+   "state": "CA",
+   "type": "S"
+  },
+  {
+   "id": "9410170",
+   "name": "SAN DIEGO (Broadway)",
+   "lat": 32.71555555555555,
+   "lng": -117.1766666666667,
+   "state": "CA",
+   "type": "R"
+  },
+  {
+   "id": "9410196",
+   "name": "Mission Bay, Campland",
+   "lat": 32.793701171875,
+   "lng": -117.22380065917969,
+   "state": "CA",
+   "type": "R"
+  },
+  {
+   "id": "9410230",
+   "name": "La Jolla (Scripps Institution Wharf)",
+   "lat": 32.86688888888889,
+   "lng": -117.2571388888889,
+   "state": "CA",
+   "type": "R"
+  },
+  {
+   "id": "9410580",
+   "name": "Newport Bay Entrance, Corona del Mar",
+   "lat": 33.6033,
+   "lng": -117.883,
+   "state": "CA",
+   "type": "R"
+  },
+  {
+   "id": "9410583",
+   "name": "Balboa Pier, Newport Beach",
+   "lat": 33.6,
+   "lng": -117.9,
+   "state": "CA",
+   "type": "S"
+  },
+  {
+   "id": "TWC0405",
+   "name": "Point Loma",
+   "lat": 32.666666666667005,
+   "lng": -117.23333333333005,
+   "state": "",
+   "type": "S"
+  },
+  {
+   "id": "TWC0413",
+   "name": "Quivira Basin, Mission Bay",
+   "lat": 32.76666666666701,
+   "lng": -117.23333333333005,
+   "state": "",
+   "type": "S"
+  },
+  {
+   "id": "TWC0419",
+   "name": "San Clemente",
+   "lat": 33.416666666667005,
+   "lng": -117.61666666666996,
+   "state": "",
+   "type": "S"
+  },
+  {
+   "id": "9999901",
+   "name": "Oceanside Pier (no MLLW datum)",
+   "lat": 33.19,
+   "lng": -117.39,
+   "state": "CA",
+   "type": "S"
+  }
+ ]
+}

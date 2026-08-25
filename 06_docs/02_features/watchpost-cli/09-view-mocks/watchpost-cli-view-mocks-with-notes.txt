@@ -1,0 +1,166 @@
+MAIN SCREEN / "DASHBOARD" or "WATCH CENTER":
+
+
+
+W A T C H P O S T   │  v 0.1.0-releaselabel                                                         ✔ NWS   ✔ FIRS   ✔ {api}     <-- Visual status indicators for each API 
+[a] About / Info                                                                  DATA LAST UPDATED: 12/31/2026 23:59:59 PDT               ✔ NWS (Green / Good)   ⚠ NWS (Yellow / Degraded - slow)  ✘ NWS (red / offline)
+
+╭── ⚠ WEATHER ADVISORY STATEMENT / TITLE  ─────────────────────────────────────────────────────────────────────────────────╮    
+│                                                                                                                          │     <-- This module only shows when there's an alert / advisory statement for either                                          
+│  THIS AREA IS RESERVED FOR ALERTS SPECIFICALLY TIED TO YOUR USER-SUPPLIED AND/OR CURRENT LOCATION. IT SHOULD ONLY BE     │         a. the user's default location (or current location is locations services are available)
+│  FOR IMMEDIATE ALERTS - EITHER SEVERE WEATHER STATEMENTS OR EVACUATION NOTICES TIED TO YOUR AREA. THIS TEXT WILL EITHER  │         b. the highlighted location in the list, which will disappear if the user navigates to a different location
+│  BE BRIGHT YELLOW (FOR STATEMENTS AND WARNINGS) OR RED (FOR EVACUATION ALERTS).                                          │
+│                                                                                                                          │
+│  01 / 88 Alerts                                                     [Shift + A] Alert Details   [←] Previous  [→] Next   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯      Mimized Player Design:   
+╭── Watchpost Weather Radio ───────────────────────────────────────────────────────────────────────────────────────────────╮    ╭── Watchpost Weather Radio ───────────────────────────────────────────────────────────────────────────────────────────────╮
+│  ♪ San Diego NOAA Maritime Forecast  Station: <station-id>                              VOL ███████████░░░░░░░░░ -18dB   │    │  ♪ San Diego NOAA Maritime Forecast  Station: <station-id>  Frequency: <frequency> Hz   VOL ███████████░░░░░░░░░ -18dB   │
+│  00:00 / 00:00                                                                                               ▶ PLAYING   │    │  00:00 / 00:00   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ▶ PLAYING   │         
+│  [                                                                                                                   ]   │    │  [p]in Selected Location                                                                [Shift + t] Toggle Player Size   │
+│  [ VISUALIZER AREA - LIKE CLI AMP                                                                                    ]   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯  
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  [p]in Selected Location                                                                [Shift + t] Toggle Player Size   │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   
+
+      PRIORITY LOCATIONS                                                                                          03/10 Used    FOR ULTRA-WIDE TERMINALS (extended columns > 125 col, progressive expansion / truncation )
+                                                                                                                                 
+           [   L O C A T I O N   /   S T A T I O N    ]     [           T O D A Y             ]     [    T O M O R R O W     ]       [                         E X T E N D E D   F O R E C A S T                          ]
+  ♪        ###. NAME                 LABEL    ZIP      CONDITIONS    NOW       HI     LOW      CONDITIONS    HI      LOW             mm/dd            mm/dd             mm/dd             mm/dd             mm/dd       
+   ▶     ⚠ 001. Oceanside, CA        OSIDE   92057     CLEAR        888ºF↗   889ºF   840ºF     RAIN         888ºF   888ºF       H 100ºF/46ºF L   H 100ºF/46ºF L    H 100ºF/46ºF L    H 100ºF/46ºF L    H 100ºF/46ºF L              <- High temp: Orange
+      002. Oceanside, CA             OSIDE   92057     CLEAR        888ºF↗   889ºF    72ºF     RAIN         888ºF   000ºF       H 100ºF/46ºF L   H 100ºF/46ºF L    H 100ºF/46ºF L    H 100ºF/46ºF L    H 100ºF/46ºF L              <- Low Temp: Cyan
+      003. San Diego, CA             SDIEG   92101     P.CLOUDY     100ºF↗   888ºF    62ºF     P.CLOUDY      00ºF    00ºF       H 100ºF/46ºF L   H 100ºF/46ºF L    H 100ºF/46ºF L    H 100ºF/46ºF L    H 100ºF/46ºF L 
+
+      ────────────────────────────────────────── RECENT / SEARCHED LOCATIONS ────────────────────────────────────────────
+
+      [   L O C A T I O N   /   S T A T I O N    ]     [           T O D A Y             ]     [    T O M O R R O W     ] 
+  ♪   ###. NAME                      LABEL    ZIP      CONDITIONS    NOW       HI     LOW      CONDITIONS    HI      LOW   ▲    <-- scrollable list - we should be smart about how many we show, taking in the available vertical viewport/terminal  
+› ▶ ⚠ 004. Oceanside, CA             OSIDE   92057     CLEAR        888ºF↗   889ºF   840ºF     RAIN         888ºF   888ºF  │        based on the other displayed modules / components in the base layour.  Floating windows/modals don't affect the
+      005. San Diego, CA             SDIEG   92101     P.CLOUDY     100ºF↗   888ºF    62ºF     P.CLOUDY      00ºF    00ºF  █        viewable list size.
+      006. San Diego Int'l Airport   SAN     92101     CLOUDY        88ºF↗    88ºF    40ºF     CLEAR         76ºF    75ºF  │
+      007. Los Angeles Int'l Ai...   LAX     90045     RAIN          88ºF↘    73ºF    55ºF     WINDY         85ºF    62ºF  │
+      008. Phoneix, AZ               PHNIX   92101     P.CLOUDY     100ºF↗   888ºF    62ºF     P.CLOUDY      00ºF    00ºF  │
+      009. San Diego, CA             SDIEG   92101     P.CLOUDY     100ºF↗   888ºF    62ºF     P.CLOUDY      00ºF    00ºF  │
+      010. San Diego, CA             SDIEG   92101     P.CLOUDY     100ºF↗   888ºF    62ºF     P.CLOUDY      00ºF    00ºF  │
+      011. San Diego, CA             SDIEG   92101     P.CLOUDY     100ºF↗   888ºF    62ºF     P.CLOUDY      00ºF    00ºF  │
+      012. San Diego, CA             SDIEG   92101     P.CLOUDY     100ºF↗   888ºF    62ºF     P.CLOUDY      00ºF    00ºF  │
+      013. San Diego, CA             SDIEG   92101     P.CLOUDY     100ºF↗   888ºF    62ºF     P.CLOUDY      00ºF    00ºF  │
+                                                                                                                           │
+                                                                                          Showing 1-10 of 15000 locations  ▼
+
+[↑↓] Navigate Locations [tab] Navigate Sections [enter] Location Weather Details [+/-] Adjust Radio Volume
+[space] Play/Pause Radio Forecast (if available) [Shift+A] Add Location [t] Choose Color Theme [?] Help [q] Quit
+
+
+
+SETUP VIEW:
+
+
+
+╭── Oceanside, California 92057 | <LABEL> ─────────────── CLI / COMMAND CENTER SETUP ───╮
+│                                                                                       │
+│   › 1. │ Enter your default (perferred) ZIP, POSTAL, INDEX CODE (ex. '92057')       ▲ │
+│        │ <editable text field/line here>                                            │ │
+│        │ e.x. '92057'                                                               █ │
+│                                                                                     │ │
+│     2. │ Want to enable location services?                                          │ │
+│        │ [Y]es / [N]o                                                               │ │
+│        │ This enables your default location to automatically change based on where  │ │
+│        | you are. Requires your machine to have location services enabled.          │ │
+│                                                                                     │ │
+│     3. │ <Setup Question>                                                           │ │
+│        │ [ User entry field / answer section ]                                      │ │
+│        │ <Description and/or helper text>                                           │ │
+│                                                                                     │ │
+│   [esc] Exit to Main Screen  [up / down] Focus / Answer setup question  [q] Quit    │ │
+│                                                                                     ▼ │
+╰───────────────────────────────────────────────────────────────────────────────────────╯ 
+
+Add location Modal:
+
+╭── Add Location to Short-list ───────────────╮
+│                                             │
+│   Enter City Name or Zip Code:              │  
+│   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │ 
+│   e.x. "Oceanside, CA" or "92057"           │
+│                                             │
+│   Give Location a 5-char Unique Label:      │  
+│   ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │ 
+│   e.x. "OSIDE", "O.SDE", "HOME"             │
+│                                             │
+│          [enter] Add  [esc] Cancel / Back   │ 
+╰─────────────────────────────────────────────╯   
+
+Help Modal:
+
+╭── Watchpost Help ──────────────────────────────────────────╮
+│                                                            │
+│   <CMD Category Label>                                     │
+│     ?            - Toggle Help                             │
+│     tab          - Focus Next Section                      │
+│     shift + tab  - Focus Previous Section                  │
+│     a            - About / Application Info and credits    │
+│     t            - Choose Color Theme                      │
+│                                                            │  
+│  <CMD Category Label>                                      │
+│     A            - Weather / Fire Alert Details            │
+│     T            - Toggle Radio Size                       │
+│                                                            │ 
+│                                              [esc] Close   │
+╰────────────────────────────────────────────────────────────╯ 
+
+
+
+LOCATION DETAIL VIEW:
+       
+
+╭── Oceanside, California 92057 ─────────────── Updated: 12/31/2026 23:59:59 PDT ───╮
+│                                                                                   │
+│   CURRENTLY   │   Partly Cloudy   73ºF↗                                         ▲ │
+│               │   Feels Like      75ºF  (+2ºF)          Humidity  :  65%        │ │
+│               │                                                                 █ │
+│       TODAY   |   Clear all Day                       HIGH 100ºF / 50ºF LOW     │ │
+│               |   Sunrise:      0645  Local Time                                │ │
+│               |   Sunset :      1756  Local Time                                │ │
+│               │                                                                 │ │
+│    FORECAST   |   mm/dd/yyyy    RAIN    ( 40%)        HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN    (100%)        HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN    ( 40%)        HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN    ( 40%)        HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN    ( 40%)        HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN    ( 40%)        HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN    ( 40%)        HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN    ( 40%)        HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN    ( 40%)        HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN    ( 40%)        HIGH 100ºF / 41ºF LOW     │ │
+│               │                                                                 │ │
+│    MARITIME   |   Swell:        WNW 6 [Feet / Meters]                           │ │
+│               │   Conditions:   Moderate Chop                                   │ │
+│               │   Water Temp:   71ºF                                            │ │
+│                                                                                 │ │
+│   ───────────────────────────────────────────────────────────────────────────   │ │
+│                                                                                 │ │
+│   ⚠ EXTREME HEAT ADVISORY                                                       │ │
+│     THIS IS WHERE THE NOAA OR NWS PROVIDED ALERT TEXT WILL GO FOR THIS          │ │
+│     PARTICULAR ETREME WEATHER STATEMENT. NOTICE THE SPACING OF THIS ALERT       │ │
+│     WITHIN THE CONFINES OF THIS MODAL OR OR FLOATING VIEW.                      │ │
+│                                                                                 │ │
+│       - ANY BULLET LISTS ARE INDENTED 4 COL FROM LEFT TEXT EDGE                 │ │
+│       - SINGLE BULLETS THAT FIT IN ONE LINE HAVE NO BREATHER SPACING            │ │
+│                                                                                 │ │
+│       - ANY MULTI-LINE BULLET GETS ONE LINE OF SPACING BOTH ABOVE AND BELOW     │ │
+│         THAT PARTICULAR BULLET SO THAT IT CAN EASILY BE SCANNED BY THE HUMAN    │ │ 
+│         BEINGS READIN THE ALERT BULLET POINT. NOTICE HOW WE STILL GIVE          │ │
+│         A SPACE GUTTER TO ACCOUNT FOR THE RIGHT SCROLL BAR FOR REPORTS THAT     │ │ 
+│         HAVE A LOT OF INFORMATION (TO ACCOUNT FOR SHORTER VERTICAL TERMINAL     │ │
+│         HEIGHTS).                                                               │ │
+│                                                                                 │ │
+│       - SOME OTHER ONE LINE BULLET                                              │ │
+│                                                                                 │ │
+│   ───────────────────────────────────────────────────────────────────────────   │ │
+│                                                                                 │ │
+│   ⚠ <<2ND+ WEATHER ADVISORY                                                     │ │
+│     <ADVISORY TEXT HERE>                                                        │ │
+│                                                                                 ▼ │
+│                                                                                   │
+│   [ ↑↓ ] navigate pane [ esc ] close pane   [ shift + w ] add to watchlist        │
+╰───────────────────────────────────────────────────────────────────────────────────╯ 

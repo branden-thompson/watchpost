@@ -1,0 +1,7 @@
+version: "2"
+# third_party/go-studs is an upstream-governed copy (see its NOTICE.md); it is
+# linted where it is developed, not here.
+linters:
+  exclusions:
+    paths:
+      - third_party/

@@ -1,0 +1,48 @@
+{
+ "icestats": {
+  "admin": "support@weatherusa.net",
+  "host": "radio.weatherusa.net",
+  "location": "Earth",
+  "server_id": "Icecast 2.4.3",
+  "server_start": "Sat, 01 Aug 2026 12:49:46 +0000",
+  "server_start_iso8601": "2026-08-01T12:49:46+0000",
+  "source": [
+   {
+    "audio_info": "ice-bitrate=128;ice-channels=1;ice-samplerate=44100",
+    "bitrate": 128,
+    "genre": "various",
+    "ice-bitrate": 128,
+    "ice-channels": 1,
+    "ice-samplerate": 44100,
+    "listener_peak": 31,
+    "listeners": 5,
+    "listenurl": "http://radio.weatherusa.net:80/NWR/KDO94.mp3",
+    "server_description": "Unspecified description",
+    "server_name": "no name",
+    "server_type": "audio/mpeg",
+    "stream_start": "Tue, 18 Aug 2026 01:29:06 +0000",
+    "stream_start_iso8601": "2026-08-18T01:29:06+0000",
+    "dummy": null
+   },
+   {
+    "listener_peak": 0,
+    "listeners": 0,
+    "listenurl": "http://radio.weatherusa.net:80/NWR/KEC49.mp3",
+    "dummy": null
+   },
+   {
+    "genre": "NOAA Weather Radio",
+    "listener_peak": 5,
+    "listeners": 0,
+    "listenurl": "http://radio.weatherusa.net:80/NWR/KEC55_2.mp3",
+    "server_description": "NOAA Weather Radio station KEC55 in Crowley broadcast from a Midland WR300 in Northern Mansfield",
+    "server_name": "NOAA Weather Radio Station KEC55 (Fort Worth, Texas) Stream Provided By DFW-EAS",
+    "server_type": "audio/mpeg",
+    "server_url": "https://dfweas.org/",
+    "stream_start": "Sun, 23 Aug 2026 19:32:09 +0000",
+    "stream_start_iso8601": "2026-08-23T19:32:09+0000",
+    "dummy": null
+   }
+  ]
+ }
+}

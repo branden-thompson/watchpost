@@ -1,0 +1,311 @@
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"compress/gzip"
+	"embed"
+	"fmt"
+	"io"
+	"math/rand"
+	"os"
+	"os/exec"
+	"runtime"
+	"runtime/debug"
+	"sort"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+)
+
+//go:embed data/cities_trim.tsv.gz data/zips_trim.tsv.gz
+var dataFS embed.FS
+
+// ---------- measurement helpers ----------
+
+func heapAlloc() uint64 {
+	runtime.GC()
+	runtime.GC()
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	return ms.HeapAlloc
+}
+
+func maxRSS() int64 {
+	var ru syscall.Rusage
+	syscall.Getrusage(syscall.RUSAGE_SELF, &ru)
+	return ru.Maxrss // bytes on darwin
+}
+
+func mb(b uint64) float64 { return float64(b) / (1024 * 1024) }
+
+// current RSS via ps (KB -> bytes); darwin has no cheap in-process current-RSS API
+func curRSS() uint64 {
+	out, err := exec.Command("ps", "-o", "rss=", "-p", strconv.Itoa(os.Getpid())).Output()
+	if err != nil {
+		return 0
+	}
+	kb, _ := strconv.ParseUint(strings.TrimSpace(string(out)), 10, 64)
+	return kb * 1024
+}
+
+func gunzip(name string) []byte {
+	f, err := dataFS.Open(name)
+	if err != nil {
+		panic(err)
+	}
+	zr, err := gzip.NewReader(f)
+	if err != nil {
+		panic(err)
+	}
+	out, err := io.ReadAll(zr)
+	if err != nil {
+		panic(err)
+	}
+	return out
+}
+
+// ---------- naive representation ----------
+
+type City struct {
+	Name, ASCII, Admin1, Country string
+	Lat, Lon                     float64
+	Pop                          int64
+	Timezone                     string
+}
+
+type Zip struct {
+	Zip, Place, State string
+	Lat, Lon          float64
+}
+
+var naiveCities []City
+var naiveZips []Zip
+
+func loadNaive() {
+	cb := gunzip("data/cities_trim.tsv.gz")
+	sc := bufio.NewScanner(bytes.NewReader(cb))
+	sc.Buffer(make([]byte, 1<<20), 1<<20)
+	for sc.Scan() {
+		f := strings.Split(sc.Text(), "\t")
+		lat, _ := strconv.ParseFloat(f[4], 64)
+		lon, _ := strconv.ParseFloat(f[5], 64)
+		pop, _ := strconv.ParseInt(f[6], 10, 64)
+		// strings.Split of a scanner line already yields substrings of a
+		// per-line allocation; clone to avoid pinning is not needed here.
+		naiveCities = append(naiveCities, City{f[0], f[1], f[2], f[3], lat, lon, pop, f[7]})
+	}
+	zb := gunzip("data/zips_trim.tsv.gz")
+	sc = bufio.NewScanner(bytes.NewReader(zb))
+	sc.Buffer(make([]byte, 1<<20), 1<<20)
+	for sc.Scan() {
+		f := strings.Split(sc.Text(), "\t")
+		lat, _ := strconv.ParseFloat(f[3], 64)
+		lon, _ := strconv.ParseFloat(f[4], 64)
+		naiveZips = append(naiveZips, Zip{f[0], f[1], f[2], lat, lon})
+	}
+}
+
+// ---------- compact representation ----------
+
+var cityBuf []byte    // raw TSV, kept resident
+var zipBuf []byte     // raw TSV, kept resident
+var cityOff []uint32  // line-start offsets into cityBuf, sorted by lowercase asciiname
+var zipOff []uint32   // line-start offsets into zipBuf (row order)
+
+func lineAt(buf []byte, off uint32) []byte {
+	end := bytes.IndexByte(buf[off:], '\n')
+	if end < 0 {
+		return buf[off:]
+	}
+	return buf[off : int(off)+end]
+}
+
+func field(line []byte, idx int) []byte {
+	for i := 0; i < idx; i++ {
+		t := bytes.IndexByte(line, '\t')
+		line = line[t+1:]
+	}
+	if t := bytes.IndexByte(line, '\t'); t >= 0 {
+		line = line[:t]
+	}
+	return line
+}
+
+func lineOffsets(buf []byte) []uint32 {
+	offs := make([]uint32, 0, 42000)
+	start := uint32(0)
+	for i, b := range buf {
+		if b == '\n' {
+			if uint32(i) > start {
+				offs = append(offs, start)
+			}
+			start = uint32(i) + 1
+		}
+	}
+	if int(start) < len(buf) {
+		offs = append(offs, start)
+	}
+	return offs
+}
+
+func loadCompact() {
+	cityBuf = gunzip("data/cities_trim.tsv.gz")
+	zipBuf = gunzip("data/zips_trim.tsv.gz")
+	cityOff = lineOffsets(cityBuf)
+	zipOff = lineOffsets(zipBuf)
+	// sort city offsets by lowercase asciiname (field 1)
+	sort.Slice(cityOff, func(i, j int) bool {
+		a := field(lineAt(cityBuf, cityOff[i]), 1)
+		b := field(lineAt(cityBuf, cityOff[j]), 1)
+		return bytes.Compare(bytes.ToLower(a), bytes.ToLower(b)) < 0
+	})
+}
+
+type hit struct {
+	name string
+	pop  int64
+}
+
+// prefix lookup via binary search over sorted offsets
+func compactLookup(prefix string) []hit {
+	p := []byte(strings.ToLower(prefix))
+	lo := sort.Search(len(cityOff), func(i int) bool {
+		n := bytes.ToLower(field(lineAt(cityBuf, cityOff[i]), 1))
+		return bytes.Compare(n, p) >= 0
+	})
+	var hits []hit
+	for i := lo; i < len(cityOff); i++ {
+		line := lineAt(cityBuf, cityOff[i])
+		n := bytes.ToLower(field(line, 1))
+		if !bytes.HasPrefix(n, p) {
+			break
+		}
+		pop, _ := strconv.ParseInt(string(field(line, 6)), 10, 64)
+		hits = append(hits, hit{string(field(line, 1)), pop})
+	}
+	sort.Slice(hits, func(i, j int) bool { return hits[i].pop > hits[j].pop })
+	return hits
+}
+
+// ---------- gzip-resident representation ----------
+
+var gzCities []byte // gzip bytes only, as go:embed would keep them
+
+func loadGzipResident() {
+	b, err := dataFS.ReadFile("data/cities_trim.tsv.gz")
+	if err != nil {
+		panic(err)
+	}
+	gzCities = b
+}
+
+func gzipLookup(prefix string) []hit {
+	p := []byte(strings.ToLower(prefix))
+	zr, err := gzip.NewReader(bytes.NewReader(gzCities))
+	if err != nil {
+		panic(err)
+	}
+	sc := bufio.NewScanner(zr)
+	sc.Buffer(make([]byte, 1<<20), 1<<20)
+	var hits []hit
+	for sc.Scan() {
+		line := sc.Bytes()
+		n := bytes.ToLower(field(line, 1))
+		if bytes.HasPrefix(n, p) {
+			pop, _ := strconv.ParseInt(string(field(line, 6)), 10, 64)
+			hits = append(hits, hit{string(field(line, 1)), pop})
+		}
+	}
+	sort.Slice(hits, func(i, j int) bool { return hits[i].pop > hits[j].pop })
+	return hits
+}
+
+// ---------- prefix sampling ----------
+
+func samplePrefixes(n int) []string {
+	// draw prefixes from real asciinames so lookups hit
+	cb := gunzip("data/cities_trim.tsv.gz")
+	var names []string
+	sc := bufio.NewScanner(bytes.NewReader(cb))
+	sc.Buffer(make([]byte, 1<<20), 1<<20)
+	for sc.Scan() {
+		f := strings.SplitN(sc.Text(), "\t", 3)
+		names = append(names, strings.ToLower(f[1]))
+	}
+	r := rand.New(rand.NewSource(42))
+	out := make([]string, 0, n)
+	for len(out) < n {
+		nm := names[r.Intn(len(names))]
+		l := 3 + r.Intn(4) // 3..6
+		if len(nm) < l {
+			continue
+		}
+		out = append(out, nm[:l])
+	}
+	return out
+}
+
+func main() {
+	mode := os.Args[1]
+	h0 := heapAlloc()
+
+	var loaded, sink int
+	start := time.Now()
+	switch mode {
+	case "baseline":
+		// nothing
+	case "naive":
+		loadNaive()
+		loaded = len(naiveCities) + len(naiveZips)
+	case "compact":
+		loadCompact()
+		loaded = len(cityOff) + len(zipOff)
+	case "gzip":
+		loadGzipResident()
+		loaded = len(gzCities)
+	}
+	loadDur := time.Since(start)
+	h1 := heapAlloc()
+	debug.FreeOSMemory()
+	rssAfterLoad := curRSS()
+	peakAfterLoad := uint64(maxRSS())
+
+	var lookupMean time.Duration
+	nq := 1000
+	if mode == "compact" || mode == "gzip" {
+		prefixes := samplePrefixes(nq)
+		// warm up
+		var f func(string) []hit
+		if mode == "compact" {
+			f = compactLookup
+		} else {
+			f = gzipLookup
+		}
+		f("spring")
+		t0 := time.Now()
+		for _, p := range prefixes {
+			sink += len(f(p))
+		}
+		lookupMean = time.Since(t0) / time.Duration(nq)
+		// show one sample result for sanity
+		top := f("spring")
+		fmt.Printf("sample 'spring' -> %d hits", len(top))
+		if len(top) > 0 {
+			fmt.Printf(", top: %s (pop %d)", top[0].name, top[0].pop)
+		}
+		fmt.Println()
+	}
+	h2 := heapAlloc() // after lookups + GC (prefix-sample names freed)
+
+	fmt.Printf("mode=%s rows/bytes=%d sink=%d\n", mode, loaded, sink)
+	fmt.Printf("load_time=%v\n", loadDur)
+	fmt.Printf("heap_before=%.2fMB heap_after_load=%.2fMB heap_after_lookups=%.2fMB heap_delta=%.2fMB\n",
+		mb(h0), mb(h1), mb(h2), mb(h1-h0))
+	fmt.Printf("rss_after_load=%.2fMB peak_rss_after_load=%.2fMB\n", mb(rssAfterLoad), mb(peakAfterLoad))
+	fmt.Printf("rss_final=%.2fMB peak_rss_final=%.2fMB\n", mb(curRSS()), mb(uint64(maxRSS())))
+	if mode == "compact" || mode == "gzip" {
+		fmt.Printf("lookup_mean=%v over %d prefixes\n", lookupMean, nq)
+	}
+}

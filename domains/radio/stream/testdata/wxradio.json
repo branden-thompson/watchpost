@@ -1,0 +1,103 @@
+{
+ "icestats": {
+  "admin": "icemaster@localhost",
+  "host": "wxradio.org",
+  "location": "USA",
+  "server_id": "Icecast 2.4.4",
+  "server_start": "Thu, 20 Aug 2026 02:08:44 +0000",
+  "server_start_iso8601": "2026-08-20T02:08:44+0000",
+  "source": [
+   {
+    "bitrate": 32,
+    "genre": "Weather Radio",
+    "listener_peak": 5,
+    "listeners": 0,
+    "listenurl": "http://wxradio.org:8000/AL-Columbus-WXM32",
+    "server_description": "NOAA Weather Radio WXM32 Columbus GA",
+    "server_name": "WXM32",
+    "server_type": "audio/mpeg",
+    "server_url": "https://www.weather.gov/nwr/sites?site=WXM32",
+    "stream_start": "Thu, 20 Aug 2026 11:49:59 +0000",
+    "stream_start_iso8601": "2026-08-20T11:49:59+0000",
+    "dummy": null
+   },
+   {
+    "audio_info": "ice-samplerate=22050;ice-bitrate=32;ice-channels=1",
+    "bitrate": 32,
+    "genre": "WEATHER RADIO",
+    "ice-bitrate": 32,
+    "ice-channels": 1,
+    "ice-samplerate": 22050,
+    "listener_peak": 15,
+    "listeners": 0,
+    "listenurl": "http://wxradio.org:8000/CA-Fresno-KIH62",
+    "server_description": "This is my server description",
+    "server_name": "KIH 62 NOAA WX RADIO",
+    "server_type": "audio/mpeg",
+    "stream_start": "Sat, 22 Aug 2026 02:51:25 +0000",
+    "stream_start_iso8601": "2026-08-22T02:51:25+0000",
+    "title": null,
+    "dummy": null
+   },
+   {
+    "audio_info": "ice-samplerate=22050;ice-bitrate=32;ice-channels=1",
+    "bitrate": 32,
+    "genre": "Weather Radio",
+    "ice-bitrate": 32,
+    "ice-channels": 1,
+    "ice-samplerate": 22050,
+    "listener_peak": 27,
+    "listeners": 2,
+    "listenurl": "http://wxradio.org:8000/CA-Monterey-KEC49",
+    "server_description": "Monterey CA KEC49",
+    "server_name": "NOAA Weather Radio KEC49 162.55MHz",
+    "server_type": "audio/mpeg",
+    "server_url": "https://saratoga-weather.org/",
+    "stream_start": "Sat, 22 Aug 2026 02:53:00 +0000",
+    "stream_start_iso8601": "2026-08-22T02:53:00+0000",
+    "title": null,
+    "dummy": null
+   },
+   {
+    "bitrate": 32,
+    "genre": "Weather Radio",
+    "listener_peak": 12,
+    "listeners": 2,
+    "listenurl": "http://wxradio.org:8000/CA-MontereyMarine-WWF64",
+    "server_description": "NOAA Weather Radio WWF64 162.450Mhz",
+    "server_name": "Monterey Marine WWF64 162.450Mhz",
+    "server_type": "audio/mpeg",
+    "server_url": "https://saratoga-weather.org/",
+    "stream_start": "Sat, 22 Aug 2026 02:48:15 +0000",
+    "stream_start_iso8601": "2026-08-22T02:48:15+0000",
+    "dummy": null
+   },
+   {
+    "bitrate": 320,
+    "genre": "various",
+    "listener_peak": 3,
+    "listeners": 2,
+    "listenurl": "http://wxradio.org:8000/CA-Victorville-WXM66",
+    "server_description": "Unspecified description",
+    "server_name": "Unspecified name",
+    "server_type": "audio/mpeg",
+    "stream_start": "Mon, 24 Aug 2026 06:31:27 +0000",
+    "stream_start_iso8601": "2026-08-24T06:31:27+0000",
+    "dummy": null
+   },
+   {
+    "bitrate": 128,
+    "genre": "various",
+    "listener_peak": 2,
+    "listeners": 1,
+    "listenurl": "http://wxradio.org:8000/CA-Yuma-WXL87",
+    "server_description": "Unspecified description",
+    "server_name": "Unspecified name",
+    "server_type": "audio/mpeg",
+    "stream_start": "Mon, 24 Aug 2026 16:55:18 +0000",
+    "stream_start_iso8601": "2026-08-24T16:55:18+0000",
+    "dummy": null
+   }
+  ]
+ }
+}

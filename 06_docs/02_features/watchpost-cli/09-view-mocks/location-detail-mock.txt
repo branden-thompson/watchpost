@@ -1,0 +1,27 @@
+╭── Oceanside, California 92057 ─────────────── Updated: 12/31/2026 23:59:59 PDT ───╮
+│                                                                                   │
+│   CURRENTLY   │   Partly Cloudy   73ºF↗                                         ▲ │
+│               │   Feels Like      75ºF  (+2ºF)          Humidity  :  65%        │ │
+│               │                                                                 █ │
+│       TODAY   |   Clear all Day                       HIGH 100ºF / 50ºF LOW     │ │
+│               |   Sunrise:      0645  Local Time                                │ │
+│               |   Sunset :      1756  Local Time                                │ │
+│               │                                                                 │ │
+│    FORECAST   |   mm/dd/yyyy    THUNDERTORM  ( 40%)   HIGH 100ºF / 41ºF LOW     │ │
+│               |   mm/dd/yyyy    RAIN         (100%)   HIGH 100ºF / 41ºF LOW     │ │
+│               |   (8 more daily rows)                                           │ │
+│               │                                                                 │ │
+│    MARITIME   |   Swell:        WNW 6 [Feet / Meters]                           │ │
+│               │   Conditions:   Moderate Chop                                   │ │
+│               │   Water Temp:   71ºF                                            │ │
+│                                                                                 │ │
+│   ───────────────────────────────────────────────────────────────────────────   │ │
+│                                                                                 │ │
+│   ⚠ EXTREME HEAT ADVISORY                                                       │ │
+│     ALERT TEXT ... bullet rules: bullets indent 4 from text edge; single-       │ │
+│     line bullets stack tight; multi-line bullets get one blank line above       │ │
+│     and below; right gutter reserved for the scroll bar.                        │ │
+│                                                                                 ▼ │
+│                                                                                   │
+│   [ ↑↓ ] navigate pane [ esc ] close pane   [ cntrl + a ] add to watchlist        │
+╰───────────────────────────────────────────────────────────────────────────────────╯

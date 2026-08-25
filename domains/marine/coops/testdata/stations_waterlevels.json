@@ -1,0 +1,19 @@
+{
+ "count": 2,
+ "stations": [
+  {
+   "id": "9410170",
+   "name": "San Diego",
+   "lat": 32.715557,
+   "lng": -117.17667,
+   "state": "CA"
+  },
+  {
+   "id": "9410230",
+   "name": "La Jolla",
+   "lat": 32.86689,
+   "lng": -117.25714,
+   "state": "CA"
+  }
+ ]
+}

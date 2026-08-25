@@ -1,0 +1,26 @@
+{
+ "@context": {
+  "@version": "1.1",
+  "@vocab": "https://api.weather.gov/ontology#"
+ },
+ "@graph": [
+  {
+   "@id": "https://api.weather.gov/products/6192b934-652c-4405-8c02-ff8e3005936c",
+   "id": "6192b934-652c-4405-8c02-ff8e3005936c",
+   "wmoCollectiveId": "FPUS56",
+   "issuingOffice": "KSGX",
+   "issuanceTime": "2026-08-24T19:23:00+00:00",
+   "productCode": "ZFP",
+   "productName": "Zone Forecast Product"
+  },
+  {
+   "@id": "https://api.weather.gov/products/713bddd9-559f-4e79-b32e-17b65c59b800",
+   "id": "713bddd9-559f-4e79-b32e-17b65c59b800",
+   "wmoCollectiveId": "FPUS56",
+   "issuingOffice": "KSGX",
+   "issuanceTime": "2026-08-24T09:02:00+00:00",
+   "productCode": "ZFP",
+   "productName": "Zone Forecast Product"
+  }
+ ]
+}

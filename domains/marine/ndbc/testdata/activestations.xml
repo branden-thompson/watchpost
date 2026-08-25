@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?><stations created="2026-08-24T17:50:02UTC" count="3">
+  <station id="LJPC1" lat="33.19" lon="-117.39" elev="0" name="La Jolla Pier (land, no realtime product)" owner="Scripps" pgm="IOOS Partners" type="buoy" met="y" currents="n" waterquality="n" dart="n"/>
+<station id="46999" lat="33.23" lon="-117.42" elev="0" name="Nearshore (waves only)" owner="Scripps" pgm="IOOS Partners" type="buoy" met="y" currents="n" waterquality="n" dart="n"/>
+<station id="ocpc1" lat="33.21" lon="-117.40" elev="0" name="Oceanside Pier (wind only)" owner="Scripps" pgm="IOOS Partners" type="fixed" met="y" currents="n" waterquality="n" dart="n"/>
+<station id="46224" lat="33.179" lon="-117.472" elev="0" name="Oceanside Offshore, CA" owner="Scripps" pgm="IOOS Partners" type="buoy" met="y" currents="n" waterquality="n" dart="n"/>
+  <station id="13001" lat="12" lon="-23" elev="0" name="NE Extension" owner="PIRATA" pgm="International Partners" type="buoy" met="n" currents="n" waterquality="n" dart="n"/>
+  <station id="45007" lat="42.674" lon="-87.026" elev="0" name="S MICHIGAN" owner="NDBC" pgm="NDBC Meteorological/Ocean" type="buoy" met="y" currents="n" waterquality="n" dart="n"/>
+</stations>

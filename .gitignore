@@ -1,0 +1,15 @@
+dist/
+*.log
+.DS_Store
+.claude/
+.a2dh/
+coverage.out
+*.test
+*.prof
+
+# Local development harness — not part of the public project
+_a2dh/
+.a2dh*
+AGENTS.md
+CLAUDE.md
+.github/copilot-instructions.md

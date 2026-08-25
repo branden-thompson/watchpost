@@ -1,0 +1,111 @@
+{
+  "properties": {
+    "primarySwellHeight": {
+      "uom": "wmoUnit:m",
+      "values": [
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/P3DT3H",
+          "value": 0.6096
+        }
+      ]
+    },
+    "primarySwellDirection": {
+      "uom": "wmoUnit:degree_(angle)",
+      "values": [
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/PT3H",
+          "value": 280
+        }
+      ]
+    },
+    "waveHeight": {
+      "uom": "wmoUnit:m",
+      "values": [
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/P2DT9H",
+          "value": 0.6096
+        }
+      ]
+    },
+    "wavePeriod": {
+      "uom": "nwsUnit:s",
+      "values": [
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/PT3H",
+          "value": 6
+        }
+      ]
+    },
+    "windWaveHeight": {
+      "uom": "wmoUnit:m",
+      "values": [
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/PT3H",
+          "value": 0.06096
+        }
+      ]
+    },
+    "windChill": {
+      "uom": "wmoUnit:degC",
+      "values": [
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/P7DT22H",
+          "value": null
+        }
+      ]
+    },
+    "secondarySwellHeight": {
+      "uom": "wmoUnit:m",
+      "values": [
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/P2DT9H",
+          "value": 0.6096
+        }
+      ]
+    },
+    "secondarySwellDirection": {
+      "uom": "wmoUnit:degree_(angle)",
+      "values": [
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/PT3H",
+          "value": 210
+        }
+      ]
+    },
+    "wavePeriod2": {
+      "uom": "nwsUnit:s",
+      "values": [
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/P1DT15H",
+          "value": 14
+        }
+      ]
+    },
+    "maxTemperature": {
+      "uom": "wmoUnit:degC",
+      "values": [
+        {
+          "validTime": "2026-08-23T15:00:00+00:00/PT13H",
+          "value": 23.88888888888889
+        },
+        {
+          "validTime": "2026-08-24T15:00:00+00:00/PT13H",
+          "value": 25.0
+        }
+      ]
+    },
+    "minTemperature": {
+      "uom": "wmoUnit:degC",
+      "values": [
+        {
+          "validTime": "2026-08-23T13:00:00+00:00/PT13H",
+          "value": 17.22222222222222
+        },
+        {
+          "validTime": "2026-08-24T03:00:00+00:00/PT13H",
+          "value": 16.11111111111111
+        }
+      ]
+    }
+  }
+}

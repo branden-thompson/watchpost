@@ -1,0 +1,38 @@
+# Release: on a v* tag, verify, cross-compile the matrix and publish the
+# binaries + checksums.txt as the GitHub release the installer downloads.
+# Every dependency resolves from the public module proxy or from the repo
+# itself (go-studs is carried in-tree under third_party/, import paths rewritten), so
+# no secrets are needed.
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Actions pinned by commit (red-team 0.9.0 S-F9): the release job has
+      # contents: write, so a moved tag must not be able to swap the code.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with: { go-version-file: go.mod }
+      - name: verify
+        run: make verify
+      - name: release matrix
+        run: make release-matrix VERSION="${GITHUB_REF_NAME#v}"
+      - name: installer smoke test
+        run: make install-test VERSION="${GITHUB_REF_NAME#v}"
+      - name: publish
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          fail_on_unmatched_files: true # an empty release must never publish (REVIEW R5)
+          generate_release_notes: true
+          files: |
+            dist/watchpost-*
+            dist/checksums.txt
+            LICENSE
+            THIRD_PARTY_LICENSES.md

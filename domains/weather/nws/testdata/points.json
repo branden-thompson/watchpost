@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "gridId": "SGX",
+    "gridX": 38,
+    "gridY": 22,
+    "forecast": "BASE/gridpoints/SGX/38,22/forecast",
+    "forecastHourly": "BASE/gridpoints/SGX/38,22/forecast/hourly",
+    "observationStations": "BASE/gridpoints/SGX/38,22/stations",
+    "forecastZone": "https://api.weather.gov/zones/forecast/CAZ554",
+    "county": "https://api.weather.gov/zones/county/CAC073",
+    "timeZone": "America/Los_Angeles",
+    "radarStation": "KNKX",
+    "forecastGridData": "BASE/gridpoints/SGX/38,22"
+  }
+}

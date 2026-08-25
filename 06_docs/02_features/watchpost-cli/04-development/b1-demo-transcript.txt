@@ -1,0 +1,21 @@
+watchpost report — generated 2026-08-24 00:56 UTC (schema 1.0.0-rc)
+--------------------------------------------------------------------------------
+Oceanside, CA (92057)
+  observed 00:30 +0000 via nws/E3174
+  temp n/a C  feels n/a C  dewpoint n/a C  humidity n/a%
+  wind n/a m/s dir n/a deg  gust 1.8  pressure n/a hPa  visibility n/a m
+  conditions: unknown
+  ALERT [severe]: Extreme Heat Watch — Extreme Heat Watch issued August 23 at 1:54PM PDT until August 28 at 8:00PM PDT by NWS San Diego CA (expires Aug 23 22:30 PDT)
+    Drink plenty of fluids, stay in an air-conditioned room, stay out of
+the sun, and check up on relatives and neighbors.
+  next hour: 25.6 C, precip 2.0%, wind 4.5 m/s, clear
+  2026-08-23: high 25.6 C low 21.7 C precip 2.0% — clear
+  2026-08-24: high 25.0 C low 22.2 C precip 3.0% — fog
+  2026-08-25: high 26.1 C low 22.8 C precip 1.0% — fog
+  2026-08-26: high 26.1 C low 23.3 C precip 1.0% — fog
+  2026-08-27: high 26.7 C low 23.3 C precip 1.0% — partly_cloudy
+  2026-08-28: high 26.7 C low 22.8 C precip 1.0% — partly_cloudy
+  2026-08-29: high 26.1 C low 22.8 C precip 1.0% — partly_cloudy
+--------------------------------------------------------------------------------
+provider nws: ok (Weather data: NOAA / National Weather Service (public domain))
+exit=0

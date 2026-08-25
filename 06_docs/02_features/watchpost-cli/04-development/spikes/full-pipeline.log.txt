@@ -1,0 +1,16 @@
+PID 85005 mode=full url=https://wxradio.org/CA-Monterey-KEC49
+HTTP 200 OK icy-metaint=16000 content-type=audio/mpeg icy-name="NOAA Weather Radio KEC49 162.55MHz" icy-br=32
+mp3 samplerate=22050
+META: "StreamTitle='';\x00"
+MEMSTATS t=11s HeapAlloc=2871808 Sys=12340240 NumGC=5
+MEMSTATS t=21s HeapAlloc=3319992 Sys=12340240 NumGC=10
+MEMSTATS t=31s HeapAlloc=899256 Sys=12602384 NumGC=16
+MEMSTATS t=41s HeapAlloc=1696872 Sys=12602384 NumGC=21
+MEMSTATS t=51s HeapAlloc=2410048 Sys=12602384 NumGC=26
+MEMSTATS t=61s HeapAlloc=3069904 Sys=12602384 NumGC=31
+MEMSTATS t=71s HeapAlloc=3403848 Sys=12602384 NumGC=36
+MEMSTATS t=81s HeapAlloc=1053448 Sys=12602384 NumGC=42
+MEMSTATS t=91s HeapAlloc=1582208 Sys=12602384 NumGC=47
+MEMSTATS t=101s HeapAlloc=1896040 Sys=12602384 NumGC=52
+MEMSTATS t=111s HeapAlloc=2410152 Sys=12602384 NumGC=57
+DONE: duration reached

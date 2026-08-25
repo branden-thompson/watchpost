@@ -1,0 +1,197 @@
+{
+ "count": 24,
+ "stations": [
+  {
+   "id": "PCT0026",
+   "name": "Point Loma Light, 0.8 nmi. east of",
+   "lat": 32.66583,
+   "lng": -117.22617,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0026",
+   "name": "Point Loma Light, 0.8 nmi. east of",
+   "lat": 32.66583,
+   "lng": -117.22617,
+   "type": "S",
+   "currbin": 2
+  },
+  {
+   "id": "PCT0031",
+   "name": "San Diego Bay Entrance",
+   "lat": 32.68170166015625,
+   "lng": -117.2300033569336,
+   "type": "H",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0036",
+   "name": "Ballast Point, south of",
+   "lat": 32.6845,
+   "lng": -117.23217,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0041",
+   "name": "Ballast Point, 100 yards north of",
+   "lat": 32.68333,
+   "lng": -117.23333,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0046",
+   "name": "Ballast Point, 0.55 nmi. north of",
+   "lat": 32.69583,
+   "lng": -117.2325,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0046",
+   "name": "Ballast Point, 0.55 nmi. north of",
+   "lat": 32.69583,
+   "lng": -117.2325,
+   "type": "S",
+   "currbin": 2
+  },
+  {
+   "id": "PCT0051",
+   "name": "Quarantine Station, La Playa",
+   "lat": 32.7,
+   "lng": -117.23333,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0056",
+   "name": "North Island",
+   "lat": 32.713,
+   "lng": -117.21283,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0056",
+   "name": "North Island",
+   "lat": 32.713,
+   "lng": -117.21283,
+   "type": "S",
+   "currbin": 2
+  },
+  {
+   "id": "PCT0061",
+   "name": "Harbor Island (east end), SSW of",
+   "lat": 32.71917,
+   "lng": -117.19167,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0066",
+   "name": "San Diego, 0.5 mile west of",
+   "lat": 32.71667,
+   "lng": -117.18333,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0071",
+   "name": "Airport CGS, 0.3 nmi. SE of",
+   "lat": 32.722,
+   "lng": -117.17783,
+   "type": "W",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0076",
+   "name": "B St. Pier (San Diego)",
+   "lat": 32.717,
+   "lng": -117.17633,
+   "type": "W",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0081",
+   "name": "G St. Pier (San Diego), 0.22 nmi. SW of",
+   "lat": 32.70833,
+   "lng": -117.1775,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0081",
+   "name": "G St. Pier (San Diego), 0.22 nmi. SW of",
+   "lat": 32.70833,
+   "lng": -117.1775,
+   "type": "S",
+   "currbin": 2
+  },
+  {
+   "id": "PCT0091",
+   "name": "Coronado, off northeast end",
+   "lat": 32.698,
+   "lng": -117.16383,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0091",
+   "name": "Coronado, off northeast end",
+   "lat": 32.698,
+   "lng": -117.16383,
+   "type": "S",
+   "currbin": 2
+  },
+  {
+   "id": "PCT0096",
+   "name": "28th St. Pier (San Diego), 0.92 nmi. SW",
+   "lat": 32.67467,
+   "lng": -117.1495,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0101",
+   "name": "28th St. Pier (San Diego), 0.35 nmi. SW",
+   "lat": 32.68283,
+   "lng": -117.14283,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0101",
+   "name": "28th St. Pier (San Diego), 0.35 nmi. SW",
+   "lat": 32.68283,
+   "lng": -117.14283,
+   "type": "S",
+   "currbin": 2
+  },
+  {
+   "id": "PCT0106",
+   "name": "National City",
+   "lat": 32.65,
+   "lng": -117.11667,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0111",
+   "name": "National City, WSW of Pier 12",
+   "lat": 32.66217,
+   "lng": -117.1255,
+   "type": "S",
+   "currbin": 1
+  },
+  {
+   "id": "PCT0116",
+   "name": "Sweetwater Channel, southwest of",
+   "lat": 32.645,
+   "lng": -117.12283,
+   "type": "S",
+   "currbin": 1
+  }
+ ]
+}
