@@ -307,12 +307,14 @@ func TestPronounceSpellsWebAddresses(t *testing.T) {
 		"Visit www.weather.gov/sandiego for more.":         "Visit w w w dot weather dot gov slash sandiego for more.",
 		"See https://forecast.weather.gov/x-y, or call.":   "See forecast dot weather dot gov slash x dash y, or call.",
 		"Rain of 3.5 inches; the U.S. average is 2.1 e.g.": "Rain of 3.5 inches; the U.S. average is 2.1 e.g.", // numbers and initialisms are not addresses
-		"weather.gov":                           "weather dot gov",
-		"broadcast live from KEC62, San Diego.": "broadcast live from K E C six two, San Diego.", // UAT 112: callsigns are spelled
-		"WXJ98 and KZZ100 serve the coast.":     "W X J nine eight and K Z Z one zero zero serve the coast.",
-		"broadcasting on 165.2024 MHz, daily.":  "broadcasting on one six five dot two zero two four mega hertz, daily.", // UAT 112.2
-		"Rain of 3.5 inches fell.":              "Rain of 3.5 inches fell.",                                              // only before MHz
-		"via NOAA radio devices; NOAA.":         "via Noah radio devices; Noah.",                                         // UAT 113: NOAA is a word
+		"weather.gov":                                           "weather dot gov",
+		"broadcast live from KEC62, San Diego.":                 "broadcast live from K E C six two, San Diego.", // UAT 112: callsigns are spelled
+		"WXJ98 and KZZ100 serve the coast.":                     "W X J nine eight and K Z Z one zero zero serve the coast.",
+		"broadcasting on 165.2024 MHz, daily.":                  "broadcasting on one six five dot two zero two four mega hertz, daily.",      // UAT 112.2
+		"Rain of 3.5 inches fell.":                              "Rain of 3.5 inches fell.",                                                   // only before MHz
+		"via NOAA radio devices; NOAA.":                         "via Noah radio devices; Noah.",                                              // UAT 113: NOAA is a word
+		"closed on SWY S-2 near Palomar Mountain Rd. and I-15;": "closed on State Highway S-2 near Palomar Mountain Road. and Interstate 15;", // UAT 120: road abbreviations
+		"US-101 at Hwy 76, Blvd and St.":                        "U S 101 at Highway 76, Boulevard and Street.",
 	} {
 		if got := Pronounce(in); got != want {
 			t.Fatalf("Pronounce(%q)\n got %q\nwant %q", in, got, want)

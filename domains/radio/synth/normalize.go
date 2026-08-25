@@ -288,6 +288,13 @@ func pronunciations() map[string]string {
 	return map[string]string{
 		"CLI":  "C L I", // never "klee"
 		"NOAA": "Noah",  // the agency says it as a word (UAT 113.2: "Noah", one syllable flow — "NO-AH" clipped mid-word), never "N O double A"
+		// Road and highway abbreviations as NWS products write them (UAT 120:
+		// "SWY S-2" is "State Highway S-2", "Palomar Mountain Rd" is "Road").
+		"SWY": "State Highway", "SR": "State Route", "HWY": "Highway", "Hwy": "Highway", "FWY": "Freeway", "Fwy": "Freeway",
+		"Rd": "Road", "RD": "Road", "Ave": "Avenue", "AVE": "Avenue", "Blvd": "Boulevard", "BLVD": "Boulevard",
+		"St": "Street", "Dr": "Drive", "DR": "Drive", "Ln": "Lane", "LN": "Lane", "Ct": "Court", "CT": "Court",
+		"Pkwy": "Parkway", "PKWY": "Parkway", "Trl": "Trail", "TRL": "Trail", "Mt": "Mount", "MT": "Mount", "Mtn": "Mountain", "MTN": "Mountain",
+		"Cyn": "Canyon", "CYN": "Canyon", "Jct": "Junction", "JCT": "Junction", "Rte": "Route", "RTE": "Route",
 	}
 }
 
@@ -300,6 +307,10 @@ func Pronounce(text string) string {
 	for i, w := range words {
 		core := strings.Trim(w, ".,;:")
 		if say, ok := table[core]; ok {
+			words[i] = strings.Replace(w, core, say, 1)
+			continue
+		}
+		if say, ok := routePrefix(core); ok { // "US-101" → "U S 101", "I-15" → "Interstate 15" (UAT 120)
 			words[i] = strings.Replace(w, core, say, 1)
 			continue
 		}
@@ -348,6 +359,24 @@ func spellDigits(s string) string {
 // digitWords names the digits for the voice (a function, not a global — P10-06).
 func digitWords() []string {
 	return []string{"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
+}
+
+// routePrefix expands a numbered route's prefix; the number stays.
+func routePrefix(core string) (string, bool) {
+	for _, pre := range []string{"US-", "I-", "SR-", "CA-"} {
+		if rest, ok := strings.CutPrefix(core, pre); ok && rest != "" && rest[0] >= '0' && rest[0] <= '9' {
+			switch pre {
+			case "US-":
+				return "U S " + rest, true
+			case "I-":
+				return "Interstate " + rest, true
+			case "SR-":
+				return "State Route " + rest, true
+			}
+			return "California " + rest, true
+		}
+	}
+	return "", false
 }
 
 // callsign is an NWR transmitter callsign: K or W, two letters, two or

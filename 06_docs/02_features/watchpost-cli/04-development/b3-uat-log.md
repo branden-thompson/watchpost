@@ -827,3 +827,9 @@ Mock saved: `09-view-mocks/location-detail-mock.txt`.
 | # | Item | Disposition |
 |---|---|---|
 | 119.1 | "Linux has a notable (~10 s) delay in the Voice modal between preview and hearing the sentence — if the voice pack is downloading, put a message in the modal so it doesn't look broken" | **Done**: `p` writes `… preparing Amy… (a first use downloads the voice, ~63 MB; loading takes a few seconds)` into the chooser at once; the deck then reports through a new `VoiceNoteMsg` — `installing Amy voice… 40% (25 MB)` while downloading, `loading Amy…` while Piper reads the model (that is the ~10 s even when installed: Piper loads the ONNX on every run), `preview failed: …` on an error — and clears the line the moment the sound starts. Tune-in installs keep reporting in the player line. The preview timeout is 60 s (was 20: a download plus a cold model load could exceed it). Pinned. |
+
+### Session 120 (narration: road abbreviations)
+
+| # | Item | Disposition |
+|---|---|---|
+| 120.1 | "'SWY S-2' → 'State Highway S-2', not 'es double-u why'; 'Palomar Mountain Rd.' → 'Road', not 'ar-dee'" | **Done** (voice only; the marquee keeps the product's text): the word table expands the road and highway abbreviations NWS products use — SWY/SR/Hwy/Fwy, Rd/Ave/Blvd/St/Dr/Ln/Ct/Pkwy/Trl, Mt/Mtn/Cyn/Jct/Rte — and numbered routes keep their number ("US-101" → "U S 101", "I-15" → "Interstate 15", "SR-78" → "State Route 78"). Pinned. |

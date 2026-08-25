@@ -2,6 +2,13 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.9.3] — 2026-08-25
+
+### Fixed
+- Narration reads road and highway abbreviations as words — "SWY S-2" is "State Highway S-2",
+  "Palomar Mountain Rd." is "Road", "I-15" is "Interstate 15", "US-101" is "U S 101" (voice only;
+  the marquee keeps the product text).
+
 ## [0.9.2] — 2026-08-25
 
 ### Fixed
