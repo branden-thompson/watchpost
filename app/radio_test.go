@@ -1,6 +1,7 @@
 package app
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 
@@ -73,8 +74,13 @@ func TestNextInQueueWrapsAndStartsAtTheTop(t *testing.T) {
 func TestVoiceChipLabelIsTheChooserLabel(t *testing.T) {
 	// UAT 91: the [V] chip shows "System Voice", not the spoken form.
 	d := &radioDeck{}
-	if got := d.VoiceName(); got != systemVoice && got != defaultMacVoice {
-		t.Fatalf("chip label = %q", got)
+	got := d.VoiceName()
+	if runtime.GOOS == "darwin" {
+		if got != systemVoice && got != defaultMacVoice {
+			t.Fatalf("chip label = %q", got)
+		}
+	} else if got != "" { // no Piper in a fresh test dir: the chip shows "—", never a Mac voice name (Linux F3)
+		t.Fatalf("chip label before a voice is installed = %q, want empty", got)
 	}
 	d.voiceID = "Karen"
 	if d.VoiceName() != "Karen" {
