@@ -62,3 +62,35 @@ the 0.3/0.6 gradient thresholds. Reading those made the port exact where it matt
 where it must NOT be exact: CLIAmp's edges run to 20 kHz for music, and on a 32 kbps weather relay
 that leaves four bars dead. The deviations (voice-weighted edges; per-band tint on a single row)
 are recorded next to the fidelity, so a reviewer can tell homage from drift.
+
+## 7. CI is a different machine — rehearse the tag before you need it
+
+Four release runs for one tag, and none of the three failures was a product bug: a test that assumed
+macOS, a lint that assumed a `main` ref on a detached tag checkout, a 10 ms budget that the race
+detector turns into 14. Every one was visible in advance to anyone who asked "what is different on
+the runner?" — OS, ref layout, instrumentation. Now `GOOS=linux go vet` and a dry tag on a scratch
+branch are part of the exit, and timing budgets carry a race-aware constant.
+
+## 8. Identity is infrastructure; check it before every outward step
+
+The account, the key, the agent, the managed config: each one independently decided whether a push
+went out as the right person, and two of them changed under us during a single afternoon (a managed
+`~/.ssh/config` rewrite; a key dropping out of the agent). The rule that held: verify the acting
+identity (`gh api user`, `ssh-add -l`) immediately before an outward action, and pin the repo to one
+key with the ambient config ignored. The rule that failed: assuming a setup that worked an hour ago
+still does.
+
+## 9. Validation on the second machine finds a different class of bug
+
+Nothing the Linux run found was a defect in logic. It found what the first machine could not show:
+that the one installed voice was the only voice, that ten seconds of silence reads as "broken", that
+a font may lack the glyphs. The fix-forward cadence (four small releases in a day) was cheap because
+the pipeline was already green and the record already explained each change — the exit reports paid
+for themselves here, not at the gate.
+
+## 10. Content-keyed caches, or the cache lies under repeat
+
+The fire report's audio was cached by position; under Repeat: Watchlist a changed hotspot count would
+have replayed yesterday's sentence while the marquee showed today's. Anything that caches rendered
+output of changing data keys on the content, not the slot — the same rule the observation segments
+already followed, and the review lens caught the one place that didn't.
