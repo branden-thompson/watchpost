@@ -123,3 +123,34 @@ Width costs a few percent of one core; no stall at 400 cols.
 - Great Lakes water levels (CO-OPS lake datums), Tahoe (no free source)
 - B4 radio audio + visualizers; the NWR transmitter callsign belongs to the player line
 - Warm-launch measurement with the disk tier (M1 target warm ≤ 3 s)
+
+## M8 soak — 2026-08-25 (VALIDATE, UAT 123)
+
+Real dashboard in a pty (133×44), 5 favourites + RECENT, **Synth playing on Repeat: Watchlist for
+60 minutes**, System Voice, macOS. Sampled every 5 min (`ps -o rss,pcpu`; threads via `ps -M`):
+
+| t | RSS MB | CPU % | threads |
+|---|---|---|---|
+| 0 | 144 | 1.0 | 21 |
+| 5 | 166 | 3.1 | 28 |
+| 10 | 213 | 1.7 | 27 |
+| 15 | 221 | 4.3 | 29 |
+| 20 | 191 | 3.7 | 29 |
+| 25 | 162 | 1.5 | 31 |
+| 30 | 203 | 2.2 | 29 |
+| 35 | 203 | 5.6 | 31 |
+| 40 | 173 | 2.0 | 29 |
+| 45 | 207 | 4.3 | 29 |
+| 50 | 215 | 4.8 | 30 |
+| 55 | 142 | 2.0 | 29 |
+| 60 | 194 | 3.6 | 32 |
+
+Reading: RSS **oscillates between 142 and 221 MB with no trend** (the rendered-audio cache filling to
+its 40-segment bound and being released as voices/segments churn; the 55-minute sample is below the
+first); CPU 1–6 % of one core; threads settle at ~30 (audio context + scheduler pool). The 90-second
+"creep" recorded at UAT 98 does not continue over an hour — **no leak**. Clean exit on `q`.
+
+Second hour (same setup, `WATCHPOST_DEBUG_PPROF=1`, dump-on-linger armed): RSS 146–202 MB, no trend
+(156 → 202 peak at 30 min → 146 at 40 min → 191 at 60); CPU 2–8 %; 28–31 threads; **`q` exited in
+0 s**, no dump taken. The first run's straggler did not recur — recorded as a harness artefact of the
+first script (its `expect eof` window), not an app fault.

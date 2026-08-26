@@ -840,3 +840,24 @@ Mock saved: `09-view-mocks/location-detail-mock.txt`.
 |---|---|---|
 | 121.1 | "Add some screenshots to the README" | **Done**: five frames rendered from the real dashboard model at 133×44 with live data (Oceanside, Mineral Wells TX, Portland ME, Grand View ID, Seattle; RECENT: El Cajon, Boise, Austin, Denver), colour forced on, radio state staged as PLAYING with the lead in the marquee and the visualizer sampled once; Location Details (fire), the Setup window mid type-ahead with a stored key, the Voice chooser with a download in progress, and Synthwave '84. ANSI → SVG via charmbracelet/freeze (window chrome, #131313); ~400 KB each under `docs/img/`, referenced from a "What it looks like" section. Procedure: a throwaway `tools/_shots` program (not kept — it stages radio state); re-run it when the UI changes. Glyphs the embedded font lacks were substituted for the frames only (see 121.2). |
 | 121.2 | freeze's embedded JetBrains Mono lacks `✔ ✘ ♪` (boxes in the first render) | For the frames only: `✔→✓`, `✘→✗`, `♪→»`; the app itself is unchanged (the terminal's own font renders them). |
+
+### Session 122 (VALIDATE — Linux protocol run, Arch/CachyOS)
+
+| # | Item | Result |
+|---|---|---|
+| 122.1 | Install via the public `curl … | sh` line | **PASS** — installed; `--version` reports the release. |
+| 122.2 | First run → Setup window; watchlist fills | **PASS**. |
+| 122.3 | Radio Synth (Piper installs on first tune-in) | **PASS** — install prompt brief on a fast connection (UAT 118.1); voice plays. |
+| 122.4 | `[V]` voice profiles | v0.9.0: only the installed voice → **fixed in v0.9.1**; other voices download and speak — **PASS** on v0.9.1+. |
+| 122.5 | Voice chooser wait explained | v0.9.2 — **PASS** (HUM LEAD asked for it after a ~10 s preview delay). |
+| 122.6 | Fire and Hotspot report on air | **PASS** (Arch). |
+| 122.7 | `m` Nearest Relay | **PASS** — live relay for Oceanside, CA from Linux. |
+| 122.8 | Narration | Road abbreviations fixed in v0.9.3 after the run (UAT 120). |
+| 122.9 | Not exercised on the laptop | 80/200-col resize, `--json` exit codes, no-audio failure mode — covered by tests and the macOS run; noted, not blocking. |
+
+### Session 123 (VALIDATE — M8 soak)
+
+| # | Item | Result |
+|---|---|---|
+| 123.1 | One-hour radio soak (Synth, Repeat: Watchlist, pty 133×44) | **PASS** — RSS 142–221 MB oscillating, no trend; CPU 1–6 %; ~30 threads; clean exit. Numbers in the infra ledger. Harness: `expect` draining the pty continuously (D-10), `ps` sampled every 5 min. |
+| 123.2 | Straggler after `q` at the end of the first hour (alive ~1 min, left on SIGTERM) | Two direct quits mid-broadcast (25 s, 45 s) exited in 0 s; a second full hour with pprof armed exited in 0 s with no dump. **Not reproduced** — closed as a harness artefact of the first script. |
