@@ -119,6 +119,7 @@ func newCacheWithCap(dir string, capBytes int64) *cache {
 	}
 	if c.dir != "" {
 		c.writes = make(chan entry, writeQueue)
+		c.queued.Add(1) // the start sweep counts as the writer's first item, so flush() waits for it too
 		go c.writer()
 	}
 	return c
@@ -270,6 +271,7 @@ func (c *cache) evictLocked() {
 // checked per write, so no timer goroutine and no new loop shape.
 func (c *cache) writer() {
 	c.sweep(c.now())
+	c.handled.Add(1)
 	for e := range c.writes {
 		if now := c.now(); now.Sub(c.lastSweepTime()) >= sweepEvery {
 			c.sweep(now)
@@ -549,7 +551,8 @@ func (c *cache) stats() Stats {
 
 // flush waits until the writer has finished every item handed to it
 // (tests): queued == handled, not merely an empty queue — the item in the
-// writer's hands counts too (a loaded CI runner exposed the difference).
+// writer's hands and the start sweep count too (loaded CI runners exposed
+// both differences).
 func (c *cache) flush() {
 	if c.writes == nil {
 		return

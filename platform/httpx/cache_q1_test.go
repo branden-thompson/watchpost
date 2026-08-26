@@ -243,12 +243,13 @@ func TestValidatorsAreStoredBounded(t *testing.T) {
 func TestRenewedEntryOutlivesAnUntouchedOne(t *testing.T) {
 	dir := cacheDirIn(t)
 	c := newCache(dir)
+	c.flush() // the writer's start sweep has run on the empty directory
 	now := time.Now()
 	old := now.Add(-48 * time.Hour)
 	writeCacheFile(t, dir, filepath.Base(c.path("https://x/renewed")), old, old, 10)
 	writeCacheFile(t, dir, filepath.Base(c.path("https://x/untouched")), old, old, 10)
 	c.renew("https://x/renewed", now.Add(time.Hour))
-	c.flush()
+	c.flush() // the touch has landed
 	c.sweep(now)
 	if !exists(dir, filepath.Base(c.path("https://x/renewed"))) || exists(dir, filepath.Base(c.path("https://x/untouched"))) {
 		t.Fatal("a 304-renewed file (fresh mtime) must outlive an untouched expired one")

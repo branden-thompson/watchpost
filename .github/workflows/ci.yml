@@ -13,6 +13,7 @@ concurrency: # a push to a PR branch and its pull_request event run once, not tw
 jobs:
   verify:
     strategy:
+      fail-fast: false # a red gate on one OS must not hide the other OS's result
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}

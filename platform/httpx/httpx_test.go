@@ -225,6 +225,10 @@ func newCached(t *testing.T, dir string) *Client {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Drain the writer before the temp dir goes: cleanups run last-registered
+	// first, so this precedes t.TempDir()'s removal (a CI runner caught the
+	// writer landing a file into a directory being removed).
+	t.Cleanup(c.cache.flush)
 	return c
 }
 
