@@ -54,13 +54,13 @@ func newRootCmd() *cobra.Command {
 }
 
 func newReportCmd() *cobra.Command {
-	var asJSON bool
+	var asJSON, verbose bool
 	cmd := &cobra.Command{
 		Use:   "report <city|zip|lat,lon>",
 		Short: "One-shot weather report (machine mode: --json; plain text: --report-only)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			snap, err := app.ReportOnce(cmd.Context(), args[0])
+			snap, stats, err := app.ReportOnceWithStats(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -77,6 +77,9 @@ func newReportCmd() *cobra.Command {
 				// Plain text is the default report surface (and the
 				// screen-reader surface, R-12d); width resolved ONCE (T-C').
 				_, _ = fmt.Fprint(cmd.OutOrStdout(), report.RenderPlain(snap, term.Width())) // stdout write errors surface via cobra exit
+				if verbose {
+					_, _ = fmt.Fprint(cmd.OutOrStdout(), report.RenderRequests(stats)) // quality pass Q0: request counters per host
+				}
 			}
 			if code := report.ExitCode(snap); code != 0 {
 				// Partial data still prints; the exit code carries the caveat
@@ -89,6 +92,7 @@ func newReportCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&asJSON, "json", false, "machine-readable JSON (see 'watchpost schema')")
 	cmd.Flags().Bool("report-only", false, "plain text, the default — explicit for scripts")
+	cmd.Flags().BoolVar(&verbose, "verbose", false, "append the request counters per host (plain text only)")
 	return cmd
 }
 

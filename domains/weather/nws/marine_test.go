@@ -18,7 +18,7 @@ import (
 
 func TestMarineProviderLiftsGridpointSeries(t *testing.T) {
 	srv, _ := testServer(t)
-	client, _ := httpx.New(httpx.Config{UserAgent: "test", MaxRetries: -1})
+	client, _ := httpx.New(httpx.Config{UserAgent: "test", MaxRetries: 0})
 	base := New(client, srv.URL)
 	m := NewMarine(base)
 	if m.ID() != "nws-marine" || m.Domains()[0] != "marine" {

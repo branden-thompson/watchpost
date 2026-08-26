@@ -1,0 +1,6 @@
+rate=10 MB/min start: HeapInuse=42 MB HeapSys=47 MB rss=47 MB footprint=46.2M
+rate=10 MB/min end:   HeapInuse=64 MB HeapSys=67 MB NumGC=7 rss=29 MB footprint=69.8M
+rate=94 MB/min start: HeapInuse=42 MB HeapSys=47 MB rss=47 MB footprint=46.0M
+rate=94 MB/min end:   HeapInuse=79 MB HeapSys=91 MB NumGC=9 rss=91 MB footprint=90.0M
+rate=620 MB/min start: HeapInuse=42 MB HeapSys=47 MB rss=47 MB footprint=46.1M
+rate=620 MB/min end:   HeapInuse=83 MB HeapSys=91 MB NumGC=35 rss=92 MB footprint=90.8M

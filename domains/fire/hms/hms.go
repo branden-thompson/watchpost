@@ -67,6 +67,14 @@ type Provider struct {
 	memoErr error
 }
 
+// MemoPoints reports how many parsed points the archive memo holds (the
+// diagnostic dump's view of the memo; one archive at a time by design).
+func (p *Provider) MemoPoints() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.memoPts)
+}
+
 // New builds the provider; url "" means the production archive.
 func New(client *httpx.Client, url string, rules fire.Rules) *Provider {
 	if url == "" {

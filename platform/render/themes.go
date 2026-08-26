@@ -23,7 +23,7 @@ var themeValue = regexp.MustCompile(`^(\d+(;\d+)*|#[0-9A-Fa-f]{6})$`)
 var (
 	themeMu    sync.RWMutex
 	themeName  = DefaultThemeName
-	themeTable = map[string]map[Token]string{DefaultThemeName: theme}
+	themeTable = map[string]map[Token]string{DefaultThemeName: defaultTheme()}
 )
 
 // builtinOverrides defines the shipped alternates as deltas over the
@@ -101,8 +101,9 @@ func RegisterTheme(name string, overrides map[Token]string) {
 	if err := invariant.Check(name != "", "theme name is required"); err != nil {
 		return
 	}
-	full := make(map[Token]string, len(theme))
-	for k, v := range theme {
+	base := defaultTheme()
+	full := make(map[Token]string, len(base))
+	for k, v := range base {
 		full[k] = v
 	}
 	for k, v := range overrides {

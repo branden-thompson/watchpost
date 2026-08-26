@@ -330,6 +330,17 @@ func (s *Source) say(ctx context.Context, v Voice, text string) ([]byte, error) 
 	return v.Say(ctx, Pronounce(text)) // voice-only spellings; the marquee shows the text
 }
 
+// Cached reports the rendered-audio cache's size — segments and mono PCM
+// bytes — for the diagnostic dump (bounded by maxCached).
+func (s *Source) Cached() (segments int, bytes int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, pcm := range s.cache {
+		bytes += len(pcm)
+	}
+	return len(s.cache), bytes
+}
+
 // maxCached bounds the rendered-audio cache: a cycle is 10–20 segments and
 // only Repeat replays them; 24 mono segments is ~16 MB at the worst.
 const maxCached = 40

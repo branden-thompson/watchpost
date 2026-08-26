@@ -21,6 +21,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -70,6 +71,24 @@ type Config struct {
 	Setup        func(def snapshot.LocationRef, firmsKey string) error // persist the default location (+ the FIRMS key when given) — the Setup window's finish (UAT 100)
 	OpenSetup    bool                                                  // open the Setup window at launch (first run, no locations, or `watchpost setup`)
 	FIRMSKey     func() string                                         // the stored FIRMS key's tail ("cdef"), "" when none — the Setup window shows it is there (UAT 111)
+	Stats        func() Stats                                          // request/publish/dump counters for the [S] modal (quality pass Q0); nil = the rows are omitted
+}
+
+// Stats is what the app hands the [S] modal beyond the snapshots (quality
+// pass Q0, plan §2.1): request counters merged across the app's clients,
+// publish counters per pipeline, and the last diagnostic dump's outcome.
+type Stats struct {
+	Requests  httpx.RequestStats
+	Pipelines [2]PipelineStats // [0] priority, [1] recent
+	LastDump  string           // "" before the first dump; else "<ts> ok <dir>" or "<ts> failed: <reason>"
+	DumpHint  string           // how to trigger a dump on this platform
+}
+
+// PipelineStats counts one pipeline's publishes and the triggers its
+// coalescing window folded.
+type PipelineStats struct {
+	Publishes int64
+	Folded    int64
 }
 
 // Radio is the app-provided player (B4): the dashboard asks, the app
@@ -2006,12 +2025,43 @@ func (d Dashboard) statusLines() []string {
 		lines = append(lines, fmt.Sprintf("    %s %-9s %-4s fetched %s ago",
 			render.PadTo(o.HealthGlyph(strings.ToUpper(p.ID), p.Status), 13), p.Role, p.Status, age))
 	}
+	var st Stats
+	if d.cfg.Stats != nil {
+		st = d.cfg.Stats()
+	}
 	lines = append(lines, "", "  PIPELINES")
-	lines = append(lines, pipelineLine("Priority", d.snap), pipelineLine("Recent  ", d.recent))
+	lines = append(lines, pipelineLine("Priority", d.snap, st.Pipelines[0]), pipelineLine("Recent  ", d.recent, st.Pipelines[1]))
 	lines = append(lines, "", "  ISSUES")
 	lines = append(lines, aggregateWarnings(d.snap, d.recent)...)
-	lines = append(lines, "", "  Request latency metrics land with the multi-provider work (B5).")
+	if d.cfg.Stats != nil {
+		lines = append(lines, requestLines(st)...)
+	}
 	return append(lines, "", "  "+o.KeyCap("esc")+" Close   "+o.KeyCap("↑↓")+" Scroll")
+}
+
+// requestLines is the [S] REQUESTS and DUMPS body (quality pass Q0):
+// one row per host, busiest first, counters since launch; then the
+// diagnostic dump's last outcome and the trigger for this platform.
+func requestLines(st Stats) []string {
+	lines := []string{"", fmt.Sprintf("  REQUESTS (since launch, %s)", fixedAge(st.Requests.Uptime))}
+	if len(st.Requests.Hosts) == 0 {
+		lines = append(lines, "    none yet")
+	} else {
+		lines = append(lines, fmt.Sprintf("    %-29s %6s %5s %5s %3s %6s", "HOST", "TRIES", "NET", "CACHE", "NEG", "BYTES"))
+	}
+	for _, h := range st.Requests.Hosts { // 63 cells: fits the 68-wide modal without wrapping (UAT 25: never truncate)
+		lines = append(lines, fmt.Sprintf("    %-29s %6d %5d %5d %3d %6s", h.Host, h.Attempts, h.Net, h.Cache, h.Neg, render.HumanBytes(h.BytesNet)))
+	}
+	lines = append(lines, "", "  DUMPS")
+	if st.LastDump == "" {
+		lines = append(lines, "    none yet")
+	} else {
+		lines = append(lines, "    last: "+st.LastDump)
+	}
+	if st.DumpHint != "" {
+		lines = append(lines, "    trigger: "+st.DumpHint)
+	}
+	return lines
 }
 
 // fixedAge formats a duration in a 7-cell right-aligned slot so ages line
@@ -2119,12 +2169,16 @@ func providersOf(sn *snapshot.Snapshot) []snapshot.ProviderStatus {
 }
 
 // pipelineLine summarizes one pipeline's snapshot for the status view.
-func pipelineLine(name string, sn *snapshot.Snapshot) string {
+func pipelineLine(name string, sn *snapshot.Snapshot, ps PipelineStats) string {
 	if sn == nil {
 		return "    " + name + "  awaiting first snapshot..."
 	}
-	return fmt.Sprintf("    %s  snapshot %s · %d locations", name,
+	line := fmt.Sprintf("    %s  snapshot %s · %d locations", name,
 		dataAsOf(sn).Local().Format("15:04:05"), len(sn.Locations))
+	if ps.Publishes > 0 {
+		line += fmt.Sprintf(" · %d publishes (%d folded)", ps.Publishes, ps.Folded)
+	}
+	return line
 }
 
 // displayCond mirrors// displayCond mirrors the table's condition vocabulary for the modal.

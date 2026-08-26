@@ -1,0 +1,121 @@
+package snapshot
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+)
+
+// realistic populates an assembler the way the live pipelines do: NWS
+// current + 156 h hourly + 14 d daily (+FillFrom), one alert with a ~1 KB
+// description on every 3rd location, marine sections from three providers on
+// every 3rd location (8 tides, 6 currents), fire parts from hms/firms/wfigs.
+func realistic(n int, hourly bool) (*Assembler, []LocationRef) {
+	refs := make([]LocationRef, 0, n)
+	for i := 0; i < n; i++ {
+		refs = append(refs, LocationRef{Label: fmt.Sprintf("City %02d, CA", i), Tag: "CTY", Zip: fmt.Sprintf("9%04d", i), Lat: 33 + float64(i)*0.01, Lon: -117 - float64(i)*0.01, TZ: "America/Los_Angeles"})
+	}
+	provs := []string{"nws", "nws-marine", "ndbc", "coops", "coops-obs", "hms", "wfigs", "firms"}
+	a := newAssembler(refs, provs)
+	now := time.Now().UTC()
+	f := func(v float64) *float64 { return &v }
+	desc := strings.Repeat("* WHAT...Dangerous heat. Temperatures up to 105. ", 20)
+	for i, r := range refs {
+		k := Key(r)
+		cur := &Conditions{ObservedAt: now, Temp: f(22), Feels: f(22), Dewpoint: f(10), HumidityPct: f(50), Pressure: f(1013), Wind: f(3), WindDirDeg: f(270), WindGust: f(5), Visibility: f(16000), Condition: "clear", IsDay: new(bool),
+			Source: SourceInfo{Provider: "nws", ModelOrStation: "KCRQ", DistanceKm: f(5), IssuedAt: now}}
+		var hrs []Hourly
+		if hourly {
+			for h := 0; h < 156; h++ {
+				hrs = append(hrs, Hourly{Time: now.Add(time.Duration(h) * time.Hour), Temp: f(20), PrecipProb: f(10), Wind: f(3), WindDirDeg: f(180), Condition: "clear"})
+			}
+		}
+		var days []Daily
+		for d := 0; d < 14; d++ {
+			days = append(days, Daily{Date: now.AddDate(0, 0, d).Format("2006-01-02"), TempMax: f(25), TempMin: f(15), PrecipProb: f(5), Condition: "clear", FillFrom: map[string]string{"temp_max": "nws:gridpoint"}})
+		}
+		pd := PartialData{Current: cur, Hourly: hrs, Daily: days}
+		if i%3 == 0 {
+			pd.Alerts = []Alert{{ID: "urn:oid:2.49.0.1.840.0.abc" + k.String(), Event: "Extreme Heat Warning", Severity: "Severe", Urgency: "Expected", Certainty: "Likely", MessageType: "Alert",
+				Sent: now, Effective: now, Expires: now.Add(24 * time.Hour), AffectedZones: []string{"CAZ043", "CAZ048"}, AreaDesc: "San Diego County Coastal Areas", Headline: "Extreme Heat Warning until 8 PM PDT Friday", Description: desc, Instruction: "Drink plenty of fluids."}}
+		}
+		a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: now, PerLocation: map[LocationKey]PartialData{k: pd}})
+		if i%3 == 0 {
+			mar := &Marine{SwellHeight: f(1), SwellDirDeg: f(270), WaveHeight: f(1.2), WavePeriod: f(12), WindSpeed: f(4), WaterTemp: f(19), Buoy: "46225", BuoyDistanceKM: f(12), ObservedAt: now, TideLevel: f(0.5), TideStation: "La Jolla", TideStationKM: f(20), CurrentStation: "SDB0301"}
+			for t := 0; t < 8; t++ {
+				mar.Tides = append(mar.Tides, TideEvent{Time: now.Add(time.Duration(t) * 6 * time.Hour), Height: 1.2, Type: "H"})
+			}
+			for t := 0; t < 6; t++ {
+				mar.Currents = append(mar.Currents, CurrentEvent{Time: now.Add(time.Duration(t) * 6 * time.Hour), Speed: 0.4, Type: "flood"})
+			}
+			for _, p := range []string{"nws-marine", "ndbc", "coops", "coops-obs"} {
+				a.Apply(Fragment{Provider: p, Kind: KindMarine, FetchedAt: now, PerLocation: map[LocationKey]PartialData{k: {Marine: mar}}})
+			}
+		}
+		spots := func(n int) []Hotspot {
+			var hs []Hotspot
+			for j := 0; j < n; j++ {
+				hs = append(hs, Hotspot{Lat: r.Lat + 0.05*float64(j), Lon: r.Lon, DetectedAt: now, Confidence: "analyst", FRPMW: f(10), DistanceKm: f(float64(j) * 5), Source: SourceInfo{Provider: "hms", ModelOrStation: "GOES-WEST", IssuedAt: now}})
+			}
+			return hs
+		}
+		a.Apply(Fragment{Provider: "hms", Kind: KindFire, FetchedAt: now, PerLocation: map[LocationKey]PartialData{k: {Fire: &FireState{AsOf: now, Hotspots: spots(5)}}}})
+		a.Apply(Fragment{Provider: "firms", Kind: KindFire, FetchedAt: now, PerLocation: map[LocationKey]PartialData{k: {Fire: &FireState{AsOf: now, Hotspots: spots(5)}}}})
+		a.Apply(Fragment{Provider: "wfigs", Kind: KindFire, FetchedAt: now, PerLocation: map[LocationKey]PartialData{k: {Fire: &FireState{AsOf: now, Incidents: []Incident{{Name: "Border 2", Lat: r.Lat, Lon: r.Lon, Discovered: now, Acres: f(6000), PercentContained: f(40)}}}}}})
+	}
+	for i := 0; i < 300; i++ {
+		a.Warn(Warning{Code: WarnProviderError, Provider: "ndbc", Message: "station 46225 returned HTTP 404 — not retryable; check the request"})
+	}
+	return a, refs
+}
+
+func (k LocationKey) String() string { return string(k) }
+
+func benchSnap(b *testing.B, n int, hourly bool) {
+	a, _ := realistic(n, hourly)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s := a.Snapshot()
+		if len(s.Locations) != n {
+			b.Fatal("bad")
+		}
+	}
+}
+
+func BenchmarkSnapshot10Fav(b *testing.B)          { benchSnap(b, 10, true) }
+func BenchmarkSnapshot50RecentNoHourly(b *testing.B) { benchSnap(b, 50, false) }
+func BenchmarkSnapshot50RecentHourly(b *testing.B) { benchSnap(b, 50, true) }
+func BenchmarkSnapshot60(b *testing.B)             { benchSnap(b, 60, true) }
+
+func BenchmarkMergeFireOnly(b *testing.B) {
+	a, _ := realistic(1, false)
+	k := a.order[0]
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = mergeFire(a.fire[k])
+	}
+}
+
+func BenchmarkFinalizeOnly(b *testing.B) {
+	a, _ := realistic(1, true)
+	s := a.Snapshot()
+	loc := s.Locations[0]
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		l := loc
+		l.Hourly, l.Daily, l.Harmonized, l.Marine = nil, nil, Conditions{}, nil
+		finalize(&l, a.providers, s.GeneratedAt)
+	}
+}
+
+func BenchmarkKey(b *testing.B) {
+	r := LocationRef{Lat: 33.1234, Lon: -117.4321}
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = Key(r)
+	}
+}

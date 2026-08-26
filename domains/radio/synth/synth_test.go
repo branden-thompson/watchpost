@@ -129,7 +129,7 @@ func TestProductsLatestPerTypeInBroadcastOrder(t *testing.T) {
 		}
 	}))
 	defer srv.Close()
-	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: -1})
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	ps, err := NewProducts(c, srv.URL).Latest(context.Background(), "SGX")
 	if err != nil || len(ps) != 1 || ps[0].Type != "ZFP" || ps[0].Office != "SGX" || !strings.Contains(ps[0].Text, "Zone Forecast Product") {
 		t.Fatalf("products = %+v, err %v", ps, err)

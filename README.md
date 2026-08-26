@@ -84,7 +84,15 @@ does not count); warnings never change the code. `providers[].status` is `ok` | 
 Shell completion: `watchpost completion bash|zsh|fish|powershell`.
 
 Diagnostics: `WATCHPOST_DEBUG_TIMING=1` prints launch→full-view time on exit;
-`WATCHPOST_DEBUG_PPROF=1` serves pprof on `127.0.0.1:6060`.
+`WATCHPOST_DEBUG_PPROF=1` serves pprof on `127.0.0.1:6060` (or `WATCHPOST_DEBUG_PPROF_ADDR`), plus
+`/debug/counters` (live request, publish and memory counters as JSON) and `/debug/dump` (write a
+profile set).
+The `S` modal shows the request counters per host since launch. A running dashboard writes a
+diagnostic dump — heap, allocs, goroutine and threadcreate profiles with `counters.json` —
+under the cache directory's `profiles/` on `kill -USR1 <pid>` (macOS/Linux; on Windows use
+`/debug/dump`); dumps are at least a minute apart and the newest twelve are kept.
+`watchpost report <loc> --verbose` appends one request-counter line per host. The soak and
+benchmark harness lives in `scripts/quality/` and `make quality-bench`.
 
 ## Fire
 

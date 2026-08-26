@@ -77,7 +77,7 @@ func TestFetchAnswersEveryLocationFromOneArchive(t *testing.T) {
 		_, _ = w.Write(kmz(t))
 	}))
 	defer srv.Close()
-	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: -1})
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	p := New(c, srv.URL+"/fireAllSats.kmz", fire.DefaultRules())
 	oceanside := snapshot.LocationRef{Label: "Oceanside, CA", Lat: 33.24, Lon: -117.29}
 	boise := snapshot.LocationRef{Label: "Boise, ID", Lat: 43.62, Lon: -116.2}

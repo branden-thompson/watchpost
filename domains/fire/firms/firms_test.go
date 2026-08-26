@@ -30,7 +30,7 @@ func TestFetchUsesTheKeyPerLocationAndSourceAndAppliesTheRules(t *testing.T) {
 		_, _ = w.Write([]byte(csvBody))
 	}))
 	defer srv.Close()
-	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: -1})
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	key := "0123456789abcdef0123456789abcdef"
 	p := New(c, srv.URL, key, fire.DefaultRules())
 	oceanside := snapshot.LocationRef{Label: "Oceanside, CA", Lat: 33.24, Lon: -117.29}
@@ -76,7 +76,7 @@ func TestFetchFailSoft(t *testing.T) {
 	key := "0123456789abcdef0123456789abcdef"
 	oceanside := snapshot.LocationRef{Label: "Oceanside, CA", Lat: 33.24, Lon: -117.29}
 	newClient := func() *httpx.Client {
-		c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: -1})
+		c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 		return c
 	}
 	var calls int

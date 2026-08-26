@@ -1,0 +1,120 @@
+package hms
+
+import (
+	"archive/zip"
+	"bytes"
+	"fmt"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/branden-thompson/watchpost/domains/fire"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
+)
+
+// syntheticKMZ builds an archive the size of the live one (27.5k placemarks).
+func syntheticKMZ(n int) []byte {
+	var sb strings.Builder
+	sb.WriteString(`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>`)
+	sats := []string{"GOES-WEST", "GOES-EAST", "NOAA-20", "NOAA-21", "SUOMI NPP", "MODIS"}
+	for i := 0; i < n; i++ {
+		lat := 25 + float64(i%2500)*0.01
+		lon := -125 + float64(i%5000)*0.01
+		fmt.Fprintf(&sb, `<Placemark><description><![CDATA[Lon: %.6f<br>Lat: %.6f<br>YearDay: 2026237<br>Time: %02d%02dUTC<br>Satellite: %s<br>Method: NGFS<br>Ecosystem: 22<br>FRP: %.3fMW]]></description><Point><coordinates>%.6f,%.6f</coordinates></Point></Placemark>`+"\n",
+			lon, lat, i%24, i%60, sats[i%len(sats)], float64(i%400), lon, lat)
+	}
+	sb.WriteString(`</Document></kml>`)
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, _ := zw.Create("kmls/hms_fire20260825.kml")
+	_, _ = w.Write([]byte(sb.String()))
+	_ = zw.Close()
+	return buf.Bytes()
+}
+
+func heapAlloc() uint64 {
+	runtime.GC()
+	runtime.GC()
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	return ms.HeapAlloc
+}
+
+func TestHMSRetainedSize(t *testing.T) {
+	raw := syntheticKMZ(27500)
+	t.Logf("KMZ bytes: %d", len(raw))
+	before := heapAlloc()
+	pts, err := Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after := heapAlloc()
+	t.Logf("points: %d, retained by memoPts: %.1f MB (%.0f B/point)", len(pts), float64(after-before)/1e6, float64(after-before)/float64(len(pts)))
+	// How much of that is the description strings pinned by Satellite/Method substrings?
+	interned := make([]Point, len(pts))
+	sat := map[string]string{}
+	for i, p := range pts {
+		q := p
+		if s, ok := sat[p.Satellite]; ok {
+			q.Satellite = s
+		} else {
+			s = strings.Clone(p.Satellite)
+			sat[s] = s
+			q.Satellite = s
+		}
+		q.Method = "NGFS"
+		interned[i] = q
+	}
+	pts = nil
+	after2 := heapAlloc()
+	t.Logf("with Satellite/Method interned: %.1f MB retained (%.0f B/point); %d", float64(after2-before)/1e6, float64(after2-before)/float64(len(interned)), len(interned))
+	runtime.KeepAlive(interned)
+}
+
+func BenchmarkParse27k(b *testing.B) {
+	raw := syntheticKMZ(27500)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		pts, err := Parse(raw)
+		if err != nil || len(pts) == 0 {
+			b.Fatal(err)
+		}
+	}
+}
+
+// BenchmarkFetch50 is one RECENT scheduler's HMS Fetch with the memo warm:
+// sha256 of the archive + Near() over every point for the request's locations.
+func BenchmarkFetchWarmMemo1Loc(b *testing.B) { benchFetch(b, 1) }
+func BenchmarkFetchWarmMemo10Loc(b *testing.B) { benchFetch(b, 10) }
+
+func benchFetch(b *testing.B, n int) {
+	raw := syntheticKMZ(27500)
+	p := &Provider{rules: fire.DefaultRules()}
+	if _, err := p.parsed(raw); err != nil {
+		b.Fatal(err)
+	}
+	var refs []snapshot.LocationRef
+	for i := 0; i < n; i++ {
+		refs = append(refs, snapshot.LocationRef{Lat: 33 + float64(i)*0.1, Lon: -117})
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		points, _ := p.parsed(raw)
+		frag := snapshot.Fragment{PerLocation: map[snapshot.LocationKey]snapshot.PartialData{}}
+		for _, ref := range refs {
+			var hs []snapshot.Hotspot
+			for _, pt := range points {
+				km, ok := fire.Near(ref, pt.Lat, pt.Lon, p.rules.RadiusKm)
+				if !ok || !p.rules.Keep("analyst", pt.FRPMW) {
+					continue
+				}
+				d := km
+				hs = append(hs, snapshot.Hotspot{Lat: pt.Lat, Lon: pt.Lon, DetectedAt: pt.At, Confidence: "analyst", FRPMW: pt.FRPMW, DistanceKm: &d})
+			}
+			frag.PerLocation[snapshot.Key(ref)] = snapshot.PartialData{Fire: &snapshot.FireState{AsOf: time.Now(), Hotspots: fire.Cluster(hs)}}
+		}
+	}
+}

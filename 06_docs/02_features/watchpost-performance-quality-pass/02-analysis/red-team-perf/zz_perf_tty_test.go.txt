@@ -1,0 +1,128 @@
+package tty
+
+import (
+	"strings"
+	"testing"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
+)
+
+// perfDash mirrors l5Dash but accepts any testing.TB.
+func perfDash(tb testing.TB, w, h, prio, recent int) tea.Model {
+	tb.Helper()
+	m, err := NewDashboard(Config{Version: "0.9.4-bench"})
+	if err != nil {
+		tb.Fatal(err)
+	}
+	obs := time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC)
+	sn := &snapshot.Snapshot{SchemaVersion: snapshot.SchemaVersion, GeneratedAt: obs,
+		Providers: []snapshot.ProviderStatus{{ID: "nws", Status: snapshot.ProviderOK, FetchedAt: obs}}}
+	for i := range prio {
+		sn.Locations = append(sn.Locations, l5Loc(i, 7, i%3 == 0))
+	}
+	rs := &snapshot.Snapshot{SchemaVersion: snapshot.SchemaVersion, GeneratedAt: obs}
+	for i := range recent {
+		rs.Locations = append(rs.Locations, l5Loc(100+i, 7, i%5 == 0))
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: w, Height: h})
+	model, _ = model.Update(SnapshotMsg{Snap: sn})
+	model, _ = model.Update(RecentSnapshotMsg{Snap: rs})
+	return model
+}
+
+const perfDetail = "The National Weather Service in Monterey has issued a Heat Advisory for the interior valleys of the Central Coast from noon today until 8 PM PDT Friday, with highs of 98 to 104 expected across the Salinas Valley and the Santa Clara Valley foothills."
+
+func perfPlaying(tb testing.TB, w, h int) tea.Model {
+	m := perfDash(tb, w, h, 10, 50)
+	m, _ = m.Update(RadioStatusMsg{State: "playing", Station: "KEC49 Monterey CA 162.550 MHz", Detail: perfDetail, Volume: 55, Spoken: 2 * time.Second})
+	return m
+}
+
+// Does the marquee advance without a message? It cannot: View is only called
+// on a message. Does the frame differ across time (i.e. would a tick redraw)?
+func TestPerfMarqueeChangesWithTime(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	m := perfPlaying(t, 133, 70)
+	a := m.View().Content
+	time.Sleep(400 * time.Millisecond)
+	b := m.View().Content
+	t.Logf("playing, no message: identical across 400ms = %v (marquee line moved = %v)", a == b, !strings.Contains(b, strings.SplitN(a, "\n", 8)[6]))
+	m2 := perfDash(t, 133, 70, 10, 50)
+	c := m2.View().Content
+	time.Sleep(400 * time.Millisecond)
+	d := m2.View().Content
+	t.Logf("radio off, no message: identical across 400ms = %v", c == d)
+}
+
+func BenchmarkPerfView_Playing_133x44(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	m := perfPlaying(b, 133, 44)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = m.View().Content
+	}
+}
+
+// Radio panel alone: what a marquee-only redraw could cost if the tables were memoised.
+func BenchmarkPerfRadioPanelOnly_Playing(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	m := perfPlaying(b, 133, 44).(Dashboard)
+	o := m.opts()
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = m.radioPanel(o)
+	}
+}
+
+func BenchmarkPerfSnapshotDeepCopy50(b *testing.B) {
+	obs := time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC)
+	refs := make([]snapshot.LocationRef, 0, 50)
+	for i := range 50 {
+		l := l5Loc(100+i, 7, i%5 == 0)
+		refs = append(refs, snapshot.LocationRef{Label: l.Label, Zip: l.Zip, Lat: l.Lat, Lon: l.Lon})
+	}
+	asm := snapshot.NewAssembler(refs, []string{"nws"})
+	frag := snapshot.Fragment{Provider: "nws", Kind: snapshot.KindForecast, FetchedAt: obs, PerLocation: map[snapshot.LocationKey]snapshot.PartialData{}}
+	for i, r := range refs {
+		l := l5Loc(100+i, 7, i%5 == 0)
+		frag.PerLocation[snapshot.Key(r)] = snapshot.PartialData{Current: &l.Harmonized, Daily: l.Daily, Alerts: l.Alerts}
+	}
+	asm.Apply(frag)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = asm.Snapshot()
+	}
+}
+
+func BenchmarkPerfView_Playing_133x70(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	m := perfPlaying(b, 133, 70)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = m.View().Content
+	}
+}
+
+func BenchmarkPerfView_Idle_133x70(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	m := perfDash(b, 133, 70, 10, 50)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = m.View().Content
+	}
+}

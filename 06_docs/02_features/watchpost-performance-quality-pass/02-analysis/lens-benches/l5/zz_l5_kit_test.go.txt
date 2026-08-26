@@ -1,0 +1,18 @@
+package render
+
+import (
+	"testing"
+
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
+)
+
+func TestL5KitByteWidth(t *testing.T) {
+	f := rendering.NewANSIFormatter()
+	for _, s := range []string{"72ºF", "◆ Canary", "\x1b[38;5;208m 72ºF\x1b[0m", "東京"} {
+		t.Logf("%-28q ANSIFormatter.GetVisualWidth=%d  rendering.DisplayWidth=%d  PadRight(12)=%q", s, f.GetVisualWidth(s), rendering.DisplayWidth(s), f.PadRight(s, 12))
+	}
+	tf := rendering.NewTextFormatter()
+	t.Logf("TextFormatter.TruncateText(\"Oceanside, CA ºF\", 8) = %q", tf.TruncateText("Oceanside, CA ºF", 8, "…"))
+	t.Logf("TextFormatter.TruncateText(\"東京都渋谷区\", 5) = %q", tf.TruncateText("東京都渋谷区", 5, "..."))
+	t.Logf("caps.SupportsColor=%v (TERM gate) vs ColorsEnabled=%v (NO_COLOR+tty gate)", tf.GetCapabilities().SupportsColor, rendering.ColorsEnabled())
+}

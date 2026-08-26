@@ -1,0 +1,154 @@
+// Package rendering provides text utilities and display formatting for GO-STUDS components.
+//
+// IMPORTANT: All STUDS components MUST use rendering.DisplayWidth() for consistent
+// Unicode text width calculation. Never use len() for display width calculations.
+package rendering
+
+import (
+	"regexp"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/mattn/go-runewidth"
+	xansi "github.com/charmbracelet/x/ansi"
+)
+
+// ansiRegex is compiled once at package init — DisplayWidth sits in per-word
+// wrap loops and per-cell table paths, so per-call compilation was a measurable
+// hot-path cost at large render sizes.
+var _ = runewidth.StringWidth
+var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+
+// DisplayWidth calculates the actual display width of a string, accounting for:
+// - ANSI escape sequences (which don't take visual space)
+// - Unicode characters (which may take different display widths)
+//
+// This is the canonical function that ALL STUDS components should use
+// for consistent text width calculation across the entire system.
+//
+// Examples:
+//
+//	DisplayWidth("hello")           // 5
+//	DisplayWidth("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")    // 10 (Unicode spinner chars)
+//	DisplayWidth("\033[31mred\033[0m") // 3 (ANSI codes stripped)
+//	DisplayWidth("café")            // 4 (Unicode é counts as 1)
+func DisplayWidth(text string) int {
+	// First, strip all ANSI escape sequences
+	return xansi.StringWidth(text)
+}
+
+// WrapTextANSI wraps text at word boundaries to the given display width.
+// It is ANSI-aware (escape sequences are excluded from width math) and
+// runewidth-correct (wide/CJK glyphs count their true terminal cells) — the
+// canonical wrap primitive for all STUDS components. Promoted from
+// TextFormatter.WrapText, which now delegates here; the upgrade from
+// byte-count to runewidth math is an intentional, tested behavior change
+// for multi-byte content.
+//
+// width <= 0 returns the text unwrapped as a single line (graceful overflow,
+// matching the historical WrapText contract).
+func WrapTextANSI(text string, width int) []string {
+	if width <= 0 {
+		return []string{text}
+	}
+
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return []string{""}
+	}
+
+	var lines []string
+	var currentLine strings.Builder
+	currentWidth := 0
+
+	for _, word := range words {
+		wordWidth := DisplayWidth(word)
+
+		// If adding this word would exceed width, start a new line
+		if currentWidth > 0 && currentWidth+1+wordWidth > width {
+			lines = append(lines, currentLine.String())
+			currentLine.Reset()
+			currentWidth = 0
+		}
+
+		// Add space if not the first word on the line
+		if currentWidth > 0 {
+			currentLine.WriteString(" ")
+			currentWidth++
+		}
+
+		currentLine.WriteString(word)
+		currentWidth += wordWidth
+	}
+
+	// Add the final line if it has content
+	if currentLine.Len() > 0 {
+		lines = append(lines, currentLine.String())
+	}
+
+	return lines
+}
+
+// PadString pads a string to the specified display width with spaces.
+// Uses DisplayWidth() for accurate width calculation.
+//
+// Examples:
+//
+//	PadString("hello", 10, "left")    // "hello     "
+//	PadString("hello", 10, "right")   // "     hello"
+//	PadString("hello", 10, "center")  // "  hello   "
+func PadString(text string, targetWidth int, alignment string) string {
+	currentWidth := DisplayWidth(text)
+
+	if currentWidth >= targetWidth {
+		return text // Already at or exceeds target width
+	}
+
+	paddingNeeded := targetWidth - currentWidth
+
+	switch alignment {
+	case "right":
+		return strings.Repeat(" ", paddingNeeded) + text
+	case "center":
+		leftPad := paddingNeeded / 2
+		rightPad := paddingNeeded - leftPad
+		return strings.Repeat(" ", leftPad) + text + strings.Repeat(" ", rightPad)
+	default: // "left" or any other value
+		return text + strings.Repeat(" ", paddingNeeded)
+	}
+}
+
+// TruncateString truncates a string to fit within the specified display width,
+// adding an ellipsis if truncation occurs. Uses DisplayWidth() for accurate calculation.
+//
+// Examples:
+//
+//	TruncateString("hello world", 8, "...")  // "hello..."
+//	TruncateString("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏", 5, "…")     // "⠋⠙⠹⠸…"
+func TruncateString(text string, maxWidth int, ellipsis string) string {
+	if DisplayWidth(text) <= maxWidth {
+		return text
+	}
+
+	ellipsisWidth := DisplayWidth(ellipsis)
+	if maxWidth <= ellipsisWidth {
+		// Not enough space for ellipsis, just truncate
+		return strings.Repeat(".", maxWidth)
+	}
+
+	targetWidth := maxWidth - ellipsisWidth
+
+	// Find the longest prefix that fits within targetWidth
+	for i := len(text); i > 0; {
+		// Move backwards by rune to avoid breaking multi-byte characters
+		_, size := utf8.DecodeLastRuneInString(text[:i])
+		i -= size
+
+		prefix := text[:i]
+		if DisplayWidth(prefix) <= targetWidth {
+			return prefix + ellipsis
+		}
+	}
+
+	return ellipsis // Fallback if even one character is too wide
+}

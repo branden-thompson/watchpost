@@ -1,0 +1,175 @@
+package hms
+
+import (
+	"archive/zip"
+	"bytes"
+	"encoding/xml"
+	"errors"
+	"fmt"
+	"io"
+	"runtime"
+	"runtime/debug"
+	"runtime/metrics"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+func genKMZ(n int) (kmz []byte, kmlLen int) {
+	var sb strings.Builder
+	sb.WriteString(`<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>HMS</name>`)
+	for i := range n {
+		lon := -125.0 + float64(i%1000)/20
+		lat := 30.0 + float64(i/1000)/2
+		fmt.Fprintf(&sb, `<Placemark><name>%d</name><styleUrl>#s</styleUrl><description><![CDATA[Lon: %.3f<br>Lat: %.3f<br>YearDay: 2026237<br>Time: %04dUTC<br>Satellite: GOES-EAST<br>Method: NGFS<br>Ecosystem: 22<br>FRP: %.3fMW]]></description><Point><coordinates>%.3f,%.3f,0</coordinates></Point></Placemark>`,
+			i, lon, lat, i%2400, float64(i%500)/10, lon, lat)
+	}
+	sb.WriteString(`</Document></kml>`)
+	kml := sb.String()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, _ := zw.Create("kmls/hms_fire20260826.kml")
+	_, _ = io.WriteString(w, kml)
+	_ = zw.Close()
+	return buf.Bytes(), len(kml)
+}
+
+// parseStream is Parse with the zip entry streamed into the decoder (no io.ReadAll).
+func parseStream(raw []byte) ([]Point, error) {
+	zr, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
+	if err != nil {
+		return nil, err
+	}
+	var f *zip.File
+	for _, zf := range zr.File {
+		if strings.HasPrefix(zf.Name, "kmls/hms_fire") && strings.HasSuffix(zf.Name, ".kml") {
+			f = zf
+			break
+		}
+	}
+	if f == nil {
+		return nil, errors.New("no merged file")
+	}
+	rc, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	return parseKMLReader(io.LimitReader(rc, maxInflateByte+1))
+}
+
+func parseKMLReader(r io.Reader) ([]Point, error) {
+	dec := xml.NewDecoder(r)
+	var out []Point
+	root := ""
+	placemarks := 0
+	for tokens := 0; tokens <= maxTokens; tokens++ {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			return out, nil
+		}
+		if err != nil {
+			return out, err
+		}
+		se, ok := tok.(xml.StartElement)
+		if !ok {
+			continue
+		}
+		if root == "" {
+			root = se.Name.Local
+		}
+		if se.Name.Local != "Placemark" {
+			continue
+		}
+		if placemarks == maxPlacemarks {
+			return out, ErrTruncated
+		}
+		placemarks++
+		var pm placemark
+		if err := dec.DecodeElement(&pm, &se); err != nil {
+			continue
+		}
+		if pt, ok := parseDescription(pm.Description, pm.Coordinates); ok {
+			out = append(out, pt)
+		}
+	}
+	return out, ErrTruncated
+}
+
+var perfKMZ, perfKMLLen = genKMZ(27500)
+
+func BenchmarkPerfHMSParse_ReadAll(b *testing.B) {
+	b.ReportAllocs()
+	for range b.N {
+		pts, err := Parse(perfKMZ)
+		if err != nil || len(pts) != 27500 {
+			b.Fatal(len(pts), err)
+		}
+	}
+}
+
+func BenchmarkPerfHMSParse_Stream(b *testing.B) {
+	b.ReportAllocs()
+	for range b.N {
+		pts, err := parseStream(perfKMZ)
+		if err != nil || len(pts) != 27500 {
+			b.Fatal(len(pts), err)
+		}
+	}
+}
+
+// peakHeap samples the live heap while fn runs (GC on, default GOGC).
+func peakHeap(fn func()) (peak uint64) {
+	s := []metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}}
+	var stop atomic.Bool
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for !stop.Load() {
+			metrics.Read(s)
+			if v := s[0].Value.Uint64(); v > peak {
+				peak = v
+			}
+			time.Sleep(50 * time.Microsecond)
+		}
+	}()
+	fn()
+	stop.Store(true)
+	<-done
+	return peak
+}
+
+func TestPerfHMSPeak(t *testing.T) {
+	t.Logf("fixture: kmz %d bytes, inflated kml %d bytes, 27500 placemarks", len(perfKMZ), perfKMLLen)
+	for _, v := range []struct {
+		name string
+		fn   func() ([]Point, error)
+	}{{"ReadAll(Parse)", func() ([]Point, error) { return Parse(perfKMZ) }}, {"Stream", func() ([]Point, error) { return parseStream(perfKMZ) }}} {
+		for range 3 {
+			runtime.GC()
+			var before runtime.MemStats
+			runtime.ReadMemStats(&before)
+			var pts []Point
+			peak := peakHeap(func() { pts, _ = v.fn() })
+			var after runtime.MemStats
+			runtime.ReadMemStats(&after)
+			t.Logf("%-16s total alloc %.1f MB  peak live heap during parse %.1f MB (baseline %.1f MB)  retained points %d",
+				v.name, float64(after.TotalAlloc-before.TotalAlloc)/1e6, float64(peak)/1e6, float64(before.HeapAlloc)/1e6, len(pts))
+		}
+	}
+	// GC off: what the parse would pin if nothing were collected mid-parse.
+	old := debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(old)
+	for _, v := range []struct {
+		name string
+		fn   func() ([]Point, error)
+	}{{"ReadAll(Parse)", func() ([]Point, error) { return Parse(perfKMZ) }}, {"Stream", func() ([]Point, error) { return parseStream(perfKMZ) }}} {
+		runtime.GC()
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		_, _ = v.fn()
+		runtime.ReadMemStats(&after)
+		t.Logf("GC off  %-16s heap grew %.1f MB", v.name, float64(after.HeapAlloc-before.HeapAlloc)/1e6)
+	}
+}

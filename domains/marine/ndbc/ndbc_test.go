@@ -69,7 +69,7 @@ func TestParseRealtimeLatestRow(t *testing.T) {
 
 func TestNearestBuoyWithinRadiusFeedsCoastalOnly(t *testing.T) {
 	srv, _ := server(t)
-	client, _ := httpx.New(httpx.Config{UserAgent: "test", MaxRetries: -1, RatePerSec: 1000})
+	client, _ := httpx.New(httpx.Config{UserAgent: "test", MaxRetries: 0, RatePerSec: 1000})
 	p := New(client, srv.URL)
 	coastal := snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057", Lat: 33.2, Lon: -117.38}
 	inland := snapshot.LocationRef{Label: "Phoenix, AZ", Zip: "85001", Lat: 33.45, Lon: -112.07}
@@ -111,7 +111,7 @@ func TestFallsThroughToNearestReportingBuoy(t *testing.T) {
 	// product (404) or wind only. The chain walks outward to the nearest
 	// buoy that actually reports sea state; a 404 never fails the batch.
 	srv, requests := server(t)
-	client, _ := httpx.New(httpx.Config{UserAgent: "test", MaxRetries: -1, RatePerSec: 1000})
+	client, _ := httpx.New(httpx.Config{UserAgent: "test", MaxRetries: 0, RatePerSec: 1000})
 	p := New(client, srv.URL)
 	coastal := snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057", Lat: 33.2, Lon: -117.38}
 	frag, err := p.Fetch(context.Background(), snapshot.FetchReq{Kind: snapshot.KindMarineObs, Locations: []snapshot.LocationRef{coastal}})

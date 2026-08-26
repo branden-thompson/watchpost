@@ -1,0 +1,80 @@
+//go:build unix || darwin
+// +build unix darwin
+
+package rendering
+
+import (
+	"sync"
+	"os"
+	"strconv"
+	"syscall"
+	"unsafe"
+)
+
+// GetTerminalSize returns the current terminal width and height.
+// This is the Unix/Darwin implementation using IOCTL syscalls.
+var l5Once sync.Once
+var l5W, l5H int
+
+func GetTerminalSize() (width, height int) {
+	l5Once.Do(func() { l5W, l5H = getTerminalSizeUncached() })
+	return l5W, l5H
+}
+
+func getTerminalSizeUncached() (width, height int) {
+	// Try to open /dev/tty directly (works even when stdout is piped)
+	if tty, err := os.Open("/dev/tty"); err == nil {
+		defer tty.Close()
+
+		type winsize struct {
+			Row    uint16
+			Col    uint16
+			Xpixel uint16
+			Ypixel uint16
+		}
+
+		ws := &winsize{}
+		retCode, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
+			uintptr(tty.Fd()),
+			uintptr(syscall.TIOCGWINSZ),
+			uintptr(unsafe.Pointer(ws)))
+
+		if int(retCode) != -1 && errno == 0 && ws.Col > 0 && ws.Row > 0 {
+			return int(ws.Col), int(ws.Row)
+		}
+	}
+
+	// Try stdin as fallback (when /dev/tty is not available)
+	type winsize struct {
+		Row    uint16
+		Col    uint16
+		Xpixel uint16
+		Ypixel uint16
+	}
+
+	ws := &winsize{}
+	retCode, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
+		uintptr(syscall.Stdin),
+		uintptr(syscall.TIOCGWINSZ),
+		uintptr(unsafe.Pointer(ws)))
+
+	if int(retCode) != -1 && errno == 0 && ws.Col > 0 && ws.Row > 0 {
+		return int(ws.Col), int(ws.Row)
+	}
+
+	// Check environment variables as fallback
+	width, height = 80, 24 // defaults
+
+	if cols := os.Getenv("COLUMNS"); cols != "" {
+		if parsedWidth, err := strconv.Atoi(cols); err == nil && parsedWidth > 0 {
+			width = parsedWidth
+		}
+	}
+	if rows := os.Getenv("LINES"); rows != "" {
+		if parsedHeight, err := strconv.Atoi(rows); err == nil && parsedHeight > 0 {
+			height = parsedHeight
+		}
+	}
+
+	return width, height
+}

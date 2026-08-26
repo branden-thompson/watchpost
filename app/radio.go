@@ -41,6 +41,9 @@ type radioDeck struct {
 
 	persistMode func(tty.RadioMode) error                   // saves the [m] pick (UAT 97); nil in tests
 	fire        func(snapshot.LocationRef) synth.FireReport // the location's fire report for the broadcast (UAT 114); nil = skipped
+	warn        func(snapshot.Warning)                      // a fresh relay-directory failure becomes a radio_unavailable warning (Q1); nil in tests
+	dirDown     map[string]bool                             // relays already warned about, so an outage warns once (guarded by mu)
+	mountOwner  map[string]stream.Station                   // the current tune list: mount URL → its station, so the label follows the mount that plays (guarded by mu)
 
 	// tuneMu makes "check the epoch, then start the engine" one step, and
 	// Stop's "bump the epoch, then halt" another (round 2 N-3): without it a
@@ -115,7 +118,8 @@ func (d *radioDeck) Tune(ref snapshot.LocationRef) {
 	d.stopDwell()
 	d.mu.Unlock()
 	same := stream.SAMEFromUGC(d.nws.CountyUGC(ctx, ref))
-	stations := d.resolver.Resolve(ctx, ref.Lat, ref.Lon, same)
+	stations, statuses := d.resolver.ResolveWithStatus(ctx, ref.Lat, ref.Lon, same)
+	d.noteDirectories(statuses)
 	// UAT 78/97: Synth is the default — a neighbour's broadcast is a
 	// neighbour's forecast. [m] Nearest Relay asks for the live station
 	// instead: the covering transmitter when relayed, else the nearest
@@ -128,17 +132,60 @@ func (d *radioDeck) Tune(ref snapshot.LocationRef) {
 		d.startSynth(ref, d.synthReason(same, ref, stations), gen)
 		return
 	}
-	var urls []string
-	for _, m := range st.Mounts {
-		urls = append(urls, m.URL)
-	}
+	// The tune list spans every candidate station in the resolver's order
+	// (Q1): a directory lists sources that may not be connected (a 404),
+	// and with weatherUSA offered again a transmitter can be "relayed" by a
+	// dead mount alone — the engine must fall through to the next live
+	// station, as it did when that transmitter was simply not offered.
+	urls, owners := tuneList(stations)
 	d.tuneMu.Lock()
 	defer d.tuneMu.Unlock()
 	if !d.epoch(gen) {
 		return // stopped or re-tuned while resolving: this tune is stale
 	}
+	d.mu.Lock()
+	d.mountOwner = owners
+	d.mu.Unlock()
 	d.setMode("live", d.label(st), st.Mounts[0].Relay)
 	d.engine.Start(urls, st.Callsign+" "+st.Site) // the dwell arms when the relay reports Playing (onStatus)
+}
+
+// tuneList flattens the candidate stations' mounts in order and remembers
+// which station each mount belongs to, so the label can follow the mount
+// that actually plays.
+func tuneList(stations []stream.Station) ([]string, map[string]stream.Station) {
+	var urls []string
+	owners := map[string]stream.Station{}
+	for _, st := range stations {
+		for _, m := range st.Mounts {
+			urls = append(urls, m.URL)
+			owners[m.URL] = st
+		}
+	}
+	return urls, owners
+}
+
+// followMount re-labels the deck when the engine has moved on to another
+// station's mount (a candidate earlier in the list was refused). Returns
+// the label now in force. Callers hold no lock.
+func (d *radioDeck) followMount(mount string) {
+	if mount == "" {
+		return
+	}
+	d.mu.Lock()
+	owner, ok := d.mountOwner[mount]
+	current := d.station
+	d.mu.Unlock()
+	if !ok || d.label(owner) == current {
+		return
+	}
+	relay := ""
+	for _, m := range owner.Mounts {
+		if m.URL == mount {
+			relay = m.Relay
+		}
+	}
+	d.setMode("live", d.label(owner), relay)
 }
 
 // epoch reports whether gen is still the current tune (no Stop or newer
@@ -176,6 +223,30 @@ func (d *radioDeck) stopDwell() {
 	if d.dwell != nil {
 		d.dwell.Stop()
 		d.dwell = nil
+	}
+}
+
+// noteDirectories turns a relay directory's first failure into one
+// radio_unavailable warning (Q1, DISCOVER LR-1: the weatherUSA directory
+// was unreachable for every Go build since 1.22 and nobody could see it)
+// and re-arms when the relay recovers, so an outage is said once.
+func (d *radioDeck) noteDirectories(statuses []stream.Status) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.dirDown == nil {
+		d.dirDown = map[string]bool{}
+	}
+	for _, st := range statuses {
+		switch {
+		case st.Err == nil:
+			delete(d.dirDown, st.Relay)
+		case !d.dirDown[st.Relay]:
+			d.dirDown[st.Relay] = true
+			if d.warn != nil {
+				d.warn(snapshot.Warning{Code: snapshot.WarnRadioUnavailable, Provider: st.Relay,
+					Message: fmt.Sprintf("relay directory %s unreachable — its transmitters are not offered until it answers: %v", st.Relay, st.Err)})
+			}
+		}
 	}
 }
 
@@ -643,6 +714,7 @@ func (d *radioDeck) defaultVoice() string {
 // onStatus forwards engine status to the dashboard; a relay that fails
 // outright falls back to the synthesized broadcast (§5: Live → Synth).
 func (d *radioDeck) onStatus(st player.Status) {
+	d.followMount(st.Mount) // a later candidate's mount is playing: the label says which (Q1)
 	d.mu.Lock()
 	station, detail, mode, ref, repeat, src, gen := d.station, d.detail, d.mode, d.ref, d.repeat, d.source, d.gen
 	d.mu.Unlock()

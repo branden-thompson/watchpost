@@ -18,6 +18,7 @@ package httpx
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strings"
 	"sync"
@@ -51,7 +53,7 @@ type Config struct {
 	UserAgent  string
 	RatePerSec int           // token bucket rate; default 5; max 1000
 	RetryBase  time.Duration // backoff base; default 1s; per-attempt backoff caps at 30s
-	MaxRetries int           // retries beyond the first attempt; 0 = default (3); -1 = no retries
+	MaxRetries int           // retries beyond the first attempt; 0 = none (the zero value is the safe reading — PA-7); the dashboard uses 1, report 3
 	Timeout    time.Duration // per-request; default 30s
 	CacheDir   string        // on-disk cache tier; "" = memory only
 }
@@ -61,6 +63,8 @@ type Client struct {
 	cfg      Config
 	http     *http.Client
 	cache    *cache
+	stats    *reqStats          // per-host counters since launch (quality pass Q0)
+	memo     *failureMemo       // per-host failure memo, normal lane only (quality pass Q1, plan §2.3)
 	sf       singleflight.Group // one in-flight request per URL
 	inflight [2]chan struct{}   // per-lane cap on requests in flight (UAT 73)
 
@@ -102,6 +106,7 @@ type Option func(*reqOpts)
 type reqOpts struct {
 	ttl     time.Duration
 	noCache bool
+	persist bool
 }
 
 // TTL states how long the response may be reused — product knowledge that
@@ -111,6 +116,11 @@ func TTL(d time.Duration) Option { return func(o *reqOpts) { o.ttl = d } }
 
 // NoCache forces a network round trip (and never stores the result).
 func NoCache() Option { return func(o *reqOpts) { o.noCache = true } }
+
+// Persist writes the entry to the disk tier even when its TTL is at or
+// below the persistence floor (5 min): for the one short-lived document
+// that does warm a relaunch — the relay directory (plan §2.2, R2-6).
+func Persist() Option { return func(o *reqOpts) { o.persist = true } }
 
 // NegativeTTL is how long a non-retryable failure (4xx) is remembered.
 const NegativeTTL = 30 * time.Second
@@ -158,7 +168,7 @@ func New(cfg Config) (*Client, error) {
 	if err := invariant.Check(cfg.RatePerSec >= 0 && cfg.RatePerSec <= 1000, "httpx: RatePerSec must be 0..1000"); err != nil {
 		return nil, err
 	}
-	if err := invariant.Check(cfg.MaxRetries >= -1, "httpx: MaxRetries must be >= -1 (-1 = no retries)"); err != nil {
+	if err := invariant.Check(cfg.MaxRetries >= 0 && cfg.MaxRetries <= 10, "httpx: MaxRetries must be 0..10 (0 = no retries)"); err != nil {
 		return nil, err
 	}
 	if cfg.RatePerSec <= 0 {
@@ -167,19 +177,13 @@ func New(cfg Config) (*Client, error) {
 	if cfg.RetryBase <= 0 {
 		cfg.RetryBase = time.Second
 	}
-	switch cfg.MaxRetries {
-	case -1:
-		cfg.MaxRetries = 0
-	case 0:
-		cfg.MaxRetries = 3
-	}
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = 30 * time.Second
 	}
 	// Lazy token pacing: no background goroutine for pacing (B0 red-team
 	// F2). Each request reserves the next start slot under the mutex and
 	// sleeps outside it.
-	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: newTransport()}, cache: newCache(cfg.CacheDir),
+	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: newTransport(), CheckRedirect: SameOriginRedirect}, cache: newCache(cfg.CacheDir), stats: newReqStats(), memo: newFailureMemo(),
 		inflight: [2]chan struct{}{make(chan struct{}, maxInflight), make(chan struct{}, maxInflightPriority)}}, nil
 }
 
@@ -311,11 +315,14 @@ func (c *Client) fetch(ctx context.Context, rawURL string, opts []Option) ([]byt
 	for _, o := range opts {
 		o(&ro)
 	}
+	host := statHost(rawURL)
 	if !ro.noCache {
 		if body, ok := c.cache.get(rawURL); ok {
+			c.stats.add(host, func(h *HostStats) { h.Cache++ })
 			return body, nil, nil
 		}
 		if err, ok := c.cache.negative(rawURL); ok {
+			c.stats.add(host, func(h *HostStats) { h.Neg++ })
 			return nil, nil, err
 		}
 	}
@@ -326,6 +333,7 @@ func (c *Client) fetch(ctx context.Context, rawURL string, opts []Option) ([]byt
 	v, err, _ := c.sf.Do(rawURL, func() (any, error) {
 		if !ro.noCache {
 			if body, ok := c.cache.get(rawURL); ok { // filled while we waited
+				c.stats.add(host, func(h *HostStats) { h.Cache++ })
 				return result{body: body}, nil
 			}
 		}
@@ -338,7 +346,7 @@ func (c *Client) fetch(ctx context.Context, rawURL string, opts []Option) ([]byt
 			return nil, err
 		}
 		if ttl := lifetime(ro, hdr); ttl > 0 && !ro.noCache {
-			c.cache.put(rawURL, body, time.Now().Add(ttl))
+			c.cache.put(rawURL, body, time.Now().Add(ttl), validatorsOf(hdr), ro.persist)
 		}
 		return result{body: body, hdr: hdr}, nil
 	})
@@ -363,79 +371,169 @@ func (c *Client) do(ctx context.Context, rawURL string) ([]byte, http.Header, er
 	if err := invariant.Check(c.cfg.MaxRetries >= 0, "retry budget must be non-negative"); err != nil {
 		return nil, nil, err
 	}
-	safe := RedactURL(rawURL)
+	req := request{rawURL: rawURL, safe: RedactURL(rawURL), host: statHost(rawURL), priority: lane(ctx) == 1}
+	// The memo is consulted on the normal lane only (plan §2.3, R2-3): the
+	// priority lane always attempts — it is the half-open probe that clears
+	// the memo on success — so alerts and the first view are never blackholed.
+	if err := c.memoRefusal(req); err != nil {
+		c.stats.add(req.host, func(h *HostStats) { h.FastFail++ })
+		return nil, nil, err
+	}
 	release, err := c.acquire(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("request cancelled: %s: %w", safe, err)
+		return nil, nil, fmt.Errorf("request cancelled: %s: %w", req.safe, err)
 	}
 	defer release()
-	var lastStatus int
-	var lastErr error
-	// Bounded per P10-02: at most 1 + MaxRetries attempts.
+	var last outcome
+	// Bounded per P10-02: at most 1 + MaxRetries attempts. A retry on the
+	// normal lane re-reads the memo: a 429 Retry-After or a transport error
+	// on the first attempt ends the call now (the cause survives below)
+	// instead of waiting inside it.
 	for attempt := 0; attempt <= c.cfg.MaxRetries; attempt++ {
-		if err := c.reserve(ctx); err != nil {
-			return nil, nil, fmt.Errorf("request cancelled: %s: %w", safe, err)
+		if attempt > 0 && c.memoRefusal(req) != nil {
+			break
 		}
-		body, hdr, status, err := c.doAttempt(ctx, rawURL, safe)
-		if err == nil && status == http.StatusOK {
-			return body, hdr, nil
+		last = c.attemptOnce(ctx, req, attempt)
+		if last.final {
+			return last.body, last.hdr, last.err
 		}
-		if err != nil && status != 0 {
-			return nil, nil, err // non-retryable failure, already actionable + redacted
-		}
-		lastStatus, lastErr = status, err
 		if attempt == c.cfg.MaxRetries {
 			break
 		}
-		if err := c.sleepBackoff(ctx, attempt, safe); err != nil {
-			if lastErr != nil {
-				return nil, nil, fmt.Errorf("%w (last failure: %v)", err, redactErr(lastErr)) // the cause survives the cancellation (F12)
+		if err := c.sleepBackoff(ctx, attempt, req.safe); err != nil {
+			if last.err != nil {
+				return nil, nil, fmt.Errorf("%w (last failure: %v)", err, redactErr(last.err)) // the cause survives the cancellation (F12)
 			}
 			return nil, nil, err
 		}
 	}
-	if lastErr != nil {
+	if last.err != nil {
 		// Transport-level cause survives, redacted (B0 red-team F1).
-		return nil, nil, fmt.Errorf("cannot reach %s after %d attempts: %w", safe, c.cfg.MaxRetries+1, redactErr(lastErr))
+		return nil, nil, fmt.Errorf("cannot reach %s after %d attempts: %w", req.safe, last.attempts, redactErr(last.err))
 	}
-	return nil, nil, fmt.Errorf("%s kept failing (last HTTP %d) after %d attempts — provider degraded; serving last-good data upstream", safe, lastStatus, c.cfg.MaxRetries+1)
+	return nil, nil, fmt.Errorf("%s kept failing (last HTTP %d) after %d attempts — provider degraded; serving last-good data upstream", req.safe, last.status, last.attempts)
 }
 
-// doAttempt performs one request. Returns (body, headers, 200, nil) on
-// success; (nil, nil, status, nil) on a retryable HTTP failure; (nil, nil,
-// 0, err) on a transport error (retryable); (nil, nil, status, err) on a
-// non-retryable, final error.
-func (c *Client) doAttempt(ctx context.Context, rawURL, safe string) ([]byte, http.Header, int, error) {
+// request is one GET's identity for the retry loop.
+type request struct {
+	rawURL, safe, host string
+	priority           bool
+}
+
+// outcome is one attempt's result: final means do() returns it as is
+// (success, a 4xx, a refused redirect); otherwise err/status carry the
+// retryable failure and attempts the count so far.
+type outcome struct {
+	body     []byte
+	hdr      http.Header
+	err      error
+	status   int
+	attempts int
+	final    bool
+}
+
+// memoRefusal is the fast-fail for a memoised host on the normal lane.
+func (c *Client) memoRefusal(req request) error {
+	if req.priority {
+		return nil
+	}
+	if wait, avoided := c.memo.avoiding(req.host, time.Now()); avoided {
+		return fmt.Errorf("%s is being avoided for %s after repeated failures; %s", req.host, wait.Round(time.Second), req.safe)
+	}
+	return nil
+}
+
+// attemptOnce paces, performs and classifies one attempt.
+func (c *Client) attemptOnce(ctx context.Context, req request, attempt int) outcome {
+	out := outcome{attempts: attempt + 1}
+	if err := c.reserve(ctx); err != nil {
+		out.err, out.final = fmt.Errorf("request cancelled: %s: %w", req.safe, err), true
+		return out
+	}
+	c.stats.add(req.host, func(h *HostStats) { h.Attempts++ })
+	res, err := c.doAttempt(ctx, req.rawURL, req.safe, req.host)
+	switch {
+	case err == nil && res.status == http.StatusOK:
+		c.stats.add(req.host, func(h *HostStats) { h.Net++; h.BytesNet += int64(len(res.body)); h.H2 += b2i(res.h2) })
+		c.memo.clear(req.host)
+		out.body, out.hdr, out.final = res.body, res.hdr, true
+	case err != nil && res.status != 0:
+		out.err, out.final = err, true // non-retryable failure (4xx), already actionable + redacted; never arms the memo
+	case errors.Is(err, errRedirectRefused):
+		out.err, out.final = redactErr(err), true // our own policy, not the host's fault: no retry, no memo
+	default:
+		c.noteFailure(req.host, req.rawURL, res, err)
+		out.err, out.status = err, res.status
+	}
+	return out
+}
+
+// attemptResult is one request's outcome: status 200 with a body on
+// success; a retryable status with no body; status 0 on a transport error.
+type attemptResult struct {
+	body       []byte
+	hdr        http.Header
+	status     int
+	h2         bool          // the response arrived over HTTP/2 (RequestStats)
+	retryAfter time.Duration // a 429/503 Retry-After, clamped (0 = none)
+}
+
+// doAttempt performs one request. Returns (200 + body, nil) on success;
+// (retryable status, nil) on a retryable HTTP failure; (0, err) on a
+// transport error (retryable); (status, err) on a non-retryable, final
+// error. host keys the TLS-handshake counter.
+func (c *Client) doAttempt(ctx context.Context, rawURL, safe, host string) (attemptResult, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, nil, http.StatusBadRequest, fmt.Errorf("bad request for %s: %w", safe, redactErr(err))
+		return attemptResult{status: http.StatusBadRequest}, fmt.Errorf("bad request for %s: %w", safe, redactErr(err))
 	}
 	req.Header.Set("User-Agent", c.cfg.UserAgent)
 	req.Header.Set("Accept", "application/geo+json, application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.http.Do(req.WithContext(httptrace.WithClientTrace(ctx, c.handshakeTrace(host))))
 	if err != nil {
 		// Transport error: retryable. Return the cause so the exhaustion
 		// message can name it (redacted) instead of a fake HTTP 0 (F1).
-		return nil, nil, 0, err
+		return attemptResult{}, err
 	}
 	// Close errors on a fully-drained GET response carry no recoverable
 	// information — drain completes the read; ignore explicitly.
 	defer func() { _ = resp.Body.Close() }()
+	res := attemptResult{status: resp.StatusCode, h2: resp.ProtoMajor == 2}
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		if !retryable(resp.StatusCode) {
-			return nil, nil, resp.StatusCode, &StatusError{URL: safe, Status: resp.StatusCode}
+			return res, &StatusError{URL: safe, Status: resp.StatusCode}
 		}
-		return nil, nil, resp.StatusCode, nil
+		res.retryAfter = parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
+		return res, nil
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes+1))
 	if err != nil {
-		return nil, nil, resp.StatusCode, fmt.Errorf("bad response body from %s: %w", safe, redactErr(err))
+		return res, fmt.Errorf("bad response body from %s: %w", safe, redactErr(err))
 	}
 	if len(body) > maxBodyBytes {
-		return nil, nil, resp.StatusCode, fmt.Errorf("response from %s exceeds %d MB — refused", safe, maxBodyBytes>>20)
+		return res, fmt.Errorf("response from %s exceeds %d MB — refused", safe, maxBodyBytes>>20)
 	}
-	return body, resp.Header, http.StatusOK, nil
+	res.body, res.hdr = body, resp.Header
+	return res, nil
+}
+
+// handshakeTrace counts full TLS handshakes for host — the number that
+// says whether session resumption and connection reuse are working
+// (DISCOVER L2-F11; read at the Q5 gate).
+func (c *Client) handshakeTrace(host string) *httptrace.ClientTrace {
+	return &httptrace.ClientTrace{TLSHandshakeDone: func(cs tls.ConnectionState, err error) {
+		if err == nil && !cs.DidResume {
+			c.stats.add(host, func(h *HostStats) { h.TLSHandshakes++ })
+		}
+	}}
+}
+
+func b2i(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // sleepBackoff waits base·2^attempt ± 50% jitter, honoring cancellation.

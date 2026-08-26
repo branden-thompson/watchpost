@@ -2,6 +2,45 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [Unreleased]
+
+## [0.9.5] — 2026-08-26
+
+Performance & quality pass, batches Q0–Q1 (instrumentation; the weatherUSA relay defect; a bounded
+disk cache; one retry layer with a per-host failure memo).
+
+### Added
+- Diagnostics for long-running sessions: the `S` modal lists request counters per host since
+  launch (attempts, network bodies, cache and negative-cache hits, bytes) and the publish counters
+  per pipeline; `kill -USR1 <pid>` (macOS/Linux) or `GET /debug/dump` on the opt-in
+  `WATCHPOST_DEBUG_PPROF=1` server writes a profile set with `counters.json` under the cache
+  directory's `profiles/` (a minute apart at most, newest twelve kept); `/debug/counters` serves
+  the same counters live; `watchpost report <loc> --verbose` appends the counters per host.
+- Build gates: `go mod tidy -diff`, `go mod verify` and `govulncheck` in `make verify`; frame
+  allocation pins in `make alloc-budget`; wall-clock benchmarks in `make quality-bench`.
+- Redirect policy: every HTTP client (data and relay audio) follows at most three redirects and only
+  to the same scheme and host; anything else is refused with the reason.
+
+### Fixed
+- Nearest Relay: the weatherUSA relay directory is reachable again. Its server only speaks a TLS key
+  exchange Go removed in 1.22, so the directory and its ~120 mounts were silently missing from every
+  Go build since; the directory and mounts are now fetched over plain HTTP — which is what the relay
+  serves its audio on anyway (relay policy; the mounts were always `http://…/NWR/*.mp3`). A relay
+  directory that stops answering is now said once in the `S` modal (`radio_unavailable`) instead
+  of contributing nothing in silence, and is asked again at most every 5 minutes.
+- Disk cache: it no longer grows without bound. Short-lived products (observations, alerts) are
+  never written to disk; expired files are swept at launch and daily (24 h grace for entries a
+  conditional GET could renew); orphaned files from the pre-0.9 format are removed; the directory
+  is capped at 256 MB, oldest first. The sweep only ever touches files it wrote, never follows
+  symlinks, and refuses to run outside a `watchpost` cache directory.
+
+### Changed
+- Retries: the dashboard's HTTP clients make one retry per request (the scheduler already re-tries
+  at 10/20/40 s), and a host that stops answering is avoided for 20 s on the background lane — the
+  favourites' lane and alerts always try, so a single failing station can never delay them. A
+  server's `Retry-After` is honoured (clamped to 5 minutes). During a provider outage the app now
+  makes a few hundred attempts an hour instead of ~23,000.
+
 ## [0.9.4] — 2026-08-25
 
 ### Changed

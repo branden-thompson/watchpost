@@ -16,6 +16,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
 // StallTimeout is the longest gap between bytes before a stream counts as
@@ -79,8 +81,11 @@ func Open(ctx context.Context, userAgent, url string) (*Stream, error) {
 // newStreamClient has no overall timeout: Icecast bodies are infinite.
 // Stalls are handled by the per-read watchdog. One per stream (a stream is
 // long-lived; no shared global).
+// Redirects follow the app-wide policy (quality pass Q1, IS-3): same
+// scheme and host, three hops — a plain-HTTP relay must never be able to
+// send the player to another host.
 func newStreamClient() *http.Client {
-	return &http.Client{Transport: &http.Transport{
+	return &http.Client{CheckRedirect: httpx.SameOriginRedirect, Transport: &http.Transport{
 		ResponseHeaderTimeout: 15 * time.Second, DisableCompression: true, MaxConnsPerHost: 2}}
 }
 

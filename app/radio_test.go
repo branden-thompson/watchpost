@@ -1,11 +1,14 @@
 package app
 
 import (
+	"errors"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -111,5 +114,49 @@ func TestPiperVoiceChooserListsTheCatalogue(t *testing.T) {
 	d.voiceID = "not-a-voice"
 	if d.piperSpec().Key != "en_US-lessac-medium" {
 		t.Fatal("an unknown pick falls back to the default")
+	}
+}
+
+// Quality pass Q1 (PR-9): a relay directory that stops answering is said
+// once, in [S], and said again only after it has recovered.
+func TestDirectoryOutageWarnsOncePerOutage(t *testing.T) {
+	var warned []snapshot.Warning
+	d := &radioDeck{warn: func(w snapshot.Warning) { warned = append(warned, w) }}
+	down := []stream.Status{{Relay: "wxradio.org"}, {Relay: "weatherusa.net", Err: errors.New("tls: handshake failure"), Since: time.Now()}}
+	d.noteDirectories(down)
+	d.noteDirectories(down) // the next Tune, still down
+	if len(warned) != 1 || warned[0].Code != snapshot.WarnRadioUnavailable || warned[0].Provider != "weatherusa.net" || !strings.Contains(warned[0].Message, "handshake") {
+		t.Fatalf("one warning per outage, naming the relay and the reason: %+v", warned)
+	}
+	d.noteDirectories([]stream.Status{{Relay: "wxradio.org"}, {Relay: "weatherusa.net"}}) // recovered
+	d.noteDirectories(down)
+	if len(warned) != 2 {
+		t.Fatalf("a new outage after recovery warns again, got %d", len(warned))
+	}
+	nilDeck := &radioDeck{}
+	nilDeck.noteDirectories(down) // no hook (tests, report): never panics
+}
+
+// Quality pass Q1: the tune list spans every candidate station in order,
+// and the label follows the mount that actually plays — a transmitter
+// relayed only by a dead mount falls through to the next live station.
+func TestTuneListSpansCandidatesAndLabelFollowsTheMount(t *testing.T) {
+	a := stream.Station{Transmitter: &stream.Transmitter{Callsign: "KZZ41", Site: "Dead", FreqMHz: "162.400"}, KM: 10, Mounts: []stream.Mount{{Callsign: "KZZ41", URL: "http://wu/NWR/KZZ41.mp3", Relay: "weatherusa.net"}}}
+	b := stream.Station{Transmitter: &stream.Transmitter{Callsign: "KEC80", Site: "Atlanta", FreqMHz: "162.550"}, KM: 40, Mounts: []stream.Mount{{Callsign: "KEC80", URL: "https://wx/GA-Atlanta-KEC80", Relay: "wxradio.org"}, {Callsign: "KEC80", URL: "http://wu/NWR/KEC80.mp3", Relay: "weatherusa.net"}}}
+	urls, owners := tuneList([]stream.Station{a, b})
+	if len(urls) != 3 || urls[0] != a.Mounts[0].URL || urls[2] != b.Mounts[1].URL || owners[urls[1]].Callsign != "KEC80" {
+		t.Fatalf("mounts flatten in station order with owners: %v %v", urls, owners)
+	}
+	d := &radioDeck{units: render.UnitF, mountOwner: owners}
+	d.setMode("live", d.label(a), "weatherusa.net")
+	d.followMount("")              // no mount yet: unchanged
+	d.followMount("https://other") // not ours: unchanged
+	d.followMount(a.Mounts[0].URL) // still the first station: unchanged
+	if d.station != d.label(a) {
+		t.Fatalf("label must stay on the first station until another mount plays, got %q", d.station)
+	}
+	d.followMount(b.Mounts[0].URL) // the engine fell through to Atlanta on wxradio
+	if d.station != d.label(b) || d.detail != "wxradio.org" {
+		t.Fatalf("label must follow the playing mount's station and relay, got %q / %q", d.station, d.detail)
 	}
 }

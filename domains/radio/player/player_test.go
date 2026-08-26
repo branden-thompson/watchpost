@@ -258,3 +258,16 @@ func TestPreviewPlaysWithoutTouchingState(t *testing.T) {
 		t.Fatalf("preview must not change engine status: %+v", e.Status())
 	}
 }
+
+// Quality pass Q1 (IS-3): the stream client refuses cross-host redirects.
+func TestStreamClientRefusesCrossHostRedirect(t *testing.T) {
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("audio")) }))
+	defer other.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, strings.Replace(other.URL, "127.0.0.1", "localhost", 1)+"/mount", http.StatusFound)
+	}))
+	defer srv.Close()
+	if _, err := Open(context.Background(), "t (t@example.com)", srv.URL+"/mount"); err == nil || !strings.Contains(err.Error(), "same-origin") {
+		t.Fatalf("a redirect to another host must be refused: %v", err)
+	}
+}

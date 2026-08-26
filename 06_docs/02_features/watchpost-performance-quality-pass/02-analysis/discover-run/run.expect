@@ -1,0 +1,23 @@
+#!/usr/bin/expect -f
+# DISCOVER instrumented run (v2): wait for real data before tuning, wait for
+# PLAYING before touching the volume, and log each step so the run is auditable.
+set timeout 5
+lassign $argv total
+log_user 0
+spawn env WATCHPOST_DEBUG_PPROF=1 HTTPS_PROXY=http://127.0.0.1:8899 HTTP_PROXY=http://127.0.0.1:8899 ./dist/watchpost
+catch {exec stty rows 44 cols 133 < $spawn_out(slave,name)}
+proc mark {s} { puts "[clock format [clock seconds] -format %H:%M:%S] $s"; flush stdout }
+expect -timeout 30 "W A T C H P O S T" { mark "masthead" }
+expect -timeout 90 -re "\\d+ºF" { mark "first data" }
+sleep 3
+send " "
+expect -timeout 90 "PLAYING" { mark "playing" } timeout { mark "NOT PLAYING after 90 s" }
+sleep 2
+send "r"; sleep 1; send "r"
+expect -timeout 5 "Watchlist" { mark "repeat: watchlist" }
+for {set i 0} {$i < 10} {incr i} { send -- "-"; sleep 0.3 }
+expect -timeout 5 -re "\\+ +5 " { mark "volume 5" } timeout { mark "volume not confirmed" }
+set start [clock seconds]
+while {[clock seconds] - $start < $total} { expect -timeout 5 -re ".+" {} }
+send "q"
+expect -timeout 15 eof { mark "quit ok" }

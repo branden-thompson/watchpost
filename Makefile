@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: build test race verify fmt vet lint-imports lint-watermark gate-controls release-matrix clean
+.PHONY: build test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls release-matrix clean alloc-budget quality-bench p10
 
 BINARY := watchpost
 DIST   := dist
@@ -26,6 +26,15 @@ fmt:
 vet:
 	go vet ./...
 
+# Dependency hygiene (quality pass Q0, red-team PH-1/IS-9): go.mod must be tidy,
+# the module cache must match go.sum, and no known vulnerability may be reachable.
+tidy:
+	go mod tidy -diff
+	go mod verify
+
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
 # Import-direction gate: modes/* may import platform/* but NEVER domains/* (architecture §1).
 lint-imports:
 	@./scripts/lint-imports.sh
@@ -40,8 +49,31 @@ gate-controls:
 	@./scripts/lint-imports.sh --self-test
 	@./scripts/lint-watermark.sh --self-test
 
-verify: fmt vet race lint-imports lint-watermark gate-controls
+verify: fmt vet tidy vuln race lint-imports lint-watermark gate-controls
 	@echo "verify: ALL GATES GREEN"
+
+# Deterministic allocation pins (quality pass §1). They count mallocs, which the race
+# detector distorts, so they run in their own non-race step (red-team R2-8); under
+# `make race` they skip themselves via the raceEnabled build tag.
+alloc-budget:
+	go test -count=1 -run 'AllocBudget$$' ./...
+
+# Wall-clock benchmarks: recorded, never gated (quality pass §0.1). Local, HUM LEAD.
+# Needs benchstat: go install golang.org/x/perf/cmd/benchstat@latest
+quality-bench:
+	go test ./modes/tty ./platform/snapshot ./domains/fire/hms ./platform/render -run '^$$' -bench . -benchmem -count 10 | tee $(DIST)/bench.txt
+
+# P10 safety-critical check (quality pass §1, red-team R2-2). The li-A2DH CLI and the
+# exemptions ledger live outside the public tree, so this is a LOCAL gate that must fail
+# loud, never skip, when the CLI is absent. A2DH=/path/to/a2dh overrides the lookup.
+A2DH ?= a2dh
+P10_OUT ?= $(DIST)/p10.json
+p10:
+	@command -v $(A2DH) >/dev/null 2>&1 || { echo "p10: '$(A2DH)' not found — this gate cannot be skipped; set A2DH=/path/to/a2dh"; exit 1; }
+	@mkdir -p $(DIST)
+	@$(A2DH) p10 check --json > $(P10_OUT) || { echo "p10: live findings — see $(P10_OUT)"; exit 1; }
+	@./scripts/quality/p10-unmatched.sh $(P10_OUT)
+	@echo "p10: 0 live, 0 unmatched ($(P10_OUT))"
 
 # T-M (§10.12): cross-compile matrix — every milestone proves it stays green.
 release-matrix:

@@ -67,7 +67,7 @@ func server(t *testing.T) (*httptest.Server, *atomic.Int32) {
 
 func newProvider(t *testing.T, base string) *Provider {
 	t.Helper()
-	c, err := httpx.New(httpx.Config{UserAgent: "watchpost/test (t@example.com)", RatePerSec: 1000, MaxRetries: -1})
+	c, err := httpx.New(httpx.Config{UserAgent: "watchpost/test (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	if err != nil {
 		t.Fatal(err)
 	}

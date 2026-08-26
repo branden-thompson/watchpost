@@ -13,6 +13,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
@@ -577,11 +578,19 @@ func TestStatusModalAndControlPlacement(t *testing.T) {
 
 func TestStatusModalWrapsNeverTruncates(t *testing.T) {
 	// UAT 25 (the recurring class, now fixed in the component): every modal
-	// body line wraps within the tile — no … anywhere in the modal.
-	m := dash(t)
-	m2, _ := m.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
+	// body line wraps within the tile — no … anywhere in the modal. The
+	// longest line today is the dump trigger's path (quality pass Q0).
+	long := "kill -USR1 4242 → /Users/someone/Library/Caches/watchpost/profiles/and-a-deeper-directory"
+	m, err := NewDashboard(Config{Version: "x", Stats: func() Stats { return Stats{DumpHint: long} }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	model, _ = model.Update(SnapshotMsg{Snap: snap()})
+	m2, _ := model.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
 	v := m2.View().Content
-	if !strings.Contains(v, "multi-provider work") {
+	if !strings.Contains(v, "and-a-deeper-directory") {
 		t.Fatalf("long diagnostic line must survive by wrapping:\n%s", v)
 	}
 	if strings.Contains(v, "…") {
@@ -2533,5 +2542,50 @@ func TestVoiceChooserShowsTheWaitAndItsProgress(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'V', Text: "V"})
 	if strings.Contains(stripANSITest(model.(Dashboard).View().Content), "loading Amy") {
 		t.Fatal("reopening the chooser starts clean")
+	}
+}
+
+// Quality pass Q0 (plan Q0 task 3): the [S] modal carries the request
+// counters per host, the publish counters per pipeline, and the last
+// diagnostic dump — and says "none yet" honestly before any traffic.
+func TestStatusModalShowsRequestAndDumpRows(t *testing.T) {
+	stats := func() Stats {
+		return Stats{
+			Requests: httpx.RequestStats{Uptime: 2*time.Hour + 5*time.Minute, Hosts: []httpx.HostStats{
+				{Host: "api.weather.gov", Attempts: 1234, Net: 980, Cache: 4560, Neg: 3, BytesNet: 12_900_000},
+				{Host: "api.tidesandcurrents.noaa.gov", Attempts: 40, Net: 40}}},
+			Pipelines: [2]PipelineStats{{Publishes: 17, Folded: 5}},
+			LastDump:  "20260826T120000Z ok /tmp/profiles/20260826T120000Z",
+			DumpHint:  "kill -USR1 4242 → /tmp/profiles",
+		}
+	}
+	m, err := NewDashboard(Config{Version: "x", Stats: stats})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 60})
+	model, _ = model.Update(SnapshotMsg{Snap: snap()})
+	sv, _ := model.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
+	v := stripANSITest(sv.View().Content)
+	for _, want := range []string{"REQUESTS (since launch,  2h 05m)", "HOST", "api.weather.gov", "1234", "980", "4560", "12.3M",
+		"api.tidesandcurrents.noaa.gov", "17 publishes (5 folded)", "DUMPS", "last: 20260826T120000Z ok", "trigger: kill -USR1 4242"} {
+		if !strings.Contains(v, want) {
+			t.Fatalf("status modal missing %q:\n%s", want, v)
+		}
+	}
+	// Before any traffic or dump: honest placeholders, never zeros dressed as data.
+	quiet, _ := NewDashboard(Config{Version: "x", Stats: func() Stats { return Stats{} }})
+	var qm tea.Model = quiet
+	qm, _ = qm.Update(tea.WindowSizeMsg{Width: 133, Height: 60})
+	qs, _ := qm.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
+	if qv := stripANSITest(qs.View().Content); strings.Count(qv, "none yet") != 2 {
+		t.Fatalf("REQUESTS and DUMPS must each read 'none yet' before traffic:\n%s", qv)
+	}
+	// No Stats hook (report-only wiring, tests): the sections are absent, not empty.
+	plain := dash(t)
+	ps, _ := plain.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
+	if strings.Contains(ps.View().Content, "REQUESTS") {
+		t.Fatal("without a Stats hook the modal must not show a REQUESTS section")
 	}
 }

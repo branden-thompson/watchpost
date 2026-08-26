@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -180,5 +181,19 @@ func TestExitCodes(t *testing.T) {
 	stale.Warnings = append(stale.Warnings, snapshot.Warning{Code: snapshot.WarnObsStale, Message: "old obs"})
 	if got := ExitCode(stale); got != 0 {
 		t.Fatalf("obs_stale must NOT trigger exit 2 (§10.2 carve-out), got %d", got)
+	}
+}
+
+// Quality pass Q0: `report --verbose` trails the plain report with one
+// counter line per host — plain words, raw numbers, no escapes.
+func TestRenderRequestsIsOneLinePerHost(t *testing.T) {
+	out := RenderRequests(httpx.RequestStats{Uptime: 1500 * time.Millisecond, Hosts: []httpx.HostStats{
+		{Host: "api.weather.gov", Attempts: 7, Net: 5, Cache: 2, BytesNet: 4096, H2: 5, TLSHandshakes: 1}}})
+	want := "requests: uptime 1.5s\nrequests api.weather.gov: attempts 7 net 5 cache 2 neg 0 304 0 bytes 4096 h2 5 tls 1\n"
+	if out != want {
+		t.Fatalf("got %q\nwant %q", out, want)
+	}
+	if got := RenderRequests(httpx.RequestStats{}); !strings.Contains(got, "requests: none") {
+		t.Fatalf("no traffic must be said outright, got %q", got)
 	}
 }

@@ -31,24 +31,42 @@ const UserAgent = "watchpost/0.9 (+https://github.com/branden-thompson/watchpost
 // resolve the location, fetch obs+forecast+alerts from NWS, and return the
 // published snapshot (B1a scope; scheduler-driven live mode arrives B1b/B3).
 func ReportOnce(ctx context.Context, query string) (*snapshot.Snapshot, error) {
+	snap, _, err := ReportOnceWithStats(ctx, query)
+	return snap, err
+}
+
+// ReportOnceWithStats is ReportOnce plus the request counters of the
+// clients the run used (`report --verbose`, quality pass Q0).
+func ReportOnceWithStats(ctx context.Context, query string) (*snapshot.Snapshot, httpx.RequestStats, error) {
+	var none httpx.RequestStats
 	if err := invariant.Check(query != "", "report requires a location query"); err != nil {
-		return nil, err
+		return nil, none, err
 	}
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, CacheDir: cacheDir()})
+	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, MaxRetries: 3, CacheDir: cacheDir()}) // one-shot: no scheduler behind it, so it keeps the full ladder (plan §2.3)
 	if err != nil {
-		return nil, err
+		return nil, none, err
 	}
 	ref, fellBack, err := resolveQuery(ctx, client, query)
 	if err != nil {
-		return nil, err
+		return nil, none, err
 	}
 	provider := nws.New(client, "")
 	// Same provider set as the dashboard (M5 parity): weather reference +
 	// coastal-waters secondaries (UAT 29).
-	tides, err := newCoops()
+	tides, tidesClient, err := newCoops()
 	if err != nil {
-		return nil, err
+		return nil, none, err
 	}
+	snap, err := reportFetch(ctx, client, provider, tides, ref, fellBack, query)
+	if err != nil {
+		return nil, none, err
+	}
+	return snap, requestStats([]*httpx.Client{client, tidesClient}), nil
+}
+
+// reportFetch runs every kind through every provider that serves it and
+// publishes once (split from ReportOnceWithStats for P10-04).
+func reportFetch(ctx context.Context, client *httpx.Client, provider *nws.Provider, tides *coops.Provider, ref snapshot.LocationRef, fellBack bool, query string) (*snapshot.Snapshot, error) {
 	cfg, err := config.Load() // rules and the FIRMS key; a missing config is the defaults (report needs none)
 	if err != nil {
 		return nil, err

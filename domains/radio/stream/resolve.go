@@ -36,7 +36,20 @@ func NewResolver(dir *Directory) (*Resolver, error) {
 // transmitters by distance (up to directoryCandidateCap). Empty when no
 // relay carries anything within reach — the caller degrades (text/Synth).
 func (r *Resolver) Resolve(ctx context.Context, lat, lon float64, same string) []Station {
-	mounts := r.dir.Mounts(ctx)
+	st, _ := r.ResolveWithStatus(ctx, lat, lon, same)
+	return st
+}
+
+// ResolveWithStatus is Resolve plus each relay directory's health, so the
+// caller can say why a relay is missing (Q1: a down directory becomes a
+// radio_unavailable warning instead of silence).
+func (r *Resolver) ResolveWithStatus(ctx context.Context, lat, lon float64, same string) ([]Station, []Status) {
+	mounts, statuses := r.dir.MountsWithStatus(ctx)
+	return r.order(mounts, lat, lon, same), statuses
+}
+
+// order ranks the relayed transmitters for a location from the mounts.
+func (r *Resolver) order(mounts map[string][]Mount, lat, lon float64, same string) []Station {
 	var out []Station
 	seen := map[string]bool{}
 	add := func(tx *Transmitter, covering bool) {

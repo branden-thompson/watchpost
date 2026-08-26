@@ -6,7 +6,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
@@ -56,7 +58,7 @@ func server(t *testing.T) *httptest.Server {
 
 func TestDirectoryMergesRelaysByCallsign(t *testing.T) {
 	srv := server(t)
-	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: -1})
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	d := NewDirectory(c, srv.URL+"/wx", srv.URL+"/wu")
 	m := d.Mounts(context.Background())
 	if len(m["KEC49"]) != 2 { // Monterey is on both relays
@@ -78,7 +80,7 @@ func TestDirectoryMergesRelaysByCallsign(t *testing.T) {
 
 func TestResolveCoveringFirstThenNearestRelayed(t *testing.T) {
 	srv := server(t)
-	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: -1})
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	r, err := NewResolver(NewDirectory(c, srv.URL+"/wx", srv.URL+"/wu"))
 	if err != nil {
 		t.Fatal(err)
@@ -116,5 +118,84 @@ func TestSAMEFromFIPS(t *testing.T) {
 	}
 	if SAMEFromUGC("CAC073") != "006073" || SAMEFromUGC("NYC061") != "036061" || SAMEFromUGC("CAZ554") != "" || SAMEFromUGC("XXC001") != "" {
 		t.Fatal("SAME from county UGC = 0 + state FIPS + county")
+	}
+}
+
+// Quality pass Q1 (plan Q1 task 1; DISCOVER LR-1, red-team PR-1/IS-2,
+// RT-9/R2-18, PR-9): weatherUSA over plain HTTP end to end, mounts pinned
+// to the directory host (port-agnostic), and a failing directory asked at
+// most once per directoryTTL.
+
+func TestWeatherUSAIsPlainHTTPEndToEnd(t *testing.T) {
+	if !strings.HasPrefix(weatherUSAStatus, "http://") || !strings.HasPrefix(weatherUSAListen, "http://") {
+		t.Fatal("both weatherUSA constants must be plain HTTP: the directory only offers RSA-kex TLS and the mounts are http:// already (LR-1)")
+	}
+	if !strings.HasPrefix(wxradioStatus, "https://") || !strings.HasPrefix(wxradioListen, "https://") {
+		t.Fatal("wxradio stays HTTPS")
+	}
+	srv := server(t)
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000})
+	m := NewDirectory(c, srv.URL+"/wx", srv.URL+"/wu").Mounts(context.Background())
+	for _, mt := range m["KEC49"] {
+		if !strings.HasPrefix(mt.URL, srv.URL) {
+			t.Fatalf("a mount's scheme and host come from the directory base, got %s", mt.URL)
+		}
+	}
+}
+
+func TestMountsAcceptedOnlyOnTheDirectoryHost(t *testing.T) {
+	list := []source{
+		{ListenURL: "http://127.0.0.1:8000/NWR/KEC49.mp3", ServerType: "audio/mpeg"}, // Icecast advertises :8000 — the port is not the host
+		{ListenURL: "http://evil.example/NWR/KEC55.mp3", ServerType: "audio/mpeg"},   // another host: dropped
+		{ListenURL: "http://LOCALHOST/NWR/KIH20.mp3", ServerType: "audio/mpeg"},      // case-insensitive host
+	}
+	got := mountsOf(list, "http://localhost/", "http://radio.weatherusa.net/", "weatherusa.net", weatherUSACallsign)
+	if len(got) != 1 || got[0].Callsign != "KIH20" || got[0].URL != "http://localhost/NWR/KIH20.mp3" {
+		t.Fatalf("only the directory's own host is accepted, URL rebuilt from the base: %+v", got)
+	}
+	got = mountsOf(list, "http://127.0.0.1/", "http://radio.weatherusa.net/", "weatherusa.net", weatherUSACallsign)
+	if len(got) != 1 || got[0].Callsign != "KEC49" || got[0].URL != "http://127.0.0.1/NWR/KEC49.mp3" {
+		t.Fatalf("a matching host on another port is accepted and the URL keeps the base's port: %+v", got)
+	}
+	// The relay's canonical host is always accepted (the live documents
+	// advertise it), whatever base the directory was fetched from.
+	live := []source{{ListenURL: "http://radio.weatherusa.net:80/NWR/KEC49.mp3"}}
+	if got := mountsOf(live, "http://127.0.0.1/", "http://radio.weatherusa.net/", "weatherusa.net", weatherUSACallsign); len(got) != 1 {
+		t.Fatalf("the canonical relay host must be accepted: %+v", got)
+	}
+}
+
+func TestFailingDirectoryIsAskedAtMostOncePerTTL(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/wu/") {
+			hits.Add(1)
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		b, _ := os.ReadFile("testdata/wxradio.json")
+		_, _ = w.Write(b)
+	}))
+	defer srv.Close()
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000})
+	d := NewDirectory(c, srv.URL+"/wx", srv.URL+"/wu")
+	now := time.Now()
+	d.now = func() time.Time { return now }
+	for range 3 { // Tune, advance, SetMode — each resolves
+		m, st := d.MountsWithStatus(context.Background())
+		if len(m) == 0 {
+			t.Fatal("the healthy relay still contributes")
+		}
+		if len(st) != 2 || st[0].Err != nil || st[1].Relay != "weatherusa.net" || st[1].Err == nil || st[1].Since.IsZero() {
+			t.Fatalf("statuses must name the down relay with its reason and first-seen time: %+v", st)
+		}
+	}
+	if hits.Load() != 1 {
+		t.Fatalf("a failing directory is hit at most once per %v, got %d", directoryTTL, hits.Load())
+	}
+	now = now.Add(directoryTTL + time.Second)
+	d.MountsWithStatus(context.Background())
+	if hits.Load() != 2 {
+		t.Fatalf("after the window it is asked again, got %d", hits.Load())
 	}
 }

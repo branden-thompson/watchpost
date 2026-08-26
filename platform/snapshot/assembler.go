@@ -239,6 +239,15 @@ func (a *Assembler) Warn(w Warning) {
 	a.warnings = append(a.warnings, w)
 }
 
+// Size reports how many locations the assembler tracks and how many
+// warnings it holds — the two structures a diagnostic dump watches for
+// growth (quality pass Q0); no snapshot copy is made.
+func (a *Assembler) Size() (locations, warnings int) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return len(a.refs), len(a.warnings)
+}
+
 // SetAttribution records a provider's role and attribution line for output.
 func (a *Assembler) SetAttribution(id, role, attribution string) {
 	a.mu.Lock()

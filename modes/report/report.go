@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -144,6 +145,23 @@ func fireLines(line func(string, ...any), fs snapshot.FireState) {
 	for _, in := range fs.Incidents {
 		line("  incident: %s — %s acres, %s%% contained, %s km (%s)", render.Plain(in.Name), num(in.Acres), num(in.PercentContained), num(in.Source.DistanceKm), when(in.Discovered, "Jan 2"))
 	}
+}
+
+// RenderRequests is the `report --verbose` trailer (quality pass Q0,
+// red-team A11-9): one plain line per host with the request counters,
+// so the chattiness of a run can be read without a proxy. Machine-friendly
+// (raw byte counts), ANSI-free like the rest of the plain surface.
+func RenderRequests(st httpx.RequestStats) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "requests: uptime %s\n", st.Uptime.Round(time.Millisecond))
+	if len(st.Hosts) == 0 {
+		b.WriteString("requests: none\n")
+	}
+	for _, h := range st.Hosts {
+		fmt.Fprintf(&b, "requests %s: attempts %d net %d cache %d neg %d 304 %d bytes %d h2 %d tls %d\n",
+			h.Host, h.Attempts, h.Net, h.Cache, h.Neg, h.NotModified, h.BytesNet, h.H2, h.TLSHandshakes)
+	}
+	return b.String()
 }
 
 // ExitCode maps a snapshot to the process exit code (§10.2): 2 only when a

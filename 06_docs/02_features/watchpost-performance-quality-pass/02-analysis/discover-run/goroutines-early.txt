@@ -1,0 +1,138 @@
+goroutine profile: total 279
+258 @ 0x1029fef38 0x1029d9748 0x102ca1cac 0x102ca1420 0x102a06584
+#	0x102ca1cab	github.com/branden-thompson/watchpost/platform/sched.(*Scheduler).wait+0x9b	/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/platform/sched/sched.go:188
+#	0x102ca141f	github.com/branden-thompson/watchpost/platform/sched.(*Scheduler).runTier+0x9f	/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/platform/sched/sched.go:124
+
+2 @ 0x1029fef38 0x10298f780 0x10298f2f4 0x102c5dcd8 0x102a06584
+#	0x102c5dcd7	github.com/branden-thompson/watchpost/platform/httpx.(*cache).writer+0x67	/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/platform/httpx/cache.go:164
+
+1 @ 0x1029bd2ac 0x1029fdd04 0x102cc3cb4 0x102cc3960 0x102cc11c4 0x102cd5944 0x102cd6170 0x102c3bbb8 0x102c3d2c4 0x102c575c0 0x102c3a5b0 0x102a06584
+#	0x102cc3cb3	runtime/pprof.writeRuntimeProfile+0xb3	/usr/local/go/src/runtime/pprof/pprof.go:848
+#	0x102cc395f	runtime/pprof.writeGoroutine+0x4f	/usr/local/go/src/runtime/pprof/pprof.go:781
+#	0x102cc11c3	runtime/pprof.(*Profile).WriteTo+0x143	/usr/local/go/src/runtime/pprof/pprof.go:405
+#	0x102cd5943	net/http/pprof.handler.ServeHTTP+0x433	/usr/local/go/src/net/http/pprof/pprof.go:272
+#	0x102cd616f	net/http/pprof.Index+0xaf		/usr/local/go/src/net/http/pprof/pprof.go:391
+#	0x102c3bbb7	net/http.HandlerFunc.ServeHTTP+0x37	/usr/local/go/src/net/http/server.go:2338
+#	0x102c3d2c3	net/http.(*ServeMux).ServeHTTP+0x193	/usr/local/go/src/net/http/server.go:2903
+#	0x102c575bf	net/http.serverHandler.ServeHTTP+0xaf	/usr/local/go/src/net/http/server.go:3413
+#	0x102c3a5af	net/http.(*conn).serve+0x59f		/usr/local/go/src/net/http/server.go:2137
+
+1 @ 0x1029c1810 0x102a01284 0x102cfd4dc 0x102a06584
+#	0x102a01283	os/signal.signal_recv+0x103	/usr/local/go/src/runtime/sigqueue.go:149
+#	0x102cfd4db	os/signal.loop+0x1b		/usr/local/go/src/os/signal/signal_unix.go:23
+
+1 @ 0x1029fef38 0x10298f780 0x10298f2d4 0x102d26818 0x102d2721c 0x102a06584
+#	0x102d26817	charm.land/bubbletea/v2.Tick.func1+0x37				/Users/bthompso/go/pkg/mod/charm.land/bubbletea/v2@v2.0.3/commands.go:157
+#	0x102d2721b	charm.land/bubbletea/v2.(*Program).handleCommands.func1.1+0x5b	/Users/bthompso/go/pkg/mod/charm.land/bubbletea/v2@v2.0.3/tea.go:731
+
+1 @ 0x1029fef38 0x10298f780 0x10298f2d4 0x102d33dac 0x102a06584
+#	0x102d33dab	github.com/branden-thompson/watchpost/domains/radio/synth.(*Source).Open.func2+0x3b	/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/domains/radio/synth/source.go:147
+
+1 @ 0x1029fef38 0x10298f780 0x10298f2f4 0x102deec3c 0x102deeb28 0x102df10b4 0x102a06584
+#	0x102deec3b	github.com/branden-thompson/watchpost/domains/radio/player.(*Engine).watch+0x8b			/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/domains/radio/player/engine.go:311
+#	0x102deeb27	github.com/branden-thompson/watchpost/domains/radio/player.(*Engine).playPCM+0x2b7		/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/domains/radio/player/engine.go:303
+#	0x102df10b3	github.com/branden-thompson/watchpost/domains/radio/player.(*Engine).StartSource.func1+0x213	/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/domains/radio/player/engine.go:278
+
+1 @ 0x1029fef38 0x1029c0780 0x1029fe170 0x102a53a68 0x102a5457c 0x102a5456d 0x102aa1e08 0x102aa9844 0x102ba97fc 0x102ba7170 0x102bac950 0x102bac951 0x102ab8848 0x102a337d0 0x102bf7ce8 0x102bf7cbd 0x102bf81fc 0x102bf88a0 0x102c11be0 0x102c1115c 0x102a06584
+#	0x1029fe16f	internal/poll.runtime_pollWait+0x9f			/usr/local/go/src/runtime/netpoll.go:351
+#	0x102a53a67	internal/poll.(*pollDesc).wait+0x27			/usr/local/go/src/internal/poll/fd_poll_runtime.go:84
+#	0x102a5457b	internal/poll.(*pollDesc).waitRead+0x22b		/usr/local/go/src/internal/poll/fd_poll_runtime.go:89
+#	0x102a5456c	internal/poll.(*FD).Read+0x21c				/usr/local/go/src/internal/poll/fd_unix.go:170
+#	0x102aa1e07	net.(*netFD).Read+0x27					/usr/local/go/src/net/fd_posix.go:68
+#	0x102aa9843	net.(*conn).Read+0x33					/usr/local/go/src/net/net.go:196
+#	0x102ba97fb	crypto/tls.(*Conn).readFromUntil+0xdb			/usr/local/go/src/crypto/tls/conn.go:820
+#	0x102ba716f	crypto/tls.(*Conn).readRecordOrCCS+0x34f		/usr/local/go/src/crypto/tls/conn.go:626
+#	0x102bac94f	crypto/tls.(*Conn).readRecord+0x14f			/usr/local/go/src/crypto/tls/conn.go:588
+#	0x102bac950	crypto/tls.(*Conn).Read+0x150				/usr/local/go/src/crypto/tls/conn.go:1392
+#	0x102ab8847	bufio.(*Reader).Read+0x187				/usr/local/go/src/bufio/bufio.go:245
+#	0x102a337cf	io.ReadAtLeast+0x8f					/usr/local/go/src/io/io.go:335
+#	0x102bf7ce7	io.ReadFull+0x57					/usr/local/go/src/io/io.go:354
+#	0x102bf7cbc	net/http/internal/http2.readFrameHeader+0x2c		/usr/local/go/src/net/http/internal/http2/frame.go:252
+#	0x102bf81fb	net/http/internal/http2.(*Framer).ReadFrameHeader+0x5b	/usr/local/go/src/net/http/internal/http2/frame.go:525
+#	0x102bf889f	net/http/internal/http2.(*Framer).ReadFrame+0x1f	/usr/local/go/src/net/http/internal/http2/frame.go:584
+#	0x102c11bdf	net/http/internal/http2.(*clientConnReadLoop).run+0xbf	/usr/local/go/src/net/http/internal/http2/transport.go:2047
+#	0x102c1115b	net/http/internal/http2.(*ClientConn).readLoop+0x4b	/usr/local/go/src/net/http/internal/http2/transport.go:1913
+
+1 @ 0x1029fef38 0x1029c0780 0x1029fe170 0x102a53a68 0x102a5457c 0x102a5456d 0x102aa1e08 0x102aa9844 0x102c350f8 0x102a06584
+#	0x1029fe16f	internal/poll.runtime_pollWait+0x9f		/usr/local/go/src/runtime/netpoll.go:351
+#	0x102a53a67	internal/poll.(*pollDesc).wait+0x27		/usr/local/go/src/internal/poll/fd_poll_runtime.go:84
+#	0x102a5457b	internal/poll.(*pollDesc).waitRead+0x22b	/usr/local/go/src/internal/poll/fd_poll_runtime.go:89
+#	0x102a5456c	internal/poll.(*FD).Read+0x21c			/usr/local/go/src/internal/poll/fd_unix.go:170
+#	0x102aa1e07	net.(*netFD).Read+0x27				/usr/local/go/src/net/fd_posix.go:68
+#	0x102aa9843	net.(*conn).Read+0x33				/usr/local/go/src/net/net.go:196
+#	0x102c350f7	net/http.(*connReader).backgroundRead+0x37	/usr/local/go/src/net/http/server.go:746
+
+1 @ 0x1029fef38 0x1029c0780 0x1029fe170 0x102a53a68 0x102a54df0 0x102a54de1 0x102aa2818 0x102ab03c4 0x102aaf97c 0x102c3e348 0x102c3df90 0x102dfdf10 0x102dfdeb9 0x102a06584
+#	0x1029fe16f	internal/poll.runtime_pollWait+0x9f					/usr/local/go/src/runtime/netpoll.go:351
+#	0x102a53a67	internal/poll.(*pollDesc).wait+0x27					/usr/local/go/src/internal/poll/fd_poll_runtime.go:84
+#	0x102a54def	internal/poll.(*pollDesc).waitRead+0x20f				/usr/local/go/src/internal/poll/fd_poll_runtime.go:89
+#	0x102a54de0	internal/poll.(*FD).Accept+0x200					/usr/local/go/src/internal/poll/fd_unix.go:618
+#	0x102aa2817	net.(*netFD).accept+0x27						/usr/local/go/src/net/fd_unix.go:149
+#	0x102ab03c3	net.(*TCPListener).accept+0x23						/usr/local/go/src/net/tcpsock_posix.go:159
+#	0x102aaf97b	net.(*TCPListener).Accept+0x2b						/usr/local/go/src/net/tcpsock.go:387
+#	0x102c3e347	net/http.(*Server).Serve+0x2a7						/usr/local/go/src/net/http/server.go:3551
+#	0x102c3df8f	net/http.(*Server).ListenAndServe+0x7f					/usr/local/go/src/net/http/server.go:3462
+#	0x102dfdf0f	net/http.ListenAndServe+0x6f						/usr/local/go/src/net/http/server.go:3813
+#	0x102dfdeb8	github.com/branden-thompson/watchpost/app.startDebugProfiles.func1+0x18	/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/app/dashboard.go:510
+
+1 @ 0x1029fef38 0x1029d9748 0x102a35368 0x102d31a40 0x102d319b5 0x102d33eec 0x102a06584
+#	0x102a35367	io.(*pipe).write+0x197									/usr/local/go/src/io/pipe.go:86
+#	0x102d31a3f	io.(*PipeWriter).Write+0x30f								/usr/local/go/src/io/pipe.go:161
+#	0x102d319b4	github.com/branden-thompson/watchpost/domains/radio/synth.(*Source).play+0x284		/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/domains/radio/synth/source.go:227
+#	0x102d33eeb	github.com/branden-thompson/watchpost/domains/radio/synth.(*Source).Open.func1+0xeb	/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/domains/radio/synth/source.go:141
+
+1 @ 0x1029fef38 0x1029d9748 0x102d1138c 0x102d2612c 0x102a06584
+#	0x102d1138b	github.com/charmbracelet/ultraviolet.(*TerminalReader).StreamEvents+0x1bb	/Users/bthompso/go/pkg/mod/github.com/charmbracelet/ultraviolet@v0.0.0-20260812204455-68fa937c71be/terminal_reader.go:162
+#	0x102d2612b	charm.land/bubbletea/v2.(*Program).readLoop+0x5b				/Users/bthompso/go/pkg/mod/charm.land/bubbletea/v2@v2.0.3/tty.go:87
+
+1 @ 0x1029fef38 0x1029d9748 0x102d2261c 0x102a06584
+#	0x102d2261b	charm.land/bubbletea/v2.(*Program).listenForResize+0xdb	/Users/bthompso/go/pkg/mod/charm.land/bubbletea/v2@v2.0.3/signals_unix.go:25
+
+1 @ 0x1029fef38 0x1029d9748 0x102d22f38 0x102d24844 0x102df4698 0x102e0385c 0x102ae5dec 0x102ae6370 0x102e03134 0x102e03135 0x102e02e70 0x1029c6b40 0x102a06584
+#	0x102d22f37	charm.land/bubbletea/v2.(*Program).eventLoop+0xa7		/Users/bthompso/go/pkg/mod/charm.land/bubbletea/v2@v2.0.3/tea.go:745
+#	0x102d24843	charm.land/bubbletea/v2.(*Program).Run+0x7b3			/Users/bthompso/go/pkg/mod/charm.land/bubbletea/v2@v2.0.3/tea.go:1144
+#	0x102df4697	github.com/branden-thompson/watchpost/app.RunDashboard+0x16f7	/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/app/dashboard.go:116
+#	0x102e0385b	main.newRootCmd.func1+0x2b					/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/cmd/watchpost/root.go:25
+#	0x102ae5deb	github.com/spf13/cobra.(*Command).execute+0x82b			/Users/bthompso/go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1015
+#	0x102ae636f	github.com/spf13/cobra.(*Command).ExecuteC+0x33f		/Users/bthompso/go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1148
+#	0x102e03133	github.com/spf13/cobra.(*Command).Execute+0x123			/Users/bthompso/go/pkg/mod/github.com/spf13/cobra@v1.10.2/command.go:1071
+#	0x102e03134	main.run+0x124							/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/cmd/watchpost/main.go:65
+#	0x102e02e6f	main.main+0x2f							/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/cmd/watchpost/main.go:27
+#	0x1029c6b3f	runtime.main+0x37f						/usr/local/go/src/runtime/proc.go:302
+
+1 @ 0x1029fef38 0x1029d9748 0x102d26f18 0x102a06584
+#	0x102d26f17	charm.land/bubbletea/v2.(*Program).handleSignals.func1+0xe7	/Users/bthompso/go/pkg/mod/charm.land/bubbletea/v2@v2.0.3/tea.go:663
+
+1 @ 0x1029fef38 0x1029d9748 0x102d27120 0x102a06584
+#	0x102d2711f	charm.land/bubbletea/v2.(*Program).handleCommands.func1+0x9f	/Users/bthompso/go/pkg/mod/charm.land/bubbletea/v2@v2.0.3/tea.go:707
+
+1 @ 0x1029fef38 0x1029d9748 0x102d27f54 0x102a06584
+#	0x102d27f53	charm.land/bubbletea/v2.(*Program).startRenderer.func1+0x83	/Users/bthompso/go/pkg/mod/charm.land/bubbletea/v2@v2.0.3/tea.go:1409
+
+1 @ 0x1029fef38 0x1029d9748 0x102d3164c 0x102a06584
+#	0x102d3164b	github.com/branden-thompson/watchpost/domains/radio/synth.(*Source).renderLoop+0x1db	/Users/bthompso/Desktop/PERSONAL_PROJECTS/watchpost/domains/radio/synth/source.go:179
+
+1 @ 0x1029fef38 0x102a008f4 0x102a008d5 0x102a10e14 0x102de774c 0x102de7850 0x102a06584
+#	0x102a008d4	sync.runtime_notifyListWait+0x174				/usr/local/go/src/runtime/sema.go:617
+#	0x102a10e13	sync.(*Cond).Wait+0xa3						/usr/local/go/src/sync/cond.go:71
+#	0x102de774b	github.com/ebitengine/oto/v3/internal/mux.(*Mux).wait+0x7b	/Users/bthompso/go/pkg/mod/github.com/ebitengine/oto/v3@v3.5.0-alpha.11/internal/mux/mux.go:86
+#	0x102de784f	github.com/ebitengine/oto/v3/internal/mux.(*Mux).loop+0x5f	/Users/bthompso/go/pkg/mod/github.com/ebitengine/oto/v3@v3.5.0-alpha.11/internal/mux/mux.go:93
+
+1 @ 0x1029fef38 0x102a008f4 0x102a008d5 0x102a10e14 0x102deb928 0x102deba9c 0x102decb10 0x102a06584
+#	0x102a008d4	sync.runtime_notifyListWait+0x174			/usr/local/go/src/runtime/sema.go:617
+#	0x102a10e13	sync.(*Cond).Wait+0xa3					/usr/local/go/src/sync/cond.go:71
+#	0x102deb927	github.com/ebitengine/oto/v3.(*context).wait+0x77	/Users/bthompso/go/pkg/mod/github.com/ebitengine/oto/v3@v3.5.0-alpha.11/driver_darwin.go:200
+#	0x102deba9b	github.com/ebitengine/oto/v3.(*context).loop+0x8b	/Users/bthompso/go/pkg/mod/github.com/ebitengine/oto/v3@v3.5.0-alpha.11/driver_darwin.go:229
+#	0x102decb0f	github.com/ebitengine/oto/v3.newContext.func1+0xbf	/Users/bthompso/go/pkg/mod/github.com/ebitengine/oto/v3@v3.5.0-alpha.11/driver_darwin.go:178
+
+1 @ 0x102a02c80 0x102a3b2d8 0x102ce6694 0x102ce6600 0x102ce797c 0x102ce7440 0x102d1110c 0x102d1a750 0x102d1a755 0x102a06584
+#	0x102a02c7f	syscall.syscalln+0x1f								/usr/local/go/src/runtime/sys_darwin.go:27
+#	0x102a3b2d7	syscall.syscall6+0x27								/usr/local/go/src/syscall/syscall_darwin.go:407
+#	0x102ce6693	golang.org/x/sys/unix.kevent+0x53						/Users/bthompso/go/pkg/mod/golang.org/x/sys@v0.47.0/unix/zsyscall_darwin_arm64.go:275
+#	0x102ce65ff	golang.org/x/sys/unix.Kevent+0x3f						/Users/bthompso/go/pkg/mod/golang.org/x/sys@v0.47.0/unix/syscall_bsd.go:397
+#	0x102ce797b	github.com/muesli/cancelreader.(*kqueueCancelReader).wait+0x5b			/Users/bthompso/go/pkg/mod/github.com/muesli/cancelreader@v0.2.2/cancelreader_bsd.go:125
+#	0x102ce743f	github.com/muesli/cancelreader.(*kqueueCancelReader).Read+0x3f			/Users/bthompso/go/pkg/mod/github.com/muesli/cancelreader@v0.2.2/cancelreader_bsd.go:69
+#	0x102d1110b	github.com/charmbracelet/ultraviolet.(*TerminalReader).sendBytes+0x6b		/Users/bthompso/go/pkg/mod/github.com/charmbracelet/ultraviolet@v0.0.0-20260812204455-68fa937c71be/terminal_reader.go:124
+#	0x102d1a74f	github.com/charmbracelet/ultraviolet.(*TerminalReader).streamData+0x4f		/Users/bthompso/go/pkg/mod/github.com/charmbracelet/ultraviolet@v0.0.0-20260812204455-68fa937c71be/terminal_reader_other.go:12
+#	0x102d1a754	github.com/charmbracelet/ultraviolet.(*TerminalReader).StreamEvents.func1+0x54	/Users/bthompso/go/pkg/mod/github.com/charmbracelet/ultraviolet@v0.0.0-20260812204455-68fa937c71be/terminal_reader.go:151
+

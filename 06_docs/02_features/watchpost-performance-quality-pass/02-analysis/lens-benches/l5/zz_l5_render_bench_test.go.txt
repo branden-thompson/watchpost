@@ -1,0 +1,198 @@
+package render
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/charmbracelet/x/ansi"
+	"github.com/clipperhouse/displaywidth"
+	runewidth "github.com/mattn/go-runewidth"
+	"github.com/rivo/uniseg"
+
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
+)
+
+func l5Rows(n int) []LocationRow {
+	rows := make([]LocationRow, 0, n)
+	for i := range n {
+		r := LocationRow{Index: i + 1, Name: fmt.Sprintf("Benchmark City %02d", i), Zip: "92057", Station: "KCRQ", StationKM: fp(12.5),
+			Conditions: "partly_cloudy", Now: fp(22.8), Hi: fp(30), Lo: fp(17), Trend: "up",
+			TomorrowConditions: "clear", TomorrowHi: fp(31), TomorrowLo: fp(18), Selected: i == 2, HasAlert: i%3 == 0, WarnAlert: i%6 == 0, Fire: i % 4}
+		for d := range 5 {
+			r.Extended = append(r.Extended, DayCell{Date: fmt.Sprintf("08/%02d", 26+d), Hi: fp(30 + float64(d)), Lo: fp(18)})
+		}
+		rows = append(rows, r)
+	}
+	return rows
+}
+
+func fp(v float64) *float64 { return &v }
+
+func BenchmarkL5LocationTable_50rows_w129(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	o := Opts{Width: 129}
+	rows := l5Rows(50)
+	out := o.LocationTable(rows, 0)
+	b.ReportMetric(float64(len(out)), "bytes")
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = o.LocationTable(rows, 0)
+	}
+}
+
+func BenchmarkL5LocationTable_10rows_w129(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	o := Opts{Width: 129}
+	rows := l5Rows(10)
+	b.ReportAllocs()
+	for range b.N {
+		_ = o.LocationTable(rows, 0)
+	}
+}
+
+func BenchmarkL5LocationTable_50rows_w200_ext(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	o := Opts{Width: 196}
+	rows := l5Rows(50)
+	b.ReportAllocs()
+	for range b.N {
+		_ = o.LocationTable(rows, 5)
+	}
+}
+
+func l5Frame() string {
+	rendering.SetColorEnabledForTest(true)
+	o := Opts{Width: 129}
+	return o.LocationTable(l5Rows(40), 0) + "\n" + o.KeyCap("enter") + " Details"
+}
+
+func BenchmarkL5TintDefault(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	f := l5Frame()
+	b.ReportMetric(float64(len(f)), "bytes")
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = TintDefault(f)
+	}
+}
+
+func BenchmarkL5TitleGradient(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	b.ReportAllocs()
+	for range b.N {
+		_ = TitleGradient("W A T C H P O S T")
+	}
+}
+
+func BenchmarkL5Overlay(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	f := l5Frame()
+	o := Opts{Width: 60}
+	modal := o.Block(o.Panel("Help", strings.Repeat("line of help text\n", 20)), Tok(ModalFG), Tok(ModalBGDark))
+	b.ReportAllocs()
+	for range b.N {
+		_ = Overlay(f, modal, 133)
+	}
+}
+
+func BenchmarkL5DisplayWidth_styledRow(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	o := Opts{Width: 129}
+	row := strings.Split(o.LocationTable(l5Rows(3), 0), "\n")[3]
+	b.ReportMetric(float64(len(row)), "bytes")
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = displayWidth(row)
+	}
+}
+
+func BenchmarkL5DisplayWidth_plainRow(b *testing.B) {
+	row := strings.Repeat("x", 129)
+	b.ReportAllocs()
+	for range b.N {
+		_ = displayWidth(row)
+	}
+}
+
+func BenchmarkL5KitDisplayWidth_styledRow(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	o := Opts{Width: 129}
+	row := strings.Split(o.LocationTable(l5Rows(3), 0), "\n")[3]
+	b.ReportAllocs()
+	for range b.N {
+		_ = rendering.DisplayWidth(row)
+	}
+}
+
+func BenchmarkL5AnsiStringWidth_styledRow(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	o := Opts{Width: 129}
+	row := strings.Split(o.LocationTable(l5Rows(3), 0), "\n")[3]
+	b.ReportAllocs()
+	for range b.N {
+		_ = ansi.StringWidth(row)
+	}
+}
+
+func BenchmarkL5NewTextFormatter(b *testing.B) {
+	b.ReportAllocs()
+	for range b.N {
+		_ = rendering.NewTextFormatter()
+	}
+}
+
+func BenchmarkL5WrapSGR(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	b.ReportAllocs()
+	for range b.N {
+		_ = rendering.WrapSGR("  72ºF", "208")
+	}
+}
+
+func BenchmarkL5sgrRaw(b *testing.B) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	b.ReportAllocs()
+	for range b.N {
+		_ = sgrRaw("  72ºF", "38;5;208")
+	}
+}
+
+func BenchmarkL5Tok(b *testing.B) {
+	b.ReportAllocs()
+	for range b.N {
+		_ = Tok(TempHi)
+	}
+}
+
+// Width agreement table: what the app measures vs what the renderer (ultraviolet/x/ansi) lays out.
+func TestL5WidthAgreement(t *testing.T) {
+	samples := []string{"◆", "▶", "⚠", "✔", "✘", "º", "∞", "↗", "↘", "♪", "■", "…", "━", "█", "▲", "▼", "│", "›", "─", "┌", "⠋",
+		"⚠️", "é", "東京", "a​b", "👍", "👨‍👩‍👧", "🕐", "ºF", "22ºC", "\x1b[38;5;208m 72ºF\x1b[0m"}
+	t.Logf("%-14s runewidth uniseg displaywidth x/ansi.StringWidth kit.DisplayWidth app.displayWidth", "sample")
+	for _, s := range samples {
+		t.Logf("%-14q %9d %6d %12d %18d %16d %16d", s, runewidth.StringWidth(s), uniseg.StringWidth(s), displaywidth.String(s), ansi.StringWidth(s), rendering.DisplayWidth(s), displayWidth(s))
+	}
+	t.Logf("runewidth EastAsian=%v", runewidth.DefaultCondition.EastAsianWidth)
+}
+
+// Composite token behaviour through the kit's classifier (UAT 108 rule).
+func TestL5ColorSequenceComposites(t *testing.T) {
+	for _, c := range []string{"208", "1;208", "1;38;5;220", "38;5;250", "48;2;66;94;122", "1;97;48;2;86;86;86", "97", "1;97", "38;2;190;84;84"} {
+		t.Logf("%-24q -> SGR=%q", c, rendering.SGR(c))
+	}
+}

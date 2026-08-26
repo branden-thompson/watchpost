@@ -127,12 +127,15 @@ func TestZeroRetriesIsExpressible(t *testing.T) {
 		w.WriteHeader(http.StatusBadGateway)
 	}))
 	defer srv.Close()
-	c := mustNew(t, Config{UserAgent: "t", RatePerSec: 100, RetryBase: time.Millisecond, MaxRetries: -1})
+	c := mustNew(t, Config{UserAgent: "t", RatePerSec: 100, RetryBase: time.Millisecond, MaxRetries: 0})
 	if _, err := c.GetJSON(context.Background(), srv.URL, nil); err == nil {
 		t.Fatal("must fail")
 	}
 	if n.Load() != 1 {
-		t.Fatalf("MaxRetries -1 must mean exactly one attempt, got %d", n.Load())
+		t.Fatalf("MaxRetries 0 (the zero value) must mean exactly one attempt, got %d", n.Load())
+	}
+	if _, err := New(Config{UserAgent: "t", MaxRetries: -1}); err == nil {
+		t.Fatal("the old -1 encoding is refused (quality pass Q1, PA-7)")
 	}
 }
 
@@ -218,7 +221,7 @@ func cacheServer(t *testing.T, cc string, status int, delay time.Duration) (*htt
 
 func newCached(t *testing.T, dir string) *Client {
 	t.Helper()
-	c, err := New(Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: -1, CacheDir: dir})
+	c, err := New(Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0, CacheDir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}

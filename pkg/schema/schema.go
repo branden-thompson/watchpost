@@ -41,7 +41,9 @@ func Generate() ([]byte, error) {
 	return out, nil
 }
 
-var timeType = reflect.TypeOf(time.Time{})
+// timeType is the reflect sentinel for time.Time leaves (a function, not a
+// package variable — quality pass Q1, L3-F17).
+func timeType() reflect.Type { return reflect.TypeOf(time.Time{}) }
 
 // maxDepth bounds the type recursion: the snapshot type graph is ~5 deep; a
 // depth beyond 12 means an accidentally-recursive type, which must fail the
@@ -58,7 +60,7 @@ func typeSchemaDepth(t reflect.Type, nullable bool, depth int) map[string]any {
 	if err := invariant.Check(depth <= maxDepth, "schema generator exceeded type depth — recursive contract type?"); err != nil {
 		return map[string]any{"$comment": err.Error()}
 	}
-	if t == timeType {
+	if t == timeType() {
 		return withNull(map[string]any{"type": "string", "format": "date-time"}, nullable)
 	}
 	switch t.Kind() {

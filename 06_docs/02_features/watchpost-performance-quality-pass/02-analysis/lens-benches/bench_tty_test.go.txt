@@ -1,0 +1,168 @@
+package tty
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
+)
+
+func bigSnap(n int, hourly bool) *snapshot.Snapshot {
+	now := time.Now().UTC()
+	desc := strings.Repeat("* WHAT...Dangerous heat. Temperatures up to 105. ", 20)
+	s := &snapshot.Snapshot{SchemaVersion: snapshot.SchemaVersion, GeneratedAt: now}
+	for i := 0; i < n; i++ {
+		loc := snapshot.Location{Label: fmt.Sprintf("City %02d, CA", i), Tag: "CTY", Zip: fmt.Sprintf("9%04d", i), Lat: 33 + float64(i)*0.01, Lon: -117 - float64(i)*0.01, TZ: "America/Los_Angeles",
+			Harmonized: snapshot.Conditions{ObservedAt: now, Temp: f64(22), Feels: f64(22), Dewpoint: f64(10), HumidityPct: f64(50), Pressure: f64(1013), Wind: f64(3), WindDirDeg: f64(270), WindGust: f64(5), Visibility: f64(16000), Condition: "clear",
+				Source: snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KCRQ", DistanceKm: f64(5), IssuedAt: now}},
+			ByProvider: map[string]snapshot.Section{}}
+		for d := 0; d < 14; d++ {
+			loc.Daily = append(loc.Daily, snapshot.Daily{Date: now.AddDate(0, 0, d).Format("2006-01-02"), TempMax: f64(25), TempMin: f64(15), PrecipProb: f64(5), Condition: "clear", Sunrise: now, Sunset: now.Add(12 * time.Hour)})
+		}
+		if hourly {
+			for h := 0; h < 156; h++ {
+				loc.Hourly = append(loc.Hourly, snapshot.Hourly{Time: now.Add(time.Duration(h) * time.Hour), Temp: f64(20), PrecipProb: f64(10), Wind: f64(3), WindDirDeg: f64(180), Condition: "clear"})
+			}
+		}
+		if i%3 == 0 {
+			loc.Alerts = []snapshot.Alert{{ID: "x", Event: "Extreme Heat Warning", Severity: "Severe", Urgency: "Expected", Certainty: "Likely", Sent: now, Effective: now, Expires: now.Add(24 * time.Hour), AreaDesc: "San Diego County Coastal Areas", Headline: "Extreme Heat Warning until 8 PM PDT Friday", Description: desc, Instruction: "Drink plenty of fluids."}}
+			loc.Marine = &snapshot.Marine{SwellHeight: f64(1), SwellDirDeg: f64(270), WaveHeight: f64(1.2), WavePeriod: f64(12), WindSpeed: f64(4), WaterTemp: f64(19), Buoy: "46225", BuoyDistanceKM: f64(12), ObservedAt: now, TideLevel: f64(0.5), TideStation: "La Jolla", TideStationKM: f64(20)}
+			for t := 0; t < 8; t++ {
+				loc.Marine.Tides = append(loc.Marine.Tides, snapshot.TideEvent{Time: now.Add(time.Duration(t) * 6 * time.Hour), Height: 1.2, Type: "H"})
+			}
+		}
+		loc.Fire = snapshot.FireState{AsOf: now}
+		for j := 0; j < 5; j++ {
+			loc.Fire.Hotspots = append(loc.Fire.Hotspots, snapshot.Hotspot{Lat: loc.Lat + 0.05*float64(j), Lon: loc.Lon, DetectedAt: now, Confidence: "analyst", FRPMW: f64(10), DistanceKm: f64(float64(j) * 5), Source: snapshot.SourceInfo{Provider: "hms", ModelOrStation: "GOES-WEST", IssuedAt: now}})
+		}
+		s.Locations = append(s.Locations, loc)
+	}
+	for _, id := range []string{"nws", "nws-marine", "ndbc", "coops", "coops-obs", "hms", "wfigs", "firms"} {
+		s.Providers = append(s.Providers, snapshot.ProviderStatus{ID: id, Status: snapshot.ProviderOK, FetchedAt: now})
+	}
+	return s
+}
+
+func bigDash(b *testing.B, w, h int) Dashboard {
+	m, err := NewDashboard(Config{Version: "0.9.4", Spectrum: func() []float64 { return make([]float64, 10) }})
+	if err != nil {
+		b.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: w, Height: h})
+	model, _ = model.Update(SnapshotMsg{Snap: bigSnap(10, true)})
+	model, _ = model.Update(RecentSnapshotMsg{Snap: bigSnap(50, false)})
+	return model.(Dashboard)
+}
+
+func benchView(b *testing.B, d Dashboard, color bool) {
+	rendering.SetColorEnabledForTest(color)
+	defer rendering.SetColorEnabledForTest(false)
+	b.ReportAllocs()
+	b.ResetTimer()
+	var n int
+	for i := 0; i < b.N; i++ {
+		v := d.View()
+		n += len(v.Content)
+	}
+	b.ReportMetric(float64(n)/float64(b.N), "frameBytes")
+}
+
+func BenchmarkViewPlain133x44(b *testing.B) { benchView(b, bigDash(b, 133, 44), false) }
+func BenchmarkViewColor133x44(b *testing.B) { benchView(b, bigDash(b, 133, 44), true) }
+func BenchmarkViewColor200x60(b *testing.B) { benchView(b, bigDash(b, 200, 60), true) }
+func BenchmarkViewColorViz(b *testing.B) {
+	d := bigDash(b, 133, 44)
+	d.radioViz, d.radioPlaying, d.radioState, d.vizBands = true, true, "playing", []float64{0.1, 0.5, 0.9, 0.3, 0.2, 0.6, 0.7, 0.1, 0.05, 0.4}
+	d.radioStation, d.radioDetail, d.radioSpoken, d.radioSince = "Watchpost Synth · City 00, CA", strings.Repeat("The forecast for tonight calls for clear skies. ", 6), 30*time.Second, time.Now()
+	benchView(b, d, true)
+}
+func BenchmarkViewColorDetails(b *testing.B) {
+	d := bigDash(b, 133, 44)
+	d.showDetails = true
+	benchView(b, d, true)
+}
+func BenchmarkViewColorAlertsModal(b *testing.B) {
+	d := bigDash(b, 133, 44)
+	d.showAlerts = true
+	benchView(b, d, true)
+}
+
+func BenchmarkDetailLines(b *testing.B) {
+	d := bigDash(b, 133, 44)
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = d.detailLines()
+	}
+}
+
+func BenchmarkBodyOnly(b *testing.B) {
+	d := bigDash(b, 133, 44)
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	o := d.opts()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = d.body(o)
+	}
+}
+
+func BenchmarkHeaderOnly(b *testing.B) {
+	d := bigDash(b, 133, 44)
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	o := d.opts()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = d.header(o)
+	}
+}
+
+func BenchmarkRadioPanelOnly(b *testing.B) {
+	d := bigDash(b, 133, 44)
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	o := d.opts()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = d.radioPanel(o)
+	}
+}
+
+func BenchmarkAlertAreaOnly(b *testing.B) {
+	d := bigDash(b, 133, 44)
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	o := d.opts()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = d.alertArea(o)
+	}
+}
+
+func BenchmarkRecentSectionOnly(b *testing.B) {
+	d := bigDash(b, 133, 44)
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	o := d.opts()
+	days := d.sharedExtDays()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = d.recentSection(o, days)
+	}
+}
+
+func BenchmarkSortAlertsOnUpdate(b *testing.B) {
+	s := bigSnap(60, true)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		sortAlerts(s)
+	}
+}

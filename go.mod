@@ -3,7 +3,6 @@ module github.com/branden-thompson/watchpost
 go 1.25.0
 
 require (
-	charm.land/bubbles/v2 v2.0.0-rc.1
 	charm.land/bubbletea/v2 v2.0.3
 	charm.land/lipgloss/v2 v2.0.2
 	github.com/alecthomas/chroma/v2 v2.20.0
@@ -20,7 +19,6 @@ require (
 require github.com/dlclark/regexp2 v1.11.5 // indirect
 
 require (
-	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260812204455-68fa937c71be // indirect
 	github.com/charmbracelet/x/ansi v0.11.8 // indirect

@@ -167,15 +167,6 @@ type LocationRow struct {
 	Selected           bool
 }
 
-// Verbatim header lines from mock M-V1 (09-view-mocks L27-28) — the mock is
-// the spec, character-for-character (UAT ruling: "the mocks I provided is the
-// output that I want exactly"); fidelity tests diff these against the file
-// AND against the go-studs-rendered header.
-const (
-	mockGroupHeader = "           [   L O C A T I O N   /   S T A T I O N    ]     [           T O D A Y             ]     [    T O M O R R O W     ]"
-	mockColHeader   = "  ♪        ###. NAME                 LABEL    ZIP      CONDITIONS    NOW       HI     LOW      CONDITIONS    HI      LOW"
-)
-
 // Base column spec, widths measured from the mock. GutterWidth 2 plus the
 // component's prefix-zone rule (no gutter before columns 0-2) reproduces the
 // mock's absolute offsets exactly. UAT 110 widened the marks block from 6
@@ -1151,6 +1142,26 @@ func Width(s string) int { return displayWidth(s) }
 // (UAT 6.6 off-by-one).
 func PadTo(s string, width int) string {
 	return s + strings.Repeat(" ", max(0, width-displayWidth(s)))
+}
+
+// HumanBytes renders a byte count for a narrow column, at most six cells:
+// "0B", "512B", "12.3K", "4.5M", "1023M", "1.2G" (diagnostics rows).
+func HumanBytes(n int64) string {
+	const unit = 1024
+	if n < unit {
+		return fmt.Sprintf("%dB", n)
+	}
+	v, suffix := float64(n)/unit, "K"
+	for _, next := range []string{"M", "G", "T"} {
+		if v < unit {
+			break
+		}
+		v, suffix = v/unit, next
+	}
+	if v < 100 {
+		return fmt.Sprintf("%.1f%s", v, suffix)
+	}
+	return fmt.Sprintf("%.0f%s", v, suffix)
 }
 
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)

@@ -19,6 +19,14 @@ type result struct {
 	err error
 }
 
+// Cached reports how many zone names the memo holds (bounded by the set of
+// zones the watchlist has ever used; the diagnostic dump watches it).
+func Cached() int {
+	n := 0
+	cache.Range(func(_, _ any) bool { n++; return true })
+	return n
+}
+
 // Location is a drop-in for time.LoadLocation, memoized by name (errors
 // too, so a bad name is not re-parsed every cycle).
 func Location(name string) (*time.Location, error) {

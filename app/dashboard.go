@@ -44,7 +44,7 @@ import (
 // opens the Setup window at once (`watchpost setup`); it also opens itself
 // on a first run or an empty watchlist (UAT 100).
 func RunDashboard(version string, openSetup bool) error {
-	startDebugProfiles()
+	start := time.Now()
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -55,7 +55,10 @@ func RunDashboard(version string, openSetup bool) error {
 	// calls at launch - at 5/s they trickled in over 15s+ (UAT 6.3). 30/s
 	// drains the burst in ~2.5s and is still polite to NWS; steady-state
 	// request volume is near zero either way.
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, CacheDir: cacheDir()})
+	// MaxRetries 1 (quality pass Q1, plan §2.3): the scheduler already
+	// rehydrates at 10/20/40 s, so this client keeps one retry for the
+	// sub-second heal of a blip; the per-host memo bounds an outage.
+	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: cacheDir()})
 	if err != nil {
 		return err
 	}
@@ -66,17 +69,20 @@ func RunDashboard(version string, openSetup bool) error {
 	defer cancel()
 
 	applyThemes(cfg.Theme) // built-ins + user theme files; persisted choice (UAT 53)
-	tides, err := newCoops()
+	tides, tidesClient, err := newCoops()
 	if err != nil {
 		return err
 	}
 	fireProvs, firmsProv := fireProviders(client, cfg) // B5
 	lp := &livePipelines{ctx: ctx, provider: provider,
 		marine: []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, // UAT 29 / 61 / 72
-		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire)}
+		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
+		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides}
+	lp.attachDiagnostics(ctx, start)
 	resolver, resolverErr := newResolver(client) // one resolver serves Resolve and Suggest
 	model, err := tty.NewDashboard(tty.Config{
 		Version: version, KeyOverrides: keyOverrides,
+		Stats:      lp.ttyStats, // [S] REQUESTS / DUMPS rows (quality pass Q0)
 		Resolve:    resolveHook(resolver, resolverErr),
 		Suggest:    suggestHook(resolver),
 		Setup:      lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
@@ -91,11 +97,10 @@ func RunDashboard(version string, openSetup bool) error {
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge
 	}
-	p, stopRadio := attachRadio(model, client, provider, cfg.Voice, tty.ParseRadioMode(cfg.Radio.Mode), lp.fireFor) // B4 / UAT 97 / 114
+	p, deck, stopRadio := attachRadio(model, client, provider, cfg.Voice, tty.ParseRadioMode(cfg.Radio.Mode), lp.fireFor) // B4 / UAT 97 / 114
 	defer stopRadio()
-	lp.p = p
+	lp.p, lp.deck = p, deck
 
-	start := time.Now()
 	var firstFullNanos atomic.Int64 // written by concurrent tier publishes (race-fixed)
 	// The favourites ride the client's priority lane (UAT 64): their
 	// requests never queue behind the seed pipeline's launch burst.
@@ -108,6 +113,7 @@ func RunDashboard(version string, openSetup bool) error {
 	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
 	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(refs, recentCap), recentCap))
 	lp.markFIRMS() // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
+	lp.wireDeckWarnings()
 	// Cancel BEFORE waiting (red-team 0.9.0 C-2): stopAll waits for every
 	// in-flight fetch, and a quit during the launch burst or a slow network
 	// would otherwise sit through pacing waits and retries.
@@ -120,6 +126,22 @@ func RunDashboard(version string, openSetup bool) error {
 	return nil
 }
 
+// attachDiagnostics builds the dump and its triggers (quality pass Q0):
+// SIGUSR1 on Unix, and the opt-in loopback server everywhere.
+func (lp *livePipelines) attachDiagnostics(ctx context.Context, start time.Time) {
+	lp.dump = newDumper(userCacheSubdir("profiles"), start, lp.sources, lp.ttyStats)
+	startDumpTrigger(ctx, lp.dump)
+	startDebugProfiles(lp.dump)
+}
+
+// wireDeckWarnings lets the radio deck report a down relay directory as a
+// radio_unavailable warning in [S] (Q1, PR-9); a nil deck (no audio) is fine.
+func (lp *livePipelines) wireDeckWarnings() {
+	if lp.deck != nil && lp.priority != nil {
+		lp.deck.warn = lp.priority.asm.Warn
+	}
+}
+
 // publisher coalesces "new data" notifications into snapshots (UAT 74):
 // a burst of provider completions — 200 at launch — becomes one snapshot
 // per publishCoalesce window instead of one per completion. Snapshot() is
@@ -129,7 +151,15 @@ func RunDashboard(version string, openSetup bool) error {
 type publisher struct {
 	mu      sync.Mutex
 	pending bool
-	run     func() // takes the snapshot and delivers it
+	run     func() *snapshot.Snapshot // takes the snapshot, delivers it, returns it
+
+	// Counters (quality pass Q0, red-team R2-7): how often this pipeline
+	// publishes and how many triggers the window folded — the numbers §1's
+	// allocation target and the C3 threshold read. The last snapshot is kept
+	// so a dump can size it without marshalling on every publish.
+	count  atomic.Int64
+	folded atomic.Int64
+	last   atomic.Pointer[snapshot.Snapshot]
 }
 
 // publishCoalesce is the window: short enough that rows still fill "as
@@ -141,6 +171,7 @@ func (pb *publisher) Trigger() {
 	pb.mu.Lock()
 	defer pb.mu.Unlock()
 	if pb.pending {
+		pb.folded.Add(1)
 		return
 	}
 	pb.pending = true
@@ -148,9 +179,20 @@ func (pb *publisher) Trigger() {
 		pb.mu.Lock()
 		pb.pending = false
 		pb.mu.Unlock()
-		pb.run()
+		if snap := pb.run(); snap != nil {
+			pb.last.Store(snap)
+		}
+		pb.count.Add(1)
 	})
 }
+
+// stats is the counters' point-in-time copy.
+func (pb *publisher) stats() tty.PipelineStats {
+	return tty.PipelineStats{Publishes: pb.count.Load(), Folded: pb.folded.Load()}
+}
+
+// lastSnapshot is the most recent published snapshot (nil before the first).
+func (pb *publisher) lastSnapshot() *snapshot.Snapshot { return pb.last.Load() }
 
 // pipeline is the priority pipeline: one assembler, one batched scheduler.
 type pipeline struct {
@@ -173,12 +215,13 @@ func (pl *pipeline) stop() { pl.s.Stop() }
 // be nil) observes each publish before it is sent — the M1 timer rides it.
 func startPriority(ctx context.Context, p *tea.Program, providers []snapshot.Provider, refs []snapshot.LocationRef, onPublish func(*snapshot.Snapshot)) *pipeline {
 	asm := newAssembler(refs, providers)
-	pub := &publisher{run: func() {
+	pub := &publisher{run: func() *snapshot.Snapshot {
 		snap := asm.Snapshot()
 		if onPublish != nil {
 			onPublish(snap)
 		}
 		p.Send(tty.SnapshotMsg{Snap: snap})
+		return snap
 	}}
 	s, err := sched.New(sched.Config{
 		Clock: sched.RealClock{}, Assembler: asm, Locations: refs,
@@ -211,23 +254,24 @@ func startPriority(ctx context.Context, p *tea.Program, providers []snapshot.Pro
 const coopsRatePerSec = 5
 
 // newCoops builds the tides provider on its paced client (shared by the
-// dashboard and report modes — single owner of the pacing knob).
-func newCoops() (*coops.Provider, error) {
-	c, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: coopsRatePerSec, CacheDir: cacheDir()})
+// dashboard and report modes — single owner of the pacing knob). The
+// client is returned too, so its request counters can be read.
+func newCoops() (*coops.Provider, *httpx.Client, error) {
+	c, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: coopsRatePerSec, MaxRetries: 1, CacheDir: cacheDir()})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return coops.New(c, ""), nil
+	return coops.New(c, ""), c, nil
 }
 
 // attachRadio wires the player (B4): the model needs the player and the
 // player needs the program to send status back, so the deck is attached
-// to the model first and given the program after. Returns the program and
-// a stop func (a no-op when the deck could not be built).
-func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, voice string, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport) (*tea.Program, func()) {
+// to the model first and given the program after. Returns the program,
+// the deck (nil when it could not be built) and a stop func.
+func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, voice string, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport) (*tea.Program, *radioDeck, func()) {
 	deck := newRadioDeck(nil, client, provider, render.UnitF)
 	if deck == nil {
-		return tea.NewProgram(model), func() {}
+		return tea.NewProgram(model), nil, func() {}
 	}
 	deck.voiceID, deck.pref, deck.fire = voice, mode, fire
 	deck.persistMode = saveRadioMode                                                                                                                  // UAT 97: [m] is a saved preference, like the voice
@@ -237,7 +281,7 @@ func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provid
 	}, deck.PreviewVoice) // UAT 86
 	p := tea.NewProgram(model)
 	deck.p = p
-	return p, deck.Stop
+	return p, deck, deck.Stop
 }
 
 // saveRadioMode persists the [m] source pick (UAT 97).
@@ -317,6 +361,15 @@ type livePipelines struct {
 	rules    fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
 	priority *pipeline
 	recent   *recentPipeline
+
+	// Diagnostics (quality pass Q0): the clients whose counters the [S]
+	// modal sums, the typed providers whose memos the dump gauges, the
+	// radio deck, and the dumper itself.
+	clients []*httpx.Client
+	weather *nws.Provider
+	tides   *coops.Provider
+	deck    *radioDeck
+	dump    *dumper
 }
 
 // fireFor is the radio deck's fire hook (UAT 114): the location's fire
@@ -500,14 +553,38 @@ func resolveHook(r *locations.Resolver, buildErr error) func(string) (snapshot.L
 // startDebugProfiles serves Go's runtime profiles on 127.0.0.1:6060 when
 // WATCHPOST_DEBUG_PPROF=1 (UAT 73/74): threadcreate, goroutine, heap —
 // the way to read a live process rather than guess. Loopback only; off by
-// default; never in release notes as a feature.
-func startDebugProfiles() {
+// default; never in release notes as a feature. Quality pass Q0 adds two
+// routes the soak harness reads: /debug/counters (counters.json, live) and
+// /debug/dump (write a dump set — the trigger on platforms without SIGUSR1).
+func startDebugProfiles(d *dumper) {
 	if os.Getenv("WATCHPOST_DEBUG_PPROF") != "1" {
 		return
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	go func() { _ = http.ListenAndServe("127.0.0.1:6060", mux) }()
+	mux.HandleFunc("/debug/counters", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(d.record(time.Now()))
+	})
+	mux.HandleFunc("/debug/dump", func(w http.ResponseWriter, _ *http.Request) {
+		dir, err := d.Dump(time.Now())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusTooManyRequests)
+			return
+		}
+		_, _ = fmt.Fprintln(w, dir)
+	})
+	go func() { _ = http.ListenAndServe(debugAddr(), mux) }()
+}
+
+// debugAddr is the loopback address of the debug server: 127.0.0.1:6060,
+// or WATCHPOST_DEBUG_PPROF_ADDR so a second instrumented instance on one
+// machine (a soak beside a soak) can pick its own port.
+func debugAddr() string {
+	if addr := os.Getenv("WATCHPOST_DEBUG_PPROF_ADDR"); addr != "" {
+		return addr
+	}
+	return "127.0.0.1:6060"
 }
 
 // reportTiming prints the M1 launch->full-view measurement when
@@ -609,6 +686,7 @@ type recentPipeline struct {
 	alerts    *sched.Scheduler // ONE batched alerts call for the whole list (UAT 72)
 	newFor    func(ref snapshot.LocationRef) *sched.Scheduler
 	publish   func()
+	pub       *publisher // the coalescer behind publish (counters; nil when the list is empty)
 
 	mu      sync.Mutex // guards scheds and started (red-team 0.9.0 C-6: the staggered starter and a commit could touch the map together)
 	scheds  map[snapshot.LocationKey]*sched.Scheduler
@@ -697,11 +775,14 @@ func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provi
 		return rp
 	}
 	rp.asm = newAssembler(refs, providers)
-	pub := &publisher{run: func() {
+	pub := &publisher{run: func() *snapshot.Snapshot {
 		// Always publish the SHARED assembler's view: every scheduler's
 		// progress lands in one snapshot regardless of which one cycled.
-		p.Send(tty.RecentSnapshotMsg{Snap: rp.asm.Snapshot()})
+		snap := rp.asm.Snapshot()
+		p.Send(tty.RecentSnapshotMsg{Snap: snap})
+		return snap
 	}}
+	rp.pub = pub
 	rp.publish = pub.Trigger
 	rp.newFor = func(ref snapshot.LocationRef) *sched.Scheduler {
 		s, err := sched.New(sched.Config{
@@ -735,34 +816,37 @@ func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provi
 	} else {
 		_ = invariant.Check(false, "recent alerts scheduler misconfigured: "+err.Error())
 	}
-	go func() {
-		// p.Send blocks until Run starts - never call it pre-Run on the main
-		// goroutine (caught by the cmd test hang).
-		rp.publish()
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(recentStartDelay):
-			// Staggered (UAT 74): 50 schedulers starting in the same instant
-			// made a 200-goroutine burst that cost ~90 OS threads; 10 ms apart
-			// spreads the launch over half a second with no visible delay.
-			rp.mu.Lock()
-			toStart := make([]*sched.Scheduler, 0, len(rp.scheds))
-			for _, s := range rp.scheds {
-				toStart = append(toStart, s)
-			}
-			rp.started = true // from here a commit's newcomers start themselves
-			rp.mu.Unlock()
-			for _, s := range toStart {
-				s.Start(ctx)
-				time.Sleep(recentStartStagger)
-			}
-			if rp.alerts != nil {
-				rp.alerts.Start(ctx)
-			}
-		}
-	}()
+	go rp.startStaggered(ctx)
 	return rp
+}
+
+// startStaggered publishes the seed snapshot once the program loop is up
+// (p.Send blocks until Run starts — never call it pre-Run on the main
+// goroutine, caught by the cmd test hang), waits recentStartDelay, then
+// starts the schedulers recentStartStagger apart (UAT 74: 50 schedulers
+// starting in the same instant made a 200-goroutine burst that cost ~90
+// OS threads; 10 ms apart spreads the launch over half a second).
+func (rp *recentPipeline) startStaggered(ctx context.Context) {
+	rp.publish()
+	select {
+	case <-ctx.Done():
+		return
+	case <-time.After(recentStartDelay):
+	}
+	rp.mu.Lock()
+	toStart := make([]*sched.Scheduler, 0, len(rp.scheds))
+	for _, s := range rp.scheds {
+		toStart = append(toStart, s)
+	}
+	rp.started = true // from here a commit's newcomers start themselves
+	rp.mu.Unlock()
+	for _, s := range toStart {
+		s.Start(ctx)
+		time.Sleep(recentStartStagger)
+	}
+	if rp.alerts != nil {
+		rp.alerts.Start(ctx)
+	}
 }
 
 // recentStartStagger spaces the recent schedulers' starts.

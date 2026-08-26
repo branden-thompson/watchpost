@@ -761,7 +761,7 @@ func TestEveryThemeOwnsItsTitleGradient(t *testing.T) {
 				t.Fatalf("theme %q must set %s as #RRGGBB, got %q", name, tok, v)
 			}
 		}
-		if over[GradStart] == theme[GradStart] && over[GradMid] == theme[GradMid] && over[GradEnd] == theme[GradEnd] {
+		if def := defaultTheme(); over[GradStart] == def[GradStart] && over[GradMid] == def[GradMid] && over[GradEnd] == def[GradEnd] {
 			t.Fatalf("theme %q reuses the default gradient", name)
 		}
 	}
@@ -810,8 +810,24 @@ func TestCompositeThemeTokensAreLegalRawSGR(t *testing.T) {
 			}
 		}
 	}
-	check(DefaultThemeName, theme)
+	check(DefaultThemeName, defaultTheme())
 	for name, over := range builtinOverrides() {
 		check(name, over)
 	}
 }
+
+// Quality pass Q0: the byte column of the [S] REQUESTS rows never exceeds
+// six cells, whatever the count.
+func TestHumanBytesFitsSixCells(t *testing.T) {
+	for n, want := range map[int64]string{0: "0B", 1023: "1023B", 1024: "1.0K", 12_900_000: "12.3M", 1023 << 20: "1023M", 1 << 30: "1.0G"} {
+		if got := HumanBytes(n); got != want || len(got) > 6 {
+			t.Fatalf("HumanBytes(%d) = %q, want %q (≤ 6 cells)", n, got, want)
+		}
+	}
+}
+
+// The mock's two header lines (test-only: the goldens pin the render against them).
+const (
+	mockGroupHeader = "           [   L O C A T I O N   /   S T A T I O N    ]     [           T O D A Y             ]     [    T O M O R R O W     ]"
+	mockColHeader   = "  ♪        ###. NAME                 LABEL    ZIP      CONDITIONS    NOW       HI     LOW      CONDITIONS    HI      LOW"
+)

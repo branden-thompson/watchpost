@@ -169,6 +169,14 @@ func (p *Provider) Office(ctx context.Context, ref snapshot.LocationRef) string 
 
 // --- resolve (points -> grid/stations/zones) ---
 
+// CachedGrids reports how many locations' gridpoint resolutions are held
+// (a structure the diagnostic dump watches; bounded on removal in Q5 — L4-F7).
+func (p *Provider) CachedGrids() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.cache)
+}
+
 func (p *Provider) resolve(ctx context.Context, ref snapshot.LocationRef) (*gridInfo, error) {
 	k := snapshot.Key(ref)
 	p.mu.Lock()

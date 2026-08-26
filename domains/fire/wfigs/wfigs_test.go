@@ -28,7 +28,7 @@ func TestFetchListsNearbyIncidentsLargestFirst(t *testing.T) {
 		_, _ = w.Write([]byte(geojson))
 	}))
 	defer srv.Close()
-	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: -1})
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	p := New(c, srv.URL+"/query", fire.DefaultRules())
 	oceanside := snapshot.LocationRef{Label: "Oceanside, CA", Lat: 33.24, Lon: -117.29}
 	frag, err := p.Fetch(context.Background(), snapshot.FetchReq{Kind: snapshot.KindFire, Locations: []snapshot.LocationRef{oceanside}})

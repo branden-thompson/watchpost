@@ -86,6 +86,14 @@ func New(client *httpx.Client, base string) *Provider {
 // ID implements snapshot.Provider.
 func (p *Provider) ID() string { return "coops" }
 
+// CachedStations reports the memoised station lists' size (tide + level +
+// current) for the diagnostic dump; they reload daily, never grow.
+func (p *Provider) CachedStations() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return len(p.tide) + len(p.level) + len(p.current)
+}
+
 // Domains implements snapshot.Provider: predictions (tides, currents).
 func (p *Provider) Domains() []string { return []string{"marine"} }
 
