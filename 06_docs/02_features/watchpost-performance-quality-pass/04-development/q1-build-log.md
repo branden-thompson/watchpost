@@ -141,7 +141,10 @@ paragraph gains `WATCHPOST_DEBUG_PPROF_ADDR` at the gate commit.
 
 **Deviation for HUM LEAD.** Two gate lines are not met as literally written: the write rate is *below*
 the derived band rather than inside it, and the fault run is analytical rather than live. Neither is a
-regression; both are stated here so the gate is a decision, not a wave.
+regression; both are stated here so the gate is a decision, not a wave. **HUM LEAD accepted both
+(2026-08-26, "Accepted; Go 2 proceed"):** the write-rate criterion reads "≤ derived" from here; the
+live fault run is Q5's; the Arch half of the relay proof is HUM LEAD's own run (deferred per RP-10
+to no later than Q7). `v0.9.5` cut from `81c88bd` on `main`.
 
 ## 8. The 1-hour run and the relay proof
 

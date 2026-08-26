@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -44,6 +45,9 @@ type cache struct {
 	neg        map[string]negEntry
 	diskWrites int64 // files written by the writer (the Q1 gate's write-rate counter)
 	lastSweep  time.Time
+
+	queued, handled atomic.Int64 // items given to the writer / items the writer has finished (flush waits for equality)
+	sweepMu         sync.Mutex   // serialises sweeps
 }
 
 // entry is one cached response.
@@ -102,8 +106,12 @@ var (
 	tmpNameRe   = regexp.MustCompile(`^[0-9a-f]{64}\.cache\.[0-9]+\.tmp$`)
 )
 
-func newCache(dir string) *cache {
-	c := &cache{dir: dir, maxDiskBytes: maxDiskBytes, now: time.Now, mem: map[string]*entry{}, neg: map[string]negEntry{}, reads: make(chan struct{}, maxDiskRead)}
+func newCache(dir string) *cache { return newCacheWithCap(dir, maxDiskBytes) }
+
+// newCacheWithCap is newCache with the directory cap chosen before the
+// writer (and its start sweep) runs — tests use a small cap.
+func newCacheWithCap(dir string, capBytes int64) *cache {
+	c := &cache{dir: dir, maxDiskBytes: capBytes, now: time.Now, mem: map[string]*entry{}, neg: map[string]negEntry{}, reads: make(chan struct{}, maxDiskRead)}
 	if dir != "" {
 		if err := os.MkdirAll(dir, 0o700); err != nil { // private, like the config dir (red-team 0.9.0 S-F10)
 			c.dir = "" // no disk tier; memory still works
@@ -181,9 +189,16 @@ func (c *cache) put(rawURL string, body []byte, expires time.Time, v validators,
 		return
 	}
 	e.key = rawURL
+	c.enqueue(e)
+}
+
+// enqueue hands an item to the writer; a full queue drops it (the entry
+// just misses the warm relaunch) rather than blocking the request path.
+func (c *cache) enqueue(e entry) {
 	select {
 	case c.writes <- e:
-	default: // queue full: this entry just misses the warm relaunch
+		c.queued.Add(1)
+	default:
 	}
 }
 
@@ -199,10 +214,7 @@ func (c *cache) renew(rawURL string, expires time.Time) {
 	if c.writes == nil {
 		return
 	}
-	select {
-	case c.writes <- entry{key: rawURL, Expires: expires, touch: true}:
-	default:
-	}
+	c.enqueue(entry{key: rawURL, Expires: expires, touch: true})
 }
 
 // remember places an entry in the memory tier within the byte budget.
@@ -265,9 +277,10 @@ func (c *cache) writer() {
 		if e.touch {
 			now := c.now()
 			_ = os.Chtimes(c.path(e.key), now, now)
-			continue
+		} else {
+			c.writeEntry(e)
 		}
-		c.writeEntry(e)
+		c.handled.Add(1)
 	}
 }
 
@@ -309,6 +322,8 @@ func (c *cache) lastSweepTime() time.Time {
 // refuses to run at all unless the directory has a "watchpost" path
 // element — a misconfigured $XDG_CACHE_HOME must never point it at $HOME.
 func (c *cache) sweep(now time.Time) {
+	c.sweepMu.Lock() // one sweep at a time: the writer's start sweep and a daily one must never overlap
+	defer c.sweepMu.Unlock()
 	c.mu.Lock()
 	c.lastSweep = now
 	c.mu.Unlock()
@@ -532,13 +547,14 @@ func (c *cache) stats() Stats {
 	return Stats{Entries: len(c.mem), Bytes: c.bytes, Negative: len(c.neg), DiskWrites: c.diskWrites}
 }
 
-// flush waits for queued disk writes (tests).
+// flush waits until the writer has finished every item handed to it
+// (tests): queued == handled, not merely an empty queue — the item in the
+// writer's hands counts too (a loaded CI runner exposed the difference).
 func (c *cache) flush() {
 	if c.writes == nil {
 		return
 	}
-	for i := 0; i < 1000 && len(c.writes) > 0; i++ { // bounded wait (P10-02): ~1 s
+	for i := 0; i < 5000 && c.handled.Load() < c.queued.Load(); i++ { // bounded wait (P10-02): ~5 s
 		time.Sleep(time.Millisecond)
 	}
-	time.Sleep(5 * time.Millisecond)
 }

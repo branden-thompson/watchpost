@@ -109,8 +109,8 @@ func TestSweepEnforcesTheDirectoryCapOldestFirst(t *testing.T) {
 	for i := range 5 {
 		writeCacheFile(t, dir, fakeName(i, ".cache"), now.Add(time.Hour), now.Add(-time.Duration(5-i)*time.Minute), 1000)
 	}
-	c := newCache(dir)
-	c.maxDiskBytes = 2600 // room for two files' bodies + headers
+	c := newCacheWithCap(dir, 2600) // room for two files' bodies + headers
+	c.flush()                       // the writer's start sweep is done
 	c.sweep(now)
 	survivors := 0
 	for i := range 5 {
