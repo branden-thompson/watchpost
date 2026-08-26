@@ -34,6 +34,12 @@ disk cache; one retry layer with a per-host failure memo).
   is capped at 256 MB, oldest first. The sweep only ever touches files it wrote, never follows
   symlinks, and refuses to run outside a `watchpost` cache directory.
 
+### Security
+- Release binaries are built with Go 1.27.0. Releases 0.9.0–0.9.4 were built by CI with Go 1.25.0,
+  whose standard library (`net/http`, `crypto/tls`, `net/url`, `encoding/xml`) has advisories fixed
+  since (GO-2026-6088/6089/6090/6218); `govulncheck` now runs on every build and fails it on a known
+  reachable vulnerability. Upgrade.
+
 ### Changed
 - Retries: the dashboard's HTTP clients make one retry per request (the scheduler already re-tries
   at 10/20/40 s), and a host that stops answering is avoided for 20 s on the background lane — the
