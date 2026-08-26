@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { fetch-depth: 0 }
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with: { go-version-file: go.mod }
+        with: { go-version: "1.27.0" } # the toolchain the gates are proven on; setup-go pins GOTOOLCHAIN=local, so go.mod's go directive alone would run an older stdlib (quality pass Q1)
       - name: verify
         run: make verify
       - name: release matrix
