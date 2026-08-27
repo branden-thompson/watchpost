@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
@@ -10,11 +11,17 @@ import (
 	"github.com/branden-thompson/watchpost/app"
 	"github.com/branden-thompson/watchpost/modes/report"
 	"github.com/branden-thompson/watchpost/pkg/schema"
+	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
 // newRootCmd builds the cobra tree (T-L: everything under `watchpost`).
-func newRootCmd() *cobra.Command {
+func newRootCmd() *cobra.Command { return newRootCmdWith(app.ReportOnceWithStats) }
+
+// newRootCmdWith builds the tree over the given report fetch.
+func newRootCmdWith(reportOnce reportFunc) *cobra.Command {
+	var ascii bool
 	root := &cobra.Command{
 		Use:           "watchpost",
 		Short:         "Terminal-native live weather station",
@@ -22,16 +29,20 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return app.RunDashboard(version, false)
+			return app.RunDashboard(version, app.Options{ASCII: ascii})
 		},
 	}
-	root.AddCommand(newReportCmd())
+	// --ascii swaps the row marks and legend for ASCII forms (R-12a; the B6
+	// promise, wired by the quality pass Q3 — A11-10). Persistent so
+	// `watchpost setup --ascii` reads the same way.
+	root.PersistentFlags().BoolVar(&ascii, "ascii", false, "draw the row marks and legend with ASCII characters")
+	root.AddCommand(newReportCmd(reportOnce))
 	root.AddCommand(&cobra.Command{
 		Use:   "setup",
 		Short: "Open the dashboard with the Setup window: your default location and an optional NASA FIRMS key (also [s] in the dashboard)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return app.RunDashboard(version, true) // UAT 100: setup is a window over the dashboard, not a separate screen
+			return app.RunDashboard(version, app.Options{OpenSetup: true, ASCII: ascii}) // UAT 100: setup is a window over the dashboard, not a separate screen
 		},
 	})
 	root.AddCommand(&cobra.Command{
@@ -53,14 +64,20 @@ func newRootCmd() *cobra.Command {
 	return root
 }
 
-func newReportCmd() *cobra.Command {
+// reportFunc is the report command's fetch — app.ReportOnceWithStats in
+// the product, a fake in tests, so the command's output paths (plain,
+// --json, --verbose, exit codes) are tested without the network (quality
+// pass Q2, L3-F25). A parameter, not a package variable (P10-06).
+type reportFunc func(context.Context, string) (*snapshot.Snapshot, httpx.RequestStats, error)
+
+func newReportCmd(reportOnce reportFunc) *cobra.Command {
 	var asJSON, verbose bool
 	cmd := &cobra.Command{
 		Use:   "report <city|zip|lat,lon>",
 		Short: "One-shot weather report (machine mode: --json; plain text: --report-only)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			snap, stats, err := app.ReportOnceWithStats(cmd.Context(), args[0])
+			snap, stats, err := reportOnce(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}

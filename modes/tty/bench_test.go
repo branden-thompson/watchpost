@@ -26,10 +26,22 @@ import (
 // Q0 sets it at DISCOVER's baseline × 1.05; Q3 lowers it to ≤ 6,000 at
 // 133×44 and Q4b to ≤ 3,300 (plan §1). A change that raises a count above
 // its budget is a regression the gate refuses.
+//
+// Since Q3 there are two paths: the memo HIT (every tick, marquee and
+// visualizer frame between input changes — the number §1's radio-on target
+// reads) and the MISS (a snapshot, key or resize re-renders the tables).
 var frameAllocBudget = map[string]float64{
-	"133x44": 10_044 * 1.05, // DISCOVER L5 (Go 1.25) = Q0 measurement (Go 1.27): 10,044
-	"133x70": 15_539 * 1.05, // measured at Q0 (tall terminal: 36 recent rows visible)
-	"200x60": 20_031 * 1.05, // measured at Q0 (wide terminal: extended days)
+	"133x44": 10_044 * 1.05, // Q0 measurement: 10,044 — the Q3 hit path is pinned in frameAllocBudgetHit
+	"133x70": 15_539 * 1.05,
+	"200x60": 20_031 * 1.05,
+}
+
+// frameAllocBudgetHit pins the memo-hit frame (plan §1: ≤ 6,000 at 133×44
+// after Q3; measured at Q3 and set at × 1.05 like the miss path).
+var frameAllocBudgetHit = map[string]float64{
+	"133x44": 6_000,
+	"133x70": 6_000,
+	"200x60": 6_000,
 }
 
 func benchLoc(i int, days int, alert bool) snapshot.Location {
@@ -114,12 +126,27 @@ func TestFrameAllocBudget(t *testing.T) {
 		if _, err := fmt.Sscanf(size, "%dx%d", &w, &h); err != nil {
 			t.Fatal(err)
 		}
-		m := benchDash(t, w, h)
-		_ = m.View().Content // warm the kit's probes and the theme
-		allocs := testing.AllocsPerRun(20, func() { _ = m.View().Content })
-		t.Logf("frame %s: %.0f allocs (budget %.0f)", size, allocs, budget)
-		if allocs > budget {
-			t.Errorf("frame %s allocates %.0f per View(), budget %.0f — a render regression (plan §1)", size, allocs, budget)
+		d := benchDash(t, w, h).(Dashboard)
+		_ = d.View().Content // warm the kit's probes and the theme
+		hit := testing.AllocsPerRun(20, func() { _ = d.View().Content })
+		miss := testing.AllocsPerRun(20, func() { d.memo.ok = false; _ = d.View().Content })
+		t.Logf("frame %s: hit %.0f allocs (budget %.0f) · miss %.0f allocs (budget %.0f)", size, hit, frameAllocBudgetHit[size], miss, budget)
+		if hit > frameAllocBudgetHit[size] {
+			t.Errorf("frame %s (memo hit) allocates %.0f per View(), budget %.0f — a render regression (plan §1)", size, hit, frameAllocBudgetHit[size])
 		}
+		if miss > budget {
+			t.Errorf("frame %s (memo miss) allocates %.0f per View(), budget %.0f — a render regression (plan §1)", size, miss, budget)
+		}
+	}
+}
+
+// BenchmarkFrame_133x44_Miss is the table re-render path (a snapshot, a
+// key, a resize): the memo slot is invalidated before every frame.
+func BenchmarkFrame_133x44_Miss(b *testing.B) {
+	d := benchDash(b, 133, 44).(Dashboard)
+	b.ReportAllocs()
+	for b.Loop() {
+		d.memo.ok = false
+		_ = d.View().Content
 	}
 }

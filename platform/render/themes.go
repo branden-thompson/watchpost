@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"sort"
 	"sync"
+	"sync/atomic"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
 )
@@ -24,7 +25,13 @@ var (
 	themeMu    sync.RWMutex
 	themeName  = DefaultThemeName
 	themeTable = map[string]map[Token]string{DefaultThemeName: defaultTheme()}
+	themeGen   atomic.Uint64 // bumps on every SetTheme/RegisterTheme: the body memo's theme key (quality pass Q3, R2-4)
 )
+
+// ThemeGeneration counts theme changes since launch. A renderer that
+// memoises tinted output keys on it: any switch or (re)registration
+// changes every Tok() value it may have baked in.
+func ThemeGeneration() uint64 { return themeGen.Load() }
 
 // builtinOverrides defines the shipped alternates as deltas over the
 // default table (unlisted tokens inherit) — one source per theme.
@@ -114,6 +121,7 @@ func RegisterTheme(name string, overrides map[Token]string) {
 	themeMu.Lock()
 	defer themeMu.Unlock()
 	themeTable[name] = full
+	themeGen.Add(1)
 }
 
 // ThemeNames lists the registered themes, default first, then sorted.
@@ -139,6 +147,7 @@ func SetTheme(name string) bool {
 		return false
 	}
 	themeName = name
+	themeGen.Add(1)
 	return true
 }
 

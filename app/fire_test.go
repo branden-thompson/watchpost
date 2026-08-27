@@ -1,12 +1,12 @@
 package app
 
 import (
-	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"testing"
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 func TestFireProvidersRegisterFIRMSAndKeyItLive(t *testing.T) {

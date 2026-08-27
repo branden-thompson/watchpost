@@ -12,14 +12,12 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/fire"
@@ -60,20 +58,20 @@ type Provider struct {
 	client *httpx.Client
 	url    string
 	rules  fire.Rules
-
-	mu      sync.Mutex
-	memoSum [sha256.Size]byte
-	memoPts []Point
-	memoErr error
+	memo   fire.Memo[[]Point] // the last archive's parse (Q3: the shared fire.Memo)
 }
 
 // MemoPoints reports how many parsed points the archive memo holds (the
 // diagnostic dump's view of the memo; one archive at a time by design).
 func (p *Provider) MemoPoints() int {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return len(p.memoPts)
+	pts, _ := p.memo.Peek()
+	return len(pts)
 }
+
+// MemoStats is the memo's size and its parse count since launch — the
+// diagnostic dump's parse-spike counter (plan §1: parse spikes reported
+// per event).
+func (p *Provider) MemoStats() (points, parses int) { return p.MemoPoints(), p.memo.Parses() }
 
 // New builds the provider; url "" means the production archive.
 func New(client *httpx.Client, url string, rules fire.Rules) *Provider {
@@ -131,17 +129,7 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 }
 
 // parsed returns the archive's points, parsing only when the bytes changed.
-func (p *Provider) parsed(raw []byte) ([]Point, error) {
-	sum := sha256.Sum256(raw)
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if sum == p.memoSum && (p.memoPts != nil || p.memoErr != nil) {
-		return p.memoPts, p.memoErr
-	}
-	pts, err := Parse(raw)
-	p.memoSum, p.memoPts, p.memoErr = sum, pts, err
-	return pts, err
-}
+func (p *Provider) parsed(raw []byte) ([]Point, error) { return p.memo.Get(raw, Parse) }
 
 // Point is one HMS detection.
 type Point struct {
@@ -184,115 +172,246 @@ func Parse(raw []byte) ([]Point, error) {
 		if err != nil {
 			return nil, err
 		}
-		b, err := io.ReadAll(io.LimitReader(rc, budget+1))
+		// Streamed, not inflated into memory first (Q3, PF-7): the counting
+		// reader keeps the refusal exact — an entry past the budget is refused
+		// whatever the parser made of its truncated tail (CQ-11).
+		var read byteCount
+		pts, perr := parseKMLReader(io.TeeReader(io.LimitReader(rc, budget+1), &read))
 		_ = rc.Close()
-		if err != nil {
-			return nil, err
-		}
-		if int64(len(b)) > budget {
+		if int64(read) > budget {
 			return nil, errors.New("archive inflates past the 96 MB budget — refused")
 		}
-		budget -= int64(len(b))
-		pts, err := parseKML(b)
+		budget -= int64(read)
 		out = append(out, pts...)
-		if err != nil {
-			return out, err
+		if perr != nil {
+			return out, perr
 		}
 	}
 	return out, nil
 }
 
-type placemark struct {
-	Description string `xml:"description"`
-	Coordinates string `xml:"Point>coordinates"`
+// byteCount is a Writer that only counts (the TeeReader's side).
+type byteCount int64
+
+func (c *byteCount) Write(p []byte) (int, error) {
+	*c += byteCount(len(p))
+	return len(p), nil
 }
 
-// parseKML streams the placemarks; a placemark that does not decode or a
-// description that does not parse is skipped (one odd point must not lose
-// the continent — red-team B5 F7). The document must be KML: an HTML
-// outage page must not read as "no fires" (F6). The cap counts placemarks,
-// not tokens (F2), and reaching it returns ErrTruncated with what was read.
-func parseKML(b []byte) ([]Point, error) {
-	dec := xml.NewDecoder(bytes.NewReader(b))
-	var out []Point
-	root := ""
-	placemarks := 0
+// parseKML parses a KML document held in memory.
+func parseKML(b []byte) ([]Point, error) { return parseKMLReader(bytes.NewReader(b)) }
+
+// parseKMLReader streams the placemarks, hand-decoding <Placemark> from
+// the raw token walk (Q3, PF-7: no per-placemark struct decode, no map):
+// a placemark whose description does not parse is skipped (one odd point
+// must not lose the continent — red-team B5 F7). The document must be
+// KML: an HTML outage page must not read as "no fires" (F6). The cap
+// counts placemarks, not tokens (F2), and reaching it returns ErrTruncated
+// with what was read.
+func parseKMLReader(r io.Reader) ([]Point, error) {
+	w := kmlWalk{dec: xml.NewDecoder(r), in: newInterner(), open: make([]string, 0, 16)}
 	for tokens := 0; tokens <= maxTokens; tokens++ { // P10-02: bounded — a placemark is a handful of tokens, so the cap trips first
-		tok, err := dec.Token()
+		tok, err := w.dec.RawToken() // RawToken: no name-space translation (eight allocations a placemark the walk never reads)
 		if err == io.EOF {
-			if root == "" {
-				return nil, errors.New("kml: empty document")
-			}
-			return out, nil
+			return w.out, w.eof()
 		}
 		if err != nil {
-			return out, fmt.Errorf("kml: %w", err)
+			return w.out, fmt.Errorf("kml: %w", err)
 		}
-		se, ok := tok.(xml.StartElement)
-		if !ok {
-			continue
-		}
-		if root == "" {
-			root = se.Name.Local
-			if root != "kml" {
-				return nil, fmt.Errorf("kml: document root is <%s>, not <kml> (an outage page in place of data?)", tagName(root))
-			}
-		}
-		if se.Name.Local != "Placemark" {
-			continue
-		}
-		if placemarks == maxPlacemarks {
-			return out, ErrTruncated
-		}
-		placemarks++
-		var pm placemark
-		if err := dec.DecodeElement(&pm, &se); err != nil {
-			continue // one malformed placemark, not the continent
-		}
-		if pt, ok := parseDescription(pm.Description, pm.Coordinates); ok {
-			out = append(out, pt)
+		if err := w.step(tok); err != nil {
+			return w.out, err
 		}
 	}
-	return out, ErrTruncated
+	return w.out, ErrTruncated
+}
+
+// kmlWalk is the state of one token walk. RawToken skips nesting checks,
+// so the element stack is kept here: a torn body must still error, so
+// Fetch forgets the cached entry (P6).
+type kmlWalk struct {
+	dec        *xml.Decoder
+	in         *interner
+	out        []Point
+	cur        placemarkText
+	open       []string // the element stack
+	root       string
+	placemarks int
+}
+
+// step consumes one token.
+func (w *kmlWalk) step(tok xml.Token) error {
+	switch t := tok.(type) {
+	case xml.StartElement:
+		return w.start(t.Name.Local)
+	case xml.CharData:
+		w.cur.text(t) // the decoder's buffer: consumed now, never retained
+	case xml.EndElement:
+		return w.end(t.Name.Local)
+	}
+	return nil
+}
+
+func (w *kmlWalk) start(name string) error {
+	if w.root == "" {
+		w.root = name
+		if name != "kml" {
+			return fmt.Errorf("kml: document root is <%s>, not <kml> (an outage page in place of data?)", tagName(name))
+		}
+	}
+	w.open = append(w.open, name)
+	switch {
+	case name == "Placemark":
+		if w.placemarks == maxPlacemarks {
+			return ErrTruncated
+		}
+		w.placemarks++
+		w.cur = placemarkText{open: true}
+	case w.cur.open && (name == "description" || name == "coordinates"):
+		w.cur.field = name
+	}
+	return nil
+}
+
+func (w *kmlWalk) end(name string) error {
+	if n := len(w.open); n == 0 || w.open[n-1] != name {
+		return fmt.Errorf("kml: unexpected </%s>", tagName(name))
+	}
+	w.open = w.open[:len(w.open)-1]
+	switch name {
+	case "description", "coordinates":
+		w.cur.field = ""
+	case "Placemark":
+		if pt, ok := parseDescription(w.cur.desc, w.cur.coords, w.in); w.cur.open && ok {
+			w.out = append(w.out, pt)
+		}
+		w.cur = placemarkText{}
+	}
+	return nil
+}
+
+// eof is the end of the document: an error when nothing was read or an
+// element is still open.
+func (w *kmlWalk) eof() error {
+	if w.root == "" {
+		return errors.New("kml: empty document")
+	}
+	if n := len(w.open); n > 0 {
+		return fmt.Errorf("kml: unexpected EOF inside <%s>", tagName(w.open[n-1]))
+	}
+	return nil
+}
+
+// placemarkText is the two text fields of the placemark being walked.
+type placemarkText struct {
+	open         bool
+	field        string // "description" | "coordinates" | ""
+	desc, coords string
+}
+
+func (p *placemarkText) text(b xml.CharData) {
+	switch p.field {
+	case "description":
+		p.desc += string(b)
+	case "coordinates":
+		p.coords += string(b)
+	}
 }
 
 // maxTokens bounds the XML token walk (P10-02): placemarks are ~2–8
 // tokens each, so maxPlacemarks trips long before this does.
 const maxTokens = maxPlacemarks * 32
 
-// parseDescription reads "Lon: -121.55<br>Lat: 49.89<br>YearDay: 2026237<br>Time: 0201UTC<br>Satellite: GOES-EAST<br>Method: NGFS<br>Ecosystem: 22<br>FRP: 10.980MW".
-func parseDescription(desc, coords string) (Point, bool) {
-	fields := map[string]string{}
-	for _, part := range strings.Split(desc, "<br>") {
-		if k, v, ok := strings.Cut(part, ":"); ok {
-			fields[strings.TrimSpace(k)] = strings.TrimSpace(v)
+// maxFields bounds one description's field walk (P10-02): the feed writes eight.
+const maxFields = 32
+
+// parseDescription reads "Lon: -121.55<br>Lat: 49.89<br>YearDay: 2026237<br>Time: 0201UTC<br>Satellite: GOES-EAST<br>Method: NGFS<br>Ecosystem: 22<br>FRP: 10.980MW"
+// with strings.Cut, field by field, no map (Q3, PF-7); the last value of a
+// repeated key wins, as before.
+func parseDescription(desc, coords string, in *interner) (Point, bool) {
+	f := descFields(desc, in)
+	if f.lon == "" || f.lat == "" {
+		if c := strings.Split(strings.TrimSpace(coords), ","); len(c) >= 2 {
+			f.lon, f.lat = c[0], c[1]
 		}
 	}
-	var pt Point
+	pt := Point{Satellite: f.satellite, Method: f.method}
 	var err error
-	lonS, latS := fields["Lon"], fields["Lat"]
-	if c := strings.Split(strings.TrimSpace(coords), ","); len(c) >= 2 && (lonS == "" || latS == "") {
-		lonS, latS = c[0], c[1]
-	}
-	if pt.Lon, err = strconv.ParseFloat(lonS, 64); err != nil {
+	if pt.Lon, err = strconv.ParseFloat(f.lon, 64); err != nil {
 		return pt, false
 	}
-	if pt.Lat, err = strconv.ParseFloat(latS, 64); err != nil {
+	if pt.Lat, err = strconv.ParseFloat(f.lat, 64); err != nil {
 		return pt, false
 	}
-	yd, hhmm := fields["YearDay"], strings.TrimSuffix(fields["Time"], "UTC")
-	if len(yd) == 7 && len(hhmm) == 4 {
-		year, _ := strconv.Atoi(yd[:4])
-		day, _ := strconv.Atoi(yd[4:])
-		hh, _ := strconv.Atoi(hhmm[:2])
-		mm, _ := strconv.Atoi(hhmm[2:])
+	if len(f.yearDay) == 7 && len(f.hhmm) == 4 {
+		year, _ := strconv.Atoi(f.yearDay[:4])
+		day, _ := strconv.Atoi(f.yearDay[4:])
+		hh, _ := strconv.Atoi(f.hhmm[:2])
+		mm, _ := strconv.Atoi(f.hhmm[2:])
 		pt.At = time.Date(year, 1, 1, hh, mm, 0, 0, time.UTC).AddDate(0, 0, day-1)
 	}
-	pt.Satellite, pt.Method = fields["Satellite"], fields["Method"]
-	if v, err := strconv.ParseFloat(strings.TrimSuffix(fields["FRP"], "MW"), 64); err == nil && v >= 0 {
+	if v, err := strconv.ParseFloat(f.frp, 64); err == nil && v >= 0 {
 		pt.FRPMW = &v
 	}
 	return pt, true
+}
+
+// fields are one description's values as written (trimmed; the unit
+// suffixes already stripped).
+type fields struct {
+	lon, lat, yearDay, hhmm, frp, satellite, method string
+}
+
+// descFields walks "Key: value<br>Key: value…" with strings.Cut, field by
+// field, no map; the last value of a repeated key wins.
+func descFields(desc string, in *interner) fields {
+	var f fields
+	rest := desc
+	for i := 0; i < maxFields && rest != ""; i++ {
+		part, tail, _ := strings.Cut(rest, "<br>")
+		rest = tail
+		k, v, ok := strings.Cut(part, ":")
+		if !ok {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		switch strings.TrimSpace(k) {
+		case "Lon":
+			f.lon = v
+		case "Lat":
+			f.lat = v
+		case "YearDay":
+			f.yearDay = v
+		case "Time":
+			f.hhmm = strings.TrimSuffix(v, "UTC")
+		case "Satellite":
+			f.satellite = in.intern(v)
+		case "Method":
+			f.method = in.intern(v)
+		case "FRP":
+			f.frp = strings.TrimSuffix(v, "MW")
+		}
+	}
+	return f
+}
+
+// interner shares the satellite and method strings across a parse: the
+// feed carries six satellites and a handful of methods, so 27k points
+// share a dozen strings instead of holding 54k (Q3). Bound: maxInterned
+// distinct values; past it, values pass through un-shared.
+type interner struct{ seen map[string]string }
+
+const maxInterned = 64
+
+func newInterner() *interner { return &interner{seen: make(map[string]string, 16)} }
+
+func (in *interner) intern(v string) string {
+	if s, ok := in.seen[v]; ok {
+		return s
+	}
+	if len(in.seen) < maxInterned {
+		in.seen[v] = v
+	}
+	return v
 }
 
 // tagName keeps an element name printable in an error (letters only, short).

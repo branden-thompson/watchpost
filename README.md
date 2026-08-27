@@ -83,6 +83,9 @@ changes only — `watchpost schema` prints it; the checked-in copy is `pkg/schem
 does not count); warnings never change the code. `providers[].status` is `ok` | `degraded` | `off`.
 Shell completion: `watchpost completion bash|zsh|fish|powershell`.
 
+`--ascii` draws the row marks and the Help legend with ASCII characters (`>` playing, `R` on
+repeat, `n*` fires nearby, `n!` alerts) for terminals or screen readers that mishandle the glyphs.
+
 Diagnostics: `WATCHPOST_DEBUG_TIMING=1` prints launch→full-view time on exit;
 `WATCHPOST_DEBUG_PPROF=1` serves pprof on `127.0.0.1:6060` (or `WATCHPOST_DEBUG_PPROF_ADDR`), plus
 `/debug/counters` (live request, publish and memory counters as JSON) and `/debug/dump` (write a

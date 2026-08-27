@@ -9,7 +9,7 @@ package snapshot
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -299,7 +299,14 @@ type LocationKey string
 
 // Key normalizes a LocationRef to its LocationKey.
 func Key(ref LocationRef) LocationKey {
-	return LocationKey(fmt.Sprintf("%.4f,%.4f", ref.Lat, ref.Lon))
+	// strconv, not Sprintf: the row path asks per location per frame while
+	// the radio plays (quality pass Q3); one allocation, same digits
+	// (TestKeyMatchesTheSprintfForm pins the equivalence).
+	var buf [48]byte
+	b := strconv.AppendFloat(buf[:0], ref.Lat, 'f', 4, 64)
+	b = append(b, ',')
+	b = strconv.AppendFloat(b, ref.Lon, 'f', 4, 64)
+	return LocationKey(b)
 }
 
 // FetchReq asks a provider for one scheduled unit of work.

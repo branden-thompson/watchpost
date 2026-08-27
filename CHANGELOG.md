@@ -4,6 +4,37 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [Unreleased]
 
+## [0.9.6] — 2026-08-26
+
+Performance & quality pass, batches Q2–Q3 (structure; the render path on the app side).
+
+### Added
+- `--ascii` (also `watchpost setup --ascii`): the row marks and the Help legend in ASCII forms
+  (`>` playing, `R` on repeat, `n*` fires, `n!` alerts) — the B6 promise, wired.
+- `counters.json` / `/debug/counters` carry `total_alloc` and `mallocs`, so a soak can read the
+  allocation rate per phase.
+
+### Changed
+- The animation tick runs only while something animates — a loading row, a volume blink, the
+  radio marquee (when the visualizer is off), the `S` modal or Location Details. An idle dashboard
+  renders nothing between events.
+- The two location tables are rendered once per input change and reused on every tick, marquee
+  and visualizer frame between, and the frame is finished in one pass: a steady frame at 133×44
+  allocates 546 times and 62 KB (was 10,044 and 436 KB) and takes ~100 µs (was ~660). The frame's geometry (compact mode, module heights, the RECENT
+  window) is resolved once per frame instead of about eight times.
+- The RECENT pipeline publishes at most once per five seconds (was once per 50 ms window): a
+  tier tick across the fifty seeded locations is one snapshot, not ~47. Scheduler tiers fire on a
+  fixed grid from start, so their phases no longer drift apart with their own fetch times.
+- The HMS fire archive is parsed by a streaming, hand-decoded walk: ~88 ms / 33 MB / 605k
+  allocations per 27.5k placemarks (was 104 ms / 75 MB / 1.05 M), with the inflated file never
+  held in memory; satellite and method names are shared strings.
+- The WFIGS incident layer is decoded once per body change (was once per location fetch).
+- The embedded location index is loaded once at launch (was twice); a cached text body is
+  handed to its parser without a copy (read-only by contract, pinned in every consumer).
+- Source layout: the five largest files split by responsibility (`modes/tty/dashboard.go` 3,386
+  lines → 14 files; `platform/render`, `app`, `domains/weather/nws`, `platform/snapshot`
+  likewise); `docs/where-things-happen.md` is the map, checked by a test.
+
 ## [0.9.5] — 2026-08-26
 
 Performance & quality pass, batches Q0–Q1 (instrumentation; the weatherUSA relay defect; a bounded

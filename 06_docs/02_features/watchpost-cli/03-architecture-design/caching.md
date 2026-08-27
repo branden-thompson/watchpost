@@ -53,9 +53,14 @@ is the number to compare.
 - **Singleflight** — identical concurrent GETs share one request (the four tiers all resolve a
   location at launch). Lives in the client, next to the cache; not a lifetime rule.
 - **Semantic caches** — `nws.gridInfo` (resolved grid + station fallback chain + preferred
-  station), the parsed NDBC/CO-OPS station lists, the HMS archive memo. These cache *decisions*
-  derived from products, not products; the products beneath them are URL-cached like everything
-  else. Each states its bound and reports its size as a gauge in the diagnostic dump.
+  station), the parsed NDBC/CO-OPS station lists, and the fire feeds' parse memos (`fire.Memo`:
+  the HMS archive and, since Q3, the WFIGS layer — parsed once per body change by content hash,
+  whoever asks; bound one body each). These cache *decisions* derived from products, not
+  products; the products beneath them are URL-cached like everything else. Each states its bound
+  and reports its size as a gauge in the diagnostic dump.
+- **The read-only body** (Q3) — `GetText` returns the cache's own slice, no copy (the HMS
+  archive is 1.4 MB and was copied on every fetch). Parsers read it and never write into it; each
+  consumer package pins that with `TestGetTextCallersMustNotMutate`.
 - **Last-good data** — the assembler keeps a location's previous sections when a fetch fails
   (`provider_error` warning, status degraded). That is resilience, not caching.
 - **Pacing, lanes and the failure memo** — the token bucket (30 req/s NWS/NDBC, 5 req/s CO-OPS),

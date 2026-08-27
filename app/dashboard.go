@@ -6,13 +6,9 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/pprof"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,9 +19,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/fire/firms"
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
 	"github.com/branden-thompson/watchpost/domains/fire/wfigs"
-	"github.com/branden-thompson/watchpost/domains/locations"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
-	"github.com/branden-thompson/watchpost/domains/locations/openmeteo"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
 	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
@@ -35,26 +29,29 @@ import (
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
-	"github.com/branden-thompson/watchpost/platform/sched"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
-	"github.com/branden-thompson/watchpost/platform/term"
 )
 
-// RunDashboard starts the live TUI. Returns after the user quits. openSetup
-// opens the Setup window at once (`watchpost setup`); it also opens itself
-// on a first run or an empty watchlist (UAT 100).
-func RunDashboard(version string, openSetup bool) error {
+// Options are the dashboard's launch switches.
+type Options struct {
+	OpenSetup bool // open the Setup window at once (`watchpost setup`); it also opens itself on a first run or an empty watchlist (UAT 100)
+	ASCII     bool // --ascii: row marks and legend in their ASCII forms (A11-10)
+}
+
+// RunDashboard starts the live TUI. Returns after the user quits.
+func RunDashboard(version string, opt Options) error {
 	start := time.Now()
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
 	refs := refsFromConfig(cfg.Locations)
-	openSetup = openSetup || cfg.FirstRun || len(refs) == 0
-	// RatePerSec 30 (default 5): the per-location seed pipeline fires ~75
-	// calls at launch - at 5/s they trickled in over 15s+ (UAT 6.3). 30/s
-	// drains the burst in ~2.5s and is still polite to NWS; steady-state
-	// request volume is near zero either way.
+	openSetup := opt.OpenSetup || cfg.FirstRun || len(refs) == 0
+	// RatePerSec 30 (default 5): the launch burst (the favourites' calls,
+	// then the RECENT list's — the real count is the [S] REQUESTS row and
+	// counters.json, never this comment: L2-F9) trickled in over 15 s+ at
+	// 5/s (UAT 6.3); 30/s drains it in a few seconds and is still polite
+	// to NWS; steady-state request volume is near zero either way.
 	// MaxRetries 1 (quality pass Q1, plan §2.3): the scheduler already
 	// rehydrates at 10/20/40 s, so this client keeps one retry for the
 	// sub-second heal of a blip; the per-host memo bounds an outage.
@@ -79,9 +76,10 @@ func RunDashboard(version string, openSetup bool) error {
 		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides}
 	lp.attachDiagnostics(ctx, start)
-	resolver, resolverErr := newResolver(client) // one resolver serves Resolve and Suggest
+	idx, idxErr := geodata.Load()                             // ONCE: the resolver and the seed list share it (Q3, L1-F21/L4-F5)
+	resolver, resolverErr := newResolver(client, idx, idxErr) // one resolver serves Resolve and Suggest
 	model, err := tty.NewDashboard(tty.Config{
-		Version: version, KeyOverrides: keyOverrides,
+		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
 		Stats:      lp.ttyStats, // [S] REQUESTS / DUMPS rows (quality pass Q0)
 		Resolve:    resolveHook(resolver, resolverErr),
 		Suggest:    suggestHook(resolver),
@@ -111,7 +109,7 @@ func RunDashboard(version string, openSetup bool) error {
 		}
 	})
 	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
-	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(refs, recentCap), recentCap))
+	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, recentCap), recentCap))
 	lp.markFIRMS() // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
 	lp.wireDeckWarnings()
 	// Cancel BEFORE waiting (red-team 0.9.0 C-2): stopAll waits for every
@@ -140,109 +138,6 @@ func (lp *livePipelines) wireDeckWarnings() {
 	if lp.deck != nil && lp.priority != nil {
 		lp.deck.warn = lp.priority.asm.Warn
 	}
-}
-
-// publisher coalesces "new data" notifications into snapshots (UAT 74):
-// a burst of provider completions — 200 at launch — becomes one snapshot
-// per publishCoalesce window instead of one per completion. Snapshot() is
-// the expensive step (deep copy + harmonize + sun times for 60 locations
-// under the assembler lock); computing it once per window removed both
-// the launch CPU spike and the 140-thread pile-up behind that lock.
-type publisher struct {
-	mu      sync.Mutex
-	pending bool
-	run     func() *snapshot.Snapshot // takes the snapshot, delivers it, returns it
-
-	// Counters (quality pass Q0, red-team R2-7): how often this pipeline
-	// publishes and how many triggers the window folded — the numbers §1's
-	// allocation target and the C3 threshold read. The last snapshot is kept
-	// so a dump can size it without marshalling on every publish.
-	count  atomic.Int64
-	folded atomic.Int64
-	last   atomic.Pointer[snapshot.Snapshot]
-}
-
-// publishCoalesce is the window: short enough that rows still fill "as
-// they land", long enough to fold a burst.
-const publishCoalesce = 50 * time.Millisecond
-
-// Trigger schedules a publish; further triggers inside the window fold in.
-func (pb *publisher) Trigger() {
-	pb.mu.Lock()
-	defer pb.mu.Unlock()
-	if pb.pending {
-		pb.folded.Add(1)
-		return
-	}
-	pb.pending = true
-	time.AfterFunc(publishCoalesce, func() {
-		pb.mu.Lock()
-		pb.pending = false
-		pb.mu.Unlock()
-		if snap := pb.run(); snap != nil {
-			pb.last.Store(snap)
-		}
-		pb.count.Add(1)
-	})
-}
-
-// stats is the counters' point-in-time copy.
-func (pb *publisher) stats() tty.PipelineStats {
-	return tty.PipelineStats{Publishes: pb.count.Load(), Folded: pb.folded.Load()}
-}
-
-// lastSnapshot is the most recent published snapshot (nil before the first).
-func (pb *publisher) lastSnapshot() *snapshot.Snapshot { return pb.last.Load() }
-
-// pipeline is the priority pipeline: one assembler, one batched scheduler.
-type pipeline struct {
-	asm *snapshot.Assembler
-	s   *sched.Scheduler
-	pub *publisher
-}
-
-// update reconciles the watchlist in place (UAT 69): kept favourites keep
-// their data, newcomers fetch at once, and the new order publishes now.
-func (pl *pipeline) update(refs []snapshot.LocationRef) {
-	pl.asm.SetLocations(refs)
-	pl.s.Update(refs)
-	pl.pub.Trigger()
-}
-
-func (pl *pipeline) stop() { pl.s.Stop() }
-
-// startPriority wires the priority pipeline (fast cadences). onPublish (may
-// be nil) observes each publish before it is sent — the M1 timer rides it.
-func startPriority(ctx context.Context, p *tea.Program, providers []snapshot.Provider, refs []snapshot.LocationRef, onPublish func(*snapshot.Snapshot)) *pipeline {
-	asm := newAssembler(refs, providers)
-	pub := &publisher{run: func() *snapshot.Snapshot {
-		snap := asm.Snapshot()
-		if onPublish != nil {
-			onPublish(snap)
-		}
-		p.Send(tty.SnapshotMsg{Snap: snap})
-		return snap
-	}}
-	s, err := sched.New(sched.Config{
-		Clock: sched.RealClock{}, Assembler: asm, Locations: refs,
-		Providers: providers,
-		Tiers: []sched.Tier{
-			{Kind: snapshot.KindAlerts, Every: 20 * time.Second},
-			{Kind: snapshot.KindObs, Every: 90 * time.Second},
-			{Kind: snapshot.KindMarineObs, Every: 10 * time.Minute}, // buoys + gauges: NDBC files turn over every 30 min (UAT 72)
-			{Kind: snapshot.KindForecast, Every: 30 * time.Minute},
-			{Kind: snapshot.KindForecastHourly, Every: 30 * time.Minute}, // fires with the daily tier (UAT 72)
-			{Kind: snapshot.KindMarine, Every: 30 * time.Minute},         // coastal waters (UAT 29); one gridpoint download serves it and the daily fill
-			{Kind: snapshot.KindFire, Every: 10 * time.Minute},           // HMS archive refresh + FIRMS cadence (B5, AI-3)
-		},
-		OnPublish: pub.Trigger,
-	})
-	if err != nil {
-		_ = invariant.Check(false, "priority scheduler misconfigured: "+err.Error())
-		return nil
-	}
-	s.Start(ctx)
-	return &pipeline{asm: asm, s: s, pub: pub}
 }
 
 // coopsRatePerSec paces CO-OPS on its own token bucket (UAT 64) so tide
@@ -461,421 +356,5 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 	return nil
 }
 
-// applyThemes registers user theme files (<config dir>/themes/*.json,
-// {"tokens": {"temp.hi": "208", ...}}; unlisted tokens inherit the default)
-// and activates the persisted choice (UAT 53).
-func applyThemes(chosen string) {
-	if path, err := config.Path(); err == nil {
-		loadUserThemes(filepath.Join(filepath.Dir(path), "themes"))
-	}
-	if chosen != "" && !render.SetTheme(chosen) {
-		_ = invariant.Check(false, "configured theme not found: "+chosen+" (falling back to "+render.DefaultThemeName+")")
-	}
-}
-
-// loadUserThemes registers every readable theme file in dir; a bad file is
-// skipped with a dev-visible invariant, never a startup failure.
-func loadUserThemes(dir string) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return // no user themes
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
-			continue
-		}
-		raw, rerr := os.ReadFile(filepath.Join(dir, e.Name()))
-		if rerr != nil {
-			continue
-		}
-		var doc struct {
-			Tokens map[string]string `json:"tokens"`
-		}
-		if jerr := json.Unmarshal(raw, &doc); jerr != nil || len(doc.Tokens) == 0 {
-			_ = invariant.Check(false, "theme file unreadable or empty: "+e.Name())
-			continue
-		}
-		over := make(map[render.Token]string, len(doc.Tokens))
-		for k, v := range doc.Tokens {
-			over[render.Token(k)] = v
-		}
-		render.RegisterTheme(strings.TrimSuffix(e.Name(), ".json"), over)
-	}
-}
-
-// setThemeHook activates a theme live and persists the choice.
-func setThemeHook(name string) error {
-	if !render.SetTheme(name) {
-		return fmt.Errorf("unknown theme %q", name)
-	}
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	cfg.Theme = name
-	return config.Save(cfg)
-}
-
-// resolveHook adapts the offline-first resolver (embedded geodata, online
-// geocoder fallback) for the dashboard's search modal (UAT 26).
-func newResolver(client *httpx.Client) (*locations.Resolver, error) {
-	idx, err := geodata.Load()
-	if err != nil {
-		return nil, fmt.Errorf("location data unavailable: %w", err)
-	}
-	r, err := locations.New(idx, openmeteo.NewGeocoder(client, ""))
-	if err != nil {
-		return nil, fmt.Errorf("resolver unavailable: %w", err)
-	}
-	return r, nil
-}
-
-// resolveHook turns a typed query into a ref; a resolver that failed to
-// build answers every query with that reason (actionable, never a panic).
-func resolveHook(r *locations.Resolver, buildErr error) func(string) (snapshot.LocationRef, error) {
-	if buildErr != nil {
-		return func(string) (snapshot.LocationRef, error) { return snapshot.LocationRef{}, buildErr }
-	}
-	return func(query string) (snapshot.LocationRef, error) {
-		rctx, done := context.WithTimeout(context.Background(), 5*time.Second)
-		defer done()
-		ref, _, err := r.Resolve(rctx, query)
-		if err != nil {
-			return snapshot.LocationRef{}, err
-		}
-		if ref.Tag == "" {
-			ref.Tag = deriveTag(ref.Label)
-		}
-		return ref, nil
-	}
-}
-
-// startDebugProfiles serves Go's runtime profiles on 127.0.0.1:6060 when
-// WATCHPOST_DEBUG_PPROF=1 (UAT 73/74): threadcreate, goroutine, heap —
-// the way to read a live process rather than guess. Loopback only; off by
-// default; never in release notes as a feature. Quality pass Q0 adds two
-// routes the soak harness reads: /debug/counters (counters.json, live) and
-// /debug/dump (write a dump set — the trigger on platforms without SIGUSR1).
-func startDebugProfiles(d *dumper) {
-	if os.Getenv("WATCHPOST_DEBUG_PPROF") != "1" {
-		return
-	}
-	mux := http.NewServeMux()
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/counters", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(d.record(time.Now()))
-	})
-	mux.HandleFunc("/debug/dump", func(w http.ResponseWriter, _ *http.Request) {
-		dir, err := d.Dump(time.Now())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusTooManyRequests)
-			return
-		}
-		_, _ = fmt.Fprintln(w, dir)
-	})
-	go func() { _ = http.ListenAndServe(debugAddr(), mux) }()
-}
-
-// debugAddr is the loopback address of the debug server: 127.0.0.1:6060,
-// or WATCHPOST_DEBUG_PPROF_ADDR so a second instrumented instance on one
-// machine (a soak beside a soak) can pick its own port.
-func debugAddr() string {
-	if addr := os.Getenv("WATCHPOST_DEBUG_PPROF_ADDR"); addr != "" {
-		return addr
-	}
-	return "127.0.0.1:6060"
-}
-
-// reportTiming prints the M1 launch->full-view measurement when
-// WATCHPOST_DEBUG_TIMING=1 (split from RunDashboard, P10-04).
-func reportTiming(firstFull time.Duration) {
-	if os.Getenv("WATCHPOST_DEBUG_TIMING") != "1" {
-		return
-	}
-	if err := invariant.Check(firstFull > 0, "M1 timer never fired — no fully-populated snapshot"); err != nil {
-		fmt.Fprintln(os.Stderr, "watchpost timing:", err)
-		return
-	}
-	fmt.Fprintf(os.Stderr, "watchpost timing: M1 launch->full view = %s (target warm<=3s cold<=8s)\n", firstFull.Round(10*time.Millisecond))
-}
-
-// refsFromConfig is the config → request-identity conversion (one builder;
-// favourites and the recent stack both ride it, UAT 96).
-func refsFromConfig(locs []config.Location) []snapshot.LocationRef {
-	refs := make([]snapshot.LocationRef, 0, len(locs))
-	for _, l := range locs {
-		refs = append(refs, snapshot.LocationRef{Label: l.Label, Tag: l.Tag, Zip: l.Zip, Lat: l.Lat, Lon: l.Lon, TZ: l.TZ})
-	}
-	return refs
-}
-
-// configLocations is the reverse conversion; a missing tag is derived.
-func configLocations(refs []snapshot.LocationRef) []config.Location {
-	out := make([]config.Location, 0, len(refs))
-	for _, r := range refs {
-		if r.Tag == "" {
-			r.Tag = deriveTag(r.Label)
-		}
-		out = append(out, config.Location{Label: r.Label, Tag: r.Tag, Zip: r.Zip, Lat: r.Lat, Lon: r.Lon, TZ: r.TZ})
-	}
-	return out
-}
-
-// restoreRecent rebuilds the RECENT / SEARCHED stack at launch (UAT 96):
-// the saved stack first (newest first, as saved; anything now a favourite
-// drops out), then the seeds fill the room below, deduped by zip, capped.
-func restoreRecent(saved, watch, seeds []snapshot.LocationRef, n int) []snapshot.LocationRef {
-	used := make(map[string]bool, len(watch))
-	for _, r := range watch {
-		used[r.Zip] = true
-	}
-	out := make([]snapshot.LocationRef, 0, n)
-	for _, r := range append(append([]snapshot.LocationRef(nil), saved...), seeds...) {
-		if used[r.Zip] || len(out) == n {
-			continue
-		}
-		used[r.Zip] = true
-		out = append(out, r)
-	}
-	return out
-}
-
-// seedRecent builds the top-N major-city refs for the RECENT/SEARCHED table
-// (UAT session 2A: prepopulate so the table is judgeable before real search
-// history exists), skipping zips already configured as priority locations.
-func seedRecent(priority []snapshot.LocationRef, n int) []snapshot.LocationRef {
-	idx, err := geodata.Load()
-	if err != nil {
-		return nil // the seed list is a nicety; the dashboard renders without it
-	}
-	used := make(map[string]bool, len(priority))
-	for _, r := range priority {
-		used[r.Zip] = true
-	}
-	out := make([]snapshot.LocationRef, 0, n)
-	for _, ref := range locations.Seeds(idx, n+len(priority)) {
-		if used[ref.Zip] || len(out) == n {
-			continue
-		}
-		ref.Tag = deriveTag(ref.Label)
-		out = append(out, ref)
-	}
-	return out
-}
-
-// recentCap is the RECENT / SEARCHED list size (UAT 48: 10 favourites +
-// 50 most-recent = 60 tracked locations). The launch burst grows with it
-// (~5 calls per location); UAT 59 landed bounded parallel fetch, singleflight
-// points resolution and a shared NDBC station cache — the warm-launch disk
-// cache is the mitigation still queued.
-const recentCap = 50
-
-// recentStartDelay holds the seed pipeline back just long enough for the
-// priority pipeline to own the first second (M1 warm budget).
-const recentStartDelay = time.Second
-
-// recentPipeline feeds the RECENT/SEARCHED list: one shared assembler,
-// one scheduler per location so each row publishes the moment its own
-// fetches land (UAT 5.1); the launch burst is ~5 requests per location
-// once (a disk cache for warm launches is the queued "NWS cache refresh").
-type recentPipeline struct {
-	ctx       context.Context
-	asm       *snapshot.Assembler
-	providers []snapshot.Provider
-	alerts    *sched.Scheduler // ONE batched alerts call for the whole list (UAT 72)
-	newFor    func(ref snapshot.LocationRef) *sched.Scheduler
-	publish   func()
-	pub       *publisher // the coalescer behind publish (counters; nil when the list is empty)
-
-	mu      sync.Mutex // guards scheds and started (red-team 0.9.0 C-6: the staggered starter and a commit could touch the map together)
-	scheds  map[snapshot.LocationKey]*sched.Scheduler
-	started bool // the staggered start has run: newcomers start themselves from now on
-}
-
-// recentAlertsEvery is the RECENT list's alert cadence: one batched
-// /alerts/active call covering every recent zone (was 50 per-location
-// calls every 2 minutes — 25 of the app's ~40 requests per minute, UAT 72).
-const recentAlertsEvery = 2 * time.Minute
-
-// update reconciles the list in place (UAT 69): removed locations stop
-// their schedulers, newcomers get one (their first cycle fetches at once),
-// kept rows keep their data, and the new order publishes immediately.
-func (rp *recentPipeline) update(refs []snapshot.LocationRef) {
-	if rp.asm == nil {
-		return // nothing was seeded; the list is a nicety
-	}
-	added, removed := rp.asm.SetLocations(refs)
-	rp.mu.Lock()
-	for _, r := range removed {
-		if s := rp.scheds[snapshot.Key(r)]; s != nil {
-			go s.Stop() // Stop waits for in-flight fetches; never on the commit path
-			delete(rp.scheds, snapshot.Key(r))
-		}
-	}
-	for _, r := range added {
-		if s := rp.newFor(r); s != nil {
-			rp.scheds[snapshot.Key(r)] = s
-			if rp.started {
-				s.Start(rp.ctx) // before that, the staggered starter picks it up
-			}
-		}
-		go rp.hydrateHourly(r) // a looked-up location is being looked at: it earns its hourly now
-	}
-	rp.mu.Unlock()
-	if rp.alerts != nil {
-		rp.alerts.Update(refs) // newcomers' alerts fetch at once; the batch continues on cadence
-	}
-	rp.publish()
-}
-
-// hydrateHourly fetches the hourly forecast for one RECENT location on
-// demand (UAT 72) and publishes; safe to call from any goroutine.
-func (rp *recentPipeline) hydrateHourly(ref snapshot.LocationRef) {
-	if rp.asm == nil {
-		return
-	}
-	for _, pr := range rp.providers {
-		if !sched.Serves(pr, snapshot.KindForecastHourly) {
-			continue
-		}
-		if frag, err := pr.Fetch(rp.ctx, snapshot.FetchReq{Kind: snapshot.KindForecastHourly, Locations: []snapshot.LocationRef{ref}}); err == nil {
-			rp.asm.Apply(frag)
-		}
-	}
-	rp.publish()
-}
-
-func (rp *recentPipeline) stop() {
-	rp.mu.Lock()
-	scheds := make([]*sched.Scheduler, 0, len(rp.scheds))
-	for _, s := range rp.scheds {
-		scheds = append(scheds, s)
-	}
-	rp.mu.Unlock() // a commit still in flight at quit must not race the map (round 2 N-6)
-	for _, s := range scheds {
-		s.Stop()
-	}
-	if rp.alerts != nil {
-		rp.alerts.Stop()
-	}
-}
-
 // hydrate is the dashboard's Hydrate hook.
 func (lp *livePipelines) hydrate(ref snapshot.LocationRef) { lp.recent.hydrateHourly(ref) }
-
-// startRecent wires the slow-cadence background pipeline that feeds live
-// weather to the seeded RECENT/SEARCHED list. The seed snapshot publishes
-// once the program loop is up (names/zips render instantly; temps stream
-// in). An empty seed list yields an inert pipeline.
-func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provider, refs []snapshot.LocationRef) *recentPipeline {
-	rp := &recentPipeline{ctx: ctx, providers: providers, scheds: map[snapshot.LocationKey]*sched.Scheduler{}}
-	if len(refs) == 0 {
-		rp.publish = func() {}
-		return rp
-	}
-	rp.asm = newAssembler(refs, providers)
-	pub := &publisher{run: func() *snapshot.Snapshot {
-		// Always publish the SHARED assembler's view: every scheduler's
-		// progress lands in one snapshot regardless of which one cycled.
-		snap := rp.asm.Snapshot()
-		p.Send(tty.RecentSnapshotMsg{Snap: snap})
-		return snap
-	}}
-	rp.pub = pub
-	rp.publish = pub.Trigger
-	rp.newFor = func(ref snapshot.LocationRef) *sched.Scheduler {
-		s, err := sched.New(sched.Config{
-			Clock: sched.RealClock{}, Assembler: rp.asm, Locations: []snapshot.LocationRef{ref},
-			Providers: providers,
-			Tiers: []sched.Tier{ // no alerts (batched across the list) and no hourly (hydrated on demand) — UAT 72
-				{Kind: snapshot.KindObs, Every: 10 * time.Minute},
-				{Kind: snapshot.KindMarineObs, Every: 10 * time.Minute},
-				{Kind: snapshot.KindForecast, Every: time.Hour},
-				{Kind: snapshot.KindMarine, Every: time.Hour},
-				{Kind: snapshot.KindFire, Every: 15 * time.Minute}, // the archive is shared through the client cache (B5)
-			},
-			OnPublish: rp.publish,
-		})
-		if err != nil {
-			// A misassembled seed pipeline never blocks the dashboard: surface
-			// the wiring bug loudly in dev, drop the nicety in release.
-			_ = invariant.Check(false, "recent seed scheduler misconfigured: "+err.Error())
-			return nil
-		}
-		return s
-	}
-	for _, ref := range refs {
-		if s := rp.newFor(ref); s != nil {
-			rp.scheds[snapshot.Key(ref)] = s
-		}
-	}
-	if s, err := sched.New(sched.Config{Clock: sched.RealClock{}, Assembler: rp.asm, Locations: refs, Providers: providers,
-		Tiers: []sched.Tier{{Kind: snapshot.KindAlerts, Every: recentAlertsEvery}}, OnPublish: rp.publish}); err == nil {
-		rp.alerts = s
-	} else {
-		_ = invariant.Check(false, "recent alerts scheduler misconfigured: "+err.Error())
-	}
-	go rp.startStaggered(ctx)
-	return rp
-}
-
-// startStaggered publishes the seed snapshot once the program loop is up
-// (p.Send blocks until Run starts — never call it pre-Run on the main
-// goroutine, caught by the cmd test hang), waits recentStartDelay, then
-// starts the schedulers recentStartStagger apart (UAT 74: 50 schedulers
-// starting in the same instant made a 200-goroutine burst that cost ~90
-// OS threads; 10 ms apart spreads the launch over half a second).
-func (rp *recentPipeline) startStaggered(ctx context.Context) {
-	rp.publish()
-	select {
-	case <-ctx.Done():
-		return
-	case <-time.After(recentStartDelay):
-	}
-	rp.mu.Lock()
-	toStart := make([]*sched.Scheduler, 0, len(rp.scheds))
-	for _, s := range rp.scheds {
-		toStart = append(toStart, s)
-	}
-	rp.started = true // from here a commit's newcomers start themselves
-	rp.mu.Unlock()
-	for _, s := range toStart {
-		s.Start(ctx)
-		time.Sleep(recentStartStagger)
-	}
-	if rp.alerts != nil {
-		rp.alerts.Start(ctx)
-	}
-}
-
-// recentStartStagger spaces the recent schedulers' starts.
-const recentStartStagger = 10 * time.Millisecond
-
-// fullyPopulated reports whether every location has current conditions —
-// the M1 "fully-populated multi-location view" definition (brief M1).
-func fullyPopulated(s *snapshot.Snapshot) bool {
-	if len(s.Locations) == 0 {
-		return false
-	}
-	for _, loc := range s.Locations {
-		if loc.Harmonized.Source.Provider == "" {
-			return false
-		}
-	}
-	return true
-}
-
-// toKeyMap converts the config [keys] table to a term.KeyMap override layer
-// (Help text comes from the defaults — B3 ledger item: preserve Help on
-// override merge lands with the full keymap config work).
-func toKeyMap(keys map[string][]string) term.KeyMap {
-	if len(keys) == 0 {
-		return nil
-	}
-	out := term.KeyMap{}
-	for action, bindings := range keys {
-		out[term.Action(action)] = term.Binding{Keys: bindings}
-	}
-	return out
-}

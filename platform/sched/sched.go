@@ -115,13 +115,25 @@ const (
 	maxRetries = 3
 )
 
+// runTier fires the tier on a fixed grid — start, start+Every, start+2·Every
+// … — waiting for the NEXT grid point after each cycle rather than Every
+// after the cycle ends (quality pass Q3, red-team PF-9: fifty RECENT
+// schedulers whose phases drifted by their own fetch times decorrelated
+// over hours and defeated the publish coalescer). A cycle that overruns
+// its slot (retries) fires again at once and the grid restarts from then;
+// missed slots are never replayed.
 func (s *Scheduler) runTier(ctx context.Context, tier Tier) {
 	defer s.wg.Done()
+	next := s.cfg.Clock.Now()
 	for {
 		if !s.fetchWithRetries(ctx, tier, s.locations()) {
 			return
 		}
-		if !s.wait(ctx, tier.Every) {
+		next = next.Add(tier.Every)
+		if now := s.cfg.Clock.Now(); next.Before(now) {
+			next = now // overran the slot: no catch-up storm
+		}
+		if !s.wait(ctx, next.Sub(s.cfg.Clock.Now())) {
 			return
 		}
 	}

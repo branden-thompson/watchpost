@@ -86,6 +86,8 @@ type memRecord struct {
 	StackInuse  uint64 `json:"stack_inuse"`
 	Sys         uint64 `json:"sys"`
 	NumGC       uint32 `json:"num_gc"`
+	TotalAlloc  uint64 `json:"total_alloc"` // cumulative bytes allocated: the soak's allocation-rate series (Q3 gate, R2-7)
+	Mallocs     uint64 `json:"mallocs"`     // cumulative heap objects allocated
 }
 
 // publishView is one pipeline's publish counters plus the size of its last
@@ -200,7 +202,7 @@ func (d *dumper) record(now time.Time) dumpRecord {
 	st := d.stats()
 	rec := dumpRecord{
 		At: now.UTC(), UptimeS: now.Sub(d.started).Seconds(),
-		Mem:        memRecord{HeapAlloc: ms.HeapAlloc, HeapInuse: ms.HeapInuse, HeapObjects: ms.HeapObjects, HeapSys: ms.HeapSys, StackInuse: ms.StackInuse, Sys: ms.Sys, NumGC: ms.NumGC},
+		Mem:        memRecord{HeapAlloc: ms.HeapAlloc, HeapInuse: ms.HeapInuse, HeapObjects: ms.HeapObjects, HeapSys: ms.HeapSys, StackInuse: ms.StackInuse, Sys: ms.Sys, NumGC: ms.NumGC, TotalAlloc: ms.TotalAlloc, Mallocs: ms.Mallocs},
 		Goroutines: g, Threads: t, FDs: fds,
 		Requests:  st.Requests,
 		Pipelines: map[string]publishView{},

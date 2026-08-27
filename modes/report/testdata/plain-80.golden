@@ -1,0 +1,15 @@
+watchpost report — generated 2026-08-23 18:04 UTC (schema 1.0.0-rc)
+--------------------------------------------------------------------------------
+Oceanside, CA (92057)
+  observed 17:52 UTC via nws/KOKB
+  temp 22.8 C  feels 24.1 C  dewpoint 16.3 C  humidity 66.5%
+  wind 4.6 m/s dir 250.0 deg  gust n/a  pressure 1014.2 hPa  visibility 16090.0 m
+  conditions: partly_cloudy
+  ALERT [moderate]: Heat Advisory — Heat Advisory until midnight (expires Aug 24 00:00 UTC)
+    Drink plenty of fluids.
+  fire: 1 hotspot(s) nearby — nearest 8.2 km, 62.4 MW, hms/GOES-WEST at Aug 23 17:52 UTC
+  incident: Timber — 12915.0 acres, 26.0% contained, 30.5 km (Aug 20)
+  next hour: 23.4 C, precip 15.0%, wind 4.0 m/s, partly_cloudy
+  2026-08-23: high 23.9 C low 17.2 C precip 20.0% — partly_cloudy
+--------------------------------------------------------------------------------
+provider nws: ok (NOAA/NWS)

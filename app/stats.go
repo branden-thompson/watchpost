@@ -14,6 +14,7 @@ import (
 	"runtime/pprof"
 
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
+	"github.com/branden-thompson/watchpost/domains/fire/wfigs"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -37,6 +38,7 @@ type diagSources struct {
 	weather     *nws.Provider
 	tides       *coops.Provider
 	hms         *hms.Provider
+	wfigs       *wfigs.Provider
 	priority    *snapshot.Assembler
 	recent      *snapshot.Assembler
 	priorityPub *publisher
@@ -74,7 +76,12 @@ func (d diagSources) gauges() []Gauge {
 		out = append(out, Gauge{Name: "coops.stations", Len: d.tides.CachedStations()})
 	}
 	if d.hms != nil {
-		out = append(out, Gauge{Name: "hms.memo.points", Len: d.hms.MemoPoints()})
+		pts, parses := d.hms.MemoStats()
+		out = append(out, Gauge{Name: "hms.memo.points", Len: pts}, Gauge{Name: "hms.memo.parses", Len: parses}) // parses since launch: the parse-spike counter (plan §1, Q3)
+	}
+	if d.wfigs != nil {
+		ins, parses := d.wfigs.MemoStats()
+		out = append(out, Gauge{Name: "wfigs.memo.incidents", Len: ins}, Gauge{Name: "wfigs.memo.parses", Len: parses}) // bound: the last layer (Q3)
 	}
 	out = append(out, assemblerGauges("priority", d.priority)...)
 	out = append(out, assemblerGauges("recent", d.recent)...)
@@ -172,6 +179,9 @@ func (lp *livePipelines) sources() diagSources {
 	for _, pr := range lp.fire {
 		if h, ok := pr.(*hms.Provider); ok {
 			src.hms = h
+		}
+		if w, ok := pr.(*wfigs.Provider); ok {
+			src.wfigs = w
 		}
 	}
 	if lp.priority != nil {

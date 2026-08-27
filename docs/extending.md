@@ -25,8 +25,8 @@ Goal: show `Harmonized.UVIndex` in the detail view (`enter`).
 | Step | File | What you do |
 |---|---|---|
 | 1 | `platform/snapshot/types.go` | Nothing — `Conditions.UVIndex *float64` already exists (§10.1). A nil pointer means "provider has no value" and renders `n/a`. |
-| 2 | `platform/render/render.go` | Only if no formatter fits: add `UVIndex(v *float64) string` next to `Distance`/`Knots`/`TideHeight` — `platform/render` is the ONLY package that may import go-studs, and every formatter has an `n/a` path and a width-bound test. |
-| 3 | `modes/tty/dashboard.go` | In `detailLines` (the modal body builder), add the row where the mock puts it, using the formatter from step 2. Rows are label/value pairs aligned by the modal's shared inset; follow the neighbours. |
+| 2 | `platform/render/units.go` | Only if no formatter fits: add `UVIndex(v *float64) string` next to `Distance`/`Knots`/`TideHeight` — `platform/render` is the ONLY package that may import go-studs, and every formatter has an `n/a` path and a width-bound test. |
+| 3 | `modes/tty/detail.go` | In `detailLines` (the modal body builder), add the row where the mock puts it, using the formatter from step 2. Rows are label/value pairs aligned by the modal's shared inset; follow the neighbours. |
 | 4 | Tests | Extend the detail-modal test with a sentinel UV value (e.g. `7.3`); the report-mode parity test then asserts the same value appears in `--json` (M5). |
 
 You never touch providers, the scheduler, or `modes/report`.

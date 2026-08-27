@@ -18,7 +18,7 @@ once ratified — the table below records the brief's provisional values.
 | M1 | Long-run resource stability (`M-STAB`) | Primary | no growth term (weeks/months of continuous operation, OQ-8); measured over multi-day runs on macOS and Linux; footprint ≤ 160 MB with radio on, ≤ 90 MB idle (provisional); threads ≤ 32 and attributed |
 | M2 | Steady-state chattiness (`M-CHAT`) | Secondary | measured, then no more than cadence math predicts |
 | M3 | Zero regression (`M-REG`) | Primary | gates, goldens, pty smokes, Linux re-run all PASS; warm launch ≤ 550 ms |
-| M4 | Code-quality floor (`M-P10`) | Maintenance | P10 0 live; non-kit exemptions ≤ 53 (plan §1: 56 − 4 stale − 2 one-liners + 2 Q0 build-tag entries + 1 `tools/slope` density entry, ratified at the Q0 gate), 0 unmatched ledger entries; coverage ≥ today |
+| M4 | Code-quality floor (`M-P10`) | Maintenance | P10 0 live; non-kit exemptions ≤ 54 (plan §1: 56 − 4 stale − 2 one-liners + 2 Q0 build-tag entries + 1 `tools/slope` density entry, ratified at the Q0 gate; + 1 `platform/declset` density entry, ratified at the Q2 gate), 0 unmatched ledger entries; coverage ≥ today |
 | M5 | Record completeness (`M-DOC`) | Maintenance | every change/non-change has rationale + evidence + a pin |
 
 ## Requirements

@@ -342,7 +342,9 @@ func (s *Source) Cached() (segments int, bytes int) {
 }
 
 // maxCached bounds the rendered-audio cache: a cycle is 10–20 segments and
-// only Repeat replays them; 24 mono segments is ~16 MB at the worst.
+// only Repeat replays them. Measured (DISCOVER L1-F13): 14.6 KB per word of
+// mono PCM, ≤ 280 characters a segment ≈ 0.73 MB, so 40 segments is ≤ 29 MB
+// resident; the diagnostic dump's synth.pcm.cache gauge reports the live size.
 const maxCached = 40
 
 func (s *Source) silence(d time.Duration) []byte {

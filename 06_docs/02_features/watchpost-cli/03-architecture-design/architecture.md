@@ -26,7 +26,7 @@ graph TB
   subgraph platform [platform/]
     SCHED[sched<br/>tiered scheduler, 5 tiers + cache]
     SNAP[(snapshot<br/>THE contract)]
-    HTTPX[httpx] ; AUDIO[audio<br/>PCM→oto] ; REND[render<br/>go-studs seam] ; TERM[term] ; CFG[config]
+    HTTPX[httpx<br/>cache · lanes · failure memo] ; REND[render<br/>go-studs seam: table.go] ; TERM[term] ; CFG[config]
   end
   subgraph modes [modes/]
     TTY[tty<br/>bubbletea v2 program]
@@ -92,9 +92,22 @@ graph LR
 
 Cache keys: gridpoint (`{wfo}/{x},{y}`), station id, zone-batch string, product id. Alert dedupe: by `id`, supersede via `references`, expire `ends ?? expires`. Alert zone batching: all locations' `forecastZone`+`county` UGCs in one `/alerts/active?zone=...` call, sharded at 80 zones. Geocode cache: never expires; bounded caps + rotation on fire-history and M2 latency log (red-team P-3/P-4).
 
-## 4. Render seam (platform/render — D-9)
+## 4. Render seam (platform/render — D-9) — as built
 
-`platform/render` is the **only** package importing go-studs. It exposes watchpost-neutral primitives: `Panel`, `Table`, `Badge`, `Sparkline(values,width)`, `Bars`, `WindGauge(speed,dir,gust)`, `Meter`, `Marquee`, `Grid(cols,breakpoint)`. Views call these; swapping go-studs (fork/bubbletea-native/upstream) touches one package. Rules baked in: severity always text label + position (R-12a); `--ascii` + `--no-animation` flags resolved here; frame stepping only via `Advance(frame int)` called from `Update` on the single 100 ms tick (never goroutine tickers — S1/AI-9 policy); widths always passed explicitly (`WindowSizeMsg` in TTY; report mode gets width once from `platform/term` — `modes/report` does NOT import `platform/render`, resolving the §1 arrow ambiguity); contrast minima per token pair with `LightDark` from `tea.BackgroundColorMsg` (G5 win → A-4).
+`platform/render` is the **only** package importing go-studs, and since the quality pass (Q2) that
+coupling is one file: `table.go` (`LocationTable` on go-studs `DataTable`: column spec, layout,
+row data, marks, styles, group headers). Around it: `units.go` (units, `Opts`, the value formatters
+with their `n/a` paths, the health and trend glyphs), `sgr.go` (tints, key caps, alert and radio
+tones, the window and modal palette — every colour through `Tok(token)`, never a literal),
+`panel.go` (panels, bands, modules, blocks, the scroll panel, the `Overlay` compositor), `text.go`
+(wrapping, padding, display width, ANSI stripping), `theme.go` / `themes.go` (the default palette and
+the live registry). The primitives the original design named (`Sparkline`, `Bars`, `WindGauge`,
+`Meter`, `Marquee`, `Grid`) were never built: the visualizer rows live in `modes/tty/radio_panel.go`
+over `domains/radio/spectrum`, and the marquee is `modes/tty/radio_panel.go:marquee`. Rules baked in:
+severity always a text label + position (R-12a); `--ascii` glyph swaps resolved here; frame stepping
+only from the program's tick (never goroutine tickers — S1/AI-9); widths always passed explicitly.
+`modes/report` **does** import `platform/render` — for `Plain` (control-character stripping of
+provider text, S-F6) and nothing that paints; the §1 arrow reads render → report, plain-text only.
 
 ## 5. Radio architecture (domains/radio — G-2, AI-13)
 
@@ -129,7 +142,7 @@ type KeyMap map[Action]Binding     // one per scope
 // wholesale at runtime (a tea.Msg — no restart).
 ```
 
-Guarantees: (1) each view — including the HUM LEAD's in-progress default view — ships its own `DefaultKeyMap()` and iterates without touching other views; (2) any Action rebinds globally or per-view via config, no code change; (3) `?` help renders live from the merged map (`bubbles/help` reads Bindings) so help stays truthful after any swap; (4) conflict detection at registration (two Actions on one key in the same scope = startup error, test-asserted). **The ONLY locked binding is `?` = help (R-3, HUM LEAD: "the only one for sure is \'?\' for help"); every other key named in these docs is a placeholder default awaiting the default-view design.** Views implement `type View interface { Name() string; Actions() []term.Action; DefaultKeyMap() term.KeyMap; Update(tea.Msg) tea.Cmd; Render(snap *snapshot.Snapshot, w,h int) string }` — activation keys live ONLY in `DefaultKeyMap()` (D-15; no hard-coded hotkeys — red-team code#2). Playlist (R-10): a config-driven `[]PlaylistEntry{View, Dwell}` cycler in the root model — architecture only in v0.1, refined later (OQ-10). Dashboard/detail = alt-screen (`view.AltScreen=true`); radio mini-player = inline auto-height (G5). One `tea.Tick(100ms)` alive only while any view reports `Animating()`.
+Guarantees: (1) each view — including the HUM LEAD's in-progress default view — ships its own `DefaultKeyMap()` and iterates without touching other views; (2) any Action rebinds globally or per-view via config, no code change; (3) `?` help renders live from the merged map (`bubbles/help` reads Bindings) so help stays truthful after any swap; (4) conflict detection at registration (two Actions on one key in the same scope = startup error, test-asserted). **The ONLY locked binding is `?` = help (R-3, HUM LEAD: "the only one for sure is \'?\' for help"); every other key named in these docs is a placeholder default awaiting the default-view design.** Views implement `type View interface { Name() string; Actions() []term.Action; DefaultKeyMap() term.KeyMap; Update(tea.Msg) tea.Cmd; Render(snap *snapshot.Snapshot, w,h int) string }` — activation keys live ONLY in `DefaultKeyMap()` (D-15; no hard-coded hotkeys — red-team code#2). Playlist (R-10): a config-driven `[]PlaylistEntry{View, Dwell}` cycler in the root model — architecture only in v0.1, refined later (OQ-10). Dashboard/detail = alt-screen (`view.AltScreen=true`); radio mini-player = inline auto-height (G5). One 300 ms `tea.Tick` alive only while the frame animates — as built by the quality pass Q3 (`tickNeeded`: a loading row, a volume blink, the radio marquee when the visualizer tick is not already redrawing, the `[S]` ages, Location Details' time-relative labels); a 50 ms visualizer tick only while the bars have something to draw.
 
 ## 7. Test architecture (FULL TDD)
 
@@ -310,10 +323,13 @@ Two pipelines share one HTTP client (30 req/s NWS/NDBC lane) plus a separately p
 client (5 req/s). The favourites' pipeline runs on the client's **priority lane** so its
 requests never queue behind the seed list's launch burst.
 
+The cadences below are owned by `app/pipelines.go` (`priorityTiers`, `recentTiers`) and pinned by
+`app/testdata/cadences.md` (`TestCadenceTableIsTheDoc`); edit there, then copy.
+
 | Pipeline | Locations | Tier | Cadence | Notes |
 |---|---|---|---|---|
 | Priority | ≤ 10 favourites, one batched scheduler | alerts | 20 s | one `/alerts/active?zone=` call for all zones |
-| | | observations | 90 s | server `max-age` 300 s coalesces this in the cache |
+| | | observations | 90 s | server `max-age` 300 s coalesces this in the cache (confirmed live by the quality pass, C2) |
 | | | marine observations | 10 min | NDBC `5day2` buoy files, CO-OPS water level |
 | | | forecast (daily) | 30 min | HIGH/LOW holes filled from the gridpoint |
 | | | forecast (hourly) | 30 min | fires with the daily tier |
@@ -340,9 +356,13 @@ discovered, never enumerated.
 - **`Assembler.SetLocations(refs)`** — reconciles the tracked set in place (kept rows keep
   data). Together these make every watchlist/lookup commit incremental (UAT 69).
 - **`OnPublish` is a notification, not a snapshot** (UAT 74) — the app coalesces notifications
-  into one `Snapshot()` per 50 ms window; `Snapshot()` is the expensive step (deep copy,
-  harmonize, sun times for every location under the lock). Time zones come from `platform/tz`
-  (memoized) — never `time.LoadLocation` in a hot path.
+  into one `Snapshot()` per window: 50 ms for the favourites, **5 s for the RECENT list** (quality
+  pass Q3: a tier tick across fifty seeded locations is one snapshot, not ~47); `Snapshot()` is
+  the expensive step (deep copy, harmonize, sun times for every location under the lock). Time
+  zones come from `platform/tz` (memoized) — never `time.LoadLocation` in a hot path.
+- **Tiers fire on a fixed grid** (Q3, red-team PF-9) — start, +Every, +2·Every …, not "Every
+  after the cycle ends", so fifty schedulers started 10 ms apart stay 10 ms apart for days; a
+  cycle that overruns its slot fires again at once and the grid restarts from then.
 
 ### 11.3 Providers (current)
 
@@ -365,6 +385,20 @@ nws:gridpoint`). Observed and forecast-period values are never overwritten.
 
 See `caching.md` (one rule, two tiers). Providers state lifetimes (`httpx.TTL`) only where they
 know better than the server's headers.
+
+### 11.5a Render frame pipeline (quality pass Q3 — as built)
+
+`View` resolves the frame's geometry once (`layout`: compact mode, the player rows for the mode in
+force, module heights, the control row, the RECENT window, the shared EXTENDED day count) and hands
+it to every section. The two location tables — 42 % of a frame — come from a **single-slot memo**
+on the model (a pointer allocated at construction; `View` is a value receiver) keyed on every input
+they read: the layout values, both snapshot pointers, selection and scroll, units, `--ascii`, the
+playing row and its ▶/∞ marks, the theme generation (`render.ThemeGeneration`), the bold-◆ rule and
+the loading frame. A tick, marquee or visualizer frame is therefore the header + radio module +
+alert area over two reused strings, finished (trim, indent, base tint) in one pre-sized pass:
+~100 µs / 62 KB / 546 allocations at 133×44 (was ~660 µs / 436 KB / 10,044); a snapshot, key or
+resize re-renders the tables (~585 µs / 9,165). Invalidation is pinned one row per
+key input (`memo_test.go`); the miss and hit paths are both allocation-gated (`bench_test.go`).
 
 ### 11.6 Radio, Live path (B4 step 1 — UAT 76)
 

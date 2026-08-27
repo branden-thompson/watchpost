@@ -276,7 +276,7 @@ func (c *Client) GetJSON(ctx context.Context, rawURL string, out any, opts ...Op
 	switch v := out.(type) {
 	case nil:
 	case *[]byte:
-		*v = append([]byte(nil), body...)
+		*v = body // aliased, read-only (see GetText)
 	default:
 		if err := json.Unmarshal(body, out); err != nil {
 			// A poisoned cache entry (truncated file, torn write) decodes badly
@@ -293,13 +293,21 @@ func (c *Client) GetJSON(ctx context.Context, rawURL string, out any, opts ...Op
 	return hdr, nil
 }
 
-// GetText fetches a URL and returns the raw body (text products such as
-// NDBC realtime files) through the same pacing, retry, cache and redaction path.
 // Forget drops a URL from the cache: a caller whose parser rejected the
 // body must not be served it again for the rest of its TTL (the GetJSON
 // poison guard, made available to GetText callers — red-team B5 P6).
 func (c *Client) Forget(rawURL string) { c.cache.forget(rawURL) }
 
+// GetText fetches a URL and returns the raw body (text products such as
+// NDBC realtime files) through the same pacing, retry, cache and redaction
+// path.
+//
+// READ-ONLY CONTRACT (quality pass Q3, L1-F9, CQ-12): the slice is the
+// cache's own — a cache hit returns the stored body without copying (the
+// HMS archive is 1.4 MB and was copied on every Fetch). Callers parse it
+// and must never write into it; every consumer package carries a
+// TestGetTextCallersMustNotMutate that runs its parser and checks the
+// bytes are unchanged.
 func (c *Client) GetText(ctx context.Context, rawURL string, opts ...Option) ([]byte, error) {
 	var body []byte
 	if _, err := c.GetJSON(ctx, rawURL, &body, opts...); err != nil {

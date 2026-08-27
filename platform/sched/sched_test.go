@@ -426,3 +426,41 @@ func TestUpdateFetchesOnlyTheNewcomersNow(t *testing.T) {
 		t.Fatal("a removal must not fetch anything")
 	}
 }
+
+// clockProvider spends fetchTime of fake-clock time in every alerts Fetch
+// (the one tier the test watches; the other tier's fetch stays instant so
+// the clock moves only where the test can account for it).
+type clockProvider struct {
+	countingProvider
+	clk       *fakeClock
+	fetchTime time.Duration
+}
+
+func (p *clockProvider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.Fragment, error) {
+	if req.Kind == snapshot.KindAlerts {
+		p.clk.Advance(p.fetchTime)
+	}
+	return p.countingProvider.Fetch(ctx, req)
+}
+
+// Quality pass Q3 (PF-9): the cadence is a fixed grid from Start — a
+// tier's own fetch time does not push its phase later each cycle, so fifty
+// schedulers started together stay together.
+func TestTierCadenceIsAFixedGrid(t *testing.T) {
+	clk := newFakeClock(time.Date(2026, 8, 23, 12, 0, 0, 0, time.UTC))
+	p := &clockProvider{countingProvider: countingProvider{id: "nws"}, clk: clk, fetchTime: 3 * time.Second}
+	s, _, _ := newTestSched(clk, p)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.Start(ctx)
+	defer s.Stop()
+	waitFor(t, func() bool { return p.alerts.Load() == 1 && p.obs.Load() == 1 }, "initial fetches")
+	// The initial alerts fetch cost 3 s of clock; the tier's next slot is
+	// still start+20 s — 17 s away, not 20 (the pre-Q3 loop fired at +23).
+	clk.Advance(16 * time.Second)
+	if p.alerts.Load() != 1 {
+		t.Fatalf("alerts must not fire before its grid point, got %d", p.alerts.Load())
+	}
+	clk.Advance(2 * time.Second) // +21 s: past the grid point, short of the drifted one
+	waitFor(t, func() bool { return p.alerts.Load() == 2 }, "alert tier on the +20 s grid point despite 3 s of fetch time")
+}
