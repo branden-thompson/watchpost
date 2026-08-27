@@ -36,8 +36,7 @@ var modalMarkers = map[string]string{
 var openers = map[string]tea.Msg{
 	"help":     tea.KeyPressMsg{Code: '?', Text: "?"},
 	"details":  tea.KeyPressMsg{Code: tea.KeyEnter},
-	"add":      tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl},
-	"lookup":   tea.KeyPressMsg{Code: 'l', Text: "l"},
+	"lookup":   tea.KeyPressMsg{Code: 'l', Text: "l"}, // ctrl+a Add is row-gated (UAT 2026-08-27); lookup covers modalAdd here
 	"remove":   tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModShift},
 	"alerts":   tea.KeyPressMsg{Code: 'A', Text: "A"},
 	"status":   tea.KeyPressMsg{Code: 'S', Text: "S"},

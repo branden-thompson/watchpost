@@ -14,7 +14,7 @@ func TestKeyCapFallsBackToBrackets(t *testing.T) {
 	if got := (Opts{}).KeyCap("tab"); got != "[tab]" && !strings.Contains(got, " tab ") {
 		t.Fatalf("keycap: %q", got)
 	}
-	if got := (Opts{ASCII: true}).KeyCap("q"); got != "[q]" {
+	if got := (Opts{ThinBands: true, ASCII: true}).KeyCap("q"); got != "[q]" {
 		t.Fatalf("ascii keycap must be plain brackets: %q", got)
 	}
 }
@@ -31,7 +31,7 @@ func TestColorPassStyling(t *testing.T) {
 	}
 	r := testRow()
 	r.Extended = []DayCell{{Date: "08/26", Hi: f64(30.0), Lo: f64(20.0)}}
-	out := (Opts{Width: 220, Units: UnitF}).LocationTable([]LocationRow{r}, 1)
+	out := (Opts{ThinBands: true, Width: 220, Units: UnitF}).LocationTable([]LocationRow{r}, 1)
 	lines := strings.Split(out, "\n")
 	for _, code := range []string{"48;2;97;97;97", "48;2;66;94;122", "48;2;66;122;122", "48;2;94;94;122"} {
 		if !strings.Contains(lines[0], code) {

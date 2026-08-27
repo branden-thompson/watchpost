@@ -491,3 +491,47 @@ func TestMaxPlayerMarqueeFillsTheRowAfterTheLocation(t *testing.T) {
 		t.Fatalf("the min player has no marquee:\n%s", min)
 	}
 }
+
+// HUM LEAD 2026-08-27: play A, navigate to B, [space] plays B (does not
+// stop); [space] on the location already playing stops. This was the
+// "relay only works on the second press" bug — the first press was read as
+// a stop because the previous location was still marked playing.
+func TestSpaceRetunesToTheFocusedLocationNotStop(t *testing.T) {
+	fr := &fakeRadio{}
+	m, err := NewDashboard(Config{Version: "t", Radio: fr})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	// Two favourites, so navigation moves the focus.
+	s := snap()
+	s.Locations = append(s.Locations, snapshot.Location{Label: "Reno, NV", Zip: "89501", Lat: 39.53, Lon: -119.81,
+		Harmonized: snapshot.Conditions{Temp: f64(20), Source: snapshot.SourceInfo{Provider: "nws"}},
+		Daily:      []snapshot.Daily{{Date: "2026-08-24", TempMax: f64(30), TempMin: f64(15)}}})
+	model, _ = model.Update(SnapshotMsg{Snap: s})
+	// Play A.
+	m2, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+	runCmd(cmd)
+	m2, _ = m2.Update(RadioStatusMsg{State: "playing", Station: "A", Detail: "wxradio.org", Volume: 55, Live: true, Location: snapshot.Key(snapshot.LocationRef{Lat: s.Locations[0].Lat, Lon: s.Locations[0].Lon})})
+	if len(fr.tuned) != 1 || fr.tuned[0] != "Oceanside, CA" {
+		t.Fatalf("A tuned: %v", fr.tuned)
+	}
+	// Navigate to B and press space once: it must TUNE B, not stop.
+	m3, _ := m2.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m4, cmd := m3.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+	runCmd(cmd)
+	if fr.stops != 0 {
+		t.Fatalf("space on a different location must not stop (stops=%d)", fr.stops)
+	}
+	if len(fr.tuned) != 2 || fr.tuned[1] != "Reno, NV" {
+		t.Fatalf("space on B tunes B in one press: %v", fr.tuned)
+	}
+	// Now playing B; space on B (still focused) stops.
+	m5, _ := m4.Update(RadioStatusMsg{State: "playing", Station: "B", Detail: "wxradio.org", Volume: 55, Live: true, Location: snapshot.Key(snapshot.LocationRef{Lat: s.Locations[1].Lat, Lon: s.Locations[1].Lon})})
+	_, cmd = m5.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+	runCmd(cmd)
+	if fr.stops != 1 {
+		t.Fatalf("space on the location already playing stops: stops=%d", fr.stops)
+	}
+}

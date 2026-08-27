@@ -63,13 +63,15 @@ func TestDetailCtrlAAddsViewedLocation(t *testing.T) {
 	if len(h.committed) != 1 || len(h.committed[0][1]) != 1 || h.committed[0][1][0].Zip != "04101" {
 		t.Fatalf("add via search must also drop the location from RECENT: %+v", h.committed)
 	}
-	// Already-watched: inert.
-	m3, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyUp}) // focus Oceanside (watched)
+	// Already-watched: inert. Close the details modal first (Up scrolls a
+	// modal, not the list), navigate to Oceanside (watched), open details.
+	m3, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	m3, _ = m3.Update(tea.KeyPressMsg{Code: tea.KeyUp}) // focus Oceanside (watched)
 	m3, _ = m3.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m4, cmd := m3.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 	_ = drain(t, m4, cmd)
 	if len(h.committed) != 1 {
-		t.Fatal("ctrl+a must be inert for an already-watched location")
+		t.Fatalf("ctrl+a must be inert for an already-watched location, committed=%d", len(h.committed))
 	}
 }
 

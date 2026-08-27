@@ -24,6 +24,19 @@ type Opts struct {
 	Units Units
 	ASCII bool
 	Frame int // animation phase (loading dots; ticked by the program loop)
+	// ThinBands collapses the group and section bands from three rows (a
+	// band-coloured row above and below the label — HUM LEAD UAT 2026-08-27,
+	// "so they breathe") back to one: the layout's last resort on a terminal
+	// too short for the table's floor.
+	ThinBands bool
+}
+
+// BandHeight is the height of a band under these options.
+func (o Opts) BandHeight() int {
+	if o.ThinBands {
+		return 1
+	}
+	return 3
 }
 
 // Glyphs are the row-mark and legend marks in the active glyph set: the

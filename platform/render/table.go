@@ -541,14 +541,26 @@ func (o Opts) groupHeader(l layout, cols []studs.ColumnDefinition, tableW int) s
 		mid := (bands[i-1].hi + bands[i].lo) / 2
 		bands[i-1].hi, bands[i].lo = mid, mid+1
 	}
-	var b strings.Builder
-	for _, bd := range bands {
-		b.WriteString(strings.Repeat(" ", max(0, bd.lo-displayWidth(b.String()))))
-		if colorOn() {
-			b.WriteString(sgrRaw(" "+centered(bd.g.title, bd.g.short, bd.hi-bd.lo-1)+" ", Tok(GroupText)+";"+Tok(bd.g.bg)))
-		} else {
-			b.WriteString(bracketTitle(bd.g.title, bd.g.short, bd.hi-bd.lo+1))
+	// Three rows unless thin (HUM LEAD UAT 2026-08-27): a band-coloured
+	// blank row above and below the label row.
+	row := func(withTitle bool) string {
+		var b strings.Builder
+		for _, bd := range bands {
+			b.WriteString(strings.Repeat(" ", max(0, bd.lo-displayWidth(b.String()))))
+			title, short := bd.g.title, bd.g.short
+			if !withTitle {
+				title, short = "", ""
+			}
+			if colorOn() {
+				b.WriteString(sgrRaw(" "+centered(title, short, bd.hi-bd.lo-1)+" ", Tok(GroupText)+";"+Tok(bd.g.bg)))
+			} else {
+				b.WriteString(bracketTitle(title, short, bd.hi-bd.lo+1))
+			}
 		}
+		return b.String()
 	}
-	return b.String()
+	if o.ThinBands {
+		return row(true)
+	}
+	return row(false) + "\n" + row(true) + "\n" + row(false)
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -379,6 +380,7 @@ func (d *radioDeck) setDetailTimed(detail string, spoken time.Duration) {
 // onStatus forwards engine status to the dashboard; a relay that fails
 // outright falls back to the synthesized broadcast (§5: Live → Synth).
 func (d *radioDeck) onStatus(st player.Status) {
+	d.logStatus(st)         // WATCHPOST_DEBUG_RADIO: the transitions, for a relay that plays nothing (follow-up F-2)
 	d.followMount(st.Mount) // a later candidate's mount is playing: the label says which (Q1)
 	d.mu.Lock()
 	station, detail, mode, ref, repeat, src, gen := d.station, d.detail, d.mode, d.ref, d.repeat, d.source, d.gen
@@ -411,4 +413,21 @@ func (d *radioDeck) onStatus(st player.Status) {
 	if st.State == player.Playing {
 		d.armDwell(ref) // UAT 93: a live relay under Watchlist gets its dwell from the moment audio plays
 	}
+}
+
+// logStatus appends one line per engine status to the file named by
+// WATCHPOST_DEBUG_RADIO (diagnostic, opt-in, off by default): the time,
+// the state, the mount, the error and the title — what "nothing after 90
+// seconds" needs to become a cause. Never a secret: mounts are public URLs.
+func (d *radioDeck) logStatus(st player.Status) {
+	path := os.Getenv("WATCHPOST_DEBUG_RADIO")
+	if path == "" {
+		return
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = fmt.Fprintf(f, "%s %-12s mount=%q err=%q title=%q vol=%d\n", time.Now().UTC().Format(time.RFC3339Nano), st.State, st.Mount, st.Err, st.Title, st.Volume)
 }

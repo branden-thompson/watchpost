@@ -10,6 +10,8 @@ const liveDwell
 const maxDumpsPerRun
 const publishCoalesce
 const recentAlertsEvery
+const recentLaunchPhase
+const recentLaunchWindow
 const recentPublishCoalesce
 const recentStartDelay
 const recentStartStagger
@@ -36,8 +38,10 @@ func (*livePipelines).wireDeckWarnings
 func (*pipeline).stop
 func (*pipeline).update
 func (*publisher).Trigger
+func (*publisher).fire
 func (*publisher).lastSnapshot
 func (*publisher).stats
+func (*publisher).windowNow
 func (*radioDeck).PreviewVoice
 func (*radioDeck).SetMode
 func (*radioDeck).SetRepeat
@@ -57,6 +61,7 @@ func (*radioDeck).followMount
 func (*radioDeck).installVoice
 func (*radioDeck).label
 func (*radioDeck).listVoices
+func (*radioDeck).logStatus
 func (*radioDeck).noteDirectories
 func (*radioDeck).onStatus
 func (*radioDeck).piperSpec

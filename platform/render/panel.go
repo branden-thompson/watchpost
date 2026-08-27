@@ -15,6 +15,16 @@ import (
 // Band renders a full-width section band in the group-header chip style
 // (UAT 43: the RECENT / SEARCHED separator becomes a band like the column
 // groups). Bracketed form when color is off.
+// BandRows is a band at the height the options set: the label row alone
+// when thin, else a blank band row above and below it (UAT 2026-08-27).
+func (o Opts) BandRows(title, short string, width int, bg Token) []string {
+	if o.ThinBands {
+		return []string{Band(title, short, width, bg)}
+	}
+	blank := Band("", "", width, bg)
+	return []string{blank, Band(title, short, width, bg), blank}
+}
+
 func Band(title, short string, width int, bg Token) string {
 	if colorOn() {
 		return sgrRaw(" "+centered(title, short, width-2)+" ", Tok(GroupText)+";"+Tok(bg))
@@ -77,15 +87,19 @@ func (o Opts) PanelColored(title, content, fg string) string {
 		return rendering.WrapSGR(t, fg)
 	}
 	var b strings.Builder
-	head := tl + hz + hz + " " + title + " "
+	// The title reads bold white against the tile (ModalTitle; HUM LEAD UAT
+	// 2026-08-27) — unless the caller tinted it already — while the rule
+	// around it keeps the panel's own tone.
 	if title == "" {
-		head = tl // untitled panel: an unbroken top rule (About window, UAT 68)
+		head := tl // untitled panel: an unbroken top rule (About window, UAT 68)
+		b.WriteString(tint(head+strings.Repeat(hz, max(0, w-displayWidth(head)-1))+tr) + "\n")
+	} else {
+		if !strings.Contains(title, "\x1b") {
+			title = Tint(title, Tok(ModalTitle))
+		}
+		pad := max(0, w-displayWidth(tl+hz+hz+" "+title+" ")-1)
+		b.WriteString(tint(tl+hz+hz+" ") + title + tint(" "+strings.Repeat(hz, pad)+tr) + "\n")
 	}
-	pad := w - displayWidth(head) - 1
-	if pad < 0 {
-		pad = 0
-	}
-	b.WriteString(tint(head+strings.Repeat(hz, pad)+tr) + "\n")
 	for _, line := range strings.Split(content, "\n") {
 		line = truncate(line, w-4)
 		b.WriteString(tint(vt) + "  " + line + strings.Repeat(" ", max(0, w-4-displayWidth(line))) + tint(vt) + "\n")

@@ -11,14 +11,14 @@ import (
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
-func TestCtrlAOpensAddLocationModal(t *testing.T) {
-	// UAT 16.3: ctrl+a floats the Add Location modal; typing builds the
-	// query (global bindings must not fire); esc cancels.
+func TestLKeyOpensLookupModal(t *testing.T) {
+	// UAT 26.4 (reworded 2026-08-27): [l] Lookup Location floats the search
+	// modal; typing builds the query (global bindings must not fire); esc
+	// cancels. (ctrl+a is now Favorite — see TestFavoriteChipEnabledOnRecentRowsOnly.)
 	m := dash(t)
-	m, _ = m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
-	v := m.View().Content
-	if !strings.Contains(v, "Add Location") || !strings.Contains(v, "Search:") {
-		t.Fatalf("add-location modal missing:\n%s", v)
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
+	if v := m.View().Content; !strings.Contains(v, "Lookup Location") || !strings.Contains(v, "Search:") {
+		t.Fatalf("lookup modal missing:\n%s", v)
 	}
 	for _, r := range "qui" { // 'q' must NOT quit while typing
 		m, _ = m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
@@ -31,31 +31,8 @@ func TestCtrlAOpensAddLocationModal(t *testing.T) {
 		t.Fatalf("backspace: %q", q)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if v := m.View().Content; strings.Contains(v, "Add Location") && strings.Contains(v, "Search:") {
-		t.Fatal("esc must close the add modal")
-	}
-}
-
-func TestAddFlowAppendsToWatchlist(t *testing.T) {
-	// UAT 26.3: enter in the Add modal resolves and commits query -> bottom
-	// of the watchlist.
-	h := &fakeHooks{resolved: snapshot.LocationRef{Label: "Portland, ME", Zip: "04101", Lat: 43.6, Lon: -70.2, TZ: "America/New_York"}}
-	m := dashWithHooks(t, h)
-	m, _ = m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
-	for _, r := range "port" {
-		m, _ = m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-	m2, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	m2 = drain(t, m2, cmd)
-	if len(h.committed) != 1 {
-		t.Fatalf("commit must fire once, got %d", len(h.committed))
-	}
-	watch := h.committed[0][0]
-	if len(watch) != 2 || watch[1].Zip != "04101" {
-		t.Fatalf("resolved location must append to the watchlist bottom: %+v", watch)
-	}
-	if m2.(Dashboard).modal == modalAdd {
-		t.Fatal("add modal must close on success")
+	if v := m.View().Content; strings.Contains(v, "Lookup Location") && strings.Contains(v, "Search:") {
+		t.Fatal("esc must close the lookup modal")
 	}
 }
 
@@ -112,9 +89,10 @@ func TestLookupFlowTopsRecentAndOpensDetails(t *testing.T) {
 	}
 }
 
-func TestAddModalFullListMutesAndNotes(t *testing.T) {
-	// UAT 26.3: at the 10-location cap the Add chip mutes and the modal
-	// leads with the performance note.
+func TestFavoriteMutesAtTheWatchlistCap(t *testing.T) {
+	// UAT 26.3 (2026-08-27): at the 10-location cap, [ctrl+a] Favorite on a
+	// recent row mutes and does nothing — the cap is felt at the chip, not a
+	// modal note.
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 	h := &fakeHooks{}
@@ -124,14 +102,26 @@ func TestAddModalFullListMutesAndNotes(t *testing.T) {
 		full.Locations = append(full.Locations, snapshot.Location{Label: fmt.Sprintf("City %d", i), Zip: fmt.Sprintf("100%02d", i)})
 	}
 	m, _ = m.Update(SnapshotMsg{Snap: full})
-	m, _ = m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
-	v := m.View().Content
-	if !strings.Contains(v, "Only 10 locations are allowed") {
-		t.Fatalf("cap note missing:\n%s", v)
+	rs := snap()
+	rs.Locations[0].Label, rs.Locations[0].Zip = "Recent City", "99999"
+	m, _ = m.Update(RecentSnapshotMsg{Snap: rs})
+	for range 10 { // onto the recent row
+		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	}
-	m2, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	favMuted := false
+	for _, l := range strings.Split(m.View().Content, "\n") {
+		if k := strings.Index(l, "ctrl+a"); k > 0 {
+			if e := strings.LastIndex(l[:k], "\x1b["); e >= 0 && strings.Contains(l[e:k], "48;2;43;43;43") {
+				favMuted = true
+			}
+		}
+	}
+	if !favMuted {
+		t.Fatal("at the cap, Favorite must be muted even on a recent row")
+	}
+	m2, cmd := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 	_ = drain(t, m2, cmd)
 	if len(h.committed) != 0 {
-		t.Fatal("enter must be inert at the cap")
+		t.Fatal("ctrl+a must be inert at the cap")
 	}
 }

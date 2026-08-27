@@ -25,6 +25,7 @@ type frameLayout struct {
 	controlRows int      // its line count
 	window      int      // RECENT rows visible
 	days        int      // EXTENDED columns shared by both tables
+	chrome      int      // every fixed line around the RECENT window
 }
 
 // layout resolves the frame's geometry from the model. The compact
@@ -33,6 +34,19 @@ type frameLayout struct {
 // rendered a second time only when the mode in force is the two-row one.
 func (d Dashboard) layout() frameLayout {
 	o := d.opts()
+	fl := d.layoutWith(o)
+	// The bands are the last thing to give (UAT 2026-08-27): only when the
+	// compact layout still cannot hold the table's floor do they fall back
+	// to one row, and the geometry is resolved again on that basis.
+	if fl.compact && d.height-fl.chrome-bottomInset < recentWindow {
+		o.ThinBands = true
+		fl = d.layoutWith(o)
+	}
+	return fl
+}
+
+// layoutWith resolves the geometry for a given set of options.
+func (d Dashboard) layoutWith(o render.Opts) frameLayout {
 	fl := frameLayout{o: o, controlRow: d.controlRow(o), days: d.sharedExtDays()}
 	fl.controlRows = strings.Count(fl.controlRow, "\n") + 1
 	_, abg := render.AlertBlockTone("", "minor")
@@ -44,7 +58,8 @@ func (d Dashboard) layout() frameLayout {
 	// tableBreakpoint rows (favourites + recent window, any split); only
 	// when the full layout cannot deliver the breakpoint do they minimize.
 	rows := max(recentWindow, min(d.numRecent(), tableBreakpoint-d.numPriority()))
-	need := chromeLines + (fl.controlRows - 1) + 1 + fullRadioH + 1 + fullAlertH + 1 + d.numPriority() + rows + bottomInset
+	bandExtra := 2 * (o.BandHeight() - 1) // the two bands' rows beyond the one chromeLines counts each
+	need := chromeLines + bandExtra + (fl.controlRows - 1) + 1 + fullRadioH + 1 + fullAlertH + 1 + d.numPriority() + rows + bottomInset
 	fl.compact = d.height < need
 	fl.alertH = fullAlertH
 	if fl.compact {
@@ -57,8 +72,8 @@ func (d Dashboard) layout() frameLayout {
 	fl.radioH = render.ModuleHeight(len(fl.radioRows), rbg)
 	// UAT 46.1/58: the window expands to fill tall terminals; the content
 	// ends exactly bottomInset rows above the bottom.
-	chrome := chromeLines + (fl.controlRows - 1) + 1 + fl.radioH + 1 + fl.alertH + 1 + d.numPriority()
-	fl.window = max(recentWindow, d.height-chrome-bottomInset)
+	fl.chrome = chromeLines + bandExtra + (fl.controlRows - 1) + 1 + fl.radioH + 1 + fl.alertH + 1 + d.numPriority()
+	fl.window = max(recentWindow, d.height-fl.chrome-bottomInset)
 	return fl
 }
 

@@ -6,6 +6,7 @@ const RepeatOne
 const RepeatWatchlist
 const WatchCap
 const aboutWidth
+const alertBodyInset
 const alertBodyLines
 const alertContentLines
 const bottomInset
@@ -38,6 +39,7 @@ const modalVoice
 const recentEmpty
 const recentWindow
 const setupQuestions
+const staleAfter
 const tableBreakpoint
 const viewPadLeft
 const viewPadRight
@@ -69,6 +71,7 @@ func (Dashboard).body
 func (Dashboard).bodyKeyFor
 func (Dashboard).canAddFocused
 func (Dashboard).canRemoveFocused
+func (Dashboard).clock
 func (Dashboard).close
 func (Dashboard).commitCmd
 func (Dashboard).compact
@@ -97,6 +100,7 @@ func (Dashboard).helpLines
 func (Dashboard).helpModal
 func (Dashboard).hydrateCmd
 func (Dashboard).layout
+func (Dashboard).layoutWith
 func (Dashboard).marqueeProgress
 func (Dashboard).memoCounts
 func (Dashboard).modalLines
@@ -165,9 +169,11 @@ func (RepeatMode).next
 func NewDashboard
 func ParseRadioMode
 func aggregateWarnings
+func agoWords
 func alertBlocks
 func alertClock
 func alertRecordLines
+func appendHelpGroup
 func buoyNote
 func compass
 func currentRow
@@ -189,6 +195,7 @@ func foldWarnings
 func formatAlertBody
 func frameText
 func gridRow
+func helpGroups
 func hiLo
 func hotspotCount
 func hotspotRows
@@ -249,6 +256,7 @@ type bodyKey
 type bodyMemo
 type committedMsg
 type frameLayout
+type helpGroup
 type issue
 type marineCell
 type modal

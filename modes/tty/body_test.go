@@ -54,17 +54,17 @@ func TestRecentSectionSeedsWithRail(t *testing.T) {
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 133, Height: 28}) // compact: 10-row window (UAT 58 budget)
 	v := m.View().Content
 	for _, want := range []string{
-		"Showing 1-10 of 25 locations",
+		"Showing 1-6 of 25 locations",
 		"002. City 01", // numbering continues after the 1 priority row
-		"011. City 10", // last visible window row
+		"007. City 06", // last visible window row (a 6-row window at 44 rows with three-row bands)
 		"▲", "│", "▼",
 	} {
 		if !strings.Contains(v, want) {
 			t.Fatalf("recent section missing %q:\n%s", want, v)
 		}
 	}
-	if strings.Contains(v, "City 11") {
-		t.Fatalf("rows beyond the 10-row window must not render:\n%s", v)
+	if strings.Contains(v, "City 07") {
+		t.Fatalf("rows beyond the 6-row window must not render:\n%s", v)
 	}
 }
 
@@ -132,7 +132,7 @@ func TestWatchlistControlsAboveAndSectionBandTight(t *testing.T) {
 		}
 		return -1
 	}
-	ctrl, group, band := idx("[ctrl+a] Add"), idx("L O C A T I O N"), idx("R E C E N T")
+	ctrl, group, band := idx("[ctrl+a] Favorite"), idx("L O C A T I O N"), idx("R E C E N T")
 	if ctrl < 0 || group < 0 || band < 0 || ctrl > group {
 		t.Fatalf("controls must sit above the group labels: ctrl=%d group=%d band=%d", ctrl, group, band)
 	}
@@ -161,7 +161,7 @@ func TestRecentTableDropsItsGroupRow(t *testing.T) {
 		t.Fatalf("exactly one group-label row (the watchlist's), got %d", n)
 	}
 	for _, l := range strings.Split(v, "\n") {
-		if strings.Contains(l, "▲") && !strings.Contains(l, "R E C E N T") {
+		if strings.Contains(l, "▲") && !strings.HasPrefix(strings.TrimSpace(l), "[") { // a band row: the band's bottom row since the three-row bands (UAT 45, nit 2026-08-27)
 			t.Fatalf("▲ must ride the section band (UAT 45): %q", l)
 		}
 	}
@@ -191,13 +191,14 @@ func TestRecentWindowExpandsOnTallTerminals(t *testing.T) {
 		t.Fatal("quit control must stay visible (header)")
 	}
 	mid, _ := m.Update(tea.WindowSizeMsg{Width: 133, Height: 50})
-	if md := mid.(Dashboard); md.compact() || !strings.Contains(mid.View().Content, "Showing 1-24 of 25 locations") {
+	if md := mid.(Dashboard); md.compact() || !strings.Contains(mid.View().Content, "Showing 1-22 of 25 locations") {
 		// UAT 49/57: 50 rows holds the FULL modules (radio 4 rows with viz
-		// off, alert 7) with a 22-row window now that the footer is gone.
-		t.Fatalf("50 rows: full modules with a 22-row window:\n%s", mid.View().Content)
+		// off, alert 5 since the 2026-08-27 redesign) with a 26-row window
+		// now that the footer is gone — every one of the 25 seeds shows.
+		t.Fatalf("50 rows: full modules with a 22-row window (three-row bands):\n%s", mid.View().Content)
 	}
 	exact, _ := m.Update(tea.WindowSizeMsg{Width: 133, Height: 39})
-	if !strings.Contains(exact.View().Content, "Showing 1-21 of 25 locations") {
+	if !strings.Contains(exact.View().Content, "Showing 1-17 of 25 locations") {
 		t.Fatalf("39 rows must yield a 21-row window (compact chrome 16 + inset 2):\n%s", exact.View().Content)
 	}
 }
@@ -223,10 +224,10 @@ func TestHeaderMastheadCentresTheStampAndCountsAPIs(t *testing.T) {
 	if !strings.HasSuffix(lines[0], "[S] Status") || !strings.Contains(lines[0], "Updated: ") || render.Width(lines[0]) > 133 {
 		t.Fatalf("title line: %q", lines[0])
 	}
-	i, j := strings.Index(lines[0], "Updated:"), strings.Index(lines[0], "API:")
-	left := strings.Index(lines[0], "v0.1.0-test") + len("v0.1.0-test")
-	if before, after := i-left, j-(i+len("Updated: 01/02/2006 15:04:05 MST")); before < after-3 || before > after+3 {
-		t.Fatalf("stamp centred between title and API block: %d vs %d in %q", before, after, lines[0])
+	i := strings.Index(lines[0], "Updated:")
+	end := i + strings.Index(lines[0][i:], "  ")                                                 // the stamp ends at the first double space (its own words are single-spaced)
+	if centre, want := (i+end)/2, render.Width(lines[0])/2; centre < want-1 || centre > want+1 { // the row's global centre (UAT 2026-08-27)
+		t.Fatalf("stamp centred on the row: %d vs %d in %q", centre, want, lines[0])
 	}
 	if !strings.HasPrefix(lines[1], "[s] Setup  [a] About  [t] Theme  [?] Help  [q] Quit") {
 		t.Fatalf("chip line: %q", lines[1])
@@ -251,8 +252,7 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
 	v := stripANSITest(model.(Dashboard).View().Content)
 	for _, want := range []string{
-		"                                     Run 's' Setup, 'l'ookup a location, or 'ctrl+a' a searched",
-		"                                                 location to add to your Watchlist",
+		"then 'ctrl+a' Favorite it",
 		"NO RECENT LOCATION SEARCHED or DATA-SEEDING FAILED",
 	} {
 		if !strings.Contains(v, want) {
@@ -269,11 +269,11 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 			t.Fatalf("line overflows 60 cols: %q", l)
 		}
 	}
-	if nv := stripANSITest(narrow.(Dashboard).View().Content); !strings.Contains(nv, "searched location to add to your Watchlist") {
+	if nv := stripANSITest(narrow.(Dashboard).View().Content); !strings.Contains(nv, "to your Watchlist") {
 		t.Fatalf("narrow: the message wraps, never truncates:\n%s", nv)
 	}
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
-	if v := stripANSITest(model.(Dashboard).View().Content); strings.Contains(v, "to add to your Watchlist") || !strings.Contains(v, "###. NAME") {
+	if v := stripANSITest(model.(Dashboard).View().Content); strings.Contains(v, "to your Watchlist") || !strings.Contains(v, "###. NAME") {
 		t.Fatalf("data replaces the watchlist empty state:\n%s", v)
 	}
 }

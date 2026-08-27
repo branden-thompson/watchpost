@@ -31,6 +31,7 @@ type bodyKey struct {
 	recentOff      int
 	units          render.Units
 	ascii          bool
+	thinBands      bool                 // the bands' height (UAT 2026-08-27)
 	radioKey       snapshot.LocationKey // the ▶ row
 	radioPlaying   bool                 // ▶ clears on stop while radioKey stays
 	radioRepeat    RepeatMode           // the ∞ mark on every row
@@ -55,7 +56,7 @@ func (d Dashboard) bodyKeyFor(fl frameLayout) bodyKey {
 		width: fl.o.Width, height: d.height, compact: fl.compact, radioH: fl.radioH, alertH: fl.alertH,
 		controlRows: fl.controlRows, window: fl.window, days: fl.days,
 		snap: d.snap, recent: d.recent, selected: d.selected, recentOff: d.recentOff,
-		units: d.units, ascii: fl.o.ASCII,
+		units: d.units, ascii: fl.o.ASCII, thinBands: fl.o.ThinBands,
 		radioKey: d.radioKey, radioPlaying: d.radioPlaying, radioRepeat: d.radioRepeat,
 		theme: render.ThemeGeneration(), fireBoldMW: d.fireBoldMW(),
 	}

@@ -31,6 +31,7 @@ const KeyChipMuted
 const ModalBGDark
 const ModalBGLight
 const ModalFG
+const ModalTitle
 const NameAdvisory
 const NameWarning
 const ProviderDown
@@ -71,6 +72,8 @@ const nameMinW
 const stationColsW
 const tableGutter
 func (Opts).AlertBanner
+func (Opts).BandHeight
+func (Opts).BandRows
 func (Opts).Block
 func (Opts).Controls
 func (Opts).Distance
@@ -103,6 +106,7 @@ func AlertIsWarning
 func AlertTone
 func BGVisible
 func Band
+func CentreBetween
 func ColorOn
 func Ctl
 func CtlIf

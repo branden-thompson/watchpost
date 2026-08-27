@@ -136,8 +136,8 @@ func (d Dashboard) detailsModal(o render.Opts) string {
 	if d.snap != nil {
 		stamp := "Updated: " + dataAsOf(d.snap).Local().Format("01/02/2006 15:04:05 MST")
 		fill := min(o.Width, d.modalWidth()) - 10 - len([]rune(title)) - len([]rune(stamp))
-		if fill > 1 {
-			title = title + " " + strings.Repeat("─", fill) + " " + stamp
+		if fill > 1 { // the name and the stamp bold white, the fill in the panel's tone (the panel leaves a tinted title as it is)
+			title = render.Tint(title, render.Tok(render.ModalTitle)) + " " + strings.Repeat("─", fill) + " " + render.Tint(stamp, render.Tok(render.ModalTitle))
 		}
 	}
 	return d.floatModal(o, d.modalWidth(), title, d.detailLines())

@@ -190,3 +190,25 @@ func truncate(s string, w int) string {
 	}
 	return runewidth.Truncate(stripANSI(s), w, "…")
 }
+
+// CentreBetween lays a row out as left … mid … right across width with mid
+// centred on the row's global centre — the same axis whatever the side
+// blocks measure, so the header's stamp and the alert title line up (HUM
+// LEAD UAT 2026-08-27). When the centred text would run into a side block
+// it shifts the least it must (two cells of air kept); when it cannot fit
+// at all it is shortened with an ellipsis, and failing that dropped.
+func CentreBetween(left, mid, right string, width int) string {
+	lw, rw := Width(left), Width(right)
+	room := width - lw - rw - 4
+	if Width(mid) > room && room >= 4 {
+		mid = truncate(mid, room-1) + "…"
+	}
+	if Width(mid) > room {
+		return PadBetween(left, right, width)
+	}
+	mw := Width(mid)
+	start := (width - mw) / 2         // the global centre
+	start = max(start, lw+2)          // not into the left block
+	start = min(start, width-rw-2-mw) // not into the right block
+	return left + strings.Repeat(" ", start-lw) + mid + strings.Repeat(" ", width-rw-start-mw) + right
+}

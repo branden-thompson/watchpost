@@ -47,6 +47,16 @@ CSV's pre-GC series said GROWTH (+25.5 MB/day); the same series past the last st
 UNCERTIFIABLE. The sites (`hms.Parse` → `io.ReadAll`, `xml.copyValue`, `parseDescription`) are the
 ones Q3 retired.
 
+## 3a. The pre-pass process, sampled for 26 hours (the "before" the plan asked for — OQ-3)
+
+HUM LEAD's own `v0.9.4` session (PID 67943, launched 2026-08-25, radio in use) was sampled every 5
+minutes from 2026-08-26 10:21 UTC to 2026-08-27 12:09 UTC — 291 samples, `ps`/`vmmap` only, never a
+process listing (RT-15): **RSS 123–455 MB (last 148), physical footprint 116–242 MB (last 160),
+threads 30–39 (last 37)**. That is the footprint band the plan's §1 rows 1–2 were written against
+(78 MB idle / 98–175 MB radio-on) and the thread ratchet the bound by construction (≈ 34) replaces.
+The pass's soaks on `v0.10.x` run at RSS 80–140 MB, 23–25 threads. Record:
+`02-analysis/baseline-pid67943.csv` (the `.log` is gitignored by pattern; the CSV is the committed copy).
+
 ## 4. Bounds, stated (every memo, cache, counter the pass introduced or touched)
 
 | Structure | Owner | Bound | Gauge | Pin |

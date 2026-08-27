@@ -108,18 +108,58 @@ func TestReportTimingIsOptInAndNamesTheMeasurement(t *testing.T) {
 func TestPublisherWindowFoldsAWave(t *testing.T) {
 	var runs atomic.Int32
 	pb := &publisher{window: 40 * time.Millisecond, run: func() *snapshot.Snapshot { runs.Add(1); return nil }}
+	pb.Trigger() // the first publish is immediate (F-1); the wave comes after it
+	time.Sleep(20 * time.Millisecond)
 	for range 20 {
 		pb.Trigger()
 		time.Sleep(time.Millisecond)
 	}
 	time.Sleep(120 * time.Millisecond)
-	if got := runs.Load(); got != 1 {
-		t.Fatalf("twenty triggers inside one window publish once, got %d", got)
+	if got := runs.Load(); got != 2 {
+		t.Fatalf("twenty triggers inside one window publish once, got %d", got-1)
 	}
-	if st := pb.stats(); st.Publishes != 1 || st.Folded != 19 {
+	if st := pb.stats(); st.Publishes != 2 || st.Folded != 19 {
 		t.Fatalf("the counters say so: %+v", st)
 	}
 	if recentPublishCoalesce < time.Second || publishCoalesce != 50*time.Millisecond {
 		t.Fatalf("RECENT folds a wave (seconds); priority stays at 50 ms: %v / %v", recentPublishCoalesce, publishCoalesce)
+	}
+}
+
+// Follow-up F-1 (HUM LEAD, 2026-08-27): the seed rows must be on screen at
+// once — the first publish never waits for a window — and while the launch
+// burst lands the rows fill progressively (the launch window), so the
+// table rehydrates cell by cell under the loading shimmer instead of
+// appearing all at once after the steady-state window.
+func TestFirstPublishIsImmediateAndLaunchFillsProgressively(t *testing.T) {
+	var runs atomic.Int32
+	pb := &publisher{window: 400 * time.Millisecond, launchWindow: 40 * time.Millisecond, launchUntil: time.Now().Add(300 * time.Millisecond),
+		run: func() *snapshot.Snapshot { runs.Add(1); return nil }}
+	start := time.Now()
+	pb.Trigger()
+	deadline := time.Now().Add(100 * time.Millisecond)
+	for runs.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(2 * time.Millisecond)
+	}
+	if runs.Load() != 1 || time.Since(start) > 100*time.Millisecond {
+		t.Fatalf("the first publish is immediate: runs=%d after %v", runs.Load(), time.Since(start))
+	}
+	pb.Trigger() // inside the launch phase: the short window
+	time.Sleep(120 * time.Millisecond)
+	if runs.Load() != 2 {
+		t.Fatalf("a launch-phase trigger publishes within the launch window: runs=%d", runs.Load())
+	}
+	time.Sleep(250 * time.Millisecond) // past launchUntil
+	pb.Trigger()
+	time.Sleep(120 * time.Millisecond)
+	if runs.Load() != 2 {
+		t.Fatalf("after the launch phase the steady-state window holds: runs=%d", runs.Load())
+	}
+	time.Sleep(400 * time.Millisecond)
+	if runs.Load() != 3 {
+		t.Fatalf("…and publishes when it elapses: runs=%d", runs.Load())
+	}
+	if recentLaunchWindow >= time.Second || recentLaunchPhase < 30*time.Second {
+		t.Fatalf("the RECENT launch window is sub-second for the whole launch burst: %v for %v", recentLaunchWindow, recentLaunchPhase)
 	}
 }

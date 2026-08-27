@@ -32,7 +32,7 @@ func TestHeaderTokensAtResolvedOffsets(t *testing.T) {
 	// LABEL hidden (UAT 11.2) and NAME is the fill column (UAT 11.1): at the
 	// minimal full width (115) every downstream token sits at the computed
 	// offset; widening moves them right by exactly the fill growth.
-	hdr := stripANSI(strings.Split((Opts{Width: 115, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
+	hdr := stripANSI(strings.Split((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
 	for tok, off := range map[string]int{"###.": 11, "NAME": 16, "ZIP": 37, "NOW": 60} {
 		if got := runeIdx(hdr, tok); got != off {
 			t.Fatalf("%q at %d, want %d\n%q", tok, got, off, hdr)
@@ -41,14 +41,14 @@ func TestHeaderTokensAtResolvedOffsets(t *testing.T) {
 	if strings.Contains(hdr, "LABEL") {
 		t.Fatalf("LABEL must be hidden (UAT 11.2): %q", hdr)
 	}
-	wide := stripANSI(strings.Split((Opts{Width: 135, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
+	wide := stripANSI(strings.Split((Opts{ThinBands: true, Width: 135, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
 	if got := runeIdx(wide, "ZIP"); got != 57 {
 		t.Fatalf("fill must widen NAME by +20 at 135 cols: ZIP at %d, want 57\n%q", got, wide)
 	}
 }
 
 func TestLocationTableAnatomy(t *testing.T) {
-	out := (Opts{Width: 115, Units: UnitF}).LocationTable([]LocationRow{testRow()}, 0)
+	out := (Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{testRow()}, 0)
 	lines := strings.Split(out, "\n")
 	if len(lines) != 3 {
 		t.Fatalf("expect group+header+1 row, got %d:\n%s", len(lines), out)
@@ -85,7 +85,7 @@ func TestResponsiveColumnDropsInOrder(t *testing.T) {
 	// HI/LOW; the NAME fill keeps every layout flush to the width.
 	r := testRow()
 	at := func(w int) string {
-		return stripANSI((Opts{Width: w, Units: UnitF}).LocationTable([]LocationRow{r}, 0))
+		return stripANSI((Opts{ThinBands: true, Width: w, Units: UnitF}).LocationTable([]LocationRow{r}, 0))
 	}
 
 	full := at(121)
@@ -126,7 +126,7 @@ func TestExtendedColumnsBeyond125(t *testing.T) {
 	}
 	// 240 (was 220): WX STN + DIST take the first 16 cells beyond the minimal
 	// full layout (UAT 60); the five day columns claim the width beyond that.
-	out := stripANSI((Opts{Width: 240, Units: UnitF}).LocationTable([]LocationRow{r}, 5))
+	out := stripANSI((Opts{ThinBands: true, Width: 240, Units: UnitF}).LocationTable([]LocationRow{r}, 5))
 	lines := strings.Split(out, "\n")
 	if !strings.Contains(lines[0], "E X T E N D E D   F O R E C A S T") {
 		t.Fatalf("ultra-wide group header missing:\n%s", lines[0])
@@ -142,11 +142,11 @@ func TestExtendedColumnsBeyond125(t *testing.T) {
 		t.Fatalf("fixed-slot day cell missing:\n%s", lines[2])
 	}
 	// Narrower ultra-wide terminals get fewer day columns, never a torn cell.
-	narrow := stripANSI((Opts{Width: 150, Units: UnitF}).LocationTable([]LocationRow{r}, 5))
+	narrow := stripANSI((Opts{ThinBands: true, Width: 150, Units: UnitF}).LocationTable([]LocationRow{r}, 5))
 	if n := strings.Count(strings.Split(narrow, "\n")[2], "H "); n != 1 {
 		t.Fatalf("150 cols fits exactly one extended day, got %d:\n%s", n, narrow)
 	}
-	if got := (Opts{Width: 240}).TableRowLen(5); got != 240 {
+	if got := (Opts{ThinBands: true, Width: 240}).TableRowLen(5); got != 240 {
 		t.Fatalf("TableRowLen must span the width under fill, got %d", got)
 	}
 }
@@ -156,7 +156,7 @@ func TestSessionFourStyling(t *testing.T) {
 	defer rendering.SetColorEnabledForTest(false)
 
 	// 4.8: provider health green when OK, red otherwise.
-	o := Opts{Width: 125, Units: UnitF}
+	o := Opts{ThinBands: true, Width: 125, Units: UnitF}
 	if g := o.HealthGlyph("NWS", snapshot.ProviderOK); !strings.Contains(g, "38;5;77") {
 		t.Fatalf("healthy provider must be green: %q", g)
 	}
@@ -216,7 +216,7 @@ func TestAlertNameAndTrendTones(t *testing.T) {
 	// (warning); trend arrows muted orange up / muted cyan down.
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	o := Opts{Width: 125, Units: UnitF}
+	o := Opts{ThinBands: true, Width: 125, Units: UnitF}
 	adv := testRow()
 	adv.Selected, adv.HasAlert, adv.WarnAlert = false, true, false
 	warn := testRow()
@@ -245,7 +245,7 @@ func TestGroupBandsTouchAtGutterMidpoints(t *testing.T) {
 	// color off keeps the bracketed form.
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	out := (Opts{Width: 125, Units: UnitF}).LocationTable([]LocationRow{testRow()}, 0)
+	out := (Opts{ThinBands: true, Width: 125, Units: UnitF}).LocationTable([]LocationRow{testRow()}, 0)
 	raw := strings.Split(out, "\n")[0]
 	// Adjacent bands close and immediately reopen - any plain spaces between
 	// a band's reset and the next band's escape is a visual gap.
@@ -262,7 +262,7 @@ func TestExtendedBandShortLabelWhenNarrow(t *testing.T) {
 	// never a truncated "EXTENDEDFORECA…".
 	r := testRow()
 	r.Extended = []DayCell{{Date: "08/26", Hi: f64(30.0), Lo: f64(20.0)}}
-	out := stripANSI((Opts{Width: 150, Units: UnitF}).LocationTable([]LocationRow{r}, 1))
+	out := stripANSI((Opts{ThinBands: true, Width: 150, Units: UnitF}).LocationTable([]LocationRow{r}, 1))
 	band := strings.Split(out, "\n")[0]
 	if strings.Contains(band, "…") || strings.Contains(band, "EXTENDEDF") {
 		t.Fatalf("narrow extended band must use the short title: %q", band)
@@ -278,7 +278,7 @@ func TestAlertBadgeCountAndTone(t *testing.T) {
 	// warning); go-studs spacing untouched.
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	hdr := stripANSI(strings.Split((Opts{Width: 115, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
+	hdr := stripANSI(strings.Split((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
 	if strings.Contains(hdr, "♪") {
 		t.Fatalf("header note icon must be hidden (UAT 20.1): %q", hdr)
 	}
@@ -286,7 +286,7 @@ func TestAlertBadgeCountAndTone(t *testing.T) {
 	warn.HasAlert, warn.WarnAlert, warn.AlertCount, warn.Playing = true, true, 2, false
 	adv := testRow()
 	adv.Selected, adv.HasAlert, adv.WarnAlert, adv.AlertCount, adv.Playing = false, true, false, 1, false
-	out := (Opts{Width: 115, Units: UnitF}).LocationTable([]LocationRow{warn, adv}, 0)
+	out := (Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{warn, adv}, 0)
 	lines := strings.Split(out, "\n")
 	plain := []rune(stripANSI(lines[2]))
 	if got := string(plain[0:11]); got != "›       2⚠ " {
@@ -309,7 +309,7 @@ func TestFocusedRowCellsLightBlueAndPointerBoldWhite(t *testing.T) {
 	// and HI/LO temp tones unchanged) and the pointer is bold white.
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	row := strings.Split((Opts{Width: 115, Units: UnitF}).LocationTable([]LocationRow{testRow()}, 0), "\n")[2]
+	row := strings.Split((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{testRow()}, 0), "\n")[2]
 	if !strings.Contains(row, "\x1b[1;97m›") {
 		t.Fatalf("pointer must be bold white:\n%q", row)
 	}
@@ -321,7 +321,7 @@ func TestFocusedRowCellsLightBlueAndPointerBoldWhite(t *testing.T) {
 	}
 	unfocused := testRow()
 	unfocused.Selected = false
-	if r := strings.Split((Opts{Width: 115, Units: UnitF}).LocationTable([]LocationRow{unfocused}, 0), "\n")[2]; strings.Contains(r, "38;5;117") {
+	if r := strings.Split((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{unfocused}, 0), "\n")[2]; strings.Contains(r, "38;5;117") {
 		t.Fatal("unfocused rows must not use the focus cell tone")
 	}
 }
@@ -335,7 +335,7 @@ func TestStationColumnsUAT60(t *testing.T) {
 	r := testRow()
 	r.Station, r.StationKM = "KCRQ", f64(5.5)
 	at := func(w int, u Units) []string {
-		return strings.Split(stripANSI((Opts{Width: w, Units: u}).LocationTable([]LocationRow{r}, 0)), "\n")
+		return strings.Split(stripANSI((Opts{ThinBands: true, Width: w, Units: u}).LocationTable([]LocationRow{r}, 0)), "\n")
 	}
 	full := at(131, UnitF)
 	for tok, off := range map[string]int{"NAME": 16, "WX STN": 37, "DIST": 45, "ZIP": 53, "CONDITIONS": 62} {
@@ -359,7 +359,7 @@ func TestStationColumnsUAT60(t *testing.T) {
 	}
 	// Loading / unknown: cells stay blank rather than lying.
 	blank := testRow()
-	if out := stripANSI((Opts{Width: 131, Units: UnitF}).LocationTable([]LocationRow{blank}, 0)); strings.Contains(out, " mi") {
+	if out := stripANSI((Opts{ThinBands: true, Width: 131, Units: UnitF}).LocationTable([]LocationRow{blank}, 0)); strings.Contains(out, " mi") {
 		t.Fatalf("unknown distance must render blank:\n%s", out)
 	}
 	// Below 131 the station columns leave first; TOMORROW survives at 125.
@@ -398,7 +398,7 @@ func TestFireMarkIsACountedOrangeDiamond(t *testing.T) {
 	defer rendering.SetColorEnabledForTest(false)
 	r := testRow()
 	r.Fire, r.FireHot, r.AlertCount = 3, true, 2
-	out := (Opts{Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0)
+	out := (Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0)
 	plain := []rune(stripANSI(strings.Split(out, "\n")[2]))
 	if got := string(plain[0:15]); got != "›  ▶ 3◆ 2⚠ 001." {
 		t.Fatalf("marks block: %q", got)
@@ -407,15 +407,36 @@ func TestFireMarkIsACountedOrangeDiamond(t *testing.T) {
 		t.Fatalf("a hot row wears a bold ◆:\n%q", out)
 	}
 	r.FireHot = false
-	if out := (Opts{Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0); strings.Contains(out, Tint("◆", "1;"+Tok(FireMark))) {
+	if out := (Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0); strings.Contains(out, Tint("◆", "1;"+Tok(FireMark))) {
 		t.Fatal("a cool row must not read bold")
 	}
-	ascii := stripANSI((Opts{Width: 115, Units: UnitF, ASCII: true}).LocationTable([]LocationRow{r}, 0))
+	ascii := stripANSI((Opts{ThinBands: true, Width: 115, Units: UnitF, ASCII: true}).LocationTable([]LocationRow{r}, 0))
 	if !strings.Contains(ascii, "3*") || strings.Contains(ascii, "◆") {
 		t.Fatalf("--ascii swaps ◆ for *:\n%s", ascii)
 	}
 	r.Fire = 0
-	if strings.Contains(stripANSI((Opts{Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0)), "◆") {
+	if strings.Contains(stripANSI((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0)), "◆") {
 		t.Fatal("no fire, no mark")
+	}
+}
+
+// HUM LEAD UAT 2026-08-27: the group bands are three rows — a band-coloured
+// blank row above and below the label — unless the layout asked for thin.
+func TestGroupBandsAreThreeRowsUnlessThin(t *testing.T) {
+	o := Opts{Width: 120} // the anatomy tests above use ThinBands: they test columns, not the band height
+	rows := strings.Split(o.LocationTable([]LocationRow{{Index: 1, Name: "X"}}, 0), "\n")
+	if len(rows) < 5 || !strings.Contains(rows[1], "L O C A T I O N") || strings.Contains(rows[0], "L") || strings.Contains(rows[2], "L") {
+		t.Fatalf("three band rows with the label in the middle:\n%s", strings.Join(rows[:3], "\n"))
+	}
+	if w0, w1 := displayWidth(rows[0]), displayWidth(rows[1]); w0 != w1 || !strings.HasPrefix(strings.TrimSpace(rows[0]), "[") {
+		t.Fatalf("the blank rows span the same cells as the label row (%d vs %d): %q", w0, w1, rows[0])
+	}
+	o.ThinBands = true
+	thin := strings.Split(o.LocationTable([]LocationRow{{Index: 1, Name: "X"}}, 0), "\n")
+	if !strings.Contains(thin[0], "L O C A T I O N") || strings.Contains(thin[1], "L O C A T I O N") {
+		t.Fatalf("thin: the label row alone:\n%s", strings.Join(thin[:2], "\n"))
+	}
+	if band := (Opts{}).BandRows("R E C E N T", "R", 40, GroupSectionBG); len(band) != 3 || band[0] != band[2] || !strings.Contains(band[1], "R E C E N T") {
+		t.Fatalf("section band rows: %q", band)
 	}
 }

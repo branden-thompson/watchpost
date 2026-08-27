@@ -173,15 +173,17 @@ func TestControlPlacementUAT56(t *testing.T) {
 	lines := strings.Split(v, "\n")
 	var ctrl, head string
 	for _, l := range lines {
-		if strings.Contains(l, "[ctrl+a] Add") {
+		if strings.Contains(l, "[ctrl+a] Favorite") {
 			ctrl = l
 		}
 		if strings.Contains(l, "[a] About") {
 			head = l
 		}
 	}
-	if !strings.Contains(ctrl, "[enter] Details") || strings.Index(ctrl, "[enter] Details") > strings.Index(ctrl, "[ctrl+a] Add") {
-		t.Fatalf("[enter] Details must lead the control row: %q", ctrl)
+	// UAT 2026-08-27 order: [l] Lookup Location, [enter] Details, [ctrl+a] Favorite, [shift+del] Unfavorite.
+	li, ei, fi := strings.Index(ctrl, "[l] Lookup Location"), strings.Index(ctrl, "[enter] Details"), strings.Index(ctrl, "[ctrl+a] Favorite")
+	if li < 0 || !(li < ei && ei < fi) {
+		t.Fatalf("control row order Lookup < Details < Favorite: %q", ctrl)
 	}
 	if !strings.HasSuffix(strings.TrimRight(ctrl, " "), "[↑↓] Navigate") {
 		t.Fatalf("[↑↓] Navigate must end the control row (right-aligned): %q", ctrl)

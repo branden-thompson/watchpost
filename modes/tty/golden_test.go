@@ -28,6 +28,7 @@ func goldenDash(t *testing.T, ascii bool) Dashboard {
 	d := benchDash(t, 133, 44).(Dashboard)
 	rendering.SetColorEnabledForTest(false)
 	d.cfg.ASCII = ascii
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 2, 0, 0, time.UTC) } // the stamp's age is part of the frame
 	return d
 }
 
@@ -92,5 +93,6 @@ func TestFrameGoldenColourOn(t *testing.T) {
 	time.Local = time.UTC
 	t.Cleanup(func() { time.Local = local })
 	d := benchDash(t, 133, 44).(Dashboard) // TERM set, colour forced on
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 2, 0, 0, time.UTC) }
 	checkGolden(t, "frame-133x44-colour.golden", d.View().Content)
 }

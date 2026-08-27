@@ -116,3 +116,27 @@ func TestUntitledPanelHasUnbrokenTopRule(t *testing.T) {
 		t.Fatalf("untitled top rule: %q", top)
 	}
 }
+
+// HUM LEAD UAT 2026-08-27: a window's title reads bold white against the
+// tile; the rule around it keeps the panel's tone; a caller-tinted title is
+// left alone; the width is unchanged.
+func TestPanelTitleIsBoldWhite(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.ResetColorEnabledForTest()
+	o := Opts{Width: 40}
+	head := strings.SplitN(o.PanelColored("Title", "x", "38;5;250"), "\n", 2)[0]
+	if !strings.Contains(head, "\x1b[1;97mTitle\x1b[0m") {
+		t.Fatalf("the title carries ModalTitle: %q", head)
+	}
+	if w := displayWidth(head); w != 40 {
+		t.Fatalf("width %d", w)
+	}
+	pre := Tint("Mine", "38;5;196")
+	if head := strings.SplitN(o.PanelColored(pre, "x", ""), "\n", 2)[0]; strings.Count(head, "\x1b[") != 2 {
+		t.Fatalf("a pre-tinted title is not wrapped again: %q", head)
+	}
+	rendering.SetColorEnabledForTest(false)
+	if head := strings.SplitN(o.PanelColored("Title", "x", ""), "\n", 2)[0]; !strings.HasPrefix(head, "┌── Title ─") || strings.Contains(head, "\x1b") || displayWidth(head) != 40 {
+		t.Fatalf("colour off: plain, same width: %q", head)
+	}
+}

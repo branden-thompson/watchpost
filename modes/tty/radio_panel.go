@@ -279,18 +279,27 @@ func (d Dashboard) radioStateLabel() string {
 	return render.Tint("■ STOPPED", render.Tok(render.StateStopped))
 }
 
-// radioToggle: [space] tunes the focused (or pinned) location, or stops.
+// radioToggle: [space] plays the focused location, or stops when that
+// location is already the one playing (HUM LEAD 2026-08-27: "play on A,
+// navigate to B, space → play B, not stop"). Re-tuning to the focused
+// location while another plays is the common case now that a person browses
+// the list with the radio on.
 func (d Dashboard) radioToggle() (Dashboard, bool) {
 	radio := d.cfg.Radio
-	if d.radioPlaying {
-		d.radioPlaying = false
-		return d.withCmd(func() tea.Msg { radio.Stop(); return nil }), true
-	}
 	loc := d.selectedLocation()
 	if loc == nil {
+		if d.radioPlaying { // no selection to tune: space still stops
+			d.radioPlaying = false
+			return d.withCmd(func() tea.Msg { radio.Stop(); return nil }), true
+		}
 		return d, true
 	}
 	ref := refOf(*loc)
+	if d.radioPlaying && d.radioKey == snapshot.Key(ref) { // already playing THIS location: stop
+		d.radioPlaying = false
+		return d.withCmd(func() tea.Msg { radio.Stop(); return nil }), true
+	}
+	// Not playing, or playing a different location: tune the focused one.
 	d.radioPlaying, d.radioState, d.radioKey = true, "connecting", snapshot.Key(ref)
 	return d.withCmd(func() tea.Msg { radio.Tune(ref); return nil }), true
 }

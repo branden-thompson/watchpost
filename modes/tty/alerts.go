@@ -252,7 +252,7 @@ func wrapPrefixed(_ render.Opts, text string, w int) []string {
 // Alert module content: title + blank + THREE body lines (UAT 15.2a) +
 // blank + pager = 7; the seam adds bg padding when the tone is visible
 // (UAT 19.1 global inset policy).
-const alertContentLines = 7
+const alertContentLines = 5 // header row, blank, three body lines (UAT 2026-08-27 redesign)
 
 const alertBodyLines = 3
 
@@ -270,34 +270,39 @@ func (d Dashboard) alertArea(fl frameLayout) string {
 	if fl.compact {
 		return o.Module([]string{d.alertCompactLine(o, sel, a, mw)}, fg, bg) // UAT 34
 	}
+	// UAT 2026-08-27 redesign: one header row — the count at the left inset,
+	// the title centred between count and controls, the controls at the
+	// right inset — a blank, then the fixed three-line body (UAT 15.2a: the
+	// budget prevents alert "jitters" as the terminal narrows) with an
+	// 8-col inset. UAT 21.1: paging chips mute when the press would do nothing.
 	title := o.Glyphs().Alert + " " + strings.ToUpper(a.Event) + " · " + sel.Label
-	// UAT 15.2: wrap, never truncate; fixed 3-line body area (15.2a); the
-	// MESSAGE alone carries a 4-col inset each side (UAT 19.1).
-	body := render.WrapText(fmt.Sprintf("[%s] %s", a.Severity, a.Headline), mw-8)
+	count := fmt.Sprintf("%02d / %02d Alerts", d.alertIdx+1, len(sel.Alerts))
+	controls := o.KeyCap("A") + " Details  " +
+		o.KeyCapIf("←", d.alertIdx > 0) + " Previous  " +
+		o.KeyCapIf("→", d.alertIdx < len(sel.Alerts)-1) + " Next"
+	body := render.WrapText(fmt.Sprintf("[%s] %s", a.Severity, a.Headline), mw-alertBodyInset*2)
 	if len(body) > alertBodyLines {
 		body = body[:alertBodyLines]
 	}
 	for i := len(body); i < alertBodyLines; i++ { // counter form (P10-02)
 		body = append(body, "")
 	}
-	lines := []string{title, ""}
+	lines := []string{render.CentreBetween(count, title, controls, mw), ""}
 	for _, l := range body {
-		lines = append(lines, "    "+l)
+		lines = append(lines, strings.Repeat(" ", alertBodyInset)+l)
 	}
-	// UAT 21.1: paging chips mute when the press would do nothing.
-	controls := o.KeyCap("A") + " Alert Details   " +
-		o.KeyCapIf("←", d.alertIdx > 0) + " Previous  " +
-		o.KeyCapIf("→", d.alertIdx < len(sel.Alerts)-1) + " Next"
-	lines = append(lines, "", render.PadBetween(fmt.Sprintf("%02d / %02d Alerts", d.alertIdx+1, len(sel.Alerts)), controls, mw))
 	return o.Module(lines, fg, bg)
 }
+
+// alertBodyInset is the body's inset beyond the module edge (the mock).
+const alertBodyInset = 8
 
 // alertCompactLine is the one-row alert module (UAT 34):
 // "nn/nn  ⚠ EVENT · Label    [sev] headline...   [A] Alert Details [←] Previous [→] Next".
 func (d Dashboard) alertCompactLine(o render.Opts, sel *snapshot.Location, a snapshot.Alert, mw int) string {
 	n := len(sel.Alerts)
 	head := fmt.Sprintf("%02d/%02d  %s %s · %s", d.alertIdx%n+1, n, o.Glyphs().Alert, strings.ToUpper(a.Event), sel.Label)
-	controls := o.KeyCap("A") + " Alert Details  " + o.KeyCapIf("←", d.alertIdx > 0) + " Previous  " + o.KeyCapIf("→", d.alertIdx < n-1) + " Next"
+	controls := o.KeyCap("A") + " Details  " + o.KeyCapIf("←", d.alertIdx > 0) + " Previous  " + o.KeyCapIf("→", d.alertIdx < n-1) + " Next"
 	body := fmt.Sprintf("[%s] %s", a.Severity, a.Headline)
 	room := mw - render.Width(head) - render.Width(controls) - 7 // 4-col gap + 3-col gap
 	if room < 8 {

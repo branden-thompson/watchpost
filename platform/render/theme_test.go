@@ -110,7 +110,7 @@ func TestThemeGenerationMovesOnSwitchAndRegistration(t *testing.T) {
 
 // A11-10: the table's marks and the Help legend read one glyph set.
 func TestGlyphsSwapAsOneSetUnderASCII(t *testing.T) {
-	u, a := Opts{}.Glyphs(), Opts{ASCII: true}.Glyphs()
+	u, a := Opts{}.Glyphs(), Opts{ThinBands: true, ASCII: true}.Glyphs()
 	if u.Play != "▶" || u.Repeat != "∞" || u.Fire != "◆" || u.Alert != "⚠" || u.Pointer != "›" {
 		t.Fatalf("unicode set: %+v", u)
 	}
@@ -118,7 +118,7 @@ func TestGlyphsSwapAsOneSetUnderASCII(t *testing.T) {
 		t.Fatalf("ascii set: %+v", a)
 	}
 	row := LocationRow{Index: 1, Name: "X", Playing: true, Repeat: true, Fire: 2, HasAlert: true, AlertCount: 1, Selected: true}
-	plain := Opts{Width: 120, ASCII: true}.LocationTable([]LocationRow{row}, 0)
+	plain := Opts{ThinBands: true, Width: 120, ASCII: true}.LocationTable([]LocationRow{row}, 0)
 	for _, g := range []string{"▶", "∞", "◆", "⚠", "›"} {
 		if strings.Contains(plain, g) {
 			t.Fatalf("an ASCII table must carry no unicode mark %q:\n%s", g, plain)
@@ -204,7 +204,7 @@ func TestThemeTokenContrastAA(t *testing.T) {
 		}
 		r, g, b := hexRGB(WindowBGDark)
 		bg := luminance(r, g, b)
-		for _, tok := range []Token{TableHeader, TableMuted, TableName, TextBase, TextBright} {
+		for _, tok := range []Token{TableHeader, TableMuted, TableName, TextBase, TextBright, ModalTitle} {
 			fg, ok := fgLuminance(Tok(tok))
 			if !ok {
 				t.Fatalf("%s %s: %q is not a foreground value", name, tok, Tok(tok))

@@ -100,22 +100,32 @@ func TestPagingChipsMuteWhenInert(t *testing.T) {
 	defer rendering.SetColorEnabledForTest(false)
 	muted, full := "48;2;43;43;43", "48;2;86;86;86"
 
+	_ = full
+	// Count muted chips in the alert header row only (the control row's
+	// Favorite/Unfavorite are gated separately — UAT 2026-08-27): [A] is
+	// always live, ← / → mute when their press would do nothing.
+	headerMuted := func(v string) int {
+		for _, l := range strings.Split(v, "\n") {
+			if s := stripANSITest(l); strings.Contains(s, "Alerts") && strings.Contains(s, "Previous") {
+				return strings.Count(l, muted)
+			}
+		}
+		return -1
+	}
 	one := dash(t) // single alert: both paging chips inert
-	v := one.View().Content
-	if got := strings.Count(v, muted); got != 2 {
-		t.Fatalf("single-alert view must mute both paging chips, got %d muted", got)
+	if got := headerMuted(one.View().Content); got != 2 {
+		t.Fatalf("single alert mutes ← and →, got %d", got)
 	}
 	two := snap()
 	two.Locations[0].Alerts = append(two.Locations[0].Alerts,
 		snapshot.Alert{Event: "Flash Flood Warning", Severity: "severe", Headline: "second"})
 	m, _ := one.Update(SnapshotMsg{Snap: two})
-	if v := m.View().Content; strings.Count(v, muted) != 1 || !strings.Contains(v, full) {
-		// at index 0 of 2: ← inert, → live
-		t.Fatalf("2-alert idx0 must mute only ←:\n%d muted", strings.Count(v, muted))
+	if got := headerMuted(m.View().Content); got != 1 {
+		t.Fatalf("2-alert idx0 mutes only ←, got %d", got)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
-	if v := m.View().Content; strings.Count(v, muted) != 1 {
-		t.Fatalf("2-alert idx1 must mute only →: %d muted", strings.Count(v, muted))
+	if got := headerMuted(m.View().Content); got != 1 {
+		t.Fatalf("2-alert idx1 mutes only →, got %d", got)
 	}
 }
 

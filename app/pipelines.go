@@ -25,8 +25,16 @@ import (
 type publisher struct {
 	mu      sync.Mutex
 	pending bool
-	window  time.Duration             // the coalescing window (publishCoalesce when zero)
+	window  time.Duration             // the steady-state coalescing window (publishCoalesce when zero)
 	run     func() *snapshot.Snapshot // takes the snapshot, delivers it, returns it
+
+	// The launch shape (follow-up F-1): the very first publish runs at once
+	// — the seed rows are on screen as soon as the loop is up (UAT 5.1) —
+	// and until launchUntil the window is launchWindow, so the launch
+	// burst fills the table cell by cell under the loading shimmer instead
+	// of landing all at once after the steady-state window.
+	launchWindow time.Duration
+	launchUntil  time.Time
 
 	// Counters (quality pass Q0, red-team R2-7): how often this pipeline
 	// publishes and how many triggers the window folded — the numbers §1's
@@ -50,7 +58,18 @@ const publishCoalesce = 50 * time.Millisecond
 // still fills within five seconds of its fetch landing.
 const recentPublishCoalesce = 5 * time.Second
 
+// The RECENT launch shape (follow-up F-1, HUM LEAD 2026-08-27): for the
+// first recentLaunchPhase after start the window is recentLaunchWindow, so
+// the seeded rows rehydrate as their fetches land (the launch burst is
+// fifty schedulers started 10 ms apart, paced at 30 requests/s: it lands
+// over ~30–60 s); the 5 s window takes over for the steady-state waves.
+const (
+	recentLaunchWindow = 250 * time.Millisecond
+	recentLaunchPhase  = 90 * time.Second
+)
+
 // Trigger schedules a publish; further triggers inside the window fold in.
+// The first publish ever runs immediately (no window: the seed rows).
 func (pb *publisher) Trigger() {
 	pb.mu.Lock()
 	defer pb.mu.Unlock()
@@ -59,19 +78,34 @@ func (pb *publisher) Trigger() {
 		return
 	}
 	pb.pending = true
-	window := pb.window
-	if window == 0 {
-		window = publishCoalesce
+	window := pb.windowNow()
+	if pb.count.Load() == 0 && pb.folded.Load() == 0 {
+		window = 0 // the first publish: at once
 	}
-	time.AfterFunc(window, func() {
-		pb.mu.Lock()
-		pb.pending = false
-		pb.mu.Unlock()
-		if snap := pb.run(); snap != nil {
-			pb.last.Store(snap)
-		}
-		pb.count.Add(1)
-	})
+	time.AfterFunc(window, pb.fire)
+}
+
+// fire runs one publish and clears the pending flag.
+func (pb *publisher) fire() {
+	pb.mu.Lock()
+	pb.pending = false
+	pb.mu.Unlock()
+	if snap := pb.run(); snap != nil {
+		pb.last.Store(snap)
+	}
+	pb.count.Add(1)
+}
+
+// windowNow is the window in force: the launch window until launchUntil,
+// then the steady-state one (caller holds mu).
+func (pb *publisher) windowNow() time.Duration {
+	if pb.launchWindow > 0 && time.Now().Before(pb.launchUntil) {
+		return pb.launchWindow
+	}
+	if pb.window == 0 {
+		return publishCoalesce
+	}
+	return pb.window
 }
 
 // stats is the counters' point-in-time copy.
@@ -256,7 +290,7 @@ func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provi
 		return rp
 	}
 	rp.asm = newAssembler(refs, providers)
-	pub := &publisher{window: recentPublishCoalesce, run: func() *snapshot.Snapshot {
+	pub := &publisher{window: recentPublishCoalesce, launchWindow: recentLaunchWindow, launchUntil: time.Now().Add(recentLaunchPhase), run: func() *snapshot.Snapshot {
 		// Always publish the SHARED assembler's view: every scheduler's
 		// progress lands in one snapshot regardless of which one cycled.
 		// Snapshot() deep-copies, so the delivered value is the receiver's

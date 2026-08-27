@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -26,10 +27,19 @@ import (
 func (d Dashboard) header(o render.Opts) string {
 	title := render.TitleGradient("W A T C H P O S T") + "  v" + d.cfg.Version // UAT 4.9 gradient; UAT 41: no pipe
 	api := d.apiSummary(o) + "  " + o.KeyCap("S") + " Status"                  // UAT 24.2
-	stamps := []string{"awaiting first data..."}
+	// The stamp (HUM LEAD UAT 2026-08-27): the widest form carries the age
+	// ("(2 Minutes Ago)"); it reads green while the data is fresh, yellow
+	// once no fetch has succeeded for staleAfter, grey before the first data.
+	stamps, tone := []string{"awaiting first data..."}, render.Tok(render.TextBase)
 	if d.snap != nil {
-		at := dataAsOf(d.snap).Local()
-		stamps = []string{"Updated: " + at.Format("01/02/2006 15:04:05 MST"), "Updated: " + at.Format("15:04:05"), at.Format("15:04:05")}
+		at := dataAsOf(d.snap)
+		age := d.clock().Sub(at)
+		full := "Updated: " + at.Local().Format("01/02/2006 15:04:05 MST")
+		stamps = []string{full + " (" + agoWords(age) + ")", full, "Updated: " + at.Local().Format("15:04:05"), at.Local().Format("15:04:05")}
+		tone = render.Tok(render.ProviderOK)
+		if age > staleAfter {
+			tone = render.Tok(render.AlertLabel)
+		}
 	}
 	if render.Width(title)+render.Width(api)+2 > o.Width { // very narrow: the chip alone, then no label
 		api = d.apiSummary(o) + " " + o.KeyCap("S")
@@ -39,15 +49,40 @@ func (d Dashboard) header(o render.Opts) string {
 	}
 	gap := o.Width - render.Width(title) - render.Width(api)
 	line1 := render.PadBetween(title, api, o.Width)
-	for _, stamp := range stamps {
-		if w := render.Width(stamp); w+2 <= gap {
-			pad := (gap - w) / 2
-			line1 = title + strings.Repeat(" ", pad) + stamp + strings.Repeat(" ", gap-pad-w) + api
+	for _, stamp := range stamps { // the widest form that fits, centred on the row's global centre (the alert title shares the axis)
+		if w := render.Width(stamp); w+4 <= gap {
+			line1 = render.CentreBetween(title, render.Tint(stamp, tone), api, o.Width)
 			break
 		}
 	}
 	line2 := o.KeyCap("s") + " Setup  " + o.KeyCap("a") + " About  " + o.KeyCap("t") + " Theme  " + o.KeyCap("?") + " Help  " + o.KeyCap("q") + " Quit" // UAT 56/57/100/102
 	return line1 + "\n" + line2
+}
+
+// staleAfter is how long the stamp stays green after the last successful
+// fetch (UAT 2026-08-27: "the API has not successfully refreshed in > 5 minutes").
+const staleAfter = 5 * time.Minute
+
+// clock is the model's clock (time.Now unless a test pinned one).
+func (d Dashboard) clock() time.Time {
+	if d.now == nil {
+		return time.Now()
+	}
+	return d.now()
+}
+
+// agoWords is the stamp's age in words: "Just Now", "1 Minute Ago",
+// "12 Minutes Ago", "3 Hours Ago".
+func agoWords(age time.Duration) string {
+	switch {
+	case age < time.Minute:
+		return "Just Now"
+	case age < time.Hour:
+		m := int(age / time.Minute)
+		return fmt.Sprintf("%d Minute%s Ago", m, plural(m))
+	}
+	h := int(age / time.Hour)
+	return fmt.Sprintf("%d Hour%s Ago", h, plural(h))
 }
 
 // apiSummary counts the providers by health: ✔ ok · ⚠ degraded but has
@@ -121,16 +156,19 @@ func (d Dashboard) priorityTable(fl frameLayout) string {
 	return o.LocationTable(rows, fl.days)
 }
 
-// controlRow is the watchlist's control line (UAT 56): [enter] Details,
-// [ctrl+a] Add, [shift+del] Remove, [l] Lookup with [↑↓] Navigate right-
-// aligned when the row fits; on narrow terminals it smart-wraps instead
-// (same WrapSegments as the footer) so no row exceeds the width.
+// controlRow is the watchlist's control line (UAT 56; reworded HUM LEAD
+// 2026-08-27): [l] Lookup Location, [enter] Details, [ctrl+a] Favorite (add
+// the focused recent/searched location), [shift+del] Unfavorite (remove the
+// focused watchlist favourite) with [↑↓] Navigate right-aligned when the row
+// fits; on narrow terminals it smart-wraps (same WrapSegments as the footer)
+// so no row exceeds the width. Favorite lights only on a recent row,
+// Unfavorite only on a watchlist row — the promote/demote pair.
 func (d Dashboard) controlRow(o render.Opts) string {
 	segs := []string{
-		o.KeyCap("enter") + " Details", // UAT 57
-		o.KeyCap("ctrl+a") + " Add",
-		o.KeyCapIf("shift+del", d.selected < d.numPriority() && d.numPriority() > 0) + " Remove",
-		o.KeyCap("l") + " Lookup",
+		o.KeyCap("l") + " Lookup Location", // the search entry (searches into RECENT), far left
+		o.KeyCap("enter") + " Details",     // UAT 57
+		o.KeyCapIf("ctrl+a", d.canAddFocused()) + " Favorite",
+		o.KeyCapIf("shift+del", d.canRemoveFocused()) + " Unfavorite",
 	}
 	nav := o.KeyCap("↑↓") + " Navigate"
 	line := strings.Join(segs, "   ")
@@ -165,9 +203,15 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 	// UAT 43/45: a full-width section band in the group-label style, no
 	// blank lines around it; the rail's ▲ rides the band now that the
 	// recent table shows rows only.
-	rail := o.TableRowLen(days) + 2 // UAT 9.2: one blank col between the last cell and the rail
-	band := render.Band("R E C E N T   /   S E A R C H E D", "R E C E N T", o.TableRowLen(days), render.GroupSectionBG)
-	b.WriteString(render.PadTo(band, rail-1) + "▲\n")
+	rail := o.TableRowLen(days) + 2                                                                                        // UAT 9.2: one blank col between the last cell and the rail
+	bandRows := o.BandRows("R E C E N T   /   S E A R C H E D", "R E C E N T", o.TableRowLen(days), render.GroupSectionBG) // three rows unless thin (UAT 2026-08-27)
+	for i, row := range bandRows {
+		if i == len(bandRows)-1 {
+			b.WriteString(render.PadTo(row, rail-1) + "▲\n") // the rail's ▲ rides the band's bottom row — no gap above the rail (UAT nit); the one-row band is its own bottom row
+		} else {
+			b.WriteString(row + "\n")
+		}
+	}
 	total, base := 0, 0
 	if d.recent != nil {
 		total = len(d.recent.Locations)
@@ -190,7 +234,7 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 	}
 	// UAT 44.1/45: the band connects the tables - the recent table renders
 	// rows only (both header rows dropped; the watchlist's headers apply).
-	table := strings.SplitN(o.LocationTable(rows, days), "\n", 3)[2]
+	table := strings.SplitN(o.LocationTable(rows, days), "\n", o.BandHeight()+2)[o.BandHeight()+1] // drop the band rows and the column header
 	b.WriteString(railify(table, rail, lo, total, window) + "\n")
 	showing := fmt.Sprintf("Showing %d-%d of %d locations", lo+1, hi, total)
 	b.WriteString(render.PadBetween("", showing+"  ▼", rail) + "\n")
@@ -201,7 +245,7 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 // on the table span and wrapped for narrow terminals, a blank — standing
 // where the table will once a location is added or searched.
 const (
-	watchlistEmpty = "Run 's' Setup, 'l'ookup a location, or 'ctrl+a' a searched location to add to your Watchlist"
+	watchlistEmpty = "Run 's' Setup or 'l'ookup a location, then 'ctrl+a' Favorite it to your Watchlist"
 	recentEmpty    = "NO RECENT LOCATION SEARCHED or DATA-SEEDING FAILED"
 	emptyWrapAt    = 64 // the mock's two-line break on wide terminals
 )

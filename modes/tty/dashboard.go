@@ -254,11 +254,12 @@ type Dashboard struct {
 	radioRepeat  RepeatMode // [r] Off | One | Watchlist (UAT 93)
 	radioMode    RadioMode  // [m] Synth | Nearest Relay (UAT 97)
 	radioViz     bool
-	radioMin     bool      // [T] Size: Min renders the two-row player
-	vizBands     []float64 // the visualizer's latest frame (UAT 92); nil = blank rows
-	vizTicking   bool      // a vizTick is in flight — never two
-	tickArmed    bool      // a shimmer tick is in flight — never two (Q3: armed only while something animates)
-	memo         *bodyMemo // the body memo's single slot (Q3); allocated at construction, shared by every copy of the model
+	radioMin     bool             // [T] Size: Min renders the two-row player
+	vizBands     []float64        // the visualizer's latest frame (UAT 92); nil = blank rows
+	vizTicking   bool             // a vizTick is in flight — never two
+	tickArmed    bool             // a shimmer tick is in flight — never two (Q3: armed only while something animates)
+	now          func() time.Time // the clock the header's "ago" reads (tests pin it)
+	memo         *bodyMemo        // the body memo's single slot (Q3); allocated at construction, shared by every copy of the model
 }
 
 // NewDashboard builds the model, merging user key overrides with validation
@@ -268,7 +269,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("key bindings invalid: %w", err)
 	}
-	d := Dashboard{cfg: cfg, keys: keys, units: render.UnitF, width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}}
+	d := Dashboard{cfg: cfg, keys: keys, units: render.UnitF, width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -452,8 +453,8 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "units-c":
 		d.units = render.UnitC
 	default:
-		if act == "add-location" && d.modal == modalDetails {
-			return d.addFocused() // detail view: straight to the watchlist (UAT 27 mock)
+		if act == "add-location" {
+			return d.addFocused() // [ctrl+a] Favorite: add the focused recent/searched location (UAT 2026-08-27); inert on a watchlist row
 		}
 		if toggled, ok := d.toggleRadio(act); ok {
 			return toggled.armViz().takeCmd() // [v] on / [space] play may start the visualizer (UAT 92)
@@ -574,12 +575,9 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 		return d.openVoice(), true // UAT 84
 	case "setup":
 		return d.openSetup(), true // UAT 100
-	case "add-location", "lookup":
-		d = d.toggle(modalAdd) // UAT 16.3/26.1/26.4: one search modal, two modes
-		d.addMode, d.addQuery, d.addErr = "add", "", ""
-		if act == "lookup" {
-			d.addMode = "lookup"
-		}
+	case "lookup":
+		d = d.toggle(modalAdd) // UAT 26.4: search a location into RECENT and open its details
+		d.addMode, d.addQuery, d.addErr = "lookup", "", ""
 		return d, true
 	case "remove":
 		if d.selected < d.numPriority() {

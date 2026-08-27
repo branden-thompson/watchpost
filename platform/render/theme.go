@@ -77,6 +77,7 @@ const (
 	AlertModalWarnBG Token = "alert.modal.warning.bg" // [A] details tile, warning-grade
 	AlertModalAdvBG  Token = "alert.modal.advisory.bg"
 
+	ModalTitle   Token = "modal.title" // a floating window's title: bold white against the tile (UAT 2026-08-27)
 	ModalFG      Token = "modal.fg"
 	ModalBGDark  Token = "modal.bg.dark"
 	ModalBGLight Token = "modal.bg.light"
@@ -157,6 +158,7 @@ func defaultTheme() map[Token]string {
 		AlertModalWarnBG: "48;2;40;0;0",  // muted red tile (UAT 22)
 		AlertModalAdvBG:  "48;2;32;28;0", // muted yellow tile (UAT 22)
 
+		ModalTitle:   "1;97",
 		ModalFG:      "38;5;250",
 		ModalBGDark:  "48;2;29;40;48", // #1D2830
 		ModalBGLight: "48;2;59;81;99", // #3B5163

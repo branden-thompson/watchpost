@@ -96,6 +96,8 @@ under the cache directory's `profiles/` on `kill -USR1 <pid>` (macOS/Linux; on W
 `/debug/dump`); dumps are at least a minute apart and the newest twelve are kept.
 `watchpost report <loc> --verbose` appends one request-counter line per host. The soak and
 benchmark harness lives in `scripts/quality/` and `make quality-bench`.
+`WATCHPOST_DEBUG_RADIO=<file>` appends one line per radio engine state change (time, state, mount,
+error, title) — the first thing to send when a relay "plays nothing".
 
 ## Fire
 

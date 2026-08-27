@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/term"
 )
 
 // helpModal renders live from the merged KeyMap so it is truthful after any
@@ -22,15 +23,59 @@ func (d Dashboard) helpModal(o render.Opts) string {
 // helpLines renders the merged KeyMap as modal body lines (truthful after
 // any swap - D-15 guarantee 3).
 func (d Dashboard) helpLines(o render.Opts) []string {
-	lines := make([]string, 0, len(d.keys)+4)
-	for act, bind := range d.keys {
-		lines = append(lines, fmt.Sprintf("%-14s - %s", strings.Join(bind.Keys, ", "), orDefault(bind.Help, string(act))))
+	lines := make([]string, 0, len(d.keys)+16)
+	seen := map[term.Action]bool{}
+	for _, g := range helpGroups() {
+		var rows []string
+		for _, act := range g.actions {
+			if bind, ok := d.keys[act]; ok {
+				rows = append(rows, fmt.Sprintf("  %-12s - %s", strings.Join(bind.Keys, ", "), orDefault(bind.Help, string(act))))
+				seen[act] = true
+			}
+		}
+		lines = appendHelpGroup(lines, g.name, rows)
 	}
-	sort.Strings(lines)
+	var other []string // an action no group names (a future binding): still listed, never lost
+	for act, bind := range d.keys {
+		if !seen[act] {
+			other = append(other, fmt.Sprintf("  %-12s - %s", strings.Join(bind.Keys, ", "), orDefault(bind.Help, string(act))))
+		}
+	}
+	sort.Strings(other)
+	lines = appendHelpGroup(lines, "OTHER", other)
 	// Row marks legend (red-team B5 U8): the glyphs beside a location, in words.
 	g := o.Glyphs() // the table's own set, ASCII included (A11-10)
-	lines = append(lines, "", fmt.Sprintf("Row marks: %s playing   %s on repeat   n%s fires nearby (bold = burning hard)   n%s alerts", g.Play, g.Repeat, g.Fire, g.Alert))
+	lines = append(lines, fmt.Sprintf("Row marks: %s playing   %s on repeat   n%s fires nearby (bold = burning hard)   n%s alerts", g.Play, g.Repeat, g.Fire, g.Alert))
 	return append(lines, "", "  "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll"))) // chips like every other modal (UAT 68.2)
+}
+
+// helpGroup is one section of the Help window: the app's features, in the
+// order a person meets them (HUM LEAD UAT 2026-08-27).
+type helpGroup struct {
+	name    string
+	actions []term.Action
+}
+
+// helpGroups is the one owner of the grouping; a binding's group is its
+// action, so a rebound key stays in its section (D-15: keys are data).
+func helpGroups() []helpGroup {
+	return []helpGroup{
+		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "alert-prev", "alert-next", "close", term.HelpAction, "quit"}},
+		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}},
+		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-size", "radio-vol-up", "radio-vol-dn"}},
+		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}},
+		{"APP", []term.Action{"setup", "status", "about"}},
+	}
+}
+
+// appendHelpGroup adds a section: a bold-white header, its rows, a blank.
+func appendHelpGroup(lines []string, name string, rows []string) []string {
+	if len(rows) == 0 {
+		return lines
+	}
+	lines = append(lines, render.Tint(name, render.Tok(render.ModalTitle)))
+	lines = append(lines, rows...)
+	return append(lines, "")
 }
 
 func orDefault(s, alt string) string {

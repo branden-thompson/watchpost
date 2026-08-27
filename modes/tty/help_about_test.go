@@ -1,6 +1,8 @@
 package tty
 
 import (
+	"fmt"
+	"github.com/branden-thompson/watchpost/platform/term"
 	"runtime"
 	"strings"
 	"testing"
@@ -98,5 +100,40 @@ func TestHelpModalControlsAreChips(t *testing.T) {
 	}
 	if !strings.Contains(last, "48;2;86;86;86") { // the chip background — colour is on
 		t.Fatalf("chips must carry the KeyChip tone: %q", last)
+	}
+}
+
+// HUM LEAD UAT 2026-08-27: the Help window groups the bindings by feature,
+// every binding appears once, and a rebound key stays in its section.
+func TestHelpGroupsBindingsByFeature(t *testing.T) {
+	m, err := NewDashboard(Config{Version: "t", KeyOverrides: term.KeyMap{"quit": {Keys: []string{"Q"}, Help: "Quit"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := m.helpLines(m.opts())
+	text := strings.Join(lines, "\n")
+	order := []string{"NAVIGATE", "WATCHLIST", "RADIO", "DISPLAY", "APP"}
+	last := -1
+	for _, name := range order {
+		i := strings.Index(text, name)
+		if i < 0 || i < last {
+			t.Fatalf("section %s missing or out of order:\n%s", name, text)
+		}
+		last = i
+	}
+	nav := text[strings.Index(text, "NAVIGATE"):strings.Index(text, "WATCHLIST")]
+	if !strings.Contains(nav, "Q ") || !strings.Contains(nav, "Quit") {
+		t.Fatalf("a rebound quit stays under NAVIGATE:\n%s", nav)
+	}
+	for _, bind := range m.keys { // every binding listed exactly once, by its rendered row prefix (up and down share a Help text; "-" is a key)
+		if row := fmt.Sprintf("  %-12s - ", strings.Join(bind.Keys, ", ")); strings.Count(text, row) != 1 {
+			t.Fatalf("%q listed %d times", row, strings.Count(text, row))
+		}
+	}
+	if strings.Contains(text, "OTHER") {
+		t.Fatal("every default binding has a group")
+	}
+	if !strings.HasPrefix(lines[len(lines)-3], "Row marks:") {
+		t.Fatalf("the legend follows the groups: %q", lines[len(lines)-3])
 	}
 }

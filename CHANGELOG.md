@@ -4,6 +4,50 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [Unreleased]
 
+## [0.10.2] — 2026-08-27
+
+UX pass on the dashboard (HUM LEAD UAT) and two follow-up fixes.
+
+### Changed
+- The group bands — `L O C A T I O N · T O D A Y · T O M O R R O W · E X T E N D E D` and
+  `R E C E N T / S E A R C H E D` — are three rows tall, a band-coloured row above and below the
+  label, so they read heavier. They are the last thing to give on a short terminal: the modules
+  minimize first, and the bands drop back to one row only when the RECENT window could not
+  otherwise keep its three-row floor.
+- The header's Updated stamp carries its age — `Updated: 08/27/2026 06:49:44 PDT (2 Minutes Ago)` —
+  and reads green while data is fresh, yellow once no fetch has succeeded for more than five
+  minutes, grey before the first data. Narrow terminals drop the age before the date, as before.
+- The alert module is one header row — the alert count at the left inset, `⚠ EVENT · Location`
+  centred, `[A] Details [←] Previous [→] Next` at the right inset — a blank, then the fixed
+  three-line body with an 8-column inset (the budget keeps the module from jittering as the terminal
+  narrows). Two rows shorter than before; the RECENT window gains them.
+- Every floating window's title reads bold white against its tile (a `modal.title` theme token;
+  each built-in theme sets its own, all at AA contrast). Location Details keeps its fill rule in the
+  panel's tone with the name and the Updated stamp bold white.
+- The Help window groups the bindings by feature — NAVIGATE, WATCHLIST, RADIO, DISPLAY, APP — with a
+  bold-white header per group; a rebound key stays in its group, and the row-marks legend and the
+  chips follow.
+
+### Changed
+- The watchlist control row reads, left to right, `[l] Lookup Location  [enter] Details
+  [ctrl+a] Favorite  [shift+del] Unfavorite`. Favorite and Unfavorite are a promote/demote pair:
+  Favorite lights only on a recent/searched row (it adds that location to the watchlist) and dims
+  on a watchlist row; Unfavorite lights only on a watchlist row and dims on a recent one. Lookup,
+  on the far left, searches a location into the RECENT list. (Adding a brand-new location is now
+  Lookup it, then Favorite it — the old ctrl+a search-straight-to-watchlist is gone.)
+
+### Fixed
+- Nearest Relay plays the location you are on in one press. Before, if the radio was already
+  playing another location, the first `space` stopped it and only the second tuned the newly
+  selected one — which read as "the relay doesn't work here". `space` now plays the focused
+  location and stops only when that location is already the one playing.
+- `WATCHPOST_DEBUG_RADIO=<file>` appends one line per radio engine state change (time, state,
+  mount, error, title) for diagnosing playback.
+- The RECENT / SEARCHED table appears at once again: the seeded rows are on screen as soon as the
+  dashboard is up (measured 159 ms from launch) and fill in cell by cell under the loading shimmer as
+  their data lands, instead of the empty state holding for up to five seconds and the rows landing
+  all at once (a side effect of 0.9.6's publish window, which now applies only after the launch burst).
+
 ## [0.10.1] — 2026-08-27
 
 ### Fixed
