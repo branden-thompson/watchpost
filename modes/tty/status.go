@@ -44,7 +44,7 @@ func (d Dashboard) statusLines() []string {
 	if d.cfg.Stats != nil {
 		lines = append(lines, requestLines(st)...)
 	}
-	return append(lines, "", "  "+o.KeyCap("esc")+" Close   "+o.KeyCap("↑↓")+" Scroll")
+	return append(lines, "", "  "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll")))
 }
 
 // requestLines is the [S] REQUESTS and DUMPS body (quality pass Q0):

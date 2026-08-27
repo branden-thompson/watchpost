@@ -9,6 +9,7 @@ say what a file holds; this page says where a *thing* happens.
 |---|---|
 | The program starts | `app/dashboard.go:RunDashboard` (composition root) → `app/pipelines.go:startPriority`, `app/pipelines.go:startRecent` |
 | A key is pressed | `modes/tty/dashboard.go:handleKey` → a modal opens via `modes/tty/dashboard.go:toggleModal`; the radio keys via `modes/tty/radio_panel.go:toggleRadio` |
+| A window opens or closes | `modes/tty/dashboard.go:toggleModal` → `modes/tty/dashboard.go:open` / `modes/tty/dashboard.go:close` (one `modal` value, so opening one closes the rest); drawn by `modes/tty/view.go:modalView` |
 | `enter` opens Location Details | `modes/tty/dashboard.go:toggleModal` → the body `modes/tty/detail.go:detailLines` (+ `modes/tty/detail_fire.go:fireRows`, `modes/tty/detail_marine.go:maritimeRows`) |
 | A frame is built | `modes/tty/view.go:View` → geometry once `modes/tty/layout.go:layout` → `modes/tty/body.go:body` → the tables from the memo `modes/tty/memo.go:tables` (rendered on a miss by `modes/tty/body.go:priorityTable` / `modes/tty/body.go:recentSection` → `platform/render/table.go:LocationTable`); modal geometry `modes/tty/view.go:modalWidth`, overlay `platform/render/panel.go:Overlay` |
 | The animation tick runs | only while `modes/tty/dashboard.go:tickNeeded` holds (a loading row, a volume blink, the marquee, `[S]`, Details); armed after every Update by `modes/tty/dashboard.go:armTick`, advanced by `modes/tty/dashboard.go:applyTick` |
@@ -41,6 +42,7 @@ say what a file holds; this page says where a *thing* happens.
 | priority / RECENT pipeline | the favourites (one batched scheduler, the priority HTTP lane) / the 50-deep list (one scheduler per location) | `app/pipelines.go` |
 | publisher | the coalescing window between "new data" and one snapshot (50 ms priority, 5 s RECENT) | `app/pipelines.go:Trigger` |
 | body memo | the single slot holding the two rendered tables, keyed on every input they read | `modes/tty/memo.go` |
+| modal | the one floating window that can be open (`type modal int`); `modalNone` is the dashboard alone | `modes/tty/dashboard.go` |
 | tick predicate | the rule for when the 300 ms animation tick runs at all | `modes/tty/dashboard.go:tickNeeded` |
 | the grid | a tier's fire times: start + n·Every, whatever a cycle took | `platform/sched/sched.go:runTier` |
 | lane | the client's two pacing queues: normal and priority; only the normal lane consults the failure memo | `platform/httpx/httpx.go:WithPriority` |

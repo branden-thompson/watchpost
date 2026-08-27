@@ -20,7 +20,7 @@ func TestDetailMaritimeSectionForCoastalOnly(t *testing.T) {
 	}
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
-	d.showDetails = true
+	d.modal = modalDetails
 	joined := strings.Join(d.detailLines(), "\n")
 	// Grid: labels at 0, values at col 14, secondary values at col 37 (the
 	// FORECAST HIGH/LOW column) — UAT 32.2.
@@ -34,7 +34,7 @@ func TestDetailMaritimeSectionForCoastalOnly(t *testing.T) {
 		}
 	}
 	inland := m.(Dashboard)
-	inland.showDetails = true
+	inland.modal = modalDetails
 	if strings.Contains(strings.Join(inland.detailLines(), "\n"), "MARITIME") {
 		t.Fatal("inland location must not render a MARITIME section")
 	}

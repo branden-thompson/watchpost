@@ -25,3 +25,15 @@ func BearingDeg(lat1, lon1, lat2, lon2 float64) float64 {
 	deg := math.Atan2(y, x) * 180 / math.Pi
 	return math.Mod(deg+360, 360)
 }
+
+// CompassIndex is the index of the compass point deg falls on, for a rose
+// of points sectors (8 or 16): 0 is north, sectors are centred on their
+// heading (quality pass Q6, L3-F9 — the one owner of the arithmetic; the
+// callers keep their own word tables).
+func CompassIndex(deg float64, points int) int {
+	if points <= 0 {
+		return 0
+	}
+	step := 360 / float64(points)
+	return int((deg+step/2)/step) % points
+}

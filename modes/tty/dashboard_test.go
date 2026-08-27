@@ -209,8 +209,8 @@ func TestFailSoftUXRedTeam09(t *testing.T) {
 	}
 	// F10: a failed save comes back into view.
 	model, _ = model.Update(committedMsg{err: commitErr, what: "remove"})
-	if d := model.(Dashboard); !d.showAdd || !strings.Contains(d.addErr, "remove failed: cannot write") || d.addMode != "add" {
-		t.Fatalf("a failed commit reopens the modal with the reason: showAdd=%v err=%q", d.showAdd, d.addErr)
+	if d := model.(Dashboard); d.modal != modalAdd || !strings.Contains(d.addErr, "remove failed: cannot write") || d.addMode != "add" {
+		t.Fatalf("a failed commit reopens the modal with the reason: showAdd=%v err=%q", d.modal == modalAdd, d.addErr)
 	}
 }
 

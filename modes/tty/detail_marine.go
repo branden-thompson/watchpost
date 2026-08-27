@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -258,7 +259,7 @@ func compass(deg *float64) string {
 		return "--"
 	}
 	pts := []string{"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"}
-	return pts[int((*deg+11.25)/22.5)%16]
+	return pts[geo.CompassIndex(*deg, 16)]
 }
 
 // seaState words a significant wave height (Douglas sea-state bands).

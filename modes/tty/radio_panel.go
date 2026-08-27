@@ -360,5 +360,5 @@ func (d Dashboard) radioControlLines(o render.Opts, inner int) []string {
 		o.KeyCap("V") + " Voice: " + d.voiceChip(), // UAT 84
 		o.KeyCap("T") + " Size: " + size,
 	}
-	return strings.Split(render.WrapSegments(segs, inner, "  "), "\n")
+	return render.WrapSegments(segs, inner, "  ")
 }

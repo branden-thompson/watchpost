@@ -17,7 +17,8 @@ import (
 // The focus index spans BOTH tables (UAT 4.4): 0..numPriority-1 walks the
 // priority rows, then the recent rows, auto-scrolling the recent window.
 func (d Dashboard) handleNav(act term.Action) Dashboard {
-	if d.showHelp || d.showDetails || d.showAlerts || d.showStatus || d.showAbout {
+	switch d.modal {
+	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout: // the scrolling windows
 		return d.handleModalNav(act)
 	}
 	switch act {
@@ -90,12 +91,12 @@ func (d Dashboard) handleModalNav(act term.Action) Dashboard {
 	case "nav-down":
 		d.modalScroll = min(d.modalScroll+1, max(0, len(d.modalLines())-d.modalMax()))
 	case "alert-prev":
-		if d.showAlerts && d.alertIdx > 0 {
+		if d.modal == modalAlerts && d.alertIdx > 0 {
 			d.alertIdx--
 			d.modalScroll = 0
 		}
 	case "alert-next":
-		if loc := d.selectedLocation(); d.showAlerts && loc != nil && d.alertIdx < len(loc.Alerts)-1 {
+		if loc := d.selectedLocation(); d.modal == modalAlerts && loc != nil && d.alertIdx < len(loc.Alerts)-1 {
 			d.alertIdx++
 			d.modalScroll = 0
 		}

@@ -45,3 +45,23 @@ func TestHumanBytesFitsSixCells(t *testing.T) {
 		}
 	}
 }
+
+// Quality pass Q6 (L3-F8, L3-F12, L3-F13).
+func TestThousandsControlsAndWrapSegmentsRows(t *testing.T) {
+	for v, want := range map[float64]string{0: "0", 999: "999", 1000: "1,000", 12915: "12,915", 1234567: "1,234,567", 42.6: "43"} {
+		if got := Thousands(v); got != want {
+			t.Errorf("Thousands(%v) = %q, want %q", v, got, want)
+		}
+	}
+	o := Opts{Width: 80}
+	if got, want := o.Controls("   ", Ctl("esc", "Close"), Ctl("↑↓", "Scroll")), o.KeyCap("esc")+" Close   "+o.KeyCap("↑↓")+" Scroll"; got != want {
+		t.Errorf("Controls: %q, want %q", got, want)
+	}
+	if got, want := o.Controls("  ", CtlIf("enter", "Add", false)), o.KeyCapIf("enter", false)+" Add"; got != want {
+		t.Errorf("a muted control: %q, want %q", got, want)
+	}
+	rows := WrapSegments([]string{"aaaa", "bbbb", "cccc"}, 10, "  ")
+	if len(rows) != 2 || rows[0] != "aaaa  bbbb" || rows[1] != "cccc" {
+		t.Errorf("rows: %q", rows)
+	}
+}

@@ -163,7 +163,7 @@ func (d Dashboard) forecastRows(o render.Opts, loc *snapshot.Location) []string 
 		if t, err := time.Parse("2006-01-02", day.Date); err == nil {
 			date = t.Format("01/02/2006")
 		}
-		row := fmt.Sprintf("%s    %-13s (%s)   ", date, truncateTo(displayCond(day.Condition), 13), pp) + hiLo(o, day)
+		row := fmt.Sprintf("%s    %-13s (%s)   ", date, truncateTo(render.DisplayCondition(day.Condition), 13), pp) + hiLo(o, day)
 		out = append(out, detailRow(label, row))
 		label = ""
 	}
@@ -179,11 +179,4 @@ func locTZ(loc *snapshot.Location) *time.Location {
 		return z
 	}
 	return time.Local
-}
-
-// displayCond mirrors// displayCond mirrors the table's condition vocabulary for the modal.
-func displayCond(c string) string {
-	c = strings.ToUpper(strings.ReplaceAll(c, "_", " "))
-	c = strings.ReplaceAll(c, "PARTLY ", "P.")
-	return strings.ReplaceAll(c, "MOSTLY ", "M.")
 }

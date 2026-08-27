@@ -54,7 +54,7 @@ func TestAddFlowAppendsToWatchlist(t *testing.T) {
 	if len(watch) != 2 || watch[1].Zip != "04101" {
 		t.Fatalf("resolved location must append to the watchlist bottom: %+v", watch)
 	}
-	if m2.(Dashboard).showAdd {
+	if m2.(Dashboard).modal == modalAdd {
 		t.Fatal("add modal must close on success")
 	}
 }
@@ -72,7 +72,7 @@ func TestRemoveFlowConfirmAndCancel(t *testing.T) {
 		t.Fatalf("confirmation modal on the confirm tile missing:\n%s", v)
 	}
 	mCancel, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if len(h.committed) != 0 || mCancel.(Dashboard).showRemove {
+	if len(h.committed) != 0 || mCancel.(Dashboard).modal == modalRemove {
 		t.Fatal("esc must cancel without committing")
 	}
 	m2, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -107,8 +107,8 @@ func TestLookupFlowTopsRecentAndOpensDetails(t *testing.T) {
 		t.Fatalf("lookup must top the recent list: %+v", h.committed)
 	}
 	d := m2.(Dashboard)
-	if !d.showDetails || d.selected != d.numPriority() {
-		t.Fatalf("lookup must open details focused on the new recent top: details=%v sel=%d", d.showDetails, d.selected)
+	if d.modal != modalDetails || d.selected != d.numPriority() {
+		t.Fatalf("lookup must open details focused on the new recent top: details=%v sel=%d", d.modal == modalDetails, d.selected)
 	}
 }
 

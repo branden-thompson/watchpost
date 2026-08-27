@@ -55,8 +55,8 @@ func TestTickArmedOnlyWhileAnimating(t *testing.T) {
 			d.radioPlaying, d.radioState, d.radioDetail, d.radioMin = true, "playing", "Tonight.", true
 			return d
 		}, false},
-		{"[S] ages", func(d Dashboard) Dashboard { d.showStatus = true; return d }, true},
-		{"Details labels and LoadingDots", func(d Dashboard) Dashboard { d.showDetails = true; return d }, true},
+		{"[S] ages", func(d Dashboard) Dashboard { d.modal = modalStatus; return d }, true},
+		{"Details labels and LoadingDots", func(d Dashboard) Dashboard { d.modal = modalDetails; return d }, true},
 	}
 	for _, row := range rows {
 		d := dash(t).(Dashboard)
@@ -128,11 +128,11 @@ func TestStatusAgesAndDetailsLabelsMoveWithTheClock(t *testing.T) {
 	old := snap()
 	old.Providers[0].FetchedAt = time.Now().Add(-90 * time.Second)
 	d.snap = old
-	d.showStatus = true
+	d.modal = modalStatus
 	if v := stripANSITest(d.View().Content); !strings.Contains(v, "fetched") {
 		t.Fatalf("the [S] modal shows provider ages:\n%s", v)
 	}
-	d.showStatus, d.showDetails = false, true
+	d.modal = modalDetails
 	loc := &d.snap.Locations[0]
 	loc.Fire.AsOf = time.Now()
 	loc.Fire.Hotspots = []snapshot.Hotspot{{Lat: 33.2, Lon: -117.4, DetectedAt: time.Now().Add(-3 * time.Hour), Confidence: "high"}}

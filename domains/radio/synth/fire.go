@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -148,7 +149,7 @@ func incidentSentence(fr FireReport, in snapshot.Incident, imperial bool, now ti
 	}
 	var facts []string
 	if in.Acres != nil {
-		facts = append(facts, fmt.Sprintf("with a size of %s acres", thousandsWords(*in.Acres)))
+		facts = append(facts, fmt.Sprintf("with a size of %s acres", render.Thousands(*in.Acres)))
 	}
 	if !in.Discovered.IsZero() {
 		facts = append(facts, "has been active for "+durationWords(now.Sub(in.Discovered)))
@@ -191,8 +192,7 @@ func ringWords(km float64, imperial bool) string {
 func bearingWords(lat1, lon1, lat2, lon2 float64) string {
 	pts := []string{"north", "north-northeast", "northeast", "east-northeast", "east", "east-southeast", "southeast", "south-southeast",
 		"south", "south-southwest", "southwest", "west-southwest", "west", "west-northwest", "northwest", "north-northwest"}
-	deg := geo.BearingDeg(lat1, lon1, lat2, lon2)
-	return pts[int((deg+11.25)/22.5)%16]
+	return pts[geo.CompassIndex(geo.BearingDeg(lat1, lon1, lat2, lon2), 16)]
 }
 
 // durationWords: "5 hours and 35 minutes", "3 days and 4 hours", "12 minutes".
@@ -220,15 +220,6 @@ func durationWords(d time.Duration) string {
 		return plural(hours, "hour")
 	}
 	return plural(mins, "minute")
-}
-
-// thousandsWords groups an acreage ("12,915") — the voices read it as a number.
-func thousandsWords(v float64) string {
-	s := fmt.Sprintf("%.0f", v)
-	for i := len(s) - 3; i > 0; i -= 3 {
-		s = s[:i] + "," + s[i:]
-	}
-	return s
 }
 
 // satelliteWords says a satellite the way the feeds name it ("GOES-West").

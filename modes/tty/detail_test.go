@@ -84,7 +84,7 @@ func TestDetailHiLoColumnAlignsAndPads(t *testing.T) {
 	}
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
-	d.showDetails = true
+	d.modal = modalDetails
 	var today, fc string
 	for _, l := range d.detailLines() {
 		if strings.Contains(l, "TODAY │") {
@@ -111,7 +111,7 @@ func TestDetailGridAlignsCurrentlyWithForecast(t *testing.T) {
 	s2.Locations[0].Harmonized.HumidityPct = f64(65)
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
-	d.showDetails = true
+	d.modal = modalDetails
 	var cur, feels, fc string
 	for _, l := range d.detailLines() {
 		p := stripANSITest(l)
@@ -149,7 +149,7 @@ func TestDetailDividerEndsBeforeRail(t *testing.T) {
 		Description: strings.Repeat("Dangerous heat across the valleys and foothills. ", 6) + "\n\n* " + strings.Repeat("BULLET TEXT THAT WRAPS ", 6)}}
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
-	d.showDetails = true
+	d.modal = modalDetails
 	inner := min(d.opts().Width, d.modalWidth()) - 7 // ScrollPanel content width; the rail sits at inner+1
 	var div string
 	longest := 0
@@ -178,14 +178,14 @@ func TestDetailShowsStationAndDistance(t *testing.T) {
 	s2.Locations[0].Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KCRQ", DistanceKm: f64(5.7)}
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
-	d.showDetails = true
+	d.modal = modalDetails
 	joined := strings.Join(d.detailLines(), "\n")
 	want := "Station   :   KCRQ" + strings.Repeat(" ", 19) + "Distance  :  4 mi"
 	if !strings.Contains(joined, want) {
 		t.Fatalf("CURRENTLY must carry %q:\n%s", want, joined)
 	}
 	loading := dash(t).(Dashboard)
-	loading.showDetails = true
+	loading.modal = modalDetails
 	if strings.Contains(strings.Join(loading.detailLines(), "\n"), "Station") {
 		t.Fatal("no station row before an observation lands")
 	}
@@ -210,7 +210,7 @@ func TestDetailsOnRecentRowHydratesHourly(t *testing.T) {
 	d := model.(Dashboard)
 	d.selected = d.numPriority() // first recent row
 	m2, cmd := d.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if !m2.(Dashboard).showDetails || cmd == nil {
+	if m2.(Dashboard).modal != modalDetails || cmd == nil {
 		t.Fatal("details on a recent row without hourly must return the hydrate cmd")
 	}
 	runCmd(cmd)

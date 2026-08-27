@@ -4,6 +4,21 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-08-27
+
+Performance & quality pass, batch Q6 (seams).
+
+### Changed
+- One floating window at a time, by construction: the dashboard's ten "is this window open"
+  flags became a single `modal` value, and a test asserts on the rendered frame — for every
+  window and every way of opening one — that at most one is drawn and that `esc` never moves the
+  focus. Before this, Help could open over Alerts, About or Status, Remove over Help or Details,
+  and a failed voice change reopened the Voice chooser over whatever was open.
+- Single owners for shared details: the acreage format, the compass arithmetic behind the three
+  word tables (dashboard abbreviations, spoken wind, spoken bearings), the condition vocabulary,
+  the two list caps (10 favourites, 50 recent), the control-row footers and wrapped rows. No
+  output changes.
+
 ## [0.9.8] — 2026-08-26
 
 Performance & quality pass, batch Q5 (network, bytes and fan-out).

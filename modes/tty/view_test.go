@@ -44,21 +44,21 @@ func TestContentModalsStretchTo60Percent(t *testing.T) {
 	m := dash(t)
 	wide, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
 	d := wide.(Dashboard)
-	d.showStatus = true
+	d.modal = modalStatus
 	if got := d.modalWidth(); got != 120 {
 		t.Fatalf("status modal at 200 cols must be 120 wide, got %d", got)
 	}
-	d.showStatus, d.showDetails = false, true
+	d.modal = modalDetails
 	if got := d.modalWidth(); got != 120 {
 		t.Fatalf("details modal at 200 cols must be 120 wide, got %d", got)
 	}
 	narrow, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 60})
 	n := narrow.(Dashboard)
-	n.showDetails = true
+	n.modal = modalDetails
 	if got := n.modalWidth(); got != 85 {
 		t.Fatalf("details floor must hold on narrow terminals, got %d", got)
 	}
-	n.showDetails, n.showAdd = false, true
+	n.modal = modalAdd
 	if got := n.modalWidth(); got != 56 {
 		t.Fatal("search/confirm modals stay fixed width")
 	}

@@ -62,6 +62,10 @@ back through `RadioStatusMsg`. `[m] Mode` (UAT 97) is the smallest complete exam
   switched off (`NoAutoStyle`), so `NO_COLOR` is honoured by one gate and a user theme file can
   restyle the whole frame. A new colour = a new token with a value in every built-in theme and a
   row that passes `TestThemeTokenContrastAA`.
+- **A new window is one `modal` constant** plus a case in `modalView` (what it draws), `modalWidth`
+  (how wide) and, if it scrolls, `modalLines`; a key that opens it goes through `toggleModal`.
+  Exclusivity is the type's: the rendered-frame test (`modal_test.go`) adds the window to its
+  table and proves nothing stacks.
 - **go-studs is patched, never edited.** An approved change to the kit is a
   `third_party/go-studs/patches/NNN-name.patch` with a row in `LOCAL_CHANGES.md`;
   `scripts/sync-go-studs.sh` re-applies the stack on every sync and refuses a drifted upstream.

@@ -18,18 +18,18 @@ func TestSetupWindowOpensOnSAndAtLaunch(t *testing.T) {
 	m := dash(t)
 	m, _ = m.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	d := m.(Dashboard)
-	if !d.showSetup {
+	if d.modal != modalSetup {
 		t.Fatal("[s] must open the Setup window")
 	}
 	if view := stripANSITest(d.View().Content); !strings.Contains(view, "Setup") || !strings.Contains(view, "1. Your default location") {
 		t.Fatalf("Setup window missing:\n%s", view)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if m.(Dashboard).showSetup {
+	if m.(Dashboard).modal == modalSetup {
 		t.Fatal("esc closes it without saving")
 	}
 	first, err := NewDashboard(Config{Version: "t", OpenSetup: true})
-	if err != nil || !first.showSetup {
+	if err != nil || first.modal != modalSetup {
 		t.Fatalf("OpenSetup opens the window at launch (%v)", err)
 	}
 	if view := stripANSITest(first.View().Content); !strings.Contains(view, "1. Your default location") {
@@ -82,8 +82,8 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	}
 	model = drain(t, model, cmd)
 	d := model.(Dashboard)
-	if d.showSetup || h.setups != 1 || h.key != "" || h.def == nil || h.def.Zip != "92057" {
-		t.Fatalf("no key: Setup hook once with the location and an empty key: %+v key=%q open=%v", h.def, h.key, d.showSetup)
+	if d.modal == modalSetup || h.setups != 1 || h.key != "" || h.def == nil || h.def.Zip != "92057" {
+		t.Fatalf("no key: Setup hook once with the location and an empty key: %+v key=%q open=%v", h.def, h.key, d.modal == modalSetup)
 	}
 	if len(h.watch) != 1 || h.watch[0].Zip != "92057" || d.selected != 0 { // the fixture's only favourite IS Oceanside: kept once, on top
 		t.Fatalf("the default leads the committed watchlist, never duplicated, focus on it: %+v", h.watch)
@@ -129,7 +129,7 @@ func TestSetupFormKeyMasksAndStoresIt(t *testing.T) {
 	}
 	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	model = drain(t, model, cmd)
-	if model.(Dashboard).showSetup || h.key != key {
+	if model.(Dashboard).modal == modalSetup || h.key != key {
 		t.Fatalf("enter stores the key: %q", h.key)
 	}
 	// A refused key (the hook's word) keeps the window open with the reason.
@@ -144,7 +144,7 @@ func TestSetupFormKeyMasksAndStoresIt(t *testing.T) {
 	_, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	model = drain(t, model, cmd)
 	d := model.(Dashboard)
-	if !d.showSetup || !strings.Contains(stripANSITest(d.View().Content), "setup failed: a FIRMS MAP_KEY is 32 hex") {
+	if d.modal != modalSetup || !strings.Contains(stripANSITest(d.View().Content), "setup failed: a FIRMS MAP_KEY is 32 hex") {
 		t.Fatalf("a failed setup stays open with the reason:\n%s", stripANSITest(d.View().Content))
 	}
 }

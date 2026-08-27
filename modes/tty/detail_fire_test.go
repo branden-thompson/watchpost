@@ -33,7 +33,7 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	loc.Alerts = append(loc.Alerts, snapshot.Alert{ID: "rfw", Event: "Red Flag Warning", Severity: "severe", Expires: now.Add(6 * time.Hour)})
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
-	d.showDetails = true
+	d.modal = modalDetails
 	raw := strings.Join(d.detailLines(), "\n")
 	joined := stripANSITest(raw)
 	for _, want := range []string{
@@ -56,7 +56,7 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 		t.Fatal("8 MW must not read bold")
 	}
 	cold := m.(Dashboard)
-	cold.showDetails = true
+	cold.modal = modalDetails
 	if q := stripANSITest(strings.Join(cold.detailLines(), "\n")); !strings.Contains(q, "FIRE │ Hotspots      fire feed not yet available") {
 		t.Fatalf("before any fire feed answers it must say so, never 'none':\n%s", q)
 	}
@@ -64,7 +64,7 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	s3.Locations[0].Fire = snapshot.FireState{AsOf: now}
 	m3, _ := m.Update(SnapshotMsg{Snap: s3})
 	quiet := m3.(Dashboard)
-	quiet.showDetails = true
+	quiet.modal = modalDetails
 	if q := stripANSITest(strings.Join(quiet.detailLines(), "\n")); !strings.Contains(q, "FIRE │ Hotspots      none within the fire ring") {
 		t.Fatalf("no fire must still be said:\n%s", q)
 	}

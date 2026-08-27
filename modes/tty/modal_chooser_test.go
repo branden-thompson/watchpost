@@ -64,7 +64,7 @@ func TestVoiceChooserUAT84(t *testing.T) {
 	}
 	m2, _ := model.Update(tea.KeyPressMsg{Code: 'V', Text: "V", Mod: tea.ModShift})
 	d := m2.(Dashboard)
-	if !d.showVoice {
+	if d.modal != modalVoice {
 		t.Fatal("V opens the chooser")
 	}
 	if mv := stripANSITest(d.View().Content); !strings.Contains(mv, "Correspondent Voice") || !strings.Contains(mv, "✔ Samantha") || !strings.Contains(mv, "Daniel") || !strings.Contains(mv, "[p] Preview") || !strings.Contains(mv, "[enter] Select Voice") || !strings.Contains(mv, "[esc] Cancel") {
@@ -94,8 +94,8 @@ func TestVoiceChooserUAT84(t *testing.T) {
 	}
 	runCmd(cmd)
 	d4 := m4.(Dashboard)
-	if chosen != "Alex" || d4.radioVoice != "Alex" || d4.showVoice {
-		t.Fatalf("enter applies the highlighted voice: chosen=%q chip=%q open=%v", chosen, d4.radioVoice, d4.showVoice)
+	if chosen != "Alex" || d4.radioVoice != "Alex" || d4.modal == modalVoice {
+		t.Fatalf("enter applies the highlighted voice: chosen=%q chip=%q open=%v", chosen, d4.radioVoice, d4.modal == modalVoice)
 	}
 	if v := stripANSITest(d4.View().Content); !strings.Contains(v, "[V] Voice: Alex") {
 		t.Fatalf("chip must show the new voice:\n%s", v)

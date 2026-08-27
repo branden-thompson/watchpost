@@ -98,7 +98,7 @@ func incidentRows(o render.Opts, ins []snapshot.Incident) []string {
 		}
 		facts := strings.TrimSpace(o.Distance(in.Source.DistanceKm))
 		if in.Acres != nil {
-			facts += dot + thousands(*in.Acres) + " ac"
+			facts += dot + render.Thousands(*in.Acres) + " ac"
 		}
 		contained := ""
 		if in.PercentContained != nil {
@@ -159,15 +159,6 @@ func fireGlyph(o render.Opts) string {
 		return "*"
 	}
 	return "◆"
-}
-
-// thousands groups an acreage ("12,915").
-func thousands(v float64) string {
-	s := fmt.Sprintf("%.0f", v)
-	for i := len(s) - 3; i > 0; i -= 3 {
-		s = s[:i] + "," + s[i:]
-	}
-	return s
 }
 
 func plural(n int) string {

@@ -1,8 +1,10 @@
 const ModeRelay
 const ModeSynth
+const RecentCap
 const RepeatOff
 const RepeatOne
 const RepeatWatchlist
+const WatchCap
 const aboutWidth
 const alertBodyLines
 const alertContentLines
@@ -22,7 +24,17 @@ const marNoteGap
 const marNoteMax
 const marNumW
 const marqueeGap
-const recentCap
+const modalAbout
+const modalAdd
+const modalAlerts
+const modalDetails
+const modalHelp
+const modalNone
+const modalRemove
+const modalSetup
+const modalStatus
+const modalTheme
+const modalVoice
 const recentEmpty
 const recentWindow
 const setupQuestions
@@ -57,6 +69,7 @@ func (Dashboard).body
 func (Dashboard).bodyKeyFor
 func (Dashboard).canAddFocused
 func (Dashboard).canRemoveFocused
+func (Dashboard).close
 func (Dashboard).commitCmd
 func (Dashboard).compact
 func (Dashboard).controlRow
@@ -88,9 +101,11 @@ func (Dashboard).marqueeProgress
 func (Dashboard).memoCounts
 func (Dashboard).modalLines
 func (Dashboard).modalMax
+func (Dashboard).modalView
 func (Dashboard).modalWidth
 func (Dashboard).numPriority
 func (Dashboard).numRecent
+func (Dashboard).open
 func (Dashboard).openSetup
 func (Dashboard).openTheme
 func (Dashboard).openVoice
@@ -127,6 +142,7 @@ func (Dashboard).takeCmd
 func (Dashboard).themeLines
 func (Dashboard).tickNeeded
 func (Dashboard).todayRows
+func (Dashboard).toggle
 func (Dashboard).toggleModal
 func (Dashboard).toggleRadio
 func (Dashboard).vizActive
@@ -158,7 +174,6 @@ func currentRow
 func dataAsOf
 func defaultKeyMap
 func detailRow
-func displayCond
 func ellipsize
 func emptyState
 func fireCount
@@ -208,7 +223,6 @@ func sortAlerts
 func splitAlertItems
 func stationNote
 func swellRows
-func thousands
 func tick
 func tideEvent
 func tideRows
@@ -237,6 +251,7 @@ type committedMsg
 type frameLayout
 type issue
 type marineCell
+type modal
 type radioParts
 type resolvedMsg
 type setupFocus

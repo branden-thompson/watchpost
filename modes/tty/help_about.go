@@ -30,7 +30,7 @@ func (d Dashboard) helpLines(o render.Opts) []string {
 	// Row marks legend (red-team B5 U8): the glyphs beside a location, in words.
 	g := o.Glyphs() // the table's own set, ASCII included (A11-10)
 	lines = append(lines, "", fmt.Sprintf("Row marks: %s playing   %s on repeat   n%s fires nearby (bold = burning hard)   n%s alerts", g.Play, g.Repeat, g.Fire, g.Alert))
-	return append(lines, "", "  "+o.KeyCap("esc")+" Close   "+o.KeyCap("↑↓")+" Scroll") // chips like every other modal (UAT 68.2)
+	return append(lines, "", "  "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll"))) // chips like every other modal (UAT 68.2)
 }
 
 func orDefault(s, alt string) string {

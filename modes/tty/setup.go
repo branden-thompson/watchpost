@@ -48,9 +48,8 @@ type setupState struct {
 
 // openSetup toggles the Setup window with fresh state, alone on top.
 func (d Dashboard) openSetup() Dashboard {
-	open := !d.showSetup
-	d.showHelp, d.showDetails, d.showAdd, d.showAlerts, d.showStatus, d.showRemove, d.showTheme, d.showAbout, d.showVoice, d.modalScroll = false, false, false, false, false, false, false, false, false, 0
-	d.showSetup, d.setup = open, setupState{}
+	d = d.toggle(modalSetup)
+	d.setup = setupState{}
 	return d
 }
 
@@ -61,7 +60,8 @@ func (d Dashboard) openSetup() Dashboard {
 func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
 	case "esc":
-		d.showSetup, d.setup = false, setupState{}
+		d = d.close()
+		d.setup = setupState{}
 		return d, nil
 	case "tab":
 		d.setup.focus, d.setup.err = (d.setup.focus+1)%setupQuestions, ""
@@ -215,7 +215,7 @@ func (d Dashboard) setupLines(o render.Opts) []string {
 	segs := []string{o.KeyCap("tab") + " Next question", o.KeyCap("enter") + " " + action, o.KeyCap("↑↓") + " Pick", o.KeyCap("ctrl+r") + " Reveal key", o.KeyCap("esc") + " Cancel"}
 	inner := min(o.Width, d.modalWidth()) - 7 - 2 // wrapModal's rail allowance, then the 2-cell inset
 	lines = append(lines, "")
-	for _, row := range strings.Split(render.WrapSegments(segs, inner, "   "), "\n") {
+	for _, row := range render.WrapSegments(segs, inner, "   ") {
 		lines = append(lines, "  "+row)
 	}
 	return lines

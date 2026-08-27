@@ -3,6 +3,7 @@ package synth
 import (
 	"context"
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"strings"
 	"time"
 
@@ -161,7 +162,7 @@ func compass(deg *float64) string {
 		return "variable"
 	}
 	names := []string{"north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"}
-	return names[int((*deg+22.5)/45)%8]
+	return names[geo.CompassIndex(*deg, 8)] // 8 points for the spoken wind — the 16-point wording is a §0.9 decision, not a nit
 }
 
 // Sample is the voice chooser's preview line (UAT 86).

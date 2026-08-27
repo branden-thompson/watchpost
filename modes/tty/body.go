@@ -137,7 +137,7 @@ func (d Dashboard) controlRow(o render.Opts) string {
 	if render.Width(line)+render.Width(nav)+2 <= o.Width {
 		return render.PadBetween(line, nav, o.Width)
 	}
-	return render.WrapSegments(append(segs, nav), o.Width, "   ")
+	return strings.Join(render.WrapSegments(append(segs, nav), o.Width, "   "), "\n")
 }
 
 // sharedExtDays pins ONE extended-forecast column count for the priority

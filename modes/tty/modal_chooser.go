@@ -16,7 +16,7 @@ func (d Dashboard) handleThemeKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	names := render.ThemeNames()
 	switch key.String() {
 	case "esc", "t":
-		d.showTheme = false
+		d = d.close()
 	case "up":
 		d.themeIdx = max(0, d.themeIdx-1)
 	case "down":
@@ -36,7 +36,8 @@ func (d Dashboard) handleThemeKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 // openTheme toggles the theme chooser with the cursor on the active theme.
 func (d Dashboard) openTheme() Dashboard {
-	d.showTheme, d.showHelp, d.showDetails, d.showAlerts, d.showStatus, d.showVoice, d.themeErr = !d.showTheme, false, false, false, false, false, ""
+	d = d.toggle(modalTheme)
+	d.themeErr = ""
 	for i, n := range render.ThemeNames() {
 		if n == render.ThemeName() {
 			d.themeIdx = i
@@ -49,8 +50,9 @@ func (d Dashboard) openTheme() Dashboard {
 // The list is read from the hook ONCE here (UAT 85): rendering must never
 // run it — on macOS it shells out to `say -v ?`.
 func (d Dashboard) openVoice() Dashboard {
-	d.showVoice, d.showHelp, d.showDetails, d.showAlerts, d.showStatus, d.showTheme, d.voiceErr, d.voiceNote = !d.showVoice, false, false, false, false, false, "", ""
-	if !d.showVoice {
+	d = d.toggle(modalVoice)
+	d.voiceErr, d.voiceNote = "", ""
+	if d.modal != modalVoice {
 		return d
 	}
 	d.voiceList = d.voices()
@@ -85,7 +87,7 @@ func (d Dashboard) handleVoiceKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	names := d.voiceList
 	switch key.String() {
 	case "esc", "V":
-		d.showVoice = false
+		d = d.close()
 	case "up":
 		d.voiceIdx = max(0, d.voiceIdx-1)
 	case "down":
@@ -101,7 +103,8 @@ func (d Dashboard) handleVoiceKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return d, nil
 		}
 		name := names[d.voiceIdx]
-		d.radioVoice, d.showVoice, d.voiceErr = name, false, ""
+		d = d.close()
+		d.radioVoice, d.voiceErr = name, ""
 		if set := d.cfg.SetVoice; set != nil {
 			// Off the update loop (red-team 0.9.0 C-5): the hook saves the
 			// config and hands the running broadcast over — disk and a
@@ -165,5 +168,5 @@ func (d Dashboard) themeLines(o render.Opts) []string {
 		lines = append(lines, "", "  ⚠ "+d.themeErr)
 	}
 	lines = append(lines, "", "  Themes apply live; add your own as ~/.config/watchpost/themes/<name>.json")
-	return append(lines, "", "  "+o.KeyCap("↑↓")+" Select  "+o.KeyCap("enter")+" Apply  "+o.KeyCap("esc")+" Close")
+	return append(lines, "", "  "+o.Controls("  ", render.Ctl("↑↓", "Select"), render.Ctl("enter", "Apply"), render.Ctl("esc", "Close")))
 }

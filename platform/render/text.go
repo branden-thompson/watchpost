@@ -12,7 +12,7 @@ import (
 
 // WrapSegments greedily packs help segments into width-bound lines (UAT
 // 6.7: the key-binding footer wraps smartly with terminal width). ANSI-aware.
-func WrapSegments(segs []string, width int, sep string) string {
+func WrapSegments(segs []string, width int, sep string) []string {
 	var lines []string
 	cur := ""
 	for _, seg := range segs {
@@ -30,7 +30,37 @@ func WrapSegments(segs []string, width int, sep string) string {
 	if cur != "" {
 		lines = append(lines, cur)
 	}
-	return strings.Join(lines, "\n")
+	return lines // one entry per row (Q6, L3-F13: callers used to re-split on "\n")
+}
+
+// Thousands groups a whole number ("12,915") — the one owner of the
+// acreage format the FIRE rows and the broadcast share (Q6, L3-F8).
+func Thousands(v float64) string {
+	s := fmt.Sprintf("%.0f", v)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return s
+}
+
+// Control is one key-cap chip with its label in a control row.
+type Control struct {
+	Key, Label string
+	Muted      bool // an inert control reads muted (UAT 21.1)
+}
+
+// Ctl builds a live control; CtlIf a control that is live only when on.
+func Ctl(key, label string) Control            { return Control{Key: key, Label: label} }
+func CtlIf(key, label string, on bool) Control { return Control{Key: key, Label: label, Muted: !on} }
+
+// Controls renders a control row — "[key] label" chips joined by gap — the
+// one owner of the modal footers' shape (Q6, L3-F12).
+func (o Opts) Controls(gap string, items ...Control) string {
+	parts := make([]string, 0, len(items))
+	for _, c := range items {
+		parts = append(parts, o.KeyCapIf(c.Key, !c.Muted)+" "+c.Label)
+	}
+	return strings.Join(parts, gap)
 }
 
 // WrapText word-wraps plain prose to width-bound lines (UAT 15.2: alert

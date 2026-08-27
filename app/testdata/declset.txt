@@ -10,7 +10,6 @@ const liveDwell
 const maxDumpsPerRun
 const publishCoalesce
 const recentAlertsEvery
-const recentCap
 const recentPublishCoalesce
 const recentStartDelay
 const recentStartStagger

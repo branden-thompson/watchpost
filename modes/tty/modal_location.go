@@ -27,7 +27,8 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return d, nil
 	case "esc", "ctrl+a":
-		d.showAdd, d.addQuery, d.addErr = false, "", ""
+		d = d.close()
+		d.addQuery, d.addErr = "", ""
 	case "backspace":
 		if r := []rune(d.addQuery); len(r) > 0 {
 			d.addQuery = string(r[:len(r)-1])
@@ -40,8 +41,16 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return d, nil
 }
 
-// watchlistFull reports the 10-location priority cap (UAT 26.3).
-func (d Dashboard) watchlistFull() bool { return d.numPriority() >= 10 }
+// The two list caps (UAT 48: 10 favourites + 50 most-recent = 60 tracked
+// locations) — exported so the app, which builds the lists, reads the tty's
+// numbers instead of its own copies (Q6, L3-F11).
+const (
+	WatchCap  = 10
+	RecentCap = 50
+)
+
+// watchlistFull reports the priority cap (UAT 26.3).
+func (d Dashboard) watchlistFull() bool { return d.numPriority() >= WatchCap }
 
 // resolveCmd asks the app hook to turn the typed query into a ref.
 func (d Dashboard) resolveCmd(query, mode string) tea.Cmd {
@@ -68,8 +77,8 @@ func (d Dashboard) handleResolved(v resolvedMsg) (tea.Model, tea.Cmd) {
 	watch, recent := refsOf(d.snap), refsOf(d.recent)
 	switch v.mode {
 	case "add":
-		if len(watch) >= 10 {
-			d.addErr = "the priority list is full (10 locations)"
+		if len(watch) >= WatchCap {
+			d.addErr = fmt.Sprintf("the priority list is full (%d locations)", WatchCap)
 			return d, nil
 		}
 		for _, r := range watch { // F4: a duplicate would leave the assembler with nothing to publish
@@ -80,12 +89,14 @@ func (d Dashboard) handleResolved(v resolvedMsg) (tea.Model, tea.Cmd) {
 		}
 		watch = append(watch, v.ref)       // bottom of the watchlist (UAT 26.3)
 		recent = withoutRef(recent, v.ref) // UAT 106: a promoted location leaves RECENT — never on screen twice
-	case "lookup":
+	}
+	d = d.close() // the search modal is done
+	d.addQuery, d.addErr = "", ""
+	if v.mode == "lookup" {
 		recent = prependRef(recent, v.ref) // top of recent/searched (UAT 26.4)
 		d.selected = len(watch)            // focus the looked-up location...
-		d.showDetails, d.modalScroll = true, 0
+		d = d.open(modalDetails)           // ...and open its details
 	}
-	d.showAdd, d.addQuery, d.addErr = false, "", ""
 	return d, d.commitCmd(watch, recent, v.mode)
 }
 
@@ -104,7 +115,7 @@ func (d Dashboard) commitCmd(watch, recent []snapshot.LocationRef, what string) 
 func (d Dashboard) handleRemoveKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
 	case "enter":
-		d.showRemove = false
+		d = d.close()
 		watch, recent := refsOf(d.snap), refsOf(d.recent)
 		if d.selected >= len(watch) {
 			return d, nil
@@ -117,7 +128,7 @@ func (d Dashboard) handleRemoveKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return d, d.commitCmd(watch, recent, "remove")
 	case "esc":
-		d.showRemove = false
+		d = d.close()
 	}
 	return d, nil
 }
@@ -138,9 +149,6 @@ func refsOf(sn *snapshot.Snapshot) []snapshot.LocationRef {
 func refOf(l snapshot.Location) snapshot.LocationRef {
 	return snapshot.LocationRef{Label: l.Label, Tag: l.Tag, Zip: l.Zip, Lat: l.Lat, Lon: l.Lon, TZ: l.TZ}
 }
-
-// recentCap is the RECENT / SEARCHED list size (UAT 48: 50 most-recent).
-const recentCap = 50
 
 // withoutRef drops ref (by location key) from refs, order kept — the
 // RECENT / SEARCHED list when a location is promoted to the watchlist
@@ -164,11 +172,11 @@ func sameLocation(a, b snapshot.LocationRef) bool {
 	return snapshot.Key(a) == snapshot.Key(b)
 }
 
-// prependRef puts ref at the head, deduped by zip, capped at recentCap.
+// prependRef puts ref at the head, deduped by zip, capped at RecentCap.
 func prependRef(refs []snapshot.LocationRef, ref snapshot.LocationRef) []snapshot.LocationRef {
 	out := []snapshot.LocationRef{ref}
 	for _, r := range refs {
-		if r.Zip == ref.Zip || len(out) == recentCap {
+		if r.Zip == ref.Zip || len(out) == RecentCap {
 			continue
 		}
 		out = append(out, r)
@@ -188,7 +196,7 @@ func (d Dashboard) removeLines(o render.Opts) []string {
 		"",
 		"  It will move to the top of the RECENT / SEARCHED list.",
 		"",
-		"  " + o.KeyCap("enter") + " Confirm   " + o.KeyCap("esc") + " Cancel",
+		"  " + o.Controls("   ", render.Ctl("enter", "Confirm"), render.Ctl("esc", "Cancel")),
 	}
 }
 
@@ -211,5 +219,5 @@ func (d Dashboard) addLines(o render.Opts) []string {
 	if d.addMode == "lookup" {
 		verb = "Lookup"
 	}
-	return append(lines, "  "+o.KeyCapIf("enter", enabled)+" "+verb+"   "+o.KeyCap("esc")+" Cancel")
+	return append(lines, "  "+o.Controls("   ", render.CtlIf("enter", verb, enabled), render.Ctl("esc", "Cancel")))
 }

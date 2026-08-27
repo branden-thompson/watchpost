@@ -105,8 +105,8 @@ func RunDashboard(version string, opt Options) error {
 		}
 	})
 	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
-	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, recentCap), recentCap))
-	lp.markFIRMS() // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
+	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap)) // the tty owns the caps (Q6, L3-F11)
+	lp.markFIRMS()                                                                                                                                        // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
 	lp.wireDeckWarnings()
 	// Cancel BEFORE waiting (red-team 0.9.0 C-2): stopAll waits for every
 	// in-flight fetch, and a quit during the launch burst or a slow network

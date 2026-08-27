@@ -27,47 +27,45 @@ func (d Dashboard) View() tea.View {
 	b.WriteString("\n\n")                                          // UAT-3.2: blank line between header and alert section
 	d.writeBody(&b, fl, priority, recent)                          // UAT 57: no footer - every control lives where it acts
 	content := frameText(b.String(), viewPadLeft, render.TextBase) // UAT 4.10: base grey; no stray trailing row (UAT 58)
-	if d.showHelp {
-		// UAT 8.3: help floats over the dashboard (lipgloss compositing).
-		content = render.Overlay(content, d.helpModal(o), d.width)
-	}
-	if d.showDetails {
-		content = render.Overlay(content, d.detailsModal(o), d.width) // UAT 10.6
-	}
-	if d.showAdd {
-		title := "Add Location"
-		if d.addMode == "lookup" {
-			title = "Lookup Location" // UAT 26.4
-		}
-		content = render.Overlay(content, d.floatModal(o, d.modalWidth(), title, d.addLines(o)), d.width)
-	}
-	if d.showRemove {
-		fg, _ := render.ModalTone(d.darkBG)
-		content = render.Overlay(content, d.floatModalToned(o, d.modalWidth(), "Remove Location",
-			d.removeLines(o), fg, render.Tok(render.ConfirmBG)), d.width) // UAT 26.2
-	}
-	if d.showAlerts {
-		content = render.Overlay(content, d.alertDetailsModal(o), d.width) // UAT 22
-	}
-	if d.showStatus {
-		content = render.Overlay(content, d.floatModal(o, d.modalWidth(), "API Status", d.statusLines()), d.width) // UAT 24.2
-	}
-	if d.showAbout {
-		content = render.Overlay(content, d.floatModal(o, d.modalWidth(), "", d.aboutLines()), d.width) // UAT 68
-	}
-	if d.showTheme {
-		content = render.Overlay(content, d.floatModal(o, d.modalWidth(), "Color Theme", d.themeLines(o)), d.width) // UAT 53
-	}
-	if d.showVoice {
-		content = render.Overlay(content, d.floatModal(o, d.modalWidth(), "Correspondent Voice", d.voiceLines(o)), d.width) // UAT 84
-	}
-	if d.showSetup {
-		content = render.Overlay(content, d.floatModal(o, d.modalWidth(), "Setup", d.setupLines(o)), d.width) // UAT 100
+	if overlay := d.modalView(o); overlay != "" {
+		content = render.Overlay(content, overlay, d.width) // the one open window (UAT 8.3: lipgloss compositing)
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.BackgroundColor = render.WindowBG(d.darkBG) // UAT 10.2: blue-grey window
 	return v
+}
+
+// modalView renders the open window, "" when none (Q6: one switch, one overlay).
+func (d Dashboard) modalView(o render.Opts) string {
+	switch d.modal {
+	case modalHelp:
+		return d.helpModal(o)
+	case modalDetails:
+		return d.detailsModal(o) // UAT 10.6
+	case modalAdd:
+		title := "Add Location"
+		if d.addMode == "lookup" {
+			title = "Lookup Location" // UAT 26.4
+		}
+		return d.floatModal(o, d.modalWidth(), title, d.addLines(o))
+	case modalRemove:
+		fg, _ := render.ModalTone(d.darkBG)
+		return d.floatModalToned(o, d.modalWidth(), "Remove Location", d.removeLines(o), fg, render.Tok(render.ConfirmBG)) // UAT 26.2
+	case modalAlerts:
+		return d.alertDetailsModal(o) // UAT 22
+	case modalStatus:
+		return d.floatModal(o, d.modalWidth(), "API Status", d.statusLines()) // UAT 24.2
+	case modalAbout:
+		return d.floatModal(o, d.modalWidth(), "", d.aboutLines()) // UAT 68
+	case modalTheme:
+		return d.floatModal(o, d.modalWidth(), "Color Theme", d.themeLines(o)) // UAT 53
+	case modalVoice:
+		return d.floatModal(o, d.modalWidth(), "Correspondent Voice", d.voiceLines(o)) // UAT 84
+	case modalSetup:
+		return d.floatModal(o, d.modalWidth(), "Setup", d.setupLines(o)) // UAT 100
+	}
+	return ""
 }
 
 // modalMax is the modal body height budget (UAT 10.4: expand to fit tall
@@ -80,35 +78,33 @@ func (d Dashboard) modalWidth() int {
 	// Content-heavy modals stretch to 60% of the terminal on wide screens
 	// (UAT 31.2); their base widths are the floor.
 	stretch := func(base int) int { return max(base, d.width*60/100) }
-	switch {
-	case d.showDetails:
+	switch d.modal {
+	case modalDetails:
 		return stretch(85) // location-detail-mock.txt width
-	case d.showAlerts:
+	case modalAlerts:
 		return stretch(76)
-	case d.showStatus:
+	case modalStatus:
 		return stretch(68)
-	case d.showAbout:
+	case modalAbout:
 		return aboutWidth
-	case d.showVoice, d.showSetup:
+	case modalVoice, modalSetup:
 		return 68 // the four chip controls fit on one line (UAT 86); the FIRMS address fits (UAT 100)
-	case d.showAdd, d.showRemove, d.showTheme:
-		return 56
 	}
-	return 56 // help
+	return 56 // help, add/lookup, remove, theme
 }
 
 // modalLines is the open modal's full body, wrapped exactly as the
 // component renders it — scroll bounds always match what is on screen.
 func (d Dashboard) modalLines() []string {
 	var raw []string
-	switch {
-	case d.showDetails:
+	switch d.modal {
+	case modalDetails:
 		raw = d.detailLines()
-	case d.showAlerts:
+	case modalAlerts:
 		raw = d.alertDetailLines()
-	case d.showStatus:
+	case modalStatus:
 		raw = d.statusLines()
-	case d.showAbout:
+	case modalAbout:
 		raw = d.aboutLines()
 	default:
 		raw = d.helpLines(d.opts())

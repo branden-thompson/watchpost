@@ -223,22 +223,13 @@ type Dashboard struct {
 	units        render.Units
 	selected     int
 	alertIdx     int
-	recentOff    int // scroll offset (interaction lands with tab section nav)
-	showHelp     bool
-	showDetails  bool   // enter: floating forecast details (UAT 10.6)
-	showAdd      bool   // ctrl+a / l: search modal (UAT 16.3/26)
+	recentOff    int    // scroll offset (interaction lands with tab section nav)
+	modal        modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode      string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	addErr       string // resolve failure surfaced in the modal
-	showRemove   bool   // shift+del: remove confirmation (UAT 26.2)
-	showAlerts   bool   // A: alert details modal (UAT 22)
-	showStatus   bool   // S: API status/diagnostics modal (UAT 24.2)
-	showAbout    bool   // a: About window (UAT 68)
-	showSetup    bool   // s: Setup window (UAT 100) — the first-run questions, over the dashboard like every other modal
 	voiceNote    string // the Voice chooser's progress line (UAT 119): set by VoiceNoteMsg, "" when nothing is pending
 	setup        setupState
-	showTheme    bool // t: theme chooser (UAT 53)
-	themeIdx     int  // chooser cursor
-	showVoice    bool // V: voice chooser (UAT 84)
+	themeIdx     int // chooser cursor
 	voiceIdx     int
 	voiceErr     string
 	voiceList    []string // snapshot of the hook's list, taken when the chooser opens (UAT 85: never from View)
@@ -314,7 +305,7 @@ func (d Dashboard) tickNeeded() bool {
 	switch {
 	case d.volFlash != "": // pending or just expired — the tick after expiry clears it
 		return true
-	case d.showStatus || d.showDetails: // [S] ages; Details "N min ago" labels and LoadingDots
+	case d.modal == modalStatus || d.modal == modalDetails: // [S] ages; Details "N min ago" labels and LoadingDots
 		return true
 	case d.radioPlaying && d.radioDetail != "" && !d.vizTicking && !d.radioMin && !(d.radioLive && d.radioState == "playing"):
 		return true // the marquee paces itself on the wall clock (UAT 83); the viz tick redraws faster when on; LIVE RADIO and the min player have none
@@ -386,9 +377,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case vizTickMsg:
 		return d.vizFrame()
 	case voiceErrMsg:
-		d.voiceErr, d.showVoice = v.err.Error(), true
-		d.showAdd, d.showRemove, d.showTheme = false, false, false // alone on top (N-7)
-		return d, nil
+		d.voiceErr = v.err.Error()
+		return d.open(modalVoice), nil // alone on top (N-7; the Q6 exclusivity test)
 	case tea.KeyPressMsg:
 		return d.handleKey(v)
 	}
@@ -438,19 +428,16 @@ func (d Dashboard) applySnapshot(v SnapshotMsg) (tea.Model, tea.Cmd) {
 
 // handleKey routes through the merged KeyMap (D-15: keys are data).
 func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	if d.showSetup {
+	switch d.modal { // windows that own the keyboard while open
+	case modalSetup:
 		return d.handleSetupKey(key)
-	}
-	if d.showAdd {
+	case modalAdd:
 		return d.handleAddKey(key)
-	}
-	if d.showRemove {
+	case modalRemove:
 		return d.handleRemoveKey(key)
-	}
-	if d.showTheme {
+	case modalTheme:
 		return d.handleThemeKey(key)
-	}
-	if d.showVoice {
+	case modalVoice:
 		return d.handleVoiceKey(key)
 	}
 	act, bound := d.keys.Lookup(key.String())
@@ -465,7 +452,7 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "units-c":
 		d.units = render.UnitC
 	default:
-		if act == "add-location" && d.showDetails {
+		if act == "add-location" && d.modal == modalDetails {
 			return d.addFocused() // detail view: straight to the watchlist (UAT 27 mock)
 		}
 		if toggled, ok := d.toggleRadio(act); ok {
@@ -513,7 +500,7 @@ func (d Dashboard) canAddFocused() bool {
 // RECENT row that has none (UAT 72): the seed list skips the 162 KB hourly
 // product on its cadence; a row someone drills into earns it.
 func (d Dashboard) hydrateCmd() tea.Cmd {
-	if !d.showDetails || d.cfg.Hydrate == nil || d.selected < d.numPriority() {
+	if d.modal != modalDetails || d.cfg.Hydrate == nil || d.selected < d.numPriority() {
 		return nil
 	}
 	loc := d.selectedLocation()
@@ -528,50 +515,93 @@ func (d Dashboard) hydrateCmd() tea.Cmd {
 	}
 }
 
+// modal names the one floating window that can be open (quality pass Q6,
+// L3-F15): before it, ten booleans kept exclusivity by hand at ten reset
+// sites and the red team found them inconsistent (help left Alerts open
+// underneath, a voice error reopened the chooser over Details). Now opening
+// a window closes whatever was open, by construction; the exclusivity test
+// asserts it on the rendered frame.
+type modal int
+
+const (
+	modalNone modal = iota
+	modalHelp
+	modalDetails // enter: floating forecast details (UAT 10.6)
+	modalAdd     // ctrl+a / l: search modal — addMode says which (UAT 16.3/26)
+	modalRemove  // shift+del: remove confirmation (UAT 26.2)
+	modalAlerts  // A: alert details modal (UAT 22)
+	modalStatus  // S: API status/diagnostics modal (UAT 24.2)
+	modalAbout   // a: About window (UAT 68)
+	modalTheme   // t: theme chooser (UAT 53)
+	modalVoice   // V: voice chooser (UAT 84)
+	modalSetup   // s: Setup window (UAT 100) — the first-run questions, over the dashboard like every other modal
+)
+
+// open shows m alone, scrolled to the top.
+func (d Dashboard) open(m modal) Dashboard {
+	d.modal, d.modalScroll = m, 0
+	return d
+}
+
+// close dismisses whatever is open.
+func (d Dashboard) close() Dashboard { return d.open(modalNone) }
+
+// toggle opens m, or closes it when it is the open one.
+func (d Dashboard) toggle(m modal) Dashboard {
+	if d.modal == m {
+		return d.close()
+	}
+	return d.open(m)
+}
+
 // toggleModal owns the open/close actions for every floating window (split
 // from handleKey, P10-04). Opening one closes the others.
 func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 	switch act {
 	case term.HelpAction:
-		d.showHelp, d.showDetails, d.modalScroll = !d.showHelp, false, 0
+		return d.toggle(modalHelp), true
 	case "details":
-		d.showDetails, d.showHelp, d.showAlerts, d.modalScroll = !d.showDetails, false, false, 0 // UAT 10.6
+		return d.toggle(modalDetails), true // UAT 10.6
 	case "alert-details":
-		d.showAlerts, d.showHelp, d.showDetails, d.modalScroll = !d.showAlerts, false, false, 0 // UAT 22
+		return d.toggle(modalAlerts), true // UAT 22
 	case "status":
-		d.showStatus, d.showHelp, d.showDetails, d.showAlerts, d.showAbout, d.modalScroll = !d.showStatus, false, false, false, false, 0 // UAT 24.2
+		return d.toggle(modalStatus), true // UAT 24.2
 	case "about":
-		d.showAbout, d.showHelp, d.showDetails, d.showAlerts, d.showStatus, d.modalScroll = !d.showAbout, false, false, false, false, 0 // UAT 68
+		return d.toggle(modalAbout), true // UAT 68
 	case "theme":
-		d = d.openTheme() // UAT 53
+		return d.openTheme(), true // UAT 53
 	case "voice":
-		d = d.openVoice() // UAT 84
+		return d.openVoice(), true // UAT 84
 	case "setup":
-		d = d.openSetup() // UAT 100
-	case "add-location":
-		d.showAdd, d.addMode, d.showHelp, d.showDetails, d.addQuery, d.addErr = !d.showAdd, "add", false, false, "", "" // UAT 16.3/26.1
-	case "lookup":
-		d.showAdd, d.addMode, d.showHelp, d.showDetails, d.addQuery, d.addErr = !d.showAdd, "lookup", false, false, "", "" // UAT 26.4
+		return d.openSetup(), true // UAT 100
+	case "add-location", "lookup":
+		d = d.toggle(modalAdd) // UAT 16.3/26.1/26.4: one search modal, two modes
+		d.addMode, d.addQuery, d.addErr = "add", "", ""
+		if act == "lookup" {
+			d.addMode = "lookup"
+		}
+		return d, true
 	case "remove":
 		if d.selected < d.numPriority() {
-			d.showRemove = true // UAT 26.2: confirm before touching the watchlist
+			d = d.open(modalRemove) // UAT 26.2: confirm before touching the watchlist
 		}
+		return d, true
 	case "close":
-		d.showHelp, d.showDetails, d.showAdd, d.showAlerts, d.showStatus, d.showRemove, d.showTheme, d.showAbout, d.showVoice, d.showSetup, d.modalScroll = false, false, false, false, false, false, false, false, false, false, 0
-	default:
-		return d, false
+		return d.close(), true
 	}
-	return d, true
+	return d, false
 }
 
 // applyCommitted records a commit hook error for the add modal.
 func (d Dashboard) applyCommitted(v committedMsg) Dashboard {
 	if v.what == "setup" { // the Setup window owns its own outcome (UAT 100)
 		if v.err != nil {
-			d.showSetup, d.setup.err, d.setup.focus = true, "setup failed: "+v.err.Error(), focusKey
+			d = d.open(modalSetup)
+			d.setup.err, d.setup.focus = "setup failed: "+v.err.Error(), focusKey
 			return d
 		}
-		d.showSetup, d.setup, d.selected = false, setupState{}, 0
+		d = d.close()
+		d.setup, d.selected = setupState{}, 0
 		return d
 	}
 	if v.err != nil {
@@ -583,8 +613,8 @@ func (d Dashboard) applyCommitted(v committedMsg) Dashboard {
 		if what == "" {
 			what = "change"
 		}
-		d.addErr, d.showAdd, d.addMode = what+" failed: "+v.err.Error(), true, "add"
-		d.showRemove, d.showVoice, d.showTheme = false, false, false
+		d = d.open(modalAdd) // alone on top (N-7)
+		d.addErr, d.addMode = what+" failed: "+v.err.Error(), "add"
 	}
 	return d
 }

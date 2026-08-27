@@ -95,7 +95,7 @@ func TestRecentListCapsAtFifty(t *testing.T) {
 	for i := range 55 {
 		refs = prependRef(refs, snapshot.LocationRef{Label: fmt.Sprintf("L%d", i), Zip: fmt.Sprintf("%05d", i)})
 	}
-	if len(refs) != recentCap || recentCap != 50 {
+	if len(refs) != RecentCap || RecentCap != 50 {
 		t.Fatalf("recent list must cap at 50, got %d", len(refs))
 	}
 	if refs[0].Zip != "00054" {

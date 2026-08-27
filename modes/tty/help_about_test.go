@@ -37,7 +37,7 @@ func TestAboutWindowMatchesMock(t *testing.T) {
 	m2, _ := model.Update(SnapshotMsg{Snap: snap()})
 	m2, _ = m2.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	d := m2.(Dashboard)
-	if !d.showAbout {
+	if d.modal != modalAbout {
 		t.Fatal("[a] must open the About window")
 	}
 	v := stripANSITest(d.View().Content)
@@ -74,7 +74,7 @@ func TestAboutWindowMatchesMock(t *testing.T) {
 		}
 	}
 	m3, _ := m2.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if m3.(Dashboard).showAbout {
+	if m3.(Dashboard).modal == modalAbout {
 		t.Fatal("esc must close the About window")
 	}
 }
@@ -87,7 +87,7 @@ func TestHelpModalControlsAreChips(t *testing.T) {
 	m := dash(t)
 	m2, _ := m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	d := m2.(Dashboard)
-	if !d.showHelp {
+	if d.modal != modalHelp {
 		t.Fatal("? opens help")
 	}
 	o := d.opts()

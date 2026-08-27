@@ -313,12 +313,12 @@ func (o Opts) rowData(l layout, r LocationRow) []string {
 	if l.zip {
 		data = append(data, r.Zip)
 	}
-	data = append(data, displayCondition(r.Conditions), o.temp5Or(r.Now, r.Loading)+trend)
+	data = append(data, DisplayCondition(r.Conditions), o.temp5Or(r.Now, r.Loading)+trend)
 	if l.hiLo {
 		data = append(data, o.temp5Or(r.Hi, r.Loading), o.temp5Or(r.Lo, r.Loading))
 	}
 	if l.tomorrow {
-		data = append(data, displayCondition(r.TomorrowConditions), o.temp5Or(r.TomorrowHi, r.Loading), o.temp5Or(r.TomorrowLo, r.Loading))
+		data = append(data, DisplayCondition(r.TomorrowConditions), o.temp5Or(r.TomorrowHi, r.Loading), o.temp5Or(r.TomorrowLo, r.Loading))
 	}
 	if l.extDays > 0 {
 		data = append(data, "") // spacer
@@ -460,9 +460,10 @@ func clampCells(data []string, cols []studs.ColumnDefinition) []string {
 	return data
 }
 
-// displayCondition maps provider condition strings to the mock's vocabulary
-// ("P.CLOUDY"): underscores to spaces, PARTLY/MOSTLY abbreviated.
-func displayCondition(c string) string {
+// DisplayCondition maps provider condition strings to the mock's vocabulary
+// ("P.CLOUDY"): underscores to spaces, PARTLY/MOSTLY abbreviated — the
+// table's and the Details modal's one vocabulary (Q6, L3-F10).
+func DisplayCondition(c string) string {
 	c = strings.ToUpper(strings.ReplaceAll(c, "_", " "))
 	c = strings.ReplaceAll(c, "PARTLY ", "P.")
 	c = strings.ReplaceAll(c, "MOSTLY ", "M.")

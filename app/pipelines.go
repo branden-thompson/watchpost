@@ -155,13 +155,6 @@ func startPriority(ctx context.Context, p *tea.Program, providers []snapshot.Pro
 	return &pipeline{asm: asm, s: s, pub: pub}
 }
 
-// recentCap is the RECENT / SEARCHED list size (UAT 48: 10 favourites +
-// 50 most-recent = 60 tracked locations). The launch burst grows with it
-// (~5 calls per location); UAT 59 landed bounded parallel fetch, singleflight
-// points resolution and a shared NDBC station cache — the warm-launch disk
-// cache is the mitigation still queued.
-const recentCap = 50
-
 // recentStartDelay holds the seed pipeline back just long enough for the
 // priority pipeline to own the first second (M1 warm budget).
 const recentStartDelay = time.Second
