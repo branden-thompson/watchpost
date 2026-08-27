@@ -62,6 +62,12 @@ const (
 
 	FireMark Token = "fire.mark" // ▲ in the row marks and the FIRE section: orange (B5)
 
+	// The table's own palette (quality pass Q4a-004, L5-F4): before it the
+	// kit painted these from its $TERM-gated palette, outside the theme.
+	TableHeader Token = "table.header" // column headers (the kit's light purple)
+	TableMuted  Token = "table.muted"  // row numbers and attribute cells (the kit's muted grey)
+	TableName   Token = "table.name"   // an unselected, un-alerted NAME cell (the kit's bright white)
+
 	ConfirmBG Token = "confirm.bg" // destructive-action confirmation tile (UAT 26.2)
 
 	AlertModalWarnFG Token = "alert.modal.warning.fg"  // modal alert text, warning-grade (UAT 28.4)
@@ -137,6 +143,10 @@ func defaultTheme() map[Token]string {
 		SpectrumMid:  "220", // yellow
 		SpectrumHigh: "196", // red
 		FireMark:     "208", // orange
+
+		TableHeader: "135", // = the kit's tui.TableHeader, so nothing changed on the day the theme took over
+		TableMuted:  "245", // = tui.TableRowNumber / tui.TableAttribute
+		TableName:   "97",  // = tui.TableLabel
 
 		ConfirmBG: "48;2;79;12;12", // #4F0C0C — deep red under light text (UAT 109; was #AE7D7E, UAT 26.2)
 

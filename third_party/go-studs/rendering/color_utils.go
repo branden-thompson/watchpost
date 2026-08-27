@@ -1,7 +1,6 @@
 package rendering
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -144,14 +143,96 @@ func ColorSequence(code string) string {
 //
 // All rendering outside the range-aware appliers MUST build escapes through
 // SGR — the archtest ANSI-format guard enforces this.
+//
+// Qualified composites are consumed atomically and passed through unchanged:
+// "38;5;N", "48;5;N", "38;2;R;G;B", "48;2;R;G;B" — so a fully-qualified
+// parameter list ("1;38;5;220") renders as written instead of being
+// re-classified element by element ("38" is a 256-band code on its own).
+// One allocation: the escape is built in place.
 func SGR(params ...string) string {
-	var out []string
+	n := 3
 	for _, p := range params {
-		for elem := range strings.SplitSeq(p, ";") {
-			out = append(out, ColorSequence(elem))
+		n += len(p) + 1
+	}
+	var b strings.Builder
+	b.Grow(n + 8)
+	b.WriteString("\033[")
+	first := true
+	for _, p := range params {
+		for i := len(p); i > 0 && len(p) > 0; i-- { // every element consumes at least one byte: bounded by the parameter's length
+			elem, rest := cutElem(p)
+			out := ColorSequence(elem)
+			if n := compositeLen(elem, rest); n > 0 {
+				out, rest = p[:n], strings.TrimPrefix(p[n:], ";") // the composite as written, no copy
+			}
+			if !first {
+				b.WriteByte(';')
+			}
+			first = false
+			b.WriteString(out)
+			p = rest
 		}
 	}
-	return fmt.Sprintf("\033[%sm", strings.Join(out, ";")) // ansi-constructor: sole sanctioned emitter
+	b.WriteByte('m') // ansi-constructor: sole sanctioned emitter
+	return b.String()
+}
+
+// cutElem splits the first ";"-separated element off p.
+func cutElem(p string) (elem, rest string) {
+	if i := strings.IndexByte(p, ';'); i >= 0 {
+		return p[:i], p[i+1:]
+	}
+	return p, ""
+}
+
+// compositeLen recognises a qualified colour that begins with elem — "38"
+// or "48" followed by "5;N" or "2;R;G;B" in rest — and returns the length
+// of the whole composite within elem+";"+rest (0 when elem starts none).
+func compositeLen(elem, rest string) int {
+	if elem != "38" && elem != "48" {
+		return 0
+	}
+	mode, after := cutElem(rest)
+	count := qualifierParts(mode)
+	if count == 0 {
+		return 0
+	}
+	end := 0
+	for i := 0; i < count; i++ {
+		part, next := cutElem(after[end:])
+		if part == "" || !allDigits(part) {
+			return 0
+		}
+		end += len(part)
+		if i < count-1 {
+			if next == "" {
+				return 0
+			}
+			end++ // the ';'
+		}
+	}
+	return len(elem) + 1 + len(mode) + 1 + end
+}
+
+// qualifierParts is how many numbers follow a colour qualifier: one for
+// the 256-palette ("5;N"), three for truecolor ("2;R;G;B"), none otherwise.
+func qualifierParts(mode string) int {
+	switch mode {
+	case "5":
+		return 1
+	case "2":
+		return 3
+	}
+	return 0
+}
+
+func allDigits(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return len(s) > 0
 }
 
 // GetDisplayWidth calculates the display width of text containing ANSI color codes

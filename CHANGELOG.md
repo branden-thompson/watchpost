@@ -4,6 +4,30 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [Unreleased]
 
+## [0.9.7] — 2026-08-26
+
+Performance & quality pass, batch Q4a (go-studs correctness patches, each a patch beside the kit).
+
+### Changed
+- The location tables' colours belong to the theme: column headers, row numbers and attribute
+  cells take three new tokens (`table.header`, `table.muted`, `table.name`; defaults are the
+  colours the kit painted before, so the default theme looks the same), the `t` chooser restyles
+  them (Monochrome no longer shows a purple header; High Contrast, Synthwave '84 and Solarized
+  Night carry their own, all ≥ 4.5:1), and `NO_COLOR=1` now silences the whole frame. **One look
+  change:** with `TERM` unset or `dumb` the kit used to leave the header and those cells plain
+  while the rest of the dashboard was tinted; they now follow the theme like everything else.
+  User theme files may set the three tokens.
+- The table no longer opens `/dev/tty` on every frame (the kit probed the terminal size on each
+  construction and never read it); the size is probed on first use, through `golang.org/x/term`,
+  with no platform-specific code.
+- Qualified colour composites (`1;38;5;220`, truecolor backgrounds) render as written through the
+  kit's `SGR`, which builds each escape in one buffer; user theme values in that form now work.
+- `Plain` (the screen-reader and `--json` text) drops U+FE0E/U+FE0F variation selectors, whose
+  width terminals disagree on.
+- go-studs is carried as the pinned upstream commit plus patches under
+  `third_party/go-studs/patches/` (`LOCAL_CHANGES.md` lists them); `scripts/sync-go-studs.sh`
+  re-applies them and refuses a drifted checkout.
+
 ## [0.9.6] — 2026-08-26
 
 Performance & quality pass, batches Q2–Q3 (structure; the render path on the app side).

@@ -136,8 +136,9 @@ func (f *ANSIFormatter) StripANSI(text string) string {
 	// This handles common patterns but could be enhanced for comprehensive coverage
 	result := text
 
-	// Remove standard ANSI color codes: \033[XXm
-	for {
+	// Remove standard ANSI color codes: \033[XXm — one iteration per escape
+	// present, so the loop is bounded by the count (P10-02)
+	for i := strings.Count(result, "\033["); i >= 0; i-- {
 		start := strings.Index(result, "\033[")
 		if start == -1 {
 			break

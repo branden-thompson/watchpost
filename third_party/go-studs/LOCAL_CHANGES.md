@@ -1,0 +1,16 @@
+# go-studs — local changes
+
+Upstream commit: `3e85e77`
+
+The in-repo copy is the upstream packages at the commit above, with the patches under
+`patches/` applied in order by `scripts/sync-go-studs.sh` (ADR-04: patches beside the kit,
+upstream first). One row per patch. A patch leaves this table when upstream carries it and the
+pin moves past that commit.
+
+| Patch | Why | Test | Upstream candidate | Removed when |
+|---|---|---|---|---|
+| `000-public-tree-scrub.patch` (**local**: `.local/`, untracked) | Comment wording only: the upstream files name the author's employer and an internal product in comments; Watchpost's public tree carries neither (the 0.9.0 public-tree scrub). A patch that removes words would carry them, so it lives beside the kit in the gitignored `.local/` directory on the maintainer's machine; the sync refuses to run without every patch listed here. No code changes. | the sync's own check: every listed patch present and applied | no — a wording choice of this tree | upstream drops the references |
+| `004-no-auto-style.patch` | The table's header and un-styled cells were painted by the kit's own `$TERM`-gated palette, outside the app's theme and outside `NO_COLOR` (DISCOVER L5-F4, red-team A11-1). `DataTableDefinition.NoAutoStyle` switches the automatic semantic-token styling off; `ColumnDefinition.HeaderColor` lets a caller colour the header cell alone. | `platform/render` colour-on golden byte-identical (`modes/tty/testdata/frame-133x44-colour.golden`), `TestFrameHonoursNoColorUnderColorTerm`, `TestThemeTokenContrastAA` | yes — to open against upstream with this diff and the two fields' doc comments | upstream ships `NoAutoStyle` + `HeaderColor` (or an equivalent) and the pin moves past it |
+| `001-lazy-terminal-probe.patch` | `NewTextFormatter` opened `/dev/tty` and ioctl'd it on every construction — twice per table frame — through a 70-line `unsafe` block with a Windows twin (L5-F1, SC-3). Capability detection no longer probes the size; `GetCapabilities` resolves it on first use, `RefreshCapabilities` re-probes; one untagged `terminal_size.go` on `golang.org/x/term`. Retires seven P10 ledger rows (`unsafe`, unchecked `Close`, function length, build tags). | `TestTerminalProbeIsLazyAndFallsBackToTheEnvironment`; the colour-on golden byte-identical; the frame benchmark | yes | upstream probes lazily on `x/term` |
+| `003-composite-sgr.patch` | `SGR` re-classified every `;`-element, so a qualified composite (`1;38;5;220`, `48;2;R;G;B`) was mangled (L5-F5) and each escape cost five allocations (L5-F3). Composites are consumed atomically and the escape is built in one pre-sized buffer. Bare codes classify exactly as before; the SGR defaults 39/49 still classify as 256-palette codes (the kit's D-28 rule), so the app keeps `TintRaw` for compositions that carry them. | `TestSGRConsumesQualifiedComposites`, `TestTintAcceptsCompositesSinceTheKitConsumesThem`; goldens byte-identical | yes | upstream's `SGR` consumes composites |
+| `008-bounded-truncation.patch` | Two condition-only loops on the truncation path (`applyIntelligentTruncation`, `StripANSI`) — P10-02. Each is bounded by the quantity it consumes (passes ≤ the excess; escapes ≤ their count). Retires three ledger rows. | `TestStripANSIIsBoundedByTheEscapeCount`; the table tests | yes | upstream bounds them |

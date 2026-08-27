@@ -1,0 +1,62 @@
+diff --git a/components/data_table_row.go b/components/data_table_row.go
+index 2765a46..84cc063 100644
+--- a/components/data_table_row.go
++++ b/components/data_table_row.go
+@@ -17,6 +17,7 @@ type ColumnDefinition struct {
+ 	SupportsWrap      bool   // Whether content can wrap within the column width
+ 	Alignment         string // "left", "right", "center"
+ 	Color             string // ANSI color code
++	HeaderColor       string // ANSI color code for the header cell alone (Color otherwise; automatic token styling when both are empty)
+ 	Fill              bool   // Whether this column should fill remaining space (alternative to Width=0)
+ 	Truncatable       bool   // Whether this column can be truncated in narrow widths
+ 	TruncatedMinWidth int    // Minimum width this column can be truncated to
+@@ -29,6 +30,7 @@ type DataTableDefinition struct {
+ 	Columns     []ColumnDefinition
+ 	Rows        []EnhancedTableRow // Row data with optional color overrides and badges
+ 	GutterWidth int                // Space between columns (default: 1, recommended: 4)
++	NoAutoStyle bool               // Skip the automatic semantic-token styling of headers and cells: only Color/HeaderColor/CellStyles/CellColors paint (a caller that owns its palette, and honours NO_COLOR through WrapSGR alone)
+ }
+ 
+ // EnhancedTableRow represents a single table row with presentation overrides
+@@ -52,6 +54,7 @@ type DataTable struct {
+ 	badgeGutter   int                      // Minimum spaces before badge
+ 	renderBadge   bool                     // Whether to actually render the badge (default true)
+ 	formatter     *rendering.TextFormatter // For automatic semantic token styling
++	noAutoStyle   bool                     // DataTableDefinition.NoAutoStyle
+ 	maxBadgeWidth int                      // Pre-calculated maximum badge width for consistent alignment across all rows
+ }
+ 
+@@ -106,6 +109,7 @@ func NewDataTable(terminalWidth int, definition *DataTableDefinition) *DataTable
+ 		badgeGutter:   4,    // Default 4-space gutter
+ 		renderBadge:   true, // Default to rendering badges
+ 		formatter:     rendering.NewTextFormatter(),
++		noAutoStyle:   definition.NoAutoStyle,
+ 	}
+ 
+ 	// Automatically calculate badge widths for proper alignment
+@@ -186,10 +190,13 @@ func (d *DataTableRow) RenderHeader() string {
+ 		formatted := d.formatCell(header, width, col.Alignment, true)
+ 
+ 		// Apply automatic semantic token colors if no explicit color is set
+-		if col.Color != "" {
++		if col.HeaderColor != "" {
++			// The header's own color
++			formatted = rendering.WrapSGR(formatted, col.HeaderColor)
++		} else if col.Color != "" {
+ 			// Use explicit color from column definition
+ 			formatted = rendering.WrapSGR(formatted, col.Color)
+-		} else if header != "" { // Only apply colors to non-empty headers
++		} else if header != "" && !d.noAutoStyle { // Only apply colors to non-empty headers
+ 			// Apply automatic semantic token styling for table headers
+ 			formatted = d.formatter.Style(formatted, "tui.TableHeader")
+ 		}
+@@ -814,6 +821,9 @@ func (d *DataTableRow) alignBadge(content, badge string) string {
+ // getDisplayWidth returns the display width of a string, stripping ANSI color codes
+ // getSemanticTokenForColumn determines the appropriate semantic token for a column value
+ func (d *DataTableRow) getSemanticTokenForColumn(columnIndex int, col ColumnDefinition, value string) string {
++	if d.noAutoStyle {
++		return "" // the caller paints every cell it wants painted (DataTableDefinition.NoAutoStyle)
++	}
+ 	// Determine semantic token based on column position and name (presentational logic only)
+ 	switch columnIndex {
+ 	case 0:

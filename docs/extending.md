@@ -56,6 +56,16 @@ back through `RadioStatusMsg`. `[m] Mode` (UAT 97) is the smallest complete exam
 
 ## Rules you inherit for free
 
+- **Every colour is a theme token.** Views call `render.Tint(text, render.Tok(render.SomeToken))`;
+  the tables' own palette is three tokens (`table.header`, `table.muted`, `table.name`) the
+  seam applies through go-studs' `HeaderColor` / `CellStyles` with the kit's automatic styling
+  switched off (`NoAutoStyle`), so `NO_COLOR` is honoured by one gate and a user theme file can
+  restyle the whole frame. A new colour = a new token with a value in every built-in theme and a
+  row that passes `TestThemeTokenContrastAA`.
+- **go-studs is patched, never edited.** An approved change to the kit is a
+  `third_party/go-studs/patches/NNN-name.patch` with a row in `LOCAL_CHANGES.md`;
+  `scripts/sync-go-studs.sh` re-applies the stack on every sync and refuses a drifted upstream.
+
 - `make verify` runs fmt, vet, `-race` tests, import-direction lint, watermark lint, and the
   gates' self-tests. Run it before every commit, then `golangci-lint run ./...` and `staticcheck ./...`.
 - New render primitives are built **on demand** — add them when a view needs them, never

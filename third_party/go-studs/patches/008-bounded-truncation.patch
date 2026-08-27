@@ -1,0 +1,45 @@
+diff --git a/components/data_table_row.go b/components/data_table_row.go
+index 84cc063..7c3ecb4 100644
+--- a/components/data_table_row.go
++++ b/components/data_table_row.go
+@@ -695,8 +695,11 @@ func (d *DataTableRow) applyIntelligentTruncation(widths []int, rowData []string
+ 	// Calculate excess width that needs to be trimmed
+ 	excessWidth := totalUsedWidth - d.terminalWidth
+ 
+-	// Distribute truncation across truncatable columns
+-	for excessWidth > 0 && len(truncatableColumns) > 0 {
++	// Distribute truncation across truncatable columns. Every pass takes at
++	// least one cell off the excess or drops a column from the list, so the
++	// passes are bounded by the excess itself; the explicit cap keeps the
++	// loop provably finite (P10-02).
++	for pass := 0; pass <= maxTruncationPasses && excessWidth > 0 && len(truncatableColumns) > 0; pass++ {
+ 		truncationPerColumn := maxInt(1, excessWidth/len(truncatableColumns))
+ 		var remainingTruncatable []int
+ 
+@@ -870,6 +873,10 @@ func (d *DataTableRow) getSemanticTokenForColumn(columnIndex int, col ColumnDefi
+ 	}
+ }
+ 
++// maxTruncationPasses bounds applyIntelligentTruncation: a pass trims at
++// least one cell, and no terminal is this wide.
++const maxTruncationPasses = 1 << 16
++
+ func (d *DataTableRow) getDisplayWidth(text string) int {
+ 	return rendering.DisplayWidth(text)
+ }
+diff --git a/rendering/ansi.go b/rendering/ansi.go
+index 64bc39b..06dadf8 100644
+--- a/rendering/ansi.go
++++ b/rendering/ansi.go
+@@ -136,8 +136,9 @@ func (f *ANSIFormatter) StripANSI(text string) string {
+ 	// This handles common patterns but could be enhanced for comprehensive coverage
+ 	result := text
+ 
+-	// Remove standard ANSI color codes: \033[XXm
+-	for {
++	// Remove standard ANSI color codes: \033[XXm — one iteration per escape
++	// present, so the loop is bounded by the count (P10-02)
++	for i := strings.Count(result, "\033["); i >= 0; i-- {
+ 		start := strings.Index(result, "\033[")
+ 		if start == -1 {
+ 			break

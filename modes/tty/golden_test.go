@@ -83,3 +83,14 @@ func TestFrameHonoursNoColorUnderColorTerm(t *testing.T) {
 		t.Skipf("known failing until Q4a-004 (kit NoAutoStyle): %d escapes under NO_COLOR=1 TERM=xterm-256color", n)
 	}
 }
+
+// TestFrameGoldenColourOn pins the frame with colour ON under
+// TERM=xterm-256color — the fidelity golden the go-studs patches must keep
+// byte for byte (quality pass Q4a, CQ-4: captured BEFORE patch 004).
+func TestFrameGoldenColourOn(t *testing.T) {
+	local := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = local })
+	d := benchDash(t, 133, 44).(Dashboard) // TERM set, colour forced on
+	checkGolden(t, "frame-133x44-colour.golden", d.View().Content)
+}

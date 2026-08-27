@@ -6,6 +6,11 @@
 set -eu
 cd "$(dirname "$0")/.."
 out=THIRD_PARTY_LICENSES.md
+# The module cache must hold every module in the graph or its licence would
+# be skipped silently (quality pass Q4a): warm it, and tidy afterwards so the
+# download's extra go.sum lines do not stay behind.
+go mod download all >/dev/null 2>&1 || true
+trap 'go mod tidy >/dev/null 2>&1 || true' EXIT
 {
   echo "# Third-party licences"
   echo
@@ -18,11 +23,12 @@ out=THIRD_PARTY_LICENSES.md
     /"Version":/{ gsub(/[",]/, "", $2); ver=$2 }
     /"Dir":/    { gsub(/[",]/, "", $2); dir=$2 }
     /"Main": true/ { main=1 }
-    /^}/ { if (!main && dir != "") print path " " ver " " dir; path=""; ver=""; dir=""; main=0 }
+    /^}/ { if (!main) print path " " ver " " (dir == "" ? "-" : dir); path=""; ver=""; dir=""; main=0 }
   ' | sort | while read -r path ver dir; do
     lic=""
+    [ "$dir" = "-" ] && dir=""
     for f in LICENSE LICENSE.md LICENSE.txt LICENCE COPYING LICENSE-MIT; do
-      [ -f "$dir/$f" ] && { lic="$dir/$f"; break; }
+      [ -n "$dir" ] && [ -f "$dir/$f" ] && { lic="$dir/$f"; break; }
     done
     echo "## $path $ver"
     echo

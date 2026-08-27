@@ -94,6 +94,13 @@ Cache keys: gridpoint (`{wfo}/{x},{y}`), station id, zone-batch string, product 
 
 ## 4. Render seam (platform/render — D-9) — as built
 
+> **Quality pass Q4a-004 (as built):** the table's colours are the theme's. `LocationTable` sets
+> `NoAutoStyle` on the go-studs definition, `HeaderColor` on every headed column from
+> `table.header`, and a `CellStyles` entry on every non-blank cell (`table.muted`, `table.name`, or
+> the value tints), so the kit's `$TERM`-gated palette never paints and `NO_COLOR` is honoured by the
+> one gate (`WrapSGR`). The kit itself is the pinned upstream commit plus the patches in
+> `third_party/go-studs/patches/` (ADR-04; `LOCAL_CHANGES.md`).
+
 `platform/render` is the **only** package importing go-studs, and since the quality pass (Q2) that
 coupling is one file: `table.go` (`LocationTable` on go-studs `DataTable`: column spec, layout,
 row data, marks, styles, group headers). Around it: `units.go` (units, `Opts`, the value formatters

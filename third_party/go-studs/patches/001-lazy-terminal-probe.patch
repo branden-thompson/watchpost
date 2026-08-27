@@ -1,0 +1,258 @@
+diff --git a/rendering/formatter.go b/rendering/formatter.go
+index f5d4e21..638eb96 100644
+--- a/rendering/formatter.go
++++ b/rendering/formatter.go
+@@ -19,6 +19,7 @@ type TerminalCapabilities struct {
+ type TextFormatter struct {
+ 	ansi         *ANSIFormatter
+ 	capabilities *TerminalCapabilities
++	sized        bool // the terminal size has been probed (lazily, on the first GetCapabilities)
+ }
+ 
+ // NewTextFormatter creates a new text formatter with terminal capability detection
+@@ -57,9 +58,9 @@ func DetectTerminalCapabilities() *TerminalCapabilities {
+ 		caps.SupportsTrueColor = true
+ 	}
+ 
+-	// Detect terminal size
+-	caps.Width, caps.Height = GetTerminalSize()
+-
++	// The terminal size is NOT probed here: opening /dev/tty costs a
++	// syscall per formatter and most callers never read Width/Height.
++	// GetCapabilities resolves it on first use; RefreshCapabilities re-probes.
+ 	return caps
+ }
+ 
+@@ -227,8 +228,14 @@ func (tf *TextFormatter) CreateProgressBar(progress float64, width int, fillChar
+ 	return bar
+ }
+ 
+-// GetCapabilities returns the detected terminal capabilities
++// GetCapabilities returns the detected terminal capabilities, probing the
++// terminal size on the first call (lazy: a formatter that never asks never
++// opens the tty).
+ func (tf *TextFormatter) GetCapabilities() *TerminalCapabilities {
++	if !tf.sized {
++		tf.capabilities.Width, tf.capabilities.Height = GetTerminalSize()
++		tf.sized = true
++	}
+ 	return tf.capabilities
+ }
+ 
+@@ -237,9 +244,12 @@ func (tf *TextFormatter) GetANSIFormatter() *ANSIFormatter {
+ 	return tf.ansi
+ }
+ 
+-// RefreshCapabilities re-detects terminal capabilities (useful if terminal changes)
++// RefreshCapabilities re-detects terminal capabilities and re-probes the
++// size (useful if the terminal changes)
+ func (tf *TextFormatter) RefreshCapabilities() {
+ 	tf.capabilities = DetectTerminalCapabilities()
++	tf.capabilities.Width, tf.capabilities.Height = GetTerminalSize()
++	tf.sized = true
+ }
+ 
+ // Convenience functions for common formatting needs
+diff --git a/rendering/formatter_unix.go b/rendering/formatter_unix.go
+deleted file mode 100644
+index e4313e9..0000000
+--- a/rendering/formatter_unix.go
++++ /dev/null
+@@ -1,71 +0,0 @@
+-//go:build unix || darwin
+-// +build unix darwin
+-
+-package rendering
+-
+-import (
+-	"os"
+-	"strconv"
+-	"syscall"
+-	"unsafe"
+-)
+-
+-// GetTerminalSize returns the current terminal width and height.
+-// This is the Unix/Darwin implementation using IOCTL syscalls.
+-func GetTerminalSize() (width, height int) {
+-	// Try to open /dev/tty directly (works even when stdout is piped)
+-	if tty, err := os.Open("/dev/tty"); err == nil {
+-		defer tty.Close()
+-
+-		type winsize struct {
+-			Row    uint16
+-			Col    uint16
+-			Xpixel uint16
+-			Ypixel uint16
+-		}
+-
+-		ws := &winsize{}
+-		retCode, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
+-			uintptr(tty.Fd()),
+-			uintptr(syscall.TIOCGWINSZ),
+-			uintptr(unsafe.Pointer(ws)))
+-
+-		if int(retCode) != -1 && errno == 0 && ws.Col > 0 && ws.Row > 0 {
+-			return int(ws.Col), int(ws.Row)
+-		}
+-	}
+-
+-	// Try stdin as fallback (when /dev/tty is not available)
+-	type winsize struct {
+-		Row    uint16
+-		Col    uint16
+-		Xpixel uint16
+-		Ypixel uint16
+-	}
+-
+-	ws := &winsize{}
+-	retCode, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
+-		uintptr(syscall.Stdin),
+-		uintptr(syscall.TIOCGWINSZ),
+-		uintptr(unsafe.Pointer(ws)))
+-
+-	if int(retCode) != -1 && errno == 0 && ws.Col > 0 && ws.Row > 0 {
+-		return int(ws.Col), int(ws.Row)
+-	}
+-
+-	// Check environment variables as fallback
+-	width, height = 80, 24 // defaults
+-
+-	if cols := os.Getenv("COLUMNS"); cols != "" {
+-		if parsedWidth, err := strconv.Atoi(cols); err == nil && parsedWidth > 0 {
+-			width = parsedWidth
+-		}
+-	}
+-	if rows := os.Getenv("LINES"); rows != "" {
+-		if parsedHeight, err := strconv.Atoi(rows); err == nil && parsedHeight > 0 {
+-			height = parsedHeight
+-		}
+-	}
+-
+-	return width, height
+-}
+diff --git a/rendering/formatter_windows.go b/rendering/formatter_windows.go
+deleted file mode 100644
+index 80b79f8..0000000
+--- a/rendering/formatter_windows.go
++++ /dev/null
+@@ -1,74 +0,0 @@
+-//go:build windows
+-// +build windows
+-
+-package rendering
+-
+-import (
+-	"os"
+-	"strconv"
+-	"syscall"
+-	"unsafe"
+-)
+-
+-var (
+-	kernel32           = syscall.NewLazyDLL("kernel32.dll")
+-	procGetConsoleMode = kernel32.NewProc("GetConsoleScreenBufferInfo")
+-)
+-
+-type coord struct {
+-	X int16
+-	Y int16
+-}
+-
+-type smallRect struct {
+-	Left   int16
+-	Top    int16
+-	Right  int16
+-	Bottom int16
+-}
+-
+-type consoleScreenBufferInfo struct {
+-	Size              coord
+-	CursorPosition    coord
+-	Attributes        uint16
+-	Window            smallRect
+-	MaximumWindowSize coord
+-}
+-
+-// GetTerminalSize returns the current terminal width and height.
+-// This is the Windows implementation using Windows Console API.
+-func GetTerminalSize() (width, height int) {
+-	// Try to get console screen buffer info
+-	handle := syscall.Handle(os.Stdout.Fd())
+-
+-	var info consoleScreenBufferInfo
+-	ret, _, _ := procGetConsoleMode.Call(
+-		uintptr(handle),
+-		uintptr(unsafe.Pointer(&info)),
+-	)
+-
+-	if ret != 0 {
+-		width = int(info.Window.Right - info.Window.Left + 1)
+-		height = int(info.Window.Bottom - info.Window.Top + 1)
+-
+-		if width > 0 && height > 0 {
+-			return width, height
+-		}
+-	}
+-
+-	// Check environment variables as fallback
+-	width, height = 80, 24 // defaults
+-
+-	if cols := os.Getenv("COLUMNS"); cols != "" {
+-		if parsedWidth, err := strconv.Atoi(cols); err == nil && parsedWidth > 0 {
+-			width = parsedWidth
+-		}
+-	}
+-	if rows := os.Getenv("LINES"); rows != "" {
+-		if parsedHeight, err := strconv.Atoi(rows); err == nil && parsedHeight > 0 {
+-			height = parsedHeight
+-		}
+-	}
+-
+-	return width, height
+-}
+diff --git a/rendering/terminal_size.go b/rendering/terminal_size.go
+new file mode 100644
+index 0000000..1cb480f
+--- /dev/null
++++ b/rendering/terminal_size.go
+@@ -0,0 +1,40 @@
++package rendering
++
++import (
++	"os"
++	"strconv"
++
++	"golang.org/x/term"
++)
++
++// GetTerminalSize returns the current terminal dimensions with robust
++// fallback logic — one implementation for every platform on
++// golang.org/x/term (no ioctl, no unsafe, no build tags).
++//
++// Detection order:
++// 1. /dev/tty (works even when stdout is piped or redirected)
++// 2. stdin, then stdout
++// 3. the COLUMNS and LINES environment variables
++// 4. 80x24
++func GetTerminalSize() (width, height int) {
++	if tty, err := os.Open("/dev/tty"); err == nil {
++		w, h, err := term.GetSize(int(tty.Fd()))
++		_ = tty.Close()
++		if err == nil && w > 0 && h > 0 {
++			return w, h
++		}
++	}
++	for _, f := range []*os.File{os.Stdin, os.Stdout} {
++		if w, h, err := term.GetSize(int(f.Fd())); err == nil && w > 0 && h > 0 {
++			return w, h
++		}
++	}
++	width, height = 80, 24
++	if cols, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && cols > 0 {
++		width = cols
++	}
++	if rows, err := strconv.Atoi(os.Getenv("LINES")); err == nil && rows > 0 {
++		height = rows
++	}
++	return width, height
++}

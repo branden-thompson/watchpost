@@ -45,6 +45,9 @@ const SpectrumLow
 const SpectrumMid
 const StatePlaying
 const StateStopped
+const TableHeader
+const TableMuted
+const TableName
 const TempHi
 const TempLo
 const TextBase
@@ -146,6 +149,7 @@ func rowStyles
 func sgrRaw
 func spectrumTier
 func stripANSI
+func tableCellStyles
 func tableGeom
 func tempTint
 func truncate

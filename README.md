@@ -73,7 +73,7 @@ macOS) and are safe to delete.
 | `m` | Mode: Synth (your location's forecast, read aloud) · Nearest Relay (live NOAA Weather Radio) |
 | `v` `V` `T` | visualizer · voice chooser (with preview) · player size |
 | `f` `c` | ºF / ºC |
-| `t` | colour theme (persisted; drop your own token JSON in `<config>/themes/`) |
+| `t` | colour theme (persisted; drop your own token JSON in `<config>/themes/` — every colour, the tables' `table.header` / `table.muted` / `table.name` included) |
 | `s` | Setup: default location + optional NASA FIRMS key (opens by itself on a first run) |
 | `a` `S` `?` `q` | About + data credits · API status · help · quit |
 

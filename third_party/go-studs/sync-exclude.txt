@@ -1,0 +1,2 @@
+# Files the sync never copies (one shell glob per line, matched against the
+# path under the package directory). Tests and docs are excluded by rule.

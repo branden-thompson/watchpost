@@ -48,6 +48,7 @@ func builtinOverrides() map[string]map[Token]string {
 			GroupLocationBG: "48;2;120;120;120", GroupTodayBG: "48;2;70;110;160",
 			GroupTomorrowBG: "48;2;60;150;150", GroupExtendedBG: "48;2;120;110;170",
 			GroupSectionBG: "48;2;60;60;60", TempHi: "214", TempLo: "87", FireMark: "214",
+			TableHeader: "231", TableMuted: "255", TableName: "231", // Q4a-004: the table reads as bright as the rest
 			GradStart: "#FFFFFF", GradMid: "#FFFF5F", GradEnd: "#5FFFFF", // white → its focus yellow → its low cyan
 		},
 		"Monochrome": {
@@ -63,6 +64,7 @@ func builtinOverrides() map[string]map[Token]string {
 			AlertModalWarnBG: "48;2;40;40;40", AlertModalAdvBG: "48;2;30;30;30",
 			GradStart: "#FFFFFF", GradMid: "#C0C0C0", GradEnd: "#808080",
 			ChipFlashUp: "1;38;5;16;48;5;255", ChipFlashDown: "1;38;5;255;48;5;240",
+			TableHeader: "1;255", TableMuted: "250", TableName: "255", // Q4a-004: no purple header on a monochrome theme
 		},
 		// Synthwave '84 (UAT 105; palette from robb0wen/synthwave-vscode:
 		// bg #262335 / #241b2f, neon pink #ff7edb, cyan #36f9f6, yellow
@@ -82,6 +84,7 @@ func builtinOverrides() map[string]map[Token]string {
 			AlertModalWarnBG: "48;2;60;20;40", AlertModalAdvBG: "48;2;60;50;20", ConfirmBG: "48;2;120;40;80",
 			ModalFG: "38;5;231", ModalBGDark: "48;2;36;27;47", ModalBGLight: "48;2;52;41;79",
 			WindowBGDark: "#262335", GradStart: "#FF7EDB", GradMid: "#36F9F6", GradEnd: "#FEDE5D",
+			TableHeader: "213", TableMuted: "146", TableName: "231", // Q4a-004: neon pink headers, lavender attributes (≥ 4.5:1 on #262335)
 		},
 		"Solarized Night": {
 			TextBase: "247", TextBright: "254", TempHi: "166", TempLo: "37", TrendUp: "136", TrendDown: "33",
@@ -92,6 +95,7 @@ func builtinOverrides() map[string]map[Token]string {
 			GroupTomorrowBG: "48;2;42;107;103", GroupExtendedBG: "48;2;108;83;132",
 			GroupSectionBG: "48;2;7;54;66", ModalBGDark: "48;2;0;43;54",
 			WindowBGDark: "#002b36", GradStart: "#D33682", GradMid: "#268BD2", GradEnd: "#2AA198",
+			TableHeader: "178", TableMuted: "247", TableName: "254", // Q4a-004: solarized yellow headers (≥ 4.5:1 on #002b36)
 		},
 	}
 }

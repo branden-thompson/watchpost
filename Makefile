@@ -48,6 +48,7 @@ lint-watermark:
 gate-controls:
 	@./scripts/lint-imports.sh --self-test
 	@./scripts/lint-watermark.sh --self-test
+	@./scripts/sync-go-studs.sh --self-test
 
 verify: fmt vet tidy vuln race lint-imports lint-watermark gate-controls
 	@echo "verify: ALL GATES GREEN"

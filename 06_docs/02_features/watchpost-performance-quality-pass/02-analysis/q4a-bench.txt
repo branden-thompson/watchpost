@@ -1,0 +1,185 @@
+go test ./modes/tty ./platform/snapshot ./domains/fire/hms ./platform/render -run '^$' -bench . -benchmem -count 10 | tee dist/bench.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/branden-thompson/watchpost/modes/tty
+cpu: Apple M3 Pro
+BenchmarkFrame_133x44-12         	   10000	    115715 ns/op	   61247 B/op	     504 allocs/op
+BenchmarkFrame_133x44-12         	   10000	    141550 ns/op	   61334 B/op	     504 allocs/op
+BenchmarkFrame_133x44-12         	   10000	    125104 ns/op	   61375 B/op	     504 allocs/op
+BenchmarkFrame_133x44-12         	    8655	    128974 ns/op	   61163 B/op	     504 allocs/op
+BenchmarkFrame_133x44-12         	   10000	    107906 ns/op	   61380 B/op	     504 allocs/op
+BenchmarkFrame_133x44-12         	   10000	    120069 ns/op	   61338 B/op	     504 allocs/op
+BenchmarkFrame_133x44-12         	   10000	    134087 ns/op	   61292 B/op	     504 allocs/op
+BenchmarkFrame_133x44-12         	   10000	    124309 ns/op	   61208 B/op	     504 allocs/op
+BenchmarkFrame_133x44-12         	   10000	    107457 ns/op	   61315 B/op	     504 allocs/op
+BenchmarkFrame_133x44-12         	   10000	    106055 ns/op	   61238 B/op	     504 allocs/op
+BenchmarkFrame_133x70-12         	   12573	     95156 ns/op	   76098 B/op	     377 allocs/op
+BenchmarkFrame_133x70-12         	   12648	     95163 ns/op	   76173 B/op	     377 allocs/op
+BenchmarkFrame_133x70-12         	   12734	     96739 ns/op	   76221 B/op	     377 allocs/op
+BenchmarkFrame_133x70-12         	   11548	    103799 ns/op	   76099 B/op	     377 allocs/op
+BenchmarkFrame_133x70-12         	   12226	     98657 ns/op	   76066 B/op	     377 allocs/op
+BenchmarkFrame_133x70-12         	   12614	     94590 ns/op	   76134 B/op	     377 allocs/op
+BenchmarkFrame_133x70-12         	   12838	     93219 ns/op	   76135 B/op	     377 allocs/op
+BenchmarkFrame_133x70-12         	   12649	     95025 ns/op	   76130 B/op	     377 allocs/op
+BenchmarkFrame_133x70-12         	   12865	     93199 ns/op	   76077 B/op	     377 allocs/op
+BenchmarkFrame_133x70-12         	   12628	     94737 ns/op	   76119 B/op	     377 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    112125 ns/op	  103349 B/op	     384 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    114083 ns/op	  103283 B/op	     384 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    116003 ns/op	  103423 B/op	     384 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    115645 ns/op	  103442 B/op	     384 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    115487 ns/op	  103480 B/op	     384 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    114241 ns/op	  103479 B/op	     384 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    113843 ns/op	  103394 B/op	     384 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    112212 ns/op	  103328 B/op	     384 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    112551 ns/op	  103374 B/op	     384 allocs/op
+BenchmarkFrame_200x60-12         	   10000	    113807 ns/op	  103369 B/op	     384 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1224	    975925 ns/op	  921775 B/op	    3539 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1221	    975730 ns/op	  920797 B/op	    3539 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1203	    975137 ns/op	  923654 B/op	    3540 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1236	    998074 ns/op	  922185 B/op	    3539 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1218	    969133 ns/op	  923155 B/op	    3540 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1220	    976187 ns/op	  923648 B/op	    3540 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1220	    977368 ns/op	  922525 B/op	    3540 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1216	    976246 ns/op	  923086 B/op	    3540 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1244	    974361 ns/op	  922611 B/op	    3539 allocs/op
+BenchmarkFrame_133x44_Help-12    	    1212	    972124 ns/op	  923220 B/op	    3540 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2696	    447461 ns/op	  350194 B/op	    8445 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2739	    443916 ns/op	  350379 B/op	    8445 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2696	    442596 ns/op	  350378 B/op	    8445 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2756	    442439 ns/op	  350202 B/op	    8445 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2695	    446363 ns/op	  350132 B/op	    8445 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2739	    443207 ns/op	  350412 B/op	    8445 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2684	    448524 ns/op	  349858 B/op	    8445 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2682	    442897 ns/op	  350402 B/op	    8445 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2690	    442616 ns/op	  350002 B/op	    8445 allocs/op
+BenchmarkFrame_133x44_Miss-12    	    2653	    445032 ns/op	  350544 B/op	    8445 allocs/op
+PASS
+ok  	github.com/branden-thompson/watchpost/modes/tty	61.313s
+goos: darwin
+goarch: arm64
+pkg: github.com/branden-thompson/watchpost/platform/snapshot
+cpu: Apple M3 Pro
+BenchmarkAssembler25Locations-12    	    7110	    161839 ns/op	  994788 B/op	     312 allocs/op
+BenchmarkAssembler25Locations-12    	    7210	    164235 ns/op	  994786 B/op	     312 allocs/op
+BenchmarkAssembler25Locations-12    	    7417	    163304 ns/op	  994783 B/op	     312 allocs/op
+BenchmarkAssembler25Locations-12    	    7461	    165942 ns/op	  994780 B/op	     311 allocs/op
+BenchmarkAssembler25Locations-12    	    7242	    163587 ns/op	  994777 B/op	     311 allocs/op
+BenchmarkAssembler25Locations-12    	    6900	    163007 ns/op	  994784 B/op	     312 allocs/op
+BenchmarkAssembler25Locations-12    	    7482	    162907 ns/op	  994782 B/op	     311 allocs/op
+BenchmarkAssembler25Locations-12    	    7330	    164225 ns/op	  994776 B/op	     311 allocs/op
+BenchmarkAssembler25Locations-12    	    7286	    168483 ns/op	  994781 B/op	     311 allocs/op
+BenchmarkAssembler25Locations-12    	    7081	    163931 ns/op	  994778 B/op	     311 allocs/op
+BenchmarkKey-12                     	24815713	        47.67 ns/op	      24 B/op	       1 allocs/op
+BenchmarkKey-12                     	25244776	        48.11 ns/op	      24 B/op	       1 allocs/op
+BenchmarkKey-12                     	25035162	        47.52 ns/op	      24 B/op	       1 allocs/op
+BenchmarkKey-12                     	25553889	        47.68 ns/op	      24 B/op	       1 allocs/op
+BenchmarkKey-12                     	25268876	        47.59 ns/op	      24 B/op	       1 allocs/op
+BenchmarkKey-12                     	24913860	        48.29 ns/op	      24 B/op	       1 allocs/op
+BenchmarkKey-12                     	25028395	        47.84 ns/op	      24 B/op	       1 allocs/op
+BenchmarkKey-12                     	25430306	        47.49 ns/op	      24 B/op	       1 allocs/op
+BenchmarkKey-12                     	25443088	        47.81 ns/op	      24 B/op	       1 allocs/op
+BenchmarkKey-12                     	25339286	        47.71 ns/op	      24 B/op	       1 allocs/op
+PASS
+ok  	github.com/branden-thompson/watchpost/platform/snapshot	24.230s
+goos: darwin
+goarch: arm64
+pkg: github.com/branden-thompson/watchpost/domains/fire/hms
+cpu: Apple M3 Pro
+BenchmarkParse27k-12    	      12	  88875934 ns/op	32945906 B/op	  605367 allocs/op
+BenchmarkParse27k-12    	      13	  88570000 ns/op	32954817 B/op	  605367 allocs/op
+BenchmarkParse27k-12    	      13	  89054676 ns/op	32947497 B/op	  605365 allocs/op
+BenchmarkParse27k-12    	      12	  89453931 ns/op	32948624 B/op	  605365 allocs/op
+BenchmarkParse27k-12    	      12	  90899708 ns/op	32952402 B/op	  605366 allocs/op
+BenchmarkParse27k-12    	      12	  91092118 ns/op	32941228 B/op	  605364 allocs/op
+BenchmarkParse27k-12    	      13	  89591564 ns/op	32940640 B/op	  605364 allocs/op
+BenchmarkParse27k-12    	      13	  90456478 ns/op	32940619 B/op	  605364 allocs/op
+BenchmarkParse27k-12    	      13	  91377663 ns/op	32957852 B/op	  605367 allocs/op
+BenchmarkParse27k-12    	      13	  90138401 ns/op	32954363 B/op	  605366 allocs/op
+PASS
+ok  	github.com/branden-thompson/watchpost/domains/fire/hms	11.922s
+goos: darwin
+goarch: arm64
+pkg: github.com/branden-thompson/watchpost/platform/render
+cpu: Apple M3 Pro
+BenchmarkLocationTable_50rows_w129-12        	    1659	    645960 ns/op	  378145 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w129-12        	    1881	    645196 ns/op	  378018 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w129-12        	    1903	    637533 ns/op	  377878 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w129-12        	    1888	    635562 ns/op	  377941 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w129-12        	    1900	    636206 ns/op	  377842 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w129-12        	    1870	    826651 ns/op	  377471 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w129-12        	    1855	    636403 ns/op	  377913 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w129-12        	    1922	    636535 ns/op	  378484 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w129-12        	    1824	    635242 ns/op	  377869 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w129-12        	    1878	    637277 ns/op	  377632 B/op	   14169 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     932	   1292719 ns/op	  720464 B/op	   23541 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     902	   1311709 ns/op	  720606 B/op	   23541 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     922	   1299252 ns/op	  721277 B/op	   23541 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     901	   1300971 ns/op	  720947 B/op	   23541 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     913	   1304878 ns/op	  720568 B/op	   23541 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     922	   1300152 ns/op	  721380 B/op	   23541 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     933	   1319505 ns/op	  720304 B/op	   23541 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     942	   1293686 ns/op	  720967 B/op	   23541 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     897	   1303391 ns/op	  720738 B/op	   23541 allocs/op
+BenchmarkLocationTable_50rows_w196_ext-12    	     909	   1308490 ns/op	  720773 B/op	   23541 allocs/op
+BenchmarkTintDefault-12                      	   46032	     25909 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkTintDefault-12                      	   46777	     25960 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkTintDefault-12                      	   46346	     25901 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkTintDefault-12                      	   45642	     25988 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkTintDefault-12                      	   45370	     26201 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkTintDefault-12                      	   46017	     26069 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkTintDefault-12                      	   46297	     26009 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkTintDefault-12                      	   46089	     26799 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkTintDefault-12                      	   45428	     26200 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkTintDefault-12                      	   45705	     26175 ns/op	   36864 B/op	       2 allocs/op
+BenchmarkOverlay-12                          	    1502	    786091 ns/op	  798348 B/op	    2092 allocs/op
+BenchmarkOverlay-12                          	    1522	    786580 ns/op	  796983 B/op	    2092 allocs/op
+BenchmarkOverlay-12                          	    1542	    795465 ns/op	  795532 B/op	    2091 allocs/op
+BenchmarkOverlay-12                          	    1514	    787070 ns/op	  798196 B/op	    2092 allocs/op
+BenchmarkOverlay-12                          	    1470	    794495 ns/op	  796814 B/op	    2092 allocs/op
+BenchmarkOverlay-12                          	    1521	    783624 ns/op	  798164 B/op	    2092 allocs/op
+BenchmarkOverlay-12                          	    1485	    797919 ns/op	  795592 B/op	    2091 allocs/op
+BenchmarkOverlay-12                          	    1542	    791841 ns/op	  797071 B/op	    2092 allocs/op
+BenchmarkOverlay-12                          	    1525	    787257 ns/op	  798891 B/op	    2092 allocs/op
+BenchmarkOverlay-12                          	    1502	    795739 ns/op	  797982 B/op	    2092 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  329805	      3593 ns/op	     669 B/op	       8 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  329415	      3631 ns/op	     669 B/op	       8 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  332456	      3609 ns/op	     668 B/op	       8 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  334904	      3600 ns/op	     668 B/op	       8 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  329124	      3655 ns/op	     669 B/op	       8 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  329576	      3623 ns/op	     669 B/op	       8 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  333740	      3666 ns/op	     669 B/op	       8 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  334102	      3603 ns/op	     669 B/op	       8 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  330692	      3657 ns/op	     669 B/op	       8 allocs/op
+BenchmarkDisplayWidth_styledRow-12           	  328284	      3632 ns/op	     669 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  321086	      3661 ns/op	     668 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  332971	      3675 ns/op	     668 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  326673	      3652 ns/op	     669 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  328352	      3665 ns/op	     670 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  320964	      3668 ns/op	     669 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  328891	      3654 ns/op	     669 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  330697	      3666 ns/op	     669 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  321378	      3673 ns/op	     669 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  322687	      3675 ns/op	     669 B/op	       8 allocs/op
+BenchmarkKitDisplayWidth_styledRow-12        	  332394	      3665 ns/op	     669 B/op	       8 allocs/op
+BenchmarkWrapSGR-12                          	18430737	        65.29 ns/op	      48 B/op	       3 allocs/op
+BenchmarkWrapSGR-12                          	18413792	        65.35 ns/op	      48 B/op	       3 allocs/op
+BenchmarkWrapSGR-12                          	18462105	        65.53 ns/op	      48 B/op	       3 allocs/op
+BenchmarkWrapSGR-12                          	18565779	        64.85 ns/op	      48 B/op	       3 allocs/op
+BenchmarkWrapSGR-12                          	18075214	        67.52 ns/op	      48 B/op	       3 allocs/op
+BenchmarkWrapSGR-12                          	17711359	        65.69 ns/op	      48 B/op	       3 allocs/op
+BenchmarkWrapSGR-12                          	18457704	        65.43 ns/op	      48 B/op	       3 allocs/op
+BenchmarkWrapSGR-12                          	18430147	        65.29 ns/op	      48 B/op	       3 allocs/op
+BenchmarkWrapSGR-12                          	18697473	        65.03 ns/op	      48 B/op	       3 allocs/op
+BenchmarkWrapSGR-12                          	17757980	        66.98 ns/op	      48 B/op	       3 allocs/op
+BenchmarkNewTextFormatter-12                 	14818206	        79.03 ns/op	     152 B/op	       5 allocs/op
+BenchmarkNewTextFormatter-12                 	15781305	        77.91 ns/op	     152 B/op	       5 allocs/op
+BenchmarkNewTextFormatter-12                 	16055336	        77.17 ns/op	     152 B/op	       5 allocs/op
+BenchmarkNewTextFormatter-12                 	15483970	        77.07 ns/op	     152 B/op	       5 allocs/op
+BenchmarkNewTextFormatter-12                 	14799512	        79.54 ns/op	     152 B/op	       5 allocs/op
+BenchmarkNewTextFormatter-12                 	15384458	        76.93 ns/op	     152 B/op	       5 allocs/op
+BenchmarkNewTextFormatter-12                 	15924094	        77.27 ns/op	     152 B/op	       5 allocs/op
+BenchmarkNewTextFormatter-12                 	15685496	        77.78 ns/op	     152 B/op	       5 allocs/op
+BenchmarkNewTextFormatter-12                 	14851975	        78.22 ns/op	     152 B/op	       5 allocs/op
+BenchmarkNewTextFormatter-12                 	15269919	        78.20 ns/op	     152 B/op	       5 allocs/op
+PASS
+ok  	github.com/branden-thompson/watchpost/platform/render	96.504s

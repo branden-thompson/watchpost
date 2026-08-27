@@ -1,6 +1,8 @@
 package render
 
 import (
+	"math"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -125,6 +127,92 @@ func TestGlyphsSwapAsOneSetUnderASCII(t *testing.T) {
 	for _, g := range []string{"R", "2*", "1!", ">"} {
 		if !strings.Contains(plain, g) {
 			t.Fatalf("the ASCII table carries %q:\n%s", g, plain)
+		}
+	}
+}
+
+// xterm256RGB is the standard 256-colour palette: 16 basics, a 6×6×6 cube
+// (levels 0, 95, 135, 175, 215, 255), 24 greys (8 + 10·i).
+func xterm256RGB(i int) (r, g, b int) {
+	basics := [16][3]int{{0, 0, 0}, {128, 0, 0}, {0, 128, 0}, {128, 128, 0}, {0, 0, 128}, {128, 0, 128}, {0, 128, 128}, {192, 192, 192},
+		{128, 128, 128}, {255, 0, 0}, {0, 255, 0}, {255, 255, 0}, {0, 0, 255}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}}
+	switch {
+	case i < 16:
+		return basics[i][0], basics[i][1], basics[i][2]
+	case i < 232:
+		levels := [6]int{0, 95, 135, 175, 215, 255}
+		i -= 16
+		return levels[i/36], levels[(i/6)%6], levels[i%6]
+	default:
+		v := 8 + 10*(i-232)
+		return v, v, v
+	}
+}
+
+// luminance is WCAG relative luminance.
+func luminance(r, g, b int) float64 {
+	lin := func(c int) float64 {
+		v := float64(c) / 255
+		if v <= 0.03928 {
+			return v / 12.92
+		}
+		return math.Pow((v+0.055)/1.055, 2.4)
+	}
+	return 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b)
+}
+
+// fgLuminance reads a theme value: a bare 256 index, "1;n", "38;5;n" or
+// "38;2;r;g;b" (bold ignored; anything else is not a foreground value).
+func fgLuminance(v string) (float64, bool) {
+	parts := strings.Split(strings.TrimPrefix(v, "1;"), ";")
+	switch {
+	case len(parts) == 1:
+		n, err := strconv.Atoi(parts[0])
+		if err != nil || n > 255 {
+			return 0, false
+		}
+		if n >= 90 && n <= 97 { // bright basics
+			return luminance(xterm256RGB(n - 90 + 8)), true
+		}
+		if n >= 30 && n <= 37 {
+			return luminance(xterm256RGB(n - 30)), true
+		}
+		return luminance(xterm256RGB(n)), true
+	case len(parts) == 3 && parts[0] == "38" && parts[1] == "5":
+		n, err := strconv.Atoi(parts[2])
+		if err != nil || n > 255 {
+			return 0, false
+		}
+		return luminance(xterm256RGB(n)), true
+	case len(parts) == 5 && parts[0] == "38" && parts[1] == "2":
+		r, _ := strconv.Atoi(parts[2])
+		g, _ := strconv.Atoi(parts[3])
+		b, _ := strconv.Atoi(parts[4])
+		return luminance(r, g, b), true
+	}
+	return 0, false
+}
+
+// Quality pass Q4a-004 (A11-2): the table tokens every theme now owns must
+// read at WCAG AA (≥ 4.5:1) against the theme's own window background;
+// the text tokens ride the same check.
+func TestThemeTokenContrastAA(t *testing.T) {
+	t.Cleanup(func() { SetTheme(DefaultThemeName) })
+	for _, name := range ThemeNames() {
+		if !SetTheme(name) {
+			t.Fatal(name)
+		}
+		r, g, b := hexRGB(WindowBGDark)
+		bg := luminance(r, g, b)
+		for _, tok := range []Token{TableHeader, TableMuted, TableName, TextBase, TextBright} {
+			fg, ok := fgLuminance(Tok(tok))
+			if !ok {
+				t.Fatalf("%s %s: %q is not a foreground value", name, tok, Tok(tok))
+			}
+			hi, lo := max(fg, bg), min(fg, bg)
+			if ratio := (hi + 0.05) / (lo + 0.05); ratio < 4.5 {
+				t.Errorf("%s: %s = %q reads %.2f:1 on %s — below AA (4.5:1)", name, tok, Tok(tok), ratio, Tok(WindowBGDark))
+			}
 		}
 	}
 }

@@ -13,3 +13,6 @@ _a2dh/
 AGENTS.md
 CLAUDE.md
 .github/copilot-instructions.md
+
+# machine-local go-studs patches the sync applies first (the public-tree wording scrub stays out of the public tree)
+third_party/go-studs/.local/

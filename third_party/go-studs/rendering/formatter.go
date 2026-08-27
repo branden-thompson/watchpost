@@ -19,6 +19,7 @@ type TerminalCapabilities struct {
 type TextFormatter struct {
 	ansi         *ANSIFormatter
 	capabilities *TerminalCapabilities
+	sized        bool // the terminal size has been probed (lazily, on the first GetCapabilities)
 }
 
 // NewTextFormatter creates a new text formatter with terminal capability detection
@@ -57,9 +58,9 @@ func DetectTerminalCapabilities() *TerminalCapabilities {
 		caps.SupportsTrueColor = true
 	}
 
-	// Detect terminal size
-	caps.Width, caps.Height = GetTerminalSize()
-
+	// The terminal size is NOT probed here: opening /dev/tty costs a
+	// syscall per formatter and most callers never read Width/Height.
+	// GetCapabilities resolves it on first use; RefreshCapabilities re-probes.
 	return caps
 }
 
@@ -227,8 +228,14 @@ func (tf *TextFormatter) CreateProgressBar(progress float64, width int, fillChar
 	return bar
 }
 
-// GetCapabilities returns the detected terminal capabilities
+// GetCapabilities returns the detected terminal capabilities, probing the
+// terminal size on the first call (lazy: a formatter that never asks never
+// opens the tty).
 func (tf *TextFormatter) GetCapabilities() *TerminalCapabilities {
+	if !tf.sized {
+		tf.capabilities.Width, tf.capabilities.Height = GetTerminalSize()
+		tf.sized = true
+	}
 	return tf.capabilities
 }
 
@@ -237,9 +244,12 @@ func (tf *TextFormatter) GetANSIFormatter() *ANSIFormatter {
 	return tf.ansi
 }
 
-// RefreshCapabilities re-detects terminal capabilities (useful if terminal changes)
+// RefreshCapabilities re-detects terminal capabilities and re-probes the
+// size (useful if the terminal changes)
 func (tf *TextFormatter) RefreshCapabilities() {
 	tf.capabilities = DetectTerminalCapabilities()
+	tf.capabilities.Width, tf.capabilities.Height = GetTerminalSize()
+	tf.sized = true
 }
 
 // Convenience functions for common formatting needs

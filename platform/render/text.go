@@ -143,6 +143,9 @@ func Plain(s string) string {
 		if r < 0x20 || (r >= 0x7f && r <= 0x9f) {
 			return -1
 		}
+		if r == 0xFE0E || r == 0xFE0F {
+			return -1 // variation selectors: a terminal may draw "⚠️" as one cell or two; plain text carries neither (A11-8, L5-F12)
+		}
 		return r
 	}, s)
 }

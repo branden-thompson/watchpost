@@ -354,9 +354,20 @@ func (o Opts) LocationTable(rows []LocationRow, days int) string {
 	}
 	l := layoutFor(o.Width, days)
 	cols := l.columns(dates)
-	def := &studs.DataTableDefinition{Columns: cols, GutterWidth: tableGutter}
+	// The theme owns every colour in the table (Q4a-004, L5-F4): headers
+	// through HeaderColor, cells through CellStyles, and the kit's own
+	// $TERM-gated palette is switched off — so NO_COLOR is honoured by the
+	// one gate (WrapSGR) and the `t` chooser restyles the whole table.
+	header := Tok(TableHeader)
+	for i := range cols {
+		if cols[i].Header != "" {
+			cols[i].HeaderColor = header
+		}
+	}
+	def := &studs.DataTableDefinition{Columns: cols, GutterWidth: tableGutter, NoAutoStyle: true}
 	for _, r := range rows {
-		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: clampCells(o.rowData(l, r), cols), CellStyles: rowStyles(cols, r)})
+		data := clampCells(o.rowData(l, r), cols)
+		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: data, CellStyles: rowStyles(cols, r, data)})
 	}
 	dt := studs.NewDataTable(o.Width, def)
 	out := []string{o.groupHeader(l, cols, o.Width), strings.TrimRight(dt.Header(), " ")}
@@ -366,10 +377,30 @@ func (o Opts) LocationTable(rows []LocationRow, days int) string {
 	return strings.Join(out, "\n")
 }
 
+// tableCellStyles is the theme's default for every non-blank cell (Q4a-004):
+// the row number and the attribute cells muted, the name bright; blank
+// cells stay bare, as the kit left them; the marks column paints itself.
+func tableCellStyles(data []string) map[int]string {
+	m := make(map[int]string, len(data))
+	for i := 1; i < len(data); i++ {
+		if strings.TrimSpace(data[i]) == "" {
+			continue
+		}
+		m[i] = Tok(TableMuted)
+		if i == 2 {
+			m[i] = Tok(TableName)
+		}
+	}
+	return m
+}
+
 // rowStyles colors one row's cells (UAT 3.3/4.5/4.7): HIs orange, LOs cyan,
 // n/a in the base grey, the focused row's name bold yellow - all applied by
-// the component after padding, so alignment is untouched.
-func rowStyles(cols []studs.ColumnDefinition, r LocationRow) map[int]string {
+// the component after padding, so alignment is untouched. Every other
+// non-blank cell takes the theme's table tokens (Q4a-004): the row number
+// and the attribute cells muted, the name bright — blank cells stay bare,
+// as the kit left them.
+func rowStyles(cols []studs.ColumnDefinition, r LocationRow, data []string) map[int]string {
 	base := Tok(TextBase)
 	if r.Selected {
 		base = Tok(FocusCell) // UAT 50.1: focused row's grey cells read light blue
@@ -380,7 +411,7 @@ func rowStyles(cols []studs.ColumnDefinition, r LocationRow) map[int]string {
 		}
 		return on
 	}
-	m := map[int]string{}
+	m := tableCellStyles(data)
 	for i, c := range cols {
 		switch c.Name {
 		case "num", "zip", "cond", "tcond", "now":
