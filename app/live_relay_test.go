@@ -23,6 +23,9 @@ import (
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
+// liveMountTries bounds the proof's search for a mount that plays.
+const liveMountTries = 25
+
 func TestLiveRelayMountsPlayOnBothRelays(t *testing.T) {
 	if os.Getenv("WATCHPOST_LIVE") != "1" {
 		t.Skip("set WATCHPOST_LIVE=1 to read the real relay directories and open one mount per relay")
@@ -58,11 +61,12 @@ func TestLiveRelayMountsPlayOnBothRelays(t *testing.T) {
 			t.Fatalf("%s answered but offered no mounts (%d callsigns in total)", relay, len(mounts))
 		}
 		// A directory lists sources; one that is not connected right now
-		// answers 404 (the app's tune list falls through the same way), so
-		// up to five mounts are tried before the relay is judged.
+		// answers 404 (the app's tune list falls through the same way — on
+		// 2026-08-26 weatherUSA advertised 116 and served a minority), so up
+		// to liveMountTries mounts are tried before the relay is judged.
 		var lastErr error
 		for i, m := range byRelay[relay] {
-			if i == 5 {
+			if i == liveMountTries {
 				break
 			}
 			if err := readMount(ctx, m, t); err != nil {
@@ -73,7 +77,7 @@ func TestLiveRelayMountsPlayOnBothRelays(t *testing.T) {
 			break
 		}
 		if lastErr != nil {
-			t.Fatalf("%s: no mount played among the first five of %d: %v", relay, len(byRelay[relay]), lastErr)
+			t.Fatalf("%s: no mount played among the first %d of %d: %v", relay, liveMountTries, len(byRelay[relay]), lastErr)
 		}
 		played++
 	}

@@ -40,7 +40,7 @@ const (
 // locations share it.
 const (
 	stationsTTL    = 24 * time.Hour
-	predictionsTTL = time.Hour        // predictions are astronomical; they do not change
+	predictionsTTL = time.Hour        // the ceiling a caller TTL is never above; predictions live to UTC midnight (see untilUTCMidnight — Q5)
 	levelTTL       = 10 * time.Minute // gauges report every 6 minutes
 	rangeHours     = 48
 )
@@ -333,7 +333,7 @@ func (p *Provider) fetchTides(ctx context.Context, id string) ([]snapshot.TideEv
 	extra := p.window()
 	extra.Set("datum", "MLLW")
 	extra.Set("interval", "hilo")
-	if _, err := p.client.GetJSON(ctx, p.query("predictions", id, extra), &doc, httpx.TTL(predictionsTTL)); err != nil {
+	if _, err := p.client.GetJSON(ctx, p.query("predictions", id, extra), &doc, httpx.TTL(p.predictionsLifetime())); err != nil {
 		return nil, err
 	}
 	if err := doc.err(); err != nil {
@@ -383,7 +383,7 @@ func (p *Provider) fetchCurrents(ctx context.Context, id string) ([]snapshot.Cur
 	}
 	extra := p.window()
 	extra.Set("interval", "MAX_SLACK")
-	if _, err := p.client.GetJSON(ctx, p.query("currents_predictions", id, extra), &doc, httpx.TTL(predictionsTTL)); err != nil {
+	if _, err := p.client.GetJSON(ctx, p.query("currents_predictions", id, extra), &doc, httpx.TTL(p.predictionsLifetime())); err != nil {
 		return nil, err
 	}
 	if err := doc.err(); err != nil {
@@ -417,4 +417,18 @@ func parseTV(t, v string) (time.Time, float64, bool) {
 		return time.Time{}, 0, false
 	}
 	return ts, f, true
+}
+
+// predictionsLifetime is how long a predictions answer is cached (quality
+// pass Q5, plan Q5b-5): the window is keyed by today's UTC date, so the
+// answer is the same until UTC midnight and the URL itself changes after
+// it — one fetch per station per day instead of one per hour. Never past
+// UTC midnight; never less than a minute (a request just before midnight
+// still caches briefly).
+func (p *Provider) predictionsLifetime() time.Duration { return untilUTCMidnight(p.Now()) }
+
+func untilUTCMidnight(now time.Time) time.Duration {
+	u := now.UTC()
+	midnight := time.Date(u.Year(), u.Month(), u.Day()+1, 0, 0, 0, 0, time.UTC)
+	return max(time.Minute, midnight.Sub(u))
 }

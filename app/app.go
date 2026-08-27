@@ -5,6 +5,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"strconv"
 	"strings"
 	"time"
@@ -42,7 +43,7 @@ func ReportOnceWithStats(ctx context.Context, query string) (*snapshot.Snapshot,
 	if err := invariant.Check(query != "", "report requires a location query"); err != nil {
 		return nil, none, err
 	}
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, MaxRetries: 3, CacheDir: cacheDir()}) // one-shot: no scheduler behind it, so it keeps the full ladder (plan §2.3)
+	client, err := newDataClient(3) // one-shot: no scheduler behind it, so it keeps the full ladder (plan §2.3)
 	if err != nil {
 		return nil, none, err
 	}
@@ -81,22 +82,40 @@ func reportFetch(ctx context.Context, client *httpx.Client, provider *nws.Provid
 	}
 
 	refs := []snapshot.LocationRef{ref}
-	// Every kind, every provider that serves it (discovered, not enumerated).
+	// Every kind, every provider that serves it (discovered, not enumerated),
+	// the kinds in parallel (Q5, L2-F8: the serial fan-out took 4–10 s cold
+	// at NWS's pacing; the assembler applies under its own lock).
 	kinds := []snapshot.FetchKind{snapshot.KindObs, snapshot.KindForecast, snapshot.KindForecastHourly, snapshot.KindAlerts, snapshot.KindMarine, snapshot.KindMarineObs, snapshot.KindFire}
+	g, gctx := errgroup.WithContext(ctx)
 	for _, kind := range kinds {
-		for _, pr := range providers {
-			if !sched.Serves(pr, kind) {
-				continue
+		g.Go(func() error {
+			for _, pr := range providers {
+				if !sched.Serves(pr, kind) {
+					continue
+				}
+				frag, err := pr.Fetch(gctx, snapshot.FetchReq{Kind: kind, Locations: refs})
+				if err != nil {
+					return err // contract violation, not a data failure
+				}
+				asm.Apply(frag)
 			}
-			frag, err := pr.Fetch(ctx, snapshot.FetchReq{Kind: kind, Locations: refs})
-			if err != nil {
-				return nil, err // contract violation, not a data failure
-			}
-			asm.Apply(frag)
-		}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	staleWarnings(asm, asm.Snapshot())
 	return asm.Snapshot(), nil
+}
+
+// newDataClient is the one owner of the data client's policy (Q5, L2-F8):
+// the shared user agent, 30 requests/s (the launch burst drains in seconds
+// and is still polite to NWS — UAT 6.3), the disk cache, and the retry
+// budget the caller's shape allows — 1 under a scheduler that rehydrates
+// at 10/20/40 s, 3 for the one-shot report.
+func newDataClient(maxRetries int) (*httpx.Client, error) {
+	return httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: maxRetries, CacheDir: cacheDir()})
 }
 
 // staleWarnings appends obs_stale warnings for observations older than 2h

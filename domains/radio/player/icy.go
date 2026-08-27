@@ -85,8 +85,9 @@ func Open(ctx context.Context, userAgent, url string) (*Stream, error) {
 // scheme and host, three hops — a plain-HTTP relay must never be able to
 // send the player to another host.
 func newStreamClient() *http.Client {
-	return &http.Client{CheckRedirect: httpx.SameOriginRedirect, Transport: &http.Transport{
-		ResponseHeaderTimeout: 15 * time.Second, DisableCompression: true, MaxConnsPerHost: 2}}
+	tr := httpx.NewTransport() // the app-wide policy (Q5), tuned for a long-lived stream
+	tr.ResponseHeaderTimeout, tr.DisableCompression, tr.MaxConnsPerHost, tr.MaxIdleConnsPerHost = 15*time.Second, true, 2, 2
+	return &http.Client{CheckRedirect: httpx.SameOriginRedirect, Transport: tr}
 }
 
 // Read yields audio bytes (metadata stripped).

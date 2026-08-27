@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"io"
 	"net/http"
 	"os"
@@ -247,7 +248,7 @@ func download(ctx context.Context, a Asset, userAgent, dest, what string, progre
 		return "", err
 	}
 	req.Header.Set("User-Agent", userAgent)
-	client := &http.Client{Timeout: 10 * time.Minute, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	client := &http.Client{Timeout: 10 * time.Minute, Transport: httpx.NewTransport(), CheckRedirect: func(req *http.Request, via []*http.Request) error { // the app-wide transport policy (Q5)
 		// Pinned artifacts travel over HTTPS only, redirects included (red-team 0.9.0 S-F4).
 		if req.URL.Scheme != "https" {
 			return fmt.Errorf("synth: refusing a redirect to %s://%s — artifacts are fetched over https only", req.URL.Scheme, req.URL.Host)

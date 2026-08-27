@@ -103,6 +103,7 @@ func loadUserThemes
 func macVoices
 func newAssembler
 func newCoops
+func newDataClient
 func newDumper
 func newRadioDeck
 func newResolver

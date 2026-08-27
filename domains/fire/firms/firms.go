@@ -61,6 +61,8 @@ type Provider struct {
 
 	mu  sync.RWMutex
 	key string
+
+	tiles *tileMemo // the parsed-tile memo (Q5, plan §2.6)
 }
 
 // New builds the provider; base "" means production; key "" (or a key of
@@ -69,7 +71,7 @@ func New(client *httpx.Client, base, key string, rules fire.Rules) *Provider {
 	if base == "" {
 		base = "https://firms.modaps.eosdis.nasa.gov"
 	}
-	p := &Provider{client: client, base: base, rules: rules}
+	p := &Provider{client: client, base: base, rules: rules, tiles: newTileMemo()}
 	_ = p.SetKey(key)
 	return p
 }
@@ -128,37 +130,10 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 		return frag, nil // no key: nothing to add, nothing to report (HMS is the default)
 	}
 	for _, ref := range req.Locations {
-		w, s, e, n := fire.Bounds(ref.Lat, ref.Lon, p.rules.RadiusKm)
-		var hs []snapshot.Hotspot
-		failed := false
-		for _, src := range sources() {
-			u := fmt.Sprintf("%s/api/area/csv/%s/%s/%.3f,%.3f,%.3f,%.3f/1", p.base, key, src, w, s, e, n) // the key is a 32-hex path segment: httpx redacts it from every error and log line
-			raw, err := p.client.GetText(ctx, u, httpx.TTL(areaTTL))
-			if err != nil {
-				if rejected(err) { // the key itself: say so, once, and stop hitting the quota (P4)
-					frag.Err = errors.New("firms: FIRMS rejected the MAP_KEY — open Setup ([s]) and paste it again")
-					return frag, nil
-				}
-				frag.Err = fmt.Errorf("firms: %w", redactKey(err, key)) // belt and braces: never trust one layer with a secret
-				failed = true
-				continue
-			}
-			pts, err := ParseCSV(raw)
-			if err != nil {
-				p.client.Forget(u)
-				frag.Err = fmt.Errorf("firms: %w", err)
-				failed = true
-				continue
-			}
-			for _, pt := range pts {
-				km, ok := fire.Near(ref, pt.Lat, pt.Lon, p.rules.RadiusKm)
-				if !ok || !p.rules.Keep(pt.Confidence, pt.FRPMW) {
-					continue
-				}
-				d := km
-				hs = append(hs, snapshot.Hotspot{Lat: pt.Lat, Lon: pt.Lon, DetectedAt: pt.At, Confidence: pt.Confidence, FRPMW: pt.FRPMW, DistanceKm: &d,
-					Source: snapshot.SourceInfo{Provider: p.ID(), ModelOrStation: pt.Satellite, IssuedAt: pt.At}})
-			}
+		hs, failed, rejectedKey := p.hotspotsFor(ctx, key, ref, &frag)
+		if rejectedKey { // the key itself: say so, once, and stop hitting the quota (P4)
+			frag.Err = errors.New("firms: FIRMS rejected the MAP_KEY — open Setup ([s]) and paste it again")
+			return frag, nil
 		}
 		if failed {
 			continue // unserved: the scheduler retries it and the location keeps its prior hotspots (P2)
@@ -167,6 +142,58 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 	}
 	return frag, nil
 }
+
+// hotspotsFor gathers one location's detections from every tile its box
+// touches, per source (Q5 tiles: the tile URL is the cache and singleflight
+// key, so locations in one tile share one request; the parsed tile is
+// memoised by body hash). failed means some tile could not be served;
+// rejectedKey means FIRMS refused the MAP_KEY.
+func (p *Provider) hotspotsFor(ctx context.Context, key string, ref snapshot.LocationRef, frag *snapshot.Fragment) (hs []snapshot.Hotspot, failed, rejectedKey bool) {
+	w, s, e, n := fire.Bounds(ref.Lat, ref.Lon, p.rules.RadiusKm)
+	for _, src := range sources() {
+		for _, t := range tilesFor(w, s, e, n, p.tiles.pitchFor(src)) {
+			u := p.tileURL(key, src, t)
+			raw, err := p.client.GetText(ctx, u, httpx.TTL(areaTTL)) // read-only (httpx.GetText contract)
+			if err != nil {
+				if rejected(err) {
+					return nil, true, true
+				}
+				frag.Err = fmt.Errorf("firms: %w", redactKey(err, key)) // belt and braces: never trust one layer with a secret
+				failed = true
+				continue
+			}
+			p.tiles.noteBody(src, len(raw))
+			pts, err := p.tiles.points(tileKey{src: src, tile: t}, raw)
+			if err != nil {
+				p.client.Forget(u)
+				frag.Err = fmt.Errorf("firms: %w", err)
+				failed = true
+				continue
+			}
+			hs = append(hs, p.near(ref, pts)...)
+		}
+	}
+	return hs, failed, false
+}
+
+// near keeps the points inside the rules' radius and confidence.
+func (p *Provider) near(ref snapshot.LocationRef, pts []Point) []snapshot.Hotspot {
+	var hs []snapshot.Hotspot
+	for _, pt := range pts {
+		km, ok := fire.Near(ref, pt.Lat, pt.Lon, p.rules.RadiusKm)
+		if !ok || !p.rules.Keep(pt.Confidence, pt.FRPMW) {
+			continue
+		}
+		d := km
+		hs = append(hs, snapshot.Hotspot{Lat: pt.Lat, Lon: pt.Lon, DetectedAt: pt.At, Confidence: pt.Confidence, FRPMW: pt.FRPMW, DistanceKm: &d,
+			Source: snapshot.SourceInfo{Provider: p.ID(), ModelOrStation: pt.Satellite, IssuedAt: pt.At}})
+	}
+	return hs
+}
+
+// MemoStats is the parsed-tile memo's size and parse count since launch
+// (the diagnostic dump's gauges).
+func (p *Provider) MemoStats() (tiles, parses int) { return p.tiles.stats() }
 
 // rejected reports a FIRMS answer that means the key, not the network:
 // the area API returns 400 "Invalid MAP_KEY." (live 2026-08-25), 401/403

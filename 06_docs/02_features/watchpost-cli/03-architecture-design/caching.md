@@ -29,6 +29,15 @@ use `TTL`.
 
 Cache hits **never consume a pacing token**, so a warm launch is also a fast one.
 
+**Revalidation (Q5).** When an entry has expired but carries validators (`Last-Modified` /
+`ETag`, stored since Q1), the miss becomes a conditional GET: `If-Modified-Since` first (NWS honours
+it and ignores its own mangled ETags), `If-None-Match` for the hosts that honour that. A `304`
+renews the entry in memory — back from disk if the budget had evicted it — and moves the file's
+mtime on the writer goroutine, with no body written; the counters record `NotModified` and
+`Bytes304`. A `304` to an unconditional request is a server fault: one bounded refetch, never a loop
+(`httpx.getOrRevalidate`). Alerts (`max-age=5`, no validators) and `/points` cannot 304; the bytes
+fall on forecast, hourly, gridpoint and products — measured at the Q5 gate, not promised.
+
 ## The four rules that keep it bounded over weeks (Q1)
 
 DISCOVER found the disk tier at 1,376 files / 116 MB after two days, growing forever: 95 % of writes
@@ -53,9 +62,18 @@ is the number to compare.
 - **Singleflight** — identical concurrent GETs share one request (the four tiers all resolve a
   location at launch). Lives in the client, next to the cache; not a lifetime rule.
 - **Semantic caches** — `nws.gridInfo` (resolved grid + station fallback chain + preferred
-  station), the parsed NDBC/CO-OPS station lists, and the fire feeds' parse memos (`fire.Memo`:
-  the HMS archive and, since Q3, the WFIGS layer — parsed once per body change by content hash,
-  whoever asks; bound one body each). These cache *decisions* derived from products, not
+  station; since Q5 re-resolved after 24 h and dropped when the location leaves the lists —
+  `Retain`), the NWS gridpoint max/min series (decoded once per body change, one per live grid),
+  the parsed NDBC/CO-OPS station lists, the fire feeds' parse memos (`fire.Memo`: the HMS archive
+  and, since Q3, the WFIGS layer — parsed once per body change by content hash, whoever asks; bound
+  one body each), and FIRMS's parsed-tile memo (≤ 240 tiles, least-recently-used out).
+- **Request tiles (Q5)** — FIRMS is asked per 5° tile, never per location: the tile URL is the
+  cache key and the singleflight key, so every location in a tile shares one request per source and
+  a request never exceeds one tile; a box that straddles an edge fetches every touched tile (≤ 4). A
+  source whose tile body passes 2 MB moves to 2.5° tiles.
+- **Lifetimes stated per kind** — tide/current predictions to UTC midnight (their window is keyed by
+  the UTC date), FIRMS tiles 10 min, HMS 10 min, the relay directory 5 min (`Persist()`), grid
+  resolutions 24 h. These cache *decisions* derived from products, not
   products; the products beneath them are URL-cached like everything else. Each states its bound
   and reports its size as a gauge in the diagnostic dump.
 - **The read-only body** (Q3) — `GetText` returns the cache's own slice, no copy (the HMS
@@ -70,8 +88,10 @@ is the number to compare.
   the cache decides *whether*.
 - **Redirects** — every client follows at most three, same scheme and host only.
 - **Resource ceilings** (UAT 73) — 16 requests in flight per client on the normal lane, 8 on the
-  priority lane, 8 connections per host, a pure-Go DNS resolver. These bound OS threads and
-  sockets during the launch burst; they are not caching either.
+  priority lane, 8 connections per host, a pure-Go DNS resolver, and (Q5) an idle-connection
+  timeout of 11 minutes so a session outlives a 10-minute tier — one `httpx.NewTransport()` policy
+  for the data clients, the ICY stream reader and the voice-model downloader. These bound OS threads
+  and sockets during the launch burst; they are not caching either.
 
 ## Reading the numbers
 

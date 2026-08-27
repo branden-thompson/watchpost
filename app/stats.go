@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 
+	"github.com/branden-thompson/watchpost/domains/fire/firms"
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
 	"github.com/branden-thompson/watchpost/domains/fire/wfigs"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
@@ -39,6 +40,7 @@ type diagSources struct {
 	tides       *coops.Provider
 	hms         *hms.Provider
 	wfigs       *wfigs.Provider
+	firms       *firms.Provider
 	priority    *snapshot.Assembler
 	recent      *snapshot.Assembler
 	priorityPub *publisher
@@ -70,7 +72,7 @@ func (d diagSources) gauges() []Gauge {
 	writes.Name = "httpx.disk.writes" // files written since launch (Q1 gate: the derived rate)
 	out := []Gauge{mem, neg, writes}
 	if d.weather != nil {
-		out = append(out, Gauge{Name: "nws.gridinfo", Len: d.weather.CachedGrids()})
+		out = append(out, Gauge{Name: "nws.gridinfo", Len: d.weather.CachedGrids()}, Gauge{Name: "nws.grid.decodes", Len: d.weather.GridDecodes()}) // decodes since launch: one per grid body change (Q5)
 	}
 	if d.tides != nil {
 		out = append(out, Gauge{Name: "coops.stations", Len: d.tides.CachedStations()})
@@ -78,6 +80,10 @@ func (d diagSources) gauges() []Gauge {
 	if d.hms != nil {
 		pts, parses := d.hms.MemoStats()
 		out = append(out, Gauge{Name: "hms.memo.points", Len: pts}, Gauge{Name: "hms.memo.parses", Len: parses}) // parses since launch: the parse-spike counter (plan §1, Q3)
+	}
+	if d.firms != nil {
+		tiles, parses := d.firms.MemoStats()
+		out = append(out, Gauge{Name: "firms.memo.tiles", Len: tiles}, Gauge{Name: "firms.memo.parses", Len: parses}) // bound: maxTiles (Q5)
 	}
 	if d.wfigs != nil {
 		ins, parses := d.wfigs.MemoStats()
@@ -182,6 +188,9 @@ func (lp *livePipelines) sources() diagSources {
 		}
 		if w, ok := pr.(*wfigs.Provider); ok {
 			src.wfigs = w
+		}
+		if f, ok := pr.(*firms.Provider); ok {
+			src.firms = f
 		}
 	}
 	if lp.priority != nil {

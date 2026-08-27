@@ -4,6 +4,8 @@ package nws
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -83,13 +85,8 @@ func (p *Provider) fillDailyFromGrid(ctx context.Context, g *gridInfo, daily []s
 	if g.gridURL == "" || !hasTempHole(daily) {
 		return
 	}
-	var grid struct {
-		Properties struct {
-			Max gridSeries `json:"maxTemperature"`
-			Min gridSeries `json:"minTemperature"`
-		} `json:"properties"`
-	}
-	if _, err := p.client.GetJSON(ctx, g.gridURL, &grid); err != nil {
+	grid, err := p.gridExtremes(ctx, g.gridURL)
+	if err != nil {
 		return
 	}
 	tz, err := tz.Location(g.timeZone)
@@ -109,6 +106,56 @@ func (p *Provider) fillDailyFromGrid(ctx context.Context, g *gridInfo, daily []s
 			}
 		}
 	}
+}
+
+// gridExtremes is the gridpoint's max/min series, decoded once per body
+// change (Q5b-6): the raw gridpoint is ~1 MB and every location on the
+// grid — and every 30-minute tier — asked for its own decode; now the
+// client cache serves the bytes and the memo the decode. Bound: one entry
+// per live grid (pruned in Retain).
+func (p *Provider) gridExtremes(ctx context.Context, gridURL string) (gridDoc, error) {
+	raw, err := p.client.GetText(ctx, gridURL) // read-only (httpx.GetText contract)
+	if err != nil {
+		return gridDoc{}, err
+	}
+	sum := sha256.Sum256(raw)
+	p.mu.Lock()
+	if m, ok := p.grids[gridURL]; ok && m.sum == sum {
+		p.mu.Unlock()
+		return m.doc, nil
+	}
+	p.mu.Unlock()
+	var doc gridDoc
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		p.client.Forget(gridURL)
+		return gridDoc{}, err
+	}
+	p.mu.Lock()
+	p.grids[gridURL] = &gridMemo{sum: sum, doc: doc}
+	p.gridDecodes++
+	p.mu.Unlock()
+	return doc, nil
+}
+
+// gridDoc is the gridpoint fields the daily fill reads.
+type gridDoc struct {
+	Properties struct {
+		Max gridSeries `json:"maxTemperature"`
+		Min gridSeries `json:"minTemperature"`
+	} `json:"properties"`
+}
+
+// gridMemo is one grid's decoded extremes and the hash of the body they came from.
+type gridMemo struct {
+	sum [sha256.Size]byte
+	doc gridDoc
+}
+
+// GridDecodes counts gridpoint decodes since launch (the diagnostic gauge).
+func (p *Provider) GridDecodes() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.gridDecodes
 }
 
 func hasTempHole(daily []snapshot.Daily) bool {

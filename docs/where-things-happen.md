@@ -17,6 +17,9 @@ say what a file holds; this page says where a *thing* happens.
 | A fire archive is parsed | once per body change through `domains/fire/memo.go:Get` (HMS: `domains/fire/hms/hms.go:parseKMLReader`, a streaming walk; WFIGS: `domains/fire/wfigs/wfigs.go:decodeLayer`) |
 | A request is retried | `platform/httpx/httpx.go:attemptOnce` (one client retry, `Config.MaxRetries`) and `platform/sched/sched.go:fetchWithRetries` (10/20/40 s) — two layers, by design |
 | A host is avoided after failures | `platform/httpx/memo.go:noteFailure` arms; `platform/httpx/httpx.go:memoRefusal` consults (normal lane only) |
+| A cache miss is revalidated | `platform/httpx/httpx.go:getOrRevalidate` — the stored validators go out as `If-Modified-Since` / `If-None-Match`; a 304 renews through `platform/httpx/cache.go:revalidated` |
+| A FIRMS request is made | per tile, never per location: `domains/fire/firms/tiles.go:tilesFor` → `domains/fire/firms/firms.go:hotspotsFor` (the parsed tile from the memo) |
+| A location leaves the lists | `app/dashboard.go:commit` → `domains/weather/nws/points.go:Retain` (grid cache and gridpoint memo follow the set) |
 | A cache entry expires or is swept | `platform/httpx/cache.go:get` (fresh or miss), `platform/httpx/cache.go:evictLocked` (memory), `platform/httpx/cache.go:sweep` (disk, allow-list) |
 | The radio tunes | `app/radio.go:Tune` → `domains/radio/stream/resolve.go:ResolveWithStatus` → `app/radio.go:tuneList` → the engine `domains/radio/player/engine.go:Start`; synth fallback `app/radio.go:startSynth` |
 | A relay directory is read | `domains/radio/stream/directory.go:MountsWithStatus` (5-min failure memo); a down relay warns via `app/radio.go:noteDirectories` |
@@ -47,6 +50,8 @@ say what a file holds; this page says where a *thing* happens.
 | sweep | the disk tier's allow-list deleter (launch and daily) | `platform/httpx/cache.go:sweep` |
 | gauge | one bounded structure's size, reported in `counters.json` | `app/stats.go` |
 | parse memo | a feed's whole-country body parsed once per content change (HMS, WFIGS) | `domains/fire/memo.go` |
+| tile | the fixed 5° cell a FIRMS request covers — the cache and singleflight key | `domains/fire/firms/tiles.go` |
+| revalidation | a conditional GET on stored validators; a 304 renews the entry without a body | `platform/httpx/httpx.go:getOrRevalidate` |
 | dump | a profile set + `counters.json` under the cache dir's `profiles/` | `app/dump.go` |
 | deck | the radio player's controller: tune, queue, voices, status | `app/radio.go` |
 | mount | one relayed transmitter stream on a relay | `domains/radio/stream/directory.go` |

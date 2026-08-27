@@ -5,6 +5,7 @@ package nws
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -27,22 +28,35 @@ type gridInfo struct {
 	zones       []string     // UGC codes: forecastZone + county
 	fireZone    string       // fire weather zone UGC (D-22 setup inference)
 	timeZone    string
+	resolvedAt  time.Time // when /points answered: a resolution older than gridTTL is redone (Q5, L4-F7 — NWS re-grids a point now and then)
 }
+
+// gridTTL is how long a point's resolution is trusted before /points is
+// asked again (Q5b-7): a day — grids and station lists change rarely, and
+// the cache serves the request when the answer has not.
+const gridTTL = 24 * time.Hour
 
 func (p *Provider) resolve(ctx context.Context, ref snapshot.LocationRef) (*gridInfo, error) {
 	k := snapshot.Key(ref)
 	p.mu.Lock()
-	if g, ok := p.cache[k]; ok {
-		p.mu.Unlock()
-		return g, nil
-	}
+	cached, ok := p.cache[k]
 	p.mu.Unlock()
+	if ok && p.now().Sub(cached.resolvedAt) < gridTTL {
+		return cached, nil
+	}
 	// Singleflight (UAT 59): the alerts/obs/forecast tiers all resolve the
 	// same location at launch — one points+stations round trip serves them.
 	v, err, _ := p.sf.Do(string(k), func() (any, error) {
 		g, err := p.resolvePoints(ctx, ref)
 		if err != nil {
+			if ok {
+				return cached, nil // a stale resolution outlives a failed refresh: last-good, retried next time
+			}
 			return nil, err
+		}
+		g.resolvedAt = p.now()
+		if ok {
+			g.preferred = cached.preferred // the station that last reported completely carries over
 		}
 		p.mu.Lock()
 		p.cache[k] = g
@@ -53,6 +67,31 @@ func (p *Provider) resolve(ctx context.Context, ref snapshot.LocationRef) (*grid
 		return nil, err
 	}
 	return v.(*gridInfo), nil
+}
+
+// Retain drops every location the caller no longer tracks from the grid
+// cache and the gridpoint memo (Q5, L4-F7): the structures follow the
+// location set instead of growing with every lookup ever made.
+func (p *Provider) Retain(refs []snapshot.LocationRef) {
+	keep := make(map[snapshot.LocationKey]bool, len(refs))
+	for _, r := range refs {
+		keep[snapshot.Key(r)] = true
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	live := map[string]bool{}
+	for k, g := range p.cache {
+		if !keep[k] {
+			delete(p.cache, k)
+			continue
+		}
+		live[g.gridURL] = true
+	}
+	for u := range p.grids {
+		if !live[u] {
+			delete(p.grids, u)
+		}
+	}
 }
 
 // resolvePoints performs the /points + /stations round trip for one location.

@@ -1,5 +1,6 @@
 const Attribution
 const fetchConcurrency
+const gridTTL
 const inlandTTL
 const stationCandidates
 func (*MarineProvider).Domains
@@ -14,13 +15,16 @@ func (*Provider).Domains
 func (*Provider).Fetch
 func (*Provider).FireWeatherZone
 func (*Provider).ForecastZone
+func (*Provider).GridDecodes
 func (*Provider).ID
 func (*Provider).Office
+func (*Provider).Retain
 func (*Provider).fetchAlerts
 func (*Provider).fetchForecast
 func (*Provider).fetchHourly
 func (*Provider).fetchObs
 func (*Provider).fillDailyFromGrid
+func (*Provider).gridExtremes
 func (*Provider).markPreferred
 func (*Provider).rebase
 func (*Provider).resolve
@@ -46,7 +50,9 @@ func windFromText
 type MarineProvider
 type Provider
 type alertProps
+type gridDoc
 type gridInfo
+type gridMemo
 type gridSeries
 type obsStation
 type period

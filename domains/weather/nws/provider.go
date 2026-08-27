@@ -47,7 +47,11 @@ type Provider struct {
 
 	mu    sync.Mutex
 	cache map[snapshot.LocationKey]*gridInfo
-	sf    singleflight.Group // one points resolution per key across concurrent tiers
+	grids map[string]*gridMemo // the decoded gridpoint max/min series per grid URL, by body hash (Q5b-6); pruned with the cache in Retain
+	sf    singleflight.Group   // one points resolution per key across concurrent tiers
+	now   func() time.Time     // the clock (tests)
+
+	gridDecodes int // gridpoint bodies decoded since launch
 }
 
 // New builds the provider. base "" means the production API.
@@ -55,7 +59,7 @@ func New(client *httpx.Client, base string) *Provider {
 	if base == "" {
 		base = "https://api.weather.gov"
 	}
-	return &Provider{client: client, base: base, cache: map[snapshot.LocationKey]*gridInfo{}}
+	return &Provider{client: client, base: base, cache: map[snapshot.LocationKey]*gridInfo{}, grids: map[string]*gridMemo{}, now: time.Now}
 }
 
 // ID implements snapshot.Provider.

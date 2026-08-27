@@ -47,15 +47,11 @@ func RunDashboard(version string, opt Options) error {
 	}
 	refs := refsFromConfig(cfg.Locations)
 	openSetup := opt.OpenSetup || cfg.FirstRun || len(refs) == 0
-	// RatePerSec 30 (default 5): the launch burst (the favourites' calls,
-	// then the RECENT list's — the real count is the [S] REQUESTS row and
-	// counters.json, never this comment: L2-F9) trickled in over 15 s+ at
-	// 5/s (UAT 6.3); 30/s drains it in a few seconds and is still polite
-	// to NWS; steady-state request volume is near zero either way.
 	// MaxRetries 1 (quality pass Q1, plan §2.3): the scheduler already
 	// rehydrates at 10/20/40 s, so this client keeps one retry for the
-	// sub-second heal of a blip; the per-host memo bounds an outage.
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: cacheDir()})
+	// sub-second heal of a blip; the per-host memo bounds an outage. The
+	// rest of the policy lives in newDataClient (Q5: one owner).
+	client, err := newDataClient(1)
 	if err != nil {
 		return err
 	}
@@ -331,6 +327,9 @@ func (lp *livePipelines) stopAll() {
 }
 
 func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
+	if lp.weather != nil {
+		lp.weather.Retain(append(append([]snapshot.LocationRef(nil), watch...), recent...)) // the grid cache follows the location set (Q5, L4-F7)
+	}
 	lp.mu.Lock()
 	defer lp.mu.Unlock()
 	if err := invariant.Check(len(watch) <= 10, "watchlist cap is 10 (R-4)"); err != nil {

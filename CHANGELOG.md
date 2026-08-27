@@ -4,6 +4,27 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [Unreleased]
 
+## [0.9.8] — 2026-08-26
+
+Performance & quality pass, batch Q5 (network, bytes and fan-out).
+
+### Changed
+- Conditional GETs: an expired cache entry that carries `Last-Modified` / `ETag` is offered to the
+  server (`If-Modified-Since` first); a `304` renews it without downloading the body. The `S` modal
+  and `report --verbose` count the renewals and the bytes they saved.
+- NASA FIRMS requests are made per 5° map tile instead of per location: every tracked location
+  inside a tile shares one request per satellite source, a location's search box that straddles a
+  tile edge fetches every tile it touches (at most four), and the hotspots each location sees are
+  unchanged. A tile is parsed once per body change.
+- One connection policy for every HTTP client — the data clients, the live-radio stream reader and
+  the voice-model downloader — with an idle timeout that outlives a 10-minute refresh cycle, so a
+  session is reused instead of a new TLS handshake per host per cycle.
+- Tide and current predictions are cached until UTC midnight (they are astronomical and the request
+  window is keyed by the UTC date) instead of for an hour; a location's NWS grid resolution is
+  redone after a day and dropped when the location leaves the lists; the gridpoint that fills
+  TODAY's HIGH/LOW after 6 PM is decoded once per body change instead of once per location.
+- `watchpost report` fetches its seven data kinds in parallel: a cold report takes seconds, not tens.
+
 ## [0.9.7] — 2026-08-26
 
 Performance & quality pass, batch Q4a (go-studs correctness patches, each a patch beside the kit).

@@ -81,8 +81,15 @@ const (
 	maxInflight         = 16 // normal lane
 	maxInflightPriority = 8  // favourites' lane
 	maxConnsPerHost     = 8
-	idleConnTimeout     = 90 * time.Second
+	idleConnTimeout     = 11 * time.Minute // keeps a warm connection across the 10-minute tiers (Q5, L4-F13): the counters showed a TLS handshake per tick per host at 90 s
 )
+
+// NewTransport builds a transport with the app-wide policy — a pure-Go
+// resolver, bounded connections per host, an idle timeout that outlives a
+// 10-minute tier, HTTP/2 — for the callers that cannot go through the
+// client (the ICY stream reader, the voice-model downloader — Q5). Each
+// caller may tune the copy it receives.
+func NewTransport() *http.Transport { return newTransport() }
 
 // newTransport builds the shared transport with a pure-Go resolver.
 func newTransport() *http.Transport {
@@ -345,16 +352,13 @@ func (c *Client) fetch(ctx context.Context, rawURL string, opts []Option) ([]byt
 				return result{body: body}, nil
 			}
 		}
-		body, hdr, err := c.do(ctx, rawURL)
+		body, hdr, err := c.getOrRevalidate(ctx, rawURL, ro, host)
 		if err != nil {
 			var se *StatusError
 			if !ro.noCache && errors.As(err, &se) && se.Status != http.StatusTooManyRequests {
 				c.cache.putNegative(rawURL, err)
 			}
 			return nil, err
-		}
-		if ttl := lifetime(ro, hdr); ttl > 0 && !ro.noCache {
-			c.cache.put(rawURL, body, time.Now().Add(ttl), validatorsOf(hdr), ro.persist)
 		}
 		return result{body: body, hdr: hdr}, nil
 	})
@@ -363,6 +367,41 @@ func (c *Client) fetch(ctx context.Context, rawURL string, opts []Option) ([]byt
 	}
 	r := v.(result)
 	return r.body, r.hdr, nil
+}
+
+// getOrRevalidate performs the network half of a miss (Q5, plan §2.2): an
+// expired entry with validators is offered to the server, a 304 renews it
+// without a body, a 200 replaces it. A 304 to an unconditional request is
+// a server fault: one bounded refetch, never re-entering fetch (SC-8).
+func (c *Client) getOrRevalidate(ctx context.Context, rawURL string, ro reqOpts, host string) ([]byte, http.Header, error) {
+	var cond conditional
+	var stale entry
+	if !ro.noCache {
+		if st, ok := c.cache.stale(rawURL); ok {
+			stale, cond = st, conditional{etag: st.ETag, lastModified: st.LastModified}
+		}
+	}
+	body, hdr, err := c.do(ctx, rawURL, cond)
+	if err != nil {
+		return nil, nil, err
+	}
+	if body == nil && hdr != nil { // 304 Not Modified
+		if err := invariant.Check(len(stale.Body) > 0, "304 with no stored body for "+RedactURL(rawURL)); err != nil {
+			if body, hdr, err = c.do(ctx, rawURL, conditional{}); err != nil || body == nil {
+				return nil, nil, fmt.Errorf("%s answered 304 to an unconditional request", RedactURL(rawURL))
+			}
+		} else {
+			c.stats.add(host, func(h *HostStats) { h.Bytes304 += int64(len(stale.Body)) })
+			if ttl := lifetime(ro, hdr); ttl > 0 {
+				c.cache.revalidated(rawURL, stale, c.cache.now().Add(ttl))
+			}
+			return stale.Body, hdr, nil
+		}
+	}
+	if ttl := lifetime(ro, hdr); ttl > 0 && !ro.noCache {
+		c.cache.put(rawURL, body, c.cache.now().Add(ttl), validatorsOf(hdr), ro.persist)
+	}
+	return body, hdr, nil
 }
 
 // lifetime applies the cache-lifetime rules: caller TTL, else server max-age
@@ -374,12 +413,19 @@ func lifetime(ro reqOpts, hdr http.Header) time.Duration {
 	return serverTTL(hdr)
 }
 
-// do performs a GET with pacing and retries, returning the body bytes.
-func (c *Client) do(ctx context.Context, rawURL string) ([]byte, http.Header, error) {
+// conditional carries the validators a request revalidates with; empty
+// means a plain GET.
+type conditional struct {
+	etag, lastModified string
+}
+
+// do performs a GET with pacing and retries, returning the body bytes —
+// or (nil, headers, nil) for a 304 to a conditional request.
+func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byte, http.Header, error) {
 	if err := invariant.Check(c.cfg.MaxRetries >= 0, "retry budget must be non-negative"); err != nil {
 		return nil, nil, err
 	}
-	req := request{rawURL: rawURL, safe: RedactURL(rawURL), host: statHost(rawURL), priority: lane(ctx) == 1}
+	req := request{rawURL: rawURL, safe: RedactURL(rawURL), host: statHost(rawURL), priority: lane(ctx) == 1, cond: cond}
 	// The memo is consulted on the normal lane only (plan §2.3, R2-3): the
 	// priority lane always attempts — it is the half-open probe that clears
 	// the memo on success — so alerts and the first view are never blackholed.
@@ -426,6 +472,7 @@ func (c *Client) do(ctx context.Context, rawURL string) ([]byte, http.Header, er
 type request struct {
 	rawURL, safe, host string
 	priority           bool
+	cond               conditional
 }
 
 // outcome is one attempt's result: final means do() returns it as is
@@ -459,8 +506,12 @@ func (c *Client) attemptOnce(ctx context.Context, req request, attempt int) outc
 		return out
 	}
 	c.stats.add(req.host, func(h *HostStats) { h.Attempts++ })
-	res, err := c.doAttempt(ctx, req.rawURL, req.safe, req.host)
+	res, err := c.doAttempt(ctx, req)
 	switch {
+	case err == nil && res.status == http.StatusNotModified:
+		c.stats.add(req.host, func(h *HostStats) { h.NotModified++; h.H2 += b2i(res.h2) })
+		c.memo.clear(req.host)
+		out.hdr, out.final = res.hdr, true // no body: the caller renews its stored one
 	case err == nil && res.status == http.StatusOK:
 		c.stats.add(req.host, func(h *HostStats) { h.Net++; h.BytesNet += int64(len(res.body)); h.H2 += b2i(res.h2) })
 		c.memo.clear(req.host)
@@ -490,13 +541,22 @@ type attemptResult struct {
 // (retryable status, nil) on a retryable HTTP failure; (0, err) on a
 // transport error (retryable); (status, err) on a non-retryable, final
 // error. host keys the TLS-handshake counter.
-func (c *Client) doAttempt(ctx context.Context, rawURL, safe, host string) (attemptResult, error) {
+func (c *Client) doAttempt(ctx context.Context, r request) (attemptResult, error) {
+	rawURL, safe, host := r.rawURL, r.safe, r.host
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return attemptResult{status: http.StatusBadRequest}, fmt.Errorf("bad request for %s: %w", safe, redactErr(err))
 	}
 	req.Header.Set("User-Agent", c.cfg.UserAgent)
 	req.Header.Set("Accept", "application/geo+json, application/json")
+	// If-Modified-Since first (NWS honours it and ignores its own mangled
+	// ETags — PR-3); If-None-Match for the hosts that honour that (HMS, NDBC).
+	if r.cond.lastModified != "" {
+		req.Header.Set("If-Modified-Since", r.cond.lastModified)
+	}
+	if r.cond.etag != "" {
+		req.Header.Set("If-None-Match", r.cond.etag)
+	}
 	resp, err := c.http.Do(req.WithContext(httptrace.WithClientTrace(ctx, c.handshakeTrace(host))))
 	if err != nil {
 		// Transport error: retryable. Return the cause so the exhaustion
@@ -507,6 +567,11 @@ func (c *Client) doAttempt(ctx context.Context, rawURL, safe, host string) (atte
 	// information — drain completes the read; ignore explicitly.
 	defer func() { _ = resp.Body.Close() }()
 	res := attemptResult{status: resp.StatusCode, h2: resp.ProtoMajor == 2}
+	if resp.StatusCode == http.StatusNotModified {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		res.hdr = resp.Header
+		return res, nil
+	}
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		if !retryable(resp.StatusCode) {

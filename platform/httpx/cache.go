@@ -156,6 +156,36 @@ func (c *cache) get(rawURL string) ([]byte, bool) {
 	return e.Body, true
 }
 
+// stale returns the entry a conditional GET can revalidate — memory first
+// (fresh or expired), else the disk file — when it carries validators and
+// a body (Q5, plan §2.2 send side). A fresh entry never reaches here: get
+// served it.
+func (c *cache) stale(rawURL string) (entry, bool) {
+	c.mu.Lock()
+	if e, ok := c.mem[rawURL]; ok {
+		cp := *e
+		c.mu.Unlock()
+		return cp, cp.hasValidators() && len(cp.Body) > 0
+	}
+	c.mu.Unlock()
+	if c.dir == "" {
+		return entry{}, false
+	}
+	c.reads <- struct{}{}
+	e, ok := readEntry(c.path(rawURL))
+	<-c.reads
+	return e, ok && e.hasValidators() && len(e.Body) > 0
+}
+
+// revalidated records a 304: the stale entry is fresh again until expires —
+// back in memory (it may have been evicted to disk only), its file's mtime
+// moved by the writer (no body write).
+func (c *cache) revalidated(rawURL string, e entry, expires time.Time) {
+	e.Expires = expires
+	c.remember(rawURL, e)
+	c.renew(rawURL, expires)
+}
+
 // validators are the response fields a 304 can renew an entry from.
 type validators struct {
 	etag, lastModified string
