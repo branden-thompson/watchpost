@@ -45,7 +45,8 @@ func (d Dashboard) helpLines(o render.Opts) []string {
 	lines = appendHelpGroup(lines, "OTHER", other)
 	// Row marks legend (red-team B5 U8): the glyphs beside a location, in words.
 	g := o.Glyphs() // the table's own set, ASCII included (A11-10)
-	lines = append(lines, fmt.Sprintf("Row marks: %s playing   %s on repeat   n%s fires nearby (bold = burning hard)   n%s alerts", g.Play, g.Repeat, g.Fire, g.Alert))
+	lines = append(lines, fmt.Sprintf("Row marks: %s playing   %s on repeat   %s%s%s recent quake (below/felt/significant)   n%s fires nearby (bold = burning hard)   n%s alerts",
+		g.Play, g.Repeat, g.Seismic[0], g.Seismic[1], g.Seismic[2], g.Fire, g.Alert))
 	return append(lines, "", "  "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll"))) // chips like every other modal (UAT 68.2)
 }
 

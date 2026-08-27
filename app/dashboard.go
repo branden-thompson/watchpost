@@ -70,28 +70,30 @@ func RunDashboard(version string, opt Options) error {
 	lp := &livePipelines{ctx: ctx, provider: provider,
 		marine: []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, // UAT 29 / 61 / 72
 		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
+		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides}
 	lp.attachDiagnostics(ctx, start)
 	idx, idxErr := geodata.Load()                             // ONCE: the resolver and the seed list share it (Q3, L1-F21/L4-F5)
 	resolver, resolverErr := newResolver(client, idx, idxErr) // one resolver serves Resolve and Suggest
 	model, err := tty.NewDashboard(tty.Config{
 		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
-		Stats:      lp.ttyStats, // [S] REQUESTS / DUMPS rows (quality pass Q0)
-		Resolve:    resolveHook(resolver, resolverErr),
-		Suggest:    suggestHook(resolver),
-		Setup:      lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
-		OpenSetup:  openSetup,
-		FIRMSKey:   firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
-		Commit:     lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
-		SetTheme:   setThemeHook,
-		Hydrate:    lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
-		Credits:    credits(),                     // data-source credits, licence obligations included (UAT 75)
-		FireBoldMW: fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
+		Stats:       lp.ttyStats, // [S] REQUESTS / DUMPS rows (quality pass Q0)
+		Resolve:     resolveHook(resolver, resolverErr),
+		Suggest:     suggestHook(resolver),
+		Setup:       lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
+		OpenSetup:   openSetup,
+		FIRMSKey:    firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
+		Commit:      lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
+		SetTheme:    setThemeHook,
+		Hydrate:     lp.hydrate,                             // hourly forecast on demand for RECENT rows (UAT 72)
+		Credits:     credits(),                              // data-source credits, licence obligations included (UAT 75)
+		FireBoldMW:  fireRules(cfg.Fire).BoldFRPMW,          // B5: one owner for the emphasis threshold — the [fire] rules
+		SeismicDays: seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
 	})
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge
 	}
-	p, deck, stopRadio := attachRadio(model, client, provider, cfg.Voice, tty.ParseRadioMode(cfg.Radio.Mode), lp.fireFor) // B4 / UAT 97 / 114
+	p, deck, stopRadio := attachRadio(model, client, provider, cfg.Voice, tty.ParseRadioMode(cfg.Radio.Mode), lp.fireFor, lp.seismicFor) // B4 / UAT 97 / 114 / P4
 	defer stopRadio()
 	lp.p, lp.deck = p, deck
 
@@ -159,12 +161,12 @@ func newCoops() (*coops.Provider, *httpx.Client, error) {
 // player needs the program to send status back, so the deck is attached
 // to the model first and given the program after. Returns the program,
 // the deck (nil when it could not be built) and a stop func.
-func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, voice string, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport) (*tea.Program, *radioDeck, func()) {
+func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, voice string, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport, seismic func(snapshot.LocationRef) synth.SeismicReport) (*tea.Program, *radioDeck, func()) {
 	deck := newRadioDeck(nil, client, provider, render.UnitF)
 	if deck == nil {
 		return tea.NewProgram(model), nil, func() {}
 	}
-	deck.voiceID, deck.pref, deck.fire = voice, mode, fire
+	deck.voiceID, deck.pref, deck.fire, deck.seismic = voice, mode, fire, seismic
 	deck.persistMode = saveRadioMode                                                                                                                  // UAT 97: [m] is a saved preference, like the voice
 	model = model.WithRadio(deck).WithRadioMode(mode).WithSpectrum(deck.Spectrum).WithVoices(deck.Voices, deck.VoiceName(), func(name string) error { // UAT 84 / 92 / 97
 		deck.SetVoice(name)
@@ -249,6 +251,7 @@ type livePipelines struct {
 	marine   []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)
 	fire     []snapshot.Provider // hms + wfigs + firms (B5)
 	firms    *firms.Provider     // the keyed one, so the Setup window can turn it on without a relaunch (UAT 100)
+	seismic  []snapshot.Provider // usgs (0.11.0)
 	rules    fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
 	priority *pipeline
 	recent   *recentPipeline
@@ -282,6 +285,25 @@ func (lp *livePipelines) fireFor(ref snapshot.LocationRef) synth.FireReport {
 	return synth.FireReport{}
 }
 
+// seismicFor is the radio deck's seismic hook (P4): the location's recent
+// quakes from whichever pipeline carries it (favourites first). No state → the
+// report is skipped.
+func (lp *livePipelines) seismicFor(ref snapshot.LocationRef) synth.SeismicReport {
+	var asms []*snapshot.Assembler
+	if lp.priority != nil {
+		asms = append(asms, lp.priority.asm)
+	}
+	if lp.recent != nil {
+		asms = append(asms, lp.recent.asm)
+	}
+	for _, asm := range asms {
+		if ss, lat, lon, ok := asm.SeismicFor(ref); ok { // the narrow read: no snapshot clone per cycle (REVIEW C2)
+			return seismicReportOf(ss, lat, lon)
+		}
+	}
+	return synth.SeismicReport{}
+}
+
 // markFIRMS mirrors the FIRMS key state into both assemblers' status rows.
 func (lp *livePipelines) markFIRMS() {
 	if lp.firms == nil {
@@ -312,9 +334,12 @@ func (lp *livePipelines) setup(def snapshot.LocationRef, firmsKey string) error 
 	return nil
 }
 
-// providers is the full provider set: weather reference + marine and fire secondaries.
+// providers is the full provider set: weather reference + marine, fire and
+// seismic secondaries.
 func (lp *livePipelines) providers() []snapshot.Provider {
-	return append(append([]snapshot.Provider{lp.provider}, lp.marine...), lp.fire...)
+	out := append([]snapshot.Provider{lp.provider}, lp.marine...)
+	out = append(out, lp.fire...)
+	return append(out, lp.seismic...)
 }
 
 func (lp *livePipelines) stopAll() {

@@ -62,6 +62,8 @@ const (
 
 	FireMark Token = "fire.mark" // ▲ in the row marks and the FIRE section: orange (B5)
 
+	SeismicMark Token = "seismic.mark" // ○●◉ in the SEISMIC section: violet — distinct from fire's orange (0.11.0)
+
 	// The table's own palette (quality pass Q4a-004, L5-F4): before it the
 	// kit painted these from its $TERM-gated palette, outside the theme.
 	TableHeader Token = "table.header" // column headers (the kit's light purple)
@@ -144,6 +146,7 @@ func defaultTheme() map[Token]string {
 		SpectrumMid:  "220", // yellow
 		SpectrumHigh: "196", // red
 		FireMark:     "208", // orange
+		SeismicMark:  "141", // violet (0.11.0): distinct from fire-orange 208, alert-red 196, advisory-yellow 220
 
 		TableHeader: "135", // = the kit's tui.TableHeader, so nothing changed on the day the theme took over
 		TableMuted:  "245", // = tui.TableRowNumber / tui.TableAttribute

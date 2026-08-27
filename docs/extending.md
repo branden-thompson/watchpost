@@ -47,6 +47,16 @@ Schema note: `by_provider` is additive — a new provider id needs no schema ver
 v1.0-rc policy, architecture §10.3). A new top-level block (like `fire`) is a schema change and
 lands with its `modes/report` lines and parity fixtures.
 
+**Second worked example — a keyless hazard with its own detail section (`seismic`, 0.11.0):** the same
+five steps, minus the key (step 2). Its shape adds two ideas worth copying. (a) *Shared canonicalised
+requests* when a domain is regional: `domains/seismic/usgs` snaps each location's wide query to a fixed
+grid so nearby locations share one request (the FIRMS-tile precedent), with a bounded, gauged parse memo
+(`boxmemo.go`) — see `docs/where-things-happen.md` "A seismic request is made". (b) *A one-provider
+domain* merges without fire's cross-provider fold: the assembler keeps the latest state per location and
+deep-copies it into the snapshot (`platform/snapshot/merge_seismic.go`). The section itself is
+`modes/tty/detail_seismic.go` (a `fireRows` sibling wired into `detailLines`), with a new
+`render.SeismicMark` token and colour-off + `--ascii` tests.
+
 ## Walkthrough 3 — add a radio control
 
 Controls live where they act: a key in `defaultKeyMap()`, a case in `toggleRadio`, a chip in

@@ -1297,6 +1297,115 @@
             ],
             "type": "object"
           },
+          "seismic": {
+            "additionalProperties": false,
+            "properties": {
+              "as_of": {
+                "format": "date-time",
+                "type": "string"
+              },
+              "quakes": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "alert": {
+                      "type": "string"
+                    },
+                    "at": {
+                      "format": "date-time",
+                      "type": "string"
+                    },
+                    "bearing": {
+                      "type": "string"
+                    },
+                    "depth_km": {
+                      "type": "number"
+                    },
+                    "distance_km": {
+                      "type": "number"
+                    },
+                    "felt": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "mag": {
+                      "type": "number"
+                    },
+                    "mag_type": {
+                      "type": "string"
+                    },
+                    "place": {
+                      "type": "string"
+                    },
+                    "sig": {
+                      "type": "integer"
+                    },
+                    "source": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "distance_km": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "fill_from": {
+                          "additionalProperties": {
+                            "type": "string"
+                          },
+                          "type": "object"
+                        },
+                        "issued_at": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "model_or_station": {
+                          "type": "string"
+                        },
+                        "provider": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "provider",
+                        "model_or_station",
+                        "distance_km",
+                        "issued_at"
+                      ],
+                      "type": "object"
+                    },
+                    "tsunami": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "mag",
+                    "mag_type",
+                    "place",
+                    "depth_km",
+                    "at",
+                    "distance_km",
+                    "bearing",
+                    "tsunami",
+                    "sig",
+                    "source"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "as_of",
+              "quakes"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "tag": {
             "type": "string"
           },
@@ -1321,7 +1430,8 @@
           "radio",
           "hourly",
           "daily",
-          "marine"
+          "marine",
+          "seismic"
         ],
         "type": "object"
       },

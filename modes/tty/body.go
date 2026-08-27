@@ -301,6 +301,7 @@ func (d Dashboard) row(i int, loc *snapshot.Location, selected bool) render.Loca
 		AlertCount: len(loc.Alerts),                            // ⚠ badge (UAT 20.2)
 		Fire:       fireCount(loc.Fire),                        // B5 / UAT 110: n◆
 		FireHot:    fireHot(loc.Fire.Hotspots, d.fireBoldMW()), // B5
+		Seismic:    seismicRowLevel(loc.Seismic),               // 0.11.0: the strongest quake's felt-band glyph
 		Selected:   selected,
 		// UAT 18.2: shimmer until this location's data lands (obs or daily
 		// still pending); post-load nils stay honest "n/a".

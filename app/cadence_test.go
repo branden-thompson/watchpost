@@ -22,7 +22,7 @@ var updateCadences = flag.Bool("update-cadences", false, "re-capture testdata/ca
 
 func kindName(k snapshot.FetchKind) string {
 	return map[snapshot.FetchKind]string{snapshot.KindAlerts: "alerts", snapshot.KindObs: "observations", snapshot.KindMarineObs: "marine observations",
-		snapshot.KindForecast: "forecast (daily)", snapshot.KindForecastHourly: "forecast (hourly)", snapshot.KindMarine: "marine forecast", snapshot.KindFire: "fire"}[k]
+		snapshot.KindForecast: "forecast (daily)", snapshot.KindForecastHourly: "forecast (hourly)", snapshot.KindMarine: "marine forecast", snapshot.KindFire: "fire", snapshot.KindSeismic: "seismic"}[k]
 }
 
 func cadenceTable() string {

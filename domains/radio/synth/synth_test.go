@@ -28,7 +28,7 @@ func TestComposeReadsLikeNWR(t *testing.T) {
 		Source: snapshot.SourceInfo{Provider: "nws"}},
 		Alerts: []snapshot.Alert{{ID: "a1", Headline: "Heat Advisory issued August 24 at 208PM PDT until 8 PM PDT Friday by NWS San Diego CA", Description: "* WHAT...Hot.\n\n* WHERE...Coast."}}}
 	now := time.Date(2026, 8, 24, 16, 5, 0, 0, time.UTC)
-	segs := Compose(loc, []Product{{ID: "p1", Type: "ZFP", Text: ".TONIGHT...Mostly clear. Lows 66 to 69.\n\n$$"}}, now, true, "Samantha", Station{Callsign: "KEC62", Site: "San Diego", State: "CA", FreqMHz: "162.400"}, FireReport{})
+	segs := Compose(loc, []Product{{ID: "p1", Type: "ZFP", Text: ".TONIGHT...Mostly clear. Lows 66 to 69.\n\n$$"}}, now, true, "Samantha", Station{Callsign: "KEC62", Site: "San Diego", State: "CA", FreqMHz: "162.400"}, FireReport{}, SeismicReport{})
 	texts := make([]string, 0, len(segs))
 	for _, s := range segs {
 		texts = append(texts, s.Text)
@@ -566,7 +566,7 @@ func TestLeadPausesBeforeTheForecastSpan(t *testing.T) {
 	// UAT 112.3: two seconds of air between "life safety use." and "This
 	// forecast is from…" — the notice segment carries the pause, the span
 	// segment none.
-	segs := Compose(snapshot.Location{Label: "Oceanside, CA"}, nil, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC), true, "Samantha", Station{}, FireReport{})
+	segs := Compose(snapshot.Location{Label: "Oceanside, CA"}, nil, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC), true, "Samantha", Station{}, FireReport{}, SeismicReport{})
 	if len(segs) < 2 || segs[0].Pause != 2*time.Second || segs[1].Pause != time.Second /* nothing follows but the tail: the 1 s tail pause (UAT 115) */ || !strings.HasSuffix(segs[0].Text, "life safety use.") || !strings.HasPrefix(segs[1].Text, "This forecast is from") {
 		t.Fatalf("lead segments: %+v", segs[:2])
 	}
@@ -579,7 +579,7 @@ func TestReportsAreSeparatedByAir(t *testing.T) {
 	loc := snapshot.Location{Label: "Oceanside, CA"}
 	products := []Product{{ID: "p1", Type: "ZFP", Text: ".TONIGHT...Mostly clear.\n\n$$"}}
 	fire := FireReport{Known: true, RadiusKm: 25, Sources: []string{"NOAA's Hazard Mapping System"}, State: snapshot.FireState{AsOf: now}}
-	segs := Compose(loc, products, now, true, "Samantha", Station{}, fire)
+	segs := Compose(loc, products, now, true, "Samantha", Station{}, fire, SeismicReport{})
 	byKey := func(prefix string) []Segment {
 		var out []Segment
 		for _, s := range segs {
@@ -596,7 +596,7 @@ func TestReportsAreSeparatedByAir(t *testing.T) {
 	if fireSegs[len(fireSegs)-1].Pause != time.Second {
 		t.Fatalf("the last report pauses 1 s before the tail: %+v", fireSegs[len(fireSegs)-1])
 	}
-	segs = Compose(loc, products, now, true, "Samantha", Station{}, FireReport{})
+	segs = Compose(loc, products, now, true, "Samantha", Station{}, FireReport{}, SeismicReport{})
 	zfp = byKey("ZFP:")
 	if zfp[len(zfp)-1].Pause != time.Second || segs[len(segs)-1].Key != "tail:Samantha" {
 		t.Fatalf("no fire report: the forecast pauses 1 s then the tail: %+v", zfp[len(zfp)-1])

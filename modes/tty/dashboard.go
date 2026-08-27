@@ -61,6 +61,7 @@ type Config struct {
 	Radio        Radio                                                 // NOAA Weather Radio playback (B4); nil = controls stay inert
 	Spectrum     func() []float64                                      // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
 	FireBoldMW   float64                                               // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
+	SeismicDays  int                                                   // 0.11.0: the [seismic] lookback window the section words ("last N days"; 0 = 7)
 	Suggest      func(query string, limit int) []snapshot.LocationRef  // type-ahead hints for the Setup window (embedded index only; nil = enter resolves)
 	Setup        func(def snapshot.LocationRef, firmsKey string) error // persist the default location (+ the FIRMS key when given) — the Setup window's finish (UAT 100)
 	OpenSetup    bool                                                  // open the Setup window at launch (first run, no locations, or `watchpost setup`)

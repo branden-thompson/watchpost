@@ -74,6 +74,7 @@ func reportFetch(ctx context.Context, client *httpx.Client, provider *nws.Provid
 	}
 	fireProvs, firmsProv := fireProviders(client, cfg)
 	providers := append([]snapshot.Provider{provider, nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, fireProvs...)
+	providers = append(providers, seismicProviders(client, cfg)...)
 	asm := newAssembler([]snapshot.LocationRef{ref}, providers)
 	_ = asm.SetInactive(firmsProv.ID(), !firmsProv.Enabled()) // unkeyed FIRMS reads "off", not "ok" (UAT 100)
 	if fellBack {
@@ -85,7 +86,7 @@ func reportFetch(ctx context.Context, client *httpx.Client, provider *nws.Provid
 	// Every kind, every provider that serves it (discovered, not enumerated),
 	// the kinds in parallel (Q5, L2-F8: the serial fan-out took 4–10 s cold
 	// at NWS's pacing; the assembler applies under its own lock).
-	kinds := []snapshot.FetchKind{snapshot.KindObs, snapshot.KindForecast, snapshot.KindForecastHourly, snapshot.KindAlerts, snapshot.KindMarine, snapshot.KindMarineObs, snapshot.KindFire}
+	kinds := []snapshot.FetchKind{snapshot.KindObs, snapshot.KindForecast, snapshot.KindForecastHourly, snapshot.KindAlerts, snapshot.KindMarine, snapshot.KindMarineObs, snapshot.KindFire, snapshot.KindSeismic}
 	g, gctx := errgroup.WithContext(ctx)
 	for _, kind := range kinds {
 		g.Go(func() error {

@@ -227,12 +227,13 @@ type Alert struct { // CAP names verbatim (AI-10 §2): ID, Event, Severity, Urge
     // AreaDesc, Headline, Description, Instruction, Source
 }
 type FireState struct { Hotspots []Hotspot; Incidents []Incident } // Hotspot{Lat,Lon,DetectedAt,Confidence,FRPMW,DistanceKm,Source}; Incident{Name,Discovered,PercentContained,Acres,State,Source}
+type SeismicState struct { AsOf time.Time; Quakes []Quake } // 0.11.0; Quake{Mag,MagType,Place,DepthKm,At,DistanceKm,Bearing,Tsunami,Alert,Felt,Sig,Source}. AsOf zero = unavailable (never "no quakes")
 type RadioState struct { Station, StreamURL string; Source string /* live|synth|none */; Status string /* available|tuned|degraded */ } // availability only in JSON (code#5, DISCOVER)
 type ProviderStatus struct { ID, Role, Status string; FetchedAt time.Time; Attribution string }
 type PlaylistEntry struct { View string; Dwell time.Duration }
 ```
 
-**Fetch plumbing:** `type FetchKind int` (KindAlerts, KindObs, KindForecast, KindFire, KindProducts, KindGeocode). `type FetchReq struct { Kind FetchKind; Locations []LocationRef; Hint map[string]string }`. `type Fragment struct { Provider string; Kind FetchKind; PerLocation map[LocationKey]PartialData; FetchedAt time.Time; Err error }`.
+**Fetch plumbing:** `type FetchKind int` (KindAlerts, KindObs, KindForecast, KindForecastHourly, KindFire, KindMarine, KindMarineObs, KindSeismic, KindProducts, KindGeocode). `type FetchReq struct { Kind FetchKind; Locations []LocationRef; Hint map[string]string }`. `type Fragment struct { Provider string; Kind FetchKind; PerLocation map[LocationKey]PartialData; FetchedAt time.Time; Err error }`.
 **Merge rule:** last-write-wins per `(provider, location, domain-section)`; a failed Fragment (`Err != nil`) never overwrites — prior data stands, a `Warning{Code:"provider_error"|"obs_stale"}` is appended, and `ProviderStatus.Status` degrades. **Single freshness authority:** `Provider.TTL()` is DELETED; per-kind cadence lives only in scheduler tier config (code#7).
 **Report-mode read:** `atomic.Pointer[Snapshot]` getter (code axis "one word" fix).
 

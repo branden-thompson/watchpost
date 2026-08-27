@@ -4,6 +4,36 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-08-27
+
+Seismic data — the fourth hazard beside weather, marine and fire. USGS earthquakes near a tracked
+location, filtered by a magnitude-graduated distance rule: a small quake shows only if it is close, a
+large one from far away, because that is who feels it.
+
+### Added
+- A **SEISMIC section in Location Details**: recent nearby earthquakes from the USGS real-time feed,
+  largest-magnitude first, each with its magnitude, distance and bearing, depth, age and a
+  felt-likelihood label. A circle-family glyph ramp — `○` below feeling, `●` felt, `◉` significant — in
+  a violet mark distinct from fire's orange `◆`; `--ascii` reads it `.` `o` `O`. A tsunami or a
+  high-level PAGER alert reads in the warning tone. A cold or unavailable feed reads "seismic data
+  unavailable"; a feed that answered with nothing reads "no recent seismic activity" — never a false
+  "none". The whole list shows (the feed is capped at 20 per location).
+- A **row mark on the main table**: the strongest recent quake's felt-band glyph (`○`/`●`/`◉`), one
+  glyph, between the play and fire marks.
+- A **radio Seismic Activity report** in the synthesized broadcast: the USGS notice, the count, the
+  strongest three quakes read with magnitude, distance, depth and age and a spoken felt-likelihood,
+  then a pointer to the details view for the rest.
+- A **`[seismic]` config section**: `enabled`, `lookback_days` (default 7), `types` (default
+  `earthquake`, extendable to blasts/explosions), and the magnitude→radius `radius_bands_mi` rule.
+- USGS Earthquake Hazards Program credited in the About window (keyless, public domain).
+
+### Performance
+- Earthquakes are regional, so requests are **shared**: a per-location near-field query plus a regional
+  query snapped to a fixed grid, so nearby locations collapse onto one request, with a bounded, gauged
+  parse memo — the FIRMS-tile precedent. The concentric split (near vs regional) fetches 4–31 KB per box
+  where a single wide query would pull ~1 MB of low-magnitude events the rule then discards. The section
+  renders only inside the Details modal, so the frame allocation budget is unchanged.
+
 ## [0.10.2] — 2026-08-27
 
 UX pass on the dashboard (HUM LEAD UAT) and two follow-up fixes.

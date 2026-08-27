@@ -129,6 +129,7 @@ func (Dashboard).recentSection
 func (Dashboard).removeLines
 func (Dashboard).resolveCmd
 func (Dashboard).row
+func (Dashboard).seismicLookbackDays
 func (Dashboard).selectedLocation
 func (Dashboard).setupFinishCmd
 func (Dashboard).setupKeyKey
@@ -225,6 +226,14 @@ func rowLoading
 func sameLocation
 func sameRefs
 func seaState
+func seismicAge
+func seismicAlertSevere
+func seismicBand
+func seismicHead
+func seismicQuakeRow
+func seismicRowLevel
+func seismicRows
+func seismicWarnLabel
 func severityLevel
 func sortAlerts
 func splitAlertItems

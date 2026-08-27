@@ -29,7 +29,7 @@ const forecastDays = 7
 // in broadcast order, then the tail naming the correspondent voice.
 // Temperatures are read in the location's display units; everything is
 // plain sentences for the voice.
-func Compose(loc snapshot.Location, products []Product, now time.Time, imperial bool, voiceName string, station Station, fire FireReport) []Segment {
+func Compose(loc snapshot.Location, products []Product, now time.Time, imperial bool, voiceName string, station Station, fire FireReport, seismic SeismicReport) []Segment {
 	var segs []Segment
 	notice, span := LeadParts(loc.Label, station, now)
 	segs = append(segs, Segment{Key: "lead:" + loc.Label + station.Callsign, Text: notice, Pause: leadPause},
@@ -53,6 +53,10 @@ func Compose(loc snapshot.Location, products []Product, now time.Time, imperial 
 	if fireSegs := FireSegments(loc.Label, fire, imperial, now); len(fireSegs) > 0 { // UAT 114: after the forecast, before the tail; skipped without fire data
 		pauseLast(segs, reportPause)
 		segs = append(segs, fireSegs...)
+	}
+	if seismicSegs := SeismicSegments(loc.Label, seismic, imperial, now); len(seismicSegs) > 0 { // P4: after the fire report; skipped without seismic entries
+		pauseLast(segs, reportPause)
+		segs = append(segs, seismicSegs...)
 	}
 	pauseLast(segs, tailPause)
 	segs = append(segs, Segment{Key: "tail:" + voiceName, Text: Tail(voiceName)})

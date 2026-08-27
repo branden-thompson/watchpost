@@ -36,6 +36,7 @@ type LocationRow struct {
 	HasAlert           bool
 	WarnAlert          bool // true = warning/alert-grade; false = advisory (UAT 14.1)
 	AlertCount         int  // active alerts: rendered beside the ⚠ (UAT 20.2)
+	Seismic            int  // 0.11.0: the strongest recent quake's felt-band level (0 none · 1 ○ · 2 ● · 3 ◉) — the row wears one glyph, no count
 	Loading            bool // data not yet arrived: temps shimmer, not "n/a" (UAT 18.2)
 	Playing            bool
 	Selected           bool
@@ -44,10 +45,11 @@ type LocationRow struct {
 // Base column spec, widths measured from the mock. GutterWidth 2 plus the
 // component's prefix-zone rule (no gutter before columns 0-2) reproduces the
 // mock's absolute offsets exactly. UAT 110 widened the marks block from 6
-// to 11 cells (`›  ▶ 3◆ 2⚠ ` — pointer, two spacers, play, spacer, fire
-// count + ◆, spacer, alert count + ⚠, spacer) and took the 5 cells from
-// NAME's floor, so idx@11, name@16 and everything from LABEL on keeps its
-// offset: label@37,
+// to 11 cells; 0.11.0 added the seismic glyph, 11 → 13 (`›  ▶ ● 5◆ 3⚠ ` —
+// pointer, two spacers, play, spacer, seismic glyph, spacer, fire count + ◆,
+// spacer, alert count + ⚠, spacer). Each growth comes out of NAME's floor
+// (marksW + nameMinW = 30), so idx@13, name@18 and everything from LABEL on
+// keeps its offset: label@37,
 // zip@46, cond@55, now@69, hi@79, lo@86, tcond@95, thi@109, tlo@117 → 124.
 type baseCol struct {
 	name, header string
@@ -83,8 +85,8 @@ const (
 	extDayW      = 18  // day column pitch
 	extCellW     = 15  // "H 888ºF/888ºF L" (fixed slots: 3-digit temps never stagger, UAT 4.2)
 	extMaxDays   = 5   // mock shows five day columns
-	marksW       = 11  // the marks block (UAT 110 mock `›  ▶ 3◆ 2⚠ 001.`)
-	nameMinW     = 19  // NAME fill floor: the mock's 24 less the 5 cells the marks block grew by (UAT 110); NAME fills again from 120 cols
+	marksW       = 13  // the marks block (0.11.0 mock `›  ▶ ● 5◆ 3⚠ 009.` — the seismic glyph joined UAT 110's `›  ▶ 3◆ 2⚠`, +2 cells)
+	nameMinW     = 17  // NAME fill floor: shrinks with every marks-block growth so LABEL@37 and everything downstream keep their offset (marksW + nameMinW = 30, invariant since UAT 110)
 	minFullW     = 115 // minimal full layout: all groups, LABEL hidden, NAME at floor
 	minNoTmrwW   = 84  // minimal layout without the TOMORROW group
 	stationColsW = 16  // WX STN + DIST with their gutters (UAT 60)
@@ -261,9 +263,9 @@ func (o Opts) temp5Or(c *float64, loading bool) string {
 // alert (yellow advisory-grade, red warning-grade; UAT 20.2/20.3). Split
 // from rowData (P10-04).
 func rowMarks(r LocationRow, g Glyphs) [marksW]string {
-	// UAT 110 mock: `›  ▶ 3◆ 2⚠ 001.` — 0 pointer · 1-2 spacers · 3 play ·
-	// 4 spacer · 5 fire count · 6 ◆ · 7 spacer · 8 alert count · 9 ⚠ ·
-	// 10 spacer.
+	// 0.11.0 mock: `›  ▶ ● 5◆ 3⚠ 009.` — 0 pointer · 1-2 spacers · 3 play ·
+	// 4 spacer · 5 seismic glyph · 6 spacer · 7 fire count · 8 ◆ · 9 spacer ·
+	// 10 alert count · 11 ⚠ · 12 spacer.
 	marks := [marksW]string{}
 	for i := range marks {
 		marks[i] = " "
@@ -277,13 +279,16 @@ func rowMarks(r LocationRow, g Glyphs) [marksW]string {
 			marks[3] = Tint(g.Repeat, Tok(StatePlaying)) // UAT 83: ∞ on repeat
 		}
 	}
+	if r.Seismic > 0 { // 0.11.0: the strongest recent quake's felt-band glyph — one mark, no count (HUM LEAD)
+		marks[5] = Tint(g.Seismic[r.Seismic-1], Tok(SeismicMark))
+	}
 	if r.Fire > 0 { // B5 / UAT 110: fire is another alert kind — orange ◆ with its count (bold when a hotspot burns hard)
 		tone := Tok(FireMark)
 		if r.FireHot {
 			tone = "1;" + tone
 		}
-		marks[5] = Tint(fmt.Sprintf("%d", min(r.Fire, 9)), tone)
-		marks[6] = Tint(g.Fire, tone)
+		marks[7] = Tint(fmt.Sprintf("%d", min(r.Fire, 9)), tone)
+		marks[8] = Tint(g.Fire, tone)
 	}
 	if !r.HasAlert {
 		return marks
@@ -293,9 +298,9 @@ func rowMarks(r LocationRow, g Glyphs) [marksW]string {
 		tone = Tok(AlertDanger)
 	}
 	if n := min(r.AlertCount, 9); n > 0 { // single glyph slot; 9 caps the badge
-		marks[8] = Tint(fmt.Sprintf("%d", n), tone)
+		marks[10] = Tint(fmt.Sprintf("%d", n), tone)
 	}
-	marks[9] = Tint(g.Alert, tone)
+	marks[11] = Tint(g.Alert, tone)
 	return marks
 }
 

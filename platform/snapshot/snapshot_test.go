@@ -317,3 +317,32 @@ func TestFireForAndProviderStatusReadNarrowly(t *testing.T) {
 		t.Fatal("inactive reads off")
 	}
 }
+
+// The seismic seam (0.11.0): a provider fragment's SeismicState reaches the
+// published Location, a later fragment replaces it, and the snapshot is a deep
+// copy (mutating the published value cannot reach back into the assembler).
+func TestAssemblerMergesSeismicAndIsolates(t *testing.T) {
+	ref := LocationRef{Label: "Ridgecrest, CA", Lat: 35.62, Lon: -117.67}
+	k := Key(ref)
+	a := NewAssembler([]LocationRef{ref}, []string{"usgs"})
+	now := time.Date(2026, 8, 27, 9, 0, 0, 0, time.UTC)
+	felt := 42
+	a.Apply(Fragment{Provider: "usgs", Kind: KindSeismic, PerLocation: map[LocationKey]PartialData{k: {Seismic: &SeismicState{
+		AsOf: now, Quakes: []Quake{{Mag: 4.0, Place: "Coso", DistanceKm: 52, Bearing: "NNW", Felt: &felt}},
+	}}}})
+	ss := a.Snapshot().Locations[0].Seismic
+	if ss == nil || ss.AsOf != now || len(ss.Quakes) != 1 || ss.Quakes[0].Mag != 4.0 || *ss.Quakes[0].Felt != 42 {
+		t.Fatalf("the seismic fragment must reach the published location: %+v", ss)
+	}
+	// Deep copy: mutating the published value leaves the next snapshot intact.
+	ss.Quakes[0].Mag = 9.9
+	*ss.Quakes[0].Felt = 0
+	if again := a.Snapshot().Locations[0].Seismic; again.Quakes[0].Mag != 4.0 || *again.Quakes[0].Felt != 42 {
+		t.Fatalf("the snapshot must not alias assembler state: %+v", again.Quakes[0])
+	}
+	// A later fragment replaces the state (one provider, latest wins).
+	a.Apply(Fragment{Provider: "usgs", Kind: KindSeismic, PerLocation: map[LocationKey]PartialData{k: {Seismic: &SeismicState{AsOf: now.Add(time.Hour)}}}})
+	if ss := a.Snapshot().Locations[0].Seismic; ss == nil || len(ss.Quakes) != 0 {
+		t.Fatalf("a later fragment replaces the state (quiet now): %+v", ss)
+	}
+}

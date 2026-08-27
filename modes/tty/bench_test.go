@@ -57,6 +57,10 @@ func benchLoc(i int, days int, alert bool) snapshot.Location {
 	if alert {
 		loc.Alerts = []snapshot.Alert{{Event: "Extreme Heat Watch", Severity: "severe", Headline: "until Friday"}}
 	}
+	// 0.11.0: a recent quake so the budget measures the seismic row mark's
+	// per-row Tint on the miss path (REVIEW P5 D2 — the fixture previously
+	// carried no hazard marks, leaving that cost unmeasured).
+	loc.Seismic = &snapshot.SeismicState{AsOf: loc.Harmonized.Source.IssuedAt, Quakes: []snapshot.Quake{{Mag: 4.2, DistanceKm: 20, Bearing: "NE", DepthKm: 8}}}
 	return loc
 }
 

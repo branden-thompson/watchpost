@@ -56,6 +56,8 @@ func (d Dashboard) detailLines() []string {
 	}
 	lines = append(lines, detailRow("", ""))
 	lines = append(lines, fireRows(o, loc, time.Now(), d.fireBoldMW())...) // B5: fire is another alert kind
+	lines = append(lines, detailRow("", ""))
+	lines = append(lines, seismicRows(o, loc, time.Now(), cw, d.seismicLookbackDays())...) // 0.11.0: earthquakes are another alert kind
 	lines = append(lines, alertBlocks(loc, min(o.Width, d.modalWidth())-11)...)
 	// UAT 101: one consolidated chip row; + / − Watchlist enabled by membership.
 	controls := o.KeyCap("↑↓") + " Scroll  " + o.KeyCap("esc") + " Close  " +

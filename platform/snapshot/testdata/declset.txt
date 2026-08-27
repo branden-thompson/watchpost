@@ -7,6 +7,7 @@ const KindMarine
 const KindMarineObs
 const KindObs
 const KindProducts
+const KindSeismic
 const MaxHotspots
 const ProviderDegraded
 const ProviderOK
@@ -23,6 +24,7 @@ const maxWarnings
 func (*Assembler).Apply
 func (*Assembler).FireFor
 func (*Assembler).ProviderStatus
+func (*Assembler).SeismicFor
 func (*Assembler).SetAttribution
 func (*Assembler).SetInactive
 func (*Assembler).SetLocations
@@ -34,6 +36,8 @@ func FetchEach
 func Key
 func NewAssembler
 func acresOf
+func cloneSeismic
+func cloneSource
 func fillFrom
 func fillMarine
 func fillSunTimes
@@ -70,8 +74,10 @@ type Marine
 type PartialData
 type Provider
 type ProviderStatus
+type Quake
 type RadioState
 type Section
+type SeismicState
 type Snapshot
 type SourceInfo
 type TideEvent

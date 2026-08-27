@@ -47,7 +47,7 @@ func builtinOverrides() map[string]map[Token]string {
 			KeyChip: "1;38;5;16;48;5;252", KeyChipMuted: "38;5;250;48;2;70;70;70",
 			GroupLocationBG: "48;2;120;120;120", GroupTodayBG: "48;2;70;110;160",
 			GroupTomorrowBG: "48;2;60;150;150", GroupExtendedBG: "48;2;120;110;170",
-			GroupSectionBG: "48;2;60;60;60", TempHi: "214", TempLo: "87", FireMark: "214",
+			GroupSectionBG: "48;2;60;60;60", TempHi: "214", TempLo: "87", FireMark: "214", SeismicMark: "177", // bright light-purple, high legibility (0.11.0)
 			TableHeader: "231", TableMuted: "255", TableName: "231", ModalTitle: "1;231", // Q4a-004: the table reads as bright as the rest
 			GradStart: "#FFFFFF", GradMid: "#FFFF5F", GradEnd: "#5FFFFF", // white → its focus yellow → its low cyan
 		},
@@ -56,7 +56,7 @@ func builtinOverrides() map[string]map[Token]string {
 			FocusName: "1;255", FocusCell: "255", NameAdvisory: "250", NameWarning: "255",
 			ProviderOK: "250", ProviderDown: "255", RadioAccent: "250", RadioStation: "1;255",
 			StatePlaying: "1;255", RepeatOn: "1;255", VizOn: "1;255",
-			SpectrumLow: "245", SpectrumMid: "250", SpectrumHigh: "255", FireMark: "255",
+			SpectrumLow: "245", SpectrumMid: "250", SpectrumHigh: "255", FireMark: "255", SeismicMark: "252", // greyscale on a monochrome theme — the glyph, not colour, distinguishes it (0.11.0)
 			GroupLocationBG: "48;2;70;70;70", GroupTodayBG: "48;2;70;70;70",
 			GroupTomorrowBG: "48;2;70;70;70", GroupExtendedBG: "48;2;70;70;70",
 			AlertWarnFG: "38;5;255", AlertAdvFG: "38;5;250", AlertLabel: "250", AlertDanger: "255",
@@ -75,7 +75,7 @@ func builtinOverrides() map[string]map[Token]string {
 			FocusName: "1;213", FocusCell: "159", FocusPointer: "1;231", NameAdvisory: "221", NameWarning: "203",
 			ProviderOK: "121", ProviderDown: "203", RadioAccent: "51", StateStopped: "1;103", StatePlaying: "1;121",
 			RadioStation: "1;213", RepeatOn: "1;221", VizOn: "1;51", SpectrumLow: "121", SpectrumMid: "213", SpectrumHigh: "51",
-			FireMark: "215", KeyChip: "1;38;5;231;48;2;52;41;79", KeyChipMuted: "38;5;103;48;2;36;27;47", GroupText: "1;231",
+			FireMark: "215", SeismicMark: "171", KeyChip: "1;38;5;231;48;2;52;41;79", KeyChipMuted: "38;5;103;48;2;36;27;47", GroupText: "1;231", // neon magenta-purple, on-palette (0.11.0)
 			ChipFlashUp: "1;38;5;16;48;5;121", ChipFlashDown: "1;38;5;231;48;5;203",
 			GroupLocationBG: "48;2;52;41;79", GroupTodayBG: "48;2;54;30;90",
 			GroupTomorrowBG: "48;2;30;70;90", GroupExtendedBG: "48;2;80;40;90", GroupSectionBG: "48;2;36;27;47",
@@ -90,7 +90,7 @@ func builtinOverrides() map[string]map[Token]string {
 			TextBase: "247", TextBright: "254", TempHi: "166", TempLo: "37", TrendUp: "136", TrendDown: "33",
 			FocusName: "1;136", FocusCell: "109", NameAdvisory: "136", NameWarning: "160",
 			ProviderOK: "64", ProviderDown: "160", RadioAccent: "64", RadioStation: "1;136",
-			SpectrumLow: "64", SpectrumMid: "136", SpectrumHigh: "160", FireMark: "166",
+			SpectrumLow: "64", SpectrumMid: "136", SpectrumHigh: "160", FireMark: "166", SeismicMark: "61", // solarized violet (0.11.0)
 			GroupLocationBG: "48;2;7;54;66", GroupTodayBG: "48;2;38;79;120",
 			GroupTomorrowBG: "48;2;42;107;103", GroupExtendedBG: "48;2;108;83;132",
 			GroupSectionBG: "48;2;7;54;66", ModalBGDark: "48;2;0;43;54",

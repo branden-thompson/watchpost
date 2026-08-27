@@ -20,6 +20,8 @@ say what a file holds; this page says where a *thing* happens.
 | A host is avoided after failures | `platform/httpx/memo.go:noteFailure` arms; `platform/httpx/httpx.go:memoRefusal` consults (normal lane only) |
 | A cache miss is revalidated | `platform/httpx/httpx.go:getOrRevalidate` — the stored validators go out as `If-Modified-Since` / `If-None-Match`; a 304 renews through `platform/httpx/cache.go:revalidated` |
 | A FIRMS request is made | per tile, never per location: `domains/fire/firms/tiles.go:tilesFor` → `domains/fire/firms/firms.go:hotspotsFor` (the parsed tile from the memo) |
+| A seismic request is made | two concentric queries per location: a per-location near-field query and a regional query snapped to a shared 4° grid, built by `domains/seismic/usgs/usgs.go:queries` from `domains/seismic/rules.go:QueryPlan`; the shared body is parsed once through `domains/seismic/usgs/boxmemo.go:features`, then `Keep`-filtered per location in `domains/seismic/usgs/usgs.go:stateFor` |
+| The SEISMIC section renders | `modes/tty/detail.go:detailLines` → `modes/tty/detail_seismic.go:seismicRows` (glyph ramp ○●◉ by felt band `seismicBand`, largest-then-nearest; "unavailable" vs "no recent activity"); the state is merged into the snapshot by `platform/snapshot/assembler.go` (Apply stores `a.seismic[k]`, Snapshot deep-copies via `platform/snapshot/merge_seismic.go:cloneSeismic`) |
 | A location leaves the lists | `app/dashboard.go:commit` → `domains/weather/nws/points.go:Retain` (grid cache and gridpoint memo follow the set) |
 | A cache entry expires or is swept | `platform/httpx/cache.go:get` (fresh or miss), `platform/httpx/cache.go:evictLocked` (memory), `platform/httpx/cache.go:sweep` (disk, allow-list) |
 | The radio tunes | `app/radio.go:Tune` → `domains/radio/stream/resolve.go:ResolveWithStatus` → `app/radio.go:tuneList` → the engine `domains/radio/player/engine.go:Start`; synth fallback `app/radio.go:startSynth` |
@@ -51,6 +53,7 @@ say what a file holds; this page says where a *thing* happens.
 | persistence floor | a body reaches disk only past a 5-minute caller TTL (or `Persist()`) | `platform/httpx/cache.go:put` |
 | sweep | the disk tier's allow-list deleter (launch and daily) | `platform/httpx/cache.go:sweep` |
 | gauge | one bounded structure's size, reported in `counters.json` | `app/stats.go` |
+| box memo | the parsed features of the seismic query boxes most recently fetched, LRU-bounded and revalidated by body hash (a shared regional box parses once for the whole cell) | `domains/seismic/usgs/boxmemo.go` |
 | parse memo | a feed's whole-country body parsed once per content change (HMS, WFIGS) | `domains/fire/memo.go` |
 | tile | the fixed 5° cell a FIRMS request covers — the cache and singleflight key | `domains/fire/firms/tiles.go` |
 | revalidation | a conditional GET on stored validators; a 304 renews the entry without a body | `platform/httpx/httpx.go:getOrRevalidate` |

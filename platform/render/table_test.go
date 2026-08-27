@@ -33,7 +33,7 @@ func TestHeaderTokensAtResolvedOffsets(t *testing.T) {
 	// minimal full width (115) every downstream token sits at the computed
 	// offset; widening moves them right by exactly the fill growth.
 	hdr := stripANSI(strings.Split((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
-	for tok, off := range map[string]int{"###.": 11, "NAME": 16, "ZIP": 37, "NOW": 60} {
+	for tok, off := range map[string]int{"###.": 13, "NAME": 18, "ZIP": 37, "NOW": 60} {
 		if got := runeIdx(hdr, tok); got != off {
 			t.Fatalf("%q at %d, want %d\n%q", tok, got, off, hdr)
 		}
@@ -60,8 +60,8 @@ func TestLocationTableAnatomy(t *testing.T) {
 		col  int
 		want string
 	}{
-		{0, "›"}, {3, "▶"}, {9, "⚠"},
-		{11, "001."}, {16, "Oceanside, CA"}, {37, "92057"},
+		{0, "›"}, {3, "▶"}, {11, "⚠"},
+		{13, "001."}, {18, "Oceanside, CA"}, {37, "92057"},
 		{46, "CLEAR"}, {60, " 73ºF↗"}, {70, " 75ºF"}, {77, " 63ºF"},
 		{86, "RAIN"}, {100, " 77ºF"}, {108, " 64ºF"},
 	} {
@@ -289,8 +289,8 @@ func TestAlertBadgeCountAndTone(t *testing.T) {
 	out := (Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{warn, adv}, 0)
 	lines := strings.Split(out, "\n")
 	plain := []rune(stripANSI(lines[2]))
-	if got := string(plain[0:11]); got != "›       2⚠ " {
-		t.Fatalf("focused 2-alert row must open '›       2⚠ ' (UAT 110 marks block), got %q", got)
+	if got := string(plain[0:13]); got != "›         2⚠ " {
+		t.Fatalf("focused 2-alert row must open '›         2⚠ ' (0.11.0 marks block), got %q", got)
 	}
 	if !strings.Contains(lines[2], "\x1b[38;5;196m2") || !strings.Contains(lines[2], "\x1b[38;5;196m⚠") {
 		t.Fatalf("warning badge must be red:\n%q", lines[2])
@@ -298,8 +298,8 @@ func TestAlertBadgeCountAndTone(t *testing.T) {
 	if !strings.Contains(lines[3], "\x1b[38;5;220m1") || !strings.Contains(lines[3], "\x1b[38;5;220m⚠") {
 		t.Fatalf("advisory badge must be yellow:\n%q", lines[3])
 	}
-	// Geometry untouched: NAME still lands at col 16 (UAT 110 marks block).
-	if got := runeIdx(stripANSI(lines[2]), "Oceanside"); got != 16 {
+	// Geometry untouched: NAME still lands at col 18 (0.11.0 marks block).
+	if got := runeIdx(stripANSI(lines[2]), "Oceanside"); got != 18 {
 		t.Fatalf("badge must not disturb column geometry: NAME at %d", got)
 	}
 }
@@ -338,7 +338,7 @@ func TestStationColumnsUAT60(t *testing.T) {
 		return strings.Split(stripANSI((Opts{ThinBands: true, Width: w, Units: u}).LocationTable([]LocationRow{r}, 0)), "\n")
 	}
 	full := at(131, UnitF)
-	for tok, off := range map[string]int{"NAME": 16, "WX STN": 37, "DIST": 45, "ZIP": 53, "CONDITIONS": 62} {
+	for tok, off := range map[string]int{"NAME": 18, "WX STN": 37, "DIST": 45, "ZIP": 53, "CONDITIONS": 62} {
 		if got := runeIdx(full[1], tok); got != off {
 			t.Fatalf("%q at %d, want %d\n%q", tok, got, off, full[1])
 		}
@@ -370,12 +370,12 @@ func TestStationColumnsUAT60(t *testing.T) {
 	if got := runeIdx(mock[1], "ZIP"); got != 47 {
 		t.Fatalf("125-col layout unchanged (ZIP at 47), got %d", got)
 	}
-	// Very narrow: ZIP leaves last, NAME keeps its 10-cell floor (at 50
-	// cols the UAT 110 marks block leaves NAME exactly its floor, so the
-	// full name survives from 55).
-	narrow := at(50, UnitF)
+	// Very narrow: ZIP leaves last, NAME keeps its floor. The 0.11.0 marks
+	// block (13 cells) sets the table's minimum content width at 52 (the band
+	// labels span the marks region); the full name still survives from 55.
+	narrow := at(52, UnitF)
 	if strings.Contains(narrow[1], "ZIP") || strings.Contains(narrow[2], "92057") {
-		t.Fatalf("50 cols must drop ZIP before breaking NAME:\n%s", strings.Join(narrow, "\n"))
+		t.Fatalf("52 cols must drop ZIP before breaking NAME:\n%s", strings.Join(narrow, "\n"))
 	}
 	if !strings.Contains(narrow[2], "Oceansi") || !strings.Contains(narrow[2], " 73ºF") {
 		t.Fatalf("NAME and NOW survive every width:\n%s", strings.Join(narrow, "\n"))
@@ -384,23 +384,25 @@ func TestStationColumnsUAT60(t *testing.T) {
 		t.Fatalf("55 cols carries the full name:\n%s", strings.Join(n55, "\n"))
 	}
 	for _, l := range narrow {
-		if w := displayWidth(l); w > 50 {
-			t.Fatalf("line exceeds 50: %q", l)
+		if w := displayWidth(l); w > 52 {
+			t.Fatalf("line exceeds 52: %q", l)
 		}
 	}
 }
 
 func TestFireMarkIsACountedOrangeDiamond(t *testing.T) {
-	// UAT 110 mock `›  ▶ 3◆ 2⚠ 001.`: fire is a counted orange ◆ in its own
+	// 0.11.0 mock `›  ▶ ● 5◆ 3⚠ 009.`: fire is a counted orange ◆ in its own
 	// slot pair (bold when a hotspot burns hard), * under --ascii, never
-	// displacing the play or alert marks; NAME's floor gives up the cells.
+	// displacing the play, seismic or alert marks; NAME's floor gives up the
+	// cells. Here the seismic slot is empty (no quake), so ▶ and the fire
+	// count are three cells apart.
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 	r := testRow()
 	r.Fire, r.FireHot, r.AlertCount = 3, true, 2
 	out := (Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0)
 	plain := []rune(stripANSI(strings.Split(out, "\n")[2]))
-	if got := string(plain[0:15]); got != "›  ▶ 3◆ 2⚠ 001." {
+	if got := string(plain[0:13]); got != "›  ▶   3◆ 2⚠ " {
 		t.Fatalf("marks block: %q", got)
 	}
 	if bold := Tint("◆", "1;"+Tok(FireMark)); !strings.Contains(out, bold) {
@@ -417,6 +419,52 @@ func TestFireMarkIsACountedOrangeDiamond(t *testing.T) {
 	r.Fire = 0
 	if strings.Contains(stripANSI((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0)), "◆") {
 		t.Fatal("no fire, no mark")
+	}
+}
+
+// 0.11.0 (HUM LEAD): the strongest recent quake's felt-band glyph sits in the
+// marks block between the play and fire marks — one glyph, no count, violet.
+func TestSeismicMarkIsStrongestQuakeGlyph(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	// The ramp ○●◉ at cell 5, in the SeismicMark tone, without disturbing the
+	// fire/alert marks or the downstream columns.
+	for level, glyph := range map[int]string{1: "○", 2: "●", 3: "◉"} {
+		r := testRow()
+		r.Seismic, r.Fire, r.AlertCount = level, 3, 2
+		out := (Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0)
+		plain := []rune(stripANSI(strings.Split(out, "\n")[2]))
+		if got := string(plain[5]); got != glyph {
+			t.Fatalf("level %d: seismic glyph at cell 5 = %q, want %q", level, got, glyph)
+		}
+		if !strings.Contains(out, Tint(glyph, Tok(SeismicMark))) {
+			t.Fatalf("level %d: the seismic mark must read in the violet SeismicMark tone:\n%q", level, out)
+		}
+		// Fire and alert marks keep their (shifted) slots.
+		if got := string(plain[7:9]); got != "3◆" {
+			t.Fatalf("fire mark must still render at 7-8, got %q", got)
+		}
+		if got := runeIdx(stripANSI(strings.Split(out, "\n")[2]), "Oceanside"); got != 18 {
+			t.Fatalf("the seismic mark must not disturb NAME@18, got %d", got)
+		}
+	}
+	// ASCII ramp .oO.
+	for level, glyph := range map[int]string{1: ".", 2: "o", 3: "O"} {
+		r := testRow()
+		r.Seismic = level
+		ascii := stripANSI(strings.Split((Opts{ThinBands: true, Width: 115, Units: UnitF, ASCII: true}).LocationTable([]LocationRow{r}, 0), "\n")[2])
+		if got := string([]rune(ascii)[5]); got != glyph {
+			t.Fatalf("--ascii level %d: cell 5 = %q, want %q", level, got, glyph)
+		}
+	}
+	// No quake, no mark.
+	r := testRow()
+	r.Seismic = 0
+	plain := stripANSI(strings.Split((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0), "\n")[2])
+	for _, g := range []string{"○", "●", "◉"} {
+		if strings.Contains(plain, g) {
+			t.Fatalf("no quake, no seismic mark, found %q", g)
+		}
 	}
 }
 

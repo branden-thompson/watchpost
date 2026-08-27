@@ -9,6 +9,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
 	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
+	"github.com/branden-thompson/watchpost/domains/seismic/usgs"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 )
 
@@ -27,6 +28,7 @@ func credits() []string {
 		hms.Attribution,           // wildfire detections (B5)
 		wfigs.Attribution,         // wildfire incidents (B5)
 		firms.Attribution,         // keyed detections (B5)
+		usgs.Attribution,          // earthquakes (0.11.0)
 		stream.TableAttribution,   // NWR transmitter list (B4)
 		stream.WxradioAttribution, // community audio relays (B4)
 		"",                        // breathing room before the relays' condition of use (UAT 103)

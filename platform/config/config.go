@@ -81,6 +81,35 @@ func (f Fire) WithDefaults() Fire {
 	return f
 }
 
+// Seismic are the earthquake rules (0.11.0): the magnitude→radius step
+// function (a quake shows iff its distance ≤ the miles of the first band
+// whose upper magnitude exceeds the quake's), the lookback window, and the
+// USGS event types shown. Zero values mean "the default" (WithDefaults).
+type Seismic struct {
+	Enabled       *bool       `toml:"enabled,omitempty"`
+	LookbackDays  int         `toml:"lookback_days,omitempty"`
+	Types         []string    `toml:"types,omitempty"`           // USGS event types; default ["earthquake"] (D4)
+	RadiusBandsMi [][]float64 `toml:"radius_bands_mi,omitempty"` // ascending [upperMag, miles] bands
+}
+
+// WithDefaults fills every unset seismic rule with the ratified default.
+func (s Seismic) WithDefaults() Seismic {
+	if s.Enabled == nil {
+		on := true
+		s.Enabled = &on
+	}
+	if s.LookbackDays <= 0 {
+		s.LookbackDays = 7
+	}
+	if len(s.Types) == 0 {
+		s.Types = []string{"earthquake"}
+	}
+	if len(s.RadiusBandsMi) == 0 {
+		s.RadiusBandsMi = [][]float64{{1.0, 3}, {2.5, 10}, {3.5, 20}, {4.0, 40}, {4.5, 100}, {5.0, 150}, {6.0, 400}, {7.0, 500}, {99, 1000}}
+	}
+	return s
+}
+
 // fireRadiusMax bounds the rings: past this a single location would attach
 // the whole continent's detections (red-team B5 F4).
 const fireRadiusMax = 500
@@ -112,9 +141,10 @@ type Config struct {
 	Providers map[string]Provider `toml:"providers,omitempty"`
 	Keys      map[string][]string `toml:"keys,omitempty"` // Action -> key names (D-15)
 	Radio     Radio               `toml:"radio,omitempty"`
-	Fire      Fire                `toml:"fire,omitempty"`  // wildfire rules (B5)
-	Theme     string              `toml:"theme,omitempty"` // active color theme (UAT 53)
-	Voice     string              `toml:"voice,omitempty"` // radio correspondent voice (UAT 84)
+	Fire      Fire                `toml:"fire,omitempty"`    // wildfire rules (B5)
+	Seismic   Seismic             `toml:"seismic,omitempty"` // earthquake rules (0.11.0)
+	Theme     string              `toml:"theme,omitempty"`   // active color theme (UAT 53)
+	Voice     string              `toml:"voice,omitempty"`   // radio correspondent voice (UAT 84)
 
 	FirstRun bool `toml:"-"`
 }

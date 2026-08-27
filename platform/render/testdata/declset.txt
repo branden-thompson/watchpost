@@ -41,6 +41,7 @@ const RadioBG
 const RadioFG
 const RadioStation
 const RepeatOn
+const SeismicMark
 const SpectrumHigh
 const SpectrumLow
 const SpectrumMid
@@ -120,6 +121,7 @@ func PadTo
 func Plain
 func RadioBlockTone
 func RegisterTheme
+func SeismicLevel
 func SetTheme
 func Spectrum
 func ThemeGeneration

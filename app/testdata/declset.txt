@@ -30,6 +30,7 @@ func (*livePipelines).fireFor
 func (*livePipelines).hydrate
 func (*livePipelines).markFIRMS
 func (*livePipelines).providers
+func (*livePipelines).seismicFor
 func (*livePipelines).setup
 func (*livePipelines).sources
 func (*livePipelines).stopAll
@@ -130,6 +131,9 @@ func runtimeCounts
 func savePreference
 func saveRadioMode
 func seedRecent
+func seismicProviders
+func seismicReportOf
+func seismicRules
 func setThemeHook
 func snapshotBytes
 func staleWarnings

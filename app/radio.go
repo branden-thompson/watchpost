@@ -37,11 +37,12 @@ type radioDeck struct {
 	analyzer *spectrum.Analyzer // visualizer bands from the engine's tap (UAT 92)
 	vizBuf   []float64          // one analysis window, reused per frame
 
-	persistMode func(tty.RadioMode) error                   // saves the [m] pick (UAT 97); nil in tests
-	fire        func(snapshot.LocationRef) synth.FireReport // the location's fire report for the broadcast (UAT 114); nil = skipped
-	warn        func(snapshot.Warning)                      // a fresh relay-directory failure becomes a radio_unavailable warning (Q1); nil in tests
-	dirDown     map[string]bool                             // relays already warned about, so an outage warns once (guarded by mu)
-	mountOwner  map[string]stream.Station                   // the current tune list: mount URL → its station, so the label follows the mount that plays (guarded by mu)
+	persistMode func(tty.RadioMode) error                      // saves the [m] pick (UAT 97); nil in tests
+	fire        func(snapshot.LocationRef) synth.FireReport    // the location's fire report for the broadcast (UAT 114); nil = skipped
+	seismic     func(snapshot.LocationRef) synth.SeismicReport // the location's seismic report for the broadcast (P4); nil = skipped
+	warn        func(snapshot.Warning)                         // a fresh relay-directory failure becomes a radio_unavailable warning (Q1); nil in tests
+	dirDown     map[string]bool                                // relays already warned about, so an outage warns once (guarded by mu)
+	mountOwner  map[string]stream.Station                      // the current tune list: mount URL → its station, so the label follows the mount that plays (guarded by mu)
 
 	// tuneMu makes "check the epoch, then start the engine" one step, and
 	// Stop's "bump the epoch, then halt" another (round 2 N-3): without it a
@@ -298,7 +299,11 @@ func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voic
 	if d.fire != nil {
 		fire = d.fire(ref)
 	}
-	return synth.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), fire), nil
+	var seismic synth.SeismicReport
+	if d.seismic != nil {
+		seismic = d.seismic(ref)
+	}
+	return synth.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), fire, seismic), nil
 }
 
 // stationFor names the NWR transmitter the lead points listeners to (UAT

@@ -288,6 +288,8 @@ func domainFor(kind snapshot.FetchKind) string {
 		return "marine"
 	case snapshot.KindMarineObs:
 		return "marine-obs"
+	case snapshot.KindSeismic:
+		return "seismic"
 	}
 	return ""
 }

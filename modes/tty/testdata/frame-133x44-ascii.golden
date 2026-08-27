@@ -12,31 +12,31 @@
    [                                                      ][                                      ][                            ]
    [                   L O C A T I O N                    ][              T O D A Y               ][      T O M O R R O W       ]
    [                                                      ][                                      ][                            ]
-              ###. NAME                            ZIP      CONDITIONS    NOW       HI     LOW      CONDITIONS    HI      LOW
-   >       1! 001. Benchmark City 01               90000    P.CLOUDY       73ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
-              002. Benchmark City 02               90001    P.CLOUDY       75ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
-              003. Benchmark City 03               90002    P.CLOUDY       77ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
-           1! 004. Benchmark City 04               90003    P.CLOUDY       78ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
-              005. Benchmark City 05               90004    P.CLOUDY       80ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
-              006. Benchmark City 06               90005    P.CLOUDY       82ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
-           1! 007. Benchmark City 07               90006    P.CLOUDY       84ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
-              008. Benchmark City 08               90007    P.CLOUDY       73ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
-              009. Benchmark City 09               90008    P.CLOUDY       75ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
-           1! 010. Benchmark City 10               90009    P.CLOUDY       77ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+                ###. NAME                          ZIP      CONDITIONS    NOW       HI     LOW      CONDITIONS    HI      LOW
+   >    o    1! 001. Benchmark City 01             90000    P.CLOUDY       73ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+        o       002. Benchmark City 02             90001    P.CLOUDY       75ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+        o       003. Benchmark City 03             90002    P.CLOUDY       77ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+        o    1! 004. Benchmark City 04             90003    P.CLOUDY       78ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+        o       005. Benchmark City 05             90004    P.CLOUDY       80ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+        o       006. Benchmark City 06             90005    P.CLOUDY       82ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+        o    1! 007. Benchmark City 07             90006    P.CLOUDY       84ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+        o       008. Benchmark City 08             90007    P.CLOUDY       73ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+        o       009. Benchmark City 09             90008    P.CLOUDY       75ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
+        o    1! 010. Benchmark City 10             90009    P.CLOUDY       77ºF      75ºF   63ºF    CLEAR          77ºF    63ºF
    [                                                                                                                            ]
    [                                             R E C E N T   /   S E A R C H E D                                              ]
    [                                                                                                                            ] ▲
-           1! 011. Benchmark City 101              90100    P.CLOUDY       77ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   █
-              012. Benchmark City 102              90101    P.CLOUDY       78ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-              013. Benchmark City 103              90102    P.CLOUDY       80ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-              014. Benchmark City 104              90103    P.CLOUDY       82ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-              015. Benchmark City 105              90104    P.CLOUDY       84ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-           1! 016. Benchmark City 106              90105    P.CLOUDY       73ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-              017. Benchmark City 107              90106    P.CLOUDY       75ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-              018. Benchmark City 108              90107    P.CLOUDY       77ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-              019. Benchmark City 109              90108    P.CLOUDY       78ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-              020. Benchmark City 110              90109    P.CLOUDY       80ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-           1! 021. Benchmark City 111              90110    P.CLOUDY       82ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-              022. Benchmark City 112              90111    P.CLOUDY       84ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-              023. Benchmark City 113              90112    P.CLOUDY       73ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o    1! 011. Benchmark City 101            90100    P.CLOUDY       77ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   █
+        o       012. Benchmark City 102            90101    P.CLOUDY       78ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o       013. Benchmark City 103            90102    P.CLOUDY       80ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o       014. Benchmark City 104            90103    P.CLOUDY       82ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o       015. Benchmark City 105            90104    P.CLOUDY       84ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o    1! 016. Benchmark City 106            90105    P.CLOUDY       73ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o       017. Benchmark City 107            90106    P.CLOUDY       75ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o       018. Benchmark City 108            90107    P.CLOUDY       77ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o       019. Benchmark City 109            90108    P.CLOUDY       78ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o       020. Benchmark City 110            90109    P.CLOUDY       80ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o    1! 021. Benchmark City 111            90110    P.CLOUDY       82ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o       022. Benchmark City 112            90111    P.CLOUDY       84ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
+        o       023. Benchmark City 113            90112    P.CLOUDY       73ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
                                                                                                     Showing 1-13 of 50 locations  ▼

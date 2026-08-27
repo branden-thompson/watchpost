@@ -43,7 +43,8 @@ type Location struct {
 	Radio      RadioState         `json:"radio"`
 	Hourly     []Hourly           `json:"hourly"`
 	Daily      []Daily            `json:"daily"`
-	Marine     *Marine            `json:"marine"` // null inland (B3 UAT 29)
+	Marine     *Marine            `json:"marine"`  // null inland (B3 UAT 29)
+	Seismic    *SeismicState      `json:"seismic"` // nil until the USGS feed has answered (0.11.0)
 }
 
 // Section is one provider's contribution to one location.
@@ -221,6 +222,32 @@ type Incident struct {
 	Source           SourceInfo `json:"source"`
 }
 
+// SeismicState reports recent earthquakes near a location (0.11.0). AsOf
+// is when the USGS feed last answered for this location; zero means no feed
+// has yet, which is NOT "no quakes" (the FireState.AsOf precedent — a cold
+// or down feed must read "unavailable", never a reassuring "none").
+type SeismicState struct {
+	AsOf   time.Time `json:"as_of"`
+	Quakes []Quake   `json:"quakes"`
+}
+
+// Quake is one earthquake as it matters to a tracked location: the event
+// plus its distance and bearing FROM that location (USGS gives neither).
+type Quake struct {
+	Mag        float64    `json:"mag"`
+	MagType    string     `json:"mag_type"`        // ml, mww, md … (USGS magnitude scale)
+	Place      string     `json:"place"`           // "52 km SSW of Progreso, B.C., MX"
+	DepthKm    float64    `json:"depth_km"`        // hypocentre depth; a shallow quake is felt more
+	At         time.Time  `json:"at"`              // origin time
+	DistanceKm float64    `json:"distance_km"`     // from the tracked location (computed, not USGS)
+	Bearing    string     `json:"bearing"`         // compass point from the location (computed)
+	Tsunami    bool       `json:"tsunami"`         // a tsunami message was issued
+	Alert      string     `json:"alert,omitempty"` // USGS PAGER level: green|yellow|orange|red ("" = none)
+	Felt       *int       `json:"felt,omitempty"`  // Did-You-Feel-It report count (nil = none)
+	Sig        int        `json:"sig"`             // USGS significance 0..1000+
+	Source     SourceInfo `json:"source"`
+}
+
 // RadioState reports tuner availability (never live playback state — PD note).
 type RadioState struct {
 	Station   string `json:"station"`
@@ -281,6 +308,7 @@ const (
 	KindMarine         // coastal-waters forecast: NWS gridpoint swell/wave, CO-OPS tide/current predictions (B3 UAT 29/61)
 	KindMarineObs      // coastal-waters observations: NDBC buoy files, CO-OPS water level — the fast marine tier (UAT 72)
 	KindForecastHourly // NWS hourly forecast — its own tier so the RECENT list can skip its 162 KB (UAT 72)
+	KindSeismic        // USGS earthquakes near the location (0.11.0)
 )
 
 // LocationRef identifies a location for fetching (Zip/TZ carried through to
@@ -325,6 +353,7 @@ type PartialData struct {
 	Alerts  []Alert // non-nil replaces (alert sets are authoritative per fetch)
 	Fire    *FireState
 	Marine  *Marine
+	Seismic *SeismicState
 }
 
 // Fragment is one provider fetch result.

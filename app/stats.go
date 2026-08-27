@@ -17,6 +17,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
 	"github.com/branden-thompson/watchpost/domains/fire/wfigs"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
+	"github.com/branden-thompson/watchpost/domains/seismic/usgs"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -41,6 +42,7 @@ type diagSources struct {
 	hms         *hms.Provider
 	wfigs       *wfigs.Provider
 	firms       *firms.Provider
+	usgs        *usgs.Provider
 	priority    *snapshot.Assembler
 	recent      *snapshot.Assembler
 	priorityPub *publisher
@@ -88,6 +90,10 @@ func (d diagSources) gauges() []Gauge {
 	if d.wfigs != nil {
 		ins, parses := d.wfigs.MemoStats()
 		out = append(out, Gauge{Name: "wfigs.memo.incidents", Len: ins}, Gauge{Name: "wfigs.memo.parses", Len: parses}) // bound: the last layer (Q3)
+	}
+	if d.usgs != nil {
+		boxes, parses := d.usgs.MemoStats()
+		out = append(out, Gauge{Name: "usgs.memo.boxes", Len: boxes}, Gauge{Name: "usgs.memo.parses", Len: parses}) // bound: maxBoxes; shared regional box ⇒ parses ≪ locations (seismic P2)
 	}
 	out = append(out, assemblerGauges("priority", d.priority)...)
 	out = append(out, assemblerGauges("recent", d.recent)...)
@@ -191,6 +197,11 @@ func (lp *livePipelines) sources() diagSources {
 		}
 		if f, ok := pr.(*firms.Provider); ok {
 			src.firms = f
+		}
+	}
+	for _, pr := range lp.seismic {
+		if u, ok := pr.(*usgs.Provider); ok {
+			src.usgs = u
 		}
 	}
 	if lp.priority != nil {

@@ -19,6 +19,7 @@ type Assembler struct {
 	sections  map[LocationKey]map[string]*Section // location -> provider -> data
 	alerts    map[LocationKey][]Alert
 	fire      map[LocationKey]map[string]*FireState // location -> provider -> its contribution (B5: HMS, WFIGS and FIRMS each add a part)
+	seismic   map[LocationKey]*SeismicState         // location -> its latest USGS state (0.11.0: one provider, no cross-merge)
 	status    map[string]*ProviderStatus
 	warnings  []Warning
 }
@@ -40,6 +41,7 @@ func newAssembler(refs []LocationRef, providerIDs []string) *Assembler {
 		sections: map[LocationKey]map[string]*Section{},
 		alerts:   map[LocationKey][]Alert{},
 		fire:     map[LocationKey]map[string]*FireState{},
+		seismic:  map[LocationKey]*SeismicState{},
 		status:   map[string]*ProviderStatus{},
 	}
 	kept := make([]LocationRef, 0, len(refs))
@@ -96,6 +98,25 @@ func (a *Assembler) FireFor(ref LocationRef) (fs FireState, lat, lon float64, ok
 		}
 	}
 	return mergeFire(a.fire[k]), lat, lon, true
+}
+
+// SeismicFor is the radio deck's narrow read (P4): a location's latest seismic
+// state and its coordinates, without cloning the whole snapshot per cycle. ok
+// is false when the location is not tracked or no seismic feed has answered.
+func (a *Assembler) SeismicFor(ref LocationRef) (ss *SeismicState, lat, lon float64, ok bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	k := Key(ref)
+	state := a.seismic[k]
+	if state == nil {
+		return nil, 0, 0, false
+	}
+	for _, r := range a.refs {
+		if Key(r) == k {
+			lat, lon = r.Lat, r.Lon
+		}
+	}
+	return cloneSeismic(state), lat, lon, true
 }
 
 // ProviderStatus reports a registered provider's current status ("" when
@@ -159,6 +180,7 @@ func (a *Assembler) SetLocations(refs []LocationRef) (added, removed []LocationR
 			delete(a.sections, k)
 			delete(a.alerts, k)
 			delete(a.fire, k)
+			delete(a.seismic, k)
 		}
 	}
 	a.order, a.refs = order, kept
@@ -220,6 +242,9 @@ func (a *Assembler) Apply(f Fragment) {
 				a.fire[k] = map[string]*FireState{}
 			}
 			a.fire[k][f.Provider] = &fs // this provider's part; the others keep theirs
+		}
+		if pd.Seismic != nil {
+			a.seismic[k] = pd.Seismic // the one seismic provider's latest state (0.11.0)
 		}
 	}
 }
@@ -289,6 +314,9 @@ func (a *Assembler) Snapshot() *Snapshot {
 		}
 		if parts := a.fire[k]; len(parts) > 0 {
 			loc.Fire = mergeFire(parts)
+		}
+		if ss := a.seismic[k]; ss != nil {
+			loc.Seismic = cloneSeismic(ss) // deep copy: the published snapshot aliases no assembler state
 		}
 		finalize(&loc, a.providers, s.GeneratedAt)
 		s.Locations = append(s.Locations, loc)
