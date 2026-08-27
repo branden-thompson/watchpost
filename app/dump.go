@@ -67,7 +67,7 @@ func newDumper(dir string, started time.Time, sources func() diagSources, stats 
 type dumpRecord struct {
 	At         time.Time              `json:"at"`
 	UptimeS    float64                `json:"uptime_s"`
-	Mem        memRecord              `json:"memstats_after_gc"`
+	Mem        memRecord              `json:"memstats_after_gc"` // read after runtime.GC() in record()
 	Goroutines int                    `json:"goroutines"`
 	Threads    int                    `json:"threads"`
 	FDs        int                    `json:"fds"`
@@ -159,7 +159,6 @@ func (d *dumper) write(now time.Time) (string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", fmt.Errorf("dump: %w", err)
 	}
-	runtime.GC() // the counters describe live memory, not garbage waiting for a cycle
 	for _, name := range profileNames() {
 		if err := writeProfile(filepath.Join(dir, name+".pb.gz"), name); err != nil {
 			return dir, err
@@ -195,7 +194,13 @@ func writeProfile(path, name string) error {
 }
 
 // record builds counters.json's content (also served by /debug/counters).
+// It runs a GC first: the memory rows describe live memory, not garbage
+// waiting for a cycle — the series the soak statistic reads (plan §1).
+// Quality pass Q7 found the GC on the dump path only, so every 5-minute
+// sample the soaks took through /debug/counters before 0.10.1 was a
+// pre-GC reading; the hourly dumps were the post-GC truth.
 func (d *dumper) record(now time.Time) dumpRecord {
+	runtime.GC()
 	var ms runtime.MemStats
 	runtime.ReadMemStats(&ms)
 	g, t, fds := runtimeCounts()

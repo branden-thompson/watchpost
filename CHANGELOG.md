@@ -4,6 +4,15 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [Unreleased]
 
+## [0.10.1] — 2026-08-27
+
+### Fixed
+- `/debug/counters` now runs a garbage collection before reading the memory rows, as the
+  diagnostic dump always did: the 5-minute soak samples are post-GC live-heap readings, the series
+  the pass's growth statistic is defined on. Before this the endpoint reported whatever the heap
+  held between cycles (found at the start of the 7-day validation soak; the hourly dumps were
+  unaffected).
+
 ## [0.10.0] — 2026-08-27
 
 Performance & quality pass, batch Q6 (seams).

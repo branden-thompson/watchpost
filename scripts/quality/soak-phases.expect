@@ -1,0 +1,40 @@
+#!/usr/bin/expect -f
+# soak-phases.expect — the 72 h phase schedule of 07-readiness/soak-profile.md, driven on a pty,
+# then idle to day 7 (quality pass Q7). Runs the same on macOS and Linux:
+#   scripts/quality/soak-phases.expect <soak-phases.log> [<http cache dir>]   (Linux: $XDG_CACHE_HOME/watchpost/http)
+# Sample beside it with scripts/quality/soak.sh <pid> 168 soak.csv 300 (WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6064).
+
+# Q7 7-day macOS soak driver: soak-profile.md phases A–F over the first 72 h, then idle to day 7.
+# Phase changes are logged to soak-phases.log (<utc> <phase>).
+set timeout 5
+lassign $argv logfile cachedir
+if {$cachedir eq ""} { set cachedir "$::env(HOME)/Library/Caches/watchpost/http" }
+log_user 0
+set lf [open $logfile a]
+proc phase {lf s} { puts $lf "[clock format [clock seconds] -format %Y-%m-%dT%H:%M:%SZ -gmt 1] $s"; flush $lf }
+proc hold {secs} { set start [clock seconds]; while {[clock seconds] - $start < $secs} { expect -timeout 30 -re ".+" {} } }
+spawn env WATCHPOST_DEBUG_PPROF=1 WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6064 ./dist/watchpost
+catch {exec stty rows 44 cols 133 < $spawn_out(slave,name)}
+expect -timeout 30 "W A T C H P O S T"
+expect -timeout 120 -re "\\d+ºF"
+phase $lf "A idle (radio off, viz off)"
+hold [expr {2*3600}]
+send " "; expect -timeout 120 "PLAYING" { phase $lf "B synth: PLAYING" } timeout { phase $lf "B synth: not confirmed" }
+sleep 2; send "r"; sleep 1; send "r"; sleep 1
+for {set i 0} {$i < 10} {incr i} { send -- "-"; sleep 0.3 }
+phase $lf "B synth (Repeat: Watchlist, volume 5, viz off)"
+hold [expr {24*3600}]
+send "v"; phase $lf "C viz (synth on, viz on)"
+hold [expr {4*3600}]
+send "v"; sleep 1; send "m"; phase $lf "D relay (Nearest Relay, viz off)"
+hold [expr {24*3600}]
+send " "; sleep 2; phase $lf "E storm: radio off; emptying the http cache"
+catch {exec sh -c "rm -f $cachedir/*.cache"}
+phase $lf "E storm: cache emptied"
+hold [expr {2*3600}]
+phase $lf "F settle (radio off, viz off) to 72 h, then idle to day 7"
+hold [expr {(168-56)*3600}]
+send "q"
+expect -timeout 15 eof
+phase $lf "quit ok"
+close $lf

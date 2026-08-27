@@ -168,3 +168,15 @@ func TestPublisherCountsPublishesAndFoldedTriggers(t *testing.T) {
 		t.Fatalf("triggers inside one window fold into it, got %+v", st)
 	}
 }
+
+// Quality pass Q7: the counters' memory rows are read after a GC — the
+// post-GC series the soak statistic is defined on — not just the dump's.
+func TestCountersRecordRunsAGCFirst(t *testing.T) {
+	d := testDumper(t, t.TempDir(), time.Now())
+	var before runtime.MemStats
+	runtime.ReadMemStats(&before)
+	rec := d.record(time.Now())
+	if rec.Mem.NumGC <= before.NumGC {
+		t.Fatalf("record must collect before it reads: NumGC %d -> %d", before.NumGC, rec.Mem.NumGC)
+	}
+}
