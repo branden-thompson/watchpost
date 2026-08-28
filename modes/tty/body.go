@@ -18,7 +18,7 @@ import (
 // terminals and any number of APIs):
 //
 //	W A T C H P O S T  <version>     Updated: <stamp>     API: ✔8 ⚠0 ✘0 /  8  [S] Status
-//	[s] Setup  [a] About  [t] Theme  [?] Help  [q] Quit
+//	[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [?] Help  [q] Quit
 //
 // The stamp is centred in the gap between the title and the API summary;
 // the total reserves two columns for growth. Narrow terminals shorten the
@@ -55,8 +55,28 @@ func (d Dashboard) header(o render.Opts) string {
 			break
 		}
 	}
-	line2 := o.KeyCap("s") + " Setup  " + o.KeyCap("a") + " About  " + o.KeyCap("t") + " Theme  " + o.KeyCap("?") + " Help  " + o.KeyCap("q") + " Quit" // UAT 56/57/100/102
-	return line1 + "\n" + line2
+	return line1 + "\n" + d.headerControls(o)
+}
+
+// headerControls is the masthead's second line (UAT 56/57/100/102):
+// `[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [?] Help  [q] Quit`.
+// [M] toggles the ticker (0.12.0), its label saying the action. On a narrow
+// terminal the mute label shortens ("Mute Severe Alerts" → "Mute") and then,
+// if it still would not fit, drops from the row (the binding stays live) — the
+// row never exceeds the width, like line 1's stamp.
+func (d Dashboard) headerControls(o render.Opts) string {
+	verb := "Mute"
+	if d.tickerMuted {
+		verb = "Unmute"
+	}
+	base := o.KeyCap("s") + " Setup  " + o.KeyCap("a") + " About  " + o.KeyCap("t") + " Theme  "
+	tail := o.KeyCap("?") + " Help  " + o.KeyCap("q") + " Quit"
+	for _, mute := range []string{o.KeyCap("M") + " " + verb + " Severe Alerts  ", o.KeyCap("M") + " " + verb + "  ", ""} {
+		if line := base + mute + tail; render.Width(line) <= o.Width {
+			return line
+		}
+	}
+	return base + tail // extremely narrow: the mute control drops (still keybound)
 }
 
 // staleAfter is how long the stamp stays green after the last successful
@@ -130,7 +150,9 @@ func (d Dashboard) body(fl frameLayout) string {
 // writeBody writes the body into the frame's own buffer (Q3: no
 // intermediate string).
 func (d Dashboard) writeBody(b *strings.Builder, fl frameLayout, priority, recent string) {
-	b.WriteString(d.radioPanel(fl)) // UAT 8.1: radio module first
+	b.WriteString(d.tickerMarquee(fl.o)) // 0.12.0: the 3-row global event ticker band, above the radio module
+	b.WriteString("\n")                  // the band's bottom row is the ticker/radio separator (absorbs the old blank)
+	b.WriteString(d.radioPanel(fl))      // UAT 8.1: radio module first
 	b.WriteString("\n\n")
 	b.WriteString(d.alertArea(fl)) // then the alert area (blanks per UAT 6.1/6.2)
 	b.WriteString("\n\n")

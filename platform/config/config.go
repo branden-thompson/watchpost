@@ -146,6 +146,9 @@ type Config struct {
 	Theme     string              `toml:"theme,omitempty"`   // active color theme (UAT 53)
 	Voice     string              `toml:"voice,omitempty"`   // radio correspondent voice (UAT 84)
 
+	TickerMuted    bool `toml:"ticker_muted,omitempty"`     // [M]: the global event ticker's tone/narration muted (0.12.0)
+	TickerRadiusMi int  `toml:"ticker_radius_mi,omitempty"` // 0.12.0: the alert-notification radius — 0 = All (global), >0 = only alerts within N miles of the default location
+
 	FirstRun bool `toml:"-"`
 }
 

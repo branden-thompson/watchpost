@@ -41,7 +41,7 @@ func ThemeGeneration() uint64 { return themeGen.Load() }
 // the palette, never a leftover from the default (HUM LEAD, UAT 107;
 // pinned by TestEveryThemeOwnsItsTitleGradient).
 func builtinOverrides() map[string]map[Token]string {
-	return map[string]map[Token]string{
+	all := map[string]map[Token]string{
 		"High Contrast": {
 			TextBase: "255", TextBright: "231", FocusCell: "159", FocusName: "1;227",
 			KeyChip: "1;38;5;16;48;5;252", KeyChipMuted: "38;5;250;48;2;70;70;70",
@@ -57,6 +57,7 @@ func builtinOverrides() map[string]map[Token]string {
 			ProviderOK: "250", ProviderDown: "255", RadioAccent: "250", RadioStation: "1;255",
 			StatePlaying: "1;255", RepeatOn: "1;255", VizOn: "1;255",
 			SpectrumLow: "245", SpectrumMid: "250", SpectrumHigh: "255", FireMark: "255", SeismicMark: "252", // greyscale on a monochrome theme — the glyph, not colour, distinguishes it (0.11.0)
+			TickerRedBG: "48;2;95;95;95", TickerOrangeBG: "48;2;68;68;68", TickerYellowBG: "48;2;46;46;46", TickerBlueBG: "48;2;80;80;80", // 0.12.0: lane by shade, not hue, on monochrome
 			GroupLocationBG: "48;2;70;70;70", GroupTodayBG: "48;2;70;70;70",
 			GroupTomorrowBG: "48;2;70;70;70", GroupExtendedBG: "48;2;70;70;70",
 			AlertWarnFG: "38;5;255", AlertAdvFG: "38;5;250", AlertLabel: "250", AlertDanger: "255",
@@ -98,6 +99,11 @@ func builtinOverrides() map[string]map[Token]string {
 			TableHeader: "178", TableMuted: "247", TableName: "254", ModalTitle: "1;254", // Q4a-004: solarized yellow headers (≥ 4.5:1 on #002b36)
 		},
 	}
+	// The Omarchy Quattro palettes, mapped systematically (quattro.go).
+	for name, p := range quattroThemes() {
+		all[name] = quattroOverrides(p)
+	}
+	return all
 }
 
 func init() {

@@ -24,7 +24,7 @@ func (d Dashboard) View() tea.View {
 	b.Grow(len(priority) + len(recent) + 8192) // one buffer for the frame, no growth copies (Q3)
 	b.WriteString("\n\n")                      // top padding: 2 blank lines (UAT 10.3, was 3 per UAT-3.1)
 	b.WriteString(d.header(o))
-	b.WriteString("\n\n")                                          // UAT-3.2: blank line between header and alert section
+	b.WriteString("\n")                                            // 0.12.0: the ticker band's top row is the header/ticker separator (absorbs the old blank)
 	d.writeBody(&b, fl, priority, recent)                          // UAT 57: no footer - every control lives where it acts
 	content := frameText(b.String(), viewPadLeft, render.TextBase) // UAT 4.10: base grey; no stray trailing row (UAT 58)
 	if overlay := d.modalView(o); overlay != "" {
@@ -87,8 +87,10 @@ func (d Dashboard) modalWidth() int {
 		return stretch(68)
 	case modalAbout:
 		return aboutWidth
-	case modalVoice, modalSetup:
-		return 68 // the four chip controls fit on one line (UAT 86); the FIRMS address fits (UAT 100)
+	case modalVoice:
+		return 68 // the four chip controls fit on one line (UAT 86)
+	case modalSetup:
+		return 78 // the FIRMS address (UAT 100) and the Alert Notification Preference line (● All ○ Filtered to [ ] Mi of my location, 0.12.0) fit
 	}
 	return 56 // help, add/lookup, remove, theme
 }

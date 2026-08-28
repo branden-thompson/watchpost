@@ -41,7 +41,9 @@ type cache struct {
 	mu         sync.Mutex
 	mem        map[string]*entry
 	bytes      int
-	tick       uint64 // LRU clock
+	large      map[string]*entry // entries over maxMemEntry kept resident (Q-mem): read from disk once, then served from memory
+	largeBytes int
+	tick       uint64 // LRU clock (shared across both tiers)
 	neg        map[string]negEntry
 	diskWrites int64 // files written by the writer (the Q1 gate's write-rate counter)
 	lastSweep  time.Time
@@ -84,6 +86,18 @@ const (
 	maxDiskRead = 4
 )
 
+// Large-entry tier (0.12.0 memory pass): an entry over maxMemEntry used to be
+// disk-only and re-read from disk on every access — a large, hot, slow-changing
+// feed (the HMS smoke KMZ, the NWS active-alerts feed in an outbreak, the
+// significant-quake feed) was thus read from disk dozens of times a window and
+// became the app's largest allocator. These keep the recently-read large
+// entries resident under their own bounded LRU, so each is read from disk once
+// per change; an entry larger than the whole tier stays disk-only.
+const (
+	maxLargeBytes   = 48 << 20
+	maxLargeEntries = 6
+)
+
 // Bounds added by the quality pass (plan §2.2, §0.8).
 const (
 	diskFloor        = 5 * time.Minute // caller TTL must exceed this (or pass Persist) for a disk write: obs/alerts never serve a relaunch (L4-F2)
@@ -111,7 +125,7 @@ func newCache(dir string) *cache { return newCacheWithCap(dir, maxDiskBytes) }
 // newCacheWithCap is newCache with the directory cap chosen before the
 // writer (and its start sweep) runs — tests use a small cap.
 func newCacheWithCap(dir string, capBytes int64) *cache {
-	c := &cache{dir: dir, maxDiskBytes: capBytes, now: time.Now, mem: map[string]*entry{}, neg: map[string]negEntry{}, reads: make(chan struct{}, maxDiskRead)}
+	c := &cache{dir: dir, maxDiskBytes: capBytes, now: time.Now, mem: map[string]*entry{}, large: map[string]*entry{}, neg: map[string]negEntry{}, reads: make(chan struct{}, maxDiskRead)}
 	if dir != "" {
 		if err := os.MkdirAll(dir, 0o700); err != nil { // private, like the config dir (red-team 0.9.0 S-F10)
 			c.dir = "" // no disk tier; memory still works
@@ -132,15 +146,13 @@ func newCacheWithCap(dir string, capBytes int64) *cache {
 func (c *cache) get(rawURL string) ([]byte, bool) {
 	now := c.now()
 	c.mu.Lock()
-	if e, ok := c.mem[rawURL]; ok {
-		if now.Before(e.Expires) {
-			c.tick++
-			e.used = c.tick
-			c.mu.Unlock()
-			return e.Body, true
-		}
+	if body, ok, found := c.hitLocked(c.mem, rawURL, now); found {
 		c.mu.Unlock()
-		return nil, false // stale in memory: the disk file is the same entry or older
+		return body, ok // fresh, or stale (the disk copy is no fresher — skip the read)
+	}
+	if body, ok, found := c.hitLocked(c.large, rawURL, now); found {
+		c.mu.Unlock()
+		return body, ok
 	}
 	c.mu.Unlock()
 	if c.dir == "" {
@@ -152,8 +164,24 @@ func (c *cache) get(rawURL string) ([]byte, bool) {
 	if !ok || !now.Before(e.Expires) {
 		return nil, false
 	}
-	c.remember(rawURL, e)
+	c.remember(rawURL, e) // promotes it to the memory tier (small or large) — no re-read next time
 	return e.Body, true
+}
+
+// hitLocked serves a URL from a memory tier: found=false when absent; found=true
+// with ok=true (fresh, body returned, LRU bumped) or ok=false (stale — the disk
+// copy is no fresher, so the caller must not read disk). Caller holds mu.
+func (c *cache) hitLocked(tier map[string]*entry, rawURL string, now time.Time) (body []byte, ok, found bool) {
+	e, present := tier[rawURL]
+	if !present {
+		return nil, false, false
+	}
+	if now.Before(e.Expires) {
+		c.tick++
+		e.used = c.tick
+		return e.Body, true, true
+	}
+	return nil, false, true
 }
 
 // stale returns the entry a conditional GET can revalidate — memory first
@@ -163,6 +191,11 @@ func (c *cache) get(rawURL string) ([]byte, bool) {
 func (c *cache) stale(rawURL string) (entry, bool) {
 	c.mu.Lock()
 	if e, ok := c.mem[rawURL]; ok {
+		cp := *e
+		c.mu.Unlock()
+		return cp, cp.hasValidators() && len(cp.Body) > 0
+	}
+	if e, ok := c.large[rawURL]; ok {
 		cp := *e
 		c.mu.Unlock()
 		return cp, cp.hasValidators() && len(cp.Body) > 0
@@ -240,6 +273,8 @@ func (c *cache) renew(rawURL string, expires time.Time) {
 	c.mu.Lock()
 	if e, ok := c.mem[rawURL]; ok {
 		e.Expires = expires
+	} else if e, ok := c.large[rawURL]; ok {
+		e.Expires = expires
 	}
 	c.mu.Unlock()
 	if c.writes == nil {
@@ -248,15 +283,37 @@ func (c *cache) renew(rawURL string, expires time.Time) {
 	c.enqueue(entry{key: rawURL, Expires: expires, touch: true})
 }
 
-// remember places an entry in the memory tier within the byte budget.
+// remember places an entry in the right memory tier within its byte budget: the
+// small tier for the common case, the large tier for entries over maxMemEntry
+// (so a hot large feed is served from memory, not re-read from disk each time).
 func (c *cache) remember(rawURL string, e entry) {
-	if len(e.Body) > maxMemEntry {
-		return // disk-only
-	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	// A body can cross the maxMemEntry boundary between fetches (an alerts feed
+	// swelling in an outbreak), so drop any prior copy from BOTH tiers before
+	// re-inserting — a URL must be resident in exactly one tier. Otherwise a
+	// stale small copy shadows a fresh large one (get() checks mem first) and
+	// largeBytes leaks the orphan (red-team 0.12.0 P4 F3).
 	if old, ok := c.mem[rawURL]; ok {
 		c.bytes -= len(old.Body)
+		delete(c.mem, rawURL)
+	}
+	if old, ok := c.large[rawURL]; ok {
+		c.largeBytes -= len(old.Body)
+		delete(c.large, rawURL)
+	}
+	if len(e.Body) > maxMemEntry {
+		if len(e.Body) > maxLargeBytes {
+			return // bigger than the whole large tier — stays disk-only
+		}
+		c.tick++
+		e.used = c.tick
+		c.large[rawURL] = &e
+		c.largeBytes += len(e.Body)
+		if c.largeBytes > maxLargeBytes || len(c.large) > maxLargeEntries {
+			c.largeBytes = evictTier(c.large, c.largeBytes, maxLargeBytes, maxLargeEntries, c.now())
+		}
+		return
 	}
 	c.tick++
 	e.used = c.tick
@@ -272,28 +329,37 @@ func (c *cache) remember(rawURL string, e entry) {
 // with validators is an LRU citizen like any other, so a 304 has a body to
 // renew (PF-4) — until the tier is within budget (caller holds mu).
 func (c *cache) evictLocked() {
-	now := c.now()
-	for k, e := range c.mem {
+	c.bytes = evictTier(c.mem, c.bytes, maxMemBytes, maxEntries, c.now())
+}
+
+// evictTier drops a tier's expired-and-unrenewable entries, then its
+// least-recently-used ones, until it is within maxBytes/maxCount — an expired
+// entry with validators is an LRU citizen like any other, so a 304 has a body
+// to renew (PF-4). Returns the tier's new byte total. Shared by both memory
+// tiers (Q-mem): the same policy, two budgets.
+func evictTier(tier map[string]*entry, bytes, maxBytes, maxCount int, now time.Time) int {
+	for k, e := range tier {
 		if !now.Before(e.Expires) && (!e.hasValidators() || !now.Before(e.Expires.Add(staleGrace))) {
-			c.bytes -= len(e.Body)
-			delete(c.mem, k)
+			bytes -= len(e.Body)
+			delete(tier, k)
 		}
 	}
 	// Bounded per P10-02: at most one eviction per entry present.
-	for i, n := 0, len(c.mem); i < n && (c.bytes > maxMemBytes || len(c.mem) > maxEntries); i++ {
+	for i, n := 0, len(tier); i < n && (bytes > maxBytes || len(tier) > maxCount); i++ {
 		var victim string
 		oldest := ^uint64(0)
-		for k, e := range c.mem {
+		for k, e := range tier {
 			if e.used < oldest {
 				victim, oldest = k, e.used
 			}
 		}
 		if victim == "" {
-			return
+			break
 		}
-		c.bytes -= len(c.mem[victim].Body)
-		delete(c.mem, victim)
+		bytes -= len(tier[victim].Body)
+		delete(tier, victim)
 	}
+	return bytes
 }
 
 // writer persists queued entries one at a time (atomic rename), refreshes
@@ -474,6 +540,10 @@ func (c *cache) forget(rawURL string) {
 		c.bytes -= len(e.Body)
 		delete(c.mem, rawURL)
 	}
+	if e, ok := c.large[rawURL]; ok {
+		c.largeBytes -= len(e.Body)
+		delete(c.large, rawURL)
+	}
 	c.mu.Unlock()
 	if c.dir != "" {
 		_ = os.Remove(c.path(rawURL))
@@ -576,7 +646,7 @@ type Stats struct {
 func (c *cache) stats() Stats {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return Stats{Entries: len(c.mem), Bytes: c.bytes, Negative: len(c.neg), DiskWrites: c.diskWrites}
+	return Stats{Entries: len(c.mem) + len(c.large), Bytes: c.bytes + c.largeBytes, Negative: len(c.neg), DiskWrites: c.diskWrites}
 }
 
 // flush waits until the writer has finished every item handed to it

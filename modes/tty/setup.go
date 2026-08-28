@@ -6,6 +6,7 @@ package tty
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -30,26 +31,34 @@ import (
 type setupFocus int
 
 const (
-	focusLocation setupFocus = iota // 1. default location
-	focusKey                        // 2. NASA FIRMS key
+	focusLocation setupFocus = iota // 1. default location    (group: Data Access)
+	focusKey                        // 2. NASA FIRMS key       (group: Data Access)
+	focusAlert                      // 3. alert notification   (group: Severe Weather / Disaster Events)
 	setupQuestions
 )
 
 type setupState struct {
-	focus  setupFocus
-	query  string
-	hints  []snapshot.LocationRef
-	idx    int
-	ref    *snapshot.LocationRef // the chosen (or kept) default
-	key    string
-	reveal bool
-	err    string
+	focus    setupFocus
+	query    string
+	hints    []snapshot.LocationRef
+	idx      int
+	ref      *snapshot.LocationRef // the chosen (or kept) default
+	key      string
+	reveal   bool
+	filtered bool   // 3. Alert Notification Preference: false = All, true = Filtered to N mi
+	radiusMi string // the miles buffer for the [    ] input (digits only)
+	err      string
 }
 
-// openSetup toggles the Setup window with fresh state, alone on top.
+// openSetup toggles the Setup window with fresh state (the alert preference
+// seeded from config), alone on top.
 func (d Dashboard) openSetup() Dashboard {
 	d = d.toggle(modalSetup)
 	d.setup = setupState{}
+	if d.cfg.AlertRadiusMi > 0 {
+		d.setup.filtered = true
+		d.setup.radiusMi = fmt.Sprintf("%d", d.cfg.AlertRadiusMi)
+	}
 	return d
 }
 
@@ -70,10 +79,14 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d.setup.focus, d.setup.err = (d.setup.focus+setupQuestions-1)%setupQuestions, ""
 		return d, nil
 	}
-	if d.setup.focus == focusLocation {
+	switch d.setup.focus {
+	case focusLocation:
 		return d.setupLocationKey(key)
+	case focusKey:
+		return d.setupKeyKey(key)
+	default:
+		return d.setupAlertKey(key)
 	}
-	return d.setupKeyKey(key)
 }
 
 // setupLocationKey is question 1: type → hints; ↑↓ pick; enter takes the
@@ -118,20 +131,13 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 // setupKeyKey is question 2: the FIRMS key line — type to paste, ctrl+r
-// reveals, enter saves the form (an empty key keeps a stored one, or means
-// the default data set on a first run).
+// reveals, enter moves on to question 3 (the alert preference), keeping the
+// typed key in state for the final save.
 func (d Dashboard) setupKeyKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
 	case "enter":
-		if d.setup.ref == nil {
-			if cur := d.currentDefault(); cur != nil {
-				d.setup.ref = cur
-			} else {
-				d.setup.focus, d.setup.err = focusLocation, "choose your default location first"
-				return d, nil
-			}
-		}
-		return d, d.setupFinishCmd(strings.TrimSpace(d.setup.key))
+		d.setup.focus, d.setup.err = focusAlert, ""
+		return d, nil
 	case "ctrl+r":
 		d.setup.reveal = !d.setup.reveal
 	case "backspace":
@@ -144,6 +150,49 @@ func (d Dashboard) setupKeyKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return d, nil
+}
+
+// setupAlertKey is question 3: the Alert Notification Preference — ↑↓ picks All
+// vs Filtered; a digit selects Filtered and builds the miles; enter saves the
+// whole form. An empty or zero radius under "Filtered" reverts to All.
+func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "enter":
+		if d.setup.ref == nil {
+			if cur := d.currentDefault(); cur != nil {
+				d.setup.ref = cur
+			} else {
+				d.setup.focus, d.setup.err = focusLocation, "choose your default location first"
+				return d, nil
+			}
+		}
+		return d, d.setupFinishCmd(strings.TrimSpace(d.setup.key))
+	case "up", "down", "left", "right", " ":
+		d.setup.filtered = !d.setup.filtered
+	case "backspace":
+		if r := []rune(d.setup.radiusMi); len(r) > 0 {
+			d.setup.radiusMi = string(r[:len(r)-1])
+		}
+	default:
+		if r := key.Text; r >= "0" && r <= "9" && len([]rune(d.setup.radiusMi)) < 4 {
+			d.setup.filtered = true // typing a distance means Filtered
+			d.setup.radiusMi += r
+		}
+	}
+	return d, nil
+}
+
+// alertRadiusChoice reads the form's alert preference as the miles to persist:
+// 0 when All (or Filtered with an empty/zero/invalid distance).
+func (st setupState) alertRadiusChoice() int {
+	if !st.filtered {
+		return 0
+	}
+	mi, err := strconv.Atoi(st.radiusMi)
+	if err != nil || mi < 0 {
+		return 0
+	}
+	return mi
 }
 
 // currentDefault is the watchlist's first location (the stored default),
@@ -173,6 +222,7 @@ func (d Dashboard) setupFinishCmd(key string) tea.Cmd {
 		return nil
 	}
 	def, setup, commit := *d.setup.ref, d.cfg.Setup, d.cfg.Commit
+	setRadius, radius := d.cfg.SetAlertRadius, d.setup.alertRadiusChoice()
 	watch := []snapshot.LocationRef{def}
 	for _, r := range refsOf(d.snap) {
 		if !sameLocation(r, def) {
@@ -187,6 +237,9 @@ func (d Dashboard) setupFinishCmd(key string) tea.Cmd {
 		if err := setup(def, key); err != nil {
 			return committedMsg{err: err, what: "setup"}
 		}
+		if setRadius != nil {
+			setRadius(radius) // 0.12.0: persist the alert-notification radius + re-scope the ticker
+		}
 		if commit == nil {
 			return committedMsg{what: "setup"}
 		}
@@ -194,8 +247,15 @@ func (d Dashboard) setupFinishCmd(key string) tea.Cmd {
 	}
 }
 
-// setupLines is the Setup window body — one form, every question on
-// screen, the focused one marked › (UAT 111.3).
+// setupGroup is a settings-group header: white like the questions, set off by
+// blank lines above and below (the section pattern — see docs). More groups
+// join as more configurability is added.
+func setupGroup(text string) string {
+	return "  " + render.Tint(text, render.Tok(render.TextBright))
+}
+
+// setupLines is the Setup window body — settings grouped by concern, every
+// question on screen, the focused one marked › (UAT 111.3).
 func (d Dashboard) setupLines(o render.Opts) []string {
 	st := d.setup
 	mark := func(f setupFocus) string {
@@ -204,10 +264,13 @@ func (d Dashboard) setupLines(o render.Opts) []string {
 		}
 		return "  "
 	}
-	lines := append([]string{""}, d.setupLocationLines(o, mark(focusLocation))...)
+	lines := []string{"", setupGroup("Data Access"), ""}
+	lines = append(lines, d.setupLocationLines(o, mark(focusLocation))...)
 	lines = append(lines, d.setupKeyLines(mark(focusKey))...)
+	lines = append(lines, "", setupGroup("Severe Weather / Disaster Events"), "")
+	lines = append(lines, d.setupAlertLines(o, mark(focusAlert))...)
 	action := "Next"
-	if st.focus == focusKey {
+	if st.focus == focusAlert {
 		action = "Save"
 	}
 	// The chip row wraps by chip, inside the inset (UAT 111.4) — the same
@@ -275,6 +338,41 @@ func (d Dashboard) setupKeyLines(mark string) []string {
 		lines = append(lines, "       ⚠ "+st.err)
 	}
 	return lines
+}
+
+// setupAlertLines is question 3: the Alert Notification Preference — a radio
+// pick (All vs Filtered to N mi of the default location). The question reads
+// white; the value line reads grey like the other supporting lines, the
+// selection carried by the ●/○ marks (glyph, not colour — R-12a).
+func (d Dashboard) setupAlertLines(o render.Opts, mark string) []string {
+	st := d.setup
+	lines := []string{"  " + mark + render.Tint("3. Alert Notification Preference", render.Tok(render.TextBright))}
+	buf := st.radiusMi
+	if st.focus == focusAlert && st.filtered {
+		buf += "▌" // the miles cursor, only while editing a Filtered distance
+	}
+	field := "[" + render.PadTo(buf, 4) + "]"
+	value := fmt.Sprintf("%s All   %s Filtered to %s Mi of my location", radioMark(!st.filtered, o.ASCII), radioMark(st.filtered, o.ASCII), field)
+	lines = append(lines, "       Current:  "+value)
+	if st.err != "" && st.focus == focusAlert {
+		lines = append(lines, "       ⚠ "+st.err)
+	}
+	return lines
+}
+
+// radioMark is a radio-button glyph: ● selected / ○ not (or * / o under
+// --ascii) — the mark carries the choice without colour (R-12a).
+func radioMark(selected, ascii bool) string {
+	switch {
+	case selected && ascii:
+		return "*"
+	case selected:
+		return "●"
+	case ascii:
+		return "o"
+	default:
+		return "○"
+	}
 }
 
 // firmsHealth words the FIRMS provider's state for the Setup window (UAT

@@ -216,10 +216,12 @@ func TestFailSoftUXRedTeam09(t *testing.T) {
 
 // setupHarness wires the Setup window's hooks to recorders (UAT 100).
 type setupHarness struct {
-	def    *snapshot.LocationRef
-	key    string
-	watch  []snapshot.LocationRef
-	setups int
+	def       *snapshot.LocationRef
+	key       string
+	watch     []snapshot.LocationRef
+	setups    int
+	radius    int
+	radiusSet bool
 }
 
 func (h *setupHarness) config() Config {
@@ -235,7 +237,8 @@ func (h *setupHarness) config() Config {
 			h.def, h.key, h.setups = &def, key, h.setups+1
 			return nil
 		},
-		Commit: func(watch, recent []snapshot.LocationRef) error { h.watch = watch; return nil },
+		Commit:         func(watch, recent []snapshot.LocationRef) error { h.watch = watch; return nil },
+		SetAlertRadius: func(mi int) { h.radius, h.radiusSet = mi, true },
 	}
 }
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -43,6 +44,8 @@ type radioDeck struct {
 	warn        func(snapshot.Warning)                         // a fresh relay-directory failure becomes a radio_unavailable warning (Q1); nil in tests
 	dirDown     map[string]bool                                // relays already warned about, so an outage warns once (guarded by mu)
 	mountOwner  map[string]stream.Station                      // the current tune list: mount URL → its station, so the label follows the mount that plays (guarded by mu)
+
+	installMu sync.Mutex // serializes Piper voice installs across concurrent callers (breaking audio + tune) — 0.12.0 P4
 
 	// tuneMu makes "check the epoch, then start the engine" one step, and
 	// Stop's "bump the epoch, then halt" another (round 2 N-3): without it a
@@ -96,10 +99,20 @@ func (d *radioDeck) Spectrum() []float64 {
 	return d.analyzer.Bands(d.vizBuf[:n])
 }
 
-// Tune implements tty.Radio: resolve, then play the first relayed station
-// — or the synthesized broadcast when nothing relays this location (B4
-// step 2: 89 % of transmitters).
+// Tune implements tty.Radio: the USER picking a location. It lifts any alert
+// duck first — a deliberate tune means "play this station now", so it is not
+// suppressed under a breaking takeover (0.12.0 follow-up). Automatic transitions
+// (relay→synth fallback, Watchlist advance) go through tune/startSynth instead
+// and stay ducked so the alert narration is still heard over them.
 func (d *radioDeck) Tune(ref snapshot.LocationRef) {
+	d.engine.Restore()
+	d.tune(ref)
+}
+
+// tune resolves, then plays the first relayed station — or the synthesized
+// broadcast when nothing relays this location (B4 step 2: 89 % of
+// transmitters). The automatic paths call it directly (no duck lift).
+func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	d.mu.Lock()
@@ -222,7 +235,7 @@ func (d *radioDeck) SetMode(mode tty.RadioMode) {
 		_ = persist(mode) // a failed save is not a playback failure; the pick still applies for this run
 	}
 	if playing && d.engine.Status().State != player.Stopped {
-		go d.Tune(ref)
+		go d.tune(ref) // Watchlist advance is automatic — stays ducked under a takeover
 	}
 }
 
@@ -336,11 +349,64 @@ func (d *radioDeck) Stop() {
 	d.mode = "" // and no fallback or Watchlist advance follows a user's stop
 	d.stopDwell()
 	d.mu.Unlock()
+	d.engine.Restore() // a user stop lifts any alert duck (0.12.0 follow-up)
 	d.engine.Halt()
 }
 
 // SetVolume implements tty.Radio.
 func (d *radioDeck) SetVolume(pct int) { d.engine.Volume(pct) }
+
+// The radioDeck is the ticker's breaking-news audio (0.12.0): a sequence ducks
+// the radio once, sounds the attention tone, speaks each breaking line in turn
+// (the caller holds each event until the line finishes — no overlap), then
+// restores (HUM LEAD 2026-08-27: duck, not interrupt; narrate each). A missing
+// voice engine is not fatal — the visual takeover still runs; only the audio is
+// skipped.
+
+// startBreaking ducks the radio and sounds the tone once, returning the tone's
+// length so the caller waits it out before the first line.
+func (d *radioDeck) startBreaking() time.Duration {
+	d.engine.Duck()
+	v, err := d.voice()
+	if err != nil {
+		return 0
+	}
+	tone := synth.AlertTone(v.Rate())
+	_ = d.engine.Preview(v.Rate(), bytes.NewReader(tone))
+	return pcmDuration(tone, v.Rate())
+}
+
+// speak renders a narration line and plays it over the ducked radio, returning
+// how long it will take so the caller holds the marquee until it finishes.
+// Rendering (say/piper) blocks ~1 s; the ticker calls this from its own
+// goroutine, off the UI loop.
+func (d *radioDeck) speak(text string) time.Duration {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	v, err := d.voice()
+	if err != nil {
+		return 0
+	}
+	pcm, err := synth.AlertNarration(ctx, v, text)
+	if err != nil {
+		return 0
+	}
+	_ = d.engine.Preview(v.Rate(), bytes.NewReader(pcm))
+	return pcmDuration(pcm, v.Rate())
+}
+
+// endBreaking lifts the duck — the radio returns after the sequence.
+func (d *radioDeck) endBreaking() { d.engine.Restore() }
+
+// pcmDuration is the playback length of 16-bit LE stereo PCM at rate (4 bytes a
+// frame); resampling preserves it, so it is the true on-air duration.
+func pcmDuration(pcm []byte, rate int) time.Duration {
+	if rate <= 0 {
+		return 0
+	}
+	frames := len(pcm) / 4
+	return time.Duration(frames) * time.Second / time.Duration(rate)
+}
 
 // label: "KEC49 Monterey CA 162.550 MHz · 78 mi (nearest relayed)".
 func (d *radioDeck) label(st stream.Station) string {

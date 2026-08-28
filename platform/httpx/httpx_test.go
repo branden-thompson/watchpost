@@ -299,9 +299,10 @@ func TestCacheDiskTierWarmsARelaunch(t *testing.T) {
 }
 
 func TestCacheMemoryBudget(t *testing.T) {
-	// UAT 73: the memory tier stays within maxMemBytes (LRU eviction) and
-	// bodies larger than a quarter of it are disk-only; both remain
-	// servable from disk.
+	// UAT 73 + the 0.12.0 memory pass: the small tier stays within maxMemBytes
+	// (LRU eviction); a body larger than a quarter of it goes to the bounded
+	// large tier — resident, so it is read from disk once, not re-read every
+	// access. Both remain servable without a refetch.
 	dir := t.TempDir()
 	big := strings.Repeat("x", maxMemEntry+1)
 	var served atomic.Int32
@@ -319,27 +320,84 @@ func TestCacheMemoryBudget(t *testing.T) {
 	if _, err := c.GetText(context.Background(), srv.URL+"/big"); err != nil {
 		t.Fatal(err)
 	}
-	if st := c.CacheStats(); st.Entries != 0 {
-		t.Fatalf("oversized bodies are disk-only, got %+v", st)
+	// The large body is resident in the large tier, never the small one.
+	c.cache.mu.Lock()
+	smallN, largeN := len(c.cache.mem), len(c.cache.large)
+	c.cache.mu.Unlock()
+	if smallN != 0 || largeN != 1 {
+		t.Fatalf("a large body is resident in the large tier, not the small: small=%d large=%d", smallN, largeN)
 	}
+	// The win: a resident large entry is served from memory even when its disk
+	// file is gone — proof it is NOT re-read from disk on each access.
+	before := served.Load()
+	_ = os.Remove(c.cache.path(srv.URL + "/big"))
+	if body, err := c.GetText(context.Background(), srv.URL+"/big"); err != nil || len(body) != len(big) {
+		t.Fatalf("a resident large entry is served from memory, no disk file needed: %v", err)
+	}
+	if served.Load() != before {
+		t.Fatal("a resident large entry is served from memory, never refetched")
+	}
+	// 12 × 1 MB fill and LRU-evict the small tier to its budget.
 	for i := range 12 {
 		if _, err := c.GetText(context.Background(), fmt.Sprintf("%s/mb/%d", srv.URL, i)); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if st := c.CacheStats(); st.Bytes > maxMemBytes || st.Entries >= 12 {
-		t.Fatalf("memory tier must evict to its budget, got %+v", st)
+	c.cache.mu.Lock()
+	smallBytes, smallN := c.cache.bytes, len(c.cache.mem)
+	c.cache.mu.Unlock()
+	if smallBytes > maxMemBytes || smallN >= 12 {
+		t.Fatalf("the small tier evicts to its budget: bytes=%d entries=%d", smallBytes, smallN)
 	}
-	c.cache.flush()
-	before := served.Load()
-	if body, err := c.GetText(context.Background(), srv.URL+"/big"); err != nil || len(body) != len(big) {
-		t.Fatal("disk-only entry must still be served", err)
+}
+
+func TestRememberIsSingleResidencyAcrossTheSizeBoundary(t *testing.T) {
+	// A URL whose body crosses maxMemEntry between fetches must live in exactly
+	// one tier — else a stale small copy shadows a fresh large one and largeBytes
+	// leaks the orphan (red-team 0.12.0 P4 F3).
+	c := newCache("") // memory only
+	url := "http://example/feed"
+	small := entry{URL: url, Body: bytes.Repeat([]byte("x"), maxMemEntry-1), Expires: c.now().Add(time.Hour)}
+	large := entry{URL: url, Body: bytes.Repeat([]byte("y"), maxMemEntry+1), Expires: c.now().Add(time.Hour)}
+
+	c.remember(url, small)
+	if len(c.mem) != 1 || len(c.large) != 0 {
+		t.Fatalf("small body → mem only: mem=%d large=%d", len(c.mem), len(c.large))
 	}
-	if _, err := c.GetText(context.Background(), srv.URL+"/mb/0"); err != nil { // evicted from memory, on disk
-		t.Fatal(err)
+	c.remember(url, large) // grow past the boundary
+	if len(c.mem) != 0 || len(c.large) != 1 || c.bytes != 0 {
+		t.Fatalf("boundary cross → large only, mem cleared: mem=%d large=%d bytes=%d", len(c.mem), len(c.large), c.bytes)
 	}
-	if served.Load() != before {
-		t.Fatal("evicted and oversized entries are served from disk, not refetched")
+	if body, ok := c.get(url); !ok || len(body) != maxMemEntry+1 || body[0] != 'y' {
+		t.Fatalf("get serves the FRESH large body, no stale shadow: ok=%v len=%d", ok, len(body))
+	}
+	c.remember(url, small) // shrink back across the boundary
+	if len(c.mem) != 1 || len(c.large) != 0 || c.largeBytes != 0 {
+		t.Fatalf("shrink → mem only, large cleared: mem=%d large=%d largeBytes=%d", len(c.mem), len(c.large), c.largeBytes)
+	}
+}
+
+func TestLargeTierEvictsToItsBudget(t *testing.T) {
+	// The large tier is bounded (maxLargeEntries): fetching more distinct large
+	// bodies than it holds evicts the least-recently-used ones.
+	dir := t.TempDir()
+	big := bytes.Repeat([]byte("x"), maxMemEntry+1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Cache-Control", "max-age=600")
+		_, _ = w.Write(big)
+	}))
+	defer srv.Close()
+	c := newCached(t, dir)
+	for i := range maxLargeEntries + 3 {
+		if _, err := c.GetText(context.Background(), fmt.Sprintf("%s/big/%d", srv.URL, i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.cache.mu.Lock()
+	n, b := len(c.cache.large), c.cache.largeBytes
+	c.cache.mu.Unlock()
+	if n > maxLargeEntries || b > maxLargeBytes {
+		t.Fatalf("the large tier stays within its budget: entries=%d bytes=%d", n, b)
 	}
 }
 

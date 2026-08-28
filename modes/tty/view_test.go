@@ -188,7 +188,7 @@ func TestControlPlacementUAT56(t *testing.T) {
 	if !strings.HasSuffix(strings.TrimRight(ctrl, " "), "[↑↓] Navigate") {
 		t.Fatalf("[↑↓] Navigate must end the control row (right-aligned): %q", ctrl)
 	}
-	if !strings.Contains(head, "[s] Setup  [a] About  [t] Theme  [?] Help  [q] Quit") {
+	if !strings.Contains(head, "[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [?] Help  [q] Quit") {
 		t.Fatalf("header must carry Setup, About, Theme, Help, Quit in order (UAT 57 / 102): %q", head)
 	}
 	// UAT 57: no footer - the last content line is the recent section's

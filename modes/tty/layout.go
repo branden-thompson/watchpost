@@ -78,10 +78,11 @@ func (d Dashboard) layoutWith(o render.Opts) frameLayout {
 }
 
 // chromeLines are the fixed lines around the modules (UAT 19.1): top pad 2,
-// header 2, blank, module gaps 2, priority headers 2 — the band/showing
-// rows are counted with the window. bottomInset mirrors the top padding.
+// header 2, blank, module gaps 2, priority headers 2, and the 0.12.0 global
+// ticker row + its blank (2) — the band/showing rows are counted with the
+// window. bottomInset mirrors the top padding.
 const (
-	chromeLines = 9
+	chromeLines = 11
 	bottomInset = 2
 )
 

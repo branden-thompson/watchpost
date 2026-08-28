@@ -19,6 +19,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/fire/firms"
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
 	"github.com/branden-thompson/watchpost/domains/fire/wfigs"
+	"github.com/branden-thompson/watchpost/domains/locations"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
 	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
@@ -30,6 +31,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/term"
 )
 
 // Options are the dashboard's launch switches.
@@ -73,23 +75,10 @@ func RunDashboard(version string, opt Options) error {
 		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides}
 	lp.attachDiagnostics(ctx, start)
-	idx, idxErr := geodata.Load()                             // ONCE: the resolver and the seed list share it (Q3, L1-F21/L4-F5)
-	resolver, resolverErr := newResolver(client, idx, idxErr) // one resolver serves Resolve and Suggest
-	model, err := tty.NewDashboard(tty.Config{
-		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
-		Stats:       lp.ttyStats, // [S] REQUESTS / DUMPS rows (quality pass Q0)
-		Resolve:     resolveHook(resolver, resolverErr),
-		Suggest:     suggestHook(resolver),
-		Setup:       lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
-		OpenSetup:   openSetup,
-		FIRMSKey:    firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
-		Commit:      lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
-		SetTheme:    setThemeHook,
-		Hydrate:     lp.hydrate,                             // hourly forecast on demand for RECENT rows (UAT 72)
-		Credits:     credits(),                              // data-source credits, licence obligations included (UAT 75)
-		FireBoldMW:  fireRules(cfg.Fire).BoldFRPMW,          // B5: one owner for the emphasis threshold — the [fire] rules
-		SeismicDays: seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
-	})
+	idx, idxErr := geodata.Load()                                        // ONCE: the resolver and the seed list share it (Q3, L1-F21/L4-F5)
+	resolver, resolverErr := newResolver(client, idx, idxErr)            // one resolver serves Resolve and Suggest
+	tickerMuted, muteTicker, tickerRadius, setRadius := tickerState(cfg) // 0.12.0: the shared [M] mute + alert-radius state and their persist hooks
+	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, muteTicker, setRadius))
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge
 	}
@@ -97,19 +86,7 @@ func RunDashboard(version string, opt Options) error {
 	defer stopRadio()
 	lp.p, lp.deck = p, deck
 
-	var firstFullNanos atomic.Int64 // written by concurrent tier publishes (race-fixed)
-	// The favourites ride the client's priority lane (UAT 64): their
-	// requests never queue behind the seed pipeline's launch burst.
-	lp.priority = startPriority(httpx.WithPriority(ctx), p, lp.providers(), refs, func(snap *snapshot.Snapshot) {
-		// M1: CAS records only the first fully-populated publish.
-		if fullyPopulated(snap) {
-			firstFullNanos.CompareAndSwap(0, int64(time.Since(start)))
-		}
-	})
-	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
-	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap)) // the tty owns the caps (Q6, L3-F11)
-	lp.markFIRMS()                                                                                                                                        // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
-	lp.wireDeckWarnings()
+	firstFullNanos := lp.startPipelines(ctx, p, refs, idx, cfg, client, tickerMuted, tickerRadius, start)
 	// Cancel BEFORE waiting (red-team 0.9.0 C-2): stopAll waits for every
 	// in-flight fetch, and a quit during the launch burst or a slow network
 	// would otherwise sit through pacing waits and retries.
@@ -122,12 +99,94 @@ func RunDashboard(version string, opt Options) error {
 	return nil
 }
 
+// tickerState builds the shared [M] mute flag and the alert-radius value, each
+// seeded from config, with the hook the UI calls to change and persist it
+// (0.12.0) — one owner so RunDashboard stays within its statement budget.
+func tickerState(cfg config.Config) (muted *atomic.Bool, muteHook func(bool), radius *atomic.Int64, radiusHook func(int)) {
+	muted, muteHook = tickerMuteState(cfg.TickerMuted)
+	radius, radiusHook = tickerRadiusState(cfg.TickerRadiusMi)
+	return
+}
+
+// startPipelines launches the priority, recent, and ticker pipelines and marks
+// the FIRMS status, returning the CAS-guarded first-full-snapshot timer the
+// caller reports on exit (extracted so RunDashboard stays within the P10-04
+// statement budget after the 0.12.0 ticker wiring).
+func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, refs []snapshot.LocationRef, idx *geodata.Index, cfg config.Config, client *httpx.Client, tickerMuted *atomic.Bool, tickerRadius *atomic.Int64, start time.Time) *atomic.Int64 {
+	firstFullNanos := &atomic.Int64{} // written by concurrent tier publishes (race-fixed)
+	// The favourites ride the client's priority lane (UAT 64): their
+	// requests never queue behind the seed pipeline's launch burst.
+	lp.priority = startPriority(httpx.WithPriority(ctx), p, lp.providers(), refs, func(snap *snapshot.Snapshot) {
+		// M1: CAS records only the first fully-populated publish.
+		if fullyPopulated(snap) {
+			firstFullNanos.CompareAndSwap(0, int64(time.Since(start)))
+		}
+	})
+	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
+	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap)) // the tty owns the caps (Q6, L3-F11)
+	lp.markFIRMS()                                                                                                                                        // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
+	lp.setWatch(refs)                                                                                                                                     // seed the live watchlist the ticker ties events to
+	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, tickerMuted, tickerRadius, lp.tickerAlert())                                            // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit)
+	lp.wireDeckWarnings()
+	return firstFullNanos
+}
+
+// ttyConfig assembles the dashboard config from the wired pipelines and the
+// launch switches — the hook set the TTY reads (extracted so RunDashboard stays
+// within the P10-04 length budget after the 0.12.0 ticker wiring).
+func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, cfg config.Config, keyOverrides term.KeyMap, resolver *locations.Resolver, resolverErr error, firmsProv *firms.Provider, muteTicker func(bool), setRadius func(int)) tty.Config {
+	return tty.Config{
+		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
+		Stats:          lp.ttyStats, // [S] REQUESTS / DUMPS rows (quality pass Q0)
+		TickerMuted:    cfg.TickerMuted,
+		MuteTicker:     muteTicker,
+		AlertRadiusMi:  cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference
+		SetAlertRadius: setRadius,
+		Resolve:        resolveHook(resolver, resolverErr),
+		Suggest:        suggestHook(resolver),
+		Setup:          lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
+		OpenSetup:      openSetup,
+		FIRMSKey:       firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
+		Commit:         lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
+		SetTheme:       setThemeHook,
+		Hydrate:        lp.hydrate,                             // hourly forecast on demand for RECENT rows (UAT 72)
+		Credits:        credits(),                              // data-source credits, licence obligations included (UAT 75)
+		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW,          // B5: one owner for the emphasis threshold — the [fire] rules
+		SeismicDays:    seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
+	}
+}
+
 // attachDiagnostics builds the dump and its triggers (quality pass Q0):
 // SIGUSR1 on Unix, and the opt-in loopback server everywhere.
 func (lp *livePipelines) attachDiagnostics(ctx context.Context, start time.Time) {
 	lp.dump = newDumper(userCacheSubdir("profiles"), start, lp.sources, lp.ttyStats)
 	startDumpTrigger(ctx, lp.dump)
 	startDebugProfiles(lp.dump)
+}
+
+// currentWatch is the live watchlist the ticker ties events to (D5) and centres
+// the radius filter on — a fresh slice per Commit, so a read is a stable
+// snapshot even if the set changes mid-cycle.
+func (lp *livePipelines) currentWatch() []snapshot.LocationRef {
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	return lp.watchRefs
+}
+
+// setWatch replaces the live watchlist (launch + every Commit).
+func (lp *livePipelines) setWatch(refs []snapshot.LocationRef) {
+	lp.mu.Lock()
+	lp.watchRefs = append([]snapshot.LocationRef(nil), refs...)
+	lp.mu.Unlock()
+}
+
+// tickerAlert is the ticker's breaking-news audio — the radio deck, or nil when
+// there is no audio (a nil deck: tests, no device).
+func (lp *livePipelines) tickerAlert() tickerAudio {
+	if lp.deck == nil {
+		return nil // typed-nil deck must become a nil interface, not a non-nil one
+	}
+	return lp.deck
 }
 
 // wireDeckWarnings lets the radio deck report a down relay directory as a
@@ -255,6 +314,9 @@ type livePipelines struct {
 	rules    fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
 	priority *pipeline
 	recent   *recentPipeline
+	ticker   *tickerDeck // 0.12.0: waited at shutdown so its cache writes settle before teardown
+
+	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit (0.12.0 follow-up)
 
 	// Diagnostics (quality pass Q0): the clients whose counters the [S]
 	// modal sums, the typed providers whose memos the dump gauges, the
@@ -344,11 +406,17 @@ func (lp *livePipelines) providers() []snapshot.Provider {
 
 func (lp *livePipelines) stopAll() {
 	lp.mu.Lock()
-	defer lp.mu.Unlock()
 	if lp.priority != nil {
 		lp.priority.stop()
 	}
 	lp.recent.stop()
+	ticker := lp.ticker
+	lp.mu.Unlock()
+	// The ticker's cycle takes lp.mu (the watchlist tie), so drain it AFTER
+	// releasing the lock — waiting under it would deadlock against that tie.
+	if ticker != nil {
+		ticker.stop()
+	}
 }
 
 func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
@@ -377,6 +445,7 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 	if lp.recent != nil {
 		lp.recent.update(recent)
 	}
+	lp.watchRefs = append([]snapshot.LocationRef(nil), watch...) // re-home the ticker's tie to the new watchlist (under lp.mu, already held)
 	return nil
 }
 

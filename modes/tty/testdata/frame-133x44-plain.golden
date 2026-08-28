@@ -1,8 +1,10 @@
 
 
    W A T C H P O S T  vbench              Updated: 08/24/2026 01:00:00 UTC (2 Minutes Ago)         API: ✔2 ⚠0 ✘0 /  2  [S] Status
-   [s] Setup  [a] About  [t] Theme  [?] Help  [q] Quit
-
+   [s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [?] Help  [q] Quit
+                                                                                                                                 
+     no active severe events                                                                                                     
+                                                                                                                                 
    Watchpost Weather Radio  ♪ Benchmark City 01 90000                                        VOL [-]█████░░░░░[+]  55   ■ STOPPED
    [space] Play  [r] Repeat: Off  [m] Mode: Synth  [v] Viz: Off  [V] Voice: —  [T] Size: Max
 
@@ -37,6 +39,4 @@
         ●       019. Benchmark City 109            90108    P.CLOUDY       78ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
         ●       020. Benchmark City 110            90109    P.CLOUDY       80ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
         ●    1⚠ 021. Benchmark City 111            90110    P.CLOUDY       82ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-        ●       022. Benchmark City 112            90111    P.CLOUDY       84ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-        ●       023. Benchmark City 113            90112    P.CLOUDY       73ºF      75ºF   63ºF    CLEAR          77ºF    63ºF   │
-                                                                                                    Showing 1-13 of 50 locations  ▼
+                                                                                                    Showing 1-11 of 50 locations  ▼

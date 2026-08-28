@@ -54,16 +54,16 @@ func TestRecentSectionSeedsWithRail(t *testing.T) {
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 133, Height: 28}) // compact: 10-row window (UAT 58 budget)
 	v := m.View().Content
 	for _, want := range []string{
-		"Showing 1-6 of 25 locations",
+		"Showing 1-4 of 25 locations",
 		"002. City 01", // numbering continues after the 1 priority row
-		"007. City 06", // last visible window row (a 6-row window at 44 rows with three-row bands)
+		"005. City 04", // last visible window row (a 4-row window at 28 rows: the 0.12.0 ticker took two)
 		"▲", "│", "▼",
 	} {
 		if !strings.Contains(v, want) {
 			t.Fatalf("recent section missing %q:\n%s", want, v)
 		}
 	}
-	if strings.Contains(v, "City 07") {
+	if strings.Contains(v, "City 05") {
 		t.Fatalf("rows beyond the 6-row window must not render:\n%s", v)
 	}
 }
@@ -191,15 +191,15 @@ func TestRecentWindowExpandsOnTallTerminals(t *testing.T) {
 		t.Fatal("quit control must stay visible (header)")
 	}
 	mid, _ := m.Update(tea.WindowSizeMsg{Width: 133, Height: 50})
-	if md := mid.(Dashboard); md.compact() || !strings.Contains(mid.View().Content, "Showing 1-22 of 25 locations") {
+	if md := mid.(Dashboard); md.compact() || !strings.Contains(mid.View().Content, "Showing 1-20 of 25 locations") {
 		// UAT 49/57: 50 rows holds the FULL modules (radio 4 rows with viz
 		// off, alert 5 since the 2026-08-27 redesign) with a 26-row window
 		// now that the footer is gone — every one of the 25 seeds shows.
-		t.Fatalf("50 rows: full modules with a 22-row window (three-row bands):\n%s", mid.View().Content)
+		t.Fatalf("50 rows: full modules with a 20-row window (three-row bands; the 0.12.0 ticker took two):\n%s", mid.View().Content)
 	}
 	exact, _ := m.Update(tea.WindowSizeMsg{Width: 133, Height: 39})
-	if !strings.Contains(exact.View().Content, "Showing 1-17 of 25 locations") {
-		t.Fatalf("39 rows must yield a 21-row window (compact chrome 16 + inset 2):\n%s", exact.View().Content)
+	if !strings.Contains(exact.View().Content, "Showing 1-15 of 25 locations") {
+		t.Fatalf("39 rows must yield a 19-row window (compact chrome 18 + inset 2):\n%s", exact.View().Content)
 	}
 }
 
@@ -229,7 +229,7 @@ func TestHeaderMastheadCentresTheStampAndCountsAPIs(t *testing.T) {
 	if centre, want := (i+end)/2, render.Width(lines[0])/2; centre < want-1 || centre > want+1 { // the row's global centre (UAT 2026-08-27)
 		t.Fatalf("stamp centred on the row: %d vs %d in %q", centre, want, lines[0])
 	}
-	if !strings.HasPrefix(lines[1], "[s] Setup  [a] About  [t] Theme  [?] Help  [q] Quit") {
+	if !strings.HasPrefix(lines[1], "[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [?] Help  [q] Quit") {
 		t.Fatalf("chip line: %q", lines[1])
 	}
 	for _, w := range []int{100, 80, 60} {

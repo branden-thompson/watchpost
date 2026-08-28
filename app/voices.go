@@ -46,6 +46,15 @@ func (d *radioDeck) voice() (synth.Voice, error) {
 	if !synth.PiperSupported() {
 		return nil, fmt.Errorf("no voice for %s/%s: install Piper or use a relayed location", runtime.GOOS, runtime.GOARCH)
 	}
+	// Serialize installs: the breaking-news goroutine and a Tune can both reach
+	// here on a fresh host, and two concurrent ~63 MB downloads into the same
+	// dir waste bandwidth and risk a corrupt model (red-team 0.12.0 P4). Re-check
+	// under the lock so a waiter reuses the winner's install.
+	d.installMu.Lock()
+	defer d.installMu.Unlock()
+	if inst, ok := synth.FindPiperVoice(d.voiceDir, spec); ok {
+		return synth.PiperVoice{Install: inst}, nil
+	}
 	inst, err := d.installVoice(spec, d.setDetail) // first use of a voice downloads it, progress in the player (UAT 118)
 	if err != nil {
 		return nil, err

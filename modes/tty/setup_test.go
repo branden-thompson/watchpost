@@ -73,8 +73,12 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	}
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	view = stripANSITest(model.(Dashboard).View().Content)
-	if !strings.Contains(view, "Chosen: Oceanside, CA (92057)") || !strings.Contains(view, "› 2. NASA FIRMS key") || !strings.Contains(view, "[enter] Save") {
-		t.Fatalf("enter accepts the pick and focuses question 2:\n%s", view)
+	if !strings.Contains(view, "Chosen: Oceanside, CA (92057)") || !strings.Contains(view, "› 2. NASA FIRMS key") || !strings.Contains(view, "[enter] Next") {
+		t.Fatalf("enter accepts the pick and focuses question 2 (Next, not Save):\n%s", view)
+	}
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key → the alert preference (Q3, the last)
+	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "› 3. Alert Notification Preference") || !strings.Contains(view, "[enter] Save") {
+		t.Fatalf("focus moves to question 3 (the last — Save):\n%s", view)
 	}
 	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
@@ -97,13 +101,67 @@ func TestSetupFormNoKeyIsTheDefaultDataSet(t *testing.T) {
 	if !strings.Contains(stripANSITest(fm.(Dashboard).View().Content), "› 2. NASA FIRMS key") {
 		t.Fatal("tab moves to question 2")
 	}
-	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key → alert (Q3)
+	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // Q3 → Save (no location on a first run)
 	if fd := fm.(Dashboard); fd.setup.focus != focusLocation || !strings.Contains(stripANSITest(fd.View().Content), "choose your default location first") {
 		t.Fatalf("saving without a location goes back to question 1 with the reason:\n%s", stripANSITest(fd.View().Content))
 	}
 	fm, _ = fm.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
-	if fm.(Dashboard).setup.focus != focusKey {
-		t.Fatal("shift+tab moves back the other way")
+	if fm.(Dashboard).setup.focus != focusAlert {
+		t.Fatal("shift+tab from question 1 wraps to the last question")
+	}
+}
+
+func TestSetupAlertPreferenceTogglesAndPersists(t *testing.T) {
+	h := &setupHarness{}
+	m, err := NewDashboard(h.config())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	model = typeText(model, "oce")
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // location → key
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key → alert (Q3)
+
+	// Default is All; a digit selects Filtered and builds the miles.
+	view := stripANSITest(model.(Dashboard).View().Content)
+	if !strings.Contains(view, "● All") || !strings.Contains(view, "○ Filtered to [    ]") {
+		t.Fatalf("Q3 starts on All, empty distance:\n%s", view)
+	}
+	model = typeText(model, "50")
+	view = stripANSITest(model.(Dashboard).View().Content)
+	if !strings.Contains(view, "○ All") || !strings.Contains(view, "● Filtered to [50") {
+		t.Fatalf("typing a distance selects Filtered:\n%s", view)
+	}
+	// Save persists the radius.
+	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	drain(t, model, cmd)
+	if !h.radiusSet || h.radius != 50 {
+		t.Fatalf("the alert radius persists: set=%v radius=%d", h.radiusSet, h.radius)
+	}
+}
+
+func TestSetupAlertAllPersistsZero(t *testing.T) {
+	h := &setupHarness{}
+	cfg := h.config()
+	cfg.AlertRadiusMi = 25 // a stored radius: the form opens on Filtered [25]
+	m, _ := NewDashboard(cfg)
+	var model tea.Model = m
+	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	model = typeText(model, "oce")
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // → Q3
+	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "● Filtered to [25") {
+		t.Fatalf("a stored radius opens on Filtered [25]:\n%s", view)
+	}
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp}) // ↑ picks All
+	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	drain(t, model, cmd)
+	if !h.radiusSet || h.radius != 0 {
+		t.Fatalf("switching to All persists 0 (global): set=%v radius=%d", h.radiusSet, h.radius)
 	}
 }
 
@@ -127,7 +185,8 @@ func TestSetupFormKeyMasksAndStoresIt(t *testing.T) {
 	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "Key: "+key) {
 		t.Fatalf("ctrl+r reveals it:\n%s", view)
 	}
-	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key → alert preference (Q3)
+	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})  // Q3 → Save
 	model = drain(t, model, cmd)
 	if model.(Dashboard).modal == modalSetup || h.key != key {
 		t.Fatalf("enter stores the key: %q", h.key)
@@ -140,8 +199,9 @@ func TestSetupFormKeyMasksAndStoresIt(t *testing.T) {
 	model = m2
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model = typeText(model, "oce")
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	_, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // oce → key
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key → alert (Q3)
+	_, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})   // Q3 → Save
 	model = drain(t, model, cmd)
 	d := model.(Dashboard)
 	if d.modal != modalSetup || !strings.Contains(stripANSITest(d.View().Content), "setup failed: a FIRMS MAP_KEY is 32 hex") {
@@ -175,7 +235,8 @@ func TestSetupFormShowsAStoredFIRMSKeyAndItsHealth(t *testing.T) {
 	if view := stripANSITest(model.(Dashboard).View().Content); !strings.Contains(view, "Chosen: Oceanside, CA (92057)") || !strings.Contains(view, "› 2. NASA FIRMS key") {
 		t.Fatalf("bare enter keeps the default:\n%s", view)
 	}
-	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // key → alert preference (Q3)
+	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})  // Q3 → Save
 	model = drain(t, model, cmd)
 	if h.key != "" || h.setups != 1 || h.def == nil || h.def.Zip != "92057" {
 		t.Fatalf("empty key keeps the stored one; the kept default is saved: %q %+v", h.key, h.def)

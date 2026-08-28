@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/branden-thompson/watchpost/domains/fire"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -110,6 +111,47 @@ func TestFetchAnswersEveryLocationFromOneArchive(t *testing.T) {
 	}
 	if _, err := p.Fetch(context.Background(), snapshot.FetchReq{Kind: snapshot.KindObs}); err == nil {
 		t.Fatal("the kind is checked")
+	}
+}
+
+func TestArchiveCoalescesReadsWithinTheWindow(t *testing.T) {
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		w.Header().Set("Content-Type", "application/vnd.google-earth.kmz")
+		_, _ = w.Write(kmz(t))
+	}))
+	defer srv.Close()
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
+	p := New(c, srv.URL+"/fireAllSats.kmz", fire.DefaultRules())
+	clock := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
+	p.now = func() time.Time { return clock }
+	req := snapshot.FetchReq{Kind: snapshot.KindFire, Locations: []snapshot.LocationRef{{Label: "Oceanside, CA", Lat: 33.24, Lon: -117.29}}}
+
+	if _, err := p.Fetch(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if hits != 1 {
+		t.Fatalf("first fetch reads the archive once, got %d", hits)
+	}
+	// Forget the client cache so a real read WOULD go back to the server.
+	c.Forget(srv.URL + "/fireAllSats.kmz")
+
+	// Within the coalesce window: the parsed archive is reused — no re-read.
+	clock = clock.Add(coalesceFor - time.Second)
+	if _, err := p.Fetch(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if hits != 1 {
+		t.Fatalf("within %s the archive is not re-read, got %d hits", coalesceFor, hits)
+	}
+	// Past the window: it reads again.
+	clock = clock.Add(2 * time.Second)
+	if _, err := p.Fetch(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if hits != 2 {
+		t.Fatalf("past the window the archive is re-read, got %d hits", hits)
 	}
 }
 

@@ -31,6 +31,24 @@ type SnapshotMsg struct{ Snap *snapshot.Snapshot }
 // session 2A) so the priority pipeline's M1 budget stays untouched.
 type RecentSnapshotMsg struct{ Snap *snapshot.Snapshot }
 
+// TickerMsg publishes the global event ticker stack (0.12.0); the app maps
+// globalfeed events onto TickerItems and sends this on the ticker cadence.
+type TickerMsg struct{ Items []TickerItem }
+
+// TickerAdvanceMsg rotates the marquee to the next non-empty category lane
+// (0.12.0). The ticker pipeline sends it every 90 s (HUM LEAD 2026-08-27) so
+// the rotation keeps a steady wall-clock rhythm independent of the frame tick.
+type TickerAdvanceMsg struct{}
+
+// TickerBreakingMsg takes the marquee over with a single breaking event, shown
+// centred in its lane colour (0.12.0). The pipeline sends one per event as it
+// steps a breaking-news sequence; TickerBreakingDoneMsg ends the takeover and
+// resumes normal rotation where it left off (HUM LEAD 2026-08-27).
+type TickerBreakingMsg struct{ Item TickerItem }
+
+// TickerBreakingDoneMsg ends a breaking-news takeover.
+type TickerBreakingDoneMsg struct{}
+
 // Viewport padding (UAT 14.3: left back to 3 now the tables are fixed -
 // a deliberate reversion; right stays 2 with the rail gutter beyond it).
 const (
@@ -68,6 +86,11 @@ type Config struct {
 	FIRMSKey     func() string                                         // the stored FIRMS key's tail ("cdef"), "" when none — the Setup window shows it is there (UAT 111)
 	Stats        func() Stats                                          // request/publish/dump counters for the [S] modal (quality pass Q0); nil = the rows are omitted
 	ASCII        bool                                                  // --ascii: the row marks and legend in their ASCII forms (A11-10; quality pass Q3)
+	TickerMuted  bool                                                  // 0.12.0: the persisted [M] state at launch
+	MuteTicker   func(bool)                                            // 0.12.0: persist the [M] toggle and tell the ticker pipeline to stay silent; nil in tests
+
+	AlertRadiusMi  int       // 0.12.0: the Alert Notification Preference at launch — 0 = All (global), >0 = only alerts within N mi of the default location
+	SetAlertRadius func(int) // 0.12.0: persist the radius and tell the ticker pipeline to re-scope; nil in tests
 }
 
 // Stats is what the app hands the [S] modal beyond the snapshots (quality
@@ -201,6 +224,7 @@ func defaultKeyMap() term.KeyMap {
 		"radio-mode":    {Keys: []string{"m"}, Help: "Radio Mode: Synth / Nearest Relay"},
 		"voice":         {Keys: []string{"V"}, Help: "Correspondent Voice"},
 		"radio-size":    {Keys: []string{"T"}, Help: "Toggle Player Size"},
+		"ticker-mute":   {Keys: []string{"M"}, Help: "Mute Severe Alerts"},
 		"radio-vol-up":  {Keys: []string{"+", "="}, Help: "Volume Up"},
 		"radio-vol-dn":  {Keys: []string{"-"}, Help: "Volume Down"},
 		"units-f":       {Keys: []string{"f"}, Help: "ºF"},
@@ -238,6 +262,11 @@ type Dashboard struct {
 	themeErr     string
 	addQuery     string               // add-location search buffer
 	modalScroll  int                  // shared scroll for floating modals (UAT 10.4)
+	ticker       []TickerItem         // 0.12.0: the active global alerts (grouped into lanes by Category)
+	tickerCatIdx int                  // which non-empty lane is showing (rotates every 90s)
+	tickerScroll int                  // tape scroll offset within the current lane
+	breaking     *TickerItem          // 0.12.0: a breaking-news takeover — one event centred, overrides the tape until done
+	tickerMuted  bool                 // [M]: the P3 tone/narration muted (visual state here in P2)
 	darkBG       bool                 // terminal mode (bubbletea BackgroundColorMsg)
 	frame        int                  // animation phase (loading shimmer, UAT 18.2b)
 	radioPlaying bool                 // [space] Play|Pause (UAT 39) — true while connecting/playing (B4)
@@ -270,7 +299,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("key bindings invalid: %w", err)
 	}
-	d := Dashboard{cfg: cfg, keys: keys, units: render.UnitF, width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, units: render.UnitF, width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, tickerMuted: cfg.TickerMuted, memo: &bodyMemo{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -308,6 +337,8 @@ func (d Dashboard) tickNeeded() bool {
 	case d.volFlash != "": // pending or just expired — the tick after expiry clears it
 		return true
 	case d.modal == modalStatus || d.modal == modalDetails: // [S] ages; Details "N min ago" labels and LoadingDots
+		return true
+	case len(d.ticker) > 0: // 0.12.0: the marquee scrolls continuously while events are active
 		return true
 	case d.radioPlaying && d.radioDetail != "" && !d.vizTicking && !d.radioMin && !(d.radioLive && d.radioState == "playing"):
 		return true // the marquee paces itself on the wall clock (UAT 83); the viz tick redraws faster when on; LIVE RADIO and the min player have none
@@ -352,6 +383,24 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return next.armTick(cmd)
 }
 
+// handleTicker applies one global-event-ticker message and re-arms the frame
+// tick (0.12.0): the stack, the 90 s lane rotation, and the breaking-news
+// takeover in/out. Split from dispatch to keep its complexity in budget.
+func (d Dashboard) handleTicker(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch v := msg.(type) {
+	case TickerMsg:
+		d.setTicker(v.Items) // the active alerts, grouped into lanes
+	case TickerAdvanceMsg:
+		d.advanceTickerCategory() // the 90s lane rotation (driven by the pipeline)
+	case TickerBreakingMsg:
+		item := v.Item
+		d.breaking = &item // a breaking event takes the marquee centre
+	case TickerBreakingDoneMsg:
+		d.breaking = nil // resume normal rotation where it left off
+	}
+	return d.armTick(nil)
+}
+
 // dispatch routes one message to its handler.
 func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch v := msg.(type) {
@@ -362,6 +411,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applySnapshot(v)
 	case RecentSnapshotMsg:
 		return d.applyRecent(v), nil
+	case TickerMsg, TickerAdvanceMsg, TickerBreakingMsg, TickerBreakingDoneMsg:
+		return d.handleTicker(msg) // 0.12.0: the global event ticker's messages, one owner
 	case tea.BackgroundColorMsg:
 		d.darkBG = v.IsDark()
 		return d, nil
@@ -403,6 +454,7 @@ func (d Dashboard) applyRecent(v RecentSnapshotMsg) Dashboard {
 func (d Dashboard) applyTick() Dashboard {
 	d.tickArmed = false
 	d.frame++
+	d.advanceTicker() // 0.12.0: the ticker scrolls on the wall clock
 	if d.volFlash != "" && !time.Now().Before(d.volFlashEnd) {
 		d.volFlash = "" // the blink clears on the first tick after it expires (UAT 41)
 	}
@@ -453,6 +505,11 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d.units = render.UnitF
 	case "units-c":
 		d.units = render.UnitC
+	case "ticker-mute":
+		d.tickerMuted = !d.tickerMuted // 0.12.0: mute the tone/narration; the marquee keeps scrolling
+		if d.cfg.MuteTicker != nil {
+			d.cfg.MuteTicker(d.tickerMuted) // persist + tell the pipeline
+		}
 	default:
 		if act == "add-location" {
 			return d.addFocused() // [ctrl+a] Favorite: add the focused recent/searched location (UAT 2026-08-27); inert on a watchlist row

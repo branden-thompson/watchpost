@@ -65,6 +65,7 @@ func helpGroups() []helpGroup {
 		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}},
 		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-size", "radio-vol-up", "radio-vol-dn"}},
 		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}},
+		{"TICKER", []term.Action{"ticker-mute"}},
 		{"APP", []term.Action{"setup", "status", "about"}},
 	}
 }

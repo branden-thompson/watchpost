@@ -18,6 +18,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/fire"
@@ -59,7 +60,29 @@ type Provider struct {
 	url    string
 	rules  fire.Rules
 	memo   fire.Memo[[]Point] // the last archive's parse (Q3: the shared fire.Memo)
+
+	// The archive is larger than the client cache's in-memory ceiling, so httpx
+	// serves it from disk — and the fire tier rehydrates across every pipeline,
+	// so without this the same disk file was read (and hashed for the memo) tens
+	// of times a window even though it changes every 10 min. This coalesces the
+	// burst: one parsed archive is reused for coalesceFor, whoever asks. (0.12.0
+	// memory pass — the disk re-read was the app's single largest allocator.)
+	mu        sync.Mutex
+	cached    []Point
+	cachedErr error // ErrTruncated (or nil) for the cached parse — reused with it
+	cachedAt  time.Time
+	now       func() time.Time // time.Now in production; a stub in tests
 }
+
+// coalesceFor is how long a parsed archive is reused before another read — well
+// inside archiveTTL (10 min) and HMS's own refresh, so the data never lags.
+const coalesceFor = 60 * time.Second
+
+// maxLastGood bounds how long a good parse is served after fetches start
+// failing: past this the archive is too stale to present as current, so fire
+// goes empty rather than claiming hours-old detections are "as of now"
+// (red-team 0.12.0 P4 F6). Beyond a couple of missed 10-min refreshes.
+const maxLastGood = 30 * time.Minute
 
 // MemoPoints reports how many parsed points the archive memo holds (the
 // diagnostic dump's view of the memo; one archive at a time by design).
@@ -78,7 +101,7 @@ func New(client *httpx.Client, url string, rules fire.Rules) *Provider {
 	if url == "" {
 		url = "https://www.ospo.noaa.gov/data/spl/kmlfiles/fire/fireAllSats.kmz"
 	}
-	return &Provider{client: client, url: url, rules: rules}
+	return &Provider{client: client, url: url, rules: rules, now: time.Now}
 }
 
 // ID implements snapshot.Provider.
@@ -98,14 +121,8 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 	if err := p.rules.Valid(); err != nil {
 		return frag, err
 	}
-	raw, err := p.client.GetText(ctx, p.url, httpx.TTL(archiveTTL))
-	if err != nil {
-		frag.Err = fmt.Errorf("hms: %w", err)
-		return frag, nil
-	}
-	points, err := p.parsed(raw)
+	points, err := p.points(ctx)
 	if err != nil && !errors.Is(err, ErrTruncated) {
-		p.client.Forget(p.url) // a cached body that does not parse must not be served for the rest of its TTL (P6)
 		frag.Err = fmt.Errorf("hms: %w", err)
 		return frag, nil
 	}
@@ -126,6 +143,58 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 		frag.PerLocation[snapshot.Key(ref)] = snapshot.PartialData{Fire: &snapshot.FireState{AsOf: frag.FetchedAt, Hotspots: fire.Cluster(hs)}}
 	}
 	return frag, nil
+}
+
+// points returns the archive's detections, coalescing the burst of pipeline/
+// tier fetches into one read: within coalesceFor the last parse is reused, so
+// the disk-cached KMZ is neither re-read nor re-hashed per fetch. A hard parse
+// failure forgets the cached body (P6) and is not cached; ErrTruncated is soft
+// (what parsed is served). A fetch/parse error while a recent good parse exists
+// returns the last good points, so a blip never blanks fire on the watchlist.
+func (p *Provider) points(ctx context.Context) ([]Point, error) {
+	// Within the coalesce window reuse the parsed archive (and its truncation
+	// state) — no re-read, no re-hash. The lock is NOT held across the fetch:
+	// httpx single-flights concurrent identical GETs and the large-entry cache
+	// serves the KMZ from memory, so releasing it avoids stalling every fire
+	// fetch (and shutdown) behind one slow network read (red-team 0.12.0 P4 F9).
+	p.mu.Lock()
+	if p.cached != nil && p.now().Sub(p.cachedAt) < coalesceFor {
+		pts, perr := p.cached, p.cachedErr
+		p.mu.Unlock()
+		return pts, perr
+	}
+	last, lastAt := p.cached, p.cachedAt
+	p.mu.Unlock()
+
+	// Serve a recent last-good archive over a transient error, but not forever:
+	// past maxLastGood the data is too stale to present as current (F6).
+	serveLast := func(err error) ([]Point, error) {
+		if last != nil && p.now().Sub(lastAt) < maxLastGood {
+			return last, nil
+		}
+		return nil, err
+	}
+	raw, err := p.client.GetText(ctx, p.url, httpx.TTL(archiveTTL))
+	if err != nil {
+		return serveLast(err)
+	}
+	pts, perr := p.memo.Get(raw, Parse)
+	if perr != nil && !errors.Is(perr, ErrTruncated) {
+		p.client.Forget(p.url) // a cached body that does not parse must not be served for the rest of its TTL (P6)
+		return serveLast(perr)
+	}
+	p.mu.Lock()
+	p.cached, p.cachedErr, p.cachedAt = pts, truncErr(perr), p.now()
+	p.mu.Unlock()
+	return pts, perr // nil, or ErrTruncated (soft)
+}
+
+// truncErr keeps only ErrTruncated as the cached parse's carried error.
+func truncErr(err error) error {
+	if errors.Is(err, ErrTruncated) {
+		return ErrTruncated
+	}
+	return nil
 }
 
 // parsed returns the archive's points, parsing only when the bytes changed.

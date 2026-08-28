@@ -60,6 +60,7 @@ type Engine struct {
 	done   chan struct{}
 	status Status
 	volume float64
+	duck   float64 // 1.0 normally; an active alert dips the main broadcast to alertDuck (0.12.0)
 
 	// startMu serializes Start / StartSource / Halt end to end (red-team
 	// 0.9.0 C-1): halting the old stream and installing the new cancel are
@@ -93,7 +94,7 @@ func New(out Output, userAgent string, onStatus func(Status)) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Engine{out: out, userAgent: userAgent, onStatus: onStatus, volume: 0.55, status: Status{State: Stopped, Volume: 55}, tap: tap}, nil
+	return &Engine{out: out, userAgent: userAgent, onStatus: onStatus, volume: 0.55, duck: 1, status: Status{State: Stopped, Volume: 55}, tap: tap}, nil
 }
 
 // Samples fills dst with the latest mono samples (±1, oldest first) of
@@ -264,6 +265,28 @@ func (e *Engine) Preview(rate int, pcm io.Reader) error {
 	return nil
 }
 
+// alertDuck is how far the main broadcast dips while an alert sounds over it
+// (to 25 % — audibly under the alert, still present so the broadcast is not
+// mistaken for stopped). HUM LEAD 2026-08-27: duck, not interrupt.
+const alertDuck = 0.25
+
+// Duck dips the main broadcast to alertDuck for an alert playing over it; the
+// watch loop applies it within 50 ms. Inert when nothing is playing. Pair every
+// Duck with a Restore (0.12.0: the breaking-news sequence ducks once, overlays
+// its tone and per-event narration, then restores).
+func (e *Engine) Duck() {
+	e.mu.Lock()
+	e.duck = alertDuck
+	e.mu.Unlock()
+}
+
+// Restore lifts the duck — the main broadcast returns to the knob within 50 ms.
+func (e *Engine) Restore() {
+	e.mu.Lock()
+	e.duck = 1
+	e.mu.Unlock()
+}
+
 // StartSource plays a generic PCM source (16-bit LE stereo at rate) until
 // it ends or Halt — the synthesized broadcast (B4 step 2). open is called
 // on the engine goroutine with a context that Halt cancels.
@@ -295,7 +318,7 @@ func (e *Engine) playPCM(ctx context.Context, pcm io.Reader, playing Status, tit
 	}
 	defer func() { _ = p.Close() }()
 	e.mu.Lock()
-	p.SetVolume(e.volume)
+	p.SetVolume(e.volume * e.duck) // ducked if an alert is sounding as this stream starts
 	e.mu.Unlock()
 	p.Play()
 	playing.Title = title()
@@ -314,7 +337,7 @@ func (e *Engine) watch(ctx context.Context, p Player, title func() string) error
 			return ctx.Err()
 		}
 		e.mu.Lock()
-		p.SetVolume(e.volume)
+		p.SetVolume(e.volume * e.duck) // re-asserted every tick — a duck/restore takes effect within 50 ms
 		st := e.status
 		e.mu.Unlock()
 		if !p.IsPlaying() {

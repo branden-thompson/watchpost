@@ -4,6 +4,54 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-08-27
+
+A global event ticker — the world's largest active hazards scroll across the top of the dashboard,
+independent of your watchlist, and a breaking one is read aloud over the radio. Three feeds join the
+weather picture at the scale of the planet: significant earthquakes (USGS), tropical cyclones (NHC)
+and US severe-weather warnings (NWS).
+
+### Added
+- A **global event ticker band** at the top of the dashboard: a ticker-tape of active hazards from
+  three keyless feeds — significant earthquakes (USGS), tropical cyclones (NHC) and US
+  severe/tornado warnings (NWS) — mapped to one event model, deduped and stacked most-recent-first.
+  It is a **separate pipeline** from the per-location snapshots: these events belong to no tracked
+  location.
+- **Category lanes.** The tape rotates through four lanes — Severe Earthquakes, Tropical Cyclones,
+  Warnings, Watches — every 90 seconds, each lane's events `•`-separated and scrolling, with their
+  issued and expires times; an event drops from the tape the moment it expires. A left indicator
+  shows the lane's `[count][glyph]`, in a fixed per-category colour: earthquakes red, warnings
+  orange, watches yellow, tropical cyclones blue.
+- A **breaking-news takeover.** When a new severe event arrives the ticker switches to its lane and
+  shows that one event, centred, holding through its narration (at least 5 seconds); simultaneous
+  events queue by severity and are read in turn. The event is **read aloud over the radio** — the
+  synth or the live relay ducks for the announcement and returns — with US state codes expanded
+  ("ND" → "North Dakota") and the same pronunciation rules as the broadcast.
+- A **redesigned Setup window**: settings grouped by concern (Data Access; Severe Weather / Disaster
+  Events) with an **Alert Notification Preference** — every severe event, or filtered to within N
+  miles of your location. The radius scopes the whole ticker. Grouped questions read white, their
+  support text grey, their working status coloured; selection is shown by glyph, not colour alone.
+- **Seven Omarchy Quattro themes** — Tokyo Night, Gruvbox, Nord, Catppuccin, Everforest, Kanagawa
+  and Osaka Jade — bringing the built-in palette count to twelve, each meeting the AA contrast
+  floor, applied live and persisted like the rest.
+- USGS, the NHC and the NWS national alerts feed credited in the About window (all keyless, public
+  domain).
+
+### Performance
+- The HMS fire provider **coalesces and single-flights** its fetches and holds a bounded staleness
+  window, and the HTTP cache gained a **large-entry tier** (separate from the small-entry cache) so
+  the multi-megabyte HMS archive is no longer re-read from disk on every access. Steady-state
+  allocation churn dropped roughly by half and disk reads by three-quarters; the ticker itself adds
+  well under a megabyte at rest.
+
+### Security
+- The ticker renders **feed text as plain text** — control and escape sequences are stripped before
+  anything from an external feed reaches the terminal, so a hostile or compromised feed cannot drive
+  the display. A GeoJSON `coordinates` blob is scanned iteratively (no unbounded recursion), and
+  feed-supplied type and place fields are length-bounded, so a malformed feed cannot overflow the
+  stack or the narration render. Untrusted text never rides in a process argument — the spoken
+  narration reaches the voice over stdin or a `0600` temp file.
+
 ## [0.11.0] — 2026-08-27
 
 Seismic data — the fourth hazard beside weather, marine and fire. USGS earthquakes near a tracked

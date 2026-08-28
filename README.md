@@ -2,21 +2,26 @@
 
 A terminal-native live weather station: a watchlist dashboard of NWS observations, forecasts and
 alerts, marine conditions and tides where you are near the coast, and NOAA Weather Radio — the
-real relays where they exist, or your location's own forecast read aloud where they don't.
+real relays where they exist, or your location's own forecast read aloud where they don't. Up top, a
+global event ticker scrolls the world's largest active hazards — significant earthquakes, tropical
+cyclones, and US severe-weather warnings — independent of your watchlist, and speaks a breaking one
+aloud over the radio.
 
 ## What it looks like
 
-Real data, 133×44, the default theme. Rendered from the dashboard itself (UAT 121).
+Real data, 133×44, the default theme unless noted (0.12.0).
 
-![The dashboard: masthead, radio player with the visualizer, an alert, the watchlist and the RECENT list with fire (◆) and alert (⚠) marks](docs/img/dashboard.svg)
+![The dashboard: the global event ticker band up top, the radio player with its live visualizer, an alert, and the watchlist with fire (◆), quake (●) and alert (⚠) marks](docs/img/dashboard.png)
 
-![Location Details for a location near a wildfire: forecast, FIRE section with hotspots and named incidents, alerts](docs/img/details-fire.svg)
+![The Setup window: settings grouped by concern, with the Alert Notification Preference — all severe events, or filtered to within N miles of your location](docs/img/setup.png)
 
-![The Setup window on a re-run: current default, type-ahead hints, the stored FIRMS key and its health](docs/img/setup.svg)
+![The theme chooser: twelve built-in palettes — including seven from Omarchy Quattro — applied live; add your own as a JSON file](docs/img/themes.png)
 
-![The Voice chooser on Linux: six Piper correspondents, one downloading with progress](docs/img/voices.svg)
+![Location Details near a wildfire: forecast, marine, the FIRE section with hotspots and named incidents, and the alerts in full](docs/img/details-fire.png)
 
-![The Synthwave '84 theme](docs/img/synthwave.svg)
+![The Voice chooser: the correspondent for the synthesized broadcast](docs/img/voices.png)
+
+![The Synthwave '84 theme applied live](docs/img/synthwave.png)
 
 ## Install
 

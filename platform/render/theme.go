@@ -64,6 +64,17 @@ const (
 
 	SeismicMark Token = "seismic.mark" // ○●◉ in the SEISMIC section: violet — distinct from fire's orange (0.11.0)
 
+	// The global event ticker's severity backgrounds (0.12.0): fixed Red /
+	// Orange / Yellow that are theme-INDEPENDENT (the same across every theme
+	// except monochrome, which renders them greyscale) — set on bare :root and
+	// overridden only under Monochrome. TickerFG / TickerMutedFG go with them; the empty band matches GroupSectionBG.
+	TickerRedBG    Token = "ticker.red.bg"
+	TickerOrangeBG Token = "ticker.orange.bg"
+	TickerYellowBG Token = "ticker.yellow.bg"
+	TickerBlueBG   Token = "ticker.blue.bg" // 0.12.0: the Tropical Cyclones lane (HUM LEAD colour pass)
+	TickerFG       Token = "ticker.fg"
+	TickerMutedFG  Token = "ticker.muted.fg"
+
 	// The table's own palette (quality pass Q4a-004, L5-F4): before it the
 	// kit painted these from its $TERM-gated palette, outside the theme.
 	TableHeader Token = "table.header" // column headers (the kit's light purple)
@@ -147,6 +158,16 @@ func defaultTheme() map[Token]string {
 		SpectrumHigh: "196", // red
 		FireMark:     "208", // orange
 		SeismicMark:  "141", // violet (0.11.0): distinct from fire-orange 208, alert-red 196, advisory-yellow 220
+
+		// The ticker severity backgrounds (0.12.0), fixed across themes (bold
+		// white text on a saturated tile; the greyscale variants live under
+		// Monochrome only).
+		TickerRedBG:    "48;2;150;20;20",     // deep red
+		TickerOrangeBG: "48;2;160;85;15",     // amber
+		TickerYellowBG: "48;2;150;125;20",    // dark gold
+		TickerBlueBG:   "48;2;20;70;150",     // deep blue (Tropical Cyclones — HUM LEAD colour pass)
+		TickerFG:       "1;38;2;255;255;255", // bold white
+		TickerMutedFG:  "38;5;245",           // muted grey text
 
 		TableHeader: "135", // = the kit's tui.TableHeader, so nothing changed on the day the theme took over
 		TableMuted:  "245", // = tui.TableRowNumber / tui.TableAttribute
