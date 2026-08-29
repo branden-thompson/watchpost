@@ -1,5 +1,13 @@
 # Watchpost
 
+[![Release](https://img.shields.io/github/v/release/branden-thompson/watchpost?label=release)](https://github.com/branden-thompson/watchpost/releases/latest)
+[![CI](https://github.com/branden-thompson/watchpost/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/branden-thompson/watchpost/actions/workflows/ci.yml)
+[![Release build](https://github.com/branden-thompson/watchpost/actions/workflows/release.yml/badge.svg)](https://github.com/branden-thompson/watchpost/actions/workflows/release.yml)
+[![Go](https://img.shields.io/github/go-mod/go-version/branden-thompson/watchpost?label=go)](go.mod)
+[![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Linux%20%7C%20Windows-555)](https://github.com/branden-thompson/watchpost/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/branden-thompson/watchpost/total?label=downloads)](https://github.com/branden-thompson/watchpost/releases)
+[![Licence](https://img.shields.io/github/license/branden-thompson/watchpost?label=licence)](LICENSE)
+
 A live weather station that lives in your terminal.
 
 ## Install

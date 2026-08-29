@@ -154,12 +154,18 @@ func TestDirGauge(t *testing.T) {
 }
 
 func TestPublisherCountsPublishesAndFoldedTriggers(t *testing.T) {
-	done := make(chan struct{}, 4)
-	pb := &publisher{run: func() *snapshot.Snapshot { done <- struct{}{}; return nil }}
+	pb := &publisher{run: func() *snapshot.Snapshot { return nil }}
 	pb.Trigger()
 	pb.Trigger() // inside the window: folds (a loaded runner may let the window fire between calls)
 	pb.Trigger()
-	<-done
+	// Every trigger ends as a publish or a fold, but a publish counts only
+	// after its run — and a loaded runner (ubuntu CI under -race, PR #4) can
+	// have a second one in flight when the first is done. Wait for the sum,
+	// not for the first publish.
+	waitUntil(t, "three triggers published or folded", func() bool {
+		st := pb.stats()
+		return st.Publishes+st.Folded == 3
+	})
 	st := pb.stats()
 	if st.Publishes < 1 || st.Publishes+st.Folded != 3 {
 		t.Fatalf("every trigger is either published or folded, at least one publish: got %+v", st)
