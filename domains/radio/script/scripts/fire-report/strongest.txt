@@ -1,0 +1,2 @@
+{{/* fire-report/strongest: the strongest hotspot. Data: .Where (6 miles north of your location | in your area), .FRP (62, or empty), .Detected (2 hours, or empty), .Satellite (GOES-West, or empty). */}}
+The strongest hotspot is {{.Where}}{{if .FRP}}, with a fire radiative power of {{.FRP}} megawatts{{end}}{{if .Detected}}, detected {{.Detected}} ago{{end}}{{if .Satellite}} by {{.Satellite}}{{end}}.

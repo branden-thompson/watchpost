@@ -1,0 +1,40 @@
+# words — voice-only spellings: the word as written stays on the screen,
+# the voice says the spoken form. KEY<TAB>spoken form; case matters.
+# Agencies and products
+CLI	C L I
+NOAA	Noah
+# Roads and highways as NWS products write them (UAT 120: "SWY S-2" is
+# "State Highway S-2", "Palomar Mountain Rd" is "Road").
+SWY	State Highway
+SR	State Route
+HWY	Highway
+Hwy	Highway
+FWY	Freeway
+Fwy	Freeway
+Rd	Road
+RD	Road
+Ave	Avenue
+AVE	Avenue
+Blvd	Boulevard
+BLVD	Boulevard
+St	Street
+Dr	Drive
+DR	Drive
+Ln	Lane
+LN	Lane
+Ct	Court
+CT	Court
+Pkwy	Parkway
+PKWY	Parkway
+Trl	Trail
+TRL	Trail
+Mt	Mount
+MT	Mount
+Mtn	Mountain
+MTN	Mountain
+Cyn	Canyon
+CYN	Canyon
+Jct	Junction
+JCT	Junction
+Rte	Route
+RTE	Route

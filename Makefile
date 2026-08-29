@@ -56,6 +56,10 @@ verify: fmt vet tidy vuln race lint-imports lint-watermark gate-controls
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
 # detector distorts, so they run in their own non-race step (red-team R2-8); under
 # `make race` they skip themselves via the raceEnabled build tag.
+# pty-severe machine-verifies the Severe Weather / Disaster Events window on a real pty (0.13.0).
+pty-severe: build
+	expect scripts/quality/severe-modal.expect
+
 alloc-budget:
 	go test -count=1 -run 'AllocBudget$$' ./...
 
@@ -64,7 +68,7 @@ alloc-budget:
 quality-bench:
 	go test ./modes/tty ./platform/snapshot ./domains/fire/hms ./platform/render -run '^$$' -bench . -benchmem -count 10 | tee $(DIST)/bench.txt
 
-# P10 safety-critical check (quality pass §1, red-team R2-2). The li-A2DH CLI and the
+# P10 safety-critical check (quality pass §1, red-team R2-2). The harness CLI and the
 # exemptions ledger live outside the public tree, so this is a LOCAL gate that must fail
 # loud, never skip, when the CLI is absent. A2DH=/path/to/a2dh overrides the lookup.
 A2DH ?= a2dh

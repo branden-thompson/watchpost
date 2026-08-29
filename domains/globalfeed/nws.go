@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -41,6 +42,7 @@ func severeEvents() []severeEvent {
 type NWS struct {
 	client *httpx.Client
 	base   string
+	memo   sourceMemo
 }
 
 // NewNWS builds the source; base "" is the production active-alerts endpoint.
@@ -67,24 +69,44 @@ func (n *NWS) url() string {
 	return n.base + "?" + strings.ReplaceAll(q.Encode(), "+", "%20")
 }
 
+// nwsProps is one CAP feature's properties (the fields the window reads).
+type nwsProps struct {
+	Event         string   `json:"event"`
+	AreaDesc      string   `json:"areaDesc"`
+	Headline      string   `json:"headline"`
+	Description   string   `json:"description"`
+	Instruction   string   `json:"instruction"`
+	Severity      string   `json:"severity"`
+	Certainty     string   `json:"certainty"`
+	Urgency       string   `json:"urgency"`
+	MessageType   string   `json:"messageType"`
+	Category      string   `json:"category"`
+	Response      string   `json:"response"`
+	Sender        string   `json:"sender"`
+	SenderName    string   `json:"senderName"`
+	Onset         string   `json:"onset"`
+	Sent          string   `json:"sent"`
+	Effective     string   `json:"effective"`
+	Ends          string   `json:"ends"`    // when the hazard ends (may be empty)
+	Expires       string   `json:"expires"` // when the alert message expires — always present
+	AffectedZones []string `json:"affectedZones"`
+	References    []struct {
+		ID string `json:"@id"` // a prior alert this message updates/replaces
+	} `json:"references"`
+	Parameters map[string][]string `json:"parameters"` // read through the allowlist only (S7)
+}
+
+// nwsFeature is one entry of the feed.
+type nwsFeature struct {
+	ID         string   `json:"id"` // the alert URI — stable
+	Properties nwsProps `json:"properties"`
+	Geometry   struct {
+		Coordinates json.RawMessage `json:"coordinates"` // GeoJSON Point/Polygon/MultiPolygon, or absent (zone-only)
+	} `json:"geometry"`
+}
+
 type nwsFeed struct {
-	Features []struct {
-		ID         string `json:"id"` // the alert URI — stable
-		Properties struct {
-			Event      string `json:"event"`
-			AreaDesc   string `json:"areaDesc"`
-			Onset      string `json:"onset"`
-			Sent       string `json:"sent"`
-			Ends       string `json:"ends"`    // when the hazard ends (may be empty)
-			Expires    string `json:"expires"` // when the alert message expires — always present
-			References []struct {
-				ID string `json:"@id"` // a prior alert this message updates/replaces
-			} `json:"references"`
-		} `json:"properties"`
-		Geometry struct {
-			Coordinates json.RawMessage `json:"coordinates"` // GeoJSON Point/Polygon/MultiPolygon, or absent (zone-only)
-		} `json:"geometry"`
-	} `json:"features"`
+	Features []json.RawMessage `json:"features"` // decoded one by one: a malformed value skips ITS entry, never the source (REVIEW R5-C-12)
 }
 
 // geoPoint returns a representative point (the first vertex) of a GeoJSON
@@ -119,31 +141,94 @@ func geoPoint(raw json.RawMessage) (lat, lon float64, ok bool) {
 	return nums[1], nums[0], true // GeoJSON is [lon, lat]
 }
 
-func (n *NWS) Fetch(ctx context.Context) ([]Event, error) {
-	var feed nwsFeed
-	if _, err := n.client.GetJSON(ctx, n.url(), &feed, httpx.TTL(nwsTTL)); err != nil {
-		return nil, err
+// parseCAPTime reads an RFC3339 field; zero when absent or malformed.
+func parseCAPTime(s string) time.Time {
+	t, _ := time.Parse(time.RFC3339, s)
+	return t.UTC()
+}
+
+// firstParam reads one allowlisted CAP parameter (the first value), bounded.
+func firstParam(params map[string][]string, key string) string {
+	if v, ok := params[key]; ok && len(v) > 0 {
+		return clampField(v[0])
 	}
+	return ""
+}
+
+// severeDetailOf bounds one CAP feature's record fields (P4 F5 / NFR-5): short
+// fields to maxFieldRunes, prose to maxProseRunes, lists to maxListLen, and the
+// parameters map through the allowlist only (S7).
+func severeDetailOf(p nwsProps) *SevereDetail {
+	d := &SevereDetail{
+		Headline: clampField(p.Headline), Description: clampProse(p.Description), Instruction: clampProse(p.Instruction),
+		Severity: clampField(p.Severity), Certainty: clampField(p.Certainty), Urgency: clampField(p.Urgency),
+		MessageType: clampField(p.MessageType), Category: clampField(p.Category), Response: clampField(p.Response),
+		SenderName: clampField(p.SenderName), Sender: clampField(p.Sender),
+		Effective: parseCAPTime(p.Effective), Sent: parseCAPTime(p.Sent), Expires: parseCAPTime(p.Expires),
+		Ends: parseCAPTime(p.Ends), Onset: parseCAPTime(p.Onset),
+		AffectedZones: clampSlice(p.AffectedZones),
+		MaxWindGust:   firstParam(p.Parameters, "maxWindGust"), MaxHailSize: firstParam(p.Parameters, "maxHailSize"),
+		EventMotion: firstParam(p.Parameters, "eventMotionDescription"), NWSHeadline: firstParam(p.Parameters, "NWSheadline"),
+		VTEC: firstParam(p.Parameters, "VTEC"),
+	}
+	refs := make([]string, 0, len(p.References))
+	for _, x := range p.References {
+		refs = append(refs, x.ID)
+	}
+	d.References = clampSlice(refs)
+	return d
+}
+
+func (n *NWS) Fetch(ctx context.Context) ([]Event, error) {
+	u := n.url()
+	return n.memo.events(func() ([]byte, bool, error) {
+		var body []byte
+		hdr, err := n.client.GetJSON(ctx, u, &body, httpx.TTL(nwsTTL))
+		return body, hdr == nil, err
+	}, func(body []byte) ([]Event, error) { return n.parse(body, u) })
+}
+
+func (n *NWS) parse(body []byte, u string) ([]Event, error) {
+	var feed nwsFeed
+	if err := json.Unmarshal(body, &feed); err != nil {
+		if n.client != nil {
+			n.client.Forget(u)
+		}
+		return nil, fmt.Errorf("NWS: bad response body: %w", err)
+	}
+	feats := decodeFeatures(feed.Features)
 	// NWS issues a NEW id when it updates/replaces a warning, linking the prior
-	// via `references`. If both are briefly active, drop the superseded one so
-	// the same real-world warning isn't shown (or announced) twice (0.12.0
-	// follow-up — dedup beyond source id).
-	superseded := make(map[string]bool)
-	for _, f := range feed.Features {
-		for _, r := range f.Properties.References {
-			if r.ID != "" && r.ID != f.ID { // never let an alert supersede itself (guard a self-reference)
-				superseded[r.ID] = true
+	// via `references`. The guarded rule (supersede.go) drops the prior only
+	// when the update is a newer message from the same sender for the same
+	// product — never on a bare reference (red-team S3). SenderName keys the
+	// sender on BOTH paths (the location path has no `sender` email).
+	refs := make([]Ref, 0, len(feed.Features))
+	for _, f := range feats {
+		r := Ref{ID: f.ID, Sender: f.Properties.SenderName, Product: f.Properties.Event, Sent: parseCAPTime(f.Properties.Sent)}
+		for _, x := range f.Properties.References {
+			if x.ID != "" && x.ID != f.ID {
+				r.Replaces = append(r.Replaces, x.ID)
 			}
 		}
+		refs = append(refs, r)
 	}
+	superseded := SupersededBy(refs)
 	out := make([]Event, 0, len(feed.Features))
-	for _, f := range feed.Features {
-		if f.ID == "" || f.Properties.Event == "" {
+	for _, f := range feats {
+		p := f.Properties
+		if f.ID == "" || p.Event == "" {
 			continue
 		}
-		when := f.Properties.Onset
+		// "Declared" is the ISSUE time (sent), not the onset: a heat advisory
+		// issued at 09:00 for 20:00 is declared at 09:00 and starts at 20:00
+		// (HUM LEAD UAT 2026-08-28 — a future "declared" read as bad data).
+		// The onset rides in the detail as "Starts".
+		when := p.Sent
 		if when == "" {
-			when = f.Properties.Sent
+			when = p.Effective
+		}
+		if when == "" {
+			when = p.Onset
 		}
 		at, _ := time.Parse(time.RFC3339, when)
 		if at.IsZero() {
@@ -151,18 +236,18 @@ func (n *NWS) Fetch(ctx context.Context) ([]Event, error) {
 		}
 		// The active window ends at `ends` (the hazard) when given, else
 		// `expires` (the message) — the marquee drops the alert past it (#2).
-		until := f.Properties.Ends
+		until := p.Ends
 		if until == "" {
-			until = f.Properties.Expires
+			until = p.Expires
 		}
 		ends, _ := time.Parse(time.RFC3339, until)
 		lat, lon, ok := geoPoint(f.Geometry.Coordinates) // ok=false for a zone-only alert (no geometry) → excluded when a radius is set
 		out = append(out, Event{
-			ID:         f.ID,
+			ID:         clampID(f.ID), // bounded (R3-D-02; ids get the longer bound, R5-B-05); the supersede map is keyed on the raw id above, looked up with the same
 			Class:      ClassSevereWx,
-			Severity:   severeSeverity(f.Properties.Event),
-			Type:       clampField(f.Properties.Event),    // the spoken type ("Tornado Warning"); bounded so a hostile feed can't blow up the narration render (P4 F5)
-			Place:      clampField(f.Properties.AreaDesc), // the location; bounded likewise
+			Severity:   severeSeverity(p.Event),
+			Type:       clampField(p.Event),    // the spoken type ("Tornado Warning"); bounded so a hostile feed can't blow up the narration render (P4 F5)
+			Place:      clampField(p.AreaDesc), // the location; bounded likewise
 			Lat:        lat,
 			Lon:        lon,
 			HasPoint:   ok,
@@ -170,17 +255,38 @@ func (n *NWS) Fetch(ctx context.Context) ([]Event, error) {
 			At:         at.UTC(),
 			Until:      ends.UTC(),
 			Source:     n.Name(),
+			Severe:     severeDetailOf(p),
 		})
 	}
 	return out, nil
 }
 
-// severeSeverity maps a curated event name to its tier (unknown ⇒ orange).
-func severeSeverity(event string) Severity {
+// CuratedSeverity is the tier of a product on the curated national list —
+// the one authority for it by every path (domains/severe reads it too).
+func CuratedSeverity(product string) (Severity, bool) {
 	for _, e := range severeEvents() {
-		if e.event == event {
-			return e.sev
+		if e.event == product {
+			return e.sev, true
 		}
 	}
-	return SevOrange
+	return SevOrange, false
+}
+
+// severeSeverity maps a curated event name to its tier (unknown ⇒ orange).
+func severeSeverity(event string) Severity {
+	sev, _ := CuratedSeverity(event)
+	return sev
+}
+
+// decodeFeatures decodes the feed's entries one by one: a malformed entry
+// skips itself, never the source (REVIEW R5-C-12).
+func decodeFeatures(raw []json.RawMessage) []nwsFeature {
+	feats := make([]nwsFeature, 0, len(raw))
+	for _, r := range raw {
+		var f nwsFeature
+		if json.Unmarshal(r, &f) == nil {
+			feats = append(feats, f)
+		}
+	}
+	return feats
 }

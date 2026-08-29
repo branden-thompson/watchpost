@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -19,14 +20,14 @@ func TestViewOpensWithTwoBlankLines(t *testing.T) {
 			t.Fatalf("line %d must be blank (top spacing):\n%s", i, v)
 		}
 	}
-	if !strings.HasPrefix(strings.TrimLeft(lines[2], " "), "W A T C H P O S T") {
+	if !strings.HasPrefix(strings.TrimLeft(lines[2], " "), "┏━━ W A T C H P O S T") { // the boxed header (2026-08-28): its top rule carries the title
 		t.Fatalf("header must follow the spacing: %q", lines[2])
 	}
-	if !strings.HasPrefix(lines[2], strings.Repeat(" ", viewPadLeft)+"W") {
+	if !strings.HasPrefix(lines[2], strings.Repeat(" ", viewPadLeft)+"┏") {
 		t.Fatalf("viewport must carry the %d-col left padding (UAT 14.3): %q", viewPadLeft, lines[2])
 	}
-	if strings.TrimSpace(lines[4]) != "" {
-		t.Fatalf("blank line required between header and alert section: %q", lines[4])
+	if strings.TrimSpace(lines[5]) != "" { // the boxed header is three rows (2026-08-28); the ticker band's top row follows
+		t.Fatalf("blank line required between header and alert section: %q", lines[5])
 	}
 }
 
@@ -74,7 +75,7 @@ func TestCompactModulesOnShortTerminals(t *testing.T) {
 	if !short.(Dashboard).compact() {
 		t.Fatal("24 rows must select compact mode")
 	}
-	if !strings.Contains(v, "01/01  ⚠ EXTREME HEAT WATCH · Oceanside, CA") {
+	if !strings.Contains(v, "01/01  ⚠ EXTREME HEAT WATCH - Oceanside, CA") {
 		t.Fatalf("compact alert line missing:\n%s", v)
 	}
 	if !strings.Contains(v, "[space] Play") || !strings.Contains(v, "Repeat:") || strings.Contains(v, "00:00 / 00:00\n") {
@@ -104,7 +105,7 @@ func TestNarrowTerminalRowsFitAndModalsCenter(t *testing.T) {
 	if !strings.Contains(v, "[space] Play") || !strings.Contains(v, "Size:") {
 		t.Fatal("radio controls must survive by wrapping")
 	}
-	if !strings.Contains(v, "WWRadio") || strings.Contains(v, "Watchpost Weather Radio") {
+	if !strings.Contains(v, "WWRADIO") || strings.Contains(v, "WATCHPOST WEATHER RADIO") {
 		t.Fatal("narrow compact row must use the short title (UAT 36)")
 	}
 	wide, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
@@ -182,14 +183,14 @@ func TestControlPlacementUAT56(t *testing.T) {
 	}
 	// UAT 2026-08-27 order: [l] Lookup Location, [enter] Details, [ctrl+a] Favorite, [shift+del] Unfavorite.
 	li, ei, fi := strings.Index(ctrl, "[l] Lookup Location"), strings.Index(ctrl, "[enter] Details"), strings.Index(ctrl, "[ctrl+a] Favorite")
-	if li < 0 || !(li < ei && ei < fi) {
+	if li < 0 || li >= ei || ei >= fi {
 		t.Fatalf("control row order Lookup < Details < Favorite: %q", ctrl)
 	}
 	if !strings.HasSuffix(strings.TrimRight(ctrl, " "), "[↑↓] Navigate") {
 		t.Fatalf("[↑↓] Navigate must end the control row (right-aligned): %q", ctrl)
 	}
-	if !strings.Contains(head, "[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [?] Help  [q] Quit") {
-		t.Fatalf("header must carry Setup, About, Theme, Help, Quit in order (UAT 57 / 102): %q", head)
+	if !strings.Contains(head, "[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [S] Status  [?] Help  [q] Quit") {
+		t.Fatalf("header must carry Setup, About, Theme, Mute, Status, Help, Quit in order (UAT 57 / 102; [S] joined the row 2026-08-28): %q", head)
 	}
 	// UAT 57: no footer - the last content line is the recent section's
 	// last row (the Showing line, or the empty state's ▼ row — UAT 104).
@@ -220,6 +221,44 @@ func TestViewFillsToBottomInset(t *testing.T) {
 		}
 		if strings.TrimSpace(lines[len(lines)-1]) == "" {
 			t.Fatalf("h=%d: no stray blank row at the bottom of the content", h)
+		}
+	}
+}
+
+// The 80x24 floor (NFR-2): the frame never exceeds the terminal — the
+// inset gives first, then the window shrinks below its 3-row floor to what
+// fits (round 4, B-07: the wrapped control row pushed it to 25 lines) —
+// and every line fits the width.
+func TestTheFloorFrameAt80x24(t *testing.T) {
+	m := dash(t)
+	rs := snap()
+	for i := range 25 {
+		rs.Locations = append(rs.Locations, snapshot.Location{Label: fmt.Sprintf("City %02d", i+1), Zip: fmt.Sprintf("900%02d", i+1)})
+	}
+	m, _ = m.Update(RecentSnapshotMsg{Snap: rs})
+	sized, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	v := sized.View().Content
+	lines := strings.Split(v, "\n")
+	if len(lines) > 24 || len(lines) < 22 || !strings.Contains(v, "Showing 1-") {
+		t.Fatalf("80x24: the frame fills the terminal and never exceeds it, got %d lines:\n%s", len(lines), v)
+	}
+	for _, l := range lines {
+		if render.Width(l) > 80 {
+			t.Fatalf("80x24: a line overflows: %q", l)
+		}
+	}
+}
+
+// A label longer than the window never overflows a modal title (REVIEW
+// R5-C-11).
+func TestLongLabelsNeverOverflowModalTitles(t *testing.T) {
+	d := dash(t).(Dashboard)
+	d.snap.Locations[0].Label = strings.Repeat("Very Long Label ", 20)
+	for _, s := range []string{d.detailsModal(d.opts()), d.alertDetailsModal(d.opts())} {
+		for _, l := range strings.Split(stripANSITest(s), "\n") {
+			if render.Width(l) > d.modalWidth() {
+				t.Fatalf("a modal line overflows (%d > %d): %q", render.Width(l), d.modalWidth(), l)
+			}
 		}
 	}
 }

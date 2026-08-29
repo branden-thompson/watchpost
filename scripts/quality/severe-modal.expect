@@ -1,0 +1,50 @@
+#!/usr/bin/expect -f
+# severe-modal.expect — machine-verifies the Severe Weather / Disaster Events window on a real pty
+# (0.13.0, 04-development/p4-verify.md Task 4.3; calibration "PTY Machine-Verify"): w opens the
+# window, → moves to Watches, enter drills into the focused event (inert on an empty tab — it is
+# sent anyway and the frame is asserted either way), esc backs out / closes, a second esc is a no-op
+# on the dashboard; ctrl+s opens it again; esc closes; q quits clean.
+# Runs against ./dist/watchpost with no network needed (the window opens on its empty state).
+#   make pty-severe        (builds first)
+# The renderer diffs CELLS: text that lands on the same cells as before is
+# never re-sent, so a substring may not appear contiguously in the stream
+# after a key. repaint forces a full frame (a one-column resize round-trip)
+# before every assertion, so each expect reads a whole screen.
+set timeout 20
+log_user 0
+spawn env NO_COLOR=1 ./dist/watchpost
+set tty $spawn_out(slave,name)
+catch {exec stty rows 44 cols 133 < $tty}
+proc repaint {} {
+  global tty
+  catch {exec stty cols 132 < $tty}; sleep 0.3
+  catch {exec stty cols 133 < $tty}; sleep 0.3
+}
+expect -timeout 30 "W A T C H P O S T" {} timeout { puts "FAIL: dashboard did not start"; exit 1 }
+sleep 1
+send "w"
+repaint
+expect "SEVERE WEATHER / DISASTER EVENTS" {} timeout { puts "FAIL: w did not open the window"; exit 1 }
+expect -re {Warnings|Warn} {} timeout { puts "FAIL: the Warnings tab is not shown"; exit 1 }
+send "\033\[C"
+repaint
+expect -re {[>›] ?Watch} {} timeout { puts "FAIL: right arrow did not move to Watches"; exit 1 }
+send "\r"
+sleep 0.5
+send "\033"
+sleep 0.5
+send "\033"
+sleep 0.5
+send "w"
+repaint
+expect "SEVERE WEATHER / DISASTER EVENTS" {} timeout { puts "FAIL: after enter, esc, esc the window must be closed so w re-opens it"; exit 1 }
+send "\033"
+sleep 0.5
+send "\x13"
+repaint
+expect "SEVERE WEATHER / DISASTER EVENTS" {} timeout { puts "FAIL: ctrl+s did not open the window"; exit 1 }
+send "\033"
+sleep 0.5
+send "q"
+expect -timeout 15 eof {} timeout { puts "FAIL: q did not quit"; exit 1 }
+puts "pty-severe: ok (w opens, right moves to Watches, enter/esc/esc, w re-opens, esc, ctrl+s opens, esc, q quits)"

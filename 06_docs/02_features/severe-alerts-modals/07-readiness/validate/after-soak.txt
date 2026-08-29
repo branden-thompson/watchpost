@@ -1,0 +1,65 @@
+soak finished 16:33:02Z
+== go test -race -count=1 ./... (16:33:02Z)
+ok  	github.com/branden-thompson/watchpost/app	7.515s
+ok  	github.com/branden-thompson/watchpost/cmd/watchpost	2.285s
+ok  	github.com/branden-thompson/watchpost/domains/alerts	1.768s
+ok  	github.com/branden-thompson/watchpost/domains/fire	2.072s
+ok  	github.com/branden-thompson/watchpost/domains/fire/firms	2.267s
+ok  	github.com/branden-thompson/watchpost/domains/fire/hms	30.217s
+ok  	github.com/branden-thompson/watchpost/domains/fire/wfigs	2.710s
+ok  	github.com/branden-thompson/watchpost/domains/globalfeed	2.865s
+ok  	github.com/branden-thompson/watchpost/domains/locations	4.412s
+ok  	github.com/branden-thompson/watchpost/domains/locations/coverage	3.081s
+ok  	github.com/branden-thompson/watchpost/domains/locations/geodata	4.496s
+ok  	github.com/branden-thompson/watchpost/domains/locations/openmeteo	3.418s
+ok  	github.com/branden-thompson/watchpost/domains/marine/coops	2.093s
+ok  	github.com/branden-thompson/watchpost/domains/marine/ndbc	1.954s
+ok  	github.com/branden-thompson/watchpost/domains/radio/player	5.498s
+ok  	github.com/branden-thompson/watchpost/domains/radio/pronounce	2.056s
+ok  	github.com/branden-thompson/watchpost/domains/radio/script	1.942s
+ok  	github.com/branden-thompson/watchpost/domains/radio/spectrum	1.739s
+ok  	github.com/branden-thompson/watchpost/domains/radio/stream	1.728s
+ok  	github.com/branden-thompson/watchpost/domains/radio/synth	3.322s
+ok  	github.com/branden-thompson/watchpost/domains/seismic	1.519s
+ok  	github.com/branden-thompson/watchpost/domains/seismic/usgs	1.588s
+ok  	github.com/branden-thompson/watchpost/domains/severe	1.629s
+ok  	github.com/branden-thompson/watchpost/domains/weather/nws	1.956s
+ok  	github.com/branden-thompson/watchpost/modes/report	1.721s
+ok  	github.com/branden-thompson/watchpost/modes/tty	10.700s
+ok  	github.com/branden-thompson/watchpost/pkg/schema	1.796s
+ok  	github.com/branden-thompson/watchpost/platform/astro	1.713s
+ok  	github.com/branden-thompson/watchpost/platform/config	1.523s
+ok  	github.com/branden-thompson/watchpost/platform/declset	1.382s
+ok  	github.com/branden-thompson/watchpost/platform/geo	1.187s
+ok  	github.com/branden-thompson/watchpost/platform/httpx	3.901s
+ok  	github.com/branden-thompson/watchpost/platform/invariant	1.336s
+ok  	github.com/branden-thompson/watchpost/platform/render	1.525s
+ok  	github.com/branden-thompson/watchpost/platform/sched	1.579s
+ok  	github.com/branden-thompson/watchpost/platform/snapshot	1.407s
+ok  	github.com/branden-thompson/watchpost/platform/term	1.526s
+ok  	github.com/branden-thompson/watchpost/platform/tz	1.566s
+ok  	github.com/branden-thompson/watchpost/tools/nwrtable	1.561s
+ok  	github.com/branden-thompson/watchpost/tools/slope	1.541s
+== bench current (bd9659e)
+BenchmarkFrame_133x44-12           	    6588	    155071 ns/op	   80606 B/op	     655 allocs/op
+BenchmarkFrame_133x44-12           	    7938	    163959 ns/op	   80606 B/op	     655 allocs/op
+BenchmarkFrame_133x44-12           	    7627	    161121 ns/op	   80612 B/op	     655 allocs/op
+BenchmarkFrame_133x44-12           	    7446	    161142 ns/op	   80603 B/op	     655 allocs/op
+BenchmarkFrame_133x44-12           	    7644	    159549 ns/op	   80506 B/op	     655 allocs/op
+BenchmarkFrame_133x44_Severe-12    	     915	   1268461 ns/op	  868445 B/op	    2051 allocs/op
+BenchmarkFrame_133x44_Severe-12    	     918	   1273715 ns/op	  867932 B/op	    2051 allocs/op
+BenchmarkFrame_133x44_Severe-12    	     930	   1274373 ns/op	  868136 B/op	    2051 allocs/op
+BenchmarkFrame_133x44_Severe-12    	     904	   1274284 ns/op	  868818 B/op	    2051 allocs/op
+BenchmarkFrame_133x44_Severe-12    	     830	   1302745 ns/op	  869675 B/op	    2052 allocs/op
+BenchmarkOverlayOnly-12            	    1098	   1096502 ns/op	  764682 B/op	    1376 allocs/op
+BenchmarkOverlayOnly-12            	    1093	   1124555 ns/op	  766055 B/op	    1376 allocs/op
+BenchmarkOverlayOnly-12            	    1160	   1032248 ns/op	  764521 B/op	    1376 allocs/op
+BenchmarkOverlayOnly-12            	    1155	   1055337 ns/op	  764659 B/op	    1376 allocs/op
+BenchmarkOverlayOnly-12            	    1165	   1060561 ns/op	  765108 B/op	    1376 allocs/op
+== bench v0.12.0
+BenchmarkFrame_133x44-12    	   10000	    112256 ns/op	   62072 B/op	     554 allocs/op
+BenchmarkFrame_133x44-12    	   10000	    129200 ns/op	   62129 B/op	     554 allocs/op
+BenchmarkFrame_133x44-12    	   10000	    113270 ns/op	   62246 B/op	     554 allocs/op
+BenchmarkFrame_133x44-12    	   10000	    115755 ns/op	   62215 B/op	     554 allocs/op
+BenchmarkFrame_133x44-12    	   10000	    112809 ns/op	   62193 B/op	     554 allocs/op
+done 16:34:00Z

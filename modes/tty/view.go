@@ -36,8 +36,9 @@ func (d Dashboard) View() tea.View {
 	return v
 }
 
-// modalView renders the open window, "" when none (Q6: one switch, one overlay).
-func (d Dashboard) modalView(o render.Opts) string {
+// renderModal renders the open window, "" when none (Q6: one switch, one
+// overlay). modalView (memo.go) memoises it per input change (FR-10).
+func (d Dashboard) renderModal(o render.Opts) string {
 	switch d.modal {
 	case modalHelp:
 		return d.helpModal(o)
@@ -64,6 +65,8 @@ func (d Dashboard) modalView(o render.Opts) string {
 		return d.floatModal(o, d.modalWidth(), "Correspondent Voice", d.voiceLines(o)) // UAT 84
 	case modalSetup:
 		return d.floatModal(o, d.modalWidth(), "Setup", d.setupLines(o)) // UAT 100
+	case modalSevere:
+		return d.severeModal(o) // 0.13.0
 	}
 	return ""
 }
@@ -84,11 +87,15 @@ func (d Dashboard) modalWidth() int {
 	case modalAlerts:
 		return stretch(76)
 	case modalStatus:
-		return stretch(68)
+		return d.statusWidth() // providers beside requests when they fit (UAT 2026-08-28), else the stretch
 	case modalAbout:
 		return aboutWidth
 	case modalVoice:
 		return 68 // the four chip controls fit on one line (UAT 86)
+	case modalHelp:
+		return d.helpWidth(d.opts().Width) // two columns when they fit, else the single column (UAT 2026-08-28)
+	case modalSevere:
+		return 130 // every column at 133 cols (the DETECTION column joined at UAT, 2026-08-28); the ladder below
 	case modalSetup:
 		return 78 // the FIRMS address (UAT 100) and the Alert Notification Preference line (● All ○ Filtered to [ ] Mi of my location, 0.12.0) fit
 	}
@@ -108,6 +115,8 @@ func (d Dashboard) modalLines() []string {
 		raw = d.statusLines()
 	case modalAbout:
 		raw = d.aboutLines()
+	case modalSevere:
+		raw = d.severeDetailLines(d.opts()) // only the record scrolls; the table windows itself
 	default:
 		raw = d.helpLines(d.opts())
 	}
@@ -133,7 +142,7 @@ func (d Dashboard) detailsModal(o render.Opts) string {
 	loc := d.selectedLocation()
 	title := "Location"
 	if loc != nil {
-		title = loc.Label + " " + loc.Zip
+		title = loc.Label + " " + loc.Zip // labels are text by the time they are published (the assembler, R5-C-05)
 	}
 	if d.snap != nil {
 		stamp := "Updated: " + dataAsOf(d.snap).Local().Format("01/02/2006 15:04:05 MST")
@@ -190,7 +199,7 @@ func frameText(s string, pad int, tok render.Token) string {
 	s = strings.TrimRight(s, "\n")
 	base := ""
 	if render.ColorOn() {
-		base = "\x1b[0;38;5;" + render.Tok(tok) + "m"
+		base = "\x1b[0;" + render.FgSGR(render.Tok(tok)) + "m" // a bare index or a truecolor token alike (the Light theme's TextBase is truecolor)
 	}
 	const reset = "\x1b[0m"
 	var b strings.Builder

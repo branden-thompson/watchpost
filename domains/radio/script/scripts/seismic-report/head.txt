@@ -1,0 +1,2 @@
+{{/* seismic-report/head: the notice. Data: .Location. */}}
+This is the Watchpost Radio Seismic Activity report for {{.Location}}. This report is derived from the United States Geological Survey real-time GeoJSON earthquake notification service. Data for this report may be delayed or incomplete, and is not intended for life safety use.

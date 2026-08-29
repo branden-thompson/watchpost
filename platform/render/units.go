@@ -45,14 +45,40 @@ func (o Opts) BandHeight() int {
 type Glyphs struct {
 	Pointer, Play, Repeat, Fire, Alert string
 	Seismic                            [3]string // the felt-band ramp: [0] below feeling, [1] felt, [2] significant (0.11.0)
+	OK, Fail, Note, Cursor, Fill       string    // ✔ ✘ ♪ ▌ ░ and their ASCII forms (REVIEW R5-C-13: one owner for every mark)
+	Dash, Dot                          string    // — and · as separators
 }
 
-// Glyphs resolves the mark set for these options.
+// Glyphs resolves the mark set for these options. Under --ascii the play
+// mark is its own form (`*`), never the pointer's `>` (HUM LEAD ruling
+// 2026-08-29, B-08b).
 func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
-		return Glyphs{Pointer: ">", Play: ">", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"}}
+		return Glyphs{Pointer: ">", Play: "*", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},
+			OK: "+", Fail: "x", Note: "~", Cursor: "_", Fill: ".", Dash: "-", Dot: "|"}
 	}
-	return Glyphs{Pointer: "›", Play: "▶", Repeat: "∞", Fire: "◆", Alert: "⚠", Seismic: [3]string{"○", "●", "◉"}}
+	return Glyphs{Pointer: "›", Play: "▶", Repeat: "∞", Fire: "◆", Alert: "⚠", Seismic: [3]string{"○", "●", "◉"},
+		OK: "✔", Fail: "✘", Note: "♪", Cursor: "▌", Fill: "░", Dash: "—", Dot: "·"}
+}
+
+// asciiKey names an arrow key in words for a chip under --ascii — the one
+// place every chip's key name crosses the glyph boundary (R5-C-13).
+func asciiKey(key string) string {
+	switch key {
+	case "↑↓":
+		return "up/down"
+	case "←→":
+		return "left/right"
+	case "←":
+		return "left"
+	case "→":
+		return "right"
+	case "↑":
+		return "up"
+	case "↓":
+		return "down"
+	}
+	return key
 }
 
 // SeismicLevel maps a magnitude to the felt-band glyph-ramp level — the single

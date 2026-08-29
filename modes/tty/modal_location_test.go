@@ -125,3 +125,70 @@ func TestFavoriteMutesAtTheWatchlistCap(t *testing.T) {
 		t.Fatal("ctrl+a must be inert at the cap")
 	}
 }
+
+// A lookup opens Details on the looked-up location from the FIRST frame —
+// blank until its data lands — never on the row that held the index before
+// (HUM LEAD UAT 2026-08-28: the modal opened on the old top RECENT row).
+func TestLookupOpensDetailsOnTheLookedUpLocationFromTheFirstFrame(t *testing.T) {
+	m := dash(t)
+	rs := snap()
+	rs.Locations[0].Label, rs.Locations[0].Zip = "Ridgecrest, CA", "93555"
+	m, _ = m.Update(RecentSnapshotMsg{Snap: rs})
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
+	ref := snapshot.LocationRef{Label: "Escondido, CA", Zip: "92025", Lat: 33.1, Lon: -117.1, TZ: "America/Los_Angeles"}
+	m, _ = m.Update(resolvedMsg{mode: "lookup", ref: ref})
+	d := m.(Dashboard)
+	if d.modal != modalDetails || d.lookupRef == nil {
+		t.Fatalf("details open on the lookup: modal=%v pending=%v", d.modal, d.lookupRef != nil)
+	}
+	if v := stripANSITest(d.detailsModal(d.opts())); !strings.Contains(v, "Escondido, CA 92025") || strings.Contains(v, "Ridgecrest") {
+		t.Fatalf("the first frame's modal names the looked-up location, blank — not the old top row:\n%s", v)
+	}
+	if d.hydrateCmd() != nil {
+		t.Fatal("no hydrate while the lookup fetches its own location")
+	}
+	// The rebuilt RECENT list arrives with the location at the top: the
+	// placeholder gives way to the data.
+	landed := snap()
+	landed.Locations = append([]snapshot.Location{{Label: "Escondido, CA", Zip: "92025", TZ: "America/Los_Angeles"}}, landed.Locations...)
+	m, _ = m.Update(RecentSnapshotMsg{Snap: landed})
+	d = m.(Dashboard)
+	if d.lookupRef != nil || d.selectedLocation() == nil || d.selectedLocation().Label != "Escondido, CA" {
+		t.Fatalf("the lookup landed: pending=%v sel=%v", d.lookupRef != nil, d.selectedLocation())
+	}
+	// Closing the modal before the data lands drops the wait too.
+	m, _ = m.Update(resolvedMsg{mode: "lookup", ref: snapshot.LocationRef{Label: "Vista, CA", Zip: "92083"}})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if m.(Dashboard).lookupRef != nil {
+		t.Fatal("esc clears the pending lookup")
+	}
+}
+
+// A lookup with an EMPTY RECENT list (the first run) keeps its focus through
+// a priority publish and lands by identity when the rebuilt list arrives
+// (REVIEW R5-C-02: the focus fell to the first favourite and the wait never
+// cleared).
+func TestLookupWithEmptyRecentSurvivesAPriorityPublish(t *testing.T) {
+	m := dash(t)
+	m, _ = m.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{SchemaVersion: snapshot.SchemaVersion}})
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
+	ref := snapshot.LocationRef{Label: "Lookup City", Zip: "99999"}
+	m, _ = m.Update(resolvedMsg{mode: "lookup", ref: ref})
+	m, _ = m.Update(SnapshotMsg{Snap: snap()}) // a priority publish lands meanwhile
+	d := m.(Dashboard)
+	if d.lookupRef == nil || d.modal != modalDetails || !strings.Contains(stripANSITest(d.detailsModal(d.opts())), "Lookup City") {
+		t.Fatalf("the lookup keeps its focus: pending=%v modal=%v", d.lookupRef != nil, d.modal)
+	}
+	landed := &snapshot.Snapshot{SchemaVersion: snapshot.SchemaVersion, Locations: []snapshot.Location{{Label: "Lookup City", Zip: "99999"}}}
+	m, _ = m.Update(RecentSnapshotMsg{Snap: landed})
+	d = m.(Dashboard)
+	if d.lookupRef != nil || d.selected != d.numPriority() || d.selectedLocation() == nil || d.selectedLocation().Label != "Lookup City" {
+		t.Fatalf("landed by identity: pending=%v selected=%d", d.lookupRef != nil, d.selected)
+	}
+	// Any other window drops the wait (R5-B-09).
+	m, _ = m.Update(resolvedMsg{mode: "lookup", ref: snapshot.LocationRef{Label: "Vista, CA", Zip: "92083"}})
+	m, _ = m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
+	if m.(Dashboard).lookupRef != nil {
+		t.Fatal("another window clears the pending lookup")
+	}
+}

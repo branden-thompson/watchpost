@@ -44,6 +44,22 @@ type Event struct {
 	At         time.Time // event / issue time — stack recency, the "declared/recorded" time
 	Until      time.Time // active-window end (NWS ends/expires); zero = no expiry — a quake's instant, a storm the feed still lists (Active keeps it until the feed drops it)
 	Source     string    // "USGS" | "NHC" | "NWS"
+	Name       string    // a named storm ("Dolly"); "" otherwise (0.13.0, SAM-D-14/20)
+
+	// Per-class detail (0.13.0, SAM-D-21): exactly one is non-nil for a
+	// parsed event; all nil on a thin event (tests, seen-store replay).
+	Quake    *QuakeDetail
+	Tropical *TropicalDetail
+	Severe   *SevereDetail
+}
+
+// Title is the event as a headline: the type, plus the storm's name when it
+// has one ("Tropical Storm Dolly", "Tornado Warning").
+func (e Event) Title() string {
+	if e.Name != "" {
+		return e.Type + " " + e.Name
+	}
+	return e.Type
 }
 
 // Verb is how the narration says the event happened, by class (HUM LEAD script):
@@ -65,6 +81,17 @@ func (e Event) Verb() string {
 // real event names and place descriptions are far shorter.
 const maxFieldRunes = 120
 
+// maxIDRunes bounds an id: the URL form of an NWS OID is 31 runes longer than the bare one the location path carries — both must normalise to the same key (REVIEW R5-B-05).
+const maxIDRunes = 200
+
+// clampID bounds an id.
+func clampID(s string) string {
+	if r := []rune(s); len(r) > maxIDRunes {
+		return string(r[:maxIDRunes])
+	}
+	return s
+}
+
 // clampField truncates a feed field to maxFieldRunes (rune-safe).
 func clampField(s string) string {
 	r := []rune(s)
@@ -75,9 +102,14 @@ func clampField(s string) string {
 }
 
 // Sentence is the event's lead line, shared by the marquee and the spoken
-// narration (single owner): "A(n) <Type> has been <verb> for <Location>". The
-// radio narration appends its own tail; the marquee shows this as-is.
+// narration (single owner): "A(n) <Type> has been <verb> for <Location>" — or,
+// for a named storm, "<Type> <Name> has been <verb> for <Location>" with no
+// article (SAM-D-20; folding the name into Type would make Article() say
+// "A Tropical Storm Dolly"). The radio narration appends its own tail.
 func (e Event) Sentence() string {
+	if e.Name != "" {
+		return e.Title() + " has been " + e.Verb() + " for " + e.Location
+	}
 	return e.Article() + " " + e.Type + " has been " + e.Verb() + " for " + e.Location
 }
 

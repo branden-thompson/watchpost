@@ -1,0 +1,2 @@
+{{/* fire-report/incident: one named fire. Data: .Name, .HasDistance (bool), .Inside (bool: within the ring), .Distance (12 miles), .Direction (east, or empty), .Facts (with a size of 12,915 acres, has been active for 3 days, and is 26 percent contained — or empty). */}}
+{{.Name}}{{if not .HasDistance}} is in your area{{else if .Inside}} is {{.Distance}}{{if .Direction}} {{.Direction}} of your location{{else}} from your location{{end}}{{else}}, at a distance of {{.Distance}}{{if .Direction}} to the {{.Direction}}{{end}}{{end}}{{if .Facts}}, {{.Facts}}{{end}}.

@@ -102,9 +102,11 @@ func TestNWSFetchMapsEventAndSeverity(t *testing.T) {
 func TestNWSDropsSupersededAlerts(t *testing.T) {
 	// svr2 UPDATES tor1 (references it): tor1 is superseded and must not show,
 	// so the same real-world warning isn't listed/announced twice (follow-up).
+	// 0.13.0 (NFR-12): a reference supersedes only from the same sender, for
+	// the same product, by a newer message — the fixture carries both.
 	body := `{"features":[
-	  {"id":"urn:oid:tor1","properties":{"event":"Tornado Warning","areaDesc":"Oklahoma County, OK","onset":"2026-08-27T20:00:00+00:00"}},
-	  {"id":"urn:oid:tor2","properties":{"event":"Tornado Warning","areaDesc":"Oklahoma County, OK","onset":"2026-08-27T20:10:00+00:00","references":[{"@id":"urn:oid:tor1"}]}}
+	  {"id":"urn:oid:tor1","properties":{"event":"Tornado Warning","areaDesc":"Oklahoma County, OK","senderName":"NWS Norman OK","sent":"2026-08-27T20:00:00+00:00","onset":"2026-08-27T20:00:00+00:00"}},
+	  {"id":"urn:oid:tor2","properties":{"event":"Tornado Warning","areaDesc":"Oklahoma County, OK","senderName":"NWS Norman OK","sent":"2026-08-27T20:10:00+00:00","onset":"2026-08-27T20:10:00+00:00","references":[{"@id":"urn:oid:tor1"}]}}
 	]}`
 	evs, err := NewNWS(client(t), serve(t, body)).Fetch(context.Background())
 	if err != nil {
@@ -144,4 +146,53 @@ func TestLiveGlobalFeeds(t *testing.T) {
 
 func sevName(s Severity) string {
 	return map[Severity]string{SevRed: "RED", SevOrange: "ORG", SevYellow: "YEL"}[s]
+}
+
+// Declared is the ISSUE time on the feed path too (HUM LEAD UAT
+// 2026-08-28): a warning sent at 20:00 for an onset at 22:00 is declared at
+// 20:00 — the fixture's sent and onset differ, so a revert to the onset fails
+// here (red-team round 4, C-10).
+func TestNWSDeclaredIsTheSentTimeOnTheFeedPath(t *testing.T) {
+	body := `{"features":[
+	  {"id":"urn:oid:hw1","properties":{"event":"High Wind Warning","areaDesc":"Laramie County, WY","senderName":"NWS Cheyenne WY","sent":"2026-08-27T20:00:00+00:00","effective":"2026-08-27T20:00:00+00:00","onset":"2026-08-27T22:00:00+00:00"}}
+	]}`
+	evs, err := NewNWS(client(t), serve(t, body)).Fetch(context.Background())
+	if err != nil || len(evs) != 1 {
+		t.Fatalf("%v %d", err, len(evs))
+	}
+	if want := time.Date(2026, 8, 27, 20, 0, 0, 0, time.UTC); !evs[0].At.Equal(want) {
+		t.Fatalf("declared = sent %v, got %v", want, evs[0].At)
+	}
+}
+
+// One malformed value skips ITS entry, never the source (REVIEW R5-C-12):
+// a feature with a wrong type beside a good one yields the good one.
+func TestOneBadEntryDoesNotSilenceASource(t *testing.T) {
+	nws := `{"features":[
+	  {"id":"urn:oid:bad","properties":{"event":"Tornado Warning","references":"not-a-list"}},
+	  {"id":"urn:oid:good","properties":{"event":"Tornado Warning","areaDesc":"Dallas County, TX","senderName":"NWS Fort Worth TX","sent":"2026-08-27T20:00:00+00:00","onset":"2026-08-27T20:00:00+00:00"}}
+	]}`
+	evs, err := NewNWS(client(t), serve(t, nws)).Fetch(context.Background())
+	if err != nil || len(evs) != 1 || evs[0].ID != "urn:oid:good" {
+		t.Fatalf("NWS: %v %+v", err, evs)
+	}
+	usgs := `{"features":[
+	  {"id":"bad","properties":{"mag":"5.0"},"geometry":{"coordinates":[-117,33,10]}},
+	  {"id":"good","properties":{"mag":5.1,"place":"10 km N of Somewhere","time":1756400000000,"type":"earthquake","title":"M 5.1"},"geometry":{"coordinates":[-117,33,10]}}
+	]}`
+	evs, err = NewUSGS(client(t), serve(t, usgs)).Fetch(context.Background())
+	if err != nil || len(evs) != 1 || evs[0].ID != "good" {
+		t.Fatalf("USGS: %v %+v", err, evs)
+	}
+	nhc := `{"activeStorms":[
+	  {"id":"bad","classification":"HU","movementDir":"60 mph"},
+	  {"id":"good","name":"Dolly","classification":"HU","binNumber":"AT1","intensity":"90","pressure":"960","latitudeNumeric":25.0,"longitudeNumeric":-60.0,"lastUpdate":"2026-08-27T18:00:00Z"}
+	]}`
+	evs, err = NewNHC(client(t), serve(t, nhc)).Fetch(context.Background())
+	if err != nil || len(evs) != 1 || evs[0].ID != "good" {
+		t.Fatalf("NHC: %v %+v", err, evs)
+	}
+	if _, err := NewNWS(client(t), serve(t, `{"features": "not-a-list"}`)).Fetch(context.Background()); err == nil {
+		t.Fatal("a broken envelope is still an error")
+	}
 }

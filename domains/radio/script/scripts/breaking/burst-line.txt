@@ -1,0 +1,2 @@
+{{/* breaking/burst-line: one event of a burst (the closing comes once, after all of them). Data: .Line. */}}
+{{.Line}}

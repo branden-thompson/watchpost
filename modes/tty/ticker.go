@@ -202,11 +202,21 @@ func scrollWindow(text string, offset, width int, gap string) string {
 	loop := []rune(text + gap)
 	n := len(loop)
 	off := ((offset % n) + n) % n
+	// The window is width CELLS, not runes: a wide-rune place name would
+	// otherwise run to twice the terminal (REVIEW R5-C-01). Bounded by n
+	// runes per pass (P10-02).
 	var b strings.Builder
-	for i := 0; i < width; i++ {
-		b.WriteRune(loop[(off+i)%n])
+	cells := 0
+	for i := 0; i < n && cells < width; i++ {
+		r := loop[(off+i)%n]
+		w := render.RuneCells(r)
+		if cells+w > width {
+			break
+		}
+		b.WriteRune(r)
+		cells += w
 	}
-	return b.String()
+	return render.PadTo(b.String(), width)
 }
 
 // advanceTicker steps the tape one cell; the offset is kept bounded to the

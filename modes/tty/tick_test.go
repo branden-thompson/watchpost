@@ -138,6 +138,8 @@ func TestStatusAgesAndDetailsLabelsMoveWithTheClock(t *testing.T) {
 	loc.Fire.Hotspots = []snapshot.Hotspot{{Lat: 33.2, Lon: -117.4, DetectedAt: time.Now().Add(-3 * time.Hour), Confidence: "high"}}
 	at3h := stripANSITest(d.View().Content)
 	loc.Fire.Hotspots[0].DetectedAt = time.Now().Add(-5 * time.Hour)
+	next := *d.snap // a new snapshot pointer, as a publish delivers (0.13.0: the modal memo keys on the pointer)
+	d.snap = &next
 	if at5h := stripANSITest(d.View().Content); at3h == at5h {
 		t.Fatal("Details carries time-relative labels (a hotspot's age), which is why showDetails is a predicate term")
 	}

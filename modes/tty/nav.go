@@ -20,6 +20,8 @@ func (d Dashboard) handleNav(act term.Action) Dashboard {
 	switch d.modal {
 	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout: // the scrolling windows
 		return d.handleModalNav(act)
+	case modalSevere:
+		return d.handleSevereNav(act) // 0.13.0: tabs and rows, or the record's scroll
 	}
 	switch act {
 	case "nav-up":
@@ -124,10 +126,33 @@ func (d Dashboard) selectedLocation() *snapshot.Location {
 	if d.selected < np {
 		return &d.snap.Locations[d.selected]
 	}
+	if d.lookupRef != nil {
+		// A lookup opened Details on a location the RECENT snapshot does not
+		// carry yet (applyRecent clears the wait the moment it does): an empty
+		// record with its name, never the row that held the index before
+		// (HUM LEAD UAT 2026-08-28).
+		r := *d.lookupRef
+		return &snapshot.Location{Label: r.Label, Tag: r.Tag, Zip: r.Zip, Lat: r.Lat, Lon: r.Lon, TZ: r.TZ}
+	}
 	if i := d.selected - np; i < d.numRecent() {
 		return &d.recent.Locations[i]
 	}
 	return nil
+}
+
+// lookupIndex is the RECENT row of the looked-up location once the rebuilt
+// list carries it (found by identity, wherever it landed — R5-C-02: an empty
+// RECENT at lookup time put the focus past the tables); −1 while it waits.
+func (d Dashboard) lookupIndex() int {
+	if d.lookupRef == nil || d.recent == nil {
+		return -1
+	}
+	for i, l := range d.recent.Locations {
+		if sameLocation(refOf(l), *d.lookupRef) {
+			return i
+		}
+	}
+	return -1
 }
 
 // syncRecentView keeps the focused recent row inside the visible window.

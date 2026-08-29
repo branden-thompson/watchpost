@@ -3,10 +3,11 @@ package synth
 import (
 	"context"
 	"fmt"
-	"github.com/branden-thompson/watchpost/platform/geo"
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/domains/radio/script"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -24,21 +25,36 @@ const leadPause = 2 * time.Second
 // forecastDays is the span a zone forecast covers (seven days).
 const forecastDays = 7
 
+// Composer builds the broadcast's spoken text from the script library
+// (domains/radio/script, 0.13.0): every sentence frame is a script file —
+// weather-radio/ for the cycle's own lead, conditions, alerts and tail,
+// fire-report/ and seismic-report/ for the two reports inside it,
+// voice-preview/ for the chooser's line — and the Go here only computes the
+// words the frames take (counts, distances, durations). Scripts nil = the
+// built-in scripts.
+type Composer struct {
+	Scripts *script.Library
+}
+
+// say renders one phrase for the air (script.Library.Say: Plain'd, silence
+// for a missing or broken part; nil speaks from the built-in tree).
+func (c Composer) say(report, part string, data any) string { return c.Scripts.Say(report, part, data) }
+
 // Compose builds one broadcast cycle the way NWR does (AI-13): the lead
 // (UAT 79 script), current conditions, active alerts, the office's products
 // in broadcast order, then the tail naming the correspondent voice.
 // Temperatures are read in the location's display units; everything is
 // plain sentences for the voice.
-func Compose(loc snapshot.Location, products []Product, now time.Time, imperial bool, voiceName string, station Station, fire FireReport, seismic SeismicReport) []Segment {
+func (c Composer) Compose(loc snapshot.Location, products []Product, now time.Time, imperial bool, voiceName string, station Station, fire FireReport, seismic SeismicReport) []Segment {
 	var segs []Segment
-	notice, span := LeadParts(loc.Label, station, now)
+	notice, span := c.LeadParts(loc.Label, station, now)
 	segs = append(segs, Segment{Key: "lead:" + loc.Label + station.Callsign, Text: notice, Pause: leadPause},
 		Segment{Key: "lead-span:" + now.Format("2006-01-02"), Text: span})
-	if c := conditions(loc, imperial); c != "" {
-		segs = append(segs, Segment{Key: "wx:" + c, Text: c})
+	if cond := c.conditions(loc, imperial); cond != "" {
+		segs = append(segs, Segment{Key: "wx:" + cond, Text: cond})
 	}
 	for _, a := range loc.Alerts {
-		text := fmt.Sprintf("%s. %s", strings.TrimSuffix(NormalizeLine(a.Headline), "."), strings.Join(Normalize(a.Description), " "))
+		text := c.say("weather-radio", "alert", map[string]string{"Headline": strings.TrimSuffix(NormalizeLine(a.Headline), "."), "Description": strings.Join(Normalize(a.Description), " ")})
 		for i, piece := range Segments([]string{ExpandStates(text)}) {
 			segs = append(segs, Segment{Key: fmt.Sprintf("alert:%s:%d", a.ID, i), Text: piece})
 		}
@@ -50,16 +66,16 @@ func Compose(loc snapshot.Location, products []Product, now time.Time, imperial 
 	}
 	// UAT 115: two seconds of air between reports (forecast → fire → …),
 	// one second before the sign-off — never one report running into the next.
-	if fireSegs := FireSegments(loc.Label, fire, imperial, now); len(fireSegs) > 0 { // UAT 114: after the forecast, before the tail; skipped without fire data
+	if fireSegs := c.FireSegments(loc.Label, fire, imperial, now); len(fireSegs) > 0 { // UAT 114: after the forecast, before the tail; skipped without fire data
 		pauseLast(segs, reportPause)
 		segs = append(segs, fireSegs...)
 	}
-	if seismicSegs := SeismicSegments(loc.Label, seismic, imperial, now); len(seismicSegs) > 0 { // P4: after the fire report; skipped without seismic entries
+	if seismicSegs := c.SeismicSegments(loc.Label, seismic, imperial, now); len(seismicSegs) > 0 { // P4: after the fire report; skipped without seismic entries
 		pauseLast(segs, reportPause)
 		segs = append(segs, seismicSegs...)
 	}
 	pauseLast(segs, tailPause)
-	segs = append(segs, Segment{Key: "tail:" + voiceName, Text: Tail(voiceName)})
+	segs = append(segs, Segment{Key: "tail:" + voiceName, Text: c.Tail(voiceName)})
 	return segs
 }
 
@@ -90,17 +106,15 @@ type Station struct {
 // delay/safety notice, the source, and the forecast span from today through
 // the seventh day. Without a known station the live-broadcast sentence is
 // left out rather than pointed at nothing.
-func Lead(location string, station Station, now time.Time) string {
-	notice, span := LeadParts(location, station, now)
+func (c Composer) Lead(location string, station Station, now time.Time) string {
+	notice, span := c.LeadParts(location, station, now)
 	return notice + " " + span
 }
 
 // LeadParts is the lead in its two spoken pieces: the notice (through "life
 // safety use.") and the forecast span — a two-second pause sits between
 // them on air (UAT 112.3).
-func LeadParts(location string, station Station, now time.Time) (notice, span string) {
-	from := now.Format("Monday, January 2")
-	until := now.AddDate(0, 0, forecastDays-1).Format("Monday, January 2")
+func (c Composer) LeadParts(location string, station Station, now time.Time) (notice, span string) {
 	live := ""
 	if station.Callsign != "" {
 		where := station.Site
@@ -110,23 +124,23 @@ func LeadParts(location string, station Station, now time.Time) (notice, span st
 		if station.FreqMHz != "" {
 			where += " broadcasting on " + station.FreqMHz + " MHz"
 		}
-		live = fmt.Sprintf(" A version of this forecast is also broadcast live from %s, %s and is accessible via NOAA radio devices and receivers.", station.Callsign, ExpandStates(where))
+		live = c.say("weather-radio", "live", map[string]string{"Callsign": station.Callsign, "Where": ExpandStates(where)})
 	}
-	notice = fmt.Sprintf("This is Watchpost Weather Radio serving %s.%s Watchpost Weather Radio forecasts may be delayed and are not intended for life safety use.", ExpandStates(location), live)
-	span = fmt.Sprintf("This forecast is from the National Oceanic and Atmospheric Administration and is for %s until %s.", from, until)
+	notice = c.say("weather-radio", "head", map[string]string{"Location": ExpandStates(location), "Live": live})
+	span = c.say("weather-radio", "span", map[string]string{"From": now.Format("Monday, January 2"), "Until": now.AddDate(0, 0, forecastDays-1).Format("Monday, January 2")})
 	return notice, span
 }
 
 // Tail is the broadcast sign-off (UAT 79, HUM LEAD script).
-func Tail(voiceName string) string {
+func (c Composer) Tail(voiceName string) string {
 	if voiceName == "" {
 		voiceName = "your correspondent"
 	}
-	return fmt.Sprintf("This is %s for Watchpost Weather Radio. You can change your correspondent voice in your Watchpost CLI application settings.", voiceName)
+	return c.say("weather-radio", "tail", map[string]string{"Voice": voiceName})
 }
 
 // conditions narrates the current observation, when there is one.
-func conditions(loc snapshot.Location, imperial bool) string {
+func (c Composer) conditions(loc snapshot.Location, imperial bool) string {
 	h := loc.Harmonized
 	if h.Source.Provider == "" {
 		return ""
@@ -151,7 +165,7 @@ func conditions(loc snapshot.Location, imperial bool) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return "Current conditions: " + strings.Join(parts, ", ") + "."
+	return c.say("weather-radio", "conditions", map[string]string{"Items": strings.Join(parts, ", ")})
 }
 
 func degrees(c float64, imperial bool) string {
@@ -170,14 +184,14 @@ func compass(deg *float64) string {
 }
 
 // Sample is the voice chooser's preview line (UAT 86).
-func Sample(voiceName string) string {
-	return fmt.Sprintf("This is %s for Watchpost Weather Radio.", voiceName)
+func (c Composer) Sample(voiceName string) string {
+	return c.say("voice-preview", "sample", map[string]string{"Voice": voiceName})
 }
 
 // SamplePCM renders the preview line in a voice as 16-bit LE stereo PCM at
 // the voice's rate.
-func SamplePCM(ctx context.Context, v Voice) ([]byte, error) {
-	mono, err := v.Say(ctx, Pronounce(Sample(v.Name())))
+func (c Composer) SamplePCM(ctx context.Context, v Voice) ([]byte, error) {
+	mono, err := v.Say(ctx, Pronounce(c.Sample(v.Name())))
 	if err != nil {
 		return nil, err
 	}

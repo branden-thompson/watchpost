@@ -1,0 +1,30 @@
+                                                                                                  
+                                                                                                  
+   ┏━━ W A T C H P O S T  vtest ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  awaiting first data... ━━┓  
+   ┃   [s] Setup  [a] About  [t] Theme  [S] Status  [?] Help  [q] Quit    API: ✔0 ⚠0 ✘0 /  0   ┃  
+   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  
+   ┌── SEVERE WEATHER / DISASTER EVENTS ──────────────────── Updated 08/28/2026 15:38:05 UTC ──┐  
+   │                                                                                           │  
+   │    [›Warnings] [Watches] [Advisories] [Spec. Statements] [Sig. Quakes] [Tropical]         │  
+   │                                                                                           │  
+   │    Warnings — 9 active                                                                    │  
+   │  [                E V E N T                ][        LOCATION        ][   DECLARED    ]   │  
+   │  ›    001. Extreme Heat Warning               Wicomico, MD              08/28 11:20 EDT   │  
+   │       002. Tornado Warning                    Olathe, KS                08/28 11:20 EDT   │  
+   │       003. Flash Flood Warning                Palomar Mountain, CA      08/28 11:20 EDT   │  
+   │       004. Severe Thunderstorm Warning        San Diego, CA             08/28 11:20 EDT   │  
+   │       005. Gale Warning                       Cape Cod Bay, MA          08/28 11:20 EDT   │  
+   │       006. Red Flag Warning                   Kern County Mtns, CA      08/28 11:20 EDT   │  
+   │       007. Flood Warning                      Wakefield, VA             08/28 11:20 EDT   │  
+   │       008. Special Marine Warning             Chesapeake Bay, MD        08/28 11:20 EDT   │  
+   │       009. High Wind Warning                  Laramie, WY               08/28 11:20 EDT   │  
+   │                                                                 9 Total Category Events   │  
+   │                                                                                           │  
+   │    [↑↓] Navigate  [←→] Category  [enter] Event Details  [space] Read  [esc] Close         │  
+   └───────────────────────────────────────────────────────────────────────────────────────────┘  
+   [                                                                                           ]  
+   [                             R E C E N T   /   S E A R C H E D                             ]  
+   [                                                                                           ] ▲
+                                                                                                  
+                        NO RECENT LOCATION SEARCHED or DATA-SEEDING FAILED                        
+                                                                                                 ▼

@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -18,11 +19,11 @@ func TestAlertPagingKeys(t *testing.T) {
 	s2.Locations[0].Alerts = append(s2.Locations[0].Alerts,
 		snapshot.Alert{Event: "Flash Flood Warning", Severity: "severe", Headline: "second"})
 	m, _ = m.Update(SnapshotMsg{Snap: s2})
-	if v := m.View().Content; !strings.Contains(v, "01 / 02 Alerts") {
+	if v := m.View().Content; !strings.Contains(v, "01/02  ") {
 		t.Fatalf("pager: %s", v)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
-	if v := m.View().Content; !strings.Contains(v, "02 / 02 Alerts") || !strings.Contains(v, "FLASH FLOOD WARNING") {
+	if v := m.View().Content; !strings.Contains(v, "02/02  ") || !strings.Contains(v, "FLASH FLOOD WARNING") {
 		t.Fatalf("right must page to alert 2:\n%s", v)
 	}
 }
@@ -47,30 +48,28 @@ func TestAlertAreaHeightIsFixed(t *testing.T) {
 func TestAlertTitleNamesTheLocation(t *testing.T) {
 	// UAT 5.3: the module's inner text matches the focused location.
 	v := dash(t).View().Content
-	if !strings.Contains(v, "EXTREME HEAT WATCH · Oceanside, CA") {
+	if !strings.Contains(v, "EXTREME HEAT WATCH - Oceanside, CA") {
 		t.Fatalf("alert title must carry the focused location:\n%s", v)
 	}
 }
 
-func TestAlertBodyWrapsInFixedThreeLineArea(t *testing.T) {
-	// UAT 15.2/15.2a: long alert bodies wrap (never truncate with …) inside
-	// a constant 3-line body area, so the module height never bounces.
+func TestAlertBodyLivesBehindDetails(t *testing.T) {
+	// UAT 15.2/15.2a → facelift 2026-08-28: the module is one row; the
+	// headline lives behind [A] ("dive in for details"), so a long body
+	// neither wraps nor bounces the module height on the dashboard.
 	m := dash(t)
 	long := snap()
 	long.Locations[0].Alerts = []snapshot.Alert{{Event: "Extreme Heat Watch", Severity: "severe",
 		Headline: "dangerously hot conditions with temperatures up to 112 expected across the inland valleys through Friday evening"}}
 	m2, _ := m.Update(SnapshotMsg{Snap: long})
-	m2, _ = m2.Update(tea.WindowSizeMsg{Width: 100, Height: 60}) // narrow: forces the wrap
+	m2, _ = m2.Update(tea.WindowSizeMsg{Width: 100, Height: 60})
 	v := m2.View().Content
-	if strings.Contains(v, "…") {
-		t.Fatalf("alert body must wrap, not truncate:\n%s", v)
-	}
-	if !strings.Contains(v, "inland valleys") {
-		t.Fatalf("wrapped continuation must render:\n%s", v)
+	if strings.Contains(v, "inland valleys") {
+		t.Fatalf("the body lives behind [A], not on the dashboard:\n%s", v)
 	}
 	short, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 60})
 	if a, b := strings.Count(short.View().Content, "\n"), strings.Count(v, "\n"); a != b {
-		t.Fatalf("module height must not bounce between short (%d) and wrapped (%d) bodies", a, b)
+		t.Fatalf("module height must not bounce between short (%d) and long (%d) bodies", a, b)
 	}
 }
 
@@ -106,7 +105,7 @@ func TestPagingChipsMuteWhenInert(t *testing.T) {
 	// always live, ← / → mute when their press would do nothing.
 	headerMuted := func(v string) int {
 		for _, l := range strings.Split(v, "\n") {
-			if s := stripANSITest(l); strings.Contains(s, "Alerts") && strings.Contains(s, "Previous") {
+			if s := stripANSITest(l); strings.Contains(s, "Details") && strings.Contains(s, "Previous") {
 				return strings.Count(l, muted)
 			}
 		}
@@ -246,15 +245,18 @@ func TestModalAlertTonesAndBoldTitles(t *testing.T) {
 	m2, _ = m2.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	v := m2.View().Content
 	// The compositor may reorder params (bold before or after the color).
-	warnTitle := regexp.MustCompile(`\x1b\[(1;)?38;2;190;84;84(;1)?m⚠ FLASH FLOOD WARNING`)
-	advTitle := regexp.MustCompile(`\x1b\[(1;)?38;2;172;174;125(;1)?m⚠ HEAT ADVISORY`)
-	if !warnTitle.MatchString(v) {
-		t.Fatalf("warning title must be bold #BE5454:\n%s", v)
+	// The tones are the theme's, lifted to AA on their tints at registration
+	// (round 4, B-05): the warning red reads brighter than #BE5454 by default.
+	warnFG, advFG := render.Tok(render.AlertModalWarnFG), render.Tok(render.AlertModalAdvFG)
+	warnTitle := regexp.MustCompile(`\x1b\[(1;)?` + regexp.QuoteMeta(warnFG) + `(;1)?m⚠ FLASH FLOOD WARNING`)
+	advTitle := regexp.MustCompile(`\x1b\[(1;)?` + regexp.QuoteMeta(advFG) + `(;1)?m⚠ HEAT ADVISORY`)
+	if !warnTitle.MatchString(v) || warnFG == "38;2;190;84;84" {
+		t.Fatalf("warning title must be bold in the lifted warning tone (%q):\n%s", warnFG, v)
 	}
 	if !advTitle.MatchString(v) {
-		t.Fatalf("advisory title must be bold #ACAE7D:\n%s", v)
+		t.Fatalf("advisory title must be bold in the advisory tone (%q):\n%s", advFG, v)
 	}
-	if !strings.Contains(v, "\x1b[38;2;172;174;125m  Advisory prose.") {
+	if !strings.Contains(v, "\x1b["+advFG+"m  Advisory prose.") {
 		t.Fatalf("advisory body must carry the advisory tone:\n%s", v)
 	}
 }

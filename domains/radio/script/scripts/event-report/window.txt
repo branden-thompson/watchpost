@@ -1,0 +1,2 @@
+{{/* event-report/window: how long the event is in effect. Data: .Window (45 minutes; 1 hour 30 minutes). */}}
+In effect for about {{.Window}}.

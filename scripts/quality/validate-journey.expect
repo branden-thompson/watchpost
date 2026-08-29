@@ -1,0 +1,68 @@
+#!/usr/bin/expect -f
+# validate-journey.expect — the 0.13.0 VALIDATE core journey (STANDARD tier: P0 + P1) on the real
+# binary, real feeds, a fresh HOME (a first run): Setup → dashboard → the severe window (tabs, a
+# record, esc/esc) → Lookup → Details → [A] → Theme (Watchpost Light) → Status → Help → quit.
+# Every step logs PASS/FAIL; the exit code is the count of FAILs.
+#   HOME=<fresh dir> scripts/quality/validate-journey.expect <journey.log>
+set timeout 10
+match_max 200000
+lassign $argv logfile
+log_user 0
+set lf [open $logfile a]
+set fails 0
+proc step {name ok} { global lf fails expect_out; puts $lf "[clock format [clock seconds] -format %Y-%m-%dT%H:%M:%SZ -gmt 1] [expr {$ok ? "PASS" : "FAIL"}] $name"; if {!$ok} { incr fails; catch { set b $expect_out(buffer); regsub -all {\x1b\[[0-9;?]*[A-Za-z]} $b "" b; puts $lf "  screen: [string range $b end-900 end]" } }; flush $lf }
+proc repaint {} { global spawn_out; catch {exec stty cols 132 < $spawn_out(slave,name)}; sleep 0.3; catch {exec stty cols 133 < $spawn_out(slave,name)}; sleep 0.5 }
+spawn ./dist/watchpost
+catch {exec stty rows 44 cols 133 < $spawn_out(slave,name)}
+expect -timeout 30 -re "Setup|Quit|Q u i t" { step "P0 the masthead's controls on a first run" 1 } timeout { step "P0 the masthead's controls on a first run" 0 }
+# Setup opens by itself on a first run: a location, the key (empty), the preference.
+expect -timeout 15 -re "default location|NASA FIRMS" { step "P0 Setup opens on the first run" 1 } timeout { step "P0 Setup opens on the first run" 0 }
+sleep 1
+send "Oceanside"; sleep 2
+send "\r"; sleep 1
+send "\r"; sleep 1
+send "\r"; sleep 2
+repaint
+expect -timeout 10 -re "Lookup Location" { step "P0 Setup saved and closed" 1 } timeout { step "P0 Setup saved and closed" 0 }
+expect -timeout 180 -re "\\d+ºF" { step "P0 first data (a temperature) for the default location" 1 } timeout { step "P0 first data (a temperature) for the default location" 0 }
+repaint
+expect -timeout 10 "Oceanside" { step "P0 the watchlist names the location" 1 } timeout { step "P0 the watchlist names the location" 0 }
+send "w"; repaint
+expect -timeout 15 "SEVERE" { step "P0 w opens the severe window" 1 } timeout { step "P0 w opens the severe window" 0 }
+expect -timeout 10 -re "Warnings|Watches" { step "P0 the tab row" 1 } timeout { step "P0 the tab row" 0 }
+send "\x1b\[C"; repaint
+expect -timeout 10 -re "Watches" { step "P1 right moves to Watches" 1 } timeout { step "P1 right moves to Watches" 0 }
+send "\x1b\[C"; send "\x1b\[C"; send "\x1b\[C"; repaint
+expect -timeout 10 -re "Sig. Quakes|Quakes" { step "P1 the Sig. Quakes tab" 1 } timeout { step "P1 the Sig. Quakes tab" 0 }
+send "\r"; repaint
+expect -timeout 10 -re "Back|Recorded|Declared|Magnitude|No active" { step "P1 enter opens a record (or the tab is empty)" 1 } timeout { step "P1 enter opens a record (or the tab is empty)" 0 }
+send "\x1b"; sleep 1; send "\x1b\[D"; send "\x1b\[D"; send "\x1b\[D"; send "\x1b\[D"; repaint
+send " "; repaint
+expect -timeout 20 -re "EVENT · |PLAYING|Reading" { step "P1 space reads the focused event over the radio (the panel shows EVENT ·)" 1 } timeout { step "P1 space reads the focused event over the radio (the panel shows EVENT ·)" 0 }
+send "\x1b"; sleep 1; send "\x1b"; repaint
+expect -timeout 10 "R E C E N T" { step "P0 esc esc closes the window" 1 } timeout { step "P0 esc esc closes the window" 0 }
+send "l"; sleep 1
+expect -timeout 10 "Search:" { step "P0 l opens Lookup" 1 } timeout { step "P0 l opens Lookup" 0 }
+send "Vista, CA"; sleep 2; send "\r"; repaint
+expect -timeout 20 "Vista" { step "P0 Lookup opens Details on Vista from the first frame" 1 } timeout { step "P0 Lookup opens Details on Vista from the first frame" 0 }
+expect -timeout 120 -re "Hourly|HOURLY|Extended|EXTENDED|Marine|FIRE" { step "P1 Details fills with data" 1 } timeout { step "P1 Details fills with data" 0 }
+send "\x1b"; sleep 1; repaint
+send "A"; repaint
+expect -timeout 10 -re "ALERT|ALERTS|No active alerts" { step "P1 A opens the alert modal" 1 } timeout { step "P1 A opens the alert modal" 0 }
+send "\x1b"; sleep 1
+send "t"; repaint
+expect -timeout 10 "Color Theme" { step "P1 t opens the theme chooser" 1 } timeout { step "P1 t opens the theme chooser" 0 }
+send "\x1b\[B"; sleep 0.5; send "\r"; sleep 0.5; send "\x1b"; repaint
+expect -timeout 10 -re "Setup|Theme" { step "P1 Watchpost Light applies live (the frame re-renders)" 1 } timeout { step "P1 Watchpost Light applies live (the frame re-renders)" 0 }
+
+send "S"; repaint
+expect -timeout 10 -re "API Status|PROVIDERS|DUMPS|REQUESTS" { step "P1 S opens Status" 1 } timeout { step "P1 S opens Status" 0 }
+expect -timeout 10 -re "severe index|rows / 500" { step "P1 Status gauges the severe index" 1 } timeout { step "P1 Status gauges the severe index" 0 }
+
+send "\x1b"; sleep 1; send "?"; repaint
+expect -timeout 10 -re "NAVIGATE" { step "P1 ? opens Help" 1 } timeout { step "P1 ? opens Help" 0 }
+send "\x1b"; sleep 1; send "t"; repaint; send "\x1b\[A"; sleep 0.5; send "\r"; sleep 1
+send "\x1b"; sleep 0.5; send "\x1b"; sleep 0.5; send "q"
+expect -timeout 20 eof { step "P0 q quits cleanly" 1 } timeout { step "P0 q quits cleanly" 0 }
+puts $lf "fails=$fails"; close $lf
+exit $fails

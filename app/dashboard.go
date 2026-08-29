@@ -23,6 +23,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
 	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
+	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -116,17 +117,30 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	firstFullNanos := &atomic.Int64{} // written by concurrent tier publishes (race-fixed)
 	// The favourites ride the client's priority lane (UAT 64): their
 	// requests never queue behind the seed pipeline's launch burst.
+	lp.severe = newSevereDeck(p.Send) // 0.13.0: the window's index — fed by the ticker cycle and by both publishers' hooks (the snapshot each is about to send)
+	lp.mu.Lock()
 	lp.priority = startPriority(httpx.WithPriority(ctx), p, lp.providers(), refs, func(snap *snapshot.Snapshot) {
 		// M1: CAS records only the first fully-populated publish.
 		if fullyPopulated(snap) {
 			firstFullNanos.CompareAndSwap(0, int64(time.Since(start)))
 		}
+		lp.severe.SetLocations(0, snap)
 	})
 	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
-	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap)) // the tty owns the caps (Q6, L3-F11)
-	lp.markFIRMS()                                                                                                                                        // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
-	lp.setWatch(refs)                                                                                                                                     // seed the live watchlist the ticker ties events to
-	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, tickerMuted, tickerRadius, lp.tickerAlert())                                            // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit)
+	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
+	lp.mu.Unlock()
+	lp.markFIRMS()                        // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
+	lp.setWatch(refs)                     // seed the live watchlist the ticker ties events to
+	lp.narrator = lp.buildNarrator()      // 0.13.0: one owner of the voice — the ticker's takeovers and the window's event reads
+	lp.scripts = script.New(scriptsDir()) // the spoken lines, by file name; the user's config dir may override them
+	if lp.deck != nil {
+		lp.deck.composer = synth.Composer{Scripts: lp.scripts} // the broadcast, the fire and seismic reports and the voice preview speak from the same tree
+	}
+	lp.reader = newEventReader(ctx, lp.narrator, lp.scripts, lp.severe.Row, p.Send) // a read ends with the app (A-08)
+	if lp.deck != nil {
+		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
+	}
+	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, tickerMuted, tickerRadius, lp.narrator, lp.scripts, lp.severe) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
 	lp.wireDeckWarnings()
 	return firstFullNanos
 }
@@ -140,6 +154,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		Stats:          lp.ttyStats, // [S] REQUESTS / DUMPS rows (quality pass Q0)
 		TickerMuted:    cfg.TickerMuted,
 		MuteTicker:     muteTicker,
+		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
 		AlertRadiusMi:  cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference
 		SetAlertRadius: setRadius,
 		Resolve:        resolveHook(resolver, resolverErr),
@@ -182,11 +197,24 @@ func (lp *livePipelines) setWatch(refs []snapshot.LocationRef) {
 
 // tickerAlert is the ticker's breaking-news audio — the radio deck, or nil when
 // there is no audio (a nil deck: tests, no device).
-func (lp *livePipelines) tickerAlert() tickerAudio {
-	if lp.deck == nil {
-		return nil // typed-nil deck must become a nil interface, not a non-nil one
+// scriptsDir is where the user's script overrides live: <config dir>/scripts
+// — the same directory as config.toml, a scripts/ folder beside it. "" when
+// the config dir cannot resolve (built-in scripts only).
+func scriptsDir() string {
+	path, err := config.Path()
+	if err != nil {
+		return ""
 	}
-	return lp.deck
+	return filepath.Join(filepath.Dir(path), "scripts")
+}
+
+// buildNarrator builds the voice arbiter over the radio deck (a silent one
+// without audio: the typed-nil deck must become a nil interface).
+func (lp *livePipelines) buildNarrator() *narrator {
+	if lp.deck == nil {
+		return newNarrator(nil)
+	}
+	return newNarrator(lp.deck)
 }
 
 // wireDeckWarnings lets the radio deck report a down relay directory as a
@@ -314,7 +342,11 @@ type livePipelines struct {
 	rules    fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
 	priority *pipeline
 	recent   *recentPipeline
-	ticker   *tickerDeck // 0.12.0: waited at shutdown so its cache writes settle before teardown
+	ticker   *tickerDeck     // 0.12.0: waited at shutdown so its cache writes settle before teardown
+	severe   *severeDeck     // 0.13.0: the severe-events index the window lists
+	narrator *narrator       // 0.13.0: the voice arbiter (narrate.go)
+	scripts  *script.Library // 0.13.0: the spoken lines (domains/radio/script)
+	reader   *eventReader    // 0.13.0: [space] in the window
 
 	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit (0.12.0 follow-up)
 
@@ -417,6 +449,9 @@ func (lp *livePipelines) stopAll() {
 	if ticker != nil {
 		ticker.stop()
 	}
+	if lp.reader != nil {
+		lp.reader.End() // a [space] read in progress ends with the app, its goroutine waited for (A-08)
+	}
 }
 
 func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
@@ -451,3 +486,17 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 
 // hydrate is the dashboard's Hydrate hook.
 func (lp *livePipelines) hydrate(ref snapshot.LocationRef) { lp.recent.hydrateHourly(ref) }
+
+// narrateEvent is the window's [space] hook. The deck is attached AFTER the
+// dashboard is built (attachRadio needs the model), so the hook decides at
+// the press, not at wiring: with no deck to speak through the press is inert
+// — no ▶ mark, no busy reader for a silent record (R5-B-04; VALIDATE
+// 2026-08-29 found the wiring-time check had muted the chip for everyone).
+func (lp *livePipelines) narrateEvent() func(string) {
+	return func(key string) {
+		if lp.deck == nil {
+			return
+		}
+		lp.reader.Read(key)
+	}
+}

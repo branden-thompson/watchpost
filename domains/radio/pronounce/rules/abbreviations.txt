@@ -1,0 +1,37 @@
+# abbreviations — the contractions NWS products use, read in full (the
+# directives' list; seeded, grows as products show them). Applied by the
+# product normaliser (screen and voice). KEY<TAB>spoken form; case matters.
+MPH	miles per hour
+mph	miles per hour
+KT	knots
+kt	knots
+KTS	knots
+kts	knots
+FT	feet
+ft	feet
+NM	nautical miles
+nm	nautical miles
+NWS	National Weather Service
+NE	northeast
+NW	northwest
+SE	southeast
+SW	southwest
+SSW	south southwest
+SSE	south southeast
+NNW	north northwest
+NNE	north northeast
+WSW	west southwest
+WNW	west northwest
+ESE	east southeast
+ENE	east northeast
+TSTMS	thunderstorms
+TSTM	thunderstorm
+PCPN	precipitation
+TEMPS	temperatures
+HWY	highway
+MTNS	mountains
+VLYS	valleys
+SFC	surface
+PRES	pressure
+VSBY	visibility
+WX	weather

@@ -66,26 +66,19 @@ func TestThousandsControlsAndWrapSegmentsRows(t *testing.T) {
 	}
 }
 
-// HUM LEAD UAT nit 2026-08-27: the middle text sits on the row's global
-// centre whatever the side blocks measure; it shifts only to clear them.
-func TestCentreBetweenUsesTheGlobalCentre(t *testing.T) {
-	row := CentreBetween("ab", "MID", "rightblock", 40)
-	if Width(row) != 40 || !strings.HasPrefix(row, "ab") || !strings.HasSuffix(row, "rightblock") {
-		t.Fatalf("row: %q", row)
+// Bidi overrides and zero-width runes never reach the frame (REVIEW
+// R5-C-14), and TruncateCells cuts by display cells (R5-C-10).
+func TestPlainDropsBidiAndZeroWidthAndTruncateCellsCountsCells(t *testing.T) {
+	if got := Plain("a\u202Eb\u200Bc\u2066d\uFEFFe"); got != "abcde" {
+		t.Fatalf("plain: %q", got)
 	}
-	if i := strings.Index(row, "MID"); i != (40-3)/2 { // "MID" straddles the row's centre, whatever the side blocks measure
-		t.Fatalf("global centre: MID starts at %d in %q", i, row)
+	if got := Plain("e\u0301\u0301\u0301\u0301x"); got != "e\u0301\u0301x" { // a combining run is capped at two (R5-C-14)
+		t.Fatalf("plain: %q", got)
 	}
-	// A wide left block pushes it right the least it must.
-	row = CentreBetween(strings.Repeat("L", 18), "MID", "r", 40)
-	if i := strings.Index(row, "MID"); i != 20 {
-		t.Fatalf("clamped clear of the left block: %d in %q", i, row)
+	if got := TruncateCells("日本語テキスト", 5); got != "日本" {
+		t.Fatalf("two wide runes fit five cells: %q", got)
 	}
-	// No room: ellipsis, then nothing.
-	if row := CentreBetween("LLLLLLLLLL", "a long middle text", "RRRRRRRRRR", 30); !strings.Contains(row, "…") || Width(row) != 30 {
-		t.Fatalf("ellipsis: %q", row)
-	}
-	if row := CentreBetween("LLLLLLLLLLLLL", "middle", "RRRRRRRRRRRRR", 30); strings.Contains(row, "middle") || Width(row) != 30 {
-		t.Fatalf("dropped: %q", row)
+	if got := TruncateCells("abc", 10); got != "abc" {
+		t.Fatalf("short stays: %q", got)
 	}
 }

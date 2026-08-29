@@ -1,0 +1,2 @@
+{{/* weather-radio/head: the broadcast opening. Data: .Location (spoken place), .Live (the live-broadcast sentence, or empty). */}}
+This is Watchpost Weather Radio serving {{.Location}}.{{if .Live}} {{.Live}}{{end}} Watchpost Weather Radio forecasts may be delayed and are not intended for life safety use.

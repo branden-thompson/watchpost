@@ -1,8 +1,6 @@
 package render
 
 import (
-	"math"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -13,7 +11,7 @@ func TestThemeTokensAllResolve(t *testing.T) {
 	for _, tk := range []Token{TextBase, TextBright, TempHi, TempLo, TrendUp, TrendDown,
 		FocusName, FocusCell, FocusPointer, NameAdvisory, NameWarning, ProviderOK, ProviderDown, KeyChip, KeyChipMuted, ChipFlashUp, ChipFlashDown, GroupText,
 		GroupLocationBG, GroupTodayBG, GroupTomorrowBG, GroupExtendedBG, GroupSectionBG,
-		AlertWarnFG, AlertWarnBG, AlertAdvFG, AlertAdvBG, AlertLabel, AlertDanger,
+		AlertLabel, AlertDanger,
 		RadioFG, RadioBG, RadioAccent, StateStopped, StatePlaying, RadioStation, RepeatOn, VizOn,
 		ConfirmBG, AlertModalText, AlertModalWarnFG, AlertModalAdvFG, AlertModalWarnBG, AlertModalAdvBG, ModalFG, ModalBGDark, ModalBGLight, WindowBGDark, WindowBGLight,
 		GradStart, GradMid, GradEnd} {
@@ -114,7 +112,7 @@ func TestGlyphsSwapAsOneSetUnderASCII(t *testing.T) {
 	if u.Play != "▶" || u.Repeat != "∞" || u.Fire != "◆" || u.Alert != "⚠" || u.Pointer != "›" {
 		t.Fatalf("unicode set: %+v", u)
 	}
-	if a.Play != ">" || a.Repeat != "R" || a.Fire != "*" || a.Alert != "!" || a.Pointer != ">" {
+	if a.Play != "*" || a.Repeat != "R" || a.Fire != "*" || a.Alert != "!" || a.Pointer != ">" {
 		t.Fatalf("ascii set: %+v", a)
 	}
 	row := LocationRow{Index: 1, Name: "X", Playing: true, Repeat: true, Fire: 2, HasAlert: true, AlertCount: 1, Selected: true}
@@ -131,68 +129,6 @@ func TestGlyphsSwapAsOneSetUnderASCII(t *testing.T) {
 	}
 }
 
-// xterm256RGB is the standard 256-colour palette: 16 basics, a 6×6×6 cube
-// (levels 0, 95, 135, 175, 215, 255), 24 greys (8 + 10·i).
-func xterm256RGB(i int) (r, g, b int) {
-	basics := [16][3]int{{0, 0, 0}, {128, 0, 0}, {0, 128, 0}, {128, 128, 0}, {0, 0, 128}, {128, 0, 128}, {0, 128, 128}, {192, 192, 192},
-		{128, 128, 128}, {255, 0, 0}, {0, 255, 0}, {255, 255, 0}, {0, 0, 255}, {255, 0, 255}, {0, 255, 255}, {255, 255, 255}}
-	switch {
-	case i < 16:
-		return basics[i][0], basics[i][1], basics[i][2]
-	case i < 232:
-		levels := [6]int{0, 95, 135, 175, 215, 255}
-		i -= 16
-		return levels[i/36], levels[(i/6)%6], levels[i%6]
-	default:
-		v := 8 + 10*(i-232)
-		return v, v, v
-	}
-}
-
-// luminance is WCAG relative luminance.
-func luminance(r, g, b int) float64 {
-	lin := func(c int) float64 {
-		v := float64(c) / 255
-		if v <= 0.03928 {
-			return v / 12.92
-		}
-		return math.Pow((v+0.055)/1.055, 2.4)
-	}
-	return 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b)
-}
-
-// fgLuminance reads a theme value: a bare 256 index, "1;n", "38;5;n" or
-// "38;2;r;g;b" (bold ignored; anything else is not a foreground value).
-func fgLuminance(v string) (float64, bool) {
-	parts := strings.Split(strings.TrimPrefix(v, "1;"), ";")
-	switch {
-	case len(parts) == 1:
-		n, err := strconv.Atoi(parts[0])
-		if err != nil || n > 255 {
-			return 0, false
-		}
-		if n >= 90 && n <= 97 { // bright basics
-			return luminance(xterm256RGB(n - 90 + 8)), true
-		}
-		if n >= 30 && n <= 37 {
-			return luminance(xterm256RGB(n - 30)), true
-		}
-		return luminance(xterm256RGB(n)), true
-	case len(parts) == 3 && parts[0] == "38" && parts[1] == "5":
-		n, err := strconv.Atoi(parts[2])
-		if err != nil || n > 255 {
-			return 0, false
-		}
-		return luminance(xterm256RGB(n)), true
-	case len(parts) == 5 && parts[0] == "38" && parts[1] == "2":
-		r, _ := strconv.Atoi(parts[2])
-		g, _ := strconv.Atoi(parts[3])
-		b, _ := strconv.Atoi(parts[4])
-		return luminance(r, g, b), true
-	}
-	return 0, false
-}
-
 // Quality pass Q4a-004 (A11-2): the table tokens every theme now owns must
 // read at WCAG AA (≥ 4.5:1) against the theme's own window background;
 // the text tokens ride the same check.
@@ -204,7 +140,7 @@ func TestThemeTokenContrastAA(t *testing.T) {
 		}
 		r, g, b := hexRGB(WindowBGDark)
 		bg := luminance(r, g, b)
-		for _, tok := range []Token{TableHeader, TableMuted, TableName, TextBase, TextBright, ModalTitle} {
+		for _, tok := range []Token{TableMuted, TableName, TextBase, TextBright, ModalTitle} {
 			fg, ok := fgLuminance(Tok(tok))
 			if !ok {
 				t.Fatalf("%s %s: %q is not a foreground value", name, tok, Tok(tok))
@@ -212,6 +148,81 @@ func TestThemeTokenContrastAA(t *testing.T) {
 			hi, lo := max(fg, bg), min(fg, bg)
 			if ratio := (hi + 0.05) / (lo + 0.05); ratio < 4.5 {
 				t.Errorf("%s: %s = %q reads %.2f:1 on %s — below AA (4.5:1)", name, tok, Tok(tok), ratio, Tok(WindowBGDark))
+			}
+		}
+	}
+}
+
+// The category tints are theme-INDEPENDENT (SAM-D-7): every theme except
+// Monochrome resolves them to the default. The planted override is the
+// positive control — a guard that passes on an empty set proves nothing.
+func TestEventCategoryTokensAreThemeIndependent(t *testing.T) {
+	t.Cleanup(func() { SetTheme(DefaultThemeName) })
+	def := defaultTheme()
+	for _, name := range ThemeNames() {
+		if name == "Monochrome" || name == LightThemeName { // greys, and the pale tints of the one light theme (HUM LEAD 2026-08-29)
+			continue
+		}
+		if !SetTheme(name) {
+			t.Fatal(name)
+		}
+		for _, tok := range []Token{EventCatRedBG, EventCatOrangeBG, EventCatYellowBG, EventCatWatchBG, EventCatStmtBG, EventCatBlueBG} {
+			if Tok(tok) != def[tok] {
+				t.Errorf("%s overrides %s: %q (must inherit %q)", name, tok, Tok(tok), def[tok])
+			}
+		}
+	}
+	// Positive control: a registered theme that DOES override must be caught.
+	RegisterTheme("planted-control", map[Token]string{EventCatRedBG: "48;2;1;2;3"})
+	t.Cleanup(func() { UnregisterTheme("planted-control") })
+	SetTheme("planted-control")
+	if Tok(EventCatRedBG) == def[EventCatRedBG] {
+		t.Fatal("the control override was not applied — the guard is vacuous")
+	}
+	UnregisterTheme("planted-control")
+	if ThemeName() != DefaultThemeName {
+		t.Fatal("unregistering the active theme must restore the default")
+	}
+}
+
+// Every token the window paints — the substrate's text and the table's own
+// (SevereTableTokens, R3-B-03) — on every category tint, on both modal
+// substrates, in every theme, at AA.
+func TestCategoryToneContrastAA(t *testing.T) {
+	t.Cleanup(func() { SetTheme(DefaultThemeName) })
+	for _, name := range ThemeNames() {
+		SetTheme(name)
+		for _, dark := range []bool{true, false} {
+			for _, hue := range []Token{EventCatRedBG, EventCatOrangeBG, EventCatYellowBG, EventCatWatchBG, EventCatStmtBG, EventCatBlueBG} {
+				fg, bg := CategoryTone(hue, dark)
+				bl, ok := bgLuminance(bg)
+				if !ok {
+					t.Fatalf("%s %s dark=%v: unreadable tone %q", name, hue, dark, bg)
+				}
+				fgs := map[string]string{"substrate": fg}
+				for _, tok := range SevereTableTokens() {
+					fgs[string(tok)] = Tok(tok)
+				}
+				for label, v := range fgs {
+					fl, ok := fgLuminance(v)
+					if !ok {
+						t.Fatalf("%s %s dark=%v: unreadable fg %s=%q", name, hue, dark, label, v)
+					}
+					hi, lo := max(fl, bl), min(fl, bl)
+					if ratio := (hi + 0.05) / (lo + 0.05); ratio < 4.5 {
+						t.Errorf("%s %s dark=%v %s: %.2f:1 below AA", name, hue, dark, label, ratio)
+					}
+				}
+				// The column-header band: bold white on the lifted tint of the hue.
+				hl, ok1 := bgLuminance(SevereHeaderTone(hue))
+				gl, ok2 := fgLuminance(severeHeaderFG(SevereHeaderTone(hue)))
+				if !ok1 || !ok2 {
+					t.Fatalf("%s %s: unreadable header tone", name, hue)
+				}
+				hi, lo := max(gl, hl), min(gl, hl)
+				if ratio := (hi + 0.05) / (lo + 0.05); ratio < 4.5 {
+					t.Errorf("%s %s header band: %.2f:1 below AA", name, hue, ratio)
+				}
 			}
 		}
 	}

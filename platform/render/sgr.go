@@ -5,6 +5,7 @@ package render
 import (
 	"fmt"
 	"image/color"
+	"strconv"
 	"strings"
 
 	lipgloss "charm.land/lipgloss/v2"
@@ -98,6 +99,26 @@ func Tint(text, code string) string {
 	return rendering.WrapSGR(text, code)
 }
 
+// FgSGR reads a FOREGROUND token value as SGR parameters: a bare 256 index
+// ("250") becomes "38;5;250", a bare basic code (30–37, 90–97) stays, and a
+// full "38;2;…" / "38;5;…" value is returned as it is. The one place a
+// foreground token becomes an escape outside Tint (the frame's base tone:
+// a truecolor TextBase once produced "38;5;38;2;40;40;40" — index 38, faint,
+// black BACKGROUND — the Watchpost Light screenshot, 2026-08-29).
+func FgSGR(code string) string {
+	if code == "" || strings.ContainsAny(code, ";#") {
+		return code
+	}
+	n, err := strconv.Atoi(code)
+	if err != nil {
+		return code
+	}
+	if (n >= 30 && n <= 37) || (n >= 90 && n <= 97) {
+		return code
+	}
+	return "38;5;" + code
+}
+
 // KeyCapIf renders a key chip in its enabled or muted state (UAT 21.1):
 // a control that cannot act in the current model state reads at ~50%
 // opacity. THE chip entry point for stateful controls - views pass their
@@ -107,8 +128,14 @@ func (o Opts) KeyCapIf(key string, enabled bool) string {
 	if enabled {
 		return o.KeyCap(key)
 	}
-	if o.ASCII || !colorOn() {
+	if o.ASCII {
+		key = asciiKey(key)
+	}
+	if !colorOn() {
 		return "[" + key + "]" // color-off keeps the textual affordance (RS-14)
+	}
+	if o.ASCII {
+		return sgrRaw("["+key+"]", Tok(KeyChipMuted)) // --ascii with colour on: the muted tone on the bracket form (R5-C-13)
 	}
 	return sgrRaw(" "+key+" ", Tok(KeyChipMuted))
 }
@@ -117,6 +144,9 @@ func (o Opts) KeyCapIf(key string, enabled bool) string {
 // feedback states such as the volume blink (UAT 41). Color-off keeps [key].
 func (o Opts) KeyCapWith(key string, tone Token) string {
 	if o.ASCII || !colorOn() {
+		if o.ASCII {
+			key = asciiKey(key)
+		}
 		return "[" + key + "]"
 	}
 	return sgrRaw(" "+key+" ", Tok(tone))
@@ -128,7 +158,7 @@ func (o Opts) KeyCapWith(key string, tone Token) string {
 // form so the affordance never disappears (RS-14).
 func (o Opts) KeyCap(key string) string {
 	if o.ASCII {
-		return "[" + key + "]"
+		return "[" + asciiKey(key) + "]"
 	}
 	if !colorOn() {
 		return "[" + key + "]"
@@ -157,14 +187,6 @@ func AlertIsWarning(event, severity string) bool {
 // (truecolor - the 256 palette has no tints that dark) with a matching text
 // tone. Dark-terminal variants; the light-bg variants land with theming.
 
-// AlertBlockTone returns the fg/bg pair for an alert module (UAT 5.4a/b).
-func AlertBlockTone(event, severity string) (fg, bg string) {
-	if AlertIsWarning(event, severity) {
-		return Tok(AlertWarnFG), Tok(AlertWarnBG)
-	}
-	return Tok(AlertAdvFG), Tok(AlertAdvBG)
-}
-
 // RadioBlockTone returns the fg/bg pair for the radio module (UAT 5.4c).
 func RadioBlockTone() (fg, bg string) { return Tok(RadioFG), Tok(RadioBG) }
 
@@ -191,4 +213,46 @@ func ModalTone(dark bool) (fg, bg string) {
 		return Tok(ModalFG), Tok(ModalBGDark)
 	}
 	return Tok(ModalFG), Tok(ModalBGLight)
+}
+
+// CategoryTone is the severe-events window's fg/bg pair for a category's tint
+// token (the tab registry in modes/tty owns which tab wears which token):
+// white body text on the fixed tint, mixed onto the active modal substrate so
+// a light-background terminal is not handed a dark hole (0.13.0, RS-11).
+func CategoryTone(hue Token, dark bool) (fg, bg string) {
+	base := ModalBGDark
+	if !dark {
+		base = ModalBGLight
+	}
+	return Tok(AlertModalText), mixBG(Tok(hue), Tok(base), categoryBlend)
+}
+
+// categoryBlend is how much of the category tint shows over the modal
+// substrate. 1.0 since the HUM LEAD UAT pass (2026-08-28): the EventCat*
+// values ARE the on-screen backgrounds (#633500 orange, #550909 red were
+// chosen looking at the window), on either substrate; the mixer stays for a
+// future blend.
+const categoryBlend = 1.0
+
+// mixBG blends two "48;2;r;g;b" backgrounds: t of a over b.
+func mixBG(a, b string, t float64) string {
+	ar, ag, ab, ok1 := bgRGB(a)
+	br, bg, bb, ok2 := bgRGB(b)
+	if !ok1 || !ok2 {
+		return a
+	}
+	m := func(x, y int) int { return int(float64(x)*t + float64(y)*(1-t) + 0.5) }
+	return fmt.Sprintf("48;2;%d;%d;%d", m(ar, br), m(ag, bg), m(ab, bb))
+}
+
+// bgRGB reads a truecolor background value.
+func bgRGB(v string) (r, g, b int, ok bool) {
+	parts := strings.Split(v, ";")
+	if len(parts) != 5 || parts[0] != "48" || parts[1] != "2" {
+		return 0, 0, 0, false
+	}
+	r, _ = strconv.Atoi(parts[2])
+	g, _ = strconv.Atoi(parts[3])
+	b, _ = strconv.Atoi(parts[4])
+	return r, g, b, true
 }

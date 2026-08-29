@@ -52,7 +52,19 @@ type fakeBreakingAudio struct {
 	restoredN int
 }
 
-func (f *fakeBreakingAudio) startBreaking() time.Duration {
+func (f *fakeBreakingAudio) duck() {
+	f.mu.Lock()
+	f.ducked = true
+	f.mu.Unlock()
+}
+func (f *fakeBreakingAudio) pause()   {}
+func (f *fakeBreakingAudio) resume()  {}
+func (f *fakeBreakingAudio) discard() {}
+func (f *fakeBreakingAudio) render(_ context.Context, text string) (clip, bool) {
+	return clip{text: text, dur: f.dur}, true
+}
+func (f *fakeBreakingAudio) play(c clip) { f.speak(c.text) }
+func (f *fakeBreakingAudio) tone() time.Duration {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.script = append(f.script, "tone")
@@ -72,7 +84,7 @@ func (f *fakeBreakingAudio) speak(text string) time.Duration {
 	f.mu.Unlock()
 	return f.dur
 }
-func (f *fakeBreakingAudio) endBreaking() {
+func (f *fakeBreakingAudio) restore() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.script = append(f.script, "restore")
@@ -87,7 +99,7 @@ func TestBreakingBurstIsOneSequentialScriptNoOverlap(t *testing.T) {
 	d := &tickerDeck{
 		send:  func(m tea.Msg) { mu.Lock(); msgs = append(msgs, m); mu.Unlock() },
 		muted: &atomic.Bool{}, // false
-		audio: audio,
+		voice: newNarrator(audio),
 	}
 	declared := time.Date(2026, 8, 27, 15, 42, 0, 0, time.Local)
 	fresh := []globalfeed.Event{
@@ -107,7 +119,7 @@ func TestBreakingBurstIsOneSequentialScriptNoOverlap(t *testing.T) {
 	if !strings.HasPrefix(audio.script[1], "A Tornado Warning") {
 		t.Fatalf("most-severe read first: %q", audio.script[1])
 	}
-	if audio.script[3] != burstClosing {
+	if audio.script[3] != burstClosingLine(nil) {
 		t.Fatalf("a burst ends with one closing tail: %q", audio.script[3])
 	}
 	if audio.ducked || audio.restoredN != 1 {
@@ -278,7 +290,7 @@ func TestNarrationLinesSingleBurstAndClosing(t *testing.T) {
 		t.Fatalf("event line: %q", got)
 	}
 	// A single event: the same line + its own broadcast tail.
-	if got := alertNarration(e); got != "A Tornado Warning has been declared for the Oklahoma City area at 3:42 PM until 4:15 PM. Play the Watchpost Radio Broadcast of that location for more details" {
+	if got := alertNarration(nil, e); got != "A Tornado Warning has been declared for the Oklahoma City area at 3:42 PM until 4:15 PM. Press W in Watchpost for the full report on this event" {
 		t.Fatalf("single narration: %q", got)
 	}
 	// A quake (no window): the time, no "until".
@@ -287,8 +299,8 @@ func TestNarrationLinesSingleBurstAndClosing(t *testing.T) {
 		t.Fatalf("quake line (no until): %q", got)
 	}
 	// The burst closing is a single shared tail (plural, "any of these events").
-	if !strings.Contains(burstClosing, "any of these events") {
-		t.Fatalf("burst closing: %q", burstClosing)
+	if !strings.Contains(burstClosingLine(nil), "any of these events") {
+		t.Fatalf("burst closing: %q", burstClosingLine(nil))
 	}
 }
 
@@ -333,5 +345,34 @@ func TestSeenStoreLoadDropsStale(t *testing.T) {
 	s.save()
 	if got := loadSeen(dir, tickerSeenWindow).set(); !got["fresh"] || got["stale"] {
 		t.Fatalf("a stale id is dropped on load: %v", got)
+	}
+}
+
+// The tape is ONE line whatever a feed puts in a name (REVIEW R5-C-01): a
+// newline or tab collapses to a space.
+func TestTapeTextIsOneLine(t *testing.T) {
+	e := globalfeed.Event{Class: globalfeed.ClassSevereWx, Type: "Tornado\nWarning", Location: "Olathe,\tKS", At: time.Now()}
+	if s := tapeText(e); strings.ContainsAny(s, "\n\t") {
+		t.Fatalf("tape: %q", s)
+	}
+}
+
+// A takeover goroutine is in the shutdown wait set (REVIEW R5-B-07): stop
+// returns only after the sequence in flight has ended.
+func TestTickerStopWaitsForATakeoverInFlight(t *testing.T) {
+	d := &tickerDeck{done: make(chan struct{})}
+	close(d.done)
+	d.breakers.Add(1)
+	ended := make(chan struct{})
+	go func() {
+		time.Sleep(60 * time.Millisecond)
+		close(ended)
+		d.breakers.Done()
+	}()
+	d.stop()
+	select {
+	case <-ended:
+	default:
+		t.Fatal("stop returned before the takeover ended")
 	}
 }

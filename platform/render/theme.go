@@ -41,10 +41,6 @@ const (
 	GroupExtendedBG Token = "group.extended.bg"
 	GroupSectionBG  Token = "group.section.bg" // RECENT / SEARCHED section band (UAT 43)
 
-	AlertWarnFG Token = "alert.warning.fg"
-	AlertWarnBG Token = "alert.warning.bg"
-	AlertAdvFG  Token = "alert.advisory.fg"
-	AlertAdvBG  Token = "alert.advisory.bg"
 	AlertLabel  Token = "alert.label"  // watch/advisory yellow (panel tints)
 	AlertDanger Token = "alert.danger" // warning red (panel tints, provider down)
 
@@ -75,11 +71,22 @@ const (
 	TickerFG       Token = "ticker.fg"
 	TickerMutedFG  Token = "ticker.muted.fg"
 
+	// The severe-events window's category tints (0.13.0, SAM-D-7): fixed,
+	// pre-darkened hues keyed to the ticker lanes — Red disasters, Orange
+	// warnings, Yellow watches/advisories/statements, Blue tropical — rendered
+	// by CategoryTone onto the active modal substrate, so they read the same in
+	// every theme (Monochrome greys them). Values: HUM LEAD's colour pass.
+	EventCatRedBG    Token = "event.cat.red.bg"
+	EventCatOrangeBG Token = "event.cat.orange.bg"
+	EventCatYellowBG Token = "event.cat.yellow.bg"    // Advisories
+	EventCatWatchBG  Token = "event.cat.watch.bg"     // Watches — a touch more yellow than Advisories (HUM LEAD UAT 2026-08-28)
+	EventCatStmtBG   Token = "event.cat.statement.bg" // Spec. Statements — a touch more green than Advisories (HUM LEAD UAT 2026-08-28)
+	EventCatBlueBG   Token = "event.cat.blue.bg"
+
 	// The table's own palette (quality pass Q4a-004, L5-F4): before it the
 	// kit painted these from its $TERM-gated palette, outside the theme.
-	TableHeader Token = "table.header" // column headers (the kit's light purple)
-	TableMuted  Token = "table.muted"  // row numbers and attribute cells (the kit's muted grey)
-	TableName   Token = "table.name"   // an unselected, un-alerted NAME cell (the kit's bright white)
+	TableMuted Token = "table.muted" // row numbers and attribute cells (the kit's muted grey)
+	TableName  Token = "table.name"  // an unselected, un-alerted NAME cell (the kit's bright white)
 
 	ConfirmBG Token = "confirm.bg" // destructive-action confirmation tile (UAT 26.2)
 
@@ -108,7 +115,7 @@ const (
 // registered theme copies from this one (quality pass Q1, L3-F17 — no
 // package-level map to guard).
 func defaultTheme() map[Token]string {
-	return map[Token]string{
+	return withAA(map[Token]string{
 		TextBase:   "250",
 		TextBright: "97",
 
@@ -138,10 +145,6 @@ func defaultTheme() map[Token]string {
 		GroupExtendedBG: "48;2;94;94;122",
 		GroupSectionBG:  "48;2;34;34;34", // #222 (UAT 44.2)
 
-		AlertWarnFG: "38;5;196",
-		AlertWarnBG: "49", // UAT 17.2: tile bg hidden for evaluation (was 48;2;20;0;0 ~5% red)
-		AlertAdvFG:  "38;5;220",
-		AlertAdvBG:  "49", // UAT 17.2: tile bg hidden for evaluation (was 48;2;32;28;0 ~10% yellow)
 		AlertLabel:  "220",
 		AlertDanger: "196",
 
@@ -169,9 +172,15 @@ func defaultTheme() map[Token]string {
 		TickerFG:       "1;38;2;255;255;255", // bold white
 		TickerMutedFG:  "38;5;245",           // muted grey text
 
-		TableHeader: "135", // = the kit's tui.TableHeader, so nothing changed on the day the theme took over
-		TableMuted:  "245", // = tui.TableRowNumber / tui.TableAttribute
-		TableName:   "97",  // = tui.TableLabel
+		EventCatRedBG:    "48;2;85;9;9",  // #550909 — HUM LEAD UAT 2026-08-28 // pre-darkened tints (HUM LEAD colour pass to tune at UAT)
+		EventCatOrangeBG: "48;2;99;53;0", // #633500 — HUM LEAD UAT 2026-08-28 ("more orange, it looked brown")
+		EventCatYellowBG: "48;2;60;52;14",
+		EventCatWatchBG:  "48;2;94;72;0", // #5E4800 — HUM LEAD asked #886800; darkened on the same hue to the AA floor (4.84:1 worst theme), UAT 2026-08-28
+		EventCatStmtBG:   "48;2;76;84;0", // #4C5400 — HUM LEAD asked #7D8800; darkened on the same hue to the AA floor (4.51:1), UAT 2026-08-28
+		EventCatBlueBG:   "48;2;14;34;64",
+
+		TableMuted: "245", // = tui.TableRowNumber / tui.TableAttribute
+		TableName:  "97",  // = tui.TableLabel
 
 		ConfirmBG: "48;2;79;12;12", // #4F0C0C — deep red under light text (UAT 109; was #AE7D7E, UAT 26.2)
 
@@ -185,15 +194,15 @@ func defaultTheme() map[Token]string {
 		ModalTitle:   "1;97",
 		ModalFG:      "38;5;250",
 		ModalBGDark:  "48;2;29;40;48", // #1D2830
-		ModalBGLight: "48;2;59;81;99", // #3B5163
+		ModalBGLight: "48;2;29;40;48", // a dark theme paints its own tile whatever the terminal reports (HUM LEAD 2026-08-29: light terminals are served by the Watchpost Light theme)
 
 		WindowBGDark:  "#131313",
-		WindowBGLight: "#ECECEC", // placeholder until theming
+		WindowBGLight: "#131313", // as above: the ground is the theme's, not the terminal's
 
 		GradStart: "#DD51D6", // the reference-CLI gradient
 		GradMid:   "#378FE9",
 		GradEnd:   "#7CE3B3",
-	}
+	})
 }
 
 // Tok resolves a semantic token to its SGR params (or hex for window/

@@ -1,0 +1,232 @@
+{
+  "findings": [
+    {
+      "file": "app/narrate.go",
+      "line": 168,
+      "rule_id": "P10-02-BOUNDED-LOOPS",
+      "tool": "p10analyzers:p10loopform",
+      "message": "P10-02: unbounded condition-only loop — restructure with an explicit bound or exempt with a recorded reason",
+      "skill_path": "02_skills/implementation/p10/p10-bounded-loops/",
+      "next_step": "restructure with an explicit bound (range/counter form), or exempt with a recorded reason",
+      "exempted": true,
+      "exempt_reason": "The suspended sequence's wait for the air (0.13.0): a sync.Cond loop — one Wait per iteration, ended by the resume or the context ending (checked on every wake). The same shape as admit and the scheduler tier loops on this ledger. Ratify at the 0.13.0 UAT/REVIEW gate."
+    },
+    {
+      "file": "app/narrate.go",
+      "line": 230,
+      "rule_id": "P10-02-BOUNDED-LOOPS",
+      "tool": "p10analyzers:p10loopform",
+      "message": "P10-02: unbounded condition-only loop — restructure with an explicit bound or exempt with a recorded reason",
+      "skill_path": "02_skills/implementation/p10/p10-bounded-loops/",
+      "next_step": "restructure with an explicit bound (range/counter form), or exempt with a recorded reason",
+      "exempted": true,
+      "exempt_reason": "The narrator's turn wait (0.13.0): a sync.Cond loop — one Wait per iteration, ended when the job is first with nothing on air or its context ends (checked on every wake). The same shape as the scheduler tier loops and the ticker run loop already on this ledger. Ratify at the 0.13.0 UAT/REVIEW gate."
+    },
+    {
+      "file": "app/pipelines.go",
+      "line": 188,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: vacuous invariant (constant condition) — asserts nothing and does not count",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "ReportOnce/resolveQuery/Save/RunSetup carry real invariants; the bubbletea model plumbing (Init/Update/View/advance — behavior pinned by 5 wizard flow tests) dilutes the average. Ratified density pattern (D-20)."
+    },
+    {
+      "file": "app/pipelines.go",
+      "line": 321,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: vacuous invariant (constant condition) — asserts nothing and does not count",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "ReportOnce/resolveQuery/Save/RunSetup carry real invariants; the bubbletea model plumbing (Init/Update/View/advance — behavior pinned by 5 wizard flow tests) dilutes the average. Ratified density pattern (D-20)."
+    },
+    {
+      "file": "app/pipelines.go",
+      "line": 335,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: vacuous invariant (constant condition) — asserts nothing and does not count",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "ReportOnce/resolveQuery/Save/RunSetup carry real invariants; the bubbletea model plumbing (Init/Update/View/advance — behavior pinned by 5 wizard flow tests) dilutes the average. Ratified density pattern (D-20)."
+    },
+    {
+      "file": "app/dashboard.go",
+      "line": 116,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.34 \u003c 2.0 across 71 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "ReportOnce/resolveQuery/Save/RunSetup carry real invariants; the bubbletea model plumbing (Init/Update/View/advance — behavior pinned by 5 wizard flow tests) dilutes the average. Ratified density pattern (D-20)."
+    },
+    {
+      "file": "domains/globalfeed/detail.go",
+      "line": 82,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.64 \u003c 2.0 across 25 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Global ticker data layer (0.12.0): the three feed fetchers and the Event mappings (severity/type/basin/verb/article, Sort, cleanPlace, Locate) are pure decode-and-classify where a quota check asserts nothing; the light invariants are the id/coord guards in each Fetch and the dedup in Merge. The seismic/fire/httpx pure-helper-with-a-guarded-path pattern. Ratified by HUM LEAD at the global-ticker P1 gate, 2026-08-27 (M-P10 restated to \u003c= 57)."
+    },
+    {
+      "file": "domains/radio/player/engine.go",
+      "line": 89,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.38 \u003c 2.0 across 8 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Engine.New/Open guard the contract (output, user agent, url); the rest are io.Reader adapters (ICY strip, watchdog, preroll, resampler) and a state machine pinned by an end-to-end test over a streaming fixture. Same adapter pattern approved for httpx (B0); B4 UAT 76, ratify at gate. Refreshed at 0.13.0 REVIEW (HUM LEAD ratified 2026-08-29) — the row now also absorbs the preview path — held lines by identity, aside and audition clips, the visualizer tee, DropHeld — pinned on the recording output."
+    },
+    {
+      "file": "domains/radio/pronounce/pronounce.go",
+      "line": 39,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.50 \u003c 2.0 across 4 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "The pronunciation-rule library (0.13.0): a table loader over five embedded text files — Set/Names are pure listing where a quota check asserts nothing; the guards live where wrongness harms (a table name never leaves the rules directory; a duplicated or half-empty rule is refused, the first wins). The script-library / term / httpx pure-helper pattern. Ratify at the 0.13.0 UAT/REVIEW gate."
+    },
+    {
+      "file": "domains/radio/script/script.go",
+      "line": 67,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.55 \u003c 2.0 across 11 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "The script library (0.13.0): a file loader over an embedded tree — New/Has/Reports/Parts/files/BuiltinFiles/sortedKeys are pure listing and lookup where a quota check asserts nothing; the guards live where wrongness harms (Text never lets template syntax reach speech; read never leaves the tree; load validates the name; a malformed override is an error). The term/httpx pure-helper pattern. Ratify at the 0.13.0 UAT/REVIEW gate."
+    },
+    {
+      "file": "domains/radio/synth/compose.go",
+      "line": 41,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.25 \u003c 2.0 across 20 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Guards sit at the boundaries (office required, WAVE shape, archive entries escaping the install dir, voice/provider required, checksum verification); the normalizer/composer are pure text transforms pinned by goldens over a live product. B4 UAT 77, ratify at gate. Refreshed at 0.13.0 REVIEW (HUM LEAD ratified 2026-08-29) — the composer speaks from the script tree (Library.Say — silence for a missing part, Plain'd) and the Pronounce pass is a pure table transform, pinned by the script and pronounce tests."
+    },
+    {
+      "file": "domains/severe/codes.go",
+      "line": 16,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.49 \u003c 2.0 across 35 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "0.13.0 pure index — Union/Cap carry the structural invariants (one row per key; a positive cap) and RecordOf its precondition; the remaining functions are pure classification/formatting (Classify, NormalizeID, compass, shortDur, ns/ew) pinned by fixture and escape-injection tests, where quota checks assert nothing. Same pattern as term/httpx (B0); ratify at the 0.13.0 BUILD gate. Refreshed at 0.13.0 REVIEW (HUM LEAD ratified 2026-08-29) — the row now also absorbs ProductCode (a table + initials) and Detection (the SOURCE-line kinds, else the certainty) — the same pure classification, pinned by fixtures including the case-lengthening rune."
+    },
+    {
+      "file": "modes/tty/alerts.go",
+      "line": 123,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.41 \u003c 2.0 across 116 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Dashboard model: Update carries the nil-snapshot invariant and NewDashboard fails closed on key conflicts; View/header/body/footer are pure renderers pinned by anatomy/toggle/navigation tests. Ratified density pattern (D-20)."
+    },
+    {
+      "file": "domains/weather/nws/alerts.go",
+      "line": 51,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.67 \u003c 2.0 across 3 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Guards live where wrongness harms (resolve zone/station checks, Fetch precondition, mapAlert id rule); 16 changed functions are dominated by pure unit-conversion/parsing helpers (toSI, foldDaily, windFromText, conditionCode) where quota checks assert nothing. B1a addition under the approved B0 pattern; ratify at B1a gate. Refreshed at 0.13.0 REVIEW (HUM LEAD ratified 2026-08-29) — the row now also absorbs the Declared = sent → effective → onset rule in mapAlert and the id bound, pinned on both paths."
+    },
+    {
+      "file": "platform/plaintext/plaintext.go",
+      "line": 18,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.33 \u003c 2.0 across 6 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "The plain-text boundary (0.13.0 REVIEW R5-C-05): Text/Line/StripSGR/dropped/droppedSpans are one pure rune filter over provider and file text — the leaf both render and the snapshot assembler use — pinned by the escape corpus, bidi and one-line tests; a quota check asserts nothing here. The term/httpx pure-helper pattern. Ratify at the 0.13.0 REVIEW gate."
+    },
+    {
+      "file": "platform/render/contrast.go",
+      "line": 22,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.40 \u003c 2.0 across 62 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Pure formatting primitives; correctness pinned by width-bound, severity-text, ASCII-fallback, and unit tests (the D-9 seam's behavior IS its test surface). Ratified density pattern (D-20)."
+    },
+    {
+      "file": "platform/snapshot/assembler.go",
+      "line": 284,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 1.00 \u003c 2.0 across 1 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Assembler's stateful paths (NewAssembler/Apply/Warn/Snapshot) carry real invariants (duplicate keys, unregistered providers, order alignment, warning codes); pure merge helpers (harmonize/fillFrom) dilute the average. Same pattern HUM LEAD approved for term/httpx (B0); added at B1a, presented for ratification at the B1a exit gate; removable if the meter weights stateful functions."
+    }
+  ],
+  "tools": [
+    {
+      "tool": "exemptions",
+      "status": "RAN",
+      "detail": "120 exemption(s) loaded"
+    },
+    {
+      "tool": "golangci-lint",
+      "status": "RAN",
+      "detail": "47 raw finding(s), 9 linters"
+    },
+    {
+      "tool": "staticcheck",
+      "status": "RAN",
+      "detail": "2 raw finding(s)"
+    },
+    {
+      "tool": "go-vet",
+      "status": "RAN",
+      "detail": "0 raw finding(s)"
+    },
+    {
+      "tool": "govulncheck",
+      "status": "RAN",
+      "detail": "no vulnerabilities"
+    },
+    {
+      "tool": "p10analyzers",
+      "status": "RAN",
+      "detail": "29 raw finding(s), 5 passes"
+    },
+    {
+      "tool": "p10:density",
+      "status": "RAN",
+      "detail": "15 finding(s) over changed functions in 59 file(s)"
+    }
+  ],
+  "base": "7a45c8c4ce124ed4d2777f09be3b080adeddd8e1",
+  "base_declared": "merge-base:main",
+  "tree_hash": "64a88c717b5df810c1b69315bbb974c75083ac0048fbc65beeebab048fe6ae00",
+  "ran_at": "2026-08-29T16:57:35.51592Z"
+}

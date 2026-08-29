@@ -28,7 +28,7 @@ func TestComposeReadsLikeNWR(t *testing.T) {
 		Source: snapshot.SourceInfo{Provider: "nws"}},
 		Alerts: []snapshot.Alert{{ID: "a1", Headline: "Heat Advisory issued August 24 at 208PM PDT until 8 PM PDT Friday by NWS San Diego CA", Description: "* WHAT...Hot.\n\n* WHERE...Coast."}}}
 	now := time.Date(2026, 8, 24, 16, 5, 0, 0, time.UTC)
-	segs := Compose(loc, []Product{{ID: "p1", Type: "ZFP", Text: ".TONIGHT...Mostly clear. Lows 66 to 69.\n\n$$"}}, now, true, "Samantha", Station{Callsign: "KEC62", Site: "San Diego", State: "CA", FreqMHz: "162.400"}, FireReport{}, SeismicReport{})
+	segs := std.Compose(loc, []Product{{ID: "p1", Type: "ZFP", Text: ".TONIGHT...Mostly clear. Lows 66 to 69.\n\n$$"}}, now, true, "Samantha", Station{Callsign: "KEC62", Site: "San Diego", State: "CA", FreqMHz: "162.400"}, FireReport{}, SeismicReport{})
 	texts := make([]string, 0, len(segs))
 	for _, s := range segs {
 		texts = append(texts, s.Text)
@@ -48,7 +48,7 @@ func TestComposeReadsLikeNWR(t *testing.T) {
 	if !strings.HasPrefix(segs[3].Key, "alert:a1:") || !strings.HasPrefix(segs[4].Key, "ZFP:p1:") || segs[len(segs)-1].Key != "tail:Samantha" {
 		t.Fatalf("segment keys carry issuance identity: %v", []string{segs[3].Key, segs[4].Key, segs[len(segs)-1].Key})
 	}
-	if Tail("") != "This is your correspondent for Watchpost Weather Radio. You can change your correspondent voice in your Watchpost CLI application settings." {
+	if std.Tail("") != "This is your correspondent for Watchpost Weather Radio. You can change your correspondent voice in your Watchpost CLI application settings." {
 		t.Fatal("tail without a voice name")
 	}
 	if (PiperVoice{Install: Install{Model: "/x/en_US-lessac-medium.onnx"}}).Name() != "Lessac" {
@@ -227,7 +227,7 @@ func TestNarrationRulesUAT81(t *testing.T) {
 	if got := ExpandStates("HEAT ADVISORY IN EFFECT. Visit OR call. Oceanside, CA and CA-San Diego and San Diego CA and I am OK"); got != "HEAT ADVISORY IN EFFECT. Visit OR call. Oceanside, California and California-San Diego and San Diego California and I am OK" {
 		t.Fatalf("state expansion needs place context: %q", got)
 	}
-	if Lead("Oceanside, CA", Station{}, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC)) != "This is Watchpost Weather Radio serving Oceanside, California. Watchpost Weather Radio forecasts may be delayed and are not intended for life safety use. This forecast is from the National Oceanic and Atmospheric Administration and is for Monday, August 24 until Sunday, August 30." { // no known station: the live sentence is left out (UAT 112)
+	if std.Lead("Oceanside, CA", Station{}, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC)) != "This is Watchpost Weather Radio serving Oceanside, California. Watchpost Weather Radio forecasts may be delayed and are not intended for life safety use. This forecast is from the National Oceanic and Atmospheric Administration and is for Monday, August 24 until Sunday, August 30." { // no known station: the live sentence is left out (UAT 112)
 		t.Fatal("the lead expands the state")
 	}
 }
@@ -552,11 +552,11 @@ func TestSetVoiceRefusesADifferentRate(t *testing.T) {
 }
 
 func TestSampleLine(t *testing.T) {
-	if Sample("Alex") != "This is Alex for Watchpost Weather Radio." {
-		t.Fatal(Sample("Alex"))
+	if std.Sample("Alex") != "This is Alex for Watchpost Weather Radio." {
+		t.Fatal(std.Sample("Alex"))
 	}
 	v := &spyVoice{}
-	pcm, err := SamplePCM(context.Background(), v)
+	pcm, err := std.SamplePCM(context.Background(), v)
 	if err != nil || len(pcm) != 800 || v.heard != "This is spy for Watchpost Weather Radio." {
 		t.Fatalf("sample: %d bytes, heard %q, err %v", len(pcm), v.heard, err)
 	}
@@ -566,7 +566,7 @@ func TestLeadPausesBeforeTheForecastSpan(t *testing.T) {
 	// UAT 112.3: two seconds of air between "life safety use." and "This
 	// forecast is from…" — the notice segment carries the pause, the span
 	// segment none.
-	segs := Compose(snapshot.Location{Label: "Oceanside, CA"}, nil, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC), true, "Samantha", Station{}, FireReport{}, SeismicReport{})
+	segs := std.Compose(snapshot.Location{Label: "Oceanside, CA"}, nil, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC), true, "Samantha", Station{}, FireReport{}, SeismicReport{})
 	if len(segs) < 2 || segs[0].Pause != 2*time.Second || segs[1].Pause != time.Second /* nothing follows but the tail: the 1 s tail pause (UAT 115) */ || !strings.HasSuffix(segs[0].Text, "life safety use.") || !strings.HasPrefix(segs[1].Text, "This forecast is from") {
 		t.Fatalf("lead segments: %+v", segs[:2])
 	}
@@ -579,7 +579,7 @@ func TestReportsAreSeparatedByAir(t *testing.T) {
 	loc := snapshot.Location{Label: "Oceanside, CA"}
 	products := []Product{{ID: "p1", Type: "ZFP", Text: ".TONIGHT...Mostly clear.\n\n$$"}}
 	fire := FireReport{Known: true, RadiusKm: 25, Sources: []string{"NOAA's Hazard Mapping System"}, State: snapshot.FireState{AsOf: now}}
-	segs := Compose(loc, products, now, true, "Samantha", Station{}, fire, SeismicReport{})
+	segs := std.Compose(loc, products, now, true, "Samantha", Station{}, fire, SeismicReport{})
 	byKey := func(prefix string) []Segment {
 		var out []Segment
 		for _, s := range segs {
@@ -596,7 +596,7 @@ func TestReportsAreSeparatedByAir(t *testing.T) {
 	if fireSegs[len(fireSegs)-1].Pause != time.Second {
 		t.Fatalf("the last report pauses 1 s before the tail: %+v", fireSegs[len(fireSegs)-1])
 	}
-	segs = Compose(loc, products, now, true, "Samantha", Station{}, FireReport{}, SeismicReport{})
+	segs = std.Compose(loc, products, now, true, "Samantha", Station{}, FireReport{}, SeismicReport{})
 	zfp = byKey("ZFP:")
 	if zfp[len(zfp)-1].Pause != time.Second || segs[len(segs)-1].Key != "tail:Samantha" {
 		t.Fatalf("no fire report: the forecast pauses 1 s then the tail: %+v", zfp[len(zfp)-1])

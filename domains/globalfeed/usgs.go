@@ -2,6 +2,8 @@ package globalfeed
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -30,6 +32,7 @@ const usgsTTL = 5 * time.Minute
 type USGS struct {
 	client *httpx.Client
 	base   string
+	memo   sourceMemo
 }
 
 // NewUSGS builds the source; base "" is the production significant_week feed.
@@ -42,53 +45,120 @@ func NewUSGS(client *httpx.Client, base string) *USGS {
 
 func (u *USGS) Name() string { return "USGS" }
 
-// usgsFeed is the slice of the summary GeoJSON the ticker reads.
-type usgsFeed struct {
-	Features []struct {
-		ID         string `json:"id"`
-		Properties struct {
-			Mag     *float64 `json:"mag"`
-			Place   string   `json:"place"`
-			Time    int64    `json:"time"` // epoch ms
-			Type    string   `json:"type"`
-			Tsunami int      `json:"tsunami"`
-		} `json:"properties"`
-		Geometry struct {
-			Coordinates []float64 `json:"coordinates"` // [lon, lat, depth]
-		} `json:"geometry"`
-	} `json:"features"`
+// usgsFeed is the slice of the summary GeoJSON the ticker and the severe
+// window read (the render list of data-shape.md §4; the network/telemetry tail
+// is not decoded in v1 — SAM-D-24 E-2).
+// usgsFeature is one entry of the feed.
+type usgsFeature struct {
+	ID         string `json:"id"`
+	Properties struct {
+		Mag     *float64 `json:"mag"`
+		MagType string   `json:"magType"`
+		Place   string   `json:"place"`
+		Time    int64    `json:"time"`    // epoch ms
+		Updated int64    `json:"updated"` // epoch ms
+		Type    string   `json:"type"`
+		Title   string   `json:"title"`
+		Alert   string   `json:"alert"`
+		Status  string   `json:"status"`
+		Tsunami int      `json:"tsunami"`
+		Sig     int      `json:"sig"`
+		Felt    *int     `json:"felt"`
+		CDI     *float64 `json:"cdi"`
+		MMI     *float64 `json:"mmi"`
+		URL     string   `json:"url"`
+		Detail  string   `json:"detail"`
+	} `json:"properties"`
+	Geometry struct {
+		Coordinates []float64 `json:"coordinates"` // [lon, lat, depth]
+	} `json:"geometry"`
 }
 
+type usgsFeed struct {
+	Features []json.RawMessage `json:"features"` // decoded one by one: a malformed value skips ITS entry, never the source (REVIEW R5-C-12)
+}
+
+// Fetch reads the feed through the parse memo: the body comes from httpx
+// (cache/TTL/conditional GET as before); it is decoded only when changed.
 func (u *USGS) Fetch(ctx context.Context) ([]Event, error) {
+	return u.memo.events(func() ([]byte, bool, error) {
+		var body []byte
+		hdr, err := u.client.GetJSON(ctx, u.base, &body, httpx.TTL(usgsTTL)) // read-only slice (the GetText contract)
+		return body, hdr == nil, err
+	}, u.parse)
+}
+
+// parse decodes one body into events (pure; the memo calls it on change).
+func (u *USGS) parse(body []byte) ([]Event, error) {
 	var feed usgsFeed
-	if _, err := u.client.GetJSON(ctx, u.base, &feed, httpx.TTL(usgsTTL)); err != nil {
-		return nil, err
+	if err := json.Unmarshal(body, &feed); err != nil {
+		if u.client != nil {
+			u.client.Forget(u.base) // the GetJSON poison guard, kept on the raw-body path
+		}
+		return nil, fmt.Errorf("USGS: bad response body: %w", err)
 	}
 	out := make([]Event, 0, len(feed.Features))
-	for _, f := range feed.Features {
+	for _, raw := range feed.Features {
+		var f usgsFeature
+		if json.Unmarshal(raw, &f) != nil {
+			continue // one bad entry (R5-C-12)
+		}
 		g := f.Geometry.Coordinates
 		if f.ID == "" || f.Properties.Mag == nil || len(g) < 2 {
 			continue
 		}
-		mag := *f.Properties.Mag
-		at := time.UnixMilli(f.Properties.Time).UTC()
-		if f.Properties.Time == 0 {
+		p := f.Properties
+		mag := clampFloat(*p.Mag, -1, 12)
+		at := time.UnixMilli(p.Time).UTC()
+		if p.Time == 0 {
 			at = time.Now() // a missing epoch is "as of now", not 1970 (P4 F6)
 		}
+		d := &QuakeDetail{
+			Mag: &mag, MagType: clampField(p.MagType), Title: clampField(p.Title),
+			Alert: pagerAlert(p.Alert), Sig: clampNonNeg(p.Sig, 5000), Status: clampField(p.Status),
+			Tsunami: p.Tsunami != 0, URL: clampField(p.URL), DetailURL: clampField(p.Detail),
+		}
+		if len(g) >= 3 {
+			d.DepthKm = clampFloat(g[2], 0, 1000)
+		}
+		if p.Felt != nil {
+			d.Felt = clampNonNeg(*p.Felt, 1_000_000)
+		}
+		if p.CDI != nil {
+			v := clampFloat(*p.CDI, 0, 12)
+			d.CDI = &v
+		}
+		if p.MMI != nil {
+			v := clampFloat(*p.MMI, 0, 12)
+			d.MMI = &v
+		}
+		if p.Updated > 0 {
+			d.UpdatedAt = time.UnixMilli(p.Updated).UTC()
+		}
 		out = append(out, Event{
-			ID:       f.ID,
+			ID:       clampField(f.ID), // bounded like every other field: the key, the seen-store entry and the tape id (R3-D-02)
 			Class:    ClassQuake,
-			Severity: quakeSeverity(mag, f.Properties.Tsunami != 0),
-			Type:     clampField(quakeType(f.Properties.Type)), // bounded feed field (P4 F5)
-			Place:    clampField(f.Properties.Place),
+			Severity: quakeSeverity(mag, p.Tsunami != 0),
+			Type:     clampField(quakeType(p.Type)), // bounded feed field (P4 F5)
+			Place:    clampField(p.Place),
 			Lat:      g[1],
 			Lon:      g[0],
 			HasPoint: true,
 			At:       at,
 			Source:   u.Name(),
+			Quake:    d,
 		})
 	}
 	return out, nil
+}
+
+// pagerAlert validates the PAGER tier against its enum; anything else is "".
+func pagerAlert(s string) string {
+	switch v := strings.ToLower(strings.TrimSpace(s)); v {
+	case "green", "yellow", "orange", "red":
+		return v
+	}
+	return ""
 }
 
 // quakeSeverity: a great quake or any tsunami reads red; a strong quake orange;

@@ -1,0 +1,2 @@
+{{/* breaking/burst-closing: the one tail after a multi-event burst. No data. */}}
+For the full report on any of these events, press W in Watchpost.

@@ -60,7 +60,7 @@ type baseCol struct {
 func baseColumns() []baseCol {
 	return []baseCol{
 		{"marks", "", marksW, 0}, // header icon hidden (UAT 20.1, CLIAmp style); column kept
-		{"num", "###.", 5, 1},
+		{"num", "##.", 5, 1},     // the mock's label (HUM LEAD UAT 2026-08-28)
 		{"name", "NAME", nameMinW, 1},
 		{"label", "LABEL", 7, 1},
 		{"wxstn", "WX STN", 6, 1}, // observing station (UAT 60); "WX" keeps it apart from the NOAA radio transmitter
@@ -155,7 +155,11 @@ func (l layout) columns(dates []string) []studs.ColumnDefinition {
 				Fill: true, MinWidth: nameMin, Truncatable: true, TruncatedMinWidth: 10, Alignment: "left"})
 			continue
 		}
-		cols = append(cols, studs.ColumnDefinition{Name: c.name, Header: c.header, Width: c.width, Alignment: "left"})
+		align := "left"
+		if c.name == "wxstn" || c.name == "zip" { // identifiers of (mostly) one length, not arithmetic: centred in the cell (HUM LEAD UAT 2026-08-28)
+			align = "center"
+		}
+		cols = append(cols, studs.ColumnDefinition{Name: c.name, Header: c.header, Width: c.width, Alignment: align})
 	}
 	if l.extDays > 0 {
 		cols = append(cols, studs.ColumnDefinition{Name: "extsp", Width: extSpacerW})
@@ -359,23 +363,18 @@ func (o Opts) LocationTable(rows []LocationRow, days int) string {
 	}
 	l := layoutFor(o.Width, days)
 	cols := l.columns(dates)
-	// The theme owns every colour in the table (Q4a-004, L5-F4): headers
-	// through HeaderColor, cells through CellStyles, and the kit's own
-	// $TERM-gated palette is switched off — so NO_COLOR is honoured by the
-	// one gate (WrapSGR) and the `t` chooser restyles the whole table.
-	header := Tok(TableHeader)
-	for i := range cols {
-		if cols[i].Header != "" {
-			cols[i].HeaderColor = header
-		}
-	}
+	// The theme owns every colour in the table (Q4a-004, L5-F4): cells
+	// through CellStyles, and the kit's own $TERM-gated palette is switched
+	// off — so NO_COLOR is honoured by the one gate (WrapSGR) and the `t`
+	// chooser restyles the whole table. The two header rows are ours
+	// (groupHeader, columnHeader): the kit's Header() is not drawn.
 	def := &studs.DataTableDefinition{Columns: cols, GutterWidth: tableGutter, NoAutoStyle: true}
 	for _, r := range rows {
 		data := clampCells(o.rowData(l, r), cols)
 		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: data, CellStyles: rowStyles(cols, r, data)})
 	}
 	dt := studs.NewDataTable(o.Width, def)
-	out := []string{o.groupHeader(l, cols, o.Width), strings.TrimRight(dt.Header(), " ")}
+	out := []string{o.groupHeader(l, cols, o.Width), o.columnHeader(l, cols, o.Width)}
 	for _, line := range dt.Rows() {
 		out = append(out, strings.TrimRight(line, " "))
 	}
@@ -505,6 +504,65 @@ func groupsFor(l layout) []groupSpec {
 		g = append(g, groupSpec{"E X T E N D E D   F O R E C A S T", "E X T E N D E D", GroupExtendedBG, days})
 	}
 	return g
+}
+
+// columnHeader renders the column-title row the way the severe window's
+// header band reads (HUM LEAD UAT 2026-08-28): one row, each column's
+// segment painted in a DIP of its group's band tint (TableHeaderTone — the
+// theme's hue, darker), the label centred in bold white, and adjacent
+// segments MEETING at the gutter midpoints so the row touches end to end
+// like the bands above it; the rows below keep their gutters. The marks
+// column is painted with no label; the EXTENDED spacer is a gap the
+// neighbours share. Colour off: the bands' bracket form, per segment.
+func (o Opts) columnHeader(l layout, cols []studs.ColumnDefinition, tableW int) string {
+	bgOf := map[string]Token{}
+	for _, g := range groupsFor(l) {
+		for _, m := range g.members {
+			bgOf[m] = g.bg
+		}
+	}
+	type seg struct {
+		lo, hi int
+		title  string
+		bg     Token
+	}
+	var segs []seg
+	for i, g := range tableGeom(cols, tableW) {
+		if g.name == "extsp" { // the spacer: a gap, not a title
+			continue
+		}
+		segs = append(segs, seg{g.off, g.off + g.w - 1, strings.TrimSpace(cols[i].Header), bgOf[g.name]})
+	}
+	for i := 1; i < len(segs); i++ {
+		mid := (segs[i-1].hi + segs[i].lo) / 2
+		segs[i-1].hi, segs[i].lo = mid, mid+1
+	}
+	var b strings.Builder
+	for _, s := range segs {
+		b.WriteString(strings.Repeat(" ", max(0, s.lo-displayWidth(b.String()))))
+		w := s.hi - s.lo + 1
+		if colorOn() {
+			b.WriteString(sgrRaw(" "+centered(s.title, "", w-2)+" ", Tok(GroupText)+";"+TableHeaderTone(s.bg)))
+		} else {
+			b.WriteString(bracketTitle(s.title, "", w))
+		}
+	}
+	return b.String()
+}
+
+// tableHeaderDip is how far the column-title row sits below its group band:
+// the band's own hue mixed toward black (a darker tint of the parent — HUM
+// LEAD UAT 2026-08-28), so the row follows the theme. The one knob.
+const tableHeaderDip = 0.35
+
+// TableHeaderTone is the column-title row's background under a group band
+// tint: the tint dipped toward black; a non-truecolor tint is used as it is.
+func TableHeaderTone(band Token) string {
+	if _, _, _, ok := bgRGB(Tok(band)); !ok {
+		return Tok(band)
+	}
+	tone := mixBG("48;2;0;0;0", Tok(band), tableHeaderDip)
+	return deepenToAA(tone, Tok(GroupText)) // until the title text reads: darker under light text, lighter under the Light theme's dark text (bounded)
 }
 
 // groupHeader renders the group bands from the resolved column geometry.

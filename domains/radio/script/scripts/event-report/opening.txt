@@ -1,0 +1,2 @@
+{{/* event-report/opening: the event and its place. Data: .Product (Tornado Warning), .Location (Olathe, KS — may be empty). */}}
+{{.Product}}{{if .Location}} for {{.Location}}{{end}}.

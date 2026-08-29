@@ -42,13 +42,14 @@ func ThemeGeneration() uint64 { return themeGen.Load() }
 // pinned by TestEveryThemeOwnsItsTitleGradient).
 func builtinOverrides() map[string]map[Token]string {
 	all := map[string]map[Token]string{
+		LightThemeName: lightOverrides(),
 		"High Contrast": {
 			TextBase: "255", TextBright: "231", FocusCell: "159", FocusName: "1;227",
 			KeyChip: "1;38;5;16;48;5;252", KeyChipMuted: "38;5;250;48;2;70;70;70",
 			GroupLocationBG: "48;2;120;120;120", GroupTodayBG: "48;2;70;110;160",
 			GroupTomorrowBG: "48;2;60;150;150", GroupExtendedBG: "48;2;120;110;170",
 			GroupSectionBG: "48;2;60;60;60", TempHi: "214", TempLo: "87", FireMark: "214", SeismicMark: "177", // bright light-purple, high legibility (0.11.0)
-			TableHeader: "231", TableMuted: "255", TableName: "231", ModalTitle: "1;231", // Q4a-004: the table reads as bright as the rest
+			TableMuted: "255", TableName: "231", ModalTitle: "1;231", // Q4a-004: the table reads as bright as the rest
 			GradStart: "#FFFFFF", GradMid: "#FFFF5F", GradEnd: "#5FFFFF", // white → its focus yellow → its low cyan
 		},
 		"Monochrome": {
@@ -58,14 +59,15 @@ func builtinOverrides() map[string]map[Token]string {
 			StatePlaying: "1;255", RepeatOn: "1;255", VizOn: "1;255",
 			SpectrumLow: "245", SpectrumMid: "250", SpectrumHigh: "255", FireMark: "255", SeismicMark: "252", // greyscale on a monochrome theme — the glyph, not colour, distinguishes it (0.11.0)
 			TickerRedBG: "48;2;95;95;95", TickerOrangeBG: "48;2;68;68;68", TickerYellowBG: "48;2;46;46;46", TickerBlueBG: "48;2;80;80;80", // 0.12.0: lane by shade, not hue, on monochrome
+			EventCatRedBG: "48;2;70;70;70", EventCatOrangeBG: "48;2;58;58;58", EventCatYellowBG: "48;2;46;46;46", EventCatWatchBG: "48;2;52;52;52", EventCatStmtBG: "48;2;40;40;40", EventCatBlueBG: "48;2;62;62;62", // 0.13.0: category by shade on monochrome; the tab glyph carries identity
 			GroupLocationBG: "48;2;70;70;70", GroupTodayBG: "48;2;70;70;70",
 			GroupTomorrowBG: "48;2;70;70;70", GroupExtendedBG: "48;2;70;70;70",
-			AlertWarnFG: "38;5;255", AlertAdvFG: "38;5;250", AlertLabel: "250", AlertDanger: "255",
+			AlertLabel: "250", AlertDanger: "255",
 			AlertModalWarnFG: "38;2;235;235;235", AlertModalAdvFG: "38;2;200;200;200",
 			AlertModalWarnBG: "48;2;40;40;40", AlertModalAdvBG: "48;2;30;30;30",
 			GradStart: "#FFFFFF", GradMid: "#C0C0C0", GradEnd: "#808080",
 			ChipFlashUp: "1;38;5;16;48;5;255", ChipFlashDown: "1;38;5;255;48;5;240",
-			TableHeader: "1;255", TableMuted: "250", TableName: "255", ModalTitle: "1;255", // Q4a-004: no purple header on a monochrome theme
+			TableMuted: "250", TableName: "255", ModalTitle: "1;255", // Q4a-004: a monochrome theme
 		},
 		// Synthwave '84 (UAT 105; palette from robb0wen/synthwave-vscode:
 		// bg #262335 / #241b2f, neon pink #ff7edb, cyan #36f9f6, yellow
@@ -80,12 +82,12 @@ func builtinOverrides() map[string]map[Token]string {
 			ChipFlashUp: "1;38;5;16;48;5;121", ChipFlashDown: "1;38;5;231;48;5;203",
 			GroupLocationBG: "48;2;52;41;79", GroupTodayBG: "48;2;54;30;90",
 			GroupTomorrowBG: "48;2;30;70;90", GroupExtendedBG: "48;2;80;40;90", GroupSectionBG: "48;2;36;27;47",
-			AlertWarnFG: "38;5;203", AlertAdvFG: "38;5;221", AlertLabel: "221", AlertDanger: "203",
+			AlertLabel: "221", AlertDanger: "203",
 			AlertModalWarnFG: "38;2;254;68;80", AlertModalAdvFG: "38;2;254;222;93", AlertModalText: "231",
 			AlertModalWarnBG: "48;2;60;20;40", AlertModalAdvBG: "48;2;60;50;20", ConfirmBG: "48;2;120;40;80",
 			ModalFG: "38;5;231", ModalBGDark: "48;2;36;27;47", ModalBGLight: "48;2;52;41;79",
 			WindowBGDark: "#262335", GradStart: "#FF7EDB", GradMid: "#36F9F6", GradEnd: "#FEDE5D",
-			TableHeader: "213", TableMuted: "146", TableName: "231", ModalTitle: "1;231", // Q4a-004: neon pink headers, lavender attributes (≥ 4.5:1 on #262335)
+			TableMuted: "146", TableName: "231", ModalTitle: "1;231", // Q4a-004: lavender attributes (≥ 4.5:1 on #262335)
 		},
 		"Solarized Night": {
 			TextBase: "247", TextBright: "254", TempHi: "166", TempLo: "37", TrendUp: "136", TrendDown: "33",
@@ -96,7 +98,7 @@ func builtinOverrides() map[string]map[Token]string {
 			GroupTomorrowBG: "48;2;42;107;103", GroupExtendedBG: "48;2;108;83;132",
 			GroupSectionBG: "48;2;7;54;66", ModalBGDark: "48;2;0;43;54",
 			WindowBGDark: "#002b36", GradStart: "#D33682", GradMid: "#268BD2", GradEnd: "#2AA198",
-			TableHeader: "178", TableMuted: "247", TableName: "254", ModalTitle: "1;254", // Q4a-004: solarized yellow headers (≥ 4.5:1 on #002b36)
+			TableMuted: "247", TableName: "254", ModalTitle: "1;254", // Q4a-004: solarized attributes (≥ 4.5:1 on #002b36)
 		},
 	}
 	// The Omarchy Quattro palettes, mapped systematically (quattro.go).
@@ -128,9 +130,33 @@ func RegisterTheme(name string, overrides map[Token]string) {
 			full[k] = v
 		}
 	}
+	// A theme paints its own ground whatever the terminal reports: a theme
+	// that sets only the dark ground/tile gets the same for the light slot
+	// (HUM LEAD 2026-08-29 — light terminals are served by Watchpost Light).
+	if _, ok := overrides[WindowBGLight]; !ok {
+		full[WindowBGLight] = full[WindowBGDark]
+	}
+	if _, ok := overrides[ModalBGLight]; !ok {
+		full[ModalBGLight] = full[ModalBGDark]
+	}
 	themeMu.Lock()
 	defer themeMu.Unlock()
-	themeTable[name] = full
+	themeTable[name] = withAA(full)
+	themeGen.Add(1)
+}
+
+// UnregisterTheme removes a registered theme (tests plant and remove control
+// themes); the default is restored if the removed one was active.
+func UnregisterTheme(name string) {
+	themeMu.Lock()
+	defer themeMu.Unlock()
+	if name == DefaultThemeName {
+		return
+	}
+	delete(themeTable, name)
+	if themeName == name {
+		themeName = DefaultThemeName
+	}
 	themeGen.Add(1)
 }
 
@@ -140,12 +166,16 @@ func ThemeNames() []string {
 	defer themeMu.RUnlock()
 	names := make([]string, 0, len(themeTable))
 	for n := range themeTable {
-		if n != DefaultThemeName {
+		if n != DefaultThemeName && n != LightThemeName {
 			names = append(names, n)
 		}
 	}
 	sort.Strings(names)
-	return append([]string{DefaultThemeName}, names...)
+	head := []string{DefaultThemeName}
+	if _, ok := themeTable[LightThemeName]; ok {
+		head = append(head, LightThemeName) // second in the picker (HUM LEAD 2026-08-29)
+	}
+	return append(head, names...)
 }
 
 // SetTheme activates a registered theme; false when unknown (the active
@@ -174,3 +204,45 @@ func activeTable() map[Token]string {
 	defer themeMu.RUnlock()
 	return themeTable[themeName]
 }
+
+// lightOverrides is Watchpost Light (HUM LEAD ruling 2026-08-29, R5-C-03):
+// the one light theme — a light ground, dark text, the bands as pale
+// tints; every pair passes the same AA lift as the dark themes (toward
+// black here). The alert tile and the severe window keep their dark
+// grounds: their text and marks are painted on the theme-independent
+// category tints too, and no one tone reads on both a dark tint and a
+// light window.
+func lightOverrides() map[Token]string {
+	return map[Token]string{
+		WindowBGDark: "#ECECEC", WindowBGLight: "#ECECEC",
+		ModalBGDark: "48;2;220;226;232", ModalBGLight: "48;2;220;226;232",
+		TextBase: "38;2;40;40;40", TextBright: "1;38;2;0;0;0", ModalTitle: "1;38;2;0;0;0", ModalFG: "38;2;40;40;40",
+		TableMuted: "38;2;95;95;95", TableName: "38;2;0;0;0",
+		GroupText: "1;38;2;20;20;20", GroupLocationBG: "48;2;200;200;200", GroupTodayBG: "48;2;169;196;224",
+		GroupTomorrowBG: "48;2;169;224;224", GroupExtendedBG: "48;2;196;196;224", GroupSectionBG: "48;2;221;221;221",
+		KeyChip: "1;38;2;0;0;0;48;2;190;190;190", KeyChipMuted: "38;2;120;120;120;48;2;225;225;225",
+		ChipFlashUp: "1;38;2;255;255;255;48;2;0;120;40", ChipFlashDown: "1;38;2;255;255;255;48;2;170;0;0",
+		FocusName: "1;38;2;120;80;0", FocusCell: "38;2;0;70;140", FocusPointer: "1;38;2;0;0;0",
+		NameAdvisory: "38;2;110;100;0", NameWarning: "38;2;150;30;30", ProviderOK: "38;2;0;110;40", ProviderDown: "38;2;170;0;0",
+		AlertLabel: "38;2;120;90;0", AlertDanger: "38;2;170;0;0",
+		RadioFG: "38;2;40;40;40", RadioAccent: "38;2;0;110;40", StateStopped: "1;38;2;110;110;110", StatePlaying: "1;38;2;0;110;40",
+		RadioStation: "1;38;2;120;90;0", RepeatOn: "1;38;2;0;110;40", VizOn: "1;38;2;0;110;40",
+		SpectrumLow: "38;2;0;110;40", SpectrumMid: "38;2;150;110;0", SpectrumHigh: "38;2;170;0;0",
+		TempHi: "38;2;190;80;0", TempLo: "38;2;0;100;140", TrendUp: "38;2;130;90;20", TrendDown: "38;2;20;110;120",
+		FireMark: "38;2;190;80;0", SeismicMark: "38;2;110;60;170",
+		TickerMutedFG:    "38;2;90;90;90",
+		ConfirmBG:        "48;2;250;205;205",
+		AlertModalWarnFG: "38;2;150;30;30", AlertModalAdvFG: "38;2;100;90;0", AlertModalText: "38;2;20;20;20",
+		AlertModalWarnBG: "48;2;250;215;215", AlertModalAdvBG: "48;2;245;238;195",
+		// The category tints and the ticker lanes, pale (the dark themes share the
+		// default's deep tints; a light theme paints no dark ground — HUM LEAD 2026-08-29).
+		EventCatRedBG: "48;2;250;205;205", EventCatOrangeBG: "48;2;250;220;185", EventCatYellowBG: "48;2;248;240;190",
+		EventCatWatchBG: "48;2;245;228;170", EventCatStmtBG: "48;2;236;240;185", EventCatBlueBG: "48;2;205;222;250",
+		TickerRedBG: "48;2;250;200;200", TickerOrangeBG: "48;2;250;220;180", TickerYellowBG: "48;2;250;240;180", TickerBlueBG: "48;2;200;220;250",
+		TickerFG:  "1;38;2;20;20;20",
+		GradStart: "#A0269A", GradMid: "#1F5FA8", GradEnd: "#2E8B6B", // the default gradient, deepened for a light ground
+	}
+}
+
+// LightThemeName is the one light theme (HUM LEAD ruling 2026-08-29).
+const LightThemeName = "Watchpost Light"

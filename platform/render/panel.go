@@ -3,12 +3,10 @@ package render
 // panel.go — panels, bands, modules, blocks, the scroll panel and the modal overlay compositor. Split from render.go by the quality pass (Q2, pure move).
 
 import (
-	"fmt"
 	"strings"
 
 	lipgloss "charm.land/lipgloss/v2"
 
-	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -54,21 +52,6 @@ func bracketTitle(title, short string, width int) string {
 	return "[" + centered(title, short, width-2) + "]"
 }
 
-// AlertBanner renders the M-V1 conditional alert module: severity ALWAYS a
-// text label; paging "NN / MM" per the mock.
-func (o Opts) AlertBanner(a snapshot.Alert, index, total int) string {
-	warn := "⚠"
-	if o.ASCII {
-		warn = "!"
-	}
-	// Title carries the event (uppercased per mock); the severity label stays
-	// a verbatim lowercase token — same shape as report mode ("ALERT [severe]")
-	// so both surfaces read identically (R-12a).
-	body := fmt.Sprintf("[%s] %s", a.Severity, a.Headline)
-	pager := fmt.Sprintf("%02d / %02d Alerts", index, total)
-	return o.Panel(warn+" "+strings.ToUpper(a.Event), body+"\n"+pager)
-}
-
 // Panel renders a rounded-border box with a title (mock anatomy), width-bound.
 func (o Opts) Panel(title, content string) string { return o.PanelColored(title, content, "") }
 
@@ -94,6 +77,9 @@ func (o Opts) PanelColored(title, content, fg string) string {
 		head := tl // untitled panel: an unbroken top rule (About window, UAT 68)
 		b.WriteString(tint(head+strings.Repeat(hz, max(0, w-displayWidth(head)-1))+tr) + "\n")
 	} else {
+		if displayWidth(title) > w-6 {
+			title = truncate(title, w-6) // a label longer than the window (R5-C-11): cut, never overflowed
+		}
 		if !strings.Contains(title, "\x1b") {
 			title = Tint(title, Tok(ModalTitle))
 		}
@@ -108,40 +94,70 @@ func (o Opts) PanelColored(title, content, fg string) string {
 	return b.String()
 }
 
-// ModuleInnerWidth is the content width inside a module for its tone:
-// visible-bg modules inset 3 cols each side (UAT 19.1a); hidden-bg modules
-// run flush with the header edges (19.1b).
-func (o Opts) ModuleInnerWidth(bg string) int {
-	if BGVisible(bg) {
-		return o.Width - 6
-	}
-	return o.Width
-}
+// Box renders a module as a bordered box (the radio player's facelift, HUM
+// LEAD UAT 2026-08-28): the HEAVY box-drawing rules, so the outline reads
+// thicker than the light rails inside it; square corners; the rows inset
+// boxInset cells from each border; the whole painted fg+bg like a Module.
+// Always a frame, whatever the background — the box is the module's
+// identity. --ascii keeps the plain +-| forms.
+func (o Opts) Box(lines []string, fg, bg string) string { return o.BoxTitled(lines, "", "", fg, bg) }
 
-// Module renders a module block with the global inset policy (UAT 19.1):
-// visible-bg tones get the 3-col left/right inset plus a padded blank line
-// top and bottom; hidden-bg tones render flush, no padding lines — the
-// single blank between modules comes from the layout (19.1c).
-func (o Opts) Module(lines []string, fg, bg string) string {
-	if !BGVisible(bg) {
-		return o.Block(strings.Join(lines, "\n"), fg, bg)
+// BoxTitled is a Box whose top rule carries a title at the left and a stamp
+// at the right (the header's facelift, HUM LEAD UAT 2026-08-28):
+//
+//	┏━━ TITLE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  STAMP ━━┓
+//
+// Either may be empty. The caller fits them to BoxRuleWidth; a rule that
+// cannot carry both drops the stamp, then the title, so the corners always
+// land.
+func (o Opts) BoxTitled(lines []string, title, stamp, fg, bg string) string {
+	w := max(o.Width, 20)
+	tl, tr, bl, br, hz, vt := "┏", "┓", "┗", "┛", "━", "┃"
+	if o.ASCII {
+		tl, tr, bl, br, hz, vt = "+", "+", "+", "+", "-", "|"
 	}
-	padded := make([]string, 0, len(lines)+2)
-	padded = append(padded, "")
+	inset := strings.Repeat(" ", boxInset)
+	out := make([]string, 0, len(lines)+2)
+	out = append(out, tl+boxRule(hz, title, stamp, w-2)+tr)
 	for _, l := range lines {
-		padded = append(padded, "   "+l)
+		out = append(out, vt+inset+PadTo(truncate(l, o.BoxInnerWidth()), o.BoxInnerWidth())+inset+vt) // a row too wide is cut, never the corner (round 4, B-10)
 	}
-	padded = append(padded, "")
-	return o.Block(strings.Join(padded, "\n"), fg, bg)
+	out = append(out, bl+strings.Repeat(hz, w-2)+br)
+	return o.Block(strings.Join(out, "\n"), fg, bg)
 }
 
-// ModuleHeight is the rendered line count for a module of n content lines.
-func ModuleHeight(n int, bg string) int {
-	if BGVisible(bg) {
-		return n + 2
+// boxRule fills w cells of a box's top rule around a title and a stamp:
+// two rule cells, a space, the title, a space, the fill, two spaces, the
+// stamp, a space, two rule cells — or the plain rule when both are empty.
+func boxRule(hz, title, stamp string, w int) string {
+	left, right := "", ""
+	if title != "" {
+		left = hz + hz + " " + title + " "
 	}
-	return n
+	if stamp != "" {
+		right = "  " + stamp + " " + hz + hz
+	}
+	if Width(left)+Width(right) > w {
+		right = ""
+	}
+	if Width(left) > w {
+		left = ""
+	}
+	return left + strings.Repeat(hz, w-Width(left)-Width(right)) + right
 }
+
+// boxInset is the air between a box's border and its rows, each side.
+const boxInset = 3
+
+// BoxRuleWidth is the cell count of a box's top rule between its corners —
+// what a title and a stamp share (BoxTitled).
+func (o Opts) BoxRuleWidth() int { return max(o.Width, 20) - 2 }
+
+// BoxInnerWidth is the row width inside a Box: the borders and both insets off.
+func (o Opts) BoxInnerWidth() int { return max(0, max(o.Width, 20)-2-2*boxInset) }
+
+// BoxHeight is the rendered line count for a Box of n rows: the two rules.
+func BoxHeight(n int) int { return n + 2 }
 
 // Block renders content as a borderless full-width background block (UAT
 // 5.4): every line is padded to the width and painted fg+bg; inner SGR
@@ -157,6 +173,14 @@ func (o Opts) Block(content, fg, bg string) string {
 		}
 		return strings.Join(lines, "\n")
 	}
+	if fg == "" && !BGVisible(bg) { // no tone of its own (the frame's base tone paints it): padded, no SGR — nothing for the compositor to style (round 4, B-01)
+		for i, line := range lines {
+			lines[i] = PadTo(line, o.Width)
+		}
+		return strings.Join(lines, "\n")
+	}
+	// fg and bg are SGR parameters ("38;5;250", "97", "48;2;…"), never a bare
+	// 256 index: a bare number here is ambiguous with the basic codes (B-01).
 	for i, line := range lines {
 		line = PadTo(line, o.Width)
 		line = strings.ReplaceAll(line, "\x1b[0m", "\x1b[0;"+fg+";"+bg+"m")

@@ -19,6 +19,9 @@ import (
 // toggleRadio flips player state (UAT 37: chip labels follow state - pin/
 // repeat/visualizer/size). Audio itself lands with B4.
 func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
+	if act == "radio-play" && d.modal == modalSevere {
+		return d.readFocusedEvent(), true // inside the window [space] reads the focused EVENT, never the location underneath (0.13.0 UAT option B)
+	}
 	switch act {
 	case "radio-play":
 		if d.cfg.Radio == nil {
@@ -77,24 +80,22 @@ func (d Dashboard) volControl(o render.Opts, width int) string {
 		plus + " " + render.Tint(fmt.Sprintf("%3d", d.radioVolume), render.Tok(render.TextBright))
 }
 
-// radioPanel renders the mock's full-size player frame. STATIC LAYOUT MOCK
-// until B4 wires audio (UAT-3.3: render it now to test the design; content
-// marked pending). Width-bound through render.Panel (UAT-2E).
+// radioPanel renders the player: the rows the layout already built for the
+// mode in force, in the heavy box (facelift 2026-08-28).
 func (d Dashboard) radioPanel(fl frameLayout) string {
 	fg, bg := render.RadioBlockTone()
-	return fl.o.Module(fl.radioRows, fg, bg) // the rows the layout already rendered for the mode in force ([T] Size: Min = two-row player)
+	return fl.o.Box(fl.radioRows, fg, bg) // a bordered box, the rows inset 3 (facelift 2026-08-28); the rows the layout already rendered for the mode in force ([T] Size: Min = two-row player)
 }
 
 // radioLines builds the player rows for a layout mode (UAT 35: width-
-// responsive - controls wrap, the VOL bar scales, the progress "play" line
-// drops when there is no room). ONE builder feeds both rendering and the
-// height budget, so what is measured is what is drawn.
+// responsive — the control rows wrap and centre, the VOL bar scales, the
+// head shortens). ONE builder feeds both rendering and the height budget,
+// so what is measured is what is drawn.
 func (d Dashboard) radioLines(o render.Opts, compactMode bool) []string {
-	_, bg := render.RadioBlockTone()
-	inner := o.ModuleInnerWidth(bg)
+	inner := o.BoxInnerWidth() // the box's rows: borders and the 3-cell insets off
 	parts := radioParts{
-		title:    render.Tint("Watchpost Weather Radio", render.Tok(render.RadioAccent)),
-		clock:    "", // the max player lays the marquee itself (UAT 90)
+		title:    render.Tint("WATCHPOST WEATHER RADIO", render.Tok(render.RadioAccent)), // the facelift's capitals (HUM LEAD UAT 2026-08-28)
+		clock:    "",                                                                     // the max player lays the marquee itself (UAT 90)
 		state:    d.radioStateLabel(),
 		controls: d.radioControlLines(o, inner),
 	}
@@ -103,7 +104,7 @@ func (d Dashboard) radioLines(o render.Opts, compactMode bool) []string {
 		return d.radioCompactRows(inner, parts)
 	}
 	parts.vol = d.volControl(o, max(10, min(30, inner/5))) // scaled in the full player
-	return d.radioMaxRows(inner, parts)
+	return d.radioMaxRows(o, inner, parts)
 }
 
 // radioParts are the styled player fragments shared by both layouts
@@ -121,7 +122,7 @@ func (d Dashboard) radioCompactRows(inner int, p radioParts) []string {
 	tail := p.vol + "   " + p.state
 	fits := func(parts []string) int { return render.Width(strings.Join(parts, "  ")) + 2 + render.Width(tail) }
 	if fits(segs) > inner {
-		segs[0] = render.Tint("WWRadio", render.Tok(render.RadioAccent))
+		segs[0] = render.Tint("WWRADIO", render.Tok(render.RadioAccent))
 	}
 	if fits(segs) > inner {
 		// The name outranks the play bar (UAT 40.3): shorten it to the room
@@ -129,7 +130,7 @@ func (d Dashboard) radioCompactRows(inner int, p radioParts) []string {
 		room := inner - fits(segs[:1]) - 2
 		if loc := d.selectedLocation(); loc != nil && room >= 8 {
 			name := truncateTo(loc.Label+" "+loc.Zip, room-3) + "…"
-			segs = []string{segs[0], "♪ " + render.Tint(name, render.Tok(render.RadioStation))}
+			segs = []string{segs[0], d.opts().Glyphs().Note + " " + render.Tint(name, render.Tok(render.RadioStation))}
 		} else {
 			segs = segs[:1]
 		}
@@ -147,9 +148,59 @@ func (d Dashboard) radioCompactRows(inner int, p radioParts) []string {
 func (d Dashboard) vizRows(inner, rows int) []string {
 	lines := render.Spectrum(d.vizBands, max(0, inner-2), rows)
 	for i, l := range lines {
-		lines[i] = "[" + l + "]"
+		lines[i] = trackLine(l, inner) // inside the player's track, under the marquee (UAT 2026-08-28)
 	}
 	return lines
+}
+
+// The player's track (HUM LEAD UAT 2026-08-28): the marquee row and the
+// visualizer rows sit between two │ rails spanning the module; an idle
+// marquee is a ░ fill, the voice's window slides over it while it speaks.
+// trackIdle is the marquee band's idle fill — through Glyphs (░, or . under --ascii).
+func trackIdle(o render.Opts) string { return o.Glyphs().Fill }
+
+// trackLine frames one row of content between the track's rails.
+func trackLine(content string, inner int) string {
+	return "│" + render.PadTo(content, max(0, inner-2)) + "│"
+}
+
+// marqueeTrack is the marquee row: LIVE RADIO centred on a relay, the
+// voice's sliding window while it speaks (short text centred), idle
+// otherwise. With colour on the track is a BAND — the section band's grey
+// (GroupSectionBG, the RECENT / SEARCHED tone) under the group-band text,
+// as the column group labels are drawn (HUM LEAD UAT 2026-08-28); with
+// colour off it is the ░ fill.
+func (d Dashboard) marqueeTrack(inner int) string {
+	w := max(0, inner-2)
+	idle := trackIdle(d.opts())
+	if render.ColorOn() {
+		idle = " " // the band's background carries the track
+	}
+	fill := func(text string) string {
+		n := render.Width(text)
+		if n >= w {
+			return text
+		}
+		left := (w - n) / 2
+		return strings.Repeat(idle, left) + text + strings.Repeat(idle, w-n-left)
+	}
+	band := func(content string) string {
+		if !render.ColorOn() {
+			return trackLine(content, inner)
+		}
+		return trackLine(render.TintRaw(content, render.Tok(render.GroupText)+";"+render.Tok(render.GroupSectionBG)), inner)
+	}
+	switch {
+	case d.radioLive && d.radioState == "playing": // UAT 79: a relay has no timeline — say what it is
+		return band(fill(" LIVE RADIO "))
+	case d.radioPlaying && d.radioDetail != "" && w >= 8:
+		text := marquee(d.radioDetail, w, d.marqueeProgress(time.Now()))
+		if render.Width(text) <= w-2 { // air either side only when both fit — a w-1 line padded to w+1 broke the box (round 4, B-02)
+			text = " " + text + " "
+		}
+		return band(fill(text))
+	}
+	return band(strings.Repeat(idle, w))
 }
 
 // vizActive: the visualizer has something to draw — Viz is on, the app
@@ -190,54 +241,66 @@ func (d Dashboard) vizFrame() (tea.Model, tea.Cmd) {
 	return d.armViz().takeCmd()
 }
 
-// radioMaxRows is the full player (UAT 54 mock): title … VOL + state /
-// station … clock / [3-row visualizer when on] / play line / controls.
-func (d Dashboard) radioMaxRows(inner int, p radioParts) []string {
-	// UAT 90: the location keeps its full width; after a 4-cell buffer the
-	// marquee (or LIVE RADIO) fills the rest of the row.
-	station := d.station()
-	lines := []string{
-		render.PadBetween(p.title, p.vol+"   "+p.state, inner),
-		render.PadTo(station+strings.Repeat(" ", marqueeGap)+d.radioClock(inner-render.Width(station)-marqueeGap), inner),
+// radioMaxRows is the full player (HUM LEAD UAT 2026-08-28 facelift): the
+// head — "WATCHPOST WEATHER RADIO • ♪ station" … VOL + state — over the
+// marquee track, the visualizer rows inside the track when it is on (three
+// wide, one narrow), then the controls. No play line: there was never a
+// timeline to scrub. Narrow: the title goes first, then the station reads
+// its short form, then it shortens.
+func (d Dashboard) radioMaxRows(o render.Opts, inner int, p radioParts) []string {
+	// The head keeps its title as long as it can: the VOL bar gives first
+	// (the wide bar, then 20 cells, then 10 — the mock's widths), the title
+	// only after that.
+	head := p.title + " • " + d.station()
+	tail := p.vol + "   " + p.state
+	room := inner - 2 - render.Width(tail)
+	for _, bar := range []int{20, 10} {
+		if render.Width(head) <= room {
+			break
+		}
+		tail = d.volControl(o, bar) + "   " + p.state
+		room = inner - 2 - render.Width(tail)
 	}
+	narrow := render.Width(head) > room
+	if narrow {
+		head = d.narrowHead(room)
+	}
+	lines := []string{" " + render.PadBetween(head, tail, inner-1), d.marqueeTrack(inner)} // the head one cell in, the track flush with the inset (the mock)
 	if d.radioViz {
-		lines = append(lines, d.vizRows(inner, 3)...) // UAT 54: three rows in the full player
-	}
-	if inner >= 70 {
-		lines = append(lines, strings.Repeat("━", inner)) // play line (UAT 35.3)
+		rows := 3 // UAT 54: three rows in the full player
+		if narrow {
+			rows = 1
+		}
+		lines = append(lines, d.vizRows(inner, rows)...)
 	}
 	return append(lines, p.controls...)
 }
 
-// station names the focused location for the player line (B4 plays it).
-func (d Dashboard) station() string {
-	if d.radioState == "failed" && d.radioDetail != "" { // red-team 0.9.0 F1: the reason, where the station was
-		return "✘ " + render.Tint(truncateTo(d.radioDetail, 72), render.Tok(render.AlertDanger))
-	}
-	if d.radioStation != "" { // B4: the resolved transmitter once tuned
-		return "♪ " + render.Tint(d.radioStation, render.Tok(render.RadioStation))
+// stationText is the station line's plain text (for shortening).
+func (d Dashboard) stationText() string {
+	if d.radioStation != "" {
+		return d.radioStation
 	}
 	if loc := d.selectedLocation(); loc != nil {
-		return "♪ " + render.Tint(loc.Label+" "+loc.Zip, render.Tok(render.RadioStation)) // UAT 40.4
+		return loc.Label + " " + loc.Zip
 	}
-	return "♪ Station: --"
+	return "Station: --"
 }
 
-// radioClock is the player's second line: the narration or install
-// progress while the player has something to say (B4 synth), else the
-// clock placeholder.
-func (d Dashboard) radioClock(width int) string {
-	if d.radioLive && d.radioState == "playing" { // UAT 79: a relay has no timeline — say what it is
-		return render.Tint("LIVE RADIO", render.Tok(render.StatePlaying))
+// station names the focused location for the player line (B4 plays it).
+func (d Dashboard) station() string {
+	g := d.opts().Glyphs()                               // ♪ / ✘, or ~ / x under --ascii (R5-C-13)
+	if d.radioState == "failed" && d.radioDetail != "" { // red-team 0.9.0 F1: the reason, where the station was
+		return g.Fail + " " + render.Tint(truncateTo(d.radioDetail, 72), render.Tok(render.AlertDanger))
 	}
-	if d.radioPlaying && d.radioDetail != "" && width >= 8 {
-		return render.Tint(marquee(d.radioDetail, width, d.marqueeProgress(time.Now())), render.Tok(render.TextBright))
+	if d.radioStation != "" { // B4: the resolved transmitter once tuned
+		return g.Note + " " + render.Tint(d.radioStation, render.Tok(render.RadioStation))
 	}
-	return "" // UAT 89: no timeline placeholder — there is never a timeline
+	if loc := d.selectedLocation(); loc != nil {
+		return g.Note + " " + render.Tint(loc.Label+" "+loc.Zip, render.Tok(render.RadioStation)) // UAT 40.4
+	}
+	return g.Note + " Station: --"
 }
-
-// marqueeGap separates the location from the marquee on the max player.
-const marqueeGap = 4
 
 // marqueeProgress is how far through the current line the voice is (0..1).
 func (d Dashboard) marqueeProgress(now time.Time) float64 {
@@ -271,7 +334,7 @@ func (d Dashboard) radioStateLabel() string {
 	case "reconnecting":
 		return render.Tint("↻ RECONNECTING", render.Tok(render.RadioAccent))
 	case "failed":
-		return render.Tint("✘ NO STREAM", render.Tok(render.StateStopped))
+		return render.Tint(d.opts().Glyphs().Fail+" NO STREAM", render.Tok(render.StateStopped))
 	}
 	if d.radioPlaying { // no player wired (tests / older builds): state follows the toggle
 		return render.Tint("▶ PLAYING", render.Tok(render.StatePlaying))
@@ -369,5 +432,42 @@ func (d Dashboard) radioControlLines(o render.Opts, inner int) []string {
 		o.KeyCap("V") + " Voice: " + d.voiceChip(), // UAT 84
 		o.KeyCap("T") + " Size: " + size,
 	}
-	return render.WrapSegments(segs, inner, "  ")
+	lines := render.WrapSegments(segs, inner-2, "  ")
+	for i := range lines { // the controls two cells in (the mock); a wrapped continuation centres under the first row
+		if i == 0 {
+			lines[i] = "  " + lines[i]
+			continue
+		}
+		if pad := (inner - render.Width(lines[i])) / 2; pad > 0 {
+			lines[i] = strings.Repeat(" ", pad) + lines[i]
+		}
+	}
+	return lines
+}
+
+// narrowHead is the player's head without the title: the station (or the
+// failure reason), then its short form, then whichever of those was chosen
+// shortened with an ellipsis (round 4, B-09: the short form shortens, the
+// failure text stays a failure), and the mark alone when even that will not
+// fit (B-10).
+func (d Dashboard) narrowHead(room int) string {
+	head := d.station()
+	g := d.opts().Glyphs()
+	failed := d.radioState == "failed" && d.radioDetail != ""
+	mark, text, tone := g.Note+" ", render.Plain(d.stationText()), render.Tok(render.RadioStation)
+	if failed {
+		mark, text, tone = g.Fail+" ", render.PlainLine(d.radioDetail), render.Tok(render.AlertDanger)
+	} else if d.radioShort != "" {
+		text = d.radioShort
+		if render.Width(head) > room {
+			head = mark + render.Tint(text, tone)
+		}
+	}
+	switch {
+	case render.Width(head) <= room:
+		return head
+	case room >= 8:
+		return mark + render.Tint(truncateTo(text, room-3)+"…", tone)
+	}
+	return strings.TrimSpace(mark)
 }

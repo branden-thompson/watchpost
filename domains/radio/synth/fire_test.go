@@ -29,7 +29,7 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 			},
 		},
 	}
-	segs := FireSegments("Oceanside, CA", fr, true, now)
+	segs := std.FireSegments("Oceanside, CA", fr, true, now)
 	want := []string{
 		"This is the Watchpost Fire and Hotspot report for Oceanside, California. This report is derived from data from NOAA's Hazard Mapping System, the National Interagency Fire Center, and NASA FIRMS. Data for this report may be delayed or incomplete, and is not intended for life safety use.",
 		"There are currently 2 hotspots within a 16 mile fire ring in your area.",
@@ -51,11 +51,11 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 	}
 	// Metric, no fire: the zero sentence in kilometers; one hotspot reads singular.
 	quiet := FireReport{Known: true, RadiusKm: 25, Sources: []string{"NOAA's Hazard Mapping System"}, State: snapshot.FireState{AsOf: now}}
-	if s := FireSegments("Oceanside, CA", quiet, false, now); len(s) != 2 || s[1].Text != "There are currently no hotspots within a 25 kilometer fire ring in your area." || !strings.Contains(s[0].Text, "data from NOAA's Hazard Mapping System.") {
+	if s := std.FireSegments("Oceanside, CA", quiet, false, now); len(s) != 2 || s[1].Text != "There are currently no hotspots within a 25 kilometer fire ring in your area." || !strings.Contains(s[0].Text, "data from NOAA's Hazard Mapping System.") {
 		t.Fatalf("quiet report: %s", join(s))
 	}
 	// No fire data at all: skipped — the broadcast goes straight to the tail.
-	if s := FireSegments("Oceanside, CA", FireReport{}, true, now); s != nil {
+	if s := std.FireSegments("Oceanside, CA", FireReport{}, true, now); s != nil {
 		t.Fatalf("no fire data must skip the report, got %s", join(s))
 	}
 }

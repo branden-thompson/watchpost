@@ -1,0 +1,28 @@
+#!/usr/bin/expect -f
+# soak-1h.expect — the 0.13.0 VALIDATE soak (RS-8, plan 4.5): one hour of the real dashboard on a pty,
+# radio off, viz off, the severe window opened every ten minutes so the index and its memo cycle under load.
+# Sample beside it with scripts/quality/soak.sh <pid> 1 soak.csv 300 (WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6064).
+#   scripts/quality/soak-1h.expect <soak-1h.log>
+set timeout 5
+match_max 200000
+lassign $argv logfile
+log_user 0
+set lf [open $logfile a]
+proc phase {lf s} { puts $lf "[clock format [clock seconds] -format %Y-%m-%dT%H:%M:%SZ -gmt 1] $s"; flush $lf }
+proc hold {secs} { set start [clock seconds]; while {[clock seconds] - $start < $secs} { expect -timeout 30 -re ".+" {} } }
+spawn env WATCHPOST_DEBUG_PPROF=1 WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6064 ./dist/watchpost
+catch {exec stty rows 44 cols 133 < $spawn_out(slave,name)}
+puts $lf "pid [exp_pid]"; flush $lf
+expect -timeout 30 -re "Setup|Quit" { phase $lf "A dashboard up" } timeout { phase $lf "A dashboard: no masthead" }
+expect -timeout 180 -re "\\d+ºF" { phase $lf "A first data" } timeout { phase $lf "A first data: not within 180 s" }
+for {set i 1} {$i <= 6} {incr i} {
+  hold 540
+  send "w"; expect -timeout 15 "SEVERE" { phase $lf "W$i window open" } timeout { phase $lf "W$i window: not confirmed" }
+  hold 30
+  send "\x1b"; hold 2; send "\x1b"; hold 28
+  phase $lf "W$i window closed"
+}
+send "q"
+expect -timeout 15 eof
+phase $lf "quit ok"
+close $lf

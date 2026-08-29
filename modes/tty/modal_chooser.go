@@ -68,7 +68,7 @@ func (d Dashboard) openVoice() Dashboard {
 // voiceChip is the [V] control's label: the chosen voice, or "—" when none.
 func (d Dashboard) voiceChip() string {
 	if d.radioVoice == "" {
-		return "—"
+		return "-" // no voice chosen (an ASCII-safe dash)
 	}
 	return render.Tint(d.radioVoice, render.Tok(render.RadioStation))
 }

@@ -1,0 +1,2 @@
+{{/* weather-radio/tail: the sign-off. Data: .Voice (the correspondent voice name; "your correspondent" when unnamed). */}}
+This is {{.Voice}} for Watchpost Weather Radio. You can change your correspondent voice in your Watchpost CLI application settings.

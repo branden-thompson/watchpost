@@ -1,0 +1,2 @@
+{{/* weather-radio/live: where the live NOAA broadcast can be heard. Data: .Callsign (KEC62), .Where (San Diego, California broadcasting on 162.400 MHz). */}}
+A version of this forecast is also broadcast live from {{.Callsign}}, {{.Where}} and is accessible via NOAA radio devices and receivers.

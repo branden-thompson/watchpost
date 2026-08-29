@@ -52,12 +52,12 @@ func (d Dashboard) detailLines() []string {
 	lines = append(lines, d.forecastRows(o, loc)...)
 	if loc.Marine != nil {
 		lines = append(lines, detailRow("", ""))
-		lines = append(lines, maritimeRows(o, loc.Marine, locTZ(loc), time.Now())...) // coastal locations only (UAT 29)
+		lines = append(lines, maritimeRows(o, loc.Marine, locTZ(loc), d.now())...) // coastal locations only (UAT 29)
 	}
 	lines = append(lines, detailRow("", ""))
-	lines = append(lines, fireRows(o, loc, time.Now(), d.fireBoldMW())...) // B5: fire is another alert kind
+	lines = append(lines, fireRows(o, loc, d.now(), d.fireBoldMW())...) // B5: fire is another alert kind
 	lines = append(lines, detailRow("", ""))
-	lines = append(lines, seismicRows(o, loc, time.Now(), cw, d.seismicLookbackDays())...) // 0.11.0: earthquakes are another alert kind
+	lines = append(lines, seismicRows(o, loc, d.now(), cw, d.seismicLookbackDays())...) // 0.11.0: earthquakes are another alert kind
 	lines = append(lines, alertBlocks(loc, min(o.Width, d.modalWidth())-11)...)
 	// UAT 101: one consolidated chip row; + / − Watchlist enabled by membership.
 	controls := o.KeyCap("↑↓") + " Scroll  " + o.KeyCap("esc") + " Close  " +
@@ -104,7 +104,7 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location) []string
 	// UAT 60.2: the observing station and its distance live here at every
 	// width — the table's WX STN / DIST columns surface them only when there
 	// is room; drilling in one level always reaches them.
-	if st := h.Source.ModelOrStation; st != "" {
+	if st := render.PlainLine(h.Source.ModelOrStation); st != "" { // a provider name never addresses the terminal (NFR-6, R5-C-05)
 		dist := ""
 		if d := strings.TrimSpace(o.Distance(h.Source.DistanceKm)); d != "" {
 			dist = "Distance  :  " + d

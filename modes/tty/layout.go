@@ -34,26 +34,34 @@ type frameLayout struct {
 // rendered a second time only when the mode in force is the two-row one.
 func (d Dashboard) layout() frameLayout {
 	o := d.opts()
-	fl := d.layoutWith(o)
+	// The rows the geometry measures are built ONCE per frame and handed to
+	// both resolutions (round 4, B-06: they were built four times a tick).
+	rows := layoutRows{full: d.radioLines(o, false), compact: d.radioLines(o, true), controlRow: d.controlRow(o)}
+	fl := d.layoutWith(o, rows)
 	// The bands are the last thing to give (UAT 2026-08-27): only when the
 	// compact layout still cannot hold the table's floor do they fall back
 	// to one row, and the geometry is resolved again on that basis.
 	if fl.compact && d.height-fl.chrome-bottomInset < recentWindow {
 		o.ThinBands = true
-		fl = d.layoutWith(o)
+		fl = d.layoutWith(o, rows)
 	}
 	return fl
 }
 
+// layoutRows are the rendered rows a layout measures: the player in both
+// modes and the control row (width-bound; the bands' height is not theirs).
+type layoutRows struct {
+	full, compact []string
+	controlRow    string
+}
+
 // layoutWith resolves the geometry for a given set of options.
-func (d Dashboard) layoutWith(o render.Opts) frameLayout {
-	fl := frameLayout{o: o, controlRow: d.controlRow(o), days: d.sharedExtDays()}
+func (d Dashboard) layoutWith(o render.Opts, built layoutRows) frameLayout {
+	fl := frameLayout{o: o, controlRow: built.controlRow, days: d.sharedExtDays()}
 	fl.controlRows = strings.Count(fl.controlRow, "\n") + 1
-	_, abg := render.AlertBlockTone("", "minor")
-	_, rbg := render.RadioBlockTone()
-	full := d.radioLines(o, false)
-	fullRadioH := render.ModuleHeight(len(full), rbg)
-	fullAlertH := render.ModuleHeight(alertContentLines, abg)
+	full := built.full
+	fullRadioH := render.BoxHeight(len(full)) // the player is a box: its two rules whatever the tone
+	fullAlertH := render.BoxHeight(1)         // the alert module is a one-row box (facelift 2026-08-28)
 	// UAT 49: the full modules stay while the table can show at least
 	// tableBreakpoint rows (favourites + recent window, any split); only
 	// when the full layout cannot deliver the breakpoint do they minimize.
@@ -63,24 +71,28 @@ func (d Dashboard) layoutWith(o render.Opts) frameLayout {
 	fl.compact = d.height < need
 	fl.alertH = fullAlertH
 	if fl.compact {
-		fl.alertH = render.ModuleHeight(1, abg) // one line when compact (UAT 34)
+		fl.alertH = 1 // the same row without the rules when compact (UAT 34)
 	}
 	fl.radioRows = full
 	if fl.compact || d.radioMin {
-		fl.radioRows = d.radioLines(o, true) // [T] Size: Min or compact = the two-row player
+		fl.radioRows = built.compact // [T] Size: Min or compact = the two-row player
 	}
-	fl.radioH = render.ModuleHeight(len(fl.radioRows), rbg)
+	fl.radioH = render.BoxHeight(len(fl.radioRows))
 	// UAT 46.1/58: the window expands to fill tall terminals; the content
 	// ends exactly bottomInset rows above the bottom.
 	fl.chrome = chromeLines + bandExtra + (fl.controlRows - 1) + 1 + fl.radioH + 1 + fl.alertH + 1 + d.numPriority()
 	fl.window = max(recentWindow, d.height-fl.chrome-bottomInset)
+	if fl.chrome+fl.window > d.height { // the floor: the inset goes first, then the window shrinks to what fits — the frame never exceeds the terminal (round 4, B-07)
+		fl.window = max(1, d.height-fl.chrome)
+	}
 	return fl
 }
 
 // chromeLines are the fixed lines around the modules (UAT 19.1): top pad 2,
-// header 2, blank, module gaps 2, priority headers 2, and the 0.12.0 global
-// ticker row + its blank (2) — the band/showing rows are counted with the
-// window. bottomInset mirrors the top padding.
+// the header box 3, blank, the alert→controls gap 1 (the radio and alert boxes
+// touch — HUM LEAD UAT 2026-08-28), priority headers 2, and the 0.12.0
+// global ticker row + its blank (2) — the band/showing rows are counted
+// with the window. bottomInset mirrors the top padding.
 const (
 	chromeLines = 11
 	bottomInset = 2

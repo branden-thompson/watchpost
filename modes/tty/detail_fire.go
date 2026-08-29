@@ -55,7 +55,7 @@ func fireSeparators(o render.Opts) (dot, more string) {
 	if o.ASCII {
 		return " - ", "..."
 	}
-	return " · ", "…"
+	return " " + o.Glyphs().Dot + " ", "…"
 }
 
 // hotspotRows: up to three hotspots nearest first, then "… and N more".

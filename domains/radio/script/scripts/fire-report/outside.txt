@@ -1,0 +1,2 @@
+{{/* fire-report/outside: introduces the named fires beyond the ring. No data. */}}
+Nearby fires outside of your fire ring that may be worth noting are:

@@ -13,6 +13,7 @@ package tty
 import (
 	"fmt"
 	"time"
+	"unicode"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -88,6 +89,7 @@ type Config struct {
 	ASCII        bool                                                  // --ascii: the row marks and legend in their ASCII forms (A11-10; quality pass Q3)
 	TickerMuted  bool                                                  // 0.12.0: the persisted [M] state at launch
 	MuteTicker   func(bool)                                            // 0.12.0: persist the [M] toggle and tell the ticker pipeline to stay silent; nil in tests
+	NarrateEvent func(key string)                                      // 0.13.0: [space] in the severe window reads the focused event over the radio (UAT option B); nil = the chip mutes
 
 	AlertRadiusMi  int       // 0.12.0: the Alert Notification Preference at launch — 0 = All (global), >0 = only alerts within N mi of the default location
 	SetAlertRadius func(int) // 0.12.0: persist the radius and tell the ticker pipeline to re-scope; nil in tests
@@ -197,6 +199,7 @@ type VoiceNoteMsg struct{ Text string }
 type RadioStatusMsg struct {
 	State    string // stopped | connecting | playing | reconnecting | failed
 	Station  string // "KEC49 Monterey CA 162.550 MHz · 78 mi (nearest relayed)"
+	Short    string // the station's short form for a narrow player ("EVENT · SPS · Palomar Mountain, CA"); "" = shorten the long one
 	Detail   string // relay name, in-band title, or the failure reason
 	Volume   int
 	Live     bool                 // a relayed broadcast (no timeline to show) vs the synthesized one (UAT 79)
@@ -211,14 +214,15 @@ func defaultKeyMap() term.KeyMap {
 		"quit":          {Keys: []string{"q", "ctrl+c"}, Help: "Quit"},
 		"about":         {Keys: []string{"a"}, Help: "About"},
 		"alert-details": {Keys: []string{"A"}, Help: "Alert Details"},
-		"details":       {Keys: []string{"enter"}, Help: "Location Details (forecast, marine, fire)"},
+		"severe":        {Keys: []string{"w", "ctrl+s"}, Help: "Severe Weather / Disaster Events"},
+		"details":       {Keys: []string{"enter"}, Help: "Location Details"}, // the window shows what it has; the short label keeps the Help columns within 133 cols (UAT 2026-08-28)
 		"add-location":  {Keys: []string{"ctrl+a"}, Help: "Add Location"},
 		"status":        {Keys: []string{"S"}, Help: "API Status"},
 		"remove":        {Keys: []string{"shift+delete"}, Help: "Remove from Watchlist"},
 		"lookup":        {Keys: []string{"l"}, Help: "Lookup Location"},
 		"theme":         {Keys: []string{"t"}, Help: "Choose Color Theme"},
 		"setup":         {Keys: []string{"s"}, Help: "Setup"},
-		"radio-play":    {Keys: []string{"space"}, Help: "Play/Pause Radio"},
+		"radio-play":    {Keys: []string{"space"}, Help: "Play/Pause · Read Event"},
 		"radio-repeat":  {Keys: []string{"r"}, Help: "Repeat: Off / One / Watchlist"},
 		"radio-viz":     {Keys: []string{"v"}, Help: "Visualizer"},
 		"radio-mode":    {Keys: []string{"m"}, Help: "Radio Mode: Synth / Nearest Relay"},
@@ -248,11 +252,12 @@ type Dashboard struct {
 	units        render.Units
 	selected     int
 	alertIdx     int
-	recentOff    int    // scroll offset (interaction lands with tab section nav)
-	modal        modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode      string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
-	addErr       string // resolve failure surfaced in the modal
-	voiceNote    string // the Voice chooser's progress line (UAT 119): set by VoiceNoteMsg, "" when nothing is pending
+	recentOff    int                   // scroll offset (interaction lands with tab section nav)
+	modal        modal                 // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode      string                // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	lookupRef    *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: the modal showed the old top RECENT row meanwhile)
+	addErr       string                // resolve failure surfaced in the modal
+	voiceNote    string                // the Voice chooser's progress line (UAT 119): set by VoiceNoteMsg, "" when nothing is pending
 	setup        setupState
 	themeIdx     int // chooser cursor
 	voiceIdx     int
@@ -273,6 +278,7 @@ type Dashboard struct {
 	radioState   string               // B4: last RadioStatusMsg state ("" = never tuned)
 	pendingCmd   tea.Cmd              // B4: a command a key handler queued (radio hook calls run off the update loop)
 	radioStation string               // B4: resolved station label
+	radioShort   string               // its short form for a narrow player (UAT 2026-08-28); "" = none
 	radioDetail  string               // B4: relay / title / failure reason
 	radioLive    bool                 // B4: relayed broadcast (UAT 79: "LIVE RADIO" instead of a timeline)
 	radioKey     snapshot.LocationKey // B4: the location being played (UAT 80: green ▶ in its row)
@@ -290,6 +296,16 @@ type Dashboard struct {
 	tickArmed    bool             // a shimmer tick is in flight — never two (Q3: armed only while something animates)
 	now          func() time.Time // the clock the header's "ago" reads (tests pin it)
 	memo         *bodyMemo        // the body memo's single slot (Q3); allocated at construction, shared by every copy of the model
+	mmemo        *modalMemo       // the modal memo's single slot (0.13.0, FR-10): the open window renders once per input change
+	// 0.13.0: the Severe Weather / Disaster Events window (severe.go)
+	severe          SevereMsg
+	severeByTab     [severeNumTabs][]int // row indices per tab, in the app's sort
+	severeTab       SevereTab
+	severeRow       int
+	severeDetail    bool      // the record replaces the table (esc backs out)
+	lastBreaking    time.Time // the last breaking-news takeover: the window opens on its category for 10 min
+	lastBreakingTab SevereTab
+	severeReading   string // the key of the event being read over the radio ([space]); "" = none — the ▶ mark
 }
 
 // NewDashboard builds the model, merging user key overrides with validation
@@ -299,7 +315,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("key bindings invalid: %w", err)
 	}
-	d := Dashboard{cfg: cfg, keys: keys, units: render.UnitF, width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, tickerMuted: cfg.TickerMuted, memo: &bodyMemo{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, units: render.UnitF, width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, tickerMuted: cfg.TickerMuted, memo: &bodyMemo{}, mmemo: &modalMemo{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -340,7 +356,7 @@ func (d Dashboard) tickNeeded() bool {
 		return true
 	case len(d.ticker) > 0: // 0.12.0: the marquee scrolls continuously while events are active
 		return true
-	case d.radioPlaying && d.radioDetail != "" && !d.vizTicking && !d.radioMin && !(d.radioLive && d.radioState == "playing"):
+	case d.radioPlaying && d.radioDetail != "" && !d.vizTicking && !d.radioMin && (!d.radioLive || d.radioState != "playing"):
 		return true // the marquee paces itself on the wall clock (UAT 83); the viz tick redraws faster when on; LIVE RADIO and the min player have none
 	}
 	return d.anyLoading() // the shimmer (UAT 18.2b)
@@ -394,7 +410,8 @@ func (d Dashboard) handleTicker(msg tea.Msg) (tea.Model, tea.Cmd) {
 		d.advanceTickerCategory() // the 90s lane rotation (driven by the pipeline)
 	case TickerBreakingMsg:
 		item := v.Item
-		d.breaking = &item // a breaking event takes the marquee centre
+		d.breaking = &item                                             // a breaking event takes the marquee centre
+		d.lastBreaking, d.lastBreakingTab = d.now(), severeTabOf(item) // the window opens on this category for a while (SAM-D-17)
 	case TickerBreakingDoneMsg:
 		d.breaking = nil // resume normal rotation where it left off
 	}
@@ -413,6 +430,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyRecent(v), nil
 	case TickerMsg, TickerAdvanceMsg, TickerBreakingMsg, TickerBreakingDoneMsg:
 		return d.handleTicker(msg) // 0.12.0: the global event ticker's messages, one owner
+	case SevereMsg, SevereReadingMsg:
+		return d.handleSevere(msg), nil // 0.13.0: the severe window's messages, one owner
 	case tea.BackgroundColorMsg:
 		d.darkBG = v.IsDark()
 		return d, nil
@@ -433,9 +452,66 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		d.voiceErr = v.err.Error()
 		return d.open(modalVoice), nil // alone on top (N-7; the Q6 exclusivity test)
 	case tea.KeyPressMsg:
-		return d.handleKey(v)
+		return d.handleKeyPress(v)
 	}
 	return d, nil
+}
+
+// handleSevere applies one severe-window message (0.13.0): the published
+// index, or which event the radio is reading (the ▶ follows it; "" ends it).
+func (d Dashboard) handleSevere(msg tea.Msg) Dashboard {
+	switch v := msg.(type) {
+	case SevereMsg:
+		return d.applySevere(v)
+	case SevereReadingMsg:
+		d.severeReading = v.Key
+	}
+	return d
+}
+
+// handleKeyPress routes a key press, un-fusing a lone esc first: a lone esc
+// followed by a key reaches the model FUSED as alt+key — the terminal sends
+// ESC then the byte, and the input layer has no ESC timeout to tell them
+// apart (probed on a pty against 0.12.0 too: esc then `a` never opened
+// About). No binding uses alt, so the only reading is the user's: esc, then
+// the key (0.13.0 red-team, PTY).
+func (d Dashboard) handleKeyPress(v tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	esc, key, fused := splitEscFusion(v)
+	if !fused {
+		return d.handleKey(v)
+	}
+	m, c1 := d.handleKey(esc)
+	m, c2 := m.(Dashboard).handleKey(key)
+	return m, tea.Batch(c1, c2)
+}
+
+// splitEscFusion recognises an alt+key that can only be a lone esc fused
+// with the key that followed it, and hands back the two presses.
+func splitEscFusion(k tea.KeyPressMsg) (esc, key tea.KeyPressMsg, fused bool) {
+	if k.Mod&tea.ModAlt == 0 {
+		return k, k, false
+	}
+	key = k
+	key.Mod &^= tea.ModAlt
+	switch {
+	case k.Code == tea.KeyEnter || k.Code == tea.KeyTab || k.Code == tea.KeyEscape: // ESC CR / ESC HT / ESC ESC: the key itself (round 4, B-08)
+	case k.Code >= 0x01 && k.Code <= 0x1a: // a raw control byte after the esc (ESC ^S): ctrl+letter
+		key.Code, key.Mod = k.Code+0x60, key.Mod|tea.ModCtrl
+	}
+	// Every other alt chord — an arrow, backspace, delete, a non-ASCII rune —
+	// is the same fusion (REVIEW R5-C-08: esc then ↓ lost both); no binding
+	// uses alt, so nothing is shadowed. An UPPERCASE key after the esc arrives
+	// as alt+shift+letter with no text: the letter is the key (VALIDATE
+	// 2026-08-29 — esc then S/V/T/M/A were lost on a real pty).
+	if key.Text == "" && key.Mod&^tea.ModShift == 0 && k.Code >= 0x20 && k.Code <= 0x7e {
+		r := rune(k.Code)
+		if key.Mod&tea.ModShift != 0 {
+			r = unicode.ToUpper(r)
+			key.Mod &^= tea.ModShift
+		}
+		key.Code, key.Text = r, string(r)
+	}
+	return tea.KeyPressMsg{Code: tea.KeyEscape}, key, true
 }
 
 // applyRecent takes a published RECENT snapshot: alerts sorted on the
@@ -446,6 +522,9 @@ func (d Dashboard) applyRecent(v RecentSnapshotMsg) Dashboard {
 	}
 	d.recent = v.Snap
 	sortAlerts(d.recent)
+	if i := d.lookupIndex(); i >= 0 {
+		d.selected, d.lookupRef = d.numPriority()+i, nil // the looked-up location's data arrived: the focus follows it, Details reads it from here on
+	}
 	return d
 }
 
@@ -470,8 +549,8 @@ func (d Dashboard) applySnapshot(v SnapshotMsg) (tea.Model, tea.Cmd) {
 	}
 	changed := !sameRefs(refsOf(d.snap), refsOf(v.Snap))
 	d.snap = v.Snap
-	sortAlerts(d.snap) // UAT 16.2: most severe first, everywhere
-	if d.selected >= d.numPriority()+d.numRecent() {
+	sortAlerts(d.snap)                                                     // UAT 16.2: most severe first, everywhere
+	if d.selected >= d.numPriority()+d.numRecent() && d.lookupRef == nil { // a pending lookup keeps its focus (R5-C-02)
 		d.selected = 0
 	}
 	if changed && d.radioRepeat == RepeatWatchlist {
@@ -559,8 +638,8 @@ func (d Dashboard) canAddFocused() bool {
 // RECENT row that has none (UAT 72): the seed list skips the 162 KB hourly
 // product on its cadence; a row someone drills into earns it.
 func (d Dashboard) hydrateCmd() tea.Cmd {
-	if d.modal != modalDetails || d.cfg.Hydrate == nil || d.selected < d.numPriority() {
-		return nil
+	if d.modal != modalDetails || d.cfg.Hydrate == nil || d.selected < d.numPriority() || d.lookupRef != nil {
+		return nil // a pending lookup is already fetching its own location
 	}
 	loc := d.selectedLocation()
 	if loc == nil || len(loc.Hourly) > 0 {
@@ -594,16 +673,24 @@ const (
 	modalTheme   // t: theme chooser (UAT 53)
 	modalVoice   // V: voice chooser (UAT 84)
 	modalSetup   // s: Setup window (UAT 100) — the first-run questions, over the dashboard like every other modal
+	modalSevere  // w / ctrl+s: the Severe Weather / Disaster Events window (0.13.0)
 )
 
 // open shows m alone, scrolled to the top.
 func (d Dashboard) open(m modal) Dashboard {
+	if m != modalDetails {
+		d.lookupRef = nil // only Details waits for a lookup (R5-B-09)
+	}
 	d.modal, d.modalScroll = m, 0
 	return d
 }
 
 // close dismisses whatever is open.
-func (d Dashboard) close() Dashboard { return d.open(modalNone) }
+func (d Dashboard) close() Dashboard {
+	d.lookupRef = nil      // a closed Details modal no longer waits for a lookup
+	d.severeDetail = false // a closed window forgets its record view (REVIEW R5-A-04)
+	return d.open(modalNone)
+}
 
 // toggle opens m, or closes it when it is the open one.
 func (d Dashboard) toggle(m modal) Dashboard {
@@ -616,6 +703,9 @@ func (d Dashboard) toggle(m modal) Dashboard {
 // toggleModal owns the open/close actions for every floating window (split
 // from handleKey, P10-04). Opening one closes the others.
 func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
+	if d, ok := d.toggleSevere(act); ok {
+		return d, true // 0.13.0: the severe window's open / drill-in / back-out
+	}
 	switch act {
 	case term.HelpAction:
 		return d.toggle(modalHelp), true
@@ -644,6 +734,22 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 		return d, true
 	case "close":
 		return d.close(), true
+	}
+	return d, false
+}
+
+// toggleSevere owns the severe window's actions (0.13.0, split from
+// toggleModal for P10-04): w / ctrl+s open it, enter drills into the focused
+// event (FR-4), esc backs out of the record — the second esc falls through to
+// close like any window.
+func (d Dashboard) toggleSevere(act term.Action) (Dashboard, bool) {
+	switch {
+	case act == "severe":
+		return d.openSevere(), true
+	case act == "details" && d.modal == modalSevere:
+		return d.openSevereDetail(), true
+	case act == "close" && d.modal == modalSevere && d.severeDetail:
+		return d.closeSevereDetail(), true
 	}
 	return d, false
 }
@@ -677,10 +783,12 @@ func (d Dashboard) applyCommitted(v committedMsg) Dashboard {
 
 // applyRadioStatus mirrors the player's status into the model (B4).
 func (d Dashboard) applyRadioStatus(v RadioStatusMsg) Dashboard {
-	if v.Detail != d.radioDetail {
+	if render.PlainLine(v.Detail) != d.radioDetail {
 		d.radioSince = time.Now() // a new line starts its own marquee clock (UAT 83)
 	}
-	d.radioState, d.radioStation, d.radioDetail, d.radioLive, d.radioSpoken = v.State, v.Station, v.Detail, v.Live, v.Spoken
+	// Every field crosses the boundary here, once: a station name, a product's
+	// short form or a spoken line never addresses the terminal (NFR-6, round 4 A-06).
+	d.radioState, d.radioStation, d.radioShort, d.radioDetail, d.radioLive, d.radioSpoken = v.State, render.PlainLine(v.Station), render.PlainLine(v.Short), render.PlainLine(v.Detail), v.Live, v.Spoken
 	d.radioPlaying = v.State == "playing" || v.State == "connecting" || v.State == "reconnecting"
 	if v.Location != "" {
 		d.radioKey = v.Location // UAT 93: the ▶ row follows a Watchlist advance

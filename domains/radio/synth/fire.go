@@ -35,26 +35,18 @@ const firePause = 2 * time.Second
 // Phrases whose data the feeds did not give are left out, never guessed.
 // With no fire data for the location the report is skipped entirely (HUM
 // LEAD: straight to the tail like normal).
-func FireSegments(location string, fr FireReport, imperial bool, now time.Time) []Segment {
+func (c Composer) FireSegments(location string, fr FireReport, imperial bool, now time.Time) []Segment {
 	if !fr.Known {
 		return nil
 	}
 	place := ExpandStates(location)
-	notice := fmt.Sprintf("This is the Watchpost Fire and Hotspot report for %s. This report is derived from data from %s. Data for this report may be delayed or incomplete, and is not intended for life safety use.", place, joinAnd(fr.Sources))
+	notice := c.say("fire-report", "head", map[string]string{"Location": place, "Sources": joinAnd(fr.Sources)})
 	segs := []Segment{{Key: "fire:notice:" + contentKey(notice), Text: notice, Pause: firePause}} // keyed by content: the cache must never replay yesterday's feeds (REVIEW C1)
 
-	ring := ringWords(fr.RadiusKm, imperial) // adjectival: "a 16 mile fire ring"
 	var body []string
-	switch n := len(fr.State.Hotspots); n {
-	case 0:
-		body = append(body, fmt.Sprintf("There are currently no hotspots within a %s fire ring in your area.", ring))
-	case 1:
-		body = append(body, fmt.Sprintf("There is currently 1 hotspot within a %s fire ring in your area.", ring))
-	default:
-		body = append(body, fmt.Sprintf("There are currently %d hotspots within a %s fire ring in your area.", n, ring))
-	}
+	body = append(body, c.say("fire-report", "count", map[string]any{"Count": len(fr.State.Hotspots), "Ring": ringWords(fr.RadiusKm, imperial)})) // adjectival: "a 16 mile fire ring"
 	if h := strongest(fr.State.Hotspots); h != nil {
-		body = append(body, hotspotSentence(fr, *h, imperial, now))
+		body = append(body, c.hotspotSentence(fr, *h, imperial, now))
 	}
 	var inside, outside []snapshot.Incident
 	for _, in := range fr.State.Incidents {
@@ -65,15 +57,18 @@ func FireSegments(location string, fr FireReport, imperial bool, now time.Time) 
 		}
 	}
 	for _, in := range inside {
-		body = append(body, incidentSentence(fr, in, imperial, now, true))
+		body = append(body, c.incidentSentence(fr, in, imperial, now, true))
 	}
 	if len(outside) > 0 {
-		body = append(body, "Nearby fires outside of your fire ring that may be worth noting are:")
+		body = append(body, c.say("fire-report", "outside", nil))
 		for _, in := range outside {
-			body = append(body, incidentSentence(fr, in, imperial, now, false))
+			body = append(body, c.incidentSentence(fr, in, imperial, now, false))
 		}
 	}
 	for _, piece := range body {
+		if piece == "" {
+			continue // a phrase without a script is not spoken
+		}
 		segs = append(segs, Segment{Key: "fire:" + contentKey(piece), Text: piece}) // content-keyed: counts change between cycles under repeat (REVIEW C1)
 	}
 	return segs
@@ -103,24 +98,18 @@ func strongest(hs []snapshot.Hotspot) *snapshot.Hotspot {
 // hotspotSentence: "The strongest hotspot is 6 miles north of your
 // location, with a fire radiative power of 62 megawatts, detected 2 hours
 // ago by GOES-West."
-func hotspotSentence(fr FireReport, h snapshot.Hotspot, imperial bool, now time.Time) string {
-	parts := []string{"The strongest hotspot is"}
+func (c Composer) hotspotSentence(fr FireReport, h snapshot.Hotspot, imperial bool, now time.Time) string {
+	data := map[string]string{"Where": "in your area", "FRP": "", "Detected": "", "Satellite": satelliteWords(h.Source.ModelOrStation)}
 	if h.DistanceKm != nil {
-		parts = append(parts, distanceWords(*h.DistanceKm, imperial)+" "+bearingWords(fr.Lat, fr.Lon, h.Lat, h.Lon)+" of your location")
-	} else {
-		parts = append(parts, "in your area")
+		data["Where"] = distanceWords(*h.DistanceKm, imperial) + " " + bearingWords(fr.Lat, fr.Lon, h.Lat, h.Lon) + " of your location"
 	}
-	s := strings.Join(parts, " ")
 	if h.FRPMW != nil {
-		s += fmt.Sprintf(", with a fire radiative power of %.0f megawatts", *h.FRPMW)
+		data["FRP"] = fmt.Sprintf("%.0f", *h.FRPMW)
 	}
 	if !h.DetectedAt.IsZero() {
-		s += ", detected " + durationWords(now.Sub(h.DetectedAt)) + " ago"
+		data["Detected"] = durationWords(now.Sub(h.DetectedAt))
 	}
-	if sat := satelliteWords(h.Source.ModelOrStation); sat != "" {
-		s += " by " + sat
-	}
-	return s + "."
+	return c.say("fire-report", "strongest", data)
 }
 
 // incidentSentence: "Timber is 12 miles east of your location, with a size
@@ -128,24 +117,13 @@ func hotspotSentence(fr FireReport, h snapshot.Hotspot, imperial bool, now time.
 // percent contained." Outside the ring the sentence opens with the
 // distance ("Timber, at a distance of 30 miles to the northeast, …"). The
 // direction is said when the feed gave the incident's point (UAT 116).
-func incidentSentence(fr FireReport, in snapshot.Incident, imperial bool, now time.Time, inside bool) string {
-	name := ExpandStates(in.Name)
-	dir := ""
+func (c Composer) incidentSentence(fr FireReport, in snapshot.Incident, imperial bool, now time.Time, inside bool) string {
+	data := map[string]any{"Name": ExpandStates(in.Name), "HasDistance": in.Source.DistanceKm != nil, "Inside": inside, "Distance": "", "Direction": "", "Facts": ""}
 	if in.Lat != 0 || in.Lon != 0 {
-		dir = bearingWords(fr.Lat, fr.Lon, in.Lat, in.Lon)
+		data["Direction"] = bearingWords(fr.Lat, fr.Lon, in.Lat, in.Lon)
 	}
-	var s string
-	switch {
-	case in.Source.DistanceKm == nil:
-		s = name + " is in your area"
-	case inside && dir != "":
-		s = name + " is " + distanceWords(*in.Source.DistanceKm, imperial) + " " + dir + " of your location"
-	case inside:
-		s = name + " is " + distanceWords(*in.Source.DistanceKm, imperial) + " from your location"
-	case dir != "":
-		s = name + ", at a distance of " + distanceWords(*in.Source.DistanceKm, imperial) + " to the " + dir
-	default:
-		s = name + ", at a distance of " + distanceWords(*in.Source.DistanceKm, imperial)
+	if in.Source.DistanceKm != nil {
+		data["Distance"] = distanceWords(*in.Source.DistanceKm, imperial)
 	}
 	var facts []string
 	if in.Acres != nil {
@@ -157,10 +135,8 @@ func incidentSentence(fr FireReport, in snapshot.Incident, imperial bool, now ti
 	if in.PercentContained != nil {
 		facts = append(facts, fmt.Sprintf("is %.0f percent contained", *in.PercentContained))
 	}
-	if len(facts) > 0 {
-		s += ", " + joinAnd(facts)
-	}
-	return s + "."
+	data["Facts"] = joinAnd(facts)
+	return c.say("fire-report", "incident", data)
 }
 
 // distanceWords: "15 miles" / "25 kilometers" (whole units; "1 mile").

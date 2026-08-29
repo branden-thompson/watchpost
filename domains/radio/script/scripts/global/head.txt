@@ -1,0 +1,2 @@
+{{/* global/head: the notice a report opens with when it has no head of its own. No data. */}}
+This is a Watchpost Notification Report. Notifications may be delayed and are not intended for life safety use.

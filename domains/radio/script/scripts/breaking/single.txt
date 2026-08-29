@@ -1,0 +1,2 @@
+{{/* breaking/single: one breaking event, read alone. Data: .Line (Tornado Warning has been declared for Olathe, Kansas at 3:42 PM until 4:15 PM). */}}
+{{.Line}}. Press W in Watchpost for the full report on this event

@@ -52,6 +52,9 @@ type Status struct {
 // with backoff on stalls, and reports status through a callback.
 type Engine struct {
 	out       Output
+	preview   Player          // the preview line in flight; nil between lines
+	held      map[Player]bool // lines held by PausePreview: their watchers wait, later clips never displace them
+	heldOrder []Player        // the held lines in the order held — ResumePreview takes the last
 	userAgent string
 	onStatus  func(Status)
 
@@ -94,7 +97,7 @@ func New(out Output, userAgent string, onStatus func(Status)) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Engine{out: out, userAgent: userAgent, onStatus: onStatus, volume: 0.55, duck: 1, status: Status{State: Stopped, Volume: 55}, tap: tap}, nil
+	return &Engine{out: out, userAgent: userAgent, onStatus: onStatus, volume: 0.55, duck: 1, status: Status{State: Stopped, Volume: 55}, tap: tap, held: map[Player]bool{}}, nil
 }
 
 // Samples fills dst with the latest mono samples (±1, oldest first) of
@@ -246,23 +249,118 @@ func (e *Engine) playOnce(ctx context.Context, mount, name string) error {
 // Preview plays a short PCM clip (16-bit LE stereo at rate) on its own
 // player, mixed over whatever is playing, without touching the engine's
 // state (UAT 86: the voice chooser's sample). Returns when it has started.
-func (e *Engine) Preview(rate int, pcm io.Reader) error {
-	p, err := e.out.NewPlayer(newResampler(pcm, rate))
+func (e *Engine) Preview(rate int, pcm io.Reader) error { return e.playClip(rate, pcm, true, true) }
+
+// Audition plays a clip that is NEVER the line in flight — the voice
+// chooser's sample: it drives the bars like a narration but a takeover's
+// pause holds the narration's line, not it (REVIEW R5-B-03).
+func (e *Engine) Audition(rate int, pcm io.Reader) error { return e.playClip(rate, pcm, true, false) }
+
+// PreviewAside plays a clip beside the broadcast WITHOUT feeding the
+// visualizer's tap — a takeover's tone and lines (the app's narrator
+// decides which narrations the bars follow; HUM LEAD 2026-08-28).
+func (e *Engine) PreviewAside(rate int, pcm io.Reader) error {
+	return e.playClip(rate, pcm, false, true)
+}
+
+// playClip is the one preview path: through the visualizer's tap like the
+// broadcast when tapped (the bars sat flat during an event read before —
+// the read plays here, not on the broadcast path), after the resampler so
+// the tap reads OutputRate. The clip becomes the line in flight; a HELD
+// line (PausePreview) is not displaced by it — a takeover's tone and lines
+// play while the read waits (red-team round 4, A-01).
+func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error {
+	src := io.Reader(newResampler(pcm, rate))
+	if tapped {
+		src = e.tap.Wrap(src)
+	}
+	p, err := e.out.NewPlayer(src)
 	if err != nil {
 		return fmt.Errorf("audio output: %w", err)
 	}
 	e.mu.Lock()
 	p.SetVolume(e.volume)
+	if inFlight {
+		e.preview = p // the line in flight
+	}
 	e.mu.Unlock()
 	p.Play()
 	go func() {
-		// Bounded per P10-02: a preview is seconds long; 30 s is the ceiling.
-		for i := 0; i < 600 && p.IsPlaying(); i++ {
+		// Bounded per P10-02: 10 min of PLAY is the ceiling (an event read
+		// speaks a whole record — minutes, not seconds); a held line does
+		// not spend its budget.
+		for i := 0; i < 12000; {
+			e.mu.Lock()
+			held := e.held[p]
+			if !held {
+				p.SetVolume(e.volume) // the knob follows a minutes-long read (round 4, A-07)
+			}
+			e.mu.Unlock()
+			if !held && !p.IsPlaying() {
+				break
+			}
 			time.Sleep(50 * time.Millisecond)
+			if !held {
+				i++
+			}
 		}
+		e.mu.Lock()
+		if e.preview == p {
+			e.preview = nil
+		}
+		delete(e.held, p)
+		e.mu.Unlock()
 		_ = p.Close()
 	}()
 	return nil
+}
+
+// PausePreview holds the line in flight (a lower-priority narration while a
+// takeover speaks — the app's narrator): it leaves the flight slot, so the
+// takeover's own clips never displace it, and its watcher waits. ResumePreview
+// puts the most recently held line back in flight and lets it go on from
+// where it stopped; DropHeld closes every held line without playing it (a
+// suspended narration that ended). All inert with nothing held.
+func (e *Engine) PausePreview() {
+	e.mu.Lock()
+	p := e.preview
+	if p != nil {
+		e.held[p] = true
+		e.heldOrder = append(e.heldOrder, p)
+		e.preview = nil
+	}
+	e.mu.Unlock()
+	if p != nil {
+		p.Pause()
+	}
+}
+
+func (e *Engine) ResumePreview() {
+	e.mu.Lock()
+	var p Player
+	if n := len(e.heldOrder); n > 0 {
+		p = e.heldOrder[n-1]
+		e.heldOrder = e.heldOrder[:n-1]
+		delete(e.held, p)
+		e.preview = p
+	}
+	e.mu.Unlock()
+	if p != nil {
+		p.Play()
+	}
+}
+
+func (e *Engine) DropHeld() {
+	e.mu.Lock()
+	held := e.heldOrder
+	e.heldOrder = nil
+	for p := range e.held {
+		delete(e.held, p)
+	}
+	e.mu.Unlock()
+	for _, p := range held {
+		_ = p.Close() // its watcher sees !IsPlaying and finishes
+	}
 }
 
 // alertDuck is how far the main broadcast dips while an alert sounds over it

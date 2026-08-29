@@ -99,7 +99,7 @@ func buoyNote(o render.Opts, m *snapshot.Marine) string {
 	if m.Buoy == "" {
 		return ""
 	}
-	note := "(buoy " + m.Buoy
+	note := "(buoy " + render.PlainLine(m.Buoy)
 	if d := strings.TrimSpace(o.Distance(m.BuoyDistanceKM)); d != "" {
 		note += ", " + d // display units, one formatter (UAT 60.2)
 	}
@@ -207,6 +207,7 @@ func currentRow(o render.Opts, events []snapshot.CurrentEvent, tz *time.Location
 // the name is cut at its parenthetical qualifier and capped so the note
 // fits the grid's note budget.
 func stationNote(o render.Opts, name string, km *float64) string {
+	name = render.PlainLine(name) // a station name is provider text (NFR-6, R5-C-05)
 	if name == "" {
 		return ""
 	}

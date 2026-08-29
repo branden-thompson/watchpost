@@ -1,0 +1,2 @@
+{{/* weather-radio/conditions: the current observation. Data: .Items (clear, temperature 72 degrees, humidity 40 percent, wind west at 8 miles per hour). */}}
+Current conditions: {{.Items}}.

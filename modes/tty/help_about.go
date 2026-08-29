@@ -20,34 +20,133 @@ func (d Dashboard) helpModal(o render.Opts) string {
 	return d.floatModal(o, d.modalWidth(), "Watchpost Help", d.helpLines(o)) // UAT 8.3/10.1/10.4
 }
 
-// helpLines renders the merged KeyMap as modal body lines (truthful after
-// any swap - D-15 guarantee 3).
-func (d Dashboard) helpLines(o render.Opts) []string {
-	lines := make([]string, 0, len(d.keys)+16)
+// The Help window's geometry (HUM LEAD UAT 2026-08-28): a blank line of air
+// under the title; the groups in two columns when the terminal is wide
+// enough, one column with the panel's scroll when it is not — each group
+// rolls as a unit, never split across columns. columnGap is the air between
+// the columns; helpOneColWidth is the single-column window (the 0.12.0
+// width); the two-column window is sized from the widest group line.
+const helpOneColWidth = 56
+
+// helpBlock is one group as rendered: the header line, then its rows.
+type helpBlock struct{ lines []string }
+
+// helpBlocks renders the merged KeyMap as groups (truthful after any swap -
+// D-15 guarantee 3): the registry's groups in order, then OTHER for any
+// action no group names (a future binding: still listed, never lost).
+func (d Dashboard) helpBlocks() []helpBlock {
+	var blocks []helpBlock
 	seen := map[term.Action]bool{}
+	row := func(bind term.Binding, act term.Action) string {
+		return fmt.Sprintf("   %-12s - %s", strings.Join(bind.Keys, ", "), orDefault(bind.Help, string(act)))
+	}
 	for _, g := range helpGroups() {
 		var rows []string
 		for _, act := range g.actions {
 			if bind, ok := d.keys[act]; ok {
-				rows = append(rows, fmt.Sprintf("  %-12s - %s", strings.Join(bind.Keys, ", "), orDefault(bind.Help, string(act))))
+				rows = append(rows, row(bind, act))
 				seen[act] = true
 			}
 		}
-		lines = appendHelpGroup(lines, g.name, rows)
-	}
-	var other []string // an action no group names (a future binding): still listed, never lost
-	for act, bind := range d.keys {
-		if !seen[act] {
-			other = append(other, fmt.Sprintf("  %-12s - %s", strings.Join(bind.Keys, ", "), orDefault(bind.Help, string(act))))
+		if len(rows) > 0 {
+			blocks = append(blocks, helpBlock{append([]string{" " + render.Tint(g.name, render.Tok(render.ModalTitle))}, rows...)})
 		}
 	}
-	sort.Strings(other)
-	lines = appendHelpGroup(lines, "OTHER", other)
+	var other []string
+	for act, bind := range d.keys {
+		if !seen[act] {
+			other = append(other, row(bind, act))
+		}
+	}
+	if len(other) > 0 {
+		sort.Strings(other)
+		blocks = append(blocks, helpBlock{append([]string{" " + render.Tint("OTHER", render.Tok(render.ModalTitle))}, other...)})
+	}
+	return blocks
+}
+
+// helpColumnWidth is the widest group line — one column's width.
+func helpColumnWidth(blocks []helpBlock) int {
+	lines := make([][]string, len(blocks))
+	for i, b := range blocks {
+		lines[i] = b.lines
+	}
+	return widest(lines...)
+}
+
+// helpPlan decides the layout for a terminal content width: two columns
+// when they fit (the chrome charged by whether the two-column body scrolls),
+// else the single column; it returns the window's width with it.
+func (d Dashboard) helpPlan(avail int) (twoCol bool, width int) {
+	blocks := d.helpBlocks()
+	colW := helpColumnWidth(blocks)
+	body := 1 + len(helpTwoColumns(blocks, colW)) + 4 // air · columns · legend (≤2) · blank · chips
+	if w := twoColumnsWidth(colW, colW, panelChromeFor(body, d.modalMax())); w <= avail {
+		return true, w
+	}
+	return false, helpOneColWidth
+}
+
+// helpWidth is the window's width for a terminal content width.
+func (d Dashboard) helpWidth(avail int) int {
+	_, w := d.helpPlan(avail)
+	return w
+}
+
+// helpLines renders the modal body: the air under the title, the groups in
+// one or two columns, the row-marks legend, the chips.
+func (d Dashboard) helpLines(o render.Opts) []string {
+	blocks := d.helpBlocks()
+	twoCol, _ := d.helpPlan(o.Width)
+	lines := []string{""} // air under the title (UAT 2026-08-28 item 1)
+	if twoCol {
+		lines = append(lines, helpTwoColumns(blocks, helpColumnWidth(blocks))...)
+	} else {
+		for _, b := range blocks {
+			lines = append(lines, b.lines...)
+			lines = append(lines, "")
+		}
+	}
 	// Row marks legend (red-team B5 U8): the glyphs beside a location, in words.
 	g := o.Glyphs() // the table's own set, ASCII included (A11-10)
-	lines = append(lines, fmt.Sprintf("Row marks: %s playing   %s on repeat   %s%s%s recent quake (below/felt/significant)   n%s fires nearby (bold = burning hard)   n%s alerts",
+	lines = append(lines, fmt.Sprintf(" Row marks: %s playing   %s on repeat   %s%s%s recent quake (below/felt/significant)   n%s fires nearby (bold = burning hard)   n%s alerts",
 		g.Play, g.Repeat, g.Seismic[0], g.Seismic[1], g.Seismic[2], g.Fire, g.Alert))
 	return append(lines, "", "  "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll"))) // chips like every other modal (UAT 68.2)
+}
+
+// helpTwoColumns lays the groups out side by side: the registry order is
+// kept and split once, at the point that balances the two columns' heights
+// best, so every group stays whole and the columns read top to bottom.
+func helpTwoColumns(blocks []helpBlock, colW int) []string {
+	height := func(bs []helpBlock) int {
+		n := 0
+		for _, b := range bs {
+			n += len(b.lines) + 1 // the blank after each group
+		}
+		return n
+	}
+	split, best := 1, -1
+	for k := 1; k < len(blocks); k++ {
+		if diff := abs(height(blocks[:k]) - height(blocks[k:])); best < 0 || diff < best {
+			split, best = k, diff
+		}
+	}
+	column := func(bs []helpBlock) []string {
+		var out []string
+		for _, b := range bs {
+			out = append(out, b.lines...)
+			out = append(out, "")
+		}
+		return out
+	}
+	return sideBySide(column(blocks[:split]), column(blocks[split:]), colW)
+}
+
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
 }
 
 // helpGroup is one section of the Help window: the app's features, in the
@@ -60,24 +159,14 @@ type helpGroup struct {
 // helpGroups is the one owner of the grouping; a binding's group is its
 // action, so a rebound key stays in its section (D-15: keys are data).
 func helpGroups() []helpGroup {
-	return []helpGroup{
-		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "alert-prev", "alert-next", "close", term.HelpAction, "quit"}},
-		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}},
+	return []helpGroup{ // NAVIGATE and RADIO first: the two tall groups make the left column of the two-column layout (UAT mock 2026-08-28)
+		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "severe", "alert-prev", "alert-next", "close", term.HelpAction, "quit"}},
 		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-size", "radio-vol-up", "radio-vol-dn"}},
+		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}},
 		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}},
 		{"TICKER", []term.Action{"ticker-mute"}},
 		{"APP", []term.Action{"setup", "status", "about"}},
 	}
-}
-
-// appendHelpGroup adds a section: a bold-white header, its rows, a blank.
-func appendHelpGroup(lines []string, name string, rows []string) []string {
-	if len(rows) == 0 {
-		return lines
-	}
-	lines = append(lines, render.Tint(name, render.Tok(render.ModalTitle)))
-	lines = append(lines, rows...)
-	return append(lines, "")
 }
 
 func orDefault(s, alt string) string {

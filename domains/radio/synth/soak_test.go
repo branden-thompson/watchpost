@@ -37,7 +37,7 @@ func TestSeismicBroadcastSoak(t *testing.T) {
 		quake(1.4, 2, 2, "W", 30*time.Minute, now),
 	}}}
 	loc := snapshot.Location{Label: "Ridgecrest, CA"}
-	segs := Compose(loc, nil, now, true, "rec", Station{}, FireReport{}, sr)
+	segs := std.Compose(loc, nil, now, true, "rec", Station{}, FireReport{}, sr)
 
 	src, err := NewSource(&recVoice{}, func(context.Context) ([]Segment, error) { return segs, nil }, nil)
 	if err != nil {
