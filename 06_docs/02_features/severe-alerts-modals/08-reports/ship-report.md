@@ -5,7 +5,7 @@
 | Phase | SHIP (VALIDATE → **SHIP** → REFLECT) · SEV-0 · HUM LEAD |
 | Entry | VALIDATE signed off 2026-08-29 ("GO 4 SHIP"); release checklist: A1–A5, B1–B6, B8, B10, C1–C5 ☑; B7 Linux half, B7 takeover check and B9 carried as **accepted risks** (below) |
 | What ships | `github.com/branden-thompson/watchpost` — public, MIT · release `v0.13.0` · five platform binaries + `checksums.txt` · install line unchanged (`curl -fsSL https://raw.githubusercontent.com/branden-thompson/watchpost/main/scripts/install.sh \| sh`) |
-| Verdict | see §6 (filled at the end of the phase) |
+| Verdict | **SHIPPED** — `v0.13.0` published 2026-08-29 17:13 UTC (§6) |
 
 ## 1. What a user gets
 
@@ -86,9 +86,20 @@ rolled-back binary reads the same files.
 5. Delete `feature/severe-alerts-modals` (FULL GIT: one branch per release); `main` (dev trunk)
    fast-forwards to the release tree's commit for 0.14.0 to branch from.
 
-## 6. Outcome
+## 6. Outcome — **SHIPPED** 2026-08-29
 
-*(filled at phase exit)*
+| Step | Result |
+|---|---|
+| Release branch | `release/v0.13.0` = `828feda`, one squash of the feature tree on `main-publish`; pushed; push-run CI green (ubuntu 1m33s, macOS 1m42s) |
+| PR | **#2** `main ← release/v0.13.0`, canonical template body; PR-run CI green on both runners. Squash-merged on HUM LEAD's instruction ("GO 4 SHIP once CI is GREEN; SQUASH and MERGE") → `main` = `baec8b0` |
+| Tag + release | `v0.13.0` on `baec8b0`; `release.yml` run 33264986559 green first time (1m22s) — published 17:13 UTC: five binaries, `checksums.txt`, LICENSE, THIRD_PARTY_LICENSES.md |
+| Artifact verified | the public one-liner (no version pinned) downloaded `watchpost-darwin-arm64 (latest)` and the binary reports **`watchpost version 0.13.0`** — the artifact, not the echo |
+| Rollback | tested before the tag (§3): `WATCHPOST_VERSION=v0.12.0` installs a binary reporting 0.12.0 |
+| Branches | `release/v0.13.0` deleted (remote + local); `feature/severe-alerts-modals` deleted after the dev trunk (`main`) fast-forwarded to its tip; `main-publish` = `origin/main` |
+| Snag at ship | the personal `gh` fine-grained token lacked *Pull requests: write* — `gh pr create` 403'd twice until HUM LEAD granted it; recorded in the publish memory. Check token permissions before pushing a release branch next time |
+| Observation | the P10-05 density row (an exempted, ledger-matched finding) anchors at a different file — or is absent — between otherwise identical runs on a clean tree; 0 live / 0 unmatched each time. For the debrief |
+
+Gates at ship: verify green · p10 0 live / 0 unmatched · `a2dh validate` 18/18 · pty-severe green · race suite green on Linux CI · alloc budgets within pins · soak flat. Accepted risks carried to REFLECT: B7-L (Linux R6 half), B7-T (live takeover pause/resume), PERF (+38 % frame time).
 
 ## Source documents
 

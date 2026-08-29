@@ -1,6 +1,24 @@
 # Watchpost
 
-A live weather station that lives in your terminal. Your places on one screen — what it is like there
+A live weather station that lives in your terminal.
+
+## Install
+
+macOS and Linux — one line, then run it:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/branden-thompson/watchpost/main/scripts/install.sh | sh
+watchpost
+```
+
+Windows: download `watchpost-windows-amd64.exe` from the
+[Releases](https://github.com/branden-thompson/watchpost/releases) page and run it. On the first run
+the Setup window asks for your location and you are on the air. Details, requirements and the by-hand
+install are under [Get it running](#get-it-running).
+
+## What it is
+
+Your places on one screen — what it is like there
 right now, today and the week ahead, every active alert, the tide and the sea if you are near the coast,
 wildfire and earthquakes in reach — with NOAA Weather Radio playing the real broadcast where a
 transmitter is streamed, and a correspondent reading your location's own forecast aloud where it is
@@ -39,13 +57,8 @@ Real data, 133×44, the default theme unless noted (0.13.0).
 
 ## Get it running
 
-macOS and Linux (Intel or Apple silicon / amd64 or arm64):
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/branden-thompson/watchpost/main/scripts/install.sh | sh
-```
-
-That downloads the right build for your machine, checks it against the release's published checksums,
+The one-line install at the top of this page covers macOS and Linux (Intel or Apple silicon / amd64 or
+arm64). It downloads the right build for your machine, checks it against the release's published checksums,
 puts it in `~/.local/bin` (or `/usr/local/bin` when that is the better place) and tells you the one
 thing left to do, if any. Windows: download `watchpost-windows-amd64.exe` from the
 [Releases](https://github.com/branden-thompson/watchpost/releases) page. You can always install by
