@@ -1,0 +1,19 @@
+# states-ambiguous — postal abbreviations that are also English words
+# ("IN EFFECT", "OR"): they expand only in a clear place context (after a
+# comma or beside a hyphen). One KEY per line.
+IN
+OR
+ME
+HI
+OK
+ID
+LA
+MA
+PA
+MT
+MO
+MS
+DE
+CO
+AL
+AS

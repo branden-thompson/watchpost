@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 // Assembler is the single merge point (§2 concurrency contract): providers
@@ -291,10 +292,10 @@ func (a *Assembler) Snapshot() *Snapshot {
 	s := &Snapshot{SchemaVersion: SchemaVersion, GeneratedAt: time.Now().UTC()}
 	for i, k := range a.order {
 		ref := a.refs[i]
-		loc := Location{
-			Label:      ref.Label,
-			Tag:        ref.Tag,
-			Zip:        ref.Zip,
+		loc := Location{ // a config file's or a resolver's text is cleaned ONCE here, for every surface that draws it (NFR-6, R5-C-05)
+			Label:      plaintext.Line(ref.Label),
+			Tag:        plaintext.Line(ref.Tag),
+			Zip:        plaintext.Line(ref.Zip),
 			Lat:        ref.Lat,
 			Lon:        ref.Lon,
 			TZ:         ref.TZ,

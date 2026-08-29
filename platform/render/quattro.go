@@ -65,23 +65,17 @@ func blend(a, b string, t float64) (int, int, int) {
 }
 
 // mix is blend as a background tile (a hue toward the dark base) — the group and
-// alert backgrounds; fgMix is blend as a foreground (lifting a hue toward the
-// bright text so a header stays AA on lighter theme backgrounds).
+// alert backgrounds. Foreground lifting is the AA pass's job (contrast.go).
 func mix(hue, base string, t float64) string {
 	r, g, b := blend(hue, base, t)
 	return fmt.Sprintf("48;2;%d;%d;%d", r, g, b)
-}
-
-func fgMix(a, toward string, t float64) string {
-	r, g, b := blend(a, toward, t)
-	return fmt.Sprintf("38;2;%d;%d;%d", r, g, b)
 }
 
 // quattroOverrides maps a Quattro palette onto Watchpost's tokens. Foregrounds
 // ride the palette's own colours; group/alert tiles are the hues mixed toward
 // the dark background; the ticker severity backgrounds are theme-independent
 // (left to inherit the fixed Red/Orange/Yellow/Blue). The six AA-checked tokens
-// (TextBase/Bright, TableHeader/Muted/Name, ModalTitle) stay pure foregrounds
+// (TextBase/Bright, TableMuted/Name, ModalTitle) stay pure foregrounds
 // on the palette's readable colours.
 func quattroOverrides(p quattroPalette) map[Token]string {
 	m := quattroForegrounds(p)
@@ -109,8 +103,6 @@ func quattroForegrounds(p quattroPalette) map[Token]string {
 		ProviderOK:       fgTruecolor(p.green),
 		ProviderDown:     fgTruecolor(p.brightRed),
 		GroupText:        boldFg(p.brightFg),
-		AlertWarnFG:      fgTruecolor(p.red),
-		AlertAdvFG:       fgTruecolor(p.yellow),
 		AlertLabel:       fgTruecolor(p.yellow),
 		AlertDanger:      fgTruecolor(p.red),
 		RadioAccent:      fgTruecolor(p.accent),
@@ -124,7 +116,6 @@ func quattroForegrounds(p quattroPalette) map[Token]string {
 		SpectrumHigh:     fgTruecolor(p.red),
 		FireMark:         fgTruecolor(p.orange),
 		SeismicMark:      fgTruecolor(p.magenta),
-		TableHeader:      fgMix(p.magenta, p.brightFg, 0.7), // a lifted magenta — the light-purple header, kept AA on lighter backgrounds (e.g. Nord)
 		TableMuted:       fgTruecolor(p.fg),
 		TableName:        fgTruecolor(p.brightFg),
 		AlertModalWarnFG: fgTruecolor(p.red),

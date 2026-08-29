@@ -1,0 +1,2 @@
+{{/* seismic-report/felt: the felt likelihood of a magnitude in general. Data: .Likelihood (strong | moderate | low). */}}
+A quake of this magnitude has a {{.Likelihood}} likelihood of being felt when it occurs.

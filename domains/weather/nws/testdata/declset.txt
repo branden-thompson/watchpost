@@ -2,6 +2,10 @@ const Attribution
 const fetchConcurrency
 const gridTTL
 const inlandTTL
+const maxFieldRunes
+const maxIDRunes
+const maxListLen
+const maxProseRunes
 const stationCandidates
 func (*MarineProvider).Domains
 func (*MarineProvider).Fetch
@@ -35,6 +39,8 @@ func (gridSeries).extremeOn
 func (gridSeries).first
 func New
 func NewMarine
+func clampList
+func clampRunes
 func conditionCode
 func fillNote
 func foldDaily

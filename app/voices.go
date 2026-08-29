@@ -141,13 +141,13 @@ func (d *radioDeck) PreviewVoice(name string) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	pcm, err := synth.SamplePCM(ctx, v)
+	pcm, err := d.composer.SamplePCM(ctx, v)
 	if err != nil {
 		d.voiceNote("preview failed: " + err.Error())
 		return
 	}
-	d.voiceNote("") // sound is on its way: the line clears
-	_ = d.engine.Preview(v.Rate(), bytes.NewReader(pcm))
+	d.voiceNote("")                                       // sound is on its way: the line clears
+	_ = d.engine.Audition(v.Rate(), bytes.NewReader(pcm)) // a sample, never the narration's line in flight (R5-B-03)
 }
 
 // voiceNote tells the Voice chooser what the deck is doing (UAT 119); nil

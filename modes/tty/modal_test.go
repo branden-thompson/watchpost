@@ -30,6 +30,7 @@ var modalMarkers = map[string]string{
 	"theme":   "─ Color Theme ─",
 	"voice":   "─ Correspondent Voice ─",
 	"setup":   "─ Setup ─",
+	"severe":  "SEVERE WEATHER / DISASTER EVENTS",
 }
 
 // openers are every way a window opens.
@@ -44,6 +45,7 @@ var openers = map[string]tea.Msg{
 	"theme":    tea.KeyPressMsg{Code: 't', Text: "t"},
 	"voice":    tea.KeyPressMsg{Code: 'V', Text: "V"},
 	"setup":    tea.KeyPressMsg{Code: 's', Text: "s"},
+	"severe":   tea.KeyPressMsg{Code: 'w', Text: "w"},
 	"voiceErr": voiceErrMsg{err: errors.New("voice failed")},
 }
 

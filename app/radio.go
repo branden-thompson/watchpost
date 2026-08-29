@@ -32,6 +32,7 @@ type radioDeck struct {
 	nws      *nws.Provider
 	resolver *stream.Resolver
 	engine   *player.Engine
+	composer synth.Composer // the broadcast\'s spoken text from the script library (0.13.0); zero value = the built-in scripts
 	products *synth.Products
 	units    render.Units
 	voiceDir string             // Piper install dir (Linux/Windows)
@@ -272,7 +273,10 @@ func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64)
 	}
 	// The sign-off names whichever voice reaches it (UAT 94: the voice may change mid-cycle).
 	src, err := synth.NewSource(voice, func(ctx context.Context) ([]synth.Segment, error) { return d.segments(ctx, ref, synth.VoiceToken) },
-		func(seg synth.Segment, spoken time.Duration) { d.setDetailTimed(seg.Text, spoken) })
+		func(seg synth.Segment, spoken time.Duration) {
+			d.debugLog(fmt.Sprintf("segment key=%q spoken=%s", seg.Key, spoken.Round(time.Millisecond))) // WATCHPOST_DEBUG_RADIO: which segment the stream reached (UAT 2026-08-28: a cycle that ended before its tail)
+			d.setDetailTimed(seg.Text, spoken)
+		})
 	if err != nil {
 		d.engine.Fail(err.Error())
 		return
@@ -316,7 +320,7 @@ func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voic
 	if d.seismic != nil {
 		seismic = d.seismic(ref)
 	}
-	return synth.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), fire, seismic), nil
+	return d.composer.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), fire, seismic), nil
 }
 
 // stationFor names the NWR transmitter the lead points listeners to (UAT
@@ -356,47 +360,78 @@ func (d *radioDeck) Stop() {
 // SetVolume implements tty.Radio.
 func (d *radioDeck) SetVolume(pct int) { d.engine.Volume(pct) }
 
-// The radioDeck is the ticker's breaking-news audio (0.12.0): a sequence ducks
-// the radio once, sounds the attention tone, speaks each breaking line in turn
-// (the caller holds each event until the line finishes — no overlap), then
-// restores (HUM LEAD 2026-08-27: duck, not interrupt; narrate each). A missing
-// voice engine is not fatal — the visual takeover still runs; only the audio is
-// skipped.
+// The radioDeck is the narrator's voice (0.13.0 narrate.go): duck, tone,
+// render, play, pause, resume, discard, restore — the narrator decides who
+// speaks and when.
 
-// startBreaking ducks the radio and sounds the tone once, returning the tone's
-// length so the caller waits it out before the first line.
-func (d *radioDeck) startBreaking() time.Duration {
-	d.engine.Duck()
+// duck dips the radio under a narration.
+func (d *radioDeck) duck() { d.engine.Duck() }
+
+// tone sounds the attention tone once, returning its length so the caller
+// waits it out before the first line.
+func (d *radioDeck) tone() time.Duration {
 	v, err := d.voice()
 	if err != nil {
 		return 0
 	}
 	tone := synth.AlertTone(v.Rate())
-	_ = d.engine.Preview(v.Rate(), bytes.NewReader(tone))
+	_ = d.engine.PreviewAside(v.Rate(), bytes.NewReader(tone)) // the attention tone never drives the bars
 	return pcmDuration(tone, v.Rate())
 }
 
-// speak renders a narration line and plays it over the ducked radio, returning
-// how long it will take so the caller holds the marquee until it finishes.
-// Rendering (say/piper) blocks ~1 s; the ticker calls this from its own
-// goroutine, off the UI loop.
-func (d *radioDeck) speak(text string) time.Duration {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+// pause holds the line in flight (a read a takeover suspends); resume lets
+// it play on from where it stopped.
+func (d *radioDeck) pause()  { d.engine.PausePreview() }
+func (d *radioDeck) resume() { d.engine.ResumePreview() }
+
+// discard drops a held line whose sequence ended while it waited.
+func (d *radioDeck) discard() { d.engine.DropHeld() }
+
+// render turns a narration line into audio (say/piper blocks ~1 s per
+// line, longer for an event read — the narrator's sequences run on their
+// own goroutines, off the UI loop); play puts a rendered line on the air
+// over the ducked radio. Split so a line rendered while its sequence is
+// suspended never starts under a takeover.
+func (d *radioDeck) render(ctx context.Context, text string) (clip, bool) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute) // a whole event record renders in seconds; the bound is for a wedged engine; the sequence's own end cancels it (R5-B-07)
 	defer cancel()
 	v, err := d.voice()
 	if err != nil {
-		return 0
+		return clip{}, false
 	}
 	pcm, err := synth.AlertNarration(ctx, v, text)
 	if err != nil {
-		return 0
+		return clip{}, false
 	}
-	_ = d.engine.Preview(v.Rate(), bytes.NewReader(pcm))
-	return pcmDuration(pcm, v.Rate())
+	return clip{text: text, pcm: pcm, rate: v.Rate(), dur: pcmDuration(pcm, v.Rate())}, true
 }
 
-// endBreaking lifts the duck — the radio returns after the sequence.
-func (d *radioDeck) endBreaking() { d.engine.Restore() }
+func (d *radioDeck) play(c clip) {
+	if c.viz {
+		_ = d.engine.Preview(c.rate, bytes.NewReader(c.pcm)) // the bars follow it
+		return
+	}
+	_ = d.engine.PreviewAside(c.rate, bytes.NewReader(c.pcm)) // a takeover: aside, the bars keep to the broadcast
+}
+
+// restore lifts the duck — the radio returns after the sequence.
+func (d *radioDeck) restore() { d.engine.Restore() }
+
+// overlay shows a narration on the radio panel while it plays — the event
+// being read, its script as the paced marquee — without touching the deck's
+// own station/detail; pushStatus puts the true state back afterwards.
+func (d *radioDeck) overlay(station, short, detail string, spoken time.Duration) {
+	st := d.engine.Status()
+	d.p.Send(tty.RadioStatusMsg{State: "playing", Station: station, Short: short, Detail: detail, Spoken: spoken, Volume: st.Volume})
+}
+
+// pushStatus re-sends the deck's current state (after an overlay).
+func (d *radioDeck) pushStatus() {
+	d.mu.Lock()
+	detail := d.detail
+	d.mu.Unlock()
+	d.setDetailTimed(detail, 0)
+}
 
 // pcmDuration is the playback length of 16-bit LE stereo PCM at rate (4 bytes a
 // frame); resampling preserves it, so it is the true on-air duration.
@@ -463,11 +498,11 @@ func (d *radioDeck) onStatus(st player.Status) {
 	if st.Err != "" && st.State == player.Failed {
 		detail = st.Err
 	}
-	ended := st.State == player.Stopped && st.Title == player.EndedTitle
-	if ended && src != nil && src.Err() != nil {
+	ended, voiceErr := d.cycleEnded(st, src)
+	if voiceErr != "" {
 		// The stream ended because the voice could not render, not because
 		// the broadcast finished (C-4/F3): say so, and never advance on it.
-		state, detail, ended = player.Failed, src.Err().Error()+" — check the voice in [V], or reinstall it", false
+		state, detail = player.Failed, voiceErr+" — check the voice in [V], or reinstall it"
 	}
 	if state == player.Stopped {
 		station = "" // the row falls back to the focused location's name
@@ -486,11 +521,33 @@ func (d *radioDeck) onStatus(st player.Status) {
 	}
 }
 
-// logStatus appends one line per engine status to the file named by
-// WATCHPOST_DEBUG_RADIO (diagnostic, opt-in, off by default): the time,
-// the state, the mount, the error and the title — what "nothing after 90
-// seconds" needs to become a cause. Never a secret: mounts are public URLs.
+// cycleEnded reads a Stopped status: ended is a synth cycle that played to
+// its sign-off; voiceErr is the voice's own failure when the stream ended
+// because a segment could not render (then ended is false — never an
+// advance on it). The diagnostic log records which it was.
+func (d *radioDeck) cycleEnded(st player.Status, src *synth.Source) (ended bool, voiceErr string) {
+	if st.State != player.Stopped || st.Title != player.EndedTitle || src == nil {
+		return st.State == player.Stopped && st.Title == player.EndedTitle, ""
+	}
+	if err := src.Err(); err != nil {
+		voiceErr = err.Error()
+	}
+	d.debugLog(fmt.Sprintf("cycle-end source-err=%q", voiceErr))
+	return voiceErr == "", voiceErr
+}
+
+// logStatus appends one line per engine status to the WATCHPOST_DEBUG_RADIO
+// log: the state, the mount, the error and the title — what "nothing after
+// 90 seconds" needs to become a cause. Never a secret: mounts are public URLs.
 func (d *radioDeck) logStatus(st player.Status) {
+	d.debugLog(fmt.Sprintf("%-12s mount=%q err=%q title=%q vol=%d", st.State, st.Mount, st.Err, st.Title, st.Volume))
+}
+
+// debugLog appends one timestamped line to the file named by
+// WATCHPOST_DEBUG_RADIO (diagnostic, opt-in, off by default): engine
+// statuses, the synth's segments as they reach the air, and why a cycle
+// ended. The one writer for the radio diagnostic.
+func (d *radioDeck) debugLog(line string) {
 	path := os.Getenv("WATCHPOST_DEBUG_RADIO")
 	if path == "" {
 		return
@@ -500,5 +557,5 @@ func (d *radioDeck) logStatus(st player.Status) {
 		return
 	}
 	defer func() { _ = f.Close() }()
-	_, _ = fmt.Fprintf(f, "%s %-12s mount=%q err=%q title=%q vol=%d\n", time.Now().UTC().Format(time.RFC3339Nano), st.State, st.Mount, st.Err, st.Title, st.Volume)
+	_, _ = fmt.Fprintf(f, "%s %s\n", time.Now().UTC().Format(time.RFC3339Nano), line)
 }

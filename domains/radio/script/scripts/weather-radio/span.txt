@@ -1,0 +1,2 @@
+{{/* weather-radio/span: the forecast span. Data: .From, .Until (Monday, January 2). */}}
+This forecast is from the National Oceanic and Atmospheric Administration and is for {{.From}} until {{.Until}}.

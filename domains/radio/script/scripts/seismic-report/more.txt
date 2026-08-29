@@ -1,0 +1,2 @@
+{{/* seismic-report/more: the quakes beyond the spoken few. Data: .Rest (int), .Noun (quake | quakes), .Location. */}}
+and {{.Rest}} more recent {{.Noun}}, which can be found in the {{.Location}} details report in the Watchpost CLI application view.

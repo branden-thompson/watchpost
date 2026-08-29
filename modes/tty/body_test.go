@@ -20,11 +20,12 @@ func TestDashboardRendersMockAnatomy(t *testing.T) {
 		"W A T C H P O S T",      // header per mock
 		"API: ✔1",                // UAT 102: the masthead counts APIs (the per-provider strip lives in [S])
 		"Oceanside, CA", "92057", // location row with zip
-		"73ºF",                              // F default (D-19)
-		"[severe]",                          // alert banner severity text (R-12a)
-		"Watchpost Weather Radio",           // radio panel frame (UAT-3.3, static until B4)
-		"R E C E N T   /   S E A R C H E D", // section band (UAT 43)
-		"[?] Help",                          // footer line 2; '?' is the locked binding
+		"73ºF",                               // F default (D-19)
+		"EXTREME HEAT WATCH - Oceanside, CA", // the one-row alert module (the body lives behind [A] since the 2026-08-28 facelift)
+		"[severe]",                           // the class in text with colour off (R-12a; round 4 B-04)
+		"WATCHPOST WEATHER RADIO",            // radio panel frame (UAT-3.3, static until B4)
+		"R E C E N T   /   S E A R C H E D",  // section band (UAT 43)
+		"[?] Help",                           // footer line 2; '?' is the locked binding
 	} {
 		if !strings.Contains(v, want) {
 			t.Fatalf("dashboard missing %q:\n%s", want, v)
@@ -54,16 +55,16 @@ func TestRecentSectionSeedsWithRail(t *testing.T) {
 	m, _ = m.Update(tea.WindowSizeMsg{Width: 133, Height: 28}) // compact: 10-row window (UAT 58 budget)
 	v := m.View().Content
 	for _, want := range []string{
-		"Showing 1-4 of 25 locations",
+		"Showing 1-6 of 25 locations",
 		"002. City 01", // numbering continues after the 1 priority row
-		"005. City 04", // last visible window row (a 4-row window at 28 rows: the 0.12.0 ticker took two)
+		"007. City 06", // last visible window row (a 6-row window at 28 rows with thin bands — the boxed player, alert and header, 2026-08-28)
 		"▲", "│", "▼",
 	} {
 		if !strings.Contains(v, want) {
 			t.Fatalf("recent section missing %q:\n%s", want, v)
 		}
 	}
-	if strings.Contains(v, "City 05") {
+	if strings.Contains(v, "City 07") {
 		t.Fatalf("rows beyond the 6-row window must not render:\n%s", v)
 	}
 }
@@ -80,8 +81,8 @@ func TestModuleBlocksAlignWithTables(t *testing.T) {
 			radioLines = append(radioLines, l)
 		}
 	}
-	if len(radioLines) != 4 { // title/vol/state, station/clock, play line, controls (viz off - UAT 54)
-		t.Fatalf("hidden-bg radio module must be 4 flush content lines (UAT 19.1b/54), got %d", len(radioLines))
+	if len(radioLines) != 5 { // the player box: 2 rules + head, the marquee track, controls (viz off); the header box carries no tone of its own (round 4, B-01)
+		t.Fatalf("hidden-bg radio module must be 5 flush lines (the box and its three rows; UAT 19.1b/54), got %d", len(radioLines))
 	}
 	for _, l := range radioLines {
 		if !strings.HasPrefix(l, strings.Repeat(" ", viewPadLeft)+"\x1b[") {
@@ -89,7 +90,7 @@ func TestModuleBlocksAlignWithTables(t *testing.T) {
 		}
 	}
 	// UAT 7.2: green title + VOL fill, white timestamp, bold-grey STOPPED.
-	if !strings.Contains(v, strings.TrimSuffix(render.Tint("Watchpost Weather Radio", render.Tok(render.RadioAccent)), "\x1b[0m")) { // the theme token, not a literal (L3-F24)
+	if !strings.Contains(v, strings.TrimSuffix(render.Tint("WATCHPOST WEATHER RADIO", render.Tok(render.RadioAccent)), "\x1b[0m")) { // the theme token, not a literal (L3-F24)
 		t.Fatal("radio title must be green")
 	}
 	if strings.Contains(v, "00:00 / 00:00") { // UAT 89: the timeline placeholder is gone
@@ -191,22 +192,23 @@ func TestRecentWindowExpandsOnTallTerminals(t *testing.T) {
 		t.Fatal("quit control must stay visible (header)")
 	}
 	mid, _ := m.Update(tea.WindowSizeMsg{Width: 133, Height: 50})
-	if md := mid.(Dashboard); md.compact() || !strings.Contains(mid.View().Content, "Showing 1-20 of 25 locations") {
-		// UAT 49/57: 50 rows holds the FULL modules (radio 4 rows with viz
-		// off, alert 5 since the 2026-08-27 redesign) with a 26-row window
-		// now that the footer is gone — every one of the 25 seeds shows.
-		t.Fatalf("50 rows: full modules with a 20-row window (three-row bands; the 0.12.0 ticker took two):\n%s", mid.View().Content)
+	if md := mid.(Dashboard); md.compact() || !strings.Contains(mid.View().Content, "Showing 1-21 of 25 locations") {
+		// UAT 49/57: 50 rows holds the FULL modules (the boxed player: 3 rows
+		// + 2 rules, the alert module one boxed row — the 2026-08-28
+		// facelifts, the boxes touching, the header box) with a 21-row window.
+		t.Fatalf("50 rows: full modules with a 21-row window (three-row bands; the 0.12.0 ticker took two; the boxed header, player and alert):\n%s", mid.View().Content)
 	}
 	exact, _ := m.Update(tea.WindowSizeMsg{Width: 133, Height: 39})
-	if !strings.Contains(exact.View().Content, "Showing 1-15 of 25 locations") {
-		t.Fatalf("39 rows must yield a 19-row window (compact chrome 18 + inset 2):\n%s", exact.View().Content)
+	if !strings.Contains(exact.View().Content, "Showing 1-13 of 25 locations") {
+		t.Fatalf("39 rows must yield a 13-row window (the boxed header, player and alert, 2026-08-28):\n%s", exact.View().Content)
 	}
 }
 
-func TestHeaderMastheadCentresTheStampAndCountsAPIs(t *testing.T) {
-	// UAT 102 mock: title left, stamp centred in the gap, API summary +
-	// [S] right; chips on line 2 starting with [s] Setup; narrow widths
-	// shorten the stamp before the row could overflow.
+func TestHeaderIsATitledBox(t *testing.T) {
+	// HUM LEAD UAT 2026-08-28 facelift: the title and the stamp ride the
+	// box's top rule; the controls and the API summary share the row inside;
+	// narrow widths shorten the stamp, then the controls, before anything
+	// could overflow.
 	m := dash(t)
 	s2 := snap()
 	s2.Providers = []snapshot.ProviderStatus{
@@ -218,26 +220,22 @@ func TestHeaderMastheadCentresTheStampAndCountsAPIs(t *testing.T) {
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
 	lines := strings.Split(stripANSITest(d.header(d.opts())), "\n")
-	if !strings.Contains(lines[0], "API: ✔1 ⚠1 ✘1 /  3") {
-		t.Fatalf("api summary (off excluded, total two columns): %q", lines[0])
+	if len(lines) != render.BoxHeight(1) || !strings.HasPrefix(lines[0], "┏━━ W A T C H P O S T  v") || !strings.HasSuffix(lines[0], " ━━┓") || !strings.Contains(lines[0], "  Updated: ") {
+		t.Fatalf("the top rule carries the title and the stamp: %q", lines)
 	}
-	if !strings.HasSuffix(lines[0], "[S] Status") || !strings.Contains(lines[0], "Updated: ") || render.Width(lines[0]) > 133 {
-		t.Fatalf("title line: %q", lines[0])
+	row := strings.TrimSpace(strings.Trim(lines[1], "┃"))
+	if !strings.HasPrefix(row, "[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [S] Status  [?] Help  [q] Quit") || !strings.HasSuffix(row, "API: ✔1 ⚠1 ✘1 /  3") {
+		t.Fatalf("the row: controls left, api summary right (off excluded, total two columns): %q", row)
 	}
-	i := strings.Index(lines[0], "Updated:")
-	end := i + strings.Index(lines[0][i:], "  ")                                                 // the stamp ends at the first double space (its own words are single-spaced)
-	if centre, want := (i+end)/2, render.Width(lines[0])/2; centre < want-1 || centre > want+1 { // the row's global centre (UAT 2026-08-27)
-		t.Fatalf("stamp centred on the row: %d vs %d in %q", centre, want, lines[0])
+	if w := d.opts().Width; !strings.HasPrefix(lines[2], "┗") || render.Width(lines[0]) != w || render.Width(lines[1]) != w {
+		t.Fatalf("a box the width of the frame: %q", lines)
 	}
-	if !strings.HasPrefix(lines[1], "[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [?] Help  [q] Quit") {
-		t.Fatalf("chip line: %q", lines[1])
-	}
-	for _, w := range []int{100, 80, 60} {
+	for _, w := range []int{100, 80, 60, 40} {
 		n, _ := d.Update(tea.WindowSizeMsg{Width: w, Height: 44})
 		nd := n.(Dashboard)
 		for _, l := range strings.Split(stripANSITest(nd.header(nd.opts())), "\n") {
-			if render.Width(l) > w {
-				t.Fatalf("width %d: header line overflows (%d): %q", w, render.Width(l), l)
+			if render.Width(l) > w || !strings.HasSuffix(l, "┓") && !strings.HasSuffix(l, "┃") && !strings.HasSuffix(l, "┛") {
+				t.Fatalf("width %d: header line overflows or loses its corner (%d): %q", w, render.Width(l), l)
 			}
 		}
 	}
@@ -259,7 +257,7 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 			t.Fatalf("empty state missing %q:\n%s", want, v)
 		}
 	}
-	if strings.Contains(v, "###. NAME") || strings.Contains(v, "Showing 0-0") {
+	if strings.Contains(v, "CONDITIONS") || strings.Contains(v, "Showing 0-0") {
 		t.Fatalf("empty state replaces the table and the Showing line:\n%s", v)
 	}
 	narrow, _ := model.Update(tea.WindowSizeMsg{Width: 60, Height: 44})
@@ -273,7 +271,7 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 		t.Fatalf("narrow: the message wraps, never truncates:\n%s", nv)
 	}
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
-	if v := stripANSITest(model.(Dashboard).View().Content); strings.Contains(v, "to your Watchlist") || !strings.Contains(v, "###. NAME") {
+	if v := stripANSITest(model.(Dashboard).View().Content); strings.Contains(v, "to your Watchlist") || !strings.Contains(v, "[##.][") {
 		t.Fatalf("data replaces the watchlist empty state:\n%s", v)
 	}
 }

@@ -1,6 +1,7 @@
 package synth
 
 import (
+	"github.com/branden-thompson/watchpost/domains/radio/pronounce"
 	"regexp"
 	"strings"
 )
@@ -33,47 +34,25 @@ var (
 // at sentence ends into ~280-character pieces.
 const maxSegmentChars = 280
 
-// abbreviations is seeded from the NWS directives' contraction list; the
-// full ~150-entry table is a checked-in TSV follow-on (§10.6).
+// abbreviations is the product normaliser's contraction table — the rules
+// files "abbreviations" and "zones" (domains/radio/pronounce): a rule is a
+// line there, not an entry here.
 func abbreviations() map[string]string {
-	return map[string]string{
-		"MPH": "miles per hour", "mph": "miles per hour", "KT": "knots", "kt": "knots", "KTS": "knots", "kts": "knots",
-		"FT": "feet", "ft": "feet", "NM": "nautical miles", "nm": "nautical miles",
-		"PDT": "Pacific Daylight Time", "PST": "Pacific Standard Time", "MDT": "Mountain Daylight Time", "MST": "Mountain Standard Time",
-		"CDT": "Central Daylight Time", "CST": "Central Standard Time", "EDT": "Eastern Daylight Time", "EST": "Eastern Standard Time",
-		"NWS": "National Weather Service", "NE": "northeast", "NW": "northwest", "SE": "southeast", "SW": "southwest",
-		"SSW": "south southwest", "SSE": "south southeast", "NNW": "north northwest", "NNE": "north northeast",
-		"WSW": "west southwest", "WNW": "west northwest", "ESE": "east southeast", "ENE": "east northeast",
-		"TSTMS": "thunderstorms", "TSTM": "thunderstorm", "PCPN": "precipitation", "TEMPS": "temperatures", "HWY": "highway",
-		"MTNS": "mountains", "VLYS": "valleys", "SFC": "surface", "PRES": "pressure", "VSBY": "visibility", "WX": "weather",
+	dict := pronounce.Table("abbreviations")
+	for k, v := range pronounce.Table("zones") {
+		dict[k] = v
 	}
+	return dict
 }
 
 // stateNames is the postal-abbreviation table (UAT 81: "San Diego CA" is
-// read "San Diego California").
-func stateNames() map[string]string {
-	return map[string]string{
-		"AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California", "CO": "Colorado", "CT": "Connecticut",
-		"DE": "Delaware", "DC": "District of Columbia", "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois",
-		"IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland",
-		"MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri", "MT": "Montana",
-		"NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
-		"NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon", "PA": "Pennsylvania",
-		"RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
-		"VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
-		"PR": "Puerto Rico", "GU": "Guam", "VI": "Virgin Islands", "AS": "American Samoa", "MP": "Northern Mariana Islands",
-	}
-}
+// read "San Diego California") — the rules file "states".
+func stateNames() map[string]string { return pronounce.Table("states") }
 
 // ambiguousStates are abbreviations that are also words; they expand only
-// in a clear place context (after a comma or beside a hyphen).
-func ambiguousStates() map[string]bool {
-	m := map[string]bool{}
-	for _, w := range []string{"IN", "OR", "ME", "HI", "OK", "ID", "LA", "MA", "PA", "MT", "MO", "MS", "DE", "CO", "AL", "AS"} {
-		m[w] = true
-	}
-	return m
-}
+// in a clear place context (after a comma or beside a hyphen) — the rules
+// file "states-ambiguous".
+func ambiguousStates() map[string]bool { return pronounce.Set("states-ambiguous") }
 
 // ExpandStates replaces postal state abbreviations where they name a
 // place: after a comma ("Oceanside, CA"), beside a hyphen ("CA-San Diego
@@ -281,31 +260,28 @@ func expandAbbreviations(s string) string {
 	return strings.Join(words, " ")
 }
 
-// pronunciations are voice-only substitutions (UAT 83): what the screen
-// shows stays as written; what the synthesizer hears is spelled the way
-// it should be said. Whole words, case-sensitive.
-func pronunciations() map[string]string {
-	return map[string]string{
-		"CLI":  "C L I", // never "klee"
-		"NOAA": "Noah",  // the agency says it as a word (UAT 113.2: "Noah", one syllable flow — "NO-AH" clipped mid-word), never "N O double A"
-		// Road and highway abbreviations as NWS products write them (UAT 120:
-		// "SWY S-2" is "State Highway S-2", "Palomar Mountain Rd" is "Road").
-		"SWY": "State Highway", "SR": "State Route", "HWY": "Highway", "Hwy": "Highway", "FWY": "Freeway", "Fwy": "Freeway",
-		"Rd": "Road", "RD": "Road", "Ave": "Avenue", "AVE": "Avenue", "Blvd": "Boulevard", "BLVD": "Boulevard",
-		"St": "Street", "Dr": "Drive", "DR": "Drive", "Ln": "Lane", "LN": "Lane", "Ct": "Court", "CT": "Court",
-		"Pkwy": "Parkway", "PKWY": "Parkway", "Trl": "Trail", "TRL": "Trail", "Mt": "Mount", "MT": "Mount", "Mtn": "Mountain", "MTN": "Mountain",
-		"Cyn": "Canyon", "CYN": "Canyon", "Jct": "Junction", "JCT": "Junction", "Rte": "Route", "RTE": "Route",
-	}
-}
+// pronunciations are the voice-only spellings — the rules file "words"
+// (agencies, road abbreviations; the screen keeps the written form).
+func pronunciations() map[string]string { return pronounce.Table("words") }
+
+// timeZones is the pronunciation rule for time-zone abbreviations (HUM LEAD
+// 2026-08-28): a zone is read as its name in every script — the rules file
+// "zones".
+func timeZones() map[string]string { return pronounce.Table("zones") }
 
 // Pronounce applies the voice-only substitutions to a segment's text:
 // the word table, and web addresses spelled the way they are read out
 // (UAT 95).
 func Pronounce(text string) string {
 	table := pronunciations()
+	zones := timeZones()
 	words := strings.Fields(text)
 	for i, w := range words {
-		core := strings.Trim(w, ".,;:")
+		core := strings.Trim(w, ".,;:()")
+		if say, ok := zones[core]; ok { // "08:45 CDT" → "08:45 Central Daylight Time" (HUM LEAD 2026-08-28: every script)
+			words[i] = strings.Replace(w, core, say, 1)
+			continue
+		}
 		if say, ok := table[core]; ok {
 			words[i] = strings.Replace(w, core, say, 1)
 			continue

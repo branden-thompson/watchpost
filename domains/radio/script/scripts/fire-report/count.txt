@@ -1,0 +1,2 @@
+{{/* fire-report/count: hotspots inside the ring. Data: .Count (int), .Ring (16 mile). */}}
+{{if eq .Count 0}}There are currently no hotspots{{else if eq .Count 1}}There is currently 1 hotspot{{else}}There are currently {{.Count}} hotspots{{end}} within a {{.Ring}} fire ring in your area.

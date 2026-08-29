@@ -1,0 +1,2 @@
+{{/* event-report/tail: the sign-off every event read closes with. No data. */}}
+This concludes this Watchpost Severe Weather Notification Report.

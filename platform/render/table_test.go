@@ -32,19 +32,45 @@ func TestHeaderTokensAtResolvedOffsets(t *testing.T) {
 	// LABEL hidden (UAT 11.2) and NAME is the fill column (UAT 11.1): at the
 	// minimal full width (115) every downstream token sits at the computed
 	// offset; widening moves them right by exactly the fill growth.
+	// The labels are CENTRED in their column's segment since the 2026-08-28
+	// facelift (the segments meet at the gutter midpoints), so the pin is
+	// "centred over its column", not a fixed offset.
 	hdr := stripANSI(strings.Split((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
-	for tok, off := range map[string]int{"###.": 13, "NAME": 18, "ZIP": 37, "NOW": 60} {
-		if got := runeIdx(hdr, tok); got != off {
-			t.Fatalf("%q at %d, want %d\n%q", tok, got, off, hdr)
-		}
+	for tok, col := range map[string]string{"##.": "num", "NAME": "name", "ZIP": "zip", "NOW": "now"} {
+		labelOverColumn(t, hdr, tok, col, 115)
 	}
 	if strings.Contains(hdr, "LABEL") {
 		t.Fatalf("LABEL must be hidden (UAT 11.2): %q", hdr)
 	}
 	wide := stripANSI(strings.Split((Opts{ThinBands: true, Width: 135, Units: UnitF}).LocationTable(nil, 0), "\n")[1])
-	if got := runeIdx(wide, "ZIP"); got != 57 {
-		t.Fatalf("fill must widen NAME by +20 at 135 cols: ZIP at %d, want 57\n%q", got, wide)
+	labelOverColumn(t, wide, "ZIP", "zip", 135) // the fill widened NAME by +20: ZIP moved with its column
+	if zipAt, zipWide := runeIdx(hdr, "ZIP"), runeIdx(wide, "ZIP"); zipWide-zipAt != 20 {
+		t.Fatalf("fill must widen NAME by +20 at 135 cols: ZIP moved %d\n%q", zipWide-zipAt, wide)
 	}
+	// Colour off: the bands' bracket form, one segment per column, touching.
+	if !strings.HasPrefix(hdr, "[") || strings.Contains(hdr, "] [") || strings.Count(hdr, "][") < 8 {
+		t.Fatalf("the segments touch end to end: %q", hdr)
+	}
+}
+
+// labelOverColumn asserts tok's centre sits over the named column's cells
+// in a header row rendered at width (the segment centres it; the column
+// may be narrower than the segment by the half-gutters either side).
+func labelOverColumn(t *testing.T, hdr, tok, col string, width int) {
+	t.Helper()
+	l := layoutFor(width, 0)
+	for _, g := range tableGeom(l.columns(nil), width) {
+		if g.name != col {
+			continue
+		}
+		idx := runeIdx(hdr, tok)
+		centre := idx + len([]rune(tok))/2
+		if idx < 0 || centre < g.off-tableGutter/2 || centre > g.off+g.w+tableGutter/2 {
+			t.Fatalf("%q centred at %d, column %s spans %d..%d\n%q", tok, centre, col, g.off, g.off+g.w-1, hdr)
+		}
+		return
+	}
+	t.Fatalf("column %s not in the layout at %d", col, width)
 }
 
 func TestLocationTableAnatomy(t *testing.T) {
@@ -61,7 +87,7 @@ func TestLocationTableAnatomy(t *testing.T) {
 		want string
 	}{
 		{0, "›"}, {3, "▶"}, {11, "⚠"},
-		{13, "001."}, {18, "Oceanside, CA"}, {37, "92057"},
+		{13, "001."}, {18, "Oceanside, CA"}, {38, "92057"}, // ZIP centred in its 7-cell column (UAT 2026-08-28)
 		{46, "CLEAR"}, {60, " 73ºF↗"}, {70, " 75ºF"}, {77, " 63ºF"},
 		{86, "RAIN"}, {100, " 77ºF"}, {108, " 64ºF"},
 	} {
@@ -92,9 +118,7 @@ func TestResponsiveColumnDropsInOrder(t *testing.T) {
 	if !strings.Contains(full, "T O M O R R O W") || !strings.Contains(full, "LOW") {
 		t.Fatalf("121 cols must carry all groups:\n%s", full)
 	}
-	if got := runeIdx(strings.Split(full, "\n")[1], "ZIP"); got != 43 {
-		t.Fatalf("fill must widen NAME (+6 at 121 cols): ZIP at %d, want 43\n%s", got, full)
-	}
+	labelOverColumn(t, strings.Split(full, "\n")[1], "ZIP", "zip", 121) // the fill widened NAME (+6 at 121 cols): ZIP over its column
 	noTmrw := at(100)
 	if strings.Contains(noTmrw, "T O M O R R O W") || strings.Contains(noTmrw, "RAIN") {
 		t.Fatalf("<115 cols must drop the TOMORROW group:\n%s", noTmrw)
@@ -187,7 +211,7 @@ func TestSessionFourStyling(t *testing.T) {
 	if AlertTone("Flash Flood Warning", "moderate") != Tok(AlertDanger) || AlertTone("Heat Advisory", "severe") != Tok(AlertDanger) {
 		t.Fatal("warning-grade / severe must read red")
 	}
-	if p := o.PanelColored("T", "x", Tok(AlertDanger)); !strings.Contains(p, "38;5;196") {
+	if p := o.PanelColored("T", "x", Tok(AlertDanger)); !strings.Contains(p, Tok(AlertDanger)) { // the theme's danger tone (lifted to AA at registration)
 		t.Fatalf("panel border tint missing: %q", p)
 	}
 	// 4.9: gradient title — bold truecolor, the reference stops at the ends.
@@ -292,10 +316,11 @@ func TestAlertBadgeCountAndTone(t *testing.T) {
 	if got := string(plain[0:13]); got != "›         2⚠ " {
 		t.Fatalf("focused 2-alert row must open '›         2⚠ ' (0.11.0 marks block), got %q", got)
 	}
-	if !strings.Contains(lines[2], "\x1b[38;5;196m2") || !strings.Contains(lines[2], "\x1b[38;5;196m⚠") {
+	danger, label := strings.TrimSuffix(Tint("", Tok(AlertDanger)), "\x1b[0m"), strings.TrimSuffix(Tint("", Tok(AlertLabel)), "\x1b[0m") // the tones as Tint emits them (a bare index becomes 38;5;N)
+	if !strings.Contains(lines[2], danger+"2") || !strings.Contains(lines[2], danger+"⚠") {
 		t.Fatalf("warning badge must be red:\n%q", lines[2])
 	}
-	if !strings.Contains(lines[3], "\x1b[38;5;220m1") || !strings.Contains(lines[3], "\x1b[38;5;220m⚠") {
+	if !strings.Contains(lines[3], label+"1") || !strings.Contains(lines[3], label+"⚠") {
 		t.Fatalf("advisory badge must be yellow:\n%q", lines[3])
 	}
 	// Geometry untouched: NAME still lands at col 18 (0.11.0 marks block).
@@ -313,7 +338,7 @@ func TestFocusedRowCellsLightBlueAndPointerBoldWhite(t *testing.T) {
 	if !strings.Contains(row, "\x1b[1;97m›") {
 		t.Fatalf("pointer must be bold white:\n%q", row)
 	}
-	if !strings.Contains(row, "\x1b[38;5;117m92057") || !strings.Contains(row, "\x1b[38;5;117m001.") {
+	if !strings.Contains(row, "\x1b[38;5;117m 92057 ") || !strings.Contains(row, "\x1b[38;5;117m001.") { // the zip centred in its cell
 		t.Fatalf("focused zip/num cells must be light blue:\n%q", row)
 	}
 	if !strings.Contains(row, "38;5;208") || !strings.Contains(row, "1;38;5;220") {
@@ -338,13 +363,11 @@ func TestStationColumnsUAT60(t *testing.T) {
 		return strings.Split(stripANSI((Opts{ThinBands: true, Width: w, Units: u}).LocationTable([]LocationRow{r}, 0)), "\n")
 	}
 	full := at(131, UnitF)
-	for tok, off := range map[string]int{"NAME": 18, "WX STN": 37, "DIST": 45, "ZIP": 53, "CONDITIONS": 62} {
-		if got := runeIdx(full[1], tok); got != off {
-			t.Fatalf("%q at %d, want %d\n%q", tok, got, off, full[1])
-		}
+	for tok, col := range map[string]string{"NAME": "name", "WX STN": "wxstn", "DIST": "dist", "ZIP": "zip", "CONDITIONS": "cond"} {
+		labelOverColumn(t, full[1], tok, col, 131)
 	}
 	row := []rune(full[2])
-	if got := string(row[37:41]); got != "KCRQ" {
+	if got := string(row[38:42]); got != "KCRQ" { // centred in the 6-cell column (UAT 2026-08-28)
 		t.Fatalf("station cell = %q\n%s", got, full[2])
 	}
 	if got := string(row[45:51]); got != "  3 mi" {
@@ -367,9 +390,7 @@ func TestStationColumnsUAT60(t *testing.T) {
 	if strings.Contains(mock[1], "WX STN") || strings.Contains(mock[2], "KCRQ") || !strings.Contains(mock[0], "T O M O R R O W") {
 		t.Fatalf("125 cols: station columns hidden, TOMORROW kept:\n%s", strings.Join(mock, "\n"))
 	}
-	if got := runeIdx(mock[1], "ZIP"); got != 47 {
-		t.Fatalf("125-col layout unchanged (ZIP at 47), got %d", got)
-	}
+	labelOverColumn(t, mock[1], "ZIP", "zip", 125) // the 125-col layout unchanged: ZIP over its column
 	// Very narrow: ZIP leaves last, NAME keeps its floor. The 0.11.0 marks
 	// block (13 cells) sets the table's minimum content width at 52 (the band
 	// labels span the marks region); the full name still survives from 55.
@@ -486,5 +507,34 @@ func TestGroupBandsAreThreeRowsUnlessThin(t *testing.T) {
 	}
 	if band := (Opts{}).BandRows("R E C E N T", "R", 40, GroupSectionBG); len(band) != 3 || band[0] != band[2] || !strings.Contains(band[1], "R E C E N T") {
 		t.Fatalf("section band rows: %q", band)
+	}
+}
+
+// The column-title row (HUM LEAD UAT 2026-08-28): one row, each segment
+// painted in a dip of its group's band tint with the label centred in bold
+// white, the segments meeting at the gutter midpoints; the marks column
+// painted with no label; a non-truecolor band is its own tone.
+func TestColumnHeaderIsAPaintedRowOfTouchingSegments(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	row := strings.Split((Opts{ThinBands: true, Width: 131, Units: UnitF}).LocationTable(nil, 0), "\n")[1]
+	loc, today := TableHeaderTone(GroupLocationBG), TableHeaderTone(GroupTodayBG)
+	if loc == Tok(GroupLocationBG) || !strings.HasPrefix(loc, "48;2;") {
+		t.Fatalf("the title row dips below its band: %q vs %q", loc, Tok(GroupLocationBG))
+	}
+	if !strings.Contains(row, "\x1b[1;97;"+loc+"m") || !strings.Contains(row, "\x1b[1;97;"+today+"m") {
+		t.Fatalf("bold white on the dipped band tints:\n%q", row)
+	}
+	plain := stripANSI(row)
+	if displayWidth(plain) != 131 || strings.TrimSpace(plain[:13]) != "" {
+		t.Fatalf("the row spans the table, the marks segment unlabelled: %d %q", displayWidth(plain), plain)
+	}
+	// Painted end to end: the SGR opens are contiguous — each segment's
+	// reset is followed by the next segment's open, never by a bare space.
+	if strings.Contains(row, "\x1b[0m ") {
+		t.Fatalf("a gap between segments:\n%q", row)
+	}
+	if got := TableHeaderTone(TextBase); got != Tok(TextBase) {
+		t.Fatalf("a non-truecolor band is its own tone: %q", got)
 	}
 }

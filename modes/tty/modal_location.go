@@ -96,6 +96,9 @@ func (d Dashboard) handleResolved(v resolvedMsg) (tea.Model, tea.Cmd) {
 		recent = prependRef(recent, v.ref) // top of recent/searched (UAT 26.4)
 		d.selected = len(watch)            // focus the looked-up location...
 		d = d.open(modalDetails)           // ...and open its details
+		ref := v.ref
+		ref.Label, ref.Tag, ref.Zip = render.PlainLine(ref.Label), render.PlainLine(ref.Tag), render.PlainLine(ref.Zip) // the placeholder is drawn before the assembler cleans it (R5-C-05)
+		d.lookupRef = &ref                                                                                              // ...which read as the looked-up location from the first frame, blank until its data lands
 	}
 	return d, d.commitCmd(watch, recent, v.mode)
 }
@@ -209,7 +212,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 		// UAT 26.3: cap note leads the modal when the watchlist is full.
 		lines = append(lines, "  Only 10 locations are allowed in the priority list", "  for performance reasons.", "")
 	}
-	lines = append(lines, "  Search: "+d.addQuery+"▌", "")
+	lines = append(lines, "  Search: "+d.addQuery+o.Glyphs().Cursor, "")
 	if d.addErr != "" {
 		lines = append(lines, "  ⚠ "+d.addErr, "")
 	}

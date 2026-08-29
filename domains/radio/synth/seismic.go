@@ -29,34 +29,32 @@ const spokenQuakeCap = 3
 // read largest-first, a summary of any beyond the cap, and the where-to-learn
 // -more tail. With no quakes for the location the report is skipped entirely
 // (HUM LEAD: the report plays only if there are seismic entries).
-func SeismicSegments(location string, sr SeismicReport, imperial bool, now time.Time) []Segment {
+func (c Composer) SeismicSegments(location string, sr SeismicReport, imperial bool, now time.Time) []Segment {
 	if !sr.Known || len(sr.State.Quakes) == 0 {
 		return nil
 	}
 	place := ExpandStates(location)
-	notice := fmt.Sprintf("This is the Watchpost Radio Seismic Activity report for %s. This report is derived from the United States Geological Survey real-time GeoJSON earthquake notification service. Data for this report may be delayed or incomplete, and is not intended for life safety use.", place)
+	notice := c.say("seismic-report", "head", map[string]string{"Location": place})
 	segs := []Segment{{Key: "seismic:notice:" + contentKey(notice), Text: notice, Pause: seismicPause}} // content-keyed: the cache must never replay a stale feed (REVIEW C1)
 
 	n := len(sr.State.Quakes)
-	var body []string
-	if n == 1 {
-		body = append(body, "There has been 1 nearby quake in the last seven days:")
-	} else {
-		body = append(body, fmt.Sprintf("There have been %d nearby quakes in the last seven days:", n))
-	}
+	body := []string{c.say("seismic-report", "count", map[string]any{"Count": n})}
 	shown := min(n, spokenQuakeCap)
 	for _, q := range sr.State.Quakes[:shown] { // already largest-first (the provider sorts)
-		body = append(body, quakeSentence(q, imperial, now))
+		body = append(body, c.quakeSentence(q, imperial, now))
 	}
 	if rest := n - spokenQuakeCap; rest > 0 {
 		noun := "quakes"
 		if rest == 1 {
 			noun = "quake"
 		}
-		body = append(body, fmt.Sprintf("and %d more recent %s, which can be found in the %s details report in the Watchpost CLI application view.", rest, noun, place))
+		body = append(body, c.say("seismic-report", "more", map[string]any{"Rest": rest, "Noun": noun, "Location": place}))
 	}
-	body = append(body, "For additional and up-to-date information regarding earthquakes in your area, please visit https://earthquake.usgs.gov/earthquakes/map") // no trailing slash: it would read an extra "slash" (HUM LEAD UAT)
+	body = append(body, c.say("seismic-report", "link", nil)) // no trailing slash in the script: it would read an extra "slash" (HUM LEAD UAT)
 	for _, piece := range body {
+		if piece == "" {
+			continue // a phrase without a script is not spoken
+		}
 		segs = append(segs, Segment{Key: "seismic:" + contentKey(piece), Text: piece}) // content-keyed: counts change between cycles under repeat (REVIEW C1)
 	}
 	return segs
@@ -66,18 +64,18 @@ func SeismicSegments(location string, sr SeismicReport, imperial bool, now time.
 // at a depth of 9 kilometers, recorded 3 days ago. A quake of this magnitude
 // has a strong likelihood of being felt when it occurs." Fields the feed did
 // not give are left out, never guessed.
-func quakeSentence(q snapshot.Quake, imperial bool, now time.Time) string {
-	s := fmt.Sprintf("A magnitude %.1f earthquake", q.Mag)
+func (c Composer) quakeSentence(q snapshot.Quake, imperial bool, now time.Time) string {
+	data := map[string]string{"Mag": fmt.Sprintf("%.1f", q.Mag), "Where": "", "Depth": "", "Ago": "", "Felt": c.say("seismic-report", "felt", map[string]string{"Likelihood": feltLikelihood(q.Mag)})}
 	if q.DistanceKm > 0 && q.Bearing != "" {
-		s += ", " + distanceWords(q.DistanceKm, imperial) + " " + bearingLong(q.Bearing) + " of your location"
+		data["Where"] = distanceWords(q.DistanceKm, imperial) + " " + bearingLong(q.Bearing)
 	}
 	if q.DepthKm > 0 { // depth is always in kilometres (the seismology convention), even under imperial (HUM LEAD)
-		s += ", at a depth of " + depthWords(q.DepthKm)
+		data["Depth"] = depthWords(q.DepthKm)
 	}
 	if !q.At.IsZero() {
-		s += ", recorded " + durationWords(now.Sub(q.At)) + " ago"
+		data["Ago"] = durationWords(now.Sub(q.At))
 	}
-	return s + ". " + feltLikelihood(q.Mag)
+	return c.say("seismic-report", "quake", data)
 }
 
 // feltLikelihood is the magnitude's general felt-likelihood — keyed to the
@@ -90,11 +88,11 @@ func quakeSentence(q snapshot.Quake, imperial bool, now time.Time) string {
 func feltLikelihood(mag float64) string {
 	switch {
 	case mag >= 4.5:
-		return "A quake of this magnitude has a strong likelihood of being felt when it occurs."
+		return "strong"
 	case mag >= 3.5:
-		return "A quake of this magnitude has a moderate likelihood of being felt when it occurs."
+		return "moderate"
 	default:
-		return "A quake of this magnitude has a low likelihood of being felt when it occurs."
+		return "low"
 	}
 }
 

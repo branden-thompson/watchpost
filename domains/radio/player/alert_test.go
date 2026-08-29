@@ -139,3 +139,187 @@ func near(a, b float64) bool {
 	}
 	return d < 0.005
 }
+
+// A held line survives the clips that play while it waits (red-team round
+// 4, A-01): a read paused for a takeover is not closed when the takeover's
+// tone and lines take the flight slot; ResumePreview plays it on; DropHeld
+// closes it without playing. The broadcast underneath is untouched.
+func TestHeldLineSurvivesTheTakeoversClips(t *testing.T) {
+	out := &recordingOutput{}
+	e, err := New(out, "watchpost/test (t@example.com)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Volume(80)
+	e.StartSource("test", OutputRate, func(context.Context) io.Reader { return endlessPCM{} })
+	waitFor(t, "main to play", func() bool { _, ok := out.mainVol(); return ok })
+	if err := e.Preview(OutputRate, bytes.NewReader(make([]byte, 60*OutputRate))); err != nil {
+		t.Fatal(err)
+	}
+	out.mu.Lock()
+	read := out.players[len(out.players)-1]
+	out.mu.Unlock()
+	e.PausePreview()
+	if err := e.PreviewAside(OutputRate, bytes.NewReader(make([]byte, OutputRate/2))); err != nil { // the takeover's tone
+		t.Fatal(err)
+	}
+	if err := e.PreviewAside(OutputRate, bytes.NewReader(make([]byte, OutputRate/2))); err != nil { // and a line
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond) // the read's watcher must keep waiting
+	select {
+	case <-read.stop:
+		t.Fatal("the takeover's clips closed the held read")
+	default:
+	}
+	if read.IsPlaying() {
+		t.Fatal("the held read must stay paused under the takeover")
+	}
+	e.Volume(40) // the knob moves while it waits
+	e.ResumePreview()
+	if !read.IsPlaying() {
+		t.Fatal("the read must play on after the takeover")
+	}
+	waitFor(t, "the knob to reach the resumed line", func() bool { return near(read.volume(), 0.4) })
+	e.PausePreview()
+	e.DropHeld()
+	waitFor(t, "the dropped line to close", func() bool {
+		select {
+		case <-read.stop:
+			return true
+		default:
+			return false
+		}
+	})
+	out.mu.Lock()
+	main := out.players[0]
+	out.mu.Unlock()
+	if !main.IsPlaying() {
+		t.Fatal("the broadcast underneath must keep playing")
+	}
+}
+
+// PausePreview holds the line in flight without closing it; ResumePreview
+// lets it play on; the broadcast is untouched throughout.
+func TestPauseAndResumePreview(t *testing.T) {
+	out := &recordingOutput{}
+	e, err := New(out, "watchpost/test (t@example.com)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Volume(80)
+	e.StartSource("test", OutputRate, func(context.Context) io.Reader { return endlessPCM{} })
+	waitFor(t, "main to play", func() bool { _, ok := out.mainVol(); return ok })
+	e.PausePreview() // nothing in flight: inert
+	if err := e.Preview(OutputRate, bytes.NewReader(make([]byte, 60*OutputRate))); err != nil {
+		t.Fatal(err)
+	}
+	out.mu.Lock()
+	line := out.players[len(out.players)-1]
+	out.mu.Unlock()
+	e.PausePreview()
+	if line.IsPlaying() {
+		t.Fatal("the line must be held")
+	}
+	time.Sleep(150 * time.Millisecond) // the watcher must not close a held line
+	select {
+	case <-line.stop:
+		t.Fatal("a paused line was closed")
+	default:
+	}
+	e.ResumePreview()
+	if !line.IsPlaying() {
+		t.Fatal("the line must play on")
+	}
+	out.mu.Lock()
+	main := out.players[0]
+	out.mu.Unlock()
+	if !main.IsPlaying() {
+		t.Fatal("the broadcast underneath must keep playing")
+	}
+}
+
+// A preview alone drives the visualizer's tap (HUM LEAD UAT 2026-08-28:
+// an event read is a preview, and the bars must follow it).
+func TestPreviewFeedsTheVisualizerTap(t *testing.T) {
+	out := &recordingOutput{}
+	e, err := New(out, "watchpost/test (t@example.com)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Volume(80)
+	clip := make([]byte, 4*OutputRate) // one second of a loud square wave, 16-bit LE stereo
+	for i := 0; i+3 < len(clip); i += 4 {
+		v := int16(20000)
+		if (i/4/50)%2 == 1 {
+			v = -20000
+		}
+		clip[i], clip[i+1], clip[i+2], clip[i+3] = byte(v), byte(v>>8), byte(v), byte(v>>8)
+	}
+	if err := e.Preview(OutputRate, bytes.NewReader(clip)); err != nil {
+		t.Fatal(err)
+	}
+	dst := make([]float64, 1024)
+	waitFor(t, "the tap to carry the preview", func() bool {
+		if e.Samples(dst) == 0 {
+			return false
+		}
+		for _, v := range dst {
+			if v > 0.1 || v < -0.1 {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+// PreviewAside plays without touching the tap: the bars stay at rest.
+func TestPreviewAsideLeavesTheTapAlone(t *testing.T) {
+	out := &recordingOutput{}
+	e, err := New(out, "watchpost/test (t@example.com)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clip := make([]byte, 4*OutputRate)
+	for i := 0; i+3 < len(clip); i += 4 {
+		clip[i], clip[i+1], clip[i+2], clip[i+3] = 0x20, 0x4e, 0x20, 0x4e // a loud constant
+	}
+	if err := e.PreviewAside(OutputRate, bytes.NewReader(clip)); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(150 * time.Millisecond)
+	dst := make([]float64, 1024)
+	if n := e.Samples(dst); n != 0 { // nothing at all reached the tap — not merely quiet frames (round 4, A-16d)
+		t.Fatalf("an aside preview must not reach the visualizer: %d frames", n)
+	}
+}
+
+// A voice audition is never the line in flight (REVIEW R5-B-03): with a read
+// on air and a sample playing, a pause holds the READ, not the sample.
+func TestAuditionIsNeverTheLineInFlight(t *testing.T) {
+	out := &recordingOutput{}
+	e, err := New(out, "watchpost/test (t@example.com)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Preview(OutputRate, bytes.NewReader(make([]byte, 60*OutputRate))); err != nil {
+		t.Fatal(err)
+	}
+	out.mu.Lock()
+	read := out.players[len(out.players)-1]
+	out.mu.Unlock()
+	if err := e.Audition(OutputRate, bytes.NewReader(make([]byte, 60*OutputRate))); err != nil {
+		t.Fatal(err)
+	}
+	out.mu.Lock()
+	sample := out.players[len(out.players)-1]
+	out.mu.Unlock()
+	e.PausePreview()
+	if read.IsPlaying() || !sample.IsPlaying() {
+		t.Fatalf("the pause holds the read (playing=%v), not the sample (playing=%v)", read.IsPlaying(), sample.IsPlaying())
+	}
+	e.ResumePreview()
+	if !read.IsPlaying() {
+		t.Fatal("the read plays on")
+	}
+}

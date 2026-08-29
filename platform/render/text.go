@@ -4,7 +4,7 @@ package render
 
 import (
 	"fmt"
-	"regexp"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"strings"
 
 	runewidth "github.com/mattn/go-runewidth"
@@ -154,31 +154,37 @@ func HumanBytes(n int64) string {
 	return fmt.Sprintf("%.0f%s", v, suffix)
 }
 
-var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
-
 // stripANSI removes SGR sequences (width math + tests).
-func stripANSI(s string) string { return ansiRe.ReplaceAllString(s, "") }
+func stripANSI(s string) string { return plaintext.StripSGR(s) }
 
-// Plain is the boundary for text that arrives from outside — relay titles
-// and names, provider headlines and product text (red-team 0.9.0 S-F6):
-// escape sequences and control characters are dropped so nothing a server
-// sends can address the terminal (OSC hyperlinks, clipboard writes). Tabs
-// and newlines survive; everything else below 0x20, and 0x7f–0x9f, goes.
-func Plain(s string) string {
-	s = stripANSI(s)
-	return strings.Map(func(r rune) rune {
-		if r == '\n' || r == '\t' {
-			return r
+// Plain is the boundary for text that arrives from outside (plaintext.Text —
+// one owner, shared with the snapshot assembler).
+func Plain(s string) string { return plaintext.Text(s) }
+
+// TruncateCells cuts s to at most n display cells (a wide rune counts two),
+// with no ellipsis — the one owner of "cut to fit" for a row that must not
+// overflow (R5-C-10).
+func TruncateCells(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
+	cells := 0
+	for i, r := range s {
+		w := RuneCells(r)
+		if cells+w > n {
+			return s[:i]
 		}
-		if r < 0x20 || (r >= 0x7f && r <= 0x9f) {
-			return -1
-		}
-		if r == 0xFE0E || r == 0xFE0F {
-			return -1 // variation selectors: a terminal may draw "⚠️" as one cell or two; plain text carries neither (A11-8, L5-F12)
-		}
-		return r
-	}, s)
+		cells += w
+	}
+	return s
 }
+
+// RuneCells is one rune's display width (a wide rune is two) — the per-rune
+// step of a cell-bounded window, with no string built per rune.
+func RuneCells(r rune) int { return runewidth.RuneWidth(r) }
+
+// PlainLine is Plain for a field that must stay on ONE line (plaintext.Line).
+func PlainLine(s string) string { return plaintext.Line(s) }
 
 // displayWidth measures terminal cells (runewidth; AI-9 glyph policy).
 func displayWidth(s string) int { return runewidth.StringWidth(stripANSI(s)) }
@@ -191,24 +197,13 @@ func truncate(s string, w int) string {
 	return runewidth.Truncate(stripANSI(s), w, "…")
 }
 
-// CentreBetween lays a row out as left … mid … right across width with mid
-// centred on the row's global centre — the same axis whatever the side
-// blocks measure, so the header's stamp and the alert title line up (HUM
-// LEAD UAT 2026-08-27). When the centred text would run into a side block
-// it shifts the least it must (two cells of air kept); when it cannot fit
-// at all it is shortened with an ellipsis, and failing that dropped.
-func CentreBetween(left, mid, right string, width int) string {
-	lw, rw := Width(left), Width(right)
-	room := width - lw - rw - 4
-	if Width(mid) > room && room >= 4 {
-		mid = truncate(mid, room-1) + "…"
+// FirstFit returns the first form that fits room cells, else the last (the
+// narrowest) — the one shape of every "widest form that fits" ladder.
+func FirstFit(room int, forms ...string) string {
+	for _, f := range forms {
+		if Width(f) <= room {
+			return f
+		}
 	}
-	if Width(mid) > room {
-		return PadBetween(left, right, width)
-	}
-	mw := Width(mid)
-	start := (width - mw) / 2         // the global centre
-	start = max(start, lw+2)          // not into the left block
-	start = min(start, width-rw-2-mw) // not into the right block
-	return left + strings.Repeat(" ", start-lw) + mid + strings.Repeat(" ", width-rw-start-mw) + right
+	return forms[len(forms)-1]
 }

@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -20,7 +21,7 @@ func TestStatusModalAndControlPlacement(t *testing.T) {
 		t.Fatalf("header wording (UAT 24.3):\n%s", v)
 	}
 	head := strings.SplitN(v, "W A T C H P O S T", 2)[1]
-	if first := strings.SplitN(head, "\n", 2)[0]; !strings.Contains(first, "Status") || !strings.Contains(first, "API: ") {
+	if first := head; !strings.Contains(first, "Status") || !strings.Contains(first, "API: ") {
 		t.Fatal("the title line carries the API summary and the [S] Status chip (UAT 24.2 / 102)")
 	}
 	if !strings.Contains(v, "VOL") || !strings.Contains(v, "[-]") || !strings.Contains(v, "[+]") {
@@ -92,7 +93,7 @@ func TestStatusAlignmentAndIssueAggregation(t *testing.T) {
 	if strings.Count(out, "obs_stale") != 1 {
 		t.Fatalf("one row per issue class:\n%s", out)
 	}
-	if aggregateWarnings(nil, nil)[0] != "    none" {
+	if aggregateWarnings(nil, nil)[0] != "   none" {
 		t.Fatal("no warnings must read none")
 	}
 }
@@ -139,5 +140,62 @@ func TestStatusModalShowsRequestAndDumpRows(t *testing.T) {
 	ps, _ := plain.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
 	if strings.Contains(ps.View().Content, "REQUESTS") {
 		t.Fatal("without a Stats hook the modal must not show a REQUESTS section")
+	}
+}
+
+// The [S] window lays PROVIDERS beside REQUESTS when the terminal is wide
+// enough (HUM LEAD UAT 2026-08-28) and stacks them when it is not; a blank
+// line of air under the title in both; PIPELINES, ISSUES and DUMPS follow
+// full width; no line ever exceeds the terminal.
+func TestStatusLaysOutOneOrTwoColumns(t *testing.T) {
+	stats := func() Stats {
+		return Stats{Requests: httpx.RequestStats{Uptime: 10 * time.Minute, Hosts: []httpx.HostStats{{Host: "api.weather.gov", Attempts: 302, Net: 211, Cache: 206, BytesNet: 8_100_000}, {Host: "earthquake.usgs.gov", Attempts: 14, Net: 14, Cache: 141, BytesNet: 77_200}}}, DumpHint: "kill -USR1 29290 → /tmp/profiles"}
+	}
+	for _, c := range []struct {
+		w      int
+		twoCol bool
+	}{{100, false}, {133, true}, {200, true}} {
+		m, err := NewDashboard(Config{Version: "t", Stats: stats})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var mm tea.Model = m
+		mm, _ = mm.Update(tea.WindowSizeMsg{Width: c.w, Height: 44})
+		mm, _ = mm.Update(SnapshotMsg{Snap: snap()})
+		mm, _ = mm.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
+		d := mm.(Dashboard)
+		lines := d.statusLines()
+		if lines[0] != "" {
+			t.Fatalf("%d cols: a blank line under the title, got %q", c.w, lines[0])
+		}
+		text := stripANSITest(strings.Join(lines, "\n"))
+		pair := false
+		for _, l := range strings.Split(text, "\n") {
+			if strings.Contains(l, "PROVIDERS") && strings.Contains(l, "REQUESTS") {
+				pair = true
+			}
+		}
+		if pair != c.twoCol {
+			t.Fatalf("%d cols: two columns = %v, want %v:\n%s", c.w, pair, c.twoCol, text)
+		}
+		for _, want := range []string{"PROVIDERS", "REQUESTS", "api.weather.gov", "PIPELINES", "severe index", "ISSUES", "DUMPS", "kill -USR1"} {
+			if !strings.Contains(text, want) {
+				t.Fatalf("%d cols: %q missing:\n%s", c.w, want, text)
+			}
+		}
+		order := []string{"PIPELINES", "ISSUES", "DUMPS"} // the full-width sections keep their order below the columns
+		last := -1
+		for _, name := range order {
+			if i := strings.Index(text, name); i < last {
+				t.Fatalf("%d cols: %s out of order", c.w, name)
+			} else {
+				last = i
+			}
+		}
+		for _, l := range strings.Split(stripANSITest(d.View().Content), "\n") {
+			if render.Width(strings.TrimRight(l, " ")) > c.w {
+				t.Fatalf("%d cols: a line overflows the terminal: %q", c.w, l)
+			}
+		}
 	}
 }

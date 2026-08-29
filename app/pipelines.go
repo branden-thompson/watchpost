@@ -171,6 +171,7 @@ func startPriority(ctx context.Context, p *tea.Program, providers []snapshot.Pro
 	asm := newAssembler(refs, providers)
 	pub := &publisher{run: func() *snapshot.Snapshot {
 		snap := asm.Snapshot()
+		dropSuperseded(snap) // an alert's own update replaces it in the tables too (R5-A-08)
 		if onPublish != nil {
 			onPublish(snap)
 		}
@@ -285,7 +286,7 @@ func (rp *recentPipeline) stop() {
 // weather to the seeded RECENT/SEARCHED list. The seed snapshot publishes
 // once the program loop is up (names/zips render instantly; temps stream
 // in). An empty seed list yields an inert pipeline.
-func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provider, refs []snapshot.LocationRef) *recentPipeline {
+func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provider, refs []snapshot.LocationRef, onPublish func(*snapshot.Snapshot)) *recentPipeline {
 	rp := &recentPipeline{ctx: ctx, providers: providers, scheds: map[snapshot.LocationKey]*sched.Scheduler{}}
 	if len(refs) == 0 {
 		rp.publish = func() {}
@@ -298,6 +299,10 @@ func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provi
 		// Snapshot() deep-copies, so the delivered value is the receiver's
 		// own — the tty sorts its alerts in place (L3-F16).
 		snap := rp.asm.Snapshot()
+		dropSuperseded(snap) // R5-A-08
+		if onPublish != nil {
+			onPublish(snap) // 0.13.0: the severe deck's Trigger rides every publish
+		}
 		p.Send(tty.RecentSnapshotMsg{Snap: snap})
 		return snap
 	}}

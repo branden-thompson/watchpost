@@ -297,7 +297,7 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 		}
 	}
 	if st.ref == nil || st.focus == focusLocation {
-		lines = append(lines, "       Search: "+st.query+"▌")
+		lines = append(lines, "       Search: "+st.query+o.Glyphs().Cursor)
 		for i, h := range st.hints {
 			pick := "  "
 			if i == st.idx {
@@ -333,7 +333,7 @@ func (d Dashboard) setupKeyLines(mark string) []string {
 	if st.reveal {
 		shown = st.key
 	}
-	lines = append(lines, "       Key: "+shown+"▌")
+	lines = append(lines, "       Key: "+shown+d.opts().Glyphs().Cursor)
 	if st.err != "" && st.focus == focusKey {
 		lines = append(lines, "       ⚠ "+st.err)
 	}
@@ -349,7 +349,7 @@ func (d Dashboard) setupAlertLines(o render.Opts, mark string) []string {
 	lines := []string{"  " + mark + render.Tint("3. Alert Notification Preference", render.Tok(render.TextBright))}
 	buf := st.radiusMi
 	if st.focus == focusAlert && st.filtered {
-		buf += "▌" // the miles cursor, only while editing a Filtered distance
+		buf += o.Glyphs().Cursor // the miles cursor, only while editing a Filtered distance
 	}
 	field := "[" + render.PadTo(buf, 4) + "]"
 	value := fmt.Sprintf("%s All   %s Filtered to %s Mi of my location", radioMark(!st.filtered, o.ASCII), radioMark(st.filtered, o.ASCII), field)
@@ -384,7 +384,7 @@ func (d Dashboard) firmsHealth() string {
 	}
 	for _, w := range d.snap.Warnings {
 		if w.Provider == "firms" && strings.Contains(w.Message, "rejected the MAP_KEY") {
-			return render.Tint("✘ rejected — replace it", render.Tok(render.ProviderDown))
+			return render.Tint(d.opts().Glyphs().Fail+" rejected "+d.opts().Glyphs().Dash+" replace it", render.Tok(render.ProviderDown))
 		}
 	}
 	for _, p := range d.snap.Providers {
@@ -397,7 +397,7 @@ func (d Dashboard) firmsHealth() string {
 		case snapshot.ProviderOff:
 			return "not active"
 		}
-		return render.Tint("✘ degraded (see [S] Status)", render.Tok(render.ProviderDown))
+		return render.Tint(d.opts().Glyphs().Fail+" degraded (see [S] Status)", render.Tok(render.ProviderDown))
 	}
 	return "no report yet"
 }

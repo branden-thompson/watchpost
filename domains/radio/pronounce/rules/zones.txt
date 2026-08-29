@@ -1,0 +1,19 @@
+# zones — a time-zone abbreviation is read as its name, in every script
+# (HUM LEAD 2026-08-28). KEY<TAB>spoken form. Applied by the voice-only
+# pass (Pronounce) and by the product normaliser.
+PDT	Pacific Daylight Time
+PST	Pacific Standard Time
+MDT	Mountain Daylight Time
+MST	Mountain Standard Time
+CDT	Central Daylight Time
+CST	Central Standard Time
+EDT	Eastern Daylight Time
+EST	Eastern Standard Time
+AKDT	Alaska Daylight Time
+AKST	Alaska Standard Time
+HDT	Hawaii Daylight Time
+HST	Hawaii Standard Time
+ADT	Atlantic Daylight Time
+AST	Atlantic Standard Time
+UTC	Coordinated Universal Time
+GMT	Greenwich Mean Time

@@ -1,6 +1,9 @@
 package app
 
 import (
+	tea "charm.land/bubbletea/v2"
+	"context"
+	"github.com/branden-thompson/watchpost/modes/tty"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,5 +80,31 @@ func TestLoadUserThemesRegistersJSONFiles(t *testing.T) {
 	}
 	if render.SetTheme("broken") {
 		t.Fatal("unreadable theme files must be skipped")
+	}
+}
+
+// [space] Read decides at the PRESS whether there is a deck to speak through
+// (the deck is attached after the dashboard is built): without one the press
+// is inert — no ▶ mark, no busy reader (R5-B-04); with one the reader reads.
+// A wiring-time check muted the chip for everyone (VALIDATE 2026-08-29).
+func TestNarrateEventDecidesAtThePress(t *testing.T) {
+	var reads []string
+	lp := &livePipelines{reader: newEventReader(context.Background(), nil, nil, func(k string) (tty.SevereRow, bool) { reads = append(reads, k); return tty.SevereRow{}, false }, func(tea.Msg) {})}
+	hook := lp.narrateEvent()
+	if hook == nil {
+		t.Fatal("the hook is always wired: the chip is live")
+	}
+	hook("k1") // no deck yet: inert
+	lp.reader.mu.Lock()
+	busy := lp.reader.busy
+	lp.reader.mu.Unlock()
+	if busy || len(reads) != 0 {
+		t.Fatal("no deck: the press is inert")
+	}
+	lp.deck = &radioDeck{} // attached later, as attachRadio does
+	hook("k1")
+	waitUntil(t, "the read", func() bool { lp.reader.mu.Lock(); defer lp.reader.mu.Unlock(); return !lp.reader.busy })
+	if len(reads) != 1 {
+		t.Fatalf("a deck: the read runs, got %v", reads)
 	}
 }

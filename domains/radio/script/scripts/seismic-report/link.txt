@@ -1,0 +1,2 @@
+{{/* seismic-report/link: where to learn more. No data. No trailing slash — it would read an extra "slash". */}}
+For additional and up-to-date information regarding earthquakes in your area, please visit https://earthquake.usgs.gov/earthquakes/map

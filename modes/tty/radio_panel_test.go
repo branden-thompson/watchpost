@@ -49,11 +49,10 @@ func TestCompactRadioRowSpansModuleAndKeepsName(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 	m := dash(t)
-	narrow, _ := m.Update(tea.WindowSizeMsg{Width: 70, Height: 24})
+	narrow, _ := m.Update(tea.WindowSizeMsg{Width: 78, Height: 24}) // 70 before the box: its borders and 3-cell insets take 8 (2026-08-28)
 	d := narrow.(Dashboard)
 	o := d.opts()
-	_, bg := render.RadioBlockTone()
-	inner := o.ModuleInnerWidth(bg)
+	inner := o.BoxInnerWidth()
 	row := d.radioLines(o, true)[0]
 	plain := stripANSITest(row)
 	if w := len([]rune(plain)); w != inner {
@@ -137,23 +136,24 @@ func TestVizChipTogglesVisualizerRows(t *testing.T) {
 	m := dash(t)
 	d := m.(Dashboard)
 	o := d.opts()
-	if n := len(d.radioLines(o, false)); n != 4 || strings.Contains(strings.Join(d.radioLines(o, false), ""), "VISUALIZER") {
-		t.Fatalf("viz off: max player is 4 rows without visualizer rows, got %d", n)
+	if n := len(d.radioLines(o, false)); n != 3 || strings.Contains(strings.Join(d.radioLines(o, false), ""), "VISUALIZER") {
+		t.Fatalf("viz off: max player is 3 rows (head, track, controls) without visualizer rows, got %d", n)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	d = m.(Dashboard)
 	full := d.radioLines(o, false)
-	if len(full) != 7 {
-		t.Fatalf("viz on: max player gains a 3-row visualizer frame, got %d: %q", len(full), full)
+	if len(full) != 6 {
+		t.Fatalf("viz on: the max player gains three visualizer rows inside the track (6 rows), got %d: %q", len(full), full)
 	}
-	for _, row := range full[2:5] { // UAT 92: bracketed rows, blank while nothing plays
-		if !strings.HasPrefix(row, "[") || !strings.HasSuffix(row, "]") || strings.TrimSpace(row[1:len(row)-1]) != "" || render.Width(row) != render.Width(full[0]) {
-			t.Fatalf("visualizer row is a bracketed frame spanning the module: %q", row)
+	for _, r := range full[2:5] { // the rows sit inside the track, blank while nothing plays
+		row := stripANSITest(r)
+		if !strings.HasPrefix(row, "│") || !strings.HasSuffix(row, "│") || strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(row, "│"), "│")) != "" || render.Width(row) != render.Width(stripANSITest(full[0])) {
+			t.Fatalf("visualizer row sits inside the track spanning the module (facelift 2026-08-28): %q", row)
 		}
 	}
 	mini := d.radioLines(o, true)
-	if len(mini) != 3 || !strings.HasPrefix(mini[1], "[") || !strings.HasSuffix(mini[1], "]") {
-		t.Fatalf("viz on: min player gets one visualizer row between status and controls: %q", mini)
+	if len(mini) != 3 || !strings.HasPrefix(stripANSITest(mini[1]), "│") || !strings.HasSuffix(stripANSITest(mini[1]), "│") {
+		t.Fatalf("viz on: min player gets one visualizer row (in the track) between status and controls: %q", mini)
 	}
 }
 
@@ -200,8 +200,8 @@ func TestVisualizerAnimatesWhilePlayingAndSettlesAfter(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("bars at rest and nothing playing: the tick ends")
 	}
-	if row := model.(Dashboard).radioLines(d.opts(), false)[3]; strings.TrimSpace(row[1:len(row)-1]) != "" {
-		t.Fatalf("at rest the rows are blank frames: %q", row)
+	if row := stripANSITest(model.(Dashboard).radioLines(d.opts(), false)[3]); strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(row, "│"), "│")) != "" {
+		t.Fatalf("at rest the rows are blank frames inside the track: %q", row)
 	}
 	// A second arm while already ticking never doubles the ticker.
 	levels = []float64{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
@@ -241,11 +241,14 @@ func TestMaxPlayerLayoutPerMock(t *testing.T) {
 	o := d.opts()
 	rows := d.radioLines(o, false)
 	r1, r2 := stripANSITest(rows[0]), stripANSITest(rows[1])
-	if !strings.HasPrefix(r1, "Watchpost Weather Radio") || !strings.HasSuffix(r1, "STOPPED") || !strings.Contains(r1, "VOL") {
+	if !strings.HasPrefix(r1, " WATCHPOST WEATHER RADIO") || !strings.HasSuffix(r1, "STOPPED") || !strings.Contains(r1, "VOL") { // one cell in (the box's rhythm)
 		t.Fatalf("row 1: %q", r1)
 	}
-	if !strings.HasPrefix(r2, "♪ Oceanside") || strings.Contains(r2, "00:00 / 00:00") { // UAT 89: no placeholder clock
+	if !strings.HasPrefix(r2, "│░") || !strings.HasSuffix(r2, "░│") || strings.Contains(r2, "00:00 / 00:00") { // the idle track (facelift 2026-08-28); UAT 89: no placeholder clock
 		t.Fatalf("row 2: %q", r2)
+	}
+	if !strings.Contains(r1, "♪ Oceanside") { // the station rides the head now
+		t.Fatalf("row 1 carries the station: %q", r1)
 	}
 }
 
@@ -476,15 +479,18 @@ func TestMaxPlayerMarqueeFillsTheRowAfterTheLocation(t *testing.T) {
 	model, _ = model.Update(RadioStatusMsg{State: "playing", Station: "Watchpost Synth · Oceanside, CA", Detail: long, Volume: 55, Spoken: 20 * time.Second})
 	d := model.(Dashboard)
 	o := d.opts()
-	_, bg := render.RadioBlockTone()
-	inner := o.ModuleInnerWidth(bg)
+	_ = render.RadioBlockTone
+	inner := o.BoxInnerWidth()
 	rows := d.radioLines(o, false)
 	l2 := stripANSITest(rows[1])
-	if !strings.HasPrefix(l2, "♪ Watchpost Synth · Oceanside, CA    Tonight mostly clear") {
-		t.Fatalf("location, 4-cell gap, then the marquee: %q", l2)
+	if !strings.HasPrefix(l2, "│") || !strings.HasSuffix(l2, "│") || !strings.Contains(l2, "Tonight mostly clear") {
+		t.Fatalf("the marquee rides the track (facelift 2026-08-28): %q", l2)
 	}
 	if w := len([]rune(l2)); w != inner {
-		t.Fatalf("the marquee must fill the row exactly (%d of %d)", w, inner)
+		t.Fatalf("the track must fill the row exactly (%d of %d)", w, inner)
+	}
+	if h := stripANSITest(rows[0]); !strings.Contains(h, "♪ Watchpost Synth · Oceanside, CA") {
+		t.Fatalf("the station rides the head: %q", h)
 	}
 	min := stripANSITest(strings.Join(d.radioLines(o, true), "\n"))
 	if strings.Contains(min, "Tonight mostly") {
@@ -533,5 +539,106 @@ func TestSpaceRetunesToTheFocusedLocationNotStop(t *testing.T) {
 	runCmd(cmd)
 	if fr.stops != 1 {
 		t.Fatalf("space on the location already playing stops: stops=%d", fr.stops)
+	}
+}
+
+// The player's facelift (HUM LEAD UAT 2026-08-28): the head reads
+// "WATCHPOST WEATHER RADIO • ♪ station … VOL + state"; under it the marquee
+// TRACK (│…│, ░ when idle, the voice's window while it speaks); the
+// visualizer rows sit inside the track; no play line; a narrow player drops
+// the title, then reads the station's short form; wrapped controls centre.
+func TestRadioFaceliftHeadTrackAndControls(t *testing.T) {
+	wide := benchDash(t, 200, 60).(Dashboard)
+	wide.radioMin = false
+	rows := wide.radioLines(wide.opts(), false)
+	plain := make([]string, len(rows))
+	for i, r := range rows {
+		plain[i] = stripANSITest(r)
+	}
+	if !strings.HasPrefix(plain[0], " WATCHPOST WEATHER RADIO • ♪ ") || !strings.Contains(plain[0], "VOL") || !strings.HasSuffix(strings.TrimRight(plain[0], " "), "STOPPED") { // one cell in: the box's rhythm
+		t.Fatalf("wide head: %q", plain[0])
+	}
+	if !strings.HasPrefix(plain[1], "│") || !strings.HasSuffix(plain[1], "│") || !strings.Contains(rows[1], render.Tok(render.GroupSectionBG)) { // colour on (benchDash): the band, not the ░ fill
+		t.Fatalf("an idle track is the section band between the rails: %q", plain[1])
+	}
+	for _, r := range plain {
+		if strings.Contains(r, "━") {
+			t.Fatalf("no play line: %q", r)
+		}
+	}
+	// The voice's window rides the track.
+	wide.radioPlaying, wide.radioState, wide.radioDetail, wide.radioSpoken, wide.radioSince = true, "playing", "Watchpost Weather Radio forecasts may be delayed", 10*time.Second, time.Now()
+	if track := stripANSITest(wide.marqueeTrack(80)); !strings.Contains(track, "forecasts may be delayed") || !strings.HasPrefix(track, "│ ") || !strings.HasSuffix(track, " │") {
+		t.Fatalf("the spoken text rides the track centred on the band: %q", track)
+	}
+	wide.radioLive = true
+	if track := stripANSITest(wide.marqueeTrack(40)); !strings.Contains(track, "LIVE RADIO") {
+		t.Fatalf("a relay says so on the track: %q", track)
+	}
+	// Viz rows sit inside the track: three wide, framed by the rails.
+	wide.radioViz = true
+	rows = wide.radioLines(wide.opts(), false)
+	viz := 0
+	for _, r := range rows[2:] {
+		if p := stripANSITest(r); strings.HasPrefix(p, "│") && strings.HasSuffix(p, "│") && !strings.Contains(p, "░") {
+			viz++
+		}
+	}
+	if viz != 3 {
+		t.Fatalf("three visualizer rows inside the track, got %d:\n%s", viz, strings.Join(rows, "\n"))
+	}
+	// Narrow: the title goes, the station's short form reads, one viz row, the wrapped controls centre.
+	narrow := benchDash(t, 96, 44).(Dashboard) // the box's inner at 96 cols holds the short station beside the 10-cell bar
+	narrow.radioMin, narrow.radioViz = false, true
+	narrow.radioStation, narrow.radioShort, narrow.radioState, narrow.radioPlaying = "EVENT · Special Weather Statement · Palomar Mountain, CA", "EVENT · SPS · Palomar Mountain, CA", "playing", true
+	rows = narrow.radioLines(narrow.opts(), false)
+	head := stripANSITest(rows[0])
+	if strings.Contains(head, "WATCHPOST") || !strings.Contains(head, "EVENT · SPS · Palomar Mountain, CA") || !strings.Contains(head, "PLAYING") {
+		t.Fatalf("narrow head drops the title and reads the short station: %q", head)
+	}
+	inner := narrow.opts().BoxInnerWidth()
+	for _, r := range rows {
+		if render.Width(r) > inner {
+			t.Fatalf("a player row overflows the module: %q", stripANSITest(r))
+		}
+	}
+	if viz := stripANSITest(rows[2]); !strings.HasPrefix(viz, "│") || !strings.HasSuffix(viz, "│") {
+		t.Fatalf("one viz row in the narrow track: %q", viz)
+	}
+	controls := rows[3:]
+	if len(controls) < 2 {
+		t.Fatalf("the narrow controls wrap: %v", controls)
+	}
+	if last := controls[len(controls)-1]; !strings.HasPrefix(last, "   ") {
+		t.Fatalf("a wrapped continuation centres: %q", stripANSITest(last))
+	}
+	// Narrower still: the short station itself shortens with an ellipsis, never vanishes.
+	tiny := benchDash(t, 84, 44).(Dashboard)
+	tiny.radioMin = false
+	tiny.radioStation, tiny.radioShort, tiny.radioState, tiny.radioPlaying = narrow.radioStation, narrow.radioShort, "playing", true
+	if head := stripANSITest(tiny.radioLines(tiny.opts(), false)[0]); !strings.Contains(head, "♪ EVENT · SPS") || !strings.Contains(head, "…") || strings.Contains(head, "WATCHPOST") {
+		t.Fatalf("84 cols: the SHORT station shortens (round 4, B-09), the title stays gone: %q", head)
+	}
+	// Failed: the reason shortens, never replaced by the station (B-09).
+	tiny.radioState, tiny.radioDetail = "failed", "voice cannot render: say: exit status 1 — check the voice in [V], or reinstall it"
+	if head := stripANSITest(tiny.radioLines(tiny.opts(), false)[0]); !strings.HasPrefix(strings.TrimSpace(head), "✘ voice cannot render") || !strings.Contains(head, "…") {
+		t.Fatalf("84 cols failed: the reason shortens: %q", head)
+	}
+}
+
+// With colour on the marquee track is a band in the section grey — the
+// RECENT / SEARCHED tone under the group-band text (HUM LEAD UAT 2026-08-28).
+func TestMarqueeTrackIsASectionBand(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	d := dash(t).(Dashboard)
+	d.radioPlaying, d.radioState, d.radioDetail, d.radioSpoken, d.radioSince = true, "playing", "Tonight mostly clear.", 10*time.Second, time.Now()
+	track := d.marqueeTrack(60)
+	if !strings.Contains(track, render.Tok(render.GroupSectionBG)) || !strings.Contains(track, "Tonight mostly clear.") || strings.Contains(track, "░") {
+		t.Fatalf("the track carries the section band's grey under the text, no ░: %q", track)
+	}
+	d.radioPlaying = false
+	if idle := d.marqueeTrack(60); !strings.Contains(idle, render.Tok(render.GroupSectionBG)) || strings.Contains(idle, "░") {
+		t.Fatalf("an idle track is the band alone: %q", idle)
 	}
 }

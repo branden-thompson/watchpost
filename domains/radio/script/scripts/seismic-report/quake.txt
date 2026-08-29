@@ -1,0 +1,2 @@
+{{/* seismic-report/quake: one quake. Data: .Mag (5.1), .Where (88 miles north, or empty), .Depth (9 kilometers, or empty), .Ago (3 days, or empty), .Felt (the felt sentence). */}}
+A magnitude {{.Mag}} earthquake{{if .Where}}, {{.Where}} of your location{{end}}{{if .Depth}}, at a depth of {{.Depth}}{{end}}{{if .Ago}}, recorded {{.Ago}} ago{{end}}. {{.Felt}}

@@ -4,20 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
-
-func TestAlertBannerSeverityIsText(t *testing.T) {
-	a := snapshot.Alert{Event: "Extreme Heat Watch", Severity: "severe", Headline: "until Friday"}
-	out := (Opts{Width: 100}).AlertBanner(a, 1, 3)
-	if !strings.Contains(out, "[severe]") && !strings.Contains(strings.ToUpper(out), "SEVERE") {
-		t.Fatalf("severity must be text (R-12a): %s", out)
-	}
-	if !strings.Contains(out, "01 / 03") {
-		t.Fatalf("alert paging (mock: '01 / 88') missing: %s", out)
-	}
-}
 
 func TestPanelWidthBound(t *testing.T) {
 	out := (Opts{Width: 60}).Panel("Watchpost Weather Radio", "content line")
@@ -34,12 +22,12 @@ func TestPanelWidthBound(t *testing.T) {
 func TestBlockPaintsFullWidthAndRearms(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	fg, bg := AlertBlockTone("Flash Flood Warning", "moderate")
+	fg, bg := "38;5;196", "49"
 	o := Opts{Width: 40}
 	out := o.Block("hi \x1b[1mchip\x1b[0m tail", fg, bg)
-	// UAT 17.2: tile bg hidden (default 49) while the red text tone stays.
-	if bg != "49" || !strings.Contains(out, "38;5;196") {
-		t.Fatalf("warning block tones (fg red, bg hidden): %q", out)
+	// A hidden bg (49) while the text tone stays.
+	if !strings.Contains(out, "38;5;196") {
+		t.Fatalf("block tones (fg red, bg hidden): %q", out)
 	}
 	// An inner reset must re-arm the block tone, never tear the background.
 	if !strings.Contains(out, "\x1b[0;"+fg+";"+bg+"m") {
@@ -51,9 +39,11 @@ func TestBlockPaintsFullWidthAndRearms(t *testing.T) {
 	if w := displayWidth(out); w != 40 {
 		t.Fatalf("block must paint the full width, got %d", w)
 	}
-	afg, abg := AlertBlockTone("Heat Advisory", "minor")
-	if afg != "38;5;220" || abg != "49" {
-		t.Fatalf("advisory tone (fg yellow, bg hidden): %s %s", afg, abg)
+	afg, abg := "38;5;220", "49"
+	// No tone of its own (round 4, B-01: the header box rode an invalid
+	// "\x1b[250;49m"): padded, and not one escape added.
+	if none := o.Block("a \x1b[1mb\x1b[0m c", "", ""); displayWidth(none) != 40 || strings.Count(none, "\x1b[") != 2 || !strings.HasPrefix(none, "a \x1b[1mb\x1b[0m c ") {
+		t.Fatalf("an untoned block adds no SGR: %q", none)
 	}
 	// Color off: content passes through untinted (text carries the signal).
 	rendering.SetColorEnabledForTest(false)
@@ -77,34 +67,6 @@ func TestModalBlockKeepsTileBGAfterInnerSpans(t *testing.T) {
 	}
 	if strings.Contains(line, ";49m") || strings.Contains(strings.TrimSuffix(line, "\x1b[0m"), "\x1b[0m"+" ") {
 		t.Fatalf("no default-bg fallthrough inside the modal line: %q", line)
-	}
-}
-
-func TestModuleInsetFollowsBGVisibility(t *testing.T) {
-	// UAT 19.1: visible-bg modules inset 3 cols each side + padded blank
-	// top/bottom; hidden-bg modules run flush with no padding lines.
-	rendering.SetColorEnabledForTest(true)
-	defer rendering.SetColorEnabledForTest(false)
-	o := Opts{Width: 40}
-	visible := o.Module([]string{"line one"}, "38;5;250", "48;2;48;48;48")
-	if got := len(strings.Split(visible, "\n")); got != 3 {
-		t.Fatalf("visible-bg module must add padding lines, got %d", got)
-	}
-	if !strings.Contains(visible, "m   line one") {
-		t.Fatalf("visible-bg module must inset content 3 cols: %q", visible)
-	}
-	hidden := o.Module([]string{"line one"}, "38;5;250", "49")
-	if got := len(strings.Split(hidden, "\n")); got != 1 {
-		t.Fatalf("hidden-bg module must not pad, got %d lines", got)
-	}
-	if !strings.Contains(hidden, "mline one") {
-		t.Fatalf("hidden-bg module must run flush: %q", hidden)
-	}
-	if ModuleHeight(7, "49") != 7 || ModuleHeight(7, "48;2;1;1;1") != 9 {
-		t.Fatal("ModuleHeight must track visibility")
-	}
-	if BGVisible("49") || !BGVisible("48;2;48;48;48") {
-		t.Fatal("BGVisible classification")
 	}
 }
 

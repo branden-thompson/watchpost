@@ -15,6 +15,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
+	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/geo"
@@ -56,6 +57,10 @@ const tickerEvery = 2 * time.Minute
 // it is not re-announced (the 7-day USGS window; HUM LEAD).
 const tickerSeenWindow = 7 * 24 * time.Hour
 
+// maxSeenIDs bounds the seen-store on load (P10-03): 7 days × a few hundred
+// ids/day, with room. Past it the OLDEST entries are dropped.
+const maxSeenIDs = 20_000
+
 // tickerRotate is how long each category lane holds the marquee before it
 // rotates to the next non-empty lane (HUM LEAD 2026-08-27, #6).
 const tickerRotate = 90 * time.Second
@@ -65,17 +70,20 @@ const tickerRotate = 90 * time.Second
 // location, stack them, publish the marquee, and detect genuinely NEW events
 // (the P3 tone/narration will sound those unless muted).
 type tickerDeck struct {
-	send    func(tea.Msg) // publishes to the dashboard (p.Send in production; a capture in tests)
-	sources []globalfeed.Source
-	watch   func() []snapshot.LocationRef // the current watchlist, for the D5 tie
-	nearest globalfeed.NearestCity        // the fuzzy "the <metro> area" resolver
-	seen    *seenStore
-	warm    atomic.Bool // false until the first cycle seeds quietly (no launch alert storm)
-	muted   *atomic.Bool
-	radius  *atomic.Int64 // alert-radius filter in miles; 0 = All (global)
-	audio   tickerAudio   // the breaking-news sound (the radio deck); nil = silent
-	running atomic.Bool   // true while a breaking-news sequence holds the marquee (no overlap)
-	done    chan struct{} // closed when run returns, so stopAll can drain the ticker before teardown
+	send     func(tea.Msg) // publishes to the dashboard (p.Send in production; a capture in tests)
+	sources  []globalfeed.Source
+	watch    func() []snapshot.LocationRef // the current watchlist, for the D5 tie
+	nearest  globalfeed.NearestCity        // the fuzzy "the <metro> area" resolver
+	seen     *seenStore
+	warm     atomic.Bool // false until the first cycle seeds quietly (no launch alert storm)
+	muted    *atomic.Bool
+	radius   *atomic.Int64   // alert-radius filter in miles; 0 = All (global)
+	voice    *narrator       // the narration arbiter (narrate.go); a silent one when there is no audio
+	scripts  *script.Library // the spoken lines (domains/radio/script); nil = the built-in scripts
+	running  atomic.Bool     // true while a breaking-news sequence holds the marquee (no overlap)
+	breakers sync.WaitGroup  // the takeover goroutines, drained by stop (R5-B-07)
+	done     chan struct{}   // closed when run returns, so stopAll can drain the ticker before teardown
+	severe   *severeDeck     // 0.13.0: the severe-events index (nil = no window, as in the older tests)
 }
 
 // tickerAudio is the breaking-news sound the ticker drives (0.12.0): duck the
@@ -84,16 +92,16 @@ type tickerDeck struct {
 // its narration finishes — no overlap), restore at the end. The radio deck
 // implements it; nil = no audio (the visual takeover still runs on a fixed
 // hold).
-type tickerAudio interface {
-	startBreaking() time.Duration
-	speak(text string) time.Duration
-	endBreaking()
-}
-
-// startTicker launches the ticker loop; it stops with ctx. onNew (nil = no
-// audio) sounds the tone + narration for a genuinely new event.
-func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx *geodata.Index, watch func() []snapshot.LocationRef, muted *atomic.Bool, radius *atomic.Int64, audio tickerAudio) *tickerDeck {
+// startTicker launches the ticker loop; it stops with ctx. nar (nil = a
+// silent narrator) sounds the tone + narration for a genuinely new event
+// through the narrator, so a takeover pre-empts an event read and never
+// overlaps one (narrate.go).
+func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx *geodata.Index, watch func() []snapshot.LocationRef, muted *atomic.Bool, radius *atomic.Int64, nar *narrator, scripts *script.Library, severe *severeDeck) *tickerDeck {
+	if nar == nil {
+		nar = newNarrator(nil)
+	}
 	t := &tickerDeck{
+		severe:  severe,
 		send:    p.Send,
 		sources: []globalfeed.Source{globalfeed.NewUSGS(client, ""), globalfeed.NewNHC(client, ""), globalfeed.NewNWS(client, "")},
 		watch:   watch,
@@ -101,7 +109,8 @@ func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx 
 		seen:    loadSeen(userCacheSubdir("ticker"), tickerSeenWindow),
 		muted:   muted,
 		radius:  radius,
-		audio:   audio,
+		voice:   nar,
+		scripts: scripts,
 		done:    make(chan struct{}),
 	}
 	go t.run(ctx)
@@ -116,7 +125,10 @@ func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx 
 // write ("directory not empty" under -race on Linux). It must be called with no
 // lock the ticker acquires — the cycle's watch tie takes livePipelines.mu — so
 // stopAll waits outside that lock.
-func (t *tickerDeck) stop() { <-t.done }
+func (t *tickerDeck) stop() {
+	<-t.done
+	t.breakers.Wait() // a takeover in flight ends with the context (its holds in a step, its render with the job); waited for, never abandoned (R5-B-07)
+}
 
 // run is the ticker's background event loop: one cycle at once, then one every
 // tickerEvery, until ctx ends (the same shape as the scheduler's tier loops).
@@ -144,16 +156,29 @@ func (t *tickerDeck) run(ctx context.Context) {
 // cycle so a launch never alert-storms).
 func (t *tickerDeck) cycle(ctx context.Context) {
 	var events []globalfeed.Event
+	health := make([]SourceHealth, 0, len(t.sources))
+	fetchedAt := time.Now()
 	for _, s := range t.sources {
 		evs, err := s.Fetch(ctx)
 		if err != nil {
-			continue // a feed outage leaves its events absent this cycle; the others still show
+			health = append(health, SourceHealth{Name: s.Name(), OK: false}) // a dead source: stated in the window, never hidden
+			continue                                                         // a feed outage leaves its events absent this cycle; the others still show
 		}
+		health = append(health, SourceHealth{Name: s.Name(), OK: true, FetchedAt: fetchedAt})
 		events = append(events, evs...)
 	}
 	now := time.Now()
 	events = globalfeed.Active(events, now) // drop alerts past their active window (#2)
 	watch := t.watch()
+	// Tie EVERY event to its representative location before any filter
+	// (0.13.0): the severe-events window lists the pre-radius set and needs
+	// the labels; the tape's radius filter applies below.
+	for i := range events {
+		events[i].Location = globalfeed.Locate(events[i].HasPoint, events[i].Lat, events[i].Lon, events[i].Place, watch, t.nearest)
+	}
+	if t.severe != nil {
+		t.severe.SetFeed(events, health) // the window's half of the index — its own copy (SetFeed clones)
+	}
 	// The alert-radius filter (HUM LEAD): "Filtered to N Mi of my location"
 	// scopes the whole ticker to within N miles of the default location; 0 = All.
 	// Filtered but no location set → show nothing, never silently fall back to
@@ -164,9 +189,6 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 		} else {
 			events = nil
 		}
-	}
-	for i := range events {
-		events[i].Location = globalfeed.Locate(events[i].HasPoint, events[i].Lat, events[i].Lon, events[i].Place, watch, t.nearest)
 	}
 	// A superseded alert is kept in `events` (so it is seen-marked below and can
 	// never resurface as "new" if its replacement drops first — P4 delta A1),
@@ -195,7 +217,8 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 		// time; a second burst arriving mid-sequence is still seen-marked and
 		// shows in normal rotation, never a doubled takeover.
 		if t.running.CompareAndSwap(false, true) {
-			go func() { defer t.running.Store(false); t.breaking(ctx, fresh) }()
+			t.breakers.Add(1) // in the shutdown wait set (REVIEW R5-B-07)
+			go func() { defer t.breakers.Done(); defer t.running.Store(false); t.breaking(ctx, fresh) }()
 		}
 	}
 }
@@ -228,42 +251,41 @@ func (t *tickerDeck) breaking(ctx context.Context, fresh []globalfeed.Event) {
 		fresh = fresh[:maxBreaking]
 	}
 	burst := len(fresh) > 1
-	audible := t.audio != nil && !t.muted.Load()
-	if audible {
-		toneDur := t.audio.startBreaking() // duck + tone
-		defer t.audio.endBreaking()
-		if !sleepCtx(ctx, toneDur) { // let the tone finish before the first line
+	audible := !t.voice.silent() && !t.muted.Load()
+	// A takeover is the highest narration class: it waits for nothing, pauses
+	// an event read on air (which resumes after it), and the narrator
+	// ducks/restores the radio around it.
+	t.voice.Run(ctx, narrateBreaking, audible, func(ctx context.Context, s *speaker) {
+		if !s.hold(s.attention()) { // let the tone finish before the first line
 			return
 		}
-	}
-	if !t.readBreaking(ctx, fresh, burst, audible) {
-		return // context ended mid-sequence — the deferred restore still fires
-	}
-	if audible && burst {
-		if !sleepCtx(ctx, t.audio.speak(burstClosing)) { // the one closing tail
-			return
+		if !t.readBreaking(ctx, s, fresh, burst) {
+			return // context ended mid-sequence — the narrator still restores
 		}
-	}
-	t.send(tty.TickerBreakingDoneMsg{}) // resume normal rotation
+		if burst {
+			if !s.hold(s.line(burstClosingLine(t.scripts))) { // the one closing tail
+				return
+			}
+		}
+		t.send(tty.TickerBreakingDoneMsg{}) // resume normal rotation
+	})
 }
 
 // readBreaking steps the marquee through the events: each is shown centred and
 // held until its narration finishes (or a fixed hold when silent), a burst
 // pausing breakingGap between them, until the queue or breakingCap runs out.
 // Returns false if the context ended mid-sequence.
-func (t *tickerDeck) readBreaking(ctx context.Context, fresh []globalfeed.Event, burst, audible bool) bool {
+func (t *tickerDeck) readBreaking(ctx context.Context, s *speaker, fresh []globalfeed.Event, burst bool) bool {
 	var elapsed time.Duration
 	for i, e := range fresh {
 		t.send(tty.TickerBreakingMsg{Item: breakingItem(e)})
 		hold := breakingHold
-		if audible {
-			if d := t.audio.speak(breakingLine(e, burst)); d > 0 { // render + play; hold until it finishes
-				hold = d
-			}
-			// d == 0 means no voice was available at runtime — keep the fixed
-			// hold so the event is still readable, don't blit past it (P4 F10).
+		if d := s.line(breakingLine(t.scripts, e, burst)); d > 0 { // render + play; hold until it finishes
+			hold = d
 		}
-		if !sleepCtx(ctx, hold) {
+		// d == 0 means muted, or no voice was available at runtime — keep the
+		// fixed hold so the event is still readable, don't blit past it (P4 F10).
+		if !s.hold(hold) {
 			return false
 		}
 		elapsed += hold
@@ -282,11 +304,11 @@ func (t *tickerDeck) readBreaking(ctx context.Context, fresh []globalfeed.Event,
 
 // breakingLine is the line to speak for one event: a single event carries its
 // own broadcast tail; a burst event's line has none (the tail comes once).
-func breakingLine(e globalfeed.Event, burst bool) string {
+func breakingLine(lib *script.Library, e globalfeed.Event, burst bool) string {
 	if burst {
-		return eventNarration(e)
+		return scriptText(lib, "breaking", "burst-line", map[string]string{"Line": eventNarration(e)})
 	}
-	return alertNarration(e)
+	return alertNarration(lib, e)
 }
 
 // sleepCtx waits d, or returns false at once if the context ends.
@@ -354,37 +376,50 @@ func tickerCategory(e globalfeed.Event) tty.TickerCategory {
 // its active window's end when it has one (HUM LEAD 2026-08-27, #1). The lane
 // label already names the category, so the line names the specific alert.
 func tapeText(e globalfeed.Event) string {
-	s := e.Type + " · " + e.Location + "  " + e.Verb() + " " + clock(e.At)
+	s := e.Title() + " · " + e.Location + "  " + e.Verb() + " " + clock(e.At) // a named storm reads by name (SAM-D-14)
 	if !e.Until.IsZero() {
 		s += " · expires " + clock(e.Until)
 	}
 	// Feed text reaches the terminal here — strip any escape/control sequences a
 	// hostile or compromised feed could smuggle in (OSC-52 clipboard, title
 	// spoof, CSI frame corruption), the same defence the snapshot path applies
-	// (red-team 0.12.0 P4 F1 — S-F6).
-	return render.Plain(s)
+	// (red-team 0.12.0 P4 F1 — S-F6). ONE line: a newline or tab in a feed
+	// name would add rows to the frame (REVIEW R5-C-01); the tape's own
+	// two-space gap stays (PlainLine would squeeze it).
+	return strings.NewReplacer("\n", " ", "\t", " ").Replace(render.Plain(s))
 }
 
 // eventNarration is one event's spoken line: the sentence, when it happened,
 // and (for an alert with a window) until when — no tail (HUM LEAD script).
-// ExpandStates in AlertNarration reads "VA" as "Virginia".
+// Through render.Plain: a provider-supplied storm NAME now reaches the
+// synthesiser (0.13.0), and the tape already strips at tapeText — the speech
+// path must too (S-F6). ExpandStates in AlertNarration reads "VA" as "Virginia".
 func eventNarration(e globalfeed.Event) string {
 	s := e.Sentence() + " at " + clock(e.At)
 	if !e.Until.IsZero() {
 		s += " until " + clock(e.Until)
 	}
-	return s
+	return render.Plain(s)
 }
 
-// alertNarration is a SINGLE event's full narration: its line plus the radio
-// tail directing the listener to that location's broadcast.
-func alertNarration(e globalfeed.Event) string {
-	return eventNarration(e) + ". Play the Watchpost Radio Broadcast of that location for more details"
+// alertNarration is a SINGLE event's full narration: its line in the
+// "breaking.single" script (the tail directing the listener to the window —
+// 0.13.0, SAM-D-26 N-1 — lives in the script file, not here).
+func alertNarration(lib *script.Library, e globalfeed.Event) string {
+	return scriptText(lib, "breaking", "single", map[string]string{"Line": eventNarration(e)})
 }
 
-// burstClosing is the one tail after a multi-event burst — the events are read
-// in turn, then this points the listener at the broadcasts (HUM LEAD script).
-const burstClosing = "For more information regarding any of these events, play the Watchpost Radio broadcast at that location for details."
+// burstClosingLine is the one tail after a multi-event burst ("breaking.burst-closing").
+func burstClosingLine(lib *script.Library) string {
+	return scriptText(lib, "breaking", "burst-closing", nil)
+}
+
+// scriptText renders a script part for the air (script.Library.Say: Plain'd;
+// a missing or broken script reads as silence rather than a crash — the
+// visuals still run).
+func scriptText(lib *script.Library, report, part string, data any) string {
+	return lib.Say(report, part, data)
+}
 
 // clock renders a time in the local zone as a 12-hour clock ("3:42 PM"), the
 // same wall-clock convention the rest of the dashboard uses.
@@ -438,9 +473,30 @@ func loadSeen(dir string, window time.Duration) *seenStore {
 					s.ids[id] = at
 				}
 			}
+			s.capOldest()
 		}
 	}
 	return s
+}
+
+// capOldest keeps the newest maxSeenIDs entries (NFR-13).
+func (s *seenStore) capOldest() {
+	if len(s.ids) <= maxSeenIDs {
+		return
+	}
+	type kv struct {
+		id string
+		at time.Time
+	}
+	all := make([]kv, 0, len(s.ids))
+	for id, at := range s.ids {
+		all = append(all, kv{id, at})
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].at.After(all[j].at) })
+	s.ids = make(map[string]time.Time, maxSeenIDs)
+	for _, e := range all[:maxSeenIDs] {
+		s.ids[e.id] = e.at
+	}
 }
 
 // set is a snapshot of the seen ids as a presence set (for Merge).
@@ -475,7 +531,11 @@ func (s *seenStore) save() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if b, err := json.Marshal(s.ids); err == nil {
-		_ = os.MkdirAll(filepath.Dir(s.path), 0o755)
-		_ = os.WriteFile(s.path, b, 0o644)
+		_ = os.MkdirAll(filepath.Dir(s.path), 0o700) // private, like the config store (NFR-13)
+		_ = os.WriteFile(s.path, b, 0o600)
+		// WriteFile applies the mode only on create and MkdirAll never re-modes:
+		// a store left by 0.12.0 at 0644/0755 is tightened here (R3-D-01).
+		_ = os.Chmod(s.path, 0o600)
+		_ = os.Chmod(filepath.Dir(s.path), 0o700)
 	}
 }

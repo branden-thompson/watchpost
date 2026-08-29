@@ -1,0 +1,2 @@
+{{/* event-report/instructions: the CAP instruction paragraph. Data: .Text (already trimmed). */}}
+Instructions. {{.Text}}

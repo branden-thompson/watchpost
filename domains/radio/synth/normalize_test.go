@@ -45,3 +45,24 @@ func TestNormalizeKeepsUnknownAbbreviations(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+// A time-zone abbreviation is read as its name in every script (HUM LEAD
+// 2026-08-28): the five named, their standard-time siblings, and UTC.
+func TestPronounceReadsTimeZonesByName(t *testing.T) {
+	cases := map[string]string{
+		"Declared 08/28 08:45 CDT   Expires 08/28 09:30 CDT (~45m)": "Declared 08/28 08:45 Central Daylight Time Expires 08/28 09:30 Central Daylight Time (~45m)",
+		"at 3:42 PM PDT.":    "at 3:42 PM Pacific Daylight Time.",
+		"MDT, then EDT":      "Mountain Daylight Time, then Eastern Daylight Time",
+		"recorded 10:00 UTC": "recorded 10:00 Coordinated Universal Time",
+		"AKST and HST":       "Alaska Standard Time and Hawaii Standard Time",
+		"the CST of goods":   "the Central Standard Time of goods", // an abbreviation is read as the zone wherever it stands alone in capitals
+	}
+	for in, want := range cases {
+		if got := Pronounce(in); got != want {
+			t.Errorf("Pronounce(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if got := Pronounce("pdt is not a zone"); got != "pdt is not a zone" {
+		t.Errorf("lower-case letters are words, not zones: %q", got)
+	}
+}

@@ -120,13 +120,7 @@ func prettyCond(c string) string {
 }
 
 // truncateTo hard-limits a plain string to n cells.
-func truncateTo(s string, n int) string {
-	r := []rune(s)
-	if len(r) <= n {
-		return s
-	}
-	return string(r[:n])
-}
+func truncateTo(s string, n int) string { return render.TruncateCells(s, n) } // by display CELLS: a wide-rune name must not overflow the row (R5-C-10)
 
 // alertDetailsModal floats ONE alert at a time (UAT 23.2): the tile tint
 // follows the FOCUSED alert's class (yellow advisory / red warning) as you
@@ -138,12 +132,17 @@ func (d Dashboard) alertDetailsModal(o render.Opts) string {
 		return d.floatModalToned(o, d.modalWidth(), "ALERTS", d.alertDetailLines(), fg, render.Tok(render.AlertModalAdvBG))
 	}
 	a := sel.Alerts[d.alertIdx%len(sel.Alerts)]
-	bg := render.Tok(render.AlertModalAdvBG)
+	title := fmt.Sprintf("ALERT %d / %d · %s", d.alertIdx%len(sel.Alerts)+1, len(sel.Alerts), sel.Label) // the page as shown (R5-C-09)
+	return d.floatModalToned(o, d.modalWidth(), title, d.alertDetailLines(), fg, alertModalBG(a))
+}
+
+// alertModalBG is the tint an alert sits on — the modal's warning red or
+// advisory yellow — in [A] and in the dashboard module alike.
+func alertModalBG(a snapshot.Alert) string {
 	if render.AlertIsWarning(a.Event, a.Severity) {
-		bg = render.Tok(render.AlertModalWarnBG)
+		return render.Tok(render.AlertModalWarnBG)
 	}
-	title := fmt.Sprintf("ALERT %d / %d · %s", d.alertIdx+1, len(sel.Alerts), sel.Label)
-	return d.floatModalToned(o, d.modalWidth(), title, d.alertDetailLines(), fg, bg)
+	return render.Tok(render.AlertModalAdvBG)
 }
 
 // alertDetailLines renders the FOCUSED alert's full record plus the paging
@@ -158,7 +157,7 @@ func (d Dashboard) alertDetailLines() []string {
 	idx := d.alertIdx % n
 	wrapW := min(o.Width, d.modalWidth()) - 9 // breathing room beside the scroll rail (UAT 23.3)
 	lines := []string{""}
-	lines = append(lines, alertRecordLines(o, idx, sel.Alerts[idx], wrapW, alertClock(sel))...)
+	lines = append(lines, alertRecordLines(o, sel.Alerts[idx], wrapW, alertClock(sel))...)
 	controls := o.KeyCapIf("←", idx > 0) + " Previous  " + o.KeyCapIf("→", idx < n-1) + " Next   " +
 		o.KeyCap("esc") + " Close   " + o.KeyCap("↑↓") + " Scroll"
 	return append(lines, "  "+controls)
@@ -195,11 +194,10 @@ func alertClock(loc *snapshot.Location) *time.Location {
 }
 
 // alertRecordLines formats one alert's full record for the modal.
-func alertRecordLines(o render.Opts, i int, a snapshot.Alert, wrapW int, in *time.Location) []string {
+func alertRecordLines(o render.Opts, a snapshot.Alert, wrapW int, in *time.Location) []string {
 	tone := modalAlertTone(a)                      // UAT 28.3/28.4 modal text tones
-	_ = i                                          // paging lives in the modal title now (UAT 23.2)
-	head := strings.ToUpper(render.Plain(a.Event)) // provider text never addresses the terminal (S-F6)
-	meta := fmt.Sprintf("[%s · %s · %s]", a.Severity, a.Urgency, a.Certainty)
+	head := strings.ToUpper(render.Plain(a.Event)) // provider text never addresses the terminal (S-F6) — EVERY field, not just the title (0.13.0 P4-1)
+	meta := fmt.Sprintf("[%s · %s · %s]", render.Plain(a.Severity), render.Plain(a.Urgency), render.Plain(a.Certainty))
 	out := []string{"  " + render.TintRaw(head, "1;"+tone) + "  " + meta} // bold title (UAT 28.5)
 	start, end := a.Effective, a.Expires
 	if a.Onset != nil {
@@ -215,7 +213,7 @@ func alertRecordLines(o render.Opts, i int, a snapshot.Alert, wrapW int, in *tim
 	}
 	out = append(out, timing)
 	if a.AreaDesc != "" {
-		out = append(out, wrapPrefixed(o, "Area: "+a.AreaDesc, wrapW)...)
+		out = append(out, wrapPrefixed(o, "Area: "+render.Plain(a.AreaDesc), wrapW)...)
 	}
 	if a.Description != "" {
 		out = append(out, "")
@@ -223,7 +221,7 @@ func alertRecordLines(o render.Opts, i int, a snapshot.Alert, wrapW int, in *tim
 	}
 	if a.Instruction != "" {
 		out = append(out, "")
-		out = append(out, wrapPrefixed(o, "Instructions: "+a.Instruction, wrapW)...)
+		out = append(out, wrapPrefixed(o, "Instructions: "+render.Plain(a.Instruction), wrapW)...)
 	}
 	// UAT 55: body text (everything below the toned title) reads white for
 	// contrast - advisories and alerts earn it.
@@ -244,79 +242,86 @@ func wrapPrefixed(_ render.Opts, text string, w int) []string {
 	return wrapped
 }
 
-// alertArea renders the alert module at a FIXED height (UAT 5.2: the area
-// stays reserved-but-blank when the focused location has no alert, so the
-// UI never jumps). Borderless background block per UAT 5.4: warning-grade
-// red-on-red-tint, advisory-grade yellow-on-yellow-tint; the focused
-// location's name sits in the title line (UAT 5.3).
-// Alert module content: title + blank + THREE body lines (UAT 15.2a) +
-// blank + pager = 7; the seam adds bg padding when the tone is visible
-// (UAT 19.1 global inset policy).
-const alertContentLines = 5 // header row, blank, three body lines (UAT 2026-08-27 redesign)
-
-const alertBodyLines = 3
-
+// The alert module (HUM LEAD UAT 2026-08-28 facelift): ONE row in a heavy
+// box on the Alert Details modal's tint — the warning red or the advisory
+// yellow — "02/02  ⚠ FLOOD ADVISORY - Temecula, CA  • Issued: 08/26 8:00 AM
+// • Expires: 12/31 12:59 PM" with the paging chips at the right. The body
+// lives behind [A] ("dive in for details"); the module reclaims the rows.
+// Without an alert the box still stands, muted, so the layout never jumps
+// (UAT 5.2 / 19.1). The compact layout keeps its one row (UAT 34) — the
+// same tinted line without the rules, so the short terminal's window holds.
 func (d Dashboard) alertArea(fl frameLayout) string {
 	o := fl.o
 	sel := d.selectedLocation()
-	if sel == nil || len(sel.Alerts) == 0 {
-		// Reserve the module's CURRENT height (tone visibility included) so
-		// the layout never jumps when alerts appear (UAT 5.2 / 19.1).
-		return strings.Repeat("\n", fl.alertH-1)
+	fg, bg := render.ModalTone(d.darkBG)
+	label := "no location"
+	if sel != nil {
+		label = sel.Label
 	}
-	a := sel.Alerts[d.alertIdx%max(1, len(sel.Alerts))]
-	fg, bg := render.AlertBlockTone(a.Event, a.Severity)
-	mw := o.ModuleInnerWidth(bg)
-	if fl.compact {
-		return o.Module([]string{d.alertCompactLine(o, sel, a, mw)}, fg, bg) // UAT 34
+	var line string
+	if sel != nil && len(sel.Alerts) > 0 {
+		a := sel.Alerts[d.alertIdx%len(sel.Alerts)]
+		bg = alertModalBG(a)
+		if fl.compact {
+			return o.Block(d.alertLine(o, sel, a, o.Width), fg, bg)
+		}
+		line = d.alertLine(o, sel, a, o.BoxInnerWidth())
+	} else {
+		line = render.Tint("No active alerts · "+label, render.Tok(render.TextBase))
+		if fl.compact {
+			return o.Block(line, fg, bg)
+		}
 	}
-	// UAT 2026-08-27 redesign: one header row — the count at the left inset,
-	// the title centred between count and controls, the controls at the
-	// right inset — a blank, then the fixed three-line body (UAT 15.2a: the
-	// budget prevents alert "jitters" as the terminal narrows) with an
-	// 8-col inset. UAT 21.1: paging chips mute when the press would do nothing.
-	title := o.Glyphs().Alert + " " + strings.ToUpper(a.Event) + " · " + sel.Label
-	count := fmt.Sprintf("%02d / %02d Alerts", d.alertIdx+1, len(sel.Alerts))
-	controls := o.KeyCap("A") + " Details  " +
-		o.KeyCapIf("←", d.alertIdx > 0) + " Previous  " +
-		o.KeyCapIf("→", d.alertIdx < len(sel.Alerts)-1) + " Next"
-	body := render.WrapText(fmt.Sprintf("[%s] %s", a.Severity, a.Headline), mw-alertBodyInset*2)
-	if len(body) > alertBodyLines {
-		body = body[:alertBodyLines]
-	}
-	for i := len(body); i < alertBodyLines; i++ { // counter form (P10-02)
-		body = append(body, "")
-	}
-	lines := []string{render.CentreBetween(count, title, controls, mw), ""}
-	for _, l := range body {
-		lines = append(lines, strings.Repeat(" ", alertBodyInset)+l)
-	}
-	return o.Module(lines, fg, bg)
+	return o.Box([]string{line}, fg, bg)
 }
 
-// alertBodyInset is the body's inset beyond the module edge (the mock).
-const alertBodyInset = 8
-
-// alertCompactLine is the one-row alert module (UAT 34):
-// "nn/nn  ⚠ EVENT · Label    [sev] headline...   [A] Alert Details [←] Previous [→] Next".
-func (d Dashboard) alertCompactLine(o render.Opts, sel *snapshot.Location, a snapshot.Alert, mw int) string {
+// alertLine is the module's row: count · TITLE (the glyph and EVENT bold
+// in the alert's modal tone — the same dress as the record's title inside
+// [A] — the place bold white) · the severity token when colour is off or
+// under --ascii (R-12a: the class in text, not tint alone — round 4, B-04)
+// · issued · expires, the chips right-aligned. Progressive degrade (UAT 35):
+// expires, then issued, then the chip labels, then the title itself
+// shortens — the row never exceeds the module width. UAT 21.1: paging
+// chips mute when the press would do nothing.
+func (d Dashboard) alertLine(o render.Opts, sel *snapshot.Location, a snapshot.Alert, mw int) string {
 	n := len(sel.Alerts)
-	head := fmt.Sprintf("%02d/%02d  %s %s · %s", d.alertIdx%n+1, n, o.Glyphs().Alert, strings.ToUpper(a.Event), sel.Label)
-	controls := o.KeyCap("A") + " Details  " + o.KeyCapIf("←", d.alertIdx > 0) + " Previous  " + o.KeyCapIf("→", d.alertIdx < n-1) + " Next"
-	body := fmt.Sprintf("[%s] %s", a.Severity, a.Headline)
-	room := mw - render.Width(head) - render.Width(controls) - 7 // 4-col gap + 3-col gap
-	if room < 8 {
-		body = ""
-	} else if render.Width(body) > room {
-		body = truncateTo(body, room-3) + "..."
+	idx := d.alertIdx % n // the page as shown: the list may have shrunk under the raw index (R5-C-09)
+	count := fmt.Sprintf("%02d/%02d  ", idx+1, n)
+	event := o.Glyphs().Alert + " " + strings.ToUpper(render.PlainLine(a.Event)) // every field crosses the boundary (NFR-6)
+	title := event + " - " + sel.Label
+	controls := o.KeyCap("A") + " Details   " + o.KeyCapIf("←", idx > 0) + " Previous   " + o.KeyCapIf("→", idx < n-1) + " Next"
+	in := alertClock(sel)
+	stamp := func(t time.Time) string { return t.In(in).Format("01/02 3:04 PM") }
+	issued, expires := "", ""
+	if !a.Sent.IsZero() {
+		issued = "  • Issued: " + stamp(a.Sent)
+	} else if !a.Effective.IsZero() {
+		issued = "  • Issued: " + stamp(a.Effective)
 	}
-	// Progressive degrade (UAT 35): body, then chip labels, then the title
-	// itself - the row never exceeds the module width.
-	if render.Width(head)+render.Width(controls)+3 > mw {
-		controls = o.KeyCap("A") + " " + o.KeyCapIf("←", d.alertIdx > 0) + " " + o.KeyCapIf("→", d.alertIdx < n-1)
+	if end := a.Expires; a.Ends != nil || !end.IsZero() {
+		if a.Ends != nil {
+			end = *a.Ends
+		}
+		expires = " • Expires: " + stamp(end)
 	}
-	if over := render.Width(head) + render.Width(controls) + 3 - mw; over > 0 {
-		head = truncateTo(head, max(8, render.Width(head)-over-1)) + "…"
+	class := ""
+	if !render.ColorOn() || o.ASCII {
+		class = "  [" + render.PlainLine(a.Severity) + "]"
 	}
-	return render.PadBetween(head+"    "+body, controls, mw)
+	fixed := render.Width(count) + render.Width(class) + 3
+	stamps := render.FirstFit(mw-fixed-render.Width(title)-render.Width(controls), issued+expires, issued, "")
+	if fixed+render.Width(title)+render.Width(controls) > mw {
+		controls = o.KeyCap("A") + " " + o.KeyCapIf("←", idx > 0) + " " + o.KeyCapIf("→", idx < n-1)
+	}
+	if over := fixed + render.Width(title) + render.Width(controls) - mw; over > 0 {
+		title = truncateTo(title, max(8, render.Width(title)-over-1)) + "…"
+	}
+	// The dress goes on after the ladder: the event in the modal's tone,
+	// the place bold white (the modal title's tone) — a shortened title
+	// keeps whatever the ellipsis left of each.
+	styled := render.TintRaw(title, "1;"+modalAlertTone(a))
+	if ev, place, ok := strings.Cut(title, " - "); ok {
+		styled = render.TintRaw(ev, "1;"+modalAlertTone(a)) + " - " + render.TintRaw(place, render.Tok(render.ModalTitle))
+	}
+	return render.PadBetween(count+styled+class+stamps, controls, mw)
 }

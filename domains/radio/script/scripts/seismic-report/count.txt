@@ -1,0 +1,2 @@
+{{/* seismic-report/count: the quakes in the window. Data: .Count (int). */}}
+{{if eq .Count 1}}There has been 1 nearby quake{{else}}There have been {{.Count}} nearby quakes{{end}} in the last seven days:

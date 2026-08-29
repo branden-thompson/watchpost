@@ -1,0 +1,2 @@
+{{/* event-report/meta: the record's meta line as a sentence. Data: .Items (Extreme, Immediate, Observed). */}}
+{{.Items}}.

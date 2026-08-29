@@ -1,0 +1,2 @@
+{{/* voice-preview/sample: the voice chooser's preview line. Data: .Voice. */}}
+This is {{.Voice}} for Watchpost Weather Radio.

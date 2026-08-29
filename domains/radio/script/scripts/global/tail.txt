@@ -1,0 +1,2 @@
+{{/* global/tail: the sign-off a report closes with when it has no tail of its own. No data. */}}
+This concludes this Watchpost Notification Report.

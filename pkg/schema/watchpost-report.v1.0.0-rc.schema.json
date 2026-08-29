@@ -74,6 +74,9 @@
                   },
                   "type": "array"
                 },
+                "sender_name": {
+                  "type": "string"
+                },
                 "sent": {
                   "format": "date-time",
                   "type": "string"
@@ -137,6 +140,7 @@
                 "headline",
                 "description",
                 "instruction",
+                "sender_name",
                 "source"
               ],
               "type": "object"

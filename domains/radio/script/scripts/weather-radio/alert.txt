@@ -1,0 +1,2 @@
+{{/* weather-radio/alert: one active alert. Data: .Headline (no trailing period), .Description. */}}
+{{.Headline}}. {{.Description}}

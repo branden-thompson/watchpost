@@ -14,19 +14,20 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// header is the two-line masthead (UAT 102 mock, redesigned for narrow
-// terminals and any number of APIs):
+// header is the masthead box (HUM LEAD UAT 2026-08-28 facelift): the title
+// and the Updated stamp ride the top rule, the controls and the API summary
+// share the one row inside:
 //
-//	W A T C H P O S T  <version>     Updated: <stamp>     API: ✔8 ⚠0 ✘0 /  8  [S] Status
-//	[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [?] Help  [q] Quit
+//	┏━━ W A T C H P O S T  v0.13.0 ━━━━━━━━━━━━━━━━━━━━━━  Updated: 08/28/2026 19:15:08 PDT (Just Now) ━━┓
+//	┃   [s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [S] Status  [?] Help  [q] Quit   API: ✔9 ⚠0 ✘0 /  9   ┃
+//	┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 //
-// The stamp is centred in the gap between the title and the API summary;
-// the total reserves two columns for growth. Narrow terminals shorten the
-// stamp (time only, then no label, then gone — it lives in [S]) before the
-// row could overflow; the header never exceeds the width.
+// Narrow terminals shorten the stamp (no age, then time only, then no
+// label, then gone — it lives in [S]) before the rule could overflow, and
+// the version leaves the title before the title would; the row inside
+// ladders the same way (headerRow). The header never exceeds the width.
 func (d Dashboard) header(o render.Opts) string {
 	title := render.TitleGradient("W A T C H P O S T") + "  v" + d.cfg.Version // UAT 4.9 gradient; UAT 41: no pipe
-	api := d.apiSummary(o) + "  " + o.KeyCap("S") + " Status"                  // UAT 24.2
 	// The stamp (HUM LEAD UAT 2026-08-27): the widest form carries the age
 	// ("(2 Minutes Ago)"); it reads green while the data is fresh, yellow
 	// once no fetch has succeeded for staleAfter, grey before the first data.
@@ -41,42 +42,64 @@ func (d Dashboard) header(o render.Opts) string {
 			tone = render.Tok(render.AlertLabel)
 		}
 	}
-	if render.Width(title)+render.Width(api)+2 > o.Width { // very narrow: the chip alone, then no label
-		api = d.apiSummary(o) + " " + o.KeyCap("S")
+	rule := o.BoxRuleWidth()
+	if render.Width(title)+4 > rule { // very narrow: the version leaves before the title
+		title = render.TitleGradient("W A T C H P O S T")
 	}
-	if render.Width(title)+render.Width(api)+2 > o.Width {
-		api = strings.TrimPrefix(d.apiSummary(o), "API: ") + " " + o.KeyCap("S")
-	}
-	gap := o.Width - render.Width(title) - render.Width(api)
-	line1 := render.PadBetween(title, api, o.Width)
-	for _, stamp := range stamps { // the widest form that fits, centred on the row's global centre (the alert title shares the axis)
-		if w := render.Width(stamp); w+4 <= gap {
-			line1 = render.CentreBetween(title, render.Tint(stamp, tone), api, o.Width)
+	stamp := ""
+	for _, form := range stamps { // the widest form the rule carries beside the title
+		if render.Width(title)+4+render.Width(form)+5 <= rule {
+			stamp = render.Tint(form, tone)
 			break
 		}
 	}
-	return line1 + "\n" + d.headerControls(o)
+	return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "") // no tone of its own: the frame's base grey paints it (round 4, B-01)
 }
 
-// headerControls is the masthead's second line (UAT 56/57/100/102):
-// `[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [?] Help  [q] Quit`.
-// [M] toggles the ticker (0.12.0), its label saying the action. On a narrow
-// terminal the mute label shortens ("Mute Severe Alerts" → "Mute") and then,
-// if it still would not fit, drops from the row (the binding stays live) — the
-// row never exceeds the width, like line 1's stamp.
-func (d Dashboard) headerControls(o render.Opts) string {
+// headerRow is the masthead's inner row: the controls at the left, the API
+// summary at the right. The ladder (round 4, B-14): the mute label shortens
+// then drops, the summary loses its "API: " label, then the chips stand
+// alone, then the summary leaves — the row never exceeds the box's inner
+// width.
+func (d Dashboard) headerRow(o render.Opts) string {
+	inner := o.BoxInnerWidth()
+	api := d.apiSummary(o) // UAT 24.2
+	short := strings.TrimPrefix(api, "API: ")
+	for _, a := range []string{api, short} {
+		for i := range 3 { // each form built only when the wider one did not fit (the frame budget)
+			if c := d.headerControls(o, i); render.Width(c)+2+render.Width(a) <= inner {
+				return render.PadBetween(c, a, inner)
+			}
+		}
+	}
+	chips := o.KeyCap("s") + " " + o.KeyCap("a") + " " + o.KeyCap("t") + " " + o.KeyCap("M") + " " + o.KeyCap("S") + " " + o.KeyCap("?") + " " + o.KeyCap("q")
+	for _, a := range []string{short, ""} {
+		if render.Width(chips)+2+render.Width(a) <= inner {
+			return render.PadBetween(chips, a, inner)
+		}
+	}
+	return truncateTo(chips, max(0, inner)) // the floor: whatever chips the room holds
+}
+
+// headerControls is the masthead's control row in its form-th form, widest
+// first (UAT 56/57/100/102): 0 `[s] Setup  [a] About  [t] Theme  [M] Mute
+// Severe Alerts  [S] Status  [?] Help  [q] Quit`; 1 the mute label
+// shortened; 2 the mute chip dropped (the binding stays live). [M] toggles
+// the ticker (0.12.0), its label saying the action.
+func (d Dashboard) headerControls(o render.Opts, form int) string {
 	verb := "Mute"
 	if d.tickerMuted {
 		verb = "Unmute"
 	}
 	base := o.KeyCap("s") + " Setup  " + o.KeyCap("a") + " About  " + o.KeyCap("t") + " Theme  "
-	tail := o.KeyCap("?") + " Help  " + o.KeyCap("q") + " Quit"
-	for _, mute := range []string{o.KeyCap("M") + " " + verb + " Severe Alerts  ", o.KeyCap("M") + " " + verb + "  ", ""} {
-		if line := base + mute + tail; render.Width(line) <= o.Width {
-			return line
-		}
+	tail := o.KeyCap("S") + " Status  " + o.KeyCap("?") + " Help  " + o.KeyCap("q") + " Quit"
+	switch form {
+	case 0:
+		return base + o.KeyCap("M") + " " + verb + " Severe Alerts  " + tail
+	case 1:
+		return base + o.KeyCap("M") + " " + verb + "  " + tail
 	}
-	return base + tail // extremely narrow: the mute control drops (still keybound)
+	return base + tail
 }
 
 // staleAfter is how long the stamp stays green after the last successful
@@ -128,7 +151,8 @@ func (d Dashboard) apiSummary(o render.Opts) string {
 		}
 		total++
 	}
-	gOK, gStale, gDown := "✔", "⚠", "✘"
+	g := o.Glyphs()
+	gOK, gStale, gDown := g.OK, g.Alert, g.Fail // one owner for every mark (R5-C-13)
 	if o.ASCII {
 		gOK, gStale, gDown = "OK", "!!", "XX"
 	}
@@ -153,8 +177,8 @@ func (d Dashboard) writeBody(b *strings.Builder, fl frameLayout, priority, recen
 	b.WriteString(d.tickerMarquee(fl.o)) // 0.12.0: the 3-row global event ticker band, above the radio module
 	b.WriteString("\n")                  // the band's bottom row is the ticker/radio separator (absorbs the old blank)
 	b.WriteString(d.radioPanel(fl))      // UAT 8.1: radio module first
-	b.WriteString("\n\n")
-	b.WriteString(d.alertArea(fl)) // then the alert area (blanks per UAT 6.1/6.2)
+	b.WriteString("\n")                  // the boxes separate themselves — no blank between (HUM LEAD UAT 2026-08-28)
+	b.WriteString(d.alertArea(fl))       // then the alert area (blanks per UAT 6.1/6.2)
 	b.WriteString("\n\n")
 	// UAT 26/43: controls live where they act - ABOVE the watchlist's group
 	// labels now (right-aligned to the table edge).
@@ -225,11 +249,12 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 	// UAT 43/45: a full-width section band in the group-label style, no
 	// blank lines around it; the rail's ▲ rides the band now that the
 	// recent table shows rows only.
+	g := render.RailGlyphsFor(o.ASCII)                                                                                     // the rail's glyph set follows --ascii like every other mark (FR-13, round-2 CQ #19)
 	rail := o.TableRowLen(days) + 2                                                                                        // UAT 9.2: one blank col between the last cell and the rail
 	bandRows := o.BandRows("R E C E N T   /   S E A R C H E D", "R E C E N T", o.TableRowLen(days), render.GroupSectionBG) // three rows unless thin (UAT 2026-08-27)
 	for i, row := range bandRows {
 		if i == len(bandRows)-1 {
-			b.WriteString(render.PadTo(row, rail-1) + "▲\n") // the rail's ▲ rides the band's bottom row — no gap above the rail (UAT nit); the one-row band is its own bottom row
+			b.WriteString(render.PadTo(row, rail-1) + g.Up + "\n") // the rail's ▲ rides the band's bottom row — no gap above the rail (UAT nit); the one-row band is its own bottom row
 		} else {
 			b.WriteString(row + "\n")
 		}
@@ -242,7 +267,7 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 		base = len(d.snap.Locations)
 	}
 	if total == 0 {
-		b.WriteString(emptyState(o.TableRowLen(days), recentEmpty, render.PadTo("", rail-o.TableRowLen(days)-1)+"▼") + "\n") // UAT 104 fallback; the rail closes on its last row
+		b.WriteString(emptyState(o.TableRowLen(days), recentEmpty, render.PadTo("", rail-o.TableRowLen(days)-1)+g.Down) + "\n") // UAT 104 fallback; the rail closes on its last row
 		return b.String()
 	}
 	window := fl.window
@@ -257,9 +282,9 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 	// UAT 44.1/45: the band connects the tables - the recent table renders
 	// rows only (both header rows dropped; the watchlist's headers apply).
 	table := strings.SplitN(o.LocationTable(rows, days), "\n", o.BandHeight()+2)[o.BandHeight()+1] // drop the band rows and the column header
-	b.WriteString(railify(table, rail, lo, total, window) + "\n")
+	b.WriteString(railify(table, rail, lo, total, window, g) + "\n")
 	showing := fmt.Sprintf("Showing %d-%d of %d locations", lo+1, hi, total)
-	b.WriteString(render.PadBetween("", showing+"  ▼", rail) + "\n")
+	b.WriteString(render.PadBetween("", showing+"  "+g.Down, rail) + "\n")
 	return b.String()
 }
 
@@ -290,22 +315,9 @@ func emptyState(span int, text, tail string) string {
 // railify appends the scroll rail: ▲ on the column-header line, │ on each
 // row line with a █ thumb tracking the scroll position (UAT 11.3), ▼ on the
 // Showing line.
-func railify(table string, width, lo, total, window int) string {
+func railify(table string, width, lo, total, window int, g render.RailGlyphs) string {
 	lines := strings.Split(table, "\n") // rows only (UAT 45); ▲ rides the band, ▼ the Showing line
-	thumb := 0
-	if maxLo := total - window; maxLo > 0 && window > 1 {
-		thumb = lo * (window - 1) / maxLo
-	}
-	for i := range lines {
-		glyph := "│"
-		if i == thumb {
-			glyph = "█"
-		}
-		// PadTo, not PadBetween: full-width rows must not push the rail right
-		// (UAT 6.6 off-by-one vs the Showing line's ▼).
-		lines[i] = render.PadTo(lines[i], width-1) + glyph
-	}
-	return strings.Join(lines, "\n")
+	return strings.Join(render.Railify(lines, width, lo, total, window, g), "\n")
 }
 
 // row converts a snapshot location to a table row.

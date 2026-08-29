@@ -46,7 +46,7 @@ func TestSynthPlaysTheSeismicBroadcast(t *testing.T) {
 		quake(5.1, 141, 15, "N", 72*time.Hour, now),
 		quake(4.2, 30, 8, "NE", 2*time.Hour, now),
 	}}}
-	segs := Compose(snapshot.Location{Label: "Ridgecrest, CA"}, nil, now, true, "rec", Station{}, FireReport{}, sr)
+	segs := std.Compose(snapshot.Location{Label: "Ridgecrest, CA"}, nil, now, true, "rec", Station{}, FireReport{}, sr)
 	// Order: the seismic report sits before the tail.
 	texts := segmentsText(segs)
 	seismicAt, tailAt := -1, -1
@@ -96,7 +96,7 @@ func TestSeismicSegmentsReadTheScript(t *testing.T) {
 	sr := SeismicReport{Known: true, Lat: 33.24, Lon: -117.29, State: snapshot.SeismicState{AsOf: now, Quakes: []snapshot.Quake{
 		quake(5.1, 141, 15, "N", 72*time.Hour, now),
 	}}}
-	segs := SeismicSegments("Oceanside, CA", sr, true, now)
+	segs := std.SeismicSegments("Oceanside, CA", sr, true, now)
 	want := []string{
 		"This is the Watchpost Radio Seismic Activity report for Oceanside, California. This report is derived from the United States Geological Survey real-time GeoJSON earthquake notification service. Data for this report may be delayed or incomplete, and is not intended for life safety use.",
 		"There has been 1 nearby quake in the last seven days:",
@@ -119,12 +119,12 @@ func TestSeismicSegmentsReadTheScript(t *testing.T) {
 func TestSeismicSkippedWithoutEntries(t *testing.T) {
 	now := time.Now()
 	// No feed yet (cold): skipped.
-	if s := SeismicSegments("X", SeismicReport{}, true, now); s != nil {
+	if s := std.SeismicSegments("X", SeismicReport{}, true, now); s != nil {
 		t.Fatalf("an unknown report is skipped entirely, got %d segments", len(s))
 	}
 	// Answered but empty: still skipped — the report plays only with entries.
 	empty := SeismicReport{Known: true, State: snapshot.SeismicState{AsOf: now}}
-	if s := SeismicSegments("X", empty, true, now); s != nil {
+	if s := std.SeismicSegments("X", empty, true, now); s != nil {
 		t.Fatalf("no quakes ⇒ no report, got %d segments", len(s))
 	}
 }
@@ -138,7 +138,7 @@ func TestSeismicCountAndOverflowCapAtThree(t *testing.T) {
 		quake(2.8, 6, 3, "E", 90*time.Minute, now),
 		quake(1.4, 2, 2, "W", 30*time.Minute, now),
 	}
-	segs := segmentsText(SeismicSegments("Ridgecrest, CA", SeismicReport{Known: true, State: snapshot.SeismicState{AsOf: now, Quakes: qs}}, true, now))
+	segs := segmentsText(std.SeismicSegments("Ridgecrest, CA", SeismicReport{Known: true, State: snapshot.SeismicState{AsOf: now, Quakes: qs}}, true, now))
 	joined := strings.Join(segs, "\n")
 	if !strings.Contains(joined, "There have been 5 nearby quakes in the last seven days:") {
 		t.Fatalf("the count is the full total (5):\n%s", joined)
@@ -166,8 +166,8 @@ func TestFeltLikelihoodTiers(t *testing.T) {
 		{4.5, "strong"}, {4.9, "strong"}, {5.0, "strong"}, {6.5, "strong"}, // almost certainly felt + significant (≥ 4.5) — matches the screen label (REVIEW P5 F2)
 	}
 	for _, r := range rows {
-		got := feltLikelihood(r.mag)
-		if !strings.Contains(got, r.word+" likelihood") {
+		got := feltLikelihood(r.mag) // the word the seismic-report/felt script takes
+		if got != r.word {
 			t.Fatalf("M%.1f felt-likelihood = %q, want %q", r.mag, got, r.word)
 		}
 	}
@@ -180,13 +180,13 @@ func TestSeismicOverflowNounAgreesWithCount(t *testing.T) {
 	for i := range four {
 		four[i] = quake(5.0-float64(i)*0.5, 20, 5, "N", time.Hour, now)
 	}
-	one := strings.Join(segmentsText(SeismicSegments("Town, CA", SeismicReport{Known: true, State: snapshot.SeismicState{AsOf: now, Quakes: four}}, true, now)), "\n")
+	one := strings.Join(segmentsText(std.SeismicSegments("Town, CA", SeismicReport{Known: true, State: snapshot.SeismicState{AsOf: now, Quakes: four}}, true, now)), "\n")
 	if !strings.Contains(one, "and 1 more recent quake,") || strings.Contains(one, "and 1 more recent quakes") {
 		t.Fatalf("exactly one overflow reads singular 'quake':\n%s", one)
 	}
 	// Five quakes: two overflow — plural "quakes".
 	five := append(four, quake(1.2, 5, 2, "E", time.Hour, now))
-	two := strings.Join(segmentsText(SeismicSegments("Town, CA", SeismicReport{Known: true, State: snapshot.SeismicState{AsOf: now, Quakes: five}}, true, now)), "\n")
+	two := strings.Join(segmentsText(std.SeismicSegments("Town, CA", SeismicReport{Known: true, State: snapshot.SeismicState{AsOf: now, Quakes: five}}, true, now)), "\n")
 	if !strings.Contains(two, "and 2 more recent quakes,") {
 		t.Fatalf("two overflow reads plural 'quakes':\n%s", two)
 	}
@@ -196,7 +196,7 @@ func TestQuakeSentenceOmitsMissingFields(t *testing.T) {
 	now := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)
 	// A quake with no depth and no bearing: those clauses are left out.
 	q := snapshot.Quake{Mag: 4.0, At: now.Add(-time.Hour)}
-	s := quakeSentence(q, true, now)
+	s := std.quakeSentence(q, true, now)
 	if strings.Contains(s, "depth") || strings.Contains(s, "of your location") {
 		t.Fatalf("missing depth/bearing must be omitted, not guessed: %q", s)
 	}

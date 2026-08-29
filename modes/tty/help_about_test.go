@@ -9,6 +9,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/platform/render"
+
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -17,12 +19,28 @@ func TestHelpFloatsOverDashboard(t *testing.T) {
 	// replacing the view — the dashboard chrome stays visible around it.
 	m := dash(t)
 	m2, _ := m.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-	v := m2.View().Content
+	v := stripANSITest(m2.View().Content)
 	if !strings.Contains(v, "Watchpost Help") {
 		t.Fatalf("help panel missing:\n%s", v)
 	}
-	if !strings.Contains(v, "W A T C H P O S T") || !strings.Contains(v, "Quit") {
-		t.Fatalf("dashboard must stay visible beneath the floating help:\n%s", v)
+	// At 133 cols the two-column window (UAT 2026-08-28) spans most of the
+	// width: the dashboard shows beside it — a row with content left of the
+	// panel's border — never replaced by it.
+	beside := false
+	for _, l := range strings.Split(v, "\n") {
+		if i := strings.Index(l, "│"); i > 0 && strings.TrimSpace(l[:i]) != "" {
+			beside = true
+			break
+		}
+	}
+	if !beside {
+		t.Fatalf("dashboard must stay visible beside the floating help:\n%s", v)
+	}
+	// On a wider terminal the header clears the window too.
+	wide, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
+	wide, _ = wide.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
+	if wv := stripANSITest(wide.View().Content); !strings.Contains(wv, "W A T C H P O S T") || !strings.Contains(wv, "Quit") {
+		t.Fatalf("dashboard header must stay visible beneath the floating help at 200 cols:\n%s", wv)
 	}
 }
 
@@ -112,7 +130,7 @@ func TestHelpGroupsBindingsByFeature(t *testing.T) {
 	}
 	lines := m.helpLines(m.opts())
 	text := strings.Join(lines, "\n")
-	order := []string{"NAVIGATE", "WATCHLIST", "RADIO", "DISPLAY", "APP"}
+	order := []string{"NAVIGATE", "RADIO", "WATCHLIST", "DISPLAY", "APP"} // the registry's order (NAVIGATE and RADIO first: the left column when two fit)
 	last := -1
 	for _, name := range order {
 		i := strings.Index(text, name)
@@ -121,19 +139,73 @@ func TestHelpGroupsBindingsByFeature(t *testing.T) {
 		}
 		last = i
 	}
-	nav := text[strings.Index(text, "NAVIGATE"):strings.Index(text, "WATCHLIST")]
+	nav := text[strings.Index(text, "NAVIGATE"):strings.Index(text, "RADIO")]
 	if !strings.Contains(nav, "Q ") || !strings.Contains(nav, "Quit") {
 		t.Fatalf("a rebound quit stays under NAVIGATE:\n%s", nav)
 	}
 	for _, bind := range m.keys { // every binding listed exactly once, by its rendered row prefix (up and down share a Help text; "-" is a key)
-		if row := fmt.Sprintf("  %-12s - ", strings.Join(bind.Keys, ", ")); strings.Count(text, row) != 1 {
+		if row := fmt.Sprintf("   %-12s - ", strings.Join(bind.Keys, ", ")); strings.Count(text, row) != 1 {
 			t.Fatalf("%q listed %d times", row, strings.Count(text, row))
 		}
 	}
 	if strings.Contains(text, "OTHER") {
 		t.Fatal("every default binding has a group")
 	}
-	if !strings.HasPrefix(lines[len(lines)-3], "Row marks:") {
+	if !strings.HasPrefix(lines[len(lines)-3], " Row marks:") { // the mock's one-space inset
 		t.Fatalf("the legend follows the groups: %q", lines[len(lines)-3])
+	}
+}
+
+// The Help window is one column with the panel's scroll on a narrow
+// terminal and two columns on a wide one (HUM LEAD UAT 2026-08-28): a blank
+// line of air under the title in both; every group whole, in one column;
+// every binding once in both layouts.
+func TestHelpLaysOutOneOrTwoColumns(t *testing.T) {
+	for _, c := range []struct {
+		w      int
+		twoCol bool
+	}{{80, false}, {100, false}, {133, true}, {200, true}} {
+		m, err := NewDashboard(Config{Version: "t"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var mm tea.Model = m
+		mm, _ = mm.Update(tea.WindowSizeMsg{Width: c.w, Height: 44})
+		mm, _ = mm.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
+		d := mm.(Dashboard)
+		lines := d.helpLines(d.opts())
+		if lines[0] != "" {
+			t.Fatalf("%d cols: a blank line under the title, got %q", c.w, lines[0])
+		}
+		text := stripANSITest(strings.Join(lines, "\n"))
+		pairs := 0
+		for _, l := range strings.Split(text, "\n") {
+			if strings.Contains(l, "NAVIGATE") && strings.Contains(l, "WATCHLIST") {
+				pairs++
+			}
+		}
+		if (pairs == 1) != c.twoCol {
+			t.Fatalf("%d cols: two columns = %v, want %v:\n%s", c.w, pairs == 1, c.twoCol, text)
+		}
+		for _, bind := range d.keys { // every binding once, whatever the layout
+			if row := fmt.Sprintf("   %-12s - ", strings.Join(bind.Keys, ", ")); strings.Count(text, row) != 1 {
+				t.Fatalf("%d cols: %q listed %d times", c.w, row, strings.Count(text, row))
+			}
+		}
+		// A group rolls as a unit: the RADIO header's column holds its first row on the next line.
+		ls := strings.Split(text, "\n")
+		for i, l := range ls {
+			if j := strings.Index(l, "RADIO"); j >= 0 {
+				if next := ls[i+1]; len(next) <= j || !strings.Contains(next[j:], "space") {
+					t.Fatalf("%d cols: RADIO's first row must follow its header in the same column:\n%s", c.w, text)
+				}
+			}
+		}
+		frame := stripANSITest(d.View().Content)
+		for _, l := range strings.Split(frame, "\n") {
+			if render.Width(strings.TrimRight(l, " ")) > c.w {
+				t.Fatalf("%d cols: a line overflows the terminal: %q", c.w, l)
+			}
+		}
 	}
 }

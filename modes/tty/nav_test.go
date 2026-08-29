@@ -54,10 +54,10 @@ func TestNavigationSpansBothTables(t *testing.T) {
 		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	}
 	d = m.(Dashboard)
-	if d.selected != 12 || d.recentOff != 8 { // a 4-row window at 28 rows since the 0.12.0 ticker took two
+	if d.selected != 12 || d.recentOff != 6 { // a 6-row window at 28 rows with thin bands (the boxed header, player and alert, 2026-08-28)
 		t.Fatalf("window must follow the focus: selected=%d off=%d", d.selected, d.recentOff)
 	}
-	if v := m.View().Content; !strings.Contains(v, "Showing 9-12 of 25 locations") {
+	if v := m.View().Content; !strings.Contains(v, "Showing 7-12 of 25 locations") {
 		t.Fatalf("Showing must track the scrolled window:\n%s", v)
 	}
 	// And back up beyond the top of the window.

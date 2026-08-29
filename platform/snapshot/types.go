@@ -183,6 +183,7 @@ type Alert struct {
 	Headline      string     `json:"headline"`
 	Description   string     `json:"description"`
 	Instruction   string     `json:"instruction"`
+	SenderName    string     `json:"sender_name"` // the issuing office ("NWS Wichita KS") — the superseded guard's key (0.13.0, NFR-12)
 	Source        SourceInfo `json:"source"`
 }
 

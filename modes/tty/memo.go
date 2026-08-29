@@ -11,7 +11,10 @@ package tty
 // Bound: one entry, the last key.
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -117,4 +120,112 @@ func (d Dashboard) anyLoading() bool {
 // (UAT 18.2): observation or daily forecast still pending.
 func rowLoading(loc *snapshot.Location) bool {
 	return loc.Harmonized.Source.Provider == "" || len(loc.Daily) == 0
+}
+
+// --- the modal memo (0.13.0, FR-10) ---
+
+// modalKey is every input any window reads (SAM-D-13): one field per input,
+// with the per-window extras projected only while that window is open, so
+// a Setup keystroke never invalidates the severe table and a status-modal
+// second never invalidates Help. The invalidation table in severe_test.go
+// has one row per field.
+type modalKey struct {
+	modal                                     modal
+	opts                                      render.Opts // width, units, ascii, bands — Frame zeroed (the shimmer keys separately)
+	width, height                             int
+	scroll                                    int
+	selected                                  int
+	alertIdx                                  int
+	snap, recent                              *snapshot.Snapshot
+	severeGen                                 uint64
+	severeTab                                 SevereTab
+	severeRow                                 int
+	severeDetail                              bool
+	breakingID                                string // the ▶ mark on the event being read (while the window is open)
+	readingKey                                string // the ▶ on the event being read
+	addMode, addQuery, addErr                 string
+	voiceNote, voiceErr, themeErr, radioVoice string
+	themeIdx, voiceIdx, nvoices               int
+	setup                                     string   // Setup's state, projected while it is open
+	stats                                     [32]byte // the [S] stats, fingerprinted while it is open
+	darkBG                                    bool
+	theme                                     uint64
+	minute                                    int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
+	second                                    int64 // [S] ages, while it is open
+	shimmer                                   int   // Details' LoadingDots while a row loads
+}
+
+// modalMemo is the single slot.
+type modalMemo struct {
+	mu           sync.Mutex
+	ok           bool
+	key          modalKey
+	out          string
+	hits, misses int
+}
+
+// modalKeyFor derives the key from the model.
+func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
+	o.Frame = 0
+	k := modalKey{
+		modal: d.modal, opts: o, width: d.width, height: d.height, scroll: d.modalScroll, selected: d.selected, alertIdx: d.alertIdx,
+		snap: d.snap, recent: d.recent,
+		severeGen: d.severe.Gen, severeTab: d.severeTab, severeRow: d.severeRow, severeDetail: d.severeDetail,
+		addMode: d.addMode, addQuery: d.addQuery, addErr: d.addErr,
+		voiceNote: d.voiceNote, voiceErr: d.voiceErr, themeErr: d.themeErr, radioVoice: d.radioVoice,
+		themeIdx: d.themeIdx, voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
+		darkBG: d.darkBG, theme: render.ThemeGeneration(),
+	}
+	switch d.modal {
+	case modalSetup:
+		k.setup = fmt.Sprintf("%+v", d.setup)
+	case modalStatus:
+		k.second = d.now().Truncate(time.Second).Unix()
+		if d.cfg.Stats != nil {
+			k.stats = sha256.Sum256([]byte(fmt.Sprintf("%+v", d.cfg.Stats())))
+		}
+	case modalSevere:
+		if d.breaking != nil {
+			k.breakingID = d.breaking.ID
+		}
+		k.readingKey = d.severeReading
+	case modalDetails:
+		k.minute = d.now().Truncate(time.Minute).Unix() // the "N min ago" labels (projected here only — R3-B-09)
+		if d.anyLoading() {
+			k.shimmer = ((d.frame % 4) + 4) % 4
+		}
+	}
+	return k
+}
+
+// modalView renders the open window through the memo: "" when none.
+func (d Dashboard) modalView(o render.Opts) string {
+	if d.modal == modalNone {
+		return ""
+	}
+	m := d.mmemo
+	if m == nil {
+		return d.renderModal(o)
+	}
+	key := d.modalKeyFor(o)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.ok && m.key == key {
+		m.hits++
+		return m.out
+	}
+	out := d.renderModal(o)
+	m.ok, m.key, m.out = true, key, out
+	m.misses++
+	return out
+}
+
+// modalMemoCounts reports the modal slot's hit/miss counters.
+func (d Dashboard) modalMemoCounts() (hits, misses int) {
+	if d.mmemo == nil {
+		return 0, 0
+	}
+	d.mmemo.mu.Lock()
+	defer d.mmemo.mu.Unlock()
+	return d.mmemo.hits, d.mmemo.misses
 }

@@ -4,6 +4,96 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-08-29
+
+A window for the ticker's other half: every active severe weather and disaster event, browsable in
+one place, with the full record of each — the complement to 0.12.0's tape, which shows them one at a
+time.
+
+### Added
+- The **Severe Weather / Disaster Events window** (`w`, or `ctrl+s`): six categories in importance
+  order — Warnings · Watches · Advisories · Spec. Statements · Sig. Quakes · Tropical — browsed with
+  `←` `→`, the category's events with `↑` `↓` (Declared newest first), `enter` for the full record in
+  the Alert Details shape, `esc` back to the table, `esc` `esc` to close. The window is the **union**
+  of the global feeds (USGS, NHC, NWS) and the tracked locations' alerts, de-duplicated by the
+  event's id, so Advisories and Special Weather Statements come from your watchlist (the national
+  query does not carry them) and every warning within reach is listed once. Each category paints the
+  window in its fixed tint — red for quakes, orange for warnings, yellow for advisories, a deeper
+  amber for watches and an olive for statements, blue for tropical — theme-independent (Monochrome
+  keeps its greys); the group header is a distinct tint of the same hue. A **DETECTION** column says
+  how an event was established (the warning's SOURCE line — Radar Indicated, Spotter Reported — else
+  the alert's certainty; a quake's review status), and DECLARED is the issue time (the onset, when
+  later, reads as "Starts" in the record); the table's column ladder gives EXPIRES, then DETECTION,
+  then DECLARED as the terminal narrows, and the window's width tops out at 130 columns. A dead source is stated on the category line ("NHC unavailable"), the title
+  carries the newest successful fetch, and opening the window within ten minutes of a breaking event
+  lands on its category (Warnings otherwise).
+- Storm **names** on the ticker tape and in the narration ("Hurricane Dolly has been reported for…").
+- `[space]` inside the window **reads the focused event over the radio** — the alert itself (what, where,
+  how long, the description and instructions), the panel showing `EVENT · …` while it plays and returning to
+  the broadcast afterwards; the ▶ marks the row being read.
+- A **narration arbiter** owns the correspondent's voice: a breaking takeover is always first — an event
+  read on air is **paused** for it and resumes where it stopped afterwards; reads duck the broadcast and
+  queue behind a takeover; the broadcast is ducked once and restored once around any run of them. The
+  visualizer follows every narration (an event read, a voice preview) except a takeover, which plays aside.
+- **Pronunciation rules as files**: how the correspondent reads time zones ("PDT" → "Pacific Daylight
+  Time"), state codes, product abbreviations and the words spelled for the voice live in
+  `domains/radio/pronounce/rules/<table>.txt`, one rule per line, read by name.
+- **Report scripts as files.** Everything the correspondent says — the location broadcast's lead,
+  conditions, alerts and sign-off, the fire and seismic reports inside it, the event read, the breaking
+  takeover and the voice preview — lives in `domains/radio/script/scripts/<report>/<part>.txt`, found by
+  name, with `global/head.txt` and `tail.txt` inherited by any report without its own; the same tree under
+  `<config dir>/scripts/` re-words a phrase. Each report is a self-contained folder. The event read opens
+  with the Watchpost notification notice ("not intended for life safety use") and closes with its sign-off.
+- The `[S]` status window gauges the severe index (rows against its 500-row cap).
+- `WATCHPOST_DEBUG_RADIO` also logs every synthesized segment as it reaches the air and why a cycle ended.
+
+### Changed — the dashboard facelift (HUM LEAD UAT)
+- The **header** is a titled box: the masthead and the Updated stamp ride its top rule, the controls and
+  the API count share the row inside, and `[S] Status` joins the controls.
+- The **alert module** is one row in a box on the Alert Details tint (red for warnings, yellow for
+  advisories): count, the event and place in the modal's own dress, Issued and Expires; the body lives
+  behind `[A]`. The full layout gains the rows (a 50-row terminal now holds a 21-row window).
+- The **radio player** is a box: the station in the head, the spoken line as a marquee band with the
+  visualizer inside it, the controls centred; the VOL bar gives before the title on narrow terminals.
+- **Help** and **API Status** lay out in two columns when the terminal is wide enough.
+- The watchlist's **column titles** are a painted row: each title centred in bold white on a darker tint
+  of its group's band, the segments touching across the gutters like the bands above; WX STN and ZIP
+  cells centred.
+- Every painted text/ground pair is lifted to WCAG AA when a theme loads — the hue kept, the text moved
+  toward white or black only as far as 4.5:1 needs; where no text tone can read on every ground it shares
+  (bold white on the gold ticker lane) the ground deepens instead. The same pass gates every theme.
+- **Watchpost Light**, the thirteenth theme (second in the picker): a light ground, dark text, pale bands,
+  tints, lanes and alert tiles, for light terminals. Every theme now paints its own ground whatever the
+  terminal reports.
+- Under `--ascii` the severe window's header reads plain `EVENT` (a screen reader spells a spread word letter
+  by letter), the play mark is `*` (never the pointer's `>`), every remaining mark has its ASCII form
+  (`+ x ~ _ . - |`), arrow keys are named in words in every chip, and a muted chip keeps its tone.
+- Feeds decode entry by entry: one malformed value skips its own entry, never the whole source.
+- An alert's own update replaces it in the tables and `[A]` too, not only in the window.
+
+### Fixed
+- Looking up a new location opened Details on the previous top RECENT row until its data arrived; it
+  opens on the looked-up location from the first frame, blank until then.
+- An alert spanning more than 50 zones never reached a location in the 51st zone or beyond (a 0.12.0
+  regression).
+- A lone `esc` followed by a key was lost (the terminal fuses the pair as alt+key); every such chord —
+  a letter, `enter`, an arrow, a control byte — now reads as `esc` then the key.
+- With colour off or under `--ascii` a warning and an advisory read the same; the alert module says its
+  class in text.
+- A read paused for a breaking takeover was closed by the takeover's own tone on the real audio engine;
+  held lines survive and resume where they stopped, with the volume knob as it is.
+- The severe index read the very snapshot the dashboard was sorting (a data race); it keeps its own copy.
+- A feed name carrying a newline added rows to the frame; the tape is one line, windowed by cells.
+- Provider station names, config labels and a hostile alert's text reach the screen as text on every
+  surface (Details, the modal titles, the tape, the radio head); a modal title never overflows its window.
+
+### Changed
+- The breaking-event narration now ends "Press W in Watchpost for the full report on this event"
+  (a burst closes with "For the full report on any of these events, press W in Watchpost.").
+- Every alert field — the record, the alert module's headline line and the compact line included —
+  passes the terminal-escape boundary before it is drawn; the ticker's seen-store is written `0600`,
+  re-tightened on every save, and capped at 20 000 ids.
+
 ## [0.12.0] — 2026-08-27
 
 A global event ticker — the world's largest active hazards scroll across the top of the dashboard,

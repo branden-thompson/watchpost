@@ -18,6 +18,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -34,6 +35,7 @@ var frameAllocBudget = map[string]float64{
 	"133x44": 10_044 * 1.05, // Q0 measurement: 10,044 — the Q3 hit path is pinned in frameAllocBudgetHit
 	"133x70": 15_539 * 1.05,
 	"200x60": 20_031 * 1.05,
+	"80x24":  3_598 * 1.05, // 0.13.0 P3-9: the worst-case floor (NFR-2) — measured 3,370; 3,598 after the player facelift's box
 }
 
 // frameAllocBudgetHit pins the memo-hit frame (plan §1: ≤ 6,000 at 133×44
@@ -42,6 +44,7 @@ var frameAllocBudgetHit = map[string]float64{
 	"133x44": 6_000,
 	"133x70": 6_000,
 	"200x60": 6_000,
+	"80x24":  962 * 1.05, // measured 962 after red-team round 4 (B-06: the layout builds the player and control rows once per frame — 1,312 before, when the thin-bands re-resolution built them four times; was 996 before the boxes)
 }
 
 func benchLoc(i int, days int, alert bool) snapshot.Location {
@@ -152,5 +155,68 @@ func BenchmarkFrame_133x44_Miss(b *testing.B) {
 	for b.Loop() {
 		d.memo.ok = false
 		_ = d.View().Content
+	}
+}
+
+// --- 0.13.0: the Severe Weather / Disaster Events window (plan P3-9) ---
+
+// severeAllocBudget pins the window's frame: the modal-memo HIT (every tick
+// while it is open — the number the radio-on target reads) and the MISS (a
+// publish, a key). Measured at P3-9 and set at × 1.05 like the frame pins.
+var severeAllocBudget = map[string]float64{"hit": 2_401 * 1.05, "miss": 7_561 * 1.05} // BUILD-exit measurement: hit 2,401 (the overlay compositor is most of it) · miss 7,561 (was 3,067 / 8,061 before the row copies went — R3-B-11)
+
+// severeBench is the window open over the 133×44 fixture with a 60-row
+// Warnings index (a busy outbreak day, not the 9-row mock).
+func severeBench(tb testing.TB) Dashboard {
+	tb.Helper()
+	d := benchDash(tb, 133, 44).(Dashboard)
+	var rows []SevereRow
+	for i := range 60 {
+		rows = append(rows, SevereRow{Key: fmt.Sprint(i), Tab: SevereWarnings, Product: "Severe Thunderstorm Warning", Location: fmt.Sprintf("Benchmark County %02d, KS", i), Declared: "08/28 08:45 CDT", Expires: "08/28 09:30 CDT",
+			Record: SevereRecord{Title: "SEVERE THUNDERSTORM WARNING", Meta: "[Severe · Immediate · Observed]", Timing: "Declared 08/28 08:45 CDT   Expires 08/28 09:30 CDT   (~45m)", Area: "Area: Benchmark County, KS · NWS Topeka", Paras: []string{"At 845 AM CDT, a severe thunderstorm was located near Benchmark, moving east at 35 mph. HAZARD: 60 mph wind gusts and quarter size hail.", "Instructions: For your protection move to an interior room on the lowest floor of a building."}}})
+	}
+	var m tea.Model = d
+	m, _ = m.Update(SevereMsg{Gen: 1, Rows: rows, Totals: [severeNumTabs]int{60}})
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
+	return m.(Dashboard)
+}
+
+func BenchmarkFrame_133x44_Severe(b *testing.B) {
+	d := severeBench(b)
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = d.View().Content
+	}
+}
+
+// BenchmarkOverlayOnly isolates the compositor: render.Overlay alone, over a
+// pre-rendered base and window (the number the memo cannot lower).
+func BenchmarkOverlayOnly(b *testing.B) {
+	d := severeBench(b)
+	o := d.opts()
+	modal := d.renderModal(o)
+	closed := d
+	closed.modal = modalNone
+	base := closed.View().Content
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = render.Overlay(base, modal, d.width)
+	}
+}
+
+func TestSevereFrameAllocBudget(t *testing.T) {
+	if raceEnabled {
+		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
+	}
+	d := severeBench(t)
+	_ = d.View().Content
+	hit := testing.AllocsPerRun(20, func() { _ = d.View().Content })
+	miss := testing.AllocsPerRun(20, func() { d.mmemo.ok = false; _ = d.View().Content })
+	t.Logf("severe window: hit %.0f allocs (budget %.0f) · miss %.0f allocs (budget %.0f)", hit, severeAllocBudget["hit"], miss, severeAllocBudget["miss"])
+	if hit > severeAllocBudget["hit"] {
+		t.Errorf("severe window (memo hit) allocates %.0f per View(), budget %.0f", hit, severeAllocBudget["hit"])
+	}
+	if miss > severeAllocBudget["miss"] {
+		t.Errorf("severe window (memo miss) allocates %.0f per View(), budget %.0f", miss, severeAllocBudget["miss"])
 	}
 }
