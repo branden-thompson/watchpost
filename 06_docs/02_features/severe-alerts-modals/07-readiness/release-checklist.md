@@ -40,8 +40,10 @@ recorded as accepted risk in the ship report.
 
 ## D. Ship steps (FULL GIT)
 
-1. VALIDATE exit approved → `release/v0.13.0` from `feature/severe-alerts-modals`.
-2. PR to `main-publish` with the harness template (problem statement and metrics read forward from
-   `08-reports/project-brief.md`); Linux CI green (race + pty).
-3. Tag `v0.13.0` on the release commit; `make release-matrix`; the release workflow publishes.
-4. Delete the feature branch; DEBRIEF (REFLECT) completes `06-key_learnings/`.
+1. ☑ VALIDATE exit approved → `release/v0.13.0` (`828feda`) from `feature/severe-alerts-modals`.
+2. ☑ PR #2 to `main` with the harness template (problem statement and metrics read forward from
+   `08-reports/project-brief.md`); Linux CI green (race + pty) on the push run and the PR run.
+3. ☑ Squash-merged (`baec8b0`); tag `v0.13.0`; `release.yml` built the matrix and published (run
+   33264986559, green first time); the installed artifact reports 0.13.0.
+4. ☑ Release and feature branches deleted; `main` (dev trunk) at the feature tip. → DEBRIEF (REFLECT)
+   completes `06-key_learnings/`.
