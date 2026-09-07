@@ -1,0 +1,19 @@
+=== RUN   TestSeismicCountersFloor
+    usgs_test.go:385: counters: 16 locations, 13 ticks, 5m0s cadence, 1h0m0s window
+    usgs_test.go:404: tick  1/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=29 net=29 304=0 cache=3 bytesNet=108077 bytes304saved=0 | memo: boxes=29 parses=29
+    usgs_test.go:404: tick  2/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=58 net=58 304=0 cache=6 bytesNet=216154 bytes304saved=0 | memo: boxes=29 parses=58
+    usgs_test.go:404: tick  3/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=87 net=87 304=0 cache=9 bytesNet=324231 bytes304saved=0 | memo: boxes=29 parses=87
+    usgs_test.go:404: tick  4/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=116 net=116 304=0 cache=12 bytesNet=432308 bytes304saved=0 | memo: boxes=29 parses=116
+    usgs_test.go:404: tick  5/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=145 net=145 304=0 cache=15 bytesNet=540385 bytes304saved=0 | memo: boxes=29 parses=145
+    usgs_test.go:404: tick  6/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=174 net=174 304=0 cache=18 bytesNet=648462 bytes304saved=0 | memo: boxes=29 parses=174
+    usgs_test.go:404: tick  7/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=203 net=203 304=0 cache=21 bytesNet=756539 bytes304saved=0 | memo: boxes=29 parses=203
+    usgs_test.go:404: tick  8/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=232 net=232 304=0 cache=24 bytesNet=864616 bytes304saved=0 | memo: boxes=29 parses=232
+    usgs_test.go:404: tick  9/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=261 net=261 304=0 cache=27 bytesNet=972693 bytes304saved=0 | memo: boxes=29 parses=261
+    usgs_test.go:404: tick 10/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=290 net=290 304=0 cache=30 bytesNet=1080770 bytes304saved=0 | memo: boxes=29 parses=290
+    usgs_test.go:404: tick 11/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=319 net=319 304=0 cache=33 bytesNet=1188847 bytes304saved=0 | memo: boxes=29 parses=319
+    usgs_test.go:404: tick 12/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=348 net=348 304=0 cache=36 bytesNet=1296924 bytes304saved=0 | memo: boxes=29 parses=348
+    usgs_test.go:404: tick 13/13  err=<nil> fragErr=<nil>  quakes=13 | host: attempts=377 net=377 304=0 cache=39 bytesNet=1405001 bytes304saved=0 | memo: boxes=29 parses=377
+    usgs_test.go:414: SUMMARY over 1h0m0s: attempts=377 (377/h) net=377 304=0 bytesNet=1405001 (1405001/h) bytes304saved=0 | memo boxes=29 (bound 160) parses=377
+--- PASS: TestSeismicCountersFloor (3700.47s)
+PASS
+ok  	github.com/branden-thompson/watchpost/domains/seismic/usgs	3700.776s

@@ -1,0 +1,23 @@
+2026-08-29T16:28:33Z PASS P0 the masthead's controls on a first run
+2026-08-29T16:28:33Z PASS P0 Setup opens on the first run
+2026-08-29T16:28:41Z PASS P0 Setup saved and closed
+2026-08-29T16:28:41Z PASS P0 first data (a temperature) for the default location
+2026-08-29T16:28:42Z PASS P0 the watchlist names the location
+2026-08-29T16:28:42Z PASS P0 w opens the severe window
+2026-08-29T16:28:42Z PASS P0 the tab row
+2026-08-29T16:28:43Z PASS P1 right moves to Watches
+2026-08-29T16:28:44Z PASS P1 the Sig. Quakes tab
+2026-08-29T16:28:45Z PASS P1 enter opens a record (or the tab is empty)
+2026-08-29T16:28:59Z PASS P1 space reads the focused event over the radio (the panel shows EVENT ·)
+2026-08-29T16:29:01Z PASS P0 esc esc closes the window
+2026-08-29T16:29:02Z PASS P0 l opens Lookup
+2026-08-29T16:29:05Z PASS P0 Lookup opens Details on Vista from the first frame
+2026-08-29T16:29:05Z PASS P1 Details fills with data
+2026-08-29T16:29:08Z PASS P1 A opens the alert modal
+2026-08-29T16:29:09Z PASS P1 t opens the theme chooser
+2026-08-29T16:29:11Z PASS P1 Watchpost Light applies live (the frame re-renders)
+2026-08-29T16:29:12Z PASS P1 S opens Status
+2026-08-29T16:29:12Z PASS P1 Status gauges the severe index
+2026-08-29T16:29:14Z PASS P1 ? opens Help
+2026-08-29T16:29:18Z PASS P0 q quits cleanly
+fails=0

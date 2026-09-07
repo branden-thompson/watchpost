@@ -1,5 +1,8 @@
 dist/
 *.log
+# ...except a run's record filed in the docs tree. 06_docs IS the durable place;
+# a record there that git ignores looks filed and is not (0.14.1 hygiene).
+!06_docs/**/*.log
 .DS_Store
 .claude/
 .a2dh/

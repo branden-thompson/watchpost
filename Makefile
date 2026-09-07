@@ -126,11 +126,12 @@ test-platforms:
 # executable is a build variant and goes.
 #
 # RECORDS are not deleted here, but dist is NOT durable: it is the directory
-# this target empties. A run's record belongs in the feature's 06_docs tree, and
-# it must be a TRACKED path — `.gitignore` carries `*.log`, so a record named
-# `.log` is not in git no matter where it sits. Name durable records `.txt` or
-# `.json`. hygiene names any record still sitting in dist so it is promoted
-# rather than quietly lost on the next run.
+# this target empties. A run's record belongs in the feature's 06_docs tree, on
+# a TRACKED path — filed is not the same as committed, and until 0.14.1 eight
+# records under 06_docs were ignored by `*.log` and only looked filed.
+# `.gitignore` now re-includes `06_docs/**/*.log`; the check below is what
+# proves it for any path you pass. hygiene also names any record still sitting
+# in dist, so it gets promoted rather than lost on the next run.
 #
 # `go clean -cache` is machine-wide, not repo-scoped — that is the blast radius
 # and it is deliberate, since the cache it clears is the one this repo filled.
@@ -140,7 +141,7 @@ hygiene:
 	@test -n "$(RESULTS)" || { echo "hygiene: RESULTS must name the run's record; refusing to delete"; exit 1; }
 	@test -s "$(RESULTS)" || { echo "hygiene: $(RESULTS) is missing or empty — the run left no record, so NOTHING is deleted"; exit 1; }
 	@case "$(RESULTS)" in $(DIST)/*) echo "hygiene: $(RESULTS) is in $(DIST), which this target empties — promote it to the feature's 06_docs tree first"; exit 1;; esac
-	@! git check-ignore -q "$(RESULTS)" || { echo "hygiene: $(RESULTS) is git-ignored, so it is not durable — name it .txt/.json under 06_docs (.gitignore carries *.log)"; exit 1; }
+	@! git check-ignore -q "$(RESULTS)" || { echo "hygiene: $(RESULTS) is git-ignored, so it is filed but not committed — put the record on a tracked path under 06_docs"; exit 1; }
 	@echo "hygiene: results durable in $(RESULTS) ($$(wc -l < $(RESULTS) | tr -d ' ') lines, tracked path)"
 	@for f in $(DIST)/*; do \
 	  b=$$(basename "$$f"); \

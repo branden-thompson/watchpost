@@ -1085,6 +1085,39 @@ and would have caught issue #7 before a listener on Linux heard a tone and then
 silence. It is going into the lens's brief. A red team that only reads for
 correctness of what is written will not see the risk in what is written twice.
 
+## A record that is filed is not a record that is kept (2026-09-07, inter-release hygiene)
+
+**The catch.** `make hygiene` is the deterministic cleanup the HUM LEAD specified: *do the thing,
+collect the results, put them somewhere durable, verify they are durable, delete every other
+variant.* Four records of the release that just shipped were sitting in `dist/` — the directory that
+target empties. One of them was the mutation run, and the **merged PR body cites it by that path**:
+"Durable record: `dist/mutant-check.log`". It was one invocation of our own hygiene target away from
+not existing, and the sentence claiming its durability would have survived it.
+
+**Then the same question one level out, and this is the part worth keeping.** The obvious fix is
+"move it into `06_docs/`". So: are the records already in `06_docs/` actually kept? `.gitignore`
+line 2 is `*.log`. **Eight run records across four features** — the 24-hour baseline sampler the
+whole perf pass is diffed against, the seismic counters run, two soaks, a journey — were filed in
+the durable tree and **not in git**. They exist on exactly one disk. Nobody was wrong about where to
+put them; the directory was right and the record still was not kept.
+
+**THE SHAPE, and it is the release's shape again:** *filed is not committed; a durable-looking
+location is not a durable record.* This is the same failure as the assertions that matched the
+marquee instead of the window, and the "durable record" that was one line. The question that catches
+it is the one already written down — **what would this check do if the thing it checks were
+broken?** — asked of the storage rather than the assertion: *if this file vanished tonight, what
+would tell me?*
+
+**The fix is a guard, not a habit.** `hygiene` now refuses a `RESULTS` that lives in `dist/` or that
+`git check-ignore` matches, and names any record still sitting in `dist/` so it gets promoted rather
+than lost. All three refusals were run and observed to fail before the change was committed —
+per *validate the instrument*, a guard nobody has watched fail is not a guard. `.gitignore` now
+re-includes `06_docs/**/*.log`, which was the right fix over renaming eight historical records and
+rewriting the red-team reports that cite them by name.
+
+**Cost:** about twenty minutes, no code touched. **What it bought:** the evidence base of four
+completed features moved from one disk to the repository.
+
 ## The metric this is all judged against
 
 Tasks completed per session. It has not moved yet (1). Every other number has. The programme
