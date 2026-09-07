@@ -7,7 +7,7 @@ level: LEVEL-1
 sev: SEV-0
 authority: HUM LEAD
 directives: FULL GIT; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD
-status: "Step 2 complete; requirements restated against measured findings — awaiting HUM LEAD approval to enter PLAN"
+status: "COMPLETE. All deliverables discharged, all HUM LEAD rulings recorded, gates green — awaiting approval to enter PLAN"
 ---
 
 # 0.15.0 — Pre-Broadcaster UI Improvements — DISCOVERY REPORT
@@ -46,10 +46,13 @@ an instrument that reports something it does not measure.
 | 3 — memo keys | `modalKey` guarded for today's 11 windows, zero skips — but the guard **skips** an unfixtured window and hard-codes three nested structs, so F-30 **stands** | Reduced, not eliminated |
 | 4 — alert path | Seam exists and enters where a real alert enters.  Scenario payloads are wrong; bound is an hour | **Shrinks, then grows** |
 | 5 — `ctrl+d` at 24 rows | Controls unreachable by any key at any focus.  Double-wrap at every width | **Grows** |
-| 6 — Piper RSS | **Blocked on Arch hardware.**  No change | Blocked |
-| 7 — docs tree | `06_docs` contains a compiled Go test package; 121 PII occurrences across 14 files | **Grows** |
+| 6 — Piper RSS | **No longer blocking.**  §3–5 answer OQ-18 alone; they cannot measure FR-3.4, whose memos sit on the provider fetch path, not the frame | Unblocked (red team C-6) |
+| 7 — docs tree | `06_docs` contains a compiled Go test package; and the 121 PII occurrences are **already published** — the repo is public and they have been on `origin/main` since 0.13.0 | **Grows** |
 
-Every probe written during this phase was deleted; the tree is clean at each commit.
+Probes written to measure a claim were temporary and deleted, with one deliberate exception: the
+four-classifier cross-table is **retained** as `app/classifier_crosstable_test.go`, because it pins a
+count and is therefore a gate rather than a snapshot.  The red team's complaint that this phase
+destroyed every instrument it built is fair for the rest, and is the reason for the exception.
 
 ## Functional Requirements
 
@@ -72,8 +75,8 @@ where the evidence moved it, the movement is stated with its reason.
   `platform/render/sgr.go:226` `AlertIsWarning`, self-described as "THE warning-vs-advisory classifier
   (single owner)".  *Merging them is not the requirement and is not safely achievable — `Classify` is
   partial and `LaneOf` is total, so collapsing them either shows everything in the severe window or
-  drops events off the band.  The deliverable is the four-way cross-table the brief asked for and this
-  phase did not produce, plus FR-2.2's coupling check.*
+  drops events off the band.  The deliverable is the four-way cross-table, produced below,
+  plus FR-2.2's coupling check.*
 - **FR-1.3** The band's single-writer rule is enforced by a mechanism rather than a comment.
 - **FR-1.4** The audio arbiter's hold, resume, and drop path is serialised against duck and restore.
 
