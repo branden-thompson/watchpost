@@ -224,6 +224,8 @@ func (Dashboard).floatModal
 func (Dashboard).floatModalFooter
 func (Dashboard).floatModalToned
 func (Dashboard).focusBody
+func (Dashboard).footerModalChrome
+func (Dashboard).footerModalScrollMax
 func (Dashboard).forecastRows
 func (Dashboard).handleAddKey
 func (Dashboard).handleDebugNav
@@ -257,7 +259,6 @@ func (Dashboard).lookupKey
 func (Dashboard).marqueeProgress
 func (Dashboard).marqueeTrack
 func (Dashboard).memoCounts
-func (Dashboard).modalFocusScroll
 func (Dashboard).modalKeyFor
 func (Dashboard).modalLines
 func (Dashboard).modalMax
@@ -390,6 +391,7 @@ func (Dashboard).watchlistFull
 func (Dashboard).windowSize
 func (Dashboard).withCmd
 func (Dashboard).wrapModal
+func (Dashboard).wrapModalAt
 func (Dashboard).writeBody
 func (RadioMode).Key
 func (RadioMode).String
@@ -454,6 +456,7 @@ func fireTone
 func firstOfGroup
 func fixedAge
 func fixedAgeTrim
+func focusScroll
 func foldWarnings
 func formatAlertBody
 func frameText
@@ -570,6 +573,7 @@ func widestBlock
 func withoutRef
 func worseStatus
 func wrapPrefixed
+func wrappedIndex
 type CastView
 type Config
 type Dashboard

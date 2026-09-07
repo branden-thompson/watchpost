@@ -289,6 +289,12 @@ func anyFocused(blocks []setupBlock) bool {
 // window's ways out below the fold: the rail drew its arrows, the cursor moved,
 // and the screen did not change. The reported "arrows do not work", arrived at
 // by geometry instead of by the memo.
+//
+// at IS -1 WHEN THERE IS NOTHING TO FOCUS (FR-5). A release build compiles the
+// injector out, so the shipped ctrl+d window is prose and no list — and a
+// focus-following scroll has nothing to follow there. -1 says "this body
+// scrolls on its own"; 0 would say "hold the top", which is what pinned the
+// whole of that window's message below the fold at 80x24.
 func (d Dashboard) focusBody(o render.Opts) (lines []string, at, end int) {
 	switch d.modal {
 	case modalSetup:
@@ -298,28 +304,37 @@ func (d Dashboard) focusBody(o render.Opts) (lines []string, at, end int) {
 	case modalDebug:
 		return d.debugLines(o)
 	}
-	return nil, 0, 0
+	return nil, -1, -1
 }
 
-// modalFocusScroll is the scroll offset that keeps the focused row — and the
-// lines under it — inside the window.
-func (d Dashboard) modalFocusScroll(o render.Opts, window int) int {
-	lines, at, end := d.focusBody(o)
-	if window <= 0 || len(lines) <= window {
+// wrappedIndex is where line i of a body lands once the body is wrapped to w.
+// WrapLines is per-line, so the prefix wraps exactly as the prefix of the whole.
+func wrappedIndex(lines []string, i, w int) int {
+	return len(render.WrapLines(lines[:min(i, len(lines))], w))
+}
+
+// focusScroll is the offset arithmetic, with no rendering in it: keep at..end
+// inside a window of `window` lines, holding `cur` when the span is already
+// there. at < 0 means nothing is focused and `cur` simply rules, clamped.
+func focusScroll(n, at, end, window, cur int) int {
+	if window <= 0 || n <= window {
 		return 0
+	}
+	if at < 0 {
+		return max(0, min(cur, n-window))
 	}
 	// The whole span, not just the first line: the row AND everything it draws
 	// — its hint, its value, its note, its reason — must be on screen (RS-19).
 	// If the span is taller than the window the top wins: a row whose head is
 	// off screen cannot be identified at all.
-	want := min(end, len(lines)-1)
+	want := min(end, n-1)
 	switch {
-	case want >= d.modalScroll+window:
+	case want >= cur+window:
 		return max(0, min(want-window+1, at))
-	case at < d.modalScroll:
+	case at < cur:
 		return at
 	}
-	return min(d.modalScroll, len(lines)-window)
+	return min(cur, n-window)
 }
 
 // castLineOf is a cast row's offset within the group's block, following the

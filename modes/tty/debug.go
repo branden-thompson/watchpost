@@ -80,11 +80,16 @@ func (d Dashboard) debugLines(o render.Opts) (out []string, focusAt, focusEnd in
 
 	sc := d.debugScenarios()
 	if len(sc) == 0 {
+		// -1: NOTHING TO FOCUS, SO THE BODY SCROLLS (FR-5). This is the window a
+		// release build ships. It returned 0 — "hold the top" — and 0 is a
+		// focused row, so the scroll never moved: at 80x24 every line of what
+		// this window exists to say sat below the fold with no key that reached
+		// it, in the build that ships.
 		return append(out, insetModalLines([]string{
 			"INJECTION IS NOT AVAILABLE IN THIS BUILD.", "",
 			"It is compiled out rather than switched off, so a fabricated alert cannot be",
 			"produced here by any means. Build with -tags watchpost_debug to enable it.", ""},
-			debugContent)...), 0, 0
+			debugContent)...), -1, -1
 	}
 	out = append(out, insetModalLines([]string{"INJECT AN ALERT:", ""}, debugContent)...)
 	// THROUGH THE LIST'S ONE OWNER (D-1), like every other list. This drew a
@@ -115,7 +120,10 @@ func (d Dashboard) debugLines(o render.Opts) (out []string, focusAt, focusEnd in
 // debugChips is the pinned footer.
 func (d Dashboard) debugChips(o render.Opts) []string {
 	if len(d.debugScenarios()) == 0 {
-		return []string{"  " + o.KeyCap("esc") + " Close"}
+		// ↑↓ SCROLL HERE, AND THE CHIPS SAY SO. There is no list in this build,
+		// and a window whose text runs past the fold with no advertised way
+		// down reads as a window with nothing more in it.
+		return []string{"  " + o.KeyCap("↑↓") + " Scroll    " + o.KeyCap("esc") + " Close"}
 	}
 	return []string{"  " + o.KeyCap("↑↓") + " Choose    " + o.KeyCap("enter") + " Inject    " + o.KeyCap("esc") + " Close"}
 }
@@ -124,6 +132,15 @@ func (d Dashboard) debugChips(o render.Opts) []string {
 func (d Dashboard) handleDebugNav(act term.Action) Dashboard {
 	n := len(d.debugScenarios())
 	if n == 0 {
+		// A BUILD WITH NO LIST STILL HAS A WINDOW TO READ (FR-5): the keys that
+		// choose a scenario scroll the prose instead, bounded by the window's
+		// own geometry rather than by a second copy of it.
+		switch act {
+		case "nav-up":
+			d.modalScroll = max(0, d.modalScroll-1)
+		case "nav-down":
+			d.modalScroll = min(d.modalScroll+1, d.footerModalScrollMax(d.opts()))
+		}
 		return d
 	}
 	switch act {

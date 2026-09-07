@@ -59,26 +59,13 @@ func (d Dashboard) renderModal(o render.Opts) string {
 		return d.floatModal(o, d.modalWidth(), "Watchpost Status", d.statusLines()) // UAT 24.2; the window covers more than the APIs now (0.14.0)
 	case modalAbout:
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines()) // UAT 68
-	case modalSetup:
+	case modalSevere:
+		return d.severeModal(o) // 0.13.0
+	case modalSetup, modalDebug, modalRelayFault:
 		// The chips are a PINNED FOOTER (OP-5): they render after the scroll
 		// window, so at 80x24 they cannot scroll away exactly when a lost
 		// listener needs them.
-		// SETTINGS, not "Setup / Configs". The window
-		// outgrew the mock's title: setup is what you do once, and this is where
-		// the cast, the tones and the alert scope are changed whenever. The CLI
-		// keeps `watchpost setup` — the run-it-once meaning is the right one
-		// there, and it is the pattern people expect of a tool's first run.
-		return d.floatModalFooter(o, d.modalWidth(), "Settings", d.setupLines(o), d.setupChips(o))
-	case modalSevere:
-		return d.severeModal(o) // 0.13.0
-	case modalDebug:
-		lines, _, _ := d.debugLines(o)
-		return d.floatModalFooter(o, debugWidth, "", lines, d.debugChips(o))
-	case modalRelayFault:
-		// No title in the frame: the mock puts *** ERROR *** on its own line
-		// inside the box, over a plain top border.
-		lines, _, _ := d.relayFaultLines(o)
-		return d.floatModalFooter(o, relayFaultWidth, "", lines, d.relayFaultChips(o))
+		return d.floatModalFooter(o)
 	}
 	return ""
 }
@@ -118,11 +105,26 @@ func (d Dashboard) modalWidth() int {
 
 // modalLines is the open modal's full body, wrapped exactly as the
 // component renders it — scroll bounds always match what is on screen.
+//
+// EVERY WINDOW HAS A CASE (FR-2.3). The default arm handed back HELP's lines,
+// so a window with no case of its own scrolled by help's line count — the
+// closed-set survey's one bucket-1 arm whose failure mode GROWS with every
+// window Broadcaster adds, since each new one would inherit it silently. What
+// remains is not a default: the two values that are not open windows are named,
+// and a window added later fails to compile here instead of quietly reading as
+// help.
 func (d Dashboard) modalLines() []string {
-	var raw []string
+	o := d.opts()
+	raw, w := []string(nil), d.modalWidth()
 	switch d.modal {
+	case modalHelp:
+		raw = d.helpLines(o)
 	case modalDetails:
 		raw = d.detailLines()
+	case modalAdd:
+		raw = d.addLines(o)
+	case modalRemove:
+		raw = d.removeLines(o)
 	case modalAlerts:
 		raw = d.alertDetailLines()
 	case modalStatus:
@@ -130,12 +132,19 @@ func (d Dashboard) modalLines() []string {
 	case modalAbout:
 		raw = d.aboutLines()
 	case modalSevere:
-		raw = d.severeDetailLines(d.opts()) // only the record scrolls; the table windows itself
-	default:
-		raw = d.helpLines(d.opts())
+		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
+	case modalSetup, modalDebug, modalRelayFault:
+		// The pinned-footer windows are laid out at their own box width and
+		// their scroll follows the focus. Asked at the dashboard's width they
+		// would report a body nobody draws.
+		fw, _, _ := d.footerModalChrome(o)
+		fo := o
+		fo.Width, w = min(o.Width, fw), fw
+		raw, _, _ = d.focusBody(fo)
+	case modalNone, numModals:
+		return nil // not open windows
 	}
-	o := d.opts()
-	return d.wrapModal(raw, min(o.Width, d.modalWidth()))
+	return d.wrapModal(raw, min(o.Width, w))
 }
 
 // wrapModal wraps a modal body for a panel of width w exactly as the
@@ -143,10 +152,55 @@ func (d Dashboard) modalLines() []string {
 // everything fits without the scroll rail, else to the rail budget (w-7).
 // Single owner — the renderer and the scroll bounds both use it.
 func (d Dashboard) wrapModal(lines []string, w int) []string {
+	out, _ := d.wrapModalAt(lines, w)
+	return out
+}
+
+// wrapModalAt is that, and the width it wrapped at, in ONE pass — because the
+// scroll has to count in the coordinates the panel draws in (FR-5), and asking
+// twice costs a second wrap of the whole body on the memo-miss frame.
+func (d Dashboard) wrapModalAt(lines []string, w int) ([]string, int) {
 	if full := render.WrapLines(lines, w-4); len(full) <= d.modalMax() {
-		return full
+		return full, w - 4
 	}
-	return render.WrapLines(lines, w-7)
+	return render.WrapLines(lines, w-7), w - 7
+}
+
+// footerModalScrollMax is how far a pinned-footer window scrolls: its wrapped
+// body less the window it is drawn in. THE KEYBOARD ASKS THIS, so a window with
+// nothing to focus scrolls exactly as far as it has lines and no further —
+// the same arithmetic floatModalFooter renders with, not a second copy of it.
+func (d Dashboard) footerModalScrollMax(o render.Opts) int {
+	width, _, footer := d.footerModalChrome(o)
+	if width == 0 {
+		return 0
+	}
+	o.Width = min(o.Width, width)
+	lines, _, _ := d.focusBody(o)
+	foot := d.wrapModal(footer, o.Width)
+	return max(0, len(d.wrapModal(lines, o.Width))-max(1, d.modalMax()-len(foot)))
+}
+
+// footerModalChrome is the open pinned-footer window's frame: its width, its
+// title and its footer rows. One owner for the three windows that pin a footer,
+// so the renderer and the keyboard cannot disagree about the geometry.
+func (d Dashboard) footerModalChrome(o render.Opts) (width int, title string, footer []string) {
+	switch d.modal {
+	case modalSetup:
+		// SETTINGS, not "Setup / Configs". The window outgrew the mock's title:
+		// setup is what you do once, and this is where the cast, the tones and
+		// the alert scope are changed whenever. The CLI keeps `watchpost setup`
+		// — the run-it-once meaning is the right one there, and it is the
+		// pattern people expect of a tool's first run.
+		return d.modalWidth(), "Settings", d.setupChips(o)
+	case modalDebug:
+		return debugWidth, "", d.debugChips(o)
+	case modalRelayFault:
+		// No title in the frame: the mock puts *** ERROR *** on its own line
+		// inside the box, over a plain top border.
+		return relayFaultWidth, "", d.relayFaultChips(o)
+	}
+	return 0, "", nil
 }
 
 // detailsModal renders the floating detail view (location-detail-mock.txt):
@@ -203,13 +257,31 @@ func (d Dashboard) floatModal(o render.Opts, width int, title string, lines []st
 // footer names the keys that operate them — a footer that scrolled with the
 // body would be missing precisely when the reader has scrolled far enough to
 // be lost.
-func (d Dashboard) floatModalFooter(o render.Opts, width int, title string, lines, footer []string) string {
+func (d Dashboard) floatModalFooter(o render.Opts) string {
+	width, title, footer := d.footerModalChrome(o)
 	fg, bg := render.ModalTone(d.darkBG)
 	o.Width = min(o.Width, width)
-	wrapped, foot := d.wrapModal(lines, o.Width), d.wrapModal(footer, o.Width)
+	// THE BODY IS BUILT AT THE WIDTH IT IS DRAWN AT. The caller used to pass it
+	// in, computed from the unnarrowed opts, so setup laid itself out for one
+	// width and was measured at another.
+	lines, at, end := d.focusBody(o)
+	wrapped, wrapAt := d.wrapModalAt(lines, o.Width)
+	foot := d.wrapModal(footer, o.Width)
 	// The scroll FOLLOWS THE FOCUS: at 80x24 most of the window is off screen,
 	// and a focused row the listener cannot see reads as a dead keyboard.
-	scroll := d.modalFocusScroll(o, max(1, d.modalMax()-len(foot)))
+	//
+	// IN THE COORDINATES THE PANEL SCROLLS IN (FR-5). The bodies arrive
+	// hand-inset to their own window's width and are RE-WRAPPED here, so every
+	// line below a paragraph that wrapped moves down. At 80x24 the ctrl+d
+	// window's focused scenario sat at unwrapped 11 and wrapped 14, the offset
+	// came out 1, and the panel drew lines 1..11: the cursor moved and the
+	// screen did not change — the dead keyboard the relay-fault window was
+	// fixed for on 2026-09-05, in the window next door, because that fix did
+	// its arithmetic on the unwrapped body.
+	if at >= 0 {
+		at, end = wrappedIndex(lines, at, wrapAt), wrappedIndex(lines, end+1, wrapAt)-1
+	}
+	scroll := focusScroll(len(wrapped), at, end, max(1, d.modalMax()-len(foot)), d.modalScroll)
 	panel := o.ScrollPanelFooter(title, wrapped, foot, scroll, d.modalMax())
 	return o.Block(panel, fg, bg)
 }
