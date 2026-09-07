@@ -575,7 +575,7 @@ func (d *radioDeck) tone(class cast.Class) time.Duration {
 	if radioDebugOn() {
 		d.debugLog("tone:" + class.Key()) // the live M4 instrument (perf-protocol.md §1 item 2)
 	}
-	tone := synth.AlertTone(synth.PresetByName(cast.ToneName(class)), synth.ToneRate)
+	tone := alertTonePCM(class)
 	_ = d.engine.PreviewAside(synth.ToneRate, bytes.NewReader(tone)) // the attention tone never drives the bars
 	return pcmDuration(tone, synth.ToneRate)
 }
@@ -877,4 +877,23 @@ func (d *radioDeck) escalate(reason string) {
 	// shows the fall-through alone — which is the honest answer: read the
 	// report, because there is nothing else to tune to.
 	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(d.engine.Status().Mount)})
+}
+
+// alertTonePCM is a class's attention signal, whole.
+//
+// A class sounds its ratified preset (MVS-D-26) — and, since #18, sounds it a
+// ratified NUMBER OF TIMES. An evacuation order is three dual tones where a
+// warning is one, so a listener with no screen hears how many and knows what
+// kind of thing is coming before a word is spoken.
+func alertTonePCM(class cast.Class) []byte {
+	one := synth.AlertTone(synth.PresetByName(cast.ToneName(class)), synth.ToneRate)
+	n := cast.ToneRepeats(class)
+	if n <= 1 || len(one) == 0 {
+		return one
+	}
+	out := make([]byte, 0, len(one)*n)
+	for range n { // bounded by the class's ratified count (P10-02)
+		out = append(out, one...)
+	}
+	return out
 }

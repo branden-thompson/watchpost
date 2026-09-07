@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
-	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -43,7 +42,7 @@ import (
 // own broadcast tail inside its line, so it gets neither. An absent part is
 // absent, rather than present and empty, so the Reader has nothing to skip.
 func composeTakeover(lib *script.Library, fresh []globalfeed.Event, burst bool, divert int, c render.Clock, now time.Time) lineup.Script {
-	sc := lineup.Script{Tone: cast.Classify(worstOf(fresh).Type).Key()}
+	sc := lineup.Script{Tone: toneClassOfEvent(worstOf(fresh)).Key()}
 	if burst {
 		if head := burstHead(lib, fresh); head != "" {
 			sc.Parts = append(sc.Parts, lineup.Part{Kind: lineup.PartHead, Text: head})

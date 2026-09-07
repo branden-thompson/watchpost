@@ -287,6 +287,7 @@ func RunDashboard
 func abbreviateHome
 func alertKeysOf
 func alertNarration
+func alertTonePCM
 func applySetup
 func applyThemes
 func arrivalsOf
@@ -446,6 +447,7 @@ func tickerState
 func timeRender
 func toKeyMap
 func toSevereRow
+func toneClassOfEvent
 func toneClasses
 func toneFromView
 func toneView

@@ -87,7 +87,8 @@ func TestEveryClassIsListedOrDeclared(t *testing.T) {
 	notListed := map[Class]string{
 		ClassEmergency: "an evacuation order's tone is not mutable: Classes() feeds the " +
 			"Settings mute list, and a listener must not be able to silence " +
-			"leave-now (#18). Absent by decision, not by omission",
+			"leave-now (#18). Absent by decision, not by omission — HUM LEAD 2026-09-07, " +
+			"provisional: revisit at UAT if a listener wants it",
 	}
 	listed := map[Class]bool{}
 	for _, c := range Classes() {

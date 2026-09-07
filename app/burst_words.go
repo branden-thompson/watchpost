@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
-	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -120,7 +119,7 @@ func worstOf(evs []globalfeed.Event) globalfeed.Event {
 			}
 			continue
 		}
-		if cast.Classify(e.Type).ToneRank() > cast.Classify(worst.Type).ToneRank() {
+		if toneClassOfEvent(e).ToneRank() > toneClassOfEvent(worst).ToneRank() {
 			worst = e
 		}
 	}
