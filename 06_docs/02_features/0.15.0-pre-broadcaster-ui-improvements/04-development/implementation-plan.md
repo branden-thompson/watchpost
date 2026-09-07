@@ -154,9 +154,16 @@ so 2.2.1's "extend" exception is architecturally absent, not merely unimplemente
 before the fix, since "how long" answers none of 2.2.1's three mechanisms.)*
 
 **Exit conditions**
-- FR-5 is a **set-level** property, not one window: at 80×24 every modal's focused row and footer keys
-  are on screen, or the modal is declared with a reason.  Ten of eleven windows have no assertion
-  below 44 rows today; fixing only `ctrl+d` leaves the defect in the other nine.
+- ~~FR-5 is a **set-level** property, not one window: at 80×24 every modal's focused row and footer
+  keys are on screen, or the modal is declared with a reason.~~  **MET, `ac69622`.**
+  `modes/tty/modal_reachability_test.go` walks the modal enum and asserts every line a window draws
+  can be brought on screen at 80×24, driven through the real key path; the baseline ratchets both
+  ways, so a window that improves takes its number down with it.  Two defects fixed rather than
+  pinned: the offset counted in unwrapped coordinates while the panel scrolled wrapped ones, and the
+  ctrl+d window a **release build ships** had no focus and therefore no scroll at all — five lines,
+  all of what that window exists to say, unreachable by any key.  Three windows keep a non-zero
+  count and it is one mechanism, filed as **F-55** for a HUM LEAD ruling.  The exit condition's own
+  premise held: fixing only `ctrl+d` would have left it in setup and relay-fault.
 - The `"emergency"` scenario injects an `Evacuation Immediate`; every payload matches its label.
 - Test events expire within two minutes, and their persisted footprint in `seen.json` is bounded or
   self-identifying — `tickerSeenWindow` is 7 days and FR-4.3's bound does not reach it.
