@@ -75,11 +75,6 @@ func (e Event) Verb() string {
 	}
 }
 
-// plaintext.MaxFieldRunes bounds a feed-supplied Type/Place so a hostile or compromised
-// feed cannot make the marquee or the TTS narration render an unbounded string
-// (red-team 0.12.0 P4 F5). The broadcast path caps a spoken segment near this;
-// real event names and place descriptions are far shorter.
-// maxIDRunes bounds an id: the URL form of an NWS OID is 31 runes longer than the bare one the location path carries — both must normalise to the same key (REVIEW R5-B-05).
 const maxIDRunes = 200
 
 // clampID bounds an id.
@@ -90,7 +85,6 @@ func clampID(s string) string {
 	return s
 }
 
-// clampField truncates a feed field to plaintext.MaxFieldRunes (rune-safe).
 // Sentence is the event's lead line, shared by the marquee and the spoken
 // narration (single owner): "A(n) <Type> has been <verb> for <Location>" — or,
 // for a named storm, "<Type> <Name> has been <verb> for <Location>" with no

@@ -165,7 +165,7 @@ func firstParam(params map[string][]string, key string) string {
 }
 
 // severeDetailOf bounds one CAP feature's record fields (P4 F5 / NFR-5): short
-// fields to plaintext.MaxFieldRunes, prose to maxProseRunes, lists to plaintext.MaxListLen, and the
+// fields and lists through platform/plaintext, prose to maxProseRunes, and the
 // parameters map through the allowlist only (S7).
 func severeDetailOf(p nwsProps) *SevereDetail {
 	d := &SevereDetail{
