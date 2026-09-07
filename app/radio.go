@@ -395,12 +395,7 @@ func envWatchlistDwell() time.Duration {
 // and on a station with no audio it stays nil — silent rather than a panic on
 // the one path that has no deck at all.
 func (d *radioDeck) tell(ev lineup.Event) {
-	d.mu.Lock()
-	emit := d.emit
-	d.mu.Unlock()
-	if emit != nil {
-		emit(ev)
-	}
+	tellUnder(&d.mu, &d.emit, ev)
 }
 
 // synthReason explains the Synth default: the unrelayed covering
@@ -570,10 +565,7 @@ func (d *radioDeck) duck() { d.engine.Suppress() }
 // clock is the listener's clock, the 12-hour default when nothing set one (the
 // older tests, which build a deck by hand).
 func (d *radioDeck) clock() render.Clock {
-	if d.clockPref == nil {
-		return render.Clock12
-	}
-	return render.Clock(d.clockPref.Load())
+	return clockFrom(d.clockPref)
 }
 
 func (d *radioDeck) tone(class cast.Class) time.Duration {

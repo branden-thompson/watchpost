@@ -108,7 +108,13 @@ func harmonize(loc *Location, providerOrder []string) {
 
 // keepOr returns have when set, else a copy of the fallback (single-deref
 // value helper, P10-09 pointer discipline).
-func keepOr(have, fallback *float64) *float64 {
+// KeepOr keeps the value a provider gave, else adopts the fallback by VALUE —
+// never by sharing the pointer, so a later write to one cannot reach the other.
+//
+// Exported because domains/marine/ndbc held a byte-identical copy. It is a
+// merge policy, and a merge policy with two owners is one that will be changed
+// in one of them (issue #7's shape).
+func KeepOr(have, fallback *float64) *float64 {
 	if have != nil || fallback == nil {
 		return have
 	}
@@ -141,7 +147,7 @@ func rehydrateFromForecast(loc *Location, now time.Time) {
 		c.Source.FillFrom[field] = fillForecast
 	}
 	if c.Temp == nil && h.Temp != nil {
-		c.Temp = keepOr(nil, h.Temp)
+		c.Temp = KeepOr(nil, h.Temp)
 		record("temp")
 	}
 	if (c.Condition == "" || c.Condition == "unknown") && h.Condition != "" && h.Condition != "unknown" {
@@ -203,18 +209,18 @@ func harmonizeMarine(loc *Location, order []string) {
 // fillMarine copies src's non-nil fields into dst's nil fields (never
 // replaces); buoy identity travels with the water temperature.
 func fillMarine(dst, src *Marine) {
-	dst.SwellHeight = keepOr(dst.SwellHeight, src.SwellHeight)
-	dst.SwellDirDeg = keepOr(dst.SwellDirDeg, src.SwellDirDeg)
-	dst.WaveHeight = keepOr(dst.WaveHeight, src.WaveHeight)
-	dst.WavePeriod = keepOr(dst.WavePeriod, src.WavePeriod)
-	dst.WindWaveHeight = keepOr(dst.WindWaveHeight, src.WindWaveHeight)
-	dst.SecondarySwellHeight = keepOr(dst.SecondarySwellHeight, src.SecondarySwellHeight)
-	dst.SecondarySwellDirDeg = keepOr(dst.SecondarySwellDirDeg, src.SecondarySwellDirDeg)
-	dst.SecondaryPeriod = keepOr(dst.SecondaryPeriod, src.SecondaryPeriod)
-	dst.WindSpeed = keepOr(dst.WindSpeed, src.WindSpeed)
-	dst.WindGust = keepOr(dst.WindGust, src.WindGust)
-	dst.WaterTemp = keepOr(dst.WaterTemp, src.WaterTemp)
-	dst.BuoyDistanceKM = keepOr(dst.BuoyDistanceKM, src.BuoyDistanceKM)
+	dst.SwellHeight = KeepOr(dst.SwellHeight, src.SwellHeight)
+	dst.SwellDirDeg = KeepOr(dst.SwellDirDeg, src.SwellDirDeg)
+	dst.WaveHeight = KeepOr(dst.WaveHeight, src.WaveHeight)
+	dst.WavePeriod = KeepOr(dst.WavePeriod, src.WavePeriod)
+	dst.WindWaveHeight = KeepOr(dst.WindWaveHeight, src.WindWaveHeight)
+	dst.SecondarySwellHeight = KeepOr(dst.SecondarySwellHeight, src.SecondarySwellHeight)
+	dst.SecondarySwellDirDeg = KeepOr(dst.SecondarySwellDirDeg, src.SecondarySwellDirDeg)
+	dst.SecondaryPeriod = KeepOr(dst.SecondaryPeriod, src.SecondaryPeriod)
+	dst.WindSpeed = KeepOr(dst.WindSpeed, src.WindSpeed)
+	dst.WindGust = KeepOr(dst.WindGust, src.WindGust)
+	dst.WaterTemp = KeepOr(dst.WaterTemp, src.WaterTemp)
+	dst.BuoyDistanceKM = KeepOr(dst.BuoyDistanceKM, src.BuoyDistanceKM)
 	if dst.Buoy == "" {
 		dst.Buoy = src.Buoy
 	}
@@ -227,10 +233,10 @@ func fillMarine(dst, src *Marine) {
 // fillTides copies the tide/current block (UAT 61) into a section that has
 // none — the whole block travels together with its station identity.
 func fillTides(dst, src *Marine) {
-	dst.TideLevel = keepOr(dst.TideLevel, src.TideLevel)
+	dst.TideLevel = KeepOr(dst.TideLevel, src.TideLevel)
 	if len(dst.Tides) == 0 && len(src.Tides) > 0 {
 		dst.Tides = append([]TideEvent(nil), src.Tides...)
-		dst.TideStation, dst.TideStationKM = src.TideStation, keepOr(nil, src.TideStationKM)
+		dst.TideStation, dst.TideStationKM = src.TideStation, KeepOr(nil, src.TideStationKM)
 	}
 	if len(dst.Currents) == 0 && len(src.Currents) > 0 {
 		dst.Currents = append([]CurrentEvent(nil), src.Currents...)

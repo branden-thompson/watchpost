@@ -62,7 +62,7 @@ func TestVoiceChipLabelIsTheChooserLabel(t *testing.T) {
 	// THROUGH THE SEAM, not runtime.GOOS. VoiceName resolves the default via
 	// the seam, so a test that branches on the real OS cannot be steered by
 	// asPlatform and silently disagrees with the code the moment they differ.
-	if runtimeGOOS == "darwin" {
+	if runtimeGOOS() == "darwin" {
 		if got != systemVoice && got != defaultMacVoice {
 			t.Fatalf("chip label = %q", got)
 		}

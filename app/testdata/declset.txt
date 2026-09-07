@@ -307,6 +307,7 @@ func castReport
 func castToConfig
 func castView
 func chooseNearest
+func clockFrom
 func composeTakeover
 func configLocations
 func coveragePhrase
@@ -315,9 +316,11 @@ func debugAddr
 func debugScenarios
 func debugScenarios
 func defaultLocation
+func defaultVoiceFor
 func deriveTag
 func dirGauge
 func discoverMacVoices
+func discoveredIn
 func dropSuperseded
 func dumpHint
 func dumpHint
@@ -336,6 +339,7 @@ func gapAfter
 func halfFor
 func holdRest
 func indexKey
+func init
 func itemsOf
 func itoaN
 func laneItems
@@ -370,6 +374,7 @@ func pairOf
 func parseLatLon
 func parseSayVoices
 func pcmDuration
+func piperInstallFor
 func piperVoiceNames
 func priorityTiers
 func profileNames
@@ -396,6 +401,7 @@ func roleVoiceOf
 func rowClock
 func runsOf
 func runtimeCounts
+func runtimeGOOS
 func saveCast
 func savePreference
 func saveRadioMode
@@ -410,6 +416,7 @@ func seismicRules
 func semverLess
 func semverParts
 func setHalf
+func setRuntimeGOOS
 func setThemeHook
 func setUIHook
 func settingsRoles
@@ -431,6 +438,7 @@ func startTicker
 func subjectOf
 func suggestHook
 func tapeHead
+func tellUnder
 func tickerCategory
 func tickerMuteState
 func tickerRadiusState
@@ -495,4 +503,4 @@ type tickerPrefs
 var _
 var _
 var errDumpTooSoon
-var runtimeGOOS
+var goosSeam

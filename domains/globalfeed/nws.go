@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 // nwsTTL: warnings change quickly during an outbreak.
@@ -158,23 +159,23 @@ func parseCAPTime(s string) time.Time {
 // firstParam reads one allowlisted CAP parameter (the first value), bounded.
 func firstParam(params map[string][]string, key string) string {
 	if v, ok := params[key]; ok && len(v) > 0 {
-		return clampField(v[0])
+		return plaintext.ClampField(v[0])
 	}
 	return ""
 }
 
 // severeDetailOf bounds one CAP feature's record fields (P4 F5 / NFR-5): short
-// fields to maxFieldRunes, prose to maxProseRunes, lists to maxListLen, and the
+// fields and lists through platform/plaintext, prose to maxProseRunes, and the
 // parameters map through the allowlist only (S7).
 func severeDetailOf(p nwsProps) *SevereDetail {
 	d := &SevereDetail{
-		Headline: clampField(p.Headline), Description: clampProse(p.Description), Instruction: clampProse(p.Instruction),
-		Severity: clampField(p.Severity), Certainty: clampField(p.Certainty), Urgency: clampField(p.Urgency),
-		MessageType: clampField(p.MessageType), Category: clampField(p.Category), Response: clampField(p.Response),
-		SenderName: clampField(p.SenderName), Sender: clampField(p.Sender),
+		Headline: plaintext.ClampField(p.Headline), Description: clampProse(p.Description), Instruction: clampProse(p.Instruction),
+		Severity: plaintext.ClampField(p.Severity), Certainty: plaintext.ClampField(p.Certainty), Urgency: plaintext.ClampField(p.Urgency),
+		MessageType: plaintext.ClampField(p.MessageType), Category: plaintext.ClampField(p.Category), Response: plaintext.ClampField(p.Response),
+		SenderName: plaintext.ClampField(p.SenderName), Sender: plaintext.ClampField(p.Sender),
 		Effective: parseCAPTime(p.Effective), Sent: parseCAPTime(p.Sent), Expires: parseCAPTime(p.Expires),
 		Ends: parseCAPTime(p.Ends), Onset: parseCAPTime(p.Onset),
-		AffectedZones: clampSlice(p.AffectedZones),
+		AffectedZones: plaintext.ClampList(p.AffectedZones),
 		MaxWindGust:   firstParam(p.Parameters, "maxWindGust"), MaxHailSize: firstParam(p.Parameters, "maxHailSize"),
 		EventMotion: firstParam(p.Parameters, "eventMotionDescription"), NWSHeadline: firstParam(p.Parameters, "NWSheadline"),
 		VTEC: firstParam(p.Parameters, "VTEC"),
@@ -183,7 +184,7 @@ func severeDetailOf(p nwsProps) *SevereDetail {
 	for _, x := range p.References {
 		refs = append(refs, x.ID)
 	}
-	d.References = clampSlice(refs)
+	d.References = plaintext.ClampList(refs)
 	return d
 }
 
@@ -254,8 +255,8 @@ func (n *NWS) parse(body []byte, u string) ([]Event, error) {
 			ID:         clampID(f.ID), // bounded (R3-D-02; ids get the longer bound, R5-B-05); the supersede map is keyed on the raw id above, looked up with the same
 			Class:      ClassSevereWx,
 			Severity:   severeSeverity(p.Event),
-			Type:       clampField(p.Event),    // the spoken type ("Tornado Warning"); bounded so a hostile feed can't blow up the narration render (P4 F5)
-			Place:      clampField(p.AreaDesc), // the location; bounded likewise
+			Type:       plaintext.ClampField(p.Event),    // the spoken type ("Tornado Warning"); bounded so a hostile feed can't blow up the narration render (P4 F5)
+			Place:      plaintext.ClampField(p.AreaDesc), // the location; bounded likewise
 			Lat:        lat,
 			Lon:        lon,
 			HasPoint:   ok,

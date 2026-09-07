@@ -129,10 +129,7 @@ type tickerDeck struct {
 // clock is the listener's clock, or the 12-hour default when nothing set one
 // (the older tests, which build a deck by hand).
 func (t *tickerDeck) clock() render.Clock {
-	if t.clockPref == nil {
-		return render.Clock12
-	}
-	return render.Clock(t.clockPref.Load())
+	return clockFrom(t.clockPref)
 }
 
 // tickerAudio is the breaking-news sound the ticker drives (0.12.0): duck the
@@ -345,12 +342,7 @@ func (t *tickerDeck) startTakeover(fresh []globalfeed.Event) {
 // tell hands an event to the Director, or drops it when there is no schedule —
 // the older tests build a deck with no station around it.
 func (t *tickerDeck) tell(ev lineup.Event) {
-	t.mu.Lock()
-	emit := t.emit
-	t.mu.Unlock()
-	if emit != nil {
-		emit(ev)
-	}
+	tellUnder(&t.mu, &t.emit, ev)
 }
 
 // unread is the events of a burst that no takeover has read aloud yet.

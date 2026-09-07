@@ -105,33 +105,32 @@ func (p *Provider) FireWeatherZone(ctx context.Context, ref snapshot.LocationRef
 // ForecastZone is the location's forecast zone UGC ("CAZ043") from the
 // cached point resolution — the synthesized broadcast reads only that
 // zone's block of a product (UAT 81). "" when unresolvable.
-func (p *Provider) ForecastZone(ctx context.Context, ref snapshot.LocationRef) string {
+// ugcOfKind is the one UGC lookup: the zones this ref resolves to, filtered to
+// the kind wanted. A UGC code is six characters with the kind at index 2 — 'Z'
+// for a forecast zone, 'C' for a county — and stating that shape twice is how
+// the two drift when the format is next touched.
+func (p *Provider) ugcOfKind(ctx context.Context, ref snapshot.LocationRef, kind byte) string {
 	g, err := p.resolve(ctx, ref)
 	if err != nil {
 		return ""
 	}
 	for _, z := range g.zones {
-		if len(z) == 6 && z[2] == 'Z' {
+		if len(z) == 6 && z[2] == kind {
 			return z
 		}
 	}
 	return ""
 }
 
+func (p *Provider) ForecastZone(ctx context.Context, ref snapshot.LocationRef) string {
+	return p.ugcOfKind(ctx, ref, 'Z')
+}
+
 // CountyUGC is the location's county UGC ("CAC073") from the cached point
 // resolution — the radio resolver turns it into a SAME code (B4). "" when
 // unresolvable.
 func (p *Provider) CountyUGC(ctx context.Context, ref snapshot.LocationRef) string {
-	g, err := p.resolve(ctx, ref)
-	if err != nil {
-		return ""
-	}
-	for _, z := range g.zones {
-		if len(z) == 6 && z[2] == 'C' {
-			return z
-		}
-	}
-	return ""
+	return p.ugcOfKind(ctx, ref, 'C')
 }
 
 // Office is the forecast office (CWA id, e.g. "SGX") that issues the

@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
@@ -22,15 +23,32 @@ import (
 // struct onto cast.Config, and it answers cast.Host's questions about this
 // machine. Nothing here re-implements a decision.
 
-// runtimeGOOS is the production seam for the platform. It is a package-level
+// runtimeGOOS() is the production seam for the platform. It is a package-level
 // var rather than a test-file function so a test in any file can point the
 // resolution at the other platform's namespace and walk the whole fallback
 // matrix on one machine — the alternative is a matrix that only ever runs half
 // of itself on the developer's box.
 //
-// It is written only by tests (t.Cleanup restores it) and read on paths that
-// already hold no lock.
-var runtimeGOOS = runtime.GOOS
+// IT IS ATOMIC BECAUSE A TEST WRITES IT WHILE PRODUCTION GOROUTINES READ IT.
+// The previous comment here said it was "read on paths that already hold no
+// lock", which is only safe if every read happens on the writing test's own
+// goroutine — and it does not. The synth Source's render loop calls
+// resolveVoice, which reads this, and nothing waits for that goroutine when a
+// test ends. asPlatform's t.Cleanup restore then raced it, and -race said so on
+// CI (issue #7's PR, ubuntu leg).
+//
+// A load per call, on a path that already resolves a voice. The alternative was
+// to default the whole app test binary to darwin, which would have stopped
+// Linux CI exercising Linux paths — the exact hole #7 came through.
+var goosSeam atomic.Value // string
+
+func init() { goosSeam.Store(runtime.GOOS) }
+
+// runtimeGOOS() is the platform this build resolves against.
+func runtimeGOOS() string { return goosSeam.Load().(string) }
+
+// setRuntimeGOOS points the seam at a platform. Tests only.
+func setRuntimeGOOS(goos string) { goosSeam.Store(goos) }
 
 // discoverTimeout bounds `say -v ?`. It has been seen to take seconds on a
 // loaded machine; past this the curated list stands and discovery is simply
@@ -193,7 +211,7 @@ func roleVoiceOf(p cast.Pair) config.RoleVoice {
 // red-team lenses at PLAN, not a hypothetical.
 
 // Platform implements cast.Host.
-func (d *radioDeck) Platform() string { return runtimeGOOS }
+func (d *radioDeck) Platform() string { return runtimeGOOS() }
 
 // Discovered implements cast.Host: may this macOS voice name be spoken here?
 //
@@ -203,24 +221,31 @@ func (d *radioDeck) Platform() string { return runtimeGOOS }
 // cost of trusting one wrongly is a SayVoice built from a name the host does
 // not have, which is silence on an alert (RS-2).
 func (d *radioDeck) Discovered(name string) bool {
-	if name == "" {
-		return false
-	}
-	if name == systemVoice {
-		return true // the sentinel is always present (UAT 88)
-	}
 	d.mu.Lock()
 	discovered := d.voices
 	d.mu.Unlock()
-	if len(discovered) == 0 {
-		discovered = macVoices() // `say -v ?` has not answered yet
+	return discoveredIn(discovered, name)
+}
+
+// piperInstallFor is the ONE way app turns a voice NAME (or key) into an
+// installed Piper voice, and every caller that starts from a name must use it.
+//
+// FindPiperVoice locates the model by KEY — `<dir>/voices/<Key>.onnx` — so a
+// name has to go through the catalogue first. A `synth.VoiceSpec{Name: name}`
+// has an EMPTY Key, so it looks for `voices/.onnx` and answers no for every
+// voice however plainly installed. Four call sites did exactly that, one of them
+// copying another with the comment "find-only, exactly as the deck's is". On
+// Linux it made every alert silent: the tone sounded, the ticker took over, and
+// nothing was ever read (issue #7, an Arch box on 0.14.0).
+//
+// The correct form already existed in the voice-preview path and nothing else
+// used it. This is that, with one owner.
+func piperInstallFor(dir, name string) (synth.Install, bool) {
+	spec, ok := synth.VoiceByName(name)
+	if !ok {
+		return synth.Install{}, false
 	}
-	for _, v := range discovered {
-		if v == name {
-			return true
-		}
-	}
-	return false
+	return synth.FindPiperVoice(dir, spec)
 }
 
 // Installed implements cast.Host: is this Piper catalogue key on disk?
@@ -231,20 +256,14 @@ func (d *radioDeck) Installed(key string) bool {
 	if key == "" {
 		return false
 	}
-	_, ok := synth.FindPiperVoice(d.voiceDir, synth.VoiceSpec{Name: key})
+	_, ok := piperInstallFor(d.voiceDir, key)
 	return ok
 }
 
 // Default implements cast.Host: this machine's own last resort when even the
 // root did not resolve.
 func (d *radioDeck) Default() string {
-	if runtimeGOOS == "darwin" {
-		return systemVoice
-	}
-	if installed := synth.InstalledVoices(d.voiceDir); len(installed) > 0 {
-		return installed[0].Name
-	}
-	return "" // nothing here at all: the one legitimately silent row (AM-19)
+	return defaultVoiceFor(runtimeGOOS(), d.voiceDir)
 }
 
 // discoverMacVoices reads `say -v ?` and returns the curated voices that are
@@ -256,7 +275,7 @@ func (d *radioDeck) Default() string {
 // disagreeing. The context ceiling is the caller's to set; discoverTimeout is
 // what both callers use.
 func discoverMacVoices(ctx context.Context) []string {
-	if runtimeGOOS != "darwin" {
+	if runtimeGOOS() != "darwin" {
 		return nil
 	}
 	out, err := exec.CommandContext(ctx, "say", "-v", "?").Output()
@@ -365,13 +384,13 @@ func (d *radioDeck) resolveVoice(role cast.Role) (synth.Voice, cast.Resolution, 
 // buildVoice turns a resolved NAME into an engine, capped by the deck's limiter
 // (FR-12). It constructs, it never installs.
 func (d *radioDeck) buildVoice(name string) (synth.Voice, error) {
-	if runtimeGOOS == "darwin" {
+	if runtimeGOOS() == "darwin" {
 		if name == systemVoice {
 			name = "" // `say` with no -v (UAT 88)
 		}
 		return synth.Limited(synth.SayVoice{Voice: name}, d.limiter), nil
 	}
-	inst, ok := synth.FindPiperVoice(d.voiceDir, synth.VoiceSpec{Name: name})
+	inst, ok := piperInstallFor(d.voiceDir, name)
 	if !ok {
 		return nil, fmt.Errorf("piper voice %q is not installed", name)
 	}
@@ -422,10 +441,14 @@ func (d *radioDeck) startBackgroundInstall(key string) {
 	go func() {
 		d.installMu.Lock()
 		defer d.installMu.Unlock()
-		if _, ok := synth.FindPiperVoice(d.voiceDir, synth.VoiceSpec{Name: key}); ok {
+		if _, ok := piperInstallFor(d.voiceDir, key); ok {
 			return // a concurrent caller won
 		}
-		if _, err := d.installVoice(synth.VoiceSpec{Name: key}, d.setDetail); err != nil {
+		spec, ok := synth.VoiceByName(key)
+		if !ok {
+			return // not a catalogue voice: nothing to install under that name
+		}
+		if _, err := d.installVoice(spec, d.setDetail); err != nil {
 			d.mu.Lock()
 			if d.cast.failedAt == nil {
 				d.cast.failedAt = map[string]time.Time{}
@@ -584,7 +607,7 @@ func castFromView(v tty.CastView, into cast.Config) cast.Config {
 
 // halfFor reads this platform's half of a pair.
 func halfFor(p cast.Pair) string {
-	if runtimeGOOS == cast.PlatformDarwin {
+	if runtimeGOOS() == cast.PlatformDarwin {
 		return p.MacOS
 	}
 	return p.Piper
@@ -592,7 +615,7 @@ func halfFor(p cast.Pair) string {
 
 // setHalf writes this platform's half, leaving the other untouched.
 func setHalf(p *cast.Pair, name string) {
-	if runtimeGOOS == cast.PlatformDarwin {
+	if runtimeGOOS() == cast.PlatformDarwin {
 		p.MacOS = name
 		return
 	}

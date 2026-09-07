@@ -1,10 +1,11 @@
 package globalfeed
 
 import (
-	"github.com/branden-thompson/watchpost/platform/category"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/branden-thompson/watchpost/platform/category"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 )

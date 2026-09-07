@@ -34,7 +34,7 @@ func mergeFire(parts map[string]*FireState) FireState {
 		for _, h := range parts[id].Hotspots {
 			k := spotKey{int(math.Round(h.Lat / 0.003)), int(math.Round(h.Lon / 0.003)), h.DetectedAt.UTC().Format("2006-01-02")}
 			if i, ok := spots[k]; ok {
-				if frpOf(h) > frpOf(out.Hotspots[i]) {
+				if h.FRPOrMissing() > out.Hotspots[i].FRPOrMissing() {
 					out.Hotspots[i] = h
 				}
 				continue
@@ -53,28 +53,7 @@ func mergeFire(parts map[string]*FireState) FireState {
 			out.Incidents = append(out.Incidents, in)
 		}
 	}
-	sort.SliceStable(out.Hotspots, func(i, j int) bool { return kmOf(out.Hotspots[i]) < kmOf(out.Hotspots[j]) })
-	sort.SliceStable(out.Incidents, func(i, j int) bool { return acresOf(out.Incidents[i]) > acresOf(out.Incidents[j]) })
+	sort.SliceStable(out.Hotspots, func(i, j int) bool { return out.Hotspots[i].KmOrFar() < out.Hotspots[j].KmOrFar() })
+	sort.SliceStable(out.Incidents, func(i, j int) bool { return out.Incidents[i].AcresOrMissing() > out.Incidents[j].AcresOrMissing() })
 	return out
-}
-
-func frpOf(h Hotspot) float64 {
-	if h.FRPMW == nil {
-		return -1
-	}
-	return *h.FRPMW
-}
-
-func kmOf(h Hotspot) float64 {
-	if h.DistanceKm == nil {
-		return math.MaxFloat64
-	}
-	return *h.DistanceKm
-}
-
-func acresOf(in Incident) float64 {
-	if in.Acres == nil {
-		return -1
-	}
-	return *in.Acres
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 // Source is one global feed the ticker reads. Fetch returns the feed's current
@@ -114,9 +115,9 @@ func (u *USGS) parse(body []byte) ([]Event, error) {
 			at = time.Now() // a missing epoch is "as of now", not 1970 (P4 F6)
 		}
 		d := &QuakeDetail{
-			Mag: &mag, MagType: clampField(p.MagType), Title: clampField(p.Title),
-			Alert: pagerAlert(p.Alert), Sig: clampNonNeg(p.Sig, 5000), Status: clampField(p.Status),
-			Tsunami: p.Tsunami != 0, URL: clampField(p.URL), DetailURL: clampField(p.Detail),
+			Mag: &mag, MagType: plaintext.ClampField(p.MagType), Title: plaintext.ClampField(p.Title),
+			Alert: pagerAlert(p.Alert), Sig: clampNonNeg(p.Sig, 5000), Status: plaintext.ClampField(p.Status),
+			Tsunami: p.Tsunami != 0, URL: plaintext.ClampField(p.URL), DetailURL: plaintext.ClampField(p.Detail),
 		}
 		if len(g) >= 3 {
 			d.DepthKm = clampFloat(g[2], 0, 1000)
@@ -136,11 +137,11 @@ func (u *USGS) parse(body []byte) ([]Event, error) {
 			d.UpdatedAt = time.UnixMilli(p.Updated).UTC()
 		}
 		out = append(out, Event{
-			ID:       clampField(f.ID), // bounded like every other field: the key, the seen-store entry and the tape id (R3-D-02)
+			ID:       plaintext.ClampField(f.ID), // bounded like every other field: the key, the seen-store entry and the tape id (R3-D-02)
 			Class:    ClassQuake,
 			Severity: quakeSeverity(mag, p.Tsunami != 0),
-			Type:     clampField(quakeType(p.Type)), // bounded feed field (P4 F5)
-			Place:    clampField(p.Place),
+			Type:     plaintext.ClampField(quakeType(p.Type)), // bounded feed field (P4 F5)
+			Place:    plaintext.ClampField(p.Place),
 			Lat:      g[1],
 			Lon:      g[0],
 			HasPoint: true,

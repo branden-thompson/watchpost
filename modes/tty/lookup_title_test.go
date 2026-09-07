@@ -63,3 +63,50 @@ func firstLines(s string, n int) string {
 	}
 	return strings.Join(ls, "\n")
 }
+
+// ISSUE #11 — A SECOND LOOKUP MUST NOT REPLAY THE FIRST ONE'S DETAILS.
+//
+// Reported against 0.14.0 from a real session: look up Miami and Lake Henshaw —
+// the previous lookup — is on screen until Miami's data lands, then "magically
+// swaps in". A regression of the 0.13.0 fix.
+//
+// THE MEMO KEY IS THE WHOLE STORY, and `selected` cannot stand in for the
+// lookup. modal_location.go focuses every lookup at the same index
+// (`d.selected = len(watch)`, the first RECENT row), so two lookups in a row
+// produce an identical modalKey while the location differs, and the single-slot
+// modal memo replays the cached frame. bodyKey has carried lookupKey since the
+// original fix; modalKey never did.
+//
+// This asserts the KEY rather than the rendered frame, because the key is what
+// broke: a frame assertion would pass the moment anything else moved the key
+// and would not say why.
+func TestASecondLookupDoesNotShareTheFirstsModalKey(t *testing.T) {
+	d := dash(t).(Dashboard)
+	d.modal = modalDetails
+	o := render.Opts{Width: 133}
+
+	first := snapshot.LocationRef{Label: "Lake Henshaw, CA", Zip: "92070", Lat: 33.24, Lon: -116.76}
+	second := snapshot.LocationRef{Label: "Miami, FL", Zip: "33101", Lat: 25.77, Lon: -80.19}
+
+	// Both lookups focus the same row, exactly as the commit path does.
+	d.selected = d.numPriority()
+	d.lookupRef = &first
+	if d.lookupIndex() >= 0 {
+		t.Fatal("the fixture already carries the looked-up row, so this does not pose the wait")
+	}
+	k1 := d.modalKeyFor(o)
+
+	d.lookupRef = &second
+	k2 := d.modalKeyFor(o)
+
+	if k1 == k2 {
+		t.Error("two different lookups share one modal key — the memo will replay the first one's Details")
+	}
+	// CONTROL: the same lookup twice must still hit, or the fix has simply
+	// disabled the memo for this window and traded a stale frame for a rebuild
+	// on every keystroke.
+	d.lookupRef = &second
+	if d.modalKeyFor(o) != k2 {
+		t.Error("control: the same pending lookup produced two different keys; the memo can never hit")
+	}
+}

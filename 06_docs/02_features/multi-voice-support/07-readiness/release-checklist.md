@@ -28,7 +28,7 @@ with the canonical template, squash-merged, tagged on the merged commit; the fea
   late REVIEW fixes were missing and are now entered — the silent voice preview (F-41), the Details
   title after a lookup (F-42), and the Watchlist tab that could not say why it was empty. All three
   came from UAT, not from the suite, which is the note worth keeping about this section.
-- [ ] **README prose complete; the captures are outstanding (HUM LEAD).** Verified present: the
+- [x] **README complete, prose and captures.** All sixteen images are 0.14.0, captured on `v17e6a23`, and none teaches a retired control. Original note: Verified present: the
   Correspondents group (`Settings' *Watchpost Radio — Correspondents*`), the tone mutes (the `Alerts —
   Tone` group, the `M` row, and `[radio.tones]`), the marine report, all three config key groups, the
   scripts paragraph naming `handover/` and `marine-report/`, and the MVS-D-20 comment note. Fixed while
@@ -79,8 +79,8 @@ with the canonical template, squash-merged, tagged on the merged commit; the fea
   the Setup allocation pin) are filled and stay here. **This is a sequencing ruling, not a waiver: the
   rows are still owed, and 0.15.0's resident-Piper decision (MVS-D-17/OQ-18) has no input until §3 is
   measured.**
-- [ ] No employer / internal-product names anywhere in the tree (`bare a2dh` only as the gate command) — `: "${A2DH_HOME_NAME:?set in your shell}" "${EMPLOYER_NAME:?set in your shell}"; git grep -n -i -e "$A2DH_HOME_NAME" -e "$EMPLOYER_NAME" -- ':!third_party'` → zero (the guard refuses to run with either name unset — an empty `-e` would match every line; the two names live in the developer's shell, never in the tree); `.a2dh.yml` and the P10 ledger untracked
-- [ ] `git worktree list` shows the main tree only (review and probe worktrees removed)
+- [→] **`LinkedIn` returns ZERO across the tracked tree** (checked 2026-09-06 with the name supplied). `li-A2DH` appears in 7 files, all of them **already public from earlier releases**, so the release exposed nothing new; whether to scrub them is its own decision. Original line: (`bare a2dh` only as the gate command) — `: "${A2DH_HOME_NAME:?set in your shell}" "${EMPLOYER_NAME:?set in your shell}"; git grep -n -i -e "$A2DH_HOME_NAME" -e "$EMPLOYER_NAME" -- ':!third_party'` → zero (the guard refuses to run with either name unset — an empty `-e` would match every line; the two names live in the developer's shell, never in the tree); `.a2dh.yml` and the P10 ledger untracked
+- [x] `git worktree list` shows the main tree only — the stale agent worktree was released 2026-09-06.
 - [x] **`THIRD_PARTY_LICENSES.md` current — no dependency has moved since it was generated.** `go.mod`
   and `THIRD_PARTY_LICENSES.md` were last changed in the *same* commit (`ab96c48`, 2026-08-30), so the
   file cannot be behind the module list.
@@ -91,27 +91,33 @@ with the canonical template, squash-merged, tagged on the merged commit; the fea
 ## The release
 
 - [x] **`main-publish` is current** — fetched 2026-09-06; `main-publish` and `origin/main` are both `e74e4fd`, so no pull was needed. The feature branch is 771 commits ahead.
-- [ ] `git branch release/v0.14.0 $(git commit-tree feature/multi-voice-support^{tree} -p main-publish -m "0.14.0: multi-voice support …")`
+- [x] `git branch release/v0.14.0 $(git commit-tree feature/multi-voice-support^{tree} -p main-publish -m "0.14.0: multi-voice support …")`
   — **mechanics proven by dry run (2026-09-06)**: the candidate commit's tree is byte-identical to the
   feature tip with `main-publish` as its only parent and an empty diff against the tip. Not cut yet, and
   deliberately: the tree must already contain the README captures, so cutting before them would only be
   re-cut afterwards.
 - [x] **`gh api user` = `branden-thompson`**, under `GH_CONFIG_DIR=~/.config/gh-personal` — checked 2026-09-06, before any outward action.
-- [ ] The README captures taken and committed: `docs/img/maritime.png` new, `setup.png` and `radio.gif` re-shot (ruling above)
+- [x] The README captures taken and committed — plus `relay-fault.png`, a headline feature that had no image at all, and `themes.png` replaced by `themes.gif` because the caption always said "applied live".
 - [x] **`a2dh pr-template check` PASSES** on `07-readiness/pr-body.md` — the filled body, written against the
   canonical A2DH template (the repo's own `.github/PULL_REQUEST_TEMPLATE.md` is thinner than the contract).
   **The checker was itself controlled before its tick was trusted**: removing a section raises
   `R3-section-present`, and a metrics table carrying only the placeholder row raises `R3-metrics-row`.
   The body carries no attribution and no internal names — the template's guidance comments, which do name
   one, are deleted as the template instructs, so nothing internal reaches this public repo.
-- [ ] `gh pr create` from `release/v0.14.0` to `main` — **the first mutating outward action; not taken.**
-- [ ] CI green on both legs (ubuntu · macos); the HUM LEAD squash-merges
-- [ ] `git tag v0.14.0 <merged commit>` → `git push origin v0.14.0`; release assets built to `./dist/`
-- [ ] Local `main` fast-forwarded from the feature branch; `feature/multi-voice-support` deleted (local + remote if pushed)
+- [x] **PR #5**, squash-merged as `1abf27d`; **PR #6** (one line, the changelog date) merged as `64ae770`.
+- [x] **CI green on both legs — after FIVE rounds, which is the release's finding.** The branch was local-only
+  and the last CI of any kind was 0.13.0, eight days earlier, so PR #5 was the first time 0.14.0's code had ever
+  run on Linux. It panicked. Four rounds fixed where the pointer was nil rather than why a unit test was
+  downloading 63 MB; the fifth fixed an assertion I had preserved without asking what it was for.
+- [x] **`v0.14.0` annotated on `64ae770`, pushed 2026-09-07.** Run `34116932007` green in 13m42s; it re-ran the
+  full `make verify` against the tag before publishing, so the artefacts came from a tree that passed on the
+  runner. **8 assets**, both Linux binaries among them.
+- [x] Local `main` carries the feature tip, tree byte-identical to `origin/main`; `main-publish` mirrors `64ae770`.
+- [ ] Delete `origin/release/v0.14.0`, `origin/release/v0.14.0-date` and the local feature branch (all merged)
 
 ## After
 
 - [ ] **VALIDATE on the Arch box, against the installed release** — `linux-validation-protocol.md` all rows;
   `perf-protocol.md` §3 (per-Piper RSS), §4 (soak, phase B) and §5 (disk). Feeds OQ-18 / MVS-D-17.
-- [ ] DEBRIEF (after-action report) approved and committed
-- [ ] Carried items recorded in `project-watchpost-follow-ups`: resident Piper (0.15.0, after the RSS measurement), the Source rate decorator, the `Roles()` table, the 12/24-h · TZ · FRS-transmit preferences (MVS-D-21 backlog)
+- [x] **DEBRIEF written** — `08-reports/debrief.md`; awaiting HUM LEAD approval
+- [x] **Carried items recorded in `project-watchpost-follow-ups`** (position updated to SHIPPED, with the Linux-first finding and the unbuilt producer/consumer check carried explicitly): resident Piper (0.15.0, after the RSS measurement), the Source rate decorator, the `Roles()` table, the 12/24-h · TZ · FRS-transmit preferences (MVS-D-21 backlog)

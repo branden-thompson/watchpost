@@ -140,23 +140,30 @@ func pickCity(hits []geodata.City, q string) (geodata.City, bool) {
 	return geodata.City{}, false
 }
 
-func cityToRef(idx *geodata.Index, c geodata.City) snapshot.LocationRef {
+// cityToRefWith builds the ref, taking the zip lookup as an argument so the
+// SHAPE of a LocationRef is stated once.
+//
+// The typeahead and the commit differ only in how the zip is found: the
+// per-keystroke path is best-effort (place-name lookup, no O(41k) centroid
+// scan — B2 red-team #3) and Resolve computes the definitive one. That
+// difference is deliberate; the four-field literal around it was not, and
+// where-things-happen.md already states the rule this protects — "the ONE
+// resolver serves both halves so the suggestions and the commit cannot
+// disagree". Two constructors is one field away from making them disagree.
+func cityToRefWith(zip func(geodata.City) string, c geodata.City) snapshot.LocationRef {
 	return snapshot.LocationRef{
 		Label: c.Label(),
-		Zip:   idx.RepresentativeZip(c),
+		Zip:   zip(c),
 		Lat:   c.Lat, Lon: c.Lon, TZ: c.TZ,
 	}
 }
 
-// cityToRefFast is the per-keystroke variant: zip adornment is best-effort
-// (place-name lookup only, no O(41k) centroid scan — B2 red-team #3); the
-// full Resolve path still computes the definitive representative zip.
+func cityToRef(idx *geodata.Index, c geodata.City) snapshot.LocationRef {
+	return cityToRefWith(idx.RepresentativeZip, c)
+}
+
 func cityToRefFast(idx *geodata.Index, c geodata.City) snapshot.LocationRef {
-	return snapshot.LocationRef{
-		Label: c.Label(),
-		Zip:   idx.RepresentativeZipFast(c),
-		Lat:   c.Lat, Lon: c.Lon, TZ: c.TZ,
-	}
+	return cityToRefWith(idx.RepresentativeZipFast, c)
 }
 
 // Seeds returns refs for the n most-populous US cities — the default

@@ -8,6 +8,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -24,9 +25,9 @@ import (
 // asPlatform points the production seam at goos for one test.
 func asPlatform(t *testing.T, goos string) {
 	t.Helper()
-	prev := runtimeGOOS
-	runtimeGOOS = goos
-	t.Cleanup(func() { runtimeGOOS = prev })
+	prev := runtimeGOOS()
+	setRuntimeGOOS(goos)
+	t.Cleanup(func() { setRuntimeGOOS(prev) })
 }
 
 // --- Task 1.12: the mapper ---
@@ -722,7 +723,7 @@ func TestCastReportAnswersWithoutADeck(t *testing.T) {
 
 // THE SEAM ONLY WORKS IF EVERY CALLER USES IT, and for the whole of 0.14.0 the
 // most important one did not. app/voices.go:rawVoice branched on runtime.GOOS
-// directly, so asPlatform(t, "darwin") set runtimeGOOS, rawVoice ignored it, and
+// directly, so asPlatform(t, "darwin") set runtimeGOOS(), rawVoice ignored it, and
 // the test walked the Piper install path anyway. On a Mac the two agree and
 // everything passed; the first Linux CI run of this release panicked in a
 // background install the test never meant to start.
@@ -750,19 +751,21 @@ func TestNoProductionFileInAppReadsRuntimeGOOSDirectly(t *testing.T) {
 			if !strings.Contains(line, "runtime.GOOS") || strings.HasPrefix(strings.TrimSpace(line), "//") {
 				continue
 			}
-			// The one legitimate use: the seam's own initialiser.
-			if n == "cast.go" && strings.Contains(line, "var runtimeGOOS = runtime.GOOS") {
+			// The one legitimate use: the seam's own initialiser. It became an
+			// atomic store when a test's restore was found racing the synth
+			// render loop, so the shape this allows changed with it.
+			if n == "cast.go" && strings.Contains(line, "goosSeam.Store(runtime.GOOS)") {
 				continue
 			}
 			found[n] = i + 1
 		}
 	}
 	for f, line := range found {
-		t.Errorf("%s:%d reads runtime.GOOS directly — use the runtimeGOOS seam, or asPlatform cannot steer it", f, line)
+		t.Errorf("%s:%d reads runtime.GOOS directly — use the runtimeGOOS() seam, or asPlatform cannot steer it", f, line)
 	}
 	// CONTROL: the seam itself must still be there to be steered.
-	if runtimeGOOS == "" {
-		t.Fatal("control: runtimeGOOS is empty; the seam is gone and this guard checks nothing")
+	if runtimeGOOS() == "" {
+		t.Fatal("control: runtimeGOOS() is empty; the seam is gone and this guard checks nothing")
 	}
 }
 
@@ -793,4 +796,117 @@ func TestAnUnwiredDeckCannotInstall(t *testing.T) {
 	if !(&radioDeck{engine: &player.Engine{}, p: &tea.Program{}}).canInstall() {
 		t.Error("control: a fully wired deck reports it cannot install; the predicate is always false")
 	}
+}
+
+// installFakePiperVoice lays out what FindPiperVoice stats: the binary and the
+// model named by the spec's KEY. Nothing is executed — this is about lookup.
+func installFakePiperVoice(t *testing.T, dir string, spec synth.VoiceSpec) {
+	t.Helper()
+	must := func(p string) {
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	must(filepath.Join(dir, "piper", "piper"))
+	must(filepath.Join(dir, "voices", spec.Key+".onnx"))
+	must(filepath.Join(dir, "voices", spec.Key+".onnx.json"))
+}
+
+// AN INSTALLED PIPER VOICE MUST RESOLVE AND BUILD ON LINUX — issue #7, reported
+// from a real Arch box against the 0.14.0 release: the alert tone sounded and the
+// ticker took over, and nothing was ever read, while the very same voice read
+// user-initiated reports perfectly.
+//
+// The split is the whole story. The report path goes through rawVoice, which
+// carries a FULL VoiceSpec from the catalogue; the takeover goes through
+// cast.Resolve, which passes NAMES, and both Installed and buildVoice rebuilt a
+// spec as VoiceSpec{Name: name} — leaving Key empty. FindPiperVoice locates the
+// model at `<dir>/voices/<Key>.onnx`, so it looked for `voices/.onnx` and said
+// no. Every Piper voice read as missing, on the one platform Piper is for.
+//
+// It survived every gate because every cast test pins darwin, where buildVoice
+// returns a SayVoice and never reaches FindPiperVoice. This test is the Linux
+// branch, with a voice actually on disk.
+func TestAnInstalledPiperVoiceResolvesAndBuildsOnLinux(t *testing.T) {
+	asPlatform(t, "linux")
+	dir := t.TempDir()
+	spec := synth.DefaultVoice()
+	installFakePiperVoice(t, dir, spec)
+	d := &radioDeck{voiceDir: dir, limiter: synth.NewLimiter(renderSlots(), synth.ReservedSlots)}
+
+	// cast.Resolve asks by NAME — the form that was broken — and by key.
+	if !d.Installed(spec.Name) {
+		t.Errorf("Installed(%q) is false for a voice that is on disk", spec.Name)
+	}
+	if !d.Installed(spec.Key) {
+		t.Errorf("Installed(%q) is false for a voice that is on disk", spec.Key)
+	}
+	if got := d.Default(); got != spec.Name {
+		t.Errorf("Default() = %q, want the installed voice %q", got, spec.Name)
+	}
+	v, err := d.buildVoice(spec.Name)
+	if err != nil {
+		t.Fatalf("buildVoice(%q): %v — this is the takeover going silent", spec.Name, err)
+	}
+	if v == nil {
+		t.Fatal("buildVoice returned no voice and no error")
+	}
+
+	// CONTROLS. A name that is not in the catalogue must still fail, and so must
+	// the macOS sentinel — otherwise this passes for a deck that says yes to
+	// everything, which is the failure mode being fixed, inverted.
+	if d.Installed("not-a-voice") {
+		t.Error("control: an unknown name reads as installed")
+	}
+	if d.Installed(systemVoice) {
+		t.Error("control: the macOS sentinel reads as an installed Piper voice")
+	}
+	if _, err := d.buildVoice("not-a-voice"); err == nil {
+		t.Error("control: buildVoice accepted a name that is not in the catalogue")
+	}
+}
+
+// A NAME-ONLY VoiceSpec IS THE BUG, so nothing in app may build one.
+//
+// FindPiperVoice locates the model by Key; a spec carrying only a Name looks for
+// `voices/.onnx` and answers no for every voice. Four call sites did it, and the
+// fourth was written by copying the third — the comment on it read "find-only,
+// exactly as the deck's is". piperInstallFor is the one owner now, and this is
+// what keeps it the only one, because the next person will otherwise reach for
+// the struct literal exactly as four people already did.
+func TestNoProductionFileInAppBuildsANameOnlyVoiceSpec(t *testing.T) {
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := 0
+	for _, e := range entries {
+		n := e.Name()
+		if e.IsDir() || !strings.HasSuffix(n, ".go") || strings.HasSuffix(n, "_test.go") {
+			continue
+		}
+		src, err := os.ReadFile(n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, line := range strings.Split(string(src), "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), "//") {
+				continue // the owner's own comment names the shape it forbids
+			}
+			if strings.Contains(line, "synth.VoiceSpec{Name:") {
+				found++
+				t.Errorf("%s:%d builds a VoiceSpec from a name alone — its Key is empty, so FindPiperVoice "+
+					"will never match it. Use piperInstallFor.", n, i+1)
+			}
+		}
+	}
+	// CONTROL: the owner must still exist to be used, or this guard forbids a
+	// shape with nothing to replace it.
+	if _, ok := piperInstallFor(t.TempDir(), "not-a-voice"); ok {
+		t.Fatal("control: piperInstallFor found a voice that cannot exist; it is not doing the lookup")
+	}
+	_ = found
 }

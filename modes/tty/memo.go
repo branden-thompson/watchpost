@@ -158,12 +158,22 @@ func rowLoading(loc *snapshot.Location) bool {
 // faultLeft, debugFocus and severeReadPause, the exact four whose absence froze
 // three windows in UAT this release (R-14).
 type modalKey struct {
-	modal                     modal
-	opts                      render.Opts // width, units, ascii, bands — Frame zeroed (the shimmer keys separately)
-	width, height             int
-	scroll                    int
-	selected                  int
-	alertIdx                  int
+	modal         modal
+	opts          render.Opts // width, units, ascii, bands — Frame zeroed (the shimmer keys separately)
+	width, height int
+	scroll        int
+	selected      int
+	alertIdx      int
+	// THE PENDING LOOKUP, because `selected` cannot stand in for it. Every
+	// lookup focuses the same index — modal_location.go sets
+	// `d.selected = len(watch)`, the first RECENT row — so two lookups in a row
+	// produce an IDENTICAL key while the location differs, and the memo replays
+	// the previous location's Details until its data lands and something else
+	// moves the key. That is issue #11: "Lake Henshaw shows up, then Miami
+	// magically swaps in". bodyKey has carried this since the fix; modalKey
+	// never did (red-team round 3: modalKey's invalidation table had 27 rows
+	// for 34 fields).
+	lookup                    snapshot.LocationKey
 	snap, recent              *snapshot.Snapshot
 	severeGen                 uint64
 	severeTab                 SevereTab
@@ -214,7 +224,8 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 	o.Frame = 0
 	k := modalKey{
 		modal: d.modal, opts: o, width: d.width, height: d.height, scroll: d.modalScroll, selected: d.selected, alertIdx: d.alertIdx,
-		snap: d.snap, recent: d.recent,
+		lookup: d.lookupKey(),
+		snap:   d.snap, recent: d.recent,
 		severeGen: d.severe.Gen, severeTab: d.severeTab, severeRow: d.severeRow, severeDetail: d.severeDetail,
 		addMode: d.addMode, addQuery: d.addQuery, addErr: d.addErr,
 		radioVoice: d.radioVoice,

@@ -24,7 +24,7 @@ import (
 // still has to happen on real hardware.
 func TestMain(m *testing.M) {
 	if goos := os.Getenv("WATCHPOST_TEST_GOOS"); goos != "" {
-		runtimeGOOS = goos
+		setRuntimeGOOS(goos)
 	}
 	os.Exit(m.Run())
 }

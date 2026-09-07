@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
-	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
@@ -29,8 +28,8 @@ type hostFacts struct {
 // `say -v ?` call; a wedged one leaves the curated list standing rather than
 // hanging a report.
 func newHostFacts(ctx context.Context) hostFacts {
-	h := hostFacts{platform: runtimeGOOS, voiceDir: voiceDir()}
-	if runtimeGOOS == cast.PlatformDarwin {
+	h := hostFacts{platform: runtimeGOOS(), voiceDir: voiceDir()}
+	if runtimeGOOS() == cast.PlatformDarwin {
 		h.discovered = discoverMacVoices(ctx)
 	}
 	return h
@@ -41,22 +40,7 @@ func (h hostFacts) Platform() string { return h.platform }
 // Discovered is the same CLOSED ALLOWLIST the deck applies: the curated list
 // until `say -v ?` has answered, the intersection afterwards.
 func (h hostFacts) Discovered(name string) bool {
-	if name == "" {
-		return false
-	}
-	if name == systemVoice {
-		return true
-	}
-	list := h.discovered
-	if len(list) == 0 {
-		list = macVoices()
-	}
-	for _, v := range list {
-		if v == name {
-			return true
-		}
-	}
-	return false
+	return discoveredIn(h.discovered, name)
 }
 
 // Installed is find-only, exactly as the deck's is.
@@ -64,18 +48,12 @@ func (h hostFacts) Installed(key string) bool {
 	if key == "" {
 		return false
 	}
-	_, ok := synth.FindPiperVoice(h.voiceDir, synth.VoiceSpec{Name: key})
+	_, ok := piperInstallFor(h.voiceDir, key)
 	return ok
 }
 
 func (h hostFacts) Default() string {
-	if h.platform == cast.PlatformDarwin {
-		return systemVoice
-	}
-	if installed := synth.InstalledVoices(h.voiceDir); len(installed) > 0 {
-		return installed[0].Name
-	}
-	return ""
+	return defaultVoiceFor(h.platform, h.voiceDir)
 }
 
 // CastRow is one role's answer, ready to print: who was asked for, who speaks,

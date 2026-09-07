@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 func TestClampProseBoundsHostileText(t *testing.T) {
@@ -28,9 +29,9 @@ func TestClampIntAndSlice(t *testing.T) {
 	if clampNonNeg(999, 250) != 250 || clampNonNeg(-5, 250) != 0 || clampNonNeg(45, 250) != 45 {
 		t.Fatal("clampNonNeg bounds wrong")
 	}
-	s := make([]string, maxListLen+10)
-	if got := clampSlice(s); len(got) != maxListLen {
-		t.Fatalf("clampSlice kept %d, want %d", len(got), maxListLen)
+	s := make([]string, plaintext.MaxListLen+10)
+	if got := plaintext.ClampList(s); len(got) != plaintext.MaxListLen {
+		t.Fatalf("clampSlice kept %d, want %d", len(got), plaintext.MaxListLen)
 	}
 }
 

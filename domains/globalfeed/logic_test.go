@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -157,12 +158,12 @@ func TestLocateSkipsTheTieWithoutAPoint(t *testing.T) {
 }
 
 func TestClampFieldBoundsHostileLength(t *testing.T) {
-	if got := clampField("Tornado Warning"); got != "Tornado Warning" {
+	if got := plaintext.ClampField("Tornado Warning"); got != "Tornado Warning" {
 		t.Fatalf("a normal field is unchanged: %q", got)
 	}
 	huge := strings.Repeat("x", 5_000)
-	if got := clampField(huge); len([]rune(got)) != maxFieldRunes {
-		t.Fatalf("a hostile field is bounded to %d runes, got %d", maxFieldRunes, len([]rune(got)))
+	if got := plaintext.ClampField(huge); len([]rune(got)) != plaintext.MaxFieldRunes {
+		t.Fatalf("a hostile field is bounded to %d runes, got %d", plaintext.MaxFieldRunes, len([]rune(got)))
 	}
 }
 

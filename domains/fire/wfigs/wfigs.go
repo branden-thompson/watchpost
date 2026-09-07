@@ -17,6 +17,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/fire"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -132,7 +133,7 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 			ins = append(ins, snapshot.Incident{Name: f.name, Lat: f.lat, Lon: f.lon, PercentContained: f.contained, Acres: f.acres, State: f.state, Discovered: f.discovered,
 				Source: snapshot.SourceInfo{Provider: p.ID(), DistanceKm: &d, IssuedAt: frag.FetchedAt}})
 		}
-		sort.SliceStable(ins, func(i, j int) bool { return acres(ins[i]) > acres(ins[j]) }) // the big ones first; dispatch-only records last
+		sort.SliceStable(ins, func(i, j int) bool { return ins[i].AcresOrMissing() > ins[j].AcresOrMissing() }) // the big ones first; dispatch-only records last
 		if len(ins) > maxIncidents {
 			ins = ins[:maxIncidents]
 		}
@@ -154,7 +155,7 @@ func decodeLayer(raw []byte) ([]incident, error) {
 			continue
 		}
 		in := incident{lon: f.Geometry.Coordinates[0], lat: f.Geometry.Coordinates[1], name: f.Properties.Name, state: f.Properties.State,
-			contained: f.Properties.Contained, acres: firstOf(f.Properties.Size, f.Properties.Final, f.Properties.Discovery, f.Properties.Initial)}
+			contained: f.Properties.Contained, acres: render.FirstOf(f.Properties.Size, f.Properties.Final, f.Properties.Discovery, f.Properties.Initial)}
 		if f.Properties.Discovered != nil {
 			in.discovered = time.UnixMilli(int64(*f.Properties.Discovered)).UTC()
 		}
@@ -163,19 +164,4 @@ func decodeLayer(raw []byte) ([]incident, error) {
 	return out, nil
 }
 
-func acres(in snapshot.Incident) float64 {
-	if in.Acres == nil {
-		return -1
-	}
-	return *in.Acres
-}
-
 // firstOf is the first reported acreage, nil when none is.
-func firstOf(vs ...*float64) *float64 {
-	for _, v := range vs {
-		if v != nil {
-			return v
-		}
-	}
-	return nil
-}

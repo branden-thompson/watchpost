@@ -148,3 +148,47 @@ func dropped(r rune) bool {
 func droppedSpans() [][2]rune {
 	return [][2]rune{{0, 0x1f}, {0x7f, 0x9f}, {0xFE0E, 0xFE0F}, {0x202A, 0x202E}, {0x2066, 0x2069}, {0x200B, 0x200F}, {0x2060, 0x2060}, {0xFEFF, 0xFEFF}}
 }
+
+// The bounds on text that arrives from outside, and the one place they are set.
+//
+// THEY WERE SET TWICE. domains/globalfeed and domains/weather/nws each declared
+// maxListLen = 50 and maxFieldRunes = 120, and each carried its own pair of
+// helpers to apply them — clampSlice/clampField and clampList/clampRunes. Four
+// names, two declarations, one policy. They agreed, which is exactly the state
+// issue #7 was in before it did not: a limit raised in one feed and not the
+// other would sanitise two providers' prose to different lengths, silently.
+//
+// This package already says why that belongs here: it is the boundary for text
+// from outside, and a leaf, so "one owner, below both" (R5-C-05).
+const (
+	// MaxFieldRunes bounds one field of provider prose.
+	MaxFieldRunes = 120
+	// MaxListLen bounds how many of them are kept.
+	MaxListLen = 50
+)
+
+// ClampRunes truncates to n runes, never bytes: cutting a multi-byte rune in
+// half produces invalid UTF-8, which is a different kind of unsafe.
+func ClampRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n])
+}
+
+// ClampField bounds one field at MaxFieldRunes.
+func ClampField(s string) string { return ClampRunes(s, MaxFieldRunes) }
+
+// ClampList bounds a list at MaxListLen and every field in it at
+// MaxFieldRunes, returning a new slice.
+func ClampList(s []string) []string {
+	if len(s) > MaxListLen {
+		s = s[:MaxListLen]
+	}
+	out := make([]string, len(s))
+	for i, v := range s {
+		out[i] = ClampField(v)
+	}
+	return out
+}
