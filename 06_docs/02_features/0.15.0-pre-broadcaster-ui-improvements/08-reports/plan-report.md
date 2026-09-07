@@ -6,7 +6,8 @@ level: LEVEL-1
 sev: SEV-0
 authority: HUM LEAD
 directives: FULL GIT; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD
-status: "Architecture and sequence drafted; internally validated — awaiting HUM LEAD approval to enter BUILD"
+revision: "2 — re-cut after the PLAN-exit red team returned NO-GO"
+status: "Re-cut against eight verified Criticals — awaiting HUM LEAD approval to enter BUILD"
 ---
 
 # 0.15.0 — Pre-Broadcaster UI Improvements — PLAN REPORT
@@ -17,10 +18,22 @@ Two approach decisions were put to the HUM LEAD and both recommendations were ta
 shared completeness helper**, and **sequence BUILD as mechanism → surfaces → rulings with FR-10
 running in parallel.**
 
-Designing against those decisions produced one correction to the first, and it is the plan's most
-important architectural finding: **the five existing completeness checks are not one shape.  They
-are two.**  A helper covers three of them.  The other two need a ruling, and a helper would have been
-the wrong answer for both.
+**REVISION 2.**  Revision 1 was returned **NO-GO** by an eleven-lens red team with eight Criticals,
+every one a verifiable fact about the codebase that revision 1 asserted wrongly.  Its three
+load-bearing constructs were each broken:
+
+- **`closedset.Spec` could not express the check it was derived from** — no `Producer` field, so two
+  of its three promised failure modes were one expression.
+- **B1's falsification test could not falsify** — `tickerCategory` is `return globalfeed.LaneOf(e)`,
+  the identity, so the lane guard's two assertions are the same expression.
+- **B4's prescribed instrument could not see B4's change** — FR-3.4 warned that a frame pin *"would
+  have returned a green false pass for a change the frame cannot see"* and then named
+  `make alloc-budget`, whose four tests are all frame pins in `modes/tty`.
+
+**The helper is deferred (PL-D-8, HUM LEAD).**  The honest Family-A call-site count was **two**, not
+five: one instance exists, and revision 1 counted four hypotheticals as instances.  *Extract at the
+second caller* now means what it says — B1 writes #18's tone map by hand, puts it beside the lane
+guard, and extracts only if they rhyme.
 
 Nothing in this plan contains implementation code.  Contracts are stated as signatures and control
 flow only; bodies are written in BUILD.  *(HUM LEAD standing rule, restated 2026-09-07: code in a
@@ -35,6 +48,11 @@ Captured per PLAN anti-pattern 6.  Nothing here silently overwrites the discover
 |---|---|---|---|
 | **PD-1** | **FR-2 splits into two families.**  DISCOVER treated producer/consumer completeness as one mechanism with one working instance.  It is two: **mapping** completeness (assert `consumer(fixture) == member`) and **property** completeness (assert an implication holds per member) | Measured at PLAN entry: the lane guard asserts a mapping; `memo_completeness_test.go` asserts *render differs ⇒ key differs*.  A generic helper cannot express the second — the "consumer" is not a function returning the member type | FR-2.1 gains a family split.  FR-3.1, FR-3.3 and FR-8.2 move to Family B and consume a **ruling** rather than the helper.  The helper's scope shrinks from five call sites to three |
 | **PD-2** | The closed-set population is **27 sets and 50 default arms**, not the 26 and 48 estimated | Counted at PLAN entry | FR-2.1a's triage is slightly larger; no structural change |
+| **PD-4** | **`platform/closedset` is deferred; the triage leads.**  Revision 1 made the helper B1 and the triage B2 | The helper's contract could not express its own first call site (no `Producer`), that call site's consumer is the identity function, and the DRY count justifying extraction was two rather than five | B1 becomes the triage; the extraction decision moves to B1's exit, with two real call sites in front of it |
+| **PD-5** | **FR-1.1, FR-1.3 and FR-1.4 gain a batch (B2).**  Revision 1 scheduled none of them | Four lenses found the gap independently; the plan designed `config.Mutate` and never scheduled it, while the internal validation certified "10 of 10" | The release's first named scope item is now buildable.  The validation is derived from `Lands:` lines rather than asserted |
+| **PD-6** | **FR-6.4 moves from B7 to B3** | A WCAG 2.2.1 Level A failure sat behind the only scope lever, in the slot a re-cut removes first.  It touches one constant and one nav handler and contends with nothing | Surface work lands with surface work.  OQ-2 must be ruled before the fix, since "how long" answers none of 2.2.1's three mechanisms |
+| **PD-7** | **FR-6.5 moves from B7 to B5** | DISCOVER's own surface taxonomy classes it a **listener** requirement; revision 1 filed it in the operator-defect batch | The screenless listener stops being split across the first and last batches |
+| **PD-8** | **FR-10.3 is not parallel; it lands in B5** | It is UI text and read-script text — the files B3 and B5 rewrite.  Revision 1's "contends with nothing for code" was true of FR-10.1/10.2 and false of 10.3 | FR-10's parallel track shrinks to the two genuine investigations |
 | **PD-3** | BUILD is planned as **batches**, not as 2–5 minute tasks | The `writing-plans` skill specifies 2–5 minute tasks with complete code.  At ~35 leaf items that is several hundred tasks of untested code in a document — which the HUM LEAD rule forbids, and which 0.14.0 did not do either (it ran P1–P4 batches with per-batch task lists written at batch entry) | Task decomposition happens at each batch's entry, against the code as it then exists.  Framework precedence: local preference wins over `writing-plans`' task-size rule; the anti-patterns document's actual requirement — "concrete contracts, not placeholders" — is met |
 
 ## Approaches considered
@@ -54,8 +72,10 @@ arms before designing anything.  *Advantage:* refuses to generalise from small n
 that produced the broken lane guard.  *Cost:* delays every consuming requirement behind a pass whose
 output might be "they do not unify."
 
-**SELECTED: A**, HUM LEAD 2026-09-07.  The triage survives as an FR-2.1a deliverable inside BUILD
-rather than ahead of it — see B2 — so the evidence still arrives, just not as a gate on starting.
+**SELECTED: A**, HUM LEAD 2026-09-07 — **and then partially reversed to B, HUM LEAD, the same day,
+after the red team.**  The helper is deferred; the triage becomes B1 and runs first.  The reversal is
+not a change of mind about DRY: it is that A's justification rested on a call-site count of five, and
+the count is two.  PL-D-8 records it.
 
 ### Rejected, with reasons
 
@@ -77,16 +97,16 @@ graph TB
   subgraph FA["FAMILY A — MAPPING completeness"]
     direction TB
     CS["platform/closedset<br/><i>Check: every member is carried,<br/>or declared with a reason</i>"]
-    CS --> A1["lane guard<br/>category.Lanes() × tickerCategory<br/><i>exists; migrates</i>"]
-    CS --> A2["FR-1.2 classifier coupling<br/>severeEvents() × LaneOf / severe.Classify / cast.Classify"]
-    CS --> A3["FR-4.2 debug scenarios<br/>lanes × debugScenarios()"]
+    CS --> A1["lane guard<br/>category.Lanes() × tickerCategory<br/><i>the ONE existing instance</i>"]
+    CS --> A2["#18 tone map<br/>category.Category × cast.Class<br/><i>the second — written by hand in B1</i>"]
+    CS -.->|"NOT a member —<br/>four classifiers, four return types"| A3["FR-1.2 classifier coupling<br/><i>a divergence pin, already shipping</i>"]
   end
   subgraph FB["FAMILY B — PROPERTY completeness"]
     direction TB
     RL["THE RULING<br/><i>an unfixtured member FAILS;<br/>exemptions are declared rows with reasons</i>"]
-    RL --> B1["FR-3.3 modalKey<br/>render differs ⇒ key differs<br/><i>exists; t.Skipf becomes t.Error</i>"]
-    RL --> B2["FR-3.1 bodyKey<br/>same property, no guard today"]
-    RL --> B3["FR-8.2 AA register + --ascii<br/>every declared token is measured"]
+    RL --> FB1["FR-3.3 modalKey<br/>render differs ⇒ key differs<br/><i>exists</i>"]
+    RL --> FB2["FR-3.1 bodyKey<br/>same property, no guard today"]
+    RL --> FB3["FR-8.2 AA register + --ascii<br/><i>CONTESTED — arguably a mapping<br/>over PAINTED PAIRS, not a property</i>"]
   end
   FA -.->|"different assertion shape,<br/>same failure mode"| FB
 ```
@@ -105,9 +125,22 @@ a `known` opt-out map, and a hand switch).
 **The failure mode is identical in both families**, which is why DISCOVER saw one thing: a member
 nobody checked, passing silently.  The fix differs.
 
-### `platform/closedset` — contract only
+### `platform/closedset` — DEFERRED (PL-D-8)
 
-Signatures and control flow.  Bodies are `// TBFI in BUILD`.
+**Not built in this plan.**  Revision 1 specified a generic `Spec[M,F]` and made it the release's
+first batch.  Three findings retired that: the contract could not express its own promised failure
+modes; its first call site's consumer is the identity function, so the migration would have proved
+nothing; and the call-site count that justified extraction was two, not five.
+
+The **property** it was meant to carry survives and is what B1 implements by hand:
+
+> Every member of a producer's closed set is **carried**, or **declared unreachable with a written
+> reason**.  A member in neither is a failure, never a skip.  A fixture that does not actually
+> produce its member is also a failure — that is the defect that let the 0.14.2 lane guard assert
+> four of seven lanes and report green.
+
+The extraction decision moves to the end of B1, with two real call sites in front of it.  *The
+contract sketch below is retained only to record what was rejected.*
 
 ```go
 // Package closedset asserts that a consumer knows every member a producer can emit.
@@ -149,11 +182,11 @@ graph LR
   SCOPE --> CLS{"classify<br/><b>FR-1.2 · FR-2</b>"}
   CLS --> LANE["LaneOf → band"]
   CLS --> TAB["severe.Classify → [w] window"]
-  CLS --> TONE["cast.Classify → tone<br/><b>#18</b>"]
   LANE --> BAND["marquee<br/><i>operator</i>"]
   TAB --> WIN["window<br/><i>operator</i>"]
-  TONE --> DIR["Director → Composer → Reader"]
-  DIR --> SPK["speak<br/><i>listener</i>"]
+  CLS --> DIR["Director → plan"]
+  DIR --> COMP["Composer<br/>cast.Classify → tone <b>#18</b>"]
+  COMP --> SPK["Reader → speak<br/><i>listener</i>"]
   SPK -.->|"<b>FR-9</b> bound:<br/>complete, fail, or fault"| SPK
   SRC -.->|"<b>FR-10</b>: what is NOT watched"| BAND
 ```
@@ -182,11 +215,19 @@ func Mutate(edit func(*Config)) error // TBFI in BUILD
 - **The lock is package-level and held across load-edit-save**, not per-caller.  A caller-held lock
   is the arrangement that already failed.
 
-### FR-9 — where the read bound lives
+### FR-9 — where the read bound lives  *(PL-D-5 WITHDRAWN)*
 
-The bound belongs in `player.Engine.watch`, not in the Director.  `watch` is the only place that
-knows a read has started and has not ended; the Director knows what it asked for, not what happened.
-A bound in the Director would be a success bound on someone else's work — the F-50 shape.
+**Revision 1 put the bound in `player.Engine.watch`.  That was wrong, and one grep refutes it.**
+`watch` has a single caller — `playPCM` — reached from the **relay stream** and `StartSource`.  A
+spoken read goes `Preview`/`PreviewAside` → `playClip`, which **already carries a ten-minute P10-02
+bound**.  A bound in `watch` would have timed the radio stream, not the read, and would abort a
+station stream that had played for hours.
+
+**What is actually unbounded is the read's completion signal, not its player.**  `director.go` returns
+a computed `pcmDuration` and `speaker.hold` sleeps it — *nothing observes that a read finished.*
+B5 opens with a one-hour spike to thread one completion event out of `playClip`, which settles both
+the bound's home and the batch's size.  **PL-D-5 is withdrawn rather than amended**, because its
+rationale — "`watch` is the only place that knows" — was the part that was false.
 
 ## BUILD sequence
 
@@ -251,16 +292,44 @@ Per anti-pattern 7 — generic mitigations are not carried forward.
 | **PL-D-2** | The helper covers **Family A only**; Family B gets a ruling | One helper for all five | Measured: the memo guard asserts an implication, not a mapping.  A generic helper cannot express it | A third family appears |
 | **PL-D-3** | Mechanism → surfaces → rulings; FR-10 parallel | Listener-safety first; two tracks | FR-2 gives every later item a way to prove itself; FR-10 contends with nothing for code | The B3 checkpoint shows B1–B3 overran |
 | **PL-D-4** | `Mutate` owns serialization only; the mirror stays in `Save` | `Mutate` absorbs the mirror | Avoids the god-object the red team named; `Save` already documents itself as the mirror's sole owner | A second back-compat mirror appears |
-| **PL-D-5** | FR-9's bound lives in `player.Engine.watch` | In the Director; in the schedule | Only `watch` knows a read started and has not ended.  A Director-side bound is a success bound on someone else's work — the F-50 shape | The engine gains a completion signal that removes the polling |
+| ~~**PL-D-5**~~ | ~~FR-9's bound lives in `player.Engine.watch`~~ | — | **WITHDRAWN.**  The rationale was false: `watch` has one caller, reached from the relay stream and `StartSource`; a spoken read goes `Preview` → `playClip`, which already has a ten-minute P10-02 bound.  B5 opens with a spike to find the real home | — |
+| **PL-D-8** | **`platform/closedset` is deferred.**  B1 writes #18's tone map by hand and the extraction decision happens at B1's exit | Build it first (revision 1); never build it | The DRY rule says extract at the second caller.  There are two call sites, not five — revision 1 counted four hypotheticals.  Deferring also takes the helper off the critical path, so the batch that produces evidence starts on day one | The tone map and the lane guard turn out to rhyme — extract then, in B1 |
+| **PL-D-9** | **FR-9.3 is reworded, and ruling I-2 stands** | Re-open I-2 | The requirement was aimed at a stopped rotation and hit I-2 by accident.  Reworded: the main-track rotation produces a read within a stated interval or reports, **unless the operator has chosen silence.**  Dead air the operator chose is not a fault | The masthead/mastTail work at 0.16.0 changes what "chosen" means |
 | **PL-D-6** | BUILD is planned as batches; tasks decomposed at batch entry | 2–5 minute tasks written now | ~35 leaf items would be several hundred tasks of untested code.  0.14.0 ran P1–P4 the same way | A batch exceeds one working session |
 | **PL-D-7** | B6 lands lint as baseline + ratchet, not a clean bill | Clean bill as exit condition | The finding count is unknown until it runs; making an unknown a gate is how a batch becomes unbounded | The first run returns a small number |
 
 ## Internal validation
 
-Run before requesting approval, per anti-pattern 5.
+**Revision 1's validation was the plan's own worst finding.**  It asserted "FR-1 → B2/B4 … 10 of 10"
+at *family* granularity, so a family with one scheduled sub-requirement out of four read as complete —
+and three requirements went missing under a green number.  That is the error this release exists to
+close, committed inside the coverage check.  Four lenses found it.
 
-- **Every DISCOVER requirement has a batch.**  FR-1 → B2/B4 · FR-2 → B1/B2 · FR-3 → B4 · FR-4 → B3 ·
-  FR-5 → B3 · FR-6 → B7 · FR-7 → B7 · FR-8 → B6 · FR-9 → B5 · FR-10 → parallel.  **10 of 10.**
+**This revision derives the check from the implementation plan's `Lands:` lines** rather than reading
+it off the requirement headings, and does it at **sub-requirement** granularity:
+
+| Requirement | Batch |
+|---|---|
+| FR-1.1, FR-1.3, FR-1.4 | **B2** *(new)* |
+| FR-1.2 | B1 |
+| FR-2.1a, FR-2.2, FR-2.3 | B1 |
+| ~~FR-2.1~~ | *deferred with the helper — PL-D-8* |
+| FR-3.1, FR-3.2, FR-3.3, FR-3.4 | B4 |
+| FR-4.1 … FR-4.7 | B3 |
+| FR-5.1, FR-5.2, FR-5.3 | B3 |
+| FR-6.1, FR-6.2, FR-6.3, FR-6.6 | B7 |
+| FR-6.4 | **B3** *(PD-6)* |
+| FR-6.5 | **B5** *(PD-7)* |
+| FR-7.1 … FR-7.5 | B7 |
+| FR-8.1 … FR-8.4 | B6 |
+| FR-9.1, FR-9.2, FR-9.3 | B5 |
+| FR-10.1, FR-10.2 | parallel |
+| FR-10.3 | **B5** *(PD-8)* |
+| #18 | B1 |
+
+**Remaining gap, stated rather than certified away:** metric **D** still has no owning batch and no
+instrument — the 0.14.1 duplicate-detection script was never committed, and rebuilding it is release
+work nobody has been assigned.  DISCOVER deferred it here by ruling; PLAN has not discharged it.
 - **Every NFR has an owner.**  NFR-1 → B4 · NFR-2 → B3 gate · NFR-3 → B6 (as FR-8.4) · NFR-4 → all
   batches (push early) · NFR-5 → B3 · NFR-6 → B7.
 - **Task ordering is stated** with a critical path, one parallel pair, and one parallel track.
