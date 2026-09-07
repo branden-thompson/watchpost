@@ -34,7 +34,11 @@ func TestEachMemberFailsOnBothBadQuadrants(t *testing.T) {
 func TestAnEmptySetIsARefusal(t *testing.T) {
 	spy := &testing.T{}
 	done := make(chan struct{})
-	go func() { defer close(done); defer func() { _ = recover() }(); EachMember(spy, "probe", []string{}, nil, func(string) bool { return true }) }()
+	go func() {
+		defer close(done)
+		defer func() { _ = recover() }()
+		EachMember(spy, "probe", []string{}, nil, func(string) bool { return true })
+	}()
 	<-done
 	if !spy.Failed() {
 		t.Error("an empty member set must fail: an instrument that cannot fail proves nothing")
