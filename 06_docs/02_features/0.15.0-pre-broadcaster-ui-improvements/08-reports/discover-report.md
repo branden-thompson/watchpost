@@ -278,6 +278,39 @@ being declined is not the same as the cycle producing a read.  A rotation in whi
 declines is silent, and under this ruling that silence is indistinguishable from a dead station to
 the only sense the listener has.  FR-9.3 is what turns the ruling into something a test can fail.
 
+### FR-10 — Hazard coverage is known, and its boundary is stated  *(F-40 — ROLLED IN, HUM LEAD 2026-09-07)*
+
+**Reversal of the intake ruling, and the reason is FR-9's reason.**  At intake F-40 was deferred to
+its own 0.15.x.  The red team then asked what the listener is told in the meantime, and the answer
+was nothing — which under the surface taxonomy is the same failure shape as an unstated silence.  A
+boundary nobody states is a boundary nobody can account for.  So the fix comes into 0.15.0 rather
+than the disclosure being deferred with it.
+
+The sighting is real, dated, and named: the Brengel Fire, Vista CA, morning of 2026-09-06.  An
+evacuation order was issued and the hotspot appeared in the details for **neither** Oceanside 92057
+nor Vista — the two nearest tracked locations.
+
+It remains **two questions, and neither is the read path**:
+
+- **FR-10.1 — the FIRE.**  Why no hotspot for a fire close enough to force evacuations in a
+  neighbouring town.  Candidates, none yet eliminated: a FIRMS radius, a confidence filter, a
+  satellite-pass latency, or the detection genuinely not being in the feed yet.
+- **FR-10.2 — the ORDER.**  `Evacuation Immediate` is now fetched and leads the read (C-2, and #15
+  fixed its marquee lane in 0.14.2), but that is the **NWS** alerts feed.  A fire evacuation issued
+  by a county or by CAL FIRE may never appear there at all, **which makes C-2's fix necessary and not
+  sufficient.**
+- **FR-10.3 — the boundary is stated to the listener and to the operator.**  Whatever FR-10.1 and
+  FR-10.2 conclude, the product says what it does not watch.  This is the requirement that made the
+  roll-in necessary, and it is deliverable even if the other two conclude "cannot be fixed here."
+
+**This keeps its own DISCOVER inside the release** (HUM LEAD, 2026-09-06, unchanged): the feeds get
+examined rather than the reader, because guessing from one sighting is how the wrong thing gets
+built.  It is scoped as a bounded investigation with a written disposition, not as an open hunt —
+the same discipline RS-4 applies to F-43.
+
+**Scope consequence, stated rather than absorbed:** this is the largest single item in the release
+and RS-1 was already its top risk.  See the recommendation for the offset.
+
 ## Metrics of Success — carried forward, with owners
 
 *Absent from the first draft; four lenses found that independently.  The brief hardened each against
@@ -393,9 +426,16 @@ from what `make verify` runs.
    hardware, with no date and no fallback, to answer a question whose answer is already the fallback,
    is a mitigation that restates the risk.  **OQ-18 and §3/§4 move to 0.16.0 DISCOVER**, where a
    Broadcaster workload justifies the paired v0.13.0 + 0.14.2 runs §4 actually requires.
-4. **Two conditions remain open and both are HUM LEAD's** (see `red-team-discover.md`): the
-   four-classifier cross-table, and a ruling on listener-versus-operator scope together with F-40's
-   deferral — which needs an exposure statement and a date, not an ordering promise.
+4. **Both open conditions are now closed.**  The surface taxonomy is ruled (visual = operator, audio
+   = listener) and F-40 is rolled in as FR-10.  The four-classifier cross-table is a DISCOVER
+   deliverable owed by this report, not a ruling owed by the HUM LEAD; it was mis-assigned.
+5. **The offset for FR-10, recommended not taken.**  FR-10 is the largest item in the release and
+   RS-1 was already the top risk.  **Nine of eleven lenses independently recommended deleting most of
+   FR-7**, and red team C-3 removed its premise outright: the PII exposure is live and published, so
+   "publication precondition" describes a door that is already open.  Cutting FR-7 to a single
+   deliverable — the exposure statement and a HUM LEAD remediation ruling — pays for FR-10 out of the
+   work the red team said had no failure mode at all, loud or silent.  **This is a scope decision and
+   therefore the HUM LEAD's; it is recommended, not applied.**
 
 **Ledger staleness is worse than this report first claimed, and not in the direction it claimed.**
 F-35 was understated and is amended; F-30 was correct and this report was wrong (FR-3.3).  The red
