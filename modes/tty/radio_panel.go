@@ -42,8 +42,6 @@ func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 		if !d.radioViz {
 			d.vizBands = nil // off: nothing lingers for the next on
 		}
-	case "radio-size":
-		d.radioMin = !d.radioMin
 	case "radio-vol-up":
 		d.radioVolume = min(100, d.radioVolume+5)
 		d.volFlash, d.volFlashEnd = "+", time.Now().Add(350*time.Millisecond) // green blink (UAT 41)
@@ -76,7 +74,8 @@ func (d Dashboard) volControl(o render.Opts, width int) string {
 	}
 	// UAT 42.1: the level always occupies 3 cells (0-100) so the row never jitters.
 	return render.TintRaw("VOL ", "1;97") + minus +
-		render.Tint(strings.Repeat("█", filled), render.Tok(render.RadioAccent)) + strings.Repeat("░", width-filled) +
+		render.Tint(strings.Repeat(o.Glyphs().RailCar, filled), render.Tok(render.RadioAccent)) +
+		strings.Repeat(o.Glyphs().Fill, width-filled) +
 		plus + " " + render.Tint(fmt.Sprintf("%3d", d.radioVolume), render.Tok(render.TextBright))
 }
 
@@ -84,7 +83,7 @@ func (d Dashboard) volControl(o render.Opts, width int) string {
 // mode in force, in the heavy box (facelift 2026-08-28).
 func (d Dashboard) radioPanel(fl frameLayout) string {
 	fg, bg := render.RadioBlockTone()
-	return fl.o.Box(fl.radioRows, fg, bg) // a bordered box, the rows inset 3 (facelift 2026-08-28); the rows the layout already rendered for the mode in force ([T] Size: Min = two-row player)
+	return fl.o.Box(fl.radioRows, fg, bg) // a bordered box, the rows inset 3 (facelift 2026-08-28); the rows the layout already rendered for the size in force
 }
 
 // radioLines builds the player rows for a layout mode (UAT 35: width-
@@ -93,19 +92,76 @@ func (d Dashboard) radioPanel(fl frameLayout) string {
 // so what is measured is what is drawn.
 func (d Dashboard) radioLines(o render.Opts, compactMode bool) []string {
 	inner := o.BoxInnerWidth() // the box's rows: borders and the 3-cell insets off
+	// Two different questions, and conflating them was a regression:
+	//
+	//   WIDTH decides the CONTROL STYLE — labelled controls and a viz toggle
+	//     at medium and wide, keys only at narrow.
+	//   HEIGHT (compactMode) decides the ROW COUNT — a short frame drops to
+	//     the two-row player, which is today's rule and is kept.
+	//
+	// A 133-column terminal that happens to be short still gets labelled
+	// controls: it has the room for them, and taking them away because the
+	// frame is short would lose the labels a listener reads without gaining a
+	// row. d.width, not o.Width — the mock's numbers are OUTER columns.
+	bp := radioBreakpoint(d.width, false)
 	parts := radioParts{
 		title:    render.Tint("WATCHPOST WEATHER RADIO", render.Tok(render.RadioAccent)), // the facelift's capitals (HUM LEAD UAT 2026-08-28)
 		clock:    "",                                                                     // the max player lays the marquee itself (UAT 90)
 		state:    d.radioStateLabel(),
-		controls: d.radioControlLines(o, inner),
+		controls: d.radioControlLines(o, inner, bp),
 	}
-	if compactMode {
+	if compactMode || bp == radioNarrow {
 		parts.vol = d.volControl(o, 10) // UAT 41.1: fixed 10 cells so the scrub bar gets the room
 		return d.radioCompactRows(inner, parts)
 	}
 	parts.vol = d.volControl(o, max(10, min(30, inner/5))) // scaled in the full player
 	return d.radioMaxRows(o, inner, parts)
 }
+
+// radioBP is one of the three fixed layouts (MVS-D-23).
+type radioBP int
+
+const (
+	radioNarrow radioBP = iota
+	radioMedium
+	radioWide
+)
+
+// The mock's boundaries, in OUTER terminal columns.
+const (
+	radioMediumCols = 84
+	radioWideCols   = 146
+)
+
+// radioBreakpoint picks the layout from the terminal's columns.
+//
+// This is what replaces the retired size toggle (MVS-D-23): every breakpoint has a STANDARD
+// VERTICAL SIZE, so there is nothing left for a size toggle to toggle. The
+// layout follows the window, which is what a listener resizing a terminal
+// expects anyway — they never had to press a key to get a wider table.
+//
+// A height-compact frame takes the NARROW player whatever the width: today's
+// rule, kept. A short terminal has no room for a visualizer however wide it is.
+func radioBreakpoint(cols int, compact bool) radioBP {
+	switch {
+	case compact:
+		return radioNarrow
+	case cols >= radioWideCols:
+		return radioWide
+	case cols >= radioMediumCols:
+		return radioMedium
+	}
+	return radioNarrow
+}
+
+// hasViz reports whether this breakpoint has a visualizer area — and therefore
+// whether the `v` control exists at all.
+//
+// The HUM LEAD's rule (2026-08-29): "smallest size won't show viz so the [v]
+// control disappears; once it gets wider it can reappear". The control row is
+// DERIVED from the breakpoint, never from a separate setting, so a control that
+// toggles nothing can never be drawn.
+func (b radioBP) hasViz() bool { return b != radioNarrow }
 
 // radioParts are the styled player fragments shared by both layouts
 // (split from radioLines, P10-04).
@@ -326,20 +382,21 @@ func marquee(text string, width int, progress float64) string {
 // radioStateLabel renders the player state (B4): STOPPED grey, PLAYING
 // bold green (UAT 7.2e), CONNECTING / RECONNECTING accent, NO STREAM grey.
 func (d Dashboard) radioStateLabel() string {
+	g := d.opts().Glyphs() // EVERY mark here, not just Fail — see F-47
 	switch d.radioState {
 	case "playing":
-		return render.Tint("▶ PLAYING", render.Tok(render.StatePlaying))
+		return render.Tint(g.Play+" PLAYING", render.Tok(render.StatePlaying))
 	case "connecting":
 		return render.Tint("… CONNECTING", render.Tok(render.RadioAccent))
 	case "reconnecting":
 		return render.Tint("↻ RECONNECTING", render.Tok(render.RadioAccent))
 	case "failed":
-		return render.Tint(d.opts().Glyphs().Fail+" NO STREAM", render.Tok(render.StateStopped))
+		return render.Tint(g.Fail+" NO STREAM", render.Tok(render.StateStopped))
 	}
 	if d.radioPlaying { // no player wired (tests / older builds): state follows the toggle
-		return render.Tint("▶ PLAYING", render.Tok(render.StatePlaying))
+		return render.Tint(g.Play+" PLAYING", render.Tok(render.StatePlaying))
 	}
-	return render.Tint("■ STOPPED", render.Tok(render.StateStopped))
+	return render.Tint(g.Stop+" STOPPED", render.Tok(render.StateStopped))
 }
 
 // radioToggle: [space] plays the focused location, or stops when that
@@ -403,17 +460,13 @@ func (d Dashboard) radioVolumeCmd() (Dashboard, bool) {
 
 // radioControlLines wraps the player controls to the module width (UAT
 // 35.1) - the same smart wrap the footer uses; B4 wires the handlers.
-func (d Dashboard) radioControlLines(o render.Opts, inner int) []string {
+func (d Dashboard) radioControlLines(o render.Opts, inner int, bp radioBP) []string {
 	// UAT 52: an "On" state reads emphasized - repeat yellow bold, viz green bold.
 	onOff := func(b bool, tok render.Token) string {
 		if b {
 			return render.Tint("On", render.Tok(tok))
 		}
 		return "Off"
-	}
-	size := "Max"
-	if d.radioMin {
-		size = "Min"
 	}
 	repeat := d.radioRepeat.String() // UAT 93: Off | One | Watchlist; any repeat reads emphasized
 	if d.radioRepeat != RepeatOff {
@@ -424,13 +477,18 @@ func (d Dashboard) radioControlLines(o render.Opts, inner int) []string {
 	if d.radioPlaying {
 		play = "Pause"
 	}
+	if bp == radioNarrow {
+		// Narrow: keys only, bracketed, and NO viz toggle — there is no
+		// visualizer here to toggle (the mock, as corrected by the HUM LEAD).
+		return []string{"  " + strings.Join([]string{o.KeyCap("space"), o.KeyCap("r"), o.KeyCap("m")}, " ")}
+	}
 	segs := []string{
 		o.KeyCap("space") + " " + play,       // UAT 39: action label follows state
 		o.KeyCap("r") + " Repeat: " + repeat, // [p] Pin retired (UAT 93): Repeat: Watchlist is how the player follows the list
 		o.KeyCap("m") + " Mode: " + render.Tint(d.radioMode.String(), render.Tok(render.RadioStation)), // UAT 97
-		o.KeyCap("v") + " Viz: " + onOff(d.radioViz, render.VizOn),
-		o.KeyCap("V") + " Voice: " + d.voiceChip(), // UAT 84
-		o.KeyCap("T") + " Size: " + size,
+	}
+	if bp.hasViz() {
+		segs = append(segs, o.KeyCap("v")+" Viz: "+onOff(d.radioViz, render.VizOn))
 	}
 	lines := render.WrapSegments(segs, inner-2, "  ")
 	for i := range lines { // the controls two cells in (the mock); a wrapped continuation centres under the first row

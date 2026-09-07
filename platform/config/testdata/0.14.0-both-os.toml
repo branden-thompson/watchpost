@@ -1,0 +1,19 @@
+# Written on one machine, synced to the other: BOTH halves of each pair are
+# present, and neither platform may destroy the other's assignment.
+voice = "Samantha"
+
+[radio]
+mode = "synth"
+cast = "cast"
+
+[radio.voices.alerts]
+macos = "Rishi"
+piper = "en_US-ryan-medium"
+
+[radio.voices.fire]
+macos = "Daniel"
+piper = "en_US-amy-medium"
+
+[radio.tones]
+mode = "mute"
+muted = ["watch", "advisory"]

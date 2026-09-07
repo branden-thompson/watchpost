@@ -35,7 +35,9 @@ func TestUpdatedStampCarriesItsAgeAndColour(t *testing.T) {
 	for _, row := range rows {
 		d.now = func() time.Time { return at.Add(row.age) }
 		line := strings.SplitN(d.header(d.opts()), "\n", 2)[0]
-		want := strings.TrimSuffix(render.Tint("Updated: "+at.Local().Format("01/02/2006 15:04:05 MST")+" "+row.want, render.Tok(row.tone)), "\x1b[0m") // the opening tone (the box re-arms its own after)
+		// The stamp is written in the LISTENER'S clock now (0.14.0), so the test
+		// asks the same owner the header does rather than repeating a layout.
+		want := strings.TrimSuffix(render.Tint("Updated: "+d.opts().Clock.Stamp(at.Local())+" "+row.want, render.Tok(row.tone)), "\x1b[0m") // the opening tone (the box re-arms its own after)
 		if !strings.Contains(line, want) {
 			t.Errorf("age %v: want %q in %q", row.age, want, stripANSITest(line))
 		}
@@ -231,10 +233,12 @@ func TestFavoriteChipEnabledOnRecentRowsOnly(t *testing.T) {
 	}
 }
 
-// The header's inner ladder (round 4, C-11a): as the row narrows the mute
-// label shortens, then the mute chip drops, then the API summary loses its
-// label, then the chips stand alone, then the summary leaves — in that
-// order, the row never wider than the box.
+// The header's inner ladder (round 4, C-11a): as the row narrows About drops,
+// then the API summary loses its label, then the chips stand alone, then the
+// summary leaves — in that order, the row never wider than the box.
+//
+// Two rungs went with [t] and [M] (0.14.0): there is no mute label to shorten
+// and no mute chip to drop, because neither is in the row any more.
 func TestHeaderRowLaddersInOrder(t *testing.T) {
 	d := dash(t).(Dashboard)
 	seen := map[string]int{}
@@ -247,12 +251,10 @@ func TestHeaderRowLaddersInOrder(t *testing.T) {
 		}
 		form := "chips-only"
 		switch {
-		case strings.Contains(row, "[M] Mute Severe Alerts"):
+		case strings.Contains(row, "[a] About"):
 			form = "full"
-		case strings.Contains(row, "[M] Mute "):
-			form = "mute-short"
-		case strings.Contains(row, "[s] Setup"):
-			form = "no-mute"
+		case strings.Contains(row, "[s] Settings"):
+			form = "no-about"
 		}
 		if strings.Contains(row, "API: ") {
 			form += "+api"
@@ -264,7 +266,7 @@ func TestHeaderRowLaddersInOrder(t *testing.T) {
 			prev = form
 		}
 	}
-	order := []string{"full+api", "mute-short+api", "no-mute+api", "no-mute+count", "chips-only+count", "chips-only"}
+	order := []string{"full+api", "no-about+api", "no-about+count", "chips-only+count", "chips-only"}
 	last := 999
 	for _, f := range order {
 		w, ok := seen[f]

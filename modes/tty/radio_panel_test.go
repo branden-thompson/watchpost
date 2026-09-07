@@ -12,36 +12,6 @@ import (
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
-func TestRadioChipLabelsFollowState(t *testing.T) {
-	// UAT 37: compact state-driven labels — [r] Repeat: Off|One|Watchlist,
-	// [v] Viz: On|Off, [T] Size: Min|Max — and Size: Min renders the two-row
-	// player even on a tall terminal. [p] Pin retired (UAT 93).
-	m := dash(t)
-	v := m.View().Content
-	for _, want := range []string{"[space] Play", "Repeat: Off", "Mode: Synth", "Viz: Off", "Size: Max", "STOPPED"} {
-		if !strings.Contains(v, want) {
-			t.Fatalf("initial label %q missing:\n%s", want, v)
-		}
-	}
-	if strings.Contains(v, "[p]") || strings.Contains(v, "Pin") {
-		t.Fatalf("[p] Pin is retired (UAT 93):\n%s", v)
-	}
-	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	m, _ = m.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
-	m, _ = m.Update(tea.KeyPressMsg{Code: 'v', Text: "v"})
-	v = m.View().Content
-	for _, want := range []string{"[space] Pause", "PLAYING", "Repeat: One", "Viz: On"} {
-		if !strings.Contains(v, want) {
-			t.Fatalf("toggled label %q missing:\n%s", want, v)
-		}
-	}
-	m, _ = m.Update(tea.KeyPressMsg{Code: 'T', Text: "T"})
-	d := m.(Dashboard)
-	if !strings.Contains(m.View().Content, "Size: Min") || !d.radioMin || len(d.radioLines(d.opts(), true)) < 2 {
-		t.Fatalf("Size: Min must render the two-row player")
-	}
-}
-
 func TestCompactRadioRowSpansModuleAndKeepsName(t *testing.T) {
 	// UAT 40: the compact row always spans the module (tail right-aligned),
 	// VOL floors at 10 cells, the clock drops before the location name, and
@@ -398,7 +368,7 @@ func TestRadioSpaceTunesFocusedLocationAndStatusDrivesLabels(t *testing.T) {
 				t.Fatalf("playing row must show ▶ in the radio column: %q", string(r[:12]))
 			}
 			playingRows++
-		} else if strings.Contains(line, "▶") && strings.Contains(line, "ºF") {
+		} else if strings.Contains(line, "▶") && strings.Contains(line, "°F") {
 			t.Fatalf("only the playing location shows ▶: %q", line)
 		}
 	}
@@ -549,7 +519,6 @@ func TestSpaceRetunesToTheFocusedLocationNotStop(t *testing.T) {
 // the title, then reads the station's short form; wrapped controls centre.
 func TestRadioFaceliftHeadTrackAndControls(t *testing.T) {
 	wide := benchDash(t, 200, 60).(Dashboard)
-	wide.radioMin = false
 	rows := wide.radioLines(wide.opts(), false)
 	plain := make([]string, len(rows))
 	for i, r := range rows {
@@ -589,7 +558,7 @@ func TestRadioFaceliftHeadTrackAndControls(t *testing.T) {
 	}
 	// Narrow: the title goes, the station's short form reads, one viz row, the wrapped controls centre.
 	narrow := benchDash(t, 96, 44).(Dashboard) // the box's inner at 96 cols holds the short station beside the 10-cell bar
-	narrow.radioMin, narrow.radioViz = false, true
+	narrow.radioViz = true
 	narrow.radioStation, narrow.radioShort, narrow.radioState, narrow.radioPlaying = "EVENT · Special Weather Statement · Palomar Mountain, CA", "EVENT · SPS · Palomar Mountain, CA", "playing", true
 	rows = narrow.radioLines(narrow.opts(), false)
 	head := stripANSITest(rows[0])
@@ -605,16 +574,15 @@ func TestRadioFaceliftHeadTrackAndControls(t *testing.T) {
 	if viz := stripANSITest(rows[2]); !strings.HasPrefix(viz, "│") || !strings.HasSuffix(viz, "│") {
 		t.Fatalf("one viz row in the narrow track: %q", viz)
 	}
+	// 96 columns is the MEDIUM breakpoint (0.14.0, MVS-D-23): labelled
+	// controls and a visualizer area, so the v toggle exists. The keys-only
+	// narrow row is TestRadioPanelBreakpoints's.
 	controls := rows[3:]
-	if len(controls) < 2 {
-		t.Fatalf("the narrow controls wrap: %v", controls)
-	}
-	if last := controls[len(controls)-1]; !strings.HasPrefix(last, "   ") {
-		t.Fatalf("a wrapped continuation centres: %q", stripANSITest(last))
+	if c := stripANSITest(strings.Join(controls, " ")); !strings.Contains(c, "Repeat:") || !strings.Contains(c, "Viz:") {
+		t.Fatalf("medium: labelled controls with the viz toggle: %q", c)
 	}
 	// Narrower still: the short station itself shortens with an ellipsis, never vanishes.
 	tiny := benchDash(t, 84, 44).(Dashboard)
-	tiny.radioMin = false
 	tiny.radioStation, tiny.radioShort, tiny.radioState, tiny.radioPlaying = narrow.radioStation, narrow.radioShort, "playing", true
 	if head := stripANSITest(tiny.radioLines(tiny.opts(), false)[0]); !strings.Contains(head, "♪ EVENT · SPS") || !strings.Contains(head, "…") || strings.Contains(head, "WATCHPOST") {
 		t.Fatalf("84 cols: the SHORT station shortens (round 4, B-09), the title stays gone: %q", head)
@@ -640,5 +608,53 @@ func TestMarqueeTrackIsASectionBand(t *testing.T) {
 	d.radioPlaying = false
 	if idle := d.marqueeTrack(60); !strings.Contains(idle, render.Tok(render.GroupSectionBG)) || strings.Contains(idle, "░") {
 		t.Fatalf("an idle track is the band alone: %q", idle)
+	}
+}
+
+// Task 4.3 (MVS-D-23/24): three fixed layouts chosen by terminal columns, each
+// with a standard vertical size — which is what retires [T].
+func TestRadioPanelBreakpoints(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		cols    int
+		compact bool
+		want    radioBP
+	}{
+		{"below medium", radioMediumCols - 1, false, radioNarrow},
+		{"at medium", radioMediumCols, false, radioMedium},
+		{"above medium", radioMediumCols + 1, false, radioMedium},
+		{"below wide", radioWideCols - 1, false, radioMedium},
+		{"at wide", radioWideCols, false, radioWide},
+		{"above wide", radioWideCols + 1, false, radioWide},
+		// A height-compact frame takes the narrow player whatever the width:
+		// a short terminal has no room for a visualizer however wide it is.
+		{"compact overrides width", radioWideCols + 40, true, radioNarrow},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := radioBreakpoint(tc.cols, tc.compact); got != tc.want {
+				t.Errorf("radioBreakpoint(%d, compact=%v) = %d, want %d", tc.cols, tc.compact, got, tc.want)
+			}
+		})
+	}
+	// The v control exists IFF the breakpoint has a visualizer area (the HUM
+	// LEAD's rule): it is derived from the layout, never from a setting, so a
+	// control that toggles nothing can never be drawn.
+	if radioNarrow.hasViz() || !radioMedium.hasViz() || !radioWide.hasViz() {
+		t.Error("only the narrow breakpoint lacks a visualizer area")
+	}
+	// The narrow controls are keys only, bracketed, with no viz toggle.
+	d := benchDash(t, 78, 24).(Dashboard)
+	rows := d.radioControlLines(d.opts(), d.opts().BoxInnerWidth(), radioNarrow)
+	if len(rows) != 1 {
+		t.Fatalf("narrow controls are one row: %v", rows)
+	}
+	c := stripANSITest(rows[0])
+	for _, want := range []string{"space", " r ", " m "} {
+		if !strings.Contains(c, want) {
+			t.Errorf("narrow controls missing %q: %q", want, c)
+		}
+	}
+	if strings.Contains(c, "Viz") || strings.Contains(c, "Size") {
+		t.Errorf("narrow carries no viz and no size control: %q", c)
 	}
 }

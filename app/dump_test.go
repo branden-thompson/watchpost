@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -184,5 +185,35 @@ func TestCountersRecordRunsAGCFirst(t *testing.T) {
 	rec := d.record(time.Now())
 	if rec.Mem.NumGC <= before.NumGC {
 		t.Fatalf("record must collect before it reads: NumGC %d -> %d", before.NumGC, rec.Mem.NumGC)
+	}
+}
+
+// A PATH ON SCREEN MUST NOT CARRY THE ACCOUNT NAME. README captures of the [S]
+// window shipped the maintainer's username publicly from 0.13.0, and no grep
+// could have found it — by the time it is in a PNG it is pixels. The fix is at
+// the source so every future capture is safe without anyone remembering.
+func TestTheDumpHintNeverShowsTheHomePath(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		t.Skip("no home directory on this host")
+	}
+	got := dumpHint(4242, filepath.Join(home, "Library", "Caches", "watchpost", "profiles"))
+	if strings.Contains(got, home) {
+		t.Errorf("the [S] dump hint carries the home path: %q", got)
+	}
+	if !strings.Contains(got, "~") {
+		t.Errorf("the home prefix was not abbreviated: %q", got)
+	}
+	// A path outside the home is left exactly as it is — half-rewriting is worse.
+	if out := abbreviateHome("/var/tmp/watchpost"); out != "/var/tmp/watchpost" {
+		t.Errorf("a path outside the home was rewritten: %q", out)
+	}
+	// The bare home abbreviates, and a sibling directory that merely SHARES the
+	// prefix must not (…/homeless is not under …/home).
+	if out := abbreviateHome(home); out != "~" {
+		t.Errorf("the bare home did not abbreviate: %q", out)
+	}
+	if out := abbreviateHome(home + "extra"); out != home+"extra" {
+		t.Errorf("a sibling sharing the prefix was rewritten: %q", out)
 	}
 }

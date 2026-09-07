@@ -51,10 +51,6 @@ func TestTickArmedOnlyWhileAnimating(t *testing.T) {
 			d.radioPlaying, d.radioState, d.radioDetail, d.radioLive = true, "playing", "KEC80", true
 			return d
 		}, false},
-		{"the min player has no marquee", func(d Dashboard) Dashboard {
-			d.radioPlaying, d.radioState, d.radioDetail, d.radioMin = true, "playing", "Tonight.", true
-			return d
-		}, false},
 		{"[S] ages", func(d Dashboard) Dashboard { d.modal = modalStatus; return d }, true},
 		{"Details labels and LoadingDots", func(d Dashboard) Dashboard { d.modal = modalDetails; return d }, true},
 	}
@@ -129,8 +125,8 @@ func TestStatusAgesAndDetailsLabelsMoveWithTheClock(t *testing.T) {
 	old.Providers[0].FetchedAt = time.Now().Add(-90 * time.Second)
 	d.snap = old
 	d.modal = modalStatus
-	if v := stripANSITest(d.View().Content); !strings.Contains(v, "fetched") {
-		t.Fatalf("the [S] modal shows provider ages:\n%s", v)
+	if v := stripANSITest(d.View().Content); !strings.Contains(v, "1m 30s") {
+		t.Fatalf("the [S] modal shows endpoint ages:\n%s", v)
 	}
 	d.modal = modalDetails
 	loc := &d.snap.Locations[0]

@@ -102,3 +102,36 @@ func TestRecentListCapsAtFifty(t *testing.T) {
 		t.Fatal("newest stays on top")
 	}
 }
+
+// numRecent MUST agree with the list it counts, in every state — it is the
+// arithmetic form of len(recentLocations()) and the focus arithmetic spans both
+// tables, so a count that disagrees with the drawn list puts the cursor off the
+// end of it.
+//
+// It is arithmetic because it ran on the RENDER PATH: three per-frame sites
+// (dashboard.go, layout.go, nav.go) each built a fresh copy of all fifty
+// Location values to take a length — 6.2 MB/min, a fifth of the whole app's
+// allocation, for an integer (perf pass, 2026-08-30). Since 0.12.0's ticker the
+// frame draws continuously, so that ran forever.
+func TestNumRecentAgreesWithTheDrawnList(t *testing.T) {
+	loc := func(label string) snapshot.Location { return snapshot.Location{Label: label} }
+	ref := func(label string) *snapshot.LocationRef { return &snapshot.LocationRef{Label: label} }
+	for _, tc := range []struct {
+		name   string
+		recent *snapshot.Snapshot
+		lookup *snapshot.LocationRef
+	}{
+		{"nothing at all", nil, nil},
+		{"empty snapshot", &snapshot.Snapshot{}, nil},
+		{"rows, no lookup", &snapshot.Snapshot{Locations: []snapshot.Location{loc("A"), loc("B")}}, nil},
+		{"lookup with no snapshot", nil, ref("C")},
+		{"lookup not yet in the list", &snapshot.Snapshot{Locations: []snapshot.Location{loc("A")}}, ref("C")},
+		{"lookup already in the list", &snapshot.Snapshot{Locations: []snapshot.Location{loc("A"), loc("C")}}, ref("C")},
+		{"lookup into an empty list", &snapshot.Snapshot{}, ref("C")},
+	} {
+		d := Dashboard{recent: tc.recent, lookupRef: tc.lookup}
+		if got, want := d.numRecent(), len(d.recentLocations()); got != want {
+			t.Errorf("%s: numRecent()=%d, the drawn list has %d", tc.name, got, want)
+		}
+	}
+}

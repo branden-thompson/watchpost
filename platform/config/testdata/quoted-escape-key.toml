@@ -1,0 +1,14 @@
+# A QUOTED top-level key carrying an escape. On go-toml v2.2.4 the strict
+# decoder panicked here ("subslice address ... is before data address"), the
+# recover masked it, and every unknown key was then silently dropped -- NFR-5
+# failing quietly. This fixture is why v2.4.3 is a REQUIRED bump.
+#
+# It must also not ALIAS the real nested key: "radio.mode" quoted at the top
+# level is a different key from radio.mode, and joining path segments into a
+# dotted string would conflate the two.
+voice = "Samantha"
+"radio\u001Bmode" = "not the real one"
+"radio.mode" = "also not the real one"
+
+[radio]
+mode = "synth"

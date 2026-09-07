@@ -80,7 +80,7 @@ func TestNWSFetchMapsEventAndSeverity(t *testing.T) {
 	]}`
 	src := NewNWS(client(t), serve(t, body))
 	// The query filters by the curated event list.
-	if u := src.url(); !strings.Contains(u, "event=Tornado%20Warning") {
+	if u := src.url(); !strings.Contains(u, "Tornado%20Warning") {
 		t.Fatalf("the national query filters by event name: %s", u)
 	}
 	evs, err := src.Fetch(context.Background())

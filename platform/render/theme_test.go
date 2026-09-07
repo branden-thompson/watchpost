@@ -1,6 +1,7 @@
 package render
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -49,7 +50,7 @@ func TestThemeRegistrySwitchesLive(t *testing.T) {
 }
 
 func TestEveryThemeOwnsItsTitleGradient(t *testing.T) {
-	// UAT 107 (HUM LEAD): the wordmark gradient follows the theme — every
+	// UAT 107: the wordmark gradient follows the theme — every
 	// built-in sets all three stops itself, and they differ from the default
 	// (a new theme that forgets them fails here, not at UAT).
 	def := builtinOverrides()
@@ -140,7 +141,7 @@ func TestThemeTokenContrastAA(t *testing.T) {
 		}
 		r, g, b := hexRGB(WindowBGDark)
 		bg := luminance(r, g, b)
-		for _, tok := range []Token{TableMuted, TableName, TextBase, TextBright, ModalTitle} {
+		for _, tok := range []Token{TableMuted, TableName, TextBase, TextBright, ModalTitle, TitleEdition} {
 			fg, ok := fgLuminance(Tok(tok))
 			if !ok {
 				t.Fatalf("%s %s: %q is not a foreground value", name, tok, Tok(tok))
@@ -166,17 +167,17 @@ func TestEventCategoryTokensAreThemeIndependent(t *testing.T) {
 		if !SetTheme(name) {
 			t.Fatal(name)
 		}
-		for _, tok := range []Token{EventCatRedBG, EventCatOrangeBG, EventCatYellowBG, EventCatWatchBG, EventCatStmtBG, EventCatBlueBG} {
+		for _, tok := range categoryTints() {
 			if Tok(tok) != def[tok] {
 				t.Errorf("%s overrides %s: %q (must inherit %q)", name, tok, Tok(tok), def[tok])
 			}
 		}
 	}
 	// Positive control: a registered theme that DOES override must be caught.
-	RegisterTheme("planted-control", map[Token]string{EventCatRedBG: "48;2;1;2;3"})
+	RegisterTheme("planted-control", map[Token]string{EventCatDisasterBG: "48;2;1;2;3"})
 	t.Cleanup(func() { UnregisterTheme("planted-control") })
 	SetTheme("planted-control")
-	if Tok(EventCatRedBG) == def[EventCatRedBG] {
+	if Tok(EventCatDisasterBG) == def[EventCatDisasterBG] {
 		t.Fatal("the control override was not applied — the guard is vacuous")
 	}
 	UnregisterTheme("planted-control")
@@ -193,7 +194,7 @@ func TestCategoryToneContrastAA(t *testing.T) {
 	for _, name := range ThemeNames() {
 		SetTheme(name)
 		for _, dark := range []bool{true, false} {
-			for _, hue := range []Token{EventCatRedBG, EventCatOrangeBG, EventCatYellowBG, EventCatWatchBG, EventCatStmtBG, EventCatBlueBG} {
+			for _, hue := range categoryTints() {
 				fg, bg := CategoryTone(hue, dark)
 				bl, ok := bgLuminance(bg)
 				if !ok {
@@ -224,6 +225,42 @@ func TestCategoryToneContrastAA(t *testing.T) {
 					t.Errorf("%s %s header band: %.2f:1 below AA", name, hue, ratio)
 				}
 			}
+		}
+	}
+}
+
+// A THEME CALLED MONOCHROME HAS NO COLOUR IN IT.
+//
+// It overrides every chromatic token BY HAND, so anything added since the last
+// pass over it leaks the default's colour. Three did: the list pointer and the
+// focused label kept their yellow, and every modal kept the blue slate tile.
+//
+// Grounds and foregrounds both, because the tile was the one a listener saw
+// first — it is behind every window in the app.
+func TestMonochromeHasNoColourInIt(t *testing.T) {
+	prev := ThemeName()
+	t.Cleanup(func() { SetTheme(prev) })
+	if !SetTheme("Monochrome") {
+		t.Fatal("no Monochrome theme")
+	}
+	grey := func(r, g, b int) bool { return r == g && g == b }
+	for tok, v := range activeTable() {
+		if v == "" || v == "39" || v == "49" {
+			continue // the SGR defaults: "whatever the terminal uses", not a colour
+		}
+		if strings.HasPrefix(v, "#") {
+			var r, g, b int
+			if _, err := fmt.Sscanf(v, "#%02x%02x%02x", &r, &g, &b); err == nil && !grey(r, g, b) {
+				t.Errorf("%s = %q is rgb(%d,%d,%d) — Monochrome must answer for it", tok, v, r, g, b)
+			}
+			continue
+		}
+		if r, g, b, ok := bgRGB(v); ok && !grey(r, g, b) {
+			t.Errorf("%s = %q is a coloured GROUND rgb(%d,%d,%d) — Monochrome must answer for it", tok, v, r, g, b)
+			continue
+		}
+		if r, g, b, ok := fgRGB(v); ok && !grey(r, g, b) {
+			t.Errorf("%s = %q is coloured TEXT rgb(%d,%d,%d) — Monochrome must answer for it", tok, v, r, g, b)
 		}
 	}
 }

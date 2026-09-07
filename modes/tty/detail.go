@@ -87,9 +87,22 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location) []string
 	h := loc.Harmonized
 	temp := render.Tint(strings.TrimSpace(o.Temp(h.Temp)), render.Tok(render.TextBright)) + o.TrendGlyph(trend(*loc))
 	out := []string{detailRow("CURRENTLY", gridRow(prettyCond(h.Condition), temp, ""))}
+	// WHERE THE NUMBER CAME FROM, WHEN IT DID NOT COME FROM A STATION.
+	//
+	// A location with no observing station within twenty miles is filled from
+	// the NWS hourly grid for its own point (UAT 2026-09-05). Saying so does
+	// two jobs: it sets the expectation that this is modelled rather than
+	// measured, and it explains why the rows below — feels like, station,
+	// distance — are simply absent rather than broken.
+	//
+	// It reads as an aside because it is one: the number above is the most
+	// accurate available, not a degraded one.
+	if h.Source.Provider != "" && render.PlainLine(h.Source.ModelOrStation) == "" {
+		out = append(out, detailRow("", render.Italic("Data from NWS hourly grid forecast for this location")))
+	}
 	feels, hum := "", ""
 	if h.Feels != nil && h.Temp != nil {
-		feels = fmt.Sprintf("%s   (%+.0fºF)", strings.TrimSpace(o.Temp(h.Feels)), (*h.Feels-*h.Temp)*9/5)
+		feels = fmt.Sprintf("%s   (%+.0f°F)", strings.TrimSpace(o.Temp(h.Feels)), (*h.Feels-*h.Temp)*9/5)
 	}
 	if h.HumidityPct != nil {
 		hum = fmt.Sprintf("Humidity  :  %.0f%%", *h.HumidityPct)
@@ -110,6 +123,20 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location) []string
 			dist = "Distance  :  " + d
 		}
 		out = append(out, detailRow("", gridRow("Station   :", st, dist)))
+		// NOT YOUR LOCAL STATION (HUM LEAD, UAT 2026-09-05).
+		//
+		// Lone Pine read 86 °F at half past six because the observation came
+		// from Death Valley, 110 km away — real, current, and not this
+		// location's weather. Beyond twenty miles the provider now refuses the
+		// reading outright; between ten and twenty it is used, and the listener
+		// is told, because a measurement from the far side of a ridge is a
+		// different microclimate and the number may simply not be theirs.
+		//
+		// It says "may vary" rather than naming a doubt it cannot quantify: how
+		// wrong the reading is depends on terrain this app does not model.
+		if d := h.Source.DistanceKm; d != nil && *d > render.StationFarKM {
+			out = append(out, detailRow("", render.Italic(render.Tint("This is not your local station - actual temp may vary", render.Tok(render.NameWarning)))))
+		}
 	}
 	return out
 }
@@ -127,10 +154,10 @@ func (d Dashboard) todayRows(o render.Opts, loc *snapshot.Location, cw int) []st
 		tz = z
 	}
 	if !day.Sunrise.IsZero() {
-		out = append(out, detailRow("", gridRow("Sunrise:", day.Sunrise.In(tz).Format("1504")+"  Local Time", "")))
+		out = append(out, detailRow("", gridRow("Sunrise:", o.Clock.Time(day.Sunrise.In(tz))+"  Local Time", "")))
 	}
 	if !day.Sunset.IsZero() {
-		out = append(out, detailRow("", gridRow("Sunset :", day.Sunset.In(tz).Format("1504")+"  Local Time", "")))
+		out = append(out, detailRow("", gridRow("Sunset :", o.Clock.Time(day.Sunset.In(tz))+"  Local Time", "")))
 	}
 	return out
 }
@@ -140,7 +167,7 @@ func (d Dashboard) todayRows(o render.Opts, loc *snapshot.Location, cw int) []st
 // pairs scan as one column (UAT 28.1).
 const forecastHiLoCol = 37
 
-// hiLo renders "HIGH  98ºF /  98ºF LOW" with fixed 5-cell temps so 2- and
+// hiLo renders "HIGH  98°F /  98°F LOW" with fixed 5-cell temps so 2- and
 // 3-digit values stay aligned (UAT 28.2).
 func hiLo(o render.Opts, day snapshot.Daily) string {
 	return fmt.Sprintf("HIGH %5s / %5s LOW", o.Temp(day.TempMax), o.Temp(day.TempMin))

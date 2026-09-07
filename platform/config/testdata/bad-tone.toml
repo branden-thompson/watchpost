@@ -1,0 +1,5 @@
+# A tone mode outside its closed set: named at load.
+voice = "Samantha"
+
+[radio.tones]
+mode = "muted"

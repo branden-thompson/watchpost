@@ -199,3 +199,90 @@ func TestFailingDirectoryIsAskedAtMostOncePerTTL(t *testing.T) {
 		t.Fatalf("after the window it is asked again, got %d", hits.Load())
 	}
 }
+
+// CO-LOCATED TRANSMITTERS RANK IN A SPECIFIED ORDER.
+//
+// Coachella (KIG78) and Coachella / Spanish (WNG712) share a mast, so their
+// distance from any listener compares exactly equal. With a KM-only comparator
+// the winner was whatever the sort's internals produced — it was WNG712, which
+// is how Vista, CA got the Spanish feed (HUM LEAD, UAT 2026-09-04).
+//
+// This asserts the ORDER, not that the order is repeatable. Go's sort is
+// deterministic for a given input, so an "is it the same twice" test passes
+// against the very comparator that has no tie-break at all — the first version
+// of this test did exactly that and had to be thrown away. What is actually
+// fragile is the tie moving when the table changes underneath it, and only
+// naming the expected winner catches that.
+//
+// The callsign is a tie-break, NOT a language policy: KIG78 winning is luck.
+// When the language preference lands, this test's expectation is what it
+// changes.
+func TestCoLocatedTransmittersRankInASpecifiedOrder(t *testing.T) {
+	tbl, err := LoadTable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const vistaLat, vistaLon = 33.2000, -117.2425
+
+	var order []string
+	var kmA, kmB float64
+	for _, n := range tbl.Nearest(vistaLat, vistaLon, tbl.Len()) {
+		switch n.Callsign {
+		case "KIG78":
+			kmA, order = n.KM, append(order, n.Callsign)
+		case "WNG712":
+			kmB, order = n.KM, append(order, n.Callsign)
+		}
+	}
+	if len(order) != 2 {
+		t.Fatalf("both Coachella transmitters must rank; got %v", order)
+	}
+	// The premise: they really are a tie. Without this the test could pass on
+	// distance alone and prove nothing about the tie-break.
+	if kmA != kmB {
+		t.Fatalf("the pair no longer shares a mast (%.6f vs %.6f); this test's premise is gone", kmA, kmB)
+	}
+	if order[0] != "KIG78" {
+		t.Errorf("the tie must break by callsign, got %v first", order[0])
+	}
+}
+
+// LANGUAGE IS READ FROM THE SITE NAME, because it is recorded nowhere else.
+//
+// Both forms the real table uses are covered, and so is the trap: a suffix
+// match, not a substring, because "Spanish Fork" is a place.
+func TestATransmittersLanguageIsReadFromItsSite(t *testing.T) {
+	for _, tc := range []struct{ site, want string }{
+		{"Coachella / Spanish", LangSpanish}, // the / form
+		{"El Paso Spanish", LangSpanish},     // the bare-suffix form
+		{"Hialeah Spanish", LangSpanish},
+		{"Coachella", LangEnglish},
+		{"San Diego", LangEnglish},
+		{"Spanish Fork", LangEnglish}, // a place, not a language
+		{"", LangEnglish},
+	} {
+		if got := (&Transmitter{Site: tc.site}).Lang(); got != tc.want {
+			t.Errorf("%q reads as %q, want %q", tc.site, got, tc.want)
+		}
+	}
+
+	// EVERY Spanish row in the shipped table is found. A rule read off five
+	// rows should be checked against those five rows, or the next naming form
+	// silently becomes an English station.
+	tbl, err := LoadTable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := 0
+	for _, n := range tbl.Nearest(0, 0, tbl.Len()) {
+		if n.Lang() == LangSpanish {
+			got++
+		}
+		if strings.Contains(strings.ToLower(n.Site), "spanish") && n.Lang() != LangSpanish {
+			t.Errorf("%s %q names Spanish and does not read as it", n.Callsign, n.Site)
+		}
+	}
+	if got != 5 {
+		t.Errorf("the table carries 5 Spanish transmitters, found %d — if the table grew one, update this count deliberately", got)
+	}
+}

@@ -17,10 +17,10 @@ import (
 func TestDashboardRendersMockAnatomy(t *testing.T) {
 	v := dash(t).View().Content
 	for _, want := range []string{
-		"W A T C H P O S T",      // header per mock
+		"WATCHPOST Observer",     // header per mock: the wordmark and the edition it is
 		"API: ✔1",                // UAT 102: the masthead counts APIs (the per-provider strip lives in [S])
 		"Oceanside, CA", "92057", // location row with zip
-		"73ºF",                               // F default (D-19)
+		"73°F",                               // F default (D-19)
 		"EXTREME HEAT WATCH - Oceanside, CA", // the one-row alert module (the body lives behind [A] since the 2026-08-28 facelift)
 		"[severe]",                           // the class in text with colour off (R-12a; round 4 B-04)
 		"WATCHPOST WEATHER RADIO",            // radio panel frame (UAT-3.3, static until B4)
@@ -220,12 +220,17 @@ func TestHeaderIsATitledBox(t *testing.T) {
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
 	lines := strings.Split(stripANSITest(d.header(d.opts())), "\n")
-	if len(lines) != render.BoxHeight(1) || !strings.HasPrefix(lines[0], "┏━━ W A T C H P O S T  v") || !strings.HasSuffix(lines[0], " ━━┓") || !strings.Contains(lines[0], "  Updated: ") {
+	if len(lines) != render.BoxHeight(1) || !strings.HasPrefix(lines[0], "┏━━ WATCHPOST Observer  v") || !strings.HasSuffix(lines[0], " ━━┓") || !strings.Contains(lines[0], "  Updated: ") {
 		t.Fatalf("the top rule carries the title and the stamp: %q", lines)
 	}
 	row := strings.TrimSpace(strings.Trim(lines[1], "┃"))
-	if !strings.HasPrefix(row, "[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [S] Status  [?] Help  [q] Quit") || !strings.HasSuffix(row, "API: ✔1 ⚠1 ✘1 /  3") {
+	// [t] and [M] left the row at 0.14.0 — both are settings now, and both live
+	// in [s]. The bindings stay live and deep-link into Settings.
+	if !strings.HasPrefix(row, "[s] Settings  [a] About  [S] Status  [?] Help  [q] Quit") || !strings.HasSuffix(row, "API: ✔1 ⚠1 ✘1 /  3") {
 		t.Fatalf("the row: controls left, api summary right (off excluded, total two columns): %q", row)
+	}
+	if strings.Contains(row, "[t]") || strings.Contains(row, "[M]") {
+		t.Errorf("theme and mute are settings now, not header chips: %q", row)
 	}
 	if w := d.opts().Width; !strings.HasPrefix(lines[2], "┗") || render.Width(lines[0]) != w || render.Width(lines[1]) != w {
 		t.Fatalf("a box the width of the frame: %q", lines)
@@ -250,7 +255,11 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
 	v := stripANSITest(model.(Dashboard).View().Content)
 	for _, want := range []string{
-		"then 'ctrl+a' Favorite it",
+		// The GESTURE, not a span that straddles the wrap: "Setup" became
+		// "Settings" and three more cells moved the
+		// line break. What this test is for is that the empty state stands where
+		// the table will and names the way out of it.
+		"'ctrl+a' Favorite",
 		"NO RECENT LOCATION SEARCHED or DATA-SEEDING FAILED",
 	} {
 		if !strings.Contains(v, want) {
@@ -273,5 +282,45 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
 	if v := stripANSITest(model.(Dashboard).View().Content); strings.Contains(v, "to your Watchlist") || !strings.Contains(v, "[##.][") {
 		t.Fatalf("data replaces the watchlist empty state:\n%s", v)
+	}
+}
+
+// THE MASTHEAD NAMES THE EDITION (HUM LEAD, 2026-08-30): "WATCHPOST Observer",
+// the wordmark keeping its gradient and the edition beside it in the theme's
+// light blue. A later version brings "WATCHPOST Broadcaster" — a different
+// dashboard for running an FRS/GMRS/HAM station — so the distinction is drawn
+// now, and the second edition arrives as a word rather than as a rename.
+//
+// The title ladders like everything else on the rule: the VERSION leaves first,
+// then the EDITION, and the wordmark is last, because a masthead that cannot say
+// what the app is has stopped being one.
+func TestMastheadCarriesTheEditionAndLaddersDown(t *testing.T) {
+	for _, tc := range []struct {
+		w                    int
+		wantEdition, wantVer bool
+	}{
+		{133, true, true}, {80, true, true}, {46, true, true},
+	} {
+		d := benchDash(t, tc.w, 44).(Dashboard)
+		head := stripANSITest(d.header(d.opts()))
+		if strings.Contains(head, "WATCHPOST") != true {
+			t.Fatalf("%d cols: the wordmark is never dropped:\n%s", tc.w, head)
+		}
+		if got := strings.Contains(head, "Observer"); got != tc.wantEdition {
+			t.Errorf("%d cols: edition shown = %v, want %v:\n%s", tc.w, got, tc.wantEdition, head)
+		}
+	}
+	// The rungs themselves, on the one owner rather than through the frame, so
+	// the ladder is pinned even at widths the terminal minimum keeps off screen.
+	full := render.Wordmark(render.EditionObserver)
+	bare := render.Wordmark("")
+	if render.Width(bare) >= render.Width(full) {
+		t.Fatal("the bare wordmark must be narrower than the wordmark plus its edition")
+	}
+	if got := render.FirstFit(render.Width(full)-1, full+"  v1.2.3", full, bare); got != bare {
+		t.Error("with room for neither the version nor the edition, the wordmark stands alone")
+	}
+	if got := render.FirstFit(render.Width(full), full+"  v1.2.3", full, bare); got != full {
+		t.Error("with room for the edition but not the version, the version is what leaves")
 	}
 }

@@ -1,0 +1,2 @@
+{{/* marine-report/observed: the buoy provenance. Data: .Distance (e.g. "6 miles"), .Ago (e.g. "39 minutes"). The buoy id is deliberately not spoken. */}}
+Conditions at the nearest buoy, {{.Distance}} offshore, observed {{.Ago}} ago.

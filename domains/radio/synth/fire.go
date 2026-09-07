@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"math"
 	"strings"
 	"time"
@@ -41,7 +42,7 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 	}
 	place := ExpandStates(location)
 	notice := c.say("fire-report", "head", map[string]string{"Location": place, "Sources": joinAnd(fr.Sources)})
-	segs := []Segment{{Key: "fire:notice:" + contentKey(notice), Text: notice, Pause: firePause}} // keyed by content: the cache must never replay yesterday's feeds (REVIEW C1)
+	segs := []Segment{{Key: "fire:notice:" + contentKey(notice), Text: notice, Role: cast.Fire, Pause: firePause}} // keyed by content: the cache must never replay yesterday's feeds (REVIEW C1)
 
 	var body []string
 	body = append(body, c.say("fire-report", "count", map[string]any{"Count": len(fr.State.Hotspots), "Ring": ringWords(fr.RadiusKm, imperial)})) // adjectival: "a 16 mile fire ring"
@@ -69,7 +70,7 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 		if piece == "" {
 			continue // a phrase without a script is not spoken
 		}
-		segs = append(segs, Segment{Key: "fire:" + contentKey(piece), Text: piece}) // content-keyed: counts change between cycles under repeat (REVIEW C1)
+		segs = append(segs, Segment{Key: "fire:" + contentKey(piece), Text: piece, Role: cast.Fire}) // content-keyed: counts change between cycles under repeat (REVIEW C1)
 	}
 	return segs
 }

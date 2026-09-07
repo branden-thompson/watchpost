@@ -21,6 +21,7 @@ type SevereCell struct {
 	Event, Location, Detection, Declared, Expires string
 	Focused                                       bool // the › pointer (the focused row)
 	Playing                                       bool // the green ▶: this event is the one being read over the radio (UAT items 11–12)
+	Paused                                        bool // that read is held by the listener: ▶ becomes ‖, same row, same colour (MVS-D-74)
 }
 
 // SevereTableTokens are the tokens the table paints on the category tints —
@@ -176,7 +177,14 @@ func severeMarks(o Opts, c SevereCell) string {
 		ptr = Tint(g.Pointer, Tok(FocusPointer))
 	}
 	if c.Playing {
-		play = Tint(g.Play, Tok(StatePlaying))
+		// THE SAME TOKEN EITHER WAY. A paused read is still this row's read, so
+		// the mark keeps its colour and changes its shape — recolouring it would
+		// read as a different KIND of state rather than the same one held.
+		mark := g.Play
+		if c.Paused {
+			mark = g.Pause
+		}
+		play = Tint(mark, Tok(StatePlaying))
 	}
 	return ptr + "  " + play + " "
 }

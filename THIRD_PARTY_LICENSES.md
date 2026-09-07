@@ -1652,7 +1652,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## github.com/pelletier/go-toml/v2 v2.2.4
+## github.com/pelletier/go-toml/v2 v2.4.3
 
 ```
 The MIT License (MIT)

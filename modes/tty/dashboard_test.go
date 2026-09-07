@@ -2,6 +2,7 @@ package tty
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -53,11 +54,11 @@ func dash(t *testing.T) tea.Model {
 func TestUnitToggleIsLive(t *testing.T) {
 	m := dash(t)
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
-	if v := m.View().Content; !strings.Contains(v, "23ºC") {
+	if v := m.View().Content; !strings.Contains(v, "23°C") {
 		t.Fatalf("c must live-swap to Celsius:\n%s", v)
 	}
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
-	if v := m.View().Content; !strings.Contains(v, "73ºF") {
+	if v := m.View().Content; !strings.Contains(v, "73°F") {
 		t.Fatal("f must swap back to Fahrenheit")
 	}
 }
@@ -81,12 +82,47 @@ func TestQuitAndHelpBindings(t *testing.T) {
 func TestKeymapConflictRejectedAtBuild(t *testing.T) {
 	// D-15: user overrides merge with validation; a config claiming '?' for
 	// anything but help must fail construction, not silently win.
+	//
+	// The action has to be one this build HAS. An override naming a retired
+	// action is dropped before the '?' rule is reached (FR-14, below), and
+	// this guard would then pass for the wrong reason.
 	_, err := NewDashboard(Config{Version: "t", KeyOverrides: term.KeyMap{
-		"search": {Keys: []string{"?"}},
+		"status": {Keys: []string{"?"}},
 	}})
 	if err == nil {
 		t.Fatal("'?' override must be rejected (R-3)")
 	}
+}
+
+// FR-14 / RS-21: an override naming an action this build no longer has is
+// DROPPED WITH A NOTE, never an error.
+//
+// A listener who rebound T for the player size in 0.13.0 must not find 0.14.0
+// refusing to start because that action retired. Losing a binding is a
+// nuisance; refusing to launch over one is a broken upgrade.
+func TestARetiredActionsOverrideIsDroppedNotRejected(t *testing.T) {
+	d, err := NewDashboard(Config{Version: "t", KeyOverrides: term.KeyMap{
+		"radio-size": {Keys: []string{"T"}}, // retired at 0.14.0 (MVS-D-23)
+		"status":     {Keys: []string{"X"}}, // a real action: still applies
+	}})
+	if err != nil {
+		t.Fatalf("a retired action must not fail construction: %v", err)
+	}
+	if act, ok := d.keys.Lookup("X"); !ok || act != "status" {
+		t.Errorf("the known override must still apply, got %q/%v", act, ok)
+	}
+	if _, ok := d.keys.Lookup("T"); ok {
+		t.Error("the retired action's key must not be bound")
+	}
+	// The NOTE is gone with [S]'s CONFIG block: the
+	// dashboard no longer keeps a list nothing reads. The behaviour this test
+	// exists for — launch, apply what is valid, drop what is not — is unchanged,
+	// and it is the half that matters to a listener upgrading.
+	//
+	// What a dropped binding no longer does is TELL anyone. `watchpost report
+	// --verbose` reports the cast's config problems but not this one, so a
+	// rebound key that quietly stops working has no surface at all. Worth a
+	// ruling before SHIP.
 }
 
 // fakeHooks wires deterministic Resolve/Commit for flow tests (UAT 26).
@@ -125,6 +161,16 @@ func runCmd(cmd tea.Cmd) []tea.Msg {
 		var out []tea.Msg
 		for _, c := range batch {
 			out = append(out, runCmd(c)...)
+		}
+		return out
+	}
+	// tea.Sequence's message type is unexported, so it is recognised by SHAPE:
+	// a slice of Cmd. The runtime runs those in order and feeds each result
+	// back; without this a sequenced command is invisible to a test.
+	if seq := reflect.ValueOf(msg); seq.Kind() == reflect.Slice && seq.Type().Elem() == reflect.TypeOf(tea.Cmd(nil)) {
+		var out []tea.Msg
+		for i := range seq.Len() {
+			out = append(out, runCmd(seq.Index(i).Interface().(tea.Cmd))...)
 		}
 		return out
 	}
@@ -222,6 +268,10 @@ type setupHarness struct {
 	setups    int
 	radius    int
 	radiusSet bool
+	dwell     time.Duration
+	dwellSet  bool
+	lang      string
+	langSet   bool
 }
 
 func (h *setupHarness) config() Config {
@@ -239,6 +289,8 @@ func (h *setupHarness) config() Config {
 		},
 		Commit:         func(watch, recent []snapshot.LocationRef) error { h.watch = watch; return nil },
 		SetAlertRadius: func(mi int) { h.radius, h.radiusSet = mi, true },
+		SetRelayDwell:  func(d time.Duration) { h.dwell, h.dwellSet = d, true },
+		SetRelayLang:   func(l string) { h.lang, h.langSet = l, true },
 	}
 }
 

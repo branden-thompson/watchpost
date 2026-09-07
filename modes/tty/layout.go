@@ -74,8 +74,8 @@ func (d Dashboard) layoutWith(o render.Opts, built layoutRows) frameLayout {
 		fl.alertH = 1 // the same row without the rules when compact (UAT 34)
 	}
 	fl.radioRows = full
-	if fl.compact || d.radioMin {
-		fl.radioRows = built.compact // [T] Size: Min or compact = the two-row player
+	if fl.compact {
+		fl.radioRows = built.compact // a short frame takes the two-row player
 	}
 	fl.radioH = render.BoxHeight(len(fl.radioRows))
 	// UAT 46.1/58: the window expands to fill tall terminals; the content

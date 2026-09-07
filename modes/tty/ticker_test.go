@@ -1,8 +1,11 @@
 package tty
 
 import (
+	tea "charm.land/bubbletea/v2"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
@@ -36,9 +39,9 @@ func TestTickerTapesTheCurrentLaneWithCategoryColour(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 	items := []TickerItem{
-		{ID: "tor", Category: CatWarning, Text: "Tornado Warning · the Oklahoma City area  declared 3:42 PM · expires 4:15 PM", Severity: TickerRed},
-		{ID: "svr", Category: CatWarning, Text: "Severe Thunderstorm Warning · Cherry, NE  declared 3:50 PM · expires 4:30 PM", Severity: TickerOrange},
-		{ID: "wat", Category: CatWatch, Text: "Tornado Watch · the Dallas area  declared 3:00 PM · expires 6:00 PM", Severity: TickerYellow},
+		{ID: "tor", Category: CatWarning, Head: "Tornado Warning · the Oklahoma City area  declared 3:42 PM · expires 4:15 PM", Severity: TickerRed},
+		{ID: "svr", Category: CatWarning, Head: "Severe Thunderstorm Warning · Cherry, NE  declared 3:50 PM · expires 4:30 PM", Severity: TickerOrange},
+		{ID: "wat", Category: CatWatch, Head: "Tornado Watch · the Dallas area  declared 3:00 PM · expires 6:00 PM", Severity: TickerYellow},
 	}
 	d := tickerDash(t, items, false)
 	raw := d.tickerMarquee(render.Opts{Width: 200})
@@ -55,7 +58,7 @@ func TestTickerTapesTheCurrentLaneWithCategoryColour(t *testing.T) {
 		t.Fatalf("the Watch (a different lane) must not appear in the Warnings tape: %q", plain)
 	}
 	// Warnings lane = ORANGE background (fixed per category, HUM LEAD colour pass).
-	if !strings.Contains(raw, render.Tok(render.TickerOrangeBG)) {
+	if !strings.Contains(raw, render.Tok(render.TickerWarningBG)) {
 		t.Fatalf("the Warnings lane wears the orange band:\n%q", raw)
 	}
 }
@@ -64,18 +67,18 @@ func TestTickerLaneRotatesEvery90s(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 	items := []TickerItem{
-		{ID: "tor", Category: CatWarning, Text: "Tornado Warning · OKC  declared 3:42 PM"},
-		{ID: "wat", Category: CatWatch, Text: "Tornado Watch · Dallas  declared 3:00 PM"},
+		{ID: "tor", Category: CatWarning, Head: "Tornado Warning · OKC  declared 3:42 PM"},
+		{ID: "wat", Category: CatWatch, Head: "Tornado Watch · Dallas  declared 3:00 PM"},
 	}
 	d := tickerDash(t, items, false)
 	// Starts on the Warnings lane (Orange).
-	if raw := d.tickerMarquee(render.Opts{Width: 120}); !strings.Contains(raw, render.Tok(render.TickerOrangeBG)) {
+	if raw := d.tickerMarquee(render.Opts{Width: 120}); !strings.Contains(raw, render.Tok(render.TickerWarningBG)) {
 		t.Fatalf("starts on the Warnings lane (orange band):\n%q", raw)
 	}
 	d.advanceTickerCategory() // the 90s switch
 	raw := d.tickerMarquee(render.Opts{Width: 120})
 	// Rotates to the Watches lane (Yellow).
-	if !strings.Contains(raw, render.Tok(render.TickerYellowBG)) {
+	if !strings.Contains(raw, render.Tok(render.TickerWatchBG)) {
 		t.Fatalf("rotates to the Watches lane (yellow band):\n%q", raw)
 	}
 }
@@ -84,8 +87,8 @@ func TestTickerBreakingTakesOverCentredInItsLaneColour(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 	// The normal tape is Watches (yellow); a breaking Warning takes it over.
-	d := tickerDash(t, []TickerItem{{ID: "w", Category: CatWatch, Text: "Tornado Watch · Dallas"}}, false)
-	item := TickerItem{ID: "tor", Category: CatWarning, Text: "Tornado Warning · the Oklahoma City area  declared 3:42 PM · expires 4:15 PM"}
+	d := tickerDash(t, []TickerItem{{ID: "w", Category: CatWatch, Head: "Tornado Watch · Dallas"}}, false)
+	item := TickerItem{ID: "tor", Category: CatWarning, Head: "Tornado Warning · the Oklahoma City area  declared 3:42 PM · expires 4:15 PM"}
 	d.breaking = &item
 	raw := d.tickerMarquee(render.Opts{Width: 120})
 	plain := stripANSITest(raw)
@@ -98,7 +101,7 @@ func TestTickerBreakingTakesOverCentredInItsLaneColour(t *testing.T) {
 		t.Fatalf("the breaking event is centred, not left-aligned: %q", rows[1])
 	}
 	// The band wears the breaking event's lane colour (Warnings = orange), not the Watch yellow.
-	if !strings.Contains(raw, render.Tok(render.TickerOrangeBG)) || strings.Contains(raw, render.Tok(render.TickerYellowBG)) {
+	if !strings.Contains(raw, render.Tok(render.TickerWarningBG)) || strings.Contains(raw, render.Tok(render.TickerWatchBG)) {
 		t.Fatalf("the band is the breaking lane's colour:\n%q", raw)
 	}
 	// Done resumes the normal (Watches) tape.
@@ -109,28 +112,43 @@ func TestTickerBreakingTakesOverCentredInItsLaneColour(t *testing.T) {
 }
 
 func TestTickerSingleLaneDoesNotRotate(t *testing.T) {
-	d := tickerDash(t, []TickerItem{{ID: "a", Category: CatWarning, Text: "one"}}, false)
+	d := tickerDash(t, []TickerItem{{ID: "a", Category: CatWarning, Head: "one"}}, false)
 	d.advanceTickerCategory()
 	if d.tickerCatIdx != 0 {
 		t.Fatalf("one lane present ⇒ no rotation, got idx=%d", d.tickerCatIdx)
 	}
 }
 
-func TestMuteControlIsInTheHeaderAndFlips(t *testing.T) {
+// [M] LEFT THE HEADER at 0.14.0. The six alert
+// classes are separately mutable now, and one key cannot mean six things — so
+// [M] opens Settings at the tone rows instead of flipping a single switch, and
+// the header no longer carries a chip whose label claimed to know the state.
+//
+// The binding stays live, which is the half that matters to a listener who
+// learnt the key.
+func TestMuteDeepLinksRatherThanFlippingAHeaderChip(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	o := render.Opts{Width: 160}
-	if got := stripANSITest(tickerDash(t, nil, false).header(o)); !strings.Contains(got, "[M] Mute Severe Alerts") {
-		t.Fatalf("the header controls carry [M] Mute Severe Alerts after [t] Theme:\n%q", got)
+	for _, muted := range []bool{false, true} {
+		if got := stripANSITest(tickerDash(t, nil, muted).header(o)); strings.Contains(got, "[M] Mute") || strings.Contains(got, "[M] Unmute") {
+			t.Errorf("muted=%v: the mute chip left the header for Settings:\n%q", muted, got)
+		}
 	}
-	if got := stripANSITest(tickerDash(t, nil, true).header(o)); !strings.Contains(got, "[M] Unmute Severe Alerts") {
-		t.Fatalf("muted flips the header label to Unmute:\n%q", got)
+	d := tickerDash(t, nil, false)
+	m, _ := d.Update(tea.KeyPressMsg{Code: 'M', Text: "M"})
+	nd := m.(Dashboard)
+	if nd.modal != modalSetup {
+		t.Fatalf("[M] opens Settings, got modal %v", nd.modal)
+	}
+	if setupTable()[nd.setup.focus].group != groupTone {
+		t.Errorf("[M] lands on the tone rows, got focus %v", nd.setup.focus)
 	}
 }
 
 func TestTickerTapeScrollsContinuouslyAndWraps(t *testing.T) {
 	// A lane whose tape is longer than the window scrolls and loops.
 	items := []TickerItem{
-		{ID: "a", Category: CatWarning, Text: strings.Repeat("Tornado Warning · somewhere far away  declared 3:42 PM ", 3)},
+		{ID: "a", Category: CatWarning, Head: strings.Repeat("Tornado Warning · somewhere far away  declared 3:42 PM ", 3)},
 	}
 	d := tickerDash(t, items, false)
 	d.tickerScroll = 0
@@ -148,16 +166,181 @@ func TestTickerTapeScrollsContinuouslyAndWraps(t *testing.T) {
 
 func TestExpiredLaneDropsFromRotation(t *testing.T) {
 	d := tickerDash(t, []TickerItem{
-		{ID: "w", Category: CatWarning, Text: "Tornado Warning · OKC"},
-		{ID: "wa", Category: CatWatch, Text: "Tornado Watch · Dallas"},
+		{ID: "w", Category: CatWarning, Head: "Tornado Warning · OKC"},
+		{ID: "wa", Category: CatWatch, Head: "Tornado Watch · Dallas"},
 	}, false)
 	d.tickerCatIdx = 1 // showing the Watches lane
 	// The next publish carries only Warnings (the watch expired and was dropped).
-	d.setTicker([]TickerItem{{ID: "w", Category: CatWarning, Text: "Tornado Warning · OKC"}})
+	d.setTicker([]TickerItem{{ID: "w", Category: CatWarning, Head: "Tornado Warning · OKC"}})
 	if cats := d.tickerCategories(); len(cats) != 1 || cats[0] != CatWarning {
 		t.Fatalf("the expired Watches lane drops out: %v", cats)
 	}
 	if d.tickerCatIdx != 0 {
 		t.Fatalf("the lane index stays valid as lanes drop: idx=%d", d.tickerCatIdx)
+	}
+}
+
+// THE TAPE REPAINTS THE MOMENT THE CLOCK CHANGES (HUM LEAD, UAT 2026-08-30:
+// "there's a delay").
+//
+// It used to arrive from the app already formatted, so the times on it were
+// written when the ticker last cycled — up to two minutes earlier. Changing
+// Show Time in did nothing until the next cycle, and the band sat there in the
+// old format with no way to tell it had been heard.
+//
+// The item carries the FACTS now and the tape is composed every frame, so the
+// preference reaches it the way the theme does: immediately, because there is
+// nothing older to repaint.
+func TestTheTapeFollowsTheClockWithoutWaitingForACycle(t *testing.T) {
+	at := time.Date(2026, 8, 30, 16, 50, 0, 0, time.Local)
+	d := tickerDash(t, []TickerItem{
+		{ID: "tor", Category: CatWarning, Head: "Tornado Warning · OKC", Verb: "declared", At: at},
+	}, false)
+	d.now = func() time.Time { return at.Add(time.Hour) } // same day: a bare time
+
+	twelve := stripANSITest(d.tickerMarquee(d.opts()))
+	if !strings.Contains(twelve, "4:50 PM") {
+		t.Fatalf("the 12-hour tape reads the time: %q", twelve)
+	}
+
+	// The listener picks 24-hour. No new event, no new cycle — just the setting.
+	d.clockFmt = render.Clock24
+	if got := stripANSITest(d.tickerMarquee(d.opts())); !strings.Contains(got, "16:50") || strings.Contains(got, "PM") {
+		t.Errorf("the tape follows the clock at once, got %q", got)
+	}
+	d.clockFmt = render.ClockMil
+	if got := stripANSITest(d.tickerMarquee(d.opts())); !strings.Contains(got, "1650") {
+		t.Errorf("military too, got %q", got)
+	}
+}
+
+// THE SHOWING LANE IS AN IDENTITY, NOT A POSITION (HUM LEAD, UAT 2026-08-30:
+// "it doesn't seem to be rotating between all the categories — I'm seeing
+// Disasters, Marine a lot").
+//
+// tickerCatIdx indexes the PRESENT lanes, and the present set changes on every
+// publish as alerts arrive and expire. setTicker used to keep the index valid
+// with `idx %= len(cats)`, which silently teleports it whenever the set shrinks
+// — and because Disasters and Marine come from the national feed they are
+// almost always present AND first in the rotation order, so every shrink
+// dragged the band back onto them.
+//
+// The rule: a lane that is still present keeps showing. Only a lane that has
+// actually gone hands over, and it hands over FORWARD.
+func TestTickerLaneSurvivesThePresentSetChanging(t *testing.T) {
+	item := func(c TickerCategory, id string) TickerItem {
+		return TickerItem{ID: id, Category: c, Head: "HEAD", Verb: "issued", At: time.Now()}
+	}
+	lane := func(d Dashboard) TickerCategory {
+		cats := d.tickerCategories()
+		if len(cats) == 0 {
+			t.Fatal("no lanes present")
+		}
+		return cats[d.tickerCatIdx%len(cats)]
+	}
+	var d Dashboard
+	d.setTicker([]TickerItem{item(CatDisasters, "q"), item(CatMarine, "m"), item(CatWarning, "w"), item(CatWatch, "x")})
+	d.advanceTickerCategory()
+	d.advanceTickerCategory()
+	d.advanceTickerCategory()
+	if got := lane(d); got != CatWatch {
+		t.Fatalf("three rotations from Disasters should reach Watches, got %v", got)
+	}
+	// The Disasters lane empties. Watches is untouched and must keep showing —
+	// this is the case the modulo got wrong, landing on Marine.
+	d.setTicker([]TickerItem{item(CatMarine, "m"), item(CatWarning, "w"), item(CatWatch, "x")})
+	if got := lane(d); got != CatWatch {
+		t.Errorf("a lane that is still present must keep showing; showing %v", got)
+	}
+	// Now the showing lane itself empties: hand over to the next one in the
+	// rotation order, not back to the front.
+	d.setTicker([]TickerItem{item(CatMarine, "m"), item(CatWarning, "w"), item(CatAdvisory, "a")})
+	if got := lane(d); got != CatAdvisory {
+		t.Errorf("the lane after Watches is Advisories; showing %v", got)
+	}
+	// And past the end it wraps.
+	d.setTicker([]TickerItem{item(CatDisasters, "q"), item(CatWarning, "w"), item(CatStatement, "s")})
+	d.setTicker([]TickerItem{item(CatDisasters, "q"), item(CatWarning, "w")})
+	if got := lane(d); got != CatDisasters {
+		t.Errorf("past the last lane the rotation wraps to the first; showing %v", got)
+	}
+}
+
+// Every lane gets a turn: rotating as many times as there are lanes visits each
+// one exactly once, which is what "rotates through the non-empty lanes" means.
+func TestTickerRotationVisitsEveryLaneOnce(t *testing.T) {
+	var items []TickerItem
+	for i, c := range tickerCatOrder() {
+		items = append(items, TickerItem{ID: fmt.Sprint(i), Category: c, Head: "HEAD", Verb: "issued", At: time.Now()})
+	}
+	var d Dashboard
+	d.setTicker(items)
+	seen := map[TickerCategory]int{}
+	for range tickerCatOrder() {
+		cats := d.tickerCategories()
+		seen[cats[d.tickerCatIdx%len(cats)]]++
+		d.advanceTickerCategory()
+	}
+	for _, c := range tickerCatOrder() {
+		if seen[c] != 1 {
+			t.Errorf("lane %v shown %d times in a full rotation, want exactly 1", c, seen[c])
+		}
+	}
+}
+
+// THE BAND IS READABLE WITH THE COLOUR OFF (R-12a). Six lanes share one strip
+// and only one is on screen at a time, so a reader who cannot tell the
+// backgrounds apart — colourblind, a monochrome theme, NO_COLOR, a screenshot in
+// black and white — has no reference to compare against and no way to know which
+// hazard class they are looking at. The lane says its own name.
+func TestEachTickerLaneNamesItselfWithoutColour(t *testing.T) {
+	item := func(c TickerCategory) TickerItem {
+		return TickerItem{ID: "x" + fmt.Sprint(c), Category: c, Head: "HEAD", Verb: "issued", At: time.Now()}
+	}
+	seen := map[string]TickerCategory{}
+	for _, cat := range tickerCatOrder() {
+		var d Dashboard
+		d.width = 133
+		d.setTicker([]TickerItem{item(cat)})
+		band := stripANSITest(d.tickerMarquee(d.opts()))
+		if label := cat.Label(); !strings.Contains(band, label) {
+			t.Errorf("lane %v must name itself %q on the band:\n%s", cat, label, band)
+		}
+		if prev, dup := seen[cat.Label()]; dup {
+			t.Errorf("lanes %v and %v share the label %q — they must be distinguishable", prev, cat, cat.Label())
+		}
+		seen[cat.Label()] = cat
+	}
+	if len(seen) != len(tickerCatOrder()) {
+		t.Errorf("every lane needs its own name: %d labels for %d lanes", len(seen), len(tickerCatOrder()))
+	}
+}
+
+// THE BAND'S LANES COME FROM THE REGISTRY, AND EACH IS DRESSED.
+//
+// The rotation used to be a list kept by hand beside the category enum, and a
+// lane missing from it never reached the band however many alerts it held. It
+// is derived now (F-21) — this checks the ticker's view of it holds up: every
+// lane it rotates through has a name and a colour, and Forecasts is absent
+// because the marquee is for what is happening (MVS-D-59).
+func TestTheBandsLanesAreDressedAndExcludeForecasts(t *testing.T) {
+	seen := map[TickerCategory]bool{}
+	for _, c := range tickerCatOrder() {
+		if seen[c] {
+			t.Errorf("lane %v appears twice in the rotation", c)
+		}
+		seen[c] = true
+		if c.Label() == "" {
+			t.Errorf("lane %v has no name; colour alone is not a channel (R-12a)", c)
+		}
+		if tickerCatBG(c) == "" {
+			t.Errorf("lane %v has no band colour", c)
+		}
+	}
+	if seen[SevereForecasts] {
+		t.Error("Forecasts must not rotate: an outlook is what might happen, not what is")
+	}
+	if len(seen) == 0 {
+		t.Fatal("the rotation is empty")
 	}
 }

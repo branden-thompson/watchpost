@@ -1,0 +1,18 @@
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                                  *** ERROR ***                                   │
+│   TL;DR                                                                          │
+│   The radio stream is either unavailable or broadcasting silence (not useful)    │
+│   Select either a different stream, or Watchpost will attempt to connect to      │
+│   the next best relay, or failing that fall through to a Synth Read.             │
+│                                                                                  │
+│   NEXT ACTIONS:                                                                  │
+│                                                                                  │
+│   ›  Recommended:  Tune to <Next Best Relay>                                     │
+│                                                                                  │
+│      Alternate  :  Tune to <2nd best Relay>                                      │
+│                                                                                  │
+│      Fall-Thru  :  Read the Watchpost Report instead                             │
+│                                                                                  │
+│                                                                                  │
+│   [esc] Close                                               Auto Close in <10>   │
+└──────────────────────────────────────────────────────────────────────────────────┘

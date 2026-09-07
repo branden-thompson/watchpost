@@ -14,18 +14,25 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-func TestSevereTabsAreSixInImportanceOrder(t *testing.T) {
+func TestSevereTabsAreInImportanceOrder(t *testing.T) {
 	tabs := severeTabs()
-	want := []string{"Warnings", "Watches", "Advisories", "Spec. Statements", "Sig. Quakes", "Tropical"}
+	want := []string{"Emergency", "Warnings", "Watches", "Advisories", "Spec. Statements", "Disasters", "Marine", "Forecasts"}
 	if len(tabs) != len(want) || len(tabs) != int(severeNumTabs) {
 		t.Fatalf("%d tabs", len(tabs))
 	}
+	// The watchlist hint on EVERY tab, not a sample. A tab the national feed
+	// cannot populate must say it tracks the watchlist, or a listener with no
+	// locations sees a tab that is empty forever and is told nothing.
+	fromWatchlistOnly := map[string]bool{"Advisories": true, "Spec. Statements": true, "Forecasts": true}
 	for i, w := range want {
-		if tabs[i].Label != w || tabs[i].Short == "" || tabs[i].Tone == "" {
+		if tabs[i].TabLabel != w || tabs[i].TabShort == "" || tabs[i].Tint == "" {
 			t.Errorf("tab %d: %+v", i, tabs[i])
 		}
+		if tabs[i].Watchlist != fromWatchlistOnly[w] {
+			t.Errorf("%s: WatchlistHint is %v, want %v", w, tabs[i].Watchlist, fromWatchlistOnly[w])
+		}
 	}
-	if !tabs[SevereAdvisories].WatchlistHint || !tabs[SevereStatements].WatchlistHint || tabs[SevereWarnings].WatchlistHint {
+	if !tabs[SevereAdvisories].Watchlist || !tabs[SevereStatements].Watchlist || tabs[SevereWarnings].Watchlist {
 		t.Error("watchlist hint on the wrong tabs")
 	}
 }
@@ -52,14 +59,14 @@ func severeFixture(t *testing.T, w, h int, ascii bool) tea.Model {
 		rows = append(rows, SevereRow{Key: fmt.Sprint(i), Tab: SevereWarnings, Product: products[i], Location: places[i], Detection: detections[i], Declared: "08/28 11:20 EDT", Expires: "08/28 20:00 EDT", Severity: sev,
 			Record: SevereRecord{Title: strings.ToUpper(products[i]), Meta: "[Extreme · Immediate · Observed]", Timing: "Declared 08/28 08:45 CDT   Expires 08/28 09:00 CDT   (~15m)", Area: "Area: Johnson County, KS · NWS Kansas City", Paras: []string{"At 845 AM CDT, a severe thunderstorm capable of producing a tornado was located near Olathe, moving northeast at 30 mph.", "Instructions: TAKE COVER NOW!"}}})
 	}
-	model, _ = model.Update(SevereMsg{Gen: 1, Rows: rows, Totals: [severeNumTabs]int{9}, Updated: time.Date(2026, 8, 28, 15, 38, 5, 0, time.UTC)})
+	model, _ = model.Update(SevereMsg{Gen: 1, Rows: rows, Totals: [severeNumTabs]int{SevereWarnings: 9}, Updated: time.Date(2026, 8, 28, 15, 38, 5, 0, time.UTC)})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	return model
 }
 
 func TestWOpensTheWindowAndEscEscCloses(t *testing.T) {
 	m := dash(t)
-	m, _ = m.Update(SevereMsg{Gen: 1, Rows: []SevereRow{{Key: "k", Tab: SevereWarnings, Product: "Tornado Warning", Location: "Olathe, KS", Declared: "08/28 08:45 CDT", Record: SevereRecord{Title: "TORNADO WARNING"}}}, Totals: [severeNumTabs]int{1}})
+	m, _ = m.Update(SevereMsg{Gen: 1, Rows: []SevereRow{{Key: "k", Tab: SevereWarnings, Product: "Tornado Warning", Location: "Olathe, KS", Declared: "08/28 08:45 CDT", Record: SevereRecord{Title: "TORNADO WARNING"}}}, Totals: [severeNumTabs]int{SevereWarnings: 1}})
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	d := m.(Dashboard)
 	if d.modal != modalSevere || d.severeDetail {
@@ -113,8 +120,8 @@ func TestOpeningTabFollowsARecentBreakingEvent(t *testing.T) {
 	m := dash(t).(Dashboard)
 	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
 	m.now = func() time.Time { return now }
-	m.lastBreaking, m.lastBreakingTab = now.Add(-5*time.Minute), SevereQuakes
-	if got := m.severeOpeningTab(); got != SevereQuakes {
+	m.lastBreaking, m.lastBreakingTab = now.Add(-5*time.Minute), SevereDisasters
+	if got := m.severeOpeningTab(); got != SevereDisasters {
 		t.Fatalf("within 10 min → the breaking tab, got %v", got)
 	}
 	m.lastBreaking = now.Add(-11 * time.Minute)
@@ -125,7 +132,7 @@ func TestOpeningTabFollowsARecentBreakingEvent(t *testing.T) {
 
 func TestSevereNavTabsAndRows(t *testing.T) {
 	m := dash(t)
-	rows := []SevereRow{{Key: "a", Tab: SevereWarnings}, {Key: "b", Tab: SevereWarnings}, {Key: "c", Tab: SevereQuakes}}
+	rows := []SevereRow{{Key: "a", Tab: SevereWarnings}, {Key: "b", Tab: SevereWarnings}, {Key: "c", Tab: SevereDisasters}}
 	m, _ = m.Update(SevereMsg{Gen: 1, Rows: rows})
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
@@ -140,9 +147,14 @@ func TestSevereNavTabsAndRows(t *testing.T) {
 	if d := m.(Dashboard); d.severeTab != SevereWatches || d.severeRow != 0 {
 		t.Fatalf("right: tab %v row %d", d.severeTab, d.severeRow)
 	}
+	// Back past Warnings to Emergency, which is now the leftmost tab.
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
-	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft}) // wraps to Tropical
-	if d := m.(Dashboard); d.severeTab != SevereTropical {
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if d := m.(Dashboard); d.severeTab != SevereEmergency {
+		t.Fatalf("left to the first tab: %v", d.severeTab)
+	}
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft}) // …and one more wraps to the last
+	if d := m.(Dashboard); d.severeTab != SevereForecasts {
 		t.Fatalf("left wraps: %v", d.severeTab)
 	}
 }
@@ -153,8 +165,13 @@ func TestSevereBrowseFramesMatchTheMocksAtEveryWidth(t *testing.T) {
 		if w == 133 && !strings.Contains(frame, "EXPIRES") {
 			t.Fatal("133: every column, EXPIRES included")
 		}
-		if !strings.Contains(frame, "SEVERE WEATHER / DISASTER EVENTS") || !strings.Contains(frame, "Warnings — 9 active") {
-			t.Fatalf("%d cols: header/category line missing:\n%s", w, frame)
+		// The count is stated ONCE, on the total line — the category heading
+		// that repeated it was removed (F-20).
+		if !strings.Contains(frame, "NOTABLE EVENTS AND FORECASTS") || !strings.Contains(frame, "9 Total Category Events") {
+			t.Fatalf("%d cols: header or total line missing:\n%s", w, frame)
+		}
+		if strings.Contains(frame, "Warnings — 9 active") {
+			t.Fatalf("%d cols: the category heading restates the total below it:\n%s", w, frame)
 		}
 		if !strings.Contains(frame, "› Warnings") && !strings.Contains(frame, "›Warnings") && !strings.Contains(frame, "›Warn") {
 			t.Fatalf("%d cols: the open tab is not marked", w)
@@ -210,12 +227,12 @@ func TestSevereBrowseASCIIHasNoGlyphs(t *testing.T) {
 			t.Fatalf("non-ASCII glyph %q in --ascii frame:\n%s", r, frame)
 		}
 	}
-	for _, want := range []string{"> Warnings", "[up/down] Navigate", " ^", " v", " #"} {
+	for _, want := range []string{">Warnings", "[up/down] Navigate", " ^", " v", " #"} {
 		if !strings.Contains(frame, want) {
 			t.Fatalf("ASCII form %q missing:\n%s", want, frame)
 		}
 	}
-	if strings.Contains(frame, "!") { // no severity glyph in the table (HUM LEAD UAT 2026-08-28)
+	if strings.Contains(frame, "!") { // no severity glyph in the table
 		t.Fatalf("the table carries no severity glyph:\n%s", frame)
 	}
 }
@@ -232,7 +249,7 @@ func TestSevereEmptyState(t *testing.T) {
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyRight}) // Advisories
 	frame := stripANSITest(m.View().Content)
-	if !strings.Contains(frame, "Advisories — no active events") || !strings.Contains(frame, "tracks your watchlist") {
+	if !strings.Contains(frame, "No active advisories events") || !strings.Contains(frame, "tracks your watchlist") {
 		t.Fatalf("empty state without a watchlist: %s", frame)
 	}
 	full := dash(t) // a populated watchlist: the same empty tab, no hint (FR-14)
@@ -240,7 +257,7 @@ func TestSevereEmptyState(t *testing.T) {
 	full, _ = full.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	full, _ = full.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	full, _ = full.Update(tea.KeyPressMsg{Code: tea.KeyRight})
-	if f := stripANSITest(full.View().Content); !strings.Contains(f, "Advisories — no active events") || strings.Contains(f, "tracks your watchlist") {
+	if f := stripANSITest(full.View().Content); !strings.Contains(f, "No active advisories events") || strings.Contains(f, "tracks your watchlist") {
 		t.Fatalf("a populated watchlist must not be told to add locations:\n%s", f)
 	}
 }
@@ -275,7 +292,7 @@ func TestSevereWindowNeverForwardsProviderEscapes(t *testing.T) {
 	}
 	frames := func(r SevereRow) (browse, detail string, lines int) {
 		m := dash(t)
-		m, _ = m.Update(SevereMsg{Gen: 1, Rows: []SevereRow{r}, Totals: [severeNumTabs]int{1}, Sources: []SevereSource{{Name: r.Product}}})
+		m, _ = m.Update(SevereMsg{Gen: 1, Rows: []SevereRow{r}, Totals: [severeNumTabs]int{SevereWarnings: 1}, Sources: []SevereSource{{Name: r.Product}}})
 		m, _ = m.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 		d := m.(Dashboard)
 		browse = d.View().Content
@@ -302,7 +319,7 @@ func TestStatusModalGaugesTheSevereIndex(t *testing.T) {
 	m := severeFixture(t, 120, 44, false)
 	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
-	if frame := stripANSITest(m.View().Content); !strings.Contains(frame, "severe index   9 rows / 500") {
+	if frame := stripANSITest(m.View().Content); !strings.Contains(frame, "9/500") {
 		t.Fatalf("[S] lacks the severe gauge:\n%s", frame)
 	}
 }
@@ -425,10 +442,15 @@ func TestModalMemoInvalidatesOnEveryInput(t *testing.T) {
 		{"breaking (the ▶ mark)", func(d *Dashboard) { d.breaking = &TickerItem{ID: "0", Category: CatWarning} }},
 		{"reading (the ▶ mark)", func(d *Dashboard) { d.severeReading = "0" }},
 		{"addQuery", func(d *Dashboard) { d.modal = modalAdd; d.addQuery = "x" }},
-		{"setup", func(d *Dashboard) { d.modal = modalSetup; d.setup.query = "x" }},
-		{"themeIdx", func(d *Dashboard) { d.modal = modalTheme; d.themeIdx = 1 }},
-		{"voiceIdx", func(d *Dashboard) { d.modal = modalVoice; d.voiceIdx = 1 }},
-		{"nvoices", func(d *Dashboard) { d.modal = modalVoice; d.voiceList = append(d.voiceList, "Z") }},
+		{"setup", func(d *Dashboard) {
+			// The Setup memo keys on the GENERATION, not on the state: a
+			// direct field poke is not a change the window can see, and the
+			// real writers all go through settled().
+			d.modal = modalSetup
+			d.setup.query = "x"
+			d.setup = d.setup.touch()
+		}},
+		{"clock", func(d *Dashboard) { d.clockFmt = render.Clock24 }},
 		{"units", func(d *Dashboard) { d.units = render.UnitC }},
 		{"ascii", func(d *Dashboard) { d.cfg.ASCII = true }},
 		{"frame (a loading row)", func(d *Dashboard) { d.modal = modalDetails; d.frame++ }},
@@ -440,10 +462,6 @@ func TestModalMemoInvalidatesOnEveryInput(t *testing.T) {
 		}},
 		{"addMode", func(d *Dashboard) { d.modal = modalAdd; d.addMode = "lookup" }},
 		{"addErr", func(d *Dashboard) { d.modal = modalAdd; d.addErr = "no such place" }},
-		{"voiceNote", func(d *Dashboard) { d.modal = modalVoice; d.voiceNote = "downloading" }},
-		{"voiceErr", func(d *Dashboard) { d.modal = modalVoice; d.voiceErr = "failed" }},
-		{"radioVoice", func(d *Dashboard) { d.modal = modalVoice; d.radioVoice = "Z" }},
-		{"themeErr", func(d *Dashboard) { d.modal = modalTheme; d.themeErr = "bad json" }},
 		{"second ([S] ages)", func(d *Dashboard) {
 			d.modal = modalStatus
 			d.now = func() time.Time { return time.Date(2026, 8, 28, 12, 0, 1, 0, time.UTC) }
@@ -504,23 +522,26 @@ func TestSevereRailThumbShowsAtTheBottom(t *testing.T) {
 	}
 }
 
-// A breaking event records its category for the opening rule end to end
-// (R3-B-10: severeTabOf was only reachable by hand).
+// A breaking event records its category for the opening rule, end to end
+// through the real key handler rather than through a mapping (R3-B-10).
 func TestBreakingEventOpensTheWindowOnItsCategory(t *testing.T) {
 	m := dash(t).(Dashboard)
 	m.now = func() time.Time { return time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC) }
 	var mm tea.Model = m
-	mm, _ = mm.Update(TickerBreakingMsg{Item: TickerItem{ID: "q", Category: CatQuake, Text: "M 6.1"}})
+	mm, _ = mm.Update(TickerBreakingMsg{Item: TickerItem{ID: "q", Category: CatDisasters, Head: "M 6.1"}})
 	mm, _ = mm.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
-	if d := mm.(Dashboard); d.severeTab != SevereQuakes {
-		t.Fatalf("a breaking quake opens Sig. Quakes, got %v", d.severeTab)
+	if d := mm.(Dashboard); d.severeTab != SevereDisasters {
+		t.Fatalf("a breaking quake opens Disasters, got %v", d.severeTab)
 	}
-	for _, c := range []struct {
-		cat  TickerCategory
-		want SevereTab
-	}{{CatTropical, SevereTropical}, {CatWarning, SevereWarnings}, {CatWatch, SevereWatches}} {
-		if got := severeTabOf(TickerItem{Category: c.cat}); got != c.want {
-			t.Errorf("%v → %v, want %v", c.cat, got, c.want)
+	// The rest of the lanes, end to end rather than through a mapping function:
+	// a lane IS a tab since F-21, so what is worth testing is that a takeover in
+	// each one actually opens the window there.
+	for _, c := range tickerCatOrder() {
+		var mm tea.Model = m
+		mm, _ = mm.Update(TickerBreakingMsg{Item: TickerItem{ID: "x", Category: c, Head: "x"}})
+		mm, _ = mm.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
+		if d := mm.(Dashboard); d.severeTab != c {
+			t.Errorf("a breaking %s opens that tab, got %v", c.Label(), d.severeTab)
 		}
 	}
 }
@@ -552,7 +573,7 @@ func TestSevereOpenTabWearsItsCategoryTint(t *testing.T) {
 	m, _ = m.Update(SevereMsg{Gen: 1})
 	m, _ = m.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	d = m.(Dashboard)
-	if frame := d.renderModal(d.opts()); !strings.Contains(frame, render.Tok(render.EventCatOrangeBG)+"m[ › Warnings ]") {
+	if frame := d.renderModal(d.opts()); !strings.Contains(frame, render.Tok(render.EventCatWarningBG)+"m[ › Warnings ]") {
 		t.Fatalf("the Warnings chip must carry the orange tint:\n%s", frame)
 	}
 }
@@ -656,7 +677,7 @@ func TestPlayMarkFollowsTheBreakingEvent(t *testing.T) {
 }
 
 // [space] inside the window reads the focused event through the app's
-// narrator (UAT option B) — the dashboard's radio is not toggled; the ▶
+// director (UAT option B) — the dashboard's radio is not toggled; the ▶
 // follows the SevereReadingMsg; without the hook the chip mutes and [space]
 // is inert.
 func TestSpaceInTheWindowReadsTheFocusedEvent(t *testing.T) {
@@ -674,8 +695,10 @@ func TestSpaceInTheWindowReadsTheFocusedEvent(t *testing.T) {
 	if len(read) != 1 || read[0] != "1" || d.radioPlaying {
 		t.Fatalf("read %v, radioPlaying %v — the location underneath must not start", read, d.radioPlaying)
 	}
-	if frame := stripANSITest(d.renderModal(d.opts())); !strings.Contains(frame, "[space] Read") {
-		t.Fatalf("the Read chip:\n%s", frame)
+	// THE CHIP SAYS WHAT THE KEY WILL DO NEXT (MVS-D-74), the same
+	// state-driven form the radio panel uses: "Play" with nothing reading.
+	if frame := stripANSITest(d.renderModal(d.opts())); !strings.Contains(frame, "[space] Play") {
+		t.Fatalf("the Play chip:\n%s", frame)
 	}
 	mm, _ = mm.Update(SevereReadingMsg{Key: "1"})
 	d = mm.(Dashboard)
@@ -715,16 +738,115 @@ func TestSevereChipsHoldOneLineAtTheASCIIFloor(t *testing.T) {
 	}
 }
 
-// The renderer never trusts a focus past the tab (REVIEW R5-C-07); the
-// category line says "showing N of M" when the cap hid rows (R5-A-05).
+// The renderer never trusts a focus past the tab (REVIEW R5-C-07); the TOTAL
+// line says "Showing N of M" when the cap hid rows (R5-A-05, moved there from
+// the removed category heading — F-20).
 func TestSevereRendererClampsTheFocusAndSaysShowing(t *testing.T) {
 	d := severeBench(t)
 	d.severeRow = 999
 	d.severe.Totals[d.severeTab] = 999 // more than the rows: the cap hid some
 	d.mmemo.ok = false
-	if v := stripANSITest(d.View().Content); !strings.Contains(v, "showing") {
-		t.Fatalf("Totals above the rows read as showing N of M:\n%s", v)
+	if v := stripANSITest(d.View().Content); !strings.Contains(v, "Showing") || !strings.Contains(v, "Total Category Events") {
+		t.Fatalf("Totals above the rows must read as Showing N of M Total Category Events:\n%s", v)
 	}
 	short, _ := d.Update(tea.WindowSizeMsg{Width: 60, Height: 21})
 	_ = short.View().Content // no panic at the floor with a wild focus
+}
+
+// EVERY severe category has a ticker lane.
+//
+// Advisories and Special Weather Statements had tabs and no lane, and they are
+// exactly the two whose rows come only from the tracked locations — so the
+// ticker, which reads the national feed, had no way to see them at all. A window
+// that promises a category the ticker never mentions is the drift this pins.
+// EVERY CATEGORY THE WINDOW NAMES HAS A TICKER LANE — EXCEPT FORECASTS.
+//
+// The marquee is for what is happening. A forecast or an outlook is what MIGHT
+// happen, days out, over a whole forecast area, and the HUM LEAD ruled it off
+// the tape (MVS-D-59): it belongs in the window, where a listener goes to read,
+// not on a band they glance at for hazards in progress.
+func TestEverySevereTabHasATickerLaneExceptForecasts(t *testing.T) {
+	if got, want := len(tickerCatOrder()), len(severeTabs())-1; got != want {
+		t.Errorf("%d ticker lanes for %d severe tabs — every category but Forecasts must have one", got, len(severeTabs()))
+	}
+	// WHICH tab lacks a lane, not merely how many. A count alone passes if an
+	// eighth tab gained a lane while Warnings lost one.
+	withLane := map[string]bool{}
+	for _, c := range tickerCatOrder() {
+		withLane[c.Label()] = true
+	}
+	// Every tab but Forecasts has a lane, named rather than counted: a count
+	// alone passes if one tab gained a lane while another lost one.
+	for _, tab := range severeTabs() {
+		want := tab.TabLabel != "Forecasts"
+		// The tab and the band can word a category differently — the tab is
+		// tight, the band has the whole strip. Matched by the pair, not by
+		// hoping the two strings agree.
+		bandName := map[string]string{
+			"Spec. Statements": "Statements",
+			"Emergency":        "Emergency Orders",
+		}
+		name := tab.TabLabel
+		if alias, ok := bandName[tab.TabLabel]; ok {
+			name = alias
+		}
+		got := withLane[name]
+		if got != want {
+			t.Errorf("%s: has a ticker lane = %v, want %v", tab.TabLabel, got, want)
+		}
+	}
+	seen := map[TickerCategory]bool{}
+	for _, c := range tickerCatOrder() {
+		if seen[c] {
+			t.Errorf("lane %v appears twice in the rotation", c)
+		}
+		seen[c] = true
+		if tickerCatBG(c) == "" {
+			t.Errorf("lane %v has no band colour", c)
+		}
+	}
+}
+
+// EVERY TAB WEARS ITS OWN TONE.
+//
+// The goldens are ANSI-stripped, so nothing else notices if two tabs share a
+// colour — a tint repointed at its neighbour's would render a Forecasts row in
+// Marine's blue and no test would object.
+func TestEverySevereTabHasItsOwnTone(t *testing.T) {
+	seen := map[render.Token]string{}
+	for _, tab := range severeTabs() {
+		if tab.Tint == "" {
+			t.Errorf("%s has no tone", tab.TabLabel)
+			continue
+		}
+		if other, dup := seen[tab.Tint]; dup {
+			t.Errorf("%s and %s share the tone %s — a row's category must be legible from its colour", other, tab.TabLabel, tab.Tint)
+		}
+		seen[tab.Tint] = tab.TabLabel
+	}
+}
+
+// THE CHIP SAYS WHAT [space] WILL DO NEXT (MVS-D-74).
+//
+// Play with nothing reading, Pause while one reads, and Play again once the
+// listener has held it — the same state-driven form the radio panel uses (UAT
+// 37). All three, because a label that only ever showed one of them would look
+// right in a screenshot and be wrong in use.
+func TestTheReadChipNamesTheNextPress(t *testing.T) {
+	d := dash(t).(Dashboard)
+	d.cfg.NarrateEvent = func(string) {}
+	o := d.opts()
+	chip := func() string { return stripANSITest(d.severeChips(o, true, 120)) }
+
+	if got := chip(); !strings.Contains(got, "[space] Play") || strings.Contains(got, "Pause") {
+		t.Errorf("with nothing reading the chip offers Play: %q", got)
+	}
+	d.severeReading, d.severeReadPause = "1", false
+	if got := chip(); !strings.Contains(got, "[space] Pause") {
+		t.Errorf("while a read runs the chip offers Pause: %q", got)
+	}
+	d.severeReadPause = true
+	if got := chip(); !strings.Contains(got, "[space] Play") || strings.Contains(got, "Pause") {
+		t.Errorf("a paused read offers Play — that press resumes it: %q", got)
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -66,5 +67,31 @@ func setThemeHook(name string) error {
 		return err
 	}
 	cfg.Theme = name
+	return config.Save(cfg)
+}
+
+// setUIHook persists the WATCHPOST UI group — theme, units and clock — in ONE
+// write when Settings closes (0.14.0).
+//
+// One write, not three: they are one group and they are decided at one moment,
+// and three Loads and Saves in a row over the same file is three chances for
+// two of them to disagree about what the third wrote.
+//
+// The theme is already live by the time this runs (the picker applies it as it
+// moves), so this only records it; an unknown name is refused rather than
+// written, because a theme the next launch cannot find would leave the app in a
+// colour scheme nobody chose.
+func setUIHook(p tty.UIPrefs) error {
+	if p.Theme != "" && !render.SetTheme(p.Theme) {
+		return fmt.Errorf("unknown theme %q", p.Theme)
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	if p.Theme != "" {
+		cfg.Theme = p.Theme
+	}
+	cfg.Units, cfg.Clock = p.Units, p.Clock
 	return config.Save(cfg)
 }

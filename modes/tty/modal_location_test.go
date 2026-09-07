@@ -192,3 +192,52 @@ func TestLookupWithEmptyRecentSurvivesAPriorityPublish(t *testing.T) {
 		t.Fatal("another window clears the pending lookup")
 	}
 }
+
+// THE ROW APPEARS WITH THE MODAL, SHIMMERING.
+//
+// A lookup put nothing in the RECENT table until the rebuilt snapshot arrived,
+// so the row simply turned up some seconds later — which reads as the app having
+// missed the keystroke. It stands there from the first frame with the same
+// loading dots a location gets on launch, and fills in where it is.
+func TestALookupDrawsAShimmeringRowBeforeItsDataLands(t *testing.T) {
+	m := dash(t)
+	rs := snap()
+	rs.Locations[0].Label, rs.Locations[0].Zip = "Ridgecrest, CA", "93555"
+	m, _ = m.Update(RecentSnapshotMsg{Snap: rs})
+	before := m.(Dashboard).numRecent()
+
+	m, _ = m.Update(tea.KeyPressMsg{Code: 'l', Text: "l"})
+	ref := snapshot.LocationRef{Label: "Escondido, CA", Zip: "92025", Lat: 33.1, Lon: -117.1, TZ: "America/Los_Angeles"}
+	m, _ = m.Update(resolvedMsg{mode: "lookup", ref: ref})
+	d := m.(Dashboard)
+
+	// One more row than the snapshot carries, and it is at the TOP.
+	if got := d.numRecent(); got != before+1 {
+		t.Fatalf("the pending lookup is a row: %d, want %d", got, before+1)
+	}
+	if locs := d.recentLocations(); len(locs) == 0 || locs[0].Label != "Escondido, CA" {
+		t.Fatalf("the pending row tops the list: %+v", locs)
+	}
+	// It SHIMMERS: no readings yet, so the temperature cells load rather than
+	// reading "n/a", and the tick that animates them is armed.
+	if !rowLoading(&d.recentLocations()[0]) {
+		t.Error("the pending row is a loading row")
+	}
+	if !d.anyLoading() {
+		t.Error("the shimmer tick must run while a lookup waits")
+	}
+	// And the frame actually draws it — under the RECENT band, with the dots.
+	v := stripANSITest(d.View().Content)
+	if !strings.Contains(v, "Escondido, CA") {
+		t.Errorf("the row is on screen from the first frame:\n%s", v)
+	}
+
+	// When the data lands the placeholder gives way — no doubled row.
+	landed := snap()
+	landed.Locations = append([]snapshot.Location{{Label: "Escondido, CA", Zip: "92025", TZ: "America/Los_Angeles"}}, landed.Locations...)
+	m, _ = m.Update(RecentSnapshotMsg{Snap: landed})
+	d = m.(Dashboard)
+	if got := d.numRecent(); got != len(landed.Locations) {
+		t.Errorf("the placeholder gives way rather than doubling: %d, want %d", got, len(landed.Locations))
+	}
+}

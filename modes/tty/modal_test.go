@@ -8,7 +8,6 @@ package tty
 // that refactor satisfies.
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -25,28 +24,23 @@ var modalMarkers = map[string]string{
 	"lookup":  "─ Lookup Location ─",
 	"remove":  "─ Remove Location ─",
 	"alerts":  "─ ALERT",
-	"status":  "─ API Status ─",
+	"status":  "─ Watchpost Status ─",
 	"about":   "Data Provided by:",
-	"theme":   "─ Color Theme ─",
-	"voice":   "─ Correspondent Voice ─",
-	"setup":   "─ Setup ─",
-	"severe":  "SEVERE WEATHER / DISASTER EVENTS",
+	"setup":   "─ Settings ─",
+	"severe":  "NOTABLE EVENTS AND FORECASTS",
 }
 
 // openers are every way a window opens.
 var openers = map[string]tea.Msg{
-	"help":     tea.KeyPressMsg{Code: '?', Text: "?"},
-	"details":  tea.KeyPressMsg{Code: tea.KeyEnter},
-	"lookup":   tea.KeyPressMsg{Code: 'l', Text: "l"}, // ctrl+a Add is row-gated (UAT 2026-08-27); lookup covers modalAdd here
-	"remove":   tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModShift},
-	"alerts":   tea.KeyPressMsg{Code: 'A', Text: "A"},
-	"status":   tea.KeyPressMsg{Code: 'S', Text: "S"},
-	"about":    tea.KeyPressMsg{Code: 'a', Text: "a"},
-	"theme":    tea.KeyPressMsg{Code: 't', Text: "t"},
-	"voice":    tea.KeyPressMsg{Code: 'V', Text: "V"},
-	"setup":    tea.KeyPressMsg{Code: 's', Text: "s"},
-	"severe":   tea.KeyPressMsg{Code: 'w', Text: "w"},
-	"voiceErr": voiceErrMsg{err: errors.New("voice failed")},
+	"help":    tea.KeyPressMsg{Code: '?', Text: "?"},
+	"details": tea.KeyPressMsg{Code: tea.KeyEnter},
+	"lookup":  tea.KeyPressMsg{Code: 'l', Text: "l"}, // ctrl+a Add is row-gated; lookup covers modalAdd here
+	"remove":  tea.KeyPressMsg{Code: tea.KeyDelete, Mod: tea.ModShift},
+	"alerts":  tea.KeyPressMsg{Code: 'A', Text: "A"},
+	"status":  tea.KeyPressMsg{Code: 'S', Text: "S"},
+	"about":   tea.KeyPressMsg{Code: 'a', Text: "a"},
+	"setup":   tea.KeyPressMsg{Code: 's', Text: "s"},
+	"severe":  tea.KeyPressMsg{Code: 'w', Text: "w"},
 }
 
 // modalsIn lists the markers present in a frame.
@@ -88,11 +82,25 @@ func TestExactlyOneModalRendersWhateverOpensOverWhat(t *testing.T) {
 	}
 }
 
+// [t] and [M] no longer open windows of their own: both DEEP-LINK into Settings
+// (0.14.0). They are exercised here rather than in openers, which is keyed by
+// the window a key opens, because they open a window someone else already owns.
+func TestTheRetiredChoosersDeepLinkIntoSettings(t *testing.T) {
+	for _, tc := range []struct{ name, key string }{{"theme", "t"}, {"mute", "M"}} {
+		m := modalFixture(t)
+		m, _ = m.Update(tea.KeyPressMsg{Code: rune(tc.key[0]), Text: tc.key})
+		frame := stripANSITest(m.View().Content)
+		if got := modalsIn(frame); len(got) != 1 || got[0] != "setup" {
+			t.Errorf("%s opens Settings and nothing else, got %v", tc.name, got)
+		}
+		if !strings.Contains(frame, "› ") {
+			t.Errorf("%s: Settings opens with a row focused", tc.name)
+		}
+	}
+}
+
 func TestEveryModalHasItsMarker(t *testing.T) {
 	for name, open := range openers {
-		if name == "voiceErr" {
-			continue
-		}
 		m := modalFixture(t)
 		m, _ = m.Update(open)
 		got := modalsIn(stripANSITest(m.View().Content))

@@ -11,7 +11,9 @@ package tty
 
 import (
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/category"
 	"strings"
+	"time"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -28,37 +30,76 @@ const (
 
 // TickerCategory is the marquee lane an event belongs to; the band rotates
 // through the non-empty lanes in this declared order (HUM LEAD 2026-08-27).
-type TickerCategory int
+// TickerCategory is a lane on the band — the same thing as a window tab, named
+// for where it is shown. An alias, so the two cannot drift.
+type TickerCategory = category.Category
 
 const (
-	CatQuake    TickerCategory = iota // Severe Earthquakes (USGS)
-	CatTropical                       // Tropical Cyclones (the live NHC storms)
-	CatWarning                        // Warnings — all NWS warning products
-	CatWatch                          // Watches — all NWS watch products
+	CatDisasters = category.Disasters // "Disasters": quakes and the other non-weather hazards
+	CatMarine    = category.Marine    // "Marine": NHC storms and the marine products beside them
+	CatWarning   = category.Warnings
+	CatWatch     = category.Watches
+	CatAdvisory  = category.Advisories
+	CatStatement = category.Statements
+	CatEmergency = category.Emergency
 )
 
-// tickerCatOrder is the rotation order (a function, not a global — P10-06).
-func tickerCatOrder() []TickerCategory {
-	return []TickerCategory{CatQuake, CatTropical, CatWarning, CatWatch}
-}
-
-// warnGlyph is the leading mark on the band (⚠, or ! under --ascii); the lane's
-// count sits before it ([count] [glyph], HUM LEAD).
-func warnGlyph(o render.Opts) string {
-	if o.ASCII {
-		return "!"
-	}
-	return "⚠"
-}
+// tickerCatOrder is the rotation — the registry's own, not a list kept beside
+// it. A lane missing from a hand-kept order never reached the band however many
+// alerts it held (F-21).
+func tickerCatOrder() []TickerCategory { return category.Lanes() }
 
 // TickerItem is one active alert as the marquee shows it. The app composes Text
 // ("Tornado Warning · the Oklahoma City area  declared 3:42 PM · expires
 // 4:15 PM") from a globalfeed.Event; Category picks the lane and the colour.
+// The item carries the FACTS, not a finished line. It used to arrive
+// pre-formatted from the app, which meant the times on it were written at the
+// moment the ticker cycled — so changing the clock in Settings did nothing until
+// the next cycle up to two minutes later, and the tape sat there in the old
+// format (HUM LEAD, UAT 2026-08-30: "there's a delay").
+//
+// Formatting here fixes that by construction: the tape is composed from
+// render.Opts every frame, so the clock preference reaches it the same way the
+// theme does — immediately, because there is nothing older to repaint.
 type TickerItem struct {
 	ID       string // the source event id
 	Category TickerCategory
-	Text     string
+	Head     string         // "<Type> · <Location>" — the part with no time in it
+	Verb     string         // how it happened: declared · recorded · reported · issued
+	At       time.Time      // when it happened
+	Until    time.Time      // when its window ends; zero = none
 	Severity TickerSeverity // ordering within the lane (set by the app)
+}
+
+// tapeLine is one alert as the tape reads it, in the LISTENER'S clock and the
+// LISTENER'S ZONE: "<Type> · <Location>  declared 3:42 PM · expires 4:15 PM".
+//
+// .Local() on both, and it is not optional. The feeds publish UTC, and the
+// spoken line localises — so without it the band said "0026" for an event the
+// radio was calling "Seventeen Twenty-Six Hours", the same instant seven hours
+// apart. It went missing when the formatting moved
+// here from the app, which localised.
+//
+// The Clock methods deliberately do NOT localise: the alert list formats in the
+// LOCATION's zone, because a tide or an expiry happens where the weather is.
+// Choosing the zone is the caller's job, which is why this one has to say so.
+func (d Dashboard) tapeLine(o render.Opts, it TickerItem) string {
+	// THE ONE PLACE THE TAPE'S TEXT CROSSES THE GLYPH BOUNDARY (F-47). Head is
+	// built by the Producer (app/ticker.go:611), which composes DATA and has no
+	// view options, so its separator is always the middot; the tape is where a
+	// frame learns whether it is being drawn under --ascii. tickerBullet already
+	// knew this — the separator BETWEEN items had both forms while the one INSIDE
+	// an item did not.
+	dot := o.Glyphs().Dot
+	head := it.Head
+	if o.ASCII {
+		head = strings.ReplaceAll(head, "·", dot)
+	}
+	s := head + "  " + it.Verb + " " + o.Clock.Since(it.At.Local(), d.clock())
+	if !it.Until.IsZero() {
+		s += " " + dot + " expires " + o.Clock.Since(it.Until.Local(), d.clock())
+	}
+	return s
 }
 
 // tickerBullet separates alerts on the tape (a middot; a plain * under --ascii).
@@ -93,18 +134,18 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 	if d.breaking != nil {
 		it := *d.breaking
 		tones := render.Tok(tickerCatBG(it.Category)) + ";" + render.Tok(render.TickerFG)
-		content := render.TintRaw(centerText(it.Text, width), tones)
+		content := render.TintRaw(centerText(d.tapeLine(o, it), width), tones)
 		blank := render.TintRaw(strings.Repeat(" ", width), tones)
 		return blank + "\n" + content + "\n" + blank
 	}
 
 	right := tickerRightReserve
 	mid := "  no active severe events"
-	bg, fg := render.GroupSectionBG, render.TickerMutedFG // the muted band matches the RECENT/SEARCHED group header (HUM LEAD)
+	bg, fg := render.GroupSectionBG, render.TickerMutedFG // the muted band matches the RECENT/SEARCHED group header
 	if cats := d.tickerCategories(); len(cats) > 0 {
 		cur := cats[d.tickerCatIdx%len(cats)]
-		items := d.tickerLane(cur)
-		left := fmt.Sprintf("  %d %s  ", len(items), warnGlyph(o)) // [count] [glyph] (HUM LEAD: the original left indicator); the lane is read by its band colour
+		items := d.tickerLane(o, cur)
+		left := fmt.Sprintf("  %s  %d %s  ", cur.Label(), len(items), o.Glyphs().Alert)
 		win := max(1, width-render.Width(left)-right)
 		tape := strings.Join(items, tickerBullet(o))
 		mid = left + scrollWindow(tape, d.tickerScroll, win, tickerBullet(o))
@@ -130,12 +171,12 @@ func (d Dashboard) tickerCategories() []TickerCategory {
 	return present
 }
 
-// tickerLane is the Text of every alert in a lane, in the app's order.
-func (d Dashboard) tickerLane(c TickerCategory) []string {
+// tickerLane is every alert in a lane, as the tape reads it, in the app's order.
+func (d Dashboard) tickerLane(o render.Opts, c TickerCategory) []string {
 	var out []string
 	for _, it := range d.ticker {
 		if it.Category == c {
-			out = append(out, it.Text)
+			out = append(out, d.tapeLine(o, it))
 		}
 	}
 	return out
@@ -144,18 +185,7 @@ func (d Dashboard) tickerLane(c TickerCategory) []string {
 // tickerCatBG is the band background for a lane — FIXED per category (HUM LEAD
 // colour pass, 2026-08-27): Earthquakes = Red, Warnings = Orange, Watches =
 // Yellow, Tropical = Blue.
-func tickerCatBG(c TickerCategory) render.Token {
-	switch c {
-	case CatQuake:
-		return render.TickerRedBG
-	case CatWarning:
-		return render.TickerOrangeBG
-	case CatWatch:
-		return render.TickerYellowBG
-	default: // CatTropical
-		return render.TickerBlueBG
-	}
-}
+func tickerCatBG(c TickerCategory) render.Token { return category.Of(c).BandTone }
 
 // centerText centres text within width (clipping by DISPLAY WIDTH when it is
 // wider) — the breaking-news event sits in the middle of the band. A
@@ -237,7 +267,7 @@ func (d Dashboard) tickerLoopLen() int {
 	if len(cats) == 0 {
 		return 0
 	}
-	tape := strings.Join(d.tickerLane(cats[d.tickerCatIdx%len(cats)]), tickerBulletDot)
+	tape := strings.Join(d.tickerLane(d.opts(), cats[d.tickerCatIdx%len(cats)]), tickerBulletDot)
 	return len([]rune(tape)) + len([]rune(tickerBulletDot))
 }
 
@@ -252,19 +282,89 @@ func (d *Dashboard) advanceTickerCategory() {
 	if len(cats) <= 1 {
 		return
 	}
+	// EACH LANE RESUMES WHERE IT LEFT OFF, so every alert on a tape is reachable.
+	// A visit lasts tickerRotate at one cell per tick, which is far less than a
+	// busy lane's tape; a lane that restarted each visit would never show its
+	// tail, while the band's count still claimed it was there.
+	cur, showing := d.showingLane()
+	if showing {
+		d.parkScroll(cur)
+	}
 	d.tickerCatIdx = (d.tickerCatIdx + 1) % len(cats)
-	d.tickerScroll = 0
+	d.tickerScroll = d.tickerScrolls[cats[d.tickerCatIdx]]
 }
 
-// setTicker replaces the active-alert set. The lane index is kept valid as the
-// present set changes; a lane whose alerts all expired simply drops out of the
-// rotation on the next publish.
+// parkScroll records how far a lane's tape has run, for its next visit.
+func (d *Dashboard) parkScroll(c TickerCategory) {
+	if d.tickerScrolls == nil {
+		d.tickerScrolls = map[TickerCategory]int{}
+	}
+	d.tickerScrolls[c] = d.tickerScroll
+}
+
+// showingLane is the lane on the band right now, and whether there is one.
+func (d Dashboard) showingLane() (TickerCategory, bool) {
+	cats := d.tickerCategories()
+	if len(cats) == 0 {
+		return 0, false
+	}
+	return cats[d.tickerCatIdx%len(cats)], true
+}
+
+// laneAfter is the index in cats of want, or — when want is no longer present —
+// of the first lane that follows it in rotation order, wrapping to the front.
+//
+// Ranked through tickerCatOrder rather than by comparing the constants, which
+// happen to be declared in the same sequence today: the rotation order is that
+// function's to state, and a reader who reorders it should not have to know
+// that the handover silently depended on the iota values agreeing.
+func laneAfter(cats []TickerCategory, want TickerCategory) int {
+	order := tickerCatOrder()
+	rank := func(c TickerCategory) int {
+		for i, o := range order {
+			if o == c {
+				return i
+			}
+		}
+		return len(order) // not in the rotation at all: sorts last
+	}
+	w := rank(want)
+	for i, c := range cats {
+		if rank(c) >= w {
+			return i // the lane itself, or the first one past where it was
+		}
+	}
+	return 0 // it was the last lane present: wrap
+}
+
+// setTicker replaces the active-alert set, KEEPING THE SHOWING LANE ON THE LANE
+// IT WAS SHOWING.
+//
+// tickerCatIdx is a position in the PRESENT lanes, and the present set changes
+// on every publish as alerts arrive and expire. This used to keep the index in
+// range with `idx %= len(cats)`, which silently teleports it the moment the set
+// shrinks: on [Disasters, Marine, Warnings, Watches] showing Watches (3), a
+// publish where Disasters has gone quiet leaves three lanes and 3 % 3 = 0 —
+// Marine. Disasters and Marine come from the national feed, so they are almost
+// always present AND first in the order, and every shrink dragged the band back
+// onto them. It looked like the rotation was stuck on those two, which is what
+// the HUM LEAD saw.
+//
+// So the lane is carried as an IDENTITY across the swap: still present, still
+// showing. Only a lane that has actually emptied hands over, and it hands over
+// forward — the next present lane in rotation order, wrapping — so a lane going
+// quiet advances the rotation instead of resetting it.
 func (d *Dashboard) setTicker(items []TickerItem) {
+	was, showing := d.showingLane()
 	d.ticker = items
-	if cats := d.tickerCategories(); len(cats) > 0 {
-		d.tickerCatIdx %= len(cats)
-	} else {
+	cats := d.tickerCategories()
+	switch {
+	case len(cats) == 0:
 		d.tickerCatIdx = 0
+	case !showing:
+		d.tickerCatIdx = 0 // nothing was on the band: start at the front
+	default:
+		d.tickerCatIdx = laneAfter(cats, was)
 	}
 	if n := d.tickerLoopLen(); n > 0 {
 		d.tickerScroll %= n

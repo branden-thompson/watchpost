@@ -2,6 +2,7 @@ package synth
 
 import (
 	"fmt"
+	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"math"
 	"time"
 
@@ -35,7 +36,7 @@ func (c Composer) SeismicSegments(location string, sr SeismicReport, imperial bo
 	}
 	place := ExpandStates(location)
 	notice := c.say("seismic-report", "head", map[string]string{"Location": place})
-	segs := []Segment{{Key: "seismic:notice:" + contentKey(notice), Text: notice, Pause: seismicPause}} // content-keyed: the cache must never replay a stale feed (REVIEW C1)
+	segs := []Segment{{Key: "seismic:notice:" + contentKey(notice), Text: notice, Role: cast.Seismic, Pause: seismicPause}} // content-keyed: the cache must never replay a stale feed (REVIEW C1)
 
 	n := len(sr.State.Quakes)
 	body := []string{c.say("seismic-report", "count", map[string]any{"Count": n})}
@@ -55,7 +56,7 @@ func (c Composer) SeismicSegments(location string, sr SeismicReport, imperial bo
 		if piece == "" {
 			continue // a phrase without a script is not spoken
 		}
-		segs = append(segs, Segment{Key: "seismic:" + contentKey(piece), Text: piece}) // content-keyed: counts change between cycles under repeat (REVIEW C1)
+		segs = append(segs, Segment{Key: "seismic:" + contentKey(piece), Text: piece, Role: cast.Seismic}) // content-keyed: counts change between cycles under repeat (REVIEW C1)
 	}
 	return segs
 }

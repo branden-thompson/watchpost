@@ -1,6 +1,6 @@
 // Semantic color tokens (UAT 16.4): every color the UI emits resolves
 // through the theme table below — the theming surface. Swapping palettes
-// (the 't' theme chooser, CLIAmp-style) replaces this table; call sites
+// (the theme picker in Settings, CLIAmp-style) replaces this table; call sites
 // never change. Values are SGR parameter lists (256-palette codes ride
 // go-studs ColorSequence; truecolor entries are pre-expanded 38;2/48;2
 // params for the raw-SGR path; window/gradient entries are #RRGGBB hex).
@@ -20,11 +20,13 @@ const (
 	TrendUp   Token = "trend.up"   // ↗ (muted orange)
 	TrendDown Token = "trend.down" // ↘ (muted cyan)
 
-	FocusName    Token = "name.focus"    // focused row name
-	FocusCell    Token = "cell.focus"    // focused row: grey data cells read light blue (UAT 50.1)
-	FocusPointer Token = "pointer.focus" // focused row pointer: bold white (UAT 50.2)
-	NameAdvisory Token = "name.advisory" // location under advisory/statement
-	NameWarning  Token = "name.warning"  // location under warning/alert
+	FocusName    Token = "name.focus"       // focused row name
+	FocusCell    Token = "cell.focus"       // focused row: grey data cells read light blue (UAT 50.1)
+	FocusPointer Token = "pointer.focus"    // focused row pointer: bold white (UAT 50.2)
+	ListPointer  Token = "pointer.list"     // a LIST's focused row: bold yellow — see render/list.go for why this is not FocusPointer
+	ListFocus    Token = "label.list.focus" // and its label: the same yellow, NOT bold
+	NameAdvisory Token = "name.advisory"    // location under advisory/statement
+	NameWarning  Token = "name.warning"     // location under warning/alert
 
 	ProviderOK   Token = "provider.ok"
 	ProviderDown Token = "provider.down"
@@ -64,24 +66,34 @@ const (
 	// Orange / Yellow that are theme-INDEPENDENT (the same across every theme
 	// except monochrome, which renders them greyscale) — set on bare :root and
 	// overridden only under Monochrome. TickerFG / TickerMutedFG go with them; the empty band matches GroupSectionBG.
-	TickerRedBG    Token = "ticker.red.bg"
-	TickerOrangeBG Token = "ticker.orange.bg"
-	TickerYellowBG Token = "ticker.yellow.bg"
-	TickerBlueBG   Token = "ticker.blue.bg" // 0.12.0: the Tropical Cyclones lane (HUM LEAD colour pass)
-	TickerFG       Token = "ticker.fg"
-	TickerMutedFG  Token = "ticker.muted.fg"
+	TickerDisasterBG Token = "ticker.disaster.bg"
+	TickerWarningBG  Token = "ticker.warning.bg"
+	TickerWatchBG    Token = "ticker.watch.bg"
+	TickerMarineBG   Token = "ticker.marine.bg" // 0.12.0: the Tropical Cyclones lane (HUM LEAD colour pass)
+	// 0.14.0: the two lanes that joined when every severe category gained one.
+	// They are LANE tokens, not category tints borrowed from the [w] window: a
+	// band is painted under bold white at full strength, a tint sits behind a
+	// row, and the AA register checks the two differently (HUM LEAD, UAT
+	// 2026-08-30).
+	TickerAdvisoryBG  Token = "ticker.advisory.bg"  // Advisories — burnt orange, away from the Watch gold beside it
+	TickerEmergencyBG Token = "ticker.emergency.bg" // Emergency Orders — THE RED (MVS-D-62)
+	TickerStatementBG Token = "ticker.statement.bg" // Spec. Statements — teal, the one lane with no warm neighbour
+	TickerFG          Token = "ticker.fg"
+	TickerMutedFG     Token = "ticker.muted.fg"
 
 	// The severe-events window's category tints (0.13.0, SAM-D-7): fixed,
 	// pre-darkened hues keyed to the ticker lanes — Red disasters, Orange
 	// warnings, Yellow watches/advisories/statements, Blue tropical — rendered
 	// by CategoryTone onto the active modal substrate, so they read the same in
 	// every theme (Monochrome greys them). Values: HUM LEAD's colour pass.
-	EventCatRedBG    Token = "event.cat.red.bg"
-	EventCatOrangeBG Token = "event.cat.orange.bg"
-	EventCatYellowBG Token = "event.cat.yellow.bg"    // Advisories
-	EventCatWatchBG  Token = "event.cat.watch.bg"     // Watches — a touch more yellow than Advisories (HUM LEAD UAT 2026-08-28)
-	EventCatStmtBG   Token = "event.cat.statement.bg" // Spec. Statements — a touch more green than Advisories (HUM LEAD UAT 2026-08-28)
-	EventCatBlueBG   Token = "event.cat.blue.bg"
+	EventCatDisasterBG  Token = "event.cat.disaster.bg"
+	EventCatWarningBG   Token = "event.cat.warning.bg"
+	EventCatAdvisoryBG  Token = "event.cat.advisory.bg"  // Advisories
+	EventCatWatchBG     Token = "event.cat.watch.bg"     // Watches — a touch more yellow than Advisories
+	EventCatStmtBG      Token = "event.cat.statement.bg" // Spec. Statements — a touch more green than Advisories
+	EventCatEmergencyBG Token = "event.cat.emergency.bg" // Emergency Orders — THE RED (MVS-D-62); Disasters takes purple
+	EventCatForecastBG  Token = "event.cat.forecast.bg"  // Forecasts and Outlooks — COLOUR IS THE HUM LEAD'S PASS
+	EventCatMarineBG    Token = "event.cat.marine.bg"
 
 	// The table's own palette (quality pass Q4a-004, L5-F4): before it the
 	// kit painted these from its $TERM-gated palette, outside the theme.
@@ -97,7 +109,7 @@ const (
 	AlertModalWarnBG Token = "alert.modal.warning.bg" // [A] details tile, warning-grade
 	AlertModalAdvBG  Token = "alert.modal.advisory.bg"
 
-	ModalTitle   Token = "modal.title" // a floating window's title: bold white against the tile (UAT 2026-08-27)
+	ModalTitle   Token = "modal.title" // a floating window's title: bold white against the tile
 	ModalFG      Token = "modal.fg"
 	ModalBGDark  Token = "modal.bg.dark"
 	ModalBGLight Token = "modal.bg.light"
@@ -108,6 +120,16 @@ const (
 	GradStart Token = "title.grad.start" // hex — gradient interpolation stops
 	GradMid   Token = "title.grad.mid"
 	GradEnd   Token = "title.grad.end"
+
+	// TitleEdition is the EDITION word beside the wordmark — "Observer"
+	// today, "Broadcaster" when that dashboard arrives (0.14.0). Bold, in the
+	// theme's own light blue, so the edition reads as a companion to the
+	// gradient rather than a second wordmark competing with it.
+	//
+	// Its own token, not FocusCell borrowed: the two happen to share a colour
+	// in most themes and have nothing to do with each other, and the second
+	// edition will want to differ.
+	TitleEdition Token = "title.edition"
 )
 
 // defaultTheme is the HUM-LEAD-directed B3 palette, built fresh on each
@@ -127,6 +149,10 @@ func defaultTheme() map[Token]string {
 		FocusName:    "1;220",
 		FocusCell:    "117", // light blue
 		FocusPointer: "1;97",
+		// A LIST's focus is its own pair of tokens, deliberately NOT the
+		// table's. See render.ListMark for why the two differ.
+		ListPointer:  "1;220",
+		ListFocus:    "220",
 		NameAdvisory: "186", // ~#D0CF89
 		NameWarning:  "174", // ~#D08989
 
@@ -165,19 +191,37 @@ func defaultTheme() map[Token]string {
 		// The ticker severity backgrounds (0.12.0), fixed across themes (bold
 		// white text on a saturated tile; the greyscale variants live under
 		// Monochrome only).
-		TickerRedBG:    "48;2;150;20;20",     // deep red
-		TickerOrangeBG: "48;2;160;85;15",     // amber
-		TickerYellowBG: "48;2;150;125;20",    // dark gold
-		TickerBlueBG:   "48;2;20;70;150",     // deep blue (Tropical Cyclones — HUM LEAD colour pass)
-		TickerFG:       "1;38;2;255;255;255", // bold white
-		TickerMutedFG:  "38;5;245",           // muted grey text
+		TickerDisasterBG: "48;2;140;20;110", // #8C146E — Disasters
+		TickerWarningBG:  "48;2;160;85;15",  // amber
+		TickerWatchBG:    "48;2;150;125;20", // dark gold
+		TickerMarineBG:   "48;2;20;70;150",  // deep blue (Tropical Cyclones — HUM LEAD colour pass)
 
-		EventCatRedBG:    "48;2;85;9;9",  // #550909 — HUM LEAD UAT 2026-08-28 // pre-darkened tints (HUM LEAD colour pass to tune at UAT)
-		EventCatOrangeBG: "48;2;99;53;0", // #633500 — HUM LEAD UAT 2026-08-28 ("more orange, it looked brown")
-		EventCatYellowBG: "48;2;60;52;14",
-		EventCatWatchBG:  "48;2;94;72;0", // #5E4800 — HUM LEAD asked #886800; darkened on the same hue to the AA floor (4.84:1 worst theme), UAT 2026-08-28
-		EventCatStmtBG:   "48;2;76;84;0", // #4C5400 — HUM LEAD asked #7D8800; darkened on the same hue to the AA floor (4.51:1), UAT 2026-08-28
-		EventCatBlueBG:   "48;2;14;34;64",
+		TickerAdvisoryBG:  "48;2;129;60;14",  // #813C0E
+		TickerStatementBG: "48;2;25;105;102", // #196966
+		// PLACEHOLDER, pending the ruling: a new colour, or THE RED with every
+		// other lane shifted down. Magenta only so it is unmistakably not final.
+		TickerEmergencyBG: "48;2;150;20;20",     // #961414 — Emergency Orders: THE red
+		TickerFG:          "1;38;2;255;255;255", // bold white
+		TickerMutedFG:     "38;5;245",           // muted grey text
+
+		// The [w] window's row tints MIRROR the lanes: the same hue and saturation
+		// at 60 % of the lane's lightness (HUM LEAD, UAT 2026-08-30 — "so they
+		// don't visually scream or bleed"). A band is glanced at across a dark
+		// frame; a tint sits under a row somebody is reading, so it has to step
+		// back without becoming a different colour.
+		EventCatDisasterBG: "48;2;96;14;76", // #600E4C — Disasters
+		EventCatWarningBG:  "48;2;94;43;10", // #5E2B0A — Warnings
+		EventCatWatchBG:    "48;2;68;56;9",  // #443809 — Watches
+		EventCatAdvisoryBG: "48;2;77;41;7",  // #4D2907 — Advisories
+		EventCatStmtBG:     "48;2;13;53;51", // #0D3533 — Spec. Statements
+		// Forecasts sit BELOW advisories, and the only tint in the set with no
+		// lane above it — there is no Forecasts band on the ticker. So it is the
+		// one that carries no hue: a neutral slate, a whisper of cool so it is
+		// not mistaken for the table's own ground, and the least chroma in the
+		// set because it is the least urgent thing the window shows.
+		EventCatForecastBG:  "48;2;46;50;56",  // #2E3238 — Forecasts and Outlooks
+		EventCatEmergencyBG: "48;2;114;15;15", // #720F0F — Emergency Orders
+		EventCatMarineBG:    "48;2;16;55;118", // #103776 — Marine
 
 		TableMuted: "245", // = tui.TableRowNumber / tui.TableAttribute
 		TableName:  "97",  // = tui.TableLabel
@@ -202,6 +246,8 @@ func defaultTheme() map[Token]string {
 		GradStart: "#DD51D6", // the reference-CLI gradient
 		GradMid:   "#378FE9",
 		GradEnd:   "#7CE3B3",
+
+		TitleEdition: "1;117", // bold light blue — 117 is what this palette already calls light blue (FocusCell)
 	})
 }
 

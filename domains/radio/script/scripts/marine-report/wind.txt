@@ -1,0 +1,2 @@
+{{/* marine-report/wind: wind at the buoy, in the listener's unit (MVS-D-21). Data: .Speed, .Gust (may be empty). */}}
+Wind at the buoy {{.Speed}}{{if .Gust}}, gusting to {{.Gust}}{{end}}.

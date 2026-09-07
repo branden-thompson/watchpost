@@ -1,3 +1,6 @@
+const BlameProvider
+const BlameUnclear
+const BlameWatchpost
 const KindAlerts
 const KindFire
 const KindForecast
@@ -23,6 +26,7 @@ const fillForecast
 const maxWarnings
 func (*Assembler).Apply
 func (*Assembler).FireFor
+func (*Assembler).MarineFor
 func (*Assembler).ProviderStatus
 func (*Assembler).SeismicFor
 func (*Assembler).SetAttribution
@@ -32,10 +36,14 @@ func (*Assembler).Size
 func (*Assembler).Snapshot
 func (*Assembler).Warn
 func (*Marine).Clone
+func BlameFor
+func DefaultOrigin
 func FetchEach
 func Key
 func NewAssembler
+func WithFailure
 func acresOf
+func cleanWarning
 func cloneSeismic
 func cloneSource
 func fillFrom
@@ -60,6 +68,7 @@ type Assembler
 type Conditions
 type CurrentEvent
 type Daily
+type FailureDetail
 type FetchKind
 type FetchReq
 type FireState

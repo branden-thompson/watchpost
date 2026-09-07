@@ -37,7 +37,7 @@ func ThemeGeneration() uint64 { return themeGen.Load() }
 // default table (unlisted tokens inherit) — one source per theme.
 //
 // Every theme, built-in or user file, sets its own title gradient
-// (GradStart/GradMid/GradEnd): the W A T C H P O S T wordmark is part of
+// (GradStart/GradMid/GradEnd): the WATCHPOST wordmark is part of
 // the palette, never a leftover from the default (HUM LEAD, UAT 107;
 // pinned by TestEveryThemeOwnsItsTitleGradient).
 func builtinOverrides() map[string]map[Token]string {
@@ -51,6 +51,7 @@ func builtinOverrides() map[string]map[Token]string {
 			GroupSectionBG: "48;2;60;60;60", TempHi: "214", TempLo: "87", FireMark: "214", SeismicMark: "177", // bright light-purple, high legibility (0.11.0)
 			TableMuted: "255", TableName: "231", ModalTitle: "1;231", // Q4a-004: the table reads as bright as the rest
 			GradStart: "#FFFFFF", GradMid: "#FFFF5F", GradEnd: "#5FFFFF", // white → its focus yellow → its low cyan
+			TitleEdition: "1;159", // its own pale blue, at this theme's brightness
 		},
 		"Monochrome": {
 			TempHi: "255", TempLo: "250", TrendUp: "250", TrendDown: "250",
@@ -58,15 +59,52 @@ func builtinOverrides() map[string]map[Token]string {
 			ProviderOK: "250", ProviderDown: "255", RadioAccent: "250", RadioStation: "1;255",
 			StatePlaying: "1;255", RepeatOn: "1;255", VizOn: "1;255",
 			SpectrumLow: "245", SpectrumMid: "250", SpectrumHigh: "255", FireMark: "255", SeismicMark: "252", // greyscale on a monochrome theme — the glyph, not colour, distinguishes it (0.11.0)
-			TickerRedBG: "48;2;95;95;95", TickerOrangeBG: "48;2;68;68;68", TickerYellowBG: "48;2;46;46;46", TickerBlueBG: "48;2;80;80;80", // 0.12.0: lane by shade, not hue, on monochrome
-			EventCatRedBG: "48;2;70;70;70", EventCatOrangeBG: "48;2;58;58;58", EventCatYellowBG: "48;2;46;46;46", EventCatWatchBG: "48;2;52;52;52", EventCatStmtBG: "48;2;40;40;40", EventCatBlueBG: "48;2;62;62;62", // 0.13.0: category by shade on monochrome; the tab glyph carries identity
+			// The lane ramp, EVENLY SPACED IN L* across the six lanes (HUM LEAD, UAT
+			// 2026-08-30). Shade is the only thing telling lanes apart on this
+			// theme, and the ramp was cut for four: adding two put Watches and
+			// Advisories four bytes apart, which is 1.06:1 — the same band twice.
+			//
+			// Spaced in CIE L*, not in bytes, because even byte steps are not even
+			// STEPS to the eye. Six lanes over the range the four already used
+			// (95..30) is 5.8 L* apart each: 95 81 68 55 42 30, in rotation order,
+			// brightest first. Three of the four original values land unchanged.
+			TickerEmergencyBG: "48;2;110;110;110", TickerDisasterBG: "48;2;95;95;95", TickerMarineBG: "48;2;81;81;81", TickerWarningBG: "48;2;68;68;68", TickerWatchBG: "48;2;55;55;55",
+			TickerAdvisoryBG: "48;2;42;42;42", TickerStatementBG: "48;2;30;30;30", EventCatEmergencyBG: "48;2;70;70;70",
+			// The tint ramp, evened in L* like the lane ramp above and running one
+			// rung darker throughout: 70 64 58 52 46 40, in the same severity
+			// order. Category by shade on monochrome; the tab glyph carries
+			// identity (0.13.0).
+			EventCatDisasterBG: "48;2;70;70;70", EventCatMarineBG: "48;2;64;64;64", EventCatWarningBG: "48;2;58;58;58",
+			EventCatWatchBG: "48;2;52;52;52", EventCatAdvisoryBG: "48;2;46;46;46", EventCatStmtBG: "48;2;40;40;40", EventCatForecastBG: "48;2;34;34;34",
 			GroupLocationBG: "48;2;70;70;70", GroupTodayBG: "48;2;70;70;70",
 			GroupTomorrowBG: "48;2;70;70;70", GroupExtendedBG: "48;2;70;70;70",
 			AlertLabel: "250", AlertDanger: "255",
 			AlertModalWarnFG: "38;2;235;235;235", AlertModalAdvFG: "38;2;200;200;200",
 			AlertModalWarnBG: "48;2;40;40;40", AlertModalAdvBG: "48;2;30;30;30",
+			// The modal TILE and the destructive-confirm tile, which every other
+			// theme paints and this one was inheriting: the default's blue slate
+			// and its dark red showed through on a greyscale theme, in every
+			// window.
+			//
+			// #272727 is the blue slate's own LUMINANCE as a grey, so a modal sits
+			// at the same visual depth here as everywhere else — raised off the
+			// #131313 window by the same amount the colour was raising it.
+			//
+			// The confirm tile goes LIGHTER rather than matching, because its job
+			// is to say "this one is different" and it was saying it in red. Shade
+			// is the only voice this theme has for that.
+			ModalBGDark: "48;2;39;39;39", ModalBGLight: "48;2;39;39;39", ConfirmBG: "48;2;58;58;58",
 			GradStart: "#FFFFFF", GradMid: "#C0C0C0", GradEnd: "#808080",
-			ChipFlashUp: "1;38;5;16;48;5;255", ChipFlashDown: "1;38;5;255;48;5;240",
+			// No blue to be had: BOLD WHITE says "edition" the only way this
+			// theme can say anything, the same choice its list focus makes.
+			TitleEdition: "1;255",
+			ChipFlashUp:  "1;38;5;16;48;5;255", ChipFlashDown: "1;38;5;255;48;5;240",
+			// A LIST's focus, in this theme's vocabulary. The default carries it in
+			// yellow and leaves the label unbolded, because the colour is doing the
+			// work; here there is no colour, so BOLD does it — the same
+			// distinction said the only way this theme can say it. Without these
+			// the Settings window kept its yellow pointer on a greyscale theme.
+			ListPointer: "1;255", ListFocus: "1;255",
 			TableMuted: "250", TableName: "255", ModalTitle: "1;255", // Q4a-004: a monochrome theme
 		},
 		// Synthwave '84 (UAT 105; palette from robb0wen/synthwave-vscode:
@@ -87,7 +125,8 @@ func builtinOverrides() map[string]map[Token]string {
 			AlertModalWarnBG: "48;2;60;20;40", AlertModalAdvBG: "48;2;60;50;20", ConfirmBG: "48;2;120;40;80",
 			ModalFG: "38;5;231", ModalBGDark: "48;2;36;27;47", ModalBGLight: "48;2;52;41;79",
 			WindowBGDark: "#262335", GradStart: "#FF7EDB", GradMid: "#36F9F6", GradEnd: "#FEDE5D",
-			TableMuted: "146", TableName: "231", ModalTitle: "1;231", // Q4a-004: lavender attributes (≥ 4.5:1 on #262335)
+			TitleEdition: "1;159",                                      // pale neon blue, on-palette beside the cyan
+			TableMuted:   "146", TableName: "231", ModalTitle: "1;231", // Q4a-004: lavender attributes (≥ 4.5:1 on #262335)
 		},
 		"Solarized Night": {
 			TextBase: "247", TextBright: "254", TempHi: "166", TempLo: "37", TrendUp: "136", TrendDown: "33",
@@ -98,7 +137,8 @@ func builtinOverrides() map[string]map[Token]string {
 			GroupTomorrowBG: "48;2;42;107;103", GroupExtendedBG: "48;2;108;83;132",
 			GroupSectionBG: "48;2;7;54;66", ModalBGDark: "48;2;0;43;54",
 			WindowBGDark: "#002b36", GradStart: "#D33682", GradMid: "#268BD2", GradEnd: "#2AA198",
-			TableMuted: "247", TableName: "254", ModalTitle: "1;254", // Q4a-004: solarized attributes (≥ 4.5:1 on #002b36)
+			TitleEdition: "1;109",                                      // solarized's readable blue-grey, its own light blue
+			TableMuted:   "247", TableName: "254", ModalTitle: "1;254", // Q4a-004: solarized attributes (≥ 4.5:1 on #002b36)
 		},
 	}
 	// The Omarchy Quattro palettes, mapped systematically (quattro.go).
@@ -223,6 +263,9 @@ func lightOverrides() map[Token]string {
 		KeyChip: "1;38;2;0;0;0;48;2;190;190;190", KeyChipMuted: "38;2;120;120;120;48;2;225;225;225",
 		ChipFlashUp: "1;38;2;255;255;255;48;2;0;120;40", ChipFlashDown: "1;38;2;255;255;255;48;2;170;0;0",
 		FocusName: "1;38;2;120;80;0", FocusCell: "38;2;0;70;140", FocusPointer: "1;38;2;0;0;0",
+		// DARK blue on the light ground: "light blue" is a relationship to the
+		// paper, not an absolute, and a pale one here would vanish.
+		TitleEdition: "1;38;2;0;70;140",
 		NameAdvisory: "38;2;110;100;0", NameWarning: "38;2;150;30;30", ProviderOK: "38;2;0;110;40", ProviderDown: "38;2;170;0;0",
 		AlertLabel: "38;2;120;90;0", AlertDanger: "38;2;170;0;0",
 		RadioFG: "38;2;40;40;40", RadioAccent: "38;2;0;110;40", StateStopped: "1;38;2;110;110;110", StatePlaying: "1;38;2;0;110;40",
@@ -236,9 +279,15 @@ func lightOverrides() map[Token]string {
 		AlertModalWarnBG: "48;2;250;215;215", AlertModalAdvBG: "48;2;245;238;195",
 		// The category tints and the ticker lanes, pale (the dark themes share the
 		// default's deep tints; a light theme paints no dark ground — HUM LEAD 2026-08-29).
-		EventCatRedBG: "48;2;250;205;205", EventCatOrangeBG: "48;2;250;220;185", EventCatYellowBG: "48;2;248;240;190",
-		EventCatWatchBG: "48;2;245;228;170", EventCatStmtBG: "48;2;236;240;185", EventCatBlueBG: "48;2;205;222;250",
-		TickerRedBG: "48;2;250;200;200", TickerOrangeBG: "48;2;250;220;180", TickerYellowBG: "48;2;250;240;180", TickerBlueBG: "48;2;200;220;250",
+		// The [w] tints mirror the lanes here too — same hue, stepped TOWARD white
+		// rather than away from it, because this theme's bands are pale and its
+		// text is dark. The step is 45 % of the way, further on the two lanes
+		// whose ruled colour is saturated enough that 45 % left the row text
+		// under AA.
+		EventCatDisasterBG: "48;2;252;225;225", EventCatWarningBG: "48;2;236;225;218", EventCatWatchBG: "48;2;252;247;214",
+		EventCatAdvisoryBG: "48;2;252;236;214", EventCatStmtBG: "48;2;215;232;219", EventCatForecastBG: "48;2;228;230;233", EventCatEmergencyBG: "48;2;246;218;238", EventCatMarineBG: "48;2;225;236;252",
+		TickerEmergencyBG: "48;2;250;200;200", TickerDisasterBG: "48;2;250;195;235", TickerWarningBG: "48;2;250;220;180", TickerWatchBG: "48;2;250;240;180", TickerMarineBG: "48;2;200;220;250",
+		TickerAdvisoryBG: "48;2;205;178;159", TickerStatementBG: "48;2;121;179;135", // #CDB29F / #79B387
 		TickerFG:  "1;38;2;20;20;20",
 		GradStart: "#A0269A", GradMid: "#1F5FA8", GradEnd: "#2E8B6B", // the default gradient, deepened for a light ground
 	}

@@ -82,3 +82,51 @@ func TestPlainDropsBidiAndZeroWidthAndTruncateCellsCountsCells(t *testing.T) {
 		t.Fatalf("short stays: %q", got)
 	}
 }
+
+// A WORD WIDER THAN THE LINE IS BROKEN, NOT LEFT TO OVERFLOW (HUM LEAD, UAT
+// 2026-08-30).
+//
+// This function's contract is that a floating window wraps and never truncates,
+// so callers cannot reintroduce that class of bug. It held only for prose: a
+// provider error carrying a 200-character URL — no spaces in it anywhere — came
+// out as one over-wide line and the panel cut it, losing the half somebody would
+// need to act on it.
+func TestWrapBreaksAWordWiderThanTheLine(t *testing.T) {
+	url := "https://api.weather.gov/alerts/active?status=actual&zone=CAC017%2CCAC027%2CCAC065%2CCAC073%2CCAZ043"
+	got := WrapText("latest: "+url+" kept failing (last HTTP 502)", 40)
+	for i, l := range got {
+		if Width(l) > 40 {
+			t.Errorf("line %d is %d cells: %q", i, Width(l), l)
+		}
+	}
+	// EVERY character survives: the point is that nothing is lost.
+	var joined string
+	for _, l := range got {
+		joined += l
+	}
+	if !strings.Contains(strings.ReplaceAll(joined, " ", ""), strings.ReplaceAll(url, " ", "")) {
+		t.Errorf("the URL must survive the break intact:\n%v", got)
+	}
+	// The words AFTER the broken one keep flowing rather than each taking a line.
+	if last := got[len(got)-1]; !strings.Contains(last, "502") {
+		t.Errorf("the tail keeps collecting: %q", last)
+	}
+}
+
+// An escape sequence is never split: half an SGR code on each line is read by
+// the terminal as text.
+func TestWrapNeverBreaksInsideAnEscape(t *testing.T) {
+	tinted := Tint("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Tok(TextBright))
+	for _, l := range WrapText(tinted, 12) {
+		if n := strings.Count(l, "\x1b"); n > 0 {
+			for _, part := range strings.Split(l, "\x1b")[1:] {
+				if !strings.Contains(part, "m") {
+					t.Errorf("a half escape survived: %q", l)
+				}
+			}
+		}
+		if Width(l) > 12 {
+			t.Errorf("%d cells: %q", Width(l), l)
+		}
+	}
+}

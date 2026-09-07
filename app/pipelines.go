@@ -286,6 +286,10 @@ func (rp *recentPipeline) stop() {
 // weather to the seeded RECENT/SEARCHED list. The seed snapshot publishes
 // once the program loop is up (names/zips render instantly; temps stream
 // in). An empty seed list yields an inert pipeline.
+// ACCEPTED COST — see docs/accepted-costs.md §7. The launch window and the
+// stagger below are tuned for how rows FILL, not for a lower publish count:
+// widening them looks like an optimisation on a counter and is a regression on
+// screen.
 func startRecent(ctx context.Context, p *tea.Program, providers []snapshot.Provider, refs []snapshot.LocationRef, onPublish func(*snapshot.Snapshot)) *recentPipeline {
 	rp := &recentPipeline{ctx: ctx, providers: providers, scheds: map[snapshot.LocationKey]*sched.Scheduler{}}
 	if len(refs) == 0 {

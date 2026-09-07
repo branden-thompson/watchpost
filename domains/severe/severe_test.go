@@ -38,13 +38,21 @@ func TestClassifySixTabs(t *testing.T) {
 			t.Errorf("%s → %v %v", product, got, ok)
 		}
 	}
-	if got, ok := Classify(globalfeed.ClassSevereWx, "Air Quality Alert"); ok || got != TabNone {
-		t.Error("Air Quality Alert must not be shown in v1, and must never index a tab")
+	// MVS-D-58 overturns v1's "not shown": an Air Quality Alert is an advisory
+	// in everything but the word, and a listener who is told to stay indoors
+	// should find it where the other advisories are.
+	if got, ok := Classify(globalfeed.ClassSevereWx, "Air Quality Alert"); !ok || got != TabAdvisories {
+		t.Errorf("an Air Quality Alert is an advisory, got %v (shown=%v)", got, ok)
 	}
-	if got, _ := Classify(globalfeed.ClassQuake, "Earthquake"); got != TabQuakes {
+	// A product still outside the taxonomy must say so, and must never index a
+	// tab. Administrative Message is not a hazard product at all.
+	if got, ok := Classify(globalfeed.ClassSevereWx, "Administrative Message"); ok || got != TabNone {
+		t.Errorf("a product the window does not carry must declare itself not-shown, got %v (shown=%v)", got, ok)
+	}
+	if got, _ := Classify(globalfeed.ClassQuake, "Earthquake"); got != TabDisasters {
 		t.Error("quake tab")
 	}
-	if got, _ := Classify(globalfeed.ClassTropical, "Hurricane"); got != TabTropical {
+	if got, _ := Classify(globalfeed.ClassTropical, "Hurricane"); got != TabMarine {
 		t.Error("tropical tab")
 	}
 }
@@ -122,7 +130,7 @@ func TestSortAndCap(t *testing.T) {
 	var rows []Row
 	base := time.Date(2026, 8, 28, 0, 0, 0, 0, time.UTC)
 	for i := 0; i < 600; i++ {
-		rows = append(rows, Row{Key: "k" + string(rune('a'+i%26)) + string(rune('0'+i/26)), At: base.Add(time.Duration(i) * time.Minute)})
+		rows = append(rows, Row{Key: "k" + string(rune('a'+i%26)) + string(rune('0'+i/26)), Tab: TabWarnings, At: base.Add(time.Duration(i) * time.Minute)})
 	}
 	Sort(rows)
 	if !rows[0].At.After(rows[1].At) {
@@ -229,5 +237,119 @@ func TestSevereImportsNoNetwork(t *testing.T) {
 				t.Fatalf("%s imports %s: the index must stay a pure join", name, path)
 			}
 		}
+	}
+}
+
+// EVERY PRODUCT THE OFFICE ISSUES REACHES A TAB IT BELONGS IN (MVS-D-57).
+//
+// A statement that was not the Special Weather Statement used to fall through
+// to "not shown": the office had told the listener something and the app quietly
+// decided not to pass it on. Warning, watch and advisory are decided first, so a
+// Special Marine Warning is a warning and not marine furniture.
+func TestClassifyPlacesEveryStatementAndMarineProduct(t *testing.T) {
+	for _, c := range []struct {
+		product string
+		want    Tab
+	}{
+		{"Coastal Flood Statement", TabStatements},
+		{"Special Weather Statement", TabStatements},
+		{"Marine Weather Statement", TabMarine},
+		{"Special Marine Warning", TabWarnings}, // a warning first, marine second
+		{"Coastal Flood Advisory", TabAdvisories},
+		{"Winter Storm Watch", TabWatches},
+	} {
+		got, ok := Classify(globalfeed.ClassSevereWx, c.product)
+		if !ok || got != c.want {
+			t.Errorf("%q belongs in tab %v, got %v (shown=%v)", c.product, c.want, got, ok)
+		}
+	}
+	// An advisory by nature, not by name.
+	if got, ok := Classify(globalfeed.ClassSevereWx, "Air Quality Alert"); !ok || got != TabAdvisories {
+		t.Errorf("an Air Quality Alert is an advisory (MVS-D-58), got %v (shown=%v)", got, ok)
+	}
+	// Forecasts and Outlooks (MVS-D-59): what might develop, days out, over a
+	// whole forecast area — below a watch, and no longer nowhere.
+	//
+	// REAL PRODUCT NAMES, from the live api.weather.gov catalogue. An earlier
+	// fixture here used "Fire Weather Outlook", which the Weather Service does
+	// not issue — and because both examples then said "Outlook", deleting the
+	// "Forecast" arm left the suite green. A fixture that cannot occur pins
+	// nothing.
+	for _, product := range []string{"Hydrologic Outlook", "Hazardous Weather Outlook", "Short Term Forecast"} {
+		if got, ok := Classify(globalfeed.ClassSevereWx, product); !ok || got != TabForecasts {
+			t.Errorf("%q belongs in Forecasts and Outlooks, got %v (shown=%v)", product, got, ok)
+		}
+	}
+	// The ordering guarantee, on real marine products: a marine WARNING is a
+	// warning, and only a product that is none of warning/watch/advisory falls
+	// through to Marine.
+	for _, c := range []struct {
+		product string
+		want    Tab
+	}{
+		{"Gale Warning", TabWarnings},
+		{"Hurricane Force Wind Warning", TabWarnings},
+		{"Hazardous Seas Watch", TabWatches},
+		{"Small Craft Advisory", TabAdvisories},
+		{"Marine Weather Statement", TabMarine},
+	} {
+		if got, ok := Classify(globalfeed.ClassSevereWx, c.product); !ok || got != c.want {
+			t.Errorf("%q belongs in tab %v, got %v (shown=%v)", c.product, c.want, got, ok)
+		}
+	}
+	// THE CIVIL-EMERGENCY FAMILY (MVS-D-60). None of these names a warning,
+	// watch or advisory, so each needs its own answer or it reaches no tab —
+	// which is where they were.
+	for _, c := range []struct {
+		product string
+		want    Tab
+	}{
+		{"Civil Emergency Message", TabDisasters},
+		{"Local Area Emergency", TabDisasters},
+		{"Child Abduction Emergency", TabStatements},
+		{"Blue Alert", TabStatements},
+		{"911 Telephone Outage", TabStatements},
+		{"Extreme Fire Danger", TabWatches},
+	} {
+		if got, ok := Classify(globalfeed.ClassSevereWx, c.product); !ok || got != c.want {
+			t.Errorf("%q belongs in tab %v, got %v (shown=%v)", c.product, c.want, got, ok)
+		}
+	}
+
+	// The Air Quality Alert is matched EXACTLY, not by "Alert": a rule that
+	// swept every product naming Alert would file other programmes' products
+	// as advisories on a coincidence of wording.
+	if got, ok := Classify(globalfeed.ClassSevereWx, "Avalanche Warning"); !ok || got != TabWarnings {
+		t.Errorf("a product naming Warning is a warning, not swept up by an Alert rule: %v (shown=%v)", got, ok)
+	}
+	// And a product outside the taxonomy is still declared not-shown rather than
+	// landing somewhere wrong.
+	if _, ok := Classify(globalfeed.ClassSevereWx, "Administrative Message"); ok {
+		t.Error("a product the window does not carry must say so, not be filed somewhere")
+	}
+}
+
+// A TAB THAT IS NOT A TAB NEVER INDEXES THE ARRAY.
+//
+// ByTab returns a fixed-size array, so a Row carrying TabNone (-1), NumTabs or
+// anything past it must be dropped rather than indexed. No path constructs such
+// a Row today — Classify's callers bail when it says not-shown — so this guards
+// a boundary that only a future caller would reach, which is exactly when a
+// panic in the alert path would be least welcome.
+func TestByTabDropsRowsThatIndexNoTab(t *testing.T) {
+	rows := []Row{
+		{Key: "none", Tab: TabNone},
+		{Key: "past", Tab: NumTabs},
+		{Key: "wild", Tab: Tab(99)},
+		{Key: "under", Tab: Tab(-99)},
+		{Key: "real", Tab: TabWarnings},
+	}
+	byTab := ByTab(rows) // must not panic
+	total := 0
+	for _, in := range byTab {
+		total += len(in)
+	}
+	if total != 1 || len(byTab[TabWarnings]) != 1 {
+		t.Errorf("only the row with a real tab is bucketed, got %d rows across the tabs", total)
 	}
 }

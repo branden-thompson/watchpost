@@ -1,0 +1,10 @@
+lead:Oceanside, CAKEC62      role=station                  pause=2s
+lead-span:2026-08-24         role=station                  pause=0s
+wx:Current conditions: partly cloudy, temperature 73 degrees, humidity 66 percent. role=weather                  pause=0s
+alert:a1:0                   role=weather                  pause=0s
+ZFP:p1:0                     role=weather                  pause=2s
+seismic:notice:a91393292a395e39 role=seismic                  pause=2s
+seismic:d0a549825a8de927     role=seismic                  pause=0s
+seismic:cdcd32579afb20a0     role=seismic                  pause=0s
+seismic:b87747e42b541e2b     role=seismic                  pause=1s
+tail:{{voice}}               role=station                  pause=0s

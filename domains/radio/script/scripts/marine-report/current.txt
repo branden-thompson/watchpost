@@ -1,0 +1,2 @@
+{{/* marine-report/current: the tidal current. Data: .Phase (e.g. "flooding at 1.4 knots" or "slack"), .Next (may be empty). Currents are always in knots (MVS-D-21). */}}
+Tidal currents are {{.Phase}}{{if .Next}}, with {{.Next}}{{end}}.

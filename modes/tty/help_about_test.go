@@ -23,7 +23,7 @@ func TestHelpFloatsOverDashboard(t *testing.T) {
 	if !strings.Contains(v, "Watchpost Help") {
 		t.Fatalf("help panel missing:\n%s", v)
 	}
-	// At 133 cols the two-column window (UAT 2026-08-28) spans most of the
+	// At 133 cols the two-column window spans most of the
 	// width: the dashboard shows beside it — a row with content left of the
 	// panel's border — never replaced by it.
 	beside := false
@@ -39,7 +39,7 @@ func TestHelpFloatsOverDashboard(t *testing.T) {
 	// On a wider terminal the header clears the window too.
 	wide, _ := m.Update(tea.WindowSizeMsg{Width: 200, Height: 60})
 	wide, _ = wide.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
-	if wv := stripANSITest(wide.View().Content); !strings.Contains(wv, "W A T C H P O S T") || !strings.Contains(wv, "Quit") {
+	if wv := stripANSITest(wide.View().Content); !strings.Contains(wv, "WATCHPOST Observer") || !strings.Contains(wv, "Quit") {
 		t.Fatalf("dashboard header must stay visible beneath the floating help at 200 cols:\n%s", wv)
 	}
 }
@@ -69,7 +69,7 @@ func TestAboutWindowMatchesMock(t *testing.T) {
 	}
 	body := strings.Join(frame, "\n")
 	for _, want := range []string{
-		"│                    W A T C H P O S T                     │",
+		"│                    WATCHPOST Observer                    │",
 		"│                       v 0.1.0-test                       │", // 12 chars centred on the 58-cell interior (the mock's {v 0.0.0-dev} is 13)
 		"│   Data Provided by:                                      │",
 		"│   NOAA National Weather Service (api.weather.gov)        │",
@@ -157,7 +157,7 @@ func TestHelpGroupsBindingsByFeature(t *testing.T) {
 }
 
 // The Help window is one column with the panel's scroll on a narrow
-// terminal and two columns on a wide one (HUM LEAD UAT 2026-08-28): a blank
+// terminal and two columns on a wide one: a blank
 // line of air under the title in both; every group whole, in one column;
 // every binding once in both layouts.
 func TestHelpLaysOutOneOrTwoColumns(t *testing.T) {

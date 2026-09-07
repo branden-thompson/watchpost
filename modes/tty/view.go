@@ -56,17 +56,29 @@ func (d Dashboard) renderModal(o render.Opts) string {
 	case modalAlerts:
 		return d.alertDetailsModal(o) // UAT 22
 	case modalStatus:
-		return d.floatModal(o, d.modalWidth(), "API Status", d.statusLines()) // UAT 24.2
+		return d.floatModal(o, d.modalWidth(), "Watchpost Status", d.statusLines()) // UAT 24.2; the window covers more than the APIs now (0.14.0)
 	case modalAbout:
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines()) // UAT 68
-	case modalTheme:
-		return d.floatModal(o, d.modalWidth(), "Color Theme", d.themeLines(o)) // UAT 53
-	case modalVoice:
-		return d.floatModal(o, d.modalWidth(), "Correspondent Voice", d.voiceLines(o)) // UAT 84
 	case modalSetup:
-		return d.floatModal(o, d.modalWidth(), "Setup", d.setupLines(o)) // UAT 100
+		// The chips are a PINNED FOOTER (OP-5): they render after the scroll
+		// window, so at 80x24 they cannot scroll away exactly when a lost
+		// listener needs them.
+		// SETTINGS, not "Setup / Configs". The window
+		// outgrew the mock's title: setup is what you do once, and this is where
+		// the cast, the tones and the alert scope are changed whenever. The CLI
+		// keeps `watchpost setup` — the run-it-once meaning is the right one
+		// there, and it is the pattern people expect of a tool's first run.
+		return d.floatModalFooter(o, d.modalWidth(), "Settings", d.setupLines(o), d.setupChips(o))
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
+	case modalDebug:
+		lines, _, _ := d.debugLines(o)
+		return d.floatModalFooter(o, debugWidth, "", lines, d.debugChips(o))
+	case modalRelayFault:
+		// No title in the frame: the mock puts *** ERROR *** on its own line
+		// inside the box, over a plain top border.
+		lines, _, _ := d.relayFaultLines(o)
+		return d.floatModalFooter(o, relayFaultWidth, "", lines, d.relayFaultChips(o))
 	}
 	return ""
 }
@@ -86,18 +98,20 @@ func (d Dashboard) modalWidth() int {
 		return stretch(85) // location-detail-mock.txt width
 	case modalAlerts:
 		return stretch(76)
+	case modalSetup:
+		return d.setupWidth()
+	case modalRelayFault:
+		return relayFaultWidth // the mock's width exactly; it does not stretch
+	case modalDebug:
+		return debugWidth
 	case modalStatus:
-		return d.statusWidth() // providers beside requests when they fit (UAT 2026-08-28), else the stretch
+		return d.statusWidth() // providers beside requests when they fit, else the stretch
 	case modalAbout:
 		return aboutWidth
-	case modalVoice:
-		return 68 // the four chip controls fit on one line (UAT 86)
 	case modalHelp:
-		return d.helpWidth(d.opts().Width) // two columns when they fit, else the single column (UAT 2026-08-28)
+		return d.helpWidth(d.opts().Width) // two columns when they fit, else the single column
 	case modalSevere:
 		return 130 // every column at 133 cols (the DETECTION column joined at UAT, 2026-08-28); the ladder below
-	case modalSetup:
-		return 78 // the FIRMS address (UAT 100) and the Alert Notification Preference line (● All ○ Filtered to [ ] Mi of my location, 0.12.0) fit
 	}
 	return 56 // help, add/lookup, remove, theme
 }
@@ -141,11 +155,27 @@ func (d Dashboard) wrapModal(lines []string, w int) []string {
 func (d Dashboard) detailsModal(o render.Opts) string {
 	loc := d.selectedLocation()
 	title := "Location"
-	if loc != nil {
+	switch {
+	case loc != nil:
 		title = loc.Label + " " + loc.Zip // labels are text by the time they are published (the assembler, R5-C-05)
+	case d.lookupRef != nil:
+		// THE REF THE LOOKUP OPENED THIS WITH, while RECENT catches up (F-42).
+		//
+		// lookupIndex is "-1 while it waits" for the rebuilt list to carry the
+		// row, and until then selectedLocation has nothing to return — so this
+		// window titled itself the literal "Location" for a frame or more after
+		// a lookup, about one run in three. The PTY journey caught it on a step
+		// named "Lookup opens Details on Vista FROM THE FIRST FRAME", which is
+		// the property that was quietly not holding.
+		//
+		// The field already exists for precisely this — "the location a lookup
+		// opened Details for, until its data lands" — and was added when the
+		// modal used to show the old top RECENT row instead (UAT 2026-08-28).
+		// The title simply never consulted it.
+		title = d.lookupRef.Label + " " + d.lookupRef.Zip
 	}
 	if d.snap != nil {
-		stamp := "Updated: " + dataAsOf(d.snap).Local().Format("01/02/2006 15:04:05 MST")
+		stamp := "Updated: " + o.Clock.Stamp(dataAsOf(d.snap).Local())
 		fill := min(o.Width, d.modalWidth()) - 10 - len([]rune(title)) - len([]rune(stamp))
 		if fill > 1 { // the name and the stamp bold white, the fill in the panel's tone (the panel leaves a tinted title as it is)
 			title = render.Tint(title, render.Tok(render.ModalTitle)) + " " + strings.Repeat("─", fill) + " " + render.Tint(stamp, render.Tok(render.ModalTitle))
@@ -166,6 +196,24 @@ func (d Dashboard) floatModal(o render.Opts, width int, title string, lines []st
 // the [A] alert modal carries its severity tint (UAT 22). Body lines WRAP
 // to the modal width here, in the component (UAT 25: truncation is not a
 // bug any caller can reintroduce).
+// floatModalFooter is floatModal with rows PINNED below the scroll window: the
+// body scrolls, the footer does not.
+//
+// Setup is the one window that needs it. Its body is four groups tall and its
+// footer names the keys that operate them — a footer that scrolled with the
+// body would be missing precisely when the reader has scrolled far enough to
+// be lost.
+func (d Dashboard) floatModalFooter(o render.Opts, width int, title string, lines, footer []string) string {
+	fg, bg := render.ModalTone(d.darkBG)
+	o.Width = min(o.Width, width)
+	wrapped, foot := d.wrapModal(lines, o.Width), d.wrapModal(footer, o.Width)
+	// The scroll FOLLOWS THE FOCUS: at 80x24 most of the window is off screen,
+	// and a focused row the listener cannot see reads as a dead keyboard.
+	scroll := d.modalFocusScroll(o, max(1, d.modalMax()-len(foot)))
+	panel := o.ScrollPanelFooter(title, wrapped, foot, scroll, d.modalMax())
+	return o.Block(panel, fg, bg)
+}
+
 func (d Dashboard) floatModalToned(o render.Opts, width int, title string, lines []string, fg, bg string) string {
 	o.Width = min(o.Width, width)
 	lines = d.wrapModal(lines, o.Width)
@@ -183,7 +231,7 @@ func (d Dashboard) floatModalToned(o render.Opts, width int, title string, lines
 // flush and aligned at any terminal size.
 func (d Dashboard) opts() render.Opts {
 	raw := max(d.width-viewPadLeft-viewPadRight, 40)
-	return render.Opts{Width: raw - 2, Units: d.units, Frame: d.frame, ASCII: d.cfg.ASCII} // --ascii (A11-10, Q3)
+	return render.Opts{Width: raw - 2, Units: d.units, Clock: d.clockFmt, Frame: d.frame, ASCII: d.cfg.ASCII} // --ascii (A11-10, Q3)
 }
 
 // tableBreakpoint is the total table rows (favourites + recent window)

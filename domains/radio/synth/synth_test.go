@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -28,7 +30,7 @@ func TestComposeReadsLikeNWR(t *testing.T) {
 		Source: snapshot.SourceInfo{Provider: "nws"}},
 		Alerts: []snapshot.Alert{{ID: "a1", Headline: "Heat Advisory issued August 24 at 208PM PDT until 8 PM PDT Friday by NWS San Diego CA", Description: "* WHAT...Hot.\n\n* WHERE...Coast."}}}
 	now := time.Date(2026, 8, 24, 16, 5, 0, 0, time.UTC)
-	segs := std.Compose(loc, []Product{{ID: "p1", Type: "ZFP", Text: ".TONIGHT...Mostly clear. Lows 66 to 69.\n\n$$"}}, now, true, "Samantha", Station{Callsign: "KEC62", Site: "San Diego", State: "CA", FreqMHz: "162.400"}, FireReport{}, SeismicReport{})
+	segs := std.Compose(loc, []Product{{ID: "p1", Type: "ZFP", Text: ".TONIGHT...Mostly clear. Lows 66 to 69.\n\n$$"}}, now, true, "Samantha", Station{Callsign: "KEC62", Site: "San Diego", State: "CA", FreqMHz: "162.400"}, Reports{}, render.Clock12)
 	texts := make([]string, 0, len(segs))
 	for _, s := range segs {
 		texts = append(texts, s.Text)
@@ -40,16 +42,25 @@ func TestComposeReadsLikeNWR(t *testing.T) {
 		"Current conditions: partly cloudy, temperature 73 degrees, humidity 66 percent, wind west at 9 miles per hour.",
 		"Heat Advisory issued August 24 at 2:08 PM Pacific Daylight Time until 8 PM Pacific Daylight Time Friday by National Weather Service San Diego California. What: Hot. Where: Coast.", // UAT 82: headlines follow the word rules too; UAT 95: bullet labels are statements ("What:"), never "What?"
 		"Tonight. Mostly clear. Lows 66 to 69.",
-		"This is Samantha for Watchpost Weather Radio. You can change your correspondent voice in your Watchpost CLI application settings."} {
+		"This is Samantha for Watchpost Weather Radio. You can change your correspondents in Settings."} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("missing %q:\n%s", want, joined)
 		}
 	}
-	if !strings.HasPrefix(segs[3].Key, "alert:a1:") || !strings.HasPrefix(segs[4].Key, "ZFP:p1:") || segs[len(segs)-1].Key != "tail:Samantha" {
+	if !strings.HasPrefix(segs[3].Key, "alert:a1:") || !strings.HasPrefix(segs[4].Key, "ZFP:p1:") || segs[len(segs)-1].Key != "tail:"+VoiceToken {
 		t.Fatalf("segment keys carry issuance identity: %v", []string{segs[3].Key, segs[4].Key, segs[len(segs)-1].Key})
 	}
-	if std.Tail("") != "This is your correspondent for Watchpost Weather Radio. You can change your correspondent voice in your Watchpost CLI application settings." {
-		t.Fatal("tail without a voice name")
+	// Composer.Tail no longer substitutes "your correspondent" for an empty
+	// name — spokenName owns that, once, where the voice is resolved (RS-18).
+	// Tail is handed a name that is already right.
+	if got := std.Tail("your correspondent"); !strings.Contains(got, "This is your correspondent for Watchpost Weather Radio.") {
+		t.Fatalf("tail with the resolved fallback name: %q", got)
+	}
+	// Each section is tagged with the role that will read it (FR-3).
+	for i, want := range []cast.Role{cast.Station, cast.Station, cast.Weather, cast.Weather, cast.Weather, cast.Station} {
+		if segs[i].Role != want {
+			t.Errorf("segment %d (%s) has role %v, want %v", i, segs[i].Key, segs[i].Role, want)
+		}
 	}
 	if (PiperVoice{Install: Install{Model: "/x/en_US-lessac-medium.onnx"}}).Name() != "Lessac" {
 		t.Fatal("Piper voices are named by their given name")
@@ -165,12 +176,42 @@ func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 	}
 	// §10.5: shell metacharacters in product text are inert — they are
 	// narrated from a file, never interpreted.
-	pcm, err := SayVoice{}.Say(context.Background(), "Test $(echo pwned) `id` ; rm -rf / ok.")
-	if err != nil {
-		t.Fatal(err)
+	//
+	// Bounded because this shells out to the real /usr/bin/say, which can wedge
+	// (seen: a 10-minute suite panic on a loaded box, 0.14.0 P1). One sentence
+	// renders in well under a second; the bound turns a wedge into a legible
+	// failure of THIS test instead of a timeout panic that takes the package
+	// with it.
+	//
+	// TWO MINUTES, NOT THIRTY SECONDS. This is a FAILURE bound, not an assertion
+	// about speed, so it costs nothing on a healthy run and only decides how
+	// much load it tolerates before calling a wedge. At 30 s it fired during a
+	// full `make race` — the whole suite under the race detector, with `say` a
+	// real process competing for the box — and reported "signal: killed" for a
+	// test that passes 3/3 in isolation. A gate that fails for load teaches
+	// people to re-run it rather than read it, which is how a real failure gets
+	// waved through (the same argument as F-29).
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	// A CONTROL RENDER FIRST, to tell "this box cannot speak" apart from "our
+	// input broke it". GitHub's macOS runner has /usr/bin/say and produced 236
+	// bytes for a whole sentence — it is present and not functional. Failing
+	// there says nothing about the security property this test exists for, and a
+	// gate that fails for the environment teaches people to re-run it.
+	benign, err := SayVoice{}.Say(ctx, "One sentence of ordinary text.")
+	if err != nil || len(benign) < 22050 {
+		t.Skipf("say is present but not rendering audio on this host (%d bytes, err=%v): the shell-safety property cannot be observed here", len(benign), err)
 	}
-	if len(pcm) < 22050 { // at least half a second of audio
-		t.Fatalf("say produced %d bytes", len(pcm))
+
+	pcm, err := SayVoice{}.Say(ctx, "Test $(echo pwned) `id` ; rm -rf / ok.")
+	if err != nil {
+		t.Fatalf("say did not render within the bound (or failed): %v", err)
+	}
+	// Against the CONTROL, not an absolute: hostile text must render like
+	// ordinary text. If it renders far shorter, something ate part of it.
+	if len(pcm) < len(benign)/2 {
+		t.Fatalf("hostile text rendered %d bytes against %d for ordinary text — it was not narrated intact", len(pcm), len(benign))
 	}
 }
 
@@ -227,14 +268,47 @@ func TestNarrationRulesUAT81(t *testing.T) {
 	if got := ExpandStates("HEAT ADVISORY IN EFFECT. Visit OR call. Oceanside, CA and CA-San Diego and San Diego CA and I am OK"); got != "HEAT ADVISORY IN EFFECT. Visit OR call. Oceanside, California and California-San Diego and San Diego California and I am OK" {
 		t.Fatalf("state expansion needs place context: %q", got)
 	}
-	if std.Lead("Oceanside, CA", Station{}, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC)) != "This is Watchpost Weather Radio serving Oceanside, California. Watchpost Weather Radio forecasts may be delayed and are not intended for life safety use. This forecast is from the National Oceanic and Atmospheric Administration and is for Monday, August 24 until Sunday, August 30." { // no known station: the live sentence is left out (UAT 112)
+	if std.Lead("Oceanside, CA", Station{}, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC), render.Clock12) != "This is Watchpost Weather Radio serving Oceanside, California. Watchpost Weather Radio forecasts may be delayed and are not intended for life safety use. This forecast is from the National Oceanic and Atmospheric Administration and is for Monday, August 24 until Sunday, August 30." { // no known station: the live sentence is left out (UAT 112)
 		t.Fatal("the lead expands the state")
 	}
 }
 
+// heldVoice speaks its first segment normally and then BLOCKS inside the second
+// until the context is cancelled, so a cancellation lands while a write is
+// genuinely pending — which is the state UAT 81 is about.
+//
+// The previous fake could not pose that state. toneVoice returns 100 ms of audio
+// instantly whatever the text, so both segments were produced immediately and
+// the reader could drain to a clean EOF before the cancellation was observed;
+// then io.ReadAll returned a nil error and the test failed for being right too
+// early. That is a SUCCESS bound in disguise, and it failed once in ten on CI
+// (F-50).
+type heldVoice struct {
+	calls   atomic.Int32
+	entered chan struct{}
+	once    sync.Once
+}
+
+func (v *heldVoice) Name() string { return "held" }
+func (v *heldVoice) Rate() int    { return 22050 }
+
+func (v *heldVoice) Say(ctx context.Context, text string) ([]byte, error) {
+	if v.calls.Add(1) == 1 {
+		n := 22050 / 10 // 100 ms, as toneVoice
+		out := make([]byte, n*2)
+		for i := range n {
+			binary.LittleEndian.PutUint16(out[i*2:], uint16(int16(len(text))))
+		}
+		return out, nil
+	}
+	v.once.Do(func() { close(v.entered) })
+	<-ctx.Done() // held open until the test cancels
+	return nil, ctx.Err()
+}
+
 func TestSourceStopsFastWhileMidSegment(t *testing.T) {
 	// UAT 81: cancelling mid-segment unblocks the pending write at once.
-	v := &toneVoice{}
+	v := &heldVoice{entered: make(chan struct{})}
 	src, _ := NewSource(v, func(context.Context) ([]Segment, error) {
 		return []Segment{{Key: "a", Text: strings.Repeat("x", 2000)}, {Key: "b", Text: "y"}}, nil
 	}, nil)
@@ -244,13 +318,29 @@ func TestSourceStopsFastWhileMidSegment(t *testing.T) {
 	if _, err := r.Read(buf); err != nil {
 		t.Fatal(err)
 	}
-	start := time.Now()
-	cancel()
-	if _, err := io.ReadAll(r); err == nil {
-		t.Fatal("reader must report the cancellation")
+
+	// THE PREMISE, ASSERTED RATHER THAN ASSUMED: the source must actually be
+	// mid-segment. If it never reaches the second one there is no pending write
+	// to unblock, and a pass would mean nothing.
+	select {
+	case <-v.entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the source never began the second segment: this test cannot pose the cancellation it is about")
 	}
-	if time.Since(start) > 200*time.Millisecond {
-		t.Fatalf("stop took %v", time.Since(start))
+
+	// THE PROPERTY IS PROMPTNESS, NOT THE ERROR. Requiring io.ReadAll to report a
+	// non-nil error is not stable: after a cancellation the stream may equally
+	// end cleanly, and CI showed both outcomes on macOS within one commit. What
+	// UAT 81 is actually about is that the pending write is unblocked — and with
+	// the voice held open, the read CANNOT finish unless the cancel unblocks it,
+	// which is what makes this falsifiable: remove the cancel and it hangs.
+	cancel()
+	done := make(chan struct{})
+	go func() { _, _ = io.ReadAll(r); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("cancelling did not unblock the pending write: the reader was still going after 5s")
 	}
 }
 
@@ -396,17 +486,19 @@ func TestRemainderResumesAtAWordBoundary(t *testing.T) {
 	if got := Remainder("", 0.5); got != "" {
 		t.Fatal("empty stays empty")
 	}
-	if got := Handoff("Bravo", "Alpha"); got != "This is Bravo, taking over for Alpha." {
+	// The hand-over line moved to Composer.HandoffLine, which reads the script
+	// tree and falls back to the built-in wording.
+	if got := std.HandoffLine("Alpha", "Bravo"); got != "This is Bravo, taking over for Alpha." {
 		t.Fatalf("hand-over line: %q", got)
 	}
 }
 
-func TestSetVoiceHandsOverMidSegmentAtTheSameSpot(t *testing.T) {
-	// UAT 94: changing the voice while a segment plays cuts to the new
-	// voice within a chunk or two, resumes the SAME segment from the spot
-	// reached (its remainder, at a word boundary), re-voices any segment
-	// already rendered ahead, and speaks the {{voice}} token as the current
-	// voice's name. Nothing restarts.
+func TestRecastHandsOverMidSegmentAtTheSameSpot(t *testing.T) {
+	// UAT 94, now through the cast: the listener saves a new assignment while a
+	// segment plays. That is a HARD change — they are waiting to hear it — so
+	// the running segment hands over at the spot reached, and the introduction
+	// and the remainder arrive as ONE utterance so there is no gap between
+	// "This is Bravo" and the words.
 	a := &markVoice{name: "Alpha", mark: 1000, msPerChar: 10}
 	b := &markVoice{name: "Bravo", mark: 2000, msPerChar: 10}
 	long := "the quick brown fox jumps over the lazy dog while the weather radio keeps on reading the zone forecast for the coast" // 116 chars ≈ 1.16 s in Alpha
@@ -419,22 +511,30 @@ func TestSetVoiceHandsOverMidSegmentAtTheSameSpot(t *testing.T) {
 		t.Fatal(err)
 	}
 	src.gap = time.Millisecond
+
+	// The resolver is the cast: it answers with whoever is assigned NOW.
+	var rmu sync.Mutex
+	current := Voice(a)
+	src.SetResolver(func(cast.Role) (Voice, error) { rmu.Lock(); defer rmu.Unlock(); return current, nil })
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	r := src.Open(ctx)
-	// Pull 300 ms of stereo (22050 × 0.3 × 4 B) in Alpha, then switch.
-	head := make([]byte, 22050*3/10*4)
+	head := make([]byte, 22050*3/10*4) // 300 ms in Alpha
 	if _, err := io.ReadFull(r, head); err != nil {
 		t.Fatal(err)
 	}
 	if binary.LittleEndian.Uint16(head[len(head)-4:]) != 1000 {
 		t.Fatal("Alpha plays first")
 	}
-	if err := src.SetVoice(b); err != nil {
-		t.Fatal(err)
-	}
+
+	rmu.Lock()
+	current = b
+	rmu.Unlock()
+	src.Recast() // the listener pressed Save
+
 	// Within two 100 ms chunks (one may already be in flight) Bravo is heard.
-	var switchedAt = -1
+	switchedAt := -1
 	for i := 0; i < 3 && switchedAt < 0; i++ { // bounded probe
 		chunk := make([]byte, 22050/10*4)
 		if _, err := io.ReadFull(r, chunk); err != nil {
@@ -448,7 +548,7 @@ func TestSetVoiceHandsOverMidSegmentAtTheSameSpot(t *testing.T) {
 		}
 	}
 	if switchedAt < 0 {
-		t.Fatal("Bravo must be heard within two chunks of the switch")
+		t.Fatal("Bravo must be heard within two chunks of the recast")
 	}
 	rest, err := io.ReadAll(r) // to the end of the cycle (Repeat off)
 	if err != nil {
@@ -456,40 +556,60 @@ func TestSetVoiceHandsOverMidSegmentAtTheSameSpot(t *testing.T) {
 	}
 	for j := 0; j+4 <= len(rest); j += 4 {
 		if v := binary.LittleEndian.Uint16(rest[j:]); v != 2000 && v != 0 {
-			t.Fatalf("after the switch only Bravo (and gaps) plays, saw %d at byte %d of %d (switched in probe %d); bravo said %q", v, j, len(rest), switchedAt, b.texts())
+			t.Fatalf("after the recast only Bravo (and gaps) plays, saw %d at byte %d of %d; bravo said %q", v, j, len(rest), b.texts())
 		}
 	}
-	// Bravo renders exactly four things — the hand-over line, the
-	// remainder, the next segment (re-voiced) and the tail in its own name
-	// — in whatever order the render-ahead and the hand-over interleave.
-	said := b.texts()
-	handoff, remainder := "This is Bravo, taking over for Alpha.", ""
-	seen := map[string]int{}
-	for _, s := range said {
-		switch s {
-		case handoff, "second segment here", "This is Bravo signing off.":
-			seen[s]++
-		default:
-			remainder = s
+
+	// Bravo renders three things: the take-over utterance (introduction +
+	// remainder, together), the next segment, and the tail in its own name.
+	// Membership, not order — render-ahead and the writer interleave.
+	// WHAT WAS HEARD, NOT WHAT WAS RENDERED — F-14, and the whole of its
+	// three-sighting flake.
+	//
+	// This used to classify `b.texts()`, which is what Bravo was asked to
+	// RENDER. The render goroutine works a segment ahead and PRE-RENDERS a
+	// hand-over line in case the next segment needs one; when the voice has
+	// already changed mid-segment it is not needed, `announce` skips it, and
+	// nothing is played — but the render happened and `b.texts()` records it.
+	// So Bravo appeared to introduce itself twice, and the old classifier
+	// (`default: takeover = x`) kept whichever came LAST. Which one that was
+	// depended on scheduling, so the test passed or failed by timing while the
+	// product was correct both ways.
+	//
+	// The marquee record is what the listener actually got: onSeg fires only for
+	// what is written. Classifying that pins the rule — ONE introduction is
+	// heard — instead of an artefact of look-ahead.
+	mu.Lock()
+	played := append([]string(nil), spoken...)
+	mu.Unlock()
+	const intro = "This is Bravo, taking over for Alpha."
+	var takeovers []string
+	for _, x := range played {
+		if strings.HasPrefix(x, intro) {
+			takeovers = append(takeovers, x)
 		}
 	}
-	if len(said) != 4 || len(seen) != 3 || remainder == "" {
-		t.Fatalf("Bravo renders hand-over, remainder, next segment, tail: %q", said)
+	if len(takeovers) != 1 {
+		t.Fatalf("the listener heard %d introductions, want exactly one — nobody introduces themselves "+
+			"twice (source.go takeOver). Everything that reached the marquee: %q", len(takeovers), played)
 	}
+	takeover := takeovers[0]
+	if !strings.HasPrefix(takeover, intro+" ") {
+		t.Fatalf("the take-over is ONE utterance opening with the introduction, got %q.\n"+
+			"A BARE introduction means the recast was seen at a segment BOUNDARY rather than inside one, "+
+			"so the fixture did not exercise the rule (F-14). Heard: %q", takeover, played)
+	}
+	remainder := strings.TrimPrefix(takeover, intro+" ")
 	at := strings.Index(long, remainder)
 	if at <= 0 || !strings.HasSuffix(long, remainder) || long[at-1] != ' ' || at < len(long)*2/10 || at > len(long)*6/10 {
 		t.Fatalf("the remainder starts at the word reached (20–60 %% in, on a word boundary), got %q", remainder)
 	}
-	if at := a.texts(); len(at) < 1 || at[0] != long {
-		t.Fatalf("Alpha rendered the first segment: %q", at)
+	if got := a.texts(); len(got) < 1 || got[0] != long {
+		t.Fatalf("Alpha rendered the first segment: %q", got)
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	if len(spoken) != 5 || spoken[0] != long || spoken[1] != handoff || spoken[2] != remainder || spoken[3] != "second segment here" || spoken[4] != "This is Bravo signing off." {
-		t.Fatalf("the marquee follows: line, hand-over, remainder, next, substituted tail — got %q", spoken)
-	}
-	if err := src.SetVoice(b); err != nil {
-		t.Fatal("re-selecting the same voice is a quiet no-op")
+	if len(played) != 4 || played[0] != long || played[1] != takeover ||
+		played[2] != "second segment here" || played[3] != "This is Bravo signing off." {
+		t.Fatalf("the marquee follows: line, take-over, next, substituted tail — got %q", played)
 	}
 }
 
@@ -519,37 +639,40 @@ func TestSourceReportsARenderFailureInsteadOfCompleting(t *testing.T) {
 	if ok.Err() != nil {
 		t.Fatal("a natural end has no error")
 	}
-	// Round 2 N-4: a broken voice chosen MID-broadcast fails through the
-	// hand-over path and must report the same way.
+	// TWO DIFFERENT FAILURES, TWO DIFFERENT RULES (the batch's contract 2).
+	// Above: a SEGMENT that cannot be rendered ends the broadcast, because
+	// there is nothing to play. Here: a listener recasts to a broken voice
+	// mid-segment. The take-over cannot render — but the broadcast is NOT
+	// ended, because FR-5's "never silence" is better served by carrying on.
+	// A test that asserted the segment rule here would be asserting the wrong
+	// contract of the wrong failure.
 	long := &markVoice{name: "Alpha", mark: 1000, msPerChar: 10}
 	src2, _ := NewSource(long, func(context.Context) ([]Segment, error) {
 		return []Segment{{Key: "a", Text: strings.Repeat("word ", 60)}}, nil
 	}, nil)
+	var rmu sync.Mutex
+	current := Voice(long)
+	src2.SetResolver(func(cast.Role) (Voice, error) { rmu.Lock(); defer rmu.Unlock(); return current, nil })
 	r := src2.Open(context.Background())
 	head := make([]byte, 22050*3/10*4)
 	if _, err := io.ReadFull(r, head); err != nil {
 		t.Fatal(err)
 	}
-	if err := src2.SetVoice(brokenVoice{}); err != nil {
-		t.Fatal(err)
-	}
+	rmu.Lock()
+	current = brokenVoice{}
+	rmu.Unlock()
+	src2.Recast()
 	_, _ = io.ReadAll(r)
-	if err := src2.Err(); err == nil || !strings.Contains(err.Error(), "voice not installed") {
-		t.Fatalf("a hand-over render failure is reported, got %v", err)
+	if err := src2.Err(); err != nil {
+		t.Fatalf("a failed TAKE-OVER must not end the broadcast (contract 2), got %v", err)
 	}
 }
 
-func TestSetVoiceRefusesADifferentRate(t *testing.T) {
-	// A voice at another sample rate cannot join a running stream (the
-	// engine fixed the rate at start): the caller re-tunes instead.
-	src, _ := NewSource(&toneVoice{}, func(context.Context) ([]Segment, error) { return nil, nil }, nil)
-	if err := src.SetVoice(&markVoice{name: "Sixteen", rate: 16000}); err == nil {
-		t.Fatal("rate mismatch must be refused")
-	}
-	if err := src.SetVoice(nil); err == nil {
-		t.Fatal("nil voice refused")
-	}
-}
+// The rate-refusal pin retired with SetVoice. A cast whose voices differ in
+// sample rate is out of scope for 0.14.0 — the stream's rate is fixed when it
+// opens — and a resampling decorator is on the backlog. Nothing asserts a
+// refusal because nothing refuses: there is no longer an API to hand a
+// different-rate voice to a running stream.
 
 func TestSampleLine(t *testing.T) {
 	if std.Sample("Alex") != "This is Alex for Watchpost Weather Radio." {
@@ -566,7 +689,7 @@ func TestLeadPausesBeforeTheForecastSpan(t *testing.T) {
 	// UAT 112.3: two seconds of air between "life safety use." and "This
 	// forecast is from…" — the notice segment carries the pause, the span
 	// segment none.
-	segs := std.Compose(snapshot.Location{Label: "Oceanside, CA"}, nil, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC), true, "Samantha", Station{}, FireReport{}, SeismicReport{})
+	segs := std.Compose(snapshot.Location{Label: "Oceanside, CA"}, nil, time.Date(2026, 8, 24, 0, 0, 0, 0, time.UTC), true, "Samantha", Station{}, Reports{}, render.Clock12)
 	if len(segs) < 2 || segs[0].Pause != 2*time.Second || segs[1].Pause != time.Second /* nothing follows but the tail: the 1 s tail pause (UAT 115) */ || !strings.HasSuffix(segs[0].Text, "life safety use.") || !strings.HasPrefix(segs[1].Text, "This forecast is from") {
 		t.Fatalf("lead segments: %+v", segs[:2])
 	}
@@ -579,7 +702,7 @@ func TestReportsAreSeparatedByAir(t *testing.T) {
 	loc := snapshot.Location{Label: "Oceanside, CA"}
 	products := []Product{{ID: "p1", Type: "ZFP", Text: ".TONIGHT...Mostly clear.\n\n$$"}}
 	fire := FireReport{Known: true, RadiusKm: 25, Sources: []string{"NOAA's Hazard Mapping System"}, State: snapshot.FireState{AsOf: now}}
-	segs := std.Compose(loc, products, now, true, "Samantha", Station{}, fire, SeismicReport{})
+	segs := std.Compose(loc, products, now, true, "Samantha", Station{}, Reports{Fire: fire}, render.Clock12)
 	byKey := func(prefix string) []Segment {
 		var out []Segment
 		for _, s := range segs {
@@ -596,9 +719,11 @@ func TestReportsAreSeparatedByAir(t *testing.T) {
 	if fireSegs[len(fireSegs)-1].Pause != time.Second {
 		t.Fatalf("the last report pauses 1 s before the tail: %+v", fireSegs[len(fireSegs)-1])
 	}
-	segs = std.Compose(loc, products, now, true, "Samantha", Station{}, FireReport{}, SeismicReport{})
+	segs = std.Compose(loc, products, now, true, "Samantha", Station{}, Reports{}, render.Clock12)
 	zfp = byKey("ZFP:")
-	if zfp[len(zfp)-1].Pause != time.Second || segs[len(segs)-1].Key != "tail:Samantha" {
+	// "tail:{{voice}}", not "tail:Samantha": from 0.14.0 the voice lives in the
+	// CACHE key, so a hand-over cannot mint a new sign-off segment.
+	if zfp[len(zfp)-1].Pause != time.Second || segs[len(segs)-1].Key != "tail:"+VoiceToken {
 		t.Fatalf("no fire report: the forecast pauses 1 s then the tail: %+v", zfp[len(zfp)-1])
 	}
 }

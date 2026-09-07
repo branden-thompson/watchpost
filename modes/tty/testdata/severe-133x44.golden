@@ -1,12 +1,12 @@
                                                                                                                                    
                                                                                                                                    
-   ┏━━ W A T C H P O S T  vtest ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  awaiting first data... ━━┓  
-   ┃   [s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [S] Status  [?] Help  [q] Quit             API: ✔0 ⚠0 ✘0 /  0   ┃  
-   ┌── SEVERE WEATHER / DISASTER EVENTS ───────────────────────────────────────────────────── Updated 08/28/2026 15:38:05 UTC ──┐  
+   ┏━━ WATCHPOST Observer  vtest ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  awaiting first data... ━━┓  
+   ┃   [s] Settings  [a] About  [S] Status  [?] Help  [q] Quit                                             API: ✔0 ⚠0 ✘0 /  0   ┃  
+   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  
+   ┌── NOTABLE EVENTS AND FORECASTS ─────────────────────────────────────────────────────── Updated 08/28/2026 3:38:05 PM UTC ──┐  
    │                                                                                                                            │  
-   │    [ › Warnings ] [ Watches ] [ Advisories ] [ Spec. Statements ] [ Sig. Quakes ] [ Tropical ]                             │  
+   │    [ Emergency ] [ › Warnings ] [ Watches ] [ Advisories ] [ Spec. Statements ] [ Disasters ] [ Marine ] [ Forecasts ]     │  
    │                                                                                                                            │  
-   │    Warnings — 9 active                                                                                                     │  
    │  [            E V E N T             ][        LOCATION        ][     DETECTION     ][    DECLARED     ][    EXPIRES    ]   │  
    │  ›    001. Extreme Heat Warning        Wicomico, MD              Observed             08/28 11:20 EDT    08/28 20:00 EDT   │  
    │       002. Tornado Warning             Olathe, KS                Radar Indicated      08/28 11:20 EDT    08/28 20:00 EDT   │  
@@ -19,7 +19,7 @@
    │       009. High Wind Warning           Laramie, WY               Possible             08/28 11:20 EDT    08/28 20:00 EDT   │  
    │                                                                                                  9 Total Category Events   │  
    │                                                                                                                            │  
-   │    [↑↓] Navigate  [←→] Category  [enter] Event Details  [space] Read  [esc] Close                                          │  
+   │    [↑↓] Navigate  [←→] Category  [enter] Event Details  [space] Play  [esc] Close                                          │  
    └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘  
    [                                             R E C E N T   /   S E A R C H E D                                              ]  
    [                                                                                                                            ] ▲

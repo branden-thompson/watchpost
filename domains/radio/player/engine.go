@@ -57,13 +57,19 @@ type Engine struct {
 	heldOrder []Player        // the held lines in the order held — ResumePreview takes the last
 	userAgent string
 	onStatus  func(Status)
+	onSilence func(mount, name string) // MVS-D-76: the relay is up and silent
+	trace     func(string)             // DR-23: the engine's line in the radio timeline
+	clips     int                      // clips started, so the timeline can name which one
 
 	mu     sync.Mutex
 	cancel context.CancelFunc
 	done   chan struct{}
 	status Status
 	volume float64
-	duck   float64 // 1.0 normally; an active alert dips the main broadcast to alertDuck (0.12.0)
+	// suppressed is "an alert is on air over the broadcast". HOW the broadcast
+	// gives way is decided from live, every watch tick — see Suppress.
+	suppressed bool
+	live       bool // the current source is a relay (live radio), not a rendered cycle
 
 	// startMu serializes Start / StartSource / Halt end to end (red-team
 	// 0.9.0 C-1): halting the old stream and installing the new cancel are
@@ -85,6 +91,31 @@ const (
 	preroll     = 12 * 1024 // compressed bytes buffered before decoding starts (~3 s at 32 kbps)
 )
 
+// SilenceAfter is how long a relay may broadcast nothing before the listener is
+// told. Five seconds, ratified by the HUM LEAD (MVS-D-76): a working NWR mount
+// measured zero quiet windows in 102 seconds, so this is twenty times anything
+// a live transmitter produces.
+const SilenceAfter = 5 * time.Second
+
+// OnSilence is called when the mount being played has been quiet for
+// SilenceAfter. It runs on the AUDIO GOROUTINE, so it must not block — the app
+// hands it straight to the UI as a message.
+func (e *Engine) OnSilence(fn func(mount, name string)) {
+	e.mu.Lock()
+	e.onSilence = fn
+	e.mu.Unlock()
+}
+
+// reportSilence tells whoever asked, once, off the read path.
+func (e *Engine) reportSilence(mount, name string) {
+	e.mu.Lock()
+	fn := e.onSilence
+	e.mu.Unlock()
+	if fn != nil {
+		go fn(mount, name) // never on the audio goroutine
+	}
+}
+
 // New builds an engine. onStatus may be nil.
 func New(out Output, userAgent string, onStatus func(Status)) (*Engine, error) {
 	if err := invariant.Check(out != nil && userAgent != "", "player: Output and user agent are required"); err != nil {
@@ -97,7 +128,7 @@ func New(out Output, userAgent string, onStatus func(Status)) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Engine{out: out, userAgent: userAgent, onStatus: onStatus, volume: 0.55, duck: 1, status: Status{State: Stopped, Volume: 55}, tap: tap, held: map[Player]bool{}}, nil
+	return &Engine{out: out, userAgent: userAgent, onStatus: onStatus, volume: 0.55, status: Status{State: Stopped, Volume: 55}, tap: tap, held: map[Player]bool{}}, nil
 }
 
 // Samples fills dst with the latest mono samples (±1, oldest first) of
@@ -115,6 +146,7 @@ func (e *Engine) Start(mounts []string, name string) {
 		e.set(Status{State: Failed, Err: "no relay carries this transmitter", Volume: e.pct()})
 		return
 	}
+	e.setLive(true) // a relay: live radio, which dips rather than pauses
 	ctx, done := e.arm()
 	go func() {
 		defer close(done)
@@ -157,6 +189,7 @@ func (e *Engine) halt() {
 	e.mu.Lock()
 	cancel, done := e.cancel, e.done
 	e.cancel, e.done = nil, nil
+
 	e.mu.Unlock()
 	if cancel != nil {
 		cancel()
@@ -243,7 +276,12 @@ func (e *Engine) playOnce(ctx context.Context, mount, name string) error {
 	if label == "" {
 		label = name
 	}
-	return e.playPCM(ctx, newResampler(dec, dec.SampleRate()), Status{State: Playing, Mount: mount, Name: label}, s.Title)
+	// THE SAMPLES ARE WATCHED, not just the connection. A relay that is up and
+	// broadcasting nothing satisfies every other check (MVS-D-76); this is the
+	// only place that can tell the difference, and it sits before the tap so it
+	// sees exactly what the listener hears.
+	pcm := newSilenceReader(newResampler(dec, dec.SampleRate()), OutputRate, SilenceAfter, func() { e.reportSilence(mount, label) })
+	return e.playPCM(ctx, pcm, Status{State: Playing, Mount: mount, Name: label}, s.Title)
 }
 
 // Preview plays a short PCM clip (16-bit LE stereo at rate) on its own
@@ -257,7 +295,7 @@ func (e *Engine) Preview(rate int, pcm io.Reader) error { return e.playClip(rate
 func (e *Engine) Audition(rate int, pcm io.Reader) error { return e.playClip(rate, pcm, true, false) }
 
 // PreviewAside plays a clip beside the broadcast WITHOUT feeding the
-// visualizer's tap — a takeover's tone and lines (the app's narrator
+// visualizer's tap — a takeover's tone and lines (the app's director
 // decides which narrations the bars follow; HUM LEAD 2026-08-28).
 func (e *Engine) PreviewAside(rate int, pcm io.Reader) error {
 	return e.playClip(rate, pcm, false, true)
@@ -283,7 +321,10 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 	if inFlight {
 		e.preview = p // the line in flight
 	}
+	e.clips++
+	n := e.clips
 	e.mu.Unlock()
+	e.debugf("player:clip:start n=%d tapped=%v inFlight=%v", n, tapped, inFlight)
 	p.Play()
 	go func() {
 		// Bounded per P10-02: 10 min of PLAY is the ceiling (an event read
@@ -310,13 +351,14 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 		}
 		delete(e.held, p)
 		e.mu.Unlock()
+		e.debugf("player:clip:end n=%d", n)
 		_ = p.Close()
 	}()
 	return nil
 }
 
 // PausePreview holds the line in flight (a lower-priority narration while a
-// takeover speaks — the app's narrator): it leaves the flight slot, so the
+// takeover speaks — the app's director): it leaves the flight slot, so the
 // takeover's own clips never displace it, and its watcher waits. ResumePreview
 // puts the most recently held line back in flight and lets it go on from
 // where it stopped; DropHeld closes every held line without playing it (a
@@ -364,25 +406,61 @@ func (e *Engine) DropHeld() {
 }
 
 // alertDuck is how far the main broadcast dips while an alert sounds over it
-// (to 25 % — audibly under the alert, still present so the broadcast is not
+// (to 15 % — audibly under the alert, still present so the broadcast is not
 // mistaken for stopped). HUM LEAD 2026-08-27: duck, not interrupt.
-const alertDuck = 0.25
+//
+// 0.25 until MVS-D-70 (UAT 2026-09-03): heard on a live relay, a quarter was
+// "still loud enough to be distracting". The floor of the range and the reason
+// it is not zero are both in TestTheDipDepthIsPinned, which is the one place
+// this number is allowed to be argued about.
+const alertDuck = 0.15
 
-// Duck dips the main broadcast to alertDuck for an alert playing over it; the
-// watch loop applies it within 50 ms. Inert when nothing is playing. Pair every
-// Duck with a Restore (0.12.0: the breaking-news sequence ducks once, overlays
-// its tone and per-event narration, then restores).
-func (e *Engine) Duck() {
+// Suppress puts an alert on the air over the broadcast: the watch loop gives
+// way within 50 ms. Inert when nothing is playing. Pair every Suppress with a
+// Restore.
+//
+// HOW the broadcast gives way is not decided here, and that is the point. A
+// relay DIPS: it is live radio, and a paused relay resumes into audio that is
+// minutes stale — a listener would hear a warning that had already expired. A
+// rendered cycle HOLDS: it has nowhere to be, so dipping loses the words under
+// the alert for good where holding means the whole report is heard afterwards.
+//
+// Deciding that at the moment the alert arrives fixes an answer that the source
+// can outlive: a relay that falls back to synth mid-alert would keep playing
+// dipped, and a stream started while an alert was already on air would take
+// whichever treatment the previous source earned. The watch loop re-reads the
+// source kind every tick, so the answer follows the audio.
+func (e *Engine) Suppress() {
 	e.mu.Lock()
-	e.duck = alertDuck
+	e.suppressed = true
 	e.mu.Unlock()
 }
 
-// Restore lifts the duck — the main broadcast returns to the knob within 50 ms.
+// Restore takes the alert off the air — the broadcast returns to the knob, or
+// plays on from where it was held, within 50 ms.
 func (e *Engine) Restore() {
 	e.mu.Lock()
-	e.duck = 1
+	e.suppressed = false
 	e.mu.Unlock()
+}
+
+// setLive records what kind of source is playing, for Suppress to read.
+func (e *Engine) setLive(relay bool) {
+	e.mu.Lock()
+	e.live = relay
+	e.mu.Unlock()
+}
+
+// giveWay is how the current source yields to an alert: the volume scale to
+// apply, and whether to pause outright. Caller holds mu.
+func (e *Engine) giveWayLocked() (scale float64, pause bool) {
+	switch {
+	case !e.suppressed:
+		return 1, false
+	case e.live:
+		return alertDuck, false // dip: live radio plays on under the alert
+	}
+	return 1, true // hold: a rendered report waits and is heard in full afterwards
 }
 
 // StartSource plays a generic PCM source (16-bit LE stereo at rate) until
@@ -392,6 +470,7 @@ func (e *Engine) StartSource(name string, rate int, open func(ctx context.Contex
 	e.startMu.Lock()
 	defer e.startMu.Unlock()
 	e.halt()
+	e.setLive(false) // a rendered cycle: it waits rather than plays on under an alert
 	ctx, done := e.arm()
 	go func() {
 		defer close(done)
@@ -416,17 +495,27 @@ func (e *Engine) playPCM(ctx context.Context, pcm io.Reader, playing Status, tit
 	}
 	defer func() { _ = p.Close() }()
 	e.mu.Lock()
-	p.SetVolume(e.volume * e.duck) // ducked if an alert is sounding as this stream starts
+	scale, hold := e.giveWayLocked() // a stream starting under an alert comes up already giving way
+	p.SetVolume(e.volume * scale)
 	e.mu.Unlock()
-	p.Play()
+	if !hold { // a rendered report waits for the alert rather than opening under it
+		p.Play()
+	}
 	playing.Title = title()
 	e.set(playing)
-	return e.watch(ctx, p, title)
+	return e.watch(ctx, p, title, hold)
 }
 
 // watch keeps the volume applied and reports title changes until the
 // player drains (stream ended/stalled) or the context ends.
-func (e *Engine) watch(ctx context.Context, p Player, title func() string) error {
+//
+// held is how the stream was opened, and it is NOT defensive. Pass a constant
+// false and an alert clearing inside the first tick leaves want == held, so no
+// Play() ever fires; the drain check below then reads a player that never
+// started as one that has finished, and the whole report is dropped without a
+// word. TestAnAlertClearingBeforeTheFirstTickStillLetsTheReportPlay is what
+// holds that shut.
+func (e *Engine) watch(ctx context.Context, p Player, title func() string, held bool) error {
 	tick := time.NewTicker(50 * time.Millisecond) // stop latency ≤ 50 ms
 	defer tick.Stop()
 	for range tick.C { // bounded by the ticker; exits on ctx or stream end
@@ -435,10 +524,23 @@ func (e *Engine) watch(ctx context.Context, p Player, title func() string) error
 			return ctx.Err()
 		}
 		e.mu.Lock()
-		p.SetVolume(e.volume * e.duck) // re-asserted every tick — a duck/restore takes effect within 50 ms
+		scale, want := e.giveWayLocked() // re-read every tick: the answer follows the audio
+		p.SetVolume(e.volume * scale)
 		st := e.status
 		e.mu.Unlock()
-		if !p.IsPlaying() {
+		if want != held {
+			if want {
+				p.Pause()
+			} else {
+				p.Play()
+			}
+			held = want
+		}
+		// A HELD player is not a finished one. It stops reporting itself as
+		// playing, which is exactly what a drained stream does, and reading that
+		// as the end of the cycle would advance the watchlist while the alert
+		// that held it was still reading.
+		if !held && !p.IsPlaying() {
 			return errEnded
 		}
 		if t := title(); t != st.Title {
@@ -499,4 +601,49 @@ func (p *prerollReader) Read(b []byte) (int, error) {
 		return n, nil
 	}
 	return p.r.Read(b)
+}
+
+// StopPreview ends the line currently in flight.
+//
+// THE ONE THING THE ENGINE COULD NOT DO. It could pause a line (PausePreview),
+// resume one (ResumePreview) and close the HELD ones (DropHeld) — but nothing
+// stopped the line that was actually sounding. So cancelling a read ended its
+// SEQUENCE while its audio played on: the arbiter released the air, resumed
+// whatever the read had suspended, and the listener heard both at once
+// (MVS-D-75, UAT 2026-09-05).
+//
+// Closing a player that has already drained is a no-op, so a sequence that
+// finished normally needs no special case — which is what lets one call sit on
+// the one path a job leaves the air by.
+func (e *Engine) StopPreview() {
+	e.mu.Lock()
+	p, held := e.preview, len(e.heldOrder)
+	e.preview = nil
+	e.mu.Unlock()
+	e.debugf("player:stopPreview found=%v held=%d", p != nil, held)
+	if p != nil {
+		// PAUSE BEFORE CLOSE. Close releases the player; it is Pause that
+		// guarantees the device stops emitting what is already buffered. A
+		// close alone left a read audible after it had been stopped
+		// (UAT 2026-09-05), and the buffered tail of a minutes-long read is not
+		// a tail — it is the rest of the report.
+		p.Pause()
+		_ = p.Close() // its watcher sees !IsPlaying and finishes
+	}
+}
+
+// debugf is the engine's own line in the radio timeline. It writes only when a
+// hook is wired, so the player stays free of the app's logging.
+func (e *Engine) debugf(format string, args ...any) {
+	if e.trace == nil {
+		return
+	}
+	e.trace(fmt.Sprintf(format, args...))
+}
+
+// Trace wires the engine's debug line to the app's log (DR-23).
+func (e *Engine) Trace(fn func(string)) {
+	e.mu.Lock()
+	e.trace = fn
+	e.mu.Unlock()
 }

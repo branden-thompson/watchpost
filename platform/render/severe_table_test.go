@@ -40,7 +40,7 @@ func TestSevereColumnsLadder(t *testing.T) {
 		}
 	}
 	for inner := 66; inner <= 123; inner++ {
-		lines := Opts{Width: inner}.SevereTable([]SevereCell{{Num: 1, Event: strings.Repeat("x", 80), Location: strings.Repeat("y", 40), Declared: "08/28 11:20 EDT", Expires: "08/28 20:00 EDT", Focused: true}}, inner, EventCatOrangeBG)
+		lines := Opts{Width: inner}.SevereTable([]SevereCell{{Num: 1, Event: strings.Repeat("x", 80), Location: strings.Repeat("y", 40), Declared: "08/28 11:20 EDT", Expires: "08/28 20:00 EDT", Focused: true}}, inner, EventCatWarningBG)
 		for i, l := range lines {
 			if w := Width(l); w != inner {
 				t.Fatalf("inner %d line %d is %d wide: %q", inner, i, w, l)
@@ -86,7 +86,7 @@ func TestSevereHeadersAreGroupBands(t *testing.T) {
 			t.Errorf("%s must read plain: %q", want, line)
 		}
 	}
-	rows := Opts{Width: 119}.SevereTable([]SevereCell{{Num: 1, Event: "x", Location: "y", Detection: "Observed", Declared: "d", Expires: "e"}}, 119, EventCatOrangeBG)
+	rows := Opts{Width: 119}.SevereTable([]SevereCell{{Num: 1, Event: "x", Location: "y", Detection: "Observed", Declared: "d", Expires: "e"}}, 119, EventCatWarningBG)
 	if !strings.Contains(rows[1], "x"+strings.Repeat(" ", ev-1)+strings.Repeat(" ", severeGutter)+"y") { // the row keeps its gutter (item 10b)
 		t.Errorf("rows keep their gutters: %q", rows[1])
 	}

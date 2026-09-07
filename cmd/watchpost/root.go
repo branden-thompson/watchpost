@@ -32,10 +32,16 @@ func newRootCmdWith(reportOnce reportFunc) *cobra.Command {
 			return app.RunDashboard(version, app.Options{ASCII: ascii})
 		},
 	}
-	// --ascii swaps the row marks and legend for ASCII forms (R-12a; the B6
-	// promise, wired by the quality pass Q3 — A11-10). Persistent so
-	// `watchpost setup --ascii` reads the same way.
-	root.PersistentFlags().BoolVar(&ascii, "ascii", false, "draw the row marks and legend with ASCII characters")
+	// --ascii swaps the row marks, the box rules, the legend and the spread-word
+	// headers for ASCII forms (R-12a; the B6 promise, wired by the quality pass
+	// Q3 — A11-10). Persistent so `watchpost setup --ascii` reads the same way.
+	//
+	// IT DOES NOT ASCII-FOLD THE WEATHER TEXT. A forecast office's own words
+	// reach the terminal as they wrote them, and the separators the app builds
+	// into an alert's title travel with it — the flag is about the furniture the
+	// app draws, not about the feed. Stated because the two are easy to confuse
+	// and a wider promise would be one this flag does not keep.
+	root.PersistentFlags().BoolVar(&ascii, "ascii", false, "draw the marks, rules, legend and headers with ASCII characters")
 	root.AddCommand(newReportCmd(reportOnce))
 	root.AddCommand(&cobra.Command{
 		Use:   "setup",
@@ -96,6 +102,10 @@ func newReportCmd(reportOnce reportFunc) *cobra.Command {
 				_, _ = fmt.Fprint(cmd.OutOrStdout(), report.RenderPlain(snap, term.Width())) // stdout write errors surface via cobra exit
 				if verbose {
 					_, _ = fmt.Fprint(cmd.OutOrStdout(), report.RenderRequests(stats)) // quality pass Q0: request counters per host
+					// The SAME cast and tone answers [S] gives, from a shell:
+					// built from the config and this host's facts, with no
+					// deck and no dashboard (0.14.0 Task 4.8).
+					_, _ = fmt.Fprint(cmd.OutOrStdout(), app.RenderCast(cmd.Context()))
 				}
 			}
 			if code := report.ExitCode(snap); code != 0 {

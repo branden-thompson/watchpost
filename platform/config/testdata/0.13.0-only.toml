@@ -1,0 +1,10 @@
+# A file written by 0.13.0: no [radio.voices], no [radio.tones].
+# Everything must inherit the root voice (FR-2), and ticker_muted must map onto
+# the 0.14.0 tone state.
+theme = "quattro-dark"
+voice = "Samantha"
+ticker_muted = true
+ticker_radius_mi = 150
+
+[radio]
+mode = "synth"

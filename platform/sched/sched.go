@@ -122,6 +122,10 @@ const (
 // over hours and defeated the publish coalescer). A cycle that overruns
 // its slot (retries) fires again at once and the grid restarts from then;
 // missed slots are never replayed.
+// ACCEPTED COST — see docs/accepted-costs.md §3 (ADR-03 option A). One of these
+// per (RECENT location × tier) is where ~309 of the app's goroutines live, so a
+// row can publish the moment its own fetches land. The register carries the
+// re-open threshold and the headroom left for new feeds.
 func (s *Scheduler) runTier(ctx context.Context, tier Tier) {
 	defer s.wg.Done()
 	next := s.cfg.Clock.Now()
@@ -211,6 +215,11 @@ func (s *Scheduler) wait(ctx context.Context, d time.Duration) bool {
 // publishing after each. It returns the locations left unserved by a FAILED fragment —
 // the rehydration set (a provider that simply has nothing for a location,
 // e.g. marine inland, reports no error and is not retried).
+// ACCEPTED COST — see docs/accepted-costs.md §4. The fan-out is SEQUENTIAL on
+// purpose: publishing after each provider keeps a slow one from holding the
+// others' data off screen (UAT 64), and a shared pool would let a rate-limited
+// provider starve the rows behind it. Making it concurrent changes publish order,
+// which is user-visible — the bar for that is in the register.
 func (s *Scheduler) cycle(ctx context.Context, tier Tier, refs []snapshot.LocationRef) []snapshot.LocationRef {
 	select {
 	case <-s.stop:

@@ -96,3 +96,92 @@ func TestFrameGoldenColourOn(t *testing.T) {
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 2, 0, 0, time.UTC) }
 	checkGolden(t, "frame-133x44-colour.golden", d.View().Content)
 }
+
+// --- 0.14.0 P4 Task 4.12: the Setup window ---
+
+// setupGolden is the Setup window over the golden fixture, with a COMPLETE
+// cast fixture: a voice list, a preview hook and an installed-check.
+//
+// Complete matters. With no voice list every picker reads "—" and every row
+// grows a "No voices are available" note, which shifts the whole layout — the
+// golden would then pin a window no listener will ever see.
+func setupGolden(t *testing.T, w, h int, ascii bool, at setupRowID) Dashboard {
+	t.Helper()
+	local := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = local })
+	rendering.SetColorEnabledForTest(false)
+	d := benchDash(t, w, h).(Dashboard)
+	d.cfg.ASCII = ascii
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 2, 0, 0, time.UTC) }
+	d.cfg.Voices = func() []string { return []string{"System Voice", "Daniel", "Karen", "Rishi", "Samantha"} }
+	d.cfg.PreviewVoice = func(string) {}
+	d.cfg.VoiceInstalled = func(string) bool { return true }
+	d.cfg.ToneClasses = []ToneClass{
+		{Key: "disaster", Label: "Disaster Events"},
+		{Key: "warning", Label: "Warnings"},
+		{Key: "watch", Label: "Watches"},
+		{Key: "advisory", Label: "Advisories"},
+		{Key: "statement", Label: "Special Statements"},
+		{Key: "storm", Label: "Maritime"},
+	}
+	return d.openSetupAt(at)
+}
+
+// The two-column layout, with a correspondent picker focused: the state a
+// listener is in when they are doing the thing this release exists for.
+func TestSetupGolden133(t *testing.T) {
+	checkGolden(t, "setup-133x44.golden", setupGolden(t, 133, 44, false, rowCastAlerts).View().Content)
+}
+
+// 80x24: the stacked layout, the scroll, and the pinned chip footer — the size
+// RS-19 was raised about.
+func TestSetupGolden80(t *testing.T) {
+	checkGolden(t, "setup-80x24.golden", setupGolden(t, 80, 24, false, rowCastAlerts).View().Content)
+}
+
+// --ascii, where Task 4.9's glyph parity is proven: every mark this window
+// draws — the focus arrow, the radio, the checkbox, the picker's dropdown, the
+// scroll rail — goes through the glyph set, so nothing needs a special case.
+func TestSetupGoldenASCII(t *testing.T) {
+	got := setupGolden(t, 133, 44, true, rowCastAlerts).View().Content
+	for _, glyph := range []string{"▾", "█", "▲", "▼", "●", "○", "›", "—"} {
+		if strings.Contains(got, glyph) {
+			t.Errorf("--ascii frame still carries %q — it needs an ASCII form in the glyph set", glyph)
+		}
+	}
+	checkGolden(t, "setup-133x44-ascii.golden", got)
+}
+
+// THE SCAN THAT WOULD HAVE CAUGHT F-47, and the reason the per-window lists
+// above did not. Each of those names the marks ITS window draws, while the
+// golden it checks is the whole frame — so a glyph belonging to the dashboard
+// behind the modal is captured in the file and scanned by nobody. F-47 lived
+// there: the radio panel wrote "▶", "■", "█" and "░" directly instead of taking
+// them from the glyph set, in the same function whose Fail branch took its mark
+// from the set correctly.
+//
+// This asks the only question that needs no list: is anything in an --ascii
+// frame outside ASCII? A list of forbidden glyphs can only find what someone
+// already thought of.
+//
+// ° (U+00B0) is the one ruled exception. Temperatures carry the real DEGREE
+// SIGN deliberately — it replaced U+00BA MASCULINE ORDINAL INDICATOR, which a
+// screen reader announces as an ordinal marker where a temperature is meant —
+// and both measure one cell, so nothing moved.
+func TestASCIIFramesCarryNothingButASCII(t *testing.T) {
+	frames := map[string]string{
+		"dashboard": goldenDash(t, true).View().Content,
+		"settings":  setupGolden(t, 133, 44, true, rowCastAlerts).View().Content,
+	}
+	for name, frame := range frames {
+		seen := map[rune]bool{}
+		for _, r := range stripANSITest(frame) {
+			if r < 128 || r == '°' || seen[r] {
+				continue
+			}
+			seen[r] = true
+			t.Errorf("--ascii %s frame carries %q (U+%04X) — it needs an ASCII form in the glyph set", name, r, r)
+		}
+	}
+}

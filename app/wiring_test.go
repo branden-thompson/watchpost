@@ -56,9 +56,12 @@ func TestDebugAddrDefaultsAndHonoursTheOverride(t *testing.T) {
 	if got := debugAddr(); got != "127.0.0.1:6060" {
 		t.Fatalf("default debug address, got %q", got)
 	}
+	// The override picks a PORT — "a soak beside a soak". It cannot pick a
+	// HOST: this test used to assert that whatever the environment said won,
+	// which is the property S-2 removed (red team 2026-09-05).
 	t.Setenv("WATCHPOST_DEBUG_PPROF_ADDR", "127.0.0.1:6061")
 	if got := debugAddr(); got != "127.0.0.1:6061" {
-		t.Fatalf("the override wins, got %q", got)
+		t.Fatalf("a loopback override wins, got %q", got)
 	}
 }
 

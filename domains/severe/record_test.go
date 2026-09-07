@@ -46,13 +46,13 @@ func TestShortDur(t *testing.T) {
 func TestRecordOfQuakeAndStorm(t *testing.T) {
 	mag := 5.8
 	cdi, mmi := 5.7, 4.624
-	q := Row{Tab: TabQuakes, Product: "Earthquake", At: time.Date(2026, 8, 28, 10, 12, 0, 0, time.UTC), Location: "Kodāri, Nepal", Lat: 27.94, Lon: 85.62, HasPoint: true,
+	q := Row{Tab: TabDisasters, Product: "Earthquake", At: time.Date(2026, 8, 28, 10, 12, 0, 0, time.UTC), Location: "Kodāri, Nepal", Lat: 27.94, Lon: 85.62, HasPoint: true,
 		Detail: Detail{Quake: &globalfeed.QuakeDetail{Mag: &mag, MagType: "mww", DepthKm: 61, Alert: "green", Felt: 153, CDI: &cdi, MMI: &mmi, Sig: 651, Status: "reviewed"}}}
 	rec := RecordOf(q, time.UTC)
 	if rec.Title != "M 5.8 EARTHQUAKE" || !strings.Contains(rec.Meta, "Depth 61 km") || !strings.Contains(rec.Area, "27.94 N, 85.62 E") {
 		t.Fatalf("quake record: %+v", rec)
 	}
-	s := Row{Tab: TabTropical, Product: "Tropical Storm", Name: "Dolly", At: time.Date(2026, 8, 28, 16, 0, 0, 0, time.UTC),
+	s := Row{Tab: TabMarine, Product: "Tropical Storm", Name: "Dolly", At: time.Date(2026, 8, 28, 16, 0, 0, 0, time.UTC),
 		Detail: Detail{Tropical: &globalfeed.TropicalDetail{Name: "Dolly", Basin: "the Atlantic", BinNumber: "AT4", WindKt: 45, PressureMb: 999, MoveDirDeg: 280, MoveSpeedKt: 25, LatText: "15.0N", LonText: "46.9W", AdvisoryNum: "5"}}}
 	rec = RecordOf(s, time.UTC)
 	if rec.Title != "TROPICAL STORM DOLLY (AT4)" || !strings.Contains(rec.Meta, "Winds 45 kt") || !strings.Contains(rec.Meta, "Moving W at 25 kt") {

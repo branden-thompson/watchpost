@@ -97,6 +97,7 @@ func quattroForegrounds(p quattroPalette) map[Token]string {
 		TrendDown:        fgTruecolor(p.cyan),
 		FocusName:        boldFg(p.accent),
 		FocusCell:        fgTruecolor(p.blue),
+		TitleEdition:     boldFg(p.blue), // the edition word beside the wordmark, in the palette's own blue
 		FocusPointer:     boldFg(p.brightFg),
 		NameAdvisory:     fgTruecolor(p.yellow),
 		NameWarning:      fgTruecolor(p.red),
@@ -145,7 +146,7 @@ func quattroTiles(p quattroPalette) map[Token]string {
 		ModalBGDark:      bgTruecolor(p.darkBg),
 		ModalBGLight:     bgTruecolor(p.lightBg),
 		WindowBGDark:     p.bg,      // hex — the theme's own background
-		GradStart:        p.magenta, // the W A T C H P O S T wordmark, on-palette
+		GradStart:        p.magenta, // the WATCHPOST wordmark, on-palette
 		GradMid:          p.accent,
 		GradEnd:          p.green,
 	}

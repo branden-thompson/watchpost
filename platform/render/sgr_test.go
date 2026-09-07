@@ -49,3 +49,39 @@ func TestColorPassStyling(t *testing.T) {
 		t.Fatalf("styled row overflows: %d", w)
 	}
 }
+
+// The edition is TINTED, and by its OWN token — a plain-text "Observer" beside a
+// gradient wordmark would read as an accident rather than a name.
+//
+// "WATCHPOST Observer" (HUM LEAD, 2026-08-30): the wordmark keeps its gradient
+// and the edition names which experience this build is, so the Broadcaster
+// dashboard a later version brings arrives as a different word here rather than
+// as a rename.
+func TestWordmarkTintsTheEditionWithItsOwnToken(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	marked := Wordmark(EditionObserver)
+	// The rendered form, not the raw token: Tint expands a bare palette index
+	// ("1;117") into its SGR ("1;38;5;117"), so comparing the token text would
+	// pass or fail on the notation rather than on the colour.
+	if want := Tint(EditionObserver, Tok(TitleEdition)); !strings.Contains(marked, want) {
+		t.Errorf("the edition must be tinted with TitleEdition (%q):\n%q", want, marked)
+	}
+	// The wordmark keeps the gradient it always had: per-rune, so no single SGR
+	// run covers the whole of it.
+	if !strings.Contains(marked, "\x1b[1;38;2;") {
+		t.Errorf("the wordmark keeps its gradient:\n%q", marked)
+	}
+	if got := StripSGRForTest(marked); got != "WATCHPOST Observer" {
+		t.Errorf("with colour stripped the masthead still reads the name, got %q", got)
+	}
+	// And an empty edition is the wordmark alone — the ladder's last rung.
+	if got := StripSGRForTest(Wordmark("")); got != "WATCHPOST" {
+		t.Errorf("an empty edition is the wordmark alone, got %q", got)
+	}
+	// Colour off, the words survive (R-12a).
+	rendering.SetColorEnabledForTest(false)
+	if got := Wordmark(EditionObserver); got != "WATCHPOST Observer" {
+		t.Errorf("with colour disabled the masthead is plain text, got %q", got)
+	}
+}

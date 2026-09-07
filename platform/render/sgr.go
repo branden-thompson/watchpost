@@ -39,6 +39,34 @@ func colorOn() bool { return rendering.ColorsEnabled() }
 // SGR themselves (the tty's frame finisher, Q3).
 func ColorOn() bool { return colorOn() }
 
+// The masthead wordmark and the EDITION beside it.
+//
+// WATCHPOST names the app; the edition names WHICH EXPERIENCE this build is.
+// Observer is the dashboard — watching, listening, reading. Broadcaster is the
+// station-running dashboard a later version brings, and it will pass its own
+// word through here (HUM LEAD, 2026-08-30). Delineating it now means the second
+// one arrives as a word, not as a rename.
+const (
+	WordmarkName    = "WATCHPOST"
+	EditionObserver = "Observer"
+)
+
+// Wordmark is the masthead: the gradient wordmark, and the edition word beside
+// it in the theme's own light blue. An empty edition is the wordmark alone —
+// the narrowest rung of the header's ladder, and what a surface with no room
+// for the distinction shows.
+//
+// ONE OWNER, because the header and the About window both draw it and a build
+// whose masthead and About box disagreed about which edition it is would be
+// worse than either wording on its own.
+func Wordmark(edition string) string {
+	mark := TitleGradient(WordmarkName)
+	if edition == "" {
+		return mark
+	}
+	return mark + " " + Tint(edition, Tok(TitleEdition))
+}
+
 // TitleGradient renders the app title bold with the reference-CLI interpolated
 // truecolor gradient (#DD51D6 -> #378FE9 -> #7CE3B3) — UAT 4.9, standing in
 // until theming lands. Plain text when color is off.
@@ -152,6 +180,23 @@ func (o Opts) KeyCapWith(key string, tone Token) string {
 	return sgrRaw(" "+key+" ", Tok(tone))
 }
 
+// KeyCapInverted renders a chip with its foreground and background swapped —
+// the press acknowledgement for a control with NO floor and NO ceiling.
+//
+// The volume's chips blink green up and red down because those directions MEAN
+// something and one of them can be at its end. A voice picker's list WRAPS:
+// neither direction is more or less than the other and neither can be
+// exhausted, so a colour would be saying something untrue. An inversion says
+// only "that landed", and it is theme-agnostic by construction — SGR 7 swaps
+// whatever the chip's own colours are, so it reads on a light terminal exactly
+// as it does on a dark one.
+func (o Opts) KeyCapInverted(key string) string {
+	if o.ASCII || !colorOn() {
+		return o.KeyCap(key) // no colour to invert; the blink is not the affordance
+	}
+	return sgrRaw(" "+key+" ", "7;"+Tok(KeyChip))
+}
+
 // KeyCap renders a key binding as a CLIAmp-style button: grey background,
 // bold white text (UAT session 2B; upstream candidate M6: tui.KeyCap token).
 // With color off (NO_COLOR, pipes, tests) it degrades to the mock's [key]
@@ -256,3 +301,17 @@ func bgRGB(v string) (r, g, b int, ok bool) {
 	b, _ = strconv.Atoi(parts[4])
 	return r, g, b, true
 }
+
+// StripSGRForTest removes SGR sequences from rendered text — the package's own
+// tests measuring what a reader would see. Exported for the render tests only;
+// production callers use Width, which strips as part of measuring.
+func StripSGRForTest(s string) string { return stripANSI(s) }
+
+// Italic wraps text in SGR 3, gated by the same colour switch as every other
+// emitter here.
+//
+// USED FOR AN ASIDE, never for anything a listener must read. Italic is the one
+// attribute terminals disagree about most — some render it upright, some as
+// inverse, some ignore it — so it may only ever ADD emphasis to a line that
+// reads correctly without it (NFR-6).
+func Italic(s string) string { return sgrRaw(s, "3") }

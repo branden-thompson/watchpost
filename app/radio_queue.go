@@ -5,82 +5,54 @@ package app
 import (
 	"time"
 
-	"github.com/branden-thompson/watchpost/domains/radio/player"
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
-
-// liveDwell is how long Watchlist mode stays on a live relay before moving
-// on (UAT 93): a relay never ends, so one NWR cycle (~5 min) is the
-// "broadcast" we let it finish. The one knob; Synth advances at its own end.
-const liveDwell = 5 * time.Minute
-
-// armDwell keeps the Watchlist dwell consistent with the mode: a live relay
-// under Watchlist counts down once (idempotent while it runs — relay title
-// changes must not restart it); any other mode or path cancels it. Callers
-// hold no lock.
-func (d *radioDeck) armDwell(ref snapshot.LocationRef) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.repeat != tty.RepeatWatchlist || d.mode != "live" {
-		d.stopDwell()
-		return
-	}
-	if d.dwell != nil {
-		return
-	}
-	d.dwell = time.AfterFunc(liveDwell, func() { d.advanceQueue(ref) })
-}
-
-// stopDwell cancels a pending live advance. Callers hold d.mu.
-func (d *radioDeck) stopDwell() {
-	if d.dwell != nil {
-		d.dwell.Stop()
-		d.dwell = nil
-	}
-}
-
-// advanceQueue tunes the location after cur in the Watchlist queue (UAT
-// 93) — wrapping at the end, starting at the top when cur is not a
-// favourite. A no-op unless the mode is still Watchlist and the queue has
-// somewhere to go.
-func (d *radioDeck) advanceQueue(cur snapshot.LocationRef) {
-	d.mu.Lock()
-	mode, queue, playing := d.repeat, d.queue, d.mode != ""
-	d.mu.Unlock()
-	if mode != tty.RepeatWatchlist || !playing {
-		return // the user stopped, or the mode changed: a late dwell timer must not tune anything
-	}
-	if next, ok := nextInQueue(queue, cur); ok {
-		d.Tune(next)
-	}
-}
-
-// nextInQueue is the location after cur (by key), wrapping; the first
-// entry when cur is not in the queue; nothing for an empty queue.
-func nextInQueue(queue []snapshot.LocationRef, cur snapshot.LocationRef) (snapshot.LocationRef, bool) {
-	if len(queue) == 0 {
-		return snapshot.LocationRef{}, false
-	}
-	for i, r := range queue {
-		if snapshot.Key(r) == snapshot.Key(cur) {
-			return queue[(i+1)%len(queue)], true
-		}
-	}
-	return queue[0], true
-}
 
 // chooseNearest picks the station Nearest Relay mode plays (UAT 97): the
 // resolver lists the covering transmitter first when it is relayed, then
 // the nearest relayed ones — so the first with a mount is the answer.
-func chooseNearest(stations []stream.Station) (stream.Station, bool) {
-	for _, st := range stations {
+//
+// EXCEPT WHERE TWO STATIONS ARE EQUALLY THE ANSWER. Coachella KIG78 and
+// Coachella / Spanish WNG712 share a mast: same coordinates, same covering
+// status, so nothing about the geography prefers either and the resolver's
+// order between them is a tie-break, not a finding. Vista, CA got the Spanish
+// feed that way (HUM LEAD, UAT 2026-09-04), and the ruling was that the choice
+// is the listener's: "some humans will prefer english, some will prefer
+// spanish".
+//
+// So the preference decides the TIE and nothing else. A listener who prefers
+// Spanish does not get a Spanish station 200 km away over the English one in
+// their county — the nearest relay is still the nearest relay, and this only
+// answers the question the distance leaves open.
+func chooseNearest(stations []stream.Station, prefer string) (stream.Station, bool) {
+	first := -1
+	for i, st := range stations { // bounded by the candidate list (P10-02)
 		if len(st.Mounts) > 0 {
+			first = i
+			break
+		}
+	}
+	if first < 0 {
+		return stream.Station{}, false
+	}
+	best := stations[first]
+	if prefer == "" || best.Lang() == prefer {
+		return best, true
+	}
+	for _, st := range stations[first+1:] { // bounded by the candidate list (P10-02)
+		// Only a station that is EQUALLY near and equally covering can take
+		// the place: anything else is a different answer, not a tie.
+		if st.KM != best.KM || st.Covering != best.Covering {
+			break
+		}
+		if len(st.Mounts) > 0 && st.Lang() == prefer {
 			return st, true
 		}
 	}
-	return stream.Station{}, false
+	return best, true
 }
 
 // SetRepeat implements tty.Radio (UAT 83/93): One loops the synthesized
@@ -94,7 +66,20 @@ func (d *radioDeck) SetRepeat(mode tty.RepeatMode, watchlist []snapshot.Location
 	if src != nil {
 		src.Loop(mode == tty.RepeatOne)
 	}
-	if d.engine.Status().State == player.Playing {
-		d.armDwell(ref) // a live relay under Watchlist starts its dwell now; any other mode cancels it
+	// THE ROTATION IS THE DIRECTOR'S NOW (T3.2b). A zero dwell is how "repeat is
+	// not Watchlist" reaches it — the translation from the deck's mode enum
+	// happens here, once, rather than by a second copy of the enum living in the
+	// pure core. It is told on every change, playing or not: the Director holds
+	// the rotation, and a setting it never heard is a setting that does not
+	// apply.
+	dwell := time.Duration(0)
+	if mode == tty.RepeatWatchlist {
+		dwell = d.watchlistDwell()
 	}
+	keys := make([]string, 0, len(watchlist))
+	for _, r := range watchlist { // bounded by the watchlist (P10-02)
+		keys = append(keys, string(snapshot.Key(r)))
+	}
+	d.tell(lineup.Programme{Watchlist: keys, Dwell: dwell})
+	_ = ref
 }

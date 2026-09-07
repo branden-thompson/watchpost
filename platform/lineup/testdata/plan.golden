@@ -1,0 +1,8 @@
+max=6 fenced=false arrivals=10 read=6 divert=3
+
+ 1. rung= 1 CLOSE     Emergency Orders   emerg-evac     sev=99
+ 2. rung= 2 CLOSE     Disasters          quake-fresh    sev=70
+ 3. rung= 3 CLOSE     Warnings           tstorm         sev=60
+ 4. rung= 3 CLOSE     Warnings           flood          sev=60
+ 5. rung= 4 CLOSE     Watches            tornado-watch  sev=55
+ 6. rung= 5 CLOSE     Advisories         heat           sev=30

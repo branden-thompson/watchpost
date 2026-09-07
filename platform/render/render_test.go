@@ -13,7 +13,7 @@ import (
 func f64(v float64) *float64 { return &v }
 
 // runeIdx is strings.Index in display columns (the header's ♪ and the rows'
-// º are multibyte - byte offsets lie).
+// ° are multibyte - byte offsets lie).
 func runeIdx(s, tok string) int {
 	b := strings.Index(s, tok)
 	if b < 0 {

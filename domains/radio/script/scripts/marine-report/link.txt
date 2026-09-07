@@ -1,0 +1,2 @@
+{{/* marine-report/link: where to read more. No data. Mirrors seismic-report/link. */}}
+For coastal conditions in your area, visit https://www.ndbc.noaa.gov

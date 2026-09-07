@@ -8,10 +8,10 @@ import (
 )
 
 func TestFormatTempUnits(t *testing.T) {
-	if got := (Opts{ThinBands: true, Units: UnitF}).Temp(f64(22.8)); got != "73ºF" {
+	if got := (Opts{ThinBands: true, Units: UnitF}).Temp(f64(22.8)); got != "73°F" {
 		t.Fatalf("F: %q", got)
 	}
-	if got := (Opts{ThinBands: true, Units: UnitC}).Temp(f64(22.8)); got != "23ºC" {
+	if got := (Opts{ThinBands: true, Units: UnitC}).Temp(f64(22.8)); got != "23°C" {
 		t.Fatalf("C: %q", got)
 	}
 	if got := (Opts{ThinBands: true, Units: UnitF}).Temp(nil); got != "n/a" {
@@ -56,7 +56,7 @@ func TestConditionVocabularyAndClamping(t *testing.T) {
 	r.Conditions = "SOMETHING_ABSURDLY_LONG_CONDITION"
 	out = stripANSI((Opts{ThinBands: true, Width: 115, Units: UnitF}).LocationTable([]LocationRow{r}, 0))
 	row = []rune(strings.Split(out, "\n")[2])
-	if got := string(row[60 : 60+6]); got != " 73ºF↗" {
+	if got := string(row[60 : 60+6]); got != " 73°F↗" {
 		t.Fatalf("NOW must hold col 60 under clamped overflow, got %q\n%s", got, out)
 	}
 }

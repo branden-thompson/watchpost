@@ -70,7 +70,7 @@ func TestColorGateNoColorWins(t *testing.T) {
 func TestKeyMapMergeLayers(t *testing.T) {
 	global := KeyMap{"quit": {Keys: []string{"q"}, Help: "quit"}, "help": {Keys: []string{"?"}, Help: "help"}}
 	view := KeyMap{"dive-in": {Keys: []string{"enter"}, Help: "dive in"}, "quit": {Keys: []string{"x"}, Help: "quit"}}
-	m, err := Merge(global, view) // later layers win per Action
+	m, _, err := Merge(global, view) // later layers win per Action
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,13 +84,13 @@ func TestKeyMapMergeLayers(t *testing.T) {
 
 func TestKeyMapMergeDetectsConflicts(t *testing.T) {
 	a := KeyMap{"quit": {Keys: []string{"q"}}, "search": {Keys: []string{"q"}}}
-	if _, err := Merge(a); err == nil {
+	if _, _, err := Merge(a); err == nil {
 		t.Fatal("two Actions on one key in the same scope must be rejected")
 	}
 }
 
 func TestKeyMapLookup(t *testing.T) {
-	m, err := Merge(KeyMap{"help": {Keys: []string{"?"}}, "quit": {Keys: []string{"q", "ctrl+c"}}})
+	m, _, err := Merge(KeyMap{"help": {Keys: []string{"?"}}, "quit": {Keys: []string{"q", "ctrl+c"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,10 +105,10 @@ func TestKeyMapLookup(t *testing.T) {
 func TestHelpReservedForHelp(t *testing.T) {
 	// R-3/D-15: '?' is the ONLY locked binding — a merge that maps '?' to any
 	// Action other than "help" is rejected.
-	if _, err := Merge(KeyMap{"search": {Keys: []string{"?"}}}); err == nil {
+	if _, _, err := Merge(KeyMap{"search": {Keys: []string{"?"}}}); err == nil {
 		t.Fatal("'?' must be reserved for the help Action")
 	}
-	if _, err := Merge(KeyMap{"help": {Keys: []string{"?"}}}); err != nil {
+	if _, _, err := Merge(KeyMap{"help": {Keys: []string{"?"}}}); err != nil {
 		t.Fatalf("'?' bound to help must be valid: %v", err)
 	}
 }

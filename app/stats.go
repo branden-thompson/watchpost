@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"time"
 
 	"github.com/branden-thompson/watchpost/domains/fire/firms"
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
@@ -179,6 +180,12 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 	}
 	if lp.dump != nil {
 		st.LastDump, st.DumpHint = lp.dump.note(), lp.dump.hint()
+	}
+	st.Endpoints = providerEndpoints()
+	st.Uptime = time.Since(lp.started)
+	if lp.release != nil {
+		st.Version, st.Latest, st.Behind = lp.release.Status()
+		st.CheckEnabled = lp.release.Enabled()
 	}
 	return st
 }

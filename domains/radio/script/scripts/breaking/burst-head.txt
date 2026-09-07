@@ -1,0 +1,2 @@
+{{/* breaking/burst-head: the one opening of a multi-event burst, naming who issued them. Data: .Agencies (already joined: "the National Weather Service and the United States Geological Survey"). A single event has no head — breaking/single carries its own words. */}}
+The following alerts have been declared by {{.Agencies}}.

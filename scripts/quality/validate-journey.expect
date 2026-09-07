@@ -5,62 +5,303 @@
 # Every step logs PASS/FAIL; the exit code is the count of FAILs.
 #   HOME=<fresh dir> scripts/quality/validate-journey.expect <journey.log>
 set timeout 10
-match_max 200000
+# match_max is generous because the marquee redraws every 300 ms for as long as
+# the app is up (accepted-costs 2), and `repaint` sleeps without consuming — so
+# an expect can face a second of accumulated tape, and expect discards the
+# OLDEST half on overflow. 200 KB was too small for a 133x44 screen in colour.
+#
+# THIS WAS NOT THE CAUSE OF THE 2026-09-06 FAILURES, and the comment here said it
+# was. Raising it changed nothing: the same nine steps failed. The cause was
+# stale labels — 0.14.0 renamed the UI out from under a 0.13.0 script — and the
+# hypothesis was built on one contradiction in a log instead of the one grep that
+# would have settled it. Kept as hardening, no longer offered as an explanation.
+match_max 4000000
 lassign $argv logfile
 log_user 0
 set lf [open $logfile a]
 set fails 0
 proc step {name ok} { global lf fails expect_out; puts $lf "[clock format [clock seconds] -format %Y-%m-%dT%H:%M:%SZ -gmt 1] [expr {$ok ? "PASS" : "FAIL"}] $name"; if {!$ok} { incr fails; catch { set b $expect_out(buffer); regsub -all {\x1b\[[0-9;?]*[A-Za-z]} $b "" b; puts $lf "  screen: [string range $b end-900 end]" } }; flush $lf }
-proc repaint {} { global spawn_out; catch {exec stty cols 132 < $spawn_out(slave,name)}; sleep 0.3; catch {exec stty cols 133 < $spawn_out(slave,name)}; sleep 0.5 }
+# repaint forces a full redraw by nudging the width, so a caller's `expect` has
+# the whole screen to match against rather than whatever the tape last touched.
+#
+# IT DRAINS FIRST. Everything already buffered is tape from before this step, and
+# leaving it there is what pushes the redraw past match_max. Draining means the
+# redraw arrives into an empty buffer, so the target is the freshest thing in it
+# rather than the oldest.
+# DO NOT DRAIN HERE, and this cost three attempts to establish.
+#
+# Draining before an expect throws away THE KEY'S OWN REDRAW — which is the only
+# redraw that reliably arrives. The stty width-nudge below does not dependably
+# produce a replacement in this environment, so a drained step has nothing left
+# to match and burns its whole timeout.
+#
+# The log says it exactly: "right moves to Watches" FAILED and "the Disasters
+# tab" PASSED in the SAME SECOND, and the difference between them is that three
+# Right keypresses were sent immediately before Disasters. Patterns match when a
+# KEY caused a redraw, not when repaint did. Draining is what made that visible —
+# while `drain` was accidentally a no-op the key's redraw survived and more steps
+# passed, which is why "fixing" it made the journey worse.
+#
+# The proc is kept, unused, because the reasoning above is worth more than the
+# four lines and someone will otherwise re-add it.
+proc drain {} {
+	while {1} {
+		set got 0
+		expect -timeout 0 -re "(?s).+" { set got 1 } timeout { }
+		if {!$got} break
+	}
+}
+
+# repaint gives the next expect a CLEAN, COMPLETE screen to match against.
+#
+# THE ORDER IS THE WHOLE THING. Draining first — the previous version — cleared
+# the app's own redraw and then depended on the stty redraw surviving a second of
+# marquee on top of it. Draining BETWEEN the two width changes means the final
+# redraw lands in an empty buffer and is the only thing there.
+#
+# Why this matters more than it sounds: expect scans FORWARD. Two assertions
+# after one repaint make the second search the remains of the first, so a pattern
+# earlier on the same line can never be found again. That produced a log where
+# "Emergency" timed out and "Disasters" — the same rendered row — passed
+# instantly (2026-09-06). Every assertion gets its own repaint now.
+# seeAfter asserts that the app REACHES a state, not that one particular redraw
+# carried it. It sends the key, looks, and on a miss forces a redraw and looks
+# again, up to a few times.
+#
+# EVERY SHORT STEP GOES THROUGH IT, and that is deliberate. It was introduced for
+# the four severe-window steps that were failing at the time, and the steps left
+# on a single look kept flapping — one run green, the next failing on "Lookup
+# opens Details", the next on "the watchlist names the location". Fixing the
+# instances in front of me instead of the class is what made that take three
+# rounds to see.
+#
+# TWO STEPS STAY SINGLE-LOOK ON PURPOSE: first data (180 s) and Details filling
+# (120 s). Those are generous FAILURE bounds on a genuine network wait, and their
+# targets persist once drawn rather than flashing past, so retrying buys nothing.
+#
+# WHAT IT COSTS, said plainly: a step that is merely SLOW now passes quietly
+# instead of flapping visibly, so the journey no longer warns that something is
+# degrading before it breaks. Logging the attempt count per step would restore
+# that signal and is the obvious next move if this ever matters.
+#
+# WHY A RETRY IS HONEST HERE. The failing runs were not the app misbehaving: the
+# severe window was demonstrably open — later steps in the very same run matched
+# its tab row, read an event and closed it — while `w opens the severe window`
+# burned its whole timeout. A minimal reproduction (spawn, w, expect) passes
+# every time; the full journey fails at the same point with a screen showing the
+# dashboard mid-seed of FIFTY locations. The app is busy, the redraw carrying the
+# pattern is late or coalesced away, and a single look misses it.
+#
+# It cannot hide a real failure: if the window never opens, every attempt misses
+# and the step still fails. What it removes is the dependence on WHICH redraw
+# happens to arrive first.
+# THE PER-ATTEMPT BOUND IS A PARAMETER, because 5 s is the right answer for one
+# kind of wait and the wrong answer for another. A step racing a redraw needs
+# only long enough for the next frame; a step that must RESOLVE something over
+# the network first needs as long as the network takes. Giving both the same
+# bound is what made "Lookup opens Details on Vista" fail after it had already
+# been converted — the retry was there, and 4x5 s still was not enough to cover a
+# lookup.
+#
+# It costs nothing when the state is reached: expect returns the instant the
+# pattern arrives, so the bound only governs how long a genuine failure takes to
+# report.
+proc seeAfter {key pat name {secs 5}} {
+	global spawn_out
+	if {$key ne ""} { send $key }
+	for {set i 0} {$i < 4} {incr i} {
+		repaint
+		expect -timeout $secs -re $pat { step $name 1; return } timeout { }
+	}
+	step $name 0
+}
+
+# tabTo LANDS ON A TAB INSTEAD OF ASSUMING WHERE IT STARTED.
+#
+# The window's opening tab is not fixed: severeOpeningTab() returns
+# lastBreakingTab whenever a breaking event landed inside severeBreakingWindow
+# (modes/tty/severe.go:166), so against live feeds it can open on any category —
+# and the arrows WRAP ((tab+n-1)%n, :218/:220), so there is no end to clamp
+# against either. The old script sent a fixed number of Rights from an assumed
+# Warnings and named the tab it expected to arrive at. That was correct only when
+# nothing had broken in the last few minutes, and the error was invisible because
+# every pattern it checked was also drawn by the marquee.
+#
+# Pressing Right until the wanted tab is SELECTED lands on the same tab wherever
+# it started, and still fails if the tab cannot be reached — which is what a
+# broken tab row actually looks like. At most one press per tab, so a window that
+# is not open runs out of presses rather than spinning.
+proc tabTo {label name} {
+	for {set i 0} {$i < 8} {incr i} {
+		repaint
+		expect -timeout 3 -re "› *$label" { step $name 1; return } timeout { }
+		send "\x1b\[C"
+	}
+	step $name 0
+}
+
+proc repaint {} {
+	global spawn_out
+	catch {exec stty cols 132 < $spawn_out(slave,name)}
+	sleep 0.3
+	catch {exec stty cols 133 < $spawn_out(slave,name)}
+	sleep 0.5
+}
+
 spawn ./dist/watchpost
 catch {exec stty rows 44 cols 133 < $spawn_out(slave,name)}
-expect -timeout 30 -re "Setup|Quit|Q u i t" { step "P0 the masthead's controls on a first run" 1 } timeout { step "P0 the masthead's controls on a first run" 0 }
+seeAfter "" "Setup|Quit|Q u i t" "P0 the masthead's controls on a first run"
 # Setup opens by itself on a first run: a location, the key (empty), the preference.
-expect -timeout 15 -re "default location|NASA FIRMS" { step "P0 Setup opens on the first run" 1 } timeout { step "P0 Setup opens on the first run" 0 }
+seeAfter "" "default location|NASA FIRMS" "P0 Setup opens on the first run"
 sleep 1
 send "Oceanside"; sleep 2
 send "\r"; sleep 1
-send "\r"; sleep 1
-send "\r"; sleep 2
+# ESC SAVES AND CLOSES. Three blind enters used to stand in for this, and they
+# do not close the window — enter ADVANCES from a picker row, and 0.14.0 gave
+# Settings four more groups to advance through. The window stayed open for the
+# rest of the journey and every later key typed into it, which is why `w` never
+# opened the severe window: the screen at that failure was the Settings form,
+# showing "Show Units in" and "Radio Convention".
+send "\x1b"; sleep 2
 repaint
-expect -timeout 10 -re "Lookup Location" { step "P0 Setup saved and closed" 1 } timeout { step "P0 Setup saved and closed" 0 }
-expect -timeout 180 -re "\\d+ºF" { step "P0 first data (a temperature) for the default location" 1 } timeout { step "P0 first data (a temperature) for the default location" 0 }
+# THIS STEP CANNOT PROVE THE WINDOW IS GONE, AND THE CLAIM THAT IT COULD WAS
+# WRONG TWICE. The first version matched "Lookup Location"; this one matched the
+# locations table, on the reasoning that "the locations table is under the
+# window; if it is readable, the window is gone". It is not. Settings is a
+# CENTRED OVERLAY on a 133-column frame: the dashboard's recent table and its
+# "Showing 1-19 of 50 locations" line render BESIDE it, and the failing screen of
+# 2026-09-06 shows both at once — the Radio Convention question and the location
+# list, in one frame.
+#
+# There is no positive marker for "no modal is open", because the modal covers
+# nothing that is unique to the frame behind it. An absence check is not
+# available either: this harness cannot force a dependable redraw (see repaint),
+# so "the pattern did not arrive" and "the pattern is not on screen" are the same
+# observation.
+#
+# SO THE PRECONDITION IS ENFORCED WHERE IT BITES INSTEAD. Every step after this
+# one now asserts on something ONLY its own window draws, so Settings left open
+# fails the next step honestly rather than three steps later as a mystery. This
+# step is kept because reaching the dashboard at all is worth logging; it is not
+# evidence that the modal closed.
+seeAfter "" "Showing 1-|R E C E N T" "P0 Setup saved and closed"
+expect -timeout 180 -re "\\d+°F" { step "P0 first data (a temperature) for the default location" 1 } timeout { step "P0 first data (a temperature) for the default location" 0 }
 repaint
-expect -timeout 10 "Oceanside" { step "P0 the watchlist names the location" 1 } timeout { step "P0 the watchlist names the location" 0 }
-send "w"; repaint
-expect -timeout 15 "SEVERE" { step "P0 w opens the severe window" 1 } timeout { step "P0 w opens the severe window" 0 }
-expect -timeout 10 -re "Warnings|Watches" { step "P0 the tab row" 1 } timeout { step "P0 the tab row" 0 }
-send "\x1b\[C"; repaint
-expect -timeout 10 -re "Watches" { step "P1 right moves to Watches" 1 } timeout { step "P1 right moves to Watches" 0 }
-send "\x1b\[C"; send "\x1b\[C"; send "\x1b\[C"; repaint
-expect -timeout 10 -re "Sig. Quakes|Quakes" { step "P1 the Sig. Quakes tab" 1 } timeout { step "P1 the Sig. Quakes tab" 0 }
-send "\r"; repaint
-expect -timeout 10 -re "Back|Recorded|Declared|Magnitude|No active" { step "P1 enter opens a record (or the tab is empty)" 1 } timeout { step "P1 enter opens a record (or the tab is empty)" 0 }
-send "\x1b"; sleep 1; send "\x1b\[D"; send "\x1b\[D"; send "\x1b\[D"; send "\x1b\[D"; repaint
-send " "; repaint
-expect -timeout 20 -re "EVENT · |PLAYING|Reading" { step "P1 space reads the focused event over the radio (the panel shows EVENT ·)" 1 } timeout { step "P1 space reads the focused event over the radio (the panel shows EVENT ·)" 0 }
+seeAfter "" "Oceanside" "P0 the watchlist names the location"
+# EVERY PATTERN HERE USED TO BE ONE THE DASHBOARD ALSO DRAWS, so none of these
+# steps could fail. The ticker band names its lane in words (0.14.0), and those
+# words are the category labels: platform/category/category.go gives
+# BandLabel "Emergency Orders" (:83), "Warnings" (:85), "Watches" (:87) and
+# "Disasters" (:92). The marquee is on screen always. So "w opens the severe
+# window" passed against the tape whether or not the window opened, and the same
+# for the tab row and both tab moves.
+#
+# The proof is in the code, not in a failing screen: `step` logs the TAIL OF
+# expect_out(buffer), which is not a frame — and when the app emits nothing
+# during an attempt, expect leaves the previous contents in place, so a dump can
+# be a minute stale. A 2026-09-06 dump timed at 20:02 carried the FIRST-RUN Setup
+# form, closed at 20:01. Read as a screenshot it says the modal was open; it says
+# no such thing. The band labels above are the evidence, and they are a grep.
+#
+# THE ANCHORS ARE NOW WINDOW-ONLY. "Total Category Events" is drawn by
+# modes/tty/severe.go:391 on EVERY tab, populated or empty (severeEmptyLines
+# takes the same total line), and by nothing else in the app. The open tab wears
+# the pointer glyph immediately before its label — "[ › Warnings ]", "[›Warnings]"
+# or "[›Warn]" as the width narrows (severeTabRow) — so "› *Warn" proves both
+# that the window is open AND which tab is selected, in every form, without
+# depending on the bracket spacing.
+seeAfter "w" "Total Category Events" "P0 w opens the severe window"
+tabTo "Warn" "P0 the tab row"
+tabTo "Watch" "P1 right moves to Watches"
+tabTo "Disast" "P1 the Disasters tab"
+seeAfter "\r" "Back|Recorded|Declared|Magnitude|No active" "P1 enter opens a record (or the tab is empty)"
+# ESC BACKS OUT OF A RECORD — OR CLOSES THE WINDOW IF NONE WAS OPEN, and the
+# step above tolerates an empty tab ("No active"), so which of those happened is
+# not knowable from it. Left unasserted, the next keys landed on the DASHBOARD:
+# space did nothing, and the read step failed with a screen showing only the
+# marquee. The precondition is now a step of its own, so a closed window says so
+# instead of surfacing two steps later as a mystery.
+send "\x1b"; sleep 1
+seeAfter "" "Total Category Events" "P1 esc backs out of the record and the window stays open"
+tabTo "Warn" "P1 back on Warnings for the read"
+# WHAT THIS STEP STILL DEPENDS ON, SAID RATHER THAN LEFT TO BE REDISCOVERED: the
+# tab it reads from must HAVE a focused event. Nothing here establishes that —
+# the record step above tolerates an empty tab on purpose, so an empty Warnings
+# makes this fail as a data condition rather than a defect. Establishing it needs
+# an assertion about what is NOT on screen ("No active warnings events"), and
+# this harness has no honest absence check: it cannot force a dependable redraw,
+# so "the pattern did not arrive" and "the pattern is not there" are one
+# observation. Carried as a follow-up rather than papered over with a tolerance,
+# because a tolerance here would put this step back in the class the rest of this
+# block was just taken out of.
+seeAfter " " "EVENT · |PLAYING|Reading" "P1 space reads the focused event over the radio (the panel shows EVENT ·)"
 send "\x1b"; sleep 1; send "\x1b"; repaint
-expect -timeout 10 "R E C E N T" { step "P0 esc esc closes the window" 1 } timeout { step "P0 esc esc closes the window" 0 }
+seeAfter "" "R E C E N T" "P0 esc esc closes the window"
 send "l"; sleep 1
-expect -timeout 10 "Search:" { step "P0 l opens Lookup" 1 } timeout { step "P0 l opens Lookup" 0 }
-send "Vista, CA"; sleep 2; send "\r"; repaint
-expect -timeout 20 "Vista" { step "P0 Lookup opens Details on Vista from the first frame" 1 } timeout { step "P0 Lookup opens Details on Vista from the first frame" 0 }
+seeAfter "" "Search:" "P0 l opens Lookup"
+send "Vista, CA"; sleep 2; send "\r"
+# THROUGH seeAfter, LIKE THE OTHER LIVE-DATA STEPS. This waited once for the
+# label and burned its timeout on 2026-09-06 while the very NEXT step — Details
+# filling with data — passed, which proves the window had opened and only the
+# transient frame carrying the name was missed. The lookup also has to RESOLVE
+# first, so how long it takes is the network's business, not the app's.
+seeAfter "" "Vista" "P0 Lookup opens Details on Vista from the first frame" 25
 expect -timeout 120 -re "Hourly|HOURLY|Extended|EXTENDED|Marine|FIRE" { step "P1 Details fills with data" 1 } timeout { step "P1 Details fills with data" 0 }
 send "\x1b"; sleep 1; repaint
 send "A"; repaint
-expect -timeout 10 -re "ALERT|ALERTS|No active alerts" { step "P1 A opens the alert modal" 1 } timeout { step "P1 A opens the alert modal" 0 }
+seeAfter "" "ALERT|ALERTS|No active alerts" "P1 A opens the alert modal"
 send "\x1b"; sleep 1
 send "t"; repaint
-expect -timeout 10 "Color Theme" { step "P1 t opens the theme chooser" 1 } timeout { step "P1 t opens the theme chooser" 0 }
+seeAfter "" "Theme -" "P1 t opens Settings at the theme row"
 send "\x1b\[B"; sleep 0.5; send "\r"; sleep 0.5; send "\x1b"; repaint
-expect -timeout 10 -re "Setup|Theme" { step "P1 Watchpost Light applies live (the frame re-renders)" 1 } timeout { step "P1 Watchpost Light applies live (the frame re-renders)" 0 }
+seeAfter "" "Setup|Theme" "P1 Watchpost Light applies live (the frame re-renders)"
 
 send "S"; repaint
-expect -timeout 10 -re "API Status|PROVIDERS|DUMPS|REQUESTS" { step "P1 S opens Status" 1 } timeout { step "P1 S opens Status" 0 }
-expect -timeout 10 -re "severe index|rows / 500" { step "P1 Status gauges the severe index" 1 } timeout { step "P1 Status gauges the severe index" 0 }
+seeAfter "" "PROVIDERS|REQUESTS" "P1 S opens Status"
+seeAfter "" "SEVERE INDEX" "P1 Status gauges the severe index"
 
-send "\x1b"; sleep 1; send "?"; repaint
-expect -timeout 10 -re "NAVIGATE" { step "P1 ? opens Help" 1 } timeout { step "P1 ? opens Help" 0 }
+# --- 0.14.0: assign a correspondent, and confirm it sticks ---
+#
+# THE KEYPRESS COUNT IS NOT MEASURED HERE ANY MORE. It cannot be: this script
+# counted its own `send` calls and asserted 11 <= 11 — arithmetic, incapable of
+# failing — and when it was rewritten to stop the moment the window closed it
+# read a late redraw as "closed" and reported 2, then 3. An app-level probe
+# settled it: Settings is demonstrably still open after seven keys.
+#
+# M2 is measured in modes/tty:TestM2TheKeypressesToAssignACorrespondent, which
+# drives the same Update loop and cannot be fooled by redraw timing. It reports
+# SIX. What this journey is for is the other half — that the path works against
+# the real binary, with real feeds, from a fresh HOME.
+#
+# ESC IS THE SAVE. A picker cycles with the arrows and commits nothing; the
+# window has two exits and both write (setup.go: "no group can be saved by one
+# route and dropped by the other").
+send "\x1b"; sleep 1
+send "V"; repaint
+seeAfter "" "CORRESPONDENTS" "P1 V opens Settings at the correspondents"
+seeAfter "" "Alerts / Takeovers" "P1 the correspondents group offers the Alerts role"
+send "\x1b\[B"; sleep 0.4
+send " "; sleep 0.4
+send "\x1b\[B"; sleep 0.4
+send "\x1b\[C"; sleep 0.4
+send "\x1b"; sleep 1.5
+repaint
+# THE ROUND TRIP, WHICH IS WHAT A PTY CAN HONESTLY CHECK. esc has closed and
+# written; re-opening shows the group is still reachable and still renders.
+#
+# PERSISTENCE IS NOT ASSERTED HERE, and the previous version pretended to: it
+# waited for a "CAST" block in the [S] window, and status.go draws ISSUES, API
+# STATUS, PIPELINES and DUMPS — there is no CAST block. It passed the label
+# guard only because "CAST" occurs inside "NOTABLE EVENTS AND FORECASTS".
+#
+# That the assignment actually PERSISTS is proven deterministically by
+# modes/tty:TestM2TheKeypressesToAssignACorrespondent, which runs the write the
+# close composes and inspects what SetCast received.
+send "V"; repaint
+seeAfter "" "Alerts / Takeovers" "P1 the correspondents group survives the round trip"
+send "\x1b"; sleep 1; repaint
+send "?"; repaint
+seeAfter "" "NAVIGATE" "P1 ? opens Help"
 send "\x1b"; sleep 1; send "t"; repaint; send "\x1b\[A"; sleep 0.5; send "\r"; sleep 1
 send "\x1b"; sleep 0.5; send "\x1b"; sleep 0.5; send "q"
 expect -timeout 20 eof { step "P0 q quits cleanly" 1 } timeout { step "P0 q quits cleanly" 0 }

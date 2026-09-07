@@ -30,6 +30,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -195,8 +196,29 @@ func SameOriginRedirect(req *http.Request, via []*http.Request) error {
 		return fmt.Errorf("%w: more than %d hops", errRedirectRefused, maxRedirectHops)
 	}
 	first := via[0].URL
-	if req.URL.Scheme != first.Scheme || req.URL.Hostname() != first.Hostname() {
-		return fmt.Errorf("%w from %s to %s://%s: only same-origin redirects are followed", errRedirectRefused, RedactURL(first.String()), req.URL.Scheme, req.URL.Hostname())
+	if req.URL.Scheme != first.Scheme || !sameOrigin(req.URL, first) {
+		return fmt.Errorf("%w from %s to %s://%s: only same-origin redirects are followed", errRedirectRefused, RedactURL(first.String()), req.URL.Scheme, req.URL.Host)
 	}
 	return nil
+}
+
+// sameOrigin reports whether two URLs address the same host AND the same port.
+//
+// THE PORT IS PART OF THE ORIGIN. Comparing hostnames alone lets a redirect
+// move to a different service on the same machine — another daemon, or one a
+// hostile DNS answer put there — carrying the path of a keyed URL with it. A
+// port left implicit is the scheme's default, so https://h and https://h:443
+// are one origin and a provider that spells the default out is not refused.
+func sameOrigin(a, b *url.URL) bool {
+	return a.Hostname() == b.Hostname() && originPort(a) == originPort(b)
+}
+
+func originPort(u *url.URL) string {
+	if p := u.Port(); p != "" {
+		return p
+	}
+	if u.Scheme == "http" {
+		return "80"
+	}
+	return "443"
 }

@@ -105,7 +105,7 @@ func BenchmarkWrapSGR(b *testing.B) {
 	colourOn(b)
 	b.ReportAllocs()
 	for b.Loop() {
-		_ = rendering.WrapSGR("  72ºF", "208")
+		_ = rendering.WrapSGR("  72°F", "208")
 	}
 }
 

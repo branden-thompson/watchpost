@@ -8,6 +8,7 @@ package tty
 
 import (
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/category"
 	"strings"
 	"time"
 
@@ -18,16 +19,22 @@ import (
 )
 
 // SevereTab is the window's category, in the app's importance order.
-type SevereTab int
+type SevereTab = category.Category
 
+// The window's tab names are the registry's categories. NOT a second ordering:
+// these are aliases, so the two cannot drift — which they could when this was
+// an enum of its own that had to agree with the domain's position by position
+// (F-21).
 const (
-	SevereWarnings SevereTab = iota
-	SevereWatches
-	SevereAdvisories
-	SevereStatements
-	SevereQuakes
-	SevereTropical
-	severeNumTabs
+	SevereEmergency  = category.Emergency
+	SevereWarnings   = category.Warnings
+	SevereWatches    = category.Watches
+	SevereAdvisories = category.Advisories
+	SevereStatements = category.Statements
+	SevereDisasters  = category.Disasters
+	SevereMarine     = category.Marine
+	SevereForecasts  = category.Forecasts
+	severeNumTabs    = category.Count
 )
 
 // SevereMaxRows mirrors the domain's cap for the [S] gauge (the app asserts
@@ -52,7 +59,13 @@ type SevereMsg struct {
 
 // SevereReadingMsg says which event the radio is reading ([space] in the
 // window, UAT option B): the ▶ rides that row; Key "" when the read ends.
-type SevereReadingMsg struct{ Key string }
+type SevereReadingMsg struct {
+	Key string
+	// Paused is a LISTENER'S hold, not a gap in the audio (MVS-D-74). The row
+	// keeps its mark either way — a paused read is still the row's read — so
+	// this is what tells the two apart on screen.
+	Paused bool
+}
 
 // SevereSource is one feed's health as the window states it ("NWS unavailable").
 type SevereSource struct {
@@ -67,7 +80,7 @@ type SevereRow struct {
 	Tab       SevereTab
 	Product   string // "Tornado Warning" · "Tropical Storm Dolly"
 	Location  string
-	Detection string // how the event was established: "Radar Indicated", "Observed", "Reviewed"; "" when not discernible (UAT 2026-08-28)
+	Detection string // how the event was established: "Radar Indicated", "Observed", "Reviewed"; "" when not discernible
 	Declared  string // "08/28 08:45 CDT"
 	Expires   string // "" when none
 	Severity  TickerSeverity
@@ -80,24 +93,15 @@ type SevereRecord struct {
 	Paras                     []string
 }
 
-// severeTab is one registry row: adding a category is adding a row here plus
-// its classification in the domain.
-type severeTab struct {
-	Label, Short  string
-	Tone          render.Token
-	WatchlistHint bool // Advisories / Statements come from the tracked locations only (SAM-D-10)
-}
-
-// severeTabs is the registry (a function, not a global — P10-06).
-func severeTabs() []severeTab {
-	return []severeTab{
-		{"Warnings", "Warn", render.EventCatOrangeBG, false},
-		{"Watches", "Watch", render.EventCatWatchBG, false},
-		{"Advisories", "Advis", render.EventCatYellowBG, true},
-		{"Spec. Statements", "Stmts", render.EventCatStmtBG, true},
-		{"Sig. Quakes", "Quakes", render.EventCatRedBG, false},
-		{"Tropical", "Tropical", render.EventCatBlueBG, false},
+// severeTabs is the window's view of the registry, in tab order. The rows are
+// the registry's own (platform/category) — adding a category is adding it
+// there, and nothing here.
+func severeTabs() []category.Spec {
+	out := make([]category.Spec, 0, category.Count)
+	for _, c := range category.All() {
+		out = append(out, category.Of(c))
 	}
+	return out
 }
 
 // --- state ---
@@ -162,19 +166,6 @@ func (d Dashboard) severeRowAt(i int) *SevereRow {
 func (d Dashboard) severeOpeningTab() SevereTab {
 	if !d.lastBreaking.IsZero() && d.now().Sub(d.lastBreaking) <= severeBreakingWindow {
 		return d.lastBreakingTab
-	}
-	return SevereWarnings
-}
-
-// severeTabOf maps a ticker lane onto the window's category.
-func severeTabOf(it TickerItem) SevereTab {
-	switch it.Category {
-	case CatQuake:
-		return SevereQuakes
-	case CatTropical:
-		return SevereTropical
-	case CatWatch:
-		return SevereWatches
 	}
 	return SevereWarnings
 }
@@ -245,8 +236,11 @@ func hz(o render.Opts) string {
 // severeArrows are the chip labels per --ascii: the words, not the
 
 // severeWindowName is the title; in the record it keeps the name and adds the
-// crumb (plan §5.6 M-6): "SEVERE WEATHER / DISASTER EVENTS ─── Warnings · 2 / 9".
-const severeWindowName = "SEVERE WEATHER / DISASTER EVENTS"
+// crumb (plan §5.6 M-6): "NOTABLE EVENTS AND FORECASTS ─── Warnings · 2 / 9".
+// severeWindowName covers weather, non-weather hazards (a landslide is not
+// weather) and now products that are not warnings at all — a forecast or an
+// outlook is notable without being bad news (MVS-D-59).
+const severeWindowName = "NOTABLE EVENTS AND FORECASTS"
 
 // severeTitleChrome is what the panel spends around a title with a
 // right-aligned stamp: the corner + rule + space before, the space + rule +
@@ -260,10 +254,10 @@ func (d Dashboard) severeTitle(o render.Opts, w int) string {
 	title := severeWindowName
 	stamp := "Awaiting first fetch"
 	if !d.severe.Updated.IsZero() {
-		stamp = "Updated " + d.severe.Updated.Local().Format("01/02/2006 15:04:05 MST")
+		stamp = "Updated " + o.Clock.Stamp(d.severe.Updated.Local())
 	}
 	if d.severeDetail {
-		stamp = fmt.Sprintf("%s · %d / %d", severeTabs()[d.severeTab].Label, d.severeRow+1, d.severeCount())
+		stamp = fmt.Sprintf("%s · %d / %d", severeTabs()[d.severeTab].TabLabel, d.severeRow+1, d.severeCount())
 	}
 	fill := w - severeTitleChrome - render.Width(title) - render.Width(stamp)
 	if fill <= 1 {
@@ -275,7 +269,7 @@ func (d Dashboard) severeTitle(o render.Opts, w int) string {
 // severeModal renders the window: the browse table or the focused record,
 // on the open category's tint mixed onto the modal substrate.
 func (d Dashboard) severeModal(o render.Opts) string {
-	fg, bg := render.CategoryTone(severeTabs()[d.severeTab].Tone, d.darkBG)
+	fg, bg := render.CategoryTone(severeTabs()[d.severeTab].Tint, d.darkBG)
 	w := min(o.Width, d.modalWidth())
 	title := d.severeTitle(o, w)
 	if d.severeDetail {
@@ -293,21 +287,21 @@ func (d Dashboard) severeTabRow(o render.Opts, inner int) string {
 	forms := []func(i int) string{
 		func(i int) string {
 			if SevereTab(i) == d.severeTab {
-				return "[ " + ptr + " " + tabs[i].Label + " ]"
+				return "[ " + ptr + " " + tabs[i].TabLabel + " ]"
 			}
-			return "[ " + tabs[i].Label + " ]"
+			return "[ " + tabs[i].TabLabel + " ]"
 		},
 		func(i int) string {
 			if SevereTab(i) == d.severeTab {
-				return "[" + ptr + tabs[i].Label + "]"
+				return "[" + ptr + tabs[i].TabLabel + "]"
 			}
-			return "[" + tabs[i].Label + "]"
+			return "[" + tabs[i].TabLabel + "]"
 		},
 		func(i int) string {
 			if SevereTab(i) == d.severeTab {
-				return "[" + ptr + tabs[i].Short + "]"
+				return "[" + ptr + tabs[i].TabShort + "]"
 			}
-			return "[" + tabs[i].Short + "]"
+			return "[" + tabs[i].TabShort + "]"
 		},
 	}
 	plain := func(f func(int) string) []string {
@@ -326,7 +320,7 @@ func (d Dashboard) severeTabRow(o render.Opts, inner int) string {
 	}
 	for i := range cells {
 		if SevereTab(i) == d.severeTab { // the open tab wears its category's UNMIXED tint under bold white (FR-2, round-2 Y4)
-			cells[i] = render.TintRaw(cells[i], "1;"+render.Tok(render.AlertModalText)+";"+render.Tok(tabs[i].Tone))
+			cells[i] = render.TintRaw(cells[i], "1;"+render.Tok(render.AlertModalText)+";"+render.Tok(tabs[i].Tint))
 		}
 	}
 	return strings.Join(cells, " ")
@@ -357,12 +351,24 @@ func (d Dashboard) severeChips(o render.Opts, hasRows bool, width int) string {
 	// Each form is built only when the wider one did not fit (the window's
 	// frame budget); the floor — the 80-col --ascii chips, round 4 B-03 —
 	// leaves the arrows unlabelled.
+	// A STATE-DRIVEN LABEL, the same as the radio panel's (UAT 37,
+	// radio_panel.go): the chip says what the key will DO next rather than
+	// naming both halves. A paused read reads "Play", because that is the press
+	// that resumes it.
+	//
+	// It also keeps the row inside the 80-column ASCII floor, which the earlier
+	// constant "Play/Pause" did not — six columns wider than the "Read" it
+	// replaced was enough to push the floor over the content width.
+	read := "Play"
+	if d.severeReading != "" && !d.severeReadPause {
+		read = "Pause"
+	}
 	for _, f := range [][3]string{{"Navigate", "Category", "Event Details"}, {"Navigate", "Category", "Details"}, {"Rows", "Tabs", "Details"}} {
-		if row := "  " + o.KeyCap(ud) + " " + f[0] + "  " + o.KeyCap(lr) + " " + f[1] + "  " + o.KeyCapIf("enter", hasRows) + " " + f[2] + "  " + o.KeyCapIf("space", canRead) + " Read  " + o.KeyCap("esc") + " Close"; render.Width(row) <= width {
+		if row := "  " + o.KeyCap(ud) + " " + f[0] + "  " + o.KeyCap(lr) + " " + f[1] + "  " + o.KeyCapIf("enter", hasRows) + " " + f[2] + "  " + o.KeyCapIf("space", canRead) + " " + read + "  " + o.KeyCap("esc") + " Close"; render.Width(row) <= width {
 			return row
 		}
 	}
-	return "  " + o.KeyCap(ud) + " " + o.KeyCap(lr) + "  " + o.KeyCapIf("enter", hasRows) + " Open  " + o.KeyCapIf("space", canRead) + " Read  " + o.KeyCap("esc") + " Close"
+	return "  " + o.KeyCap(ud) + " " + o.KeyCap(lr) + "  " + o.KeyCapIf("enter", hasRows) + " Open  " + o.KeyCapIf("space", canRead) + " " + read + "  " + o.KeyCap("esc") + " Close"
 }
 
 // severeBrowseLines is the browse body for a panel w wide (the mock, width-
@@ -375,21 +381,27 @@ func (d Dashboard) severeBrowseLines(o render.Opts, w int) []string {
 	inner := w - 7 // the rail budget: chrome (4) + rail col + gap
 	tab := severeTabs()[d.severeTab]
 	n := d.severeCount()
-	totalLine := fmt.Sprintf("%d Total Category Events", d.severe.Totals[d.severeTab])
-	totalLine = render.PadTo("", inner-len(totalLine)) + totalLine
+	// ONE STATEMENT OF THE COUNT, not two. "Advisories — 14 active" sat above
+	// "14 Total Category Events" and the two were the same number: the heading
+	// only differed when the tab was capped, which needs more than five hundred
+	// rows in one category (HUM LEAD, UAT 2026-09-01). So the total line carries
+	// everything the heading did — the cap when there is one, and any dead
+	// source — and the heading is gone.
+	total := d.severe.Totals[d.severeTab]
+	totalText := fmt.Sprintf("%d Total Category Events", total)
+	if n > 0 && total > n {
+		totalText = fmt.Sprintf("Showing %d of %d Total Category Events", n, total)
+	}
+	totalText += d.severeDownSources()
+	totalLine := render.PadTo("", inner-len(totalText)) + totalText
 	if n == 0 {
 		return d.severeEmptyLines(o, w, inner, tab, totalLine)
 	}
-	cat := fmt.Sprintf("  %s %s %d active", tab.Label, o.Glyphs().Dash, n)
-	if total := d.severe.Totals[d.severeTab]; total > n {
-		cat += fmt.Sprintf(" %s showing %d of %d", o.Glyphs().Dot, n, total)
-	}
-	head := []string{"", "  " + d.severeTabRow(o, inner), "", cat + d.severeDownSources()}
+	head := []string{"", "  " + d.severeTabRow(o, inner), ""}
 	foot := []string{totalLine, "", d.severeChips(o, true, w-4)}
 	budget := d.modalMax()
 	if budget < len(head)+len(foot)+2 { // a short terminal: the blanks go first, then the total line
 		head, foot = head[1:2:2], foot[0:1:1]
-		head = append(head, cat+d.severeDownSources())
 		foot = append(foot, d.severeChips(o, true, w-4))
 		if budget < len(head)+len(foot)+2 {
 			foot = foot[1:]
@@ -408,10 +420,10 @@ func (d Dashboard) severeBrowseLines(o render.Opts, w int) []string {
 		r := d.severeRowAt(i)
 		cells = append(cells, render.SevereCell{
 			Num: i + 1, Event: render.PlainLine(r.Product), Location: render.PlainLine(r.Location), Detection: render.PlainLine(r.Detection), Declared: render.PlainLine(r.Declared), Expires: render.PlainLine(r.Expires),
-			Focused: i == d.severeRow, Playing: d.severePlaying(r.Key),
+			Focused: i == d.severeRow, Playing: d.severePlaying(r.Key), Paused: d.severeReadPause && d.severeReading == r.Key,
 		})
 	}
-	table := o.SevereTable(cells, inner, tab.Tone)
+	table := o.SevereTable(cells, inner, tab.Tint)
 	if n > window { // more rows than the window: the rail
 		table = severeRailed(o, table, inner, lo, n, window)
 	}
@@ -421,15 +433,35 @@ func (d Dashboard) severeBrowseLines(o render.Opts, w int) []string {
 // severeEmptyLines is the empty-state body: the category line with any dead
 // source, the stamp, the watchlist hint only when there is no watchlist to
 // track (FR-14), the total and the chips with [enter] muted.
-func (d Dashboard) severeEmptyLines(o render.Opts, w, inner int, tab severeTab, totalLine string) []string {
-	lines := []string{"", "  " + d.severeTabRow(o, inner), "", "  " + tab.Label + " — no active events" + d.severeDownSources(), ""}
+func (d Dashboard) severeEmptyLines(o render.Opts, w, inner int, tab category.Spec, totalLine string) []string {
+	// NO CATEGORY LINE WHEN THE TAB IS EMPTY. It read "Forecasts — no active
+	// events" directly above "No active forecasts events" and "0 Total Category
+	// Events" — three ways of saying nothing is here. The heading would earn its
+	// place if it introduced sub-groups, and it does not (HUM LEAD, UAT
+	// 2026-09-01). The dead-source note it carried moves to the stamp, which is
+	// the other line about how current the tab is.
+	lines := []string{"", "  " + d.severeTabRow(o, inner), ""}
 	stamp := "no fetch yet"
 	if !d.severe.Updated.IsZero() {
-		stamp = "Updated " + d.severe.Updated.Local().Format("01/02 15:04 MST")
+		stamp = "Updated " + o.Clock.DateTimeZone(d.severe.Updated.Local())
 	}
-	lines = append(lines, "  No active "+strings.ToLower(tab.Label)+" events · "+stamp)
-	if tab.WatchlistHint && d.numPriority() == 0 {
-		lines = append(lines, "  (tracks your watchlist — add locations with ctrl+a)")
+	lines = append(lines, "  No active "+strings.ToLower(tab.TabLabel)+" events · "+stamp)
+	// A WATCHLIST TAB SAYS WHY IT IS EMPTY IN BOTH CASES.
+	//
+	// This only spoke when the watchlist was EMPTY, which is the case where a
+	// listener already knows why nothing is there. With locations set — the case
+	// where the tab looks like a national view that has missed something — it
+	// said nothing at all. Found at UAT 2026-09-06: a Special Weather Statement
+	// for Alabama, seen in another app, absent here, and no way to tell from
+	// this screen that the tab never looks past your own zones. The national
+	// feed carries nine products and no statements (SAM-D-10), so Warnings is
+	// nationwide and this tab is not — an asymmetry only this line can explain.
+	if tab.Watchlist {
+		if d.numPriority() == 0 {
+			lines = append(lines, "  (tracks your watchlist — add locations with ctrl+a)")
+		} else {
+			lines = append(lines, "  (your watchlist locations only — these are not in the national feed)")
+		}
 	}
 	return append(lines, "", totalLine, "", d.severeChips(o, false, w-4))
 }
@@ -461,7 +493,7 @@ func (d Dashboard) severePlaying(key string) bool {
 }
 
 // readFocusedEvent is [space] inside the window: the focused event is read
-// over the radio through the app's narrator (UAT option B) — never the
+// over the radio through the app's director (UAT option B) — never the
 // dashboard's location underneath. Inert without the hook or a row.
 func (d Dashboard) readFocusedEvent() Dashboard {
 	r := d.severeRowAt(d.severeRow)

@@ -1,0 +1,195 @@
+package app
+
+// schedule.go — the Director, its executors and the pump, wired into the
+// running station (T3.2a).
+//
+// IT DRIVES THE LIVE ALERT RAIL (T3.10b). It did not when this file was
+// written — the header claimed, correctly then and falsely for the rest of the
+// release, that no arrival reached it — and the sentence stayed while the wiring
+// changed eighteen lines below, at `tick.emit = s.carry`. A file header telling
+// the next maintainer that the file wiring the Director into a weather radio is
+// dead is the most expensive comment in the tree (red team 2026-09-05, R-3).
+//
+// So: the producer states what arrived, the Director schedules it, the Composer
+// writes it and the Reader performs it. The main track still runs through the
+// radio deck.
+//
+// It is split from the absorb it enables (T3.2b) deliberately. Moving the
+// Watchlist dwell onto a Director that nothing drives would have deleted a
+// working five-minute advance and replaced it with something that never fires;
+// splitting isolates the risky half behind a claim a test can state — nothing
+// changes — and every later Phase 3 task needs this half regardless.
+
+import (
+	"context"
+	"time"
+
+	"github.com/branden-thompson/watchpost/domains/globalfeed"
+	"github.com/branden-thompson/watchpost/domains/radio/script"
+	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
+)
+
+// scheduleTick is how often the Director is told the time.
+//
+// The clock is an EVENT (DR-20), so this is the resolution of every deadline
+// the schedule keeps. One second is far finer than anything it decides today —
+// the Watchlist dwell it absorbs at T3.2b is five minutes — and costs one
+// channel send a second on a goroutine that is otherwise asleep.
+const scheduleTick = time.Second
+
+// schedule owns the pump's lifetime.
+type schedule struct {
+	pump   *pump
+	ctx    context.Context // the schedule's own: a late producer gives up rather than blocking
+	cancel context.CancelFunc
+	ticks  chan struct{} // closed by the tick goroutine when it returns
+}
+
+// startSchedule builds the Director, its executors and the pump, and starts
+// both goroutines.
+//
+// THE ARBITER AND THE EFFECTOR ARE THE ONES ALREADY RUNNING, not new ones. The
+// executors perform through `nar` and `nar.mc`, which is the same pair the
+// ticker's takeovers use — building a second effector here would put the band
+// and the duck back under two owners, which is the defect T2.3 removed and the
+// one this file would be the easiest place to reintroduce.
+func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, watch func() []snapshot.LocationRef, tick *tickerDeck) *schedule {
+	if nar == nil {
+		return nil // no arbiter, no schedule: there is nothing to perform through
+	}
+	if tick == nil {
+		return nil // no producer, no arrivals: the rail would have nothing to read
+	}
+	x := newExecutors(executors{
+		voice:   nar,
+		scripts: scripts,
+		clock:   clock,
+		now:     time.Now,
+		mc:      nar.mc,
+		audible: func() bool { return !nar.silent() },
+		// MUTE REACHES THE SCHEDULE (T3.10b). `[M]` is the listener's "do not
+		// speak to me"; a read that ignored it would consume a hazard in silence.
+		muted: tick.muted.Load,
+		// THE PRODUCER IS THE TICKER (T3.10b). It holds what an alert IS and the
+		// store of what has been read aloud; the card carries only the ids.
+		alert: tick.alerts.get,
+		mark:  func(id string) { tick.seen.mark([]globalfeed.Event{{ID: id}}, time.Now()) },
+		// THE SAME STORE, ASKED THE OTHER WAY (I-7): two bursts with different
+		// leads can carry the same alert, and neither the producer's filter nor
+		// the Director's ID check can see the overlap.
+		readAloud: tick.seen.has,
+		report: func(f lineup.Effect, why string) {
+			radioDebugLog("schedule:declined:" + lineup.Describe(f) + ":" + why)
+		},
+		cutTo: tuneTo(deck, watch),
+		// DR-21's one escalation channel. It reuses the relay-fault window
+		// rather than adding a second error surface: from the listener's chair
+		// "the relay is silent" and "the schedule stopped" are the same event —
+		// the station has gone quiet and they are being offered the way back.
+		escalate: func(reason string) { deck.escalate(reason) },
+	})
+	if x == nil {
+		return nil // a seam was nil; newExecutors has already said which
+	}
+	run, cancel := context.WithCancel(ctx)
+	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax}, time.Now()), x.run,
+		func(f lineup.Effect, v any) { radioDebugLog("schedule:fault:" + lineup.Describe(f)) })
+	if p == nil {
+		cancel()
+		return nil
+	}
+	s := &schedule{pump: p, ctx: run, cancel: cancel, ticks: make(chan struct{})}
+	go p.loop(run)
+	go s.tick(run)
+	// THE PRODUCERS REPORT INTO IT, WIRED HERE (T3.10b).
+	//
+	// Both were the caller's job, and the ticker's was one line away from being
+	// forgotten: without it the rail receives nothing and NO HAZARD IS EVER
+	// READ, while every test stays green because each wires its own schedule.
+	// That is the shape of D-12 — three tests passing over an inert Settings row
+	// because they called the cycle function instead of pressing the key — so
+	// the wiring lives with the thing that needs it and a test can assert it.
+	//
+	// There is nothing mutual about it any more: both are parameters.
+	tick.mu.Lock()
+	tick.emit = s.carry
+	tick.mu.Unlock()
+	if deck != nil {
+		deck.mu.Lock()
+		deck.emit = s.carry
+		deck.mu.Unlock()
+	}
+	return s
+}
+
+// tuneTo resolves the key the Director named back to a location and cuts the
+// bed over to it.
+//
+// THE UNEXPORTED tune, DELIBERATELY. Every tune the Director asks for is
+// automatic — a dwell elapsed, a cycle ended — and lifting the alert duck on an
+// automatic transition brought the next location's report in at full volume over
+// a breaking alert still reading. That distinction used to live in the case of an
+// identifier; T2.3 gave the duck one owner instead, and this calls the path that
+// has never lifted it.
+//
+// A KEY THAT NAMES NOTHING IS DROPPED, not guessed at. The listener can remove a
+// location from the watchlist between the Director planning a move and the move
+// running, and tuning "the nearest thing to what they asked for" would put a
+// station on the air they had just taken away.
+func tuneTo(deck *radioDeck, watch func() []snapshot.LocationRef) func(string) {
+	return func(ref string) {
+		if deck == nil || watch == nil {
+			return // no audio, or no watchlist to resolve against
+		}
+		for _, r := range watch() { // bounded by the watchlist (P10-02)
+			if string(snapshot.Key(r)) == ref {
+				deck.tune(r)
+				return
+			}
+		}
+		radioDebugLog("schedule:tune-unknown:" + ref)
+	}
+}
+
+// carry hands the Director something that happened, from anywhere outside it.
+//
+// NAMED carry, NOT send, for the tool rather than the code: P10 resolves by
+// NAME, so a `send` here collides with pump.send — which is genuinely in a call
+// cycle — and reports this as recursion it has no part in. Fifth rename in this
+// release for the same false positive, and the collisions are all between a
+// method on one type and a method on another.
+//
+// IT CARRIES THE SCHEDULE'S OWN CONTEXT, so a producer that outlives the station
+// — the deck reports a status after shutdown has begun — gives up rather than
+// blocking on a pump that has stopped reading.
+func (s *schedule) carry(ev lineup.Event) {
+	if s == nil {
+		return
+	}
+	s.pump.send(s.ctx, ev)
+}
+
+// tick tells the Director the time until the station stops.
+func (s *schedule) tick(ctx context.Context) {
+	defer close(s.ticks)
+	everyTick(ctx, scheduleTick, func(now time.Time) {
+		s.pump.send(ctx, lineup.Tick{Now: now})
+	})
+}
+
+// stop ends the schedule and WAITS for both goroutines.
+//
+// Both, and in this order. The tick goroutine sends to the pump, so a stop that
+// waited only for the pump would leave a sender writing to a loop that had
+// returned — the shape that made a 0.12.0 tag go red on the Linux race gate,
+// where a fire-and-forget goroutine outlived the thing it wrote to.
+func (s *schedule) stop() {
+	if s == nil {
+		return
+	}
+	s.cancel()
+	<-s.ticks
+	s.pump.stop()
+}

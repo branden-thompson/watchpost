@@ -2,7 +2,124 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
-## [Unreleased]
+## [0.14.0] — 2026-09-06
+
+### Added
+
+- **A cast of correspondents.** Settings gains a *Watchpost Radio — Correspondents* group: a row for
+  each thing you hear — the alerts and takeovers, the location report, the marine report, the fires,
+  the quakes — and a voice for each. A row you have not set names the voice it **inherits**, so every
+  row says who will actually speak. `p` previews the focused voice, and correspondents hand over by
+  name mid-broadcast.
+- **Alert tones by class.** Every alert opens with a sound that says what kind it is: warnings and
+  significant quakes share the loudest, and watches, advisories, special statements and marine/winter
+  storms each have their own. Settings' *Alerts — Tone* group mutes any class; the words always read.
+- **A marine report** for coastal locations, between the forecast and the fire report: the
+  coastal-waters forecast, the nearest buoy, the tide in force, the next high and low, and the current.
+- **A Radio Convention setting** — 12-hour, 24-hour or military — which decides how every time is
+  written *and* how it is spoken. Under military the correspondent reads "Sixteen Fifty Hours" and
+  spells callsigns in NATO phonetics, with "niner" for nine.
+- **Show Units in** and **Show Time in** rows, so the two display preferences you could only set by
+  flag are settings that persist.
+- **An optional update check.** `update_check = true` asks GitHub, once an hour, whether a newer
+  release exists. **Off by default**: left off the app never contacts GitHub. It sends nothing about
+  you or your machine, and the `S` window shows the answer beside the uptime.
+- **A read order for alerts.** When several alerts arrive at once they are read **most serious,
+  closest first** rather than in whatever order the feed listed them, against a limit of five per
+  burst. Anything past the limit is **said aloud rather than silently dropped** — "…and 4 other
+  alerts, press W in Watchpost" — so a busy day never quietly loses a hazard. Emergency Orders are
+  exempt from the limit and always lead.
+- **A window when the radio goes quiet.** If a relay stops producing audible audio for five seconds,
+  Watchpost says so and offers the next-best relay, an alternate, or a read of its own report. With
+  nobody at the keyboard it takes the last of those after ten seconds rather than sitting in silence.
+- **Pause and resume a `w` read**, and `esc` to stop one outright.
+- **A `ctrl+d` diagnostics window.**
+- **STANDBY.** A muted station now *holds* an alert rather than spending it: unmute and you hear what
+  arrived, instead of finding it already gone.
+
+### Changed
+
+- **The Setup window is now Settings** — it grew past setup some time ago. `watchpost setup` still
+  opens it, and `s` still opens it from the dashboard.
+- **The theme chooser is a row in Settings**, not a window of its own. `t` opens Settings with the
+  theme picker focused; `←→` preview themes live.
+- **`M` opens Settings at the alert tones** rather than muting them outright, so you can change which
+  classes sound while the radio is talking.
+- **`[M]` now mutes tones only — a listener who muted the alerts in 0.13.0 hears the words again.**
+  0.13.0's `[M]` silenced the tone *and* the narration; 0.14.0's silences the tone alone, and the
+  words always read. If you had the ticker muted when you upgraded, every class you had silenced
+  stays silent — but the alerts themselves are spoken again, which is the behaviour change to know
+  about.
+- **The `[S]` window is Watchpost Status**: uptime and version on its own row, one line per endpoint
+  with its providers and request counters, the pipelines, and an issues table naming what failed, on
+  which endpoint, with which HTTP status, and whose fault it looks like.
+- **`MARITIME` is `MARINE`** and **`Sig. Quakes` is `Disasters`**, in the windows and on the air. Both
+  names were narrower than what they carry.
+- **The masthead reads `WATCHPOST Observer`** — the edition this build is. A later version brings a
+  Broadcaster edition for running a station.
+- Ticker events that stay for days now carry a date, not just a time, and the tape reads in your
+  clock and your zone.
+- Alert tones and announcements are chosen per lane, and every severe category has a ticker lane.
+
+### Fixed
+
+- **An alert could be missed entirely.** A lane's tape restarted from the left on every rotation, so
+  anything past what one 90-second visit could reach was never shown while the count claimed it was.
+- **An alert radius now scopes the `w` window too, not just the ticker.** Before, narrowing the
+  radius quietened the tape and left the window global, so the two disagreed about the same weather.
+  If you set a radius and the window looks emptier than you remember, this is why.
+- **Setting an alert radius removed zone-only alerts from the severe window** — many NWS products
+  carry no polygon, including watches and most flood warnings, so a tornado warning for your own
+  county could vanish when you narrowed the radius.
+- **The `[w]` window's Watchlist tab looked like a national view that had missed something.** Warnings
+  are nationwide; Advisories and Special Statements come only from the zones of your own locations.
+  The line saying so appeared only when the watchlist was *empty* — the one case where a listener
+  already knows why the tab is bare. It explains itself with locations set too, so a statement you
+  hear elsewhere and cannot find here has its reason on the screen.
+- **The event cap kept the newest, not the worst.** On a busy day the most severe alerts were evicted
+  by fresher, milder ones, and whole categories disappeared from the rotation while they were live.
+- **A location changeover could talk over an alert.** Alerts now take the air unconditionally: a live
+  relay dips under them, a spoken report pauses and is heard in full afterwards, and the choice
+  follows whatever is actually playing.
+- **Muting one alert tone silenced every spoken alert, permanently.** Muting a single class in
+  Settings was written to the config in a form an older Watchpost reads as "mute everything", and
+  this version then read it back at the next launch as "say nothing at all" — with no way to undo it,
+  because the key that once toggled it now opens Settings. If you muted a tone in an earlier 0.14.0
+  build, hazards were shown and never spoken from the following launch onward. **The words always
+  read; the tone mute silences tones.**
+- **Evacuation orders were never spoken.** `Evacuation Immediate` — the Weather Service's
+  highest-urgency product, an instruction to leave — appeared on the marquee and in the `w` window and
+  was never read aloud, because the national feed was never asked for it. It is now fetched, has its
+  own lane, and leads the read.
+- **A significant quake outside your radius was silently dropped.** With an alert radius set, a large
+  distant earthquake was fenced out before it could reach the read, so the rule that a big enough
+  hazard reaches further never took effect. An M7.5 about 120 miles away now reaches a listener whose
+  radius is 50; an ordinary one still does not.
+- **Alerts issued while Watchpost was closed were never announced.** Every hazard active at launch was
+  marked as already-heard, so a warning issued while the app was shut appeared on the tape and was
+  never spoken. A genuine first run still starts quietly.
+- **An expired alert could be read as current**, with its original expiry time in the sentence, if it
+  lapsed between arriving and being read.
+- **The "relay is silent" window could appear for no fault** — muting the tones or pressing `esc`
+  raised it, which is how a listener learns to dismiss the window that matters.
+- **`W` works as well as `w`** for the severe-events window, which is what the spoken alerts tell you
+  to press.
+- **Saving Settings with `enter` discarded your theme, units and clock.** Both ways out of the window
+  now write the same things, one after another rather than at the same time.
+- A provider's own error text is cleaned before it is shown, and the update check shows only version
+  numbers this app parsed.
+- The ticker band names its lane in words, so it is readable without colour, and the Status window's
+  table tones are held to WCAG AA on the window they are drawn in.
+- Monochrome paints its own modal tile and list focus instead of inheriting a blue one.
+- **Previewing a voice in Settings gave no sign it was working.** `p` sent the deck's progress — and
+  its reason when a voice failed to load — to a field nothing draws, so on a machine where the voice
+  takes seconds to read its model, the key looked dead. The note now appears under the row you pressed
+  `p` on, and stays with that row if you move on.
+- **Details opened from a lookup was titled "Location"** for the frame or more before the looked-up
+  row reached RECENT. It names the place the lookup found, from the first frame.
+- Looking up a location shows its row immediately, shimmering, instead of after the data lands.
+- A long error wraps instead of being cut off, and a narrow window drops a whole column rather than
+  clipping one.
 
 ## [0.13.0] — 2026-08-29
 

@@ -1,0 +1,2 @@
+{{/* marine-report/head: the notice. Data: .Location, .Sources. A 2 s pause follows (the shared report-head pause). */}}
+This is the Watchpost Marine report for {{.Location}}. Data from {{.Sources}}; not for life-safety use.

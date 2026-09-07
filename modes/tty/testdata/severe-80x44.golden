@@ -1,13 +1,12 @@
                                                                               
                                                                               
-   ┏━━ W A T C H P O S T  vtest ━━━━━━━━━━━━━━━━  awaiting first data... ━━┓  
-   ┃   [s] [a] [t] [M] [S] [?] [q]                         ✔0 ⚠0 ✘0 /  0   ┃  
+   ┏━━ WATCHPOST Observer  vtest ━━━━━━━━━━━━━━━  awaiting first data... ━━┓  
+   ┃   [s] Settings  [S] Status  [?] Help  [q] Quit   API: ✔0 ⚠0 ✘0 /  0   ┃  
    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  
-   ┌── SEVERE WEATHER / DISASTER EVENTS ───────────────────────────────────┐  
+   ┌── NOTABLE EVENTS AND FORECASTS ── Updated 08/28/2026 3:38:05 PM UTC ──┐  
    │                                                                       │  
-   │    [›Warn] [Watch] [Advis] [Stmts] [Quakes] [Tropical]                │  
+   │    [Emrg] [›Warn] [Watch] [Advis] [Stmts] [Disast] [Marine] [Fcast]   │  
    │                                                                       │  
-   │    Warnings — 9 active                                                │  
    │  [               E V E N T                ][       LOCATION       ]   │  
    │  ›    001. Extreme Heat Warning              Wicomico, MD             │  
    │       002. Tornado Warning                   Olathe, KS               │  
@@ -20,9 +19,8 @@
    │       009. High Wind Warning                 Laramie, WY              │  
    │                                             9 Total Category Events   │  
    │                                                                       │  
-   │    [↑↓] Rows  [←→] Tabs  [enter] Details  [space] Read  [esc] Close   │  
+   │    [↑↓] Rows  [←→] Tabs  [enter] Details  [space] Play  [esc] Close   │  
    └───────────────────────────────────────────────────────────────────────┘  
-   [                                                                       ]  
    [                   R E C E N T   /   S E A R C H E D                   ]  
    [                                                                       ] ▲
                                                                               

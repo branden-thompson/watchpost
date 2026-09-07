@@ -15,7 +15,7 @@ proc phase {lf s} { puts $lf "[clock format [clock seconds] -format %Y-%m-%dT%H:
 proc hold {secs} { set start [clock seconds]; while {[clock seconds] - $start < $secs} { expect -timeout 30 -re ".+" {} } }
 spawn env WATCHPOST_DEBUG_PPROF=1 WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6064 ./dist/watchpost
 catch {exec stty rows 44 cols 133 < $spawn_out(slave,name)}
-expect -timeout 30 "W A T C H P O S T"
+expect -timeout 30 "WATCHPOST"
 expect -timeout 120 -re "\\d+ºF"
 phase $lf "A idle (radio off, viz off)"
 hold [expr {2*3600}]
