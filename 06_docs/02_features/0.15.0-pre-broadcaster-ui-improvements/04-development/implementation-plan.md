@@ -123,15 +123,21 @@ plan report and scheduled nowhere.  Four lenses found it independently.
   debug-tagged test.  Every FR-4 assertion would have landed in a build nothing runs.  The Makefile
   already records this happening once: *"`inject_seam_test.go` — the test the whole injector stands
   on — stopped compiling at T3.10b and stayed dark."*
-- **NFR-2's predicate is written down**, and it is **symbol-level, not string-level**.
-  `modes/tty/debug.go` has no build tag, so its UI literals — `"INJECT AN ALERT:"` — compile into
-  every release binary and a string grep fails a clean build.  The predicate is `go tool nm` over each
-  `dist/watchpost-*` asserting zero `app.(*tickerDeck).Inject` and zero `debugScenarios` body symbol.
+- **NFR-2's predicate is written down** — ~~symbol-level, not string-level~~ **STRING-level, and the
+  correction was found by measuring rather than reasoning (2026-09-07).**  Release artifacts are
+  linked `-s -w`, which strips the symbol table: `go tool nm` reports *"no symbol section"* on linux
+  and *"no symbols"* on windows, so a symbol predicate finds zero in a DEBUG matrix and zero in a
+  clean one and passes everything.  Strings survive stripping; symbols do not.
+  The anchor is **`watchpost-injected-`**, the id prefix `Inject` mints — 1/1/1 in a debug matrix,
+  0/0/0 in a clean one, on every platform.  It is **not copy**, so FR-4.4 may rewrite every
+  user-facing marking string without retiring the gate.  `"INJECT AN ALERT"` is unusable: it lives in
+  the untagged `modes/tty/debug.go` and ships in every clean binary.  `debugScenarios` is unusable
+  too: zero in both builds, because its release form inlines away.
   It runs as a **`release-matrix` post-step**, not in `verify`, because `verify` runs before the
-  published artifacts exist.
-- **FR-4.4 must not remove `Location: "Injected Test Location"`** until NFR-2's replacement predicate
-  is landed and observed.  F-38 proposes grepping artifacts for that literal; renaming it first
-  silently retires the only gate proposal that exists.
+  published artifacts exist.  *Landed as `scripts/lint-injector.sh`, self-tested against **stripped**
+  builds in both directions, and validated end-to-end against a matrix built with the tag.*
+- ~~**FR-4.4 must not remove `Location: "Injected Test Location"`**~~ **No longer a constraint.**  The
+  gate anchors on the id prefix rather than on marking copy, so FR-4.4 is free.
 
 **Order within the batch is fixed: FR-5 before FR-4.**  Adding scenarios to a window whose controls
 cannot be seen produces an instrument nobody can operate.
