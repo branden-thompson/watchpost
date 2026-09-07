@@ -361,13 +361,16 @@ func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provid
 // whatever is on disk while the other platform's half — and every key this
 // build does not know — survives (FR-8, NFR-5).
 func saveCast(deck *radioDeck, v tty.CastView) error {
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	next := castFromView(v, castLoaded(cfg))
-	cfg = castToConfig(next, cfg)
-	if err := config.Save(cfg); err != nil {
+	// `next` ESCAPES THE TRANSACTION by capture, because the deck needs the
+	// value the write produced. It is the one caller of the six that cannot be
+	// expressed as edit(*Config) error alone — a second signature for one
+	// caller would be a second write path, which is what FR-1.1 removes.
+	var next cast.Config
+	if err := config.Mutate(func(cfg *config.Config) error {
+		next = castFromView(v, castLoaded(*cfg))
+		*cfg = castToConfig(next, *cfg)
+		return nil
+	}); err != nil {
 		return err
 	}
 	if deck != nil {
@@ -412,13 +415,15 @@ func saveRadioMode(mode tty.RadioMode) error {
 
 // savePreference loads, edits and saves the config — the one path for a
 // persisted UI preference (voice, radio mode).
+// savePreference is the no-error convenience over config.Mutate, for the
+// preference writes that cannot fail. It is an ADAPTER now, not a second write
+// path: it once called itself "the one path" while five siblings bypassed it,
+// which is the defect FR-1.1 closes.
 func savePreference(edit func(cfg *config.Config)) error {
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	edit(&cfg)
-	return config.Save(cfg)
+	return config.Mutate(func(cfg *config.Config) error {
+		edit(cfg)
+		return nil
+	})
 }
 
 // cacheDir is the on-disk tier of the HTTP cache (UAT 71): the OS cache
@@ -621,13 +626,15 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 	if err := invariant.Check(len(watch) <= 10, "watchlist cap is 10 (R-4)"); err != nil {
 		return err
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	cfg.Locations = configLocations(watch)
-	cfg.Recent = configLocations(recent) // UAT 96: the RECENT stack survives a restart
-	if err := config.Save(cfg); err != nil {
+	// LOCK ORDER: lp.mu -> config's. Held in that order here and nowhere in the
+	// reverse, and the edit below must never reach config.Load or config.Save —
+	// the config mutex is not reentrant. reloadCast's bare Load is the one to
+	// keep out of any edit closure.
+	if err := config.Mutate(func(cfg *config.Config) error {
+		cfg.Locations = configLocations(watch)
+		cfg.Recent = configLocations(recent) // UAT 96: the RECENT stack survives a restart
+		return nil
+	}); err != nil {
 		return err
 	}
 	// UAT 69: incremental — only the changed locations move; nothing that

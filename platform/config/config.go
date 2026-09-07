@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	toml "github.com/pelletier/go-toml/v2"
 
@@ -390,6 +391,42 @@ func mergeUnknown(marshalled []byte, path string) ([]byte, bool) {
 // would make first-run undetectable forever (B0 red-team F5). Callers that want
 // an empty config on disk clear FirstRun first; "has locations" checks belong
 // on len(cfg.Locations), never FirstRun.
+// Mutate is the ONE write path for the config file: it loads, applies edit, and
+// saves, with the whole sequence held under one lock.
+//
+// WHAT THE LOCK BUYS, precisely. Save is already atomic on disk — CreateTemp
+// plus Rename — so a reader can never see a torn file. What was unprotected was
+// the READ-MODIFY-WRITE: six owners each did Load, edited their own field, and
+// Saved, so two owners interleaving lost whichever edit landed first. This
+// closes that window and nothing else.
+//
+// WHAT IT DOES NOT BUY: the lock is process-local. Two Watchpost instances on
+// one machine still race, and last writer still wins — app/debug.go already
+// anticipates two instances, so this is a stated limit rather than an oversight.
+//
+// edit RETURNS AN ERROR so a caller can abort inside the transaction: applySetup
+// validates before writing and livePipelines.commit checks the watchlist cap,
+// and neither can refuse through a signature that cannot say no.
+//
+// edit MUST NOT call Load, Save or Mutate. A Go mutex is not reentrant, so a
+// nested call deadlocks the config path for the life of the process.
+func Mutate(edit func(*Config) error) error {
+	mu.Lock()
+	defer mu.Unlock() // deferred: a panic inside edit must not strand every later write
+	cfg, err := Load()
+	if err != nil {
+		return err
+	}
+	if err := edit(&cfg); err != nil {
+		return err
+	}
+	return Save(cfg)
+}
+
+// mu serialises Mutate's read-modify-write. It guards the SEQUENCE, not the
+// file: Save's rename is what makes the file safe.
+var mu sync.Mutex
+
 func Save(cfg Config) error {
 	if err := invariant.Check(!cfg.FirstRun, "refusing to persist a first-run config — clear FirstRun before Save"); err != nil {
 		return err
