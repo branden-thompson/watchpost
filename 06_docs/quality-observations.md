@@ -1201,6 +1201,32 @@ have two working callers in front of you, not two imagined ones.
 correction could not work at all, because release binaries are stripped.  **A correction is a new
 claim and carries the same burden as the original.**
 
+### 12. A gate that measures a rendered surface must count in the coordinates the renderer draws in
+
+**Catch:** FR-5's first probe compared an 80x24 render against an 80x200 one and reported **every
+line of every window unreachable**.  A modal that overflows wraps three columns narrower than one
+that does not, so the two renders share almost no line.  The defect it was hunting was the *same
+mistake*: the scroll offset was computed from the body before the panel re-wrapped it, so it pointed
+at line 11 of a body whose focused row had moved to 14.  **The instrument and the bug were one error
+in two places** — and the probe's version was found first only because it was measured.
+
+### 13. A cursor is not text
+
+**Catch:** the same probe reported `a burst` unreachable while `› a burst` was on screen.  A focused
+row carries a pointer glyph and an unfocused one does not, so a comparison that keeps the glyph
+counts one line as two and reports the form that is not currently focused as missing.  **Normalise
+away everything the frame draws that is not content** — box, rail, padding, cursor — or the
+measurement is of the instrument.
+
+### 14. Fix the member, then measure the set
+
+**Catch:** the relay-fault window's unreachable ways out were found by a human at 80x24, fixed
+correctly, and **the fix did not generalise** — the window next door had the same defect five weeks
+later, and the shipped ctrl+d window had a worse version of it that no key could work around.  Three
+separate discoveries, one mechanism.  A defect found by opening one window is a question about the
+set of windows; the set-level property is what turns three sightings into one number that can only
+go down.
+
 ### The meta-rule
 
 **A red-team finding is a hypothesis, not a fix.**  Twice in one day, measuring a lens's
