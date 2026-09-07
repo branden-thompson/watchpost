@@ -1021,40 +1021,56 @@ func TestAnEvacuationOrderKeepsItsLaneOnTheMarquee(t *testing.T) {
 // nothing checking that the consumer knows every value the producer emits, so
 // the next lane added would fail exactly the same way and just as quietly.
 //
-// Walking category.Lanes() means this test fails the day a lane is added and
-// the marquee is not taught it, rather than the day a listener is shown the
-// wrong colour for an evacuation order.
+// THE FIRST VERSION OF THIS TEST HAD THAT DEFECT ITSELF (0.15.0 DISCOVER, red
+// team). It walked category.Lanes(), asked productLaningTo for a product, and
+// `continue`d when LaneOf disagreed — so a lane with no fixture was skipped in
+// silence. It asserted 4 of 7 lanes and reported green, which is F-30's
+// t.Skipf wearing a different keyword, inside the instrument written to catch
+// exactly this. Every lane is now accounted for EXPLICITLY: it is either
+// reachable and carried, or declared unreachable with a reason. A lane in
+// neither list fails the test.
 func TestEveryFeedLaneSurvivesTheMarqueeMap(t *testing.T) {
+	// reachable maps a lane to an event the national feed can actually produce
+	// for it. The Class matters as much as the product: LaneOf reads Class
+	// first, and ClassQuake is the ZERO VALUE, so an event built without one is
+	// silently a quake in the Disasters lane.
+	reachable := map[category.Category]globalfeed.Event{
+		category.Emergency: {Class: globalfeed.ClassSevereWx, Type: "Evacuation Immediate"},
+		category.Disasters: {Class: globalfeed.ClassSevereWx, Type: "Civil Emergency Message"},
+		category.Marine:    {Class: globalfeed.ClassTropical, Type: "Hurricane"},
+		category.Warnings:  {Class: globalfeed.ClassSevereWx, Type: "Tornado Warning"},
+		category.Watches:   {Class: globalfeed.ClassSevereWx, Type: "Tornado Watch"},
+	}
+	// unreachable is a lane the band DRAWS but LaneOf can never fill, with the
+	// reason written down. This is not an exemption list for convenience — it
+	// is the finding: these two categories have a band lane and no producer,
+	// so an advisory or a statement reaching the feed lands in Warnings.
+	unreachable := map[category.Category]string{
+		category.Advisories: "LaneOf has no Advisory arm; an advisory falls to its Warnings default (F-2, 0.15.0 FR-2.2)",
+		category.Statements: "LaneOf has no Statement arm; a statement falls to its Warnings default (F-2, 0.15.0 FR-2.2)",
+	}
+
 	lanes := category.Lanes()
 	if len(lanes) == 0 {
 		t.Fatal("no lanes to check — the instrument cannot fail, so it proves nothing")
 	}
 	for _, lane := range lanes {
-		e := globalfeed.Event{Class: globalfeed.ClassSevereWx, Type: productLaningTo(t, lane)}
+		e, ok := reachable[lane]
+		if !ok {
+			if _, declared := unreachable[lane]; declared {
+				continue // accounted for, in writing, above
+			}
+			t.Errorf("lane %v is drawn on the band and is in NEITHER list: give it a "+
+				"reachable event or declare why LaneOf cannot produce it", lane)
+			continue
+		}
 		if got := globalfeed.LaneOf(e); got != lane {
-			continue // not a lane the national feed can produce; nothing to carry
+			t.Errorf("fixture for lane %v lanes as %v instead — the fixture is wrong, "+
+				"which is how this test skipped three lanes in silence", lane, got)
+			continue
 		}
 		if got := tickerCategory(e); got != lane {
 			t.Errorf("lane %v arrives at the band as %v", lane, got)
 		}
 	}
-}
-
-// productLaningTo is a product string the feed lanes into c, so the walk above
-// exercises real inputs rather than asserting on the map in the abstract.
-func productLaningTo(t *testing.T, c category.Category) string {
-	t.Helper()
-	switch c {
-	case category.Emergency:
-		return "Evacuation Immediate"
-	case category.Disasters:
-		return "Civil Emergency Message"
-	case category.Marine:
-		return "Hurricane Warning" // ClassTropical lanes Marine; by name this is a Warning
-	case category.Warnings:
-		return "Tornado Warning"
-	case category.Watches:
-		return "Tornado Watch"
-	}
-	return "" // an unreachable lane for the national feed; LaneOf will not agree and the walk skips it
 }

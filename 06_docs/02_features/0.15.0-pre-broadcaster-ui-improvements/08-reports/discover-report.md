@@ -15,9 +15,16 @@ status: "Step 2 complete; requirements restated against measured findings — aw
 ## Bottom Line Up Front / BLUF
 
 DISCOVER checked the brief's seven investigation areas against the code rather than against the
-ledger, and the ledger was wrong more often than it was right.  Two requirements shrink
-substantially, two grow, one is already satisfied, and one investigation produced a live defect that
-shipped as 0.14.2 during the phase.
+ledger.  Every ledger row it sampled outside the seven has since also proved stale, so the honest
+statement is not a score: **roughly forty rows have not been audited since 0.14.0.**  Two
+requirements shrink, three grow, and one investigation produced a live defect that shipped as 0.14.2
+during the phase.
+
+**This report has been revised after an eleven-lens red team (`red-team-discover.md`), which
+returned NO-GO as written.**  Seven lenses independently found that an entire brief theme had
+vanished from the requirement set with no descope line; it is reinstated below as FR-8.  Three
+findings were errors in this report or in code it cites, all of the same kind — a number read
+without asking what produces it.  They are marked where they occurred rather than quietly fixed.
 
 The locked problem statement survives unchanged and gained a tenth documented instance.
 
@@ -57,9 +64,16 @@ where the evidence moved it, the movement is stated with its reason.
   path" while five siblings bypass it, not four.  `config.Save` is atomic at the file level and owns
   the `ticker_muted` mirror, so the target pattern is already demonstrated inside the function that
   needs to own the whole operation.
-- **FR-1.2** One answer to "what category is this product."  `severe.Classify` and
-  `globalfeed.LaneOf` both return a `category.Category` from the same product string and do not
-  agree in the general case.
+- **FR-1.2** No classifier over the NWS product-string set carries an unratified default arm.
+  **There are four, not the two this report first named** (red team C-2, verified):
+  `domains/severe/severe.go:105` `Classify` (partial — `(Tab, bool)`); `domains/globalfeed/stack.go:82`
+  `LaneOf` (total, defaults to Warnings); `domains/radio/cast/tone.go:186` `Classify` — **on the audio
+  path**, with no civil-emergency arm, so an Evacuation Immediate falls to `ClassWarning`; and
+  `platform/render/sgr.go:226` `AlertIsWarning`, self-described as "THE warning-vs-advisory classifier
+  (single owner)".  *Merging them is not the requirement and is not safely achievable — `Classify` is
+  partial and `LaneOf` is total, so collapsing them either shows everything in the severe window or
+  drops events off the band.  The deliverable is the four-way cross-table the brief asked for and this
+  phase did not produce, plus FR-2.2's coupling check.*
 - **FR-1.3** The band's single-writer rule is enforced by a mechanism rather than a comment.
 - **FR-1.4** The audio arbiter's hold, resume, and drop path is serialised against duck and restore.
 
@@ -69,8 +83,17 @@ This was a sub-clause of the brief's R1.  The evidence promotes it to a requirem
 right, because it is the single mechanism that would have caught #15, and it generalises.
 
 - **FR-2.1** Wherever a producer emits a value from a closed set and a consumer switches on it, a
-  test walks the producer's set and fails if the consumer does not carry every member.
-  `TestEveryFeedLaneSurvivesTheMarqueeMap`, written for 0.14.2, is the working template.
+  test walks the producer's set and fails if the consumer does not carry every member.  **Every member
+  is accounted for explicitly: carried, or declared unreachable with a written reason.  A member in
+  neither list fails the test.**
+  *`TestEveryFeedLaneSurvivesTheMarqueeMap` is the template — but not as first written.  Its first
+  version walked `category.Lanes()` and `continue`d when its fixture disagreed, asserting **4 of 7
+  lanes** and reporting green, with Advisories — the hazard FR-2.2 names — among the three it skipped.
+  A `continue` where F-30 has a `t.Skipf`, inside the instrument written to catch exactly that.  Found
+  by two lenses, confirmed by probe, rewritten, and its three failure modes observed.*
+- **FR-2.1a** The population is sized before the mechanism is generalised: **26 `iota` closed sets and
+  48 `default:` arms** in non-test source.  Generalising from one instance is how the first version of
+  the template happened.
 - **FR-2.2** `severeEvents()` is checked against both classifiers.  The nine products on the curated
   national query all name "Warning" or "Watch", or are the one civil-emergency product, which is the
   only reason `LaneOf`'s missing Advisory, Marine, Statement, and Forecast arms cannot diverge from
@@ -101,8 +124,13 @@ loudly rather than passing quietly.  It reports **11 of 11 modals covered, zero 
   `:122` descends into exactly three named nested structs, `relayFault || debug || setup`, so a
   fourth is never perturbed.  Reading a green number as coverage is the precise error this report
   accuses the ledger of, and I made it here.)*
-- **FR-3.4** `tileMemo` and `boxMemo` consolidated with frame cost measured.  Blocked on Arch
-  hardware — see the constraints below.
+- **FR-3.4** `tileMemo` and `boxMemo` consolidated, **measured on the path they actually sit on.**
+  *Corrected after red team C-6: they are fields on the FIRMS and USGS clients
+  (`domains/fire/firms/firms.go:65`, `domains/seismic/usgs/usgs.go:80`) — provider fetch, on scheduler
+  goroutines, **not the render frame.**  `perf-protocol.md` §3–5 cannot measure them, and a frame
+  allocation pin would have returned a green false pass for a change the frame cannot see.  The
+  instrument is `make alloc-budget` plus the memo hit/miss gauges, on this machine.  **This item is no
+  longer blocked on Arch hardware.***
 
 ### FR-4 — The station can be tested on demand  *(brief R3 — reshaped)*
 
@@ -172,12 +200,88 @@ FR-7.3 (F-45) ratify the 23 stale ledger rows · FR-7.4 (F-12) the ephemeral att
   - **`06_docs` is not documentation alone.**  `06_docs/mutants/` holds `mutants_test.go`,
     `harness_test.go`, and 171 `.py` mutants, compiled by `make mutant-check`
     (`go test -tags mutants ./06_docs/mutants`).  A wholesale relocation breaks a quality gate.
-  - **Publication would leak PII**: 81 occurrences of `/Users/bthompso`, 40 of `bthompso`, and one
-    `/home/research`, across 14 files.  F-48 already covers one such leak in the README; publishing
-    this tree multiplies it by 121.
-  - Counts for the record: 279 files, 4.3 MB — 194 prose, 77 evidence records, 6 code-adjacent, 2
-    other.  The evidence is cited by the prose, so the two cannot be separated without rewriting
-    citations.
+  - **The PII exposure is LIVE, not prospective** *(red team C-3, verified — this report had the
+    tense wrong).*  `gh repo view` returns `PUBLIC`, `06_docs` is on `origin/main`, and the content has
+    been published since 0.13.0.  A gate that blocks future writes while every published tag carries
+    the same content defends a door that is open.  The scan was also **pattern-limited to the
+    maintainer's name** and missed a ZIP-level **home locality in 35 files**.  What is owed is an
+    exposure statement, a categorised re-scan (identity, location, host, credential, internal URL,
+    path), and a HUM LEAD remediation ruling on the *published* copy — on the same footing F-48 already
+    has.  OQ-8 is the wrong question: the documentation has already moved.
+  - Counts for the record, **with the scope named** (the earlier figures silently measured
+    `06_docs/02_features` while the bullet above them said `06_docs`): `06_docs/02_features` is 280
+    files; all of `06_docs` is **460 tracked files**, which is the tree the ruling applies to.  Of
+    `02_features`: 194 prose, 77 evidence records, 6 code-adjacent, 2 other.  The evidence is cited by
+    the prose, so the two cannot be separated without rewriting citations.
+
+### FR-8 — Every gate can fail  *(brief R4 — REINSTATED after red team C-1)*
+
+**This theme was absent from the first draft of this report, with no descope line.  Seven of eleven
+lenses found it independently.**  It is not a scope reduction that was decided; it is one that
+happened.  The locked problem statement names it directly — *an AA register that shrinks when a token
+is added, and `--ascii` scans that miss four windows, are how a surface silently degrades* — and the
+public issue #14 still promises it.
+
+- **FR-8.1** A `make lint` target wiring `golangci-lint` and `staticcheck`.  Neither has ever run as a
+  gate in this repository, while `.github/PULL_REQUEST_TEMPLATE.md` already asks reviewers to tick
+  that both are clean.  *(F-15; the ledger's own due column reads 0.15.0)*
+- **FR-8.2** One completeness test covering the AA contrast register and `--ascii` together.  Measured
+  during the red team: **eleven declared tokens sit outside `aaPairs()`**, and
+  `TestEveryPaintedPairReadsAAInEveryTheme` iterates that hand-list — a test whose name asserts a
+  completeness it cannot deliver, which is FR-2's shape on a different producer set.  `--ascii` is
+  scanned for two frames only.  *(F-18, F-37, F-47)*
+- **FR-8.3** The PTY journey's read step establishes its own precondition.  *(F-44)*
+- **FR-8.4** Every gate in `gates.md` carries an evidence line recording a watched failure.
+  *(formerly NFR-3)*
+
+### FR-9 — A read completes, fails, or reports a fault within a stated bound  *(new — red team C-4)*
+
+Three lenses noted that F-43 was promoted to a requirement with a timebox while #17 stayed a risk row
+with an activity for a mitigation.  One traced the mechanism: `domains/radio/player/engine.go:518`
+`watch()` detects completion only by polling `IsPlaying()`, and **carries no deadline on a read at
+all.**
+
+- **FR-9.1** Every spoken read completes, fails, or reports a fault within a stated bound.  A read
+  that overruns is abandoned loudly and the schedule advances.
+- **FR-9.2** A sounded tone not followed by a spoken part produces a user-perceivable fault, and its
+  diagnostic is on by default.  *(Today `read:gaveup:after-tone` is emitted only when
+  `WATCHPOST_DEBUG_RADIO` is set, so F-43's own closing condition is unreachable in normal use.)*
+
+**FR-9 stands whether or not #17 is ever reproduced.**  A bound is a requirement about the product;
+#17 is a question about one failure.
+
+## Metrics of Success — carried forward, with owners
+
+*Absent from the first draft; four lenses found that independently.  The brief hardened each against
+an anti-solution at intake and this report discarded the hardening by omission.*
+
+| Metric | Owning requirement | Baseline | Target |
+|---|---|---|---|
+| **T** — time to confirm the station works | FR-4 + FR-5 | Unbounded | ≤ 2 min |
+| **D** — unexplained duplicate implementations | FR-1 + FR-2, gate landed by FR-8.1 | **Unmeasured — owed before PLAN exit** | 0 |
+| **K** — memo keys with no completeness guard | FR-3.1 + FR-3.3 | 1 on the frame path (`bodyKey`); 6 data caches pending FR-3.2's ruling | 0 |
+| **G** — gates never observed failing | FR-8.4 | **Unmeasured — needs a canonical gate roster** | 0 |
+
+**Two hardening notes the red team added.**  K must stay an absolute count: FR-3.2's ruling on the six
+data-cache memos removes them from the numerator by definition rather than by guarding them, which is
+the anti-solution the brief hardened **D** against, re-imported.  And **G** has no denominator today —
+`gates.md` exists per feature, not as one roster, and `ci.yml` omits `vet-tags` and `mutant-check`
+from what `make verify` runs.
+
+## Brief → requirement trace
+
+*Added after red team C-1: the absence of this table is what let a theme disappear.*
+
+| Brief | Report | Movement |
+|---|---|---|
+| R1 | FR-1 | Unchanged in substance; FR-2 promoted out of it |
+| R2 | FR-3 | Reduced — the modal guard exists; `bodyKey` does not |
+| R3 | FR-4, FR-5 | Reshaped — the seam exists; FR-5 promoted and enlarged |
+| **R4** | **FR-8** | **Reinstated.  Absent from the first draft with no descope line** |
+| R5 | FR-6 | Unchanged |
+| R6 | FR-7 | Unchanged, premise corrected (C-3) |
+| — | FR-2 | New — promoted to stand alone |
+| — | FR-9 | New — from #17, red team C-4 |
 
 ## Non-Functional Requirements
 
@@ -186,16 +290,20 @@ FR-7.3 (F-45) ratify the 23 stale ledger rows · FR-7.4 (F-12) the ephemeral att
 - **NFR-2 — The injector is absent from release artifacts, provably.**  An artifact-level check, not
   a source-text assertion.  FR-4 makes the surface user-facing, which converts this from
   "if it is cheap" to a release gate.
-- **NFR-3 — Every gate carries a watched failure.**  One evidence line per gate in `gates.md`
-  recording an observed failure against a deliberately broken input.
+- **NFR-3 — Every gate carries a watched failure.**  *Promoted to FR-8.4; it was the only part of the
+  brief's R4 that survived the first draft, and demoting a theme to one NFR is how the rest went
+  missing.*
 - **NFR-4 — Both platforms run in CI while the work is in progress**, not at the release PR.
 - **NFR-5 — A test event is indistinguishable in path and unmistakable in presentation.**
 - **NFR-6 — WCAG 2.2.1 Level A**: no hard timeout on a control.
 
 ## Constraints & Dependencies
 
-1. **Blocking, HUM LEAD-owned:** `perf-protocol.md` §3–5 on Arch hardware.  FR-3.4 and the
-   resident-Piper decision (MVS-D-17 / OQ-18) have no input until it is measured.  §3 was amended at
+1. **HUM LEAD-owned, and NO LONGER PHASE-BLOCKING:** `perf-protocol.md` §3–5 on Arch hardware.  It
+   is the right instrument for **OQ-18, the resident-Piper decision** — and only that.  FR-3.4 came off
+   this dependency at red team C-6.  §3.6 already states OQ-18's default ("otherwise
+   process-per-utterance + the FR-12 cap stays"), so not measuring costs a design that was not going to
+   be built in 0.15.0 anyway.  §3 was amended at
    `9ee6bdc` to exclude the 0.14.0 window: on Linux that build never reached Piper for a takeover
    (#7), so a run against it samples one voice's footprint and records it as two.  **0.14.1 or
    later.**
@@ -251,14 +359,24 @@ FR-7.3 (F-45) ratify the 23 stale ledger rows · FR-7.4 (F-12) the ephemeral att
 2. **FR-5 precedes FR-4.**  The window is unusable at 24 rows today.  Adding scenarios to a surface
    whose controls cannot be seen produces an instrument nobody can operate, which is how this release
    started.
-3. **DISCOVER does not exit until RS-2 is measured.**  Everything else here was checked against the
-   code rather than the ledger, and the ledger lost three times out of seven.  Accepting an
-   unmeasured input after that would be inconsistent with the rest of the phase.
+3. **DISCOVER exits without RS-2.**  *Reversed after red team C-6 and F-A.*  RS-2 cannot measure
+   FR-3.4 — the memos are on the provider fetch path, not the frame — and it is the right instrument
+   for OQ-18 alone, whose default §3.6 already states.  Holding a SEV-0 phase on externally-owned
+   hardware, with no date and no fallback, to answer a question whose answer is already the fallback,
+   is a mitigation that restates the risk.  **OQ-18 and §3/§4 move to 0.16.0 DISCOVER**, where a
+   Broadcaster workload justifies the paired v0.13.0 + 0.14.2 runs §4 actually requires.
+4. **Two conditions remain open and both are HUM LEAD's** (see `red-team-discover.md`): the
+   four-classifier cross-table, and a ruling on listener-versus-operator scope together with F-40's
+   deferral — which needs an exposure statement and a date, not an ordering promise.
 
-**Both ledger rows named in OQ-10 were re-checked against source on 2026-09-07 and the outcome was
-not what this report first claimed.**  F-35 was understated and is amended.  **F-30 was correct and
-this report was wrong** — see FR-3.3.  The ledger lost three times out of seven; on the eighth it
-won, against me.
+**Ledger staleness is worse than this report first claimed, and not in the direction it claimed.**
+F-35 was understated and is amended; F-30 was correct and this report was wrong (FR-3.3).  The red
+team then sampled outside the seven and found **F-8 already fixed** (`httpx/memo.go:213` compares host
+*and* port) and **F-10 fixed in 0.14.0**, carried open through two releases — plus F-1's "four
+siblings," which this report disproved and did not correct.  All three now corrected.  The "three of
+seven" framing is withdrawn: the denominator included an uncontested row and a substituted one, and
+the real finding is that **~40 rows have not been audited since 0.14.0** and every row sampled since
+has been stale.
 
 ## Evidence
 
