@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: build test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: cache-clean build test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -76,9 +76,17 @@ mutant-check:
 # harness that held, which IS this gate's result. (The per-mutant CAUGHT/SURVIVED
 # verdicts come from run.sh, invoked one mutant at a time, and are recorded by
 # hand in the batch build logs; this gate guards the harness, not the corpus.)
+# THIS GATE'S LOG IS TRANSIENT, AND SAYING SO IS THE POINT. It is printed to
+# stdout in the same breath it is written, and it is promoted into the feature's
+# 07-readiness folder deliberately at release time — so it is evidence for one
+# run, not a kept record. It calls cache-clean, NOT hygiene: hygiene certifies a
+# durable record before deleting, and a gate that runs on every verify has no
+# durable record to certify. Claiming otherwise here cost a silently skipped
+# clean-up inside a 900-line log while verify still reported green (0.14.2), and
+# then a 730-line file rewritten on every verify when that was "fixed" wrong.
 	@go test -tags mutants -v -count=1 ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
 	  cat $(DIST)/mutant-check.log; \
-	  $(MAKE) --no-print-directory hygiene RESULTS=$(DIST)/mutant-check.log; \
+	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc
 
 # THE SUITE AS ANOTHER PLATFORM. The first Linux run of 0.14.0 was its release
@@ -132,9 +140,6 @@ test-platforms:
 # `.gitignore` now re-includes `06_docs/**/*.log`; the check below is what
 # proves it for any path you pass. hygiene also names any record still sitting
 # in dist, so it gets promoted rather than lost on the next run.
-#
-# `go clean -cache` is machine-wide, not repo-scoped — that is the blast radius
-# and it is deliberate, since the cache it clears is the one this repo filled.
 HYGIENE_KEEP := watchpost watchpost-0.14.1
 
 hygiene:
@@ -153,8 +158,16 @@ hygiene:
 	  case " $(HYGIENE_KEEP) " in *" $$b "*) continue;; esac; \
 	  if [ -e "$$f" ] && [ ! -x "$$f" ]; then echo "hygiene: RECORD still in $(DIST): $$b — promote it to 06_docs or it dies with the next run"; fi; \
 	done
+	@$(MAKE) --no-print-directory cache-clean
+	@echo "hygiene: kept $(HYGIENE_KEEP)"
+
+# cache-clean is the cleaning half on its own, for callers that have nothing to
+# certify. `go clean -cache` is machine-wide, not repo-scoped — that is the
+# blast radius and it is deliberate, since the cache it clears is the one this
+# repo filled.
+cache-clean:
 	@go clean -cache -testcache
-	@echo "hygiene: build cache cleared; kept $(HYGIENE_KEEP)"
+	@echo "cache-clean: build and test caches cleared"
 
 verify: fmt vet vet-tags tidy vuln race lint-imports lint-watermark gate-controls mutant-check
 	@echo "verify: ALL GATES GREEN"
