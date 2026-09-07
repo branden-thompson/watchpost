@@ -131,7 +131,7 @@ func (p *Provider) marineFor(ctx context.Context, ref snapshot.LocationRef) (*sn
 	switch {
 	case waves != nil:
 		if temp != nil {
-			waves.WaterTemp = keepOr(nil, temp.WaterTemp)
+			waves.WaterTemp = snapshot.KeepOr(nil, temp.WaterTemp)
 		}
 		return waves, nil
 	case temp != nil:
@@ -176,14 +176,6 @@ func head(cands []candidate, n int) []candidate {
 }
 
 // keepOr copies fallback when have is nil (P10-09 single-deref helper).
-func keepOr(have, fallback *float64) *float64 {
-	if have != nil || fallback == nil {
-		return have
-	}
-	v := *fallback
-	return &v
-}
-
 // loadStations fetches activestations.xml once a day.
 func (p *Provider) loadStations(ctx context.Context) error {
 	p.mu.Lock()

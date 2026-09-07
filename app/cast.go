@@ -203,24 +203,10 @@ func (d *radioDeck) Platform() string { return runtimeGOOS }
 // cost of trusting one wrongly is a SayVoice built from a name the host does
 // not have, which is silence on an alert (RS-2).
 func (d *radioDeck) Discovered(name string) bool {
-	if name == "" {
-		return false
-	}
-	if name == systemVoice {
-		return true // the sentinel is always present (UAT 88)
-	}
 	d.mu.Lock()
 	discovered := d.voices
 	d.mu.Unlock()
-	if len(discovered) == 0 {
-		discovered = macVoices() // `say -v ?` has not answered yet
-	}
-	for _, v := range discovered {
-		if v == name {
-			return true
-		}
-	}
-	return false
+	return discoveredIn(discovered, name)
 }
 
 // piperInstallFor is the ONE way app turns a voice NAME (or key) into an
@@ -259,13 +245,7 @@ func (d *radioDeck) Installed(key string) bool {
 // Default implements cast.Host: this machine's own last resort when even the
 // root did not resolve.
 func (d *radioDeck) Default() string {
-	if runtimeGOOS == "darwin" {
-		return systemVoice
-	}
-	if installed := synth.InstalledVoices(d.voiceDir); len(installed) > 0 {
-		return installed[0].Name
-	}
-	return "" // nothing here at all: the one legitimately silent row (AM-19)
+	return defaultVoiceFor(runtimeGOOS, d.voiceDir)
 }
 
 // discoverMacVoices reads `say -v ?` and returns the curated voices that are

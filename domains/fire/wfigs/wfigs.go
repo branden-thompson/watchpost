@@ -132,7 +132,7 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 			ins = append(ins, snapshot.Incident{Name: f.name, Lat: f.lat, Lon: f.lon, PercentContained: f.contained, Acres: f.acres, State: f.state, Discovered: f.discovered,
 				Source: snapshot.SourceInfo{Provider: p.ID(), DistanceKm: &d, IssuedAt: frag.FetchedAt}})
 		}
-		sort.SliceStable(ins, func(i, j int) bool { return acres(ins[i]) > acres(ins[j]) }) // the big ones first; dispatch-only records last
+		sort.SliceStable(ins, func(i, j int) bool { return ins[i].AcresOrMissing() > ins[j].AcresOrMissing() }) // the big ones first; dispatch-only records last
 		if len(ins) > maxIncidents {
 			ins = ins[:maxIncidents]
 		}
@@ -161,13 +161,6 @@ func decodeLayer(raw []byte) ([]incident, error) {
 		out = append(out, in)
 	}
 	return out, nil
-}
-
-func acres(in snapshot.Incident) float64 {
-	if in.Acres == nil {
-		return -1
-	}
-	return *in.Acres
 }
 
 // firstOf is the first reported acreage, nil when none is.

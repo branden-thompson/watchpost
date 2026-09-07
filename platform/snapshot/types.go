@@ -10,6 +10,7 @@ package snapshot
 import (
 	"context"
 	"errors"
+	"math"
 	"strconv"
 	"time"
 )
@@ -440,4 +441,41 @@ type Provider interface {
 	ID() string
 	Domains() []string
 	Fetch(ctx context.Context, req FetchReq) (Fragment, error)
+}
+
+// The three optional fire numbers, read with the sentinel every ranking uses.
+//
+// EACH OF THESE WAS WRITTEN TWICE — once here beside the type and once in
+// domains/fire — with identical bodies and identical sentinels. They agree
+// today. The sentinels are POLICY (a missing FRP sorts last; a missing distance
+// is infinitely far), so the failure mode is that one is adjusted and the other
+// is not, and the merge and the ranking then disagree about the same fire while
+// both look right in isolation.
+//
+// They live on the type because the type is what they are about. Issue #7 was
+// the same shape — one operation, four hand-written copies, one of them wrong.
+
+// FRPOrMissing is the fire radiative power, or -1 when the feed omitted it.
+func (h Hotspot) FRPOrMissing() float64 {
+	if h.FRPMW == nil {
+		return -1
+	}
+	return *h.FRPMW
+}
+
+// KmOrFar is the distance in kilometres, or "infinitely far" when unknown, so
+// an unplaced hotspot never wins a nearest-first comparison.
+func (h Hotspot) KmOrFar() float64 {
+	if h.DistanceKm == nil {
+		return math.MaxFloat64
+	}
+	return *h.DistanceKm
+}
+
+// AcresOrMissing is the incident's size, or -1 when it has not been reported.
+func (in Incident) AcresOrMissing() float64 {
+	if in.Acres == nil {
+		return -1
+	}
+	return *in.Acres
 }

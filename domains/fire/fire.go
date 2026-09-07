@@ -87,7 +87,7 @@ func Cluster(hs []snapshot.Hotspot) []snapshot.Hotspot {
 	for _, h := range hs {
 		k := key{int(math.Round(h.Lat / 0.003)), int(math.Round(h.Lon / 0.003)), h.DetectedAt.UTC().Format("2006-01-02")}
 		if i, ok := best[k]; ok {
-			if frp(h) > frp(out[i]) || (frp(h) == frp(out[i]) && h.DetectedAt.After(out[i].DetectedAt)) {
+			if h.FRPOrMissing() > out[i].FRPOrMissing() || (h.FRPOrMissing() == out[i].FRPOrMissing() && h.DetectedAt.After(out[i].DetectedAt)) {
 				out[i] = h
 			}
 			continue
@@ -95,25 +95,11 @@ func Cluster(hs []snapshot.Hotspot) []snapshot.Hotspot {
 		best[k] = len(out)
 		out = append(out, h)
 	}
-	sort.SliceStable(out, func(i, j int) bool { return dist(out[i]) < dist(out[j]) })
+	sort.SliceStable(out, func(i, j int) bool { return out[i].KmOrFar() < out[j].KmOrFar() })
 	if len(out) > snapshot.MaxHotspots {
 		out = out[:snapshot.MaxHotspots] // nearest first, so the cap keeps what matters
 	}
 	return out
-}
-
-func frp(h snapshot.Hotspot) float64 {
-	if h.FRPMW == nil {
-		return -1
-	}
-	return *h.FRPMW
-}
-
-func dist(h snapshot.Hotspot) float64 {
-	if h.DistanceKm == nil {
-		return math.MaxFloat64
-	}
-	return *h.DistanceKm
 }
 
 // Age is a hotspot's age at now, for the views ("2 h ago").
