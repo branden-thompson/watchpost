@@ -448,23 +448,23 @@ from what `make verify` runs.
 | **RS-3** | FR-4 raises the stakes on injection | The surface becomes user-facing for the first time | NFR-2 becomes a release gate; if it slips, FR-4 does not ship |
 | **RS-4** | FR-6.6 is an unbounded hunt | F-43 has never been reproduced | Timebox and a written disposition, decided before it starts |
 | **RS-5** | FR-1 and FR-3 are wide refactors carrying hazard information | SEV-0 | TDD is directive-mandated; safety is the tests that exist before the change |
-| **RS-6** | **New — a gate reported green over a failed step** | A `$(MAKE)` chained with `;` inside a recipe does not propagate status.  Found and fixed for one instance in 0.14.2; nothing checks the others | Belongs to NFR-3 |
-| **RS-7** | **New — an intermittent stall in the broadcast completion path** | #17.  52 ms of work, unmoved by starving to one core under `-race`, missed a 5 s bound: 96×.  One failure in three runs on identical source, same platform | Investigation on Linux hardware.  **The bound must not be widened** — that deletes the symptom and leaves the stall |
+| **RS-6** | **New — a gate reported green over a failed step** | A `$(MAKE)` chained with `;` inside a recipe does not propagate status.  Found and fixed for one instance in 0.14.2; nothing counts the others | Belongs to FR-8.4 |
+| **RS-7** | **New — an unexplained intermittent failure in the broadcast completion path** | #17.  One failure in three runs on a byte-identical tree, same platform, inside twenty minutes.  *The issue's original argument — 52 ms of work unmoved under starvation, a 96× margin — was **withdrawn**: `engine.go:519` polls a 50 ms ticker, so the figure is one poll interval and is invariant under CPU starvation by construction.  The measurement could not have moved whatever the code did.  Corrected publicly on the issue.* | **The bound must not be widened.**  Cheapest step first: `fakePlayer`'s drain goroutine and `Play()` are unordered, which reproduces the reported status exactly — eliminate the test double before suspecting production.  **FR-9 exists regardless of the outcome** |
 
 ## Open Questions
 
-- **OQ-1** — ~~Fire release numbering.~~ **RULED:** Broadcaster is 0.16.0, so the fire release is
-  0.15.x.  Remaining half: does F-40's fix fit a point release, or does a new fire feed make it a
-  minor?
+- **OQ-1** — ~~Fire release numbering.~~ **CLOSED.**  There is no fire release: F-40 was rolled into
+  0.15.0 as FR-10, so the sequence is 0.15.0 → 0.16.0.
 - **OQ-2** — FR-6.4: how long should the relay-fault window stay open, and does a keypress reset it?
 - **OQ-3** — FR-4.6: what key does STOP ALL take, and where does it live?
 - **OQ-4** — FR-7.1: is `app/release.go` a provider?
 - **OQ-5** — FR-7.2: `os.UserCacheDir()` or `~/.watchpost/`, and does the migration ride with the
   ruling?
 - **OQ-6** — FR-6.6: F-43's timebox and its disposition if unreproduced.
-- **OQ-7** — FR-3.4: does consolidating the two memo types cost frame time?  Blocked on RS-2.
-- **OQ-8** — FR-7.5: does documentation move at all, given that `06_docs` holds source and 121 PII
-  occurrences?
+- **OQ-7** — FR-3.4: does consolidating the two memo types cost anything?  **Not a frame question and not blocked** — the memos are on the provider fetch path, so the instrument is `make alloc-budget` plus the memo gauges, on this machine.
+- **OQ-8** — FR-7.5: ~~does documentation move at all?~~ **The wrong question** — it has already
+  moved; the repo is public.  What replaces it: what is the exposure statement, and what is the
+  remediation ruling on the published copy?
 - **OQ-9** — **New.**  FR-3.2: what is the right property for a data-cache memo?  The frame guard's
   implication does not transfer, and inventing the wrong property is worse than having none.
 - **OQ-10** — ~~Should F-30 be closed and F-35 rewritten?~~ **RESOLVED 2026-09-07.**  F-35 amended
@@ -476,8 +476,11 @@ from what `make verify` runs.
 **Proceed to PLAN**, with three qualifications.
 
 1. **FR-2 leads.**  The producer/consumer completeness check is the one mechanism that generalises
-   across FR-1, FR-3, and FR-4, and it already has a working instance from 0.14.2.  Building it first
-   makes the rest of the release cheaper and gives every subsequent item a way to prove itself.
+   across FR-1, FR-3, and FR-4.  Building it first makes the rest of the release cheaper and gives
+   every subsequent item a way to prove itself.  *It now has a working instance — but only after the
+   0.14.2 original was found to assert 4 of 7 lanes and was rewritten.  FR-2.1a's sizing step exists
+   because of that: 26 closed sets and 48 default arms are the population, and generalising from one
+   instance is what produced the broken template.*
 2. **FR-5 precedes FR-4.**  The window is unusable at 24 rows today.  Adding scenarios to a surface
    whose controls cannot be seen produces an instrument nobody can operate, which is how this release
    started.
@@ -516,8 +519,14 @@ has been stale.
 
 ## Evidence
 
-Findings were produced by probe rather than by reading wherever a claim could be measured.  Every
-probe was temporary and deleted in the same session:
+Findings were produced by probe rather than by reading wherever a claim could be measured.
+
+**One instrument is RETAINED** — `app/classifier_crosstable_test.go`, which emits the four-classifier
+cross-table and pins the divergence count at 7, so a classifier edit that moves it fails and must be
+re-ratified.  The red team's finding that this phase destroyed every instrument it built is fair for
+the rest, and is why this one stays.
+
+The temporary probes, deleted in the same session:
 
 - `app/zz_discover_probe_test.go` — the lane divergence.  **Its first version was invalid**: it
   built a `globalfeed.Event` without a `Class`, and `ClassQuake` is the zero value, so an unset event
@@ -530,7 +539,8 @@ probe was temporary and deleted in the same session:
 
 ## Source documents
 
-`08-reports/project-brief.md` · GitHub #9, #12, #13, #14, #15, #17 · `06_docs/follow-ups.md`
-(47 open rows; F-2 corrected at `f0ddddc`) · `06_docs/quality-observations.md` ·
+`08-reports/project-brief.md` · `08-reports/red-team-discover.md` · GitHub #9, #12, #13, #14, #15,
+#17, #18 · `06_docs/follow-ups.md` (**46** `F-` rows, not the 47 both documents first claimed; F-2,
+F-35 and F-1 corrected, F-8 and F-10 closed as already-fixed) · `06_docs/quality-observations.md` ·
 `multi-voice-support/08-reports/debrief.md` · `multi-voice-support/07-readiness/perf-protocol.md`
 (§3 amended at `9ee6bdc`) · `CHANGELOG.md` §0.14.2.
