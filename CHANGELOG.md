@@ -2,6 +2,23 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.14.1] — 2026-09-07
+
+### Fixed
+
+- **Alerts were never spoken on Linux.** The tone sounded, the ticker took over, and no correspondent
+  ever read the alert — while the very same voice read the location report perfectly. Watchpost looks
+  a Piper voice up by its model key, and the alert path asked for one by its display name instead, so
+  every installed voice read as missing. If you are on Linux and 0.14.0 went quiet on you, this is why.
+
+### Changed
+
+- Nothing you can see. Seven operations that were written out more than once — how a voice is found,
+  which voices this machine has, the fallback voice, the clock default, the bound on text that arrives
+  from a feed, two fire measurements and a location lookup — now have one implementation each. The
+  fix above was one of those duplicates going wrong on the platform its copy was never run on, so the
+  rest were consolidated rather than left to do it later.
+
 ## [0.14.0] — 2026-09-07
 
 ### Added
