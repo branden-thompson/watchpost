@@ -382,7 +382,7 @@ from what `make verify` runs.
 
 | ID | Risk | Rationale | Mitigation |
 |---|---|---|---|
-| **RS-1** | Scope | FR-1 through FR-7 remains large, though smaller than the brief's R1–R6 after FR-3 shrank and FR-4 lost its construction half | The scope predicate — a loud failure is not 0.15.0 — plus a checkpoint after FR-1 to FR-5 |
+| **RS-1** | Scope — **now the live risk, and unmitigated by descoping** | FR-1 to FR-10, nothing removed.  FR-3 shrank and FR-4 lost its construction half, but FR-8 was reinstated and FR-10 rolled in, so the release is larger than the brief's R1–R6, not smaller.  Descope was recommended (nine lenses on FR-7) and declined on precedent grounds | The scope predicate no longer helps: every remaining item passes it.  What is left is **sequencing and early detection** — FR-2 first, FR-5 before FR-4, a defined checkpoint after FR-1 to FR-5, and **FR-10 started immediately in parallel**, since it investigates feeds and does not contend with any other item for code.  PLAN owes a size per FR |
 | **RS-2** | Arch measurement is blocking and externally owned | FR-3.4 and OQ-18 have no input | HUM LEAD run; DISCOVER cannot honestly exit without it |
 | **RS-3** | FR-4 raises the stakes on injection | The surface becomes user-facing for the first time | NFR-2 becomes a release gate; if it slips, FR-4 does not ship |
 | **RS-4** | FR-6.6 is an unbounded hunt | F-43 has never been reproduced | Timebox and a written disposition, decided before it starts |
@@ -429,13 +429,20 @@ from what `make verify` runs.
 4. **Both open conditions are now closed.**  The surface taxonomy is ruled (visual = operator, audio
    = listener) and F-40 is rolled in as FR-10.  The four-classifier cross-table is a DISCOVER
    deliverable owed by this report, not a ruling owed by the HUM LEAD; it was mis-assigned.
-5. **The offset for FR-10, recommended not taken.**  FR-10 is the largest item in the release and
-   RS-1 was already the top risk.  **Nine of eleven lenses independently recommended deleting most of
-   FR-7**, and red team C-3 removed its premise outright: the PII exposure is live and published, so
-   "publication precondition" describes a door that is already open.  Cutting FR-7 to a single
-   deliverable — the exposure statement and a HUM LEAD remediation ruling — pays for FR-10 out of the
-   work the red team said had no failure mode at all, loud or silent.  **This is a scope decision and
-   therefore the HUM LEAD's; it is recommended, not applied.**
+5. **No descope.  FR-7 stays whole — HUM LEAD, 2026-09-07: "better to solve now than later."**
+   Nine of eleven lenses recommended deleting most of it, and the offset was recommended and
+   declined.  The counter-argument the ruling rests on is sound and was in the recommendation: FR-7.1
+   and FR-7.2 are **precedents**, FR-7.1 explicitly sets the pattern six new feeds will copy, and
+   0.16.0 is when those feeds arrive — so ruling after Broadcaster starts is ruling too late.  The
+   same "cheaper now than twice" logic the release rests on applies to them.
+
+   **The consequence is stated, not absorbed:** scope now runs FR-1 to FR-10 with nothing removed,
+   and the largest item in the release arrived after the red team called scope the top risk.  With
+   descoping off the table, **the only remaining levers are order and early detection**, so PLAN owes
+   two things it would otherwise have been able to skip — a sequence, and a size per FR.  The
+   principal-engineer lens named this as the likeliest overrun driver and it is now the live one:
+   nine open questions, six of them HUM LEAD rulings that block work, and not one FR carrying an
+   estimate or a checkpoint definition.
 
 **Ledger staleness is worse than this report first claimed, and not in the direction it claimed.**
 F-35 was understated and is amended; F-30 was correct and this report was wrong (FR-3.3).  The red
