@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 // nhcTTL: NHC issues advisories every few hours.
@@ -93,9 +94,9 @@ func (n *NHC) parse(body []byte) ([]Event, error) {
 			at = time.Now() // a malformed advisory time is "as of now", not year 1 (P4 F6)
 		}
 		advAt, _ := time.Parse(time.RFC3339, s.PublicAdvisory.Issuance)
-		name := clampField(strings.TrimSpace(s.Name))
+		name := plaintext.ClampField(strings.TrimSpace(s.Name))
 		out = append(out, Event{
-			ID:       clampField(s.ID),
+			ID:       plaintext.ClampField(s.ID),
 			Class:    ClassTropical,
 			Severity: sev,
 			Type:     typ,
@@ -107,13 +108,13 @@ func (n *NHC) parse(body []byte) ([]Event, error) {
 			At:       at.UTC(),
 			Source:   n.Name(),
 			Tropical: &TropicalDetail{
-				Name: name, Basin: tropicalBasin(s.ID), BinNumber: clampField(s.BinNumber),
+				Name: name, Basin: tropicalBasin(s.ID), BinNumber: plaintext.ClampField(s.BinNumber),
 				WindKt: clampNonNeg(atoiLoose(s.Intensity), 250), PressureMb: clampNonNeg(atoiLoose(s.Pressure), 1100),
 				MoveDirDeg: clampNonNeg(s.MovementDir, 360), MoveSpeedKt: clampNonNeg(s.MovementSpeed, 100),
-				LatText: clampField(s.Latitude), LonText: clampField(s.Longitude),
-				AdvisoryNum: clampField(s.PublicAdvisory.AdvNum), AdvisoryAt: advAt.UTC(),
-				ForecastNum: clampField(s.ForecastAdv.AdvNum), DiscussionNum: clampField(s.Discussion.AdvNum),
-				AdvisoryURL: clampField(s.PublicAdvisory.URL),
+				LatText: plaintext.ClampField(s.Latitude), LonText: plaintext.ClampField(s.Longitude),
+				AdvisoryNum: plaintext.ClampField(s.PublicAdvisory.AdvNum), AdvisoryAt: advAt.UTC(),
+				ForecastNum: plaintext.ClampField(s.ForecastAdv.AdvNum), DiscussionNum: plaintext.ClampField(s.Discussion.AdvNum),
+				AdvisoryURL: plaintext.ClampField(s.PublicAdvisory.URL),
 			},
 		})
 	}

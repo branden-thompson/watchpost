@@ -17,6 +17,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/fire"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -154,7 +155,7 @@ func decodeLayer(raw []byte) ([]incident, error) {
 			continue
 		}
 		in := incident{lon: f.Geometry.Coordinates[0], lat: f.Geometry.Coordinates[1], name: f.Properties.Name, state: f.Properties.State,
-			contained: f.Properties.Contained, acres: firstOf(f.Properties.Size, f.Properties.Final, f.Properties.Discovery, f.Properties.Initial)}
+			contained: f.Properties.Contained, acres: render.FirstOf(f.Properties.Size, f.Properties.Final, f.Properties.Discovery, f.Properties.Initial)}
 		if f.Properties.Discovered != nil {
 			in.discovered = time.UnixMilli(int64(*f.Properties.Discovered)).UTC()
 		}
@@ -164,11 +165,3 @@ func decodeLayer(raw []byte) ([]incident, error) {
 }
 
 // firstOf is the first reported acreage, nil when none is.
-func firstOf(vs ...*float64) *float64 {
-	for _, v := range vs {
-		if v != nil {
-			return v
-		}
-	}
-	return nil
-}

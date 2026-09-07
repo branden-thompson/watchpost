@@ -3,9 +3,7 @@ const ObsMaxKm
 const fetchConcurrency
 const gridTTL
 const inlandTTL
-const maxFieldRunes
 const maxIDRunes
-const maxListLen
 const maxProseRunes
 const stationCandidates
 func (*MarineProvider).Domains
@@ -36,12 +34,11 @@ func (*Provider).resolve
 func (*Provider).resolvePoints
 func (*Provider).stationObs
 func (*Provider).stationOrder
+func (*Provider).ugcOfKind
 func (gridSeries).extremeOn
 func (gridSeries).first
 func New
 func NewMarine
-func clampList
-func clampRunes
 func conditionCode
 func far
 func fillNote

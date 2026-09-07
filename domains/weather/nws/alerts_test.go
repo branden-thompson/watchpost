@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -26,7 +27,7 @@ func TestMapAlertBoundsEveryFieldAndKeepsSender(t *testing.T) {
 		t.Fatalf("expected one alert on k, got %d", len(perKey["k"]))
 	}
 	a := perKey["k"][0]
-	if len([]rune(a.Event)) > maxFieldRunes || len([]rune(a.Description)) > maxProseRunes || len(a.AffectedZones) > maxListLen || len(a.References) > maxListLen {
+	if len([]rune(a.Event)) > plaintext.MaxFieldRunes || len([]rune(a.Description)) > maxProseRunes || len(a.AffectedZones) > plaintext.MaxListLen || len(a.References) > plaintext.MaxListLen {
 		t.Fatalf("unbounded: event %d desc %d zones %d refs %d", len(a.Event), len(a.Description), len(a.AffectedZones), len(a.References))
 	}
 	if a.SenderName != "NWS Test" {
@@ -49,7 +50,7 @@ func TestMapAlertAttachesWhenTheZoneIsBeyondTheListCap(t *testing.T) {
 	if len(perKey["olathe"]) != 1 {
 		t.Fatalf("alert affecting the tracked zone (60th of 80) was dropped: %d attached", len(perKey["olathe"]))
 	}
-	if got := len(perKey["olathe"][0].AffectedZones); got != maxListLen {
-		t.Fatalf("the retained zone list is bounded to %d, got %d", maxListLen, got)
+	if got := len(perKey["olathe"][0].AffectedZones); got != plaintext.MaxListLen {
+		t.Fatalf("the retained zone list is bounded to %d, got %d", plaintext.MaxListLen, got)
 	}
 }

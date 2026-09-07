@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/plaintext"
+
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -42,30 +44,9 @@ type alertProps struct {
 // Field bounds for a CAP alert reaching the snapshot (0.13.0, NFR-5; red-team
 // S2 — the location path was unbounded while the ticker path was not).
 const (
-	maxFieldRunes = 120
 	maxIDRunes    = 200 // an id: the URL form of an OID is 31 runes longer (R5-B-05)
 	maxProseRunes = 4000
-	maxListLen    = 50
 )
-
-func clampRunes(s string, n int) string {
-	r := []rune(s)
-	if len(r) <= n {
-		return s
-	}
-	return string(r[:n])
-}
-
-func clampList(s []string) []string {
-	if len(s) > maxListLen {
-		s = s[:maxListLen]
-	}
-	out := make([]string, len(s))
-	for i, v := range s {
-		out[i] = clampRunes(v, maxFieldRunes)
-	}
-	return out
-}
 
 func (p *Provider) fetchAlerts(ctx context.Context, refs []snapshot.LocationRef, frag *snapshot.Fragment) error {
 	// Collect every location's zones (dual-UGC: forecastZone + county — M3).
@@ -116,24 +97,24 @@ func mapAlert(pr alertProps, zoneToKeys map[string][]snapshot.LocationKey, perKe
 		pr.ID = "no-id:" + pr.Headline // never drop an alert silently (RS-10)
 	}
 	a := snapshot.Alert{
-		ID:          clampRunes(pr.ID, maxIDRunes), // the bare OID; the feed path bounds its URL form the same (R5-B-05)
-		Event:       clampRunes(pr.Event, maxFieldRunes),
-		Severity:    strings.ToLower(clampRunes(pr.Severity, maxFieldRunes)),
-		Urgency:     strings.ToLower(clampRunes(pr.Urgency, maxFieldRunes)),
-		Certainty:   strings.ToLower(clampRunes(pr.Certainty, maxFieldRunes)),
-		MessageType: strings.ToLower(clampRunes(pr.MessageType, maxFieldRunes)),
+		ID:          plaintext.ClampRunes(pr.ID, maxIDRunes), // the bare OID; the feed path bounds its URL form the same (R5-B-05)
+		Event:       plaintext.ClampField(pr.Event),
+		Severity:    strings.ToLower(plaintext.ClampField(pr.Severity)),
+		Urgency:     strings.ToLower(plaintext.ClampField(pr.Urgency)),
+		Certainty:   strings.ToLower(plaintext.ClampField(pr.Certainty)),
+		MessageType: strings.ToLower(plaintext.ClampField(pr.MessageType)),
 		Sent:        pr.Sent, Effective: pr.Effective, Onset: pr.Onset,
 		Expires: pr.Expires, Ends: pr.Ends,
-		AreaDesc: clampRunes(pr.AreaDesc, maxFieldRunes), Headline: clampRunes(pr.Headline, maxFieldRunes),
-		Description: clampRunes(pr.Description, maxProseRunes), Instruction: clampRunes(pr.Instruction, maxProseRunes),
-		SenderName: clampRunes(pr.SenderName, maxFieldRunes),
+		AreaDesc: plaintext.ClampField(pr.AreaDesc), Headline: plaintext.ClampField(pr.Headline),
+		Description: plaintext.ClampRunes(pr.Description, maxProseRunes), Instruction: plaintext.ClampRunes(pr.Instruction, maxProseRunes),
+		SenderName: plaintext.ClampField(pr.SenderName),
 		Source:     snapshot.SourceInfo{Provider: "nws", IssuedAt: pr.Sent},
 	}
 	var refs []string
 	for _, r := range pr.References {
 		refs = append(refs, r.ID)
 	}
-	a.References = clampList(refs)
+	a.References = plaintext.ClampList(refs)
 	// Two passes (B1 red-team #1): the full zone list must be complete BEFORE
 	// any location receives its copy, or early-matched locations get a
 	// truncated CAP AffectedZones. The match runs over the FULL list — a
@@ -144,7 +125,7 @@ func mapAlert(pr alertProps, zoneToKeys map[string][]snapshot.LocationKey, perKe
 	for _, zURL := range pr.AffectedZones {
 		zones = append(zones, lastSegment(zURL))
 	}
-	a.AffectedZones = clampList(zones)
+	a.AffectedZones = plaintext.ClampList(zones)
 	matched := map[snapshot.LocationKey]bool{}
 	for _, z := range zones {
 		for _, k := range zoneToKeys[z] {

@@ -1034,6 +1034,57 @@ platform while the work is still being done.* Not before the release PR. The
 branch being local-only is a git-hygiene choice; it silently became a testing
 choice.
 
+## One operation, four hand-written copies (2026-09-07, 0.14.1)
+
+Issue #7 — the first Linux bug after release — was a name-to-install lookup
+written out four times. `FindPiperVoice` locates a model by KEY; four callers
+passed `synth.VoiceSpec{Name: name}`, whose Key is empty. They looked for
+`voices/.onnx` and answered no for every voice however plainly installed. On
+Linux the tone sounded, the ticker took over, and nothing was ever read.
+
+**The fourth copy was written by copying the third.** `hostFacts.Installed`
+carries the comment *"find-only, exactly as the deck's is"*. It was, faithfully,
+defect and all. And the file's own header says why that is dangerous: *"two
+implementations of which voices does this host have is how a report and a screen
+start disagreeing about the same machine, so the deck and the report share this
+one."* **It did not share it.** Three methods of one interface, written twice.
+
+**The correct form was already in the tree.** The voice-preview path resolves
+through `VoiceByName` first. Nothing else used it. So this was not missing
+knowledge — it was knowledge that existed in one place and was re-derived,
+badly, in four others.
+
+**Then the maintainer asked one question** — *"can we turn that into a shared
+helper so there aren't two call paths for the same functionality?"* — and the
+grep that answered it found the two call sites the patch had missed. **The
+question was a better instrument than the fix.**
+
+**So we went looking for the class rather than the instance.** Every production
+function body normalised and hashed: **nine groups of identical bodies**. Six
+were one policy with two owners and are now one — the closed allowlist, the
+last-resort voice, the twelve-hour clock default (the radio and the tape could
+have disagreed about the time on one screen), the Producer's lock discipline,
+the fire sentinels, a merge rule. Three were left, with reasons written down.
+
+**Then for near-duplicates — the same thing done DIFFERENTLY**, which exact
+matching cannot see. The sharpest find: `maxListLen = 50` and
+`maxFieldRunes = 120` declared in **two** domain packages, with four differently
+named helpers applying them. That is the bound on untrusted provider prose. Both
+agreed, which is precisely the state issue #7 was in before it did not.
+
+**THE RULE.** *Two implementations of one operation is a defect that has not
+happened yet.* Not a style preference — a defect with a delay on it, because the
+day one is corrected and the other is not is the day they disagree, and both
+will look right in isolation. The cost of finding them is a hundred-line script.
+
+**WHERE THIS SHOULD HAVE SURFACED, and this is the maintainer's point:** the
+**Code Quality red-team lens, at BUILD and at REVIEW.** Ten lenses ran over this
+release across four rounds and none of them asked "is this operation implemented
+more than once, and do the copies agree?" — a question that is mechanical, cheap,
+and would have caught issue #7 before a listener on Linux heard a tone and then
+silence. It is going into the lens's brief. A red team that only reads for
+correctness of what is written will not see the risk in what is written twice.
+
 ## The metric this is all judged against
 
 Tasks completed per session. It has not moved yet (1). Every other number has. The programme

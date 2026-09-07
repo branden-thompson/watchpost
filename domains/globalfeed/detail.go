@@ -2,8 +2,8 @@ package globalfeed
 
 // detail.go — per-class detail carried on an Event (0.13.0, SAM-D-21): what
 // the severe-events window renders beyond the tape's thin fields. Every string
-// from a feed is bounded here (P4 F5 / NFR-5): short fields to maxFieldRunes,
-// prose to maxProseRunes, numbers to their physical ranges, lists to maxListLen.
+// from a feed is bounded here (P4 F5 / NFR-5): short fields to plaintext.MaxFieldRunes,
+// prose to maxProseRunes, numbers to their physical ranges, lists to plaintext.MaxListLen.
 
 import "time"
 
@@ -11,9 +11,7 @@ import "time"
 // the cap only stops a hostile feed from growing the window without bound.
 const maxProseRunes = 4000
 
-// maxListLen bounds a feed-supplied list (zones, references, parameters).
-const maxListLen = 50
-
+// plaintext.MaxListLen bounds a feed-supplied list (zones, references, parameters).
 // QuakeDetail is a USGS significant-feed event's record (the render list in
 // 02-analysis/data-shape.md §4 plus the Keep fields).
 type QuakeDetail struct {
@@ -98,18 +96,7 @@ func clampNonNeg(n, hi int) int {
 	return n
 }
 
-// clampSlice bounds a list to maxListLen entries, each to maxFieldRunes.
-func clampSlice(s []string) []string {
-	if len(s) > maxListLen {
-		s = s[:maxListLen]
-	}
-	out := make([]string, len(s))
-	for i, v := range s {
-		out[i] = clampField(v)
-	}
-	return out
-}
-
+// clampSlice bounds a list to plaintext.MaxListLen entries, each to plaintext.MaxFieldRunes.
 // clampFloat bounds a physical quantity; NaN/Inf read as lo.
 func clampFloat(f, lo, hi float64) float64 {
 	if f != f || f < lo { // NaN compares false to itself
