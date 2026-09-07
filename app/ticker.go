@@ -610,18 +610,21 @@ func laneItems(rows []severe.Row) []tty.TickerItem {
 	return out
 }
 
-// tickerCategory maps an event to its marquee lane (HUM LEAD 2026-08-27):
-// quakes and tropical cyclones to their own lanes; an NWS product splits by
-// Watch vs Warning.
-func tickerCategory(e globalfeed.Event) tty.TickerCategory {
-	switch globalfeed.LaneOf(e) {
-	case globalfeed.LaneDisasters:
-		return tty.CatDisasters
-	case globalfeed.LaneMarine:
-		return tty.CatMarine
-	case globalfeed.LaneWatch:
-		return tty.CatWatch
-	default:
-		return tty.CatWarning
-	}
-}
+// tickerCategory is the marquee lane of an event, and it is LaneOf's answer
+// unchanged. globalfeed.Lane and tty.TickerCategory are both aliases of
+// category.Category, so there is nothing here to translate.
+//
+// IT USED TO TRANSLATE, AND THAT IS THE BUG (#15). A four-arm switch over the
+// lanes, with a default of Warnings, had no arm for LaneEmergency — so an
+// Evacuation Immediate was laned Emergency by the feed and relabelled a
+// Warning on its way to the band, shown in warning colours beside a
+// thunderstorm warning. The window and the read ladder had it right; only the
+// screen was wrong. C-2 pinned the ruling where the lane is decided during
+// 0.14.0, and this layer, the one that delivers the lane to a listener, was
+// never taught it.
+//
+// A per-lane switch is a producer/consumer pair with nothing checking that the
+// consumer knows every value the producer can emit, and a default arm makes
+// the gap read as a decision. The identity removes the arms and the default
+// together, so a lane added later cannot fall through anything.
+func tickerCategory(e globalfeed.Event) tty.TickerCategory { return globalfeed.LaneOf(e) }

@@ -2,6 +2,21 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.14.2] — 2026-09-07
+
+### Fixed
+
+- **An evacuation order was shown on the marquee as an ordinary warning.**  The Weather Service's
+  highest-urgency product — the one that says leave now — reached the band in the Warnings lane, in
+  warning colours, beside a thunderstorm warning.  If nothing else occupied the Emergency Orders
+  lane, that lane did not render at all.  The window and the spoken read had it right; only the band
+  was wrong.  `tickerCategory` translated a feed lane into a marquee lane through a four-arm switch
+  with a default, and had no arm for Emergency Orders, so an evacuation order fell through the
+  default and was relabelled.  The two types are aliases of one another, so there was never anything
+  to translate: the map is now the identity, which removes the arms and the default together.  A
+  companion test walks every lane the feed can produce and fails if any of them fails to survive the
+  trip to the band, so a lane added later cannot fall through anything.  (#15)
+
 ## [0.14.1] — 2026-09-07
 
 ### Fixed
