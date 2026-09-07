@@ -2,7 +2,7 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
-## [0.14.0] — 2026-09-06
+## [0.14.0] — 2026-09-07
 
 ### Added
 
