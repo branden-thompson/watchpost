@@ -36,7 +36,7 @@ an instrument that reports something it does not measure.
 |---|---|---|
 | 1 — config writers | Confirmed.  **Six** owners; the ledger's "four siblings" is five.  `config.Save` is file-atomic but carries no mutex, so the read-modify-write is unserialised across owners | Unchanged |
 | 2 — classifiers | F-2 wrong in three specifics; corrected in place at `f0ddddc`.  Yielded **#15**, shipped in 0.14.2 | Restated |
-| 3 — memo keys | `modalKey` fully guarded: 11 of 11 modals, zero skips.  **F-30's premise is already satisfied** | **Shrinks sharply** |
+| 3 — memo keys | `modalKey` guarded for today's 11 windows, zero skips — but the guard **skips** an unfixtured window and hard-codes three nested structs, so F-30 **stands** | Reduced, not eliminated |
 | 4 — alert path | Seam exists and enters where a real alert enters.  Scenario payloads are wrong; bound is an hour | **Shrinks, then grows** |
 | 5 — `ctrl+d` at 24 rows | Controls unreachable by any key at any focus.  Double-wrap at every width | **Grows** |
 | 6 — Piper RSS | **Blocked on Arch hardware.**  No change | Blocked |
@@ -92,9 +92,15 @@ loudly rather than passing quietly.  It reports **11 of 11 modals covered, zero 
 - **FR-3.2** The six data-cache memos — `tileMemo`, `boxMemo`, `gridMemo`, `sourceMemo`, `hostMemo`,
   `failureMemo` — receive a **ruling**, not the same test.  Their failure mode is stale data, not a
   stale frame, and the frame guard's property does not transfer.
-- **FR-3.3** ~~A cursor fixture for the completeness test (F-30).~~ **ALREADY SATISFIED.**  Every
-  modal in the enum has a fixture rich enough to draw, and none skip.  F-30 should be closed by
-  measurement rather than by work.
+- **FR-3.3** The guard **fails** on an unfixtured window instead of skipping it, and derives the
+  nested-struct set instead of naming it.  *(F-30 — and the first draft of this report got this
+  wrong.  I read the run's 11/11 with zero skips as coverage and wrote that F-30 was satisfied.  It
+  is not: that number describes today's windows and says nothing about the guard's behaviour when a
+  window is added, which is the whole point of the row.  Both of its mechanisms are confirmed in
+  source — `memo_completeness_test.go:49` `t.Skipf`s an unfixtured window rather than failing, and
+  `:122` descends into exactly three named nested structs, `relayFault || debug || setup`, so a
+  fourth is never perturbed.  Reading a green number as coverage is the precise error this report
+  accuses the ledger of, and I made it here.)*
 - **FR-3.4** `tileMemo` and `boxMemo` consolidated with frame cost measured.  Blocked on Arch
   hardware — see the constraints below.
 
@@ -231,9 +237,9 @@ FR-7.3 (F-45) ratify the 23 stale ledger rows · FR-7.4 (F-12) the ephemeral att
   occurrences?
 - **OQ-9** — **New.**  FR-3.2: what is the right property for a data-cache memo?  The frame guard's
   implication does not transfer, and inventing the wrong property is worse than having none.
-- **OQ-10** — **New.**  Should F-30 be closed as satisfied by measurement, and should F-35 be
-  rewritten?  Both rows describe a state that no longer matches the code — F-30 understates the
-  coverage, F-35 understates the defect.
+- **OQ-10** — ~~Should F-30 be closed and F-35 rewritten?~~ **RESOLVED 2026-09-07.**  F-35 amended
+  (understated on both halves).  F-30 stands unchanged and carries a dated re-verification; the
+  claim in this report that it was satisfied was mine and was wrong.
 
 ## Recommendation
 
@@ -249,8 +255,10 @@ FR-7.3 (F-45) ratify the 23 stale ledger rows · FR-7.4 (F-12) the ephemeral att
    code rather than the ledger, and the ledger lost three times out of seven.  Accepting an
    unmeasured input after that would be inconsistent with the rest of the phase.
 
-**Two ledger rows should be dispositioned before PLAN**, per OQ-10: F-30 is satisfied and F-35 is
-understated.  Both are HUM LEAD calls, since a ledger row is a record and not only a task.
+**Both ledger rows named in OQ-10 were re-checked against source on 2026-09-07 and the outcome was
+not what this report first claimed.**  F-35 was understated and is amended.  **F-30 was correct and
+this report was wrong** — see FR-3.3.  The ledger lost three times out of seven; on the eighth it
+won, against me.
 
 ## Evidence
 
