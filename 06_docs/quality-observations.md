@@ -1118,6 +1118,97 @@ rewriting the red-team reports that cite them by name.
 **Cost:** about twenty minutes, no code touched. **What it bought:** the evidence base of four
 completed features moved from one disk to the repository.
 
+## The rules a gate must obey (2026-09-07, 0.15.0 B1–B3)
+
+**Eleven gates or instruments were written or repaired in one working day.  Every single one was
+wrong on the first attempt, and every one was caught by asking what its green meant.**  The failures
+were never in the rules being enforced — they were in the *fixtures*.  These are the rules that
+follow, each with the catch that earned it.
+
+### 1. A gate's self-test must use a fixture shaped exactly like the thing it will police
+
+**Catch:** `lint-injector` asserted no release artifact carries the injector, and its self-test built
+**without `-ldflags "-s -w"`**.  Release artifacts are stripped; the test fixture was not.  The gate
+was blind — `go tool nm` reports *"no symbol section"* on a stripped linux binary — and the self-test
+certified it anyway, because an unstripped binary *does* have symbols.  Shipped blind for ten
+minutes.
+
+*"Validate the instrument" is not enough on its own.  An instrument validated against the wrong
+shape is validated into a false positive.*
+
+### 2. Prove the matcher is alive before it judges
+
+**Catch:** the config one-writer gate looked for a `config.Save` **selector**.  The moment the last
+production bypass was migrated, `Mutate` called `Save` unqualified, zero selectors remained, and the
+gate would have been green forever.  Its own empty-corpus guard caught it.  **Count the corpus over
+everything, including tests; police only what the rule is about.**
+
+### 3. A member is never skipped — carried, or declared with a written reason
+
+**Catch:** `TestEveryFeedLaneSurvivesTheMarqueeMap` walked seven lanes and asserted **four**,
+`continue`-ing past three whose fixture disagreed — including Advisories, the exact hazard it was
+written to guard.  A `continue` reads as deliberate.  F-30's guard does the same with `t.Skipf`.
+**Skipping is how a set gate lies.**
+
+### 4. Catch the stale exemption, or the exemption becomes the defect
+
+**Catch:** the same lane guard could not see a lane that *started* being carried while still declared
+unreachable.  The two guards written after it could.  One rule, three hand-written instances, and the
+oldest had already drifted — which is the argument for one owner, found by looking.
+
+### 5. Match both spellings
+
+**Catch:** twice.  A type or function is bare inside its own package and qualified outside it.  A
+matcher that knows one spelling reports green while blind to half the tree.
+
+### 6. Find the root; do not count it
+
+**Catch:** a hand-written `"../.."` pointed one directory short of the module root, so the walk
+matched nothing.  **A gate that has to know its own depth breaks when it moves.**  Walk up for
+`go.mod`.
+
+### 7. A number with no stated boundary is not reproducible
+
+**Catch:** the closed-set population was "50 default arms" without an exclusion rule and **49** with
+one — and ~30% different again if the vendored patch stack counts.  Write the boundary down *before*
+counting, or the number cannot be checked by anyone else.
+
+### 8. Do not edit the tree while the mutant gate runs
+
+**Catch:** three mutants reported UNMEASURED that were fine.  The harness patches source files; my
+edits moved them underneath it.  `run.sh` guards this with a dirty-tree check; `make verify` does
+not, so going through `verify` bypasses the guard.
+
+### 9. "Does this need a lock?" is answered by experiment, and the experiment needs its own control
+
+**Catch:** FR-1.4 asked for a mutex on three methods.  They touch no mutable shared state, and the
+engine state underneath is disjoint.  Ten goroutines under `-race` found nothing — **and a
+deliberately planted unsynchronised field produced three DATA RACE warnings**, which is the only
+reason the clean run means anything.  Outcome: no lock, with evidence.  *A race test is worth keeping
+precisely when it passes; its job is to notice when that stops being true.*
+
+### 10. Extract from working implementations, never from imagined ones
+
+**Catch:** `closedset` was designed at PLAN with five fields and five call sites.  There was **one**
+call site, and the shape was wrong — the thing that repeated was not a mapping with fixtures but a
+cross-product of *carried* against *declared absent*.  The true skeleton only became visible at the
+**third** hand-written instance.  The standing rule says extract at the second caller; it assumes you
+have two working callers in front of you, not two imagined ones.
+
+### 11. When you correct an instrument, check the correction the same way
+
+**Catch:** the red team found half of NFR-2's proposed predicate vacuous.  I corrected it — and my
+correction could not work at all, because release binaries are stripped.  **A correction is a new
+claim and carries the same burden as the original.**
+
+### The meta-rule
+
+**A red-team finding is a hypothesis, not a fix.**  Twice in one day, measuring a lens's
+recommendation changed it: `debugScenarios` discriminates nothing, and the symbol approach it implied
+cannot work on a stripped artifact.  Both lenses were right that something was wrong and wrong about
+what to do — which is the correct division of labour, and only holds if the measurement actually
+happens.
+
 ## The metric this is all judged against
 
 Tasks completed per session. It has not moved yet (1). Every other number has. The programme
