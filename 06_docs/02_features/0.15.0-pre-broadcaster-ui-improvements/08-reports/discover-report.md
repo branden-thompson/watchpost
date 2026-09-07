@@ -77,6 +77,49 @@ where the evidence moved it, the movement is stated with its reason.
 - **FR-1.3** The band's single-writer rule is enforced by a mechanism rather than a comment.
 - **FR-1.4** The audio arbiter's hold, resume, and drop path is serialised against duck and restore.
 
+### The four-classifier cross-table  *(the brief's area-2 deliverable, produced 2026-09-07)*
+
+The brief said *"that table IS the requirement."*  The first draft of this report returned one cell
+instead.  It is now measured and retained as `app/classifier_crosstable_test.go`, which emits the
+table and pins the divergence count, so it is a gate rather than a snapshot.
+
+| Product | severe → tab | LaneOf → lane | cast → tone |
+|---|---|---|---|
+| **Evacuation Immediate** | Emergency Orders | Emergency Orders | **Warnings** |
+| Tornado Warning | Warnings | Warnings | Warnings |
+| Hurricane Warning | Warnings | Warnings | Marine |
+| Civil Emergency Message | Disasters | Disasters | **Warnings** |
+| Child Abduction Emergency | Statements | Statements | **Warnings** |
+| Small Craft Advisory | Advisories | **Warnings** | Advisories |
+| Flood Advisory | Advisories | **Warnings** | Advisories |
+| Air Quality Alert | Advisories | **Warnings** | Warnings |
+| Coastal Flood Statement | Statements | **Warnings** | Special Statements |
+| Special Weather Statement | Statements | **Warnings** | Special Statements |
+| Marine Weather Statement | Marine | **Warnings** | Special Statements |
+| Hazardous Weather Outlook | *(Forecasts — blank label)* | **Warnings** | Warnings |
+| Earthquake | Disasters | Disasters | Disaster Events |
+| Nonexistent Product Type | NOT SHOWN | Warnings | Warnings |
+
+**Three findings, none of which reading produced:**
+
+1. **An `Evacuation Immediate` gets the WARNING tone** — `toneRank: 5`, identical to a Severe
+   Thunderstorm Warning.  The tone taxonomy has six classes and **none is Emergency**
+   (`cast/tone.go:27-32`).  C-2 taught the feed, the window and the read ladder; #15 taught the
+   marquee in 0.14.2; the tone was never told.  Under the surface taxonomy ruling this is
+   **listener-facing** — the tone is the entire signal before the words start.  **Filed as #18; it
+   needs a UX ruling, not a patch.**  Eleventh instance of the release's shape.
+2. **Seven of twenty-five products are filed differently by the window and the band** — the whole
+   Advisory / Statement / Marine / Forecast family.  FR-2.2 called this latent; it is latent only for
+   the *national query*.  These products reach the window through tracked locations, so the
+   divergence is reachable today.
+3. **`category.Forecasts` renders a blank label**, so a Hazardous Weather Outlook files into a tab
+   with no name.  Minor, and noted rather than chased.
+
+**One limitation of the instrument, stated:** `render.AlertIsWarning(event, severity)` is fixtured
+with an empty severity, so its column exercises the string path only.  A real alert carries a
+severity and would take the `severe`/`extreme` arm.  That column is not evidence of a defect and is
+excluded from the table above.
+
 ### FR-2 — Producer/consumer completeness over closed sets  *(new — promoted out of R1)*
 
 This was a sub-clause of the brief's R1.  The evidence promotes it to a requirement in its own
