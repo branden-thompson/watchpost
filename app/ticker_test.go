@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
+	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"strings"
 	"sync"
@@ -994,4 +995,66 @@ func TestMutingHoldsABurstRatherThanSpendingIt(t *testing.T) {
 	if !seen.set()[fresh[0].ID] {
 		t.Error("unmuted, the burst must be read and marked")
 	}
+}
+
+// TestAnEvacuationOrderKeepsItsLaneOnTheMarquee pins the one product this
+// exists for. The Weather Service's highest-urgency product is laned Emergency
+// by the feed (globalfeed.LaneOf, via the civil-emergency table C-2 added), and
+// the marquee must show it in that lane rather than beside a thunderstorm
+// warning. GitHub #15.
+func TestAnEvacuationOrderKeepsItsLaneOnTheMarquee(t *testing.T) {
+	e := globalfeed.Event{
+		ID: "evac", Class: globalfeed.ClassSevereWx, Type: "Evacuation Immediate",
+		Location: "Vista, CA", Severity: globalfeed.SevRed, At: time.Now(),
+	}
+	if lane := globalfeed.LaneOf(e); lane != category.Emergency {
+		t.Fatalf("precondition: the feed must lane it Emergency, got %v", lane)
+	}
+	if got := tickerCategory(e); got != tty.CatEmergency {
+		t.Errorf("an evacuation order reaches the band as %v, not Emergency Orders", got)
+	}
+}
+
+// TestEveryFeedLaneSurvivesTheMarqueeMap is the guard, and it is the point.
+// #15 was not a wrong arm — it was a MISSING one, falling through a default
+// that reads as deliberate. A per-lane switch is a producer/consumer pair with
+// nothing checking that the consumer knows every value the producer emits, so
+// the next lane added would fail exactly the same way and just as quietly.
+//
+// Walking category.Lanes() means this test fails the day a lane is added and
+// the marquee is not taught it, rather than the day a listener is shown the
+// wrong colour for an evacuation order.
+func TestEveryFeedLaneSurvivesTheMarqueeMap(t *testing.T) {
+	lanes := category.Lanes()
+	if len(lanes) == 0 {
+		t.Fatal("no lanes to check — the instrument cannot fail, so it proves nothing")
+	}
+	for _, lane := range lanes {
+		e := globalfeed.Event{Class: globalfeed.ClassSevereWx, Type: productLaningTo(t, lane)}
+		if got := globalfeed.LaneOf(e); got != lane {
+			continue // not a lane the national feed can produce; nothing to carry
+		}
+		if got := tickerCategory(e); got != lane {
+			t.Errorf("lane %v arrives at the band as %v", lane, got)
+		}
+	}
+}
+
+// productLaningTo is a product string the feed lanes into c, so the walk above
+// exercises real inputs rather than asserting on the map in the abstract.
+func productLaningTo(t *testing.T, c category.Category) string {
+	t.Helper()
+	switch c {
+	case category.Emergency:
+		return "Evacuation Immediate"
+	case category.Disasters:
+		return "Civil Emergency Message"
+	case category.Marine:
+		return "Hurricane Warning" // ClassTropical lanes Marine; by name this is a Warning
+	case category.Warnings:
+		return "Tornado Warning"
+	case category.Watches:
+		return "Tornado Watch"
+	}
+	return "" // an unreachable lane for the national feed; LaneOf will not agree and the walk skips it
 }

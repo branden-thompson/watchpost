@@ -1,0 +1,205 @@
+2026-09-06T19:02:15Z PASS P0 the masthead's controls on a first run
+2026-09-06T19:02:16Z PASS P0 Setup opens on the first run
+2026-09-06T19:02:23Z PASS P0 Setup saved and closed
+2026-09-06T19:02:24Z PASS P0 first data (a temperature) for the default location
+2026-09-06T19:02:25Z PASS P0 the watchlist names the location
+2026-09-06T19:02:26Z PASS P0 w opens the severe window
+2026-09-06T19:02:27Z PASS P0 the tab row
+2026-09-06T19:02:28Z PASS P1 right moves to Watches
+2026-09-06T19:02:29Z PASS P1 the Disasters tab
+2026-09-06T19:02:30Z PASS P1 enter opens a record (or the tab is empty)
+2026-09-06T19:02:32Z PASS P1 esc backs out of the record and the window stays open
+2026-09-06T19:02:48Z PASS P1 space reads the focused event over the radio (the panel shows EVENT ·)
+2026-09-06T19:02:50Z PASS P0 esc esc closes the window
+2026-09-06T19:02:52Z PASS P0 l opens Lookup
+2026-09-06T19:02:55Z PASS P0 Lookup opens Details on Vista from the first frame
+2026-09-06T19:03:44Z PASS P1 Details fills with data
+2026-09-06T19:03:48Z PASS P1 A opens the alert modal
+2026-09-06T19:03:51Z PASS P1 t opens Settings at the theme row
+2026-09-06T19:03:53Z PASS P1 Watchpost Light applies live (the frame re-renders)
+2026-09-06T19:03:55Z PASS P1 S opens Status
+2026-09-06T19:03:56Z PASS P1 Status gauges the severe index
+2026-09-06T19:03:59Z PASS P1 V opens Settings at the correspondents
+2026-09-06T19:03:59Z PASS P1 the correspondents group offers the Alerts role
+2026-09-06T19:04:05Z PASS P1 the correspondents group survives the round trip
+2026-09-06T19:04:09Z PASS P1 ? opens Help
+2026-09-06T19:04:13Z PASS P0 q quits cleanly
+fails=0
+2026-09-06T19:48:54Z PASS P0 the masthead's controls on a first run
+2026-09-06T19:48:55Z PASS P0 Setup opens on the first run
+2026-09-06T19:49:03Z PASS P0 Setup saved and closed
+2026-09-06T19:49:03Z PASS P0 first data (a temperature) for the default location
+2026-09-06T19:49:05Z PASS P0 the watchlist names the location
+2026-09-06T19:49:06Z PASS P0 w opens the severe window
+2026-09-06T19:49:06Z PASS P0 the tab row
+2026-09-06T19:49:07Z PASS P1 right moves to Watches
+2026-09-06T19:49:09Z PASS P1 the Disasters tab
+2026-09-06T19:49:10Z PASS P1 enter opens a record (or the tab is empty)
+2026-09-06T19:49:12Z PASS P1 esc backs out of the record and the window stays open
+2026-09-06T19:49:33Z FAIL P1 space reads the focused event over the radio (the panel shows EVENT ·)
+  screen: ·.   │ 008. Phil│      ○ Metric    (°C/Km)│ │         .·.     .·.   │ 009. San ││ │         .·.     .·.   │ 010. Manh│    Radio Convention:│ │         .·.     .·.   │ 011. San │      ● 12hr (8:00 PM)│ │         .·.     .·.   │ 012. The │      ○ 24hr (20:00)│ │         .·.     .·.   │ 013. Dall│      ○ MIL  (2000)▼ │         .·.     .·.   │ 014. Jack││         .·.     .·.   │ 015. Fort│     tab  Next question    enter  Next    ↑↓  Move    esc  Cancel│         .·.     .·.   │ 016. San └────────────────────────────────────────────────────────────────────────────────┘         .·.     .·.   │ 017. Austin, TX   73301   .·.       .·.    .·..·.     .·.   │ 018. Columbus, OH   43085   .·.       .·.    .·..·.     .·.   │ 019. Charlotte, NC   28201   .·.       .·.    .·..·.     .·.   │ Showing 1-19 of 50 locations  ▼│▲ │
+  Disasters  3 ⚠  Eart│    DATA█ │ou, China  recorde    
+││ │○ ○ 5◆Y       88°F
+2026-09-06T19:49:35Z PASS P0 esc esc closes the window
+2026-09-06T19:49:37Z PASS P0 l opens Lookup
+2026-09-06T19:49:40Z PASS P0 Lookup opens Details on Vista from the first frame
+2026-09-06T19:50:24Z PASS P1 Details fills with data
+2026-09-06T19:50:28Z PASS P1 A opens the alert modal
+2026-09-06T19:50:30Z PASS P1 t opens Settings at the theme row
+2026-09-06T19:50:33Z PASS P1 Watchpost Light applies live (the frame re-renders)
+2026-09-06T19:50:35Z PASS P1 S opens Status
+2026-09-06T19:50:36Z PASS P1 Status gauges the severe index
+2026-09-06T19:50:38Z PASS P1 V opens Settings at the correspondents
+2026-09-06T19:50:39Z PASS P1 the correspondents group offers the Alerts role
+2026-09-06T19:50:45Z PASS P1 the correspondents group survives the round trip
+2026-09-06T19:50:48Z PASS P1 ? opens Help
+2026-09-06T19:50:53Z PASS P0 q quits cleanly
+fails=1
+2026-09-06T19:52:03Z PASS P0 the masthead's controls on a first run
+2026-09-06T19:52:04Z PASS P0 Setup opens on the first run
+2026-09-06T19:52:12Z PASS P0 Setup saved and closed
+2026-09-06T19:52:12Z PASS P0 first data (a temperature) for the default location
+2026-09-06T19:52:34Z FAIL P0 the watchlist names the location
+  screen: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Disasters  3 ⚠  Earthquake · Castle Rock, Washington  recorded 09/05 4:09 AM   •   Earthquake · Jiangyou, China  recorde   
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WATCHPOST WEATHER RADIO  ♪ New York City, NY 10004VOL  - █████░░░░░ +   55   ■ STOPPED   
+     space  Play   r  Repeat: Off   m  Mode: Synth   v  Viz: Off
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ active alerts · New York City, NY
+
+  Lookup Location    enter  Details    ctrl+a  Favorite    shift+del  Unfavorite ↑↓  Navigat
+ Run 's' Settings or 'l'ookup a location, then 'ctrl+a' Favorite it to your Watchlist
+
+
+R E C E N T   /   S E A R C H E D
+
+           001. New York City, NY              10004                   ·..      74°F
+2026-09-06T19:52:35Z PASS P0 w opens the severe window
+2026-09-06T19:52:35Z PASS P0 the tab row
+2026-09-06T19:52:36Z PASS P1 right moves to Watches
+2026-09-06T19:52:38Z PASS P1 the Disasters tab
+2026-09-06T19:52:39Z PASS P1 enter opens a record (or the tab is empty)
+2026-09-06T19:52:41Z PASS P1 esc backs out of the record and the window stays open
+2026-09-06T19:53:03Z FAIL P1 space reads the focused event over the radio (the panel shows EVENT ·)
+  screen: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Disasters  3 ⚠  Earthquake · Castle Rock, Washington  recorded 09/05 4:09 AM   •   Earthquake · Jiangyou, China  recorde   
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WATCHPOST WEATHER RADIO  ♪ New York City, NY 10004VOL  - █████░░░░░ +   55   ■ STOPPED   
+     space  Play   r  Repeat: Off   m  Mode: Synth   v  Viz: Off
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ active alerts · New York City, NY
+
+  Lookup Location    enter  Details    ctrl+a  Favorite    shift+del  Unfavorite ↑↓  Navigat
+ Run 's' Settings or 'l'ookup a location, then 'ctrl+a' Favorite it to your Watchlist
+
+
+R E C E N T   /   S E A R C H E D
+
+           001. New York City, NY              10004                   ·..      74°F
+2026-09-06T19:53:05Z PASS P0 esc esc closes the window
+2026-09-06T19:53:07Z PASS P0 l opens Lookup
+2026-09-06T19:54:51Z FAIL P0 Lookup opens Details on Vista from the first frame
+  screen: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Disasters  3 ⚠  Earthquake · Castle Rock, Washington  recorded 09/05 4:09 AM   •   Earthquake · Jiangyou, China  recorde   
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  WATCHPOST WEATHER RADIO  ♪ New York City, NY 10004VOL  - █████░░░░░ +   55   ■ STOPPED   
+     space  Play   r  Repeat: Off   m  Mode: Synth   v  Viz: Off
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ active alerts · New York City, NY
+
+  Lookup Location    enter  Details    ctrl+a  Favorite    shift+del  Unfavorite ↑↓  Navigat
+ Run 's' Settings or 'l'ookup a location, then 'ctrl+a' Favorite it to your Watchlist
+
+
+R E C E N T   /   S E A R C H E D
+
+           001. New York City, NY              10004                   ·..      74°F
+2026-09-06T19:56:51Z FAIL P1 Details fills with data
+  screen: e Thunderstorm Watch · Burke, GA  declared 11:42 AM , GA  declared 11:44 AM · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · GA  declared 11:44 AM · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · GA  declared 11:44 AM · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · eA  declared 11:44 AM · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · ex  declared 11:44 AM · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expdeclared 11:44 AM · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expideclared 11:44 AM · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expireclared 11:44 AM · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expire[
+2026-09-06T19:56:54Z PASS P1 A opens the alert modal
+2026-09-06T19:56:57Z PASS P1 t opens Settings at the theme row
+2026-09-06T19:56:59Z PASS P1 Watchpost Light applies live (the frame re-renders)
+2026-09-06T19:57:01Z PASS P1 S opens Status
+2026-09-06T19:57:02Z PASS P1 Status gauges the severe index
+2026-09-06T19:57:05Z PASS P1 V opens Settings at the correspondents
+2026-09-06T19:57:06Z PASS P1 the correspondents group offers the Alerts role
+2026-09-06T19:57:11Z PASS P1 the correspondents group survives the round trip
+2026-09-06T19:57:15Z PASS P1 ? opens Help
+2026-09-06T19:57:19Z PASS P0 q quits cleanly
+fails=4
+2026-09-06T19:57:20Z PASS P0 the masthead's controls on a first run
+2026-09-06T19:57:21Z PASS P0 Setup opens on the first run
+2026-09-06T19:57:29Z PASS P0 Setup saved and closed
+2026-09-06T19:57:29Z PASS P0 first data (a temperature) for the default location
+2026-09-06T19:57:31Z PASS P0 the watchlist names the location
+2026-09-06T19:57:31Z PASS P0 w opens the severe window
+2026-09-06T19:57:32Z PASS P0 the tab row
+2026-09-06T19:57:33Z PASS P1 right moves to Watches
+2026-09-06T19:57:35Z PASS P1 the Disasters tab
+2026-09-06T19:57:36Z PASS P1 enter opens a record (or the tab is empty)
+2026-09-06T19:57:37Z PASS P1 esc backs out of the record and the window stays open
+2026-09-06T19:58:01Z FAIL P1 space reads the focused event over the radio (the panel shows EVENT ·)
+  screen: ·..     ·..   │ 007. Phoe│      ● Imperial  (°F/Mi)│ │         ·..     ·..   │ 008. Phil│      ○ Metric    (°C/Km)│ │         ·..     ·..   │ 009. San ││ │         ·..     ·..   │ 010. Manh│    Radio Convention:│ │         ·..     ·..   │ 011. San │      ● 12hr (8:00 PM)│ │         ·..     ·..   │ 012. The │      ○ 24hr (20:00)│ │         ·..     ·..   │ 013. Dall│      ○ MIL  (2000)▼ │         ·..     ·..   │ 014. Jack││         ·..     ·..   │ 015. Fort│     tab  Next question    enter  Next    ↑↓  Move    esc  Cancel│         ·..     ·..   │ 016. San └────────────────────────────────────────────────────────────────────────────────┘         ·..     ·..   │ 017. Austin, TX   73301   ·..       ·..    ·..·..     ·..   │ 018. Columbus, OH   43085   ·..       ·..    ·..·..     ·..   │ 019. Charlotte, NC   28201   ·..       ·..    ·..·..     ·..   │ Showing 1-19 of 50 locations  ▼STORM   89°F
+2026-09-06T19:58:03Z PASS P0 esc esc closes the window
+2026-09-06T19:58:05Z PASS P0 l opens Lookup
+2026-09-06T19:58:08Z PASS P0 Lookup opens Details on Vista from the first frame
+2026-09-06T19:58:50Z PASS P1 Details fills with data
+2026-09-06T19:58:53Z PASS P1 A opens the alert modal
+2026-09-06T19:58:56Z PASS P1 t opens Settings at the theme row
+2026-09-06T19:58:59Z PASS P1 Watchpost Light applies live (the frame re-renders)
+2026-09-06T19:59:00Z PASS P1 S opens Status
+2026-09-06T19:59:01Z PASS P1 Status gauges the severe index
+2026-09-06T19:59:04Z PASS P1 V opens Settings at the correspondents
+2026-09-06T19:59:05Z PASS P1 the correspondents group offers the Alerts role
+2026-09-06T19:59:10Z PASS P1 the correspondents group survives the round trip
+2026-09-06T19:59:14Z PASS P1 ? opens Help
+2026-09-06T19:59:18Z PASS P0 q quits cleanly
+fails=1
+2026-09-06T20:00:53Z PASS P0 the masthead's controls on a first run
+2026-09-06T20:00:54Z PASS P0 Setup opens on the first run
+2026-09-06T20:01:02Z PASS P0 Setup saved and closed
+2026-09-06T20:01:02Z PASS P0 first data (a temperature) for the default location
+2026-09-06T20:01:04Z PASS P0 the watchlist names the location
+2026-09-06T20:01:04Z PASS P0 w opens the severe window
+2026-09-06T20:01:05Z PASS P0 the tab row
+2026-09-06T20:01:10Z PASS P1 right moves to Watches
+2026-09-06T20:01:21Z PASS P1 the Disasters tab
+2026-09-06T20:01:22Z PASS P1 enter opens a record (or the tab is empty)
+2026-09-06T20:01:24Z PASS P1 esc backs out of the record and the window stays open
+2026-09-06T20:01:38Z PASS P1 back on Warnings for the read
+2026-09-06T20:02:01Z FAIL P1 space reads the focused event over the radio (the panel shows EVENT ·)
+  screen: 8;5;250;48;2;29;40;48m│     tab  Next question    enter  Next    ↑↓  Move    esc  Cancel│         ·..     ·..   │ 016. San └────────────────────────────────────────────────────────────────────────────────┘         ·..     ·..   │ 017. Austin, TX   73301   ·..       ·..    ·..·..     ·..   │ 018. Columbus, OH   43085   ·..       ·..    ·..·..     ·..   │ 019. Charlotte, NC   28201   ·..       ·..    ·..·..     ·..   │ Showing 1-19 of 50 locations  ▼│▲ │
+  Disasters  3 ⚠  Eart│    DATA█ │ou, China  recorde    
+││ │○ 5◆○ 1◆ ceansi▌ceanside, CA (92049)ceanside, NY (11572)            NASA FIRMS key: none (optional)  ││ │
+   │    WATCHPOST UI│ │
+   ││ │Theme -   ←  Watchpost          →   Add yours: ~/.config/watchpost/themes/<name>.jsonShow Units in:● Imperial  (°F/Mi)○ Metric    (°C/Km)
+Radio Convention:│ │       107°F
+2026-09-06T20:02:04Z PASS P0 esc esc closes the window
+2026-09-06T20:02:05Z PASS P0 l opens Lookup
+2026-09-06T20:03:49Z FAIL P0 Lookup opens Details on Vista from the first frame
+  screen: 8;5;250;48;2;29;40;48m│     tab  Next question    enter  Next    ↑↓  Move    esc  Cancel│         ·..     ·..   │ 016. San └────────────────────────────────────────────────────────────────────────────────┘         ·..     ·..   │ 017. Austin, TX   73301   ·..       ·..    ·..·..     ·..   │ 018. Columbus, OH   43085   ·..       ·..    ·..·..     ·..   │ 019. Charlotte, NC   28201   ·..       ·..    ·..·..     ·..   │ Showing 1-19 of 50 locations  ▼│▲ │
+  Disasters  3 ⚠  Eart│    DATA█ │ou, China  recorde    
+││ │○ 5◆○ 1◆ ceansi▌ceanside, CA (92049)ceanside, NY (11572)            NASA FIRMS key: none (optional)  ││ │
+   │    WATCHPOST UI│ │
+   ││ │Theme -   ←  Watchpost          →   Add yours: ~/.config/watchpost/themes/<name>.jsonShow Units in:● Imperial  (°F/Mi)○ Metric    (°C/Km)
+Radio Convention:│ │       107°F
+2026-09-06T20:05:49Z FAIL P1 Details fills with data
+  screen:  · Burke, GA  declared 11:42 AM · expires 6:00 PM   • M · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expires 6:00 PM   •  · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expires 6:00 PM   • · expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expires 6:00 PM   •   S expires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expires 6:00 PM   •   Seexpires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expires 6:00 PM   •   Sevxpires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expires 6:00 PM   •   Sevepires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expires 6:00 PM   •   Severires 6:00 PM   •   Severe Thunderstorm Watch · Burke, GA  declared 11:42 AM · expires 6:00 PM   •   Severe[
+2026-09-06T20:05:52Z PASS P1 A opens the alert modal
+2026-09-06T20:05:55Z PASS P1 t opens Settings at the theme row
+2026-09-06T20:05:58Z PASS P1 Watchpost Light applies live (the frame re-renders)
+2026-09-06T20:05:59Z PASS P1 S opens Status
+2026-09-06T20:06:00Z PASS P1 Status gauges the severe index
+2026-09-06T20:06:03Z PASS P1 V opens Settings at the correspondents
+2026-09-06T20:06:04Z PASS P1 the correspondents group offers the Alerts role
+2026-09-06T20:06:09Z PASS P1 the correspondents group survives the round trip
+2026-09-06T20:06:13Z PASS P1 ? opens Help
+2026-09-06T20:06:17Z PASS P0 q quits cleanly
+fails=3

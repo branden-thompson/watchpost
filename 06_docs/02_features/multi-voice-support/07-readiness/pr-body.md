@@ -100,7 +100,7 @@ allocation pins and the goldens. Please read the code rather than the green tick
   final tree.
 - **Mutation testing** — 189 mutants apply and compile; the harness self-test pins that a crash is
   CAUGHT rather than SURVIVED, that a flaky failure is not read as CAUGHT, and that an unattributable
-  failure is INVALID rather than evidence either way. Durable record: `dist/mutant-check.log`.
+  failure is INVALID rather than evidence either way. Durable record: `07-readiness/mutant-check.txt` (promoted from `dist/` at hygiene; `dist` is emptied and `*.log` is git-ignored).
 - **Integration (the PTY journey) is UNCHECKED above, deliberately.** Every step passes except the
   `[space]` read described in the caveats. Leaving the box unchecked is the honest state; checking it
   would require widening a bound around a measured 11.4 s.

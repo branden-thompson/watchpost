@@ -1,0 +1,730 @@
+=== RUN   TestTheHarnessReportsEachVerdictWithItsExitCode
+=== PAUSE TestTheHarnessReportsEachVerdictWithItsExitCode
+=== RUN   TestACrashIsCaughtRatherThanSurvived
+=== PAUSE TestACrashIsCaughtRatherThanSurvived
+=== RUN   TestTheHarnessRefusesAnUnmutatedTreeThatIsAlreadyRed
+=== PAUSE TestTheHarnessRefusesAnUnmutatedTreeThatIsAlreadyRed
+=== RUN   TestTheHarnessRefusesADirtyTreeAndLeavesItAlone
+=== PAUSE TestTheHarnessRefusesADirtyTreeAndLeavesItAlone
+=== RUN   TestTheHarnessRestoresWhatItMutates
+=== PAUSE TestTheHarnessRestoresWhatItMutates
+=== RUN   TestAFlakyFailureIsNotReadAsCaught
+=== PAUSE TestAFlakyFailureIsNotReadAsCaught
+=== RUN   TestEveryMutantAppliesAndCompiles
+=== PAUSE TestEveryMutantAppliesAndCompiles
+=== CONT  TestTheHarnessReportsEachVerdictWithItsExitCode
+=== CONT  TestTheHarnessRestoresWhatItMutates
+=== RUN   TestTheHarnessReportsEachVerdictWithItsExitCode/a_deleted_rule_is_caught
+=== PAUSE TestTheHarnessReportsEachVerdictWithItsExitCode/a_deleted_rule_is_caught
+=== RUN   TestTheHarnessReportsEachVerdictWithItsExitCode/a_no-op_survives
+=== PAUSE TestTheHarnessReportsEachVerdictWithItsExitCode/a_no-op_survives
+=== RUN   TestTheHarnessReportsEachVerdictWithItsExitCode/an_absent_anchor_is_unapplied
+=== PAUSE TestTheHarnessReportsEachVerdictWithItsExitCode/an_absent_anchor_is_unapplied
+=== CONT  TestTheHarnessRefusesADirtyTreeAndLeavesItAlone
+=== CONT  TestTheHarnessRefusesAnUnmutatedTreeThatIsAlreadyRed
+=== CONT  TestACrashIsCaughtRatherThanSurvived
+=== CONT  TestEveryMutantAppliesAndCompiles
+=== CONT  TestAFlakyFailureIsNotReadAsCaught
+=== RUN   TestTheHarnessReportsEachVerdictWithItsExitCode/a_tree_that_will_not_compile_is_invalid
+=== PAUSE TestTheHarnessReportsEachVerdictWithItsExitCode/a_tree_that_will_not_compile_is_invalid
+=== CONT  TestTheHarnessReportsEachVerdictWithItsExitCode/a_deleted_rule_is_caught
+=== CONT  TestTheHarnessReportsEachVerdictWithItsExitCode/an_absent_anchor_is_unapplied
+=== CONT  TestTheHarnessReportsEachVerdictWithItsExitCode/a_no-op_survives
+=== CONT  TestTheHarnessReportsEachVerdictWithItsExitCode/a_tree_that_will_not_compile_is_invalid
+=== RUN   TestEveryMutantAppliesAndCompiles/m15_alertkeysof_drops_guard.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m15_alertkeysof_drops_guard.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m16_scopeevents_drops_ok.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m16_scopeevents_drops_ok.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m22_mark_on_read_removed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m22_mark_on_read_removed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m25_stillnew_guard_removed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m25_stillnew_guard_removed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m26_keepworst_removed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m26_keepworst_removed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m30_open_ignores_the_dip.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m30_open_ignores_the_dip.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m31_play_before_volume.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m31_play_before_volume.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m33_lane_cut_leaks_into_the_window.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m33_lane_cut_leaks_into_the_window.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m34_setlive_false_dropped.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m34_setlive_false_dropped.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m35_dip_is_no_dip.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m35_dip_is_no_dip.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m36_dip_is_silence.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m36_dip_is_silence.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m37_aqa_not_an_advisory.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m37_aqa_not_an_advisory.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m38_forecasts_arm_removed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m38_forecasts_arm_removed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m39_marine_beats_warning.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m39_marine_beats_warning.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m40_statements_exact_again.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m40_statements_exact_again.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m41_forecast_arm_dropped.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m41_forecast_arm_dropped.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m42_aqa_matched_loosely.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m42_aqa_matched_loosely.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m43_marine_narrowed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m43_marine_narrowed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m44_bytab_lower_bound.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m44_bytab_lower_bound.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m45_forecast_tone_is_marines.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m45_forecast_tone_is_marines.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m46_forecasts_hint_false.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m46_forecasts_hint_false.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m48_cue_send_deleted.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m48_cue_send_deleted.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m49_cue_after_the_words.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m49_cue_after_the_words.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m51_advance_ignores_stop.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m51_advance_ignores_stop.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m52_dwell_arms_for_any_mode.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m52_dwell_arms_for_any_mode.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m53_dwell_restarts_on_every_arm.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m53_dwell_restarts_on_every_arm.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m55_read_order_harmonised_to_tab_order.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m55_read_order_harmonised_to_tab_order.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m56_forecasts_become_readable.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m56_forecasts_become_readable.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m57_warnings_outrank_disasters.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m57_warnings_outrank_disasters.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m58_rail_no_longer_drains_first.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m58_rail_no_longer_drains_first.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m59_next_offers_any_live_card.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m59_next_offers_any_live_card.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m60_on_air_lock_removed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m60_on_air_lock_removed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m61_lineup_takes_any_card.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m61_lineup_takes_any_card.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m62_the_air_has_one_exit.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m62_the_air_has_one_exit.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m63_cards_hands_out_the_storage.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m63_cards_hands_out_the_storage.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m64_queue_appends_in_place.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m64_queue_appends_in_place.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m65_text_may_arrive_at_admission.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m65_text_may_arrive_at_admission.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m66_a_card_takes_the_air_empty.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m66_a_card_takes_the_air_empty.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m67_a_card_may_change_what_it_is.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m67_a_card_may_change_what_it_is.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m68_two_cards_under_one_identity.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m68_two_cards_under_one_identity.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m69_ladder_built_remaining_first.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m69_ladder_built_remaining_first.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m70_emergencies_do_not_spend_the_budget.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m70_emergencies_do_not_spend_the_budget.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m71_emergencies_bounded_by_max.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m71_emergencies_bounded_by_max.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m72_divert_counts_what_never_arrived.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m72_divert_counts_what_never_arrived.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m73_the_fence_stops_mattering.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m73_the_fence_stops_mattering.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m74_freshness_boundary_moved.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m74_freshness_boundary_moved.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m75_ties_keep_the_arrival_order.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m75_ties_keep_the_arrival_order.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m76_recency_outranks_severity.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m76_recency_outranks_severity.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m77_unreadable_rows_enter_the_burst.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m77_unreadable_rows_enter_the_burst.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m78_the_freshness_rule_lands_on_warnings.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m78_the_freshness_rule_lands_on_warnings.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m79_freshness_window_widened.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m79_freshness_window_widened.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m80_the_fence_stops_governing_entry.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m80_the_fence_stops_governing_entry.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m81_reach_granted_to_every_category.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m81_reach_granted_to_every_category.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m82_magnitude_ceiling_removed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m82_magnitude_ceiling_removed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m83_reach_below_the_strong_threshold.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m83_reach_below_the_strong_threshold.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m84_a_fence_with_no_origin_falls_back.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m84_a_fence_with_no_origin_falls_back.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m85_pointless_alerts_walk_through.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m85_pointless_alerts_walk_through.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m86_the_radius_becomes_exclusive.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m86_the_radius_becomes_exclusive.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m87_reach_compared_in_the_wrong_unit.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m87_reach_compared_in_the_wrong_unit.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m88_no_radius_fences_everything_out.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m88_no_radius_fences_everything_out.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m90_the_words_precede_the_cue.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m90_the_words_precede_the_cue.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m91_the_next_card_waits_for_this_one.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m91_the_next_card_waits_for_this_one.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m92_the_release_is_conditional_again.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m92_the_release_is_conditional_again.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m93_the_release_fires_without_a_cue.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m93_the_release_fires_without_a_cue.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m94_a_second_card_takes_the_air.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m94_a_second_card_takes_the_air.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m95_publish_comes_first.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m95_publish_comes_first.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m96_a_card_is_built_twice.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m96_a_card_is_built_twice.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m97_the_clock_runs_backwards.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m97_the_clock_runs_backwards.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m98_a_stranger_disturbs_the_schedule.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m98_a_stranger_disturbs_the_schedule.py
+=== RUN   TestEveryMutantAppliesAndCompiles/m99_an_arriving_burst_replaces_the_rail.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/m99_an_arriving_burst_replaces_the_rail.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mA0_the_programme_runs_while_stopped.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mA0_the_programme_runs_while_stopped.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mA1_stopping_silences_the_alert_rail.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mA1_stopping_silences_the_alert_rail.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mA2_stopping_cuts_the_alert_short.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mA2_stopping_cuts_the_alert_short.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mA3_stopping_leaves_the_programme_on_the_air.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mA3_stopping_leaves_the_programme_on_the_air.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mA4_a_new_director_comes_up_running.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mA4_a_new_director_comes_up_running.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mA5_the_stopped_programme_is_still_built.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mA5_the_stopped_programme_is_still_built.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mA6_a_repeated_stop_releases_again.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mA6_a_repeated_stop_releases_again.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mA7_an_unknown_power_reads_as_running.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mA7_an_unknown_power_reads_as_running.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mA8_the_head_of_the_queue_is_skipped.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mA8_the_head_of_the_queue_is_skipped.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mB0_effects_run_inline.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mB0_effects_run_inline.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mB1_every_effect_gets_its_own_worker.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mB1_every_effect_gets_its_own_worker.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mB2_everything_is_one_run.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mB2_everything_is_one_run.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mB3_a_panic_is_not_contained.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mB3_a_panic_is_not_contained.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mB4_a_contained_panic_fails_nothing.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mB4_a_contained_panic_fails_nothing.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mB5_a_cardless_panic_fails_a_card.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mB5_a_cardless_panic_fails_a_card.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mB6_stop_abandons_effects_in_flight.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mB6_stop_abandons_effects_in_flight.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mB7_a_fault_goes_unreported.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mB7_a_fault_goes_unreported.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC0_a_read_the_context_ended_still_comes_home_finished.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC0_a_read_the_context_ended_still_comes_home_finished.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC1_an_empty_script_is_built_as_silence.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC1_an_empty_script_is_built_as_silence.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC2_the_cue_is_not_recorded.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC2_the_cue_is_not_recorded.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC3_a_declined_card_effect_fails_nothing.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC3_a_declined_card_effect_fails_nothing.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC4_a_report_is_read_as_an_alert.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC4_a_report_is_read_as_an_alert.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC5_the_band_record_is_unbounded.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC5_the_band_record_is_unbounded.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC6_the_slot_is_dropped_from_the_build.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC6_the_slot_is_dropped_from_the_build.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC7_a_cue_that_cannot_be_built_fails_the_card.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC7_a_cue_that_cannot_be_built_fails_the_card.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC8_a_silent_read_holds_for_nothing.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC8_a_silent_read_holds_for_nothing.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mC9_the_read_follows_the_bars.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mC9_the_read_follows_the_bars.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mCA_the_slot_is_dropped_from_the_speak.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mCA_the_slot_is_dropped_from_the_speak.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mD0_the_band_is_not_a_shared_output.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mD0_the_band_is_not_a_shared_output.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mD1_everything_rides_the_lane.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mD1_everything_rides_the_lane.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mD2_a_card_with_words_is_refused_again.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mD2_a_card_with_words_is_refused_again.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mD3_a_card_with_words_is_built_anyway.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mD3_a_card_with_words_is_built_anyway.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mD4_the_card_takes_the_air_and_nobody_is_told.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mD4_the_card_takes_the_air_and_nobody_is_told.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mD5_the_one_ahead_is_lost_behind_a_structural_card.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mD5_the_one_ahead_is_lost_behind_a_structural_card.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mD6_the_lane_is_fed_from_the_worker.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mD6_the_lane_is_fed_from_the_worker.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mD8_preparation_runs_ahead_of_the_air.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mD8_preparation_runs_ahead_of_the_air.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mD9_the_second_door_is_left_open.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mD9_the_second_door_is_left_open.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mDA_a_step_publishes_twice.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mDA_a_step_publishes_twice.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mDB_a_stranger_publishes.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mDB_a_stranger_publishes.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mDC_the_bed_is_not_a_shared_output.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mDC_the_bed_is_not_a_shared_output.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mDD_the_lane_outlives_the_loop.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mDD_the_lane_outlives_the_loop.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mDE_a_queued_run_is_discarded_on_a_coin_flip.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mDE_a_queued_run_is_discarded_on_a_coin_flip.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mDF_an_effect_is_dropped_from_its_run.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mDF_an_effect_is_dropped_from_its_run.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mE0_the_duck_is_not_idempotent.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mE0_the_duck_is_not_idempotent.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mE1_the_bed_is_taken_back_when_nobody_dipped_it.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mE1_the_bed_is_taken_back_when_nobody_dipped_it.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mE3_the_duck_effect_never_reaches_the_bed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mE3_the_duck_effect_never_reaches_the_bed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mE4_a_held_bed_is_lifted_between_cards.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mE4_a_held_bed_is_lifted_between_cards.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mE5_the_held_bed_is_never_given_back.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mE5_the_held_bed_is_never_given_back.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mE6_the_rail_lifts_the_bed_over_a_live_read.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mE6_the_rail_lifts_the_bed_over_a_live_read.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mE7_the_dip_and_the_claim_are_not_atomic.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mE7_the_dip_and_the_claim_are_not_atomic.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mF0_the_space_read_sounds_a_tone_again.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mF0_the_space_read_sounds_a_tone_again.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mF1_the_bed_barely_dips.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mF1_the_bed_barely_dips.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mG0_a_bound_returns_mid_read.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mG0_a_bound_returns_mid_read.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mG1_the_tone_follows_the_running_order.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mG1_the_tone_follows_the_running_order.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mG2_the_render_moves_back_into_the_pause.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mG2_the_render_moves_back_into_the_pause.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mG3_the_first_alert_renders_in_the_heads_pause.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mG3_the_first_alert_renders_in_the_heads_pause.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mG4_the_tone_tie_falls_back_to_position.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mG4_the_tone_tie_falls_back_to_position.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mH0_nothing_left_to_wait_skips_the_check.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mH0_nothing_left_to_wait_skips_the_check.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mH2_the_cue_goes_up_without_checking_the_air.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mH2_the_cue_goes_up_without_checking_the_air.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mI0_the_schedule_abandons_its_goroutines.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mI0_the_schedule_abandons_its_goroutines.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mJ0_a_paused_read_holds_the_bed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mJ0_a_paused_read_holds_the_bed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mJ1_settle_promotes_a_paused_read.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mJ1_settle_promotes_a_paused_read.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mJ2_closing_the_window_waits_for_the_read.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mJ2_closing_the_window_waits_for_the_read.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mJ3_a_stale_read_clears_the_current_ones_state.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mJ3_a_stale_read_clears_the_current_ones_state.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mJ4_the_close_path_sends_and_softlocks.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mJ4_the_close_path_sends_and_softlocks.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mK0_the_dwell_does_not_restart_at_the_decision.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mK0_the_dwell_does_not_restart_at_the_decision.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mK1_the_synth_broadcast_dwells_like_a_relay.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mK1_the_synth_broadcast_dwells_like_a_relay.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mK2_a_takeover_cannot_be_paused_through.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mK2_a_takeover_cannot_be_paused_through.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mK3_two_presses_race_the_same_reader.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mK3_two_presses_race_the_same_reader.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mK4_a_lone_station_retunes_itself.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mK4_a_lone_station_retunes_itself.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mK5_a_queued_read_cannot_be_paused.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mK5_a_queued_read_cannot_be_paused.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mK6_a_pause_claims_a_dead_read.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mK6_a_pause_claims_a_dead_read.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mK7_the_mark_outlives_a_read_that_never_started.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mK7_the_mark_outlives_a_read_that_never_started.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mL0_the_on_air_pause_claims_a_dead_read.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mL0_the_on_air_pause_claims_a_dead_read.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mL1_a_paused_queued_read_holds_the_bed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mL1_a_paused_queued_read_holds_the_bed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mL2_a_dead_read_is_promoted_to_the_air.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mL2_a_dead_read_is_promoted_to_the_air.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mL3_a_dead_waiting_read_holds_the_bed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mL3_a_dead_waiting_read_holds_the_bed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mL4_the_enumerations_on_air_third_is_dropped.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mL4_the_enumerations_on_air_third_is_dropped.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mM0_a_stopped_programme_advances_the_bed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mM0_a_stopped_programme_advances_the_bed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mM1_a_finished_cycle_holds_the_bed.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mM1_a_finished_cycle_holds_the_bed.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mM2_the_directors_tune_lifts_the_duck.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mM2_the_directors_tune_lifts_the_duck.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mM3_the_director_is_never_told_the_programme_runs.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mM3_the_director_is_never_told_the_programme_runs.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mM4_the_rotation_row_is_drawn_but_inert.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mM4_the_rotation_row_is_drawn_but_inert.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mM5_the_new_rotation_never_reaches_the_director.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mM5_the_new_rotation_never_reaches_the_director.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mR1_the_band_is_released_only_on_the_happy_path.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mR1_the_band_is_released_only_on_the_happy_path.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mS1_an_unbuilt_card_can_go_stale.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mS1_an_unbuilt_card_can_go_stale.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mS2_staleness_is_judged_on_a_stopped_programme.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mS2_staleness_is_judged_on_a_stopped_programme.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mT0_the_rail_holds_one_card_per_alert.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mT0_the_rail_holds_one_card_per_alert.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mT1_the_takeover_hides_what_follows_the_lead.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mT1_the_takeover_hides_what_follows_the_lead.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mU0_the_producer_never_tells_the_director.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mU0_the_producer_never_tells_the_director.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mU1_the_composer_reads_the_lead_alone.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mU1_the_composer_reads_the_lead_alone.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mU2_a_muted_read_is_performed_anyway.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mU2_a_muted_read_is_performed_anyway.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mU3_a_cut_short_read_says_nothing.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mU3_a_cut_short_read_says_nothing.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mU4_nothing_is_recorded_as_read_aloud.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mU4_nothing_is_recorded_as_read_aloud.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mV0_the_fault_window_arms_no_tick.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mV0_the_fault_window_arms_no_tick.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mV1_the_fault_window_marks_focus_its_own_way.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mV1_the_fault_window_marks_focus_its_own_way.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mV2_a_repeat_silence_report_rebuilds_the_window.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mV2_a_repeat_silence_report_rebuilds_the_window.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mV3_the_fault_windows_moving_parts_leave_the_memo_key.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mV3_the_fault_windows_moving_parts_leave_the_memo_key.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mV4_the_debug_windows_cursor_leaves_the_memo_key.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mV4_the_debug_windows_cursor_leaves_the_memo_key.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mV5_a_wrapped_row_falls_back_to_the_margin.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mV5_a_wrapped_row_falls_back_to_the_margin.py
+=== RUN   TestEveryMutantAppliesAndCompiles/mV6_the_body_is_cut_instead_of_wrapped.py
+=== PAUSE TestEveryMutantAppliesAndCompiles/mV6_the_body_is_cut_instead_of_wrapped.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mC6_the_slot_is_dropped_from_the_build.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mV6_the_body_is_cut_instead_of_wrapped.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m15_alertkeysof_drops_guard.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mC5_the_band_record_is_unbounded.py
+--- PASS: TestTheHarnessRefusesADirtyTreeAndLeavesItAlone (0.44s)
+=== CONT  TestEveryMutantAppliesAndCompiles/mC4_a_report_is_read_as_an_alert.py
+--- PASS: TestTheHarnessRefusesAnUnmutatedTreeThatIsAlreadyRed (2.16s)
+=== CONT  TestEveryMutantAppliesAndCompiles/mC3_a_declined_card_effect_fails_nothing.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mC2_the_cue_is_not_recorded.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mC1_an_empty_script_is_built_as_silence.py
+--- PASS: TestACrashIsCaughtRatherThanSurvived (3.82s)
+=== CONT  TestEveryMutantAppliesAndCompiles/mC0_a_read_the_context_ended_still_comes_home_finished.py
+--- PASS: TestTheHarnessReportsEachVerdictWithItsExitCode (0.00s)
+    --- PASS: TestTheHarnessReportsEachVerdictWithItsExitCode/a_tree_that_will_not_compile_is_invalid (1.93s)
+    --- PASS: TestTheHarnessReportsEachVerdictWithItsExitCode/an_absent_anchor_is_unapplied (2.40s)
+    --- PASS: TestTheHarnessReportsEachVerdictWithItsExitCode/a_no-op_survives (3.60s)
+    --- PASS: TestTheHarnessReportsEachVerdictWithItsExitCode/a_deleted_rule_is_caught (5.69s)
+=== CONT  TestEveryMutantAppliesAndCompiles/mB7_a_fault_goes_unreported.py
+--- PASS: TestTheHarnessRestoresWhatItMutates (5.82s)
+=== CONT  TestEveryMutantAppliesAndCompiles/mB6_stop_abandons_effects_in_flight.py
+--- PASS: TestAFlakyFailureIsNotReadAsCaught (6.17s)
+=== CONT  TestEveryMutantAppliesAndCompiles/mB5_a_cardless_panic_fails_a_card.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mB4_a_contained_panic_fails_nothing.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mB3_a_panic_is_not_contained.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mB2_everything_is_one_run.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mB1_every_effect_gets_its_own_worker.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mB0_effects_run_inline.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mA8_the_head_of_the_queue_is_skipped.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mA7_an_unknown_power_reads_as_running.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mA6_a_repeated_stop_releases_again.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mA5_the_stopped_programme_is_still_built.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mA4_a_new_director_comes_up_running.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mA3_stopping_leaves_the_programme_on_the_air.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mA2_stopping_cuts_the_alert_short.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mA1_stopping_silences_the_alert_rail.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mA0_the_programme_runs_while_stopped.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m99_an_arriving_burst_replaces_the_rail.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m98_a_stranger_disturbs_the_schedule.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m97_the_clock_runs_backwards.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m96_a_card_is_built_twice.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m95_publish_comes_first.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m94_a_second_card_takes_the_air.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m93_the_release_fires_without_a_cue.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m92_the_release_is_conditional_again.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m91_the_next_card_waits_for_this_one.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m90_the_words_precede_the_cue.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m88_no_radius_fences_everything_out.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m87_reach_compared_in_the_wrong_unit.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m86_the_radius_becomes_exclusive.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m85_pointless_alerts_walk_through.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m84_a_fence_with_no_origin_falls_back.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m83_reach_below_the_strong_threshold.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m82_magnitude_ceiling_removed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m81_reach_granted_to_every_category.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m80_the_fence_stops_governing_entry.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m79_freshness_window_widened.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m78_the_freshness_rule_lands_on_warnings.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m77_unreadable_rows_enter_the_burst.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m76_recency_outranks_severity.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m75_ties_keep_the_arrival_order.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m74_freshness_boundary_moved.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m73_the_fence_stops_mattering.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m72_divert_counts_what_never_arrived.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m71_emergencies_bounded_by_max.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m70_emergencies_do_not_spend_the_budget.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m69_ladder_built_remaining_first.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m68_two_cards_under_one_identity.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m67_a_card_may_change_what_it_is.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m66_a_card_takes_the_air_empty.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m65_text_may_arrive_at_admission.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m64_queue_appends_in_place.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m63_cards_hands_out_the_storage.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m62_the_air_has_one_exit.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m61_lineup_takes_any_card.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m60_on_air_lock_removed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m59_next_offers_any_live_card.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m58_rail_no_longer_drains_first.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m57_warnings_outrank_disasters.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m56_forecasts_become_readable.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m55_read_order_harmonised_to_tab_order.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m53_dwell_restarts_on_every_arm.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m52_dwell_arms_for_any_mode.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m51_advance_ignores_stop.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m49_cue_after_the_words.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m48_cue_send_deleted.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m46_forecasts_hint_false.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m45_forecast_tone_is_marines.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m44_bytab_lower_bound.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m43_marine_narrowed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m42_aqa_matched_loosely.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m41_forecast_arm_dropped.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m40_statements_exact_again.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m39_marine_beats_warning.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m38_forecasts_arm_removed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m37_aqa_not_an_advisory.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m36_dip_is_silence.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m35_dip_is_no_dip.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m34_setlive_false_dropped.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m33_lane_cut_leaks_into_the_window.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m31_play_before_volume.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m30_open_ignores_the_dip.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m26_keepworst_removed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m25_stillnew_guard_removed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m22_mark_on_read_removed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/m16_scopeevents_drops_ok.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mJ2_closing_the_window_waits_for_the_read.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mV5_a_wrapped_row_falls_back_to_the_margin.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mV4_the_debug_windows_cursor_leaves_the_memo_key.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mV3_the_fault_windows_moving_parts_leave_the_memo_key.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mV2_a_repeat_silence_report_rebuilds_the_window.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mV1_the_fault_window_marks_focus_its_own_way.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mV0_the_fault_window_arms_no_tick.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mU4_nothing_is_recorded_as_read_aloud.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mU3_a_cut_short_read_says_nothing.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mU2_a_muted_read_is_performed_anyway.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mU1_the_composer_reads_the_lead_alone.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mU0_the_producer_never_tells_the_director.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mT1_the_takeover_hides_what_follows_the_lead.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mT0_the_rail_holds_one_card_per_alert.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mS2_staleness_is_judged_on_a_stopped_programme.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mS1_an_unbuilt_card_can_go_stale.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mR1_the_band_is_released_only_on_the_happy_path.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mM5_the_new_rotation_never_reaches_the_director.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mM4_the_rotation_row_is_drawn_but_inert.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mM3_the_director_is_never_told_the_programme_runs.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mM2_the_directors_tune_lifts_the_duck.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mM1_a_finished_cycle_holds_the_bed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mM0_a_stopped_programme_advances_the_bed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mL4_the_enumerations_on_air_third_is_dropped.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mL3_a_dead_waiting_read_holds_the_bed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mL2_a_dead_read_is_promoted_to_the_air.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mL1_a_paused_queued_read_holds_the_bed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mL0_the_on_air_pause_claims_a_dead_read.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mK7_the_mark_outlives_a_read_that_never_started.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mK6_a_pause_claims_a_dead_read.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mK5_a_queued_read_cannot_be_paused.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mK4_a_lone_station_retunes_itself.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mK3_two_presses_race_the_same_reader.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mK2_a_takeover_cannot_be_paused_through.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mK1_the_synth_broadcast_dwells_like_a_relay.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mK0_the_dwell_does_not_restart_at_the_decision.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mJ4_the_close_path_sends_and_softlocks.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mJ3_a_stale_read_clears_the_current_ones_state.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mE0_the_duck_is_not_idempotent.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mJ1_settle_promotes_a_paused_read.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mJ0_a_paused_read_holds_the_bed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mI0_the_schedule_abandons_its_goroutines.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mH2_the_cue_goes_up_without_checking_the_air.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mH0_nothing_left_to_wait_skips_the_check.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mG4_the_tone_tie_falls_back_to_position.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mG3_the_first_alert_renders_in_the_heads_pause.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mG2_the_render_moves_back_into_the_pause.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mG1_the_tone_follows_the_running_order.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mG0_a_bound_returns_mid_read.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mF1_the_bed_barely_dips.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mF0_the_space_read_sounds_a_tone_again.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mE7_the_dip_and_the_claim_are_not_atomic.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mE6_the_rail_lifts_the_bed_over_a_live_read.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mE5_the_held_bed_is_never_given_back.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mE4_a_held_bed_is_lifted_between_cards.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mE3_the_duck_effect_never_reaches_the_bed.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mE1_the_bed_is_taken_back_when_nobody_dipped_it.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mD5_the_one_ahead_is_lost_behind_a_structural_card.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mDF_an_effect_is_dropped_from_its_run.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mDE_a_queued_run_is_discarded_on_a_coin_flip.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mDD_the_lane_outlives_the_loop.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mDC_the_bed_is_not_a_shared_output.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mDB_a_stranger_publishes.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mDA_a_step_publishes_twice.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mD9_the_second_door_is_left_open.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mD8_preparation_runs_ahead_of_the_air.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mD6_the_lane_is_fed_from_the_worker.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mD0_the_band_is_not_a_shared_output.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mD4_the_card_takes_the_air_and_nobody_is_told.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mD3_a_card_with_words_is_built_anyway.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mD2_a_card_with_words_is_refused_again.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mD1_everything_rides_the_lane.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mC9_the_read_follows_the_bars.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mCA_the_slot_is_dropped_from_the_speak.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mC8_a_silent_read_holds_for_nothing.py
+=== CONT  TestEveryMutantAppliesAndCompiles/mC7_a_cue_that_cannot_be_built_fails_the_card.py
+--- PASS: TestEveryMutantAppliesAndCompiles (0.00s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC6_the_slot_is_dropped_from_the_build.py (7.96s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC5_the_band_record_is_unbounded.py (7.80s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m15_alertkeysof_drops_guard.py (8.37s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mV6_the_body_is_cut_instead_of_wrapped.py (8.66s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC4_a_report_is_read_as_an_alert.py (11.76s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC3_a_declined_card_effect_fails_nothing.py (11.86s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC1_an_empty_script_is_built_as_silence.py (11.11s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC2_the_cue_is_not_recorded.py (12.60s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC0_a_read_the_context_ended_still_comes_home_finished.py (15.43s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mB7_a_fault_goes_unreported.py (13.73s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mB6_stop_abandons_effects_in_flight.py (14.95s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mB5_a_cardless_panic_fails_a_card.py (15.91s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mB4_a_contained_panic_fails_nothing.py (17.46s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mB2_everything_is_one_run.py (17.09s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mB3_a_panic_is_not_contained.py (18.55s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mB1_every_effect_gets_its_own_worker.py (19.29s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mA7_an_unknown_power_reads_as_running.py (17.49s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mB0_effects_run_inline.py (18.74s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mA8_the_head_of_the_queue_is_skipped.py (18.81s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mA6_a_repeated_stop_releases_again.py (17.91s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mA5_the_stopped_programme_is_still_built.py (18.45s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mA2_stopping_cuts_the_alert_short.py (15.61s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mA3_stopping_leaves_the_programme_on_the_air.py (17.37s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mA4_a_new_director_comes_up_running.py (18.99s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mA0_the_programme_runs_while_stopped.py (17.67s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mA1_stopping_silences_the_alert_rail.py (17.80s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m99_an_arriving_burst_replaces_the_rail.py (16.79s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m98_a_stranger_disturbs_the_schedule.py (15.81s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m96_a_card_is_built_twice.py (15.93s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m97_the_clock_runs_backwards.py (16.24s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m94_a_second_card_takes_the_air.py (16.50s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m95_publish_comes_first.py (16.58s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m92_the_release_is_conditional_again.py (16.18s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m93_the_release_fires_without_a_cue.py (16.31s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m90_the_words_precede_the_cue.py (16.40s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m91_the_next_card_waits_for_this_one.py (16.66s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m87_reach_compared_in_the_wrong_unit.py (16.26s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m88_no_radius_fences_everything_out.py (16.38s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m86_the_radius_becomes_exclusive.py (16.66s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m85_pointless_alerts_walk_through.py (16.48s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m84_a_fence_with_no_origin_falls_back.py (16.55s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m83_reach_below_the_strong_threshold.py (16.50s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m82_magnitude_ceiling_removed.py (16.18s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m81_reach_granted_to_every_category.py (16.26s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m79_freshness_window_widened.py (16.43s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m80_the_fence_stops_governing_entry.py (16.56s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m78_the_freshness_rule_lands_on_warnings.py (16.21s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m77_unreadable_rows_enter_the_burst.py (16.30s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m75_ties_keep_the_arrival_order.py (16.37s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m76_recency_outranks_severity.py (16.43s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m73_the_fence_stops_mattering.py (16.53s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m74_freshness_boundary_moved.py (16.53s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m72_divert_counts_what_never_arrived.py (16.41s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m71_emergencies_bounded_by_max.py (16.53s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m69_ladder_built_remaining_first.py (16.23s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m70_emergencies_do_not_spend_the_budget.py (16.32s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m67_a_card_may_change_what_it_is.py (16.20s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m68_two_cards_under_one_identity.py (16.22s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m65_text_may_arrive_at_admission.py (16.34s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m66_a_card_takes_the_air_empty.py (16.46s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m64_queue_appends_in_place.py (16.05s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m63_cards_hands_out_the_storage.py (16.07s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m62_the_air_has_one_exit.py (16.04s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m61_lineup_takes_any_card.py (16.07s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m60_on_air_lock_removed.py (15.99s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m59_next_offers_any_live_card.py (16.49s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m57_warnings_outrank_disasters.py (16.17s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m58_rail_no_longer_drains_first.py (16.30s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m56_forecasts_become_readable.py (16.25s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m55_read_order_harmonised_to_tab_order.py (16.50s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m52_dwell_arms_for_any_mode.py (15.76s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m53_dwell_restarts_on_every_arm.py (16.57s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m51_advance_ignores_stop.py (16.98s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m48_cue_send_deleted.py (16.28s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m49_cue_after_the_words.py (17.14s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m46_forecasts_hint_false.py (16.96s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m45_forecast_tone_is_marines.py (17.03s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m43_marine_narrowed.py (16.40s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m44_bytab_lower_bound.py (16.52s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m42_aqa_matched_loosely.py (17.02s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m40_statements_exact_again.py (16.83s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m39_marine_beats_warning.py (16.80s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m41_forecast_arm_dropped.py (17.21s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m38_forecasts_arm_removed.py (16.56s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m36_dip_is_silence.py (16.38s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m35_dip_is_no_dip.py (16.37s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m37_aqa_not_an_advisory.py (16.64s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m34_setlive_false_dropped.py (16.27s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m30_open_ignores_the_dip.py (16.88s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m31_play_before_volume.py (16.88s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m33_lane_cut_leaks_into_the_window.py (17.14s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m26_keepworst_removed.py (16.27s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m16_scopeevents_drops_ok.py (17.24s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mJ2_closing_the_window_waits_for_the_read.py (16.77s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m22_mark_on_read_removed.py (17.42s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/m25_stillnew_guard_removed.py (17.48s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mV5_a_wrapped_row_falls_back_to_the_margin.py (17.30s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mV4_the_debug_windows_cursor_leaves_the_memo_key.py (17.40s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mV3_the_fault_windows_moving_parts_leave_the_memo_key.py (17.37s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mV2_a_repeat_silence_report_rebuilds_the_window.py (16.88s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mV1_the_fault_window_marks_focus_its_own_way.py (17.32s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mV0_the_fault_window_arms_no_tick.py (17.37s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mU3_a_cut_short_read_says_nothing.py (17.32s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mU4_nothing_is_recorded_as_read_aloud.py (17.33s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mT1_the_takeover_hides_what_follows_the_lead.py (17.09s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mU0_the_producer_never_tells_the_director.py (17.11s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mU1_the_composer_reads_the_lead_alone.py (17.39s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mU2_a_muted_read_is_performed_anyway.py (17.41s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mS2_staleness_is_judged_on_a_stopped_programme.py (17.06s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mT0_the_rail_holds_one_card_per_alert.py (17.25s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mR1_the_band_is_released_only_on_the_happy_path.py (17.17s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mS1_an_unbuilt_card_can_go_stale.py (17.26s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mM4_the_rotation_row_is_drawn_but_inert.py (16.75s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mM5_the_new_rotation_never_reaches_the_director.py (16.90s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mM3_the_director_is_never_told_the_programme_runs.py (16.81s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mM2_the_directors_tune_lifts_the_duck.py (17.60s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mM0_a_stopped_programme_advances_the_bed.py (16.58s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mM1_a_finished_cycle_holds_the_bed.py (16.65s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mL4_the_enumerations_on_air_third_is_dropped.py (16.55s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mL3_a_dead_waiting_read_holds_the_bed.py (17.27s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mL1_a_paused_queued_read_holds_the_bed.py (17.33s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mL0_the_on_air_pause_claims_a_dead_read.py (17.39s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mL2_a_dead_read_is_promoted_to_the_air.py (17.75s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mK7_the_mark_outlives_a_read_that_never_started.py (17.78s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mK3_two_presses_race_the_same_reader.py (17.08s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mK5_a_queued_read_cannot_be_paused.py (17.93s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mK6_a_pause_claims_a_dead_read.py (18.07s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mK4_a_lone_station_retunes_itself.py (18.08s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mK0_the_dwell_does_not_restart_at_the_decision.py (18.02s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mK1_the_synth_broadcast_dwells_like_a_relay.py (18.11s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mK2_a_takeover_cannot_be_paused_through.py (18.23s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mJ4_the_close_path_sends_and_softlocks.py (17.38s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mJ1_settle_promotes_a_paused_read.py (17.92s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mJ0_a_paused_read_holds_the_bed.py (17.67s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mE0_the_duck_is_not_idempotent.py (18.14s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mJ3_a_stale_read_clears_the_current_ones_state.py (18.33s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mG4_the_tone_tie_falls_back_to_position.py (17.79s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mI0_the_schedule_abandons_its_goroutines.py (18.11s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mH0_nothing_left_to_wait_skips_the_check.py (18.08s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mH2_the_cue_goes_up_without_checking_the_air.py (18.23s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mG1_the_tone_follows_the_running_order.py (18.30s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mG0_a_bound_returns_mid_read.py (18.36s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mG3_the_first_alert_renders_in_the_heads_pause.py (18.51s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mG2_the_render_moves_back_into_the_pause.py (18.52s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mF1_the_bed_barely_dips.py (17.39s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mF0_the_space_read_sounds_a_tone_again.py (17.51s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mE7_the_dip_and_the_claim_are_not_atomic.py (18.03s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mE6_the_rail_lifts_the_bed_over_a_live_read.py (18.30s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mE4_a_held_bed_is_lifted_between_cards.py (17.54s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mE5_the_held_bed_is_never_given_back.py (17.73s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mE1_the_bed_is_taken_back_when_nobody_dipped_it.py (17.78s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mE3_the_duck_effect_never_reaches_the_bed.py (18.38s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mD5_the_one_ahead_is_lost_behind_a_structural_card.py (17.39s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mDF_an_effect_is_dropped_from_its_run.py (17.46s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mDD_the_lane_outlives_the_loop.py (17.79s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mDE_a_queued_run_is_discarded_on_a_coin_flip.py (18.21s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mDC_the_bed_is_not_a_shared_output.py (17.48s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mDB_a_stranger_publishes.py (17.34s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mDA_a_step_publishes_twice.py (17.44s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mD9_the_second_door_is_left_open.py (17.18s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mD8_preparation_runs_ahead_of_the_air.py (17.20s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mD0_the_band_is_not_a_shared_output.py (16.89s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mD6_the_lane_is_fed_from_the_worker.py (17.25s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mD4_the_card_takes_the_air_and_nobody_is_told.py (16.50s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mD3_a_card_with_words_is_built_anyway.py (16.95s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mD2_a_card_with_words_is_refused_again.py (16.81s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC9_the_read_follows_the_bars.py (16.10s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mD1_everything_rides_the_lane.py (16.51s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mCA_the_slot_is_dropped_from_the_speak.py (15.86s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC8_a_silent_read_holds_for_nothing.py (15.86s)
+    --- PASS: TestEveryMutantAppliesAndCompiles/mC7_a_cue_that_cannot_be_built_fails_the_card.py (15.74s)
+PASS
+ok  	github.com/branden-thompson/watchpost/06_docs/mutants	247.204s

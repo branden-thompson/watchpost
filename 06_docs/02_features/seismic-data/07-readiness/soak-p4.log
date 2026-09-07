@@ -1,0 +1,11 @@
+=== RUN   TestSeismicBroadcastSoak
+    soak_test.go:59: t=0      goroutines=6 heapInUse=3960 KB
+    soak_test.go:59: 10m0s    goroutines=3 heapInUse=2928 KB
+    soak_test.go:59: 20m0s    goroutines=3 heapInUse=2928 KB
+    soak_test.go:59: 30m0s    goroutines=3 heapInUse=2928 KB
+    soak_test.go:59: 40m0s    goroutines=3 heapInUse=2928 KB
+    soak_test.go:59: 50m0s    goroutines=3 heapInUse=2928 KB
+    soak_test.go:59: final    goroutines=2 heapInUse=2928 KB
+--- PASS: TestSeismicBroadcastSoak (3004.02s)
+PASS
+ok  	github.com/branden-thompson/watchpost/domains/radio/synth	3004.335s

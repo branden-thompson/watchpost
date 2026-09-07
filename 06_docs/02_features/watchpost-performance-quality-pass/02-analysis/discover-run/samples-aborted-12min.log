@@ -1,0 +1,3 @@
+t_s rss_kb footprint_mb threads pcpu goroutines
+20 86480 68.2M 24 0.7 profile:
+321 123104 98.9M 31 1.4 profile:
