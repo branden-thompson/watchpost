@@ -328,6 +328,32 @@ to clear it, reproducing the reported status exactly.  **Cheap disproof before a
 
 ---
 
+## UAT — required before REVIEW exit  *(HUM LEAD, 2026-09-07)*
+
+**Two questions, and the second is not a formality.**
+
+1. **Regression:** does anything behave differently from accepted behaviour?  The batches touch the
+   config write path, the tone taxonomy, the classifier coupling, the arbiter, and the diagnostics
+   window — none of which is supposed to change what a listener or operator experiences, except
+   where a defect was being fixed.  **A structural change that alters behaviour is a defect until
+   ruled otherwise.**
+2. **Yield:** did the design changes produce anything beyond the defects they targeted?  Single
+   ownership and good structure are a win on their own — the HUM LEAD's framing — but if collapsing
+   six config writers or one tone mapping *also* removes a latent behaviour nobody had named, that is
+   worth capturing rather than discovering later.
+
+**What must be exercised, per batch:**
+
+| Batch | Behaviour that must be unchanged | Behaviour that must be NEW |
+|---|---|---|
+| B1 | every alert class still sounds its ratified preset; the marquee lanes as before | an evacuation order sounds **three** dual tones |
+| B2 | Settings saves, theme switches, location add/remove, cast changes all persist | nothing user-visible — this is the test |
+| B3 | the diagnostics window opens and injects as before at 133×44 | it is usable at 80×24; test events expire in two minutes |
+| B4–B7 | *(set at each batch's entry)* | |
+
+**The B2 row is the interesting one.**  Six write paths became one, and the correct UAT result is
+that a user cannot tell.  If they can, the refactor changed something it was not asked to.
+
 ## Ordering
 
 ```
