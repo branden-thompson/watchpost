@@ -119,24 +119,38 @@ test-platforms:
 # and the evidence together.
 #
 # WHAT IS KEPT is the stated exception: a small number of real binaries for UAT
-# and for comparing versions. dist/watchpost is what `make journey` drives, the
-# UAT build is what the HUM LEAD runs, and the previous release is what the M3
-# ear test and perf-protocol §4 measure against. Everything else in dist that is
-# executable is a build variant and goes; the RECORDS in dist (journey.log,
-# p10.json, bench.txt, validate/) are not executable and are never touched.
+# and for comparing versions. dist/watchpost is what `make journey` drives and
+# what the HUM LEAD runs for UAT, and the previous release is what the M3 ear
+# test and perf-protocol §4 measure against — so the pinned comparator moves up
+# with each release, and the one before it goes (its assets stay on the tag). Everything else in dist that is
+# executable is a build variant and goes.
+#
+# RECORDS are not deleted here, but dist is NOT durable: it is the directory
+# this target empties. A run's record belongs in the feature's 06_docs tree, and
+# it must be a TRACKED path — `.gitignore` carries `*.log`, so a record named
+# `.log` is not in git no matter where it sits. Name durable records `.txt` or
+# `.json`. hygiene names any record still sitting in dist so it is promoted
+# rather than quietly lost on the next run.
 #
 # `go clean -cache` is machine-wide, not repo-scoped — that is the blast radius
 # and it is deliberate, since the cache it clears is the one this repo filled.
-HYGIENE_KEEP := watchpost watchpost-uat watchpost-0.13.0
+HYGIENE_KEEP := watchpost watchpost-0.14.1
 
 hygiene:
 	@test -n "$(RESULTS)" || { echo "hygiene: RESULTS must name the run's record; refusing to delete"; exit 1; }
 	@test -s "$(RESULTS)" || { echo "hygiene: $(RESULTS) is missing or empty — the run left no record, so NOTHING is deleted"; exit 1; }
-	@echo "hygiene: results durable in $(RESULTS) ($$(wc -l < $(RESULTS) | tr -d ' ') lines)"
+	@case "$(RESULTS)" in $(DIST)/*) echo "hygiene: $(RESULTS) is in $(DIST), which this target empties — promote it to the feature's 06_docs tree first"; exit 1;; esac
+	@! git check-ignore -q "$(RESULTS)" || { echo "hygiene: $(RESULTS) is git-ignored, so it is not durable — name it .txt/.json under 06_docs (.gitignore carries *.log)"; exit 1; }
+	@echo "hygiene: results durable in $(RESULTS) ($$(wc -l < $(RESULTS) | tr -d ' ') lines, tracked path)"
 	@for f in $(DIST)/*; do \
 	  b=$$(basename "$$f"); \
 	  case " $(HYGIENE_KEEP) " in *" $$b "*) continue;; esac; \
 	  if [ -f "$$f" ] && [ -x "$$f" ]; then rm -f "$$f" && echo "hygiene: removed build variant $$b"; fi; \
+	done
+	@for f in $(DIST)/*; do \
+	  b=$$(basename "$$f"); \
+	  case " $(HYGIENE_KEEP) " in *" $$b "*) continue;; esac; \
+	  if [ -e "$$f" ] && [ ! -x "$$f" ]; then echo "hygiene: RECORD still in $(DIST): $$b — promote it to 06_docs or it dies with the next run"; fi; \
 	done
 	@go clean -cache -testcache
 	@echo "hygiene: build cache cleared; kept $(HYGIENE_KEEP)"
