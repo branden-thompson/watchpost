@@ -370,6 +370,7 @@ func pairOf
 func parseLatLon
 func parseSayVoices
 func pcmDuration
+func piperInstallFor
 func piperVoiceNames
 func priorityTiers
 func profileNames

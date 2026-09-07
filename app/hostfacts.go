@@ -64,7 +64,7 @@ func (h hostFacts) Installed(key string) bool {
 	if key == "" {
 		return false
 	}
-	_, ok := synth.FindPiperVoice(h.voiceDir, synth.VoiceSpec{Name: key})
+	_, ok := piperInstallFor(h.voiceDir, key)
 	return ok
 }
 

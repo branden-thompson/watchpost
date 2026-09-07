@@ -223,6 +223,27 @@ func (d *radioDeck) Discovered(name string) bool {
 	return false
 }
 
+// piperInstallFor is the ONE way app turns a voice NAME (or key) into an
+// installed Piper voice, and every caller that starts from a name must use it.
+//
+// FindPiperVoice locates the model by KEY — `<dir>/voices/<Key>.onnx` — so a
+// name has to go through the catalogue first. A `synth.VoiceSpec{Name: name}`
+// has an EMPTY Key, so it looks for `voices/.onnx` and answers no for every
+// voice however plainly installed. Four call sites did exactly that, one of them
+// copying another with the comment "find-only, exactly as the deck's is". On
+// Linux it made every alert silent: the tone sounded, the ticker took over, and
+// nothing was ever read (issue #7, an Arch box on 0.14.0).
+//
+// The correct form already existed in the voice-preview path and nothing else
+// used it. This is that, with one owner.
+func piperInstallFor(dir, name string) (synth.Install, bool) {
+	spec, ok := synth.VoiceByName(name)
+	if !ok {
+		return synth.Install{}, false
+	}
+	return synth.FindPiperVoice(dir, spec)
+}
+
 // Installed implements cast.Host: is this Piper catalogue key on disk?
 //
 // FIND-ONLY — a stat, never an install (FR-9). The alert path calls this, and
@@ -231,7 +252,7 @@ func (d *radioDeck) Installed(key string) bool {
 	if key == "" {
 		return false
 	}
-	_, ok := synth.FindPiperVoice(d.voiceDir, synth.VoiceSpec{Name: key})
+	_, ok := piperInstallFor(d.voiceDir, key)
 	return ok
 }
 
@@ -371,7 +392,7 @@ func (d *radioDeck) buildVoice(name string) (synth.Voice, error) {
 		}
 		return synth.Limited(synth.SayVoice{Voice: name}, d.limiter), nil
 	}
-	inst, ok := synth.FindPiperVoice(d.voiceDir, synth.VoiceSpec{Name: name})
+	inst, ok := piperInstallFor(d.voiceDir, name)
 	if !ok {
 		return nil, fmt.Errorf("piper voice %q is not installed", name)
 	}
@@ -422,10 +443,14 @@ func (d *radioDeck) startBackgroundInstall(key string) {
 	go func() {
 		d.installMu.Lock()
 		defer d.installMu.Unlock()
-		if _, ok := synth.FindPiperVoice(d.voiceDir, synth.VoiceSpec{Name: key}); ok {
+		if _, ok := piperInstallFor(d.voiceDir, key); ok {
 			return // a concurrent caller won
 		}
-		if _, err := d.installVoice(synth.VoiceSpec{Name: key}, d.setDetail); err != nil {
+		spec, ok := synth.VoiceByName(key)
+		if !ok {
+			return // not a catalogue voice: nothing to install under that name
+		}
+		if _, err := d.installVoice(spec, d.setDetail); err != nil {
 			d.mu.Lock()
 			if d.cast.failedAt == nil {
 				d.cast.failedAt = map[string]time.Time{}
