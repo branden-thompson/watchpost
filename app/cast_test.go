@@ -25,9 +25,9 @@ import (
 // asPlatform points the production seam at goos for one test.
 func asPlatform(t *testing.T, goos string) {
 	t.Helper()
-	prev := runtimeGOOS
-	runtimeGOOS = goos
-	t.Cleanup(func() { runtimeGOOS = prev })
+	prev := runtimeGOOS()
+	setRuntimeGOOS(goos)
+	t.Cleanup(func() { setRuntimeGOOS(prev) })
 }
 
 // --- Task 1.12: the mapper ---
@@ -723,7 +723,7 @@ func TestCastReportAnswersWithoutADeck(t *testing.T) {
 
 // THE SEAM ONLY WORKS IF EVERY CALLER USES IT, and for the whole of 0.14.0 the
 // most important one did not. app/voices.go:rawVoice branched on runtime.GOOS
-// directly, so asPlatform(t, "darwin") set runtimeGOOS, rawVoice ignored it, and
+// directly, so asPlatform(t, "darwin") set runtimeGOOS(), rawVoice ignored it, and
 // the test walked the Piper install path anyway. On a Mac the two agree and
 // everything passed; the first Linux CI run of this release panicked in a
 // background install the test never meant to start.
@@ -751,19 +751,21 @@ func TestNoProductionFileInAppReadsRuntimeGOOSDirectly(t *testing.T) {
 			if !strings.Contains(line, "runtime.GOOS") || strings.HasPrefix(strings.TrimSpace(line), "//") {
 				continue
 			}
-			// The one legitimate use: the seam's own initialiser.
-			if n == "cast.go" && strings.Contains(line, "var runtimeGOOS = runtime.GOOS") {
+			// The one legitimate use: the seam's own initialiser. It became an
+			// atomic store when a test's restore was found racing the synth
+			// render loop, so the shape this allows changed with it.
+			if n == "cast.go" && strings.Contains(line, "goosSeam.Store(runtime.GOOS)") {
 				continue
 			}
 			found[n] = i + 1
 		}
 	}
 	for f, line := range found {
-		t.Errorf("%s:%d reads runtime.GOOS directly — use the runtimeGOOS seam, or asPlatform cannot steer it", f, line)
+		t.Errorf("%s:%d reads runtime.GOOS directly — use the runtimeGOOS() seam, or asPlatform cannot steer it", f, line)
 	}
 	// CONTROL: the seam itself must still be there to be steered.
-	if runtimeGOOS == "" {
-		t.Fatal("control: runtimeGOOS is empty; the seam is gone and this guard checks nothing")
+	if runtimeGOOS() == "" {
+		t.Fatal("control: runtimeGOOS() is empty; the seam is gone and this guard checks nothing")
 	}
 }
 

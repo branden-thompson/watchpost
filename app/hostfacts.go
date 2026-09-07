@@ -28,8 +28,8 @@ type hostFacts struct {
 // `say -v ?` call; a wedged one leaves the curated list standing rather than
 // hanging a report.
 func newHostFacts(ctx context.Context) hostFacts {
-	h := hostFacts{platform: runtimeGOOS, voiceDir: voiceDir()}
-	if runtimeGOOS == cast.PlatformDarwin {
+	h := hostFacts{platform: runtimeGOOS(), voiceDir: voiceDir()}
+	if runtimeGOOS() == cast.PlatformDarwin {
 		h.discovered = discoverMacVoices(ctx)
 	}
 	return h

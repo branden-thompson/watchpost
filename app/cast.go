@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
@@ -22,15 +23,32 @@ import (
 // struct onto cast.Config, and it answers cast.Host's questions about this
 // machine. Nothing here re-implements a decision.
 
-// runtimeGOOS is the production seam for the platform. It is a package-level
+// runtimeGOOS() is the production seam for the platform. It is a package-level
 // var rather than a test-file function so a test in any file can point the
 // resolution at the other platform's namespace and walk the whole fallback
 // matrix on one machine — the alternative is a matrix that only ever runs half
 // of itself on the developer's box.
 //
-// It is written only by tests (t.Cleanup restores it) and read on paths that
-// already hold no lock.
-var runtimeGOOS = runtime.GOOS
+// IT IS ATOMIC BECAUSE A TEST WRITES IT WHILE PRODUCTION GOROUTINES READ IT.
+// The previous comment here said it was "read on paths that already hold no
+// lock", which is only safe if every read happens on the writing test's own
+// goroutine — and it does not. The synth Source's render loop calls
+// resolveVoice, which reads this, and nothing waits for that goroutine when a
+// test ends. asPlatform's t.Cleanup restore then raced it, and -race said so on
+// CI (issue #7's PR, ubuntu leg).
+//
+// A load per call, on a path that already resolves a voice. The alternative was
+// to default the whole app test binary to darwin, which would have stopped
+// Linux CI exercising Linux paths — the exact hole #7 came through.
+var goosSeam atomic.Value // string
+
+func init() { goosSeam.Store(runtime.GOOS) }
+
+// runtimeGOOS() is the platform this build resolves against.
+func runtimeGOOS() string { return goosSeam.Load().(string) }
+
+// setRuntimeGOOS points the seam at a platform. Tests only.
+func setRuntimeGOOS(goos string) { goosSeam.Store(goos) }
 
 // discoverTimeout bounds `say -v ?`. It has been seen to take seconds on a
 // loaded machine; past this the curated list stands and discovery is simply
@@ -193,7 +211,7 @@ func roleVoiceOf(p cast.Pair) config.RoleVoice {
 // red-team lenses at PLAN, not a hypothetical.
 
 // Platform implements cast.Host.
-func (d *radioDeck) Platform() string { return runtimeGOOS }
+func (d *radioDeck) Platform() string { return runtimeGOOS() }
 
 // Discovered implements cast.Host: may this macOS voice name be spoken here?
 //
@@ -245,7 +263,7 @@ func (d *radioDeck) Installed(key string) bool {
 // Default implements cast.Host: this machine's own last resort when even the
 // root did not resolve.
 func (d *radioDeck) Default() string {
-	return defaultVoiceFor(runtimeGOOS, d.voiceDir)
+	return defaultVoiceFor(runtimeGOOS(), d.voiceDir)
 }
 
 // discoverMacVoices reads `say -v ?` and returns the curated voices that are
@@ -257,7 +275,7 @@ func (d *radioDeck) Default() string {
 // disagreeing. The context ceiling is the caller's to set; discoverTimeout is
 // what both callers use.
 func discoverMacVoices(ctx context.Context) []string {
-	if runtimeGOOS != "darwin" {
+	if runtimeGOOS() != "darwin" {
 		return nil
 	}
 	out, err := exec.CommandContext(ctx, "say", "-v", "?").Output()
@@ -366,7 +384,7 @@ func (d *radioDeck) resolveVoice(role cast.Role) (synth.Voice, cast.Resolution, 
 // buildVoice turns a resolved NAME into an engine, capped by the deck's limiter
 // (FR-12). It constructs, it never installs.
 func (d *radioDeck) buildVoice(name string) (synth.Voice, error) {
-	if runtimeGOOS == "darwin" {
+	if runtimeGOOS() == "darwin" {
 		if name == systemVoice {
 			name = "" // `say` with no -v (UAT 88)
 		}
@@ -589,7 +607,7 @@ func castFromView(v tty.CastView, into cast.Config) cast.Config {
 
 // halfFor reads this platform's half of a pair.
 func halfFor(p cast.Pair) string {
-	if runtimeGOOS == cast.PlatformDarwin {
+	if runtimeGOOS() == cast.PlatformDarwin {
 		return p.MacOS
 	}
 	return p.Piper
@@ -597,7 +615,7 @@ func halfFor(p cast.Pair) string {
 
 // setHalf writes this platform's half, leaving the other untouched.
 func setHalf(p *cast.Pair, name string) {
-	if runtimeGOOS == cast.PlatformDarwin {
+	if runtimeGOOS() == cast.PlatformDarwin {
 		p.MacOS = name
 		return
 	}

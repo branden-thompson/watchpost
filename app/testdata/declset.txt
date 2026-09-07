@@ -339,6 +339,7 @@ func gapAfter
 func halfFor
 func holdRest
 func indexKey
+func init
 func itemsOf
 func itoaN
 func laneItems
@@ -400,6 +401,7 @@ func roleVoiceOf
 func rowClock
 func runsOf
 func runtimeCounts
+func runtimeGOOS
 func saveCast
 func savePreference
 func saveRadioMode
@@ -414,6 +416,7 @@ func seismicRules
 func semverLess
 func semverParts
 func setHalf
+func setRuntimeGOOS
 func setThemeHook
 func setUIHook
 func settingsRoles
@@ -500,4 +503,4 @@ type tickerPrefs
 var _
 var _
 var errDumpTooSoon
-var runtimeGOOS
+var goosSeam

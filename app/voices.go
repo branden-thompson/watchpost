@@ -33,7 +33,7 @@ func (d *radioDeck) listVoices() {
 // The Station Director's two reserved slots are on top of this number, so the
 // worst case is renderSlots()+2 processes (perf-protocol.md §3).
 func renderSlots() int {
-	if runtimeGOOS == "darwin" {
+	if runtimeGOOS() == "darwin" {
 		return 3
 	}
 	return 2
@@ -56,7 +56,7 @@ func (d *radioDeck) voice() (synth.Voice, error) {
 // rawVoice is the unbounded engine pick. It is unexported and has exactly one
 // caller — voice, above — so the wrap cannot be forgotten.
 func (d *radioDeck) rawVoice() (synth.Voice, error) {
-	if runtimeGOOS == "darwin" {
+	if runtimeGOOS() == "darwin" {
 		d.mu.Lock()
 		name := d.voiceID
 		d.mu.Unlock()
@@ -79,10 +79,10 @@ func (d *radioDeck) rawVoice() (synth.Voice, error) {
 	// Four Linux CI rounds of this release died on this path, each in a slightly
 	// different dereference, because nothing stopped the download itself.
 	if !d.canInstall() {
-		return nil, fmt.Errorf("no voice for %s/%s: this deck is not wired to install one", runtimeGOOS, runtime.GOARCH)
+		return nil, fmt.Errorf("no voice for %s/%s: this deck is not wired to install one", runtimeGOOS(), runtime.GOARCH)
 	}
 	if !synth.PiperSupported() {
-		return nil, fmt.Errorf("no voice for %s/%s: install Piper or use a relayed location", runtimeGOOS, runtime.GOARCH)
+		return nil, fmt.Errorf("no voice for %s/%s: install Piper or use a relayed location", runtimeGOOS(), runtime.GOARCH)
 	}
 	// Serialize installs: the breaking-news goroutine and a Tune can both reach
 	// here on a fresh host, and two concurrent ~63 MB downloads into the same
@@ -166,7 +166,7 @@ func (d *radioDeck) PreviewVoice(name string) {
 		name = ""
 	}
 	var v synth.Voice = synth.SayVoice{Voice: name}
-	if runtimeGOOS != "darwin" {
+	if runtimeGOOS() != "darwin" {
 		spec, ok := synth.VoiceByName(name)
 		if !ok {
 			spec = d.piperSpec()
@@ -232,7 +232,7 @@ func (d *radioDeck) Voices() []string {
 // (UAT 118) — every entry can be chosen, an uninstalled one downloads on
 // first use (~63 MB) with progress in the player.
 func (d *radioDeck) discoverVoices() []string {
-	if runtimeGOOS == "darwin" {
+	if runtimeGOOS() == "darwin" {
 		// Through the shared discoverMacVoices, not a second `say -v ?` of its
 		// own: P4's `report --verbose` needs the same answer without a deck,
 		// and two implementations of "which voices does this Mac have" is how
@@ -309,7 +309,7 @@ const defaultMacVoice = "Samantha"
 // defaultVoice is the Mac's own System Voice (always present; UAT 88/91 —
 // what a fresh setup heard first), else the first installed voice.
 func (d *radioDeck) defaultVoice() string {
-	if runtimeGOOS == "darwin" {
+	if runtimeGOOS() == "darwin" {
 		return systemVoice
 	}
 	if installed := synth.InstalledVoices(d.voiceDir); len(installed) > 0 {
