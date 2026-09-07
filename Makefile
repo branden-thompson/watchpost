@@ -239,7 +239,12 @@ release-matrix:
 	  echo "  building $$os/$$arch"; \
 	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY)-$$os-$$arch$$ext ./cmd/watchpost || exit 1; \
 	done
-	@cd $(DIST) && (command -v sha256sum >/dev/null && sha256sum $(BINARY)-* || shasum -a 256 $(BINARY)-*) > checksums.txt && echo "release-matrix: OK ($(VERSION))"
+	@cd $(DIST) && (command -v sha256sum >/dev/null && sha256sum $(BINARY)-* || shasum -a 256 $(BINARY)-*) > checksums.txt
+# NFR-2, AND IT RUNS HERE RATHER THAN IN verify FOR A REASON. verify runs before
+# the published artifacts exist, so a check living there inspects a binary nobody
+# ships. These are the files the release workflow uploads.
+	@./scripts/lint-injector.sh $(DIST)/$(BINARY)-*
+	@echo "release-matrix: OK ($(VERSION))"
 
 # Installer smoke test: serve the release matrix locally and run scripts/install.sh
 # against it (no GitHub involved), then check the installed binary reports the version.
