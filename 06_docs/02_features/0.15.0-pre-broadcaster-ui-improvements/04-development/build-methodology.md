@@ -25,9 +25,13 @@ makes a gate valid live in `06_docs/quality-observations.md`; this file is about
 **Immediately next:** FR-5.  The measurement is done (below); the fix is `modalDebug`'s scroll, then
 land the reachability property as a baseline-and-ratchet.
 
-**Then:** FR-4 (scenario payloads, 2-minute expiry, per-line marking, pre-emption rule), then FR-6.4
-— which **needs OQ-2 ruled by the HUM LEAD first**: "how long should the relay-fault window stay
-open" answers none of WCAG 2.2.1's three mechanisms (turn off / adjust ≥10× / extend with warning).
+**Then:** FR-4 (scenario payloads, 2-minute expiry, per-line marking, pre-emption rule), then FR-6.4.
+
+**FR-6.4 IS NOT BLOCKING — HUM LEAD ruling, 2026-09-07.**  *"Watchpost is not a web application, so
+recommendations are useful, but never blocking functionality, at least until I have data or users
+that insist otherwise."*  WCAG 2.2.1 is **aspirational** here.  OQ-2 is therefore not a gate on the
+batch: improve the relay-fault timeout if it is cheap and clearly better, and do not hold work or
+raise conformance as a defect.  Revisit only on evidence — a real user, or data.
 
 ### FR-5's measurement, so it is not repeated
 
@@ -110,6 +114,6 @@ that *something* was wrong.  Take the finding; re-derive the fix.
 - **No AI attribution** anywhere — enforced by `lint-watermark`.
 - **Tier B at PLAN only**; BUILD writes real code, and no plan gains implementation code.
 - **P10 exemptions are presented for ratification**, never self-approved.
-- **UX rulings are the HUM LEAD's** — OQ-2 is the live one.
+- **UX rulings are the HUM LEAD's.**  OQ-2 is ruled: accessibility guidance is advisory here, not a gate.
 - **Every batch pushes on first commit** (NFR-4) — not yet done for this branch; still local.
 - **UAT before REVIEW exit**, two questions: regression *and* yield.  See the implementation plan.

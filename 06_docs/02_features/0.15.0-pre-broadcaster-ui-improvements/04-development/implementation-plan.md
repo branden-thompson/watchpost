@@ -142,8 +142,12 @@ plan report and scheduled nowhere.  Four lenses found it independently.
 **Order within the batch is fixed: FR-5 before FR-4.**  Adding scenarios to a window whose controls
 cannot be seen produces an instrument nobody can operate.
 
-**FR-6.4 joins this batch** — the relay-fault window's 10-second auto-close, a **WCAG 2.2.1 Level A**
-failure on the only station-tuning control.  Revision 1 put it last, behind the only scope lever, in
+**FR-6.4 joins this batch, as an IMPROVEMENT rather than a conformance gate** — HUM LEAD, 2026-09-07:
+*"Watchpost is not a web application, so recommendations are useful, but never blocking
+functionality, at least until I have data or users that insist otherwise."*  The relay-fault window's
+10-second auto-close on the only station-tuning control is still worth fixing on its own merits — a
+control that acts for you while you are reading it is poor regardless of any standard — but it does
+not gate the batch and WCAG conformance is not claimed.  Revision 1 put it last, behind the only scope lever, in
 the slot a re-cut removes first.  It touches one constant and one nav handler, contends with nothing,
 and is surface work.  *(Deviation PD-6.  `handleRelayFaultNav` touches neither `.last` nor `.left`,
 so 2.2.1's "extend" exception is architecturally absent, not merely unimplemented — OQ-2 must be ruled
