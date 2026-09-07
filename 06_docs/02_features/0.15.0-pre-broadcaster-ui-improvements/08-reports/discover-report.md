@@ -163,8 +163,12 @@ Measured, not assumed.  `TestTheMemoKeyCoversEverythingTheFrameShows` derives fi
 walks the modal enum rather than a written list, states its property as an implication, and skips
 loudly rather than passing quietly.  It reports **11 of 11 modals covered, zero skips.**
 
-- **FR-3.1** `bodyKey` gains the guard `modalKey` already has.  18 fields against the frame that runs
-  24/7, and nothing derives its coverage.  This is the side the 0.13.0 lookup defect and #11 both
+- **FR-3.1** `bodyKey` gains the guard `modalKey` already has.  **22** fields against the frame that
+  runs 24/7, and nothing derives its coverage.  *(This report first said 18, counting declaration
+  lines rather than fields — `width, height int` is two.  `memo.go:28` says 22 and is right.  A count
+  taken by eye in a report about counts taken by eye.)*  Note the guard does not transfer as-is:
+  `bodyKeyFor` derives ten fields from `frameLayout` and four more by computation, and `perturbations`
+  walks a `Dashboard`, so a copied guard would perturb neither.  This is the side the 0.13.0 lookup defect and #11 both
   lived on.
 - **FR-3.2** The six data-cache memos — `tileMemo`, `boxMemo`, `gridMemo`, `sourceMemo`, `hostMemo`,
   `failureMemo` — receive a **ruling**, not the same test.  Their failure mode is stale data, not a
@@ -363,7 +367,10 @@ built.  It is scoped as a bounded investigation with a written disposition, not 
 the same discipline RS-4 applies to F-43.
 
 **Scope consequence, stated rather than absorbed:** this is the largest single item in the release
-and RS-1 was already its top risk.  See the recommendation for the offset.
+and RS-1 was already its top risk.  An offset was recommended — cutting FR-7, which nine of eleven
+lenses named — and **declined by the HUM LEAD on precedent grounds**: FR-7.1 sets the pattern six new
+feeds copy, and 0.16.0 is when those feeds arrive.  Scope therefore runs FR-1 to FR-10 with nothing
+removed, and sequencing is the only lever left.
 
 ## Metrics of Success — carried forward, with owners
 
@@ -373,9 +380,9 @@ an anti-solution at intake and this report discarded the hardening by omission.*
 | Metric | Owning requirement | Baseline | Target |
 |---|---|---|---|
 | **T** — time to confirm the station works | FR-4 + FR-5 | Unbounded | ≤ 2 min |
-| **D** — unexplained duplicate implementations | FR-1 + FR-2, gate landed by FR-8.1 | **Unmeasured — owed before PLAN exit** | 0 |
+| **D** — unexplained duplicate implementations | FR-1 + FR-2, gate landed by FR-8.1 | **Unmeasured, and DEFERRED to PLAN (HUM LEAD).**  The instrument does not exist: the 0.14.1 duplicate-detection script this metric names was never committed — the third instrument this project has used and thrown away, after `sampler.sh` and this phase's probes.  Rebuilding it is release work under FR-2/FR-8, not a discovery measurement | 0 |
 | **K** — memo keys with no completeness guard | FR-3.1 + FR-3.3 | 1 on the frame path (`bodyKey`); 6 data caches pending FR-3.2's ruling | 0 |
-| **G** — gates never observed failing | FR-8.4 | **Unmeasured — needs a canonical gate roster** | 0 |
+| **G** — gates never observed failing | FR-8.4 | **Unmeasured, and DEFERRED to PLAN (HUM LEAD).**  Its denominator is the canonical gate roster that FR-8.4 defines, so it cannot be baselined before the requirement that creates it | 0 |
 
 **Two hardening notes the red team added.**  K must stay an absolute count: FR-3.2's ruling on the six
 data-cache memos removes them from the numerator by definition rather than by guarding them, which is
@@ -430,14 +437,14 @@ from what `make verify` runs.
    go-studs · P10 exemptions presented for ratification, never self-approved · no AI attribution ·
    no PII in shipped artifacts.
 5. **Nothing in 0.15.0 may require Broadcaster to exist.**
-6. **Sequence:** 0.15.0 → 0.15.x (F-40, the fire feeds) → 0.16.0 (Broadcaster).
+6. **Sequence:** 0.15.0 → 0.16.0 (Broadcaster).  *The 0.15.x fire release is gone: F-40 was rolled into 0.15.0 as FR-10 (HUM LEAD, 2026-09-07), so there is no longer a release between this one and Broadcaster.*
 
 ## Risk Assessment
 
 | ID | Risk | Rationale | Mitigation |
 |---|---|---|---|
 | **RS-1** | Scope — **now the live risk, and unmitigated by descoping** | FR-1 to FR-10, nothing removed.  FR-3 shrank and FR-4 lost its construction half, but FR-8 was reinstated and FR-10 rolled in, so the release is larger than the brief's R1–R6, not smaller.  Descope was recommended (nine lenses on FR-7) and declined on precedent grounds | The scope predicate no longer helps: every remaining item passes it.  What is left is **sequencing and early detection** — FR-2 first, FR-5 before FR-4, a defined checkpoint after FR-1 to FR-5, and **FR-10 started immediately in parallel**, since it investigates feeds and does not contend with any other item for code.  PLAN owes a size per FR |
-| **RS-2** | Arch measurement is blocking and externally owned | FR-3.4 and OQ-18 have no input | HUM LEAD run; DISCOVER cannot honestly exit without it |
+| **RS-2** | ~~Arch measurement blocks the phase~~ **WITHDRAWN** | FR-3.4 came off this dependency at red team C-6 — its memos are on the provider fetch path, which §3–5 cannot measure.  Only OQ-18 consumes it, and §3.6 already states OQ-18's default | Run when convenient, for OQ-18 alone.  **DISCOVER exits without it** |
 | **RS-3** | FR-4 raises the stakes on injection | The surface becomes user-facing for the first time | NFR-2 becomes a release gate; if it slips, FR-4 does not ship |
 | **RS-4** | FR-6.6 is an unbounded hunt | F-43 has never been reproduced | Timebox and a written disposition, decided before it starts |
 | **RS-5** | FR-1 and FR-3 are wide refactors carrying hazard information | SEV-0 | TDD is directive-mandated; safety is the tests that exist before the change |
