@@ -9,6 +9,7 @@ package snapshot
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 )
@@ -290,6 +291,74 @@ type Warning struct {
 	Message  string `json:"message"`
 	Location string `json:"location,omitempty"`
 	Provider string `json:"provider,omitempty"`
+
+	// The failure as VALUES, for a diagnostic that shows them in columns
+	// (0.14.0). Additive and omitempty: a warning that is not an HTTP failure
+	// carries none of them, and an older reader sees the file it always saw.
+	Endpoint   string `json:"endpoint,omitempty"`    // the host, not the whole URL
+	HTTPStatus int    `json:"http_status,omitempty"` // 0 when the failure had no status
+	Blame      string `json:"blame,omitempty"`       // see Blame
+}
+
+// Who a failure belongs to, as far as the response can tell.
+const (
+	BlameProvider  = "provider_error"  // theirs
+	BlameWatchpost = "watchpost_error" // ours
+	BlameUnclear   = "unclear"         // it could be either, and saying so is the honest answer
+)
+
+// FailureDetail is what a transport error can tell a warning about itself.
+// httpx's StatusError and ReachError implement it; this package does not import
+// transport, so the shared vocabulary stays a leaf.
+type FailureDetail interface {
+	Endpoint() string
+	HTTPStatus() int
+}
+
+// WithFailure fills a warning's structured half from an error that carries one,
+// and decides blame from the status. An error with no detail keeps the message
+// it always had and reads as unclear.
+func WithFailure(w Warning, err error) Warning {
+	var d FailureDetail
+	if errors.As(err, &d) {
+		w.Endpoint, w.HTTPStatus = d.Endpoint(), d.HTTPStatus()
+	}
+	w.Blame = BlameFor(w.HTTPStatus)
+	return w
+}
+
+// BlameFor reads a status as whose fault it is.
+//
+// 5xx IS THEIRS. A server error is a server error, and 408 and 429 go with them:
+// a timeout and a throttle are both the far end saying "not now".
+//
+// 4xx IS USUALLY OURS, because a request is something we built — a malformed
+// query, a URL that no longer exists, a method they do not take. The exceptions
+// are the two that turn on a credential: a 401 or a 403 is ours when we sent no
+// key and theirs when the key we sent was revoked, and the response cannot tell
+// the two apart. Those read UNCLEAR rather than guessing, because a diagnostic
+// that blames the wrong side sends somebody to fix the wrong thing.
+//
+// 3xx reaching here at all means a redirect we did not follow, which is a
+// question about the request as often as about the server — unclear.
+//
+// NO STATUS is a transport failure: DNS, a refused connection, a dead link. That
+// is as likely to be the listener's own network as the provider's, so it is not
+// pinned on either.
+func BlameFor(status int) string {
+	switch {
+	case status == 0:
+		return BlameUnclear
+	case status >= 500, status == 408, status == 429:
+		return BlameProvider
+	case status == 401, status == 403:
+		return BlameUnclear
+	case status >= 400:
+		return BlameWatchpost
+	case status >= 300:
+		return BlameUnclear
+	}
+	return BlameUnclear
 }
 
 // --- fetch plumbing (§10.1) ---

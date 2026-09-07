@@ -2,6 +2,7 @@ package synth
 
 import (
 	"context"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"io"
 	"strings"
 	"sync"
@@ -46,7 +47,7 @@ func TestSynthPlaysTheSeismicBroadcast(t *testing.T) {
 		quake(5.1, 141, 15, "N", 72*time.Hour, now),
 		quake(4.2, 30, 8, "NE", 2*time.Hour, now),
 	}}}
-	segs := std.Compose(snapshot.Location{Label: "Ridgecrest, CA"}, nil, now, true, "rec", Station{}, FireReport{}, sr)
+	segs := std.Compose(snapshot.Location{Label: "Ridgecrest, CA"}, nil, now, true, "rec", Station{}, Reports{Seismic: sr}, render.Clock12)
 	// Order: the seismic report sits before the tail.
 	texts := segmentsText(segs)
 	seismicAt, tailAt := -1, -1

@@ -1,0 +1,16 @@
+# Hostile names: an SGR colour sequence, an OSC title-set with its BEL
+# terminator, a tab, and a screen clear. None of these may reach a frame, an
+# argv or an [S] line unrendered (NFR-6). Written as \u escapes so the fixture
+# itself stays readable; the decoded values carry the real bytes.
+voice = "Samantha\u001B[31m"
+
+[radio]
+cast = "cast"
+
+[radio.voices.alerts]
+macos = "\u001B]0;pwned\u0007"
+piper = "en_US-\u0009ryan-medium"
+
+[radio.tones]
+mode = "mute"
+muted = ["watch", "\u001B[2Jclear", "watch"]

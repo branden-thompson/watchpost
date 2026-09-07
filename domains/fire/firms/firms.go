@@ -132,7 +132,7 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 	for _, ref := range req.Locations {
 		hs, failed, rejectedKey := p.hotspotsFor(ctx, key, ref, &frag)
 		if rejectedKey { // the key itself: say so, once, and stop hitting the quota (P4)
-			frag.Err = errors.New("firms: FIRMS rejected the MAP_KEY — open Setup ([s]) and paste it again")
+			frag.Err = errors.New("firms: FIRMS rejected the MAP_KEY — open Settings ([s]) and paste it again")
 			return frag, nil
 		}
 		if failed {

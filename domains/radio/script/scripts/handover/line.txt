@@ -1,0 +1,2 @@
+{{/* handover/line: the incoming correspondent takes over mid-broadcast (MVS-D-6). Data: .To (who is starting), .From (who was reading). Both names are already plain and capped. A broken override falls back to the built-in line — a hand-over must never become silence. */}}
+This is {{.To}}, taking over for {{.From}}.

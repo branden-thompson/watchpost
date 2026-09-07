@@ -1,0 +1,2 @@
+{{/* marine-report/sea: sea state and swell in ONE sentence (the report is long; MVS-D-21). Data: .State, .Height, .Swell (may be empty). */}}
+Seas are {{.State}}, with a significant wave height of {{.Height}}{{if .Swell}}, and {{.Swell}}{{end}}.

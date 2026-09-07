@@ -110,6 +110,9 @@ type boxQuery struct {
 // query centred on the location itself (no snap — the buffer would balloon a
 // swarm), and the regional query snapped to the shared grid so nearby
 // locations resolve to one URL.
+// ACCEPTED COST — see docs/accepted-costs.md §5. The near-field query is one URL
+// per location and cannot be a 304 (FDSN sends no validators); snapping it would
+// need a buffer, and a buffer balloons during a swarm.
 func (p *Provider) queries(ref snapshot.LocationRef, now time.Time) []boxQuery {
 	plan := p.rules.QueryPlan()
 	out := make([]boxQuery, 0, len(plan))

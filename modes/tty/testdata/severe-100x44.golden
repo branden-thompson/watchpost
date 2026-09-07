@@ -1,13 +1,12 @@
                                                                                                   
                                                                                                   
-   ┏━━ W A T C H P O S T  vtest ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  awaiting first data... ━━┓  
-   ┃   [s] Setup  [a] About  [t] Theme  [S] Status  [?] Help  [q] Quit    API: ✔0 ⚠0 ✘0 /  0   ┃  
+   ┏━━ WATCHPOST Observer  vtest ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  awaiting first data... ━━┓  
+   ┃   [s] Settings  [a] About  [S] Status  [?] Help  [q] Quit            API: ✔0 ⚠0 ✘0 /  0   ┃  
    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛  
-   ┌── SEVERE WEATHER / DISASTER EVENTS ──────────────────── Updated 08/28/2026 15:38:05 UTC ──┐  
+   ┌── NOTABLE EVENTS AND FORECASTS ────────────────────── Updated 08/28/2026 3:38:05 PM UTC ──┐  
    │                                                                                           │  
-   │    [›Warnings] [Watches] [Advisories] [Spec. Statements] [Sig. Quakes] [Tropical]         │  
+   │    [Emrg] [›Warn] [Watch] [Advis] [Stmts] [Disast] [Marine] [Fcast]                       │  
    │                                                                                           │  
-   │    Warnings — 9 active                                                                    │  
    │  [                E V E N T                ][        LOCATION        ][   DECLARED    ]   │  
    │  ›    001. Extreme Heat Warning               Wicomico, MD              08/28 11:20 EDT   │  
    │       002. Tornado Warning                    Olathe, KS                08/28 11:20 EDT   │  
@@ -20,7 +19,7 @@
    │       009. High Wind Warning                  Laramie, WY               08/28 11:20 EDT   │  
    │                                                                 9 Total Category Events   │  
    │                                                                                           │  
-   │    [↑↓] Navigate  [←→] Category  [enter] Event Details  [space] Read  [esc] Close         │  
+   │    [↑↓] Navigate  [←→] Category  [enter] Event Details  [space] Play  [esc] Close         │  
    └───────────────────────────────────────────────────────────────────────────────────────────┘  
    [                                                                                           ]  
    [                             R E C E N T   /   S E A R C H E D                             ]  

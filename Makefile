@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: build test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls release-matrix clean alloc-budget quality-bench p10
+.PHONY: build test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -26,6 +26,16 @@ fmt:
 vet:
 	go vet ./...
 
+# THE BUILD-TAGGED SOURCE IS SOURCE, and nothing was compiling it. The injector
+# lives behind `watchpost_debug` (P10-08) so it cannot ship, which also means
+# `go vet ./...` never sees it: app/inject_seam_test.go — the test the whole
+# injector stands on — stopped compiling at T3.10b and stayed dark until the
+# BUILD-exit red team found it by hand (I-3). A tag with no gate is a tag that
+# rots. `mutants` is excluded deliberately: mutant-check owns it, and it costs
+# ~140s.
+vet-tags:
+	go vet -tags watchpost_debug ./...
+
 # Dependency hygiene (quality pass Q0, red-team PH-1/IS-9): go.mod must be tidy,
 # the module cache must match go.sum, and no known vulnerability may be reachable.
 tidy:
@@ -49,8 +59,89 @@ gate-controls:
 	@./scripts/lint-imports.sh --self-test
 	@./scripts/lint-watermark.sh --self-test
 	@./scripts/sync-go-studs.sh --self-test
+	@./scripts/quality/p10-unmatched_test.sh
 
-verify: fmt vet tidy vuln race lint-imports lint-watermark gate-controls
+# The mutation corpus and the harness that reads it (06_docs/mutants, Go, behind
+# the `mutants` build tag so its ~140s does not land in `go test ./...` and thus
+# in `make race`). Every mutant still applies to the tip, still compiles with its
+# tests, and is not inert; the harness still reports each verdict with the right
+# exit code, still refuses a red baseline and a dirty tree, and still calls a
+# crash CAUGHT. All of that was shell until 2026-09-03, and 17 of one session's
+# 34 defects were in that shell.
+mutant-check:
+	@mkdir -p $(DIST)
+# -v ON PURPOSE. Without it the durable record is one line — "ok ... 241s" — which
+# proves the gate ran and nothing else, and a verify step that accepts that is a
+# verify step in name only. With it the log names every property of the mutation
+# harness that held, which IS this gate's result. (The per-mutant CAUGHT/SURVIVED
+# verdicts come from run.sh, invoked one mutant at a time, and are recorded by
+# hand in the batch build logs; this gate guards the harness, not the corpus.)
+	@go test -tags mutants -v -count=1 ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
+	  cat $(DIST)/mutant-check.log; \
+	  $(MAKE) --no-print-directory hygiene RESULTS=$(DIST)/mutant-check.log; \
+	  exit $$rc
+
+# THE SUITE AS ANOTHER PLATFORM. The first Linux run of 0.14.0 was its release
+# PR, and it panicked: app/voices.go branched on runtime.GOOS behind the seam's
+# back, so two tests that had pinned darwin walked the Piper install path anyway.
+# On a Mac the seam and the real OS agree, so nothing could see it.
+#
+# This flips the seam for the whole app package (WATCHPOST_TEST_GOOS, honoured by
+# a test-only TestMain) and runs the suite as the other platform. It simulates
+# the SEAM, not the operating system: real syscalls, paths and audio are still
+# the host's, so green here is evidence about platform BRANCHING and never a
+# substitute for running on Linux.
+# -count=1 IS LOAD-BEARING. Without it `go test` can answer from the cache, and a
+# cached "ok" is not a run — the whole point here is to execute the suite in a
+# configuration it has not been executed in.
+test-platforms:
+	@echo "--- app suite as linux ---"   && WATCHPOST_TEST_GOOS=linux  go test -count=1 ./app
+	@echo "--- app suite as darwin ---"  && WATCHPOST_TEST_GOOS=darwin go test -count=1 ./app
+
+# --- hygiene: clean up after ourselves, every time, without doing arithmetic ---
+#
+# ON 2026-09-06 THE VOLUME REACHED 1.2 GiB FREE OF 926 GiB, and 274 GB of that
+# was the Go build cache. A mutation run compiles the tree once per mutant, and
+# every variant is a cache entry that will never be reused again, so the cache
+# grows without bound and nothing trims it. This is not untidiness: the gates
+# were flaky, journey steps that need the network failed, and a 14.2 s radio
+# read was measured on a machine with no disk left. A FULL DISK IS A VECTOR FOR
+# BAD RESULTS, not only for no space.
+#
+# The protocol is deterministic and consults the size of nothing, because a
+# threshold means the cleanup only runs once the damage is already done:
+#
+#   do the thing -> collect the results -> put them somewhere durable ->
+#   VERIFY they are there -> delete the build variants
+#
+# The verify step is the whole point. Without it this target is `rm` with a
+# comment, and the first time a run dies early it would delete the artefacts
+# and the evidence together.
+#
+# WHAT IS KEPT is the stated exception: a small number of real binaries for UAT
+# and for comparing versions. dist/watchpost is what `make journey` drives, the
+# UAT build is what the HUM LEAD runs, and the previous release is what the M3
+# ear test and perf-protocol §4 measure against. Everything else in dist that is
+# executable is a build variant and goes; the RECORDS in dist (journey.log,
+# p10.json, bench.txt, validate/) are not executable and are never touched.
+#
+# `go clean -cache` is machine-wide, not repo-scoped — that is the blast radius
+# and it is deliberate, since the cache it clears is the one this repo filled.
+HYGIENE_KEEP := watchpost watchpost-uat watchpost-0.13.0
+
+hygiene:
+	@test -n "$(RESULTS)" || { echo "hygiene: RESULTS must name the run's record; refusing to delete"; exit 1; }
+	@test -s "$(RESULTS)" || { echo "hygiene: $(RESULTS) is missing or empty — the run left no record, so NOTHING is deleted"; exit 1; }
+	@echo "hygiene: results durable in $(RESULTS) ($$(wc -l < $(RESULTS) | tr -d ' ') lines)"
+	@for f in $(DIST)/*; do \
+	  b=$$(basename "$$f"); \
+	  case " $(HYGIENE_KEEP) " in *" $$b "*) continue;; esac; \
+	  if [ -f "$$f" ] && [ -x "$$f" ]; then rm -f "$$f" && echo "hygiene: removed build variant $$b"; fi; \
+	done
+	@go clean -cache -testcache
+	@echo "hygiene: build cache cleared; kept $(HYGIENE_KEEP)"
+
+verify: fmt vet vet-tags tidy vuln race lint-imports lint-watermark gate-controls mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
@@ -59,6 +150,23 @@ verify: fmt vet tidy vuln race lint-imports lint-watermark gate-controls
 # pty-severe machine-verifies the Severe Weather / Disaster Events window on a real pty (0.13.0).
 pty-severe: build
 	expect scripts/quality/severe-modal.expect
+
+# The VALIDATE core journey on the real binary, real feeds, a FRESH HOME (a
+# first run). Its exit code is the count of FAILs, and the M2 step measures the
+# keypresses from the dashboard to "role X speaks in voice Y".
+#
+# IT HAD NO TARGET UNTIL 2026-09-06, and gates.md documented it as a command you
+# type. So it went red at the Setup -> Settings rename — it waited for a label
+# that no longer existed — and stayed red, unnoticed, exactly as the severe-window
+# pty smoke had (F-D3). A gate nothing runs is not a gate.
+#
+# Not in `verify`: it needs the network and a few minutes. Local, before SHIP.
+journey: build
+	@d=$$(mktemp -d) && HOME=$$d expect scripts/quality/validate-journey.expect dist/journey.log; \
+		rc=$$?; rm -rf $$d; \
+		echo "--- dist/journey.log ---"; grep -E "FAIL|M2:" dist/journey.log || true; \
+		test $$rc -eq 0 || { echo "journey: $$rc step(s) FAILED"; exit 1; }; \
+		echo "journey: every step PASSED"
 
 alloc-budget:
 	go test -count=1 -run 'AllocBudget$$' ./...

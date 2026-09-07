@@ -18,14 +18,54 @@ const (
 	UnitC
 )
 
+// The config words for the units, a closed set like the clock's. An unknown one
+// reads as Imperial rather than failing a load.
+const (
+	unitsKeyImperial = "imperial"
+	unitsKeyMetric   = "metric"
+)
+
+// UnitsByKey is the config word's units, UnitF for anything unrecognised.
+func UnitsByKey(key string) Units {
+	if key == unitsKeyMetric {
+		return UnitC
+	}
+	return UnitF
+}
+
+// Key is the config word for u.
+func (u Units) Key() string {
+	if u == UnitC {
+		return unitsKeyMetric
+	}
+	return unitsKeyImperial
+}
+
+// Label is how the Settings row names u — the system AND the units it means, so
+// nobody has to remember which way round Imperial runs.
+//
+// The units are PADDED so the parentheticals line up under each other, the way
+// the clock's do. Two rows is few enough to align by hand and the alignment is
+// what makes the pair scannable: the eye reads down the bracketed column.
+func (u Units) Label() string {
+	if u == UnitC {
+		return "Metric    (°C/Km)"
+	}
+	return "Imperial  (°F/Mi)"
+}
+
+// UnitsOrder is the two systems in the order the Settings group draws them.
+func UnitsOrder() []Units { return []Units{UnitF, UnitC} }
+
 // Opts carries the render context every primitive needs.
 type Opts struct {
 	Width int
 	Units Units
+	Clock Clock // how times of day are written (clock.go) — one owner, one setting
 	ASCII bool
 	Frame int // animation phase (loading dots; ticked by the program loop)
 	// ThinBands collapses the group and section bands from three rows (a
-	// band-coloured row above and below the label — HUM LEAD UAT 2026-08-27,
+	// band-coloured row above and below the label,
 	// "so they breathe") back to one: the layout's last resort on a terminal
 	// too short for the table's floor.
 	ThinBands bool
@@ -44,9 +84,18 @@ func (o Opts) BandHeight() int {
 // (A11-10: one owner, so the table and the Help legend cannot disagree).
 type Glyphs struct {
 	Pointer, Play, Repeat, Fire, Alert string
-	Seismic                            [3]string // the felt-band ramp: [0] below feeling, [1] felt, [2] significant (0.11.0)
-	OK, Fail, Note, Cursor, Fill       string    // ✔ ✘ ♪ ▌ ░ and their ASCII forms (REVIEW R5-C-13: one owner for every mark)
-	Dash, Dot                          string    // — and · as separators
+	// Pause is the row mark for a read a LISTENER has paused (MVS-D-74). It
+	// replaces Play on that row rather than sitting beside it: the row is still
+	// the one being read, and two marks would say two things are happening.
+	Pause                        string
+	Seismic                      [3]string // the felt-band ramp: [0] below feeling, [1] felt, [2] significant (0.11.0)
+	OK, Fail, Note, Cursor, Fill string    // ✔ ✘ ♪ ▌ ░ and their ASCII forms (REVIEW R5-C-13: one owner for every mark)
+	Dash, Dot                    string    // — and · as separators
+	// 0.14.0: the Setup window's marks. Down is a picker's dropdown arrow;
+	// Rail and RailCar draw the scroll rail; Ellipsis and Bullet are used where
+	// text is cut or listed. All go through the glyph set so --ascii needs no
+	// special case anywhere (Task 4.9's glyph parity).
+	Up, Down, DropDown, Rail, RailCar, Ellipsis, Bullet, Stop string
 }
 
 // Glyphs resolves the mark set for these options. Under --ascii the play
@@ -54,11 +103,13 @@ type Glyphs struct {
 // 2026-08-29, B-08b).
 func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
-		return Glyphs{Pointer: ">", Play: "*", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},
-			OK: "+", Fail: "x", Note: "~", Cursor: "_", Fill: ".", Dash: "-", Dot: "|"}
+		return Glyphs{Pointer: ">", Play: "*", Pause: "=", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},
+			OK: "+", Fail: "x", Note: "~", Cursor: "_", Fill: ".", Dash: "-", Dot: "|",
+			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#"}
 	}
-	return Glyphs{Pointer: "›", Play: "▶", Repeat: "∞", Fire: "◆", Alert: "⚠", Seismic: [3]string{"○", "●", "◉"},
-		OK: "✔", Fail: "✘", Note: "♪", Cursor: "▌", Fill: "░", Dash: "—", Dot: "·"}
+	return Glyphs{Pointer: "›", Play: "▶", Pause: "‖", Repeat: "∞", Fire: "◆", Alert: "⚠", Seismic: [3]string{"○", "●", "◉"},
+		OK: "✔", Fail: "✘", Note: "♪", Cursor: "▌", Fill: "░", Dash: "—", Dot: "·",
+		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■"}
 }
 
 // asciiKey names an arrow key in words for a chip under --ascii — the one
@@ -113,13 +164,13 @@ func (o Opts) Temp(c *float64) string {
 		return "n/a"
 	}
 	if o.Units == UnitC {
-		return fmt.Sprintf("%.0fºC", *c)
+		return fmt.Sprintf("%.0f°C", *c)
 	}
-	return fmt.Sprintf("%.0fºF", *c*9/5+32)
+	return fmt.Sprintf("%.0f°F", *c*9/5+32)
 }
 
 // Distance renders a kilometres value in the DIST column's fixed "nnn km"
-// slot (miles under ºF, following Height); blank when unknown.
+// slot (miles under °F, following Height); blank when unknown.
 func (o Opts) Distance(km *float64) string {
 	if km == nil {
 		return ""
@@ -131,7 +182,7 @@ func (o Opts) Distance(km *float64) string {
 }
 
 // TideHeight renders a metres value at tide precision (tenths of a foot
-// under ºF, centimetres under ºC — UAT 61) in a fixed 4-cell numeric slot,
+// under °F, centimetres under °C — UAT 61) in a fixed 4-cell numeric slot,
 // so a negative low ("-0.1 ft") never shifts the column (UAT 62).
 func (o Opts) TideHeight(m *float64) string {
 	if m == nil {
@@ -152,7 +203,7 @@ func (o Opts) Knots(mps *float64) string {
 	return fmt.Sprintf("%4.1f kt", *mps/0.514444)
 }
 
-// Wind renders a m/s value in the display units (mph under ºF, km/h under ºC).
+// Wind renders a m/s value in the display units (mph under °F, km/h under °C).
 func (o Opts) Wind(mps *float64) string {
 	if mps == nil {
 		return "n/a"

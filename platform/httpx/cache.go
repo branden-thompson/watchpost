@@ -188,6 +188,10 @@ func (c *cache) hitLocked(tier map[string]*entry, rawURL string, now time.Time) 
 // (fresh or expired), else the disk file — when it carries validators and
 // a body (Q5, plan §2.2 send side). A fresh entry never reaches here: get
 // served it.
+// ACCEPTED COST — see docs/accepted-costs.md §6. An entry evicted from the
+// memory tier is read back from disk to have a body to revalidate against. It is
+// a LAUNCH cost (0.75 MB per 3 min in steady state) and it buys the app's single
+// biggest saving; the register says what would make it worth fixing.
 func (c *cache) stale(rawURL string) (entry, bool) {
 	c.mu.Lock()
 	if e, ok := c.mem[rawURL]; ok {

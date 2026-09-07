@@ -41,5 +41,5 @@ func startDumpTrigger(ctx context.Context, d *dumper) {
 
 // dumpHint is the [S] modal's one-line instruction.
 func dumpHint(pid int, dir string) string {
-	return fmt.Sprintf("kill -USR1 %d → %s", pid, dir)
+	return fmt.Sprintf("kill -USR1 %d → %s", pid, abbreviateHome(dir))
 }

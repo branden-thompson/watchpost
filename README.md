@@ -21,7 +21,7 @@ watchpost
 
 Windows: download `watchpost-windows-amd64.exe` from the
 [Releases](https://github.com/branden-thompson/watchpost/releases) page and run it. On the first run
-the Setup window asks for your location and you are on the air. Details, requirements and the by-hand
+the Settings window asks for your location and you are on the air. Details, requirements and the by-hand
 install are under [Get it running](#get-it-running).
 
 ## What it is
@@ -41,27 +41,27 @@ detections — straight from the source.
 
 ## What it looks like
 
-Real data, 133×44, the default theme unless noted (0.13.0).
+Real data, 133×44, the default theme unless noted (0.14.0).
 
-![The dashboard: the masthead box, the global event ticker band, the radio player, the alert module for the focused location, and the watchlist with fire (◆), quake (○ ● ◉) and alert (⚠) marks](docs/img/dashboard.png)
+![The dashboard with a breaking event across the band: the masthead box, the takeover in place of the global event ticker, the radio player, the alert module for the focused location, and the watchlist with fire (◆), quake (○ ● ◉) and alert (⚠) marks](docs/img/dashboard.png)
 
 ![A breaking event: the tape hands over to the takeover — read aloud over the radio — and `w` opens the window on its category, the event as row 001](docs/img/breaking.gif)
 
-![The Severe Weather / Disaster Events window, category by category: Warnings, Watches, Advisories, Special Weather Statements, Significant Quakes, Tropical — each in its own tint, with DETECTION, DECLARED and EXPIRES](docs/img/severe.gif)
+![The Severe Weather / Disaster Events window, category by category: Emergency Orders, Warnings, Watches, Advisories, Special Weather Statements, Disasters and Forecasts — each in its own tint, with DETECTION, DECLARED and EXPIRES](docs/img/severe.gif)
 
-![The Alert Details modal paging through a location's three alerts: an Extreme Heat Warning, a Flood Watch and an Air Quality Alert](docs/img/alert-details.gif)
+![The Alert Details modal paging through a location's alerts: a Coastal Flood Advisory then a High Surf Advisory for Vista, CA, each in full](docs/img/alert-details.gif)
+
+![The radio goes quiet and says so: the relay stopped producing audible audio, so Watchpost names the problem in plain words and offers the next-best relay, an alternate, or a read of its own report — and takes the last of those itself if nobody is at the keyboard](docs/img/relay-fault.png)
 
 ![The radio on air in Synth mode: the station lead, then the forecast read line by line in the marquee band, the visualizer inside it](docs/img/radio.gif)
 
-![The Setup window: settings grouped by concern, with the Alert Notification Preference — all severe events, or filtered to within N miles of your location](docs/img/setup.png)
+![The Settings window: settings grouped by concern, with the Alert Notification Preference — all severe events, or filtered to within N miles of your location](docs/img/setup.png)
 
-![The theme chooser: thirteen built-in palettes — Watchpost Light among them, and seven from Omarchy Quattro — applied live; add your own as a JSON file](docs/img/themes.png)
+![Settings' theme picker cycling twelve of the thirteen built-in palettes live — Watchpost Light, Catppuccin, Everforest, Gruvbox, High Contrast, Kanagawa, Monochrome, Nord, Osaka Jade, Solarized Night, Synthwave '84, Tokyo Night — the whole frame repainting on each; add your own as a JSON file](docs/img/themes.gif)
 
-![Location Details for Los Angeles: currently, today, the forecast, marine and tides, the FIRE section with the named incidents in reach, the SEISMIC section with the week's quakes, and the alert in full](docs/img/details-fire.png)
+![Location Details for Oceanside, CA: currently, today, the forecast, MARINE with the buoy and the tide, the FIRE section with the named incidents in reach, the SEISMIC section with the week's quakes, and the alert in full](docs/img/details-fire.png)
 
-![The Voice chooser: the correspondent for the synthesized broadcast](docs/img/voices.png)
-
-![The API Status window: every provider's health, the request counters per host, the pipelines and the severe index against its cap](docs/img/status.png)
+![Watchpost Status: uptime and version, every endpoint's health and request counters, the pipelines, and the issues with what failed and whose fault it looks like](docs/img/status.png)
 
 ## Get it running
 
@@ -85,16 +85,35 @@ Then:
 watchpost
 ```
 
-On the first run the Setup window opens over the dashboard and asks three things, all on one screen:
+On the first run the Settings window opens over the dashboard and asks three things, all on one screen:
 your default location (start typing a city or ZIP; the list narrows as you type), an optional NASA
 FIRMS key for satellite fire detections minutes old (leave it empty — the built-in fire sources need
 no key), and whether the radio should announce every severe event nationwide or only those within a
 distance of you. `tab` moves between the questions, `enter` saves. Press `s` to come back to it any time.
 
-The radio voice needs nothing on macOS — the correspondent is one of the system's own voices (`V` lists
-ten, with a preview). On Linux and Windows the voice (Piper) installs itself the first time you tune in
-and `V` offers six correspondents; picking one you have not used yet downloads it (about 63 MB,
-verified) with progress shown in the player.
+**Your correspondents.** Settings' *Watchpost Radio — Correspondents* group gives the station a cast: a
+row for each thing you hear — the alerts and takeovers, the location report, the marine report, the fires,
+the quakes — and a voice for each. A row you have not set names the voice it inherits, so every row says
+who will actually speak, and `p` previews the focused one. When correspondents change mid-broadcast they hand over by name
+— *"This is Rishi, taking over for Samantha."* Press `V` to jump straight to that group.
+
+The voices themselves need nothing on macOS — the correspondents are the system's own. On Linux and
+Windows the voice (Piper) installs itself the first time you tune in; picking one you have not used yet
+downloads it (about 63 MB, verified) with progress shown in the player. Watchpost fetches at most two
+voices in the background per session, so a hand-edited config cannot quietly pull hundreds of megabytes
+on launch.
+
+**Alert tones.** Every alert opens with a sound that says what KIND of alert is coming, before a word is
+spoken: warnings and significant quakes share the loudest, and watches, advisories, special statements
+and tropical/winter storms each have their own. Settings' *Alerts — Tone* group mutes any class you like,
+and `M` opens Settings there so you can change them while the radio is talking. The words always
+read: muting a class silences its tone, never its announcement.
+
+**A marine report.** Coastal locations gain a spoken sea report between the forecast and the fire
+report: the coastal-waters forecast, the nearest buoy, the tide in force, the next high and low, and the
+tidal current.
+
+![Location Details showing the MARINE section: how long ago the buoy reported, the conditions, the water temperature with the buoy and its distance, the swell and its period, the tide in force with the station that measured it, and the next high and next low](docs/img/maritime.png)
 
 ## Every day
 
@@ -108,11 +127,11 @@ verified) with progress shown in the player.
 | `ctrl+a` / `shift+delete` | make the focused location a favourite (up to 10) / remove it |
 | `space` `+` `-` | radio: play or pause the focused location · volume up (`=` too) and down |
 | `r` `m` | Repeat: Off · One · Watchlist (each favourite in turn) · Mode: Synth (your forecast, read aloud) or Nearest Relay (the live station) |
-| `v` `V` `T` | the visualizer · the correspondent's voice · a smaller player |
-| `M` | mute the breaking-event announcements (the tape keeps scrolling) |
+| `v` `V` | the visualizer · your correspondents (opens Settings) |
+| `M` | open Settings at the alert TONES, where each class can be muted (the words always read; the tape keeps scrolling) |
 | `f` `c` | Fahrenheit / Celsius |
 | `t` | the colour theme — thirteen built in, **Watchpost Light** for a light terminal |
-| `s` `a` `S` `?` `q` | Setup · About and data credits · the status of every data source · help · quit (`ctrl+c` too) |
+| `s` `a` `S` `?` `q` | Settings · About and data credits · the status of every data source · help · quit (`ctrl+c` too) |
 
 (`ctrl+s` also opens the severe window — unless your shell or tmux has it reserved for flow control,
 which is why `w` is the key to remember.)
@@ -122,7 +141,7 @@ which is why `w` is the key to remember.)
 ## Severe events
 
 `w` opens the Severe Weather / Disaster Events window: every active event in six categories —
-Warnings · Watches · Advisories · Spec. Statements · Sig. Quakes · Tropical — each painting the window
+Warnings · Watches · Advisories · Spec. Statements · Disasters · Marine — each painting the window
 in its own colour. It combines the national feeds (USGS significant quakes, NHC tropical cyclones,
 the NWS severe-warning feed) with the alerts of every place on your watchlist, one row per event; an
 alert a newer message from the same office has replaced is dropped everywhere it would show. Each row
@@ -134,23 +153,22 @@ the radio; `esc` backs out; `esc` `esc` closes. Open the window within ten minut
 and it lands on that event's category. A source that is down is named on the category line ("NHC
 unavailable") — never a silently empty list.
 
-![space reads the focused event: the player's head names it (EVENT · Extreme Heat Warning · Phoenix, AZ), the notification report scrolls through the marquee, and the row wears the ▶](docs/img/event-read.png)
+![space reads the focused event: the player's head names it (EVENT · Severe Thunderstorm Warning · Lewis and Clark, MT), the notification report scrolls through the marquee, and the row wears the ▶](docs/img/event-read.png)
 
 ## Radio
 
 `space` tunes the focused location. **Synth** is a broadcast the correspondent composes for that place,
 in the order NOAA Weather Radio uses: the notice and the station lead, current conditions, active
-alerts, the forecast office's products, then — when there is something to say — the Fire and Hotspot
-report and the Seismic Activity report, and the sign-off. **Nearest Relay** (`m`) plays the real
-transmitter, streamed by the community relays. `r` cycles Repeat: Off · One · Watchlist; `v` puts the
-visualizer inside the marquee; `T` shrinks the player; `V` chooses the voice. A **breaking event**
+alerts, the forecast office's products, then — when there is something to say — the Marine report on
+the coast, the Fire and Hotspot report and the Seismic Activity report, and the sign-off.
+**Nearest Relay** (`m`) plays the real transmitter, streamed by the community relays. `r` cycles
+Repeat: Off · One · Watchlist; `v` puts the visualizer inside the marquee. A **breaking event**
 always speaks first: the broadcast dips, the attention tone sounds, the event is read; a `space` read
 in progress pauses for it and carries on afterwards; the broadcast comes back up when nothing else
-is waiting. `M` mutes the announcements.
+is waiting.
 
-![Nearest Relay: the live transmitter streamed — WXK58 Reno, 162.550 MHz, 27 miles away](docs/img/relay.png)
+![Nearest Relay: the live transmitter streamed — KIG78 Coachella, CA on 162.400 MHz, 81 miles away, LIVE RADIO across the band](docs/img/relay.png)
 
-![The small player (T): one row of controls, the visualizer still inside the band](docs/img/radio-min.png)
 
 ## Quakes
 
@@ -179,11 +197,14 @@ FIRMS simply reads `off` in the status window and the other two sources carry th
 
 ## Themes and looks
 
-`t` opens the theme chooser: Watchpost, Watchpost Light (for a light terminal), High Contrast,
+`t` opens Settings at the theme picker: Watchpost, Watchpost Light (for a light terminal), High Contrast,
 Monochrome and nine more, applied live and remembered. Every colour pair in every theme is checked to
 read at the WCAG AA contrast level. `watchpost --ascii` draws every mark with plain characters
 (`>` pointer, `*` playing, `R` on repeat, `n*` fires, `n!` alerts, `.`/`o`/`O` quakes, `+ - |` box
-rules, arrow keys named in words) for terminals or screen readers that mishandle the glyphs; with
+rules, arrow keys named in words) and spells out headers a screen reader would read letter by letter,
+for terminals or screen readers that mishandle the glyphs. It covers the marks, the box rules, the
+legend and those headers — **not** the weather text itself, which is the forecast offices' words and
+is printed as they wrote them; punctuation inside an alert's own title travels with it. With
 `NO_COLOR` set, every state still reads in text — the meaning never rides on colour alone.
 
 ![Watchpost Light: the dashboard with Location Details open, then the severe window — every ground light, every colour pair checked for contrast](docs/img/light.gif)
@@ -203,8 +224,17 @@ feed; GeoNames and Open-Meteo geocoding (CC BY 4.0, <https://creativecommons.org
 NWR audio relayed by wxradio.org and weatherUSA (community relays — relayed audio lags and is not
 for life-safety use). Watchpost is not affiliated with NOAA, NIFC, the USGS or NASA.
 
+**What it talks to, and when.** Watchpost fetches only from the providers above, on the schedule the
+dashboard shows, and it sends nothing about you to any of them. One further connection is available and
+is **off unless you turn it on**: `update_check = true` asks `api.github.com`, once an hour, whether a
+newer release has been published. It is a plain GET — no version, no identifier, nothing about your
+machine — and the answer is compared locally; the `S` window shows the result. Left off, the app never
+contacts GitHub at all.
+
 **Where things live.** Your settings are in `~/.config/watchpost/config.toml` (written so only you can
-read it). The download cache and the voice live under `~/.cache/watchpost/` (`~/Library/Caches/watchpost/`
+read it). **Settings rewrites that file when it saves: keys it does not know are kept, but hand-written
+comments are dropped.** If you keep notes in there, keep a copy — a comment-preserving writer is a
+later job, not this release's. The download cache and the voice live under `~/.cache/watchpost/` (`~/Library/Caches/watchpost/`
 on macOS) and are safe to delete at any time.
 
 ## For tinkerers
@@ -222,20 +252,51 @@ bold_frp_mw        = 50   # at or above this the mark and the strength read bold
 min_confidence     = "nominal"   # low | nominal | high — FIRMS points; HMS points are analyst-curated and always pass
 
 [providers.firms]
-key = "your-32-character-map-key"   # or paste it in Setup
+key = "your-32-character-map-key"   # or paste it in Settings
 ```
+
+**Display and behaviour** (`config.toml`; every one of these is also a row in Settings):
+
+```toml
+units         = "imperial"   # imperial (°F/mi) | metric (°C/km)
+clock         = "12h"        # 12h | 24h | mil — how times are written AND spoken
+update_check  = false        # true asks GitHub, hourly, whether a newer release exists
+```
+
+**The radio's own keys** (`[radio]`; all of them are Settings rows too, so you never have to write
+them by hand):
+
+```toml
+[radio]
+mode = "synth"            # synth (the correspondent reads) | relay (a live NOAA stream)
+cast = ""                 # "" one voice reads everything | "cast" each role has its own
+
+[radio.voices.alerts]     # one table per role: alerts, breaking, severe_read, standard,
+macos = "Samantha"        # weather, maritime, fire, seismic, station. A role you leave out
+piper = "en_US-amy"       # inherits from the level above it, so setting `alerts` alone is fine.
+
+[radio.tones]
+mode  = ""                # "" every class sounds | "mute" silence the classes below
+muted = ["warning"]       # class keys; EMPTY under mute means every class
+```
+
+**`[M]` silences tones, never words.** Muting a class stops its attention tone; the alert is still
+read aloud. There is no setting that stops the words — that is deliberate.
 
 `[seismic]` holds the earthquake rule — the magnitude → radius bands, the lookback in days and the
 USGS event types — with the same shape as the defaults in the app.
 
 **Your own theme.** Drop a JSON file of colour tokens in `~/.config/watchpost/themes/<name>.json`;
-it appears in the chooser. Every colour has a token, the tables' included (`table.muted`, `table.name`).
+it appears in the picker. Every colour has a token, the tables' included (`table.muted`, `table.name`).
 
 **What the correspondent says.** Every report script is a text file, not code:
 `domains/radio/script/scripts/<report>/<part>.txt` (Go text/template; each file's first line names its
 data), plus `scripts/global/head.txt` and `tail.txt`, which any report inherits when it has none of its
-own. Today: `weather-radio/` (the broadcast's lead, conditions, alerts, sign-off), `fire-report/` and
-`seismic-report/`, `event-report/` (the `space` read), `breaking/` (the takeover) and `voice-preview/`.
+own. Today: `weather-radio/` (the broadcast's lead, conditions, alerts, sign-off), `fire-report/`,
+`seismic-report/` and `marine-report/`, `event-report/` (the `space` read), `breaking/` (the takeover),
+`handover/` (one correspondent passing to another) and `voice-preview/`. There is also
+`transition/`, written and pinned but **not yet on air** — it is the line between a takeover and the
+programme resuming, and it arrives with the wiring in a later release.
 To re-word a phrase, put the same `<report>/<part>.txt` under `~/.config/watchpost/scripts/`; it
 replaces that phrase alone. How the correspondent *pronounces* things is data too:
 `domains/radio/pronounce/rules/<table>.txt` — `zones` (PDT → "Pacific Daylight Time"), `states`,

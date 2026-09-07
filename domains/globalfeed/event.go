@@ -39,7 +39,7 @@ type Event struct {
 	Place      string    // the feed's raw place text, before D5 tying (locate.go resolves the spoken Location)
 	Location   string    // the tied representative location (D5) — set by Locate
 	Lat, Lon   float64   // the event point, for the watchlist tie and the nearest-city fuzzy area
-	HasPoint   bool      // whether Lat/Lon is a real location (a zone-only NWS alert has none) — the radius filter excludes point-less alerts
+	HasPoint   bool      // whether Lat/Lon is a real location (a zone-only NWS alert has none); a scoped surface keeps a point-less alert only by the tracked-alert tie
 	Superseded bool      // this alert was updated/replaced by a newer one (NWS references) — kept only so the ticker can seen-mark it, never displayed/announced
 	At         time.Time // event / issue time — stack recency, the "declared/recorded" time
 	Until      time.Time // active-window end (NWS ends/expires); zero = no expiry — a quake's instant, a storm the feed still lists (Active keeps it until the feed drops it)
@@ -111,6 +111,26 @@ func (e Event) Sentence() string {
 		return e.Title() + " has been " + e.Verb() + " for " + e.Location
 	}
 	return e.Article() + " " + e.Type + " has been " + e.Verb() + " for " + e.Location
+}
+
+// Agency is the issuing organisation's SPOKEN name, for the burst head that
+// names who declared the alerts it is about to read.
+//
+// Written out rather than initialised: a synthesiser reads "USGS" as a word and
+// "US" as "us", and a listener being told who declared an alert is exactly the
+// moment not to be guessing at letters.
+func (e Event) Agency() string {
+	switch e.Source {
+	case "NWS":
+		return "the National Weather Service"
+	case "USGS":
+		return "the United States Geological Survey"
+	case "NHC":
+		return "the National Hurricane Center"
+	case "NIFC":
+		return "the National Interagency Fire Center"
+	}
+	return "" // an unnamed source is LEFT OUT of the head rather than guessed at
 }
 
 // Article is "A" or "An" agreeing with the Type's initial sound (a simple

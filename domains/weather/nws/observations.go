@@ -30,10 +30,30 @@ func (p *Provider) fetchObs(ctx context.Context, ref snapshot.LocationRef) (snap
 	}
 	var best *snapshot.Conditions
 	var lastErr error
+	rejected := false
 	for _, st := range p.stationOrder(g) {
 		c, err := p.stationObs(ctx, st, ref)
 		if err != nil {
 			lastErr = err
+			continue
+		}
+		// AN OBSERVATION FROM FAR ENOUGH AWAY IS NOT THIS LOCATION'S WEATHER.
+		//
+		// UAT 2026-09-05: Lone Pine, CA showed 86 °F at half past six in the
+		// morning. Nothing was stale and nothing was cached — the reading was
+		// forty-two minutes old and perfectly real. It came from FURNACE CREEK,
+		// DEATH VALLEY, 110 km east and below sea level, because the two nearer
+		// stations published no temperature and the fallback chain had no bound.
+		// The actual temperature was 59 °F.
+		//
+		// The chain is already ordered nearest-first, so this only ever discards
+		// candidates worse than one already rejected. And discarding is SAFE
+		// rather than lossy: an observation with no temperature is rehydrated
+		// from the location's OWN hourly forecast (rehydrateFromForecast), which
+		// for Lone Pine reads 59-60 °F. The right answer was available the whole
+		// time and the wrong one was suppressing it.
+		if far(c.Source.DistanceKm) {
+			rejected = true
 			continue
 		}
 		if c.Temp != nil && c.Condition != "unknown" {
@@ -46,6 +66,27 @@ func (p *Provider) fetchObs(ctx context.Context, ref snapshot.LocationRef) (snap
 	}
 	if best != nil {
 		return snapshot.PartialData{Current: best}, nil
+	}
+	// NO LOCAL STATION IS A FACT, NOT A FAILURE.
+	//
+	// The two are opposite states and they were being returned as one. A
+	// network failure is transient: no observation comes back, the location
+	// stays LOADING and the retry owns it. A location whose every station is
+	// too far has a stable answer — there is no local observation and there
+	// will not be one on the next attempt — and returning an error there left
+	// Lone Pine's temperature loading forever (UAT 2026-09-05, introduced by
+	// the distance bound an hour earlier).
+	//
+	// The empty observation is what the FORECAST fills.
+	// rehydrateFromForecast needs a Conditions to fill — it takes a SPARSE
+	// observation's holes from the location's own hourly grid and returns early
+	// on `Source.Provider == ""`. So the honest answer is a provenance-only
+	// observation: this provider looked, found nothing near enough, and the
+	// forecast for THIS grid supplies the number (recorded as FillFrom
+	// "forecast"). It names no station, because there is no local station to
+	// name.
+	if rejected {
+		return snapshot.PartialData{Current: &snapshot.Conditions{Source: snapshot.SourceInfo{Provider: "nws"}}}, nil
 	}
 	return snapshot.PartialData{}, fmt.Errorf("observations for %s: %w", ref.Label, lastErr)
 }
@@ -172,3 +213,18 @@ func conditionCode(text string) string {
 		return "unknown"
 	}
 }
+
+// ObsMaxKm is how far an observation may come from and still be treated as this
+// location's weather: 20 miles, ratified by the HUM LEAD (UAT 2026-09-05).
+//
+// Twenty miles is the microclimate line — past it the terrain, the elevation and
+// the exposure are commonly different enough that a real measurement describes a
+// real place that is not yours. It is a PHYSICAL bound, in kilometres, so the
+// listener's choice of units cannot move it.
+const ObsMaxKm = 32.19 // 20 miles
+
+// far reports whether a station is beyond the bound. A station with NO geometry
+// is not rejected: unknown is not the same as distant, and the station list
+// carrying no coordinates is a gap in the feed rather than evidence about where
+// the station is.
+func far(km *float64) bool { return km != nil && *km > ObsMaxKm }

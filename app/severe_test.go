@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -66,8 +68,8 @@ func TestSevereDeckCapsAndCounts(t *testing.T) {
 		evs = append(evs, globalfeed.Event{ID: fmt.Sprintf("us%04d", i), Class: globalfeed.ClassQuake, Type: "Earthquake", Location: "x", At: time.Now().Add(-time.Duration(i) * time.Minute), Quake: &globalfeed.QuakeDetail{}})
 	}
 	deck.SetFeed(evs, nil)
-	if len(last.Rows) != 500 || last.Totals[tty.SevereQuakes] != 520 {
-		t.Fatalf("cap/count: %d rows, total %d", len(last.Rows), last.Totals[tty.SevereQuakes])
+	if len(last.Rows) != 500 || last.Totals[tty.SevereDisasters] != 520 {
+		t.Fatalf("cap/count: %d rows, total %d", len(last.Rows), last.Totals[tty.SevereDisasters])
 	}
 }
 
@@ -135,21 +137,21 @@ func TestRecentPublishPokesTheDeck(t *testing.T) {
 
 func TestNarrationPointsAtTheWindow(t *testing.T) {
 	e := globalfeed.Event{Class: globalfeed.ClassSevereWx, Type: "Tornado Warning", Location: "the Oklahoma City area", At: time.Date(2026, 8, 28, 15, 42, 0, 0, time.Local)}
-	if got := alertNarration(nil, e); !strings.HasSuffix(got, ". Press W in Watchpost for the full report on this event") {
+	if got := alertNarration(nil, e, render.Clock12, sameDay); !strings.HasSuffix(got, ". Press W in Watchpost for the full report on this event") {
 		t.Fatalf("tail: %q", got)
 	}
-	if got := burstClosingLine(nil); got != "For the full report on any of these events, press W in Watchpost." {
+	if got := burstClosingLine(nil, 0, "alerts"); got != "For more details on any of these alerts, press W in Watchpost." {
 		t.Fatalf("burst closing: %q", got)
 	}
 	s := globalfeed.Event{Class: globalfeed.ClassTropical, Type: "Tropical Storm", Name: "Dolly", Location: "the Atlantic", At: e.At}
-	if got := tapeText(s); !strings.HasPrefix(got, "Tropical Storm Dolly · the Atlantic") {
+	if got := tapeHead(s); !strings.HasPrefix(got, "Tropical Storm Dolly · the Atlantic") {
 		t.Fatalf("tape: %q", got)
 	}
-	if got := eventNarration(s); !strings.HasPrefix(got, "Tropical Storm Dolly has been reported for the Atlantic") {
+	if got := eventNarration(s, render.Clock12, sameDay); !strings.HasPrefix(got, "Tropical Storm Dolly has been reported for the Atlantic") {
 		t.Fatalf("narration: %q", got)
 	}
 	evil := globalfeed.Event{Class: globalfeed.ClassTropical, Type: "Tropical Storm", Name: "Dolly\x1b]52;c;x\x07", Location: "the Atlantic", At: e.At}
-	if got := eventNarration(evil); strings.ContainsAny(got, "\x1b\x07") {
+	if got := eventNarration(evil, render.Clock12, sameDay); strings.ContainsAny(got, "\x1b\x07") {
 		t.Fatalf("a provider escape reached the speech path: %q", got)
 	}
 	for _, name := range []string{"Dolly", "Idalia", "Lala"} {
@@ -356,4 +358,433 @@ func TestDropSupersededKeepsOnlyTheReplacement(t *testing.T) {
 		t.Fatalf("want the update and the unrelated advisory, got %+v", got)
 	}
 	dropSuperseded(nil) // inert
+}
+
+// ALERTS - EVENTS scopes the WINDOW, not only the tape (HUM LEAD, UAT
+// 2026-08-30).
+//
+// The window listed the pre-radius set while the tape listed the filtered one,
+// so the two disagreed — and the STATEMENTS and ADVISORIES tabs, whose rows come
+// only from the tracked locations and never from the national feed, were bounded
+// by nothing but which locations happened to be on the watchlist. One preference
+// governs both now.
+func TestTheAlertRadiusScopesTheSevereWindowsLocationRows(t *testing.T) {
+	near := snapshot.Location{Label: "Oceanside, CA", Lat: 33.24, Lon: -117.30,
+		Alerts: []snapshot.Alert{{ID: "sps-near", Event: "Special Weather Statement", Effective: time.Now()}}}
+	far := snapshot.Location{Label: "Lone Pine, CA", Lat: 36.61, Lon: -118.06, // ~240 mi away
+		Alerts: []snapshot.Alert{{ID: "sps-far", Event: "Special Weather Statement", Effective: time.Now()}}}
+
+	statements := func(radiusMi int) []string {
+		d := newSevereDeck(func(tea.Msg) {})
+		if radiusMi > 0 {
+			d.radius = &atomic.Int64{}
+			d.radius.Store(int64(radiusMi))
+		}
+		d.locs[0] = &snapshot.Snapshot{Locations: []snapshot.Location{near, far}}
+		feed, locs := d.scope(defaultLocation(d.locs[0]), nil, d.locs[0].Locations)
+		var out []string
+		for _, r := range severe.Union(feed, locs, time.Now()) {
+			if r.Tab == severe.TabStatements {
+				out = append(out, r.Location)
+			}
+		}
+		return out
+	}
+
+	if got := statements(0); len(got) != 2 {
+		t.Errorf("All locations keeps every statement, got %v", got)
+	}
+	// Within 50 mi of the DEFAULT location — the first of the priority snapshot,
+	// which is the location the setting names.
+	got := statements(50)
+	if len(got) != 1 || got[0] != "Oceanside, CA" {
+		t.Errorf("Within 50 mi keeps only the near statement, got %v", got)
+	}
+}
+
+// Filtered with NO default location set shows nothing rather than silently
+// falling back to the unscoped set — the rule the tape already follows. A window
+// that says it is scoped must not quietly show everything.
+func TestAScopedWindowWithNoDefaultShowsNothing(t *testing.T) {
+	d := newSevereDeck(func(tea.Msg) {})
+	d.radius = &atomic.Int64{}
+	d.radius.Store(25)
+	feed, locs := d.scope(nil, []globalfeed.Event{{ID: "e", HasPoint: true}}, []snapshot.Location{{Label: "x"}})
+	if len(feed) != 0 || len(locs) != 0 {
+		t.Errorf("scoped with no default: feed %d rows, locations %d — both must be empty", len(feed), len(locs))
+	}
+}
+
+// A RADIUS MUST NOT DELETE AN ALERT FOR HAVING COARSE GEOMETRY.
+//
+// Many NWS products are zone-only — watches, most flood warnings, heat
+// advisories — and carry no polygon, so there is nothing to measure a radius
+// against. Dropping them silenced the tape, the breaking takeover and the
+// spoken alert for a warning the app was already tracking.
+//
+// THE INPUT IS BUILT BY THE PIPELINE, not by the test. globalfeed.Locate is
+// what fills Location on the real path, and it deliberately skips the watchlist
+// tie without a point — so a zone-only alert's Location is the feed's area
+// description. A test that hand-sets Location to a watchlist label asserts a
+// rule against an input the pipeline cannot produce, and passes while the
+// product does not work.
+func TestAZoneOnlyAlertTheAppIsTrackingSurvivesTheRadius(t *testing.T) {
+	here := snapshot.LocationRef{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.3}
+	now := time.Now()
+	zoneOnly := globalfeed.Event{
+		ID: "urn:oid:2.49.0.1.840.0.abc123", Class: globalfeed.ClassSevereWx,
+		Severity: globalfeed.SevRed, Type: "Tornado Warning",
+		Place: "San Diego County", HasPoint: false,
+		At: now, Until: now.Add(time.Hour),
+	}
+	zoneOnly.Location = globalfeed.Locate(zoneOnly.HasPoint, zoneOnly.Lat, zoneOnly.Lon,
+		zoneOnly.Place, []snapshot.LocationRef{here}, nil)
+	if zoneOnly.Location == here.Label {
+		t.Fatalf("Locate tied a point-less alert to the watchlist (%q) — rewrite this test rather than trusting it", zoneOnly.Location)
+	}
+
+	tracked := []snapshot.Location{{Label: here.Label, Lat: here.Lat, Lon: here.Lon,
+		Alerts: []snapshot.Alert{{ID: zoneOnly.ID, Event: "Tornado Warning"}}}}
+	if kept := scopeEvents([]globalfeed.Event{zoneOnly}, here.Lat, here.Lon, 100, alertKeysOf(tracked)); len(kept) != 1 {
+		t.Errorf("a zone-only warning the app is tracking must reach every surface, got %d kept", len(kept))
+	}
+	// The radius still means something.
+	if stray := scopeEvents([]globalfeed.Event{zoneOnly}, here.Lat, here.Lon, 100, nil); len(stray) != 0 {
+		t.Errorf("a zone-only alert nothing is tracking must not be pulled in, got %d", len(stray))
+	}
+	far := zoneOnly
+	far.ID, far.HasPoint, far.Lat, far.Lon = "urn:oid:2.49.0.1.840.0.far", true, 44.0, -93.0
+	if out := scopeEvents([]globalfeed.Event{far}, here.Lat, here.Lon, 100, alertKeysOf(tracked)); len(out) != 0 {
+		t.Errorf("a distant polygonal alert must still be filtered out, got %d", len(out))
+	}
+}
+
+// THE RADIUS BRANCH UNDER CONCURRENCY (red-team BUILD exit, CQ-1/SC-3).
+//
+// scope() used to re-read s.locs[0] outside s.mu while SetLocations wrote it —
+// three race sites on the alert path. The -race gate could not see it: every
+// test that set a radius called scope() DIRECTLY, single-goroutine, so the
+// branch was never entered concurrently. This test enters it the way the app
+// does, through publish, which is the only reason -race now covers it.
+func TestScopeIsRaceFreeUnderConcurrentLocationUpdates(t *testing.T) {
+	d := newSevereDeck(func(tea.Msg) {})
+	d.radius = &atomic.Int64{}
+	d.radius.Store(100) // the branch: ALERTS-EVENTS is not "All"
+	d.SetFeed([]globalfeed.Event{{
+		ID: "e1", Type: "Tornado Warning", Lat: 33.2, Lon: -117.3, HasPoint: true,
+		At: time.Now(), Until: time.Now().Add(time.Hour),
+	}}, nil)
+
+	var wg sync.WaitGroup
+	for i := range 40 {
+		wg.Add(2)
+		go func(i int) {
+			defer wg.Done()
+			d.SetLocations(0, &snapshot.Snapshot{Locations: []snapshot.Location{
+				{Label: "Oceanside, CA", Lat: 33.0 + float64(i)/100, Lon: -117.3},
+			}})
+		}(i)
+		go func() { defer wg.Done(); d.publish() }()
+	}
+	wg.Wait()
+}
+
+// THE TIE IS SCOPED BY THE RADIUS TOO, driven through cycle.
+//
+// A point-less alert is kept when the app is already tracking it — but "already
+// tracking" must mean a location INSIDE the radius. The RECENT table is seeded
+// with the fifty largest US cities and each fetches its own alerts, so an
+// unscoped tie hands the marquee and the spoken read to a warning a thousand
+// miles from the listener, defeating their own setting from the other side.
+func TestCycleScopesTheZoneOnlyTieByTheRadiusToo(t *testing.T) {
+	const (
+		nearID = "urn:oid:2.49.0.1.840.0.aaa111.1.1"
+		farID  = "urn:oid:2.49.0.1.840.0.bbb222.1.1"
+		// The feed serves the URL form and a tracked location carries the bare
+		// OID, so the tie is a join across the two — which is the thing worth
+		// testing, and the thing a same-string fixture never touches.
+		feedPrefix = "https://api.weather.gov/alerts/"
+	)
+	oceanside := snapshot.LocationRef{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.3}
+	now := time.Now()
+	zoneOnly := func(id, place string) globalfeed.Event {
+		return globalfeed.Event{ID: id, Class: globalfeed.ClassSevereWx, Severity: globalfeed.SevRed,
+			Type: "Tornado Warning", Place: place, HasPoint: false, At: now, Until: now.Add(time.Hour)}
+	}
+
+	deck := newSevereDeck(func(tea.Msg) {})
+	// Both are tracked: one where the listener lives, one a seeded RECENT row
+	// 1,700 miles away.
+	deck.SetLocations(1, &snapshot.Snapshot{Locations: []snapshot.Location{
+		{Label: oceanside.Label, Lat: oceanside.Lat, Lon: oceanside.Lon,
+			Alerts: []snapshot.Alert{{ID: nearID, Event: "Tornado Warning"}}},
+		{Label: "Chicago, IL", Lat: 41.9, Lon: -87.6,
+			Alerts: []snapshot.Alert{{ID: farID, Event: "Tornado Warning"}}},
+	}})
+
+	var tape []tty.TickerItem
+	td := &tickerDeck{
+		send: func(m tea.Msg) {
+			if v, ok := m.(tty.TickerMsg); ok {
+				tape = v.Items
+			}
+		},
+		sources: []globalfeed.Source{fakeSource{name: "stub",
+			evs: []globalfeed.Event{zoneOnly(feedPrefix+nearID, "San Diego County"), zoneOnly(feedPrefix+farID, "Cook County")}}},
+		watch: func() []snapshot.LocationRef { return []snapshot.LocationRef{oceanside} },
+		seen:  loadSeen(t.TempDir(), time.Hour),
+		muted: &atomic.Bool{}, radius: &atomic.Int64{}, severe: deck, done: make(chan struct{}),
+	}
+	td.radius.Store(100)
+	td.warm.Store(true)
+	td.cycle(context.Background())
+
+	var onTape []string
+	for _, it := range tape {
+		onTape = append(onTape, it.Head)
+	}
+	near, far := false, false
+	for _, head := range onTape {
+		if strings.Contains(head, "San Diego County") {
+			near = true
+		}
+		if strings.Contains(head, "Cook County") {
+			far = true
+		}
+	}
+	if !near {
+		t.Errorf("a zone-only warning the listener is tracking where they live must reach the tape: %v", onTape)
+	}
+	if far {
+		t.Errorf("a zone-only warning 1,700 miles away must NOT reach the tape or the spoken read — the radius is the listener's setting: %v", onTape)
+	}
+}
+
+// EACH LOCATION-ONLY LANE KEEPS ITS OWN BUDGET, AND ITS WORST ROWS.
+//
+// Advisories and Special Weather Statements reach the marquee only through the
+// tracked locations, and they shared one budget — so a day of heat advisories
+// emptied the Statements lane while its statements were live, and the rotation
+// lost a whole lane. Driven through publish, which is what fills LaneRows.
+func TestEachLocationOnlyLaneKeepsItsOwnBudget(t *testing.T) {
+	now := time.Now()
+	alert := func(id, event, severity string, at time.Time) snapshot.Alert {
+		return snapshot.Alert{ID: id, Event: event, Severity: severity, Sent: at,
+			Effective: at, Expires: now.Add(6 * time.Hour), AreaDesc: "San Diego County"}
+	}
+	// One old but SEVERE advisory against a flood of fresher, milder ones, so
+	// the cut has to choose on severity within the lane — plus three statements,
+	// which must survive the advisory flood entirely.
+	alerts := []snapshot.Alert{alert("urn:oid:2.49.0.1.840.0.aaa111.1.1", "Heat Advisory", "Severe", now.Add(-6*time.Hour))}
+	for i := range 2 * maxLaneRows {
+		alerts = append(alerts, alert(fmt.Sprintf("urn:oid:2.49.0.1.840.0.a%05x.1.1", i),
+			"Heat Advisory", "Minor", now.Add(-time.Duration(i)*time.Minute)))
+	}
+	for i := range 3 {
+		alerts = append(alerts, alert(fmt.Sprintf("urn:oid:2.49.0.1.840.0.b%05x.1.1", i),
+			"Special Weather Statement", "Minor", now.Add(-time.Duration(i)*time.Minute)))
+	}
+
+	deck := newSevereDeck(func(tea.Msg) {})
+	deck.SetLocations(0, &snapshot.Snapshot{Locations: []snapshot.Location{
+		{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.3, Alerts: alerts}}})
+	deck.publish()
+
+	perTab := map[severe.Tab]int{}
+	var advisories []severe.Row
+	for _, r := range deck.LaneRows() {
+		perTab[r.Tab]++
+		if r.Tab == severe.TabAdvisories {
+			advisories = append(advisories, r)
+		}
+	}
+	if perTab[severe.TabAdvisories] != maxLaneRows {
+		t.Errorf("an over-full advisories lane is cut to exactly maxLaneRows=%d, got %d", maxLaneRows, perTab[severe.TabAdvisories])
+	}
+	if perTab[severe.TabStatements] != 3 {
+		t.Errorf("the statements lane has its own budget and keeps all 3, got %d", perTab[severe.TabStatements])
+	}
+	// The cut is by severity: the six-hour-old severe advisory outranks sixty
+	// fresher minor ones and must survive.
+	if !slices.ContainsFunc(advisories, func(r severe.Row) bool { return r.Severity == globalfeed.SevOrange }) {
+		t.Error("the lane's most severe row was evicted by fresher, milder ones")
+	}
+	// …and what survives reads most-recent-first, like every other lane.
+	for i := 1; i < len(advisories); i++ {
+		if advisories[i].At.After(advisories[i-1].At) {
+			t.Fatalf("the kept rows must read most-recent-first: %v before %v", advisories[i-1].At, advisories[i].At)
+		}
+	}
+}
+
+// AN UNIDENTIFIABLE ALERT TIES TO NOTHING.
+//
+// The tie matches a point-less feed event to a tracked alert by normalised id.
+// An id the app cannot identify must key nothing, or one such tracked alert
+// would pull the national feed's zone-only products past a listener's radius,
+// onto the tape and into the spoken read.
+//
+// Driven through cycle, because that is where a real feed's ids arrive. The
+// live arm is the NON-EMPTY unrecognised id: an event with no id at all is
+// already dropped by globalfeed.Merge and by severe's index before the tie is
+// reached, so that arm is belt-and-braces here and is pinned where it can
+// actually fail, in TestAlertKeysOfRefusesAnythingItCannotIdentify.
+func TestAnUnidentifiableAlertTiesToNothing(t *testing.T) {
+	now := time.Now()
+	oceanside := snapshot.LocationRef{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.3}
+	zoneOnly := func(id, place string) globalfeed.Event {
+		return globalfeed.Event{ID: id, Class: globalfeed.ClassSevereWx, Severity: globalfeed.SevRed,
+			Type: "Tornado Warning", Place: place, HasPoint: false, At: now, Until: now.Add(time.Hour)}
+	}
+
+	deck := newSevereDeck(func(tea.Msg) {})
+	// A tracked location whose alerts carry ids nothing can normalise: one
+	// empty, one that is not a CAP id at all.
+	deck.SetLocations(0, &snapshot.Snapshot{Locations: []snapshot.Location{
+		{Label: oceanside.Label, Lat: oceanside.Lat, Lon: oceanside.Lon, Alerts: []snapshot.Alert{
+			{ID: "", Event: "Tornado Warning"},
+			{ID: "not-an-oid", Event: "Tornado Warning"},
+		}}}})
+
+	var tape []tty.TickerItem
+	td := &tickerDeck{
+		send: func(m tea.Msg) {
+			if v, ok := m.(tty.TickerMsg); ok {
+				tape = v.Items
+			}
+		},
+		sources: []globalfeed.Source{fakeSource{name: "stub", evs: []globalfeed.Event{
+			zoneOnly("", "Cook County"),           // no id either
+			zoneOnly("not-an-oid", "Erie County"), // an id, but not one NormalizeID accepts
+		}}},
+		watch: func() []snapshot.LocationRef { return []snapshot.LocationRef{oceanside} },
+		seen:  loadSeen(t.TempDir(), time.Hour),
+		muted: &atomic.Bool{}, radius: &atomic.Int64{}, severe: deck, done: make(chan struct{}),
+	}
+	td.radius.Store(100)
+	td.warm.Store(true)
+	td.cycle(context.Background())
+
+	for _, it := range tape {
+		if strings.Contains(it.Head, "Cook County") || strings.Contains(it.Head, "Erie County") {
+			t.Errorf("an alert the app cannot identify must tie to nothing, yet %q defeated the radius", it.Head)
+		}
+	}
+}
+
+// THE TIE SET REFUSES ANYTHING IT CANNOT IDENTIFY.
+//
+// Asserted directly, because through the pipeline it cannot be: globalfeed.Merge
+// and severe's own index both drop an id-less event before the tie is reached,
+// so an end-to-end test of the empty-id case passes whatever this function does.
+// The guard is real all the same — one tracked alert keying the empty string
+// would tie every point-less event that also lacks an id — and this is the only
+// place it can be shown to work.
+func TestAlertKeysOfRefusesAnythingItCannotIdentify(t *testing.T) {
+	const real = "urn:oid:2.49.0.1.840.0.aaa111.1.1"
+	keys := alertKeysOf([]snapshot.Location{{Label: "Oceanside, CA", Alerts: []snapshot.Alert{
+		{ID: "", Event: "Tornado Warning"},           // no id at all
+		{ID: "not-an-oid", Event: "Tornado Warning"}, // an id, but not a CAP one
+		{ID: "urn:oid:", Event: "Tornado Warning"},   // the prefix alone
+	}}})
+	if len(keys) != 0 {
+		t.Errorf("an alert the app cannot identify must key nothing, got %v", keys)
+	}
+
+	// The positive half: without it this passes on a function that keys nothing
+	// at all, and the tie would be silently dead rather than selective.
+	keys = alertKeysOf([]snapshot.Location{{Label: "Oceanside, CA",
+		Alerts: []snapshot.Alert{{ID: real, Event: "Tornado Warning"}}}})
+	if !keys[real] {
+		t.Errorf("a real CAP alert id must key the tie set, got %v", keys)
+	}
+}
+
+// THE LANE CUT MUST NOT REORDER THE WINDOW.
+//
+// publish sorts its rows once, hands the same slice to setLaneRows, and then
+// reuses it for the window's own cap and totals. setLaneRows cuts each
+// location-only lane by SEVERITY, which is a different order from the window's
+// most-recent-first — so if that cut reached the caller's slice, the window
+// would silently start listing by severity, and the two surfaces the listener
+// compares would disagree about the same alerts.
+//
+// The fixture is built so the two orders genuinely differ: an old but severe
+// advisory against newer mild ones. Sorted the window's way it comes last;
+// sorted the lane's way it comes first.
+func TestTheLaneCutDoesNotReorderTheWindow(t *testing.T) {
+	now := time.Now()
+	alert := func(id, event, severity string, at time.Time) snapshot.Alert {
+		return snapshot.Alert{ID: id, Event: event, Severity: severity, Sent: at,
+			Effective: at, Expires: now.Add(6 * time.Hour), AreaDesc: "San Diego County"}
+	}
+	alerts := []snapshot.Alert{
+		alert("urn:oid:2.49.0.1.840.0.aaa111.1.1", "Heat Advisory", "Severe", now.Add(-6*time.Hour)), // old, severe
+	}
+	for i := range 4 { // newer, milder
+		alerts = append(alerts, alert(fmt.Sprintf("urn:oid:2.49.0.1.840.0.b%05x.1.1", i),
+			"Heat Advisory", "Minor", now.Add(-time.Duration(i)*time.Minute)))
+	}
+
+	var msg tty.SevereMsg
+	deck := newSevereDeck(func(m tea.Msg) {
+		if v, ok := m.(tty.SevereMsg); ok {
+			msg = v
+		}
+	})
+	deck.SetLocations(0, &snapshot.Snapshot{Locations: []snapshot.Location{
+		{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.3, Alerts: alerts}}})
+	deck.publish()
+
+	if len(msg.Rows) != len(alerts) {
+		t.Fatalf("the window must list every alert: got %d of %d", len(msg.Rows), len(alerts))
+	}
+	// Fixture validity: the severe row must be the OLDEST, so that severity-first
+	// and recency-first genuinely disagree about where it goes. Without that the
+	// test proves nothing whichever order the window is in.
+	var keys []string
+	for _, r := range msg.Rows {
+		keys = append(keys, r.Key)
+	}
+	severe := "urn:oid:2.49.0.1.840.0.aaa111.1.1"
+	if !slices.Contains(keys, severe) {
+		t.Fatalf("the severe row must reach the window at all: %v", keys)
+	}
+	// The window reads most-recent-first, so the oldest row is last. The lane's
+	// own cut is severity-first and would put it first.
+	if keys[len(keys)-1] != severe {
+		t.Errorf("the lane's severity cut has reordered the window — the oldest row must be last, order was %v", keys)
+	}
+}
+
+// THE TWO TAB ENUMS ARE ONE ORDERING, NOT TWO THAT LOOK ALIKE.
+//
+// toSevereRow converts with a numeric cast — tty.SevereTab(r.Tab) — so the
+// domain's Tab and the window's SevereTab must agree position by position. A
+// compile-time check already asserts they are the same LENGTH; nothing asserted
+// they are in the same ORDER, and reordering one without the other would file
+// every row under a neighbouring category with no error anywhere.
+func TestTheDomainAndWindowTabsAgreePositionByPosition(t *testing.T) {
+	for _, c := range []struct {
+		domain severe.Tab
+		window tty.SevereTab
+		name   string
+	}{
+		{severe.TabEmergency, tty.SevereEmergency, "Emergency"},
+		{severe.TabWarnings, tty.SevereWarnings, "Warnings"},
+		{severe.TabWatches, tty.SevereWatches, "Watches"},
+		{severe.TabAdvisories, tty.SevereAdvisories, "Advisories"},
+		{severe.TabStatements, tty.SevereStatements, "Statements"},
+		{severe.TabDisasters, tty.SevereDisasters, "Disasters"},
+		{severe.TabMarine, tty.SevereMarine, "Marine"},
+		{severe.TabForecasts, tty.SevereForecasts, "Forecasts"},
+	} {
+		if got := tty.SevereTab(c.domain); got != c.window {
+			t.Errorf("%s: the domain says %d and the window says %d — a row would land in the wrong tab",
+				c.name, c.domain, c.window)
+		}
+	}
+	if int(severe.NumTabs) != 8 {
+		t.Errorf("a tab was added or removed without this list: %d", severe.NumTabs)
+	}
 }

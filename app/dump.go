@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -257,4 +258,31 @@ func pruneDumps(root string, keep int) error {
 		}
 	}
 	return nil
+}
+
+// abbreviateHome rewrites a path under the user's home as "~/…" so a path
+// rendered on screen never carries the account name.
+//
+// THIS IS A PRIVACY FIX, NOT COSMETICS. The [S] window's DUMPS line is the one
+// place the app prints an absolute path, and README captures of that window
+// have shipped the maintainer's username publicly since 0.13.0 — a grep cannot
+// see it, because by then it is pixels. Abbreviating at the source means every
+// future capture is safe by construction rather than by someone remembering.
+//
+// It is deliberately conservative: only an exact home prefix at a path boundary
+// is rewritten, and an unknown home leaves the path untouched, because a
+// half-rewritten path is worse than a long one.
+func abbreviateHome(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" || path == "" {
+		return path
+	}
+	home = strings.TrimSuffix(home, string(os.PathSeparator))
+	if path == home {
+		return "~"
+	}
+	if strings.HasPrefix(path, home+string(os.PathSeparator)) {
+		return "~" + path[len(home):]
+	}
+	return path
 }

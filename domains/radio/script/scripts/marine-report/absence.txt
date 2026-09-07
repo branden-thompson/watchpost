@@ -1,0 +1,2 @@
+{{/* marine-report/absence: no tide or current predictions for this area (the station is out of range). No data. */}}
+There are no tide or current predictions available for your area.

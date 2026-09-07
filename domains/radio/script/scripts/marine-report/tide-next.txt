@@ -1,0 +1,2 @@
+{{/* marine-report/tide-next: the next high and low, 12-hour clock in the location's zone (MVS-D-21). Data: .High, .Low (either may be empty). */}}
+{{if .High}}The next high tide is at {{.High}}{{end}}{{if and .High .Low}}; the next low at {{.Low}}{{end}}{{if and (not .High) .Low}}The next low tide is at {{.Low}}{{end}}.

@@ -1,7 +1,7 @@
 # Extending watchpost
 
-> **Status (as of 0.9.0):** everything named here exists and the steps are verified against the
-> shipped code (Documented-Commands-Execute rule). The planned `app/registry.go` / `View` interface
+> **Status:** everything named here exists and the steps are verified against the shipped code
+> (Documented-Commands-Execute rule). The planned `app/registry.go` / `View` interface
 > was not built — one dashboard model plus keybindings-as-data covered v0.x; see architecture
 > §11.9. When a second top-level view arrives (the playlist cycler, B6), the registry comes with it.
 
@@ -70,8 +70,14 @@ back through `RadioStatusMsg`. `[m] Mode` (UAT 97) is the smallest complete exam
   the tables' own palette is three tokens (`table.header`, `table.muted`, `table.name`) the
   seam applies through go-studs' `HeaderColor` / `CellStyles` with the kit's automatic styling
   switched off (`NoAutoStyle`), so `NO_COLOR` is honoured by one gate and a user theme file can
-  restyle the whole frame. A new colour = a new token with a value in every built-in theme and a
-  row that passes `TestThemeTokenContrastAA`.
+  restyle the whole frame. A new colour is a token declared in `platform/render/theme.go` with a value
+  in `defaultTheme()`, and **four** places may need to know it: `builtinOverrides()` and
+  `lightOverrides()` in `themes.go` (a theme that says nothing inherits the default — that is fine and
+  usually right), `quattroOverrides()` in `quattro.go` (seven of the thirteen themes are generated
+  there, and a miss surfaces as an AA failure with nothing pointing at the file), and `aaPairs()` in
+  `contrast.go`, which is what actually holds a colour to WCAG AA. Register a FOREGROUND there against
+  every ground it is painted on — the window, the modal tile, a band — and the lift does the rest; a
+  background token belongs in one of the ground lists instead.
 - **A new window is one `modal` constant** plus a case in `modalView` (what it draws), `modalWidth`
   (how wide) and, if it scrolls, `modalLines`; a key that opens it goes through `toggleModal`.
   Exclusivity is the type's: the rendered-frame test (`modal_test.go`) adds the window to its
@@ -79,9 +85,19 @@ back through `RadioStatusMsg`. `[m] Mode` (UAT 97) is the smallest complete exam
 - **go-studs is patched, never edited.** An approved change to the kit is a
   `third_party/go-studs/patches/NNN-name.patch` with a row in `LOCAL_CHANGES.md`;
   `scripts/sync-go-studs.sh` re-applies the stack on every sync and refuses a drifted upstream.
+  **We do not fork or reimplement a dependency to win performance** — a hand-rolled replacement for
+  something lipgloss or go-studs already does has to be re-checked and re-invested on every upstream
+  release, which is the cost the dependency was taken on to avoid. Patch narrowly, send it upstream,
+  or accept the cost and record it.
+- **Some slow things are slow on purpose.** `docs/accepted-costs.md` is the register of costs that
+  were measured, priced and chosen — usually to protect what the listener sees. Read it before
+  optimising the render path, the scheduler or the HTTP client. Every entry states the trigger that
+  would re-open it; that trigger, measured, is the only route back, and the sites themselves carry
+  `ACCEPTED COST` comments pointing at it.
 
-- `make verify` runs fmt, vet, `-race` tests, import-direction lint, watermark lint, and the
-  gates' self-tests. Run it before every commit, then `golangci-lint run ./...` and `staticcheck ./...`.
+- `make verify` runs `fmt vet tidy vuln race lint-imports lint-watermark gate-controls`. `vuln` is
+  `govulncheck`, which downloads the tool on each run — the one step that needs the network. Run it
+  before every commit.
 - New render primitives are built **on demand** — add them when a view needs them, never
   speculatively (PD/§10.10.5).
 - Every package carries a package comment stating its contract; follow the pattern in

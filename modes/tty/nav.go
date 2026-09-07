@@ -22,6 +22,10 @@ func (d Dashboard) handleNav(act term.Action) Dashboard {
 		return d.handleModalNav(act)
 	case modalSevere:
 		return d.handleSevereNav(act) // 0.13.0: tabs and rows, or the record's scroll
+	case modalRelayFault:
+		return d.handleRelayFaultNav(act) // MVS-D-76: the three ways out of a dead relay
+	case modalDebug:
+		return d.handleDebugNav(act) // F-21
 	}
 	switch act {
 	case "nav-up":
@@ -113,11 +117,45 @@ func (d Dashboard) numPriority() int {
 	return len(d.snap.Locations)
 }
 
+// It counts the same list recentLocations draws WITHOUT BUILDING IT. The three
+// callers are all on the frame path, and since 0.12.0's ticker the frame draws
+// continuously — so copying fifty Location values to take a length ran forever,
+// at 6.2 MB/min, a fifth of the app's whole allocation rate (perf pass,
+// 2026-08-30). TestNumRecentAgreesWithTheDrawnList pins the two together.
 func (d Dashboard) numRecent() int {
-	if d.recent == nil {
-		return 0
+	n := 0
+	if d.lookupRef != nil && d.lookupIndex() < 0 {
+		n++
 	}
-	return len(d.recent.Locations)
+	if d.recent != nil {
+		n += len(d.recent.Locations)
+	}
+	return n
+}
+
+// recentLocations is the RECENT list AS THE TABLE DRAWS IT: the snapshot's
+// locations, with the looked-up one PREPENDED while its data is still coming.
+//
+// A lookup used to put nothing in the table until the rebuilt snapshot arrived,
+// so the row simply appeared some seconds later — which reads as the app having
+// missed the keystroke. The placeholder carries no
+// readings, so rowLoading marks it and the temperature cells shimmer, exactly as
+// they do for a location still loading on first launch. The row is there from
+// the first frame and fills in where it stands.
+//
+// ONE OWNER for the drawn list, because the focus arithmetic spans both tables:
+// a table showing a row the navigation did not count would put the cursor off
+// the end of it.
+func (d Dashboard) recentLocations() []snapshot.Location {
+	var out []snapshot.Location
+	if d.lookupRef != nil && d.lookupIndex() < 0 {
+		r := *d.lookupRef
+		out = append(out, snapshot.Location{Label: r.Label, Tag: r.Tag, Zip: r.Zip, Lat: r.Lat, Lon: r.Lon, TZ: r.TZ})
+	}
+	if d.recent != nil {
+		out = append(out, d.recent.Locations...)
+	}
+	return out
 }
 
 // selectedLocation resolves the focus index across both tables.
@@ -126,16 +164,12 @@ func (d Dashboard) selectedLocation() *snapshot.Location {
 	if d.selected < np {
 		return &d.snap.Locations[d.selected]
 	}
-	if d.lookupRef != nil {
-		// A lookup opened Details on a location the RECENT snapshot does not
-		// carry yet (applyRecent clears the wait the moment it does): an empty
-		// record with its name, never the row that held the index before
-		// (HUM LEAD UAT 2026-08-28).
-		r := *d.lookupRef
-		return &snapshot.Location{Label: r.Label, Tag: r.Tag, Zip: r.Zip, Lat: r.Lat, Lon: r.Lon, TZ: r.TZ}
-	}
-	if i := d.selected - np; i < d.numRecent() {
-		return &d.recent.Locations[i]
+	// The drawn list, which already carries the pending lookup at its top — so
+	// Details reads the same record the table is showing, rather than each
+	// building its own idea of what the focus is on.
+	rec := d.recentLocations()
+	if i := d.selected - np; i >= 0 && i < len(rec) {
+		return &rec[i]
 	}
 	return nil
 }

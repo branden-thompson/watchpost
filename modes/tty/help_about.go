@@ -20,7 +20,7 @@ func (d Dashboard) helpModal(o render.Opts) string {
 	return d.floatModal(o, d.modalWidth(), "Watchpost Help", d.helpLines(o)) // UAT 8.3/10.1/10.4
 }
 
-// The Help window's geometry (HUM LEAD UAT 2026-08-28): a blank line of air
+// The Help window's geometry: a blank line of air
 // under the title; the groups in two columns when the terminal is wide
 // enough, one column with the panel's scroll when it is not — each group
 // rolls as a unit, never split across columns. columnGap is the air between
@@ -98,7 +98,7 @@ func (d Dashboard) helpWidth(avail int) int {
 func (d Dashboard) helpLines(o render.Opts) []string {
 	blocks := d.helpBlocks()
 	twoCol, _ := d.helpPlan(o.Width)
-	lines := []string{""} // air under the title (UAT 2026-08-28 item 1)
+	lines := []string{""} // air under the title (item 1)
 	if twoCol {
 		lines = append(lines, helpTwoColumns(blocks, helpColumnWidth(blocks))...)
 	} else {
@@ -150,7 +150,7 @@ func abs(n int) int {
 }
 
 // helpGroup is one section of the Help window: the app's features, in the
-// order a person meets them (HUM LEAD UAT 2026-08-27).
+// order a person meets them.
 type helpGroup struct {
 	name    string
 	actions []term.Action
@@ -161,11 +161,11 @@ type helpGroup struct {
 func helpGroups() []helpGroup {
 	return []helpGroup{ // NAVIGATE and RADIO first: the two tall groups make the left column of the two-column layout (UAT mock 2026-08-28)
 		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "severe", "alert-prev", "alert-next", "close", term.HelpAction, "quit"}},
-		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-size", "radio-vol-up", "radio-vol-dn"}},
+		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-vol-up", "radio-vol-dn"}},
 		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}},
 		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}},
 		{"TICKER", []term.Action{"ticker-mute"}},
-		{"APP", []term.Action{"setup", "status", "about"}},
+		{"APP", []term.Action{"setup", "status", "about", "debug"}},
 	}
 }
 
@@ -189,9 +189,10 @@ func (d Dashboard) aboutLines() []string {
 	centre := func(text string) string {
 		return strings.Repeat(" ", max(0, (interior-render.Width(text))/2)) + text
 	}
-	inset := func(text string) string { return "   " + text } // 3-cell inset (UAT 70): the NOAA line splits 3-52-3
+	// The window's own margin, from the one owner (UAT 70; D-1 at the T3.10 red team).
+	inset := func(text string) string { return strings.Repeat(" ", modalInset) + text }
 	lines := []string{
-		centre(render.TitleGradient("W A T C H P O S T")),
+		centre(render.Wordmark(render.EditionObserver)),
 		centre("v " + d.cfg.Version),
 		"",
 		inset("Data Provided by:"),

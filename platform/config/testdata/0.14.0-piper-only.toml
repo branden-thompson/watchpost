@@ -1,0 +1,11 @@
+# The mirror image: written on Linux, opened on a Mac.
+voice = "en_US-lessac-medium"
+
+[radio]
+cast = "cast"
+
+[radio.voices.alerts]
+piper = "en_US-ryan-medium"
+
+[radio.voices.station]
+piper = "en_US-amy-medium"

@@ -1,9 +1,12 @@
 # Where things happen
 
 A flow map for someone reading the code for the first time: the event on the left, the function
-that handles it on the right. Every `path:Func` here is checked by `cmd/watchpost`'s
-`TestWhereThingsHappenNamesRealSymbols`, so this page cannot drift silently. The per-file headers
-say what a file holds; this page says where a *thing* happens.
+that handles it on the right. Every symbol named here — in a file (**file.go:Func**) or in a package
+(**pkg:Func**) — is checked by `cmd/watchpost`'s `TestWhereThingsHappenNamesRealSymbols`, so this
+page cannot drift silently. Until the 0.14.0 BUILD-exit red team the check required the `.go`, so
+12 of the 163 refs were invisible to it, including both rows this release rewrote; the promise in
+this paragraph is now true. The per-file headers say what a file holds; this page says where a
+*thing* happens.
 
 | Event | Where |
 |---|---|
@@ -12,8 +15,8 @@ say what a file holds; this page says where a *thing* happens.
 | A window opens or closes | `modes/tty/dashboard.go:toggleModal` → `modes/tty/dashboard.go:open` / `modes/tty/dashboard.go:close` (one `modal` value, so opening one closes the rest); drawn by `modes/tty/view.go:renderModal` through the modal memo `modes/tty/memo.go:modalView` (0.13.0: one render per input change, keyed by `modes/tty/memo.go:modalKeyFor`) |
 | `enter` opens Location Details | `modes/tty/dashboard.go:toggleModal` → the body `modes/tty/detail.go:detailLines` (+ `modes/tty/detail_fire.go:fireRows`, `modes/tty/detail_marine.go:maritimeRows`) |
 | A word is pronounced | the voice-only pass `domains/radio/synth/normalize.go:Pronounce` (every Say) and the product normaliser `domains/radio/synth/normalize.go:Normalize` load their tables by name from `domains/radio/pronounce/pronounce.go:Table` — `rules/<table>.txt`, one rule per line |
-| A report's wording is chosen | by file name in `domains/radio/script/script.go:Text` — `scripts/<report>/<part>.txt`, `global/` lending a head or tail a report lacks, the same tree under the config dir's `scripts/` winning (`app/dashboard.go:scriptsDir`); the event read composes its phrases in `app/severe_read.go:eventScript`, the takeover its lines in `app/ticker.go:breakingLine` |
-| Something is spoken over the radio | every narration runs through the arbiter `app/narrate.go:Run` with a class — a breaking takeover (`app/ticker.go:breaking`, highest: it pauses a read on air, which resumes after it) or an event read (`app/severe_read.go:Read` from `[space]` in the window) — which ducks the broadcast once, serialises the sequences by class and arrival, SUSPENDS a lower one under a higher (its line pauses through `domains/radio/player/engine.go:PausePreview`, its holds stop counting, a line it is rendering waits — `app/narrate.go:awaitAir`) and resumes it after (`domains/radio/player/engine.go:ResumePreview`), and restores the broadcast when nothing waits or is suspended; the radio deck is the voice (`app/radio.go:render` then `app/radio.go:play`); which narrations the visualizer follows is `app/narrate.go:vizFor` (every one but a takeover — those play `domains/radio/player/engine.go:PreviewAside`, off the tap) |
+| A report's wording is chosen | by file name in `domains/radio/script/script.go:Text` — `scripts/<report>/<part>.txt`, `global/` lending a head or tail a report lacks, the same tree under the config dir's `scripts/` winning (`app/dashboard.go:scriptsDir`); the event read composes its phrases in `app/severe_read.go:eventScript`, the takeover its lines in `app/burst_words.go:breakingLine` |
+| Something is spoken over the radio | every narration runs through the arbiter `app/director.go:Run` with a class — a breaking takeover (the Director's `Speak` effect, performed by `app/executors.go:speak`, highest: it pauses a read on air, which resumes after it — the ticker only PRODUCES the arrivals now, `app/ticker.go:startTakeover`) or an event read (`app/severe_read.go:Read` from `[space]` in the window) — which ducks the broadcast once, serialises the sequences by class and arrival, SUSPENDS a lower one under a higher (its line pauses through `domains/radio/player/engine.go:PausePreview`, its holds stop counting, a line it is rendering waits — `app/director.go:awaitAir`) and resumes it after (`domains/radio/player/engine.go:ResumePreview`), and restores the broadcast when nothing waits or is suspended; the radio deck is the voice (`app/radio.go:render` then `app/radio.go:play`); which narrations the visualizer follows is `app/director.go:vizFor` (every one but a takeover — those play `domains/radio/player/engine.go:PreviewAside`, off the tap) |
 | A lookup opens Details before its data lands | the dashboard remembers the lookup (`modes/tty/modal_location.go:handleResolved` sets it) and `modes/tty/nav.go:selectedLocation` answers with an empty record in its name until `modes/tty/dashboard.go:applyRecent` finds the row by identity (`modes/tty/nav.go:lookupIndex`); any other window drops the wait (`modes/tty/dashboard.go:open`) |
 | The radio diagnostic is written | `app/radio.go:debugLog` (`WATCHPOST_DEBUG_RADIO`): engine statuses (`app/radio.go:logStatus`), every synthesized segment as it reaches the air, and why a cycle ended (`app/radio.go:cycleEnded`) |
 | A severe event is listed | the app joins the ticker's feed events and the tracked locations' alerts in `app/severe.go:publish` → `domains/severe/severe.go:Union` (one row per event key, the location record winning) → `domains/severe/record.go:RecordOf` (the [A]-shaped record); the window draws the open category through `modes/tty/severe.go:severeBrowseLines` on `platform/render/severe_table.go:SevereTable` with the rail from `platform/render/severe_table.go:Railify` |
@@ -32,13 +35,29 @@ say what a file holds; this page says where a *thing* happens.
 | A cache entry expires or is swept | `platform/httpx/cache.go:get` (fresh or miss), `platform/httpx/cache.go:evictLocked` (memory), `platform/httpx/cache.go:sweep` (disk, allow-list) |
 | The radio tunes | `app/radio.go:Tune` → `domains/radio/stream/resolve.go:ResolveWithStatus` → `app/radio.go:tuneList` → the engine `domains/radio/player/engine.go:Start`; synth fallback `app/radio.go:startSynth` |
 | A relay directory is read | `domains/radio/stream/directory.go:MountsWithStatus` (5-min failure memo); a down relay warns via `app/radio.go:noteDirectories` |
-| The Watchlist advances | `app/radio_queue.go:advanceQueue` after `app/radio_queue.go:armDwell` (live) or the synth cycle end in `app/radio.go:onStatus` |
-| A voice is chosen or previewed | `app/voices.go:SetVoice`, `app/voices.go:PreviewVoice`; the chooser `modes/tty/modal_chooser.go:handleVoiceKey` |
+| The Watchlist advances | the **Director** decides: `platform/lineup/bed.go:advanceBed` on a tick once the dwell has elapsed (live relay), or `:onEnded` when a synthesised cycle finishes. The deck only reports the facts — `app/radio.go:onStatus` tells it where the bed landed and when a cycle ended, through `app/radio.go:tell` — and `app/executors.go:runTune` cuts the bed over without lifting the alert duck |
+| A voice is chosen or previewed | in **Settings**, not a chooser of its own (MVS-D-3): `modes/tty/setup_cast.go:cyclePicker` moves a picker, `modes/tty/setup_cast.go:previewOffer` is `p`'s ask-once flow, and `app/voices.go:PreviewVoice` speaks it. `V` opens Settings at the correspondents (`modes/tty/setup.go:openSetupAt`) |
+| A list shows which row has the focus | `platform/render/list.go:ListMark` and `:ListLabel` — one owner for every list-shaped surface (the Settings window's picker rows). It is deliberately NOT the dashboard table's focus (`platform/render/table.go:rowStyles`, which also bolds the NAME cell and tints the row's other cells); `list.go`'s header says why the two differ and why merging them would break one of them |
+| The Settings window is laid out | one row table owns the focus order, the keyboard rule and the › mark (`modes/tty/setup_rows.go:setupTable`); the body is two columns when they fit (`modes/tty/setup_layout.go:setupBody`), the chips are a pinned footer (`platform/render/panel.go:ScrollPanelFooter`) and the scroll follows the focused row and everything it draws (`modes/tty/setup_layout.go:modalFocusScroll`, which asks the OPEN window through `modes/tty/setup_layout.go:focusBody` — it used to ask Setup whatever window was open, which left every other pinned-footer window unscrollable) |
+| The Radio panel picks a layout | `modes/tty/radio_panel.go:radioBreakpoint` — three fixed layouts by terminal columns, which is what retires the size toggle; the `v` control exists iff the breakpoint has a visualizer area (`modes/tty/radio_panel.go:hasViz`) |
+| A role's voice is decided | `domains/radio/cast/resolve.go:Resolve` walks role → group → root → the platform default and says **why** the requested one lost; the deck answers the host questions (`app/cast.go:Discovered`, `app/cast.go:Installed`, `app/cast.go:Default`) and turns the answer into an engine in `app/cast.go:resolveVoice` — find-only, never an install (FR-9) |
+| Correspondents hand over | the render goroutine sees the voice change between two segments and renders the line THERE, ahead of the air (`domains/radio/synth/source.go:renderAhead`); the writer only writes it (`domains/radio/synth/source.go:announce`). The one render the writer performs is the listener's own save mid-segment (`domains/radio/synth/source.go:takeOver`), folded with the remainder into a single utterance. The wording is `domains/radio/synth/compose.go:HandoffLine` over `scripts/handover/line.txt` |
+| An alert's tone is chosen | `domains/radio/cast/tone.go:Classify` maps the product string to a class (storm beats warning and watch — MVS-D-15), `domains/radio/cast/tone.go:ToneName` names its preset, and `app/radio.go:tone` renders it from constants at `synth.ToneRate` — no voice is resolved, so an alert sounds while its correspondent is still being found |
 | The `[S]` modal renders | `modes/tty/status.go:statusLines` ← `app/stats.go:ttyStats` (request/publish counters) |
 | A diagnostic dump is written | `app/dump.go:Dump` (SIGUSR1 in `app/dump_unix.go:startDumpTrigger`; `/debug/dump` in `app/debug.go:startDebugProfiles`) |
 | A report is printed | `cmd/watchpost/root.go:newReportCmd` → `app/app.go:ReportOnceWithStats` → `modes/report/report.go:RenderPlain` / `RenderJSON` |
 | The Setup window finishes | `modes/tty/setup.go:setupFinishCmd` → `app/dashboard.go:setup` (persists, keys FIRMS) → `app/dashboard.go:commit` |
 | Alerts are ordered for display | `modes/tty/nav.go:sortAlerts` — on the tty's own copy of the snapshot (the publisher deep-copies) |
+| The ticker band scrolls and rotates | `modes/tty/ticker.go:advanceTicker` steps the tape one cell per tick, `modes/tty/ticker.go:advanceTickerCategory` hands the band to the next non-empty lane every `tickerRotate` and parks the old lane's offset so no tape's tail is unreachable; the lane's own name, colour and order come from ONE registry — `platform/category:Of`, `:Label` and `:Lanes` — which the window's tabs read too (F-21) |
+| A time is written or spoken | `platform/render/clock.go` is the one owner: `:Time` / `:Since` / `:Stamp` write it, `:Spoken` says it and `:SpokenID` reads a callsign in NATO phonetics under the military convention. The listener's choice is Settings → WATCHPOST UI → Radio Convention |
+| The app checks for a newer release | `app/release.go:start` polls hourly ONLY when `update_check` is set; `app/release.go:checkAt` asks GitHub and keeps the parsed numbers, never the published tag |
+| A [S] table is laid out | `modes/tty/status.go:providerLines`, `:pipelineLines` and `:issueLines` build cells; `platform/render/status_table.go:StatusTable` lays them out on the go-studs table, and each table drops columns down a ladder rather than clipping one |
+
+## Why something is slow on purpose
+
+`docs/accepted-costs.md` — the register of measured, chosen costs (the modal compositor, the
+always-on marquee frame, the per-location schedulers, the sequential provider fan-out) with the
+trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointing back at it.
 
 ## Vocabulary
 
@@ -82,3 +101,24 @@ say what a file holds; this page says where a *thing* happens.
 | JD/CQ/PA/PR/A11/BQ/IS/PH/DQ/SC/PF/RT/R2-n | red-team findings | `…/08-reports/red-team-plan.md` |
 | P10-nn | safety-critical rules (`make p10`, the harness CLI's check) | the harness's P10 skill (outside the public tree) |
 | C1–C5, OQ-n, D1/D2 | decisions, open questions, defects of the quality pass | `…/08-reports/discover-report.md`, `project-brief.md` |
+| A location is typed, and becomes a place | the ONE resolver serves both halves so the suggestions and the commit cannot disagree: `app/resolve.go:newResolver` builds it over the embedded index, `domains/locations/resolver.go:TypeAhead` answers each keystroke from that index alone (never the network — a per-keystroke fetch is how a search box becomes a rate limit), and `domains/locations/resolver.go:Resolve` is the commit, which MAY reach the network and reports `fellBack` when it could not match exactly. `app/resolve.go:resolveHook` is what Settings and Lookup call, and it answers with the build error on every query when the index failed to load, so a broken resolver says why instead of returning nothing |
+
+## Rules, and where they are stated
+
+The table above answers *where does event X happen*. This one answers *where is
+rule R stated* — which is the question that kept getting re-derived by
+experiment on 2026-09-06, five times in one session, when the answer was in a
+comment a few lines from where someone was already looking.
+
+A rule belongs here when knowing it changes what you would do, and when it is
+NOT discoverable by grepping for a symbol — you cannot search for "how does
+Settings save" unless you already know the answer is `applyOnCloseCmds`.
+
+| Rule | Where it is stated |
+|---|---|
+| **Settings has exactly two exits, and both write.** `esc` closes and applies; `enter` on a non-input row saves; `enter` on a PICKER row only advances, and the arrows cycle a value forever without committing it. So a path built out of Enters never terminates. | `modes/tty/setup.go:setupSave` and `modes/tty/setup.go:applyOnCloseCmds` — the header at the esc case spells out both exits |
+| **Nothing left to WAIT is not nothing to CHECK.** `hold(d)` loops on `d > 0`, so a non-positive duration returns true without ever reaching the air check; the caller must ask separately whether the sequence is still on air. | `app/read_script.go:holdRest` |
+| **Which categories the national feed can produce.** `Spec.Watchlist` marks the ones that arrive only through tracked locations. A category WITHOUT it is claimed to be feed-producible — which is how Emergency Orders were found unreachable. | `platform/category:Of` (the `Watchlist` field on the registry's Spec) |
+| **In-flight audio is released on stop; HELD audio is not.** `StopPreview` closes the line in flight and leaves `heldOrder` alone. Releasing held lines is a different call, and the arbiter makes it whenever a suspended job ends. | `domains/radio/player/engine.go:StopPreview` and `:DropHeld`; the arbiter's side is `app/director.go:releaseBed` |
+| **A mutant's CAUGHT is only evidence if the failure is attributable.** The green baseline is sampled once, so a flaky test can fail on the mutated run and be credited to the mutation. The harness re-runs the named test against the unmutated tree before believing it. | `06_docs/mutants/run.sh`, at the `--- FAIL` branch |
+| **The band has ONE writer.** Only `mastercontrol` may construct a takeover message; it was written from two files once and the pair drifted. | `app/mastercontrol.go:cue`; the rule's history is in `app/executors.go`'s header |

@@ -1,0 +1,2 @@
+{{/* marine-report/tide: the tide in force. Data: .Trend, .Level, .Station, .Distance. "above the low-water mark" rather than "mean lower low water" (MVS-D-21). */}}
+The tide is {{.Trend}}, currently {{.Level}} above the low-water mark, at {{.Station}}, {{.Distance}} from you.

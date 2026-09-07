@@ -72,6 +72,24 @@ func WrapText(text string, width int) []string {
 	var lines []string
 	cur := ""
 	for _, word := range strings.Fields(text) {
+		// A WORD WIDER THAN THE LINE is broken across lines rather than left to
+		// overflow. Without this the wrap was a wrap only for prose: a provider
+		// error carrying a 200-character URL — no spaces in it anywhere — came
+		// out as one over-wide line and the panel cut it, losing the half a
+		// listener would need to act on it.
+		//
+		// That is the truncation this function's own contract says callers
+		// cannot reintroduce, so it belongs here rather than at the one caller
+		// that noticed.
+		if displayWidth(word) > width {
+			parts := splitCells(word, width)
+			if cur != "" {
+				lines = append(lines, cur)
+			}
+			lines = append(lines, parts[:len(parts)-1]...)
+			cur = parts[len(parts)-1] // the tail keeps collecting the words after it
+			continue
+		}
 		switch {
 		case cur == "":
 			cur = word
@@ -89,6 +107,43 @@ func WrapText(text string, width int) []string {
 		lines = []string{""}
 	}
 	return lines
+}
+
+// splitCells breaks s into pieces of at most width display cells.
+//
+// An escape sequence is copied WHOLE and costs no cells: a break inside one
+// would put half an SGR code on each line, which the terminal reads as text.
+// Always returns at least one piece, so callers can take its tail.
+func splitCells(s string, width int) []string {
+	if width < 1 {
+		width = 1
+	}
+	var out []string
+	var b strings.Builder
+	cells, inEscape := 0, false
+	for _, r := range s { // one pass over the runes — no cursor to run away with
+		switch {
+		case inEscape:
+			b.WriteRune(r)
+			inEscape = r != 'm' // the sequence ends at its terminator
+			continue
+		case r == 0x1b:
+			b.WriteRune(r)
+			inEscape = true
+			continue
+		}
+		if w := RuneCells(r); cells+w > width && cells > 0 {
+			out = append(out, b.String())
+			b.Reset()
+			cells = 0
+		}
+		b.WriteRune(r)
+		cells += RuneCells(r)
+	}
+	if b.Len() > 0 || len(out) == 0 {
+		out = append(out, b.String())
+	}
+	return out
 }
 
 // WrapLines wraps every over-wide body line to width, preserving each
@@ -109,6 +164,39 @@ func WrapLines(lines []string, width int) []string {
 		for _, w := range WrapText(strings.TrimLeft(line, " "), width-displayWidth(indent)) {
 			out = append(out, indent+w)
 		}
+	}
+	return out
+}
+
+// WrapHanging lays one labelled row out: the first line follows head, and every
+// line after it is indented to head's DISPLAY width, so a value too long for the
+// row reads as one column instead of falling back to the margin.
+//
+//	›  Recommended:  Tune to WNG712 Coachella / Spanish CA
+//	                 162.525 MHz (81 mi)
+//
+// IT IS THE OTHER HALF OF WrapLines' GUARANTEE. That one keeps a modal's PROSE
+// from overflowing and preserves a line's own indent on continuation; a labelled
+// row needs the continuation under the VALUE, not under the label, or the wrap
+// reads as a new row. Without it the only way to make such a row fit is to cut
+// it — which is the truncation class UAT 25 ruled out, and in an error window it
+// is the address of the station the listener is being told to tune to.
+//
+// head is measured ANSI-aware, so a tinted label indents by what it LOOKS like.
+func WrapHanging(head, text string, width int) []string {
+	room := width - displayWidth(head)
+	if room < 8 {
+		room = 8 // a head wider than the window still leaves the value somewhere to go
+	}
+	parts := WrapText(text, room)
+	out := make([]string, 0, len(parts))
+	pad := strings.Repeat(" ", displayWidth(head))
+	for i, p := range parts { // bounded by the wrap (P10-02)
+		if i == 0 {
+			out = append(out, head+p)
+			continue
+		}
+		out = append(out, pad+p)
 	}
 	return out
 }

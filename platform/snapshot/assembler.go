@@ -120,6 +120,39 @@ func (a *Assembler) SeismicFor(ref LocationRef) (ss *SeismicState, lat, lon floa
 	return cloneSeismic(state), lat, lon, true
 }
 
+// MarineFor is one location's merged coastal block, for the maritime report.
+//
+// The NARROW read, like SeismicFor: the radio deck asks per cycle, and cloning
+// the whole snapshot to reach one location's sea state would be work for
+// nothing (REVIEW C2).
+//
+// It merges through harmonizeMarine — the SAME body the publisher uses — rather
+// than re-implementing the field-wise loop. Two implementations of "which
+// provider's wave height wins" is how the Details view and the maritime report
+// would start disagreeing about the same sea.
+func (a *Assembler) MarineFor(ref LocationRef) (m *Marine, tz string, lat, lon float64, ok bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	k := Key(ref)
+	if len(a.sections[k]) == 0 {
+		return nil, "", 0, 0, false
+	}
+	scratch := &Location{ByProvider: map[string]Section{}}
+	for pid, sec := range a.sections[k] {
+		scratch.ByProvider[pid] = Section{Marine: sec.Marine.Clone()}
+	}
+	harmonizeMarine(scratch, a.providers)
+	if scratch.Marine == nil {
+		return nil, "", 0, 0, false // inland: not "no data", not applicable
+	}
+	for i, r := range a.refs {
+		if a.order[i] == k {
+			tz, lat, lon = r.TZ, r.Lat, r.Lon
+		}
+	}
+	return scratch.Marine, tz, lat, lon, true
+}
+
 // ProviderStatus reports a registered provider's current status ("" when
 // unknown) — the radio deck credits FIRMS only when it answered ok.
 func (a *Assembler) ProviderStatus(id string) string {
@@ -199,14 +232,14 @@ func (a *Assembler) Apply(f Fragment) {
 	defer a.mu.Unlock()
 	st, known := a.status[f.Provider]
 	if err := invariant.Check(known, "fragment from unregistered provider "+f.Provider); err != nil {
-		a.warnings = append(a.warnings, Warning{Code: WarnProviderError, Message: err.Error(), Provider: f.Provider})
+		a.warnings = append(a.warnings, cleanWarning(Warning{Code: WarnProviderError, Message: err.Error(), Provider: f.Provider}))
 		return
 	}
 	if f.Err != nil {
 		st.Status = ProviderDegraded
-		a.warnings = append(a.warnings, Warning{
+		a.warnings = append(a.warnings, cleanWarning(WithFailure(Warning{
 			Code: WarnProviderError, Message: f.Err.Error(), Provider: f.Provider,
-		})
+		}, f.Err)))
 	} else {
 		st.Status = ProviderOK
 		st.FetchedAt = f.FetchedAt
@@ -258,7 +291,23 @@ func (a *Assembler) Warn(w Warning) {
 	if err := invariant.Check(w.Code != "", "warnings must carry a machine-readable code (§10.2)"); err != nil {
 		w.Code = WarnProviderError
 	}
-	a.warnings = append(a.warnings, w)
+	a.warnings = append(a.warnings, cleanWarning(w))
+}
+
+// cleanWarning takes a warning's provider-supplied text through the plaintext
+// boundary.
+//
+// A warning's Message is a PROVIDER'S OWN WORDS — several feeds put their error
+// envelope's text straight into it — and it reaches a terminal on more than one
+// surface. Escape sequences a server sends can address that terminal: an OSC 52
+// writes the user's clipboard, an OSC 8 paints a hyperlink over honest text, a
+// bidi override reverses a line. Cleaning at the boundary means no render site
+// has to remember, which is the only way this stays true as surfaces are added.
+func cleanWarning(w Warning) Warning {
+	w.Message = plaintext.Line(w.Message)
+	w.Endpoint = plaintext.Line(w.Endpoint)
+	w.Location = plaintext.Line(w.Location)
+	return w
 }
 
 // Size reports how many locations the assembler tracks and how many

@@ -36,6 +36,30 @@ type Transmitter struct {
 	SAME     []string // covered county SAME codes ("0" + FIPS)
 }
 
+// The languages a transmitter broadcasts in, as the table records them.
+//
+// NWR carries a handful of Spanish-language transmitters and marks them in the
+// SITE NAME and nowhere else — "El Paso Spanish" and "Coachella / Spanish" are
+// both forms in use, and there are five rows in all. There is no language
+// column to read, so this is the only honest source; if the table ever grows
+// one, this is the single place that changes.
+//
+// A suffix match rather than a substring: "Spanish Fork, UT" is a real place,
+// and a station there would be an English transmitter whose name begins with
+// the word.
+const (
+	LangEnglish = "en"
+	LangSpanish = "es"
+)
+
+// Lang is the language this transmitter broadcasts in.
+func (t *Transmitter) Lang() string {
+	if strings.HasSuffix(strings.ToLower(strings.TrimSpace(t.Site)), "spanish") {
+		return LangSpanish
+	}
+	return LangEnglish
+}
+
 // Table is the parsed transmitter table.
 type Table struct {
 	byCall map[string]*Transmitter
@@ -100,7 +124,24 @@ func (t *Table) Nearest(lat, lon float64, n int) []Near {
 	for _, tx := range t.all {
 		out = append(out, Near{tx, geo.HaversineKM(lat, lon, tx.Lat, tx.Lon)})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].KM < out[j].KM })
+	// TIES ARE BROKEN BY CALLSIGN, and the sort is over a TOTAL order.
+	//
+	// Co-located transmitters are not a curiosity: Coachella KIG78 and Coachella
+	// / Spanish WNG712 share a mast and so share their coordinates to six
+	// decimals, giving a KM that compares exactly equal. sort.Slice is not
+	// stable, so which of the pair a listener got was unspecified — it could
+	// differ between runs on the same input, and Vista, CA got the Spanish feed
+	// that way (HUM LEAD, UAT 2026-09-04).
+	//
+	// The callsign is a tie-break, NOT a language policy: that KIG78 sorts
+	// before WNG712 is luck, not intent. A language preference is the setting
+	// that decides it on purpose, and it replaces this second key when it lands.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].KM != out[j].KM {
+			return out[i].KM < out[j].KM
+		}
+		return out[i].Callsign < out[j].Callsign
+	})
 	if len(out) > n {
 		out = out[:n]
 	}

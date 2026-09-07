@@ -14,12 +14,12 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// header is the masthead box (HUM LEAD UAT 2026-08-28 facelift): the title
+// header is the masthead box (facelift): the title
 // and the Updated stamp ride the top rule, the controls and the API summary
 // share the one row inside:
 //
-//	┏━━ W A T C H P O S T  v0.13.0 ━━━━━━━━━━━━━━━━━━━━━━  Updated: 08/28/2026 19:15:08 PDT (Just Now) ━━┓
-//	┃   [s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [S] Status  [?] Help  [q] Quit   API: ✔9 ⚠0 ✘0 /  9   ┃
+//	┏━━ WATCHPOST Observer  v0.14.0 ━━━━━━━━━━━━━━━━━━━━━  Updated: 08/28/2026 19:15:08 PDT (Just Now) ━━┓
+//	┃   [s] Settings  [a] About  [S] Status  [?] Help  [q] Quit                     API: ✔9 ⚠0 ✘0 /  9   ┃
 //	┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 //
 // Narrow terminals shorten the stamp (no age, then time only, then no
@@ -27,24 +27,42 @@ import (
 // the version leaves the title before the title would; the row inside
 // ladders the same way (headerRow). The header never exceeds the width.
 func (d Dashboard) header(o render.Opts) string {
-	title := render.TitleGradient("W A T C H P O S T") + "  v" + d.cfg.Version // UAT 4.9 gradient; UAT 41: no pipe
-	// The stamp (HUM LEAD UAT 2026-08-27): the widest form carries the age
+	// WATCHPOST Observer (HUM LEAD, 2026-08-30): the wordmark keeps its
+	// gradient and the EDITION rides beside it, naming which experience this
+	// build is. Broadcaster — the station-running dashboard — is the second one,
+	// and it arrives as a different word here rather than as a rename.
+	full := render.Wordmark(render.EditionObserver)
+	// The stamp: the widest form carries the age
 	// ("(2 Minutes Ago)"); it reads green while the data is fresh, yellow
 	// once no fetch has succeeded for staleAfter, grey before the first data.
 	stamps, tone := []string{"awaiting first data..."}, render.Tok(render.TextBase)
 	if d.snap != nil {
 		at := dataAsOf(d.snap)
 		age := d.clock().Sub(at)
-		full := "Updated: " + at.Local().Format("01/02/2006 15:04:05 MST")
-		stamps = []string{full + " (" + agoWords(age) + ")", full, "Updated: " + at.Local().Format("15:04:05"), at.Local().Format("15:04:05")}
+		full := "Updated: " + o.Clock.Stamp(at.Local())
+		short := o.Clock.TimeSec(at.Local())
+		stamps = []string{full + " (" + agoWords(age) + ")", full, "Updated: " + short, short}
 		tone = render.Tok(render.ProviderOK)
 		if age > staleAfter {
 			tone = render.Tok(render.AlertLabel)
 		}
 	}
 	rule := o.BoxRuleWidth()
-	if render.Width(title)+4 > rule { // very narrow: the version leaves before the title
-		title = render.TitleGradient("W A T C H P O S T")
+	// The title's own ladder: the version leaves first, then the edition — the
+	// wordmark is the last thing to go, because a masthead that cannot say what
+	// the app is has stopped being a masthead.
+	//
+	// Each rung is built only if the one above it did not fit. Passing all three
+	// to FirstFit would render the bare wordmark on every frame — a second
+	// per-rune gradient pass — for a form only a terminal under about 46
+	// columns ever shows.
+	title := full + "  v" + d.cfg.Version
+	switch {
+	case render.Width(title)+4 <= rule:
+	case render.Width(full)+4 <= rule:
+		title = full
+	default:
+		title = render.Wordmark("")
 	}
 	stamp := ""
 	for _, form := range stamps { // the widest form the rule carries beside the title
@@ -57,21 +75,25 @@ func (d Dashboard) header(o render.Opts) string {
 }
 
 // headerRow is the masthead's inner row: the controls at the left, the API
-// summary at the right. The ladder (round 4, B-14): the mute label shortens
-// then drops, the summary loses its "API: " label, then the chips stand
-// alone, then the summary leaves — the row never exceeds the box's inner
-// width.
+// summary at the right. The ladder (round 4, B-14): About drops, the summary
+// loses its "API: " label, then the chips stand alone, then the summary leaves
+// — the row never exceeds the box's inner width.
+//
+// The ladder lost two rungs with [t] and [M] (0.14.0): the row starts nearly
+// forty cells shorter, so the narrow forms are reached far later than they were.
 func (d Dashboard) headerRow(o render.Opts) string {
 	inner := o.BoxInnerWidth()
 	api := d.apiSummary(o) // UAT 24.2
 	short := strings.TrimPrefix(api, "API: ")
 	for _, a := range []string{api, short} {
-		for i := range 3 { // each form built only when the wider one did not fit (the frame budget)
+		for i := range 2 { // each form built only when the wider one did not fit (the frame budget)
 			if c := d.headerControls(o, i); render.Width(c)+2+render.Width(a) <= inner {
 				return render.PadBetween(c, a, inner)
 			}
 		}
 	}
+	// The bare-chip floor keeps [t] and [M]: they are still bound, and this row
+	// is the only place a narrow terminal names any key at all.
 	chips := o.KeyCap("s") + " " + o.KeyCap("a") + " " + o.KeyCap("t") + " " + o.KeyCap("M") + " " + o.KeyCap("S") + " " + o.KeyCap("?") + " " + o.KeyCap("q")
 	for _, a := range []string{short, ""} {
 		if render.Width(chips)+2+render.Width(a) <= inner {
@@ -82,22 +104,18 @@ func (d Dashboard) headerRow(o render.Opts) string {
 }
 
 // headerControls is the masthead's control row in its form-th form, widest
-// first (UAT 56/57/100/102): 0 `[s] Setup  [a] About  [t] Theme  [M] Mute
-// Severe Alerts  [S] Status  [?] Help  [q] Quit`; 1 the mute label
-// shortened; 2 the mute chip dropped (the binding stays live). [M] toggles
-// the ticker (0.12.0), its label saying the action.
+// first (UAT 56/57/100/102): 0 `[s] Settings  [a] About  [S] Status  [?] Help
+// [q] Quit`; 1 drops About, which is the least urgent of them.
+//
+// [t] Theme and [M] Mute Severe Alerts LEFT THE ROW at 0.14.0 (HUM LEAD, UAT
+// 2026-08-30): both are settings now, and both live in [s]. The bindings stay
+// live and both deep-link — [t] opens Settings at the theme picker, [M] at the
+// tone rows — so a listener who knows the keys still lands where the thing is.
 func (d Dashboard) headerControls(o render.Opts, form int) string {
-	verb := "Mute"
-	if d.tickerMuted {
-		verb = "Unmute"
-	}
-	base := o.KeyCap("s") + " Setup  " + o.KeyCap("a") + " About  " + o.KeyCap("t") + " Theme  "
+	base := o.KeyCap("s") + " Settings  "
 	tail := o.KeyCap("S") + " Status  " + o.KeyCap("?") + " Help  " + o.KeyCap("q") + " Quit"
-	switch form {
-	case 0:
-		return base + o.KeyCap("M") + " " + verb + " Severe Alerts  " + tail
-	case 1:
-		return base + o.KeyCap("M") + " " + verb + "  " + tail
+	if form == 0 {
+		return base + o.KeyCap("a") + " About  " + tail
 	}
 	return base + tail
 }
@@ -177,7 +195,7 @@ func (d Dashboard) writeBody(b *strings.Builder, fl frameLayout, priority, recen
 	b.WriteString(d.tickerMarquee(fl.o)) // 0.12.0: the 3-row global event ticker band, above the radio module
 	b.WriteString("\n")                  // the band's bottom row is the ticker/radio separator (absorbs the old blank)
 	b.WriteString(d.radioPanel(fl))      // UAT 8.1: radio module first
-	b.WriteString("\n")                  // the boxes separate themselves — no blank between (HUM LEAD UAT 2026-08-28)
+	b.WriteString("\n")                  // the boxes separate themselves — no blank between
 	b.WriteString(d.alertArea(fl))       // then the alert area (blanks per UAT 6.1/6.2)
 	b.WriteString("\n\n")
 	// UAT 26/43: controls live where they act - ABOVE the watchlist's group
@@ -251,7 +269,7 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 	// recent table shows rows only.
 	g := render.RailGlyphsFor(o.ASCII)                                                                                     // the rail's glyph set follows --ascii like every other mark (FR-13, round-2 CQ #19)
 	rail := o.TableRowLen(days) + 2                                                                                        // UAT 9.2: one blank col between the last cell and the rail
-	bandRows := o.BandRows("R E C E N T   /   S E A R C H E D", "R E C E N T", o.TableRowLen(days), render.GroupSectionBG) // three rows unless thin (UAT 2026-08-27)
+	bandRows := o.BandRows("R E C E N T   /   S E A R C H E D", "R E C E N T", o.TableRowLen(days), render.GroupSectionBG) // three rows unless thin
 	for i, row := range bandRows {
 		if i == len(bandRows)-1 {
 			b.WriteString(render.PadTo(row, rail-1) + g.Up + "\n") // the rail's ▲ rides the band's bottom row — no gap above the rail (UAT nit); the one-row band is its own bottom row
@@ -259,10 +277,8 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 			b.WriteString(row + "\n")
 		}
 	}
-	total, base := 0, 0
-	if d.recent != nil {
-		total = len(d.recent.Locations)
-	}
+	locs := d.recentLocations()
+	total, base := len(locs), 0
 	if d.snap != nil {
 		base = len(d.snap.Locations)
 	}
@@ -275,8 +291,8 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 	hi := min(total, lo+window)
 	rows := make([]render.LocationRow, 0, hi-lo)
 	for i := lo; i < hi; i++ {
-		r := d.row(i, &d.recent.Locations[i], base+i == d.selected) // focus spans both tables (UAT 4.4)
-		r.Index = base + i + 1                                      // numbering continues after the priority rows (mock: 004.)
+		r := d.row(i, &locs[i], base+i == d.selected) // focus spans both tables (UAT 4.4)
+		r.Index = base + i + 1                        // numbering continues after the priority rows (mock: 004.)
 		rows = append(rows, r)
 	}
 	// UAT 44.1/45: the band connects the tables - the recent table renders
@@ -292,7 +308,7 @@ func (d Dashboard) recentSection(fl frameLayout) string {
 // on the table span and wrapped for narrow terminals, a blank — standing
 // where the table will once a location is added or searched.
 const (
-	watchlistEmpty = "Run 's' Setup or 'l'ookup a location, then 'ctrl+a' Favorite it to your Watchlist"
+	watchlistEmpty = "Run 's' Settings or 'l'ookup a location, then 'ctrl+a' Favorite it to your Watchlist"
 	recentEmpty    = "NO RECENT LOCATION SEARCHED or DATA-SEEDING FAILED"
 	emptyWrapAt    = 64 // the mock's two-line break on wide terminals
 )
@@ -372,7 +388,7 @@ func mmdd(iso string) string {
 }
 
 // trend derives the NOW arrow from the next forecast hour vs current temp
-// (mock: 888ºF↗; ±0.3ºC deadband so noise doesn't flicker the arrow).
+// (mock: 888°F↗; ±0.3°C deadband so noise doesn't flicker the arrow).
 func trend(loc snapshot.Location) string {
 	if loc.Harmonized.Temp == nil || len(loc.Hourly) == 0 || loc.Hourly[0].Temp == nil {
 		return ""

@@ -15,17 +15,67 @@ import (
 // tier cadence is THE freshness authority.
 
 // fakeClock drives time deterministically.
+// fakeClock drives the scheduler's time. IT SYNCHRONISES; IT DOES NOT GUESS
+// (F-29, 2026-09-06).
+//
+// Advance used to fire the due waiters and then `time.Sleep(5 * time.Millisecond)`
+// — "give the scheduler goroutines a beat to run their fetch cycle". That beat
+// is a WALL-CLOCK GUESS against work of unbounded cost, and under `-race` on a
+// busy machine the guess is sometimes wrong: the caller then asserts before the
+// work it is waiting for has happened, and the test fails for a reason that has
+// nothing to do with the grid arithmetic it is named for. A gate that fails for
+// unrelated reasons teaches people to re-run rather than read it.
+//
+// The synchronisation point is `armed`: a tier loop's only exit from a cycle is
+// back into Clock.After (runTier's wait, and fetchWithRetries' retry wait), so
+// "every goroutine this Advance woke has registered again" means every one of
+// them is quiescent — blocked on the clock, with nothing more to do until time
+// moves. That is exactly the state the caller is about to assert against.
 type fakeClock struct {
 	mu      sync.Mutex
 	now     time.Time
 	waiters []waiter
+	// rearmed is closed and replaced on every registration, so a caller can
+	// wait for the set to grow without polling.
+	rearmed chan struct{}
 }
 type waiter struct {
 	at time.Time
 	ch chan time.Time
 }
 
-func newFakeClock(start time.Time) *fakeClock { return &fakeClock{now: start} }
+func newFakeClock(start time.Time) *fakeClock {
+	return &fakeClock{now: start, rearmed: make(chan struct{})}
+}
+
+// wedgeBound is how long Advance and awaitArmed will wait for the scheduler to
+// come back round before giving up.
+//
+// IT IS A FAILURE BOUND, NOT A SUCCESS BOUND, and that is the whole difference
+// from the sleep it replaces. The old 5 ms was a guess that the work was DONE;
+// this is a limit on how long a genuinely wedged scheduler may hang the suite.
+// Reaching it means something is actually broken, so it can be generous.
+const wedgeBound = 10 * time.Second
+
+// awaitWaiters blocks until at least n waiters are pending on the clock — n
+// quiescent tiers. It is also how to wait for the INITIAL fetches, which no
+// Advance triggers: a tier arms for the first time only after its first cycle.
+func (c *fakeClock) awaitWaiters(n int) {
+	deadline := time.After(wedgeBound)
+	for {
+		c.mu.Lock()
+		got, changed := len(c.waiters), c.rearmed
+		c.mu.Unlock()
+		if got >= n {
+			return
+		}
+		select {
+		case <-changed:
+		case <-deadline:
+			return // wedged: let the caller's own assertion say so
+		}
+	}
+}
 
 func (c *fakeClock) Now() time.Time {
 	c.mu.Lock()
@@ -38,6 +88,10 @@ func (c *fakeClock) After(d time.Duration) <-chan time.Time {
 	defer c.mu.Unlock()
 	ch := make(chan time.Time, 1)
 	c.waiters = append(c.waiters, waiter{at: c.now.Add(d), ch: ch})
+	// REGISTERING IS THE QUIESCENT SIGNAL. A tier that reaches here has finished
+	// whatever it woke to do and cannot proceed until time moves again.
+	close(c.rearmed)
+	c.rearmed = make(chan struct{})
 	return ch
 }
 
@@ -56,12 +110,16 @@ func (c *fakeClock) Advance(d time.Duration) {
 		}
 	}
 	c.waiters = rest
+	// Every tier that was quiescent before must be quiescent again.
+	target := len(rest) + len(due)
 	c.mu.Unlock()
 	for _, w := range due {
 		w.ch <- now
 	}
-	// Give the scheduler goroutines a beat to run their fetch cycle.
-	time.Sleep(5 * time.Millisecond)
+	if len(due) == 0 {
+		return // nothing was woken: there is nothing to wait for
+	}
+	c.awaitWaiters(target)
 }
 
 // countingProvider records fetches per kind.
@@ -454,7 +512,17 @@ func TestTierCadenceIsAFixedGrid(t *testing.T) {
 	defer cancel()
 	s.Start(ctx)
 	defer s.Stop()
-	waitFor(t, func() bool { return p.alerts.Load() == 1 && p.obs.Load() == 1 }, "initial fetches")
+	// NOT waitFor (F-29). Both bounds in this test were 2 s of REAL time against
+	// work of unbounded cost, so under `-race` on a busy machine the assertion
+	// could fire before the scheduler had acted — and the test then failed for a
+	// reason unrelated to the grid arithmetic it is named for. Both tiers arm the
+	// clock only after their first cycle, so two pending waiters IS "the initial
+	// fetches are done"; the clock waits on that, and the counters are then
+	// asserted directly rather than polled towards.
+	clk.awaitWaiters(2)
+	if p.alerts.Load() != 1 || p.obs.Load() != 1 {
+		t.Fatalf("initial fetches: alerts=%d obs=%d, want 1 and 1", p.alerts.Load(), p.obs.Load())
+	}
 	// The initial alerts fetch cost 3 s of clock; the tier's next slot is
 	// still start+20 s — 17 s away, not 20 (the pre-Q3 loop fired at +23).
 	clk.Advance(16 * time.Second)
@@ -462,5 +530,36 @@ func TestTierCadenceIsAFixedGrid(t *testing.T) {
 		t.Fatalf("alerts must not fire before its grid point, got %d", p.alerts.Load())
 	}
 	clk.Advance(2 * time.Second) // +21 s: past the grid point, short of the drifted one
-	waitFor(t, func() bool { return p.alerts.Load() == 2 }, "alert tier on the +20 s grid point despite 3 s of fetch time")
+	// DIRECT, because Advance now returns only once every tier it woke is
+	// quiescent again. If this ever needs a wait, the clock has stopped
+	// synchronising and that is the bug to fix — not the bound to raise.
+	if got := p.alerts.Load(); got != 2 {
+		t.Fatalf("the alert tier fires on the +20 s grid point despite 3 s of fetch time: alerts=%d, want 2", got)
+	}
+}
+
+// F-29 — ADVANCE RETURNS ONLY ONCE THE SCHEDULER HAS ACTED.
+//
+// This is the property the cadence test rests on, pinned on its own so that
+// losing it fails HERE, with a message about the clock, rather than surfacing as
+// an occasional unexplained timeout in a test about grid arithmetic.
+//
+// The old Advance fired the due waiters and slept 5 ms. That is a guess, and no
+// number of passing runs makes it not one; this asserts with no wait at all.
+func TestAdvanceReturnsOnlyOnceTheTierHasActed(t *testing.T) {
+	clk := newFakeClock(time.Date(2026, 8, 23, 12, 0, 0, 0, time.UTC))
+	p := &clockProvider{countingProvider: countingProvider{id: "nws"}, clk: clk, fetchTime: 3 * time.Second}
+	s, _, _ := newTestSched(clk, p)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.Start(ctx)
+	defer s.Stop()
+	clk.awaitWaiters(2)
+	before := p.alerts.Load()
+	// Past the alerts tier's next grid point in one step.
+	clk.Advance(20 * time.Second)
+	if got := p.alerts.Load(); got != before+1 {
+		t.Fatalf("Advance returned before the tier it woke had fetched: alerts=%d, want %d — "+
+			"the clock is guessing again, and every assertion after an Advance is racing it", got, before+1)
+	}
 }

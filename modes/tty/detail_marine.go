@@ -24,7 +24,7 @@ import (
 //
 //	Observed      39m 22s ago
 //	Conditions    Slight Chop
-//	Water Temp    75ºF             (buoy 46224, 11 mi)
+//	Water Temp    75°F             (buoy 46224, 11 mi)
 //	Swell         SSW      3.0 ft  (period 14 s)
 //	Tide          Rising   3.7 ft  (La Jolla, 24 mi)
 //	Next High     19:40    5.7 ft
@@ -75,7 +75,7 @@ func maritimeRows(o render.Opts, m *snapshot.Marine, tz *time.Location, now time
 		rows = append(rows, marineRow("Observed", fixedAgeTrim(now.Sub(m.ObservedAt))+" ago", ""))
 	}
 	if m.WaveHeight != nil {
-		rows = append(rows, marineRow("Conditions", seaState(*m.WaveHeight), ""))
+		rows = append(rows, marineRow("Conditions", render.SeaState(*m.WaveHeight), ""))
 	}
 	if m.WaterTemp != nil {
 		rows = append(rows, marineRow("Water Temp", strings.TrimSpace(o.Temp(m.WaterTemp)), buoyNote(o, m)))
@@ -87,7 +87,7 @@ func maritimeRows(o render.Opts, m *snapshot.Marine, tz *time.Location, now time
 	for i, r := range laid {
 		label := ""
 		if i == 0 {
-			label = "MARITIME"
+			label = "MARINE"
 		}
 		out = append(out, detailRow(label, r))
 	}
@@ -110,7 +110,7 @@ func buoyNote(o render.Opts, m *snapshot.Marine) string {
 // and the buoy wind.
 func swellRows(o render.Opts, m *snapshot.Marine) []marineCell {
 	var rows []marineCell
-	if h := firstOf(m.SwellHeight, m.WaveHeight); h != nil {
+	if h := render.FirstOf(m.SwellHeight, m.WaveHeight); h != nil {
 		rows = append(rows, marineRow("Swell", marinePair(compass(m.SwellDirDeg), o.TideHeight(h)), period(m.WavePeriod)))
 	}
 	if m.SecondarySwellHeight != nil {
@@ -133,9 +133,9 @@ func swellRows(o render.Opts, m *snapshot.Marine) []marineCell {
 // the next predicted event, one row per next high / low, local hh:mm.
 func tideRows(o render.Opts, m *snapshot.Marine, tz *time.Location, now time.Time) []marineCell {
 	var rows []marineCell
-	nh, nl := nextTide(m.Tides, "H", now), nextTide(m.Tides, "L", now)
+	nh, nl := render.NextTide(m.Tides, "H", now), render.NextTide(m.Tides, "L", now)
 	if m.TideStation != "" || m.TideLevel != nil || nh != nil || nl != nil {
-		val := tideTrend(nh, nl)
+		val := render.TideTrend(nh, nl)
 		if m.TideLevel != nil {
 			val = marinePair(val, o.TideHeight(m.TideLevel))
 		}
@@ -155,29 +155,10 @@ func tideRows(o render.Opts, m *snapshot.Marine, tz *time.Location, now time.Tim
 
 // tideEvent: "19:40    5.7 ft" (local time, fixed-width height).
 func tideEvent(o render.Opts, e *snapshot.TideEvent, tz *time.Location) string {
-	return marinePair(e.Time.In(tz).Format("15:04"), o.TideHeight(&e.Height))
+	return marinePair(o.Clock.Time(e.Time.In(tz)), o.TideHeight(&e.Height))
 }
 
 // tideTrend reads the direction from whichever extreme comes next.
-func tideTrend(nh, nl *snapshot.TideEvent) string {
-	switch {
-	case nh != nil && (nl == nil || nh.Time.Before(nl.Time)):
-		return "Rising"
-	case nl != nil:
-		return "Falling"
-	}
-	return ""
-}
-
-// nextTide is the first event of a type after now (events are time-ordered).
-func nextTide(events []snapshot.TideEvent, typ string, now time.Time) *snapshot.TideEvent {
-	for i := range events {
-		if events[i].Type == typ && events[i].Time.After(now) {
-			return &events[i]
-		}
-	}
-	return nil
-}
 
 // currentRow: the phase in force (last predicted extreme before now, with
 // its max speed) and the next predicted event as the note.
@@ -198,7 +179,7 @@ func currentRow(o render.Opts, events []snapshot.CurrentEvent, tz *time.Location
 		val = marinePair(titleWord(cur.Type), o.Knots(&cur.Speed))
 	}
 	if next != nil {
-		note = "(" + titleWord(next.Type) + " " + next.Time.In(tz).Format("15:04") + ")"
+		note = "(" + titleWord(next.Type) + " " + o.Clock.Time(next.Time.In(tz)) + ")"
 	}
 	return marineRow("Currents", val, note), true
 }
@@ -241,16 +222,6 @@ func period(s *float64) string {
 	return fmt.Sprintf("(period %.0f s)", *s)
 }
 
-// firstOf returns the first non-nil value.
-func firstOf(vals ...*float64) *float64 {
-	for _, v := range vals {
-		if v != nil {
-			return v
-		}
-	}
-	return nil
-}
-
 // fixedAgeTrim is fixedAge without the alignment padding.
 func fixedAgeTrim(d time.Duration) string { return strings.TrimSpace(fixedAge(d)) }
 
@@ -261,21 +232,4 @@ func compass(deg *float64) string {
 	}
 	pts := []string{"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"}
 	return pts[geo.CompassIndex(*deg, 16)]
-}
-
-// seaState words a significant wave height (Douglas sea-state bands).
-func seaState(m float64) string {
-	switch {
-	case m < 0.1:
-		return "Calm (glassy)"
-	case m < 0.5:
-		return "Smooth"
-	case m < 1.25:
-		return "Slight Chop"
-	case m < 2.5:
-		return "Moderate Chop"
-	case m < 4:
-		return "Rough"
-	}
-	return "Very Rough"
 }

@@ -23,7 +23,9 @@ import (
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/marine/coops"
 	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
+	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
+	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -76,18 +78,19 @@ func RunDashboard(version string, opt Options) error {
 		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides}
 	lp.attachDiagnostics(ctx, start)
-	idx, idxErr := geodata.Load()                                        // ONCE: the resolver and the seed list share it (Q3, L1-F21/L4-F5)
-	resolver, resolverErr := newResolver(client, idx, idxErr)            // one resolver serves Resolve and Suggest
-	tickerMuted, muteTicker, tickerRadius, setRadius := tickerState(cfg) // 0.12.0: the shared [M] mute + alert-radius state and their persist hooks
-	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, muteTicker, setRadius))
+	idx, idxErr := geodata.Load()                             // ONCE: the resolver and the seed list share it (Q3, L1-F21/L4-F5)
+	resolver, resolverErr := newResolver(client, idx, idxErr) // one resolver serves Resolve and Suggest
+	lp.unknownKeys = append([]string(nil), cfg.Unknown...)
+	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
+	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, setRadius, uiHook(prefs.clock)))
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge
 	}
-	p, deck, stopRadio := attachRadio(model, client, provider, cfg.Voice, tty.ParseRadioMode(cfg.Radio.Mode), lp.fireFor, lp.seismicFor) // B4 / UAT 97 / 114 / P4
+	p, deck, stopRadio := attachRadio(model, client, provider, cfg, tty.ParseRadioMode(cfg.Radio.Mode), lp.fireFor, lp.seismicFor, lp.marineFor) // B4 / UAT 97 / 114 / P4 / 0.14.0
 	defer stopRadio()
-	lp.p, lp.deck = p, deck
+	lp.attachDeck(ctx, p, deck, client, prefs, version, start)
 
-	firstFullNanos := lp.startPipelines(ctx, p, refs, idx, cfg, client, tickerMuted, tickerRadius, start)
+	firstFullNanos := lp.startPipelines(ctx, p, refs, idx, cfg, client, prefs, start)
 	// Cancel BEFORE waiting (red-team 0.9.0 C-2): stopAll waits for every
 	// in-flight fetch, and a quit during the launch burst or a slow network
 	// would otherwise sit through pacing waits and retries.
@@ -103,21 +106,63 @@ func RunDashboard(version string, opt Options) error {
 // tickerState builds the shared [M] mute flag and the alert-radius value, each
 // seeded from config, with the hook the UI calls to change and persist it
 // (0.12.0) — one owner so RunDashboard stays within its statement budget.
-func tickerState(cfg config.Config) (muted *atomic.Bool, muteHook func(bool), radius *atomic.Int64, radiusHook func(int)) {
-	muted, muteHook = tickerMuteState(cfg.TickerMuted)
-	radius, radiusHook = tickerRadiusState(cfg.TickerRadiusMi)
-	return
+func tickerState(cfg config.Config) (tickerPrefs, func(int)) {
+	radius, radiusHook := tickerRadiusState(cfg.TickerRadiusMi)
+	clock := &atomic.Int32{}
+	clock.Store(int32(render.ClockByKey(cfg.Clock)))
+	return tickerPrefs{muted: tickerMuteState(), radius: radius, clock: clock, updateCheck: cfg.UpdateCheck}, radiusHook
 }
 
+// uiHook is what Settings calls when it closes: it persists the display
+// preferences AND updates the clock the running ticker pipeline reads.
+//
+// Two places, like [M]'s hook. The ticker builds its tape in this package, so a
+// tape that kept the launch-time clock would be the one surface in the app still
+// writing times the way they were written before the setting existed.
+func uiHook(clock *atomic.Int32) func(tty.UIPrefs) error {
+	return func(u tty.UIPrefs) error {
+		clock.Store(int32(render.ClockByKey(u.Clock)))
+		return setUIHook(u)
+	}
+}
+
+// tickerPrefs are the LIVE preferences the ticker pipeline reads and Settings
+// changes underneath it: the [M] mute, the alert radius, and the listener's
+// clock.
+//
+// They travel together because they are one thing — a preference a running
+// pipeline must see change — and because threading a third atomic through two
+// signatures was one too many. The clock joined them at 0.14.0: the ticker
+// builds its tape in this package, so a tape that kept the launch-time clock
+// would be the one surface left writing times the old way.
+type tickerPrefs struct {
+	muted  *atomic.Bool
+	radius *atomic.Int64
+	clock  *atomic.Int32
+	// updateCheck is the listener's opt-in to the hourly release check. Read
+	// once at wiring: it decides whether the poller exists at all.
+	updateCheck bool
+}
+
+// [M]'s PERSIST HOOK WAS HERE, and is deleted (red team 2026-09-05, C-1).
+//
+// It flipped the tone mode, the deck's live tone state and the file, and it was
+// reached through tty.Config.MuteTicker — a field declared and never called.
+// MVS-D-48 retired the one-key toggle when [M] became a deep link into the
+// Settings tone rows, and the call site went with it; the hook has been dead
+// since before this release opened. Settings persists the tone rows through
+// saveTones, which is the same three places by the path that is actually taken.
+//
 // startPipelines launches the priority, recent, and ticker pipelines and marks
 // the FIRMS status, returning the CAS-guarded first-full-snapshot timer the
 // caller reports on exit (extracted so RunDashboard stays within the P10-04
 // statement budget after the 0.12.0 ticker wiring).
-func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, refs []snapshot.LocationRef, idx *geodata.Index, cfg config.Config, client *httpx.Client, tickerMuted *atomic.Bool, tickerRadius *atomic.Int64, start time.Time) *atomic.Int64 {
+func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, refs []snapshot.LocationRef, idx *geodata.Index, cfg config.Config, client *httpx.Client, prefs tickerPrefs, start time.Time) *atomic.Int64 {
 	firstFullNanos := &atomic.Int64{} // written by concurrent tier publishes (race-fixed)
 	// The favourites ride the client's priority lane (UAT 64): their
 	// requests never queue behind the seed pipeline's launch burst.
 	lp.severe = newSevereDeck(p.Send) // 0.13.0: the window's index — fed by the ticker cycle and by both publishers' hooks (the snapshot each is about to send)
+	lp.severe.radius = prefs.radius   // 0.14.0: ALERTS - EVENTS scopes the WINDOW too, not only the tape
 	lp.mu.Lock()
 	lp.priority = startPriority(httpx.WithPriority(ctx), p, lp.providers(), refs, func(snap *snapshot.Snapshot) {
 		// M1: CAS records only the first fully-populated publish.
@@ -129,18 +174,22 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
 	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
 	lp.mu.Unlock()
-	lp.markFIRMS()                        // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
-	lp.setWatch(refs)                     // seed the live watchlist the ticker ties events to
-	lp.narrator = lp.buildNarrator()      // 0.13.0: one owner of the voice — the ticker's takeovers and the window's event reads
-	lp.scripts = script.New(scriptsDir()) // the spoken lines, by file name; the user's config dir may override them
+	lp.markFIRMS()                         // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
+	lp.setWatch(refs)                      // seed the live watchlist the ticker ties events to
+	lp.director = lp.buildDirector(p.Send) // 0.13.0: one owner of the voice — the ticker's takeovers and the window's event reads
+	lp.scripts = script.New(scriptsDir())  // the spoken lines, by file name; the user's config dir may override them
 	if lp.deck != nil {
 		lp.deck.composer = synth.Composer{Scripts: lp.scripts} // the broadcast, the fire and seismic reports and the voice preview speak from the same tree
 	}
-	lp.reader = newEventReader(ctx, lp.narrator, lp.scripts, lp.severe.Row, p.Send) // a read ends with the app (A-08)
+	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send) // a read ends with the app (A-08)
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
 	}
-	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, tickerMuted, tickerRadius, lp.narrator, lp.scripts, lp.severe) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
+	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.director, lp.scripts, lp.severe) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
+	// The schedule runs from here, over the SAME arbiter and effector the ticker
+	// was just given. It drives the live alert rail since T3.10b — so a
+	// listener notices nothing; T3.2b is the first thing it owns.
+	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.currentWatch, lp.ticker)
 	lp.wireDeckWarnings()
 	return firstFullNanos
 }
@@ -148,15 +197,22 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 // ttyConfig assembles the dashboard config from the wired pipelines and the
 // launch switches — the hook set the TTY reads (extracted so RunDashboard stays
 // within the P10-04 length budget after the 0.12.0 ticker wiring).
-func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, cfg config.Config, keyOverrides term.KeyMap, resolver *locations.Resolver, resolverErr error, firmsProv *firms.Provider, muteTicker func(bool), setRadius func(int)) tty.Config {
+func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, cfg config.Config, keyOverrides term.KeyMap, resolver *locations.Resolver, resolverErr error, firmsProv *firms.Provider, setRadius func(int), setUI func(tty.UIPrefs) error) tty.Config {
 	return tty.Config{
 		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
-		Stats:          lp.ttyStats, // [S] REQUESTS / DUMPS rows (quality pass Q0)
-		TickerMuted:    cfg.TickerMuted,
-		MuteTicker:     muteTicker,
+		Stats:          lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
 		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
+		EndEventRead:   lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
 		AlertRadiusMi:  cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference
 		SetAlertRadius: setRadius,
+		RelayDwell:     lp.relayDwell(),
+		SetRelayDwell:  lp.setRelayDwell(),
+		RelayLang:      lp.relayLang(),
+		TuneRelay:      lp.tuneRelay(),
+		ReadReport:     lp.readReport(),
+		InjectAlert:    lp.injectHook(),  // F-21b: nil in a release build
+		DebugScenarios: debugScenarios(), // and empty with it
+		SetRelayLang:   lp.setRelayLang(),
 		Resolve:        resolveHook(resolver, resolverErr),
 		Suggest:        suggestHook(resolver),
 		Setup:          lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
@@ -164,11 +220,28 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		FIRMSKey:       firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
 		Commit:         lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
 		SetTheme:       setThemeHook,
+		SetUI:          setUI,
+		Units:          cfg.Units,
+		Clock:          cfg.Clock,
 		Hydrate:        lp.hydrate,                             // hourly forecast on demand for RECENT rows (UAT 72)
 		Credits:        credits(),                              // data-source credits, licence obligations included (UAT 75)
 		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW,          // B5: one owner for the emphasis threshold — the [fire] rules
 		SeismicDays:    seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
 	}
+}
+
+// attachDeck takes ownership of the player and starts what rides with it: the
+// live clock the broadcast reads, this run's launch time, and the hourly
+// "is there a newer Watchpost?" check (0.14.0, release.go).
+//
+// One step because it is one moment — the deck exists, so everything that needs
+// it can be wired — and because RunDashboard is at the safety gate's statement
+// ceiling and each of these on its own line is a line it does not have.
+func (lp *livePipelines) attachDeck(ctx context.Context, p *tea.Program, deck *radioDeck, client *httpx.Client, prefs tickerPrefs, version string, start time.Time) {
+	deck.clockPref = prefs.clock // one preference, one holder: the tape and the broadcast read the same value
+	lp.p, lp.deck = p, deck
+	lp.started, lp.release = start, newReleaseWatch(version, prefs.updateCheck)
+	lp.release.start(ctx, client)
 }
 
 // attachDiagnostics builds the dump and its triggers (quality pass Q0):
@@ -208,13 +281,14 @@ func scriptsDir() string {
 	return filepath.Join(filepath.Dir(path), "scripts")
 }
 
-// buildNarrator builds the voice arbiter over the radio deck (a silent one
-// without audio: the typed-nil deck must become a nil interface).
-func (lp *livePipelines) buildNarrator() *narrator {
+// buildDirector builds the voice arbiter over the radio deck (a silent one
+// without audio: the typed-nil deck must become a nil interface), and the
+// effector it performs through.
+func (lp *livePipelines) buildDirector(send func(tea.Msg)) *director {
 	if lp.deck == nil {
-		return newNarrator(nil)
+		return newDirector(nil, newMastercontrol(nil, send))
 	}
-	return newNarrator(lp.deck)
+	return newDirector(lp.deck, newMastercontrol(lp.deck, send))
 }
 
 // wireDeckWarnings lets the radio deck report a down relay directory as a
@@ -248,20 +322,87 @@ func newCoops() (*coops.Provider, *httpx.Client, error) {
 // player needs the program to send status back, so the deck is attached
 // to the model first and given the program after. Returns the program,
 // the deck (nil when it could not be built) and a stop func.
-func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, voice string, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport, seismic func(snapshot.LocationRef) synth.SeismicReport) (*tea.Program, *radioDeck, func()) {
+func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, cfg config.Config, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport, seismic func(snapshot.LocationRef) synth.SeismicReport, marine func(snapshot.LocationRef) synth.MarineReport) (*tea.Program, *radioDeck, func()) {
 	deck := newRadioDeck(nil, client, provider, render.UnitF)
 	if deck == nil {
 		return tea.NewProgram(model), nil, func() {}
 	}
-	deck.voiceID, deck.pref, deck.fire, deck.seismic = voice, mode, fire, seismic
+	deck.voiceID, deck.pref, deck.fire, deck.seismic, deck.marine = cfg.Voice, mode, fire, seismic, marine
+	// The whole cast, from the config: setCast validates it against this host
+	// OUTSIDE the deck's lock and memoises the problems for [S] (P4).
+	deck.setCast(castLoaded(cfg))
 	deck.persistMode = saveRadioMode                                                                                                                  // UAT 97: [m] is a saved preference, like the voice
 	model = model.WithRadio(deck).WithRadioMode(mode).WithSpectrum(deck.Spectrum).WithVoices(deck.Voices, deck.VoiceName(), func(name string) error { // UAT 84 / 92 / 97
 		deck.SetVoice(name)
-		return savePreference(func(cfg *config.Config) { cfg.Voice = name })
+		if err := savePreference(func(cfg *config.Config) { cfg.Voice = name }); err != nil {
+			return err
+		}
+		// A saved root is a cast change: re-validate and re-resolve from the
+		// file, so [S] and the broadcast agree with what is on disk.
+		return reloadCast(deck)
 	}, deck.PreviewVoice) // UAT 86
+	// The cast reaches the TUI as strings (modes/tty imports no domain): the
+	// assignments, the tone state, the class list, and the two save hooks.
+	// SetCast re-casts the deck — the listener is waiting to hear it. SetTones
+	// deliberately does NOT: [M] and the checkboxes must not disturb a
+	// broadcast in flight.
+	model = model.WithCast(castView(castLoaded(cfg)), toneView(castLoaded(cfg).Tones), toneClasses(),
+		func(v tty.CastView) error { return saveCast(deck, v) },
+		func(t tty.ToneState) error { return saveTones(deck, toneFromView(t)) },
+		deck.Installed)
 	p := tea.NewProgram(model)
 	deck.p = p
 	return p, deck, deck.Stop
+}
+
+// saveCast persists the cast the Setup window shows and re-casts the deck.
+//
+// It re-reads the config first so THIS platform's half is written over
+// whatever is on disk while the other platform's half — and every key this
+// build does not know — survives (FR-8, NFR-5).
+func saveCast(deck *radioDeck, v tty.CastView) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	next := castFromView(v, castLoaded(cfg))
+	cfg = castToConfig(next, cfg)
+	if err := config.Save(cfg); err != nil {
+		return err
+	}
+	if deck != nil {
+		deck.setCast(next)
+	}
+	return nil
+}
+
+// reloadCast re-reads the config and installs it on the deck. One reload, not a
+// field-by-field patch: the file is the source of truth after a save, and
+// patching would let the deck and the file disagree about a key this build
+// preserved but does not read.
+func reloadCast(deck *radioDeck) error {
+	if deck == nil {
+		return nil
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	deck.setCast(castLoaded(cfg))
+	return nil
+}
+
+// saveTones persists the per-class tone mute and tells the deck, WITHOUT a
+// recast: [M] must be instant and must not disturb a broadcast in flight — no
+// config reload on the deck, no re-resolution, no install pass (Task 2.10).
+func saveTones(deck *radioDeck, t cast.Tones) error {
+	if deck != nil {
+		deck.setTones(t)
+	}
+	return savePreference(func(cfg *config.Config) {
+		cfg.Radio.Tones = config.Tones{Mode: t.Mode, Muted: t.Muted}
+		// Save is the one owner of the ticker_muted mirror; nothing here writes it.
+	})
 }
 
 // saveRadioMode persists the [m] source pick (UAT 97).
@@ -331,8 +472,19 @@ func newAssembler(refs []snapshot.LocationRef, providers []snapshot.Provider) *s
 // exactly the changed locations — a lookup is one location's requests,
 // never a rebuild. Serialized — commits arrive from tea cmd goroutines.
 type livePipelines struct {
-	mu       sync.Mutex
-	ctx      context.Context
+	mu  sync.Mutex
+	ctx context.Context
+
+	// started is this run's launch, for [S]'s uptime; release is the hourly
+	// "is there a newer Watchpost?" check (0.14.0).
+	started time.Time
+	release *releaseWatch
+
+	// unknownKeys are the [radio.*] keys the config carried that this build
+	// does not know (NFR-5). They are PRESERVED on save by platform/config;
+	// this is only the reporting half, for [S].
+	unknownKeys []string
+
 	p        *tea.Program
 	provider snapshot.Provider
 	marine   []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)
@@ -344,9 +496,10 @@ type livePipelines struct {
 	recent   *recentPipeline
 	ticker   *tickerDeck     // 0.12.0: waited at shutdown so its cache writes settle before teardown
 	severe   *severeDeck     // 0.13.0: the severe-events index the window lists
-	narrator *narrator       // 0.13.0: the voice arbiter (narrate.go)
+	director *director       // 0.13.0: the voice arbiter (app/director.go)
 	scripts  *script.Library // 0.13.0: the spoken lines (domains/radio/script)
 	reader   *eventReader    // 0.13.0: [space] in the window
+	schedule *schedule       // 0.14.0 T3.2a: the Director, its executors and the pump — running, driving nothing yet
 
 	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit (0.12.0 follow-up)
 
@@ -452,6 +605,11 @@ func (lp *livePipelines) stopAll() {
 	if lp.reader != nil {
 		lp.reader.End() // a [space] read in progress ends with the app, its goroutine waited for (A-08)
 	}
+	// LAST, and waited for. The schedule's tick goroutine writes to the pump, so
+	// both have an owner here rather than being abandoned to the context — the
+	// 0.12.0 lesson, where a fire-and-forget goroutine outlived what it wrote to
+	// and turned a release tag red on the Linux race gate.
+	lp.schedule.stop()
 }
 
 func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
@@ -487,16 +645,103 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 // hydrate is the dashboard's Hydrate hook.
 func (lp *livePipelines) hydrate(ref snapshot.LocationRef) { lp.recent.hydrateHourly(ref) }
 
-// narrateEvent is the window's [space] hook. The deck is attached AFTER the
+// narrateEvent is the window's [space] hook — a play/PAUSE now (MVS-D-74). The deck is attached AFTER the
 // dashboard is built (attachRadio needs the model), so the hook decides at
 // the press, not at wiring: with no deck to speak through the press is inert
 // — no ▶ mark, no busy reader for a silent record (R5-B-04; VALIDATE
 // 2026-08-29 found the wiring-time check had muted the chip for everyone).
+// relayDwell is what the Settings window opens showing. Nil-safe: the deck is
+// not built in every mode, and a window that cannot show the setting is better
+// than one that cannot open.
+func (lp *livePipelines) relayDwell() time.Duration {
+	if lp.deck == nil {
+		return envWatchlistDwell()
+	}
+	return lp.deck.watchlistDwell()
+}
+
+// tuneRelay tunes to one named transmitter — the listener's answer to the
+// relay-fault window (MVS-D-76). It goes through the deck's own tune so the
+// duck is not lifted: an alert may be reading while they answer.
+func (lp *livePipelines) tuneRelay() func(string) {
+	return func(callsign string) {
+		if lp.deck == nil || callsign == "" {
+			return
+		}
+		lp.deck.tuneCallsign(callsign)
+	}
+}
+
+// readReport is the fall-through: stop trying relays and read the synthesized
+// report for wherever the deck is pointed. It is what the countdown takes, so
+// it must work with nobody at the keyboard.
+func (lp *livePipelines) readReport() func() {
+	return func() {
+		if lp.deck == nil {
+			return
+		}
+		lp.deck.readSynth()
+	}
+}
+
+// relayLang is what the Settings window opens showing.
+func (lp *livePipelines) relayLang() string {
+	if lp.deck == nil {
+		return stream.LangEnglish
+	}
+	return lp.deck.watchlistLang()
+}
+
+// setRelayLang records which language wins a co-located tie. It takes effect on
+// the NEXT tune rather than at once: re-tuning mid-sentence to swap languages
+// would cut off whatever is being said, and the listener changing this is
+// setting a preference, not asking for an interruption.
+func (lp *livePipelines) setRelayLang() func(string) {
+	return func(lang string) {
+		if lp.deck == nil {
+			return
+		}
+		lp.deck.mu.Lock()
+		lp.deck.relayLang = lang
+		lp.deck.mu.Unlock()
+	}
+}
+
+// setRelayDwell applies a new rotation interval at once.
+//
+// IT GOES STRAIGHT TO THE DIRECTOR, through the same SetRepeat the [r] key uses,
+// because the Director holds the dwell and a setting it has not been told is a
+// setting that does not apply. Re-sending the current repeat mode is how the new
+// number reaches it — the deck translates the mode to a dwell in one place, and
+// this asks it to do that again with the new value.
+func (lp *livePipelines) setRelayDwell() func(time.Duration) {
+	return func(d time.Duration) {
+		if lp.deck == nil {
+			return
+		}
+		lp.deck.mu.Lock()
+		lp.deck.relayDwell = d
+		mode, queue := lp.deck.repeat, lp.deck.queue
+		lp.deck.mu.Unlock()
+		lp.deck.SetRepeat(mode, queue)
+	}
+}
+
+// endEventRead is the window's close hook: a read belongs to the window that
+// started it (MVS-D-75).
+func (lp *livePipelines) endEventRead() func() {
+	return func() {
+		if lp.reader != nil {
+			lp.reader.Cancel() // a keypress never waits: the frame redraws now
+		}
+	}
+}
+
 func (lp *livePipelines) narrateEvent() func(string) {
 	return func(key string) {
 		if lp.deck == nil {
 			return
 		}
-		lp.reader.Read(key)
+		lp.reader.Toggle(key)
 	}
 }

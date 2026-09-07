@@ -389,3 +389,148 @@ func TestCountyUGCFromResolvedPoint(t *testing.T) {
 		t.Fatalf("forecast zone = %q", got)
 	}
 }
+
+// lonePine is the location that produced the defect, at its real coordinates.
+var lonePine = snapshot.LocationRef{Label: "Lone Pine, CA", Lat: 36.6061, Lon: -118.0629}
+
+// AN OBSERVATION FROM BEYOND THE BOUND IS NOT THIS LOCATION'S WEATHER.
+//
+// UAT 2026-09-05, and the numbers here are the real ones. Lone Pine showed
+// 86 °F at half past six in the morning. Nothing was stale and nothing was
+// cached — the reading was forty-two minutes old and perfectly real. It came
+// from FURNACE CREEK, DEATH VALLEY: 110 km east, below sea level, and one of
+// the hottest places on earth. The two nearer stations published no
+// temperature, and the fallback chain had no bound on distance.
+//
+// The station list is the one NWS actually returns for Lone Pine's grid point,
+// and it is why this location is the worst case imaginable: its fallback list
+// reaches into Death Valley.
+//
+// The bound is 20 miles (HUM LEAD): past that the terrain, elevation and
+// exposure are commonly different enough that a real measurement describes a
+// real place that is not yours.
+func TestAFarObservationIsNotThisLocationsWeather(t *testing.T) {
+	var tried []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		switch {
+		case strings.HasPrefix(p, "/points/"):
+			_, _ = w.Write(fixture(t, "points.json"))
+		case strings.HasSuffix(p, "/stations"):
+			_, _ = w.Write(fixture(t, "stations_lonepine.json"))
+		case strings.Contains(p, "/stations/KO26/observations/latest"):
+			tried = append(tried, "KO26")
+			w.WriteHeader(404) // the local station published nothing at all
+		case strings.Contains(p, "/stations/KBIH/observations/latest"):
+			tried = append(tried, "KBIH")
+			_, _ = w.Write(fixture(t, "obs_sparse.json")) // no temperature
+		case strings.Contains(p, "/stations/DEVC1/observations/latest"):
+			tried = append(tried, "DEVC1")
+			_, _ = w.Write(fixture(t, "obs_deathvalley.json")) // 29.78 °C = 85.6 °F
+		default:
+			t.Errorf("unexpected path %s", p)
+			w.WriteHeader(404)
+		}
+	}))
+	defer srv.Close()
+
+	p := newProvider(t, srv.URL)
+	frag, err := p.Fetch(context.Background(), snapshot.FetchReq{Kind: snapshot.KindObs, Locations: []snapshot.LocationRef{lonePine}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := frag.PerLocation[snapshot.Key(lonePine)].Current
+
+	// DEATH VALLEY'S TEMPERATURE MUST NOT BE LONE PINE'S. Whether an
+	// observation comes back at all is secondary — an absent temperature is
+	// rehydrated from the location's OWN hourly forecast, which read 59-60 °F
+	// while this said 86.
+	if c != nil && c.Temp != nil {
+		t.Errorf("a station %0.f km away supplied the temperature (%.1f °C); the bound is %.0f km",
+			*c.Source.DistanceKm, *c.Temp, ObsMaxKm)
+	}
+	if c != nil && c.Source.ModelOrStation == "DEVC1" {
+		t.Errorf("Death Valley was accepted as Lone Pine's station")
+	}
+	// AND IT IS AN OBSERVATION, NOT AN ERROR. "No station near enough" is a
+	// stable fact; "the fetch failed" is transient and stays LOADING while the
+	// retry owns it. Returning the second for the first left Lone Pine's
+	// temperature loading forever — the regression this half exists to prevent.
+	if frag.Err != nil {
+		t.Errorf("no local station is a fact, not a failure: %v", frag.Err)
+	}
+	if c == nil {
+		t.Fatal("an empty observation must still come back, or the forecast has nothing to fill")
+	}
+	if c.Source.Provider == "" {
+		t.Error("the provenance must be set, or rehydrateFromForecast returns early and the row stays blank")
+	}
+	if c.Source.ModelOrStation != "" {
+		t.Errorf("no local station is named, got %q", c.Source.ModelOrStation)
+	}
+
+	// THE NEARER STATIONS WERE STILL TRIED. The bound must reject the distant
+	// one, not stop the walk — a chain that gave up early would lose the local
+	// station on the day it comes back.
+	if len(tried) != 3 {
+		t.Errorf("every station is tried, nearest first: %v", tried)
+	}
+}
+
+// The bound rejects only what is FAR. A station with no geometry is unknown,
+// not distant, and unknown must not be treated as evidence.
+func TestTheDistanceBoundJudgesOnlyWhatItKnows(t *testing.T) {
+	near, edge, over := 1.0, ObsMaxKm, ObsMaxKm+0.01
+	for _, tc := range []struct {
+		name string
+		km   *float64
+		want bool
+	}{
+		{"a local station", &near, false},
+		{"exactly at the bound", &edge, false}, // exceeded, not reached
+		{"just past it", &over, true},
+		{"no geometry at all", nil, false},
+	} {
+		if got := far(tc.km); got != tc.want {
+			t.Errorf("%s: far=%v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// A FETCH FAILURE IS NOT "NO LOCAL STATION".
+//
+// The two states are opposite and the fix turns on telling them apart. A
+// location whose stations are all too far has a STABLE answer — the forecast
+// fills it and the row settles. A location whose stations could not be REACHED
+// has a transient one: the row must stay loading and the retry must own it,
+// because the real observation is coming.
+//
+// Settling for the forecast on a network blip would be the same defect as the
+// original in a quieter costume: a plausible number standing in for the true
+// one, with nothing to say it had.
+func TestAFetchFailureStaysLoadingRatherThanSettling(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		switch {
+		case strings.HasPrefix(p, "/points/"):
+			_, _ = w.Write(fixture(t, "points.json"))
+		case strings.HasSuffix(p, "/stations"):
+			_, _ = w.Write(fixture(t, "stations_lonepine.json"))
+		default:
+			w.WriteHeader(503) // every station unreachable
+		}
+	}))
+	defer srv.Close()
+
+	p := newProvider(t, srv.URL)
+	frag, err := p.Fetch(context.Background(), snapshot.FetchReq{Kind: snapshot.KindObs, Locations: []snapshot.LocationRef{lonePine}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := frag.PerLocation[snapshot.Key(lonePine)].Current; c != nil {
+		t.Errorf("an unreachable station must not settle into an empty observation: %+v", c)
+	}
+	if frag.Err == nil {
+		t.Error("the failure must travel, so the row stays loading and the retry owns it")
+	}
+}

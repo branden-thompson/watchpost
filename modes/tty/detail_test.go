@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -24,7 +25,7 @@ func TestEnterOpensFloatingForecastDetails(t *testing.T) {
 			t.Fatalf("details modal missing %q:\n%s", want, v)
 		}
 	}
-	if !strings.Contains(v, "W A T C H P O S T") {
+	if !strings.Contains(v, "WATCHPOST Observer") {
 		t.Fatal("dashboard must stay visible beneath the details window")
 	}
 	m3, _ := m2.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -81,8 +82,8 @@ func TestDetailHiLoColumnAlignsAndPads(t *testing.T) {
 	m := dash(t)
 	s2 := snap()
 	s2.Locations[0].Daily = []snapshot.Daily{
-		{Date: "2026-08-24", TempMax: f64(36.7), TempMin: f64(36.7), Condition: "clear"}, // 98ºF / 98ºF
-		{Date: "2026-08-25", TempMax: f64(42.2), TempMin: f64(37.8), Condition: "rain"},  // 108ºF / 100ºF
+		{Date: "2026-08-24", TempMax: f64(36.7), TempMin: f64(36.7), Condition: "clear"}, // 98°F / 98°F
+		{Date: "2026-08-25", TempMax: f64(42.2), TempMin: f64(37.8), Condition: "rain"},  // 108°F / 100°F
 	}
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
@@ -96,7 +97,7 @@ func TestDetailHiLoColumnAlignsAndPads(t *testing.T) {
 			fc = l
 		}
 	}
-	if !strings.Contains(today, "HIGH  98ºF /  98ºF LOW") || !strings.Contains(fc, "HIGH 108ºF / 100ºF LOW") {
+	if !strings.Contains(today, "HIGH  98°F /  98°F LOW") || !strings.Contains(fc, "HIGH 108°F / 100°F LOW") {
 		t.Fatalf("fixed 5-cell temp slots:\n%q\n%q", today, fc)
 	}
 	if strings.Index(today, "HIGH") != strings.Index(fc, "HIGH") {
@@ -127,14 +128,14 @@ func TestDetailGridAlignsCurrentlyWithForecast(t *testing.T) {
 		}
 	}
 	content := func(l string) string { return strings.SplitN(l, "│ ", 2)[1] }
-	col := func(l, tok string) int { // display column, not byte offset (º is 2 bytes)
+	col := func(l, tok string) int { // display column, not byte offset (° is 2 bytes)
 		b := strings.Index(l, tok)
 		if b < 0 {
 			return -1
 		}
 		return len([]rune(l[:b]))
 	}
-	if col(content(cur), "73ºF") != colVal || col(content(fc), "RAIN") != colVal {
+	if col(content(cur), "73°F") != colVal || col(content(fc), "RAIN") != colVal {
 		t.Fatalf("temps must share the FORECAST condition column:\n%q\n%q", cur, fc)
 	}
 	if col(content(feels), "Humidity") != forecastHiLoCol || col(content(fc), "HIGH") != forecastHiLoCol {
@@ -228,3 +229,85 @@ func TestDetailsOnRecentRowHydratesHourly(t *testing.T) {
 		t.Fatalf("priority rows have their own hourly tier, got %v", got)
 	}
 }
+
+// THE CARD SAYS WHEN THE STATION IS NOT YOURS.
+//
+// UAT 2026-09-05: Lone Pine read 86 °F at half past six from a station in Death
+// Valley. Beyond twenty miles the provider refuses the observation outright;
+// between ten and twenty it is used and the listener is told, because a reading
+// from the far side of a ridge is a different microclimate.
+//
+// The three cases are the rule: local says nothing, far-but-usable warns,
+// unknown says nothing — an absent distance is not evidence of distance.
+func TestTheCardWarnsWhenTheStationIsNotLocal(t *testing.T) {
+	const note = "not your local station"
+	near, far, edge := 2.0, render.StationFarKM+1, render.StationFarKM
+	for _, tc := range []struct {
+		name string
+		km   *float64
+		want bool
+	}{
+		{"a local station", &near, false},
+		{"exactly at the line", &edge, false}, // exceeded, not reached
+		{"past the line", &far, true},
+		{"no distance known", nil, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := dash(t).(Dashboard)
+			d.width, d.height = 133, 44
+			loc := &snapshot.Location{Label: "Lone Pine, CA"}
+			loc.Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KO26", DistanceKm: tc.km}
+			got := stripANSITest(strings.Join(d.currentlyRows(d.opts(), loc), "\n"))
+			if has := strings.Contains(got, note); has != tc.want {
+				t.Errorf("note present=%v, want %v:\n%s", has, tc.want, got)
+			}
+			// The station itself is always named: provenance is not the warning.
+			if !strings.Contains(got, "KO26") {
+				t.Errorf("the station is always named:\n%s", got)
+			}
+		})
+	}
+}
+
+// THE CARD SAYS WHEN THE NUMBER IS MODELLED RATHER THAN MEASURED.
+//
+// A location with no observing station within twenty miles is filled from the
+// NWS hourly grid for its own point (UAT 2026-09-05). The note does two jobs:
+// it sets the expectation that this is modelled, and it explains why feels-like,
+// station and distance are absent rather than broken.
+//
+// The two notes are MUTUALLY EXCLUSIVE and that is the rule: a card either has
+// a station (and may doubt its distance) or has none (and says where the number
+// came from). Both at once would be contradictory — "not your local station"
+// about a station that does not exist.
+func TestTheCardSaysWhenTheNumberIsFromTheGridForecast(t *testing.T) {
+	const gridNote, farNote = "NWS hourly grid forecast", "not your local station"
+	near, far := 2.0, render.StationFarKM+1
+	for _, tc := range []struct {
+		name              string
+		station           string
+		km                *float64
+		wantGrid, wantFar bool
+	}{
+		{"no station at all", "", nil, true, false},
+		{"a local station", "KO26", &near, false, false},
+		{"a far station", "DEVC1", &far, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := dash(t).(Dashboard)
+			d.width, d.height = 133, 44
+			loc := &snapshot.Location{Label: "Lone Pine, CA"}
+			loc.Harmonized.Temp = f64ptr(15)
+			loc.Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: tc.station, DistanceKm: tc.km}
+			got := stripANSITest(strings.Join(d.currentlyRows(d.opts(), loc), "\n"))
+			if has := strings.Contains(got, gridNote); has != tc.wantGrid {
+				t.Errorf("grid note present=%v, want %v:\n%s", has, tc.wantGrid, got)
+			}
+			if has := strings.Contains(got, farNote); has != tc.wantFar {
+				t.Errorf("far note present=%v, want %v:\n%s", has, tc.wantFar, got)
+			}
+		})
+	}
+}
+
+func f64ptr(v float64) *float64 { return &v }

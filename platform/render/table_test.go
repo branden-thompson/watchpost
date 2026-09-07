@@ -81,15 +81,15 @@ func TestLocationTableAnatomy(t *testing.T) {
 	}
 	row := []rune(stripANSI(lines[2]))
 	// Absolute offsets of the label-less minimal-full layout; temps
-	// right-justify in 5-cell fields (mock rows " 72ºF"/" 00ºF").
+	// right-justify in 5-cell fields (mock rows " 72°F"/" 00°F").
 	for _, c := range []struct {
 		col  int
 		want string
 	}{
 		{0, "›"}, {3, "▶"}, {11, "⚠"},
 		{13, "001."}, {18, "Oceanside, CA"}, {38, "92057"}, // ZIP centred in its 7-cell column (UAT 2026-08-28)
-		{46, "CLEAR"}, {60, " 73ºF↗"}, {70, " 75ºF"}, {77, " 63ºF"},
-		{86, "RAIN"}, {100, " 77ºF"}, {108, " 64ºF"},
+		{46, "CLEAR"}, {60, " 73°F↗"}, {70, " 75°F"}, {77, " 63°F"},
+		{86, "RAIN"}, {100, " 77°F"}, {108, " 64°F"},
 	} {
 		got := string(row[c.col:min(len(row), c.col+len([]rune(c.want)))])
 		if got != c.want {
@@ -127,11 +127,11 @@ func TestResponsiveColumnDropsInOrder(t *testing.T) {
 		t.Fatalf("TODAY HI/LOW must survive the first drop:\n%s", noTmrw)
 	}
 	minimal := at(80)
-	if strings.Contains(minimal, "LOW") || strings.Contains(minimal, " 75ºF") {
+	if strings.Contains(minimal, "LOW") || strings.Contains(minimal, " 75°F") {
 		t.Fatalf("<84 cols must drop TODAY HI/LOW:\n%s", minimal)
 	}
 	for _, out := range []string{full, noTmrw, minimal} {
-		if !strings.Contains(out, "Oceanside, CA") || !strings.Contains(out, "92057") || !strings.Contains(out, " 73ºF↗") {
+		if !strings.Contains(out, "Oceanside, CA") || !strings.Contains(out, "92057") || !strings.Contains(out, " 73°F↗") {
 			t.Fatalf("core columns (NAME/ZIP/NOW) must survive every breakpoint:\n%s", out)
 		}
 	}
@@ -162,7 +162,7 @@ func TestExtendedColumnsBeyond125(t *testing.T) {
 	if h, c := runeIdx(lines[1], "08/26"), runeIdx(lines[2], "H "); h != c+5 {
 		t.Fatalf("date header must align with its cell: hdr %d cell %d", h, c)
 	}
-	if !strings.Contains(lines[2], "H  86ºF/68ºF  L") {
+	if !strings.Contains(lines[2], "H  86°F/68°F  L") {
 		t.Fatalf("fixed-slot day cell missing:\n%s", lines[2])
 	}
 	// Narrower ultra-wide terminals get fewer day columns, never a torn cell.
@@ -181,11 +181,14 @@ func TestSessionFourStyling(t *testing.T) {
 
 	// 4.8: provider health green when OK, red otherwise.
 	o := Opts{ThinBands: true, Width: 125, Units: UnitF}
-	if g := o.HealthGlyph("NWS", snapshot.ProviderOK); !strings.Contains(g, "38;5;77") {
-		t.Fatalf("healthy provider must be green: %q", g)
+	// Asserted through the TOKEN, not a palette value: the theme owns the
+	// colour, and the AA lift may move it so it reads on every ground it is
+	// painted on. A test pinning the literal fails on a legitimate lift.
+	if g := o.HealthGlyph("NWS", snapshot.ProviderOK); !strings.Contains(g, Tok(ProviderOK)) {
+		t.Fatalf("healthy provider must carry the provider.ok tone: %q", g)
 	}
-	if g := o.HealthGlyph("NWS", snapshot.ProviderDegraded); !strings.Contains(g, "38;5;196") {
-		t.Fatalf("degraded provider must be red: %q", g)
+	if g := o.HealthGlyph("NWS", snapshot.ProviderDegraded); !strings.Contains(g, Tok(ProviderDown)) {
+		t.Fatalf("degraded provider must carry the provider.down tone: %q", g)
 	}
 	// 4.7: focused row's name bold yellow; 4.5: n/a temps in base grey.
 	r := testRow()
@@ -371,10 +374,10 @@ func TestStationColumnsUAT60(t *testing.T) {
 		t.Fatalf("station cell = %q\n%s", got, full[2])
 	}
 	if got := string(row[45:51]); got != "  3 mi" {
-		t.Fatalf("distance renders in the display units (miles under ºF): %q", got)
+		t.Fatalf("distance renders in the display units (miles under °F): %q", got)
 	}
 	if got := string([]rune(at(131, UnitC)[2])[45:51]); got != "  6 km" {
-		t.Fatalf("distance under ºC: %q", got)
+		t.Fatalf("distance under °C: %q", got)
 	}
 	band := full[0]
 	if i, j := runeIdx(band, "L O C A T I O N"), runeIdx(band, "T O D A Y"); i < 0 || j < 62-2 {
@@ -398,7 +401,7 @@ func TestStationColumnsUAT60(t *testing.T) {
 	if strings.Contains(narrow[1], "ZIP") || strings.Contains(narrow[2], "92057") {
 		t.Fatalf("52 cols must drop ZIP before breaking NAME:\n%s", strings.Join(narrow, "\n"))
 	}
-	if !strings.Contains(narrow[2], "Oceansi") || !strings.Contains(narrow[2], " 73ºF") {
+	if !strings.Contains(narrow[2], "Oceansi") || !strings.Contains(narrow[2], " 73°F") {
 		t.Fatalf("NAME and NOW survive every width:\n%s", strings.Join(narrow, "\n"))
 	}
 	if n55 := at(55, UnitF); !strings.Contains(n55[2], "Oceanside") {
@@ -536,5 +539,45 @@ func TestColumnHeaderIsAPaintedRowOfTouchingSegments(t *testing.T) {
 	}
 	if got := TableHeaderTone(TextBase); got != Tok(TextBase) {
 		t.Fatalf("a non-truecolor band is its own tone: %q", got)
+	}
+}
+
+// THE DIST CELL WEARS THE WARNING COLOUR ONCE THE STATION IS NOT LOCAL.
+//
+// A bare number reads as provenance trivia. A red one reads as "this came from
+// somewhere else", which is what a listener needs when the temperature looks
+// wrong (HUM LEAD, UAT 2026-09-05).
+func TestTheDistCellMarksAFarStation(t *testing.T) {
+	// COLOUR MUST BE ARMED or Tint is the identity and every assertion below
+	// passes without measuring anything (D-2). A test binary has no terminal,
+	// so emission is off unless it is turned on deliberately.
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(rendering.ResetColorEnabledForTest)
+	t.Cleanup(func() { SetTheme(DefaultThemeName) })
+	if !SetTheme(DefaultThemeName) {
+		t.Fatal("the default theme must load, or this test is vacuous")
+	}
+	if Tok(NameWarning) == "" || !ColorOn() {
+		t.Fatal("no colour is being emitted: nothing here would be measured")
+	}
+	o := Opts{Units: UnitF, Width: 200}
+	near, far, edge := 2.0, StationFarKM+1, StationFarKM
+	plainNear := StripSGRForTest(o.StationDistance(&near))
+	if plainNear == "" {
+		t.Fatal("a local station still shows its distance")
+	}
+	if o.StationDistance(&near) != plainNear {
+		t.Error("a local station's distance is not tinted")
+	}
+	if o.StationDistance(&edge) != StripSGRForTest(o.StationDistance(&edge)) {
+		t.Error("exactly at the line is still local: the line is exceeded, not reached")
+	}
+	if got := o.StationDistance(&far); got == StripSGRForTest(got) {
+		t.Errorf("a far station's distance must be tinted, got %q", got)
+	}
+	// An unknown distance is not a far one, and must not be painted as a
+	// warning about something nobody knows.
+	if got := o.StationDistance(nil); got != StripSGRForTest(got) {
+		t.Errorf("an unknown distance is not tinted, got %q", got)
 	}
 }

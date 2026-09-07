@@ -7,10 +7,12 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/player"
 	"github.com/branden-thompson/watchpost/domains/radio/spectrum"
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
@@ -18,6 +20,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -35,18 +38,35 @@ type radioDeck struct {
 	composer synth.Composer // the broadcast\'s spoken text from the script library (0.13.0); zero value = the built-in scripts
 	products *synth.Products
 	units    render.Units
-	voiceDir string             // Piper install dir (Linux/Windows)
-	analyzer *spectrum.Analyzer // visualizer bands from the engine's tap (UAT 92)
-	vizBuf   []float64          // one analysis window, reused per frame
+	// clockPref is the listener's clock, LIVE (Settings changes it while a cycle
+	// is composing). It reaches the broadcast because MILITARY changes how a
+	// callsign is read, not only how a time is written.
+	clockPref *atomic.Int32
+	voiceDir  string             // Piper install dir (Linux/Windows)
+	analyzer  *spectrum.Analyzer // visualizer bands from the engine's tap (UAT 92)
+	vizBuf    []float64          // one analysis window, reused per frame
 
 	persistMode func(tty.RadioMode) error                      // saves the [m] pick (UAT 97); nil in tests
 	fire        func(snapshot.LocationRef) synth.FireReport    // the location's fire report for the broadcast (UAT 114); nil = skipped
 	seismic     func(snapshot.LocationRef) synth.SeismicReport // the location's seismic report for the broadcast (P4); nil = skipped
+	marine      func(snapshot.LocationRef) synth.MarineReport  // the location's coastal block for the maritime report (0.14.0); nil = skipped
 	warn        func(snapshot.Warning)                         // a fresh relay-directory failure becomes a radio_unavailable warning (Q1); nil in tests
 	dirDown     map[string]bool                                // relays already warned about, so an outage warns once (guarded by mu)
+	mountURLs   []string                                       // the tune list in order, so a fault can offer what has not been tried (MVS-D-76)
 	mountOwner  map[string]stream.Station                      // the current tune list: mount URL → its station, so the label follows the mount that plays (guarded by mu)
 
+	// cast is who reads what, on this host: the config, the memoised
+	// resolutions and problems, and the session's unattended-install budget.
+	// Guarded by mu; replaced wholesale so a reader sees a consistent view.
+	cast castState
+
 	installMu sync.Mutex // serializes Piper voice installs across concurrent callers (breaking audio + tune) — 0.12.0 P4
+
+	// limiter bounds how many voice renders run at once — ONE per process,
+	// here, because "how many say/piper are alive" is a property of the
+	// machine, not of a call site (FR-12). Every voice the deck hands out is
+	// wrapped by it; nothing else in app calls Say directly.
+	limiter *synth.Limiter
 
 	// tuneMu makes "check the epoch, then start the engine" one step, and
 	// Stop's "bump the epoch, then halt" another (round 2 N-3): without it a
@@ -59,14 +79,21 @@ type radioDeck struct {
 	detail  string
 	mode    string // "live" | "synth" | ""
 	ref     snapshot.LocationRef
-	gen     uint64                 // tune epoch (red-team 0.9.0 C-3): Tune and Stop bump it; a slow Tune that lost the race must not start playback
-	repeat  tty.RepeatMode         // [r] Off | One | Watchlist (UAT 83/93)
-	pref    tty.RadioMode          // [m] Synth | Nearest Relay (UAT 97) — the source the user asked for
-	queue   []snapshot.LocationRef // Watchlist mode's order (the favourites, from the dashboard)
-	dwell   *time.Timer            // Watchlist on a live relay: advance after liveDwell
-	source  *synth.Source          // the running synthesized broadcast, if any
-	voiceID string                 // chosen correspondent (UAT 84); "" = the platform default
-	voices  []string               // available correspondents, listed once in the background (UAT 85)
+	gen     uint64         // tune epoch (red-team 0.9.0 C-3): Tune and Stop bump it; a slow Tune that lost the race must not start playback
+	repeat  tty.RepeatMode // [r] Off | One | Watchlist (UAT 83/93)
+	// relayDwell is the Settings window's rotation choice; zero = unset.
+	relayDwell time.Duration
+	// relayLang is the Settings window's language preference; "" = unset.
+	relayLang string
+	pref      tty.RadioMode          // [m] Synth | Nearest Relay (UAT 97) — the source the user asked for
+	queue     []snapshot.LocationRef // Watchlist mode's order (the favourites, from the dashboard)
+	// emit hands the Director the bed's facts (T3.2b). It replaced a
+	// time.AfterFunc: the dwell is the Director's now, and this deck only
+	// reports what it alone can see.
+	emit    func(lineup.Event)
+	source  *synth.Source // the running synthesized broadcast, if any
+	voiceID string        // chosen correspondent (UAT 84); "" = the platform default
+	voices  []string      // available correspondents, listed once in the background (UAT 85)
 }
 
 // newRadioDeck wires the player. A resolver failure (a broken vendored
@@ -76,11 +103,13 @@ func newRadioDeck(p *tea.Program, client *httpx.Client, provider *nws.Provider, 
 	if err != nil {
 		return nil
 	}
-	d := &radioDeck{p: p, nws: provider, resolver: r, units: units, products: synth.NewProducts(client, ""), voiceDir: voiceDir()}
+	d := &radioDeck{p: p, nws: provider, resolver: r, units: units, products: synth.NewProducts(client, ""), voiceDir: voiceDir(), limiter: synth.NewLimiter(renderSlots(), synth.ReservedSlots)}
 	d.engine, err = player.New(&player.OtoOutput{}, UserAgent, d.onStatus)
 	if err != nil {
 		return nil
 	}
+	d.engine.OnSilence(d.onSilence)
+	d.engine.Trace(radioDebugLog)
 	d.analyzer, err = spectrum.New(player.OutputRate)
 	if err != nil {
 		return nil
@@ -100,15 +129,24 @@ func (d *radioDeck) Spectrum() []float64 {
 	return d.analyzer.Bands(d.vizBuf[:n])
 }
 
-// Tune implements tty.Radio: the USER picking a location. It lifts any alert
-// duck first — a deliberate tune means "play this station now", so it is not
-// suppressed under a breaking takeover (0.12.0 follow-up). Automatic transitions
-// (relay→synth fallback, Watchlist advance) go through tune/startSynth instead
-// and stay ducked so the alert narration is still heard over them.
-func (d *radioDeck) Tune(ref snapshot.LocationRef) {
-	d.engine.Restore()
-	d.tune(ref)
-}
+// Tune implements tty.Radio: the USER picking a location.
+//
+// IT DOES NOT LIFT THE ALERT DUCK, and that is a reversal of the 0.12.0
+// follow-up, which held that a deliberate tune means "play this station now".
+// ALERTS ALWAYS HAVE PRIORITY: everything else queues
+// behind them or plays under them. A listener who tunes while a warning is
+// being read gets the station they asked for, ducked, and hears it come up when
+// the alert finishes — which is the same thing the broadcast does.
+//
+// The duck now has exactly ONE owner, the director, which ducks when a sequence
+// takes the air and restores when nothing is waiting or suspended. Nothing else
+// touches it but a user STOP, where there is no broadcast left to duck.
+//
+// That single owner is the point. What broke was not a wrong decision, it was a
+// distinction carried by a capital letter: this method lifted the duck and the
+// unexported one did not, and the Watchlist advance called the wrong one. A rule
+// that lives in the case of an identifier is a rule waiting to be missed.
+func (d *radioDeck) Tune(ref snapshot.LocationRef) { d.tune(ref) }
 
 // tune resolves, then plays the first relayed station — or the synthesized
 // broadcast when nothing relays this location (B4 step 2: 89 % of
@@ -120,7 +158,6 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	d.ref = ref
 	d.gen++
 	gen, pref := d.gen, d.pref
-	d.stopDwell()
 	d.mu.Unlock()
 	same := stream.SAMEFromUGC(d.nws.CountyUGC(ctx, ref))
 	stations, statuses := d.resolver.ResolveWithStatus(ctx, ref.Lat, ref.Lon, same)
@@ -131,7 +168,7 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	// relayed one; none in reach still means Synth, with the reason.
 	st, live := stream.Station{}, false
 	if pref == tty.ModeRelay {
-		st, live = chooseNearest(stations)
+		st, live = chooseNearest(stations, d.watchlistLang())
 	}
 	if !live {
 		d.startSynth(ref, d.synthReason(same, ref, stations), gen)
@@ -142,14 +179,14 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	// and with weatherUSA offered again a transmitter can be "relayed" by a
 	// dead mount alone — the engine must fall through to the next live
 	// station, as it did when that transmitter was simply not offered.
-	urls, owners := tuneList(stations)
+	urls, owners := tuneList(stations, st)
 	d.tuneMu.Lock()
 	defer d.tuneMu.Unlock()
 	if !d.epoch(gen) {
 		return // stopped or re-tuned while resolving: this tune is stale
 	}
 	d.mu.Lock()
-	d.mountOwner = owners
+	d.mountOwner, d.mountURLs = owners, urls
 	d.mu.Unlock()
 	d.setMode("live", d.label(st), st.Mounts[0].Relay)
 	d.engine.Start(urls, st.Callsign+" "+st.Site) // the dwell arms when the relay reports Playing (onStatus)
@@ -158,16 +195,68 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 // tuneList flattens the candidate stations' mounts in order and remembers
 // which station each mount belongs to, so the label can follow the mount
 // that actually plays.
-func tuneList(stations []stream.Station) ([]string, map[string]stream.Station) {
+func tuneList(stations []stream.Station, first stream.Station) ([]string, map[string]stream.Station) {
 	var urls []string
 	owners := map[string]stream.Station{}
-	for _, st := range stations {
-		for _, m := range st.Mounts {
+	add := func(st stream.Station) {
+		for _, m := range st.Mounts { // bounded by the station's mounts (P10-02)
+			if _, seen := owners[m.URL]; seen {
+				continue
+			}
 			urls = append(urls, m.URL)
 			owners[m.URL] = st
 		}
 	}
+	// THE CHOSEN STATION LEADS, and it is not always the resolver's first.
+	//
+	// The engine starts at urls[0] while the deck is labelled with the station
+	// chooseNearest picked. Those were the same station for as long as
+	// chooseNearest meant "the first one with a mount". The language preference
+	// broke that: it may pick a co-located station further down the order, and
+	// the deck would then name the transmitter the listener asked for while the
+	// audio came from the one beside it — the label and the sound disagreeing,
+	// silently, which is the class of defect this release exists to remove.
+	add(first)
+	for _, st := range stations { // bounded by the candidate list (P10-02)
+		add(st)
+	}
 	return urls, owners
+}
+
+// onSilence raises the fault window: the mount being played is up and
+// broadcasting nothing (MVS-D-76).
+//
+// The candidates it offers are the OTHER stations on this tune list — the ones
+// the engine has not tried — because offering the listener the mount that just
+// went silent is offering them the fault again. They arrive already in the
+// engine's own fall-through order, so "Recommended" is what it would have
+// reached next anyway.
+func (d *radioDeck) onSilence(mount, _ string) {
+	radioDebugLog("relay:silent:" + mount)
+	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(mount)})
+}
+
+// silentCandidates is what to offer instead of the mount that went quiet: every
+// OTHER station on the tune list, once each, in the engine's own order.
+func (d *radioDeck) silentCandidates(mount string) []tty.RelayCandidate {
+	d.mu.Lock()
+	owners, urls := d.mountOwner, append([]string(nil), d.mountURLs...)
+	d.mu.Unlock()
+	dead, ok := owners[mount]
+	if !ok {
+		return nil // a mount from a tune that has already been replaced
+	}
+	seen := map[string]bool{dead.Callsign: true}
+	var out []tty.RelayCandidate
+	for _, url := range urls { // bounded by the tune list (P10-02)
+		st, known := owners[url]
+		if !known || seen[st.Callsign] {
+			continue
+		}
+		seen[st.Callsign] = true
+		out = append(out, tty.RelayCandidate{Label: d.label(st), Key: st.Callsign})
+	}
+	return out
 }
 
 // followMount re-labels the deck when the engine has moved on to another
@@ -240,6 +329,80 @@ func (d *radioDeck) SetMode(mode tty.RadioMode) {
 	}
 }
 
+// liveDwell is how long Watchlist stays on a live relay before moving on (UAT
+// 93): a relay never ends, so one NWR cycle (~5 min) is the "broadcast" we let
+// it finish. The deck no longer counts it — it only says what the number is,
+// and the Director keeps the deadline.
+const liveDwell = 5 * time.Minute
+
+// WATCHPOST_WATCHLIST_DWELL overrides it, for testing the rotation without
+// waiting five minutes a station (HUM LEAD, UAT 2026-09-04).
+//
+// AN ENVIRONMENT VARIABLE IS THE HALF THAT IS NOT A UI DECISION. Where the row
+// belongs in Settings, what it is called and what values it offers are the HUM
+// LEAD's to specify; making the duration a value rather than a constant is not,
+// and it is what makes the rotation testable in thirty seconds. The Settings row
+// reads this same function when it arrives.
+//
+// It takes a Go duration ("30s", "2m"). Anything unparseable or non-positive is
+// the default rather than an error: a mistyped variable should not silently stop
+// the rotation, which is exactly the failure this exists to help find.
+// The Settings window's choice lives ON THE DECK (d.relayDwell), not in a
+// package variable. A package-level override is the same setting reachable from
+// every test in the package at once: the first version of this was exactly that,
+// and its own pin had to save and restore the global to avoid leaking into the
+// next test. State that needs a t.Cleanup to be safe is state in the wrong
+// place. Zero means nothing has been set this run and the environment or the
+// default answers instead.
+func (d *radioDeck) watchlistDwell() time.Duration {
+	d.mu.Lock()
+	set := d.relayDwell
+	d.mu.Unlock()
+	if set > 0 {
+		return set // the listener set it in Settings this run
+	}
+	return envWatchlistDwell()
+}
+
+// watchlistLang is the language preference the tie-break uses. English until a
+// listener says otherwise: the app's own voice is English, so it is the answer
+// that surprises fewest people — not a judgement about which is better.
+func (d *radioDeck) watchlistLang() string {
+	d.mu.Lock()
+	set := d.relayLang
+	d.mu.Unlock()
+	if set != "" {
+		return set
+	}
+	return stream.LangEnglish
+}
+
+// envWatchlistDwell is the half that has no deck: the variable and the default.
+func envWatchlistDwell() time.Duration {
+	v := os.Getenv("WATCHPOST_WATCHLIST_DWELL")
+	if v == "" {
+		return liveDwell
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		radioDebugLog("watchlist-dwell:ignored:" + v)
+		return liveDwell
+	}
+	return d
+}
+
+// tell hands the Director a fact about the bed. Nil until the schedule is wired,
+// and on a station with no audio it stays nil — silent rather than a panic on
+// the one path that has no deck at all.
+func (d *radioDeck) tell(ev lineup.Event) {
+	d.mu.Lock()
+	emit := d.emit
+	d.mu.Unlock()
+	if emit != nil {
+		emit(ev)
+	}
+}
+
 // synthReason explains the Synth default: the unrelayed covering
 // transmitter, plus the nearest live broadcast when there is one.
 func (d *radioDeck) synthReason(same string, ref snapshot.LocationRef, stations []stream.Station) string {
@@ -281,6 +444,15 @@ func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64)
 		d.engine.Fail(err.Error())
 		return
 	}
+	// The cast: who reads each role, and how correspondents introduce
+	// themselves. Both are installed BEFORE the source starts, so the very
+	// first segment already resolves through the cast rather than through the
+	// root voice the Source was constructed with.
+	src.SetResolver(func(role cast.Role) (synth.Voice, error) {
+		v, _, err := d.resolveVoice(role)
+		return v, err
+	})
+	src.SetHandoffLine(d.composer.HandoffLine)
 	d.mu.Lock()
 	src.Loop(d.repeat == tty.RepeatOne) // Watchlist ends the cycle too — then advances (UAT 93)
 	d.source = src
@@ -320,7 +492,12 @@ func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voic
 	if d.seismic != nil {
 		seismic = d.seismic(ref)
 	}
-	return d.composer.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), fire, seismic), nil
+	var maritime synth.MarineReport
+	if d.marine != nil {
+		maritime = d.marine(ref)
+		maritime.Forecast = synth.CoastalForecast(products, zone)
+	}
+	return d.composer.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), synth.Reports{Fire: fire, Seismic: seismic, Maritime: maritime}, d.clock()), nil
 }
 
 // stationFor names the NWR transmitter the lead points listeners to (UAT
@@ -351,32 +528,64 @@ func (d *radioDeck) Stop() {
 	d.mu.Lock()
 	d.gen++     // any Tune still resolving is stale now (C-3)
 	d.mode = "" // and no fallback or Watchlist advance follows a user's stop
-	d.stopDwell()
 	d.mu.Unlock()
-	d.engine.Restore() // a user stop lifts any alert duck (0.12.0 follow-up)
+	// NOTHING FOLLOWS A STOP, and the Director has to be told: it holds the
+	// dwell now, and a schedule that never heard about the stop would move the
+	// bed on five minutes later and start the station up again by itself.
+	d.tell(lineup.Powered{To: lineup.Stopped})
+	// NOT Restore(): whether an alert is on the air is the takeover's to say,
+	// and it pairs its own. Halt silences the broadcast either way, and a
+	// suppression cleared here would let whatever the listener starts next come
+	// up over an alert still being read.
 	d.engine.Halt()
 }
 
 // SetVolume implements tty.Radio.
 func (d *radioDeck) SetVolume(pct int) { d.engine.Volume(pct) }
 
-// The radioDeck is the narrator's voice (0.13.0 narrate.go): duck, tone,
-// render, play, pause, resume, discard, restore — the narrator decides who
+// The radioDeck is the director's voice (0.13.0; app/director.go): duck, tone,
+// render, play, pause, resume, discard, restore — the director decides who
 // speaks and when.
 
-// duck dips the radio under a narration.
-func (d *radioDeck) duck() { d.engine.Duck() }
+// duck puts an alert on the air over the broadcast.
+//
+// WHICH WAY the broadcast gives way — a relay dips, a rendered cycle holds — is
+// the engine's, because only the engine knows what is playing at each moment and
+// the source can change while the alert is still reading. Asking the deck's mode
+// here fixed an answer the audio could outlive.
+func (d *radioDeck) duck() { d.engine.Suppress() }
 
 // tone sounds the attention tone once, returning its length so the caller
 // waits it out before the first line.
-func (d *radioDeck) tone() time.Duration {
-	v, err := d.voice()
-	if err != nil {
-		return 0
+//
+// It renders FROM CONSTANTS at synth.ToneRate and RESOLVES NO VOICE (FR-9).
+// That is the point of the whole tone path: an alert's sound must reach the
+// listener while the correspondent who will read it is still being resolved, or
+// still downloading. Before 0.14.0 this went through d.voice(), which on a
+// fresh Linux host could block on a ~63 MB install — the alert was silent for
+// as long as the download took.
+//
+// The class parameter arrives with the Station Director in Task 2.6; until then
+// every alert sounds the classic tone, exactly as 0.13.0 did.
+// clock is the listener's clock, the 12-hour default when nothing set one (the
+// older tests, which build a deck by hand).
+func (d *radioDeck) clock() render.Clock {
+	if d.clockPref == nil {
+		return render.Clock12
 	}
-	tone := synth.AlertTone(v.Rate())
-	_ = d.engine.PreviewAside(v.Rate(), bytes.NewReader(tone)) // the attention tone never drives the bars
-	return pcmDuration(tone, v.Rate())
+	return render.Clock(d.clockPref.Load())
+}
+
+func (d *radioDeck) tone(class cast.Class) time.Duration {
+	if cast.Muted(class, d.tones()) {
+		return 0 // the class is muted: no tone. The WORDS always read (MVS-D-26).
+	}
+	if radioDebugOn() {
+		d.debugLog("tone:" + class.Key()) // the live M4 instrument (perf-protocol.md §1 item 2)
+	}
+	tone := synth.AlertTone(synth.PresetByName(cast.ToneName(class)), synth.ToneRate)
+	_ = d.engine.PreviewAside(synth.ToneRate, bytes.NewReader(tone)) // the attention tone never drives the bars
+	return pcmDuration(tone, synth.ToneRate)
 }
 
 // pause holds the line in flight (a read a takeover suspends); resume lets
@@ -384,26 +593,31 @@ func (d *radioDeck) tone() time.Duration {
 func (d *radioDeck) pause()  { d.engine.PausePreview() }
 func (d *radioDeck) resume() { d.engine.ResumePreview() }
 
+func (d *radioDeck) stop() { d.engine.StopPreview() }
+
 // discard drops a held line whose sequence ended while it waited.
 func (d *radioDeck) discard() { d.engine.DropHeld() }
 
 // render turns a narration line into audio (say/piper blocks ~1 s per
-// line, longer for an event read — the narrator's sequences run on their
+// line, longer for an event read — the director's sequences run on their
 // own goroutines, off the UI loop); play puts a rendered line on the air
 // over the ducked radio. Split so a line rendered while its sequence is
 // suspended never starts under a takeover.
-func (d *radioDeck) render(ctx context.Context, text string) (clip, bool) {
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute) // a whole event record renders in seconds; the bound is for a wedged engine; the sequence's own end cancels it (R5-B-07)
-	defer cancel()
-	v, err := d.voice()
+// render turns a narration line into audio IN THE ROLE'S VOICE, and records on
+// the player's detail line WHY it failed when it did — a silent takeover must
+// never be unexplained.
+func (d *radioDeck) render(ctx context.Context, role cast.Role, text string) (clip, bool) {
+	v, res, err := d.resolveVoice(role)
 	if err != nil {
+		d.setDetail(fmt.Sprintf("no voice for %s: %v", role, err))
 		return clip{}, false
 	}
 	pcm, err := synth.AlertNarration(ctx, v, text)
 	if err != nil {
+		d.setDetail(fmt.Sprintf("%s could not read: %v", res.Spoken, err))
 		return clip{}, false
 	}
-	return clip{text: text, pcm: pcm, rate: v.Rate(), dur: pcmDuration(pcm, v.Rate())}, true
+	return clip{text: text, pcm: pcm, rate: v.Rate(), dur: pcmDuration(pcm, v.Rate()), role: role}, true
 }
 
 func (d *radioDeck) play(c clip) {
@@ -415,6 +629,9 @@ func (d *radioDeck) play(c clip) {
 }
 
 // restore lifts the duck — the radio returns after the sequence.
+// restore lifts BOTH — a hold and a duck — because the mode can change while a
+// sequence is on air and the one that was taken is not always the one that is
+// given back.
 func (d *radioDeck) restore() { d.engine.Restore() }
 
 // overlay shows a narration on the radio panel while it plays — the event
@@ -465,8 +682,21 @@ func (d *radioDeck) unrelayedLabel(same string, ref snapshot.LocationRef) string
 
 func (d *radioDeck) setMode(mode, station, detail string) {
 	d.mu.Lock()
+	was := d.mode
 	d.mode, d.station, d.detail = mode, station, detail
 	d.mu.Unlock()
+	// THE PROGRAMME IS RUNNING, AND THE DIRECTOR HAS TO BE TOLD. It starts
+	// Stopped — deliberately, so a station comes up silent — and Stop was the
+	// only power it ever heard about, so `advances(MainTrack)` was permanently
+	// false and the bed never moved on at all. Watchlist looked like it simply
+	// did nothing.
+	//
+	// Only the TRANSITION is reported, not every tune: the Director's own
+	// handler is not a no-op on a repeat, and a station that re-announced itself
+	// on every relay change would be telling it something that had not changed.
+	if was == "" && mode != "" {
+		d.tell(lineup.Powered{To: lineup.Running})
+	}
 }
 
 // setDetail updates the detail line and pushes it to the UI at once
@@ -489,7 +719,7 @@ func (d *radioDeck) onStatus(st player.Status) {
 	d.logStatus(st)         // WATCHPOST_DEBUG_RADIO: the transitions, for a relay that plays nothing (follow-up F-2)
 	d.followMount(st.Mount) // a later candidate's mount is playing: the label says which (Q1)
 	d.mu.Lock()
-	station, detail, mode, ref, repeat, src, gen := d.station, d.detail, d.mode, d.ref, d.repeat, d.source, d.gen
+	station, detail, mode, ref, src, gen := d.station, d.detail, d.mode, d.ref, d.source, d.gen
 	d.mu.Unlock()
 	state := st.State
 	if st.Title != "" {
@@ -502,7 +732,7 @@ func (d *radioDeck) onStatus(st player.Status) {
 	if voiceErr != "" {
 		// The stream ended because the voice could not render, not because
 		// the broadcast finished (C-4/F3): say so, and never advance on it.
-		state, detail = player.Failed, voiceErr+" — check the voice in [V], or reinstall it"
+		state, detail = player.Failed, voiceErr+" — check your correspondents in Settings, or reinstall the voice"
 	}
 	if state == player.Stopped {
 		station = "" // the row falls back to the focused location's name
@@ -513,11 +743,27 @@ func (d *radioDeck) onStatus(st player.Status) {
 	if st.State == player.Failed && mode == "live" {
 		go d.startSynth(ref, "relay unavailable — "+st.Err, gen)
 	}
-	if ended && mode != "" && repeat == tty.RepeatWatchlist {
-		go d.advanceQueue(ref) // UAT 93: the cycle ended — next favourite
+	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). What used to be a
+	// time.AfterFunc here — armDwell setting a five-minute timer, advanceQueue
+	// firing on it — is now two facts the deck is the only thing able to
+	// observe: that a synthesised cycle ran to its end, and where the bed landed
+	// and when it actually started playing. Whether either moves the rotation on
+	// is the Director's, and it is a pure function of those facts, the
+	// listener's settings and the clock.
+	//
+	// WATCHLIST IS NOT ASKED HERE ANY MORE. It was the deck's test before; the
+	// Director holds the rotation now and a zero dwell is how "not Watchlist"
+	// reaches it, so reporting the fact unconditionally is right and filtering
+	// it here would be a second copy of the rule.
+	if ended && mode != "" {
+		d.tell(lineup.Ended{})
 	}
 	if st.State == player.Playing {
-		d.armDwell(ref) // UAT 93: a live relay under Watchlist gets its dwell from the moment audio plays
+		// THE DWELL STARTS FROM HERE, which is why this is reported at Playing
+		// rather than when the tune was asked for: a resolve and a connect can
+		// take seconds, and charging those to the listener's turn would cut
+		// every one short by however slow the network was that time.
+		d.tell(lineup.Tuned{Ref: string(snapshot.Key(ref)), Live: mode == "live"})
 	}
 }
 
@@ -547,15 +793,96 @@ func (d *radioDeck) logStatus(st player.Status) {
 // WATCHPOST_DEBUG_RADIO (diagnostic, opt-in, off by default): engine
 // statuses, the synth's segments as they reach the air, and why a cycle
 // ended. The one writer for the radio diagnostic.
-func (d *radioDeck) debugLog(line string) {
+func (d *radioDeck) debugLog(line string) { radioDebugLog(line) }
+
+// radioDebugLog is the package-level form. The ticker writes the `breaking:`
+// entry of the M4 live instrument (perf-protocol.md §1 item 2) and has no deck,
+// so the body lives here and the deck method delegates — one writer, two
+// callers, rather than two implementations of the same file format.
+func radioDebugLog(line string) {
 	path := os.Getenv("WATCHPOST_DEBUG_RADIO")
 	if path == "" {
 		return
 	}
+	writeRadioDebug(path, line)
+}
+
+// radioDebugOn reports whether the diagnostic is enabled, so a caller on a
+// latency-sensitive path can skip BUILDING its line.
+//
+// It matters: the takeover path's entry log is one string concatenation, and
+// that concatenation ran on every takeover whether or not anybody was
+// collecting the log. The diagnostic is off by default, so the allocation was
+// pure cost on the one path M4 measures.
+func radioDebugOn() bool { return os.Getenv("WATCHPOST_DEBUG_RADIO") != "" }
+
+func writeRadioDebug(path, line string) {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return
 	}
 	defer func() { _ = f.Close() }()
 	_, _ = fmt.Fprintf(f, "%s %s\n", time.Now().UTC().Format(time.RFC3339Nano), line)
+}
+
+// tuneCallsign plays one named transmitter from the current tune list.
+//
+// It plays only mounts ALREADY RESOLVED for this location: the window offers
+// what the resolver found, so answering it is choosing among those rather than
+// starting a new search. Its own mounts lead, and the rest follow, so a station
+// the listener picked that is itself dead still falls through.
+func (d *radioDeck) tuneCallsign(callsign string) {
+	d.mu.Lock()
+	owners, urls := d.mountOwner, append([]string(nil), d.mountURLs...)
+	d.mu.Unlock()
+	var lead, rest []string
+	for _, u := range urls { // bounded by the tune list (P10-02)
+		if st, ok := owners[u]; ok && st.Callsign == callsign {
+			lead = append(lead, u)
+			continue
+		}
+		rest = append(rest, u)
+	}
+	if len(lead) == 0 {
+		return // it is not on this list any more; the tune moved on
+	}
+	d.setMode("live", d.label(owners[lead[0]]), owners[lead[0]].Mounts[0].Relay)
+	d.engine.Start(append(lead, rest...), callsign)
+}
+
+// readSynth falls through to the synthesized report for the current location —
+// the relay-fault window's default when nobody answers it (MVS-D-76).
+func (d *radioDeck) readSynth() {
+	d.mu.Lock()
+	ref, gen := d.ref, d.gen
+	d.mu.Unlock()
+	d.startSynth(ref, "the relay was silent", gen)
+}
+
+// escalate raises the fault window for a schedule that has stopped (DR-21).
+//
+// ONE WINDOW FOR BOTH FAULTS. A silent relay and a schedule with nothing left
+// are different causes with one consequence — the station is quiet — and one
+// surface for that is what keeps the window meaningful. A second error modal
+// would be a second thing to learn and a second thing to dismiss.
+func (d *radioDeck) escalate(reason string) {
+	// A STATION WITH NO AUDIO IS A SUPPORTED CONFIGURATION, and this is the one
+	// channel that tells a listener the station has gone quiet — so a nil deck
+	// must return, not dereference (red team 2026-09-05, I-1). buildDirector
+	// treats a nil deck as fine and nine call sites guard it; startSchedule's
+	// escalate closure did not, while the SAME function guards it for cutTo
+	// twenty-eight lines later. The invariant in newExecutors could not see it:
+	// the closure is non-nil while the channel behind it is dead. The pump then
+	// contained the panic and Escalate names no card, so no Failed was emitted
+	// and nothing anywhere said the station had stopped — verbatim the outcome
+	// DR-21 exists to remove. Same idiom and same reason as mastercontrol.cue.
+	if d == nil || d.p == nil {
+		return
+	}
+	radioDebugLog("schedule:escalate:" + reason)
+	// The candidates are whatever the current tune still offers. A schedule that
+	// stopped for a reason unrelated to the bed leaves none, and the window then
+	// shows the fall-through alone — which is the honest answer: read the
+	// report, because there is nothing else to tune to.
+	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(d.engine.Status().Mount)})
 }

@@ -1,4 +1,5 @@
 const Attribution
+const ObsMaxKm
 const fetchConcurrency
 const gridTTL
 const inlandTTL
@@ -42,6 +43,7 @@ func NewMarine
 func clampList
 func clampRunes
 func conditionCode
+func far
 func fillNote
 func foldDaily
 func hasTempHole

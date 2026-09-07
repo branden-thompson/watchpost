@@ -1,2 +1,2 @@
-{{/* breaking/burst-closing: the one tail after a multi-event burst. No data. */}}
-For the full report on any of these events, press W in Watchpost.
+{{/* breaking/burst-closing: the one tail after a multi-event burst (DR-14). Data: .Divert (how many the burst admitted and could not read; 0 when it read everything) and .Alerts ("alert" or "alerts", already agreed with the count in code — the grammar rule is the same in every script and does not belong in the wording). The DESTINATION is the one edition-specific value here: "press W in Watchpost" is Observer's; a Broadcaster station names its website instead. ONE script rather than two: the two readings differ only in the middle clause, so a second file would restate the opening and the destination and let them drift. */}}
+For more details on {{if .Divert}}these and {{.Divert}} other {{.Alerts}}{{else}}any of these alerts{{end}}, press W in Watchpost.

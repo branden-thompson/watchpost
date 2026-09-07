@@ -1,2 +1,2 @@
-{{/* breaking/burst-line: one event of a burst (the closing comes once, after all of them). Data: .Line. */}}
+{{/* breaking/burst-line: one event of a burst — the TITLE, where and when. The head has already said these were declared, and the closing comes once after all of them, so this line does not repeat either. Data: .Line. */}}
 {{.Line}}

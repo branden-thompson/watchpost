@@ -20,10 +20,29 @@ type recordingOutput struct {
 
 type recordingPlayer struct {
 	started atomic.Bool
+	plays   atomic.Int32  // every Play(), so a stream that should never have started is visible
+	volAt   atomic.Uint64 // the volume in force the first time Play() was called, float64 bits
 	drained atomic.Bool
 	vol     atomic.Uint64 // float64 bits
 	stop    chan struct{}
 	once    sync.Once
+	acts    []string // Play/Pause/Close in the ORDER they happened (MVS-D-75)
+	actMu   sync.Mutex
+}
+
+// act records what was done to this player, so a test can assert the ORDER —
+// which is the whole of the stop rule: a close alone leaves buffered audio
+// sounding, so the pause must come first.
+func (p *recordingPlayer) act(what string) {
+	p.actMu.Lock()
+	p.acts = append(p.acts, what)
+	p.actMu.Unlock()
+}
+
+func (p *recordingPlayer) actions() []string {
+	p.actMu.Lock()
+	defer p.actMu.Unlock()
+	return append([]string(nil), p.acts...)
 }
 
 func (o *recordingOutput) NewPlayer(pcm io.Reader) (Player, error) {
@@ -49,14 +68,31 @@ func (o *recordingOutput) NewPlayer(pcm io.Reader) (Player, error) {
 	return p, nil
 }
 
-func (p *recordingPlayer) Play()           { p.started.Store(true) }
-func (p *recordingPlayer) Pause()          { p.started.Store(false) }
-func (p *recordingPlayer) IsPlaying() bool { return p.started.Load() && !p.drained.Load() }
+func (p *recordingPlayer) Play() {
+	// The volume AT the moment audio starts, sampled here rather than polled:
+	// setting the right volume just after Play() still puts a tick of
+	// full-volume broadcast over an alert, and a poll can never see that window.
+	if p.plays.Load() == 0 {
+		p.volAt.Store(p.vol.Load()) // sampled BEFORE the count, so no reader sees a play with no sample
+	}
+	p.act("play")
+	p.plays.Add(1)
+	p.started.Store(true)
+}
+
+// volumeAtPlay is the volume the player had when it first started.
+func (p *recordingPlayer) volumeAtPlay() float64 { return float64(int64(p.volAt.Load())) / 1e6 }
+func (p *recordingPlayer) Pause()                { p.act("pause"); p.started.Store(false) }
+func (p *recordingPlayer) IsPlaying() bool       { return p.started.Load() && !p.drained.Load() }
 func (p *recordingPlayer) SetVolume(v float64) {
 	p.vol.Store(uint64(int64(v * 1e6)))
 }
 func (p *recordingPlayer) volume() float64 { return float64(int64(p.vol.Load())) / 1e6 }
-func (p *recordingPlayer) Close() error    { p.once.Do(func() { close(p.stop) }); return nil }
+func (p *recordingPlayer) Close() error {
+	p.act("close")
+	p.once.Do(func() { close(p.stop) })
+	return nil
+}
 
 // endlessPCM never drains: the "main broadcast" that keeps playing so the
 // watch loop keeps re-asserting its (ducked) volume.
@@ -106,15 +142,17 @@ func TestDuckAndRestoreScaleTheBroadcastOnly(t *testing.T) {
 	}
 	e.Volume(80) // 0.80
 
-	// The main broadcast: an endless source, playing.
+	// The main broadcast: an endless source, playing, standing in for a relay —
+	// a live source dips under an alert where a rendered cycle holds.
 	e.StartSource("test", OutputRate, func(context.Context) io.Reader { return endlessPCM{} })
+	e.setLive(true)
 	atVol := func(want float64) func() bool {
 		return func() bool { v, ok := out.mainVol(); return ok && near(v, want) }
 	}
 	waitFor(t, "main to reach full volume", atVol(0.80))
 
-	// Duck: the main broadcast dips.
-	e.Duck()
+	// An alert takes the air: a live broadcast dips.
+	e.Suppress()
 	waitFor(t, "main to duck", atVol(0.80*alertDuck))
 
 	// An overlay (a narration) plays at the KNOB volume — un-ducked — while the
@@ -322,4 +360,223 @@ func TestAuditionIsNeverTheLineInFlight(t *testing.T) {
 	if !read.IsPlaying() {
 		t.Fatal("the read plays on")
 	}
+}
+
+// A CHANGEOVER UNDER A DUCK STAYS DUCKED.
+//
+// The Watchlist advance replaces the main broadcast mid-alert: one location's
+// cycle ends, the next one's starts. The new stream must come up AT THE DUCKED
+// volume, because the alert reading over it has not finished — and the duck is
+// engine state, not stream state, so a stream that started after the duck knows
+// nothing about it unless the engine applies it on the way in.
+//
+// This is the mechanism the app's fix relies on: with the duck lift removed from
+// the tune path, an automatic changeover can no longer un-duck, and this is why
+// starting a fresh stream underneath does not either.
+func TestANewStreamStartedUnderADuckPlaysDucked(t *testing.T) {
+	out := &recordingOutput{}
+	e, err := New(out, "watchpost/test (t@example.com)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Volume(80)
+	e.StartSource("first", OutputRate, func(context.Context) io.Reader { return endlessPCM{} })
+	waitFor(t, "the first location to reach full volume", func() bool {
+		v, ok := out.mainVol()
+		return ok && near(v, 0.80)
+	})
+
+	e.Suppress() // an alert takes the air over a rendered cycle: it holds
+	waitFor(t, "the first location to hold", func() bool {
+		out.mu.Lock()
+		defer out.mu.Unlock()
+		return len(out.players) > 0 && !out.players[0].IsPlaying()
+	})
+
+	// The cycle ends and the next favourite tunes — a whole new stream. It must
+	// not come up over the alert either.
+	e.StartSource("second", OutputRate, func(context.Context) io.Reader { return endlessPCM{} })
+	waitFor(t, "the next location to give way too", func() bool {
+		out.mu.Lock()
+		defer out.mu.Unlock()
+		return len(out.players) >= 2 && !out.players[len(out.players)-1].IsPlaying()
+	})
+
+	// And it comes up only when the alert is done, not when it started.
+	e.Restore()
+	waitFor(t, "the next location to come up after the alert", func() bool {
+		out.mu.Lock()
+		defer out.mu.Unlock()
+		return near(out.players[len(out.players)-1].volume(), 0.80)
+	})
+}
+
+// HOLD STOPS THE BROADCAST WHERE IT IS, and a held stream is not a finished one
+// (HUM LEAD, UAT 2026-08-30 — approved per mode: hold a synth cycle, duck a
+// relay).
+//
+// The second half is the one that bites. A paused player stops reporting itself
+// as playing, which is exactly what a drained one does — so without the guard
+// the watch loop would call the cycle over and the watchlist would advance to
+// the next location while the alert that held it was still reading. Which is the
+// very collision holding was introduced to prevent.
+func TestHoldStopsTheBroadcastAndIsNotAnEndedStream(t *testing.T) {
+	out := &recordingOutput{}
+	e, err := New(out, "watchpost/test (t@example.com)", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Volume(80)
+	e.StartSource("cycle", OutputRate, func(context.Context) io.Reader { return endlessPCM{} })
+	waitFor(t, "the cycle to play", func() bool {
+		out.mu.Lock()
+		defer out.mu.Unlock()
+		return len(out.players) > 0 && out.players[0].IsPlaying()
+	})
+
+	e.Suppress() // an alert takes the air over a synthesised report
+	waitFor(t, "the cycle to stop where it is", func() bool {
+		out.mu.Lock()
+		defer out.mu.Unlock()
+		return !out.players[0].IsPlaying()
+	})
+
+	// Held is NOT ended: the engine still reports a live stream, so nothing
+	// downstream advances the watchlist.
+	time.Sleep(200 * time.Millisecond) // several watch ticks
+	if st := e.Status(); st.State == Stopped {
+		t.Errorf("a held cycle must not read as stopped, got %v", st.State)
+	}
+
+	// And it plays on from the same spot when the alert releases it.
+	e.Restore()
+	waitFor(t, "the cycle to play on", func() bool {
+		out.mu.Lock()
+		defer out.mu.Unlock()
+		return out.players[0].IsPlaying()
+	})
+}
+
+// A RENDERED REPORT STARTING UNDER AN ALERT IS HELD, NOT PLAYED.
+//
+// giveWay answers two things — how far to dip, and whether to hold outright —
+// and the start path read only the first. A relay came up correctly dipped, but
+// a rendered cycle came up PLAYING at full volume over the alert and was only
+// held on the watch loop's next tick. The whole reason a rendered report holds
+// rather than dips is that its words are lost under an alert; playing its first
+// words over one loses exactly what the rule exists to protect.
+func TestARenderedReportStartingUnderAnAlertIsHeldFromTheFirstSample(t *testing.T) {
+	out := &recordingOutput{}
+	e, err := New(out, "test", func(Status) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Suppress() // an alert is already on the air
+	e.StartSource("synth", 44100, func(context.Context) io.Reader { return endlessPCM{} })
+	defer e.Halt()
+
+	p := waitForPlayer(t, out)
+	// Two watch ticks: long enough that a stream started and then paused would
+	// still have recorded its Play().
+	time.Sleep(120 * time.Millisecond)
+	if n := p.plays.Load(); n != 0 {
+		t.Errorf("a rendered report must not be played while an alert is on the air, Play() called %d time(s)", n)
+	}
+
+	e.Restore() // the alert ends
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) && p.plays.Load() == 0 {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if p.plays.Load() == 0 {
+		t.Error("…and it must play on once the alert is off the air — held, not dropped")
+	}
+}
+
+// waitForPlayer blocks until the engine has opened its player.
+func waitForPlayer(t *testing.T, out *recordingOutput) *recordingPlayer {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		out.mu.Lock()
+		n := len(out.players)
+		var p *recordingPlayer
+		if n > 0 {
+			p = out.players[0]
+		}
+		out.mu.Unlock()
+		if p != nil {
+			return p
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatal("the engine never opened a player")
+	return nil
+}
+
+// AN ALERT THAT ENDS BEFORE THE FIRST WATCH TICK STILL LETS THE REPORT PLAY.
+//
+// A report opened under an alert is not played, so the watch loop must know it
+// is holding one. If the loop assumed every stream opened playing, an alert
+// clearing inside its first 50 ms would leave nothing to switch: the loop sees
+// no change to make, then reads a player that never started as a player that
+// has drained, and drops the report entirely.
+func TestAnAlertClearingBeforeTheFirstTickStillLetsTheReportPlay(t *testing.T) {
+	out := &recordingOutput{}
+	e, err := New(out, "test", func(Status) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Suppress()
+	e.StartSource("synth", 44100, func(context.Context) io.Reader { return endlessPCM{} })
+	defer e.Halt()
+
+	p := waitForPlayer(t, out)
+	e.Restore() // the alert ends inside the watch loop's first tick
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) && p.plays.Load() == 0 {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if p.plays.Load() == 0 {
+		t.Error("the report must play once the alert clears, however briefly it was held — not be dropped as though it had ended")
+	}
+}
+
+// A RELAY OPENED UNDER AN ALERT COMES UP DIPPED, NOT AT FULL VOLUME.
+//
+// giveWay answers two things at once — how far to dip and whether to hold — and
+// the open path has to honour BOTH. Holding was the half that was wrong before;
+// this is the other half at the same moment. A relay that opened at the knob's
+// volume would talk over the alert for a whole watch tick before the loop
+// pulled it down, which is the same defect wearing the other hat.
+//
+// A real relay, because `live` is what decides dip-versus-hold and only the
+// relay path sets it.
+func TestARelayOpenedUnderAnAlertComesUpDipped(t *testing.T) {
+	srv := mp3Server(t, nil)
+	defer srv.Close()
+	out := &recordingOutput{}
+	e, err := New(out, "watchpost/test (t@example.com)", func(Status) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.Volume(80)
+	e.Suppress() // an alert is already on the air
+	e.Start([]string{srv.URL + "/live"}, "KEC49 Monterey")
+	defer e.Halt()
+
+	p := waitForPlayer(t, out)
+	// The FIRST volume the player is ever given, before any watch tick could
+	// correct it: dipped, and playing, because live radio does not wait.
+	waitFor(t, "the relay to be playing", func() bool { return p.plays.Load() > 0 })
+	if got, want := p.volumeAtPlay(), 0.80*alertDuck; !near(got, want) {
+		t.Errorf("a relay opened under an alert must be dipped BEFORE it plays: volume at play %.4f, want %.4f", got, want)
+	}
+
+	// …and it returns to the knob when the alert ends, so the dip is not a
+	// one-way trip. Without this the test would pass on an engine that simply
+	// never raised the volume again.
+	e.Restore()
+	waitFor(t, "the relay to return to full volume", func() bool { return near(p.volume(), 0.80) })
 }

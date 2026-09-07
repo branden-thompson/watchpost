@@ -1,0 +1,166 @@
+{
+  "findings": [
+    {
+      "file": "app/cast.go",
+      "line": 33,
+      "rule_id": "P10-06-MINIMAL-SCOPE",
+      "tool": "golangci-lint:gochecknoglobals",
+      "message": "runtimeGOOS is a global variable",
+      "skill_path": "02_skills/implementation/p10/p10-minimal-scope/",
+      "next_step": "narrow the declaration scope / remove the dead store or global (see skill)",
+      "exempted": true,
+      "exempt_reason": "`runtimeGOOS` is the PRESCRIBED production seam for the platform (0.14.0 P1 Task 1.12: \"a package-level var in app/cast.go that tests may assign - not a test-file function\"). It is initialised once from runtime.GOOS and written only by tests, which restore it via t.Cleanup. It exists so the M5 fallback matrix can walk BOTH platform namespaces on one machine; without it half the matrix would never execute on the developer's box or in CI, which is the failure the seam is bought to prevent. Same class as the ratified platform/tz and platform/render/themes.go rows, with a narrower write surface. Ratify at the P1 gate."
+    },
+    {
+      "file": "domains/radio/cast/cast.go",
+      "line": 63,
+      "rule_id": "P10-06-MINIMAL-SCOPE",
+      "tool": "golangci-lint:gochecknoglobals",
+      "message": "registry is a global variable",
+      "skill_path": "02_skills/implementation/p10/p10-minimal-scope/",
+      "next_step": "narrow the declaration scope / remove the dead store or global (see skill)",
+      "exempted": true,
+      "exempt_reason": "`registry` is an IMMUTABLE [numRoles]role lookup table — the role tree itself, written nowhere at run time and never addressed. Go has no const array, so a package-level var is the only way to express it. Stronger than the ratified platform/render/themes.go and platform/tz rows, which guard genuinely mutable state under a mutex; this has no writer at all. The alternative (a 10-case switch per accessor) would hide the tree the design is built on. 0.14.0 P1 Task 1.3; ratify at the P1 gate."
+    },
+    {
+      "file": "domains/radio/cast/tone.go",
+      "line": 53,
+      "rule_id": "P10-06-MINIMAL-SCOPE",
+      "tool": "golangci-lint:gochecknoglobals",
+      "message": "classes is a global variable",
+      "skill_path": "02_skills/implementation/p10/p10-minimal-scope/",
+      "next_step": "narrow the declaration scope / remove the dead store or global (see skill)",
+      "exempted": true,
+      "exempt_reason": "`classes` (the [numClasses]class registry) and `rules` (the classification rule of record, tones.md §2, where ORDER IS PRECEDENCE) are immutable tables with no run-time writer. Same class as the cast.go row. Keeping `rules` as data rather than nested ifs is what makes MVS-D-15 (storm wins over warning/watch) reviewable against the analysis document. 0.14.0 P1 Task 1.6; ratify at the P1 gate."
+    },
+    {
+      "file": "domains/radio/cast/tone.go",
+      "line": 131,
+      "rule_id": "P10-06-MINIMAL-SCOPE",
+      "tool": "golangci-lint:gochecknoglobals",
+      "message": "rules is a global variable",
+      "skill_path": "02_skills/implementation/p10/p10-minimal-scope/",
+      "next_step": "narrow the declaration scope / remove the dead store or global (see skill)",
+      "exempted": true,
+      "exempt_reason": "`classes` (the [numClasses]class registry) and `rules` (the classification rule of record, tones.md §2, where ORDER IS PRECEDENCE) are immutable tables with no run-time writer. Same class as the cast.go row. Keeping `rules` as data rather than nested ifs is what makes MVS-D-15 (storm wins over warning/watch) reviewable against the analysis document. 0.14.0 P1 Task 1.6; ratify at the P1 gate."
+    },
+    {
+      "file": "app/director.go",
+      "line": 258,
+      "rule_id": "P10-02-BOUNDED-LOOPS",
+      "tool": "p10analyzers:p10loopform",
+      "message": "P10-02: unbounded condition-only loop — restructure with an explicit bound or exempt with a recorded reason",
+      "skill_path": "02_skills/implementation/p10/p10-bounded-loops/",
+      "next_step": "restructure with an explicit bound (range/counter form), or exempt with a recorded reason",
+      "exempted": true,
+      "exempt_reason": "The Station Director's turn wait (0.13.0; re-keyed from app/narrate.go at the 0.14.0 P2 rename): a sync.Cond loop — one Wait per iteration, ended when the job is first with nothing on air or its context ends (checked on every wake). The same shape as the scheduler tier loops and the ticker run loop already on this ledger. Ratify at the 0.13.0 UAT/REVIEW gate."
+    },
+    {
+      "file": "app/cast.go",
+      "line": 44,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.53 \u003c 2.0 across 87 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "ReportOnce/resolveQuery/Save/RunSetup carry real invariants; the bubbletea model plumbing (Init/Update/View/advance — behavior pinned by 5 wizard flow tests) dilutes the average. Ratified density pattern (D-20)."
+    },
+    {
+      "file": "domains/radio/cast/cast.go",
+      "line": 78,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.27 \u003c 2.0 across 41 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Density 0.26 across 39 functions, but the package is deliberately mostly total accessors over an immutable table (Key/String/Parent/Empty/CastOn/Link.String and the class equivalents) whose defined behaviour on bad input IS the contract — every one reads an out-of-range value as empty or as the loud default, tested exhaustively in TestOutOfRangeRolesReadEmptyAndNeverPanic and TestToneNameNamesThePresetAndIsLoudOutOfRange. Quota checks on those would assert what the return statement already guarantees. The invariants sit where something can actually be wrong: the walk-reaches-the-root check in Resolve and the registry well-formedness check the tests run. Same shape as the ratified platform/term and platform/httpx rows. 0.14.0 P1 Tasks 1.3-1.6; ratify at the P1 gate."
+    },
+    {
+      "file": "platform/render/marine.go",
+      "line": 19,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.50 \u003c 2.0 across 10 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Pure formatting primitives; correctness pinned by width-bound, severity-text, ASCII-fallback, and unit tests (the D-9 seam's behavior IS its test surface). Ratified density pattern (D-20)."
+    },
+    {
+      "file": "domains/radio/synth/coastal.go",
+      "line": 33,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.59 \u003c 2.0 across 73 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Guards sit at the boundaries (office required, WAVE shape, archive entries escaping the install dir, voice/provider required, checksum verification); the normalizer/composer are pure text transforms pinned by goldens over a live product. B4 UAT 77, ratify at gate. Refreshed at 0.13.0 REVIEW (HUM LEAD ratified 2026-08-29) — the composer speaks from the script tree (Library.Say — silence for a missing part, Plain'd) and the Pronounce pass is a pure table transform, pinned by the script and pronounce tests."
+    },
+    {
+      "file": "modes/tty/dashboard.go",
+      "line": 236,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 0.29 \u003c 2.0 across 94 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Dashboard model: Update carries the nil-snapshot invariant and NewDashboard fails closed on key conflicts; View/header/body/footer are pure renderers pinned by anatomy/toggle/navigation tests. Ratified density pattern (D-20)."
+    },
+    {
+      "file": "platform/config/config.go",
+      "line": 127,
+      "rule_id": "P10-05-INVARIANT-DENSITY",
+      "tool": "p10analyzers:p10invariantdensity",
+      "message": "P10-05: invariant density 1.36 \u003c 2.0 across 11 changed function(s) — add meaningful checks (see skill)",
+      "skill_path": "02_skills/implementation/p10/p10-invariant-density/",
+      "next_step": "add meaningful invariant checks (guard clauses / invariant.Check) — see skill",
+      "exempted": true,
+      "exempt_reason": "Load/Save carry the real guards (path, permissions, parse errors surfaced with the file name); Fire.WithDefaults/Rules are pure defaulting pinned by TestFireRulesDefaultAndOverride. B5 fire; ratify at gate."
+    }
+  ],
+  "tools": [
+    {
+      "tool": "exemptions",
+      "status": "RAN",
+      "detail": "123 exemption(s) loaded"
+    },
+    {
+      "tool": "golangci-lint",
+      "status": "RAN",
+      "detail": "51 raw finding(s), 9 linters"
+    },
+    {
+      "tool": "staticcheck",
+      "status": "RAN",
+      "detail": "2 raw finding(s)"
+    },
+    {
+      "tool": "go-vet",
+      "status": "RAN",
+      "detail": "0 raw finding(s)"
+    },
+    {
+      "tool": "govulncheck",
+      "status": "RAN",
+      "detail": "no vulnerabilities"
+    },
+    {
+      "tool": "p10analyzers",
+      "status": "RAN",
+      "detail": "30 raw finding(s), 5 passes"
+    },
+    {
+      "tool": "p10:density",
+      "status": "RAN",
+      "detail": "6 finding(s) over changed functions in 45 file(s)"
+    }
+  ],
+  "base": "186d97c2d6b7719effa78fdd885c7c08881d2e04",
+  "base_declared": "merge-base:main",
+  "tree_hash": "ff76782967b5f2136c414fd5c544d26bee2e6bd026d1021802aedc468dc46b10",
+  "ran_at": "2026-08-30T19:16:47.192328Z"
+}

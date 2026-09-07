@@ -7,15 +7,83 @@
 package plaintext
 
 import (
-	"regexp"
 	"strings"
 	"unicode"
 )
 
-var sgrRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
-
 // StripSGR removes SGR sequences (width math + tests).
-func StripSGR(s string) string { return sgrRe.ReplaceAllString(s, "") }
+//
+// A SCANNER, NOT A REGEXP, and the fast path returns the input itself.
+//
+// This sits under render.Width, which measures every cell of every row of every
+// frame; since 0.12.0's ticker the frame draws continuously, so it runs about
+// three times a second for as long as the app is up. Regexp.ReplaceAllString
+// builds a fresh string EVEN WHEN NOTHING MATCHES, and almost every cell
+// measured is plain text — ≈3.2 MB/min of copies of strings that had nothing to
+// strip (perf pass, 2026-08-30; flagged as item 26 of the L4 caching lens and
+// left to the render lens, which never picked it up).
+//
+// TestStripSGRMatchesTheRegexpItReplaced holds this byte-identical to
+// `\x1b\[[0-9;]*m` over a corpus and 20,000 random strings built from the
+// alphabet that can form and malform a sequence, so the grammar below is pinned
+// rather than described: ESC, '[', digits and semicolons, 'm'. Anything else —
+// a truncated sequence at the end of the string, an OSC hyperlink, a CSI with
+// another final byte — is left exactly where it is.
+func StripSGR(s string) string {
+	i := strings.IndexByte(s, escByte)
+	if i < 0 {
+		return s // the overwhelmingly common case: no escape, no copy
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	b.WriteString(s[:i])
+	// BOUNDED BY THE STRING (P10-02): every pass consumes at least one byte, so
+	// there can be at most len(s) of them; the loop counter is the proof and the
+	// guard is what stops it.
+	for range len(s) {
+		if i >= len(s) {
+			break
+		}
+		if n := sgrLen(s[i:]); n > 0 {
+			i += n
+			continue
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	// POSTCONDITION: stripping only ever removes bytes. A longer result would
+	// mean the scan had gone backwards, and the input is the safe answer —
+	// text that keeps an escape is a cosmetic fault; text that grows without
+	// bound on the render path is not.
+	if b.Len() > len(s) {
+		return s
+	}
+	return b.String()
+}
+
+// escByte is ESC, the byte every sequence starts with.
+const escByte = 0x1b
+
+// sgrLen is the length of the SGR sequence at the head of s, or 0 when there is
+// not a complete one there.
+func sgrLen(s string) int {
+	if len(s) < 3 || s[0] != escByte || s[1] != '[' {
+		return 0 // the shortest possible sequence is ESC [ m
+	}
+	for i := 2; i < len(s); i++ { // bounded by the string (P10-02)
+		switch c := s[i]; {
+		case c == 'm':
+			if i+1 > len(s) {
+				return 0 // a length past the end would slice out of range upstream
+			}
+			return i + 1
+		case c >= '0' && c <= '9', c == ';':
+		default:
+			return 0 // another CSI final byte, or a stray: not ours to remove
+		}
+	}
+	return 0 // ran off the end mid-sequence
+}
 
 // Text is the boundary for text that arrives from outside — relay titles
 // and names, provider headlines and product text (red-team 0.9.0 S-F6):

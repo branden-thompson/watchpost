@@ -1489,6 +1489,9 @@
       "items": {
         "additionalProperties": false,
         "properties": {
+          "blame": {
+            "type": "string"
+          },
           "code": {
             "enum": [
               "provider_error",
@@ -1499,6 +1502,12 @@
               "deprecated_field"
             ],
             "type": "string"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "http_status": {
+            "type": "integer"
           },
           "location": {
             "type": "string"

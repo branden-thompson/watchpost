@@ -9,7 +9,7 @@ require (
 	github.com/ebitengine/oto/v3 v3.5.0-alpha.11
 	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/mattn/go-runewidth v0.0.24
-	github.com/pelletier/go-toml/v2 v2.2.4
+	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/sync v0.22.0

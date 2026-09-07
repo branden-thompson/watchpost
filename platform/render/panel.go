@@ -14,7 +14,7 @@ import (
 // (UAT 43: the RECENT / SEARCHED separator becomes a band like the column
 // groups). Bracketed form when color is off.
 // BandRows is a band at the height the options set: the label row alone
-// when thin, else a blank band row above and below it (UAT 2026-08-27).
+// when thin, else a blank band row above and below it.
 func (o Opts) BandRows(title, short string, width int, bg Token) []string {
 	if o.ThinBands {
 		return []string{Band(title, short, width, bg)}
@@ -194,6 +194,57 @@ func (o Opts) Block(content, fg, bg string) string {
 // scrolls on short terminals); when everything fits, it expands and the
 // rail disappears.
 func (o Opts) ScrollPanel(title string, lines []string, scroll, maxLines int) string {
+	return o.ScrollPanelFooter(title, lines, nil, scroll, maxLines)
+}
+
+// ScrollPanelFooter is ScrollPanel with rows PINNED below the scroll window,
+// inside the same frame: the body scrolls, the footer does not.
+//
+// The Setup window needs it (0.14.0 OP-5). Its body is four groups tall and its
+// footer names the keys that operate them, so a footer that scrolled with the
+// body would be gone exactly when a reader has scrolled far enough to be lost.
+func (o Opts) ScrollPanelFooter(title string, lines, footer []string, scroll, maxLines int) string {
+	if len(footer) == 0 {
+		return o.scrollBody(title, lines, scroll, maxLines)
+	}
+	// The footer is charged against the window, so the frame's height is the
+	// caller's budget however long the body is.
+	body := o.scrollWindow(lines, scroll, max(1, maxLines-len(footer)))
+	return o.PanelColored(title, strings.Join(append(body, footer...), "\n"), "")
+}
+
+// scrollWindow is the visible slice of lines, with the rail drawn on it.
+func (o Opts) scrollWindow(lines []string, scroll, maxLines int) []string {
+	if len(lines) <= maxLines {
+		return lines
+	}
+	inner := o.Width - 7
+	maxScroll := len(lines) - maxLines
+	scroll = max(0, min(scroll, maxScroll))
+	thumb := 1
+	if maxLines > 3 {
+		thumb = 1 + scroll*(maxLines-3)/max(1, maxScroll)
+	}
+	win := make([]string, maxLines)
+	// Through the glyph set, so --ascii needs no special case here (0.14.0
+	// Task 4.9's glyph parity — the ASCII Setup golden proves it).
+	g := o.Glyphs()
+	for i := range maxLines {
+		glyph := g.Rail
+		switch i {
+		case 0:
+			glyph = g.Up
+		case maxLines - 1:
+			glyph = g.Down
+		case thumb:
+			glyph = g.RailCar
+		}
+		win[i] = PadTo(truncate(lines[scroll+i], inner), inner) + " " + glyph
+	}
+	return win
+}
+
+func (o Opts) scrollBody(title string, lines []string, scroll, maxLines int) string {
 	if maxLines <= 0 {
 		maxLines = 1
 	}
@@ -227,6 +278,12 @@ func (o Opts) ScrollPanel(title string, lines []string, scroll, maxLines int) st
 // compositing (UAT 8.3: the '?' help floats over the dashboard instead of
 // replacing it). The modal's own cells - spaces included - overwrite the
 // base, so the panel is opaque.
+// ACCEPTED COST — see docs/accepted-costs.md §1 before optimising this.
+// The compositor is ~86 % of a modal frame, and that is CHOSEN: splicing the
+// window's rows in by hand means reimplementing lipgloss's style emitter (it
+// re-emits SGR canonically and pads to the widest line of the whole base), which
+// would need re-checking on every lipgloss release. A memo does not help either
+// — the marquee moves the base every frame.
 func Overlay(base, modal string, termWidth int) string {
 	// v2.0.2 note: Layer.Draw ignores X/Y (positioning lives in the
 	// Compositor) and Layer.Width/Height are unset fields - measure with

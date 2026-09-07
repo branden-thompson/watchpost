@@ -263,17 +263,33 @@ type aaPair struct {
 func aaPairs() []aaPair {
 	win := []Token{WindowBGDark, WindowBGLight}
 	bands := []Token{GroupLocationBG, GroupTodayBG, GroupTomorrowBG, GroupExtendedBG, GroupSectionBG}
-	lanes := []Token{TickerRedBG, TickerOrangeBG, TickerYellowBG, TickerBlueBG}
-	tints := []Token{EventCatRedBG, EventCatOrangeBG, EventCatYellowBG, EventCatWatchBG, EventCatStmtBG, EventCatBlueBG}
+	lanes := []Token{TickerDisasterBG, TickerWarningBG, TickerWatchBG, TickerMarineBG, TickerAdvisoryBG, TickerStatementBG, TickerEmergencyBG}
+	tints := categoryTints()
 	modal := []Token{ModalBGDark, ModalBGLight}
 	pairs := []aaPair{
 		{GroupText, bands}, {TickerFG, lanes}, {TickerMutedFG, append(append([]Token{}, lanes...), GroupSectionBG)},
 		{StatePlaying, append(append([]Token{}, tints...), win...)}, {FocusPointer, append(append([]Token{}, tints...), win...)}, {ModalTitle, tints},
-		{ModalFG, modal}, {ModalTitle, modal}, {AlertDanger, append([]Token{ModalBGDark}, win...)}, {AlertModalText, append(append([]Token{}, tints...), AlertModalWarnBG, AlertModalAdvBG)},
+		{ModalFG, modal}, {ModalTitle, modal},
+		// The confirm tile is a painted ground with text on it; it was in no pair,
+		// so nothing measured it, and Tokyo Night's read 4.17:1.
+		{ModalFG, []Token{ConfirmBG}}, {ModalTitle, []Token{ConfirmBG}},
+		// A list's focus tokens are drawn on the MODAL ground, not the
+		// window's — every list-shaped surface that uses them is a floating
+		// window (0.14.0 Task 4.9).
+		{ListPointer, modal}, {ListFocus, modal}, {AlertDanger, append([]Token{ModalBGDark}, win...)}, {AlertModalText, append(append([]Token{}, tints...), AlertModalWarnBG, AlertModalAdvBG)},
 		{AlertModalWarnFG, []Token{AlertModalWarnBG}}, {AlertModalAdvFG, []Token{AlertModalAdvBG}},
 	}
-	for _, fg := range []Token{TextBase, TextBright, TableMuted, TableName, ProviderOK, ProviderDown, NameAdvisory, NameWarning,
-		StateStopped, RadioFG, RadioStation, RadioAccent, RepeatOn, VizOn, AlertLabel, TrendUp, TrendDown, TempHi, TempLo,
+	// The table tones and the masthead's edition word are painted on the MODAL
+	// ground as well as the window's: [S] lays three tables inside a floating
+	// window, and the About box carries the wordmark. A tone registered against
+	// one ground only is never lifted for the other, and no test measures it
+	// there.
+	onBoth := []Token{TableMuted, TableName, ProviderOK, ProviderDown, AlertLabel, TextBase, TextBright, TitleEdition}
+	for _, fg := range onBoth {
+		pairs = append(pairs, aaPair{fg, append(append([]Token{}, win...), modal...)})
+	}
+	for _, fg := range []Token{NameAdvisory, NameWarning,
+		StateStopped, RadioFG, RadioStation, RadioAccent, RepeatOn, VizOn, TrendUp, TrendDown, TempHi, TempLo,
 		FireMark, SeismicMark, FocusName, FocusCell} {
 		pairs = append(pairs, aaPair{fg, win})
 	}
@@ -295,9 +311,19 @@ func bgOf(t map[Token]string, bg Token) string {
 
 // isCategoryTint reports one of the severe window's fixed category tints.
 func isCategoryTint(bg Token) bool {
-	switch bg {
-	case EventCatRedBG, EventCatOrangeBG, EventCatYellowBG, EventCatWatchBG, EventCatStmtBG, EventCatBlueBG:
-		return true
+	for _, t := range categoryTints() {
+		if t == bg {
+			return true
+		}
 	}
 	return false
+}
+
+// categoryTints is THE list of the severe window's row tints — the one every
+// gate reads, so a tint added here is measured everywhere without anyone
+// remembering to add it. EventCatForecastBG reached three separate lists before
+// this existed, and passed two of them by being absent rather than by passing.
+func categoryTints() []Token {
+	return []Token{EventCatDisasterBG, EventCatWarningBG, EventCatAdvisoryBG, EventCatWatchBG,
+		EventCatStmtBG, EventCatMarineBG, EventCatForecastBG, EventCatEmergencyBG}
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func TestDetailMaritimeSectionForCoastalOnly(t *testing.T) {
-	// B3 UAT 29: MARITIME rows render only when marine data exists — swell
+	// B3 UAT 29: MARINE rows render only when marine data exists — swell
 	// heading + height in display units, sea state, buoy water temp.
 	m := dash(t)
 	s2 := snap()
@@ -25,8 +25,8 @@ func TestDetailMaritimeSectionForCoastalOnly(t *testing.T) {
 	// Grid: labels at 0, values at col 14, secondary values at col 37 (the
 	// FORECAST HIGH/LOW column) — UAT 32.2.
 	for _, want := range []string{
-		"MARITIME │ Conditions    Slight Chop",
-		"Water Temp    74ºF             (buoy 46224, 6 mi)", // 9 km in display units (UAT 60.2)
+		"MARINE │ Conditions    Slight Chop",
+		"Water Temp    74°F             (buoy 46224, 6 mi)", // 9 km in display units (UAT 60.2)
 		"Swell         W        2.0 ft  (period 14 s)",
 	} {
 		if !strings.Contains(joined, want) {
@@ -35,13 +35,13 @@ func TestDetailMaritimeSectionForCoastalOnly(t *testing.T) {
 	}
 	inland := m.(Dashboard)
 	inland.modal = modalDetails
-	if strings.Contains(strings.Join(inland.detailLines(), "\n"), "MARITIME") {
-		t.Fatal("inland location must not render a MARITIME section")
+	if strings.Contains(strings.Join(inland.detailLines(), "\n"), "MARINE") {
+		t.Fatal("inland location must not render a MARINE section")
 	}
 }
 
 func TestDetailTideAndCurrentRows(t *testing.T) {
-	// B3 UAT 61-64: tides and currents on the MARITIME grid (value col 14 /
+	// B3 UAT 61-64: tides and currents on the MARINE grid (value col 14 /
 	// sub-column 8 / fixed 4-cell number / note at col 37 with HIGH) — trend from the next
 	// predicted event, one row per next high and low, local hh:mm; a
 	// negative low never shifts "ft"; currents in knots.
@@ -63,9 +63,9 @@ func TestDetailTideAndCurrentRows(t *testing.T) {
 	rows := strings.Join(maritimeRows(o, mar, tz, now), "\n")
 	for _, want := range []string{
 		"Tide          Rising   3.7 ft  (La Jolla, 24 mi)",
-		"Next High     19:40    5.7 ft",
-		"Next Low      02:49   -0.1 ft",
-		"Currents      Flood    1.4 kt  (Slack 16:05)",
+		"Next High     7:40 PM  5.7 ft",
+		"Next Low      2:49 AM -0.1 ft",
+		"Currents      Flood    1.4 kt  (Slack 4:05 PM)",
 	} {
 		if !strings.Contains(rows, want) {
 			t.Fatalf("maritime rows missing %q:\n%s", want, rows)
@@ -75,7 +75,7 @@ func TestDetailTideAndCurrentRows(t *testing.T) {
 	falling := &snapshot.Marine{Tides: []snapshot.TideEvent{{Time: at(23, 30), Height: 0.5, Type: "L"}},
 		Currents: []snapshot.CurrentEvent{{Time: at(21, 0), Speed: 0, Type: "slack"}, {Time: at(23, 30), Speed: 0.6, Type: "ebb"}}}
 	rows = strings.Join(maritimeRows(o, falling, tz, now), "\n")
-	if !strings.Contains(rows, "Tide          Falling") || !strings.Contains(rows, "Next Low      16:30    1.6 ft") || strings.Contains(rows, "Next High") || !strings.Contains(rows, "Currents      Slack            (Ebb 16:30)") {
+	if !strings.Contains(rows, "Tide          Falling") || !strings.Contains(rows, "Next Low      4:30 PM  1.6 ft") || strings.Contains(rows, "Next High") || !strings.Contains(rows, "Currents      Slack            (Ebb 4:30 PM)") {
 		t.Fatalf("falling / slack rendering:\n%s", rows)
 	}
 	if got := strings.Join(maritimeRows(render.Opts{Units: render.UnitC}, mar, tz, now), "\n"); !strings.Contains(got, "Rising  1.13 m") || !strings.Contains(got, "1.4 kt") || !strings.Contains(got, "39 km") {
@@ -90,7 +90,7 @@ func TestDetailTideAndCurrentRows(t *testing.T) {
 func TestTideHeightsShareOneColumn(t *testing.T) {
 	// UAT 62/63: the height starts at the same cell on the Tide and Next
 	// rows, for Rising and Falling, positive and negative values; and no
-	// MARITIME row can exceed the details modal's 78-cell wrap budget.
+	// MARINE row can exceed the details modal's 78-cell wrap budget.
 	tz := time.UTC
 	now := time.Date(2026, 8, 24, 12, 0, 0, 0, tz)
 	for _, tc := range []struct {
@@ -135,7 +135,7 @@ func TestTideHeightsShareOneColumn(t *testing.T) {
 			}
 		}
 	}
-	if got := stripANSITest(strings.Join(maritimeRows(render.Opts{Units: render.UnitF}, wide, tz, now), "\n")); !strings.Contains(strings.Split(got, "\n")[0], "MARITIME │ Observed      40m") {
+	if got := stripANSITest(strings.Join(maritimeRows(render.Opts{Units: render.UnitF}, wide, tz, now), "\n")); !strings.Contains(strings.Split(got, "\n")[0], "MARINE │ Observed      40m") {
 		t.Fatalf("mock order starts with Observed:\n%s", got)
 	}
 }

@@ -1,0 +1,2 @@
+{{/* marine-report/forecast: the office coastal-waters forecast, already cut to the zone and the first periods. Data: .Text (prose from the network — split into sentences before it is spoken). */}}
+{{.Text}}

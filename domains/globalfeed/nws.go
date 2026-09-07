@@ -26,6 +26,14 @@ type severeEvent struct {
 // A function, not a global, per the codebase's table convention (P10-06).
 func severeEvents() []severeEvent {
 	return []severeEvent{
+		// THE EMERGENCY ORDER FIRST. Without it read rank 1 could never be
+		// occupied: the ladder leads with Emergency Orders, exempts them from
+		// the burst Max and lets them overrun the budget, and no arrival could
+		// carry the category because the query never asked for the product
+		// (C-2). It is the only civil-emergency product on the national list —
+		// the rest of the family reaches the window through tracked locations,
+		// which is what they did before and is a separate question.
+		{"Evacuation Immediate", SevRed},
 		{"Tornado Warning", SevRed},
 		{"Extreme Wind Warning", SevRed},
 		{"Hurricane Warning", SevRed},
@@ -241,7 +249,7 @@ func (n *NWS) parse(body []byte, u string) ([]Event, error) {
 			until = p.Expires
 		}
 		ends, _ := time.Parse(time.RFC3339, until)
-		lat, lon, ok := geoPoint(f.Geometry.Coordinates) // ok=false for a zone-only alert (no geometry) → excluded when a radius is set
+		lat, lon, ok := geoPoint(f.Geometry.Coordinates) // ok=false for a zone-only alert (no geometry) → a scoped surface keeps it only by the tracked-alert tie
 		out = append(out, Event{
 			ID:         clampID(f.ID), // bounded (R3-D-02; ids get the longer bound, R5-B-05); the supersede map is keyed on the raw id above, looked up with the same
 			Class:      ClassSevereWx,

@@ -13,5 +13,5 @@ func startDumpTrigger(context.Context, *dumper) {}
 
 // dumpHint is the [S] modal's one-line instruction.
 func dumpHint(_ int, dir string) string {
-	return "WATCHPOST_DEBUG_PPROF=1 then GET http://" + debugAddr() + "/debug/dump → " + dir
+	return "WATCHPOST_DEBUG_PPROF=1 then GET http://" + debugAddr() + "/debug/dump → " + abbreviateHome(dir)
 }

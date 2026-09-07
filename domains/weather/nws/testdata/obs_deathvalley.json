@@ -1,0 +1,15 @@
+{
+  "properties": {
+    "timestamp": "2026-09-05T13:00:00+00:00",
+    "textDescription": "Clear",
+    "temperature": {"unitCode": "wmoUnit:degC", "value": 29.78},
+    "dewpoint": {"unitCode": "wmoUnit:degC", "value": 2.0},
+    "windSpeed": {"unitCode": "wmoUnit:km_h-1", "value": 5.0},
+    "windGust": {"unitCode": "wmoUnit:km_h-1", "value": null},
+    "windDirection": {"unitCode": "wmoUnit:degree_(angle)", "value": 180},
+    "barometricPressure": {"unitCode": "wmoUnit:Pa", "value": 101000},
+    "relativeHumidity": {"unitCode": "wmoUnit:percent", "value": 10},
+    "visibility": {"unitCode": "wmoUnit:m", "value": 16000},
+    "heatIndex": {"unitCode": "wmoUnit:degC", "value": null}
+  }
+}

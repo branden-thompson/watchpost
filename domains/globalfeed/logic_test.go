@@ -121,23 +121,6 @@ func TestGeoPointHandlesPointPolygonAndEmpty(t *testing.T) {
 	}
 }
 
-func TestWithinFiltersByRadiusAndDropsPointless(t *testing.T) {
-	// Center: San Diego. Near = ~20 km away; far = across the country.
-	evs := []Event{
-		{ID: "near", Lat: 32.90, Lon: -117.20, HasPoint: true},
-		{ID: "far", Lat: 40.71, Lon: -74.01, HasPoint: true}, // New York
-		{ID: "zone", HasPoint: false},                        // a zone-only NWS alert — no point
-	}
-	got := Within(evs, 32.72, -117.16, 50) // 50 mi around San Diego
-	if len(got) != 1 || got[0].ID != "near" {
-		t.Fatalf("only the near event within 50 mi, point-less dropped: %v", ids(got))
-	}
-	// A non-positive radius keeps everything (the global "All" ticker).
-	if all := Within(evs, 32.72, -117.16, 0); len(all) != 3 {
-		t.Fatalf("radius 0 = All (global): %v", ids(all))
-	}
-}
-
 func TestLocateTiesToHighestWatchlistThenPlaceThenArea(t *testing.T) {
 	watch := []snapshot.LocationRef{
 		{Label: "San Diego, CA", Lat: 32.72, Lon: -117.16}, // highest

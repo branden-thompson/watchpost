@@ -71,7 +71,8 @@ func (d Dashboard) handleResolved(v resolvedMsg) (tea.Model, tea.Cmd) {
 		return d, nil
 	}
 	if v.mode == "setup" { // the Setup window's location question, answered by a full resolve (no hint matched)
-		d.setup.ref, d.setup.focus, d.setup.err = &v.ref, focusKey, ""
+		d.setup.ref, d.setup.focus, d.setup.err = &v.ref, rowFIRMSKey, ""
+		d = d.settled()
 		return d, nil
 	}
 	watch, recent := refsOf(d.snap), refsOf(d.recent)

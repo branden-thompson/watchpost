@@ -1,0 +1,10 @@
+{
+  "features": [
+    {"properties": {"stationIdentifier": "KO26", "name": "Lone Pine/Death Valley Airport"},
+     "geometry": {"type": "Point", "coordinates": [-118.049, 36.589]}},
+    {"properties": {"stationIdentifier": "KBIH", "name": "Bishop, Bishop Airport"},
+     "geometry": {"type": "Point", "coordinates": [-118.358, 37.371]}},
+    {"properties": {"stationIdentifier": "DEVC1", "name": "VISITORS CENTER AT FURNACE CREEK DEATH VALLEY"},
+     "geometry": {"type": "Point", "coordinates": [-116.864, 36.462]}}
+  ]
+}

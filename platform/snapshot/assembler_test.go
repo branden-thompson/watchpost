@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -63,5 +64,50 @@ func TestMarineTidesFillFromCoops(t *testing.T) {
 	inland := NewAssembler([]LocationRef{ref}, []string{"nws"}).Snapshot()
 	if inland.Locations[0].Marine != nil {
 		t.Fatal("no marine data stays null")
+	}
+}
+
+// A PROVIDER'S OWN WORDS REACH A TERMINAL, so they cross the plaintext boundary
+// on the way into a warning rather than at each surface that renders one.
+//
+// Feeds put their error envelope's text straight into a message, and a server
+// that controls that text controls a byte stream the terminal will interpret:
+// OSC 52 writes the reader's clipboard, OSC 8 paints a hyperlink over honest
+// text, a bidi override reverses a line. Cleaning here means `watchpost report`,
+// the [S] window and every future surface are safe without knowing they had to be.
+func TestWarningTextIsCleanedAtTheBoundary(t *testing.T) {
+	const (
+		clipboardWrite = "\x1b]52;c;cm0gLXJmIH4K\a"
+		hyperlink      = "\x1b]8;;https://evil.example\aCLICK\x1b]8;;\a"
+		titleSet       = "\x1b]0;PWNED\a"
+		bidiOverride   = "\u202e" // right-to-left override: reverses a rendered line
+	)
+	hostile := "coops: " + clipboardWrite + titleSet + hyperlink + bidiOverride + " bad station"
+
+	a := NewAssembler([]LocationRef{{Label: "A"}}, nil)
+	a.Warn(Warning{Code: WarnProviderError, Provider: "coops", Message: hostile,
+		Endpoint: "api.tidesandcurrents.noaa.gov" + titleSet})
+	snap := a.Snapshot()
+	if len(snap.Warnings) != 1 {
+		t.Fatalf("expected one warning, got %d", len(snap.Warnings))
+	}
+	got := snap.Warnings[0]
+	for _, sequence := range []struct{ name, raw string }{
+		{"clipboard write (OSC 52)", clipboardWrite},
+		{"hyperlink (OSC 8)", "\x1b]8;;"},
+		{"window title (OSC 0)", titleSet},
+		{"bidi override", bidiOverride},
+		{"any escape at all", "\x1b"},
+	} {
+		if strings.Contains(got.Message, sequence.raw) {
+			t.Errorf("the %s survived into the message: %q", sequence.name, got.Message)
+		}
+		if strings.Contains(got.Endpoint, sequence.raw) {
+			t.Errorf("the %s survived into the endpoint: %q", sequence.name, got.Endpoint)
+		}
+	}
+	// The words themselves are kept — this sanitises, it does not censor.
+	if !strings.Contains(got.Message, "bad station") {
+		t.Errorf("the provider's actual words must survive: %q", got.Message)
 	}
 }

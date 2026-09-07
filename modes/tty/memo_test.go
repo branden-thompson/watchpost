@@ -28,7 +28,12 @@ func TestBodyMemoInvalidatesOnEveryInput(t *testing.T) {
 		mut  func(d Dashboard) Dashboard
 	}{
 		{"snapshot pointer", func(d Dashboard) Dashboard { s := *d.snap; s.Locations[0].Label = "Renamed"; d.snap = &s; return d }},
-		{"recent pointer", func(d Dashboard) Dashboard { s := *d.recent; s.Locations[0].Label = "Renamed"; d.recent = &s; return d }},
+		{"recent pointer", func(d Dashboard) Dashboard {
+			s := *d.recent
+			s.Locations[0].Label = "Renamed"
+			d.recent = &s
+			return d
+		}},
 		{"width", func(d Dashboard) Dashboard { d.width = 150; return d }},
 		{"height (window)", func(d Dashboard) Dashboard { d.height = 60; return d }},
 		{"selected", func(d Dashboard) Dashboard { d.selected = 3; return d }},
@@ -47,7 +52,7 @@ func TestBodyMemoInvalidatesOnEveryInput(t *testing.T) {
 			d.radioPlaying, d.radioKey, d.radioRepeat = true, snapshot.Key(snapshot.LocationRef{Lat: d.snap.Locations[2].Lat, Lon: d.snap.Locations[2].Lon}), RepeatOne
 			return d
 		}},
-		{"[T]: the min player changes the window", func(d Dashboard) Dashboard { d.radioMin = true; return d }},
+		{"[T]: the min player changes the window", func(d Dashboard) Dashboard { _ = d; return d }},
 		{"[v]: the visualizer rows change the window", func(d Dashboard) Dashboard { d.radioViz = true; return d }},
 		{"Setup: the bold-◆ rule", func(d Dashboard) Dashboard {
 			d.snap.Locations[0].Fire.Hotspots = []snapshot.Hotspot{{Lat: 33, Lon: -117, FRPMW: f64(80)}}

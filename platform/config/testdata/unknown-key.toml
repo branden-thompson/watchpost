@@ -1,0 +1,19 @@
+# Keys from a FUTURE build. This binary knows none of them and must preserve
+# every one on save (NFR-5) -- and list the [radio.*] ones in [S].
+voice = "Samantha"
+future_top_level = "keep me"
+
+[radio]
+mode = "synth"
+future_scalar = "keep me too"
+
+[radio.voices.alerts]
+macos = "Rishi"
+future_half = "and me"
+
+[radio.future_table]
+a = 1
+b = "two"
+
+[future_root_table]
+nested = { deep = true }

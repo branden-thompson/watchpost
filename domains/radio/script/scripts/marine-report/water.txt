@@ -1,0 +1,2 @@
+{{/* marine-report/water: the sea temperature. Data: .Temp. */}}
+Water temperature {{.Temp}}.

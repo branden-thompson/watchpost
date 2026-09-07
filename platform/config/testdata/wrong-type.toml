@@ -1,0 +1,5 @@
+# A known key with the wrong type: reported as corrupt, naming the key.
+voice = "Samantha"
+
+[radio]
+mode = 42

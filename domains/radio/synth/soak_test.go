@@ -2,6 +2,7 @@ package synth
 
 import (
 	"context"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"io"
 	"os"
 	"runtime"
@@ -37,7 +38,7 @@ func TestSeismicBroadcastSoak(t *testing.T) {
 		quake(1.4, 2, 2, "W", 30*time.Minute, now),
 	}}}
 	loc := snapshot.Location{Label: "Ridgecrest, CA"}
-	segs := std.Compose(loc, nil, now, true, "rec", Station{}, FireReport{}, sr)
+	segs := std.Compose(loc, nil, now, true, "rec", Station{}, Reports{Seismic: sr}, render.Clock12)
 
 	src, err := NewSource(&recVoice{}, func(context.Context) ([]Segment, error) { return segs, nil }, nil)
 	if err != nil {

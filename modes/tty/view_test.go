@@ -20,7 +20,7 @@ func TestViewOpensWithTwoBlankLines(t *testing.T) {
 			t.Fatalf("line %d must be blank (top spacing):\n%s", i, v)
 		}
 	}
-	if !strings.HasPrefix(strings.TrimLeft(lines[2], " "), "┏━━ W A T C H P O S T") { // the boxed header (2026-08-28): its top rule carries the title
+	if !strings.HasPrefix(strings.TrimLeft(lines[2], " "), "┏━━ WATCHPOST Observer") { // the boxed header (2026-08-28): its top rule carries the title
 		t.Fatalf("header must follow the spacing: %q", lines[2])
 	}
 	if !strings.HasPrefix(lines[2], strings.Repeat(" ", viewPadLeft)+"┏") {
@@ -78,8 +78,10 @@ func TestCompactModulesOnShortTerminals(t *testing.T) {
 	if !strings.Contains(v, "01/01  ⚠ EXTREME HEAT WATCH - Oceanside, CA") {
 		t.Fatalf("compact alert line missing:\n%s", v)
 	}
-	if !strings.Contains(v, "[space] Play") || !strings.Contains(v, "Repeat:") || strings.Contains(v, "00:00 / 00:00\n") {
-		t.Fatalf("compact radio must be the two-row form:\n%s", v)
+	// A height-compact frame takes the NARROW player whatever the width
+	// (MVS-D-23): keys only, no labels, no scrub line.
+	if !strings.Contains(v, "[space]") || strings.Contains(v, "00:00 / 00:00\n") {
+		t.Fatalf("compact radio must be the narrow player:\n%s", v)
 	}
 	if !strings.Contains(v, "Quit") {
 		t.Fatal("footer controls must remain visible on short terminals")
@@ -102,8 +104,10 @@ func TestNarrowTerminalRowsFitAndModalsCenter(t *testing.T) {
 			t.Fatalf("row %d exceeds the terminal width (%d): %q", i, w, l)
 		}
 	}
-	if !strings.Contains(v, "[space] Play") || !strings.Contains(v, "Size:") {
-		t.Fatal("radio controls must survive by wrapping")
+	// [T] Size retired with the breakpoints (MVS-D-23); the narrow row is
+	// keys only and fits without wrapping.
+	if !strings.Contains(v, "[space]") || strings.Contains(v, "Size:") {
+		t.Fatal("narrow radio controls are keys only, with no size toggle")
 	}
 	if !strings.Contains(v, "WWRADIO") || strings.Contains(v, "WATCHPOST WEATHER RADIO") {
 		t.Fatal("narrow compact row must use the short title (UAT 36)")
@@ -115,7 +119,7 @@ func TestNarrowTerminalRowsFitAndModalsCenter(t *testing.T) {
 	}
 	sm, _ := narrow.Update(tea.KeyPressMsg{Code: 'S', Text: "S"})
 	for _, l := range strings.Split(stripANSITest(sm.View().Content), "\n") {
-		if strings.Contains(l, "API Status") {
+		if strings.Contains(l, "Watchpost Status") {
 			// Measure the modal by its own box span: base rows can peek out
 			// past the modal's right edge on narrow terminals.
 			r := []rune(l)
@@ -189,8 +193,8 @@ func TestControlPlacementUAT56(t *testing.T) {
 	if !strings.HasSuffix(strings.TrimRight(ctrl, " "), "[↑↓] Navigate") {
 		t.Fatalf("[↑↓] Navigate must end the control row (right-aligned): %q", ctrl)
 	}
-	if !strings.Contains(head, "[s] Setup  [a] About  [t] Theme  [M] Mute Severe Alerts  [S] Status  [?] Help  [q] Quit") {
-		t.Fatalf("header must carry Setup, About, Theme, Mute, Status, Help, Quit in order (UAT 57 / 102; [S] joined the row 2026-08-28): %q", head)
+	if !strings.Contains(head, "[s] Settings  [a] About  [S] Status  [?] Help  [q] Quit") {
+		t.Fatalf("header must carry Settings, About, Status, Help, Quit in order (UAT 57 / 102; [t] and [M] left for Settings 2026-08-30): %q", head)
 	}
 	// UAT 57: no footer - the last content line is the recent section's
 	// last row (the Showing line, or the empty state's ▼ row — UAT 104).

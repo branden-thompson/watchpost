@@ -1,12 +1,11 @@
 package app
 
-// voices.go — voices: discovery (macOS say, Piper catalogue), choice, preview, install, the [V] labels. Split from radio.go by the quality pass (Q2, pure move).
+// voices.go — voices: discovery (macOS say, Piper catalogue), choice, preview, install. Split from radio.go by the quality pass (Q2, pure move).
 
 import (
 	"bytes"
 	"context"
 	"fmt"
-	"os/exec"
 	"runtime"
 	"strings"
 	"time"
@@ -24,10 +23,40 @@ func (d *radioDeck) listVoices() {
 	d.mu.Unlock()
 }
 
+// renderSlots is how many ORDINARY renders may run at once on this host.
+//
+// Three on macOS: `say` is cheap and the broadcast reads ahead while a takeover
+// and a Setup preview can both be live. Two elsewhere: a Piper render is a
+// ~63 MB model load per process, and a third concurrent one buys nothing a
+// listener can hear while costing memory a small box may not have.
+//
+// The Station Director's two reserved slots are on top of this number, so the
+// worst case is renderSlots()+2 processes (perf-protocol.md §3).
+func renderSlots() int {
+	if runtimeGOOS == "darwin" {
+		return 3
+	}
+	return 2
+}
+
 // voice picks the engine for this host: macOS `say`; Piper elsewhere,
 // installed under the cache dir when missing (SHA-256-pinned artifacts).
+//
+// Every return is wrapped by the deck's limiter (FR-12): a caller cannot get an
+// uncapped voice out of the deck, which is what makes "one owner of how many
+// renders at once" true rather than merely intended.
 func (d *radioDeck) voice() (synth.Voice, error) {
-	if runtime.GOOS == "darwin" {
+	v, err := d.rawVoice()
+	if err != nil {
+		return nil, err
+	}
+	return synth.Limited(v, d.limiter), nil
+}
+
+// rawVoice is the unbounded engine pick. It is unexported and has exactly one
+// caller — voice, above — so the wrap cannot be forgotten.
+func (d *radioDeck) rawVoice() (synth.Voice, error) {
+	if runtimeGOOS == "darwin" {
 		d.mu.Lock()
 		name := d.voiceID
 		d.mu.Unlock()
@@ -43,8 +72,17 @@ func (d *radioDeck) voice() (synth.Voice, error) {
 	if inst, ok := synth.FindPiperVoice(d.voiceDir, spec); ok {
 		return synth.PiperVoice{Install: inst}, nil
 	}
+	// AN UNWIRED DECK DOES NOT DOWNLOAD. Installing here is a ~63 MB fetch whose
+	// progress is reported back through the program; a deck with no program and
+	// no engine is a test's, and it has nowhere to report and nothing to play.
+	// Production is unaffected — a deck can only reach a tune once both are set.
+	// Four Linux CI rounds of this release died on this path, each in a slightly
+	// different dereference, because nothing stopped the download itself.
+	if !d.canInstall() {
+		return nil, fmt.Errorf("no voice for %s/%s: this deck is not wired to install one", runtimeGOOS, runtime.GOARCH)
+	}
 	if !synth.PiperSupported() {
-		return nil, fmt.Errorf("no voice for %s/%s: install Piper or use a relayed location", runtime.GOOS, runtime.GOARCH)
+		return nil, fmt.Errorf("no voice for %s/%s: install Piper or use a relayed location", runtimeGOOS, runtime.GOARCH)
 	}
 	// Serialize installs: the breaking-news goroutine and a Tune can both reach
 	// here on a fresh host, and two concurrent ~63 MB downloads into the same
@@ -62,7 +100,7 @@ func (d *radioDeck) voice() (synth.Voice, error) {
 	return synth.PiperVoice{Install: inst}, nil
 }
 
-// piperSpec is the chosen catalogue voice (Linux/Windows): the [V] pick by
+// piperSpec is the chosen catalogue voice (Linux/Windows): the root pick by
 // name, else the first installed voice, else the catalogue default.
 func (d *radioDeck) piperSpec() synth.VoiceSpec {
 	d.mu.Lock()
@@ -95,8 +133,14 @@ func (d *radioDeck) installVoice(spec synth.VoiceSpec, report func(string)) (syn
 	return inst, nil
 }
 
-// SetVoice chooses the correspondent (UAT 84) and re-tunes a playing
-// synthesized broadcast so the change is heard at once.
+// SetVoice chooses the ROOT correspondent (UAT 84) and hands a playing
+// broadcast over so the change is heard at once.
+//
+// The chooser that called this retired at P4 (MVS-D-3); from now on the
+// root is set in Setup like every other role, and a Setup save is a Recast. The
+// mechanism is already the same one, which is why this survives P2 unchanged in
+// behaviour: a root change IS a hard recast — the listener asked for it and is
+// waiting to hear it.
 func (d *radioDeck) SetVoice(name string) {
 	d.mu.Lock()
 	d.voiceID = name
@@ -106,12 +150,11 @@ func (d *radioDeck) SetVoice(name string) {
 		return
 	}
 	if src != nil {
-		// UAT 94: hand the running broadcast over at the spot reached —
-		// no re-resolve, no restart. Only a voice at another sample rate
-		// (or none) needs the full re-tune.
-		if v, err := d.voice(); err == nil && src.SetVoice(v) == nil {
-			return
-		}
+		// UAT 94: hand the running broadcast over at the spot reached — no
+		// restart. The Source re-resolves through the deck's resolver, which
+		// has just been told the new root, so nothing needs to be passed in.
+		src.Recast()
+		return
 	}
 	go d.Tune(ref)
 }
@@ -123,7 +166,7 @@ func (d *radioDeck) PreviewVoice(name string) {
 		name = ""
 	}
 	var v synth.Voice = synth.SayVoice{Voice: name}
-	if runtime.GOOS != "darwin" {
+	if runtimeGOOS != "darwin" {
 		spec, ok := synth.VoiceByName(name)
 		if !ok {
 			spec = d.piperSpec()
@@ -158,7 +201,7 @@ func (d *radioDeck) voiceNote(text string) {
 	}
 }
 
-// VoiceName is the correspondent's chooser label — the [V] chip (UAT 91:
+// VoiceName is the correspondent's label (UAT 91:
 // "System Voice", never the spoken "the System Voice").
 func (d *radioDeck) VoiceName() string {
 	d.mu.Lock()
@@ -189,9 +232,15 @@ func (d *radioDeck) Voices() []string {
 // (UAT 118) — every entry can be chosen, an uninstalled one downloads on
 // first use (~63 MB) with progress in the player.
 func (d *radioDeck) discoverVoices() []string {
-	if runtime.GOOS == "darwin" {
-		out, err := exec.Command("say", "-v", "?").Output()
-		if list := parseSayVoices(string(out)); err == nil && len(list) > 0 {
+	if runtimeGOOS == "darwin" {
+		// Through the shared discoverMacVoices, not a second `say -v ?` of its
+		// own: P4's `report --verbose` needs the same answer without a deck,
+		// and two implementations of "which voices does this Mac have" is how
+		// the screen and the ear start disagreeing. The ceiling turns a wedged
+		// `say` into "not discovered yet" rather than a goroutine held forever.
+		ctx, cancel := context.WithTimeout(context.Background(), discoverTimeout)
+		defer cancel()
+		if list := discoverMacVoices(ctx); len(list) > 0 {
 			return list
 		}
 		return []string{defaultMacVoice}
@@ -260,7 +309,7 @@ const defaultMacVoice = "Samantha"
 // defaultVoice is the Mac's own System Voice (always present; UAT 88/91 —
 // what a fresh setup heard first), else the first installed voice.
 func (d *radioDeck) defaultVoice() string {
-	if runtime.GOOS == "darwin" {
+	if runtimeGOOS == "darwin" {
 		return systemVoice
 	}
 	if installed := synth.InstalledVoices(d.voiceDir); len(installed) > 0 {

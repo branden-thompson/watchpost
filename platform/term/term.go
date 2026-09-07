@@ -117,14 +117,30 @@ type KeyMap map[Action]Binding
 // validates: no key may serve two Actions, and "?" may serve only help.
 // It is used at registration AND inside runtime swaps (§10.7) — a conflicting
 // swap is rejected with an actionable error, never applied.
-func Merge(layers ...KeyMap) (KeyMap, error) {
+func Merge(layers ...KeyMap) (KeyMap, []string, error) {
 	if err := invariant.Check(len(layers) >= 1, "Merge requires at least one layer"); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	// The FIRST layer is the build's own actions; the rest are the user's
+	// [keys] overrides. An override naming an action this build no longer has
+	// is DROPPED WITH A NOTE, never an error (FR-14, RS-21).
+	//
+	// A listener who rebound T for the player size in 0.13.0 must not find
+	// 0.14.0 refusing to start because that action retired. Losing a binding
+	// is a nuisance; refusing to launch over one is a broken upgrade.
 	out := KeyMap{}
-	for _, layer := range layers {
-		maps.Copy(out, layer)
+	maps.Copy(out, layers[0])
+	var dropped []string
+	for _, layer := range layers[1:] {
+		for act, b := range layer {
+			if _, known := out[act]; !known {
+				dropped = append(dropped, string(act))
+				continue
+			}
+			out[act] = b
+		}
 	}
+	sort.Strings(dropped)
 	seen := map[string]Action{}
 	acts := make([]string, 0, len(out))
 	for act := range out {
@@ -135,18 +151,18 @@ func Merge(layers ...KeyMap) (KeyMap, error) {
 		act := Action(a)
 		for _, k := range out[act].Keys {
 			if err := invariant.Check(k != "", "bindings must not contain empty keys"); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if k == "?" && act != HelpAction {
-				return nil, fmt.Errorf("key '?' is reserved for help (R-3); %q tried to claim it", act)
+				return nil, nil, fmt.Errorf("key '?' is reserved for help (R-3); %q tried to claim it", act)
 			}
 			if prev, dup := seen[k]; dup {
-				return nil, fmt.Errorf("key %q bound to both %q and %q in the same scope — rebind one in [keys]", k, prev, act)
+				return nil, nil, fmt.Errorf("key %q bound to both %q and %q in the same scope — rebind one in [keys]", k, prev, act)
 			}
 			seen[k] = act
 		}
 	}
-	return out, nil
+	return out, dropped, nil
 }
 
 // Lookup resolves a pressed key to its Action in this merged map.

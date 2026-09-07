@@ -108,3 +108,43 @@ func TestRehydrateSparseObsFromForecast(t *testing.T) {
 		t.Fatal("no observation at all is a loading state, not a rehydration case")
 	}
 }
+
+// A LOCATION WITH NO LOCAL STATION IS FILLED FROM ITS OWN FORECAST.
+//
+// UAT 2026-09-05, and the end of the Lone Pine chain. Every station serving its
+// grid is beyond the twenty-mile bound, so the provider returns an observation
+// with provenance and nothing else — deliberately, because "no station near
+// enough" is a stable fact rather than a failure, and a failure would leave the
+// row loading forever.
+//
+// This is the half that was ASSERTED and not tested when the bound landed: the
+// claim was that the forecast would fill the gap, and it does — but only for an
+// observation that EXISTS. An absent one returns early on Source.Provider == ""
+// and the row stays blank, which is exactly what shipped for an hour.
+func TestAnObservationWithNoStationIsFilledFromTheForecast(t *testing.T) {
+	now := time.Date(2026, 9, 5, 13, 30, 0, 0, time.UTC)
+	l := &Location{
+		// What the provider returns when every station is too far: provenance,
+		// no station, no values.
+		Harmonized: Conditions{Source: SourceInfo{Provider: "nws"}},
+		Hourly: []Hourly{
+			{Time: now.Add(-30 * time.Minute), Temp: f64(15), Condition: "clear"},
+			{Time: now.Add(30 * time.Minute), Temp: f64(18), Condition: "clear"},
+		},
+	}
+	rehydrateFromForecast(l, now)
+	if l.Harmonized.Temp == nil {
+		t.Fatal("the row must fill from the forecast, or it loads forever")
+	}
+	if *l.Harmonized.Temp != 15 {
+		t.Errorf("the covering hour fills it, got %v", *l.Harmonized.Temp)
+	}
+	if l.Harmonized.Source.FillFrom["temp"] != fillForecast {
+		t.Errorf("the fill is recorded as the forecast's, got %v", l.Harmonized.Source.FillFrom)
+	}
+	// And it names no station, because there is none — provenance must not
+	// invent one to look complete.
+	if l.Harmonized.Source.ModelOrStation != "" {
+		t.Errorf("no station is named, got %q", l.Harmonized.Source.ModelOrStation)
+	}
+}

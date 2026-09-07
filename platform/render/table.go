@@ -83,7 +83,7 @@ const (
 	tableGutter  = 2
 	extSpacerW   = 2   // pads the ext group to the mock's col-128 start
 	extDayW      = 18  // day column pitch
-	extCellW     = 15  // "H 888ºF/888ºF L" (fixed slots: 3-digit temps never stagger, UAT 4.2)
+	extCellW     = 15  // "H 888°F/888°F L" (fixed slots: 3-digit temps never stagger, UAT 4.2)
 	extMaxDays   = 5   // mock shows five day columns
 	marksW       = 13  // the marks block (0.11.0 mock `›  ▶ ● 5◆ 3⚠ 009.` — the seismic glyph joined UAT 110's `›  ▶ 3◆ 2⚠`, +2 cells)
 	nameMinW     = 17  // NAME fill floor: shrinks with every marks-block growth so LABEL@37 and everything downstream keep their offset (marksW + nameMinW = 30, invariant since UAT 110)
@@ -250,7 +250,7 @@ func (o Opts) TableRowLen(days int) int {
 }
 
 // temp5 right-justifies a temperature in the mock's 5-cell field (the mock's
-// " 72ºF"/" 00ºF" rows pin right-justification; ºF stays column-aligned).
+// " 72°F"/" 00°F" rows pin right-justification; °F stays column-aligned).
 func (o Opts) temp5(c *float64) string { return fmt.Sprintf("%5s", o.Temp(c)) }
 
 // temp5Or renders the 5-cell temp slot, shimmering while the row is still
@@ -317,7 +317,7 @@ func (o Opts) rowData(l layout, r LocationRow) []string {
 		data = append(data, r.Tag)
 	}
 	if l.station {
-		data = append(data, r.Station, o.Distance(r.StationKM))
+		data = append(data, r.Station, o.StationDistance(r.StationKM))
 	}
 	if l.zip {
 		data = append(data, r.Zip)
@@ -626,4 +626,36 @@ func (o Opts) groupHeader(l layout, cols []studs.ColumnDefinition, tableW int) s
 		return row(true)
 	}
 	return row(false) + "\n" + row(true) + "\n" + row(false)
+}
+
+// StationFarKM is the distance past which an observing station is not YOUR
+// station: ten miles (HUM LEAD, UAT 2026-09-05). Past it the terrain, the
+// elevation and the exposure are commonly a different microclimate, so the
+// reading is real and may not be yours.
+//
+// It is half the HARD bound. An observation from beyond twenty miles is refused
+// outright by the provider (nws.ObsMaxKm) and never reaches a row; this marks
+// what is accepted and still worth doubting, so the two numbers describe one
+// idea at two strengths — doubt it, then refuse it.
+const StationFarKM = 16.09 // 10 miles
+
+// StationDistance is the DIST cell: the distance, worn in the warning colour
+// once the station stops being local.
+//
+// THE COLOUR IS THE WHOLE POINT. A number alone reads as provenance trivia; a
+// red one reads as "this came from somewhere else", which is what a listener
+// needs when the temperature looks wrong. It reuses NameWarning rather than
+// introducing a token, because an unregistered token is never measured by the AA
+// gate and silently passes (F-18).
+func (o Opts) StationDistance(km *float64) string {
+	d := o.Distance(km)
+	// The nil check guards the DEREFERENCE, not the outcome: an unknown
+	// distance renders as an empty cell, which tints to nothing either way. A
+	// mutant removing it therefore survives, correctly — it is inert rather
+	// than a defect, and that is worth saying so the next reader does not go
+	// looking for the missing test.
+	if km == nil || *km <= StationFarKM || strings.TrimSpace(d) == "" {
+		return d
+	}
+	return Tint(d, Tok(NameWarning))
 }

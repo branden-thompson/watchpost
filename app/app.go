@@ -25,8 +25,12 @@ import (
 
 // UserAgent identifies watchpost to providers (AI-1: NWS requires contact
 // info; a reachable project URL satisfies it). The tree is public, so no
-// personal address rides here (b1 red-team S-1, closed at the 0.9.0 exit).
-const UserAgent = "watchpost/0.9 (+https://github.com/branden-thompson/watchpost)"
+// personal address rides here.
+//
+// NO VERSION. A version in the header is a fact about this machine that no
+// provider asks for, and one more thing to keep in step with the build — it
+// read 0.9 for five releases. The project URL is the contact NWS wants.
+const UserAgent = "watchpost (+https://github.com/branden-thompson/watchpost)"
 
 // ReportOnce runs the one-shot fetch pipeline for `watchpost report <query>`:
 // resolve the location, fetch obs+forecast+alerts from NWS, and return the

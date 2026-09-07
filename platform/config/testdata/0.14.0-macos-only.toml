@@ -1,0 +1,12 @@
+# Written on a Mac and never opened on Linux: the Piper halves are absent, so on
+# Linux every assigned role falls back (FR-7). The file is not wrong.
+voice = "Samantha"
+
+[radio]
+cast = "cast"
+
+[radio.voices.alerts]
+macos = "Rishi"
+
+[radio.voices.station]
+macos = "Daniel"

@@ -105,16 +105,42 @@ func TestReportTimingIsOptInAndNamesTheMeasurement(t *testing.T) {
 // Quality pass Q3 (plan §2.4, PF-9): the RECENT publisher's window folds a
 // tier tick's wave of triggers into one publish; the priority window is
 // the 50 ms one.
+// awaitRuns waits for the publish count to REACH n. It is a failure bound: it
+// costs nothing when the publish is prompt and only fires if it never happens.
+//
+// Waiting longer than necessary is safe here and that is the point — once the
+// wave has been sent, no further trigger exists to publish, so the count cannot
+// drift past n no matter how long we wait. That is what makes "exactly n"
+// assertable without racing a clock.
+func awaitRuns(t *testing.T, runs *atomic.Int32, n int32) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if runs.Load() >= n {
+			return
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	t.Fatalf("publishes never reached %d (got %d)", n, runs.Load())
+}
+
 func TestPublisherWindowFoldsAWave(t *testing.T) {
 	var runs atomic.Int32
-	pb := &publisher{window: 40 * time.Millisecond, run: func() *snapshot.Snapshot { runs.Add(1); return nil }}
+	// THE WINDOW IS GENEROUS ON PURPOSE. The old test used 40 ms and spaced twenty
+	// triggers a millisecond apart, so the wave itself very nearly filled the
+	// window; on a loaded CI box it spilled past, a second window opened, and
+	// folding twice was the CORRECT behaviour for the timing it was handed. It
+	// failed on one macOS leg while the other passed on the same commit (F-51).
+	//
+	// Now the wave is sent back-to-back — microseconds — into a half-second
+	// window, and the assertions wait for a state instead of sleeping past one.
+	pb := &publisher{window: 500 * time.Millisecond, run: func() *snapshot.Snapshot { runs.Add(1); return nil }}
 	pb.Trigger() // the first publish is immediate (F-1); the wave comes after it
-	time.Sleep(20 * time.Millisecond)
+	awaitRuns(t, &runs, 1)
 	for range 20 {
-		pb.Trigger()
-		time.Sleep(time.Millisecond)
+		pb.Trigger() // no spacing: all twenty are inside one window by construction
 	}
-	time.Sleep(120 * time.Millisecond)
+	awaitRuns(t, &runs, 2)
 	if got := runs.Load(); got != 2 {
 		t.Fatalf("twenty triggers inside one window publish once, got %d", got-1)
 	}

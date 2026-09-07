@@ -137,15 +137,66 @@ const NegativeTTL = 30 * time.Second
 // past 32 MB is a misbehaving server, not data.
 const maxBodyBytes = 32 << 20
 
-// StatusError is a non-retryable HTTP failure (4xx other than 429).
+// StatusError is an HTTP failure a caller gave up on: a non-retryable 4xx, or a
+// status that kept coming back until the retries ran out.
+//
+// It carries the ENDPOINT and the STATUS as values rather than only inside its
+// sentence. [S] shows which endpoint failed and with what, in their own columns,
+// and it decides blame from the status — and a diagnostic window that had to
+// parse an error message to do either would be reading prose written for a
+// human.
 type StatusError struct {
-	URL    string // redacted
-	Status int
+	URL      string // redacted
+	Status   int
+	Attempts int  // 0 for a non-retryable failure — it was never retried
+	Degraded bool // true when the retries ran out and last-good data is being served
 }
 
 func (e *StatusError) Error() string {
+	if e.Degraded {
+		return fmt.Sprintf("%s kept failing (last HTTP %d) after %d attempts — provider degraded; serving last-good data upstream", e.URL, e.Status, e.Attempts)
+	}
 	return fmt.Sprintf("%s returned HTTP %d — not retryable; check the request", e.URL, e.Status)
 }
+
+// HTTPStatus and Endpoint satisfy the snapshot vocabulary's failure detail, so
+// a warning can carry them as values without snapshot importing transport.
+func (e *StatusError) HTTPStatus() int { return e.Status }
+
+// Endpoint is the HOST the failure was against, for a column that must fit.
+func (e *StatusError) Endpoint() string { return hostOf(e.URL) }
+
+// hostOf is the bare host of a URL. Shared by both failure types rather than
+// one calling the other's method — two methods of the same name calling each
+// other is recursion to a reader and to the safety gate, whatever the receivers.
+func hostOf(rawURL string) string {
+	u := rawURL
+	if i := strings.Index(u, "://"); i >= 0 {
+		u = u[i+3:]
+	}
+	if i := strings.IndexAny(u, "/?"); i >= 0 {
+		u = u[:i]
+	}
+	return u
+}
+
+// ReachError is a failure with NO HTTP STATUS: DNS, a refused connection, a
+// dead link. It carries the endpoint like StatusError does, and reports status
+// 0 — which is the honest answer, and the one BlameFor reads as "could be either
+// end", since a name that will not resolve is as likely to be the listener's own
+// network as the provider's.
+type ReachError struct {
+	URL      string // redacted
+	Attempts int
+	Err      error
+}
+
+func (e *ReachError) Error() string {
+	return fmt.Sprintf("cannot reach %s after %d attempts: %v", e.URL, e.Attempts, e.Err)
+}
+func (e *ReachError) Unwrap() error    { return e.Err }
+func (e *ReachError) HTTPStatus() int  { return 0 }
+func (e *ReachError) Endpoint() string { return hostOf(e.URL) }
 
 // Priority lane (B3 UAT 64): the favourites' pipeline must never queue
 // behind the 50-location seed pipeline's launch burst on a shared client.
@@ -354,8 +405,17 @@ func (c *Client) fetch(ctx context.Context, rawURL string, opts []Option) ([]byt
 		}
 		body, hdr, err := c.getOrRevalidate(ctx, rawURL, ro, host)
 		if err != nil {
+			// The negative cache remembers a request that is WRONG, not a server
+			// that is DOWN. A non-retryable 4xx will fail the same way for its
+			// whole TTL, so re-asking is waste; a degraded 5xx is the far end
+			// having a bad minute and must be asked again when the window is up.
+			//
+			// Degraded failures became StatusErrors at 0.14.0 so [S] could show
+			// their status in a column, which put them in this branch for the
+			// first time — a failing relay directory stopped being retried at
+			// all, and the test that pins the retry window caught it.
 			var se *StatusError
-			if !ro.noCache && errors.As(err, &se) && se.Status != http.StatusTooManyRequests {
+			if !ro.noCache && errors.As(err, &se) && !se.Degraded && se.Status != http.StatusTooManyRequests {
 				c.cache.putNegative(rawURL, err)
 			}
 			return nil, err
@@ -463,9 +523,9 @@ func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byt
 	}
 	if last.err != nil {
 		// Transport-level cause survives, redacted (B0 red-team F1).
-		return nil, nil, fmt.Errorf("cannot reach %s after %d attempts: %w", req.safe, last.attempts, redactErr(last.err))
+		return nil, nil, &ReachError{URL: req.safe, Attempts: last.attempts, Err: redactErr(last.err)}
 	}
-	return nil, nil, fmt.Errorf("%s kept failing (last HTTP %d) after %d attempts — provider degraded; serving last-good data upstream", req.safe, last.status, last.attempts)
+	return nil, nil, &StatusError{URL: req.safe, Status: last.status, Attempts: last.attempts, Degraded: true}
 }
 
 // request is one GET's identity for the retry loop.

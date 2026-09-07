@@ -206,9 +206,9 @@ func alertRecordLines(o render.Opts, a snapshot.Alert, wrapW int, in *time.Locat
 	if a.Ends != nil {
 		end = *a.Ends
 	}
-	timing := "  Starts " + start.In(in).Format("Mon 01/02 3:04 PM") // the location's clock (F17)
+	timing := "  Starts " + o.Clock.WeekdayDateTime(start.In(in)) // the location's clock (F17), in the listener's form
 	if end.After(start) {
-		timing += "   Ends " + end.In(in).Format("Mon 01/02 3:04 PM") +
+		timing += "   Ends " + o.Clock.WeekdayDateTime(end.In(in)) +
 			fmt.Sprintf("   (~%s)", end.Sub(start).Round(time.Hour))
 	}
 	out = append(out, timing)
@@ -242,7 +242,7 @@ func wrapPrefixed(_ render.Opts, text string, w int) []string {
 	return wrapped
 }
 
-// The alert module (HUM LEAD UAT 2026-08-28 facelift): ONE row in a heavy
+// The alert module (facelift): ONE row in a heavy
 // box on the Alert Details modal's tint — the warning red or the advisory
 // yellow — "02/02  ⚠ FLOOD ADVISORY - Temecula, CA  • Issued: 08/26 8:00 AM
 // • Expires: 12/31 12:59 PM" with the paging chips at the right. The body
@@ -291,7 +291,7 @@ func (d Dashboard) alertLine(o render.Opts, sel *snapshot.Location, a snapshot.A
 	title := event + " - " + sel.Label
 	controls := o.KeyCap("A") + " Details   " + o.KeyCapIf("←", idx > 0) + " Previous   " + o.KeyCapIf("→", idx < n-1) + " Next"
 	in := alertClock(sel)
-	stamp := func(t time.Time) string { return t.In(in).Format("01/02 3:04 PM") }
+	stamp := func(t time.Time) string { return o.Clock.DateTime(t.In(in)) }
 	issued, expires := "", ""
 	if !a.Sent.IsZero() {
 		issued = "  • Issued: " + stamp(a.Sent)

@@ -7,6 +7,7 @@
 package severe
 
 import (
+	"github.com/branden-thompson/watchpost/platform/category"
 	"regexp"
 	"sort"
 	"strings"
@@ -17,18 +18,23 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// Tab is the window's category, in importance order (HUM LEAD SAM-D-10).
-type Tab int
+// Tab is the window's category — names for the one registry
+// (platform/category), never an ordering of its own. Anything that needs to
+// know about a category asks the registry, so there is nothing for a second
+// list to disagree with.
+type Tab = category.Category
 
 const (
-	TabWarnings Tab = iota
-	TabWatches
-	TabAdvisories
-	TabStatements
-	TabQuakes
-	TabTropical
-	NumTabs
-	TabNone Tab = -1 // Classify's "not shown" — never a valid index
+	TabEmergency  = category.Emergency
+	TabWarnings   = category.Warnings
+	TabWatches    = category.Watches
+	TabAdvisories = category.Advisories
+	TabStatements = category.Statements
+	TabDisasters  = category.Disasters
+	TabMarine     = category.Marine
+	TabForecasts  = category.Forecasts
+	NumTabs       = category.Count
+	TabNone       = category.None // Classify's "not shown" — never a valid index
 )
 
 // MaxRows caps the retained index (NFR-4 / SAM-D-22, P10-03): the most recent win.
@@ -92,26 +98,65 @@ func NormalizeID(id string) (key string, nws bool) {
 }
 
 // Classify maps an event class + product name to its tab; ok is false (and
-// the tab TabNone) for a product the window does not show in v1 (Air Quality
-// Alert, Hydrologic Outlook…). English substring matching on NWS product
+// the tab TabNone) for a product the window does not show (Air Quality Alert,
+// Hydrologic Outlook…). English substring matching on NWS product
 // names is an accepted limitation (objectives §5); "Statements" is Special
 // Weather Statements by name (SAM-D-10).
 func Classify(class globalfeed.Class, product string) (Tab, bool) {
 	switch class {
 	case globalfeed.ClassQuake:
-		return TabQuakes, true
+		return TabDisasters, true
 	case globalfeed.ClassTropical:
-		return TabTropical, true
+		return TabMarine, true
 	}
+	// The civil-emergency family is matched BY NAME, before the keyword arms.
+	// None of these products names a warning, watch or advisory, so without
+	// this they fall through to "not shown" — which is where the Weather
+	// Service's highest-urgency products were sitting.
+	//
+	// THE TABLE MOVED TO globalfeed AND IS NO LONGER OURS (C-2, D-1). The
+	// producer asks the same question when it lanes an arrival for the marquee
+	// and the read, and this package is the one that imports globalfeed rather
+	// than the reverse — so a copy here was a copy the marquee could not see,
+	// and it laned an evacuation order as an ordinary warning.
+	if tab, ok := globalfeed.CivilEmergencyCategory(product); ok {
+		return tab, true
+	}
+	// Warning, Watch and Advisory are decided first: a product naming one of
+	// them is that thing, whatever else its name contains.
 	switch {
-	case product == "Special Weather Statement":
-		return TabStatements, true
 	case strings.Contains(product, "Warning"):
 		return TabWarnings, true
 	case strings.Contains(product, "Watch"):
 		return TabWatches, true
-	case strings.Contains(product, "Advisory"):
+	case strings.Contains(product, "Advisory"), product == "Air Quality Alert":
+		// The Air Quality Alert is an advisory by name in everything but the
+		// word (MVS-D-58). Named exactly rather than matching "Alert", which
+		// would sweep in products from other programmes on a coincidence.
 		return TabAdvisories, true
+	case strings.Contains(product, "Marine"):
+		// MARINE is the tab's name to the listener. Swept against the live
+		// catalogue this arm matches exactly ONE product — Marine Weather
+		// Statement — because every other marine product (Gale Warning,
+		// Hazardous Seas Watch, Small Craft Advisory, Hurricane Force Wind
+		// Warning) names warning, watch or advisory and is decided above.
+		// So narrowing this to that one string changes nothing today, and no
+		// test can tell the two apart without inventing a product the Weather
+		// Service does not issue. Whether marine products belong here at all
+		// rather than in their severity tab is an open ruling.
+		return TabMarine, true
+	case strings.Contains(product, "Outlook"), strings.Contains(product, "Forecast"):
+		// FORECASTS AND OUTLOOKS (MVS-D-59): what MIGHT develop, days out, over
+		// a whole forecast area — issued below a watch and written as
+		// discussion. Decided after warning, watch and advisory, so a product
+		// that names one of those is that thing however it is worded.
+		return TabForecasts, true
+	case strings.Contains(product, "Statement"):
+		// EVERY remaining statement, not only the Special Weather Statement
+		// (MVS-D-57). A Coastal Flood Statement used to fall through to "not
+		// shown", so the office had told the listener something and the app
+		// had quietly decided not to pass it on.
+		return TabStatements, true
 	}
 	return TabNone, false
 }
