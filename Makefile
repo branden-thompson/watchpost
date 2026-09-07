@@ -36,6 +36,21 @@ vet:
 vet-tags:
 	go vet -tags watchpost_debug ./...
 
+# AND RUN THEM. vet-tags proves the tagged tree COMPILES; it does not run a
+# single assertion in it. app/inject_seam_test.go — "the test the whole injector
+# stands on" — is behind the tag, so until now no gate in this repository had
+# ever executed it. It stayed dark once already, through a compile break that
+# vet alone would not have caught either, and was found by hand at a red team.
+#
+# The injector is the one capability that must never ship, and B3 makes its
+# surface user-facing. Asserting things about code no gate runs is how a
+# capability gets a green check and no measurement.
+#
+# ./app ONLY: it is the sole package with tagged tests, and the whole tree under
+# the tag costs a second full suite for nothing.
+test-tags:
+	go test -tags watchpost_debug -count=1 ./app
+
 # Dependency hygiene (quality pass Q0, red-team PH-1/IS-9): go.mod must be tidy,
 # the module cache must match go.sum, and no known vulnerability may be reachable.
 tidy:
@@ -169,7 +184,7 @@ cache-clean:
 	@go clean -cache -testcache
 	@echo "cache-clean: build and test caches cleared"
 
-verify: fmt vet vet-tags tidy vuln race lint-imports lint-watermark gate-controls mutant-check
+verify: fmt vet vet-tags test-tags tidy vuln race lint-imports lint-watermark gate-controls mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
