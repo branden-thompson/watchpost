@@ -270,6 +270,24 @@ func (n *NWS) parse(body []byte, u string) ([]Event, error) {
 	return out, nil
 }
 
+// CuratedProducts is the curated national list, in query order — the closed set
+// the feed actually asks the Weather Service for.
+//
+// EXPORTED SO A CONSUMER CAN BE CHECKED AGAINST IT (FR-2.2). The four
+// classifiers over product strings agree today only because every name here
+// carries "Warning" or "Watch", or is the one civil-emergency product; adding an
+// advisory to severeEvents() is a one-line edit that would silently lane it as a
+// Warning. A consumer that derives its fixtures from this cannot drift from it —
+// which is a stronger guarantee than a test asserting it has not.
+func CuratedProducts() []string {
+	list := severeEvents() // bounded by the table (P10-02)
+	out := make([]string, 0, len(list))
+	for _, e := range list {
+		out = append(out, e.event)
+	}
+	return out
+}
+
 // CuratedSeverity is the tier of a product on the curated national list —
 // the one authority for it by every path (domains/severe reads it too).
 func CuratedSeverity(product string) (Severity, bool) {

@@ -33,17 +33,16 @@ func TestTheProductClassifierCrossTable(t *testing.T) {
 		product string
 		class   globalfeed.Class
 	}
-	products := []row{
-		// The nine on the curated national query (globalfeed/nws.go).
-		{"Evacuation Immediate", globalfeed.ClassSevereWx},
-		{"Tornado Warning", globalfeed.ClassSevereWx},
-		{"Extreme Wind Warning", globalfeed.ClassSevereWx},
-		{"Hurricane Warning", globalfeed.ClassSevereWx},
-		{"Severe Thunderstorm Warning", globalfeed.ClassSevereWx},
-		{"Flash Flood Warning", globalfeed.ClassSevereWx},
-		{"Tornado Watch", globalfeed.ClassSevereWx},
-		{"Hurricane Watch", globalfeed.ClassSevereWx},
-		{"Severe Thunderstorm Watch", globalfeed.ClassSevereWx},
+	// THE CURATED QUERY IS DERIVED, NOT COPIED (FR-2.2). A product added to
+	// severeEvents() arrives here on its own and moves the divergence count
+	// below, so the coupling between the feed's closed set and the four
+	// classifiers cannot drift. A hand-copied list is what let this table look
+	// complete while severeEvents() moved underneath it.
+	var products []row
+	for _, p := range globalfeed.CuratedProducts() {
+		products = append(products, row{p, globalfeed.ClassSevereWx})
+	}
+	products = append(products, []row{
 		// The rest of the civil-emergency family (globalfeed/civil.go): these
 		// reach the window through tracked locations, not the national query.
 		{"Civil Emergency Message", globalfeed.ClassSevereWx},
@@ -65,7 +64,7 @@ func TestTheProductClassifierCrossTable(t *testing.T) {
 		{"Hurricane", globalfeed.ClassTropical},
 		// Unknown: every classifier's default, side by side.
 		{"Nonexistent Product Type", globalfeed.ClassSevereWx},
-	}
+	}...)
 
 	label := func(c category.Category) string {
 		if c == category.None {
