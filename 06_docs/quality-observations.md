@@ -969,6 +969,71 @@ thing that stopped the release was that nobody had run it on the other platform
 until the PR. The branch was local-only by design; the last CI run of any kind
 was the previous release, eight days earlier.
 
+## Five CI rounds, and I fixed the wrong thing in four of them (2026-09-07, SHIP)
+
+The release PR went red on Linux. It took five rounds to go green, and the
+interesting part is not the defects — it is the shape of my own debugging.
+
+**Round 1** — `app/voices.go` branched on `runtime.GOOS` instead of the
+`runtimeGOOS` seam, so tests that had explicitly pinned darwin walked the Piper
+install path on Linux. Real fix.
+
+**Round 2** — I guarded `startBackgroundInstall`. Wrong path entirely; the panic
+came back.
+
+**Round 3** — the guard's predicate was half a predicate (engine, not engine *and*
+program). The panic moved one line, from `Engine.Status` to `Program.Send`.
+
+**Round 4** — the actual cause: `tune → startSynth → rawVoice` installs
+**synchronously**, and a helper named `offlineDeck` was downloading 63 MB from the
+internet.
+
+**Round 5** — my own fix for a flaky test was still wrong, because I had replaced
+the fake underneath an assertion without asking what the assertion was for.
+
+**The pattern in one line: I kept fixing where the pointer was nil instead of
+asking why a unit test was downloading 63 MB.** Each round I took the stack trace
+as the statement of the problem. The stack trace says where the program noticed;
+it does not say what is wrong. Four rounds of nil-guards were four rounds of
+treating a symptom that moved.
+
+**The same mistake in a different register, round 5.**
+`TestSourceStopsFastWhileMidSegment` asserted that `io.ReadAll` returns a non-nil
+error after cancellation. I built a blocking fake so the cancellation had
+something to interrupt — correct — and kept the assertion. CI failed it again:
+after a cancellation the stream may equally end *cleanly*, and both outcomes
+appeared on macOS within one commit. The property UAT 81 protects is
+**promptness**. **Preserving an assertion is not the same as preserving what it
+was for**, and an assertion nobody can restate is a liability whatever it does.
+
+**What the rounds were really telling us.** They were not five defects. They were
+one: **this release had never been run on Linux.** The branch was local-only by
+design and the last CI of any kind was the previous release, eight days earlier.
+Every round was the same platform saying the same thing in a different place.
+
+**The instrument that existed and could not fire.**
+`TestHostPlatformFollowsTheSeam` asserts the platform follows the seam. It passed
+throughout, on a Mac, where the seam and the real OS agree. **The check was
+written; the ability to run it in a configuration where it could fail was not.**
+That is a different failure from a missing test, and it needs a different fix —
+not another assertion, but a way to disagree. `WATCHPOST_TEST_GOOS` and
+`make test-platforms` are that.
+
+**And the new instrument was hollow on its second use.** `make test-platforms`
+answered `(cached)`. A cached "ok" is not a run, and the entire point was to
+execute the suite in a configuration it had not been executed in. Found by
+noticing the word "cached" in output I had already decided was green. **`-count=1`
+is load-bearing in any target whose purpose is to run something differently.**
+
+**Cost.** Five CI rounds, each ~2–4 minutes of runner time and a re-cut of the
+release commit; perhaps two hours. A single push of the branch to CI on the day
+the Director landed would have surfaced all of it while the code was warm.
+
+**The rule, and it is cheap:** *push early enough that CI runs on every target
+platform while the work is still being done.* Not before the release PR. The
+branch being local-only is a git-hygiene choice; it silently became a testing
+choice.
+
 ## The metric this is all judged against
 
 Tasks completed per session. It has not moved yet (1). Every other number has. The programme
