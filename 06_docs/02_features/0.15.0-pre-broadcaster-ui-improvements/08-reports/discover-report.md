@@ -247,8 +247,36 @@ all.**
   diagnostic is on by default.  *(Today `read:gaveup:after-tone` is emitted only when
   `WATCHPOST_DEBUG_RADIO` is set, so F-43's own closing condition is unreachable in normal use.)*
 
+- **FR-9.3** A broadcast cycle that yields nothing to say is a **fault**, not a quiet moment, and is
+  reported as one.
+
 **FR-9 stands whether or not #17 is ever reproduced.**  A bound is a requirement about the product;
 #17 is a question about one failure.
+
+### The surface taxonomy — HUM LEAD ruling, 2026-09-07
+
+> **Visual is the operator.  Audio is the listener.**
+
+This settles the red team's strongest finding, and settles it as a mis-framing rather than a gap.
+Three lenses argued that the locked statement names a *listener* while every requirement serves the
+*operator*.  Under the ruling that is false: FR-9, FR-9.2, FR-6.5, F-43 and #17 are **listener**
+requirements, and FR-4, FR-5, FR-7 and FR-8 are **operator** requirements.  Metric **T** measuring
+"operator intent" is correct rather than a substitution, because `ctrl+d` is a visual surface and
+therefore operator-facing by definition.  What was missing was never the requirements; it was this
+sentence.
+
+**A periodic audible liveness signal is OUT OF SCOPE (same ruling).**  The reason is structural and
+is why FR-9.3 exists: the station always has something to report — a default location and a service
+radius produce a rotation, on the NOAA weather-radio pattern, whether or not any hazard is active.
+**So a listener CAN already tell a quiet day from a dead station, because a quiet day still speaks.**
+Silence is not the absence of news; silence is the fault.
+
+That makes "the station always has something to say" a **load-bearing invariant of the product's
+safety argument**, and today nothing enforces it.  One path is already handled — a card whose script
+renders nothing is declined (`app/executors.go:273`, *"the script rendered nothing to say"*) — but
+being declined is not the same as the cycle producing a read.  A rotation in which every candidate
+declines is silent, and under this ruling that silence is indistinguishable from a dead station to
+the only sense the listener has.  FR-9.3 is what turns the ruling into something a test can fail.
 
 ## Metrics of Success — carried forward, with owners
 
