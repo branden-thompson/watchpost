@@ -106,8 +106,16 @@ table and pins the divergence count, so it is a gate rather than a snapshot.
    Thunderstorm Warning.  The tone taxonomy has six classes and **none is Emergency**
    (`cast/tone.go:27-32`).  C-2 taught the feed, the window and the read ladder; #15 taught the
    marquee in 0.14.2; the tone was never told.  Under the surface taxonomy ruling this is
-   **listener-facing** — the tone is the entire signal before the words start.  **Filed as #18; it
-   needs a UX ruling, not a patch.**  Eleventh instance of the release's shape.
+   **listener-facing** — the tone is the entire signal before the words start.  **Filed as #18,
+   and RULED the same day (HUM LEAD).  The lane was already decided at C-2 and was not in
+   question; the TONE becomes three repetitions of the existing dual tone — a warning is 1 ×, an
+   evacuation order is 3 × — on the NWS attention-signal pattern, so the count carries the urgency
+   before a word is spoken.  It reuses `PresetDualTone` rather than inventing a fourth sound: the
+   distinction is carried by repetition, the one dimension the six-class taxonomy does not use.**
+   Eleventh instance of the release's shape.  **The fix stops this instance and nothing else** — the
+   recurrence is FR-2's job: every `category.Category` that can reach a read maps to exactly one
+   `cast.Class`, declared in one place, and a category with no mapping fails a test instead of
+   falling through to `ClassWarning`.  No further ruling needed; the cross-table is the fixture.
 2. **Seven of twenty-five products are filed differently by the window and the band** — the whole
    Advisory / Statement / Marine / Forecast family.  FR-2.2 called this latent; it is latent only for
    the *national query*.  These products reach the window through tracked locations, so the
