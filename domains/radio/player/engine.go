@@ -60,6 +60,7 @@ type Engine struct {
 	onSilence func(mount, name string) // MVS-D-76: the relay is up and silent
 	trace     func(string)             // DR-23: the engine's line in the radio timeline
 	clips     int                      // clips started, so the timeline can name which one
+	budget    int                      // the clip watcher's ceiling in polls; 0 = defaultClipBudget
 
 	mu     sync.Mutex
 	cancel context.CancelFunc
@@ -284,21 +285,51 @@ func (e *Engine) playOnce(ctx context.Context, mount, name string) error {
 	return e.playPCM(ctx, pcm, Status{State: Playing, Mount: mount, Name: label}, s.Title)
 }
 
+// ClipEnd is one clip's ending, reported once when its watcher stops.
+//
+// SPENT SAYS WHICH ENDING IT WAS: false when the player ran out of audio —
+// the clip was heard to its end — and true when the watcher's own budget ran
+// out first, which means the player was still claiming to play after ten
+// minutes of AIR time and was closed from under it. The second is the shape
+// FR-9 calls a fault: the read neither finished nor errored.
+type ClipEnd struct {
+	Spent bool
+}
+
 // Preview plays a short PCM clip (16-bit LE stereo at rate) on its own
 // player, mixed over whatever is playing, without touching the engine's
 // state (UAT 86: the voice chooser's sample). Returns when it has started.
-func (e *Engine) Preview(rate int, pcm io.Reader) error { return e.playClip(rate, pcm, true, true) }
+func (e *Engine) Preview(rate int, pcm io.Reader) error {
+	_, err := e.playClip(rate, pcm, true, true)
+	return err
+}
+
+// PreviewWatched is Preview with the clip's ending reported on a channel
+// (FR-9). The channel carries exactly one value and is then closed, so a
+// caller that stops listening cannot block the watcher.
+func (e *Engine) PreviewWatched(rate int, pcm io.Reader) (<-chan ClipEnd, error) {
+	return e.playClip(rate, pcm, true, true)
+}
+
+// PreviewAsideWatched is PreviewAside with the same report.
+func (e *Engine) PreviewAsideWatched(rate int, pcm io.Reader) (<-chan ClipEnd, error) {
+	return e.playClip(rate, pcm, false, true)
+}
 
 // Audition plays a clip that is NEVER the line in flight — the voice
 // chooser's sample: it drives the bars like a narration but a takeover's
 // pause holds the narration's line, not it (REVIEW R5-B-03).
-func (e *Engine) Audition(rate int, pcm io.Reader) error { return e.playClip(rate, pcm, true, false) }
+func (e *Engine) Audition(rate int, pcm io.Reader) error {
+	_, err := e.playClip(rate, pcm, true, false)
+	return err
+}
 
 // PreviewAside plays a clip beside the broadcast WITHOUT feeding the
 // visualizer's tap — a takeover's tone and lines (the app's director
 // decides which narrations the bars follow; HUM LEAD 2026-08-28).
 func (e *Engine) PreviewAside(rate int, pcm io.Reader) error {
-	return e.playClip(rate, pcm, false, true)
+	_, err := e.playClip(rate, pcm, false, true)
+	return err
 }
 
 // playClip is the one preview path: through the visualizer's tap like the
@@ -307,15 +338,19 @@ func (e *Engine) PreviewAside(rate int, pcm io.Reader) error {
 // the tap reads OutputRate. The clip becomes the line in flight; a HELD
 // line (PausePreview) is not displaced by it — a takeover's tone and lines
 // play while the read waits (red-team round 4, A-01).
-func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error {
+func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) (<-chan ClipEnd, error) {
 	src := io.Reader(newResampler(pcm, rate))
 	if tapped {
 		src = e.tap.Wrap(src)
 	}
 	p, err := e.out.NewPlayer(src)
 	if err != nil {
-		return fmt.Errorf("audio output: %w", err)
+		return nil, fmt.Errorf("audio output: %w", err)
 	}
+	// BUFFERED AND CLOSED, so the watcher never waits on a listener. A caller
+	// that walks away — the sequence ended, the operator pressed esc — must not
+	// pin the goroutine that closes the player.
+	done := make(chan ClipEnd, 1)
 	e.mu.Lock()
 	p.SetVolume(e.volume)
 	if inFlight {
@@ -330,7 +365,14 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 		// Bounded per P10-02: 10 min of PLAY is the ceiling (an event read
 		// speaks a whole record — minutes, not seconds); a held line does
 		// not spend its budget.
-		for i := 0; i < 12000; {
+		//
+		// THE BUDGET IS ALSO FR-9's BOUND, and it was already the right shape:
+		// held-excluded elapsed time, on the read's own player, never on the
+		// live stream. What was missing was anyone being told how it ended.
+		spent := true
+		budget := e.clipBudget()
+		i := 0
+		for i < budget {
 			e.mu.Lock()
 			held := e.held[p]
 			if !held {
@@ -338,6 +380,7 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 			}
 			e.mu.Unlock()
 			if !held && !p.IsPlaying() {
+				spent = false // the player ran out of audio: the clip was heard
 				break
 			}
 			time.Sleep(50 * time.Millisecond)
@@ -351,10 +394,32 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 		}
 		delete(e.held, p)
 		e.mu.Unlock()
-		e.debugf("player:clip:end n=%d", n)
+		e.debugf("player:clip:end n=%d spent=%v", n, spent)
 		_ = p.Close()
+		done <- ClipEnd{Spent: spent}
+		close(done)
 	}()
-	return nil
+	return done, nil
+}
+
+// defaultClipBudget is the watcher's ceiling in 50 ms polls: ten minutes of AIR
+// time. An event read speaks a whole record — minutes, not seconds — and a held
+// line does not spend it.
+const defaultClipBudget = 12000
+
+// clipBudget is that ceiling, OVERRIDABLE so the fault path can be tested.
+//
+// A BOUND NOBODY CAN REACH IN A TEST IS A BOUND NOBODY HAS WATCHED FAIL. Ten
+// minutes of air time is right for a listener and impossible for a suite, so
+// the number lives in a field the package's own tests can shorten — which is
+// the difference between "the fault fires" being a claim and a measurement.
+func (e *Engine) clipBudget() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.budget > 0 {
+		return e.budget
+	}
+	return defaultClipBudget
 }
 
 // PausePreview holds the line in flight (a lower-priority narration while a

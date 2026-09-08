@@ -352,3 +352,77 @@ func TestAFinishedFakePlayerNeverReportsPlaying(t *testing.T) {
 			"left to clear it: watch() polls until the caller gives up, which is what #17 saw")
 	}
 }
+
+// A CLIP REPORTS HOW IT ENDED (FR-9, B5 spike).
+//
+// The read's duration is open-loop today: the app computes a PCM length and
+// sleeps it, and nothing observes that the audio finished. playClip's watcher
+// has always known — it polls the player and stops when the audio runs out or
+// when its ten-minute budget does — and now it says which of the two happened.
+//
+// SPENT IS THE FAULT SHAPE FR-9 IS ABOUT: the player still claimed to be
+// playing after ten minutes of AIR time and was closed from under it, which is
+// a read that neither finished nor errored.
+func TestAClipReportsThatItFinished(t *testing.T) {
+	e, _ := New(&fakeOutput{}, "watchpost/test (t@example.com)", nil)
+	done, err := e.PreviewWatched(OutputRate, bytes.NewReader(make([]byte, 4*OutputRate/10))) // 100 ms
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case end := <-done:
+		if end.Spent {
+			t.Error("a clip that ran out of audio reported its budget spent")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the clip never reported an ending: the signal this batch is built on does not arrive")
+	}
+	// AND THE CHANNEL IS CLOSED, so a caller that keeps listening is not
+	// blocked and a second read yields the zero value rather than hanging.
+	select {
+	case <-done:
+	default:
+		t.Error("the completion channel is not closed after its one value")
+	}
+}
+
+// AND A CLIP THAT NEVER ENDS REPORTS ITS BUDGET SPENT (FR-9).
+//
+// THIS IS THE HALF THAT MATTERS. A read that finishes is the easy case; the one
+// FR-9 exists for is the read that neither finishes nor errors — the player
+// still claiming to play after ten minutes of AIR time, with the schedule
+// waiting behind it. The watcher closes it and now says so.
+//
+// The budget is shortened here rather than waited out: ten minutes is right for
+// a listener and impossible for a suite, and a bound nobody can reach in a test
+// is a bound nobody has watched fail.
+func TestAClipThatNeverEndsReportsItsBudgetSpent(t *testing.T) {
+	e, _ := New(&fakeOutput{}, "watchpost/test (t@example.com)", nil)
+	e.mu.Lock()
+	e.budget = 4 // 200 ms of polls
+	e.mu.Unlock()
+
+	done, err := e.PreviewWatched(OutputRate, neverEnding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case end := <-done:
+		if !end.Spent {
+			t.Error("a clip that never stopped playing reported a clean ending")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the watcher never gave up: the bound does not hold")
+	}
+}
+
+// neverEnding is a source that always has more audio and never errors — a
+// player that will not stop.
+type neverEnding struct{}
+
+func (neverEnding) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = 0
+	}
+	return len(p), nil
+}
