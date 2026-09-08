@@ -160,6 +160,7 @@ func TestAWatchlistOfOneNeverRetunesItself(t *testing.T) {
 	}
 
 	// And it still advances the moment there is somewhere else to go.
+	d, _ = d.Step(Powered{To: Running}) // a stopped station rotates nowhere; without this these pass vacuously
 	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
 	_, fx := d.Step(Tick{Now: atNoon().Add(5 * time.Minute)})
 	if tunes := tunesIn(fx); len(tunes) != 1 || tunes[0].Ref != "b" {
@@ -275,4 +276,96 @@ func TestARepeatedTunedReportDoesNotRestartTheTurn(t *testing.T) {
 	if _, fx := d.Step(Tick{Now: atNoon().Add(time.Minute + 30*time.Second)}); len(tunesIn(fx)) != 0 {
 		t.Errorf("the new station did not get a full turn of its own: %v", fx)
 	}
+}
+
+// A TUNE THAT NEVER LANDS IS REPORTED (FR-9.3).
+//
+// The rotation is told to move and the station does not: the deck reports Tuned
+// when audio actually PLAYS, so a tune that never plays is silence that nothing
+// else observes. Nothing is on the air and nothing is coming — which is exactly
+// the fault fault.go says a window is for.
+func TestATuneThatNeverLandsIsReported(t *testing.T) {
+	d := New(Settings{Max: 5}, planNow)
+	d, _ = d.Step(Powered{To: Running}) // a stopped station rotates nowhere; without this these pass vacuously
+	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
+	d, _ = d.Step(Tuned{Ref: "a", Live: true})
+
+	// The turn ends and the rotation is told to move to "b".
+	d, fx := d.Step(Ended{})
+	if !hasTune(fx, "b") {
+		t.Fatalf("the rotation did not move on: %v", fx)
+	}
+
+	// The station never plays it. Ticks up to the bound report nothing.
+	d, fx = d.Step(Tick{Now: planNow.Add(tuneLands - time.Second)})
+	if hasEscalate(fx) {
+		t.Errorf("the rotation was reported stalled before its bound: %v", fx)
+	}
+	// Past the bound it is reported, ONCE.
+	d, fx = d.Step(Tick{Now: planNow.Add(tuneLands + time.Second)})
+	if !hasEscalate(fx) {
+		t.Fatalf("a tune that never landed was never reported: %v", fx)
+	}
+	// A SECOND TICK, ONE SECOND LATER — not at 2 x the bound, which is where
+	// the one-minute dwell elapses and issues a NEW tune, resetting the clock
+	// and making this assertion pass for the wrong reason. It did, until the
+	// planted defect it exists to catch went unnoticed.
+	_, fx = d.Step(Tick{Now: planNow.Add(tuneLands + 2*time.Second)})
+	if hasEscalate(fx) {
+		t.Errorf("the stall was reported twice; a tick every second would raise a window every "+
+			"second, which is the noise regression fault.go exists to avoid: %v", fx)
+	}
+}
+
+// AND A TUNE THAT LANDS IS NOT REPORTED, however long the station then plays.
+func TestATuneThatLandsIsNotReported(t *testing.T) {
+	d := New(Settings{Max: 5}, planNow)
+	d, _ = d.Step(Powered{To: Running}) // a stopped station rotates nowhere; without this these pass vacuously
+	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
+	d, _ = d.Step(Tuned{Ref: "a", Live: true})
+	d, _ = d.Step(Ended{})
+	d, _ = d.Step(Tuned{Ref: "b", Live: true}) // the station moved
+
+	_, fx := d.Step(Tick{Now: planNow.Add(10 * tuneLands)})
+	if hasEscalate(fx) {
+		t.Errorf("a station that moved when asked was reported as stalled: %v", fx)
+	}
+}
+
+// AND SILENCE THE OPERATOR CHOSE IS NOT A FAULT (FR-9.3's rewording; I-2).
+//
+// A stop while a tune is in flight is a listener saying stop, not a station
+// failing to move. Reporting it would raise a window for something the listener
+// did on purpose — the exact reversal the HUM LEAD's rewording exists to
+// prevent.
+func TestAStopWhileATuneIsInFlightIsNotAFault(t *testing.T) {
+	d := New(Settings{Max: 5}, planNow)
+	d, _ = d.Step(Powered{To: Running}) // a stopped station rotates nowhere; without this these pass vacuously
+	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
+	d, _ = d.Step(Tuned{Ref: "a", Live: true})
+	d, _ = d.Step(Ended{})
+	d, _ = d.Step(Powered{To: Stopped}) // the listener stopped it
+
+	_, fx := d.Step(Tick{Now: planNow.Add(tuneLands + time.Second)})
+	if hasEscalate(fx) {
+		t.Errorf("stopping the station raised a fault for the tune it was mid-way through: %v", fx)
+	}
+}
+
+func hasTune(fx []Effect, ref string) bool {
+	for _, f := range fx {
+		if t, ok := f.(Tune); ok && t.Ref == ref {
+			return true
+		}
+	}
+	return false
+}
+
+func hasEscalate(fx []Effect) bool {
+	for _, f := range fx {
+		if _, ok := f.(Escalate); ok {
+			return true
+		}
+	}
+	return false
 }
