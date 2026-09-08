@@ -457,7 +457,7 @@ func (d Dashboard) severeEmptyLines(o render.Opts, w, inner int, tab category.Sp
 	if !d.severe.Updated.IsZero() {
 		stamp = "Updated " + o.Clock.DateTimeZone(d.severe.Updated.Local())
 	}
-	lines = append(lines, "  No active "+strings.ToLower(tab.TabLabel)+" events · "+stamp)
+	lines = append(lines, "  No active "+strings.ToLower(tab.TabLabel)+" events "+o.Glyphs().Dot+" "+stamp)
 	// A WATCHLIST TAB SAYS WHY IT IS EMPTY IN BOTH CASES.
 	//
 	// This only spoke when the watchlist was EMPTY, which is the case where a

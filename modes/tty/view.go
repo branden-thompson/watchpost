@@ -117,7 +117,7 @@ func (d Dashboard) modalWidth() int {
 	case modalAbout:
 		return aboutWidth
 	case modalHelp:
-		return d.helpWidth(d.opts().Width) // two columns when they fit, else the single column
+		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
 	case modalSevere:
 		return 130 // every column at 133 cols (the DETECTION column joined at UAT, 2026-08-28); the ladder below
 	}

@@ -147,6 +147,7 @@ func (Opts).Knots
 func (Opts).ListMark
 func (Opts).LoadingDots
 func (Opts).LocationTable
+func (Opts).Marks
 func (Opts).Panel
 func (Opts).PanelColored
 func (Opts).ScrollPanel
@@ -327,6 +328,7 @@ type groupSpec
 type layout
 type quattroPalette
 type severeCol
+var asciiMarks
 var themeGen
 var themeMu
 var themeName

@@ -101,7 +101,7 @@ func maritimeRows(o render.Opts, m *snapshot.Marine, tz *time.Location, now time
 		if i == 0 {
 			label = "MARINE"
 		}
-		out = append(out, detailRow(label, r))
+		out = append(out, detailRow(o, label, r))
 	}
 	return out
 }

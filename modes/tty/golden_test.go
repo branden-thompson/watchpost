@@ -7,12 +7,15 @@ package tty
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -184,4 +187,58 @@ func TestASCIIFramesCarryNothingButASCII(t *testing.T) {
 			t.Errorf("--ascii %s frame carries %q (U+%04X) — it needs an ASCII form in the glyph set", name, r, r)
 		}
 	}
+}
+
+// EVERY WINDOW UNDER --ascii, NOT TWO (FR-8).
+//
+// TestFrameGoldenASCII scans the DASHBOARD for seven glyphs, and the Setup
+// golden covers one window. That is two surfaces against eleven, and the eight
+// unscanned ones are where the last three --ascii escapes were found by hand:
+// the ctrl+d window's bare "›", the relay-fault window's, and the Settings
+// window's location suggestions — each found by someone opening that window,
+// each after the previous one was called the last.
+//
+// THE GLYPH LIST IS DERIVED, TOO. Seven were named by hand out of a set of
+// twenty-two, so a glyph added to the set was unscanned the day it landed.
+// This asks the set itself.
+func TestNoWindowLeaksAUnicodeGlyphUnderASCII(t *testing.T) {
+	uni := unicodeGlyphs(t)
+	for m := modalHelp; m < numModals; m++ {
+		t.Run(modalName(m), func(t *testing.T) {
+			d := fixtureFor(t, m)
+			d.cfg.ASCII = true
+			got := stripANSITest(d.renderModal(d.opts()))
+			if got == "" {
+				t.Fatalf("%s draws nothing at fixtureFor: it is NOT covered by this scan", modalName(m))
+			}
+			for name, g := range uni {
+				if strings.Contains(got, g) {
+					t.Errorf("%s carries %s %q under --ascii", modalName(m), name, g)
+				}
+			}
+		})
+	}
+}
+
+// unicodeGlyphs is every mark the glyph set has a unicode form for, by field
+// name, read from the set rather than listed beside it.
+func unicodeGlyphs(t *testing.T) map[string]string {
+	t.Helper()
+	g := reflect.ValueOf(render.Opts{}.Glyphs())
+	out := map[string]string{}
+	for i := range g.NumField() {
+		f, name := g.Field(i), g.Type().Field(i).Name
+		switch f.Kind() {
+		case reflect.String:
+			out[name] = f.String()
+		case reflect.Array:
+			for j := range f.Len() {
+				out[fmt.Sprintf("%s[%d]", name, j)] = f.Index(j).String()
+			}
+		}
+	}
+	if len(out) == 0 {
+		t.Fatal("the glyph set yielded nothing: this scan would pass having looked for no glyphs")
+	}
+	return out
 }

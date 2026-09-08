@@ -28,10 +28,10 @@ const detailPrefixW = detailLabelW + 3
 // empty label for continuations). No lead (UAT 65): the section label
 // column starts flush with the modal's header label; the freed cells are
 // spacing on the right.
-func detailRow(label, content string) string {
+func detailRow(o render.Opts, label, content string) string {
 	// UAT 30: 1-col breathing room each side of the divider (was 3) - the
 	// reclaimed width goes to the right gutter beside the scroll rail.
-	return fmt.Sprintf("%*s │ %s", detailLabelW, label, content)
+	return fmt.Sprintf("%*s %s %s", detailLabelW, label, o.Glyphs().Rail, content)
 }
 
 func (d Dashboard) detailLines() []string {
@@ -46,19 +46,19 @@ func (d Dashboard) detailLines() []string {
 	cw := min(o.Width, d.modalWidth()) - 7 - detailPrefixW
 	lines := []string{""}
 	lines = append(lines, d.currentlyRows(o, loc, cw)...)
-	lines = append(lines, detailRow("", ""))
+	lines = append(lines, detailRow(o, "", ""))
 	lines = append(lines, d.todayRows(o, loc, cw)...)
-	lines = append(lines, detailRow("", ""))
+	lines = append(lines, detailRow(o, "", ""))
 	lines = append(lines, d.forecastRows(o, loc, cw)...)
 	if loc.Marine != nil {
-		lines = append(lines, detailRow("", ""))
+		lines = append(lines, detailRow(o, "", ""))
 		lines = append(lines, maritimeRows(o, loc.Marine, locTZ(loc), d.now(), cw)...) // coastal locations only (UAT 29)
 	}
-	lines = append(lines, detailRow("", ""))
+	lines = append(lines, detailRow(o, "", ""))
 	lines = append(lines, fireRows(o, loc, d.now(), d.fireBoldMW(), d.cfg.FireRadiusKm, d.cfg.FireIncidentRadiusKm, cw)...) // B5: fire is another alert kind
-	lines = append(lines, detailRow("", ""))
+	lines = append(lines, detailRow(o, "", ""))
 	lines = append(lines, seismicRows(o, loc, d.now(), cw, d.seismicLookbackDays())...) // 0.11.0: earthquakes are another alert kind
-	lines = append(lines, alertBlocks(loc, min(o.Width, d.modalWidth())-11)...)
+	lines = append(lines, alertBlocks(o, loc, min(o.Width, d.modalWidth())-11)...)
 	// UAT 101: one consolidated chip row; + / − Watchlist enabled by membership.
 	controls := o.KeyCap("↑↓") + " Scroll  " + o.KeyCap("esc") + " Close  " +
 		o.KeyCapIf("ctrl+a", d.canAddFocused()) + " + Watchlist  " +
@@ -86,7 +86,7 @@ func gridRow(label, primary, secondary string) string {
 func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location, cw int) []string {
 	h := loc.Harmonized
 	temp := render.Tint(strings.TrimSpace(o.Temp(h.Temp)), render.Tok(render.TextBright)) + o.TrendGlyph(trend(*loc))
-	out := []string{detailRow("CURRENTLY", gridRow(prettyCond(h.Condition), temp, ""))}
+	out := []string{detailRow(o, "CURRENTLY", gridRow(prettyCond(h.Condition), temp, ""))}
 	// WHERE THE NUMBER CAME FROM, WHEN IT DID NOT COME FROM A STATION.
 	//
 	// A location with no observing station within twenty miles is filled from
@@ -98,7 +98,7 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location, cw int) 
 	// It reads as an aside because it is one: the number above is the most
 	// accurate available, not a degraded one.
 	if h.Source.Provider != "" && render.PlainLine(h.Source.ModelOrStation) == "" {
-		out = append(out, detailRow("", render.Italic("Data from NWS hourly grid forecast for this location")))
+		out = append(out, detailRow(o, "", render.Italic("Data from NWS hourly grid forecast for this location")))
 	}
 	// THE SECOND LABEL IS A COLUMN, not a string with spaces in it (0.15.0).
 	//
@@ -144,7 +144,7 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location, cw int) 
 		// It says "may vary" rather than naming a doubt it cannot quantify: how
 		// wrong the reading is depends on terrain this app does not model.
 		if d := h.Source.DistanceKm; d != nil && *d > render.StationFarKM {
-			out = append(out, detailRow("", render.Italic(render.Tint("This is not your local station - actual temp may vary", render.Tok(render.NameWarning)))))
+			out = append(out, detailRow(o, "", render.Italic(render.Tint("This is not your local station - actual temp may vary", render.Tok(render.NameWarning)))))
 		}
 	}
 	return out
@@ -170,7 +170,7 @@ func currentlyGrid(o render.Opts, rows []render.StatusRow, cw int) []string {
 	}
 	out := make([]string, 0, len(rows))
 	for _, l := range o.DetailTable(cols, rows, cw-detailRailGutter, 0) { // bounded by the rows (P10-02)
-		out = append(out, detailRow("", l))
+		out = append(out, detailRow(o, "", l))
 	}
 	return out
 }
@@ -178,20 +178,20 @@ func currentlyGrid(o render.Opts, rows []render.StatusRow, cw int) []string {
 // todayRows: today's condition + HIGH/LOW, sunrise/sunset in local time.
 func (d Dashboard) todayRows(o render.Opts, loc *snapshot.Location, cw int) []string {
 	if len(loc.Daily) == 0 {
-		return []string{detailRow("TODAY", o.LoadingDots())}
+		return []string{detailRow(o, "TODAY", o.LoadingDots())}
 	}
 	_ = cw
 	day := loc.Daily[0]
-	out := []string{detailRow("TODAY", gridRow(prettyCond(day.Condition), "", hiLo(o, day)))}
+	out := []string{detailRow(o, "TODAY", gridRow(prettyCond(day.Condition), "", hiLo(o, day)))}
 	tz := time.Local
 	if z, err := zones.Location(loc.TZ); err == nil {
 		tz = z
 	}
 	if !day.Sunrise.IsZero() {
-		out = append(out, detailRow("", gridRow("Sunrise:", o.Clock.Time(day.Sunrise.In(tz))+"  Local Time", "")))
+		out = append(out, detailRow(o, "", gridRow("Sunrise:", o.Clock.Time(day.Sunrise.In(tz))+"  Local Time", "")))
 	}
 	if !day.Sunset.IsZero() {
-		out = append(out, detailRow("", gridRow("Sunset :", o.Clock.Time(day.Sunset.In(tz))+"  Local Time", "")))
+		out = append(out, detailRow(o, "", gridRow("Sunset :", o.Clock.Time(day.Sunset.In(tz))+"  Local Time", "")))
 	}
 	return append(out, d.hourlyRows(o, loc, tz, cw)...)
 }
@@ -238,9 +238,9 @@ func (d Dashboard) hourlyRows(o render.Opts, loc *snapshot.Location, tz *time.Lo
 			"(" + pp + ")", "   " + strings.TrimSpace(o.Temp(h.Temp)),
 		}})
 	}
-	out := []string{detailRow("", ""), detailRow("", gridRow(fmt.Sprintf("Next %d Hours:", len(hrs)), "", ""))}
+	out := []string{detailRow(o, "", ""), detailRow(o, "", gridRow(fmt.Sprintf("Next %d Hours:", len(hrs)), "", ""))}
 	for _, l := range o.DetailTable(hourCols(), rows, cw-detailRailGutter, 0) { // bounded by the table (P10-02)
-		out = append(out, detailRow("", l))
+		out = append(out, detailRow(o, "", l))
 	}
 	return out
 }
@@ -350,12 +350,12 @@ func (d Dashboard) forecastRows(o render.Opts, loc *snapshot.Location, cw int) [
 		}})
 	}
 	if len(rows) == 0 {
-		return []string{detailRow("FORECAST", o.LoadingDots())}
+		return []string{detailRow(o, "FORECAST", o.LoadingDots())}
 	}
 	var out []string
 	label := "FORECAST"
 	for _, l := range o.DetailTable(dayCols(), rows, cw-detailRailGutter, 0) { // bounded by the days (P10-02)
-		out = append(out, detailRow(label, l))
+		out = append(out, detailRow(o, label, l))
 		label = ""
 	}
 	return out

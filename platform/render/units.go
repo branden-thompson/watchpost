@@ -4,6 +4,9 @@ package render
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
+	"sync"
 
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
@@ -254,4 +257,36 @@ func (o Opts) TrendGlyph(trend string) string {
 		return Tint(down, Tok(TrendDown))
 	}
 	return ""
+}
+
+// asciiMarks maps every unicode mark to its ASCII form, derived from the two
+// sets rather than listed beside them: a mark added to Glyphs is covered the
+// day it lands, which is the failure F-47 describes.
+var asciiMarks = sync.OnceValue(func() *strings.Replacer {
+	uni, asc := reflect.ValueOf(Opts{}.Glyphs()), reflect.ValueOf(Opts{ASCII: true}.Glyphs())
+	var pairs []string
+	for i := range uni.NumField() {
+		switch u, a := uni.Field(i), asc.Field(i); u.Kind() {
+		case reflect.String:
+			pairs = append(pairs, u.String(), a.String())
+		case reflect.Array:
+			for j := range u.Len() {
+				pairs = append(pairs, u.Index(j).String(), a.Index(j).String())
+			}
+		}
+	}
+	return strings.NewReplacer(pairs...)
+})
+
+// Marks rewrites text that was COMPOSED WITHOUT VIEW OPTIONS into this
+// frame's mark set — a keymap's static help string, a Producer's ticker head.
+// Those are the strings that cross the glyph boundary already built (F-47),
+// and they are the only ones that need this: anything a renderer composes
+// itself takes its marks from Glyphs directly, where the mark is chosen once
+// with the layout around it rather than substituted afterwards.
+func (o Opts) Marks(s string) string {
+	if !o.ASCII {
+		return s
+	}
+	return asciiMarks().Replace(s)
 }

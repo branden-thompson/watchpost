@@ -16,7 +16,7 @@ import (
 
 // alertBlocks renders each alert in full with the mock's bullet rules,
 // separated by dividers.
-func alertBlocks(loc *snapshot.Location, w int) []string {
+func alertBlocks(o render.Opts, loc *snapshot.Location, w int) []string {
 	if len(loc.Alerts) == 0 {
 		return nil
 	}
@@ -29,7 +29,7 @@ func alertBlocks(loc *snapshot.Location, w int) []string {
 	lines := []string{}
 	for _, a := range loc.Alerts {
 		tone := modalAlertTone(a)
-		lines = append(lines, "", divider, "", render.TintRaw("⚠ "+strings.ToUpper(render.Plain(a.Event)), "1;"+tone)) // bold title (UAT 28.5)
+		lines = append(lines, "", divider, "", render.TintRaw(o.Glyphs().Alert+" "+strings.ToUpper(render.Plain(a.Event)), "1;"+tone)) // bold title (UAT 28.5)
 		for _, l := range formatAlertBody(render.Plain(a.Description), textW) {
 			lines = append(lines, render.TintRaw(l, tone))
 		}
@@ -132,7 +132,7 @@ func (d Dashboard) alertDetailsModal(o render.Opts) string {
 		return d.floatModalToned(o, d.modalWidth(), "ALERTS", d.alertDetailLines(), fg, render.Tok(render.AlertModalAdvBG))
 	}
 	a := sel.Alerts[d.alertIdx%len(sel.Alerts)]
-	title := fmt.Sprintf("ALERT %d / %d · %s", d.alertIdx%len(sel.Alerts)+1, len(sel.Alerts), sel.Label) // the page as shown (R5-C-09)
+	title := fmt.Sprintf("ALERT %d / %d %s %s", d.alertIdx%len(sel.Alerts)+1, len(sel.Alerts), o.Glyphs().Dot, sel.Label) // the page as shown (R5-C-09)
 	return d.floatModalToned(o, d.modalWidth(), title, d.alertDetailLines(), fg, alertModalBG(a))
 }
 
@@ -197,7 +197,7 @@ func alertClock(loc *snapshot.Location) *time.Location {
 func alertRecordLines(o render.Opts, a snapshot.Alert, wrapW int, in *time.Location) []string {
 	tone := modalAlertTone(a)                      // UAT 28.3/28.4 modal text tones
 	head := strings.ToUpper(render.Plain(a.Event)) // provider text never addresses the terminal (S-F6) — EVERY field, not just the title (0.13.0 P4-1)
-	meta := fmt.Sprintf("[%s · %s · %s]", render.Plain(a.Severity), render.Plain(a.Urgency), render.Plain(a.Certainty))
+	meta := fmt.Sprintf("[%[1]s %[4]s %[2]s %[4]s %[3]s]", render.Plain(a.Severity), render.Plain(a.Urgency), render.Plain(a.Certainty), o.Glyphs().Dot)
 	out := []string{"  " + render.TintRaw(head, "1;"+tone) + "  " + meta} // bold title (UAT 28.5)
 	start, end := a.Effective, a.Expires
 	if a.Onset != nil {

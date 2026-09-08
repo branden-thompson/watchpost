@@ -34,11 +34,11 @@ type helpBlock struct{ lines []string }
 // helpBlocks renders the merged KeyMap as groups (truthful after any swap -
 // D-15 guarantee 3): the registry's groups in order, then OTHER for any
 // action no group names (a future binding: still listed, never lost).
-func (d Dashboard) helpBlocks() []helpBlock {
+func (d Dashboard) helpBlocks(o render.Opts) []helpBlock {
 	var blocks []helpBlock
 	seen := map[term.Action]bool{}
 	row := func(bind term.Binding, act term.Action) string {
-		return fmt.Sprintf("   %-12s - %s", strings.Join(bind.Keys, ", "), orDefault(bind.Help, string(act)))
+		return fmt.Sprintf("   %-12s - %s", strings.Join(bind.Keys, ", "), o.Marks(orDefault(bind.Help, string(act))))
 	}
 	for _, g := range helpGroups() {
 		var rows []string
@@ -77,8 +77,11 @@ func helpColumnWidth(blocks []helpBlock) int {
 // helpPlan decides the layout for a terminal content width: two columns
 // when they fit (the chrome charged by whether the two-column body scrolls),
 // else the single column; it returns the window's width with it.
-func (d Dashboard) helpPlan(avail int) (twoCol bool, width int) {
-	blocks := d.helpBlocks()
+// THE PLAN SEES WHAT THE RENDER SEES. The mark swap changes widths — an
+// ellipsis is one cell in the set and three in ASCII — so a plan measured
+// under one set and drawn under the other clips (F-47).
+func (d Dashboard) helpPlan(o render.Opts, avail int) (twoCol bool, width int) {
+	blocks := d.helpBlocks(o)
 	colW := helpColumnWidth(blocks)
 	body := 1 + len(helpTwoColumns(blocks, colW)) + 4 // air · columns · legend (≤2) · blank · chips
 	if w := twoColumnsWidth(colW, colW, panelChromeFor(body, d.modalMax())); w <= avail {
@@ -88,16 +91,16 @@ func (d Dashboard) helpPlan(avail int) (twoCol bool, width int) {
 }
 
 // helpWidth is the window's width for a terminal content width.
-func (d Dashboard) helpWidth(avail int) int {
-	_, w := d.helpPlan(avail)
+func (d Dashboard) helpWidth(o render.Opts, avail int) int {
+	_, w := d.helpPlan(o, avail)
 	return w
 }
 
 // helpLines renders the modal body: the air under the title, the groups in
 // one or two columns, the row-marks legend, the chips.
 func (d Dashboard) helpLines(o render.Opts) []string {
-	blocks := d.helpBlocks()
-	twoCol, _ := d.helpPlan(o.Width)
+	blocks := d.helpBlocks(o)
+	twoCol, _ := d.helpPlan(o, o.Width)
 	lines := []string{""} // air under the title (item 1)
 	if twoCol {
 		lines = append(lines, helpTwoColumns(blocks, helpColumnWidth(blocks))...)

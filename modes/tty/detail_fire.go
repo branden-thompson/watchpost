@@ -24,16 +24,16 @@ import (
 func fireRows(o render.Opts, loc *snapshot.Location, now time.Time, boldMW, ringKm, incidentKm float64, cw int) []string {
 	fs := loc.Fire
 	if fs.AsOf.IsZero() { // no fire feed has answered yet (cold launch, feeds down): never "none" (red-team B5 P3)
-		return []string{detailRow("FIRE", gridRow("Hotspots", "fire feed not yet available", ""))}
+		return []string{detailRow(o, "FIRE", gridRow("Hotspots", "fire feed not yet available", ""))}
 	}
-	out := []string{detailRow("FIRE", fireSectionHead(o, "Hotspots", ringKm))}
-	out = append(out, rows(hotspotRows(o, loc, fs.Hotspots, now, boldMW, cw))...)
-	out = append(out, detailRow("", ""))
-	out = append(out, detailRow("", fireSectionHead(o, "Incidents", incidentKm)))
-	out = append(out, rows(incidentRows(o, loc, fs.Incidents, now, cw))...)
+	out := []string{detailRow(o, "FIRE", fireSectionHead(o, "Hotspots", ringKm))}
+	out = append(out, rows(o, hotspotRows(o, loc, fs.Hotspots, now, boldMW, cw))...)
+	out = append(out, detailRow(o, "", ""))
+	out = append(out, detailRow(o, "", fireSectionHead(o, "Incidents", incidentKm)))
+	out = append(out, rows(o, incidentRows(o, loc, fs.Incidents, now, cw))...)
 	for _, a := range loc.Alerts {
 		if ev := strings.ToLower(a.Event); strings.Contains(ev, "red flag") || strings.Contains(ev, "fire weather") {
-			out = append(out, detailRow("", gridRow("Fire Wx", render.Tint(render.Plain(a.Event), render.Tok(render.AlertDanger)), "")))
+			out = append(out, detailRow(o, "", gridRow("Fire Wx", render.Tint(render.Plain(a.Event), render.Tok(render.AlertDanger)), "")))
 			break
 		}
 	}
@@ -96,10 +96,10 @@ func nearestFirst[T any](in []T, km func(T) *float64) []T {
 // NO EXTRA INDENT: the table's first column is one cell wide and carries the
 // hotspot's ◆ or an incident's nothing, so both lists' names start in the same
 // column — which is what the mock draws.
-func rows(lines []string) []string {
+func rows(o render.Opts, lines []string) []string {
 	out := make([]string, 0, len(lines))
 	for _, l := range lines { // bounded by the table (P10-02)
-		out = append(out, detailRow("", l))
+		out = append(out, detailRow(o, "", l))
 	}
 	return out
 }

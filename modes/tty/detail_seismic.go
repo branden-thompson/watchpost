@@ -31,20 +31,20 @@ func (d Dashboard) seismicLookbackDays() int {
 func seismicRows(o render.Opts, loc *snapshot.Location, now time.Time, cw, lookbackDays int) []string {
 	ss := loc.Seismic
 	if ss == nil || ss.AsOf.IsZero() { // no feed has answered (cold/down): "unavailable", never a fake "none" (FIRE AsOf precedent)
-		return []string{detailRow("SEISMIC", seismicHead("seismic data unavailable", cw))}
+		return []string{detailRow(o, "SEISMIC", seismicHead("seismic data unavailable", cw))}
 	}
 	n := len(ss.Quakes)
 	if n == 0 { // the feed answered and nothing was in reach: the honest quiet answer
-		return []string{detailRow("SEISMIC", seismicHead("no recent seismic activity", cw))}
+		return []string{detailRow(o, "SEISMIC", seismicHead("no recent seismic activity", cw))}
 	}
 	head := fmt.Sprintf("%d nearby in the last %d days", n, lookbackDays)
 	// The whole list (the provider caps it at 20, so this is bounded): the radio
 	// broadcast reads only the strongest three and sends listeners here for the
 	// rest (P4, HUM LEAD). Pre-sized: header + one row per quake.
 	out := make([]string, 0, n+1)
-	out = append(out, detailRow("SEISMIC", seismicHead(head, cw)))
+	out = append(out, detailRow(o, "SEISMIC", seismicHead(head, cw)))
 	for _, l := range seismicTable(o, ss.Quakes, now, cw-detailRailGutter) { // bounded by the provider's cap of 20 (P10-02)
-		out = append(out, detailRow("", l))
+		out = append(out, detailRow(o, "", l))
 	}
 	return out
 }
