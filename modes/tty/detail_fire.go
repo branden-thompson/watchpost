@@ -6,7 +6,6 @@ package tty
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -21,18 +20,16 @@ import (
 // bearing, distance, strength, satellite and age — the named incidents
 // with acres and containment, and the fire-weather alert when one is
 // active. Always present, so "none nearby" is said, never implied.
-func fireRows(o render.Opts, loc *snapshot.Location, now time.Time, boldMW float64) []string {
+func fireRows(o render.Opts, loc *snapshot.Location, now time.Time, boldMW, ringKm, incidentKm float64, cw int) []string {
 	fs := loc.Fire
 	if fs.AsOf.IsZero() { // no fire feed has answered yet (cold launch, feeds down): never "none" (red-team B5 P3)
 		return []string{detailRow("FIRE", gridRow("Hotspots", "fire feed not yet available", ""))}
 	}
-	head := "none within the fire ring"
-	if n := len(fs.Hotspots); n > 0 {
-		head = fmt.Sprintf("%s hotspot%s nearby", hotspotCount(n), plural(n))
-	}
-	out := []string{detailRow("FIRE", gridRow("Hotspots", render.Tint(head, fireTone(len(fs.Hotspots) > 0)), ""))}
-	out = append(out, hotspotRows(o, loc, fs.Hotspots, now, boldMW)...)
-	out = append(out, incidentRows(o, fs.Incidents)...)
+	out := []string{detailRow("FIRE", fireSectionHead(o, "Hotspots", ringKm))}
+	out = append(out, rows(hotspotRows(o, loc, fs.Hotspots, now, boldMW, cw))...)
+	out = append(out, detailRow("", ""))
+	out = append(out, detailRow("", fireSectionHead(o, "Incidents", incidentKm)))
+	out = append(out, rows(incidentRows(o, loc, fs.Incidents, now, cw))...)
 	for _, a := range loc.Alerts {
 		if ev := strings.ToLower(a.Event); strings.Contains(ev, "red flag") || strings.Contains(ev, "fire weather") {
 			out = append(out, detailRow("", gridRow("Fire Wx", render.Tint(render.Plain(a.Event), render.Tok(render.AlertDanger)), "")))
@@ -42,20 +39,42 @@ func fireRows(o render.Opts, loc *snapshot.Location, now time.Time, boldMW float
 	return out
 }
 
-// hotspotCount words the count; at the cap it is "300+" (snapshot.MaxHotspots).
-func hotspotCount(n int) string {
-	if n >= snapshot.MaxHotspots {
-		return fmt.Sprintf("%d+", snapshot.MaxHotspots)
+// fireSectionHead is "Hotspots - Radius: 16 mi": the list's name and HOW FAR IT
+// LOOKED, beside the list itself.
+//
+// THE RADIUS IS ON THE HEAD BECAUSE THERE ARE TWO OF THEM (UAT 2026-09-07). The
+// section drew one label, "Hotspots", and listed satellite detections and named
+// incidents under it — two feeds, two rings, one heading. So "none within the
+// fire ring" read as a claim about the three named fires printed under it, one
+// of them eleven miles away: *"Radio says none within your 16 mile fire ring -
+// but there are 2 hotspots at 11 miles."* They were incidents, from the wider
+// ring, and nothing on screen said so.
+func fireSectionHead(o render.Opts, name string, km float64) string {
+	if km <= 0 {
+		return gridRow(name, "", "")
 	}
-	return strconv.Itoa(n)
+	// PadTo the longer of the two names, so the two dashes line up down the
+	// section exactly as the mock draws them.
+	return render.PadTo(name, len("Incidents")+1) + "- Radius: " + strings.TrimSpace(o.Distance(&km))
 }
 
-// fireSeparators are the glyphs the FIRE rows join with, per glyph set.
-func fireSeparators(o render.Opts) (dot, more string) {
-	if o.ASCII {
-		return " - ", "..."
+// rows puts a table's lines in the detail's continuation column.
+//
+// NO EXTRA INDENT: the table's first column is one cell wide and carries the
+// hotspot's ◆ or an incident's nothing, so both lists' names start in the same
+// column — which is what the mock draws.
+func rows(lines []string) []string {
+	out := make([]string, 0, len(lines))
+	for _, l := range lines { // bounded by the table (P10-02)
+		out = append(out, detailRow("", l))
 	}
-	return " " + o.Glyphs().Dot + " ", "…"
+	return out
+}
+
+// fireNone is what a list says when its ring admitted nothing. It names the
+// RING, not "the fire ring", because there are two.
+func fireNone(o render.Opts) []string {
+	return []string{render.Tint("none within this radius", render.Tok(render.TableMuted))}
 }
 
 // hotspotRows: up to three hotspots nearest first, then "… and N more".
@@ -65,33 +84,54 @@ func fireSeparators(o render.Opts) (dot, more string) {
 // name to tell it from the next, so three and a count is the whole of what a
 // reader can use. A named fire is exactly what someone is asking about, and
 // there are as many as the incident radius admits.
-func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, now time.Time, boldMW float64) []string {
-	dot, more := fireSeparators(o)
-	var out []string
-	for i, h := range hs {
+//
+// A HOTSPOT HAS NO NAME AND NO ACRES. It is a satellite pixel: where it is, how
+// hard it is radiating, which bird saw it, when, and how sure. Those are the
+// columns, and the mock's NAME and ACRES have no source on this side.
+func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, now time.Time, boldMW float64, cw int) []string {
+	if len(hs) == 0 {
+		return fireNone(o)
+	}
+	cols := []render.StatusColumn{
+		{Width: 1},                // the ◆
+		{Fill: true, MinWidth: 9}, // where: distance and bearing
+		{Width: 8, Right: true},   // radiative power
+		{Width: 12},               // the satellite that saw it
+		{Width: 8, Right: true},   // how long ago
+		{Width: 9, Right: true},   // how sure the feed is
+	}
+	var rows []render.StatusRow
+	for i, h := range hs { // bounded by the cap below (P10-02)
 		if i == 3 {
-			out = append(out, detailRow("", gridRow("", fmt.Sprintf("%s and %d more", more, len(hs)-3), "")))
+			more := "…"
+			if o.ASCII {
+				more = "..."
+			}
+			rows = append(rows, render.StatusRow{Cells: []string{"", fmt.Sprintf("%s and %d more", more, len(hs)-3), "", "", "", ""}})
 			break
 		}
 		brg := geo.BearingDeg(loc.Lat, loc.Lon, h.Lat, h.Lon)
-		where := "  " + fireGlyph(o) + " " + strings.TrimSpace(o.Distance(h.DistanceKm)) + " " + compass(&brg) + " " // the trailing space keeps a gap when the label fills the column (red-team B5 U6)
-		strength := "n/a MW"                                                                                         // an unmeasured point (HMS GOES often) — short, so the age column never collides (U1)
+		strength, styles := "n/a MW", map[int]string{} // an unmeasured point (HMS GOES often)
 		if h.FRPMW != nil {
 			strength = fmt.Sprintf("%.0f MW", *h.FRPMW)
 			if *h.FRPMW >= boldMW {
-				strength = render.Tint(strength, "1;"+render.Tok(render.FireMark))
+				styles[2] = "1;" + render.Tok(render.FireMark)
 			}
-		}
-		if sat := render.Plain(h.Source.ModelOrStation); sat != "" {
-			strength += dot + sat
 		}
 		age := "age n/a"
 		if !h.DetectedAt.IsZero() { // a point without a time is not "2562047h" old (U2)
 			age = fixedAgeTrim(now.Sub(h.DetectedAt))
 		}
-		out = append(out, detailRow("", gridRow(where, strength, age)))
+		rows = append(rows, render.StatusRow{Styles: styles, Cells: []string{
+			render.Tint(fireGlyph(o), render.Tok(render.FireMark)),
+			strings.TrimSpace(o.Distance(h.DistanceKm)) + " " + compass(&brg),
+			strength,
+			render.Plain(h.Source.ModelOrStation),
+			age,
+			render.Plain(h.Confidence),
+		}})
 	}
-	return out
+	return o.DetailTable(cols, rows, cw)
 }
 
 // incidentRows lists EVERY named fire the row counts (UAT 2026-09-07).
@@ -101,22 +141,48 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 // the spoken report named all five. Three surfaces, three answers to "which
 // fires are near me", and the most complete was the one you cannot re-read.
 //
-// incidentRows: up to three named incidents, largest first.
-func incidentRows(o render.Opts, ins []snapshot.Incident) []string {
-	dot, _ := fireSeparators(o)
-	var out []string
+// AN INCIDENT HAS NO RADIATIVE POWER. It is a reported fire: its name, where it
+// is, how big, how contained, and when it was found. The mock's MWRP column has
+// no source on this side.
+//
+// THE NAME IS NOT TRUNCATED, by HUM LEAD ruling: *"this can not worry about
+// that just like the USGS seismic section does not worry about it."*
+func incidentRows(o render.Opts, loc *snapshot.Location, ins []snapshot.Incident, now time.Time, cw int) []string {
+	if len(ins) == 0 {
+		return fireNone(o)
+	}
+	cols := []render.StatusColumn{
+		{Width: 1},                 // no glyph: a named fire is not a detection
+		{Fill: true, MinWidth: 10}, // the name, whole
+		{Width: 9, Right: true},    // distance and bearing
+		{Width: 12, Right: true},
+		{Width: 14, Right: true},
+		{Width: 9, Right: true},
+	}
+	var rows []render.StatusRow
 	for _, in := range ins { // bounded by the incident radius (P10-02)
-		facts := strings.TrimSpace(o.Distance(in.Source.DistanceKm))
+		acres := ""
 		if in.Acres != nil {
-			facts += dot + render.Thousands(*in.Acres) + " ac"
+			acres = render.Thousands(*in.Acres) + " acres"
 		}
 		contained := ""
 		if in.PercentContained != nil {
 			contained = fmt.Sprintf("%.0f%% contained", *in.PercentContained)
 		}
-		out = append(out, detailRow("", gridRow("  "+ellipsize(render.Plain(in.Name), 11, o.ASCII)+" ", facts, contained)))
+		found := ""
+		if !in.Discovered.IsZero() {
+			found = fixedAgeTrim(now.Sub(in.Discovered))
+		}
+		where := strings.TrimSpace(o.Distance(in.Source.DistanceKm))
+		if in.Lat != 0 || in.Lon != 0 {
+			brg := geo.BearingDeg(loc.Lat, loc.Lon, in.Lat, in.Lon)
+			where += " " + compass(&brg)
+		}
+		rows = append(rows, render.StatusRow{Cells: []string{
+			"", render.Plain(in.Name), where, acres, contained, found,
+		}})
 	}
-	return out
+	return o.DetailTable(cols, rows, cw)
 }
 
 // fireCount is the row badge's number (UAT 110): the named incidents

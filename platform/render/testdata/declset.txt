@@ -134,6 +134,7 @@ func (Opts).BoxInnerWidth
 func (Opts).BoxRuleWidth
 func (Opts).BoxTitled
 func (Opts).Controls
+func (Opts).DetailTable
 func (Opts).Distance
 func (Opts).Glyphs
 func (Opts).HealthGlyph

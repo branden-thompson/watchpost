@@ -458,8 +458,9 @@ func errorWord
 func fireCount
 func fireGlyph
 func fireHot
+func fireNone
 func fireRows
-func fireSeparators
+func fireSectionHead
 func fireTone
 func firstOfGroup
 func fixedAge
@@ -473,7 +474,6 @@ func helpColumnWidth
 func helpGroups
 func helpTwoColumns
 func hiLo
-func hotspotCount
 func hotspotRows
 func hz
 func incidentRows
@@ -525,6 +525,7 @@ func relayLineOf
 func roleOf
 func roleState
 func rowLoading
+func rows
 func sameLocation
 func sameRefs
 func scrollWindow

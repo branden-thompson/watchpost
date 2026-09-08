@@ -87,26 +87,35 @@ type Config struct {
 	// 0.14.0 — the cast, as strings. modes/tty may not import the registry
 	// (make lint-imports), so the app supplies the role keys, the class list
 	// and the hooks, and a parity test in app pins them to the registry.
-	Cast           CastView                                              // who reads what, on this host
-	Tones          ToneState                                             // the per-class mute state
-	ToneClasses    []ToneClass                                           // the mutable classes, in draw order
-	SetCast        func(CastView) error                                  // save the cast and re-cast the deck
-	SetTones       func(ToneState) error                                 // save the tone mute; NOT a re-cast ([M] must not disturb the air)
-	VoiceInstalled func(name string) bool                                // is this voice on the host? (the not-installed note)
-	Hydrate        func(ref snapshot.LocationRef)                        // on-demand hourly forecast for a RECENT row (UAT 72)
-	Credits        []string                                              // About "Data Provided by" lines — the app owns the list (UAT 75)
-	Radio          Radio                                                 // NOAA Weather Radio playback (B4); nil = controls stay inert
-	Spectrum       func() []float64                                      // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
-	FireBoldMW     float64                                               // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
-	SeismicDays    int                                                   // 0.11.0: the [seismic] lookback window the section words ("last N days"; 0 = 7)
-	Suggest        func(query string, limit int) []snapshot.LocationRef  // type-ahead hints for the Setup window (embedded index only; nil = enter resolves)
-	Setup          func(def snapshot.LocationRef, firmsKey string) error // persist the default location (+ the FIRMS key when given) — the Setup window's finish (UAT 100)
-	OpenSetup      bool                                                  // open the Setup window at launch (first run, no locations, or `watchpost setup`)
-	FIRMSKey       func() string                                         // the stored FIRMS key's tail ("cdef"), "" when none — the Setup window shows it is there (UAT 111)
-	Stats          func() Stats                                          // request/publish/dump counters for the [S] modal (quality pass Q0); nil = the rows are omitted
-	ASCII          bool                                                  // --ascii: the row marks and legend in their ASCII forms (A11-10; quality pass Q3)
-	NarrateEvent   func(key string)                                      // 0.13.0: [space] in the severe window reads the focused event over the radio (UAT option B); nil = the chip mutes
-	EndEventRead   func()                                                // 0.14.0 MVS-D-75: closing the window stops a read in progress; nil = it plays on
+	Cast           CastView                       // who reads what, on this host
+	Tones          ToneState                      // the per-class mute state
+	ToneClasses    []ToneClass                    // the mutable classes, in draw order
+	SetCast        func(CastView) error           // save the cast and re-cast the deck
+	SetTones       func(ToneState) error          // save the tone mute; NOT a re-cast ([M] must not disturb the air)
+	VoiceInstalled func(name string) bool         // is this voice on the host? (the not-installed note)
+	Hydrate        func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
+	Credits        []string                       // About "Data Provided by" lines — the app owns the list (UAT 75)
+	Radio          Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
+	Spectrum       func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
+	FireBoldMW     float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
+
+	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
+	// reports against, and they are TWO because the data is two things: the
+	// ring is satellite hotspots, and named incidents are admitted from a wider
+	// one. The section states each ring beside its own list — a reader who is
+	// told "none" needs to know what it was none of, and how far it looked
+	// (UAT 2026-09-07: "Radio says none within your 16 mile fire ring - but
+	// there are 2 hotspots at 11 miles", which were named incidents).
+	FireRadiusKm, FireIncidentRadiusKm float64
+	SeismicDays                        int                                                   // 0.11.0: the [seismic] lookback window the section words ("last N days"; 0 = 7)
+	Suggest                            func(query string, limit int) []snapshot.LocationRef  // type-ahead hints for the Setup window (embedded index only; nil = enter resolves)
+	Setup                              func(def snapshot.LocationRef, firmsKey string) error // persist the default location (+ the FIRMS key when given) — the Setup window's finish (UAT 100)
+	OpenSetup                          bool                                                  // open the Setup window at launch (first run, no locations, or `watchpost setup`)
+	FIRMSKey                           func() string                                         // the stored FIRMS key's tail ("cdef"), "" when none — the Setup window shows it is there (UAT 111)
+	Stats                              func() Stats                                          // request/publish/dump counters for the [S] modal (quality pass Q0); nil = the rows are omitted
+	ASCII                              bool                                                  // --ascii: the row marks and legend in their ASCII forms (A11-10; quality pass Q3)
+	NarrateEvent                       func(key string)                                      // 0.13.0: [space] in the severe window reads the focused event over the radio (UAT option B); nil = the chip mutes
+	EndEventRead                       func()                                                // 0.14.0 MVS-D-75: closing the window stops a read in progress; nil = it plays on
 
 	AlertRadiusMi  int       // 0.12.0: the Alert Notification Preference at launch — 0 = All (global), >0 = only alerts within N mi of the default location
 	SetAlertRadius func(int) // 0.12.0: persist the radius and tell the ticker pipeline to re-scope; nil in tests

@@ -34,14 +34,28 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	m2, _ := m.Update(SnapshotMsg{Snap: s2})
 	d := m2.(Dashboard)
 	d.modal = modalDetails
+	// THE TWO RINGS ARE CONFIGURED, because the section states each one beside
+	// the list it admits and a test with neither set would never draw them.
+	d.cfg.FireRadiusKm, d.cfg.FireIncidentRadiusKm = 25, 50
 	raw := strings.Join(d.detailLines(), "\n")
 	joined := stripANSITest(raw)
 	for _, want := range []string{
-		"FIRE │ Hotspots      2 hotspots nearby",
-		"◆ 6 mi N    62 MW · GOES-WEST",
+		// EACH LIST NAMES ITS OWN RING (UAT 2026-09-07). One heading over two
+		// feeds is what made "none within the fire ring" read as a claim about
+		// the named fires printed under it.
+		"Hotspots  - Radius: 16 mi",
+		"Incidents - Radius: 31 mi",
+		// A hotspot is a satellite pixel: where, how hard, which bird, when,
+		// how sure. It has no name and no acres.
+		"62 MW",
+		"GOES-WEST",
 		"2h 00m",
-		"◆ 11 mi E   8 MW · NOAA-20",
-		"Timber      19 mi · 12,915 ac",
+		"8 MW",
+		"NOAA-20",
+		// A named fire has a name, a size and a containment, and no radiative
+		// power.
+		"Timber",
+		"12,915 acres",
 		"26% contained",
 		"Fire Wx       Red Flag Warning",
 	} {
@@ -49,11 +63,20 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 			t.Fatalf("FIRE section missing %q:\n%s", want, joined)
 		}
 	}
-	if !strings.Contains(raw, render.Tint("62 MW", "1;"+render.Tok(render.FireMark))) {
-		t.Fatalf("62 MW must read bold at the 50 MW threshold:\n%q", raw)
-	}
-	if strings.Contains(raw, render.Tint("8 MW", "1;"+render.Tok(render.FireMark))) {
-		t.Fatal("8 MW must not read bold")
+	// THE BOLD IS ON THE CELL, not on the words: the table styles a padded cell,
+	// so the assertion asks which LINE carries the emphasis rather than
+	// rebuilding the exact string the kit produced.
+	// The kit expands a token into a full SGR ("208" -> "38;5;208"), so the
+	// assertion asks for the BOLD attribute rather than rebuilding the escape.
+	const bold = "\x1b[1;"
+	for _, l := range strings.Split(raw, "\n") {
+		plain := stripANSITest(l)
+		switch {
+		case strings.Contains(plain, "62 MW") && !strings.Contains(l, bold):
+			t.Fatalf("62 MW must read bold at the 50 MW threshold:\n%q", l)
+		case strings.Contains(plain, "8 MW") && !strings.Contains(plain, "62 MW") && strings.Contains(l, bold):
+			t.Fatalf("8 MW must not read bold:\n%q", l)
+		}
 	}
 	cold := m.(Dashboard)
 	cold.modal = modalDetails
@@ -65,8 +88,15 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 	m3, _ := m.Update(SnapshotMsg{Snap: s3})
 	quiet := m3.(Dashboard)
 	quiet.modal = modalDetails
-	if q := stripANSITest(strings.Join(quiet.detailLines(), "\n")); !strings.Contains(q, "FIRE │ Hotspots      none within the fire ring") {
-		t.Fatalf("no fire must still be said:\n%s", q)
+	// THE QUIET ANSWER IS SAID TWICE, ONCE PER RING (UAT 2026-09-07). A single
+	// "none" over two lists is what let a listener read it as covering the
+	// named fires printed underneath.
+	q := stripANSITest(strings.Join(quiet.detailLines(), "\n"))
+	if n := strings.Count(q, "none within this radius"); n != 2 {
+		t.Fatalf("each ring says its own none; got %d:\n%s", n, q)
+	}
+	if !strings.Contains(q, "Hotspots") || !strings.Contains(q, "Incidents") {
+		t.Fatalf("both lists are named even when both are empty:\n%s", q)
 	}
 }
 
@@ -96,7 +126,7 @@ func TestTheFireDetailListsEveryNamedIncident(t *testing.T) {
 		})
 	}
 
-	got := stripANSITest(strings.Join(fireRows(render.Opts{Width: 100}, loc, time.Now(), 50), "\n"))
+	got := stripANSITest(strings.Join(fireRows(render.Opts{Width: 100}, loc, time.Now(), 50, 25, 50, 65), "\n"))
 	for _, n := range names {
 		if !strings.Contains(got, ellipsizeName(n)) {
 			t.Errorf("%q is one of the %d fires the row counts and the detail does not list it:\n%s",

@@ -223,10 +223,15 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		SetUI:          setUI,
 		Units:          cfg.Units,
 		Clock:          cfg.Clock,
-		Hydrate:        lp.hydrate,                             // hourly forecast on demand for RECENT rows (UAT 72)
-		Credits:        credits(),                              // data-source credits, licence obligations included (UAT 75)
-		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW,          // B5: one owner for the emphasis threshold — the [fire] rules
-		SeismicDays:    seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
+		Hydrate:        lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
+		Credits:        credits(),                     // data-source credits, licence obligations included (UAT 75)
+		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
+		// THE SAME OWNER FOR THE TWO RINGS. The detail states each ring beside
+		// the list it admits, so the window and the spoken report cannot
+		// disagree about how far either looked.
+		FireRadiusKm:         fireRules(cfg.Fire).RadiusKm,
+		FireIncidentRadiusKm: fireRules(cfg.Fire).IncidentRadiusKm,
+		SeismicDays:          seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
 	}
 }
 

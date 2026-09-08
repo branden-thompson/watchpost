@@ -55,7 +55,7 @@ func (d Dashboard) detailLines() []string {
 		lines = append(lines, maritimeRows(o, loc.Marine, locTZ(loc), d.now())...) // coastal locations only (UAT 29)
 	}
 	lines = append(lines, detailRow("", ""))
-	lines = append(lines, fireRows(o, loc, d.now(), d.fireBoldMW())...) // B5: fire is another alert kind
+	lines = append(lines, fireRows(o, loc, d.now(), d.fireBoldMW(), d.cfg.FireRadiusKm, d.cfg.FireIncidentRadiusKm, cw)...) // B5: fire is another alert kind
 	lines = append(lines, detailRow("", ""))
 	lines = append(lines, seismicRows(o, loc, d.now(), cw, d.seismicLookbackDays())...) // 0.11.0: earthquakes are another alert kind
 	lines = append(lines, alertBlocks(loc, min(o.Width, d.modalWidth())-11)...)
