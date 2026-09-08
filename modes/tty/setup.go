@@ -195,6 +195,7 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// shut. Both exits write through sequenceWrites, so no group can be
 		// saved by one route and dropped by the other.
 		apply := d.applyOnCloseCmds()
+		d = d.commitToModel() // before close(): it reads d.setup, which the reset below clears
 		d = d.close()
 		d.setup = setupState{}
 		return d, apply
@@ -443,8 +444,43 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 	// location, radius, cast and tones; the WATCHPOST UI group is uiApplyCmd's,
 	// and leaving it out of this path meant enter saved four groups of five and
 	// then discarded the fifth with the window state.
-	return d, sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)),
+	cmd := sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)),
 		d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd())
+	return d.commitToModel(), cmd
+}
+
+// commitToModel makes the MODEL agree with what closing the window just wrote.
+//
+// THE WRITE WAS NEVER THE PROBLEM. These three settings persist through a setter
+// that returns nothing, so nothing wrote the new value back into d.cfg — and
+// openSetup seeds the form FROM d.cfg, so re-opening showed the old choice and
+// the listener reasonably concluded the save had failed. It had not: HUM LEAD,
+// UAT 2026-09-08, saw the [w] window correctly trim its events to the new radius
+// while Settings still displayed the previous one. The config file, the ticker
+// pipeline and the severe window all had the new value; only the form did not.
+//
+// The display preferences never had this bug because uiApplyCmd returns a
+// uiSavedMsg and applyUISaved writes the values back (setup_ui.go) — this is
+// that same round trip, for the three settings whose setters cannot report an
+// outcome to return.
+//
+// CALL IT AFTER THE CMDS ARE BUILT. applyIfChanged compares the new value with
+// d.cfg, so updating d.cfg first would make every write look like a no-op and
+// nothing would be saved at all.
+//
+// The guards match applyIfChanged's exactly. If they drift, the model and the
+// file disagree about what is in force, which is a worse bug than this one.
+func (d Dashboard) commitToModel() Dashboard {
+	if d.cfg.SetAlertRadius != nil {
+		d.cfg.AlertRadiusMi = d.setup.alertRadiusChoice()
+	}
+	if d.cfg.SetRelayDwell != nil && d.setup.relayDwell > 0 {
+		d.cfg.RelayDwell = d.setup.relayDwell
+	}
+	if d.cfg.SetRelayLang != nil && d.setup.relayLang != "" {
+		d.cfg.RelayLang = d.setup.relayLang
+	}
+	return d
 }
 
 // sequenceWrites orders the window's config writes and drops the no-ops.
