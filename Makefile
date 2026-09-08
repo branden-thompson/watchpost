@@ -95,6 +95,7 @@ gate-controls:
 	@./scripts/lint-watermark.sh --self-test
 	@./scripts/sync-go-studs.sh --self-test
 	@./scripts/quality/p10-unmatched_test.sh
+	@./scripts/quality/ledger-ratified.sh --self-test
 
 # The mutation corpus and the harness that reads it (06_docs/mutants, Go, behind
 # the `mutants` build tag so its ~140s does not land in `go test ./...` and thus
@@ -283,7 +284,8 @@ p10:
 	@mkdir -p $(DIST)
 	@$(A2DH) p10 check --json > $(P10_OUT) || { echo "p10: live findings — see $(P10_OUT)"; exit 1; }
 	@./scripts/quality/p10-unmatched.sh $(P10_OUT)
-	@echo "p10: 0 live, 0 unmatched ($(P10_OUT))"
+	@./scripts/quality/ledger-ratified.sh
+	@echo "p10: 0 live, 0 unmatched, 0 unratified ($(P10_OUT))"
 
 # T-M (§10.12): cross-compile matrix — every milestone proves it stays green.
 release-matrix:
