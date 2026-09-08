@@ -23,9 +23,42 @@ def sh(*a, **kw):
 
 # The maintainer's own identifiers, read from git rather than hardcoded, so the
 # scan follows the repository instead of needing an edit per contributor.
-NAME  = sh("git", "config", "user.name").strip() or "Branden Thompson"
-EMAIL = sh("git", "config", "user.email").strip()
-USER  = pathlib.Path.home().name
+# THE IDENTIFIERS ARE CHECKED IN, NOT READ OFF THE MACHINE (red team,
+# 2026-09-08). Taking them from `git config` and $HOME meant the scan measured
+# whoever RAN it: on any other machine — CI, a container, a second maintainer —
+# the `path` and `host` categories matched nothing and reported a confident
+# ZERO, against a real 12 files and 81 occurrences here. A survey that answers
+# "clean" because it is looking for the wrong name is worse than no survey.
+#
+# The machine may only ADD to the list, never replace it.
+IDENTITIES = pathlib.Path(__file__).with_name("exposure-identities.txt")
+
+def identifiers():
+    names, users, emails = set(), set(), set()
+    if IDENTITIES.exists():
+        for line in IDENTITIES.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            kind, _, value = line.partition(":")
+            {"name": names, "user": users, "email": emails}.get(kind.strip(), set()).add(value.strip())
+    if v := sh("git", "config", "user.name").strip():
+        names.add(v)
+    if v := sh("git", "config", "user.email").strip():
+        emails.add(v)
+    users.add(pathlib.Path.home().name)
+    return sorted(n for n in names if n), sorted(u for u in users if u), sorted(e for e in emails if e)
+
+NAMES, USERS, EMAILS = identifiers()
+if not NAMES or not USERS:
+    sys.exit("exposure-scan: no identifiers to search for — populate " + str(IDENTITIES))
+# An EMPTY alternative matches at every byte offset, which is how an unset
+# git email once produced 20,786,233 "identity" hits in the same format as a
+# real number. Every alternative here is non-empty by construction.
+NAME_ALT  = "|".join(re.escape(n) for n in NAMES)
+USER_ALT  = "|".join(re.escape(u) for u in USERS)
+EMAIL_ALT = "|".join(re.escape(e) for e in EMAILS) or r"(?!x)x"  # matches nothing, safely
+NAME, EMAIL, USER = NAMES[0], (EMAILS[0] if EMAILS else ""), USERS[0]
 SURNAME = NAME.split()[-1] if NAME else ""
 FIRST   = NAME.split()[0] if NAME else ""
 
@@ -37,9 +70,9 @@ FIRST   = NAME.split()[0] if NAME else ""
 # across the scopes they are being compared across.
 CATEGORIES = {
     # label: (compiled pattern, redact the match when printing?)
-    "identity":     (re.compile(rf"{re.escape(EMAIL)}|{re.escape(NAME)}|\b{re.escape(USER)}\b"), False),
+    "identity":     (re.compile(rf"{EMAIL_ALT}|{NAME_ALT}|\b(?:{USER_ALT})\b"), False),
     "location":     (re.compile(r"\b9[12][0-9]{3}\b|Oceanside|Vista, CA|Carlsbad"), False),
-    "host":         (re.compile(rf"{re.escape(USER)}-[a-z0-9]+|MacBook|iMac|\.local\b"), False),
+    "host":         (re.compile(rf"(?:{USER_ALT})-[a-z0-9]+|MacBook|iMac|\.local\b"), False),
     # Tightened from the first run, which counted every "internal/poll" in the Go
     # runtime and reported ~4,600 per binary. A category that fires on the
     # standard library measures the standard library.
@@ -53,7 +86,7 @@ CATEGORIES = {
     # random. Reported as DISTINCT VALUES, never occurrences — one fixture
     # copied into sixty blobs is one thing to judge, not sixty.
     "credential":   (re.compile(r"\b[0-9a-f]{32}\b|(?:api[_-]?key|apikey|secret|password)\s*[:=]\s*['\"]([A-Za-z0-9+/=_-]{16,})['\"]", re.I), True),
-    "path":         (re.compile(rf"/Users/{re.escape(USER)}|/home/{re.escape(USER)}"), False),
+    "path":         (re.compile(rf"/Users/(?:{USER_ALT})|/home/(?:{USER_ALT})"), False),
 }
 
 def scan_text(text, pat):
@@ -83,8 +116,25 @@ def every_blob():
     question: an unreferenced blob is still in a clone."""
     ids = subprocess.run(["git", "cat-file", "--batch-all-objects", "--batch-check=%(objectname) %(objecttype) %(objectsize)"],
                          capture_output=True, text=True).stdout
-    blobs = [l.split()[0] for l in ids.split("\n")
-             if l and l.split()[1] == "blob" and int(l.split()[2]) < 2_000_000]
+    # BIG BLOBS ARE COUNTED, NOT DROPPED. The cap silently excluded four blobs
+    # totalling 11.6 MB here — including the terminal-recording GIFs, which are
+    # the highest-yield carrier of a hostname or a prompt string in this
+    # repository, and one blob no longer reachable by any path, which is the
+    # exact case this function exists to cover (red team, 2026-09-08).
+    blobs, skipped, skipped_bytes = [], 0, 0
+    for l in ids.split("\n"):
+        if not l:
+            continue
+        name, kind, size = l.split()[0], l.split()[1], int(l.split()[2])
+        if kind != "blob":
+            continue
+        if size >= 20_000_000:  # a real memory bound, an order of magnitude above any blob here
+            skipped += 1
+            skipped_bytes += size
+            continue
+        blobs.append(name)
+    if skipped:
+        print(f"  NOTE: {skipped} blob(s), {skipped_bytes/1e6:.1f} MB, exceeded the size bound and were NOT scanned")
     for i in range(0, len(blobs), 200):
         chunk = blobs[i:i + 200]
         proc = subprocess.run(["git", "cat-file", "--batch"], input="\n".join(chunk),

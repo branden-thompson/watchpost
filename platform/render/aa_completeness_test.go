@@ -22,6 +22,9 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/branden-thompson/watchpost/platform/closedset"
@@ -82,12 +85,19 @@ func TestEveryTokenIsMeasuredOrExcused(t *testing.T) {
 // never been measured.
 func declaredTokens(t *testing.T) []Token {
 	t.Helper()
-	f, err := parser.ParseFile(token.NewFileSet(), "theme.go", nil, 0)
+	// THE WHOLE PACKAGE, NOT ONE FILE (red team, 2026-09-08). This parsed
+	// "theme.go" alone, so a token declared in any of the package's other
+	// 29 files was invisible to the gate — and a token the gate cannot see is a
+	// token nothing holds to WCAG AA. Planted: `const PlantedBG Token =
+	// "planted.bg"` in themes.go passed silently.
+	pkgs, err := parser.ParseDir(token.NewFileSet(), ".", func(fi os.FileInfo) bool {
+		return !strings.HasSuffix(fi.Name(), "_test.go")
+	}, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var out []Token
-	ast.Inspect(f, func(n ast.Node) bool {
+	inspect := func(n ast.Node) bool {
 		vs, ok := n.(*ast.ValueSpec)
 		if !ok || vs.Type == nil {
 			return true
@@ -106,9 +116,52 @@ func declaredTokens(t *testing.T) []Token {
 			out = append(out, Token(lit.Value[1:len(lit.Value)-1]))
 		}
 		return true
-	})
+	}
+	for _, pkg := range pkgs {
+		for _, f := range pkg.Files {
+			ast.Inspect(f, inspect)
+		}
+	}
 	if len(out) == 0 {
-		t.Fatal("no tokens found in theme.go: this gate would pass having measured nothing")
+		t.Fatal("no tokens found in the package: this gate would pass having measured nothing")
 	}
 	return out
+}
+
+// TOKENS ARE DECLARED ONE WAY, and this is what makes the parse above
+// sufficient rather than merely wide (red team, 2026-09-08).
+//
+// declaredTokens reads `Name Token = "value"`. A token written as a CONVERSION —
+// `Name = Token("value")` — has no ast.Ident type and is invisible to it;
+// planted in theme.go's own const block, it passed. Rather than teach the parser
+// every spelling, this forbids the other spellings: one shape to parse, and a
+// gate that fails the day someone invents a second.
+func TestEveryTokenIsDeclaredInTheOneShapeTheGateCanRead(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := 0
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") {
+			continue
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, line := range strings.Split(string(b), "\n") {
+			if strings.Contains(line, "Token(\"") {
+				t.Errorf("%s:%d declares a token by CONVERSION, which declaredTokens cannot see;\n"+
+					"  write `Name Token = \"value\"` instead:\n  %s", f, i+1, strings.TrimSpace(line))
+			}
+			if strings.Contains(line, "Token = \"") {
+				found++
+			}
+		}
+	}
+	if found == 0 {
+		t.Fatal("no token declarations found at all: this guard is looking at the wrong place")
+	}
+	t.Logf("%d token declarations, all in the readable shape", found)
 }

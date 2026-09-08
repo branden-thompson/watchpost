@@ -34,7 +34,7 @@ changes when either body changes — which is intended. An edited exemption has 
 
 | Fingerprint | Sites | Reason |
 |---|---|---|
-| `fbf77287aa96` | `render.Opts.Distance` · `render.Opts.TideHeight` | **RATIFIED by the HUM LEAD 2026-09-08.** Same skeleton — nil check, unit branch, two `Sprintf` — over two genuinely independent column contracts. They differ in unit system, precision, sentinel (`""` vs `"n/a"`) and field width, and the widths are pinned by UAT 61 and UAT 62 so a negative low never shifts the column. Collapsing would parameterise five things to save six lines and would couple two specifications that have no reason to move together. |
+| `fbf77287aa96` | `Opts.Distance` · `Opts.TideHeight` | **RATIFIED by the HUM LEAD 2026-09-08.** Same skeleton — nil check, unit branch, two `Sprintf` — over two genuinely independent column contracts. They differ in unit system, precision, sentinel (`""` vs `"n/a"`) and field width, and the widths are pinned by UAT 61 and UAT 62 so a negative low never shifts the column. Collapsing would parameterise five things to save six lines and would couple two specifications that have no reason to move together. |
 
 ## Collapsed rather than ratified (2026-09-08)
 

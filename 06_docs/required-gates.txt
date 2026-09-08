@@ -1,0 +1,27 @@
+# THE GATES THIS RELEASE REQUIRES — the third list (red team, 2026-09-08).
+#
+# TestCIAndVerifyRunTheSameGates compared `verify` against ci.yml and nothing
+# else, so it proved the two AGREE and not that either is complete: deleting
+# alloc-budget from BOTH passed, silently removing the repository's only
+# allocation gate — the exact loss that test's own header warns about.
+#
+# Two lists can agree by both being wrong. This is the third, so a gate can only
+# disappear if someone edits all three, and the third edit is this file, whose
+# whole content is the claim being made.
+#
+# A gate leaves this list by a HUM LEAD ruling recorded in the release's
+# gates.md, never by being convenient to drop.
+fmt
+vet
+vet-tags
+test-tags
+tidy
+vuln
+race
+lint
+lint-imports
+lint-watermark
+gate-controls
+alloc-budget
+dupes
+mutant-check

@@ -76,9 +76,16 @@ func main() {
 	ratified := readLedger(*ledgerPath)
 
 	var unratified []group
+	var drift []string
 	for _, g := range groups {
-		if !ratified[g.Fingerprint] {
+		sites, known := ratified[g.Fingerprint]
+		if !known {
 			unratified = append(unratified, g)
+			continue
+		}
+		if ok, why := covers(sites, g); !ok {
+			unratified = append(unratified, g)
+			drift = append(drift, g.Fingerprint+": "+why)
 		}
 	}
 	if *asJSON {
@@ -88,6 +95,9 @@ func main() {
 	} else {
 		fmt.Printf("dupes: %d duplicate group(s) at >= %d nodes; %d ratified, %d NOT\n",
 			len(groups), *min, len(groups)-len(unratified), len(unratified))
+		for _, d := range drift {
+			fmt.Printf("\n  RATIFIED GROUP CHANGED — %s\n", d)
+		}
 		for _, g := range unratified {
 			fmt.Printf("\n  %s  (%d nodes, %d copies)\n", g.Fingerprint, g.Nodes, len(g.Sites))
 			for _, s := range g.Sites {
@@ -179,9 +189,23 @@ func scan(root string, min int, withTests bool) ([]group, error) {
 			if n < min {
 				continue
 			}
+			// THE RECEIVER'S TYPE, not "(recv)". A site name goes into a
+			// ratified row and is compared against it, so it has to be the
+			// name a person would write — "Opts.Distance", not a placeholder
+			// that makes two different methods look identical.
 			name := fn.Name.Name
 			if fn.Recv != nil && len(fn.Recv.List) > 0 {
-				name = "(recv)." + name
+				t := fn.Recv.List[0].Type
+				if star, ok := t.(*ast.StarExpr); ok {
+					t = star.X
+				}
+				if id, ok := t.(*ast.Ident); ok {
+					name = id.Name + "." + name
+				} else if idx, ok := t.(*ast.IndexExpr); ok { // a generic receiver
+					if id, ok := idx.X.(*ast.Ident); ok {
+						name = id.Name + "." + name
+					}
+				}
 			}
 			byPrint[fp] = append(byPrint[fp], site{Func: name, File: path, Line: fset.Position(fn.Pos()).Line})
 			nodes[fp] = n
@@ -204,29 +228,68 @@ func scan(root string, min int, withTests bool) ([]group, error) {
 	return out, nil
 }
 
-// readLedger takes fingerprints out of a markdown table: | `fp` | … | reason … |
+// readLedger takes ratified exemptions out of a markdown table:
+//
+//	| `fingerprint` | pkg.Func · pkg.Other | reason … RATIFIED … |
+//
 // A row without a RATIFIED marker does not count, on the same rule the P10
 // ledger gate enforces — a reason nobody approved is not a reason.
-func readLedger(path string) map[string]bool {
-	out := map[string]bool{}
+//
+// THE SITES ARE PART OF THE EXEMPTION, and leaving them out was a hole (red
+// team, 2026-09-08). Keyed on the fingerprint alone, a row naming two specific
+// functions granted "any set of functions with this AST shape, anywhere,
+// forever": a THIRD copy joining the ratified group passed silently, and so did
+// an unrelated function in another package that happened to share the shape.
+// What the HUM LEAD ratified was two named functions, and that is what this
+// records.
+func readLedger(path string) map[string][]string {
+	out := map[string][]string{}
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return out
 	}
 	for _, line := range strings.Split(string(b), "\n") {
-		if !strings.HasPrefix(strings.TrimSpace(line), "|") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "|") || !strings.Contains(line, "RATIFIED") {
 			continue
 		}
-		if !strings.Contains(line, "RATIFIED") {
+		cells := strings.Split(strings.Trim(strings.TrimSpace(line), "|"), "|")
+		if len(cells) < 2 {
 			continue
 		}
-		if i := strings.Index(line, "`"); i >= 0 {
-			if j := strings.Index(line[i+1:], "`"); j > 0 {
-				out[line[i+1:i+1+j]] = true
+		fp := strings.Trim(strings.TrimSpace(cells[0]), "`")
+		if fp == "" {
+			continue
+		}
+		var sites []string
+		for _, s := range strings.Split(cells[1], "·") {
+			if s = strings.Trim(strings.TrimSpace(s), "`"); s != "" {
+				sites = append(sites, s)
 			}
 		}
+		sort.Strings(sites)
+		out[fp] = sites
 	}
 	return out
+}
+
+// covers reports whether a ratified row admits exactly this group. The
+// fingerprint matching is not enough: the row names its sites and a group that
+// has grown, shrunk or moved is a DIFFERENT exemption from the one approved.
+func covers(sites []string, g group) (bool, string) {
+	got := make([]string, 0, len(g.Sites))
+	for _, s := range g.Sites {
+		got = append(got, s.Func)
+	}
+	sort.Strings(got)
+	if len(got) != len(sites) {
+		return false, fmt.Sprintf("the exemption covers %d site(s), %d found", len(sites), len(got))
+	}
+	for i := range got {
+		if got[i] != sites[i] {
+			return false, fmt.Sprintf("the exemption names %v, found %v", sites, got)
+		}
+	}
+	return true, ""
 }
 
 // runSelfTest proves the detector fires on a KNOWN duplicate and stays quiet on

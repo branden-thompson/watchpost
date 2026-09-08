@@ -137,10 +137,72 @@ func TestCIAndVerifyRunTheSameGates(t *testing.T) {
 	}
 }
 
+// THE REQUIRED SET IS A THIRD LIST, and without it this file proved only that
+// two lists agree (red team, 2026-09-08). Deleting alloc-budget from `verify`
+// AND ci.yml passed — the repository's only allocation gate gone from both
+// machines, which is precisely the loss TestCIAndVerifyRunTheSameGates was
+// written to prevent. Two lists can agree by both being wrong.
+func TestEveryRequiredGateIsStillRun(t *testing.T) {
+	var required []string
+	for _, l := range strings.Split(read(t, "../../06_docs/required-gates.txt"), "\n") {
+		if l = strings.TrimSpace(l); l != "" && !strings.HasPrefix(l, "#") {
+			required = append(required, l)
+		}
+	}
+	if len(required) == 0 {
+		t.Fatal("the required-gates list is empty; this test measures nothing")
+	}
+	verify, ci := verifyTargets(t), ciTargets(t)
+	has := func(set []string, want string) bool {
+		for _, g := range set {
+			if g == want {
+				return true
+			}
+		}
+		return false
+	}
+	for _, g := range required {
+		if !has(verify, g) {
+			t.Errorf("%s is required and `make verify` does not run it", g)
+		}
+		// mutant-check runs on a schedule CI decides (MUTANT_POLICY), so its
+		// absence from a given workflow read is not a finding; every other
+		// required gate must be on both machines.
+		if g != "mutant-check" && !has(ci, g) {
+			t.Errorf("%s is required and CI does not run it", g)
+		}
+	}
+}
+
+// makeLines is the Makefile with BACKSLASH CONTINUATIONS JOINED.
+//
+// A recipe split across lines is one command, and reading it as two loses
+// whichever half carries the thing you are looking for: build-diag puts
+// `go build` on one line and `./cmd/watchpost` on the next, so a scan keyed on
+// both silently dropped a shipping target — and verify's prerequisite list has
+// the same shape waiting for the day it grows a continuation.
+func makeLines(t *testing.T) []string {
+	t.Helper()
+	var out []string
+	var cur string
+	for _, l := range strings.Split(read(t, "../../Makefile"), "\n") {
+		if strings.HasSuffix(l, "\\") {
+			cur += strings.TrimSuffix(l, "\\") + " "
+			continue
+		}
+		out = append(out, cur+l)
+		cur = ""
+	}
+	if cur != "" {
+		out = append(out, cur)
+	}
+	return out
+}
+
 // verifyTargets is the verify recipe's prerequisites, from the Makefile.
 func verifyTargets(t *testing.T) []string {
 	t.Helper()
-	for _, line := range strings.Split(read(t, "../../Makefile"), "\n") {
+	for _, line := range makeLines(t) {
 		if after, ok := strings.CutPrefix(line, "verify:"); ok {
 			return sorted(strings.Fields(after))
 		}
@@ -193,11 +255,7 @@ func contains(hay []string, want string) bool {
 // harness. Every target that produces a shippable artifact must carry the flag,
 // and a new target that forgets it fails here rather than at a release.
 func TestEveryBuildTargetTrimsThePath(t *testing.T) {
-	mk, err := os.ReadFile("../../Makefile")
-	if err != nil {
-		t.Fatal(err)
-	}
-	lines := strings.Split(string(mk), "\n")
+	lines := makeLines(t)
 	var built []string
 	for _, l := range lines {
 		// A RECIPE LINE, NOT PROSE. The Makefile's comments discuss `go build`
@@ -205,7 +263,11 @@ func TestEveryBuildTargetTrimsThePath(t *testing.T) {
 		// and the first version of this gate failed on that sentence. A gate
 		// that reads documentation as configuration reports a defect in a
 		// paragraph.
-		if strings.HasPrefix(strings.TrimSpace(l), "#") || !strings.Contains(l, "go build") {
+		// ANY RECIPE LINE THAT BUILDS A SHIPPED ARTIFACT, not the literal
+		// "go build". One Make variable — $(GO) build — hid a whole target
+		// from this scan (red team, 2026-09-08), and a target invisible to
+		// the gate is a target that ships the path it was compiled from.
+		if strings.HasPrefix(strings.TrimSpace(l), "#") || !strings.Contains(l, "build ") || !strings.Contains(l, "./cmd/") {
 			continue
 		}
 		built = append(built, strings.TrimSpace(l))
