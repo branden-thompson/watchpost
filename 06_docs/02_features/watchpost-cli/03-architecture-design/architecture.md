@@ -66,6 +66,8 @@ of only in this paragraph, and retired the P10 exemption that the unbounded loop
 for weeks will not notice a release published while it was up. Accepted because acting on the notice
 needs a restart anyway. If it ever proves wrong the fix is a re-check when `[S]` opens — not a timer.
 
+**This rule is repeated in `docs/extending.md`**, above the add-a-provider walkthrough, because that is the page someone adding a feed opens and this one is not.
+
 **Before adding another non-provider fetch:** say here why it is not hazard data, state its bound, and
 make that bound reachable by a test. F-3 was filed because this file is *"the precedent six new feeds
 will copy"*, and a rule nobody writes down is copied wrong.
