@@ -103,14 +103,23 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 			outside = append(outside, in)
 		}
 	}
+	// NO HEADER BETWEEN THE TWO GROUPS ANY MORE (HUM LEAD, UAT 2026-09-08).
+	// "Nearby fires outside of your fire ring that may be worth noting are:"
+	// earned its place when the incidents arrived unannounced: it was the only
+	// thing telling a listener a second, wider ring existed. The incident-count
+	// line above now says that outright, with the radius in it, so the header
+	// restated it a sentence later and read as a second list rather than the
+	// continuation it is.
+	//
+	// The SPLIT stays. It is not about the header: it orders the fires inside
+	// the ring before the ones beyond it, and it chooses the phrasing — an
+	// incident inside reads "is 12 miles east of your location", one beyond
+	// reads ", at a distance of 29 miles".
 	for _, in := range inside {
 		body = append(body, c.incidentSentence(fr, in, imperial, now, true))
 	}
-	if len(outside) > 0 {
-		body = append(body, c.say("fire-report", "outside", nil))
-		for _, in := range outside {
-			body = append(body, c.incidentSentence(fr, in, imperial, now, false))
-		}
+	for _, in := range outside {
+		body = append(body, c.incidentSentence(fr, in, imperial, now, false))
 	}
 	for _, piece := range body {
 		if piece == "" {

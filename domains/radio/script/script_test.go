@@ -56,7 +56,7 @@ func TestTheAppsPartsExist(t *testing.T) {
 		"event-report/head", "event-report/tail", "event-report/opening", "event-report/meta", "event-report/window", "event-report/instructions",
 		"breaking/single", "breaking/burst-line", "breaking/burst-closing",
 		"weather-radio/head", "weather-radio/live", "weather-radio/span", "weather-radio/conditions", "weather-radio/alert", "weather-radio/tail",
-		"fire-report/head", "fire-report/count", "fire-report/strongest", "fire-report/incident", "fire-report/outside",
+		"fire-report/head", "fire-report/count", "fire-report/incident-count", "fire-report/strongest", "fire-report/incident",
 		"seismic-report/head", "seismic-report/count", "seismic-report/quake", "seismic-report/felt", "seismic-report/more", "seismic-report/link",
 		"voice-preview/sample",
 	} {

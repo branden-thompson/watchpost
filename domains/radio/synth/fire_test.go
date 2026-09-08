@@ -41,7 +41,6 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 		// mile radius, and on the air the two were indistinguishable.
 		"There are currently 2 named incidents within a 31 mile radius of your area, reported in the last 3 days.",
 		"Timber is 12 miles east of your location, with a size of 12,915 acres, has been active for 3 days and 4 hours, and is 26 percent contained.",
-		"Nearby fires outside of your fire ring that may be worth noting are:",
 		"Convoy, at a distance of 29 miles, has been active for 3 hours.",
 	}
 	if len(segs) != len(want) {
