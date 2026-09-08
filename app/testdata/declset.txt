@@ -94,8 +94,11 @@ func (*executors).runCue
 func (*executors).runRelease
 func (*executors).runTune
 func (*executors).speak
+func (*injectQueue).readyLocked
 func (*injectQueue).take
 func (*injectQueue).take
+func (*injectQueue).wake
+func (*injectQueue).wake
 func (*livePipelines).attachDeck
 func (*livePipelines).attachDiagnostics
 func (*livePipelines).buildDirector

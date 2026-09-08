@@ -198,6 +198,11 @@ func (t *tickerDeck) run(ctx context.Context) {
 			return
 		case <-tk.C:
 			t.cycle(ctx)
+		case <-t.inject.wake():
+			// AN INJECTION DOES NOT WAIT FOR THE WEATHER (F-21b, UAT
+			// 2026-09-07). Nil in a release build, where this arm can never
+			// fire.
+			t.cycle(ctx)
 		case <-rotate.C:
 			t.send(tty.TickerAdvanceMsg{}) // the 90s lane rotation; the tty skips it when ≤1 lane is active
 		}

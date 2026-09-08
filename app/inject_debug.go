@@ -37,19 +37,52 @@ import (
 // empty struct — otherwise those fields are dead weight there, which P10 reports
 // and AP-DEAD-01 forbids.
 type injectQueue struct {
-	mu  sync.Mutex
-	evs []globalfeed.Event
+	mu    sync.Mutex
+	evs   []globalfeed.Event
+	ready chan struct{} // buffered 1: "there is something to drain, cycle now"
 }
 
-// Inject queues events for the next ticker cycle. Safe from any goroutine.
+// Inject queues events and ASKS FOR A CYCLE AT ONCE. Safe from any goroutine.
+//
+// IT USED TO WAIT FOR THE WEATHER (UAT 2026-09-07). The queue is drained by the
+// fetch cycle, which runs every two minutes, so an operator who confirmed an
+// injection watched nothing happen for up to two minutes and reasonably
+// reported that it does not work. Worse than slow: a test event is effective
+// for two minutes — the same two minutes — so in the worst case Active drops it
+// in the very cycle that would have shown it, and the tool that exists to prove
+// the machinery works is the one thing in the app that cannot be trusted.
 func (t *tickerDeck) Inject(evs ...globalfeed.Event) {
 	if t == nil || len(evs) == 0 {
 		return
 	}
 	t.inject.mu.Lock()
 	t.inject.evs = append(t.inject.evs, evs...)
+	ready := t.inject.readyLocked()
 	t.inject.mu.Unlock()
+	select {
+	case ready <- struct{}{}:
+	default: // a cycle is already asked for; one is enough for any number of events
+	}
 	radioDebugLog("inject:queued:" + itoaN(len(evs)))
+}
+
+// wake is the deck's "cycle now" signal. NIL IN A RELEASE BUILD, where a select
+// arm on a nil channel blocks forever and costs nothing — the capability is
+// absent there rather than switched off, like everything else in this file.
+func (q *injectQueue) wake() <-chan struct{} {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.readyLocked()
+}
+
+// readyLocked returns the channel, making it on first use. The deck is built as
+// a zero value in half a dozen places, so the queue cannot rely on a
+// constructor.
+func (q *injectQueue) readyLocked() chan struct{} {
+	if q.ready == nil {
+		q.ready = make(chan struct{}, 1)
+	}
+	return q.ready
 }
 
 // takeInjected drains the queue into the cycle.
@@ -72,6 +105,14 @@ func (q *injectQueue) take() []globalfeed.Event {
 	defer q.mu.Unlock()
 	out := q.evs
 	q.evs = nil
+	// STAMPED WHEN THE CYCLE TAKES IT, NOT WHEN IT WAS QUEUED. The read promises
+	// two minutes out loud, and a cycle in flight, a slow fetch or a wake that
+	// lands mid-cycle all spend part of that before anyone can see it. The
+	// event's life starts where the listener's does.
+	now := time.Now()
+	for i := range out { // bounded by the queue (P10-02)
+		out[i].At, out[i].Until = now.Add(-time.Minute), now.Add(testEventLife)
+	}
 	return out
 }
 

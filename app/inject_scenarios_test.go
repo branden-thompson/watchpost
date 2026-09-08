@@ -19,10 +19,14 @@ package app
 // not against a second copy of the mapping.
 
 import (
+	"context"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
@@ -168,5 +172,127 @@ func TestADebugBuildWiresTheInjector(t *testing.T) {
 	}
 	if len(debugScenarios()) == 0 {
 		t.Error("a debug build offers no scenarios, so the window has no question to ask")
+	}
+}
+
+// WHAT THE WINDOW SENDS BACK IS WHAT THE HOOK INJECTS (F-21b).
+//
+// THE PIPELINE TEST CANNOT SEE THIS. TestAnInjectedAlertCrossesTheWholePipeline
+// — "the test the whole tool stands on" — calls deck.Inject with a
+// hand-built event, so it proves the SEAM and says nothing about the path from
+// the window's key to that call. A key the hook does not recognise, or a hook
+// that returns before it queues anything, is invisible to it: the tool reports
+// that everything works and pressing the button does nothing at all.
+//
+// UAT 2026-09-07: the confirmation was accepted and no alert arrived — no
+// audio, no takeover, nothing in [w].
+func TestTheHookInjectsWhatTheWindowSendsBack(t *testing.T) {
+	for _, sc := range debugScenarios() {
+		deck := &tickerDeck{}
+		lp := &livePipelines{ticker: deck}
+		lp.injectHook()(sc.Key)
+		got := deck.takeInjected()
+		if len(got) == 0 {
+			t.Errorf("the window's %q scenario (%s) queued NOTHING: the operator confirmed an "+
+				"injection and nothing happened", sc.Key, sc.Label)
+			continue
+		}
+		for _, e := range got {
+			if !e.Fabricated || e.Type == "" {
+				t.Errorf("the %q scenario queued %+v", sc.Key, e)
+			}
+		}
+	}
+}
+
+// AN INJECTION RUNS A CYCLE AT ONCE (UAT 2026-09-07).
+//
+// THE DIAGNOSTIC WAITED FOR THE WEATHER. Injected events are drained by the
+// ticker's fetch cycle, which runs every two minutes — so an operator who
+// confirmed an injection watched nothing happen for up to two minutes and
+// reasonably reported that it does not work.
+//
+// AND IT IS WORSE THAN SLOW. A test event is effective for two minutes
+// (FR-4.3), the same two minutes, so in the worst case globalfeed.Active drops
+// it in the very cycle that would have shown it: the injection then does
+// nothing at all, silently, and the tool that exists to prove the machinery
+// works is the one thing in the app that cannot be trusted.
+func TestAnInjectionRunsACycleAtOnce(t *testing.T) {
+	deck := &tickerDeck{}
+	select {
+	case <-deck.inject.wake():
+		t.Fatal("the deck asked for a cycle before anything was injected")
+	default:
+	}
+	deck.Inject(globalfeed.Event{ID: "x", Type: "Tornado Warning"})
+	select {
+	case <-deck.inject.wake():
+	default:
+		t.Error("an injection did not ask for a cycle: the operator waits up to two minutes for " +
+			"the fetch that drains it, and the event may expire first")
+	}
+}
+
+// AND IT IS EFFECTIVE FOR TWO MINUTES FROM WHEN IT ARRIVES, not from when it
+// was queued. A cycle in flight, a slow fetch, or a wake that lands mid-cycle
+// all spend part of the event's life before anyone can see it — and the read
+// promises two minutes out loud.
+func TestAQueuedEventIsFreshWhenTheCycleTakesIt(t *testing.T) {
+	deck := &tickerDeck{}
+	stale := time.Now().Add(-90 * time.Second)
+	deck.Inject(globalfeed.Event{ID: "x", Type: "Tornado Warning", Fabricated: true,
+		At: stale.Add(-time.Minute), Until: stale.Add(testEventLife)})
+
+	got := deck.takeInjected()
+	if len(got) != 1 {
+		t.Fatalf("queued 1, took %d", len(got))
+	}
+	if left := time.Until(got[0].Until); left < testEventLife-time.Second {
+		t.Errorf("the event arrives with %s left of its %s: it was stamped when it was queued, "+
+			"not when the cycle took it", left.Round(time.Second), testEventLife)
+	}
+	if got[0].At.After(time.Now()) {
+		t.Errorf("the event was declared in the future: %s", got[0].At)
+	}
+}
+
+// EVERY SCENARIO THE WINDOW OFFERS REACHES THE [w] WINDOW (UAT 2026-09-07).
+//
+// "STILL NO ENTRIES IN [w]" is the report this covers, and the path it covers
+// is the one no test had: the window's own KEY, through the real hook, through
+// a real cycle, into the severe index. The pipeline test hands a hand-built
+// event to deck.Inject — so a scenario whose payload the index cannot classify,
+// or whose key the hook does not know, was invisible to every gate in the repo
+// while the tool reported that everything works.
+func TestEveryScenarioReachesTheSevereIndex(t *testing.T) {
+	for _, sc := range debugScenarios() {
+		t.Run(sc.Key, func(t *testing.T) {
+			sev := newSevereDeck(func(tea.Msg) {})
+			deck := &tickerDeck{
+				send:   func(tea.Msg) {},
+				muted:  &atomic.Bool{},
+				mc:     newMastercontrol(nil, func(tea.Msg) {}),
+				voice:  testDirector(&scriptVoice{}, nil),
+				seen:   loadSeen(t.TempDir(), time.Hour),
+				severe: sev,
+				watch:  func() []snapshot.LocationRef { return []snapshot.LocationRef{testHere} },
+			}
+			deck.warm.Store(true)
+			lp := &livePipelines{ticker: deck, watchRefs: []snapshot.LocationRef{testHere}}
+
+			lp.injectHook()(sc.Key)
+			deck.cycle(context.Background())
+
+			rows, _ := sev.currentRows()
+			if len(rows) == 0 {
+				t.Fatalf("%q (%s) reached no row in the severe index: [w] is empty after an "+
+					"injection the operator confirmed", sc.Key, sc.Label)
+			}
+			for _, r := range rows {
+				if !r.Test {
+					t.Errorf("%q produced an UNMARKED row in [w]: %s", sc.Key, r.Product)
+				}
+			}
+		})
 	}
 }
