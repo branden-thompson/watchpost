@@ -1257,6 +1257,22 @@ test called `cycle()` itself, so the wait it was hiding was zero.
 system's own clock run (the loop, not a hand-called step).  A test that supplies both the input and
 the tick is measuring a function, not a feature.
 
+### 17. A member with no fixture is a FAILURE, not a skip
+
+**Catch:** the modal memo guard skipped a window it could not draw — loudly, which was the argument
+for it — and 11 of 11 windows had a fixture, so the branch fired **zero times**.  Its green number
+described today's windows rather than the guard, and the next window added with a cursor and no
+fixture would have been silently uncovered: the exact defect F-30 was filed for.  The 0.14.2 lane
+guard `continue`d past three of seven lanes the same way.
+
+**The rule:** a closed-set walk may not decline a member.  Skipping is how a set gate lies — it
+reports on the members that happened to be easy.  Either the member is covered, or it is **declared
+absent with a reason** that a guard can check for rot (`platform/closedset`, and `nestedExcuse` in
+`memo_completeness_test.go`).  A reason is not a silencer: a member that starts being covered while
+its excuse still stands is itself a failure.
+
+**Both B4 and B6 cite this rule rather than each re-deciding it.**
+
 ### The meta-rule
 
 **A red-team finding is a hypothesis, not a fix.**  Twice in one day, measuring a lens's

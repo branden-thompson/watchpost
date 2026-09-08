@@ -48,3 +48,20 @@ func TestBoxMemoHitAllocBudget(t *testing.T) {
 			"cheaper than the decode it replaces", got, boxMemoHitAllocBudget)
 	}
 }
+
+// BenchmarkBoxMemoHit — the seismic half of the same question.
+func BenchmarkBoxMemoHit(b *testing.B) {
+	m := newBoxMemo()
+	raw := []byte(`{"type":"FeatureCollection","features":[` +
+		quake{id: "m4", mag: 4.2, lat: 34.4, lon: -118.4, depth: 10, ago: time.Hour, typ: "earthquake"}.json() + `]}`)
+	const url = "https://example.invalid/box"
+	if _, err := m.features(url, raw); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := m.features(url, raw); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

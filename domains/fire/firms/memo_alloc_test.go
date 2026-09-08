@@ -50,3 +50,21 @@ func TestTileMemoHitAllocBudget(t *testing.T) {
 			"cheaper than the parse it replaces", got, tileMemoHitAllocBudget)
 	}
 }
+
+// BenchmarkTileMemoHit is the consolidation's wall-clock question: does one
+// shared implementation cost anything against the one it replaced? Run the same
+// benchmark at the commit before platform/bodymemo to answer it.
+func BenchmarkTileMemoHit(b *testing.B) {
+	m := newTileMemo()
+	k := tileKey{src: "a", tile: tile{x: 1, y: 0, pitch: tileDeg}}
+	raw := []byte(csvBody)
+	if _, err := m.points(k, raw); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := m.points(k, raw); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

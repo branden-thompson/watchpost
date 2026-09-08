@@ -87,3 +87,27 @@ func parsesOf[K comparable, V any](m *Memo[K, V]) int {
 	_, p := m.Stats()
 	return p
 }
+
+// 3b — AND BOUNDED BY THE CALLER'S OWN LIVENESS RULE, which is the other way a
+// memo stays bounded: keys that stop mattering go, whether or not anything else
+// arrived to push them out.
+func TestPruneDropsWhatTheCallerNoLongerWants(t *testing.T) {
+	m := New[string, string](100)
+	for _, k := range []string{"a", "b", "c"} {
+		m.Parsed(k, []byte(k), upper)
+	}
+	live := map[string]bool{"b": true}
+	m.Prune(func(k string) bool { return live[k] })
+	if n, _ := m.Stats(); n != 1 {
+		t.Fatalf("one key is live and %d survived", n)
+	}
+	before := parsesOf(m)
+	m.Parsed("b", []byte("b"), upper)
+	if parsesOf(m) != before {
+		t.Error("the live key was pruned")
+	}
+	m.Parsed("a", []byte("a"), upper)
+	if parsesOf(m) == before {
+		t.Error("a dead key survived the prune: the memo is bounded by nothing")
+	}
+}

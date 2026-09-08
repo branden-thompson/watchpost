@@ -93,6 +93,28 @@ func (m *Memo[K, V]) evictLocked() {
 	delete(m.items, victim)
 }
 
+// Prune drops every entry the caller no longer considers live.
+//
+// THE SECOND WAY A MEMO IS BOUNDED, and both are real. The tile and box memos
+// are bounded by COUNT — at most max, least-recently-used out — because their
+// keys are geometry and there is no outside authority on which ones matter. The
+// NWS grid memo is bounded by LIVENESS: its keys are the grid URLs of watched
+// locations, and when a location leaves the watchlist its grid stops existing
+// as far as the app is concerned. Forcing that caller onto an LRU would keep a
+// removed location's grid until 240 others pushed it out.
+//
+// keep runs under the memo's lock, so it must not call back into anything that
+// takes it.
+func (m *Memo[K, V]) Prune(keep func(K) bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for k := range m.items {
+		if !keep(k) {
+			delete(m.items, k)
+		}
+	}
+}
+
 // Stats is the memo's live size and the parses since it was made — the gauge a
 // bounded size and a low parse rate are read from.
 func (m *Memo[K, V]) Stats() (entries, parses int) {
