@@ -356,7 +356,9 @@ func TestTheHourlyWindowRollsTwelveHoursFromNow(t *testing.T) {
 	}
 	// AND THE DAY IS NAMED WHEN IT TURNS OVER. Without it the column reads
 	// 22:00, 23:00, 00:00, 01:00 and the times look like they run backwards.
-	if !strings.Contains(body, "Tue 00:00") {
+	// The day is its own column now, so it sits two cells from the hour — the
+	// gap the mock draws, and the reason the hour does not move on that row.
+	if !strings.Contains(body, "Tue  00:00") {
 		t.Errorf("the window crosses midnight and does not say so:\n%s", body)
 	}
 }

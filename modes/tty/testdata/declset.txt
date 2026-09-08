@@ -445,6 +445,7 @@ func cycleRelayDwell
 func cycleRelayLang
 func dashIfEmpty
 func dataAsOf
+func dayCols
 func debugProseWidth
 func defaultKeyMap
 func defaultRelayDwell
@@ -478,6 +479,7 @@ func helpGroups
 func helpTwoColumns
 func hiLo
 func hotspotRows
+func hourCols
 func hz
 func incidentRows
 func insetModalLines
@@ -582,7 +584,7 @@ func truncateTo
 func twoColumnsWidth
 func unitsRow
 func vizTick
-func whenCols
+func whenTail
 func widest
 func widestBlock
 func withoutRef

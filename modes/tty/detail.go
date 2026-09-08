@@ -182,7 +182,6 @@ func (d Dashboard) hourlyRows(o render.Opts, loc *snapshot.Location, tz *time.Lo
 		return nil
 	}
 	local := d.now().In(tz)
-	cols := whenCols()
 	rows := make([]render.StatusRow, 0, len(hrs))
 	for _, h := range hrs { // bounded by the hours left in the day (P10-02)
 		pp := " --%"
@@ -192,18 +191,21 @@ func (d Dashboard) hourlyRows(o render.Opts, loc *snapshot.Location, tz *time.Lo
 		// A ROLLING WINDOW CROSSES MIDNIGHT, so the day is named when it turns
 		// over: without it the column reads 22:00, 23:00, 00:00, 01:00 and a
 		// reader takes the times as going backwards into this morning.
+		// THE DAY IS NAMED WHEN IT TURNS OVER: without it the column reads
+		// 22:00, 23:00, 00:00, 01:00 and a reader takes the times as going
+		// backwards into this morning.
 		at := h.Time.In(tz)
-		when := o.Clock.Time(at)
+		day := ""
 		if at.Day() != local.Day() {
-			when = at.Format("Mon") + " " + when
+			day = at.Format("Mon")
 		}
 		rows = append(rows, render.StatusRow{Cells: []string{
-			"  " + when, "    " + render.DisplayCondition(h.Condition),
+			day, o.Clock.Time(at), "    " + render.DisplayCondition(h.Condition),
 			"(" + pp + ")", "   " + strings.TrimSpace(o.Temp(h.Temp)),
 		}})
 	}
 	out := []string{detailRow("", ""), detailRow("", gridRow(fmt.Sprintf("Next %d Hours:", len(hrs)), "", ""))}
-	for _, l := range o.DetailTable(cols, rows, cw-detailRailGutter, 0) { // bounded by the table (P10-02)
+	for _, l := range o.DetailTable(hourCols(), rows, cw-detailRailGutter, 0) { // bounded by the table (P10-02)
 		out = append(out, detailRow("", l))
 	}
 	return out
@@ -239,25 +241,44 @@ func nextHours(hrs []snapshot.Hourly, now time.Time, tz *time.Location, want int
 	return out
 }
 
-// whenCols is the column spec BOTH the hours and the days are drawn with, so
+// whenTail is the three columns the hours and the days share, and the reason
 // they scan as one column instead of as two tables that happen to be adjacent
 // (HUM LEAD, 2026-09-07). The alternative was tuning one to the other by eye,
 // which holds until either changes.
 //
-// The last column is unsized: it fits the widest thing in it, which is a
-// temperature in the hours and a HIGH/LOW pair in the days.
-func whenCols() []render.StatusColumn {
-	// THE GAPS ARE IN THE WIDTHS, and the table is drawn with no gutter of its
-	// own, because these columns have to land where the report's OTHER sections
-	// already put theirs: CURRENTLY's value shares the condition column
-	// (colVal), and every HIGH/LOW pair in the report starts at
-	// forecastHiLoCol. A uniform gutter cannot reproduce 4, 1 and 3.
+// THE GAPS ARE IN THE WIDTHS, and these tables are drawn with no gutter of
+// their own, because the columns have to land where the report's OTHER sections
+// already put theirs: CURRENTLY's value shares the condition column (colVal),
+// and every HIGH/LOW pair in the report starts at forecastHiLoCol. A uniform
+// gutter cannot reproduce four, one and three.
+func whenTail() []render.StatusColumn {
 	return []render.StatusColumn{
-		{Width: 10, NoGutter: true},             // the hour, or the date
 		{Width: colVal + 3, NoGutter: true},     // 4 spaces + the condition's 13
 		{Width: 7, Right: true, NoGutter: true}, // 1 space + "( nn%)"
-		{NoGutter: true},                        // 3 spaces + the temperature or the pair
+		{NoGutter: true},                        // 3 spaces + the temperature, or the pair
 	}
+}
+
+// hourCols is whenTail under a DAY and an HOUR (HUM LEAD, 2026-09-07).
+//
+// THE DAY IS ITS OWN COLUMN so that the hour does not move when it appears: a
+// rolling window crosses midnight, and a day name folded into the time cell
+// pushed every column right on that one row. Blank on every other row, four
+// cells wide against the kit's one of gutter, which is the two the mock draws
+// between "Tue" and the hour.
+//
+// FOUR AND FIVE AND THE GUTTER MAKE TEN — the width the days' date occupies —
+// so the condition column is in the same place in both tables.
+func hourCols() []render.StatusColumn {
+	return append([]render.StatusColumn{
+		{Width: 5, NoGutter: true}, // the day, when it turns over
+		{Width: 5, NoGutter: true}, // the hour
+	}, whenTail()...)
+}
+
+// dayCols is whenTail under a date.
+func dayCols() []render.StatusColumn {
+	return append([]render.StatusColumn{{Width: 10, NoGutter: true}}, whenTail()...)
 }
 
 // forecastHiLoCol is the content column where every HIGH/LOW pair starts
@@ -299,7 +320,7 @@ func (d Dashboard) forecastRows(o render.Opts, loc *snapshot.Location, cw int) [
 	}
 	var out []string
 	label := "FORECAST"
-	for _, l := range o.DetailTable(whenCols(), rows, cw-detailRailGutter, 0) { // bounded by the days (P10-02)
+	for _, l := range o.DetailTable(dayCols(), rows, cw-detailRailGutter, 0) { // bounded by the days (P10-02)
 		out = append(out, detailRow(label, l))
 		label = ""
 	}
