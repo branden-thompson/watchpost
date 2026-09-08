@@ -540,9 +540,9 @@ func seismicAge
 func seismicAlertSevere
 func seismicBand
 func seismicHead
-func seismicQuakeRow
 func seismicRowLevel
 func seismicRows
+func seismicTable
 func seismicWarnLabel
 func sequenceWrites
 func settingLabel

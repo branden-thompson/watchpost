@@ -53,6 +53,47 @@ func fitColumns(cols []StatusColumn, rows []StatusRow) []StatusColumn {
 	return out
 }
 
+// shrinkToFit takes an overflow out of the columns that said they could lose
+// it, and leaves the rest alone.
+//
+// FIT SIZES A COLUMN TO ITS CONTENT, which means a long value makes a wide
+// column and the kit — believing every column fits — never truncates anything.
+// The row then runs past the section and is CUT, with no tail, in the middle of
+// a word: "PAGER — Almost certainly" for "PAGER — Almost certainly felt". A cut
+// is what a clamp does to a line; a truncation is what a column does to a
+// value, and only the second one leaves a mark saying so.
+//
+// The excess comes off the Truncatable columns in order, each floored at its
+// MinWidth. A table with none keeps its width, and the caller's clamp is then
+// the honest outcome: nothing in it volunteered to be shortened.
+func shrinkToFit(cols []StatusColumn, inner, gutter int) []StatusColumn {
+	out := append([]StatusColumn(nil), cols...)
+	natural := 0
+	for i, c := range out {
+		natural += c.Width
+		if i >= 3 { // the kit's own rule: a gutter precedes columns 3..last
+			natural += gutter
+		}
+	}
+	over := natural - inner
+	for i := range out { // bounded by the columns (P10-02)
+		if over <= 0 {
+			break
+		}
+		if !out[i].Truncatable {
+			continue
+		}
+		floor := max(out[i].MinWidth, 1)
+		take := min(over, out[i].Width-floor)
+		if take <= 0 {
+			continue
+		}
+		out[i].Width -= take
+		over -= take
+	}
+	return out
+}
+
 // DetailTable lays out rows at inner cells wide and returns them, no header.
 //
 // The FILL column absorbs what is left over, so a name is never truncated to
@@ -69,6 +110,7 @@ func (o Opts) DetailTable(cols []StatusColumn, rows []StatusRow, inner, gutter i
 	// it. Sizing first gives it something to add to.
 	if gutter > 0 {
 		cols, rows = statusGutters(fitColumns(cols, rows), rows)
+		cols = shrinkToFit(cols, inner, gutter)
 	} else {
 		// GUTTER 0: the caller is placing its own columns to the cell, because
 		// it has to line up with something drawn elsewhere. The gaps then live

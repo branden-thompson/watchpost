@@ -292,6 +292,7 @@ func severeHeaderFG
 func severeHeaderLine
 func severeMarks
 func sgrRaw
+func shrinkToFit
 func spectrumTier
 func splitCells
 func statusCols

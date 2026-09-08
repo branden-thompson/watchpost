@@ -38,10 +38,10 @@ func TestDetailSeismicSectionShowsGraduatedRows(t *testing.T) {
 	for _, want := range []string{
 		"SEISMIC │ 4 nearby in the last 7 days",
 		"(USGS)",
-		"◉ M5.1", "Significant",
-		"● M4.2", "Might feel it",
-		"○ M2.8", "Below feeling",
-		"○ M1.4", // the 4th quake is listed too (the radio sends users here for the full list)
+		"◉  M5.1", "Significant",
+		"●  M4.2", "Might feel it",
+		"○  M2.8", "Below feeling",
+		"○  M1.4", // the 4th quake is listed too (the radio sends users here for the full list)
 		"depth 15 km",
 		"3d ago", "2h ago", "1d ago",
 		"NE", "SSW",
@@ -93,7 +93,7 @@ func TestDetailSeismicASCIIGlyphs(t *testing.T) {
 	d.cfg.ASCII = true // the --ascii glyph set
 	d.modal = modalDetails
 	joined := stripANSITest(strings.Join(d.detailLines(), "\n"))
-	for _, want := range []string{"O M5.1", "o M4.2", ". M2.8"} {
+	for _, want := range []string{"O  M5.1", "o  M4.2", ".  M2.8"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("--ascii ramp .oO missing %q:\n%s", want, joined)
 		}
@@ -136,5 +136,40 @@ func TestDetailSeismicTsunamiReadsWarning(t *testing.T) {
 	}
 	if !strings.Contains(asciiOut, "Tsunami - Below feeling") {
 		t.Fatalf("--ascii warn label uses an ASCII hyphen:\n%s", asciiOut)
+	}
+}
+
+// A LABEL TOO LONG FOR THE SECTION IS TRUNCATED, NOT CUT (0.15.0).
+//
+// Fit sizes a column to its content, so a long value makes a wide column and
+// the kit — believing every column fits — truncates nothing. The row then ran
+// past the section and was CLAMPED, with no tail, in the middle of a word:
+// "PAGER — Almost certainly" for "PAGER — Almost certainly felt". A clamp is
+// what happens to a line; a truncation is what a column does to a value, and
+// only the second leaves a mark saying something was dropped.
+//
+// THE FELT LABEL IS THE ONLY COLUMN THAT VOLUNTEERS. Everything left of it is a
+// measurement, and half a measurement is worse than none.
+func TestALongFeltLabelIsTruncatedRatherThanCut(t *testing.T) {
+	rendering.SetColorEnabledForTest(false)
+	now := time.Now()
+	ss := &snapshot.SeismicState{AsOf: now, Quakes: []snapshot.Quake{
+		{Mag: 4.6, DepthKm: 8, At: now.Add(-2 * time.Hour), DistanceKm: 19, Bearing: "NE", Alert: "orange"},
+	}}
+	loc := &snapshot.Location{Label: "Oceanside, CA", Seismic: ss}
+
+	// The 80-column floor, where the section has least room.
+	got := stripANSITest(strings.Join(seismicRows(render.Opts{Width: 80}, loc, now, 51, 7), "\n"))
+	if !strings.Contains(got, "PAGER") {
+		t.Fatalf("the warning label is gone entirely:\n%s", got)
+	}
+	if !strings.Contains(got, "…") {
+		t.Errorf("the label was cut with no mark saying so:\n%s", got)
+	}
+	// AND THE MEASUREMENTS SURVIVED. They are what the label is about.
+	for _, want := range []string{"M4.6", "12 mi", "NE", "depth 8 km", "2h ago"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%q was dropped to make room for the label:\n%s", want, got)
+		}
 	}
 }
