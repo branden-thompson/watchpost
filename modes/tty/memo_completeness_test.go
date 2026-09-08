@@ -42,11 +42,18 @@ func TestTheMemoKeyCoversEverythingTheFrameShows(t *testing.T) {
 		t.Run(modalName(m), func(t *testing.T) {
 			base := fixtureFor(t, m)
 			o := base.opts()
-			// A window that draws nothing at this fixture cannot be measured —
-			// SKIPPED LOUDLY rather than passing quietly, so the gap is visible
-			// in the run instead of being mistaken for coverage.
+			// A WINDOW WITH NO FIXTURE IS A FAILURE, not a skip (FR-3.3).
+			//
+			// It skipped, loudly, and 11 of 11 windows have a fixture — so the
+			// branch fired zero times and the guard's green number described
+			// today's windows rather than the guard. The next window added with
+			// a cursor and no fixture would have been silently uncovered, which
+			// is the defect F-30 was filed for. Adding a window means adding a
+			// fixture, and this is where that is enforced.
 			if base.renderModal(o) == "" {
-				t.Skipf("%s draws nothing without a richer fixture; NOT covered", modalName(m))
+				t.Fatalf("%s draws nothing at fixtureFor: give it a fixture, or this window is "+
+					"NOT covered by the memo guard and the next thing that freezes it will be found "+
+					"in UAT (F-30)", modalName(m))
 			}
 			for _, p := range perturbations(t, base) {
 				// EACH MODEL RENDERS THROUGH ITS OWN OPTS, as View does. Holding
@@ -117,9 +124,13 @@ func walk(t *testing.T, typ reflect.Type, prefix string, emit func(string, func(
 			idx := i
 			emit(path, func(d *Dashboard) { bump(fieldAt(d, prefix, idx)) })
 		case reflect.Struct:
-			// One level down, and only for the windows' own state: the deeper
-			// structs here are clocks and snapshots, which the key holds whole.
-			if prefix == "" && (f.Name == "relayFault" || f.Name == "debug" || f.Name == "setup") {
+			// ONE LEVEL DOWN, INTO EVERY STRUCT THIS FILE HAS NOT EXCUSED
+			// (FR-3.3). It named three — relayFault, debug and setup — so a
+			// FOURTH window's state was never perturbed and the guard reported
+			// coverage it did not have. A hand-written list of the windows with
+			// state is the same shape as the hand-written memo key it checks,
+			// and would miss a new window in exactly the same way.
+			if prefix == "" && nestedExcuse[path] == "" {
 				walkNested(t, f, i, emit)
 			}
 		}
@@ -135,6 +146,9 @@ func walkNested(t *testing.T, f reflect.StructField, outer int, emit func(string
 		case reflect.Bool, reflect.Int, reflect.Int64, reflect.String:
 			jdx := j
 			name := f.Name
+			if nestedExcuse[name+"."+inner.Name] != "" {
+				continue
+			}
 			emit(name+"."+inner.Name, func(d *Dashboard) {
 				v := reflect.ValueOf(d).Elem().Field(outer).Field(jdx)
 				bump(reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem())
@@ -150,6 +164,24 @@ func walkNested(t *testing.T, f reflect.StructField, outer int, emit func(string
 			})
 		}
 	}
+}
+
+// nestedExcuse names a struct field this walk does NOT descend into, and why.
+// A reason, not a silencer: it is read by TestTheNestedWalkExcusesNothingQuietly,
+// which fails on an excuse for a field that no longer exists.
+var nestedExcuse = map[string]string{
+	"memo": "the memo itself: perturbing the cache is not a state the model can be in",
+	// THE VERSION IS WRITTEN ONCE, AT CONSTRUCTION. The About window and the
+	// header both draw it, so perturbing it changes the frame — but nothing in
+	// the app writes cfg.Version after NewDashboard, so no reachable state
+	// change can make a memoised frame stale on it. Carrying it in the key
+	// would cost a comparison every frame for a value that cannot move.
+	//
+	// The REST of cfg is walked, and must be: Cast, Tones, Radio, Spectrum,
+	// Units and Clock are all written while the app runs (dashboard.go,
+	// setup_ui.go), which is why the excuse is one FIELD rather than the struct
+	// it sits in.
+	"cfg.Version": "written once at construction; the app has no path that changes it while running",
 }
 
 // fieldAt is one addressable field of d, by index, at the top level.
@@ -298,5 +330,29 @@ func TestEveryWindowClearsItsMargins(t *testing.T) {
 					modalName(m), lead, trail, modalInset)
 			}
 		})
+	}
+}
+
+// AN EXCUSE CANNOT OUTLIVE THE FIELD IT EXCUSES (FR-3.3).
+//
+// nestedExcuse is the one hand-written thing left in this walk, so it is the
+// one thing that can rot: a field renamed or deleted leaves a row that silences
+// nothing and reads like coverage. The same failure mode as the stale exemption
+// platform/closedset was written for.
+func TestTheNestedWalkExcusesNothingQuietly(t *testing.T) {
+	typ := reflect.TypeOf(Dashboard{})
+	for path := range nestedExcuse {
+		outer, inner, nested := strings.Cut(path, ".")
+		f, ok := typ.FieldByName(outer)
+		if !ok {
+			t.Errorf("nestedExcuse names %q and Dashboard has no field %q", path, outer)
+			continue
+		}
+		if !nested {
+			continue
+		}
+		if _, ok := f.Type.FieldByName(inner); !ok {
+			t.Errorf("nestedExcuse names %q and %s has no field %q", path, outer, inner)
+		}
 	}
 }
