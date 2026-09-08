@@ -15,6 +15,44 @@ package render
 
 import studs "github.com/branden-thompson/watchpost/third_party/go-studs/components"
 
+// detailGutter is the air between a detail table's columns — ONE cell, not the
+// [S] window's two.
+//
+// A detail section is dense and its columns are already separated by their own
+// alignment: a right-aligned number ends where the next begins. The second cell
+// buys nothing and costs one per column boundary, which across seven columns is
+// the difference between the last one fitting and being cut at the 65 cells a
+// detail section has (85-wide modal, less the panel and the label gutter).
+const detailGutter = 1
+
+// fitColumns sizes every unsized column to its own widest cell.
+//
+// THE KIT HAS NO "FIT": Width == 0 means FILL there (data_table_row.go:539), so
+// a table of unsized columns stretches to the section's edge and puts a hand's
+// width of air in the middle of a row. Measuring here is what "as wide as the
+// widest data cell" means, and it pulls the table in to the width of what is
+// actually in it — which is also what keeps the last column clear of the scroll
+// rail.
+//
+// A column that asks for a Width or a Fill keeps it: the mark column is one
+// cell whatever is in it.
+func fitColumns(cols []StatusColumn, rows []StatusRow) []StatusColumn {
+	out := append([]StatusColumn(nil), cols...)
+	for i := range out {
+		if out[i].Width > 0 || out[i].Fill {
+			continue
+		}
+		w := out[i].MinWidth
+		for _, r := range rows { // bounded by the table (P10-02)
+			if i < len(r.Cells) {
+				w = max(w, Width(r.Cells[i]))
+			}
+		}
+		out[i].Width = max(w, 1)
+	}
+	return out
+}
+
 // DetailTable lays out rows at inner cells wide and returns them, no header.
 //
 // The FILL column absorbs what is left over, so a name is never truncated to
@@ -25,8 +63,12 @@ func (o Opts) DetailTable(cols []StatusColumn, rows []StatusRow, inner int) []st
 	if len(cols) == 0 || len(rows) == 0 {
 		return nil
 	}
-	cols, rows = statusGutters(cols, rows)
-	def := &studs.DataTableDefinition{Columns: statusCols(cols, ""), GutterWidth: statusGutter, NoAutoStyle: true}
+	// FIT FIRST, THEN THE GUTTERS. statusGutters adds its cell of air to a
+	// column's WIDTH, and a column with no width yet gets nothing — which is
+	// exactly how a right-aligned fit column ended up touching the name beside
+	// it. Sizing first gives it something to add to.
+	cols, rows = statusGutters(fitColumns(cols, rows), rows)
+	def := &studs.DataTableDefinition{Columns: statusCols(cols, ""), GutterWidth: detailGutter, NoAutoStyle: true}
 	for _, r := range rows {
 		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: r.Cells, CellStyles: r.Styles})
 	}

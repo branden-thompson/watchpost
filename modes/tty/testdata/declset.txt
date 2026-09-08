@@ -41,6 +41,7 @@ const debugPickW
 const debugWidth
 const detailLabelW
 const detailPrefixW
+const detailRailGutter
 const emptyWrapAt
 const flashLeft
 const flashNone
@@ -492,6 +493,7 @@ func maritimeRows
 func marquee
 func mmdd
 func modalAlertTone
+func nearestFirst
 func newArrowChips
 func nextGroup
 func nextRow

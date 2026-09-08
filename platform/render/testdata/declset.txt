@@ -89,6 +89,7 @@ const categoryBlend
 const clockKey12
 const clockKey24
 const clockKeyMil
+const detailGutter
 const extCellW
 const extDayW
 const extMaxDays
@@ -259,6 +260,7 @@ func displayWidth
 func fgLuminance
 func fgRGB
 func fgTruecolor
+func fitColumns
 func fracBlock
 func groupsFor
 func hexRGB

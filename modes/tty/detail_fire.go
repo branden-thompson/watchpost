@@ -6,6 +6,7 @@ package tty
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -58,6 +59,38 @@ func fireSectionHead(o render.Opts, name string, km float64) string {
 	return render.PadTo(name, len("Incidents")+1) + "- Radius: " + strings.TrimSpace(o.Distance(&km))
 }
 
+// detailRailGutter is the air the tables leave on the right for the modal's
+// vertical scroll control (HUM LEAD, 2026-09-07: the age column ran up against
+// it). The detail report scrolls whenever it is longer than the window, which
+// is nearly always, so the gutter is unconditional rather than a guess about
+// whether the rail is drawn this frame.
+const detailRailGutter = 3
+
+// nearestFirst orders a list by distance, closest at the top (HUM LEAD,
+// 2026-09-07).
+//
+// ON A COPY: the slice belongs to the published snapshot, which every other
+// consumer reads, and sorting it in place would reorder the spoken report and
+// the row badge from inside a render.
+//
+// A DISTANCE-LESS ENTRY SORTS LAST rather than first: an unknown distance is
+// not zero miles, and a fire of unknown distance at the top of a list read
+// closest-first is the one wrong place for it.
+func nearestFirst[T any](in []T, km func(T) *float64) []T {
+	out := append([]T(nil), in...)
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := km(out[i]), km(out[j])
+		switch {
+		case a == nil:
+			return false
+		case b == nil:
+			return true
+		}
+		return *a < *b
+	})
+	return out
+}
+
 // rows puts a table's lines in the detail's continuation column.
 //
 // NO EXTRA INDENT: the table's first column is one cell wide and carries the
@@ -92,13 +125,20 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 	if len(hs) == 0 {
 		return fireNone(o)
 	}
+	hs = nearestFirst(hs, func(h snapshot.Hotspot) *float64 { return h.DistanceKm })
+	// FIT, NOT FILL (HUM LEAD, 2026-09-07): every column is as wide as its own
+	// widest cell, so the table pulls in to the width of what is in it rather
+	// than stretching to the section's edge. DISTANCE AND DIRECTION ARE TWO
+	// COLUMNS: a number aligns on its right edge and a heading on its left, and
+	// together in one cell neither does.
 	cols := []render.StatusColumn{
-		{Width: 1},                // the ◆
-		{Fill: true, MinWidth: 9}, // where: distance and bearing
-		{Width: 8, Right: true},   // radiative power
-		{Width: 12},               // the satellite that saw it
-		{Width: 8, Right: true},   // how long ago
-		{Width: 9, Right: true},   // how sure the feed is
+		{Width: 1},    // the ◆
+		{Right: true}, // how far
+		{},            // which way
+		{Right: true}, // radiative power
+		{},            // the satellite that saw it
+		{Right: true}, // how long ago
+		{Right: true}, // how sure the feed is
 	}
 	var rows []render.StatusRow
 	for i, h := range hs { // bounded by the cap below (P10-02)
@@ -107,7 +147,7 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 			if o.ASCII {
 				more = "..."
 			}
-			rows = append(rows, render.StatusRow{Cells: []string{"", fmt.Sprintf("%s and %d more", more, len(hs)-3), "", "", "", ""}})
+			rows = append(rows, render.StatusRow{Cells: []string{"", "", fmt.Sprintf("%s and %d more", more, len(hs)-3), "", "", "", ""}})
 			break
 		}
 		brg := geo.BearingDeg(loc.Lat, loc.Lon, h.Lat, h.Lon)
@@ -115,7 +155,7 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 		if h.FRPMW != nil {
 			strength = fmt.Sprintf("%.0f MW", *h.FRPMW)
 			if *h.FRPMW >= boldMW {
-				styles[2] = "1;" + render.Tok(render.FireMark)
+				styles[3] = "1;" + render.Tok(render.FireMark) // the FRP cell, which moved when the bearing left it
 			}
 		}
 		age := "age n/a"
@@ -124,14 +164,15 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 		}
 		rows = append(rows, render.StatusRow{Styles: styles, Cells: []string{
 			render.Tint(fireGlyph(o), render.Tok(render.FireMark)),
-			strings.TrimSpace(o.Distance(h.DistanceKm)) + " " + compass(&brg),
+			strings.TrimSpace(o.Distance(h.DistanceKm)),
+			compass(&brg),
 			strength,
 			render.Plain(h.Source.ModelOrStation),
 			age,
 			render.Plain(h.Confidence),
 		}})
 	}
-	return o.DetailTable(cols, rows, cw)
+	return o.DetailTable(cols, rows, cw-detailRailGutter)
 }
 
 // incidentRows lists EVERY named fire the row counts (UAT 2026-09-07).
@@ -151,13 +192,15 @@ func incidentRows(o render.Opts, loc *snapshot.Location, ins []snapshot.Incident
 	if len(ins) == 0 {
 		return fireNone(o)
 	}
+	ins = nearestFirst(ins, func(in snapshot.Incident) *float64 { return in.Source.DistanceKm })
 	cols := []render.StatusColumn{
-		{Width: 1},                 // no glyph: a named fire is not a detection
-		{Fill: true, MinWidth: 10}, // the name, whole
-		{Width: 9, Right: true},    // distance and bearing
-		{Width: 12, Right: true},
-		{Width: 14, Right: true},
-		{Width: 9, Right: true},
+		{Width: 1},    // no glyph: a named fire is not a detection
+		{},            // the name, whole and never truncated
+		{Right: true}, // how far
+		{},            // which way
+		{Right: true}, // acres
+		{Right: true}, // containment
+		{Right: true}, // when it was found
 	}
 	var rows []render.StatusRow
 	for _, in := range ins { // bounded by the incident radius (P10-02)
@@ -171,18 +214,22 @@ func incidentRows(o render.Opts, loc *snapshot.Location, ins []snapshot.Incident
 		}
 		found := ""
 		if !in.Discovered.IsZero() {
-			found = fixedAgeTrim(now.Sub(in.Discovered))
+			// THE COARSE FORM, not the marine clock's: a fire discovered 200
+			// hours ago reads "8d ago", which is both shorter and what a person
+			// would say. The precise form is for something that moves.
+			found = seismicAge(now.Sub(in.Discovered))
 		}
-		where := strings.TrimSpace(o.Distance(in.Source.DistanceKm))
+		dir := ""
 		if in.Lat != 0 || in.Lon != 0 {
 			brg := geo.BearingDeg(loc.Lat, loc.Lon, in.Lat, in.Lon)
-			where += " " + compass(&brg)
+			dir = compass(&brg)
 		}
 		rows = append(rows, render.StatusRow{Cells: []string{
-			"", render.Plain(in.Name), where, acres, contained, found,
+			"", render.Plain(in.Name), strings.TrimSpace(o.Distance(in.Source.DistanceKm)), dir,
+			acres, contained, found,
 		}})
 	}
-	return o.DetailTable(cols, rows, cw)
+	return o.DetailTable(cols, rows, cw-detailRailGutter)
 }
 
 // fireCount is the row badge's number (UAT 110): the named incidents
