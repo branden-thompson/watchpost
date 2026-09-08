@@ -6,6 +6,9 @@ nobody has seen fail is a gate nobody has measured, and this release has already
 — a `--ascii` scan covering two surfaces of thirteen, an AA gate that iterated the list it was
 lifting, and a controls gate that could not fire on itself.
 
+*(This is the definition `quality-plan.md`'s INST-3 refers to. A junior-dev review found "plant" used
+cold in two other documents and defined only here.)*
+
 **"Watched" means one of two things, and the table says which:**
 
 - **Plant** — a defect was introduced deliberately, the gate was run, and it fired. The date and the

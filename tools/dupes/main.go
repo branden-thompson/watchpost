@@ -95,6 +95,17 @@ func main() {
 	} else {
 		fmt.Printf("dupes: %d duplicate group(s) at >= %d nodes; %d ratified, %d NOT\n",
 			len(groups), *min, len(groups)-len(unratified), len(unratified))
+		// INST-5, applied to the instrument that earned the rule. The count was
+		// published for a fortnight with its blind spots recorded only in a
+		// document that quotes it — which is the weaker reading of "where the
+		// number is published" (junior-dev review, 2026-09-08).
+		scope := "production code only"
+		if *withTests {
+			scope = "including _test.go"
+		}
+		fmt.Printf("  scope: %s. A FLOOR, not a total: structural fingerprints miss a near-duplicate\n"+
+			"  that differs by one statement (two 3-copy groups were reported as pairs), and nothing\n"+
+			"  below %d nodes is looked at.\n", scope, *min)
 		for _, d := range drift {
 			fmt.Printf("\n  RATIFIED GROUP CHANGED — %s\n", d)
 		}

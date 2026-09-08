@@ -25,7 +25,10 @@ makes a gate valid live in `06_docs/quality-observations.md`; this file is about
 | **B3** | **CODE COMPLETE** — FR-5 (`ac69622`) · FR-4.1/4.2/4.3/4.4/4.7 (`c5bcd03`) · FR-6.4 (`7f6786d`).  What remains in this batch is four HUM LEAD rulings, below |
 | Gates | `VERIFY=0 ALLOC=0` + the debug-tagged suite, on `7f6786d`, 2026-09-07 |
 
-**Immediately next:** B6 (FR-8 — the AA register and the `--ascii` completeness), then B7.  Serial, on
+**Immediately next:** *(as of 2026-09-08)* B6 and B7 are DONE, as is metric D and FR-10; the
+release is at BUILD EXIT with the red team run and its findings remediated. **This line goes stale
+the moment a batch lands — check `git log` before trusting it.** A junior-dev review found it
+pointing at finished work while claiming to be the first thing a returning reader should read.
 the HUM LEAD's instruction: *"better to reduce variables if something doesn't work."*
 
 **B5 is worth reading for what it removed rather than what it added.**  PL-D-5 was withdrawn as
@@ -103,6 +106,11 @@ to `deck.Inject` and calls `cycle()` itself.  That is one seam past the operator
 supplies its own tick.  `quality-observations.md` rule 16 is that catch, generalised.
 
 ## What worked — keep doing these
+
+**Items 1-8 and 14 are HABITS from this release's batches; 9-15 carry an `(INST-n)` tag where they
+are an instance of a standing rule in `quality-plan.md`.** A junior-dev review could not tell
+doctrine from war story here, and the difference matters: a habit is advice, a rule has a named catch
+and a review date.
 
 **1. A watched RED, never a compile error.**  When the first attempt at a test fails to *build*, add
 stubs returning the wrong answer so the RED is an assertion with a message.  A build failure proves

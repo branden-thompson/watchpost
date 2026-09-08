@@ -17,7 +17,7 @@ So there are two numbers, and only the first is metric D:
 | **Metric D — success** | production code | **0 unexplained** | target 0, gated in `verify` and CI |
 | Test duplication — internal | `-tests` | **17 unexplained** across 18 groups | worked down over time; NOT gated, NOT a release criterion |
 
-`go run ./tools/dupes -tests` is the second number whenever someone wants it. Its largest group is
+`go run ./tools/dupes -tests` re-runs the sweep with test files INCLUDED (the flag adds them; it does not scan them alone), which is why its groups still contain production symbols. Its largest group is
 five copies of `TestDeclarationSetUnchanged`, which is per-package by necessity — a reminder that the
 test number needs judgement before it needs work.
 
@@ -31,6 +31,11 @@ the word `RATIFIED` does not count, on the same rule the P10 ledger gate enforce
 **Fingerprints are structural**: two functions share one when their bodies have the same AST shape
 with identifiers and literals ignored, so a renamed copy fingerprints identically. A fingerprint
 changes when either body changes — which is intended. An edited exemption has to be re-ratified.
+
+**Adding a row:** the fingerprint goes in the FIRST cell, in backticks; the sites go in the second,
+backticked and separated by `·`, named as the tool prints them (`Opts.Distance`, receiver type
+included). The gate matches the fingerprint AND the exact site set, so a copy joining a ratified
+group fails rather than inheriting its exemption. A row without the word `RATIFIED` does not count.
 
 | Fingerprint | Sites | Reason |
 |---|---|---|
