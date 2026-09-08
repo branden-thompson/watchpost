@@ -19,13 +19,23 @@ makes a gate valid live in `06_docs/quality-observations.md`; this file is about
 | Branch | `feature/0.15.0-pre-broadcaster-ui-improvements` — **pushed** at the FR-5 commit; NFR-4 discharged |
 | **B1** | **DONE** — survey (bucket 1 = 4, not 49) · FR-2.2 coupling derived from `severeEvents()` · #18 evacuation tone (3× dual tone) audible · `platform/closedset` extracted at the third caller |
 | **B2** | **DONE** — FR-1.1 `config.Mutate` (6 writers → 1) · FR-1.3 band gate · `platform/singleowner` extracted at the second caller · FR-1.4 answered *no lock*, by experiment |
-| **B3** | **IN PROGRESS** — entry conditions discharged (`test-tags` in `verify`; `scripts/lint-injector.sh` as a `release-matrix` post-step).  **FR-5 DONE** (`ac69622`) |
-| Gates | `VERIFY=0 ALLOC=0` on the FR-5 tip, 2026-09-07 |
+| **B3** | **IN PROGRESS** — entry conditions discharged.  **FR-5 DONE** (`ac69622`) · **FR-4.1/4.2/4.3/4.4/4.7 DONE** (`c5bcd03`) |
+| Gates | `VERIFY=0 ALLOC=0` + the debug-tagged suite, on `c5bcd03`, 2026-09-07 |
 
-**Immediately next:** FR-4 — scenario payloads that match their labels, the 2-minute expiry, per-line
-`*** TEST EVENT ***` marking, the pre-emption rule, and `/debug/dump`'s method check.
+**Immediately next:** FR-6.4 as an improvement, then FR-10, then UAT before REVIEW exit.
 
-**Then:** FR-6.4 as an improvement, FR-10, and UAT before REVIEW exit.
+**FOUR THINGS ARE WAITING ON A HUM LEAD RULING, and none of them blocks the work below.**
+
+| # | Question | Recommendation |
+|---|---|---|
+| 1 | **F-55** — three windows cannot show their own head at 80x24 | Pin the head as chrome, the way the footer already is |
+| 2 | **FR-4.5** — a diagnostic head and tail on test audio, on the emergency-broadcast pattern | **Descope.**  Nine lenses named it for deletion at DISCOVER: it is the one FR-4 item that CONSTRUCTS a new forgeable artifact rather than repairing an instrument that lies, and it lands on the modality with no screen to disambiguate it.  The per-line marking now covers the safety need |
+| 3 | **FR-4.6** — a STOP ALL control | **Defer to F-26**, which says it plainly: it needs a key-binding decision before it can be built, and the obvious letters are taken.  OQ-3 is unanswered |
+| 4 | **The severe window's VISIBLE marking** | The row carries `Test` and nothing draws it yet.  Where the mark goes on the row is layout, and layout is the HUM LEAD's |
+
+**Also wanted: a read of the spoken copy.**  A fabricated alert now says *"This is a test event."*
+before every burst line and at the head of the `[w]` report.  That is placeholder-grade wording in
+my voice, not yours.
 
 **FR-6.4 IS NOT BLOCKING — HUM LEAD ruling, 2026-09-07.**  *"Watchpost is not a web application, so
 recommendations are useful, but never blocking functionality, at least until I have data or users

@@ -164,18 +164,13 @@ before the fix, since "how long" answers none of 2.2.1's three mechanisms.)*
   all of what that window exists to say, unreachable by any key.  Three windows keep a non-zero
   count and it is one mechanism, filed as **F-55** for a HUM LEAD ruling.  The exit condition's own
   premise held: fixing only `ctrl+d` would have left it in setup and relay-fault.
-- The `"emergency"` scenario injects an `Evacuation Immediate`; every payload matches its label.
-- Test events expire within two minutes, and their persisted footprint in `seen.json` is bounded or
-  self-identifying — `tickerSeenWindow` is 7 days and FR-4.3's bound does not reach it.
-- **A real arrival pre-empts a test event, and fabricated events never consume the burst Max.**  The
-  `burst` scenario injects six events against `defaultBurstMax = 5`, so an operator testing at the
-  wrong moment can push a real hazard out of the read budget.
-- `*** TEST EVENT ***` marking is per-line for the spoken read; **for the marquee it is lane chrome,
-  not tape text** — the tape is one scrolling line, so an in-tape marker is off-window most of the
+- ~~The `"emergency"` scenario injects an `Evacuation Immediate`; every payload matches its label.~~  **MET, `c5bcd03`** — and generalised: the scenarios are DERIVED from `globalfeed.FeedLanes()`, one per lane the feed can produce, each label built from the payload it injects, and each round-tripped through `globalfeed.LaneOf` rather than against a second copy of the mapping.
+- ~~Test events expire within two minutes~~ **MET, `c5bcd03`** (`testEventLife = 2 * time.Minute`).  The seen store keeps the id for its 7-day window as before, and the id is self-identifying (`watchpost-injected-`) — the persisted footprint is therefore bounded by identification, not by expiry.
+- ~~**A real arrival pre-empts a test event, and fabricated events never consume the burst Max.**~~  **MET, `c5bcd03`.**  Read as *never DISPLACES*: every real arrival's slot is reserved before a test event is offered one, and a fabricated emergency takes no exemption from Max.  Unlimited fabricated reads would be the worse failure, so a test event still spends what is left of the budget.  Watched failing in both directions first.
+- ~~`*** TEST EVENT ***` marking is per-line for the spoken read; **for the marquee it is lane chrome, not tape text**~~  **MET for the band, the takeover, the burst and the `[w]` report (`c5bcd03`); NOT claimed for the severe window's row**, which carries the mark and does not yet draw it — where it goes is layout, and layout is the HUM LEAD's.  Original wording: — the tape is one scrolling line, so an in-tape marker is off-window most of the
   time, and an 18-cell prefix per item at the 80-column floor makes the marker the majority of the
   tape.
-- **`advanceTicker` stays within its 71-alloc budget with a marked-event fixture present.**  It runs
-  at 68 today; `benchTicker` contains no test events, so the existing pin cannot see this change.
+- ~~**`advanceTicker` stays within its 71-alloc budget with a marked-event fixture present.**~~  **MET, `c5bcd03`** — 68 with a marked event, and the 133x44 memo-miss frame moves 5666 → 5668 against a 5888 budget.  Both are pinned in a test that fails if the fixture stops reaching the marked path.
 - NFR-2's check runs against built artifacts, has been observed **failing** against a debug build
   **and passing** against a clean one.
 - Gate set green.
