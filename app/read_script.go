@@ -75,6 +75,12 @@ type reader struct {
 	haveNext  bool
 	firstLine int
 	lastLine  int
+
+	// toned and spoke are FR-9.2's two facts: a tone was sounded, and how many
+	// parts reached the air after it. A tone is a promise of words, and this is
+	// the only place that can tell whether the promise was kept.
+	toned bool
+	spoke int
 }
 
 // readScript performs one card. It returns false when the sequence ended — the
@@ -89,7 +95,41 @@ func readScript(s *speaker, sc lineup.Script, h readHooks) bool {
 			return false
 		}
 	}
+	r.reportSilentTone()
 	return true
+}
+
+// reportSilentTone says so when a tone was sounded and nothing followed it
+// (FR-9.2).
+//
+// A TONE IS A PROMISE OF WORDS. The listener hears the attention tone, leans
+// in, and gets nothing — the failure reported three times in one burst at UAT
+// 2026-09-06 and impossible to diagnose from the outside, because a read that
+// ends early is Routed and raises nothing (I-2).
+//
+// THE THREE LEGITIMATE TONES-WITH-NO-WORDS NEVER REACH HERE, and the check for
+// them would be a branch with no failing input (D-2). An operator pressing esc,
+// a takeover pre-empting the read and the pump stopping all CANCEL, and every
+// path to this line has already checked the air: openTone returns false when
+// its hold finds the context gone, and readPart checks before every callout. To
+// arrive here is to have passed an air check, so a guard on ctx.Err() would
+// read as extra safety and be extra surface — the shape relayfault.go's own
+// empty guard had.
+//
+// A planted mutation proved it: removing that guard broke nothing, because
+// nothing could construct the state it excluded.
+//
+// ONLY WHEN NOTHING WAS SPOKEN. A read that got a line out and then lost
+// the rest is a different failure with a different shape, and calling it this
+// one would train the operator to read past both.
+func (r *reader) reportSilentTone() {
+	if !r.toned || r.spoke > 0 {
+		return
+	}
+	if r.s.d == nil || r.s.d.v == nil {
+		return
+	}
+	r.s.d.v.fault("an alert tone sounded and no words followed it")
 }
 
 // openTone sounds the attention tone and renders the first part behind it, so
@@ -99,6 +139,7 @@ func (r *reader) openTone(sc lineup.Script) bool {
 	toneDur := time.Duration(0)
 	if c, ok := cast.ClassByKey(sc.Tone); ok && sc.Tone != "" {
 		toneDur = r.s.attention(c)
+		r.toned = toneDur > 0 // sounded, not merely asked for: a muted or voiceless job tones nothing
 	}
 	// prepare only RENDERS; nothing is spoken early, and the cue still precedes
 	// the words.
@@ -154,7 +195,7 @@ func (r *reader) readPart(sc lineup.Script, i int, p lineup.Part) bool {
 	hold, start := breakingHold, time.Now()
 	if have {
 		if d := r.s.deliver(cur); d > 0 {
-			hold = d
+			hold, r.spoke = d, r.spoke+1
 		}
 	}
 	// d == 0 means muted, or no voice at runtime — keep the fixed hold so the

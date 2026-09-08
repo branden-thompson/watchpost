@@ -87,6 +87,11 @@ type narrationVoice interface {
 	// stop ends the line in flight. A cancelled read must not play on after
 	// its sequence has gone (MVS-D-75).
 	stop()
+	// fault says that something the LISTENER could hear went wrong, in the one
+	// place they can read it (FR-9.2). It is not spoken: an operational message
+	// over the air is confusing and the audience can do nothing about it
+	// (HUM LEAD, 2026-09-08).
+	fault(why string)
 	discard()
 	restore()
 }

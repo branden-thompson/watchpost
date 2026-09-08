@@ -42,6 +42,11 @@ func (v *scriptVoice) play(c clip) {
 	}
 	v.rec("aside:" + c.text) // a takeover's line: the visualizer does not follow it
 }
+
+// fault is inert in this double: the seam exists so a read can report a
+// tone with no words (FR-9.2); nothing here reads it.
+func (v *scriptVoice) fault(string) {}
+
 func (v *scriptVoice) pause()   { v.rec("pause") }
 func (v *scriptVoice) resume()  { v.rec("resume") }
 func (v *scriptVoice) stop()    { v.rec("stop") }
@@ -336,10 +341,15 @@ func (p *probeVoice) render(_ context.Context, _ cast.Role, t string) (clip, boo
 	return clip{text: t}, true
 }
 func (p *probeVoice) play(c clip) { p.onPlay(c) }
-func (p *probeVoice) pause()      {}
-func (p *probeVoice) resume()     {}
-func (p *probeVoice) discard()    {}
-func (p *probeVoice) restore()    {}
+
+// fault is inert in this double: the seam exists so a read can report a
+// tone with no words (FR-9.2); nothing here reads it.
+func (p *probeVoice) fault(string) {}
+
+func (p *probeVoice) pause()   {}
+func (p *probeVoice) resume()  {}
+func (p *probeVoice) discard() {}
+func (p *probeVoice) restore() {}
 
 // waitUntil polls cond (no fixed sleeps: the release, a queue position) and
 // fails after two seconds.

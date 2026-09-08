@@ -187,6 +187,7 @@ func (*radioDeck).discoverVoices
 func (*radioDeck).duck
 func (*radioDeck).epoch
 func (*radioDeck).escalate
+func (*radioDeck).fault
 func (*radioDeck).followMount
 func (*radioDeck).installVoice
 func (*radioDeck).label
@@ -234,6 +235,7 @@ func (*radioDeck).watchlistDwell
 func (*radioDeck).watchlistLang
 func (*reader).openTone
 func (*reader).readPart
+func (*reader).reportSilentTone
 func (*recentPipeline).hydrateHourly
 func (*recentPipeline).startStaggered
 func (*recentPipeline).stop

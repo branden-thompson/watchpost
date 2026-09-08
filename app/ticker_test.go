@@ -75,6 +75,11 @@ func (f *fakeBreakingAudio) render(_ context.Context, _ cast.Role, text string) 
 	return clip{text: text, dur: f.dur}, true
 }
 func (f *fakeBreakingAudio) play(c clip) { f.speak(c.text) }
+
+// fault is inert in this double: the seam exists so a read can report a
+// tone with no words (FR-9.2); nothing here reads it.
+func (f *fakeBreakingAudio) fault(string) {}
+
 func (f *fakeBreakingAudio) tone(cast.Class) time.Duration {
 	f.mu.Lock()
 	defer f.mu.Unlock()

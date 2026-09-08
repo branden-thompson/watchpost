@@ -625,6 +625,20 @@ func (d *radioDeck) resume() { d.engine.ResumePreview() }
 
 func (d *radioDeck) stop() { d.engine.StopPreview() }
 
+// fault puts what went wrong where the operator reads it, and NOWHERE ELSE
+// (FR-9.2; HUM LEAD, 2026-09-08).
+//
+// NOT SPOKEN, and that is the ruling rather than an omission: an operational
+// message over the air is confusing, and the audience can do nothing about it.
+// A radio station in this position cuts to "we are experiencing technical
+// difficulties" and NOAA Weather Radio names an alternate frequency — both
+// infrastructure this app does not have. What it can do is tell the person who
+// can act.
+func (d *radioDeck) fault(why string) {
+	radioDebugLog("read:fault:" + why)
+	d.setDetail(why)
+}
+
 // discard drops a held line whose sequence ended while it waited.
 func (d *radioDeck) discard() { d.engine.DropHeld() }
 

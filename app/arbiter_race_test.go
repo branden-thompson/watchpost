@@ -76,6 +76,11 @@ type countingVoice struct {
 }
 
 func (v *countingVoice) hit() { v.mu.Lock(); v.n++; v.mu.Unlock() }
+
+// fault is inert here: the seam exists so a read can report a tone with no
+// words (FR-9.2).
+func (v *countingVoice) fault(string) {}
+
 func (v *countingVoice) calls() int {
 	v.mu.Lock()
 	defer v.mu.Unlock()

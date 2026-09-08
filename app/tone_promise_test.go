@@ -98,3 +98,97 @@ func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
 			"same reconstruction this one did:\n%s", string(b))
 	}
 }
+
+// A TONE WITH NO WORDS IS REPORTED (FR-9.2).
+//
+// A TONE IS A PROMISE OF WORDS. The listener hears the attention tone, leans
+// in, and gets nothing — heard three times in one burst at UAT 2026-09-06 and
+// impossible to diagnose from the outside, because a read that ends early is
+// Routed and raises nothing (I-2).
+//
+// The report goes to the OPERATOR'S surface and is never spoken: an operational
+// message over the air is confusing and the audience can do nothing about it
+// (HUM LEAD, 2026-09-08).
+func TestAToneWithNoWordsIsReported(t *testing.T) {
+	v := &silentAfterToneVoice{}
+	d := testDirector(v, nil)
+	d.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
+
+	d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {
+		readScript(s, lineup.Script{Tone: cast.ClassWarning.Key(), Parts: []lineup.Part{
+			{Kind: lineup.PartLine, Text: "a tornado warning", Ref: "a"},
+		}}, readHooks{})
+	})
+
+	if v.faults == 0 {
+		t.Error("a tone sounded and nothing followed it, and nothing said so: the listener hears a " +
+			"promise and gets silence, and the operator has no way to know")
+	}
+}
+
+// AND A READ THAT SPOKE IS NOT REPORTED, however it ended afterwards. A read
+// that got a line out and then lost the rest is a different failure with a
+// different shape, and calling it this one would train the operator to read
+// past both.
+func TestAToneFollowedByWordsIsNotReported(t *testing.T) {
+	v := &speakingToneVoice{}
+	d := testDirector(v, nil)
+	d.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
+
+	d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {
+		readScript(s, lineup.Script{Tone: cast.ClassWarning.Key(), Parts: []lineup.Part{
+			{Kind: lineup.PartLine, Text: "a tornado warning", Ref: "a"},
+		}}, readHooks{})
+	})
+	if v.faults > 0 {
+		t.Errorf("a read that spoke reported a silent tone %d times", v.faults)
+	}
+}
+
+// AND A CARD WITH NO TONE IS NOT REPORTED, however little it says.
+//
+// This fault is about a PROMISE — the attention tone — being broken. A card
+// that never sounded one and rendered nothing is a different failure, and
+// reporting it here would put "an alert tone sounded" on the operator's screen
+// when no alert tone did.
+func TestACardWithNoToneIsNotReported(t *testing.T) {
+	v := &silentAfterToneVoice{}
+	d := testDirector(v, nil)
+	d.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
+
+	d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {
+		readScript(s, lineup.Script{Parts: []lineup.Part{ // no Tone
+			{Kind: lineup.PartLine, Text: "a forecast", Ref: "a"},
+		}}, readHooks{})
+	})
+	if v.faults > 0 {
+		t.Errorf("a card that sounded no tone reported a broken tone promise %d times", v.faults)
+	}
+}
+
+// speakingToneVoice sounds a tone and DOES render — the well-behaved case, so
+// the report's absence is measured rather than assumed.
+type speakingToneVoice struct{ silentAfterToneVoice }
+
+func (v *speakingToneVoice) render(context.Context, cast.Role, string) (clip, bool) {
+	return clip{text: "words", dur: time.Millisecond}, true
+}
+
+// silentAfterToneVoice sounds a tone and then renders nothing — the shape of a
+// synthesiser that has stopped answering while the tone path still works.
+type silentAfterToneVoice struct {
+	faults int
+}
+
+func (v *silentAfterToneVoice) duck()                         {}
+func (v *silentAfterToneVoice) tone(cast.Class) time.Duration { return 10 * time.Millisecond }
+func (v *silentAfterToneVoice) render(context.Context, cast.Role, string) (clip, bool) {
+	return clip{}, false // every part fails to render, and nothing is cancelled
+}
+func (v *silentAfterToneVoice) play(clip)    {}
+func (v *silentAfterToneVoice) pause()       {}
+func (v *silentAfterToneVoice) resume()      {}
+func (v *silentAfterToneVoice) stop()        {}
+func (v *silentAfterToneVoice) discard()     {}
+func (v *silentAfterToneVoice) restore()     {}
+func (v *silentAfterToneVoice) fault(string) { v.faults++ }
