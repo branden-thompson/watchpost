@@ -24,6 +24,9 @@ jobs:
       # One step per gate so a red run names its gate from the API (quality pass PH-3).
       - run: make fmt
       - run: make vet
+      - run: make vet-tags # the debug build is vetted too, or its seam rots unseen
+      - run: make test-tags # and its tests RUN: vet-tags vets, it does not test
+      - run: make lint # golangci-lint + staticcheck, as a baseline ratchet
       - run: make tidy
       - run: make vuln
       - run: make race

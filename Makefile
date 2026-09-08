@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: cache-clean build build-diag test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: cache-clean build build-diag lint lint-update test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -204,7 +204,7 @@ cache-clean:
 	@go clean -cache -testcache
 	@echo "cache-clean: build and test caches cleared"
 
-verify: fmt vet vet-tags test-tags tidy vuln race lint-imports lint-watermark gate-controls mutant-check
+verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
@@ -230,6 +230,15 @@ journey: build
 		echo "--- dist/journey.log ---"; grep -E "FAIL|M2:" dist/journey.log || true; \
 		test $$rc -eq 0 || { echo "journey: $$rc step(s) FAILED"; exit 1; }; \
 		echo "journey: every step PASSED"
+
+# lint is golangci-lint (which runs staticcheck) as a BASELINE + RATCHET: this
+# tree's known findings are recorded once and anything else fails the build.
+# `make lint-update` re-records them, and is the only way an entry leaves.
+lint:
+	@scripts/lint.sh
+
+lint-update:
+	@scripts/lint.sh --update
 
 alloc-budget:
 	go test -count=1 -run 'AllocBudget$$' ./...

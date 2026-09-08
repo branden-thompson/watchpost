@@ -467,7 +467,6 @@ func fireHot
 func fireNone
 func fireRows
 func fireSectionHead
-func fireTone
 func firstOfGroup
 func fixedAge
 func fixedAgeTrim

@@ -259,14 +259,6 @@ func fireHot(hs []snapshot.Hotspot, boldMW float64) bool {
 	return false
 }
 
-// fireTone: the count reads in the fire colour when there is fire.
-func fireTone(on bool) string {
-	if on {
-		return render.Tok(render.FireMark)
-	}
-	return render.Tok(render.TextBase)
-}
-
 // ellipsize cuts a name to n cells with a visible ellipsis (U5: a silent
 // cut hid that "Cottonwood Creek Complex" was cut at all).
 func ellipsize(s string, n int, ascii bool) string {

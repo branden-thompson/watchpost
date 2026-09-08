@@ -50,19 +50,24 @@ func TestAnUnchangedBodyDoesNotParseAgain(t *testing.T) {
 // 3 — IT IS BOUNDED, and what it drops is the least recently used.
 func TestItIsBoundedAndDropsTheLeastRecentlyUsed(t *testing.T) {
 	m := New[string, string](2)
-	m.Parsed("a", []byte("a"), upper)
-	m.Parsed("b", []byte("b"), upper)
-	m.Parsed("a", []byte("a"), upper) // a is now the most recently used
-	m.Parsed("c", []byte("c"), upper) // evicts b
+	for _, k := range []string{"a", "b", "a", "c"} { // a is used again before c evicts b
+		if _, err := m.Parsed(k, []byte(k), upper); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if n, _ := m.Stats(); n != 2 {
 		t.Fatalf("the memo holds at most 2, got %d", n)
 	}
 	before := parsesOf(m)
-	m.Parsed("a", []byte("a"), upper)
+	if _, err := m.Parsed("a", []byte("a"), upper); err != nil {
+		t.Fatal(err)
+	}
 	if parsesOf(m) != before {
 		t.Error("a was evicted; the eviction took the most recently used")
 	}
-	m.Parsed("b", []byte("b"), upper)
+	if _, err := m.Parsed("b", []byte("b"), upper); err != nil {
+		t.Fatal(err)
+	}
 	if parsesOf(m) == before {
 		t.Error("b survived; nothing was evicted and the bound does not hold")
 	}
@@ -94,7 +99,9 @@ func parsesOf[K comparable, V any](m *Memo[K, V]) int {
 func TestPruneDropsWhatTheCallerNoLongerWants(t *testing.T) {
 	m := New[string, string](100)
 	for _, k := range []string{"a", "b", "c"} {
-		m.Parsed(k, []byte(k), upper)
+		if _, err := m.Parsed(k, []byte(k), upper); err != nil {
+			t.Fatal(err)
+		}
 	}
 	live := map[string]bool{"b": true}
 	m.Prune(func(k string) bool { return live[k] })
@@ -102,11 +109,15 @@ func TestPruneDropsWhatTheCallerNoLongerWants(t *testing.T) {
 		t.Fatalf("one key is live and %d survived", n)
 	}
 	before := parsesOf(m)
-	m.Parsed("b", []byte("b"), upper)
+	if _, err := m.Parsed("b", []byte("b"), upper); err != nil {
+		t.Fatal(err)
+	}
 	if parsesOf(m) != before {
 		t.Error("the live key was pruned")
 	}
-	m.Parsed("a", []byte("a"), upper)
+	if _, err := m.Parsed("a", []byte("a"), upper); err != nil {
+		t.Fatal(err)
+	}
 	if parsesOf(m) == before {
 		t.Error("a dead key survived the prune: the memo is bounded by nothing")
 	}
