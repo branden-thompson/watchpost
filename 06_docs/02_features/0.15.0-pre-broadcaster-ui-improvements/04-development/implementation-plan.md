@@ -312,23 +312,41 @@ to clear it, reproducing the reported status exactly.  **Cheap disproof before a
 **Opening task** — run `golangci-lint` and `staticcheck` once and **count**.
 
 **Exit conditions**
-- `make lint` exists and is in `verify`, as **baseline + no-new-findings ratchet**.  A clean bill is
-  not an exit condition.
-- **`alloc-budget` joins `verify`.**
-- **`ci.yml` and `verify` run the same set, in both directions.**  Revision 1 stated this
-  one-directionally; `verify` omits `vet-tags` and `mutant-check` from CI's view, but CI *also* runs
-  `alloc-budget`, `release-matrix` and `install-test` which `verify` omits — so a naive convergence
-  **deletes the repo's only automated allocation gate.**
-- One completeness test covers the AA register and `--ascii`.  Two corrections to revision 1:
-  **`--ascii` misses ten windows, not four** (the golden scan covers `dashboard` and `settings` only,
-  against eleven modals); and **the AA gate is currently a tautology** — `withAA` lifts every pair in
-  `aaPairs()` and the test iterates the same list, so it can only fail if the lifter fails to
-  converge.  The producer is the set of pairs actually *painted at render call sites*, not the
-  register.
-- The PTY journey's read step establishes its own precondition.
-- Every gate in a **single** `gates.md` carries an evidence line naming a **watched** failure.
-  Creating that roster is a task in this batch, not an assumption — no 0.15.0 `gates.md` exists.
-- Gate set green.
+- ~~`make lint` exists and is in `verify`, as **baseline + no-new-findings ratchet**.~~  **MET.**
+  `scripts/lint.sh`, golangci-lint v2.13.1 pinned, fingerprinted by file+rule.  It fails in BOTH
+  directions — a new finding of a baselined rule, and a baseline row matching nothing on disk.  Both
+  watched: a ratchet that only tightens is half a gate, because a stale row is how a baseline
+  outlives the finding it excused.
+- ~~**`alloc-budget` joins `verify`.**~~  **MET**, and watched — **on the second plant.**  The first
+  survived: `_ = make([]byte, 64)` never escapes, so the compiler removed the defect before the gate
+  could count it.  Recorded in the roster, because a plant the optimiser deletes measures the
+  optimiser.
+- ~~**`ci.yml` and `verify` run the same set, in both directions.**~~  **MET.**
+  `TestCIAndVerifyRunTheSameGates` carries `ciOnly`/`verifyOnly` and rots either way, so the naive
+  convergence the plan warned about — the one that deletes the only allocation gate — fails the test
+  rather than the release.
+- ~~One completeness test covers the AA register and `--ascii`.~~  **MET, and both halves were worse
+  than the plan said.**  `--ascii` missed ten windows AND fifteen glyphs: the scan checked the
+  dashboard for seven named marks against eleven windows and a set of twenty-two.  It is now one scan
+  over thirteen surfaces asking the only question that needs no list — is anything here outside
+  ASCII? — which found six leaks in four windows, two of them (`Dot`, `Rail`) marks no list had.  The
+  AA gate was the tautology the plan called it; the producer is now the 75 **declared** tokens
+  crossed against the 64 registered, and each of the 11 exemptions carries a verified mechanism
+  rather than a judgement (F-57).
+- ~~The PTY journey's read step establishes its own precondition.~~  **MET.**  The recorded blocker
+  was that it needed an absence check this harness cannot make.  It does not: a record's title stamp
+  carries `· n / N` only while one is open, so one ARRIVING pattern proves the tab is populated and a
+  row is focused.  `readableTab` walks the categories instead of naming one.  Passed against live
+  feeds on both runs, and the `space` read passed with it.
+- ~~Every gate in a **single** `gates.md` carries an evidence line naming a **watched** failure.~~
+  **MET.**  `07-readiness/gates.md`, thirteen plants.  **It found a real hole:** `gate-controls` — the
+  gate whose entire job is proving the others still fire — was GREEN while running no control at all,
+  because two of its scripts ignored an unrecognised flag and ran their normal path to exit 0.
+- **Gate set green.**  **MET WITH ONE DELIBERATE EXCEPTION.**  `make verify` is green.  `make journey`
+  is **RED and stays red**: 26 of 28 steps pass, and the two Lookup steps fail on a freshly seeded
+  install (**F-58**).  Widening its bound would convert a measured stall into a tick — the call F-44
+  already made for the 11.4 s `space` read.  HUM LEAD 2026-09-08: document and proceed; the cause is
+  not cheap to find.  A 40-second probe is committed so the next attempt starts from a measurement.
 
 ---
 
