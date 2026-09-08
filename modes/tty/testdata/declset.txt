@@ -214,6 +214,7 @@ func (Dashboard).close
 func (Dashboard).closeSevereDetail
 func (Dashboard).columnPlan
 func (Dashboard).commitCmd
+func (Dashboard).commitToModel
 func (Dashboard).compact
 func (Dashboard).confirmOverlay
 func (Dashboard).controlRow
