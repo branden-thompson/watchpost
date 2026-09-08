@@ -103,7 +103,7 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 		}
 		b.lines = append(b.lines, "") // the separator between the two DATA rows
 		at = len(b.lines)
-		b.lines = append(b.lines, d.setupKeyLines(setupMark(o, focus == rowFIRMSKey))...)
+		b.lines = append(b.lines, d.setupKeyLines(o, setupMark(o, focus == rowFIRMSKey))...)
 		if focus == rowFIRMSKey {
 			b.at, b.end = at, len(b.lines)
 		}

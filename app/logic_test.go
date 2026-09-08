@@ -97,7 +97,7 @@ func TestStaleWarningsFlagObservationsOlderThanTwoHours(t *testing.T) {
 	old := time.Now().Add(-3 * time.Hour)
 	temp := 20.0
 	asm.Apply(snapshot.Fragment{Provider: "nws", Kind: snapshot.KindObs, FetchedAt: time.Now(),
-		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{snapshot.Key(ref): {Current: &snapshot.Conditions{Temp: &temp, ObservedAt: old, Source: snapshot.SourceInfo{Provider: "nws"}}}}})
+		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{snapshot.Key(ref): {Current: &snapshot.Conditions{Temp: &temp, ObservedAt: old, Source: snapshot.SourceInfo{Provider: "nws"}}}}}, nil)
 	staleWarnings(asm, asm.Snapshot())
 	warns := asm.Snapshot().Warnings
 	if len(warns) != 1 || warns[0].Code != snapshot.WarnObsStale || !strings.Contains(warns[0].Message, "Old") {
@@ -105,7 +105,7 @@ func TestStaleWarningsFlagObservationsOlderThanTwoHours(t *testing.T) {
 	}
 	fresh := snapshot.NewAssembler([]snapshot.LocationRef{ref}, []string{"nws"})
 	fresh.Apply(snapshot.Fragment{Provider: "nws", Kind: snapshot.KindObs, FetchedAt: time.Now(),
-		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{snapshot.Key(ref): {Current: &snapshot.Conditions{Temp: &temp, ObservedAt: time.Now(), Source: snapshot.SourceInfo{Provider: "nws"}}}}})
+		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{snapshot.Key(ref): {Current: &snapshot.Conditions{Temp: &temp, ObservedAt: time.Now(), Source: snapshot.SourceInfo{Provider: "nws"}}}}}, nil)
 	staleWarnings(fresh, fresh.Snapshot())
 	if len(fresh.Snapshot().Warnings) != 0 {
 		t.Fatal("a fresh observation warns of nothing")

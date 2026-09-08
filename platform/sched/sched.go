@@ -246,7 +246,11 @@ func (s *Scheduler) cycle(ctx context.Context, tier Tier, refs []snapshot.Locati
 			s.cfg.Assembler.Warn(snapshot.Warning{Code: snapshot.WarnProviderError, Provider: p.ID(), Message: err.Error()})
 			continue
 		}
-		s.cfg.Assembler.Apply(frag)
+		// THE REFS THIS CYCLE ASKED ABOUT (#13). This is the dashboard's only
+		// refresh path, and it is the one that did not pass them — so no
+		// location ever recorded an attempt and a row the feed cannot serve
+		// shimmered for ever, which is the defect the field was added for.
+		s.cfg.Assembler.Apply(frag, snapshot.Keys(refs))
 		s.publish() // per provider (UAT 64): a slow provider never holds the others' data off screen
 		if frag.Err != nil {
 			for _, r := range unserved(refs, frag) {

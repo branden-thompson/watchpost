@@ -61,7 +61,7 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 	// question beside the value.
 	hint := "City Name, \"City, ST\", or Zip"
 	if unset {
-		hint = "Watchpost's default — set your own: " + hint
+		hint = "Watchpost's default " + o.Glyphs().Dash + " set your own: " + hint
 	}
 	lines := []string{head, supportIndent + hint}
 	if st.ref == nil || st.focus == rowLocation {
@@ -83,14 +83,18 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 		}
 	}
 	if st.err != "" && st.focus == rowLocation {
-		lines = append(lines, "       ⚠ "+st.err)
+		lines = append(lines, "       "+o.Glyphs().Alert+" "+st.err)
 	}
 	return lines
 }
 
 // setupKeyLines is question 2 of the form: the FIRMS key, with a stored
 // key's tail and health when there is one (UAT 111).
-func (d Dashboard) setupKeyLines(mark string) []string {
+// setupKeyLines takes Opts because its marks come from the SET, not from
+// literals (red team, 2026-09-08: the ellipsis, the dash, the bullet and the
+// warning here all survived --ascii, in a window the scan renders only in a
+// state that reaches none of them).
+func (d Dashboard) setupKeyLines(o render.Opts, mark string) []string {
 	st := d.setup
 	hint := ""
 	if d.cfg.FIRMSKey != nil {
@@ -103,14 +107,14 @@ func (d Dashboard) setupKeyLines(mark string) []string {
 	// it was not.
 	var lines []string
 	if hint != "" { // UAT 111: a stored key is shown to be there, with how it is doing, and can be replaced
-		lines = append(lines, "  "+mark+settingLabel("NASA FIRMS key: stored (…"+hint+") — ", st.focus == rowFIRMSKey)+d.firmsHealth(),
-			"       Paste new key to replace — empty keeps")
+		lines = append(lines, "  "+mark+settingLabel("NASA FIRMS key: stored ("+o.Glyphs().Ellipsis+hint+") "+o.Glyphs().Dash+" ", st.focus == rowFIRMSKey)+d.firmsHealth(o),
+			"       Paste new key to replace "+o.Glyphs().Dash+" empty keeps")
 	} else {
 		lines = append(lines, "  "+mark+settingLabel("NASA FIRMS key: ", st.focus == rowFIRMSKey)+"none (optional)",
 			"       Free key: firms.modaps.eosdis.nasa.gov/api/map_key",
 			"       Empty = the default data set, no key")
 	}
-	shown := strings.Repeat("•", len([]rune(st.key)))
+	shown := strings.Repeat(o.Glyphs().Bullet, len([]rune(st.key)))
 	if st.reveal {
 		shown = st.key
 	}
@@ -129,7 +133,7 @@ func (d Dashboard) setupKeyLines(mark string) []string {
 		lines = append(lines, supportIndent+d.opts().KeyCap("ctrl+r")+"  "+label)
 	}
 	if st.err != "" && st.focus == rowFIRMSKey {
-		lines = append(lines, "       ⚠ "+st.err)
+		lines = append(lines, "       "+o.Glyphs().Alert+" "+st.err)
 	}
 	return lines
 }
@@ -171,7 +175,7 @@ func radioMark(selected, ascii bool) string {
 // firmsHealth words the FIRMS provider's state for the Setup window (UAT
 // 111): ✔ working (green), ✘ rejected (red), degraded, off, or not yet
 // reported — glyph and colour together (R-12a: the glyph carries it alone).
-func (d Dashboard) firmsHealth() string {
+func (d Dashboard) firmsHealth(o render.Opts) string {
 	if d.snap == nil {
 		return "no report yet"
 	}
@@ -186,7 +190,7 @@ func (d Dashboard) firmsHealth() string {
 		}
 		switch p.Status {
 		case snapshot.ProviderOK:
-			return render.Tint("✔ working", render.Tok(render.ProviderOK))
+			return render.Tint(o.Glyphs().OK+" working", render.Tok(render.ProviderOK))
 		case snapshot.ProviderOff:
 			return "not active"
 		}

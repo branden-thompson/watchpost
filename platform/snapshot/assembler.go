@@ -229,7 +229,17 @@ func (a *Assembler) SetLocations(refs []LocationRef) (added, removed []LocationR
 // (B3 UAT 59: one bad location must not blank the rest of the batch);
 // locations it could not serve keep their prior data (§10.1; obs_stale
 // never degrades status — see Warn).
-func (a *Assembler) Apply(f Fragment) {
+// asked is which locations the fetch COVERED. It is a PARAMETER, not a field on
+// Fragment, because a field can be forgotten and a parameter cannot: the first
+// version carried it on the Fragment, three of the four call sites set it, and
+// the one that did not — platform/sched, the ONLY path the dashboard refreshes
+// through — silently recorded no attempt for any location, ever. The fix ran in
+// `watchpost report` and nowhere a listener could see it (red team, 2026-09-08).
+//
+// PerLocation cannot answer this: a provider that returned nothing for a
+// location looks exactly like one nobody asked about, and telling those apart is
+// the whole of issue #13.
+func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	st, known := a.status[f.Provider]
@@ -245,15 +255,41 @@ func (a *Assembler) Apply(f Fragment) {
 	} else {
 		st.Status = ProviderOK
 		st.FetchedAt = f.FetchedAt
-		// THE ATTEMPT IS RECORDED, NOT THE RESULT (#13). Only the reference
-		// provider stamps it: it is the one whose absence makes a row read as
-		// "still loading", and a secondary that skips a location says nothing
-		// about whether the weather is coming.
-		if st.Role == "reference" {
-			for _, k := range f.Asked {
-				if _, tracked := a.sections[k]; tracked {
-					a.asked[k] = f.FetchedAt
-				}
+	}
+	// THE ATTEMPT IS RECORDED, NOT THE RESULT (#13), and it is recorded even when
+	// f.Err is set.
+	//
+	// THAT IS THE CORRECTION, not an oversight. FetchEach JOINS per-location
+	// errors into one Fragment.Err (platform/snapshot/foreach.go), so a single
+	// location the API cannot serve marks the whole fragment failed — and
+	// "the API does not answer for this location" is precisely issue #13. Under
+	// the first version's `f.Err == nil` guard, the one case the fix existed for
+	// was the one case it skipped.
+	//
+	// Reaching Apply at all means the PROVIDER RESPONDED: a transport-level
+	// failure returns an error from Fetch and never gets here (sched.go warns and
+	// continues). So the honest meaning of a stamp is "a fetch covering this
+	// location completed", which is true whether or not this location was served.
+	//
+	// Only the reference provider stamps: it is the one whose absence makes a row
+	// read as "still loading", and a secondary skipping a location says nothing
+	// about whether the weather is coming.
+	if st.Role == "reference" {
+		// THE STAMP CANNOT BE ZERO, because zero is how "never asked" is spelled.
+		//
+		// FetchedAt comes from the provider and a provider may simply not set it
+		// — the scheduler's own flaky fixture does not. Writing it through would
+		// record an attempt that reads as no attempt, and the row would shimmer
+		// for ever with the fact sitting right there in the snapshot. Found by
+		// the first test that drove the real scheduler instead of a hand-built
+		// fragment (red team, 2026-09-08).
+		at := f.FetchedAt
+		if at.IsZero() {
+			at = time.Now().UTC() // the assembler is processing it now; that is the honest answer
+		}
+		for _, k := range asked {
+			if _, tracked := a.sections[k]; tracked {
+				a.asked[k] = at
 			}
 		}
 	}

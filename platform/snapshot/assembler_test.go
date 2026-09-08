@@ -15,10 +15,10 @@ func TestMarineMergesForecastThenBuoy(t *testing.T) {
 	f := func(v float64) *float64 { return &v }
 	a.Apply(Fragment{Provider: "nws-marine", Kind: KindMarine, FetchedAt: time.Now(), PerLocation: map[LocationKey]PartialData{
 		Key(ref): {Marine: &Marine{SwellHeight: f(0.6), SwellDirDeg: f(280), WavePeriod: f(6), Source: SourceInfo{Provider: "nws-marine"}}},
-	}})
+	}}, nil)
 	a.Apply(Fragment{Provider: "ndbc", Kind: KindMarine, FetchedAt: time.Now(), PerLocation: map[LocationKey]PartialData{
 		Key(ref): {Marine: &Marine{WaveHeight: f(0.9), WavePeriod: f(14), WaterTemp: f(23.3), Buoy: "46224"}},
-	}})
+	}}, nil)
 	s := a.Snapshot()
 	m := s.Locations[0].Marine
 	if m == nil {
@@ -47,11 +47,11 @@ func TestMarineTidesFillFromCoops(t *testing.T) {
 	when := time.Date(2026, 8, 25, 2, 40, 0, 0, time.UTC)
 	a.Apply(Fragment{Provider: "ndbc", Kind: KindMarine, FetchedAt: time.Now(), PerLocation: map[LocationKey]PartialData{
 		Key(ref): {Marine: &Marine{WaveHeight: f(0.6), WaterTemp: f(23.9), Buoy: "46254"}},
-	}})
+	}}, nil)
 	a.Apply(Fragment{Provider: "coops", Kind: KindMarine, FetchedAt: time.Now(), PerLocation: map[LocationKey]PartialData{
 		Key(ref): {Marine: &Marine{TideLevel: f(1.13), Tides: []TideEvent{{Time: when, Height: 1.73, Type: "H"}},
 			TideStation: "San Diego", TideStationKM: f(1.2), Currents: []CurrentEvent{{Time: when, Speed: 0.5, Type: "flood"}}, CurrentStation: "San Diego Bay Entrance"}},
-	}})
+	}}, nil)
 	s := a.Snapshot()
 	m := s.Locations[0].Marine
 	if m == nil || m.Buoy != "46254" || m.TideStation != "San Diego" || len(m.Tides) != 1 || m.Tides[0].Height != 1.73 || len(m.Currents) != 1 || *m.TideLevel != 1.13 {
@@ -123,7 +123,7 @@ func TestWarningTextIsCleanedAtTheBoundary(t *testing.T) {
 // only what came back, stamping on a failed fetch, letting a secondary answer
 // a question about the reference, and stamping locations the fetch never
 // covered.
-func TestOnlyACompletedReferenceFetchRecordsTheAttempt(t *testing.T) {
+func TestTheReferenceFetchRecordsWhichLocationsItCovered(t *testing.T) {
 	served := LocationRef{Label: "Oceanside, CA", Zip: "92057", Lat: 33.2, Lon: -117.38}
 	barren := LocationRef{Label: "Nowhere, XX", Zip: "00000", Lat: 1, Lon: 1}
 	unasked := LocationRef{Label: "Elsewhere, YY", Zip: "11111", Lat: 2, Lon: 2}
@@ -144,37 +144,43 @@ func TestOnlyACompletedReferenceFetchRecordsTheAttempt(t *testing.T) {
 		t.Fatalf("%s missing from the snapshot", ref.Label)
 		return time.Time{}
 	}
+	asked := []LocationKey{Key(served), Key(barren)}
 
-	// A completed reference fetch covering two of the three.
 	a := build()
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: at,
-		Asked:       []LocationKey{Key(served), Key(barren)},
-		PerLocation: map[LocationKey]PartialData{Key(served): {Current: &Conditions{Source: SourceInfo{Provider: "nws"}}}}})
+		PerLocation: map[LocationKey]PartialData{Key(served): {Current: &Conditions{Source: SourceInfo{Provider: "nws"}}}}}, asked)
 
 	if got := stamp(a, served); !got.Equal(at) {
 		t.Errorf("a served location is stamped: %v", got)
 	}
 	// THE WHOLE POINT: asked about, nothing came back, and it says so.
 	if got := stamp(a, barren); !got.Equal(at) {
-		t.Errorf("a location the feed had NOTHING for is still a location it ANSWERED about: %v", got)
+		t.Errorf("a location the feed had NOTHING for is still one it ANSWERED about: %v", got)
 	}
 	if got := stamp(a, unasked); !got.IsZero() {
 		t.Errorf("a location outside the fetch was not attempted; stamping it would report a wait as a fact: %v", got)
 	}
 
-	// A FAILED fetch answered nothing, whatever it covered.
+	// A FRAGMENT CARRYING AN ERROR STILL RECORDS THE ATTEMPT, and this assertion
+	// is the reverse of what it said before (red team, 2026-09-08).
+	//
+	// FetchEach JOINS per-location errors into one Fragment.Err, so a single
+	// location the API cannot serve marks the whole fragment failed — and "the
+	// API does not answer for this location" IS issue #13. The old rule skipped
+	// the stamp on any error, which meant the one case the field existed for was
+	// the one case it never recorded. Reaching Apply means the provider
+	// responded; a transport failure returns an error from Fetch and never
+	// arrives here.
 	bad := build()
-	bad.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: at,
-		Asked: []LocationKey{Key(served), Key(barren)}, Err: errFetch})
-	if got := stamp(bad, barren); !got.IsZero() {
-		t.Errorf("a failed fetch is not an answer: %v", got)
+	bad.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: at, Err: errFetch}, asked)
+	if got := stamp(bad, barren); !got.Equal(at) {
+		t.Errorf("a per-location failure is still an answer about that location: %v", got)
 	}
 
 	// A SECONDARY cannot answer a question about the reference: its absence is
 	// not what makes a row read as loading.
 	sec := build()
-	sec.Apply(Fragment{Provider: "ndbc", Kind: KindMarine, FetchedAt: at,
-		Asked: []LocationKey{Key(served), Key(barren)}})
+	sec.Apply(Fragment{Provider: "ndbc", Kind: KindMarine, FetchedAt: at}, asked)
 	if got := stamp(sec, barren); !got.IsZero() {
 		t.Errorf("a secondary stamped the weather attempt: %v", got)
 	}

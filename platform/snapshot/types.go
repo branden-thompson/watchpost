@@ -452,12 +452,6 @@ type Fragment struct {
 	PerLocation map[LocationKey]PartialData
 	FetchedAt   time.Time
 	Err         error
-	// Asked is which locations this fetch COVERED, set by the caller from the
-	// FetchReq it issued. PerLocation cannot answer that: a provider that
-	// returned nothing for a location looks exactly like one that was never
-	// asked about it, and telling those apart is the whole of issue #13. Not
-	// published — Fragment carries no json tags and never leaves the process.
-	Asked []LocationKey
 }
 
 // Provider is the only interface a data source implements (§2).

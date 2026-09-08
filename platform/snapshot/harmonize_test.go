@@ -12,7 +12,7 @@ import (
 
 func apply(a *Assembler, prov string, k LocationKey, c *Conditions) {
 	a.Apply(Fragment{Provider: prov, Kind: KindObs, FetchedAt: time.Now(),
-		PerLocation: map[LocationKey]PartialData{k: {Current: c}}})
+		PerLocation: map[LocationKey]PartialData{k: {Current: c}}}, nil)
 }
 
 func TestHarmonizeNWSWinsOutright(t *testing.T) {
@@ -56,9 +56,9 @@ func TestHarmonizeSeriesNeverSplice(t *testing.T) {
 	a := NewAssembler([]LocationRef{ref}, []string{"nws", "open-meteo"})
 	k := Key(ref)
 	a.Apply(Fragment{Provider: "open-meteo", Kind: KindForecast, FetchedAt: time.Now(),
-		PerLocation: map[LocationKey]PartialData{k: {Hourly: []Hourly{{Temp: f64(9.9)}, {Temp: f64(9.8)}}}}})
+		PerLocation: map[LocationKey]PartialData{k: {Hourly: []Hourly{{Temp: f64(9.9)}, {Temp: f64(9.8)}}}}}, nil)
 	a.Apply(Fragment{Provider: "nws", Kind: KindForecast, FetchedAt: time.Now(),
-		PerLocation: map[LocationKey]PartialData{k: {Hourly: []Hourly{{Temp: f64(1.1)}}}}})
+		PerLocation: map[LocationKey]PartialData{k: {Hourly: []Hourly{{Temp: f64(1.1)}}}}}, nil)
 	loc := a.Snapshot().Locations[0]
 	if len(loc.Hourly) != 1 || *loc.Hourly[0].Temp != 1.1 {
 		t.Fatalf("hourly must come wholesale from nws (first in order), never spliced: %+v", loc.Hourly)

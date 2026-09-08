@@ -59,7 +59,7 @@ func TestReplayThroughRealNWSProvider(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		asm.Apply(frag)
+		asm.Apply(frag, nil)
 	}
 	_ = sched.RealClock{} // harness parity: cadence covered by the stub replay
 

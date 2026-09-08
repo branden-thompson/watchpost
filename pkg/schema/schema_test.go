@@ -39,13 +39,13 @@ func TestGeneratedSchemaValidatesRealEnvelope(t *testing.T) {
 	asm.Apply(snapshot.Fragment{Provider: "nws", Kind: snapshot.KindObs, FetchedAt: time.Now(),
 		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{
 			snapshot.Key(ref): {Current: &snapshot.Conditions{Temp: f64(21.5)}},
-		}})
+		}}, nil)
 	// A marine block with nil collections (REVIEW M1): the per-provider copy
 	// must publish arrays too, or the live --json fails this very schema.
 	asm.Apply(snapshot.Fragment{Provider: "coops", Kind: snapshot.KindMarine, FetchedAt: time.Now(),
 		PerLocation: map[snapshot.LocationKey]snapshot.PartialData{
 			snapshot.Key(ref): {Marine: &snapshot.Marine{}},
-		}})
+		}}, nil)
 	envBytes, err := json.Marshal(asm.Snapshot())
 	if err != nil {
 		t.Fatal(err)
