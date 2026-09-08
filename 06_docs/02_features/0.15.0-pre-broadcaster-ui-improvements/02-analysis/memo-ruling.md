@@ -100,3 +100,38 @@ pinned by the same shape of test.  The fourth and fifth were **declined on the
 strength of those same questions** rather than on a reading of their code — and
 that is the thing that was not possible before: there was no contract to hold
 them against.
+
+## Metric K, with its denominator fixed FIRST
+
+**K — memo keys with no completeness guard.**  Baseline at DISCOVER: *"1 on the
+frame path (`bodyKey`); 6 data caches pending FR-3.2's ruling"*.  Target 0.
+
+The red team's hardening note is the reason this section exists: *"K must stay
+an absolute count: FR-3.2's ruling on the six data-cache memos removes them from
+the numerator by definition rather than by guarding them, which is the
+anti-solution the brief hardened D against, re-imported."*
+
+**So the denominator is stated before the verdicts, and it is EIGHT** — the two
+frame keys and the six named memos.  Nothing is dropped from it; the two that
+cannot have a key-completeness guard are marked N/A **with what they are**,
+which is a fact about their shape and not about this release's convenience.
+
+| Key | Can it go stale? | Guard | K |
+|---|---|---|---|
+| `modalKey` | Yes | `TestTheMemoKeyCoversEverythingTheFrameShows` — now FAILS on an unfixtured window and derives the nested-struct set (FR-3.3) | 0 |
+| `bodyKey` | Yes | `TestTheBodyKeyCoversEverythingTheTablesShow`, its theme twin, and `TestEveryBodyKeyInputIsExercised` (FR-3.1) | 0 |
+| `tileMemo` | Yes | `platform/bodymemo`'s three property tests, the firms allocation pin, and its own bound/split test | 0 |
+| `boxMemo` | Yes | The same three, plus the shared-regional-body test | 0 |
+| `gridMemo` | Yes | The same three, plus `Retain`'s prune test | 0 |
+| `sourceMemo` | Yes | `TestSourceMemoSkipsDecodeOnAnUnchangedBody`: one decode per body, a changed body re-decodes, a cache hit does not, and a parse error is not swallowed | 0 |
+| `hostMemo` | **No — it holds no parsed value.**  A consecutive-5xx count and a deadline | N/A, stated | — |
+| `failureMemo` | **No — the map those live in** | N/A, stated | — |
+
+**K = 0 of 6 answerable keys, with 2 of 8 declared unanswerable and why.**
+
+**And one thing K does not say, recorded so nobody reads the zero as more than
+it is:** `bodyKey` has a guard, and that guard's own coverage is **measured** —
+six of its twenty-two inputs are exercised by nothing and are declared in
+`bodyKeyUnexercised` with what would close each.  A key with a guard is not the
+same as a key whose every input is exercised, and the second number is the one
+worth watching.

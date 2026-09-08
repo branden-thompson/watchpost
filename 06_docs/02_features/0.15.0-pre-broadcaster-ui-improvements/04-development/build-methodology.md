@@ -20,10 +20,12 @@ makes a gate valid live in `06_docs/quality-observations.md`; this file is about
 | **B1** | **DONE** — survey (bucket 1 = 4, not 49) · FR-2.2 coupling derived from `severeEvents()` · #18 evacuation tone (3× dual tone) audible · `platform/closedset` extracted at the third caller |
 | **B2** | **DONE** — FR-1.1 `config.Mutate` (6 writers → 1) · FR-1.3 band gate · `platform/singleowner` extracted at the second caller · FR-1.4 answered *no lock*, by experiment |
 | **UAT** | **B3 PASSED on the operator's own machine, 2026-09-07** (`0.14.2-46-g5ec65fb+debug`): ctrl+d opens, the picker cycles, the confirmation asks, and injection produces the tone "almost immediately", the takeover, the read script and the `[w]` row.  Two defects found by it, both fixed and both now gated — see below |
+| **B4** | **DONE** — FR-3.1 (`bodyKey` guard + its coverage measured) · FR-3.2 (the six memos ruled, three consolidated) · FR-3.3 (F-30 closed) · FR-3.4 (F-53 closed, measured) · K = 0 of 6 answerable keys |
 | **B3** | **CODE COMPLETE** — FR-5 (`ac69622`) · FR-4.1/4.2/4.3/4.4/4.7 (`c5bcd03`) · FR-6.4 (`7f6786d`).  What remains in this batch is four HUM LEAD rulings, below |
 | Gates | `VERIFY=0 ALLOC=0` + the debug-tagged suite, on `7f6786d`, 2026-09-07 |
 
-**Immediately next:** FR-10, then UAT before REVIEW exit.
+**Immediately next:** the fire-report UAT (B4 touched the FIRMS tile path), then B5 — serial, on the
+HUM LEAD's instruction: *"better to reduce variables if something doesn't work."*
 
 **FOUR THINGS ARE WAITING ON A HUM LEAD RULING, and none of them blocks the work below.**
 
