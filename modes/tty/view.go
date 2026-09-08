@@ -79,7 +79,7 @@ func (d Dashboard) renderModal(o render.Opts) string {
 	case modalStatus:
 		return d.floatModal(o, d.modalWidth(), "Watchpost Status", d.statusLines()) // UAT 24.2; the window covers more than the APIs now (0.14.0)
 	case modalAbout:
-		return d.floatModal(o, d.modalWidth(), "", d.aboutLines()) // UAT 68
+		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
 	case modalSetup, modalDebug, modalRelayFault:
@@ -151,7 +151,7 @@ func (d Dashboard) modalLines() []string {
 	case modalStatus:
 		raw = d.statusLines()
 	case modalAbout:
-		raw = d.aboutLines()
+		raw = d.aboutLines(o)
 	case modalSevere:
 		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
 	case modalSetup, modalDebug, modalRelayFault:
@@ -255,7 +255,7 @@ func (d Dashboard) detailsModal(o render.Opts) string {
 		stamp := "Updated: " + o.Clock.Stamp(dataAsOf(d.snap).Local())
 		fill := min(o.Width, d.modalWidth()) - 10 - len([]rune(title)) - len([]rune(stamp))
 		if fill > 1 { // the name and the stamp bold white, the fill in the panel's tone (the panel leaves a tinted title as it is)
-			title = render.Tint(title, render.Tok(render.ModalTitle)) + " " + strings.Repeat("─", fill) + " " + render.Tint(stamp, render.Tok(render.ModalTitle))
+			title = render.Tint(title, render.Tok(render.ModalTitle)) + " " + strings.Repeat(o.Glyphs().Rule, fill) + " " + render.Tint(stamp, render.Tok(render.ModalTitle))
 		}
 	}
 	return d.floatModal(o, d.modalWidth(), title, d.detailLines())

@@ -229,15 +229,6 @@ func (d Dashboard) handleSevereNav(act term.Action) Dashboard {
 
 // --- rendering ---
 
-// hz is the title rule's glyph per --ascii (the panel draws the frame; the
-// title's inner rule is the window's own).
-func hz(o render.Opts) string {
-	if o.ASCII {
-		return "-"
-	}
-	return "─"
-}
-
 // severeArrows are the chip labels per --ascii: the words, not the
 
 // severeWindowName is the title; in the record it keeps the name and adds the
@@ -268,7 +259,7 @@ func (d Dashboard) severeTitle(o render.Opts, w int) string {
 	if fill <= 1 {
 		return render.Tint(title, render.Tok(render.ModalTitle))
 	}
-	return render.Tint(title, render.Tok(render.ModalTitle)) + " " + strings.Repeat(hz(o), fill) + " " + render.Tint(stamp, render.Tok(render.ModalTitle))
+	return render.Tint(title, render.Tok(render.ModalTitle)) + " " + strings.Repeat(o.Glyphs().Rule, fill) + " " + render.Tint(stamp, render.Tok(render.ModalTitle))
 }
 
 // severeModal renders the window: the browse table or the focused record,

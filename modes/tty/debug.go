@@ -88,7 +88,7 @@ func (d Dashboard) debugTitle(o render.Opts, w int) string {
 	if fill <= 1 {
 		return tint(name)
 	}
-	return tint(name) + " " + strings.Repeat(hz(o), fill) + " " + tint(warn)
+	return tint(name) + " " + strings.Repeat(o.Glyphs().Rule, fill) + " " + tint(warn)
 }
 
 // debugLines is the body.

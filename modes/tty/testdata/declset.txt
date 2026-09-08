@@ -481,7 +481,6 @@ func helpTwoColumns
 func hiLo
 func hotspotRows
 func hourCols
-func hz
 func incidentRows
 func insetModalLines
 func issueCols

@@ -187,7 +187,7 @@ func orDefault(s, alt string) string {
 // new data source lists itself.
 const aboutWidth = 60
 
-func (d Dashboard) aboutLines() []string {
+func (d Dashboard) aboutLines(o render.Opts) []string {
 	interior := aboutWidth - 2
 	centre := func(text string) string {
 		return strings.Repeat(" ", max(0, (interior-render.Width(text))/2)) + text
@@ -212,7 +212,7 @@ func (d Dashboard) aboutLines() []string {
 		inset("GO "+strings.TrimPrefix(runtime.Version(), "go")+" | BubbleTea | LipGloss |"),
 		inset("STUDS - Stylized Terminal UI Design System"),
 		"",
-		centre("Made with ♥ by Branden R. Thompson"),
+		centre("Made with "+o.Glyphs().Heart+" by Branden R. Thompson"),
 		centre("github: branden-thompson"),
 		centre("Make CLIs Great for Humans Again"),
 	)

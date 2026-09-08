@@ -25,7 +25,7 @@ func alertBlocks(o render.Opts, loc *snapshot.Location, w int) []string {
 	// w is the modal width less 11; the rail sits at w+5, so the right
 	// edge is w+2.
 	textW := w + 2
-	divider := strings.Repeat("─", textW)
+	divider := strings.Repeat(o.Glyphs().Rule, textW)
 	lines := []string{}
 	for _, a := range loc.Alerts {
 		tone := modalAlertTone(a)

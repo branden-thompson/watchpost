@@ -62,7 +62,7 @@ func (d Dashboard) detailLines() []string {
 	// UAT 101: one consolidated chip row; + / − Watchlist enabled by membership.
 	controls := o.KeyCap("↑↓") + " Scroll  " + o.KeyCap("esc") + " Close  " +
 		o.KeyCapIf("ctrl+a", d.canAddFocused()) + " + Watchlist  " +
-		o.KeyCapIf("shift+del", d.canRemoveFocused()) + " − Watchlist"
+		o.KeyCapIf("shift+del", d.canRemoveFocused()) + " " + o.Glyphs().Minus + " Watchlist"
 	return append(lines, "", controls)
 }
 
