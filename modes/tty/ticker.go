@@ -69,6 +69,11 @@ type TickerItem struct {
 	At       time.Time      // when it happened
 	Until    time.Time      // when its window ends; zero = none
 	Severity TickerSeverity // ordering within the lane (set by the app)
+
+	// Test marks an item the ctrl+d window fabricated (FR-4.4). The BAND says
+	// so — see the lane chrome — because a photograph of the marquee showing a
+	// tornado warning is indistinguishable from a real one otherwise.
+	Test bool
 }
 
 // tapeLine is one alert as the tape reads it, in the LISTENER'S clock and the
@@ -121,6 +126,24 @@ func tickerBullet(o render.Opts) string {
 // control lives in the header controls, not the band.
 const tickerRightReserve = 4
 
+// testEventMark is what the band says when what it shows was fabricated.
+//
+// IT RIDES THE BAND'S TOP ROW — chrome, not tape (FR-4.4). The tape is one
+// scrolling line: a marker inside it is off-window most of the time, and an
+// 18-cell prefix on every item at the 80-column floor would leave the marker
+// occupying more of the band than the hazards do. The top row is already there,
+// already the lane's colour, and carries nothing.
+const testEventMark = "*** TEST EVENT ***"
+
+// testBanner is the band's top row: blank normally, and the marking centred in
+// it when what the band is showing was fabricated.
+func testBanner(width int, on bool, tones string) string {
+	if !on {
+		return render.TintRaw(strings.Repeat(" ", width), tones)
+	}
+	return render.TintRaw(render.PadTo(centerText(testEventMark, width), width), tones)
+}
+
 // tickerMarquee renders the ticker as a THREE-row band: a category-coloured
 // blank row above and below the tape row, so the band breathes and absorbs the
 // header/radio spacers rather than growing the frame. Empty ⇒ a persistent
@@ -136,15 +159,17 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 		tones := render.Tok(tickerCatBG(it.Category)) + ";" + render.Tok(render.TickerFG)
 		content := render.TintRaw(centerText(d.tapeLine(o, it), width), tones)
 		blank := render.TintRaw(strings.Repeat(" ", width), tones)
-		return blank + "\n" + content + "\n" + blank
+		return testBanner(width, it.Test, tones) + "\n" + content + "\n" + blank
 	}
 
 	right := tickerRightReserve
 	mid := "  no active severe events"
+	fabricated := false
 	bg, fg := render.GroupSectionBG, render.TickerMutedFG // the muted band matches the RECENT/SEARCHED group header
 	if cats := d.tickerCategories(); len(cats) > 0 {
 		cur := cats[d.tickerCatIdx%len(cats)]
 		items := d.tickerLane(o, cur)
+		fabricated = d.laneHoldsATestEvent(cur)
 		left := fmt.Sprintf("  %s  %d %s  ", cur.Label(), len(items), o.Glyphs().Alert)
 		win := max(1, width-render.Width(left)-right)
 		tape := strings.Join(items, tickerBullet(o))
@@ -153,8 +178,21 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 	}
 	tones := render.Tok(bg) + ";" + render.Tok(fg)
 	content := render.TintRaw(render.PadTo(mid, width), tones)
-	blank := render.TintRaw(strings.Repeat(" ", width), tones) // the band's top and bottom rows
-	return blank + "\n" + content + "\n" + blank
+	blank := render.TintRaw(strings.Repeat(" ", width), tones) // the band's bottom row
+	return testBanner(width, fabricated, tones) + "\n" + content + "\n" + blank
+}
+
+// laneHoldsATestEvent reports whether anything in this lane was fabricated.
+// PER LANE, not per band: the rotation shows one lane at a time, and marking
+// the band while a clean lane is up would say the wrong thing about real
+// hazards.
+func (d Dashboard) laneHoldsATestEvent(c TickerCategory) bool {
+	for _, it := range d.ticker { // bounded by the tape (P10-02)
+		if it.Category == c && it.Test {
+			return true
+		}
+	}
+	return false
 }
 
 // tickerCategories are the non-empty lanes, in rotation order.

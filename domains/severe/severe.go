@@ -57,6 +57,11 @@ type Row struct {
 	Sender   string
 	Sent     time.Time
 	Detail   Detail
+
+	// Test marks a row the ctrl+d window fabricated (FR-4.4), carried from
+	// globalfeed.Event.Fabricated so the window and its spoken report can say
+	// so. Nothing in a release build sets it.
+	Test bool
 }
 
 // Detail is the per-class record (SAM-D-21). Alert is the tracked-location
@@ -238,6 +243,7 @@ func (x *index) addFeed(feed []globalfeed.Event, superseded map[string]bool, now
 		}
 		r := Row{Key: key, Tab: tab, Source: e.Source, Product: e.Type, Name: e.Name, Location: e.Location,
 			Severity: e.Severity, At: e.At, Until: e.Until, HasPoint: e.HasPoint, Lat: e.Lat, Lon: e.Lon,
+			Test:   e.Fabricated,
 			Detail: Detail{Quake: e.Quake, Tropical: e.Tropical, Severe: e.Severe}}
 		if e.Severe != nil {
 			r.Sender, r.Sent = e.Severe.SenderName, e.Severe.Sent

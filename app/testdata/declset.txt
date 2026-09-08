@@ -5,6 +5,7 @@ const bandRecordCap
 const breakingGap
 const breakingHold
 const burstHeadGap
+const burstKey
 const burstTailGap
 const coopsRatePerSec
 const debugAddrDefault
@@ -41,6 +42,8 @@ const releaseAPI
 const releaseEvery
 const scheduleTick
 const systemVoice
+const testEventLife
+const testEventSpoken
 const tickerEvery
 const tickerRotate
 const tickerSeenWindow
@@ -288,6 +291,7 @@ func abbreviateHome
 func alertKeysOf
 func alertNarration
 func alertTonePCM
+func allScenarioKeys
 func applySetup
 func applyThemes
 func arrivalsOf
@@ -314,6 +318,7 @@ func configLocations
 func coveragePhrase
 func credits
 func debugAddr
+func debugMux
 func debugScenarios
 func debugScenarios
 func defaultLocation
@@ -341,10 +346,13 @@ func halfFor
 func holdRest
 func indexKey
 func init
+func injectedEvents
 func itemsOf
 func itoaN
+func laneForKey
 func laneItems
 func laneRowsPerTab
+func laneScenarios
 func lastLineIndex
 func live
 func loadSeen
@@ -407,6 +415,7 @@ func saveCast
 func savePreference
 func saveRadioMode
 func saveTones
+func scenarioKeyFor
 func scopeEvents
 func scriptText
 func scriptsDir
@@ -496,6 +505,7 @@ type reader
 type recentPipeline
 type releaseWatch
 type runEffect
+type scenario
 type schedule
 type seenStore
 type severeDeck

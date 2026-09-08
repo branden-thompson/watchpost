@@ -153,6 +153,11 @@ type Arrival struct {
 	HasPoint bool
 	Tracked  bool
 
+	// Test marks an arrival the ctrl+d window fabricated (FR-4.4). It travels
+	// from globalfeed.Event.Fabricated, and the burst treats it as strictly
+	// junior to a real hazard.
+	Test bool
+
 	// ReachMi is how far this hazard carries its own effects, and ZERO IS THE
 	// ORDINARY CASE. It is honoured only for a Disaster (DR-13); QuakeReachMi
 	// turns a magnitude into one.
@@ -348,9 +353,38 @@ func selectBurst(p []placed, max int) []placed {
 	if err := invariant.Check(max >= 0, "the budget is never negative"); err != nil {
 		return nil
 	}
-	out := make([]placed, 0, len(p))
-	spent := 0
+	// EVERY REAL HAZARD'S SLOT IS RESERVED BEFORE A TEST EVENT IS OFFERED ONE
+	// (FR-4.4). The ctrl+d window's burst scenario fabricates six alerts against
+	// a Max of five, so without this an operator exercising the station while
+	// weather is arriving drops a live hazard out of the read and hears the
+	// divert count absorb it — the burst is the one place in the app where
+	// something is dropped for lack of room, and a fabricated event taking that
+	// room is a fabricated event silencing a real alert.
+	//
+	// The order is untouched: what a test event loses is its CLAIM on a slot,
+	// not its place in the ladder.
+	reals := 0
 	for _, c := range p { // bounded by the candidates (P10-02)
+		if !c.arrival.Test {
+			reals++
+		}
+	}
+	testRoom := max - min(reals, max)
+	out := make([]placed, 0, len(p))
+	spent, testSpent := 0, 0
+	for _, c := range p { // bounded by the candidates (P10-02)
+		if c.arrival.Test {
+			// AND A FABRICATED EMERGENCY TAKES NO EXEMPTION. Reading past Max is
+			// what an evacuation order is owed; inheriting it would make the
+			// window a way to read an unbounded burst.
+			if testSpent >= testRoom {
+				continue
+			}
+			testSpent++
+			out = append(out, c)
+			spent++
+			continue
+		}
 		emergency := c.arrival.Category == category.Emergency
 		if !emergency && spent >= max {
 			continue

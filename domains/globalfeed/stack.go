@@ -117,6 +117,13 @@ func LaneOf(e Event) Lane {
 //
 // EMERGENCY LEADS, matching the read ladder and the window's tab order: an
 // evacuation order is the most serious thing the feed can carry.
+// FeedLanes is that list, for consumers outside this package. The ctrl+d
+// scenarios are DERIVED from it (FR-4.2), so a lane added to the feed arrives
+// with a way to exercise it instead of waiting for someone to remember the
+// window — which is how the scenario named for the emergency path came to
+// inject a Tornado Warning.
+func FeedLanes() []Lane { return laneOrder() }
+
 func laneOrder() []Lane {
 	return []Lane{LaneEmergency, LaneDisasters, LaneMarine, LaneWarning, LaneWatch}
 }

@@ -85,6 +85,11 @@ type SevereRow struct {
 	Expires   string // "" when none
 	Severity  TickerSeverity
 	Record    SevereRecord
+
+	// Test marks a fabricated row (FR-4.4) — the ctrl+d window's events reach
+	// this window like any other, and a screenshot of one is indistinguishable
+	// from the real thing without it.
+	Test bool
 }
 
 // SevereRecord is the [A]-shaped record of one row.

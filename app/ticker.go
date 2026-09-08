@@ -378,6 +378,7 @@ func arrivalsOf(fresh []globalfeed.Event) []lineup.Arrival {
 			Lat:      e.Lat,
 			Lon:      e.Lon,
 			HasPoint: e.HasPoint,
+			Test:     e.Fabricated, // it takes no real hazard's place (FR-4.4)
 			// THE SIGNIFICANCE REACH TRAVELS WITH THE ARRIVAL (BD-6, C-3).
 			// Without it Fence.Admits measured every disaster against zero
 			// miles of reach, so the ruling's own admit-case — an M7.5 in Los
@@ -519,6 +520,7 @@ func itemsOf(evs []globalfeed.Event) []tty.TickerItem {
 			At:       e.At,
 			Until:    e.Until,
 			Severity: tty.TickerSeverity(e.Severity),
+			Test:     e.Fabricated, // the band says so (FR-4.4)
 		})
 	}
 	return out

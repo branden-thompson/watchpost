@@ -344,3 +344,45 @@ func TestTheBandsLanesAreDressedAndExcludeForecasts(t *testing.T) {
 		t.Fatal("the rotation is empty")
 	}
 }
+
+// THE BAND SAYS WHEN WHAT IT IS SHOWING IS FABRICATED (FR-4.4).
+//
+// A photograph of the marquee carrying a tornado warning is indistinguishable
+// from a real one — the same sentence that keeps the injector out of a release
+// build. The marking is LANE CHROME, in the band's top row: the tape is one
+// scrolling line, so a marker inside it is off-window most of the time, and an
+// 18-cell prefix per item at the 80-column floor would make the marker the
+// majority of the tape.
+func TestTheBandMarksALaneHoldingATestEvent(t *testing.T) {
+	rendering.SetColorEnabledForTest(false)
+	real := TickerItem{ID: "tor", Category: CatWarning, Head: "Tornado Warning · Olathe, KS", Severity: TickerRed}
+	test := real
+	test.ID, test.Test = "injected", true
+
+	for _, width := range []int{80, 133} {
+		if got := stripANSITest(tickerDash(t, []TickerItem{test}, false).tickerMarquee(render.Opts{Width: width})); !strings.Contains(got, testEventMark) {
+			t.Errorf("%d cells: the band is showing a fabricated warning and says nothing:\n%s", width, got)
+		}
+		if got := stripANSITest(tickerDash(t, []TickerItem{real}, false).tickerMarquee(render.Opts{Width: width})); strings.Contains(got, testEventMark) {
+			t.Errorf("%d cells: a REAL warning is marked as a test event:\n%s", width, got)
+		}
+	}
+}
+
+// AND SO DOES THE TAKEOVER, which is the surface that most looks like the real
+// thing: one event, centred, across the whole band, in its lane's colour.
+func TestTheTakeoverMarksAFabricatedEvent(t *testing.T) {
+	rendering.SetColorEnabledForTest(false)
+	it := TickerItem{ID: "injected", Category: CatEmergency, Head: "Evacuation Immediate · Paradise, CA", Severity: TickerRed, Test: true}
+	d := tickerDash(t, nil, false)
+	d.breaking = &it
+	if got := stripANSITest(d.tickerMarquee(render.Opts{Width: 80})); !strings.Contains(got, testEventMark) {
+		t.Errorf("a fabricated evacuation order is taking over the band unmarked:\n%s", got)
+	}
+	real := it
+	real.Test = false
+	d.breaking = &real
+	if got := stripANSITest(d.tickerMarquee(render.Opts{Width: 80})); strings.Contains(got, testEventMark) {
+		t.Errorf("a REAL evacuation order is marked as a test event:\n%s", got)
+	}
+}

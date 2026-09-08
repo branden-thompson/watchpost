@@ -90,11 +90,31 @@ func burstTitle(e globalfeed.Event, c render.Clock, now time.Time) string {
 
 // breakingLine is the line to speak for one event: a single event carries its
 // own broadcast tail; a burst event's line has none (the tail comes once).
+// testEventSpoken is what a fabricated alert says about itself.
+//
+// ON EVERY LINE, AND NOT IN THE SCRIPT (FR-4.4). A listener who walks in
+// halfway through a six-alert burst has heard no header, and the words are all
+// they have. It is composed HERE rather than in breaking/*.txt because the read
+// scripts are user-editable by design, and a safety marking that an edit to a
+// text file removes is not a marking.
+const testEventSpoken = "This is a test event."
+
 func breakingLine(lib *script.Library, e globalfeed.Event, burst bool, c render.Clock, now time.Time) string {
+	line := alertNarration(lib, e, c, now)
 	if burst {
-		return scriptText(lib, "breaking", "burst-line", map[string]string{"Line": burstTitle(e, c, now)})
+		line = scriptText(lib, "breaking", "burst-line", map[string]string{"Line": burstTitle(e, c, now)})
 	}
-	return alertNarration(lib, e, c, now)
+	if !e.Fabricated {
+		return line
+	}
+	// A LINE THAT RENDERED NOTHING STILL SAYS IT WAS A TEST. The empty string is
+	// what a broken script yields, and "" spoken beside a real alert is silence
+	// — but a fabricated event reaching the air unmarked is the thing this
+	// exists to prevent, so the marking stands on its own.
+	if line == "" {
+		return testEventSpoken
+	}
+	return testEventSpoken + " " + line
 }
 
 // worstOf is the most serious event of a burst — the one the tone warns about.

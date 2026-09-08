@@ -311,11 +311,11 @@ installs shell completion.
 
 **Diagnostics.** `WATCHPOST_DEBUG_TIMING=1` prints launch→full-view time on exit.
 `WATCHPOST_DEBUG_PPROF=1` serves pprof on `127.0.0.1:6060` (or `WATCHPOST_DEBUG_PPROF_ADDR`), plus
-`/debug/counters` (live request, publish and memory counters as JSON) and `/debug/dump` (write a
-profile set). The `S` window shows the request counters per host since launch and the severe index
+`/debug/counters` (live request, publish and memory counters as JSON) and `/debug/dump` (**POST** —
+it writes a profile set to disk, so a GET is refused). The `S` window shows the request counters per host since launch and the severe index
 against its 500-row cap. A running dashboard writes a diagnostic dump — heap, allocs, goroutine and
 threadcreate profiles with `counters.json` — under the cache directory's `profiles/` on
-`kill -USR1 <pid>` (macOS/Linux; on Windows use `/debug/dump`); dumps are at least a minute apart and
+`kill -USR1 <pid>` (macOS/Linux; on Windows use `curl -X POST .../debug/dump`); dumps are at least a minute apart and
 the newest twelve are kept. `watchpost report <loc> --verbose` appends one request-counter line per
 host. `WATCHPOST_DEBUG_RADIO=<file>` appends one line per radio engine state change, one per
 synthesized segment as it reaches the air, and one when a cycle ends (the voice's error, if that is
