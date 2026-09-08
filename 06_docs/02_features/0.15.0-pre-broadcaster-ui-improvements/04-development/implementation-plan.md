@@ -275,16 +275,16 @@ duck path F-27 owns, with its own task and its own red team.  F-33 carries the r
 to clear it, reproducing the reported status exactly.  **Cheap disproof before any hardware time.**
 
 **Exit conditions**
-- A read completes, fails, or reports a fault within a stated bound.  **The bound is held-excluded
+- ~~A read completes, fails, or reports a fault within a stated bound.~~  **MET.**  The bound was already there and already the right shape — `playClip`'s watcher, held-excluded, on the read's own player — and what was missing was anyone being told how it ended.  `Engine.OnClipSpent` reports it, the deck ends the read on the air, and the derivation is written beside the constant.  Original condition:  **The bound is held-excluded
   elapsed time and is never applied to the live stream** — `watch` pauses the player entirely when a
   report gives way to an alert, so a naive wall-clock deadline kills the read that ducking exists to
   protect.  The number is derived from expected script length plus Piper's measured ~10 s
   per-utterance load, and both the number and its derivation are written down.
-- **The fail-safe direction is stated and tested:** abandonment cancels the job's context so the
+- ~~**The fail-safe direction is stated and tested:**~~  **MET.**  A job now carries its own cancel, a child of the caller's context; `abandonOnAir` unwinds the read onto the path a cut-short one already takes.  Watched failing.  Original condition: abandonment cancels the job's context so the
   existing `Failed{Routed:true}` path advances the schedule and `restore()` runs.  Without it the bed
   stays ducked, the arbiter stays occupied, and the reader speaks into a closed player — a silent
   station produced by the safety feature.
-- **FR-9.2** — a sounded tone with no words produces a user-perceivable fault.  The **fault** is a UI
+- ~~**FR-9.2**~~ **MET, with one condition removed for being unfalsifiable.**  The reader counts what reached the air after a tone and reports through `narrationVoice.fault` — the operator's surface, never spoken (HUM LEAD, 2026-09-08).  The diagnostic is hardened: a validated NAME, the cache root, 0600, rotated once past 8 MiB.  **The `ctx.Err() == nil` half of the trigger was removed:** every path to that line has already checked the air, so it was a branch with no failing input (D-2), and a planted mutation proved nothing could construct the state it excluded.  Original condition:  The **fault** is a UI
   obligation and lands with FR-6.5's window.  The **diagnostic** stays opt-in behind
   `WATCHPOST_DEBUG_RADIO`, hardened `debugAddr()`-style: a fixed, size-capped, rotated 0600 file under
   the cache root, with the env var selecting a validated name rather than an arbitrary path.
@@ -292,7 +292,7 @@ to clear it, reproducing the reported status exactly.  **Cheap disproof before a
   the default on a 24/7 process.*
   The fault fires only when **no part could be rendered and `ctx.Err() == nil`** — an operator pressing
   `esc`, a takeover pre-empting, or the pump stopping are all legitimate tone-without-words today.
-- **FR-9.3, reworded (HUM LEAD, 2026-09-07):** *the main-track rotation produces a read within a
+- ~~**FR-9.3, reworded (HUM LEAD, 2026-09-07):**~~  **MET.**  The rotation's liveness is a `Tune` that never lands — the deck reports `Tuned` when audio actually plays, so a tune that never plays is silence nothing else sees.  Thirty seconds, derived and written down; once per ask; and a stop while a tune is in flight clears it rather than reporting, which is the rewording's whole point.  Original condition: *the main-track rotation produces a read within a
   stated interval, or it reports* — **unless the operator has chosen silence.**  Dead air the operator
   chose is not a fault.  This leaves ruling **I-2** intact: a deliberate non-delivery is not a fault,
   and neither is deliberate silence.  Revision 1's wording — "a cycle that yields nothing to say is a
@@ -300,7 +300,7 @@ to clear it, reproducing the reported status exactly.  **Cheap disproof before a
   Director declines every non-alert cycle by design.  *The masthead / mastTail feature (0.16.0,
   Broadcaster) is the downstream surface that makes chosen dead air legible; FR-9.3 is what tells it
   the difference.*
-- #17 has a written disposition.
+- ~~#17 has a written disposition.~~  **MET** — posted on the issue: the stall was `fakePlayer`, not the completion path, and oto's own `playImpl` refuses to enter the playing state when its source is spent.  Closing it is the HUM LEAD's.
 - Gate set green.
 
 ---

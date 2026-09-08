@@ -393,8 +393,23 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 }
 
 // defaultClipBudget is the watcher's ceiling in 50 ms polls: ten minutes of AIR
-// time. An event read speaks a whole record — minutes, not seconds — and a held
-// line does not spend it.
+// time.
+//
+// THE DERIVATION, not just the number (FR-9). The longest thing this app says
+// is an event read, which speaks a whole CAP record: the fixtures run to about
+// forty parts, and a part is a sentence — call it fifteen seconds spoken, so
+// ten minutes of audio is roughly the worst script this station has. Piper adds
+// about ten seconds per utterance on first load, but that is RENDER time and
+// happens before a clip exists, so it does not spend this budget. What does
+// spend it is audio actually playing.
+//
+// A HELD LINE DOES NOT SPEND IT, which is what makes the bound safe to apply at
+// all: watch pauses the player entirely when a report gives way to an alert, so
+// a wall-clock deadline would kill the read that ducking exists to protect.
+//
+// AND IT IS NEVER APPLIED TO THE LIVE STREAM. This is the clip watcher — the
+// read's own player. A station that has played for hours is doing exactly what
+// it should.
 const defaultClipBudget = 12000
 
 // clipBudget is that ceiling, OVERRIDABLE so the fault path can be tested.
