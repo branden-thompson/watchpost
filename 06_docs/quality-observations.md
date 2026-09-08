@@ -1227,6 +1227,19 @@ separate discoveries, one mechanism.  A defect found by opening one window is a 
 set of windows; the set-level property is what turns three sightings into one number that can only
 go down.
 
+### 15. The gate that pays for itself is the one that fires on YOUR change
+
+**Catch:** FR-6.4 added one boolean to the relay-fault window's state, and F-30's memo guard failed
+on the next run: the field changes the frame and was not in the memo key, which is exactly the defect
+that froze that window through three UAT rounds in 0.14.0.  Nothing else would have caught it —
+every test in the file renders through the memo's MISS path.  In the same run, mutant mV3's anchor
+no longer matched the line it patches, and the harness reported **UNAPPLIED** rather than passing
+over a mutation that no longer applies.
+
+**Two different instruments, one property:** a gate is only worth its cost if it can fail on work
+nobody wrote it for.  Both of these were written for defects that had already happened, and both
+earned their place again on a change made months later by someone who had forgotten they existed.
+
 ### The meta-rule
 
 **A red-team finding is a hypothesis, not a fix.**  Twice in one day, measuring a lens's

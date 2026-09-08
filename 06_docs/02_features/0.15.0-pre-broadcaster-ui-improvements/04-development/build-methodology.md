@@ -19,10 +19,10 @@ makes a gate valid live in `06_docs/quality-observations.md`; this file is about
 | Branch | `feature/0.15.0-pre-broadcaster-ui-improvements` — **pushed** at the FR-5 commit; NFR-4 discharged |
 | **B1** | **DONE** — survey (bucket 1 = 4, not 49) · FR-2.2 coupling derived from `severeEvents()` · #18 evacuation tone (3× dual tone) audible · `platform/closedset` extracted at the third caller |
 | **B2** | **DONE** — FR-1.1 `config.Mutate` (6 writers → 1) · FR-1.3 band gate · `platform/singleowner` extracted at the second caller · FR-1.4 answered *no lock*, by experiment |
-| **B3** | **IN PROGRESS** — entry conditions discharged.  **FR-5 DONE** (`ac69622`) · **FR-4.1/4.2/4.3/4.4/4.7 DONE** (`c5bcd03`) |
-| Gates | `VERIFY=0 ALLOC=0` + the debug-tagged suite, on `c5bcd03`, 2026-09-07 |
+| **B3** | **CODE COMPLETE** — FR-5 (`ac69622`) · FR-4.1/4.2/4.3/4.4/4.7 (`c5bcd03`) · FR-6.4 (`7f6786d`).  What remains in this batch is four HUM LEAD rulings, below |
+| Gates | `VERIFY=0 ALLOC=0` + the debug-tagged suite, on `7f6786d`, 2026-09-07 |
 
-**Immediately next:** FR-6.4 as an improvement, then FR-10, then UAT before REVIEW exit.
+**Immediately next:** FR-10, then UAT before REVIEW exit.
 
 **FOUR THINGS ARE WAITING ON A HUM LEAD RULING, and none of them blocks the work below.**
 
