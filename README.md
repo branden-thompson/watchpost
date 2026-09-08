@@ -260,11 +260,11 @@ key = "your-32-character-map-key"   # or paste it in Settings
 ```toml
 units         = "imperial"   # imperial (°F/mi) | metric (°C/km)
 clock         = "12h"        # 12h | 24h | mil — how times are written AND spoken
-update_check  = false        # true asks GitHub, hourly, whether a newer release exists
+update_check  = false        # true asks GitHub ONCE at startup whether a newer release exists
 ```
 
-**The radio's own keys** (`[radio]`; all of them are Settings rows too, so you never have to write
-them by hand):
+**The radio's own keys** (`[radio]`). Most are Settings rows, so you never have to write them by
+hand — **four are not, deliberately**; see below the block.
 
 ```toml
 [radio]
@@ -279,6 +279,15 @@ piper = "en_US-amy"       # inherits from the level above it, so setting `alerts
 mode  = ""                # "" every class sounds | "mute" silence the classes below
 muted = ["warning"]       # class keys; EMPTY under mute means every class
 ```
+
+**Four voice roles are config-only, on purpose.** Settings has a row for the five a listener picks
+between — *Alerts / Takeovers*, *Location Report*, *Marine Report*, *Fire/Hotspots*, *Seismic
+Reports* — and **`breaking`, `severe_read`, `standard` and `station` have no row**. They are set by
+hand or not at all, and each inherits from the level above it if you leave it out, so the app is
+fully usable without ever naming one. They stay out of the window because a picker for every role
+was tried and rejected: fine-grained controls for the five that get chosen, rather than nine rows
+where four are almost always inherited. Write them the same way as the block above —
+`[radio.voices.station]`, and so on.
 
 **`[M]` silences tones, never words.** Muting a class stops its attention tone; the alert is still
 read aloud. There is no setting that stops the words — that is deliberate.
