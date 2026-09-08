@@ -2,6 +2,25 @@
 
 **Metric D counts operations implemented more than once with no written, ratified reason. Target 0.**
 
+**SCOPE: PRODUCTION CODE. Stated, because it was a default before it was a decision** (red team,
+2026-09-08 — the gate was reporting "0 unexplained" while never having looked at a test file).
+
+**HUM LEAD ruling 2026-09-08:** *"(a) is the metric that matters for success; (b) is an internal
+quality metric that we should work down, but that's a secondary or tertiary metric since it pays us
+in productivity later, but doesn't necessarily affect the end-user experience / quality of the
+application."*
+
+So there are two numbers, and only the first is metric D:
+
+| | Scope | Today | Standing |
+|---|---|---|---|
+| **Metric D — success** | production code | **0 unexplained** | target 0, gated in `verify` and CI |
+| Test duplication — internal | `-tests` | **17 unexplained** across 18 groups | worked down over time; NOT gated, NOT a release criterion |
+
+`go run ./tools/dupes -tests` is the second number whenever someone wants it. Its largest group is
+five copies of `TestDeclarationSetUnchanged`, which is per-package by necessity — a reminder that the
+test number needs judgement before it needs work.
+
 A row here is an exemption, and it works exactly like a P10 exemption: **the reason is RATIFIED by the
 HUM LEAD, never self-issued.** That is the metric's own hardening in the project brief — otherwise D
 could be satisfied by writing a justification for every duplicate.

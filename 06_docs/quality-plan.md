@@ -127,6 +127,25 @@ longer it survives.**
   useless; exactly **one** of them shipped in the binary, and it was a comment. The measurement
   turned a re-record of 67 recorded API fixtures into a three-line change.
 
+### Two limits recorded rather than built around (red team, 2026-09-08)
+
+**The exposure scan follows whoever RUNS it.** `scripts/quality/exposure-scan.py` takes its
+identifiers from `git config user.name` and `$HOME`, so on another machine it measures a different
+person and could report clean on the same data. **HUM LEAD: leave it** — *"if we find we have
+additional collaborators in the future, we can figure this out, but we don't need to build something
+until there's a real need for it."* Stated here so the next reader knows the number is
+single-maintainer, not universal. *(INST-5.)*
+
+**The mutant corpus survives a collapse by FAILING, and that is already universal.** Measured
+2026-09-08: 171 mutants, 155 distinct `(file, old)` targets, and **zero without an `assert`** — so
+every mutant can report UNAPPLIED, and the harness fails the gate on it rather than passing (proven
+by `m44`, stranded when metric D moved `ByTab`'s guard into `platform/bucket`).
+
+**The consequence is a procedure, not a tool.** As duplicates collapse n→1, mutants that guarded the
+copies strand. Each is **re-pointed at the new owner, not deleted** — after which one mutant guards
+every caller, which is the collapse paying twice: one place to fix, one place to measure. Deleting a
+stranded mutant instead silently retires the rule it was written for.
+
 ### What it cost, and what it returned
 
 Six instruments were built or repaired in B6/B7. **Four were wrong on their first run, and every one
