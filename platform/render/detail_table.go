@@ -15,7 +15,7 @@ package render
 
 import studs "github.com/branden-thompson/watchpost/third_party/go-studs/components"
 
-// detailGutter is the air between a detail table's columns — ONE cell, not the
+// DetailGutter is the air between a detail table's columns — ONE cell, not the
 // [S] window's two.
 //
 // A detail section is dense and its columns are already separated by their own
@@ -23,7 +23,7 @@ import studs "github.com/branden-thompson/watchpost/third_party/go-studs/compone
 // buys nothing and costs one per column boundary, which across seven columns is
 // the difference between the last one fitting and being cut at the 65 cells a
 // detail section has (85-wide modal, less the panel and the label gutter).
-const detailGutter = 1
+const DetailGutter = 1
 
 // fitColumns sizes every unsized column to its own widest cell.
 //
@@ -59,7 +59,7 @@ func fitColumns(cols []StatusColumn, rows []StatusRow) []StatusColumn {
 // make room for a number — the HUM LEAD's rule for this section, and the same
 // one the seismic section already follows: *"this can not worry about that just
 // like the USGS seismic section does not worry about it."*
-func (o Opts) DetailTable(cols []StatusColumn, rows []StatusRow, inner int) []string {
+func (o Opts) DetailTable(cols []StatusColumn, rows []StatusRow, inner, gutter int) []string {
 	if len(cols) == 0 || len(rows) == 0 {
 		return nil
 	}
@@ -67,8 +67,16 @@ func (o Opts) DetailTable(cols []StatusColumn, rows []StatusRow, inner int) []st
 	// column's WIDTH, and a column with no width yet gets nothing — which is
 	// exactly how a right-aligned fit column ended up touching the name beside
 	// it. Sizing first gives it something to add to.
-	cols, rows = statusGutters(fitColumns(cols, rows), rows)
-	def := &studs.DataTableDefinition{Columns: statusCols(cols, ""), GutterWidth: detailGutter, NoAutoStyle: true}
+	if gutter > 0 {
+		cols, rows = statusGutters(fitColumns(cols, rows), rows)
+	} else {
+		// GUTTER 0: the caller is placing its own columns to the cell, because
+		// it has to line up with something drawn elsewhere. The gaps then live
+		// in the widths and the cells, where they can be read off against the
+		// section they are matching.
+		cols = fitColumns(cols, rows)
+	}
+	def := &studs.DataTableDefinition{Columns: statusCols(cols, ""), GutterWidth: gutter, NoAutoStyle: true}
 	for _, r := range rows {
 		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: r.Cells, CellStyles: r.Styles})
 	}

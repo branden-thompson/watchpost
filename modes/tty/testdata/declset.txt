@@ -54,6 +54,7 @@ const groupRelay
 const groupTone
 const groupUI
 const helpOneColWidth
+const hourlyWindow
 const inheritEntry
 const marFirstW
 const marLabelW
@@ -258,6 +259,7 @@ func (Dashboard).helpLines
 func (Dashboard).helpModal
 func (Dashboard).helpPlan
 func (Dashboard).helpWidth
+func (Dashboard).hourlyRows
 func (Dashboard).hydrateCmd
 func (Dashboard).issueLines
 func (Dashboard).layout
@@ -496,6 +498,7 @@ func modalAlertTone
 func nearestFirst
 func newArrowChips
 func nextGroup
+func nextHours
 func nextRow
 func orDefault
 func panelChromeFor
@@ -579,6 +582,7 @@ func truncateTo
 func twoColumnsWidth
 func unitsRow
 func vizTick
+func whenCols
 func widest
 func widestBlock
 func withoutRef

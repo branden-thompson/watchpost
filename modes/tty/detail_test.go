@@ -3,6 +3,7 @@ package tty
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -311,3 +312,90 @@ func TestTheCardSaysWhenTheNumberIsFromTheGridForecast(t *testing.T) {
 }
 
 func f64ptr(v float64) *float64 { return &v }
+
+// THE HOURLY WINDOW IS A ROLLING TWELVE (HUM LEAD, 2026-09-07).
+//
+// A WINDOW, NOT "THE REST OF TODAY": the rest of today is 23 rows at one in the
+// morning and one row at eleven at night, so the section — and every section
+// under it — walks down the report as the day goes on. A fixed window is the
+// same height whenever it is read.
+//
+// NOT THE WHOLE FEED EITHER: NWS /forecast/hourly returns about 156 periods and
+// nothing caps them on the way in, so "every hour available" is a 156-row table
+// inside a section headed TODAY.
+func TestTheHourlyWindowRollsTwelveHoursFromNow(t *testing.T) {
+	tz := time.Local
+	now := time.Date(2026, 9, 7, 20, 40, 0, 0, tz) // late enough that the window crosses midnight
+	f := func(v float64) *float64 { return &v }
+	var hrs []snapshot.Hourly
+	for i := range 40 { // a feed with far more than a day in it
+		at := time.Date(2026, 9, 7, 0, 0, 0, 0, tz).Add(time.Duration(i) * time.Hour)
+		hrs = append(hrs, snapshot.Hourly{Time: at, Condition: "clear", PrecipProb: f(0), Temp: f(20)})
+	}
+	loc := &snapshot.Location{Label: "Oceanside, CA", Hourly: hrs,
+		Daily: []snapshot.Daily{{Date: "2026-09-07", Condition: "clear", TempMax: f(30), TempMin: f(20)}}}
+
+	got := nextHours(loc.Hourly, now, tz, hourlyWindow)
+	if len(got) != hourlyWindow {
+		t.Fatalf("the window is %d hours, want %d", len(got), hourlyWindow)
+	}
+	// FROM THE HOUR SOMEONE IS STANDING IN: 20:40 asks about 20:00, whose
+	// period is the forecast for the rest of it.
+	if h := got[0].Time.In(tz).Hour(); h != 20 {
+		t.Errorf("the window starts at %02d:00, and the listener is in 20:00", h)
+	}
+	if !got[len(got)-1].Time.After(now) {
+		t.Error("the window ends before it starts")
+	}
+
+	d := dash(t).(Dashboard)
+	d.now = func() time.Time { return now }
+	body := stripANSITest(strings.Join(d.todayRows(render.Opts{Width: 85, Clock: render.Clock24}, loc, 65), "\n"))
+	if !strings.Contains(body, "Next 12 Hours:") {
+		t.Errorf("the heading carries the count:\n%s", body)
+	}
+	// AND THE DAY IS NAMED WHEN IT TURNS OVER. Without it the column reads
+	// 22:00, 23:00, 00:00, 01:00 and the times look like they run backwards.
+	if !strings.Contains(body, "Tue 00:00") {
+		t.Errorf("the window crosses midnight and does not say so:\n%s", body)
+	}
+}
+
+// AND THE HOURS LINE UP WITH THE DAYS BELOW THEM. Both are drawn from one
+// column spec (whenCols), so this holds by construction rather than by two
+// functions agreeing about a number — which is what it was.
+func TestTheHourlyRowsShareTheForecastColumns(t *testing.T) {
+	tz := time.Local
+	now := time.Date(2026, 9, 7, 8, 0, 0, 0, tz)
+	f := func(v float64) *float64 { return &v }
+	loc := &snapshot.Location{Label: "Oceanside, CA",
+		Hourly: []snapshot.Hourly{{Time: now, Condition: "rain", PrecipProb: f(90), Temp: f(20)}},
+		Daily: []snapshot.Daily{
+			{Date: "2026-09-07", Condition: "clear", TempMax: f(30), TempMin: f(20)},
+			{Date: "2026-09-08", Condition: "rain", TempMax: f(25), TempMin: f(18), PrecipProb: f(80)},
+		}}
+	d := dash(t).(Dashboard)
+	d.now = func() time.Time { return now }
+	o := render.Opts{Width: 85, Clock: render.Clock24}
+
+	hourly := contentOf(t, d.todayRows(o, loc, 65), "RAIN")
+	daily := contentOf(t, d.forecastRows(o, loc, 65), "RAIN")
+	if a, b := strings.Index(hourly, "RAIN"), strings.Index(daily, "RAIN"); a != b {
+		t.Errorf("the condition column is at %d in the hours and %d in the days:\n%q\n%q", a, b, hourly, daily)
+	}
+	if a, b := strings.Index(hourly, "( 90%)"), strings.Index(daily, "( 80%)"); a != b {
+		t.Errorf("the precip column is at %d in the hours and %d in the days:\n%q\n%q", a, b, hourly, daily)
+	}
+}
+
+// contentOf is the first line carrying want, past the detail's label gutter.
+func contentOf(t *testing.T, lines []string, want string) string {
+	t.Helper()
+	for _, l := range lines {
+		if plain := stripANSITest(l); strings.Contains(plain, want) {
+			return plain[detailPrefixW:]
+		}
+	}
+	t.Fatalf("no line carries %q:\n%s", want, stripANSITest(strings.Join(lines, "\n")))
+	return ""
+}

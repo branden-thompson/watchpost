@@ -49,7 +49,7 @@ func (d Dashboard) detailLines() []string {
 	lines = append(lines, detailRow("", ""))
 	lines = append(lines, d.todayRows(o, loc, cw)...)
 	lines = append(lines, detailRow("", ""))
-	lines = append(lines, d.forecastRows(o, loc)...)
+	lines = append(lines, d.forecastRows(o, loc, cw)...)
 	if loc.Marine != nil {
 		lines = append(lines, detailRow("", ""))
 		lines = append(lines, maritimeRows(o, loc.Marine, locTZ(loc), d.now())...) // coastal locations only (UAT 29)
@@ -159,7 +159,105 @@ func (d Dashboard) todayRows(o render.Opts, loc *snapshot.Location, cw int) []st
 	if !day.Sunset.IsZero() {
 		out = append(out, detailRow("", gridRow("Sunset :", o.Clock.Time(day.Sunset.In(tz))+"  Local Time", "")))
 	}
+	return append(out, d.hourlyRows(o, loc, tz, cw)...)
+}
+
+// hourlyWindow is how many hours the section shows, rolling from now.
+//
+// TWELVE, AND CONSTANT: half a day is enough to plan around, and a fixed count
+// keeps the section — and the sections under it — in the same place all day.
+const hourlyWindow = 12
+
+// hourlyRows is the coming hours, hour by hour (HUM LEAD, 2026-09-07).
+//
+// The heading carries the count rather than the constant, because a feed short
+// of twelve periods should say what it actually has.
+//
+// AN EMPTY LIST DRAWS NOTHING. The hourly tier hydrates on demand (UAT 72: 162
+// KB per location), so a RECENT row has none until it is opened — and a heading
+// over no rows reads as a fault rather than as a fetch that has not happened.
+func (d Dashboard) hourlyRows(o render.Opts, loc *snapshot.Location, tz *time.Location, cw int) []string {
+	hrs := nextHours(loc.Hourly, d.now(), tz, hourlyWindow)
+	if len(hrs) == 0 {
+		return nil
+	}
+	local := d.now().In(tz)
+	cols := whenCols()
+	rows := make([]render.StatusRow, 0, len(hrs))
+	for _, h := range hrs { // bounded by the hours left in the day (P10-02)
+		pp := " --%"
+		if h.PrecipProb != nil {
+			pp = fmt.Sprintf("%3.0f%%", *h.PrecipProb)
+		}
+		// A ROLLING WINDOW CROSSES MIDNIGHT, so the day is named when it turns
+		// over: without it the column reads 22:00, 23:00, 00:00, 01:00 and a
+		// reader takes the times as going backwards into this morning.
+		at := h.Time.In(tz)
+		when := o.Clock.Time(at)
+		if at.Day() != local.Day() {
+			when = at.Format("Mon") + " " + when
+		}
+		rows = append(rows, render.StatusRow{Cells: []string{
+			"  " + when, "    " + render.DisplayCondition(h.Condition),
+			"(" + pp + ")", "   " + strings.TrimSpace(o.Temp(h.Temp)),
+		}})
+	}
+	out := []string{detailRow("", ""), detailRow("", gridRow(fmt.Sprintf("Next %d Hours:", len(hrs)), "", ""))}
+	for _, l := range o.DetailTable(cols, rows, cw-detailRailGutter, 0) { // bounded by the table (P10-02)
+		out = append(out, detailRow("", l))
+	}
 	return out
+}
+
+// nextHours is a ROLLING WINDOW of the coming hours, from the hour the listener
+// is standing in (HUM LEAD, 2026-09-07).
+//
+// A WINDOW, NOT "THE REST OF TODAY", and the reason is the layout: the rest of
+// today is 23 rows at one in the morning and one row at eleven at night, so the
+// section — and everything below it — moves down the report all day. A fixed
+// window is the same height whenever it is read.
+//
+// NOT THE WHOLE FEED EITHER: NWS /forecast/hourly returns about 156 periods and
+// nothing caps them on the way in, so "every hour available" is a 156-row table
+// inside a section headed TODAY.
+//
+// FROM THE CURRENT HOUR, not the next one: the hour someone is standing in is
+// the one they are asking about, and the feed's period for it is the forecast
+// for the rest of it.
+func nextHours(hrs []snapshot.Hourly, now time.Time, tz *time.Location, want int) []snapshot.Hourly {
+	local := now.In(tz)
+	from := time.Date(local.Year(), local.Month(), local.Day(), local.Hour(), 0, 0, 0, tz)
+	out := make([]snapshot.Hourly, 0, want)
+	for _, h := range hrs { // bounded by the feed's periods (P10-02)
+		if h.Time.In(tz).Before(from) {
+			continue
+		}
+		if out = append(out, h); len(out) == want {
+			break
+		}
+	}
+	return out
+}
+
+// whenCols is the column spec BOTH the hours and the days are drawn with, so
+// they scan as one column instead of as two tables that happen to be adjacent
+// (HUM LEAD, 2026-09-07). The alternative was tuning one to the other by eye,
+// which holds until either changes.
+//
+// The last column is unsized: it fits the widest thing in it, which is a
+// temperature in the hours and a HIGH/LOW pair in the days.
+func whenCols() []render.StatusColumn {
+	// THE GAPS ARE IN THE WIDTHS, and the table is drawn with no gutter of its
+	// own, because these columns have to land where the report's OTHER sections
+	// already put theirs: CURRENTLY's value shares the condition column
+	// (colVal), and every HIGH/LOW pair in the report starts at
+	// forecastHiLoCol. A uniform gutter cannot reproduce 4, 1 and 3.
+	return []render.StatusColumn{
+		{Width: 10, NoGutter: true},             // the hour, or the date
+		{Width: colVal + 3, NoGutter: true},     // 4 spaces + the condition's 13
+		{Width: 7, Right: true, NoGutter: true}, // 1 space + "( nn%)"
+		{NoGutter: true},                        // 3 spaces + the temperature or the pair
+	}
 }
 
 // forecastHiLoCol is the content column where every HIGH/LOW pair starts
@@ -173,11 +271,11 @@ func hiLo(o render.Opts, day snapshot.Daily) string {
 	return fmt.Sprintf("HIGH %5s / %5s LOW", o.Temp(day.TempMax), o.Temp(day.TempMin))
 }
 
-// forecastRows: up to 10 upcoming days with precip probability.
-func (d Dashboard) forecastRows(o render.Opts, loc *snapshot.Location) []string {
-	out := []string{}
-	label := "FORECAST"
-	for i, day := range loc.Daily {
+// forecastRows: up to 10 upcoming days with precip probability, through the
+// same table the hours above are drawn with (whenCols).
+func (d Dashboard) forecastRows(o render.Opts, loc *snapshot.Location, cw int) []string {
+	var rows []render.StatusRow
+	for i, day := range loc.Daily { // bounded at ten days below (P10-02)
 		if i == 0 {
 			continue // today has its own section
 		}
@@ -192,12 +290,18 @@ func (d Dashboard) forecastRows(o render.Opts, loc *snapshot.Location) []string 
 		if t, err := time.Parse("2006-01-02", day.Date); err == nil {
 			date = t.Format("01/02/2006")
 		}
-		row := fmt.Sprintf("%s    %-13s (%s)   ", date, truncateTo(render.DisplayCondition(day.Condition), 13), pp) + hiLo(o, day)
-		out = append(out, detailRow(label, row))
-		label = ""
+		rows = append(rows, render.StatusRow{Cells: []string{
+			date, "    " + render.DisplayCondition(day.Condition), "(" + pp + ")", "   " + hiLo(o, day),
+		}})
 	}
-	if len(out) == 0 {
-		out = append(out, detailRow("FORECAST", o.LoadingDots()))
+	if len(rows) == 0 {
+		return []string{detailRow("FORECAST", o.LoadingDots())}
+	}
+	var out []string
+	label := "FORECAST"
+	for _, l := range o.DetailTable(whenCols(), rows, cw-detailRailGutter, 0) { // bounded by the days (P10-02)
+		out = append(out, detailRow(label, l))
+		label = ""
 	}
 	return out
 }

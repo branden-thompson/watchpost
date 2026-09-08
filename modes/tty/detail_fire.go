@@ -172,7 +172,7 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 			render.Plain(h.Confidence),
 		}})
 	}
-	return o.DetailTable(cols, rows, cw-detailRailGutter)
+	return o.DetailTable(cols, rows, cw-detailRailGutter, render.DetailGutter)
 }
 
 // incidentRows lists EVERY named fire the row counts (UAT 2026-09-07).
@@ -229,7 +229,7 @@ func incidentRows(o render.Opts, loc *snapshot.Location, ins []snapshot.Incident
 			acres, contained, found,
 		}})
 	}
-	return o.DetailTable(cols, rows, cw-detailRailGutter)
+	return o.DetailTable(cols, rows, cw-detailRailGutter, render.DetailGutter)
 }
 
 // fireCount is the row badge's number (UAT 110): the named incidents

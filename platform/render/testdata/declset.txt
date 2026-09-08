@@ -13,6 +13,7 @@ const Clock24
 const ClockMil
 const ConfirmBG
 const DefaultThemeName
+const DetailGutter
 const EditionObserver
 const EventCatAdvisoryBG
 const EventCatDisasterBG
@@ -89,7 +90,6 @@ const categoryBlend
 const clockKey12
 const clockKey24
 const clockKeyMil
-const detailGutter
 const extCellW
 const extDayW
 const extMaxDays
