@@ -59,6 +59,12 @@ func fireSeparators(o render.Opts) (dot, more string) {
 }
 
 // hotspotRows: up to three hotspots nearest first, then "… and N more".
+//
+// THE CAP STAYS HERE AND NOT ON THE INCIDENTS, and the difference is what they
+// are: there can be 300 hotspots (snapshot.MaxHotspots) and none of them has a
+// name to tell it from the next, so three and a count is the whole of what a
+// reader can use. A named fire is exactly what someone is asking about, and
+// there are as many as the incident radius admits.
 func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, now time.Time, boldMW float64) []string {
 	dot, more := fireSeparators(o)
 	var out []string
@@ -88,14 +94,18 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 	return out
 }
 
+// incidentRows lists EVERY named fire the row counts (UAT 2026-09-07).
+//
+// It broke at three and said nothing about the rest, so a location wearing 5◆
+// listed three in the one place the app sends people for more detail — while
+// the spoken report named all five. Three surfaces, three answers to "which
+// fires are near me", and the most complete was the one you cannot re-read.
+//
 // incidentRows: up to three named incidents, largest first.
 func incidentRows(o render.Opts, ins []snapshot.Incident) []string {
 	dot, _ := fireSeparators(o)
 	var out []string
-	for i, in := range ins {
-		if i == 3 {
-			break
-		}
+	for _, in := range ins { // bounded by the incident radius (P10-02)
 		facts := strings.TrimSpace(o.Distance(in.Source.DistanceKm))
 		if in.Acres != nil {
 			facts += dot + render.Thousands(*in.Acres) + " ac"

@@ -69,3 +69,47 @@ func TestDetailFireSectionAlwaysPresent(t *testing.T) {
 		t.Fatalf("no fire must still be said:\n%s", q)
 	}
 }
+
+// THE DETAIL SHOWS EVERY NAMED FIRE THE ROW COUNTS (UAT 2026-09-07).
+//
+// The row wears n◆ from len(Incidents) and this list broke at three with no
+// word about the rest, so a location with five named fires read "5◆" on the
+// dashboard and listed three in the one place the app sends people for more
+// detail. The spoken report, meanwhile, names ALL of them — so the same
+// location had three different answers to "which fires are near me", and the
+// most complete one was the one you cannot re-read.
+//
+// HUM LEAD, 2026-09-07: "we direct user to the location detail for 'more
+// details' so location detail modal needs to show all 5."
+//
+// Hotspots keep their cap and their "… and N more": there can be 300 of them
+// (snapshot.MaxHotspots) and they have no names to tell apart. Named incidents
+// are bounded by the incident radius and are exactly what a listener is asking
+// about.
+func TestTheFireDetailListsEveryNamedIncident(t *testing.T) {
+	names := []string{"MUTUAL AID", "ORTEGA", "SC/PMQ", "BRENGEL", "FUR CREEK"}
+	loc := &snapshot.Location{Label: "Oceanside, CA", Fire: snapshot.FireState{AsOf: time.Now()}}
+	for i, n := range names {
+		km := float64(18 + i)
+		loc.Fire.Incidents = append(loc.Fire.Incidents, snapshot.Incident{
+			Name: n, Source: snapshot.SourceInfo{DistanceKm: &km},
+		})
+	}
+
+	got := stripANSITest(strings.Join(fireRows(render.Opts{Width: 100}, loc, time.Now(), 50), "\n"))
+	for _, n := range names {
+		if !strings.Contains(got, ellipsizeName(n)) {
+			t.Errorf("%q is one of the %d fires the row counts and the detail does not list it:\n%s",
+				n, len(names), got)
+		}
+	}
+	// AND THE COUNT ON THE ROW IS THE COUNT IN THE LIST, which is the thing the
+	// two surfaces disagreed about.
+	if got, want := fireCount(loc.Fire), len(names); got != want {
+		t.Errorf("the row wears %d◆ for %d incidents", got, want)
+	}
+}
+
+// ellipsizeName is how the row draws a name, so the assertion compares what is
+// actually on screen rather than the name the fixture used.
+func ellipsizeName(n string) string { return ellipsize(n, 11, false) }
