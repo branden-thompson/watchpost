@@ -137,6 +137,46 @@ claim its own author has disproved is the defect this release is about.
 stayed because it pins the divergence at 7.  The FR-5 probe was deleted once its measurement was
 recorded here.
 
+**9. Plant BOTH ways before believing a gate — and check the plant when it survives.**  Twelve plants
+filled `gates.md`'s evidence column in ~20 minutes.  Two did not fire.  One was a REAL HOLE
+(`gate-controls` was green while running no control at all: two of its scripts treated an
+unrecognised flag as "run normally, exit 0"), and one was a BAD PLANT (`_ = make([]byte, 64)` never
+escapes, so the compiler deleted the defect before `alloc-budget` could see it).  **Telling those two
+apart is the skill the table exists to teach**, which is why the roster records both rather than only
+the CAUGHT rows.  *(INST-3.)*
+
+**10. Derive the producer; a hand-written subject list is stale the day after it is written.**  The
+`--ascii` scan checked ONE surface for SEVEN named glyphs against eleven windows and a set of
+twenty-two.  Asking the modal enum and the glyph type by reflection found six leaks in four windows,
+two of them marks no list ever had.  Same shape in the AA register (75 declared, 64 registered) and in
+F-45's ledger rows.  *(INST-1.)*
+
+**11. Make silence a distinct verdict.**  `git grep -E` treats an inline `(?i)` as a FATAL error, so
+four exposure-scan categories printed a confident `0` from a command that had crashed — including
+"0/18 tags carry location data" while 137 tracked files matched.  The mutant harness gets this right
+already and it is why `m44` reported **UNMEASURED** rather than passing when a metric-D collapse moved
+the rule it guarded.  *(INST-2.)*
+
+**12. A/B a new instrument against a case whose answer you already know.**  The Lookup investigation
+reported "the keystrokes were dropped" on the strength of a forced repaint showing an empty box — and
+the identical dump appears in the warm-config run where the echo arrives 0.0 s later.  Forty seconds
+of A/B falsified a finding that had already been written down.  *(INST-4.)*
+
+**13. Measure the surface before scoping the fix.**  "139 files carry the demo location" was true and
+useless.  Exactly ONE of them reaches a shipped binary, and it is a comment in an embedded asset.  The
+measurement turned a re-record of 67 recorded API fixtures into a three-line change.
+
+**14. Build the cheap reproduction before running the expensive one again.**  Three 5-minute journey
+runs (one of them corrupted by a second run I started on top of it) produced less than a 40-second
+targeted probe did.  The probe is committed as `scripts/quality/lookup-stall-probe.expect`; the
+journey is not a debugger.
+
+**15. Assert the ROUND TRIP, not the call.**  The Settings save defect survived because every test
+asserted that the setter FIRED.  A setter that fired proves the write was asked for; the listener was
+watching the value fail to come back.  My first three attempts at the regression test were each a
+FALSE PASS — asserting the hook, then a probe that discarded the model `Update` returned, then a
+"reopen" that was typing into a form which had never closed.
+
 ## What did not work — do not repeat these
 
 **1. Grep/regex analysis of my own code to answer structural questions.**  Wrong three times in one

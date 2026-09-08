@@ -78,6 +78,67 @@ Not adopted, and why: **D-6** folds into D-2. **D-7** (tests assert the requirem
 behaviour) is a good habit but the list is kept short deliberately. **D-8** (no number without a
 re-derivation) is already an A2DH calibration. **D-10** mostly disappears once D-9 holds.
 
+## Instrument-driven development — INST-1 to INST-5 (added 2026-09-08, 0.15.0 B6/B7)
+
+**HUM LEAD, 2026-09-08:** *"the testing / instrumentation methodology to drive feature development…
+I argue is better than the standard TDD methodology on its own. I do not want that 'magic' lost."*
+
+**A NEW PREFIX, DELIBERATELY.** `D-n` already means two different things — `D-9` is this plan's
+"verification logic lives in a typed language" AND the architecture's render pivot seam
+(`platform/render/render.go:1`). These are `INST-n` rather than deepening that collision.
+
+### Why this is not TDD, and what TDD does not catch
+
+TDD proves the CODE does what the TEST says. It does not prove the test is asking anything. Every
+defect below was found in 0.15.0 while the suite was **green**, and none of them is a TDD failure —
+they are instrument failures, and TDD has no opinion about instruments:
+
+| Green, and measuring nothing | What it actually was |
+|---|---|
+| the AA contrast gate | iterated the same list its lifter had just lifted — a tautology |
+| the `--ascii` scan | 2 surfaces of 13, and 7 glyphs of 22, both hand-listed |
+| `gate-controls` | the gate that proves other gates fire **could not fire on itself** |
+| 5 P10 exemptions | in force, unratified, hiding behind *"the same RATIFIED pattern as platform/geo"* — and `platform/geo` was one of the five |
+| the release-check pin | asserted a bound on `start` while calling `checkAt` |
+| my own Settings test | asserted the setter FIRED, not that the value round-tripped |
+
+**The premise this extends.** `D-11` says a pin is not evidence until seen failing on its own defect.
+That is the seed. INST-1..5 are what the same idea costs when the subject is a GATE rather than a
+function, and the reason it is worth paying: **an instrument that silently reports "clean" is
+indistinguishable from a clean subject, and it is the only kind of bug that gets more confident the
+longer it survives.**
+
+### The rules
+
+| Rule | Statement | Mechanical | The catch that earned it |
+|---|---|---|---|
+| **INST-1** | **The producer is DERIVED, never enumerated.** A gate's subject list is computed from the thing itself — the enum, the AST, the registry, the type by reflection. A hand-written list is stale the day after it is written and its staleness is invisible. | **Yes** | `--ascii` (2/13 surfaces, 7/22 glyphs); the AA register (75 declared vs 64 registered); F-45's 23 rows found by ENUMERATING a file whose closing line said it was clean |
+| **INST-2** | **Silence is a verdict and must be a DISTINCT one.** An instrument reports "passed", "not applicable", "could not run" and "not covered" as four different things. Any of the last three rendered as the first is worse than having no instrument. | **Yes** | `git grep -E` treats inline `(?i)` as FATAL — four exposure categories printed a confident `0` from a crashed command; `m44` reported UNMEASURED, not passing, when a collapse moved the rule it guarded |
+| **INST-3** | **A plant that survives indicts the PLANT first.** Before reporting a hole, prove the plant reached the subject. | No — judgement | `_ = make([]byte, 64)` never escapes, so the compiler deleted the defect before `alloc-budget` could count it; re-planted so it escaped, CAUGHT |
+| **INST-4** | **Believe an instrument about the unknown only after it has answered the KNOWN.** A/B it against a case whose answer you already have. | No — habit | The Lookup stall: a forced repaint "showed" an empty box, and the identical dump appeared in the warm-config run where the echo arrived 0.0 s later. Forty seconds of A/B falsified a finding I had already reported |
+| **INST-5** | **State the instrument's blind spot with its number.** A count from a method that can miss is a FLOOR, not a total, and says so where the number is published. | No — habit | The duplicate detector reported two 3-copy groups as pairs: `nws.Fetch` differs from its twins by one statement, `Slot.String` by the field it returns |
+
+### Two corollaries that are not rules but keep being true
+
+- **Assert the ROUND TRIP, not the call.** A setter that fired proves the write was *asked for*. The
+  Settings defect survived because the tests asserted the hook, and the listener was watching the
+  value fail to come back. *(See `TestClosingSettingsLeavesTheModelAgreeingWithTheWrite`.)*
+- **Measure the surface before scoping the fix.** "139 files carry the demo location" was true and
+  useless; exactly **one** of them shipped in the binary, and it was a comment. The measurement
+  turned a re-record of 67 recorded API fixtures into a three-line change.
+
+### What it cost, and what it returned
+
+Six instruments were built or repaired in B6/B7. **Four were wrong on their first run, and every one
+of those failures looked like good news** — a zero, a clean bill, a green gate. All four were caught
+by planting rather than by reading. The plant sweep for `gates.md` was ~20 minutes and found a real
+hole in the gate whose entire job is finding that class of hole.
+
+**The honest caveat, for whoever reads this next:** every one of those catches was made by the same
+agent that wrote the instrument. That is the arrangement a red team exists to distrust, and it is why
+the BUILD exit red team should point at the NEW INSTRUMENTS first. A gate is at its least trustworthy
+on the day it is added.
+
 ## Step 4, measured — the evaluation point, 2026-09-03
 
 Measured at the T2.3 exit on `92a3c21`, against the baselines above. Every figure is derived from

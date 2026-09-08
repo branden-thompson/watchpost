@@ -1319,6 +1319,16 @@ Cost, for the metric: the whole F-58 investigation ran ~90 minutes, of which the
 journey runs (5 minutes each, one of them corrupted by my own overlapping second run) produced less
 than the 40-second probe did. The probe is committed. The next attempt starts from a measurement.
 
+## The rules these observations became (2026-09-08)
+
+This file is the narrative; `quality-plan.md` is the doctrine. As of 0.15.0 B6/B7 the recurring shapes
+here are written up as **INST-1 to INST-5** — derive the producer, make silence a distinct verdict,
+indict the plant before the gate, A/B against a known answer, publish the blind spot with the number.
+
+**Read them together.** A rule earns its place by a named catch, and every INST rule carries one from
+this release. When a new shape appears here that no rule covers, that is the signal to add one — and
+when a rule stops earning catches, that is the signal to withdraw it, the way D-4 was.
+
 ## The metric this is all judged against
 
 Tasks completed per session. It has not moved yet (1). Every other number has. The programme
