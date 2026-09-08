@@ -43,7 +43,6 @@ const releaseEvery
 const scheduleTick
 const systemVoice
 const testEventLife
-const testEventSpoken
 const tickerEvery
 const tickerRotate
 const tickerSeenWindow
@@ -122,6 +121,7 @@ func (*livePipelines).setup
 func (*livePipelines).sources
 func (*livePipelines).startPipelines
 func (*livePipelines).stopAll
+func (*livePipelines).testLocation
 func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
@@ -291,6 +291,7 @@ func abbreviateHome
 func alertKeysOf
 func alertNarration
 func alertTonePCM
+func allFabricated
 func allScenarioKeys
 func applySetup
 func applyThemes
@@ -449,6 +450,9 @@ func subjectOf
 func suggestHook
 func tapeHead
 func tellUnder
+func testCard
+func testHead
+func testLine
 func tickerCategory
 func tickerMuteState
 func tickerRadiusState

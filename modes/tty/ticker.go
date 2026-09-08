@@ -104,6 +104,9 @@ func (d Dashboard) tapeLine(o render.Opts, it TickerItem) string {
 	if !it.Until.IsZero() {
 		s += " " + dot + " expires " + o.Clock.Since(it.Until.Local(), d.clock())
 	}
+	if it.Test {
+		return testEventMark + " " + s + " " + testEventMark
+	}
 	return s
 }
 
@@ -128,21 +131,20 @@ const tickerRightReserve = 4
 
 // testEventMark is what the band says when what it shows was fabricated.
 //
-// IT RIDES THE BAND'S TOP ROW — chrome, not tape (FR-4.4). The tape is one
-// scrolling line: a marker inside it is off-window most of the time, and an
-// 18-cell prefix on every item at the 80-column floor would leave the marker
-// occupying more of the band than the hazards do. The top row is already there,
-// already the lane's colour, and carries nothing.
-const testEventMark = "*** TEST EVENT ***"
-
-// testBanner is the band's top row: blank normally, and the marking centred in
-// it when what the band is showing was fabricated.
-func testBanner(width int, on bool, tones string) string {
-	if !on {
-		return render.TintRaw(strings.Repeat(" ", width), tones)
-	}
-	return render.TintRaw(render.PadTo(centerText(testEventMark, width), width), tones)
-}
+// PREPENDED AND POSTPENDED, ON THE ITEM (HUM LEAD 2026-09-07). The tape
+// scrolls: a marker at one end only is off-window half the time, and a marker
+// at both ends means the item cannot be on screen without one of them. It sat
+// in the band's top row first, as lane chrome, on the argument that an 18-cell
+// prefix per item at the 80-column floor makes the marker the majority of the
+// tape — the ruling overrides that argument, and it is the ITEM that is
+// fabricated rather than the lane it happens to be filed under.
+//
+// TWO ASTERISKS, NOT THREE, and the ruling's own wording is the reason twice
+// over: it is what was written, and at 14 cells it fits the severe window's
+// EVENT column ahead of a product where "*** TEST EVENT ***" did not — that
+// column truncates, and a mark that pushes the product out of its own column
+// is a mark that hides what it is marking.
+const testEventMark = "**TEST EVENT**"
 
 // tickerMarquee renders the ticker as a THREE-row band: a category-coloured
 // blank row above and below the tape row, so the band breathes and absorbs the
@@ -159,17 +161,15 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 		tones := render.Tok(tickerCatBG(it.Category)) + ";" + render.Tok(render.TickerFG)
 		content := render.TintRaw(centerText(d.tapeLine(o, it), width), tones)
 		blank := render.TintRaw(strings.Repeat(" ", width), tones)
-		return testBanner(width, it.Test, tones) + "\n" + content + "\n" + blank
+		return blank + "\n" + content + "\n" + blank
 	}
 
 	right := tickerRightReserve
 	mid := "  no active severe events"
-	fabricated := false
 	bg, fg := render.GroupSectionBG, render.TickerMutedFG // the muted band matches the RECENT/SEARCHED group header
 	if cats := d.tickerCategories(); len(cats) > 0 {
 		cur := cats[d.tickerCatIdx%len(cats)]
 		items := d.tickerLane(o, cur)
-		fabricated = d.laneHoldsATestEvent(cur)
 		left := fmt.Sprintf("  %s  %d %s  ", cur.Label(), len(items), o.Glyphs().Alert)
 		win := max(1, width-render.Width(left)-right)
 		tape := strings.Join(items, tickerBullet(o))
@@ -178,21 +178,8 @@ func (d Dashboard) tickerMarquee(o render.Opts) string {
 	}
 	tones := render.Tok(bg) + ";" + render.Tok(fg)
 	content := render.TintRaw(render.PadTo(mid, width), tones)
-	blank := render.TintRaw(strings.Repeat(" ", width), tones) // the band's bottom row
-	return testBanner(width, fabricated, tones) + "\n" + content + "\n" + blank
-}
-
-// laneHoldsATestEvent reports whether anything in this lane was fabricated.
-// PER LANE, not per band: the rotation shows one lane at a time, and marking
-// the band while a clean lane is up would say the wrong thing about real
-// hazards.
-func (d Dashboard) laneHoldsATestEvent(c TickerCategory) bool {
-	for _, it := range d.ticker { // bounded by the tape (P10-02)
-		if it.Category == c && it.Test {
-			return true
-		}
-	}
-	return false
+	blank := render.TintRaw(strings.Repeat(" ", width), tones) // the band's top and bottom rows
+	return blank + "\n" + content + "\n" + blank
 }
 
 // tickerCategories are the non-empty lanes, in rotation order.

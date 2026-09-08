@@ -304,7 +304,7 @@ func eventScript(lib *script.Library, row tty.SevereRow) string {
 	// delete is not a marking.
 	var parts []string
 	if row.Test {
-		parts = append(parts, testEventSpoken)
+		parts = append(parts, testHead(lib))
 	}
 	parts = append(parts, say("head", nil), say("opening", map[string]string{"Product": render.PlainLine(row.Product), "Location": render.PlainLine(row.Location)}))
 	if meta := strings.Trim(render.PlainLine(row.Record.Meta), "[]"); meta != "" {

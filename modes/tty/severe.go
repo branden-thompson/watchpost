@@ -423,8 +423,15 @@ func (d Dashboard) severeBrowseLines(o render.Opts, w int) []string {
 	cells := make([]render.SevereCell, 0, hi-lo)
 	for i := lo; i < hi; i++ {
 		r := d.severeRowAt(i)
+		// THE MARK LEADS THE EVENT COLUMN, and it is added HERE rather than to
+		// the row's Product: the [w] read speaks that field, and a product with
+		// three asterisks in it would be read aloud as asterisks.
+		event := render.PlainLine(r.Product)
+		if r.Test {
+			event = testEventMark + " " + event
+		}
 		cells = append(cells, render.SevereCell{
-			Num: i + 1, Event: render.PlainLine(r.Product), Location: render.PlainLine(r.Location), Detection: render.PlainLine(r.Detection), Declared: render.PlainLine(r.Declared), Expires: render.PlainLine(r.Expires),
+			Num: i + 1, Event: event, Location: render.PlainLine(r.Location), Detection: render.PlainLine(r.Detection), Declared: render.PlainLine(r.Declared), Expires: render.PlainLine(r.Expires),
 			Focused: i == d.severeRow, Playing: d.severePlaying(r.Key), Paused: d.severeReadPause && d.severeReading == r.Key,
 		})
 	}

@@ -19,13 +19,20 @@ package app
 // not against a second copy of the mapping.
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
+	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/closedset"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
+
+// testHere is a watchlist location for the scenarios to happen at.
+var testHere = snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23}
 
 func TestEveryLaneTheFeedProducesHasAScenarioThatLandsInIt(t *testing.T) {
 	now := time.Now()
@@ -34,7 +41,7 @@ func TestEveryLaneTheFeedProducesHasAScenarioThatLandsInIt(t *testing.T) {
 		if !ok {
 			return false
 		}
-		evs := injectedEvents(key, now)
+		evs := injectedEvents(key, now, testHere)
 		if len(evs) == 0 {
 			t.Errorf("%s: the %q scenario fabricates nothing", category.Of(l).Bucket, key)
 			return true
@@ -55,7 +62,7 @@ func TestEveryLaneTheFeedProducesHasAScenarioThatLandsInIt(t *testing.T) {
 // id prefix, which is the one string a clean binary is proven not to contain.
 func TestEveryFabricatedEventIsMarkedAsOne(t *testing.T) {
 	for _, key := range allScenarioKeys() {
-		for _, e := range injectedEvents(key, time.Now()) {
+		for _, e := range injectedEvents(key, time.Now(), testHere) {
 			if !e.Fabricated {
 				t.Errorf("the %q scenario fabricates %q and it does not say so — nothing "+
 					"downstream can tell it from a real hazard", key, e.Type)
@@ -71,7 +78,7 @@ func TestEveryFabricatedEventIsMarkedAsOne(t *testing.T) {
 func TestFabricatedEventsExpireWithinTwoMinutes(t *testing.T) {
 	now := time.Now()
 	for _, key := range allScenarioKeys() {
-		for _, e := range injectedEvents(key, now) {
+		for _, e := range injectedEvents(key, now, testHere) {
 			if e.Until.IsZero() {
 				t.Errorf("the %q scenario fabricates %q with NO expiry: Active keeps it "+
 					"until the feed drops it, and the feed never had it", key, e.Type)
@@ -89,7 +96,57 @@ func TestFabricatedEventsExpireWithinTwoMinutes(t *testing.T) {
 // asked for — and produced it identically to the scenario named for the
 // emergency path, which is how FR-4.1 went unnoticed.
 func TestAnUnknownScenarioKeyFabricatesNothing(t *testing.T) {
-	if evs := injectedEvents("no-such-scenario", time.Now()); len(evs) != 0 {
+	if evs := injectedEvents("no-such-scenario", time.Now(), testHere); len(evs) != 0 {
 		t.Errorf("an unknown key fabricated %d events, first %q", len(evs), evs[0].Type)
+	}
+}
+
+// A TEST ALERT HAPPENS WHERE THE LISTENER IS (HUM LEAD 2026-09-07).
+//
+// It carried Location: "Injected Test Location" and no point, which exercises
+// neither the D5 location tie nor the radius fence — the two stages most likely
+// to be the reason a real alert never reached someone. The whole tool exists to
+// test the machinery, and a fabricated event that skips two stages of it tests
+// less of the machinery than it appears to.
+//
+// The mark is what keeps it identifiable, and there are now four of them: the
+// event says so, the tape says so at both ends, the window's row says so, and
+// the read says so in words.
+func TestAFabricatedAlertHappensAtTheListenersOwnLocation(t *testing.T) {
+	here := snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23}
+	for _, e := range injectedEvents("warn", time.Now(), here) {
+		if e.Location != here.Label {
+			t.Errorf("the fabricated alert is for %q, not the listener's own location %q", e.Location, here.Label)
+		}
+		if !e.HasPoint || e.Lat != here.Lat || e.Lon != here.Lon {
+			t.Errorf("the fabricated alert carries no point (%v %v %v), so the radius fence and the "+
+				"location tie are never exercised", e.HasPoint, e.Lat, e.Lon)
+		}
+	}
+
+	// AND WITH AN EMPTY WATCHLIST IT STILL SAYS WHERE IT IS. A listener with no
+	// locations can still press ctrl+d, and a blank location on the band reads
+	// as a rendering fault rather than as a test.
+	for _, e := range injectedEvents("warn", time.Now(), snapshot.LocationRef{}) {
+		if e.Location == "" {
+			t.Error("with no watchlist the fabricated alert has no location at all")
+		}
+		if e.HasPoint {
+			t.Error("with no watchlist the fabricated alert claims a point at 0,0 — the Gulf of Guinea")
+		}
+	}
+}
+
+// THE COPY AND THE CLOCK ARE ONE FACT (FR-4.3 × FR-4.5).
+//
+// The test read promises "effective for 2 minutes" in words while testEventLife
+// says it in a constant, and nothing but this holds them together: change the
+// constant and the read goes on promising two minutes, which is the release's
+// own subject — one fact with two owners, disagreeing quietly.
+func TestTheTestScriptPromisesTheExpiryTheEventCarries(t *testing.T) {
+	want := strconv.Itoa(int(testEventLife.Minutes())) + " minutes"
+	got := testLine(script.New(""), globalfeed.Event{Type: "Tornado Warning"})
+	if !strings.Contains(got, want) {
+		t.Errorf("the test read says %q and the event lives %s: the read promises %q", got, testEventLife, want)
 	}
 }

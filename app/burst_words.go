@@ -90,31 +90,40 @@ func burstTitle(e globalfeed.Event, c render.Clock, now time.Time) string {
 
 // breakingLine is the line to speak for one event: a single event carries its
 // own broadcast tail; a burst event's line has none (the tail comes once).
-// testEventSpoken is what a fabricated alert says about itself.
+// testHead is what a diagnostic read opens with, and what the [w] report for a
+// fabricated event leads with. Same fallback rule as testLine.
+func testHead(lib *script.Library) string {
+	if s := scriptText(lib, "test-alert", "head", nil); s != "" {
+		return s
+	}
+	return "This is a test of the Watchpost alert events system. This is only a test"
+}
+
+// testLine is a fabricated alert's own line, in place of the one a real alert
+// would get (FR-4.5, HUM LEAD 2026-09-07).
 //
-// ON EVERY LINE, AND NOT IN THE SCRIPT (FR-4.4). A listener who walks in
-// halfway through a six-alert burst has heard no header, and the words are all
-// they have. It is composed HERE rather than in breaking/*.txt because the read
-// scripts are user-editable by design, and a safety marking that an edit to a
-// text file removes is not a marking.
-const testEventSpoken = "This is a test event."
+// EVERY LINE, and not only in an all-test card: a listener who walks in halfway
+// through a burst has heard no head, and the words are all they have.
+//
+// IT FALLS BACK TO WORDS IT OWNS. The read scripts are user-editable by design,
+// and "" is what a broken or emptied override yields — silence beside a real
+// alert is a missing line, but a fabricated alert reaching the air unmarked is
+// the thing this exists to prevent.
+func testLine(lib *script.Library, e globalfeed.Event) string {
+	if s := scriptText(lib, "test-alert", "title", map[string]string{"Type": e.Title()}); s != "" {
+		return s
+	}
+	return "A test " + e.Title() + " has been issued by the Watchpost alerts event system."
+}
 
 func breakingLine(lib *script.Library, e globalfeed.Event, burst bool, c render.Clock, now time.Time) string {
-	line := alertNarration(lib, e, c, now)
+	if e.Fabricated {
+		return testLine(lib, e)
+	}
 	if burst {
-		line = scriptText(lib, "breaking", "burst-line", map[string]string{"Line": burstTitle(e, c, now)})
+		return scriptText(lib, "breaking", "burst-line", map[string]string{"Line": burstTitle(e, c, now)})
 	}
-	if !e.Fabricated {
-		return line
-	}
-	// A LINE THAT RENDERED NOTHING STILL SAYS IT WAS A TEST. The empty string is
-	// what a broken script yields, and "" spoken beside a real alert is silence
-	// — but a fabricated event reaching the air unmarked is the thing this
-	// exists to prevent, so the marking stands on its own.
-	if line == "" {
-		return testEventSpoken
-	}
-	return testEventSpoken + " " + line
+	return alertNarration(lib, e, c, now)
 }
 
 // worstOf is the most serious event of a burst — the one the tone warns about.

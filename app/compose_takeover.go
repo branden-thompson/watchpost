@@ -43,6 +43,9 @@ import (
 // absent, rather than present and empty, so the Reader has nothing to skip.
 func composeTakeover(lib *script.Library, fresh []globalfeed.Event, burst bool, divert int, c render.Clock, now time.Time) lineup.Script {
 	sc := lineup.Script{Tone: toneClassOfEvent(worstOf(fresh)).Key()}
+	if allFabricated(fresh) {
+		return testCard(lib, fresh, sc)
+	}
 	if burst {
 		if head := burstHead(lib, fresh); head != "" {
 			sc.Parts = append(sc.Parts, lineup.Part{Kind: lineup.PartHead, Text: head})
@@ -85,4 +88,53 @@ func burstTail(lib *script.Library, divert int) string {
 		alerts = "alert"
 	}
 	return burstClosingLine(lib, divert, alerts)
+}
+
+// allFabricated reports whether every event on this card came from the ctrl+d
+// window.
+//
+// EVERY ONE, NOT ANY ONE (FR-4.5). A burst carrying a real hazard is about that
+// hazard, whatever else arrived with it: it keeps the ordinary head and tail,
+// and the fabricated lines say what they are inside it. Reading "this is a test
+// of the alert events system" over a live tornado warning is the one outcome
+// this whole feature exists to make impossible.
+func allFabricated(evs []globalfeed.Event) bool {
+	for _, e := range evs { // bounded by the burst (P10-02)
+		if !e.Fabricated {
+			return false
+		}
+	}
+	return len(evs) > 0
+}
+
+// testCard is the diagnostic read: head, one title per fabricated alert, one
+// explanation, tail (HUM LEAD 2026-09-07).
+//
+// ALERT-AGNOSTIC ON PURPOSE. The same words for every category, so exercising
+// the machinery never waits on someone writing suitable content for each
+// hazard — and the TONE is still the injected type's own, so what is under test
+// is the tone, the takeover, the band, the window and the expiry rather than
+// the copy.
+//
+// THE EXPLANATION IS SAID ONCE. Six fabricated alerts each carrying it is a
+// seven-minute read, and saying it six times is not more informative than
+// saying it once. It carries no Ref, so it cues no band item: it is about the
+// test, not about any one alert.
+func testCard(lib *script.Library, fresh []globalfeed.Event, sc lineup.Script) lineup.Script {
+	say := func(part string, e globalfeed.Event) string {
+		return scriptText(lib, "test-alert", part, map[string]string{"Type": e.Title()})
+	}
+	if head := testHead(lib); head != "" {
+		sc.Parts = append(sc.Parts, lineup.Part{Kind: lineup.PartHead, Text: head})
+	}
+	for _, e := range fresh { // bounded by the burst (P10-02)
+		sc.Parts = append(sc.Parts, lineup.Part{Kind: lineup.PartLine, Text: testLine(lib, e), Ref: e.ID})
+	}
+	if explain := say("explain", fresh[0]); explain != "" {
+		sc.Parts = append(sc.Parts, lineup.Part{Kind: lineup.PartLine, Text: explain})
+	}
+	if tail := say("tail", fresh[0]); tail != "" {
+		sc.Parts = append(sc.Parts, lineup.Part{Kind: lineup.PartTail, Text: tail})
+	}
+	return sc
 }

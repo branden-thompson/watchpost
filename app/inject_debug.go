@@ -29,6 +29,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/category"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // injectQueue holds what is waiting for the next cycle. It is a TYPE rather
@@ -189,7 +190,7 @@ func (lp *livePipelines) injectHook() func(string) {
 		if tk == nil {
 			return
 		}
-		evs := injectedEvents(key, time.Now())
+		evs := injectedEvents(key, time.Now(), lp.testLocation())
 		radioDebugLog("inject:" + key)
 		tk.Inject(evs...)
 	}
@@ -203,6 +204,22 @@ func (lp *livePipelines) injectHook() func(string) {
 // of it, and in the seen store for seven days after that.
 const testEventLife = 2 * time.Minute
 
+// testLocation is where a fabricated alert happens: the listener's own first
+// watched location (HUM LEAD 2026-09-07).
+//
+// NOT A PLACEHOLDER STRING. It carried "Injected Test Location" with no point,
+// which exercises neither the D5 location tie nor the radius fence — two of the
+// stages most likely to be the reason a real alert never reached someone, and
+// the two this tool exists to test.
+func (lp *livePipelines) testLocation() snapshot.LocationRef {
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	if len(lp.watchRefs) == 0 {
+		return snapshot.LocationRef{}
+	}
+	return lp.watchRefs[0]
+}
+
 // injectedEvents is what a scenario key fabricates, as a pure function of the
 // key and the clock — so what the window offers can be checked without a deck.
 //
@@ -210,12 +227,21 @@ const testEventLife = 2 * time.Minute
 // Tornado Warning identical to the "emergency" scenario's, so the two could not
 // be told apart — which is precisely how the emergency scenario went five weeks
 // without exercising the emergency path.
-func injectedEvents(key string, now time.Time) []globalfeed.Event {
+func injectedEvents(key string, now time.Time, here snapshot.LocationRef) []globalfeed.Event {
+	// A LISTENER WITH NO LOCATIONS CAN STILL PRESS ctrl+d, and a blank location
+	// on the band reads as a rendering fault rather than as a test.
+	where := here.Label
+	if where == "" {
+		where = "Injected Test Location"
+	}
 	mk := func(n int, sc scenario) globalfeed.Event {
 		return globalfeed.Event{
 			ID:         fmt.Sprintf("watchpost-injected-%s-%d-%d", key, now.UnixNano(), n),
 			Type:       sc.typ,
-			Location:   "Injected Test Location",
+			Location:   where,
+			Lat:        here.Lat,
+			Lon:        here.Lon,
+			HasPoint:   here.Label != "",
 			Class:      sc.class,
 			Severity:   sc.sev,
 			Source:     sc.source,

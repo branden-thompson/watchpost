@@ -25,7 +25,8 @@ func TestBuiltinScriptsFollowTheConvention(t *testing.T) {
 		"Agencies": "the National Weather Service and the United States Geological Survey",
 		"Divert":   4, "Alerts": "alerts",
 		"InProgress": true, "Coverage": "a 50 mile radius", "Providers": "the National Weather Service and the United States Geological Survey",
-		"Mag": "5.1", "Depth": "9 kilometers", "Ago": "3 days", "Felt": "A quake of this magnitude has a strong likelihood of being felt when it occurs.", "Likelihood": "strong", "Rest": 2, "Noun": "quakes",
+		"Type": "Tornado Warning", // test-alert: the category the operator chose to inject
+		"Mag":  "5.1", "Depth": "9 kilometers", "Ago": "3 days", "Felt": "A quake of this magnitude has a strong likelihood of being felt when it occurs.", "Likelihood": "strong", "Rest": 2, "Noun": "quakes",
 	}
 	for _, f := range files {
 		report, file, ok := strings.Cut(f, "/")
@@ -39,7 +40,7 @@ func TestBuiltinScriptsFollowTheConvention(t *testing.T) {
 			t.Errorf("%s: %q %v", f, out, err)
 		}
 	}
-	if got := lib.Reports(); strings.Join(got, ",") != "breaking,event-report,fire-report,global,handover,marine-report,seismic-report,transition,voice-preview,weather-radio" {
+	if got := lib.Reports(); strings.Join(got, ",") != "breaking,event-report,fire-report,global,handover,marine-report,seismic-report,test-alert,transition,voice-preview,weather-radio" {
 		t.Errorf("reports: %v", got)
 	}
 	if got := lib.Parts("global"); strings.Join(got, ",") != "head,tail" {
@@ -114,7 +115,7 @@ func TestOverrideFileWinsPhraseByPhrase(t *testing.T) {
 	if tail, err := lib.Text("my-report", "tail", nil); err != nil || !strings.HasPrefix(tail, "This concludes this Watchpost Notification") {
 		t.Fatalf("a new report inherits global's tail: %q %v", tail, err)
 	}
-	if got := lib.Reports(); strings.Join(got, ",") != "breaking,event-report,fire-report,global,handover,marine-report,my-report,seismic-report,transition,voice-preview,weather-radio" {
+	if got := lib.Reports(); strings.Join(got, ",") != "breaking,event-report,fire-report,global,handover,marine-report,my-report,seismic-report,test-alert,transition,voice-preview,weather-radio" {
 		t.Errorf("reports with the override: %v", got)
 	}
 }

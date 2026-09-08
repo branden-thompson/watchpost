@@ -253,7 +253,6 @@ func (Dashboard).helpPlan
 func (Dashboard).helpWidth
 func (Dashboard).hydrateCmd
 func (Dashboard).issueLines
-func (Dashboard).laneHoldsATestEvent
 func (Dashboard).layout
 func (Dashboard).layoutWith
 func (Dashboard).lookupIndex
@@ -553,7 +552,6 @@ func statusHeader
 func statusRank
 func stepRow
 func swellRows
-func testBanner
 func tick
 func tickerBullet
 func tickerCatBG

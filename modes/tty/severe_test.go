@@ -850,3 +850,44 @@ func TestTheReadChipNamesTheNextPress(t *testing.T) {
 		t.Errorf("a paused read offers Play — that press resumes it: %q", got)
 	}
 }
+
+// THE WINDOW'S ROW SAYS WHEN ITS EVENT WAS FABRICATED (FR-4.4, HUM LEAD
+// 2026-09-07): the mark leads the event column, and the detection column reads
+// "injected" — the row's own account of how the event was established.
+//
+// A SCREENSHOT OF THIS WINDOW carrying a tornado warning is indistinguishable
+// from a real one otherwise, which is the same sentence that keeps the injector
+// out of a release build.
+func TestTheSevereWindowMarksAFabricatedRow(t *testing.T) {
+	d := dash(t).(Dashboard)
+	d.width, d.height = 133, 44
+	row := SevereRow{Key: "k", Tab: SevereWarnings, Product: "Tornado Warning", Location: "Bonsall, CA",
+		Detection: "Radar Indicated", Declared: "09/07 08:45 PDT", Expires: "09/07 08:47 PDT", Test: true}
+	d = d.applySevere(SevereMsg{Gen: 1, Totals: [severeNumTabs]int{SevereWarnings: 1}, Rows: []SevereRow{row}})
+	d = d.open(modalSevere)
+	d.severeTab = SevereWarnings
+
+	got := stripANSITest(d.renderModal(d.opts()))
+	if !strings.Contains(got, testEventMark) {
+		t.Errorf("the fabricated row's event column is unmarked:\n%s", got)
+	}
+	// THE MARK LEADS AND THE PRODUCT TRUNCATES BEHIND IT. The EVENT column
+	// holds about 24 cells of content, so a 14-cell mark plus a product does
+	// not fit — and the mark is the half that must survive. The row still says
+	// what it is: the tab, the location, the DETECTION column's "injected"
+	// (severe.Detection) and the record behind [enter] all carry the product.
+	if !strings.Contains(got, testEventMark+" Torn") {
+		t.Errorf("the mark does not lead the event column:\n%s", got)
+	}
+
+	real := row
+	real.Test, real.Key = false, "r"
+	d2 := dash(t).(Dashboard)
+	d2.width, d2.height = 133, 44
+	d2 = d2.applySevere(SevereMsg{Gen: 1, Totals: [severeNumTabs]int{SevereWarnings: 1}, Rows: []SevereRow{real}})
+	d2 = d2.open(modalSevere)
+	d2.severeTab = SevereWarnings
+	if got := stripANSITest(d2.renderModal(d2.opts())); strings.Contains(got, testEventMark) {
+		t.Errorf("a REAL row is marked as a test event:\n%s", got)
+	}
+}
