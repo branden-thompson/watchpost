@@ -120,7 +120,7 @@ func fingerprintBody(fset *token.FileSet, src []byte, body *ast.BlockStmt) (stri
 		case *ast.BasicLit:
 			b.WriteString("l;")
 		default:
-			b.WriteString(fmt.Sprintf("%T;", x))
+			fmt.Fprintf(&b, "%T;", x)
 		}
 		n++
 		return true
@@ -239,7 +239,7 @@ func runSelfTest(min int) int {
 		fmt.Fprintln(os.Stderr, "self-test: cannot create fixture:", err)
 		return 1
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	// TWO COPIES OF ONE OPERATION, renamed — the shape that must be caught.
 	// Long enough to clear any sane floor, and identical only in STRUCTURE:
@@ -290,7 +290,7 @@ func onlyOne(a int) int { return a + 1 }
 func alsoOne(b int) int { return b + 2 }
 `
 	dir2, _ := os.MkdirTemp("", "dupes-neg")
-	defer os.RemoveAll(dir2)
+	defer func() { _ = os.RemoveAll(dir2) }()
 	_ = os.WriteFile(filepath.Join(dir2, "solo.go"), []byte(solo), 0o600)
 	neg, err := scan(dir2, min, false)
 	if err != nil || len(neg) != 0 {
