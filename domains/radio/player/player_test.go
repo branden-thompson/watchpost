@@ -70,16 +70,30 @@ func TestResamplerKeepsDurationAndLevel(t *testing.T) {
 // fakeOutput drains PCM on a goroutine and counts bytes.
 type fakeOutput struct{ bytes atomic.Int64 }
 
+// fakePlayer models an output whose SOURCE CAN RUN OUT, which is the part the
+// atomics could not express (#17).
+//
+// playing and done were one atomic.Bool and a goroutine, so Play() after EOF
+// stored true with nothing left to clear it. Under a mutex the two facts move
+// together: a player whose source is exhausted is not playing, and cannot be
+// told otherwise.
 type fakePlayer struct {
-	out     *fakeOutput
-	stop    chan struct{}
-	playing atomic.Bool
-	vol     atomic.Value
-	once    sync.Once
+	out  *fakeOutput
+	stop chan struct{}
+	once sync.Once
+	vol  atomic.Value
+
+	// drained closes when the source has run out, so a test can wait for that
+	// ORDER rather than sleeping and hoping for it.
+	drained chan struct{}
+
+	mu      sync.Mutex
+	playing bool
+	done    bool // the source reached EOF; Play() cannot undo that
 }
 
 func (f *fakeOutput) NewPlayer(pcm io.Reader) (Player, error) {
-	p := &fakePlayer{out: f, stop: make(chan struct{})}
+	p := &fakePlayer{out: f, stop: make(chan struct{}), drained: make(chan struct{})}
 	p.vol.Store(0.0)
 	go func() {
 		buf := make([]byte, 4096)
@@ -92,16 +106,38 @@ func (f *fakeOutput) NewPlayer(pcm io.Reader) (Player, error) {
 			n, err := pcm.Read(buf)
 			f.bytes.Add(int64(n))
 			if err != nil {
-				p.playing.Store(false)
+				p.mu.Lock()
+				p.done, p.playing = true, false
+				p.mu.Unlock()
+				close(p.drained)
 				return
 			}
 		}
 	}()
 	return p, nil
 }
-func (p *fakePlayer) Play()               { p.playing.Store(true) }
-func (p *fakePlayer) Pause()              { p.playing.Store(false) }
-func (p *fakePlayer) IsPlaying() bool     { return p.playing.Load() }
+
+// Play starts playback, unless the source has already run out — a real output
+// has nothing left to play at that point either.
+func (p *fakePlayer) Play() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !p.done {
+		p.playing = true
+	}
+}
+
+func (p *fakePlayer) Pause() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.playing = false
+}
+
+func (p *fakePlayer) IsPlaying() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.playing
+}
 func (p *fakePlayer) SetVolume(v float64) { p.vol.Store(v) }
 func (p *fakePlayer) Close() error        { p.once.Do(func() { close(p.stop) }); return nil }
 
@@ -269,5 +305,50 @@ func TestStreamClientRefusesCrossHostRedirect(t *testing.T) {
 	defer srv.Close()
 	if _, err := Open(context.Background(), "t (t@example.com)", srv.URL+"/mount"); err == nil || !strings.Contains(err.Error(), "same-origin") {
 		t.Fatalf("a redirect to another host must be refused: %v", err)
+	}
+}
+
+// THE FAKE PLAYER COULD REPORT PLAYING FOREVER, AND THAT IS #17 (B5 opening
+// task).
+//
+// NewPlayer starts the drain goroutine at CONSTRUCTION; the caller calls Play()
+// after. If the source is short enough that the drain reaches EOF first, the
+// order is: goroutine stores playing=false and returns, then Play() stores
+// playing=true — with nothing left running to clear it. IsPlaying() is then
+// true for the rest of the process, watch() polls forever, and the engine's
+// state stays "playing" while nothing is playing at all.
+//
+// THAT IS THE REPORTED SYMPTOM, EXACTLY: issue #17,
+// TestSourceCompletionReportsStoppedNotFailed on Ubuntu, "completion status:
+// {State:playing ...}" after five seconds. It also explains what the issue's
+// own measurements could not — why starving the CPU did not move the 52 ms (it
+// is an ORDERING race, not slow work), why it never reproduced on macOS
+// (goroutine scheduling), and why twenty-five repeat runs came back clean.
+//
+// THE REAL PLAYER HAS THIS RULE AND THE FAKE DID NOT. oto refuses to enter the
+// playing state when its source is spent — internal/mux/mux.go:316, in
+// playImpl: `if p.eof && len(p.buf) == 0 { return }`. The double was missing a
+// rule the production implementation states outright, which is the whole of
+// #17: the engine was never at fault, and the instrument was.
+//
+// This test forces the order rather than waiting for it, which is what makes it
+// a proof instead of another sighting.
+func TestAFinishedFakePlayerNeverReportsPlaying(t *testing.T) {
+	out := &fakeOutput{}
+	p, err := out.NewPlayer(strings.NewReader("")) // exhausted at once
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Let the drain reach EOF and return BEFORE Play() is called — the losing
+	// order, WAITED FOR rather than slept through.
+	select {
+	case <-p.(*fakePlayer).drained:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the drain never finished; the fixture is not the one this is about")
+	}
+	p.Play()
+	if p.IsPlaying() {
+		t.Error("Play() on a player whose source is exhausted reports PLAYING, and nothing is " +
+			"left to clear it: watch() polls until the caller gives up, which is what #17 saw")
 	}
 }
