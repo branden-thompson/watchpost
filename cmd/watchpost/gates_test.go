@@ -179,3 +179,44 @@ func contains(hay []string, want string) bool {
 	}
 	return false
 }
+
+// THE BUILD PATH IS NOT SHIPPED (FR-7.5, HUM LEAD 2026-09-08).
+//
+// Without -trimpath every binary embeds the absolute directory it was compiled
+// from, which names the person who built it: 473 occurrences in
+// watchpost-darwin-arm64 and 485 in linux-amd64 when this was measured. The
+// exposure scan found it; a documentation survey never would, because it never
+// opens a binary.
+//
+// THIS ASKS THE MAKEFILE, NOT A BINARY. `go test` builds its own test binary
+// with its own flags, so inspecting the running one would measure the test
+// harness. Every target that produces a shippable artifact must carry the flag,
+// and a new target that forgets it fails here rather than at a release.
+func TestEveryBuildTargetTrimsThePath(t *testing.T) {
+	mk, err := os.ReadFile("../../Makefile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(mk), "\n")
+	var built []string
+	for _, l := range lines {
+		// A RECIPE LINE, NOT PROSE. The Makefile's comments discuss `go build`
+		// — one explains why build-diag exists rather than "a bare go build" —
+		// and the first version of this gate failed on that sentence. A gate
+		// that reads documentation as configuration reports a defect in a
+		// paragraph.
+		if strings.HasPrefix(strings.TrimSpace(l), "#") || !strings.Contains(l, "go build") {
+			continue
+		}
+		built = append(built, strings.TrimSpace(l))
+	}
+	if len(built) == 0 {
+		t.Fatal("no `go build` line found in the Makefile: this gate is looking at the wrong file")
+	}
+	for _, l := range built {
+		if !strings.Contains(l, "$(TRIMPATH)") && !strings.Contains(l, "-trimpath") {
+			t.Errorf("a build target ships the path it was compiled from:\n  %s", l)
+		}
+	}
+	t.Logf("%d build targets, all trimmed", len(built))
+}

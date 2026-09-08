@@ -55,16 +55,34 @@ published copy actually says something about where the author lives.
 
 ## What is owed, and what is not mine to decide
 
-1. **`-trimpath` on `build`, `build-diag` and `release-matrix`.** One flag, removes the build path
-   from every FUTURE artifact, and improves reproducibility. It does nothing for the artifacts
-   already published. *Recommended.*
+1. ~~**`-trimpath` on `build`, `build-diag` and `release-matrix`.**~~ **DONE, HUM LEAD 2026-09-08.**
+   Verified on a real rebuild: **473 occurrences → 0**. All three targets carry it, and
+   `TestEveryBuildTargetTrimsThePath` reads the Makefile so a NEW target that forgets the flag fails
+   here rather than at a release. It does nothing for artifacts already published.
 2. **The published copy — tags, history, released binaries.** Rewriting history would break 18 tags,
    every published checksum and every release artifact, to remove city-level location data and a
    name the project is deliberately published under. **On the same footing as F-48: the HUM LEAD
    rules, not the agent.** My reading is that the cost is high and the yield is low, and that the
    honest action is to accept the published copy and stop adding — but that is a recommendation.
-3. **Going forward.** If the demo location is to change to a neutral city, that is a product decision
-   with UAT consequences (fixtures, goldens, the journey's own `Oceanside`), not a scrub.
+   **RULED 2026-09-08: accepted.** The published copy stands.
+3. **Going forward — the demo location.** **RULED 2026-09-08: keep as is for now.**
+
+   **The trade-off, stated so the decision is a decision and not a default.** The cost is not that
+   anything new leaks — it is that **the exposure keeps GROWING at the rate the project ships**. Every
+   future tag adds another published copy; the count went from 137 files to 139 during this session's
+   own work, without anyone intending it. Three consequences follow:
+
+   - **It compounds with the rest.** City-level location plus a real name plus a machine name is a
+     sharper picture than any one of them, and the first two are already in 18/18 tags.
+   - **The window to change it cheaply is now, and it is closing.** The demo location is load-bearing
+     in fixtures, goldens, the PTY journey and the README screenshots. Every release makes that
+     thicker, so this is the least expensive it will ever be.
+   - **It cannot be undone later.** Changing the fixtures going forward does not unpublish the 18 tags
+     that already carry it, so a future reversal buys less than doing it now would.
+
+   **What it is NOT.** City-level, not an address; it is the app's own demo data on a public personal
+   project; and no automated harm follows from it. That is why "keep as is" is defensible. The
+   trigger to revisit is a change in how public the project becomes — not a change in the data.
 
 **No gate.** This is a survey that informs a ruling. A gate that blocks future writes while every
 published tag carries the same content defends a door that is open — the DISCOVER report's own words,

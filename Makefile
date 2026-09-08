@@ -8,11 +8,17 @@ PLATFORMS := darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64
 # VERSION is stamped into the binary (cmd/watchpost main.version): the tag on a
 # tagged commit, else the nearest tag + commit (and -dirty). Override: make VERSION=0.9.0
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
+# -trimpath: the build path is not shipped (FR-7.5, HUM LEAD 2026-09-08).
+# Without it every binary embeds the absolute directory it was compiled from —
+# 473 occurrences in watchpost-darwin-arm64, 485 in linux-amd64 — which names
+# the person who built it. It also makes the build reproducible from any
+# checkout location, which is the same property said the other way round.
+TRIMPATH := -trimpath
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 build:
 	@mkdir -p $(DIST)
-	go build -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY) ./cmd/watchpost
+	go build $(TRIMPATH) -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY) ./cmd/watchpost
 
 # build-diag is the UAT build for the ctrl+d window's injection half (F-21b).
 #
@@ -28,7 +34,7 @@ build:
 # any artifact carrying the injector.
 build-diag:
 	@mkdir -p $(DIST)
-	go build -tags watchpost_debug -ldflags '-s -w -X main.version=$(VERSION)+debug' \
+	go build $(TRIMPATH) -tags watchpost_debug -ldflags '-s -w -X main.version=$(VERSION)+debug' \
 	  -o $(DIST)/$(BINARY)-diag ./cmd/watchpost
 	@scripts/lint-injector.sh $(DIST)/$(BINARY)-diag >/dev/null 2>&1 \
 	  && { echo "build-diag: the injector is MISSING from the diagnostics build"; exit 1; } \
@@ -293,7 +299,7 @@ release-matrix:
 	@for p in $(PLATFORMS); do \
 	  os=$${p%/*}; arch=$${p#*/}; ext=""; [ $$os = windows ] && ext=".exe"; \
 	  echo "  building $$os/$$arch"; \
-	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY)-$$os-$$arch$$ext ./cmd/watchpost || exit 1; \
+	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build $(TRIMPATH) -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY)-$$os-$$arch$$ext ./cmd/watchpost || exit 1; \
 	done
 	@cd $(DIST) && (command -v sha256sum >/dev/null && sha256sum $(BINARY)-* || shasum -a 256 $(BINARY)-*) > checksums.txt
 # NFR-2, AND IT RUNS HERE RATHER THAN IN verify FOR A REASON. verify runs before
