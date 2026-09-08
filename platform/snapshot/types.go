@@ -47,6 +47,14 @@ type Location struct {
 	Daily      []Daily            `json:"daily"`
 	Marine     *Marine            `json:"marine"`  // null inland (B3 UAT 29)
 	Seismic    *SeismicState      `json:"seismic"` // nil until the USGS feed has answered (0.11.0)
+
+	// WeatherAsOf is when the REFERENCE provider last completed a fetch that
+	// covered this location — zero = none has yet. It is the weather half of a
+	// distinction FireState.AsOf and Seismic's nil-ness already make, and the
+	// only reason a never-resolving lookup could not be told from a loading one
+	// (issue #13): with no attempt recorded, an empty location shimmers for
+	// ever. It says the feed ANSWERED, never that it found anything.
+	WeatherAsOf time.Time `json:"weather_as_of"`
 }
 
 // Section is one provider's contribution to one location.
@@ -408,6 +416,16 @@ func Key(ref LocationRef) LocationKey {
 	return LocationKey(b)
 }
 
+// Keys is Key over a set — the shape every Apply caller needs to say which
+// locations its fetch covered (#13).
+func Keys(refs []LocationRef) []LocationKey {
+	out := make([]LocationKey, 0, len(refs))
+	for _, r := range refs {
+		out = append(out, Key(r))
+	}
+	return out
+}
+
 // FetchReq asks a provider for one scheduled unit of work.
 type FetchReq struct {
 	Kind      FetchKind
@@ -434,6 +452,12 @@ type Fragment struct {
 	PerLocation map[LocationKey]PartialData
 	FetchedAt   time.Time
 	Err         error
+	// Asked is which locations this fetch COVERED, set by the caller from the
+	// FetchReq it issued. PerLocation cannot answer that: a provider that
+	// returned nothing for a location looks exactly like one that was never
+	// asked about it, and telling those apart is the whole of issue #13. Not
+	// published — Fragment carries no json tags and never leaves the process.
+	Asked []LocationKey
 }
 
 // Provider is the only interface a data source implements (§2).

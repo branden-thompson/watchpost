@@ -1416,6 +1416,10 @@
           "tz": {
             "type": "string"
           },
+          "weather_as_of": {
+            "format": "date-time",
+            "type": "string"
+          },
           "zip": {
             "type": "string"
           }
@@ -1435,7 +1439,8 @@
           "hourly",
           "daily",
           "marine",
-          "seismic"
+          "seismic",
+          "weather_as_of"
         ],
         "type": "object"
       },

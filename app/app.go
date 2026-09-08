@@ -102,6 +102,7 @@ func reportFetch(ctx context.Context, client *httpx.Client, provider *nws.Provid
 				if err != nil {
 					return err // contract violation, not a data failure
 				}
+				frag.Asked = snapshot.Keys(refs) // what was ASKED, which PerLocation cannot say (#13)
 				asm.Apply(frag)
 			}
 			return nil

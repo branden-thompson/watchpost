@@ -140,7 +140,24 @@ func (d Dashboard) anyLoading() bool {
 
 // rowLoading is the one definition of "this row is still loading"
 // (UAT 18.2): observation or daily forecast still pending.
+// rowLoading: shimmer while the data is still COMING, never after it has been
+// asked for and not arrived (issue #13).
+//
+// It used to be the first clause alone, and an empty location is empty in
+// exactly the same way whether the feed has not answered yet or has answered
+// and had nothing for this place — so a location the API does not cover
+// shimmered for ever, across restarts, reading as "still loading" until the
+// listener removed the row themselves.
+//
+// WeatherAsOf is what makes the two distinguishable: the reference provider
+// stamps it when a fetch COVERING this location completes. Once it is set, a
+// missing value is a fact rather than a wait, and the row falls through to the
+// honest "n/a" the post-load path already draws (UAT 18.2). Nothing new is
+// rendered — the whole defect was a flag that could never go false.
 func rowLoading(loc *snapshot.Location) bool {
+	if !loc.WeatherAsOf.IsZero() {
+		return false
+	}
 	return loc.Harmonized.Source.Provider == "" || len(loc.Daily) == 0
 }
 

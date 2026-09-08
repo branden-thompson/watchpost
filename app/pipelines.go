@@ -261,6 +261,7 @@ func (rp *recentPipeline) hydrateHourly(ref snapshot.LocationRef) {
 			continue
 		}
 		if frag, err := pr.Fetch(rp.ctx, snapshot.FetchReq{Kind: snapshot.KindForecastHourly, Locations: []snapshot.LocationRef{ref}}); err == nil {
+			frag.Asked = snapshot.Keys([]snapshot.LocationRef{ref})
 			rp.asm.Apply(frag)
 		}
 	}

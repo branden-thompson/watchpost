@@ -357,7 +357,18 @@ to clear it, reproducing the reported status exactly.  **Cheap disproof before a
 *(FR-6.4 moved to B3, FR-6.5 to B5.)*
 
 **Exit conditions**
-- FR-6.1, 6.2, 6.3 landed.  ~~**FR-6.6 (F-43) carries a timebox set at entry and a written
+- ~~FR-6.1, 6.2, 6.3 landed.~~  **MET.**  **6.2 needed no code** — F-46 was closed as NOT A DEFECT
+  (HUM LEAD 2026-09-06: the flattened window is the record, the spec was the stale artefact), so the
+  requirement was answered by ruling it out.  **6.3** took the documented-as-deliberate branch
+  MVS-D-10 had already ruled for, and found F-5's count wrong — there are **four** config-only roles,
+  not three, because F-46's flattening removed `standard`'s row too — and the README actively
+  promising the opposite (*"all of them are Settings rows"*).  **6.1 answered the issue's own open
+  question:** "never resolved" and "hasn't resolved yet" were NOT distinguishable, because nothing
+  recorded that a fetch had been attempted — while `FireState.AsOf` and `Seismic`'s nil-ness exist
+  for exactly that distinction and weather had no equivalent.  `Location.WeatherAsOf` is that
+  equivalent (an additive RC-schema field, HUM LEAD go 2026-09-08); the treatment needed no new UI,
+  because the honest "n/a" was already what a post-load nil drew.  Six plants: two on the view half,
+  four on the producer half — the producer half was UNPINNED until a plant found it.  ~~**FR-6.6 (F-43) carries a timebox set at entry and a written
   disposition**~~ — **RULED 2026-09-08, and the timebox was never needed.**  HUM LEAD: *"if we have no
   reproduction this far — after lots of UAT sessions — let's log it as something that was observed
   once, but cannot be chased until we have a reproduction.  Otherwise we're just chasing vapors."*

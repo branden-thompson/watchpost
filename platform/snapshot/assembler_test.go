@@ -111,3 +111,77 @@ func TestWarningTextIsCleanedAtTheBoundary(t *testing.T) {
 		t.Errorf("the provider's actual words must survive: %q", got.Message)
 	}
 }
+
+// THE ATTEMPT IS RECORDED FOR THE LOCATIONS THAT WERE ASKED ABOUT (#13).
+//
+// This is the producer half of the never-resolving lookup. The view can only
+// tell "no data yet" from "no data ever" if something records that a fetch
+// COVERED a location, and PerLocation cannot: a place the provider had nothing
+// for is absent from it in exactly the same way as a place nobody asked about.
+//
+// Each clause below is a way of getting this wrong that looks right: stamping
+// only what came back, stamping on a failed fetch, letting a secondary answer
+// a question about the reference, and stamping locations the fetch never
+// covered.
+func TestOnlyACompletedReferenceFetchRecordsTheAttempt(t *testing.T) {
+	served := LocationRef{Label: "Oceanside, CA", Zip: "92057", Lat: 33.2, Lon: -117.38}
+	barren := LocationRef{Label: "Nowhere, XX", Zip: "00000", Lat: 1, Lon: 1}
+	unasked := LocationRef{Label: "Elsewhere, YY", Zip: "11111", Lat: 2, Lon: 2}
+	at := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+
+	build := func() *Assembler {
+		a := NewAssembler([]LocationRef{served, barren, unasked}, []string{"nws", "ndbc"})
+		a.SetAttribution("nws", "reference", "NWS")
+		a.SetAttribution("ndbc", "secondary", "NDBC")
+		return a
+	}
+	stamp := func(a *Assembler, ref LocationRef) time.Time {
+		for _, l := range a.Snapshot().Locations {
+			if l.Label == ref.Label {
+				return l.WeatherAsOf
+			}
+		}
+		t.Fatalf("%s missing from the snapshot", ref.Label)
+		return time.Time{}
+	}
+
+	// A completed reference fetch covering two of the three.
+	a := build()
+	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: at,
+		Asked:       []LocationKey{Key(served), Key(barren)},
+		PerLocation: map[LocationKey]PartialData{Key(served): {Current: &Conditions{Source: SourceInfo{Provider: "nws"}}}}})
+
+	if got := stamp(a, served); !got.Equal(at) {
+		t.Errorf("a served location is stamped: %v", got)
+	}
+	// THE WHOLE POINT: asked about, nothing came back, and it says so.
+	if got := stamp(a, barren); !got.Equal(at) {
+		t.Errorf("a location the feed had NOTHING for is still a location it ANSWERED about: %v", got)
+	}
+	if got := stamp(a, unasked); !got.IsZero() {
+		t.Errorf("a location outside the fetch was not attempted; stamping it would report a wait as a fact: %v", got)
+	}
+
+	// A FAILED fetch answered nothing, whatever it covered.
+	bad := build()
+	bad.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: at,
+		Asked: []LocationKey{Key(served), Key(barren)}, Err: errFetch})
+	if got := stamp(bad, barren); !got.IsZero() {
+		t.Errorf("a failed fetch is not an answer: %v", got)
+	}
+
+	// A SECONDARY cannot answer a question about the reference: its absence is
+	// not what makes a row read as loading.
+	sec := build()
+	sec.Apply(Fragment{Provider: "ndbc", Kind: KindMarine, FetchedAt: at,
+		Asked: []LocationKey{Key(served), Key(barren)}})
+	if got := stamp(sec, barren); !got.IsZero() {
+		t.Errorf("a secondary stamped the weather attempt: %v", got)
+	}
+}
+
+var errFetch = errString("the provider did not answer")
+
+type errString string
+
+func (e errString) Error() string { return string(e) }

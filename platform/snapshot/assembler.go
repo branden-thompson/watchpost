@@ -21,6 +21,7 @@ type Assembler struct {
 	alerts    map[LocationKey][]Alert
 	fire      map[LocationKey]map[string]*FireState // location -> provider -> its contribution (B5: HMS, WFIGS and FIRMS each add a part)
 	seismic   map[LocationKey]*SeismicState         // location -> its latest USGS state (0.11.0: one provider, no cross-merge)
+	asked     map[LocationKey]time.Time             // location -> when the reference provider last completed a fetch covering it (#13)
 	status    map[string]*ProviderStatus
 	warnings  []Warning
 }
@@ -43,6 +44,7 @@ func newAssembler(refs []LocationRef, providerIDs []string) *Assembler {
 		alerts:   map[LocationKey][]Alert{},
 		fire:     map[LocationKey]map[string]*FireState{},
 		seismic:  map[LocationKey]*SeismicState{},
+		asked:    map[LocationKey]time.Time{},
 		status:   map[string]*ProviderStatus{},
 	}
 	kept := make([]LocationRef, 0, len(refs))
@@ -243,6 +245,17 @@ func (a *Assembler) Apply(f Fragment) {
 	} else {
 		st.Status = ProviderOK
 		st.FetchedAt = f.FetchedAt
+		// THE ATTEMPT IS RECORDED, NOT THE RESULT (#13). Only the reference
+		// provider stamps it: it is the one whose absence makes a row read as
+		// "still loading", and a secondary that skips a location says nothing
+		// about whether the weather is coming.
+		if st.Role == "reference" {
+			for _, k := range f.Asked {
+				if _, tracked := a.sections[k]; tracked {
+					a.asked[k] = f.FetchedAt
+				}
+			}
+		}
 	}
 	for k, pd := range f.PerLocation {
 		secs, ok := a.sections[k]
@@ -342,14 +355,15 @@ func (a *Assembler) Snapshot() *Snapshot {
 	for i, k := range a.order {
 		ref := a.refs[i]
 		loc := Location{ // a config file's or a resolver's text is cleaned ONCE here, for every surface that draws it (NFR-6, R5-C-05)
-			Label:      plaintext.Line(ref.Label),
-			Tag:        plaintext.Line(ref.Tag),
-			Zip:        plaintext.Line(ref.Zip),
-			Lat:        ref.Lat,
-			Lon:        ref.Lon,
-			TZ:         ref.TZ,
-			ByProvider: map[string]Section{},
-			Alerts:     append([]Alert(nil), a.alerts[k]...),
+			Label:       plaintext.Line(ref.Label),
+			Tag:         plaintext.Line(ref.Tag),
+			Zip:         plaintext.Line(ref.Zip),
+			Lat:         ref.Lat,
+			Lon:         ref.Lon,
+			TZ:          ref.TZ,
+			ByProvider:  map[string]Section{},
+			Alerts:      append([]Alert(nil), a.alerts[k]...),
+			WeatherAsOf: a.asked[k], // zero until the reference provider has covered it (#13)
 		}
 		for pid, sec := range a.sections[k] {
 			cp := Section{}

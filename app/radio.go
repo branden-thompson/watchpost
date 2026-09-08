@@ -501,6 +501,7 @@ func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voic
 	asm := snapshot.NewAssembler([]snapshot.LocationRef{ref}, []string{d.nws.ID()})
 	for _, kind := range []snapshot.FetchKind{snapshot.KindObs, snapshot.KindAlerts} {
 		if frag, err := d.nws.Fetch(ctx, snapshot.FetchReq{Kind: kind, Locations: []snapshot.LocationRef{ref}}); err == nil {
+			frag.Asked = snapshot.Keys([]snapshot.LocationRef{ref})
 			asm.Apply(frag)
 		}
 	}
