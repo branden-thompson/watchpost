@@ -143,3 +143,49 @@ func TestTheFireDetailListsEveryNamedIncident(t *testing.T) {
 // ellipsizeName is how the row draws a name, so the assertion compares what is
 // actually on screen rather than the name the fixture used.
 func ellipsizeName(n string) string { return ellipsize(n, 11, false) }
+
+// A LONG NAME COSTS THE AGE COLUMN, NOT THE CONTAINMENT (HUM LEAD, 2026-09-07).
+//
+// The name is never shortened — that is the ruling this table was built on — so
+// an unusually long one has to come out of something. It used to come out of
+// the RIGHT EDGE: the row ran past the section and was clamped, silently, which
+// took the containment and the age together and left no mark saying so.
+//
+// "Age can be truncatable - containment is more important." So the age is the
+// column that volunteers, and it goes WHOLE rather than shrinking to "...",
+// because a cell too narrow to hold a value is a cell shaped like one that says
+// nothing.
+//
+// THERE IS STILL A LENGTH THIS CANNOT SURVIVE. With the age gone, a name past
+// about twenty-four cells leaves the row wider than the section and the
+// containment is clamped after all. Wrapping the name onto a second line is the
+// only thing that would fix that, and it is not built.
+func TestALongIncidentNameCostsTheAgeAndNotTheContainment(t *testing.T) {
+	rendering.SetColorEnabledForTest(false)
+	now := time.Now()
+	f := func(v float64) *float64 { return &v }
+	loc := &snapshot.Location{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.38,
+		Fire: snapshot.FireState{AsOf: now, Incidents: []snapshot.Incident{{
+			Name: "SAN LUIS REY COMPLEX", Lat: 33.19, Lon: -117.24,
+			Acres: f(18000), PercentContained: f(35), Discovered: now.Add(-200 * time.Hour),
+			Source: snapshot.SourceInfo{DistanceKm: f(12)},
+		}}}}
+
+	got := stripANSITest(strings.Join(fireRows(render.Opts{Width: 85}, loc, now, 50, 25, 50, 65), "\n"))
+	if !strings.Contains(got, "SAN LUIS REY COMPLEX") {
+		t.Errorf("the name was shortened, which is the one thing this table does not do:\n%s", got)
+	}
+	if !strings.Contains(got, "35% contained") {
+		t.Errorf("the containment was lost to the name; it is the more important of the two:\n%s", got)
+	}
+	if !strings.Contains(got, "18,000 acres") {
+		t.Errorf("the size was lost:\n%s", got)
+	}
+	// THE AGE WENT WHOLE, not to a stub.
+	if strings.Contains(got, "8d") {
+		t.Errorf("the age survived in some form; it was the column that volunteered:\n%s", got)
+	}
+	if strings.Contains(got, "...") || strings.Contains(got, "…") {
+		t.Errorf("a column was cut to a tail instead of dropped:\n%s", got)
+	}
+}

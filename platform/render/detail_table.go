@@ -66,32 +66,70 @@ func fitColumns(cols []StatusColumn, rows []StatusRow) []StatusColumn {
 // The excess comes off the Truncatable columns in order, each floored at its
 // MinWidth. A table with none keeps its width, and the caller's clamp is then
 // the honest outcome: nothing in it volunteered to be shortened.
-func shrinkToFit(cols []StatusColumn, inner, gutter int) []StatusColumn {
+func shrinkToFit(cols []StatusColumn, rows []StatusRow, inner, gutter int) ([]StatusColumn, []StatusRow) {
 	out := append([]StatusColumn(nil), cols...)
 	natural := 0
 	for i, c := range out {
 		natural += c.Width
-		if i >= 3 { // the kit's own rule: a gutter precedes columns 3..last
+		if i >= 3 && !c.NoGutter { // the kit's own rule: a gutter precedes columns 3..last
 			natural += gutter
 		}
 	}
 	over := natural - inner
+	drop := map[int]bool{}
 	for i := range out { // bounded by the columns (P10-02)
-		if over <= 0 {
-			break
-		}
-		if !out[i].Truncatable {
+		if over <= 0 || !out[i].Truncatable {
 			continue
 		}
-		floor := max(out[i].MinWidth, 1)
-		take := min(over, out[i].Width-floor)
-		if take <= 0 {
-			continue
+		// SHRINK TO ITS FLOOR, THEN DROP IT ENTIRELY. MinWidth on a truncatable
+		// column is the width below which its value stops meaning anything: an
+		// age cut to three cells renders "...", a cell shaped like a value that
+		// says nothing. Past that the column goes, because an absent column
+		// reads better than an empty one.
+		if take := min(over, out[i].Width-out[i].MinWidth); take > 0 {
+			out[i].Width -= take
+			over -= take
 		}
-		out[i].Width -= take
-		over -= take
+		if over > 0 {
+			over -= out[i].Width + gutter
+			drop[i] = true
+		}
 	}
-	return out
+	if len(drop) == 0 {
+		return out, rows
+	}
+	// REMOVED, NOT ZEROED. A zero width means FILL in the kit
+	// (data_table_row.go:539), so a "dropped" column would stretch to take
+	// everything that is left — the exact opposite of dropping it.
+	kept := make([]StatusColumn, 0, len(out))
+	shift := make([]int, len(out)) // old index -> new, for the per-cell styles
+	for i, c := range out {
+		if drop[i] {
+			shift[i] = -1
+			continue
+		}
+		shift[i] = len(kept)
+		kept = append(kept, c)
+	}
+	trimmed := make([]StatusRow, len(rows))
+	for j, r := range rows {
+		cells := make([]string, 0, len(kept))
+		var styles map[int]string
+		for i, cell := range r.Cells {
+			if i >= len(shift) || shift[i] < 0 {
+				continue
+			}
+			if s, ok := r.Styles[i]; ok {
+				if styles == nil {
+					styles = map[int]string{}
+				}
+				styles[shift[i]] = s
+			}
+			cells = append(cells, cell)
+		}
+		trimmed[j] = StatusRow{Cells: cells, Styles: styles}
+	}
+	return kept, trimmed
 }
 
 // DetailTable lays out rows at inner cells wide and returns them, no header.
@@ -110,7 +148,7 @@ func (o Opts) DetailTable(cols []StatusColumn, rows []StatusRow, inner, gutter i
 	// it. Sizing first gives it something to add to.
 	if gutter > 0 {
 		cols, rows = statusGutters(fitColumns(cols, rows), rows)
-		cols = shrinkToFit(cols, inner, gutter)
+		cols, rows = shrinkToFit(cols, rows, inner, gutter)
 	} else {
 		// GUTTER 0: the caller is placing its own columns to the cell, because
 		// it has to line up with something drawn elsewhere. The gaps then live
