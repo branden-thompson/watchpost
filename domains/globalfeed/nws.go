@@ -48,18 +48,14 @@ func severeEvents() []severeEvent {
 
 // NWS reads the national active-alerts feed filtered to the severe/tornado
 // event list (US only, keyless).
-type NWS struct {
-	client *httpx.Client
-	base   string
-	memo   sourceMemo
-}
+type NWS struct{ jsonFeed }
 
 // NewNWS builds the source; base "" is the production active-alerts endpoint.
 func NewNWS(client *httpx.Client, base string) *NWS {
 	if base == "" {
 		base = "https://api.weather.gov/alerts/active"
 	}
-	return &NWS{client: client, base: base}
+	return &NWS{jsonFeed{client: client, base: base}}
 }
 
 func (n *NWS) Name() string { return "NWS" }
@@ -190,11 +186,7 @@ func severeDetailOf(p nwsProps) *SevereDetail {
 
 func (n *NWS) Fetch(ctx context.Context) ([]Event, error) {
 	u := n.url()
-	return n.memo.events(func() ([]byte, bool, error) {
-		var body []byte
-		hdr, err := n.client.GetJSON(ctx, u, &body, httpx.TTL(nwsTTL))
-		return body, hdr == nil, err
-	}, func(body []byte) ([]Event, error) { return n.parse(body, u) })
+	return n.fetch(ctx, u, nwsTTL, func(body []byte) ([]Event, error) { return n.parse(body, u) })
 }
 
 func (n *NWS) parse(body []byte, u string) ([]Event, error) {

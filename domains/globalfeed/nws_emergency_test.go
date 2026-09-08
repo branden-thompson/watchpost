@@ -23,7 +23,7 @@ func TestTheNationalQueryAsksForTheEmergencyOrders(t *testing.T) {
 	if _, ok := CivilEmergencyCategory("Evacuation Immediate"); !ok {
 		t.Fatal("the civil-emergency family does not know the Evacuation Immediate")
 	}
-	got := (&NWS{base: "https://example.test/alerts/active"}).url()
+	got := (&NWS{jsonFeed{base: "https://example.test/alerts/active"}}).url()
 	if !strings.Contains(got, "Evacuation%20Immediate") {
 		t.Errorf("the national query never asks for an evacuation order, so read rank 1 can never be occupied:\n%s", got)
 	}

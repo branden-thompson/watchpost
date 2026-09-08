@@ -8,6 +8,7 @@ package tty
 
 import (
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/bucket"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"strings"
 	"time"
@@ -139,11 +140,7 @@ func (d Dashboard) applySevere(msg SevereMsg) Dashboard {
 // bucketSevere indexes the rows per tab, preserving the app's sort.
 func bucketSevere(rows []SevereRow) [severeNumTabs][]int {
 	var by [severeNumTabs][]int
-	for i, r := range rows {
-		if r.Tab >= 0 && r.Tab < severeNumTabs {
-			by[r.Tab] = append(by[r.Tab], i)
-		}
-	}
+	copy(by[:], bucket.ByIndex(rows, severeNumTabs, func(r SevereRow) SevereTab { return r.Tab }))
 	return by
 }
 

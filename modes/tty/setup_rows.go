@@ -424,3 +424,30 @@ const pickerNameW = 17
 
 // pickerFlashFor's window, matching the volume chips' 350 ms (UAT 41).
 const pickerFlashDur = 350 * time.Millisecond
+
+// cycleIn moves one entry through a picker's list, wrapping at both ends.
+//
+// ONE OWNER FOR THE WRAP ARITHMETIC (metric D, 2026-09-08). The relay language
+// and relay dwell pickers each carried their own copy of
+// `((at+step)%len+len)%len` — the expression that makes -1 wrap to the end
+// rather than panicking — and an off-by-one in one of them would be invisible
+// in the other. The saving is not the six lines; it is that the arithmetic
+// exists once.
+//
+// A value not in the list starts at index 0, which is what both copies did:
+// a config written by hand can name a choice a later build removed, and the
+// picker has to land somewhere.
+func cycleIn[T any, K comparable](list []T, key func(T) K, cur K, forward bool) T {
+	at := 0
+	for i, it := range list { // bounded by the list (P10-02)
+		if key(it) == cur {
+			at = i
+			break
+		}
+	}
+	step := 1
+	if !forward {
+		step = -1
+	}
+	return list[((at+step)%len(list)+len(list))%len(list)]
+}

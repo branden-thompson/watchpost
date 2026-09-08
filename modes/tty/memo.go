@@ -56,12 +56,31 @@ type bodyKey struct {
 
 // bodyMemo is the single slot. hits/misses are read by the tests and the
 // diagnostic dump; they are not policy.
+// memoStats is the counter half every memo slot carries. ONE OWNER (metric D,
+// 2026-09-08): bodyMemo and modalMemo each had their own nil-check-lock-return
+// accessor, and a third memo would have written a third. Embedding it means the
+// next one inherits `counts()` instead of copying it.
+type memoStats struct {
+	mu           sync.Mutex
+	hits, misses int
+}
+
+// counts reports the slot's hit/miss counters; the zero value of a nil slot is
+// (0, 0), which is what both callers already returned.
+func (m *memoStats) counts() (hits, misses int) {
+	if m == nil {
+		return 0, 0
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.hits, m.misses
+}
+
 type bodyMemo struct {
-	mu               sync.Mutex
+	memoStats
 	ok               bool
 	key              bodyKey
 	priority, recent string
-	hits, misses     int
 }
 
 // bodyKeyFor derives the key from the model and this frame's layout.
@@ -100,15 +119,8 @@ func (d Dashboard) tables(fl frameLayout) (priority, recent string) {
 	return priority, recent
 }
 
-// memoCounts reports the slot's hit/miss counters (0, 0 without a slot).
-func (d Dashboard) memoCounts() (hits, misses int) {
-	if d.memo == nil {
-		return 0, 0
-	}
-	d.memo.mu.Lock()
-	defer d.memo.mu.Unlock()
-	return d.memo.hits, d.memo.misses
-}
+// memoCounts reports the body slot's hit/miss counters (0, 0 without a slot).
+func (d Dashboard) memoCounts() (hits, misses int) { return d.memo.stats().counts() }
 
 // lookupKey is the pending lookup's identity, zero when none is waiting.
 func (d Dashboard) lookupKey() snapshot.LocationKey {
@@ -235,11 +247,10 @@ type modalKey struct {
 
 // modalMemo is the single slot.
 type modalMemo struct {
-	mu           sync.Mutex
-	ok           bool
-	key          modalKey
-	out          string
-	hits, misses int
+	memoStats
+	ok  bool
+	key modalKey
+	out string
 }
 
 // modalKeyFor derives the key from the model.
@@ -333,11 +344,20 @@ func (d Dashboard) modalView(o render.Opts) string {
 }
 
 // modalMemoCounts reports the modal slot's hit/miss counters.
-func (d Dashboard) modalMemoCounts() (hits, misses int) {
-	if d.mmemo == nil {
-		return 0, 0
+func (d Dashboard) modalMemoCounts() (hits, misses int) { return d.mmemo.stats().counts() }
+
+// stats returns the embedded counters, or nil for a nil slot — so counts() can
+// answer (0, 0) without every caller repeating the nil check.
+func (m *bodyMemo) stats() *memoStats {
+	if m == nil {
+		return nil
 	}
-	d.mmemo.mu.Lock()
-	defer d.mmemo.mu.Unlock()
-	return d.mmemo.hits, d.mmemo.misses
+	return &m.memoStats
+}
+
+func (m *modalMemo) stats() *memoStats {
+	if m == nil {
+		return nil
+	}
+	return &m.memoStats
 }

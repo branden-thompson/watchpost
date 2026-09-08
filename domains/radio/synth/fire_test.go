@@ -1,6 +1,7 @@
 package synth
 
 import (
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"strings"
 	"testing"
 	"time"
@@ -75,7 +76,7 @@ func TestFireWords(t *testing.T) {
 	if bearingWords(33, -117, 33.5, -118.2) != "west-northwest" || bearingWords(33, -117, 34, -117) != "north" {
 		t.Fatal("bearing words")
 	}
-	if joinAnd([]string{"a"}) != "a" || joinAnd([]string{"a", "b"}) != "a and b" || joinAnd([]string{"a", "b", "c"}) != "a, b, and c" {
+	if plaintext.SpokenList([]string{"a"}) != "a" || plaintext.SpokenList([]string{"a", "b"}) != "a and b" || plaintext.SpokenList([]string{"a", "b", "c"}) != "a, b, and c" {
 		t.Fatal("joinAnd")
 	}
 	if distanceWords(1.2, true) != "1 mile" || distanceWords(25, true) != "16 miles" || distanceWords(1.4, false) != "1 kilometer" {

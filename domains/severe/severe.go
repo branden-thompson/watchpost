@@ -7,6 +7,7 @@
 package severe
 
 import (
+	"github.com/branden-thompson/watchpost/platform/bucket"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"regexp"
 	"sort"
@@ -356,12 +357,14 @@ func Cap(rows []Row, n int) (kept []Row, total int) {
 	return rows, total
 }
 
-// ByTab splits rows into their tabs, order preserved.
+// ByTab splits rows into their tabs, order preserved. The walk itself is
+// bucket.ByIndex — the tty side does the same one over the same field, and
+// two copies of it is what metric D counts.
 func ByTab(rows []Row) [NumTabs][]Row {
 	var out [NumTabs][]Row
-	for _, r := range rows {
-		if r.Tab >= 0 && r.Tab < NumTabs {
-			out[r.Tab] = append(out[r.Tab], r)
+	for tab, idx := range bucket.ByIndex(rows, NumTabs, func(r Row) Tab { return r.Tab }) {
+		for _, i := range idx {
+			out[tab] = append(out[tab], rows[i])
 		}
 	}
 	return out

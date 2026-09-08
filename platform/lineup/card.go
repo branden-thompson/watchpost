@@ -149,45 +149,48 @@ func slots() [numSlots]slotRow {
 	}
 }
 
+// row is the one safe read of the slot registry (metric D, 2026-09-08).
+//
+// THREE ACCESSORS CARRIED THIS, not two: String, CountsAgainstMax and
+// textAtStandby each repeated the range guard and the same invariant, and a
+// fourth would have repeated it again. The duplicate detector found two of
+// them; the third differed only in the field it returned.
+//
+// A HOLE IN THE TABLE IS CAUGHT WHERE IT IS USED: a slot added to the enum
+// without a row beside it would otherwise be an unnamed card in the log and a
+// blank line in the rail, with nothing to say which slot it was.
+func (s Slot) row() (slotRow, bool) {
+	if s < 0 || s >= numSlots {
+		return slotRow{}, false
+	}
+	r := slots()[s]
+	if err := invariant.Check(r.label != "", "every slot in the enum has a row in the registry"); err != nil {
+		return slotRow{}, false
+	}
+	return r, true
+}
+
 // String is the slot's name as the Operator reads it.
 func (s Slot) String() string {
-	if s < 0 || s >= numSlots {
+	r, ok := s.row()
+	if !ok {
 		return ""
 	}
-	row := slots()[s]
-	// A HOLE IN THE TABLE IS CAUGHT WHERE IT IS USED: a slot added to the enum
-	// without a row beside it would otherwise be an unnamed card in the log and
-	// a blank line in the rail, with nothing to say which slot it was.
-	if err := invariant.Check(row.label != "", "every slot in the enum has a row in the registry"); err != nil {
-		return ""
-	}
-	return row.label
+	return r.label
 }
 
 // CountsAgainstMax reports whether this slot spends the burst's budget (DR-15).
 func (s Slot) CountsAgainstMax() bool {
-	if s < 0 || s >= numSlots {
-		return false
-	}
-	row := slots()[s]
-	if err := invariant.Check(row.label != "", "every slot in the enum has a row in the registry"); err != nil {
-		return false
-	}
-	return row.alertRead
+	r, ok := s.row()
+	return ok && r.alertRead
 }
 
 // textAtStandby reports whether this slot's words are composed as it nears the
 // air. Unexported: it is the card model's own rule, not a question anyone
 // outside asks.
 func (s Slot) textAtStandby() bool {
-	if s < 0 || s >= numSlots {
-		return false
-	}
-	row := slots()[s]
-	if err := invariant.Check(row.label != "", "every slot in the enum has a row in the registry"); err != nil {
-		return false
-	}
-	return row.textAtStandby
+	r, ok := s.row()
+	return ok && r.textAtStandby
 }
 
 // Origin is who put the card forward (DR-4).

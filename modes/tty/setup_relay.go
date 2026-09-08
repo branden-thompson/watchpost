@@ -95,19 +95,7 @@ func relayLangLabel(code string) string {
 
 // cycleRelayLang moves the picker one entry, wrapping at both ends.
 func cycleRelayLang(cur string, forward bool) string {
-	list := relayLangs()
-	at := 0
-	for i, l := range list { // bounded by the list (P10-02)
-		if l.code == cur {
-			at = i
-			break
-		}
-	}
-	step := 1
-	if !forward {
-		step = -1
-	}
-	return list[((at+step)%len(list)+len(list))%len(list)].code
+	return cycleIn(relayLangs(), func(l relayLang) string { return l.code }, cur, forward).code
 }
 
 func defaultRelayDwell() time.Duration { return 5 * time.Minute }
@@ -139,19 +127,7 @@ func relayDwellLabel(d time.Duration) string {
 // cycleRelayDwell moves the picker one entry, wrapping at both ends like every
 // other picker in the window.
 func cycleRelayDwell(cur time.Duration, forward bool) time.Duration {
-	list := relayDwells()
-	at := 0
-	for i, c := range list { // bounded by the list (P10-02)
-		if c.d == cur {
-			at = i
-			break
-		}
-	}
-	step := 1
-	if !forward {
-		step = -1
-	}
-	return list[((at+step)%len(list)+len(list))%len(list)].d
+	return cycleIn(relayDwells(), func(c relayDwell) time.Duration { return c.d }, cur, forward).d
 }
 
 // relayLines draws the group: the picker row and its support line.

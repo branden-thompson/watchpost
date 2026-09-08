@@ -192,3 +192,29 @@ func ClampList(s []string) []string {
 	}
 	return out
 }
+
+// SpokenList joins names the way a person reads them aloud: "a", "a and b",
+// "a, b, and c" — with the Oxford comma, which is a house rule and not a
+// stylistic accident.
+//
+// ONE OWNER, BECAUSE IT WAS TWO (metric D, 2026-09-08). `app.spokenList` and
+// `synth.joinAnd` were byte-identical apart from their names, and both feed the
+// SPOKEN output: the burst head and the provider-transition line on one side,
+// the fire report's sources and facts on the other. Nothing would have caught
+// them diverging — a comma policy changed in one place would simply have made
+// two reports read differently, in a medium nobody can re-read.
+//
+// It lives in plaintext because that is the package both sides already depend
+// on for text they are about to say, and because `modes/` may not import
+// `domains/` (architecture §1), so the shared home has to be under platform/.
+func SpokenList(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0]
+	case 2:
+		return names[0] + " and " + names[1]
+	}
+	return strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
+}

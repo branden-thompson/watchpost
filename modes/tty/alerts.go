@@ -40,10 +40,21 @@ func alertBlocks(o render.Opts, loc *snapshot.Location, w int) []string {
 // modalAlertTone: advisory #ACAE7D / warning #BE5454 text in modals
 // (UAT 28.3/28.4) - theme tokens on the raw-SGR path.
 func modalAlertTone(a snapshot.Alert) string {
+	return alertPair(a, render.AlertModalWarnFG, render.AlertModalAdvFG)
+}
+
+// alertPair picks the warning or advisory member of a token PAIR off the one
+// predicate (metric D, 2026-09-08).
+//
+// The foreground and the background were choosing independently, from copies of
+// the same three-line branch. They cannot disagree today, and the point is that
+// they cannot disagree TOMORROW either: the pairing is structural now rather
+// than a convention two functions happen to share.
+func alertPair(a snapshot.Alert, warn, adv render.Token) string {
 	if render.AlertIsWarning(a.Event, a.Severity) {
-		return render.Tok(render.AlertModalWarnFG)
+		return render.Tok(warn)
 	}
-	return render.Tok(render.AlertModalAdvFG)
+	return render.Tok(adv)
 }
 
 // formatAlertBody applies the mock's bullet rules to NWS alert prose:
@@ -139,10 +150,7 @@ func (d Dashboard) alertDetailsModal(o render.Opts) string {
 // alertModalBG is the tint an alert sits on — the modal's warning red or
 // advisory yellow — in [A] and in the dashboard module alike.
 func alertModalBG(a snapshot.Alert) string {
-	if render.AlertIsWarning(a.Event, a.Severity) {
-		return render.Tok(render.AlertModalWarnBG)
-	}
-	return render.Tok(render.AlertModalAdvBG)
+	return alertPair(a, render.AlertModalWarnBG, render.AlertModalAdvBG)
 }
 
 // alertDetailLines renders the FOCUSED alert's full record plus the paging

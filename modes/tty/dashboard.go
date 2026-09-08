@@ -459,9 +459,15 @@ type committedMsg struct {
 // (plan §2.5 tick predicate: tickNeeded).
 type tickMsg struct{}
 
-func tick() tea.Cmd {
-	return tea.Tick(300*time.Millisecond, func(time.Time) tea.Msg { return tickMsg{} })
+// tickEvery is the one way this model makes a clock (metric D, 2026-09-08).
+// TWO CLOCKS ARE CORRECT — 300 ms for the shimmer and ages, 50 ms for the
+// visualizer's bars, which the shimmer tick is far too slow to draw — so this
+// collapses how one is BUILT, not how many there are.
+func tickEvery(d time.Duration, m tea.Msg) tea.Cmd {
+	return tea.Tick(d, func(time.Time) tea.Msg { return m })
 }
+
+func tick() tea.Cmd { return tickEvery(300*time.Millisecond, tickMsg{}) }
 
 // tickNeeded is the predicate (PF-2, R2-23): true while a frame would
 // differ from the last one without any message arriving.
@@ -510,9 +516,7 @@ func (d Dashboard) armTick(cmd tea.Cmd) (tea.Model, tea.Cmd) {
 // there is something to draw — the shimmer tick is far too slow for bars.
 type vizTickMsg struct{}
 
-func vizTick() tea.Cmd {
-	return tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg { return vizTickMsg{} })
-}
+func vizTick() tea.Cmd { return tickEvery(50*time.Millisecond, vizTickMsg{}) }
 
 // Init implements tea.Model — asks the terminal for its background color
 // so the window tint tracks light/dark mode (UAT 10.2). The animation tick

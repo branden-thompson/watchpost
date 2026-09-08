@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: dupes dupes-selftest cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -102,6 +102,7 @@ gate-controls:
 	@./scripts/sync-go-studs.sh --self-test
 	@./scripts/quality/p10-unmatched_test.sh
 	@./scripts/quality/ledger-ratified.sh --self-test
+	@go run ./tools/dupes -self-test
 
 # The mutation corpus and the harness that reads it (06_docs/mutants, Go, behind
 # the `mutants` build tag so its ~140s does not land in `go test ./...` and thus
@@ -211,7 +212,7 @@ cache-clean:
 	@go clean -cache -testcache
 	@echo "cache-clean: build and test caches cleared"
 
-verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget mutant-check
+verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget dupes mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
@@ -262,6 +263,16 @@ MUTANT_POLICY ?= push
 # than carrying a second copy of it.
 mutant-policy:
 	@echo $(MUTANT_POLICY)
+
+# METRIC D: operations implemented more than once with no ratified reason.
+# The ledger is 06_docs/duplicates-ratified.md, and a reason in it is RATIFIED
+# by the HUM LEAD, never self-issued — the metric's own hardening, without which
+# D could be satisfied by writing a justification for every duplicate.
+dupes:
+	@go run ./tools/dupes
+
+dupes-selftest:
+	@go run ./tools/dupes -self-test
 
 # lint is golangci-lint (which runs staticcheck) as a BASELINE + RATCHET: this
 # tree's known findings are recorded once and anything else fails the build.

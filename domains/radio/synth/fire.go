@@ -4,10 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"math"
 	"strings"
 	"time"
+
+	"github.com/branden-thompson/watchpost/domains/radio/cast"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -41,7 +43,7 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 		return nil
 	}
 	place := ExpandStates(location)
-	notice := c.say("fire-report", "head", map[string]string{"Location": place, "Sources": joinAnd(fr.Sources)})
+	notice := c.say("fire-report", "head", map[string]string{"Location": place, "Sources": plaintext.SpokenList(fr.Sources)})
 	segs := []Segment{{Key: "fire:notice:" + contentKey(notice), Text: notice, Role: cast.Fire, Pause: firePause}} // keyed by content: the cache must never replay yesterday's feeds (REVIEW C1)
 
 	var body []string
@@ -136,7 +138,7 @@ func (c Composer) incidentSentence(fr FireReport, in snapshot.Incident, imperial
 	if in.PercentContained != nil {
 		facts = append(facts, fmt.Sprintf("is %.0f percent contained", *in.PercentContained))
 	}
-	data["Facts"] = joinAnd(facts)
+	data["Facts"] = plaintext.SpokenList(facts)
 	return c.say("fire-report", "incident", data)
 }
 
@@ -209,17 +211,4 @@ func satelliteWords(name string) string {
 		return "GOES-West"
 	}
 	return name
-}
-
-// joinAnd joins a list for speech: "a", "a and b", "a, b, and c".
-func joinAnd(items []string) string {
-	switch len(items) {
-	case 0:
-		return ""
-	case 1:
-		return items[0]
-	case 2:
-		return items[0] + " and " + items[1]
-	}
-	return strings.Join(items[:len(items)-1], ", ") + ", and " + items[len(items)-1]
 }

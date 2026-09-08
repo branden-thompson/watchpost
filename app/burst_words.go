@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/plaintext"
+
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -44,24 +46,12 @@ func burstAgencies(evs []globalfeed.Event) string {
 		seen[n] = true
 		names = append(names, n)
 	}
-	return spokenList(names)
+	return plaintext.SpokenList(names)
 }
 
 // spokenList joins names the way a person says a list: "A", "A and B",
 // "A, B, and C". Extracted at the second caller (the masthead's provider list,
 // F-24) rather than written twice.
-func spokenList(names []string) string {
-	switch len(names) {
-	case 0:
-		return ""
-	case 1:
-		return names[0]
-	case 2:
-		return names[0] + " and " + names[1]
-	}
-	return strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
-}
-
 // burstHead is the one opening of a multi-event burst: who declared what is
 // about to be read. "" when no source could be named, in which case the burst
 // simply starts with its first alert — a head that named nobody would be worse

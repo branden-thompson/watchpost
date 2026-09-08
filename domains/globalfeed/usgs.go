@@ -30,18 +30,14 @@ const (
 const usgsTTL = 5 * time.Minute
 
 // USGS reads the USGS significant-earthquakes summary feed (global, keyless).
-type USGS struct {
-	client *httpx.Client
-	base   string
-	memo   sourceMemo
-}
+type USGS struct{ jsonFeed }
 
 // NewUSGS builds the source; base "" is the production significant_week feed.
 func NewUSGS(client *httpx.Client, base string) *USGS {
 	if base == "" {
 		base = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_week.geojson"
 	}
-	return &USGS{client: client, base: base}
+	return &USGS{jsonFeed{client: client, base: base}}
 }
 
 func (u *USGS) Name() string { return "USGS" }
@@ -82,11 +78,7 @@ type usgsFeed struct {
 // Fetch reads the feed through the parse memo: the body comes from httpx
 // (cache/TTL/conditional GET as before); it is decoded only when changed.
 func (u *USGS) Fetch(ctx context.Context) ([]Event, error) {
-	return u.memo.events(func() ([]byte, bool, error) {
-		var body []byte
-		hdr, err := u.client.GetJSON(ctx, u.base, &body, httpx.TTL(usgsTTL)) // read-only slice (the GetText contract)
-		return body, hdr == nil, err
-	}, u.parse)
+	return u.fetch(ctx, u.base, usgsTTL, u.parse)
 }
 
 // parse decodes one body into events (pure; the memo calls it on change).

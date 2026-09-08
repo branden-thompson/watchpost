@@ -467,29 +467,35 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 // Neither writes when the value has not moved: closing a window you only looked
 // at should not re-scope the ticker or restart a rotation.
 func (d Dashboard) radiusApplyCmd() tea.Cmd {
-	set, mi := d.cfg.SetAlertRadius, d.setup.alertRadiusChoice()
-	if set == nil || mi == d.cfg.AlertRadiusMi {
-		return nil
-	}
-	return func() tea.Msg { set(mi); return nil }
+	// No validity predicate: 0 is "All (global)", a real choice (0.12.0).
+	return applyIfChanged(d.cfg.SetAlertRadius, d.setup.alertRadiusChoice(), d.cfg.AlertRadiusMi, nil)
 }
 
-func (d Dashboard) relayApplyCmd() tea.Cmd {
-	set, dwell := d.cfg.SetRelayDwell, d.setup.relayDwell
-	if set == nil || dwell <= 0 || dwell == d.cfg.RelayDwell {
+// applyIfChanged is the write-on-close shape THREE settings share: do nothing
+// without a setter, do nothing for an invalid value, do nothing when the value
+// has not moved — otherwise write it (metric D, 2026-09-08).
+//
+// IT COVERS THREE OF THE FIVE *ApplyCmd, NOT ALL FIVE, and that is deliberate.
+// castApplyCmd and uiApplyCmd return a MESSAGE and handle a save error; forcing
+// them through this would mean a second return path and a nil-able error, which
+// is more shape than the duplication costs.
+func applyIfChanged[T comparable](set func(T), next, cur T, valid func(T) bool) tea.Cmd {
+	if set == nil || next == cur || (valid != nil && !valid(next)) {
 		return nil
 	}
-	// The rotation applies at once, not at the next launch: a listener who
-	// shortens it is usually shortening it to watch it work.
-	return func() tea.Msg { set(dwell); return nil }
+	return func() tea.Msg { set(next); return nil }
+}
+
+// The rotation applies at once, not at the next launch: a listener who shortens
+// it is usually shortening it to watch it work.
+func (d Dashboard) relayApplyCmd() tea.Cmd {
+	return applyIfChanged(d.cfg.SetRelayDwell, d.setup.relayDwell, d.cfg.RelayDwell,
+		func(v time.Duration) bool { return v > 0 })
 }
 
 func (d Dashboard) relayLangApplyCmd() tea.Cmd {
-	set, lang := d.cfg.SetRelayLang, d.setup.relayLang
-	if set == nil || lang == "" || lang == d.cfg.RelayLang {
-		return nil
-	}
-	return func() tea.Msg { set(lang); return nil }
+	return applyIfChanged(d.cfg.SetRelayLang, d.setup.relayLang, d.cfg.RelayLang,
+		func(v string) bool { return v != "" })
 }
 
 // applyOnCloseCmds is THE list of what closing the window writes. Both exits

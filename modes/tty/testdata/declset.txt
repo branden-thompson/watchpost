@@ -163,6 +163,9 @@ func (*Dashboard).advanceTicker
 func (*Dashboard).advanceTickerCategory
 func (*Dashboard).parkScroll
 func (*Dashboard).setTicker
+func (*bodyMemo).stats
+func (*memoStats).counts
+func (*modalMemo).stats
 func (Dashboard).Init
 func (Dashboard).Update
 func (Dashboard).View
@@ -424,8 +427,10 @@ func agoWords
 func alertBlocks
 func alertClock
 func alertModalBG
+func alertPair
 func alertRecordLines
 func anyFocused
+func applyIfChanged
 func blockHeight
 func bucketSevere
 func buoyNote
@@ -443,6 +448,7 @@ func compass
 func counterCols
 func currentRow
 func currentlyGrid
+func cycleIn
 func cycleRelayDwell
 func cycleRelayLang
 func dashIfEmpty
@@ -568,6 +574,7 @@ func statusRank
 func stepRow
 func swellRows
 func tick
+func tickEvery
 func tickerBullet
 func tickerCatBG
 func tickerCatOrder
@@ -637,6 +644,7 @@ type helpGroup
 type issue
 type layoutRows
 type marineCell
+type memoStats
 type modal
 type modalKey
 type modalMemo

@@ -445,7 +445,6 @@ func settingsRoles
 func sharesAnOutput
 func sleepCtx
 func snapshotBytes
-func spokenList
 func spokenName
 func spokenWhen
 func spokenWindow
