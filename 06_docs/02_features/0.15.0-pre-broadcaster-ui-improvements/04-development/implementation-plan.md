@@ -357,9 +357,24 @@ to clear it, reproducing the reported status exactly.  **Cheap disproof before a
 *(FR-6.4 moved to B3, FR-6.5 to B5.)*
 
 **Exit conditions**
-- FR-6.1, 6.2, 6.3 landed.  **FR-6.6 (F-43) carries a timebox set at entry and a written disposition**
-  — the "or dispositioned in writing" escape is removed from the others.
+- FR-6.1, 6.2, 6.3 landed.  ~~**FR-6.6 (F-43) carries a timebox set at entry and a written
+  disposition**~~ — **RULED 2026-09-08, and the timebox was never needed.**  HUM LEAD: *"if we have no
+  reproduction this far — after lots of UAT sessions — let's log it as something that was observed
+  once, but cannot be chased until we have a reproduction.  Otherwise we're just chasing vapors."*
+  F-43 is **closed unexplained** on the evidence, not on the severity.  The trap stays armed
+  (`app/tone_promise_test.go`, and `read_script.go:162` traces `read:gaveup:after-tone`), and the
+  reopen trigger is **a trace line, not a memory**.
 - FR-7.1 … FR-7.4 ruled, and the rulings written **where the decision lives**, not only in a report.
+  **FR-7.1 DONE:** `app/release.go` is ruled OUT of the provider seam as a named exception, and
+  bounded to a single check at startup.  The rule is in `architecture.md §1.1` — the section a new
+  feed's author reads — because F-3's risk was PRECEDENT and prose in a report does not stop a
+  copy.  F-3 named `extending.md` as the home; that file does not exist, and creating a second place
+  for the same rule is how the first one goes stale.  **The bound is pinned and the pin was planted
+  against**: restoring the poller (13 requests) and deleting the opt-out guard (1 request) are both
+  CAUGHT.  *The pin's FIRST version was vacuous* — it claimed something about `start` while calling
+  `checkAt`, and both plants walked past it; `start` was untestable because its URL was a const, so
+  the const became an overridable field.  A bound nobody can reach in a test is a bound nobody has
+  watched fail.
 - **FR-7.5 produces an exposure statement covering the tree, the git history, the published tags, the
   README and its images, and `dist/watchpost-*`.**  Revision 1 scoped it to `06_docs`.  The categories
   are enumerated — identity, location, host, credential, internal URL, path, **artifact, image** — and

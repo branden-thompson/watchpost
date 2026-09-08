@@ -44,6 +44,32 @@ graph TB
 
 **The one enforced arrow:** `modes/*` imports `platform/snapshot` and never any `domains/*` package (import-direction lint, Makefile `verify`). Everything M5 needs is structural.
 
+### 1.1 What is a provider, and what is not (FR-7.1, HUM LEAD 2026-09-08)
+
+**A `snapshot.Provider` is location-scoped hazard data that merges into the snapshot.** The interface
+says so: `ID()`, `Domains() []string`, `Fetch(ctx, FetchReq) (Fragment, error)`. If a source has no
+domain, no location and no fragment, it is not a provider, and putting it behind the seam means
+inventing all three — which makes the seam mean less rather than more.
+
+**A network call is not a provider merely for being a network call.** The named exception today is
+`app/release.go`: it asks GitHub whether a newer release of the app exists, and says so or says
+nothing. It is opt-in (`update_check`), it is redacted like any other fetch, and it appears in `[S]`'s
+host table because it goes through `httpx` — which is what made it *look* like a feed.
+
+**The exception is bounded, and the bound is the point.** It asks **once, at startup**, and is then
+done. It used to poll hourly, and that poller — a goroutine, an interval, a cancellation path — was
+the shape of a provider on something that is not one. Deleting it put the ruling in the code instead
+of only in this paragraph, and retired the P10 exemption that the unbounded loop had required.
+`TestTheReleaseCheckAsksExactlyOnceAndOptingOutAsksNever` pins both halves.
+
+**What this gives up, recorded so it is weighed rather than rediscovered:** a dashboard left running
+for weeks will not notice a release published while it was up. Accepted because acting on the notice
+needs a restart anyway. If it ever proves wrong the fix is a re-check when `[S]` opens — not a timer.
+
+**Before adding another non-provider fetch:** say here why it is not hazard data, state its bound, and
+make that bound reachable by a test. F-3 was filed because this file is *"the precedent six new feeds
+will copy"*, and a rule nobody writes down is copied wrong.
+
 ## 2. Snapshot contract (platform/snapshot)
 
 ```go

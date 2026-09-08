@@ -42,7 +42,6 @@ const recentPublishCoalesce
 const recentStartDelay
 const recentStartStagger
 const releaseAPI
-const releaseEvery
 const scheduleTick
 const systemVoice
 const testEventLife
