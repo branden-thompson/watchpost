@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -844,11 +845,9 @@ func (d *radioDeck) debugLog(line string) { radioDebugLog(line) }
 // so the body lives here and the deck method delegates — one writer, two
 // callers, rather than two implementations of the same file format.
 func radioDebugLog(line string) {
-	path := os.Getenv("WATCHPOST_DEBUG_RADIO")
-	if path == "" {
-		return
+	if path := radioDebugPath(); path != "" {
+		writeRadioDebug(path, line)
 	}
-	writeRadioDebug(path, line)
 }
 
 // radioDebugOn reports whether the diagnostic is enabled, so a caller on a
@@ -858,9 +857,81 @@ func radioDebugLog(line string) {
 // that concatenation ran on every takeover whether or not anybody was
 // collecting the log. The diagnostic is off by default, so the allocation was
 // pure cost on the one path M4 measures.
-func radioDebugOn() bool { return os.Getenv("WATCHPOST_DEBUG_RADIO") != "" }
+func radioDebugOn() bool { return os.Getenv(radioDebugEnv) != "" }
 
+const (
+	radioDebugEnv = "WATCHPOST_DEBUG_RADIO"
+
+	// radioDebugMax is the size one log may reach before it is rotated. A 24/7
+	// process writing three to ten lines per event needs a ceiling, and eight
+	// mebibytes is days of them.
+	radioDebugMax = 8 << 20
+
+	// radioDebugNameMax bounds the name the environment may choose.
+	radioDebugNameMax = 32
+)
+
+// radioDebugName is the file name the environment asked for, and "" when what
+// it asked for is not a name.
+//
+// A NAME, NOT A PATH (FR-9.2). The variable took a path and the writer appended
+// to it, so an unvalidated append-anywhere file write was one environment
+// variable away on a process that runs all day — and the plan's first revision
+// had it ON BY DEFAULT. The variable now picks WHICH log under the cache root,
+// which is the only part of the decision a caller has any business making.
+// Anything else falls back to the default name rather than failing, because a
+// diagnostic that refuses to start is a diagnostic nobody collects.
+//
+// The rule is debugAddr's, one file down: the environment may choose the
+// harmless half of the decision and nothing else.
+func radioDebugName(v string) string {
+	if v == "" || v == "1" || len(v) > radioDebugNameMax {
+		return "radio"
+	}
+	for _, r := range v { // bounded by the name (P10-02)
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-', r == '_':
+		default:
+			return "radio" // a separator, an upper case, a dot: not a name
+		}
+	}
+	return v
+}
+
+// radioDebugPath is where the diagnostic goes, or "" when it is off:
+// <OS cache dir>/watchpost/debug/<name>.log.
+//
+// UNDER THE CACHE ROOT, with the other things this app writes and deletes
+// freely. "" when the OS gives no cache directory, which turns the diagnostic
+// off rather than guessing at a location.
+func radioDebugPath() string {
+	v, ok := os.LookupEnv(radioDebugEnv)
+	if !ok || v == "" {
+		return ""
+	}
+	dir := userCacheSubdir("debug")
+	if dir == "" {
+		return ""
+	}
+	return filepath.Join(dir, radioDebugName(v)+".log")
+}
+
+// writeRadioDebug appends one timestamped line, rotating the log once it has
+// grown past its ceiling.
+//
+// ONE GENERATION. The previous log is kept as .1 and the one before it is
+// dropped: a diagnostic is read while the thing it describes is still fresh,
+// and keeping more is disk nobody asked for on a process that runs all day.
+//
+// 0600 ON BOTH THE FILE AND THE DIRECTORY. It carries station names, mount
+// URLs and the listener's own locations.
 func writeRadioDebug(path, line string) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return
+	}
+	if fi, err := os.Stat(path); err == nil && fi.Size() >= radioDebugMax {
+		_ = os.Rename(path, path+".1") // best effort: a failed rotation must not stop the log
+	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return

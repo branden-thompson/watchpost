@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -71,8 +70,7 @@ func (v *tonedVoice) tone(cast.Class) time.Duration { return v.dur }
 // is otherwise SILENT, and placing it took a reconstruction from a UAT report.
 // The timeline carries the line now.
 func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
-	log := filepath.Join(t.TempDir(), "radio.log")
-	t.Setenv("WATCHPOST_DEBUG_RADIO", log)
+	log := radioDebugTo(t, "1")
 
 	v := &tonedVoice{dur: 300 * time.Millisecond}
 	nar := testDirector(v, nil)

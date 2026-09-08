@@ -317,9 +317,13 @@ against its 500-row cap. A running dashboard writes a diagnostic dump — heap, 
 threadcreate profiles with `counters.json` — under the cache directory's `profiles/` on
 `kill -USR1 <pid>` (macOS/Linux; on Windows use `curl -X POST .../debug/dump`); dumps are at least a minute apart and
 the newest twelve are kept. `watchpost report <loc> --verbose` appends one request-counter line per
-host. `WATCHPOST_DEBUG_RADIO=<file>` appends one line per radio engine state change, one per
-synthesized segment as it reaches the air, and one when a cycle ends (the voice's error, if that is
-why) — the first thing to send when a relay "plays nothing" or a broadcast ends before its sign-off.
+host. `WATCHPOST_DEBUG_RADIO=1` writes one line per radio engine state change, one per
+synthesized segment as it reaches the air, one when a cycle ends (the voice's error, if that is why),
+and one when a read is ended for not finishing — the first thing to send when a relay "plays nothing"
+or a broadcast ends before its sign-off. It lands at `<cache>/watchpost/debug/radio.log`, mode 0600,
+rotated once past 8 MiB. **The variable names the LOG, not a path**: set it to a lower-case name
+(`WATCHPOST_DEBUG_RADIO=soak`) to keep a run's log beside the others, and anything that is not a name
+falls back to `radio`.
 
 ## Building from source
 

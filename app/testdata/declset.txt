@@ -30,6 +30,9 @@ const narrateRead
 const numNarrationClasses
 const publishCoalesce
 const pumpBacklog
+const radioDebugEnv
+const radioDebugMax
+const radioDebugNameMax
 const readingHoldMax
 const readingHoldPerRune
 const recentAlertsEvery
@@ -399,7 +402,9 @@ func programmeReturnLine
 func providerEndpoints
 func pruneDumps
 func radioDebugLog
+func radioDebugName
 func radioDebugOn
+func radioDebugPath
 func reachMiOf
 func readScript
 func recentTiers
