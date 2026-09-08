@@ -377,12 +377,15 @@ func TestTheFocusMarkIsTintedByTheListsOwner(t *testing.T) {
 func TestASecondSilenceReportDoesNotDisturbTheOpenWindow(t *testing.T) {
 	d := faultDash(t)
 
-	// The listener walks to the second way out and the clock has spent a second.
-	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	d = m.(Dashboard)
+	// The clock spends a second and THEN the listener walks to the second way
+	// out. That order, and not the other one: moving the cursor holds the clock
+	// (FR-6.4), so a fixture that pressed the key first would have a clock that
+	// cannot spend anything and would prove nothing about a second report.
 	now := time.Now()
 	d, _ = d.stepRelayFault(now)
 	d, _ = d.stepRelayFault(now.Add(time.Second))
+	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	d = m.(Dashboard)
 	if d.relayFault.focus != 1 || d.relayFault.left != relayFaultSeconds-1 {
 		t.Fatalf("the fixture must have a moved cursor and a spent second, got focus=%d left=%d",
 			d.relayFault.focus, d.relayFault.left)
@@ -394,6 +397,10 @@ func TestASecondSilenceReportDoesNotDisturbTheOpenWindow(t *testing.T) {
 	after := m2.(Dashboard)
 	if after.relayFault.focus != 1 {
 		t.Errorf("a second report moved the cursor to %d; the listener's arrow press was undone", after.relayFault.focus)
+	}
+	if !after.relayFault.held {
+		t.Errorf("a second report released the hold the listener's arrow press put on the clock: " +
+			"the window is counting down again at someone who is mid-choice")
 	}
 	if after.relayFault.left != relayFaultSeconds-1 {
 		t.Errorf("a second report restarted the clock at %d; it can never reach zero and the fall-through never fires",
@@ -703,5 +710,44 @@ func TestTheFocusedWayOutIsAlwaysOnScreen(t *testing.T) {
 			next, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 			d = next.(Dashboard)
 		}
+	}
+}
+
+// THE CLOCK STOPS WHEN THE LISTENER STARTS CHOOSING (FR-6.4).
+//
+// The window acts for you after ten seconds, and what it acts on is the only
+// station-tuning control in the app. Ten seconds is enough to read four lines
+// and not enough to read them and decide — so the listener who IS deciding is
+// exactly the one it takes the choice away from, mid-keystroke.
+//
+// MVS-D-76 IS UNTOUCHED. Doing nothing still falls through at ten seconds, and
+// still through the one door that enter uses. What changes is that pressing a
+// key is no longer doing nothing.
+func TestMovingTheCursorHoldsTheRelayFaultClock(t *testing.T) {
+	d := dash(t).(Dashboard)
+	d = d.openRelayFault(RelaySilentMsg{Candidates: []RelayCandidate{{Label: "KEC62", Key: "a"}}})
+	d = d.handleRelayFaultNav("nav-down")
+
+	now := time.Now()
+	for i := range relayFaultSeconds + 5 {
+		var out bool
+		d, out = d.stepRelayFault(now.Add(time.Duration(i+1) * time.Second))
+		if out {
+			t.Fatalf("the window took the fall-through %d seconds after the listener moved the "+
+				"cursor: it acted for someone who was in the middle of choosing", i+1)
+		}
+	}
+
+	// AND AN UNTOUCHED WINDOW STILL FALLS THROUGH, or this removed the ruling
+	// instead of narrowing it.
+	idle := dash(t).(Dashboard).openRelayFault(RelaySilentMsg{Candidates: []RelayCandidate{{Label: "KEC62", Key: "a"}}})
+	var ran bool
+	// relayFaultSeconds+1 steps: the first sets the clock's mark and spends
+	// nothing, which is what makes the countdown wall-time rather than ticks.
+	for i := range relayFaultSeconds + 1 {
+		idle, ran = idle.stepRelayFault(now.Add(time.Duration(i+1) * time.Second))
+	}
+	if !ran {
+		t.Error("an untouched window no longer falls through: MVS-D-76 was removed, not narrowed")
 	}
 }

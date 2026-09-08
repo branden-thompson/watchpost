@@ -198,6 +198,12 @@ type modalKey struct {
 	// the countdown counted down to a fall-through that fired while the display
 	// still read <10>. See the case below.
 	faultFocus, faultLeft int
+
+	// faultHeld is the clock's hold (FR-6.4). The footer reads "Auto Close
+	// held" instead of a number, so it is a third thing the frame shows that
+	// moves — and F-30's guard caught its absence the moment it was added,
+	// which is what that guard is for.
+	faultHeld bool
 	// debugFocus is the ctrl+d window's cursor — the same rule, and it had the
 	// same hole: its arrows moved the model and the memo replayed the frame.
 	debugFocus int
@@ -263,7 +269,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		// underneath it worked perfectly — the arrows moved the cursor, the
 		// clock ran down, the fall-through fired on time, and the DISPLAY never
 		// changed once (UAT 2026-09-05, three rounds).
-		k.faultFocus, k.faultLeft = d.relayFault.focus, d.relayFault.left
+		k.faultFocus, k.faultLeft, k.faultHeld = d.relayFault.focus, d.relayFault.left, d.relayFault.held
 	}
 	return k
 }
