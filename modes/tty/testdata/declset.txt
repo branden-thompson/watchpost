@@ -132,6 +132,7 @@ const rowTheme
 const rowToggle
 const rowUnitsImperial
 const rowUnitsMetric
+const secondGap
 const setupOneColWidth
 const setupRowCount
 const severeBreakingWindow
@@ -441,6 +442,7 @@ func clockRow
 func compass
 func counterCols
 func currentRow
+func currentlyGrid
 func cycleRelayDwell
 func cycleRelayLang
 func dashIfEmpty

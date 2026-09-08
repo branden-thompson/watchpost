@@ -45,14 +45,14 @@ func (d Dashboard) detailLines() []string {
 	// divider column. 15 = the detailRow chrome left of the content.
 	cw := min(o.Width, d.modalWidth()) - 7 - detailPrefixW
 	lines := []string{""}
-	lines = append(lines, d.currentlyRows(o, loc)...)
+	lines = append(lines, d.currentlyRows(o, loc, cw)...)
 	lines = append(lines, detailRow("", ""))
 	lines = append(lines, d.todayRows(o, loc, cw)...)
 	lines = append(lines, detailRow("", ""))
 	lines = append(lines, d.forecastRows(o, loc, cw)...)
 	if loc.Marine != nil {
 		lines = append(lines, detailRow("", ""))
-		lines = append(lines, maritimeRows(o, loc.Marine, locTZ(loc), d.now())...) // coastal locations only (UAT 29)
+		lines = append(lines, maritimeRows(o, loc.Marine, locTZ(loc), d.now(), cw)...) // coastal locations only (UAT 29)
 	}
 	lines = append(lines, detailRow("", ""))
 	lines = append(lines, fireRows(o, loc, d.now(), d.fireBoldMW(), d.cfg.FireRadiusKm, d.cfg.FireIncidentRadiusKm, cw)...) // B5: fire is another alert kind
@@ -83,7 +83,7 @@ func gridRow(label, primary, secondary string) string {
 
 // currentlyRows: condition + temp/trend; feels-like + delta; humidity
 // aligned to the HIGH/LOW column.
-func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location) []string {
+func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location, cw int) []string {
 	h := loc.Harmonized
 	temp := render.Tint(strings.TrimSpace(o.Temp(h.Temp)), render.Tok(render.TextBright)) + o.TrendGlyph(trend(*loc))
 	out := []string{detailRow("CURRENTLY", gridRow(prettyCond(h.Condition), temp, ""))}
@@ -100,29 +100,38 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location) []string
 	if h.Source.Provider != "" && render.PlainLine(h.Source.ModelOrStation) == "" {
 		out = append(out, detailRow("", render.Italic("Data from NWS hourly grid forecast for this location")))
 	}
-	feels, hum := "", ""
+	// THE SECOND LABEL IS A COLUMN, not a string with spaces in it (0.15.0).
+	//
+	// These rows carry two label/value pairs each — feels-like and humidity,
+	// station and distance — and the second pair was built as
+	// "Humidity  :  %.0f%%", a hand-laid column inside a cell. The two rows
+	// lined up only because "Humidity  :" and "Distance  :" happen to be the
+	// same length; a third pair of a different width would have gone unnoticed
+	// until someone read it.
+	var grid []render.StatusRow
 	if h.Feels != nil && h.Temp != nil {
-		feels = fmt.Sprintf("%s   (%+.0f°F)", strings.TrimSpace(o.Temp(h.Feels)), (*h.Feels-*h.Temp)*9/5)
-	}
-	if h.HumidityPct != nil {
-		hum = fmt.Sprintf("Humidity  :  %.0f%%", *h.HumidityPct)
-	}
-	if feels != "" || hum != "" {
-		label := "Feels Like"
-		if feels == "" {
-			label = ""
+		hum := []string{"", ""}
+		if h.HumidityPct != nil {
+			hum = []string{"Humidity  :", secondGap + fmt.Sprintf("%.0f%%", *h.HumidityPct)}
 		}
-		out = append(out, detailRow("", gridRow(label, feels, hum)))
+		grid = append(grid, render.StatusRow{Cells: append([]string{"Feels Like",
+			fmt.Sprintf("%s   (%+.0f°F)", strings.TrimSpace(o.Temp(h.Feels)), (*h.Feels-*h.Temp)*9/5)}, hum...)})
+	} else if h.HumidityPct != nil {
+		grid = append(grid, render.StatusRow{Cells: []string{"", "", "Humidity  :", secondGap + fmt.Sprintf("%.0f%%", *h.HumidityPct)}})
 	}
 	// UAT 60.2: the observing station and its distance live here at every
 	// width — the table's WX STN / DIST columns surface them only when there
 	// is room; drilling in one level always reaches them.
-	if st := render.PlainLine(h.Source.ModelOrStation); st != "" { // a provider name never addresses the terminal (NFR-6, R5-C-05)
-		dist := ""
-		if d := strings.TrimSpace(o.Distance(h.Source.DistanceKm)); d != "" {
-			dist = "Distance  :  " + d
+	st := render.PlainLine(h.Source.ModelOrStation) // a provider name never addresses the terminal (NFR-6, R5-C-05)
+	if st != "" {
+		dist := []string{"", ""}
+		if v := strings.TrimSpace(o.Distance(h.Source.DistanceKm)); v != "" {
+			dist = []string{"Distance  :", secondGap + v}
 		}
-		out = append(out, detailRow("", gridRow("Station   :", st, dist)))
+		grid = append(grid, render.StatusRow{Cells: append([]string{"Station   :", st}, dist...)})
+	}
+	out = append(out, currentlyGrid(o, grid, cw)...)
+	if st != "" {
 		// NOT YOUR LOCAL STATION (HUM LEAD, UAT 2026-09-05).
 		//
 		// Lone Pine read 86 °F at half past six because the observation came
@@ -137,6 +146,31 @@ func (d Dashboard) currentlyRows(o render.Opts, loc *snapshot.Location) []string
 		if d := h.Source.DistanceKm; d != nil && *d > render.StationFarKM {
 			out = append(out, detailRow("", render.Italic(render.Tint("This is not your local station - actual temp may vary", render.Tok(render.NameWarning)))))
 		}
+	}
+	return out
+}
+
+// secondGap is the air between the second pair's label and its value. It lives
+// in the CELL because every column here has the report's own geometry and takes
+// no gutter of its own.
+const secondGap = "  "
+
+// currentlyGrid draws CURRENTLY's two-pair rows: the report's own label column
+// (colVal), a value column that reaches the column every secondary starts at
+// (forecastHiLoCol), and the second pair beyond it.
+//
+// GUTTER 0: those two columns are the report's, shared with every other
+// section, so the gaps are in the widths rather than in a uniform gutter.
+func currentlyGrid(o render.Opts, rows []render.StatusRow, cw int) []string {
+	cols := []render.StatusColumn{
+		{Width: colVal, NoGutter: true},                   // the row's name
+		{Width: forecastHiLoCol - colVal, NoGutter: true}, // its value
+		{NoGutter: true},                                  // the second name
+		{NoGutter: true},                                  // and its value
+	}
+	out := make([]string, 0, len(rows))
+	for _, l := range o.DetailTable(cols, rows, cw-detailRailGutter, 0) { // bounded by the rows (P10-02)
+		out = append(out, detailRow("", l))
 	}
 	return out
 }

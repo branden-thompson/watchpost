@@ -258,7 +258,7 @@ func TestTheCardWarnsWhenTheStationIsNotLocal(t *testing.T) {
 			d.width, d.height = 133, 44
 			loc := &snapshot.Location{Label: "Lone Pine, CA"}
 			loc.Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: "KO26", DistanceKm: tc.km}
-			got := stripANSITest(strings.Join(d.currentlyRows(d.opts(), loc), "\n"))
+			got := stripANSITest(strings.Join(d.currentlyRows(d.opts(), loc, 65), "\n"))
 			if has := strings.Contains(got, note); has != tc.want {
 				t.Errorf("note present=%v, want %v:\n%s", has, tc.want, got)
 			}
@@ -300,7 +300,7 @@ func TestTheCardSaysWhenTheNumberIsFromTheGridForecast(t *testing.T) {
 			loc := &snapshot.Location{Label: "Lone Pine, CA"}
 			loc.Harmonized.Temp = f64ptr(15)
 			loc.Harmonized.Source = snapshot.SourceInfo{Provider: "nws", ModelOrStation: tc.station, DistanceKm: tc.km}
-			got := stripANSITest(strings.Join(d.currentlyRows(d.opts(), loc), "\n"))
+			got := stripANSITest(strings.Join(d.currentlyRows(d.opts(), loc, 65), "\n"))
 			if has := strings.Contains(got, gridNote); has != tc.wantGrid {
 				t.Errorf("grid note present=%v, want %v:\n%s", has, tc.wantGrid, got)
 			}
