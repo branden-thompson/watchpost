@@ -37,17 +37,23 @@ type FireReport struct {
 // WHOLE DAYS, and never "0 days": a fire discovered this morning reads "in the
 // last day", which is what a listener means by it.
 func oldestIncidentWords(in []snapshot.Incident, now time.Time) string {
-	oldest := 0
+	// dated IS THE POINT, and its absence was a defect (red team, 2026-09-08).
+	// Without it a list where NO incident carries a discovery time fell through
+	// to oldest == 0 and spoke "reported in the last day" — a freshness claim
+	// about data that has no date at all, in a medium nobody can re-read. The
+	// comment above already promised this behaviour; the code did not have it.
+	oldest, dated := 0, false
 	for _, i := range in {
 		if i.Discovered.IsZero() {
 			continue // an undated incident cannot widen a window it never entered
 		}
+		dated = true
 		if d := int(now.Sub(i.Discovered).Hours() / 24); d > oldest {
 			oldest = d
 		}
 	}
-	if len(in) == 0 {
-		return ""
+	if len(in) == 0 || !dated {
+		return "" // the sentence ends after the radius rather than claiming a window
 	}
 	if oldest <= 1 {
 		return "day"

@@ -112,3 +112,36 @@ func join(segs []Segment) string {
 	}
 	return strings.Join(out, "\n")
 }
+
+// A FRESHNESS WINDOW IS NOT CLAIMED WITHOUT A DATE (red team, 2026-09-08).
+//
+// oldestIncidentWords fell through to "day" when NO incident carried a
+// discovery time — so the read said "reported in the last day" about data that
+// has no date at all. WFIGS's FireDiscoveryDateTime is nullable, so this is
+// reachable, and it is spoken output: a listener cannot go back and check.
+//
+// The function's own comment already promised this behaviour. The code did not
+// have it, and no test asked.
+func TestAnUndatedIncidentListClaimsNoFreshnessWindow(t *testing.T) {
+	now := time.Now()
+	f := func(v float64) *float64 { return &v }
+	fr := FireReport{Known: true, RadiusKm: 25, IncidentRadiusKm: 50,
+		Sources: []string{"the National Interagency Fire Center"},
+		State: snapshot.FireState{AsOf: now, Incidents: []snapshot.Incident{
+			{Name: "ALPHA", Source: snapshot.SourceInfo{DistanceKm: f(30)}}, // no Discovered
+			{Name: "BRAVO", Source: snapshot.SourceInfo{DistanceKm: f(40)}}, // no Discovered
+		}}}
+	got := join(std.FireSegments("Oceanside, CA", fr, true, now))
+	if strings.Contains(got, "in the last") {
+		t.Errorf("no incident is dated, so no window may be claimed:\n%s", got)
+	}
+	if !strings.Contains(got, "There are currently 2 named incidents within a 31 mile radius of your area.") {
+		t.Errorf("the sentence must still name the count and the radius, and simply stop:\n%s", got)
+	}
+
+	// ONE DATED INCIDENT IS ENOUGH to state a window, and it is that one's age.
+	fr.State.Incidents[1].Discovered = now.Add(-72 * time.Hour)
+	if got := join(std.FireSegments("Oceanside, CA", fr, true, now)); !strings.Contains(got, "reported in the last 3 days") {
+		t.Errorf("one dated incident sets the window:\n%s", got)
+	}
+}

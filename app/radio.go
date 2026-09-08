@@ -501,7 +501,7 @@ func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voic
 	asm := snapshot.NewAssembler([]snapshot.LocationRef{ref}, []string{d.nws.ID()})
 	for _, kind := range []snapshot.FetchKind{snapshot.KindObs, snapshot.KindAlerts} {
 		if frag, err := d.nws.Fetch(ctx, snapshot.FetchReq{Kind: kind, Locations: []snapshot.LocationRef{ref}}); err == nil {
-			asm.Apply(frag, snapshot.Keys([]snapshot.LocationRef{ref}))
+			asm.Apply(frag, nil) // a read-driven fetch, not the cycle that answers the row (see pipelines.go)
 		}
 	}
 	snap := asm.Snapshot()

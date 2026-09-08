@@ -261,7 +261,13 @@ func (rp *recentPipeline) hydrateHourly(ref snapshot.LocationRef) {
 			continue
 		}
 		if frag, err := pr.Fetch(rp.ctx, snapshot.FetchReq{Kind: snapshot.KindForecastHourly, Locations: []snapshot.LocationRef{ref}}); err == nil {
-			rp.asm.Apply(frag, snapshot.Keys([]snapshot.LocationRef{ref}))
+			// NO ASKED SET: this is the Details modal's supplementary HOURLY fetch, a
+			// different endpoint from the obs/forecast cycle that answers "is weather
+			// coming for this row". Stamping here let the hourly response arrive first
+			// and flip the row out of loading while Harmonized and Daily were still
+			// empty — a flash of "n/a" for data that was on its way (red team,
+			// 2026-09-08). The scheduler stamps it on the cycle that actually answers.
+			rp.asm.Apply(frag, nil)
 		}
 	}
 	rp.publish()
