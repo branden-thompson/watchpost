@@ -31,17 +31,62 @@ var ciOnly = map[string]string{
 }
 
 // verifyOnly are gates a local `make verify` runs that CI does not, with the
-// reason and — where it is a decision rather than a fact — who owes it.
+// reason. Empty today: mutant-check was the last one, and it runs per push.
 //
-// THIS IS A HOLE, NOT A DESIGN, and it is written down so it is visible rather
-// than discovered. A PR can merge today with a survived mutant, because the
-// strongest gate in this repository runs only where somebody remembers to run
-// it.
-var verifyOnly = map[string]string{
-	"mutant-check": "COST DECISION, HUM LEAD, pending: 171 mutants take 261 s on twelve cores here, " +
-		"which is roughly fifteen to twenty minutes on a four-core runner — per push. Running it " +
-		"per-push is correct on the merits and expensive on the clock; running it nightly leaves a " +
-		"window where a survived mutant is merged.",
+// A reason is not a silencer — a row for a gate that runs in both fails, and so
+// does one for a gate that runs in neither.
+var verifyOnly = map[string]string{}
+
+// mutantModes are the schedules the mutant corpus can be put on.
+//
+// ALL THREE ARE WIRED AT ONCE, whichever is chosen (HUM LEAD, 2026-09-08):
+// "I want any choice to be non-destructive... vs. simply flipping a switch."
+// So the workflow carries every mode's condition and the Makefile carries one
+// word, and this test fails if a mode's path is ever removed to make room for
+// another — which is what would turn the next switch back into a rewrite.
+var mutantModes = []string{"push", "nightly", "label"}
+
+// THE SWITCH IS A WORD, AND STAYS ONE.
+func TestTheMutantPolicyIsASwitchAndNotARewrite(t *testing.T) {
+	mk := read(t, "../../Makefile")
+	ci := read(t, "../../.github/workflows/ci.yml")
+
+	m := regexp.MustCompile(`(?m)^MUTANT_POLICY \?= (\w+)`).FindStringSubmatch(mk)
+	if m == nil {
+		t.Fatal("the Makefile declares no MUTANT_POLICY: the decision has gone back into the workflow")
+	}
+	if !contains(mutantModes, m[1]) {
+		t.Errorf("MUTANT_POLICY is %q, which is not one of %v", m[1], mutantModes)
+	}
+	// EVERY MODE'S CONDITION IS PRESENT, not only the chosen one.
+	for _, mode := range mutantModes {
+		if !strings.Contains(ci, "'"+mode+"'") {
+			t.Errorf("the workflow does not mention the %q mode: switching to it would be a "+
+				"workflow change, which is the thing this arrangement exists to avoid", mode)
+		}
+	}
+	// AND THE TRIGGERS EVERY MODE NEEDS. A schedule with no cron cannot run
+	// nightly; a pull_request that does not fire on `labeled` cannot run on a
+	// label, however carefully the condition is written.
+	for _, need := range []string{"schedule:", "cron:", "labeled"} {
+		if !strings.Contains(ci, need) {
+			t.Errorf("the workflow has no %q, so at least one mode cannot fire", need)
+		}
+	}
+	// AND CI READS THE DECISION rather than carrying a second copy of it.
+	if !strings.Contains(ci, "make -s mutant-policy") {
+		t.Error("the workflow does not read the policy from the Makefile: two copies of a decision " +
+			"is one that can disagree with itself")
+	}
+}
+
+func read(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }
 
 func TestCIAndVerifyRunTheSameGates(t *testing.T) {
@@ -95,11 +140,7 @@ func TestCIAndVerifyRunTheSameGates(t *testing.T) {
 // verifyTargets is the verify recipe's prerequisites, from the Makefile.
 func verifyTargets(t *testing.T) []string {
 	t.Helper()
-	b, err := os.ReadFile("../../Makefile")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, line := range strings.Split(string(b), "\n") {
+	for _, line := range strings.Split(read(t, "../../Makefile"), "\n") {
 		if after, ok := strings.CutPrefix(line, "verify:"); ok {
 			return sorted(strings.Fields(after))
 		}
@@ -111,13 +152,11 @@ func verifyTargets(t *testing.T) []string {
 // ciTargets is every `make <target>` ci.yml runs.
 func ciTargets(t *testing.T) []string {
 	t.Helper()
-	b, err := os.ReadFile("../../.github/workflows/ci.yml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	re := regexp.MustCompile(`(?m)^\s*-\s*run:\s*make\s+([a-z-]+)`)
+	// `- run: make x` and `- name: x` + `run: make x` both count: a step with a
+	// name is still a step that runs the gate.
+	re := regexp.MustCompile(`(?m)^\s*(?:-\s*)?run:\s*make\s+([a-z-]+)`)
 	var out []string
-	for _, m := range re.FindAllStringSubmatch(string(b), -1) {
+	for _, m := range re.FindAllStringSubmatch(read(t, "../../.github/workflows/ci.yml"), -1) {
 		out = append(out, m[1])
 	}
 	if len(out) == 0 {

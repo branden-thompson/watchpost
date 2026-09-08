@@ -5,13 +5,31 @@ on:
   push:
     branches: ["**"]
   pull_request:
+    # labeled is here for the `label` mutant policy: adding `run-mutants` to a
+    # pull request has to start a run, or the label decides nothing.
+    types: [opened, synchronize, reopened, labeled]
+  schedule:
+    - cron: "0 8 * * *" # for the `nightly` mutant policy; inert under the others
 permissions:
   contents: read
 concurrency: # a push to a PR branch and its pull_request event run once, not twice (REVIEW M13)
   group: ci-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 jobs:
+  # policy reads the decision out of the Makefile, so WHEN the expensive gates
+  # run is one word in the repository rather than a workflow edit
+  # (HUM LEAD, 2026-09-08).
+  policy:
+    runs-on: ubuntu-latest
+    outputs:
+      mutants: ${{ steps.read.outputs.mutants }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - id: read
+        run: echo "mutants=$(make -s mutant-policy)" >> "$GITHUB_OUTPUT"
+
   verify:
+    needs: policy
     strategy:
       fail-fast: false # a red gate on one OS must not hide the other OS's result
       matrix:
@@ -37,3 +55,19 @@ jobs:
       - run: make release-matrix
       - run: make install-test
         if: runner.os == 'Linux'
+      # THE MUTANT CORPUS, on whichever schedule MUTANT_POLICY names. All three
+      # conditions are written out so switching between them is a word in the
+      # Makefile and not a change here — and so that no mode's path has to be
+      # rebuilt after being deleted to make room for another.
+      #
+      # LINUX ONLY: the corpus patches the tree and runs the suite per mutant,
+      # and running it twice per push buys a second opinion on the same Go code
+      # at twice the slowest gate's cost.
+      - name: mutant-check
+        if: >-
+          runner.os == 'Linux' && (
+            needs.policy.outputs.mutants == 'push'
+            || (needs.policy.outputs.mutants == 'nightly' && github.event_name == 'schedule')
+            || (needs.policy.outputs.mutants == 'label' && contains(github.event.pull_request.labels.*.name, 'run-mutants'))
+          )
+        run: make mutant-check

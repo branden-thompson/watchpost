@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: cache-clean build build-diag lint lint-update test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -230,6 +230,31 @@ journey: build
 		echo "--- dist/journey.log ---"; grep -E "FAIL|M2:" dist/journey.log || true; \
 		test $$rc -eq 0 || { echo "journey: $$rc step(s) FAILED"; exit 1; }; \
 		echo "journey: every step PASSED"
+
+# MUTANT_POLICY decides WHEN the mutant corpus (171 mutants) runs in CI. It is
+# ONE WORD, AND SWITCHING IS EDITING IT: every mode's plumbing already exists in
+# the CI workflow — the schedule trigger, the label trigger and the per-push
+# path are all present whatever this says — so a change of mind costs a word
+# rather than a workflow rewrite, and no mode's path is deleted to make room for
+# another. cmd/watchpost/gates_test.go fails if that stops being true.
+#
+#   push     every push and pull request. Correct on the merits and the
+#            slowest: 261 s on twelve cores locally, so roughly fifteen to
+#            twenty minutes on a four-core runner, every time.
+#   nightly  the scheduled run only, plus every release tag (the release
+#            workflow runs `make verify`, which includes it). Fast pull
+#            requests, and a window in which a survived mutant can be merged
+#            and found later.
+#   label    only when a pull request carries the `run-mutants` label. Fastest,
+#            and it trusts whoever remembers to apply it.
+#
+# HUM LEAD, 2026-09-08: push.
+MUTANT_POLICY ?= push
+
+# mutant-policy prints it, so CI reads the decision from the repository rather
+# than carrying a second copy of it.
+mutant-policy:
+	@echo $(MUTANT_POLICY)
 
 # lint is golangci-lint (which runs staticcheck) as a BASELINE + RATCHET: this
 # tree's known findings are recorded once and anything else fails the build.

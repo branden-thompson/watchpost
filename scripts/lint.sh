@@ -25,7 +25,12 @@ trap 'rm -f "$tmp" "$tmp.now"' EXIT
 # THE JSON GOES TO A FILE. Both writers default to stdout, so asking for JSON
 # there yields the text report interleaved with it — five lines of "JSON" that
 # no parser accepts.
-golangci-lint run --output.json.path "$tmp" ./... >/dev/null 2>&1 || true
+# PINNED, unlike vuln's @latest, and the difference is the point: govulncheck
+# SHOULD track the newest advisories, and a linter that tracks its newest rules
+# would break this ratchet on somebody else's release schedule. A new rule is a
+# decision to take deliberately, by moving this line and re-recording.
+go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1 \
+  run --output.json.path "$tmp" ./... >/dev/null 2>&1 || true
 if [ ! -s "$tmp" ]; then
   echo "lint: golangci-lint produced nothing — the gate cannot report on a run that did not happen" >&2
   exit 1
