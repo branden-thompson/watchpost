@@ -158,9 +158,16 @@ proc readableTab {name} {
 			expect -timeout 4 -re {· [0-9]+ / [1-9]} { set open 1; break } timeout { }
 		}
 		if {$open} {
+			# ONE STEP, ONE LINE. Backing out of the record is part of THIS
+			# precondition, not a step of its own: routing it through seeAfter
+			# logged a second row, and — worse — logged a FAIL that the outer
+			# `step $name 1` then contradicted on the next line.
 			send "\x1b"
-			seeAfter "" "Total Category Events" "$name — back on the table, that row still focused"
-			step $name 1
+			for {set k 0} {$k < 4} {incr k} {
+				repaint
+				expect -timeout 5 -re "Total Category Events" { step $name 1; return } timeout { }
+			}
+			step $name 0
 			return
 		}
 		send "\x1b\[C"

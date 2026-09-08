@@ -1281,6 +1281,44 @@ cannot work on a stripped artifact.  Both lenses were right that something was w
 what to do — which is the correct division of labour, and only holds if the measurement actually
 happens.
 
+## A gate that cannot fire on itself, and a buffer read as a screenshot — twice (2026-09-08, 0.15.0 B6)
+
+B6's premise is that a gate nobody has watched fail is a gate nobody has measured. Twelve plants were
+run to fill in a `gates.md` evidence column. Three of the results are worth keeping.
+
+**The controls gate could not fire on itself.** `gate-controls` exists to prove the other gates still
+fire; it invokes each one with `--self-test`. Renaming that flag left the gate **GREEN**, because
+`lint-imports.sh` and `p10-unmatched_test.sh` ignored an unrecognised argument and ran their normal
+path to exit 0. So a typo in the Makefile, or a script whose self-test was deleted, would have left
+the gate passing having run no control at all — and it is the one gate whose entire job is to notice
+that. Both scripts now reject an unknown argument. **The shape: a positive control needs a positive
+control, and the cheapest one is refusing to be invoked in a way you did not mean.**
+
+**A plant that survives is not a hole until you check the plant.** `alloc-budget` did not fire on
+`_ = make([]byte, 64)`. The gate was fine; the plant never reached the heap, because a constant-sized
+make whose result is discarded is stack-allocated and then deleted. Re-planted with an escaping
+allocation, CAUGHT. **The shape: a plant the optimiser removes measures the optimiser.** Both results
+are recorded in the roster, because telling a bad plant from a real hole is the work, and a table
+that only shows CAUGHT hides the one skill it needs.
+
+**AND THE ONE I GOT WRONG.** F-44 records, in the journey script itself, that `expect_out(buffer)` is
+not a frame — expect leaves previous contents in place, so a dump can be minutes stale. Chasing
+F-58 I forced a repaint, printed the buffer, saw the Lookup box holding its empty-state placeholder,
+and reported that the keystrokes were dropped. The **same dump appears in the warm-config run where
+the echo is found 0.0 s later**: a repaint arrives in chunks and a single `expect` returns on the
+first one, so what I printed was a fragment, not a screenshot. I quoted the warning and then walked
+into it inside the same hour.
+
+**The shape, and it is the general one:** an observation that is *shaped like* a screenshot invites
+being read as one. The defence is not "remember harder" — it is to A/B the instrument against a case
+you already know the answer to. The warm-config run cost forty seconds and falsified the reading
+immediately. **Run the known-good case through the same instrument before believing what it says
+about the unknown one.**
+
+Cost, for the metric: the whole F-58 investigation ran ~90 minutes, of which the first three
+journey runs (5 minutes each, one of them corrupted by my own overlapping second run) produced less
+than the 40-second probe did. The probe is committed. The next attempt starts from a measurement.
+
 ## The metric this is all judged against
 
 Tasks completed per session. It has not moved yet (1). Every other number has. The programme

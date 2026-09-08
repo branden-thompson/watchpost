@@ -14,6 +14,19 @@
 # usage: scripts/quality/p10-unmatched_test.sh
 
 set -eu
+# AN ARGUMENT THIS SCRIPT DOES NOT KNOW IS A FAILURE, NOT A NO-OP (B6).
+#
+# gate-controls exists to prove the other gates still fire, and it invokes them
+# by flag. Both of these ignored an unrecognised argument and ran their NORMAL
+# path to a green exit, so a renamed or mistyped flag in the Makefile left the
+# controls gate passing having run no control at all — the one gate whose whole
+# job is to notice that, unable to notice it about itself. Found by planting a
+# renamed flag, 2026-09-08.
+case "${1:-}" in
+  "") ;;
+  *) echo "p10-unmatched_test: unknown argument '$1'" >&2; exit 2 ;;
+esac
+
 here=$(cd "$(dirname "$0")" && pwd)
 script="$here/p10-unmatched.sh"
 [ -x "$script" ] || { echo "p10-unmatched_test: $script is not executable"; exit 1; }
