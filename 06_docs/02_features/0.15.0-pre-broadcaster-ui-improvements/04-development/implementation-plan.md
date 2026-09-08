@@ -238,6 +238,23 @@ perturbation design, which is this batch's real risk.
 **FR-6.5 moves here from B7** — making the relay-fault window audible is a listener requirement, and
 DISCOVER's own taxonomy says so.  *(Deviation PD-7.)*
 
+**~~FR-6.5~~ RULED AND DEFERRED, 2026-09-08 (HUM LEAD).**  *"Potentially yes for Observer, NO for
+Broadcaster — relay faults are the business of the Operator, not the reader."*  The requirement as
+written asks for the wrong thing: **an operational error message over the air is confusing and the
+listener can do nothing about it.**  The industry answer is infrastructure this app does not have —
+a station cuts to a pre-recorded "we are experiencing technical difficulties", NOAA Weather Radio
+says "this station is currently offline, please tune to <alternate>".
+
+**What can be accounted for is a JOURNEY, and it is already F-27's:** if audio was running before the
+fault, an intra-card transition carries the listener from the old audio to the fallback — relay →
+switch location → fail → transition read → backup relay, the same shape as the ruled relay A → `[w]`
+read → `[esc]`/finish → transition → relay A.  Catastrophic failovers cannot be accounted for.
+
+**So FR-6.5 does not land in B5.**  It is not a descope by scope pressure: the thing it asked for is
+refused for a broadcast audience, and the part that survives — Observer, where the listener IS the
+operator and can retune — is a "potentially" whose wording is a HUM LEAD call and whose seam is the
+duck path F-27 owns, with its own task and its own red team.  F-33 carries the ruling.
+
 **Entry conditions**
 - ~~**PL-D-5 is withdrawn and the bound is re-sited.**~~  **WITHDRAWN 2026-09-08, and it was
   REDUNDANT rather than merely mis-sited.**  `playClip`'s watcher already bounds the read: 12,000
