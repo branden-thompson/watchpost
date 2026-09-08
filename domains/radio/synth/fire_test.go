@@ -35,6 +35,11 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 		"This is the Watchpost Fire and Hotspot report for Oceanside, California. This report is derived from data from NOAA's Hazard Mapping System, the National Interagency Fire Center, and NASA FIRMS. Data for this report may be delayed or incomplete, and is not intended for life safety use.",
 		"There are currently 2 hotspots within a 16 mile fire ring in your area.",
 		"The strongest hotspot is 6 miles north of your location, with a fire radiative power of 62 megawatts, detected 2 hours ago by GOES-West.",
+		// THE SUBJECT CHANGES HERE, and the read now says so (HUM LEAD, UAT
+		// 2026-09-08). Everything above is a satellite pixel inside the 16 mile
+		// fire ring; everything below is a NAMED incident inside the wider 31
+		// mile radius, and on the air the two were indistinguishable.
+		"There are currently 2 named incidents within a 31 mile radius of your area, reported in the last 3 days.",
 		"Timber is 12 miles east of your location, with a size of 12,915 acres, has been active for 3 days and 4 hours, and is 26 percent contained.",
 		"Nearby fires outside of your fire ring that may be worth noting are:",
 		"Convoy, at a distance of 29 miles, has been active for 3 hours.",
@@ -51,9 +56,26 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 		t.Fatal("the notice carries the two-second pause")
 	}
 	// Metric, no fire: the zero sentence in kilometers; one hotspot reads singular.
-	quiet := FireReport{Known: true, RadiusKm: 25, Sources: []string{"NOAA's Hazard Mapping System"}, State: snapshot.FireState{AsOf: now}}
-	if s := std.FireSegments("Oceanside, CA", quiet, false, now); len(s) != 2 || s[1].Text != "There are currently no hotspots within a 25 kilometer fire ring in your area." || !strings.Contains(s[0].Text, "data from NOAA's Hazard Mapping System.") {
-		t.Fatalf("quiet report: %s", join(s))
+	// A QUIET REPORT SAYS BOTH NOTHINGS, one per ring (HUM LEAD, UAT
+	// 2026-09-08). "No hotspots within 16 miles" is not an answer about the
+	// named incidents, and a listener who hears only the first has been told
+	// half of what was checked.
+	quiet := FireReport{Known: true, RadiusKm: 25, IncidentRadiusKm: 50, Sources: []string{"NOAA's Hazard Mapping System"}, State: snapshot.FireState{AsOf: now}}
+	qs := std.FireSegments("Oceanside, CA", quiet, false, now)
+	if len(qs) != 3 || !strings.Contains(qs[0].Text, "data from NOAA's Hazard Mapping System.") {
+		t.Fatalf("quiet report: %s", join(qs))
+	}
+	if qs[1].Text != "There are currently no hotspots within a 25 kilometer fire ring in your area." {
+		t.Fatalf("quiet hotspot line: %q", qs[1].Text)
+	}
+	if qs[2].Text != "There are currently no named incidents within a 50 kilometer radius of your area." {
+		t.Fatalf("quiet incident line: %q", qs[2].Text)
+	}
+	// AN UNCONFIGURED INCIDENT RADIUS SAYS NOTHING rather than "0 kilometer".
+	noRing := quiet
+	noRing.IncidentRadiusKm = 0
+	if s := std.FireSegments("Oceanside, CA", noRing, false, now); len(s) != 2 {
+		t.Fatalf("no incident radius means no incident line: %s", join(s))
 	}
 	// No fire data at all: skipped — the broadcast goes straight to the tail.
 	if s := std.FireSegments("Oceanside, CA", FireReport{}, true, now); s != nil {

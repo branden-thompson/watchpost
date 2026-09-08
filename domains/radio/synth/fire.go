@@ -29,6 +29,32 @@ type FireReport struct {
 	Lat, Lon         float64  // the location, for bearings
 }
 
+// oldestIncidentWords is how far back the incidents being read reach — the age
+// of the OLDEST of them, in whole days, spoken. "" when there are none to age,
+// or when the feed gave no discovery time for any of them, so the sentence
+// simply ends after the radius rather than claiming a window it cannot support.
+//
+// WHOLE DAYS, and never "0 days": a fire discovered this morning reads "in the
+// last day", which is what a listener means by it.
+func oldestIncidentWords(in []snapshot.Incident, now time.Time) string {
+	oldest := 0
+	for _, i := range in {
+		if i.Discovered.IsZero() {
+			continue // an undated incident cannot widen a window it never entered
+		}
+		if d := int(now.Sub(i.Discovered).Hours() / 24); d > oldest {
+			oldest = d
+		}
+	}
+	if len(in) == 0 {
+		return ""
+	}
+	if oldest <= 1 {
+		return "day"
+	}
+	return fmt.Sprintf("%d days", oldest)
+}
+
 // firePause separates the fire notice from the counts (UAT 114 script).
 const firePause = 2 * time.Second
 
@@ -51,6 +77,24 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 	if h := strongest(fr.State.Hotspots); h != nil {
 		body = append(body, c.hotspotSentence(fr, *h, imperial, now))
 	}
+	// THE SUBJECT CHANGES HERE, and until now nothing said so. The hotspot lines
+	// above are satellite pixels inside the fire ring; everything below is a
+	// NAMED incident inside the wider incident radius. On screen the two lists
+	// carry their own headings and their own radius; on the air they ran
+	// together, so a listener heard "no hotspots within 16 miles" and then a
+	// list of fires with no way to tell which ring they belonged to
+	// (HUM LEAD, UAT 2026-09-08).
+	// AN UNCONFIGURED RADIUS SAYS NOTHING rather than "within a 0 kilometer
+	// radius". The line's whole job is to name the second ring, so without one
+	// there is nothing for it to say.
+	if fr.IncidentRadiusKm > 0 {
+		body = append(body, c.say("fire-report", "incident-count", map[string]any{
+			"Count": len(fr.State.Incidents),
+			"Ring":  ringWords(fr.IncidentRadiusKm, imperial),
+			"Days":  oldestIncidentWords(fr.State.Incidents, now),
+		}))
+	}
+
 	var inside, outside []snapshot.Incident
 	for _, in := range fr.State.Incidents {
 		if in.Source.DistanceKm != nil && *in.Source.DistanceKm <= fr.RadiusKm {
