@@ -150,3 +150,23 @@ func TestTheTestScriptPromisesTheExpiryTheEventCarries(t *testing.T) {
 		t.Errorf("the test read says %q and the event lives %s: the read promises %q", got, testEventLife, want)
 	}
 }
+
+// A DEBUG BUILD ACTUALLY OFFERS THE INJECTION (F-21b).
+//
+// THE WINDOW SAYS "NOT AVAILABLE IN THIS BUILD" WHENEVER THE HOOK IS NIL, and
+// it is right to: a scenario list with no injector behind it is a row that
+// fabricates nothing. But that message is also what a correctly-built
+// DIAGNOSTICS binary would show if the wiring ever came loose, and nothing here
+// asserted the wiring — only that a release build has none of it. UAT hit the
+// mirror of this on 2026-09-07: a clean binary and a diagnostics binary that
+// differed only in a filename, and the clean one was run.
+func TestADebugBuildWiresTheInjector(t *testing.T) {
+	lp := &livePipelines{}
+	if lp.injectHook() == nil {
+		t.Error("a debug build supplies no injector: the ctrl+d window will say injection is not " +
+			"available in a build that was made specifically to have it")
+	}
+	if len(debugScenarios()) == 0 {
+		t.Error("a debug build offers no scenarios, so the window has no question to ask")
+	}
+}

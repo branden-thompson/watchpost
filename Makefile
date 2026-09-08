@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: cache-clean build test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: cache-clean build build-diag test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -13,6 +13,26 @@ LDFLAGS := -s -w -X main.version=$(VERSION)
 build:
 	@mkdir -p $(DIST)
 	go build -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY) ./cmd/watchpost
+
+# build-diag is the UAT build for the ctrl+d window's injection half (F-21b).
+#
+# IT STAMPS ITS OWN VERSION, and that is the point of the target existing. Built
+# by hand with a bare `go build`, the two artifacts differ only in a name: one
+# says 0.14.2-44-g00c48ce and the other 0.0.0-dev, and the operator reasonably
+# runs the one whose version matches the commit under test — then reports that
+# ctrl+d offers no injection, which is exactly what a clean build is supposed to
+# say. The +debug suffix travels into the About window and `--version`, so the
+# binary answers "which build is this" wherever the question is asked.
+#
+# NEVER SHIPPED: release-matrix builds the clean matrix and lint-injector fails
+# any artifact carrying the injector.
+build-diag:
+	@mkdir -p $(DIST)
+	go build -tags watchpost_debug -ldflags '-s -w -X main.version=$(VERSION)+debug' \
+	  -o $(DIST)/$(BINARY)-diag ./cmd/watchpost
+	@scripts/lint-injector.sh $(DIST)/$(BINARY)-diag >/dev/null 2>&1 \
+	  && { echo "build-diag: the injector is MISSING from the diagnostics build"; exit 1; } \
+	  || echo "build-diag: $(DIST)/$(BINARY)-diag carries the injector, as it must"
 
 test:
 	go test ./...

@@ -114,7 +114,7 @@ func (d Dashboard) debugLines(o render.Opts) (out []string, focusAt, focusEnd in
 		return append(out, insetModalLines([]string{
 			"INJECTION IS NOT AVAILABLE IN THIS BUILD.", "",
 			"It is compiled out rather than switched off, so a fabricated alert cannot be produced " +
-				"here by any means. Build with -tags watchpost_debug to enable it."},
+				"here by any means. Build the diagnostics binary with `make build-diag` to enable it."},
 			debugProseWidth(o, debugWidth))...), -1, -1
 	}
 	out = append(out, insetModalLines([]string{
