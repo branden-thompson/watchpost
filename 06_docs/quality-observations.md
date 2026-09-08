@@ -1240,6 +1240,23 @@ over a mutation that no longer applies.
 nobody wrote it for.  Both of these were written for defects that had already happened, and both
 earned their place again on a change made months later by someone who had forgotten they existed.
 
+### 16. A gate must enter the system where the user does
+
+**Catch:** `TestAnInjectedAlertCrossesTheWholePipeline` — whose own comment calls it *"the test the
+whole tool stands on"* — hands a **hand-built event** to `deck.Inject`.  That is one function past
+where the operator's keypress lands.  A key the hook did not recognise, or a hook that returned
+before queuing, was invisible to every gate in the repo **while the tool reported that everything
+works** — and UAT found exactly that class of failure by pressing the button.
+
+The same test also could not see the defect that actually shipped: the queue is drained by a
+two-minute fetch cycle and the event was effective for two minutes, so the injection could expire in
+the cycle that would have shown it.  **Nothing measured the LATENCY, only the correctness** — the
+test called `cycle()` itself, so the wait it was hiding was zero.
+
+**The rule has two halves:** enter at the user's own seam (the key, not the payload), and let the
+system's own clock run (the loop, not a hand-called step).  A test that supplies both the input and
+the tick is measuring a function, not a feature.
+
 ### The meta-rule
 
 **A red-team finding is a hypothesis, not a fix.**  Twice in one day, measuring a lens's

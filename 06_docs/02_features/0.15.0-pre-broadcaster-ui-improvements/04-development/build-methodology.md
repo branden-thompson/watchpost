@@ -19,6 +19,7 @@ makes a gate valid live in `06_docs/quality-observations.md`; this file is about
 | Branch | `feature/0.15.0-pre-broadcaster-ui-improvements` — **pushed** at the FR-5 commit; NFR-4 discharged |
 | **B1** | **DONE** — survey (bucket 1 = 4, not 49) · FR-2.2 coupling derived from `severeEvents()` · #18 evacuation tone (3× dual tone) audible · `platform/closedset` extracted at the third caller |
 | **B2** | **DONE** — FR-1.1 `config.Mutate` (6 writers → 1) · FR-1.3 band gate · `platform/singleowner` extracted at the second caller · FR-1.4 answered *no lock*, by experiment |
+| **UAT** | **B3 PASSED on the operator's own machine, 2026-09-07** (`0.14.2-46-g5ec65fb+debug`): ctrl+d opens, the picker cycles, the confirmation asks, and injection produces the tone "almost immediately", the takeover, the read script and the `[w]` row.  Two defects found by it, both fixed and both now gated — see below |
 | **B3** | **CODE COMPLETE** — FR-5 (`ac69622`) · FR-4.1/4.2/4.3/4.4/4.7 (`c5bcd03`) · FR-6.4 (`7f6786d`).  What remains in this batch is four HUM LEAD rulings, below |
 | Gates | `VERIFY=0 ALLOC=0` + the debug-tagged suite, on `7f6786d`, 2026-09-07 |
 
@@ -74,6 +75,23 @@ ruling — pin the head as chrome, spend a key on free scrolling, or accept it a
 windows.**  Help's 5 became 0 and setup's 4 became 2 once the probe stopped comparing across two
 different wraps and stopped counting the cursor glyph as text.  The earlier table is superseded;
 `quality-observations.md` rules 12–14 carry why.
+
+### What UAT found that the gates did not
+
+**1. The two binaries were indistinguishable.**  `dist/watchpost-diag` was built by hand with no
+version stamp, so the artifact whose version matched the commit under test was the CLEAN one — and a
+clean build correctly says injection is not available.  `make build-diag` now stamps `+debug`, and
+self-checks in the opposite direction to the release gate: it fails if `lint-injector` passes.
+
+**2. The injection waited for the weather, and could expire before it arrived.**  The queue is
+drained by the fetch cycle (`tickerEvery` = 2 min) and a test event is effective for 2 minutes, so in
+the worst case `globalfeed.Active` dropped it in the cycle that would have shown it.  `Inject` now
+asks for a cycle at once — nil channel in a release build, so the path is absent there — and the
+event is stamped when the cycle TAKES it.
+
+**Both were invisible to the test the tool stands on, for one reason:** it hands a hand-built event
+to `deck.Inject` and calls `cycle()` itself.  That is one seam past the operator's keypress and it
+supplies its own tick.  `quality-observations.md` rule 16 is that catch, generalised.
 
 ## What worked — keep doing these
 
