@@ -7,6 +7,7 @@ package tty
 
 import (
 	"flag"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"os"
 	"path/filepath"
 	"strings"
@@ -194,6 +195,38 @@ func TestASCIIFramesCarryNothingButASCII(t *testing.T) {
 //
 // The producer is the modal enum, so a window added to the app is scanned the
 // day it lands rather than the day someone remembers to add it here.
+// populated gives the detail modal DATA, because fixtureFor gives it none and a
+// window scanned empty is a window scanned in the one state whose glyphs are
+// missing (red team, 2026-09-08).
+//
+// The scan reported thirteen surfaces and meant it, but the detail modal drew
+// "fire feed not yet available" and "seismic data unavailable" — so the fire and
+// hotspot TABLES this release built, the incidents list with its second radius,
+// the felt-band ramp and the truncation that spends an Ellipsis were all outside
+// it. fixtureFor's own severe case says why: "a fixture that does not exercise
+// the state is a hole shaped exactly like coverage."
+func populated(d Dashboard) Dashboard {
+	if d.snap == nil || len(d.snap.Locations) == 0 {
+		return d
+	}
+	now := time.Now()
+	f := func(v float64) *float64 { return &v }
+	loc := &d.snap.Locations[0]
+	loc.Fire = snapshot.FireState{
+		AsOf: now,
+		Hotspots: []snapshot.Hotspot{
+			{Lat: loc.Lat + 0.09, Lon: loc.Lon, DetectedAt: now.Add(-2 * time.Hour), FRPMW: f(62), DistanceKm: f(10),
+				Source: snapshot.SourceInfo{Provider: "hms", ModelOrStation: "GOES-WEST"}},
+		},
+		// A NAME LONG ENOUGH TO TRUNCATE, so the Ellipsis glyph is on screen.
+		Incidents: []snapshot.Incident{{Name: "SAN LUIS REY COMPLEX", Acres: f(18000), PercentContained: f(35),
+			Discovered: now.Add(-72 * time.Hour), Source: snapshot.SourceInfo{Provider: "wfigs", DistanceKm: f(30)}}},
+	}
+	loc.Seismic = &snapshot.SeismicState{AsOf: now}
+	d.cfg.FireRadiusKm, d.cfg.FireIncidentRadiusKm = 25, 50
+	return d
+}
+
 func asciiSurfaces(t *testing.T) map[string]string {
 	t.Helper()
 	out := map[string]string{
@@ -201,7 +234,7 @@ func asciiSurfaces(t *testing.T) map[string]string {
 		"settings frame":  setupGolden(t, 133, 44, true, rowCastAlerts).View().Content,
 	}
 	for m := modalHelp; m < numModals; m++ {
-		d := fixtureFor(t, m)
+		d := populated(fixtureFor(t, m))
 		d.cfg.ASCII = true
 		got := d.renderModal(d.opts())
 		// A WINDOW THAT DRAWS NOTHING IS NOT A WINDOW THAT PASSED. This is the

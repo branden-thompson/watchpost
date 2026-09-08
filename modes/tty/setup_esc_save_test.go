@@ -3,6 +3,7 @@ package tty
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -173,5 +174,78 @@ func TestTypingOverAStoredRadiusReplacesItRatherThanAppending(t *testing.T) {
 	model = typeText(model, "30")
 	if got := model.(Dashboard).setup.radiusMi; got != "30" {
 		t.Errorf("an empty field still builds normally; got %q", got)
+	}
+}
+
+// THE TWO GUARD SETS MUST AGREE, AND NOTHING MADE THEM (red team, 2026-09-08).
+//
+// commitToModel's own comment says it: "The guards match applyIfChanged's
+// exactly. If they drift, the model and the file disagree about what is in
+// force, which is a worse bug than this one." That was written, and then not
+// tested — the shape this release is about.
+//
+// The drift is silent and asymmetric, which is why it needs a test rather than
+// care. If applyIfChanged writes where commitToModel does not, the file moves
+// ahead of the model and the window shows a stale value — the defect just
+// fixed. If commitToModel updates where applyIfChanged does not write, the model
+// moves ahead of the FILE: the window shows a value that was never saved and is
+// gone at the next launch, which is worse because nothing on screen is wrong
+// until a restart.
+func TestTheModelAndTheFileAgreeAboutWhatWasWritten(t *testing.T) {
+	// Each case: a form state, and whether the write is expected. The model must
+	// change exactly when the write happens, never on one side alone.
+	for _, tc := range []struct {
+		name    string
+		seed    func(*setupState)
+		cfg     func(*Config)
+		wrote   bool
+		reading func(Dashboard) any
+		want    any
+	}{
+		{"radius changes", func(s *setupState) { s.filtered, s.radiusMi = true, "20" },
+			func(c *Config) { c.AlertRadiusMi = 5 }, true,
+			func(d Dashboard) any { return d.cfg.AlertRadiusMi }, 20},
+		{"radius unchanged", func(s *setupState) { s.filtered, s.radiusMi = true, "5" },
+			func(c *Config) { c.AlertRadiusMi = 5 }, false,
+			func(d Dashboard) any { return d.cfg.AlertRadiusMi }, 5},
+		{"radius back to All", func(s *setupState) { s.filtered = false },
+			func(c *Config) { c.AlertRadiusMi = 5 }, true,
+			func(d Dashboard) any { return d.cfg.AlertRadiusMi }, 0},
+		{"language changes", func(s *setupState) { s.relayLang = "es" },
+			func(c *Config) { c.RelayLang = "en" }, true,
+			func(d Dashboard) any { return d.cfg.RelayLang }, "es"},
+		// AN INVALID VALUE WRITES NOTHING AND MOVES NOTHING. This is the case the
+		// two guard sets could disagree about without any other test noticing.
+		{"language empty is not a choice", func(s *setupState) { s.relayLang = "" },
+			func(c *Config) { c.RelayLang = "en" }, false,
+			func(d Dashboard) any { return d.cfg.RelayLang }, "en"},
+		{"dwell zero is not a choice", func(s *setupState) { s.relayDwell = 0 },
+			func(c *Config) { c.RelayDwell = time.Minute }, false,
+			func(d Dashboard) any { return d.cfg.RelayDwell }, time.Minute},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := &setupHarness{}
+			cfg := h.config()
+			tc.cfg(&cfg)
+			m, err := NewDashboard(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			d := m
+			tc.seed(&d.setup)
+
+			cmd := d.applyOnCloseCmds()
+			after := d.commitToModel()
+
+			// Did a write actually go out? sequenceWrites returns nil when every
+			// member is a no-op, which is the file's answer.
+			wrote := cmd != nil
+			if wrote != tc.wrote {
+				t.Errorf("the FILE: wrote=%v want %v", wrote, tc.wrote)
+			}
+			if got := tc.reading(after); got != tc.want {
+				t.Errorf("the MODEL: got %v want %v", got, tc.want)
+			}
+		})
 	}
 }
