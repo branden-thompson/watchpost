@@ -110,3 +110,68 @@ func TestTheRelayLanguageSurvivesClosingTheWindow(t *testing.T) {
 		t.Errorf("the model must know the language it wrote: cfg.RelayLang=%q want \"es\"", got)
 	}
 }
+
+// TYPING OVER A STORED RADIUS REPLACES IT (HUM LEAD, UAT 2026-09-08).
+//
+// The window opened reading "[50] mi", the listener typed 20 — the obvious way
+// to change it — and got 5020: a five-thousand-mile radius, silently saved.
+// That is what "did not preserve my choices" actually was; the choice WAS
+// preserved, it just was not the one entered.
+//
+// No test covered this because both existing radius tests avoid the case: one
+// starts from an EMPTY field and types "50", the other uses space to pick All.
+// Typing over a value nobody had typed was the untested path.
+func TestTypingOverAStoredRadiusReplacesItRatherThanAppending(t *testing.T) {
+	open := func(stored int) tea.Model {
+		h := &setupHarness{}
+		cfg := h.config()
+		cfg.AlertRadiusMi = stored
+		m, err := NewDashboard(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var model tea.Model = m
+		model, _ = model.Update(tea.WindowSizeMsg{Width: 133, Height: 44})
+		model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+		model = typeText(model, "oce")
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		return model
+	}
+
+	// The reported case, exactly.
+	model := open(50)
+	if got := model.(Dashboard).setup.radiusMi; got != "50" {
+		t.Fatalf("the window opens showing the stored radius; got %q", got)
+	}
+	model = typeText(model, "20")
+	if got := model.(Dashboard).setup.radiusMi; got != "20" {
+		t.Errorf("typing 20 over a stored 50 means 20, not %q", got)
+	}
+
+	// AND THE DIGITS AFTER THE FIRST STILL APPEND — replacing on every keypress
+	// would make a two-digit radius impossible to enter, which is the opposite
+	// failure and just as bad.
+	model = open(50)
+	model = typeText(model, "125")
+	if got := model.(Dashboard).setup.radiusMi; got != "125" {
+		t.Errorf("only the FIRST digit replaces; got %q want \"125\"", got)
+	}
+
+	// A field the listener has already edited belongs to them: backspace then
+	// type appends rather than replacing again.
+	model = open(50)
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	model = typeText(model, "7")
+	if got := model.(Dashboard).setup.radiusMi; got != "57" {
+		t.Errorf("after a backspace the buffer is the listener's; got %q want \"57\"", got)
+	}
+
+	// An empty field is unchanged behaviour.
+	model = open(0)
+	model = typeText(model, "30")
+	if got := model.(Dashboard).setup.radiusMi; got != "30" {
+		t.Errorf("an empty field still builds normally; got %q", got)
+	}
+}

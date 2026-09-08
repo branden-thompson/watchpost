@@ -72,6 +72,15 @@ type setupState struct {
 	// ALERTS - EVENTS
 	filtered bool   // false = All locations, true = Within N mi
 	radiusMi string // the miles buffer for the [    ] input (digits only)
+	// radiusSeeded is true while radiusMi still holds the STORED value and the
+	// listener has typed nothing. The first digit then REPLACES it instead of
+	// appending (HUM LEAD, UAT 2026-09-08).
+	//
+	// Without this, opening a window that reads "[50] mi" and typing 20 — the
+	// obvious way to change it — produced 5020, a five-thousand-mile radius,
+	// and the listener reasonably read the result as "my choice was not saved".
+	// It was saved; it was just not the number they entered.
+	radiusSeeded bool
 
 	// ALERTS - TONE
 	toneMode  string          // "" all tones on | "mute"
@@ -174,6 +183,7 @@ func (d Dashboard) openSetup() Dashboard {
 	if d.cfg.AlertRadiusMi > 0 {
 		d.setup.filtered = true
 		d.setup.radiusMi = fmt.Sprintf("%d", d.cfg.AlertRadiusMi)
+		d.setup.radiusSeeded = true // the first digit typed replaces it
 	}
 	return d
 }
@@ -640,13 +650,24 @@ func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "up", "down":
 		d.setup.filtered = !d.setup.filtered
 	case "backspace":
+		// Editing is taking the field over as surely as typing is: after a
+		// backspace the buffer is the listener's, so the next digit appends.
+		d.setup.radiusSeeded = false
 		if r := []rune(d.setup.radiusMi); len(r) > 0 {
 			d.setup.radiusMi = string(r[:len(r)-1])
 		}
 	default:
-		if r := key.Text; r >= "0" && r <= "9" && len([]rune(d.setup.radiusMi)) < 4 {
+		if r := key.Text; r >= "0" && r <= "9" {
 			d.setup.filtered = true // typing a distance means Filtered
-			d.setup.radiusMi += r
+			// THE FIRST DIGIT REPLACES THE STORED VALUE, the rest append. A
+			// field showing a number the listener did not type is a field they
+			// are about to type over, not one they are appending to.
+			if d.setup.radiusSeeded {
+				d.setup.radiusMi, d.setup.radiusSeeded = "", false
+			}
+			if len([]rune(d.setup.radiusMi)) < 4 {
+				d.setup.radiusMi += r
+			}
 		}
 	}
 	return d, nil
