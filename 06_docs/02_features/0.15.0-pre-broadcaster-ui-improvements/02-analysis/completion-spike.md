@@ -3,7 +3,7 @@ title: "0.15.0 — B5 entry: the completion-signal spike"
 date: 2026-09-08
 phase: BUILD · B5 entry condition
 sev: SEV-0
-status: "Answered. The signal lands; the bound was already in the right place and the wrong shape to test."
+status: "Answered and DISPOSED: the channel was the vehicle, the callback shipped."
 ---
 
 # The completion-signal spike
@@ -70,3 +70,27 @@ instead of a schedule that waits forever.
 
 That keeps the batch small: the app wires `deliver` to the channel and treats
 `Spent` as the fault, rather than rebuilding how a read is timed.
+
+## Disposal
+
+**The channel was the spike's vehicle, not the design.**  It was deleted when the
+question was answered, and what shipped is a callback — `Engine.OnClipSpent`,
+the same shape `OnSilence` already has.
+
+The reason is the finding above: **the Director has already moved on** by the
+time a spent clip is known.  It slept the computed duration minutes earlier, so
+a per-clip return value would have been handed to something with nothing left to
+do with it.  A spent clip is a STATION condition, and the deck is where station
+conditions are reported.
+
+`PreviewWatched` / `PreviewAsideWatched` are gone; `Preview`, `PreviewAside` and
+`Audition` never changed signature, so no caller in the app moved at all.
+
+**Where the report goes, and where it does NOT.**  Not the relay-fault window:
+that window offers other stations, which is right for a mount broadcasting
+silence and no answer at all for a read — there is no other station to switch to
+and the broadcast itself is fine.  It goes to the station's detail line, where
+every other "could not read" already goes, and says what happened rather than
+what it means: *"a read did not finish and was ended."*  Ten minutes of audio
+that never ended has one honest description and no diagnosis this code can
+offer.

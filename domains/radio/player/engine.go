@@ -51,16 +51,17 @@ type Status struct {
 // Engine plays one station at a time: tries its mounts in order, reconnects
 // with backoff on stalls, and reports status through a callback.
 type Engine struct {
-	out       Output
-	preview   Player          // the preview line in flight; nil between lines
-	held      map[Player]bool // lines held by PausePreview: their watchers wait, later clips never displace them
-	heldOrder []Player        // the held lines in the order held — ResumePreview takes the last
-	userAgent string
-	onStatus  func(Status)
-	onSilence func(mount, name string) // MVS-D-76: the relay is up and silent
-	trace     func(string)             // DR-23: the engine's line in the radio timeline
-	clips     int                      // clips started, so the timeline can name which one
-	budget    int                      // the clip watcher's ceiling in polls; 0 = defaultClipBudget
+	out         Output
+	preview     Player          // the preview line in flight; nil between lines
+	held        map[Player]bool // lines held by PausePreview: their watchers wait, later clips never displace them
+	heldOrder   []Player        // the held lines in the order held — ResumePreview takes the last
+	userAgent   string
+	onStatus    func(Status)
+	onSilence   func(mount, name string) // MVS-D-76: the relay is up and silent
+	onClipSpent func()                   // FR-9: a read's watcher gave up on it
+	trace       func(string)             // DR-23: the engine's line in the radio timeline
+	clips       int                      // clips started, so the timeline can name which one
+	budget      int                      // the clip watcher's ceiling in polls; 0 = defaultClipBudget
 
 	mu     sync.Mutex
 	cancel context.CancelFunc
@@ -114,6 +115,24 @@ func (e *Engine) reportSilence(mount, name string) {
 	e.mu.Unlock()
 	if fn != nil {
 		go fn(mount, name) // never on the audio goroutine
+	}
+}
+
+// OnClipSpent is called when a clip's watcher gives up on it — the read that
+// neither finished nor errored (FR-9). Nil by default; the app wires it.
+func (e *Engine) OnClipSpent(fn func()) {
+	e.mu.Lock()
+	e.onClipSpent = fn
+	e.mu.Unlock()
+}
+
+// reportClipSpent tells whoever asked, once, off the watcher.
+func (e *Engine) reportClipSpent() {
+	e.mu.Lock()
+	fn := e.onClipSpent
+	e.mu.Unlock()
+	if fn != nil {
+		go fn()
 	}
 }
 
@@ -285,51 +304,21 @@ func (e *Engine) playOnce(ctx context.Context, mount, name string) error {
 	return e.playPCM(ctx, pcm, Status{State: Playing, Mount: mount, Name: label}, s.Title)
 }
 
-// ClipEnd is one clip's ending, reported once when its watcher stops.
-//
-// SPENT SAYS WHICH ENDING IT WAS: false when the player ran out of audio —
-// the clip was heard to its end — and true when the watcher's own budget ran
-// out first, which means the player was still claiming to play after ten
-// minutes of AIR time and was closed from under it. The second is the shape
-// FR-9 calls a fault: the read neither finished nor errored.
-type ClipEnd struct {
-	Spent bool
-}
-
 // Preview plays a short PCM clip (16-bit LE stereo at rate) on its own
 // player, mixed over whatever is playing, without touching the engine's
 // state (UAT 86: the voice chooser's sample). Returns when it has started.
-func (e *Engine) Preview(rate int, pcm io.Reader) error {
-	_, err := e.playClip(rate, pcm, true, true)
-	return err
-}
-
-// PreviewWatched is Preview with the clip's ending reported on a channel
-// (FR-9). The channel carries exactly one value and is then closed, so a
-// caller that stops listening cannot block the watcher.
-func (e *Engine) PreviewWatched(rate int, pcm io.Reader) (<-chan ClipEnd, error) {
-	return e.playClip(rate, pcm, true, true)
-}
-
-// PreviewAsideWatched is PreviewAside with the same report.
-func (e *Engine) PreviewAsideWatched(rate int, pcm io.Reader) (<-chan ClipEnd, error) {
-	return e.playClip(rate, pcm, false, true)
-}
+func (e *Engine) Preview(rate int, pcm io.Reader) error { return e.playClip(rate, pcm, true, true) }
 
 // Audition plays a clip that is NEVER the line in flight — the voice
 // chooser's sample: it drives the bars like a narration but a takeover's
 // pause holds the narration's line, not it (REVIEW R5-B-03).
-func (e *Engine) Audition(rate int, pcm io.Reader) error {
-	_, err := e.playClip(rate, pcm, true, false)
-	return err
-}
+func (e *Engine) Audition(rate int, pcm io.Reader) error { return e.playClip(rate, pcm, true, false) }
 
 // PreviewAside plays a clip beside the broadcast WITHOUT feeding the
 // visualizer's tap — a takeover's tone and lines (the app's director
 // decides which narrations the bars follow; HUM LEAD 2026-08-28).
 func (e *Engine) PreviewAside(rate int, pcm io.Reader) error {
-	_, err := e.playClip(rate, pcm, false, true)
-	return err
+	return e.playClip(rate, pcm, false, true)
 }
 
 // playClip is the one preview path: through the visualizer's tap like the
@@ -338,19 +327,15 @@ func (e *Engine) PreviewAside(rate int, pcm io.Reader) error {
 // the tap reads OutputRate. The clip becomes the line in flight; a HELD
 // line (PausePreview) is not displaced by it — a takeover's tone and lines
 // play while the read waits (red-team round 4, A-01).
-func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) (<-chan ClipEnd, error) {
+func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error {
 	src := io.Reader(newResampler(pcm, rate))
 	if tapped {
 		src = e.tap.Wrap(src)
 	}
 	p, err := e.out.NewPlayer(src)
 	if err != nil {
-		return nil, fmt.Errorf("audio output: %w", err)
+		return fmt.Errorf("audio output: %w", err)
 	}
-	// BUFFERED AND CLOSED, so the watcher never waits on a listener. A caller
-	// that walks away — the sequence ended, the operator pressed esc — must not
-	// pin the goroutine that closes the player.
-	done := make(chan ClipEnd, 1)
 	e.mu.Lock()
 	p.SetVolume(e.volume)
 	if inFlight {
@@ -396,10 +381,15 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) (<-cha
 		e.mu.Unlock()
 		e.debugf("player:clip:end n=%d spent=%v", n, spent)
 		_ = p.Close()
-		done <- ClipEnd{Spent: spent}
-		close(done)
+		if spent {
+			// THE CLIP NEITHER FINISHED NOR ERRORED (FR-9): the player was
+			// still claiming to play after ten minutes of AIR time and has been
+			// closed from under it. Reported off this goroutine, like every
+			// other report the engine makes.
+			e.reportClipSpent()
+		}
 	}()
-	return done, nil
+	return nil
 }
 
 // defaultClipBudget is the watcher's ceiling in 50 ms polls: ten minutes of AIR

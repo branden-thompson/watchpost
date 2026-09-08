@@ -239,7 +239,11 @@ perturbation design, which is this batch's real risk.
 DISCOVER's own taxonomy says so.  *(Deviation PD-7.)*
 
 **Entry conditions**
-- **PL-D-5 is withdrawn and the bound is re-sited.**  Revision 1 put it in `player.Engine.watch`.
+- ~~**PL-D-5 is withdrawn and the bound is re-sited.**~~  **WITHDRAWN 2026-09-08, and it was
+  REDUNDANT rather than merely mis-sited.**  `playClip`'s watcher already bounds the read: 12,000
+  polls at 50 ms, and `if !held { i++ }` makes it held-excluded — the read's own player, never the
+  live stream, which is exactly what the exit condition asks for.  What the read lacked was anyone
+  being TOLD how it ended.  See `02-analysis/completion-spike.md`.  Original condition:  Revision 1 put it in `player.Engine.watch`.
   `watch` has one caller — `playPCM` — reached from the **relay stream** and `StartSource`.  A spoken
   read goes `Preview`/`PreviewAside` → `playClip`, which **already carries a 10-minute P10-02 bound**.
   A bound in `watch` would time the radio stream, not the read, and would abort a station stream that

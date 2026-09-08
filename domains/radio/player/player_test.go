@@ -353,66 +353,53 @@ func TestAFinishedFakePlayerNeverReportsPlaying(t *testing.T) {
 	}
 }
 
-// A CLIP REPORTS HOW IT ENDED (FR-9, B5 spike).
+// A CLIP THAT NEVER ENDS IS REPORTED (FR-9).
 //
-// The read's duration is open-loop today: the app computes a PCM length and
-// sleeps it, and nothing observes that the audio finished. playClip's watcher
-// has always known — it polls the player and stops when the audio runs out or
-// when its ten-minute budget does — and now it says which of the two happened.
+// The read's duration is open-loop: the app computes a PCM length and sleeps
+// it, and nothing observes that the audio finished. playClip's watcher has
+// always known — it polls the player and stops when the audio runs out or when
+// its ten-minute budget does — and now it says so when it was the budget.
 //
-// SPENT IS THE FAULT SHAPE FR-9 IS ABOUT: the player still claimed to be
-// playing after ten minutes of AIR time and was closed from under it, which is
-// a read that neither finished nor errored.
-func TestAClipReportsThatItFinished(t *testing.T) {
-	e, _ := New(&fakeOutput{}, "watchpost/test (t@example.com)", nil)
-	done, err := e.PreviewWatched(OutputRate, bytes.NewReader(make([]byte, 4*OutputRate/10))) // 100 ms
-	if err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case end := <-done:
-		if end.Spent {
-			t.Error("a clip that ran out of audio reported its budget spent")
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("the clip never reported an ending: the signal this batch is built on does not arrive")
-	}
-	// AND THE CHANNEL IS CLOSED, so a caller that keeps listening is not
-	// blocked and a second read yields the zero value rather than hanging.
-	select {
-	case <-done:
-	default:
-		t.Error("the completion channel is not closed after its one value")
-	}
-}
-
-// AND A CLIP THAT NEVER ENDS REPORTS ITS BUDGET SPENT (FR-9).
-//
-// THIS IS THE HALF THAT MATTERS. A read that finishes is the easy case; the one
-// FR-9 exists for is the read that neither finishes nor errors — the player
-// still claiming to play after ten minutes of AIR time, with the schedule
-// waiting behind it. The watcher closes it and now says so.
+// THAT IS THE HALF THAT MATTERS. A read that finishes is the easy case; the one
+// FR-9 exists for is the read that neither finishes nor errors, the player
+// still claiming to play after ten minutes of AIR time.
 //
 // The budget is shortened here rather than waited out: ten minutes is right for
-// a listener and impossible for a suite, and a bound nobody can reach in a test
-// is a bound nobody has watched fail.
-func TestAClipThatNeverEndsReportsItsBudgetSpent(t *testing.T) {
+// a listener and impossible for a suite, and A BOUND NOBODY CAN REACH IN A TEST
+// IS A BOUND NOBODY HAS WATCHED FAIL.
+func TestAClipThatNeverEndsIsReported(t *testing.T) {
 	e, _ := New(&fakeOutput{}, "watchpost/test (t@example.com)", nil)
+	spent := make(chan struct{}, 1)
+	e.OnClipSpent(func() { spent <- struct{}{} })
 	e.mu.Lock()
 	e.budget = 4 // 200 ms of polls
 	e.mu.Unlock()
 
-	done, err := e.PreviewWatched(OutputRate, neverEnding{})
-	if err != nil {
+	if err := e.Preview(OutputRate, neverEnding{}); err != nil {
 		t.Fatal(err)
 	}
 	select {
-	case end := <-done:
-		if !end.Spent {
-			t.Error("a clip that never stopped playing reported a clean ending")
-		}
+	case <-spent:
 	case <-time.After(5 * time.Second):
-		t.Fatal("the watcher never gave up: the bound does not hold")
+		t.Fatal("the watcher gave up on the clip and told nobody: the bound holds and reports nothing")
+	}
+}
+
+// AND A CLIP THAT FINISHES IS NOT REPORTED. A report on every clip is a report
+// on nothing: the station speaks constantly, and a fault that fires each time
+// is one a listener learns to ignore.
+func TestAClipThatFinishesIsNotReported(t *testing.T) {
+	e, _ := New(&fakeOutput{}, "watchpost/test (t@example.com)", nil)
+	spent := make(chan struct{}, 1)
+	e.OnClipSpent(func() { spent <- struct{}{} })
+
+	if err := e.Preview(OutputRate, bytes.NewReader(make([]byte, 4*OutputRate/10))); err != nil { // 100 ms
+		t.Fatal(err)
+	}
+	select {
+	case <-spent:
+		t.Error("a clip that ran out of audio was reported as a fault")
+	case <-time.After(time.Second):
 	}
 }
 

@@ -109,6 +109,7 @@ func newRadioDeck(p *tea.Program, client *httpx.Client, provider *nws.Provider, 
 		return nil
 	}
 	d.engine.OnSilence(d.onSilence)
+	d.engine.OnClipSpent(d.onClipSpent)
 	d.engine.Trace(radioDebugLog)
 	d.analyzer, err = spectrum.New(player.OutputRate)
 	if err != nil {
@@ -234,6 +235,24 @@ func tuneList(stations []stream.Station, first stream.Station) ([]string, map[st
 func (d *radioDeck) onSilence(mount, _ string) {
 	radioDebugLog("relay:silent:" + mount)
 	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(mount)})
+}
+
+// onClipSpent says so when a read's watcher gave up on it (FR-9): the player was
+// still claiming to play after ten minutes of AIR time and was closed from under
+// it — a read that neither finished nor errored.
+//
+// IT IS NOT THE RELAY-FAULT WINDOW. That window offers other stations, which is
+// the right answer for a mount broadcasting silence and no answer at all for a
+// read: there is no other station to switch to, and the broadcast itself is
+// fine. This is the station's own detail line, where every other "could not
+// read" already goes.
+//
+// THE LISTENER IS TOLD WHAT HAPPENED, not what it means. Ten minutes of audio
+// that never ended has one honest description and no diagnosis this code can
+// offer.
+func (d *radioDeck) onClipSpent() {
+	radioDebugLog("read:clip:spent")
+	d.setDetail("a read did not finish and was ended")
 }
 
 // silentCandidates is what to offer instead of the mount that went quiet: every

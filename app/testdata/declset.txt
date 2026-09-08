@@ -192,6 +192,7 @@ func (*radioDeck).label
 func (*radioDeck).listVoices
 func (*radioDeck).logStatus
 func (*radioDeck).noteDirectories
+func (*radioDeck).onClipSpent
 func (*radioDeck).onSilence
 func (*radioDeck).onStatus
 func (*radioDeck).overlay
