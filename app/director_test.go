@@ -410,3 +410,50 @@ func testDirector(v narrationVoice, band func(tea.Msg)) *director {
 	}
 	return newDirector(v, newMastercontrol(v, band))
 }
+
+// A READ THAT STOPS MAKING PROGRESS IS ENDED, NOT LEFT RUNNING (FR-9).
+//
+// The read's timing is open-loop: the Director sleeps a length computed from
+// the PCM and moves to the next line. So a line whose audio hangs does not stop
+// the sequence — it goes on issuing lines over a player that the engine's
+// watcher eventually closes from under it, holding the arbiter and keeping the
+// broadcast ducked under nothing.
+//
+// CANCELLING IS THE FAIL-SAFE DIRECTION, and it is the one the rest of the
+// system already understands: the sequence unwinds onto the path a cut-short
+// read takes, which is Failed{Routed:true} — the schedule advances and
+// restore() runs. Stopping the audio alone would leave the sequence running and
+// it would simply speak the next line.
+func TestAbandoningTheReadOnAirUnwindsIt(t *testing.T) {
+	d := testDirector(&scriptVoice{}, nil)
+	started, ended := make(chan struct{}), make(chan bool, 1)
+	go func() {
+		ok := d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {
+			close(started)
+			<-ctx.Done() // a read that will not finish on its own
+		})
+		ended <- ok
+	}()
+	<-started
+
+	if !d.abandonOnAir("test") {
+		t.Fatal("nothing reported as being on the air while a sequence was running")
+	}
+	select {
+	case ok := <-ended:
+		if ok {
+			// Run returns false when the context ended before the sequence
+			// finished, which is what the executor reads to fail the card
+			// Routed and advance the schedule.
+			t.Error("the abandoned read reported success; the schedule would wait for a card that has stopped")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the read did not unwind: the arbiter stays occupied and the bed stays ducked")
+	}
+
+	// AND THE CALLER'S CONTEXT IS UNTOUCHED — the cancel is a child, so
+	// abandoning one read does not end whatever asked for it.
+	if d.abandonOnAir("again") {
+		t.Error("a second abandon found a read on the air after the first unwound it")
+	}
+}

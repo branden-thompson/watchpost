@@ -293,7 +293,11 @@ func (lp *livePipelines) buildDirector(send func(tea.Msg)) *director {
 	if lp.deck == nil {
 		return newDirector(nil, newMastercontrol(nil, send))
 	}
-	return newDirector(lp.deck, newMastercontrol(lp.deck, send))
+	nar := newDirector(lp.deck, newMastercontrol(lp.deck, send))
+	// THE DECK CAN END A READ, and this is the only place both exist: the deck
+	// is built first and the Director takes it as its voice (FR-9).
+	lp.deck.abandonRead = nar.abandonOnAir
+	return nar
 }
 
 // wireDeckWarnings lets the radio deck report a down relay directory as a

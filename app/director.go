@@ -96,8 +96,9 @@ type narrationJob struct {
 	role      cast.Role // whose voice reads this sequence (FR-3)
 	audible   bool      // a muted or voiceless sequence runs its visuals only and never dips the broadcast
 	ctx       context.Context
-	seq       uint64 // arrival order within a class
-	suspended bool   // taken off the air by a higher class; resumes when it ends
+	cancel    context.CancelFunc // ends THIS job without touching the caller's context
+	seq       uint64             // arrival order within a class
+	suspended bool               // taken off the air by a higher class; resumes when it ends
 	// paused is a LISTENER'S hold, and it is not the same as suspended even
 	// though it uses the same stack (MVS-D-74). A suspended job is waiting for
 	// something to finish and resumes on its own; a paused one is waiting for a
@@ -274,7 +275,17 @@ func (d *director) Run(ctx context.Context, class narrationClass, role cast.Role
 		seq(ctx, &speaker{ctx: ctx, sleep: sleepCtx}) // no director at all: run the visuals, in real time
 		return ctx.Err() == nil
 	}
-	job := &narrationJob{class: class, role: role, audible: audible && !d.silent(), ctx: ctx}
+	// THE JOB GETS ITS OWN CANCEL (FR-9), a child of the caller's context.
+	//
+	// Without it nothing but the caller can end a read, and the caller is
+	// waiting for it: a read whose audio hangs would go on issuing lines over a
+	// player that has been closed from under it, holding the arbiter and
+	// keeping the bed ducked. Cancelling here unwinds the sequence onto the
+	// path a cut-short read already takes — Failed{Routed:true}, the schedule
+	// advances, restore() runs — rather than inventing a second way out.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel() // the child never outlives the job
+	job := &narrationJob{class: class, role: role, audible: audible && !d.silent(), ctx: ctx, cancel: cancel}
 	// The context's end wakes every wait this job may be parked in — the
 	// turn wait in admit, the air wait while suspended (REVIEW R5-B-02: a
 	// cancel landed while parked stayed parked until the takeover's release).
@@ -372,6 +383,28 @@ func (d *director) release(job *narrationJob) {
 		return // already discarded by settle: nothing of it remains
 	}
 	d.settle()
+}
+
+// abandonOnAir ends the read that is on the air, and reports whether there was
+// one (FR-9).
+//
+// IT CANCELS RATHER THAN STOPS. Stopping the audio would leave the sequence
+// running and it would simply speak the next line; cancelling unwinds it onto
+// the one path a cut-short read already takes, which the arbiter, the schedule
+// and the bed all already understand.
+func (d *director) abandonOnAir(why string) bool {
+	if d == nil {
+		return false
+	}
+	d.mu.Lock()
+	job := d.onAir
+	d.mu.Unlock()
+	if job == nil || job.cancel == nil {
+		return false // nothing on the air: whatever failed has already gone
+	}
+	radioDebugLog("read:abandoned:" + why)
+	job.cancel()
+	return true
 }
 
 // settle decides who has the air when it frees (a release, a cancelled wait):

@@ -46,6 +46,12 @@ type radioDeck struct {
 	analyzer  *spectrum.Analyzer // visualizer bands from the engine's tap (UAT 92)
 	vizBuf    []float64          // one analysis window, reused per frame
 
+	// abandonRead ends the read on the air when its audio stops making
+	// progress (FR-9). Set where the Director is built, because the deck is
+	// constructed first and the Director takes it as its voice; nil in tests
+	// and in the pathless build.
+	abandonRead func(why string) bool
+
 	persistMode func(tty.RadioMode) error                      // saves the [m] pick (UAT 97); nil in tests
 	fire        func(snapshot.LocationRef) synth.FireReport    // the location's fire report for the broadcast (UAT 114); nil = skipped
 	seismic     func(snapshot.LocationRef) synth.SeismicReport // the location's seismic report for the broadcast (P4); nil = skipped
@@ -252,6 +258,19 @@ func (d *radioDeck) onSilence(mount, _ string) {
 // offer.
 func (d *radioDeck) onClipSpent() {
 	radioDebugLog("read:clip:spent")
+	// THE READ GOES WITH THE CLIP (FR-9). The sequence is still running: it
+	// slept the line's computed length minutes ago and has been issuing further
+	// lines over a player that has now been closed from under it. Cancelling
+	// unwinds it onto the path a cut-short read already takes — the schedule
+	// advances and the bed comes back up — instead of leaving the arbiter
+	// occupied and the broadcast ducked under nothing.
+	//
+	// THE LISTENER IS TOLD ONLY IF THEY WERE HEARING IT. abandonRead reports
+	// whether there was a read on the air; a spent clip from a read that has
+	// already ended is a diagnostic, not something to put on the detail line.
+	if d.abandonRead != nil && !d.abandonRead("clip-spent") {
+		return
+	}
 	d.setDetail("a read did not finish and was ended")
 }
 

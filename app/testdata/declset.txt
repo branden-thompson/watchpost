@@ -53,6 +53,7 @@ func (*bandRecord).has
 func (*bandRecord).note
 func (*bandRecord).recent
 func (*director).Run
+func (*director).abandonOnAir
 func (*director).admit
 func (*director).first
 func (*director).heldRead
