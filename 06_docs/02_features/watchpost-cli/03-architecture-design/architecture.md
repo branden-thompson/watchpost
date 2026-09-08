@@ -70,6 +70,36 @@ needs a restart anyway. If it ever proves wrong the fix is a re-check when `[S]`
 make that bound reachable by a test. F-3 was filed because this file is *"the precedent six new feeds
 will copy"*, and a rule nobody writes down is copied wrong.
 
+### 1.2 Where files live, and why the two roots differ (FR-7.2, HUM LEAD 2026-09-08)
+
+**Config is XDG on every platform. Cache is native on every platform.** That is deliberate, it is not
+symmetrical, and until now nothing said so — which is why the layout reads as an accident.
+
+| | Path | Owner |
+|---|---|---|
+| Config | `$XDG_CONFIG_HOME/watchpost/` → `~/.config/watchpost/` **on macOS too** | `platform/config.Path()` |
+| Cache | `os.UserCacheDir()/watchpost/<name>` — `~/Library/Caches` on macOS, `~/.cache` on Linux | `app.userCacheSubdir` |
+
+The cache subdirs are `http`, `piper`, `profiles`, `ticker` and `debug`, all from that one builder.
+
+**Why they are not merged into a single `~/.watchpost/`.** A cache is meant to be **disposable and
+reclaimable** — that is what a cache directory *is*, and a Piper voice is ~63 MB. One combined tree
+can only be one of two things, and both are worse: a directory a listener clears to reclaim space,
+taking `config.toml` with it; or a directory no OS tool will ever reclaim, holding voices forever.
+The migration cost (stranded voices re-downloading silently) is real but was not what decided it.
+
+**Why config is XDG even on macOS.** `~/.config` is where someone editing a TOML file by hand looks,
+on any platform; `~/Library/Application Support` is where an app puts things a user is not expected
+to open. `config.toml` is meant to be opened. Moving it now would strand every existing install for a
+convention nobody was asking for.
+
+**If you are adding a new file, it goes under one of these two roots** — through `config.Path()` or
+`userCacheSubdir`, never a third root and never a hand-built path. Ask which one it is by asking
+whether losing it costs the listener anything they typed.
+
+**Displaying any of these paths is a separate question with its own rule:** a full path names the
+user, so it goes through `abbreviateHome` (`app/dump.go:263`). See FR-7.5.
+
 ## 2. Snapshot contract (platform/snapshot)
 
 ```go

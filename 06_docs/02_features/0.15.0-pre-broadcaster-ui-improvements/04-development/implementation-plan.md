@@ -375,7 +375,14 @@ to clear it, reproducing the reported status exactly.  **Cheap disproof before a
   `checkAt`, and both plants walked past it; `start` was untestable because its URL was a const, so
   the const became an overridable field.  A bound nobody can reach in a test is a bound nobody has
   watched fail.
-- **FR-7.5 produces an exposure statement covering the tree, the git history, the published tags, the
+  **FR-7.2 DONE:** the cache stays at `os.UserCacheDir()`, ruled on a PROPERTY — a cache is meant to
+  be disposable and OS-reclaimable, and one `~/.watchpost/` holding `config.toml` cannot be that
+  without either taking a listener's settings when they clear it or holding ~63 MB voices no OS tool
+  will reclaim.  The migration cost was not what decided it.  The ruling CONCEDES the complaint's
+  cause: config is XDG on every platform while cache is native, so macOS is already half-XDG and
+  nothing said so — now `architecture.md §1.2`.  Surfacing the paths in `[S]` is deliberately left to
+  FR-7.5: a full path names the user, and ruling the LAYOUT separately from the DISPLAY is what stops
+  a discoverability fix becoming a PII regression. produces an exposure statement covering the tree, the git history, the published tags, the
   README and its images, and `dist/watchpost-*`.**  Revision 1 scoped it to `06_docs`.  The categories
   are enumerated — identity, location, host, credential, internal URL, path, **artifact, image** — and
   the count is re-run with its scope named.  A scan that never looks at a built artifact or a
