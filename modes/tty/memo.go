@@ -262,7 +262,12 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 			k.shimmer = ((d.frame % 4) + 4) % 4
 		}
 	case modalDebug:
-		k.debugFocus = d.debug.focus
+		// THE PICKER'S VALUE, not the question's index: the window has one
+		// question and the value is what moves on the frame (HUM LEAD mock,
+		// 2026-09-07). The confirmation is NOT here, and does not need to be —
+		// it is a second layer composited outside this memo, and the window
+		// underneath it is unchanged.
+		k.debugFocus = d.debug.focus*1000 + d.debugPick()
 	case modalRelayFault:
 		// EVERYTHING THE FRAME SHOWS THAT MOVES. This window has two such things
 		// and neither was here, so the memo replayed one frame while the model

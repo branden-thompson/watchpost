@@ -91,6 +91,11 @@ func itoaN(n int) string {
 // tester wants to exercise is a path through the app, and the product is
 // whichever one reaches it.
 type scenario struct {
+	// label is what the window's Alert Type picker reads. THE OPERATOR'S WORDS,
+	// not the product string: "Emergency Evacuation Order" is what the mock
+	// asks for, and the product a scenario injects ("Evacuation Immediate") is
+	// the feed's name for the same thing.
+	label  string
 	typ    string
 	class  globalfeed.Class
 	sev    globalfeed.Severity
@@ -110,11 +115,11 @@ type scenario struct {
 // fails if it lands anywhere but the lane it is filed under.
 func laneScenarios() map[globalfeed.Lane]scenario {
 	return map[globalfeed.Lane]scenario{
-		category.Emergency: {"Evacuation Immediate", globalfeed.ClassSevereWx, globalfeed.SevRed, "NWS"},
-		category.Disasters: {"Earthquake", globalfeed.ClassQuake, globalfeed.SevOrange, "USGS"},
-		category.Marine:    {"Tropical Storm", globalfeed.ClassTropical, globalfeed.SevOrange, "NHC"},
-		category.Warnings:  {"Tornado Warning", globalfeed.ClassSevereWx, globalfeed.SevRed, "NWS"},
-		category.Watches:   {"Tornado Watch", globalfeed.ClassSevereWx, globalfeed.SevYellow, "NWS"},
+		category.Emergency: {"Emergency Evacuation Order", "Evacuation Immediate", globalfeed.ClassSevereWx, globalfeed.SevRed, "NWS"},
+		category.Disasters: {"Earthquake", "Earthquake", globalfeed.ClassQuake, globalfeed.SevOrange, "USGS"},
+		category.Marine:    {"Tropical Storm", "Tropical Storm", globalfeed.ClassTropical, globalfeed.SevOrange, "NHC"},
+		category.Warnings:  {"Tornado Warning", "Tornado Warning", globalfeed.ClassSevereWx, globalfeed.SevRed, "NWS"},
+		category.Watches:   {"Tornado Watch", "Tornado Watch", globalfeed.ClassSevereWx, globalfeed.SevYellow, "NWS"},
 	}
 }
 
@@ -166,15 +171,12 @@ func debugScenarios() []tty.DebugScenario {
 		if !ok {
 			continue
 		}
-		out = append(out, tty.DebugScenario{
-			Label: category.Of(l).Bucket + " - " + laneScenarios()[l].typ,
-			Key:   k,
-		})
+		out = append(out, tty.DebugScenario{Label: laneScenarios()[l].label, Key: k})
 	}
-	return append(out, tty.DebugScenario{
-		Label: "A burst of six Warnings (head, lines, tail, divert)",
-		Key:   burstKey,
-	})
+	// THE BURST IS AN ALERT TYPE TOO, as far as the picker is concerned: it is
+	// the value that exercises the head, the lines, the tail and the divert,
+	// which no single alert can.
+	return append(out, tty.DebugScenario{Label: "Burst of six Tornado Warnings", Key: burstKey})
 }
 
 // injectHook turns a scenario key into fabricated events.

@@ -30,9 +30,10 @@ import (
 
 const (
 	debugWidth = 84 // the relay-fault window's width: one shape for the app's asides
-	// debugContent is the room between the two margins — the box less its
-	// borders, less modalInset either side.
-	debugContent = debugWidth - 2 - 2*modalInset
+	// debugPickW is the Alert Type picker's value cell: the widest value this
+	// window offers plus room for one longer, so the chips do not move when the
+	// value changes and a new scenario does not silently truncate.
+	debugPickW = 30
 )
 
 // DebugScenario is one thing the window can make happen. Label is what the
@@ -42,9 +43,12 @@ type DebugScenario struct {
 	Key   string
 }
 
-// debugState is the open window.
+// debugState is the open window: which question has the focus, which value that
+// question is showing, and whether the confirmation is up.
 type debugState struct {
-	focus int
+	focus   int
+	pick    int
+	confirm bool
 }
 
 // debugScenarios is what this build offers. Empty in a release build, because
@@ -57,26 +61,48 @@ func (d Dashboard) debugScenarios() []DebugScenario {
 	return d.cfg.DebugScenarios
 }
 
-// debugLines is the body.
-// debugTitle heads the window, centred from the width it is drawn at rather
-// than from a hand-computed column.
-const debugTitle = "*** DIAGNOSTICS ***"
+// debugProseWidth is the width this window's prose wraps to: the panel's RAIL
+// budget, less the window's own inset.
+//
+// WRAPPED ONCE, AND WITH A MARGIN LEFT. Wrapping to the box width let the panel
+// wrap a second time three columns narrower, and at 80 columns the prose came
+// apart into orphan lines reading "a", "and", "correctly". Leaving the wrap to
+// the panel fixed that and cost the right margin — the panel wraps to its
+// border, and every other window in the app clears it by three. Wrapping to the
+// NARROWER of the two budgets does both: the panel's wrap is then a no-op, and
+// on a frame with no scroll rail the text is three cells short of what it could
+// be, which is invisible.
+func debugProseWidth(o render.Opts, box int) int {
+	return max(min(o.Width, box)-7-(modalInset-panelSide), 8)
+}
 
-func (d Dashboard) debugLines(o render.Opts) (out []string, focusAt, focusEnd int) {
-	out = []string{
-		strings.Repeat(" ", max((debugWidth-2-2*modalInset-render.Width(debugTitle))/2+modalInset-panelSide, 0)) + debugTitle,
-		"",
-		" This window is not part of a release build's alerting surface. It exists so a",
-		" person can check whether the app is working when the answer is not obvious —",
-		" the case that produced it was a relay that answered every check correctly and",
-		" broadcast silence.",
-		"",
+// debugTitle is the window's border: its name, and the warning it carries
+// wherever it is drawn.
+//
+// THE WARNING IS IN THE CHROME, not in the body, so it cannot scroll away from
+// the control it is about.
+func (d Dashboard) debugTitle(o render.Opts, w int) string {
+	const name, warn = "DIAGNOSTICS", "*USE RESPONSIBLY*"
+	fill := w - severeTitleChrome - render.Width(name) - render.Width(warn)
+	tint := func(s string) string { return render.Tint(s, render.Tok(render.ModalTitle)) }
+	if fill <= 1 {
+		return tint(name)
 	}
-	// THE PROSE THROUGH THE ONE OWNER (red team 2026-09-05). These are
-	// hand-wrapped literals and they reached two cells from the right border —
-	// the same defect the relay-fault window had, in the window next door, and
-	// found by measuring every window instead of the one that was reported.
-	out = insetModalLines(out, debugContent)
+	return tint(name) + " " + strings.Repeat(hz(o), fill) + " " + tint(warn)
+}
+
+// debugLines is the body.
+func (d Dashboard) debugLines(o render.Opts) (out []string, focusAt, focusEnd int) {
+	// ONE PARAGRAPH, WRAPPED BY ITS OWNER. Hand-wrapped literals were wrapped a
+	// second time by the panel at 80 columns and came apart into orphan lines
+	// ("a", "and", "correctly") — a paragraph the window wraps once cannot.
+	out = insetModalLines([]string{
+		"Tools to verify Watchpost machinery is working as intended. USE RESPONSIBLY. Audio " +
+			"diagnostics will have Diagnostic messages attached to the beginning and ending of the " +
+			"audio feed for safety purposes to ensure listeners do not confuse the diagnostic event " +
+			"as a real weather report, situation, or emergency.",
+		"",
+	}, debugProseWidth(o, debugWidth))
 
 	sc := d.debugScenarios()
 	if len(sc) == 0 {
@@ -87,54 +113,84 @@ func (d Dashboard) debugLines(o render.Opts) (out []string, focusAt, focusEnd in
 		// it, in the build that ships.
 		return append(out, insetModalLines([]string{
 			"INJECTION IS NOT AVAILABLE IN THIS BUILD.", "",
-			"It is compiled out rather than switched off, so a fabricated alert cannot be",
-			"produced here by any means. Build with -tags watchpost_debug to enable it.", ""},
-			debugContent)...), -1, -1
+			"It is compiled out rather than switched off, so a fabricated alert cannot be produced " +
+				"here by any means. Build with -tags watchpost_debug to enable it."},
+			debugProseWidth(o, debugWidth))...), -1, -1
 	}
-	out = append(out, insetModalLines([]string{"INJECT AN ALERT:", ""}, debugContent)...)
-	// THROUGH THE LIST'S ONE OWNER (D-1), like every other list. This drew a
-	// bare "›" with no tint — which
-	// --ascii could not turn into ">" — and the cursor moved with nothing on
-	// the line changing colour. The same three defects the relay-fault window
-	// had, in the window next door (red team 2026-09-05).
-	//
-	// IT WAS NOT THE LAST ONE, which this comment claimed until 2026-09-06. The
-	// Settings window's location suggestions had the same three defects, in the
-	// most-opened window in the app, and the --ascii scan that should have
-	// caught it could not: its fixture focuses a cast row, so the suggestion
-	// list never rendered. A gate whose fixture cannot reach the branch is
-	// vacuous on that branch.
-	for i, s := range sc { // bounded by the scenarios (P10-02)
-		focused := i == d.debug.focus
-		if focused {
-			focusAt, focusEnd = len(out), len(out)
-		}
-		out = append(out, strings.Repeat(" ", modalInset)+o.ListMark(focused)+" "+render.ListLabel(s.Label, focused))
+	out = append(out, insetModalLines([]string{
+		"ALERT INJECTION - ENSURE ALERTING AND TICKER TAKEOVER WORKS", ""}, debugProseWidth(o, debugWidth))...)
+	// THROUGH THE SETTINGS ROW'S OWN CONTROLS (D-1). The mark, the label and the
+	// picker are the Settings window's, because this is the same gesture on the
+	// same shape of question — and because the --ascii scan and the AA register
+	// already know those three.
+	focusAt = len(out)
+	focusEnd = focusAt
+	out = append(out, strings.Repeat(" ", modalInset)+o.ListMark(true)+" "+
+		settingLabel("Alert Type:", true)+"   "+
+		pickerCellW(sc[d.debugPick()].Label, newArrowChips(o), flashNone, debugPickW))
+	return append(out, ""), focusAt, focusEnd
+}
+
+// debugPick is the focused value, bounded by what the build offers — the list
+// is the app's and this window never trusts an index into it.
+func (d Dashboard) debugPick() int {
+	n := len(d.debugScenarios())
+	if n == 0 {
+		return 0
 	}
-	return append(out, insetModalLines([]string{"",
-		"These are FABRICATED and enter where a real alert enters, so what you hear is",
-		"what the pipeline does — not a shortcut that would prove nothing.", ""},
-		debugContent)...), focusAt, focusEnd
+	return ((d.debug.pick % n) + n) % n
 }
 
 // debugChips is the pinned footer.
 func (d Dashboard) debugChips(o render.Opts) []string {
 	if len(d.debugScenarios()) == 0 {
-		// ↑↓ SCROLL HERE, AND THE CHIPS SAY SO. There is no list in this build,
-		// and a window whose text runs past the fold with no advertised way
-		// down reads as a window with nothing more in it.
+		// ↑↓ SCROLL HERE, AND THE CHIPS SAY SO. There is no question in this
+		// build, and a window whose text runs past the fold with no advertised
+		// way down reads as a window with nothing more in it.
 		return []string{"  " + o.KeyCap("↑↓") + " Scroll    " + o.KeyCap("esc") + " Close"}
 	}
-	return []string{"  " + o.KeyCap("↑↓") + " Choose    " + o.KeyCap("enter") + " Inject    " + o.KeyCap("esc") + " Close"}
+	// "TEST ALERT" HERE, "TEST EVENT" ON THE SURFACES. The chip names the ACTION
+	// — inject a test alert — and the mark names what the thing IS wherever it
+	// is later seen. The mock says both, in those two places.
+	return []string{"  " + o.KeyCap("tab") + " Next question    " +
+		o.KeyCap("enter") + " Inject **TEST ALERT**    " +
+		o.KeyCap("↑↓") + " Pick   " + o.KeyCap("esc") + " Cancel"}
 }
 
-// handleDebugNav walks the scenarios, wrapping like every other list.
+// debugConfirmWidth is the confirmation's box, to the mock.
+const debugConfirmWidth = 65
+
+// debugConfirmLines is the ARE YOU SURE window (HUM LEAD mock, 2026-09-07).
+//
+// IT IS A SECOND WINDOW OVER THE FIRST, and it is RED. An injection cannot be
+// stopped once it is under way — it enters where a real alert enters and
+// crosses every stage a real one does — so the last thing between the operator
+// and a fabricated alert on their own broadcast is a question they have to
+// answer, on the colour this app uses for exactly one thing.
+func (d Dashboard) debugConfirmLines(o render.Opts) []string {
+	centre := func(s string) string {
+		return strings.Repeat(" ", max((debugConfirmWidth-2-2*modalInset-render.Width(s))/2+modalInset-panelSide, 0)) + s
+	}
+	out := []string{"", centre("ARE YOU SURE?"), centre("*** ONCE CONFIRMED, YOU CANNOT STOP THIS ACTION ***"), ""}
+	out = append(out, insetModalLines([]string{
+		"Watchpost has taken every reasonable measure to ensure an injected alert is clearly " +
+			"marked as such in the UI, and in the audio read scripts to minimize any potential " +
+			"confusion to anyone listening to the audio or your broadcast.  However, as the " +
+			"operator, responsibility for the contents of your station broadcast is ultimately " +
+			"yours.",
+		""}, debugProseWidth(o, debugConfirmWidth))...)
+	return append(out, strings.Repeat(" ", modalInset)+o.KeyCap("esc")+"  Cancel   "+
+		o.KeyCap("enter")+" CONFIRM: I UNDERSTAND", "")
+}
+
+// handleDebugNav walks the window: the questions with tab, the focused
+// question's value with the arrows.
 func (d Dashboard) handleDebugNav(act term.Action) Dashboard {
 	n := len(d.debugScenarios())
 	if n == 0 {
 		// A BUILD WITH NO LIST STILL HAS A WINDOW TO READ (FR-5): the keys that
-		// choose a scenario scroll the prose instead, bounded by the window's
-		// own geometry rather than by a second copy of it.
+		// pick a value scroll the prose instead, bounded by the window's own
+		// geometry rather than by a second copy of it.
 		switch act {
 		case "nav-up":
 			d.modalScroll = max(0, d.modalScroll-1)
@@ -143,22 +199,42 @@ func (d Dashboard) handleDebugNav(act term.Action) Dashboard {
 		}
 		return d
 	}
+	if d.debug.confirm {
+		return d // the question is answered with enter or esc, not walked
+	}
 	switch act {
-	case "nav-up":
-		d.debug.focus = (d.debug.focus - 1 + n) % n
-	case "nav-down":
-		d.debug.focus = (d.debug.focus + 1) % n
+	case "nav-up", "alert-prev":
+		d.debug.pick = ((d.debugPick()-1)%n + n) % n
+	case "nav-down", "alert-next":
+		d.debug.pick = (d.debugPick() + 1) % n
 	}
 	return d
 }
 
-// chooseDebug fires the focused scenario and closes the window.
+// askDebugConfirm puts the confirmation up. ENTER DOES NOT INJECT: the window
+// asks first, and the asking is the feature.
+func (d Dashboard) askDebugConfirm() Dashboard {
+	if len(d.debugScenarios()) == 0 {
+		return d
+	}
+	d.debug.confirm = true
+	return d
+}
+
+// cancelDebugConfirm takes the confirmation down and injects nothing.
+func (d Dashboard) cancelDebugConfirm() Dashboard {
+	d.debug.confirm = false
+	return d
+}
+
+// chooseDebug fires the chosen scenario and closes the window — ONLY from the
+// confirmation. Nothing else in this file injects.
 func (d Dashboard) chooseDebug() (Dashboard, tea.Cmd) {
 	sc := d.debugScenarios()
-	if d.debug.focus < 0 || d.debug.focus >= len(sc) {
+	if len(sc) == 0 || !d.debug.confirm {
 		return d, nil
 	}
-	inject, key := d.cfg.InjectAlert, sc[d.debug.focus].Key
+	inject, key := d.cfg.InjectAlert, sc[d.debugPick()].Key
 	d.modal, d.debug = modalNone, debugState{}
 	return d, func() tea.Msg {
 		if inject != nil {

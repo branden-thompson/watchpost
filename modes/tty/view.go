@@ -30,10 +30,31 @@ func (d Dashboard) View() tea.View {
 	if overlay := d.modalView(o); overlay != "" {
 		content = render.Overlay(content, overlay, d.width) // the one open window (UAT 8.3: lipgloss compositing)
 	}
+	// AND THE CONFIRMATION OVER THAT (HUM LEAD mock, 2026-09-07). A second
+	// layer rather than a swapped body: the mock shows the red box ON TOP of
+	// the diagnostics window, and the window underneath is unchanged — which is
+	// also why it stays outside the modal memo. It is composited here, on the
+	// terminal's own centre, because a box taller than the window it covers
+	// would hang off the bottom of a composite centred on the window.
+	if box := d.confirmOverlay(o); box != "" {
+		content = render.Overlay(content, box, d.width)
+	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.BackgroundColor = render.WindowBG(d.darkBG) // UAT 10.2: blue-grey window
 	return v
+}
+
+// confirmOverlay is the window that floats over another window, "" when none.
+//
+// ONE TODAY: the ctrl+d window's ARE YOU SURE, on the red confirm tile this app
+// uses for exactly one thing — a question whose answer cannot be taken back.
+func (d Dashboard) confirmOverlay(o render.Opts) string {
+	if d.modal != modalDebug || !d.debug.confirm {
+		return ""
+	}
+	fg, _ := render.ModalTone(d.darkBG)
+	return d.floatModalToned(o, debugConfirmWidth, "", d.debugConfirmLines(o), fg, render.Tok(render.ConfirmBG))
 }
 
 // renderModal renders the open window, "" when none (Q6: one switch, one
@@ -194,7 +215,9 @@ func (d Dashboard) footerModalChrome(o render.Opts) (width int, title string, fo
 		// pattern people expect of a tool's first run.
 		return d.modalWidth(), "Settings", d.setupChips(o)
 	case modalDebug:
-		return debugWidth, "", d.debugChips(o)
+		// THE WARNING RIDES THE BORDER (HUM LEAD mock, 2026-09-07), so it cannot
+		// scroll away from the control it is about.
+		return debugWidth, d.debugTitle(o, min(o.Width, debugWidth)), d.debugChips(o)
 	case modalRelayFault:
 		// No title in the frame: the mock puts *** ERROR *** on its own line
 		// inside the box, over a plain top border.

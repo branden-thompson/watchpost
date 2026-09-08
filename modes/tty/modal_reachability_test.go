@@ -80,7 +80,7 @@ var reachabilityBaseline = map[modal]int{
 	modalSetup:      2,
 	modalSevere:     0,
 	modalRelayFault: 1,
-	modalDebug:      7,
+	modalDebug:      0,
 }
 
 // reachabilityNote is what is KNOWN about a non-zero baseline, so the number is
@@ -100,7 +100,6 @@ var reachabilityBaseline = map[modal]int{
 var reachabilityNote = map[modal]string{
 	modalSetup:      "the two group headers: WATCHPOST RADIO - CORRESPONDENTS and WATCHPOST UI",
 	modalRelayFault: "*** ERROR ***, the window's own head; its three ways out are reachable and its own test proves it",
-	modalDebug:      "the title and the FABRICATED caveat — the head and the tail of the body",
 }
 
 func TestEveryLineOfEveryWindowIsReachableAtTheFloor(t *testing.T) {

@@ -961,9 +961,19 @@ func (d Dashboard) toggleSevere(act term.Action) (Dashboard, bool) {
 		return d.openSevere(), true
 	case act == "debug":
 		return d.toggle(modalDebug), true
+	case act == "details" && d.modal == modalDebug && !d.debug.confirm:
+		// enter ASKS. Nothing here injects: an injected alert cannot be stopped
+		// once it is under way, and what it produces goes out over the
+		// operator's own broadcast (HUM LEAD mock, 2026-09-07).
+		return d.askDebugConfirm(), true
 	case act == "details" && d.modal == modalDebug:
 		next, cmd := d.chooseDebug()
 		return next.withCmd(cmd), true
+	case act == "close" && d.modal == modalDebug && d.debug.confirm:
+		// esc answers the question "no" and leaves the window open. Closing the
+		// tool because a confirmation was declined would be the app deciding
+		// what the operator meant.
+		return d.cancelDebugConfirm(), true
 	case act == "details" && d.modal == modalRelayFault:
 		// enter takes the focused way out (MVS-D-76). Handled here with the
 		// other windows' actions rather than in the nav switch: choosing is not
