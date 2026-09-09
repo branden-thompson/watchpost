@@ -179,6 +179,8 @@ func (Broadcaster).Init
 func (Broadcaster).Update
 func (Broadcaster).View
 func (Broadcaster).clamp
+func (Broadcaster).clock
+func (Broadcaster).heldNotice
 func (Broadcaster).lanes
 func (Broadcaster).minSize
 func (Broadcaster).notice
@@ -705,3 +707,4 @@ type tonedRow
 type uiSavedMsg
 type vizTickMsg
 var _
+var heldEscalation

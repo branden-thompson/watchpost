@@ -171,3 +171,33 @@ exit 1`.  P2(a) chained with `;` and pushed a red gate to `origin`.
 a key name, so a test cannot quietly drive past the real key path — the seam the 0.15.0 build log
 records being burned by twice.  It was extended to express the chord rather than the test being
 weakened to avoid it.
+
+## P2(d) — NFR-7, the bounded silent station
+
+**The safety lens's finding, made into a gate.**  STANDBY holds every track *including the alert rail*
+— correct, and it is what stops a station on standby putting a tornado warning to air.  The cost is a
+hazard that is neither broadcast nor visible, and the operator is the only person who can end it.
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestAHeldAlertInStandbyRaisesANotice` | A hazard held while silent is visible | By the watched RED — the notice was a `nil` stub |
+| `TestTheHeldNoticeEscalatesWithTime` | **NFR-7's exit** — it escalates rather than sitting unchanged | **Plant 2026-09-09:** the ladder flattened to one rung → **CAUGHT** (`reads identically at 30s and at 20m`) |
+| `TestAnEmptyRailInStandbyRaisesNothing` | A station holding NOTHING is at rest, not a hazard withheld | **Plant 2026-09-09:** the empty-rail return made unreachable → **CAUGHT**.  Crying wolf here would train the operator to ignore the notice that matters |
+| `TestARunningStationRaisesNoStandbyNotice` | It does not persist once the station is draining | Passes; the negative direction |
+| `TestARepeatedStationMessageDoesNotRestartTheStandbyClock` | A repeat of the same power is a refresh, **not a transition** | **WRITTEN BECAUSE A PLANT SURVIVED — see below** |
+
+### A plant survived, and this time the PLANT was right
+
+**Plant C made every `StationMsg` restart the standby clock (`if true`), and nothing failed.**
+
+INST-3 says a surviving plant indicts the plant first.  It was checked, and here the plant was sound:
+**every fixture above sends exactly one station message**, so a clock that restarts on repeats never
+manifests.  **The gate was blind, not the plant bad.**
+
+The consequence it would have shipped: a station silent for an hour looks *freshly quiet* the moment
+any other message arrives, and **the escalation never climbs past its first rung** — the notice exists
+and quietly never gets louder, which is worse than not having it.
+
+`TestARepeatedStationMessageDoesNotRestartTheStandbyClock` was written for it, verified to **PASS clean
+and FAIL under the plant**.  **This is the first surviving plant this release that indicted the gate
+rather than itself**, and it is the reason the rule says to check both.

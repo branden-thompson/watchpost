@@ -14,6 +14,7 @@ package tty
 import (
 	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -55,6 +56,13 @@ type Broadcaster struct {
 	// the Director decided.
 	power lineup.Power
 
+	// now is the console's clock, injectable so a test can state the schedule
+	// instead of waiting for it.
+	now func() time.Time
+
+	// standbySince is when the station last went silent. Zero while it is not.
+	standbySince time.Time
+
 	// lineup is the last PUBLISHED schedule. It is never mutated here — the
 	// console names an intent and the Director owns the order (D-23).
 	lineup lineup.Lineup
@@ -62,6 +70,56 @@ type Broadcaster struct {
 
 // NewBroadcaster builds the console.
 func NewBroadcaster() Broadcaster { return Broadcaster{} }
+
+// clock is the console's time, real unless a test injected one.
+func (b Broadcaster) clock() time.Time {
+	if b.now != nil {
+		return b.now()
+	}
+	return time.Now()
+}
+
+// heldNotice is NFR-7's bound: a silent station holding a hazard says so, and
+// says it louder the longer it holds.
+//
+// WHY THIS EXISTS AT ALL. STANDBY holds EVERY track including the alert rail,
+// and that is correct — it is what stops a station on standby putting a
+// tornado warning to air. The cost is that the hazard is neither broadcast
+// nor visible, and the operator is the only person who can end that state.
+//
+// IT IS SILENT WHEN THE RAIL IS EMPTY, deliberately. A silent station holding
+// nothing is a station at rest; warning about it would train the operator to
+// ignore the notice that matters.
+func (b Broadcaster) heldNotice() []string {
+	if b.power != lineup.OffAir {
+		return nil
+	}
+	held := len(b.lineup.Cards(lineup.AlertRail))
+	if held == 0 {
+		return nil
+	}
+	for _, s := range heldEscalation {
+		if b.standbySince.IsZero() || b.clock().Sub(b.standbySince) >= s.after {
+			return []string{"", s.mark + "  " + strconv.Itoa(held) + " HAZARD(S) HELD — the station is in STANDBY and nothing is going to air. " + s.say}
+		}
+	}
+	return nil
+}
+
+// heldEscalation is the ladder, LONGEST FIRST so the walk returns the most
+// severe rung that has been reached.
+//
+// The rungs are a PARAMETER, written down the way a threshold is meant to be
+// (INST-1 scopes its rule to the SET being iterated, not to the numbers).
+var heldEscalation = []struct {
+	after time.Duration
+	mark  string
+	say   string
+}{
+	{15 * time.Minute, "!!!", "They have been held past the staleness bound and may be dropped unread."},
+	{5 * time.Minute, "!!", "Go ON AIR or stand the station down."},
+	{0, "!", "Go ON AIR to read them."},
+}
 
 func (b Broadcaster) Init() tea.Cmd { return nil }
 
@@ -77,6 +135,15 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 	case LineupMsg:
 		b.lineup = v.Lineup
 	case StationMsg:
+		// THE CLOCK STARTS ON THE TRANSITION, not on every message: a station
+		// that has been silent an hour must not look freshly quiet because
+		// another message arrived.
+		if v.Power != b.power {
+			b.standbySince = time.Time{}
+			if v.Power == lineup.OffAir {
+				b.standbySince = b.clock()
+			}
+		}
 		b.power = v.Power
 	}
 	return b, nil
@@ -169,6 +236,7 @@ func (b Broadcaster) lanes() []string {
 	g := b.opts().Glyphs()
 	out := []string{"WATCHPOST Broadcaster"}
 	out = append(out, b.stationLine()...)
+	out = append(out, b.heldNotice()...)
 	out = append(out, "")
 
 	// THE PRIORITY TRACK IS DRAWN FIRST because it DRAINS first, in every
