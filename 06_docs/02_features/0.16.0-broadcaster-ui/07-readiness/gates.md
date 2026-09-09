@@ -120,3 +120,18 @@ it — the bad plant recorded in 0.15.0's own roster.  These assign to a package
 
 **The lesson is the one INST-1 keeps making.**  A single fixture is a hand-written subject list of size
 one.  The hole was not in the gate's logic; it was in what the gate was pointed at.
+
+### The alloc budget fired for real, and I pushed past it
+
+**`TestConsoleFrameAllocBudget` caught P2(a)'s banner: 14 allocations against a budget of 13.**  The
+gate did exactly what it was pinned at the measurement to do.
+
+**And I committed and pushed anyway.**  The test run and the commit were chained with `;` rather than
+gated on the result, so a red gate reached `origin`.  That is the failure
+*Verify-Then-Commit for Scripted Edits* names precisely — never chain edit-and-commit; verify, THEN
+commit — and I had already recorded a variant of it earlier the same session when an `echo pushed`
+followed a push whose exit code I had discarded.
+
+**Re-pinned to 14 deliberately**, with the cause named (`stationLine`), which is the path the gate's
+own failure message prescribes.  **Both the catch and the process failure are recorded**, because a
+roster that only shows catches teaches the easy half.

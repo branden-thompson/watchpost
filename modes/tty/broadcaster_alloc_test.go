@@ -21,12 +21,16 @@ const (
 	routerOverheadAllocs = 1
 
 	// bcFrameAllocs is the console's own frame cost at 150x74 with two cards.
-	// MEASURED 2026-09-09: 13.
+	// MEASURED 2026-09-09: 13 at P1(e); RE-PINNED to 14 at P2(a).
+	//
+	// THE +1 IS THE STATION BANNER (stationLine), and it was caught by this
+	// gate rather than noticed later — which is the whole point of pinning at
+	// the measurement instead of at a comfortable margin.
 	//
 	// IT WILL MOVE. P2..P5 add lanes, state and controls; each re-pins this
 	// DELIBERATELY, with the reason in the commit, the way the goldens are
 	// re-recorded. A budget nobody re-pins is a budget nobody reads.
-	bcFrameAllocs = 13
+	bcFrameAllocs = 14
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {
