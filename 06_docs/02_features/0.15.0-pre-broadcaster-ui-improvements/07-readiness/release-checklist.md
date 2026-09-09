@@ -77,6 +77,13 @@ and the branch is deleted after the merge either way.
   — verify before pushing that the candidate's tree is byte-identical to the feature tip, that
   `main-publish` is its only parent, and that it has an empty diff against the tip.
 - [ ] Push `release/v0.15.0`; open the PR against `main` with `07-readiness/pr-body.md`.
+- [~] **CI round 1 (2026-09-09, `02fb023`): a SPLIT result on one commit.** `verify (ubuntu-latest)`
+  **passed** in the `pull_request` run and **failed** in the `push` run — same SHA, four minutes apart.
+  Not a code defect: `mutant-check` hit `go test`'s **default 10-minute timeout**. The passing run took
+  **8m06s** for 172 mutants on `ubuntu-latest`, against **250s** on the developer's machine, so the
+  margin was invisible locally and adding one mutant at SHIP is what crossed it. Fixed with an explicit
+  `-timeout 40m` and the measurement recorded in the Makefile. **F-64.** macOS passed in both runs, and
+  `policy` passed in both.
 - [ ] **CI green on the PR.** Budget for rounds: this branch's last CI was red, and the Linux leg has
   not run on the 41 commits since. **Expect Linux-only failures and treat each as a finding**, not as
   runner noise.
