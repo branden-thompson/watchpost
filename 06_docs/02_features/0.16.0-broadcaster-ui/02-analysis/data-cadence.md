@@ -71,6 +71,49 @@ number of them.**
 **The two halves of the intent are one mechanism: the radius is what makes the frequency affordable.**
 That is the requirement, and it is materially different from "make the numbers smaller".
 
+## The arithmetic, shown — added after the DISCOVER-exit red team
+
+**The red team was right that this document asserted affordability and showed no arithmetic.  It is
+shown here.  Its own number was wrong, and that correction matters more than the finding.**
+
+**The budget is not 5 requests per second.**  Five is the library DEFAULT (`httpx.go:232-233`), and the
+doc comment at `httpx.go:5` describes that default — which is what the reviewing lens read.  **The
+application overrides it: the main client is built at `RatePerSec: 30`** (`app/app.go:123`).  Tides run
+on their **own** bucket at 5 (`app/dashboard.go:330,336`), so these are per-client budgets, not one
+shared pool.
+
+**Cost of one priority location, from `pipelines.go:125-135`:**
+
+| Kind | Cadence | Requests per minute |
+|---|---|---|
+| Alerts | 20 s | 3.00 |
+| Observations | 90 s | 0.67 |
+| Seismic | 5 min | 0.20 |
+| Marine obs · fire | 10 min | 0.20 |
+| Forecast · hourly · marine | 30 min | 0.10 |
+| **Total** | | **≈ 4.2 req/min** |
+
+**Against the real budget:** 30 req/s = 1,800 req/min.  1,800 ÷ 4.2 ≈ **430 locations** at the priority
+cadence if Broadcaster had the whole budget.  Against the lens's assumed 5 req/s it would have been ~71.
+
+**So the headroom is roughly six times what the review calculated, and the conclusion changes:** the
+constraint on the priority tier is **not** the request budget.  Two things bound it instead, and they
+are the ones the cap must be argued against:
+
+1. **The cache and the sources' own TTLs.**  Most of that 4.2 is alerts, and alerts already sit at the
+   fastest cadence the app runs anywhere.  Extra locations mostly re-read cache.
+2. **Everything else sharing the client** — Observer's own watchlist and its recent tier draw on the
+   same bucket, and this document has no measurement of what fraction is already spoken for.  **That,
+   not the ceiling, is the open number.**
+
+**Which is why R-8.2 stands unchanged**: the bound is each source's refresh interval and politeness,
+not arithmetic headroom.  **And why the cap is still not given a number here** — the number wants a
+measurement of current utilisation that nobody has taken, and inventing one would be the first cadence
+figure in this project without an argument beside it.
+
+**A measurement is therefore owed at PLAN**, and it is small: current requests per minute at idle and
+during a burst, on the main client, with the watchlist at a realistic size.
+
 ## Proposed requirement — R-8, for HUM LEAD confirmation
 
 ### R-8 — Freshness follows the service area

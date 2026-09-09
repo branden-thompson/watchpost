@@ -120,6 +120,19 @@ measurement carries the bound that closes it.
 | M4 | Give each UI a wholly separate config, which trivially prevents bleed and breaks the shared-theme requirement — so the metric counts failures in BOTH directions. |
 | M5 | Refuse to run below some size, reporting zero overflows because it renders nothing.  A clear refusal notice IS an acceptable answer here, which is why the metric counts silent overflow rather than non-render. |
 
+### Bounds tightened after the DISCOVER-exit red team
+
+**The business-quality lens broke all five**, and each bound below closes the specific hole it found.
+Recorded rather than silently patched, because a metric that was gameable once will be again.
+
+| Metric | The hole the red team drove through | The bound that closes it |
+|---|---|---|
+| M1 | A rehearsed operator recites a fixed script from memory and scores 100% with an unreadable console | Prompts are **randomised and unrehearsed**, drawn from the live schedule at the moment of asking |
+| M2 | A silently-declined reorder is timed as *fast* because the operator never notices it did not happen | The stopwatch stops only when **the schedule's own walk** reflects the change, never when the screen does |
+| M3 | "Mid-utterance" satisfied by switching in the pause between words | At least half the switches land **inside a word**, not at a boundary |
+| M4 | An in-memory bleed between two live models never round-trips through the file and so never registers | The check covers **live model state as well as the on-disk round trip** |
+| M5 | The overflow notice itself overflows, and the sweep still reads zero | The notice is **measured against the terminal width** like any other line |
+
 **M3 is the metric this release is most likely to fail**, and it is stated first among the safety
 items on purpose: the mode switch is the only requirement in the brief that can leave a physical
 transmitter keyed with no software owner.

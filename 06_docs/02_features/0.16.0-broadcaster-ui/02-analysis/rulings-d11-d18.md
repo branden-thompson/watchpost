@@ -1,13 +1,13 @@
 ---
-title: "0.16.0 DISCOVER — HUM LEAD rulings D-11 through D-18"
+title: "0.16.0 DISCOVER — HUM LEAD rulings D-11 through D-21"
 date: 2026-09-09
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "D-11..D-19 ruled.  Outstanding: the STANDBY variant pick (D-17) only."
+status: "D-11..D-21 ruled.  Nothing outstanding.  D-12 is AMENDED by D-20 — read them together."
 ---
 
-# Rulings D-11 to D-18
+# Rulings D-11 to D-21
 
 ## D-11 (OQ-12) — THE MAIN TRACK **IS** THE ROTATION.  My framing was wrong.
 
@@ -61,7 +61,14 @@ the wiring, exactly as with `Publish`, `Power`, `Fence`, `Origin.FromOperator` a
 **These three are the release's real design work**, and they replace the "two paths to speech" framing
 in `wave2-findings.md` §1, which is superseded by this ruling.
 
-## D-12 (OQ-11) — The service radius is the boundary, with a possible National exemption
+## D-12 (OQ-11) — ⚠️ **AMENDED BY D-20 — DO NOT READ THIS SECTION ALONE**
+
+> **This ruling was recorded correctly but I MISREAD it as unification — one radius.  D-20, below,
+> carries the correction: there are TWO radii with different meanings.  Read D-20 before acting on
+> anything here.**  *(Flagged after the DISCOVER-exit red team found this section still reading as
+> current — RT-5.)*
+
+### The ruling as originally recorded — The service radius is the boundary, with a possible National exemption
 
 > *"Service radius is the boundary - with a *potential* exemption for anything that could be considered
 > 'National' - though in that situation I expect it would manifest as local alerts."*
@@ -154,10 +161,12 @@ five proposed Broadcaster settings in Table 2 are approved as proposed.
    the same reads.  The tone mode and mute list are **SPLIT**, because a personal comfort mute must not
    silence a tone the station is meant to transmit.  Provider keys are **SHARED**, with the rate budget
    carried as a risk and D-16's cap as its mitigation.
-2. **D-12's unification is confirmed by silence in the right direction.**  The correction I invited —
-   "if you meant Broadcaster's radius overrides Observer's, say so" — was not taken, so the service
-   radius is ONE value.  `broadcaster.service_radius_mi` is **withdrawn**; `ticker_radius_mi` is renamed
-   in place with a compatibility shim.
+2. ~~**D-12's unification is confirmed by silence.**~~  **WITHDRAWN BY D-20.**  I inferred unification
+   from an uncorrected reading; the HUM LEAD then corrected it directly.  There are **two radii**:
+   Observer's bounds ALERTS over an unbounded location set, Broadcaster's bounds LOOKUPS.
+   `broadcaster.service_radius_mi` **stands**, and `ticker_radius_mi` is **not** renamed.
+   *(Struck rather than deleted: the wrong inference is part of the record, and the lesson is that
+   silence is not confirmation — see the disposition ledger, RT-5.)*
 3. **Gain is Broadcaster's own and persisted**, separate from Observer's unpersisted listening volume.
 
 **STILL OUTSTANDING, and deliberately not assumed:** the STANDBY wording pick (D-17).  Three variants

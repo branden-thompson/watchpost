@@ -63,8 +63,10 @@ and Table 2's five proposed Broadcaster settings are approved as proposed.**
 
 ### Notes on the three rows that are not simple preferences
 
-- **Row 25** is settled by **D-12**: the service radius is *the* boundary, one value.  It is listed here
-  for completeness, not for re-ruling.  Its name is now wrong for what it does and should change.
+- **Row 25** is settled by **D-20, which AMENDS D-12**: it is **Observer's ALERT radius**, and it keeps
+  both its meaning and its name.  There are two radii, not one — Broadcaster's service radius (row 27)
+  bounds LOOKUPS and is a separate setting.  *(This paragraph asserted the withdrawn unification until
+  the DISCOVER-exit red team caught it — RT-1.)*
 - **Row 24** is derived, not chosen.  Whatever rules row 8 rules this.
 - **Row 4** cannot be ruled S, O or B as things stand.  `term.KeyMap` is one flat namespace whose merge
   rejects any key claimed twice across the whole map, and Broadcaster's own key row already collides
@@ -91,7 +93,8 @@ now recommended **SHARED**: one station, one sound.
 ## The migration, which is purely additive
 
 Add a `[broadcaster]` table; **touch, rename or repurpose nothing else** — except row 25's name, if
-D-12's unification is confirmed, which is a rename with a compatibility shim rather than a move.  A
+**there is no rename and no unification** — D-20 amended D-12, so row 25 keeps its name and row 27 is a
+new, separate setting.  A
 0.15.0 file then decodes unchanged and **R-2.4 holds by construction**.
 
 For any row ruled **SPLIT**, a one-shot shim shaped like `withToneCompat` **copies** — never moves — the

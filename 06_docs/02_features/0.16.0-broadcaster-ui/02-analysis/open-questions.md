@@ -4,10 +4,29 @@ date: 2026-09-09
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "OPEN — 8 items.  OQ-12 carries a descope lever that changes the release's shape."
+status: "CLOSED — all 8 ruled 2026-09-09 as D-11..D-21.  This file is the QUESTION record; the ANSWERS are in 02-analysis/rulings-d11-d18.md.  Do not read it as a live blocker list."
 ---
 
-# Open questions — restated as direct asks
+# Open questions — ALL CLOSED
+
+> **STATUS: every question below was ruled on 2026-09-09.**  This file records what was ASKED and the
+> options offered; the RULINGS are in `02-analysis/rulings-d11-d18.md` as D-11 through D-21.  It is kept
+> for the reasoning, not as a blocker list.  A reader arriving at PLAN should start with the rulings.
+
+| Asked here | Ruled |
+|---|---|
+| 1 · main track absorb/beside/descope | **D-11** — the main track IS the rotation; the question dissolved |
+| 2 · which radius fences | **D-12, AMENDED BY D-20** — two radii, two mechanisms |
+| 3 · breakpoint vocabulary | **D-13** — adopt the platform enum |
+| 4 · credits obligation | **D-14** — not an obligation; a Watchpost self-credit |
+| 5 · R-8 | **D-15** — approved |
+| 6 · priority-tier cap | **D-16** — hard cap, population-descending |
+| 7 · STANDBY wording | **D-21** — Variant C plus a colour treatment |
+| 8 · the settings fields | **D-19** — every recommendation approved |
+
+---
+
+## The questions as originally asked
 
 Ordered by how much each changes the work.  Items 1-5 block FR enumeration; 6-8 can be ruled later in
 DISCOVER or at PLAN.  Every recommendation names its strongest counter-argument.

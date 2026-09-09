@@ -35,6 +35,10 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 - **FR-1.5** The swap chords are **rebindable**, and the defaults are chosen at PLAN against the
   multiplexer survey.  *Exit: an override in the user's key table changes the chord; the default is not
   a documented multiplexer prefix.*
+- **FR-1.6** **The chord is not the only door.**  Switching surfaces is reachable without a modifier
+  chord, because a terminal, multiplexer or assistive tool can intercept one and leave the operator with
+  no path back.  *Exit: a surface switch is reachable by a non-chord route, driven through the real key
+  path.*  *(Red team, accessibility lens: a chord-only switch has no fallback.)*
 
 ## FR-2 — The three lanes
 
@@ -53,6 +57,14 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
   exists.*
 - **FR-2.4** The ten slots are addressable **`0`-`9`**, and the takeover layer has its own handles.
   *Exit: each handle opens the card it names, driven through the real key path.*
+- **FR-2.5** **No report is ever read twice by two audio owners.**  The rotation drives the engine
+  directly while the rail goes through the narrator arbiter, and nothing dedupes between them today.
+  *Exit: a test drives both paths at the same subject and asserts exactly one read; a mutant removing the
+  guard is CAUGHT.*  *(Red team, safety lens: the double-speak gap had no requirement.)*
+- **FR-2.6** **All external text in the new lanes routes through the existing plaintext clamp** — the
+  boundary that strips escape sequences and control characters from provider prose and relay titles.
+  **One owner, no second path.**  *Exit: a hostile relay title and a hostile alert body render clamped
+  in the bed row and the takeover card.*  *(Red team, infosec lens: the reuse was assumed, not stated.)*
 
 ## FR-3 — Card management
 
@@ -60,7 +72,9 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 |---|---|
 | **Source** | R-3.3, R-3.4, D-11 |
 
-- **FR-3.1** Selecting a slot opens a **modal for that card** showing its detail.
+- **FR-3.1** Selecting a slot opens a **modal for that card** showing its detail.  *Exit: the modal
+  opens for every one of the ten slots and the takeover handles, driven through the real key path, and
+  its content is the card the handle names.*
 - **FR-3.2** The operator can **promote, demote and drop** a card.  *Exit: each action changes the
   order the schedule actually walks — asserted against `Next()`, never against a display field.*
 - **FR-3.3** **An action must never be shown as taken unless the schedule took it.**  `Lineup.Set`
@@ -75,6 +89,12 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 - **FR-3.6** A card the operator holds past the **fifteen-minute staleness bound** is dropped by the
   existing safety rule, and **the operator is told which card went**.  The listener is already told.
   *Exit: the operator-facing notice names the dropped card.*
+- **FR-3.7** **A mis-action is recoverable.**  Dropping a card is the destructive one, and an operator
+  under severe-weather pressure will eventually drop the wrong thing.  Either the action is undoable, or
+  it is confirmed before it takes effect — **PLAN chooses which, and may not choose neither.**
+  *Exit: a dropped card can be restored, or its drop required a confirmation; asserted for an ACTIVE
+  warning specifically, which is the case that matters.*  *(Red team, DISCOVER phase lens: promote and
+  demote got full rigor and destructive drop had no safeguard at all.)*
 
 ## FR-4 — The bed and the cut-over
 
@@ -111,7 +131,19 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
   of the ticker (D-21).  *Exit: the state is distinguishable at a glance; the chosen pair is measured by
   the contrast register like every other painted pair, and the `--ascii` and no-colour paths still carry
   the state in words, because a colour alone is not a carrier.*
-- **FR-5.4** **A paused main track is a distinct condition from STANDBY.**  `OffAir` holds the rail;
+- **FR-5.4** **The operator changes the state with a named control**, and the control is a requirement
+  rather than a mock detail.  *Exit: the control moves the Director's power and the console reflects it;
+  the binding is in the key map like every other action.*  *(Red team, business lens: promote and demote
+  had FRs and the state toggle had none.)*
+- **FR-5.5** **THE BOUNDARY OF "ON AIR" IS STATED, NOT IMPLIED.**  Watchpost has **no radio path** — it
+  produces audio, and a separate transmitter the application cannot observe puts it over the air.  So
+  "on the air" can only ever mean *the software is putting programme out*, never *the antenna is
+  radiating*.  **The console must say so where the operator reads it**, because the locked problem
+  statement's third inability is about confirming you are on the air, and an operator who believes the
+  banner is confirming RF has been misled by us.  *Exit: the boundary is stated in the console's own help
+  or About text, not only in a design document.*  *(Red team, three lenses converged here: business,
+  safety and the phase lens each reached it independently.)*
+- **FR-5.6** **A paused main track is a distinct condition from STANDBY.**  `OffAir` holds the rail;
   a paused main track does not.  *Exit: the two are separately representable and separately asserted.*
 
 ## FR-6 — Settings
@@ -120,7 +152,8 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 |---|---|
 | **Source** | R-2, D-6, **D-19** |
 
-- **FR-6.1** Broadcaster has its **own settings modal**.
+- **FR-6.1** Broadcaster has its **own settings modal**.  *Exit: it opens, it edits only the fields
+  ruled Broadcaster's or shared, and it never presents an Observer-only field.*
 - **FR-6.2** The split is **exactly as ruled** in the field table: shared theme, units, clock, update
   check, provider keys, cast and voices; Observer's watchlist, recents, fire and seismic thresholds;
   split tone mode and mute list; Broadcaster's own tower, relay and gain.  *Exit: a round-trip test
@@ -144,7 +177,10 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 | **Source** | R-5, D-4, **D-13** |
 
 - **FR-7.1** Broadcaster uses the **platform breakpoint vocabulary**, whose boundaries are redefined
-  for an operator console.  *Exit: the platform breakpoint API has production callers.*
+  for an operator console.  *Exit: the console's layout is SELECTED by the platform breakpoint function —
+  proven by a mutant that changes a boundary and moves the rendered layout.  A call whose result is
+  discarded does not satisfy this.*  *(Red team, code lens: the original exit was satisfiable by
+  `_ = term.BreakpointFor(w)`.)*
 - **FR-7.2** The console **renders correctly at every supported class**, decomposing as ruled — the
   visual scrollbar becomes a counter, titles truncate, and the side-by-side stacks below the class
   where the takeover panel would wrap.  *Exit: a size sweep that DERIVES its widths from the breakpoint
@@ -183,7 +219,15 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
   N greater than the cap; the rule is stated where the operator reads it.*
 - **FR-8.7** Cadences stay **bounded by each source's own refresh and the client's politeness limits**.
   *Exit: every cadence carries its argument beside it, as every existing one does.*
-- **FR-8.8** The operator can see **effective freshness** — when each kind last arrived.
+- **FR-8.8** The operator can see **effective freshness** — when each kind last arrived.  *Exit: the
+  console shows a per-kind last-arrival time that moves when data arrives and visibly ages when it does
+  not.*
+- **FR-8.10** **The station behaves defined-ly when a feed fails while broadcasting.**  Visibility of
+  freshness is not a behaviour.  The station must not read stale data as current, and must not go
+  silently quiet.  *Exit: with a provider forced to fail, the console shows the degradation and the
+  spoken output either says the data is unavailable or omits it — never presents it as current.*
+  *(Red team, DISCOVER phase lens: the worst day is severe weather with a failing feed, and no
+  requirement covered it.)*
 - **FR-8.9** A **national-scope exemption** is investigated and either built or dropped with a recorded
   reason.  **The HUM LEAD's own expectation is that it manifests as local alerts anyway**, and FR-8.4's
   zone mechanism is why.  *Exit: DISCOVER states whether any product carries a national scope that
@@ -198,8 +242,17 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 - **FR-9.1** The broadcast location's **name and coordinates are one fact with one source of truth**.
   *Exit: a test that changes the name and finds the coordinates follow, or refuses the change.*
 - **FR-9.2** The coordinate pair is a **first-class value**, not a string assembled for the masthead,
-  because the planned map consumes it.
-- **FR-9.3** The **service radius and the relay selection both measure from that pair.**
+  because the planned map consumes it.  *Exit: the pair is a typed value with one owner; no consumer
+  parses it back out of rendered text.*
+- **FR-9.3** The **service radius and the relay selection both measure from that pair.**  *Exit: both
+  compute from the same origin; changing the tower moves both.*
+- **FR-9.4** **The tower's storage boundary is stated to the operator.**  The tower is a real person's
+  antenna position at metre precision, persisted to disk.  The operator is told, once, what the
+  application does and does not do with it — that it stays local, and whether it reaches debug dumps or
+  exports.  *Exit: the statement exists where an operator configuring the tower will read it, and a
+  debug dump is asserted not to contain the pair unless that is stated.*  *(Red team, infosec lens: the
+  project already reasoned about exactly this class for a MOCK coordinate — F-66 — and never re-ran that
+  reasoning for the real field.)*
 
 ## FR-10 — Gain
 
@@ -217,14 +270,46 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 | **Source** | the directive itself |
 
 - **FR-11.1** **Every gate this release adds carries a watched failure** — a plant applied, compiled,
-  and seen to turn it red — recorded with its date, or a by-construction control.
+  and seen to turn it red — recorded with its date, or a by-construction control.  *Exit: a roster in
+  `07-readiness/gates.md` with an evidence line per gate, as 0.15.0 produced.*
 - **FR-11.2** **Every subject list is derived** (INST-1): the size sweep walks the breakpoint
   boundaries; the settings round-trip walks the config struct; the lane assertions walk the track enum.
-  No hand-written list of things-to-check.
+  No hand-written list of things-to-check.  *Exit: adding a breakpoint, a config field or a track adds
+  sweep rows with no edit to the test.*
 - **FR-11.3** **Silence is a distinct verdict** (INST-2): not-applicable, could-not-run and not-covered
-  never render as passed.
-- **FR-11.4** **A surviving plant indicts the plant first** (INST-3).
-- **FR-11.5** **Every published count states its blind spot in its own output** (INST-5).
+  never render as passed.  *Exit: each instrument has a case per verdict, and a forced could-not-run
+  reports as such rather than green.*
+- **FR-11.4** **A surviving plant indicts the plant first** (INST-3).  *Exit: any SURVIVED verdict is
+  recorded with the plant re-examined, as 0.15.0 recorded both its surviving plants.*
+- **FR-11.5** **Every published count states its blind spot in its own output** (INST-5).  *Exit: the
+  count's own output names what its method cannot see.*
+- **FR-11.6** **An instrument answers a KNOWN case before it is believed about an unknown one**
+  (**INST-4**).  *Exit: each new instrument is run against a case whose answer is already established,
+  and that A/B is recorded beside its first published number.*  *(Red team, junior-dev lens: INST-4 was
+  the one rule with no requirement — a builder discharging every other FR-11 item would have believed
+  they had satisfied `FULL INST` while never A/B-ing an instrument at all.)*
+
+---
+
+# Glossary — the words this release borrows from earlier ones
+
+**Written because a newcomer cannot act on these documents without it.**  Every term below is used
+throughout the requirements and is defined only in a previous release's files.
+
+| Term | What it means here | Defined in |
+|---|---|---|
+| **the main track** | The rotation: the queue of ordinary reads, shown as the ten-card stack | `platform/lineup/lineup.go:15` |
+| **the (alert) rail** | The priority queue for severe-weather takeovers.  It **always drains first** | `platform/lineup/lineup.go:16,171-188` |
+| **the bed** | The live NOAA relay stream the programme rides on.  Deliberately **not** a track — a resource the Director cuts over to, not a queue | `platform/lineup/lineup.go:9-12`, `bed.go:2-3` |
+| **a card** | One scheduled read, with a state machine from proposed to on-air to done | `platform/lineup/card.go:233-307` |
+| **a takeover** | The one card a severe-weather burst produces, queued to the rail | `platform/lineup/plan.go:188-200` |
+| **the fence** | A **hard** boundary on which alerts reach the schedule at all.  What it excludes is *"not read, not counted and not pointed at"* | `platform/lineup/fence.go:95-97` |
+| **the duck** | Dipping the relay's volume so a spoken alert is audible over it.  **One owner**, and lifting it is the defect a prior release removed | `app/mastercontrol.go:12`, `app/executors.go:113-123` |
+| **dead air** | The station is on but broadcasting nothing.  Modelled as `Power.OffAir`; **it holds the rail too** | `platform/lineup/power.go:26-33` |
+| **STANDBY** | **Overloaded, deliberately.**  A *card* on standby is READY TO AIR; a *station* on standby is OFF air.  The code says `OffAir` for the station to keep them apart; the operator-facing word stays STANDBY | `platform/lineup/power.go:36-42` |
+
+*(Red team, junior-dev lens: the duck, the fence and the rail were used throughout and defined nowhere
+in this feature's own folder.)*
 
 ---
 
@@ -242,6 +327,12 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
   self-approved.
 - **NFR-6 — Accessibility guidance is advisory, not a gate**, per the standing ruling — improve where
   cheap and clearly better; do not hold work.
+- **NFR-7 — A silent station is bounded.**  STANDBY holds every track including the alert rail, which is
+  correct and deliberate — but it means a station can sit silent with a severe-weather card held and
+  nothing tells anyone.  **There is a bound**: either a duration ceiling, or an escalating operator-facing
+  warning that grows while a rail card is held in standby.  *Exit: with a held rail card, the console
+  escalates over time rather than sitting unchanged.*  *(Red team, safety lens: held is better than
+  dropped, and neither is broadcast.)*
 
 ---
 

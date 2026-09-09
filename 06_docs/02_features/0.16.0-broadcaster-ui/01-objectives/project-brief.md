@@ -319,7 +319,7 @@ construction, not an integration.
   reachable** — selecting *Within* and entering `0` renders `Within [0] mi` while `alertRadiusChoice`
   returns 0, which means All locations (`setup.go:683-693`, and the function's own docstring says so).
   **This was traced in code and not run**; DISCOVER should verify it against the binary.
-- **A documentation citation does not resolve:** the 0.15.0 debrief lists
+- **A documentation citation does not resolve — CORRECTED HERE, still wrong at its source:** the 0.15.0 debrief lists
   `06_docs/build-methodology.md`, which lives at
   `06_docs/02_features/0.15.0-pre-broadcaster-ui-improvements/04-development/build-methodology.md`.
 
@@ -426,8 +426,11 @@ answer the *durability* question C-1 raised — how long an operator's edit surv
 that re-plans on the next arrival — and that remains a DISCOVER item, now correctly framed as a
 design need rather than as an authority dispute.
 
-Charter references for DISCOVER: `01-objectives/director-charter.md` (D-C-5 asks the sibling question
-for Observer), `01-objectives/director-requirements.md`, `03-architecture-design/role-model.md`.
+Charter references for DISCOVER, **as full repo-relative paths** — these live under the
+*multi-voice-support* feature, not this one:
+`06_docs/02_features/multi-voice-support/01-objectives/director-charter.md` (D-C-5 asks the sibling
+question for Observer), `.../01-objectives/director-requirements.md`,
+`.../03-architecture-design/role-model.md`.
 
 ### D-6 (OQ-6) — The shared/unique settings split
 
