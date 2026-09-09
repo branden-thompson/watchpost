@@ -23,9 +23,9 @@ func BenchmarkAssembler25Locations(b *testing.B) {
 	for _, ref := range refs {
 		for _, prov := range []string{"nws", "open-meteo"} {
 			a.Apply(Fragment{Provider: prov, Kind: KindObs, FetchedAt: t0,
-				PerLocation: map[LocationKey]PartialData{Key(ref): {Current: &Conditions{Temp: &v, Source: SourceInfo{Provider: prov}}}}})
+				PerLocation: map[LocationKey]PartialData{Key(ref): {Current: &Conditions{Temp: &v, Source: SourceInfo{Provider: prov}}}}}, nil)
 			a.Apply(Fragment{Provider: prov, Kind: KindForecast, FetchedAt: t0,
-				PerLocation: map[LocationKey]PartialData{Key(ref): {Hourly: hours}}})
+				PerLocation: map[LocationKey]PartialData{Key(ref): {Hourly: hours}}}, nil)
 		}
 	}
 	b.ResetTimer()

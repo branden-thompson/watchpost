@@ -86,7 +86,7 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 	}
 	// Concurrent + fail-soft per location (UAT 59/64): the rest of the batch
 	// still lands, and every call reserves its pacing slot up front.
-	got, err := snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, func(ctx context.Context, ref snapshot.LocationRef) (snapshot.PartialData, error) {
+	got, _, err := snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, func(ctx context.Context, ref snapshot.LocationRef) (snapshot.PartialData, error) {
 		mar, err := p.marineFor(ctx, ref)
 		if err != nil {
 			return snapshot.PartialData{}, err

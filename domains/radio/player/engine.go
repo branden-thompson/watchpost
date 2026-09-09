@@ -51,15 +51,17 @@ type Status struct {
 // Engine plays one station at a time: tries its mounts in order, reconnects
 // with backoff on stalls, and reports status through a callback.
 type Engine struct {
-	out       Output
-	preview   Player          // the preview line in flight; nil between lines
-	held      map[Player]bool // lines held by PausePreview: their watchers wait, later clips never displace them
-	heldOrder []Player        // the held lines in the order held — ResumePreview takes the last
-	userAgent string
-	onStatus  func(Status)
-	onSilence func(mount, name string) // MVS-D-76: the relay is up and silent
-	trace     func(string)             // DR-23: the engine's line in the radio timeline
-	clips     int                      // clips started, so the timeline can name which one
+	out         Output
+	preview     Player          // the preview line in flight; nil between lines
+	held        map[Player]bool // lines held by PausePreview: their watchers wait, later clips never displace them
+	heldOrder   []Player        // the held lines in the order held — ResumePreview takes the last
+	userAgent   string
+	onStatus    func(Status)
+	onSilence   func(mount, name string) // MVS-D-76: the relay is up and silent
+	onClipSpent func()                   // FR-9: a read's watcher gave up on it
+	trace       func(string)             // DR-23: the engine's line in the radio timeline
+	clips       int                      // clips started, so the timeline can name which one
+	budget      int                      // the clip watcher's ceiling in polls; 0 = defaultClipBudget
 
 	mu     sync.Mutex
 	cancel context.CancelFunc
@@ -113,6 +115,24 @@ func (e *Engine) reportSilence(mount, name string) {
 	e.mu.Unlock()
 	if fn != nil {
 		go fn(mount, name) // never on the audio goroutine
+	}
+}
+
+// OnClipSpent is called when a clip's watcher gives up on it — the read that
+// neither finished nor errored (FR-9). Nil by default; the app wires it.
+func (e *Engine) OnClipSpent(fn func()) {
+	e.mu.Lock()
+	e.onClipSpent = fn
+	e.mu.Unlock()
+}
+
+// reportClipSpent tells whoever asked, once, off the watcher.
+func (e *Engine) reportClipSpent() {
+	e.mu.Lock()
+	fn := e.onClipSpent
+	e.mu.Unlock()
+	if fn != nil {
+		go fn()
 	}
 }
 
@@ -330,7 +350,14 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 		// Bounded per P10-02: 10 min of PLAY is the ceiling (an event read
 		// speaks a whole record — minutes, not seconds); a held line does
 		// not spend its budget.
-		for i := 0; i < 12000; {
+		//
+		// THE BUDGET IS ALSO FR-9's BOUND, and it was already the right shape:
+		// held-excluded elapsed time, on the read's own player, never on the
+		// live stream. What was missing was anyone being told how it ended.
+		spent := true
+		budget := e.clipBudget()
+		i := 0
+		for i < budget {
 			e.mu.Lock()
 			held := e.held[p]
 			if !held {
@@ -338,6 +365,7 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 			}
 			e.mu.Unlock()
 			if !held && !p.IsPlaying() {
+				spent = false // the player ran out of audio: the clip was heard
 				break
 			}
 			time.Sleep(50 * time.Millisecond)
@@ -351,10 +379,52 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 		}
 		delete(e.held, p)
 		e.mu.Unlock()
-		e.debugf("player:clip:end n=%d", n)
+		e.debugf("player:clip:end n=%d spent=%v", n, spent)
 		_ = p.Close()
+		if spent {
+			// THE CLIP NEITHER FINISHED NOR ERRORED (FR-9): the player was
+			// still claiming to play after ten minutes of AIR time and has been
+			// closed from under it. Reported off this goroutine, like every
+			// other report the engine makes.
+			e.reportClipSpent()
+		}
 	}()
 	return nil
+}
+
+// defaultClipBudget is the watcher's ceiling in 50 ms polls: ten minutes of AIR
+// time.
+//
+// THE DERIVATION, not just the number (FR-9). The longest thing this app says
+// is an event read, which speaks a whole CAP record: the fixtures run to about
+// forty parts, and a part is a sentence — call it fifteen seconds spoken, so
+// ten minutes of audio is roughly the worst script this station has. Piper adds
+// about ten seconds per utterance on first load, but that is RENDER time and
+// happens before a clip exists, so it does not spend this budget. What does
+// spend it is audio actually playing.
+//
+// A HELD LINE DOES NOT SPEND IT, which is what makes the bound safe to apply at
+// all: watch pauses the player entirely when a report gives way to an alert, so
+// a wall-clock deadline would kill the read that ducking exists to protect.
+//
+// AND IT IS NEVER APPLIED TO THE LIVE STREAM. This is the clip watcher — the
+// read's own player. A station that has played for hours is doing exactly what
+// it should.
+const defaultClipBudget = 12000
+
+// clipBudget is that ceiling, OVERRIDABLE so the fault path can be tested.
+//
+// A BOUND NOBODY CAN REACH IN A TEST IS A BOUND NOBODY HAS WATCHED FAIL. Ten
+// minutes of air time is right for a listener and impossible for a suite, so
+// the number lives in a field the package's own tests can shorten — which is
+// the difference between "the fault fires" being a claim and a measurement.
+func (e *Engine) clipBudget() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.budget > 0 {
+		return e.budget
+	}
+	return defaultClipBudget
 }
 
 // PausePreview holds the line in flight (a lower-priority narration while a

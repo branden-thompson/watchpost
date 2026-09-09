@@ -53,8 +53,10 @@ func TestRetainDropsLocationsNoLongerTracked(t *testing.T) {
 		t.Fatalf("the removed location's resolution is gone: %d", p.CachedGrids())
 	}
 	p.Retain(nil)
-	if p.CachedGrids() != 0 || len(p.grids) != 0 {
-		t.Fatal("an empty set empties the cache and the grid memo")
+	grids, _ := p.grids.Stats()
+	if p.CachedGrids() != 0 || grids != 0 {
+		t.Fatalf("an empty set empties the cache and the grid memo: %d cached, %d memoised",
+			p.CachedGrids(), grids)
 	}
 }
 
@@ -74,7 +76,7 @@ func TestGridExtremesDecodeOncePerBody(t *testing.T) {
 		t.Fatalf("three reads of one body: one decode, got %d", p.GridDecodes())
 	}
 	p.Retain(nil)
-	if len(p.grids) != 0 {
-		t.Fatal("Retain prunes the memo with the cache")
+	if n, _ := p.grids.Stats(); n != 0 {
+		t.Fatalf("Retain prunes the memo with the cache: %d entries survived", n)
 	}
 }

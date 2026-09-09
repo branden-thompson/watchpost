@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: cache-clean build test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: dupes dupes-selftest cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -8,11 +8,37 @@ PLATFORMS := darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64
 # VERSION is stamped into the binary (cmd/watchpost main.version): the tag on a
 # tagged commit, else the nearest tag + commit (and -dirty). Override: make VERSION=0.9.0
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
+# -trimpath: the build path is not shipped (FR-7.5, HUM LEAD 2026-09-08).
+# Without it every binary embeds the absolute directory it was compiled from —
+# 473 occurrences in watchpost-darwin-arm64, 485 in linux-amd64 — which names
+# the person who built it. It also makes the build reproducible from any
+# checkout location, which is the same property said the other way round.
+TRIMPATH := -trimpath
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 build:
 	@mkdir -p $(DIST)
-	go build -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY) ./cmd/watchpost
+	go build $(TRIMPATH) -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY) ./cmd/watchpost
+
+# build-diag is the UAT build for the ctrl+d window's injection half (F-21b).
+#
+# IT STAMPS ITS OWN VERSION, and that is the point of the target existing. Built
+# by hand with a bare `go build`, the two artifacts differ only in a name: one
+# says 0.14.2-44-g00c48ce and the other 0.0.0-dev, and the operator reasonably
+# runs the one whose version matches the commit under test — then reports that
+# ctrl+d offers no injection, which is exactly what a clean build is supposed to
+# say. The +debug suffix travels into the About window and `--version`, so the
+# binary answers "which build is this" wherever the question is asked.
+#
+# NEVER SHIPPED: release-matrix builds the clean matrix and lint-injector fails
+# any artifact carrying the injector.
+build-diag:
+	@mkdir -p $(DIST)
+	go build $(TRIMPATH) -tags watchpost_debug -ldflags '-s -w -X main.version=$(VERSION)+debug' \
+	  -o $(DIST)/$(BINARY)-diag ./cmd/watchpost
+	@scripts/lint-injector.sh $(DIST)/$(BINARY)-diag >/dev/null 2>&1 \
+	  && { echo "build-diag: the injector is MISSING from the diagnostics build"; exit 1; } \
+	  || echo "build-diag: $(DIST)/$(BINARY)-diag carries the injector, as it must"
 
 test:
 	go test ./...
@@ -35,6 +61,21 @@ vet:
 # ~140s.
 vet-tags:
 	go vet -tags watchpost_debug ./...
+
+# AND RUN THEM. vet-tags proves the tagged tree COMPILES; it does not run a
+# single assertion in it. app/inject_seam_test.go — "the test the whole injector
+# stands on" — is behind the tag, so until now no gate in this repository had
+# ever executed it. It stayed dark once already, through a compile break that
+# vet alone would not have caught either, and was found by hand at a red team.
+#
+# The injector is the one capability that must never ship, and B3 makes its
+# surface user-facing. Asserting things about code no gate runs is how a
+# capability gets a green check and no measurement.
+#
+# ./app ONLY: it is the sole package with tagged tests, and the whole tree under
+# the tag costs a second full suite for nothing.
+test-tags:
+	go test -tags watchpost_debug -count=1 ./app
 
 # Dependency hygiene (quality pass Q0, red-team PH-1/IS-9): go.mod must be tidy,
 # the module cache must match go.sum, and no known vulnerability may be reachable.
@@ -60,6 +101,8 @@ gate-controls:
 	@./scripts/lint-watermark.sh --self-test
 	@./scripts/sync-go-studs.sh --self-test
 	@./scripts/quality/p10-unmatched_test.sh
+	@./scripts/quality/ledger-ratified.sh --self-test
+	@go run ./tools/dupes -self-test
 
 # The mutation corpus and the harness that reads it (06_docs/mutants, Go, behind
 # the `mutants` build tag so its ~140s does not land in `go test ./...` and thus
@@ -84,7 +127,23 @@ mutant-check:
 # durable record to certify. Claiming otherwise here cost a silently skipped
 # clean-up inside a 900-line log while verify still reported green (0.14.2), and
 # then a 730-line file rewritten on every verify when that was "fixed" wrong.
-	@go test -tags mutants -v -count=1 ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
+# -timeout IS NOT DECORATION HERE, and the numbers are the argument. go test
+# defaults to 10 minutes. This corpus at 172 mutants takes 250s on the
+# developer's machine and ran 396s, 486s and 602s across three ubuntu-latest
+# jobs on 2026-09-09 — a 1.5x spread on the SAME commit and platform. The
+# margin is invisible locally because local has more cores.
+#
+# What that spread does to a 10-minute default: the same commit passed in the
+# pull_request run and died in the push run with "panic: test timed out after
+# 10m0s", and a later run came in at 602s — TWO SECONDS under the default it
+# would have been measured against. A gate whose failure mode is the clock is
+# not reporting on the code, and it fails at random, which is the worst way for
+# it to be wrong.
+#
+# 40m is ~4x the slowest run observed, not a guess at the next mutant. The
+# corpus grows every release; when it approaches this, raise it and re-record
+# the measurement here rather than trimming the corpus to fit the clock.
+	@go test -tags mutants -v -count=1 -timeout 40m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
 	  cat $(DIST)/mutant-check.log; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc
@@ -169,7 +228,7 @@ cache-clean:
 	@go clean -cache -testcache
 	@echo "cache-clean: build and test caches cleared"
 
-verify: fmt vet vet-tags tidy vuln race lint-imports lint-watermark gate-controls mutant-check
+verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget dupes mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
@@ -196,6 +255,50 @@ journey: build
 		test $$rc -eq 0 || { echo "journey: $$rc step(s) FAILED"; exit 1; }; \
 		echo "journey: every step PASSED"
 
+# MUTANT_POLICY decides WHEN the mutant corpus (171 mutants) runs in CI. It is
+# ONE WORD, AND SWITCHING IS EDITING IT: every mode's plumbing already exists in
+# the CI workflow — the schedule trigger, the label trigger and the per-push
+# path are all present whatever this says — so a change of mind costs a word
+# rather than a workflow rewrite, and no mode's path is deleted to make room for
+# another. cmd/watchpost/gates_test.go fails if that stops being true.
+#
+#   push     every push and pull request. Correct on the merits and the
+#            slowest: 261 s on twelve cores locally, so roughly fifteen to
+#            twenty minutes on a four-core runner, every time.
+#   nightly  the scheduled run only, plus every release tag (the release
+#            workflow runs `make verify`, which includes it). Fast pull
+#            requests, and a window in which a survived mutant can be merged
+#            and found later.
+#   label    only when a pull request carries the `run-mutants` label. Fastest,
+#            and it trusts whoever remembers to apply it.
+#
+# HUM LEAD, 2026-09-08: push.
+MUTANT_POLICY ?= push
+
+# mutant-policy prints it, so CI reads the decision from the repository rather
+# than carrying a second copy of it.
+mutant-policy:
+	@echo $(MUTANT_POLICY)
+
+# METRIC D: operations implemented more than once with no ratified reason.
+# The ledger is 06_docs/duplicates-ratified.md, and a reason in it is RATIFIED
+# by the HUM LEAD, never self-issued — the metric's own hardening, without which
+# D could be satisfied by writing a justification for every duplicate.
+dupes:
+	@go run ./tools/dupes
+
+dupes-selftest:
+	@go run ./tools/dupes -self-test
+
+# lint is golangci-lint (which runs staticcheck) as a BASELINE + RATCHET: this
+# tree's known findings are recorded once and anything else fails the build.
+# `make lint-update` re-records them, and is the only way an entry leaves.
+lint:
+	@scripts/lint.sh
+
+lint-update:
+	@scripts/lint.sh --update
+
 alloc-budget:
 	go test -count=1 -run 'AllocBudget$$' ./...
 
@@ -214,7 +317,8 @@ p10:
 	@mkdir -p $(DIST)
 	@$(A2DH) p10 check --json > $(P10_OUT) || { echo "p10: live findings — see $(P10_OUT)"; exit 1; }
 	@./scripts/quality/p10-unmatched.sh $(P10_OUT)
-	@echo "p10: 0 live, 0 unmatched ($(P10_OUT))"
+	@./scripts/quality/ledger-ratified.sh
+	@echo "p10: 0 live, 0 unmatched, 0 unratified ($(P10_OUT))"
 
 # T-M (§10.12): cross-compile matrix — every milestone proves it stays green.
 release-matrix:
@@ -222,9 +326,14 @@ release-matrix:
 	@for p in $(PLATFORMS); do \
 	  os=$${p%/*}; arch=$${p#*/}; ext=""; [ $$os = windows ] && ext=".exe"; \
 	  echo "  building $$os/$$arch"; \
-	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY)-$$os-$$arch$$ext ./cmd/watchpost || exit 1; \
+	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build $(TRIMPATH) -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY)-$$os-$$arch$$ext ./cmd/watchpost || exit 1; \
 	done
-	@cd $(DIST) && (command -v sha256sum >/dev/null && sha256sum $(BINARY)-* || shasum -a 256 $(BINARY)-*) > checksums.txt && echo "release-matrix: OK ($(VERSION))"
+	@cd $(DIST) && (command -v sha256sum >/dev/null && sha256sum $(BINARY)-* || shasum -a 256 $(BINARY)-*) > checksums.txt
+# NFR-2, AND IT RUNS HERE RATHER THAN IN verify FOR A REASON. verify runs before
+# the published artifacts exist, so a check living there inspects a binary nobody
+# ships. These are the files the release workflow uploads.
+	@./scripts/lint-injector.sh $(DIST)/$(BINARY)-*
+	@echo "release-matrix: OK ($(VERSION))"
 
 # Installer smoke test: serve the release matrix locally and run scripts/install.sh
 # against it (no GitHub involved), then check the installed binary reports the version.

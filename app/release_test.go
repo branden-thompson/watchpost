@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
@@ -130,4 +132,65 @@ func TestOnlyParsedVersionNumbersReachTheUpdateRow(t *testing.T) {
 			}
 		})
 	}
+}
+
+// THE CHECK ASKS ONCE, AND THE OPT-OUT ASKS NEVER (FR-7.1, HUM LEAD 2026-09-08).
+//
+// This is the bound the ruling created, so it is the bound a test has to be
+// able to reach. Before the ruling `start` polled hourly and the only honest
+// pin available was "it eventually stops with the context" — a property every
+// poller has. Counting requests is possible now precisely because the number
+// is one.
+//
+// It is also the ruling's evidence in the code: a provider is asked repeatedly
+// as the snapshot refreshes; this is asked once and is then done, which is what
+// makes it not a provider (architecture §1).
+func TestTheReleaseCheckAsksExactlyOnceAndOptingOutAsksNever(t *testing.T) {
+	var hits atomic.Int64
+	srv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		_ = json.NewEncoder(rw).Encode(map[string]string{"tag_name": "v9.9.9"})
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "watchpost/test (t@example.com)", RatePerSec: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ON: one request, and an answer.
+	w := newReleaseWatch("0.14.0", true)
+	w.checkAt(context.Background(), c, srv.URL)
+	if got := hits.Load(); got != 1 {
+		t.Fatalf("one check, one request: got %d", got)
+	}
+	if _, latest, behind := w.Status(); latest != "9.9.9" || !behind {
+		t.Fatalf("the answer did not land: latest %q behind %v", latest, behind)
+	}
+
+	// AND START — THE THING ACTUALLY BEING BOUNDED — ASKS ONCE.
+	//
+	// The first version of this block called checkAt and then made a claim
+	// about start. Two plants proved it worthless: restoring the poller, and
+	// deleting the opt-out guard, both passed. start is called here, and the
+	// wait is long enough that a restored interval would show up as a second
+	// request rather than as a slow one.
+	before := hits.Load()
+	w2 := newReleaseWatch("0.14.0", true)
+	w2.api = srv.URL
+	w2.start(context.Background(), c)
+	time.Sleep(250 * time.Millisecond)
+	if got := hits.Load() - before; got != 1 {
+		t.Fatalf("start asks exactly once: got %d requests", got)
+	}
+
+	// OFF: the opt-out is the absence of a request, not a discarded answer.
+	off := hits.Load()
+	offw := newReleaseWatch("0.14.0", false)
+	offw.api = srv.URL
+	offw.start(context.Background(), c)
+	time.Sleep(150 * time.Millisecond) // long enough for a goroutine that must not exist
+	if got := hits.Load() - off; got != 0 {
+		t.Fatalf("update_check off must make no request; got %d", got)
+	}
+
 }

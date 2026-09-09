@@ -10,7 +10,7 @@
 
 set -eu
 pid=${1:?pid}
-if dir=$(curl -fs --max-time 30 http://127.0.0.1:6060/debug/dump 2>/dev/null); then
+if dir=$(curl -fs -X POST --max-time 30 http://127.0.0.1:6060/debug/dump 2>/dev/null); then
   echo "$dir"; exit 0
 fi
 kill -USR1 "$pid"

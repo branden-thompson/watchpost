@@ -2,6 +2,41 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.15.0] — 2026-09-09
+
+### Fixed
+- **A location the feed cannot serve stops reading as "still loading."** A row for somewhere the
+  weather service has no data for shimmered for ever, and across restarts, because nothing recorded
+  that a fetch had been ATTEMPTED. It now says `n/a` — an honest absence rather than a wait. During a
+  network outage rows keep shimmering, because "we cannot reach the service" is not the same answer
+  as "there is nothing for your area" (#13).
+- **Settings now shows what it saved.** Closing the window with `esc` wrote the alert radius and the
+  relay language to the config file, but the window re-opened showing the OLD values — and, worse,
+  the change could not be undone from the window, because it compared your choice against the stale
+  value and decided nothing had changed.
+- **Typing over a stored alert radius replaces it.** A field showing `50` that you typed `20` into
+  became `5020` — a five-thousand-mile radius, saved silently.
+- **The fire report says which ring it is talking about.** Hotspots and named incidents have their
+  own radius on screen; on the air they ran together, so "no hotspots within a 16 mile fire ring" was
+  followed by a list of fires with nothing saying which ring they belonged to.
+- **Six marks that ignored `--ascii`** — the add-window and Settings warnings, the masked key, the
+  stored-key ellipsis and dashes, and the provider tick.
+
+### Changed
+- **The update check asks once at startup**, not hourly, when `update_check = true`. A long-running
+  dashboard will not notice a release published while it was up; acting on the notice needs a restart
+  anyway. It also stops the app holding an unbounded poller for a question with one answer per launch.
+- **Released binaries no longer embed the path they were built from** (`-trimpath`), on every build
+  target.
+- **Four voice roles are documented as config-only** — `breaking`, `severe_read`, `standard` and
+  `station` have no Settings row, deliberately. The README previously promised the opposite.
+
+### Notes
+- Fire and evacuation coverage has a stated boundary: there is no geostationary near-real-time
+  detection path, so a fire that ignites after the night satellite pass can be invisible for most of a
+  day, and an evacuation ordered by CAL FIRE or a county is not an NWS product and does not appear.
+  Adding that source is 0.16.0 work.
+
 ## [0.14.2] — 2026-09-07
 
 ### Fixed

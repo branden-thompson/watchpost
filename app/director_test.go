@@ -42,6 +42,11 @@ func (v *scriptVoice) play(c clip) {
 	}
 	v.rec("aside:" + c.text) // a takeover's line: the visualizer does not follow it
 }
+
+// fault is inert in this double: the seam exists so a read can report a
+// tone with no words (FR-9.2); nothing here reads it.
+func (v *scriptVoice) fault(string) {}
+
 func (v *scriptVoice) pause()   { v.rec("pause") }
 func (v *scriptVoice) resume()  { v.rec("resume") }
 func (v *scriptVoice) stop()    { v.rec("stop") }
@@ -336,10 +341,15 @@ func (p *probeVoice) render(_ context.Context, _ cast.Role, t string) (clip, boo
 	return clip{text: t}, true
 }
 func (p *probeVoice) play(c clip) { p.onPlay(c) }
-func (p *probeVoice) pause()      {}
-func (p *probeVoice) resume()     {}
-func (p *probeVoice) discard()    {}
-func (p *probeVoice) restore()    {}
+
+// fault is inert in this double: the seam exists so a read can report a
+// tone with no words (FR-9.2); nothing here reads it.
+func (p *probeVoice) fault(string) {}
+
+func (p *probeVoice) pause()   {}
+func (p *probeVoice) resume()  {}
+func (p *probeVoice) discard() {}
+func (p *probeVoice) restore() {}
 
 // waitUntil polls cond (no fixed sleeps: the release, a queue position) and
 // fails after two seconds.
@@ -409,4 +419,51 @@ func testDirector(v narrationVoice, band func(tea.Msg)) *director {
 		band = func(tea.Msg) {}
 	}
 	return newDirector(v, newMastercontrol(v, band))
+}
+
+// A READ THAT STOPS MAKING PROGRESS IS ENDED, NOT LEFT RUNNING (FR-9).
+//
+// The read's timing is open-loop: the Director sleeps a length computed from
+// the PCM and moves to the next line. So a line whose audio hangs does not stop
+// the sequence — it goes on issuing lines over a player that the engine's
+// watcher eventually closes from under it, holding the arbiter and keeping the
+// broadcast ducked under nothing.
+//
+// CANCELLING IS THE FAIL-SAFE DIRECTION, and it is the one the rest of the
+// system already understands: the sequence unwinds onto the path a cut-short
+// read takes, which is Failed{Routed:true} — the schedule advances and
+// restore() runs. Stopping the audio alone would leave the sequence running and
+// it would simply speak the next line.
+func TestAbandoningTheReadOnAirUnwindsIt(t *testing.T) {
+	d := testDirector(&scriptVoice{}, nil)
+	started, ended := make(chan struct{}), make(chan bool, 1)
+	go func() {
+		ok := d.Run(context.Background(), narrateRead, cast.All, true, func(ctx context.Context, s *speaker) {
+			close(started)
+			<-ctx.Done() // a read that will not finish on its own
+		})
+		ended <- ok
+	}()
+	<-started
+
+	if !d.abandonOnAir("test") {
+		t.Fatal("nothing reported as being on the air while a sequence was running")
+	}
+	select {
+	case ok := <-ended:
+		if ok {
+			// Run returns false when the context ended before the sequence
+			// finished, which is what the executor reads to fail the card
+			// Routed and advance the schedule.
+			t.Error("the abandoned read reported success; the schedule would wait for a card that has stopped")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the read did not unwind: the arbiter stays occupied and the bed stays ducked")
+	}
+
+	// AND THE CALLER'S CONTEXT IS UNTOUCHED — the cancel is a child, so
+	// abandoning one read does not end whatever asked for it.
+	if d.abandonOnAir("again") {
+		t.Error("a second abandon found a read on the air after the first unwound it")
+	}
 }

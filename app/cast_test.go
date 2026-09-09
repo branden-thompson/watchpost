@@ -513,6 +513,11 @@ type classVoice struct {
 }
 
 func (v *classVoice) duck() {}
+
+// fault is inert here: the seam exists so a read can report a tone with no
+// words (FR-9.2).
+func (v *classVoice) fault(string) {}
+
 func (v *classVoice) tone(c cast.Class) time.Duration {
 	v.mu.Lock()
 	v.classes = append(v.classes, c)

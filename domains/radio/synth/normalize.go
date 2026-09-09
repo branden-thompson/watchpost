@@ -55,7 +55,7 @@ func stateNames() map[string]string { return pronounce.Table("states") }
 func ambiguousStates() map[string]bool { return pronounce.Set("states-ambiguous") }
 
 // ExpandStates replaces postal state abbreviations where they name a
-// place: after a comma ("Oceanside, CA"), beside a hyphen ("CA-San Diego
+// place: after a comma ("Monterey, CA"), beside a hyphen ("CA-San Diego
 // County"), or after a Title-case word ("San Diego CA"). Words that are
 // also English ("IN EFFECT", "OR") expand only after a comma or hyphen.
 func ExpandStates(s string) string {

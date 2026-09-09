@@ -1,0 +1,2 @@
+{{/* test-alert/title: one fabricated alert, in place of the line a real one would get. Data: .Type (the alert type the operator chose to inject). */}}
+A test {{.Type}} has been issued by the Watchpost alerts event system.  This test alert is effective for 2 minutes.

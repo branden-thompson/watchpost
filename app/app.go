@@ -102,7 +102,7 @@ func reportFetch(ctx context.Context, client *httpx.Client, provider *nws.Provid
 				if err != nil {
 					return err // contract violation, not a data failure
 				}
-				asm.Apply(frag)
+				asm.Apply(frag, snapshot.Keys(refs))
 			}
 			return nil
 		})

@@ -1,0 +1,2 @@
+{{/* test-alert/head: the head of a diagnostic test read (FR-4.5, HUM LEAD 2026-09-07). ALERT-AGNOSTIC: the same words for every category, so exercising the machinery never waits on someone writing suitable content. Data: none. */}}
+This is a test of the Watchpost alert events system. This is only a test

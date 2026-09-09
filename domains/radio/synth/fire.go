@@ -4,10 +4,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"math"
 	"strings"
 	"time"
+
+	"github.com/branden-thompson/watchpost/domains/radio/cast"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -24,7 +26,57 @@ type FireReport struct {
 	RadiusKm         float64  // the fire ring
 	IncidentRadiusKm float64  // named incidents beyond the ring, up to here
 	Sources          []string // spoken feed names, broadcast order
-	Lat, Lon         float64  // the location, for bearings
+	// HotspotsKnown and IncidentsKnown say whether the feed behind each half
+	// ANSWERED. A zero count is only a fact when its own feed did (REVIEW red
+	// team, 2026-09-08).
+	HotspotsKnown  bool
+	IncidentsKnown bool
+	Lat, Lon       float64 // the location, for bearings
+}
+
+// oldestIncidentWords is how far back the incidents being read reach — the age
+// of the OLDEST of them, in whole days, spoken. "" when there are none to age,
+// or when the feed gave no discovery time for any of them, so the sentence
+// simply ends after the radius rather than claiming a window it cannot support.
+//
+// WHOLE DAYS, and never "0 days": a fire discovered this morning reads "in the
+// last day", which is what a listener means by it.
+func oldestIncidentWords(in []snapshot.Incident, now time.Time) string {
+	// dated IS THE POINT, and its absence was a defect (red team, 2026-09-08).
+	// Without it a list where NO incident carries a discovery time fell through
+	// to oldest == 0 and spoke "reported in the last day" — a freshness claim
+	// about data that has no date at all, in a medium nobody can re-read. The
+	// comment above already promised this behaviour; the code did not have it.
+	// EVERY INCIDENT MUST BE DATED, not merely one of them (red team round 2,
+	// 2026-09-08). The first fix only handled the all-undated case, so a list of
+	// three where two carried no discovery date still spoke "reported in the last
+	// day" — a window computed from the dated subset and attached to the full
+	// count, when the other two could be months old. WFIGS's
+	// FireDiscoveryDateTime is nullable, so a mixed list is the ordinary case,
+	// and this is spoken output a listener cannot go back and check.
+	oldest := 0
+	for _, i := range in {
+		if i.Discovered.IsZero() {
+			return "" // one undated incident makes the window unsayable for the whole list
+		}
+		// CEILING, NOT FLOOR (REVIEW red team, 2026-09-08). Integer division
+		// truncates, so a fire found 47 hours ago read "in the last day" and one
+		// at 95 hours read "3 days". A freshness claim that errs must err
+		// OLD — telling a listener the fire information is fresher than it is
+		// runs the error in the one direction that matters on a hazard radio.
+		if h := now.Sub(i.Discovered).Hours(); h > 0 {
+			if d := int(math.Ceil(h / 24)); d > oldest {
+				oldest = d
+			}
+		}
+	}
+	if len(in) == 0 {
+		return "" // the sentence ends after the radius rather than claiming a window
+	}
+	if oldest <= 1 {
+		return "day"
+	}
+	return fmt.Sprintf("%d days", oldest)
 }
 
 // firePause separates the fire notice from the counts (UAT 114 script).
@@ -41,14 +93,40 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 		return nil
 	}
 	place := ExpandStates(location)
-	notice := c.say("fire-report", "head", map[string]string{"Location": place, "Sources": joinAnd(fr.Sources)})
+	notice := c.say("fire-report", "head", map[string]string{"Location": place, "Sources": plaintext.SpokenList(fr.Sources)})
 	segs := []Segment{{Key: "fire:notice:" + contentKey(notice), Text: notice, Role: cast.Fire, Pause: firePause}} // keyed by content: the cache must never replay yesterday's feeds (REVIEW C1)
 
 	var body []string
-	body = append(body, c.say("fire-report", "count", map[string]any{"Count": len(fr.State.Hotspots), "Ring": ringWords(fr.RadiusKm, imperial)})) // adjectival: "a 16 mile fire ring"
+	// A COUNT OF ZERO IS ONLY A FACT WHEN ITS FEED ANSWERED.
+	if fr.HotspotsKnown {
+		body = append(body, c.say("fire-report", "count", map[string]any{"Count": len(fr.State.Hotspots), "Ring": ringWords(fr.RadiusKm, imperial)})) // adjectival: "a 16 mile fire ring"
+	} else {
+		body = append(body, c.say("fire-report", "count-unavailable", map[string]any{"What": "hotspot", "Ring": ringWords(fr.RadiusKm, imperial)}))
+	}
 	if h := strongest(fr.State.Hotspots); h != nil {
 		body = append(body, c.hotspotSentence(fr, *h, imperial, now))
 	}
+	// THE SUBJECT CHANGES HERE, and until now nothing said so. The hotspot lines
+	// above are satellite pixels inside the fire ring; everything below is a
+	// NAMED incident inside the wider incident radius. On screen the two lists
+	// carry their own headings and their own radius; on the air they ran
+	// together, so a listener heard "no hotspots within 16 miles" and then a
+	// list of fires with no way to tell which ring they belonged to
+	// (HUM LEAD, UAT 2026-09-08).
+	// AN UNCONFIGURED RADIUS SAYS NOTHING rather than "within a 0 kilometer
+	// radius". The line's whole job is to name the second ring, so without one
+	// there is nothing for it to say.
+	if fr.IncidentRadiusKm > 0 && !fr.IncidentsKnown {
+		body = append(body, c.say("fire-report", "count-unavailable", map[string]any{
+			"What": "named incident", "Ring": ringWords(fr.IncidentRadiusKm, imperial)}))
+	} else if fr.IncidentRadiusKm > 0 {
+		body = append(body, c.say("fire-report", "incident-count", map[string]any{
+			"Count": len(fr.State.Incidents),
+			"Ring":  ringWords(fr.IncidentRadiusKm, imperial),
+			"Days":  oldestIncidentWords(fr.State.Incidents, now),
+		}))
+	}
+
 	var inside, outside []snapshot.Incident
 	for _, in := range fr.State.Incidents {
 		if in.Source.DistanceKm != nil && *in.Source.DistanceKm <= fr.RadiusKm {
@@ -57,14 +135,23 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 			outside = append(outside, in)
 		}
 	}
+	// NO HEADER BETWEEN THE TWO GROUPS ANY MORE (HUM LEAD, UAT 2026-09-08).
+	// "Nearby fires outside of your fire ring that may be worth noting are:"
+	// earned its place when the incidents arrived unannounced: it was the only
+	// thing telling a listener a second, wider ring existed. The incident-count
+	// line above now says that outright, with the radius in it, so the header
+	// restated it a sentence later and read as a second list rather than the
+	// continuation it is.
+	//
+	// The SPLIT stays. It is not about the header: it orders the fires inside
+	// the ring before the ones beyond it, and it chooses the phrasing — an
+	// incident inside reads "is 12 miles east of your location", one beyond
+	// reads ", at a distance of 29 miles".
 	for _, in := range inside {
 		body = append(body, c.incidentSentence(fr, in, imperial, now, true))
 	}
-	if len(outside) > 0 {
-		body = append(body, c.say("fire-report", "outside", nil))
-		for _, in := range outside {
-			body = append(body, c.incidentSentence(fr, in, imperial, now, false))
-		}
+	for _, in := range outside {
+		body = append(body, c.incidentSentence(fr, in, imperial, now, false))
 	}
 	for _, piece := range body {
 		if piece == "" {
@@ -136,7 +223,7 @@ func (c Composer) incidentSentence(fr FireReport, in snapshot.Incident, imperial
 	if in.PercentContained != nil {
 		facts = append(facts, fmt.Sprintf("is %.0f percent contained", *in.PercentContained))
 	}
-	data["Facts"] = joinAnd(facts)
+	data["Facts"] = plaintext.SpokenList(facts)
 	return c.say("fire-report", "incident", data)
 }
 
@@ -209,17 +296,4 @@ func satelliteWords(name string) string {
 		return "GOES-West"
 	}
 	return name
-}
-
-// joinAnd joins a list for speech: "a", "a and b", "a, b, and c".
-func joinAnd(items []string) string {
-	switch len(items) {
-	case 0:
-		return ""
-	case 1:
-		return items[0]
-	case 2:
-		return items[0] + " and " + items[1]
-	}
-	return strings.Join(items[:len(items)-1], ", ") + ", and " + items[len(items)-1]
 }

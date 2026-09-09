@@ -1118,8 +1118,251 @@ rewriting the red-team reports that cite them by name.
 **Cost:** about twenty minutes, no code touched. **What it bought:** the evidence base of four
 completed features moved from one disk to the repository.
 
+## The rules a gate must obey (2026-09-07, 0.15.0 B1–B3)
+
+**Eleven gates or instruments were written or repaired in one working day.  Every single one was
+wrong on the first attempt, and every one was caught by asking what its green meant.**  The failures
+were never in the rules being enforced — they were in the *fixtures*.  These are the rules that
+follow, each with the catch that earned it.
+
+### 1. A gate's self-test must use a fixture shaped exactly like the thing it will police
+
+**Catch:** `lint-injector` asserted no release artifact carries the injector, and its self-test built
+**without `-ldflags "-s -w"`**.  Release artifacts are stripped; the test fixture was not.  The gate
+was blind — `go tool nm` reports *"no symbol section"* on a stripped linux binary — and the self-test
+certified it anyway, because an unstripped binary *does* have symbols.  Shipped blind for ten
+minutes.
+
+*"Validate the instrument" is not enough on its own.  An instrument validated against the wrong
+shape is validated into a false positive.*
+
+### 2. Prove the matcher is alive before it judges
+
+**Catch:** the config one-writer gate looked for a `config.Save` **selector**.  The moment the last
+production bypass was migrated, `Mutate` called `Save` unqualified, zero selectors remained, and the
+gate would have been green forever.  Its own empty-corpus guard caught it.  **Count the corpus over
+everything, including tests; police only what the rule is about.**
+
+### 3. A member is never skipped — carried, or declared with a written reason
+
+**Catch:** `TestEveryFeedLaneSurvivesTheMarqueeMap` walked seven lanes and asserted **four**,
+`continue`-ing past three whose fixture disagreed — including Advisories, the exact hazard it was
+written to guard.  A `continue` reads as deliberate.  F-30's guard does the same with `t.Skipf`.
+**Skipping is how a set gate lies.**
+
+### 4. Catch the stale exemption, or the exemption becomes the defect
+
+**Catch:** the same lane guard could not see a lane that *started* being carried while still declared
+unreachable.  The two guards written after it could.  One rule, three hand-written instances, and the
+oldest had already drifted — which is the argument for one owner, found by looking.
+
+### 5. Match both spellings
+
+**Catch:** twice.  A type or function is bare inside its own package and qualified outside it.  A
+matcher that knows one spelling reports green while blind to half the tree.
+
+### 6. Find the root; do not count it
+
+**Catch:** a hand-written `"../.."` pointed one directory short of the module root, so the walk
+matched nothing.  **A gate that has to know its own depth breaks when it moves.**  Walk up for
+`go.mod`.
+
+### 7. A number with no stated boundary is not reproducible
+
+**Catch:** the closed-set population was "50 default arms" without an exclusion rule and **49** with
+one — and ~30% different again if the vendored patch stack counts.  Write the boundary down *before*
+counting, or the number cannot be checked by anyone else.
+
+### 8. Do not edit the tree while the mutant gate runs
+
+**Catch:** three mutants reported UNMEASURED that were fine.  The harness patches source files; my
+edits moved them underneath it.  `run.sh` guards this with a dirty-tree check; `make verify` does
+not, so going through `verify` bypasses the guard.
+
+### 9. "Does this need a lock?" is answered by experiment, and the experiment needs its own control
+
+**Catch:** FR-1.4 asked for a mutex on three methods.  They touch no mutable shared state, and the
+engine state underneath is disjoint.  Ten goroutines under `-race` found nothing — **and a
+deliberately planted unsynchronised field produced three DATA RACE warnings**, which is the only
+reason the clean run means anything.  Outcome: no lock, with evidence.  *A race test is worth keeping
+precisely when it passes; its job is to notice when that stops being true.*
+
+### 10. Extract from working implementations, never from imagined ones
+
+**Catch:** `closedset` was designed at PLAN with five fields and five call sites.  There was **one**
+call site, and the shape was wrong — the thing that repeated was not a mapping with fixtures but a
+cross-product of *carried* against *declared absent*.  The true skeleton only became visible at the
+**third** hand-written instance.  The standing rule says extract at the second caller; it assumes you
+have two working callers in front of you, not two imagined ones.
+
+### 11. When you correct an instrument, check the correction the same way
+
+**Catch:** the red team found half of NFR-2's proposed predicate vacuous.  I corrected it — and my
+correction could not work at all, because release binaries are stripped.  **A correction is a new
+claim and carries the same burden as the original.**
+
+### 12. A gate that measures a rendered surface must count in the coordinates the renderer draws in
+
+**Catch:** FR-5's first probe compared an 80x24 render against an 80x200 one and reported **every
+line of every window unreachable**.  A modal that overflows wraps three columns narrower than one
+that does not, so the two renders share almost no line.  The defect it was hunting was the *same
+mistake*: the scroll offset was computed from the body before the panel re-wrapped it, so it pointed
+at line 11 of a body whose focused row had moved to 14.  **The instrument and the bug were one error
+in two places** — and the probe's version was found first only because it was measured.
+
+### 13. A cursor is not text
+
+**Catch:** the same probe reported `a burst` unreachable while `› a burst` was on screen.  A focused
+row carries a pointer glyph and an unfocused one does not, so a comparison that keeps the glyph
+counts one line as two and reports the form that is not currently focused as missing.  **Normalise
+away everything the frame draws that is not content** — box, rail, padding, cursor — or the
+measurement is of the instrument.
+
+### 14. Fix the member, then measure the set
+
+**Catch:** the relay-fault window's unreachable ways out were found by a human at 80x24, fixed
+correctly, and **the fix did not generalise** — the window next door had the same defect five weeks
+later, and the shipped ctrl+d window had a worse version of it that no key could work around.  Three
+separate discoveries, one mechanism.  A defect found by opening one window is a question about the
+set of windows; the set-level property is what turns three sightings into one number that can only
+go down.
+
+### 15. The gate that pays for itself is the one that fires on YOUR change
+
+**Catch:** FR-6.4 added one boolean to the relay-fault window's state, and F-30's memo guard failed
+on the next run: the field changes the frame and was not in the memo key, which is exactly the defect
+that froze that window through three UAT rounds in 0.14.0.  Nothing else would have caught it —
+every test in the file renders through the memo's MISS path.  In the same run, mutant mV3's anchor
+no longer matched the line it patches, and the harness reported **UNAPPLIED** rather than passing
+over a mutation that no longer applies.
+
+**Two different instruments, one property:** a gate is only worth its cost if it can fail on work
+nobody wrote it for.  Both of these were written for defects that had already happened, and both
+earned their place again on a change made months later by someone who had forgotten they existed.
+
+### 16. A gate must enter the system where the user does
+
+**Catch:** `TestAnInjectedAlertCrossesTheWholePipeline` — whose own comment calls it *"the test the
+whole tool stands on"* — hands a **hand-built event** to `deck.Inject`.  That is one function past
+where the operator's keypress lands.  A key the hook did not recognise, or a hook that returned
+before queuing, was invisible to every gate in the repo **while the tool reported that everything
+works** — and UAT found exactly that class of failure by pressing the button.
+
+The same test also could not see the defect that actually shipped: the queue is drained by a
+two-minute fetch cycle and the event was effective for two minutes, so the injection could expire in
+the cycle that would have shown it.  **Nothing measured the LATENCY, only the correctness** — the
+test called `cycle()` itself, so the wait it was hiding was zero.
+
+**The rule has two halves:** enter at the user's own seam (the key, not the payload), and let the
+system's own clock run (the loop, not a hand-called step).  A test that supplies both the input and
+the tick is measuring a function, not a feature.
+
+### 17. A member with no fixture is a FAILURE, not a skip
+
+**Catch:** the modal memo guard skipped a window it could not draw — loudly, which was the argument
+for it — and 11 of 11 windows had a fixture, so the branch fired **zero times**.  Its green number
+described today's windows rather than the guard, and the next window added with a cursor and no
+fixture would have been silently uncovered: the exact defect F-30 was filed for.  The 0.14.2 lane
+guard `continue`d past three of seven lanes the same way.
+
+**The rule:** a closed-set walk may not decline a member.  Skipping is how a set gate lies — it
+reports on the members that happened to be easy.  Either the member is covered, or it is **declared
+absent with a reason** that a guard can check for rot (`platform/closedset`, and `nestedExcuse` in
+`memo_completeness_test.go`).  A reason is not a silencer: a member that starts being covered while
+its excuse still stands is itself a failure.
+
+**Both B4 and B6 cite this rule rather than each re-deciding it.**
+
+### The meta-rule
+
+**A red-team finding is a hypothesis, not a fix.**  Twice in one day, measuring a lens's
+recommendation changed it: `debugScenarios` discriminates nothing, and the symbol approach it implied
+cannot work on a stripped artifact.  Both lenses were right that something was wrong and wrong about
+what to do — which is the correct division of labour, and only holds if the measurement actually
+happens.
+
+## A gate that cannot fire on itself, and a buffer read as a screenshot — twice (2026-09-08, 0.15.0 B6)
+
+B6's premise is that a gate nobody has watched fail is a gate nobody has measured. Twelve plants were
+run to fill in a `gates.md` evidence column. Three of the results are worth keeping.
+
+**The controls gate could not fire on itself.** `gate-controls` exists to prove the other gates still
+fire; it invokes each one with `--self-test`. Renaming that flag left the gate **GREEN**, because
+`lint-imports.sh` and `p10-unmatched_test.sh` ignored an unrecognised argument and ran their normal
+path to exit 0. So a typo in the Makefile, or a script whose self-test was deleted, would have left
+the gate passing having run no control at all — and it is the one gate whose entire job is to notice
+that. Both scripts now reject an unknown argument. **The shape: a positive control needs a positive
+control, and the cheapest one is refusing to be invoked in a way you did not mean.**
+
+**A plant that survives is not a hole until you check the plant.** `alloc-budget` did not fire on
+`_ = make([]byte, 64)`. The gate was fine; the plant never reached the heap, because a constant-sized
+make whose result is discarded is stack-allocated and then deleted. Re-planted with an escaping
+allocation, CAUGHT. **The shape: a plant the optimiser removes measures the optimiser.** Both results
+are recorded in the roster, because telling a bad plant from a real hole is the work, and a table
+that only shows CAUGHT hides the one skill it needs.
+
+**AND THE ONE I GOT WRONG.** F-44 records, in the journey script itself, that `expect_out(buffer)` is
+not a frame — expect leaves previous contents in place, so a dump can be minutes stale. Chasing
+F-58 I forced a repaint, printed the buffer, saw the Lookup box holding its empty-state placeholder,
+and reported that the keystrokes were dropped. The **same dump appears in the warm-config run where
+the echo is found 0.0 s later**: a repaint arrives in chunks and a single `expect` returns on the
+first one, so what I printed was a fragment, not a screenshot. I quoted the warning and then walked
+into it inside the same hour.
+
+**The shape, and it is the general one:** an observation that is *shaped like* a screenshot invites
+being read as one. The defence is not "remember harder" — it is to A/B the instrument against a case
+you already know the answer to. The warm-config run cost forty seconds and falsified the reading
+immediately. **Run the known-good case through the same instrument before believing what it says
+about the unknown one.**
+
+Cost, for the metric: the whole F-58 investigation ran ~90 minutes, of which the first three
+journey runs (5 minutes each, one of them corrupted by my own overlapping second run) produced less
+than the 40-second probe did. The probe is committed. The next attempt starts from a measurement.
+
+## The rules these observations became (2026-09-08)
+
+This file is the narrative; `quality-plan.md` is the doctrine. As of 0.15.0 B6/B7 the recurring shapes
+here are written up as **INST-1 to INST-5** — derive the producer, make silence a distinct verdict,
+indict the plant before the gate, A/B against a known answer, publish the blind spot with the number.
+
+**Read them together.** A rule earns its place by a named catch, and every INST rule carries one from
+this release. When a new shape appears here that no rule covers, that is the signal to add one — and
+when a rule stops earning catches, that is the signal to withdraw it, the way D-4 was.
+
 ## The metric this is all judged against
 
 Tasks completed per session. It has not moved yet (1). Every other number has. The programme
 continues on the HUM LEAD's 2026-09-03 ruling, and the reason given was **cost per defect** — minutes
 rather than hours — rather than defect count.
+
+## A green gate on one platform is not a green gate (2026-09-09, SHIP)
+
+`make verify` was green on the developer's machine and had been for the whole of REVIEW and VALIDATE.
+The last CI run on the branch was **red** — `go test -race` on `ubuntu-latest`, while the
+`macos-latest` leg of the SAME run passed.
+
+The failure was not a platform defect. `TestEventReaderDucksSpeaksRestoresAndOverlaysThePanel` asked
+`Read` for a read that was already running and asserted the second was inert, but nothing held the
+first one open: the voice and the sleep are both stubbed, so the read finished before the next line
+ran and the second read legitimately started. The assertion passed on scheduling, not on the guard.
+Its own comment said so — *"a goroutine may already be running"* — and that hedge is the tell.
+
+**The shape: an assertion whose subject is a WINDOW must hold the window open.** A test that says
+"inert while X is in progress" and does not pin X in progress is testing the scheduler. It is the
+concurrent sibling of the release's other repeated shape — *a test that constructs the value under
+test cannot test where the value comes from* — and it fails the same way, by passing.
+
+The fix used the idiom already in the file: the neighbouring test gates the read's first hold step on
+a channel, with a comment saying it *"flaked on real time under -race"*. The same problem had been
+solved twenty lines away and not carried across.
+
+**Three things this is worth:**
+- **CI is a gate, not a report.** Nothing in the exit sequence read the branch's CI state, so a red
+  run sat unexamined for a day across two review phases. `06_docs/required-gates.txt` names the local
+  gates; the branch's last CI conclusion belongs in the same place. Carried as **F-63**.
+- **A flake is a finding, not weather.** This one was reproducible on demand once the mechanism was
+  understood: 25/25 red with the guard removed, 25/25 green with it restored, on both trees.
+- **The instrument was validated before it was trusted (INST-4).** Green 25x → plant the removed
+  guard → compiles → red 25/25 → revert → green 25x. Now a standing mutant, `mK8`, so the guard
+  cannot quietly lose its only cover again.
+

@@ -87,11 +87,7 @@ func (p *Provider) Retain(refs []snapshot.LocationRef) {
 		}
 		live[g.gridURL] = true
 	}
-	for u := range p.grids {
-		if !live[u] {
-			delete(p.grids, u)
-		}
-	}
+	p.grids.Prune(func(u string) bool { return live[u] })
 }
 
 // resolvePoints performs the /points + /stations round trip for one location.

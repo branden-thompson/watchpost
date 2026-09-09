@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/domains/fire"
+
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -58,5 +60,36 @@ func TestFireReportOf(t *testing.T) {
 	}
 	if got := fireReportOf(fs, 0, 0, rules, false).Sources; len(got) != 2 {
 		t.Fatalf("firms not ok (unkeyed, rejected, degraded): two feeds, got %v", got)
+	}
+}
+
+// THE WIRING, NOT THE COMPOSER (REVIEW red team, 2026-09-08).
+//
+// The composer's own test builds a FireReport by hand and sets HotspotsKnown /
+// IncidentsKnown itself, so it proves the SENTENCES are right and can say
+// nothing about whether fireReportOf sets those flags correctly. A plant that
+// hardcoded both to true passed it — the identical shape as the #13 assembler
+// test that hand-set its asked list while nobody called it.
+func TestFireReportOfMarksOnlyTheHalvesWhoseFeedAnswered(t *testing.T) {
+	now := time.Now()
+	rules := fire.Rules{RadiusKm: 25, IncidentRadiusKm: 50}
+	for _, tc := range []struct {
+		name            string
+		state           snapshot.FireState
+		hotspots, incid bool
+	}{
+		{"both answered", snapshot.FireState{AsOf: now, HotspotsAsOf: now, IncidentsAsOf: now}, true, true},
+		{"only the hotspot feeds", snapshot.FireState{AsOf: now, HotspotsAsOf: now}, true, false},
+		{"only the incident feed", snapshot.FireState{AsOf: now, IncidentsAsOf: now}, false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := fireReportOf(tc.state, 33.2, -117.3, rules, true)
+			if got.HotspotsKnown != tc.hotspots {
+				t.Errorf("HotspotsKnown=%v want %v — a zero count is only a fact when its feed answered", got.HotspotsKnown, tc.hotspots)
+			}
+			if got.IncidentsKnown != tc.incid {
+				t.Errorf("IncidentsKnown=%v want %v", got.IncidentsKnown, tc.incid)
+			}
+		})
 	}
 }

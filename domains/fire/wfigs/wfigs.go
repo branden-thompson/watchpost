@@ -137,7 +137,7 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 		if len(ins) > maxIncidents {
 			ins = ins[:maxIncidents]
 		}
-		frag.PerLocation[snapshot.Key(ref)] = snapshot.PartialData{Fire: &snapshot.FireState{AsOf: frag.FetchedAt, Incidents: ins}}
+		frag.PerLocation[snapshot.Key(ref)] = snapshot.PartialData{Fire: &snapshot.FireState{AsOf: frag.FetchedAt, IncidentsAsOf: frag.FetchedAt, Incidents: ins}}
 	}
 	return frag, nil
 }

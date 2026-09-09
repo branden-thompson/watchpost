@@ -11,8 +11,13 @@ import pathlib
 # anchor to its new home rather than deleting the mutant is the difference
 # between a rule that moved and a rule that was lost — which the corpus guard
 # has now caught five times in this release.
+# RE-ANCHORED AT 0.15.0 B1 (#18). The call moved behind toneClassOfEvent, the
+# one owner of "which sound does this event make" — cast.Classify reads a
+# product's words, which cannot carry the civil-emergency family. A pure move
+# for this mutant: the rule it guards, that the burst's WORST hazard sets the
+# tone, is unchanged and still lives on this line.
 p = pathlib.Path("app/compose_takeover.go"); s = p.read_text()
-old = "cast.Classify(worstOf(fresh).Type)"
-new = "cast.Classify(fresh[0].Type)"
+old = "toneClassOfEvent(worstOf(fresh))"
+new = "toneClassOfEvent(fresh[0])"
 assert old in s, "mG1"
 p.write_text(s.replace(old, new, 1))

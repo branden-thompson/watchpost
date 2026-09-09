@@ -215,7 +215,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 	}
 	lines = append(lines, "  Search: "+d.addQuery+o.Glyphs().Cursor, "")
 	if d.addErr != "" {
-		lines = append(lines, "  ⚠ "+d.addErr, "")
+		lines = append(lines, "  "+o.Glyphs().Alert+" "+d.addErr, "")
 	}
 	lines = append(lines, "  Type a city name or ZIP code.", "")
 	verb := "Add"

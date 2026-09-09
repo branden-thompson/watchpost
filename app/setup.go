@@ -49,30 +49,34 @@ func applySetup(def snapshot.LocationRef, firmsKey string) error {
 	if err := firms.CheckKey(firmsKey); err != nil {
 		return err // refused before anything is written — the window shows the reason
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("cannot read existing config before saving setup: %w", err)
-	}
-	cfg.FirstRun = false
-	loc := config.Location{Label: def.Label, Tag: def.Tag, Zip: def.Zip, Lat: def.Lat, Lon: def.Lon, TZ: def.TZ}
-	if loc.Tag == "" {
-		loc.Tag = deriveTag(def.Label)
-	}
-	locs := []config.Location{loc}
-	for i, l := range cfg.Locations {
-		if i == 0 || (l.Zip == loc.Zip && l.Zip != "") || (l.Lat == loc.Lat && l.Lon == loc.Lon) {
-			continue
+	// The message no longer claims WHICH half failed: config.Mutate reads and
+	// writes under one lock and returns either error, so a wrapper that says
+	// "before saving" would be asserting more than it knows.
+	if err := config.Mutate(func(cfg *config.Config) error {
+		cfg.FirstRun = false
+		loc := config.Location{Label: def.Label, Tag: def.Tag, Zip: def.Zip, Lat: def.Lat, Lon: def.Lon, TZ: def.TZ}
+		if loc.Tag == "" {
+			loc.Tag = deriveTag(def.Label)
 		}
-		locs = append(locs, l)
-	}
-	cfg.Locations = locs
-	if firmsKey != "" {
-		if cfg.Providers == nil {
-			cfg.Providers = map[string]config.Provider{}
+		locs := []config.Location{loc}
+		for i, l := range cfg.Locations {
+			if i == 0 || (l.Zip == loc.Zip && l.Zip != "") || (l.Lat == loc.Lat && l.Lon == loc.Lon) {
+				continue
+			}
+			locs = append(locs, l)
 		}
-		cfg.Providers["firms"] = config.Provider{Key: firmsKey}
+		cfg.Locations = locs
+		if firmsKey != "" {
+			if cfg.Providers == nil {
+				cfg.Providers = map[string]config.Provider{}
+			}
+			cfg.Providers["firms"] = config.Provider{Key: firmsKey}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("cannot save setup: %w", err)
 	}
-	return config.Save(cfg)
+	return nil
 }
 
 // deriveTag builds the default 5-char short label from a location name

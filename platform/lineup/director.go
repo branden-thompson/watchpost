@@ -447,8 +447,11 @@ func (d Director) onTick(ev Tick) (Director, []Effect) {
 	// inside the radio deck, which made "when does the bed move" observable only
 	// by waiting five minutes with a real clock.
 	d, moved := d.advanceBed()
+	// FR-9.3: a tune the station never made. Asked before settle, so a stall
+	// reported this tick is not hidden by whatever the schedule does next.
+	d, stalled := d.stalledRotation()
 	next, fx := d.settle()
-	return next, append(moved, fx...)
+	return next, append(append(moved, stalled...), fx...)
 }
 
 // onBuilt puts a card's composed script on it (DR-7). The card is at standby,

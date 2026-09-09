@@ -10,10 +10,11 @@ package firms
 // the hotspots a location sees are byte-identical to the per-box request.
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"math"
 	"sync"
+
+	"github.com/branden-thompson/watchpost/platform/bodymemo"
 )
 
 // tileDeg is the grid pitch. A 5° tile is about 1/40 of CONUS: on a peak
@@ -64,16 +65,20 @@ func (p *Provider) tileURL(key, src string, t tile) string {
 	return fmt.Sprintf("%s/api/area/csv/%s/%s/%.3f,%.3f,%.3f,%.3f/1", p.base, key, src, w, s, e, n) // the key is a 32-hex path segment: httpx redacts it from every error and log line
 }
 
-// tileMemo holds the parsed points of the tiles most recently fetched,
-// keyed by (source, tile) and revalidated by body hash — a peak-season tile
-// is parsed once per body change, not once per location per cycle.
-// Bound: maxTiles entries, least-recently-used out (R2-5).
+// tileMemo is the parsed-tile cache and the per-source pitch rule.
+//
+// THE CACHE IS platform/bodymemo (F-53). This held its own tick counter, hash
+// revalidation and least-recently-used eviction, and domains/seismic/usgs held
+// a byte-identical copy of all three — one operation implemented twice, which
+// is a defect that has not happened yet: the day one is corrected and the other
+// is not, they disagree and both look right in isolation. What stays here is
+// what is FIRMS's own: a source whose tiles outgrew the body budget moves to
+// the split pitch, and nothing outside this package has that rule.
 type tileMemo struct {
-	mu     sync.Mutex
-	tick   uint64
-	items  map[tileKey]*tileEntry
-	parses int
-	split  map[string]bool // sources whose tiles exceeded the body budget: on the split pitch from then on
+	cache *bodymemo.Memo[tileKey, []Point]
+
+	mu    sync.Mutex
+	split map[string]bool // sources whose tiles exceeded the body budget: on the split pitch from then on
 }
 
 type tileKey struct {
@@ -81,48 +86,17 @@ type tileKey struct {
 	tile tile
 }
 
-type tileEntry struct {
-	sum  [sha256.Size]byte
-	pts  []Point
-	used uint64
-}
-
 func newTileMemo() *tileMemo {
-	return &tileMemo{items: make(map[tileKey]*tileEntry, 64), split: map[string]bool{}}
+	return &tileMemo{cache: bodymemo.New[tileKey, []Point](maxTiles), split: map[string]bool{}}
 }
 
 // points returns the tile's parsed points, parsing only when the body changed.
+//
+// ParseCSV IS PASSED AS A TOP-LEVEL FUNCTION, not wrapped: a closure that
+// captures anything allocates on every call, hits included, and
+// TestTileMemoHitAllocBudget holds a hit at zero.
 func (m *tileMemo) points(k tileKey, raw []byte) ([]Point, error) {
-	sum := sha256.Sum256(raw)
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.tick++
-	if e, ok := m.items[k]; ok && e.sum == sum {
-		e.used = m.tick
-		return e.pts, nil
-	}
-	pts, err := ParseCSV(raw)
-	if err != nil {
-		return nil, err
-	}
-	m.parses++
-	if _, ok := m.items[k]; !ok && len(m.items) >= maxTiles {
-		m.evictLocked()
-	}
-	m.items[k] = &tileEntry{sum: sum, pts: pts, used: m.tick}
-	return pts, nil
-}
-
-// evictLocked drops the least-recently-used tile (caller holds mu).
-func (m *tileMemo) evictLocked() {
-	var victim tileKey
-	oldest := uint64(math.MaxUint64)
-	for k, e := range m.items {
-		if e.used < oldest {
-			victim, oldest = k, e.used
-		}
-	}
-	delete(m.items, victim)
+	return m.cache.Parsed(k, raw, ParseCSV)
 }
 
 // pitchFor is the grid pitch a source uses: the split pitch once one of its
@@ -147,8 +121,4 @@ func (m *tileMemo) noteBody(src string, n int) {
 }
 
 // stats is the memo's size and parse count (the diagnostic gauges).
-func (m *tileMemo) stats() (tiles, parses int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return len(m.items), m.parses
-}
+func (m *tileMemo) stats() (tiles, parses int) { return m.cache.Stats() }

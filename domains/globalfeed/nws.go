@@ -48,18 +48,14 @@ func severeEvents() []severeEvent {
 
 // NWS reads the national active-alerts feed filtered to the severe/tornado
 // event list (US only, keyless).
-type NWS struct {
-	client *httpx.Client
-	base   string
-	memo   sourceMemo
-}
+type NWS struct{ jsonFeed }
 
 // NewNWS builds the source; base "" is the production active-alerts endpoint.
 func NewNWS(client *httpx.Client, base string) *NWS {
 	if base == "" {
 		base = "https://api.weather.gov/alerts/active"
 	}
-	return &NWS{client: client, base: base}
+	return &NWS{jsonFeed{client: client, base: base}}
 }
 
 func (n *NWS) Name() string { return "NWS" }
@@ -190,11 +186,7 @@ func severeDetailOf(p nwsProps) *SevereDetail {
 
 func (n *NWS) Fetch(ctx context.Context) ([]Event, error) {
 	u := n.url()
-	return n.memo.events(func() ([]byte, bool, error) {
-		var body []byte
-		hdr, err := n.client.GetJSON(ctx, u, &body, httpx.TTL(nwsTTL))
-		return body, hdr == nil, err
-	}, func(body []byte) ([]Event, error) { return n.parse(body, u) })
+	return n.fetch(ctx, u, nwsTTL, func(body []byte) ([]Event, error) { return n.parse(body, u) })
 }
 
 func (n *NWS) parse(body []byte, u string) ([]Event, error) {
@@ -268,6 +260,24 @@ func (n *NWS) parse(body []byte, u string) ([]Event, error) {
 		})
 	}
 	return out, nil
+}
+
+// CuratedProducts is the curated national list, in query order — the closed set
+// the feed actually asks the Weather Service for.
+//
+// EXPORTED SO A CONSUMER CAN BE CHECKED AGAINST IT (FR-2.2). The four
+// classifiers over product strings agree today only because every name here
+// carries "Warning" or "Watch", or is the one civil-emergency product; adding an
+// advisory to severeEvents() is a one-line edit that would silently lane it as a
+// Warning. A consumer that derives its fixtures from this cannot drift from it —
+// which is a stronger guarantee than a test asserting it has not.
+func CuratedProducts() []string {
+	list := severeEvents() // bounded by the table (P10-02)
+	out := make([]string, 0, len(list))
+	for _, e := range list {
+		out = append(out, e.event)
+	}
+	return out
 }
 
 // CuratedSeverity is the tier of a product on the curated national list —

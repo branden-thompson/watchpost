@@ -4,7 +4,6 @@ package nws
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -118,22 +117,25 @@ func (p *Provider) gridExtremes(ctx context.Context, gridURL string) (gridDoc, e
 	if err != nil {
 		return gridDoc{}, err
 	}
-	sum := sha256.Sum256(raw)
-	p.mu.Lock()
-	if m, ok := p.grids[gridURL]; ok && m.sum == sum {
-		p.mu.Unlock()
-		return m.doc, nil
-	}
-	p.mu.Unlock()
-	var doc gridDoc
-	if err := json.Unmarshal(raw, &doc); err != nil {
+	doc, err := p.grids.Parsed(gridURL, raw, decodeGridDoc)
+	if err != nil {
+		// THE BAD BODY IS FORGOTTEN AT THE CLIENT, not remembered here: the
+		// memo does not store a failed parse (platform/bodymemo), and this
+		// drops the cached body that produced it so the next fetch is real.
 		p.client.Forget(gridURL)
 		return gridDoc{}, err
 	}
-	p.mu.Lock()
-	p.grids[gridURL] = &gridMemo{sum: sum, doc: doc}
-	p.gridDecodes++
-	p.mu.Unlock()
+	return doc, nil
+}
+
+// decodeGridDoc is the gridpoint body's parse, as a TOP-LEVEL function: the
+// memo takes it by value on every call, and a closure that captured anything
+// would allocate on the hits the memo exists to make free.
+func decodeGridDoc(raw []byte) (gridDoc, error) {
+	var doc gridDoc
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return gridDoc{}, err
+	}
 	return doc, nil
 }
 
@@ -145,17 +147,10 @@ type gridDoc struct {
 	} `json:"properties"`
 }
 
-// gridMemo is one grid's decoded extremes and the hash of the body they came from.
-type gridMemo struct {
-	sum [sha256.Size]byte
-	doc gridDoc
-}
-
 // GridDecodes counts gridpoint decodes since launch (the diagnostic gauge).
 func (p *Provider) GridDecodes() int {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.gridDecodes
+	_, decodes := p.grids.Stats()
+	return decodes
 }
 
 func hasTempHole(daily []snapshot.Daily) bool {

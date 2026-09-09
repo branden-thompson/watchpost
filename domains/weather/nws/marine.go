@@ -60,7 +60,7 @@ func (m *MarineProvider) Fetch(ctx context.Context, req snapshot.FetchReq) (snap
 	}
 	// Concurrent + fail-soft per location (UAT 59/64): partial failure
 	// travels in the Fragment (§10.1); successes always land.
-	got, err := snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, func(ctx context.Context, ref snapshot.LocationRef) (snapshot.PartialData, error) {
+	got, _, err := snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, func(ctx context.Context, ref snapshot.LocationRef) (snapshot.PartialData, error) {
 		mar, err := m.fetchMarine(ctx, ref)
 		if err != nil {
 			return snapshot.PartialData{}, err

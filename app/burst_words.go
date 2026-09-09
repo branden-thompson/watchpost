@@ -21,8 +21,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/plaintext"
+
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
-	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -45,24 +46,12 @@ func burstAgencies(evs []globalfeed.Event) string {
 		seen[n] = true
 		names = append(names, n)
 	}
-	return spokenList(names)
+	return plaintext.SpokenList(names)
 }
 
 // spokenList joins names the way a person says a list: "A", "A and B",
 // "A, B, and C". Extracted at the second caller (the masthead's provider list,
 // F-24) rather than written twice.
-func spokenList(names []string) string {
-	switch len(names) {
-	case 0:
-		return ""
-	case 1:
-		return names[0]
-	case 2:
-		return names[0] + " and " + names[1]
-	}
-	return strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
-}
-
 // burstHead is the one opening of a multi-event burst: who declared what is
 // about to be read. "" when no source could be named, in which case the burst
 // simply starts with its first alert — a head that named nobody would be worse
@@ -91,7 +80,36 @@ func burstTitle(e globalfeed.Event, c render.Clock, now time.Time) string {
 
 // breakingLine is the line to speak for one event: a single event carries its
 // own broadcast tail; a burst event's line has none (the tail comes once).
+// testHead is what a diagnostic read opens with, and what the [w] report for a
+// fabricated event leads with. Same fallback rule as testLine.
+func testHead(lib *script.Library) string {
+	if s := scriptText(lib, "test-alert", "head", nil); s != "" {
+		return s
+	}
+	return "This is a test of the Watchpost alert events system. This is only a test"
+}
+
+// testLine is a fabricated alert's own line, in place of the one a real alert
+// would get (FR-4.5, HUM LEAD 2026-09-07).
+//
+// EVERY LINE, and not only in an all-test card: a listener who walks in halfway
+// through a burst has heard no head, and the words are all they have.
+//
+// IT FALLS BACK TO WORDS IT OWNS. The read scripts are user-editable by design,
+// and "" is what a broken or emptied override yields — silence beside a real
+// alert is a missing line, but a fabricated alert reaching the air unmarked is
+// the thing this exists to prevent.
+func testLine(lib *script.Library, e globalfeed.Event) string {
+	if s := scriptText(lib, "test-alert", "title", map[string]string{"Type": e.Title()}); s != "" {
+		return s
+	}
+	return "A test " + e.Title() + " has been issued by the Watchpost alerts event system."
+}
+
 func breakingLine(lib *script.Library, e globalfeed.Event, burst bool, c render.Clock, now time.Time) string {
+	if e.Fabricated {
+		return testLine(lib, e)
+	}
 	if burst {
 		return scriptText(lib, "breaking", "burst-line", map[string]string{"Line": burstTitle(e, c, now)})
 	}
@@ -120,7 +138,7 @@ func worstOf(evs []globalfeed.Event) globalfeed.Event {
 			}
 			continue
 		}
-		if cast.Classify(e.Type).ToneRank() > cast.Classify(worst.Type).ToneRank() {
+		if toneClassOfEvent(e).ToneRank() > toneClassOfEvent(worst).ToneRank() {
 			worst = e
 		}
 	}

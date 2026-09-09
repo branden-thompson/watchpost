@@ -20,12 +20,13 @@ func TestBuiltinScriptsFollowTheConvention(t *testing.T) {
 	data := map[string]any{
 		"Product": "Tornado Warning", "Location": "Olathe, KS", "Items": "Extreme, Immediate, Observed", "Window": "45 minutes", "Text": "TAKE COVER NOW!", "Line": "Tornado Warning has been declared for Olathe, Kansas",
 		"Live": "A version of this forecast is also broadcast live.", "Callsign": "KEC62", "Where": "San Diego, California", "From": "Monday, August 24", "To": "Rishi", "Until": "Sunday, August 30", "State": "slight chop", "Height": "3 feet", "Swell": "primary swell from the west at 2 feet", "Temp": "74 degrees", "Speed": "11 knots", "Gust": "16 knots", "Trend": "rising", "Level": "3.7 feet", "Station": "La Jolla", "High": "7:40 PM at 5.7 feet", "Low": "2:49 AM at minus 0.1 feet", "Phase": "flooding at 1.4 knots", "Next": "slack water at 4:05 PM",
-		"Headline": "Heat Advisory", "Description": "Hot.", "Voice": "Samantha", "Sources": "FIRMS and HMS", "Count": 2, "Ring": "16 mile", "FRP": "62", "Detected": "2 hours", "Satellite": "GOES-West",
+		"Headline": "Heat Advisory", "Description": "Hot.", "Voice": "Samantha", "Sources": "FIRMS and HMS", "Count": 2, "Ring": "16 mile", "Days": "3 days", "What": "hotspot", "FRP": "62", "Detected": "2 hours", "Satellite": "GOES-West",
 		"Name": "Timber", "HasDistance": true, "Inside": true, "Distance": "12 miles", "Direction": "east", "Facts": "is 26 percent contained",
 		"Agencies": "the National Weather Service and the United States Geological Survey",
 		"Divert":   4, "Alerts": "alerts",
 		"InProgress": true, "Coverage": "a 50 mile radius", "Providers": "the National Weather Service and the United States Geological Survey",
-		"Mag": "5.1", "Depth": "9 kilometers", "Ago": "3 days", "Felt": "A quake of this magnitude has a strong likelihood of being felt when it occurs.", "Likelihood": "strong", "Rest": 2, "Noun": "quakes",
+		"Type": "Tornado Warning", // test-alert: the category the operator chose to inject
+		"Mag":  "5.1", "Depth": "9 kilometers", "Ago": "3 days", "Felt": "A quake of this magnitude has a strong likelihood of being felt when it occurs.", "Likelihood": "strong", "Rest": 2, "Noun": "quakes",
 	}
 	for _, f := range files {
 		report, file, ok := strings.Cut(f, "/")
@@ -39,7 +40,7 @@ func TestBuiltinScriptsFollowTheConvention(t *testing.T) {
 			t.Errorf("%s: %q %v", f, out, err)
 		}
 	}
-	if got := lib.Reports(); strings.Join(got, ",") != "breaking,event-report,fire-report,global,handover,marine-report,seismic-report,transition,voice-preview,weather-radio" {
+	if got := lib.Reports(); strings.Join(got, ",") != "breaking,event-report,fire-report,global,handover,marine-report,seismic-report,test-alert,transition,voice-preview,weather-radio" {
 		t.Errorf("reports: %v", got)
 	}
 	if got := lib.Parts("global"); strings.Join(got, ",") != "head,tail" {
@@ -55,7 +56,7 @@ func TestTheAppsPartsExist(t *testing.T) {
 		"event-report/head", "event-report/tail", "event-report/opening", "event-report/meta", "event-report/window", "event-report/instructions",
 		"breaking/single", "breaking/burst-line", "breaking/burst-closing",
 		"weather-radio/head", "weather-radio/live", "weather-radio/span", "weather-radio/conditions", "weather-radio/alert", "weather-radio/tail",
-		"fire-report/head", "fire-report/count", "fire-report/strongest", "fire-report/incident", "fire-report/outside",
+		"fire-report/head", "fire-report/count", "fire-report/incident-count", "fire-report/strongest", "fire-report/incident",
 		"seismic-report/head", "seismic-report/count", "seismic-report/quake", "seismic-report/felt", "seismic-report/more", "seismic-report/link",
 		"voice-preview/sample",
 	} {
@@ -114,7 +115,7 @@ func TestOverrideFileWinsPhraseByPhrase(t *testing.T) {
 	if tail, err := lib.Text("my-report", "tail", nil); err != nil || !strings.HasPrefix(tail, "This concludes this Watchpost Notification") {
 		t.Fatalf("a new report inherits global's tail: %q %v", tail, err)
 	}
-	if got := lib.Reports(); strings.Join(got, ",") != "breaking,event-report,fire-report,global,handover,marine-report,my-report,seismic-report,transition,voice-preview,weather-radio" {
+	if got := lib.Reports(); strings.Join(got, ",") != "breaking,event-report,fire-report,global,handover,marine-report,my-report,seismic-report,test-alert,transition,voice-preview,weather-radio" {
 		t.Errorf("reports with the override: %v", got)
 	}
 }

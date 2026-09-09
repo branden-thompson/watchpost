@@ -5,6 +5,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/platform/lineup"
@@ -82,4 +83,26 @@ func defaultVoiceFor(platform, dir string) string {
 		return installed[0].Name
 	}
 	return ""
+}
+
+// toneClassOfEvent is the tone class an event sounds, and it is the ONE place
+// that decides between the product's words and its category.
+//
+// cast.Classify reads the words, which is right for the severity family. It is
+// wrong for the civil-emergency family: "Evacuation Immediate" contains no
+// "warning", "watch" or "advisory", so it falls through to Classify's loud
+// default — and that fall-through is #18.
+//
+// NARROW ON PURPOSE. The category wins only for the products whose words
+// provably cannot carry it, which is exactly globalfeed's civil-emergency
+// table. Preferring the category everywhere would regress advisories: LaneOf
+// has no Advisory arm and defaults to Warnings, so a Small Craft Advisory would
+// start sounding like a warning.
+func toneClassOfEvent(e globalfeed.Event) cast.Class {
+	if c, ok := globalfeed.CivilEmergencyCategory(e.Type); ok {
+		if cls, ok := cast.ClassFor(c); ok {
+			return cls
+		}
+	}
+	return cast.Classify(e.Type)
 }

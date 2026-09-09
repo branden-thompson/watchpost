@@ -1,0 +1,80 @@
+#!/usr/bin/env expect
+# lookup-stall-probe.expect — the Lookup block, alone, with a timestamp on every
+# step. It exists because `make journey` could say only "P0 Lookup opens Details
+# on Vista FAILED" after five minutes, and that sentence is compatible with a
+# network problem, a lost keypress, a closed modal and an app that has stopped
+# redrawing. Those need telling apart, and a 26-step journey cannot tell them
+# apart because every one of its steps runs downstream of the last.
+#
+# It takes about forty seconds and reproduces the failure, so a claim about this
+# path can be re-measured instead of re-argued (F-58).
+#
+#   HOME=$(mktemp -d) expect scripts/quality/lookup-stall-probe.expect
+#
+# RUN IT WITH A FRESH HOME. That is the whole variable: a fresh HOME seeds FIFTY
+# locations, and against the developer's own config — one location — every step
+# here passes in about three seconds. Anything that loads this path is invisible
+# on a warm config, which is why the failure only ever appeared inside the
+# journey and never in a hand check.
+#
+# RUN IT ALONE. It measures how long the app takes to redraw, so anything else
+# competing for the machine is measuring the machine. Two of these overlapping
+# produced a run that hung with no steps at all.
+set timeout 10
+match_max 4000000
+log_user 0
+spawn ./dist/watchpost
+catch {exec stty rows 44 cols 133 < $spawn_out(slave,name)}
+
+# look TIMES THE WAIT, because "it failed" and "it took ninety seconds" are
+# different findings and the journey's log cannot distinguish them.
+proc look {pat tag {secs 25}} {
+	set t0 [clock milliseconds]
+	expect -timeout $secs -re $pat {
+		puts [format "FOUND   %-34s +%.1fs" $tag [expr {([clock milliseconds]-$t0)/1000.0}]]; return 1
+	} timeout {
+		puts [format "MISSING %-34s (waited %ds)" $tag $secs]; return 0
+	}
+}
+
+look "default location|NASA FIRMS" "first-run Setup" 30
+sleep 1; send "Oceanside"; sleep 2; send "\r"; sleep 1; send "\x1b"; sleep 2
+# "Showing 1-" IS NOT EVIDENCE THAT SETUP CLOSED, and building on it is how the
+# first version of this probe measured the wrong thing. Setup is a CENTRED
+# OVERLAY: the dashboard's recent table renders BESIDE it, so that pattern
+# matches with the form still open — and Setup's own location question draws a
+# "Search:" box with the same suggestion list Lookup has, so the step below it
+# would match the WRONG WINDOW and every timing after it would be a measurement
+# of keys going into the Setup form.
+#
+# The severe window is the proof, exactly as the journey establishes it:
+# "Total Category Events" is drawn by that window and by nothing else, so it
+# cannot be reached with a modal in the way (F-44).
+look "Showing 1-|R E C E N T" "the dashboard is drawing"
+send "w"; sleep 1
+if {![look "Total Category Events" "SETUP IS CLOSED (the severe window opened)"]} {
+	puts "-- stopping: everything below would measure the Setup form, not Lookup --"
+	send "q"; sleep 1
+	exit 1
+}
+send "\x1b"; sleep 1
+look "R E C E N T|Showing 1-" "back on the dashboard"
+
+# THE SETTLE IS A PARAMETER, and it is the measurement. Raise it to ask whether
+# the app recovers once the seed is done; the journey effectively uses about
+# twenty seconds, arriving here after its severe-window block.
+set settle 20
+sleep $settle
+puts "-- settled ${settle}s after the first-run seed --"
+
+send "l"; sleep 1
+look "Search:" "Search: after l"
+# THE ECHO IS A STEP OF ITS OWN. The journey has no equivalent, so a run where
+# the keystrokes never reached the box is indistinguishable there from one where
+# Enter did nothing.
+send "Vista, CA"; sleep 2
+look "Vista" "the box echoes Vista"
+send "\r"
+look "Vista" "Vista AFTER ENTER" 120
+look "Hourly|HOURLY|Extended|EXTENDED" "Details filled" 120
+send "\x1b"; sleep 1; send "q"; sleep 1

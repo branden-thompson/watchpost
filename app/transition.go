@@ -15,6 +15,8 @@ package app
 import (
 	"strconv"
 
+	"github.com/branden-thompson/watchpost/platform/plaintext"
+
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -54,7 +56,7 @@ func mastheadLine(lib *script.Library, at snapshot.LocationRef, radiusMi int, pr
 	return scriptText(lib, "transition", "masthead", map[string]any{
 		"Location":  at.Label,
 		"Coverage":  coveragePhrase(radiusMi),
-		"Providers": spokenList(providers),
+		"Providers": plaintext.SpokenList(providers),
 	})
 }
 

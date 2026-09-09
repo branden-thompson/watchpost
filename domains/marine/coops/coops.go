@@ -115,7 +115,7 @@ func (p *Provider) fetchEach(ctx context.Context, id string, req snapshot.FetchR
 		frag.Err = err
 		return frag, nil
 	}
-	got, err := snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, func(ctx context.Context, ref snapshot.LocationRef) (snapshot.PartialData, error) {
+	got, _, err := snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, func(ctx context.Context, ref snapshot.LocationRef) (snapshot.PartialData, error) {
 		mar, err := fn(ctx, ref)
 		if err != nil {
 			return snapshot.PartialData{}, fmt.Errorf("tides for %s: %w", ref.Label, err)

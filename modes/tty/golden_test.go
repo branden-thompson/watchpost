@@ -7,6 +7,7 @@ package tty
 
 import (
 	"flag"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"os"
 	"path/filepath"
 	"strings"
@@ -170,18 +171,119 @@ func TestSetupGoldenASCII(t *testing.T) {
 // screen reader announces as an ordinal marker where a temperature is meant —
 // and both measure one cell, so nothing moved.
 func TestASCIIFramesCarryNothingButASCII(t *testing.T) {
-	frames := map[string]string{
-		"dashboard": goldenDash(t, true).View().Content,
-		"settings":  setupGolden(t, 133, 44, true, rowCastAlerts).View().Content,
-	}
-	for name, frame := range frames {
+	for name, frame := range asciiSurfaces(t) {
 		seen := map[rune]bool{}
 		for _, r := range stripANSITest(frame) {
-			if r < 128 || r == '°' || seen[r] {
+			if r < 128 || r == '\u00b0' || seen[r] {
 				continue
 			}
 			seen[r] = true
-			t.Errorf("--ascii %s frame carries %q (U+%04X) — it needs an ASCII form in the glyph set", name, r, r)
+			t.Errorf("--ascii %s carries %q (U+%04X) — it needs an ASCII form in the glyph set", name, r, r)
 		}
 	}
+}
+
+// asciiSurfaces is EVERY SURFACE AN --ascii FRAME CAN SHOW, and it is the
+// half of this gate that kept going stale (FR-8).
+//
+// The scan above has always asked the only question that needs no list — is
+// anything here outside ASCII? — but it asked it of two surfaces: the
+// dashboard and Settings. There are eleven windows. The eight it never
+// reached are where the last three --ascii escapes were found, each by
+// someone opening that window, each after the previous one was called the
+// last.
+//
+// The producer is the modal enum, so a window added to the app is scanned the
+// day it lands rather than the day someone remembers to add it here.
+// populated gives the detail modal DATA, because fixtureFor gives it none and a
+// window scanned empty is a window scanned in the one state whose glyphs are
+// missing (red team, 2026-09-08).
+//
+// The scan reported thirteen surfaces and meant it, but the detail modal drew
+// "fire feed not yet available" and "seismic data unavailable" — so the fire and
+// hotspot TABLES this release built, the incidents list with its second radius,
+// the felt-band ramp and the truncation that spends an Ellipsis were all outside
+// it. fixtureFor's own severe case says why: "a fixture that does not exercise
+// the state is a hole shaped exactly like coverage."
+func populated(d Dashboard) Dashboard {
+	if d.snap == nil || len(d.snap.Locations) == 0 {
+		return d
+	}
+	now := time.Now()
+	f := func(v float64) *float64 { return &v }
+	loc := &d.snap.Locations[0]
+	loc.Fire = snapshot.FireState{
+		AsOf: now,
+		Hotspots: []snapshot.Hotspot{
+			{Lat: loc.Lat + 0.09, Lon: loc.Lon, DetectedAt: now.Add(-2 * time.Hour), FRPMW: f(62), DistanceKm: f(10),
+				Source: snapshot.SourceInfo{Provider: "hms", ModelOrStation: "GOES-WEST"}},
+		},
+		// A NAME LONG ENOUGH TO TRUNCATE, so the Ellipsis glyph is on screen.
+		Incidents: []snapshot.Incident{{Name: "SAN LUIS REY COMPLEX", Acres: f(18000), PercentContained: f(35),
+			Discovered: now.Add(-72 * time.Hour), Source: snapshot.SourceInfo{Provider: "wfigs", DistanceKm: f(30)}}},
+	}
+	loc.Seismic = &snapshot.SeismicState{AsOf: now}
+	d.cfg.FireRadiusKm, d.cfg.FireIncidentRadiusKm = 25, 50
+	return d
+}
+
+// states are the conditions a window can be in that change what it DRAWS. Each
+// is applied to every window; one that means nothing to a given window simply
+// changes nothing, which costs a render and buys the guarantee that no window
+// has an unscanned appearance.
+func states() []struct {
+	name  string
+	apply func(Dashboard) Dashboard
+} {
+	return []struct {
+		name  string
+		apply func(Dashboard) Dashboard
+	}{
+		{"resting", func(d Dashboard) Dashboard { return d }},
+		// THE ERROR LINES. Both carried a raw warning mark.
+		{"erroring", func(d Dashboard) Dashboard {
+			d.addErr = "could not resolve that location"
+			d.setup.err = "that key was rejected"
+			return d
+		}},
+		// A STORED KEY draws the masked bullets, the ellipsis and the dash; a
+		// healthy provider draws the tick. None is reachable from a fresh form.
+		{"configured", func(d Dashboard) Dashboard {
+			d.cfg.FIRMSKey = func() string { return "0123456789abcdef0123456789abcdef" }
+			d.setup.key = "abcd1234"
+			if d.snap != nil {
+				d.snap.Providers = append(d.snap.Providers,
+					snapshot.ProviderStatus{ID: "firms", Status: snapshot.ProviderOK})
+			}
+			return d
+		}},
+	}
+}
+
+func asciiSurfaces(t *testing.T) map[string]string {
+	t.Helper()
+	out := map[string]string{
+		"dashboard frame": goldenDash(t, true).View().Content,
+		"settings frame":  setupGolden(t, 133, 44, true, rowCastAlerts).View().Content,
+	}
+	for m := modalHelp; m < numModals; m++ {
+		// EVERY WINDOW IN EVERY STATE THE SCAN CAN REACH, not just its resting
+		// one. Six live --ascii defects sat behind an error line, a stored key
+		// and a healthy provider — states fixtureFor never sets — while three
+		// golden tests stayed green (red team, 2026-09-08). A window has more
+		// than one appearance and only one of them was ever scanned.
+		for _, st := range states() {
+			d := st.apply(populated(fixtureFor(t, m)))
+			d.cfg.ASCII = true
+			got := d.renderModal(d.opts())
+			// A WINDOW THAT DRAWS NOTHING IS NOT A WINDOW THAT PASSED. This is
+			// the failure a coverage scan is most likely to have and least
+			// likely to report: it goes quiet in exactly the shape of success.
+			if strings.TrimSpace(stripANSITest(got)) == "" {
+				t.Fatalf("the %s window draws nothing at fixtureFor/%s: it is NOT covered by this scan", modalName(m), st.name)
+			}
+			out["the "+modalName(m)+" window ("+st.name+")"] = got
+		}
+	}
+	return out
 }

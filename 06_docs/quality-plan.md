@@ -72,11 +72,163 @@ a person remembering.
 | ~~D-4~~ | **WITHDRAWN 2026-09-03.** Never mutate an assertion is TRUE and not mechanisable: three static predicates each flagged legitimate mutants, the last being one that drops half a conjunction inside an invariant, which is a real rule deletion and is caught. Weakening an invariant is legitimate when the code under it can violate the weakened form and vacuous when it cannot, and that is semantic. Its decidable form is a triage rule at sweep time — a mutant that SURVIVES while editing only an invariant's condition means an unpinned rule or a vacuous check, and both need a person. | No, as it turned out | 1 |
 | **D-5** | **Every ordering guarantee names its SCOPE and is tested at that boundary.** "A before B" means nothing without "within what". | No | 2, both serious |
 | **D-11** | **A pin is not evidence until it has been seen failing on its own defect**, in every environment the gate runs it in. A pin for an interleaving fixes its own `GOMAXPROCS` rather than inheriting it. | Partly — a mutant run to CAUGHT is this observation mechanised | The two T2.3 pins that were green while the defect was live |
-| **D-9** | **Verification logic lives in the project's typed, tested language.** Shell invokes things; it does not decide them. | **Yes, by convention** | 17 |
+| **D-9** | **Verification logic lives in the project's typed, tested language — and shell that DOES decide must have Go tests that drive it.** *(Restated 2026-09-08, then corrected the same day. The absolute form contradicted the tree: `06_docs/mutants/run.sh` is 115 lines and is the entire verdict engine. **Only that one has a Go driver** — `harness_test.go` builds a probe repo and asserts all five verdicts with their exit codes. `p10-unmatched.sh` (131) and `ledger-ratified.sh` (115) decide things too and are covered by SHELL self-tests through `gate-controls`, not Go; `exposure-scan.py` (228) has neither. So the rule is **aspirational for three of the four**, and the restatement's own "~220 more" undercounted: it is 246, plus 228 of Python it omitted entirely. Named here rather than left as a rule the tree quietly fails.)* | Partly | 17 |
 
 Not adopted, and why: **D-6** folds into D-2. **D-7** (tests assert the requirement, not the observed
 behaviour) is a good habit but the list is kept short deliberately. **D-8** (no number without a
 re-derivation) is already an A2DH calibration. **D-10** mostly disappears once D-9 holds.
+
+## Instrument validation — the TDD dimension, INST-1 to INST-5 (added 2026-09-08, 0.15.0 B6/B7)
+
+**HUM LEAD, 2026-09-08:** *"the testing / instrumentation methodology to drive feature development…
+I argue is better than the standard TDD methodology on its own. I do not want that 'magic' lost."*
+And, on where it belongs: *"this to me is another **dimension** of TDD — I expect to take these rules
+and fold them formally into the A2DH framework so this becomes part and parcel to the 'FULL TDD'
+directive when doing work."*
+
+**The name was changed from "instrument-driven development" for accuracy** — nothing here drives
+development; every rule is applied to an instrument, and a reader told "we use IDD not TDD" would
+write no test first.
+
+**A NEW PREFIX, DELIBERATELY.** `D-n` already means two different things — `D-9` is this plan's
+"verification logic lives in a typed language" AND the architecture's render pivot seam
+(`platform/render/render.go:1`). These are `INST-n` rather than deepening that collision.
+
+**IT IS A DIMENSION OF TDD, NOT AN ALTERNATIVE TO IT** (HUM LEAD, 2026-09-08).
+You still write the test first; these rules govern the INSTRUMENT that test
+becomes. Read "on top of TDD", never "instead of". The destination is the A2DH
+framework, where these fold into the **FULL TDD** directive rather than living
+here as a local house rule.
+
+**On independence, which this section does not claim to have discovered.** The
+A2DH framework's **red-team** skill (`02_skills/critical-analysis/red-team/`, in the A2DH
+install — NOT in this repository) already documents it, and 0.15.0's BUILD exit re-validated it the hard way: the author's
+own red team found five things; three blind agents found roughly twenty more,
+**including all three blockers**, and the sharpest was a defect *inside the fix
+for one of their findings*. What follows may sharpen that skill; it does not
+replace it.
+
+### Why this is a dimension TDD does not cover
+
+TDD proves the CODE does what the TEST says. It does not prove the test is asking anything. Every
+defect below was found in 0.15.0 while the suite was **green**, and none of them is a TDD failure —
+they are instrument failures, and TDD has no opinion about instruments:
+
+| Green, and measuring nothing | What it actually was |
+|---|---|
+| the AA contrast gate | iterated the same list its lifter had just lifted — a tautology |
+| the `--ascii` scan | 2 surfaces of 13, and 7 glyphs of 22, both hand-listed |
+| `gate-controls` | the gate that proves other gates fire **could not fire on itself** |
+| 5 P10 exemptions | in force, unratified, hiding behind *"the same RATIFIED pattern as platform/geo"* — and `platform/geo` was one of the five |
+| the release-check pin | asserted a bound on `start` while calling `checkAt` |
+| my own Settings test | asserted the setter FIRED, not that the value round-tripped |
+
+**The premise this extends.** `D-11` says a pin is not evidence until seen failing on its own defect.
+That is the seed. INST-1..5 are what the same idea costs when the subject is a GATE rather than a
+function, and the reason it is worth paying: **an instrument that silently reports "clean" is
+indistinguishable from a clean subject, and it is the only kind of bug that gets more confident the
+longer it survives.**
+
+### The rules
+
+| Rule | Statement | Mechanical | The catch that earned it |
+|---|---|---|---|
+| **INST-1** | **The SUBJECT LIST is derived, never enumerated.** The set a gate ITERATES is computed from the thing itself — the enum, the AST, the registry, the type by reflection. A hand-written set is stale the day after it is written and its staleness is invisible. **Scope: the SET, never the thresholds.** A floor, a budget or a cadence is a parameter and is meant to be written down; the list of things being checked is not. | No — habit | `--ascii` (2/13 surfaces, 7/22 glyphs); the AA register (75 declared vs 64 registered); F-45's 23 rows found by ENUMERATING a file whose closing line said it was clean |
+| **INST-2** | **Silence is a verdict and must be a DISTINCT one.** An instrument reports "passed", "not applicable", "could not run" and "not covered" as four different things. Any of the last three rendered as the first is worse than having no instrument. | No — habit | `git grep -E` treats inline `(?i)` as FATAL — four exposure categories printed a confident `0` from a crashed command; `m44` reported **UNAPPLIED** — the harness's own verdict word, which these documents narrate as "unmeasured" — rather than passing, when a collapse moved the rule it guarded |
+| **INST-3** | **A plant that survives indicts the PLANT first.** Before reporting a hole, prove the plant reached the subject. | No — judgement | `_ = make([]byte, 64)` never escapes, so the compiler deleted the defect before `alloc-budget` could count it; re-planted so it escaped, CAUGHT |
+| **INST-4** | **Believe an instrument about the unknown only after it has answered the KNOWN.** A/B it against a case whose answer you already have. | No — habit | The Lookup stall: a forced repaint "showed" an empty box, and the identical dump appeared in the warm-config run where the echo arrived 0.0 s later. Forty seconds of A/B falsified a finding I had already reported |
+| **INST-5** | **State the instrument's blind spot with its number** — in the instrument's OWN OUTPUT, not only in a document that quotes it. A count from a method that can miss is a FLOOR, not a total. | No — habit | The duplicate detector reported two 3-copy groups as pairs: `nws.Fetch` differs from its twins by one statement, `Slot.String` by the field it returns |
+
+### How to apply them
+
+The five in the order you meet them when building a gate. Each has a "done when",
+because a rule you cannot check you have followed is a rule nobody follows.
+
+1. **Before writing the gate — INST-1.** Ask what set it iterates and where that
+   set comes from. If the answer is a literal in the test file, stop and find the
+   producer: the enum, `parser.ParseDir`, the registry, the struct by reflection.
+   **Done when** adding a member to the real thing makes the gate cover it with
+   no edit to the gate. Worked example: `modes/tty/golden_test.go`
+   (`asciiSurfaces` walks the modal enum) against what it replaced (seven glyphs
+   and one window, both typed by hand).
+2. **While writing it — INST-2.** Enumerate the ways it can end: passed, failed,
+   nothing to check, could not run. Give each a distinct message. **Done when**
+   you can make it print each one on demand. Worked example: `06_docs/mutants`
+   (`CAUGHT` / `SURVIVED` / `INVALID` / `UNAPPLIED` / `SKIPPED`).
+3. **Before believing it — INST-3.** Plant the defect it claims to catch. If the
+   plant survives, **suspect the plant first**: check it compiled, applied, and
+   was reachable in the state the gate renders. **Done when** you have watched it
+   fail for the right reason — an assertion with a message, never a compile
+   error (see `build-methodology.md` item 1).
+4. **Before quoting a number from it — INST-4.** Run it against a case whose
+   answer you already know. **Done when** the known case comes out right. Forty
+   seconds of this falsified a finding already written down (F-58).
+5. **When publishing the number — INST-5.** Say what the method cannot see, in
+   the output. **Done when** the blind spot appears next to the count.
+
+**`plant`** is defined in `06_docs/02_features/0.15.0-pre-broadcaster-ui-improvements/07-readiness/gates.md` (the only release whose roster carries the definition); the short form
+is: introduce the defect the gate claims to catch, run the gate, record CAUGHT or
+SURVIVED. **`P10`** is an A2DH skill, indexed at `02_skills/implementation/p10/README.md` **inside the A2DH
+install, not this repo** — read it with `a2dh show 02_skills/implementation/p10/README.md`; `make p10` needs the framework CLI (`A2DH=/path/to/a2dh`)
+and is a LOCAL gate by design, since the exemption ledger lives outside the
+public tree.
+
+### Two corollaries that are not rules but keep being true
+
+- **Assert the ROUND TRIP, not the call.** A setter that fired proves the write was *asked for*. The
+  Settings defect survived because the tests asserted the hook, and the listener was watching the
+  value fail to come back. *(See `TestClosingSettingsLeavesTheModelAgreeingWithTheWrite`.)*
+- **Measure the surface before scoping the fix.** "139 files carry the demo location" was true and
+  useless; exactly **one** of them shipped in the binary, and it was a comment. The measurement
+  turned a re-record of 67 recorded API fixtures into a three-line change.
+
+### Why five rules were added to a list that is meant to shrink
+
+The plan closes with *"the list should shrink over time, not grow. A rule that
+cannot be made mechanical and has not prevented anything in two releases should
+be retired."* Five rules were then added, three of them self-describing as
+judgement or habit. That needs answering rather than leaving as a contradiction
+(junior-dev review, 2026-09-08).
+
+**The admission price was paid: every INST rule carries a named catch from this
+release, and none is speculative.** The shrink rule's own test is "has not
+prevented anything in two releases" — so these are due for review at **0.17.0**,
+and any that has not caught something by then should be retired the way `D-4`
+was. That is the deal, written down where the rules are, not asserted afterwards.
+
+### Two limits recorded rather than built around (red team, 2026-09-08)
+
+**The exposure scan once followed whoever RAN it, and does not any more.** It took its identifiers
+from `git config` and `$HOME`, so on another machine the `path` and `host` categories matched nothing
+and reported a confident ZERO against a real 12 files and 81 occurrences. It now derives them from
+`git log --all` and from the paths already in the tree, which is machine-independent and
+self-maintaining for new contributors. **This paragraph previously recorded that as an accepted
+limit, citing a HUM LEAD "leave it" — and stayed there after the adjacent commit closed it.** The
+ruling was about not building for hypothetical collaborators; it was never a ruling against this fix.
+A document rewritten to remove claims the tree contradicts had grown a fresh one within the same
+diff, which is the whole reason this section exists. *(INST-5.)*
+
+**The mutant corpus survives a collapse by FAILING, and that is already universal.** Measured
+2026-09-08: **171** mutants across **32** distinct target files, and **zero without an `assert`** — so
+every mutant can report UNAPPLIED, and the harness fails the gate on it rather than passing (proven
+by `m44`, stranded when metric D moved `ByTab`'s guard into `platform/bucket`).
+
+**The consequence is a procedure, not a tool.** As duplicates collapse n→1, mutants that guarded the
+copies strand. Each is **re-pointed at the new owner, not deleted** — after which one mutant guards
+every caller, which is the collapse paying twice: one place to fix, one place to measure. Deleting a
+stranded mutant instead silently retires the rule it was written for.
+
+### What it cost, and what it returned
+
+Six instruments were built or repaired in B6/B7. **Four were wrong on their first run, and every one
+of those failures looked like good news** — a zero, a clean bill, a green gate. All four were caught
+by planting rather than by reading. The plant sweep for `gates.md` was ~20 minutes and found a real
+hole in the gate whose entire job is finding that class of hole.
+
+**The honest caveat, for whoever reads this next:** every one of those catches was made by the same
+agent that wrote the instrument. That is the arrangement a red team exists to distrust, and it is why
+the BUILD exit red team should point at the NEW INSTRUMENTS first. A gate is at its least trustworthy
+on the day it is added.
 
 ## Step 4, measured — the evaluation point, 2026-09-03
 

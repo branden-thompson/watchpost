@@ -65,7 +65,7 @@ while [ "$i" -lt "$n" ] && kill -0 "$pid" 2>/dev/null; do
   fi
   printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' "$(date -u +%FT%TZ)" "$el" "$rss" "$fp" "$th" "$cpu" "$ha" "$hi" "$ho" "$go" "$fd" "$df" "$db" "$pr" >> "$out"
   if [ $(( i % per_hour )) -eq 0 ]; then
-    curl -fs --max-time 30 "$dump" >/dev/null 2>&1 || kill -USR1 "$pid" 2>/dev/null || true
+    curl -fs -X POST --max-time 30 "$dump" >/dev/null 2>&1 || kill -USR1 "$pid" 2>/dev/null || true
   fi
   i=$(( i + 1 ))
   sleep "$iv"

@@ -69,6 +69,11 @@ type TickerItem struct {
 	At       time.Time      // when it happened
 	Until    time.Time      // when its window ends; zero = none
 	Severity TickerSeverity // ordering within the lane (set by the app)
+
+	// Test marks an item the ctrl+d window fabricated (FR-4.4). The BAND says
+	// so — see the lane chrome — because a photograph of the marquee showing a
+	// tornado warning is indistinguishable from a real one otherwise.
+	Test bool
 }
 
 // tapeLine is one alert as the tape reads it, in the LISTENER'S clock and the
@@ -99,6 +104,9 @@ func (d Dashboard) tapeLine(o render.Opts, it TickerItem) string {
 	if !it.Until.IsZero() {
 		s += " " + dot + " expires " + o.Clock.Since(it.Until.Local(), d.clock())
 	}
+	if it.Test {
+		return testEventMark + " " + s + " " + testEventMark
+	}
 	return s
 }
 
@@ -120,6 +128,23 @@ func tickerBullet(o render.Opts) string {
 // the multi-alert circle viz will render (HUM LEAD 2026-08-27); the mute
 // control lives in the header controls, not the band.
 const tickerRightReserve = 4
+
+// testEventMark is what the band says when what it shows was fabricated.
+//
+// PREPENDED AND POSTPENDED, ON THE ITEM (HUM LEAD 2026-09-07). The tape
+// scrolls: a marker at one end only is off-window half the time, and a marker
+// at both ends means the item cannot be on screen without one of them. It sat
+// in the band's top row first, as lane chrome, on the argument that an 18-cell
+// prefix per item at the 80-column floor makes the marker the majority of the
+// tape — the ruling overrides that argument, and it is the ITEM that is
+// fabricated rather than the lane it happens to be filed under.
+//
+// TWO ASTERISKS, NOT THREE, and the ruling's own wording is the reason twice
+// over: it is what was written, and at 14 cells it fits the severe window's
+// EVENT column ahead of a product where "*** TEST EVENT ***" did not — that
+// column truncates, and a mark that pushes the product out of its own column
+// is a mark that hides what it is marking.
+const testEventMark = "**TEST EVENT**"
 
 // tickerMarquee renders the ticker as a THREE-row band: a category-coloured
 // blank row above and below the tape row, so the band breathes and absorbs the
