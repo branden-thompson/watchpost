@@ -47,7 +47,7 @@ Real data, 133×44, the default theme unless noted (0.14.0).
 
 ![A breaking event: the tape hands over to the takeover — read aloud over the radio — and `w` opens the window on its category, the event as row 001](docs/img/breaking.gif)
 
-![The Severe Weather / Disaster Events window, category by category: Emergency Orders, Warnings, Watches, Advisories, Special Weather Statements, Disasters and Forecasts — each in its own tint, with DETECTION, DECLARED and EXPIRES](docs/img/severe.gif)
+![The Severe Weather / Disaster Events window, category by category: Emergency Orders, Warnings, Watches, Advisories, Special Weather Statements, Disasters, Marine and Forecasts — each in its own tint, with DETECTION, DECLARED and EXPIRES](docs/img/severe.gif)
 
 ![The Alert Details modal paging through a location's alerts: a Coastal Flood Advisory then a High Surf Advisory for Vista, CA, each in full](docs/img/alert-details.gif)
 
@@ -99,9 +99,9 @@ who will actually speak, and `p` previews the focused one. When correspondents c
 
 The voices themselves need nothing on macOS — the correspondents are the system's own. On Linux and
 Windows the voice (Piper) installs itself the first time you tune in; picking one you have not used yet
-downloads it (about 63 MB, verified) with progress shown in the player. Watchpost fetches at most two
-voices in the background per session, so a hand-edited config cannot quietly pull hundreds of megabytes
-on launch.
+downloads it (about 63 MB, verified) with progress shown in the player. A voice downloads the first time something
+actually needs it, never at launch, and only one download runs at a time — so a config naming several
+correspondents fetches them as each one is first heard, not all at once.
 
 **Alert tones.** Every alert opens with a sound that says what KIND of alert is coming, before a word is
 spoken: warnings and significant quakes share the loudest, and watches, advisories, special statements
@@ -140,9 +140,10 @@ which is why `w` is the key to remember.)
 
 ## Severe events
 
-`w` opens the Severe Weather / Disaster Events window: every active event in six categories —
-Warnings · Watches · Advisories · Spec. Statements · Disasters · Marine — each painting the window
-in its own colour. It combines the national feeds (USGS significant quakes, NHC tropical cyclones,
+`w` opens the Severe Weather / Disaster Events window: every active event in eight categories —
+Emergency · Warnings · Watches · Advisories · Spec. Statements · Disasters · Marine · Forecasts —
+each painting the window in its own colour. **Emergency** is where an evacuation order lands, and it
+leads the window. It combines the national feeds (USGS significant quakes, NHC tropical cyclones,
 the NWS severe-warning feed) with the alerts of every place on your watchlist, one row per event; an
 alert a newer message from the same office has replaced is dropped everywhere it would show. Each row
 tells you the EVENT, its LOCATION, how it was **detected** (a warning's own source line — Radar
@@ -198,8 +199,12 @@ FIRMS simply reads `off` in the status window and the other two sources carry th
 ## Themes and looks
 
 `t` opens Settings at the theme picker: Watchpost, Watchpost Light (for a light terminal), High Contrast,
-Monochrome and nine more, applied live and remembered. Every colour pair in every theme is checked to
-read at the WCAG AA contrast level. `watchpost --ascii` draws every mark with plain characters
+Monochrome and nine more, applied live and remembered. Every colour pair the themes paint TEXT with is held to
+the WCAG AA contrast level, in every theme, by a gate that fails the build. Eleven tokens sit outside
+it, listed with their reason in `06_docs/follow-ups.md` (F-57): the radio ground is the terminal's own
+default with no colour to measure, the key chips carry foreground and background together, the title
+gradient is large display text held to 3:1, and the visualizer bars are decorative and repeat what the
+play mark already says. `watchpost --ascii` draws every mark with plain characters
 (`>` pointer, `*` playing, `R` on repeat, `n*` fires, `n!` alerts, `.`/`o`/`O` quakes, `+ - |` box
 rules, arrow keys named in words) and spells out headers a screen reader would read letter by letter,
 for terminals or screen readers that mishandle the glyphs. It covers the marks, the box rules, the
