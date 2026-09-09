@@ -4,7 +4,7 @@ date: 2026-09-09
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "D-11..D-17 ruled.  D-18 (the settings table) is presented and awaiting per-field rulings."
+status: "D-11..D-19 ruled.  Outstanding: the STANDBY variant pick (D-17) only."
 ---
 
 # Rulings D-11 to D-18
@@ -139,3 +139,28 @@ the bed row's third use of the word STANDBY.
 
 **52 persisted paths, presented at 25 natural ruling units** in `02-analysis/config-field-table.md`.
 Awaiting a ruling per row.
+
+## D-19 — Every settings recommendation approved
+
+> *"All recommendations approved."*
+
+**RULED.**  All 25 rows of `02-analysis/config-field-table.md` take their recommended value, and the
+five proposed Broadcaster settings in Table 2 are approved as proposed.
+
+**Three things this settles that were previously open:**
+
+1. **The five NEEDS-RULING fields are closed.**  The cast, the nine role voices and the root voice are
+   **SHARED** — one station, one sound — which D-11 made answerable by settling that Broadcaster drives
+   the same reads.  The tone mode and mute list are **SPLIT**, because a personal comfort mute must not
+   silence a tone the station is meant to transmit.  Provider keys are **SHARED**, with the rate budget
+   carried as a risk and D-16's cap as its mitigation.
+2. **D-12's unification is confirmed by silence in the right direction.**  The correction I invited —
+   "if you meant Broadcaster's radius overrides Observer's, say so" — was not taken, so the service
+   radius is ONE value.  `broadcaster.service_radius_mi` is **withdrawn**; `ticker_radius_mi` is renamed
+   in place with a compatibility shim.
+3. **Gain is Broadcaster's own and persisted**, separate from Observer's unpersisted listening volume.
+
+**STILL OUTSTANDING, and deliberately not assumed:** the STANDBY wording pick (D-17).  Three variants
+are rendered at 150 cells; "all recommendations approved" does not choose among them, because what I
+recommended was the *principle* — the station keeps STANDBY and the bed row gets a different word —
+and all three variants satisfy it.  **A, B or C is still needed.**

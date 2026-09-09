@@ -4,10 +4,22 @@ date: 2026-09-09
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "AWAITING RULING — 25 rows covering all 52 persisted paths, plus 5 proposed new Broadcaster settings."
+status: "RULED — HUM LEAD approved every recommendation 2026-09-09 (\"All recommendations approved\").  Row 4 stays deferred by its own terms."
 ---
 
-# Every setting, for ruling
+# Every setting — RULED
+
+**HUM LEAD, 2026-09-09: *"All recommendations approved."*  Every row below is ruled as recommended,
+and Table 2's five proposed Broadcaster settings are approved as proposed.**
+
+**Two consequences carried forward, because "approved" did not resolve them:**
+
+1. **Row 4 (`keys.<action>`) is not ruled S/O/B — it could not be.**  What is approved is its
+   *disposition*: per-surface scoping is built first, and the S/O/B question is answered afterwards.
+   Approving a recommendation that says "needs a namespace" approves the sequence, not a value.
+2. **Row 27 does not exist.**  D-12's unification stands uncorrected, so the service radius is ONE
+   value.  Row 25 is renamed rather than duplicated, and `broadcaster.service_radius_mi` is withdrawn.
+
 
 **52 persisted dotted paths**, grouped into **25 natural ruling units**.  Ruling codes:
 **S** shared (one value, both surfaces) · **O** Observer's own · **B** Broadcaster's own ·
