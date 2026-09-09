@@ -50,16 +50,16 @@ and is documented as such. Nothing else is outstanding.
 |---|---|
 | fmt · vet · vet-tags · test-tags · tidy · vuln · race | Planted 2026-09-08, each CAUGHT. `vet-tags` fires where plain `vet` passes — its whole justification, now measured |
 | lint | Both directions: a new finding, and a stale baseline row |
-| lint-imports · lint-watermark · sync-go-studs · p10-unmatched | By construction — `gate-controls` runs each against known-bad input every build |
+| lint-imports · lint-watermark · sync-go-studs · p10-unmatched | By construction — `gate-controls` runs each against known-bad input every build. **`sync-go-studs` and `p10-unmatched` have no `make` target of their own**: only their `--self-test` half runs in `verify`, and the real tree check has no `verify` path (REVIEW red team) |
 | gate-controls | **Was green while running no control at all.** Two scripts treated an unknown flag as "run normally, exit 0" |
 | alloc-budget | CAUGHT on the second plant; the first never escaped and the compiler deleted it |
 | dupes | Ratification is site-exact; a third copy joining a ratified group fails |
-| mutant-check | 171 mutants, 155 distinct targets, **zero without an `assert`** |
+| mutant-check | 171 mutants, 32 distinct target files, **zero without an `assert`** |
 | **journey** | **RED, deliberately** — 26 of 28. F-58, HUM LEAD ruling |
 
 ## 3. Measurements
 
-- **171** mutants; every one can report `UNAPPLIED`, proven when `m44` was stranded by a collapse.
+- **171** mutants across **32** target files; every one can report `UNAPPLIED`, proven when `m44` was stranded by a collapse.
 - **75** declared colour tokens, 64 registered, 11 excused with a verified mechanism (F-57).
 - **Metric D: 0** unexplained duplicates in production. Test-code duplication is **17**, internal, not gated (F-59).
 - **`-trimpath`**: 473 occurrences of the build path per binary → **0**.

@@ -139,8 +139,9 @@ type tickerPrefs struct {
 	muted  *atomic.Bool
 	radius *atomic.Int64
 	clock  *atomic.Int32
-	// updateCheck is the listener's opt-in to the hourly release check. Read
-	// once at wiring: it decides whether the poller exists at all.
+	// updateCheck is the listener's opt-in to the startup release check. Read
+	// once at wiring: it decides whether the check runs at all. There is no
+	// poller — FR-7.1 retired it.
 	updateCheck bool
 }
 

@@ -208,6 +208,23 @@ type FireState struct {
 	AsOf      time.Time  `json:"as_of"` // when a fire feed last answered for this location; zero = no feed has yet (never "no hotspots" — red-team B5 P3)
 	Hotspots  []Hotspot  `json:"hotspots"`
 	Incidents []Incident `json:"incidents"`
+
+	// HotspotsAsOf and IncidentsAsOf are per-FEED, and AsOf alone was not enough
+	// (REVIEW red team, 2026-09-08). AsOf is the freshest answer from ANY fire
+	// feed, so with HMS up and WFIGS down it is set — and the spoken report then
+	// stated "there are currently no named incidents within a 31 mile radius" as
+	// a FACT, one sentence after crediting the National Interagency Fire Center
+	// as a source. The mirror case says "no hotspots" while HMS and FIRMS are
+	// both down.
+	//
+	// This is the on-screen distinction the UAT already forced — "fire feed not
+	// yet available" is not "none within this radius" — applied per FEED rather
+	// than per ring, and on the air rather than only on screen.
+	//
+	// Zero means that half was never answered for this location. A count of zero
+	// is only a fact when its own stamp is set.
+	HotspotsAsOf  time.Time `json:"hotspots_as_of"`
+	IncidentsAsOf time.Time `json:"incidents_as_of"`
 }
 
 // Hotspot is one satellite fire detection.

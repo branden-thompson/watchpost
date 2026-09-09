@@ -26,8 +26,20 @@ func mergeFire(parts map[string]*FireState) FireState {
 	names := map[string]int{}
 	out := FireState{Hotspots: []Hotspot{}, Incidents: []Incident{}}
 	for _, id := range ids {
-		if t := parts[id].AsOf; t.After(out.AsOf) {
-			out.AsOf = t // the freshest answer from any fire feed
+		p := parts[id]
+		if p.AsOf.After(out.AsOf) {
+			out.AsOf = p.AsOf // the freshest answer from any fire feed
+		}
+		// AND WHICH HALF IT ANSWERED. Each fire provider stamps the half it
+		// serves — HMS and FIRMS the hotspots, WFIGS the incidents — so a feed
+		// that answered with NOTHING still records that it answered. Reading it
+		// from the counts instead would make "nobody looked" and "nothing found"
+		// the same value, which is the defect this exists to prevent.
+		if p.HotspotsAsOf.After(out.HotspotsAsOf) {
+			out.HotspotsAsOf = p.HotspotsAsOf
+		}
+		if p.IncidentsAsOf.After(out.IncidentsAsOf) {
+			out.IncidentsAsOf = p.IncidentsAsOf
 		}
 	}
 	for _, id := range ids {

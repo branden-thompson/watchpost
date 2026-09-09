@@ -140,7 +140,7 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 			hs = append(hs, snapshot.Hotspot{Lat: pt.Lat, Lon: pt.Lon, DetectedAt: pt.At, Confidence: "analyst", FRPMW: pt.FRPMW, DistanceKm: &d,
 				Source: snapshot.SourceInfo{Provider: p.ID(), ModelOrStation: pt.Satellite, IssuedAt: pt.At}})
 		}
-		frag.PerLocation[snapshot.Key(ref)] = snapshot.PartialData{Fire: &snapshot.FireState{AsOf: frag.FetchedAt, Hotspots: fire.Cluster(hs)}}
+		frag.PerLocation[snapshot.Key(ref)] = snapshot.PartialData{Fire: &snapshot.FireState{AsOf: frag.FetchedAt, HotspotsAsOf: frag.FetchedAt, Hotspots: fire.Cluster(hs)}}
 	}
 	return frag, nil
 }

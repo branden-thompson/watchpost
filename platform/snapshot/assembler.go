@@ -217,6 +217,13 @@ func (a *Assembler) SetLocations(refs []LocationRef) (added, removed []LocationR
 			delete(a.alerts, k)
 			delete(a.fire, k)
 			delete(a.seismic, k)
+			// AND THE ATTEMPT RECORD. Without this a location removed and
+			// re-added in the same session inherited the stamp of its previous
+			// life and read "n/a" — asserting "we asked and there is nothing
+			// here" before a single fetch had been issued for it (REVIEW red
+			// team, 2026-09-08). It also stopped the map growing for ever
+			// across removals.
+			delete(a.asked, k)
 		}
 	}
 	a.order, a.refs = order, kept

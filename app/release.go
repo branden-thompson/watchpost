@@ -2,7 +2,7 @@ package app
 
 // release.go — "is there a newer Watchpost?" (0.14.0).
 //
-// One unauthenticated GET to the GitHub releases API, once an hour, through the
+// One unauthenticated GET to the GitHub releases API, once at startup, through the
 // same client every provider uses — so it is paced, cached, retried and
 // redacted like any other fetch, and it shows up in [S]'s own table as a host
 // with traffic and no provider, which is exactly what it is.

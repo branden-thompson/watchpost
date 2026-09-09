@@ -20,7 +20,7 @@ func TestBuiltinScriptsFollowTheConvention(t *testing.T) {
 	data := map[string]any{
 		"Product": "Tornado Warning", "Location": "Olathe, KS", "Items": "Extreme, Immediate, Observed", "Window": "45 minutes", "Text": "TAKE COVER NOW!", "Line": "Tornado Warning has been declared for Olathe, Kansas",
 		"Live": "A version of this forecast is also broadcast live.", "Callsign": "KEC62", "Where": "San Diego, California", "From": "Monday, August 24", "To": "Rishi", "Until": "Sunday, August 30", "State": "slight chop", "Height": "3 feet", "Swell": "primary swell from the west at 2 feet", "Temp": "74 degrees", "Speed": "11 knots", "Gust": "16 knots", "Trend": "rising", "Level": "3.7 feet", "Station": "La Jolla", "High": "7:40 PM at 5.7 feet", "Low": "2:49 AM at minus 0.1 feet", "Phase": "flooding at 1.4 knots", "Next": "slack water at 4:05 PM",
-		"Headline": "Heat Advisory", "Description": "Hot.", "Voice": "Samantha", "Sources": "FIRMS and HMS", "Count": 2, "Ring": "16 mile", "Days": "3 days", "FRP": "62", "Detected": "2 hours", "Satellite": "GOES-West",
+		"Headline": "Heat Advisory", "Description": "Hot.", "Voice": "Samantha", "Sources": "FIRMS and HMS", "Count": 2, "Ring": "16 mile", "Days": "3 days", "What": "hotspot", "FRP": "62", "Detected": "2 hours", "Satellite": "GOES-West",
 		"Name": "Timber", "HasDistance": true, "Inside": true, "Distance": "12 miles", "Direction": "east", "Facts": "is 26 percent contained",
 		"Agencies": "the National Weather Service and the United States Geological Survey",
 		"Divert":   4, "Alerts": "alerts",

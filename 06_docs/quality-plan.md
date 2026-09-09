@@ -209,7 +209,7 @@ A document rewritten to remove claims the tree contradicts had grown a fresh one
 diff, which is the whole reason this section exists. *(INST-5.)*
 
 **The mutant corpus survives a collapse by FAILING, and that is already universal.** Measured
-2026-09-08: 171 mutants, 155 distinct `(file, old)` targets, and **zero without an `assert`** — so
+2026-09-08: **171** mutants across **32** distinct target files, and **zero without an `assert`** — so
 every mutant can report UNAPPLIED, and the harness fails the gate on it rather than passing (proven
 by `m44`, stranded when metric D moved `ByTab`'s guard into `platform/bucket`).
 

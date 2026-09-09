@@ -252,8 +252,8 @@ type Config struct {
 	Units string `toml:"units,omitempty"` // "imperial" (default) | "metric"
 	Clock string `toml:"clock,omitempty"` // "12h" (default) | "24h" | "mil"
 
-	// UpdateCheck asks the app, once an hour, whether a newer release is
-	// published. OPT-IN: the app makes no unattended outbound request the
+	// UpdateCheck asks the app, once at startup, whether a newer release is
+	// published (0.15.0 FR-7.1; it polled hourly before). OPT-IN: the app makes no unattended outbound request the
 	// listener did not ask for, and the check is not needed to read weather.
 	UpdateCheck bool `toml:"update_check,omitempty"`
 

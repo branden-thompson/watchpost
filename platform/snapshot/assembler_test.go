@@ -302,3 +302,46 @@ func TestOnlyTheAnsweringFetchesEndTheShimmer(t *testing.T) {
 		t.Error("both answering fetches completed; the row is no longer loading")
 	}
 }
+
+// A LOCATION THAT LEAVES TAKES ITS ATTEMPT RECORD WITH IT (REVIEW red team,
+// 2026-09-08).
+//
+// SetLocations cleared sections, alerts, fire and seismic — and not `asked`. So
+// a location removed and re-added in the same session inherited the stamp of its
+// previous life and read "n/a" immediately, asserting "we asked and there is
+// nothing here" before a single fetch had been issued for it. The shimmer that
+// should cover the gap never appeared.
+//
+// It also leaked: the map grew by one entry per removal, for the life of the
+// process.
+func TestARemovedLocationDoesNotKeepItsAttemptRecord(t *testing.T) {
+	a := LocationRef{Label: "A", Lat: 33.2, Lon: -117.38}
+	b := LocationRef{Label: "B", Lat: 32.7, Lon: -117.16}
+	at := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+
+	asm := NewAssembler([]LocationRef{a, b}, []string{"nws"})
+	asm.SetAttribution("nws", "reference", "NWS")
+	for _, k := range []FetchKind{KindObs, KindForecast} {
+		asm.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at,
+			PerLocation: map[LocationKey]PartialData{Key(a): {}, Key(b): {}}},
+			[]LocationKey{Key(a), Key(b)})
+	}
+	stampOf := func(ref LocationRef) time.Time {
+		for _, l := range asm.Snapshot().Locations {
+			if l.Label == ref.Label {
+				return l.WeatherAsOf
+			}
+		}
+		return time.Time{}
+	}
+	if stampOf(b).IsZero() {
+		t.Fatal("precondition: B was covered by both fetches and should be stamped")
+	}
+
+	asm.SetLocations([]LocationRef{a})    // B removed
+	asm.SetLocations([]LocationRef{a, b}) // and re-added, with no fetch in between
+	if got := stampOf(b); !got.IsZero() {
+		t.Errorf("a re-added location must start unanswered and SHIMMER; it carried %v, "+
+			"which reads as \"we asked and there is nothing here\"", got)
+	}
+}

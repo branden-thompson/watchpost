@@ -26,7 +26,12 @@ type FireReport struct {
 	RadiusKm         float64  // the fire ring
 	IncidentRadiusKm float64  // named incidents beyond the ring, up to here
 	Sources          []string // spoken feed names, broadcast order
-	Lat, Lon         float64  // the location, for bearings
+	// HotspotsKnown and IncidentsKnown say whether the feed behind each half
+	// ANSWERED. A zero count is only a fact when its own feed did (REVIEW red
+	// team, 2026-09-08).
+	HotspotsKnown  bool
+	IncidentsKnown bool
+	Lat, Lon       float64 // the location, for bearings
 }
 
 // oldestIncidentWords is how far back the incidents being read reach — the age
@@ -54,8 +59,15 @@ func oldestIncidentWords(in []snapshot.Incident, now time.Time) string {
 		if i.Discovered.IsZero() {
 			return "" // one undated incident makes the window unsayable for the whole list
 		}
-		if d := int(now.Sub(i.Discovered).Hours() / 24); d > oldest {
-			oldest = d
+		// CEILING, NOT FLOOR (REVIEW red team, 2026-09-08). Integer division
+		// truncates, so a fire found 47 hours ago read "in the last day" and one
+		// at 95 hours read "3 days". A freshness claim that errs must err
+		// OLD — telling a listener the fire information is fresher than it is
+		// runs the error in the one direction that matters on a hazard radio.
+		if h := now.Sub(i.Discovered).Hours(); h > 0 {
+			if d := int(math.Ceil(h / 24)); d > oldest {
+				oldest = d
+			}
 		}
 	}
 	if len(in) == 0 {
@@ -85,7 +97,12 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 	segs := []Segment{{Key: "fire:notice:" + contentKey(notice), Text: notice, Role: cast.Fire, Pause: firePause}} // keyed by content: the cache must never replay yesterday's feeds (REVIEW C1)
 
 	var body []string
-	body = append(body, c.say("fire-report", "count", map[string]any{"Count": len(fr.State.Hotspots), "Ring": ringWords(fr.RadiusKm, imperial)})) // adjectival: "a 16 mile fire ring"
+	// A COUNT OF ZERO IS ONLY A FACT WHEN ITS FEED ANSWERED.
+	if fr.HotspotsKnown {
+		body = append(body, c.say("fire-report", "count", map[string]any{"Count": len(fr.State.Hotspots), "Ring": ringWords(fr.RadiusKm, imperial)})) // adjectival: "a 16 mile fire ring"
+	} else {
+		body = append(body, c.say("fire-report", "count-unavailable", map[string]any{"What": "hotspot", "Ring": ringWords(fr.RadiusKm, imperial)}))
+	}
 	if h := strongest(fr.State.Hotspots); h != nil {
 		body = append(body, c.hotspotSentence(fr, *h, imperial, now))
 	}
@@ -99,7 +116,10 @@ func (c Composer) FireSegments(location string, fr FireReport, imperial bool, no
 	// AN UNCONFIGURED RADIUS SAYS NOTHING rather than "within a 0 kilometer
 	// radius". The line's whole job is to name the second ring, so without one
 	// there is nothing for it to say.
-	if fr.IncidentRadiusKm > 0 {
+	if fr.IncidentRadiusKm > 0 && !fr.IncidentsKnown {
+		body = append(body, c.say("fire-report", "count-unavailable", map[string]any{
+			"What": "named incident", "Ring": ringWords(fr.IncidentRadiusKm, imperial)}))
+	} else if fr.IncidentRadiusKm > 0 {
 		body = append(body, c.say("fire-report", "incident-count", map[string]any{
 			"Count": len(fr.State.Incidents),
 			"Ring":  ringWords(fr.IncidentRadiusKm, imperial),
