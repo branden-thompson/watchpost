@@ -350,3 +350,24 @@ sized or owned"*, and it was right that it was unsized.  **The correct response 
 forward it to the HUM LEAD.**  This is the second time this release that a concern evaporated once
 someone did the arithmetic — the first was a request budget read from a default the app overrides.
 **An unsized risk is a question for the person who can measure it, not for the person who has to rule.**
+
+## D-30 — The mock's layout is its own batch, after P4
+
+> *"after p4 is fine"*
+
+**RULED.**  A dedicated layout batch lands **after P4**, and it is where the HUM LEAD is heavily
+involved.
+
+**Why this was a gap worth surfacing rather than discovering.**  P1 built the console's STRUCTURE in
+the mock's vocabulary — the lane names, the slot handles, the badges — and said in the code that
+byte-exact fidelity was not claimed.  That was right for a shell batch, and it left the actual layout
+work with **no home in the eight batches**.
+
+**Why after P4 and not after P5.**  At P4 the schedule, the station state and the operator controls all
+have real data behind them, and only the bed row is still a stub — so there is something real to rule
+on while one element is provisional.  Waiting for P5 would give a complete picture but concentrate
+every layout ruling at the end, which is the shape that produced the separator rollback in an earlier
+release: ratified from a description, rejected on first sight.
+
+**The batch is bound by the standing rule** that a rendered change is ratified from an ACTUAL
+RENDERING at representative widths, never from prose.  It will present renderings, not descriptions.
