@@ -311,3 +311,22 @@ capability, claim *nothing changes*, then switch the producer over in its own co
 
 **A pin that names the task which will retire it is a pin that tells you when it is stale.**  That is
 worth copying.
+
+## P3(a3) — the speak half
+
+**Both halves of the T3.2 decline are now gone.**  Still at parity: nothing produces a
+`LocationReport` card yet.
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestALocationReportIsSpokenAsTheRotationClass` | The rotation reads as `narrateRotation` in the standard voice — **not as a takeover** | **Plant 2026-09-09:** the class selection made unreachable, so it read as a takeover → **CAUGHT** (`duck,aside:...` — the aside is a takeover's line, whose visualizer does not follow it) |
+| `TestEffectsNotYetEmittedAreDeclinedNotHalfDone` | An unknown slot is DECLINED, not silently spoken | **Plant 2026-09-09:** the decline made unreachable → **CAUGHT** |
+
+### The pin fired at both halves, which is what it is for
+
+This table names the task that will retire each decline.  It failed at **P3(a2)** when the build half
+arrived, and again at **P3(a3)** when the speak half did.  Each time it was updated deliberately.
+
+**The location-report SPEAK row is now GONE from the table** rather than reworded: it is no longer
+declined at all, and a row asserting a decline that never happens would be a check that cannot fail.
+The positive assertion lives in its own test instead.

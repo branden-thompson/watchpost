@@ -327,8 +327,8 @@ func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Even
 // a Finished for words never finished would tell the schedule a read happened
 // that did not.
 func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
-	if !onTheRail(v.Slot) {
-		return x.decline(v, v.ID, "read by the main track, which arrives with T3.2")
+	if !onTheRail(v.Slot) && v.Slot != lineup.LocationReport {
+		return x.decline(v, v.ID, "no reader for this slot: only the rail and the main track read")
 	}
 	// Card.To(OnAir) refuses this already; refused again here because this
 	// is the last thing between the schedule and a silent hold with a callout
@@ -362,7 +362,19 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	// pauses, the overlap that keeps a render out of every gap — and the live
 	// takeover reads through the same function. Two implementations of a ruling
 	// the HUM LEAD found BY EAR would be two places for it to drift.
-	x.voice.Run(ctx, narrateBreaking, cast.Breaking, x.audible(), func(ctx context.Context, s *speaker) {
+	// THE CLASS AND THE VOICE FOLLOW THE LANE (0.16.0 P3).
+	//
+	// A takeover reads as narrateBreaking in the breaking correspondent's
+	// voice; the rotation reads as narrateRotation — the LOWEST class — in the
+	// standard voice, because it is the programme and everything interrupts
+	// it. That is the whole reason the class was added, and the arbiter needed
+	// nothing: it already suspends a lower class for a higher one and resumes
+	// it after.
+	class, role := narrateBreaking, cast.Breaking
+	if v.Slot == lineup.LocationReport {
+		class, role = narrateRotation, cast.Standard
+	}
+	x.voice.Run(ctx, class, role, x.audible(), func(ctx context.Context, s *speaker) {
 		read = readScript(s, v.Script, readHooks{
 			cue: func(ref string) {
 				// THE READ'S OWN CUES ARE RECORDED TOO (red team 2026-09-05).

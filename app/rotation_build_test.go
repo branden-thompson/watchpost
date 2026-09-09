@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -68,5 +69,33 @@ func TestALocationReportThatComposesNothingIsDeclinedNotAired(t *testing.T) {
 	if _, ok := evs[0].(lineup.Built); ok {
 		t.Error("a card that composed nothing must be DECLINED, not built — a card on the air with " +
 			"no words is silence under a callout the band has already promised")
+	}
+}
+
+// P3(a3): the SPEAK half. A location report reads through the arbiter as the
+// rotation class, so the programme gives way to a severe read and to a
+// takeover — which is the whole reason the class exists.
+//
+// STILL AT PARITY: nothing produces a LocationReport card yet.
+func TestALocationReportIsSpokenAsTheRotationClass(t *testing.T) {
+	v := &scriptVoice{}
+	b := newBench(t, v)
+	out := b.x.run(context.Background(), lineup.Speak{
+		ID: "r1", Slot: lineup.LocationReport, Script: lineup.Say("Currently sixty-one degrees."),
+	})
+	if len(out) == 0 {
+		t.Fatal("a spoken card comes home with an event")
+	}
+	if _, failed := out[0].(lineup.Failed); failed {
+		t.Fatalf("a location report must now be SPOKEN, not declined: %v — this is the second half of "+
+			"the decline that named T3.2", out[0])
+	}
+	if got := v.got(); !strings.Contains(got, "speak:Currently sixty-one degrees.") {
+		t.Errorf("the words must reach the voice; got %q", got)
+	}
+	// NOT AN ASIDE. An aside is a TAKEOVER's line, whose visualizer does not
+	// follow it; the programme is ordinary speech.
+	if strings.Contains(v.got(), "aside:") {
+		t.Errorf("the rotation is the programme, not a takeover: %q", v.got())
 	}
 }

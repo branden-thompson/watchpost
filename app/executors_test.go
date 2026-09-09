@@ -451,13 +451,17 @@ func TestEffectsNotYetEmittedAreDeclinedNotHalfDone(t *testing.T) {
 		//
 		// A location-report BUILD is no longer declined by slot: it declines
 		// only because THIS bench wires no composer, and the reason says so.
-		// A location-report SPEAK is still declined, because the speak half
-		// lands with the producer in P3(a2) — the two halves are deliberately
-		// separate commits, at parity, the way T3.2a was.
+		// BOTH HALVES HAVE NOW ARRIVED (P3(a2) build, P3(a3) speak), and this
+		// pin fired at each one — which is exactly what a pin naming the task
+		// that will retire it is for.
+		//
+		// The location-report SPEAK row is GONE from this table because it is
+		// no longer declined at all; it is asserted positively by
+		// TestALocationReportIsSpokenAsTheRotationClass. A row here would have
+		// to assert a decline that no longer happens.
 		{lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, "r1", "no composer"},
 		{lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, "s1", "severe window"},
-		{lineup.Speak{ID: "r1", Slot: lineup.LocationReport, Script: lineup.Say("the report")}, "r1", "T3.2"},
-		{lineup.Speak{ID: "t1", Slot: lineup.Transition, Script: lineup.Say("we now return")}, "t1", "T3.2"},
+		{lineup.Speak{ID: "t1", Slot: lineup.Transition, Script: lineup.Say("we now return")}, "t1", "no reader for this slot"},
 		{lineup.BuildCard{ID: "h1", Slot: lineup.Transition, Subject: "h1"}, "h1", "proposal"},
 	} {
 		t.Run(lineup.Describe(tc.effect), func(t *testing.T) {
