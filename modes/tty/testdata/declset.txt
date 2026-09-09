@@ -169,6 +169,9 @@ func (*Dashboard).setTicker
 func (*bodyMemo).stats
 func (*memoStats).counts
 func (*modalMemo).stats
+func (Broadcaster).Init
+func (Broadcaster).Update
+func (Broadcaster).View
 func (Dashboard).Init
 func (Dashboard).Update
 func (Dashboard).View
@@ -429,6 +432,7 @@ func (setupState).classMuted
 func (setupState).mutedClassKeys
 func (setupState).touch
 func (tonedRow).row
+func NewBroadcaster
 func NewDashboard
 func NewRouter
 func ParseRadioMode
@@ -530,6 +534,7 @@ func prependRef
 func prettyCond
 func prevGroup
 func prevRow
+func programScoped
 func providerTable
 func providersOf
 func radioBreakpoint
@@ -608,6 +613,7 @@ func withoutRef
 func worseStatus
 func wrapPrefixed
 func wrappedIndex
+type Broadcaster
 type CastView
 type Config
 type Dashboard
@@ -674,6 +680,7 @@ type setupRowID
 type setupRowKind
 type setupState
 type statusSections
+type surfaceView
 type tickMsg
 type tonedCell
 type tonedRow

@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"image/color"
 	"strings"
 	"testing"
 
@@ -52,4 +53,34 @@ func firstDiff(a, b string) int {
 		}
 	}
 	return min(len(a), len(b))
+}
+
+// P1: the fan-out is now OBSERVABLE, which is why FR-1.2 waited for a second
+// surface. With one surface a fan-out and a delegation are indistinguishable.
+
+func TestSizeReachesTheINACTIVESurface(t *testing.T) {
+	var m tea.Model = NewRouter(goldenDash(t, false))
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 171, Height: 61})
+	r := m.(Router)
+	if r.broadcaster.width != 171 || r.broadcaster.height != 61 {
+		t.Errorf("a resize must reach BOTH surfaces; the inactive one has %dx%d, want 171x61 "+
+			"(an inactive surface with a stale size renders wrong the instant it is swapped to)",
+			r.broadcaster.width, r.broadcaster.height)
+	}
+}
+
+func TestBackgroundColourReachesTheINACTIVESurface(t *testing.T) {
+	var m tea.Model = NewRouter(goldenDash(t, false))
+	m, _ = m.Update(tea.BackgroundColorMsg{Color: color.Black})
+	if r := m.(Router); !r.broadcaster.darkBG {
+		t.Error("the background colour must reach BOTH surfaces; the inactive one still thinks the terminal is light")
+	}
+}
+
+func TestObserverStillGetsItsOwnSizeToo(t *testing.T) {
+	var m tea.Model = NewRouter(goldenDash(t, false))
+	m, _ = m.Update(tea.WindowSizeMsg{Width: 171, Height: 61})
+	if r := m.(Router); r.observer.width != 171 {
+		t.Errorf("fanning out must not stop the ACTIVE surface receiving it; observer width = %d, want 171", r.observer.width)
+	}
 }

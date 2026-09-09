@@ -31,39 +31,72 @@ const (
 
 // Router holds the surfaces and delegates to the active one.
 type Router struct {
-	observer Dashboard
-	active   Surface
+	observer    Dashboard
+	broadcaster Broadcaster
+	active      Surface
 }
 
 // NewRouter wraps Observer. The second surface arrives in P1.
-func NewRouter(o Dashboard) Router { return Router{observer: o, active: SurfaceObserver} }
+func NewRouter(o Dashboard) Router {
+	return Router{observer: o, broadcaster: NewBroadcaster(), active: SurfaceObserver}
+}
 
 // Init delegates to the active surface. Observer asks for the terminal's
 // background colour here, and dropping that would leave the frame painting
 // against the wrong ground.
 func (r Router) Init() tea.Cmd { return r.surface().Init() }
 
+// programScoped reports whether a message describes the PROGRAM's world
+// rather than either surface's business — the terminal's size, its colours,
+// whether it has focus, whether the process was suspended.
+//
+// AN ENUMERATED SET, AND HONESTLY SO. INST-1 says the set a gate ITERATES is
+// derived, never hand-written — but this set is a property of the FRAMEWORK,
+// not of our code, and there is no type here to walk. It is written down the
+// way a threshold is, and the guard beside it states what it cannot see.
+//
+// THE LAST FIVE ARE F-67 (0.16.0 P1). They had no production handler anywhere
+// before this: focus, blur, suspend, resume, colour-profile. Fanning them
+// costs nothing while nobody handles them, and it means the surface that
+// eventually does will RECEIVE them rather than discover they were dropped at
+// a seam. That is the structural half of F-67; handling them is still open.
+func programScoped(msg tea.Msg) bool {
+	switch msg.(type) {
+	case tea.WindowSizeMsg, tea.BackgroundColorMsg,
+		tea.FocusMsg, tea.BlurMsg, tea.SuspendMsg, tea.ResumeMsg, tea.ColorProfileMsg:
+		return true
+	}
+	return false
+}
+
 // Update routes the message and keeps the Router as the program's model.
 //
-// EVERY MESSAGE GOES TO THE ACTIVE SURFACE while there is only one. The
-// fan-out the program-scoped messages need — window size and background
-// colour reaching BOTH surfaces — arrives with the second surface in P1,
-// because fanning to one surface is the same as delegating to it and a
-// fan-out nothing can observe is a claim rather than a mechanism.
-//
-// F-67 IS NOT CLOSED BY THIS BATCH, and saying so is the disposition. The
-// five program-scoped messages with no production handler — focus, blur,
-// suspend, resume and colour-profile — are forwarded exactly as every other
-// message is, so they are neither more nor less handled than before P0. They
-// become actionable when a second surface can be inactive and stale, which is
-// P1. What P0 changes is that there is now ONE place to handle them.
+// PROGRAM-SCOPED MESSAGES GO TO BOTH SURFACES; everything else goes to the
+// active one. An inactive surface holding a stale size renders wrong the
+// instant it is swapped to, and the operator would meet a broken frame at
+// exactly the moment they asked for it.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if programScoped(msg) {
+		var oc, bc tea.Cmd
+		if m, c := r.observer.Update(msg); true {
+			if d, ok := m.(Dashboard); ok {
+				r.observer = d
+			}
+			oc = c
+		}
+		r.broadcaster, bc = r.broadcaster.Update(msg)
+		return r, tea.Batch(oc, bc)
+	}
 	switch r.active {
 	case SurfaceObserver:
 		m, cmd := r.observer.Update(msg)
 		if d, ok := m.(Dashboard); ok {
 			r.observer = d
 		}
+		return r, cmd
+	case SurfaceBroadcaster:
+		b, cmd := r.broadcaster.Update(msg)
+		r.broadcaster = b
 		return r, cmd
 	}
 	return r, nil
@@ -72,9 +105,27 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the active surface, unchanged.
 func (r Router) View() tea.View { return r.surface().View() }
 
-// surface is the active model. It exists so Init and View cannot disagree
-// about which surface is on screen — one accessor, not two switches.
-func (r Router) surface() tea.Model { return r.observer }
+// surfaceView is the part of a surface the Router needs in order to start it
+// and to draw it.
+//
+// DELIBERATELY NARROWER THAN tea.Model. Update is routed explicitly, with
+// concrete types, so Broadcaster can return a Broadcaster rather than a
+// tea.Model and the Router needs no type assertion to put it back. Observer
+// keeps its tea.Model signature untouched — P0's claim was that nothing
+// changes, and a signature change is a change.
+type surfaceView interface {
+	Init() tea.Cmd
+	View() tea.View
+}
+
+// surface is the active surface. It exists so Init and View cannot disagree
+// about which one is on screen — one accessor, not two switches.
+func (r Router) surface() surfaceView {
+	if r.active == SurfaceBroadcaster {
+		return r.broadcaster
+	}
+	return r.observer
+}
 
 // canSwap reports whether the operator may leave the given surface.
 //
