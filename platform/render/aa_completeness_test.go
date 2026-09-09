@@ -90,11 +90,29 @@ func declaredTokens(t *testing.T) []Token {
 	// 29 files was invisible to the gate — and a token the gate cannot see is a
 	// token nothing holds to WCAG AA. Planted: `const PlantedBG Token =
 	// "planted.bg"` in themes.go passed silently.
-	pkgs, err := parser.ParseDir(token.NewFileSet(), ".", func(fi os.FileInfo) bool {
-		return !strings.HasSuffix(fi.Name(), "_test.go")
-	}, 0)
+	// EVERY .go FILE IN THE DIRECTORY, parsed one at a time. parser.ParseDir is
+	// deprecated (SA1019) precisely because it does not consider build tags when
+	// grouping files into packages — and "every file that might declare a token,
+	// tags or not" is exactly what this needs, so globbing is both simpler and
+	// more correct than the API that was deprecated for getting it wrong.
+	files, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatal(err)
+	}
+	fset := token.NewFileSet()
+	var parsed []*ast.File
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed = append(parsed, f)
+	}
+	if len(parsed) == 0 {
+		t.Fatal("no source files parsed: this gate would pass having measured nothing")
 	}
 	var out []Token
 	inspect := func(n ast.Node) bool {
@@ -117,10 +135,8 @@ func declaredTokens(t *testing.T) []Token {
 		}
 		return true
 	}
-	for _, pkg := range pkgs {
-		for _, f := range pkg.Files {
-			ast.Inspect(f, inspect)
-		}
+	for _, f := range parsed {
+		ast.Inspect(f, inspect)
 	}
 	if len(out) == 0 {
 		t.Fatal("no tokens found in the package: this gate would pass having measured nothing")
