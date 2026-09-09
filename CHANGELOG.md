@@ -2,10 +2,7 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
-## [Unreleased] — 0.15.0, pre-Broadcaster UI improvements
-
-*In REVIEW. Dated on release, never before — a version line with a date it did not ship on is the
-first stale claim in the file.*
+## [0.15.0] — 2026-09-09
 
 ### Fixed
 - **A location the feed cannot serve stops reading as "still loading."** A row for somewhere the
