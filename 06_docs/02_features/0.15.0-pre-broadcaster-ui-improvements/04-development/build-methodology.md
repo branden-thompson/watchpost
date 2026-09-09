@@ -29,7 +29,9 @@ makes a gate valid live in `06_docs/quality-observations.md`; this file is about
 release is at BUILD EXIT with the red team run and its findings remediated. **This line goes stale
 the moment a batch lands — check `git log` before trusting it.** A junior-dev review found it
 pointing at finished work while claiming to be the first thing a returning reader should read.
-the HUM LEAD's instruction: *"better to reduce variables if something doesn't work."*
+
+**Batches run serially**, on the HUM LEAD's instruction: *"better to reduce variables if something
+doesn't work."*
 
 **B5 is worth reading for what it removed rather than what it added.**  PL-D-5 was withdrawn as
 REDUNDANT — the read already had a held-excluded bound and lacked only a report.  FR-6.5 was refused
@@ -107,8 +109,8 @@ supplies its own tick.  `quality-observations.md` rule 16 is that catch, general
 
 ## What worked — keep doing these
 
-**Items 1-8 and 14 are HABITS from this release's batches; 9-15 carry an `(INST-n)` tag where they
-are an instance of a standing rule in `quality-plan.md`.** A junior-dev review could not tell
+**Items 1-8 and 13-15 are HABITS from this release's batches; items 9-12 carry an `(INST-n)` tag and
+are instances of standing rules in `quality-plan.md` (INST-1 to INST-4). INST-5 has no item here.** A junior-dev review could not tell
 doctrine from war story here, and the difference matters: a habit is advice, a rule has a named catch
 and a review date.
 

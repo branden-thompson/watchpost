@@ -161,9 +161,16 @@ func TestEveryRequiredGateIsStillRun(t *testing.T) {
 		}
 		return false
 	}
+	// A REQUIRED GATE RUNS SOMEWHERE, and CI-only is a legitimate somewhere:
+	// release-matrix inspects the published artifacts, which do not exist when
+	// verify runs. What is not legitimate is running NOWHERE.
+	ciOnlyOK := map[string]bool{"release-matrix": true, "install-test": true}
 	for _, g := range required {
-		if !has(verify, g) {
+		if !has(verify, g) && !ciOnlyOK[g] {
 			t.Errorf("%s is required and `make verify` does not run it", g)
+		}
+		if ciOnlyOK[g] && !has(ci, g) {
+			t.Errorf("%s is required and CI-only, and CI does not run it either — it now runs NOWHERE", g)
 		}
 		// mutant-check runs on a schedule CI decides (MUTANT_POLICY), so its
 		// absence from a given workflow read is not a finding; every other

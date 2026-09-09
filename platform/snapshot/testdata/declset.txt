@@ -35,6 +35,7 @@ func (*Assembler).SetLocations
 func (*Assembler).Size
 func (*Assembler).Snapshot
 func (*Assembler).Warn
+func (*Assembler).weatherAsOf
 func (*Marine).Clone
 func (Hotspot).FRPOrMissing
 func (Hotspot).KmOrFar
@@ -47,6 +48,7 @@ func Key
 func Keys
 func NewAssembler
 func WithFailure
+func answersTheRow
 func cleanWarning
 func cloneSeismic
 func cloneSource

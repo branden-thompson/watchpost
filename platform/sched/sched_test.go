@@ -582,8 +582,14 @@ func TestTheSchedulerRecordsTheLocationsItAskedAbout(t *testing.T) {
 	p := &flakyProvider{} // serves A, fails B — the issue #13 shape exactly
 	asm := snapshot.NewAssembler(two, []string{"nws"})
 	asm.SetAttribution("nws", "reference", "NWS")
+	// BOTH ANSWERING TIERS. A row reads as loading until it has conditions AND a
+	// daily forecast, so the stamp requires both — a test running one tier
+	// measures half the rule (red team, 2026-09-08).
 	s, err := New(Config{Clock: clk, Assembler: asm, Locations: two, Providers: []snapshot.Provider{p},
-		Tiers: []Tier{{Kind: snapshot.KindObs, Every: 10 * time.Minute}}})
+		Tiers: []Tier{
+			{Kind: snapshot.KindObs, Every: 10 * time.Minute},
+			{Kind: snapshot.KindForecast, Every: 10 * time.Minute},
+		}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -591,7 +597,7 @@ func TestTheSchedulerRecordsTheLocationsItAskedAbout(t *testing.T) {
 	defer cancel()
 	s.Start(ctx)
 	defer s.Stop()
-	waitFor(t, func() bool { return len(p.snapshotCalls()) == 1 }, "initial fetch")
+	waitFor(t, func() bool { return len(p.snapshotCalls()) >= 2 }, "both tiers fetch")
 
 	waitFor(t, func() bool {
 		for _, l := range asm.Snapshot().Locations {

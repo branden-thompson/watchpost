@@ -19,9 +19,9 @@ type Assembler struct {
 	providers []string
 	sections  map[LocationKey]map[string]*Section // location -> provider -> data
 	alerts    map[LocationKey][]Alert
-	fire      map[LocationKey]map[string]*FireState // location -> provider -> its contribution (B5: HMS, WFIGS and FIRMS each add a part)
-	seismic   map[LocationKey]*SeismicState         // location -> its latest USGS state (0.11.0: one provider, no cross-merge)
-	asked     map[LocationKey]time.Time             // location -> when the reference provider last completed a fetch covering it (#13)
+	fire      map[LocationKey]map[string]*FireState   // location -> provider -> its contribution (B5: HMS, WFIGS and FIRMS each add a part)
+	seismic   map[LocationKey]*SeismicState           // location -> its latest USGS state (0.11.0: one provider, no cross-merge)
+	asked     map[LocationKey]map[FetchKind]time.Time // location -> per KIND, when a reference fetch covering it completed (#13)
 	status    map[string]*ProviderStatus
 	warnings  []Warning
 }
@@ -44,7 +44,7 @@ func newAssembler(refs []LocationRef, providerIDs []string) *Assembler {
 		alerts:   map[LocationKey][]Alert{},
 		fire:     map[LocationKey]map[string]*FireState{},
 		seismic:  map[LocationKey]*SeismicState{},
-		asked:    map[LocationKey]time.Time{},
+		asked:    map[LocationKey]map[FetchKind]time.Time{},
 		status:   map[string]*ProviderStatus{},
 	}
 	kept := make([]LocationRef, 0, len(refs))
@@ -256,43 +256,61 @@ func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 		st.Status = ProviderOK
 		st.FetchedAt = f.FetchedAt
 	}
-	// THE ATTEMPT IS RECORDED, NOT THE RESULT (#13), and it is recorded even when
-	// f.Err is set.
+	// THE ATTEMPT IS RECORDED, NOT THE RESULT (#13) — but only when the fetch
+	// can actually answer the question the row is asking, and only when the
+	// provider was REACHABLE. Both qualifications were missing and both were
+	// wrong in a way a listener would see (red team, 2026-09-08).
 	//
-	// THAT IS THE CORRECTION, not an oversight. FetchEach JOINS per-location
-	// errors into one Fragment.Err (platform/snapshot/foreach.go), so a single
-	// location the API cannot serve marks the whole fragment failed — and
-	// "the API does not answer for this location" is precisely issue #13. Under
-	// the first version's `f.Err == nil` guard, the one case the fix existed for
-	// was the one case it skipped.
+	// WHY THE KIND MATTERS. A row reads as loading until it has conditions AND a
+	// daily forecast, so only those two fetches answer it. The alerts tier is a
+	// single GET and starts at the same instant as obs (three chained GETs), so
+	// it lands first — and stamping on it ended the shimmer across the whole
+	// board a second into every cold start, flashing "n/a" for temperatures that
+	// were on their way. app/pipelines.go already refuses to stamp on the
+	// supplementary hourly fetch for exactly this reason; the same hazard was
+	// left standing on the path that matters.
 	//
-	// Reaching Apply at all means the PROVIDER RESPONDED: a transport-level
-	// failure returns an error from Fetch and never gets here (sched.go warns and
-	// continues). So the honest meaning of a stamp is "a fetch covering this
-	// location completed", which is true whether or not this location was served.
+	// answersTheRow HERE IS A STORAGE FILTER, NOT THE GUARD, and saying so is the
+	// point: weatherAsOf requires BOTH answering kinds, so an alerts fragment
+	// could be recorded and still end nothing. Removing this line changes no
+	// behaviour — a plant proved it — it only stops the map growing an entry per
+	// kind that nobody reads. The protection lives in weatherAsOf; a comment
+	// claiming it lives here would be the same false attribution this round has
+	// been removing.
 	//
-	// Only the reference provider stamps: it is the one whose absence makes a row
-	// read as "still loading", and a secondary skipping a location says nothing
-	// about whether the weather is coming.
-	if st.Role == "reference" {
-		// THE STAMP CANNOT BE ZERO, because zero is how "never asked" is spelled.
-		//
-		// FetchedAt comes from the provider and a provider may simply not set it
-		// — the scheduler's own flaky fixture does not. Writing it through would
-		// record an attempt that reads as no attempt, and the row would shimmer
-		// for ever with the fact sitting right there in the snapshot. Found by
-		// the first test that drove the real scheduler instead of a hand-built
-		// fragment (red team, 2026-09-08).
+	// WHY REACHABILITY MATTERS. The previous comment here claimed "reaching Apply
+	// means the provider responded". That is FALSE: FetchEach joins per-location
+	// errors into Fragment.Err and returns a nil error, so a connection refused
+	// arrives as a fragment carrying an error and serving NOTHING. Stamping it
+	// made every row assert "we asked and there is nothing for your area" during
+	// a network outage, when the truth was "we cannot reach the weather service"
+	// — and before this change those rows correctly kept shimmering.
+	//
+	// A fragment that served at least one location proves the provider answered,
+	// so a location missing from it is a location it had nothing for. A fragment
+	// that served NONE and carries an error proves nothing at all.
+	//
+	// THE LIMIT, STATED: a single-location watchlist whose only location the feed
+	// cannot serve is indistinguishable from an outage by this rule, and keeps
+	// shimmering. Telling those apart needs a per-location error from the
+	// provider, which FetchEach does not carry today.
+	if st.Role == "reference" && answersTheRow(f.Kind) && (f.Err == nil || len(f.PerLocation) > 0) {
 		at := f.FetchedAt
 		if at.IsZero() {
-			at = time.Now().UTC() // the assembler is processing it now; that is the honest answer
+			// A stamp cannot be zero: zero is how "never asked" is spelled, and a
+			// provider may simply not set FetchedAt.
+			at = time.Now().UTC()
 		}
 		for _, k := range asked {
 			if _, tracked := a.sections[k]; tracked {
-				a.asked[k] = at
+				if a.asked[k] == nil {
+					a.asked[k] = map[FetchKind]time.Time{}
+				}
+				a.asked[k][f.Kind] = at
 			}
 		}
 	}
+
 	for k, pd := range f.PerLocation {
 		secs, ok := a.sections[k]
 		if !ok {
@@ -377,6 +395,28 @@ func (a *Assembler) SetAttribution(id, role, attribution string) {
 	}
 }
 
+// answersTheRow names the fetches whose completion can end a row's "loading"
+// state. A row shows conditions and a daily forecast, so those two answer it;
+// alerts, fire, marine and the rest do not, however fast they arrive.
+func answersTheRow(k FetchKind) bool { return k == KindObs || k == KindForecast }
+
+// weatherAsOf is when the LAST of the answering fetches completed for this
+// location, or zero while either is outstanding. Both are required because
+// either alone leaves half the row empty — obs without forecast is a row with a
+// temperature and no high/low, which would read "n/a" while the forecast is
+// still in flight.
+func (a *Assembler) weatherAsOf(k LocationKey) time.Time {
+	obs, okObs := a.asked[k][KindObs]
+	fc, okFc := a.asked[k][KindForecast]
+	if !okObs || !okFc {
+		return time.Time{}
+	}
+	if fc.After(obs) {
+		return fc
+	}
+	return obs
+}
+
 // Snapshot publishes a fresh immutable value: everything is copied, nothing
 // aliases assembler state.
 func (a *Assembler) Snapshot() *Snapshot {
@@ -399,7 +439,7 @@ func (a *Assembler) Snapshot() *Snapshot {
 			TZ:          ref.TZ,
 			ByProvider:  map[string]Section{},
 			Alerts:      append([]Alert(nil), a.alerts[k]...),
-			WeatherAsOf: a.asked[k], // zero until the reference provider has covered it (#13)
+			WeatherAsOf: a.weatherAsOf(k), // zero until BOTH answering fetches have covered it (#13)
 		}
 		for pid, sec := range a.sections[k] {
 			cp := Section{}

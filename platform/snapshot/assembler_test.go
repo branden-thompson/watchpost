@@ -146,9 +146,14 @@ func TestTheReferenceFetchRecordsWhichLocationsItCovered(t *testing.T) {
 	}
 	asked := []LocationKey{Key(served), Key(barren)}
 
+	// BOTH ANSWERING KINDS: a row is loading until it has conditions AND a daily
+	// forecast, so either alone leaves it loading (see
+	// TestOnlyTheAnsweringFetchesEndTheShimmer).
 	a := build()
-	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: at,
-		PerLocation: map[LocationKey]PartialData{Key(served): {Current: &Conditions{Source: SourceInfo{Provider: "nws"}}}}}, asked)
+	for _, k := range []FetchKind{KindObs, KindForecast} {
+		a.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at,
+			PerLocation: map[LocationKey]PartialData{Key(served): {Current: &Conditions{Source: SourceInfo{Provider: "nws"}}}}}, asked)
+	}
 
 	if got := stamp(a, served); !got.Equal(at) {
 		t.Errorf("a served location is stamped: %v", got)
@@ -171,16 +176,26 @@ func TestTheReferenceFetchRecordsWhichLocationsItCovered(t *testing.T) {
 	// the one case it never recorded. Reaching Apply means the provider
 	// responded; a transport failure returns an error from Fetch and never
 	// arrives here.
+	// SERVED IS THE PROOF THE PROVIDER WAS REACHABLE. A fragment that carries an
+	// error but served somebody says this location has nothing; one that served
+	// NOBODY says only that the provider could not be reached, and stamps
+	// nothing — see TestAnUnreachableProviderDoesNotAnswerForAnyLocation.
 	bad := build()
-	bad.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: at, Err: errFetch}, asked)
+	for _, k := range []FetchKind{KindObs, KindForecast} {
+		bad.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at, Err: errFetch,
+			PerLocation: map[LocationKey]PartialData{Key(served): {}}}, asked)
+	}
 	if got := stamp(bad, barren); !got.Equal(at) {
-		t.Errorf("a per-location failure is still an answer about that location: %v", got)
+		t.Errorf("a per-location failure alongside a served location is still an answer: %v", got)
 	}
 
 	// A SECONDARY cannot answer a question about the reference: its absence is
 	// not what makes a row read as loading.
 	sec := build()
-	sec.Apply(Fragment{Provider: "ndbc", Kind: KindMarine, FetchedAt: at}, asked)
+	for _, k := range []FetchKind{KindObs, KindForecast} {
+		sec.Apply(Fragment{Provider: "ndbc", Kind: k, FetchedAt: at,
+			PerLocation: map[LocationKey]PartialData{Key(served): {}}}, asked)
+	}
 	if got := stamp(sec, barren); !got.IsZero() {
 		t.Errorf("a secondary stamped the weather attempt: %v", got)
 	}
@@ -191,3 +206,99 @@ var errFetch = errString("the provider did not answer")
 type errString string
 
 func (e errString) Error() string { return string(e) }
+
+// AN UNREACHABLE PROVIDER IS NOT AN ANSWER (red team, 2026-09-08).
+//
+// The stamp's first version fired on any fragment reaching Apply, justified by a
+// comment claiming "reaching Apply means the provider responded". That is false:
+// FetchEach joins per-location errors into Fragment.Err and returns a NIL error,
+// so a connection refused arrives as a fragment carrying an error and serving
+// nothing — measured against 127.0.0.1:1, Fetch returns err=nil, frag.Err set,
+// PerLocation=0.
+//
+// The consequence was a regression a listener would see: cold-start with no
+// network and every row stopped shimmering and read "n/a" — the product saying
+// "we asked and there is nothing for your area" when the truth was "we cannot
+// reach the weather service". Before the change those rows kept shimmering.
+func TestAnUnreachableProviderDoesNotAnswerForAnyLocation(t *testing.T) {
+	a := LocationRef{Label: "A", Lat: 33.2, Lon: -117.38}
+	b := LocationRef{Label: "B", Lat: 32.7, Lon: -117.16}
+	at := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+	asked := []LocationKey{Key(a), Key(b)}
+
+	build := func() *Assembler {
+		asm := NewAssembler([]LocationRef{a, b}, []string{"nws"})
+		asm.SetAttribution("nws", "reference", "NWS")
+		return asm
+	}
+	stamped := func(asm *Assembler) int {
+		n := 0
+		for _, l := range asm.Snapshot().Locations {
+			if !l.WeatherAsOf.IsZero() {
+				n++
+			}
+		}
+		return n
+	}
+
+	// THE OUTAGE: an error, and nothing served. Proves nothing about any location.
+	out := build()
+	for _, k := range []FetchKind{KindObs, KindForecast} {
+		out.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at, Err: errFetch}, asked)
+	}
+	if n := stamped(out); n != 0 {
+		t.Errorf("an unreachable provider answered for %d location(s); rows must keep shimmering", n)
+	}
+
+	// THE PARTIAL: an error, but A was served — so the provider IS reachable and
+	// B is a place it has nothing for. That is issue #13 and it must still work.
+	part := build()
+	for _, k := range []FetchKind{KindObs, KindForecast} {
+		part.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at, Err: errFetch,
+			PerLocation: map[LocationKey]PartialData{Key(a): {}}}, asked)
+	}
+	if n := stamped(part); n != 2 {
+		t.Errorf("a partial answer covers every location asked about; stamped %d of 2", n)
+	}
+}
+
+// ONLY THE FETCHES THAT ANSWER THE ROW END ITS SHIMMER (red team, 2026-09-08).
+//
+// The alerts tier is a single GET and starts at the same instant as obs, which
+// is three chained GETs, so it lands first. Stamping on it ended the shimmer
+// across the whole board a second into every cold start — flashing "n/a" for
+// temperatures that were on their way. app/pipelines.go already refused to stamp
+// on the supplementary hourly fetch for exactly this reason; the same hazard was
+// left standing on the path that matters.
+func TestOnlyTheAnsweringFetchesEndTheShimmer(t *testing.T) {
+	ref := LocationRef{Label: "A", Lat: 33.2, Lon: -117.38}
+	at := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+	asked := []LocationKey{Key(ref)}
+	served := map[LocationKey]PartialData{Key(ref): {}}
+
+	stamp := func(kinds ...FetchKind) time.Time {
+		a := NewAssembler([]LocationRef{ref}, []string{"nws"})
+		a.SetAttribution("nws", "reference", "NWS")
+		for _, k := range kinds {
+			a.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at, PerLocation: served}, asked)
+		}
+		return a.Snapshot().Locations[0].WeatherAsOf
+	}
+
+	for _, k := range []FetchKind{KindAlerts, KindFire, KindMarine, KindSeismic, KindForecastHourly} {
+		if got := stamp(k); !got.IsZero() {
+			t.Errorf("kind %v does not answer the row and must not end its shimmer: %v", k, got)
+		}
+	}
+	// EITHER ALONE IS HALF A ROW: obs without a forecast is a temperature with no
+	// high/low, which would read "n/a" while the forecast is still in flight.
+	if got := stamp(KindObs); !got.IsZero() {
+		t.Errorf("conditions alone leave the forecast outstanding: %v", got)
+	}
+	if got := stamp(KindForecast); !got.IsZero() {
+		t.Errorf("a forecast alone leaves the conditions outstanding: %v", got)
+	}
+	if got := stamp(KindObs, KindForecast); got.IsZero() {
+		t.Error("both answering fetches completed; the row is no longer loading")
+	}
+}

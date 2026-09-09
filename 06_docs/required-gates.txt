@@ -25,3 +25,11 @@ gate-controls
 alloc-budget
 dupes
 mutant-check
+# CI-ONLY, and required all the same. release-matrix is the SOLE caller of
+# scripts/lint-injector.sh — the only thing standing between a debug-injector
+# build and a release — and it cannot live in verify, which runs before the
+# published artifacts exist. Leaving these two off the list left them protected
+# by two lists, which is exactly the condition that made alloc-budget deletable
+# and that this file exists to close (red team, 2026-09-08).
+release-matrix
+install-test

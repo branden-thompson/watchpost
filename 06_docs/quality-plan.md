@@ -72,7 +72,7 @@ a person remembering.
 | ~~D-4~~ | **WITHDRAWN 2026-09-03.** Never mutate an assertion is TRUE and not mechanisable: three static predicates each flagged legitimate mutants, the last being one that drops half a conjunction inside an invariant, which is a real rule deletion and is caught. Weakening an invariant is legitimate when the code under it can violate the weakened form and vacuous when it cannot, and that is semantic. Its decidable form is a triage rule at sweep time — a mutant that SURVIVES while editing only an invariant's condition means an unpinned rule or a vacuous check, and both need a person. | No, as it turned out | 1 |
 | **D-5** | **Every ordering guarantee names its SCOPE and is tested at that boundary.** "A before B" means nothing without "within what". | No | 2, both serious |
 | **D-11** | **A pin is not evidence until it has been seen failing on its own defect**, in every environment the gate runs it in. A pin for an interleaving fixes its own `GOMAXPROCS` rather than inheriting it. | Partly — a mutant run to CAUGHT is this observation mechanised | The two T2.3 pins that were green while the defect was live |
-| **D-9** | **Verification logic lives in the project's typed, tested language — and shell that DOES decide must have Go tests that drive it.** *(Restated 2026-09-08 after a junior-dev review found the absolute form contradicting the tree: `06_docs/mutants/run.sh` is 115 lines and is the entire verdict engine, and `p10-unmatched.sh` and `ledger-ratified.sh` add ~220 more. The arrangement is defensible — `harness_test.go` drives `run.sh`'s branches in a purpose-built probe repo — but the old wording asserted the opposite of what shipped, and a reader went looking for a Go verdict engine that is not there.)* | Partly | 17 |
+| **D-9** | **Verification logic lives in the project's typed, tested language — and shell that DOES decide must have Go tests that drive it.** *(Restated 2026-09-08, then corrected the same day. The absolute form contradicted the tree: `06_docs/mutants/run.sh` is 115 lines and is the entire verdict engine. **Only that one has a Go driver** — `harness_test.go` builds a probe repo and asserts all five verdicts with their exit codes. `p10-unmatched.sh` (131) and `ledger-ratified.sh` (115) decide things too and are covered by SHELL self-tests through `gate-controls`, not Go; `exposure-scan.py` (228) has neither. So the rule is **aspirational for three of the four**, and the restatement's own "~220 more" undercounted: it is 246, plus 228 of Python it omitted entirely. Named here rather than left as a rule the tree quietly fails.)* | Partly | 17 |
 
 Not adopted, and why: **D-6** folds into D-2. **D-7** (tests assert the requirement, not the observed
 behaviour) is a good habit but the list is kept short deliberately. **D-8** (no number without a
@@ -101,8 +101,8 @@ framework, where these fold into the **FULL TDD** directive rather than living
 here as a local house rule.
 
 **On independence, which this section does not claim to have discovered.** The
-A2DH **red-team** skill (`02_skills/critical-analysis/red-team/`) already
-documents it, and 0.15.0's BUILD exit re-validated it the hard way: the author's
+A2DH framework's **red-team** skill (`02_skills/critical-analysis/red-team/`, in the A2DH
+install — NOT in this repository) already documents it, and 0.15.0's BUILD exit re-validated it the hard way: the author's
 own red team found five things; three blind agents found roughly twenty more,
 **including all three blockers**, and the sharpest was a defect *inside the fix
 for one of their findings*. What follows may sharpen that skill; it does not
@@ -166,10 +166,10 @@ because a rule you cannot check you have followed is a rule nobody follows.
 5. **When publishing the number — INST-5.** Say what the method cannot see, in
    the output. **Done when** the blind spot appears next to the count.
 
-**`plant`** is defined in each release's `07-readiness/gates.md`; the short form
+**`plant`** is defined in `06_docs/02_features/0.15.0-pre-broadcaster-ui-improvements/07-readiness/gates.md` (the only release whose roster carries the definition); the short form
 is: introduce the defect the gate claims to catch, run the gate, record CAUGHT or
-SURVIVED. **`P10`** is an A2DH skill — `02_skills/implementation/p10/README.md`
-indexes the ten rules; `make p10` needs the framework CLI (`A2DH=/path/to/a2dh`)
+SURVIVED. **`P10`** is an A2DH skill, indexed at `02_skills/implementation/p10/README.md` **inside the A2DH
+install, not this repo** — read it with `a2dh show 02_skills/implementation/p10/README.md`; `make p10` needs the framework CLI (`A2DH=/path/to/a2dh`)
 and is a LOCAL gate by design, since the exemption ledger lives outside the
 public tree.
 
@@ -198,12 +198,15 @@ was. That is the deal, written down where the rules are, not asserted afterwards
 
 ### Two limits recorded rather than built around (red team, 2026-09-08)
 
-**The exposure scan follows whoever RUNS it.** `scripts/quality/exposure-scan.py` takes its
-identifiers from `git config user.name` and `$HOME`, so on another machine it measures a different
-person and could report clean on the same data. **HUM LEAD: leave it** — *"if we find we have
-additional collaborators in the future, we can figure this out, but we don't need to build something
-until there's a real need for it."* Stated here so the next reader knows the number is
-single-maintainer, not universal. *(INST-5.)*
+**The exposure scan once followed whoever RAN it, and does not any more.** It took its identifiers
+from `git config` and `$HOME`, so on another machine the `path` and `host` categories matched nothing
+and reported a confident ZERO against a real 12 files and 81 occurrences. It now derives them from
+`git log --all` and from the paths already in the tree, which is machine-independent and
+self-maintaining for new contributors. **This paragraph previously recorded that as an accepted
+limit, citing a HUM LEAD "leave it" — and stayed there after the adjacent commit closed it.** The
+ruling was about not building for hypothetical collaborators; it was never a ruling against this fix.
+A document rewritten to remove claims the tree contradicts had grown a fresh one within the same
+diff, which is the whole reason this section exists. *(INST-5.)*
 
 **The mutant corpus survives a collapse by FAILING, and that is already universal.** Measured
 2026-09-08: 171 mutants, 155 distinct `(file, old)` targets, and **zero without an `assert`** — so

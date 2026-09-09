@@ -1,8 +1,0 @@
-# Identifiers the exposure scan searches for, CHECKED IN so the answer does not
-# depend on whose machine runs it (red team, 2026-09-08).
-#
-# The scan ADDS the running machine's git name/email and home directory to this
-# list; it never replaces it. A second maintainer adds a line rather than
-# discovering that the scan reported zero for everyone but themselves.
-name: Branden Thompson
-user: bthompso

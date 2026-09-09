@@ -139,9 +139,16 @@ func TestAnUndatedIncidentListClaimsNoFreshnessWindow(t *testing.T) {
 		t.Errorf("the sentence must still name the count and the radius, and simply stop:\n%s", got)
 	}
 
-	// ONE DATED INCIDENT IS ENOUGH to state a window, and it is that one's age.
+	// A MIXED LIST IS STILL UNSAYABLE, and the first fix got this wrong (red team
+	// round 2). Dating ONE of the two leaves the other's age unknown, so a window
+	// stated over "2 named incidents" would be a claim about data that has none.
 	fr.State.Incidents[1].Discovered = now.Add(-72 * time.Hour)
+	if got := join(std.FireSegments("Oceanside, CA", fr, true, now)); strings.Contains(got, "in the last") {
+		t.Errorf("one incident is still undated, so the window is unsayable:\n%s", got)
+	}
+	// EVERY incident dated: now it can be stated, and it is the oldest one's age.
+	fr.State.Incidents[0].Discovered = now.Add(-24 * time.Hour)
 	if got := join(std.FireSegments("Oceanside, CA", fr, true, now)); !strings.Contains(got, "reported in the last 3 days") {
-		t.Errorf("one dated incident sets the window:\n%s", got)
+		t.Errorf("every incident dated: the window is the oldest one's age:\n%s", got)
 	}
 }

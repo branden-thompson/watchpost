@@ -11,6 +11,13 @@ largest findings below are in the scopes it did not look at. Instrument:
 
 ## The table
 
+**A POINT-IN-TIME MEASUREMENT, and the commit is named** — `d1cc0c9`, 2026-09-08. The counts move with
+the tree: this session's own work took `location` from 137 files to 139 while nobody intended it, and
+the red-team round after this table was written moved `identity` and `path` again. **Re-derive rather
+than cite** — `python3 scripts/quality/exposure-scan.py` prints the current numbers, and a
+transcription is stale the moment a commit lands. Recorded because a published number with no
+as-of and no command behind it is the shape of a claim nobody can check (red team, 2026-09-08).
+
 | Category | Working tree | Git history | Tags | Built artifacts | Verdict |
 |---|---|---|---|---|---|
 | **identity** | 23 files / 133 | 288 | **18/18** | ~460–486 per binary | **Present, and largely deliberate** |

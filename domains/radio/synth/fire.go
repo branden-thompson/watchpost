@@ -42,17 +42,23 @@ func oldestIncidentWords(in []snapshot.Incident, now time.Time) string {
 	// to oldest == 0 and spoke "reported in the last day" — a freshness claim
 	// about data that has no date at all, in a medium nobody can re-read. The
 	// comment above already promised this behaviour; the code did not have it.
-	oldest, dated := 0, false
+	// EVERY INCIDENT MUST BE DATED, not merely one of them (red team round 2,
+	// 2026-09-08). The first fix only handled the all-undated case, so a list of
+	// three where two carried no discovery date still spoke "reported in the last
+	// day" — a window computed from the dated subset and attached to the full
+	// count, when the other two could be months old. WFIGS's
+	// FireDiscoveryDateTime is nullable, so a mixed list is the ordinary case,
+	// and this is spoken output a listener cannot go back and check.
+	oldest := 0
 	for _, i := range in {
 		if i.Discovered.IsZero() {
-			continue // an undated incident cannot widen a window it never entered
+			return "" // one undated incident makes the window unsayable for the whole list
 		}
-		dated = true
 		if d := int(now.Sub(i.Discovered).Hours() / 24); d > oldest {
 			oldest = d
 		}
 	}
-	if len(in) == 0 || !dated {
+	if len(in) == 0 {
 		return "" // the sentence ends after the radius rather than claiming a window
 	}
 	if oldest <= 1 {

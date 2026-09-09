@@ -23,15 +23,26 @@ def sh(*a, **kw):
 
 # The maintainer's own identifiers, read from git rather than hardcoded, so the
 # scan follows the repository instead of needing an edit per contributor.
-# THE IDENTIFIERS ARE CHECKED IN, NOT READ OFF THE MACHINE (red team,
-# 2026-09-08). Taking them from `git config` and $HOME meant the scan measured
-# whoever RAN it: on any other machine — CI, a container, a second maintainer —
-# the `path` and `host` categories matched nothing and reported a confident
-# ZERO, against a real 12 files and 81 occurrences here. A survey that answers
-# "clean" because it is looking for the wrong name is worse than no survey.
+# THE IDENTIFIERS COME FROM THE REPOSITORY'S OWN HISTORY, not from the machine
+# and not from a checked-in list (red team, 2026-09-08, twice).
 #
-# The machine may only ADD to the list, never replace it.
-IDENTITIES = pathlib.Path(__file__).with_name("exposure-identities.txt")
+# First fault: reading `git config` and $HOME meant the scan measured whoever RAN
+# it — on any other machine the `path` and `host` categories matched nothing and
+# reported a confident ZERO against a real 12 files and 81 occurrences. A survey
+# that answers "clean" because it is looking for the wrong name is worse than no
+# survey.
+#
+# Second fault, in the fix: checking the identifiers into a tracked file made
+# this the single most canonical, greppable statement of the author's name and
+# username in a PUBLIC repository — added by a script whose purpose is to reduce
+# that surface, and not covered by any of the exposure rulings. `git log` already
+# publishes every contributor identity, so deriving from it is machine-
+# independent, self-maintaining for new contributors, and adds nothing new to the
+# public tree.
+#
+# A gitignored local file may still SUPPLEMENT this for identifiers the history
+# does not carry (a corporate username, say); it is optional and never required.
+IDENTITIES = pathlib.Path(__file__).with_name("exposure-identities.local.txt")
 
 def identifiers():
     names, users, emails = set(), set(), set()
@@ -42,11 +53,23 @@ def identifiers():
                 continue
             kind, _, value = line.partition(":")
             {"name": names, "user": users, "email": emails}.get(kind.strip(), set()).add(value.strip())
+    # EVERY CONTRIBUTOR THE HISTORY KNOWS. This is the same set a reader of the
+    # public repo can enumerate in one command, so naming it here discloses
+    # nothing the tree does not already publish.
+    for line in sh("git", "log", "--all", "--format=%an%n%ae").split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        (emails if "@" in line else names).add(line)
     if v := sh("git", "config", "user.name").strip():
         names.add(v)
     if v := sh("git", "config", "user.email").strip():
         emails.add(v)
     users.add(pathlib.Path.home().name)
+    # A username is not in the git history; derive it from the paths the tree
+    # already contains rather than requiring a checked-in list.
+    for m in re.finditer(r"/(?:Users|home)/([A-Za-z0-9._-]+)", sh("git", "grep", "-hoE", r"/(Users|home)/[A-Za-z0-9._-]+") or ""):
+        users.add(m.group(1))
     return sorted(n for n in names if n), sorted(u for u in users if u), sorted(e for e in emails if e)
 
 NAMES, USERS, EMAILS = identifiers()

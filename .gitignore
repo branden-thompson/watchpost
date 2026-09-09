@@ -19,3 +19,6 @@ CLAUDE.md
 
 # machine-local go-studs patches the sync applies first (the public-tree wording scrub stays out of the public tree)
 third_party/go-studs/.local/
+
+# the exposure scan's optional LOCAL identifier supplement (never tracked)
+scripts/quality/exposure-identities.local.txt
