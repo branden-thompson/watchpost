@@ -41,7 +41,7 @@ flowchart TB
   MC[mastercontrol · one owner of band + duck] --> ENG
 
   DIR -.->|Power · EXISTS, unwired| BC
-  DIR -.->|Fence · EXISTS| ADMIT[alert admission]
+  DIR -->|Fence · ALREADY LIVE, not a seam| ADMIT[alert admission]
 
   classDef new fill:#dfd,stroke:#2a2
   classDef seam fill:#ffd,stroke:#aa2,stroke-dasharray:4
@@ -112,7 +112,7 @@ sequenceDiagram
   DIR->>L: Reorder(id, PlaceLead)
   Note over L: NEW mutator.  Set REFUSES to reorder<br/>by design — routing through it<br/>would silently no-op (RS-1)
   L-->>DIR: a new Lineup, order changed
-  DIR->>DIR: mark Origin = FromOperator
+  Note over DIR: ⚠ The first draft marked Origin = FromOperator HERE.<br/>lineup.go:227 forbids it — a card keeps its origin<br/>for life. OPEN RULING, not settled design.
   DIR-->>PUMP: Publish{Lineup}
   PUMP-->>BC: the console re-renders from what was PUBLISHED
   Note over BC: The console never computes an index.<br/>It names an intent; the Director owns the order.
