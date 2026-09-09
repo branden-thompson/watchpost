@@ -17,6 +17,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/term"
 )
 
 // Surface names which UI is on screen.
@@ -33,11 +34,42 @@ const (
 	numSurfaces
 )
 
+// The console's own actions. They are ACTIONS rather than literal keys so a
+// user can rebind them (FR-1.5) through the same table Observer's use.
+const (
+	actSwapObserver    term.Action = "swap-observer"
+	actSwapBroadcaster term.Action = "swap-broadcaster"
+	actStationToggle   term.Action = "station-toggle"
+)
+
+// broadcasterKeyMap is the console's bindings.
+//
+// EVERY ACTION CARRIES A NON-CHORD KEY (FR-1.6). The chord is the mnemonic
+// one and it is NOT the only door: tmux takes ctrl+b by default and screen
+// takes ctrl+a, and an operator whose multiplexer eats the chord would
+// otherwise have no route back at all. D-3 left the exact chords to be
+// finalised, so these are placeholders — but the non-chord route is a
+// REQUIREMENT, not a placeholder, and it stays whatever the chords become.
+func broadcasterKeyMap() term.KeyMap {
+	return term.KeyMap{
+		actSwapObserver:    {Keys: []string{"ctrl+o", "O"}, Help: "Observer"},
+		actSwapBroadcaster: {Keys: []string{"ctrl+b", "B"}, Help: "Broadcaster"},
+		actStationToggle:   {Keys: []string{"shift+enter"}, Help: "ON AIR / STANDBY"},
+	}
+}
+
 // Router holds the surfaces and delegates to the active one.
 type Router struct {
 	observer    Dashboard
 	broadcaster Broadcaster
 	active      Surface
+
+	// keys are the console's own bindings, merged once and shared by value.
+	keys term.KeyMap
+
+	// refusal is why the last swap was refused, shown to the operator. A
+	// refusal they cannot read is indistinguishable from a broken control.
+	refusal string
 }
 
 // NewRouter wraps Observer. The second surface arrives in P1.
@@ -97,6 +129,19 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.broadcaster, bc = r.broadcaster.Update(msg)
 		return r, tea.Batch(oc, bc)
 	}
+	// A SWAP REQUEST GOES THROUGH canSwap AND NOWHERE ELSE. Handling it here,
+	// before the message reaches either surface, is what keeps the D-1 rule to
+	// one carrier — a binding that switched surfaces itself would be a second.
+	if k, ok := msg.(tea.KeyPressMsg); ok && r.keys != nil {
+		if a, bound := r.keys.Lookup(k.String()); bound {
+			switch a {
+			case actSwapObserver:
+				return r.swapTo(SurfaceObserver), nil
+			case actSwapBroadcaster:
+				return r.swapTo(SurfaceBroadcaster), nil
+			}
+		}
+	}
 	switch r.active {
 	case SurfaceObserver:
 		m, cmd := r.observer.Update(msg)
@@ -135,6 +180,19 @@ func (r Router) surface() surfaceView {
 		return r.broadcaster
 	}
 	return r.observer
+}
+
+// swapTo moves to the surface if the gate permits, and records the refusal
+// for the operator when it does not.
+func (r Router) swapTo(to Surface) Router {
+	ok, why := r.canSwap(to)
+	if !ok {
+		r.refusal = why
+		return r
+	}
+	r.refusal = ""
+	r.active = to
+	return r
 }
 
 // canSwap reports whether the operator may move to the given surface, and

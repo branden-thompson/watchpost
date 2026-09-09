@@ -157,3 +157,17 @@ band and the config writer each already carry an AST guard for exactly this.
 
 **This batch's commit was GATED on the results rather than chained after them** — `if ! go test; then
 exit 1`.  P2(a) chained with `;` and pushed a red gate to `origin`.
+
+## P2(c) — the bindings, and the chord that is not the only door
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestTheSwapActionsAreInTheKeyMapAndSoAreRebindable` | **FR-1.5** — the swap and the station toggle are ACTIONS, so a user can rebind them | **Plant 2026-09-09:** an action dropped from the map → **CAUGHT** (`not in the key map, so a user cannot rebind it`) |
+| `TestTheSwapHasANonChordRoute` | **FR-1.6** — the chord is NOT the only door | **Plant 2026-09-09:** the plain key removed, leaving only `ctrl+o` → **CAUGHT**.  The accessibility lens leaned toward blocking on this at DISCOVER; it is now a gate |
+| `TestPressingTheSwapKeyOnALiveStationDoesNotSwitch` | The binding goes THROUGH `canSwap` | **Plant 2026-09-09:** the gate asked and its answer ignored → **CAUGHT** (`the binding bypassed canSwap, which makes the key a second carrier of the D-1 rule`) |
+| `TestPressingTheSwapKeyFromStandbySwitches` | Both routes work from STANDBY | Sweeps **every bound key** for the action, not just the first — testing only the chord would leave FR-1.6's own subject untested |
+
+**The fixture refused to fake a chord.**  `keyPress` fatals rather than guessing when it cannot express
+a key name, so a test cannot quietly drive past the real key path — the seam the 0.15.0 build log
+records being burned by twice.  It was extended to express the chord rather than the test being
+weakened to avoid it.

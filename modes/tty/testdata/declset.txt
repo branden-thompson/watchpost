@@ -27,6 +27,9 @@ const TickerRed
 const TickerYellow
 const WatchCap
 const aboutWidth
+const actStationToggle
+const actSwapBroadcaster
+const actSwapObserver
 const bcMinCols
 const bcMinRows
 const bottomInset
@@ -434,6 +437,7 @@ func (Router).Update
 func (Router).View
 func (Router).canSwap
 func (Router).surface
+func (Router).swapTo
 func (arrowChips).pick
 func (endpointRow).counters
 func (radioBP).hasViz
@@ -456,6 +460,7 @@ func alertRecordLines
 func anyFocused
 func applyIfChanged
 func blockHeight
+func broadcasterKeyMap
 func bucketSevere
 func buoyNote
 func cardRow
