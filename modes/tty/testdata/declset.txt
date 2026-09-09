@@ -58,6 +58,7 @@ const groupUI
 const helpOneColWidth
 const hourlyWindow
 const inheritEntry
+const mainTrackSlots
 const marFirstW
 const marLabelW
 const marNoteGap
@@ -172,6 +173,7 @@ func (*modalMemo).stats
 func (Broadcaster).Init
 func (Broadcaster).Update
 func (Broadcaster).View
+func (Broadcaster).lanes
 func (Dashboard).Init
 func (Dashboard).Update
 func (Dashboard).View
@@ -448,6 +450,7 @@ func applyIfChanged
 func blockHeight
 func bucketSevere
 func buoyNote
+func cardRow
 func castLabel
 func castLineOf
 func castRowOrder
@@ -618,6 +621,7 @@ type CastView
 type Config
 type Dashboard
 type DebugScenario
+type LineupMsg
 type PipelineStats
 type Radio
 type RadioMode

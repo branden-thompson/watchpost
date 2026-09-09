@@ -1,0 +1,96 @@
+package tty
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/lineup"
+)
+
+// P1(b): the console shows what the schedule PUBLISHED, and nothing it made up
+// itself. A console that painted its own idea of the running order would be
+// asserting an order the schedule does not follow — RS-1, the release's
+// UI-integrity risk.
+
+func bcWith(t *testing.T, cards ...lineup.Card) Broadcaster {
+	t.Helper()
+	var l lineup.Lineup
+	for _, c := range cards {
+		next, err := l.Queue(lineup.MainTrack, c)
+		if err != nil {
+			t.Fatalf("seeding the lineup: %v", err)
+		}
+		l = next
+	}
+	b := NewBroadcaster()
+	b, _ = b.Update(LineupMsg{Lineup: l})
+	b.width, b.height = 150, 74
+	return b
+}
+
+func card(t *testing.T, id, subject string) lineup.Card {
+	t.Helper()
+	c, err := lineup.Propose(lineup.Card{ID: id, Slot: lineup.LocationReport, Subject: subject, Headline: subject, State: lineup.Proposed})
+	if err != nil {
+		t.Fatalf("proposing %s: %v", id, err)
+	}
+	// The lineup holds ADMITTED cards only — its own invariant, and it refused
+	// a proposed one. The fixture follows the real lifecycle rather than
+	// side-stepping it.
+	c, err = c.To(lineup.Admitted)
+	if err != nil {
+		t.Fatalf("admitting %s: %v", id, err)
+	}
+	return c
+}
+
+func TestTheConsoleShowsTheMainTrackItWasPublished(t *testing.T) {
+	b := bcWith(t, card(t, "a", "OCEANSIDE"), card(t, "b", "BONSALL"))
+	got := b.View().Content
+	for _, want := range []string{"OCEANSIDE", "BONSALL"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the console must show the card the schedule published; %q is missing from the frame", want)
+		}
+	}
+}
+
+func TestTheConsoleShowsNothingItWasNotPublished(t *testing.T) {
+	b := bcWith(t) // an empty lineup
+	if got := b.View().Content; strings.Contains(got, "OCEANSIDE") {
+		t.Error("the console invented a card the schedule never published")
+	}
+}
+
+func TestTheConsoleNumbersTheMainTrackSlots(t *testing.T) {
+	b := bcWith(t, card(t, "a", "ONE"), card(t, "b", "TWO"))
+	got := b.View().Content
+	if !strings.Contains(got, "[ 0 ]") || !strings.Contains(got, "[ 1 ]") {
+		t.Error("the ten slots are addressable 0-9 (FR-2.4); the frame carries no slot handles")
+	}
+}
+
+func TestTheConsoleShowsAtMostTenMainTrackCards(t *testing.T) {
+	var cs []lineup.Card
+	for i := 0; i < 14; i++ {
+		cs = append(cs, card(t, string(rune('a'+i)), "LOC"+string(rune('A'+i))))
+	}
+	got := bcWith(t, cs...).View().Content
+	if strings.Contains(got, "[ 10 ]") || strings.Contains(got, "LOCK") {
+		t.Error("the main track is a ROLLING view of ten (FR-3.1); an eleventh card reached the frame")
+	}
+}
+
+// FR-2.6: external text in the NEW lanes goes through the EXISTING clamp.
+// One owner, no second path — a card's headline is provider prose and a
+// provider can send anything.
+func TestAHostileHeadlineIsClampedInTheNewLanes(t *testing.T) {
+	b := bcWith(t, card(t, "a", "NORMAL\x1b[31mRED\x1b[0m\x07"))
+	got := b.View().Content
+	if strings.Contains(got, "\x1b[31m") || strings.Contains(got, "\x07") {
+		t.Error("a card's headline reached the frame with escapes intact — the new lanes must route " +
+			"external text through the existing plaintext clamp, not a second path")
+	}
+	if !strings.Contains(got, "NORMAL") {
+		t.Error("clamping must strip the escapes and KEEP the words")
+	}
+}

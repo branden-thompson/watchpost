@@ -42,3 +42,17 @@ real hole from a bad plant is the skill the roster exists to teach.
 **Why these could not exist before P1.**  With one surface, a fan-out and a delegation are the same
 operation and no test can tell them apart.  FR-1.2 waited for the surface that makes it observable —
 which is why it was deferred rather than skipped.
+
+## P1(b) — the three lanes
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestTheConsoleShowsTheMainTrackItWasPublished` | The console shows the cards the schedule PUBLISHED | **By the watched RED**: the stub stored the lineup and rendered `BROADCASTER`, and the test named the missing headline |
+| `TestTheConsoleShowsNothingItWasNotPublished` | It invents nothing | Passes on an empty lineup; the negative direction of the row above |
+| `TestTheConsoleNumbersTheMainTrackSlots` | The ten slots are addressable `0`-`9` (FR-2.4) | **Plant 2026-09-09, and THE FIRST ATTEMPT WAS INVALID.**  v1 deleted `strconv.Itoa(i)` and left `i` and the import unused → **BUILD FAILURE, which is not evidence either way** (the removed-a-use shape).  v2 computed the index, discarded it, and returned a constant handle → **CAUGHT** |
+| `TestTheConsoleShowsAtMostTenMainTrackCards` | A rolling view of ten; an eleventh does not reach the frame (FR-3.1) | **Plant 2026-09-09:** the bound removed → **CAUGHT** (`an eleventh card reached the frame`) |
+| `TestAHostileHeadlineIsClampedInTheNewLanes` | **FR-2.6** — external text in the NEW lanes goes through the EXISTING clamp, not a second path | **Plant 2026-09-09, v1 ALSO INVALID** — removing the clamp call left its import unused → build failure.  v2 CALLED the clamp and discarded its result → **CAUGHT** (`escapes intact`) |
+
+**Two invalid plants in one batch, same shape, and it is a documented one.**  A mutation that removes
+a USE leaves the tree uncompilable and reports nothing.  Both were re-planted as the rule says — the
+call still runs, its result is discarded — and both then fired.
