@@ -7,7 +7,7 @@ level: LEVEL-1
 sev: SEV-0
 authority: HUM LEAD
 directives: FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD; FULL INST
-status: "FINAL — intake closed 2026-09-09.  Problem statement LOCKED; D-1..D-9 ruled; nothing outstanding.  This brief is the body of GitHub issue #10."
+status: "FINAL — intake closed 2026-09-09.  Problem statement LOCKED; D-1..D-10 ruled; F-66 closed; nothing outstanding.  This brief is the body of GitHub issue #10."
 ---
 
 # New Major System Feature | `Broadcaster-UI`
@@ -115,7 +115,8 @@ and are refined through UAT** — this is new UX, and the ruling expects them to
 treated as locked, and any of them may change without a scope change.
 
 - **R-6.1** A masthead carrying BROADCAST LOCATION, TOWER GPS as a latitude and longitude pair, and
-  SERVICE RADIUS in miles.
+  SERVICE RADIUS in miles.  **The mock renders the pair as `<lat>, <lon>` by ruling D-10**; the real
+  values are R-7's concern, not the mock's.
 - **R-6.2** The Observer key row is retained — Settings, About, Status, Help, Quit — plus the API
   health counter.
 - **R-6.3** The station-state banner reads as a single line offering both states, with the inactive
@@ -126,6 +127,28 @@ treated as locked, and any of them may change without a scope change.
 - **R-6.6** Cards carry a class marker — the mock renders `•PRIORITY•` and `•STANDARD•`.
 - **R-6.7** The audio bed row names the transmitter, its frequency, and its distance from TOWER GPS,
   and carries its own STANDBY state.
+
+### R-7 — The named location and its coordinates must harmonize
+
+**Stated by the HUM LEAD at intake, 2026-09-09, and not inferred from the mock.**  This is a real
+requirement rather than a provisional one.
+
+- **R-7.1** In the running application, the broadcast location's **name** and its **coordinates** are
+  one fact with one source of truth.  A masthead that says `Bonsall, CA` beside a coordinate pair
+  somewhere else is a defect, not a display choice.
+- **R-7.2** The coordinate pair is a **first-class value**, not a formatted string assembled for the
+  masthead, because the planned Go TerminalMap service-radius visualization consumes it.
+- **R-7.3** The service radius is expressed against that same pair, so the radius, the relay
+  selection of R-4.3, and any future map all measure from one origin.
+
+**Why this is a requirement and not a PLAN detail.**  C-11 records that a service-radius map is
+greenfield — `platform/geo` offers `HaversineKM`, `BearingDeg` and `CompassIndex` and nothing else,
+and there is no canvas or plotting anywhere.  The map is out of scope for 0.16.0, but the thing that
+would make it expensive later is shipping a masthead whose coordinates are cosmetic.  R-7 is the
+cheap half of that future, paid now.
+
+**The mock is explicitly exempt.**  D-10 ruled the mock's coordinates a placeholder precisely because
+illustration does not need real ones.  R-7 governs the code; it does not govern the mock.
 
 ## Metrics of Success
 
@@ -511,6 +534,33 @@ and the honest disposition is to name it rather than to claim a fidelity nobody 
 on, keeping the version this brief's requirements were read from readable next to the ones that
 followed.
 
+## D-10 — the mock's coordinates, ruled 2026-09-09
+
+> *"Replace the specific GPS a placeholder while keeping \"Bonsall, CA\" the demo location PURELY IN
+> THE MOCK; not that that location was super sensitive, but it was for illustration purposes.  That
+> GPS is important because it will power the planned GO terminalMap visualization, so the real code
+> will (obviously) need to ensure both the named location and gps coordinates harmonize, but again
+> for the mock it's not needed."*
+
+**RULED, and applied.**  `mock-broadcaster-v1.txt` now renders `TOWER GPS:  <lat>, <lon>`, and
+`Bonsall, CA` is retained as the demo location.  The placeholder follows the mock's own idiom — it
+already writes `<alert>`, `<location>`, `<declared>` and `<expires>`.
+
+**The geometry is provably unchanged.**  The placeholder was padded to the width of the pair it
+replaced, so every column to its right holds position.  Measured before and after: **74 lines, every
+line the same cell width, maximum 150.**  Widths compared element by element and found identical, so
+no layout claim in this brief is affected and D-9's measurements still stand.
+
+**This closes F-66.**  The coordinate pair no longer appears anywhere in the tree — verified by
+`git grep` returning nothing.  The town name stays, unchanged, and remains covered by the existing
+demo-location ruling of 2026-09-08.
+
+**The ruling also created a requirement, which is the more important half.**  The reason the
+coordinates matter — that they will power the planned Go TerminalMap service-radius visualization,
+and that the real code must keep the named location and the pair in agreement — is captured as
+**R-7**, above.  It is a stated requirement, not a provisional one, and it is the cheap half of a
+future the mock is exempt from.
+
 ## Completeness Check
 
 ```
@@ -520,12 +570,12 @@ PROJECT BRIEF — COMPLETENESS CHECK
   [✓] Header              — Scope, type and name defined
   [✓] Directives          — LEVEL-1, SEV-0, seven phase directives; IDD flagged
   [✓] Summary / Intent    — What, why, who benefits, cost of doing nothing
-  [✓] Requirements        — 6 families, 24 numbered items; R-6 marked for confirmation
+  [✓] Requirements        — 7 families; R-6 provisional by ruling, R-7 stated by the HUM LEAD
   [✓] Metrics of Success  — 5, anti-solution hardened
   [✓] Tech Constraints    — 11, each measured against the tree at f29cc1f
   [✓] Considerations      — Issue #10, TerminalMap, mock provenance, 5 carried follow-ups
 
-  [✓] Rulings             — D-1..D-9 recorded verbatim with dispositions
+  [✓] Rulings             — D-1..D-10 recorded verbatim with dispositions
   [✓] Outstanding         — none.  X-1 and X-2 closed as D-8 and D-9.
 
   Required sections: 4/4 complete
