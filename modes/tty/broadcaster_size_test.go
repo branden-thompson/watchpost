@@ -5,6 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
@@ -113,23 +114,35 @@ func TestNoSizeRendersPastTheTerminal(t *testing.T) {
 // non-ASCII forms ARE, rather than naming a few by hand. A hand-written list
 // is stale the day someone adds a glyph.
 func TestTheConsoleCarriesNoNonASCIIUnderASCII(t *testing.T) {
-	b := bcWith(t, card(t, "a", "OCEANSIDE"))
-	b.width, b.height = 150, 74
-	b.ascii = true
+	// SWEEP EVERY POWER STATE. The first version used ONE fixture, which left
+	// the station STOPPED — and the ON AIR banner's separator slipped past it.
+	//
+	// DERIVED, not listed (INST-1): Power.String() returns "" for a value
+	// outside the declared set, so the walk asks the type where it ends
+	// rather than naming three constants that go stale when a fourth lands.
+	for p := lineup.Power(0); p.String() != ""; p++ {
+		b := bcWith(t, card(t, "a", "OCEANSIDE"))
+		b.width, b.height = 150, 74
+		b.ascii = true
+		b, _ = b.Update(StationMsg{Power: p})
+		assertASCIIOnly(t, b.View().Content, p)
+	}
+}
 
-	got := b.View().Content
+func assertASCIIOnly(t *testing.T, got string, p lineup.Power) {
+	t.Helper()
 	rich := render.Opts{}.Glyphs() // the non-ASCII set, asked for rather than listed
 	for _, g := range []string{
 		rich.Bullet, rich.Pointer, rich.Play, rich.Pause, rich.Alert, rich.OK, rich.Fail,
 		rich.Rail, rich.RailCar, rich.Fill, rich.Up, rich.Down, rich.Stop, rich.Rule, rich.Dot,
 	} {
 		if g != "" && strings.Contains(got, g) {
-			t.Errorf("--ascii: the frame carries %q, which has an ASCII form the glyph set already defines", g)
+			t.Errorf("--ascii (power=%v): the frame carries %q, which has an ASCII form the glyph set already defines", p, g)
 		}
 	}
 	for _, r := range got {
 		if r > 127 && r != '\n' {
-			t.Errorf("--ascii: the frame carries the non-ASCII rune %q", r)
+			t.Errorf("--ascii (power=%v): the frame carries the non-ASCII rune %q", p, r)
 			break
 		}
 	}

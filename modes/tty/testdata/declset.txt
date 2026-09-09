@@ -180,6 +180,7 @@ func (Broadcaster).lanes
 func (Broadcaster).minSize
 func (Broadcaster).notice
 func (Broadcaster).opts
+func (Broadcaster).stationLine
 func (Broadcaster).tooSmall
 func (Dashboard).Init
 func (Dashboard).Update
@@ -645,6 +646,7 @@ type SevereRow
 type SevereSource
 type SevereTab
 type SnapshotMsg
+type StationMsg
 type Stats
 type Surface
 type TickerAdvanceMsg

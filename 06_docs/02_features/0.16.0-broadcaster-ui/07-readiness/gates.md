@@ -107,3 +107,16 @@ the commit, the way the goldens are re-recorded.  A budget nobody re-pins is a b
 
 **The plant had to ESCAPE.**  A discarded `make` is deleted by the compiler before a gate can count
 it — the bad plant recorded in 0.15.0's own roster.  These assign to a package-level sink.
+
+## P2(a) — the station banner
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestTheBannerReadsTheDirectorsPowerNotALocalFlag` | **FR-5.1** — the state is the Director's, never a local flag | **Plant 2026-09-09:** the published state ignored and a local flag kept → **CAUGHT** (`got STOPPED`).  This is a SAFETY gate, not a display one: the swap gate depends on this value |
+| `TestTheBannerIsVariantC` | **D-21** — a labelled field with the transition in parentheses | By the watched RED: the field existed, nothing rendered it, and the test named each missing part |
+| `TestTheStateIsLegibleWithoutColour` | **FR-5.3** — the words carry the state, not the colour | By the watched RED under `--ascii` |
+| `TestTheOnAirBoundaryIsStatedToTheOperator` | **FR-5.5** — the console says what ON AIR means | **Plant 2026-09-09:** the boundary line blanked → **CAUGHT** |
+| `TestTheConsoleCarriesNoNonASCIIUnderASCII` **(strengthened)** | Now sweeps **every power state**, derived | **I PUT A NON-ASCII SEPARATOR IN THE ON AIR BANNER AND MY OWN GATE MISSED IT** — its fixture left the station STOPPED, whose line carries no separator.  The sweep now walks the power set by asking `Power.String()` where it ends.  **Plant 2026-09-09:** the literal restored → **CAUGHT**, and the message names the state: `--ascii (power=RUNNING): the frame carries "·"` |
+
+**The lesson is the one INST-1 keeps making.**  A single fixture is a hand-written subject list of size
+one.  The hole was not in the gate's logic; it was in what the gate was pointed at.

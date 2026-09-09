@@ -31,6 +31,13 @@ import (
 // had become by then, not what was published.
 type LineupMsg struct{ Lineup lineup.Lineup }
 
+// StationMsg carries the station's power as the DIRECTOR holds it (FR-5.1).
+//
+// THE CONSOLE KEEPS NO OPINION OF ITS OWN. A local "am I on air" flag could
+// drift from the audio path, and the swap gate depends on this value — so a
+// second carrier would be a safety bug rather than a display one.
+type StationMsg struct{ Power lineup.Power }
+
 // mainTrackSlots is how many cards the rolling main-track view shows (FR-3.1).
 const mainTrackSlots = 10
 
@@ -42,6 +49,11 @@ type Broadcaster struct {
 	// ascii is the --ascii mode: box-drawing and symbol glyphs give way to
 	// forms a terminal without them can draw.
 	ascii bool
+
+	// power is the station's state as the Director holds it. Never set from
+	// a keypress directly — the console asks for a change and reads back what
+	// the Director decided.
+	power lineup.Power
 
 	// lineup is the last PUBLISHED schedule. It is never mutated here — the
 	// console names an intent and the Director owns the order (D-23).
@@ -64,6 +76,8 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 		b.darkBG = v.IsDark()
 	case LineupMsg:
 		b.lineup = v.Lineup
+	case StationMsg:
+		b.power = v.Power
 	}
 	return b, nil
 }
@@ -154,6 +168,7 @@ func (b Broadcaster) notice() []string {
 func (b Broadcaster) lanes() []string {
 	g := b.opts().Glyphs()
 	out := []string{"WATCHPOST Broadcaster"}
+	out = append(out, b.stationLine()...)
 	out = append(out, "")
 
 	// THE PRIORITY TRACK IS DRAWN FIRST because it DRAINS first, in every
@@ -194,6 +209,43 @@ func (b Broadcaster) lanes() []string {
 	out = append(out, "")
 	out = append(out, "BED   (no relay tuned)")
 	return out
+}
+
+// stationLine is the station's state, Variant C (D-21): a labelled field with
+// the transition named in parentheses.
+//
+// THE WORDS CARRY THE STATE, NOT THE COLOUR (FR-5.3). A background treatment
+// makes it legible at a glance and is the HUM LEAD's own pass — but a colour
+// alone fails --ascii and any terminal without one, so a reader who sees no
+// colour still reads the state.
+//
+// AND IT SAYS WHAT "ON AIR" MEANS (FR-5.5). Watchpost has no radio path: it
+// produces audio, and a transmitter it cannot observe puts that over the air.
+// An operator who reads a confident ON AIR and infers their antenna is
+// radiating has been misled by us, so the boundary is stated HERE, where they
+// read it — not only in a design document.
+func (b Broadcaster) stationLine() []string {
+	// THE SEPARATOR COMES FROM THE GLYPH SET, not a literal. A middle dot
+	// here passed --ascii only because that test's fixture leaves the station
+	// STOPPED, whose line carries no separator — a coverage hole in my own
+	// gate, closed by sweeping every power state below.
+	g := b.opts().Glyphs()
+	switch b.power {
+	case lineup.Running:
+		return []string{
+			"STATION:  *** ON AIR " + g.Dot + " BROADCASTING ***      ( SHIFT + ENTER  ->  STANDBY )",
+			"          audio out of this program; Watchpost does not observe a transmitter",
+		}
+	case lineup.OffAir:
+		return []string{
+			"STATION:  STANDBY (DEAD AIR)                        ( SHIFT + ENTER  ->  ON AIR )",
+			"          nothing is broadcast, hazards included; the schedule holds what it has not said",
+		}
+	}
+	return []string{
+		"STATION:  STOPPED                                   ( SHIFT + ENTER  ->  ON AIR )",
+		"          the programme is stopped; hazards still read",
+	}
 }
 
 // cardRow is one lane row: what it is, and the handle that addresses it.
