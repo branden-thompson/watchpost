@@ -7,7 +7,7 @@ level: LEVEL-1
 sev: SEV-0
 authority: HUM LEAD
 directives: FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD; FULL INST
-status: "RULED at intake 2026-09-09 — problem statement LOCKED, OQ-1..OQ-7 ruled.  Outstanding: R-6 confirmation and the mock source file.  Replaces the body of GitHub issue #10 once those two are released."
+status: "FINAL — intake closed 2026-09-09.  Problem statement LOCKED; D-1..D-9 ruled; nothing outstanding.  This brief is the body of GitHub issue #10."
 ---
 
 # New Major System Feature | `Broadcaster-UI`
@@ -108,10 +108,11 @@ DISCOVER can trace each one.
   vets the approach, and C-10 records that `platform/term` already defines the breakpoint vocabulary
   and nothing calls it.
 
-### R-6 — Inferred from the mock, for confirmation
+### R-6 — Inferred from the mock — PROVISIONAL BY RULING (D-8)
 
-These are read off the mock rather than stated in the intent.  **Each needs confirmation or
-rejection**, and none is assumed.
+These are read off the mock rather than stated in the intent.  **They are deliberately provisional
+and are refined through UAT** — this is new UX, and the ruling expects them to move.  None may be
+treated as locked, and any of them may change without a scope change.
 
 - **R-6.1** A masthead carrying BROADCAST LOCATION, TOWER GPS as a latitude and longitude pair, and
   SERVICE RADIUS in miles.
@@ -278,9 +279,9 @@ construction, not an integration.
   the architecture should avoid foreclosing it.  C-11 says the ground is empty, which is the easy
   case: the constraint on PLAN is to keep the service radius a first-class value that a renderer
   could later consume, not to invent the renderer.
-- **The mock is transcribed verbatim** at `01-objectives/mock-broadcaster-v1.txt` — 73 lines, 70 of
-  them exactly 150 cells.  **It was retyped from the conversation, not copied from a file**, so it
-  carries transcription risk that no diff has excluded.  **The original file is requested.**
+- **The mock of record** is `01-objectives/mock-broadcaster-v1.txt` — 73 lines, 70 of them exactly
+  150 cells.  Adopted by ruling D-9.  It was retyped from the conversation rather than copied from a
+  source, and that risk is recorded there rather than resolved.
 - **The mock's masthead reads `v 0.14.0`.**  Cosmetic in a mock, and worth naming so it does not
   travel into the build.
 - **The mock spells `•STANRARD•`** in every standard-card badge.  Read as `STANDARD`; confirm.
@@ -299,7 +300,7 @@ construction, not an integration.
   `06_docs/build-methodology.md`, which lives at
   `06_docs/02_features/0.15.0-pre-broadcaster-ui-improvements/04-development/build-methodology.md`.
 
-## HUM LEAD Rulings — recorded 2026-09-09
+## HUM LEAD Rulings D-1..D-7 — recorded 2026-09-09
 
 **All seven ruled at intake.**  Each is quoted, then read into the work.  Where a ruling defers a
 decision to PLAN, that is recorded as the disposition rather than as an open question, so nothing
@@ -454,14 +455,61 @@ alongside `FULL TDD`, which is the destination `quality-plan.md` already named f
 Tracked as an A2DH backlog item rather than a watchpost one; the watchpost usage in this release is
 the evidence that proposal will cite.
 
-## Outstanding at intake close
+## D-8 and D-9 — the last two rulings, 2026-09-09
 
-Two items from the intake ask are not yet answered, and neither blocks DISCOVER from opening:
+### D-8 (X-1) — R-6 stays PROVISIONAL, and that is the intent
 
-| # | Item | Effect if it stays open |
-|---|---|---|
-| **X-1** | **R-6 confirmation** — the seven requirements inferred from the mock rather than stated in the intent | They are treated as PROVISIONAL.  DISCOVER may not treat an unconfirmed R-6 item as a locked requirement, and any of them may be withdrawn without a scope change. |
-| **X-2** | **The mock's source file** | The transcription at `01-objectives/mock-broadcaster-v1.txt` carries unexcluded retyping risk.  Any pixel-exact layout claim derived from it is provisional until the original is diffed against it. |
+> *"PROVISIONAL is fine; since this is new UX - A LOT of things will be discovered and refined in
+> UAT."*
+
+**RULED: the seven mock-inferred requirements stay provisional by design, and are refined through
+UAT rather than resolved before DISCOVER.**  This is a stronger statement than "not yet confirmed":
+R-6 is not a gap in the brief waiting to be closed, it is the part of the brief that is *expected* to
+move.
+
+**What this changes about how the release runs.**
+
+- **R-6 items may change without a scope change.**  A provisional requirement that shifts under UAT
+  is the process working, not a deviation to justify.
+- **UAT stops being a late checkpoint and becomes a design instrument.**  0.15.0 already showed this
+  in the small — UAT found the two defects the gates could not, and the build methodology records
+  *"UAT before REVIEW exit, two questions: regression and yield."*  For 0.16.0 the yield question
+  carries more weight than the regression question, because the surface is new.
+- **PLAN must not over-specify R-6.**  Locking mock-derived layout into the plan would convert a
+  provisional item into a commitment the UAT ruling explicitly declines to make.  Tier B signatures
+  and flow skeletons, not finished layout.
+- **The locked problem statement is what does not move.**  R-6 flexes; the sentence in
+  `problem-statement.md` and the five measures M1-M5 do not.  That is the anchor a UX release needs
+  in order to let its requirements move without losing its scope.
+
+### D-9 (X-2) — the transcription is adopted as the mock of record
+
+> *"That's fine.  We can also create a .txt file specifically for it if needed."*
+
+**RULED: the transcription stands, and the `.txt` already exists.**
+`01-objectives/mock-broadcaster-v1.txt` was created at intake and committed at `745eab7` — 73 lines,
+70 of them exactly 150 cells.  It is now the **mock of record** for 0.16.0.
+
+**The consequence, stated plainly because adopting it silently would hide it.**  The file was retyped
+from the conversation rather than copied from a source, so **no diff has ever excluded transcription
+drift**.  Making it canonical does not remove that risk — it *fixes* it, by making any difference
+from the original invisible from here on.  The Migration Fidelity rule exists for exactly this shape,
+and the honest disposition is to name it rather than to claim a fidelity nobody measured.
+
+**What that means in practice, and it is deliberately modest:**
+
+- Geometry claims taken FROM the file are sound, because the file is what will be built against.
+  The measured 150 x 73 stands, and D-4 already ruled it a reference rendering rather than a floor.
+- A claim about what the ORIGINAL mock intended is only as good as the transcription.  Two known
+  candidates are recorded in *Other Considerations*: the masthead's `v 0.14.0`, and `•STANRARD•`
+  appearing in every standard-card badge where `STANDARD` is meant.
+- **If the original file surfaces, it should be diffed against this one rather than replacing it**,
+  so any drift is recorded as a finding instead of being quietly corrected.  Until then, no diff is
+  owed and none is pending.
+
+**A `v2` supersedes rather than overwrites.**  Later mocks land as `mock-broadcaster-v2.txt` and so
+on, keeping the version this brief's requirements were read from readable next to the ones that
+followed.
 
 ## Completeness Check
 
@@ -477,12 +525,12 @@ PROJECT BRIEF — COMPLETENESS CHECK
   [✓] Tech Constraints    — 11, each measured against the tree at f29cc1f
   [✓] Considerations      — Issue #10, TerminalMap, mock provenance, 5 carried follow-ups
 
-  [✓] Rulings             — D-1..D-7 recorded verbatim with dispositions
-  [~] Outstanding         — X-1 (R-6 confirmation), X-2 (mock source file)
+  [✓] Rulings             — D-1..D-9 recorded verbatim with dispositions
+  [✓] Outstanding         — none.  X-1 and X-2 closed as D-8 and D-9.
 
   Required sections: 4/4 complete
-  Overall: DISCOVER MAY OPEN.  Problem statement locked, all seven questions ruled.
-           R-6 stays PROVISIONAL until X-1 is answered.
+  Overall: INTAKE CLOSED.  DISCOVER MAY OPEN.
+           R-6 is PROVISIONAL BY RULING (D-8) and is refined through UAT.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
