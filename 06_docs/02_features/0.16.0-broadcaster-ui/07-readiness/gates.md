@@ -260,3 +260,28 @@ same as a missing test — the test existed, ran, and passed for the wrong reaso
 My first assertion expected the severe read to run as an **aside** over the suspended rotation.  It does
 not, and should not: *aside* marks a **takeover's** line, the one whose visualizer does not follow it.
 **The code was right and the expectation was wrong**, so the expectation changed.
+
+## P3(a) — segments become a script
+
+**The join S0 named.**  The rotation composes `[]synth.Segment` and plays it on the engine; a card
+carries `lineup.Script` and is read through the arbiter.  Everything else was already in place, so
+this translation is deliberately the ONLY new idea in P3(a).
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestSegmentsBecomeAScriptOfLines` | Every segment is a `PartLine`, the words survive, and **no tone opens it** | **Plant 2026-09-09:** a tone added → **CAUGHT** (`got "alerts"`).  A tone is a promise of a hazard; sounding one before an ordinary report teaches a listener to ignore the one that matters |
+| `TestBlankSegmentsAreDroppedNotSpoken` | A blank segment is dropped, not spoken | **Plant 2026-09-09:** the drop made unreachable → **CAUGHT**.  A blank part is dead air under a callout the band has already promised |
+| `TestAnEmptyRotationComposesAnEmptyScript` | An all-blank compose yields a script the executor declines | **PLANT SURVIVED — AND IT WAS BENIGN.  See below** |
+
+### A third outcome: the plant was not a defect
+
+Returning a script of **one blank part** instead of an empty one failed nothing.
+
+Checked, per INST-3, before blaming the gate — and here the plant simply **is not a defect**:
+`Script.Empty()` is defined on whether any part has TEXT, not on the part count
+(`platform/lineup/script.go:98-105`).  A script of one blank part is empty by that definition, the
+executor declines it identically, and nothing observable changes.
+
+**Three outcomes are possible when a plant survives, and this release has now seen all three:** a bad
+plant that never reached its subject (P0), a blind gate (P2, P3(c)), and a plant that was not a defect
+(here).  Recording which is which is the skill the roster exists to teach.

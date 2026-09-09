@@ -430,6 +430,7 @@ func saveRadioMode
 func saveTones
 func scenarioKeyFor
 func scopeEvents
+func scriptFromSegments
 func scriptText
 func scriptsDir
 func seedRecent
