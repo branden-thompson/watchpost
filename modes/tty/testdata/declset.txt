@@ -27,6 +27,8 @@ const TickerRed
 const TickerYellow
 const WatchCap
 const aboutWidth
+const bcMinCols
+const bcMinRows
 const bottomInset
 const castLabelW
 const castModeOn
@@ -173,7 +175,11 @@ func (*modalMemo).stats
 func (Broadcaster).Init
 func (Broadcaster).Update
 func (Broadcaster).View
+func (Broadcaster).clamp
 func (Broadcaster).lanes
+func (Broadcaster).minSize
+func (Broadcaster).notice
+func (Broadcaster).tooSmall
 func (Dashboard).Init
 func (Dashboard).Update
 func (Dashboard).View

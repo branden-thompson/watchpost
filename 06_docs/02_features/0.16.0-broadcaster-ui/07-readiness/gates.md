@@ -56,3 +56,16 @@ which is why it was deferred rather than skipped.
 **Two invalid plants in one batch, same shape, and it is a documented one.**  A mutation that removes
 a USE leaves the tree uncompilable and reports nothing.  Both were re-planted as the rule says — the
 call still runs, its result is discarded — and both then fired.
+
+## P1(c) — the size floor and the breakpoints
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestNoSizeRendersPastTheTerminal` | **Nothing ever renders past the terminal**, in either direction | **Caught the F-55 shape on its FIRST RUN, before any fix existed** — `19x5 rendered 22 cells wide`.  **Plant 2026-09-09:** the clamp computed and its result discarded → **CAUGHT** (`24 cells wide`).  Sweeps widths **DERIVED from the breakpoint boundaries** (INST-1) **unioned with a stride of 5**, because a boundary-only sweep verifies classification and not interior rendering — the PLAN red team's own counter-argument |
+| `TestBelowTheFloorTheConsoleSaysSoRatherThanOverflowing` | Below the floor the operator gets a NOTICE, and **the notice itself fits** | **Plant 2026-09-09:** the notice computed and never shown → **CAUGHT**.  The fit assertion exists because a notice that overflows lets a sweep report zero overflows — M5's anti-solution, closed |
+| `TestTheFloorIsFortyFourLines` | The height floor is the MEASURED 44, not a chosen number | **Plant 2026-09-09:** floor changed to 30 → **CAUGHT** (`got 30`) |
+| `TestTheLayoutIsSelectedByThePlatformBreakpoint` | **FR-7.1** — the layout is SELECTED by the platform classifier | **Plant 2026-09-09 — THE REQUIREMENT'S OWN ANTI-SOLUTION.**  The original exit read *"the platform breakpoint API has production callers"*, which the red team showed was satisfiable by `_ = term.BreakpointFor(w)`.  Planted exactly that — classify, discard, one layout → **CAUGHT** (`two different breakpoint classes rendered an identical frame`).  The rewritten exit is proven to reject what the old one accepted.  The test also **voids itself** if both fixture widths classify the same, so it cannot pass by asserting nothing |
+
+**F-68 moves.**  `term.Breakpoint` had **zero** production callers at DISCOVER — it was the dead half of
+the two-vocabulary duplication.  It now has two.  Whether Observer's own scale migrates is **still not
+ruled** (D-13 did not decide it) and P1 does not assume it does.
