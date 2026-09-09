@@ -1334,3 +1334,35 @@ when a rule stops earning catches, that is the signal to withdraw it, the way D-
 Tasks completed per session. It has not moved yet (1). Every other number has. The programme
 continues on the HUM LEAD's 2026-09-03 ruling, and the reason given was **cost per defect** — minutes
 rather than hours — rather than defect count.
+
+## A green gate on one platform is not a green gate (2026-09-09, SHIP)
+
+`make verify` was green on the developer's machine and had been for the whole of REVIEW and VALIDATE.
+The last CI run on the branch was **red** — `go test -race` on `ubuntu-latest`, while the
+`macos-latest` leg of the SAME run passed.
+
+The failure was not a platform defect. `TestEventReaderDucksSpeaksRestoresAndOverlaysThePanel` asked
+`Read` for a read that was already running and asserted the second was inert, but nothing held the
+first one open: the voice and the sleep are both stubbed, so the read finished before the next line
+ran and the second read legitimately started. The assertion passed on scheduling, not on the guard.
+Its own comment said so — *"a goroutine may already be running"* — and that hedge is the tell.
+
+**The shape: an assertion whose subject is a WINDOW must hold the window open.** A test that says
+"inert while X is in progress" and does not pin X in progress is testing the scheduler. It is the
+concurrent sibling of the release's other repeated shape — *a test that constructs the value under
+test cannot test where the value comes from* — and it fails the same way, by passing.
+
+The fix used the idiom already in the file: the neighbouring test gates the read's first hold step on
+a channel, with a comment saying it *"flaked on real time under -race"*. The same problem had been
+solved twenty lines away and not carried across.
+
+**Three things this is worth:**
+- **CI is a gate, not a report.** Nothing in the exit sequence read the branch's CI state, so a red
+  run sat unexamined for a day across two review phases. `06_docs/required-gates.txt` names the local
+  gates; the branch's last CI conclusion belongs in the same place. Carried as **F-63**.
+- **A flake is a finding, not weather.** This one was reproducible on demand once the mechanism was
+  understood: 25/25 red with the guard removed, 25/25 green with it restored, on both trees.
+- **The instrument was validated before it was trusted (INST-4).** Green 25x → plant the removed
+  guard → compiles → red 25/25 → revert → green 25x. Now a standing mutant, `mK8`, so the guard
+  cannot quietly lose its only cover again.
+
