@@ -371,3 +371,41 @@ release: ratified from a description, rejected on first sight.
 
 **The batch is bound by the standing rule** that a rendered change is ratified from an ACTUAL
 RENDERING at representative widths, never from prose.  It will present renderings, not descriptions.
+
+## D-31 — Card types get mocked in P4, and they are not one shape
+
+> *"we will need to mock out cards in P4 as well, as there are a couple of card type that likely have a
+> similar structure, but may have some minor differences."*
+
+**RULED.**  P4 mocks the card types, not one generic card.  **P4.5 then lays them out**, so the
+sequence is: real data (P3) → the card types drawn (P4) → the 150-column geometry (P4.5).
+
+### What the mock actually draws, against what the model holds
+
+| The mock's card | Slot | Note |
+|---|---|---|
+| `LOCATION REPORT · OCEANSIDE, CA 92057` | `LocationReport` | The rotation's ordinary read — the one P3 is wiring now |
+| `BURST (5 EVENTS)` · `WEATHER ALERT · BURST` | `BreakingAlert` | The mock draws it **twice**, at two sizes: once in the takeover panel and once in the deck |
+| `TAKE-OVER │ WEATHER ALERTS` | `BreakingAlert` | The **priority** presentation of the same slot — the `•PRIORITY•` badge and the `[ T ]` handle |
+| `TRANSITION CARD` | `Transition` | The Director's own additive act |
+| *(a severe read)* | `SevereRead` | Not drawn in this mock; it exists in the model |
+| `WATCHPOST CREDITS READ` | **NONE** | **D-14: a Watchpost self-credit, not a licence obligation.**  It maps to no slot, and is the first thing to drop under time pressure |
+
+### The finding this ruling lands on
+
+**DISCOVER already found that the mock exceeds the model**: four slots, and the credits card fits none
+of them.  D-14 settled the *obligation* question — it is a courtesy, not a legal duty — but **not
+whether it gets a representation.**  P4 is where that is decided, because that is where the card types
+are drawn.
+
+### What "minor differences" means concretely, for P4 to answer
+
+The same skeleton — a bordered box, a title, a badge, a handle — differs by:
+
+- **Which badge**: `•PRIORITY•` versus `•STANDARD•`, and whether a slot can ever be either.
+- **Which lane** it can sit in, and therefore which handle addresses it (`[ T ]` versus `[ 0 ]`-`[ 9 ]`).
+- **What the title line carries** — a location and a postcode, an event count, a bare name.
+- **How much body** it shows, which the takeover panel affords more of than a deck row.
+
+**Whether those are one component with parameters or several components is a P4 decision**, and it
+should be made from renderings rather than from this table.
