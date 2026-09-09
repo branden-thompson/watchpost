@@ -21,6 +21,8 @@ package app
 // changes — and every later Phase 3 task needs this half regardless.
 
 import (
+	tea "charm.land/bubbletea/v2"
+
 	"context"
 	"time"
 
@@ -55,7 +57,7 @@ type schedule struct {
 // ticker's takeovers use — building a second effector here would put the band
 // and the duck back under two owners, which is the defect T2.3 removed and the
 // one this file would be the easiest place to reintroduce.
-func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, watch func() []snapshot.LocationRef, tick *tickerDeck) *schedule {
+func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg)) *schedule {
 	if nar == nil {
 		return nil // no arbiter, no schedule: there is nothing to perform through
 	}
@@ -63,7 +65,10 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		return nil // no producer, no arrivals: the rail would have nothing to read
 	}
 	x := newExecutors(executors{
-		voice:   nar,
+		voice: nar,
+		// THE CONSOLE'S ONLY SOURCE (0.16.0 P2). It never reads the Director
+		// directly — it is told, at the moment the schedule settles.
+		publish: publish,
 		scripts: scripts,
 		clock:   clock,
 		now:     time.Now,

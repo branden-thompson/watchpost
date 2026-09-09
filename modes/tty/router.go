@@ -111,6 +111,22 @@ func programScoped(msg tea.Msg) bool {
 	return false
 }
 
+// consoleScoped reports whether a message is the CONSOLE's own business,
+// wherever the operator happens to be looking.
+//
+// A THIRD CATEGORY, and it earns its place for the same reason the fan-out
+// does: a surface that only learns things while on screen is stale the
+// instant it is swapped to — and here the stale things would be the running
+// order and whether the station is on the air, which is the one screen an
+// operator swaps to in order to trust.
+func consoleScoped(msg tea.Msg) bool {
+	switch msg.(type) {
+	case LineupMsg, StationMsg:
+		return true
+	}
+	return false
+}
+
 // Update routes the message and keeps the Router as the program's model.
 //
 // PROGRAM-SCOPED MESSAGES GO TO BOTH SURFACES; everything else goes to the
@@ -118,6 +134,11 @@ func programScoped(msg tea.Msg) bool {
 // instant it is swapped to, and the operator would meet a broken frame at
 // exactly the moment they asked for it.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if consoleScoped(msg) {
+		var cmd tea.Cmd
+		r.broadcaster, cmd = r.broadcaster.Update(msg)
+		return r, cmd
+	}
 	if programScoped(msg) {
 		var oc, bc tea.Cmd
 		if m, c := r.observer.Update(msg); true {

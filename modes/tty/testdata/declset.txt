@@ -477,6 +477,7 @@ func classRowOrder
 func clipToWidth
 func clockRow
 func compass
+func consoleScoped
 func counterCols
 func currentRow
 func currentlyGrid

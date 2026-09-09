@@ -718,3 +718,41 @@ func TestPreparationNeverRunsAheadOfTheAir(t *testing.T) {
 		t.Errorf("the air holds %q, want %s", on.ID, first)
 	}
 }
+
+// P2: Publish carries the station's power alongside the schedule, so a reader
+// can never hold a torn pair — a new lineup beside a stale power.
+//
+// SWEPT ACROSS EVERY POWER, derived from where Power.String() ends, because a
+// version that carried a constant would pass a single-value check.
+func TestPublishCarriesThePowerWithTheLineup(t *testing.T) {
+	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	for p := Power(0); p.String() != ""; p++ {
+		d := New(Settings{Max: 5}, base)
+		// MAKE THE TRANSITION REAL. A Director starts STOPPED, so stepping to
+		// STOPPED changes nothing, settles nothing and publishes nothing — and
+		// the sweep would have asserted nothing for that value. The "no
+		// Publish" fatal below caught exactly that.
+		from := Running
+		if p == Running {
+			from = OffAir
+		}
+		d, _ = d.Step(Powered{To: from})
+		_, fx := d.Step(Powered{To: p})
+		found := false
+		for _, e := range fx {
+			pub, ok := e.(Publish)
+			if !ok {
+				continue
+			}
+			found = true
+			if pub.Power != p {
+				t.Errorf("Publish must carry the power the Director holds; got %v want %v", pub.Power, p)
+			}
+		}
+		// SILENCE IS A DISTINCT VERDICT (INST-2): no Publish means the check
+		// did not run, which is not the same as it passing.
+		if !found {
+			t.Fatalf("power=%v: no Publish was emitted, so this asserted nothing", p)
+		}
+	}
+}

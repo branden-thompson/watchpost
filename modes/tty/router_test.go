@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
 // P0's whole claim is that NOTHING CHANGES. These pin it at the ROUTER, which
@@ -92,5 +94,19 @@ func TestTheConsoleInheritsTheASCIIDecision(t *testing.T) {
 	d := goldenDash(t, true) // built --ascii
 	if !NewRouter(d).broadcaster.ascii {
 		t.Error("Observer was built --ascii and the console was not; one setting must not have two carriers")
+	}
+}
+
+// The console's OWN messages reach it even while it is inactive.
+//
+// A THIRD ROUTING CATEGORY, and it exists for the same reason the fan-out
+// does: a surface that only learns things while on screen is stale the
+// instant the operator swaps to it — and here the stale thing would be the
+// running order and whether the station is on the air.
+func TestTheConsoleGetsItsOwnMessagesWhileInactive(t *testing.T) {
+	var m tea.Model = NewRouter(goldenDash(t, false)) // Observer active
+	m, _ = m.Update(StationMsg{Power: lineup.OffAir})
+	if got := m.(Router).broadcaster.power; got != lineup.OffAir {
+		t.Errorf("the console must learn the station's state while inactive; got %v", got)
 	}
 }

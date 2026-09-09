@@ -202,7 +202,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// The schedule runs from here, over the SAME arbiter and effector the ticker
 	// was just given. It drives the live alert rail since T3.10b — so a
 	// listener notices nothing; T3.2b is the first thing it owns.
-	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.currentWatch, lp.ticker)
+	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.currentWatch, lp.ticker, p.Send)
 	lp.wireDeckWarnings()
 	return firstFullNanos
 }

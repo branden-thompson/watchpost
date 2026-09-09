@@ -182,9 +182,16 @@ type Tune struct {
 // asynchronously, so a reader that fetched the Director's current lineup when
 // the effect ran would get whatever it had become by then, not what was
 // published.
+//
+// IT CARRIES THE POWER TOO (0.16.0 P2), and for the same reason it carries
+// the lineup by value: a reader told the schedule and the station's state
+// SEPARATELY can hold a torn pair — a new lineup beside a stale power — and
+// the console's whole job is to show what is actually going to air. One
+// message, one consistent moment.
 type Publish struct {
 	isEffect
 	Lineup Lineup
+	Power  Power
 }
 
 // Describe is what an effect IS, in one line.
@@ -580,7 +587,7 @@ func (d Director) settle() (Director, []Effect) {
 		return d, nil // the air was taken and then lost; publish nothing rather than a lie
 	}
 	fx := append(air, prep...)
-	fx = append(fx, Publish{Lineup: d.lineup})
+	fx = append(fx, Publish{Lineup: d.lineup, Power: d.Power()})
 	last := fx[len(fx)-1]
 	_, published := last.(Publish)
 	// THE READERS ARE TOLD LAST. A subscriber reads the lineup to decide what to

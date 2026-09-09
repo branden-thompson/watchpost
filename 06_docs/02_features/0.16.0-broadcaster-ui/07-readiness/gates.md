@@ -201,3 +201,29 @@ and quietly never gets louder, which is worse than not having it.
 `TestARepeatedStationMessageDoesNotRestartTheStandbyClock` was written for it, verified to **PASS clean
 and FAIL under the plant**.  **This is the first surviving plant this release that indicted the gate
 rather than itself**, and it is the reason the rule says to check both.
+
+## P2(e) — the console is wired to the real schedule
+
+**`lineup.Publish` gets its first consumer.**  The executor was deliberately empty through 0.15.0 and
+said so — the seam existed and had no reader, which is a different thing from a no-op pretending to be
+wired.
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestPublishCarriesThePowerWithTheLineup` | The effect carries the schedule AND the power, so no reader holds a torn pair | **Plant 2026-09-09:** the power replaced with a constant → **CAUGHT** twice (`got STOPPED want RUNNING`, `want OFF AIR`).  **The test also caught its own vacuity first**: swept from the zero power, the first transition was a no-op that published nothing, and the `no Publish was emitted, so this asserted nothing` fatal fired.  Fixture fixed to make every transition real |
+| `TestTheConsoleGetsItsOwnMessagesWhileInactive` | Console-scoped messages reach it **while it is inactive** | **Plant 2026-09-09:** the category removed so they fell through to the active surface → **CAUGHT**.  A console that only learns while on screen is stale the instant it is swapped to — and the stale things here are the running order and whether the station is on the air |
+
+### An existing guard caught the new seam, and that is the system working
+
+`TestExecutorsRefuseToBeBuiltWithoutTheirSeams` **walks the executors struct by reflection** and demands
+every nil-able field be either checked at construction or **declared optional**.  Adding `publish`
+failed it immediately:
+
+> `seam "publish" is neither checked nor declared optional: a nil one would reach production unmeasured`
+
+**Declared optional, with the reason**: nil means no surface is listening, which is every build before
+the console existed.  **Refusing to build without it would make the schedule depend on a UI** — the
+wrong direction entirely.
+
+**This is a derived guard written by an earlier release catching a field added by this one**, with no
+edit to the guard itself.  That is what INST-1 buys.

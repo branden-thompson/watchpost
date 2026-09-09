@@ -20,12 +20,16 @@ import (
 	"sync"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+
+	"github.com/branden-thompson/watchpost/modes/tty"
 )
 
 // executors performs effects. Every field is a seam into the running station,
@@ -44,6 +48,11 @@ type executors struct {
 	// written from here AND from app/ticker.go, two files constructing the same
 	// takeover message, which is two carriers of one rule (D-1).
 	mc *mastercontrol
+	// publish hands the settled schedule to the console. Nil when no surface
+	// is listening, which is every build before 0.16.0 and every test that
+	// does not care.
+	publish func(tea.Msg)
+
 	// audible is false when there is nothing to hear — no device, no voice. The
 	// visuals still run and nothing dips: a station with no sound card still
 	// shows the alert on the band.
@@ -188,16 +197,19 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 	case lineup.ReleaseTicker:
 		return x.runRelease(v)
 	case lineup.Publish:
-		// NOBODY READS THE LINEUP YET, and the seam that pretended otherwise is
-		// gone (red team 2026-09-05). It was `func(lineup.Lineup) {}` — a no-op
-		// with a nil-guard around it, dispatched every second — which reads as a
-		// wired feature and is not one. The Broadcaster surface that consumes a
-		// published lineup is 0.15.0's; Observer's marquee is driven by the cue
-		// and release effects instead.
+		// THE CONSOLE READS THE LINEUP NOW (0.16.0 P2). This executor was
+		// deliberately empty through 0.15.0 and said so — the seam existed and
+		// had no consumer, which is a very different thing from a no-op that
+		// pretends to be wired.
 		//
-		// THE EFFECT STAYS. It is architecture (PL-6) and the "readers are told
-		// last" ordering depends on it being emitted; what is declined here is
-		// performing it, by name, the way every other unemitted member is.
+		// BOTH FACTS TRAVEL TOGETHER because the effect carries both. A console
+		// told the schedule and the station's state separately can hold a torn
+		// pair — a new lineup beside a stale power — and showing what is
+		// actually going to air is the console's whole job.
+		if x.publish != nil {
+			x.publish(tty.LineupMsg{Lineup: v.Lineup})
+			x.publish(tty.StationMsg{Power: v.Power})
+		}
 		return nil
 	// DUCK AND RESTORE ARE WIRED AND UNREACHED (red team 2026-09-05, I-5).
 	//

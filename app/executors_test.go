@@ -670,6 +670,11 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 	optional := map[string]bool{
 		"scripts": true, // nil means the built-in script tree
 		"band":    true, // built by newExecutors itself, never passed in
+		// DELIBERATELY OPTIONAL (0.16.0 P2). nil means no surface is
+		// listening, which is every build before the console existed and
+		// every test that does not care. Refusing to build without it would
+		// make the schedule depend on a UI — the wrong direction entirely.
+		"publish": true,
 	}
 	v := reflect.ValueOf(whole())
 	for i := 0; i < v.NumField(); i++ {
