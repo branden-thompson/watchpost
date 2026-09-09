@@ -167,6 +167,29 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	d.gen++
 	gen, pref := d.gen, d.pref
 	d.mu.Unlock()
+	// THE PROGRAMME IS RUNNING, AND THE DIRECTOR HAS TO BE TOLD — HERE, where
+	// the listener asked for a location, and NOT wherever the audio happens to
+	// begin (red team 2026-09-09, finding 1).
+	//
+	// IT USED TO RIDE ON setMode's transition edge, which made "the programme
+	// is running" a side effect of the DECK changing mode. On the synthesised
+	// path setMode is reached only from startSynth, and the merged station does
+	// not call startSynth — so the first need arrived at a Director still
+	// Stopped, advances(MainTrack) refused the card, no mode ever changed, and
+	// the Director was never powered. Every subsequent need was refused the
+	// same way: a permanently silent station with a permanently empty lineup
+	// and no fault raised, because nothing failed and nothing was ever
+	// admitted.
+	//
+	// THE ASYMMETRY WAS THE DEFECT. Stop is reported from Stop, where the
+	// listener acts. Start is now reported from here, for the same reason and
+	// in the same terms — and BEFORE the relay/synth fork, so which medium wins
+	// cannot change whether the station is on.
+	//
+	// A REPEATED TUNE IS NOT A SECOND START: onPowered no-ops when the power is
+	// already what it is asked for, which is why this needs no transition edge
+	// of its own to guard it.
+	d.tell(lineup.Powered{To: lineup.Running})
 	same := stream.SAMEFromUGC(d.nws.CountyUGC(ctx, ref))
 	stations, statuses := d.resolver.ResolveWithStatus(ctx, ref.Lat, ref.Lon, same)
 	d.noteDirectories(statuses)
@@ -781,22 +804,18 @@ func (d *radioDeck) unrelayedLabel(same string, ref snapshot.LocationRef) string
 }
 
 func (d *radioDeck) setMode(mode, station, detail string) {
-	d.mu.Lock()
-	was := d.mode
-	d.mode, d.station, d.detail = mode, station, detail
-	d.mu.Unlock()
-	// THE PROGRAMME IS RUNNING, AND THE DIRECTOR HAS TO BE TOLD. It starts
-	// Stopped — deliberately, so a station comes up silent — and Stop was the
-	// only power it ever heard about, so `advances(MainTrack)` was permanently
-	// false and the bed never moved on at all. Watchlist looked like it simply
-	// did nothing.
+	// THE POWER IS NOT REPORTED FROM HERE ANY MORE (red team 2026-09-09,
+	// finding 1). This used to send Powered{Running} on the transition out of
+	// an empty mode, which made "the programme is running" a fact about the
+	// DECK's mode string rather than about the listener. `tune` reports it now,
+	// where the listener asks for a location and before the relay/synth fork —
+	// so a station whose audio is owned by the schedule still starts.
 	//
-	// Only the TRANSITION is reported, not every tune: the Director's own
-	// handler is not a no-op on a repeat, and a station that re-announced itself
-	// on every relay change would be telling it something that had not changed.
-	if was == "" && mode != "" {
-		d.tell(lineup.Powered{To: lineup.Running})
-	}
+	// The transition variable went with it: it existed only to guard that send,
+	// and a local kept "in case" is a reader's question with no answer.
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.mode, d.station, d.detail = mode, station, detail
 }
 
 // setDetail updates the detail line and pushes it to the UI at once

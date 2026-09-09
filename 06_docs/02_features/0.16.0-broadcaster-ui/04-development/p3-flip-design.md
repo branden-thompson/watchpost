@@ -33,7 +33,7 @@ first reading and it was wrong: `readScript` walks the script part by part and e
 just before it plays, so a report plays segment by segment exactly as the source does.  **The whole
 report is not buffered.**
 
-**Six things are genuinely lost**, and each of them is behaviour a listener can see or hear today.
+**Seven things are genuinely lost**, and each of them is behaviour a listener can see or hear today.
 
 | # | What retires with `startSynth` | Where it lives now | Severity if simply dropped |
 |---|---|---|---|
@@ -43,6 +43,11 @@ report is not buffered.**
 | G-4 | **repeat-one**, `src.Loop(d.repeat == tty.RepeatOne)` (UAT 93) | `radio.go:531` | MAJOR — a listener's repeat setting silently stops working |
 | G-5 | **the station and player rows**, `setMode` + `StartSource`'s title | `radio.go:459`, `radio.go:535` | MAJOR — the radio panel stops naming what is playing |
 | G-6 | **first-use voice install with progress in the player** (HUM LEAD ruling: first-run install) | `radio.go:461` | MINOR — `resolveVoice` starts a background install, but the foreground progress is `startSynth`'s |
+| G-7 | **the segment's DELIVERY — `Role`, `SelfIntro` and `Pause`** — and **the `why` a read is happening at all** | `synth.Segment` (compose.go) vs `lineup.Part` (script.go); `needsRead`'s `why` | **MAJOR, and found by the red team.**  `scriptFromSegments` keeps `Text` and drops the other four fields, because `lineup.Part` has nowhere to put them.  Under Shape A the cast collapses to one `cast.Standard` voice for the whole report, `SelfIntro`'s double-introduction suppression has nothing to suppress, and UAT 112.3's per-segment pauses are gone.  **Separately, `why` has no transport at all**: it is one of three listener-facing diagnostics and in `live` it is passed to a `startSynth` that is never called |
+
+**G-7 is the one that decides between the two shapes below**, because Shape A must rebuild it and Shape B
+never touches it: if the source still plays the report, the roles, the introductions and the pauses are
+already right, and the card's `Script` is a DISPLAY artefact whose job is the console.
 
 **G-1 alone makes "delete the direct path" wrong as written.**  A card's `Finished` would have to take
 over what `Ended{}` does, and that is a design decision, not a deletion.
@@ -102,6 +107,25 @@ would no longer be a source.
 with zero code written.**  The estimate that Shape B needed new suspend/resume capability was wrong, in
 the same direction as every other estimate this release has checked.
 
+## The red team found something earlier than any of this, and it is fixed
+
+**The `live` stage could never start the station at all.**  The Director begins `Stopped` on purpose, and
+the only thing that ever told it otherwise was `setMode`'s transition edge — which on the synthesised
+path is reached only from `startSynth`, which `live` does not call.  So the first need arrived at a
+stopped Director, `advances(MainTrack)` refused the card, no mode changed, the Director was never
+powered, and every subsequent need was refused identically: **a permanently silent station with a
+permanently empty lineup and no fault raised**, because nothing failed and nothing was ever admitted.
+
+**The asymmetry was the defect.**  Stop is reported from `Stop`, where the listener acts; start was
+reported wherever the audio happened to begin.  `tune` reports it now, before the relay/synth fork, and
+a structural gate asserts the send is not inside a branch — because no offline fixture has a live relay,
+so "which medium wins cannot change whether the station is on" is a POSITION, and a position is what a
+walk can assert.
+
+**This is the second time this exact wire has broken**, and `setMode`'s own comment recorded the first.
+The pin written then drove `setMode` directly, so it passed throughout: a pin on the CARRIER rather than
+on the RULE cannot see the carrier become the wrong one.  It drives `tune` now.
+
 ## THE RULING NEEDED
 
 **Shape A or Shape B.**  It decides what the flip is, and both readings are defensible from the plan's
@@ -114,7 +138,7 @@ measurement.**  Shape A rebuilds a working player on the path that carries every
 inside the batch already named the most dangerous in the release — **and it would also have to rebuild
 the give-way rule**, because a report that is no longer a source has no case in `giveWayLocked` and
 would inherit a narration's treatment instead of a rendered cycle's.  The release's stated value
-(A1: *"it needs to function as intended out of the gate"*) is not served by re-earning seven behaviours
+(A1: *"it needs to function as intended out of the gate"*) is not served by re-earning eight behaviours
 that already work.
 
 **What Shape B actually changes is small and is exactly the merge:** the SCHEDULE decides when a report

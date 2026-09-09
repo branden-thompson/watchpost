@@ -94,11 +94,33 @@ func TestNeedsReadOnAStoppedStationQueuesNothing(t *testing.T) {
 // what gets pinned. Twice burned by asserting an outcome that occurs either
 // way (P2d, P3c).
 func TestARotationCardIsNamedAfterItsLocationAndNothingElse(t *testing.T) {
-	if ReadID("oceanside") != ReadID("oceanside") {
-		t.Error("the same location names the same card, every time — this IS the no-double-speak rule")
+	// WRITTEN THROUGH A SLICE, NOT AS TWO IDENTICAL CALLS. `ReadID("x") !=
+	// ReadID("x")` reads to a linter as identical expressions either side of a
+	// comparison, which is a warning worth heeding rather than silencing: what
+	// the rule is actually about is that the SAME INPUT gives the same answer,
+	// so the input is a value that travels.
+	refs := []string{"oceanside", "bonsall", "vista"}
+	first := make([]string, len(refs))
+	for i, r := range refs { // bounded by the slice (P10-02)
+		first[i] = ReadID(r)
 	}
-	if ReadID("oceanside") == ReadID("bonsall") {
-		t.Error("two locations are two cards")
+	seen := map[string]string{}
+	for i, r := range refs { // bounded by the slice (P10-02)
+		// TWICE IN A ROW, and that adjacency is the whole test. Comparing only
+		// across the two passes let a counter-based mutant through: with three
+		// refs and a counter taken modulo three, every ref got the same suffix
+		// on both passes and the id looked pure. Two adjacent calls differ
+		// under ANY per-call variation, whatever its period. Found by the plant
+		// that survived the first rewrite of this test.
+		again, andAgain := ReadID(r), ReadID(r)
+		if again != andAgain || again != first[i] {
+			t.Errorf("%q named %q, then %q, then %q — the same location must name the same card, "+
+				"every time; this IS the no-double-speak rule", r, first[i], again, andAgain)
+		}
+		if had, ok := seen[first[i]]; ok {
+			t.Errorf("%q and %q name the same card %q; two locations are two cards", had, r, first[i])
+		}
+		seen[first[i]] = r
 	}
 	// A rotation read and a burst led by an alert of the same name are
 	// different cards; sharing an id would wedge the schedule.

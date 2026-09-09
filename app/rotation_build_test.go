@@ -110,7 +110,12 @@ func TestALocationReportIsSpokenAsTheRotationClass(t *testing.T) {
 // makes dark an observation of the real producer — and it stops HERE, one call
 // short of the voice.
 func TestADarkMainTrackCardIsDeclinedAtTheAirAndNeverReachesTheVoice(t *testing.T) {
-	for _, stage := range []string{"", "dark"} {
+	// DARK ONLY. The `off` arm was here too and proved nothing about `off`
+	// (red team 2026-09-09, finding 12): in that stage the deck never reports,
+	// so no LocationReport card can exist to be declined, and the arm read as
+	// coverage it was not. What `off` guarantees is pinned where it is true —
+	// at the seam, by TestTheDefaultStageTellsTheDirectorNothing.
+	for _, stage := range []string{"dark"} {
 		t.Setenv("WATCHPOST_MAINTRACK", stage)
 		v := &scriptVoice{}
 		b := newBench(t, v)

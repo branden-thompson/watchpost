@@ -337,8 +337,16 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	// owner at every moment of the batch. DELETED AT P3(d), with startSynth's
 	// direct path, in the change that makes the schedule the owner.
 	//
-	// DECLINED, NOT HELD: a card standing by for a stage that will not change
-	// mid-process would wedge the main track behind it.
+	// DECLINED, NOT HELD: a card standing by for a stage would wedge the main
+	// track behind it, and there is nothing to wait for — the stage is read
+	// from the environment, which nothing in the running station writes.
+	//
+	// THE STAGE IS READ TWICE PER READ, HERE AND AT THE SEAM, and nothing pins
+	// them together (red team 2026-09-09, finding 9). Only a test can make them
+	// disagree — t.Setenv, which forbids t.Parallel — so it is not reachable in
+	// production. Recorded rather than guarded: the guard (sync.OnceValue)
+	// would take the stage away from the tests that must switch it, on a file
+	// that is deleted at P3(d) anyway.
 	if v.Slot == lineup.LocationReport && !mainTrack().ownsTheAir() {
 		return x.decline(v, v.ID, "the main track is dark; the rotation reads through its own path")
 	}

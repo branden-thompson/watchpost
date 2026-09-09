@@ -2,11 +2,10 @@ package tty
 
 import (
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/platform/declset"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -68,30 +67,28 @@ func TestAnUndeclaredSurfaceIsRefused(t *testing.T) {
 // DERIVED (INST-1): it walks the package's syntax tree for reads of the
 // console's power, rather than asserting against a remembered list of files.
 func TestThePowerPreconditionHasOneReaderInTheRouter(t *testing.T) {
-	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, ".", nil, 0)
+	// THROUGH declset.Files, NOT go/parser.ParseDir. ParseDir is deprecated
+	// (Go 1.25) and three checks in this tree had copied the same shape; the
+	// package that already walked a package's non-test files owns it now.
+	fset, files, err := declset.Files(".")
 	if err != nil {
 		t.Fatal(err)
 	}
 	readers := map[string]int{}
-	for _, pkg := range pkgs {
-		for name, file := range pkg.Files {
-			if strings.HasSuffix(name, "_test.go") {
-				continue
-			}
-			ast.Inspect(file, func(n ast.Node) bool {
-				sel, ok := n.(*ast.SelectorExpr)
-				if !ok || sel.Sel.Name != "power" {
-					return true
-				}
-				inner, ok := sel.X.(*ast.SelectorExpr)
-				if !ok || inner.Sel.Name != "broadcaster" {
-					return true
-				}
-				readers[name]++
+	for _, file := range files { // bounded by the package (P10-02)
+		name := fset.Position(file.Pos()).Filename
+		ast.Inspect(file, func(n ast.Node) bool {
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "power" {
 				return true
-			})
-		}
+			}
+			inner, ok := sel.X.(*ast.SelectorExpr)
+			if !ok || inner.Sel.Name != "broadcaster" {
+				return true
+			}
+			readers[name]++
+			return true
+		})
 	}
 	total := 0
 	for _, n := range readers {

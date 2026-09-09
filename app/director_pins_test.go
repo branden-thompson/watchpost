@@ -669,25 +669,39 @@ func TestTheRetryPathAlsoCuesNothingOnceTheSequenceEnded(t *testing.T) {
 // NO TEST CAUGHT IT BECAUSE EVERY FIXTURE SENT Powered{Running} ITSELF. The
 // tests supplied what production had forgotten, which is the one thing a fixture
 // must never do for a wiring seam.
+//
+// MOVED TO tune AT 0.16.0 P3, and the same defect came back through the door
+// the first fix left open (red team 2026-09-09, finding 1). The report rode on
+// setMode's transition edge, which made "the programme is running" a fact about
+// the DECK's mode string; the merged station does not change the deck's mode at
+// all, so it was never powered and never read anything. THIS TEST DROVE setMode
+// DIRECTLY, so it passed throughout — a pin on the carrier rather than on the
+// rule, which is why it could not see the carrier become the wrong one.
+//
+// It drives `tune` now: the thing the LISTENER does. A pin that names the
+// listener's act survives the next time the audio path is rearranged.
 func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 	d, _ := offlineDeck(t)
 	var got []lineup.Event
 	d.emit = func(ev lineup.Event) { got = append(got, ev) }
 
-	d.setMode("synth", "Oceanside, CA", "the broadcast")
-	if len(got) != 1 {
-		t.Fatalf("starting the programme told the Director %d things, want one: %v", len(got), got)
+	d.tune(pinRef("A", 33.19, -117.37))
+	d.engine.Halt()
+	if len(got) == 0 {
+		t.Fatalf("starting the programme told the Director nothing")
 	}
 	if p, ok := got[0].(lineup.Powered); !ok || p.To != lineup.Running {
-		t.Errorf("starting reported %#v, want Powered{Running}", got[0])
+		t.Errorf("starting reported %#v, want Powered{Running} FIRST — a need reported to a "+
+			"stopped Director is a card refused", got[0])
 	}
 
-	// ONLY THE TRANSITION. A station re-announcing itself on every relay change
-	// would be telling the Director something that had not changed.
+	// A MODE CHANGE IS NOT A POWER CHANGE. The deck moving from synth to a
+	// relay tells the Director nothing, because nothing about whether the
+	// programme is running has changed — which is the coupling this fix broke.
 	got = nil
 	d.setMode("live", "KEC62", "a relay")
 	if len(got) != 0 {
-		t.Errorf("a mode change on an already-running station reported %v", got)
+		t.Errorf("a mode change reported %v; the mode is the deck's business, the power is the listener's", got)
 	}
 
 	// And a stop is still reported, so the pair is balanced.

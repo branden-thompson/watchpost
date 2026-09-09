@@ -188,9 +188,18 @@ func refFor(watch func() []snapshot.LocationRef, ref string) (snapshot.LocationR
 // THE EXECUTOR KNOWS NOTHING ABOUT HOW A REPORT IS ASSEMBLED, and this is the
 // other side of that: the deck owns what a location report IS — the observation,
 // the alerts, the office products, the sign-off — and hands back the segments it
-// would have voiced. ONE COMPOSER, TWO CONSUMERS while the merge is staged, and
-// one after it: this is the same call startSynth makes for its own source, so
-// the card and the direct path cannot say different things.
+// would have voiced. It is the same call startSynth makes for its own source.
+//
+// WHAT IS SHARED IS THE TEXT, NOT THE DELIVERY, and the first draft of this
+// comment overclaimed it (red team 2026-09-09, finding 5). A synth.Segment
+// carries Key, Text, Role, SelfIntro and Pause; scriptFromSegments keeps Text
+// and drops the rest, because lineup.Part has nowhere to put them. The source
+// consumes all five. So the two paths cannot say different WORDS — and can
+// still differ in which correspondent says them, whether an introduction is
+// suppressed, and how long the pauses are.
+//
+// That is a live question for the flip and it is recorded there, not resolved
+// here (04-development/p3-flip-design.md, G-7).
 func composeFor(deck *radioDeck, watch func() []snapshot.LocationRef) func(context.Context, string) ([]synth.Segment, error) {
 	return func(ctx context.Context, ref string) ([]synth.Segment, error) {
 		if deck == nil {

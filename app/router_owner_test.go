@@ -10,55 +10,51 @@ package app
 
 import (
 	"go/ast"
-	"go/parser"
-	"go/token"
-	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/platform/declset"
 )
 
 func TestTheProgramsModelIsAlwaysTheRouter(t *testing.T) {
-	fset := token.NewFileSet()
-	pkgMap, err := parser.ParseDir(fset, ".", nil, 0)
+	// THROUGH declset.Files, NOT go/parser.ParseDir. ParseDir is deprecated
+	// (Go 1.25) and three checks in this tree had copied the same shape; the
+	// package that already walked a package's non-test files owns it now.
+	fset, files, err := declset.Files(".")
 	if err != nil {
 		t.Fatal(err)
 	}
 	found := 0
-	for _, pkg := range pkgMap {
-		for name, file := range pkg.Files {
-			if strings.HasSuffix(name, "_test.go") {
-				continue
-			}
-			ast.Inspect(file, func(n ast.Node) bool {
-				call, ok := n.(*ast.CallExpr)
-				if !ok {
-					return true
-				}
-				sel, ok := call.Fun.(*ast.SelectorExpr)
-				if !ok || sel.Sel.Name != "NewProgram" {
-					return true
-				}
-				if id, ok := sel.X.(*ast.Ident); !ok || id.Name != "tea" {
-					return true
-				}
-				found++
-				pos := fset.Position(call.Pos())
-				if len(call.Args) == 0 {
-					t.Errorf("%s: tea.NewProgram with no model", pos)
-					return true
-				}
-				inner, ok := call.Args[0].(*ast.CallExpr)
-				if !ok {
-					t.Errorf("%s: the program's model must be tty.NewRouter(...), got a bare value — "+
-						"a surface handed straight to the program is a seam nothing can swap", pos)
-					return true
-				}
-				isel, ok := inner.Fun.(*ast.SelectorExpr)
-				if !ok || isel.Sel.Name != "NewRouter" {
-					t.Errorf("%s: the program's model must be tty.NewRouter(...), got %s", pos, exprName(inner.Fun))
-				}
+	for _, file := range files {
+		ast.Inspect(file, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
 				return true
-			})
-		}
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || sel.Sel.Name != "NewProgram" {
+				return true
+			}
+			if id, ok := sel.X.(*ast.Ident); !ok || id.Name != "tea" {
+				return true
+			}
+			found++
+			pos := fset.Position(call.Pos())
+			if len(call.Args) == 0 {
+				t.Errorf("%s: tea.NewProgram with no model", pos)
+				return true
+			}
+			inner, ok := call.Args[0].(*ast.CallExpr)
+			if !ok {
+				t.Errorf("%s: the program's model must be tty.NewRouter(...), got a bare value — "+
+					"a surface handed straight to the program is a seam nothing can swap", pos)
+				return true
+			}
+			isel, ok := inner.Fun.(*ast.SelectorExpr)
+			if !ok || isel.Sel.Name != "NewRouter" {
+				t.Errorf("%s: the program's model must be tty.NewRouter(...), got %s", pos, exprName(inner.Fun))
+			}
+			return true
+		})
 	}
 	// SILENCE IS A DISTINCT VERDICT (INST-2): finding no call at all means the
 	// walk broke, not that the package is clean.

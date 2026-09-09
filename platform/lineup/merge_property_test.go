@@ -69,14 +69,20 @@ type merged struct {
 	admits map[string]int // card id -> times it entered the schedule
 	airs   map[string]int // card id -> times it took the air
 	steps  int
+
+	// whileStopped counts events stepped against a stopped Director. It is a
+	// REACH figure, not a property: the driver used to stop and start in one
+	// atomic pair, so this was structurally zero and the merge's whole power
+	// asymmetry went untested (red team finding 3).
+	whileStopped int
 }
 
 // snap is what a property needs to know about the schedule at one instant.
 type snap struct {
-	ids         map[string]bool // every card the schedule holds
-	onAir       map[string]bool // every card in the OnAir state, so two can be SEEN
-	byTrack     map[string]Track
-	railWaiting bool // the rail holds a card still on its way to the air
+	ids         map[string]bool  // every card the schedule holds
+	onAir       map[string]bool  // every card in the OnAir state, so two can be SEEN
+	byTrack     map[string]Track // a card the schedule no longer holds is ABSENT, never MainTrack
+	railWaiting bool             // the rail holds a card still on its way to the air
 	// railUnprepared is the rail holding a card whose words have not even been
 	// asked for. A stricter reading than railWaiting, and the one property 5
 	// needs: preparation is the expensive step.
@@ -98,9 +104,6 @@ func (m *merged) snapshot() snap {
 			if Track(t) == AlertRail && c.State == Admitted {
 				s.railUnprepared = true
 			}
-			if Track(t) == AlertRail && c.State == Admitted {
-				s.railUnprepared = true
-			}
 		}
 	}
 	return s
@@ -109,9 +112,31 @@ func (m *merged) snapshot() snap {
 // step feeds one event and checks every property against the transition.
 func (m *merged) step(ev Event) {
 	before := m.snapshot()
+	if m.d.Power() != Running {
+		if _, ordinary := ev.(Powered); !ordinary {
+			m.whileStopped++
+		}
+	}
 	next, fx := m.d.Step(ev)
 	m.d = next
-	m.pending = append(m.pending, fx...)
+	// ONLY WHAT THE DRIVER CAN ANSWER GOES INTO THE BACKLOG (red team blind
+	// spot 7, measured). Every effect used to be queued and every service call
+	// drew one at random, but only a BuildCard or a Speak comes home as an
+	// event — and a Publish is emitted on EVERY settle, so the queue filled
+	// with effects the driver could only discard. Measured: 29,798 service
+	// calls, 4,680 of them actionable — 15.7% — and the ratio worsens through a
+	// run, which makes the DELAYED BUILD this test exists for rarer the longer
+	// it goes.
+	//
+	// The others are dropped rather than queued because that is what they are:
+	// a publish is a send to a console, a cue and a release are the band's, a
+	// tune is the deck's. None of them answers the Director back.
+	for _, f := range fx { // bounded by the step's effects (P10-02)
+		switch f.(type) {
+		case BuildCard, Speak:
+			m.pending = append(m.pending, f)
+		}
+	}
 	m.steps++
 	after := m.snapshot()
 
@@ -138,7 +163,11 @@ func (m *merged) step(ev Event) {
 		if !ok {
 			continue
 		}
-		if after.byTrack[b.ID] == MainTrack && after.railUnprepared {
+		// ASKED WITH ok, NOT BY VALUE. MainTrack is Track(0), so a card the
+		// schedule no longer holds would read as a main-track card and produce
+		// a failure nobody could explain (red team finding 11).
+		tr, held := after.byTrack[b.ID]
+		if held && tr == MainTrack && after.railUnprepared {
 			m.t.Fatalf("step %d (%T): the programme card %q was sent to be composed while a hazard on the rail "+
 				"had not been; the expensive step went to the wrong card and the air is blocked until it returns",
 				m.steps, ev, b.ID)
@@ -162,6 +191,15 @@ func (m *merged) step(ev Event) {
 			m.t.Fatalf("step %d (%T): card %q took the air %d time(s) but was admitted %d — a report read twice",
 				m.steps, ev, id, m.airs[id], m.admits[id])
 		}
+		// 6. A STOPPED PROGRAMME DOES NOT READ (PD-1, DR-3's asymmetry). The
+		// rail advances while the programme is stopped; the main track must
+		// not. Asked of the DIRECTOR's own power rather than of the driver's
+		// bookkeeping, so a test that lost track of the station cannot make
+		// this pass.
+		if tr, held := after.byTrack[id]; held && tr == MainTrack && m.d.Power() != Running {
+			m.t.Fatalf("step %d (%T): the programme card %q took the air while the station was %v",
+				m.steps, ev, id, m.d.Power())
+		}
 		// 4. THE RAIL DRAINS FIRST. Asserted at the MOMENT the programme takes
 		// the air, against the schedule AS IT STANDS AFTER the step — because
 		// the step that airs the programme is very often the same step that
@@ -169,7 +207,8 @@ func (m *merged) step(ev Event) {
 		// rule working. The `after` reading is also the strict one: an
 		// unready rail card blocks the air entirely (airOnce takes Next() or
 		// nothing), so a hazard queued in this same step cannot be outrun.
-		if after.byTrack[id] == MainTrack && after.railWaiting {
+		tr, held := after.byTrack[id]
+		if held && tr == MainTrack && after.railWaiting {
 			m.t.Fatalf("step %d (%T): the programme card %q took the air while a hazard was waiting on the rail",
 				m.steps, ev, id)
 		}
@@ -231,7 +270,7 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 	locations := []string{"oceanside", "bonsall", "vista"}
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	const runs = 300
-	var totalSteps, totalAdmits, totalAirs, reportAirs, railAirs, repeats int
+	var totalSteps, totalAdmits, totalAirs, reportAirs, railAirs, repeats, stoppedEvents int
 
 	for run := range runs {
 		rng := rand.New(rand.NewSource(int64(run)))
@@ -242,8 +281,9 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 		}
 		now := base
 		m.step(Powered{To: Running})
+		stopped := false
 
-		for range 60 {
+		for range 200 {
 			// SERVICE OR ADVANCE, at random: whether the station gets to
 			// finish what it started before the next thing happens IS the
 			// timing dimension under test.
@@ -252,26 +292,47 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 				continue
 			}
 			now = now.Add(time.Duration(rng.Intn(90)) * time.Second)
-			switch rng.Intn(7) {
-			case 0, 1:
+			// A STOP DOES NOT LAST FOR EVER. Left to case 7 alone the station
+			// was down 44% of the time and the main track barely aired, so the
+			// resume gets its own faster path — the stop is still a state with
+			// duration, just a shorter one.
+			if stopped && rng.Intn(3) == 0 {
+				m.step(Powered{To: Running})
+				stopped = false
+				continue
+			}
+			switch rng.Intn(8) {
+			case 0, 1, 2:
 				ref := locations[rng.Intn(len(locations))]
 				m.step(NeedsRead{Ref: ref, Headline: "REPORT FOR " + ref})
-			case 2, 3:
+			case 3:
 				m.step(Arrived{Arrivals: randomArrivals(rng, now), Fence: Fence{}})
-			case 4:
+			case 4, 5:
 				m.step(Tick{Now: now})
-			case 5:
+			case 6:
 				ref := locations[rng.Intn(len(locations))]
 				m.step(Tuned{Ref: ref, Live: rng.Intn(2) == 0})
-			case 6:
-				// THE PROGRAMME STOPS AND STARTS UNDER LOAD. Stopping while a
-				// hazard is on the rail is the case DR-3's asymmetry exists
-				// for, and it must not be the way a report is read twice.
-				if rng.Intn(4) == 0 {
-					m.step(Powered{To: Stopped})
+			case 7:
+				// A STOP IS A STATE WITH DURATION, NOT AN INSTANT (red team
+				// finding 3). This used to step Stopped and Running as an
+				// atomic pair, so across 300 runs and 2,630 needs, NOT ONE
+				// ordinary event was ever stepped against a stopped Director —
+				// and the whole asymmetry the merge turns on (DR-3: the rail
+				// advances while the programme is stopped, the main track does
+				// not) went unexercised. A neutralised PD-1 guard passed every
+				// property.
+				//
+				// Now the station stays down until a later iteration flips it
+				// back, so needs, arrivals, ticks and completions all land
+				// while it is off.
+				if stopped {
 					m.step(Powered{To: Running})
+					stopped = false
 					continue
 				}
+				m.step(Powered{To: Stopped})
+				stopped = true
+			default:
 				m.step(Ended{})
 			}
 		}
@@ -285,27 +346,42 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 		}
 		for id, n := range m.admits {
 			totalAdmits += n
-			if m.airs[id] > 1 {
-				repeats++ // a location legitimately read again after its card left
+			// A LOCATION, NOT A HAZARD (red team finding 4). This counted every
+			// card re-aired, and 35 of the 38 it reported were rail cards from
+			// a repeated burst — so the gate below could have stayed green with
+			// the rotation never once coming round, which is the exact case
+			// property 3 exists to tell apart from a double read. The same
+			// isRead the report counter uses, twelve lines up.
+			if m.airs[id] > 1 && isRead(id) {
+				repeats++
 			}
 		}
 		totalSteps += m.steps
+		stoppedEvents += m.whileStopped
 	}
 
 	// SILENCE IS A DISTINCT VERDICT (INST-2). Every one of these ran green
 	// against a station that never read anything, so the run's REACH is
 	// asserted, not assumed — and each figure names the property it feeds.
-	t.Logf("%d runs, %d steps: %d admissions, %d readings (%d reports, %d hazards), %d locations read more than once",
-		runs, totalSteps, totalAdmits, totalAirs, reportAirs, railAirs, repeats)
+	t.Logf("%d runs, %d steps: %d admissions, %d readings (%d reports, %d hazards), %d locations read more than once, %d events on a stopped station",
+		runs, totalSteps, totalAdmits, totalAirs, reportAirs, railAirs, repeats, stoppedEvents)
+	if stoppedEvents == 0 {
+		t.Error("not one event was ever stepped against a STOPPED station: property 6 and the producer's " +
+			"own stopped-station gate were never exercised, whatever the other figures say")
+	}
 	if reportAirs == 0 {
 		t.Error("no MAIN-TRACK card ever took the air: property 4 (the rail drains first) was never put to the test")
 	}
 	if railAirs == 0 {
 		t.Error("no HAZARD ever took the air: the rail was never exercised against the merged producer")
 	}
-	if repeats == 0 {
-		t.Error("no location was ever read a second time: property 3 (a report is never read twice) never " +
-			"had to distinguish a legitimate second turn from a double read, which is the whole difficulty")
+	// A FLOOR WITH ROOM IN IT. One occurrence would make this a presence check
+	// that a seed change could take to zero while still reading as a reach
+	// assertion; the case must be routine, not lucky.
+	if repeats < 20 {
+		t.Errorf("only %d LOCATION(s) were read a second time: property 3 (a report is never read twice) "+
+			"barely had to distinguish a legitimate second turn from a double read, which is the whole "+
+			"difficulty. Lengthen the runs or widen the rotation until this case is routine", repeats)
 	}
 }
 
