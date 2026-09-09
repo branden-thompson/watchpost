@@ -5,6 +5,7 @@ const bandRecordCap
 const breakingGap
 const breakingHold
 const burstHeadGap
+const burstKey
 const burstTailGap
 const coopsRatePerSec
 const debugAddrDefault
@@ -29,6 +30,9 @@ const narrateRead
 const numNarrationClasses
 const publishCoalesce
 const pumpBacklog
+const radioDebugEnv
+const radioDebugMax
+const radioDebugNameMax
 const readingHoldMax
 const readingHoldPerRune
 const recentAlertsEvery
@@ -38,9 +42,9 @@ const recentPublishCoalesce
 const recentStartDelay
 const recentStartStagger
 const releaseAPI
-const releaseEvery
 const scheduleTick
 const systemVoice
+const testEventLife
 const tickerEvery
 const tickerRotate
 const tickerSeenWindow
@@ -51,6 +55,7 @@ func (*bandRecord).has
 func (*bandRecord).note
 func (*bandRecord).recent
 func (*director).Run
+func (*director).abandonOnAir
 func (*director).admit
 func (*director).first
 func (*director).heldRead
@@ -92,8 +97,11 @@ func (*executors).runCue
 func (*executors).runRelease
 func (*executors).runTune
 func (*executors).speak
+func (*injectQueue).readyLocked
 func (*injectQueue).take
 func (*injectQueue).take
+func (*injectQueue).wake
+func (*injectQueue).wake
 func (*livePipelines).attachDeck
 func (*livePipelines).attachDiagnostics
 func (*livePipelines).buildDirector
@@ -119,6 +127,7 @@ func (*livePipelines).setup
 func (*livePipelines).sources
 func (*livePipelines).startPipelines
 func (*livePipelines).stopAll
+func (*livePipelines).testLocation
 func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
@@ -180,12 +189,14 @@ func (*radioDeck).discoverVoices
 func (*radioDeck).duck
 func (*radioDeck).epoch
 func (*radioDeck).escalate
+func (*radioDeck).fault
 func (*radioDeck).followMount
 func (*radioDeck).installVoice
 func (*radioDeck).label
 func (*radioDeck).listVoices
 func (*radioDeck).logStatus
 func (*radioDeck).noteDirectories
+func (*radioDeck).onClipSpent
 func (*radioDeck).onSilence
 func (*radioDeck).onStatus
 func (*radioDeck).overlay
@@ -226,6 +237,7 @@ func (*radioDeck).watchlistDwell
 func (*radioDeck).watchlistLang
 func (*reader).openTone
 func (*reader).readPart
+func (*reader).reportSilentTone
 func (*recentPipeline).hydrateHourly
 func (*recentPipeline).startStaggered
 func (*recentPipeline).stop
@@ -287,6 +299,9 @@ func RunDashboard
 func abbreviateHome
 func alertKeysOf
 func alertNarration
+func alertTonePCM
+func allFabricated
+func allScenarioKeys
 func applySetup
 func applyThemes
 func arrivalsOf
@@ -313,6 +328,7 @@ func configLocations
 func coveragePhrase
 func credits
 func debugAddr
+func debugMux
 func debugScenarios
 func debugScenarios
 func defaultLocation
@@ -340,10 +356,13 @@ func halfFor
 func holdRest
 func indexKey
 func init
+func injectedEvents
 func itemsOf
 func itoaN
+func laneForKey
 func laneItems
 func laneRowsPerTab
+func laneScenarios
 func lastLineIndex
 func live
 func loadSeen
@@ -382,7 +401,9 @@ func programmeReturnLine
 func providerEndpoints
 func pruneDumps
 func radioDebugLog
+func radioDebugName
 func radioDebugOn
+func radioDebugPath
 func reachMiOf
 func readScript
 func recentTiers
@@ -406,6 +427,7 @@ func saveCast
 func savePreference
 func saveRadioMode
 func saveTones
+func scenarioKeyFor
 func scopeEvents
 func scriptText
 func scriptsDir
@@ -423,7 +445,6 @@ func settingsRoles
 func sharesAnOutput
 func sleepCtx
 func snapshotBytes
-func spokenList
 func spokenName
 func spokenWhen
 func spokenWindow
@@ -439,6 +460,9 @@ func subjectOf
 func suggestHook
 func tapeHead
 func tellUnder
+func testCard
+func testHead
+func testLine
 func tickerCategory
 func tickerMuteState
 func tickerRadiusState
@@ -446,6 +470,7 @@ func tickerState
 func timeRender
 func toKeyMap
 func toSevereRow
+func toneClassOfEvent
 func toneClasses
 func toneFromView
 func toneView
@@ -494,6 +519,7 @@ type reader
 type recentPipeline
 type releaseWatch
 type runEffect
+type scenario
 type schedule
 type seenStore
 type severeDeck

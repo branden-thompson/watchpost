@@ -152,6 +152,7 @@ func NewDataTableRowFromLayout(terminalWidth int, definition *DataTableDefinitio
 		badgeGutter:   4,    // Default 4-space gutter
 		renderBadge:   true, // Default to rendering badges
 		formatter:     rendering.NewTextFormatter(),
+		noAutoStyle:   definition.NoAutoStyle,
 	}
 }
 

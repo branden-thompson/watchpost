@@ -44,6 +44,64 @@ graph TB
 
 **The one enforced arrow:** `modes/*` imports `platform/snapshot` and never any `domains/*` package (import-direction lint, Makefile `verify`). Everything M5 needs is structural.
 
+### 1.1 What is a provider, and what is not (FR-7.1, HUM LEAD 2026-09-08)
+
+**A `snapshot.Provider` is location-scoped hazard data that merges into the snapshot.** The interface
+says so: `ID()`, `Domains() []string`, `Fetch(ctx, FetchReq) (Fragment, error)`. If a source has no
+domain, no location and no fragment, it is not a provider, and putting it behind the seam means
+inventing all three — which makes the seam mean less rather than more.
+
+**A network call is not a provider merely for being a network call.** The named exception today is
+`app/release.go`: it asks GitHub whether a newer release of the app exists, and says so or says
+nothing. It is opt-in (`update_check`), it is redacted like any other fetch, and it appears in `[S]`'s
+host table because it goes through `httpx` — which is what made it *look* like a feed.
+
+**The exception is bounded, and the bound is the point.** It asks **once, at startup**, and is then
+done. It used to poll hourly, and that poller — a goroutine, an interval, a cancellation path — was
+the shape of a provider on something that is not one. Deleting it put the ruling in the code instead
+of only in this paragraph, and retired the P10 exemption that the unbounded loop had required.
+`TestTheReleaseCheckAsksExactlyOnceAndOptingOutAsksNever` pins both halves.
+
+**What this gives up, recorded so it is weighed rather than rediscovered:** a dashboard left running
+for weeks will not notice a release published while it was up. Accepted because acting on the notice
+needs a restart anyway. If it ever proves wrong the fix is a re-check when `[S]` opens — not a timer.
+
+**This rule is repeated in `docs/extending.md`**, above the add-a-provider walkthrough, because that is the page someone adding a feed opens and this one is not.
+
+**Before adding another non-provider fetch:** say here why it is not hazard data, state its bound, and
+make that bound reachable by a test. F-3 was filed because this file is *"the precedent six new feeds
+will copy"*, and a rule nobody writes down is copied wrong.
+
+### 1.2 Where files live, and why the two roots differ (FR-7.2, HUM LEAD 2026-09-08)
+
+**Config is XDG on every platform. Cache is native on every platform.** That is deliberate, it is not
+symmetrical, and until now nothing said so — which is why the layout reads as an accident.
+
+| | Path | Owner |
+|---|---|---|
+| Config | `$XDG_CONFIG_HOME/watchpost/` → `~/.config/watchpost/` **on macOS too** | `platform/config.Path()` |
+| Cache | `os.UserCacheDir()/watchpost/<name>` — `~/Library/Caches` on macOS, `~/.cache` on Linux | `app.userCacheSubdir` |
+
+The cache subdirs are `http`, `piper`, `profiles`, `ticker` and `debug`, all from that one builder.
+
+**Why they are not merged into a single `~/.watchpost/`.** A cache is meant to be **disposable and
+reclaimable** — that is what a cache directory *is*, and a Piper voice is ~63 MB. One combined tree
+can only be one of two things, and both are worse: a directory a listener clears to reclaim space,
+taking `config.toml` with it; or a directory no OS tool will ever reclaim, holding voices forever.
+The migration cost (stranded voices re-downloading silently) is real but was not what decided it.
+
+**Why config is XDG even on macOS.** `~/.config` is where someone editing a TOML file by hand looks,
+on any platform; `~/Library/Application Support` is where an app puts things a user is not expected
+to open. `config.toml` is meant to be opened. Moving it now would strand every existing install for a
+convention nobody was asking for.
+
+**If you are adding a new file, it goes under one of these two roots** — through `config.Path()` or
+`userCacheSubdir`, never a third root and never a hand-built path. Ask which one it is by asking
+whether losing it costs the listener anything they typed.
+
+**Displaying any of these paths is a separate question with its own rule:** a full path names the
+user, so it goes through `abbreviateHome` (`app/dump.go:263`). See FR-7.5.
+
 ## 2. Snapshot contract (platform/snapshot)
 
 ```go

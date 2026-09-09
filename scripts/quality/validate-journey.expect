@@ -140,6 +140,41 @@ proc tabTo {label name} {
 	step $name 0
 }
 
+# readableTab LEAVES THE WINDOW ON A CATEGORY THAT HAS AN EVENT, focused and
+# ready to read — the precondition the read step used to assume.
+#
+# The probe is opening a record: the title stamp carries "· n / N" only while one
+# is open (severe.go:255), so a match proves the tab is populated AND that a row
+# is focused. On a miss it presses Right — never Escape, which on an empty tab
+# would close the WINDOW rather than a record that never opened, and send the
+# next three steps to the dashboard to fail as a mystery.
+proc readableTab {name} {
+	for {set i 0} {$i < 4} {incr i} {
+		repaint
+		send "\r"
+		set open 0
+		for {set j 0} {$j < 2} {incr j} {
+			repaint
+			expect -timeout 4 -re {· [0-9]+ / [1-9]} { set open 1; break } timeout { }
+		}
+		if {$open} {
+			# ONE STEP, ONE LINE. Backing out of the record is part of THIS
+			# precondition, not a step of its own: routing it through seeAfter
+			# logged a second row, and — worse — logged a FAIL that the outer
+			# `step $name 1` then contradicted on the next line.
+			send "\x1b"
+			for {set k 0} {$k < 4} {incr k} {
+				repaint
+				expect -timeout 5 -re "Total Category Events" { step $name 1; return } timeout { }
+			}
+			step $name 0
+			return
+		}
+		send "\x1b\[C"
+	}
+	step $name 0
+}
+
 proc repaint {} {
 	global spawn_out
 	catch {exec stty cols 132 < $spawn_out(slave,name)}
@@ -223,17 +258,29 @@ seeAfter "\r" "Back|Recorded|Declared|Magnitude|No active" "P1 enter opens a rec
 # instead of surfacing two steps later as a mystery.
 send "\x1b"; sleep 1
 seeAfter "" "Total Category Events" "P1 esc backs out of the record and the window stays open"
-tabTo "Warn" "P1 back on Warnings for the read"
-# WHAT THIS STEP STILL DEPENDS ON, SAID RATHER THAN LEFT TO BE REDISCOVERED: the
-# tab it reads from must HAVE a focused event. Nothing here establishes that —
-# the record step above tolerates an empty tab on purpose, so an empty Warnings
-# makes this fail as a data condition rather than a defect. Establishing it needs
-# an assertion about what is NOT on screen ("No active warnings events"), and
-# this harness has no honest absence check: it cannot force a dependable redraw,
-# so "the pattern did not arrive" and "the pattern is not there" are one
-# observation. Carried as a follow-up rather than papered over with a tolerance,
-# because a tolerance here would put this step back in the class the rest of this
-# block was just taken out of.
+# THE READ STEP ESTABLISHES ITS OWN PRECONDITION (R4.3, F-44).
+#
+# It used to tabTo "Warn" and read, which is a bet that the national Warnings
+# feed happened to be non-empty at that minute. When it was not, `space` did
+# nothing and the READ step failed — reporting a defect where there was only a
+# quiet feed, in the one block that had just been taken out of that class.
+#
+# The blocker recorded here was that establishing "this tab has an event" seemed
+# to need an assertion about what is NOT on screen, and this harness cannot make
+# one: it cannot force a dependable redraw, so "the pattern did not arrive" and
+# "the pattern is not there" are one observation.
+#
+# THE PRECONDITION IS POSITIVE, so no absence check is needed. Opening a record
+# puts the count in the window's title stamp — "Warnings · 1 / 9", severe.go:255,
+# drawn ONLY while a record is open — so "· n / N" with N at least one proves,
+# in a single pattern that must ARRIVE, that the tab has an event and that one
+# of them is focused. An empty tab draws no stamp and the probe moves on: the
+# same evidence, read the way round this harness can actually read it.
+#
+# It walks the tabs rather than naming one, so the read runs against whichever
+# category the feed has, and fails only when EVERY category is empty — a real
+# condition, reported as itself.
+readableTab "P0 a category with an event, focused and ready to read"
 seeAfter " " "EVENT · |PLAYING|Reading" "P1 space reads the focused event over the radio (the panel shows EVENT ·)"
 send "\x1b"; sleep 1; send "\x1b"; repaint
 seeAfter "" "R E C E N T" "P0 esc esc closes the window"

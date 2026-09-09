@@ -1,0 +1,6 @@
+1	app/emergency_order_test.go	staticcheck/QF1011
+1	app/executors_test.go	govet
+1	domains/radio/player/mount_diag_test.go	errcheck
+1	domains/radio/stream/directory.go	staticcheck/QF1001
+1	modes/tty/journey_labels_test.go	staticcheck/QF1001
+1	platform/lineup/effectset_test.go	staticcheck/SA1019

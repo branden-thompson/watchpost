@@ -4,6 +4,9 @@ package render
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
+	"sync"
 
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
@@ -96,6 +99,12 @@ type Glyphs struct {
 	// text is cut or listed. All go through the glyph set so --ascii needs no
 	// special case anywhere (Task 4.9's glyph parity).
 	Up, Down, DropDown, Rail, RailCar, Ellipsis, Bullet, Stop string
+	// Rule is a horizontal rule a WINDOW draws inside itself — a divider over
+	// an alert, the fill between a modal's title and its stamp. It is not the
+	// panel's border, which PanelColored owns and switches for itself.
+	// Minus pairs with a plain "+" on the watchlist chips and is U+2212, not a
+	// hyphen, so the two marks are the same width. Heart is the About line.
+	Rule, Minus, Heart string
 }
 
 // Glyphs resolves the mark set for these options. Under --ascii the play
@@ -105,11 +114,11 @@ func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
 		return Glyphs{Pointer: ">", Play: "*", Pause: "=", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},
 			OK: "+", Fail: "x", Note: "~", Cursor: "_", Fill: ".", Dash: "-", Dot: "|",
-			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#"}
+			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#", Rule: "-", Minus: "-", Heart: "<3"}
 	}
 	return Glyphs{Pointer: "›", Play: "▶", Pause: "‖", Repeat: "∞", Fire: "◆", Alert: "⚠", Seismic: [3]string{"○", "●", "◉"},
 		OK: "✔", Fail: "✘", Note: "♪", Cursor: "▌", Fill: "░", Dash: "—", Dot: "·",
-		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■"}
+		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■", Rule: "─", Minus: "−", Heart: "♥"}
 }
 
 // asciiKey names an arrow key in words for a chip under --ascii — the one
@@ -254,4 +263,36 @@ func (o Opts) TrendGlyph(trend string) string {
 		return Tint(down, Tok(TrendDown))
 	}
 	return ""
+}
+
+// asciiMarks maps every unicode mark to its ASCII form, derived from the two
+// sets rather than listed beside them: a mark added to Glyphs is covered the
+// day it lands, which is the failure F-47 describes.
+var asciiMarks = sync.OnceValue(func() *strings.Replacer {
+	uni, asc := reflect.ValueOf(Opts{}.Glyphs()), reflect.ValueOf(Opts{ASCII: true}.Glyphs())
+	var pairs []string
+	for i := range uni.NumField() {
+		switch u, a := uni.Field(i), asc.Field(i); u.Kind() {
+		case reflect.String:
+			pairs = append(pairs, u.String(), a.String())
+		case reflect.Array:
+			for j := range u.Len() {
+				pairs = append(pairs, u.Index(j).String(), a.Index(j).String())
+			}
+		}
+	}
+	return strings.NewReplacer(pairs...)
+})
+
+// Marks rewrites text that was COMPOSED WITHOUT VIEW OPTIONS into this
+// frame's mark set — a keymap's static help string, a Producer's ticker head.
+// Those are the strings that cross the glyph boundary already built (F-47),
+// and they are the only ones that need this: anything a renderer composes
+// itself takes its marks from Glyphs directly, where the mark is chosen once
+// with the layout around it rather than substituted afterwards.
+func (o Opts) Marks(s string) string {
+	if !o.ASCII {
+		return s
+	}
+	return asciiMarks().Replace(s)
 }

@@ -3,6 +3,8 @@ package cast
 import (
 	"slices"
 	"strings"
+
+	"github.com/branden-thompson/watchpost/platform/category"
 )
 
 // The alert tone's class: what a listener hears BEFORE the words, saying which
@@ -30,6 +32,12 @@ const (
 	ClassAdvisory
 	ClassStatement
 	ClassStorm
+	// ClassEmergency is the Weather Service's highest-urgency product — leave,
+	// now. It reuses the dual tone and is told apart by COUNT: three, where a
+	// warning is one (#18, HUM LEAD 2026-09-07). Repetition is the one
+	// dimension this taxonomy did not use, so it costs nothing to design, tune,
+	// or teach a listener.
+	ClassEmergency
 
 	numClasses
 )
@@ -51,6 +59,7 @@ const (
 // sounds its ratified preset.
 type class struct {
 	toneRank int // how much attention this class's tone demands; higher is more severe
+	repeats  int // how many times the preset sounds; 0 means once
 	key      string
 	label    string
 	preset   string
@@ -63,6 +72,52 @@ var classes = [numClasses]class{
 	ClassAdvisory:  {key: "advisory", label: "Advisories", preset: PresetClassic, toneRank: 3},
 	ClassStatement: {key: "statement", label: "Special Statements", preset: PresetSoftChime, toneRank: 2},
 	ClassStorm:     {key: "storm", label: "Marine", preset: PresetLowSweep, toneRank: 1},
+	// THREE, and the count is the signal. Same preset as a warning; a listener
+	// with no screen hears how many and knows before a word is spoken.
+	ClassEmergency: {key: "emergency", label: "Emergency Orders", preset: PresetDualTone, toneRank: 7, repeats: 3},
+}
+
+// toneClassOf is the ONE declared mapping from a hazard category to the tone it
+// sounds. #18 happened because category.Emergency was added at C-2 and this
+// relationship existed nowhere — the feed, the window and the read ladder were
+// all taught, and the tone was not.
+//
+// A function, not a global, per the codebase's table convention (P10-06).
+// A category absent here fails TestEveryCategoryThatReachesAReadHasATone rather
+// than falling through to ClassWarning, which is what made the omission silent.
+func toneClassOf() map[category.Category]Class {
+	return map[category.Category]Class{
+		category.Emergency:  ClassEmergency,
+		category.Warnings:   ClassWarning,
+		category.Watches:    ClassWatch,
+		category.Advisories: ClassAdvisory,
+		category.Statements: ClassStatement,
+		category.Disasters:  ClassDisaster,
+		category.Marine:     ClassStorm,
+		// category.Forecasts is deliberately absent: a forecast is not an alert
+		// and never reaches the read ladder. The test carries that reason too.
+	}
+}
+
+// ClassFor is the tone class a hazard category sounds; ok is false for a
+// category no read can carry.
+//
+// PREFER THIS OVER Classify WHERE A CATEGORY IS IN HAND. Classify reads a
+// product's own words, which is all the breaking path has; a caller holding a
+// category already knows the answer more precisely, and the civil-emergency
+// family is exactly the case where the words do not carry it.
+func ClassFor(c category.Category) (Class, bool) {
+	cls, ok := toneClassOf()[c]
+	return cls, ok
+}
+
+// ToneRepeats is how many times c's preset sounds. One, unless the class earns
+// more — today only ClassEmergency does.
+func ToneRepeats(c Class) int {
+	if !c.valid() || classes[c].repeats == 0 {
+		return 1
+	}
+	return classes[c].repeats
 }
 
 // ToneRank is how much attention this class's tone demands — HIGHER IS MORE

@@ -35,6 +35,10 @@ type toneStampVoice struct {
 
 func (v *toneStampVoice) duck() {}
 
+// fault is inert here: the seam exists so a read can report a tone with no
+// words (FR-9.2).
+func (v *toneStampVoice) fault(string) {}
+
 func (v *toneStampVoice) tone(cast.Class) time.Duration {
 	v.at = time.Now()
 	v.cancel() // the measured path ends here; the rest of the sequence must not run

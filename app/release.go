@@ -2,7 +2,7 @@ package app
 
 // release.go — "is there a newer Watchpost?" (0.14.0).
 //
-// One unauthenticated GET to the GitHub releases API, once an hour, through the
+// One unauthenticated GET to the GitHub releases API, once at startup, through the
 // same client every provider uses — so it is paced, cached, retried and
 // redacted like any other fetch, and it shows up in [S]'s own table as a host
 // with traffic and no provider, which is exactly what it is.
@@ -31,22 +31,22 @@ import (
 // releaseAPI is the latest-release endpoint for this repository.
 const releaseAPI = "https://api.github.com/repos/branden-thompson/watchpost/releases/latest"
 
-// releaseEvery is how often the check runs. An hour is far inside GitHub's
-// unauthenticated budget (60 requests an hour per address) and far more often
-// than releases happen; the point is that a long-running dashboard notices,
-// not that it notices quickly.
-const releaseEvery = time.Hour
-
 // releaseWatch holds the last answer, for [S] to read.
 type releaseWatch struct {
 	mu      sync.Mutex
 	running string // this binary, as it was stamped
 	latest  string // the newest published tag, "" until one is known
 	on      bool   // the listener asked for the check (config: update_check)
+	// api is the endpoint, overridable ONLY by a test. It exists because the
+	// one-shot bound (FR-7.1) is not reachable otherwise: `start` is the thing
+	// being bounded, and with a hardcoded URL a test can only exercise
+	// `checkAt` and then claim something about `start` that it never ran. That
+	// claim was written, and two planted defects walked straight past it.
+	api string
 }
 
 func newReleaseWatch(running string, on bool) *releaseWatch {
-	return &releaseWatch{running: running, on: on}
+	return &releaseWatch{running: running, on: on, api: releaseAPI}
 }
 
 // Enabled reports whether the check runs at all.
@@ -60,24 +60,36 @@ func (w *releaseWatch) Status() (running, latest string, behind bool) {
 	return w.running, w.latest, w.latest != "" && semverLess(w.running, w.latest)
 }
 
-// start polls until ctx ends. The first check runs at once so a listener who
-// opens [S] in the first minute sees an answer rather than a blank.
+// start asks ONCE, at startup, and is then done (FR-7.1, HUM LEAD 2026-09-08).
+//
+// It used to poll hourly, and that poller is what made this file look like a
+// data feed: a goroutine, an interval, a cancellation path — the shape of a
+// provider, on something that is not one. Deleting it is what makes the ruling
+// visible in the code rather than only in the architecture note.
+//
+// IT ALSO RETIRES A P10 EXEMPTION rather than carrying one. The ledger row for
+// this function was granted because an hourly ticker is "an unbounded event
+// loop by nature… no meaningful iteration count to bound it by". One check has
+// a bound of one.
+//
+// WHAT THIS GIVES UP, SAID PLAINLY: a dashboard left running for weeks will not
+// notice a release published while it was up. That was the old comment's stated
+// point. It is accepted because ACTING on the notice needs a restart anyway, so
+// once-at-startup reports it at the moment the listener can do something about
+// it. If that ever proves wrong, the fix is a re-check when [S] OPENS — not a
+// timer — and it needs a don't-refetch-within guard, which is a slice of the
+// state being deleted here. Recorded so the next person weighs it rather than
+// rediscovering it.
 func (w *releaseWatch) start(ctx context.Context, c *httpx.Client) {
 	if !w.on {
 		return // opt-in: no goroutine, no request, nothing to disclose
 	}
-	go func() {
-		// CHECKS ONCE FIRST, then on the interval. The immediate pass is stated
-		// here rather than passed to everyTick as a flag: a caller reading this
-		// can see when the first request goes out.
-		w.check(ctx, c)
-		everyTick(ctx, releaseEvery, func(time.Time) { w.check(ctx, c) })
-	}()
+	go w.check(ctx, c) // off the startup path; the answer lands when it lands
 }
 
 // check asks once. Every failure is silent by design — see the file header.
 func (w *releaseWatch) check(ctx context.Context, c *httpx.Client) {
-	w.checkAt(ctx, c, releaseAPI)
+	w.checkAt(ctx, c, w.api)
 }
 
 // checkAt is check against a given URL — the seam the tests point at a stub,

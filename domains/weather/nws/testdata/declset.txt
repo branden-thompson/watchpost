@@ -3,6 +3,7 @@ const ObsMaxKm
 const fetchConcurrency
 const gridTTL
 const inlandTTL
+const maxGrids
 const maxIDRunes
 const maxProseRunes
 const stationCandidates
@@ -40,6 +41,7 @@ func (gridSeries).first
 func New
 func NewMarine
 func conditionCode
+func decodeGridDoc
 func far
 func fillNote
 func foldDaily
@@ -57,7 +59,6 @@ type Provider
 type alertProps
 type gridDoc
 type gridInfo
-type gridMemo
 type gridSeries
 type obsStation
 type period

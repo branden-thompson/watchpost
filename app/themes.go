@@ -62,12 +62,10 @@ func setThemeHook(name string) error {
 	if !render.SetTheme(name) {
 		return fmt.Errorf("unknown theme %q", name)
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	cfg.Theme = name
-	return config.Save(cfg)
+	return config.Mutate(func(cfg *config.Config) error {
+		cfg.Theme = name
+		return nil
+	})
 }
 
 // setUIHook persists the WATCHPOST UI group — theme, units and clock — in ONE
@@ -85,13 +83,11 @@ func setUIHook(p tty.UIPrefs) error {
 	if p.Theme != "" && !render.SetTheme(p.Theme) {
 		return fmt.Errorf("unknown theme %q", p.Theme)
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	if p.Theme != "" {
-		cfg.Theme = p.Theme
-	}
-	cfg.Units, cfg.Clock = p.Units, p.Clock
-	return config.Save(cfg)
+	return config.Mutate(func(cfg *config.Config) error {
+		if p.Theme != "" {
+			cfg.Theme = p.Theme
+		}
+		cfg.Units, cfg.Clock = p.Units, p.Clock
+		return nil
+	})
 }

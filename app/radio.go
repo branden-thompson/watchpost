@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -45,6 +46,12 @@ type radioDeck struct {
 	voiceDir  string             // Piper install dir (Linux/Windows)
 	analyzer  *spectrum.Analyzer // visualizer bands from the engine's tap (UAT 92)
 	vizBuf    []float64          // one analysis window, reused per frame
+
+	// abandonRead ends the read on the air when its audio stops making
+	// progress (FR-9). Set where the Director is built, because the deck is
+	// constructed first and the Director takes it as its voice; nil in tests
+	// and in the pathless build.
+	abandonRead func(why string) bool
 
 	persistMode func(tty.RadioMode) error                      // saves the [m] pick (UAT 97); nil in tests
 	fire        func(snapshot.LocationRef) synth.FireReport    // the location's fire report for the broadcast (UAT 114); nil = skipped
@@ -109,6 +116,7 @@ func newRadioDeck(p *tea.Program, client *httpx.Client, provider *nws.Provider, 
 		return nil
 	}
 	d.engine.OnSilence(d.onSilence)
+	d.engine.OnClipSpent(d.onClipSpent)
 	d.engine.Trace(radioDebugLog)
 	d.analyzer, err = spectrum.New(player.OutputRate)
 	if err != nil {
@@ -234,6 +242,37 @@ func tuneList(stations []stream.Station, first stream.Station) ([]string, map[st
 func (d *radioDeck) onSilence(mount, _ string) {
 	radioDebugLog("relay:silent:" + mount)
 	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(mount)})
+}
+
+// onClipSpent says so when a read's watcher gave up on it (FR-9): the player was
+// still claiming to play after ten minutes of AIR time and was closed from under
+// it — a read that neither finished nor errored.
+//
+// IT IS NOT THE RELAY-FAULT WINDOW. That window offers other stations, which is
+// the right answer for a mount broadcasting silence and no answer at all for a
+// read: there is no other station to switch to, and the broadcast itself is
+// fine. This is the station's own detail line, where every other "could not
+// read" already goes.
+//
+// THE LISTENER IS TOLD WHAT HAPPENED, not what it means. Ten minutes of audio
+// that never ended has one honest description and no diagnosis this code can
+// offer.
+func (d *radioDeck) onClipSpent() {
+	radioDebugLog("read:clip:spent")
+	// THE READ GOES WITH THE CLIP (FR-9). The sequence is still running: it
+	// slept the line's computed length minutes ago and has been issuing further
+	// lines over a player that has now been closed from under it. Cancelling
+	// unwinds it onto the path a cut-short read already takes — the schedule
+	// advances and the bed comes back up — instead of leaving the arbiter
+	// occupied and the broadcast ducked under nothing.
+	//
+	// THE LISTENER IS TOLD ONLY IF THEY WERE HEARING IT. abandonRead reports
+	// whether there was a read on the air; a spent clip from a read that has
+	// already ended is a diagnostic, not something to put on the detail line.
+	if d.abandonRead != nil && !d.abandonRead("clip-spent") {
+		return
+	}
+	d.setDetail("a read did not finish and was ended")
 }
 
 // silentCandidates is what to offer instead of the mount that went quiet: every
@@ -462,7 +501,7 @@ func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voic
 	asm := snapshot.NewAssembler([]snapshot.LocationRef{ref}, []string{d.nws.ID()})
 	for _, kind := range []snapshot.FetchKind{snapshot.KindObs, snapshot.KindAlerts} {
 		if frag, err := d.nws.Fetch(ctx, snapshot.FetchReq{Kind: kind, Locations: []snapshot.LocationRef{ref}}); err == nil {
-			asm.Apply(frag)
+			asm.Apply(frag, nil) // a read-driven fetch, not the cycle that answers the row (see pipelines.go)
 		}
 	}
 	snap := asm.Snapshot()
@@ -575,7 +614,7 @@ func (d *radioDeck) tone(class cast.Class) time.Duration {
 	if radioDebugOn() {
 		d.debugLog("tone:" + class.Key()) // the live M4 instrument (perf-protocol.md §1 item 2)
 	}
-	tone := synth.AlertTone(synth.PresetByName(cast.ToneName(class)), synth.ToneRate)
+	tone := alertTonePCM(class)
 	_ = d.engine.PreviewAside(synth.ToneRate, bytes.NewReader(tone)) // the attention tone never drives the bars
 	return pcmDuration(tone, synth.ToneRate)
 }
@@ -586,6 +625,20 @@ func (d *radioDeck) pause()  { d.engine.PausePreview() }
 func (d *radioDeck) resume() { d.engine.ResumePreview() }
 
 func (d *radioDeck) stop() { d.engine.StopPreview() }
+
+// fault puts what went wrong where the operator reads it, and NOWHERE ELSE
+// (FR-9.2; HUM LEAD, 2026-09-08).
+//
+// NOT SPOKEN, and that is the ruling rather than an omission: an operational
+// message over the air is confusing, and the audience can do nothing about it.
+// A radio station in this position cuts to "we are experiencing technical
+// difficulties" and NOAA Weather Radio names an alternate frequency — both
+// infrastructure this app does not have. What it can do is tell the person who
+// can act.
+func (d *radioDeck) fault(why string) {
+	radioDebugLog("read:fault:" + why)
+	d.setDetail(why)
+}
 
 // discard drops a held line whose sequence ended while it waited.
 func (d *radioDeck) discard() { d.engine.DropHeld() }
@@ -792,11 +845,9 @@ func (d *radioDeck) debugLog(line string) { radioDebugLog(line) }
 // so the body lives here and the deck method delegates — one writer, two
 // callers, rather than two implementations of the same file format.
 func radioDebugLog(line string) {
-	path := os.Getenv("WATCHPOST_DEBUG_RADIO")
-	if path == "" {
-		return
+	if path := radioDebugPath(); path != "" {
+		writeRadioDebug(path, line)
 	}
-	writeRadioDebug(path, line)
 }
 
 // radioDebugOn reports whether the diagnostic is enabled, so a caller on a
@@ -806,9 +857,81 @@ func radioDebugLog(line string) {
 // that concatenation ran on every takeover whether or not anybody was
 // collecting the log. The diagnostic is off by default, so the allocation was
 // pure cost on the one path M4 measures.
-func radioDebugOn() bool { return os.Getenv("WATCHPOST_DEBUG_RADIO") != "" }
+func radioDebugOn() bool { return os.Getenv(radioDebugEnv) != "" }
 
+const (
+	radioDebugEnv = "WATCHPOST_DEBUG_RADIO"
+
+	// radioDebugMax is the size one log may reach before it is rotated. A 24/7
+	// process writing three to ten lines per event needs a ceiling, and eight
+	// mebibytes is days of them.
+	radioDebugMax = 8 << 20
+
+	// radioDebugNameMax bounds the name the environment may choose.
+	radioDebugNameMax = 32
+)
+
+// radioDebugName is the file name the environment asked for, and "" when what
+// it asked for is not a name.
+//
+// A NAME, NOT A PATH (FR-9.2). The variable took a path and the writer appended
+// to it, so an unvalidated append-anywhere file write was one environment
+// variable away on a process that runs all day — and the plan's first revision
+// had it ON BY DEFAULT. The variable now picks WHICH log under the cache root,
+// which is the only part of the decision a caller has any business making.
+// Anything else falls back to the default name rather than failing, because a
+// diagnostic that refuses to start is a diagnostic nobody collects.
+//
+// The rule is debugAddr's, one file down: the environment may choose the
+// harmless half of the decision and nothing else.
+func radioDebugName(v string) string {
+	if v == "" || v == "1" || len(v) > radioDebugNameMax {
+		return "radio"
+	}
+	for _, r := range v { // bounded by the name (P10-02)
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-', r == '_':
+		default:
+			return "radio" // a separator, an upper case, a dot: not a name
+		}
+	}
+	return v
+}
+
+// radioDebugPath is where the diagnostic goes, or "" when it is off:
+// <OS cache dir>/watchpost/debug/<name>.log.
+//
+// UNDER THE CACHE ROOT, with the other things this app writes and deletes
+// freely. "" when the OS gives no cache directory, which turns the diagnostic
+// off rather than guessing at a location.
+func radioDebugPath() string {
+	v, ok := os.LookupEnv(radioDebugEnv)
+	if !ok || v == "" {
+		return ""
+	}
+	dir := userCacheSubdir("debug")
+	if dir == "" {
+		return ""
+	}
+	return filepath.Join(dir, radioDebugName(v)+".log")
+}
+
+// writeRadioDebug appends one timestamped line, rotating the log once it has
+// grown past its ceiling.
+//
+// ONE GENERATION. The previous log is kept as .1 and the one before it is
+// dropped: a diagnostic is read while the thing it describes is still fresh,
+// and keeping more is disk nobody asked for on a process that runs all day.
+//
+// 0600 ON BOTH THE FILE AND THE DIRECTORY. It carries station names, mount
+// URLs and the listener's own locations.
 func writeRadioDebug(path, line string) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return
+	}
+	if fi, err := os.Stat(path); err == nil && fi.Size() >= radioDebugMax {
+		_ = os.Rename(path, path+".1") // best effort: a failed rotation must not stop the log
+	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return
@@ -877,4 +1000,23 @@ func (d *radioDeck) escalate(reason string) {
 	// shows the fall-through alone — which is the honest answer: read the
 	// report, because there is nothing else to tune to.
 	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(d.engine.Status().Mount)})
+}
+
+// alertTonePCM is a class's attention signal, whole.
+//
+// A class sounds its ratified preset (MVS-D-26) — and, since #18, sounds it a
+// ratified NUMBER OF TIMES. An evacuation order is three dual tones where a
+// warning is one, so a listener with no screen hears how many and knows what
+// kind of thing is coming before a word is spoken.
+func alertTonePCM(class cast.Class) []byte {
+	one := synth.AlertTone(synth.PresetByName(cast.ToneName(class)), synth.ToneRate)
+	n := cast.ToneRepeats(class)
+	if n <= 1 || len(one) == 0 {
+		return one
+	}
+	out := make([]byte, 0, len(one)*n)
+	for range n { // bounded by the class's ratified count (P10-02)
+		out = append(out, one...)
+	}
+	return out
 }

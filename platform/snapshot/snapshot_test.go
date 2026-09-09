@@ -34,14 +34,14 @@ func TestAssemblerMergesFireFromEveryProvider(t *testing.T) {
 	a.Apply(Fragment{Provider: "hms", Kind: KindFire, PerLocation: map[LocationKey]PartialData{k: {Fire: &FireState{Hotspots: []Hotspot{
 		{Lat: 33.29, Lon: -117.24, DetectedAt: day, FRPMW: f(20), DistanceKm: f(6), Source: SourceInfo{Provider: "hms"}},
 		{Lat: 33.10, Lon: -117.10, DetectedAt: day, FRPMW: f(9), DistanceKm: f(22), Source: SourceInfo{Provider: "hms"}},
-	}}}}})
+	}}}}}, nil)
 	a.Apply(Fragment{Provider: "firms", Kind: KindFire, PerLocation: map[LocationKey]PartialData{k: {Fire: &FireState{Hotspots: []Hotspot{
 		{Lat: 33.291, Lon: -117.241, DetectedAt: day.Add(time.Hour), FRPMW: f(61.5), DistanceKm: f(6), Source: SourceInfo{Provider: "firms"}}, // the same fire, stronger
-	}}}}})
+	}}}}}, nil)
 	a.Apply(Fragment{Provider: "wfigs", Kind: KindFire, PerLocation: map[LocationKey]PartialData{k: {Fire: &FireState{Incidents: []Incident{
 		{Name: "Timber", Acres: f(12915), Source: SourceInfo{Provider: "wfigs", IssuedAt: day}},
 		{Name: "LAC-1", Source: SourceInfo{Provider: "wfigs", IssuedAt: day}},
-	}}}}})
+	}}}}}, nil)
 	fs := a.Snapshot().Locations[0].Fire
 	if len(fs.Hotspots) != 2 || *fs.Hotspots[0].FRPMW != 61.5 || fs.Hotspots[0].Source.Provider != "firms" || *fs.Hotspots[1].DistanceKm != 22 {
 		t.Fatalf("union, deduped to the strongest reading, nearest first: %+v", fs.Hotspots)
@@ -50,7 +50,7 @@ func TestAssemblerMergesFireFromEveryProvider(t *testing.T) {
 		t.Fatalf("incidents largest first: %+v", fs.Incidents)
 	}
 	// HMS reports nothing next cycle: only its part goes; FIRMS's stays.
-	a.Apply(Fragment{Provider: "hms", Kind: KindFire, PerLocation: map[LocationKey]PartialData{k: {Fire: &FireState{}}}})
+	a.Apply(Fragment{Provider: "hms", Kind: KindFire, PerLocation: map[LocationKey]PartialData{k: {Fire: &FireState{}}}}, nil)
 	fs = a.Snapshot().Locations[0].Fire
 	if len(fs.Hotspots) != 1 || fs.Hotspots[0].Source.Provider != "firms" || len(fs.Incidents) != 2 {
 		t.Fatalf("a provider replaces only its own contribution: %+v", fs)
@@ -81,10 +81,10 @@ func TestAssemblerMergesFragmentsLastWriteWins(t *testing.T) {
 
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1, PerLocation: map[LocationKey]PartialData{
 		k: {Current: &Conditions{Temp: f64(20.0), ObservedAt: t1}},
-	}})
+	}}, nil)
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1.Add(time.Minute), PerLocation: map[LocationKey]PartialData{
 		k: {Current: &Conditions{Temp: f64(21.5), ObservedAt: t1.Add(time.Minute)}},
-	}})
+	}}, nil)
 
 	snap := a.Snapshot()
 	if got := snap.Locations[0].ByProvider["nws"].Current.Temp; got == nil || *got != 21.5 {
@@ -98,8 +98,8 @@ func TestFailedFragmentNeverOverwrites(t *testing.T) {
 	t1 := time.Now().UTC()
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1, PerLocation: map[LocationKey]PartialData{
 		k: {Current: &Conditions{Temp: f64(20)}},
-	}})
-	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1.Add(time.Minute), Err: assertErr("boom")})
+	}}, nil)
+	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1.Add(time.Minute), Err: assertErr("boom")}, nil)
 
 	snap := a.Snapshot()
 	if got := snap.Locations[0].ByProvider["nws"].Current.Temp; got == nil || *got != 20 {
@@ -128,7 +128,7 @@ func TestSnapshotsAreImmutablePublications(t *testing.T) {
 	s1 := a.Snapshot()
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: time.Now(), PerLocation: map[LocationKey]PartialData{
 		k: {Current: &Conditions{Temp: f64(30)}},
-	}})
+	}}, nil)
 	if s1.Locations[0].ByProvider["nws"].Current != nil {
 		t.Fatal("earlier snapshot must not see later writes (immutability)")
 	}
@@ -145,7 +145,7 @@ func TestConcurrentApplyAndReadIsRaceFree(t *testing.T) {
 			v := float64(n)
 			a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: time.Now(), PerLocation: map[LocationKey]PartialData{
 				k: {Current: &Conditions{Temp: &v}},
-			}})
+			}}, nil)
 		}(i)
 		go func() {
 			defer wg.Done()
@@ -216,9 +216,9 @@ func TestFailedFragmentStillAppliesPartialData(t *testing.T) {
 	t1 := time.Now().UTC()
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1, PerLocation: map[LocationKey]PartialData{
 		kb: {Current: &Conditions{Temp: f64(15)}},
-	}})
+	}}, nil)
 	a.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: t1.Add(time.Minute), Err: assertErr("B: 404"),
-		PerLocation: map[LocationKey]PartialData{ka: {Current: &Conditions{Temp: f64(20)}}}})
+		PerLocation: map[LocationKey]PartialData{ka: {Current: &Conditions{Temp: f64(20)}}}}, nil)
 	snap := a.Snapshot()
 	if got := snap.Locations[0].ByProvider["nws"].Current; got == nil || *got.Temp != 20 {
 		t.Fatal("the successful location in a partially failed fragment must land")
@@ -239,7 +239,7 @@ func TestSetLocationsKeepsDataForKeptLocations(t *testing.T) {
 	asm := NewAssembler([]LocationRef{a, b}, []string{"nws"})
 	asm.Apply(Fragment{Provider: "nws", Kind: KindObs, FetchedAt: time.Now(), PerLocation: map[LocationKey]PartialData{
 		Key(a): {Current: &Conditions{Temp: f64(20)}}, Key(b): {Current: &Conditions{Temp: f64(15)}},
-	}})
+	}}, nil)
 	added, removed := asm.SetLocations([]LocationRef{c, a}) // C on top, B dropped
 	if len(added) != 1 || added[0].Label != "C" || len(removed) != 1 || removed[0].Label != "B" {
 		t.Fatalf("added %v removed %v", added, removed)
@@ -305,7 +305,7 @@ func TestFireForAndProviderStatusReadNarrowly(t *testing.T) {
 	}
 	at := time.Now().UTC()
 	a.Apply(Fragment{Provider: "hms", Kind: KindFire, FetchedAt: at, PerLocation: map[LocationKey]PartialData{
-		Key(ref): {Fire: &FireState{AsOf: at, Hotspots: []Hotspot{{Lat: 33.3, Lon: -117.3, DistanceKm: f64(11)}}}}}})
+		Key(ref): {Fire: &FireState{AsOf: at, Hotspots: []Hotspot{{Lat: 33.3, Lon: -117.3, DistanceKm: f64(11)}}}}}}, nil)
 	if fs, _, _, _ := a.FireFor(ref); fs.AsOf.IsZero() || len(fs.Hotspots) != 1 {
 		t.Fatalf("after a fire fragment: %+v", fs)
 	}
@@ -329,7 +329,7 @@ func TestAssemblerMergesSeismicAndIsolates(t *testing.T) {
 	felt := 42
 	a.Apply(Fragment{Provider: "usgs", Kind: KindSeismic, PerLocation: map[LocationKey]PartialData{k: {Seismic: &SeismicState{
 		AsOf: now, Quakes: []Quake{{Mag: 4.0, Place: "Coso", DistanceKm: 52, Bearing: "NNW", Felt: &felt}},
-	}}}})
+	}}}}, nil)
 	ss := a.Snapshot().Locations[0].Seismic
 	if ss == nil || ss.AsOf != now || len(ss.Quakes) != 1 || ss.Quakes[0].Mag != 4.0 || *ss.Quakes[0].Felt != 42 {
 		t.Fatalf("the seismic fragment must reach the published location: %+v", ss)
@@ -341,7 +341,7 @@ func TestAssemblerMergesSeismicAndIsolates(t *testing.T) {
 		t.Fatalf("the snapshot must not alias assembler state: %+v", again.Quakes[0])
 	}
 	// A later fragment replaces the state (one provider, latest wins).
-	a.Apply(Fragment{Provider: "usgs", Kind: KindSeismic, PerLocation: map[LocationKey]PartialData{k: {Seismic: &SeismicState{AsOf: now.Add(time.Hour)}}}})
+	a.Apply(Fragment{Provider: "usgs", Kind: KindSeismic, PerLocation: map[LocationKey]PartialData{k: {Seismic: &SeismicState{AsOf: now.Add(time.Hour)}}}}, nil)
 	if ss := a.Snapshot().Locations[0].Seismic; ss == nil || len(ss.Quakes) != 0 {
 		t.Fatalf("a later fragment replaces the state (quiet now): %+v", ss)
 	}

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -97,6 +98,17 @@ func RunDashboard(version string, opt Options) error {
 	defer func() { cancel(); lp.stopAll() }()
 
 	if _, err := p.Run(); err != nil {
+		// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team,
+		// 2026-09-08). Piping or redirecting stdin surfaced "bubbletea: error
+		// opening TTY: … open /dev/tty: device not configured", which names a
+		// dependency the listener did not choose and no step they can take.
+		// Watchpost is a full-screen program: without a terminal it has nothing
+		// to draw on, and the fix is to run it in one.
+		if strings.Contains(err.Error(), "TTY") || strings.Contains(err.Error(), "/dev/tty") {
+			return fmt.Errorf("watchpost needs a terminal to draw in, and this one has no TTY " +
+				"(stdin looks piped or redirected). Run `watchpost` directly in a terminal window; " +
+				"for a one-shot text report that needs no terminal, use `watchpost report`")
+		}
 		return fmt.Errorf("dashboard failed: %w", err)
 	}
 	reportTiming(time.Duration(firstFullNanos.Load()))
@@ -139,8 +151,9 @@ type tickerPrefs struct {
 	muted  *atomic.Bool
 	radius *atomic.Int64
 	clock  *atomic.Int32
-	// updateCheck is the listener's opt-in to the hourly release check. Read
-	// once at wiring: it decides whether the poller exists at all.
+	// updateCheck is the listener's opt-in to the startup release check. Read
+	// once at wiring: it decides whether the check runs at all. There is no
+	// poller — FR-7.1 retired it.
 	updateCheck bool
 }
 
@@ -223,10 +236,15 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		SetUI:          setUI,
 		Units:          cfg.Units,
 		Clock:          cfg.Clock,
-		Hydrate:        lp.hydrate,                             // hourly forecast on demand for RECENT rows (UAT 72)
-		Credits:        credits(),                              // data-source credits, licence obligations included (UAT 75)
-		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW,          // B5: one owner for the emphasis threshold — the [fire] rules
-		SeismicDays:    seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
+		Hydrate:        lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
+		Credits:        credits(),                     // data-source credits, licence obligations included (UAT 75)
+		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
+		// THE SAME OWNER FOR THE TWO RINGS. The detail states each ring beside
+		// the list it admits, so the window and the spoken report cannot
+		// disagree about how far either looked.
+		FireRadiusKm:         fireRules(cfg.Fire).RadiusKm,
+		FireIncidentRadiusKm: fireRules(cfg.Fire).IncidentRadiusKm,
+		SeismicDays:          seismicRules(cfg.Seismic).LookbackDays, // 0.11.0: one owner for the lookback window — the [seismic] rules
 	}
 }
 
@@ -288,7 +306,11 @@ func (lp *livePipelines) buildDirector(send func(tea.Msg)) *director {
 	if lp.deck == nil {
 		return newDirector(nil, newMastercontrol(nil, send))
 	}
-	return newDirector(lp.deck, newMastercontrol(lp.deck, send))
+	nar := newDirector(lp.deck, newMastercontrol(lp.deck, send))
+	// THE DECK CAN END A READ, and this is the only place both exist: the deck
+	// is built first and the Director takes it as its voice (FR-9).
+	lp.deck.abandonRead = nar.abandonOnAir
+	return nar
 }
 
 // wireDeckWarnings lets the radio deck report a down relay directory as a
@@ -361,13 +383,16 @@ func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provid
 // whatever is on disk while the other platform's half — and every key this
 // build does not know — survives (FR-8, NFR-5).
 func saveCast(deck *radioDeck, v tty.CastView) error {
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	next := castFromView(v, castLoaded(cfg))
-	cfg = castToConfig(next, cfg)
-	if err := config.Save(cfg); err != nil {
+	// `next` ESCAPES THE TRANSACTION by capture, because the deck needs the
+	// value the write produced. It is the one caller of the six that cannot be
+	// expressed as edit(*Config) error alone — a second signature for one
+	// caller would be a second write path, which is what FR-1.1 removes.
+	var next cast.Config
+	if err := config.Mutate(func(cfg *config.Config) error {
+		next = castFromView(v, castLoaded(*cfg))
+		*cfg = castToConfig(next, *cfg)
+		return nil
+	}); err != nil {
 		return err
 	}
 	if deck != nil {
@@ -412,13 +437,15 @@ func saveRadioMode(mode tty.RadioMode) error {
 
 // savePreference loads, edits and saves the config — the one path for a
 // persisted UI preference (voice, radio mode).
+// savePreference is the no-error convenience over config.Mutate, for the
+// preference writes that cannot fail. It is an ADAPTER now, not a second write
+// path: it once called itself "the one path" while five siblings bypassed it,
+// which is the defect FR-1.1 closes.
 func savePreference(edit func(cfg *config.Config)) error {
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	edit(&cfg)
-	return config.Save(cfg)
+	return config.Mutate(func(cfg *config.Config) error {
+		edit(cfg)
+		return nil
+	})
 }
 
 // cacheDir is the on-disk tier of the HTTP cache (UAT 71): the OS cache
@@ -621,13 +648,15 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 	if err := invariant.Check(len(watch) <= 10, "watchlist cap is 10 (R-4)"); err != nil {
 		return err
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
-	cfg.Locations = configLocations(watch)
-	cfg.Recent = configLocations(recent) // UAT 96: the RECENT stack survives a restart
-	if err := config.Save(cfg); err != nil {
+	// LOCK ORDER: lp.mu -> config's. Held in that order here and nowhere in the
+	// reverse, and the edit below must never reach config.Load or config.Save —
+	// the config mutex is not reentrant. reloadCast's bare Load is the one to
+	// keep out of any edit closure.
+	if err := config.Mutate(func(cfg *config.Config) error {
+		cfg.Locations = configLocations(watch)
+		cfg.Recent = configLocations(recent) // UAT 96: the RECENT stack survives a restart
+		return nil
+	}); err != nil {
 		return err
 	}
 	// UAT 69: incremental — only the changed locations move; nothing that

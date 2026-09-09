@@ -13,6 +13,14 @@ import (
 // usefully than the certainty and wins when present. A quake reads its
 // review status (Reviewed, Automatic). Blank when nothing discernible.
 func Detection(r Row) string {
+	// A FABRICATED ROW SAYS SO HERE (FR-4.4, HUM LEAD 2026-09-07). This column
+	// is the row's account of how the event was established, and "injected" is
+	// the true answer for one the ctrl+d window made — ahead of the CAP fields,
+	// because a fabricated row carries whatever certainty its payload was given
+	// and reporting that would be the window agreeing with the fabrication.
+	if r.Test {
+		return "injected"
+	}
 	switch {
 	case r.Detail.Alert != nil:
 		return detectionOf(r.Detail.Alert.Certainty, r.Detail.Alert.Description)

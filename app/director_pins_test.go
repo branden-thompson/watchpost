@@ -282,11 +282,16 @@ func tag(s string) string {
 	return ":structural" // the burst head and the closing tail belong to no event
 }
 func (v *cueVoice) play(c clip) { v.log.add("say" + tag(c.text)) }
-func (v *cueVoice) pause()      {}
-func (v *cueVoice) resume()     {}
-func (v *cueVoice) stop()       {}
-func (v *cueVoice) discard()    {}
-func (v *cueVoice) restore()    {}
+
+// fault is inert in this double: the seam exists so a read can report a
+// tone with no words (FR-9.2); nothing here reads it.
+func (v *cueVoice) fault(string) {}
+
+func (v *cueVoice) pause()   {}
+func (v *cueVoice) resume()  {}
+func (v *cueVoice) stop()    {}
+func (v *cueVoice) discard() {}
+func (v *cueVoice) restore() {}
 
 // cueDeck is a ticker deck wired to the log: no network, no audio, no disk
 // beyond the seen store's temp dir.
@@ -543,11 +548,16 @@ func (v *endingVoice) render(_ context.Context, _ cast.Role, text string) (clip,
 	return clip{text: text, dur: time.Millisecond}, true
 }
 func (v *endingVoice) play(c clip) { v.log.add("say" + tag(c.text)) }
-func (v *endingVoice) pause()      {}
-func (v *endingVoice) resume()     {}
-func (v *endingVoice) stop()       {}
-func (v *endingVoice) discard()    {}
-func (v *endingVoice) restore()    {}
+
+// fault is inert in this double: the seam exists so a read can report a
+// tone with no words (FR-9.2); nothing here reads it.
+func (v *endingVoice) fault(string) {}
+
+func (v *endingVoice) pause()   {}
+func (v *endingVoice) resume()  {}
+func (v *endingVoice) stop()    {}
+func (v *endingVoice) discard() {}
+func (v *endingVoice) restore() {}
 
 // A SEQUENCE THAT ENDED WHILE THE WORK OVERRAN THE SOUND CUES NOTHING.
 //
@@ -595,7 +605,12 @@ type refuseThenEndVoice struct {
 	mu     sync.Mutex
 }
 
-func (v *refuseThenEndVoice) duck()                         {}
+func (v *refuseThenEndVoice) duck() {}
+
+// fault is inert here: the seam exists so a read can report a tone with no
+// words (FR-9.2).
+func (v *refuseThenEndVoice) fault(string) {}
+
 func (v *refuseThenEndVoice) tone(cast.Class) time.Duration { return 0 }
 func (v *refuseThenEndVoice) render(_ context.Context, _ cast.Role, text string) (clip, bool) {
 	v.mu.Lock()

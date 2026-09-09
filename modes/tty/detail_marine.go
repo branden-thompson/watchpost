@@ -44,23 +44,35 @@ type marineCell struct{ label, value, note string }
 // marineRow collects one row for layoutMarine.
 func marineRow(label, value, note string) marineCell { return marineCell{label, value, note} }
 
-// layoutMarine lays the rows on the grid: notes share one column,
-// marNoteGap cells past the widest value in the section (UAT 67).
-func layoutMarine(cells []marineCell) []string {
-	widest := 0
-	for _, c := range cells {
-		widest = max(widest, render.Width(c.value))
+// layoutMarine lays the rows through the kit: label, value, note.
+//
+// IT WAS THIS TABLE WRITTEN BY HAND — a pass for the widest value, a PadTo for
+// the label, a PadTo to the note column. That pass IS fit, and the kit does it
+// now: the note column starts marNoteGap past the widest value in the section
+// (UAT 67), which is what a fit value column plus a two-cell prefix means.
+//
+// GUTTER 0: the gaps are in the widths and the cells, because this section's
+// label column is the report's own (colVal) and its note gap is a ruling.
+//
+// THE VALUE IS ONE COLUMN, not the two that marinePair draws inside it. Most
+// rows carry a pair — a compass and a height, a time and a height — but
+// "Moderate Chop" and "9 mph" are single values, and splitting the column would
+// size the second one against a first that half the rows do not have.
+func layoutMarine(o render.Opts, cells []marineCell, inner int) []string {
+	cols := []render.StatusColumn{
+		{Width: marLabelW, NoGutter: true}, // the row's name
+		{NoGutter: true},                   // the value, whole
+		{NoGutter: true},                   // the provenance or the second fact
 	}
-	noteCol := marLabelW + widest + marNoteGap
-	out := make([]string, 0, len(cells))
-	for _, c := range cells {
-		line := render.PadTo(c.label, marLabelW) + c.value
-		if c.note != "" {
-			line = render.PadTo(line, noteCol) + c.note
+	rows := make([]render.StatusRow, 0, len(cells))
+	for _, c := range cells { // bounded by the section's rows (P10-02)
+		note := c.note
+		if note != "" {
+			note = strings.Repeat(" ", marNoteGap) + note
 		}
-		out = append(out, line)
+		rows = append(rows, render.StatusRow{Cells: []string{c.label, c.value, note}})
 	}
-	return out
+	return o.DetailTable(cols, rows, inner, 0)
 }
 
 // marinePair is the two-part value: first sub-column + fixed-width number.
@@ -69,7 +81,7 @@ func marinePair(first, num string) string { return render.PadTo(first, marFirstW
 // maritimeRows renders the coastal-waters section in the mock's scan order
 // (UAT 29/32/61/63): observation age, sea state, water temperature, swells,
 // then tides and currents.
-func maritimeRows(o render.Opts, m *snapshot.Marine, tz *time.Location, now time.Time) []string {
+func maritimeRows(o render.Opts, m *snapshot.Marine, tz *time.Location, now time.Time, cw int) []string {
 	rows := []marineCell{}
 	if !m.ObservedAt.IsZero() && m.Buoy != "" {
 		rows = append(rows, marineRow("Observed", fixedAgeTrim(now.Sub(m.ObservedAt))+" ago", ""))
@@ -82,14 +94,14 @@ func maritimeRows(o render.Opts, m *snapshot.Marine, tz *time.Location, now time
 	}
 	rows = append(rows, swellRows(o, m)...)
 	rows = append(rows, tideRows(o, m, tz, now)...)
-	laid := layoutMarine(rows)
+	laid := layoutMarine(o, rows, cw-detailRailGutter)
 	out := make([]string, 0, len(laid))
 	for i, r := range laid {
 		label := ""
 		if i == 0 {
 			label = "MARINE"
 		}
-		out = append(out, detailRow(label, r))
+		out = append(out, detailRow(o, label, r))
 	}
 	return out
 }

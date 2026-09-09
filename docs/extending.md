@@ -66,6 +66,19 @@ back through `RadioStatusMsg`. `[m] Mode` (UAT 97) is the smallest complete exam
 
 ## Rules you inherit for free
 
+- **A network call is not automatically a provider, and Walkthrough 2 is not the only shape.** A
+  `snapshot.Provider` is **location-scoped hazard data that merges into the snapshot** — the interface
+  says so: `ID()`, `Domains() []string`, `Fetch(ctx, req) (Fragment, error)`. If what you are adding
+  has no domain, no location and no fragment, it is not a provider, and putting it behind the seam
+  means inventing all three, which makes the seam mean *less*. The one named exception today is
+  `app/release.go`: it asks GitHub whether a newer release exists, **once, at startup**, and is opt-in
+  (`update_check`). It appears in `[S]`'s host table only because it goes through `httpx`. Before
+  adding another non-provider fetch, say in `architecture.md §1.1` why it is not hazard data, state
+  its bound, and make that bound reachable by a test — `app/release.go` used to poll hourly, and that
+  poller is the entire reason it read as a feed. See `architecture.md §1.1` and §1.2 (which root a new
+  file belongs under).
+
+
 - **Every colour is a theme token.** Views call `render.Tint(text, render.Tok(render.SomeToken))`;
   the tables' own palette is three tokens (`table.header`, `table.muted`, `table.name`) the
   seam applies through go-studs' `HeaderColor` / `CellStyles` with the kit's automatic styling

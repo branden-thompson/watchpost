@@ -1,0 +1,2 @@
+{{/* test-alert/explain: what a listener is hearing and where to look for it. Data: .Type. */}}
+This is only a test, had this been a real {{.Type}} Instead of the test message, you would be hearing a report about the specific {{.Type}} and any instructions if appropriate.  For watchpost Observers and Operators, this test alert will appear in the notable weather events window for two minutes.

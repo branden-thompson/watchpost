@@ -198,6 +198,11 @@ func (t *tickerDeck) run(ctx context.Context) {
 			return
 		case <-tk.C:
 			t.cycle(ctx)
+		case <-t.inject.wake():
+			// AN INJECTION DOES NOT WAIT FOR THE WEATHER (F-21b, UAT
+			// 2026-09-07). Nil in a release build, where this arm can never
+			// fire.
+			t.cycle(ctx)
 		case <-rotate.C:
 			t.send(tty.TickerAdvanceMsg{}) // the 90s lane rotation; the tty skips it when ≤1 lane is active
 		}
@@ -378,6 +383,7 @@ func arrivalsOf(fresh []globalfeed.Event) []lineup.Arrival {
 			Lat:      e.Lat,
 			Lon:      e.Lon,
 			HasPoint: e.HasPoint,
+			Test:     e.Fabricated, // it takes no real hazard's place (FR-4.4)
 			// THE SIGNIFICANCE REACH TRAVELS WITH THE ARRIVAL (BD-6, C-3).
 			// Without it Fence.Admits measured every disaster against zero
 			// miles of reach, so the ruling's own admit-case — an M7.5 in Los
@@ -519,6 +525,7 @@ func itemsOf(evs []globalfeed.Event) []tty.TickerItem {
 			At:       e.At,
 			Until:    e.Until,
 			Severity: tty.TickerSeverity(e.Severity),
+			Test:     e.Fabricated, // the band says so (FR-4.4)
 		})
 	}
 	return out

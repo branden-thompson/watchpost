@@ -44,7 +44,7 @@ func New(idx *geodata.Index, fallback Fallback) (*Resolver, error) {
 
 // Suggestion is one type-ahead hint, label always zip-adorned (R-2′).
 type Suggestion struct {
-	Display string // "Oceanside, CA (92057)"
+	Display string // "Monterey, CA (93940)"
 	Ref     snapshot.LocationRef
 }
 

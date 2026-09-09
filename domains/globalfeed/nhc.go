@@ -17,18 +17,14 @@ const nhcTTL = 30 * time.Minute
 
 // NHC reads the National Hurricane Center current-storms feed (Atlantic and
 // Eastern Pacific basins; keyless). W-Pacific typhoons are not carried (D1).
-type NHC struct {
-	client *httpx.Client
-	base   string
-	memo   sourceMemo
-}
+type NHC struct{ jsonFeed }
 
 // NewNHC builds the source; base "" is the production CurrentStorms feed.
 func NewNHC(client *httpx.Client, base string) *NHC {
 	if base == "" {
 		base = "https://www.nhc.noaa.gov/CurrentStorms.json"
 	}
-	return &NHC{client: client, base: base}
+	return &NHC{jsonFeed{client: client, base: base}}
 }
 
 func (n *NHC) Name() string { return "NHC" }
@@ -64,11 +60,7 @@ type nhcFeed struct {
 }
 
 func (n *NHC) Fetch(ctx context.Context) ([]Event, error) {
-	return n.memo.events(func() ([]byte, bool, error) {
-		var body []byte
-		hdr, err := n.client.GetJSON(ctx, n.base, &body, httpx.TTL(nhcTTL))
-		return body, hdr == nil, err
-	}, n.parse)
+	return n.fetch(ctx, n.base, nhcTTL, n.parse)
 }
 
 func (n *NHC) parse(body []byte) ([]Event, error) {

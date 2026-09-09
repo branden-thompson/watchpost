@@ -72,6 +72,15 @@ type setupState struct {
 	// ALERTS - EVENTS
 	filtered bool   // false = All locations, true = Within N mi
 	radiusMi string // the miles buffer for the [    ] input (digits only)
+	// radiusSeeded is true while radiusMi still holds the STORED value and the
+	// listener has typed nothing. The first digit then REPLACES it instead of
+	// appending (HUM LEAD, UAT 2026-09-08).
+	//
+	// Without this, opening a window that reads "[50] mi" and typing 20 — the
+	// obvious way to change it — produced 5020, a five-thousand-mile radius,
+	// and the listener reasonably read the result as "my choice was not saved".
+	// It was saved; it was just not the number they entered.
+	radiusSeeded bool
 
 	// ALERTS - TONE
 	toneMode  string          // "" all tones on | "mute"
@@ -174,6 +183,7 @@ func (d Dashboard) openSetup() Dashboard {
 	if d.cfg.AlertRadiusMi > 0 {
 		d.setup.filtered = true
 		d.setup.radiusMi = fmt.Sprintf("%d", d.cfg.AlertRadiusMi)
+		d.setup.radiusSeeded = true // the first digit typed replaces it
 	}
 	return d
 }
@@ -195,6 +205,7 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// shut. Both exits write through sequenceWrites, so no group can be
 		// saved by one route and dropped by the other.
 		apply := d.applyOnCloseCmds()
+		d = d.commitToModel() // before close(): it reads d.setup, which the reset below clears
 		d = d.close()
 		d.setup = setupState{}
 		return d, apply
@@ -443,8 +454,43 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 	// location, radius, cast and tones; the WATCHPOST UI group is uiApplyCmd's,
 	// and leaving it out of this path meant enter saved four groups of five and
 	// then discarded the fifth with the window state.
-	return d, sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)),
+	cmd := sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)),
 		d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd())
+	return d.commitToModel(), cmd
+}
+
+// commitToModel makes the MODEL agree with what closing the window just wrote.
+//
+// THE WRITE WAS NEVER THE PROBLEM. These three settings persist through a setter
+// that returns nothing, so nothing wrote the new value back into d.cfg — and
+// openSetup seeds the form FROM d.cfg, so re-opening showed the old choice and
+// the listener reasonably concluded the save had failed. It had not: HUM LEAD,
+// UAT 2026-09-08, saw the [w] window correctly trim its events to the new radius
+// while Settings still displayed the previous one. The config file, the ticker
+// pipeline and the severe window all had the new value; only the form did not.
+//
+// The display preferences never had this bug because uiApplyCmd returns a
+// uiSavedMsg and applyUISaved writes the values back (setup_ui.go) — this is
+// that same round trip, for the three settings whose setters cannot report an
+// outcome to return.
+//
+// CALL IT AFTER THE CMDS ARE BUILT. applyIfChanged compares the new value with
+// d.cfg, so updating d.cfg first would make every write look like a no-op and
+// nothing would be saved at all.
+//
+// The guards match applyIfChanged's exactly. If they drift, the model and the
+// file disagree about what is in force, which is a worse bug than this one.
+func (d Dashboard) commitToModel() Dashboard {
+	if d.cfg.SetAlertRadius != nil {
+		d.cfg.AlertRadiusMi = d.setup.alertRadiusChoice()
+	}
+	if d.cfg.SetRelayDwell != nil && d.setup.relayDwell > 0 {
+		d.cfg.RelayDwell = d.setup.relayDwell
+	}
+	if d.cfg.SetRelayLang != nil && d.setup.relayLang != "" {
+		d.cfg.RelayLang = d.setup.relayLang
+	}
+	return d
 }
 
 // sequenceWrites orders the window's config writes and drops the no-ops.
@@ -467,29 +513,35 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 // Neither writes when the value has not moved: closing a window you only looked
 // at should not re-scope the ticker or restart a rotation.
 func (d Dashboard) radiusApplyCmd() tea.Cmd {
-	set, mi := d.cfg.SetAlertRadius, d.setup.alertRadiusChoice()
-	if set == nil || mi == d.cfg.AlertRadiusMi {
-		return nil
-	}
-	return func() tea.Msg { set(mi); return nil }
+	// No validity predicate: 0 is "All (global)", a real choice (0.12.0).
+	return applyIfChanged(d.cfg.SetAlertRadius, d.setup.alertRadiusChoice(), d.cfg.AlertRadiusMi, nil)
 }
 
-func (d Dashboard) relayApplyCmd() tea.Cmd {
-	set, dwell := d.cfg.SetRelayDwell, d.setup.relayDwell
-	if set == nil || dwell <= 0 || dwell == d.cfg.RelayDwell {
+// applyIfChanged is the write-on-close shape THREE settings share: do nothing
+// without a setter, do nothing for an invalid value, do nothing when the value
+// has not moved — otherwise write it (metric D, 2026-09-08).
+//
+// IT COVERS THREE OF THE FIVE *ApplyCmd, NOT ALL FIVE, and that is deliberate.
+// castApplyCmd and uiApplyCmd return a MESSAGE and handle a save error; forcing
+// them through this would mean a second return path and a nil-able error, which
+// is more shape than the duplication costs.
+func applyIfChanged[T comparable](set func(T), next, cur T, valid func(T) bool) tea.Cmd {
+	if set == nil || next == cur || (valid != nil && !valid(next)) {
 		return nil
 	}
-	// The rotation applies at once, not at the next launch: a listener who
-	// shortens it is usually shortening it to watch it work.
-	return func() tea.Msg { set(dwell); return nil }
+	return func() tea.Msg { set(next); return nil }
+}
+
+// The rotation applies at once, not at the next launch: a listener who shortens
+// it is usually shortening it to watch it work.
+func (d Dashboard) relayApplyCmd() tea.Cmd {
+	return applyIfChanged(d.cfg.SetRelayDwell, d.setup.relayDwell, d.cfg.RelayDwell,
+		func(v time.Duration) bool { return v > 0 })
 }
 
 func (d Dashboard) relayLangApplyCmd() tea.Cmd {
-	set, lang := d.cfg.SetRelayLang, d.setup.relayLang
-	if set == nil || lang == "" || lang == d.cfg.RelayLang {
-		return nil
-	}
-	return func() tea.Msg { set(lang); return nil }
+	return applyIfChanged(d.cfg.SetRelayLang, d.setup.relayLang, d.cfg.RelayLang,
+		func(v string) bool { return v != "" })
 }
 
 // applyOnCloseCmds is THE list of what closing the window writes. Both exits
@@ -598,13 +650,30 @@ func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "up", "down":
 		d.setup.filtered = !d.setup.filtered
 	case "backspace":
+		// Editing is taking the field over as surely as typing is: after a
+		// backspace the buffer is the listener's, so the next digit appends.
+		d.setup.radiusSeeded = false
 		if r := []rune(d.setup.radiusMi); len(r) > 0 {
 			d.setup.radiusMi = string(r[:len(r)-1])
 		}
 	default:
-		if r := key.Text; r >= "0" && r <= "9" && len([]rune(d.setup.radiusMi)) < 4 {
-			d.setup.filtered = true // typing a distance means Filtered
-			d.setup.radiusMi += r
+		if r := key.Text; r >= "0" && r <= "9" {
+			// A KEY THAT CHANGES NOTHING SELECTS NOTHING (VALIDATE red team,
+			// 2026-09-08). Moving this out of the length guard let a digit typed
+			// into a full buffer flip the radio to "Within" while leaving the
+			// number alone — a press that appears to choose and does not.
+			if d.setup.radiusSeeded || len([]rune(d.setup.radiusMi)) < 4 {
+				d.setup.filtered = true // typing a distance means Filtered
+			}
+			// THE FIRST DIGIT REPLACES THE STORED VALUE, the rest append. A
+			// field showing a number the listener did not type is a field they
+			// are about to type over, not one they are appending to.
+			if d.setup.radiusSeeded {
+				d.setup.radiusMi, d.setup.radiusSeeded = "", false
+			}
+			if len([]rune(d.setup.radiusMi)) < 4 {
+				d.setup.radiusMi += r
+			}
 		}
 	}
 	return d, nil

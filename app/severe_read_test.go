@@ -60,7 +60,23 @@ func TestEventReaderDucksSpeaksRestoresAndOverlaysThePanel(t *testing.T) {
 	v := &scriptVoice{dur: 3 * time.Second}
 	nar := testDirector(v, nil)
 	var slept time.Duration
-	nar.sleep = func(_ context.Context, d time.Duration) bool { mu.Lock(); slept += d; mu.Unlock(); return true }
+	// Deterministic air: the read's FIRST hold step blocks on readGate, so the
+	// second Read below is provably made WHILE the first read is in progress.
+	// The stubbed voice and stubbed sleep otherwise finish the whole sequence
+	// before the next line runs, and then the inertness assertion passes on
+	// timing rather than on the guard it is there to hold. It did not, on a
+	// Linux runner: the second read ran in full, four reading messages for two.
+	readGate := make(chan struct{})
+	var sleeps atomic.Int32
+	nar.sleep = func(_ context.Context, d time.Duration) bool {
+		mu.Lock()
+		slept += d
+		mu.Unlock()
+		if sleeps.Add(1) == 1 {
+			<-readGate
+		}
+		return true
+	}
 	r := newEventReader(context.Background(), nar, nil, func(key string) (tty.SevereRow, bool) { return tornadoRow(), key == "k1" }, func(m tea.Msg) { mu.Lock(); sent = append(sent, m); mu.Unlock() })
 	r.status = func(station, short, detail string, spoken time.Duration) {
 		mu.Lock()
@@ -69,7 +85,8 @@ func TestEventReaderDucksSpeaksRestoresAndOverlaysThePanel(t *testing.T) {
 	}
 	r.restore = func() { mu.Lock(); restored++; mu.Unlock() }
 	r.Toggle("k1") // the production entry point: the press owns the mark (T3.2b review)
-	r.Read("k1")   // inert while reading (a goroutine may already be running)
+	r.Read("k1")   // inert while reading — PINNED: the first read is held below
+	close(readGate)
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		mu.Lock()

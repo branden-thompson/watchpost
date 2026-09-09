@@ -1,0 +1,2 @@
+{{/* test-alert/tail: the end of the test, and the handback. Data: none. */}}
+This concludes the test of the Watchpost alert events system. We now return Watchpost to it's normal operation.

@@ -138,7 +138,7 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 		if failed {
 			continue // unserved: the scheduler retries it and the location keeps its prior hotspots (P2)
 		}
-		frag.PerLocation[snapshot.Key(ref)] = snapshot.PartialData{Fire: &snapshot.FireState{AsOf: frag.FetchedAt, Hotspots: fire.Cluster(hs)}}
+		frag.PerLocation[snapshot.Key(ref)] = snapshot.PartialData{Fire: &snapshot.FireState{AsOf: frag.FetchedAt, HotspotsAsOf: frag.FetchedAt, Hotspots: fire.Cluster(hs)}}
 	}
 	return frag, nil
 }

@@ -14,6 +14,19 @@ check_tree() {
     return 1
   fi
 }
+# AN ARGUMENT THIS SCRIPT DOES NOT KNOW IS A FAILURE, NOT A NO-OP (B6).
+#
+# gate-controls exists to prove the other gates still fire, and it invokes them
+# by flag. Both of these ignored an unrecognised argument and ran their NORMAL
+# path to a green exit, so a renamed or mistyped flag in the Makefile left the
+# controls gate passing having run no control at all — the one gate whose whole
+# job is to notice that, unable to notice it about itself. Found by planting a
+# renamed flag, 2026-09-08.
+case "${1:-}" in
+  ""|--self-test) ;;
+  *) echo "lint-imports: unknown argument '$1'" >&2; exit 2 ;;
+esac
+
 if [ "${1:-}" = "--self-test" ]; then
   tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
   mkdir -p "$tmp/modes/report" "$tmp/platform/lineup"

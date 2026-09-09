@@ -56,12 +56,31 @@ type bodyKey struct {
 
 // bodyMemo is the single slot. hits/misses are read by the tests and the
 // diagnostic dump; they are not policy.
+// memoStats is the counter half every memo slot carries. ONE OWNER (metric D,
+// 2026-09-08): bodyMemo and modalMemo each had their own nil-check-lock-return
+// accessor, and a third memo would have written a third. Embedding it means the
+// next one inherits `counts()` instead of copying it.
+type memoStats struct {
+	mu           sync.Mutex
+	hits, misses int
+}
+
+// counts reports the slot's hit/miss counters; the zero value of a nil slot is
+// (0, 0), which is what both callers already returned.
+func (m *memoStats) counts() (hits, misses int) {
+	if m == nil {
+		return 0, 0
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.hits, m.misses
+}
+
 type bodyMemo struct {
-	mu               sync.Mutex
+	memoStats
 	ok               bool
 	key              bodyKey
 	priority, recent string
-	hits, misses     int
 }
 
 // bodyKeyFor derives the key from the model and this frame's layout.
@@ -100,15 +119,8 @@ func (d Dashboard) tables(fl frameLayout) (priority, recent string) {
 	return priority, recent
 }
 
-// memoCounts reports the slot's hit/miss counters (0, 0 without a slot).
-func (d Dashboard) memoCounts() (hits, misses int) {
-	if d.memo == nil {
-		return 0, 0
-	}
-	d.memo.mu.Lock()
-	defer d.memo.mu.Unlock()
-	return d.memo.hits, d.memo.misses
-}
+// memoCounts reports the body slot's hit/miss counters (0, 0 without a slot).
+func (d Dashboard) memoCounts() (hits, misses int) { return d.memo.stats().counts() }
 
 // lookupKey is the pending lookup's identity, zero when none is waiting.
 func (d Dashboard) lookupKey() snapshot.LocationKey {
@@ -140,7 +152,24 @@ func (d Dashboard) anyLoading() bool {
 
 // rowLoading is the one definition of "this row is still loading"
 // (UAT 18.2): observation or daily forecast still pending.
+// rowLoading: shimmer while the data is still COMING, never after it has been
+// asked for and not arrived (issue #13).
+//
+// It used to be the first clause alone, and an empty location is empty in
+// exactly the same way whether the feed has not answered yet or has answered
+// and had nothing for this place — so a location the API does not cover
+// shimmered for ever, across restarts, reading as "still loading" until the
+// listener removed the row themselves.
+//
+// WeatherAsOf is what makes the two distinguishable: the reference provider
+// stamps it when a fetch COVERING this location completes. Once it is set, a
+// missing value is a fact rather than a wait, and the row falls through to the
+// honest "n/a" the post-load path already draws (UAT 18.2). Nothing new is
+// rendered — the whole defect was a flag that could never go false.
 func rowLoading(loc *snapshot.Location) bool {
+	if !loc.WeatherAsOf.IsZero() {
+		return false
+	}
 	return loc.Harmonized.Source.Provider == "" || len(loc.Daily) == 0
 }
 
@@ -198,6 +227,12 @@ type modalKey struct {
 	// the countdown counted down to a fall-through that fired while the display
 	// still read <10>. See the case below.
 	faultFocus, faultLeft int
+
+	// faultHeld is the clock's hold (FR-6.4). The footer reads "Auto Close
+	// held" instead of a number, so it is a third thing the frame shows that
+	// moves — and F-30's guard caught its absence the moment it was added,
+	// which is what that guard is for.
+	faultHeld bool
 	// debugFocus is the ctrl+d window's cursor — the same rule, and it had the
 	// same hole: its arrows moved the model and the memo replayed the frame.
 	debugFocus int
@@ -212,11 +247,10 @@ type modalKey struct {
 
 // modalMemo is the single slot.
 type modalMemo struct {
-	mu           sync.Mutex
-	ok           bool
-	key          modalKey
-	out          string
-	hits, misses int
+	memoStats
+	ok  bool
+	key modalKey
+	out string
 }
 
 // modalKeyFor derives the key from the model.
@@ -256,14 +290,19 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 			k.shimmer = ((d.frame % 4) + 4) % 4
 		}
 	case modalDebug:
-		k.debugFocus = d.debug.focus
+		// THE PICKER'S VALUE, not the question's index: the window has one
+		// question and the value is what moves on the frame (HUM LEAD mock,
+		// 2026-09-07). The confirmation is NOT here, and does not need to be —
+		// it is a second layer composited outside this memo, and the window
+		// underneath it is unchanged.
+		k.debugFocus = d.debug.focus*1000 + d.debugPick()
 	case modalRelayFault:
 		// EVERYTHING THE FRAME SHOWS THAT MOVES. This window has two such things
 		// and neither was here, so the memo replayed one frame while the model
 		// underneath it worked perfectly — the arrows moved the cursor, the
 		// clock ran down, the fall-through fired on time, and the DISPLAY never
 		// changed once (UAT 2026-09-05, three rounds).
-		k.faultFocus, k.faultLeft = d.relayFault.focus, d.relayFault.left
+		k.faultFocus, k.faultLeft, k.faultHeld = d.relayFault.focus, d.relayFault.left, d.relayFault.held
 	}
 	return k
 }
@@ -305,11 +344,20 @@ func (d Dashboard) modalView(o render.Opts) string {
 }
 
 // modalMemoCounts reports the modal slot's hit/miss counters.
-func (d Dashboard) modalMemoCounts() (hits, misses int) {
-	if d.mmemo == nil {
-		return 0, 0
+func (d Dashboard) modalMemoCounts() (hits, misses int) { return d.mmemo.stats().counts() }
+
+// stats returns the embedded counters, or nil for a nil slot — so counts() can
+// answer (0, 0) without every caller repeating the nil check.
+func (m *bodyMemo) stats() *memoStats {
+	if m == nil {
+		return nil
 	}
-	d.mmemo.mu.Lock()
-	defer d.mmemo.mu.Unlock()
-	return d.mmemo.hits, d.mmemo.misses
+	return &m.memoStats
+}
+
+func (m *modalMemo) stats() *memoStats {
+	if m == nil {
+		return nil
+	}
+	return &m.memoStats
 }

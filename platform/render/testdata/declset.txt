@@ -13,6 +13,7 @@ const Clock24
 const ClockMil
 const ConfirmBG
 const DefaultThemeName
+const DetailGutter
 const EditionObserver
 const EventCatAdvisoryBG
 const EventCatDisasterBG
@@ -134,6 +135,7 @@ func (Opts).BoxInnerWidth
 func (Opts).BoxRuleWidth
 func (Opts).BoxTitled
 func (Opts).Controls
+func (Opts).DetailTable
 func (Opts).Distance
 func (Opts).Glyphs
 func (Opts).HealthGlyph
@@ -145,6 +147,7 @@ func (Opts).Knots
 func (Opts).ListMark
 func (Opts).LoadingDots
 func (Opts).LocationTable
+func (Opts).Marks
 func (Opts).Panel
 func (Opts).PanelColored
 func (Opts).ScrollPanel
@@ -258,6 +261,7 @@ func displayWidth
 func fgLuminance
 func fgRGB
 func fgTruecolor
+func fitColumns
 func fracBlock
 func groupsFor
 func hexRGB
@@ -289,6 +293,7 @@ func severeHeaderFG
 func severeHeaderLine
 func severeMarks
 func sgrRaw
+func shrinkToFit
 func spectrumTier
 func splitCells
 func statusCols
@@ -323,6 +328,7 @@ type groupSpec
 type layout
 type quattroPalette
 type severeCol
+var asciiMarks
 var themeGen
 var themeMu
 var themeName

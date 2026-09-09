@@ -764,6 +764,10 @@
                 },
                 "type": "array"
               },
+              "hotspots_as_of": {
+                "format": "date-time",
+                "type": "string"
+              },
               "incidents": {
                 "items": {
                   "additionalProperties": false,
@@ -844,12 +848,18 @@
                   "type": "object"
                 },
                 "type": "array"
+              },
+              "incidents_as_of": {
+                "format": "date-time",
+                "type": "string"
               }
             },
             "required": [
               "as_of",
               "hotspots",
-              "incidents"
+              "incidents",
+              "hotspots_as_of",
+              "incidents_as_of"
             ],
             "type": "object"
           },
@@ -1416,6 +1426,10 @@
           "tz": {
             "type": "string"
           },
+          "weather_as_of": {
+            "format": "date-time",
+            "type": "string"
+          },
           "zip": {
             "type": "string"
           }
@@ -1435,7 +1449,8 @@
           "hourly",
           "daily",
           "marine",
-          "seismic"
+          "seismic",
+          "weather_as_of"
         ],
         "type": "object"
       },

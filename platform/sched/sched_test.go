@@ -563,3 +563,55 @@ func TestAdvanceReturnsOnlyOnceTheTierHasActed(t *testing.T) {
 			"the clock is guessing again, and every assertion after an Advance is racing it", got, before+1)
 	}
 }
+
+// THE SCHEDULER RECORDS WHICH LOCATIONS IT ASKED ABOUT (#13, red team 2026-09-08).
+//
+// This is the dashboard's ONLY refresh path, and it was the one call site that
+// did not pass the asked set — so no location ever recorded an attempt, and a
+// row the feed cannot serve shimmered for ever. The fix ran only in
+// `watchpost report`, which is not a surface a listener can see.
+//
+// IT IS TESTED HERE, THROUGH THE REAL SCHEDULER, and that is the point. The
+// assembler's own test hand-built the fragment and set the asked set itself, so
+// it proved the assembler works and could say nothing about whether anybody
+// calls it that way. A test that supplies the producer's output cannot detect a
+// missing producer.
+func TestTheSchedulerRecordsTheLocationsItAskedAbout(t *testing.T) {
+	two := []snapshot.LocationRef{{Label: "A", Lat: 33.24, Lon: -117.29}, {Label: "B", Lat: 32.72, Lon: -117.16}}
+	clk := newFakeClock(time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC))
+	p := &flakyProvider{} // serves A, fails B — the issue #13 shape exactly
+	asm := snapshot.NewAssembler(two, []string{"nws"})
+	asm.SetAttribution("nws", "reference", "NWS")
+	// BOTH ANSWERING TIERS. A row reads as loading until it has conditions AND a
+	// daily forecast, so the stamp requires both — a test running one tier
+	// measures half the rule (red team, 2026-09-08).
+	s, err := New(Config{Clock: clk, Assembler: asm, Locations: two, Providers: []snapshot.Provider{p},
+		Tiers: []Tier{
+			{Kind: snapshot.KindObs, Every: 10 * time.Minute},
+			{Kind: snapshot.KindForecast, Every: 10 * time.Minute},
+		}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	s.Start(ctx)
+	defer s.Stop()
+	waitFor(t, func() bool { return len(p.snapshotCalls()) >= 2 }, "both tiers fetch")
+
+	waitFor(t, func() bool {
+		for _, l := range asm.Snapshot().Locations {
+			if l.Label == "B" && !l.WeatherAsOf.IsZero() {
+				return true
+			}
+		}
+		return false
+	}, "B — which the provider could NOT serve — must still record that it was asked about; "+
+		"without it the row shimmers for ever and the listener is told the data is still coming")
+
+	for _, l := range asm.Snapshot().Locations {
+		if l.WeatherAsOf.IsZero() {
+			t.Errorf("%s was in the fetch and recorded no attempt", l.Label)
+		}
+	}
+}

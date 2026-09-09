@@ -1,6 +1,7 @@
 package synth
 
 import (
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 	// phrases without data left out.
 	now := time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC)
 	fr := FireReport{
+		HotspotsKnown: true, IncidentsKnown: true, // both feeds answered
 		Known: true, RadiusKm: 25, IncidentRadiusKm: 50, Lat: 33.24, Lon: -117.29,
 		Sources: []string{"NOAA's Hazard Mapping System", "the National Interagency Fire Center", "NASA FIRMS"},
 		State: snapshot.FireState{
@@ -34,8 +36,12 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 		"This is the Watchpost Fire and Hotspot report for Oceanside, California. This report is derived from data from NOAA's Hazard Mapping System, the National Interagency Fire Center, and NASA FIRMS. Data for this report may be delayed or incomplete, and is not intended for life safety use.",
 		"There are currently 2 hotspots within a 16 mile fire ring in your area.",
 		"The strongest hotspot is 6 miles north of your location, with a fire radiative power of 62 megawatts, detected 2 hours ago by GOES-West.",
+		// THE SUBJECT CHANGES HERE, and the read now says so (HUM LEAD, UAT
+		// 2026-09-08). Everything above is a satellite pixel inside the 16 mile
+		// fire ring; everything below is a NAMED incident inside the wider 31
+		// mile radius, and on the air the two were indistinguishable.
+		"There are currently 2 named incidents within a 31 mile radius of your area, reported in the last 4 days.", // 76h = 3.17 days; the window rounds UP so the claim stays true,
 		"Timber is 12 miles east of your location, with a size of 12,915 acres, has been active for 3 days and 4 hours, and is 26 percent contained.",
-		"Nearby fires outside of your fire ring that may be worth noting are:",
 		"Convoy, at a distance of 29 miles, has been active for 3 hours.",
 	}
 	if len(segs) != len(want) {
@@ -50,9 +56,26 @@ func TestFireSegmentsReadTheScript(t *testing.T) {
 		t.Fatal("the notice carries the two-second pause")
 	}
 	// Metric, no fire: the zero sentence in kilometers; one hotspot reads singular.
-	quiet := FireReport{Known: true, RadiusKm: 25, Sources: []string{"NOAA's Hazard Mapping System"}, State: snapshot.FireState{AsOf: now}}
-	if s := std.FireSegments("Oceanside, CA", quiet, false, now); len(s) != 2 || s[1].Text != "There are currently no hotspots within a 25 kilometer fire ring in your area." || !strings.Contains(s[0].Text, "data from NOAA's Hazard Mapping System.") {
-		t.Fatalf("quiet report: %s", join(s))
+	// A QUIET REPORT SAYS BOTH NOTHINGS, one per ring (HUM LEAD, UAT
+	// 2026-09-08). "No hotspots within 16 miles" is not an answer about the
+	// named incidents, and a listener who hears only the first has been told
+	// half of what was checked.
+	quiet := FireReport{Known: true, HotspotsKnown: true, IncidentsKnown: true, RadiusKm: 25, IncidentRadiusKm: 50, Sources: []string{"NOAA's Hazard Mapping System"}, State: snapshot.FireState{AsOf: now, HotspotsAsOf: now, IncidentsAsOf: now}}
+	qs := std.FireSegments("Oceanside, CA", quiet, false, now)
+	if len(qs) != 3 || !strings.Contains(qs[0].Text, "data from NOAA's Hazard Mapping System.") {
+		t.Fatalf("quiet report: %s", join(qs))
+	}
+	if qs[1].Text != "There are currently no hotspots within a 25 kilometer fire ring in your area." {
+		t.Fatalf("quiet hotspot line: %q", qs[1].Text)
+	}
+	if qs[2].Text != "There are currently no named incidents within a 50 kilometer radius of your area." {
+		t.Fatalf("quiet incident line: %q", qs[2].Text)
+	}
+	// AN UNCONFIGURED INCIDENT RADIUS SAYS NOTHING rather than "0 kilometer".
+	noRing := quiet
+	noRing.IncidentRadiusKm = 0
+	if s := std.FireSegments("Oceanside, CA", noRing, false, now); len(s) != 2 {
+		t.Fatalf("no incident radius means no incident line: %s", join(s))
 	}
 	// No fire data at all: skipped — the broadcast goes straight to the tail.
 	if s := std.FireSegments("Oceanside, CA", FireReport{}, true, now); s != nil {
@@ -75,7 +98,7 @@ func TestFireWords(t *testing.T) {
 	if bearingWords(33, -117, 33.5, -118.2) != "west-northwest" || bearingWords(33, -117, 34, -117) != "north" {
 		t.Fatal("bearing words")
 	}
-	if joinAnd([]string{"a"}) != "a" || joinAnd([]string{"a", "b"}) != "a and b" || joinAnd([]string{"a", "b", "c"}) != "a, b, and c" {
+	if plaintext.SpokenList([]string{"a"}) != "a" || plaintext.SpokenList([]string{"a", "b"}) != "a and b" || plaintext.SpokenList([]string{"a", "b", "c"}) != "a, b, and c" {
 		t.Fatal("joinAnd")
 	}
 	if distanceWords(1.2, true) != "1 mile" || distanceWords(25, true) != "16 miles" || distanceWords(1.4, false) != "1 kilometer" {
@@ -89,4 +112,92 @@ func join(segs []Segment) string {
 		out = append(out, s.Text)
 	}
 	return strings.Join(out, "\n")
+}
+
+// A FRESHNESS WINDOW IS NOT CLAIMED WITHOUT A DATE (red team, 2026-09-08).
+//
+// oldestIncidentWords fell through to "day" when NO incident carried a
+// discovery time — so the read said "reported in the last day" about data that
+// has no date at all. WFIGS's FireDiscoveryDateTime is nullable, so this is
+// reachable, and it is spoken output: a listener cannot go back and check.
+//
+// The function's own comment already promised this behaviour. The code did not
+// have it, and no test asked.
+func TestAnUndatedIncidentListClaimsNoFreshnessWindow(t *testing.T) {
+	now := time.Now()
+	f := func(v float64) *float64 { return &v }
+	fr := FireReport{Known: true, HotspotsKnown: true, IncidentsKnown: true, RadiusKm: 25, IncidentRadiusKm: 50,
+		Sources: []string{"the National Interagency Fire Center"},
+		State: snapshot.FireState{AsOf: now, HotspotsAsOf: now, IncidentsAsOf: now, Incidents: []snapshot.Incident{
+			{Name: "ALPHA", Source: snapshot.SourceInfo{DistanceKm: f(30)}}, // no Discovered
+			{Name: "BRAVO", Source: snapshot.SourceInfo{DistanceKm: f(40)}}, // no Discovered
+		}}}
+	got := join(std.FireSegments("Oceanside, CA", fr, true, now))
+	if strings.Contains(got, "in the last") {
+		t.Errorf("no incident is dated, so no window may be claimed:\n%s", got)
+	}
+	if !strings.Contains(got, "There are currently 2 named incidents within a 31 mile radius of your area.") {
+		t.Errorf("the sentence must still name the count and the radius, and simply stop:\n%s", got)
+	}
+
+	// A MIXED LIST IS STILL UNSAYABLE, and the first fix got this wrong (red team
+	// round 2). Dating ONE of the two leaves the other's age unknown, so a window
+	// stated over "2 named incidents" would be a claim about data that has none.
+	fr.State.Incidents[1].Discovered = now.Add(-72 * time.Hour)
+	if got := join(std.FireSegments("Oceanside, CA", fr, true, now)); strings.Contains(got, "in the last") {
+		t.Errorf("one incident is still undated, so the window is unsayable:\n%s", got)
+	}
+	// EVERY incident dated: now it can be stated, and it is the oldest one's age.
+	fr.State.Incidents[0].Discovered = now.Add(-24 * time.Hour)
+	if got := join(std.FireSegments("Oceanside, CA", fr, true, now)); !strings.Contains(got, "reported in the last 3 days") {
+		t.Errorf("every incident dated: the window is the oldest one's age:\n%s", got)
+	}
+}
+
+// A ZERO COUNT IS ONLY A FACT WHEN ITS OWN FEED ANSWERED (REVIEW red team,
+// 2026-09-08).
+//
+// FireState.AsOf is the freshest answer from ANY fire feed, so with HMS up and
+// WFIGS down it is set — and the read stated "there are currently no named
+// incidents within a 31 mile radius" as a FACT, one sentence after crediting the
+// National Interagency Fire Center as a source of the report. The mirror case
+// says "no hotspots" while HMS and FIRMS are both down.
+//
+// This is the distinction the UAT already forced on screen — "fire feed not yet
+// available" is not "none within this radius" — applied per FEED rather than per
+// ring, and on the air rather than only on screen.
+func TestAHalfWhoseFeedDidNotAnswerSaysSoRatherThanZero(t *testing.T) {
+	now := time.Now()
+	base := FireReport{Known: true, RadiusKm: 25, IncidentRadiusKm: 50,
+		Sources: []string{"NOAA's Hazard Mapping System"}}
+
+	// WFIGS down: the incident half cannot be stated, the hotspot half can.
+	noIncidents := base
+	noIncidents.HotspotsKnown = true
+	noIncidents.State = snapshot.FireState{AsOf: now, HotspotsAsOf: now}
+	got := join(std.FireSegments("Oceanside, CA", noIncidents, true, now))
+	if strings.Contains(got, "no named incidents") {
+		t.Errorf("WFIGS did not answer; a zero incident count is not a fact:\n%s", got)
+	}
+	if !strings.Contains(got, "named incident feed has not answered") {
+		t.Errorf("it must say the feed did not answer:\n%s", got)
+	}
+	if !strings.Contains(got, "no hotspots within a 16 mile fire ring") {
+		t.Errorf("the hotspot half DID answer and must still be stated:\n%s", got)
+	}
+
+	// HMS and FIRMS down: the mirror.
+	noHotspots := base
+	noHotspots.IncidentsKnown = true
+	noHotspots.State = snapshot.FireState{AsOf: now, IncidentsAsOf: now}
+	got = join(std.FireSegments("Oceanside, CA", noHotspots, true, now))
+	if strings.Contains(got, "no hotspots") {
+		t.Errorf("the hotspot feeds did not answer; a zero count is not a fact:\n%s", got)
+	}
+	if !strings.Contains(got, "hotspot feed has not answered") {
+		t.Errorf("it must say the hotspot feed did not answer:\n%s", got)
+	}
+	if !strings.Contains(got, "no named incidents within a 31 mile radius") {
+		t.Errorf("the incident half DID answer and must still be stated:\n%s", got)
+	}
 }

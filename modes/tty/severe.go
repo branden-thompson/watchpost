@@ -8,6 +8,7 @@ package tty
 
 import (
 	"fmt"
+	"github.com/branden-thompson/watchpost/platform/bucket"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"strings"
 	"time"
@@ -85,6 +86,11 @@ type SevereRow struct {
 	Expires   string // "" when none
 	Severity  TickerSeverity
 	Record    SevereRecord
+
+	// Test marks a fabricated row (FR-4.4) — the ctrl+d window's events reach
+	// this window like any other, and a screenshot of one is indistinguishable
+	// from the real thing without it.
+	Test bool
 }
 
 // SevereRecord is the [A]-shaped record of one row.
@@ -134,11 +140,7 @@ func (d Dashboard) applySevere(msg SevereMsg) Dashboard {
 // bucketSevere indexes the rows per tab, preserving the app's sort.
 func bucketSevere(rows []SevereRow) [severeNumTabs][]int {
 	var by [severeNumTabs][]int
-	for i, r := range rows {
-		if r.Tab >= 0 && r.Tab < severeNumTabs {
-			by[r.Tab] = append(by[r.Tab], i)
-		}
-	}
+	copy(by[:], bucket.ByIndex(rows, severeNumTabs, func(r SevereRow) SevereTab { return r.Tab }))
 	return by
 }
 
@@ -224,15 +226,6 @@ func (d Dashboard) handleSevereNav(act term.Action) Dashboard {
 
 // --- rendering ---
 
-// hz is the title rule's glyph per --ascii (the panel draws the frame; the
-// title's inner rule is the window's own).
-func hz(o render.Opts) string {
-	if o.ASCII {
-		return "-"
-	}
-	return "─"
-}
-
 // severeArrows are the chip labels per --ascii: the words, not the
 
 // severeWindowName is the title; in the record it keeps the name and adds the
@@ -263,7 +256,7 @@ func (d Dashboard) severeTitle(o render.Opts, w int) string {
 	if fill <= 1 {
 		return render.Tint(title, render.Tok(render.ModalTitle))
 	}
-	return render.Tint(title, render.Tok(render.ModalTitle)) + " " + strings.Repeat(hz(o), fill) + " " + render.Tint(stamp, render.Tok(render.ModalTitle))
+	return render.Tint(title, render.Tok(render.ModalTitle)) + " " + strings.Repeat(o.Glyphs().Rule, fill) + " " + render.Tint(stamp, render.Tok(render.ModalTitle))
 }
 
 // severeModal renders the window: the browse table or the focused record,
@@ -418,8 +411,15 @@ func (d Dashboard) severeBrowseLines(o render.Opts, w int) []string {
 	cells := make([]render.SevereCell, 0, hi-lo)
 	for i := lo; i < hi; i++ {
 		r := d.severeRowAt(i)
+		// THE MARK LEADS THE EVENT COLUMN, and it is added HERE rather than to
+		// the row's Product: the [w] read speaks that field, and a product with
+		// three asterisks in it would be read aloud as asterisks.
+		event := render.PlainLine(r.Product)
+		if r.Test {
+			event = testEventMark + " " + event
+		}
 		cells = append(cells, render.SevereCell{
-			Num: i + 1, Event: render.PlainLine(r.Product), Location: render.PlainLine(r.Location), Detection: render.PlainLine(r.Detection), Declared: render.PlainLine(r.Declared), Expires: render.PlainLine(r.Expires),
+			Num: i + 1, Event: event, Location: render.PlainLine(r.Location), Detection: render.PlainLine(r.Detection), Declared: render.PlainLine(r.Declared), Expires: render.PlainLine(r.Expires),
 			Focused: i == d.severeRow, Playing: d.severePlaying(r.Key), Paused: d.severeReadPause && d.severeReading == r.Key,
 		})
 	}
@@ -445,7 +445,7 @@ func (d Dashboard) severeEmptyLines(o render.Opts, w, inner int, tab category.Sp
 	if !d.severe.Updated.IsZero() {
 		stamp = "Updated " + o.Clock.DateTimeZone(d.severe.Updated.Local())
 	}
-	lines = append(lines, "  No active "+strings.ToLower(tab.TabLabel)+" events · "+stamp)
+	lines = append(lines, "  No active "+strings.ToLower(tab.TabLabel)+" events "+o.Glyphs().Dot+" "+stamp)
 	// A WATCHLIST TAB SAYS WHY IT IS EMPTY IN BOTH CASES.
 	//
 	// This only spoke when the watchlist was EMPTY, which is the case where a

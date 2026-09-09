@@ -26,13 +26,31 @@ func startDebugProfiles(d *dumper) {
 	if os.Getenv("WATCHPOST_DEBUG_PPROF") != "1" {
 		return
 	}
+	go func() { _ = http.ListenAndServe(debugAddr(), debugMux(d)) }()
+}
+
+// debugMux is the routes, apart from the listener, so they can be exercised
+// without binding a port.
+func debugMux(d *dumper) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/counters", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(d.record(time.Now()))
 	})
-	mux.HandleFunc("/debug/dump", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/debug/dump", func(w http.ResponseWriter, r *http.Request) {
+		// POST, BECAUSE IT WRITES (F-9). A GET is what any page a developer has
+		// open can issue at 127.0.0.1:6060 without reading the answer — the
+		// browser needs no permission to make the request, only to see the
+		// reply — and this route writes a profile set to disk. The route is
+		// opt-in and loopback-only, which is why this was hardening rather than
+		// an incident; FR-4 is what changes that, by documenting the debug
+		// surface for users.
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", http.MethodPost)
+			http.Error(w, "use POST: this writes a dump set to disk", http.StatusMethodNotAllowed)
+			return
+		}
 		dir, err := d.Dump(time.Now())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusTooManyRequests)
@@ -40,7 +58,7 @@ func startDebugProfiles(d *dumper) {
 		}
 		_, _ = fmt.Fprintln(w, dir)
 	})
-	go func() { _ = http.ListenAndServe(debugAddr(), mux) }()
+	return mux
 }
 
 // debugAddrDefault is where the debug server lives when nothing overrides it.

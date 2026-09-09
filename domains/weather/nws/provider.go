@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/bodymemo"
+
 	"golang.org/x/sync/singleflight"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -41,17 +43,25 @@ const stationCandidates = 4
 const fetchConcurrency = 6
 
 // Provider implements snapshot.Provider for api.weather.gov.
+// maxGrids is the grid memo's ceiling. Retain prunes it by LIVENESS every
+// cycle, so this is a backstop rather than the bound that does the work: a leak
+// in Retain used to mean unbounded growth and now means 240 entries.
+const maxGrids = 240
+
 type Provider struct {
 	client *httpx.Client
 	base   string // e.g. https://api.weather.gov (test servers override)
 
 	mu    sync.Mutex
 	cache map[snapshot.LocationKey]*gridInfo
-	grids map[string]*gridMemo // the decoded gridpoint max/min series per grid URL, by body hash (Q5b-6); pruned with the cache in Retain
-	sf    singleflight.Group   // one points resolution per key across concurrent tiers
-	now   func() time.Time     // the clock (tests)
+	// grids is the decoded gridpoint max/min series per grid URL, revalidated
+	// by body hash (Q5b-6). BOUNDED BY LIVENESS, in Retain: its keys are the
+	// grids of watched locations, so one that leaves the watchlist stops
+	// existing rather than waiting to be pushed out by others.
+	grids *bodymemo.Memo[string, gridDoc]
+	sf    singleflight.Group // one points resolution per key across concurrent tiers
+	now   func() time.Time   // the clock (tests)
 
-	gridDecodes int // gridpoint bodies decoded since launch
 }
 
 // New builds the provider. base "" means the production API.
@@ -59,7 +69,7 @@ func New(client *httpx.Client, base string) *Provider {
 	if base == "" {
 		base = "https://api.weather.gov"
 	}
-	return &Provider{client: client, base: base, cache: map[snapshot.LocationKey]*gridInfo{}, grids: map[string]*gridMemo{}, now: time.Now}
+	return &Provider{client: client, base: base, cache: map[snapshot.LocationKey]*gridInfo{}, grids: bodymemo.New[string, gridDoc](maxGrids), now: time.Now}
 }
 
 // ID implements snapshot.Provider.
@@ -76,11 +86,11 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 	}
 	switch req.Kind {
 	case snapshot.KindObs:
-		frag.PerLocation, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchObs)
+		frag.PerLocation, frag.Failed, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchObs)
 	case snapshot.KindForecast:
-		frag.PerLocation, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchForecast)
+		frag.PerLocation, frag.Failed, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchForecast)
 	case snapshot.KindForecastHourly:
-		frag.PerLocation, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchHourly)
+		frag.PerLocation, frag.Failed, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchHourly)
 	case snapshot.KindAlerts:
 		if err := p.fetchAlerts(ctx, req.Locations, &frag); err != nil {
 			frag.Err = err

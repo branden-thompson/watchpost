@@ -47,7 +47,7 @@ Real data, 133×44, the default theme unless noted (0.14.0).
 
 ![A breaking event: the tape hands over to the takeover — read aloud over the radio — and `w` opens the window on its category, the event as row 001](docs/img/breaking.gif)
 
-![The Severe Weather / Disaster Events window, category by category: Emergency Orders, Warnings, Watches, Advisories, Special Weather Statements, Disasters and Forecasts — each in its own tint, with DETECTION, DECLARED and EXPIRES](docs/img/severe.gif)
+![The Severe Weather / Disaster Events window, category by category: Emergency Orders, Warnings, Watches, Advisories, Special Weather Statements, Disasters, Marine and Forecasts — each in its own tint, with DETECTION, DECLARED and EXPIRES](docs/img/severe.gif)
 
 ![The Alert Details modal paging through a location's alerts: a Coastal Flood Advisory then a High Surf Advisory for Vista, CA, each in full](docs/img/alert-details.gif)
 
@@ -99,9 +99,9 @@ who will actually speak, and `p` previews the focused one. When correspondents c
 
 The voices themselves need nothing on macOS — the correspondents are the system's own. On Linux and
 Windows the voice (Piper) installs itself the first time you tune in; picking one you have not used yet
-downloads it (about 63 MB, verified) with progress shown in the player. Watchpost fetches at most two
-voices in the background per session, so a hand-edited config cannot quietly pull hundreds of megabytes
-on launch.
+downloads it (about 63 MB, verified) with progress shown in the player. A voice downloads the first time something
+actually needs it, never at launch, and only one download runs at a time — so a config naming several
+correspondents fetches them as each one is first heard, not all at once.
 
 **Alert tones.** Every alert opens with a sound that says what KIND of alert is coming, before a word is
 spoken: warnings and significant quakes share the loudest, and watches, advisories, special statements
@@ -140,9 +140,10 @@ which is why `w` is the key to remember.)
 
 ## Severe events
 
-`w` opens the Severe Weather / Disaster Events window: every active event in six categories —
-Warnings · Watches · Advisories · Spec. Statements · Disasters · Marine — each painting the window
-in its own colour. It combines the national feeds (USGS significant quakes, NHC tropical cyclones,
+`w` opens the Severe Weather / Disaster Events window: every active event in eight categories —
+Emergency · Warnings · Watches · Advisories · Spec. Statements · Disasters · Marine · Forecasts —
+each painting the window in its own colour. **Emergency** is where an evacuation order lands, and it
+leads the window. It combines the national feeds (USGS significant quakes, NHC tropical cyclones,
 the NWS severe-warning feed) with the alerts of every place on your watchlist, one row per event; an
 alert a newer message from the same office has replaced is dropped everywhere it would show. Each row
 tells you the EVENT, its LOCATION, how it was **detected** (a warning's own source line — Radar
@@ -198,8 +199,12 @@ FIRMS simply reads `off` in the status window and the other two sources carry th
 ## Themes and looks
 
 `t` opens Settings at the theme picker: Watchpost, Watchpost Light (for a light terminal), High Contrast,
-Monochrome and nine more, applied live and remembered. Every colour pair in every theme is checked to
-read at the WCAG AA contrast level. `watchpost --ascii` draws every mark with plain characters
+Monochrome and nine more, applied live and remembered. Every colour pair the themes paint TEXT with is held to
+the WCAG AA contrast level, in every theme, by a gate that fails the build. Eleven tokens sit outside
+it, listed with their reason in `06_docs/follow-ups.md` (F-57): the radio ground is the terminal's own
+default with no colour to measure, the key chips carry foreground and background together, the title
+gradient is large display text held to 3:1, and the visualizer bars are decorative and repeat what the
+play mark already says. `watchpost --ascii` draws every mark with plain characters
 (`>` pointer, `*` playing, `R` on repeat, `n*` fires, `n!` alerts, `.`/`o`/`O` quakes, `+ - |` box
 rules, arrow keys named in words) and spells out headers a screen reader would read letter by letter,
 for terminals or screen readers that mishandle the glyphs. It covers the marks, the box rules, the
@@ -226,7 +231,7 @@ for life-safety use). Watchpost is not affiliated with NOAA, NIFC, the USGS or N
 
 **What it talks to, and when.** Watchpost fetches only from the providers above, on the schedule the
 dashboard shows, and it sends nothing about you to any of them. One further connection is available and
-is **off unless you turn it on**: `update_check = true` asks `api.github.com`, once an hour, whether a
+is **off unless you turn it on**: `update_check = true` asks `api.github.com`, **once at startup**, whether a
 newer release has been published. It is a plain GET — no version, no identifier, nothing about your
 machine — and the answer is compared locally; the `S` window shows the result. Left off, the app never
 contacts GitHub at all.
@@ -260,11 +265,11 @@ key = "your-32-character-map-key"   # or paste it in Settings
 ```toml
 units         = "imperial"   # imperial (°F/mi) | metric (°C/km)
 clock         = "12h"        # 12h | 24h | mil — how times are written AND spoken
-update_check  = false        # true asks GitHub, hourly, whether a newer release exists
+update_check  = false        # true asks GitHub ONCE at startup whether a newer release exists
 ```
 
-**The radio's own keys** (`[radio]`; all of them are Settings rows too, so you never have to write
-them by hand):
+**The radio's own keys** (`[radio]`). Most are Settings rows, so you never have to write them by
+hand — **four are not, deliberately**; see below the block.
 
 ```toml
 [radio]
@@ -279,6 +284,15 @@ piper = "en_US-amy"       # inherits from the level above it, so setting `alerts
 mode  = ""                # "" every class sounds | "mute" silence the classes below
 muted = ["warning"]       # class keys; EMPTY under mute means every class
 ```
+
+**Four voice roles are config-only, on purpose.** Settings has a row for the five a listener picks
+between — *Alerts / Takeovers*, *Location Report*, *Marine Report*, *Fire/Hotspots*, *Seismic
+Reports* — and **`breaking`, `severe_read`, `standard` and `station` have no row**. They are set by
+hand or not at all, and each inherits from the level above it if you leave it out, so the app is
+fully usable without ever naming one. They stay out of the window because a picker for every role
+was tried and rejected: fine-grained controls for the five that get chosen, rather than nine rows
+where four are almost always inherited. Write them the same way as the block above —
+`[radio.voices.station]`, and so on.
 
 **`[M]` silences tones, never words.** Muting a class stops its attention tone; the alert is still
 read aloud. There is no setting that stops the words — that is deliberate.
@@ -311,15 +325,19 @@ installs shell completion.
 
 **Diagnostics.** `WATCHPOST_DEBUG_TIMING=1` prints launch→full-view time on exit.
 `WATCHPOST_DEBUG_PPROF=1` serves pprof on `127.0.0.1:6060` (or `WATCHPOST_DEBUG_PPROF_ADDR`), plus
-`/debug/counters` (live request, publish and memory counters as JSON) and `/debug/dump` (write a
-profile set). The `S` window shows the request counters per host since launch and the severe index
+`/debug/counters` (live request, publish and memory counters as JSON) and `/debug/dump` (**POST** —
+it writes a profile set to disk, so a GET is refused). The `S` window shows the request counters per host since launch and the severe index
 against its 500-row cap. A running dashboard writes a diagnostic dump — heap, allocs, goroutine and
 threadcreate profiles with `counters.json` — under the cache directory's `profiles/` on
-`kill -USR1 <pid>` (macOS/Linux; on Windows use `/debug/dump`); dumps are at least a minute apart and
+`kill -USR1 <pid>` (macOS/Linux; on Windows use `curl -X POST .../debug/dump`); dumps are at least a minute apart and
 the newest twelve are kept. `watchpost report <loc> --verbose` appends one request-counter line per
-host. `WATCHPOST_DEBUG_RADIO=<file>` appends one line per radio engine state change, one per
-synthesized segment as it reaches the air, and one when a cycle ends (the voice's error, if that is
-why) — the first thing to send when a relay "plays nothing" or a broadcast ends before its sign-off.
+host. `WATCHPOST_DEBUG_RADIO=1` writes one line per radio engine state change, one per
+synthesized segment as it reaches the air, one when a cycle ends (the voice's error, if that is why),
+and one when a read is ended for not finishing — the first thing to send when a relay "plays nothing"
+or a broadcast ends before its sign-off. It lands at `<cache>/watchpost/debug/radio.log`, mode 0600,
+rotated once past 8 MiB. **The variable names the LOG, not a path**: set it to a lower-case name
+(`WATCHPOST_DEBUG_RADIO=soak`) to keep a run's log beside the others, and anything that is not a name
+falls back to `radio`.
 
 ## Building from source
 

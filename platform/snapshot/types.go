@@ -47,6 +47,14 @@ type Location struct {
 	Daily      []Daily            `json:"daily"`
 	Marine     *Marine            `json:"marine"`  // null inland (B3 UAT 29)
 	Seismic    *SeismicState      `json:"seismic"` // nil until the USGS feed has answered (0.11.0)
+
+	// WeatherAsOf is when the REFERENCE provider last completed a fetch that
+	// covered this location — zero = none has yet. It is the weather half of a
+	// distinction FireState.AsOf and Seismic's nil-ness already make, and the
+	// only reason a never-resolving lookup could not be told from a loading one
+	// (issue #13): with no attempt recorded, an empty location shimmers for
+	// ever. It says the feed ANSWERED, never that it found anything.
+	WeatherAsOf time.Time `json:"weather_as_of"`
 }
 
 // Section is one provider's contribution to one location.
@@ -200,6 +208,23 @@ type FireState struct {
 	AsOf      time.Time  `json:"as_of"` // when a fire feed last answered for this location; zero = no feed has yet (never "no hotspots" — red-team B5 P3)
 	Hotspots  []Hotspot  `json:"hotspots"`
 	Incidents []Incident `json:"incidents"`
+
+	// HotspotsAsOf and IncidentsAsOf are per-FEED, and AsOf alone was not enough
+	// (REVIEW red team, 2026-09-08). AsOf is the freshest answer from ANY fire
+	// feed, so with HMS up and WFIGS down it is set — and the spoken report then
+	// stated "there are currently no named incidents within a 31 mile radius" as
+	// a FACT, one sentence after crediting the National Interagency Fire Center
+	// as a source. The mirror case says "no hotspots" while HMS and FIRMS are
+	// both down.
+	//
+	// This is the on-screen distinction the UAT already forced — "fire feed not
+	// yet available" is not "none within this radius" — applied per FEED rather
+	// than per ring, and on the air rather than only on screen.
+	//
+	// Zero means that half was never answered for this location. A count of zero
+	// is only a fact when its own stamp is set.
+	HotspotsAsOf  time.Time `json:"hotspots_as_of"`
+	IncidentsAsOf time.Time `json:"incidents_as_of"`
 }
 
 // Hotspot is one satellite fire detection.
@@ -408,6 +433,16 @@ func Key(ref LocationRef) LocationKey {
 	return LocationKey(b)
 }
 
+// Keys is Key over a set — the shape every Apply caller needs to say which
+// locations its fetch covered (#13).
+func Keys(refs []LocationRef) []LocationKey {
+	out := make([]LocationKey, 0, len(refs))
+	for _, r := range refs {
+		out = append(out, Key(r))
+	}
+	return out
+}
+
 // FetchReq asks a provider for one scheduled unit of work.
 type FetchReq struct {
 	Kind      FetchKind
@@ -434,6 +469,12 @@ type Fragment struct {
 	PerLocation map[LocationKey]PartialData
 	FetchedAt   time.Time
 	Err         error
+	// Failed is which locations failed and why, so a consumer can tell a
+	// definitive answer ("we do not cover that point") from a failure to ask
+	// ("we could not reach the service"). Err joins the same failures and says
+	// nothing about where they happened. Not published; Fragment has no json
+	// tags.
+	Failed map[LocationKey]error
 }
 
 // Provider is the only interface a data source implements (§2).

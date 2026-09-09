@@ -344,3 +344,62 @@ func TestTheBandsLanesAreDressedAndExcludeForecasts(t *testing.T) {
 		t.Fatal("the rotation is empty")
 	}
 }
+
+// THE BAND SAYS WHEN WHAT IT IS SHOWING IS FABRICATED (FR-4.4).
+//
+// A photograph of the marquee carrying a tornado warning is indistinguishable
+// from a real one — the same sentence that keeps the injector out of a release
+// build.
+//
+// PREPENDED AND POSTPENDED, ON THE ITEM (HUM LEAD, 2026-09-07). The tape
+// scrolls, so a marker at one end only is off-window half the time; a marker at
+// both ends means the item cannot be on screen without one of them. The earlier
+// design put it in the band's top row as lane chrome, on the argument that an
+// 18-cell prefix per item at the 80-column floor makes the marker the majority
+// of the tape — the ruling overrides that argument, and it is the item that is
+// fabricated rather than the lane.
+func TestTheTapeMarksAFabricatedItemAtBothEnds(t *testing.T) {
+	rendering.SetColorEnabledForTest(false)
+	real := TickerItem{ID: "tor", Category: CatWarning, Head: "Tornado Warning · Olathe, KS", Severity: TickerRed}
+	test := real
+	test.ID, test.Test = "injected", true
+	d := tickerDash(t, []TickerItem{test}, false)
+
+	line := stripANSITest(d.tapeLine(render.Opts{Width: 80}, test))
+	if !strings.HasPrefix(line, testEventMark) || !strings.HasSuffix(line, testEventMark) {
+		t.Errorf("the tape reads %q; a fabricated item is marked at BOTH ends, so it cannot be on "+
+			"screen without one of them", line)
+	}
+	if got := stripANSITest(d.tapeLine(render.Opts{Width: 80}, real)); strings.Contains(got, testEventMark) {
+		t.Errorf("a REAL warning is marked as a test event: %q", got)
+	}
+
+	for _, width := range []int{80, 133} {
+		if got := stripANSITest(d.tickerMarquee(render.Opts{Width: width})); !strings.Contains(got, testEventMark) {
+			t.Errorf("%d cells: the band is showing a fabricated warning and says nothing:\n%s", width, got)
+		}
+		if got := stripANSITest(tickerDash(t, []TickerItem{real}, false).tickerMarquee(render.Opts{Width: width})); strings.Contains(got, testEventMark) {
+			t.Errorf("%d cells: a REAL warning is marked as a test event:\n%s", width, got)
+		}
+	}
+}
+
+// AND SO DOES THE TAKEOVER, which is the surface that most looks like the real
+// thing: one event, centred, across the whole band, in its lane's colour. It
+// draws the same tape line, so it inherits the marking rather than repeating
+// the rule.
+func TestTheTakeoverMarksAFabricatedEvent(t *testing.T) {
+	rendering.SetColorEnabledForTest(false)
+	it := TickerItem{ID: "injected", Category: CatEmergency, Head: "Evacuation Immediate · Paradise, CA", Severity: TickerRed, Test: true}
+	d := tickerDash(t, nil, false)
+	d.breaking = &it
+	if got := stripANSITest(d.tickerMarquee(render.Opts{Width: 80})); !strings.Contains(got, testEventMark) {
+		t.Errorf("a fabricated evacuation order is taking over the band unmarked:\n%s", got)
+	}
+	real := it
+	real.Test = false
+	d.breaking = &real
+	if got := stripANSITest(d.tickerMarquee(render.Opts{Width: 80})); strings.Contains(got, testEventMark) {
+		t.Errorf("a REAL evacuation order is marked as a test event:\n%s", got)
+	}
+}

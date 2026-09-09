@@ -31,22 +31,69 @@ func (d Dashboard) seismicLookbackDays() int {
 func seismicRows(o render.Opts, loc *snapshot.Location, now time.Time, cw, lookbackDays int) []string {
 	ss := loc.Seismic
 	if ss == nil || ss.AsOf.IsZero() { // no feed has answered (cold/down): "unavailable", never a fake "none" (FIRE AsOf precedent)
-		return []string{detailRow("SEISMIC", seismicHead("seismic data unavailable", cw))}
+		return []string{detailRow(o, "SEISMIC", seismicHead("seismic data unavailable", cw))}
 	}
 	n := len(ss.Quakes)
 	if n == 0 { // the feed answered and nothing was in reach: the honest quiet answer
-		return []string{detailRow("SEISMIC", seismicHead("no recent seismic activity", cw))}
+		return []string{detailRow(o, "SEISMIC", seismicHead("no recent seismic activity", cw))}
 	}
 	head := fmt.Sprintf("%d nearby in the last %d days", n, lookbackDays)
 	// The whole list (the provider caps it at 20, so this is bounded): the radio
 	// broadcast reads only the strongest three and sends listeners here for the
 	// rest (P4, HUM LEAD). Pre-sized: header + one row per quake.
 	out := make([]string, 0, n+1)
-	out = append(out, detailRow("SEISMIC", seismicHead(head, cw)))
-	for _, q := range ss.Quakes {
-		out = append(out, detailRow("", seismicQuakeRow(o, q, now)))
+	out = append(out, detailRow(o, "SEISMIC", seismicHead(head, cw)))
+	for _, l := range seismicTable(o, ss.Quakes, now, cw-detailRailGutter) { // bounded by the provider's cap of 20 (P10-02)
+		out = append(out, detailRow(o, "", l))
 	}
 	return out
+}
+
+// seismicTable is the quakes, through the kit (0.15.0).
+//
+// THE COLUMNS WERE PadTo LITERALS, which is the same table written by hand: the
+// widths were counted once and every change since has had to re-count them, and
+// a value one cell too long pushed the rest of its row right. FIT sizes each
+// column to its own widest cell, so the table is as wide as what is in it.
+//
+// DISTANCE AND DIRECTION ARE TWO COLUMNS, as they are in the fire tables: a
+// number aligns on its right edge and a heading on its left, and together in
+// one cell neither does.
+//
+// THE FELT LABEL IS THE ONE TRUNCATABLE COLUMN. "Tsunami — Almost certainly
+// felt" is 31 cells and the section has about 62 for everything; it is also the
+// only column whose meaning survives being cut, because the words that matter
+// are at the front. Everything left of it is a measurement, and half a
+// measurement is worse than none.
+func seismicTable(o render.Opts, qs []snapshot.Quake, now time.Time, inner int) []string {
+	cols := []render.StatusColumn{
+		{Width: 1},                       // the felt-likelihood glyph
+		{},                               // the magnitude
+		{Right: true},                    // how far
+		{},                               // which way
+		{Right: true},                    // how deep
+		{Right: true},                    // how long ago
+		{Truncatable: true, MinWidth: 8}, // what it would have felt like
+	}
+	rows := make([]render.StatusRow, 0, len(qs))
+	for _, q := range qs { // bounded by the provider's cap of 20 (P10-02)
+		glyph, label := seismicBand(o, q.Mag)
+		tone := render.Tok(render.SeismicMark)
+		if q.Tsunami || seismicAlertSevere(q.Alert) {
+			tone = render.Tok(render.AlertDanger) // tsunami / orange-red PAGER: warning tone, any magnitude
+			label = seismicWarnLabel(o, q, label)
+		}
+		rows = append(rows, render.StatusRow{Cells: []string{
+			render.Tint(glyph, tone),
+			fmt.Sprintf("M%.1f", q.Mag),
+			strings.TrimSpace(o.Distance(&q.DistanceKm)),
+			q.Bearing,
+			fmt.Sprintf("depth %.0f km", q.DepthKm),
+			seismicAge(now.Sub(q.At)),
+			label,
+		}})
+	}
+	return o.DetailTable(cols, rows, inner, render.DetailGutter)
 }
 
 // seismicHead renders the section header content with the "(USGS)" credit
@@ -59,25 +106,6 @@ func seismicHead(head string, cw int) string {
 		return head + "  " + attr // too narrow to right-align: keep a gap
 	}
 	return render.PadTo(head, target) + attr
-}
-
-// seismicQuakeRow renders one quake: felt-likelihood glyph, magnitude,
-// distance + bearing, depth, age and the felt-likelihood label. A tsunami or
-// a high-level PAGER alert reads in the warning tone regardless of band.
-func seismicQuakeRow(o render.Opts, q snapshot.Quake, now time.Time) string {
-	glyph, label := seismicBand(o, q.Mag)
-	tone := render.Tok(render.SeismicMark)
-	if q.Tsunami || seismicAlertSevere(q.Alert) {
-		tone = render.Tok(render.AlertDanger) // tsunami / orange-red PAGER: warning tone, any magnitude
-		label = seismicWarnLabel(o, q, label)
-	}
-	mark := render.Tint(glyph, tone)
-	dist := o.Distance(&q.DistanceKm) // kept right-aligned (%3.0f) so the numbers line up down the column
-	where := "  " + mark + " " + render.PadTo(fmt.Sprintf("M%.1f", q.Mag), 5)
-	facts := render.PadTo(dist+" "+q.Bearing, 11) +
-		render.PadTo(fmt.Sprintf("depth %.0f km", q.DepthKm), 13) +
-		render.PadTo(seismicAge(now.Sub(q.At)), 8) + label
-	return where + " " + facts
 }
 
 // seismicRowLevel is the felt-band level the main-table row mark wears

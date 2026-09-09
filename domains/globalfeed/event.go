@@ -46,6 +46,17 @@ type Event struct {
 	Source     string    // "USGS" | "NHC" | "NWS"
 	Name       string    // a named storm ("Dolly"); "" otherwise (0.13.0, SAM-D-14/20)
 
+	// Fabricated marks an event the ctrl+d window injected (FR-4.4). It is set
+	// in ONE place, in a build-tagged file, and nothing outside that file can
+	// set it — a release binary has no code that writes true here.
+	//
+	// IT IS A FIELD RATHER THAN AN ID PREFIX because the consumers are untagged:
+	// the marquee and the read script have to mark a test event, and they ship.
+	// Matching on the id would put the injector's own anchor string —
+	// "watchpost-injected-" — into every clean binary, which is exactly the
+	// string scripts/lint-injector.sh proves is absent from one.
+	Fabricated bool
+
 	// Per-class detail (0.13.0, SAM-D-21): exactly one is non-nil for a
 	// parsed event; all nil on a thin event (tests, seen-store replay).
 	Quake    *QuakeDetail

@@ -23,6 +23,11 @@ type injectQueue struct{}
 
 func (q *injectQueue) take() []globalfeed.Event { return nil }
 
+// wake is NIL here, and that is the point: the ticker's loop selects on it in
+// both builds, and a select arm on a nil channel blocks forever. The "cycle
+// now" path is absent from a release binary rather than switched off in it.
+func (q *injectQueue) wake() <-chan struct{} { return nil }
+
 func (t *tickerDeck) takeInjected() []globalfeed.Event { return t.inject.take() }
 
 // No injector and no scenarios: the window renders its "not available in this

@@ -47,7 +47,26 @@ type bed struct {
 	ref   string    // the location carrying it; "" = nothing is tuned
 	live  bool      // a relay, which dwells; the synth broadcast does not
 	since time.Time // when it took the bed, for the dwell
+
+	// asked and askedAt are the tune the Director has issued and not yet seen
+	// land (FR-9.3). A rotation that is told to move and does not is a station
+	// that has gone quiet with nothing coming, and nothing else observes it:
+	// the deck reports Tuned when audio actually plays, so silence here is
+	// silence everywhere.
+	asked   string
+	askedAt time.Time
 }
+
+// tuneLands is how long a tune has to land before the rotation is reported as
+// stalled (FR-9.3).
+//
+// THIRTY SECONDS, AND THE DERIVATION MATTERS MORE THAN THE NUMBER. A resolve
+// and a connect "can take seconds" — the reason the dwell starts at Playing
+// rather than at the ask — and a failed relay falls through to a synthesised
+// cycle, which re-renders at roughly ten seconds per utterance on Piper. Thirty
+// is comfortably past both paths and still inside the time a listener would
+// give a station that has stopped talking.
+const tuneLands = 30 * time.Second
 
 // onTuned records where the bed went. The dwell starts HERE, at the moment
 // audio actually plays, rather than when the tune was asked for — a resolve and
@@ -68,6 +87,36 @@ func (d Director) onTuned(ev Tuned) (Director, []Effect) {
 	}
 	d.bed = bed{ref: ev.Ref, live: ev.Live, since: d.now}
 	return d, nil
+}
+
+// tuneAsked records a tune the Director has just issued, so a tick can notice
+// that it never landed.
+func (d Director) tuneAsked(ref string) Director {
+	d.bed.asked, d.bed.askedAt = ref, d.now
+	return d
+}
+
+// stalledRotation is the report a tune that never landed raises, or nothing.
+//
+// UNLESS THE OPERATOR CHOSE SILENCE (FR-9.3, reworded by the HUM LEAD): a
+// stopped station and a rotation that does not move by itself are both
+// deliberate, and I-2 holds that a deliberate non-delivery is not a fault. The
+// only case here is a station that was TOLD to move and did not.
+//
+// ONCE PER ASK. The pending tune is cleared as the report goes out, so a tick
+// every second does not raise a window every second — the noise regression
+// fault.go exists to avoid.
+func (d Director) stalledRotation() (Director, []Effect) {
+	if d.bed.asked == "" || d.now.Sub(d.bed.askedAt) < tuneLands {
+		return d, nil
+	}
+	if !d.advances(MainTrack) {
+		d.bed.asked = "" // stopped while it was in flight: not a fault, and not pending either
+		return d, nil
+	}
+	ref := d.bed.asked
+	d.bed.asked = ""
+	return d, []Effect{Escalate{Reason: "the station was asked to move to " + ref + " and did not"}}
 }
 
 // onProgramme takes the listener's rotation.
@@ -126,7 +175,7 @@ func (d Director) advanceBed() (Director, []Effect) {
 	if err := invariant.Check(!d.dwellElapsed(), "an advance restarts the turn it just spent"); err != nil {
 		return d, nil
 	}
-	return d, []Effect{Tune{Ref: next}}
+	return d.tuneAsked(next), []Effect{Tune{Ref: next}}
 }
 
 // Ended says the programme on the bed finished on its own — the synthesised
@@ -163,7 +212,7 @@ func (d Director) onEnded(Ended) (Director, []Effect) {
 		return d, nil // nowhere else to go
 	}
 	d.bed.since = d.now
-	return d, []Effect{Tune{Ref: next}}
+	return d.tuneAsked(next), []Effect{Tune{Ref: next}}
 }
 
 // dwellElapsed reports whether the live relay on the bed has had its turn.

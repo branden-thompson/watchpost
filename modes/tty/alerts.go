@@ -16,7 +16,7 @@ import (
 
 // alertBlocks renders each alert in full with the mock's bullet rules,
 // separated by dividers.
-func alertBlocks(loc *snapshot.Location, w int) []string {
+func alertBlocks(o render.Opts, loc *snapshot.Location, w int) []string {
 	if len(loc.Alerts) == 0 {
 		return nil
 	}
@@ -25,11 +25,11 @@ func alertBlocks(loc *snapshot.Location, w int) []string {
 	// w is the modal width less 11; the rail sits at w+5, so the right
 	// edge is w+2.
 	textW := w + 2
-	divider := strings.Repeat("─", textW)
+	divider := strings.Repeat(o.Glyphs().Rule, textW)
 	lines := []string{}
 	for _, a := range loc.Alerts {
 		tone := modalAlertTone(a)
-		lines = append(lines, "", divider, "", render.TintRaw("⚠ "+strings.ToUpper(render.Plain(a.Event)), "1;"+tone)) // bold title (UAT 28.5)
+		lines = append(lines, "", divider, "", render.TintRaw(o.Glyphs().Alert+" "+strings.ToUpper(render.Plain(a.Event)), "1;"+tone)) // bold title (UAT 28.5)
 		for _, l := range formatAlertBody(render.Plain(a.Description), textW) {
 			lines = append(lines, render.TintRaw(l, tone))
 		}
@@ -40,10 +40,21 @@ func alertBlocks(loc *snapshot.Location, w int) []string {
 // modalAlertTone: advisory #ACAE7D / warning #BE5454 text in modals
 // (UAT 28.3/28.4) - theme tokens on the raw-SGR path.
 func modalAlertTone(a snapshot.Alert) string {
+	return alertPair(a, render.AlertModalWarnFG, render.AlertModalAdvFG)
+}
+
+// alertPair picks the warning or advisory member of a token PAIR off the one
+// predicate (metric D, 2026-09-08).
+//
+// The foreground and the background were choosing independently, from copies of
+// the same three-line branch. They cannot disagree today, and the point is that
+// they cannot disagree TOMORROW either: the pairing is structural now rather
+// than a convention two functions happen to share.
+func alertPair(a snapshot.Alert, warn, adv render.Token) string {
 	if render.AlertIsWarning(a.Event, a.Severity) {
-		return render.Tok(render.AlertModalWarnFG)
+		return render.Tok(warn)
 	}
-	return render.Tok(render.AlertModalAdvFG)
+	return render.Tok(adv)
 }
 
 // formatAlertBody applies the mock's bullet rules to NWS alert prose:
@@ -132,17 +143,14 @@ func (d Dashboard) alertDetailsModal(o render.Opts) string {
 		return d.floatModalToned(o, d.modalWidth(), "ALERTS", d.alertDetailLines(), fg, render.Tok(render.AlertModalAdvBG))
 	}
 	a := sel.Alerts[d.alertIdx%len(sel.Alerts)]
-	title := fmt.Sprintf("ALERT %d / %d · %s", d.alertIdx%len(sel.Alerts)+1, len(sel.Alerts), sel.Label) // the page as shown (R5-C-09)
+	title := fmt.Sprintf("ALERT %d / %d %s %s", d.alertIdx%len(sel.Alerts)+1, len(sel.Alerts), o.Glyphs().Dot, sel.Label) // the page as shown (R5-C-09)
 	return d.floatModalToned(o, d.modalWidth(), title, d.alertDetailLines(), fg, alertModalBG(a))
 }
 
 // alertModalBG is the tint an alert sits on — the modal's warning red or
 // advisory yellow — in [A] and in the dashboard module alike.
 func alertModalBG(a snapshot.Alert) string {
-	if render.AlertIsWarning(a.Event, a.Severity) {
-		return render.Tok(render.AlertModalWarnBG)
-	}
-	return render.Tok(render.AlertModalAdvBG)
+	return alertPair(a, render.AlertModalWarnBG, render.AlertModalAdvBG)
 }
 
 // alertDetailLines renders the FOCUSED alert's full record plus the paging
@@ -197,7 +205,7 @@ func alertClock(loc *snapshot.Location) *time.Location {
 func alertRecordLines(o render.Opts, a snapshot.Alert, wrapW int, in *time.Location) []string {
 	tone := modalAlertTone(a)                      // UAT 28.3/28.4 modal text tones
 	head := strings.ToUpper(render.Plain(a.Event)) // provider text never addresses the terminal (S-F6) — EVERY field, not just the title (0.13.0 P4-1)
-	meta := fmt.Sprintf("[%s · %s · %s]", render.Plain(a.Severity), render.Plain(a.Urgency), render.Plain(a.Certainty))
+	meta := fmt.Sprintf("[%[1]s %[4]s %[2]s %[4]s %[3]s]", render.Plain(a.Severity), render.Plain(a.Urgency), render.Plain(a.Certainty), o.Glyphs().Dot)
 	out := []string{"  " + render.TintRaw(head, "1;"+tone) + "  " + meta} // bold title (UAT 28.5)
 	start, end := a.Effective, a.Expires
 	if a.Onset != nil {

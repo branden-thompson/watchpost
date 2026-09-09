@@ -296,7 +296,17 @@ func (r *eventReader) run(ctx context.Context, key string, done chan struct{}, g
 // there). A phrase whose script is missing is simply not spoken.
 func eventScript(lib *script.Library, row tty.SevereRow) string {
 	say := func(part string, data any) string { return scriptText(lib, "event-report", part, data) }
-	parts := []string{say("head", nil), say("opening", map[string]string{"Product": render.PlainLine(row.Product), "Location": render.PlainLine(row.Location)})}
+	// THE MARKING LEADS THE REPORT (FR-4.4). This read is one script rather than
+	// a line per alert, so there is no per-line place to put it — and a listener
+	// who asked for the full report on a fabricated event must hear what it is
+	// before they hear what it says. In Go rather than in the script file, like
+	// the burst's: the read scripts are user-editable, and a marking an edit can
+	// delete is not a marking.
+	var parts []string
+	if row.Test {
+		parts = append(parts, testHead(lib))
+	}
+	parts = append(parts, say("head", nil), say("opening", map[string]string{"Product": render.PlainLine(row.Product), "Location": render.PlainLine(row.Location)}))
 	if meta := strings.Trim(render.PlainLine(row.Record.Meta), "[]"); meta != "" {
 		parts = append(parts, say("meta", map[string]string{"Items": strings.Join(strings.Split(meta, " · "), ", ")}))
 	}

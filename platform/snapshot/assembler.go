@@ -19,8 +19,9 @@ type Assembler struct {
 	providers []string
 	sections  map[LocationKey]map[string]*Section // location -> provider -> data
 	alerts    map[LocationKey][]Alert
-	fire      map[LocationKey]map[string]*FireState // location -> provider -> its contribution (B5: HMS, WFIGS and FIRMS each add a part)
-	seismic   map[LocationKey]*SeismicState         // location -> its latest USGS state (0.11.0: one provider, no cross-merge)
+	fire      map[LocationKey]map[string]*FireState   // location -> provider -> its contribution (B5: HMS, WFIGS and FIRMS each add a part)
+	seismic   map[LocationKey]*SeismicState           // location -> its latest USGS state (0.11.0: one provider, no cross-merge)
+	asked     map[LocationKey]map[FetchKind]time.Time // location -> per KIND, when a reference fetch covering it completed (#13)
 	status    map[string]*ProviderStatus
 	warnings  []Warning
 }
@@ -43,6 +44,7 @@ func newAssembler(refs []LocationRef, providerIDs []string) *Assembler {
 		alerts:   map[LocationKey][]Alert{},
 		fire:     map[LocationKey]map[string]*FireState{},
 		seismic:  map[LocationKey]*SeismicState{},
+		asked:    map[LocationKey]map[FetchKind]time.Time{},
 		status:   map[string]*ProviderStatus{},
 	}
 	kept := make([]LocationRef, 0, len(refs))
@@ -215,6 +217,13 @@ func (a *Assembler) SetLocations(refs []LocationRef) (added, removed []LocationR
 			delete(a.alerts, k)
 			delete(a.fire, k)
 			delete(a.seismic, k)
+			// AND THE ATTEMPT RECORD. Without this a location removed and
+			// re-added in the same session inherited the stamp of its previous
+			// life and read "n/a" — asserting "we asked and there is nothing
+			// here" before a single fetch had been issued for it (REVIEW red
+			// team, 2026-09-08). It also stopped the map growing for ever
+			// across removals.
+			delete(a.asked, k)
 		}
 	}
 	a.order, a.refs = order, kept
@@ -227,7 +236,17 @@ func (a *Assembler) SetLocations(refs []LocationRef) (added, removed []LocationR
 // (B3 UAT 59: one bad location must not blank the rest of the batch);
 // locations it could not serve keep their prior data (§10.1; obs_stale
 // never degrades status — see Warn).
-func (a *Assembler) Apply(f Fragment) {
+// asked is which locations the fetch COVERED. It is a PARAMETER, not a field on
+// Fragment, because a field can be forgotten and a parameter cannot: the first
+// version carried it on the Fragment, three of the four call sites set it, and
+// the one that did not — platform/sched, the ONLY path the dashboard refreshes
+// through — silently recorded no attempt for any location, ever. The fix ran in
+// `watchpost report` and nowhere a listener could see it (red team, 2026-09-08).
+//
+// PerLocation cannot answer this: a provider that returned nothing for a
+// location looks exactly like one nobody asked about, and telling those apart is
+// the whole of issue #13.
+func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	st, known := a.status[f.Provider]
@@ -244,6 +263,65 @@ func (a *Assembler) Apply(f Fragment) {
 		st.Status = ProviderOK
 		st.FetchedAt = f.FetchedAt
 	}
+	// THE ATTEMPT IS RECORDED, NOT THE RESULT (#13) — but only when the fetch
+	// can actually answer the question the row is asking, and only when the
+	// provider was REACHABLE. Both qualifications were missing and both were
+	// wrong in a way a listener would see (red team, 2026-09-08).
+	//
+	// WHY THE KIND MATTERS. A row reads as loading until it has conditions AND a
+	// daily forecast, so only those two fetches answer it. The alerts tier is a
+	// single GET and starts at the same instant as obs (three chained GETs), so
+	// it lands first — and stamping on it ended the shimmer across the whole
+	// board a second into every cold start, flashing "n/a" for temperatures that
+	// were on their way. app/pipelines.go already refuses to stamp on the
+	// supplementary hourly fetch for exactly this reason; the same hazard was
+	// left standing on the path that matters.
+	//
+	// answersTheRow HERE IS A STORAGE FILTER, NOT THE GUARD, and saying so is the
+	// point: weatherAsOf requires BOTH answering kinds, so an alerts fragment
+	// could be recorded and still end nothing. Removing this line changes no
+	// behaviour — a plant proved it — it only stops the map growing an entry per
+	// kind that nobody reads. The protection lives in weatherAsOf; a comment
+	// claiming it lives here would be the same false attribution this round has
+	// been removing.
+	//
+	// WHY REACHABILITY MATTERS, PER LOCATION. An earlier version stamped every
+	// asked location whenever the fragment served ANYBODY, on the reasoning that
+	// a served location proves the provider answered. That is right for a total
+	// outage and WRONG FOR A PARTIAL ONE: with A served and B refused, B was
+	// stamped and its row read "n/a" — asserting an absence for a location the
+	// request never reached.
+	//
+	// Fragment.Failed now says which locations failed and why, so the question is
+	// asked per location rather than per fragment. A 404 for a point outside the
+	// forecast area IS an answer — "we do not cover you" — and the row should say
+	// n/a. A refused connection is not, and the row should keep waiting.
+	//
+	// This also closes issue #13's last hole: a single-location watchlist whose
+	// only location the feed genuinely does not cover now gets a truthful n/a
+	// instead of shimmering for ever, which the previous rule could not tell from
+	// an outage.
+	if st.Role == "reference" && answersTheRow(f.Kind) {
+		at := f.FetchedAt
+		if at.IsZero() {
+			// A stamp cannot be zero: zero is how "never asked" is spelled, and a
+			// provider may simply not set FetchedAt.
+			at = time.Now().UTC()
+		}
+		for _, k := range asked {
+			if _, tracked := a.sections[k]; !tracked {
+				continue
+			}
+			if Unreachable(f.Failed[k]) {
+				continue // we could not ask about this one; it is still waiting
+			}
+			if a.asked[k] == nil {
+				a.asked[k] = map[FetchKind]time.Time{}
+			}
+			a.asked[k][f.Kind] = at
+		}
+	}
+
 	for k, pd := range f.PerLocation {
 		secs, ok := a.sections[k]
 		if !ok {
@@ -328,6 +406,28 @@ func (a *Assembler) SetAttribution(id, role, attribution string) {
 	}
 }
 
+// answersTheRow names the fetches whose completion can end a row's "loading"
+// state. A row shows conditions and a daily forecast, so those two answer it;
+// alerts, fire, marine and the rest do not, however fast they arrive.
+func answersTheRow(k FetchKind) bool { return k == KindObs || k == KindForecast }
+
+// weatherAsOf is when the LAST of the answering fetches completed for this
+// location, or zero while either is outstanding. Both are required because
+// either alone leaves half the row empty — obs without forecast is a row with a
+// temperature and no high/low, which would read "n/a" while the forecast is
+// still in flight.
+func (a *Assembler) weatherAsOf(k LocationKey) time.Time {
+	obs, okObs := a.asked[k][KindObs]
+	fc, okFc := a.asked[k][KindForecast]
+	if !okObs || !okFc {
+		return time.Time{}
+	}
+	if fc.After(obs) {
+		return fc
+	}
+	return obs
+}
+
 // Snapshot publishes a fresh immutable value: everything is copied, nothing
 // aliases assembler state.
 func (a *Assembler) Snapshot() *Snapshot {
@@ -342,14 +442,15 @@ func (a *Assembler) Snapshot() *Snapshot {
 	for i, k := range a.order {
 		ref := a.refs[i]
 		loc := Location{ // a config file's or a resolver's text is cleaned ONCE here, for every surface that draws it (NFR-6, R5-C-05)
-			Label:      plaintext.Line(ref.Label),
-			Tag:        plaintext.Line(ref.Tag),
-			Zip:        plaintext.Line(ref.Zip),
-			Lat:        ref.Lat,
-			Lon:        ref.Lon,
-			TZ:         ref.TZ,
-			ByProvider: map[string]Section{},
-			Alerts:     append([]Alert(nil), a.alerts[k]...),
+			Label:       plaintext.Line(ref.Label),
+			Tag:         plaintext.Line(ref.Tag),
+			Zip:         plaintext.Line(ref.Zip),
+			Lat:         ref.Lat,
+			Lon:         ref.Lon,
+			TZ:          ref.TZ,
+			ByProvider:  map[string]Section{},
+			Alerts:      append([]Alert(nil), a.alerts[k]...),
+			WeatherAsOf: a.weatherAsOf(k), // zero until BOTH answering fetches have covered it (#13)
 		}
 		for pid, sec := range a.sections[k] {
 			cp := Section{}

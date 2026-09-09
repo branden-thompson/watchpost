@@ -12,8 +12,11 @@ import pathlib
 # takeover's read gone from this file, worstOf became the only user of `cast`
 # here and removing the call left the tree UNCOMPILABLE — a verdict that is no
 # evidence either way. Disabling the branch is the same defect and still builds.
+# RE-ANCHORED AT 0.15.0 B1 (#18). Both calls moved behind toneClassOfEvent; the
+# defect is identical — disabling the branch returns the tie to POSITION, which
+# is what MVS-D-73 replaced.
 p = pathlib.Path("app/burst_words.go"); s = p.read_text()
-old = "\t\tif cast.Classify(e.Type).ToneRank() > cast.Classify(worst.Type).ToneRank() {"
-new = "\t\tif false && cast.Classify(e.Type).ToneRank() > cast.Classify(worst.Type).ToneRank() {"
+old = "\t\tif toneClassOfEvent(e).ToneRank() > toneClassOfEvent(worst).ToneRank() {"
+new = "\t\tif false && toneClassOfEvent(e).ToneRank() > toneClassOfEvent(worst).ToneRank() {"
 assert old in s, "mG4"
 p.write_text(s.replace(old, new, 1))

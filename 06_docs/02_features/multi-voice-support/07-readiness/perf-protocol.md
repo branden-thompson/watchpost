@@ -58,10 +58,19 @@ pinned at ×1.05. The PLAN probe predicted 3 046 / 3 476 and 1 979 / 2 478 — t
 lower and the pin is based on the **measurement** (1,978), not the probe. These are the **informational**
 "before" numbers, not the release pin. Nothing new runs per tick (the on-air chip was dropped, MVS-D-24); per-tick misses are a failure.
 
-## 3. Per-Piper-process RSS (MVS-D-17 — 0.15.0's resident decision input, OQ-18) — HUM LEAD, Arch box, at UAT on a 0.14.0 build
+## 3. Per-Piper-process RSS (MVS-D-17 — 0.15.0's resident decision input, OQ-18) — HUM LEAD, Arch box, at UAT on a **0.14.1 or later** build
 
-*(A 0.14.0 measurement: step 1 assigns two voices in Setup, which 0.13.0 cannot do. The 0.13.0 comparison row is
-§4's, on `v0.13.0` with one voice.)*
+*(Step 1 assigns two voices in Setup, which 0.13.0 cannot do. The 0.13.0 comparison row is §4's, on `v0.13.0`
+with one voice.)*
+
+> **The 0.14.0 window is excluded, and a run on it must be discarded rather than adjusted (amended
+> 2026-09-07).** This section's headline numbers come from step 2's takeover-over-read overlap. On
+> Linux, 0.14.0 never reached Piper for a takeover at all: issue #7 left `FindPiperVoice` holding an
+> empty `Key`, so every installed voice read as missing and the alert fell silent. The location
+> report still spoke, because it passed a full spec — so the app looks healthy while the measurement
+> is wrong. A §3 run on 0.14.0 Linux therefore samples ONE voice's footprint and records it as two,
+> and the overlap the section exists to capture never occurs. Both headline numbers understate, and
+> §4's summed-RSS criterion inherits the error, since it is stated relative to this one.
 
 1. Install two Piper voices (`Setup` → assign *Alerts* and *Standard* distinct voices).
 2. Tune a coastal location with fire and seismic data so the broadcast runs long; trigger a takeover mid-read.

@@ -196,8 +196,9 @@ func packagesOf(mutant string) []string {
 // and its verdict is no evidence either way. Six of each in one release, every
 // one of them found by paying for a sweep first.
 // mutantLanes is how many trees may compile at once. Four rather than one:
-// serial takes 429 s where the corpus is 159 mutants, and four keeps the run
-// near three minutes while leaving the machine enough to be used.
+// serial took 429 s when the corpus was 159 mutants (it is larger now, so the
+// envelope is understated); four keeps the run near three minutes while leaving
+// the machine enough to be used.
 const mutantLanes = 4
 
 func TestEveryMutantAppliesAndCompiles(t *testing.T) {

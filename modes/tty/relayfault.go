@@ -74,6 +74,15 @@ type relayFaultState struct {
 	focus      int
 	left       int       // seconds remaining; the footer reads it
 	last       time.Time // when the countdown last stepped, so a 300 ms tick counts seconds
+
+	// held stops the countdown for a listener who has started choosing
+	// (FR-6.4). Ten seconds is enough to read the four ways out and not enough
+	// to read them and decide, so the person the auto-close takes the choice
+	// away from is the one who was in the middle of making it. MVS-D-76 is
+	// narrowed, not removed: doing nothing still falls through, through the
+	// same one door enter uses — what changes is that pressing a key is no
+	// longer doing nothing.
+	held bool
 }
 
 // relayFaultRows is what the window offers, in the mock's order: the two best
@@ -189,6 +198,11 @@ func (d Dashboard) relayFaultChips(o render.Opts) []string {
 	content := relayFaultContentFor(o)
 	left := o.KeyCap("esc") + " Close"
 	right := "Auto Close in <" + strconv.Itoa(d.relayFault.left) + ">"
+	if d.relayFault.held {
+		// AND IT SAYS SO. A countdown that stops with no explanation reads as a
+		// frozen window, which is the state this window exists to report.
+		right = "Auto Close held"
+	}
 	gap := content - render.Width(render.PlainLine(left)) - render.Width(render.PlainLine(right))
 	if gap < 1 {
 		gap = 1
@@ -201,7 +215,7 @@ func (d Dashboard) relayFaultChips(o render.Opts) []string {
 // business, and a window that counted ticks would run at whatever speed the
 // shimmer happened to be redrawing at.
 func (d Dashboard) stepRelayFault(now time.Time) (Dashboard, bool) {
-	if d.modal != modalRelayFault || d.relayFault.left <= 0 {
+	if d.modal != modalRelayFault || d.relayFault.left <= 0 || d.relayFault.held {
 		return d, false
 	}
 	if d.relayFault.last.IsZero() {
@@ -226,9 +240,9 @@ func (d Dashboard) handleRelayFaultNav(act term.Action) Dashboard {
 	n := len(d.relayFaultRows())
 	switch act {
 	case "nav-up":
-		d.relayFault.focus = (d.relayFault.focus - 1 + n) % n
+		d.relayFault.focus, d.relayFault.held = (d.relayFault.focus-1+n)%n, true
 	case "nav-down":
-		d.relayFault.focus = (d.relayFault.focus + 1) % n
+		d.relayFault.focus, d.relayFault.held = (d.relayFault.focus+1)%n, true
 	}
 	return d
 }
