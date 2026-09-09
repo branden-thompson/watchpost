@@ -1,13 +1,13 @@
 ---
-title: "0.16.0 DISCOVER — HUM LEAD rulings D-11 through D-21"
+title: "0.16.0 — HUM LEAD rulings D-11 through D-29 (DISCOVER and PLAN)"
 date: 2026-09-09
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "D-11..D-21 ruled.  Nothing outstanding.  D-12 is AMENDED by D-20 — read them together."
+status: "D-11..D-29 ruled.  Nothing outstanding.  D-12 is AMENDED by D-20 — read them together.  D-29 CLOSES the provider-key question with arithmetic rather than a ruling."
 ---
 
-# Rulings D-11 to D-21
+# Rulings D-11 to D-29
 
 ## D-11 (OQ-12) — THE MAIN TRACK **IS** THE ROTATION.  My framing was wrong.
 
@@ -246,3 +246,107 @@ contrast register like every other painted pair.
 - **The new pair enters the AA register.**  The completeness gate crosses the token vocabulary against
   the measured pairs, so a station-state background that is not registered fails the gate rather than
   passing silently.
+
+## D-25 — Spike the merge before anything else
+
+> *"Spike the merge first - again we should have most of this infra built - the main thing is going to
+> be the operator controls."*
+
+**RULED.**  Chartered in `03-architecture-design/spike-the-merge.md`: one question, one session, its own
+worktree, three outputs, code deleted afterwards.  **It runs BEFORE P0.**
+
+**This also re-weights the release.**  The HUM LEAD's read is that the infrastructure is largely built
+and **the operator controls are the real work** — which moves P4 from "a batch behind the dangerous one"
+to the batch that carries the release's actual value.  The batch order is re-cut accordingly.
+
+## D-26 — Both confirm AND undo
+
+> *"We should provide both - you confirm AND we give you and option to undo it"*
+
+**RULED, and it is the stronger answer than either alone.**  My recommendation was undo only, on the
+grounds that a confirm costs a keystroke under pressure.  The HUM LEAD's ruling keeps the confirm as
+the guard against the accidental keypress AND the undo as the recovery from a considered-but-wrong
+decision — **two different failures, two different remedies.**
+
+**Design constraints this creates, recorded now:** the confirm must not steal focus in a way that
+delays a takeover, and **the undo must not carry a timer** — an expiring undo is a hidden clock, and
+under severe-weather pressure a hidden clock is a trap.  FR-3.7 is amended to require both.
+
+## D-27 — A card's origin never changes while it is alive
+
+> *"Cards origina should never change.  We can make *new* cards, or use a card to make a copy, and we
+> can remove / delete cards once they're done - but while it's alive its origin should not change."*
+
+**RULED: the invariant wins.**  `lineup.go:227` — *"a card keeps its slot and its origin for life"* —
+stands unrelaxed.  **My intent diagram was wrong** and has been corrected.
+
+**What this settles for P4:** a reorder moves a card and does **not** re-stamp it.  Operator provenance,
+if it is wanted at all, is either recorded outside the card or carried by a **new** card the operator's
+action creates.  The ruling explicitly permits creating new cards and copying from one — so the design
+space is intact and the invariant is not bent to fit it.
+
+## D-28 — Drop belongs to `Remove`, not to the placement event
+
+**The HUM LEAD asked what question 5 actually meant.**  It was badly framed; restated plainly:
+
+*When an operator drops a card, which existing piece of code owns that — the new placement event with a
+"dropped" placement, or the existing `Lineup.Remove`?*
+
+**It matters because `Remove`'s own comment already reserved the job:** *"it is not the Operator's DROP
+control, which arrives with the Broadcaster UI"* (`lineup.go:247-249`).  Two candidates for one job is
+the shape this codebase has removed twice.
+
+**RECOMMENDATION, and D-27 decides it:** **drop stays with `Remove`.**  A placement event that moves a
+card and a removal that ends one are different operations on different lifetimes — and since a card's
+origin is immutable while alive, "ending a card" is exactly the vocabulary D-27 uses.  `PlaceDropped`
+is withdrawn from the `Place` enum, which becomes placement only.
+
+## D-29 — The provider key: answered with arithmetic, not escalated again
+
+**The HUM LEAD asked the right question:** *"What specific provider key, and what it specifically
+owed?"*  I had carried "the provider key" as an open ruling across three checkpoints without ever
+saying which key or what the exposure actually was.  **That is the vaguest thing in the release, and it
+should have been measured the first time it was raised rather than re-escalated twice.**
+
+### The specifics
+
+**There is exactly ONE keyed provider: NASA FIRMS** (`cfg.Providers["firms"].Key`, `app/fire.go:21`).
+It supplies keyed near-real-time satellite fire detections — the upgrade over HMS, which carries the
+default unkeyed. **With no key the provider contributes nothing and says nothing.**
+
+**The quota is documented in the package itself** (`domains/fire/firms/firms.go:5-7`):
+
+> *"Quota 5,000 transactions per 10 minutes: one request per location per source, cached 10 minutes,
+> keeps a 60-location watchlist at ~120."*
+
+**Two sources** — `VIIRS_NOAA20_NRT` and `VIIRS_NOAA21_NRT` (`firms.go:33-34`), one request each.
+
+### The arithmetic
+
+| | |
+|---|---|
+| Quota | **5,000 per 10 minutes** |
+| Cost per location | **2** (one per source), cached 10 minutes |
+| Locations the quota supports | **~2,500 per window** |
+| Today's 60-location watchlist | **120 — 2.4% of quota** |
+| A 500-location Broadcaster **plus** that watchlist | **1,120 — 22% of quota** |
+
+### The conclusion
+
+**The shared-key concern does not survive its own numbers.**  The quota is not scarce at any station
+size this release contemplates, and D-16's population cap bounds the location count anyway.  **No
+ruling is owed on quota grounds, and I should not have asked for one a third time.**
+
+**What genuinely remains is much smaller:** a *revocation* or a rejected key takes fire detections from
+**both** surfaces at once rather than one.  The code already handles that gracefully — a rejected key
+*"say[s] so, once, and stop[s] hitting the quota"* (`firms.go:134`), and an unkeyed FIRMS degrades to
+HMS rather than failing.
+
+**DISPOSITION: the key stays SHARED (D-19 unchanged), and this question is CLOSED.**  The residual
+revocation case is a one-line note in P6, not a ruling.
+
+**The lesson, which is the reusable part:** the red team raised this as *"blast radius named but not
+sized or owned"*, and it was right that it was unsized.  **The correct response was to size it, not to
+forward it to the HUM LEAD.**  This is the second time this release that a concern evaporated once
+someone did the arithmetic — the first was a request budget read from a default the app overrides.
+**An unsized risk is a question for the person who can measure it, not for the person who has to rule.**

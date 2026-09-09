@@ -96,12 +96,18 @@ than I said.
 **Serial, on the standing instruction** — *"better to reduce variables if something doesn't work."*
 Each batch pushes on its first commit so CI sees both platforms while the work is warm.
 
+**RE-CUT BY D-25.**  The merge is spiked FIRST, in its own worktree, before any batch begins — see
+`spike-the-merge.md`.  The HUM LEAD's read that *"the main thing is going to be the operator controls"*
+also moves the release's centre of gravity to P4, which the original order buried behind the riskiest
+batch.
+
 | # | Batch | Delivers | Depends on |
 |---|---|---|---|
+| **S0** | **THE SPIKE — the audio merge** | One question, one session, its own worktree, code deleted after.  **Answers whether P3 is wiring or a re-shape** | — |
 | **P0** | **The router** | FR-1.1-1.3 — the router becomes the model; **11 senders** (derived, below) take its send; **Observer behaviour identical**.  **F-67's five unhandled program messages are dispositioned here** | — |
 | **P1** | **The console shell** | FR-2.1-2.4, **FR-2.6** (clamp reuse), FR-7 — three lanes read from `Publish`, read-only; breakpoints; the **minimum-size notice at 44 lines**; **the `--ascii` render**; **NFR-3's frame measurement** | P0 |
 | **P2** | **Station state and the swap gate** | FR-5, **NFR-7** (bounded silent station), FR-1.4-1.6 — `Power` wired; Variant C banner; the "on the air" boundary; STANDBY-before-swap; **`mastheadLine` wired** | P1 |
-| **P3** | **The main track producer** | T3.2b, FR-2.5 — the rotation becomes main-track cards; **the audio merge**; no double-speak | P2 |
+| **P3** | **The main track producer** | T3.2b, FR-2.5 — the rotation becomes main-track cards; **the audio merge**; no double-speak.  **Re-planned from S0's answer, not from this row** | P2, **and S0's verdict** |
 | **P4** | **Operator intent** | FR-3, B1 — the `Moved` event, the reorder mutator, the card modal, mis-action recovery | P3 |
 | **P5** | **The bed and the cut-over** | FR-4, D-24 — transitions wired, duck-per-medium, the paused main track | P3 |
 | **P6** | **Settings, tower, radius, cadence** | FR-6, FR-8 **including FR-8.9's national-scope answer**, FR-9, FR-10.  **BLOCKED on the cadence measurement** | P2 |

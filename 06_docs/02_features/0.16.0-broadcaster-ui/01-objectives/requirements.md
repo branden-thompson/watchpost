@@ -89,9 +89,12 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 - **FR-3.6** A card the operator holds past the **fifteen-minute staleness bound** is dropped by the
   existing safety rule, and **the operator is told which card went**.  The listener is already told.
   *Exit: the operator-facing notice names the dropped card.*
-- **FR-3.7** **A mis-action is recoverable.**  Dropping a card is the destructive one, and an operator
-  under severe-weather pressure will eventually drop the wrong thing.  Either the action is undoable, or
-  it is confirmed before it takes effect — **PLAN chooses which, and may not choose neither.**
+- **FR-3.7** **A mis-action is recoverable — BOTH a confirm AND an undo (D-26).**  Dropping a card is
+  the destructive one, and an operator under severe-weather pressure will eventually drop the wrong
+  thing.  **The confirm guards the accidental keypress; the undo recovers the considered-but-wrong
+  decision.  Two different failures, two different remedies.**  **The undo carries NO TIMER** — an
+  expiring undo is a hidden clock, and a hidden clock under pressure is a trap.  The confirm must not
+  delay a takeover.
   *Exit: a dropped card can be restored, or its drop required a confirmation; asserted for an ACTIVE
   warning specifically, which is the case that matters.*  *(Red team, DISCOVER phase lens: promote and
   demote got full rigor and destructive drop had no safeguard at all.)*
