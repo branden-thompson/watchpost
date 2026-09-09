@@ -50,7 +50,7 @@ this paragraph is now true. The per-file headers say what a file holds; this pag
 | Alerts are ordered for display | `modes/tty/nav.go:sortAlerts` — on the tty's own copy of the snapshot (the publisher deep-copies) |
 | The ticker band scrolls and rotates | `modes/tty/ticker.go:advanceTicker` steps the tape one cell per tick, `modes/tty/ticker.go:advanceTickerCategory` hands the band to the next non-empty lane every `tickerRotate` and parks the old lane's offset so no tape's tail is unreachable; the lane's own name, colour and order come from ONE registry — `platform/category:Of`, `:Label` and `:Lanes` — which the window's tabs read too (F-21) |
 | A time is written or spoken | `platform/render/clock.go` is the one owner: `:Time` / `:Since` / `:Stamp` write it, `:Spoken` says it and `:SpokenID` reads a callsign in NATO phonetics under the military convention. The listener's choice is Settings → WATCHPOST UI → Radio Convention |
-| The app checks for a newer release | `app/release.go:start` polls hourly ONLY when `update_check` is set; `app/release.go:checkAt` asks GitHub and keeps the parsed numbers, never the published tag |
+| The app checks for a newer release | `app/release.go:start` asks ONCE at startup, and only when `update_check` is set (0.15.0 FR-7.1; it polled hourly before); `app/release.go:checkAt` asks GitHub and keeps the parsed numbers, never the published tag |
 | A [S] table is laid out | `modes/tty/status.go:providerLines`, `:pipelineLines` and `:issueLines` build cells; `platform/render/status_table.go:StatusTable` lays them out on the go-studs table, and each table drops columns down a ladder rather than clipping one |
 
 ## Why something is slow on purpose

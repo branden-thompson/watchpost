@@ -226,7 +226,7 @@ for life-safety use). Watchpost is not affiliated with NOAA, NIFC, the USGS or N
 
 **What it talks to, and when.** Watchpost fetches only from the providers above, on the schedule the
 dashboard shows, and it sends nothing about you to any of them. One further connection is available and
-is **off unless you turn it on**: `update_check = true` asks `api.github.com`, once an hour, whether a
+is **off unless you turn it on**: `update_check = true` asks `api.github.com`, **once at startup**, whether a
 newer release has been published. It is a plain GET — no version, no identifier, nothing about your
 machine — and the answer is compared locally; the `S` window shows the result. Left off, the app never
 contacts GitHub at all.
