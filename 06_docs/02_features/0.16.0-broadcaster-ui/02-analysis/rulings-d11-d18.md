@@ -164,3 +164,76 @@ five proposed Broadcaster settings in Table 2 are approved as proposed.
 are rendered at 150 cells; "all recommendations approved" does not choose among them, because what I
 recommended was the *principle* — the station keeps STANDBY and the bed row gets a different word —
 and all three variants satisfy it.  **A, B or C is still needed.**
+
+## D-20 — **D-12 AMENDED.**  Two radii, two different mechanisms.  My unification was wrong.
+
+> *"Row 27 should stand - Observer's filter is for alert radius, but is unbounded for location.
+> Broadcaster service radius is a HARD Fence for lookups, and may have different values.  Example,
+> someone may want to run a 'hyper-local' station with a service radius of 3mi.  In this case - the
+> reports and the alerts are constrained to that radius - which generally already includes
+> warnings/advisories for the county."*
+
+**RULED, and it corrects me.**  I read "service radius is the boundary" as unification — one value.
+It is not.  There are **two boundaries operating at two different levels**, and conflating them would
+have deleted the more important one.
+
+### The distinction, confirmed against the code
+
+| | Observer | Broadcaster |
+|---|---|---|
+| **What it bounds** | **ALERTS only** | **LOOKUPS** — the location set itself |
+| **Location set** | **Unbounded.**  The watchlist may hold anywhere | **Bounded by the radius** |
+| **Alerts** | Filtered by the alert radius | Constrained **transitively**, because every location is inside the radius |
+| **Level** | Filters arrivals into an unbounded world | Defines how big the world is |
+
+**The code confirms Observer's half exactly.**  `Fence.Admits(a Arrival)` (`fence.go:129`) takes an
+*arrival* — an alert — not a location.  Nothing in the fence bounds the watchlist.  So today's radius
+is an alert filter over an unbounded location set, which is precisely the HUM LEAD's description.
+
+**And the county nuance is already load-bearing in the code.**  A zone-only alert has no point to
+measure, and the fence admits it *"only by being one the app is already tracking at a watched
+location"* (`fence.go:136-141`).  **That is the mechanism that makes a 3-mile station viable**: it
+still receives the county and zone products for the location it tracks, so a hyper-local service
+radius does not starve the station of warnings.  The HUM LEAD's *"generally already includes
+warnings/advisories for the county"* is a property the tree already has.
+
+### What this changes
+
+1. **Row 27 STANDS.**  `broadcaster.service_radius_mi` is a real, separate setting.  Row 25 keeps its
+   own meaning as Observer's alert radius and **is not renamed after all** — D-19's rename is
+   withdrawn.
+2. **FR-8 is rewritten** with two boundaries rather than one.  The Broadcaster radius is a **lookup
+   boundary**, which is new work: nothing today bounds which locations may exist.
+3. **The one-Director question dissolves rather than resolving.**  The two radii were never competing
+   for the same fence.  Observer's feeds the alert fence; Broadcaster's bounds the location set that
+   feeds everything.
+4. **A hyper-local station is an explicit supported case.**  Three miles is a stated example, not an
+   edge, so the minimum radius must be small and the cap of D-16 must behave sensibly when the radius
+   admits very few locations — possibly one.
+
+## D-21 (D-17 closed) — Variant C, with a coloured background for state
+
+> *"Variant C accepted - we'll also color the background kind of like the ticker to make state
+> IMMEDIATELY obvious as well."*
+
+**RULED: Variant C.**  The station state is a labelled field with the transition in parentheses:
+
+```
+   STATION:  *** ON AIR · BROADCASTING ***                    ( SHIFT + ENTER  →  STANDBY )
+```
+
+and the bed row's third use of the word is replaced: `○ OFF BED  [ B ]`.
+
+**Plus a background-colour treatment**, in the manner of the ticker, so the station's state reads
+instantly rather than by reading words.  **The palette is the HUM LEAD's own pass**, per the standing
+rule that colour is directed rather than chosen here; what DISCOVER records is the *requirement* that
+state be legible without reading, and the constraint that whatever pair is chosen is measured by the
+contrast register like every other painted pair.
+
+**Two obligations this creates, both recorded now so they are not discovered late:**
+
+- **The colour is not the only carrier.**  A background alone fails the `--ascii` path and any
+  non-colour terminal, so the label carries the state in words as well — which Variant C already does.
+- **The new pair enters the AA register.**  The completeness gate crosses the token vocabulary against
+  the measured pairs, so a station-state background that is not registered fails the gate rather than
+  passing silently.

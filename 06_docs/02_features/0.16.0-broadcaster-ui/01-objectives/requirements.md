@@ -107,7 +107,11 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 - **FR-5.2** ON AIR is **mock for this release** — it does not assert a continuous carrier, and the
   release says so where a user reads it.  *Exit: no claim of continuous broadcast in the README, the
   help, or the About window.*
-- **FR-5.3** **A paused main track is a distinct condition from STANDBY.**  `OffAir` holds the rail;
+- **FR-5.3** **The station state is legible without reading**, via a background treatment in the manner
+  of the ticker (D-21).  *Exit: the state is distinguishable at a glance; the chosen pair is measured by
+  the contrast register like every other painted pair, and the `--ascii` and no-colour paths still carry
+  the state in words, because a colour alone is not a carrier.*
+- **FR-5.4** **A paused main track is a distinct condition from STANDBY.**  `OffAir` holds the rail;
   a paused main track does not.  *Exit: the two are separately representable and separately asserted.*
 
 ## FR-6 — Settings
@@ -126,8 +130,9 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
   table.*
 - **FR-6.4** `broadcaster.tower` is a **single table, never an array of tables**, because the unknown-key
   preservation refuses to follow those.  *Exit: an old-binary save preserves it.*
-- **FR-6.5** The service radius is **one value**, renamed from its ticker-era name with a compatibility
-  shim.  *Exit: an old file's radius arrives under the new name with the same value.*
+- **FR-6.5** **WITHDRAWN by D-20.**  There is no rename and no unification: Observer's alert radius
+  keeps its meaning and its name, and Broadcaster's service radius is a separate setting.  Recorded
+  rather than deleted, because the withdrawn version was written into the record.
 - **FR-6.6** Key-binding overrides gain **per-surface scoping** before their sharing question is
   answered.  *Exit: the same key can mean different actions on the two surfaces, and a duplicate within
   one surface is still refused.*
@@ -150,26 +155,39 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 - **FR-7.4** The minimum height is far below the mock's 74 lines.  *Exit: the fixed chrome plus one
   readable card renders within the ruled floor.*
 
-## FR-8 — Service radius and freshness
+## FR-8 — The two boundaries, and freshness
 
 | | |
 |---|---|
-| **Source** | R-8, **D-12**, **D-16** |
+| **Source** | R-8, **D-20** (which amends D-12), **D-16** |
 
-- **FR-8.1** The **service radius is the boundary**, and it is the existing fence — a hard boundary on
-  what reaches the schedule at all.  *Exit: the fence is fed from the renamed single value.*
-- **FR-8.2** Locations inside the radius are fetched at the **priority cadence**.  *Exit: a location
-  inside the radius is on the fast tier; one outside is not.*
-- **FR-8.3** A **hard cap** bounds how many locations reach the priority tier, filled
-  **population-descending**.  *Exit: with more candidates than the cap, the admitted set is the densest
-  N, and the rule is stated where an operator reads it.*
-- **FR-8.4** Cadences stay **bounded by each source's own refresh and the client's politeness limits**.
-  No cadence is set faster than its source refreshes.  *Exit: every cadence carries its argument beside
-  it, as every existing one does.*
-- **FR-8.5** The operator can see **effective freshness** — when each kind last arrived.
-- **FR-8.6** A **national-scope exemption** to the radius is investigated and either built or dropped
-  with a recorded reason.  *Exit: DISCOVER states whether any product carries a national scope that
-  would not also appear locally.*
+**There are TWO radii and they bound different things.**  Conflating them deletes the stronger one.
+
+- **FR-8.1** **Observer's alert radius is unchanged.**  It filters *arrivals* into an **unbounded**
+  location set — the watchlist may hold anywhere.  *Exit: Observer's behaviour is identical; this is an
+  NFR-1 claim, and the test states "nothing changes".*
+- **FR-8.2** **Broadcaster's service radius is a HARD boundary on LOOKUPS.**  It bounds which locations
+  may exist for the station at all, and therefore constrains alerts transitively.  **Nothing today
+  bounds the location set**, so this is new work rather than a reuse.  *Exit: a location outside the
+  radius cannot be added, and none appears in the rotation.*
+- **FR-8.3** **A hyper-local station is a supported case, not an edge.**  Three miles is the HUM LEAD's
+  own example.  *Exit: the console is usable, and the schedule non-empty, at a 3-mile radius.*
+- **FR-8.4** **A tiny radius must still receive county and zone products.**  The mechanism already
+  exists: a zone-only alert with no point to measure is admitted by being *"one the app is already
+  tracking at a watched location"*.  *Exit: a 3-mile station receives the county warning for the
+  location it tracks — asserted, because this is what makes FR-8.3 viable.*
+- **FR-8.5** Locations inside the service radius are fetched at the **priority cadence**.  *Exit: inside
+  is fast, outside does not exist for the station at all.*
+- **FR-8.6** A **hard cap** bounds the priority tier, filled **population-descending**, and **behaves
+  when the radius admits very few locations — possibly one.**  *Exit: the cap is correct at N=1 and at
+  N greater than the cap; the rule is stated where the operator reads it.*
+- **FR-8.7** Cadences stay **bounded by each source's own refresh and the client's politeness limits**.
+  *Exit: every cadence carries its argument beside it, as every existing one does.*
+- **FR-8.8** The operator can see **effective freshness** — when each kind last arrived.
+- **FR-8.9** A **national-scope exemption** is investigated and either built or dropped with a recorded
+  reason.  **The HUM LEAD's own expectation is that it manifests as local alerts anyway**, and FR-8.4's
+  zone mechanism is why.  *Exit: DISCOVER states whether any product carries a national scope that
+  would not also arrive locally.*
 
 ## FR-9 — The tower
 
@@ -239,3 +257,5 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 | **RS-6** | **The settings split leaks or loses a value** on upgrade | MED | FR-6.3's captured-file round trip, per field |
 | **RS-7** | **A sparse town inside the radius is excluded by the cap** and the operator cannot tell why | LOW | FR-8.3 states the rule where the operator reads it |
 | **RS-8** | **Broadcaster becomes a third breakpoint implementation** | LOW | Closed by D-13 |
+| **RS-9** | **A hyper-local radius starves the station.**  A 3-mile radius could admit one location and few alerts | MED | FR-8.4 — the zone mechanism already delivers county products to a tracked location.  **Asserted, not assumed**, because FR-8.3's viability rests on it |
+| **RS-10** | **The location-set bound is new work with no precedent.**  Nothing today bounds which locations may exist; the fence bounds arrivals only | MED | FR-8.2 is scoped as new rather than as a reuse, so it is estimated honestly at PLAN |

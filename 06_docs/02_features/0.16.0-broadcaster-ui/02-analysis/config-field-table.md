@@ -17,8 +17,10 @@ and Table 2's five proposed Broadcaster settings are approved as proposed.**
 1. **Row 4 (`keys.<action>`) is not ruled S/O/B — it could not be.**  What is approved is its
    *disposition*: per-surface scoping is built first, and the S/O/B question is answered afterwards.
    Approving a recommendation that says "needs a namespace" approves the sequence, not a value.
-2. **Row 27 does not exist.**  D-12's unification stands uncorrected, so the service radius is ONE
-   value.  Row 25 is renamed rather than duplicated, and `broadcaster.service_radius_mi` is withdrawn.
+2. **Row 27 STANDS — see D-20, which amends D-12.**  There are TWO radii with different meanings:
+   Observer's bounds ALERTS over an unbounded location set; Broadcaster's is a HARD boundary on
+   LOOKUPS, so it bounds the location set itself and constrains alerts transitively.  Row 25 keeps its
+   meaning and **is not renamed**; `broadcaster.service_radius_mi` is a real, separate setting.
 
 
 **52 persisted dotted paths**, grouped into **25 natural ruling units**.  Ruling codes:
@@ -55,7 +57,7 @@ and Table 2's five proposed Broadcaster settings are approved as proposed.**
 | 22 | `clock` | 1 | 12-hour, 24-hour or military | **S** |
 | 23 | `update_check` | 1 | Opt-in check for a new release at startup | **S** |
 | 24 | `ticker_muted` | 1 | A **derived mirror** of `radio.tones.mode`; `Save` is its only writer | follows row 8 |
-| 25 | `ticker_radius_mi` | 1 | **The service radius.**  Not a display preference — it feeds `lineup.Fence`, the hard boundary on what reaches the schedule at all.  0 means All | **S**, per **D-12** |
+| 25 | `ticker_radius_mi` | 1 | **Observer's ALERT radius.**  It feeds `lineup.Fence`, which admits *arrivals* — alerts — not locations.  Observer's location set is unbounded.  0 means All | **O**, per **D-20** |
 
 **Total: 52 paths.**
 
@@ -81,7 +83,7 @@ now recommended **SHARED**: one station, one sound.
 | # | Proposed path | Type | Reuses | Note |
 |---|---|---|---|---|
 | 26 | `broadcaster.tower` | the existing `Location` struct | **Reuse, do not invent** | R-7 says the name and the coordinates are one fact; `Location` already shapes exactly that (label, zip, lat, lon, tz).  **Must be a single table, never an array of tables** — `keepUnknown` refuses to follow those because *"indices are not stable"* |
-| 27 | `broadcaster.service_radius_mi` | float64 | **See D-12** | If the service radius is one value with row 25, this row does **not** exist and row 25 is simply renamed.  Listed so the choice is explicit |
+| 27 | `broadcaster.service_radius_mi` | float64 | none — a new mechanism | **STANDS (D-20).**  A HARD boundary on LOOKUPS: it bounds which locations may exist for the station, and constrains alerts transitively.  Nothing today bounds the location set, so this is new work.  **A 3-mile hyper-local station is a stated supported case**, so the floor must be small and D-16's cap must behave when the radius admits very few locations |
 | 28 | `broadcaster.relay` | string | none | The chosen audio-bed transmitter.  `radio.mode = "relay"` names a *kind*, and carries no identity |
 | 29 | `broadcaster.gain_pct` | int | `Engine.Volume` mechanically | **Recommend B, persisted.**  Observer's volume is a listening preference and is not persisted at all (hardcoded 55).  A station's gain sets the level of a signal going over the air, and sharing them means an operator's on-air level changes because someone moved the listening volume |
 | 30 | priority-tier cap and ordering | int | `sched.Tier` | **D-16**: a hard cap filled population-descending.  R-8.3 says the cadence set keeps one owner, so this generalises the existing tier table rather than adding a field beside it |
