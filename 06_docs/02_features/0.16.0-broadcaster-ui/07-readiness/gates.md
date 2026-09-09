@@ -80,3 +80,30 @@ ruled** (D-13 did not decide it) and P1 does not assume it does.
 **RT-23 is closed.**  The DISCOVER red team flagged that no `--ascii` rendering of the design existed,
 so it was *"not shown to survive that mode"*.  It is now shown, by a derived assertion rather than a
 screenshot.
+
+## P1(e) — NFR-3, the frame budget
+
+**The review's objection was that NFR-3 was a PROMISE TO MEASURE, not a budget** — no threshold meant
+nothing could fail it, and it had no owning batch until PLAN's remediation gave it one.  **These are
+the measurements, taken and then pinned.**
+
+| Measurement | Value |
+|---|---|
+| Observer's frame, direct | **218 allocations** |
+| Observer's frame, through the Router | **219** |
+| **The Router's overhead** | **1 allocation per frame** |
+| The console's frame, 150x74, two cards | **13 allocations** |
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestRouterCostsObserverAlmostNothingPerFrame` | **NFR-1/NFR-3** — the Router does not regress Observer | **Plant 2026-09-09:** twenty escaping allocations per frame → **CAUGHT** (`through the router 239 · overhead 21 (budget 1)`).  **The first attempt did not build** — the import edit missed — which is not evidence; re-planted and it fired |
+| `TestConsoleFrameAllocBudget` | The console's own frame cost | **Plant 2026-09-09:** twenty escaping allocations → **CAUGHT** (`allocates 33 per View(), budget 13`) |
+
+**Both budgets are pinned AT the measurement, not at a comfortable margin.**  An overhead of 1 means a
+second allocation fires the gate — deliberate, because the frame is drawn on every tick.
+
+**The console's number WILL move**, and each later batch re-pins it deliberately with the reason in
+the commit, the way the goldens are re-recorded.  A budget nobody re-pins is a budget nobody reads.
+
+**The plant had to ESCAPE.**  A discarded `make` is deleted by the compiler before a gate can count
+it — the bad plant recorded in 0.15.0's own roster.  These assign to a package-level sink.
