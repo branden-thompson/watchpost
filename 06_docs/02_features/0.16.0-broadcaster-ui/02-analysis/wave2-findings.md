@@ -4,7 +4,7 @@ date: 2026-09-09
 phase: DISCOVER
 sev: SEV-0
 authority: HUM LEAD
-status: "Wave 2 — schedule producer, router sender audit, station state and audio bed.  Config field table pending."
+status: "Wave 2 COMPLETE — all four areas reported and hand-verified.  D-6's field table delivered."
 ---
 
 # Wave 2 — and the correction that matters most
@@ -263,6 +263,95 @@ reads the Director's power rather than a UI flag.  **That belongs in the require
 
 ---
 
+## 3A. The settings field table — the D-6 deliverable
+
+**52 persisted dotted paths**, walked through every nested struct.  The full table lives in
+`02-analysis/config-field-table.md`; what follows is the shape of the decision and the five entries
+that genuinely need a HUM LEAD ruling.
+
+### 3A.1 The clear cases
+
+**SHARED (5):** `Theme`, `Units`, `Clock`, `UpdateCheck`, `Providers[name].Key`.
+**OBSERVER (roughly 20):** `Locations[]`, `Recent[]`, `Radio.Mode`, and the whole `Fire.*` and
+`Seismic.*` threshold blocks — these are a listener's personal filtering, not a station's.
+
+### 3A.2 The five that need a ruling, and why each is genuinely open
+
+1. **`TickerRadiusMi` — and this one is not a preference at all.**  See §3A.3; it is the sharpest
+   finding in the config analysis.
+2. **`Radio.Cast`, `Radio.Voices.*` (9 roles × 2), `Voice`.**  Shared means an operator's personal
+   single-voice identity goes out over the air.  Split means a listener hears a different voice on
+   air than in Observer with no visible reason, and 18 fields are duplicated for a benefit nobody has
+   shown.  **Genuinely undecidable until it is settled whether Broadcaster speaks cards at all in
+   0.16.0** — R-4 scopes its audio to mock.
+3. **`Radio.Tones.Mode` and `Radio.Tones.Muted`.**  **The stakes are asymmetric**, which is the whole
+   argument: shared means muting a tone class for personal comfort in Observer **silences an alert
+   tone the station is meant to transmit**, so a private preference censors what goes over the air.
+   Split doubles the tone surface from day one.  Asymmetry argues for split; nothing yet says
+   Broadcaster re-transmits tones at all.
+4. **`Keys[action]`.**  Neither shared nor split is right — it needs the per-surface namespace
+   `Merge` does not have (wave 1 §3.2).  The config question is downstream of F-68's sibling problem.
+5. **`Providers[name].Key`.**  Looks obviously shared — one account, one key.  **But R-8's cadence
+   means Broadcaster can burn a rate-limited free tier that Observer's slower polling was sized for**,
+   silently changing Observer's quota.  Splitting means entering one key twice and letting the copies
+   drift, with neither surface able to see the other's.
+
+### 3A.3 `TickerRadiusMi` is already the Director's fence, and that changes the question
+
+`platform/lineup/fence.go:95-99` says it outright:
+
+> *"Fence is the listener's service radius: a HARD boundary on what reaches the lineup at all (DR-13,
+> G-7), not a sort key.  What it keeps out is not read, not counted and not pointed at."*
+
+It is fed from `config.TickerRadiusMi` (`fence.go:99-100`, built at `app/ticker.go:429-433`).
+
+**So the service-radius mechanism R-2.3 and R-8 need ALREADY EXISTS, and it is not a UI setting — it
+is an admission boundary on the shared schedule.**  That is a fifth pre-built seam.
+
+**And it creates the conflict the config table cannot resolve.**  There is ONE Director feeding one
+`Publish` that both surfaces read (wave 1 §1.1).  If Observer's personal notification radius and
+Broadcaster's hundred-mile service radius are two values, **the Director must be told which one to
+fence by** — and if they are one value, whichever surface saves last silently changes what the other
+sees.  **Splitting the config does not answer it.  This is a design question, and it is the one the
+settings split cannot absorb.**
+
+### 3A.4 What Broadcaster adds
+
+| Proposed path | Type | Reuse |
+|---|---|---|
+| `Broadcaster.Tower` | the existing `Location` struct | **Reuse, do not invent.**  R-7 says the name and coordinates are one fact, and `Location` already shapes exactly that fact |
+| `Broadcaster.ServiceRadiusMi` | float64 | The pattern exists twice; the **value** must not be shared — §3A.3 |
+| `Broadcaster.Relay` | string | No real precedent; `Radio.Mode="relay"` names a kind, carries no identity |
+| `Broadcaster.GainPct` | int | None — §3.3 |
+| cadence override | — | Generalize `sched.Tier`'s existing per-kind table rather than add an unrelated field (R-8.3's one-owner rule) |
+
+### 3A.5 The migration, and the recommendation
+
+**Purely additive.**  Add a `Broadcaster` table; touch, rename and repurpose nothing.  A 0.15.0 file
+then decodes unchanged and R-2.4 is satisfied by construction.  For any hard case ruled *split*, a
+one-shot shim in the shape of `withToneCompat` **copies** — never moves — the legacy value once, so
+the first Broadcaster launch is not blank and the two are independent thereafter.
+
+**Two mechanical traps worth carrying to PLAN:**
+
+- **`Broadcaster.Tower` must be a single table, not an array of tables.**  `keepUnknown` refuses to
+  follow arrays of tables because *"indices are not stable"* (`keep.go:78-81`), so an old binary
+  re-saving the file would silently drop it.
+- An old binary saving the file is **already safe** for a plain table: `mergeUnknown`
+  (`config.go:363-387`) copies unknown paths from the on-disk file into the fresh document before
+  writing.  This is the machinery `keep.go:14-24` was built for.
+
+**Recommendation: split only the fields Broadcaster actually needs, not the whole config.**  R-2.4
+demands zero reconfiguration for upgraders, and the additive zero-value pattern is proven by `Fire`,
+`Seismic` and `Radio.Voices`.  A wholesale re-namespace would touch all 52 paths in a SEV-0 release
+to satisfy a requirement that names only "default location, service radius, and the like".
+
+**The counter-argument, recorded because it is the F-54 shape again:** piecemeal splitting means every
+future Broadcaster need re-triggers a field-by-field ruling instead of following one settled rule —
+and the five open cases above suggest that rule does not exist yet.
+
+---
+
 ## 4. Cross-cutting synthesis — wave 2
 
 1. **Composition — four unwired artefacts now, not three.**  `Publish` (display), `Origin.FromOperator`
@@ -287,7 +376,12 @@ reads the Director's power rather than a UI flag.  **That belongs in the require
 7. **Open question — the word STANDBY is used three ways on one screen.**  Station standby, card
    standby, and the bed row's marker.  `power.go` solved it in code by renaming; the console cannot.
    **A HUM LEAD UX ruling, from a rendering.**
-8. **Implication for wave 3.**  Read the remainder of the 0.14.0 director build plan for rows that are
+8. **Convergence — a FIFTH pre-built seam, and it carries a conflict.**  §3A.3 finds
+   `config.TickerRadiusMi` is already `lineup.Fence`, documented as *"the listener's service radius: a
+   HARD boundary on what reaches the lineup at all"*.  Broadcaster's service radius is not a new
+   concept; it is the same one.  **But one Director cannot fence by two radii**, so this is the one
+   place where the settings split runs out and a design ruling is required.
+9. **Implication for wave 3.**  Read the remainder of the 0.14.0 director build plan for rows that are
    silently 0.16.0's; settle the main-track producer question with T3.2b's text on the table; and take
    the two outstanding rulings — the breakpoint vocabulary and the credits obligation — which still
    gate FR enumeration.
