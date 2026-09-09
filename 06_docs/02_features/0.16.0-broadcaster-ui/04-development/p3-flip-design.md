@@ -73,12 +73,34 @@ The arbiter owns **who speaks**.  It does not have to own **how a report is spok
 - All six gaps stay closed because nothing about the player changed.  G-1 becomes `Finished`, which is
   what the card path already emits.
 
-**The cost of Shape B:** the arbiter must be able to suspend and resume a `synth.Source`, not just a
-clip.  `engine.Suppress`/`Restore` and the deck's duck already exist for the takeover-over-a-read case
-— *"we can PAUSE the read, let the alert rail drain, insert a transition read, then resume the read at
-normal volume"* is the HUM LEAD's own ruling for the main rotation — so the mechanism is the one
-already ratified.  **What must be proven is that it works when the arbiter, rather than the deck, is
-the one asking.**
+### Shape B has no cost, and that was worth checking rather than assuming
+
+**The one thing Shape B seemed to need is that the arbiter can suspend and resume a `synth.Source`, not
+just a clip.  It already does, in production, today.**  The chain is five calls and every one of them
+is live:
+
+| | |
+|---|---|
+| `app/mastercontrol.go:102` | `dip()` — *"THE ONE CARRIER of 'put the broadcast down'"* |
+| `app/radio.go:645` | `duck()` → `engine.Suppress()` |
+| `player/engine.go:526` | `giveWayLocked()` |
+| `player/engine.go:497` | `StartSource` sets `live=false` — *"a rendered cycle: it waits rather than plays on under an alert"* |
+| `player/engine.go:533` | **`return 1, true` — hold: *"a rendered report waits and is heard in full afterwards"*** |
+
+**That is the HUM LEAD's own ruling, already implemented:** *"With the main rotation we can PAUSE the
+read, let the alert rail drain, insert a transition read, then resume the read at normal volume.  The
+duck is important for the stream because that relay is fundamentally out of our control."*  The engine
+decides which treatment to apply **from the source kind, re-read every tick**, so a relay dips and a
+rendered report holds — and a fallback from one to the other mid-alert follows the audio.
+
+**So a takeover reading over a running rotation ALREADY pauses the report and resumes it.**  Shape B
+does not add that behaviour; it keeps it.  Shape A is the one that would have to re-earn it — and would
+have to re-earn it as a NARRATION, where `giveWayLocked` has no case for "a report", because a report
+would no longer be a source.
+
+**This is the S0 discipline applied again: the question was answered by reading five live call sites,
+with zero code written.**  The estimate that Shape B needed new suspend/resume capability was wrong, in
+the same direction as every other estimate this release has checked.
 
 ## THE RULING NEEDED
 
@@ -87,10 +109,17 @@ own words: *"the card then travels the ordinary path — `BuildCard` composes it
 through the arbiter"* is Shape A; *"the direct `StartSource` path retires **behind the arbiter**"* is
 Shape B.
 
-**My recommendation is Shape B**, for one reason: **Shape A rebuilds a working player on the path that
-carries every ordinary broadcast, in the batch already named the most dangerous in the release.**  The
-release's stated value (A1: "it needs to function as intended out of the gate") is not served by
-re-earning six behaviours that already work.
+**My recommendation is Shape B, and the evidence above strengthens it from a preference to a
+measurement.**  Shape A rebuilds a working player on the path that carries every ordinary broadcast,
+inside the batch already named the most dangerous in the release — **and it would also have to rebuild
+the give-way rule**, because a report that is no longer a source has no case in `giveWayLocked` and
+would inherit a narration's treatment instead of a rendered cycle's.  The release's stated value
+(A1: *"it needs to function as intended out of the gate"*) is not served by re-earning seven behaviours
+that already work.
+
+**What Shape B actually changes is small and is exactly the merge:** the SCHEDULE decides when a report
+starts, instead of the deck deciding on its own.  Everything about how it then plays, pauses and
+resumes is untouched.
 
 **This is the go/no-go the plan requires before P4 begins.**  It is recorded here rather than decided,
 because read order, pacing, what the marquee shows and what repeat means are HUM LEAD rulings.
