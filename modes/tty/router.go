@@ -38,7 +38,13 @@ type Router struct {
 
 // NewRouter wraps Observer. The second surface arrives in P1.
 func NewRouter(o Dashboard) Router {
-	return Router{observer: o, broadcaster: NewBroadcaster(), active: SurfaceObserver}
+	// The console inherits the SAME --ascii decision Observer was built with.
+	// Two surfaces disagreeing about whether the terminal can draw a glyph
+	// would be one setting with two carriers, which is the shape this codebase
+	// has removed twice.
+	b := NewBroadcaster()
+	b.ascii = o.cfg.ASCII
+	return Router{observer: o, broadcaster: b, active: SurfaceObserver}
 }
 
 // Init delegates to the active surface. Observer asks for the terminal's

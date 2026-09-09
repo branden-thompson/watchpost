@@ -84,3 +84,13 @@ func TestObserverStillGetsItsOwnSizeToo(t *testing.T) {
 		t.Errorf("fanning out must not stop the ACTIVE surface receiving it; observer width = %d, want 171", r.observer.width)
 	}
 }
+
+// The console must inherit Observer's --ascii decision: one setting, one
+// carrier. Two surfaces disagreeing about whether a terminal can draw a glyph
+// is the two-carriers shape this codebase has removed twice.
+func TestTheConsoleInheritsTheASCIIDecision(t *testing.T) {
+	d := goldenDash(t, true) // built --ascii
+	if !NewRouter(d).broadcaster.ascii {
+		t.Error("Observer was built --ascii and the console was not; one setting must not have two carriers")
+	}
+}

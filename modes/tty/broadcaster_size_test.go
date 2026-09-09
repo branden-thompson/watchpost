@@ -5,6 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -102,4 +103,34 @@ func TestNoSizeRendersPastTheTerminal(t *testing.T) {
 		}
 	}
 	t.Logf("swept %d widths x 5 heights; blind to a terminal narrower than 20 or wider than 200", len(widths))
+}
+
+// FR-7 / RT-23: the console must survive --ascii. This was flagged at the
+// DISCOVER red team as "no --ascii rendering exists, so the design is not
+// shown to survive that mode", carried through PLAN, and is closed here.
+//
+// THE SUBJECT LIST IS DERIVED (INST-1): it asks the glyph set what the
+// non-ASCII forms ARE, rather than naming a few by hand. A hand-written list
+// is stale the day someone adds a glyph.
+func TestTheConsoleCarriesNoNonASCIIUnderASCII(t *testing.T) {
+	b := bcWith(t, card(t, "a", "OCEANSIDE"))
+	b.width, b.height = 150, 74
+	b.ascii = true
+
+	got := b.View().Content
+	rich := render.Opts{}.Glyphs() // the non-ASCII set, asked for rather than listed
+	for _, g := range []string{
+		rich.Bullet, rich.Pointer, rich.Play, rich.Pause, rich.Alert, rich.OK, rich.Fail,
+		rich.Rail, rich.RailCar, rich.Fill, rich.Up, rich.Down, rich.Stop, rich.Rule, rich.Dot,
+	} {
+		if g != "" && strings.Contains(got, g) {
+			t.Errorf("--ascii: the frame carries %q, which has an ASCII form the glyph set already defines", g)
+		}
+	}
+	for _, r := range got {
+		if r > 127 && r != '\n' {
+			t.Errorf("--ascii: the frame carries the non-ASCII rune %q", r)
+			break
+		}
+	}
 }

@@ -39,6 +39,10 @@ type Broadcaster struct {
 	width, height int
 	darkBG        bool
 
+	// ascii is the --ascii mode: box-drawing and symbol glyphs give way to
+	// forms a terminal without them can draw.
+	ascii bool
+
 	// lineup is the last PUBLISHED schedule. It is never mutated here — the
 	// console names an intent and the Director owns the order (D-23).
 	lineup lineup.Lineup
@@ -81,6 +85,12 @@ func (b Broadcaster) View() tea.View {
 	v.AltScreen = true
 	v.BackgroundColor = render.WindowBG(b.darkBG)
 	return v
+}
+
+// opts is the console's render options — one owner, so a glyph decision is
+// made in one place rather than at every call site.
+func (b Broadcaster) opts() render.Opts {
+	return render.Opts{Width: b.width, ASCII: b.ascii}
 }
 
 // minSize is the floor below which the console refuses to draw (FR-7.3).
@@ -142,6 +152,7 @@ func (b Broadcaster) notice() []string {
 
 // lanes builds the three lanes from the last published schedule.
 func (b Broadcaster) lanes() []string {
+	g := b.opts().Glyphs()
 	out := []string{"WATCHPOST Broadcaster"}
 	out = append(out, "")
 
@@ -154,7 +165,7 @@ func (b Broadcaster) lanes() []string {
 		out = append(out, "  (clear)")
 	}
 	for _, c := range rail {
-		out = append(out, "  "+cardRow(c, "T", "PRIORITY", term.BreakpointFor(b.width) >= term.BreakWide))
+		out = append(out, "  "+cardRow(c, "T", "PRIORITY", term.BreakpointFor(b.width) >= term.BreakWide, g))
 	}
 	out = append(out, "")
 
@@ -178,7 +189,7 @@ func (b Broadcaster) lanes() []string {
 		out = append(out, "  (nothing scheduled)")
 	}
 	for i, c := range main {
-		out = append(out, "  "+cardRow(c, strconv.Itoa(i), "STANDARD", wide))
+		out = append(out, "  "+cardRow(c, strconv.Itoa(i), "STANDARD", wide, g))
 	}
 	out = append(out, "")
 	out = append(out, "BED   (no relay tuned)")
@@ -186,7 +197,7 @@ func (b Broadcaster) lanes() []string {
 }
 
 // cardRow is one lane row: what it is, and the handle that addresses it.
-func cardRow(c lineup.Card, handle, badge string, wide bool) string {
+func cardRow(c lineup.Card, handle, badge string, wide bool, g render.Glyphs) string {
 	// A narrower class affords less headline. The width is not decoration: it
 	// is what the class BUYS, and it is why a discarded classify call would
 	// not satisfy FR-7.1.
@@ -196,5 +207,7 @@ func cardRow(c lineup.Card, handle, badge string, wide bool) string {
 	}
 	// THE HEADLINE, NOT THE SUBJECT. The headline is what the card is ABOUT in
 	// the words a person reads; the subject is its key.
-	return render.PadTo(render.TruncateCells(plaintext.Text(c.Headline), w), w) + " •" + badge + "•  [ " + handle + " ]"
+	// THE GLYPH COMES FROM THE SET, not a literal — that is the whole reason
+	// the set exists, and a literal here is exactly what --ascii cannot fix.
+	return render.PadTo(render.TruncateCells(plaintext.Text(c.Headline), w), w) + " " + g.Bullet + badge + g.Bullet + "  [ " + handle + " ]"
 }

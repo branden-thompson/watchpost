@@ -69,3 +69,14 @@ call still runs, its result is discarded — and both then fired.
 **F-68 moves.**  `term.Breakpoint` had **zero** production callers at DISCOVER — it was the dead half of
 the two-vocabulary duplication.  It now has two.  Whether Observer's own scale migrates is **still not
 ruled** (D-13 did not decide it) and P1 does not assume it does.
+
+## P1(d) — the `--ascii` render
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestTheConsoleCarriesNoNonASCIIUnderASCII` | Under `--ascii` the frame carries no glyph that has an ASCII form, **and no non-ASCII rune at all** | **By the watched RED**: the field existed and nothing consulted it, and the test named the offending glyph — `the frame carries "•"`.  **Plant 2026-09-09:** the glyph set consulted and a literal used anyway → **CAUGHT**.  **The subject list is DERIVED** (INST-1): it asks the glyph set what the rich forms ARE rather than naming a few, so a glyph added later is covered without editing the test |
+| `TestTheConsoleInheritsTheASCIIDecision` | One setting, one carrier — the console inherits Observer's `--ascii` | **Plant 2026-09-09:** the config read and not carried → **CAUGHT** (`one setting must not have two carriers`) |
+
+**RT-23 is closed.**  The DISCOVER red team flagged that no `--ascii` rendering of the design existed,
+so it was *"not shown to survive that mode"*.  It is now shown, by a derived assertion rather than a
+screenshot.

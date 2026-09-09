@@ -179,6 +179,7 @@ func (Broadcaster).clamp
 func (Broadcaster).lanes
 func (Broadcaster).minSize
 func (Broadcaster).notice
+func (Broadcaster).opts
 func (Broadcaster).tooSmall
 func (Dashboard).Init
 func (Dashboard).Update
