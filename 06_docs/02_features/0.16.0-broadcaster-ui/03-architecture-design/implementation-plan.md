@@ -103,11 +103,11 @@ batch.
 
 | # | Batch | Delivers | Depends on |
 |---|---|---|---|
-| **S0** | **THE SPIKE — the audio merge** | One question, one session, its own worktree, code deleted after.  **Answers whether P3 is wiring or a re-shape** | — |
+| **S0** | ~~**THE SPIKE**~~ **DONE 2026-09-09 — ANSWERED YES.**  No spike code was written; the arbiter already serialises and 8 existing tests are green.  **The window is TRANSITIONAL, not inherent.**  Result: `04-development/s0-spike-result.md` | — |
 | **P0** | **The router** | FR-1.1-1.3 — the router becomes the model; **11 senders** (derived, below) take its send; **Observer behaviour identical**.  **F-67's five unhandled program messages are dispositioned here** | — |
 | **P1** | **The console shell** | FR-2.1-2.4, **FR-2.6** (clamp reuse), FR-7 — three lanes read from `Publish`, read-only; breakpoints; the **minimum-size notice at 44 lines**; **the `--ascii` render**; **NFR-3's frame measurement** | P0 |
 | **P2** | **Station state and the swap gate** | FR-5, **NFR-7** (bounded silent station), FR-1.4-1.6 — `Power` wired; Variant C banner; the "on the air" boundary; STANDBY-before-swap; **`mastheadLine` wired** | P1 |
-| **P3** | **The main track producer** | T3.2b, FR-2.5 — the rotation becomes main-track cards; **the audio merge**; no double-speak.  **Re-planned from S0's answer, not from this row** | P2, **and S0's verdict** |
+| **P3** | **The main track producer** | **RE-PLANNED FROM S0.**  (a) the rotation's tune becomes a card — **wiring**; (b) **the two relay-failure fallbacks** (`radio.go:789,974`) route through the schedule — **real work, on a failure path**; (c) a third narration class below `narrateRead`; (d) `startSynth`'s direct path **retires in the same change** — that deletion is what closes the window; (e) FR-2.5 is **asserted, not built** | P2, **and S0 — ANSWERED YES** |
 | **P4** | **Operator intent** | FR-3, B1 — the `Moved` event, the reorder mutator, the card modal, mis-action recovery | P3 |
 | **P5** | **The bed and the cut-over** | FR-4, D-24 — transitions wired, duck-per-medium, the paused main track | P3 |
 | **P6** | **Settings, tower, radius, cadence** | FR-6, FR-8 **including FR-8.9's national-scope answer**, FR-9, FR-10.  **BLOCKED on the cadence measurement** | P2 |
