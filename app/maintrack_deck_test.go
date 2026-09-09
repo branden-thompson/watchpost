@@ -12,6 +12,8 @@ package app
 // (maintrack_seam_test.go) and by the P3 UAT.
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
@@ -92,5 +94,56 @@ func TestTheDefaultStageTellsTheDirectorNothing(t *testing.T) {
 	d.needsRead(testRef, "no NWR relay in reach", 99)
 	if len(*got) != 0 {
 		t.Errorf("the merge is off until it is asked for; got %v", *got)
+	}
+}
+
+// THE DARK RUN'S ONE INSTRUMENT (0.16.0 P3).
+//
+// The dark stage exists so the producer's decisions can be compared against the
+// live path's, and that comparison is made from this log and nowhere else: the
+// live path already records its engine transitions and its segments, and until
+// now the NEED that produced them was recorded nowhere at all. A dark run with
+// this line missing is not a quiet run, it is a run that proves nothing —
+// which is why the line has a gate of its own (INST-2).
+func TestTheDarkRunRecordsTheNeedItWouldHaveActedOn(t *testing.T) {
+	for _, stage := range []string{"", "dark", "live"} {
+		path := radioDebugTo(t, "1")
+		t.Setenv("WATCHPOST_MAINTRACK", stage)
+		d, _ := recordingDeck()
+
+		// A stale generation, so no stage reaches the audio: what is under test
+		// is the record, which is written before any of that is decided.
+		d.needsRead(testRef, "no NWR relay in reach", 99)
+
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("stage %q: the dark run's log was never written: %v", stage, err)
+		}
+		line := strings.TrimSpace(string(b))
+		want := []string{
+			"needs-read",
+			"stage=" + mainTrack().String(), // DERIVED from the switch, never spelled out here
+			"fresh=false",                   // and it says WHY nothing followed
+			"ref=" + string(snapshot.Key(testRef)),
+			"why=no NWR relay in reach",
+		}
+		for _, w := range want {
+			if !strings.Contains(line, w) {
+				t.Errorf("stage %q: the record must carry %q, or the comparison cannot be made; got %q", stage, w, line)
+			}
+		}
+	}
+}
+
+// THE DIAGNOSTIC IS OFF BY DEFAULT, and a station running without it must not
+// pay for a line nobody collects.
+func TestTheNeedIsNotRecordedWhenTheDiagnosticIsOff(t *testing.T) {
+	path := radioDebugTo(t, "1")
+	t.Setenv("WATCHPOST_DEBUG_RADIO", "")
+	t.Setenv("WATCHPOST_MAINTRACK", "dark")
+	d, _ := recordingDeck()
+	d.needsRead(testRef, "no NWR relay in reach", 99)
+	if b, err := os.ReadFile(path); err == nil && len(b) > 0 {
+		t.Errorf("the diagnostic is opt-in; got %q", b)
 	}
 }

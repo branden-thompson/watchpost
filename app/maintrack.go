@@ -35,6 +35,9 @@ const (
 	// arbiter and the rotation's direct path is not taken. This becomes the
 	// only behaviour at P3(d).
 	mainTrackLive
+
+	// numMainTrackStages bounds the registry; it is not itself a stage.
+	numMainTrackStages
 )
 
 // mainTrack reads the stage from the environment, once per ask.
@@ -49,6 +52,27 @@ func mainTrack() mainTrackStage {
 		return mainTrackLive
 	}
 	return mainTrackOff
+}
+
+// stageNames is the registry, indexed by mainTrackStage. DERIVED FROM IT, so
+// the diagnostic and the switch cannot name different things (INST-1).
+func stageNames() [numMainTrackStages]string {
+	return [numMainTrackStages]string{
+		mainTrackOff:  "off",
+		mainTrackDark: "dark",
+		mainTrackLive: "live",
+	}
+}
+
+// String names the stage for the dark run's log. An undeclared stage names
+// itself as such rather than as one of the three, because a diagnostic that
+// silently reports "off" for a corrupt value is worse than one that says it
+// does not know.
+func (s mainTrackStage) String() string {
+	if s < 0 || s >= numMainTrackStages {
+		return "undeclared"
+	}
+	return stageNames()[s]
 }
 
 // reports says whether the deck tells the Director that a location needs a

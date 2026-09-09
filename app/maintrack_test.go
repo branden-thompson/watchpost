@@ -44,3 +44,35 @@ func TestOnlyLiveOwnsTheAirAndDarkStillReports(t *testing.T) {
 		t.Error("live is the merged station")
 	}
 }
+
+// The dark run's log names the stage, and the registry is walked rather than
+// listed — a fourth stage added without a name would fail here rather than
+// print an empty string into the one log the comparison is made from.
+func TestEveryStageNamesItself(t *testing.T) {
+	seen := map[string]bool{}
+	for s := mainTrackStage(0); s < numMainTrackStages; s++ {
+		name := s.String()
+		if name == "" {
+			t.Errorf("stage %d has no name; the dark run's log is the only place the comparison is made", s)
+		}
+		if name == "undeclared" {
+			t.Errorf("stage %d is inside the registry and must not name itself undeclared", s)
+		}
+		if seen[name] {
+			t.Errorf("two stages are both called %q; the log could not tell them apart", name)
+		}
+		seen[name] = true
+	}
+	if len(seen) != int(numMainTrackStages) {
+		t.Errorf("named %d stages of %d", len(seen), numMainTrackStages)
+	}
+	// A CORRUPT VALUE SAYS SO rather than reading as the safe default: a
+	// diagnostic that quietly reports "off" would hide the one case worth
+	// seeing.
+	if got := mainTrackStage(-1).String(); got != "undeclared" {
+		t.Errorf("an out-of-range stage names itself undeclared, got %q", got)
+	}
+	if got := mainTrackStage(numMainTrackStages).String(); got != "undeclared" {
+		t.Errorf("an out-of-range stage names itself undeclared, got %q", got)
+	}
+}

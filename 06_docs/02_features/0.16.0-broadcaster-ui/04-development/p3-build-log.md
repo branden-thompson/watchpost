@@ -169,14 +169,49 @@ warning queues behind a weather report.  Property 4 cannot see it, because nothi
 two lines and the script refused it; a "SURVIVED" printed there would have been a lie about a plant
 that was never made.
 
+# P3 — the dark run's instrument
+
+**The dark stage was landed with nothing to observe it with.**  The live path already records its
+engine transitions and its segments; the NEED that produced them was recorded nowhere at all, so a dark
+run would have compared one half of a pair against nothing.
+
+`needs-read stage=<off|dark|live> fresh=<bool> ref=<lat,lon> why=<reason>` now goes to the existing
+`WATCHPOST_DEBUG_RADIO` log, **before the staleness check and carrying its answer** — because *"the live
+path started a read here and the producer did not"* has two possible causes, and `fresh=false` is what
+tells them apart.  The protocol is `07-readiness/p3-dark-run.md`.
+
+**The stage names itself from a registry**, walked by a test rather than listed in one (INST-1), and an
+out-of-range stage names itself `undeclared` rather than reading as the safe default: a diagnostic that
+quietly reports `off` for a corrupt value hides the one case worth seeing.
+
+| # | Plant | Verdict |
+|---|---|---|
+| s1 | two stages share a name | CAUGHT |
+| s2 | a stage left unnamed | CAUGHT |
+| s3 | an out-of-range stage reads as `off` | CAUGHT |
+| s4 | the record deleted | CAUGHT |
+| s5 | **the `radioDebugOn()` gate at the call site removed** | **SURVIVED, and BENIGN** |
+| s6 | the record omits the staleness verdict | CAUGHT |
+| s7 | the record names the location by label instead of key | CAUGHT |
+
+**s5 is benign by design and is recorded rather than fixed.**  `debugLog` is already gated inside — an
+unset `WATCHPOST_DEBUG_RADIO` gives `radioDebugPath()` an empty path and nothing is written — so
+removing the outer guard changes no behaviour, only whether the line is BUILT.  That is what
+`radioDebugOn`'s own comment says it is for.  **No allocation gate was added**: that guard earns its
+place on the takeover path M4 measures, and `needsRead` runs a few times a minute.  A gate here would be
+theatre, and the honest record is that this guard is convention, not a load-bearing rule.
+
+**Two plants did not apply and are recorded as INVALID, not as verdicts** — `p1` and `s4` each matched
+two lines on the first attempt and the script refused them.
+
 ## What P3 still owes
 
 | Owed | State |
 |---|---|
 | P3(b) the two relay-failure fallbacks | **the seam is in place**; the flip is what routes them |
-| P3(d) `startSynth`'s direct path retires | with the flip, in one change |
+| P3(d) `startSynth`'s direct path retires | **BLOCKED ON A RULING** — see `p3-flip-design.md`.  Retiring the direct path also retires the rotation's end signal, the marquee, the handoff lines, repeat-one and the player row |
 | the property test over arrival timing | **DONE** |
-| the dark path RUN, and its comparison | the mechanism is in; the run is not |
+| the dark path RUN, and its comparison | **the mechanism, the instrument and the protocol are all in.  The RUN is the HUM LEAD's** — it needs a real station, a real relay and a period of use |
 | P3's own red team | not started |
 | a UAT shared with nothing | not started |
 | the go/no-go before P4 | not reached |

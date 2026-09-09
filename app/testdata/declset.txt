@@ -31,6 +31,7 @@ const metroCapKm
 const narrateBreaking
 const narrateRead
 const narrateRotation
+const numMainTrackStages
 const numNarrationClasses
 const publishCoalesce
 const pumpBacklog
@@ -297,6 +298,7 @@ func (hostFacts).Default
 func (hostFacts).Discovered
 func (hostFacts).Installed
 func (hostFacts).Platform
+func (mainTrackStage).String
 func (mainTrackStage).ownsTheAir
 func (mainTrackStage).reports
 func RenderCast
@@ -459,6 +461,7 @@ func snapshotBytes
 func spokenName
 func spokenWhen
 func spokenWindow
+func stageNames
 func staleWarnings
 func startDebugProfiles
 func startDumpTrigger

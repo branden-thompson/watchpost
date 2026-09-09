@@ -470,10 +470,25 @@ func (d *radioDeck) synthReason(same string, ref snapshot.LocationRef, stations 
 // guard inside startSynth stays: it has its own callers, and it retires with the
 // direct path at P3(d).
 func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) {
-	if !d.epoch(gen) {
+	stage, fresh := mainTrack(), d.epoch(gen)
+	// THE DARK RUN'S ONLY INSTRUMENT (0.16.0 P3).  The whole point of the dark
+	// stage is that the producer's decisions can be compared against the live
+	// path's, and neither is visible without this: the live path logs its
+	// engine transitions and its segments, and the need that produced them was
+	// logged nowhere at all.
+	//
+	// RECORDED BEFORE THE STALENESS CHECK, AND CARRYING ITS ANSWER.  A need
+	// dropped as stale is exactly the kind of thing the comparison is looking
+	// for — "the live path started a read here and the producer did not" has
+	// two possible causes, and this is what tells them apart.  Built only when
+	// the diagnostic is on, because the concatenation is pure cost otherwise
+	// (the shape radioDebugOn exists for).
+	if radioDebugOn() {
+		d.debugLog(fmt.Sprintf("needs-read stage=%s fresh=%t ref=%s why=%s", stage, fresh, snapshot.Key(ref), why))
+	}
+	if !fresh {
 		return // the listener stopped, or moved on: this need is about a location nobody is on
 	}
-	stage := mainTrack()
 	if stage.reports() {
 		// THE HEADLINE IS THE LOCATION'S OWN NAME. A card is showable from the
 		// moment it exists (DR-7), and at this point there is nothing else true
