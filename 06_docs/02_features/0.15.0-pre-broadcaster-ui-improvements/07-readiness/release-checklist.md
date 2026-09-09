@@ -84,6 +84,11 @@ and the branch is deleted after the merge either way.
   margin was invisible locally and adding one mutant at SHIP is what crossed it. Fixed with an explicit
   `-timeout 40m` and the measurement recorded in the Makefile. **F-64.** macOS passed in both runs, and
   `policy` passed in both.
+- [x] **CI round 2 (`619e841`): GREEN on both legs of both runs** — `policy`, `verify (macos-latest)`
+  and `verify (ubuntu-latest)` all pass under `push` and `pull_request`. **And the fix was load-bearing
+  rather than precautionary:** the two green `mutant-check` runs took **396 s** and **602 s**, and 602 s
+  is **two seconds** under the default that had just failed. Three observed Linux runs span **396–602 s**
+  on one commit and one platform.
 - [ ] **CI green on the PR.** Budget for rounds: this branch's last CI was red, and the Linux leg has
   not run on the 41 commits since. **Expect Linux-only failures and treat each as a finding**, not as
   runner noise.

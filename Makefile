@@ -127,15 +127,22 @@ mutant-check:
 # durable record to certify. Claiming otherwise here cost a silently skipped
 # clean-up inside a 900-line log while verify still reported green (0.14.2), and
 # then a 730-line file rewritten on every verify when that was "fixed" wrong.
-# -timeout IS NOT DECORATION HERE. go test defaults to 10 minutes, and this
-# corpus ran 8m06s on ubuntu-latest at 172 mutants while taking 250s on the
-# developer's machine — the margin is invisible locally because local has more
-# cores. On 2026-09-09 the SAME commit passed in the pull_request run and died
-# in the push run with "panic: test timed out after 10m0s": the corpus had
-# crossed the default, and a corpus that grows every release crosses it for
-# good. The number below is ~5x the observed Linux time, not a guess at the
-# next mutant. A gate whose failure mode is the clock is not reporting on the
-# code, and it fails at random, which is the worst way for it to be wrong.
+# -timeout IS NOT DECORATION HERE, and the numbers are the argument. go test
+# defaults to 10 minutes. This corpus at 172 mutants takes 250s on the
+# developer's machine and ran 396s, 486s and 602s across three ubuntu-latest
+# jobs on 2026-09-09 — a 1.5x spread on the SAME commit and platform. The
+# margin is invisible locally because local has more cores.
+#
+# What that spread does to a 10-minute default: the same commit passed in the
+# pull_request run and died in the push run with "panic: test timed out after
+# 10m0s", and a later run came in at 602s — TWO SECONDS under the default it
+# would have been measured against. A gate whose failure mode is the clock is
+# not reporting on the code, and it fails at random, which is the worst way for
+# it to be wrong.
+#
+# 40m is ~4x the slowest run observed, not a guess at the next mutant. The
+# corpus grows every release; when it approaches this, raise it and re-record
+# the measurement here rather than trimming the corpus to fit the clock.
 	@go test -tags mutants -v -count=1 -timeout 40m ./06_docs/mutants > $(DIST)/mutant-check.log 2>&1; rc=$$?; \
 	  cat $(DIST)/mutant-check.log; \
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
