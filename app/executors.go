@@ -25,6 +25,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
+	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -48,6 +49,12 @@ type executors struct {
 	// written from here AND from app/ticker.go, two files constructing the same
 	// takeover message, which is two carriers of one rule (D-1).
 	mc *mastercontrol
+	// compose builds a location report's segments for the card path (0.16.0
+	// P3). It is the deck's own composition, reached as a SEAM rather than a
+	// dependency: the executors know how to turn segments into a script and
+	// nothing about how a report is assembled.
+	compose func(ctx context.Context, ref string) ([]synth.Segment, error)
+
 	// publish hands the settled schedule to the console. Nil when no surface
 	// is listening, which is every build before 0.16.0 and every test that
 	// does not care.
@@ -189,7 +196,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 	}
 	switch v := f.(type) {
 	case lineup.BuildCard:
-		return x.build(v)
+		return x.build(ctx, v)
 	case lineup.Speak:
 		return x.speak(ctx, v)
 	case lineup.CueTicker:
@@ -262,7 +269,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 }
 
 // build composes a card's words at standby (DR-7).
-func (x *executors) build(v lineup.BuildCard) []lineup.Event {
+func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Event {
 	switch v.Slot {
 	case lineup.BreakingAlert:
 		// THE COMPOSER, ON THE DIRECTOR'S ORDER (MVS-D-77, S-7). The Refs are
@@ -286,8 +293,31 @@ func (x *executors) build(v lineup.BuildCard) []lineup.Event {
 			return x.decline(v, v.ID, "the script rendered nothing to say")
 		}
 		return []lineup.Event{lineup.Built{ID: v.ID, Script: sc}}
-	case lineup.LocationReport, lineup.SevereRead:
-		return x.decline(v, v.ID, "read by the main track, which arrives with T3.2")
+	case lineup.LocationReport:
+		// THE MAIN TRACK ARRIVED (0.16.0 P3). This decline read "read by the
+		// main track, which arrives with T3.2" from 0.14.0 until now.
+		//
+		// THE EXECUTOR KNOWS NOTHING ABOUT HOW A REPORT IS ASSEMBLED. It asks
+		// the composer for segments and turns them into a script; the deck
+		// owns what a report IS, exactly as the producer owns what an alert is
+		// on the rail path.
+		if x.compose == nil {
+			return x.decline(v, v.ID, "no composer is wired for the main track")
+		}
+		segs, err := x.compose(ctx, v.Subject)
+		if err != nil {
+			return x.decline(v, v.ID, "the report could not be composed: "+err.Error())
+		}
+		sc := scriptFromSegments(segs)
+		if sc.Empty() {
+			// A CARD ON THE AIR WITH NO WORDS IS SILENCE under a callout the
+			// band has already promised (DR-18) — the same rule the takeover
+			// path states two cases above.
+			return x.decline(v, v.ID, "the report composed nothing to say")
+		}
+		return []lineup.Event{lineup.Built{ID: v.ID, Script: sc}}
+	case lineup.SevereRead:
+		return x.decline(v, v.ID, "read by the severe window's own reader, not the schedule")
 	}
 	return x.decline(v, v.ID, "a structural card's words are fixed at proposal; nothing builds them")
 }

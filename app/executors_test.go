@@ -446,8 +446,16 @@ func TestEffectsNotYetEmittedAreDeclinedNotHalfDone(t *testing.T) {
 		failed string // the card that must be failed, or empty
 		task   string // the task named in the reason
 	}{
-		{lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, "r1", "T3.2"},
-		{lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, "s1", "T3.2"},
+		// THE MAIN TRACK ARRIVED (0.16.0 P3), so these three rows changed and
+		// this pin caught it — which is what it is for.
+		//
+		// A location-report BUILD is no longer declined by slot: it declines
+		// only because THIS bench wires no composer, and the reason says so.
+		// A location-report SPEAK is still declined, because the speak half
+		// lands with the producer in P3(a2) — the two halves are deliberately
+		// separate commits, at parity, the way T3.2a was.
+		{lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, "r1", "no composer"},
+		{lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, "s1", "severe window"},
 		{lineup.Speak{ID: "r1", Slot: lineup.LocationReport, Script: lineup.Say("the report")}, "r1", "T3.2"},
 		{lineup.Speak{ID: "t1", Slot: lineup.Transition, Script: lineup.Say("we now return")}, "t1", "T3.2"},
 		{lineup.BuildCard{ID: "h1", Slot: lineup.Transition, Subject: "h1"}, "h1", "proposal"},
@@ -670,6 +678,18 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 	optional := map[string]bool{
 		"scripts": true, // nil means the built-in script tree
 		"band":    true, // built by newExecutors itself, never passed in
+		// OPTIONAL ONLY UNTIL THE DIRECT PATH RETIRES (0.16.0 P3).
+		//
+		// nil means the main track cannot be built, which is exactly how every
+		// build behaved before this release and how every test that does not
+		// care behaves now. `build` declines rather than panicking.
+		//
+		// IT BECOMES REQUIRED AT P3(d). Once startSynth's direct path is
+		// deleted, a nil composer means location reports never reach the air
+		// at all — silence rather than a decline — so this row moves into
+		// `strippers` in the same change that removes the direct path. That is
+		// recorded here rather than remembered.
+		"compose": true,
 		// DELIBERATELY OPTIONAL (0.16.0 P2). nil means no surface is
 		// listening, which is every build before the console existed and
 		// every test that does not care. Refusing to build without it would

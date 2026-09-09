@@ -285,3 +285,29 @@ executor declines it identically, and nothing observable changes.
 **Three outcomes are possible when a plant survives, and this release has now seen all three:** a bad
 plant that never reached its subject (P0), a blind gate (P2, P3(c)), and a plant that was not a defect
 (here).  Recording which is which is the skill the roster exists to teach.
+
+## P3(a2) — the executors can build a location report
+
+**AT PARITY. Nothing produces one yet.**  This is the T3.2a discipline that worked in 0.14.0: wire the
+capability, claim *nothing changes*, then switch the producer over in its own commit.
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestALocationReportCardIsBuiltNotDeclined` | The decline that read *"read by the main track, which arrives with T3.2"* is gone | **By the watched RED**, which quoted the decline back: `got lineup.Failed — this is the decline that said 'read by the main track...'` |
+| `TestALocationReportThatComposesNothingIsDeclinedNotAired` | A card that composed nothing is DECLINED, not aired | A card on the air with no words is silence under a callout the band has already promised |
+
+### Two existing guards caught this change, and neither needed editing to do it
+
+1. **The seam guard** (`TestExecutorsRefuseToBeBuiltWithoutTheirSeams`) fired on the new `compose`
+   field: *"neither checked nor declared optional: a nil one would reach production unmeasured"*.
+   **Declared optional WITH A DATED OBLIGATION**: it becomes REQUIRED at P3(d), because once the direct
+   path is deleted a nil composer means location reports never reach the air at all — silence rather
+   than a decline.  **Recorded in the guard rather than remembered.**
+
+2. **`TestEffectsNotYetEmittedAreDeclinedNotHalfDone`** pinned the decline reasons by naming the task
+   that would end them, and **failed the moment that task arrived**: *"want one line naming T3.2"*.
+   Updated deliberately to the new truth — the build half declines only for a missing composer now,
+   while the **speak half still names T3.2**, because the two halves are separate commits at parity.
+
+**A pin that names the task which will retire it is a pin that tells you when it is stale.**  That is
+worth copying.
