@@ -342,12 +342,18 @@ func newCoops() (*coops.Provider, *httpx.Client, error) {
 
 // attachRadio wires the player (B4): the model needs the player and the
 // player needs the program to send status back, so the deck is attached
-// to the model first and given the program after. Returns the program,
+// to the model first and given the program after.
+//
+// THE MODEL IS THE ROUTER (P0, FR-1.1). Every sender in this package keeps
+// `p` or `p.Send` UNCHANGED and that is correct, not an oversight: a send
+// goes to the PROGRAM, and the program delivers to whichever model it holds.
+// The plan and its red-team audit both said ~9 senders would need rewiring;
+// measuring it found ZERO. `p.Send` was never model-scoped. Returns the program,
 // the deck (nil when it could not be built) and a stop func.
 func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, cfg config.Config, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport, seismic func(snapshot.LocationRef) synth.SeismicReport, marine func(snapshot.LocationRef) synth.MarineReport) (*tea.Program, *radioDeck, func()) {
 	deck := newRadioDeck(nil, client, provider, render.UnitF)
 	if deck == nil {
-		return tea.NewProgram(model), nil, func() {}
+		return tea.NewProgram(tty.NewRouter(model)), nil, func() {}
 	}
 	deck.voiceID, deck.pref, deck.fire, deck.seismic, deck.marine = cfg.Voice, mode, fire, seismic, marine
 	// The whole cast, from the config: setCast validates it against this host
@@ -372,7 +378,7 @@ func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provid
 		func(v tty.CastView) error { return saveCast(deck, v) },
 		func(t tty.ToneState) error { return saveTones(deck, toneFromView(t)) },
 		deck.Installed)
-	p := tea.NewProgram(model)
+	p := tea.NewProgram(tty.NewRouter(model))
 	deck.p = p
 	return p, deck, deck.Stop
 }
