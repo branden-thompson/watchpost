@@ -19,6 +19,9 @@ const holdStep
 const installRetryAfter
 const laneBacklog
 const liveDwell
+const mainTrackDark
+const mainTrackLive
+const mainTrackOff
 const maxAlertRecords
 const maxDumpsPerRun
 const maxLaneRows
@@ -196,6 +199,7 @@ func (*radioDeck).installVoice
 func (*radioDeck).label
 func (*radioDeck).listVoices
 func (*radioDeck).logStatus
+func (*radioDeck).needsRead
 func (*radioDeck).noteDirectories
 func (*radioDeck).onClipSpent
 func (*radioDeck).onSilence
@@ -293,6 +297,8 @@ func (hostFacts).Default
 func (hostFacts).Discovered
 func (hostFacts).Installed
 func (hostFacts).Platform
+func (mainTrackStage).ownsTheAir
+func (mainTrackStage).reports
 func RenderCast
 func ReportOnce
 func ReportOnceWithStats
@@ -324,6 +330,7 @@ func castToConfig
 func castView
 func chooseNearest
 func clockFrom
+func composeFor
 func composeTakeover
 func configLocations
 func coveragePhrase
@@ -369,6 +376,7 @@ func live
 func loadSeen
 func loadUserThemes
 func macVoices
+func mainTrack
 func marineReportOf
 func mastheadLine
 func narrateDebug
@@ -409,6 +417,7 @@ func reachMiOf
 func readScript
 func recentTiers
 func reconcile
+func refFor
 func refsFromConfig
 func releaseNumbers
 func reloadCast
@@ -506,6 +515,7 @@ type hostFacts
 type injectQueue
 type injectQueue
 type livePipelines
+type mainTrackStage
 type mastercontrol
 type memRecord
 type narrationClass

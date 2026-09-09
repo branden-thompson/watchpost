@@ -24,10 +24,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"context"
+	"errors"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
+	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -89,6 +91,10 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 			radioDebugLog("schedule:declined:" + lineup.Describe(f) + ":" + why)
 		},
 		cutTo: tuneTo(deck, watch),
+		// THE MAIN TRACK'S WORDS (0.16.0 P3). Required from P3(d): a station
+		// whose rotation is owned by the schedule and has no composer wired
+		// would queue every report and read none.
+		compose: composeFor(deck, watch),
 		// DR-21's one escalation channel. It reuses the relay-fault window
 		// rather than adding a second error surface: from the listener's chair
 		// "the relay is silent" and "the schedule stopped" are the same event —
@@ -145,16 +151,59 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 // station on the air they had just taken away.
 func tuneTo(deck *radioDeck, watch func() []snapshot.LocationRef) func(string) {
 	return func(ref string) {
-		if deck == nil || watch == nil {
-			return // no audio, or no watchlist to resolve against
+		if deck == nil {
+			return // no audio
 		}
-		for _, r := range watch() { // bounded by the watchlist (P10-02)
-			if string(snapshot.Key(r)) == ref {
-				deck.tune(r)
-				return
-			}
+		r, ok := refFor(watch, ref)
+		if !ok {
+			radioDebugLog("schedule:tune-unknown:" + ref)
+			return
 		}
-		radioDebugLog("schedule:tune-unknown:" + ref)
+		deck.tune(r)
+	}
+}
+
+// refFor resolves the key a card carries back to the location it names.
+//
+// THE CARD STAYS DOMAIN-FREE (DR-1), so what travels through the schedule is an
+// identifier and nothing more, and the app is where it becomes a place again.
+// EXTRACTED AT THE SECOND CALLER: the cut-over asked this question first, and
+// the main-track composer asks the same one — two walks of the watchlist
+// comparing the same key would be two places for "what is a location's identity"
+// to drift.
+func refFor(watch func() []snapshot.LocationRef, ref string) (snapshot.LocationRef, bool) {
+	if watch == nil {
+		return snapshot.LocationRef{}, false // no watchlist to resolve against
+	}
+	for _, r := range watch() { // bounded by the watchlist (P10-02)
+		if string(snapshot.Key(r)) == ref {
+			return r, true
+		}
+	}
+	return snapshot.LocationRef{}, false
+}
+
+// composeFor is how a main-track card gets its words (0.16.0 P3).
+//
+// THE EXECUTOR KNOWS NOTHING ABOUT HOW A REPORT IS ASSEMBLED, and this is the
+// other side of that: the deck owns what a location report IS — the observation,
+// the alerts, the office products, the sign-off — and hands back the segments it
+// would have voiced. ONE COMPOSER, TWO CONSUMERS while the merge is staged, and
+// one after it: this is the same call startSynth makes for its own source, so
+// the card and the direct path cannot say different things.
+func composeFor(deck *radioDeck, watch func() []snapshot.LocationRef) func(context.Context, string) ([]synth.Segment, error) {
+	return func(ctx context.Context, ref string) ([]synth.Segment, error) {
+		if deck == nil {
+			return nil, errors.New("no audio deck to compose a report")
+		}
+		r, ok := refFor(watch, ref)
+		if !ok {
+			// NAMED, NOT EMPTY. The executor turns this into a decline that
+			// says why, and a card for a location the listener has since
+			// removed is exactly the case that produces it.
+			return nil, errors.New("no watched location for " + ref)
+		}
+		return deck.segments(ctx, r, synth.VoiceToken)
 	}
 }
 

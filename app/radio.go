@@ -179,7 +179,7 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 		st, live = chooseNearest(stations, d.watchlistLang())
 	}
 	if !live {
-		d.startSynth(ref, d.synthReason(same, ref, stations), gen)
+		d.needsRead(ref, d.synthReason(same, ref, stations), gen)
 		return
 	}
 	// The tune list spans every candidate station in the resolver's order
@@ -447,6 +447,46 @@ func (d *radioDeck) synthReason(same string, ref snapshot.LocationRef, stations 
 		reason += fmt.Sprintf(" · nearest live: %s %s %s", stations[0].Callsign, stations[0].Site, strings.TrimSpace(o.Distance(&km)))
 	}
 	return reason
+}
+
+// needsRead is THE ONE SEAM at which a location becomes a synthesised read,
+// and the merge's whole surface area (0.16.0 P3).
+//
+// THREE SITES REACH IT, and until now each started audio itself: the ordinary
+// tune when nothing live carries this location, the relay that failed while
+// playing, and the relay that went silent. They are three different facts with
+// one consequence — nobody is carrying this location, so the station must read
+// it — and that consequence is what the schedule now owns.
+//
+// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b), which is the rule the
+// neighbouring dwell case already states. What travels is the fact; whether it
+// becomes a card, where it sits, and whether it is read twice are the
+// Director's, and it answers all three from the schedule it holds.
+//
+// THE STALENESS CHECK GUARDS THE REPORT, not just the audio. startSynth has
+// always dropped a fallback that arrived after the listener stopped or re-tuned;
+// without the same check here, that stale fallback would still queue a card —
+// the listener would have stopped the station and been read to anyway. The
+// guard inside startSynth stays: it has its own callers, and it retires with the
+// direct path at P3(d).
+func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) {
+	if !d.epoch(gen) {
+		return // the listener stopped, or moved on: this need is about a location nobody is on
+	}
+	stage := mainTrack()
+	if stage.reports() {
+		// THE HEADLINE IS THE LOCATION'S OWN NAME. A card is showable from the
+		// moment it exists (DR-7), and at this point there is nothing else true
+		// about it: its words are composed at standby, minutes later.
+		d.tell(lineup.NeedsRead{Ref: string(snapshot.Key(ref)), Headline: ref.Label})
+	}
+	if stage.ownsTheAir() {
+		// THE SCHEDULE READS IT NOW. Starting audio here as well is the second
+		// speaker this batch exists to remove, and it would appear on the
+		// failure path — the worst place to find one.
+		return
+	}
+	d.startSynth(ref, why, gen)
 }
 
 // startSynth voices the location's NWS products (architecture §5 Synth):
@@ -786,7 +826,7 @@ func (d *radioDeck) onStatus(st player.Status) {
 	// Off the engine goroutine (it is finishing this very status): Halt
 	// inside Tune waits for it. Nothing follows a user's Stop (mode == "").
 	if st.State == player.Failed && mode == "live" {
-		go d.startSynth(ref, "relay unavailable — "+st.Err, gen)
+		go d.needsRead(ref, "relay unavailable — "+st.Err, gen)
 	}
 	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). What used to be a
 	// time.AfterFunc here — armDwell setting a five-minute timer, advanceQueue
@@ -971,7 +1011,7 @@ func (d *radioDeck) readSynth() {
 	d.mu.Lock()
 	ref, gen := d.ref, d.gen
 	d.mu.Unlock()
-	d.startSynth(ref, "the relay was silent", gen)
+	d.needsRead(ref, "the relay was silent", gen)
 }
 
 // escalate raises the fault window for a schedule that has stopped (DR-21).

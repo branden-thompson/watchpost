@@ -330,6 +330,18 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	if !onTheRail(v.Slot) && v.Slot != lineup.LocationReport {
 		return x.decline(v, v.ID, "no reader for this slot: only the rail and the main track read")
 	}
+	// THE MERGE IS STAGED, AND THIS IS THE STAGE (0.16.0 P3, maintrack.go).
+	// While the main track is dark the card is queued, composed and published —
+	// its decisions are observable and comparable against the live path's — but
+	// the rotation still reads through its own audio, so the air has exactly one
+	// owner at every moment of the batch. DELETED AT P3(d), with startSynth's
+	// direct path, in the change that makes the schedule the owner.
+	//
+	// DECLINED, NOT HELD: a card standing by for a stage that will not change
+	// mid-process would wedge the main track behind it.
+	if v.Slot == lineup.LocationReport && !mainTrack().ownsTheAir() {
+		return x.decline(v, v.ID, "the main track is dark; the rotation reads through its own path")
+	}
 	// Card.To(OnAir) refuses this already; refused again here because this
 	// is the last thing between the schedule and a silent hold with a callout
 	// already promised (DR-18).

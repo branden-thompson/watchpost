@@ -393,6 +393,8 @@ func (d Director) Step(ev Event) (Director, []Effect) {
 		return d.onProgramme(e)
 	case Ended:
 		return d.onEnded(e)
+	case NeedsRead:
+		return d.onNeedsRead(e)
 	}
 	// An event nothing handles changes nothing. The set is closed, so this is
 	// unreachable for anything built here — and it is the safe direction for
