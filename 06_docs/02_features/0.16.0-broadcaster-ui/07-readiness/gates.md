@@ -330,3 +330,47 @@ arrived, and again at **P3(a3)** when the speak half did.  Each time it was upda
 **The location-report SPEAK row is now GONE from the table** rather than reworded: it is no longer
 declined at all, and a row asserting a decline that never happens would be a check that cannot fail.
 The positive assertion lives in its own test instead.
+
+## P3(a4) — the producer, and the staging that keeps the air single-owner
+
+**The rotation's turn is now a card.**  The switch below is the reason this commit is inaudible to a
+listener who has not asked for it, and every gate names the failure it was watched to catch.
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestASynthesisedReadBecomesAMainTrackCard` | A need becomes ONE `LocationReport` card on `MainTrack`, **and the step also asks for its words** | **Plant m6 2026-09-09:** the settle skipped → **SURVIVED first**, because the test threw the effects away with `_ = fx`.  Gate rewritten to require a `BuildCard` for that card and a `Publish` after it; re-planted → **CAUGHT** |
+| `TestASecondNeedForTheSameLocationDoesNotQueueTwice` | FR-2.5 at the schedule level | **Plant m2:** `ReadID` made non-deterministic → **CAUGHT** |
+| `TestARotationCardIsNamedAfterItsLocationAndNothingElse` | **The MECHANISM**: the id is a pure function of the ref, and does not collide with a burst's | The duplicate gate above would pass under a remembered-set implementation; this one would not.  Written because two earlier plants survived by asserting an outcome that occurs either way |
+| `TestTheLocationCanBeReadAgainOnceItsCardHasLeft` | A rotation comes ROUND | Without it, a permanent refusal reads each location once and then plays nothing, and the duplicate gate above would still pass |
+| `TestNeedsReadOnAStoppedStationQueuesNothing` | Admission is a promise to read (DR-3), so a track that cannot advance takes none | **Plant m1:** the gate deleted → **CAUGHT** |
+| `TestARotationCardIsTheDirectorsOwn` | The origin is `FromDirector`, matching the stale-tune transition | **Plant m4:** origin set to Observer's → **CAUGHT** |
+| `TestANeedWithNoHeadlineQueuesNothing` | A card is showable from proposal (DR-7) | **Plant m7b:** the headline replaced by the ref → **CAUGHT** |
+| `TestTheMergeIsOffUntilItIsAskedFor` | An unrecognised `WATCHPOST_MAINTRACK` is **off**, never live | **Plant n1:** any non-empty value reads as live → **CAUGHT**.  Nine values checked, including `1`, `true`, `LIVE` and `" live"` |
+| `TestOnlyLiveOwnsTheAirAndDarkStillReports` | Dark observes the REAL producer and still does not own the air | **Plants n2, n3** → **CAUGHT** |
+| `TestEveryStageNamesItself` | Every stage names itself, **walked from the registry** (INST-1), and a corrupt value says `undeclared` rather than reading as `off` | **Plants s1, s2, s3** → **CAUGHT** |
+| `TestTheDeckReportsTheNeedAndLeavesTheAirAlone` | Live reports the fact and **does not also start audio** | **Plants n5, n6, n7** → **CAUGHT**.  The air half is proved by a blank `mode`: `setMode` is `startSynth`'s second statement |
+| `TestAStaleNeedIsNotReported` | A need that arrived after the listener moved on queues nothing, **at every stage** | **Plant n4:** the epoch guard deleted → **CAUGHT** |
+| `TestADarkMainTrackCardIsDeclinedAtTheAirAndNeverReachesTheVoice` | The card stops one call short of the voice, and the decline is **Routed** | **Plants n8, n10** → **CAUGHT**.  Unrouted would raise a RELAY FAULT window every rotation turn while dark (I-2) |
+| `TestTheAlertRailReadsWhateverTheMainTrackStageIs` | **The rail is not staged** | **Plant n9:** the decline widened to every slot → **CAUGHT**.  This is the gate that stops the merge silencing hazards |
+| `TestEveryPathToASynthesisedReadGoesThroughTheOneSeam` | `startSynth` has exactly one caller, **derived by walking the AST** (INST-1) | A fourth call site is correct in isolation and wrong in company, so no behavioural test sees it.  **Zero callers is a FATAL** here, not a pass (INST-2) — and at P3(d) zero becomes the right answer and this gate is rewritten to say so |
+| `TestTheNeedIsReportedFromTheOneSeam` | `lineup.NeedsRead` is constructed in exactly one place | A second site would queue the card under a staleness rule only one of them checks |
+| `TestACardsKeyResolvesBackToTheLocationItNames` | A card's key resolves to the right location, **including the second entry** | **Plant c1:** the resolver returns the first entry always → **CAUGHT** |
+| `TestComposingForAnUnknownLocationFailsByName` | A location the listener removed fails by NAME, not as an empty report | **Plants c2, c3, c4** → **CAUGHT**.  An empty report becomes a card on the air with nothing to say |
+| `TestTheDarkRunRecordsTheNeedItWouldHaveActedOn` | The dark run's only instrument exists, names the stage **from the switch**, and carries `fresh=` | **Plants s4, s6, s7** → **CAUGHT**.  A dark run missing this line is not a quiet run, it is a run that proves nothing |
+| `TestTheMergedStationHoldsItsPropertiesUnderRandomTiming` | Five properties over 300 randomised runs — one voice, one identity, **no card read more times than admitted**, the rail airs first, **and the rail is PREPARED first** | **Plant p1b:** `toPrepare`'s precedence reversed → **SURVIVED**, which is what property 5 was written for; re-planted → **CAUGHT**.  **Plant p6:** the producer made a no-op → **CAUGHT by the reach assertion**, not by a property, which is the instrument checking itself |
+
+### Two gates were written because a plant survived, and both are recorded as such
+
+**m6** and **p1b** are the release's second and third instances of a gate that watched the state instead
+of the work.  m6's test had the effects in hand and discarded them; p1b's properties all watched what
+took the air, and the defect was in what got COMPOSED, where nothing takes the air at all.
+
+### One survival is recorded as BENIGN rather than fixed
+
+**s5** — removing the `radioDebugOn()` guard at the call site changes no behaviour, because `debugLog`
+is gated inside; only whether the line is BUILT.  **No allocation gate was added**: that guard earns its
+place on the takeover path M4 measures, and `needsRead` runs a few times a minute.  A gate here would be
+theatre, and the honest record is that this one is convention.
+
+**m9b** — both proposal error guards removed, and `Queue`'s own `check()` refuses the card anyway.  The
+guards stay (a discarded error is worse than a redundant branch) and the record says they carry nothing.
