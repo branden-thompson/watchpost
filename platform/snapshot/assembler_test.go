@@ -231,6 +231,14 @@ func TestAnUnreachableProviderDoesNotAnswerForAnyLocation(t *testing.T) {
 		asm.SetAttribution("nws", "reference", "NWS")
 		return asm
 	}
+	stamp := func(asm *Assembler, ref LocationRef) time.Time {
+		for _, l := range asm.Snapshot().Locations {
+			if l.Label == ref.Label {
+				return l.WeatherAsOf
+			}
+		}
+		return time.Time{}
+	}
 	stamped := func(asm *Assembler) int {
 		n := 0
 		for _, l := range asm.Snapshot().Locations {
@@ -241,10 +249,11 @@ func TestAnUnreachableProviderDoesNotAnswerForAnyLocation(t *testing.T) {
 		return n
 	}
 
-	// THE OUTAGE: an error, and nothing served. Proves nothing about any location.
+	// THE OUTAGE: every location unreachable. Proves nothing about any of them.
 	out := build()
 	for _, k := range []FetchKind{KindObs, KindForecast} {
-		out.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at, Err: errFetch}, asked)
+		out.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at, Err: errFetch,
+			Failed: map[LocationKey]error{Key(a): errFetch, Key(b): errFetch}}, asked)
 	}
 	if n := stamped(out); n != 0 {
 		t.Errorf("an unreachable provider answered for %d location(s); rows must keep shimmering", n)
@@ -252,13 +261,21 @@ func TestAnUnreachableProviderDoesNotAnswerForAnyLocation(t *testing.T) {
 
 	// THE PARTIAL: an error, but A was served — so the provider IS reachable and
 	// B is a place it has nothing for. That is issue #13 and it must still work.
+	// THE PARTIAL OUTAGE, and this is the case the fragment-level rule got wrong:
+	// A is served, B is REFUSED. B was stamped and its row read "n/a" — an
+	// absence asserted for a location the request never reached.
 	part := build()
 	for _, k := range []FetchKind{KindObs, KindForecast} {
 		part.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at, Err: errFetch,
-			PerLocation: map[LocationKey]PartialData{Key(a): {}}}, asked)
+			PerLocation: map[LocationKey]PartialData{Key(a): {}},
+			Failed:      map[LocationKey]error{Key(b): errFetch}}, asked)
 	}
-	if n := stamped(part); n != 2 {
-		t.Errorf("a partial answer covers every location asked about; stamped %d of 2", n)
+	if got := stamp(part, a); got.IsZero() {
+		t.Error("A was served and must be stamped")
+	}
+	if got := stamp(part, b); !got.IsZero() {
+		t.Errorf("B could not be REACHED; a row that says n/a for it is asserting an absence "+
+			"the request never established: %v", got)
 	}
 }
 
@@ -345,3 +362,51 @@ func TestARemovedLocationDoesNotKeepItsAttemptRecord(t *testing.T) {
 			"which reads as \"we asked and there is nothing here\"", got)
 	}
 }
+
+// A DEFINITIVE ANSWER IS AN ANSWER, EVEN WHEN IT IS AN ERROR (REVIEW red team,
+// 2026-09-08).
+//
+// This is issue #13's original case and the last hole in it: a point outside the
+// forecast area answers 404 — "we do not cover you" — and a row reading "n/a" is
+// then TRUE. A refused connection is not an answer and the row must keep
+// waiting. The previous rule could not tell them apart, so a single-location
+// watchlist the feed does not cover shimmered for ever.
+func TestADefinitiveRefusalIsAnAnswerAndAnUnreachableOneIsNot(t *testing.T) {
+	only := LocationRef{Label: "Nowhere, XX", Lat: 1, Lon: 1}
+	at := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)
+	asked := []LocationKey{Key(only)}
+
+	run := func(failure error) time.Time {
+		asm := NewAssembler([]LocationRef{only}, []string{"nws"})
+		asm.SetAttribution("nws", "reference", "NWS")
+		for _, k := range []FetchKind{KindObs, KindForecast} {
+			asm.Apply(Fragment{Provider: "nws", Kind: k, FetchedAt: at, Err: failure,
+				Failed: map[LocationKey]error{Key(only): failure}}, asked)
+		}
+		return asm.Snapshot().Locations[0].WeatherAsOf
+	}
+
+	// 404: the service answered. The row may say n/a, and issue #13 is closed
+	// even for a watchlist of one.
+	if got := run(statusErr(404)); got.IsZero() {
+		t.Error("a 404 is the service saying it does not cover this point; that IS an answer")
+	}
+	// Connection refused: no answer. The row keeps waiting.
+	if got := run(statusErr(0)); !got.IsZero() {
+		t.Errorf("an unreachable service answered nothing; the row must keep waiting: %v", got)
+	}
+	// An error carrying no status at all is treated as unreachable: "we do not
+	// know" keeps the row waiting rather than asserting an absence.
+	if got := run(errFetch); !got.IsZero() {
+		t.Errorf("an unclassifiable error must not be read as an answer: %v", got)
+	}
+}
+
+// statusErr is a stand-in for httpx's StatusError/ReachError, which snapshot
+// deliberately does not import — Unreachable duck-types HTTPStatus() so the
+// transport's types satisfy it without inverting the dependency.
+type statusErrT int
+
+func (e statusErrT) Error() string   { return "status" }
+func (e statusErrT) HTTPStatus() int { return int(e) }
+func statusErr(code int) error       { return statusErrT(code) }

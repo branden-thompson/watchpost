@@ -469,6 +469,12 @@ type Fragment struct {
 	PerLocation map[LocationKey]PartialData
 	FetchedAt   time.Time
 	Err         error
+	// Failed is which locations failed and why, so a consumer can tell a
+	// definitive answer ("we do not cover that point") from a failure to ask
+	// ("we could not reach the service"). Err joins the same failures and says
+	// nothing about where they happened. Not published; Fragment has no json
+	// tags.
+	Failed map[LocationKey]error
 }
 
 // Provider is the only interface a data source implements (§2).

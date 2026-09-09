@@ -47,6 +47,7 @@ func KeepOr
 func Key
 func Keys
 func NewAssembler
+func Unreachable
 func WithFailure
 func answersTheRow
 func cleanWarning

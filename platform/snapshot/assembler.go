@@ -285,23 +285,23 @@ func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	// claiming it lives here would be the same false attribution this round has
 	// been removing.
 	//
-	// WHY REACHABILITY MATTERS. The previous comment here claimed "reaching Apply
-	// means the provider responded". That is FALSE: FetchEach joins per-location
-	// errors into Fragment.Err and returns a nil error, so a connection refused
-	// arrives as a fragment carrying an error and serving NOTHING. Stamping it
-	// made every row assert "we asked and there is nothing for your area" during
-	// a network outage, when the truth was "we cannot reach the weather service"
-	// — and before this change those rows correctly kept shimmering.
+	// WHY REACHABILITY MATTERS, PER LOCATION. An earlier version stamped every
+	// asked location whenever the fragment served ANYBODY, on the reasoning that
+	// a served location proves the provider answered. That is right for a total
+	// outage and WRONG FOR A PARTIAL ONE: with A served and B refused, B was
+	// stamped and its row read "n/a" — asserting an absence for a location the
+	// request never reached.
 	//
-	// A fragment that served at least one location proves the provider answered,
-	// so a location missing from it is a location it had nothing for. A fragment
-	// that served NONE and carries an error proves nothing at all.
+	// Fragment.Failed now says which locations failed and why, so the question is
+	// asked per location rather than per fragment. A 404 for a point outside the
+	// forecast area IS an answer — "we do not cover you" — and the row should say
+	// n/a. A refused connection is not, and the row should keep waiting.
 	//
-	// THE LIMIT, STATED: a single-location watchlist whose only location the feed
-	// cannot serve is indistinguishable from an outage by this rule, and keeps
-	// shimmering. Telling those apart needs a per-location error from the
-	// provider, which FetchEach does not carry today.
-	if st.Role == "reference" && answersTheRow(f.Kind) && (f.Err == nil || len(f.PerLocation) > 0) {
+	// This also closes issue #13's last hole: a single-location watchlist whose
+	// only location the feed genuinely does not cover now gets a truthful n/a
+	// instead of shimmering for ever, which the previous rule could not tell from
+	// an outage.
+	if st.Role == "reference" && answersTheRow(f.Kind) {
 		at := f.FetchedAt
 		if at.IsZero() {
 			// A stamp cannot be zero: zero is how "never asked" is spelled, and a
@@ -309,12 +309,16 @@ func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 			at = time.Now().UTC()
 		}
 		for _, k := range asked {
-			if _, tracked := a.sections[k]; tracked {
-				if a.asked[k] == nil {
-					a.asked[k] = map[FetchKind]time.Time{}
-				}
-				a.asked[k][f.Kind] = at
+			if _, tracked := a.sections[k]; !tracked {
+				continue
 			}
+			if Unreachable(f.Failed[k]) {
+				continue // we could not ask about this one; it is still waiting
+			}
+			if a.asked[k] == nil {
+				a.asked[k] = map[FetchKind]time.Time{}
+			}
+			a.asked[k][f.Kind] = at
 		}
 	}
 

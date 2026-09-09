@@ -86,11 +86,11 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 	}
 	switch req.Kind {
 	case snapshot.KindObs:
-		frag.PerLocation, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchObs)
+		frag.PerLocation, frag.Failed, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchObs)
 	case snapshot.KindForecast:
-		frag.PerLocation, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchForecast)
+		frag.PerLocation, frag.Failed, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchForecast)
 	case snapshot.KindForecastHourly:
-		frag.PerLocation, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchHourly)
+		frag.PerLocation, frag.Failed, frag.Err = snapshot.FetchEach(ctx, req.Locations, fetchConcurrency, p.fetchHourly)
 	case snapshot.KindAlerts:
 		if err := p.fetchAlerts(ctx, req.Locations, &frag); err != nil {
 			frag.Err = err
