@@ -133,10 +133,19 @@ the same tick an alert arrives.  `platform/lineup/merge_property_test.go` assert
 driver that services effects at random moments too, because *"the build came home three steps late"* is
 itself a timing case.
 
-**Reach, per run of the suite: 300 runs, 11,629 steps, 2,706 admissions, 772 readings — 157 reports and
-615 hazards — and 38 locations legitimately read a second time.**
+**~~Reach: 300 runs, 11,629 steps, 2,706 admissions, 772 readings — 157 reports and 615 hazards — and 38
+locations legitimately read a second time.~~  THAT LAST FIGURE WAS WRONG AND THE RED TEAM MEASURED IT:
+35 of the 38 were HAZARD cards re-aired after a repeat burst, not rotation reads.  The true figure was
+3 — one per hundred runs — thin enough that a seed change could have taken it to zero with the gate
+still green, on the one case property 3 exists to tell apart from a double read.**
+
+**Corrected, derived from the same `isRead` the report counter uses, and the driver rebalanced until the
+case is routine.  Reach now: 300 runs, 60,300 steps, 12,036 admissions, 10,207 readings — 6,671 reports
+and 3,536 hazards — 899 locations read a second time, and 8,116 events stepped against a STOPPED
+station, where there were none at all.**
 
 | # | Property | Why it is the one that matters |
+| 6 | **a stopped programme does not read** | added after the red team measured the power dimension as inert; asked of the DIRECTOR's own power, so a driver that lost track of the station cannot make it pass |
 |---|---|---|
 | 1 | at most one card holds the air | two would be two voices.  **Counted directly**, because `OnAir` returns "nobody" when its own invariant trips, and a violation would otherwise read as an idle station |
 | 2 | no two cards share an identity | an ambiguous address is a card read twice |
@@ -203,6 +212,22 @@ theatre, and the honest record is that this guard is convention, not a load-bear
 
 **Two plants did not apply and are recorded as INVALID, not as verdicts** — `p1` and `s4` each matched
 two lines on the first attempt and the script refused them.
+
+# P3 — the red team, and what it cost
+
+**It found a BLOCKER, and it found it in the one place the staging could not look:** the `live` stage
+could never start the station at all, and `dark` is structurally green on it.  Full disposition of all
+twelve findings, and the fixes, in `08-reports/red-team-p3.md`.
+
+**Three of my own gates were wrong and are recorded as such:** both seam AST walks skipped package-level
+declarations, the property test's power dimension was inert, and the reach figure above was measuring
+the wrong thing.  Each was found by the red team, not by me, and each is now caught by a plant.
+
+**One of my own fixes then broke a gate, and the instrument caught that too.**  Rewriting the identity
+test to satisfy a linter lost the ADJACENCY that made it work: comparing across two passes let a
+counter-based mutant through, because with three refs and a counter taken modulo three every ref got the
+same suffix on both passes.  Two adjacent calls differ under any per-call variation, whatever its
+period.  **A cosmetic rewrite of a test is a change to the instrument.**
 
 ## What P3 still owes
 
