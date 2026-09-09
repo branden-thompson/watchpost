@@ -1,0 +1,102 @@
+---
+title: "0.16.0 P3(b)+(d) — the flip: what retiring startSynth actually costs, and the ruling it needs"
+date: 2026-09-09
+phase: BUILD
+sev: SEV-0
+authority: HUM LEAD
+status: "DESIGN RECORDED.  ONE ARCHITECTURE QUESTION IS OPEN AND IT IS THE HUM LEAD'S.  The edit is not made."
+---
+
+# The flip
+
+**P3(a) and P3(c) have landed.  What remains is the change that hands the air to the schedule** — the
+two relay-failure fallbacks route through it, `startSynth`'s direct path retires, and `app/maintrack.go`
+is deleted.  The plan describes that as one change, and it is, **but it is not the change the plan
+described.**
+
+## The plan said "the direct `StartSource` path retires behind the arbiter".  That sentence hides a
+## substitution.
+
+**S0 concluded the merge was mostly wiring, and for the SCHEDULE half it was — five seams, all live.**
+The audio half is different.  Reading a report through the arbiter does not move the existing playback
+behind a new owner; **it replaces the player.**
+
+| | The rotation today | The card path |
+|---|---|---|
+| what plays it | `synth.Source` streamed through `engine.StartSource` | a `lineup.Script` read line by line through the narrator's `speaker` |
+| how a line becomes audio | the source pulls segments as it goes | `radio.go:694 render` → `synth.AlertNarration` → PCM in memory → `engine.Preview` |
+| the player row | `"Watchpost Synth (<voice>)"`, with the source's rate | a preview over whatever the engine was doing |
+| the station line | `setMode("synth", "Watchpost Synth · "+ref.Label, why)` | **nothing sets it** |
+
+**The per-line latency concern does NOT apply**, and it is worth saying so plainly because it was my
+first reading and it was wrong: `readScript` walks the script part by part and each part is rendered
+just before it plays, so a report plays segment by segment exactly as the source does.  **The whole
+report is not buffered.**
+
+**Six things are genuinely lost**, and each of them is behaviour a listener can see or hear today.
+
+| # | What retires with `startSynth` | Where it lives now | Severity if simply dropped |
+|---|---|---|---|
+| G-1 | **the rotation's end signal.**  `cycleEnded` reads `player.EndedTitle` off `d.source`; that is what emits `lineup.Ended{}`, and `Ended` is what advances the bed and the Watchlist | `radio.go:859`, `radio.go:807` | **BLOCKER.**  With no source, `Ended{}` never fires and **the rotation stops advancing entirely** |
+| G-2 | **the marquee**, `setDetailTimed(seg.Text, spoken)` per segment, paced to the voice (UAT 83) | `radio.go:521` | MAJOR — the detail line goes static for the whole report |
+| G-3 | **correspondent handoff lines**, `src.SetHandoffLine(d.composer.HandoffLine)` | `radio.go:529` | MAJOR — the cast stops introducing itself mid-report |
+| G-4 | **repeat-one**, `src.Loop(d.repeat == tty.RepeatOne)` (UAT 93) | `radio.go:531` | MAJOR — a listener's repeat setting silently stops working |
+| G-5 | **the station and player rows**, `setMode` + `StartSource`'s title | `radio.go:459`, `radio.go:535` | MAJOR — the radio panel stops naming what is playing |
+| G-6 | **first-use voice install with progress in the player** (HUM LEAD ruling: first-run install) | `radio.go:461` | MINOR — `resolveVoice` starts a background install, but the foreground progress is `startSynth`'s |
+
+**G-1 alone makes "delete the direct path" wrong as written.**  A card's `Finished` would have to take
+over what `Ended{}` does, and that is a design decision, not a deletion.
+
+## Two shapes.  The difference is what the arbiter is FOR.
+
+### Shape A — the card carries the words (what the plan literally says)
+
+`BuildCard` composes the report into a `Script`; `Speak` reads that script through the narrator.  The
+synth source is gone.
+
+- **All six gaps must be rebuilt** on the card path: a display hook in `readHooks`, handoff lines in
+  `readScript`, a loop concept in the schedule, a station-row owner, and a new source of `Ended{}`.
+- The Broadcaster console gets the report's words for free, which FR-1 wants.
+- **It re-implements a player that already works, on the path that carries every ordinary broadcast.**
+
+### Shape B — the card carries the ORDER; the source still carries the report  *(my recommendation)*
+
+The arbiter owns **who speaks**.  It does not have to own **how a report is spoken**.
+
+- `BuildCard` composes the segments **once** and keeps them; the card's `Script` is built from them
+  **for display** (the console, the lineup, the operator's "what is about to go out").
+- `Speak` for a `LocationReport` **takes the air through the arbiter** — so a takeover suspends it and
+  resumes it, which is the whole point — **and starts the existing `synth.Source` over those same
+  segments**, returning `Finished` when it ends and `Failed{Routed}` when it is cut short.
+- `startSynth`'s body becomes that executor's, called from one place, with the schedule deciding when.
+  **The direct path still retires; the player does not.**
+- All six gaps stay closed because nothing about the player changed.  G-1 becomes `Finished`, which is
+  what the card path already emits.
+
+**The cost of Shape B:** the arbiter must be able to suspend and resume a `synth.Source`, not just a
+clip.  `engine.Suppress`/`Restore` and the deck's duck already exist for the takeover-over-a-read case
+— *"we can PAUSE the read, let the alert rail drain, insert a transition read, then resume the read at
+normal volume"* is the HUM LEAD's own ruling for the main rotation — so the mechanism is the one
+already ratified.  **What must be proven is that it works when the arbiter, rather than the deck, is
+the one asking.**
+
+## THE RULING NEEDED
+
+**Shape A or Shape B.**  It decides what the flip is, and both readings are defensible from the plan's
+own words: *"the card then travels the ordinary path — `BuildCard` composes it, `Speak` reads it
+through the arbiter"* is Shape A; *"the direct `StartSource` path retires **behind the arbiter**"* is
+Shape B.
+
+**My recommendation is Shape B**, for one reason: **Shape A rebuilds a working player on the path that
+carries every ordinary broadcast, in the batch already named the most dangerous in the release.**  The
+release's stated value (A1: "it needs to function as intended out of the gate") is not served by
+re-earning six behaviours that already work.
+
+**This is the go/no-go the plan requires before P4 begins.**  It is recorded here rather than decided,
+because read order, pacing, what the marquee shows and what repeat means are HUM LEAD rulings.
+
+## What is NOT blocked by this ruling
+
+Nothing in P3(a) or P3(c) depends on it — the producer, the event, the card, the staging switch and the
+property test are the same under both shapes.  **What changes is only what `Speak` does with a
+`LocationReport`**, which is one executor case.
