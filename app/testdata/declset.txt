@@ -27,6 +27,7 @@ const maxUnattendedInstalls
 const metroCapKm
 const narrateBreaking
 const narrateRead
+const narrateRotation
 const numNarrationClasses
 const publishCoalesce
 const pumpBacklog

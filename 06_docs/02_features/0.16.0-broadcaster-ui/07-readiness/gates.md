@@ -227,3 +227,36 @@ wrong direction entirely.
 
 **This is a derived guard written by an earlier release catching a field added by this one**, with no
 edit to the guard itself.  That is what INST-1 buys.
+
+## P3(c) — the rotation's narration class
+
+**A VALUE, NOT A MECHANISM.**  The arbiter already suspends a lower class for a higher one and resumes
+it — eight tests pinned that before this class existed — so the rotation joining the card path needed a
+constant and nothing else.
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestTheRotationIsTheLowestClass` | Everything interrupts the programme | **By the watched RED**: the class was added deliberately in the WRONG position first, so the failure was an assertion (`it is 2`) rather than a compile error.  **Plant 2026-09-09:** placed above the severe read → **CAUGHT**.  Walks the class type by its sentinel, so a class added later is covered without editing it |
+| `TestARotationReadIsSuspendedByASevereRead` | A severe read suspends the rotation, which then RESUMES | **Plant 2026-09-09:** the ordering inverted → **CAUGHT** (`got: duck,speak:rotation-line,speak:read-line,restore` — no pause at all) |
+| `TestARotationReadIsSuspendedByATakeover` | A takeover suspends the rotation | **WRITTEN WEAK, THEN FIXED — see below** |
+| The 5 pre-existing suspension pins | The shared arbiter did not regress | All still green.  **This is the regression evidence that matters** for a change to an arbiter three paths share |
+
+### A second surviving plant, the same shape as the first
+
+**Disabling the arbiter's suspension entirely (`&& false`) failed nothing** in the takeover test.
+
+The reason: it asserted only that the rotation **finished**, and a rotation that is never paused
+finishes just as happily as one paused and resumed.  **"It completed" was never evidence that anything
+gave way.**
+
+Strengthened to assert the `pause ... resume` trace, and verified to fail under the plant.
+
+**Both surviving plants this release share one shape:** a test asserting an OUTCOME that occurs either
+way, instead of the MECHANISM that was supposed to produce it.  Worth naming, because it is not the
+same as a missing test — the test existed, ran, and passed for the wrong reason.
+
+### A test that was wrong where the code was right
+
+My first assertion expected the severe read to run as an **aside** over the suspended rotation.  It does
+not, and should not: *aside* marks a **takeover's** line, the one whose visualizer does not follow it.
+**The code was right and the expectation was wrong**, so the expectation changed.

@@ -38,7 +38,17 @@ import (
 type narrationClass int
 
 const (
-	narrateRead narrationClass = iota
+	// narrateRotation is THE PROGRAMME — the ordinary rotation of location
+	// reports (0.16.0 P3). It is the LOWEST class because everything else
+	// interrupts it: a severe read is a listener asking for a hazard now, and
+	// a takeover is a hazard asking for itself.
+	//
+	// ADDED AS A VALUE, WHICH IS THE WHOLE POINT OF THE ENUM. The arbiter
+	// already suspends a lower class for a higher one and resumes it after —
+	// eight tests pinned that before this class existed — so the rotation
+	// joining the card path needed a value here, not a mechanism anywhere.
+	narrateRotation narrationClass = iota
+	narrateRead
 	narrateBreaking
 
 	// numNarrationClasses bounds the set; it is not itself a class.
