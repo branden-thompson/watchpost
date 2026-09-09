@@ -124,13 +124,58 @@ so nobody later reads their presence as the reason a bad card cannot be queued.
 - **Nothing here exercises timing.**  The property test over randomised interleavings of cycle-end and
   alert-arrival is P3's, and it is still owed.
 
+# P3(c) — the timing property test
+
+**A scenario UAT targets precedence and duplication, not timing.**  That was the safety lens's
+objection to P3's controls, and it is right: no fixed scenario reaches the case where a cycle ends at
+the same tick an alert arrives.  `platform/lineup/merge_property_test.go` asserts the merge's rules over
+**randomly interleaved** needs, arrivals, ticks, completions, failures and power changes — with a
+driver that services effects at random moments too, because *"the build came home three steps late"* is
+itself a timing case.
+
+**Reach, per run of the suite: 300 runs, 11,629 steps, 2,706 admissions, 772 readings — 157 reports and
+615 hazards — and 38 locations legitimately read a second time.**
+
+| # | Property | Why it is the one that matters |
+|---|---|---|
+| 1 | at most one card holds the air | two would be two voices.  **Counted directly**, because `OnAir` returns "nobody" when its own invariant trips, and a violation would otherwise read as an idle station |
+| 2 | no two cards share an identity | an ambiguous address is a card read twice |
+| 3 | **no card takes the air more times than it was admitted** | FR-2.5 at the schedule level.  The rotation legitimately comes round to a location again once its card has left, so a bare "read once" would be wrong; the count is what separates the two |
+| 4 | a main-track card only takes the air when no hazard is waiting | DR-3, the rail drains first |
+| 5 | **a main-track card is only SENT TO BE COMPOSED when no hazard is waiting to be** | found by a plant that survived — see below |
+
+## Property 5 exists because a plant survived
+
+**Reversing the precedence in `Next` is caught by property 4.  Reversing it in `toPrepare` was not** —
+and it is the more dangerous of the two.
+
+Preparation is the expensive step (a cold build is ~1 s of network), and **an unready rail card blocks
+the air entirely**: `airOnce` takes `Next()` or nothing.  So composing a report ahead of a waiting
+hazard does not merely reorder the reads — **it holds the whole station silent** while the tornado
+warning queues behind a weather report.  Property 4 cannot see it, because nothing takes the air at all.
+
+## The instrument, checked
+
+| # | Plant | Verdict |
+|---|---|---|
+| p1a | `Next`'s precedence reversed | CAUGHT (property 4) |
+| p1b | `toPrepare`'s precedence reversed | **SURVIVED, then CAUGHT** once property 5 existed |
+| p1c | both reversed | CAUGHT |
+| p2 | the "already on the air" guard removed | CAUGHT (property 1: two cards named in the failure) |
+| p4 | duplicate identities allowed into the lineup | CAUGHT (property 2) |
+| p6 | **the producer made a no-op** | CAUGHT **by the reach assertion**, not by a property — 0 reports aired.  This is the instrument checking itself: every property above passes trivially against a station that never reads anything |
+
+**Two plants that did not apply are recorded as INVALID, not as verdicts.**  The first `p1` edit matched
+two lines and the script refused it; a "SURVIVED" printed there would have been a lie about a plant
+that was never made.
+
 ## What P3 still owes
 
 | Owed | State |
 |---|---|
 | P3(b) the two relay-failure fallbacks | **the seam is in place**; the flip is what routes them |
 | P3(d) `startSynth`'s direct path retires | with the flip, in one change |
-| the property test over arrival timing | **not started** |
+| the property test over arrival timing | **DONE** |
 | the dark path RUN, and its comparison | the mechanism is in; the run is not |
 | P3's own red team | not started |
 | a UAT shared with nothing | not started |
