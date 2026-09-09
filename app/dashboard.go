@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -97,6 +98,17 @@ func RunDashboard(version string, opt Options) error {
 	defer func() { cancel(); lp.stopAll() }()
 
 	if _, err := p.Run(); err != nil {
+		// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team,
+		// 2026-09-08). Piping or redirecting stdin surfaced "bubbletea: error
+		// opening TTY: … open /dev/tty: device not configured", which names a
+		// dependency the listener did not choose and no step they can take.
+		// Watchpost is a full-screen program: without a terminal it has nothing
+		// to draw on, and the fix is to run it in one.
+		if strings.Contains(err.Error(), "TTY") || strings.Contains(err.Error(), "/dev/tty") {
+			return fmt.Errorf("watchpost needs a terminal to draw in, and this one has no TTY " +
+				"(stdin looks piped or redirected). Run `watchpost` directly in a terminal window; " +
+				"for a one-shot text report that needs no terminal, use `watchpost report`")
+		}
 		return fmt.Errorf("dashboard failed: %w", err)
 	}
 	reportTiming(time.Duration(firstFullNanos.Load()))

@@ -658,7 +658,13 @@ func (d Dashboard) setupAlertKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	default:
 		if r := key.Text; r >= "0" && r <= "9" {
-			d.setup.filtered = true // typing a distance means Filtered
+			// A KEY THAT CHANGES NOTHING SELECTS NOTHING (VALIDATE red team,
+			// 2026-09-08). Moving this out of the length guard let a digit typed
+			// into a full buffer flip the radio to "Within" while leaving the
+			// number alone — a press that appears to choose and does not.
+			if d.setup.radiusSeeded || len([]rune(d.setup.radiusMi)) < 4 {
+				d.setup.filtered = true // typing a distance means Filtered
+			}
 			// THE FIRST DIGIT REPLACES THE STORED VALUE, the rest append. A
 			// field showing a number the listener did not type is a field they
 			// are about to type over, not one they are appending to.
