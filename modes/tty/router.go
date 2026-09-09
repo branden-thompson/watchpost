@@ -13,7 +13,11 @@ package tty
 // because a gate whose state source is a stub must refuse rather than permit
 // (the P1->P2 window, PLAN red team).
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/platform/lineup"
+)
 
 // Surface names which UI is on screen.
 type Surface int
@@ -133,16 +137,34 @@ func (r Router) surface() surfaceView {
 	return r.observer
 }
 
-// canSwap reports whether the operator may leave the given surface.
+// canSwap reports whether the operator may move to the given surface, and
+// why not when the answer is no.
 //
-// FAILS CLOSED, DELIBERATELY (PLAN red team). The precondition it enforces —
-// the station is in STANDBY — reads a Power that is not wired until P2, and a
-// second surface first exists in P1. For that window the honest answer is no:
-// a refused swap is an inconvenience, and a permitted one during a live read
-// is the hazard D-1 exists to prevent.
+// THE ONE PLACE THE D-1 PRECONDITION IS CHECKED (FR-1.4). It lives here and
+// not in the console's key handler for a reason this codebase has already
+// paid for once: if the surface decided, every future path that could request
+// a swap — a menu, a programmatic message, a second binding — would have to
+// re-implement the same guard, and "two carriers of one rule" is the shape
+// that produced the duck-lift bug.
+//
+// FAILS CLOSED on anything it does not understand. A corrupt surface value is
+// refused rather than permitted, because the cost of a wrong refusal is an
+// inconvenience and the cost of a wrong permission is audio left running with
+// no owner — and there is no graceful stop anywhere in the tree to catch it.
 func (r Router) canSwap(to Surface) (bool, string) {
 	if to < 0 || to >= numSurfaces {
 		return false, "that surface does not exist"
 	}
-	return false, "switching arrives with the Broadcaster surface"
+	if to == r.active {
+		return true, "" // already there; not a transition at all
+	}
+	// ARRIVING at the console is not the hazard the ruling bounds. Leaving a
+	// LIVE station is.
+	if to == SurfaceBroadcaster {
+		return true, ""
+	}
+	if r.broadcaster.power == lineup.Running {
+		return false, "the station is ON AIR — go to STANDBY before leaving the console"
+	}
+	return true, ""
 }

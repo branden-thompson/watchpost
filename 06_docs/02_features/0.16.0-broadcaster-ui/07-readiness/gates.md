@@ -135,3 +135,25 @@ followed a push whose exit code I had discarded.
 **Re-pinned to 14 deliberately**, with the cause named (`stationLine`), which is the path the gate's
 own failure message prescribes.  **Both the catch and the process failure are recorded**, because a
 roster that only shows catches teaches the easy half.
+
+## P2(b) — the swap gate, reading real power
+
+**D-1's precondition stops failing closed and starts deciding.**
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestSwappingAwayIsRefusedWhileTheStationIsLive` | **FR-1.4** — a swap away from a RUNNING station is refused | **Plant 2026-09-09:** the refusal made unreachable (`&& false`, so the identifiers stay used) → **CAUGHT** |
+| `TestSwappingAwayIsPermittedFromStandby` · `...WhenStopped` | STANDBY and STOPPED both permit it | **By the watched RED**: the fail-closed stub refused everything, and these two were the red half — which also proved the stub genuinely failed closed |
+| `TestSwappingTOTheConsoleIsAlwaysPermitted` | Arriving is not the hazard the ruling bounds | Swept across **every power state, derived** from `Power.String()`'s end |
+| `TestAnUndeclaredSurfaceIsRefused` | Fail closed on a corrupt value | **Plant 2026-09-09:** the default opened → **CAUGHT** |
+| `TestThePowerPreconditionHasOneReaderInTheRouter` | **The rule has exactly ONE carrier** — an AST walk, derived, not a remembered file list | **Plant 2026-09-09:** a second read added in `View` → **CAUGHT** (`has 2 readers`).  Reports **"the check did not run"** rather than passing if the walk finds nothing (INST-2), and states its blind spot (INST-5) |
+
+**Why the single-reader guard exists at all.**  The gate lives in the Router and not in the console's
+key handler because if the surface decided, every future path that could request a swap would have to
+re-implement it.  **Two carriers of one rule is the shape that produced the duck-lift bug**, and the
+band and the config writer each already carry an AST guard for exactly this.
+
+### Process, corrected
+
+**This batch's commit was GATED on the results rather than chained after them** — `if ! go test; then
+exit 1`.  P2(a) chained with `;` and pushed a red gate to `origin`.
