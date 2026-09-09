@@ -76,7 +76,7 @@ and the branch is deleted after the merge either way.
 - [ ] `git branch release/v0.15.0 $(git commit-tree HEAD^{tree} -p main-publish -m "0.15.0: …")`
   — verify before pushing that the candidate's tree is byte-identical to the feature tip, that
   `main-publish` is its only parent, and that it has an empty diff against the tip.
-- [ ] Push `release/v0.15.0`; open the PR against `main` with `07-readiness/pr-body.md`.
+- [x] Pushed; **PR #19** opened against `main`.
 - [~] **CI round 1 (2026-09-09, `02fb023`): a SPLIT result on one commit.** `verify (ubuntu-latest)`
   **passed** in the `pull_request` run and **failed** in the `push` run — same SHA, four minutes apart.
   Not a code defect: `mutant-check` hit `go test`'s **default 10-minute timeout**. The passing run took
@@ -89,16 +89,35 @@ and the branch is deleted after the merge either way.
   rather than precautionary:** the two green `mutant-check` runs took **396 s** and **602 s**, and 602 s
   is **two seconds** under the default that had just failed. Three observed Linux runs span **396–602 s**
   on one commit and one platform.
-- [ ] **CI green on the PR.** Budget for rounds: this branch's last CI was red, and the Linux leg has
+- [x] **CI green on the PR — round 3 (`7db2cd0`), all six checks.** Three rounds, and **every round's
+  failure was a real finding rather than runner noise**, which is the budget line from above coming
+  out true: round 1's split result was the mutant corpus crossing `go test`'s default timeout (F-64),
+  and the round-3 timings — **642 s and 648 s** — are BOTH over that old 600 s default, so this round
+  would have failed both ubuntu legs without the fix. Observed Linux range is now 396–648 s. Budget for rounds: this branch's last CI was red, and the Linux leg has
   not run on the 41 commits since. **Expect Linux-only failures and treat each as a finding**, not as
   runner noise.
-- [ ] Squash-merge; **check the CHANGELOG date still matches the merge day** before tagging.
-- [ ] `v0.15.0` annotated on the merged commit; push; release workflow green; assets present.
-- [ ] Local `main` carries the feature tip; `main-publish` mirrors the merged commit.
-- [ ] Delete `origin/release/v0.15.0`, `origin/feature/0.15.0-pre-broadcaster-ui-improvements` and the
-  local feature branch.
-- [ ] Close **#14** (the release), **#13** and **#17**. **#12 stays open** — the memo-key audit is
-  partly done and saying otherwise would be the exact kind of claim this release spent itself hunting.
+- [x] **Squash-merged as `fd761ab`.** CHANGELOG date re-checked against the merge day (2026-09-09) before tagging — it matched, so 0.14.0's second PR had no counterpart here. The merged tree was verified byte-identical to both the release commit and the feature tip BEFORE the tag was cut.
+- [x] **`v0.15.0` annotated on `fd761ab`, pushed 2026-09-09.** Release workflow `34352664330` green;
+  it re-ran the full `make verify` against the tag before publishing, so the artifacts come from a tree
+  that passed on the runner. **8 assets**, both Linux binaries among them.
+- [x] **The PUBLISHED artifact was verified, not just the build.** `watchpost-darwin-arm64` downloaded
+  from the release: checksum matches `checksums.txt`, it reports `watchpost version 0.15.0`, and it
+  carries **0** build-path strings — the `-trimpath` fix confirmed on the real artifact rather than
+  locally, against **109,594** total strings, so the zero is not a vacuous scan.
+- [x] Local `main` carries the feature tip (`d7f2605`), tree byte-identical to `origin/main`; `main-publish` mirrors `fd761ab`.
+- [x] Deleted `origin/release/v0.15.0`, `origin/feature/0.15.0-pre-broadcaster-ui-improvements` and both local branches. **`origin` now carries `main` alone.**
+- [x] **Issues reconciled against what the release MEANT to do with them — and one was wrong.**
+  #13 and #17 closed correctly from the plain `Closes #13. Closes #17.` in the release commit.
+  #14 did NOT close from `Closes **#14**` in the PR body, and was closed by hand. **#12 was closed by
+  the PR body's sentence saying it should stay open** — GitHub's parser matches `close … #12` and does
+  not read the `not`. Reopened, with the state of the audit recorded on the issue. **The lesson is in
+  `06_docs/quality-observations.md`: put close directives in the release commit message, unadorned,
+  and nowhere else — and check every touched issue's final state, because three of the four were right
+  and the check would have looked like a waste right up until it was not.**
+  **#17's closure is EARNED, and was verified rather than assumed:** the release found the root cause
+  — the fake player was missing a rule the real `oto` states outright
+  (`if p.eof && len(p.buf) == 0 { return }`), so it was an instrument defect and not an engine stall —
+  and pinned it with a test that forces the losing order instead of waiting for it.
 
 ## After
 

@@ -1366,3 +1366,32 @@ solved twenty lines away and not carried across.
   guard → compiles → red 25/25 → revert → green 25x. Now a standing mutant, `mK8`, so the guard
   cannot quietly lose its only cover again.
 
+## A negation in prose is invisible to a keyword parser (2026-09-09, SHIP)
+
+The 0.15.0 PR body said, deliberately and in as many words: *"Does **not** close #12 — the memo-key
+audit is partly done and stays open."* The sentence existed **only** to stop that issue being closed.
+On merge, GitHub closed it. Its linking parser matches `close … #12` and does not read the `not`.
+
+**The sentence written to keep the issue open is the sentence that closed it.**
+
+It is the release's own recurring shape arriving in a new medium. The others were assertions the code
+could not support — a row saying "loading" when it meant "never", a read stating an absence it had no
+evidence for, a README describing a cap nobody built. This one is an assertion the *tooling* could not
+read: correct English, correct intent, and a machine acting on four of its characters.
+
+**Two things that generalise:**
+- **Never name an issue you are not closing in text a robot parses.** If the PR must explain why an
+  issue stays open, write the number without a linking keyword anywhere before it, or say it in a
+  comment on the issue instead. The negation costs nothing to write and buys nothing at all.
+- **Verify the post-conditions of a publish, not just its exit code.** The merge succeeded, CI was
+  green, the tag was clean, and an issue was silently in the wrong state. It was found by checking
+  every issue the release touched against what the release *meant* to do with it — which is a step,
+  not a reflex, and it is now in the release checklist. The other three issues were all in the right
+  state, so the check would have looked like a waste right up until it was not.
+
+**How #13, #17 and #14 differed, because the mechanism matters.** #13 and #17 closed correctly, from
+the plain `Closes #13. Closes #17.` in the RELEASE COMMIT message — not from the PR body. #14 did not
+close from `Closes **#14**` in the body at all. So within one release the same intent expressed three
+ways produced three outcomes: closed correctly, not closed, and closed when the text said not to.
+**Put close directives in the release commit message, unadorned, and nowhere else.**
+
