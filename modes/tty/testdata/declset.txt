@@ -20,6 +20,8 @@ const SevereMaxRows
 const SevereStatements
 const SevereWarnings
 const SevereWatches
+const SurfaceBroadcaster
+const SurfaceObserver
 const TickerOrange
 const TickerRed
 const TickerYellow
@@ -76,6 +78,7 @@ const modalSetup
 const modalSevere
 const modalStatus
 const numModals
+const numSurfaces
 const panelFrame
 const panelRail
 const panelSide
@@ -413,6 +416,11 @@ func (RadioMode).String
 func (RadioMode).next
 func (RepeatMode).String
 func (RepeatMode).next
+func (Router).Init
+func (Router).Update
+func (Router).View
+func (Router).canSwap
+func (Router).surface
 func (arrowChips).pick
 func (endpointRow).counters
 func (radioBP).hasViz
@@ -422,6 +430,7 @@ func (setupState).mutedClassKeys
 func (setupState).touch
 func (tonedRow).row
 func NewDashboard
+func NewRouter
 func ParseRadioMode
 func abs
 func agoWords
@@ -611,6 +620,7 @@ type RecentSnapshotMsg
 type RelayCandidate
 type RelaySilentMsg
 type RepeatMode
+type Router
 type SevereMsg
 type SevereReadingMsg
 type SevereRecord
@@ -619,6 +629,7 @@ type SevereSource
 type SevereTab
 type SnapshotMsg
 type Stats
+type Surface
 type TickerAdvanceMsg
 type TickerBreakingDoneMsg
 type TickerBreakingMsg
