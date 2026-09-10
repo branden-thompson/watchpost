@@ -79,7 +79,17 @@ type member struct {
 	Decl    string `json:"decl"`    // file:line where it is declared
 	Writers int    `json:"writers"` // production sites that construct or assign it
 	Readers int    `json:"readers"` // production sites that discriminate on it
+
+	// WriteAt and ReadAt are WHERE, which is what makes a review of an unwired
+	// member possible without grepping: the question is never only "is it
+	// wired" but "by whom, and is that the right whom".
+	WriteAt []string `json:"writeAt,omitempty"`
+	ReadAt  []string `json:"readAt,omitempty"`
 }
+
+// wrote and read record a site as well as counting it.
+func (m *member) wrote(at string) { m.Writers++; m.WriteAt = append(m.WriteAt, at) }
+func (m *member) read(at string)  { m.Readers++; m.ReadAt = append(m.ReadAt, at) }
 
 // unwired reports whether this member is missing a writer or a reader.
 func (m member) unwired() bool { return m.Writers == 0 || m.Readers == 0 }
@@ -99,6 +109,7 @@ func (m member) why() string {
 func main() {
 	ledger := flag.String("ledger", "06_docs/wires-ratified.md", "the ratified-exemption ledger")
 	asJSON := flag.Bool("json", false, "machine-readable output")
+	sites := flag.Bool("sites", false, "print WHERE each unwired member is written and read")
 	selfTest := flag.Bool("self-test", false, "prove the instrument can fail, then exit")
 	root := flag.String("root", ".", "the tree to scan")
 	flag.Parse()
@@ -116,11 +127,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "wires:", err)
 		os.Exit(2)
 	}
-	report(members, ratified, *asJSON)
+	report(members, ratified, *asJSON, *sites)
 }
 
 // report prints the verdict and exits non-zero if anything is unexplained.
-func report(members []member, ratified map[string]bool, asJSON bool) {
+func report(members []member, ratified map[string]bool, asJSON, sites bool) {
 	var unexplained, exempt []member
 	for _, m := range members {
 		if !m.unwired() {
@@ -148,6 +159,14 @@ func report(members []member, ratified map[string]bool, asJSON bool) {
 			len(members), len(exempt), len(unexplained))
 		for _, m := range unexplained {
 			fmt.Printf("  %-28s %s\n      %s\n", m.Set+"."+m.Name, m.Decl, m.why())
+			if sites {
+				for _, w := range m.WriteAt {
+					fmt.Printf("        written  %s\n", w)
+				}
+				for _, r := range m.ReadAt {
+					fmt.Printf("        read     %s\n", r)
+				}
+			}
 		}
 		fmt.Println("  scope: production code only. A reader is any discrimination, including an")
 		fmt.Println("  ordered comparison — so a member nothing treats SPECIALLY still counts as read.")
@@ -187,7 +206,7 @@ func scan(root string) ([]member, error) {
 		return nil, err
 	}
 	decls := declaredMembers(fset, files)
-	countUses(files, decls)
+	countUses(fset, files, decls)
 	out := make([]member, 0, len(decls))
 	for _, m := range decls {
 		out = append(out, *m)
@@ -296,7 +315,7 @@ func markerStructs(fset *token.FileSet, gen *ast.GenDecl) []*member {
 // THE DECLARATION IS NOT A USE. A const block naming a member, and the struct
 // type declaring it, are what created the question; counting them as answers
 // would make every member look wired.
-func countUses(files []*ast.File, decls map[string]*member) {
+func countUses(fset *token.FileSet, files []*ast.File, decls map[string]*member) {
 	for _, f := range files {
 		ast.Inspect(f, func(n ast.Node) bool {
 			switch v := n.(type) {
@@ -305,7 +324,7 @@ func countUses(files []*ast.File, decls map[string]*member) {
 			case *ast.CompositeLit:
 				// `Foo{…}` or `pkg.Foo{…}` MAKES one.
 				if m := decls[typeNameOf(v.Type)]; m != nil {
-					m.Writers++
+					m.wrote(pos(fset, n.Pos()))
 				}
 				// `[]Track{AlertRail, MainTrack}` — a set written out as a
 				// literal is the walk this codebase uses for precedence, and
@@ -313,21 +332,21 @@ func countUses(files []*ast.File, decls map[string]*member) {
 				// consider. That is a read.
 				for _, e := range v.Elts {
 					if m := decls[typeNameOf(e)]; m != nil {
-						m.Readers++
+						m.read(pos(fset, n.Pos()))
 					}
 				}
 			case *ast.CaseClause:
 				// `case Foo:` READS it — a type switch or a value switch.
 				for _, e := range v.List {
 					if m := decls[typeNameOf(e)]; m != nil {
-						m.Readers++
+						m.read(pos(fset, n.Pos()))
 					}
 				}
 			case *ast.BinaryExpr:
 				// `x == Foo`, `x >= Foo` READS it.
 				for _, e := range []ast.Expr{v.X, v.Y} {
 					if m := decls[typeNameOf(e)]; m != nil {
-						m.Readers++
+						m.read(pos(fset, n.Pos()))
 					}
 				}
 			case *ast.KeyValueExpr:
@@ -337,32 +356,32 @@ func countUses(files []*ast.File, decls map[string]*member) {
 				// registry), and it is the shape INST-1 asks for. So the KEY
 				// reads.
 				if m := decls[typeNameOf(v.Key)]; m != nil {
-					m.Readers++
+					m.read(pos(fset, n.Pos()))
 				}
 				// `Field: Foo` — the member is the VALUE, so something is being
 				// MADE with it. Missing this called every Power unwritten while
 				// `Powered{To: Running}` sat in two files.
 				if m := decls[typeNameOf(v.Value)]; m != nil {
-					m.Writers++
+					m.wrote(pos(fset, n.Pos()))
 				}
 			case *ast.AssignStmt:
 				// `x = Foo` and `x := Foo` MAKE one.
 				for _, e := range v.Rhs {
 					if m := decls[typeNameOf(e)]; m != nil {
-						m.Writers++
+						m.wrote(pos(fset, n.Pos()))
 					}
 				}
 			case *ast.CallExpr:
 				// `f(Foo)` passes one along, which is making it someone's input.
 				for _, a := range v.Args {
 					if m := decls[typeNameOf(a)]; m != nil {
-						m.Writers++
+						m.wrote(pos(fset, n.Pos()))
 					}
 				}
 			case *ast.ReturnStmt:
 				for _, e := range v.Results {
 					if m := decls[typeNameOf(e)]; m != nil {
-						m.Writers++
+						m.wrote(pos(fset, n.Pos()))
 					}
 				}
 			}
