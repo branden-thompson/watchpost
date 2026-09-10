@@ -185,13 +185,25 @@ const (
 	// bcMinRows is MEASURED: fixed chrome plus one readable card, counted off
 	// the mock at wave 1. The mock draws 74, so 30 of its lines show MORE
 	// cards rather than making it work.
+	//
+	// KEPT AT 44 AGAINST THE RULING'S EXAMPLE, WHICH SAID "100 x 25". The 100
+	// is the ruled breakpoint and is applied above; the 25 came inside an
+	// example of the MESSAGE ("or something like this"), and 44 is the measured
+	// number. Lowering it would let the console draw a frame the terminal
+	// cannot hold and clamp the remainder away — which is the F-55 defect this
+	// floor exists to prevent, arriving through the notice meant to prevent it.
+	// Flagged to the HUM LEAD rather than silently chosen.
 	bcMinRows = 44
 
-	// bcMinCols is the start of the platform's STANDARD class. Below it the
-	// console has no honest layout — and D-13 chose the platform vocabulary
+	// bcMinCols is the start of the platform's COMPACT class (D-50). Below it
+	// the console has no honest layout — and D-13 chose the platform vocabulary
 	// precisely so this number is a boundary someone already reasoned about
 	// rather than one invented here.
-	bcMinCols = 80
+	//
+	// RAISED FROM 80 BY THE HUM LEAD'S RULING: "< 100 col : Not supported — we
+	// adopt a 'btop' style". It is `term.BreakUnsupported`'s own boundary, so
+	// the console and the classifier cannot drift apart.
+	bcMinCols = 100
 )
 
 // tooSmall reports whether the terminal is below the floor.
@@ -248,14 +260,14 @@ func (b Broadcaster) lanes() []string {
 		out = append(out, "  (clear)")
 	}
 	for _, c := range rail {
-		out = append(out, "  "+cardRow(c, "T", "PRIORITY", term.BreakpointFor(b.width) >= term.BreakWide, g))
+		out = append(out, "  "+cardRow(c, "T", "PRIORITY", term.BreakpointFor(b.width) >= term.BreakOptima, g))
 	}
 	out = append(out, "")
 
 	// THE BREAKPOINT SELECTS THE LAYOUT (FR-7.1, D-13). Not a call whose
 	// result is discarded: the class decides what a lane row can afford, and
 	// changing the class changes the frame.
-	wide := term.BreakpointFor(b.width) >= term.BreakWide
+	wide := term.BreakpointFor(b.width) >= term.BreakOptima
 	if wide {
 		out = append(out, "SCHEDULED LINE UP")
 	} else {

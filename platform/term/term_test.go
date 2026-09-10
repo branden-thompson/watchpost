@@ -31,25 +31,52 @@ func TestWidthPrefersTTYThenEnv(t *testing.T) {
 	}
 }
 
+// D-50 (HUM LEAD, 2026-09-10): four classes, and the lowest one is NOT A
+// LAYOUT — it is a refusal to draw.
+//
+//	< 100    UNSUPPORTED   "resize your terminal to 100 x 25 or larger"
+//	100-119  COMPACT       titles may truncate
+//	120-150  OPTIMA        the range the reference mock is drawn at
+//	> 150    LARGE         a later release: the right rail (D-51)
 func TestBreakpoints(t *testing.T) {
 	cases := []struct {
 		w    int
 		want Breakpoint
 	}{
-		{39, BreakTooNarrow}, {40, BreakMini}, {59, BreakMini},
-		{60, BreakSingle}, {79, BreakSingle}, {80, BreakStandard},
-		{119, BreakStandard}, {120, BreakWide}, {200, BreakWide},
+		{0, BreakUnsupported}, {40, BreakUnsupported}, {99, BreakUnsupported},
+		{100, BreakCompact}, {119, BreakCompact},
+		{120, BreakOptima},
+		// 150 IS THE TOP OF OPTIMA, NOT THE BOTTOM OF LARGE. The ruling's two
+		// ranges overlapped at exactly 150; the reference mock is 150 wide and
+		// the ruling calls that Optima's range.
+		{150, BreakOptima},
+		{151, BreakLarge}, {400, BreakLarge},
 	}
 	for _, c := range cases {
 		if got := BreakpointFor(c.w); got != c.want {
-			t.Fatalf("BreakpointFor(%d) = %v, want %v", c.w, got, c.want)
+			t.Errorf("BreakpointFor(%d) = %v, want %v", c.w, got, c.want)
 		}
 	}
 }
 
-func TestHeightCompact(t *testing.T) {
-	if !HeightCompact(11) || HeightCompact(12) {
-		t.Fatal("PD-4: rows <12 compact, >=12 full")
+// A NEGATIVE WIDTH IS NOT A WIDE TERMINAL. Nothing produces one, which is
+// exactly why it is worth pinning: the ordered comparisons below rely on
+// Unsupported being the bottom, and a signed value that fell through would
+// classify a garbage size as drawable.
+func TestABadWidthIsUnsupportedRatherThanLarge(t *testing.T) {
+	if got := BreakpointFor(-1); got != BreakUnsupported {
+		t.Errorf("BreakpointFor(-1) = %v, want BreakUnsupported", got)
+	}
+}
+
+func TestEveryBreakpointIsNamed(t *testing.T) {
+	for _, b := range []Breakpoint{BreakUnsupported, BreakCompact, BreakOptima, BreakLarge} {
+		if b.String() == "" {
+			t.Errorf("breakpoint %d has no name; the log and the notice both read it", int(b))
+		}
+	}
+	if got := Breakpoint(99).String(); got != "" {
+		t.Errorf("a class outside the set names nothing; got %q", got)
 	}
 }
 
