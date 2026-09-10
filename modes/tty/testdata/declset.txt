@@ -198,6 +198,8 @@ func (Broadcaster).minSize
 func (Broadcaster).notice
 func (Broadcaster).opts
 func (Broadcaster).stationLine
+func (Broadcaster).stationSection
+func (Broadcaster).stationTone
 func (Broadcaster).tooSmall
 func (Dashboard).DiagnosticsOpen
 func (Dashboard).Init
