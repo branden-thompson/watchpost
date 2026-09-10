@@ -153,6 +153,7 @@ rebuilt its context from the code would re-derive the WRONG answer for every one
 | **D-46** | `[shift+N]` makes a **request order**, not a card — the Producer turns it into a proposal | keeps the role split at the point most likely to break.  Carries a KIND (no slot for it yet — D-31) and a target slot in LINE-UP space |
 | **D-47** | origin is a **term** in the ranking, not a trump; insistence is the escalation | reconciles D-41 with the cadence example, and makes D-40's choice modal a TRIGGERED thing |
 | **D-48** | the Director remembers **one timestamp per slot**, and nothing else | read history ruled out by name.  `WeighLastRead` is the operator's switch, and every degraded path answers the same for everything |
+| **D-49** | a transition is a property of the **KIND**, not the origin — `announced` / `handsBack` rows | **MVS-D-80 ruled the trigger in 2026-09-05 and the scripts are pinned.**  Does NOT fire location-to-location.  The words come from the script library through Settings, never from the Director |
 
 **D-40's operator flow, ruled in full:** card in the main track → `[#]` → detail modal → `[D]` Drop →
 confirm ARE YOU SURE → `[enter]` → both modals close → the card leaves → **everything below moves up

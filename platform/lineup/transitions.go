@@ -1,33 +1,57 @@
 package lineup
 
-// transitions.go — the inter-card transition, DERIVED FROM THE JOIN (D-43).
+// transitions.go — the inter-card transition, DERIVED FROM WHAT EACH KIND NEEDS
+// AROUND IT (D-49; MVS-D-80, HUM LEAD 2026-09-05).
 //
-// THE DIRECTOR'S ONE ADDITIVE ACT (role-model.md).  Everything else in this
-// package arranges cards other roles proposed; this is the only place the
-// Director puts a card into the running order because of what the running order
-// IS.
+// THE DIRECTOR'S ONE ADDITIVE ACT (role-model.md) — the only place it puts a
+// card into the running order because of what the running order IS:
 //
-// IT BELONGS TO THE JOIN, NOT TO THE CARD, and the HUM LEAD's own sentence is
-// the argument: "the Director will re-evaluate if transitions are needed for
-// that card AT THAT TIME, and the answer MAY BE DIFFERENT depending on what the
-// line looks like at that time."  That is as true of a DROP as of a
-// resurrection — dropping the card between A and C changes what A→C needs.  Card
-// ownership would leave adjacency artifacts (two tails in a row, a lead with
-// nothing before it) and something would have to clean them up, which is the
-// recompute it was trying to avoid.
+//	"only the Director knows that two adjacent cards came from DIFFERENT
+//	COMPOSERS and need a handoff between them."
 //
-// AND RE-DERIVING IS FREE.  `slots()` gives Transition `textAtStandby: false`,
-// so a transition's words are FIXED AT PROPOSAL — no composer, no network,
-// nothing to wait for.  Creating and destroying them costs nothing, which is
-// what makes "recompute the whole running order on every change" the cheap
-// option rather than the expensive one.
+// THE TRIGGER IS RULED (MVS-D-80, follow-ups.md F-27). A transition "fires when
+// something that INTERRUPTED THE PROGRAMME leaves the air and the programme
+// resumes", and it does NOT fire location-to-location — because "the location
+// scripts already announce their location". **That reason is the general rule**,
+// and it is a property of the KIND rather than of a pair:
 //
-// WHAT THIS BUYS, AND IT IS THE HUM LEAD'S STATED REQUIREMENT: "the system needs
-// to be flexible enough that adding additional transition or inter-card cards is
-// low cost, and doesn't require a complete rewiring of the line-up flow and
-// logic."  Adding a kind means adding a rule to `between` — ONE function that
-// looks at (previous, next).  `Reorder`, `onDropped` and the undo never change,
-// because there is no association for them to honour.
+//	announced — this kind does NOT introduce itself, so the listener is told
+//	            what is coming ("please standby for station identification").
+//	handsBack — this kind INTERRUPTED the programme, so the listener is handed
+//	            back when it ends ("we now return to our regularly scheduled
+//	            programming").
+//
+// SO ADDING AN INTER-CARD CARD IS A ROW, which is the HUM LEAD's requirement in
+// their own words: "the system needs to be flexible enough that adding
+// additional transition or inter-card cards is low cost, and doesn't require a
+// complete rewiring of the line-up flow and logic."
+//
+// AN EARLIER VERSION FIRED ON `Origin == FromOperator` AND WAS WRONG. D-43's
+// bookended operator card was "an example to show the function of the DIRECTOR
+// understanding how a card fits into the line-up" — not a rule — and as a rule
+// it fired location-to-location, which MVS-D-80 forbids and S-5 independently
+// calls "jarring to a listening audience". It was written without reading F-27,
+// which is the failure 00-REQUIRED-READING.md exists for.
+//
+// THE WORDS ARE NOT THE DIRECTOR'S. It owns ARRANGEMENT; the script library owns
+// CONTENT, and that is the S-7 boundary T-3 draws. The station hands the lines in
+// through Settings, composed by the app from `transition/resume.txt` — so there
+// is ONE owner of the sentence and the Director never invents one. With no words
+// it arranges nothing, which is the same degradation shape as D-48's cadence
+// term: better to move on than to speak a line nobody wrote.
+//
+// RE-DERIVING IS FREE. `slots()` gives Transition `textAtStandby: false`, so a
+// transition's words are fixed at proposal — no composer, no network, nothing to
+// wait for. That is what makes recomputing the whole order on every change the
+// cheap option rather than the expensive one.
+//
+// PLACEMENT, AND IT RE-OPENS A RULING. MVS-D-80 put the transition "at the duck"
+// in `mastercontrol`, because the lift "is the one point that sees the takeover,
+// the [w] read and the relay ALIKE". With the relay case ruled out of scope
+// (HUM LEAD 2026-09-10), two of those three are cards — and T-3 says inter-card
+// transitions ARE cards, where the Director can adjust and remove them. So the
+// takeover's hand-back is a card at the end of the rail. **Flagged for
+// ratification**: if it is wrong it costs one registry row.
 
 import (
 	"strings"
@@ -35,78 +59,80 @@ import (
 	"github.com/branden-thompson/watchpost/platform/invariant"
 )
 
-// joinPrefix marks the cards THIS FILE OWNS.
-//
-// OWNERSHIP BY IDENTITY, and it is load-bearing rather than cosmetic: the
-// reconcile deletes structural cards it no longer wants, and the staleness
-// notice is a structural card it never made.  A reconcile that owned every
-// structural card would delete that notice silently, leaving the listener the
-// gap it exists to explain.  The prefix is the house pattern — `ReadID` prefixes
-// "read:", `BurstID` prefixes its own, `staleTransitionID` is its own constant.
+// joinPrefix marks the cards THIS FILE OWNS, and ownership by identity is
+// load-bearing rather than cosmetic: the reconcile deletes transitions it no
+// longer wants, and the staleness notice is a structural card it never made. A
+// reconcile that owned every structural card would delete that notice silently.
 const joinPrefix = "join:"
 
-// joinID is the identity of the transition between two cards, and it is a PURE
-// FUNCTION OF THE PAIR.
-//
-// THAT IS WHAT MAKES THE RECONCILE IDEMPOTENT.  It runs on every settle, so a
-// non-deterministic id would grow the schedule by one transition per event; with
-// this, "is it already there?" is a lookup, and the lineup's own refusal of two
-// cards under one identity is the backstop.
-func joinID(prev, next string) string {
-	return joinPrefix + prev + ">" + next
-}
+const (
+	leadKind = "lead" // said BEFORE the card it names
+	tailKind = "tail" // said AFTER it
+)
 
-// isJoinID reports whether an id names a card this file minted. It sits beside
-// joinID deliberately: the shape is defined once and read once.
+// leadID and tailID are the identities of a card's transitions, and both are
+// PURE FUNCTIONS OF THE CARD. That is what makes the reconcile idempotent: it
+// runs on every settle, so a non-deterministic id would grow the schedule by one
+// transition per event.
+func leadID(id string) string { return joinPrefix + leadKind + ":" + id }
+func tailID(id string) string { return joinPrefix + tailKind + ":" + id }
+
+// isJoinID reports whether an id names a card this file minted.
 func isJoinID(id string) bool { return strings.HasPrefix(id, joinPrefix) }
 
-// splitJoinID reads back the pair a join was minted for — the third and last
-// reader of the id's shape, all of them in this block.
-func splitJoinID(id string) (prev, next string, ok bool) {
+// splitJoinID reads back what a transition was minted for — the last reader of
+// the id's shape, and all of them are in this block.
+func splitJoinID(id string) (kind, card string, ok bool) {
 	if !isJoinID(id) {
 		return "", "", false
 	}
-	prev, next, ok = strings.Cut(strings.TrimPrefix(id, joinPrefix), ">")
-	return prev, next, ok && prev != "" && next != ""
+	kind, card, ok = strings.Cut(strings.TrimPrefix(id, joinPrefix), ":")
+	if !ok || card == "" || (kind != leadKind && kind != tailKind) {
+		return "", "", false
+	}
+	return kind, card, true
 }
 
-// between is THE ONE PLACE THE RULE LIVES: what, if anything, belongs at the
-// join from prev to next.
-//
-// THE RULE IS D-43's, STATED BY THE HUM LEAD — "Location Report Card from
-// Operator needs to be bookended by transition cards" — and it is deliberately
-// the whole rule for now.  What ELSE makes a join need something said (a change
-// of subject, a report following an alert, elapsed time since the last one) is a
-// CONTENT ruling and is not yet made; when it is, it is arms in this function
-// and nothing else moves.
-func between(prev, next Card) (Card, bool) {
-	if prev.Origin != FromOperator && next.Origin != FromOperator {
-		return Card{}, false
+// around is what this card needs said before and after it — THE ONE PLACE THE
+// RULE IS APPLIED, reading the one place it is declared.
+func (d Director) around(c Card) (lead Card, hasLead bool, tail Card, hasTail bool) {
+	// A TRANSITION NEVER BOOKENDS A TRANSITION. Two structural cards in a row is
+	// the Director talking to itself, and the registry says as much by leaving
+	// Transition's own row empty — this is the tripwire for the day it does not.
+	if err := invariant.Check(!c.Slot.structural(),
+		"a transition is asked about the running order, where the Director's own cards do not appear"); err != nil {
+		return Card{}, false, Card{}, false
 	}
-	// A TRANSITION NEVER BOOKENDS A TRANSITION — two structural cards in a row is
-	// the Director talking to itself, and it is exactly the adjacency artifact
-	// card-ownership would have produced by design.
+	if c.Slot.announced() {
+		lead, hasLead = d.mint(leadID(c.ID), c, d.settings.Announcement)
+	}
+	// THE HAND-BACK IS MINTED WHILE THE INTERRUPTING READ IS STILL ON AIR, and
+	// F-27's own design note asks for exactly that: "enqueue it while the
+	// interrupting read is still on air, and the duck stays down by itself …
+	// the hazard to design against is the DUCK-BOUNCE" — enqueue it after the
+	// read has ended and the bed lifts, dips again for the transition, then
+	// lifts, which is the dip-lift-dip MVS-D-67 removed and MEASURED.
 	//
-	// A TRIPWIRE, NOT A GUARD, and the difference is the one this release keeps
-	// re-learning. It was written as a guard and its mutant SURVIVED: `between`
-	// is asked only about cards in the RUNNING ORDER, and the running order
-	// excludes structural cards by construction (D-44), so the branch could
-	// never decide anything. Deleting it would have thrown away a real
-	// precondition; leaving it as a decision was the rule written twice. It
-	// watches instead — and it is what fails, loudly, if a second caller ever
-	// asks this question about the schedule rather than the line-up.
-	if err := invariant.Check(!prev.Slot.structural() && !next.Slot.structural(),
-		"a join is asked about the running order, where the Director's own cards do not appear"); err != nil {
-		return Card{}, false
+	// AND IT IS WHAT TELLS "READ" FROM "NEVER PLAYED" WITH NO STORED
+	// ASSOCIATION. A takeover dropped or declined before it aired never had a
+	// hand-back to strand; one that aired leaves its hand-back at the head of
+	// the track, where `stillHolds` keeps it. A first attempt derived the tail
+	// from admission instead, and a dropped takeover left a stray "we now
+	// return to our regularly scheduled programming" with nothing before it.
+	if c.Slot.handsBack() && c.State == OnAir {
+		tail, hasTail = d.mint(tailID(c.ID), c, d.settings.ProgrammeReturn)
 	}
-	// ITS WORDS ARE FIXED HERE, WHICH IS WHY THEY NAME WHAT COMES NEXT. The
-	// Director is the only role that knows the order, and DR-7's other half says
-	// a card whose text is fixed at proposal must arrive carrying it.
+	return lead, hasLead, tail, hasTail
+}
+
+// mint builds one transition card, or says the station gave it nothing to say.
+func (d Director) mint(id string, about Card, words string) (Card, bool) {
+	if words == "" {
+		return Card{}, false // the station has no line for this; say nothing
+	}
 	card, err := Propose(Card{
-		ID: joinID(prev.ID, next.ID), Slot: Transition, Origin: FromDirector,
-		Subject:  next.Subject,
-		Headline: "Coming up: " + next.Headline,
-		Script:   Say("Coming up, " + next.Headline + "."),
+		ID: id, Slot: Transition, Origin: FromDirector,
+		Subject: about.Subject, Headline: about.Headline, Script: Say(words),
 	})
 	if err != nil {
 		return Card{}, false
@@ -114,27 +140,30 @@ func between(prev, next Card) (Card, bool) {
 	return card, true
 }
 
-// wantedJoins is the transitions the CURRENT running order calls for, in order,
-// each with the card it must sit in front of.
-//
-// THE HEAD IS NOT A JOIN. A card at the top of the running order has nothing
-// before it to hand off from — what precedes it is the bed, or silence, and
-// neither is a card. (A hand-off out of the BED is the cut-over's business, not
-// this one; D-11 and FR-4.2 own that lane.)
-func (d Director) wantedJoins() []Card {
-	view := d.lineup.Projection(MainTrack)
-	out := make([]Card, 0, len(view))
-	for i := 1; i < len(view); i++ { // bounded by the running order (P10-02)
-		card, ok := between(view[i-1], view[i])
-		if !ok {
-			continue
+// placement is one transition and where it goes: the card it attaches to, and
+// whether it sits before or after it.
+type placement struct {
+	card   Card
+	anchor string
+	before bool
+}
+
+// wanted is every transition the running order now calls for, per track.
+func (d Director) wanted(t Track) []placement {
+	view := d.lineup.Projection(t)
+	out := make([]placement, 0, 2*len(view))
+	for _, c := range view { // bounded by the running order (P10-02)
+		lead, hasLead, tail, hasTail := d.around(c)
+		if hasLead {
+			out = append(out, placement{card: lead, anchor: c.ID, before: true})
 		}
-		out = append(out, card)
+		if hasTail {
+			out = append(out, placement{card: tail, anchor: c.ID})
+		}
 	}
-	// ONE JOIN PER GAP, at most. More would mean `between` had produced two
-	// cards for one place in the order, which is a schedule that reads the same
-	// hand-off twice.
-	if err := invariant.Check(len(out) < max(len(view), 1), "a running order of n cards has at most n-1 joins"); err != nil {
+	// AT MOST TWO PER CARD. More would mean a kind had asked for the same side
+	// twice, which is a schedule that reads one handoff to itself.
+	if err := invariant.Check(len(out) <= 2*len(view), "a running order of n cards needs at most 2n transitions"); err != nil {
 		return nil
 	}
 	return out
@@ -142,53 +171,56 @@ func (d Director) wantedJoins() []Card {
 
 // reconcileJoins brings the schedule's transitions into line with what the
 // running order now calls for. It is the whole of "they move with the card" and
-// "they simply go away" — neither is implemented, both fall out.
+// "they simply go away" — neither is implemented, both fall out, because there
+// is no association for `Reorder`, `onDropped` or the undo to honour.
 //
 // IT RUNS FIRST IN `settle`, before anything reads the order, because a
-// transition inserted now may be the very next thing spoken.
+// transition added now may be the very next thing spoken.
 //
 // IT IS NOT GATED ON `advances`. These are consequences of cards the schedule
-// has ALREADY admitted, not new admissions, so DR-3's promise was made when the
-// report was let in. A stopped station still has a running order; it simply is
-// not reading it.
+// has ALREADY admitted, so DR-3's promise was made when the card was let in. A
+// stopped station still has a running order; it simply is not reading it.
 func (d Director) reconcileJoins() Director {
-	d.lineup = d.lineup.dropStaleJoins()
-	for _, c := range d.wantedJoins() { // bounded by the running order (P10-02)
-		d.lineup = d.lineup.addJoin(c)
+	for t := Track(0); t < numTracks; t++ { // bounded by the registry (P10-02)
+		d.lineup = d.lineup.dropStaleJoins(t)
+		for _, p := range d.wanted(t) { // bounded by the running order (P10-02)
+			d.lineup = d.lineup.addJoin(t, p)
+		}
 	}
 	return d
 }
 
-// stillHolds reports whether the join at index i still describes the hand-off it
-// was minted for.
+// stillHolds reports whether the transition at index i still sits where it was
+// minted to sit.
 //
-// ASKED OF THE SCHEDULE, NOT OF THE PROJECTION, and that distinction is a
+// ASKED OF THE SCHEDULE, NOT OF THE RUNNING ORDER, and that distinction is a
 // DEFECT THIS FILE ALREADY HAD. Deriving the wanted set from the running order
-// alone prunes a join the moment its lead-in card is READ: `a` finishes, leaves
-// the schedule, and the transition introducing what follows it is deleted in the
-// same settle — one step before it would have been spoken. The listener loses
-// the hand-off and hears the next report begin cold.
+// alone prunes a hand-back the moment the card it hands back FROM is read: the
+// takeover finishes, leaves the schedule, and the transition is deleted in the
+// same settle — one step before it would have been spoken. The listener hears
+// the programme resume with no hand-back, which is the precise thing MVS-D-80
+// exists to prevent.
 //
-// So a join survives when it is AT THE HEAD OF THE TRACK: everything before it
-// has already been read, which is the only way its lead-in can legitimately have
-// vanished. A join whose lead-in was DROPPED from the middle is not at the head,
-// and is pruned — which is the difference between "already read" and "taken
-// away" expressed as a position rather than as a flag anyone has to maintain.
-func (l Lineup) stillHolds(i int) bool {
-	track := l.tracks[MainTrack]
-	prev, next, ok := splitJoinID(track[i].ID)
+// So a TAIL survives at the head of its track: everything before it has been
+// read, which is the only way its card can legitimately have vanished. One whose
+// card was DROPPED from the middle is not at the head, and goes — the difference
+// between "already read" and "taken away", as a position rather than a flag
+// anyone maintains.
+func (l Lineup) stillHolds(t Track, i int) bool {
+	track := l.tracks[t]
+	kind, about, ok := splitJoinID(track[i].ID)
 	if !ok {
 		return false
 	}
-	// IT MUST STILL INTRODUCE WHAT FOLLOWS IT. A transition read in front of the
-	// wrong card is worse than none: it announces something that is not next.
-	if i+1 >= len(track) || track[i+1].ID != next {
-		return false
+	if kind == leadKind {
+		// A LEAD MUST STILL INTRODUCE WHAT FOLLOWS IT. Announcing a card that is
+		// no longer next is worse than announcing nothing.
+		return i+1 < len(track) && track[i+1].ID == about
 	}
 	if i == 0 {
-		return true // its lead-in has been read; this is the pending hand-off
+		return true // the card it hands back from has been read; this is due
 	}
-	return track[i-1].ID == prev
+	return track[i-1].ID == about
 }
 
 // dropStaleJoins removes the transitions this file minted that the order no
@@ -196,41 +228,36 @@ func (l Lineup) stillHolds(i int) bool {
 //
 // TWO THINGS IT WILL NOT TOUCH. A structural card it did not mint — the
 // staleness notice — because ownership is by identity. And a card ON THE AIR
-// (D-45): the listener is mid-sentence, and taking it back is the one thing a
-// schedule must never do.
-func (l Lineup) dropStaleJoins() Lineup {
+// (D-45): the listener is mid-sentence.
+func (l Lineup) dropStaleJoins(t Track) Lineup {
 	out := l.clone()
-	kept := make([]Card, 0, len(out.tracks[MainTrack]))
-	for i, c := range out.tracks[MainTrack] { // bounded by the track (P10-02)
-		if isJoinID(c.ID) && c.State != OnAir && !l.stillHolds(i) {
+	kept := make([]Card, 0, len(out.tracks[t]))
+	for i, c := range out.tracks[t] { // bounded by the track (P10-02)
+		if isJoinID(c.ID) && c.State != OnAir && !l.stillHolds(t, i) {
 			continue
 		}
 		kept = append(kept, c)
 	}
-	out.tracks[MainTrack] = kept
-	// IT ONLY EVER SHORTENS. A reconcile that added a card here would be
-	// inventing a running order rather than pruning one.
-	if err := invariant.Check(len(kept) <= len(l.tracks[MainTrack]), "pruning the joins never adds a card"); err != nil {
+	out.tracks[t] = kept
+	// IT ONLY EVER SHORTENS. A prune that added a card would be inventing a
+	// running order rather than tidying one.
+	if err := invariant.Check(len(kept) <= len(l.tracks[t]), "pruning the transitions never adds a card"); err != nil {
 		return l
 	}
 	return out
 }
 
-// addJoin puts one transition in front of the card it introduces, if the
-// schedule is not already holding it.
-func (l Lineup) addJoin(c Card) Lineup {
-	if _, _, held := l.find(c.ID); held {
-		return l // already there; the id is a pure function of the join
+// addJoin puts one transition beside the card it belongs to, if the schedule is
+// not already holding it.
+func (l Lineup) addJoin(t Track, p placement) Lineup {
+	if _, _, held := l.find(p.card.ID); held {
+		return l // already there; the id is a pure function of the card
 	}
-	admitted, err := c.To(Admitted)
+	admitted, err := p.card.To(Admitted)
 	if err != nil {
 		return l
 	}
-	_, after, ok := splitJoinID(c.ID)
-	if !ok {
-		return l
-	}
-	next, err := l.insertBefore(MainTrack, after, admitted)
+	next, err := l.insertBeside(t, p.anchor, admitted, p.before)
 	if err != nil {
 		return l
 	}
