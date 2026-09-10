@@ -311,3 +311,63 @@ content ruling and is not yet made.  Candidates raised and not chosen: a change 
 subject, a report following an alert, elapsed time since the last transition.  Built with D-43's stated
 rule — *an operator-originated card is bookended* — as its initial content, because that is concrete,
 it is the HUM LEAD's own words, and it exercises all three of the leading/tailing/both cases.
+
+---
+
+# D-48 — WHAT THE DIRECTOR REMEMBERS, AND HOW LITTLE
+
+> *"I would agree this is something only the director needs to see, and it's bounded by the types of
+> cards/reports we have (so it's bounded) and it's just a 'since last read of this type' — **read
+> history is too overweight and violates our 'done/discarded cards can pile up' concern**."*
+
+**ONE TIMESTAMP PER SLOT, in an array bounded by the registry.**  It cannot grow, so there is nothing to
+cap, nothing to evict, and no second owner — a log would have wanted all four, and the HUM LEAD named
+exactly that objection.  It closes **F-76**.
+
+**Written where a card LEAVES THE AIR READ IN FULL** (`takeOffTheAir`, `to == Done`), not where one is
+removed.  A discarded card was taken away precisely so the listener would not hear it.
+
+## The degradation requirement, and it is arithmetic rather than a branch
+
+> *"I would also architect this in a way where the Director can still function and make other
+> evaluations in the event this particular stack fails or is somehow disabled (maybe a broadcaster
+> specific setting — where the Operator does/does not want 'last read' to be a factor in Director
+> prioritization)."*
+
+**`Settings.WeighLastRead` is the switch**, and `false` is the zero value — a station that never chose
+gets the behaviour that existed before the term did.
+
+**`overdue` ANSWERS THE SAME FOR EVERY CANDIDATE ON EVERY DEGRADED PATH**, and a term equal for
+everything discriminates between nothing, so the ranking falls straight through to the watchlist:
+
+| Path | Answer |
+|---|---|
+| the operator switched it off | `0` for everything |
+| the slot is outside the registry | `0` — **fail soft: it costs the Director its opinion, not its ability to choose** |
+| nothing of that kind has ever gone out | `neverRead` for everything, at a cold start |
+
+**That is why it degrades without a branch anyone has to remember to write.**
+
+## A test caught the rule being wrong, and it was the HUM LEAD's own example that showed it
+
+**`neverRead` is the LARGEST duration, not zero**, and it was zero first.  *"We have never done one"* is
+the strongest possible case that one is due — stronger than any elapsed time.  With zero, a severe read
+put out six minutes ago outranked a location report that had **never** gone out, which is the exact
+inversion of the ruling that motivated the whole term.
+
+**And it does not break the cold start**, because then every kind answers `neverRead`, so the term
+discriminates between none of them.
+
+## What came with it
+
+**`Proposal.Slot`** — the cadence term discriminates between KINDS, and *"we haven't had a location
+report in a while"* is not a statement about a location.  The zero value is `LocationReport`, which is
+what every proposal was before.  Two guards came with it: the top-off admits only what belongs on the
+**main track** (a takeover drains on the rail, and admitting one here would spend a slot it never
+filled), and **the Director's own structural cards are not the producer's to propose** — a tripwire,
+because today that holds only by accident (D-42's shape again: a structural card's words are fixed at
+proposal, `Proposal` carries none, and `check` refuses a wordless transition).
+
+**STILL NOT BUILT, and deliberately:** the ORIGIN term and the INSISTENCE levels from D-47.  Neither has
+a producer until D-46's request order exists, and a closed-set member with no writer is what the wires
+gate refuses.

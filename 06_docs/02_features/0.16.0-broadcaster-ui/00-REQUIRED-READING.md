@@ -150,6 +150,9 @@ rebuilt its context from the code would re-derive the WRONG answer for every one
 | **D-43** | transitions **bookend** their card and **move with it** on promote/quash | **JOIN-owned**, ruled 2026-09-10: derived from the sequence, re-evaluated on every change.  Free, because a transition's words are fixed at proposal |
 | **D-44** | the **line-up** is a PROJECTION of the **schedule** — ruled 2026-09-05, built 2026-09-10 | `Cards()` = the schedule; `Projection()` = what the operator sees, numbers and addresses.  `Moved` carries LINE-UP numbers |
 | **D-45** | ON AIR is locked; only GO TO STANDBY or catastrophe changes it | closes an item the 2026-09-05 log left open *"when operator editing arrives"*.  Every caller conforms; the TYPE still permits it |
+| **D-46** | `[shift+N]` makes a **request order**, not a card — the Producer turns it into a proposal | keeps the role split at the point most likely to break.  Carries a KIND (no slot for it yet — D-31) and a target slot in LINE-UP space |
+| **D-47** | origin is a **term** in the ranking, not a trump; insistence is the escalation | reconciles D-41 with the cadence example, and makes D-40's choice modal a TRIGGERED thing |
+| **D-48** | the Director remembers **one timestamp per slot**, and nothing else | read history ruled out by name.  `WeighLastRead` is the operator's switch, and every degraded path answers the same for everything |
 
 **D-40's operator flow, ruled in full:** card in the main track → `[#]` → detail modal → `[D]` Drop →
 confirm ARE YOU SURE → `[enter]` → both modals close → the card leaves → **everything below moves up

@@ -208,6 +208,20 @@ type Settings struct {
 	// and the safe reading of an unset number is "do nothing" rather than "fill
 	// for ever".
 	Depth int
+
+	// WeighLastRead is the operator's switch on the cadence term (D-48).
+	//
+	// A BROADCASTER SETTING, and the HUM LEAD asked for it by name: "where the
+	// Operator does/does not want 'last read' to be a factor in Director
+	// prioritization." Some stations run a fixed rotation and want the
+	// watchlist honoured exactly; others want the Director to notice that a
+	// kind of read has gone quiet.
+	//
+	// FALSE IS OFF AND IS THE ZERO VALUE, so a station that never chose gets
+	// the behaviour that existed before the term did. Turning it off must never
+	// stop the Director choosing — see cadence.go: the term answers zero for
+	// everything, and zero for everything discriminates nothing.
+	WeighLastRead bool
 }
 
 // Burst is one planned takeover: what is read, in order, and how much was not.

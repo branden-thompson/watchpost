@@ -329,6 +329,14 @@ type Director struct {
 	now      time.Time
 	power    Power
 	bed      bed // what the broadcast rides on, and when it took it (T3.2b)
+
+	// lastRead is when each KIND of card was last read in full (D-48, F-76).
+	//
+	// AN ARRAY, BOUNDED BY THE REGISTRY, and that is the whole of the ruling:
+	// "read history is too overweight and violates our 'done/discarded cards
+	// can pile up' concern." It cannot grow, so there is nothing to cap, evict
+	// or own. See cadence.go.
+	lastRead [numSlots]time.Time
 }
 
 // New is a Director with the listener's settings and a clock already set.
@@ -612,6 +620,12 @@ func (d Director) takeOffTheAir(id string, to State) (Director, []Effect, bool) 
 	if err := invariant.Check(len(d.lineup.tracks[AlertRail])+len(d.lineup.tracks[MainTrack]) < held,
 		"a card leaving the schedule shortens it"); err != nil {
 		return d, nil, false
+	}
+	// THE ONE WRITER OF THE CADENCE RECORD (D-48). Here rather than in
+	// onFinished because this is where a card actually LEAVES the air read in
+	// full, and `leave` is not the only caller.
+	if to == Done {
+		d = d.noteRead(gone.Slot)
 	}
 	var fx []Effect
 	if wasOnAir {
