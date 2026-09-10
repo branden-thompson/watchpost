@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 func stationAt(t *testing.T, w int, p lineup.Power) []string {
@@ -121,5 +122,78 @@ func TestTheGainControlReflows(t *testing.T) {
 				t.Errorf("width %d row %d: %d cells, want the lane's %d\n%q", w, i, c, want, stripANSITest(line))
 			}
 		}
+	}
+}
+
+// THE STATION BAR IS A SECTION, NOT A ROW (HUM LEAD, 2026-09-10).
+//
+//	"that station bar should be treated as a section/box — we're going to apply
+//	a background color to it based on its state (RED for ON-AIR / GREY for
+//	STANDBY) — so ensuring these are sectioned is important so we're not
+//	painting color row by row / col by col manually."
+//
+// So it goes through `render.Opts.Block`, which pads every line to the width and
+// paints the whole region as ONE: it also RE-ARMS the tone at inner SGR resets,
+// which is what stops a background tearing where a chip or a tinted level sits
+// mid-line — and the gain bar puts three tinted runs inside this very section.
+//
+// THE PALETTE IS NOT CHOSEN HERE. Colour is the HUM LEAD's own pass; what this
+// pins is that ONE call paints the section, so that pass is a token rather than
+// a sweep through every row.
+
+// painted turns colour ON for the duration of a test: `Block` passes content
+// through untinted when colour is off, which is the default in tests — so a
+// section's painting cannot be asserted without it.
+func painted(t *testing.T) {
+	t.Helper()
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+}
+
+func TestTheStationBarIsPaintedAsOneSection(t *testing.T) {
+	painted(t)
+	b := NewBroadcaster()
+	b.width, b.height = 150, 74
+	b.power, b.gain = lineup.Running, 55
+	const fg, bg = "97", "48;5;52"
+
+	got := strings.Split(b.stationSection(b.opts(), fg, bg), "\n")
+	if len(got) < 4 {
+		t.Fatalf("the section carries its own breathing room above and below; got %d rows", len(got))
+	}
+	for i, row := range got {
+		if !strings.Contains(row, bg) {
+			t.Errorf("row %d is not painted with the section's background:\n%q", i, row)
+		}
+		if !strings.HasSuffix(row, "\x1b[0m") {
+			t.Errorf("row %d does not close its tone, so the paint bleeds past the section:\n%q", i, row)
+		}
+	}
+}
+
+// AND THE TONE SURVIVES THE TINTED RUNS INSIDE IT. The gain bar tints its
+// filled cells and its level; each of those closes with a reset, and a reset
+// mid-line would end the section's background from that column on.
+func TestTheSectionsBackgroundSurvivesTheGainBar(t *testing.T) {
+	painted(t)
+	b := NewBroadcaster()
+	b.width, b.height = 150, 74
+	b.power, b.gain = lineup.Running, 55
+	const bg = "48;5;52"
+
+	rows := strings.Split(b.stationSection(b.opts(), "97", bg), "\n")
+	gainRow := ""
+	for _, r := range rows {
+		if strings.Contains(stripANSITest(r), "GAIN") {
+			gainRow = r
+		}
+	}
+	if gainRow == "" {
+		t.Fatal("the gain row must be in the section")
+	}
+	// A bare reset anywhere but the very end would drop the background for the
+	// rest of the row.
+	if i := strings.Index(gainRow, "\x1b[0m"); i >= 0 && i != len(gainRow)-len("\x1b[0m") {
+		t.Errorf("a bare reset at %d tears the section's background mid-row:\n%q", i, gainRow)
 	}
 }

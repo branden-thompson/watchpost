@@ -92,7 +92,10 @@ const (
 	// lane now rather than carrying literal spaces to a fixed column.
 	// 180 AT THE GAIN CONTROL: Observer's own bar, drawn on the station line's
 	// second row under the station's word for it.
-	bcFrameAllocs = 180
+	// 186 WITH THE STATION SECTION: the bar is a paintable REGION now (HUM LEAD,
+	// 2026-09-10) rather than two loose rows — Block pads and closes every line
+	// so ONE call can colour it by state, instead of a sweep row by row.
+	bcFrameAllocs = 186
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

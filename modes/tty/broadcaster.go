@@ -318,7 +318,10 @@ func (b Broadcaster) lanes() []string {
 	// change between the cards in it.
 	lane := newCardLane(b.laneWidth(), g)
 	out := strings.Split(b.header(b.opts()), "\n")
-	out = append(out, b.stationLine()...)
+	// THE STATION BAR IS A SECTION (see stationSection): one region, painted by
+	// one call, so the colour pass is a token rather than a sweep.
+	fg, bg := b.stationTone()
+	out = append(out, strings.Split(b.stationSection(b.opts(), fg, bg), "\n")...)
 	out = append(out, b.heldNotice()...)
 	out = append(out, "")
 
@@ -370,6 +373,38 @@ func (b Broadcaster) lanes() []string {
 // bcGainCells is the gain bar's width, from the reference mock: thirty cells,
 // which is what the level steps across at the tens.
 const bcGainCells = 30
+
+// stationSection is the station's state as a PAINTABLE REGION (HUM LEAD,
+// 2026-09-10) — Variant C's two rows with breathing room above and below,
+// rendered through `render.Opts.Block` so ONE call paints the whole thing.
+//
+//	"that station bar should be treated as a section/box — we're going to apply
+//	a background color to it based on its state (RED for ON-AIR / GREY for
+//	STANDBY) — so ensuring these are sectioned is important so we're not
+//	painting color row by row / col by col manually."
+//
+// BLOCK IS THE RIGHT OWNER AND NOT JUST A CONVENIENCE. It pads every line to
+// the width, and it RE-ARMS the tone at inner SGR resets — which is what stops
+// a background tearing where a tinted run sits mid-line. This section contains
+// three of those: the gain bar's filled cells, its chips and its level.
+//
+// THE PALETTE IS NOT CHOSEN HERE. Colour is the HUM LEAD's own pass, so the
+// tone arrives as arguments and production passes what `stationTone` says —
+// which today is nothing at all. What is built now is that the pass will be a
+// token, not a sweep through every row.
+func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
+	rows := append([]string{""}, b.stationLine()...)
+	rows = append(rows, "")
+	return o.Block(strings.Join(rows, "\n"), fg, bg)
+}
+
+// stationTone is the section's colour, by state.
+//
+// EMPTY UNTIL THE COLOUR PASS. The HUM LEAD has named the intent — red on air,
+// grey on standby — and naming the TOKENS is their pass, not mine. `Block`
+// treats an empty pair as "no tone of its own: the frame's base tone paints it",
+// so the section is correct today and coloured by one edit here.
+func (b Broadcaster) stationTone() (fg, bg string) { return "", "" }
 
 // stationLine is the station's state, Variant C (D-21): a labelled field with
 // the transition named in parentheses.
