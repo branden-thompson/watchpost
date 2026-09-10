@@ -20,6 +20,8 @@ import (
 	"testing"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 func TestAClearPriorityTrackDrawsNothingAtAll(t *testing.T) {
@@ -111,6 +113,10 @@ func TestThePriorityOverlaySitsOnTopOfTheRunningOrder(t *testing.T) {
 	}
 }
 
+// MEASURED IN CELLS, NOT RUNES. These counted runes, which is the same mistake
+// the function itself was making (D-71): a splice now brackets its patch in
+// resets so the row it covers cannot bleed a tone into it, and those escapes are
+// runes that are not columns.
 func TestSpliceWritesInPlaceAndNeverGrowsTheRow(t *testing.T) {
 	base := []string{strings.Repeat("-", 20), strings.Repeat("-", 20)}
 	got := spliceAt(base, []string{"ABC", "DEFGH"}, 5)
@@ -118,22 +124,53 @@ func TestSpliceWritesInPlaceAndNeverGrowsTheRow(t *testing.T) {
 		t.Fatalf("splicing adds no rows; got %d", len(got))
 	}
 	for i, r := range got {
-		if len([]rune(r)) != 20 {
-			t.Errorf("row %d grew to %d cells: %q", i, len([]rune(r)), r)
+		if render.Width(r) != 20 {
+			t.Errorf("row %d grew to %d cells: %q", i, render.Width(r), r)
 		}
 	}
-	if got[0][5:8] != "ABC" {
-		t.Errorf("the patch lands at the column it was given; got %q", got[0])
+	if plain := render.StripSGRForTest(got[0]); plain[5:8] != "ABC" {
+		t.Errorf("the patch lands at the column it was given; got %q", plain)
 	}
 }
 
 func TestASpliceRunningPastTheRowIsCutNotWrapped(t *testing.T) {
 	got := spliceAt([]string{"----------"}, []string{strings.Repeat("X", 40)}, 6)
-	if len([]rune(got[0])) != 10 {
-		t.Errorf("the frame is the viewport; got %d cells: %q", len([]rune(got[0])), got[0])
+	if render.Width(got[0]) != 10 {
+		t.Errorf("the frame is the viewport; got %d cells: %q", render.Width(got[0]), got[0])
 	}
-	if !strings.HasPrefix(got[0], "------XXXX") {
-		t.Errorf("the patch is cut at the edge; got %q", got[0])
+	if plain := render.StripSGRForTest(got[0]); !strings.HasPrefix(plain, "------XXXX") {
+		t.Errorf("the patch is cut at the edge; got %q", plain)
+	}
+}
+
+// AND A SPLICE OVER A STYLED ROW KEEPS WHAT IT DID NOT COVER (D-71).
+//
+//	"Alert card appearing (correct) causes the row render of the right hand side
+//	 of the LIVE card to truncate inappropriately"
+//
+// The rows the overlay covers carry a tinted headline, a badge and the handle's
+// chip. Splicing them by rune index counted each escape's characters as columns
+// and overwrote the escapes it landed on, so everything right of the overlay
+// came out short.
+func TestTheOverlayDoesNotTruncateTheCardUnderIt(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	b := withTakeover(t, 6)
+	for i, r := range strings.Split(b.View().Content, "\n") {
+		if got := render.Width(r); got != b.width {
+			t.Fatalf("row %d is %d cells with a takeover up, want %d", i, got, b.width)
+		}
+	}
+	frame := render.StripSGRForTest(b.View().Content)
+	if strings.Contains(frame, "\x1b") {
+		t.Error("an escape survived the strip: the splice cut through one")
+	}
+	// THE HANDLE THE OPERATOR TYPES SURVIVES THE OVERLAY, which is the whole
+	// reason the overlay covers only half the card.
+	for _, want := range []string{chipFor("0"), chipFor("T")} {
+		if !strings.Contains(b.View().Content, want) {
+			t.Errorf("the frame lost %q while a takeover was up", render.StripSGRForTest(want))
+		}
 	}
 }
 

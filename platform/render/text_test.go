@@ -85,6 +85,46 @@ func TestPlainDropsBidiAndZeroWidthAndTruncateCellsCountsCells(t *testing.T) {
 	}
 }
 
+// A SPLICE LANDS ON A DISPLAY COLUMN, NOT A RUNE INDEX.
+//
+// THE UAT DEFECT (HUM LEAD, 2026-09-10): "Alert card appearing (correct) causes
+// the row render of the right hand side of the LIVE card to truncate
+// inappropriately." The console lays the priority overlay ON the running order
+// at a column; the rows underneath carry a tinted headline, a badge and the
+// handle's chip; and the splice walked `[]rune`, so every escape character it
+// passed counted as a cell and every escape it landed on was overwritten.
+//
+// It is D-66's defect one function along, and it was FILED as F-85 rather than
+// fixed — on the reasoning that it held "by accident of layout". It stopped
+// holding the moment a takeover was injected over a real card.
+func TestSpliceCellsLandsOnColumnsAndKeepsWhatItPassed(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	base := "ab" + Tint("cdef", "31") + "ghij"
+	if Width(base) != 10 {
+		t.Fatalf("precondition: ten cells, got %d", Width(base))
+	}
+	got := SpliceCells(base, "XY", 4)
+	if want := "abcdXYghij"; StripSGRForTest(got) != want {
+		t.Errorf("splice at column 4: %q, want %q", StripSGRForTest(got), want)
+	}
+	if Width(got) != Width(base) {
+		t.Errorf("a splice never changes the row's width: %d, want %d", Width(got), Width(base))
+	}
+	if strings.Contains(StripSGRForTest(got), "\x1b") {
+		t.Errorf("the splice cut through an escape: %q", got)
+	}
+	// IT NEVER GROWS THE ROW. A patch that would run past the end is cut to fit,
+	// because the caller's frame has already been sized.
+	if got := SpliceCells(base, "ZZZZ", 8); Width(got) != Width(base) {
+		t.Errorf("a patch past the end grew the row to %d", Width(got))
+	}
+	// AND A COLUMN PAST THE END CHANGES NOTHING.
+	if got := SpliceCells(base, "ZZ", 99); got != base {
+		t.Errorf("a splice past the end altered the row: %q", got)
+	}
+}
+
 // A CUT NEVER LANDS INSIDE AN ESCAPE SEQUENCE, and never counts one as content.
 //
 // THE UAT DEFECT THIS IS BUILT FROM (HUM LEAD, 2026-09-10): the console's

@@ -313,6 +313,59 @@ func TruncateCells(s string, n int) string {
 // about what "off" is.
 const sgrReset = "\x1b[0m"
 
+// SpliceCells replaces the display columns [col, col+Width(patch)) of s with
+// patch, keeping every escape sequence s carries outside that span and never
+// changing the row's width.
+//
+// THE SAME MEASURE AS `Width` AND `TruncateCells` (D-66). A splice by rune index
+// counts an escape's characters as columns and overwrites the escapes it lands
+// on — which is how the priority overlay truncated the card underneath it the
+// first time a takeover was drawn over a real one (HUM LEAD, UAT 2026-09-10).
+//
+// THE BASE'S ESCAPES INSIDE THE SPAN ARE KEPT, cells and all discarded. They
+// cost nothing to draw and they leave the tone AFTER the span exactly as the row
+// intended it — the alternative is guessing what to restore, and a splice that
+// guesses is a splice that recolours a row it was only meant to cover.
+func SpliceCells(s, patch string, col int) string {
+	w := Width(patch)
+	if col < 0 || w == 0 {
+		return s
+	}
+	room := Width(s) - col
+	if room <= 0 {
+		return s // the row ends before the span begins: nothing to cover
+	}
+	if w > room {
+		patch, w = TruncateCells(patch, room), room
+	}
+	var b strings.Builder
+	cells, inEscape, written := 0, false, false
+	for _, r := range s { // one pass over the runes, like splitCells
+		switch {
+		case inEscape:
+			b.WriteRune(r)
+			inEscape = r != 'm'
+			continue
+		case r == 0x1b:
+			b.WriteRune(r)
+			inEscape = true
+			continue
+		}
+		cw := RuneCells(r)
+		switch {
+		case cells+cw <= col, cells >= col+w:
+			b.WriteRune(r)
+		case !written:
+			// THE PATCH ARRIVES ON A CLEAN SLATE and leaves one, so the tone the
+			// row was carrying cannot bleed into it or out of it.
+			b.WriteString(sgrReset + patch + sgrReset)
+			written = true
+		}
+		cells += cw
+	}
+	return b.String()
+}
+
 // RuneCells is one rune's display width (a wide rune is two) — the per-rune
 // step of a cell-bounded window, with no string built per rune.
 func RuneCells(r rune) int { return runewidth.RuneWidth(r) }

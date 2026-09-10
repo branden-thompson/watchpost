@@ -194,11 +194,15 @@ var bcRailForms = map[string][]string{
 // IT NEVER GROWS THE FRAME. A patch that ran past the row is cut: the frame is
 // the viewport (D-58), and something composited BESIDE it rather than onto it is
 // the defect UAT found in the diagnostics window.
-// IT IS RUNE-ACCURATE AND NOT CELL-ACCURATE, which is D-66's defect one function
-// along and is filed as F-85. It holds today only because of where the overlay
-// lands: the rows it covers are box glyphs and spaces up to column 74, and every
-// escape on them — the badge, the handle's chip — sits to the RIGHT of the
-// splice. A tinted headline would break it, and nothing here would say so.
+// IT SPLICES BY DISPLAY COLUMN, through `render.SpliceCells` — the same measure
+// `Width` and `TruncateCells` use (D-66).
+//
+// IT DID NOT, AND F-85 SAID SO AND WAS NOT ACTED ON. The note reasoned that a
+// rune-accurate splice "holds today by accident of layout", because every escape
+// on the covered rows sat to the right of the span. It stopped holding the first
+// time a takeover was drawn over a real card, and the HUM LEAD saw the card
+// underneath lose its right-hand side (UAT 2026-09-10). **A filed follow-up is
+// not a fix, and "it holds by accident" is a prediction with a date on it.**
 func spliceAt(base []string, patch []string, col int) []string {
 	if col < 0 {
 		return base
@@ -208,17 +212,7 @@ func spliceAt(base []string, patch []string, col int) []string {
 		if i >= len(out) {
 			break
 		}
-		row, ins := []rune(out[i]), []rune(p)
-		if col >= len(row) {
-			continue
-		}
-		for j, r := range ins {
-			if col+j >= len(row) {
-				break
-			}
-			row[col+j] = r
-		}
-		out[i] = string(row)
+		out[i] = render.SpliceCells(out[i], p, col)
 	}
 	return out
 }

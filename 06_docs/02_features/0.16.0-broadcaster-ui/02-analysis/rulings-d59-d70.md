@@ -1,4 +1,4 @@
-# 0.16.0 rulings, D-59 … D-70
+# 0.16.0 rulings, D-59 … D-71
 
 The layout phase and the UAT that followed it.  D-59 … D-65 were built and shipped with their
 reasoning in the code and in the commits; they are stated here in short because a ruling that lives
@@ -259,3 +259,69 @@ border) both SURVIVED the first run.  The break test looked only at columns 0..1
 landed in a real render was unmeasured too.  **Both were rules I had just written and neither was
 being checked** — the same shape as the four "the unit test sets the field itself" findings this
 release, one layer along: the assertion stopped short of the thing the ruling was about.
+
+---
+
+# D-71 — ONE MORE CONSOLIDATION, AND THE OVERLAY STOPS EATING THE CARD
+
+**HUM LEAD, UAT 2026-09-10**, fourth pass.
+
+## The overlay was truncating the card under it — and F-85 said it would
+
+> Alert card appearing (correct) causes the row render of the right hand side of the "live" card to
+> truncate inappropriately.
+
+`spliceAt` walked `[]rune`, so every escape character it passed counted as a column and every escape
+it landed on was overwritten.  The rows the overlay covers carry a tinted headline, a badge and the
+handle's chip — so everything right of the overlay came out short.
+
+**This was FILED, NOT FIXED, one batch earlier.**  F-85 diagnosed it exactly and reasoned that it
+"holds today by accident of layout, because every escape on those rows sits to the RIGHT of the
+splice".  That was true and it was a prediction with a date on it.  It stopped holding the first time
+a takeover was drawn over a real card.
+
+`render.SpliceCells` now lands on display columns, keeps the escapes it passes without spending their
+cells, brackets the patch in resets so no tone bleeds either way, and never changes a row's width.
+It lives beside `Width` and `TruncateCells`, because cell arithmetic has one home (D-66).
+
+**The lesson is the same one D-66 recorded and it happened again, to me, four days later**: a
+correct diagnosis written down next to unfixed code is not protection.  It is a note for whoever
+reads that exact line — and the next caller does not.
+
+## Three geometry rulings
+
+| | |
+|---|---|
+| **SCHEDULED and LINE UP run together** | *"there should be no line break here … this is one area they should be continuous."*  They are ONE stack of cards that the rail names in two halves.  A break now follows a READ region and only a read region — after LIVE, after UP NEXT, and at the close for the ▼ |
+| **the lane's caption carries no lines** | *"this line … should have no pipes / lines."*  It is a caption OVER the running order, not a row of it, so it is written before the frame's right-hand columns rather than inside them |
+| **the station's identity leaves the masthead** | *"we're going to take the station center out of the masthead — this should now make the Observer/Broadcaster masthead nearly identical minus the Observer/Broadcaster [word]"* |
+
+The last is D-59 finishing what it started.  The masthead is what the two surfaces SHARE; where the
+station transmits from is a fact about the station, and the station has a section.  It arrives there
+as `TRANSMITTER:`, and the bed's state moves to the right of its row as a sentence — `BED IS
+INACTIVE` — into the same column the station's own transition hint occupies, so the two facts an
+operator checks without reading are read in one place.
+
+## Three tests failed for a reason none of them was about
+
+`TestTheBedRidesInTheStationSection`, `TestTheBedRowCarriesItsSelector` and
+`TestTheBedRowSaysWhetherItIsCarrying` all indexed `stationLine()[1]`, and the transmitter's row
+landed there.  They find the row by its LABEL now.  **A test that addresses a row by position fails
+the day the section grows**, which is a false signal in three places about a change that broke
+nothing — and the noise is what makes a real failure easy to miss.
+
+## The quit report, and what it actually was
+
+> [q] quit stops working when I flip back and forth … finally worked, but looks like there's some
+> hold/release on the key bindings
+
+**Reproduced once and it was the harness, not the app.**  Driving the real binary through a pty on a
+FRESH HOME hung on `q` every time — including with no surface swap at all — because a first run opens
+the Setup window, and a window that owns the keyboard is supposed to eat `q`.  With the operator's own
+config seeded, `q` quit in **8–23 ms** in every sequence tried, including `ctrl+b` → `ctrl+o` → `q`
+and after a thirty-second settle with the station running.
+
+**So it is NOT reproduced, and it is not closed.**  The most likely shape is the one the harness
+found by accident: some window owned the keyboard while the masthead went on advertising `q  Quit`.
+That is D-69's defect wearing different clothes — a control that says it works while something else
+holds it — and it is filed as **F-86** rather than guessed at.

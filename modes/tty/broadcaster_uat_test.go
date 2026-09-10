@@ -131,8 +131,18 @@ func TestOneBlankRowSeparatesTheRegions(t *testing.T) {
 			t.Errorf("a break still draws %q in the rail column:\n%s", string(c), r)
 		}
 	}
-	if want := len(bcRegions) - 1; breaks != want {
-		t.Errorf("%d breaks between %d regions, want %d", breaks, len(bcRegions), want)
+	// ONE PER READ REGION (D-71). SCHEDULED and LINE UP are one stack of cards
+	// the rail names in two halves — "this is one area they should be
+	// continuous" — so the air goes after LIVE and after UP NEXT, and nowhere
+	// else inside the order.
+	want := 0
+	for _, r := range bcRegions {
+		if r.reads {
+			want++
+		}
+	}
+	if breaks != want {
+		t.Errorf("%d breaks in the running order, want %d (one after each read region)", breaks, want)
 	}
 	// AND THE CARDS INSIDE A REGION STAY FLUSH: the LINE UP's five slots draw
 	// twenty rows with nothing between them.
@@ -298,5 +308,50 @@ func TestTheScrollControlCapsSitOnRowsOfTheirOwn(t *testing.T) {
 	}
 	if up > firstScrolling {
 		t.Errorf("the control starts at row %d, below the first scrolling card at %d", up, firstScrolling)
+	}
+}
+
+// THE LANE'S CAPTION IS A BARE ROW (D-71).
+//
+//	"This line: │ … STANDARD … │    │ should have no pipes / lines."
+//
+// It is a caption OVER the running order, not a row of it — so it is written
+// before the frame's own right-hand columns are added rather than inside them.
+func TestTheLaneCaptionCarriesNoLines(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+	at := -1
+	for i, r := range rows {
+		if strings.Contains(r, "STANDARD") && !strings.Contains(r, "•") && !strings.Contains(r, "*") {
+			at = i
+			break
+		}
+	}
+	if at < 0 {
+		t.Fatal("the lane names itself above its cards")
+	}
+	if strings.Trim(rows[at], " ") != "STANDARD" {
+		t.Errorf("the caption row carries something other than its word:\n%q", rows[at])
+	}
+}
+
+// AND THE STATION'S IDENTITY IS IN THE STATION'S SECTION (D-71).
+//
+//	"one more consolidation — we're going to take the station center out of the
+//	 masthead"
+func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	got := stripANSITest(b.stationSection(b.opts(), "", ""))
+	for _, want := range []string{"TRANSMITTER:", bcPlaceholderLocation, "TOWER GPS", "SERVICE RADIUS"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%q is missing from the station section:\n%s", want, got)
+		}
+	}
+	// AND THE BED SAYS WHAT IT IS DOING IN A SENTENCE, at the right, in the
+	// column the station's own transition hint occupies.
+	if !strings.Contains(got, "BED IS") {
+		t.Errorf("the bed's state reads as a sentence:\n%s", got)
 	}
 }

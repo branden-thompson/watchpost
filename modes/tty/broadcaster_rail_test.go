@@ -243,7 +243,21 @@ func TestEveryDrawnRowClosesTheFrame(t *testing.T) {
 	}
 	// FROM THE RUNNING ORDER DOWN. The station band above it has NO walls by
 	// design (D-70): it is a painted region, and colour is its edge.
-	for i := bcInsetRows + 10; i <= last; i++ {
+	// FROM THE FIRST CARD DOWN. Above it are the masthead's own box, the painted
+	// station band (which has no walls by design, D-70) and the lane's bare
+	// caption (which has none either, D-71) — three regions that close
+	// themselves, or deliberately do not.
+	first := 0
+	for i, r := range rows {
+		if strings.Contains(r, "|    +---") {
+			first = i
+			break
+		}
+	}
+	if first == 0 {
+		t.Fatal("no cards drawn")
+	}
+	for i := first; i <= last; i++ {
 		r := []rune(rows[i])
 		if len(r) != b.width {
 			t.Errorf("row %d is %d cells, want %d", i, len(r), b.width)

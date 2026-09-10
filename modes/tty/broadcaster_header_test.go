@@ -77,21 +77,25 @@ func TestTheMastheadShedsTheStampBeforeTheWordmark(t *testing.T) {
 	}
 }
 
-// THE CONTROLS AND THE STATION'S IDENTITY BOTH RIDE INSIDE IT, which is what the
-// reference draws: the key row, then BROADCAST LOCATION / TOWER GPS / SERVICE
-// RADIUS.
-func TestTheMastheadCarriesTheStationsIdentity(t *testing.T) {
+// THE STATION'S IDENTITY IS NOT IN THE MASTHEAD, AND THAT IS THE POINT (D-71).
+//
+//	"we're going to take the station center out of the masthead — this should now
+//	 make the Observer/Broadcaster masthead nearly identical minus the
+//	 Observer/Broadcaster [word]"
+//
+// It is a fact about the STATION, and the station has a section of its own. What
+// is left is what both surfaces share, which is what D-59 was for.
+func TestTheMastheadCarriesNoStationIdentity(t *testing.T) {
 	got := stripANSITest(strings.Join(headerOf(t, 150), "\n"))
-	for _, want := range []string{"BROADCAST LOCATION", "SERVICE RADIUS"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("%q is missing from the masthead:\n%s", want, got)
+	for _, gone := range []string{"TRANSMITTER", "TOWER GPS", "SERVICE RADIUS", bcPlaceholderLocation} {
+		if strings.Contains(got, gone) {
+			t.Errorf("%q still rides in the masthead:\n%s", gone, got)
 		}
 	}
-	// THE COORDINATES ARE A PLACEHOLDER AND STAY ONE (F-66, CLOSED). The repo is
-	// public; the mock in this repository renders "TOWER GPS: <lat>, <lon>" and
-	// so does this.
-	if !strings.Contains(got, "TOWER GPS") {
-		t.Errorf("TOWER GPS is missing from the masthead:\n%s", got)
+	// AND IT IS THREE ROWS: the title, the controls, the rule under them —
+	// Observer's masthead exactly, one word apart.
+	if n := len(headerOf(t, 150)); n != 3 {
+		t.Errorf("the masthead draws %d rows, want 3", n)
 	}
 }
 
