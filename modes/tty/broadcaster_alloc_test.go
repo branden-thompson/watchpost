@@ -90,7 +90,9 @@ const (
 	// and the API summary — instead of the three of those I had dropped.
 	// 175 AT VARIANT C's REFLOW: the station line is composed and padded to the
 	// lane now rather than carrying literal spaces to a fixed column.
-	bcFrameAllocs = 175
+	// 180 AT THE GAIN CONTROL: Observer's own bar, drawn on the station line's
+	// second row under the station's word for it.
+	bcFrameAllocs = 180
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

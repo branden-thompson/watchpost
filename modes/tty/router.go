@@ -44,6 +44,14 @@ const (
 	// the same window the Observer draws — see Router.View.
 	actDiagnostics   term.Action = "diagnostics"
 	actStationToggle term.Action = "station-toggle"
+
+	// actGainUp and actGainDown are the station's output level — Observer's VOL
+	// under the station's own word (HUM LEAD, 2026-09-10). They are FORWARDED
+	// rather than reimplemented: the Dashboard owns the level, the step, the
+	// chip flash and the engine call, and a second owner would be a second
+	// answer to how loud the station is.
+	actGainUp   term.Action = "gain-up"
+	actGainDown term.Action = "gain-down"
 )
 
 // StationControlMsg hands the console the control it asks ON AIR / STANDBY
@@ -87,7 +95,11 @@ func broadcasterKeyMap() term.KeyMap {
 		// THE SAME BINDING THE DASHBOARD USES, deliberately: one key for one
 		// thing, on every surface (D-56). An operator who learned ctrl+d in
 		// Observer does not learn a second key here.
-		actDiagnostics:   {Keys: []string{"ctrl+d"}, Help: "Diagnostics"},
+		actDiagnostics: {Keys: []string{"ctrl+d"}, Help: "Diagnostics"},
+		// THE SAME KEYS OBSERVER USES, for the same reason ctrl+d is the same
+		// key: one control, one binding, on every surface.
+		actGainUp:        {Keys: []string{"+", "="}, Help: "Gain Up"},
+		actGainDown:      {Keys: []string{"-"}, Help: "Gain Down"},
 		actStationToggle: {Keys: []string{"shift+enter"}, Help: "ON AIR / STANDBY"},
 	}
 }
@@ -193,6 +205,23 @@ func consoleScoped(msg tea.Msg) bool {
 // instant it is swapped to, and the operator would meet a broken frame at
 // exactly the moment they asked for it.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m, cmd := r.update(msg)
+	// THE LEVEL IS MIRRORED, NEVER OWNED TWICE (D-56). The Dashboard holds it —
+	// it has the engine call, the step and the chip flash — and the console
+	// draws the same number under its own word for it. Mirrored on EVERY update
+	// rather than on a message, so the console cannot lag the control the
+	// operator just pressed, and there is exactly one answer to how loud the
+	// station is.
+	if out, ok := m.(Router); ok {
+		out.broadcaster.gain = out.observer.radioVolume
+		return out, cmd
+	}
+	return m, cmd
+}
+
+// update is the Router's own routing; Update wraps it to mirror what the two
+// surfaces must agree on.
+func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// THE ROUTER KEEPS THE CONTROL, not the console, because the router is
 	// where the key is looked up — one key-lookup site, which is the same
 	// reason the swap is handled here (D-1).
@@ -228,6 +257,8 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r.swapTo(SurfaceBroadcaster), nil
 			case actStationToggle:
 				return r.toggleStation(), nil
+			case actGainUp, actGainDown:
+				return r.throughToObserver(msg)
 			case actDiagnostics:
 				// FORWARDED TO THE SURFACE THAT OWNS THE WINDOW, and the
 				// active surface does NOT change: the operator is here to

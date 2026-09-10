@@ -61,7 +61,6 @@ func (d Dashboard) toggleRadio(act term.Action) (Dashboard, bool) {
 // being acknowledged (the bar only steps at the 10s, so the blink is the
 // per-press feedback).
 func (d Dashboard) volControl(o render.Opts, width int) string {
-	filled := width * d.radioVolume / 100
 	// UAT 42.2: at the floor/ceiling the inert chip mutes like every other
 	// control; a live press blinks (the blink outranks the resting state).
 	minus, plus := o.KeyCapIf("-", d.radioVolume > 0), o.KeyCapIf("+", d.radioVolume < 100)
@@ -72,11 +71,25 @@ func (d Dashboard) volControl(o render.Opts, width int) string {
 			minus = o.KeyCapWith("-", render.ChipFlashDown)
 		}
 	}
-	// UAT 42.1: the level always occupies 3 cells (0-100) so the row never jitters.
-	return render.TintRaw("VOL ", "1;97") + minus +
+	return levelControl(o, "VOL ", d.radioVolume, minus, plus, width)
+}
+
+// levelControl renders "<LABEL> [-]█████░░░░░[+] 55" — the ONE bar (D-56).
+//
+// THE CONSOLE CALLS IT "GAIN" AND OBSERVER CALLS IT "VOL", and that is the whole
+// difference (HUM LEAD, 2026-09-10: "gain is the VOL control in Observer"). A
+// second bar would be a second place the level is drawn, and two bars
+// disagreeing about how loud the station is would be worse than either.
+//
+// The bar only steps at the tens, which is why the chips blink: the blink is the
+// per-press feedback (UAT 41). The level always occupies 3 cells (0-100) so the
+// row never jitters (UAT 42.1).
+func levelControl(o render.Opts, label string, level int, minus, plus string, width int) string {
+	filled := width * level / 100
+	return render.TintRaw(label, "1;97") + minus +
 		render.Tint(strings.Repeat(o.Glyphs().RailCar, filled), render.Tok(render.RadioAccent)) +
 		strings.Repeat(o.Glyphs().Fill, width-filled) +
-		plus + " " + render.Tint(fmt.Sprintf("%3d", d.radioVolume), render.Tok(render.TextBright))
+		plus + " " + render.Tint(fmt.Sprintf("%3d", level), render.Tok(render.TextBright))
 }
 
 // radioPanel renders the player: the rows the layout already built for the
