@@ -67,3 +67,38 @@ func (l Lineup) discard(c Card) Lineup {
 func (l Lineup) Discarded() []Card {
 	return append([]Card(nil), l.discarded...)
 }
+
+// takeDiscarded lifts one card off the pile, by identity.
+//
+// IT REMOVES IT. An undo that left the entry behind would let a second press
+// queue a second copy of the same card, which is the read-twice defect arriving
+// through the recovery control rather than through the schedule.
+func (l Lineup) takeDiscarded(id string) (Card, Lineup, bool) {
+	for i, c := range l.discarded { // bounded by the cap (P10-02)
+		if c.ID != id {
+			continue
+		}
+		out := l.clone()
+		out.discarded = append(out.discarded[:i], out.discarded[i+1:]...)
+		return c, out, true
+	}
+	return Card{}, l, false
+}
+
+// trackFor is the lane a slot belongs to, and it is the ONE owner of that rule.
+//
+// DERIVED RATHER THAN REMEMBERED. The pile could have stored the track each
+// card came from, and then a restore would depend on a field nobody else keeps
+// in step. What lane a card belongs to is a property of WHAT IT IS: a takeover
+// is the priority rail's, and everything else — a report, a transition — is the
+// programme's.
+//
+// IT IS ALSO WHY `Moved` CANNOT CHANGE TRACKS. A card that could hop lanes
+// would let an operator schedule a hazard as programming, or a report as a
+// takeover.
+func trackFor(s Slot) Track {
+	if s == BreakingAlert {
+		return AlertRail
+	}
+	return MainTrack
+}

@@ -235,3 +235,43 @@ never reaches the check: the report takes the air immediately, and an on-air car
 The fixture now holds the air with a hazard while the report ages behind it, then finishes the hazard —
 which is the sequence a real station produces, and the 0.15.0 build log's own lesson about **driving
 through the seam rather than past it**.
+
+
+---
+
+# Built: P4's pure half — operator intent, and FR-3.3's own mutant
+
+**Nine plants.  Five caught at once; four survived and every one pointed at a test that should have
+existed.**  One of the four was **FR-3.7's own stated exit**, which I had not written.
+
+## FR-3.3 is satisfied, by its own named mutant
+
+> *"`Lineup.Set` refuses to reorder by design, so a promote routed through it would silently no-op.
+> Exit: a mutant that makes promote update display state without reordering is CAUGHT."*
+
+**Planted exactly that** — the promote routed through `Set` — and it is **CAUGHT**.  Every assertion in
+the batch is against what `Next()` walks, never a field a console renders, which is what makes the
+mutant visible at all.
+
+## The four that survived, and what each was hiding
+
+| Plant | Why it survived | The test that now exists |
+|---|---|---|
+| the on-air lock removed | `Next()` skips an on-air card either way, so the WALK cannot see it — and the harm is positional: the schedule describing a queue place for a card that has left the queue | asserts the card's POSITION, deliberately against the rule used everywhere else |
+| the undo leaves its pile entry | restoring twice is refused by the identity check anyway, so nothing broke — but the console keeps offering an undo for a card already back | `TestRestoringSpendsThePileEntry` |
+| every slot restores to the main track | **nothing restored a TAKEOVER** | `TestARestoredTakeoverGoesBackOnTheRail` — **FR-3.7's exit, in its own words: "asserted for an ACTIVE warning specifically, which is the case that matters"** |
+| an on-air card can be dropped | nothing tried | `TestTheCardOnTheAirCannotBeDropped` — a drop mid-read strands the band's callout, which is DR-24's original defect arriving through the operator's control |
+
+**The third is the one worth the batch.**  A restored warning going back to the programme instead of the
+priority rail would read behind every weather report ahead of it, and the requirement had named that
+exact case as its exit while the test did not exist.
+
+## The gate closed an obligation and opened three, on the same run
+
+`Origin.FromOperator` gained its writer — `onRestored` attributes the card to the human who put it back
+— so its ledger row went **STALE** and the build stayed red until it was deleted.  It had existed for
+two releases with nothing ever constructing it.
+
+**And `Moved`, `Dropped` and `Restored` are ratified as owed to P4's UI half**, because the pure half
+deliberately does not invent the CONFIRM that FR-3.7 requires: a confirm is a console control, and
+inventing one here would be the surface deciding the operator's interaction from underneath.
