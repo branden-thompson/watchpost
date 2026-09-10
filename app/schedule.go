@@ -30,6 +30,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
+	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -131,6 +132,34 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		deck.mu.Lock()
 		deck.emit = s.carry
 		deck.mu.Unlock()
+	}
+	// AND MASTERCONTROL DECLARES ON AIR / STANDBY (MVS-D-78, FR-5.4). It is the
+	// third thing that speaks to the Director and the only one that speaks for
+	// the OPERATOR — the ticker reports arrivals, the deck reports the bed, and
+	// this carries a decision a human made.
+	if nar != nil && nar.mc != nil {
+		nar.mc.mu.Lock()
+		nar.mc.carry = s.carry
+		nar.mc.mu.Unlock()
+		// AND THE CONSOLE IS HANDED THE CONTROL (FR-5.4). Without this the
+		// operator's ON AIR / STANDBY key reaches a nil seam and does nothing,
+		// which is the console being a surface with no controls — the trap
+		// F-72 recorded, arriving by a different route.
+		//
+		// ON ITS OWN GOROUTINE, AND THAT IS NOT STYLE. `publish` is the
+		// program's Send, and THIS RUNS BEFORE THE PROGRAM'S LOOP DOES: a
+		// synchronous send here blocks until something reads it, and nothing
+		// will, because the reader is the loop this function returns to start.
+		// Measured: `TestRunWithoutArgsStartsTheDashboard` hung for the full
+		// ten-minute test timeout, with the trace pointing at this line.
+		//
+		// It is the shape every other startup-time sender already has —
+		// severeDeck publishes from its own goroutine for the same reason — and
+		// `Send` selects on the program's context, so a program that never
+		// starts unblocks it at shutdown rather than leaking.
+		if publish != nil {
+			go publish(tty.StationControlMsg{Control: nar.mc})
+		}
 	}
 	return s
 }

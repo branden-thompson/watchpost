@@ -30,6 +30,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
 // mastercontrol performs on the two outputs a card reaches the listener through.
@@ -47,6 +48,22 @@ type mastercontrol struct {
 
 	// ducked is whether the broadcast is currently given way to. THE ONE COPY.
 	ducked bool
+
+	// carry hands the Director a DECLARATION. Nil until the schedule is wired,
+	// and on a station with no schedule it stays nil — silent rather than a
+	// panic on the one path that has none.
+	//
+	// MASTERCONTROL DECLARES ON AIR / STANDBY, and everyone complies, the
+	// Director included (MVS-D-78). 0.14.0's role model recorded the gap in as
+	// many words — "Today: app/mastercontrol owns the band and the duck. It
+	// does NOT own ON AIR / STANDBY" — and this is that sentence closing.
+	//
+	// IT DECLARES; IT DOES NOT PERFORM. Two entities act on the declaration and
+	// neither alone suffices: the Director holds the schedule, because gating
+	// only the audio would let cards be marked read and consumed silently, and
+	// MasterControl silences the bed, because a Director holding every card
+	// still leaves a relay playing and that is not dead air.
+	carry func(lineup.Event)
 
 	// held is whether something owns the bed for longer than one sequence.
 	//
@@ -66,6 +83,31 @@ func newMastercontrol(v narrationVoice, send func(tea.Msg)) *mastercontrol {
 		return nil
 	}
 	return &mastercontrol{v: v, send: send}
+}
+
+// GoOnAir and GoToStandby are the operator's control (FR-5.4), and they are
+// the ONLY producers of a power change from the console.
+//
+// THE CONSOLE ASKS AND IS TOLD. It does not set a flag of its own: the state it
+// draws comes back from the Director through Publish (FR-5.1), so a declaration
+// that never reached the schedule shows as a control that did nothing — which
+// is the honest failure, rather than a banner that lies.
+func (m *mastercontrol) GoOnAir() { m.declare(lineup.Running) }
+
+// GoToStandby takes the station to dead air.
+func (m *mastercontrol) GoToStandby() { m.declare(lineup.OffAir) }
+
+func (m *mastercontrol) declare(p lineup.Power) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	carry := m.carry
+	m.mu.Unlock()
+	if carry == nil {
+		return // no schedule to declare to
+	}
+	carry(lineup.Powered{To: p})
 }
 
 // silent reports whether there is no voice to perform with.

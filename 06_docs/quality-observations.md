@@ -1477,3 +1477,29 @@ test walk then failed against `livePipelines.readReport`, an unrelated method in
 receiver is part of the subject**, and both the tool and the test now say so.
 
 **This is worth an upstream fix rather than a seventh rename.**
+
+
+---
+
+## A synchronous `Send` on the startup path deadlocks the program (0.16.0 P4)
+
+**`TestRunWithoutArgsStartsTheDashboard` hung for the full ten-minute test timeout**, and the trace
+pointed at one line: a `p.Send` called from `startSchedule`, which runs BEFORE the program's event loop
+does.  Nothing reads the channel, because the reader is the loop the caller returns to start.
+
+**Three things about it are worth keeping.**
+
+**It was invisible to the way I had been testing.**  Every gate I ran during the batch was
+`./modes/tty/`, `./app/` and `./platform/lineup/` — the packages I had touched.  The hang is in
+`./cmd/watchpost/`, which nothing I edited appears in, and only `go test ./...` reaches it.  **The
+package you changed is not the package that breaks.**
+
+**A hang is the worst failure shape to leave for CI.**  It does not report a wrong answer; it reports
+nothing, for ten minutes, and then panics with a stack that has to be read. The corpus already carries
+the lesson one level up (F-64: a mutant gate whose limit was the clock "does not report on the code, and
+it fails at random").
+
+**And the fix was already the house pattern.**  `severeDeck` publishes from its own goroutine, for
+exactly this reason, and had done for releases.  The rule generalises: **anything that sends to the
+program during construction sends from its own goroutine**, because construction is by definition before
+the loop.

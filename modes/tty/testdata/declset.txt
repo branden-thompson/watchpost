@@ -438,8 +438,10 @@ func (Router).Init
 func (Router).Update
 func (Router).View
 func (Router).canSwap
+func (Router).stationIsLive
 func (Router).surface
 func (Router).swapTo
+func (Router).toggleStation
 func (arrowChips).pick
 func (endpointRow).counters
 func (radioBP).hasViz
@@ -654,6 +656,8 @@ type SevereRow
 type SevereSource
 type SevereTab
 type SnapshotMsg
+type Station
+type StationControlMsg
 type StationMsg
 type Stats
 type Surface

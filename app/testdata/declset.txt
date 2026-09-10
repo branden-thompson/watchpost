@@ -135,8 +135,11 @@ func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
 func (*livePipelines).wireDeckWarnings
+func (*mastercontrol).GoOnAir
+func (*mastercontrol).GoToStandby
 func (*mastercontrol).clearBand
 func (*mastercontrol).cue
+func (*mastercontrol).declare
 func (*mastercontrol).dip
 func (*mastercontrol).dropHeld
 func (*mastercontrol).giveWay

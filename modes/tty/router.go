@@ -42,6 +42,32 @@ const (
 	actStationToggle   term.Action = "station-toggle"
 )
 
+// StationControlMsg hands the console the control it asks ON AIR / STANDBY
+// through (FR-5.4).
+//
+// A MESSAGE, BECAUSE OF THE ORDER THINGS ARE BUILT IN. MasterControl is
+// constructed with the program's own `Send`, so it cannot exist when the
+// program's model does. Passing it through a constructor would mean building
+// the router twice or the effector early, and both are worse than the console
+// learning this the way it learns everything else: it is TOLD.
+type StationControlMsg struct{ Control Station }
+
+// Station is what the console may ask of the station's STATE (FR-5.4).
+//
+// TWO METHODS, NOT ONE WITH AN ARGUMENT. The console toggles between on the air
+// and dead air; `Stopped` is Observer's control and not the operator's, so a
+// setter taking a Power would let this surface ask for a state it has no
+// business naming.
+//
+// MASTERCONTROL DECLARES, EVERYONE COMPLIES (MVS-D-78). The console does not
+// change the power itself and does not hold a flag saying what it is: it ASKS,
+// and learns the answer the same way it learns everything else — from the
+// Director, through Publish (FR-5.1).
+type Station interface {
+	GoOnAir()
+	GoToStandby()
+}
+
 // broadcasterKeyMap is the console's bindings.
 //
 // EVERY ACTION CARRIES A NON-CHORD KEY (FR-1.6). The chord is the mnemonic
@@ -65,7 +91,21 @@ type Router struct {
 	active      Surface
 
 	// keys are the console's own bindings, merged once and shared by value.
+	//
+	// ASSIGNED AT CONSTRUCTION, and it was not for a release (F-72). With it
+	// nil the swap branch in Update is skipped entirely, so `ctrl+o` and
+	// `ctrl+b` reached nothing and the console could not be arrived at — which
+	// is the only reason the one-way door below was latent rather than live.
 	keys term.KeyMap
+
+	// station is how the console asks for ON AIR or STANDBY (FR-5.4).
+	//
+	// IT LANDS IN THE SAME CHANGE AS THE KEYMAP, deliberately. `canSwap`
+	// refuses to leave a running station — the ratified rule — and until
+	// something could produce `OffAir` there was no way to satisfy it. Install
+	// the keymap without this and the console becomes a surface with no
+	// controls and no exit but killing the process.
+	station Station
 
 	// refusal is why the last swap was refused, shown to the operator. A
 	// refusal they cannot read is indistinguishable from a broken control.
@@ -80,7 +120,7 @@ func NewRouter(o Dashboard) Router {
 	// has removed twice.
 	b := NewBroadcaster()
 	b.ascii = o.cfg.ASCII
-	return Router{observer: o, broadcaster: b, active: SurfaceObserver}
+	return Router{observer: o, broadcaster: b, active: SurfaceObserver, keys: broadcasterKeyMap()}
 }
 
 // Init delegates to the active surface. Observer asks for the terminal's
@@ -134,6 +174,13 @@ func consoleScoped(msg tea.Msg) bool {
 // instant it is swapped to, and the operator would meet a broken frame at
 // exactly the moment they asked for it.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// THE ROUTER KEEPS THE CONTROL, not the console, because the router is
+	// where the key is looked up — one key-lookup site, which is the same
+	// reason the swap is handled here (D-1).
+	if m, ok := msg.(StationControlMsg); ok {
+		r.station = m.Control
+		return r, nil
+	}
 	if consoleScoped(msg) {
 		var cmd tea.Cmd
 		r.broadcaster, cmd = r.broadcaster.Update(msg)
@@ -160,6 +207,8 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r.swapTo(SurfaceObserver), nil
 			case actSwapBroadcaster:
 				return r.swapTo(SurfaceBroadcaster), nil
+			case actStationToggle:
+				return r.toggleStation(), nil
 			}
 		}
 	}
@@ -242,8 +291,44 @@ func (r Router) canSwap(to Surface) (bool, string) {
 	if to == SurfaceBroadcaster {
 		return true, ""
 	}
-	if r.broadcaster.power == lineup.Running {
+	if r.stationIsLive() {
 		return false, "the station is ON AIR — go to STANDBY before leaving the console"
 	}
 	return true, ""
 }
+
+// toggleStation asks for the other station state, and asks NOTHING when the
+// operator is not looking at the console.
+//
+// THE CONSOLE RUNS THE STATION; OBSERVER DOES NOT. A key that silenced the
+// broadcast from the other surface would be a control acting where it is not
+// drawn, and the operator would have no way to see what they had done.
+//
+// IT READS THE DIRECTOR'S POWER, NEVER A UI FLAG (FR-5.1). The console's own
+// `power` came from `Publish`, so the toggle's direction is decided from what
+// the schedule says is true rather than from what this surface last drew.
+func (r Router) toggleStation() Router {
+	if r.active != SurfaceBroadcaster || r.station == nil {
+		return r
+	}
+	if r.stationIsLive() {
+		r.station.GoToStandby()
+		return r
+	}
+	r.station.GoOnAir()
+	return r
+}
+
+// stationIsLive is the ONE reader of the console's power, and it stayed one
+// because a gate insisted.
+//
+// The swap precondition and the operator's toggle both need to know whether the
+// station is on the air, and the second reader tripped the D-1 guard the moment
+// it was written — "two carriers of one rule is the shape that produced the
+// duck-lift bug". The guard was right and was not narrowed: the question got a
+// name instead, and both askers go through it.
+//
+// IT READS THE DIRECTOR'S POWER, NEVER A UI FLAG (FR-5.1). And `Stopped` is not
+// live, so from a stopped station the operator's control puts it ON the air —
+// which is what a person pressing ON AIR means.
+func (r Router) stationIsLive() bool { return r.broadcaster.power == lineup.Running }
