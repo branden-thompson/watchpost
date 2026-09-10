@@ -95,7 +95,11 @@ const (
 	// 186 WITH THE STATION SECTION: the bar is a paintable REGION now (HUM LEAD,
 	// 2026-09-10) rather than two loose rows — Block pads and closes every line
 	// so ONE call can colour it by state, instead of a sweep row by row.
-	bcFrameAllocs = 186
+	// 241 WITH THE BOXED CARDS AND THE LEFT RAIL (D-60): every card is four
+	// framed rows now instead of one flat line, and each region carries its own
+	// rail column. The reference has always drawn it this way; this is that
+	// arriving.
+	bcFrameAllocs = 241
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {
