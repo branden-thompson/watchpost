@@ -27,51 +27,15 @@ import (
 // the version leaves the title before the title would; the row inside
 // ladders the same way (headerRow). The header never exceeds the width.
 func (d Dashboard) header(o render.Opts) string {
-	// WATCHPOST Observer (HUM LEAD, 2026-08-30): the wordmark keeps its
-	// gradient and the EDITION rides beside it, naming which experience this
-	// build is. Broadcaster — the station-running dashboard — is the second one,
-	// and it arrives as a different word here rather than as a rename.
-	full := render.Wordmark(render.EditionObserver)
-	// The stamp: the widest form carries the age
-	// ("(2 Minutes Ago)"); it reads green while the data is fresh, yellow
-	// once no fetch has succeeded for staleAfter, grey before the first data.
-	stamps, tone := []string{"awaiting first data..."}, render.Tok(render.TextBase)
-	if d.snap != nil {
-		at := dataAsOf(d.snap)
-		age := d.clock().Sub(at)
-		full := "Updated: " + o.Clock.Stamp(at.Local())
-		short := o.Clock.TimeSec(at.Local())
-		stamps = []string{full + " (" + agoWords(age) + ")", full, "Updated: " + short, short}
-		tone = render.Tok(render.ProviderOK)
-		if age > staleAfter {
-			tone = render.Tok(render.AlertLabel)
-		}
-	}
+	// THE LADDERS ARE SHARED WITH THE CONSOLE (D-59, masthead.go). They were
+	// here first and this is still their only behavioural home — what moved is
+	// the CODE, so that the two surfaces cannot come to draw different
+	// mastheads, which is exactly what had happened.
 	rule := o.BoxRuleWidth()
-	// The title's own ladder: the version leaves first, then the edition — the
-	// wordmark is the last thing to go, because a masthead that cannot say what
-	// the app is has stopped being a masthead.
-	//
-	// Each rung is built only if the one above it did not fit. Passing all three
-	// to FirstFit would render the bare wordmark on every frame — a second
-	// per-rune gradient pass — for a form only a terminal under about 46
-	// columns ever shows.
-	title := full + "  v" + d.cfg.Version
-	switch {
-	case render.Width(title)+4 <= rule:
-	case render.Width(full)+4 <= rule:
-		title = full
-	default:
-		title = render.Wordmark("")
-	}
-	stamp := ""
-	for _, form := range stamps { // the widest form the rule carries beside the title
-		if render.Width(title)+4+render.Width(form)+5 <= rule {
-			stamp = render.Tint(form, tone)
-			break
-		}
-	}
-	return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "") // no tone of its own: the frame's base grey paints it (round 4, B-01)
+	title := mastheadTitle(render.EditionObserver, d.cfg.Version, rule)
+	stamp := mastheadStamp(o, title, d.snap, d.clock(), rule)
+	// no tone of its own: the frame's base grey paints it (round 4, B-01)
+	return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "")
 }
 
 // headerRow is the masthead's inner row: the controls at the left, the API
@@ -152,9 +116,12 @@ func agoWords(age time.Duration) string {
 // has not answered yet counts in the total only (the three never sum past
 // it; a shortfall means "still loading"). The total is the active set,
 // padded to two columns (UAT 102: "reserve 2 col for growth").
-func (d Dashboard) apiSummary(o render.Opts) string {
+// apiSummaryOf counts the providers' health for the masthead — the ONE owner,
+// called by both surfaces (D-59). Two counts of one snapshot could disagree, and
+// the number is a health claim.
+func apiSummaryOf(o render.Opts, snap *snapshot.Snapshot) string {
 	ok, stale, down, total := 0, 0, 0, 0
-	for _, p := range providersOf(d.snap) {
+	for _, p := range providersOf(snap) {
 		switch {
 		case p.Status == snapshot.ProviderOff:
 			continue
@@ -179,6 +146,9 @@ func (d Dashboard) apiSummary(o render.Opts) string {
 		render.Tint(gStale, render.Tok(render.AlertLabel)), stale,
 		render.Tint(gDown, render.Tok(render.ProviderDown)), down, total)
 }
+
+// apiSummary is the Dashboard's own reading of it.
+func (d Dashboard) apiSummary(o render.Opts) string { return apiSummaryOf(o, d.snap) }
 
 // body is the frame below the header: radio module, alert area, the
 // control row, then the two tables from the memo (Q3).
