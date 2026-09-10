@@ -30,7 +30,31 @@ const (
 	// IT WILL MOVE. P2..P5 add lanes, state and controls; each re-pins this
 	// DELIBERATELY, with the reason in the commit, the way the goldens are
 	// re-recorded. A budget nobody re-pins is a budget nobody reads.
-	bcFrameAllocs = 14
+	//
+	// RE-PINNED TO 65 AT P4 (D-52), AND THIS ONE IS NOT A ROUNDING. The card row
+	// became a go-studs `data_table_row`, which costs ~25 ALLOCATIONS PER CARD
+	// against the hand-rolled row's effectively zero. Measured, not estimated:
+	//
+	//	cards   0    1    2    5   10
+	//	allocs 14   40   65  141  266
+	//
+	// So the FIXED cost is unchanged at 14 and the whole regression is per-card
+	// and linear. A full ten-card line-up is ~266.
+	//
+	// IT IS ACCEPTED RATHER THAN OPTIMISED, and the standing rules decide that
+	// rather than my judgement: any table is a go-studs table, and a dependency
+	// is never re-implemented for speed — patch narrowly, go upstream, or accept
+	// and record the cost. This is the third. `docs/accepted-costs.md` carries
+	// the entry, and what would re-open it.
+	//
+	// WHAT THE COMPONENT BUYS IS THE DEFECT IT MAKES IMPOSSIBLE. It sizes the
+	// fill column with the badge's width ALREADY RESERVED, so a centred title
+	// cannot run into the badge — which the hand-rolled draft did, silently,
+	// producing "…(COASTAL)D•".
+	//
+	// Building the row once per FRAME rather than once per card was tried and
+	// saved 5 of the 51: the cost is inside RenderRow, not construction.
+	bcFrameAllocs = 65
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {
