@@ -335,7 +335,10 @@ func (b Broadcaster) lanes() []string {
 	fg, bg := b.stationTone()
 	out = append(out, strings.Split(b.stationSection(b.opts(), fg, bg), "\n")...)
 	out = append(out, b.heldNotice()...)
-	out = append(out, "")
+	// NO SEPARATOR HERE. THE SECTION OWNS ITS OWN SPACING — `stationSection`
+	// carries a breathing row above and below, and a second blank appended out
+	// here made a DOUBLE gap that read as a rendering fault (HUM LEAD, UAT
+	// 2026-09-10). One owner for the air around a region, like everything else.
 
 	// THE PRIORITY TRACK IS DRAWN FIRST because it DRAINS first, in every
 	// state. Drawing it below the rotation would put the lane that interrupts
@@ -348,7 +351,6 @@ func (b Broadcaster) lanes() []string {
 	for _, c := range rail {
 		out = append(out, "  "+lane.render(c, "T", "PRIORITY"))
 	}
-	out = append(out, "")
 
 	// THE MAIN TRACK IS DRAWN AS NAMED REGIONS (D-60), which is what the
 	// reference's left rail names: the card on the air, the one after it, the

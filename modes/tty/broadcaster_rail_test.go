@@ -162,3 +162,25 @@ func TestTheLabelIsCentredInItsSection(t *testing.T) {
 		t.Errorf("the label is not centred: %d rows above, %d below", above, below)
 	}
 }
+
+// NO DOUBLE BLANKS BETWEEN REGIONS. A section carries its own breathing row;
+// a second one appended by the frame made a double gap that reads as a
+// rendering fault rather than as spacing (HUM LEAD, UAT 2026-09-10).
+func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+	// The frame is padded to the terminal, so trailing blanks below the content
+	// are expected; only gaps BETWEEN drawn rows are the concern.
+	last := 0
+	for i, r := range rows {
+		if strings.TrimSpace(r) != "" {
+			last = i
+		}
+	}
+	for i := 1; i <= last; i++ {
+		if strings.TrimSpace(rows[i]) == "" && strings.TrimSpace(rows[i-1]) == "" {
+			t.Errorf("rows %d and %d are both blank — a section's spacing has two owners", i-1, i)
+		}
+	}
+}
