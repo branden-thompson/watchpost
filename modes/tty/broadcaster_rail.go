@@ -96,11 +96,13 @@ func (b Broadcaster) section(label string, rows []string) []string {
 	g := b.opts().Glyphs()
 	rail := railColumn(label, len(rows), g)
 	gap := strings.Repeat(" ", bcRailGap)
-	// Three of air, the inner wall, four more, the outer wall.
-	tail := "   " + g.Rail + "    " + g.Rail
+	// THE RIGHT-HAND CHROME IS NOT ADDED HERE. It carries the SCROLL RAIL, and
+	// the rail is ONE continuous column over the whole running order — a thumb
+	// drawn per section would put one in every region and say that each scrolls
+	// on its own. `lanes` adds it once, after the regions are assembled.
 	out := make([]string, 0, len(rows))
 	for i, r := range rows { // bounded by the section (P10-02)
-		out = append(out, rail[i]+gap+r+tail)
+		out = append(out, rail[i]+gap+r)
 	}
 	return out
 }
@@ -192,3 +194,34 @@ const bcPriorityCol = bcRailWidth + 1
 // fixed 67 cells would swallow two thirds of a 100-column frame — the narrowest
 // the station supports (D-50).
 func (b Broadcaster) priorityWidth() int { return (b.cardBoxWidth() + 2) / 2 }
+
+// framed adds the right-hand chrome to the assembled running order: the inner
+// wall, the scroll rail, and the frame's own edge.
+//
+// THE RAIL IS `render.Railify`, THE ONE OWNER (D-56). It already tracks a thumb
+// over a window and already pads with PadTo rather than PadBetween, "so a
+// full-width line must never push the rail right" — an off-by-one that surface
+// found and fixed once already.
+//
+// IT IS APPLIED TO THE WHOLE BODY, not per region, because the running order
+// scrolls as one thing. At the reference's 150 columns this puts the wall at
+// 144, the rail at 145 and the frame's edge at 149.
+func (b Broadcaster) framed(body []string, shown, total int) []string {
+	g := b.opts().Glyphs()
+	inner := make([]string, len(body))
+	for i, r := range body { // bounded by the body (P10-02)
+		inner[i] = r + "   " + g.Rail
+	}
+	// THE GUTTER IS BLANK EXCEPT FOR THE THUMB. `RailGlyphsFor` draws a BAR on
+	// every row, which is right for a window that has its own edge — here the
+	// inner wall is already at 144, and a bar beside it reads as a doubled
+	// border. The reference leaves the column empty and shows only the thumb.
+	glyphs := render.RailGlyphsFor(b.ascii)
+	glyphs.Bar = " "
+	railed := render.Railify(inner, b.width-4, 0, max(total, 1), max(shown, 1), glyphs)
+	out := make([]string, len(railed))
+	for i, r := range railed { // bounded by the body (P10-02)
+		out[i] = r + "   " + g.Rail
+	}
+	return out
+}

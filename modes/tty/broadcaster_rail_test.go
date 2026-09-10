@@ -13,6 +13,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -83,8 +84,13 @@ func TestTheRailIsWalledOnBothSides(t *testing.T) {
 // THE ASSEMBLED FRAME LANDS ON THE REFERENCE'S OWN COLUMNS.
 //
 // `mock-broadcaster-v1.txt` row 56: the rail's walls at 0 and 4, the card's
-// border at 9 and 140, the inner wall at 144 and the outer at 149. Those are the
-// numbers, and they are what a reader checks the drawing against.
+// border at 9 and 140, the inner wall at 144, the scroll rail at 145, and the
+// frame's own edge at 149. Those are the numbers, and they are what a reader
+// checks the drawing against.
+//
+// IN TWO HALVES, because they have two owners: `section` draws the rail and the
+// card, and `framed` adds the right-hand chrome — the scroll rail belongs to the
+// running order as a whole, so it cannot be drawn per region.
 func TestTheSectionLandsOnTheReferencesColumns(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
@@ -96,13 +102,28 @@ func TestTheSectionLandsOnTheReferencesColumns(t *testing.T) {
 	rows := b.section("LINE UP", box)
 
 	top := []rune(rows[0])
-	if len(top) != 150 {
-		t.Fatalf("the assembled row is the terminal's width; got %d", len(top))
+	if len(top) != 141 {
+		t.Fatalf("a section ends at the card's border; got %d cells", len(top))
 	}
-	for col, want := range map[int]rune{0: '|', 4: '|', 9: '+', 140: '+', 144: '|', 149: '|'} {
+	for col, want := range map[int]rune{0: '|', 4: '|', 9: '+', 140: '+'} {
 		if top[col] != want {
 			t.Errorf("column %d is %q, want %q\n%s", col, string(top[col]), string(want), string(top))
 		}
+	}
+
+	framed := []rune(b.framed(rows, 10, 10)[0])
+	if len(framed) != 150 {
+		t.Fatalf("the framed row is the terminal's width; got %d", len(framed))
+	}
+	for col, want := range map[int]rune{144: '|', 149: '|'} {
+		if framed[col] != want {
+			t.Errorf("framed column %d is %q, want %q\n%s", col, string(framed[col]), string(want), string(framed))
+		}
+	}
+	// THE SCROLL RAIL SITS INSIDE THE FRAME, at 145 — between the inner wall and
+	// the outer edge, which is the gutter the reference leaves for it.
+	if framed[145] == ' ' {
+		t.Errorf("the scroll rail is missing from column 145:\n%s", string(framed))
 	}
 }
 
@@ -182,5 +203,61 @@ func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
 		if strings.TrimSpace(rows[i]) == "" && strings.TrimSpace(rows[i-1]) == "" {
 			t.Errorf("rows %d and %d are both blank — a section's spacing has two owners", i-1, i)
 		}
+	}
+}
+
+// THE FRAME CLOSES ON BOTH SIDES, on every drawn row.
+//
+// THE BUG THIS PINS was mine and it was invisible: the station section padded
+// its rows to the full lane and THEN added the inset, so every row ran three
+// cells long and `clamp` ate the right-hand wall. The rows were still exactly
+// the terminal's width — the clamp saw to that — so nothing measured wrong.
+// Only the EDGE was gone.
+func TestEveryDrawnRowClosesTheFrame(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	b.power = lineup.Running
+	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+	last := 0
+	for i, r := range rows {
+		if strings.TrimSpace(r) != "" {
+			last = i
+		}
+	}
+	for i := 4; i <= last; i++ { // from the station section down; the masthead draws its own box
+		r := []rune(rows[i])
+		if len(r) != b.width {
+			t.Errorf("row %d is %d cells, want %d", i, len(r), b.width)
+			continue
+		}
+		if r[0] != '|' || r[b.width-1] != '|' {
+			t.Errorf("row %d does not close the frame: starts %q ends %q\n%.40s", i, string(r[0]), string(r[b.width-1]), rows[i])
+		}
+	}
+}
+
+// THE SCROLL GUTTER IS BLANK EXCEPT FOR THE THUMB. `RailGlyphsFor` draws a bar
+// on every row, which is right for a window that has no edge of its own — here
+// the inner wall is already beside it, and a bar there reads as a doubled
+// border rather than as a rail.
+func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	body := b.section("LINE UP", []string{strings.Repeat("-", b.cardBoxWidth()), strings.Repeat("-", b.cardBoxWidth()), strings.Repeat("-", b.cardBoxWidth())})
+	framed := b.framed(body, 2, 10)
+
+	marks := 0
+	for i, r := range framed {
+		c := []rune(r)[b.width-5]
+		if c == ' ' {
+			continue
+		}
+		marks++
+		if c == '|' {
+			t.Errorf("row %d draws a BAR in the gutter beside the wall:\n%.40s", i, r)
+		}
+	}
+	if marks != 1 {
+		t.Errorf("the gutter carries exactly one thumb; it carries %d marks", marks)
 	}
 }

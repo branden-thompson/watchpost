@@ -101,7 +101,11 @@ const (
 	// arriving.
 	// 263: the handle is a CHIP now, and the bed rides in the station section.
 	// 265: the handle is a CHIP, and the bed rides in the station section (D-62).
-	bcFrameAllocs = 265
+	// 297: the outer frame and the scroll rail — the last of the chrome.
+	// 302: the outer frame, the section inset, and the scroll rail — the last of
+	// the chrome. The layout phase moved this number from 14 to here, one piece
+	// of the reference at a time; none of them optimised, per D-53.
+	bcFrameAllocs = 302
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

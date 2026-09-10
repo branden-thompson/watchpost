@@ -241,6 +241,21 @@ const (
 	bcMinCols = 100
 )
 
+// sectionWidth is how much room a SECTION'S TEXT has: the lane, less the frame's
+// two walls and the inset the reference leaves inside them.
+//
+// COUNTED BEFORE THE ROWS ARE BUILT, not after. A first version padded the rows
+// to the full lane and THEN added the inset, so every row ran three cells long
+// and the clamp ate the right-hand wall — the frame lost an edge on exactly the
+// section that is supposed to be a painted region.
+func (b Broadcaster) sectionWidth() int {
+	w := b.laneWidth() - len(bcSectionInset)
+	if w < 1 {
+		return 0
+	}
+	return w
+}
+
 // laneWidth is how much room a card actually has, and it is the ONE place that
 // number is decided (D-51).
 //
@@ -378,6 +393,12 @@ func (b Broadcaster) lanes() []string {
 	for _, r := range bcRegions {
 		order = append(order, b.region(r, main, lane)...)
 	}
+	// AN EMPTY LINE-UP STILL SAYS SO, INSIDE THE FRAME. It was drawn outside it
+	// and the frame lost its edge on that row — caught by the test that walks
+	// every drawn row rather than by looking.
+	if len(order) == 0 {
+		order = b.section("LINE UP", []string{render.PadTo("  (nothing scheduled)", b.cardBoxWidth())})
+	}
 	// AND THE PRIORITY TRACK IS COMPOSITED ON TOP OF IT (D-61).
 	//
 	// "the priority track visually sits ON TOP of the main track — that's
@@ -393,12 +414,10 @@ func (b Broadcaster) lanes() []string {
 	// ruling: "the PRIORITY rail label ONLY shows up when a priority card sits
 	// on top of the main rail." While it is up, those rows are the priority
 	// track's and say so.
-	out = append(out, b.withPriority(order)...)
-	if len(main) == 0 {
-		out = append(out, b.section("LINE UP", []string{render.PadTo("  (nothing scheduled)", b.cardBoxWidth())})...)
-	}
-	out = append(out, "")
-	out = append(out, "BED   (no relay tuned)")
+	// THE FRAME'S RIGHT-HAND CHROME GOES ON LAST, over the assembled order and
+	// whatever the priority track composited onto it — the scroll rail belongs
+	// to the running order as a whole, not to any one region of it.
+	out = append(out, b.framed(b.withPriority(order), MainTrackSlots, len(b.lineup.Projection(lineup.MainTrack)))...)
 	return out
 }
 
@@ -487,8 +506,17 @@ const bcGainCells = 30
 // which today is nothing at all. What is built now is that the pass will be a
 // token, not a sweep through every row.
 func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
-	rows := append([]string{""}, b.stationLine()...)
-	rows = append(rows, "")
+	// WALLED LIKE EVERY OTHER ROW OF THE FRAME. The masthead draws its own box
+	// and the running order carries the rail's; without these the station
+	// section was the one region with no edges, and the frame read as broken
+	// between them.
+	g := o.Glyphs()
+	rows := []string{}
+	// INSET FROM THE WALL, as the reference draws it: the section's text begins
+	// four cells in, not hard against the frame's edge.
+	for _, r := range append(append([]string{""}, b.stationLine()...), "") {
+		rows = append(rows, g.Rail+render.PadTo(bcSectionInset+r, b.laneWidth())+g.Rail)
+	}
 	return o.Block(strings.Join(rows, "\n"), fg, bg)
 }
 
@@ -530,7 +558,7 @@ func (b Broadcaster) stationLine() []string {
 		state = "STANDBY (DEAD AIR)"
 		why = "nothing is broadcast, hazards included; the schedule holds what it has not said"
 	}
-	lane := b.laneWidth()
+	lane := b.sectionWidth()
 	// THE LABELS SHARE A VALUE COLUMN (D-62). "STATION:" and the bed's label are
 	// different lengths, and a section whose two values began in different
 	// columns would read as two unrelated rows rather than as one region saying
@@ -583,6 +611,10 @@ func (b Broadcaster) bedRow(o render.Opts) string {
 }
 
 const (
+	// bcSectionInset is the air between the frame's edge and a section's text,
+	// from the reference: the wall at column 0 and "STATION:" at 4.
+	bcSectionInset = "   "
+
 	// bcLabelCells is the section's label column: wide enough for the longest of
 	// them plus air, so every value starts in the same place.
 	//

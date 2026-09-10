@@ -48,6 +48,7 @@ const bcRailGap
 const bcRailWidth
 const bcRightChrome
 const bcRowTail
+const bcSectionInset
 const bottomInset
 const castLabelW
 const castModeOn
@@ -198,6 +199,7 @@ func (Broadcaster).cardBoxWidth
 func (Broadcaster).clamp
 func (Broadcaster).clock
 func (Broadcaster).controlRow
+func (Broadcaster).framed
 func (Broadcaster).header
 func (Broadcaster).headerRows
 func (Broadcaster).heldNotice
@@ -210,6 +212,7 @@ func (Broadcaster).opts
 func (Broadcaster).priorityWidth
 func (Broadcaster).region
 func (Broadcaster).section
+func (Broadcaster).sectionWidth
 func (Broadcaster).stationLine
 func (Broadcaster).stationSection
 func (Broadcaster).stationTone
