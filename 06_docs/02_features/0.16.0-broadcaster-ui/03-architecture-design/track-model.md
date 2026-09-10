@@ -195,3 +195,43 @@ reasoning is recorded instead, in the test and here.
 
 **IT BECOMES REACHABLE IF EXCLUSIVITY IS EVER RELAXED.**  Whoever allows a main-track card to air over a
 live bed — the exception D-33 deliberately refused — re-opens this, and then the position needs a check.
+
+
+---
+
+# Built: the discard pile, and the line between a DROP and a FAILURE
+
+**Six plants, five caught at once; the sixth was a bad plant of mine and was re-run properly.**
+
+## It is not a track, and the assertion says why in the words that matter
+
+`stopped()` is `held() == 0` and `held()` counts every card on every track, so a discarded card parked
+in one would mean **the schedule never reads as stopped and the relay-fault window could never fire**.
+The plant that makes `held()` count the pile is CAUGHT by a test whose name is the rule.
+
+## The pile has a production writer TODAY, so it is not another owed row
+
+**The staleness drop.**  PD-3 removes a card whose data has aged past the window, and the reason is
+sharper than "the observation is old" — the window exists **to stop the station asserting something
+untrue**.  That is a deliberate removal, so it belongs on the operator's pile.  **Before this the card
+simply vanished** and nothing could say what had been taken away or why.
+
+## A FAILED card is not a DROPPED card
+
+**This is the line, and getting it wrong would have made the feature useless.**  A routed decline is the
+schedule routing AROUND a fault (DR-21) — the producer offers the alert again and nobody chose anything.
+Putting those on the undo pile would fill it with things the operator never did, **one per rotation turn
+on some paths**, and an undo buffer full of noise is one nobody reaches for under pressure.
+
+So the hook is at the staleness drop and at the operator's own DROP when it arrives — **not** at `leave`,
+which would have caught every failure uniformly and looked tidier.
+
+## The fixture had to drive the real path, and the first version did not
+
+Staleness is *"a question about a card that is about to be READ"*, so it fires only when the air frees
+and the next card has been standing by too long.  **The first test queued a report and ticked**, which
+never reaches the check: the report takes the air immediately, and an on-air card is not a candidate.
+
+The fixture now holds the air with a hazard while the report ages behind it, then finishes the hazard —
+which is the sequence a real station produces, and the 0.15.0 build log's own lesson about **driving
+through the seam rather than past it**.

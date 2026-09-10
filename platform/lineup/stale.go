@@ -74,7 +74,14 @@ func (d Director) dropStale() (Director, Card, bool) {
 		if err := invariant.Check(next.held() < d.lineup.held(), "dropping a stale card shortens the schedule"); err != nil {
 			return d, Card{}, false
 		}
-		d.lineup = next
+		// ON THE OPERATOR'S PILE, because this is a DELIBERATE removal (D-35).
+		// PD-3's window exists to stop the station asserting something untrue,
+		// so a card dropped here was taken away on purpose — and before this it
+		// simply vanished, with nothing able to say what had gone or why.
+		//
+		// A FAILED card takes a different path and does NOT land here: routing
+		// around a fault is not something the operator did.
+		d.lineup = next.discard(gone)
 		dropped = true
 	}
 	if !dropped {
