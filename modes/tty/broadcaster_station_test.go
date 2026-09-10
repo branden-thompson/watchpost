@@ -55,8 +55,8 @@ func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
 		got := b.stationLine()[0]
 		// IT FILLS THE LANE, which is the frame less its gutter — the same
 		// number every lane row is drawn against, from `laneWidth` (D-51).
-		if c, want := utf8.RuneCountInString(got), b.laneWidth(); c != want {
-			t.Errorf("width %d: the station line is %d cells, want the lane's %d\n%q", w, c, want, got)
+		if c, want := utf8.RuneCountInString(got), b.sectionWidth(); c != want {
+			t.Errorf("width %d: the station line is %d cells, want the section's %d\n%q", w, c, want, got)
 			continue
 		}
 		if strings.HasSuffix(got, "  ") {
@@ -120,8 +120,8 @@ func TestTheGainControlReflows(t *testing.T) {
 		b.power = lineup.Running
 		b.gain = 55
 		for i, line := range b.stationLine() {
-			if c, want := utf8.RuneCountInString(stripANSITest(line)), b.laneWidth(); c != want {
-				t.Errorf("width %d row %d: %d cells, want the lane's %d\n%q", w, i, c, want, stripANSITest(line))
+			if c, want := utf8.RuneCountInString(stripANSITest(line)), b.sectionWidth(); c != want {
+				t.Errorf("width %d row %d: %d cells, want the section's %d\n%q", w, i, c, want, stripANSITest(line))
 			}
 		}
 	}
@@ -322,8 +322,8 @@ func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
 	}
 	// AND EVERY ROW IS STILL THE LANE'S WIDTH.
 	for i, row := range rows {
-		if got, want := utf8.RuneCountInString(stripANSITest(row)), b.laneWidth(); got != want {
-			t.Errorf("row %d is %d cells with colour on, want the lane's %d", i, got, want)
+		if got, want := utf8.RuneCountInString(stripANSITest(row)), b.sectionWidth(); got != want {
+			t.Errorf("row %d is %d cells with colour on, want the section's %d", i, got, want)
 		}
 	}
 }
