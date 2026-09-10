@@ -100,3 +100,67 @@ line-up?  It will go in at slot [9]"* — which is a level-3 Detail/Operator Act
 
 **Open, and small:** a card the OPERATOR chose from a proposal is arguably `Origin.FromOperator` rather
 than the Director's.  Not ruled; flagged so it is decided rather than defaulted.
+
+---
+
+# D-41 — `Origin.FromOperator` OUTRANKS
+
+> *"That makes sense, and `Origin.fromOperator` automatically gets a higher rank."*
+
+**Ruled in answer to the open item D-40 left**, which was whether a card the Operator picked out of a
+choice modal is the Operator's or the Director's.  It is the Operator's, **and the origin then carries
+rank** — which is the Director's charter reading on itself: a card the human chose outranks one the
+Director chose on their behalf.
+
+**SCOPE, stated so it is not over-applied:** this governs the **choice ranking** — which proposal takes
+the slot.  It is NOT yet a ruling on where a RESTORED card lands in the running order (`onRestored`
+appends today).  That is a separate UX question and is deliberately not defaulted here.
+
+**Nothing is built for it yet, on purpose.**  `Proposal` carries a ref and a headline; no producer sets
+an origin, because no producer can — the modal that would is UI work.  Adding the field now would be a
+member of a closed set with no writer, which the wires gate exists to refuse and `AP-DEAD-01` names.
+
+---
+
+# D-42 — A TRANSITION IS NEVER THE OPERATOR'S
+
+> *"transition cards are NEVER `Origin.fromOperator`."*
+
+**BUILT, because it was one invariant and it was already reachable.**  `Card.check` now holds it, so
+every door — `Propose`, `Queue` and `Set` — enforces it.
+
+**It used to hold BY ACCIDENT**, which is the reason it was worth stating.  The only path that could
+have constructed one is the operator's undo, and that failed for an unrelated reason: it drops the
+words deliberately, and a wordless transition is refused by the guard above.  **A rule held by a
+different rule** is the shape this package keeps having to un-split — it is how the duck came to be
+lifted by one spelling of tune and not the other.
+
+**The reason behind the ruling** is the role model's: the transition is the DIRECTOR'S one additive act.
+The human asks for a report; the hand-off around it is the Director's consequence of that choice, never
+the request itself.
+
+---
+
+# D-43 — TRANSITIONS ARE SOFT-ASSOCIATED, AND THEY MOVE WITH THEIR CARD
+
+> *"they may need to have some kind of soft association at the Director level -> Location Report Card
+> from Operator needs to be bookended by transition cards, those transitions cards 'move' with the
+> operator's card in the event the operator then 'promotes' or 'quashes' that card up or down the
+> rotation.  I don't know if the code accounts for this, but we it should be noted just in case we find
+> out we have to build this later."*
+
+**Checked, and the code does not account for it.**  Filed as **F-75** with the evidence:
+
+- **Exactly ONE transition exists in production** — `stale.go:93`, the staleness drop's replacement
+  read, `FromDirector`, fixed id, *"one at a time is all that can"* exist.
+- **Nothing bookends anything.**  The Director's inter-card transition is not built beyond that case.
+- **There is no companion concept at all.**  `Reorder` moves exactly one card and asserts the track
+  length is unchanged; `Remove` takes exactly one; `discard` piles one.  Bookending transitions today
+  would be stranded by the first promote — the report would move and its hand-offs would stay, reading
+  a lead-in to something no longer next.
+
+**NOT BUILT, per the ruling.**  What F-75 records for whoever builds it: a move, a quash and an undo are
+**three doors onto one rule**, so DR-1 says the association gets ONE carrier that `Reorder`,
+`onDropped` and the discard pile all read.
+
+**And verifying it found a live defect** — F-74, fixed the same day.  See the follow-ups.

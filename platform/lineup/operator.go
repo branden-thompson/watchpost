@@ -98,21 +98,31 @@ func (d Director) onDropped(ev Dropped) (Director, []Effect) {
 // says so: `Origin.FromOperator` has existed for two releases with nothing ever
 // constructing it.
 func (d Director) onRestored(ev Restored) (Director, []Effect) {
+	// NOTHING IS COMMITTED UNTIL ALL OF IT SUCCEEDS (F-74). The pile entry used
+	// to be spent here, on the line that takes it, and every refusal below
+	// returned the Director that had ALREADY LOST IT — so a restore the schedule
+	// would not accept destroyed the operator's one recovery and put nothing
+	// back, silently.
+	//
+	// IT WAS REACHED THE ORDINARY WAY, which is why this is a defect and not a
+	// hardening: ReadID is a pure function of the ref, so a location dropped and
+	// then re-queued by the rotation is holding the very identity the undo wants.
+	// `next` is therefore carried down as a LOCAL and assigned to the Director
+	// only at the end.
 	was, next, ok := d.lineup.takeDiscarded(ev.ID)
 	if !ok {
 		return d, nil
 	}
-	d.lineup = next
 	card, err := Propose(Card{ID: was.ID, Slot: was.Slot, Origin: FromOperator,
 		Subject: was.Subject, Headline: was.Headline, Refs: was.Refs})
 	if err != nil {
-		return d, nil
+		return d, nil // it cannot be re-proposed — a structural card, whose words the undo drops
 	}
 	admitted, err := card.To(Admitted)
 	if err != nil {
 		return d, nil
 	}
-	queued, err := d.lineup.Queue(trackFor(was.Slot), admitted)
+	queued, err := next.Queue(trackFor(was.Slot), admitted)
 	if err != nil {
 		return d, nil // the schedule is already holding one under that identity
 	}
