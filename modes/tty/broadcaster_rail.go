@@ -135,4 +135,60 @@ var bcRailForms = map[string][]string{
 	"SCHEDULED": {"SCHEDULED", "SCHED", "SCH"},
 	"LINE UP":   {"LINE UP", "LINE", "UP"},
 	"BED":       {"BED"},
+	// THE OVERLAY IS AS TALL AS THE TAKEOVER IT HOLDS, which for a single card
+	// is four rows — too few for eight letters. It sheds to a word rather than
+	// being cut: "PRIO" reads as damage, and this label appears exactly when
+	// something is interrupting the broadcast.
+	"PRIORITY": {"PRIORITY", "ALERT", "!"},
 }
+
+// spliceAt writes `patch` into `base` starting at column `col`, one row per
+// entry, and returns the result.
+//
+// RUNE-ACCURATE, because the frame is full of box-drawing and the badge's
+// bullets are three bytes each — a byte offset here reads as a plausible wrong
+// number, which is how a card's handle came to sit one cell off the reference.
+//
+// IT NEVER GROWS THE FRAME. A patch that ran past the row is cut: the frame is
+// the viewport (D-58), and something composited BESIDE it rather than onto it is
+// the defect UAT found in the diagnostics window.
+func spliceAt(base []string, patch []string, col int) []string {
+	if col < 0 {
+		return base
+	}
+	out := append([]string(nil), base...)
+	for i, p := range patch { // bounded by the patch (P10-02)
+		if i >= len(out) {
+			break
+		}
+		row, ins := []rune(out[i]), []rune(p)
+		if col >= len(row) {
+			continue
+		}
+		for j, r := range ins {
+			if col+j >= len(row) {
+				break
+			}
+			row[col+j] = r
+		}
+		out[i] = string(row)
+	}
+	return out
+}
+
+// bcPriorityCol is where the priority overlay's box begins — just past the
+// rail's divider, from the reference: the divider sits at column 4 and the
+// overlay's border at 6.
+const bcPriorityCol = bcRailWidth + 1
+
+// priorityWidth is the overlay box's own width.
+//
+// HALF THE CARD BOX, from the reference: at its 150 columns the card runs 9..140
+// (132 cells) and the overlay 6..72 (67) — so the operator keeps the right-hand
+// half of every card it covers, which is the half carrying the badge and the
+// HANDLE they type.
+//
+// PROPORTIONAL RATHER THAN FIXED, because the reference gives one width and a
+// fixed 67 cells would swallow two thirds of a 100-column frame — the narrowest
+// the station supports (D-50).
+func (b Broadcaster) priorityWidth() int { return (b.cardBoxWidth() + 2) / 2 }
