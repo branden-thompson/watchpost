@@ -232,6 +232,19 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// station is.
 	if out, ok := m.(Router); ok {
 		out.broadcaster.gain = out.observer.radioVolume
+		// AND THE REFUSAL IS CARRIED TO THE SURFACE THAT WAS REFUSED. It was
+		// recorded here and drawn nowhere — under a comment saying a refusal
+		// the operator cannot read is indistinguishable from a broken control,
+		// which is exactly how it was reported: "ctrl+o will soft lock
+		// randomly" (HUM LEAD, UAT 2026-09-10).
+		//
+		// IT DIES WITH ITS REASON. The only refusal there is says the station
+		// is ON AIR; once it is not, the sentence is false and must go, or the
+		// operator is left reading about a state they have already left.
+		if !out.stationIsLive() {
+			out.refusal = ""
+		}
+		out.broadcaster.statusNote = out.refusal
 		return out, cmd
 	}
 	return m, cmd

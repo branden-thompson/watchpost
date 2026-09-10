@@ -124,7 +124,7 @@ func (b Broadcaster) section(label string, rows []string) []string {
 // came to look broken between the regions in the first place.
 func (b Broadcaster) regionGap() string {
 	g := b.opts().Glyphs()
-	return railColumn(" ", 1, g)[0] + strings.Repeat(" ", bcRailGap+b.cardBoxWidth())
+	return railColumn(" ", 1, g)[0] + strings.Repeat(" ", b.orderWidth()-bcRailWidth)
 }
 
 // bcRailLabel is the widest form of a section's name that fits its height.
@@ -174,6 +174,11 @@ var bcRailForms = map[string][]string{
 // IT NEVER GROWS THE FRAME. A patch that ran past the row is cut: the frame is
 // the viewport (D-58), and something composited BESIDE it rather than onto it is
 // the defect UAT found in the diagnostics window.
+// IT IS RUNE-ACCURATE AND NOT CELL-ACCURATE, which is D-66's defect one function
+// along and is filed as F-85. It holds today only because of where the overlay
+// lands: the rows it covers are box glyphs and spaces up to column 74, and every
+// escape on them — the badge, the handle's chip — sits to the RIGHT of the
+// splice. A tinted headline would break it, and nothing here would say so.
 func spliceAt(base []string, patch []string, col int) []string {
 	if col < 0 {
 		return base
@@ -234,6 +239,17 @@ func (b Broadcaster) priorityWidth() int { return (b.cardBoxWidth() + 2) / 2 }
 // mock: an ordinary row ends `╯   │    │` and the thumb row `█    │`, the thumb
 // standing exactly WHERE the bar was. One column, two glyphs.
 func (b Broadcaster) framed(body []string, shown, total int) []string {
+	return b.chrome(body, true, shown, total)
+}
+
+// chrome adds the right-hand columns, with or without the scroll rail.
+//
+// THE RAIL SPANS ONLY WHAT SCROLLS (D-68). The HUM LEAD, beside the SCHEDULED
+// region of his reference: "Notice the top of the scroll is here, and the left
+// rail is separated." The two cards the operator reads from are always the same
+// two — there is nothing to scroll past — so the gutter beside them is air, and
+// a thumb drawn there would say they move when they do not.
+func (b Broadcaster) chrome(body []string, rail bool, shown, total int) []string {
 	g := b.opts().Glyphs()
 	inner := make([]string, len(body))
 	for i, r := range body { // bounded by the body (P10-02)
@@ -244,6 +260,16 @@ func (b Broadcaster) framed(body []string, shown, total int) []string {
 	// drew a separate wall, which is how the extra column got in.
 	glyphs := render.RailGlyphsFor(b.ascii)
 	glyphs.Bar = g.Rail
+	if !rail {
+		// AN UNSCROLLED ZONE STILL HAS THE WALL; what it does not have is a
+		// thumb. Railify puts the thumb on row 0 of whatever it is given, so a
+		// zone that does not scroll must not be given to it at all.
+		out := make([]string, len(inner))
+		for i, r := range inner { // bounded by the body (P10-02)
+			out[i] = render.PadTo(r, b.width-6) + g.Rail + "    " + g.Rail
+		}
+		return out
+	}
 	railed := render.Railify(inner, b.width-5, 0, max(total, 1), max(shown, 1), glyphs)
 	out := make([]string, len(railed))
 	for i, r := range railed { // bounded by the body (P10-02)

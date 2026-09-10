@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
@@ -40,17 +41,17 @@ func TestTheFrameSurvivesColour(t *testing.T) {
 				t.Fatalf("at %d cols, row %d was cut through an escape: %q", w, i, r)
 			}
 		}
-		head := render.StripSGRForTest(rows[0])
+		head := render.StripSGRForTest(rows[bcInsetRows])
 		for _, want := range []string{"WATCHPOST", "Broadcaster", "v0.16.0"} {
 			if !strings.Contains(head, want) {
 				t.Errorf("at %d cols the masthead lost %q: %q", w, want, head)
 			}
 		}
-		if !strings.Contains(render.StripSGRForTest(rows[1]), "API:") {
-			t.Errorf("at %d cols the masthead lost its API summary: %q", w, rows[1])
+		if !strings.Contains(render.StripSGRForTest(rows[bcInsetRows+1]), "API:") {
+			t.Errorf("at %d cols the masthead lost its API summary: %q", w, rows[bcInsetRows+1])
 		}
 		// THE GAIN CONTROL KEEPS BOTH ENDS. It showed only its left arrow.
-		station := strings.Join(rows[4:9], "\n")
+		station := strings.Join(rows[bcInsetRows+4:bcInsetRows+9], "\n")
 		if !strings.Contains(render.StripSGRForTest(station), "+") {
 			t.Errorf("at %d cols the gain control lost its right end:\n%s", w, render.StripSGRForTest(station))
 		}
@@ -113,8 +114,11 @@ func TestOneBlankRowSeparatesTheRegions(t *testing.T) {
 			gaps++
 		}
 	}
-	if want := len(bcRegions) - 1; gaps != want {
-		t.Errorf("%d blank rows between %d regions, want %d", gaps, len(bcRegions), want)
+	// ONE PER BOUNDARY, PLUS THE ONE UNDER THE LANE HEADER — which is the same
+	// row by construction: the header is followed by the spacer the reference
+	// draws ("Notice the spacer row"), and a spacer is what a region gap IS.
+	if want := len(bcRegions); gaps != want {
+		t.Errorf("%d blank rows in the running order, want %d", gaps, want)
 	}
 	// AND THE CARDS INSIDE A REGION STAY FLUSH: the LINE UP's five slots draw
 	// twenty rows with nothing between them.
@@ -123,5 +127,73 @@ func TestOneBlankRowSeparatesTheRegions(t *testing.T) {
 	body := b.slotRows(r, nil, lane)
 	if got, want := len(body), (r.upto-r.from)*4; got != want {
 		t.Errorf("the last region draws %d rows for %d slots, want %d", got, r.upto-r.from, want)
+	}
+}
+
+// THE READ CARDS ARE TALL AND THE ORDERED ONES ARE FLAT (D-68).
+//
+//	"the LIVE CARD should be bigger to support showing at least most the script
+//	 being played … UP NEXT should also be bigger"
+func TestTheReadCardsAreTallerThanTheOrderedOnes(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
+	for _, r := range bcRegions {
+		got := len(b.slotRows(r, nil, lane)) / (r.upto - r.from)
+		want := bcFlatCardRows
+		if r.reads {
+			want = bcReadCardRows
+		}
+		if got != want {
+			t.Errorf("%s draws %d rows per card, want %d", r.label, got, want)
+		}
+	}
+}
+
+// AND A READ SLOT ON A STATION AT REST IS EMPTY, NOT SHIMMERING.
+//
+//	"when it's on standby — like it is on first open/play — that should be blank
+//	 we should have an empty state for that live slot"
+//
+// A shimmer promises a read that is coming. Nothing is coming while the station
+// is not on the air, so the promise would be false — which is the same fault as
+// the dead end D-64 removed, wearing the opposite costume.
+func TestAReadSlotIsEmptyWhileTheStationIsAtRest(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
+	rest := strings.Join(b.slotRows(bcRegions[0], nil, lane), "\n")
+	if strings.Contains(rest, "waiting for the line-up") {
+		t.Errorf("a stopped station shimmers in the LIVE slot:\n%s", rest)
+	}
+	b.power = lineup.Running
+	live := strings.Join(b.slotRows(bcRegions[0], nil, lane), "\n")
+	if !strings.Contains(live, "waiting for the line-up") {
+		t.Errorf("a running station with nothing decided IS waiting:\n%s", live)
+	}
+	// AND THE SLOT IS THE SAME SHAPE EITHER WAY, or the frame jumps under the
+	// operator at the moment the station goes on the air.
+	if a, c := len(strings.Split(rest, "\n")), len(strings.Split(live, "\n")); a != c {
+		t.Errorf("the read slot changes height with the station: %d at rest, %d live", a, c)
+	}
+}
+
+// THE FRAME OPENS AND CLOSES ON THE APP'S OWN AIR.
+//
+//	"Universal 2 line inset like Observer" … "global 2 row inset"
+func TestTheFrameKeepsItsInset(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+	for i := range bcInsetRows {
+		if strings.TrimSpace(rows[i]) != "" {
+			t.Errorf("row %d is inside the opening inset and is not blank: %q", i, rows[i])
+		}
+		if j := len(rows) - 1 - i; strings.TrimSpace(rows[j]) != "" {
+			t.Errorf("row %d is inside the closing inset and is not blank: %q", j, rows[j])
+		}
+	}
+	if strings.TrimSpace(rows[bcInsetRows]) == "" {
+		t.Error("the masthead follows the inset immediately; a third blank row is not the design")
 	}
 }

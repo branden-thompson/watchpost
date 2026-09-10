@@ -209,7 +209,10 @@ func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
 			last = i
 		}
 	}
-	for i := 1; i <= last; i++ {
+	// FROM BELOW THE OPENING INSET. Those two blank rows ARE the frame's air
+	// (D-68, "Universal 2 line inset like Observer") and are the one place two
+	// blanks in a row is the design rather than a fault.
+	for i := bcInsetRows + 1; i <= last; i++ {
 		if strings.TrimSpace(rows[i]) == "" && strings.TrimSpace(rows[i-1]) == "" {
 			t.Errorf("rows %d and %d are both blank — a section's spacing has two owners", i-1, i)
 		}
@@ -234,10 +237,18 @@ func TestEveryDrawnRowClosesTheFrame(t *testing.T) {
 			last = i
 		}
 	}
-	for i := 4; i <= last; i++ { // from the station section down; the masthead draws its own box
+	for i := bcInsetRows + 4; i <= last; i++ { // from the station section down; the masthead draws its own box
 		r := []rune(rows[i])
 		if len(r) != b.width {
 			t.Errorf("row %d is %d cells, want %d", i, len(r), b.width)
+			continue
+		}
+		// THE ONE UNWALLED ROW IS THE SEPARATOR BETWEEN THE STATION SECTION AND
+		// THE RUNNING ORDER, and the HUM LEAD annotated it as deliberate twice:
+		// "Notice the blank line and how it separates the rail — this is
+		// intentional." Two closed boxes with air between them; the air belongs
+		// to neither, so it carries neither's walls.
+		if strings.TrimSpace(rows[i]) == "" {
 			continue
 		}
 		if r[0] != '|' || r[b.width-1] != '|' {

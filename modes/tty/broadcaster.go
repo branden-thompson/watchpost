@@ -91,6 +91,19 @@ type Broadcaster struct {
 	// disagree about how loud the station is.
 	gain int
 
+	// statusNote is what the STATION SECTION says on its third row instead of the
+	// power's own words — today, why a swap was refused.
+	//
+	// MIRRORED FROM THE ROUTER, NEVER OWNED HERE, for `gain`'s reason: the
+	// Router is where a swap is decided, so the Router is the one thing that
+	// knows a swap was refused. The console DRAWS it, because the console is
+	// what the operator is looking at when the refusal happens.
+	//
+	// THE ROW THE REFERENCE RESERVES: "<this then becomes a status message of
+	// something related to the broadcast bar>" (HUM LEAD's mock). That is
+	// exactly what this is.
+	statusNote string
+
 	// snap is the last published snapshot, for the masthead's `Updated:` stamp
 	// and its API summary.
 	//
@@ -357,12 +370,23 @@ func (b Broadcaster) lanes() []string {
 	// ONE RENDERER FOR THE WHOLE FRAME (see cardLane): the lane width does not
 	// change between the cards in it.
 	lane := newCardLane(b.cardBoxWidth(), g)
-	out := strings.Split(b.header(b.opts()), "\n")
+	// THE FRAME OPENS WITH TWO BLANK ROWS, AS OBSERVER'S DOES (D-68). The HUM
+	// LEAD, annotating his own mock: "Universal 2 line inset like Observer."
+	// The console had its masthead hard against the top of the terminal, which
+	// is the one place in the app that does not breathe.
+	out := b.inset()
+	out = append(out, strings.Split(b.header(b.opts()), "\n")...)
 	// THE STATION BAR IS A SECTION (see stationSection): one region, painted by
 	// one call, so the colour pass is a token rather than a sweep.
 	fg, bg := b.stationTone()
 	out = append(out, strings.Split(b.stationSection(b.opts(), fg, bg), "\n")...)
 	out = append(out, b.heldNotice()...)
+	// A BARE BLANK ROW SEPARATES THE STATION SECTION FROM THE RUNNING ORDER, and
+	// the HUM LEAD annotated it twice: "Notice the blank line and how it
+	// separates the rail — this is intentional." It carries NO walls, because
+	// the station section is one closed box and the running order is another;
+	// the air between them belongs to neither.
+	out = append(out, "")
 	// NO SEPARATOR HERE. THE SECTION OWNS ITS OWN SPACING — `stationSection`
 	// carries a breathing row above and below, and a second blank appended out
 	// here made a DOUBLE gap that read as a rendering fault (HUM LEAD, UAT
@@ -402,7 +426,18 @@ func (b Broadcaster) lanes() []string {
 	if len(main) > MainTrackSlots {
 		main = main[:MainTrackSlots]
 	}
-	order := []string{}
+	// THE RUNNING ORDER IS IN TWO ZONES, and the boundary is where the scroll
+	// rail starts (D-68). The HUM LEAD, annotating the reference beside the
+	// SCHEDULED region: "Notice the top of the scroll is here, and the left rail
+	// is separated." The cards the operator READS FROM do not scroll — there are
+	// two of them and they are always the same two — so the gutter beside them
+	// is empty and the rail begins below.
+	// THE LANE NAMES ITSELF ABOVE ITS CARDS, and it is part of the BODY rather
+	// than of the chrome above it — so it gets the frame's own right-hand
+	// columns like every other row of the running order. Built here and not in
+	// `out`, which is where the first version put it and why it came out with
+	// no right wall at all.
+	order, reads, drawn := b.laneHeader("STANDARD"), 0, false
 	for _, r := range bcRegions {
 		rows := b.region(r, main, lane)
 		if len(rows) == 0 {
@@ -411,10 +446,14 @@ func (b Broadcaster) lanes() []string {
 		// ONE BLANK ROW BETWEEN REGIONS (see regionGap) — never before the first
 		// or after the last, which would be air against the section above and
 		// below rather than between the regions it separates.
-		if len(order) > 0 {
+		if drawn {
 			order = append(order, b.regionGap())
 		}
 		order = append(order, rows...)
+		drawn = true
+		if r.reads {
+			reads = len(order)
+		}
 	}
 
 	// AND THE PRIORITY TRACK IS COMPOSITED ON TOP OF IT (D-61).
@@ -435,12 +474,15 @@ func (b Broadcaster) lanes() []string {
 	// THE FRAME'S RIGHT-HAND CHROME GOES ON LAST, over the assembled order and
 	// whatever the priority track composited onto it — the scroll rail belongs
 	// to the running order as a whole, not to any one region of it.
-	body := b.withPriority(order)
-	// AND THE FRAME RUNS THE FULL HEIGHT OF THE TERMINAL. It stopped at the last
-	// drawn row, so a station with a short line-up showed a fragment floating in
-	// black — the reference carries its walls to the bottom, and a frame that
-	// ends where its content does is not a frame.
-	if n := b.height - len(out) - len(body); n > 0 {
+	body := b.withPriority(order, len(b.laneHeader("STANDARD")))
+	if reads > len(body) {
+		reads = len(body)
+	}
+	// AND THE FRAME RUNS THE FULL HEIGHT OF THE TERMINAL, LESS ITS CLOSING
+	// INSET. It stopped at the last drawn row, so a station with a short line-up
+	// showed a fragment floating in black — the reference carries its walls to
+	// the bottom, and a frame that ends where its content does is not a frame.
+	if n := b.height - len(out) - len(body) - len(b.inset()); n > 0 {
 		// ONE BLANK ROW, REPEATED. Building a whole section per row rebuilt its
 		// rail and its glyph set every time — 702 allocations for a frame, from
 		// rows that are all identical by construction.
@@ -449,14 +491,69 @@ func (b Broadcaster) lanes() []string {
 			body = append(body, blank...)
 		}
 	}
-	out = append(out, b.framed(body, MainTrackSlots, len(b.lineup.Projection(lineup.MainTrack)))...)
-	return out
+	out = append(out, b.chrome(body[:reads], false, 0, 0)...)
+	out = append(out, b.chrome(body[reads:], true,
+		MainTrackSlots, len(b.lineup.Projection(lineup.MainTrack)))...)
+	return append(out, b.inset()...)
 }
+
+// inset is the blank air above and below the whole frame — Observer's own, which
+// the console did not have.
+func (b Broadcaster) inset() []string {
+	return make([]string, bcInsetRows)
+}
+
+// bcInsetRows is how many blank rows open and close the frame.
+//
+// TWO, AND "UNIVERSAL" IS THE HUM LEAD'S OWN WORD FOR IT: "Universal 2 line
+// inset like Observer." It is the app's air, not this surface's, which is why
+// the number is stated once here rather than being folded into a caller.
+const bcInsetRows = 2
+
+// laneHeader names the lane the cards below it belong to, centred over them.
+//
+// THE REFERENCE DRAWS IT AND THE CONSOLE DID NOT (HUM LEAD, 2026-09-10: "Notice
+// the header line; this should be centered"). It is the STANDARD lane; the
+// priority lane names itself the same way when it has something, which is D-61's
+// rule one row up from the rail label.
+//
+// A BARE BLANK ROW ABOVE IT, deliberately: "Notice the blank line and how it
+// separates the rail — this is intentional." The station section is a closed box
+// and the running order is another; the air between them belongs to neither, so
+// it carries no walls.
+func (b Broadcaster) laneHeader(label string) []string {
+	g := b.opts().Glyphs()
+	if b.cardBoxWidth() < 1 {
+		return nil
+	}
+	// CENTRED OVER THE CARDS, not over the row: the header names the lane, and
+	// the lane is the card column. Measured in cells rather than bytes —
+	// `render.Width` is the one measure (D-66).
+	lead := bcRailWidth + bcRailGap + max(0, (b.cardBoxWidth()-render.Width(label))/2)
+	return []string{
+		g.Rail + render.PadTo(strings.Repeat(" ", lead-1)+label, b.orderWidth()-1),
+		b.regionGap(),
+	}
+}
+
+// orderWidth is how wide a row of the running order is BEFORE the frame's
+// right-hand columns: the rail, the air beside it, and the card.
+//
+// ONE OWNER, because three things build such a row — a region, the gap between
+// two regions, and the lane's header — and the first version of the header used
+// the LANE's width instead. It came out seven cells long, so the chrome's own
+// columns were pushed past the terminal's edge and clamped away, and that row
+// alone lost its walls.
+func (b Broadcaster) orderWidth() int { return bcRailWidth + bcRailGap + b.cardBoxWidth() }
 
 // bcRegion is one named part of the running order, and the slots it holds.
 type bcRegion struct {
 	label      string
 	from, upto int // half-open, in LINE-UP positions
+	// reads is whether the operator READS FROM this region's cards rather than
+	// merely ordering them — the LIVE card and the one after it (D-68). Those
+	// draw the tall box that carries the script; the rest draw the flat one.
+	reads bool
 }
 
 // bcRegions is the reference's own division of the main track, which is what
@@ -464,10 +561,10 @@ type bcRegion struct {
 // not part of this table: it is not a card slot, and the schedule cannot put
 // one there (Track's own comment refuses exactly that).
 var bcRegions = []bcRegion{
-	{"LIVE", 0, 1},
-	{"UP NEXT", 1, 2},
-	{"SCHEDULED", 2, 5},
-	{"LINE UP", 5, MainTrackSlots},
+	{"LIVE", 0, 1, true},
+	{"UP NEXT", 1, 2, true},
+	{"SCHEDULED", 2, 5, false},
+	{"LINE UP", 5, MainTrackSlots, false},
 }
 
 // withPriority composites the priority track over the running order, or hands
@@ -476,7 +573,7 @@ var bcRegions = []bcRegion{
 // AN EMPTY RAIL COMPOSITES NOTHING, and the box being empty is the ONE thing
 // that says so: a `len(rail) > 0` guard stood in the old drawing and its mutant
 // SURVIVED, because a section built from no rows already returned nothing.
-func (b Broadcaster) withPriority(order []string) []string {
+func (b Broadcaster) withPriority(order []string, from int) []string {
 	lane := newCardLane(b.priorityWidth(), b.opts().Glyphs())
 	rows := []string{}
 	for _, c := range b.lineup.Cards(lineup.AlertRail) { // bounded by the rail (P10-02)
@@ -485,6 +582,15 @@ func (b Broadcaster) withPriority(order []string) []string {
 	if len(rows) == 0 {
 		return order
 	}
+	// IT COVERS THE CARDS, NOT THE LANE'S OWN HEADER. The running order now
+	// opens with the header naming the lane and the spacer under it (D-68), and
+	// an overlay spliced from row zero began on those — so the takeover's title
+	// landed on a spacer and the card it is supposed to sit ON was one row down.
+	if from < 0 || from > len(order) {
+		from = 0
+	}
+	head := append([]string(nil), order[:from]...)
+	order = append([]string(nil), order[from:]...)
 	// THE OVERLAY CANNOT BE TALLER THAN WHAT IT COVERS. A takeover with more
 	// rows than the running order would otherwise draw past the bottom of the
 	// frame, which is the overflow FR-7.3 calls a defect rather than a
@@ -500,7 +606,7 @@ func (b Broadcaster) withPriority(order []string) []string {
 		rows[i] = r + " "
 	}
 	out := spliceAt(order, railColumn("PRIORITY", len(rows), b.opts().Glyphs()), 0)
-	return spliceAt(out, rows, bcPriorityCol)
+	return append(head, spliceAt(out, rows, bcPriorityCol)...)
 }
 
 // region draws one of them — EVERY slot it holds, decided or waiting (D-64).
@@ -587,6 +693,12 @@ func (b Broadcaster) stationLine() []string {
 	case lineup.OffAir:
 		state = "STANDBY (DEAD AIR)"
 		why = "nothing is broadcast, hazards included; the schedule holds what it has not said"
+	}
+	// A NOTICE DISPLACES THE PROSE. The state's own words describe a station at
+	// rest; a refusal describes something the operator JUST DID, and the row
+	// they are looking at has to answer the key they just pressed.
+	if b.statusNote != "" {
+		why = b.statusNote
 	}
 	lane := b.sectionWidth()
 	// THE LABELS SHARE A VALUE COLUMN (D-62). "STATION:" and the bed's label are
@@ -817,6 +929,23 @@ const bcCardRows = 4
 // most likely to be partly occluded and one mark on it the weakest possible
 // placement.
 func (l cardLane) box(c lineup.Card, handle, badge string) []string {
+	return l.boxOf(c, handle, badge, nil)
+}
+
+// boxOf is the card, with whatever the region puts INSIDE it below the first
+// row (D-68).
+//
+// THE READ CARDS ARE TALLER THAN THE SCHEDULED ONES, which is the reference and
+// was the HUM LEAD's UAT (2026-09-10): "the LIVE CARD should be bigger to
+// support showing at least most the script being played … UP NEXT should also be
+// bigger." A card the operator READS FROM needs the words on it; a card they are
+// merely deciding the ORDER of needs its name and its handle.
+//
+// ONE DRAWER FOR BOTH, because everything except the interior is the same
+// card — the borders, the centred title, the badge and the handle's chip. A
+// second box function would be a second place for the handle to drift, which is
+// the D-56 shape this file has already paid for once.
+func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []string {
 	if l.lane < 4 {
 		return nil
 	}
@@ -825,13 +954,19 @@ func (l cardLane) box(c lineup.Card, handle, badge string) []string {
 	rule := strings.Repeat(g.Rule, inner)
 	// The title row is the SAME renderer the flat row used, one width in: the
 	// box does not get to move the handle or re-centre the title.
-	body := newCardLane(inner, g)
-	return []string{
+	title := newCardLane(inner, g)
+	rows := []string{
 		g.CornerTL + rule + g.CornerTR,
-		g.Rail + body.render(c, handle, badge) + g.Rail,
+		g.Rail + title.render(c, handle, badge) + g.Rail,
+		// THE FIRST INTERIOR ROW IS ALWAYS THE CORNERS' ROW, tall or flat: it is
+		// where the fabricated-event marks live (D-57), and a mark that moved
+		// with the card's height would be in a different place on every card.
 		g.Rail + l.corners(inner, c.Test) + g.Rail,
-		g.CornerBL + rule + g.CornerBR,
 	}
+	for _, r := range body { // bounded by the card's own height (P10-02)
+		rows = append(rows, g.Rail+render.PadTo(render.TruncateCells(r, inner), inner)+g.Rail)
+	}
+	return append(rows, g.CornerBL+rule+g.CornerBR)
 }
 
 // corners is the card's body row: blank, or D-57's marks at both ends.

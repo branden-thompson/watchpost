@@ -1,4 +1,4 @@
-# 0.16.0 rulings, D-59 … D-67
+# 0.16.0 rulings, D-59 … D-68
 
 The layout phase and the UAT that followed it.  D-59 … D-65 were built and shipped with their
 reasoning in the code and in the commits; they are stated here in short because a ruling that lives
@@ -124,3 +124,70 @@ sitting out never leaves the line-up short.
 keys instead of capping them · `s4` the regions run together · `s5` the rail column loses its bar ·
 `s6` the scroll rail moves back off the wall · `r1` the cool-off is not consulted · `r2` a routed
 failure is never recorded · `r3` the cool-off never expires · `r4` the ring is unbounded.
+
+---
+
+# D-68 — THE CARDS THE OPERATOR READS FROM ARE NOT THE CARDS THEY ORDER
+
+**HUM LEAD, UAT 2026-09-10**, with a reference mock drawn without the alert overlay to show it:
+
+> the LIVE CARD should be bigger to support showing at least "most" the script being played — when
+> it's on standby, like it is on first open/play, that should be blank, we should have an empty state
+> for that live slot … UP next should also be bigger
+
+**Two kinds of card, one drawer.**  A card the operator READS FROM needs the words on it: eleven
+rows — border, title, the marks' row, a five-line window onto the script, a blank, the card's own
+controls, border.  A card they are merely deciding the ORDER of needs its name and its handle, which
+is four.  Everything else about them is identical, so `boxOf` takes the interior and `box` is the
+flat case of it; a second box function would be a second place for the handle to drift.
+
+**The empty state is EMPTY, and only where the promise would be false.**  A shimmer says the read is
+coming.  Nothing is coming while the station is not on the air, so the LIVE and UP NEXT slots draw
+their box with nothing in it at rest, and shimmer only once the station is running.  The slot is the
+SAME HEIGHT either way, or the frame jumps under the operator at the moment they go on air.
+
+**The window is built and there is nothing to put in it (F-84).**  `BuildCard` produces
+`Built{ID, Script}` inside the executors; `Card` carries a headline and no words.  The geometry is
+the half that could be built without a ruling; where the script rides is the half that needs one,
+and it is worth ruling once for the bed's state (F-79) as well.
+
+## The chrome the reference draws and the console did not
+
+| | |
+|---|---|
+| **two blank rows above and below the whole frame** | *"Universal 2 line inset like Observer"* — the console had its masthead hard against the top of the terminal, the one place in the app that does not breathe |
+| **a bare blank row between the station section and the running order** | annotated twice: *"Notice the blank line and how it separates the rail — this is intentional."*  It carries NO walls, because the two regions are closed boxes and the air between them belongs to neither |
+| **the lane names itself, centred over the cards** | *"Notice the header line; this should be centered"* — it is the STANDARD lane, and the priority lane names itself the same way when it has something (D-61) |
+| **a spacer row under the header** | *"Notice the spacer row"* — which is what a region gap already is, so it is the same row builder |
+| **the scroll rail spans only what scrolls** | *"Notice the top of the scroll is here, and the left rail is separated."*  The two read cards are always the same two; a thumb beside them would say they move |
+
+**ONE DEVIATION, STATED**: the reference draws the read cards five cells WIDER than the scheduled
+ones, because it drops the scroll rail's columns entirely in that zone.  The console keeps ONE card
+width for both and leaves the gutter blank instead — `cardBoxWidth` is D-51's single owner of that
+arithmetic, and two card widths is the thing that seam exists to avoid.  Raised rather than assumed.
+
+---
+
+# D-69 — A REFUSED SWAP HAS TO SAY SO
+
+> ctrl+o will soft lock randomly — so ctrl+o -> ctrl+b -> ctrl+o (doesn't work the 2nd time) …
+> While radio is on standby I should flip back and forth easily.
+
+**It is not a lock and it is not random.**  Visiting Observer TUNES, a tune tells the Director the
+programme is RUNNING (which is mM3's own fix, and correct), so the station the operator left STOPPED
+is ON AIR when they come back — and FR-1.4 refuses to let anyone walk away from a live console.  The
+gate was right every time.
+
+**What was missing is that `Router.refusal` was recorded and drawn nowhere**, under a comment saying
+exactly why that must not happen: *"a refusal they cannot read is indistinguishable from a broken
+control."*  Written down, not done — the same shape as D-66's, two files apart, in the same release.
+
+It rides to the console the way the gain does — mirrored, never owned twice — and lands on the row
+the reference reserves for it: *"<this then becomes a status message of something related to the
+broadcast bar>"*.  **It dies with its reason**: the only refusal there is says the station is on the
+air, so once it is not, the sentence is false and goes.
+
+**THE DEEPER QUESTION IS STILL OPEN AND IT IS F-80's.**  Observer's playback and the console's ON AIR
+are the same `Power`, so listening on one surface puts the station live on the other.  That may be
+exactly right — they are one station — but it means the operator can be refused a swap they never
+did anything to earn.  Ruling wanted.

@@ -113,7 +113,11 @@ const (
 	// `TruncateCells` learning about escapes cost NOTHING here, because it still
 	// returns the string itself when the row already fits — which the console's
 	// rows do, since it builds them to width.
-	bcFrameAllocs = 898
+	// 957: D-68 — the LIVE and UP NEXT cards are the reference's TALL boxes
+	// (eleven rows each, carrying a window onto the script), the lane names
+	// itself above them, and the frame opens and closes on Observer's two-row
+	// inset. Reference geometry, not optimisation, per D-53.
+	bcFrameAllocs = 957
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {
