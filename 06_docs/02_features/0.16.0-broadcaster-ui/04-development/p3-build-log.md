@@ -241,3 +241,45 @@ period.  **A cosmetic rewrite of a test is a change to the instrument.**
 | a UAT shared with nothing | not started |
 | the go/no-go before P4 | not reached |
 | `"compose"` moves from `optional` to `strippers` in `executors_test.go` | at P3(d): it is wired now, but a station running off/dark still works without it |
+
+
+# P3's plants become a corpus — the fix for "a measurement that happened once"
+
+**Forty-odd plants ran across this batch and none of them entered the corpus.**  They were `for` loops
+in a terminal, verified once and gone, and the next attempt at this work would have inherited nothing
+from them.  That is recorded as **P-10** in the post-mortem and this is it being discharged.
+
+**Ten entries, chosen for DISTINCT RULES rather than for coverage.**  The corpus is 172 → **182**.
+
+| # | The rule it deletes | Verdict | Caught by |
+|---|---|---|---|
+| **m100** | the settle after queueing a rotation card | CAUGHT | `TestASynthesisedReadBecomesAMainTrackCard` |
+| **m101** | `ReadID` as a pure function of the ref (FR-2.5) | CAUGHT | `TestTheMergedStationHoldsItsPropertiesUnderRandomTiming` |
+| **m102** | a stopped station admits no read (DR-3) | CAUGHT | `TestNeedsReadOnAStoppedStationQueuesNothing` |
+| **m103** | the rail drains first, in `Next` | CAUGHT | `TestTheRailDrainsBeforeTheMainTrackThroughStep` |
+| **m104** | the rail is PREPARED first, in `toPrepare` | CAUGHT | the same property |
+| **m105** | one card holds the air | CAUGHT | `TestTheNextCardIsBuiltWhileThisOneReads` |
+| **m106** | no two cards share an identity | CAUGHT | `TestTheLineupRefusesACardItCannotAddress` |
+| **m107** | a stopped programme does not read (PD-1) | CAUGHT | the property test |
+| **m108** | **the programme can start at all** | CAUGHT | `TestTheDeckReportsThatTheProgrammeIsRunning` |
+| **m109** | a stale need queues nothing (N-3 / C-3) | CAUGHT | `TestAStaleNeedIsNotReported` |
+
+**Ten run, ten CAUGHT.**  The two that matter most are the two that once SURVIVED: **m100**, because the
+test held the step's effects and discarded them, and **m104**, because every property watched what took
+the air and this defect stops anything taking the air at all.
+
+**m108 is the shape of a blocker that shipped.**  The Director begins Stopped on purpose; with nothing
+telling it otherwise every card is refused, the lineup fills, and **no fault is raised** — nothing
+failed and nothing was ever admitted.  A permanently silent station is the hardest defect to see, and
+this is the one wire that prevents it.
+
+## Why the corpus and not another shell loop
+
+`make mutant-check` iterates every entry and asserts it still **applies and compiles**, and it runs in
+CI.  **So a corpus mutant cannot silently rot:** edit `rotation.go` so m100's target text no longer
+exists and the build fails.  That is the durability the loops never had, and it is what makes *"a plant
+worth running is worth keeping"* a gate rather than an intention.
+
+**The flip's own plants are NOT here**, and that is deliberate: d1–d12 and e1–e5 target code the revert
+removed, so an entry for them could not apply.  They are recorded in the build log above and will be
+re-planted against whatever replaces the flip.
