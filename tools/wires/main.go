@@ -66,8 +66,10 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -229,7 +231,7 @@ func triage(members []member, ratified map[string]bool) (unexplained, exempt []m
 		}
 		unexplained = append(unexplained, m)
 	}
-	return unexplained, exempt, sortedKeys(left)
+	return unexplained, exempt, slices.Sorted(maps.Keys(left))
 }
 
 // scan walks the tree and returns every closed-set member with its counts.
@@ -501,16 +503,6 @@ func typeNameOf(e ast.Expr) string {
 // the safe direction — a member the walk cannot name is simply not counted,
 // and an uncounted member reports as unwired rather than as wired.
 const maxPointerDepth = 8
-
-// sortedKeys is a stable order for a set, so two runs read the same.
-func sortedKeys(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m { // bounded by the map (P10-02)
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
-}
 
 func pos(fset *token.FileSet, p token.Pos) string {
 	pp := fset.Position(p)

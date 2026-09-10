@@ -328,8 +328,25 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 			Lat: 33 + float64(i)/100, Lon: -117 - float64(i)/100, TZ: "America/Los_Angeles"})
 	}
 
+	// THE DEEPEST LINE-UP EVER PUBLISHED, not the latest one.
+	//
+	// THIS TEST WAS GREEN BECAUSE OF A DEFECT, which is worth stating plainly.
+	// It runs with a NIL DECK, so every card fails to compose the moment it is
+	// built — and until D-67 a routed failure was re-admitted on the publish the
+	// failure itself caused, so the track was continuously refilled at pump
+	// speed and a poll of `last` always caught ten cards in flight. The cool-off
+	// stopped the spin, and this assertion went to zero: what it had been
+	// measuring was the churn (HUM LEAD, UAT 2026-09-10: "the lineup is FLYING
+	// through locations rapidly").
+	//
+	// Its SUBJECT is the top-off — that the Director fills the console's window
+	// when the producer offers — and that happens once, at the first publish
+	// after the programme starts. So the peak is what to watch, and watching it
+	// at the publish rather than by polling is also what removes the race that
+	// let the defect hide here.
 	var mu sync.Mutex
 	var last lineup.Lineup
+	deepest := 0
 	publish := func(m tea.Msg) {
 		lm, ok := m.(tty.LineupMsg)
 		if !ok {
@@ -337,6 +354,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 		}
 		mu.Lock()
 		last = lm.Lineup
+		deepest = max(deepest, len(lm.Lineup.Projection(lineup.MainTrack)))
 		mu.Unlock()
 	}
 	nar := testDirector(nil, func(tea.Msg) {})
@@ -355,7 +373,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 	var got int
 	for time.Now().Before(deadline) {
 		mu.Lock()
-		got = len(last.Projection(lineup.MainTrack))
+		got = deepest
 		mu.Unlock()
 		if got >= tty.MainTrackSlots {
 			break
@@ -364,7 +382,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	if got != tty.MainTrackSlots {
-		t.Fatalf("the line-up published to the console holds %d cards; the console draws %d slots and the Director fills them",
+		t.Fatalf("the line-up published to the console held %d cards at its deepest; the console draws %d slots and the Director fills them",
 			got, tty.MainTrackSlots)
 	}
 
@@ -441,12 +459,17 @@ func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
 			Label: "Town " + strconv.Itoa(i) + ", CA", Zip: "9210" + strconv.Itoa(i%10),
 			Lat: 33 + float64(i)/100, Lon: -117 - float64(i)/100, TZ: "America/Los_Angeles"})
 	}
+	// THE DEEPEST EVER PUBLISHED, for the reason the top-off test states: the
+	// deck is nil, so every card fails to compose, and until D-67 the failures
+	// refilled the track fast enough that a poll always caught ten.
 	var mu sync.Mutex
 	var last lineup.Lineup
+	deepest := 0
 	publish := func(m tea.Msg) {
 		if lm, ok := m.(tty.LineupMsg); ok {
 			mu.Lock()
 			last = lm.Lineup
+			deepest = max(deepest, len(lm.Lineup.Projection(lineup.MainTrack)))
 			mu.Unlock()
 		}
 	}
@@ -476,7 +499,7 @@ func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
 	var got int
 	for time.Now().Before(deadline) {
 		mu.Lock()
-		got = len(last.Projection(lineup.MainTrack))
+		got = deepest
 		mu.Unlock()
 		if got >= tty.MainTrackSlots {
 			break
@@ -484,7 +507,7 @@ func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	if got != tty.MainTrackSlots {
-		t.Errorf("going ON AIR must fill the line-up the console draws; it holds %d of %d",
+		t.Errorf("going ON AIR must fill the line-up the console draws; it reached %d of %d",
 			got, tty.MainTrackSlots)
 	}
 }

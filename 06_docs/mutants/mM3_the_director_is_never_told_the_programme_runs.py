@@ -7,8 +7,13 @@ import pathlib
 #
 # Found at UAT 2026-09-04, and no test caught it because every fixture sent
 # Powered{Running} itself: the tests supplied what the wiring had forgotten.
+#
+# RE-ANCHORED 2026-09-10. The start used to be a side effect of the DECK changing
+# mode, which is what the defect was; it is reported from the tune now, BEFORE
+# the relay/synth fork. The mutant follows the RULE, not the line — and it had
+# stopped applying, so the rule was UNMEASURED.
 p = pathlib.Path("app/radio.go"); s = p.read_text()
-old = '	if was == "" && mode != "" {'
-new = '	if false && was == "" && mode != "" {'
+old = "\td.tell(lineup.Powered{To: lineup.Running})\n"
+new = ""
 assert old in s, "mM3"
 p.write_text(s.replace(old, new, 1))

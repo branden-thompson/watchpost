@@ -252,20 +252,66 @@ func Plain(s string) string { return plaintext.Text(s) }
 // TruncateCells cuts s to at most n display cells (a wide rune counts two),
 // with no ellipsis — the one owner of "cut to fit" for a row that must not
 // overflow (R5-C-10).
+//
+// IT MEASURES WHAT `Width` MEASURES. An SGR sequence occupies no cells, is
+// never cut through, and a span still open at the cut is CLOSED — the three
+// things that make a cut safe on styled text.
+//
+// IT DID NOT, AND THAT IS THE UAT DEFECT OF 2026-09-10 (HUM LEAD): the console
+// clamps every row of its frame to the terminal's width through here, the
+// masthead's wordmark carries a truecolor escape PER RUNE, and the escapes were
+// counted as content. A 150-cell row was cut after ten visible characters and
+// through the middle of an escape — so the masthead read "WATCHPOS", lost its
+// border, its `Updated:` stamp and its API summary, printed the escape's tail as
+// text, and left a span open that painted the padding a colour that MOVED as the
+// terminal resized. One measure, six symptoms.
+//
+// `Width` has stripped ANSI since it was written. Two measures of the same
+// quantity disagreeing is what "one canonical way to do a thing" forbids, and
+// the disagreement was even NOTED at `status_table.go` and worked around there
+// rather than fixed here — a comment is not a fix.
 func TruncateCells(s string, n int) string {
 	if n <= 0 {
 		return ""
 	}
-	cells := 0
+	// ONE COUNTING PASS FIRST, so the common case — a row that already fits —
+	// returns the string ITSELF and allocates nothing, which is what this did
+	// before it learned about escapes. `open` remembers whether the last
+	// sequence seen was a reset, and it is read only if the cut happens.
+	cut, cells, escAt, open := -1, 0, -1, false
 	for i, r := range s {
+		if escAt >= 0 { // inside a sequence: it ends at its terminator
+			if r == 'm' {
+				open = s[escAt:i+1] != sgrReset
+				escAt = -1
+			}
+			continue
+		}
+		if r == 0x1b {
+			escAt = i
+			continue
+		}
 		w := RuneCells(r)
 		if cells+w > n {
-			return s[:i]
+			cut = i
+			break
 		}
 		cells += w
 	}
-	return s
+	if cut < 0 {
+		return s
+	}
+	// CLOSE WHAT WAS OPENED, because the caller pads after cutting and an open
+	// span paints the padding.
+	if open {
+		return s[:cut] + sgrReset
+	}
+	return s[:cut]
 }
+
+// sgrReset ends a span. Spelled once so a truncation and a tint cannot disagree
+// about what "off" is.
+const sgrReset = "\x1b[0m"
 
 // RuneCells is one rune's display width (a wide rune is two) — the per-rune
 // step of a cell-bounded window, with no string built per rune.

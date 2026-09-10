@@ -337,6 +337,12 @@ type Director struct {
 	// can pile up' concern." It cannot grow, so there is nothing to cap, evict
 	// or own. See cadence.go.
 	lastRead [numSlots]time.Time
+
+	// declined is the ref of each card that recently left the schedule WITHOUT
+	// reaching the air, and when (see retry.go). A ring, oldest evicted, so the
+	// Director's memory of the past cannot grow — the same bound D-48 was ruled
+	// to keep.
+	declined []declineNote
 }
 
 // New is a Director with the listener's settings and a clock already set.
@@ -564,6 +570,14 @@ func (d Director) onFinished(ev Finished) (Director, []Effect) { return d.leave(
 // failure on the last card leaves the station silent, which is the one case a
 // person has to be told about.
 func (d Director) onFailed(ev Failed) (Director, []Effect) {
+	// WHAT FAILED IS REMEMBERED BEFORE IT IS FORGOTTEN. The ref has to be read
+	// off the card while the schedule still holds it, and a ROUTED failure is
+	// exactly the one the producer will offer again (see retry.go): without
+	// this, that offer arrives on the publish this very step is about to
+	// describe, and the station spins.
+	if card, ok := d.find(ev.ID); ok && ev.Routed {
+		d = d.noteDeclined(card.Subject)
+	}
 	d, fx := d.leave(ev.ID, Discarded)
 	return d, append(fx, d.escalation(ev)...)
 }

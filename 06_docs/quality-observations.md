@@ -1723,3 +1723,49 @@ feature is unreachable in a way every green test agrees with.
 **Cheap and worth making routine:** for any batch with a pure half and a wiring half, plant the WIRING
 first.  It is one edit per wire, it takes seconds when the plants are scoped to the right tests, and it
 has caught something every single time it has been run in this release.
+
+## A comment is not a fix: the local detour around a known-wrong shared function
+
+**Found 2026-09-10, by the HUM LEAD's UAT, and it had been in the tree for a release.**
+
+`render.TruncateCells` counted an escape sequence's characters as display cells while
+`render.Width` — the other half of the same measure — had always stripped ANSI.  One call site
+noticed, diagnosed it CORRECTLY in a comment, and routed around it:
+
+> `splitCells`, not `TruncateCells`: the lines are STYLED, and `TruncateCells` counts an escape
+> sequence's bytes as content and will cut through the middle of one.
+
+Every later caller inherited the defect, and no warning reached them, because the warning lived in
+the caller that had already escaped.  The console then clamped every row of its frame through it and
+lost its title, its top border, its `Updated:` stamp, its API summary, half its gain control, its
+card chips and its right-hand geometry — **eight reported symptoms, one measure** — with colours that
+bled and moved as the terminal resized, because each cut landed inside a different escape.
+
+**The shape:** a developer who finds a shared function wrong, understands exactly why, and fixes
+their own call site.  It reads as caution.  It is the opposite: it converts a defect that would have
+been found by the next caller into one that is invisible to them.
+
+**The rule it earns:** when a shared function is wrong, the fix goes in the shared function.  If it
+genuinely cannot — a caller needs different behaviour — the DIFFERENCE gets a name and the shared
+one gets the warning, never the caller that escaped.  This is [[feedback-one-canonical-way]] read
+one level down: one canonical way is not only about not writing the second implementation, it is
+about not leaving the first one broken once you know.
+
+**The tell to search for:** a comment at a call site explaining why it does NOT use the obvious
+shared helper.  Every one of those is either a fix that was never made, or a difference that was
+never named.
+
+## "The chain is self-limiting" was true of the path that was tested
+
+**Found 2026-09-10, same UAT.**  The publish executor tops the line-up off, and its comment reasons
+the chain to a stop: publish → offered → the track fills → publish → offered → nothing left to admit
+→ no effects → the chain has nowhere to go.  Correct, for the path it describes.
+
+It is not self-limiting when a card LEAVES.  A routed failure discards the card, which creates the
+depth the next offer fills with the same card, which fails the same way — an unthrottled loop at
+pump speed, which the operator sees as the line-up flying through locations.
+
+**The shape:** a termination argument written about the success path, in a system where the failure
+path re-enters the same loop.  Both this and the entry above are the same family as the four
+"the unit test sets the field itself" findings in this release — a claim that holds over the states
+that were considered, and nothing saying which states those were.

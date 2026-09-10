@@ -45,19 +45,33 @@ func (b Broadcaster) controlRow(o render.Opts) string {
 	// left out. It is the Observer's own count, from the same snapshot, so the
 	// two surfaces cannot report different provider health.
 	api := apiSummaryOf(o, b.snap)
-	for _, form := range [][]string{
-		{"s  Settings", "a  About", "S  Status", "ctrl+o  Observer", "?  Help", "q  Quit"},
-		{"s  Settings", "ctrl+o  Observer", "?  Help", "q  Quit"},
-		{"ctrl+o  Observer", "q  Quit"},
+	// EVERY KEY IS A CHIP, THROUGH `o.Controls` — the Observer's own control-row
+	// builder, and the reason this row is not built from string literals any
+	// more. It was, and the HUM LEAD saw the result in UAT (2026-09-10): "chips
+	// don't render their bkg ... tells me something about coloring and tokens
+	// are broken in broadcaster ui". Nothing was broken. The console had simply
+	// TYPED the keys as text, so no chip existed to paint.
+	//
+	// `[ X ]` IN THE MOCK IS A CHIP CONTROL, NOT BRACKETS (HUM LEAD): "the
+	// brackets indicate a chip control ... that's also true throughout the
+	// layout". `KeyCap` is the one thing that knows that — the painted cap in
+	// colour, the literal `[X]` without it, `[x]` under --ascii.
+	for _, form := range [][]render.Control{
+		{render.Ctl("s", "Settings"), render.Ctl("a", "About"), render.Ctl("S", "Status"),
+			render.Ctl("ctrl+o", "Observer"), render.Ctl("?", "Help"), render.Ctl("q", "Quit")},
+		{render.Ctl("s", "Settings"), render.Ctl("ctrl+o", "Observer"),
+			render.Ctl("?", "Help"), render.Ctl("q", "Quit")},
+		{render.Ctl("ctrl+o", "Observer"), render.Ctl("q", "Quit")},
 	} {
-		row := strings.Join(form, "   ")
+		row := o.Controls("  ", form...)
 		if render.Width(row)+2+render.Width(api) <= inner {
 			return render.PadBetween(row, api, inner)
 		}
 	}
 	// The bare floor still names the two controls that appear ONLY here: the way
 	// back to Observer, and the way out.
-	return render.PadTo(render.TruncateCells("ctrl+o  Observer   q  Quit", inner), inner)
+	return render.PadTo(render.TruncateCells(o.Controls("  ",
+		render.Ctl("ctrl+o", "Observer"), render.Ctl("q", "Quit")), inner), inner)
 }
 
 // identityRow is where the station broadcasts FROM, and how far it reaches.

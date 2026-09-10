@@ -107,7 +107,13 @@ const (
 	// of the reference at a time; none of them optimised, per D-53.
 	// 873: the console draws its TEN SLOTS always now (D-64), decided or
 	// shimmering, instead of stopping at the last card the Director had chosen.
-	bcFrameAllocs = 873
+	// 898: the UAT fixes of 2026-09-10 — the masthead's keys are real CHIPS
+	// rather than typed text, and the running order carries a blank row between
+	// its four regions. Both are the reference; neither is optimised, per D-53.
+	// `TruncateCells` learning about escapes cost NOTHING here, because it still
+	// returns the string itself when the row already fits — which the console's
+	// rows do, since it builds them to width.
+	bcFrameAllocs = 898
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

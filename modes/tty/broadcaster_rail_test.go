@@ -111,19 +111,29 @@ func TestTheSectionLandsOnTheReferencesColumns(t *testing.T) {
 		}
 	}
 
-	framed := []rune(b.framed(rows, 10, 10)[0])
+	// ROW 1, NOT ROW 0: row 0 carries the scroll THUMB in the rail column, which
+	// is the point — the thumb stands where the bar does rather than beside it.
+	framed := []rune(b.framed(rows, 10, 10)[1])
 	if len(framed) != 150 {
 		t.Fatalf("the framed row is the terminal's width; got %d", len(framed))
 	}
+	// 144 IS THE WALL AND THE SCROLL RAIL AT ONCE, and 149 is the frame's edge.
+	//
+	// THIS USED TO ASSERT A WALL AT 144 AND A SEPARATE RAIL AT 145, which is a
+	// column the reference does not have — so everything right of the cards sat
+	// a cell off (HUM LEAD, UAT 2026-09-10: "right hand lanes are off"). Counted
+	// off `mock-broadcaster-v1.txt`: an ordinary row ends `╯   │    │` and the
+	// thumb row ends `█    │`, the thumb standing exactly WHERE the bar was.
 	for col, want := range map[int]rune{144: '|', 149: '|'} {
 		if framed[col] != want {
 			t.Errorf("framed column %d is %q, want %q\n%s", col, string(framed[col]), string(want), string(framed))
 		}
 	}
-	// THE SCROLL RAIL SITS INSIDE THE FRAME, at 145 — between the inner wall and
-	// the outer edge, which is the gutter the reference leaves for it.
-	if framed[145] == ' ' {
-		t.Errorf("the scroll rail is missing from column 145:\n%s", string(framed))
+	// AND 145..148 ARE AIR. A mark there is the extra column coming back.
+	for col := 145; col < 149; col++ {
+		if framed[col] != ' ' {
+			t.Errorf("column %d is %q; 145..148 are air\n%s", col, string(framed[col]), string(framed))
+		}
 	}
 }
 
@@ -246,18 +256,21 @@ func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	body := b.section("LINE UP", []string{strings.Repeat("-", b.cardBoxWidth()), strings.Repeat("-", b.cardBoxWidth()), strings.Repeat("-", b.cardBoxWidth())})
 	framed := b.framed(body, 2, 10)
 
-	marks := 0
+	// THE RAIL IS COLUMN 144 — the wall's own column, which is where the
+	// reference puts it. Every row carries the bar; exactly one carries the
+	// thumb instead. An earlier version blanked the bar and drew the thumb in a
+	// gutter of its own at 145, which gave the frame a column the mock has not.
+	thumbs := 0
 	for i, r := range framed {
-		c := []rune(r)[b.width-5]
-		if c == ' ' {
-			continue
-		}
-		marks++
-		if c == '|' {
-			t.Errorf("row %d draws a BAR in the gutter beside the wall:\n%.40s", i, r)
+		switch c := []rune(r)[b.width-6]; c {
+		case '#':
+			thumbs++
+		case '|':
+		default:
+			t.Errorf("row %d draws %q in the rail column; a rail is a bar or the thumb:\n%.40s", i, string(c), r)
 		}
 	}
-	if marks != 1 {
-		t.Errorf("the gutter carries exactly one thumb; it carries %d marks", marks)
+	if thumbs != 1 {
+		t.Errorf("the rail carries exactly one thumb; it carries %d", thumbs)
 	}
 }
