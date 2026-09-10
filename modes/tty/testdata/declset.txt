@@ -28,6 +28,7 @@ const TickerRed
 const TickerYellow
 const WatchCap
 const aboutWidth
+const actDiagnostics
 const actStationToggle
 const actSwapBroadcaster
 const actSwapObserver
@@ -189,6 +190,8 @@ func (Broadcaster).notice
 func (Broadcaster).opts
 func (Broadcaster).stationLine
 func (Broadcaster).tooSmall
+func (Dashboard).DiagnosticsOpen
+func (Dashboard).DiagnosticsOverlay
 func (Dashboard).Init
 func (Dashboard).Update
 func (Dashboard).View
@@ -308,6 +311,7 @@ func (Dashboard).numPriority
 func (Dashboard).numRecent
 func (Dashboard).onTick
 func (Dashboard).open
+func (Dashboard).openDiagnostics
 func (Dashboard).openRelayFault
 func (Dashboard).openSetup
 func (Dashboard).openSetupAt
@@ -443,6 +447,7 @@ func (Router).canSwap
 func (Router).stationIsLive
 func (Router).surface
 func (Router).swapTo
+func (Router).throughToObserver
 func (Router).toggleStation
 func (arrowChips).pick
 func (cardLane).render

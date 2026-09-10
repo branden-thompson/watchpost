@@ -17,6 +17,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -39,7 +40,11 @@ const (
 const (
 	actSwapObserver    term.Action = "swap-observer"
 	actSwapBroadcaster term.Action = "swap-broadcaster"
-	actStationToggle   term.Action = "station-toggle"
+
+	// actDiagnostics reaches the ctrl+d window FROM THE CONSOLE (D-58). It is
+	// the same window the Observer draws — see Router.View.
+	actDiagnostics   term.Action = "diagnostics"
+	actStationToggle term.Action = "station-toggle"
 )
 
 // StationControlMsg hands the console the control it asks ON AIR / STANDBY
@@ -80,7 +85,11 @@ func broadcasterKeyMap() term.KeyMap {
 	return term.KeyMap{
 		actSwapObserver:    {Keys: []string{"ctrl+o", "O"}, Help: "Observer"},
 		actSwapBroadcaster: {Keys: []string{"ctrl+b", "B"}, Help: "Broadcaster"},
-		actStationToggle:   {Keys: []string{"shift+enter"}, Help: "ON AIR / STANDBY"},
+		// THE SAME BINDING THE DASHBOARD USES, deliberately: one key for one
+		// thing, on every surface (D-56). An operator who learned ctrl+d in
+		// Observer does not learn a second key here.
+		actDiagnostics:   {Keys: []string{"ctrl+d"}, Help: "Diagnostics"},
+		actStationToggle: {Keys: []string{"shift+enter"}, Help: "ON AIR / STANDBY"},
 	}
 }
 
@@ -209,7 +218,22 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r.swapTo(SurfaceBroadcaster), nil
 			case actStationToggle:
 				return r.toggleStation(), nil
+			case actDiagnostics:
+				// FORWARDED TO THE SURFACE THAT OWNS THE WINDOW, and the
+				// active surface does NOT change: the operator is here to
+				// watch what the injection does to the console.
+				return r.throughToObserver(msg)
 			}
+		}
+	}
+	// THE WINDOW ON TOP OWNS THE KEYS (D-58). While the diagnostics window is
+	// composited over the console, its own navigation — arrows, enter, esc —
+	// must reach IT and not the lanes beneath it. An arrow that promoted a card
+	// while the operator was choosing a scenario would be the console acting on
+	// input meant for the window over it.
+	if r.active == SurfaceBroadcaster && r.observer.DiagnosticsOpen() {
+		if _, isKey := msg.(tea.KeyPressMsg); isKey {
+			return r.throughToObserver(msg)
 		}
 	}
 	switch r.active {
@@ -228,7 +252,36 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the active surface, unchanged.
-func (r Router) View() tea.View { return r.surface().View() }
+// View draws the active surface, and composites the diagnostics window over it
+// when that window is open on another surface (D-58).
+//
+// ONE WINDOW, NOT TWO (D-56). The ctrl+d window is entirely Dashboard methods;
+// giving the console its own would be a second injector UI, a second
+// confirmation, and two places for the TEST EVENT wording to drift. The Router
+// is where both surfaces are already held, so it is where they compose.
+//
+// THE CONSOLE STAYS DRAWN UNDERNEATH, which is the whole reason to reach the
+// window from here: the operator injects an alert and WATCHES the takeover
+// activate and drain.
+func (r Router) View() tea.View {
+	v := r.surface().View()
+	if r.active == SurfaceBroadcaster && r.observer.DiagnosticsOpen() {
+		if overlay := r.observer.DiagnosticsOverlay(); overlay != "" {
+			v.Content = render.Overlay(v.Content, overlay, r.broadcaster.width)
+		}
+	}
+	return v
+}
+
+// throughToObserver hands a message to the surface that owns the diagnostics
+// window, WITHOUT changing which surface is drawn.
+func (r Router) throughToObserver(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m, cmd := r.observer.Update(msg)
+	if d, ok := m.(Dashboard); ok {
+		r.observer = d
+	}
+	return r, cmd
+}
 
 // surfaceView is the part of a surface the Router needs in order to start it
 // and to draw it.

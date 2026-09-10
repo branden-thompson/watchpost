@@ -732,3 +732,37 @@ draws boxes throughout, so the boxed renderer is the next rendering step and the
 **What is in now (D-55's single leading mark) is a correct interim FOR A ROW**, and it is superseded
 rather than extended when the box arrives.  Its "a card that cannot be labelled honestly is not drawn"
 backstop SURVIVES the change: it is about the mark being whole, not about where the mark sits.
+
+---
+
+# D-58 — ONE DIAGNOSTICS WINDOW, COMPOSITED OVER WHICHEVER SURFACE IS ACTIVE
+
+**The first worked example of D-56.**  The `ctrl+d` window is entirely `Dashboard` methods; giving the
+console its own would be a second injector UI, a second confirmation, and **two places for the
+TEST EVENT wording to drift**.  So the Router composites the EXISTING window over the console.
+
+**THE CONSOLE STAYS DRAWN UNDERNEATH, and that is the whole reason to reach it from here** — the
+operator injects an alert and WATCHES the takeover activate and drain.  A window that replaced the frame
+would make the one thing it is for impossible.
+
+## What it took
+
+| | |
+|---|---|
+| `actDiagnostics` on the console's keymap | **the same `ctrl+d`**, deliberately: one key for one thing on every surface.  An operator who learned it in Observer does not learn a second |
+| `Router.throughToObserver` | hands the message to the surface that OWNS the window, **without changing which surface is drawn** |
+| the window on top owns the keys | while it is composited, arrows/enter/esc reach IT.  An arrow that promoted a card while the operator was choosing a scenario would be the console acting on input meant for the window over it |
+| `Dashboard.DiagnosticsOpen` / `DiagnosticsOverlay` | narrow, NAMED seams rather than the Router reaching into `d.modal`.  The Dashboard owns what "open" means, and the compositing rule — the confirmation goes ON TOP of the window — stays with the window that owns it |
+
+**A test asserts it is the SAME window the Observer draws**, byte for byte.  If those ever diverge there
+are two injector UIs, which is what D-56 refuses — and the assertion is what would say so.
+
+## The fixture taught something worth keeping
+
+**A bare `Dashboard{}` has no keymap**, so a forwarded `ctrl+d` reached nothing and the first draft of
+these tests failed on it.  The window is reached through the OBSERVER's own bindings — which is the
+point of the design — so the fixture has to be a Dashboard that HAS them.  A test built on an empty
+model would have proven the routing without proving it reaches anything.
+
+**Eight plants, six caught**, including `ctrl+d` swapping surfaces instead of composing, the console
+keeping the keys while the window is up, and the overlay dropping its confirmation layer.
