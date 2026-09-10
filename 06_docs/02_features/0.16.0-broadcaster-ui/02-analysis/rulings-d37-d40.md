@@ -535,3 +535,37 @@ location report to exercise truncation.
 **Not drawn, on the HUM LEAD's ruling:** the transition card, which the reference put at slot [7].
 **The badge spelling is corrected** — the reference reads `•STANRARD•` in all ten card rows while its
 own header spells `STANDARD`.
+
+---
+
+# D-50's CODE HALF — AND ONE NUMBER HELD BACK FOR THE HUM LEAD
+
+**Built:** `platform/term.Breakpoint` is now `BreakUnsupported` / `BreakCompact` / `BreakOptima` /
+`BreakLarge` at 100 / 120 / 150, with `String()` on each.  `HeightCompact` is **retired** — its 12-row
+rule had no caller but its own test, so it went with the vocabulary it belonged to.  `broadcaster.go`
+asks `>= BreakOptima` for the wide frame, and its column floor is **100**.
+
+**THE FLOOR AND THE CLASSIFIER ARE NOW ONE NUMBER.**  `bcMinCols` was 80 and pinned by NOTHING, so it
+could drift from `BreakpointFor` with no test noticing — two carriers of one rule, the shape this
+release keeps un-splitting.  `TestTheColumnFloorIsTheUnsupportedBoundary` asserts the floor is the first
+drawable width and that one column below it is not, so the two cannot move apart.
+
+## The 25 rows: NOT applied, and flagged rather than silently chosen
+
+**The ruling's example said "100 x 25".**  The **100 is the breakpoint** and is applied.  The **25
+arrived inside an example of the MESSAGE** — *"resize your terminal to 100 x 25 or larger — or something
+like this"* — and `bcMinRows` is **44, MEASURED**: fixed chrome plus one readable card, counted off the
+mock at DISCOVER wave 1.
+
+**Lowering it to 25 would let the console draw a frame the terminal cannot hold and clamp the remainder
+away** — which is **F-55**, the defect this floor exists to prevent, arriving through the notice meant to
+prevent it.  So 44 stands and the notice reads "Broadcaster needs 100x44".
+
+**HUM LEAD: if 25 was meant literally, the honest fix is to make the chrome shorter at COMPACT, not to
+lower the floor under it.**  That is a layout task, not a constant.
+
+## The btop screen was already there
+
+`notice()` has said the requirement AND the current size since wave 1, which is what the v2 mock
+proposed independently.  What changed is the number it names.  Seven plants, all caught — including the
+floor drifting from the classifier, and 150 slipping from the top of OPTIMA to the bottom of LARGE.

@@ -4,7 +4,8 @@
 //   - Report/stdout mode resolves width ONCE here (TTY ioctl → stdin → $COLUMNS
 //     → 80); TTY mode uses bubbletea WindowSizeMsg and never calls Width().
 //   - Color gate: NO_COLOR (any value) wins, then TTY-ness of stdout.
-//   - Width breakpoints 40/60/80/120; height <12 rows renders compact.
+//   - Width breakpoints 100/120/150 (D-50); below 100 the console refuses to
+//     draw rather than clamping a frame that does not fit.
 //   - KeyMap is layered DATA (view → mode → global). Only "?" = help is locked
 //     (R-3). Merge validates conflicts; runtime swaps revalidate (§10.7).
 package term
@@ -54,37 +55,68 @@ func resolveWidth(tty, stdin int, columnsEnv string) int {
 	return 80
 }
 
-// --- breakpoints (PD-4) ---
+// --- breakpoints (PD-4, D-50) ---
 
 // Breakpoint names the responsive layout class for a width.
+//
+// THE LOWEST CLASS IS NOT A LAYOUT. It is a refusal to draw: below 100 columns
+// the console says so and renders nothing else, btop-style, because a frame
+// clamped into a terminal that cannot hold it is the F-55 defect — 57 cells
+// rendered into a 20-cell terminal, silently.
+//
+// FOUR CLASSES, RULED (D-50, HUM LEAD 2026-09-10). They REPLACE the 40/60/80/120
+// scale rather than joining it: `broadcaster.go` was the only production caller
+// of this enum, and Observer keeps its own `radioBP` at 84/146, so redefining
+// the boundaries here is F-68's "wire the platform one" answer.
 type Breakpoint int
 
 const (
-	BreakTooNarrow Breakpoint = iota // <40: print "terminal too narrow"
-	BreakMini                        // 40–59: mini/player layouts
-	BreakSingle                      // 60–79: single column
-	BreakStandard                    // 80–119: standard two-column
-	BreakWide                        // >=120: three panels + charts
+	// BreakUnsupported is below the floor: say so, draw nothing else.
+	BreakUnsupported Breakpoint = iota
+	// BreakCompact is 100-119, where titles may truncate.
+	BreakCompact
+	// BreakOptima is 120-150, the range the reference mock is drawn at.
+	BreakOptima
+	// BreakLarge is above 150 and is a LATER RELEASE — the right rail, once
+	// there are terminal maps to put in it (D-51). It is classified now so the
+	// seam exists; nothing lays out differently for it yet.
+	BreakLarge
 )
 
-// BreakpointFor classifies a width.
-func BreakpointFor(w int) Breakpoint {
-	switch {
-	case w < 40:
-		return BreakTooNarrow
-	case w < 60:
-		return BreakMini
-	case w < 80:
-		return BreakSingle
-	case w < 120:
-		return BreakStandard
-	default:
-		return BreakWide
+// String names the class, and empty for anything outside the set — a
+// Breakpoint crosses package boundaries and a hand-built value must not print
+// as a lie.
+func (b Breakpoint) String() string {
+	switch b {
+	case BreakUnsupported:
+		return "UNSUPPORTED"
+	case BreakCompact:
+		return "COMPACT"
+	case BreakOptima:
+		return "OPTIMA"
+	case BreakLarge:
+		return "LARGE"
 	}
+	return ""
 }
 
-// HeightCompact reports whether a terminal height renders the compact layout.
-func HeightCompact(rows int) bool { return rows < 12 }
+// BreakpointFor classifies a width.
+//
+// 150 IS THE TOP OF OPTIMA, NOT THE BOTTOM OF LARGE. The ruling's two ranges
+// overlapped at exactly 150; the reference mock is 150 wide and the ruling calls
+// that Optima's range, so that is the reading.
+func BreakpointFor(w int) Breakpoint {
+	switch {
+	case w < 100:
+		return BreakUnsupported
+	case w < 120:
+		return BreakCompact
+	case w <= 150:
+		return BreakOptima
+	default:
+		return BreakLarge
+	}
+}
 
 // --- color ---
 

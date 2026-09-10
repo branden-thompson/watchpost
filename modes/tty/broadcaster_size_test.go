@@ -147,3 +147,48 @@ func assertASCIIOnly(t *testing.T, got string, p lineup.Power) {
 		}
 	}
 }
+
+// D-50: THE FLOOR AND THE CLASSIFIER ARE ONE NUMBER, NOT TWO.
+//
+// The console's column floor was 80 and pinned by nothing, so it could drift
+// from `term.BreakpointFor` without a test noticing — two carriers of one rule,
+// which is the shape this release keeps having to un-split. The ruled boundary
+// is 100: "< 100 col : Not supported — we adopt a 'btop' style."
+func TestTheColumnFloorIsTheUnsupportedBoundary(t *testing.T) {
+	cols, _ := bcSized(150, 74).minSize()
+	if term.BreakpointFor(cols) == term.BreakUnsupported {
+		t.Errorf("the floor must be the first DRAWABLE width; %d classifies as unsupported", cols)
+	}
+	if term.BreakpointFor(cols-1) != term.BreakUnsupported {
+		t.Errorf("and one column below it must not be; %d classifies as %v", cols-1, term.BreakpointFor(cols-1))
+	}
+}
+
+// The floor is a REFUSAL, and it is reached one column below the boundary.
+func TestNinetyNineColumnsIsRefusedAndOneHundredIsDrawn(t *testing.T) {
+	if got := bcSized(99, 74).View().Content; !strings.Contains(strings.ToUpper(got), "TOO SMALL") {
+		t.Error("99 columns is below the ruled floor and must say so")
+	}
+	drawn := bcSized(100, 74).View().Content
+	if strings.Contains(strings.ToUpper(drawn), "TOO SMALL") {
+		t.Error("100 columns is the narrowest SUPPORTED width and must draw the console")
+	}
+	// AND IT MUST SAY WHAT IS NEEDED AND WHAT IT HAS. A notice that says only
+	// "too small" leaves the operator resizing by trial, during weather.
+	notice := bcSized(99, 74).View().Content
+	for _, want := range []string{"100", "99"} {
+		if !strings.Contains(notice, want) {
+			t.Errorf("the notice must name the requirement and the current size; %q is missing from:\n%s", want, notice)
+		}
+	}
+}
+
+// COMPACT AND OPTIMA ARE DIFFERENT FRAMES, and the class is what chooses. If
+// this ever passes vacuously the breakpoint has stopped being load-bearing.
+func TestTheClassChoosesTheFrame(t *testing.T) {
+	compact := bcSized(110, 74).View().Content
+	optima := bcSized(130, 74).View().Content
+	if compact == optima {
+		t.Error("COMPACT and OPTIMA must not render identically; the breakpoint is deciding nothing")
+	}
+}
