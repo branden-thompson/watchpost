@@ -4,10 +4,25 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "READY TO RUN.  Runs on the current build; needs no further code."
+status: "SUPERSEDED 2026-09-09 by p3-uat.md.  The staged switch this describes was DELETED with the direct path at P3(d); kept as the record of a control that was designed, built and then made unnecessary by the ruling."
 ---
 
-# The dark run
+# The dark run — SUPERSEDED, AND KEPT
+
+**This protocol described a control that no longer exists.**  `WATCHPOST_MAINTRACK` was the staged
+switch between the producer landing and the flip; the HUM LEAD ratified Shape B, which made the flip
+small enough to land in one change, and the switch was deleted with the direct path.  **A switch that
+outlived the merge would have been a second way for the station to behave — the thing being removed.**
+
+**What replaces it is `p3-uat.md`.**  What SURVIVED it is the instrument: the `needs-read` line is still
+written, and pairing it with what the station actually did is still how a read is attributed.
+
+**Kept rather than deleted** because the control was real, was built, and stopped being needed for a
+reason worth being able to find later.  Everything below is the record of that.
+
+---
+
+# The dark run (as designed)
 
 **The plan's control, in its own words:** *"the merged producer runs and is observed WITHOUT owning the
 air before it owns it, so its decisions can be compared against the live path's for a period."*
