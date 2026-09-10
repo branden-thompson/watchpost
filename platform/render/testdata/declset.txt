@@ -212,6 +212,7 @@ func SetTheme
 func SevereHeaderTone
 func SevereTableTokens
 func Spectrum
+func SpliceCells
 func StatusNaturalWidth
 func StripSGRForTest
 func TableHeaderTone

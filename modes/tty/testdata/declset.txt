@@ -205,7 +205,7 @@ func (Broadcaster).Init
 func (Broadcaster).Update
 func (Broadcaster).View
 func (Broadcaster).armTick
-func (Broadcaster).bedRow
+func (Broadcaster).bedSelector
 func (Broadcaster).cardBoxWidth
 func (Broadcaster).chrome
 func (Broadcaster).clamp
@@ -218,6 +218,7 @@ func (Broadcaster).heldNotice
 func (Broadcaster).identityRow
 func (Broadcaster).inset
 func (Broadcaster).laneHeader
+func (Broadcaster).laneLabel
 func (Broadcaster).laneWidth
 func (Broadcaster).lanes
 func (Broadcaster).minSize

@@ -29,9 +29,15 @@ func (b Broadcaster) header(o render.Opts) string {
 }
 
 // headerRows is what rides inside the masthead: the controls the operator has,
-// and the station's identity.
+// and nothing else.
+//
+// THE STATION'S IDENTITY LEFT AT D-71 (HUM LEAD, UAT 2026-09-10): "we're going
+// to take the station center out of the masthead — this should now make the
+// Observer/Broadcaster masthead nearly identical minus the Observer/Broadcaster
+// [word]." It is a fact about the STATION, and the station has a section of its
+// own; the masthead is what the two surfaces share.
 func (b Broadcaster) headerRows(o render.Opts) []string {
-	return []string{b.controlRow(o), b.identityRow(o)}
+	return []string{b.controlRow(o)}
 }
 
 // controlRow names the keys, with the surface swap among them.
@@ -79,10 +85,9 @@ func (b Broadcaster) controlRow(o render.Opts) string {
 // THE COORDINATES ARE A PLACEHOLDER AND STAY ONE (F-66, CLOSED). The repository
 // is public; the reference mock renders `TOWER GPS: <lat>, <lon>` and so does
 // this. Real coordinates arrive, if ever, behind a ruling of their own.
-func (b Broadcaster) identityRow(o render.Opts) string {
-	inner := o.BoxInnerWidth()
+func (b Broadcaster) identityRow(inner int) string {
 	const (
-		where = "BROADCAST LOCATION : " + bcPlaceholderLocation
+		where = bcPlaceholderLocation
 		gps   = "TOWER GPS:  <lat>, <lon>"
 		reach = "SERVICE RADIUS: " + bcPlaceholderRadius
 	)

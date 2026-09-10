@@ -387,6 +387,11 @@ func (b Broadcaster) lanes() []string {
 	// the station section is one closed box and the running order is another;
 	// the air between them belongs to neither.
 	out = append(out, "")
+	// THE LANE NAMES ITSELF ON A BARE ROW (HUM LEAD, UAT 2026-09-10): "this line
+	// … should have no pipes / lines." It is a caption over the running order,
+	// not a row of it — so it is written before the frame's own columns are
+	// added rather than inside them.
+	out = append(out, b.laneLabel("STANDARD"))
 	// NO SEPARATOR HERE. THE SECTION OWNS ITS OWN SPACING — `stationSection`
 	// carries a breathing row above and below, and a second blank appended out
 	// here made a DOUBLE gap that read as a rendering fault (HUM LEAD, UAT
@@ -437,21 +442,24 @@ func (b Broadcaster) lanes() []string {
 	// columns like every other row of the running order. Built here and not in
 	// `out`, which is where the first version put it and why it came out with
 	// no right wall at all.
-	order, reads, drawn := b.laneHeader("STANDARD"), 0, false
-	for _, r := range bcRegions {
-		rows := b.region(r, main, lane)
+	order, reads, after := b.laneHeader(), 0, (*bcRegion)(nil)
+	for r := range bcRegions {
+		reg := bcRegions[r]
+		rows := b.region(reg, main, lane)
 		if len(rows) == 0 {
 			continue
 		}
-		// ONE BLANK ROW BETWEEN REGIONS (see regionGap) — never before the first
-		// or after the last, which would be air against the section above and
-		// below rather than between the regions it separates.
-		if drawn {
+		// A BREAK FOLLOWS A READ REGION, AND ONLY A READ REGION (HUM LEAD, UAT
+		// 2026-09-10): "there should be no line break here … this is one area
+		// they should be continuous." SCHEDULED and LINE UP are one stack of
+		// cards that the rail happens to name in two halves; LIVE and UP NEXT
+		// are each a thing on its own, and the air is what says so.
+		if after != nil && after.reads {
 			order = append(order, b.regionGap())
 		}
 		order = append(order, rows...)
-		drawn = true
-		if r.reads {
+		after = &bcRegions[r]
+		if reg.reads {
 			reads = len(order)
 		}
 	}
@@ -459,7 +467,7 @@ func (b Broadcaster) lanes() []string {
 	// one of its own — which is where the reference draws it, under the last
 	// card rather than across its border. Its ▲ already has one: the gap between
 	// UP NEXT and SCHEDULED.
-	if drawn && reads < len(order) {
+	if after != nil && reads < len(order) {
 		order = append(order, b.regionGap())
 	}
 
@@ -481,7 +489,7 @@ func (b Broadcaster) lanes() []string {
 	// THE FRAME'S RIGHT-HAND CHROME GOES ON LAST, over the assembled order and
 	// whatever the priority track composited onto it — the scroll rail belongs
 	// to the running order as a whole, not to any one region of it.
-	body := b.withPriority(order, len(b.laneHeader("STANDARD")))
+	body := b.withPriority(order, len(b.laneHeader()))
 	if reads > len(body) {
 		reads = len(body)
 	}
@@ -529,20 +537,19 @@ const bcInsetRows = 2
 // separates the rail — this is intentional." The station section is a closed box
 // and the running order is another; the air between them belongs to neither, so
 // it carries no walls.
-func (b Broadcaster) laneHeader(label string) []string {
-	g := b.opts().Glyphs()
+func (b Broadcaster) laneLabel(label string) string {
 	if b.cardBoxWidth() < 1 {
-		return nil
+		return ""
 	}
-	// CENTRED OVER THE CARDS, not over the row: the header names the lane, and
+	// CENTRED OVER THE CARDS, not over the row: the caption names the lane, and
 	// the lane is the card column. Measured in cells rather than bytes —
 	// `render.Width` is the one measure (D-66).
 	lead := bcRailWidth + bcRailGap + max(0, (b.cardBoxWidth()-render.Width(label))/2)
-	return []string{
-		g.Rail + render.PadTo(strings.Repeat(" ", lead-1)+label, b.orderWidth()-1),
-		b.railSpacer(),
-	}
+	return render.PadTo(strings.Repeat(" ", lead)+label, b.width)
 }
+
+// laneHeader is the air the running order opens with, under the lane's caption.
+func (b Broadcaster) laneHeader() []string { return []string{b.railSpacer()} }
 
 // orderWidth is how wide a row of the running order is BEFORE the frame's
 // right-hand columns: the rail, the air beside it, and the card.
@@ -747,9 +754,16 @@ func (b Broadcaster) stationLine() []string {
 	// handle: the operator ACTS on the bar, and a level they cannot see is a
 	// station they cannot set.
 	room := lane - render.Width(gain) - 2
+	// THE BED'S STATE READS AS A SENTENCE AND SITS AT THE RIGHT, where the
+	// station's own transition hint sits — the two facts an operator checks
+	// without reading the row are both in the same column (D-71).
+	bed := g.Idle + "  BED IS INACTIVE"
 	return []string{
 		render.PadBetween(label("STATION:")+state, hint, lane),
-		render.PadTo(label(o.KeyCap("B")+" BED:")+b.bedRow(o), lane),
+		// THE TRANSMITTER'S IDENTITY MOVED HERE FROM THE MASTHEAD (D-71). It is
+		// a fact about the STATION; the masthead is what both surfaces share.
+		render.PadTo(label("TRANSMITTER:")+b.identityRow(max(0, lane-bcLabelCells)), lane),
+		render.PadBetween(label(o.KeyCap("B")+" BED:")+b.bedSelector(o), bed, lane),
 		render.PadBetween(render.TruncateCells(label("")+why, max(0, room)), gain, lane),
 	}
 }
@@ -765,17 +779,20 @@ func (b Broadcaster) stationLine() []string {
 // THE SELECTOR LIVES HERE, which is what F-77 was open about: it went missing
 // when Variant C absorbed the control row, and the ruling put it on this row
 // rather than restoring a separate card at the bottom of the frame.
-func (b Broadcaster) bedRow(o render.Opts) string {
+func (b Broadcaster) bedSelector(o render.Opts) string {
 	g := o.Glyphs()
 	// THE ARROWS GO THROUGH KeyCap, which is the one owner that already names
 	// them in WORDS under --ascii (`asciiKey`) — a literal here would print a
 	// glyph a terminal without them cannot draw, in the row that says whether
 	// the station is on the air.
-	left := o.KeyCap("←") + "  " + bcNoRelay + "  " + o.KeyCap("→")
 	// INACTIVE UNTIL THE BED'S STATE IS PUBLISHED (F-79). The schedule carries
-	// the lineup and the power; it does not yet carry what the bed is doing, so
+	// the lineup and the power; it does not yet carry which relay is tuned, so
 	// this says the true thing it can say rather than guessing at the other.
-	return left + "    " + g.Idle + " INACTIVE"
+	//
+	// THE STATE LEFT THIS ROW AT D-71 and sits at the right of the section with
+	// the station's own transition hint; what stays here is the SELECTOR.
+	_ = g
+	return o.KeyCap("←") + "  " + bcNoRelay + "  " + o.KeyCap("→")
 }
 
 const (

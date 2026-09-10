@@ -96,9 +96,11 @@ func TestTheStationLineCarriesTheGainControl(t *testing.T) {
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	b.gain = 100
-	// THE THIRD ROW: the section is STATION, BED, then the status row that
-	// carries the level (D-62). The gain moved down when the bed came in.
-	got := stripANSITest(b.stationLine()[2])
+	// THE LAST ROW: the section is STATION, TRANSMITTER, BED, then the status
+	// row that carries the level (D-62, D-71). Indexed from the END, so the
+	// next row the section gains does not move this assertion with it.
+	rows := b.stationLine()
+	got := stripANSITest(rows[len(rows)-1])
 
 	if !strings.Contains(got, "GAIN") {
 		t.Errorf("the station's word for it is GAIN:\n%q", got)
@@ -215,17 +217,18 @@ func TestTheBedRidesInTheStationSection(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
+	// FOUR ROWS SINCE D-71: the station, the transmitter, the bed, the status
+	// row. Found by the LABEL rather than by index, so the section can gain
+	// another row without moving this assertion — which it just did.
 	rows := b.stationLine()
-	if len(rows) != 3 {
-		t.Fatalf("the section carries the station, the bed and the status row; got %d", len(rows))
+	if len(rows) != 4 {
+		t.Fatalf("the section carries the station, the transmitter, the bed and the status row; got %d", len(rows))
 	}
-	if !strings.Contains(rows[1], "BED:") {
-		t.Errorf("the bed's row is the second:\n%q", rows[1])
-	}
+	bed := bedRowOf(t, rows)
 	// THE KEY IS A CHIP, so this asks the chip renderer — "[ B ]" is only what
 	// the mock draws around it, and only what it falls back to without colour.
-	if !strings.Contains(rows[1], chipFor("B")) {
-		t.Errorf("and it names the key that reaches it:\n%q", rows[1])
+	if !strings.Contains(bed, chipFor("B")) {
+		t.Errorf("and it names the key that reaches it:\n%q", bed)
 	}
 }
 
@@ -236,7 +239,7 @@ func TestTheBedRowCarriesItsSelector(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
-	got := stripANSITest(b.stationLine()[1])
+	got := stripANSITest(bedRowOf(t, b.stationLine()))
 	// ASKED OF THE CHIP RENDERER, which also names the arrows in WORDS under
 	// --ascii: a terminal that cannot draw them still gets a usable control,
 	// and the test does not have to know which form it got.
@@ -253,7 +256,7 @@ func TestTheBedRowCarriesItsSelector(t *testing.T) {
 func TestTheBedRowSaysWhetherItIsCarrying(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	got := stripANSITest(b.stationLine()[1])
+	got := stripANSITest(bedRowOf(t, b.stationLine()))
 	if !strings.Contains(got, "INACTIVE") && !strings.Contains(got, "ACTIVE") {
 		t.Errorf("the bed's row says whether it is carrying:\n%q", got)
 	}
@@ -326,4 +329,21 @@ func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
 			t.Errorf("row %d is %d cells with colour on, want the section's %d", i, got, want)
 		}
 	}
+}
+
+// bedRowOf is the station section's bed row, found by its LABEL.
+//
+// BY LABEL, NOT BY INDEX. These tests indexed `[1]`, and D-71 put the
+// transmitter's identity there — so three of them failed at once for a reason
+// none of them was about. A row found by what it SAYS survives the section
+// gaining another.
+func bedRowOf(t *testing.T, rows []string) string {
+	t.Helper()
+	for _, r := range rows {
+		if strings.Contains(stripANSITest(r), "BED:") {
+			return r
+		}
+	}
+	t.Fatalf("no bed row in the station section:\n%q", rows)
+	return ""
 }
