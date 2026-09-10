@@ -164,3 +164,34 @@ func (p discardPile) restore() (Card, discardPile, bool)
 | a restored card is a NEW card, because a revived one can be read twice | **no** |
 
 **Seven gates, no audio device.**  That is the argument for doing this batch before P4.
+
+
+---
+
+# Built: the duck, and one rule that is enforced by something other than itself
+
+**`givingWay()` is two questions and D-32 is that there is only one duck.**  Five plants, four caught at
+once.  The fifth is the interesting one.
+
+## The duck-before-the-cue rule has no reachable violation today
+
+The effect set states it — *"a duck that landed after the read had started would be the duck-lift bug in
+a new costume"* — and a plant that moves the duck after the cue **SURVIVES**.  Measuring the sequence
+says why, rather than guessing:
+
+```
+Arrived  -> duck    · build   · publish
+Built    -> cue     · speak   · publish
+Finished -> release · restore · publish
+```
+
+**The duck's edges never fall in the same step as a cue.**  The rising edge is at admission, when the
+card has no words and nothing can air.  The falling edge is at the last `Finished` — and while the bed
+carries, **exclusivity means no main-track card can take the air** to be cued alongside it.
+
+**So the ordering is enforced by exclusivity, not by the order of that list.**  A check asserting the
+position would be the vacuous class this project has already shipped five of, so there is none; the
+reasoning is recorded instead, in the test and here.
+
+**IT BECOMES REACHABLE IF EXCLUSIVITY IS EVER RELAXED.**  Whoever allows a main-track card to air over a
+live bed — the exception D-33 deliberately refused — re-opens this, and then the position needs a check.

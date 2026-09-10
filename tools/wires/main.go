@@ -517,8 +517,25 @@ func pos(fset *token.FileSet, p token.Pos) string {
 	return fmt.Sprintf("%s:%d", pp.Filename, pp.Line)
 }
 
-// readLedger reads the ratified exemptions: a markdown table whose first cell
-// is `Set.Member` in backticks.
+// The fence that marks the exemption table. An exemption is only what sits
+// between these lines.
+const (
+	ledgerOpen  = "<!-- wires:exemptions -->"
+	ledgerClose = "<!-- /wires:exemptions -->"
+)
+
+// readLedger reads the ratified exemptions: table rows BETWEEN THE FENCE, whose
+// first cell is `Set.Member` in backticks.
+//
+// THE FENCE IS NOT TIDINESS, IT IS A HAZARD FIX, and the tool found it in its
+// own ledger on day two. Without it every table row starting with a backticked
+// dotted name was an exemption — so a PROSE table listing rows that had been
+// CLOSED silently re-created them, and two obligations that had just been
+// discharged came back as exemptions with no ratification behind them.
+//
+// A ledger where writing about a member exempts it is worse than no ledger: it
+// fails in the direction of silence, and silence here means an unwired member
+// nobody is told about.
 func readLedger(path string) (map[string]bool, error) {
 	out := map[string]bool{}
 	b, err := os.ReadFile(path)
@@ -528,8 +545,16 @@ func readLedger(path string) (map[string]bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, line := range strings.Split(string(b), "\n") {
-		if !strings.HasPrefix(strings.TrimSpace(line), "|") {
+	inside := false
+	for _, line := range strings.Split(string(b), "\n") { // bounded by the file (P10-02)
+		switch t := strings.TrimSpace(line); {
+		case t == ledgerOpen:
+			inside = true
+			continue
+		case t == ledgerClose:
+			inside = false
+			continue
+		case !inside || !strings.HasPrefix(t, "|"):
 			continue
 		}
 		cells := strings.Split(line, "|")

@@ -76,6 +76,17 @@ type bed struct {
 	// deletion rather than a redefinition.
 	carries bool
 
+	// ducked is whether the Director has ASKED for the bed to give way, so the
+	// pair can be closed (DR-24). It is the Director's record of what it has
+	// emitted, never a claim about the engine: mastercontrol owns the duck and
+	// the engine decides dip-or-hold from the source kind, re-read every tick.
+	//
+	// EDGE-TRIGGERED. MVS-D-67 is "one duck per RAIL DRAIN, never per card" —
+	// a rail of two cards that dipped, lifted and dipped again between them was
+	// MEASURED before that ruling — so what is emitted is the CHANGE, and a
+	// second hazard arriving over an already-ducked bed emits nothing.
+	ducked bool
+
 	// asked and askedAt are the tune the Director has issued and not yet seen
 	// land (FR-9.3). A rotation that is told to move and does not is a station
 	// that has gone quiet with nothing coming, and nothing else observes it:
@@ -316,4 +327,40 @@ func (d Director) onCutOver(ev CutOver) (Director, []Effect) {
 	}
 	d.bed.carries = ev.ToBed
 	return d.settle()
+}
+
+// givingWay is the duck's ONE condition, and D-32 is that there is only one
+// (HUM LEAD 2026-09-09): *"only 1 [of main and bed] can be active at a time,
+// and the priority ducks the bed only."*
+//
+// TWO QUESTIONS, BOTH ANSWERABLE FROM STATE THE DIRECTOR ALREADY HOLDS — which
+// is the whole reason this decision belongs here rather than in the arbiter.
+// Three things could trigger a duck before this existed and only one of them
+// should: the rotation IS the programme, and ducking for it ducks the thing
+// being played.
+//
+// IT ASKS `carries`, NOT WHETHER AUDIO IS AUDIBLE. `Suppress` is inert when
+// nothing is playing and the engine re-reads the source kind every tick, so the
+// answer follows the audio by itself. Asking which medium is on at this instant
+// "fixed an answer the audio could outlive" (radio.go), and that design is not
+// repeated here.
+//
+// AND IT ASKS WHETHER THE RAIL HOLDS ANYTHING, not whether a card is on the
+// air: MVS-D-67 restores "only after the tail has played and the rail is
+// empty", so the bed stays down across a drain of several cards.
+func (d Director) givingWay() bool {
+	return d.bed.carries && len(d.lineup.tracks[AlertRail]) > 0
+}
+
+// giveOrTakeBack emits the change, and only the change.
+func (d Director) giveOrTakeBack() (Director, []Effect) {
+	want := d.givingWay()
+	if want == d.bed.ducked {
+		return d, nil
+	}
+	d.bed.ducked = want
+	if want {
+		return d, []Effect{Duck{}}
+	}
+	return d, []Effect{Restore{}}
 }
