@@ -4,16 +4,19 @@ package tty
 // whichever surface is active.
 //
 // THE RULE IT SERVES IS D-56, "one canonical way to do a thing". The ctrl+d
-// window is entirely Dashboard methods, and giving the console a second one
-// would be a second injector UI, a second confirm, and two places for the
-// TEST EVENT wording to drift. So the Router composites the EXISTING window
-// over the console instead — and the console stays on screen underneath, which
-// is the whole point: the operator injects an alert and WATCHES the takeover
-// activate and drain.
+// window is entirely Dashboard methods, and giving the console its own would be
+// a second injector UI, a second confirm, and two places for the TEST EVENT
+// wording to drift. So the Router composites the EXISTING window over the
+// console instead — and the console stays on screen underneath, which is the
+// whole point: the operator injects an alert and WATCHES the takeover activate
+// and drain.
 
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 // consoleWith puts the operator on the console, over a REAL Dashboard.
@@ -71,6 +74,7 @@ func TestTheConsoleIsStillDrawnBeneathTheDiagnosticsWindow(t *testing.T) {
 // IT IS THE SAME WINDOW THE OBSERVER SHOWS, not a copy of it. If these ever
 // diverge there are two injector UIs, which is what D-56 refuses.
 func TestItIsTheObserversOwnWindowAndNotACopy(t *testing.T) {
+	const base = "x"
 	viaConsole := consoleWith(t, goldenDash(t, false))
 	viaConsole = pressAction(t, viaConsole, actDiagnostics)
 
@@ -78,14 +82,60 @@ func TestItIsTheObserversOwnWindowAndNotACopy(t *testing.T) {
 	onObserver.observer.width, onObserver.observer.height = 150, 74
 	onObserver.observer = onObserver.observer.openDiagnostics()
 
-	want := onObserver.observer.DiagnosticsOverlay()
-	if want == "" {
-		t.Fatal("the observer's own window rendered nothing")
+	want := onObserver.observer.OverlayDiagnostics(base, 150)
+	if want == base {
+		t.Fatal("the observer's own window composited nothing")
 	}
-	if got := viaConsole.observer.DiagnosticsOverlay(); got != want {
+	if got := viaConsole.observer.OverlayDiagnostics(base, 150); got != want {
 		t.Errorf("the console composites a DIFFERENT window than the observer draws:\n got %q\nwant %q",
 			firstLine(got), firstLine(want))
 	}
+}
+
+// THE WINDOW SITS ON TOP OF THE FRAME, NOT BESIDE IT — and this is the test the
+// first version of these did not have.
+//
+// It asserted only that the composited frame CHANGED, which a window rendered
+// off to the RIGHT satisfies perfectly. In UAT the diagnostics box and its
+// confirmation appeared side by side, both pinned to the top rail, because
+// `render.Overlay` centres on the TERMINAL width and positions against the
+// BASE's height — so compositing the confirmation onto the bare 70-wide window
+// put it at x=70 in a 200-column terminal, past the right edge of the thing it
+// was covering.
+//
+// THE SHAPE THIS PINS: the frame keeps its size, and every layer lands INSIDE
+// it. A composite that grows the frame has placed something beside it.
+func TestTheWindowsStackOnTheFrameRatherThanBesideIt(t *testing.T) {
+	r := consoleWith(t, goldenDash(t, false))
+	before := r.View().Content
+	baseW, baseH := frameWidth(before), strings.Count(before, "\n")
+
+	r = pressAction(t, r, actDiagnostics)
+	got := r.View().Content
+
+	if w := frameWidth(got); w > baseW {
+		t.Errorf("the composite is %d cells wide against a %d-cell frame: something landed BESIDE it, not on it", w, baseW)
+	}
+	if h := strings.Count(got, "\n"); h > baseH {
+		t.Errorf("the composite grew to %d rows from %d: a layer landed below the frame", h, baseH)
+	}
+	// AND THE FRAME MUST BE THE VIEWPORT. A short frame pins every overlay to
+	// the top rail, because Overlay centres vertically on the base's height.
+	if baseH < r.broadcaster.height-1 {
+		t.Errorf("the console frame is %d rows in a %d-row terminal; overlays cannot centre on it",
+			baseH, r.broadcaster.height)
+	}
+}
+
+// frameWidth is the widest line in a rendered frame, in cells.
+func frameWidth(s string) int {
+	n := 0
+	for _, line := range strings.Split(s, "\n") {
+		if c := utf8.RuneCountInString(line); c > n {
+			n = c
+		}
+	}
+	return n
 }
 
 // WHILE IT IS OPEN THE KEYS ARE ITS OWN. An arrow that moved a card in the
@@ -117,4 +167,56 @@ func firstLine(s string) string {
 		return s[:i]
 	}
 	return s
+}
+
+// EVERY LAYER CENTRES ON THE TERMINAL, WHICH IS WHAT "ON TOP OF" MEANS HERE.
+//
+// THE UAT BUG THIS PINS. `render.Overlay` centres on the TERMINAL width and
+// positions against the BASE's height, so compositing the confirmation onto the
+// bare 84-cell window put it at x=(150-65)/2=42 INSIDE AN 84-CELL BASE. The
+// pair then went onto the frame as one 107-cell block, landing the confirmation
+// at column 63 in a 150-column terminal — 20 cells off centre, and visibly
+// BESIDE the window rather than on it.
+//
+// The first attempt at a test asserted only that the composite was no wider
+// than the frame, and the broken layout FIT INSIDE a 150-cell frame, so it
+// passed. Width was never the property. POSITION is.
+func TestEveryLayerCentresOnTheTerminal(t *testing.T) {
+	// `wiredDebug` opens the window itself, so pressing ctrl+d here would
+	// TOGGLE IT SHUT — the fixture and the keypress fighting each other.
+	r := consoleWith(t, wiredDebug(t, func(string) {}))
+	if !r.observer.DiagnosticsOpen() {
+		t.Fatal("fixture: the window must be open")
+	}
+	// enter raises the confirmation over the window, injecting nothing.
+	m, _ := r.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	r = m.(Router)
+	if !r.observer.debug.confirm {
+		t.Fatal("fixture: the confirmation must be up")
+	}
+
+	got := stripANSITest(r.View().Content)
+	want := r.broadcaster.width / 2
+	c, ok := centreOfLineContaining(got, "ARE YOU SURE")
+	if !ok {
+		t.Fatal("the confirmation must be drawn")
+	}
+	if d := c - want; d > 3 || d < -3 {
+		t.Errorf("the confirmation's centre is column %d in a %d-column terminal (want ~%d): "+
+			"it was composited against something narrower than the frame, so it sits BESIDE what it covers",
+			c, r.broadcaster.width, want)
+	}
+}
+
+// centreOfLineContaining is the mid-column of the drawn text on the first line
+// holding `want` — enough to say where a box sits without parsing its borders.
+func centreOfLineContaining(frame, want string) (int, bool) {
+	for _, line := range strings.Split(frame, "\n") {
+		i := strings.Index(line, want)
+		if i < 0 {
+			continue
+		}
+		return i + utf8.RuneCountInString(want)/2, true
+	}
+	return 0, false
 }

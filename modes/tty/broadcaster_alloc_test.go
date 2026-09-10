@@ -68,7 +68,18 @@ const (
 	// only be too soon, but may corner us and make intended functionality
 	// hard-to-impossible." Measure it, record it, surface the number, keep
 	// building.
-	bcFrameAllocs = 72
+	// RE-PINNED TO 151 AT D-58: the frame is now PADDED to the terminal in both
+	// dimensions, which is one allocation per line and the whole difference.
+	//
+	// IT IS A CORRECTNESS FIX, NOT A FEATURE. A ragged frame is invisible in the
+	// alt-screen — the rest is simply blank — but `render.Overlay` composites
+	// against the BASE's measured size, so a short, narrow frame pinned every
+	// window to the top rail and let the composite grow sideways past its own
+	// right edge. UAT found it on screen.
+	//
+	// NOT OPTIMISED, per D-53. Padding a frame line by line is the obvious thing
+	// to do better later, and "later" is after the layout is judged good.
+	bcFrameAllocs = 151
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

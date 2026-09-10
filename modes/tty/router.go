@@ -17,7 +17,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
-	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -266,9 +265,7 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (r Router) View() tea.View {
 	v := r.surface().View()
 	if r.active == SurfaceBroadcaster && r.observer.DiagnosticsOpen() {
-		if overlay := r.observer.DiagnosticsOverlay(); overlay != "" {
-			v.Content = render.Overlay(v.Content, overlay, r.broadcaster.width)
-		}
+		v.Content = r.observer.OverlayDiagnostics(v.Content, r.broadcaster.width)
 	}
 	return v
 }

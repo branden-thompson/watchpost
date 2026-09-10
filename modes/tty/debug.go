@@ -252,23 +252,39 @@ func (d Dashboard) chooseDebug() (Dashboard, tea.Cmd) {
 // exists.
 func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
 
-// DiagnosticsOverlay is the ctrl+d window alone — the box, with its
-// confirmation composited on top when one is up — ready to be laid over another
-// surface's frame (D-58).
+// OverlayDiagnostics lays the ctrl+d window — and its confirmation — over
+// another surface's frame (D-58).
 //
-// THE COMPOSITING RULE STAYS HERE, with the window that owns it. The
-// confirmation goes ON TOP of the window rather than replacing it, which is the
-// HUM LEAD's mock and the reason `View` layers rather than swaps.
-func (d Dashboard) DiagnosticsOverlay() string {
+// IT TAKES THE BASE RATHER THAN RETURNING A PRE-COMPOSITED PAIR, and that is a
+// CORRECTNESS requirement, not a style choice. `render.Overlay` centres the
+// modal on the TERMINAL width and positions it against the BASE's height:
+//
+//	x := max(0, (termWidth-Width(modal))/2)
+//	y := max(0, (Height(base)-Height(modal))/2)
+//
+// So compositing the confirmation onto the BARE WINDOW put it at x=70 in a
+// 200-column terminal — past the right edge of the 70-wide box it was meant to
+// cover — and the two rendered SIDE BY SIDE. Found in UAT, on screen, because
+// the test asserted only that the frame CHANGED.
+//
+// BOTH LAYERS GO ONTO THE SAME FULL-SIZE BASE, which is exactly what
+// `Dashboard.View` does with them and why it never had this bug. Keeping that
+// rule in one place is the point of the seam (D-56).
+func (d Dashboard) OverlayDiagnostics(base string, termWidth int) string {
 	if !d.DiagnosticsOpen() {
-		return ""
+		return base
 	}
 	o := d.layout().o
-	out := d.modalView(o)
-	if box := d.confirmOverlay(o); box != "" && out != "" {
-		out = render.Overlay(out, box, d.width)
+	if win := d.modalView(o); win != "" {
+		base = render.Overlay(base, win, termWidth)
 	}
-	return out
+	// AND THE CONFIRMATION OVER THAT — a second layer rather than a swapped
+	// body, which is the HUM LEAD's own mock: the red box sits ON TOP of the
+	// diagnostics window and the window underneath is unchanged.
+	if box := d.confirmOverlay(o); box != "" {
+		base = render.Overlay(base, box, termWidth)
+	}
+	return base
 }
 
 // openDiagnostics opens the window directly, for tests that need it open

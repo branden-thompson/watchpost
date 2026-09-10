@@ -1661,3 +1661,39 @@ that it was missing because there was no data on the card to be missing.
 **The cheap detector is the question, not a tool:** when a rule is enforced at RENDER time on N
 surfaces, ask what happens on surface N+1 — and prefer carrying the FACT as data on the value everyone
 reads, so a new surface inherits the question instead of silently answering it wrong.
+
+
+---
+
+## UAT found what the tests could not, and the assertion is why (0.16.0 P4)
+
+**The HUM LEAD ran the diagnostic build and saw the diagnostics window and its confirmation SIDE BY
+SIDE, both pinned to the top rail.**  Every test was green.
+
+**Two defects, one root.**  `render.Overlay` centres on the TERMINAL width and positions against the
+BASE's height:
+
+```
+x := max(0, (termWidth-Width(modal))/2)
+y := max(0, (Height(base)-Height(modal))/2)
+```
+
+- the confirmation was composited onto the **bare 84-cell window** with `termWidth=150`, so it landed at
+  x=42 inside an 84-cell base and the pair rendered beside each other;
+- the Broadcaster's frame was **ragged and short** — truncated to the width, never padded to it — so the
+  composite had nothing full-size to centre against and clamped to y=0.
+
+**THE TEST ASSERTED THAT THE FRAME *CHANGED*.**  A window rendered off to the right satisfies that
+perfectly.  A second attempt asserted the composite was no wider than the frame — and the broken layout
+(about 107 cells) FIT INSIDE a 150-cell frame, so that passed too.
+
+**WIDTH WAS NEVER THE PROPERTY.  POSITION IS.**  The rule is that every layer centres on the TERMINAL, so
+the assertion is a column: the confirmation's centre must be within a few cells of `width/2`.  That
+fails at 20 cells off, which is exactly what was on screen.
+
+**The generalisable questions:**
+
+- for a COMPOSITED thing, assert WHERE it landed, not THAT something happened;
+- **a frame is a viewport in BOTH dimensions.**  A ragged frame is invisible in the alt-screen — the
+  rest is simply blank — and becomes a defect the moment anything is composited over it.  Nothing else
+  would ever have shown it.

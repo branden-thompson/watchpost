@@ -248,9 +248,25 @@ func (b Broadcaster) clamp(lines []string) string {
 	if b.height > 0 && len(lines) > b.height {
 		lines = lines[:b.height]
 	}
+	// AND IT FILLS THE TERMINAL IT WAS GIVEN. A frame shorter than the screen
+	// looks identical in the alt-screen — the rest is simply blank — which is
+	// why this went unnoticed until something was COMPOSITED over it.
+	//
+	// `render.Overlay` centres vertically on the BASE's height, so a ten-line
+	// frame in a seventy-four-line terminal pinned every window to the top rail
+	// (UAT, 2026-09-10). The frame is the viewport, and it has to say so.
+	for b.height > 0 && len(lines) < b.height {
+		lines = append(lines, "")
+	}
 	if b.width > 0 {
 		for i, l := range lines {
-			lines[i] = render.TruncateCells(l, b.width)
+			// TRUNCATED *AND* PADDED: the frame IS the viewport, in both
+			// dimensions. Truncating alone leaves a ragged frame whose widest
+			// line is whatever the longest lane happens to be — and
+			// `render.Overlay` composites against that, so a window centred on
+			// the TERMINAL landed past the frame's right edge and the composite
+			// grew sideways instead of stacking (UAT, 2026-09-10).
+			lines[i] = render.PadTo(render.TruncateCells(l, b.width), b.width)
 		}
 	}
 	return strings.Join(lines, "\n")

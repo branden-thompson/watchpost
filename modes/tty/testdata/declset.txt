@@ -191,8 +191,8 @@ func (Broadcaster).opts
 func (Broadcaster).stationLine
 func (Broadcaster).tooSmall
 func (Dashboard).DiagnosticsOpen
-func (Dashboard).DiagnosticsOverlay
 func (Dashboard).Init
+func (Dashboard).OverlayDiagnostics
 func (Dashboard).Update
 func (Dashboard).View
 func (Dashboard).WithCast
