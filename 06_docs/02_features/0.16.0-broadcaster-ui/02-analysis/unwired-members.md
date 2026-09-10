@@ -4,7 +4,7 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "FOR RULING.  The TODAY columns are derived by `go run ./tools/wires -sites`; the 0.16.0 columns are read off the role model and the requirements, with the citation in each row."
+status: "FOUR OF THE EIGHT ARE NOW RULED (D-32..D-36, 2026-09-09); see the resolutions section.  Originally: FOR RULING.  The TODAY columns are derived by `go run ./tools/wires -sites`; the 0.16.0 columns are read off the role model and the requirements, with the citation in each row."
 ---
 
 # The eight, by role
@@ -21,10 +21,10 @@ and the **Engine** (the audio device).
 | `Effect.Duck` | **MasterControl**, via the Reader's dispatch (`executors.go:239` → `mc.hold()`) | **nobody** | **MasterControl** — unchanged, it performs | **the Director** |
 | `Effect.Restore` | **MasterControl**, same path (`executors.go:244`) | **nobody** | **MasterControl** | **the Director** |
 | `Power.OffAir` | **the Director** (`power.go:112 advances`) · **the console** (`broadcaster.go:94,143,307`) | **nobody** | unchanged | **MasterControl** |
-| `Origin.FromOperator` | the name registry, for display (`card.go:214`) | **nobody** | **the console**, as card provenance | **the Operator**, through the Card Producer |
+| `Origin.FromOperator` | the name registry, for display (`card.go:214`) | **nobody** | **the console**, as card provenance | **the Operator**, through the Card Producer — **RULED, D-36**: `[space]` becomes the promote that writes it |
 | `State.Proposed` | the card's transition table (`card.go:63`) · `Propose`'s guard (`card.go:313`) | **nobody NAMES it** — it is the zero value | unchanged | unchanged — **and that is the answer** |
-| `State.Refused` | the transition table only (`card.go:63,65`) | **nobody** | **OPEN** | **OPEN** |
-| `narrationClass.narrateRotation` | **nobody** | **the Reader** (`executors.go:395`) | **OPEN — and it is the architecture question** | — |
+| `State.Refused` | the transition table only (`card.go:63,65`) | **nobody** | **the console**, as the discard pile | **the Director** — **RULED, D-35** |
+| `narrationClass.narrateRotation` | **nobody** | **the Reader** (`executors.go:395`) | **STILL OPEN — but now DECIDABLE.**  D-36 removes the second producer of speech, after which the class has nothing to arbitrate | — |
 | `Band.CloseBand` | **nobody** by name; `rungOf` compares rung-to-rung | the burst planner (`plan.go:70,112,115,121`) | unchanged | unchanged |
 
 ---
@@ -82,9 +82,25 @@ row, not code** — and writing it is what stops the next person "fixing" it.
 
 ---
 
-## The two that are genuinely open
+## RESOLVED 2026-09-09 — D-32 to D-36
 
-### `State.Refused` — does a refused proposal become visible, or does the state retire?
+**Four of the eight are ruled, and two of the rulings were the same decision seen from two ends.**
+
+| Member | Ruling | Writer |
+|---|---|---|
+| `Effect.Duck` / `Effect.Restore` | **D-32** — one duck, and it is the priority rail over the bed.  Nothing else ducks anything | the **Director**, and the decision is pure state: is a priority card on the air, and is the bed live |
+| `State.Refused` | **D-35** — a capped discard-pile stack with a trapdoor, ~5 deep.  **Not a track**, because `held()` counts tracks and a parked card would stop the fault window ever firing.  Undo mints a NEW card from the content | the **Director**, per DR-1's one writer |
+| `Origin.FromOperator` | **D-36** — `[space]` becomes an operator-initiated promote, and that promote is what writes it | the **Operator**, through the Producer |
+
+**And D-33 killed the duck for a CHOSEN read**: main replaces the bed rather than playing over it, with
+the return transition covering the reconnect.  `D-34` anchors that transition's distance on the focused
+location in Observer and the tower in Broadcaster.
+
+Full text: `rulings-d32-d36.md`.
+
+## The two that were genuinely open
+
+### ~~`State.Refused` — does a refused proposal become visible, or does the state retire?~~  RULED D-35: it becomes visible, in a capped discard pile the Director writes.
 
 `Propose()` returns an **error** rather than a Refused card, so nothing ever reaches the state.  Its own
 comment says *"REFUSED, DONE and DISCARDED lead nowhere: a card that could be revived is a card that can
@@ -97,7 +113,7 @@ Two dispositions, and it is a product call:
 | **Give it a writer at P4** | the operator sees that a card was refused and why, rather than it never appearing.  A visible refusal is a station that explains itself |
 | **Retire it** | AP-DEAD-01's own rule — *a slot nobody proposes is dead code* — applied to a state.  `BurstHead` and `DivertNotice` were retired for exactly this |
 
-### `narrationClass.narrateRotation` — the architecture question, in one row
+### `narrationClass.narrateRotation` — STILL OPEN, and D-36 is what makes it decidable
 
 **Nothing reads it.**  The Reader writes it and no code anywhere treats the programme differently for
 carrying it.  The arbiter's comparisons are `job.class > on.class` — variable against variable — so the
