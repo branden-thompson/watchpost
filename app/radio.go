@@ -97,22 +97,10 @@ type radioDeck struct {
 	// emit hands the Director the bed's facts (T3.2b). It replaced a
 	// time.AfterFunc: the dwell is the Director's now, and this deck only
 	// reports what it alone can see.
-	emit   func(lineup.Event)
-	source *synth.Source // the running synthesized broadcast, if any
-	// reportDone releases whoever is waiting for the running report to end,
-	// carrying whether it reached its sign-off. ONE SLOT, because one report
-	// plays at a time — the schedule guarantees it, and a second arming
-	// releases the first rather than leaking a waiter (0.16.0 P3(d)).
-	reportDone chan bool
-	// needWhy is why each location needs a read, from the moment the deck
-	// noticed until the moment it says so on the player's detail line. THE
-	// DECK'S OWN STRING, produced and consumed here: "the relay was silent" is
-	// not a fact the schedule has any use for, and a card cannot carry it
-	// without putting the radio domain inside the lineup (DR-1). Bounded by
-	// the watchlist, and each entry is taken exactly once.
-	needWhy map[string]string
-	voiceID string   // chosen correspondent (UAT 84); "" = the platform default
-	voices  []string // available correspondents, listed once in the background (UAT 85)
+	emit    func(lineup.Event)
+	source  *synth.Source // the running synthesized broadcast, if any
+	voiceID string        // chosen correspondent (UAT 84); "" = the platform default
+	voices  []string      // available correspondents, listed once in the background (UAT 85)
 }
 
 // newRadioDeck wires the player. A resolver failure (a broken vendored
@@ -358,15 +346,6 @@ func (d *radioDeck) followMount(mount string) {
 
 // epoch reports whether gen is still the current tune (no Stop or newer
 // Tune since it began).
-// epochNow is the deck's current tune epoch, for a caller that is about to ask
-// the deck to do something and wants to know whether the answer changed while
-// it was asking.
-func (d *radioDeck) epochNow() uint64 {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.gen
-}
-
 func (d *radioDeck) epoch(gen uint64) bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -514,7 +493,7 @@ func (d *radioDeck) synthReason(same string, ref snapshot.LocationRef, stations 
 // guard inside startSynth stays: it has its own callers, and it retires with the
 // direct path at P3(d).
 func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) {
-	fresh := d.epoch(gen)
+	stage, fresh := mainTrack(), d.epoch(gen)
 	// THE DARK RUN'S ONLY INSTRUMENT (0.16.0 P3).  The whole point of the dark
 	// stage is that the producer's decisions can be compared against the live
 	// path's, and neither is visible without this: the live path logs its
@@ -528,121 +507,54 @@ func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) 
 	// the diagnostic is on, because the concatenation is pure cost otherwise
 	// (the shape radioDebugOn exists for).
 	if radioDebugOn() {
-		d.debugLog(fmt.Sprintf("needs-read fresh=%t ref=%s why=%s", fresh, snapshot.Key(ref), why))
+		d.debugLog(fmt.Sprintf("needs-read stage=%s fresh=%t ref=%s why=%s", stage, fresh, snapshot.Key(ref), why))
 	}
 	if !fresh {
 		return // the listener stopped, or moved on: this need is about a location nobody is on
 	}
-	key := string(snapshot.Key(ref))
-	d.rememberWhy(key, why)
-	// THE HEADLINE IS THE LOCATION'S OWN NAME. A card is showable from the
-	// moment it exists (DR-7), and at this point there is nothing else true
-	// about it: its words are composed at standby, minutes later.
-	//
-	// AND NOTHING ELSE HAPPENS HERE. Starting the audio too is the second
-	// speaker this batch exists to remove, and it would appear on the failure
-	// path — the worst place to find one. The schedule decides when this is
-	// read, and the read runs through readReport under the arbiter.
-	d.tell(lineup.NeedsRead{Ref: key, Headline: ref.Label})
-}
-
-// rememberWhy files the reason a location needs a read, for the detail line the
-// listener sees when it starts.
-//
-// BOUNDED BY THE WATCHLIST, AND THEN BY A CAP. One entry per location, taken
-// exactly once by takeWhy; the cap is what keeps a location the listener has
-// since removed from holding a string for the life of the process.
-func (d *radioDeck) rememberWhy(ref, why string) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if d.needWhy == nil {
-		d.needWhy = map[string]string{}
+	if stage.reports() {
+		// THE HEADLINE IS THE LOCATION'S OWN NAME. A card is showable from the
+		// moment it exists (DR-7), and at this point there is nothing else true
+		// about it: its words are composed at standby, minutes later.
+		d.tell(lineup.NeedsRead{Ref: string(snapshot.Key(ref)), Headline: ref.Label})
 	}
-	if len(d.needWhy) >= needWhyCap {
-		// The oldest is not knowable from a map and does not need to be: what
-		// matters is that this cannot grow. Clearing costs at most one
-		// generic detail line on the next read.
-		clear(d.needWhy)
+	if stage.ownsTheAir() {
+		// THE SCHEDULE READS IT NOW. Starting audio here as well is the second
+		// speaker this batch exists to remove, and it would appear on the
+		// failure path — the worst place to find one.
+		return
 	}
-	d.needWhy[ref] = why
+	d.startSynth(ref, why, gen)
 }
 
-// takeWhy is the reason this location needed a read, and removes it: a reason
-// is about ONE read, and a stale one on a later read would explain the wrong
-// thing.
-func (d *radioDeck) takeWhy(ref string) string {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	why := d.needWhy[ref]
-	delete(d.needWhy, ref)
-	return why
-}
-
-// needWhyCap bounds the reason store (P10-03). A station reads one location at
-// a time and the reason is taken by the read that follows, so the live count is
-// one or two; the cap is slack for a watchlist whose locations changed
-// mid-flight.
-const needWhyCap = 32
-
-// readReport voices the location's NWS products (architecture §5 Synth): the
-// voice is the built-in `say` on macOS, Piper elsewhere — installed on first
-// use with progress shown in the player (HUM LEAD: first-run install).
-//
-// THE SCHEDULE DECIDES WHEN; THE SOURCE STILL DECIDES HOW (0.16.0 P3(d), Shape
-// B, ratified). This was `startSynth`, which the DECK called for itself from
-// three places. It is now called from ONE place — the Speak executor, under the
-// narration arbiter — and everything below the decision is untouched: the
-// per-segment marquee, the cast, the correspondent handoffs, repeat-one, the
-// player row and the give-way rule are all the source's, and the source is
-// still what plays.
-//
-// THAT IS WHY THE FLIP IS SMALL. Reading a report through the narrator would
-// have replaced the player: `giveWayLocked` HOLDS a rendered cycle and DIPS a
-// live relay, chosen from the source kind and re-read every tick, and a report
-// that stopped being a source would have inherited a narration's treatment.
-//
-// IT BLOCKS until the report ends, and returns whether it reached its sign-off.
-// The arbiter holds the air for exactly that long, which is what makes the two
-// paths to speech one.
-func (d *radioDeck) readReport(ctx context.Context, ref snapshot.LocationRef, gen uint64, segs []synth.Segment) bool {
-	// THE EPOCH GUARDS THE LABEL AS WELL AS THE AUDIO, and it is asked here
-	// FIRST for the reason startSynth asked it first: a read the listener has
-	// already moved on from must not relabel the station it is no longer on.
+// startSynth voices the location's NWS products (architecture §5 Synth):
+// the voice is the built-in `say` on macOS, Piper elsewhere — installed on
+// first use with progress shown in the player (HUM LEAD: first-run install).
+func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64) {
 	if !d.epoch(gen) {
-		return false
+		return // a stale fallback (a relay that failed after the user stopped) must not relabel anything
 	}
-	d.announceReport(ref)
+	d.setMode("synth", "Watchpost Synth · "+ref.Label, why)
 	voice, err := d.voice() // may install Piper (minutes): never under tuneMu
+	d.tuneMu.Lock()
+	defer d.tuneMu.Unlock()
+	if !d.epoch(gen) {
+		return // stopped while the voice was being found/installed
+	}
 	if err != nil {
 		d.setMode("synth", "Watchpost Synth · "+ref.Label, err.Error())
 		d.engine.Fail(err.Error()) // the reason, in the player (F2)
-		return false
-	}
-	// THE COMPOSED SEGMENTS ARE THE FIRST PASS, AND A LOOP RE-COMPOSES.
-	//
-	// The card's words were composed at standby (DR-7) and those are the words
-	// that go out — the console shows them, and what is displayed and what is
-	// spoken must be one thing. A REPEAT is a different read of the same
-	// location, minutes later, and re-fetching is what made repeat-one worth
-	// having: replaying a stale observation would be the station lying about
-	// the weather because the listener asked to hear it again.
-	first := true
-	pass := func(ctx context.Context) ([]synth.Segment, error) {
-		if first {
-			first = false
-			return segs, nil
-		}
-		return d.segments(ctx, ref, synth.VoiceToken)
+		return
 	}
 	// The sign-off names whichever voice reaches it (UAT 94: the voice may change mid-cycle).
-	src, err := synth.NewSource(voice, pass,
+	src, err := synth.NewSource(voice, func(ctx context.Context) ([]synth.Segment, error) { return d.segments(ctx, ref, synth.VoiceToken) },
 		func(seg synth.Segment, spoken time.Duration) {
 			d.debugLog(fmt.Sprintf("segment key=%q spoken=%s", seg.Key, spoken.Round(time.Millisecond))) // WATCHPOST_DEBUG_RADIO: which segment the stream reached (UAT 2026-08-28: a cycle that ended before its tail)
 			d.setDetailTimed(seg.Text, spoken)
 		})
 	if err != nil {
 		d.engine.Fail(err.Error())
-		return false
+		return
 	}
 	// The cast: who reads each role, and how correspondents introduce
 	// themselves. Both are installed BEFORE the source starts, so the very
@@ -655,93 +567,9 @@ func (d *radioDeck) readReport(ctx context.Context, ref snapshot.LocationRef, ge
 	src.SetHandoffLine(d.composer.HandoffLine)
 	d.mu.Lock()
 	src.Loop(d.repeat == tty.RepeatOne) // Watchlist ends the cycle too — then advances (UAT 93)
-	d.mu.Unlock()
-	// "CHECK THE EPOCH, THEN START THE ENGINE" IS ONE STEP (N-3), and this is
-	// the lock that makes it one. Stop's own pair is "bump the epoch, then
-	// halt", under the same lock: without it a Stop landing between the check
-	// and the start left audio playing after the listener had silenced the
-	// station. The flip dropped this and put that race back on the path that
-	// now carries every ordinary broadcast.
-	//
-	// HELD ACROSS THE START AND NOTHING MORE. The wait below is the report's
-	// whole length; holding it there would block Stop for minutes, which is the
-	// same silence-that-will-not-stop by a different route.
-	d.tuneMu.Lock()
-	if !d.epoch(gen) {
-		d.tuneMu.Unlock()
-		return false // stopped, or re-tuned, while the voice was being found or installed
-	}
-	d.mu.Lock()
 	d.source = src
 	d.mu.Unlock()
-	done := d.armReport()
 	d.engine.StartSource("Watchpost Synth ("+voice.Name()+")", src.Rate(), src.Open)
-	d.tuneMu.Unlock()
-	select {
-	case ok := <-done:
-		return ok
-	case <-ctx.Done():
-		// THE ENGINE IS NOT HALTED HERE. This context ends when the pump is
-		// stopping or the read was cancelled, and both of those already halt
-		// the engine by their own route — Stop does it, and a Tune does it
-		// before arming. Halting again would race a source the next tune has
-		// already started.
-		d.endReport(false)
-		return false
-	}
-}
-
-// announceReport puts the station on the synthesised broadcast and says WHY it
-// is reading rather than relaying.
-//
-// THE REASON IS TAKEN HERE, at the one moment it is true and for the one read
-// it is about: "the relay was silent" explains THIS read, and left behind it
-// would explain the next one, which may have started for a different reason
-// entirely. Separated from readReport so the sentence a listener sees can be
-// asserted without an audio device.
-func (d *radioDeck) announceReport(ref snapshot.LocationRef) {
-	d.setMode("synth", "Watchpost Synth · "+ref.Label, d.takeWhy(string(snapshot.Key(ref))))
-}
-
-// armReport installs the completion signal for the report about to start.
-//
-// ONE SLOT IS ENOUGH BECAUSE ONE REPORT PLAYS AT A TIME, and the schedule is
-// what guarantees it: a card takes the air only when the air is free. Arming
-// over a live slot releases the previous waiter rather than leaking it, so a
-// violation of that guarantee ends a read early instead of hanging one.
-func (d *radioDeck) armReport() chan bool {
-	done := make(chan bool, 1)
-	d.mu.Lock()
-	prev := d.reportDone
-	d.reportDone = done
-	d.mu.Unlock()
-	if prev != nil {
-		select {
-		case prev <- false:
-		default:
-		}
-	}
-	return done
-}
-
-// endReport releases whoever is waiting on the running report, telling them
-// whether it reached its sign-off.
-//
-// NEVER BLOCKS. It runs on the engine's own status goroutine, and a send that
-// waited for a reader would stall every subsequent status — including the ones
-// that drive the player row.
-func (d *radioDeck) endReport(ok bool) {
-	d.mu.Lock()
-	done := d.reportDone
-	d.reportDone = nil
-	d.mu.Unlock()
-	if done == nil {
-		return
-	}
-	select {
-	case done <- ok:
-	default:
-	}
 }
 
 // segments composes one broadcast cycle: the location's current
@@ -1027,18 +855,6 @@ func (d *radioDeck) onStatus(st player.Status) {
 	}
 	if state == player.Stopped {
 		station = "" // the row falls back to the focused location's name
-	}
-	// THE READ THAT IS WAITING ON THIS IS RELEASED HERE (0.16.0 P3(d)). The
-	// Speak executor blocks for the report's whole length, and this is the one
-	// place that can see it end — the same observation `cycleEnded` was already
-	// making for the bed. `ended` is true only at the sign-off, so a halt, a
-	// stop and a voice failure all release the waiter with FALSE, and the
-	// schedule is told the read did not finish rather than that it did.
-	switch state {
-	case player.Stopped:
-		d.endReport(ended)
-	case player.Failed:
-		d.endReport(false)
 	}
 	d.p.Send(tty.RadioStatusMsg{State: string(state), Station: station, Detail: detail, Volume: st.Volume, Live: mode == "live", Location: snapshot.Key(ref)})
 	// Off the engine goroutine (it is finishing this very status): Halt

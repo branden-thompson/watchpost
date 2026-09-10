@@ -18,17 +18,12 @@ package app
 // level —
 //
 //	var secondSpeaker = func(d *radioDeck, ref snapshot.LocationRef) {
-//		d.engine.StartSource("...", rate, open)
+//		d.startSynth(ref, "a retry nobody routed through the seam", 0)
 //	}
 //
 // — was invisible to BOTH walks, and the counts did not move, so the INST-2
 // gate could not see it either. That is precisely the defect these tests exist
-// to catch, declared in the file they were reading.
-//
-// THE SUBJECT CHANGED AT P3(d) AND THE RULE DID NOT. It used to ask who calls
-// `startSynth`; `startSynth` is gone, and asking after a deleted function is a
-// check that can only pass. It asks who starts a SOURCE now — which is what
-// `startSynth` was, and what a second speaker would have to do. AT P3(d) THIS CHECK GETS STRICTER, not
+// to catch, declared in the file they were reading. AT P3(d) THIS CHECK GETS STRICTER, not
 // looser — startSynth goes to ZERO callers when the direct path retires, and
 // this test is where that is stated.
 
@@ -109,31 +104,25 @@ func callsTo(t *testing.T, method string) []site {
 }
 
 func TestEveryPathToASynthesisedReadGoesThroughTheOneSeam(t *testing.T) {
-	callers := callsTo(t, "StartSource")
-	// SILENCE IS A DISTINCT VERDICT (INST-2). Zero callers means the walk
-	// broke, or the station can no longer play a report at all — never that
-	// the tree is clean.
+	callers := callsTo(t, "startSynth")
+	// SILENCE IS A DISTINCT VERDICT (INST-2). Zero callers today would mean the
+	// walk broke, not that the tree is clean — and at P3(d), when zero becomes
+	// the right answer, this test is rewritten rather than left to pass by
+	// accident.
 	if len(callers) == 0 {
-		t.Fatal("found no call to engine.StartSource — either the walk did not run, or nothing in this " +
-			"package can play a synthesised report any more. Neither is the same as passing")
+		t.Fatal("found no call to startSynth — the walk did not run, which is not the same as passing. " +
+			"If the direct path has retired (P3(d)), this test is now the one that asserts ZERO, and must say so")
 	}
 	for _, c := range callers {
-		if c.in != "readReport" {
-			t.Errorf("%s: a synthesised report is started from %s — every path to one must go through "+
-				"readReport, which the SCHEDULE calls, under the narration arbiter. A site that starts "+
-				"a source itself is the second speaker P3 removed, and it is invisible to any test that "+
+		if c.in != "needsRead" {
+			t.Errorf("%s: startSynth is called from %s — every path to a synthesised read must go through "+
+				"needsRead, which is the one place the merge stage is asked. A site that starts audio "+
+				"itself is the second speaker P3 exists to remove, and it is invisible to any test that "+
 				"looks at one site at a time", c.at, c.in)
 		}
 	}
-	// AND THE ONE THAT RETIRED STAYS RETIRED. `startSynth` was the deck's own
-	// path to the air; naming it here means a re-introduction fails rather
-	// than quietly restoring the second speaker.
-	if gone := callsTo(t, "startSynth"); len(gone) > 0 {
-		t.Errorf("startSynth is called again, from %v — the direct path retired at P3(d) and the "+
-			"deletion is what closed the double-speak window", gone)
-	}
-	t.Logf("checked %d call(s) to engine.StartSource; blind to any made from outside package app, or "+
-		"through a function value whose call site names something else", len(callers))
+	t.Logf("checked %d call(s) to startSynth; blind to any made from outside package app, or through a "+
+		"function value whose call site names something other than startSynth", len(callers))
 }
 
 // THE FACT IS REPORTED FROM ONE PLACE TOO. A second site telling the Director a

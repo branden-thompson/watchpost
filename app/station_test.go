@@ -58,22 +58,19 @@ func newStation(t testing.TB, deck *tickerDeck) *station {
 	}
 	s := &station{t: t, deck: deck, dir: lineup.New(lineup.Settings{Max: defaultBurstMax}, time.Now())}
 	s.x = newExecutors(executors{
-		compose:    stubCompose,
-		playReport: stubPlayReport,
-		held:       newSegmentStore(),
-		voice:      deck.voice,
-		scripts:    deck.scripts,
-		clock:      deck.clock,
-		now:        time.Now,
-		mc:         deck.mc,
-		audible:    func() bool { return deck.voice == nil || !deck.voice.silent() },
-		muted:      deck.muted.Load,
-		alert:      deck.alerts.get,
-		mark:       func(id string) { deck.seen.mark([]globalfeed.Event{{ID: id}}, time.Now()) },
-		readAloud:  deck.seen.has,
-		report:     func(f lineup.Effect, why string) { s.reports = append(s.reports, lineup.Describe(f)+": "+why) },
-		cutTo:      func(string) {},
-		escalate:   func(reason string) { s.escalated = append(s.escalated, reason) },
+		voice:     deck.voice,
+		scripts:   deck.scripts,
+		clock:     deck.clock,
+		now:       time.Now,
+		mc:        deck.mc,
+		audible:   func() bool { return deck.voice == nil || !deck.voice.silent() },
+		muted:     deck.muted.Load,
+		alert:     deck.alerts.get,
+		mark:      func(id string) { deck.seen.mark([]globalfeed.Event{{ID: id}}, time.Now()) },
+		readAloud: deck.seen.has,
+		report:    func(f lineup.Effect, why string) { s.reports = append(s.reports, lineup.Describe(f)+": "+why) },
+		cutTo:     func(string) {},
+		escalate:  func(reason string) { s.escalated = append(s.escalated, reason) },
 	})
 	if s.x == nil {
 		t.Fatal("the station's executors were refused; a seam is missing")

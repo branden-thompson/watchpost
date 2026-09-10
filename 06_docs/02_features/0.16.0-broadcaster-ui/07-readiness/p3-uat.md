@@ -4,7 +4,21 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "READY TO RUN.  Reframed twice on 2026-09-09; the second correction is the one that matters."
+status: "NOT READY.  The flip it was written for was reverted on 2026-09-09.  Against the dark state there is nothing to regress: Observer's audio path is untouched by design, and the ten signal cases have no subject until the flip lands again."
+---
+
+# HELD — there is nothing to test yet
+
+**The flip was reverted on 2026-09-09** (`04-development/p3-flip-postmortem.md`).  In the dark state
+the deck still plays every report through its own path, so **Observer's audio is unchanged by
+construction** and the ten signal cases below have no subject.
+
+**The HUM LEAD said this before the revert and was right:** *"UAT cannot really begin until we wire up
+the Broadcaster UI mock — unless it's purely as regression UAT of Observer."*  It is the second half,
+and against the dark state even that is vacuous.
+
+**This document stands as written and becomes live the day the flip does.**
+
 ---
 
 # What P3's UAT tests: the audio out, unchanged

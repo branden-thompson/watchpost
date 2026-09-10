@@ -4,10 +4,20 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "SUPERSEDED 2026-09-09 by p3-uat.md.  The staged switch this describes was DELETED with the direct path at P3(d); kept as the record of a control that was designed, built and then made unnecessary by the ruling."
+status: "LIVE AGAIN.  Superseded when the flip landed, restored when the flip was reverted on 2026-09-09.  The staged switch it describes is back in the tree, and this is the protocol for the state the branch is actually in."
 ---
 
-# The dark run — SUPERSEDED, AND KEPT
+# The dark run — LIVE AGAIN
+
+**Superseded when the flip landed; restored when the flip was reverted** (2026-09-09,
+`04-development/p3-flip-postmortem.md`).  `app/maintrack.go` and its three stages are back in the tree,
+and this is the protocol for the state the branch is actually in.
+
+**Read the section below as history of the supersession, not as current status.**
+
+---
+
+# The note written when it was superseded
 
 **This protocol described a control that no longer exists.**  `WATCHPOST_MAINTRACK` was the staged
 switch between the producer landing and the flip; the HUM LEAD ratified Shape B, which made the flip

@@ -18,7 +18,6 @@ import (
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
-	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/lineup"
@@ -51,13 +50,6 @@ type bench struct {
 	marked      []string // what the read recorded as spoken aloud
 	muted       bool
 	release     chan struct{} // lets a test hold a sequence on the air
-
-	// reads is every report the ROTATION was asked to play, with the segments
-	// it was handed: the subject and the first segment's key, so a test can
-	// see that the composed report — not a re-composed one — reached the
-	// source (0.16.0 P3(d)).
-	reads     []string
-	readFails bool // the source did not reach its sign-off
 }
 
 func newBench(t *testing.T, v *scriptVoice) *bench {
@@ -110,27 +102,7 @@ func newBench(t *testing.T, v *scriptVoice) *bench {
 			b.reports = append(b.reports, lineup.Describe(f)+": "+why)
 			b.mu.Unlock()
 		},
-		cutTo: func(ref string) { b.mu.Lock(); b.tuned = append(b.tuned, ref); b.mu.Unlock() },
-		// THE ROTATION'S READER (0.16.0 P3(d)). It records what it was asked to
-		// play and, crucially, records it FROM INSIDE the arbiter's callback —
-		// so the voice's own log shows the duck around it and a test can see
-		// that the air was held for the report's whole length.
-		playReport: func(_ context.Context, ref string, segs []synth.Segment) bool {
-			keys := make([]string, 0, len(segs))
-			for _, sg := range segs {
-				keys = append(keys, sg.Key)
-			}
-			b.mu.Lock()
-			b.reads = append(b.reads, ref+":"+strings.Join(keys, ","))
-			fail := b.readFails
-			b.mu.Unlock()
-			if v != nil {
-				v.rec("report:" + ref)
-			}
-			return !fail
-		},
-		held:     newSegmentStore(),
-		compose:  stubCompose,
+		cutTo:    func(ref string) { b.mu.Lock(); b.tuned = append(b.tuned, ref); b.mu.Unlock() },
 		escalate: func(why string) { b.mu.Lock(); b.escalations = append(b.escalations, why); b.mu.Unlock() },
 	})
 	if b.x == nil {
@@ -474,17 +446,20 @@ func TestEffectsNotYetEmittedAreDeclinedNotHalfDone(t *testing.T) {
 		failed string // the card that must be failed, or empty
 		task   string // the task named in the reason
 	}{
-		// THE MAIN TRACK ARRIVED (0.16.0 P3), AND BOTH OF ITS ROWS ARE NOW
-		// GONE — the SPEAK row at P3(a3), the BUILD row here at P3(d). This
-		// pin fired at every one of those steps, which is exactly what a pin
-		// naming the task that will retire it is for.
+		// THE MAIN TRACK ARRIVED (0.16.0 P3), so these three rows changed and
+		// this pin caught it — which is what it is for.
 		//
-		// THEY ARE REMOVED RATHER THAN REWORDED. A location report is no
-		// longer declined at all: the composer and the reader are REQUIRED
-		// seams now, so there is no station that has a rotation and cannot
-		// read it. A row asserting a decline that cannot happen is a check
-		// that cannot fail. What replaced them is positive, in
-		// rotation_build_test.go.
+		// A location-report BUILD is no longer declined by slot: it declines
+		// only because THIS bench wires no composer, and the reason says so.
+		// BOTH HALVES HAVE NOW ARRIVED (P3(a2) build, P3(a3) speak), and this
+		// pin fired at each one — which is exactly what a pin naming the task
+		// that will retire it is for.
+		//
+		// The location-report SPEAK row is GONE from this table because it is
+		// no longer declined at all; it is asserted positively by
+		// TestALocationReportIsSpokenAsTheRotationClass. A row here would have
+		// to assert a decline that no longer happens.
+		{lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, "r1", "no composer"},
 		{lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, "s1", "severe window"},
 		{lineup.Speak{ID: "t1", Slot: lineup.Transition, Script: lineup.Say("we now return")}, "t1", "no reader for this slot"},
 		{lineup.BuildCard{ID: "h1", Slot: lineup.Transition, Subject: "h1"}, "h1", "proposal"},
@@ -667,15 +642,12 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 			voice: testDirector(nil, nil), clock: func() render.Clock { return render.Clock12 },
 			now: func() time.Time { return execNow }, mc: newMastercontrol(nil, func(tea.Msg) {}),
 			audible: func() bool { return true }, muted: func() bool { return false },
-			alert:      func(string) (globalfeed.Event, bool) { return globalfeed.Event{}, false },
-			mark:       func(string) {},
-			readAloud:  func(string) bool { return false },
-			report:     func(lineup.Effect, string) {},
-			cutTo:      func(string) {},
-			escalate:   func(string) {},
-			compose:    stubCompose,
-			playReport: stubPlayReport,
-			held:       newSegmentStore(),
+			alert:     func(string) (globalfeed.Event, bool) { return globalfeed.Event{}, false },
+			mark:      func(string) {},
+			readAloud: func(string) bool { return false },
+			report:    func(lineup.Effect, string) {},
+			cutTo:     func(string) {},
+			escalate:  func(string) {},
 		}
 	}
 	if newExecutors(whole()) == nil {
@@ -706,18 +678,22 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		"muted":     func(x *executors) { x.muted = nil },
 		"report":    func(x *executors) { x.report = nil },
 		"escalate":  func(x *executors) { x.escalate = nil },
-		// PROMISED AT P3, REQUIRED AT P3(d), AND THIS IS P3(d). With the
-		// direct path gone, a nil composer means location reports never reach
-		// the air at all — silence rather than a decline — and a nil reader
-		// means the same. The dated obligation recorded in the row below is
-		// discharged here rather than remembered.
-		"compose":    func(x *executors) { x.compose = nil },
-		"playReport": func(x *executors) { x.playReport = nil },
-		"held":       func(x *executors) { x.held = nil },
 	}
 	optional := map[string]bool{
 		"scripts": true, // nil means the built-in script tree
 		"band":    true, // built by newExecutors itself, never passed in
+		// OPTIONAL ONLY UNTIL THE DIRECT PATH RETIRES (0.16.0 P3).
+		//
+		// nil means the main track cannot be built, which is exactly how every
+		// build behaved before this release and how every test that does not
+		// care behaves now. `build` declines rather than panicking.
+		//
+		// IT BECOMES REQUIRED AT P3(d). Once startSynth's direct path is
+		// deleted, a nil composer means location reports never reach the air
+		// at all — silence rather than a decline — so this row moves into
+		// `strippers` in the same change that removes the direct path. That is
+		// recorded here rather than remembered.
+		"compose": true,
 		// DELIBERATELY OPTIONAL (0.16.0 P2). nil means no surface is
 		// listening, which is every build before the console existed and
 		// every test that does not care. Refusing to build without it would
@@ -1177,11 +1153,3 @@ func TestTheDivertNoticeSaysTheCountAndTheDestination(t *testing.T) {
 		})
 	}
 }
-
-// stubCompose and stubPlayReport are the two seams a fixture needs but is not
-// about. Named rather than repeated, for the reason mainTrackSeams exists.
-func stubCompose(context.Context, string) ([]synth.Segment, error) {
-	return []synth.Segment{{Key: "obs", Text: "Currently sixty-one degrees."}}, nil
-}
-
-func stubPlayReport(context.Context, string, []synth.Segment) bool { return true }

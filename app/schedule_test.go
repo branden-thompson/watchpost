@@ -188,10 +188,7 @@ func TestTheDirectorsTuneLeavesTheDuckAlone(t *testing.T) {
 
 	var tuned []string
 	x := newExecutors(executors{
-		compose:    stubCompose,
-		playReport: stubPlayReport,
-		held:       newSegmentStore(),
-		voice:      nar, clock: func() render.Clock { return render.Clock12 }, now: time.Now,
+		voice: nar, clock: func() render.Clock { return render.Clock12 }, now: time.Now,
 		mc: nar.mc, audible: func() bool { return true },
 		alert:     func(string) (globalfeed.Event, bool) { return globalfeed.Event{}, false },
 		mark:      func(string) {},
@@ -222,10 +219,7 @@ func TestATuneWithNoLocationIsDeclined(t *testing.T) {
 	var declined int
 	var tuned int
 	x := newExecutors(executors{
-		compose:    stubCompose,
-		playReport: stubPlayReport,
-		held:       newSegmentStore(),
-		voice:      nar, clock: func() render.Clock { return render.Clock12 }, now: time.Now,
+		voice: nar, clock: func() render.Clock { return render.Clock12 }, now: time.Now,
 		mc: nar.mc, audible: func() bool { return true },
 		alert:     func(string) (globalfeed.Event, bool) { return globalfeed.Event{}, false },
 		mark:      func(string) {},
