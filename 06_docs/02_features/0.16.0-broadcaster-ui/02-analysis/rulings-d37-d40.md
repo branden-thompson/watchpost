@@ -456,3 +456,82 @@ job.  The Operator manages the 'main cards' of the lineup (Report types, credits
 
 **The relay hand-back stays out of scope** (HUM LEAD) — it is not a card join, the programme being the
 bed, and F-27 names its hazards: the duck-bounce and the F-D5 lock.  P5's.
+
+---
+
+# D-50 — THE BREAKPOINTS, AND THE FLOOR BELOW WHICH WE DO NOT DRAW
+
+> *"< 100 col : Not supported — we adopt a 'btop' style — 'resize your terminal to 100 x 25 or larger'.
+> >= 100 <= 120 'smaller' — this is where titles may or may not truncate.  >= 120 <= 150 'Optima' —
+> this is the range of the mock.  >= 150 'large terminals' — this will be supported in LATER releases,
+> once we have things like terminal-based maps — this will have a 'right rail'."*
+
+| Class | Width | |
+|---|---|---|
+| **UNSUPPORTED** | < 100 cols, or < 25 rows | btop-style: *"resize your terminal to 100 x 25 or larger"* |
+| **COMPACT** | 100 – 119 | titles may truncate |
+| **OPTIMA** | 120 – 150 | the range the reference mock is drawn at |
+| **LARGE** | > 150 | **LATER RELEASE** — a right rail.  A SEAM ONLY (D-51) |
+
+**150 IS THE TOP OF OPTIMA, NOT THE BOTTOM OF LARGE.**  The ruling's two ranges overlapped at exactly
+150; the reference mock is 150 wide and the ruling calls that Optima's range, so that is the reading.
+Stated rather than silently chosen.
+
+## It REPLACES a vocabulary rather than adding a third, and that was checked
+
+**F-68 warned that two breakpoint vocabularies already exist and 0.16.0 must choose one of three
+answers.**  Checked before writing anything: **`broadcaster.go` is the ONLY production caller of
+`term.BreakpointFor`** (lines 251 and 258); Observer uses its own `radioBP` at 84/146 and touches the
+platform enum nowhere.  So the platform vocabulary is already Broadcaster's in practice, and redefining
+its boundaries is F-68's *"wire the platform one"* answer rather than its *"write a third"*.
+
+**`BreakMini`, `BreakSingle`, `BreakStandard` and `HeightCompact`'s 12-row rule all go with it** — the
+new floor is 25 rows, from the same ruling.
+
+---
+
+# D-51 — THE RIGHT RAIL IS A SEAM NOW AND A LAYOUT LATER
+
+> *"this will have 'right rail' — nothing needed yet, but make a note and ensure the architecture has a
+> seam to support this cleanly."*
+
+**WHAT IS OWED NOW IS ONE NUMBER FROM ONE PLACE.**  A right rail is not a new card renderer; it is a
+SMALLER LANE.  So the requirement is that the card takes its lane width as an argument and derives
+everything from it — which is what the v2 mock's generator demonstrates rather than asserts: the same
+function draws 150, 130 and 100, and a right rail is simply a fourth number.
+
+**THE FAILURE IT AVOIDS IS THE ONE v1 HAD.**  A card drawn at fixed columns has to be redrawn for every
+lane it ever appears in, and the first sign is a half-drawn card — which is exactly how v1 was wrong.
+
+---
+
+# D-52 — THE CARD TYPES, v2
+
+**`01-objectives/mock-card-types-v2.txt`**, and **v1 is deleted rather than kept**: it was drawn at the
+occluded width and would have been built from.
+
+**NOTHING IN IT IS A HARD-CODED COLUMN.**  Every row is GENERATED from the anchoring rule at each
+supported width, which is the only way to be sure the RULE is what gets built rather than the drawing:
+
+| | |
+|---|---|
+| box | fills the lane (width − 9 left chrome − 9 right chrome) |
+| title | centred on the box; truncates **kind-first, subject-last** |
+| badge | right-anchored, 2 cells inboard of the handle |
+| handle | right-most, fixed 5 cells, 2 cells inside the edge — **the address the operator types**, so it never truncates and never moves |
+
+**VERIFIED AGAINST THE REFERENCE, NOT AGAINST MEMORY.**  The generated 150-column row lands its badge at
+col 122, its handle at col 134 and its edges at 9/140 — the same columns as `mock-broadcaster-v1.txt`.
+
+**A LONG TITLE FOUND A BUG IN MY OWN RULE.**  The first draft tested whether the title FIT BY LENGTH,
+but the title is CENTRED — so a title can be short enough to fit and still run through the badge once
+centred, which is what it did (`…(COASTAL)D•`).  The test is POSITION, not length.  It is in the mock
+set permanently so the same mistake cannot be made silently in code.
+
+**Types drawn:** `LOCATION REPORT`, `SEVERE-EVENT READ` (SevereRead exists and nothing mocked it),
+`WATCHPOST CREDITS READ` (**no slot — D-31**), `WEATHER ALERT • BURST` (`•PRIORITY•`), and a long
+location report to exercise truncation.
+
+**Not drawn, on the HUM LEAD's ruling:** the transition card, which the reference put at slot [7].
+**The badge spelling is corrected** — the reference reads `•STANRARD•` in all ten card rows while its
+own header spells `STANDARD`.
