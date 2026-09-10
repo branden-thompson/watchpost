@@ -358,6 +358,15 @@ func (d *radioDeck) followMount(mount string) {
 
 // epoch reports whether gen is still the current tune (no Stop or newer
 // Tune since it began).
+// epochNow is the deck's current tune epoch, for a caller that is about to ask
+// the deck to do something and wants to know whether the answer changed while
+// it was asking.
+func (d *radioDeck) epochNow() uint64 {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.gen
+}
+
 func (d *radioDeck) epoch(gen uint64) bool {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -595,7 +604,13 @@ const needWhyCap = 32
 // IT BLOCKS until the report ends, and returns whether it reached its sign-off.
 // The arbiter holds the air for exactly that long, which is what makes the two
 // paths to speech one.
-func (d *radioDeck) readReport(ctx context.Context, ref snapshot.LocationRef, segs []synth.Segment) bool {
+func (d *radioDeck) readReport(ctx context.Context, ref snapshot.LocationRef, gen uint64, segs []synth.Segment) bool {
+	// THE EPOCH GUARDS THE LABEL AS WELL AS THE AUDIO, and it is asked here
+	// FIRST for the reason startSynth asked it first: a read the listener has
+	// already moved on from must not relabel the station it is no longer on.
+	if !d.epoch(gen) {
+		return false
+	}
 	d.announceReport(ref)
 	voice, err := d.voice() // may install Piper (minutes): never under tuneMu
 	if err != nil {
@@ -640,10 +655,28 @@ func (d *radioDeck) readReport(ctx context.Context, ref snapshot.LocationRef, se
 	src.SetHandoffLine(d.composer.HandoffLine)
 	d.mu.Lock()
 	src.Loop(d.repeat == tty.RepeatOne) // Watchlist ends the cycle too — then advances (UAT 93)
+	d.mu.Unlock()
+	// "CHECK THE EPOCH, THEN START THE ENGINE" IS ONE STEP (N-3), and this is
+	// the lock that makes it one. Stop's own pair is "bump the epoch, then
+	// halt", under the same lock: without it a Stop landing between the check
+	// and the start left audio playing after the listener had silenced the
+	// station. The flip dropped this and put that race back on the path that
+	// now carries every ordinary broadcast.
+	//
+	// HELD ACROSS THE START AND NOTHING MORE. The wait below is the report's
+	// whole length; holding it there would block Stop for minutes, which is the
+	// same silence-that-will-not-stop by a different route.
+	d.tuneMu.Lock()
+	if !d.epoch(gen) {
+		d.tuneMu.Unlock()
+		return false // stopped, or re-tuned, while the voice was being found or installed
+	}
+	d.mu.Lock()
 	d.source = src
 	d.mu.Unlock()
 	done := d.armReport()
 	d.engine.StartSource("Watchpost Synth ("+voice.Name()+")", src.Rate(), src.Open)
+	d.tuneMu.Unlock()
 	select {
 	case ok := <-done:
 		return ok

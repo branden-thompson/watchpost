@@ -329,3 +329,47 @@ The detail line is the ONLY place a listener learns why the station is reading r
 it was written inside `readReport`, which resolves a voice — on a machine without one, a 63 MB download
 inside a unit test.  **So it was extracted**: `announceReport` is the one carrier, takes the reason, and
 needs no audio device to assert.  A rule that cannot be reached by a test is a rule with no gate.
+
+
+# P3(d) — a regression I introduced, and found by reading what I replaced
+
+**The flip dropped BOTH of `startSynth`'s staleness guards**, and that put a previously-fixed race back
+on the path that now carries every ordinary broadcast.
+
+| The old function had | What it was for |
+|---|---|
+| `if !d.epoch(gen)` at entry | *"a stale fallback must not relabel anything"* — a read the listener has moved on from must not rewrite the station row |
+| `tuneMu` around a SECOND `epoch` check and the engine start | `tuneMu`'s own comment: *"without it a Stop landing between the check and engine.Start left audio playing"* (N-3, red team 0.9.0 C-3) |
+
+**`readReport` carried neither.**  Found by diffing the new function against the one it replaced, which
+is a step worth naming: a rewrite that keeps the BODY can still lose the GUARDS, and the guards are the
+part with no visible behaviour to miss.
+
+**Restored, with the lock held across the check and the start and NOTHING MORE.**  Holding it across the
+wait — the report's whole length — would block Stop for minutes, which is the same
+silence-that-will-not-stop by a different route.  A plant proved that direction too.
+
+| # | Plant | Verdict |
+|---|---|---|
+| e1 | the entry epoch check deleted | CAUGHT |
+| e2 | **the pre-start epoch check neutralised** | **SURVIVED, and recorded** |
+| e3 | the tune lock held across the wait (`defer`) | SURVIVED first; CAUGHT once the position gate existed |
+| e4 | the tune lock never taken | CAUGHT |
+| e5 | the engine started outside the lock | CAUGHT |
+
+## e2 is a limit, not an oversight, and it is stated rather than papered over
+
+**Both halves of this rule are windows between two statements, and no fixture can stand in one.**  So
+the rule is asserted as a POSITION: the check is inside the lock, the start is inside the lock, the wait
+is outside.  That catches e3, e4 and e5.
+
+**It cannot judge whether the CONDITION is honest.**  `if false && !d.epoch(gen)` leaves the call
+exactly where the walk looks for it.  Tightening the gate to reject that shape would move the goalposts
+to `gen == gen` and no further, so the gate stops here and says so.  **The old code had the same window
+and the same untestability; the difference is that this is written down.**
+
+## The collision that the walk found on its way
+
+Scoping the walk to `readReport` failed against `livePipelines.readReport` in `dashboard.go` — the
+dashboard's fetch cycle, nothing to do with audio, and no business holding a tune lock.  **The receiver
+is part of the subject**, and the check says so now.  Seventh name collision this release.

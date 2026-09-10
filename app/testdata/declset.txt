@@ -195,6 +195,7 @@ func (*radioDeck).discoverVoices
 func (*radioDeck).duck
 func (*radioDeck).endReport
 func (*radioDeck).epoch
+func (*radioDeck).epochNow
 func (*radioDeck).escalate
 func (*radioDeck).fault
 func (*radioDeck).followMount

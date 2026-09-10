@@ -207,7 +207,12 @@ func playReportFor(deck *radioDeck, watch func() []snapshot.LocationRef) func(co
 			radioDebugLog("schedule:read-unknown:" + ref)
 			return false
 		}
-		return deck.readReport(ctx, r, segs)
+		// THE EPOCH IS READ AT THE MOMENT OF THE READ, not carried from the
+		// need. A card composed a minute ago and aired now is current if the
+		// listener has not moved since; what makes it stale is a stop or a
+		// re-tune BETWEEN this line and the engine starting, which is exactly
+		// the window readReport closes under tuneMu.
+		return deck.readReport(ctx, r, deck.epochNow(), segs)
 	}
 }
 
