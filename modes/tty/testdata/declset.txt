@@ -37,8 +37,10 @@ const actSwapObserver
 const bcCardRows
 const bcCornerMark
 const bcGainCells
+const bcLabelCells
 const bcMinCols
 const bcMinRows
+const bcNoRelay
 const bcPlaceholderLocation
 const bcPlaceholderRadius
 const bcPriorityCol
@@ -191,6 +193,7 @@ func (*modalMemo).stats
 func (Broadcaster).Init
 func (Broadcaster).Update
 func (Broadcaster).View
+func (Broadcaster).bedRow
 func (Broadcaster).cardBoxWidth
 func (Broadcaster).clamp
 func (Broadcaster).clock

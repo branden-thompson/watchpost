@@ -96,7 +96,9 @@ func TestTheStationLineCarriesTheGainControl(t *testing.T) {
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	b.gain = 100
-	got := stripANSITest(b.stationLine()[1])
+	// THE THIRD ROW: the section is STATION, BED, then the status row that
+	// carries the level (D-62). The gain moved down when the bed came in.
+	got := stripANSITest(b.stationLine()[2])
 
 	if !strings.Contains(got, "GAIN") {
 		t.Errorf("the station's word for it is GAIN:\n%q", got)
@@ -195,5 +197,133 @@ func TestTheSectionsBackgroundSurvivesTheGainBar(t *testing.T) {
 	// rest of the row.
 	if i := strings.Index(gainRow, "\x1b[0m"); i >= 0 && i != len(gainRow)-len("\x1b[0m") {
 		t.Errorf("a bare reset at %d tears the section's background mid-row:\n%q", i, gainRow)
+	}
+}
+
+// D-62: THE BED LIVES IN THE BROADCAST SECTION.
+//
+//	"we talked about this earlier in moving the bed card into the 'broadcast
+//	section' — this was because the bed was yet another conveyer of the AIR
+//	STATE and we wanted to consolidate those … this way the ON AIR / STANDBY is
+//	all in one section, and the user doesn't have to look to different parts of
+//	the UI to determine what is and is not ON AIR."
+//
+// THREE THINGS SAID WHERE THE STATION IS SAID: the programme's state, the bed's
+// state, and the level. The bed was a separate card at the bottom of the frame —
+// a second place to look for the same question.
+func TestTheBedRidesInTheStationSection(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	b.power = lineup.Running
+	rows := b.stationLine()
+	if len(rows) != 3 {
+		t.Fatalf("the section carries the station, the bed and the status row; got %d", len(rows))
+	}
+	if !strings.Contains(rows[1], "BED:") {
+		t.Errorf("the bed's row is the second:\n%q", rows[1])
+	}
+	// THE KEY IS A CHIP, so this asks the chip renderer — "[ B ]" is only what
+	// the mock draws around it, and only what it falls back to without colour.
+	if !strings.Contains(rows[1], chipFor("B")) {
+		t.Errorf("and it names the key that reaches it:\n%q", rows[1])
+	}
+}
+
+// THE SELECTOR IS ON THE BED'S ROW, which is what F-77 was open about — it went
+// missing when Variant C absorbed the control line, and the ruling put it here
+// rather than restoring a separate card.
+func TestTheBedRowCarriesItsSelector(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	b.power = lineup.Running
+	got := stripANSITest(b.stationLine()[1])
+	// ASKED OF THE CHIP RENDERER, which also names the arrows in WORDS under
+	// --ascii: a terminal that cannot draw them still gets a usable control,
+	// and the test does not have to know which form it got.
+	for _, want := range []string{chipFor("←"), chipFor("→")} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the bed's row carries the selector; %q is missing from:\n%q", want, got)
+		}
+	}
+}
+
+// AND ITS OWN STATE, which is the third carrier being consolidated: the station
+// says ON AIR or STANDBY, the bed says ACTIVE or INACTIVE, and both are read in
+// one glance.
+func TestTheBedRowSaysWhetherItIsCarrying(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	got := stripANSITest(b.stationLine()[1])
+	if !strings.Contains(got, "INACTIVE") && !strings.Contains(got, "ACTIVE") {
+		t.Errorf("the bed's row says whether it is carrying:\n%q", got)
+	}
+}
+
+// THE LABELS' VALUES LINE UP. "STATION:" and "[ B ] BED:" are different
+// lengths, and a section whose two values began in different columns would read
+// as two unrelated rows rather than as one region saying one thing.
+//
+// MEASURED AT THE VALUE COLUMN ITSELF, not at the value's TEXT: the bed's value
+// opens with a key cap, so its arrow sits one cell in from where its value
+// starts — which is what a first version of this compared, and failed on.
+func TestTheSectionsLabelsShareAValueColumn(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	b.power = lineup.Running
+	for i, row := range b.stationLine()[:2] {
+		r := []rune(stripANSITest(row))
+		if len(r) <= bcLabelCells {
+			t.Fatalf("row %d is shorter than the label column", i)
+		}
+		if r[bcLabelCells] == ' ' {
+			t.Errorf("row %d has no value at the shared column %d:\n%q", i, bcLabelCells, string(r[:40]))
+		}
+		if r[bcLabelCells-1] != ' ' {
+			t.Errorf("row %d has no air before its value:\n%q", i, string(r[:40]))
+		}
+	}
+}
+
+// THE VALUE COLUMN HOLDS WITH COLOUR ON, which is the mode the operator runs in
+// and the mode no other test here uses.
+//
+// A CHIP CARRIES SGR. With colour off `KeyCap("B")` is "[B]" — three bytes and
+// three cells, so a byte count and a cell count agree and a `len()` bug is
+// INVISIBLE. With colour on it is " B " wrapped in escape codes: the bytes
+// roughly triple and the cells do not, so a label padded by bytes stops padding
+// at all and its value slides eight columns left.
+//
+// COMPARED BETWEEN THE ROWS, not against a fixed column: a chip's FIRST CELL IS
+// A SPACE by design, so the bed's value legitimately begins one cell later than
+// the station's. What must not happen is the two drifting apart.
+func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
+	painted(t)
+	b := NewBroadcaster()
+	b.width, b.height = 150, 74
+	b.power = lineup.Running
+	rows := b.stationLine()
+
+	start := func(row string) int {
+		r := []rune(stripANSITest(row))
+		for i := bcLabelCells - 1; i < len(r); i++ {
+			if r[i] != ' ' {
+				return i
+			}
+		}
+		return -1
+	}
+	a, c := start(rows[0]), start(rows[1])
+	if a < 0 || c < 0 {
+		t.Fatalf("both rows must carry a value:\n%q\n%q", rows[0], rows[1])
+	}
+	if d := a - c; d > 1 || d < -1 {
+		t.Errorf("the values start at %d and %d with colour on — the label column was padded by BYTES, "+
+			"and a chip's escape codes are not cells", a, c)
+	}
+	// AND EVERY ROW IS STILL THE LANE'S WIDTH.
+	for i, row := range rows {
+		if got, want := utf8.RuneCountInString(stripANSITest(row)), b.laneWidth(); got != want {
+			t.Errorf("row %d is %d cells with colour on, want the lane's %d", i, got, want)
+		}
 	}
 }

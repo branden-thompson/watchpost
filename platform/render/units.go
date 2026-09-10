@@ -103,6 +103,11 @@ type Glyphs struct {
 	// owns, and a card is not a window. Through the glyph set so --ascii needs
 	// no special case at the call site.
 	CornerTL, CornerTR, CornerBL, CornerBR string
+	// Idle and Live are a thing's own state where it is NAMED — the bed's
+	// ACTIVE / INACTIVE chip (0.16.0, D-62). Not the seismic ramp, which an
+	// early draft borrowed: that ramp means FELT INTENSITY and reusing it here
+	// would give one glyph two meanings.
+	Idle, Live string
 	// 0.14.0: the Setup window's marks. Down is a picker's dropdown arrow;
 	// Rail and RailCar draw the scroll rail; Ellipsis and Bullet are used where
 	// text is cut or listed. All go through the glyph set so --ascii needs no
@@ -123,11 +128,11 @@ func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
 		return Glyphs{Pointer: ">", Play: "*", Pause: "=", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},
 			OK: "+", Fail: "x", Note: "~", Cursor: "_", Fill: ".", Dash: "-", Dot: "|",
-			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#", Rule: "-", Minus: "-", Heart: "<3", Arrow: "->", CornerTL: "+", CornerTR: "+", CornerBL: "+", CornerBR: "+"}
+			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#", Rule: "-", Minus: "-", Heart: "<3", Arrow: "->", CornerTL: "+", CornerTR: "+", CornerBL: "+", CornerBR: "+", Idle: "o", Live: "*"}
 	}
 	return Glyphs{Pointer: "›", Play: "▶", Pause: "‖", Repeat: "∞", Fire: "◆", Alert: "⚠", Seismic: [3]string{"○", "●", "◉"},
 		OK: "✔", Fail: "✘", Note: "♪", Cursor: "▌", Fill: "░", Dash: "—", Dot: "·",
-		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■", Rule: "─", Minus: "−", Heart: "♥", Arrow: "→", CornerTL: "╭", CornerTR: "╮", CornerBL: "╰", CornerBR: "╯"}
+		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■", Rule: "─", Minus: "−", Heart: "♥", Arrow: "→", CornerTL: "╭", CornerTR: "╮", CornerBL: "╰", CornerBR: "╯", Idle: "○", Live: "●"}
 }
 
 // asciiKey names an arrow key in words for a chip under --ascii — the one
