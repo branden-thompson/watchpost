@@ -49,6 +49,12 @@ func ColorOn() bool { return colorOn() }
 const (
 	WordmarkName    = "WATCHPOST"
 	EditionObserver = "Observer"
+
+	// EditionBroadcaster is the station-running dashboard, arriving as the word
+	// this block was written to hold (0.16.0). It is the ONE place either
+	// edition is spelled, so the masthead and the About window cannot disagree
+	// about which experience the build is.
+	EditionBroadcaster = "Broadcaster"
 )
 
 // Wordmark is the masthead: the gradient wordmark, and the edition word beside
