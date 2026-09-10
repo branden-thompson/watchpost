@@ -378,23 +378,27 @@ func (b Broadcaster) stationLine() []string {
 	// THE SEPARATOR COMES FROM THE GLYPH SET, not a literal. A middle dot
 	// here passed --ascii only because that test's fixture leaves the station
 	// STOPPED, whose line carries no separator — a coverage hole in my own
-	// gate, closed by sweeping every power state below.
+	// gate, closed by sweeping every power state.
 	g := b.opts().Glyphs()
+	state, why, to := "STOPPED", "the programme is stopped; hazards still read", "ON AIR"
 	switch b.power {
 	case lineup.Running:
-		return []string{
-			"STATION:  *** ON AIR " + g.Dot + " BROADCASTING ***      ( SHIFT + ENTER  ->  STANDBY )",
-			"          audio out of this program; Watchpost does not observe a transmitter",
-		}
+		state = "*** ON AIR " + g.Dot + " BROADCASTING ***"
+		why = "audio out of this program; Watchpost does not observe a transmitter"
+		to = "STANDBY"
 	case lineup.OffAir:
-		return []string{
-			"STATION:  STANDBY (DEAD AIR)                        ( SHIFT + ENTER  ->  ON AIR )",
-			"          nothing is broadcast, hazards included; the schedule holds what it has not said",
-		}
+		state = "STANDBY (DEAD AIR)"
+		why = "nothing is broadcast, hazards included; the schedule holds what it has not said"
 	}
+	// VARIANT C (D-21): a labelled field, the transition in parentheses. The
+	// two are the ENDS of one line — the transition RIGHT-ANCHORED rather than
+	// padded to a fixed column, which is what it was and which lands correctly
+	// at exactly one terminal width.
+	lane := b.laneWidth()
+	hint := "( SHIFT + ENTER  " + g.Arrow + "  " + to + " )"
 	return []string{
-		"STATION:  STOPPED                                   ( SHIFT + ENTER  ->  ON AIR )",
-		"          the programme is stopped; hazards still read",
+		render.PadBetween("STATION:  "+state, hint, lane),
+		render.PadTo("          "+why, lane),
 	}
 }
 

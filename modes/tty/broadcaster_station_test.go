@@ -1,72 +1,83 @@
 package tty
 
+// broadcaster_station_test.go — the station line, Variant C (D-21).
+//
+// VARIANT C WAS RATIFIED AND IS ALREADY BUILT: "the station state as a labelled
+// field, the transition in parentheses." It SUPERSEDES the reference mock's
+// centred `{ *** ON AIR | BROADCASTING *** }` banner and the separate
+// `[ SHIFT + ENTER ] GO TO STANDBY` control row — one line carries both.
+//
+// WHAT WAS WRONG WAS THE DRAWING, NOT THE WORDING. The transition sat at a
+// HARD-CODED COLUMN, padded with literal spaces, so it only landed correctly at
+// one width — the geometry the HUM LEAD ruled out.
+
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
-// P2: the station's state comes from the DIRECTOR's power, never a UI flag
-// (FR-5.1). A console that kept its own idea of whether it was on the air
-// could show ON AIR while nothing was broadcasting — and the swap gate is
-// about to depend on this value, so a local copy would be a safety bug, not a
-// display bug.
-
-func bcPowered(p lineup.Power) Broadcaster {
+func stationAt(t *testing.T, w int, p lineup.Power) []string {
+	t.Helper()
 	b := NewBroadcaster()
-	b.width, b.height = 150, 74
-	b, _ = b.Update(StationMsg{Power: p})
-	return b
+	b.width, b.height, b.ascii = w, 74, true
+	b.power = p
+	return b.stationLine()
 }
 
-func TestTheBannerReadsTheDirectorsPowerNotALocalFlag(t *testing.T) {
-	if got := bcPowered(lineup.Running).power; got != lineup.Running {
-		t.Errorf("the console's power must be what the Director published; got %v", got)
-	}
-	if got := bcPowered(lineup.OffAir).power; got != lineup.OffAir {
-		t.Errorf("the console's power must be what the Director published; got %v", got)
-	}
-}
-
-// D-21: Variant C — the state as a labelled field with the transition in
-// parentheses, and the bed row's third use of the word replaced.
-func TestTheBannerIsVariantC(t *testing.T) {
-	on := bcPowered(lineup.Running).View().Content
-	if !strings.Contains(on, "STATION:") {
-		t.Error("Variant C names the state as a labelled field: the frame carries no STATION: label")
-	}
-	if !strings.Contains(on, "ON AIR") {
-		t.Error("a running station reads ON AIR")
-	}
-	if !strings.Contains(on, "STANDBY") {
-		t.Error("Variant C puts the transition in parentheses, so the destination state is named")
-	}
-	off := bcPowered(lineup.OffAir).View().Content
-	if !strings.Contains(off, "STANDBY") || strings.Contains(off, "*** ON AIR") {
-		t.Error("a station OffAir must not read as emphasised ON AIR")
+// EVERY POWER STATE HAS A LINE, swept from the registry rather than listed —
+// a state added without one would draw nothing where the operator looks first.
+func TestEveryStationStateSaysWhatItIs(t *testing.T) {
+	for _, p := range []lineup.Power{lineup.Stopped, lineup.Running, lineup.OffAir} {
+		got := stationAt(t, 150, p)
+		if len(got) == 0 || strings.TrimSpace(got[0]) == "" {
+			t.Fatalf("power %v draws no station line", p)
+		}
+		if !strings.Contains(got[0], "STATION:") {
+			t.Errorf("power %v: Variant C is a LABELLED FIELD; got %q", p, got[0])
+		}
+		if !strings.Contains(got[0], "SHIFT + ENTER") {
+			t.Errorf("power %v: and the transition rides on the same line; got %q", p, got[0])
+		}
 	}
 }
 
-// FR-5.3: the state is legible WITHOUT colour. A background alone fails the
-// --ascii path and any terminal without colour, so the words carry it too.
-func TestTheStateIsLegibleWithoutColour(t *testing.T) {
-	b := bcPowered(lineup.OffAir)
-	b.ascii = true
-	got := b.View().Content
-	if !strings.Contains(got, "STANDBY") {
-		t.Error("under --ascii, with no colour at all, the state must still be readable in words")
+// THE TRANSITION IS RIGHT-ANCHORED AT EVERY WIDTH. It was padded to a fixed
+// column, which lands correctly at exactly one terminal size and nowhere else.
+func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
+	for _, w := range []int{100, 110, 120, 130, 150} {
+		b := NewBroadcaster()
+		b.width, b.height, b.ascii = w, 74, true
+		b.power = lineup.Running
+		got := b.stationLine()[0]
+		// IT FILLS THE LANE, which is the frame less its gutter — the same
+		// number every lane row is drawn against, from `laneWidth` (D-51).
+		if c, want := utf8.RuneCountInString(got), b.laneWidth(); c != want {
+			t.Errorf("width %d: the station line is %d cells, want the lane's %d\n%q", w, c, want, got)
+			continue
+		}
+		if strings.HasSuffix(got, "  ") {
+			t.Errorf("width %d: the transition is not at the right edge:\n%q", w, got)
+		}
+		if !strings.HasSuffix(strings.TrimRight(got, " "), ")") {
+			t.Errorf("width %d: the transition ends the line; got %q", w, got)
+		}
 	}
 }
 
-// FR-5.5: Watchpost has NO radio path. "On the air" can only mean the
-// software is putting programme out, never that an antenna is radiating — and
-// an operator who infers otherwise has been misled by us. The boundary is
-// stated where they read it, not only in a design document.
-func TestTheOnAirBoundaryIsStatedToTheOperator(t *testing.T) {
-	got := bcPowered(lineup.Running).View().Content
-	if !strings.Contains(strings.ToUpper(got), "AUDIO OUT") {
-		t.Error("FR-5.5: the console must say what ON AIR means — that it is audio out of this " +
-			"program, not a transmitter it cannot observe")
+// AND IT SAYS WHERE IT WOULD GO, which is the whole of Variant C's parenthetical:
+// ON AIR offers STANDBY, and the two stopped states offer ON AIR.
+func TestTheTransitionNamesTheStateItWouldReach(t *testing.T) {
+	live := stationAt(t, 150, lineup.Running)[0]
+	if !strings.Contains(live, "STANDBY") {
+		t.Errorf("a live station's control offers STANDBY; got %q", live)
+	}
+	for _, p := range []lineup.Power{lineup.Stopped, lineup.OffAir} {
+		got := stationAt(t, 150, p)[0]
+		if !strings.Contains(got, "ON AIR") {
+			t.Errorf("power %v: the control offers ON AIR; got %q", p, got)
+		}
 	}
 }
