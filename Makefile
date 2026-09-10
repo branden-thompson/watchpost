@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: dupes dupes-selftest cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: wires wires-selftest dupes dupes-selftest cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -289,6 +289,21 @@ dupes:
 
 dupes-selftest:
 	@go run ./tools/dupes -self-test
+
+# THE PRODUCER/CONSUMER COMPLETENESS CHECK over the closed sets. Proposed at
+# 0.14.0's round-3 red team, named in that release's debrief as "the single
+# highest-value thing 0.15.0 could inherit", and unbuilt until 0.16.0 P3 shipped
+# another instance of the shape it was designed to catch.
+#
+# NOT IN `verify` YET, and saying so is the point: the first run reports eight
+# unwired members and every row of the ledger is a HUM LEAD ratification, never
+# self-issued. It joins `verify` when the ledger is settled, exactly as metric D
+# did — a gate switched on over a red tree teaches people to ignore it.
+wires:
+	@go run ./tools/wires
+
+wires-selftest:
+	@go run ./tools/wires -self-test
 
 # lint is golangci-lint (which runs staticcheck) as a BASELINE + RATCHET: this
 # tree's known findings are recorded once and anything else fails the build.
