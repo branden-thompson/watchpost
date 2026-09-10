@@ -22,6 +22,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/components"
 )
 
 // LineupMsg carries the schedule the Director PUBLISHED.
@@ -206,6 +207,23 @@ const (
 	bcMinCols = 100
 )
 
+// laneWidth is how much room a card actually has, and it is the ONE place that
+// number is decided (D-51).
+//
+// THAT IS THE RIGHT-RAIL SEAM, and it is the whole of what was owed now: above
+// 150 columns a right rail is a LATER RELEASE, and when it arrives it must be a
+// SMALLER NUMBER HANDED TO THE SAME CARD ROW rather than a second renderer. A
+// card that derived its own width from `b.width` would have to be rewritten for
+// every lane it ever appears in — which is exactly how the v1 mock came to be
+// half a card.
+func (b Broadcaster) laneWidth() int {
+	const gutter = 2 // the "  " every lane row is indented by
+	if b.width <= gutter {
+		return 0
+	}
+	return b.width - gutter
+}
+
 // tooSmall reports whether the terminal is below the floor.
 func (b Broadcaster) tooSmall() bool {
 	c, r := b.minSize()
@@ -246,6 +264,9 @@ func (b Broadcaster) notice() []string {
 // lanes builds the three lanes from the last published schedule.
 func (b Broadcaster) lanes() []string {
 	g := b.opts().Glyphs()
+	// ONE RENDERER FOR THE WHOLE FRAME (see cardLane): the lane width does not
+	// change between the cards in it.
+	lane := newCardLane(b.laneWidth(), g)
 	out := []string{"WATCHPOST Broadcaster"}
 	out = append(out, b.stationLine()...)
 	out = append(out, b.heldNotice()...)
@@ -260,7 +281,7 @@ func (b Broadcaster) lanes() []string {
 		out = append(out, "  (clear)")
 	}
 	for _, c := range rail {
-		out = append(out, "  "+cardRow(c, "T", "PRIORITY", term.BreakpointFor(b.width) >= term.BreakOptima, g))
+		out = append(out, "  "+lane.render(c, "T", "PRIORITY"))
 	}
 	out = append(out, "")
 
@@ -289,7 +310,7 @@ func (b Broadcaster) lanes() []string {
 		out = append(out, "  (nothing scheduled)")
 	}
 	for i, c := range main {
-		out = append(out, "  "+cardRow(c, strconv.Itoa(i), "STANDARD", wide, g))
+		out = append(out, "  "+lane.render(c, strconv.Itoa(i), "STANDARD"))
 	}
 	out = append(out, "")
 	out = append(out, "BED   (no relay tuned)")
@@ -334,17 +355,96 @@ func (b Broadcaster) stationLine() []string {
 }
 
 // cardRow is one lane row: what it is, and the handle that addresses it.
-func cardRow(c lineup.Card, handle, badge string, wide bool, g render.Glyphs) string {
-	// A narrower class affords less headline. The width is not decoration: it
-	// is what the class BUYS, and it is why a discarded classify call would
-	// not satisfy FR-7.1.
-	w := 60
-	if !wide {
-		w = 30
+// cardLane renders every card in one lane, at that lane's width (D-52).
+//
+// IT IS BUILT ONCE PER FRAME, NOT ONCE PER CARD, and that is not a
+// micro-optimisation: a row constructed per card put the console frame at 70
+// allocations against a budget of 14, which the alloc gate caught on the commit
+// that introduced it. The lane's width does not change between the cards in it,
+// so neither should the thing that measures it.
+//
+// IT TAKES THE LANE, NOT A CLASS. The previous version took `wide bool` and
+// picked 60 or 30 columns from it, which is the hard-coded geometry the HUM LEAD
+// ruled out: "this layout can dynamically resize in between our breakpoints".
+// The class still decides the FRAME; it does not decide the card's arithmetic.
+//
+// THE ANCHORING RULE, and it is the whole of the mock:
+//
+//	title    centred, and truncates KIND-FIRST so the SUBJECT survives — the
+//	         kind repeats down the whole lane, the subject is what tells one
+//	         card from another
+//	badge    right-anchored, inboard of the handle
+//	handle   right-most and fixed. IT IS THE ADDRESS THE OPERATOR TYPES, so it
+//	         is the one thing that never truncates and never moves
+//
+// A GO-STUDS ROW, per the standing rule, and it earns its place rather than
+// merely satisfying it: the fill column is sized with the badge's width ALREADY
+// RESERVED, so a centred title cannot run into the badge. The hand-rolled draft
+// written while generating the mock tested whether the title fit BY LENGTH and
+// produced "…(COASTAL)D•" — a centred title can fit by length and still collide
+// by POSITION. Here that is structural rather than policed.
+type cardLane struct {
+	row  *components.DataTableRow
+	lane int
+	g    render.Glyphs
+}
+
+// newCardLane prepares the renderer for a lane of the given width.
+func newCardLane(lane int, g render.Glyphs) cardLane {
+	if lane <= 0 {
+		return cardLane{lane: 0, g: g}
 	}
+	return cardLane{lane: lane, g: g, row: components.NewDataTableRow(lane, []components.ColumnDefinition{{
+		Name:              "headline",
+		Fill:              true,
+		Alignment:         "center",
+		Truncatable:       true,
+		TruncatedMinWidth: 8,
+		TruncationTail:    g.Ellipsis,
+	}})}
+}
+
+// render is one card as the operator reads it.
+func (l cardLane) render(c lineup.Card, handle, badge string) string {
+	if l.row == nil {
+		return ""
+	}
+	// THE BADGE AND THE HANDLE TRAVEL AS ONE right-anchored unit, which is how
+	// the reference draws them: two cells apart, the handle outermost. Every
+	// badge in the set is the same width, so the space the row reserves for one
+	// is the space it reserves for all — the cards stay aligned down the lane.
+	l.row.SetBadge(l.g.Bullet+badge+l.g.Bullet+"  [ "+handle+" ]", 2)
 	// THE HEADLINE, NOT THE SUBJECT. The headline is what the card is ABOUT in
 	// the words a person reads; the subject is its key.
-	// THE GLYPH COMES FROM THE SET, not a literal — that is the whole reason
-	// the set exists, and a literal here is exactly what --ascii cannot fix.
-	return render.PadTo(render.TruncateCells(plaintext.Text(c.Headline), w), w) + " " + g.Bullet + badge + g.Bullet + "  [ " + handle + " ]"
+	out := l.row.RenderRow(map[string]string{"headline": kindFirst(plaintext.Text(c.Headline), l.lane, l.g)})
+	return render.PadTo(render.TruncateCells(out, l.lane), l.lane)
 }
+
+// kindFirst drops the card's KIND before it touches the subject.
+//
+// "LOCATION REPORT • OCEANSIDE, CA 92057" becomes "… • OCEANSIDE, CA 92057"
+// before it becomes "LOCATION REPORT • OCEANSID…". The kind is repeated on every
+// card in the lane and carries almost no information there; the subject is the
+// only part that says which card this is.
+//
+// Anything that still does not fit is handed to the row's own truncation, which
+// owns the arithmetic.
+func kindFirst(headline string, lane int, g render.Glyphs) string {
+	const sep = " • "
+	head, sub, split := strings.Cut(headline, sep)
+	if !split || head == "" {
+		return headline
+	}
+	// Only when the lane is genuinely too tight for the whole thing: a wide lane
+	// keeps the kind, which is what the reference draws.
+	if render.Width(headline) <= lane-bcRowTail {
+		return headline
+	}
+	return g.Ellipsis + sep + sub
+}
+
+// bcRowTail is what the badge and handle reserve at the right of a card row: the
+// badge, its two delimiters, the gutter and the five-cell handle. It is an
+// ESTIMATE, used only to decide when the kind is dropped — the row itself owns
+// the real arithmetic, and over-estimating here costs a kind, never a subject.
+const bcRowTail = 24

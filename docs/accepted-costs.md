@@ -218,3 +218,38 @@ scanner.
 
 Its §4 table states the bound on every cache and memo in the app. If you are about to add one, put its
 bound and its gauge there.
+
+---
+
+## The console's card row costs ~25 allocations per card (0.16.0 P4)
+
+**The number.** The Broadcaster frame was 14 allocations with two cards; it is now 65, and the cost is
+entirely per-card and linear:
+
+| cards | 0 | 1 | 2 | 5 | 10 |
+|---|---|---|---|---|---|
+| allocs | 14 | 40 | 65 | 141 | 266 |
+
+A full ten-card line-up draws at **~266 allocations per frame**, against a fixed cost that has not
+moved.
+
+**Why it stands.** The card row is a **go-studs `data_table_row`**, and two standing rules decide this
+rather than a judgement call: *any table is a go-studs table*, and *a dependency is never re-implemented
+for speed — patch narrowly, go upstream, or accept and record the cost.*
+
+**And the component is buying correctness, not convenience.** It sizes the fill column with the badge's
+width **already reserved**, so a centred title cannot run into the badge. The hand-rolled row written
+while generating the card mock did exactly that — a title short enough to FIT BY LENGTH still collided
+BY POSITION once centred, producing `…(COASTAL)D•` and eating the badge. Hand-rolling it back would
+re-open a defect that is invisible until a location has a long name.
+
+**What was tried.** Building the row once per FRAME rather than once per card: it saved 5 of the 51
+added. The cost is inside `RenderRow`, not construction.
+
+**What would re-open it.** A measured frame cost that matters — the console redraws on a tick, so this
+is thousands of allocations per second at most, and `perf-measurement.md`'s method is the instrument,
+not this counter. Or an upstream go-studs change that lowers `RenderRow`'s per-call cost, which is an
+**M6 upstream candidate** rather than a local patch.
+
+**Evidence.** `modes/tty/broadcaster_alloc_test.go`'s `bcFrameAllocs` comment carries the table and the
+measurement date.
