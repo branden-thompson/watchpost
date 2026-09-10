@@ -55,7 +55,7 @@ func TestTheHandleIsRightMostAndNeverMoves(t *testing.T) {
 			"LOCATION REPORT • RANCHO SANTA MARGARITA, CA 92688 (COASTAL AND VALLEY AREAS)",
 		} {
 			got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).render(aCard(t, headline), "6", "STANDARD")
-			if !strings.HasSuffix(strings.TrimRight(got, " "), "[ 6 ]") {
+			if !strings.HasSuffix(strings.TrimRight(got, " "), chipFor("6")) {
 				t.Fatalf("lane %d, %q: the handle must be right-most; got %q", lane, headline, got)
 			}
 		}
@@ -139,7 +139,7 @@ func TestAnAbsurdlyNarrowLaneStillNeverOverflows(t *testing.T) {
 
 func TestTheBadgeSitsBetweenTheHeadlineAndTheHandle(t *testing.T) {
 	got := newCardLane(148, render.Opts{ASCII: true}.Glyphs()).render(aCard(t, "OCEANSIDE, CA"), "T", "PRIORITY")
-	b, h := strings.Index(got, "PRIORITY"), strings.Index(got, "[ T ]")
+	b, h := strings.Index(got, "PRIORITY"), strings.Index(got, chipFor("T"))
 	if b < 0 || h < 0 {
 		t.Fatalf("both must be present; got %q", got)
 	}
@@ -247,3 +247,9 @@ func TestANarrowLaneStillDrawsTheMarkedCardRatherThanDroppingIt(t *testing.T) {
 		}
 	}
 }
+
+// chipFor is how a handle actually renders — the CHIP, not the brackets a mock
+// draws around it. Asserting the literal "[ 6 ]" encoded the costume: KeyCap
+// paints " 6 " with the chip background in colour and falls back to "[6]"
+// without it, so the literal was only ever right in one mode.
+func chipFor(handle string) string { return render.Opts{ASCII: true}.KeyCap(handle) }

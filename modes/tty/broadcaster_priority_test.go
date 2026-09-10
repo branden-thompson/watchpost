@@ -176,7 +176,7 @@ func TestTheOverlayAndTheCardBeneathShareARow(t *testing.T) {
 	rows := strings.Split(stripANSITest(withTakeover(t, 6).View().Content), "\n")
 	found := ""
 	for _, r := range rows {
-		if strings.Contains(r, "[ T ]") {
+		if strings.Contains(r, chipFor("T")) {
 			found = r
 			break
 		}
@@ -184,7 +184,7 @@ func TestTheOverlayAndTheCardBeneathShareARow(t *testing.T) {
 	if found == "" {
 		t.Fatal("the takeover must reach the frame")
 	}
-	if !strings.Contains(found, "[ 0 ]") {
+	if !strings.Contains(found, chipFor("0")) {
 		t.Errorf("the card beneath must still show its handle on the same row — the overlay is ON it, not above it:\n%q", found)
 	}
 }
@@ -201,7 +201,7 @@ func TestTheOverlaysRowsCarryThePriorityLabel(t *testing.T) {
 	rows := strings.Split(stripANSITest(withTakeover(t, 6).View().Content), "\n")
 	title := -1
 	for i, r := range rows {
-		if strings.Contains(r, "[ T ]") {
+		if strings.Contains(r, chipFor("T")) {
 			title = i
 			break
 		}

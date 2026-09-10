@@ -99,7 +99,9 @@ const (
 	// framed rows now instead of one flat line, and each region carries its own
 	// rail column. The reference has always drawn it this way; this is that
 	// arriving.
-	bcFrameAllocs = 255
+	// 263: the handle is a CHIP now, and the bed rides in the station section.
+	// 265: the handle is a CHIP, and the bed rides in the station section (D-62).
+	bcFrameAllocs = 265
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

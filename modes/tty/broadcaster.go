@@ -514,11 +514,12 @@ func (b Broadcaster) stationTone() (fg, bg string) { return "", "" }
 // radiating has been misled by us, so the boundary is stated HERE, where they
 // read it — not only in a design document.
 func (b Broadcaster) stationLine() []string {
-	// THE SEPARATOR COMES FROM THE GLYPH SET, not a literal. A middle dot
-	// here passed --ascii only because that test's fixture leaves the station
-	// STOPPED, whose line carries no separator — a coverage hole in my own
-	// gate, closed by sweeping every power state.
-	g := b.opts().Glyphs()
+	// THE SEPARATOR COMES FROM THE GLYPH SET, not a literal. A middle dot here
+	// passed --ascii only because that test's fixture leaves the station
+	// STOPPED, whose line carries no separator — a coverage hole in my own gate,
+	// closed by sweeping every power state.
+	o := b.opts()
+	g := o.Glyphs()
 	state, why, to := "STOPPED", "the programme is stopped; hazards still read", "ON AIR"
 	switch b.power {
 	case lineup.Running:
@@ -529,29 +530,71 @@ func (b Broadcaster) stationLine() []string {
 		state = "STANDBY (DEAD AIR)"
 		why = "nothing is broadcast, hazards included; the schedule holds what it has not said"
 	}
-	// GAIN RIDES THE SECOND ROW (HUM LEAD's layout, 2026-09-10) — the row
-	// Variant C left free when it absorbed the control line. It is Observer's
-	// own bar under the station's word for it, so there is one level and one
-	// place it is drawn.
-	o := b.opts()
+	lane := b.laneWidth()
+	// THE LABELS SHARE A VALUE COLUMN (D-62). "STATION:" and the bed's label are
+	// different lengths, and a section whose two values began in different
+	// columns would read as two unrelated rows rather than as one region saying
+	// one thing.
+	//
+	// PADDED THROUGH `render.PadTo`, WHICH IS ALREADY ANSI-AWARE — "right-pads
+	// a line to exactly width DISPLAY CELLS". That is how Observer handles the
+	// same problem, and a hand-rolled version stood here briefly: a verbatim
+	// reimplementation of PadTo, which is the second copy D-56 exists to
+	// prevent. The bed's label opens with a CHIP, so its escape codes are
+	// bytes that are not cells, and the ONE function that knows that should be
+	// the only one that has to.
+	label := func(s string) string { return render.PadTo(s, bcLabelCells) }
+	hint := "( SHIFT + ENTER  " + g.Arrow + "  " + to + " )"
 	gain := levelControl(o, "GAIN  ", b.gain,
 		o.KeyCapIf("-", b.gain > 0), o.KeyCapIf("+", b.gain < 100), bcGainCells)
-	// VARIANT C (D-21): a labelled field, the transition in parentheses. The
-	// two are the ENDS of one line — the transition RIGHT-ANCHORED rather than
-	// padded to a fixed column, which is what it was and which lands correctly
-	// at exactly one terminal width.
-	lane := b.laneWidth()
-	hint := "( SHIFT + ENTER  " + g.Arrow + "  " + to + " )"
-	// THE CONTROL SURVIVES AND THE PROSE YIELDS. Same rule as the card's
+	// THE CONTROL SURVIVES AND THE PROSE YIELDS, the same rule as the card's
 	// handle: the operator ACTS on the bar, and a level they cannot see is a
-	// station they cannot set. The sentence explains something they can also
-	// read in the state above it.
+	// station they cannot set.
 	room := lane - render.Width(gain) - 2
 	return []string{
-		render.PadBetween("STATION:  "+state, hint, lane),
-		render.PadBetween(render.TruncateCells("          "+why, max(0, room)), gain, lane),
+		render.PadBetween(label("STATION:")+state, hint, lane),
+		render.PadTo(label(o.KeyCap("B")+" BED:")+b.bedRow(o), lane),
+		render.PadBetween(render.TruncateCells(label("")+why, max(0, room)), gain, lane),
 	}
 }
+
+// bedRow is the bed's selector and its own state (D-62).
+//
+// THE BED IS THE THIRD CARRIER OF THE AIR STATE, and consolidating the three is
+// the whole ruling: "the bed was yet another conveyer of the AIR STATE and we
+// wanted to consolidate those … this way the ON AIR / STANDBY is all in one
+// section, and the user doesn't have to look to different parts of the UI to
+// determine what is and is not ON AIR."
+//
+// THE SELECTOR LIVES HERE, which is what F-77 was open about: it went missing
+// when Variant C absorbed the control row, and the ruling put it on this row
+// rather than restoring a separate card at the bottom of the frame.
+func (b Broadcaster) bedRow(o render.Opts) string {
+	g := o.Glyphs()
+	// THE ARROWS GO THROUGH KeyCap, which is the one owner that already names
+	// them in WORDS under --ascii (`asciiKey`) — a literal here would print a
+	// glyph a terminal without them cannot draw, in the row that says whether
+	// the station is on the air.
+	left := o.KeyCap("←") + "  " + bcNoRelay + "  " + o.KeyCap("→")
+	// INACTIVE UNTIL THE BED'S STATE IS PUBLISHED (F-79). The schedule carries
+	// the lineup and the power; it does not yet carry what the bed is doing, so
+	// this says the true thing it can say rather than guessing at the other.
+	return left + "    " + g.Idle + " INACTIVE"
+}
+
+const (
+	// bcLabelCells is the section's label column: wide enough for the longest of
+	// them plus air, so every value starts in the same place.
+	//
+	// COUNTED IN DISPLAY CELLS, not bytes — the bed's label is a CHIP followed
+	// by a word, and a chip carries SGR a byte count would charge it for.
+	bcLabelCells = 16
+
+	// bcNoRelay is what the bed's row says before a relay is tuned. The relay's
+	// own description — its call sign, frequency and distance — arrives with the
+	// bed's state, which the schedule does not publish yet (F-79).
+	bcNoRelay = "(no relay tuned)"
+)
 
 // cardRow is one lane row: what it is, and the handle that addresses it.
 // cardLane renders every card in one lane, at that lane's width (D-52).
@@ -583,6 +626,11 @@ func (b Broadcaster) stationLine() []string {
 // produced "…(COASTAL)D•" — a centred title can fit by length and still collide
 // by POSITION. Here that is structural rather than policed.
 type cardLane struct {
+	// o is the render options the lane draws with. It carries the CHIP
+	// renderer, which the handle needs: `[ 6 ]` in the reference is a chip, not
+	// text wearing brackets (HUM LEAD, 2026-09-10).
+	o render.Opts
+
 	row *components.DataTableRow
 	// marked is the same row with a leading, NON-TRUNCATABLE column for the
 	// fabricated-event mark (D-55). TWO ROWS RATHER THAN ONE, because a fixed
@@ -629,7 +677,7 @@ func newCardLane(lane int, g render.Glyphs) cardLane {
 		Truncatable: false,
 	}
 	return cardLane{
-		lane: lane, g: g,
+		lane: lane, g: g, o: render.Opts{ASCII: g.Rule == "-"},
 		row:    components.NewDataTableRow(lane, []components.ColumnDefinition{headline}),
 		marked: components.NewDataTableRow(lane, []components.ColumnDefinition{mark, headline}),
 	}
@@ -659,11 +707,17 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	// badge in the set is the same width, so the space the row reserves for one
 	// is the space it reserves for all — the cards stay aligned down the lane,
 	// marked and unmarked alike.
-	// THE TRAILING SPACE IS THE REFERENCE'S, and it is not decoration: the mock
-	// leaves ONE cell between the handle and the card's right border, and the
-	// component right-aligns a badge flush. Measured at the reference's own
-	// 132-cell card, where the handle lands at 125 and the border at 131.
-	row.SetBadge(l.g.Bullet+badge+l.g.Bullet+"  [ "+handle+" ] ", 2)
+	// THE HANDLE IS A CHIP, NOT TEXT WEARING BRACKETS (HUM LEAD, 2026-09-10:
+	// "[ 1 ] is a chip in the card(s)"). `KeyCap` paints " 6 " with the chip
+	// background in colour and falls back to "[6]" without it — so the
+	// reference's five cells ARE the chip, and hand-writing the brackets drew
+	// its costume while losing everything it is: the palette, --ascii's word
+	// forms, and every future state a control can show.
+	//
+	// THE TRAILING SPACE IS THE REFERENCE'S: the mock leaves ONE cell between
+	// the handle and the card's right border, and the component right-aligns a
+	// badge flush.
+	row.SetBadge(l.g.Bullet+badge+l.g.Bullet+"  "+l.o.KeyCap(handle)+" ", 2)
 	out := render.PadTo(render.TruncateCells(row.RenderRow(data), l.lane), l.lane)
 	// A CARD THAT CANNOT BE LABELLED HONESTLY IS NOT DRAWN AT ALL (D-55).
 	//

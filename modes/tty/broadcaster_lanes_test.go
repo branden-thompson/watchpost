@@ -64,7 +64,9 @@ func TestTheConsoleShowsNothingItWasNotPublished(t *testing.T) {
 func TestTheConsoleNumbersTheMainTrackSlots(t *testing.T) {
 	b := bcWith(t, card(t, "a", "ONE"), card(t, "b", "TWO"))
 	got := b.View().Content
-	if !strings.Contains(got, "[ 0 ]") || !strings.Contains(got, "[ 1 ]") {
+	// THE HANDLE IS A CHIP, so the assertion asks the chip renderer rather
+	// than a literal — the brackets are only its no-colour fallback.
+	if !strings.Contains(got, chipFor("0")) || !strings.Contains(got, chipFor("1")) {
 		t.Error("the ten slots are addressable 0-9 (FR-2.4); the frame carries no slot handles")
 	}
 }

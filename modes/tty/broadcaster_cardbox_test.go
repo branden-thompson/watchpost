@@ -57,7 +57,7 @@ func TestACardHasBordersOnEveryEdge(t *testing.T) {
 func TestTheBoxedCardKeepsItsHandleRightMost(t *testing.T) {
 	rows := boxOf(t, 132, aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")
 	title := strings.TrimSuffix(strings.TrimPrefix(rows[1], "|"), "|")
-	if !strings.HasSuffix(strings.TrimRight(title, " "), "[ 6 ]") {
+	if !strings.HasSuffix(strings.TrimRight(title, " "), chipFor("6")) {
 		t.Errorf("the handle is right-most inside the box; got %q", title)
 	}
 }
@@ -119,7 +119,11 @@ func TestTheBoxedCardMatchesTheReferenceGeometry(t *testing.T) {
 	if got := len(title); got != 132 {
 		t.Fatalf("the reference's card is 132 cells; got %d", got)
 	}
-	if got, want := string(title[len(title)-3:]), "] |"; got != want {
-		t.Errorf("the reference leaves one cell between the handle and the border; got %q want %q", got, want)
+	// ONE CELL BETWEEN THE CHIP AND THE BORDER, whatever the chip's own width
+	// is: in colour it paints " 6 " (five cells, the reference's `[ 6 ]`) and
+	// without colour it falls back to "[6]".
+	tail := string(title[len(title)-len([]rune(chipFor("6")))-2:])
+	if want := chipFor("6") + " |"; tail != want {
+		t.Errorf("the reference leaves one cell between the handle and the border; got %q want %q", tail, want)
 	}
 }
