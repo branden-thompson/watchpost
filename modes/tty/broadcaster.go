@@ -340,17 +340,29 @@ func (b Broadcaster) lanes() []string {
 	// here made a DOUBLE gap that read as a rendering fault (HUM LEAD, UAT
 	// 2026-09-10). One owner for the air around a region, like everything else.
 
-	// THE PRIORITY TRACK IS DRAWN FIRST because it DRAINS first, in every
-	// state. Drawing it below the rotation would put the lane that interrupts
-	// everything under the lane it interrupts.
-	out = append(out, "PRIORITY")
-	rail := b.lineup.Cards(lineup.AlertRail)
-	if len(rail) == 0 {
-		out = append(out, "  (clear)")
+	// THE PRIORITY TRACK IS INVISIBLE UNTIL IT HAS SOMETHING (D-61, HUM LEAD
+	// 2026-09-10): "the PRIORITY rail label ONLY shows up when a priority card
+	// sits on top of the main rail — this gives the operator more space to
+	// view/manage the main rail during normal operation."
+	//
+	// A "(clear)" ROW IS NOT NOTHING. It spent two rows of the running order
+	// saying that a hazard is not happening, which is the state the station is
+	// in almost all of the time — and the track's own design is that it is
+	// "normally INVISIBLE to the operator, so the main track takes the full
+	// width of the UI."
+	//
+	// IT IS STILL DRAWN FIRST when it has something, because it DRAINS first in
+	// every state: putting the lane that interrupts everything below the lane it
+	// interrupts would say the wrong thing about which is which.
+	// AN EMPTY REGION DRAWS NOTHING, and `section` is the ONE thing that says
+	// so — a `len(rail) > 0` guard stood here and its mutant SURVIVED, because
+	// a section built from no rows already returns nothing. The rule written
+	// twice, for the fourth time in this release.
+	rows := []string{}
+	for _, c := range b.lineup.Cards(lineup.AlertRail) { // bounded by the rail (P10-02)
+		rows = append(rows, lane.box(c, "T", "PRIORITY")...)
 	}
-	for _, c := range rail {
-		out = append(out, "  "+lane.render(c, "T", "PRIORITY"))
-	}
+	out = append(out, b.section("PRIORITY", rows)...)
 
 	// THE MAIN TRACK IS DRAWN AS NAMED REGIONS (D-60), which is what the
 	// reference's left rail names: the card on the air, the one after it, the
