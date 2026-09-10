@@ -133,6 +133,29 @@ the revert:
 
 ---
 
+## The UX rulings, and they are NOT re-derivable from the code
+
+**`02-analysis/rulings-d37-d40.md` is a re-required read too.**  These are HUM LEAD rulings made in
+conversation while reviewing the card mocks, and nothing in the tree implies them — a session that
+rebuilt its context from the code would re-derive the WRONG answer for every one.
+
+| | The ruling | The trap it keeps us out of |
+|---|---|---|
+| **D-37** | the discard pile is a **modal**, `[shift+U]`, patterned on the `[w]` window — and reached **from the base UI only** | `Dashboard.modal` is a SINGLE VALUE.  Opening it from a card modal needs a return path, which is the rewiring |
+| **D-38** | **four** elevations: base → priority overlay → detail/action → confirm/destructive | three already exist.  What does NOT is an INTERACTIVE overlay on the body, which is what the priority track is |
+| **D-39** | the card detail modal is a **centred** overlay like the location-details one — scroll, sticky controls | a report grows long once the Composer merges real data at Up Next |
+| **D-40** | **the Producer proposes — several, cheap, name-only — and the DIRECTOR chooses** | nothing reads track depth today, so the lineup holds ~1 card while the mock draws 10 |
+
+**D-40's operator flow, ruled in full:** card in the main track → `[#]` → detail modal → `[D]` Drop →
+confirm ARE YOU SURE → `[enter]` → both modals close → the card leaves → **everything below moves up
+one** → **slot [9] gets a new card from proposals**.  That last arrow is the gap the ruling closes.
+
+**And the mock is measured at 130 cells, not 65.**  The priority track is an OVERLAY on a full-width
+main track — normally invisible, taking over only while it has alerts.  A card drawn at the occluded
+width is half a card.
+
+---
+
 ## The reading list, ranked
 
 1. `multi-voice-support/04-development/director-build-log.md` — §§ 783-830, 1063-1130, 2137-2230.  **The
