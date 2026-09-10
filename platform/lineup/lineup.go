@@ -43,6 +43,11 @@ func (t Track) String() string {
 // ordinary resting state: the alert rail is always there and usually empty.
 type Lineup struct {
 	tracks [numTracks][]Card
+
+	// discarded is the operator's undo pile — NOT a track (D-35, discard.go).
+	// It is outside `tracks` on purpose: held() counts tracks, and a pile that
+	// counted would mean the schedule never reads as stopped.
+	discarded []Card
 }
 
 // clone copies the storage so a write can be made against the copy. Every
@@ -58,6 +63,13 @@ func (l Lineup) clone() Lineup {
 		if err := invariant.Check(len(out.tracks[t]) == len(l.tracks[t]), "a clone keeps every card on every track"); err != nil {
 			return Lineup{}
 		}
+	}
+	// AND IT KEEPS THE PILE. Every mutator starts here, so a short copy would
+	// lose the operator's undo silently — the same defect the track check above
+	// exists for, one field along.
+	out.discarded = slices.Clone(l.discarded)
+	if err := invariant.Check(len(out.discarded) == len(l.discarded), "a clone keeps the discard pile"); err != nil {
+		return Lineup{}
 	}
 	return out
 }
