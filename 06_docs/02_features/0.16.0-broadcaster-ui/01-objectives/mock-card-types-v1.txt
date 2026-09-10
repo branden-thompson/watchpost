@@ -1,0 +1,109 @@
+0.16.0 BROADCASTER — CARD TYPES AND THEIR CONTROL SURFACES (proposed, v1)
+Widths are the v1 mock's own: a 65-cell border run in the scheduled column.
+Colour is a separate pass and is not proposed here.
+
+==============================================================================
+THE CARD TYPES
+==============================================================================
+
+1. LOCATION REPORT — the rotation's read, and the common case
+  ─────────────────────────────────────────────────────────────────╮
+  CA 92057 · OCEANSIDE, CA                         •STANDARD•  [ 2 ]
+                                                                    
+  ─────────────────────────────────────────────────────────────────╯
+
+2. LOCATION REPORT · ON AIR — the LIVE slot
+  ─────────────────────────────────────────────────────────────────╮
+  CA 92057 · OCEANSIDE, CA                         •STANDARD•  [ 0 ]
+  ● ON AIR   2:14 / 3:40                                            
+                                                                    
+  ─────────────────────────────────────────────────────────────────╯
+
+3. LOCATION REPORT · WORDS NOT YET COMPOSED
+  ─────────────────────────────────────────────────────────────────╮
+  CA 92003 · BONSALL, CA                           •STANDARD•  [ 5 ]
+  ○ QUEUED   words compose at standby                               
+                                                                    
+  ─────────────────────────────────────────────────────────────────╯
+
+4. TAKE-OVER — one card per burst (MVS-D-77)
+  ─────────────────────────────────────────────────────────────────╮
+  WEATHER ALERT • BURST (5 EVENTS)                 •PRIORITY•  [ A ]
+  ! TONE: WARNING   5 alerts · 2 diverted                           
+                                                                    
+  ─────────────────────────────────────────────────────────────────╯
+
+5. TRANSITION — the Director's own, words fixed at proposal
+  ─────────────────────────────────────────────────────────────────╮
+  TRANSITION CARD                                  •STANDARD•  [ 7 ]
+  ◆ DIRECTOR   "we now return to our regularly scheduled…"          
+                                                                    
+  ─────────────────────────────────────────────────────────────────╯
+
+6. SEVERE READ — promoted by the operator (D-36)
+  ─────────────────────────────────────────────────────────────────╮
+  TORNADO WARNING · VISTA, CA                      •STANDARD•  [ 1 ]
+  ▲ OPERATOR   promoted 12:04 PM                                    
+                                                                    
+  ─────────────────────────────────────────────────────────────────╯
+
+7. DISCARDED — on the pile, restorable, no clock (FR-3.7)
+  ─────────────────────────────────────────────────────────────────╮
+  CA 92057 · OCEANSIDE, CA                         •DROPPED •  [ u ]
+  ✕ DROPPED   12:03 PM · [ u ] restore                              
+                                                                    
+  ─────────────────────────────────────────────────────────────────╯
+
+==============================================================================
+THE CONTROL SURFACES
+==============================================================================
+
+THE CARD MODAL (FR-3.1) — opened by pressing the card's own handle
+
+╭── CARD  [ 2 ] ─────────────────────────────────────────────────────────╮
+│                                                                        │
+│  LOCATION REPORT · CA 92057 · OCEANSIDE, CA                            │
+│  ○ QUEUED    proposed 12:01 PM by the rotation             •STANDARD•  │
+│                                                                        │
+├────────────────────────────────────────────────────────────────────────┤
+│  WHAT IT WILL SAY                                 composed at standby  │
+│                                                                        │
+│  Currently sixty-one degrees and fair at Oceanside.                    │
+│  Winds out of the west at eight miles per hour.                        │
+│  …                                                                     │
+│                                                                        │
+├────────────────────────────────────────────────────────────────────────┤
+│  MOVE IT                                            the running order  │
+│  [ ↑ ] promote            [ ↓ ] demote                                 │
+│                                                                        │
+│  TAKE IT OUT                                              recoverable  │
+│  [ x ] drop  — asks first, and the undo has no clock                   │
+│                                                                        │
+│  [ esc ] close                                             [ ? ] help  │
+╰────────────────────────────────────────────────────────────────────────╯
+
+THE DROP CONFIRM (FR-3.7) — for the accidental keypress
+
+╭── DROP  [ 2 ] ? ───────────────────────────────────────────────────────╮
+│                                                                        │
+│  CA 92057 · OCEANSIDE, CA                                              │
+│                                                                        │
+│  It leaves the running order and goes on the discard pile,             │
+│  where [ u ] puts it back.  There is no time limit on that.            │
+│                                                                        │
+│  ◆ [ y ] drop it            [ n ] keep it        [ esc ] keep it       │
+│                                                                        │
+╰────────────────────────────────────────────────────────────────────────╯
+
+THE DROP CONFIRM · A LIVE HAZARD — the case FR-3.7 names as the one that matters
+
+╭── DROP  [ A ] ?  — THIS IS A LIVE WARNING ─────────────────────────────╮
+│                                                                        │
+│  ! TORNADO WARNING · VISTA, CA · until 2:00 PM                         │
+│                                                                        │
+│  Nobody on the channel hears this if you drop it.                      │
+│  It stays on the discard pile and [ u ] puts it back.                  │
+│                                                                        │
+│  ◆ [ y ] drop it            [ n ] keep it        [ esc ] keep it       │
+│                                                                        │
+╰────────────────────────────────────────────────────────────────────────╯
