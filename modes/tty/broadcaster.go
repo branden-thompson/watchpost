@@ -565,7 +565,11 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	// badge in the set is the same width, so the space the row reserves for one
 	// is the space it reserves for all — the cards stay aligned down the lane,
 	// marked and unmarked alike.
-	row.SetBadge(l.g.Bullet+badge+l.g.Bullet+"  [ "+handle+" ]", 2)
+	// THE TRAILING SPACE IS THE REFERENCE'S, and it is not decoration: the mock
+	// leaves ONE cell between the handle and the card's right border, and the
+	// component right-aligns a badge flush. Measured at the reference's own
+	// 132-cell card, where the handle lands at 125 and the border at 131.
+	row.SetBadge(l.g.Bullet+badge+l.g.Bullet+"  [ "+handle+" ] ", 2)
 	out := render.PadTo(render.TruncateCells(row.RenderRow(data), l.lane), l.lane)
 	// A CARD THAT CANNOT BE LABELLED HONESTLY IS NOT DRAWN AT ALL (D-55).
 	//
@@ -584,6 +588,65 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	}
 	return out
 }
+
+// bcCardRows is a card's height: a top border, the title, a body row and a
+// bottom border — four, from the reference.
+//
+// EVERY CARD IS THE SAME HEIGHT, fabricated or not. The body row is blank on a
+// real card and carries D-57's corner marks on a test one, rather than a test
+// card growing a fifth row: a lane whose rows moved when an alert was injected
+// would renumber every slot below it, and the slot number is the address the
+// operator types.
+const bcCardRows = 4
+
+// box draws one card as the reference draws it: four rows, walled on every edge.
+//
+// THE BORDERS ARE WHAT D-57's CORNERS NEEDED. The console drew flat rows until
+// now, so a fabricated card had exactly one place to be marked — and the
+// priority track sits ON TOP of the main track, which makes a takeover the card
+// most likely to be partly occluded and one mark on it the weakest possible
+// placement.
+func (l cardLane) box(c lineup.Card, handle, badge string) []string {
+	if l.lane < 4 {
+		return nil
+	}
+	inner := l.lane - 2
+	g := l.g
+	rule := strings.Repeat(g.Rule, inner)
+	// The title row is the SAME renderer the flat row used, one width in: the
+	// box does not get to move the handle or re-centre the title.
+	body := newCardLane(inner, g)
+	return []string{
+		g.CornerTL + rule + g.CornerTR,
+		g.Rail + body.render(c, handle, badge) + g.Rail,
+		g.Rail + l.corners(inner, c.Test) + g.Rail,
+		g.CornerBL + rule + g.CornerBR,
+	}
+}
+
+// corners is the card's body row: blank, or D-57's marks at both ends.
+//
+// BOTH ENDS, which is the ticker's own reasoning one surface along — it marks a
+// fabricated item at BOTH ends of the tape "because the tape scrolls: a marker
+// at one end only is off-window half the time." A card can be occluded from
+// either side by the priority overlay, and two corners cannot both be covered by
+// a box that starts at the left.
+// PASSED, NOT CARRIED. A first version set a `test` field on the lane inside
+// `render` — which takes a VALUE receiver, so the flag died with the copy and
+// the corners never drew. Hidden state across two methods of a value type is
+// how that happens; the fact travels as an argument now.
+func (l cardLane) corners(inner int, test bool) string {
+	if !test || inner < 2*len(bcCornerMark)+4 {
+		return strings.Repeat(" ", inner)
+	}
+	gap := inner - 2*len(bcCornerMark) - 4
+	return "  " + bcCornerMark + strings.Repeat(" ", gap) + bcCornerMark + "  "
+}
+
+// bcCornerMark is the short form of the test mark, for the corners. The title
+// row carries the full `**TEST EVENT**`; the corners repeat the fact in the
+// space a corner has.
+const bcCornerMark = "TEST"
 
 // kindFirst drops the card's KIND before it touches the subject.
 //
