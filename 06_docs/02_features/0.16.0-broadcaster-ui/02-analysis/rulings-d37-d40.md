@@ -423,13 +423,21 @@ association**: a takeover dropped before it aired never had a hand-back to stran
 minted it at admission, and a dropped takeover left a stray *"we now return to our regularly scheduled
 programming"* with nothing before it.
 
-## PLACEMENT — RE-OPENED, AND FLAGGED FOR RATIFICATION
+## PLACEMENT — RE-OPENED, AND RATIFIED PROVISIONALLY (HUM LEAD, 2026-09-10)
 
 **MVS-D-80 placed the transition "at the duck"** in `mastercontrol`, because the lift *"is the one point
 that sees the takeover, the `[w]` read and the relay ALIKE."*  **With the relay case ruled out of scope**
 (HUM LEAD 2026-09-10), two of those three are cards — and T-3 says inter-card transitions ARE cards,
 where the Director can adjust and remove them.  So the takeover's hand-back is **a card at the end of the
 rail**.  If that is wrong it costs one registry row, which is what the design was for.
+
+> **RATIFIED, HUM LEAD 2026-09-10:** *"MVS-D-80 place is ratified for now — we may change based on UAT
+> if it doesn't work as expected."*
+
+**HELD PROVISIONALLY, AND UAT IS THE INSTRUMENT.**  This is a change a listener HEARS and a reader
+cannot check: whether a hand-back at the end of the rail lands where a human expects it is not
+decidable from the schedule.  So it is ratified to be TRIED, and the cost of reversing it is a registry
+row plus a placement — which is why it was safe to try.
 
 ## Two plants survive, and both are named rather than hidden
 
