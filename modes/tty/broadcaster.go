@@ -289,7 +289,7 @@ func (b Broadcaster) lanes() []string {
 	// ONE RENDERER FOR THE WHOLE FRAME (see cardLane): the lane width does not
 	// change between the cards in it.
 	lane := newCardLane(b.laneWidth(), g)
-	out := []string{"WATCHPOST Broadcaster"}
+	out := strings.Split(b.header(b.opts()), "\n")
 	out = append(out, b.stationLine()...)
 	out = append(out, b.heldNotice()...)
 	out = append(out, "")

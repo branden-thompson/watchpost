@@ -14,6 +14,7 @@ const ClockMil
 const ConfirmBG
 const DefaultThemeName
 const DetailGutter
+const EditionBroadcaster
 const EditionObserver
 const EventCatAdvisoryBG
 const EventCatDisasterBG

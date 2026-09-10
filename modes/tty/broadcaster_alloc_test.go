@@ -79,7 +79,13 @@ const (
 	//
 	// NOT OPTIMISED, per D-53. Padding a frame line by line is the obvious thing
 	// to do better later, and "later" is after the layout is judged good.
-	bcFrameAllocs = 151
+	// RE-PINNED TO 164 AT D-59: the masthead. It is a framed box with a title
+	// ladder and two inner rows, drawn through the Observer's own BoxTitled —
+	// so the cost is the frame the reference has always had, arriving.
+	//
+	// The layout phase will move this number several more times. Each re-pin
+	// says WHAT arrived; none of them optimise, per D-53.
+	bcFrameAllocs = 164
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

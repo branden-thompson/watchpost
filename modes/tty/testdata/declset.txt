@@ -34,6 +34,8 @@ const actSwapBroadcaster
 const actSwapObserver
 const bcMinCols
 const bcMinRows
+const bcPlaceholderLocation
+const bcPlaceholderRadius
 const bcRowTail
 const bottomInset
 const castLabelW
@@ -182,7 +184,11 @@ func (Broadcaster).Update
 func (Broadcaster).View
 func (Broadcaster).clamp
 func (Broadcaster).clock
+func (Broadcaster).controlRow
+func (Broadcaster).header
+func (Broadcaster).headerRows
 func (Broadcaster).heldNotice
+func (Broadcaster).identityRow
 func (Broadcaster).laneWidth
 func (Broadcaster).lanes
 func (Broadcaster).minSize
