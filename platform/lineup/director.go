@@ -630,6 +630,10 @@ func (d Director) takeOffTheAir(id string, to State) (Director, []Effect, bool) 
 // DR-7 and the 1.03 s finding, structural rather than scheduled. Publishing last
 // means a subscriber never sees a state this same step is still changing.
 func (d Director) settle() (Director, []Effect) {
+	// THE ORDER IS DECIDED BEFORE ANYTHING READS IT (D-43). A transition the
+	// running order now calls for may be the very next thing spoken, so it must
+	// exist before the air is taken and before preparation looks ahead.
+	d = d.reconcileJoins()
 	d, air := d.takeTheAir()
 	d, prep := d.prepareNext()
 	// A card that arrived with its own words reached standby just now, in this
