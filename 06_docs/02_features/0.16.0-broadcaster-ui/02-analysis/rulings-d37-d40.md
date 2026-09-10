@@ -628,3 +628,107 @@ caught the two new top-level functions.
 **A STALE COMMENT WAS FIXED RATHER THAN LEFT** — `TestAPublishIsCarriedAndDeclined` still said the
 publish is "EMITTED and nobody reads it".  The console has read it since P2 and the producer answers it
 now.  That is the **F-69 shape**, caught in the same file it applies to.
+
+---
+
+# D-55 — THE INJECTOR SHIPS, AND THE CARD LEARNS TO SAY "TEST"
+
+> *"all UI portions of the inject alert are labeled **TEST EVENT** … we also have a test script which
+> repeatedly indicates that it's a TEST … the Station Operator NEEDS that functionality to test his
+> machinery, and the visual and audio call outs make it clear.  There's also real-world precedent for TV
+> stations and Radio stations to do this very activity while actively on air."*
+
+**THE PREMISE WAS CHECKED SURFACE BY SURFACE, AND IT HELD EVERYWHERE EXCEPT THE ONE THIS RELEASE ADDS.**
+
+| Surface | Marked | Where |
+|---|---|---|
+| Ticker band | ✅ `**TEST EVENT**` at **both** ends, so it cannot scroll off-window | `ticker.go:108` |
+| Severe `[w]` table | ✅ leads the EVENT column | `severe.go:419` |
+| `[w]` read audio | ✅ four separate "this is only a test" statements | `test-alert/{head,title,explain,tail}` |
+| Takeover audio | ✅ `allFabricated` → the test scripts | `compose_takeover.go:46` |
+| Band cue from a card | ✅ `Test: e.Fabricated` | `itemsOf` |
+| **Broadcaster line-up card** | ❌ **NOTHING AT ALL** | `Card` had no `Test` field |
+
+**`takeoverOf` built the card from the headline and DROPPED `Arrival.Test`**, which survived only into
+`selectBurst`'s ordering.  So the console drew a fabricated takeover as an ordinary one — the exact
+hazard the original "never ship" rule was written against, arriving on the surface that did not exist
+when that rule was written.
+
+**Two safeguards worth crediting**, because they are stronger than the record suggested: `selectBurst`
+**reserves every real hazard's slot before a test event is offered one**, and a fabricated emergency
+takes **no** Max exemption — *"a fabricated event taking that room is a fabricated event silencing a
+real alert."*
+
+## What was built
+
+**`Card.Test`, rendered PER SURFACE.**  The severe window already made and stated this call — the mark
+is added at render *"rather than to the row's Product: the `[w]` read speaks that field, and a product
+with three asterisks in it would be read aloud as asterisks."*
+
+**EVERY alert in the burst, not ANY.**  One card carries the whole burst (MVS-D-77), so a burst holding
+one REAL hazard is not a test; marking it would hide a live alert behind a label that says to ignore it.
+This is the same call `allFabricated` makes about the WORDS, and the two must not disagree.
+
+**A card that cannot be labelled honestly is NOT DRAWN.**  A test caught the outer clamp chopping the
+mark into `**TEST E` — the one output worse than no mark, because a reader takes a broken label for
+rendering damage and the warning beside it for real.  Drawing it unmarked is the screenshot hazard
+itself, so the only remaining choice is to draw nothing.
+
+## A go-studs gap, sent upstream rather than patched
+
+**`SetPrefix` reserves its width and never renders on a data row.**  `prefixWidth` is counted
+(`data_table_row.go:521`) and only `RenderHeader` writes it (`:210`), so a prefix set for the mark
+reserved its space and printed nothing.  **M6 upstream candidate.**  The mark is a real column instead —
+and TWO rows are built per lane rather than one, because a fixed column present on every card would put
+every real hazard 14 cells off-centre to make room for a label it never carries.
+
+---
+
+# D-56 — "ONE CANONICAL WAY TO DO A THING" IS A STANDING RULE, ACROSS ALL ENGINEERING
+
+> *"the 'one way to do a thing' extends to ALL aspects of our engineering, not just the router layer.
+> This is/was a big helper in consolidating methods and providers in previous releases."*
+
+**RATIFIED.**  Duplicate ONLY when isolation is a genuine need, **and name the need where the duplicate
+lives.**
+
+**The worked example is the diagnostic window:** rather than give the Broadcaster its own `ctrl+d`, the
+Router composites the Dashboard's existing one over whichever surface is active.  One owner, no second
+injector UI, and the console stays on screen underneath so the operator can watch the takeover drain.
+
+**It is the same rule behind most of this release's real defects**, each of which was one rule carried
+twice: the duck lifted by one spelling of `tune`; `bcMinCols` drifting from the breakpoint classifier;
+the console's window drifting from the Director's depth; and every surviving plant that turned out to be
+a redundant guard.
+
+---
+
+# D-57 — THE TEST MARK GOES IN THE CARD'S CORNERS, AND THE BADGE KEEPS ITS LANE
+
+> *"we have a UI where overlays happen — we can mark 'TEST' on the card corners of a fabricated
+> event"*, with `TEST EVENT` leading the title row and `TEST` at the bottom corners.  Badge: **"Keeping
+> 'PRIORITY' is fine."**
+
+**IT IS BETTER THAN ONE MARK, AND THE REASON IS THE OVERLAY.**  A single mark has a single point of
+failure — it can be truncated, and more importantly **the priority track sits ON TOP of the main
+track**, so a takeover card is exactly the card most likely to be partly occluded.  A one-position mark
+on the one card type that gets overlaid is the weakest possible placement.  Marks at fixed corners
+cannot all be lost to truncation, occlusion, or a cropped screenshot.
+
+**It is the ticker's own reasoning, one surface along** — `testEventMark` is prepended AND postpended
+because *"the tape scrolls: a marker at one end only is off-window half the time, and a marker at both
+ends means the item cannot be on screen without one of them."*  The card is the same argument in two
+dimensions.
+
+**THE BADGE STAYS `•PRIORITY•` (HUM LEAD).**  The two facts never compete for one slot: the lane badge
+is the only thing that says WHICH lane the card is on, and for a takeover that is what the operator most
+needs to see.
+
+## It waits on the boxed card, and that is a real dependency
+
+**The console draws FLAT ROWS today — there are no borders to put corners on.**  The reference mock
+draws boxes throughout, so the boxed renderer is the next rendering step and the corners land with it.
+
+**What is in now (D-55's single leading mark) is a correct interim FOR A ROW**, and it is superseded
+rather than extended when the box arrives.  Its "a card that cannot be labelled honestly is not drawn"
+backstop SURVIVES the change: it is about the mark being whole, not about where the mark sits.

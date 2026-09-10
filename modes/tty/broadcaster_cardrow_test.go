@@ -147,3 +147,103 @@ func TestTheBadgeSitsBetweenTheHeadlineAndTheHandle(t *testing.T) {
 		t.Errorf("the badge is inboard of the handle; got %q", got)
 	}
 }
+
+// D-55: A FABRICATED TAKEOVER SAYS SO IN THE LINE-UP TOO.
+//
+// Every surface that existed when the injector's safeguards were written marks
+// one — the band at both ends, the severe window leading its EVENT column, the
+// audio four times over. The console did not, because it did not exist yet, and
+// `Card` did not carry the fact at all.
+//
+// THE MARK IS A PREFIX, NOT PART OF THE HEADLINE, so the row reserves its width
+// and the title's truncation can never eat it. A HALF-EATEN MARK IS WORSE THAN
+// NONE: "**TEST EV…" beside a tornado warning reads as damage, not as a label.
+func TestAFabricatedCardIsMarkedInTheLineUp(t *testing.T) {
+	c := aCard(t, "TORNADO WARNING + 2 more")
+	c.Test = true
+	got := newCardLane(148, render.Opts{ASCII: true}.Glyphs()).render(c, "T", "PRIORITY")
+
+	if !strings.Contains(got, testEventMark) {
+		t.Errorf("a fabricated takeover must say so where the operator reads the line-up; got %q", got)
+	}
+	// IT LEADS. A mark after the headline is a mark the eye reaches second, and
+	// the headline is the part that looks like a real warning.
+	if i, j := strings.Index(got, testEventMark), strings.Index(got, "TORNADO"); i < 0 || j < 0 || i > j {
+		t.Errorf("the mark leads the card; got %q", got)
+	}
+}
+
+func TestARealCardCarriesNoMark(t *testing.T) {
+	// THE HALF THAT MATTERS MOST: a mark on a real hazard teaches an operator to
+	// ignore the mark.
+	got := newCardLane(148, render.Opts{ASCII: true}.Glyphs()).
+		render(aCard(t, "TORNADO WARNING + 2 more"), "T", "PRIORITY")
+	if strings.Contains(got, testEventMark) {
+		t.Errorf("a real hazard is never marked as a test; got %q", got)
+	}
+}
+
+func TestTheTestMarkSurvivesTheNarrowestLane(t *testing.T) {
+	// The mark is the one thing on the card that must never be truncated away,
+	// so it is asserted at every supported width AND below them.
+	c := aCard(t, "TORNADO WARNING FOR SAN DIEGO COUNTY COASTAL AREAS + 4 more")
+	c.Test = true
+	for _, lane := range []int{98, 108, 128, 148} {
+		got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).render(c, "T", "PRIORITY")
+		if !strings.Contains(got, testEventMark) {
+			t.Errorf("lane %d: the mark was truncated away; got %q", lane, got)
+		}
+		if w := utf8.RuneCountInString(got); w != lane {
+			t.Errorf("lane %d: and it still fills the lane exactly; got %d", lane, w)
+		}
+	}
+}
+
+// A PARTIAL MARK IS THE ONE OUTPUT THAT IS WORSE THAN NO MARK. "**TEST EV…"
+// beside a tornado warning reads as rendering damage, not as a label — and an
+// operator who reads it as damage reads the warning as real.
+//
+// So at any width the row must show the mark WHOLE or not at all. This is
+// asserted below the supported floor as well as at it, because the rule is
+// about the mark and not about the breakpoints.
+func TestTheTestMarkIsNeverShownPartially(t *testing.T) {
+	c := aCard(t, "TORNADO WARNING FOR SAN DIEGO COUNTY + 4 more")
+	c.Test = true
+	for _, lane := range []int{4, 8, 12, 16, 20, 30, 60, 98, 148} {
+		got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).render(c, "T", "PRIORITY")
+		whole := strings.Contains(got, testEventMark)
+		partial := !whole && strings.Contains(got, "TEST")
+		if partial {
+			t.Errorf("lane %d: the mark is shown in pieces — %q", lane, got)
+		}
+		if w := utf8.RuneCountInString(got); w > lane {
+			t.Errorf("lane %d: and it overflowed to %d cells", lane, w)
+		}
+	}
+}
+
+// AT A NARROW-BUT-DRAWABLE WIDTH THE CARD IS STILL DRAWN, AND STILL MARKED.
+//
+// The two mechanisms that keep the mark whole are different in scope and this
+// is what separates them: the column is NON-TRUNCATABLE so the component never
+// shortens it, and the row is DROPPED if the mark is missing so nothing else
+// can. Without the first, a squeezed lane truncates the mark, the second fires,
+// and the card VANISHES — a fabricated takeover that silently disappears from
+// the line-up instead of being labelled.
+//
+// These widths are below the supported floor on purpose: they are where the
+// squeeze happens, and the rule is about the mark rather than the breakpoints.
+func TestANarrowLaneStillDrawsTheMarkedCardRatherThanDroppingIt(t *testing.T) {
+	c := aCard(t, "TORNADO WARNING FOR SAN DIEGO COUNTY + 4 more")
+	c.Test = true
+	for _, lane := range []int{36, 44, 52, 60, 80} {
+		got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).render(c, "T", "PRIORITY")
+		if got == "" {
+			t.Errorf("lane %d: the card was dropped; it is narrow, not unlabellable", lane)
+			continue
+		}
+		if !strings.Contains(got, testEventMark) {
+			t.Errorf("lane %d: drawn without its mark — %q", lane, got)
+		}
+	}
+}

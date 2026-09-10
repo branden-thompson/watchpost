@@ -350,6 +350,23 @@ type Card struct {
 	// cannot discard the very transition it raises.
 	BuiltAt time.Time
 
+	// Test marks a card assembled ENTIRELY from fabricated alerts — the ctrl+d
+	// window's injection (FR-4.4, D-55).
+	//
+	// IT TRAVELS AS DATA AND IS RENDERED PER SURFACE, which is the call the
+	// severe window already made and stated: the mark is added "HERE rather than
+	// to the row's Product: the [w] read speaks that field, and a product with
+	// three asterisks in it would be read aloud as asterisks." Baking it into
+	// Headline would put asterisks in the operator's own words and in anything
+	// that ever speaks them.
+	//
+	// EVERY ALERT IN THE BURST, NOT ANY OF THEM. One card carries the whole
+	// burst (MVS-D-77), so a burst holding one REAL hazard is not a test —
+	// marking it would hide a live alert behind a label that says to ignore it.
+	// The audio path makes exactly this call (`allFabricated`), and the card
+	// must not disagree with what is being spoken.
+	Test bool
+
 	// State is where the card is in its life, and the only thing about it that
 	// may change while it is on the air.
 	State State

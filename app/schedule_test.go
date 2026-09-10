@@ -368,14 +368,24 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 			got, tty.MainTrackSlots)
 	}
 
-	// AND IT STOPS THERE. The chain is Publish -> Offered -> fill -> Publish,
-	// so a depth that never satisfies would spin for ever.
-	time.Sleep(50 * time.Millisecond)
-	mu.Lock()
-	after := len(last.Projection(lineup.MainTrack))
-	mu.Unlock()
-	if after != tty.MainTrackSlots {
-		t.Errorf("the line-up kept growing past the console's window: %d", after)
+	// AND IT NEVER GOES PAST IT. The chain is Publish -> Offered -> fill ->
+	// Publish, so a depth that never satisfies would spin for ever and the
+	// line-up would run away.
+	//
+	// THE DEPTH IS A CEILING, NOT A FIXED LEVEL, and the first draft of this
+	// asserted the wrong thing: the station is LIVE here, so cards take the air
+	// and leave, and the count sits at nine as often as ten while the top-off
+	// refills behind them. Asserting equality made the test a race against the
+	// programme it was watching.
+	deadline = time.Now().Add(250 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		after := len(last.Projection(lineup.MainTrack))
+		mu.Unlock()
+		if after > tty.MainTrackSlots {
+			t.Fatalf("the line-up ran past the console's window: %d", after)
+		}
+		time.Sleep(5 * time.Millisecond)
 	}
 }
 

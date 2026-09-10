@@ -516,8 +516,21 @@ func takeoverOf(p []placed) (Card, error) {
 	for _, c := range p {
 		refs = append(refs, c.arrival.ID)
 	}
+	// EVERY ALERT, NOT ANY ALERT (FR-4.4, D-55). A burst that carries one real
+	// hazard is not a test: marking it would hide a live alert behind a label
+	// that tells the operator to ignore it. This is the same call
+	// `app/compose_takeover.go:allFabricated` makes about the WORDS, and the two
+	// must not disagree — the card would say "test" while the voice read a real
+	// warning, or the reverse.
+	fabricated := true
+	for _, c := range p { // bounded by the selection (P10-02)
+		if !c.arrival.Test {
+			fabricated = false
+			break
+		}
+	}
 	card, err := Propose(Card{ID: BurstID(head.ID), Slot: BreakingAlert, Origin: FromObserver,
-		Subject: head.Subject, Headline: headline, Refs: refs})
+		Subject: head.Subject, Headline: headline, Refs: refs, Test: fabricated})
 	if err != nil {
 		return Card{}, err
 	}
