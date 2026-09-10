@@ -393,12 +393,7 @@ func (b Broadcaster) lanes() []string {
 	for _, r := range bcRegions {
 		order = append(order, b.region(r, main, lane)...)
 	}
-	// AN EMPTY LINE-UP STILL SAYS SO, INSIDE THE FRAME. It was drawn outside it
-	// and the frame lost its edge on that row — caught by the test that walks
-	// every drawn row rather than by looking.
-	if len(order) == 0 {
-		order = b.section("LINE UP", []string{render.PadTo("  (nothing scheduled)", b.cardBoxWidth())})
-	}
+
 	// AND THE PRIORITY TRACK IS COMPOSITED ON TOP OF IT (D-61).
 	//
 	// "the priority track visually sits ON TOP of the main track — that's
@@ -417,7 +412,27 @@ func (b Broadcaster) lanes() []string {
 	// THE FRAME'S RIGHT-HAND CHROME GOES ON LAST, over the assembled order and
 	// whatever the priority track composited onto it — the scroll rail belongs
 	// to the running order as a whole, not to any one region of it.
-	out = append(out, b.framed(b.withPriority(order), MainTrackSlots, len(b.lineup.Projection(lineup.MainTrack)))...)
+	body := b.withPriority(order)
+	// AN EMPTY LINE-UP STILL SAYS SO, AND SAYS IT BELOW THE OVERLAY. It was
+	// drawn into the order itself, so a takeover composited straight over the
+	// one row that explains why the rest is empty.
+	if len(main) == 0 {
+		body = append(body, b.section("LINE UP", []string{render.PadTo("  (nothing scheduled)", b.cardBoxWidth())})...)
+	}
+	// AND THE FRAME RUNS THE FULL HEIGHT OF THE TERMINAL. It stopped at the last
+	// drawn row, so a station with a short line-up showed a fragment floating in
+	// black — the reference carries its walls to the bottom, and a frame that
+	// ends where its content does is not a frame.
+	if n := b.height - len(out) - len(body); n > 0 {
+		// ONE BLANK ROW, REPEATED. Building a whole section per row rebuilt its
+		// rail and its glyph set every time — 702 allocations for a frame, from
+		// rows that are all identical by construction.
+		blank := b.section("", []string{strings.Repeat(" ", b.cardBoxWidth())})
+		for range n { // bounded by the terminal (P10-02)
+			body = append(body, blank...)
+		}
+	}
+	out = append(out, b.framed(body, MainTrackSlots, len(b.lineup.Projection(lineup.MainTrack)))...)
 	return out
 }
 
