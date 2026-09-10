@@ -61,15 +61,73 @@ func (b Broadcaster) slotRows(r bcRegion, cards []lineup.Card, lane cardLane) []
 	o := b.opts()
 	rows := []string{}
 	for i := r.from; i < r.upto; i++ { // bounded by the region (P10-02)
+		handle := strconv.Itoa(i)
 		c, decided := b.slotCard(cards, i)
-		if decided {
-			rows = append(rows, lane.box(c, strconv.Itoa(i), "STANDARD")...)
+		if !decided {
+			// THE HANDLE IS DRAWN ON AN EMPTY SLOT TOO: it is addressable — the
+			// operator can put something in it — so it carries its address.
+			c = lineup.Card{Headline: b.waiting(o)}
+			// AND A READ SLOT ON A STATION AT REST IS SIMPLY EMPTY (D-68). The
+			// HUM LEAD: "when it's on standby — like it is on first open/play —
+			// that should be blank, we should have an empty state for that live
+			// slot." A shimmer there would promise a read that is not coming,
+			// because nothing is going to air at all.
+			if r.reads && b.power != lineup.Running {
+				c = lineup.Card{}
+			}
+		}
+		if r.reads {
+			rows = append(rows, lane.boxOf(c, handle, "STANDARD", b.readBody(o, c, handle, decided))...)
 			continue
 		}
-		// THE HANDLE IS DRAWN ON AN EMPTY SLOT TOO: it is addressable — the
-		// operator can put something in it — so it carries its address.
-		waiting := lineup.Card{Headline: b.waiting(o)}
-		rows = append(rows, lane.box(waiting, strconv.Itoa(i), "STANDARD")...)
+		rows = append(rows, lane.box(c, handle, "STANDARD")...)
 	}
 	return rows
 }
+
+// bcReadLines is how many lines of the script a read card shows.
+//
+// FIVE, FROM THE REFERENCE — its LIVE card runs eleven rows: the border, the
+// title, a blank, five of script, a blank, the controls, the border. It is a
+// WINDOW onto the read and never the whole of it, which is what `Details (Full
+// Read)` is for.
+const bcReadLines = 5
+
+const (
+	// bcFlatCardRows is a card the operator only ORDERS: border, title, a row,
+	// border.
+	bcFlatCardRows = 4
+
+	// bcReadCardRows is a card the operator READS FROM: the flat card plus the
+	// script window, a blank, and the card's own controls.
+	bcReadCardRows = bcFlatCardRows + bcReadLines + 2
+)
+
+// readBody is the interior of a card the operator reads from, below the row the
+// test marks live on: the script, a blank, and the card's own controls.
+//
+// THE HEIGHT IS THE SAME WHETHER THERE IS A SCRIPT OR NOT. A card that grew when
+// its words arrived would move every card below it at the moment the operator is
+// reading one — so an empty read card is the same shape with nothing in it.
+//
+// THERE IS NO SCRIPT TO SHOW YET, AND THAT IS WIRING, NOT LAYOUT (F-84). The
+// script is built into `Built{ID, Script}` inside the executors and never
+// reaches the card or the console; `Card` carries a Headline and no words. The
+// window is built to the reference's size so the words have somewhere to land.
+func (b Broadcaster) readBody(o render.Opts, c lineup.Card, handle string, decided bool) []string {
+	rows := make([]string, 0, bcReadLines+2)
+	for range bcReadLines { // bounded by the card's height (P10-02)
+		rows = append(rows, "")
+	}
+	rows = append(rows, "")
+	if !decided {
+		return append(rows, "") // nothing to detail, and the shape holds
+	}
+	// THE CONTROL IS THE CARD'S OWN HANDLE, which is the reference: `[ 0 ]
+	// Details (Full Read)`. The operator types the address they can already see
+	// on the card, so there is one number to learn per card rather than two.
+	return append(rows, bcCardInset+o.KeyCap(handle)+" Details (Full Read)")
+}
+
+// bcCardInset is where a read card's own text begins, counted off the reference.
+const bcCardInset = "   "

@@ -39,9 +39,12 @@ const actStationToggle
 const actStatus
 const actSwapBroadcaster
 const actSwapObserver
+const bcCardInset
 const bcCardRows
 const bcCornerMark
+const bcFlatCardRows
 const bcGainCells
+const bcInsetRows
 const bcLabelCells
 const bcMinCols
 const bcMinRows
@@ -51,6 +54,8 @@ const bcPlaceholderRadius
 const bcPriorityCol
 const bcRailGap
 const bcRailWidth
+const bcReadCardRows
+const bcReadLines
 const bcRightChrome
 const bcRowTail
 const bcSectionInset
@@ -202,6 +207,7 @@ func (Broadcaster).View
 func (Broadcaster).armTick
 func (Broadcaster).bedRow
 func (Broadcaster).cardBoxWidth
+func (Broadcaster).chrome
 func (Broadcaster).clamp
 func (Broadcaster).clock
 func (Broadcaster).controlRow
@@ -210,12 +216,16 @@ func (Broadcaster).header
 func (Broadcaster).headerRows
 func (Broadcaster).heldNotice
 func (Broadcaster).identityRow
+func (Broadcaster).inset
+func (Broadcaster).laneHeader
 func (Broadcaster).laneWidth
 func (Broadcaster).lanes
 func (Broadcaster).minSize
 func (Broadcaster).notice
 func (Broadcaster).opts
+func (Broadcaster).orderWidth
 func (Broadcaster).priorityWidth
+func (Broadcaster).readBody
 func (Broadcaster).region
 func (Broadcaster).regionGap
 func (Broadcaster).section
@@ -492,6 +502,7 @@ func (Router).toggleStation
 func (Router).update
 func (arrowChips).pick
 func (cardLane).box
+func (cardLane).boxOf
 func (cardLane).corners
 func (cardLane).render
 func (endpointRow).counters
