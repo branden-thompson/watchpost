@@ -1,0 +1,176 @@
+0.16.0 — BROADCASTER CARD TYPES, v2
+=====================================
+
+SUPERSEDES v1, which was drawn at the OCCLUDED width (65 cells) and was half a card.
+
+NOTHING HERE IS A HARD-CODED COLUMN.  Every row below is GENERATED from the anchoring
+rule at each supported width, which is the only way to be sure the rule — not the
+drawing — is what gets built:
+
+    box      fills the lane            (width − 9 left chrome − 9 right chrome)
+    title    centred on the box; truncates KIND-FIRST, SUBJECT-LAST
+    badge    right-anchored, 2 cells inboard of the handle
+    handle   right-most, fixed 5 cells, 2 cells inside the edge — it is the ADDRESS
+             the operator types, so it never truncates and never moves
+
+In go-studs terms that is one `data_table_row` column set: the title column carries
+`Fill` + `Truncatable` + `TruncationTail`, and the badge and handle are fixed-width
+trailing columns (`SetBadge` already takes a gutter).  The standing rule applies —
+a row is a go-studs row, not a hand-built one.
+
+D-50 — THE BREAKPOINTS (HUM LEAD, 2026-09-10)
+
+    < 100 cols   UNSUPPORTED   btop-style: "resize your terminal to 100 x 25 or larger"
+    100 – 119    COMPACT       titles may truncate
+    120 – 150    OPTIMA        the range the reference mock is drawn at
+    > 150        LARGE         LATER RELEASE — a right rail (terminal maps).  SEAM ONLY.
+
+    Height floor is 25 rows, from the same ruling ("100 x 25").
+    150 is the TOP of Optima, not the bottom of Large — the reference mock is 150 wide
+    and the ruling calls that Optima's range.  Stated because the two overlapped.
+
+================================================================================
+OPTIMA — 150 columns, the reference width
+================================================================================
+
+  the ordinary card, and most of the broadcast
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                                              LOCATION REPORT • OCEANSIDE, CA 92057                             •STANDARD•  [ 6 ] │   │    │
+│   │    │                                                                                                                                  │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  SevereRead — a hazard read that did NOT take over
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                                               SEVERE-EVENT READ • RED FLAG WARNING                             •STANDARD•  [ 7 ] │   │    │
+│   │    │                                                                                                                                  │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  NO SLOT EXISTS FOR THIS YET — D-31
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                                                      WATCHPOST CREDITS READ                                    •STANDARD•  [ 8 ] │   │    │
+│   │    │                                                                                                                                  │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  BreakingAlert — drains on the rail, overlays the main track
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                                                 WEATHER ALERT • BURST (5 EVENTS)                               •PRIORITY•  [ T ] │   │    │
+│   │    │                                                                                                                                  │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  A LONG ONE — the truncation firing, kind-first
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                                   LOCATION REPORT • RANCHO SANTA MARGARITA, CA 92688 (COASTAL)                 •STANDARD•  [ 9 ] │   │    │
+│   │    │                                                                                                                                  │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+
+================================================================================
+OPTIMA — 130 columns, mid-range
+================================================================================
+
+  the ordinary card, and most of the broadcast
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                                    LOCATION REPORT • OCEANSIDE, CA 92057                   •STANDARD•  [ 6 ] │   │    │
+│   │    │                                                                                                              │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  SevereRead — a hazard read that did NOT take over
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                                     SEVERE-EVENT READ • RED FLAG WARNING                   •STANDARD•  [ 7 ] │   │    │
+│   │    │                                                                                                              │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  NO SLOT EXISTS FOR THIS YET — D-31
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                                            WATCHPOST CREDITS READ                          •STANDARD•  [ 8 ] │   │    │
+│   │    │                                                                                                              │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  BreakingAlert — drains on the rail, overlays the main track
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                                       WEATHER ALERT • BURST (5 EVENTS)                     •PRIORITY•  [ T ] │   │    │
+│   │    │                                                                                                              │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  A LONG ONE — the truncation firing, kind-first
+│   │    ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                         LOCATION REPORT • RANCHO SANTA MARGARITA, CA 92688 (COASTAL)       •STANDARD•  [ 9 ] │   │    │
+│   │    │                                                                                                              │   │    │
+│   │    ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+
+================================================================================
+COMPACT — 100 columns, the narrowest supported
+================================================================================
+
+  the ordinary card, and most of the broadcast
+│   │    ╭────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                     LOCATION REPORT • OCEANSIDE, CA 92057    •STANDARD•  [ 6 ] │   │    │
+│   │    │                                                                                │   │    │
+│   │    ╰────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  SevereRead — a hazard read that did NOT take over
+│   │    ╭────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                      SEVERE-EVENT READ • RED FLAG WARNING    •STANDARD•  [ 7 ] │   │    │
+│   │    │                                                                                │   │    │
+│   │    ╰────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  NO SLOT EXISTS FOR THIS YET — D-31
+│   │    ╭────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                             WATCHPOST CREDITS READ           •STANDARD•  [ 8 ] │   │    │
+│   │    │                                                                                │   │    │
+│   │    ╰────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  BreakingAlert — drains on the rail, overlays the main track
+│   │    ╭────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                        WEATHER ALERT • BURST (5 EVENTS)      •PRIORITY•  [ T ] │   │    │
+│   │    │                                                                                │   │    │
+│   │    ╰────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+  A LONG ONE — the truncation firing, kind-first
+│   │    ╭────────────────────────────────────────────────────────────────────────────────╮   │    │
+│   │    │                  … • RANCHO SANTA MARGARITA, CA 92688 (COAS… •STANDARD•  [ 9 ] │   │    │
+│   │    │                                                                                │   │    │
+│   │    ╰────────────────────────────────────────────────────────────────────────────────╯   │    │
+
+================================================================================
+BELOW 100 COLUMNS, OR BELOW 25 ROWS — NOT SUPPORTED
+================================================================================
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │                                                              │
+  │                    WATCHPOST BROADCASTER                     │
+  │                                                              │
+  │        This terminal is too small to broadcast from.         │
+  │                Resize to 100 x 25 or larger.                 │
+  │                                                              │
+  │                        now:  84 x 22                         │
+  │                                                              │
+  └──────────────────────────────────────────────────────────────┘
+
+  It states the REQUIREMENT and the CURRENT SIZE.  A message that says only "too small"
+  leaves the operator resizing by trial, which is the wrong thing to be doing during
+  weather.
+
+
+================================================================================
+WHAT IS DELIBERATELY NOT HERE
+================================================================================
+
+TRANSITION CARDS.  The reference draws one at slot [7], numbered and addressable.
+D-44 and D-49 rule the operator never sees or addresses one, and the HUM LEAD confirmed
+it on 2026-09-10: "Operator never deals with transitions, that's the Director's job.
+The Operator manages the 'main cards' of the lineup (Report types, credits, etc)."
+They live in the SCHEDULE and never in the LINE-UP.  Everything below one shifts up.
+
+THE BADGE SPELLING IS CORRECTED.  The reference reads •STANRARD• in all ten card rows
+while its own header row spells STANDARD.  Corrected on the HUM LEAD's ruling.
+
+THE RIGHT RAIL (> 150 columns).  A later release.  What is owed NOW is a SEAM, not a
+layout — see D-51: the lane width must come from ONE place, so that a right rail becomes
+a smaller number handed to the same card row rather than a rewrite of it.  The card
+above already takes its width as an argument, which is the whole of that seam.
+
+CREDITS HAVE NO SLOT.  The registry holds LocationReport, SevereRead, BreakingAlert and
+Transition, and says a slot nobody proposes is dead code.  The analysis found this
+independently — wave1-findings.md §4.5, "the mock exceeds the model".  D-31.
