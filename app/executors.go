@@ -55,6 +55,36 @@ type executors struct {
 	// nothing about how a report is assembled.
 	compose func(ctx context.Context, ref string) ([]synth.Segment, error)
 
+	// playReport plays a composed report and BLOCKS until it ends, reporting
+	// whether it reached its sign-off (0.16.0 P3(d), Shape B).
+	//
+	// NAMED DIFFERENTLY FROM THE DECK METHOD IT REACHES, deliberately. P10
+	// resolves by NAME, so a seam here called `readReport` and a method there
+	// called `readReport` are read as one node and the pair reports as
+	// recursion — the sixth instance of that false positive in this release,
+	// and every one of them a method on one type colliding with a method on
+	// another. The rename is the cheaper half of that trade.
+	//
+	// THE ARBITER OWNS WHO SPEAKS; THE SOURCE STILL OWNS HOW A REPORT IS
+	// SPOKEN. This runs inside voice.Run, so the air is held for the report's
+	// whole length and a takeover gives way exactly as it always has — through
+	// the engine, which HOLDS a rendered cycle and DIPS a live relay. Reading a
+	// report through the narrator instead would have replaced the player and
+	// taken that rule with it.
+	playReport func(ctx context.Context, ref string, segs []synth.Segment) bool
+
+	// held is the words a built card is waiting to speak, by card id — the
+	// SEGMENTS, which carry the roles, the self-introductions and the pauses
+	// that a lineup.Script cannot (red team 2026-09-09, finding 5). The script
+	// on the card is what the console DISPLAYS; this is what is voiced, and
+	// both come from one composition so the two cannot disagree.
+	//
+	// BOUNDED (P10-03) by heldSegmentsCap. Preparation runs one ahead and only
+	// one, so the live count is the card on the air plus the one standing by;
+	// the cap is what stops a card that was built and then dropped from holding
+	// its report for the life of the process.
+	held *segmentStore
+
 	// publish hands the settled schedule to the console. Nil when no surface
 	// is listening, which is every build before 0.16.0 and every test that
 	// does not care.
@@ -153,36 +183,56 @@ type executors struct {
 // newExecutors checks every seam once, here, rather than on the first effect —
 // where a nil would panic on a worker, be contained, and read as a fault of
 // the card instead of the wiring bug it is.
+// seamsPresent is the wiring contract, checked ONCE and in one place.
+//
+// SPLIT OUT OF newExecutors at P3(d), when the main track's three seams became
+// required and pushed it past P10-04's branch bound. That bound is doing its
+// job here: a constructor whose only remaining decision is "was the wiring
+// complete" reads better than one that also answers it.
+//
+// EVERY FAILURE NAMES THE SEAM. A nil seam would panic on the first effect, on
+// a worker, where the panic is contained and read as a fault of the CARD rather
+// than as the wiring bug it is.
+func seamsPresent(x executors) bool {
+	// A TABLE, NOT A CHAIN. Eleven `if` statements in a row is eleven branches
+	// and P10-04's bound is 15 — the merge's three seams took it past, and
+	// splitting the function merely moved the count. Walking a list is ONE
+	// branch, and it reads as what it is: the wiring contract, in order, each
+	// row saying what is missing in the words the reader needs.
+	for _, seam := range []struct {
+		present bool
+		says    string
+	}{
+		{x.voice != nil, "executors are built over a narrator, silent or not"},
+		{x.clock != nil && x.now != nil, "executors are built with a clock and a time"},
+		{x.mc != nil && x.audible != nil, "executors are built with an effector and a mute state"},
+		{x.alert != nil, "executors are built with a producer to ask"},
+		{x.mark != nil, "executors are built with somewhere to record what was read aloud"},
+		{x.readAloud != nil, "executors are built with a way to ask what was already read"},
+		{x.muted != nil, "executors are built with the listener's mute to ask"},
+		{x.report != nil, "executors are built with somewhere to report a declined effect"},
+		{x.cutTo != nil, "executors are built with a bed to cut over"},
+		{x.escalate != nil, "executors are built with somewhere a stopped schedule can be reported"},
+		// THE MAIN TRACK'S THREE (0.16.0 P3(d)). With the deck's direct path
+		// gone, the schedule is the ONLY way a location report reaches the air
+		// — so a nil composer, a nil player or a nil store is not a degraded
+		// station, it is a station whose rotation is permanently silent while
+		// its lineup fills up. They were optional while the direct path still
+		// ran; that window closed with it.
+		{x.compose != nil, "executors are built with a way to compose a report"},
+		{x.held != nil, "executors are built with somewhere to keep a composed report"},
+		{x.playReport != nil, "executors are built with something to play a report"},
+	} { // bounded by the list (P10-02)
+		if err := invariant.Check(seam.present, seam.says); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
 func newExecutors(x executors) *executors {
-	if err := invariant.Check(x.voice != nil, "executors are built over a narrator, silent or not"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.clock != nil && x.now != nil, "executors are built with a clock and a time"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.mc != nil && x.audible != nil, "executors are built with an effector and a mute state"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.alert != nil, "executors are built with a producer to ask"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.mark != nil, "executors are built with somewhere to record what was read aloud"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.readAloud != nil, "executors are built with a way to ask what was already read"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.muted != nil, "executors are built with the listener's mute to ask"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.report != nil, "executors are built with somewhere to report a declined effect"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.cutTo != nil, "executors are built with a bed to cut over"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.escalate != nil, "executors are built with somewhere a stopped schedule can be reported"); err != nil {
-		return nil
+	if !seamsPresent(x) {
+		return nil // seamsPresent has already named the one that was missing
 	}
 	x.band = &bandRecord{}
 	return &x
@@ -301,13 +351,17 @@ func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Even
 		// the composer for segments and turns them into a script; the deck
 		// owns what a report IS, exactly as the producer owns what an alert is
 		// on the rail path.
-		if x.compose == nil {
-			return x.decline(v, v.ID, "no composer is wired for the main track")
-		}
 		segs, err := x.compose(ctx, v.Subject)
 		if err != nil {
 			return x.decline(v, v.ID, "the report could not be composed: "+err.Error())
 		}
+		// COMPOSED ONCE, USED TWICE — as the card's script, which the console
+		// DISPLAYS, and as the segments, which the source VOICES. The script
+		// keeps only the text; the segments carry the roles, the
+		// self-introductions and the pauses that a lineup.Part has nowhere to
+		// put. Re-composing at the air would be eleven more requests and a
+		// second answer to a question already asked.
+		x.held.put(v.ID, segs)
 		sc := scriptFromSegments(segs)
 		if sc.Empty() {
 			// A CARD ON THE AIR WITH NO WORDS IS SILENCE under a callout the
@@ -330,26 +384,6 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	if !onTheRail(v.Slot) && v.Slot != lineup.LocationReport {
 		return x.decline(v, v.ID, "no reader for this slot: only the rail and the main track read")
 	}
-	// THE MERGE IS STAGED, AND THIS IS THE STAGE (0.16.0 P3, maintrack.go).
-	// While the main track is dark the card is queued, composed and published —
-	// its decisions are observable and comparable against the live path's — but
-	// the rotation still reads through its own audio, so the air has exactly one
-	// owner at every moment of the batch. DELETED AT P3(d), with startSynth's
-	// direct path, in the change that makes the schedule the owner.
-	//
-	// DECLINED, NOT HELD: a card standing by for a stage would wedge the main
-	// track behind it, and there is nothing to wait for — the stage is read
-	// from the environment, which nothing in the running station writes.
-	//
-	// THE STAGE IS READ TWICE PER READ, HERE AND AT THE SEAM, and nothing pins
-	// them together (red team 2026-09-09, finding 9). Only a test can make them
-	// disagree — t.Setenv, which forbids t.Parallel — so it is not reachable in
-	// production. Recorded rather than guarded: the guard (sync.OnceValue)
-	// would take the stage away from the tests that must switch it, on a file
-	// that is deleted at P3(d) anyway.
-	if v.Slot == lineup.LocationReport && !mainTrack().ownsTheAir() {
-		return x.decline(v, v.ID, "the main track is dark; the rotation reads through its own path")
-	}
 	// Card.To(OnAir) refuses this already; refused again here because this
 	// is the last thing between the schedule and a silent hold with a callout
 	// already promised (DR-18).
@@ -371,7 +405,13 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	// ASKED SEPARATELY FROM `audible`, which is about whether the MACHINE can
 	// make a sound. A voiceless station still reads: the words play nothing and
 	// the band still shows the hazard.
-	if x.muted() {
+	//
+	// THE RAIL'S RULE, AND ONLY THE RAIL'S (0.16.0 P3(d)). Every word above is
+	// about alerts, and the rotation is not one: `[M]` is "do not read me
+	// hazards", and it has never silenced the broadcast — the radio plays
+	// through it today. Applying it to a location report would have made the
+	// merge turn the mute key into a stop button.
+	if onTheRail(v.Slot) && x.muted() {
 		return x.decline(v, v.ID, "the listener is muted; the alerts stay new and will be offered again")
 	}
 	read := false
@@ -394,6 +434,29 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	if v.Slot == lineup.LocationReport {
 		class, role = narrateRotation, cast.Standard
 	}
+	// THE ROTATION IS PLAYED BY ITS SOURCE, UNDER THE ARBITER (0.16.0 P3(d),
+	// Shape B, ratified). The air is taken here and held for the report's whole
+	// length, so the schedule owns WHO speaks — and the report is still voiced
+	// by the synth source, so everything about HOW it is spoken is unchanged:
+	// the per-segment marquee, the cast, the correspondent handoffs,
+	// repeat-one, the player row, and the engine's give-way rule, which HOLDS a
+	// rendered cycle and DIPS a live relay.
+	//
+	// ITS WORDS ARE THE SEGMENTS, NOT THE SCRIPT. The script is what the
+	// console displays; both come from the one composition the build made.
+	if v.Slot == lineup.LocationReport {
+		segs, ok := x.held.take(v.ID)
+		if !ok || x.playReport == nil {
+			// A card whose report is gone, or a station with no audio deck.
+			// DECLINED rather than held: the schedule routes around it and
+			// offers the location again on the next turn (DR-21).
+			return x.decline(v, v.ID, "no composed report is waiting for this card")
+		}
+		x.voice.Run(ctx, class, role, x.audible(), func(ctx context.Context, _ *speaker) {
+			read = x.playReport(ctx, v.Subject, segs)
+		})
+		return x.leaveTheAir(v, read)
+	}
 	x.voice.Run(ctx, class, role, x.audible(), func(ctx context.Context, s *speaker) {
 		read = readScript(s, v.Script, readHooks{
 			cue: func(ref string) {
@@ -411,6 +474,16 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 			mark: x.mark,
 		})
 	})
+	return x.leaveTheAir(v, read)
+}
+
+// leaveTheAir is how a read comes home, whichever path performed it.
+//
+// EXTRACTED AT THE SECOND CALLER (0.16.0 P3(d)): the rotation is played by its
+// source and a takeover is read line by line, and both have to end the card the
+// same way. Two copies of DR-24's rule is two places for it to drift, and the
+// half that drifts is the half that fires rarely.
+func (x *executors) leaveTheAir(v lineup.Speak, read bool) []lineup.Event {
 	if !read {
 		// A READ THAT ENDED EARLY SAYS SO, ALWAYS (DR-24).
 		//
@@ -614,4 +687,51 @@ func (x *executors) eventsFor(refs []string) ([]globalfeed.Event, bool) {
 		out = append(out, e)
 	}
 	return out, true
+}
+
+// heldSegmentsCap bounds the composed-report store. Preparation runs one ahead
+// and only one, so two is the working count; the slack is for a card dropped
+// between its build and its read.
+const heldSegmentsCap = 8
+
+// segmentStore keeps a built card's composed report until it is read.
+//
+// TAKEN EXACTLY ONCE. A report belongs to one card and one read; leaving it
+// behind would let a later card with a recycled id speak last week's weather,
+// and the rotation recycles ids by design (ReadID is a pure function of the
+// location).
+type segmentStore struct {
+	mu   sync.Mutex
+	segs map[string][]synth.Segment
+}
+
+func newSegmentStore() *segmentStore { return &segmentStore{segs: map[string][]synth.Segment{}} }
+
+// put files a card's composed report.
+func (s *segmentStore) put(id string, segs []synth.Segment) {
+	if s == nil || id == "" {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.segs) >= heldSegmentsCap {
+		// THE BOUND IS THE POINT, not which entry goes. Everything here is a
+		// report for a card that was built and never read, and the cost of
+		// clearing is that such a card declines at the air and the schedule
+		// routes around it — which is what it would do anyway.
+		clear(s.segs)
+	}
+	s.segs[id] = segs
+}
+
+// take is a card's composed report, removed.
+func (s *segmentStore) take(id string) ([]synth.Segment, bool) {
+	if s == nil {
+		return nil, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	segs, ok := s.segs[id]
+	delete(s.segs, id)
+	return segs, ok
 }

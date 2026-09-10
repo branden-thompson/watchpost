@@ -134,6 +134,14 @@ type Speak struct {
 	ID     string
 	Slot   Slot
 	Script Script
+
+	// Subject is what the card is about, CARRIED ON THE EFFECT for the reason
+	// BuildCard's slot is (BD-8): the reader is chosen by what kind of read
+	// this is, and a location report's reader needs to know WHICH location —
+	// the source it plays is the deck's, and the deck resolves a place from
+	// this key. Looking it up from the published lineup instead would race the
+	// publish, which runs in the same step.
+	Subject string
 }
 
 // CueTicker tells the band to show the callout for the card taking the air. Fire
@@ -669,7 +677,7 @@ func (d Director) airOnce() (Director, []Effect, bool) {
 	d.lineup = moved
 	return d, []Effect{
 		CueTicker{ID: onAir.ID, Headline: onAir.Headline, Slot: onAir.Slot},
-		Speak{ID: onAir.ID, Slot: onAir.Slot, Script: onAir.Script},
+		Speak{ID: onAir.ID, Slot: onAir.Slot, Script: onAir.Script, Subject: onAir.Subject},
 	}, false
 }
 

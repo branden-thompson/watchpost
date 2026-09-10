@@ -95,6 +95,10 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// whose rotation is owned by the schedule and has no composer wired
 		// would queue every report and read none.
 		compose: composeFor(deck, watch),
+		// THE ROTATION'S AUDIO, UNDER THE ARBITER (0.16.0 P3(d)). The deck
+		// still plays the report; the schedule decides when.
+		playReport: playReportFor(deck, watch),
+		held:       newSegmentStore(),
 		// DR-21's one escalation channel. It reuses the relay-fault window
 		// rather than adding a second error surface: from the listener's chair
 		// "the relay is silent" and "the schedule stopped" are the same event —
@@ -181,6 +185,30 @@ func refFor(watch func() []snapshot.LocationRef, ref string) (snapshot.LocationR
 		}
 	}
 	return snapshot.LocationRef{}, false
+}
+
+// playReportFor is how a main-track card is VOICED (0.16.0 P3(d), Shape B).
+//
+// THE OTHER HALF OF composeFor, and deliberately its neighbour: one resolves a
+// card's key to a place and asks the deck what the report SAYS, the other
+// resolves the same key and asks the deck to PLAY it. Neither knows how a
+// report is assembled or how it sounds.
+//
+// IT BLOCKS for the report's whole length, because the caller is inside the
+// narration arbiter and the air is meant to be held for exactly that long.
+func playReportFor(deck *radioDeck, watch func() []snapshot.LocationRef) func(context.Context, string, []synth.Segment) bool {
+	return func(ctx context.Context, ref string, segs []synth.Segment) bool {
+		if deck == nil {
+			return false // a station with no audio: the card ends as an unfinished read
+		}
+		r, ok := refFor(watch, ref)
+		if !ok {
+			// The listener removed the location between the build and the air.
+			radioDebugLog("schedule:read-unknown:" + ref)
+			return false
+		}
+		return deck.readReport(ctx, r, segs)
+	}
 }
 
 // composeFor is how a main-track card gets its words (0.16.0 P3).

@@ -4,7 +4,7 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "DESIGN RECORDED.  ONE ARCHITECTURE QUESTION IS OPEN AND IT IS THE HUM LEAD'S.  The edit is not made."
+status: "SHAPE B RATIFIED by the HUM LEAD 2026-09-09 (\"Approved for B\").  BUILT.  This document is now the record of why."
 ---
 
 # The flip
@@ -126,7 +126,34 @@ walk can assert.
 The pin written then drove `setMode` directly, so it passed throughout: a pin on the CARRIER rather than
 on the RULE cannot see the carrier become the wrong one.  It drives `tune` now.
 
-## THE RULING NEEDED
+## RULED: SHAPE B (HUM LEAD, 2026-09-09)
+
+**Built as specified.**  What changed, in full:
+
+| | |
+|---|---|
+| `startSynth` → `readReport` | same body, one caller instead of three, and it **BLOCKS** until the report ends |
+| who calls it | the **Speak executor**, inside `voice.Run` — so the arbiter holds the air for the report's whole length |
+| what it plays | the segments the **BUILD** composed, taken from a bounded store keyed by card id |
+| how the read ends | the deck's own `cycleEnded` observation releases the waiter, carrying whether it reached its sign-off |
+| what the card's `Script` is for | **the console.**  Both halves come from one composition, so display and audio cannot disagree |
+| `app/maintrack.go` | **deleted**, with the direct path, as promised |
+
+**All seven gaps stayed closed** because nothing below the decision moved: the per-segment marquee, the
+cast, the correspondent handoffs, repeat-one, the player row, the first-use install and the give-way
+rule are the source's, and the source still plays.  **G-1 is closed by the same observation that raised
+it:** `cycleEnded` still fires, still tells the bed, and now also releases the read.
+
+**Two things came out of building it that the design did not foresee:**
+
+- **A repeat RE-COMPOSES.**  The card's words are the first pass — what the console showed is what went
+  out — and a loop fetches again.  Replaying a stale observation because the listener asked to hear it
+  again would be the station lying about the weather.
+- **`[M]` is the RAIL's rule and only the rail's.**  The mute check sat above the slot switch, so the
+  merge would have made the mute key a stop button: `[M]` means "do not read me hazards", and it has
+  never silenced the broadcast.  Caught by a plant in both directions.
+
+## The ruling as it was put
 
 **Shape A or Shape B.**  It decides what the flip is, and both readings are defensible from the plan's
 own words: *"the card then travels the ordinary path — `BuildCard` composes it, `Speak` reads it

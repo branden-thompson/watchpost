@@ -374,3 +374,30 @@ theatre, and the honest record is that this one is convention.
 
 **m9b** — both proposal error guards removed, and `Queue`'s own `check()` refuses the card anyway.  The
 guards stay (a discarded error is worse than a redundant branch) and the record says they carry nothing.
+
+
+## P3(d) — the flip
+
+**The schedule owns the air.  `startSynth`'s direct path is gone, and so is the staging switch.**  The
+roster below replaces P3(a4)'s three stage rows, which asserted a switch that no longer exists.
+
+| Gate | What it asserts | Evidence: a failure watched |
+|---|---|---|
+| `TestALocationReportIsPlayedByItsSourceUnderTheArbiter` | the report plays **inside** the arbiter's hold, from **this card's** composed segments, and is **not** narrated clip by clip | **Plants d1, d2 2026-09-09** → CAUGHT.  d1's first form did not compile and is recorded INVALID, not as a verdict |
+| `TestWhatTheBuildComposedIsWhatTheAirPlays` | the BUILD's composition is what reaches the source — **the two halves run together** | **Plant d3 → SURVIVED**, because nothing ran build and speak in one test.  Re-planted → CAUGHT.  Third instance this batch of a gate watching the state and not the work |
+| `TestAReportThatDidNotReachItsSignOffComesHomeFailed` | a read cut short comes home **Failed and Routed** (DR-24, I-2) | **Plant d8** — the result discarded so every read reports success → CAUGHT |
+| `TestACardWithNoComposedReportIsDeclinedNotAired` | a card whose report is gone is declined, and nothing reaches the source | **Plant d7** → CAUGHT |
+| `TestMutingHoldsHazardsAndDoesNotStopTheBroadcast` | **`[M]` is the RAIL's rule and only the rail's** | **Plants d5 and d6, in BOTH directions** → CAUGHT.  Without it the merge turns the mute key into a stop button |
+| `TestTheStationSaysWhyItIsReadingRatherThanRelaying` | the detail line carries the reason, **for one read only** | **Plants d10 → SURVIVED**, d11, d12 → CAUGHT.  The rule had no gate because it had no seam; `announceReport` is the seam |
+| `TestTheReasonIsKeptForTheReadAndTakenOnce` | the reason is filed at the need and consumed at the read | **Plant d9** → CAUGHT |
+| `TestTheReasonStoreIsBounded` | the store cannot grow with the day (P10-03) | asserted against `needWhyCap`, and that bounding it to NOTHING is also a failure |
+| `TestEveryPathToASynthesisedReadGoesThroughTheOneSeam` | **`engine.StartSource` has exactly one caller, and `startSynth` has none** | the gate said at P3(a4) that zero callers of `startSynth` would become the right answer and that it must then be rewritten to say so.  **It was.**  It now names the SOURCE, which is what a second speaker would have to start |
+| `TestExecutorsRefuseToBeBuiltWithoutTheirSeams` | `compose`, `readReport` and `held` are **required** | the dated obligation from P3(a) is discharged, and the derived completeness check is what made it impossible to forget |
+
+### The one decline row left in the table is gone too
+
+`TestEffectsNotYetEmittedAreDeclinedNotHalfDone` named the task that would retire each decline, and it
+**fired at every step**: P3(a2) when the build half arrived, P3(a3) when the speak half did, and P3(d)
+when the composer became required.  **Both location-report rows are now REMOVED rather than reworded** —
+there is no station that has a rotation and cannot read it, so a row asserting that decline is a check
+that cannot fail.  What replaced them is positive.

@@ -15,13 +15,11 @@ const discoverTimeout
 const dumpKeep
 const dumpMinInterval
 const dumpTimeLayout
+const heldSegmentsCap
 const holdStep
 const installRetryAfter
 const laneBacklog
 const liveDwell
-const mainTrackDark
-const mainTrackLive
-const mainTrackOff
 const maxAlertRecords
 const maxDumpsPerRun
 const maxLaneRows
@@ -31,7 +29,7 @@ const metroCapKm
 const narrateBreaking
 const narrateRead
 const narrateRotation
-const numMainTrackStages
+const needWhyCap
 const numNarrationClasses
 const publishCoalesce
 const pumpBacklog
@@ -97,6 +95,7 @@ func (*executors).build
 func (*executors).cueFor
 func (*executors).decline
 func (*executors).eventsFor
+func (*executors).leaveTheAir
 func (*executors).run
 func (*executors).runCue
 func (*executors).runRelease
@@ -181,6 +180,8 @@ func (*radioDeck).Stop
 func (*radioDeck).Tune
 func (*radioDeck).VoiceName
 func (*radioDeck).Voices
+func (*radioDeck).announceReport
+func (*radioDeck).armReport
 func (*radioDeck).buildVoice
 func (*radioDeck).canInstall
 func (*radioDeck).castChanged
@@ -192,6 +193,7 @@ func (*radioDeck).defaultVoice
 func (*radioDeck).discard
 func (*radioDeck).discoverVoices
 func (*radioDeck).duck
+func (*radioDeck).endReport
 func (*radioDeck).epoch
 func (*radioDeck).escalate
 func (*radioDeck).fault
@@ -211,8 +213,10 @@ func (*radioDeck).piperSpec
 func (*radioDeck).play
 func (*radioDeck).pushStatus
 func (*radioDeck).rawVoice
+func (*radioDeck).readReport
 func (*radioDeck).readSynth
 func (*radioDeck).recordResolution
+func (*radioDeck).rememberWhy
 func (*radioDeck).render
 func (*radioDeck).resolveVoice
 func (*radioDeck).restore
@@ -226,11 +230,11 @@ func (*radioDeck).setTones
 func (*radioDeck).silentCandidates
 func (*radioDeck).softChanged
 func (*radioDeck).startBackgroundInstall
-func (*radioDeck).startSynth
 func (*radioDeck).stationFor
 func (*radioDeck).stop
 func (*radioDeck).synthReason
 func (*radioDeck).synthSource
+func (*radioDeck).takeWhy
 func (*radioDeck).tell
 func (*radioDeck).tone
 func (*radioDeck).tones
@@ -262,6 +266,8 @@ func (*seenStore).has
 func (*seenStore).mark
 func (*seenStore).save
 func (*seenStore).set
+func (*segmentStore).put
+func (*segmentStore).take
 func (*severeDeck).AlertKeysWithin
 func (*severeDeck).LaneRows
 func (*severeDeck).Row
@@ -298,9 +304,6 @@ func (hostFacts).Default
 func (hostFacts).Discovered
 func (hostFacts).Installed
 func (hostFacts).Platform
-func (mainTrackStage).String
-func (mainTrackStage).ownsTheAir
-func (mainTrackStage).reports
 func RenderCast
 func ReportOnce
 func ReportOnceWithStats
@@ -378,7 +381,6 @@ func live
 func loadSeen
 func loadUserThemes
 func macVoices
-func mainTrack
 func marineReportOf
 func mastheadLine
 func narrateDebug
@@ -397,6 +399,7 @@ func newPump
 func newRadioDeck
 func newReleaseWatch
 func newResolver
+func newSegmentStore
 func newSevereDeck
 func notNew
 func onTheRail
@@ -406,6 +409,7 @@ func parseSayVoices
 func pcmDuration
 func piperInstallFor
 func piperVoiceNames
+func playReportFor
 func priorityTiers
 func profileNames
 func programmeReturnLine
@@ -444,6 +448,7 @@ func scopeEvents
 func scriptFromSegments
 func scriptText
 func scriptsDir
+func seamsPresent
 func seedRecent
 func seismicProviders
 func seismicReportOf
@@ -461,7 +466,6 @@ func snapshotBytes
 func spokenName
 func spokenWhen
 func spokenWindow
-func stageNames
 func staleWarnings
 func startDebugProfiles
 func startDumpTrigger
@@ -518,7 +522,6 @@ type hostFacts
 type injectQueue
 type injectQueue
 type livePipelines
-type mainTrackStage
 type mastercontrol
 type memRecord
 type narrationClass
@@ -537,6 +540,7 @@ type runEffect
 type scenario
 type schedule
 type seenStore
+type segmentStore
 type severeDeck
 type speaker
 type tickerDeck

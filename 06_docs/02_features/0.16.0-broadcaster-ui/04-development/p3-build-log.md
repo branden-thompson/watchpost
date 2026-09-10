@@ -4,7 +4,7 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "P3(a) LANDED DARK.  P3(b) and P3(d) are the next change, and they land together."
+status: "P3 COMPLETE except its UAT.  The producer, the property test, the instrument, the red team and THE FLIP have all landed."
 ---
 
 # P3(a) — the producer, wired dark
@@ -241,3 +241,91 @@ period.  **A cosmetic rewrite of a test is a change to the instrument.**
 | a UAT shared with nothing | not started |
 | the go/no-go before P4 | not reached |
 | `"compose"` moves from `optional` to `strippers` in `executors_test.go` | at P3(d): it is wired now, but a station running off/dark still works without it |
+
+
+# P3(b)+(d) — the flip, as built
+
+**Shape B, ratified 2026-09-09.**  The schedule decides WHEN a report is read; the source still decides
+HOW it is read.  Full reasoning and the gap table: `p3-flip-design.md`.
+
+## What moved
+
+| | |
+|---|---|
+| `startSynth` → `readReport` | the same body, **one caller instead of three**, and it BLOCKS until the report ends |
+| the caller | the **Speak executor**, inside `voice.Run` — the arbiter holds the air for exactly as long as the report plays |
+| the words | the segments the BUILD composed, taken once from a bounded store keyed by card id |
+| the end | the deck's own `cycleEnded` releases the waiter, carrying whether the report reached its sign-off |
+| `app/maintrack.go` | **deleted**, with the direct path, exactly as it said it would be |
+| `compose`, `readReport`, `held` | **REQUIRED seams now.**  The dated obligation recorded at P3(a) is discharged |
+
+**`Speak` gained a `Subject`**, for the reason `BuildCard` carries its slot (BD-8): the reader is chosen
+by what kind of read it is, and a location report's reader has to know WHICH location.  Looking it up
+from the published lineup would race the publish, which runs in the same step.
+
+## Three decisions taken while building it
+
+**A repeat RE-COMPOSES.**  The composed segments are the first pass — what the console displayed is what
+went out — and a loop fetches again.  Replaying a stale observation because the listener asked to hear
+it again would be the station lying about the weather.
+
+**`[M]` is the RAIL's rule and only the rail's.**  The mute check sat above the slot switch, so the
+merge would have turned the mute key into a stop button: `[M]` means *"do not read me hazards"*, and it
+has never silenced the broadcast.  Plants in both directions.
+
+**`leaveTheAir` was extracted at the second caller.**  The rotation is played by its source and a
+takeover is read line by line, and both have to end the card by DR-24's rule.  Two copies is two places
+for it to drift, and the half that drifts is the half that fires rarely.
+
+## The instrument
+
+**Fifteen plants.  Thirteen CAUGHT on the first pass, two SURVIVED and both found real holes.**
+
+| # | Plant | Verdict |
+|---|---|---|
+| d1 | the report is narrated line by line instead of played | CAUGHT (after one INVALID: the first form did not compile) |
+| d2 | the report plays OUTSIDE the arbiter | CAUGHT |
+| d3 | **the composed segments are never stored** | **SURVIVED**, then CAUGHT |
+| d4 | the report is left in the store instead of taken | CAUGHT |
+| d5 | mute stops the broadcast again | CAUGHT |
+| d6 | mute no longer holds a hazard | CAUGHT |
+| d7 | a card with no report airs silently | CAUGHT |
+| d8 | the read's result is discarded and every read reports success | CAUGHT |
+| d9 | the reason is never filed | CAUGHT |
+| d10 | **the reason is never taken** | **SURVIVED**, then CAUGHT |
+| d11 | the reason is not consumed, so it explains the next read too | CAUGHT |
+| d12 | the station never says it is on its own broadcast | CAUGHT |
+
+### d3 — nothing ran the two halves together
+
+**Deleting the store's write changed no assertion.**  The build test looked only at the card's script;
+the speak test put the segments in itself.  So the one wire that carries a report from where it is
+composed to where it is voiced was untested, and a station with it cut would show a full lineup and read
+none of it.
+
+**Closed by `TestWhatTheBuildComposedIsWhatTheAirPlays`**, which builds and then speaks through the same
+executors.  **This is the same shape as m6 and p1b**: a gate that watched the state and not the work.
+Third instance this batch.
+
+## Two P10 findings the flip raised, and what each one actually was
+
+**`recursion (direct or via readReport)` and `(direct or via segments)` were the SAME false positive,
+for the sixth time this release.**  P10 resolves by NAME, so the executors' `readReport` seam and the
+deck's `readReport` method read as one node and the pair reported as a cycle.  **The seam is
+`playReport` now**, and both findings cleared — which is also the evidence that they were name
+collisions rather than real cycles.
+
+**`newExecutors` crossed P10-04's branch bound**, and splitting the checks into `seamsPresent` merely
+MOVED the count — the same sixteen branches under a different name, which the meter said plainly.  So
+the chain became a TABLE the constructor walks: one branch, every message kept, and the contract now
+reads as what it is.  Two plants — a row deleted, and the table walked without acting — are both CAUGHT.
+
+**The bound was right and the first fix was not.**  A rule that only relocates the thing it measures is
+not satisfied, and the meter is what said so.
+
+### d10 — the reason had no gate because it had no seam
+
+The detail line is the ONLY place a listener learns why the station is reading rather than relaying, and
+it was written inside `readReport`, which resolves a voice — on a machine without one, a 63 MB download
+inside a unit test.  **So it was extracted**: `announceReport` is the one carrier, takes the reason, and
+needs no audio device to assert.  A rule that cannot be reached by a test is a rule with no gate.

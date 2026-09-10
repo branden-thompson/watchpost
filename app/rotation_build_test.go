@@ -27,13 +27,15 @@ func buildDeps(t *testing.T, segs []synth.Segment, err error) *executors {
 		voice: testDirector(nil, nil), clock: func() render.Clock { return render.Clock12 },
 		now: func() time.Time { return execNow }, mc: newMastercontrol(nil, func(tea.Msg) {}),
 		audible: func() bool { return true }, muted: func() bool { return false },
-		alert:     func(string) (globalfeed.Event, bool) { return globalfeed.Event{}, false },
-		mark:      func(string) {},
-		readAloud: func(string) bool { return false },
-		report:    func(lineup.Effect, string) {},
-		cutTo:     func(string) {},
-		escalate:  func(string) {},
-		compose:   func(ctx context.Context, ref string) ([]synth.Segment, error) { return segs, err },
+		alert:      func(string) (globalfeed.Event, bool) { return globalfeed.Event{}, false },
+		mark:       func(string) {},
+		readAloud:  func(string) bool { return false },
+		report:     func(lineup.Effect, string) {},
+		cutTo:      func(string) {},
+		escalate:   func(string) {},
+		compose:    func(ctx context.Context, ref string) ([]synth.Segment, error) { return segs, err },
+		playReport: stubPlayReport,
+		held:       newSegmentStore(),
 	})
 	if x == nil {
 		t.Fatal("the executors refused to build with a composer")
@@ -72,94 +74,180 @@ func TestALocationReportThatComposesNothingIsDeclinedNotAired(t *testing.T) {
 	}
 }
 
-// P3(a3): the SPEAK half. A location report reads through the arbiter as the
-// rotation class, so the programme gives way to a severe read and to a
-// takeover — which is the whole reason the class exists.
+// P3(d): the SPEAK half, and Shape B.
 //
-// THE STAGE IS SET EXPLICITLY (0.16.0 P3, maintrack.go). Until the flip, a
-// main-track card is declined at speak so the rotation keeps sole ownership of
-// the air; this test is about the MERGED station, so it asks for it by name.
-func TestALocationReportIsSpokenAsTheRotationClass(t *testing.T) {
-	t.Setenv("WATCHPOST_MAINTRACK", "live")
+// THE ARBITER OWNS WHO SPEAKS; THE SOURCE STILL OWNS HOW A REPORT IS SPOKEN.
+// A location report takes the air as `narrateRotation` — the lowest class, so
+// the programme gives way to a severe read and to a takeover — and is then
+// played by the deck's own synth source, which is what keeps the per-segment
+// marquee, the cast, the correspondent handoffs, repeat-one, the player row and
+// the engine's give-way rule (a rendered cycle HOLDS, a live relay DIPS).
+
+func TestALocationReportIsPlayedByItsSourceUnderTheArbiter(t *testing.T) {
 	v := &scriptVoice{}
 	b := newBench(t, v)
+	segs := []synth.Segment{{Key: "obs", Text: "Currently sixty-one degrees."}, {Key: "tail", Text: "This has been Watchpost."}}
+	b.x.held.put("r1", segs)
+
 	out := b.x.run(context.Background(), lineup.Speak{
-		ID: "r1", Slot: lineup.LocationReport, Script: lineup.Say("Currently sixty-one degrees."),
+		ID: "r1", Slot: lineup.LocationReport, Subject: "33.1959,-117.3795",
+		Script: lineup.Say("Currently sixty-one degrees."),
 	})
+
 	if len(out) == 0 {
 		t.Fatal("a spoken card comes home with an event")
 	}
 	if _, failed := out[0].(lineup.Failed); failed {
-		t.Fatalf("a location report must now be SPOKEN, not declined: %v — this is the second half of "+
-			"the decline that named T3.2", out[0])
+		t.Fatalf("a location report must be SPOKEN, not declined: %v", out[0])
 	}
-	if got := v.got(); !strings.Contains(got, "speak:Currently sixty-one degrees.") {
-		t.Errorf("the words must reach the voice; got %q", got)
+	if _, ok := out[0].(lineup.Finished); !ok {
+		t.Fatalf("a report that reached its sign-off comes home Finished; got %T", out[0])
+	}
+	// THE COMPOSED REPORT IS WHAT WAS PLAYED, not a re-composition. The
+	// segments carry the roles, the self-introductions and the pauses that the
+	// card's script cannot, so re-composing at the air would be eleven more
+	// requests AND a second answer to a question already asked.
+	if len(b.reads) != 1 {
+		t.Fatalf("the rotation is played once, by its source; got %d reads", len(b.reads))
+	}
+	if b.reads[0] != "33.1959,-117.3795:obs,tail" {
+		t.Errorf("the reader must be handed THIS card's location and THIS card's composed segments; got %q", b.reads[0])
+	}
+	// AND THE AIR WAS HELD FOR IT. The duck is the arbiter taking the air; the
+	// report plays inside it, and the restore comes after.
+	got := v.got()
+	if !strings.Contains(got, "duck") || !strings.Contains(got, "report:33.1959,-117.3795") {
+		t.Errorf("the report must play INSIDE the arbiter's hold on the air; got %q", got)
 	}
 	// NOT AN ASIDE. An aside is a TAKEOVER's line, whose visualizer does not
-	// follow it; the programme is ordinary speech.
-	if strings.Contains(v.got(), "aside:") {
-		t.Errorf("the rotation is the programme, not a takeover: %q", v.got())
+	// follow it; the programme is the broadcast.
+	if strings.Contains(got, "aside:") {
+		t.Errorf("the rotation is the programme, not a takeover: %q", got)
+	}
+	// NOR IS IT SPOKEN LINE BY LINE. Reading the script through the narrator
+	// would replace the player and take the give-way rule with it.
+	if strings.Contains(got, "speak:") {
+		t.Errorf("the report is played by its source, not narrated clip by clip: %q", got)
+	}
+	// THE REPORT IS TAKEN FROM THE STORE, not left behind for a later card
+	// with the same id to speak — and the rotation recycles ids by design.
+	if _, still := b.x.held.take("r1"); still {
+		t.Error("the composed report must be taken exactly once")
 	}
 }
 
-// THE DARK STAGE IS THE ONE THING BETWEEN A HALF-MERGED PRODUCER AND TWO
-// SPEAKERS, so it is pinned from the speak side as well as from the switch.
+func TestAReportThatDidNotReachItsSignOffComesHomeFailed(t *testing.T) {
+	v := &scriptVoice{}
+	b := newBench(t, v)
+	b.readFails = true
+	b.x.held.put("r1", []synth.Segment{{Key: "obs", Text: "x"}})
+
+	out := b.x.run(context.Background(), lineup.Speak{
+		ID: "r1", Slot: lineup.LocationReport, Subject: "here", Script: lineup.Say("x"),
+	})
+
+	if len(out) != 1 {
+		t.Fatalf("one event; got %d", len(out))
+	}
+	f, failed := out[0].(lineup.Failed)
+	if !failed {
+		t.Fatalf("a read that ended early says so, always (DR-24); got %T — a Finished would tell the "+
+			"schedule a read happened that did not", out[0])
+	}
+	// ROUTED: a stop, a halt or a pre-emption is not the station failing, and a
+	// fault window for one would be the noise regression fault.go avoids (I-2).
+	if !f.Routed {
+		t.Error("a report cut short is routed, not a station that has gone quiet")
+	}
+}
+
+func TestACardWithNoComposedReportIsDeclinedNotAired(t *testing.T) {
+	b := newBench(t, &scriptVoice{})
+	// Nothing put in the store: the card was built and then dropped, or its
+	// report was evicted by the bound.
+	out := b.x.run(context.Background(), lineup.Speak{
+		ID: "ghost", Slot: lineup.LocationReport, Subject: "here", Script: lineup.Say("x"),
+	})
+	if len(out) != 1 {
+		t.Fatalf("one event; got %d", len(out))
+	}
+	if _, failed := out[0].(lineup.Failed); !failed {
+		t.Fatalf("a card with nothing to play must be declined, not aired silently; got %T", out[0])
+	}
+	if len(b.reads) != 0 {
+		t.Errorf("and nothing may reach the source; got %v", b.reads)
+	}
+}
+
+// MUTE IS THE RAIL'S RULE, AND ONLY THE RAIL'S (0.16.0 P3(d)).
 //
-// The card is still queued, still composed and still published — that is what
-// makes dark an observation of the real producer — and it stops HERE, one call
-// short of the voice.
-func TestADarkMainTrackCardIsDeclinedAtTheAirAndNeverReachesTheVoice(t *testing.T) {
-	// DARK ONLY. The `off` arm was here too and proved nothing about `off`
-	// (red team 2026-09-09, finding 12): in that stage the deck never reports,
-	// so no LocationReport card can exist to be declined, and the arm read as
-	// coverage it was not. What `off` guarantees is pinned where it is true —
-	// at the seam, by TestTheDefaultStageTellsTheDirectorNothing.
-	for _, stage := range []string{"dark"} {
-		t.Setenv("WATCHPOST_MAINTRACK", stage)
-		v := &scriptVoice{}
-		b := newBench(t, v)
-		out := b.x.run(context.Background(), lineup.Speak{
-			ID: "r1", Slot: lineup.LocationReport, Script: lineup.Say("Currently sixty-one degrees."),
-		})
-		if len(out) != 1 {
-			t.Fatalf("stage %q: a declined card comes home with one event; got %d", stage, len(out))
-		}
-		f, failed := out[0].(lineup.Failed)
-		if !failed {
-			t.Fatalf("stage %q: the rotation still owns the air here, so the card must be declined; got %T", stage, out[0])
-		}
-		// ROUTED, or the station raises a RELAY FAULT window every rotation
-		// turn while the merge is dark — the noise regression fault.go exists
-		// to avoid (I-2).
-		if !f.Routed {
-			t.Errorf("stage %q: a staged decline is not the station going quiet", stage)
-		}
-		if got := v.got(); strings.Contains(got, "speak:") {
-			t.Errorf("stage %q: nothing may reach the voice while the rotation owns the air; got %q", stage, got)
-		}
+// `[M]` means "do not read me hazards". It has never silenced the broadcast —
+// the radio plays through it today — so applying it to a location report would
+// have made the merge turn the mute key into a stop button.
+func TestMutingHoldsHazardsAndDoesNotStopTheBroadcast(t *testing.T) {
+	b := newBench(t, &scriptVoice{})
+	b.muted = true
+	b.x.held.put("r1", []synth.Segment{{Key: "obs", Text: "x"}})
+
+	out := b.x.run(context.Background(), lineup.Speak{
+		ID: "r1", Slot: lineup.LocationReport, Subject: "here", Script: lineup.Say("x"),
+	})
+	if _, failed := out[0].(lineup.Failed); failed {
+		t.Fatalf("the rotation is not a hazard: muting must not stop the broadcast; got %v", out[0])
+	}
+	if len(b.reads) != 1 {
+		t.Fatalf("the report still plays; got %d reads", len(b.reads))
+	}
+
+	// And the rail's rule is untouched: a hazard read while muted would be
+	// consumed in silence and never sounded (MVS-D-78).
+	alertOut := b.x.run(context.Background(), lineup.Speak{
+		ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("Tornado warning."),
+	})
+	if _, failed := alertOut[0].(lineup.Failed); !failed {
+		t.Fatal("a takeover read while muted would mark every alert read and sound none of them")
 	}
 }
 
-// A TAKEOVER IS NOT STAGED. The rail has read through the arbiter since 0.14.0
-// and the merge must not touch it — a stage check written against the wrong
-// question would silence hazards.
-func TestTheAlertRailReadsWhateverTheMainTrackStageIs(t *testing.T) {
-	for _, stage := range []string{"", "dark", "live"} {
-		t.Setenv("WATCHPOST_MAINTRACK", stage)
-		v := &scriptVoice{}
-		b := newBench(t, v)
-		out := b.x.run(context.Background(), lineup.Speak{
-			ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("Tornado warning."),
-		})
-		if len(out) == 0 {
-			t.Fatalf("stage %q: a spoken card comes home with an event", stage)
-		}
-		if _, failed := out[0].(lineup.Failed); failed {
-			t.Fatalf("stage %q: the alert rail is not staged: %v", stage, out[0])
-		}
-		if got := v.got(); !strings.Contains(got, "Tornado warning.") {
-			t.Errorf("stage %q: the hazard must reach the voice; got %q", stage, got)
-		}
+// THE HANDOFF: what the BUILD composed is what the AIR plays (0.16.0 P3(d)).
+//
+// FOUND BY A PLANT THAT SURVIVED. Deleting the store's write changed no
+// assertion, because the build test looked only at the card's script and the
+// speak test put the segments in itself. Nothing ran the two halves together,
+// so the one thing that carries a report from where it is composed to where it
+// is voiced was untested — and a station with that wire cut would show a
+// full lineup and read none of it.
+func TestWhatTheBuildComposedIsWhatTheAirPlays(t *testing.T) {
+	v := &scriptVoice{}
+	b := newBench(t, v)
+	// The bench's composer is the one seam here: whatever IT returns must be
+	// what reaches the reader, with no second composition in between.
+	evs := b.x.build(context.Background(), lineup.BuildCard{
+		ID: "r1", Slot: lineup.LocationReport, Subject: "33.1959,-117.3795",
+	})
+	if len(evs) != 1 {
+		t.Fatalf("one event comes home from a build; got %d", len(evs))
+	}
+	built, ok := evs[0].(lineup.Built)
+	if !ok {
+		t.Fatalf("the card must come home BUILT; got %T", evs[0])
+	}
+
+	out := b.x.run(context.Background(), lineup.Speak{
+		ID: "r1", Slot: lineup.LocationReport, Subject: "33.1959,-117.3795", Script: built.Script,
+	})
+	if _, failed := out[0].(lineup.Failed); failed {
+		t.Fatalf("the card the build just composed must be playable: %v — a build that composes and "+
+			"then loses its report leaves a full lineup and a silent station", out[0])
+	}
+	if len(b.reads) != 1 || b.reads[0] != "33.1959,-117.3795:obs" {
+		t.Errorf("the reader must be handed the segments THIS build composed; got %v", b.reads)
+	}
+	// AND THE DISPLAY AND THE AUDIO COME FROM ONE COMPOSITION. The script is
+	// what the console shows; the segments are what is voiced; a station whose
+	// two halves were composed separately would show one report and read
+	// another.
+	if got := built.Script.Text(); !strings.Contains(got, "Currently sixty-one degrees.") {
+		t.Errorf("the card's script must carry the composed words for the console; got %q", got)
 	}
 }

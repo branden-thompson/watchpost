@@ -2,14 +2,12 @@ package app
 
 // The deck's half of the merge: what needsRead REPORTS (0.16.0 P3).
 //
-// WHAT THIS CAN SEE, AND WHAT IT CANNOT (INST-5). The live stage never enters
-// startSynth, so the deck can be a bare struct and every assertion here is
-// about the report. The off and dark stages DO enter it, and startSynth
-// resolves a voice — which on a machine without one installs Piper, minutes of
-// network, inside a unit test. So those two stages are exercised here only on
-// the stale-generation path, where startSynth's own first line returns, and
-// their fresh path is covered structurally instead
-// (maintrack_seam_test.go) and by the P3 UAT.
+// THE STAGE IS GONE (P3(d)). While the merge was landing, a three-state switch
+// kept the air single-owner between the producer arriving and the flip; it was
+// deleted with startSynth's direct path, because a switch that outlived the
+// merge would be a second way for the station to behave — the thing being
+// removed. What is left is the rule it protected: the deck REPORTS, and starts
+// no audio of its own.
 
 import (
 	"os"
@@ -32,7 +30,6 @@ func recordingDeck() (*radioDeck, *[]lineup.Event) {
 var testRef = snapshot.LocationRef{Label: "OCEANSIDE, CA", Lat: 33.1959, Lon: -117.3795}
 
 func TestTheDeckReportsTheNeedAndLeavesTheAirAlone(t *testing.T) {
-	t.Setenv("WATCHPOST_MAINTRACK", "live")
 	d, got := recordingDeck()
 
 	d.needsRead(testRef, "no NWR relay in reach", 0) // gen 0 matches a fresh deck
@@ -45,92 +42,101 @@ func TestTheDeckReportsTheNeedAndLeavesTheAirAlone(t *testing.T) {
 		t.Fatalf("the fact reported is that the location needs a read; got %T", (*got)[0])
 	}
 	if ev.Ref != string(snapshot.Key(testRef)) {
-		t.Errorf("the ref is the location's own key, which is what the cut-over and the composer "+
-			"both resolve against; got %q", ev.Ref)
+		t.Errorf("the ref is the location's own key, which is what the cut-over, the composer and the "+
+			"reader all resolve against; got %q", ev.Ref)
 	}
 	if ev.Headline != testRef.Label {
 		t.Errorf("the headline is the location's name — a card is showable from the moment it "+
 			"exists (DR-7); got %q", ev.Headline)
 	}
-	// startSynth's second statement is setMode. A blank mode is proof the deck
-	// did not also start the audio, which is the double-speak this batch removes.
+	// setMode is readReport's first statement. A blank mode is proof the deck
+	// did not also start the audio, which is the double-speak this batch
+	// removed — and the deck here has no engine, so it could not have.
 	d.mu.Lock()
 	mode := d.mode
 	d.mu.Unlock()
 	if mode != "" {
-		t.Errorf("the schedule owns the air at this stage; the deck must not start audio too, got mode %q", mode)
+		t.Errorf("the schedule owns the air; the deck must not start audio when it reports, got mode %q", mode)
+	}
+}
+
+// THE REASON IS FILED FOR THE READ THAT FOLLOWS, and taken exactly once.
+//
+// It is the deck's own string — "the relay was silent" is not a fact the
+// schedule has any use for — so it travels beside the event rather than on it,
+// and the read that starts minutes later puts it on the player's detail line.
+func TestTheReasonIsKeptForTheReadAndTakenOnce(t *testing.T) {
+	d, _ := recordingDeck()
+	key := string(snapshot.Key(testRef))
+
+	d.needsRead(testRef, "the relay was silent", 0)
+
+	if got := d.takeWhy(key); got != "the relay was silent" {
+		t.Errorf("the read must be able to say WHY it is happening; got %q", got)
+	}
+	if got := d.takeWhy(key); got != "" {
+		t.Errorf("a reason is about ONE read: taken twice it would explain the wrong one; got %q", got)
+	}
+}
+
+func TestTheReasonStoreIsBounded(t *testing.T) {
+	d, _ := recordingDeck()
+	for i := range needWhyCap * 3 {
+		d.rememberWhy(string(rune('a'+i%26))+string(rune('a'+i/26)), "why")
+	}
+	d.mu.Lock()
+	n := len(d.needWhy)
+	d.mu.Unlock()
+	if n > needWhyCap {
+		t.Errorf("the store holds %d reasons against a cap of %d — a 24/7 station whose watchlist "+
+			"churns must not accumulate strings for the life of the process", n, needWhyCap)
+	}
+	if n == 0 {
+		t.Error("bounding it to nothing is not bounding it: the next read would have no reason to give")
 	}
 }
 
 func TestAStaleNeedIsNotReported(t *testing.T) {
-	for _, stage := range []string{"", "dark", "live"} {
-		t.Setenv("WATCHPOST_MAINTRACK", stage)
-		d, got := recordingDeck()
-
-		// The listener stopped, or re-tuned, while the fallback was in flight:
-		// the deck's generation has moved on and this need is about a location
-		// nobody is on.
-		d.needsRead(testRef, "relay unavailable", 99)
-
-		if len(*got) != 0 {
-			t.Errorf("stage %q: a need that arrived after the listener moved on must not queue a card — "+
-				"they would have stopped the station and been read to anyway; got %v", stage, *got)
-		}
-		d.mu.Lock()
-		mode := d.mode
-		d.mu.Unlock()
-		if mode != "" {
-			t.Errorf("stage %q: nor start audio; got mode %q", stage, mode)
-		}
-	}
-}
-
-func TestTheDefaultStageTellsTheDirectorNothing(t *testing.T) {
-	t.Setenv("WATCHPOST_MAINTRACK", "")
 	d, got := recordingDeck()
-	// A stale generation, so the audio half returns at startSynth's own guard:
-	// what is under test is that the REPORT does not happen by default, which
-	// is what makes every commit before the flip a no-op for a listener.
-	d.needsRead(testRef, "no NWR relay in reach", 99)
+
+	// The listener stopped, or re-tuned, while the fallback was in flight: the
+	// deck's generation has moved on and this need is about a location nobody
+	// is on.
+	d.needsRead(testRef, "relay unavailable", 99)
+
 	if len(*got) != 0 {
-		t.Errorf("the merge is off until it is asked for; got %v", *got)
+		t.Errorf("a need that arrived after the listener moved on must not queue a card — "+
+			"they would have stopped the station and been read to anyway; got %v", *got)
+	}
+	if got := d.takeWhy(string(snapshot.Key(testRef))); got != "" {
+		t.Errorf("nor leave a reason behind for the next read to explain itself with; got %q", got)
 	}
 }
 
-// THE DARK RUN'S ONE INSTRUMENT (0.16.0 P3).
-//
-// The dark stage exists so the producer's decisions can be compared against the
-// live path's, and that comparison is made from this log and nowhere else: the
-// live path already records its engine transitions and its segments, and until
-// now the NEED that produced them was recorded nowhere at all. A dark run with
-// this line missing is not a quiet run, it is a run that proves nothing —
-// which is why the line has a gate of its own (INST-2).
-func TestTheDarkRunRecordsTheNeedItWouldHaveActedOn(t *testing.T) {
-	for _, stage := range []string{"", "dark", "live"} {
-		path := radioDebugTo(t, "1")
-		t.Setenv("WATCHPOST_MAINTRACK", stage)
-		d, _ := recordingDeck()
+// THE DARK RUN'S INSTRUMENT OUTLIVED THE DARK RUN, and deliberately: "which
+// location did the deck decide needed a read, when, and was it fresh" is the
+// first question anyone asks of a station that read the wrong thing.
+func TestTheDeckRecordsTheNeedItActedOn(t *testing.T) {
+	path := radioDebugTo(t, "1")
+	d, _ := recordingDeck()
 
-		// A stale generation, so no stage reaches the audio: what is under test
-		// is the record, which is written before any of that is decided.
-		d.needsRead(testRef, "no NWR relay in reach", 99)
+	// A stale generation, so nothing follows: what is under test is the
+	// record, which is written before any of that is decided.
+	d.needsRead(testRef, "no NWR relay in reach", 99)
 
-		b, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("stage %q: the dark run's log was never written: %v", stage, err)
-		}
-		line := strings.TrimSpace(string(b))
-		want := []string{
-			"needs-read",
-			"stage=" + mainTrack().String(), // DERIVED from the switch, never spelled out here
-			"fresh=false",                   // and it says WHY nothing followed
-			"ref=" + string(snapshot.Key(testRef)),
-			"why=no NWR relay in reach",
-		}
-		for _, w := range want {
-			if !strings.Contains(line, w) {
-				t.Errorf("stage %q: the record must carry %q, or the comparison cannot be made; got %q", stage, w, line)
-			}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("the need was recorded nowhere: %v", err)
+	}
+	line := strings.TrimSpace(string(b))
+	for _, w := range []string{
+		"needs-read",
+		"fresh=false", // and it says WHY nothing followed
+		"ref=" + string(snapshot.Key(testRef)),
+		"why=no NWR relay in reach",
+	} {
+		if !strings.Contains(line, w) {
+			t.Errorf("the record must carry %q, or it cannot be paired with what the station did; got %q", w, line)
 		}
 	}
 }
@@ -140,10 +146,46 @@ func TestTheDarkRunRecordsTheNeedItWouldHaveActedOn(t *testing.T) {
 func TestTheNeedIsNotRecordedWhenTheDiagnosticIsOff(t *testing.T) {
 	path := radioDebugTo(t, "1")
 	t.Setenv("WATCHPOST_DEBUG_RADIO", "")
-	t.Setenv("WATCHPOST_MAINTRACK", "dark")
 	d, _ := recordingDeck()
 	d.needsRead(testRef, "no NWR relay in reach", 99)
 	if b, err := os.ReadFile(path); err == nil && len(b) > 0 {
 		t.Errorf("the diagnostic is opt-in; got %q", b)
+	}
+}
+
+// THE LISTENER IS TOLD WHY THE STATION IS READING (0.16.0 P3(d)).
+//
+// A report starts for one of three reasons — no relay covers this location,
+// the relay failed, or the relay went silent — and the detail line is the only
+// place any of that reaches a person. Asserted here rather than inside
+// readReport because readReport resolves a voice, which on a machine without
+// one is a 63 MB download inside a unit test.
+func TestTheStationSaysWhyItIsReadingRatherThanRelaying(t *testing.T) {
+	d, _ := recordingDeck()
+	d.needsRead(testRef, "the relay was silent", 0)
+
+	d.announceReport(testRef)
+
+	d.mu.Lock()
+	mode, station, detail := d.mode, d.station, d.detail
+	d.mu.Unlock()
+	if mode != "synth" {
+		t.Errorf("the station is on its own broadcast; got mode %q", mode)
+	}
+	if station != "Watchpost Synth · "+testRef.Label {
+		t.Errorf("the player row names the station and the location; got %q", station)
+	}
+	if detail != "the relay was silent" {
+		t.Errorf("the detail line must say WHY this read is happening; got %q — a listener whose "+
+			"relay just died is owed the reason, and it is the only place it appears", detail)
+	}
+
+	// AND ONLY FOR THIS READ. The next report has its own reason, or none.
+	d.announceReport(testRef)
+	d.mu.Lock()
+	again := d.detail
+	d.mu.Unlock()
+	if again != "" {
+		t.Errorf("a reason explains ONE read; carried forward it explains the wrong one; got %q", again)
 	}
 }
