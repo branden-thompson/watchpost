@@ -55,6 +55,19 @@ type executors struct {
 	// nothing about how a report is assembled.
 	compose func(ctx context.Context, ref string) ([]synth.Segment, error)
 
+	// propose asks the Producer what cards COULD exist, so the Director can top
+	// the line-up up to its depth (D-40).
+	//
+	// A SEAM, LIKE compose, and for the same reason: the executors know how to
+	// carry an offer and nothing about where locations come from. The producer
+	// may offer more than the Director needs, may offer what is already
+	// scheduled, and may offer on every publish — none of that costs anything,
+	// because THE DIRECTOR HOLDS THE DEPTH. Proposing is cheap by construction:
+	// a proposal is a name and a headline, and DR-7 puts the words at standby.
+	//
+	// Nil is a station with no producer, which offers nothing.
+	propose func() []lineup.Proposal
+
 	// publish hands the settled schedule to the console. Nil when no surface
 	// is listening, which is every build before 0.16.0 and every test that
 	// does not care.
@@ -188,6 +201,21 @@ func newExecutors(x executors) *executors {
 	return &x
 }
 
+// offer is the producer's answer to a settled schedule, or nothing.
+//
+// AN EMPTY OFFER IS NOT AN EVENT. Returning `Offered{}` with no proposals would
+// be a step the Director takes for no reason, once per publish, for ever.
+func (x *executors) offer() []lineup.Event {
+	if x.propose == nil {
+		return nil // a station with no producer offers nothing
+	}
+	ps := x.propose()
+	if len(ps) == 0 {
+		return nil
+	}
+	return []lineup.Event{lineup.Offered{Proposals: ps}}
+}
+
 // run is the pump's runEffect: one effect in, what it learned out. It may
 // block for as long as the work takes — it runs on a worker, never the pump.
 func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
@@ -217,7 +245,16 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 			x.publish(tty.LineupMsg{Lineup: v.Lineup})
 			x.publish(tty.StationMsg{Power: v.Power})
 		}
-		return nil
+		// AND THE PRODUCER IS ASKED TO TOP THE LINE-UP OFF (D-40). No new
+		// effect: `run` already returns what an effect learned, and a publish is
+		// the moment the schedule has SETTLED — which is exactly when the
+		// producer can see what the line-up still needs.
+		//
+		// THE CHAIN IS SELF-LIMITING BY THE DEPTH, not by a counter. Publish →
+		// Offered → the track fills → settle publishes → Offered again → nothing
+		// left to admit → `onOffered` returns NO EFFECTS, so there is no publish
+		// and the chain has nowhere to go.
+		return x.offer()
 	// DUCK AND RESTORE ARE WIRED AND UNREACHED (red team 2026-09-05, I-5).
 	//
 	// Nothing in production constructs either effect — the Director emits

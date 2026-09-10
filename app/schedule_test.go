@@ -10,8 +10,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
+	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"strconv"
+	"sync"
 )
 
 // scheduleUnderTest starts a schedule over a silent arbiter and returns it with
@@ -298,4 +302,108 @@ func TestTheProducersReachTheSchedule(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 	t.Error("an arrival never reached the read: the producer offered it, and nothing in the schedule acted on it")
+}
+
+// D-54: THE PRODUCTION WIRING, DRIVEN — and it was written because four plants
+// SURVIVED against tests that set the seams by hand.
+//
+// The unit tests for the top-off set `x.propose` themselves and passed
+// `Settings{Depth: 2}` themselves, so deleting BOTH production wirings —
+// `propose: proposeFrom(watch)` and `Depth: tty.MainTrackSlots` — changed no
+// assertion anywhere. That is P-1's stubbed seam, and it is the same shape that
+// cost this release its P3 flip: "every test drove a stubbed seam."
+//
+// So this drives `startSchedule` itself and watches what the CONSOLE is
+// published, which is the only path an operator will ever see.
+func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// MORE LOCATIONS THAN SLOTS, deliberately: it pins the depth as a CEILING
+	// rather than "however many the listener happens to watch".
+	var refs []snapshot.LocationRef
+	for i := 0; i < tty.MainTrackSlots+4; i++ {
+		refs = append(refs, snapshot.LocationRef{
+			Label: "Town " + strconv.Itoa(i) + ", CA", Zip: "9200" + strconv.Itoa(i%10),
+			Lat: 33 + float64(i)/100, Lon: -117 - float64(i)/100, TZ: "America/Los_Angeles"})
+	}
+
+	var mu sync.Mutex
+	var last lineup.Lineup
+	publish := func(m tea.Msg) {
+		lm, ok := m.(tty.LineupMsg)
+		if !ok {
+			return
+		}
+		mu.Lock()
+		last = lm.Lineup
+		mu.Unlock()
+	}
+	nar := testDirector(nil, func(tea.Msg) {})
+	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
+	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
+		func() []snapshot.LocationRef { return refs }, tick, publish)
+	if s == nil {
+		t.Fatal("the schedule refused to start")
+	}
+
+	// Starting the programme is what lets the track advance (DR-3), and the
+	// publish that follows is what asks the producer.
+	s.carry(lineup.Powered{To: lineup.Running})
+
+	deadline := time.Now().Add(10 * time.Second)
+	var got int
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		got = len(last.Projection(lineup.MainTrack))
+		mu.Unlock()
+		if got >= tty.MainTrackSlots {
+			break
+		}
+		runtime.Gosched()
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got != tty.MainTrackSlots {
+		t.Fatalf("the line-up published to the console holds %d cards; the console draws %d slots and the Director fills them",
+			got, tty.MainTrackSlots)
+	}
+
+	// AND IT STOPS THERE. The chain is Publish -> Offered -> fill -> Publish,
+	// so a depth that never satisfies would spin for ever.
+	time.Sleep(50 * time.Millisecond)
+	mu.Lock()
+	after := len(last.Projection(lineup.MainTrack))
+	mu.Unlock()
+	if after != tty.MainTrackSlots {
+		t.Errorf("the line-up kept growing past the console's window: %d", after)
+	}
+}
+
+// A PROPOSAL AND A ROTATION READ ARE ONE CARD, NOT TWO.
+//
+// `ReadID` is a pure function of the ref, and that IS the no-double-speak
+// mechanism (FR-2.5) — but only while BOTH paths key a location the same way.
+// A plant that keyed proposals by Label instead of `snapshot.Key` survived every
+// test, and it would have read a place twice: once because the producer offered
+// it, once because the deck reported it needed reading.
+func TestAProposalAndARotationReadShareOneIdentity(t *testing.T) {
+	ref := snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057", Lat: 33.1959, Lon: -117.3795, TZ: "America/Los_Angeles"}
+	ps := proposeFrom(func() []snapshot.LocationRef { return []snapshot.LocationRef{ref} })()
+	if len(ps) != 1 {
+		t.Fatalf("one watched location is one proposal; got %d", len(ps))
+	}
+
+	d := lineup.New(lineup.Settings{Max: 5, Depth: 4}, execNow)
+	d, _ = d.Step(lineup.Powered{To: lineup.Running})
+	d, _ = d.Step(lineup.Offered{Proposals: ps})
+	if n := len(d.Lineup().Projection(lineup.MainTrack)); n != 1 {
+		t.Fatalf("the offer must be taken; got %d cards", n)
+	}
+
+	// The deck now reports the SAME location needs a read, keyed its own way.
+	d, _ = d.Step(lineup.NeedsRead{Ref: string(snapshot.Key(ref)), Headline: ref.Label})
+
+	if n := len(d.Lineup().Projection(lineup.MainTrack)); n != 1 {
+		t.Errorf("a location offered and then reported is ONE card; the schedule holds %d, so it would be read twice", n)
+	}
 }

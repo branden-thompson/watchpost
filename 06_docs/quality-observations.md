@@ -1606,3 +1606,36 @@ question about the schedule instead of the line-up.
 
 The question that separates them: *could a DIFFERENT caller make this false?*  If no, it is duplication.
 If yes, it is a precondition and the tripwire is what stops the next caller being the one who finds out.
+
+
+---
+
+## The plants found that ALL of the production wiring was untested (0.16.0 P4)
+
+**Seven plants against the top-off's wiring; four survived, and every survivor was a PRODUCTION WIRE:**
+
+| | |
+|---|---|
+| `w4` | the Director's depth is never set — nothing tops off |
+| `w5` | the producer seam is never wired |
+| `w6` | proposals keyed by Label instead of `snapshot.Key` — **a location read twice** |
+| `w7` | the depth stops matching the console's window |
+
+**The unit tests set the seams THEMSELVES.**  They assigned `x.propose` by hand and passed
+`Settings{Depth: 2}` by hand, so deleting both production wirings changed no assertion anywhere.  That
+is **P-1's stubbed seam**, and it is the same shape that cost this release its P3 flip — *"every test
+drove a stubbed seam."*  The unit tests were not wrong; they were **not the whole of the claim.**
+
+**The fix is a test that drives `startSchedule` and watches what is PUBLISHED TO THE CONSOLE**, which is
+the only path an operator ever sees.  It uses the publish seam rather than reading the Director's state,
+which is also what makes it race-free.
+
+**THE GENERAL RULE THIS EARNS:** when a change has a PURE half and a WIRING half, the pure half's tests
+can never cover the wiring, and passing them says nothing about whether the feature is reachable.  **Ask
+of every seam: what deletes cleanly?**  If the answer is "the line that connects it to production", the
+wiring has no test.
+
+**A COST NOTE, because it was mine to price.**  The first plant run took ~11 minutes: seven plants ×
+`go test ./app` at ~95 s. Re-running them against the NEW tests with `-run TopsTheLineUpOff|ShareOneIdentity`
+took seconds. **Plants should target the tests that are supposed to catch them** — a full-package run
+per plant prices the technique out of the habit it needs to be.

@@ -402,16 +402,19 @@ func TestACueTheProducerCannotAccountForIsReportedAndFailsNothing(t *testing.T) 
 	}
 }
 
-// TestAPublishIsCarriedAndDeclined — the effect is EMITTED and nobody reads it.
+// TestAPublishIsCarriedAndDeclined — the effect's POSITION, which is what the
+// ordering guarantee rests on.
 //
-// The seam it used to reach was `func(lineup.Lineup) {}`, a no-op behind a
-// nil-guard, dispatched once a second (red team 2026-09-05): that reads as a
-// wired feature and is not one. The Broadcaster surface that consumes a
-// published lineup is 0.15.0's.
+// IT IS NO LONGER "nobody reads it", AND THE COMMENT SAYS SO RATHER THAN
+// OUTLIVING THE FACT (the F-69 shape). The console reads it (0.16.0 P2) and the
+// producer answers it (P4, D-40) — a publish with a producer wired comes home
+// with an Offered, which `TestAPublishAsksTheProducerToTopTheLineUpOff` pins.
+// This bench has no producer, so it still comes home empty, and that is the
+// case being asserted here.
 //
-// THE EFFECT STAYS EMITTED, and this pins why: the "readers are told last"
-// ordering in settle depends on it existing, so it must be carried and declined
-// rather than dropped from the set.
+// WHAT HAS NOT CHANGED is that the publish is LAST: the "readers are told last"
+// ordering in settle depends on its position, so it is pinned here separately
+// from anything that reads it.
 func TestAPublishIsCarriedAndDeclined(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
 	d := lineup.New(lineup.Settings{Max: 10}, execNow)
@@ -699,6 +702,15 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		// every test that does not care. Refusing to build without it would
 		// make the schedule depend on a UI — the wrong direction entirely.
 		"publish": true,
+		// DELIBERATELY OPTIONAL (0.16.0 P4, D-40). nil is a station with no
+		// producer, which offers nothing — and the line-up is still filled by
+		// the rotation's own NeedsRead and by the operator's undo, so a station
+		// without one broadcasts, it just never tops itself off.
+		//
+		// REFUSING TO BUILD WITHOUT IT WOULD BE THE WRONG DIRECTION, the same
+		// one `publish` names: topping the line-up off is an ENRICHMENT of the
+		// schedule, not a precondition for having one.
+		"propose": true,
 	}
 	v := reflect.ValueOf(whole())
 	for i := 0; i < v.NumField(); i++ {
@@ -1151,5 +1163,81 @@ func TestTheDivertNoticeSaysTheCountAndTheDestination(t *testing.T) {
 				t.Errorf("the burst reads %d alert lines, want %d — the tail spent the budget", got, min(tc.arrive, tc.max))
 			}
 		})
+	}
+}
+
+// D-40: THE PRODUCER TOPS THE LINE-UP OFF, THROUGH THE SEAM THAT ALREADY
+// RETURNS EVENTS.
+//
+// The gap this closes was found by walking the operator's drop flow: only the
+// deck's NeedsRead and the operator's undo ever queued a main-track card, and
+// nothing read the track's DEPTH — so the schedule held about one card while the
+// console drew ten slots, and a dropped card left its slot empty for ever.
+//
+// NO NEW EFFECT. `run` already returns whatever an effect learned, and a publish
+// is the moment the schedule has settled — which is exactly when the producer
+// can see what the line-up still needs. That was the HUM LEAD's option 2.
+func TestAPublishAsksTheProducerToTopTheLineUpOff(t *testing.T) {
+	b := newBench(t, &scriptVoice{})
+	b.x.propose = func() []lineup.Proposal {
+		return []lineup.Proposal{
+			{Ref: "oceanside", Headline: "OCEANSIDE, CA", Slot: lineup.LocationReport},
+			{Ref: "carlsbad", Headline: "CARLSBAD, CA", Slot: lineup.LocationReport},
+		}
+	}
+
+	out := b.x.run(context.Background(), lineup.Publish{})
+
+	if len(out) != 1 {
+		t.Fatalf("a publish comes home with the producer's offer; got %d events", len(out))
+	}
+	offer, ok := out[0].(lineup.Offered)
+	if !ok {
+		t.Fatalf("want an Offered; got %T", out[0])
+	}
+	if len(offer.Proposals) != 2 {
+		t.Errorf("it carries everything the producer has, and the Director takes what it needs; got %d", len(offer.Proposals))
+	}
+}
+
+// A STATION WITH NO PRODUCER OFFERS NOTHING, and says so by returning no event
+// rather than an empty one — an empty offer would be a step the Director takes
+// for no reason, once per publish, for ever.
+func TestAPublishWithNothingToOfferComesHomeEmpty(t *testing.T) {
+	b := newBench(t, &scriptVoice{})
+	if out := b.x.run(context.Background(), lineup.Publish{}); len(out) != 0 {
+		t.Errorf("no producer, no offer; got %v", out)
+	}
+	b.x.propose = func() []lineup.Proposal { return nil }
+	if out := b.x.run(context.Background(), lineup.Publish{}); len(out) != 0 {
+		t.Errorf("a producer with nothing to offer offers nothing; got %v", out)
+	}
+}
+
+// THE LOOP TERMINATES, and that is the whole risk of feeding an event back from
+// the effect that publishes. Publish -> Offered -> the track fills -> settle
+// publishes -> Offered again -> nothing left to admit -> no publish, no event.
+//
+// IT IS SELF-LIMITING BY THE DEPTH, not by a counter: `onOffered` returns no
+// effects at all when it admitted nothing, so the chain has nowhere to go.
+func TestTheTopOffChainStopsOnceTheLineUpIsFull(t *testing.T) {
+	offer := lineup.Offered{Proposals: []lineup.Proposal{
+		{Ref: "oceanside", Headline: "OCEANSIDE, CA"},
+		{Ref: "carlsbad", Headline: "CARLSBAD, CA"},
+	}}
+	d := lineup.New(lineup.Settings{Max: 10, Depth: 2}, execNow)
+	d, _ = d.Step(lineup.Powered{To: lineup.Running})
+
+	d, first := d.Step(offer)
+	if len(first) == 0 {
+		t.Fatal("the first offer must fill the track and publish")
+	}
+	d, again := d.Step(offer)
+
+	if len(again) != 0 {
+		t.Errorf("a full line-up takes nothing and publishes nothing, or the chain never ends; got %d effects", len(again))
+	}
+	if n := len(d.Lineup().Projection(lineup.MainTrack)); n != 2 {
+		t.Errorf("and it holds exactly its depth; got %d", n)
 	}
 }
