@@ -31,25 +31,22 @@ const (
 	// unchanged; the cost is that a report is composed twice while dark.
 	mainTrackDark
 
-	// mainTrackLive is the merged station: the card is read through the
-	// arbiter and the rotation's direct path is not taken. This becomes the
-	// only behaviour at P3(d).
-	mainTrackLive
-
 	// numMainTrackStages bounds the registry; it is not itself a stage.
 	numMainTrackStages
 )
 
 // mainTrack reads the stage from the environment, once per ask.
 //
-// AN UNRECOGNISED VALUE IS OFF, not an error and not live: a typo in a shell
-// profile must not silently hand the air to a path that is still being merged.
+// AN UNRECOGNISED VALUE IS OFF: a typo in a shell profile must not silently
+// change what a station does.
+//
+// "live" IS GONE (D-33, 2026-09-09). It meant "the card is read through the
+// arbiter", and the arbiter does not read the programme — a chosen read
+// REPLACES the bed. The stage that expressed the wrong design went with it.
 func mainTrack() mainTrackStage {
 	switch os.Getenv("WATCHPOST_MAINTRACK") {
 	case "dark":
 		return mainTrackDark
-	case "live":
-		return mainTrackLive
 	}
 	return mainTrackOff
 }
@@ -60,7 +57,6 @@ func stageNames() [numMainTrackStages]string {
 	return [numMainTrackStages]string{
 		mainTrackOff:  "off",
 		mainTrackDark: "dark",
-		mainTrackLive: "live",
 	}
 }
 
@@ -78,10 +74,4 @@ func (s mainTrackStage) String() string {
 // reports says whether the deck tells the Director that a location needs a
 // read. Dark and live both do; that is what makes dark an observation of the
 // real producer rather than a simulation of one.
-func (s mainTrackStage) reports() bool { return s == mainTrackDark || s == mainTrackLive }
-
-// ownsTheAir says whether a main-track card is read through the arbiter. ONLY
-// LIVE DOES, and it is the same question asked from the other side: when it is
-// true the rotation's own path must not run, and when it is false the card is
-// declined at speak rather than queued and forgotten.
-func (s mainTrackStage) ownsTheAir() bool { return s == mainTrackLive }
+func (s mainTrackStage) reports() bool { return s == mainTrackDark }

@@ -29,15 +29,27 @@ const (
 	numBands
 )
 
+// bandNames is the registry, indexed by Band.
+//
+// A REGISTRY, NOT A CONDITIONAL, and the reason is the house pattern rather
+// than taste: origins, states and slots are all named this way, so every member
+// appears once and adding one that nobody named fails to compile rather than
+// falling through to the other arm. The conditional this replaces handled
+// RemainingBand by name and let CloseBand fall through, which is idiomatic Go
+// and left the closer of the two bands mentioned nowhere.
+func bandNames() [numBands]string {
+	return [numBands]string{
+		CloseBand:     "CLOSE",
+		RemainingBand: "REMAINING",
+	}
+}
+
 // String names the band for the transition log (DR-23).
 func (b Band) String() string {
 	if b < 0 || b >= numBands {
 		return ""
 	}
-	if b == RemainingBand {
-		return "REMAINING"
-	}
-	return "CLOSE"
+	return bandNames()[b]
 }
 
 // Rung is one step of the ratified ladder: a band and a category.

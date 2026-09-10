@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -72,94 +71,19 @@ func TestALocationReportThatComposesNothingIsDeclinedNotAired(t *testing.T) {
 	}
 }
 
-// P3(a3): the SPEAK half. A location report reads through the arbiter as the
-// rotation class, so the programme gives way to a severe read and to a
-// takeover — which is the whole reason the class exists.
+// D-33 RETIRED THE SPEAK HALF, AND THESE THREE TESTS WITH IT.
 //
-// THE STAGE IS SET EXPLICITLY (0.16.0 P3, maintrack.go). Until the flip, a
-// main-track card is declined at speak so the rotation keeps sole ownership of
-// the air; this test is about the MERGED station, so it asks for it by name.
-func TestALocationReportIsSpokenAsTheRotationClass(t *testing.T) {
-	t.Setenv("WATCHPOST_MAINTRACK", "live")
-	v := &scriptVoice{}
-	b := newBench(t, v)
-	out := b.x.run(context.Background(), lineup.Speak{
-		ID: "r1", Slot: lineup.LocationReport, Script: lineup.Say("Currently sixty-one degrees."),
-	})
-	if len(out) == 0 {
-		t.Fatal("a spoken card comes home with an event")
-	}
-	if _, failed := out[0].(lineup.Failed); failed {
-		t.Fatalf("a location report must now be SPOKEN, not declined: %v — this is the second half of "+
-			"the decline that named T3.2", out[0])
-	}
-	if got := v.got(); !strings.Contains(got, "speak:Currently sixty-one degrees.") {
-		t.Errorf("the words must reach the voice; got %q", got)
-	}
-	// NOT AN ASIDE. An aside is a TAKEOVER's line, whose visualizer does not
-	// follow it; the programme is ordinary speech.
-	if strings.Contains(v.got(), "aside:") {
-		t.Errorf("the rotation is the programme, not a takeover: %q", v.got())
-	}
-}
-
-// THE DARK STAGE IS THE ONE THING BETWEEN A HALF-MERGED PRODUCER AND TWO
-// SPEAKERS, so it is pinned from the speak side as well as from the switch.
+// P3(a3) taught `speak` to read a LocationReport as its own narration class,
+// and P3's flip built on that. The HUM LEAD ruled on 2026-09-09 that a chosen
+// read REPLACES the bed rather than speaking over it — so the programme is not
+// a narration, does not belong on the narration path, and `speak` declines
+// every slot that is not on the rail.
 //
-// The card is still queued, still composed and still published — that is what
-// makes dark an observation of the real producer — and it stops HERE, one call
-// short of the voice.
-func TestADarkMainTrackCardIsDeclinedAtTheAirAndNeverReachesTheVoice(t *testing.T) {
-	// DARK ONLY. The `off` arm was here too and proved nothing about `off`
-	// (red team 2026-09-09, finding 12): in that stage the deck never reports,
-	// so no LocationReport card can exist to be declined, and the arm read as
-	// coverage it was not. What `off` guarantees is pinned where it is true —
-	// at the seam, by TestTheDefaultStageTellsTheDirectorNothing.
-	for _, stage := range []string{"dark"} {
-		t.Setenv("WATCHPOST_MAINTRACK", stage)
-		v := &scriptVoice{}
-		b := newBench(t, v)
-		out := b.x.run(context.Background(), lineup.Speak{
-			ID: "r1", Slot: lineup.LocationReport, Script: lineup.Say("Currently sixty-one degrees."),
-		})
-		if len(out) != 1 {
-			t.Fatalf("stage %q: a declined card comes home with one event; got %d", stage, len(out))
-		}
-		f, failed := out[0].(lineup.Failed)
-		if !failed {
-			t.Fatalf("stage %q: the rotation still owns the air here, so the card must be declined; got %T", stage, out[0])
-		}
-		// ROUTED, or the station raises a RELAY FAULT window every rotation
-		// turn while the merge is dark — the noise regression fault.go exists
-		// to avoid (I-2).
-		if !f.Routed {
-			t.Errorf("stage %q: a staged decline is not the station going quiet", stage)
-		}
-		if got := v.got(); strings.Contains(got, "speak:") {
-			t.Errorf("stage %q: nothing may reach the voice while the rotation owns the air; got %q", stage, got)
-		}
-	}
-}
-
-// A TAKEOVER IS NOT STAGED. The rail has read through the arbiter since 0.14.0
-// and the merge must not touch it — a stage check written against the wrong
-// question would silence hazards.
-func TestTheAlertRailReadsWhateverTheMainTrackStageIs(t *testing.T) {
-	for _, stage := range []string{"", "dark", "live"} {
-		t.Setenv("WATCHPOST_MAINTRACK", stage)
-		v := &scriptVoice{}
-		b := newBench(t, v)
-		out := b.x.run(context.Background(), lineup.Speak{
-			ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("Tornado warning."),
-		})
-		if len(out) == 0 {
-			t.Fatalf("stage %q: a spoken card comes home with an event", stage)
-		}
-		if _, failed := out[0].(lineup.Failed); failed {
-			t.Fatalf("stage %q: the alert rail is not staged: %v", stage, out[0])
-		}
-		if got := v.got(); !strings.Contains(got, "Tornado warning.") {
-			t.Errorf("stage %q: the hazard must reach the voice; got %q", stage, got)
-		}
-	}
-}
+// The three tests removed here pinned: that a report is spoken as the rotation
+// class, that a dark-stage card is declined at the air, and that the rail reads
+// whatever the stage is. The first two assert a design that no longer exists;
+// the third's subject — a stage that could hand the air over — went with it.
+//
+// WHAT REPLACES THEM is the single decline at the top of `speak`, and the two
+// BUILD tests above, which still stand: the executors can compose a report, and
+// a report that composes nothing is declined rather than aired.

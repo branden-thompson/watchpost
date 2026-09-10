@@ -12,7 +12,7 @@ func TestTheMergeIsOffUntilItIsAskedFor(t *testing.T) {
 	}{
 		{"", mainTrackOff},
 		{"dark", mainTrackDark},
-		{"live", mainTrackLive},
+		{"live", mainTrackOff},     // D-33 retired the live stage; it is now just an unknown word
 		{"1", mainTrackOff},        // truthy-looking, and NOT live
 		{"true", mainTrackOff},     //
 		{"LIVE", mainTrackOff},     // a case slip is not a licence
@@ -27,21 +27,23 @@ func TestTheMergeIsOffUntilItIsAskedFor(t *testing.T) {
 	}
 }
 
-func TestOnlyLiveOwnsTheAirAndDarkStillReports(t *testing.T) {
+// D-33 RETIRED THE LIVE STAGE, and with it the question this test used to ask.
+// "live" meant the card was read through the ARBITER; the programme is not a
+// narration, so no stage can hand it over that way. What is left is the one
+// distinction that still means something: does the deck TELL the Director.
+func TestOnlyDarkReportsAndNothingElseChanges(t *testing.T) {
 	if mainTrackOff.reports() {
-		t.Error("the default tells the Director nothing; a commit before the flip must be a no-op")
+		t.Error("the default tells the Director nothing; a build nobody asked must be a no-op")
 	}
 	if !mainTrackDark.reports() {
 		t.Error("dark observes the REAL producer, or it observes nothing")
 	}
-	if !mainTrackLive.reports() {
-		t.Error("live reports too")
-	}
-	if mainTrackOff.ownsTheAir() || mainTrackDark.ownsTheAir() {
-		t.Error("the air stays with the rotation's own path until the flip — this is the double-speak window")
-	}
-	if !mainTrackLive.ownsTheAir() {
-		t.Error("live is the merged station")
+	// AND "live" IS JUST A WORD NOW. A shell profile left over from the
+	// reverted merge must read as off, not as something the parser still
+	// knows.
+	t.Setenv("WATCHPOST_MAINTRACK", "live")
+	if got := mainTrack(); got != mainTrackOff {
+		t.Errorf("a stale WATCHPOST_MAINTRACK=live must read as off; got stage %d", got)
 	}
 }
 
