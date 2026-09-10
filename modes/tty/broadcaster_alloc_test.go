@@ -85,7 +85,10 @@ const (
 	//
 	// The layout phase will move this number several more times. Each re-pin
 	// says WHAT arrived; none of them optimise, per D-53.
-	bcFrameAllocs = 164
+	// 170 AT D-59's CORRECTION: the masthead now draws what the reference draws
+	// — the version in the title, the `Updated:` stamp with its freshness tone,
+	// and the API summary — instead of the three of those I had dropped.
+	bcFrameAllocs = 170
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

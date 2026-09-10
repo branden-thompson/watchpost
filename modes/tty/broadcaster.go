@@ -21,6 +21,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/components"
 )
@@ -69,6 +70,20 @@ type Broadcaster struct {
 
 	// standbySince is when the station last went silent. Zero while it is not.
 	standbySince time.Time
+
+	// version is the build's, inherited from the Dashboard the Router was
+	// built over — the same reason `ascii` is (NewRouter): two surfaces
+	// disagreeing about which build this is would be one fact with two
+	// carriers.
+	version string
+
+	// snap is the last published snapshot, for the masthead's `Updated:` stamp
+	// and its API summary.
+	//
+	// THE CONSOLE IS TOLD EVEN WHILE IT IS NOT ON SCREEN, which is the rule
+	// `consoleScoped` already states for the schedule: "a surface that only
+	// learns things while on screen is stale the instant it is swapped to."
+	snap *snapshot.Snapshot
 
 	// lineup is the last PUBLISHED schedule. It is never mutated here — the
 	// console names an intent and the Director owns the order (D-23).
@@ -134,6 +149,13 @@ func (b Broadcaster) Init() tea.Cmd { return nil }
 // through the Router's fan-out, which is why they are handled here as well as
 // in Observer: BOTH surfaces must know the size, including while inactive.
 func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
+	// THE SNAPSHOT REACHES THE CONSOLE TOO (D-59). The masthead's `Updated:`
+	// stamp and its API summary come from it, and both surfaces draw the same
+	// masthead — so both are told, whichever one is on screen.
+	if v, ok := msg.(SnapshotMsg); ok && v.Snap != nil {
+		b.snap = v.Snap
+		return b, nil
+	}
 	switch v := msg.(type) {
 	case tea.WindowSizeMsg:
 		b.width, b.height = v.Width, v.Height

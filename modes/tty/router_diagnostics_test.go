@@ -220,3 +220,33 @@ func centreOfLineContaining(frame, want string) (int, bool) {
 	}
 	return 0, false
 }
+
+// THE MASTHEAD'S DATA REACHES THE CONSOLE THROUGH THE ROUTER, AND THAT IS THE
+// PART UNIT TESTS KEEP MISSING.
+//
+// THE THIRD TIME THIS SHAPE HAS BITTEN in this release. The console's own tests
+// set `b.version` and `b.snap` themselves, so deleting BOTH production wirings —
+// `b.version = o.cfg.Version` in NewRouter, and SnapshotMsg's fan-out — changed
+// no assertion anywhere. Same as the top-off's depth and producer seam.
+//
+// SO IT IS DRIVEN THE WAY PRODUCTION DRIVES IT: a Router built over a Dashboard
+// that HAS a version, and a snapshot delivered as a MESSAGE.
+func TestTheConsoleLearnsTheVersionAndTheSnapshotThroughTheRouter(t *testing.T) {
+	d := goldenDash(t, true)
+	d.cfg.Version = "9.9.9"
+	r := NewRouter(d)
+	r.broadcaster.width, r.broadcaster.height = 150, 74
+	r.observer.width, r.observer.height = 150, 74
+
+	m, _ := r.Update(SnapshotMsg{Snap: mastheadSnap()})
+	r = m.(Router)
+	r = pressAction(t, r, actSwapBroadcaster)
+
+	got := stripANSITest(r.View().Content)
+	if !strings.Contains(got, "9.9.9") {
+		t.Errorf("the console never learned the build's version:\n%s", firstLine(got))
+	}
+	if !strings.Contains(got, "Updated:") {
+		t.Errorf("the console never learned the snapshot, so its masthead has no stamp:\n%s", firstLine(got))
+	}
+}

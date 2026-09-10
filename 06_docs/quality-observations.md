@@ -1697,3 +1697,29 @@ fails at 20 cells off, which is exactly what was on screen.
 - **a frame is a viewport in BOTH dimensions.**  A ragged frame is invisible in the alt-screen — the
   rest is simply blank — and becomes a defect the moment anything is composited over it.  Nothing else
   would ever have shown it.
+
+
+---
+
+## "The wiring is untested" has now happened THREE times in one release (0.16.0 P4)
+
+| | The pure half | The wiring the plants found untested |
+|---|---|---|
+| the top-off | `onOffered`, the choice rule, the depth | `propose: proposeFrom(watch)` and `Depth: tty.MainTrackSlots` |
+| the masthead | the title and stamp ladders | `b.version = o.cfg.Version` and `SnapshotMsg`'s fan-out |
+| the console's frame | `cardLane.render` | the lane the frame hands it |
+
+**EVERY TIME, THE UNIT TEST SET THE FIELD ITSELF.**  `x.propose = func(){…}`, `b.version = "0.16.0"`,
+`b.snap = …` — so deleting the line that connects it to production changed no assertion anywhere.  The
+unit tests were not wrong; **they were not the whole of the claim.**
+
+**THE DETECTOR IS ONE QUESTION, ASKED OF EVERY FIELD A TEST ASSIGNS:** *what sets this in production, and
+what would fail if I deleted that line?*  If the answer is "nothing", the wiring has no test — and the
+feature is unreachable in a way every green test agrees with.
+
+**The fix is always the same shape too**: drive the thing production drives — `startSchedule`, the
+`Router`, a MESSAGE rather than a field — and assert at the surface the operator actually sees.
+
+**Cheap and worth making routine:** for any batch with a pure half and a wiring half, plant the WIRING
+first.  It is one edit per wire, it takes seconds when the plants are scoped to the right tests, and it
+has caught something every single time it has been run in this release.

@@ -476,6 +476,7 @@ func alertModalBG
 func alertPair
 func alertRecordLines
 func anyFocused
+func apiSummaryOf
 func applyIfChanged
 func blockHeight
 func broadcasterKeyMap
@@ -550,6 +551,8 @@ func marinePair
 func marineRow
 func maritimeRows
 func marquee
+func mastheadStamp
+func mastheadTitle
 func mmdd
 func modalAlertTone
 func nearestFirst

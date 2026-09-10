@@ -14,9 +14,11 @@ package tty
 import (
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 func headerOf(t *testing.T, w int) []string {
@@ -86,18 +88,67 @@ func TestTheMastheadCarriesTheStationsIdentity(t *testing.T) {
 		}
 	}
 	// THE COORDINATES ARE A PLACEHOLDER AND STAY ONE (F-66, CLOSED). The repo is
-	// public; the mock renders "TOWER GPS: <lat>, <lon>" and so does this.
+	// public; the mock in this repository renders "TOWER GPS: <lat>, <lon>" and
+	// so does this.
 	if !strings.Contains(got, "TOWER GPS") {
 		t.Errorf("TOWER GPS is missing from the masthead:\n%s", got)
 	}
 }
 
-func TestTheMastheadIsPartOfTheFrame(t *testing.T) {
+// THE MASTHEAD IS THE OBSERVER'S, DIFFERING ONLY IN THE EDITION WORD.
+//
+// THE HUM LEAD ASKED WHY IT WAS DIFFERENT, AND THE ANSWER WAS THAT I HAD
+// DEVIATED FROM THE MOCK: the version was dropped from the title, the `Updated:`
+// stamp was replaced with an invented "ON AIR / STANDBY", and the API summary
+// was left out entirely. The reference draws all three.
+//
+// The stamp was the worst of the three — it was substituted on my own reasoning
+// that the STATION line already carries state, which is a UX ruling that was not
+// mine to make.
+func TestTheMastheadDrawsWhatTheReferenceDraws(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	got := stripANSITest(b.View().Content)
-	if !strings.Contains(got, "BROADCAST LOCATION") {
-		t.Errorf("the masthead must reach the rendered frame, not just its own function:\n%s",
-			strings.Join(strings.Split(got, "\n")[:6], "\n"))
+	b.version = "0.16.0"
+	b.snap = mastheadSnap()
+	b.now = func() time.Time { return time.Date(2026, 8, 28, 19, 15, 8, 0, time.UTC) }
+	got := stripANSITest(b.header(b.opts()))
+
+	for _, want := range []string{"v0.16.0", "Updated:", "API:"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the reference draws %q and the console must too:\n%s", want, got)
+		}
 	}
+}
+
+// AND THE STAMP GOES BEFORE THE VERSION, WHICH GOES BEFORE THE EDITION. The
+// Observer's own ladder order, because a masthead that cannot say what the app
+// is has stopped being a masthead.
+func TestTheMastheadLaddersInTheObserversOrder(t *testing.T) {
+	b := NewBroadcaster()
+	b.height, b.ascii = 74, true
+	b.version = "0.16.0"
+	b.snap = mastheadSnap()
+	b.now = func() time.Time { return time.Date(2026, 8, 28, 19, 15, 8, 0, time.UTC) }
+
+	b.width = 150
+	wide := stripANSITest(b.header(b.opts()))
+	b.width = 100
+	narrow := stripANSITest(b.header(b.opts()))
+
+	if !strings.Contains(wide, "Updated:") {
+		t.Fatalf("fixture: the wide form must carry the stamp:\n%s", wide)
+	}
+	if !strings.Contains(narrow, "WATCHPOST") {
+		t.Errorf("the wordmark is the last thing to go:\n%s", narrow)
+	}
+}
+
+// mastheadSnap is a snapshot with providers, so the API summary has something
+// to count.
+func mastheadSnap() *snapshot.Snapshot {
+	at := time.Date(2026, 8, 28, 19, 15, 0, 0, time.UTC)
+	return &snapshot.Snapshot{Providers: []snapshot.ProviderStatus{
+		{ID: "a", Status: snapshot.ProviderOK, FetchedAt: at},
+		{ID: "b", Status: snapshot.ProviderOK, FetchedAt: at},
+	}}
 }

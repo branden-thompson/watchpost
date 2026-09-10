@@ -128,6 +128,10 @@ func NewRouter(o Dashboard) Router {
 	// has removed twice.
 	b := NewBroadcaster()
 	b.ascii = o.cfg.ASCII
+	// AND THE SAME BUILD. The masthead names the version on both surfaces, and
+	// two surfaces disagreeing about which build this is would be the same
+	// two-carriers defect one field along.
+	b.version = o.cfg.Version
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver, keys: broadcasterKeyMap()}
 }
 
@@ -154,6 +158,13 @@ func programScoped(msg tea.Msg) bool {
 	switch msg.(type) {
 	case tea.WindowSizeMsg, tea.BackgroundColorMsg,
 		tea.FocusMsg, tea.BlurMsg, tea.SuspendMsg, tea.ResumeMsg, tea.ColorProfileMsg:
+		return true
+	// THE SNAPSHOT GOES TO BOTH (D-59). Both surfaces draw the same masthead,
+	// and its `Updated:` stamp and API summary come from here — so a console
+	// that only learned the data while on screen would show a stale masthead the
+	// instant it was swapped to, which is the exact argument `consoleScoped`
+	// already makes for the schedule.
+	case SnapshotMsg:
 		return true
 	}
 	return false

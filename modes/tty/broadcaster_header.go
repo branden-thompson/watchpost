@@ -22,32 +22,9 @@ import (
 // header is the masthead block: the framed title row, the controls, and the
 // station's own identity.
 func (b Broadcaster) header(o render.Opts) string {
-	full := render.Wordmark(render.EditionBroadcaster)
 	rule := o.BoxRuleWidth()
-
-	// THE LADDER, and its ORDER is the Observer's: the version leaves first,
-	// then the edition, and the wordmark is the last thing to go — "a masthead
-	// that cannot say what the app is has stopped being a masthead."
-	//
-	// Each rung is built only when the one above it did not fit, because the
-	// bare wordmark costs a per-rune gradient pass for a form only a very narrow
-	// terminal ever shows.
-	title := full
-	switch {
-	case render.Width(full)+4 <= rule:
-	default:
-		title = render.Wordmark("")
-	}
-	// The stamp is what the station IS ON AIR AS, not a clock: the console has
-	// its own STATION line for state, and repeating it here would be two
-	// carriers of one fact.
-	stamp := ""
-	for _, form := range []string{"ON AIR / STANDBY", "ON AIR"} {
-		if render.Width(title)+4+render.Width(form)+5 <= rule {
-			stamp = form
-			break
-		}
-	}
+	title := mastheadTitle(render.EditionBroadcaster, b.version, rule)
+	stamp := mastheadStamp(o, title, b.snap, b.clock(), rule)
 	return o.BoxTitled(b.headerRows(o), title, stamp, "", "")
 }
 
@@ -64,17 +41,23 @@ func (b Broadcaster) headerRows(o render.Opts) []string {
 // at all would strand an operator who arrived by keyboard.
 func (b Broadcaster) controlRow(o render.Opts) string {
 	inner := o.BoxInnerWidth()
+	// THE API SUMMARY RIDES AT THE RIGHT, which the reference draws and I had
+	// left out. It is the Observer's own count, from the same snapshot, so the
+	// two surfaces cannot report different provider health.
+	api := apiSummaryOf(o, b.snap)
 	for _, form := range [][]string{
 		{"s  Settings", "a  About", "S  Status", "ctrl+o  Observer", "?  Help", "q  Quit"},
 		{"s  Settings", "ctrl+o  Observer", "?  Help", "q  Quit"},
 		{"ctrl+o  Observer", "q  Quit"},
 	} {
 		row := strings.Join(form, "   ")
-		if render.Width(row) <= inner {
-			return render.PadTo(row, inner)
+		if render.Width(row)+2+render.Width(api) <= inner {
+			return render.PadBetween(row, api, inner)
 		}
 	}
-	return render.PadTo(render.TruncateCells("ctrl+o  Observer", inner), inner)
+	// The bare floor still names the two controls that appear ONLY here: the way
+	// back to Observer, and the way out.
+	return render.PadTo(render.TruncateCells("ctrl+o  Observer   q  Quit", inner), inner)
 }
 
 // identityRow is where the station broadcasts FROM, and how far it reaches.
