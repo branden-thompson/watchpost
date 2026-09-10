@@ -145,6 +145,9 @@ rebuilt its context from the code would re-derive the WRONG answer for every one
 | **D-38** | **four** elevations: base → priority overlay → detail/action → confirm/destructive | three already exist.  What does NOT is an INTERACTIVE overlay on the body, which is what the priority track is |
 | **D-39** | the card detail modal is a **centred** overlay like the location-details one — scroll, sticky controls | a report grows long once the Composer merges real data at Up Next |
 | **D-40** | **the Producer proposes — several, cheap, name-only — and the DIRECTOR chooses** | nothing reads track depth today, so the lineup holds ~1 card while the mock draws 10 |
+| **D-41** | a card the Operator CHOSE is `FromOperator`, and that origin **outranks** | scope is the CHOICE ranking; where a RESTORED card lands is still unruled |
+| **D-42** | a transition is **never** `FromOperator` — it is the Director's one additive act | held by accident before it was stated: a different rule refused it for an unrelated reason |
+| **D-43** | transitions **bookend** their card and **move with it** on promote/quash | **not built, and nothing supports it** — `Reorder` moves exactly one card.  F-75 |
 
 **D-40's operator flow, ruled in full:** card in the main track → `[#]` → detail modal → `[D]` Drop →
 confirm ARE YOU SURE → `[enter]` → both modals close → the card leaves → **everything below moves up

@@ -382,6 +382,22 @@ func (c Card) check() error {
 		"a card whose words are fixed at proposal never exists without them"); err != nil {
 		return err
 	}
+	// D-42 (HUM LEAD, 2026-09-10): "transition cards are NEVER
+	// Origin.fromOperator." A transition is the DIRECTOR'S one additive act —
+	// the role model's own words — so an operator-originated one is a category
+	// error: the human asks for a report, and the hand-off around it is the
+	// Director's consequence of that choice, never the request itself.
+	//
+	// IT HELD BY ACCIDENT BEFORE THIS LINE. The guard above refuses a wordless
+	// transition, and the undo deliberately drops the words, so the one path
+	// that could have built such a card failed for an unrelated reason — a rule
+	// held by a DIFFERENT rule, which is the shape this package keeps having to
+	// un-split. Stated here, it survives the day a transition carries its words
+	// through.
+	if err := invariant.Check(c.Slot != Transition || c.Origin != FromOperator,
+		"a transition is the Director's own structural card; the operator never originates one"); err != nil {
+		return err
+	}
 	return nil
 }
 

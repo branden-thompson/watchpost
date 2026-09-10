@@ -1533,3 +1533,33 @@ carrier, and say in the comment that a mutant is why.
 **A guard that decides and an invariant that watches are not the same thing**, and only the first kind
 should be deleted when its mutant survives.  Deleting the second kind would strip the tripwires this
 package is built out of.
+
+
+---
+
+## Verifying "does the code account for this?" is where the defects are (0.16.0 P4)
+
+**The HUM LEAD asked a question they expected to be a note, not a fix**: *"I don't know if the code
+accounts for this, but it should be noted just in case we find out we have to build this later."*
+Answering it honestly — by reading the paths rather than reasoning about them — turned up a live defect
+in code committed an hour earlier.
+
+**`onRestored` spent the operator's undo before it could fail.**  The pile entry was lifted on the first
+line and `d.lineup` assigned immediately; every refusal below returned the Director that had already
+lost it.  So the pile shrank, nothing was queued, and no effect said so.
+
+**It was reachable the ORDINARY way, which is the part worth keeping.**  `ReadID` is a pure function of
+the ref, so a location dropped and then re-queued by the rotation holds the very identity the undo
+wants.  **The rotation doing its job is the trigger** — no adversarial input, no edge case.  The class:
+*a function that mutates its receiver before its last fallible step*, in a language where the receiver
+is a value and every early return ships that mutation.
+
+**And the ruling it came from was already true — by accident.**  D-42 says a transition is never the
+operator's card.  Nothing enforced it; the one path that could build one failed for an UNRELATED reason
+(the undo drops the words, and a wordless transition is refused a guard earlier).  **A rule held by a
+different rule** is the third instance of this shape in the package — the duck lifted by one spelling of
+tune and not the other, DR-7's structural half, and now this.  Each time the remedy is the same: state
+it where it can be seen to fail.
+
+**Cheapest instrument for the class:** ask of every fallible handler, *what has already been written to
+the receiver by the time the last `return d, nil` runs?*

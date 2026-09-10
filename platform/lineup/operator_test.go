@@ -263,3 +263,79 @@ func TestTheCardOnTheAirCannotBeDropped(t *testing.T) {
 		t.Errorf("and nothing lands on the pile; got %v", got)
 	}
 }
+
+// AN UNDO THAT CANNOT BE PERFORMED MUST NOT CONSUME THE UNDO (F-74).
+//
+// `onRestored` took the card off the pile BEFORE the proposal and the queue
+// could fail, and every failure path returned the Director it had already
+// mutated. So a restore that could not be completed destroyed the pile entry
+// and put nothing back — the operator's one recovery, spent on nothing, with no
+// way to tell it had happened.
+//
+// IT IS REACHED THE ORDINARY WAY. ReadID is a pure function of the ref, so a
+// location dropped and then re-queued by the rotation is holding the identity
+// the undo wants. That is not an edge case; it is the rotation doing its job.
+func TestARestoreTheScheduleRefusesKeepsTheCardOnThePile(t *testing.T) {
+	base := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
+	d := New(Settings{Max: 5}, base)
+	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
+
+	d, _ = d.Step(Dropped{ID: ReadID("oceanside")})
+	if len(d.lineup.Discarded()) != 1 {
+		t.Fatalf("the drop must reach the pile; got %d", len(d.lineup.Discarded()))
+	}
+	// The rotation asks for that location again, and gets the same identity.
+	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
+
+	d, fx := d.Step(Restored{ID: ReadID("oceanside")})
+
+	if got := len(d.lineup.Discarded()); got != 1 {
+		t.Errorf("a refused restore must leave the undo intact; the pile holds %d", got)
+	}
+	if len(fx) != 0 {
+		t.Errorf("and it did nothing, so it reports nothing; got %d effects", len(fx))
+	}
+}
+
+// The same rule, reached through the OTHER refusal: a structural card can never
+// be re-proposed, because its words are fixed at proposal and the undo
+// deliberately drops the words (they may have gone stale).
+func TestRestoringATransitionKeepsItOnThePileRatherThanEatingIt(t *testing.T) {
+	base := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
+	d := New(Settings{Max: 5}, base)
+	d, _ = d.Step(Powered{To: Running})
+	notice, err := Propose(Card{ID: "t1", Slot: Transition, Origin: FromDirector,
+		Subject: "stale read", Headline: "Report out of date", Script: Say("dropped.")})
+	if err != nil {
+		t.Fatalf("building the fixture transition: %v", err)
+	}
+	admitted, err := notice.To(Admitted)
+	if err != nil {
+		t.Fatalf("admitting the fixture: %v", err)
+	}
+	d.lineup, err = d.lineup.Queue(MainTrack, admitted)
+	if err != nil {
+		t.Fatalf("queueing the fixture: %v", err)
+	}
+
+	d, _ = d.Step(Dropped{ID: "t1"})
+	d, _ = d.Step(Restored{ID: "t1"})
+
+	if got := len(d.lineup.Discarded()); got != 1 {
+		t.Errorf("a transition that cannot be re-proposed stays on the pile; got %d", got)
+	}
+}
+
+// D-42 (HUM LEAD, 2026-09-10): "transition cards are NEVER Origin.fromOperator."
+//
+// TODAY IT HOLDS BY ACCIDENT — the wordless-transition check refuses one before
+// the origin is ever looked at, which is a rule held by a DIFFERENT rule. It is
+// stated here so it survives the day a transition carries its words through.
+func TestATransitionIsNeverTheOperatorsCard(t *testing.T) {
+	_, err := Propose(Card{ID: "t2", Slot: Transition, Origin: FromOperator,
+		Subject: "hand-off", Headline: "Coming up", Script: Say("and now, the forecast.")})
+	if err == nil {
+		t.Error("a transition is the Director's own structural card; the operator never originates one")
+	}
+}
