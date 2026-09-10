@@ -1,4 +1,4 @@
-# 0.16.0 rulings, D-59 … D-68
+# 0.16.0 rulings, D-59 … D-70
 
 The layout phase and the UAT that followed it.  D-59 … D-65 were built and shipped with their
 reasoning in the code and in the commits; they are stated here in short because a ruling that lives
@@ -191,3 +191,71 @@ air, so once it is not, the sentence is false and goes.
 are the same `Power`, so listening on one surface puts the station live on the other.  That may be
 exactly right — they are one station — but it means the operator can be refused a swap they never
 did anything to earn.  Ruling wanted.
+
+---
+
+# D-70 — THE BREAKS ARE THE DESIGN, AND COLOUR IS AN EDGE
+
+**HUM LEAD, UAT 2026-09-10**, third pass on the same frame.
+
+## The break between two regions goes all the way across
+
+> The blank row in between sections needs to be completely blank — right now the left rail is
+> connected top to bottom.  The breaks in the mock were intentional.
+
+A rail that runs unbroken from LIVE to the bottom of the LINE UP draws the four regions **as one
+column with labels in it**.  A rail that stops and starts draws four regions.  The gap is doing the
+work, and a wall through it undoes exactly that — so a row of the running order that carries no card
+carries no wall either, on EITHER side: not the rail's, and not the inner one at 144.  The frame's
+outer edge carries on, which is what the reference draws.
+
+**The spacer under the lane's header keeps its rail, and that is not an inconsistency.**  A gap
+BETWEEN two regions has to break; that row breaks nothing, because it is the top of the running
+order and the rail begins there.
+
+## The scroll control starts and ends where the reference puts it
+
+> The scroll line is still not right.  Even if the LIVE and UP NEXT cards share the same width, the
+> vertical control should start and end where the mock says.
+
+▲ on the break above the first scrolling card, ▼ on a row of its own below the last — so the running
+order now CLOSES on a blank row, the way it opens on one.  Until it did, the down cap landed across
+the last card's border.
+
+**`Railify` is still the one owner of where the thumb lands**, and this is its own stated contract:
+*"callers draw ▲/▼ themselves … a caller that draws ▼ on its last visible row passes the rows above
+it."*  So it is asked for the TRACK BETWEEN THE CAPS and nothing else — asked with empty lines and a
+width of one, which returns the glyph ladder alone.
+
+**And the frame ends where the running order does.**  It used to carry walled blank rows to the
+bottom of the terminal; the reference closes under the ▼ and leaves the rest of the screen empty.
+`clamp` still pads the VIEW to the terminal's height, so D-63 holds: the frame is the viewport, and
+`render.Overlay` still composites against a full-height base.
+
+## The station band is painted, not walled
+
+> We can remove the lines from the playing section — since we'll use color for the differentiation.
+> It should be the same grey taken as the "Recent/Searched Locations" on STANDBY and ALERT RED on
+> "ON AIR".
+
+A painted band already has a boundary; drawing one as well is two answers to where the region begins.
+**Both tones are tokens that already exist**, and the HUM LEAD named them by the thing they already
+paint: `GroupSectionBG` **is** the RECENT/SEARCHED band, and `TickerEmergencyBG` is what MVS-D-62
+calls "THE red".  A second red mixed here would be a second answer to what red means in this app.
+
+This is the colour pass D-62 said would come as a token rather than a sweep, arriving as one.
+
+## Still open, and named as such
+
+**Nothing is wired to a card yet** — `0` opens no detail modal.  The HUM LEAD raised it and answered
+it in the same breath: *"may be built yet, that's okay."*  It is P4's, and F-84 (the script never
+reaches the console) is the data half of the same window.
+
+## Eight plants, eight caught — two of them only after the tests grew
+
+`u1` (the rail runs unbroken through the breaks) and `u7` (the down cap lands on the last card
+border) both SURVIVED the first run.  The break test looked only at columns 0..143, so the wall at
+144 was unmeasured; the cap test drove `framed` directly rather than the frame, so where the caps
+landed in a real render was unmeasured too.  **Both were rules I had just written and neither was
+being checked** — the same shape as the four "the unit test sets the field itself" findings this
+release, one layer along: the assertion stopped short of the thing the ruling was about.

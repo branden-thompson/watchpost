@@ -123,6 +123,26 @@ func (b Broadcaster) section(label string, rows []string) []string {
 // other: an unwalled blank row is a hole in the border, which is how the frame
 // came to look broken between the regions in the first place.
 func (b Broadcaster) regionGap() string {
+	// COMPLETELY BLANK — NO WALLS, NOT EVEN THE RAIL'S (HUM LEAD, UAT
+	// 2026-09-10): "the blank row in between sections needs to be completely
+	// blank — right now the left rail is connected top to bottom; the breaks in
+	// the mock were intentional."
+	//
+	// THE BREAK IS THE SEPARATOR. A rail that runs unbroken from LIVE to the
+	// bottom of the LINE UP draws the four regions as one column with labels in
+	// it; a rail that stops and starts draws four regions. The gap is doing the
+	// work, and a wall through it undoes exactly that.
+	return strings.Repeat(" ", b.orderWidth())
+}
+
+// railSpacer is the row of air UNDER the lane's header, before its first card.
+//
+// IT KEEPS THE RAIL'S WALLS, and a region gap does not — which looks like an
+// inconsistency and is the reference drawn exactly. A gap BETWEEN two regions
+// has to break the rail, because an unbroken rail draws four regions as one
+// column with labels in it. This row breaks nothing: it is the top of the
+// running order, and the rail begins here.
+func (b Broadcaster) railSpacer() string {
 	g := b.opts().Glyphs()
 	return railColumn(" ", 1, g)[0] + strings.Repeat(" ", b.orderWidth()-bcRailWidth)
 }
@@ -251,29 +271,48 @@ func (b Broadcaster) framed(body []string, shown, total int) []string {
 // a thumb drawn there would say they move when they do not.
 func (b Broadcaster) chrome(body []string, rail bool, shown, total int) []string {
 	g := b.opts().Glyphs()
-	inner := make([]string, len(body))
-	for i, r := range body { // bounded by the body (P10-02)
-		inner[i] = r + "   "
-	}
-	// THE BAR IS THE WALL. `RailGlyphsFor` already draws one on every row, and
-	// that is the reference's own inner edge — an earlier version blanked it and
-	// drew a separate wall, which is how the extra column got in.
 	glyphs := render.RailGlyphsFor(b.ascii)
-	glyphs.Bar = g.Rail
-	if !rail {
-		// AN UNSCROLLED ZONE STILL HAS THE WALL; what it does not have is a
-		// thumb. Railify puts the thumb on row 0 of whatever it is given, so a
-		// zone that does not scroll must not be given to it at all.
-		out := make([]string, len(inner))
-		for i, r := range inner { // bounded by the body (P10-02)
-			out[i] = render.PadTo(r, b.width-6) + g.Rail + "    " + g.Rail
-		}
-		return out
+	// THE MARK IN COLUMN 144 FOR EACH ROW. Without a rail that is the wall, on
+	// every row; with one it is the rail's own ladder — ▲ at the top, ▼ at the
+	// bottom, the thumb somewhere between.
+	//
+	// THE CAPS ARE THE CALLER'S, WHICH IS `Railify`'S OWN CONTRACT: "callers
+	// draw ▲/▼ themselves … a caller that draws ▼ on its last visible row passes
+	// the rows above it". So Railify is asked only for the TRACK between them,
+	// and it stays the one owner of where the thumb lands (HUM LEAD, UAT
+	// 2026-09-10: "the vertical control should start and end where the mock
+	// says").
+	marks := make([]string, len(body))
+	for i := range marks { // bounded by the body (P10-02)
+		marks[i] = g.Rail
 	}
-	railed := render.Railify(inner, b.width-5, 0, max(total, 1), max(shown, 1), glyphs)
-	out := make([]string, len(railed))
-	for i, r := range railed { // bounded by the body (P10-02)
-		out[i] = r + "    " + g.Rail
+	if rail && len(body) >= 3 {
+		marks[0], marks[len(body)-1] = glyphs.Up, glyphs.Down
+		// Width 1 over empty lines asks Railify for the GLYPHS and nothing else:
+		// `PadTo("", 0)` is empty, so each line it returns is the mark alone.
+		for i, m := range render.Railify(make([]string, len(body)-2), 1, 0,
+			max(total, 1), max(shown, 1), glyphs) {
+			marks[i+1] = m
+		}
+	}
+	out := make([]string, len(body))
+	for i, r := range body { // bounded by the body (P10-02)
+		mark := marks[i]
+		// A BREAK IS A BREAK, ON BOTH SIDES (HUM LEAD, UAT 2026-09-10): "the
+		// blank row in between sections needs to be completely blank — right now
+		// the left rail is connected top to bottom; the breaks in the mock were
+		// intentional." A row of the running order that is entirely blank IS the
+		// separator between two regions, so the inner wall stops with the rail
+		// column beside it — the frame's outer edge carries on, which is what
+		// the reference draws.
+		//
+		// THE SCROLL RAIL'S END CAPS ARE THE EXCEPTION, and they are exactly why
+		// they sit on blank rows: ▲ and ▼ say where the scrolling region begins
+		// and ends, which is a thing to say IN the break rather than despite it.
+		if strings.TrimSpace(r) == "" && mark != glyphs.Up && mark != glyphs.Down {
+			mark = " "
+		}
+		out[i] = render.PadTo(r+"   ", b.width-6) + mark + "    " + g.Rail
 	}
 	return out
 }

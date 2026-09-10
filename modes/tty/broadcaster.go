@@ -455,6 +455,13 @@ func (b Broadcaster) lanes() []string {
 			reads = len(order)
 		}
 	}
+	// AND THE RUNNING ORDER CLOSES ON A BLANK ROW, so the scroll rail's ▼ has
+	// one of its own — which is where the reference draws it, under the last
+	// card rather than across its border. Its ▲ already has one: the gap between
+	// UP NEXT and SCHEDULED.
+	if drawn && reads < len(order) {
+		order = append(order, b.regionGap())
+	}
 
 	// AND THE PRIORITY TRACK IS COMPOSITED ON TOP OF IT (D-61).
 	//
@@ -482,18 +489,19 @@ func (b Broadcaster) lanes() []string {
 	// INSET. It stopped at the last drawn row, so a station with a short line-up
 	// showed a fragment floating in black — the reference carries its walls to
 	// the bottom, and a frame that ends where its content does is not a frame.
-	if n := b.height - len(out) - len(body) - len(b.inset()); n > 0 {
-		// ONE BLANK ROW, REPEATED. Building a whole section per row rebuilt its
-		// rail and its glyph set every time — 702 allocations for a frame, from
-		// rows that are all identical by construction.
-		blank := b.section("", []string{strings.Repeat(" ", b.cardBoxWidth())})
-		for range n { // bounded by the terminal (P10-02)
-			body = append(body, blank...)
-		}
-	}
+	// THE SCROLL RAIL ENDS WITH THE CARDS, NOT WITH THE FRAME. Its ▼ sits on the
+	// last row of the running order, which is what the reference draws — filler
+	// below it is the frame reaching the bottom of the terminal, and a rail run
+	// through that would say the line-up continues into empty space.
 	out = append(out, b.chrome(body[:reads], false, 0, 0)...)
 	out = append(out, b.chrome(body[reads:], true,
 		MainTrackSlots, len(b.lineup.Projection(lineup.MainTrack)))...)
+	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
+	// blank rows to the bottom of the terminal, which is what the reference does
+	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the
+	// screen is empty. `clamp` still pads the view to the terminal's height, so
+	// D-63's rule holds: the frame is the viewport, and `render.Overlay` still
+	// composites against a full-height base.
 	return append(out, b.inset()...)
 }
 
@@ -532,7 +540,7 @@ func (b Broadcaster) laneHeader(label string) []string {
 	lead := bcRailWidth + bcRailGap + max(0, (b.cardBoxWidth()-render.Width(label))/2)
 	return []string{
 		g.Rail + render.PadTo(strings.Repeat(" ", lead-1)+label, b.orderWidth()-1),
-		b.regionGap(),
+		b.railSpacer(),
 	}
 }
 
@@ -646,12 +654,17 @@ func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
 	// and the running order carries the rail's; without these the station
 	// section was the one region with no edges, and the frame read as broken
 	// between them.
-	g := o.Glyphs()
 	rows := []string{}
-	// INSET FROM THE WALL, as the reference draws it: the section's text begins
-	// four cells in, not hard against the frame's edge.
+	// NO WALLS. THE COLOUR IS THE EDGE (HUM LEAD, UAT 2026-09-10): "we can
+	// remove the lines from the playing section, since we'll use color for the
+	// differentiation." A painted band already has a boundary — drawing one as
+	// well says the region is bordered AND filled, which is two answers to
+	// where it begins.
+	//
+	// INSET FROM THE FRAME, as the reference draws it: the section's text begins
+	// four cells in, not hard against the edge.
 	for _, r := range append(append([]string{""}, b.stationLine()...), "") {
-		rows = append(rows, g.Rail+render.PadTo(bcSectionInset+r, b.laneWidth())+g.Rail)
+		rows = append(rows, render.PadTo(" "+bcSectionInset+r, b.width))
 	}
 	return o.Block(strings.Join(rows, "\n"), fg, bg)
 }
@@ -662,7 +675,20 @@ func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
 // grey on standby — and naming the TOKENS is their pass, not mine. `Block`
 // treats an empty pair as "no tone of its own: the frame's base tone paints it",
 // so the section is correct today and coloured by one edit here.
-func (b Broadcaster) stationTone() (fg, bg string) { return "", "" }
+func (b Broadcaster) stationTone() (fg, bg string) {
+	// THE HUM LEAD NAMED BOTH TONES BY THE THING THEY ALREADY EXIST ON (UAT
+	// 2026-09-10): "the same grey taken as the Recent/Searched Locations on
+	// STANDBY, and ALERT RED on ON AIR."
+	//
+	// SO THEY ARE THE SAME TOKENS, NOT NEW ONES. `GroupSectionBG` IS the
+	// RECENT/SEARCHED band, and `TickerEmergencyBG` is what MVS-D-62 calls "THE
+	// red" — a second red mixed here would be a second answer to what red means
+	// in this app.
+	if b.power == lineup.Running {
+		return render.Tok(render.AlertModalText), render.Tok(render.TickerEmergencyBG)
+	}
+	return render.Tok(render.TextBase), render.Tok(render.GroupSectionBG)
+}
 
 // stationLine is the station's state, Variant C (D-21): a labelled field with
 // the transition named in parentheses.

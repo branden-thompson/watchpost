@@ -225,6 +225,7 @@ func (Broadcaster).notice
 func (Broadcaster).opts
 func (Broadcaster).orderWidth
 func (Broadcaster).priorityWidth
+func (Broadcaster).railSpacer
 func (Broadcaster).readBody
 func (Broadcaster).region
 func (Broadcaster).regionGap
