@@ -45,6 +45,17 @@ import (
 type Proposal struct {
 	Ref      string // the location, as the schedule keys it
 	Headline string // what the card is about, in the words a person reads
+
+	// Slot is WHAT KIND OF READ this would be (D-46, D-48).
+	//
+	// THE PRODUCER'S TO SAY, because "what cards should exist" is its whole
+	// charter, and the kind is most of what a card IS. The Director needs it to
+	// choose: D-48's cadence term discriminates between KINDS — "we haven't had
+	// a location report in a while" is not a statement about a location.
+	//
+	// THE ZERO VALUE IS A LOCATION REPORT, which is most of the broadcast and
+	// what every proposal was before this field existed.
+	Slot Slot
 }
 
 // Offered is the Producer offering the Director something to fill the lineup
@@ -128,6 +139,16 @@ func (d Director) onOffered(ev Offered) (Director, []Effect) {
 func (d Director) chosen(ps []Proposal) []Proposal {
 	out := slices.Clone(ps)
 	slices.SortStableFunc(out, func(a, b Proposal) int {
+		// THE CADENCE TERM FIRST, AND IT IS SEPARABLE (D-48). It answers zero
+		// for every proposal when the operator has switched it off, when
+		// nothing has been read yet, or when a slot is outside the registry —
+		// and a term equal for everything discriminates nothing, so the
+		// comparison falls straight through to the watchlist below. That is the
+		// degradation the HUM LEAD asked for, and it is arithmetic rather than
+		// a branch anyone has to remember.
+		if n := cmp.Compare(d.overdue(b.Slot), d.overdue(a.Slot)); n != 0 {
+			return n // longest unread first
+		}
 		return cmp.Compare(d.rank(a.Ref), d.rank(b.Ref))
 	})
 	// A SORT THAT LOST A CANDIDATE would silently narrow the choice, and the
@@ -142,8 +163,11 @@ func (d Director) chosen(ps []Proposal) []Proposal {
 	// failure this whole file exists to prevent, so it is asserted rather than
 	// assumed.
 	if err := invariant.Check(slices.IsSortedFunc(out, func(a, b Proposal) int {
+		if n := cmp.Compare(d.overdue(b.Slot), d.overdue(a.Slot)); n != 0 {
+			return n
+		}
 		return cmp.Compare(d.rank(a.Ref), d.rank(b.Ref))
-	}), "the chosen order runs in the operator's watchlist order"); err != nil {
+	}), "the chosen order runs in the Director's own order of preference"); err != nil {
 		return nil
 	}
 	return out
@@ -184,7 +208,27 @@ func (d Director) rank(ref string) int {
 // it forward; DR-4 records who put the card in the running order, and that is
 // the chair this one was decided in.
 func (d Director) admit(p Proposal) (Lineup, bool) {
-	card, err := Propose(Card{ID: ReadID(p.Ref), Slot: LocationReport, Origin: FromDirector,
+	// THE TOP-OFF FILLS THE MAIN TRACK, so it admits only what belongs there.
+	// A takeover proposed here would drain onto the rail, leaving the slot it
+	// was meant to fill still empty while the walk counted it spent.
+	if trackFor(p.Slot) != MainTrack {
+		return d.lineup, false
+	}
+	// AND THE DIRECTOR'S OWN CARDS ARE NOT THE PRODUCER'S TO PROPOSE (D-43).
+	// Transitions are derived from the running order; one arriving as a proposal
+	// would be a second author of the same thing.
+	//
+	// A TRIPWIRE, NOT A DECISION, and its mutant SURVIVES BY DESIGN: a
+	// structural card's words are fixed at proposal, `Proposal` carries none,
+	// and `check` refuses a wordless transition — so today the rule holds for an
+	// UNRELATED reason. That is the D-42 shape exactly, and it is stated here
+	// for the same reason: a rule held by a different rule is one that vanishes
+	// silently the day the other rule moves.
+	if err := invariant.Check(!p.Slot.structural(),
+		"the Director's own structural cards are derived from the order, never proposed"); err != nil {
+		return d.lineup, false
+	}
+	card, err := Propose(Card{ID: ReadID(p.Ref), Slot: p.Slot, Origin: FromDirector,
 		Subject: p.Ref, Headline: p.Headline})
 	if err != nil {
 		return d.lineup, false
