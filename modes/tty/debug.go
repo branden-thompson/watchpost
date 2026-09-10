@@ -243,3 +243,34 @@ func (d Dashboard) chooseDebug() (Dashboard, tea.Cmd) {
 		return nil
 	}
 }
+
+// DiagnosticsOpen reports whether the ctrl+d window is showing (D-58).
+//
+// EXPORTED FOR THE ROUTER, which composites this window over the console. It is
+// a narrow, named seam rather than the Router reaching into `d.modal`: the
+// Dashboard owns what "open" means, including the day a second modal state
+// exists.
+func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
+
+// DiagnosticsOverlay is the ctrl+d window alone — the box, with its
+// confirmation composited on top when one is up — ready to be laid over another
+// surface's frame (D-58).
+//
+// THE COMPOSITING RULE STAYS HERE, with the window that owns it. The
+// confirmation goes ON TOP of the window rather than replacing it, which is the
+// HUM LEAD's mock and the reason `View` layers rather than swaps.
+func (d Dashboard) DiagnosticsOverlay() string {
+	if !d.DiagnosticsOpen() {
+		return ""
+	}
+	o := d.layout().o
+	out := d.modalView(o)
+	if box := d.confirmOverlay(o); box != "" && out != "" {
+		out = render.Overlay(out, box, d.width)
+	}
+	return out
+}
+
+// openDiagnostics opens the window directly, for tests that need it open
+// without pressing a key on a particular surface.
+func (d Dashboard) openDiagnostics() Dashboard { return d.toggle(modalDebug) }
