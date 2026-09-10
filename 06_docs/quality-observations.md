@@ -1395,3 +1395,85 @@ close from `Closes **#14**` in the body at all. So within one release the same i
 ways produced three outcomes: closed correctly, not closed, and closed when the text said not to.
 **Put close directives in the release commit message, unadorned, and nowhere else.**
 
+
+---
+
+## 0.16.0 P3 — the audio merge: six shapes, and the cost each one paid
+
+**The most dangerous batch in the release, and the observations are worth more than the code.** Five
+gates in this batch were WRONG, every one of them found by an instrument rather than by reading, and
+four of them fall into shapes that have now recurred often enough to name.
+
+### 1. A gate that watches the STATE and not the WORK — three instances in one batch
+
+| Plant | What it deleted | Why nothing noticed |
+|---|---|---|
+| **m6** | the settle after queueing a card | the test held the effects and threw them away: `_ = fx` |
+| **p1b** | `toPrepare`'s rail-first precedence | every property watched what took the AIR; the defect was in what got COMPOSED, where nothing takes the air at all |
+| **d3** | the composed report's store write | the build test looked at the card's script; the speak test put the segments in itself.  **Nothing ran the two halves together** |
+
+**The tell is always the same: the test can see the result, and does not ask for the step.** A card
+that is queued and never composed leaves a full lineup and a silent station, and every assertion about
+the lineup stays green.
+
+**The check that generalises:** for any test that ends in "and the state is X", ask what WORK produced
+X, and whether deleting that work would change the assertion. If the work returns something — effects,
+events, a handle — and the test discards it, that discard is the hole.
+
+### 2. A pin on the CARRIER, not on the RULE, cannot see the carrier become wrong
+
+`Powered{Running}` rode on `setMode`'s transition edge. A pin existed, written the first time this
+broke, and it **drove `setMode` directly** — so when the merged station stopped changing the deck's
+mode, the pin passed and the station was permanently silent with a permanently empty lineup and no
+fault raised, because nothing failed and nothing was ever admitted.
+
+**Pin the thing the USER does, not the function that currently implements it.** The pin drives `tune`
+now, which is what the listener does; it survives the next rearrangement of the audio path.
+
+### 3. A rewrite that keeps the BODY can lose the GUARDS
+
+`startSynth` became `readReport` — same body, one caller instead of three — and **both** staleness
+guards vanished: the entry epoch check and the `tuneMu`-held pair whose own comment records the race it
+closed. Nothing failed, because guards have no visible behaviour to miss.
+
+**Diff a rewrite against what it replaced, specifically for the checks.** It is a step, not a reflex,
+and it is the only thing that found this.
+
+### 4. A rule that cannot be reached by a test is a rule with no gate
+
+The detail line is the only place a listener learns why the station is reading rather than relaying, and
+it lived inside a function that resolves a voice — on a machine without one, a 63 MB download inside a
+unit test. So it had no gate, and a plant deleting it survived.
+
+**Extracting the rule into its own seam is the fix, not writing a bigger fixture.** `announceReport` is
+one line and needs no audio device.
+
+### 5. A cosmetic rewrite of a test is a change to the INSTRUMENT
+
+Rewriting an identity test to satisfy a linter lost the ADJACENCY that made it work: comparing across
+two passes let a counter-based mutant through, because with three refs and a counter taken modulo three
+every ref got the same suffix both times. **The rewrite was correct-looking and measured less.**
+
+**Re-plant after touching a test, even when the change is cosmetic.**
+
+### 6. Position gates, and where they stop
+
+Three rules in this batch have no behavioural test **because the window is between two statements** and
+no fixture can stand in one: the power report must not be inside a branch, the epoch check and the
+engine start must be one locked step, and the wait must be outside that lock. All three are asserted as
+POSITIONS by an AST walk, and each caught a plant nothing else could.
+
+**And the limit is stated rather than papered over:** a walk can find a check; it cannot judge whether
+its condition is honest. `if false && !d.epoch(gen)` leaves the call exactly where the walk looks, and
+tightening the gate to reject that shape only moves the goalposts to `gen == gen`. **The gate stops
+there and says so** — which is the difference between this and the old code, which had the same window
+and the same untestability and no record of either.
+
+### And the running tally: P10 resolves by NAME, seventh collision this release
+
+`executors.readReport` (a seam) and `radioDeck.readReport` (a method) read as one node and reported as
+recursion; renaming the seam to `playReport` cleared it, which is also the proof it was a collision. A
+test walk then failed against `livePipelines.readReport`, an unrelated method in another file — **the
+receiver is part of the subject**, and both the tool and the test now say so.
+
+**This is worth an upstream fix rather than a seventh rename.**
