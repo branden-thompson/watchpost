@@ -56,7 +56,10 @@ func TestTheOperatorCanOpenDiagnosticsFromTheConsole(t *testing.T) {
 func TestTheConsoleIsStillDrawnBeneathTheDiagnosticsWindow(t *testing.T) {
 	r := consoleWith(t, goldenDash(t, false))
 	before := r.View().Content
-	if !strings.Contains(before, "LINE UP") {
+	// ANCHORED ON THE STATION LINE, NOT ON "LINE UP". The left rail spells its
+	// section names VERTICALLY now (D-60) — L, I, N, E, blank, U, P down the
+	// edge — so the label is no longer a string in the frame at all.
+	if !strings.Contains(before, "STATION:") {
 		t.Fatalf("fixture: the console must be drawing its lanes; got:\n%s", before)
 	}
 
@@ -66,7 +69,7 @@ func TestTheConsoleIsStillDrawnBeneathTheDiagnosticsWindow(t *testing.T) {
 	if got == before {
 		t.Fatal("the frame did not change: nothing was composited over the console")
 	}
-	if !strings.Contains(got, "LINE UP") {
+	if !strings.Contains(got, "STATION:") {
 		t.Error("the console must remain visible beneath the window; it was replaced instead")
 	}
 }

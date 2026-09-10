@@ -260,8 +260,20 @@ func (b Broadcaster) laneWidth() int {
 
 // tooSmall reports whether the terminal is below the floor.
 func (b Broadcaster) tooSmall() bool {
-	c, r := b.minSize()
-	return b.width < c || b.height < r
+	// THE CLASSIFIER OWNS THE WIDTH BOUNDARY (D-50), and this asks it rather
+	// than comparing against a second copy of the same number. `bcMinCols` is
+	// what the NOTICE names; `BreakUnsupported` is what DECIDES — and the two
+	// cannot drift, because a test asserts the floor is the first drawable
+	// width.
+	//
+	// It also keeps the classifier in production: the layout became fully fluid
+	// when the regions arrived, so nothing else branches on the class any more,
+	// and a vocabulary with no caller is the state F-68 was filed about.
+	if term.BreakpointFor(b.width) == term.BreakUnsupported {
+		return true
+	}
+	_, r := b.minSize()
+	return b.height < r
 }
 
 // clamp cuts the frame to the terminal, in BOTH directions.
@@ -316,7 +328,7 @@ func (b Broadcaster) lanes() []string {
 	g := b.opts().Glyphs()
 	// ONE RENDERER FOR THE WHOLE FRAME (see cardLane): the lane width does not
 	// change between the cards in it.
-	lane := newCardLane(b.laneWidth(), g)
+	lane := newCardLane(b.cardBoxWidth(), g)
 	out := strings.Split(b.header(b.opts()), "\n")
 	// THE STATION BAR IS A SECTION (see stationSection): one region, painted by
 	// one call, so the colour pass is a token rather than a sweep.
@@ -338,36 +350,63 @@ func (b Broadcaster) lanes() []string {
 	}
 	out = append(out, "")
 
-	// THE BREAKPOINT SELECTS THE LAYOUT (FR-7.1, D-13). Not a call whose
-	// result is discarded: the class decides what a lane row can afford, and
-	// changing the class changes the frame.
-	wide := term.BreakpointFor(b.width) >= term.BreakOptima
-	if wide {
-		out = append(out, "SCHEDULED LINE UP")
-	} else {
-		out = append(out, "LINE UP")
-	}
+	// THE MAIN TRACK IS DRAWN AS NAMED REGIONS (D-60), which is what the
+	// reference's left rail names: the card on the air, the one after it, the
+	// ones scheduled behind that, and the rest of the line-up.
+	//
+	// THE RAIL IS WHY A CARD CARRIES NO STATE OF ITS OWN. An earlier card mock
+	// had a strip saying whether a card was live or scheduled and the HUM LEAD
+	// cut it — the rail already says it, once per region instead of once per
+	// card.
+	//
 	// THE LINE-UP, NOT THE SCHEDULE (D-44). The Director's own structural cards
 	// are read on air and never shown: the operator did not ask for them, and a
-	// slot number spent on one is a number they cannot address. The staleness
-	// notice has been in the schedule since 0.14.0, so this is a live
-	// difference, not a future one.
+	// slot number spent on one is a number they cannot address.
 	main := b.lineup.Projection(lineup.MainTrack)
 	// A ROLLING VIEW OF TEN (FR-3.1). An eleventh card exists in the schedule
-	// and does not reach the frame; the console shows a window onto the
-	// lineup, never a second copy of it.
+	// and does not reach the frame; the console shows a window onto the lineup,
+	// never a second copy of it.
 	if len(main) > MainTrackSlots {
 		main = main[:MainTrackSlots]
 	}
-	if len(main) == 0 {
-		out = append(out, "  (nothing scheduled)")
+	for _, r := range bcRegions {
+		out = append(out, b.region(r, main, lane)...)
 	}
-	for i, c := range main {
-		out = append(out, "  "+lane.render(c, strconv.Itoa(i), "STANDARD"))
+	if len(main) == 0 {
+		out = append(out, b.section("LINE UP", []string{render.PadTo("  (nothing scheduled)", b.cardBoxWidth())})...)
 	}
 	out = append(out, "")
 	out = append(out, "BED   (no relay tuned)")
 	return out
+}
+
+// bcRegion is one named part of the running order, and the slots it holds.
+type bcRegion struct {
+	label      string
+	from, upto int // half-open, in LINE-UP positions
+}
+
+// bcRegions is the reference's own division of the main track, which is what
+// its left rail spells out. The BED sits between UP NEXT and SCHEDULED and is
+// not part of this table: it is not a card slot, and the schedule cannot put
+// one there (Track's own comment refuses exactly that).
+var bcRegions = []bcRegion{
+	{"LIVE", 0, 1},
+	{"UP NEXT", 1, 2},
+	{"SCHEDULED", 2, 5},
+	{"LINE UP", 5, MainTrackSlots},
+}
+
+// region draws one of them, or nothing when the line-up has not reached it.
+func (b Broadcaster) region(r bcRegion, cards []lineup.Card, lane cardLane) []string {
+	if r.from >= len(cards) {
+		return nil
+	}
+	rows := []string{}
+	for i := r.from; i < min(r.upto, len(cards)); i++ { // bounded by the window (P10-02)
+		rows = append(rows, lane.box(cards[i], strconv.Itoa(i), "STANDARD")...)
+	}
+	return b.section(r.label, rows)
 }
 
 // bcGainCells is the gain bar's width, from the reference mock: thirty cells,

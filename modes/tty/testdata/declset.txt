@@ -41,6 +41,9 @@ const bcMinCols
 const bcMinRows
 const bcPlaceholderLocation
 const bcPlaceholderRadius
+const bcRailGap
+const bcRailWidth
+const bcRightChrome
 const bcRowTail
 const bottomInset
 const castLabelW
@@ -187,6 +190,7 @@ func (*modalMemo).stats
 func (Broadcaster).Init
 func (Broadcaster).Update
 func (Broadcaster).View
+func (Broadcaster).cardBoxWidth
 func (Broadcaster).clamp
 func (Broadcaster).clock
 func (Broadcaster).controlRow
@@ -199,6 +203,8 @@ func (Broadcaster).lanes
 func (Broadcaster).minSize
 func (Broadcaster).notice
 func (Broadcaster).opts
+func (Broadcaster).region
+func (Broadcaster).section
 func (Broadcaster).stationLine
 func (Broadcaster).stationSection
 func (Broadcaster).stationTone
@@ -488,6 +494,7 @@ func alertRecordLines
 func anyFocused
 func apiSummaryOf
 func applyIfChanged
+func bcRailLabel
 func blockHeight
 func broadcasterKeyMap
 func bucketSevere
@@ -589,6 +596,7 @@ func providerTable
 func providersOf
 func radioBreakpoint
 func radioMark
+func railColumn
 func railify
 func refOf
 func refsOf
@@ -703,6 +711,7 @@ type UIPrefs
 type VoiceNoteMsg
 type alertItem
 type arrowChips
+type bcRegion
 type bodyKey
 type bodyMemo
 type cardLane
@@ -742,4 +751,6 @@ type tonedRow
 type uiSavedMsg
 type vizTickMsg
 var _
+var bcRailForms
+var bcRegions
 var heldEscalation
