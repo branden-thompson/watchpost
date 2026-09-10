@@ -417,3 +417,74 @@ func TestAProposalAndARotationReadShareOneIdentity(t *testing.T) {
 		t.Errorf("a location offered and then reported is ONE card; the schedule holds %d, so it would be read twice", n)
 	}
 }
+
+// THE OPERATOR'S FIRST JOURNEY, end to end: arrive at an empty console, press
+// the control, and watch the line-up fill.
+//
+// IT HAD NO TEST, and it is the first thing anyone does. The console opens on a
+// STOPPED station showing "(nothing scheduled)", which is CORRECT — DR-3 makes
+// admission a promise to read, so a stopped programme must not accumulate a
+// rotation nobody can drop. But "correct and empty" is indistinguishable from
+// "broken and empty" from the operator's chair, and nothing proved which one
+// this was.
+//
+// IT DRIVES THE REAL CONTROL, `mastercontrol.GoOnAir`, which is what the
+// console's SHIFT+ENTER reaches — not `carry(Powered{...})` directly, because
+// that would skip the very wiring the journey depends on.
+func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var refs []snapshot.LocationRef
+	for i := 0; i < tty.MainTrackSlots; i++ {
+		refs = append(refs, snapshot.LocationRef{
+			Label: "Town " + strconv.Itoa(i) + ", CA", Zip: "9210" + strconv.Itoa(i%10),
+			Lat: 33 + float64(i)/100, Lon: -117 - float64(i)/100, TZ: "America/Los_Angeles"})
+	}
+	var mu sync.Mutex
+	var last lineup.Lineup
+	publish := func(m tea.Msg) {
+		if lm, ok := m.(tty.LineupMsg); ok {
+			mu.Lock()
+			last = lm.Lineup
+			mu.Unlock()
+		}
+	}
+	nar := testDirector(nil, func(tea.Msg) {})
+	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
+	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
+		func() []snapshot.LocationRef { return refs }, tick, publish)
+	if s == nil {
+		t.Fatal("the schedule refused to start")
+	}
+	nar.mc.mu.Lock()
+	nar.mc.carry = s.carry
+	nar.mc.mu.Unlock()
+
+	// THE CONSOLE OPENS EMPTY, and that is the state being left.
+	mu.Lock()
+	held := len(last.Projection(lineup.MainTrack))
+	mu.Unlock()
+	if held != 0 {
+		t.Fatalf("a stopped station schedules nothing; it held %d", held)
+	}
+
+	// SHIFT+ENTER, through the control the console actually calls.
+	nar.mc.GoOnAir()
+
+	deadline := time.Now().Add(10 * time.Second)
+	var got int
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		got = len(last.Projection(lineup.MainTrack))
+		mu.Unlock()
+		if got >= tty.MainTrackSlots {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got != tty.MainTrackSlots {
+		t.Errorf("going ON AIR must fill the line-up the console draws; it holds %d of %d",
+			got, tty.MainTrackSlots)
+	}
+}
