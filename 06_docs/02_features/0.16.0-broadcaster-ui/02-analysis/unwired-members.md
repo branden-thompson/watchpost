@@ -82,6 +82,22 @@ row, not code** — and writing it is what stops the next person "fixing" it.
 
 ---
 
+## RESOLVED — three of the eight are GONE, not exempted (2026-09-09)
+
+**The ledger has no rows.  That was the goal and it is worth saying why it is better than four
+ratifications:** an exemption records that a finding is acceptable, and three of these were not
+acceptable, they were wrong.
+
+| Member | What happened |
+|---|---|
+| `narrationClass.narrateRotation` | **DELETED.**  Unreachable in a default build, and D-33 says the programme is not a narration, so it will never be needed.  `mainTrackLive` and `ownsTheAir` went with it — they existed only to express "read through the arbiter" |
+| `State.Proposed` | **THE TOOL WAS WRONG.**  It is the zero value, so every `Card{…}` writes it and no syntax walk can see that.  A ratified row would have recorded a false thing as ratified; the tool has a `Zero` verdict now, exempt from the writer half and from that half only |
+| `Band.CloseBand` | **CODE FIXED.**  `Band.String` handled the other member by name and let this one fall through.  It is a registry now, indexed by the constant, which is the pattern origins, states and slots already use |
+
+**Five findings remain and every one is ruled** — `Duck`, `Restore`, `Power.OffAir`,
+`Origin.FromOperator` and `State.Refused` all have a named writer in D-32, D-35 and D-36, and each is
+waiting on the batch that builds it.
+
 ## RESOLVED 2026-09-09 — D-32 to D-36
 
 **Four of the eight are ruled, and two of the rulings were the same decision seen from two ends.**

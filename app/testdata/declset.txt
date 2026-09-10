@@ -20,7 +20,6 @@ const installRetryAfter
 const laneBacklog
 const liveDwell
 const mainTrackDark
-const mainTrackLive
 const mainTrackOff
 const maxAlertRecords
 const maxDumpsPerRun
@@ -30,7 +29,6 @@ const maxUnattendedInstalls
 const metroCapKm
 const narrateBreaking
 const narrateRead
-const narrateRotation
 const numMainTrackStages
 const numNarrationClasses
 const publishCoalesce
@@ -299,7 +297,6 @@ func (hostFacts).Discovered
 func (hostFacts).Installed
 func (hostFacts).Platform
 func (mainTrackStage).String
-func (mainTrackStage).ownsTheAir
 func (mainTrackStage).reports
 func RenderCast
 func ReportOnce

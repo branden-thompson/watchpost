@@ -150,6 +150,66 @@ func isAlpha(f Flag) bool { return f == Alpha }
 			want: []string{"Flag.Beta"},
 		},
 		{
+			name: "the zero value is written by every zero construction",
+			src: `package probe
+
+type State int
+
+const (
+	Proposed State = iota
+	Admitted
+
+	numStates
+)
+
+type Card struct {
+	State State
+	Name  string
+}
+
+// NOTHING NAMES Proposed. A Card built without a State field is one, and no
+// walk of the syntax can see that — which is why the zero value is exempt from
+// the writer half and only from that half.
+func propose(name string) Card { return Card{Name: name} }
+
+func check(c Card) bool {
+	switch c.State {
+	case Proposed:
+		return true
+	case Admitted:
+		return false
+	}
+	return false
+}
+
+func admit(c Card) Card { c.State = Admitted; return c }
+`,
+			// Proposed: no writer, but it is the zero value — NOT reported.
+			// Admitted: written by admit, read by check — NOT reported.
+			want: nil,
+		},
+		{
+			name: "the zero value is still reported when nothing READS it",
+			src: `package probe
+
+type Mode int
+
+const (
+	Quiet Mode = iota
+	Loud
+
+	numModes
+)
+
+// Quiet is the zero value AND nothing discriminates on it. The exemption
+// covers the writer half only, so this is still a finding.
+func loud(m Mode) bool { return m == Loud }
+
+func set() Mode { return Loud }
+`,
+			want: []string{"Mode.Quiet"},
+		},
+		{
 			name: "a const block with no sentinel is not a closed set",
 			src: `package probe
 

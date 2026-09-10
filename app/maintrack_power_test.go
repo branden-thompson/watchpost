@@ -32,8 +32,8 @@ import (
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
-func TestALiveStageStationCanActuallyStart(t *testing.T) {
-	t.Setenv("WATCHPOST_MAINTRACK", "live")
+func TestAReportingStationCanActuallyStart(t *testing.T) {
+	t.Setenv("WATCHPOST_MAINTRACK", "dark")
 	d, _ := offlineDeck(t)
 	dir := lineup.New(lineup.Settings{Max: 5}, time.Now())
 	d.emit = func(ev lineup.Event) {
@@ -51,9 +51,13 @@ func TestALiveStageStationCanActuallyStart(t *testing.T) {
 		t.Fatalf("the deck was asked to carry a location and the Director is still %v — "+
 			"every main-track card is refused by advances() and the station is permanently silent", got)
 	}
+	// D-33 retired the "live" stage; DARK is the one that reports now. The
+	// defect this pins is unchanged and is not about the stage at all: power
+	// must be reported from where the LISTENER acts, never from the deck's
+	// mode string.
 	cards := dir.Lineup().Cards(lineup.MainTrack)
 	if len(cards) != 1 {
-		t.Fatalf("a live-stage tune must put ONE report on the main track; got %d", len(cards))
+		t.Fatalf("a reporting tune must put ONE report on the main track; got %d", len(cards))
 	}
 	if cards[0].Slot != lineup.LocationReport {
 		t.Errorf("it is a location report; got %v", cards[0].Slot)
@@ -70,7 +74,7 @@ func TestALiveStageStationCanActuallyStart(t *testing.T) {
 // structurally instead, by TestThePowerReportIsNotInsideABranch below — the
 // rule is "before the fork", and a position is what a walk can assert.
 func TestARelayTuneAlsoPowersTheDirector(t *testing.T) {
-	t.Setenv("WATCHPOST_MAINTRACK", "live")
+	t.Setenv("WATCHPOST_MAINTRACK", "dark")
 	d, _ := offlineDeck(t)
 	dir := lineup.New(lineup.Settings{Max: 5}, time.Now())
 	d.emit = func(ev lineup.Event) {

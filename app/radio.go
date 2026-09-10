@@ -518,12 +518,12 @@ func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) 
 		// about it: its words are composed at standby, minutes later.
 		d.tell(lineup.NeedsRead{Ref: string(snapshot.Key(ref)), Headline: ref.Label})
 	}
-	if stage.ownsTheAir() {
-		// THE SCHEDULE READS IT NOW. Starting audio here as well is the second
-		// speaker this batch exists to remove, and it would appear on the
-		// failure path — the worst place to find one.
-		return
-	}
+	// THE DECK STILL PLAYS IT. There is no stage in which it does not: "live"
+	// meant the card was read through the ARBITER, and D-33 rules that the
+	// programme is not a narration — a chosen read replaces the bed rather
+	// than speaking over it. What the schedule eventually takes over is WHEN
+	// this happens, not what performs it (BD-9: a report's speak is the engine
+	// Source adapter).
 	d.startSynth(ref, why, gen)
 }
 

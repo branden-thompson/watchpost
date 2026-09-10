@@ -31,34 +31,37 @@ func recordingDeck() (*radioDeck, *[]lineup.Event) {
 
 var testRef = snapshot.LocationRef{Label: "OCEANSIDE, CA", Lat: 33.1959, Lon: -117.3795}
 
-func TestTheDeckReportsTheNeedAndLeavesTheAirAlone(t *testing.T) {
-	t.Setenv("WATCHPOST_MAINTRACK", "live")
-	d, got := recordingDeck()
+// D-33 RETIRED "LEAVES THE AIR ALONE". There is no stage in which the deck
+// reports and does not also play: "live" meant the card was read through the
+// arbiter, and the programme is not a narration. What survives is the half that
+// still matters — WHAT the deck reports — and it is driven against a real deck
+// now, because the bare struct this used to use only worked while a stage
+// existed that never touched the audio.
+func TestTheDeckReportsWhatTheCardNeedsToBeShown(t *testing.T) {
+	t.Setenv("WATCHPOST_MAINTRACK", "dark")
+	d, _ := offlineDeck(t)
+	var got []lineup.Event
+	d.emit = func(ev lineup.Event) { got = append(got, ev) }
 
-	d.needsRead(testRef, "no NWR relay in reach", 0) // gen 0 matches a fresh deck
+	d.needsRead(testRef, "no NWR relay in reach", 0) // gen 0 matches a deck that has not tuned
+	d.engine.Halt()
 
-	if len(*got) != 1 {
-		t.Fatalf("the deck reports the need, once; got %d events", len(*got))
+	var need *lineup.NeedsRead
+	for _, ev := range got {
+		if n, ok := ev.(lineup.NeedsRead); ok {
+			need = &n
+		}
 	}
-	ev, ok := (*got)[0].(lineup.NeedsRead)
-	if !ok {
-		t.Fatalf("the fact reported is that the location needs a read; got %T", (*got)[0])
+	if need == nil {
+		t.Fatalf("the deck must report that the location needs a read; got %v", got)
 	}
-	if ev.Ref != string(snapshot.Key(testRef)) {
-		t.Errorf("the ref is the location's own key, which is what the cut-over and the composer "+
-			"both resolve against; got %q", ev.Ref)
+	if need.Ref != string(snapshot.Key(testRef)) {
+		t.Errorf("the ref is the location's own key, which is what the cut-over, the composer and the "+
+			"reader all resolve against; got %q", need.Ref)
 	}
-	if ev.Headline != testRef.Label {
+	if need.Headline != testRef.Label {
 		t.Errorf("the headline is the location's name — a card is showable from the moment it "+
-			"exists (DR-7); got %q", ev.Headline)
-	}
-	// startSynth's second statement is setMode. A blank mode is proof the deck
-	// did not also start the audio, which is the double-speak this batch removes.
-	d.mu.Lock()
-	mode := d.mode
-	d.mu.Unlock()
-	if mode != "" {
-		t.Errorf("the schedule owns the air at this stage; the deck must not start audio too, got mode %q", mode)
+			"exists (DR-7); got %q", need.Headline)
 	}
 }
 

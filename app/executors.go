@@ -327,28 +327,15 @@ func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Even
 // a Finished for words never finished would tell the schedule a read happened
 // that did not.
 func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
-	if !onTheRail(v.Slot) && v.Slot != lineup.LocationReport {
-		return x.decline(v, v.ID, "no reader for this slot: only the rail and the main track read")
-	}
-	// THE MERGE IS STAGED, AND THIS IS THE STAGE (0.16.0 P3, maintrack.go).
-	// While the main track is dark the card is queued, composed and published —
-	// its decisions are observable and comparable against the live path's — but
-	// the rotation still reads through its own audio, so the air has exactly one
-	// owner at every moment of the batch. DELETED AT P3(d), with startSynth's
-	// direct path, in the change that makes the schedule the owner.
+	// ONLY THE RAIL READS THROUGH THE ARBITER (D-33, HUM LEAD 2026-09-09).
 	//
-	// DECLINED, NOT HELD: a card standing by for a stage would wedge the main
-	// track behind it, and there is nothing to wait for — the stage is read
-	// from the environment, which nothing in the running station writes.
-	//
-	// THE STAGE IS READ TWICE PER READ, HERE AND AT THE SEAM, and nothing pins
-	// them together (red team 2026-09-09, finding 9). Only a test can make them
-	// disagree — t.Setenv, which forbids t.Parallel — so it is not reachable in
-	// production. Recorded rather than guarded: the guard (sync.OnceValue)
-	// would take the stage away from the tests that must switch it, on a file
-	// that is deleted at P3(d) anyway.
-	if v.Slot == lineup.LocationReport && !mainTrack().ownsTheAir() {
-		return x.decline(v, v.ID, "the main track is dark; the rotation reads through its own path")
+	// The main track was admitted here for one release and it was wrong: a
+	// chosen read REPLACES the bed rather than speaking over it, so it is not a
+	// narration and it has no business on the narration path. The two declines
+	// this replaces — a slot check that let LocationReport through, and a stage
+	// check that then turned it away — are one check now.
+	if !onTheRail(v.Slot) {
+		return x.decline(v, v.ID, "no reader for this slot: the arbiter reads the rail, and the rail only")
 	}
 	// Card.To(OnAir) refuses this already; refused again here because this
 	// is the last thing between the schedule and a silent hold with a callout
@@ -382,18 +369,10 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	// pauses, the overlap that keeps a render out of every gap — and the live
 	// takeover reads through the same function. Two implementations of a ruling
 	// the HUM LEAD found BY EAR would be two places for it to drift.
-	// THE CLASS AND THE VOICE FOLLOW THE LANE (0.16.0 P3).
-	//
-	// A takeover reads as narrateBreaking in the breaking correspondent's
-	// voice; the rotation reads as narrateRotation — the LOWEST class — in the
-	// standard voice, because it is the programme and everything interrupts
-	// it. That is the whole reason the class was added, and the arbiter needed
-	// nothing: it already suspends a lower class for a higher one and resumes
-	// it after.
+	// ONE CLASS REACHES HERE, because one lane does (D-33). The rotation had a
+	// class of its own for one release; it was retired with the design that
+	// put the programme on the narration path at all.
 	class, role := narrateBreaking, cast.Breaking
-	if v.Slot == lineup.LocationReport {
-		class, role = narrateRotation, cast.Standard
-	}
 	x.voice.Run(ctx, class, role, x.audible(), func(ctx context.Context, s *speaker) {
 		read = readScript(s, v.Script, readHooks{
 			cue: func(ref string) {

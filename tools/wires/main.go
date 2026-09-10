@@ -85,6 +85,15 @@ type member struct {
 	// wired" but "by whom, and is that the right whom".
 	WriteAt []string `json:"writeAt,omitempty"`
 	ReadAt  []string `json:"readAt,omitempty"`
+
+	// Zero marks the FIRST member of an iota enum — the type's zero value.
+	//
+	// EVERY ZERO CONSTRUCTION WRITES IT, and none of them names it: `Card{…}`
+	// with no State field makes a PROPOSED card, and no walk of the syntax can
+	// see that. Reporting such a member as having no writer is the tool being
+	// wrong about the code, and a ratified exemption for it would record a
+	// false thing as ratified.
+	Zero bool `json:"zero,omitempty"`
 }
 
 // wrote and read record a site as well as counting it.
@@ -92,11 +101,22 @@ func (m *member) wrote(at string) { m.Writers++; m.WriteAt = append(m.WriteAt, a
 func (m *member) read(at string)  { m.Readers++; m.ReadAt = append(m.ReadAt, at) }
 
 // unwired reports whether this member is missing a writer or a reader.
-func (m member) unwired() bool { return m.Writers == 0 || m.Readers == 0 }
+//
+// A ZERO VALUE IS NEVER MISSING A WRITER — see Zero. It can still be missing a
+// READER, and that is a real finding: being the default does not mean anything
+// discriminates on it.
+func (m member) unwired() bool {
+	if m.Readers == 0 {
+		return true
+	}
+	return m.Writers == 0 && !m.Zero
+}
 
 // why says which half is missing, in the words the ledger uses.
 func (m member) why() string {
 	switch {
+	case m.Zero && m.Readers == 0:
+		return "NO READER — the type's zero value, so every zero construction makes one, and nothing discriminates on it"
 	case m.Writers == 0 && m.Readers == 0:
 		return "no writer and no reader — nothing makes it and nothing looks at it"
 	case m.Writers == 0:
@@ -269,11 +289,14 @@ func sentinelEnum(fset *token.FileSet, gen *ast.GenDecl) []*member {
 		return nil
 	}
 	out := make([]*member, 0, len(names)-1)
-	for _, n := range names[:len(names)-1] {
+	for i, n := range names[:len(names)-1] {
 		if n.Name == "_" {
 			continue
 		}
-		out = append(out, &member{Set: typeName, Name: n.Name, Decl: pos(fset, n.Pos())})
+		// THE FIRST NAME IS THE ZERO VALUE. iota starts at 0 and this codebase
+		// declares every closed enum that way; a block that did not would put
+		// its own type on the first spec, which sentinelEnum already requires.
+		out = append(out, &member{Set: typeName, Name: n.Name, Decl: pos(fset, n.Pos()), Zero: i == 0})
 	}
 	return out
 }
