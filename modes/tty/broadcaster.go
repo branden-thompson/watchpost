@@ -354,15 +354,6 @@ func (b Broadcaster) lanes() []string {
 	// IT IS STILL DRAWN FIRST when it has something, because it DRAINS first in
 	// every state: putting the lane that interrupts everything below the lane it
 	// interrupts would say the wrong thing about which is which.
-	// AN EMPTY REGION DRAWS NOTHING, and `section` is the ONE thing that says
-	// so — a `len(rail) > 0` guard stood here and its mutant SURVIVED, because
-	// a section built from no rows already returns nothing. The rule written
-	// twice, for the fourth time in this release.
-	rows := []string{}
-	for _, c := range b.lineup.Cards(lineup.AlertRail) { // bounded by the rail (P10-02)
-		rows = append(rows, lane.box(c, "T", "PRIORITY")...)
-	}
-	out = append(out, b.section("PRIORITY", rows)...)
 
 	// THE MAIN TRACK IS DRAWN AS NAMED REGIONS (D-60), which is what the
 	// reference's left rail names: the card on the air, the one after it, the
@@ -383,9 +374,26 @@ func (b Broadcaster) lanes() []string {
 	if len(main) > MainTrackSlots {
 		main = main[:MainTrackSlots]
 	}
+	order := []string{}
 	for _, r := range bcRegions {
-		out = append(out, b.region(r, main, lane)...)
+		order = append(order, b.region(r, main, lane)...)
 	}
+	// AND THE PRIORITY TRACK IS COMPOSITED ON TOP OF IT (D-61).
+	//
+	// "the priority track visually sits ON TOP of the main track — that's
+	// because it's not supposed to always be on, and it signals that it is
+	// TAKING OVER while there are alerts in that line."
+	//
+	// The running order is drawn at its FULL width underneath, which is what
+	// the reference shows: its cards run 9..140 while the overlay covers 6..72,
+	// so the operator keeps the right-hand half of every card it hides — the
+	// half carrying the badge and the HANDLE they type.
+	//
+	// THE RAIL LABEL COMES WITH IT, which is the whole of the HUM LEAD's
+	// ruling: "the PRIORITY rail label ONLY shows up when a priority card sits
+	// on top of the main rail." While it is up, those rows are the priority
+	// track's and say so.
+	out = append(out, b.withPriority(order)...)
 	if len(main) == 0 {
 		out = append(out, b.section("LINE UP", []string{render.PadTo("  (nothing scheduled)", b.cardBoxWidth())})...)
 	}
@@ -409,6 +417,39 @@ var bcRegions = []bcRegion{
 	{"UP NEXT", 1, 2},
 	{"SCHEDULED", 2, 5},
 	{"LINE UP", 5, MainTrackSlots},
+}
+
+// withPriority composites the priority track over the running order, or hands
+// the order back untouched when the rail is clear.
+//
+// AN EMPTY RAIL COMPOSITES NOTHING, and the box being empty is the ONE thing
+// that says so: a `len(rail) > 0` guard stood in the old drawing and its mutant
+// SURVIVED, because a section built from no rows already returned nothing.
+func (b Broadcaster) withPriority(order []string) []string {
+	lane := newCardLane(b.priorityWidth(), b.opts().Glyphs())
+	rows := []string{}
+	for _, c := range b.lineup.Cards(lineup.AlertRail) { // bounded by the rail (P10-02)
+		rows = append(rows, lane.box(c, "T", "PRIORITY")...)
+	}
+	if len(rows) == 0 {
+		return order
+	}
+	// THE OVERLAY CANNOT BE TALLER THAN WHAT IT COVERS. A takeover with more
+	// rows than the running order would otherwise draw past the bottom of the
+	// frame, which is the overflow FR-7.3 calls a defect rather than a
+	// degradation.
+	for len(order) < len(rows) {
+		order = append(order, b.section("", []string{strings.Repeat(" ", b.cardBoxWidth())})...)
+	}
+	// A BLANK COLUMN AFTER THE BOX, so the overlay reads as sitting ON the
+	// running order rather than merging with it. Without it the box's right
+	// border butts straight into the card's own rule and the two draw as one
+	// wide box — which says the opposite of what the overlay means.
+	for i, r := range rows { // bounded by the overlay (P10-02)
+		rows[i] = r + " "
+	}
+	out := spliceAt(order, railColumn("PRIORITY", len(rows), b.opts().Glyphs()), 0)
+	return spliceAt(out, rows, bcPriorityCol)
 }
 
 // region draws one of them, or nothing when the line-up has not reached it.

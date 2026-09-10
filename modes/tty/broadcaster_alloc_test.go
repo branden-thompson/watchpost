@@ -99,7 +99,7 @@ const (
 	// framed rows now instead of one flat line, and each region carries its own
 	// rail column. The reference has always drawn it this way; this is that
 	// arriving.
-	bcFrameAllocs = 241
+	bcFrameAllocs = 255
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

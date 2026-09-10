@@ -41,6 +41,7 @@ const bcMinCols
 const bcMinRows
 const bcPlaceholderLocation
 const bcPlaceholderRadius
+const bcPriorityCol
 const bcRailGap
 const bcRailWidth
 const bcRightChrome
@@ -203,12 +204,14 @@ func (Broadcaster).lanes
 func (Broadcaster).minSize
 func (Broadcaster).notice
 func (Broadcaster).opts
+func (Broadcaster).priorityWidth
 func (Broadcaster).region
 func (Broadcaster).section
 func (Broadcaster).stationLine
 func (Broadcaster).stationSection
 func (Broadcaster).stationTone
 func (Broadcaster).tooSmall
+func (Broadcaster).withPriority
 func (Dashboard).DiagnosticsOpen
 func (Dashboard).Init
 func (Dashboard).OverlayDiagnostics
@@ -635,6 +638,7 @@ func severeTabs
 func severityLevel
 func sideBySide
 func sortAlerts
+func spliceAt
 func splitAlertItems
 func splitEscFusion
 func stacked
