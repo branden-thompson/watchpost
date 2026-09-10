@@ -81,3 +81,45 @@ func TestTheTransitionNamesTheStateItWouldReach(t *testing.T) {
 		}
 	}
 }
+
+// GAIN IS OBSERVER'S VOL CONTROL, WEARING THE STATION'S WORD FOR IT (HUM LEAD,
+// 2026-09-10: "gain is the VOL control in Observer").
+//
+// SO IT IS THE SAME CONTROL, NOT A SECOND ONE (D-56). Observer's `volControl`
+// already draws the bar, already steps at the tens, already blinks the chip on a
+// press, and already knows the floor and the ceiling. A second bar here would be
+// a second place for the level to be drawn — and two bars disagreeing about how
+// loud the station is would be worse than either.
+func TestTheStationLineCarriesTheGainControl(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	b.power = lineup.Running
+	b.gain = 100
+	got := stripANSITest(b.stationLine()[1])
+
+	if !strings.Contains(got, "GAIN") {
+		t.Errorf("the station's word for it is GAIN:\n%q", got)
+	}
+	// IT RIDES ON THE SECOND ROW, beside the explanatory text — the HUM LEAD's
+	// own layout, and the row Variant C left free when it absorbed the control.
+	if !strings.Contains(got, "audio out of this program") {
+		t.Errorf("the second row still says what ON AIR means:\n%q", got)
+	}
+	if !strings.HasSuffix(strings.TrimRight(got, " "), "100") {
+		t.Errorf("the level ends the row, right-anchored:\n%q", got)
+	}
+}
+
+func TestTheGainControlReflows(t *testing.T) {
+	for _, w := range []int{100, 120, 150} {
+		b := NewBroadcaster()
+		b.width, b.height, b.ascii = w, 74, true
+		b.power = lineup.Running
+		b.gain = 55
+		for i, line := range b.stationLine() {
+			if c, want := utf8.RuneCountInString(stripANSITest(line)), b.laneWidth(); c != want {
+				t.Errorf("width %d row %d: %d cells, want the lane's %d\n%q", w, i, c, want, stripANSITest(line))
+			}
+		}
+	}
+}

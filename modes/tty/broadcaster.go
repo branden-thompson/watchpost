@@ -77,6 +77,12 @@ type Broadcaster struct {
 	// carriers.
 	version string
 
+	// gain is the station's output level, 0-100 — Observer's VOL under the
+	// station's own word for it (HUM LEAD, 2026-09-10). The Dashboard OWNS it;
+	// the Router mirrors it here each update, so the two surfaces cannot
+	// disagree about how loud the station is.
+	gain int
+
 	// snap is the last published snapshot, for the masthead's `Updated:` stamp
 	// and its API summary.
 	//
@@ -361,6 +367,10 @@ func (b Broadcaster) lanes() []string {
 	return out
 }
 
+// bcGainCells is the gain bar's width, from the reference mock: thirty cells,
+// which is what the level steps across at the tens.
+const bcGainCells = 30
+
 // stationLine is the station's state, Variant C (D-21): a labelled field with
 // the transition named in parentheses.
 //
@@ -390,15 +400,27 @@ func (b Broadcaster) stationLine() []string {
 		state = "STANDBY (DEAD AIR)"
 		why = "nothing is broadcast, hazards included; the schedule holds what it has not said"
 	}
+	// GAIN RIDES THE SECOND ROW (HUM LEAD's layout, 2026-09-10) — the row
+	// Variant C left free when it absorbed the control line. It is Observer's
+	// own bar under the station's word for it, so there is one level and one
+	// place it is drawn.
+	o := b.opts()
+	gain := levelControl(o, "GAIN  ", b.gain,
+		o.KeyCapIf("-", b.gain > 0), o.KeyCapIf("+", b.gain < 100), bcGainCells)
 	// VARIANT C (D-21): a labelled field, the transition in parentheses. The
 	// two are the ENDS of one line — the transition RIGHT-ANCHORED rather than
 	// padded to a fixed column, which is what it was and which lands correctly
 	// at exactly one terminal width.
 	lane := b.laneWidth()
 	hint := "( SHIFT + ENTER  " + g.Arrow + "  " + to + " )"
+	// THE CONTROL SURVIVES AND THE PROSE YIELDS. Same rule as the card's
+	// handle: the operator ACTS on the bar, and a level they cannot see is a
+	// station they cannot set. The sentence explains something they can also
+	// read in the state above it.
+	room := lane - render.Width(gain) - 2
 	return []string{
 		render.PadBetween("STATION:  "+state, hint, lane),
-		render.PadTo("          "+why, lane),
+		render.PadBetween(render.TruncateCells("          "+why, max(0, room)), gain, lane),
 	}
 }
 

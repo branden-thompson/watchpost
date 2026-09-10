@@ -29,9 +29,12 @@ const TickerYellow
 const WatchCap
 const aboutWidth
 const actDiagnostics
+const actGainDown
+const actGainUp
 const actStationToggle
 const actSwapBroadcaster
 const actSwapObserver
+const bcGainCells
 const bcMinCols
 const bcMinRows
 const bcPlaceholderLocation
@@ -455,6 +458,7 @@ func (Router).surface
 func (Router).swapTo
 func (Router).throughToObserver
 func (Router).toggleStation
+func (Router).update
 func (arrowChips).pick
 func (cardLane).render
 func (endpointRow).counters
@@ -545,6 +549,7 @@ func joinBlocks
 func kindFirst
 func laneAfter
 func layoutMarine
+func levelControl
 func locTZ
 func longAge
 func marinePair

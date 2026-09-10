@@ -250,3 +250,48 @@ func TestTheConsoleLearnsTheVersionAndTheSnapshotThroughTheRouter(t *testing.T) 
 		t.Errorf("the console never learned the snapshot, so its masthead has no stamp:\n%s", firstLine(got))
 	}
 }
+
+// THE GAIN THE CONSOLE DRAWS IS THE LEVEL OBSERVER OWNS, AND PRESSING IT FROM
+// THE CONSOLE MOVES THAT ONE LEVEL.
+//
+// PLANTED FIRST THIS TIME. The wiring has been the survivor three times running
+// in this release — the top-off's depth, its producer seam, the masthead's
+// version and snapshot — every time because a unit test set the field itself.
+// So this drives the KEY, through the Router, and reads the level back from the
+// surface that owns it.
+func TestGainPressedOnTheConsoleMovesObserversOwnLevel(t *testing.T) {
+	r := consoleWith(t, goldenDash(t, true))
+	before := r.observer.radioVolume
+	if r.broadcaster.gain != before {
+		t.Fatalf("the console must mirror the level it draws: console %d, observer %d",
+			r.broadcaster.gain, before)
+	}
+
+	r = pressAction(t, r, actGainUp)
+
+	if r.observer.radioVolume <= before {
+		t.Errorf("the press must reach the surface that owns the level: %d -> %d", before, r.observer.radioVolume)
+	}
+	if r.broadcaster.gain != r.observer.radioVolume {
+		t.Errorf("and the console must draw that same level, not a second copy: console %d, observer %d",
+			r.broadcaster.gain, r.observer.radioVolume)
+	}
+	// AND IT DOES NOT SWAP SURFACES. The operator is watching the console.
+	if r.active != SurfaceBroadcaster {
+		t.Error("the gain keys must not move the operator off the console")
+	}
+}
+
+func TestGainDownReachesTheSameLevel(t *testing.T) {
+	r := consoleWith(t, goldenDash(t, true))
+	before := r.observer.radioVolume
+
+	r = pressAction(t, r, actGainDown)
+
+	if r.observer.radioVolume >= before {
+		t.Errorf("gain down must lower the one level: %d -> %d", before, r.observer.radioVolume)
+	}
+	if r.broadcaster.gain != r.observer.radioVolume {
+		t.Errorf("console %d, observer %d", r.broadcaster.gain, r.observer.radioVolume)
+	}
+}
