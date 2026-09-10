@@ -1,75 +1,102 @@
 ---
-title: "0.16.0 P3 — UAT: the audio merge, shared with nothing"
+title: "0.16.0 P3 — UAT: Observer must be indistinguishable"
 date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "READY TO RUN.  This UAT covers P3 AND NOTHING ELSE, deliberately."
+status: "READY TO RUN.  Reframed 2026-09-09 on the HUM LEAD's own statement of it."
 ---
 
-# P3's UAT
+# P3's UAT is an OBSERVER REGRESSION TEST
 
-**It is shared with nothing, on the 0.14.0 precedent for the takeover swap:** *"it replaces the working
-takeover path, so it carries its own red team, and it must not share a UAT with anything else or a
-regression cannot be attributed."*  **P3 replaces how every ordinary broadcast reaches the speaker.**
-If it is run alongside anything else and something sounds wrong, there is no way to say which change did
-it.
+**The HUM LEAD's framing, and it is the correct one:** *"the UAT would be to ensure that when I use
+Observer, I cannot tell the difference in the audio outputs."*
 
-**Run it on a build of this branch, with a real relay in reach and a real one out of reach.**
+**That is the whole test, and here is why it is sufficient.**  P3 changed **who decides when a report
+plays**, and nothing else.  It did not change:
+
+| | |
+|---|---|
+| **who controls the radio** | Observer, exactly as in 0.15.0 — tune, `[m]` Synth/Relay, `[r]` repeat, `[space]`, stop, volume, the Watchlist |
+| **what plays** | the same `synth.Source`, the same segments, the same cast, the same handoffs, the same sign-off |
+| **how it plays** | the same engine, the same give-way rule — a rendered report HOLDS under an alert, a live relay DIPS |
+
+**What changed is one sentence:** the deck used to decide for itself that a location needed a read and
+start the audio; now it reports the fact, the Director makes a card, and the card's read runs through
+the narration arbiter.  **The listener's controls, the words and the sound are all meant to be
+identical.**
+
+**So the pass criterion is a COMPARISON, not a checklist.**  Any perceptible difference is a failure,
+including ones no case below anticipates — which is the point of framing it this way rather than as a
+list of features to tick.
+
+## There is no operator UI to test, and that is not an oversight
+
+**`ctrl+o` / `ctrl+b` do nothing in a running build.**  `broadcasterKeyMap()` is written and
+`Router.keys` is never assigned, so no key reaches the console; the console renders the running order
+and the station state when it is SENT them, and accepts no input at all.  **`shift+enter` — ON AIR /
+STANDBY — is declared in a keymap nobody installs.**
+
+**Nothing in the tree ever produces `lineup.OffAir`.**  Every power change comes from Observer:
+`radioDeck.tune` reports RUNNING, `radioDeck.Stop` reports STOPPED.
+
+**That is P4, P4.5 and P5's work and it has not been done.**  It is recorded here so this UAT is not
+read as covering an operator surface, and because **it hides a trap that must be closed before the
+console is ever reachable** — see `p3-console-reachability.md`.
+
+## How to run it
+
+**A/B against the shipped release.**  The claim is indistinguishability, so the comparison should be
+against the thing it must be indistinguishable FROM, not against memory.
 
 ```sh
-make build
-WATCHPOST_DEBUG_RADIO=1 ./dist/watchpost
+git worktree add /tmp/wp-0150 v0.15.0
+cd /tmp/wp-0150 && make build && mv dist/watchpost /tmp/watchpost-0.15.0
+cd -                       && make build          # this branch
+WATCHPOST_DEBUG_RADIO=1 ./dist/watchpost          # and /tmp/watchpost-0.15.0 for the other leg
 ```
 
-**~~`WATCHPOST_MAINTRACK=dark`~~ IS GONE.**  The staged switch existed only between the producer landing
-and the flip, and it was deleted with the direct path — a switch that outlived the merge would be a
-second way for the station to behave, which is the thing being removed.  What was the dark run's
-instrument stayed: `needs-read` lines are still written to the same log, and they are still how a read
-is paired with the decision that caused it.
+**Run the same steps on both, on the same locations, and listen.**  Fourteen prompts follow; each one
+is a place a difference would be audible or visible, not a feature list.
 
-## What is actually being tested
+| # | Do this on BOTH builds | A difference here means |
+|---|---|---|
+| **1** | Tune a location with **no relay in reach**.  Let the report run to its sign-off | the words, the voices, the pacing or the sign-off moved |
+| **2** | Watch the **marquee** through the whole report | the per-segment detail line is not tracking the speech |
+| **3** | Watch the **player row** and the **detail line** as it starts | the station name or the reason it is reading changed |
+| **4** | Let the report **end on its own** | **the rotation did not advance.**  The report's end is what moves the bed on, and it now travels a different route — this is the single most likely regression |
+| **5** | Set **repeat-one** and let a report end | the repeat stopped working, or repeated a stale reading instead of re-fetching |
+| **6** | Let a **severe alert arrive while a report reads** | the report did not PAUSE and resume in full |
+| **7** | Let an alert arrive **while a live relay plays** | the relay did not DIP and play on underneath |
+| **8** | Press **`[M]`** during a report | **the broadcast stopped.**  `[M]` has never silenced the radio, and the merge nearly made it a stop button |
+| **9** | Press `[M]`, then let an alert arrive | the hazard was read anyway, or consumed silently and never offered again |
+| **10** | Press **stop** mid-report | audio continued, or the station restarted itself minutes later |
+| **11** | Stop, then start again | it did not resume reading |
+| **12** | Tune a **live relay, then kill the network** so it fails while playing | the fallback did not happen, did not say why, or **two voices spoke at once** |
+| **13** | Tune a relay that connects and then **goes silent** | same |
+| **14** | Run **thirty minutes** through a full Watchlist rotation | a location was skipped, repeated, or the rotation stalled |
 
-**Two owners of the audio device became one.**  Everything below is a way of asking whether the one
-that remains behaves like the one that left.
+**Cases 4, 8 and 12 are the ones to spend attention on.**  Four is the merge's new route for an old
+fact; eight is the failure it most nearly shipped; twelve is the double-speak the whole batch exists to
+remove, on the path that is hardest to reach deliberately.
 
-| # | Do this | It passes if | It fails if |
-|---|---|---|---|
-| **1** | Tune a location with **no NWR relay in reach**.  Let the report run to its sign-off | The report plays exactly as it did in 0.15.0: the same words, the same voices, the marquee moving line by line paced to the speech, the player row reading `Watchpost Synth (<voice>)` | Any of those is missing, static, or differently voiced |
-| **2** | Watch the **detail line** as it starts | It says why: *"… — not relayed"*, or *"… — no NWR relay in reach"*, with the nearest live station when there is one | It is blank, or carries the reason from the PREVIOUS read |
-| **3** | Let the report **end on its own** | The rotation moves to the next location by itself | It stops there.  **This is the one to watch**: the report's end is what advances the rotation, and it now travels a different route |
-| **4** | Set **repeat-one** and let a report end | It reads again — and the observation is **re-fetched**, not a replay.  Check a value that changes (the time in the sign-off) | The second read is identical to the first, word for word |
-| **5** | While a report is reading, let a **severe alert arrive** (or force one) | The report **PAUSES**, the alert reads in full, and the report **resumes from where it stopped** | The report keeps playing under the alert, or restarts, or never comes back |
-| **6** | While a **relay** is playing, let an alert arrive | The relay **DIPS** and plays on underneath.  This is the regression half: it must be unchanged | It pauses |
-| **7** | Press **`[M]`** while a report is reading | **The broadcast keeps playing.**  `[M]` means "do not read me hazards", and it has never stopped the radio | The report stops.  **This is the merge turning the mute key into a stop button**, and it is the failure mode P3(d) most nearly shipped |
-| **8** | Press `[M]`, then let an alert arrive | The alert is **held**, not read — and it is offered again when unmuted | It reads anyway, or is consumed silently and never sounded |
-| **9** | Press **stop** mid-report | Everything goes quiet at once, and nothing starts itself again | Audio continues, or the rotation restarts on its own a few minutes later |
-| **10** | Press **stop**, then start again | It reads again from the current location | It stays silent |
-| **11** | **Tune to a live relay, then kill the network** so the relay fails while playing | The station falls back to a synthesised read, and the detail line says *"relay unavailable — …"* | It goes silent, or reads without saying why, or reads TWICE (two voices at once is the defect this whole batch exists to remove) |
-| **12** | Tune to a relay that **connects and then goes silent** | Same as 11, with *"the relay was silent"* | Same failures |
-| **13** | Remove a location from the watchlist **while its report is queued** | Nothing plays for it and the station moves on | It reads a location that is no longer watched, or the station stops |
-| **14** | Run for **thirty minutes** through a full rotation | Every location is read once per turn, in order, and none is read twice in a row | A location repeats, or one is skipped, or the rotation stalls |
+## The log, for attributing anything you hear
 
-## The log, and how to read it
-
-Three kinds of line share `~/Library/Caches/watchpost/debug/radio.log`, timestamped:
+`~/Library/Caches/watchpost/debug/radio.log`, timestamped, on the new build only:
 
 | Line | What it means |
 |---|---|
-| `needs-read fresh=<bool> ref=<lat,lon> why=<reason>` | the deck noticed nothing is carrying this location.  **`fresh=false` is a decision, not an error** — the need arrived after the listener stopped or moved on, and was dropped deliberately |
-| `<state> mount=… title=…` | the engine's own transitions |
+| `needs-read fresh=<bool> ref=<lat,lon> why=<reason>` | the deck noticed nothing is carrying this location.  **`fresh=false` is a decision, not an error** — the need arrived after you stopped or moved on |
 | `segment key=… spoken=…` | which segment the read reached, and for how long |
 | `schedule:declined:…` | a card the schedule refused, with the reason in words |
 
-**Pair them.**  Every `needs-read … fresh=true` should be followed by segments for that location.  A
-`needs-read` with no segments after it is case 3 or 13; segments with no `needs-read` in front of them
-would be an audio path nobody asked for, which is the defect.
+**Pair them.**  Every `needs-read … fresh=true` should be followed by segments for that location.
+Segments with no `needs-read` in front of them would be an audio path nobody asked for — which is
+exactly the defect.
 
 ## What this UAT does NOT cover
 
-- **The operator console.**  P4 and P4.5 are the surface; this is the audio underneath it.
-- **Anything about the alert rail's own content** — the burst ordering, the divert count, the ladder.
-  Those shipped in 0.14.0 and 0.15.0 and are not touched here; cases 5, 6 and 8 test only that the
-  merge did not disturb them.
-- **Cold-start voice installation.**  Case 1 on a machine with no voice will download one; that is the
-  first-run install ruling and is not a P3 behaviour.
+- **The operator console.**  It is unreachable; see above.
+- **The alert rail's own content** — burst ordering, the divert count, the ladder.  Those shipped in
+  0.14.0 and 0.15.0; cases 6, 7 and 9 test only that the merge did not disturb them.
+- **Cold-start voice installation**, which is the first-run install ruling and not a P3 behaviour.
