@@ -34,6 +34,8 @@ const actGainUp
 const actStationToggle
 const actSwapBroadcaster
 const actSwapObserver
+const bcCardRows
+const bcCornerMark
 const bcGainCells
 const bcMinCols
 const bcMinRows
@@ -462,6 +464,8 @@ func (Router).throughToObserver
 func (Router).toggleStation
 func (Router).update
 func (arrowChips).pick
+func (cardLane).box
+func (cardLane).corners
 func (cardLane).render
 func (endpointRow).counters
 func (radioBP).hasViz

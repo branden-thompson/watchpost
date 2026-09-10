@@ -98,6 +98,11 @@ type Glyphs struct {
 	// Not a keycap: KeyCap draws a KEY, and this is the direction between two
 	// states. One owner, so --ascii needs no special case at the call site.
 	Arrow string
+	// The CARD's own corners (0.16.0). Rounded, which is what the reference
+	// mock draws for a card — the app's WINDOWS use the heavy box `BoxTitled`
+	// owns, and a card is not a window. Through the glyph set so --ascii needs
+	// no special case at the call site.
+	CornerTL, CornerTR, CornerBL, CornerBR string
 	// 0.14.0: the Setup window's marks. Down is a picker's dropdown arrow;
 	// Rail and RailCar draw the scroll rail; Ellipsis and Bullet are used where
 	// text is cut or listed. All go through the glyph set so --ascii needs no
@@ -118,11 +123,11 @@ func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
 		return Glyphs{Pointer: ">", Play: "*", Pause: "=", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},
 			OK: "+", Fail: "x", Note: "~", Cursor: "_", Fill: ".", Dash: "-", Dot: "|",
-			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#", Rule: "-", Minus: "-", Heart: "<3", Arrow: "->"}
+			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#", Rule: "-", Minus: "-", Heart: "<3", Arrow: "->", CornerTL: "+", CornerTR: "+", CornerBL: "+", CornerBR: "+"}
 	}
 	return Glyphs{Pointer: "›", Play: "▶", Pause: "‖", Repeat: "∞", Fire: "◆", Alert: "⚠", Seismic: [3]string{"○", "●", "◉"},
 		OK: "✔", Fail: "✘", Note: "♪", Cursor: "▌", Fill: "░", Dash: "—", Dot: "·",
-		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■", Rule: "─", Minus: "−", Heart: "♥", Arrow: "→"}
+		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■", Rule: "─", Minus: "−", Heart: "♥", Arrow: "→", CornerTL: "╭", CornerTR: "╮", CornerBL: "╰", CornerBR: "╯"}
 }
 
 // asciiKey names an arrow key in words for a chip under --ascii — the one
