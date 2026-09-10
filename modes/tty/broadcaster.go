@@ -261,7 +261,12 @@ func (b Broadcaster) lanes() []string {
 	} else {
 		out = append(out, "LINE UP")
 	}
-	main := b.lineup.Cards(lineup.MainTrack)
+	// THE LINE-UP, NOT THE SCHEDULE (D-44). The Director's own structural cards
+	// are read on air and never shown: the operator did not ask for them, and a
+	// slot number spent on one is a number they cannot address. The staleness
+	// notice has been in the schedule since 0.14.0, so this is a live
+	// difference, not a future one.
+	main := b.lineup.Projection(lineup.MainTrack)
 	// A ROLLING VIEW OF TEN (FR-3.1). An eleventh card exists in the schedule
 	// and does not reach the frame; the console shows a window onto the
 	// lineup, never a second copy of it.

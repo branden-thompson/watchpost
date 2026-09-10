@@ -70,12 +70,17 @@ func (d Director) onOffered(ev Offered) (Director, []Effect) {
 	if !d.advances(MainTrack) {
 		return d, nil
 	}
+	// COUNTED IN THE LINE-UP, NOT THE SCHEDULE (D-44). The depth is a promise
+	// about what the OPERATOR sees: counting the Director's own cards against it
+	// would top a ten-slot console off at about five real reports and leave the
+	// rest empty for ever.
+	//
 	// HOW MANY SLOTS ARE OWED, and the loop below is the ONE thing that enforces
 	// it. An early `if need <= 0 { return }` stood here and its mutant SURVIVED:
 	// with the walk's own bound, flipping it to `< 0` changed no outcome, which
 	// is the rule written twice rather than an invariant — the same verdict, and
 	// the same remedy, as the DR-7 guard card.go's Propose records.
-	need := d.settings.Depth - len(d.lineup.tracks[MainTrack])
+	need := d.settings.Depth - len(d.lineup.Projection(MainTrack))
 	took := 0
 	for _, p := range d.chosen(ev.Proposals) { // bounded by the offer (P10-02)
 		if took >= need {
@@ -107,7 +112,7 @@ func (d Director) onOffered(ev Offered) (Director, []Effect) {
 	// FILLING NEVER OVERSHOOTS. The console draws a fixed number of slots and a
 	// track deeper than the depth is a running order the operator cannot see the
 	// end of — cards promised a read with nothing on screen admitting they exist.
-	if err := invariant.Check(len(d.lineup.tracks[MainTrack]) <= d.settings.Depth,
+	if err := invariant.Check(len(d.lineup.Projection(MainTrack)) <= d.settings.Depth,
 		"topping off fills the track to its depth and never past it"); err != nil {
 		return d, nil
 	}

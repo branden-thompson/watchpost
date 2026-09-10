@@ -1563,3 +1563,30 @@ it where it can be seen to fail.
 
 **Cheapest instrument for the class:** ask of every fallible handler, *what has already been written to
 the receiver by the time the last `return d, nil` runs?*
+
+
+---
+
+## The redundant-guard shape recurred twice in one day, and the second one was mine again (0.16.0 P4)
+
+**Two plants survived for the same reason within hours of each other**, both in code written that
+morning, and neither was a coverage hole:
+
+| | The redundant guard | What already enforced it |
+|---|---|---|
+| `t8` | `if need <= 0 { return }` in the top-off | the walk's own `took >= need` bound |
+| `p3` | `to >= 0 && to < len(Projection(t))` in `Reorder` | `scheduleIndex`'s lookup, which refuses exactly the same set |
+
+**Both remedied the same way**, on `card.go`'s standing precedent — *"deleting a guard that another
+guard already enforces changes nothing, which is the rule written twice rather than an invariant"* —
+and in the second case the surviving carrier inherited the BETTER error message, because D-2 wants the
+failing input named and the lookup's own wording was vaguer than the guard's.
+
+**Worth naming as a habit, not a coincidence.**  The shape appears when a function validates an input
+and then calls something that validates it again more precisely.  The instinct that produces it is
+sound — fail early, fail with a good message — and the fix is to keep the message and drop the second
+check, not the reverse.
+
+**The cheap detector is the plant.**  Neither guard was reachable by any test, in either direction, and
+no amount of reading would have said so: both LOOK load-bearing. Only deleting them and watching nothing
+happen settles it.

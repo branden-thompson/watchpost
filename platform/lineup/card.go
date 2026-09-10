@@ -125,6 +125,17 @@ type slotRow struct {
 	// burst, not the rotation.
 	alertRead bool
 
+	// structural marks one of THE DIRECTOR'S OWN CARDS — a card the schedule
+	// reads but the operator never asked for and never sees (D-44).
+	//
+	// STATED, NOT INFERRED. This row's own comment already said "a slot that
+	// neither spends the Max nor composes at standby is one of the Director's
+	// own structural cards" — a rule carried by the CONJUNCTION OF TWO ZERO
+	// VALUES, which is a rule nobody can find and any new slot can break by
+	// accident. It is the filter the operator's whole running order is derived
+	// from, so it gets a field.
+	structural bool
+
 	// textAtStandby marks a slot whose words are composed as the card nears the
 	// air (DR-7), rather than when it is proposed. Reports go this way: a report
 	// composed at admission says what the weather was when it was queued, not
@@ -145,7 +156,7 @@ func slots() [numSlots]slotRow {
 		LocationReport: {label: "Location Report", textAtStandby: true},
 		SevereRead:     {label: "Severe-event Read", alertRead: true, textAtStandby: true},
 		BreakingAlert:  {label: "Breaking Alert", alertRead: true, textAtStandby: true},
-		Transition:     {label: "Transition"},
+		Transition:     {label: "Transition", structural: true},
 	}
 }
 
@@ -183,6 +194,14 @@ func (s Slot) String() string {
 func (s Slot) CountsAgainstMax() bool {
 	r, ok := s.row()
 	return ok && r.alertRead
+}
+
+// structural reports whether this is one of the Director's own cards, which the
+// operator neither sees nor addresses. Unexported for the reason textAtStandby
+// is: it is the card model's own rule, asked through Lineup.Projection.
+func (s Slot) structural() bool {
+	r, ok := s.row()
+	return ok && r.structural
 }
 
 // textAtStandby reports whether this slot's words are composed as it nears the

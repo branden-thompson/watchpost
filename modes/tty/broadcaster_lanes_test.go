@@ -94,3 +94,56 @@ func TestAHostileHeadlineIsClampedInTheNewLanes(t *testing.T) {
 		t.Error("clamping must strip the escapes and KEEP the words")
 	}
 }
+
+// notice is the Director's own structural card — the staleness replacement read,
+// which director.go has queued straight onto the main track since 0.14.0.
+func notice(t *testing.T, id string) lineup.Card {
+	t.Helper()
+	c, err := lineup.Propose(lineup.Card{ID: id, Slot: lineup.Transition, Origin: lineup.FromDirector,
+		Subject: "stale read", Headline: "Report out of date",
+		Script: lineup.Say("That report is out of date and has been dropped.")})
+	if err != nil {
+		t.Fatalf("proposing the notice: %v", err)
+	}
+	c, err = c.To(lineup.Admitted)
+	if err != nil {
+		t.Fatalf("admitting the notice: %v", err)
+	}
+	return c
+}
+
+// D-44: the console draws the LINE-UP, not the SCHEDULE.
+//
+// The two differ by the Director's own structural cards, which are read on air
+// and never shown — the operator did not ask for them, and a slot number spent
+// on one is a number they cannot address. This is a LIVE difference: the
+// staleness notice reaches the main track in production.
+//
+// IT IS ALSO WHAT KEEPS THE SLOT NUMBERS HONEST. The console numbers rows by
+// their position in what it drew, and `Moved` carries that number back to the
+// schedule; a hidden card between two visible ones shifts every number below it.
+func TestTheConsoleDrawsTheLineUpAndNotTheSchedule(t *testing.T) {
+	b := bcWith(t, card(t, "a", "OCEANSIDE"), notice(t, "n1"), card(t, "b", "BONSALL"))
+	got := b.View().Content
+
+	if strings.Contains(got, "Report out of date") {
+		t.Error("the Director's own structural card must not appear in the operator's running order")
+	}
+	for _, want := range []string{"OCEANSIDE", "BONSALL"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("and the cards the operator DID schedule must still be drawn; %q is missing", want)
+		}
+	}
+	// THE SLOT NUMBERS ARE THE POINT. With the notice hidden, BONSALL is the
+	// operator's slot 1 — and slot 1 is the number `Moved` would carry back.
+	// Drawing the schedule instead would number it 2 and move the wrong card.
+	oceanside := strings.Index(got, "OCEANSIDE")
+	bonsall := strings.Index(got, "BONSALL")
+	if oceanside < 0 || bonsall < 0 {
+		t.Fatal("both cards must be on the frame")
+	}
+	between := got[oceanside:bonsall]
+	if strings.Contains(between, "2") && !strings.Contains(between, "1") {
+		t.Errorf("BONSALL must be numbered as the operator's slot 1, not the schedule's 2:\n%s", between)
+	}
+}
