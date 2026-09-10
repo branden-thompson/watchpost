@@ -95,6 +95,7 @@ func (*executors).build
 func (*executors).cueFor
 func (*executors).decline
 func (*executors).eventsFor
+func (*executors).offer
 func (*executors).run
 func (*executors).runCue
 func (*executors).runRelease
@@ -409,6 +410,7 @@ func piperVoiceNames
 func priorityTiers
 func profileNames
 func programmeReturnLine
+func proposeFrom
 func providerEndpoints
 func pruneDumps
 func radioDebugLog

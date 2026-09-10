@@ -154,6 +154,10 @@ rebuilt its context from the code would re-derive the WRONG answer for every one
 | **D-47** | origin is a **term** in the ranking, not a trump; insistence is the escalation | reconciles D-41 with the cadence example, and makes D-40's choice modal a TRIGGERED thing |
 | **D-48** | the Director remembers **one timestamp per slot**, and nothing else | read history ruled out by name.  `WeighLastRead` is the operator's switch, and every degraded path answers the same for everything |
 | **D-49** | a transition is a property of the **KIND**, not the origin — `announced` / `handsBack` rows | **MVS-D-80 ruled the trigger in 2026-09-05 and the scripts are pinned.**  Does NOT fire location-to-location.  The words come from the script library through Settings, never from the Director |
+| **D-50** | breakpoints **100 / 120 / 150**, floor 25 rows; below 100 the console REFUSES to draw | replaces `platform/term`'s 40/60/80/120 — broadcaster was its only caller.  `bcMinRows` stays 44 (MEASURED); the ruling's "25" was inside an example of the message |
+| **D-51** | above 150 is a **right rail**, a LATER release — a SEAM is owed now, not a layout | `laneWidth()` is that seam: the lane's width comes from ONE place, so a right rail is a smaller number, not a second renderer |
+| **D-53** | **product first, optimisation second** — a working baseline is the reason | measure it, record it, surface the number, then KEEP BUILDING.  Optimising before behaviour settles has nothing to prove it did not change behaviour |
+| **D-54** | the Producer is wired through the **`Publish` executor's return**, no new effect | the chain is self-limiting by the DEPTH: a full line-up admits nothing, so `onOffered` emits nothing, so there is no next publish |
 
 **D-40's operator flow, ruled in full:** card in the main track → `[#]` → detail modal → `[D]` Drop →
 confirm ARE YOU SURE → `[enter]` → both modals close → the card leaves → **everything below moves up

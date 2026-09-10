@@ -40,8 +40,14 @@ type LineupMsg struct{ Lineup lineup.Lineup }
 // second carrier would be a safety bug rather than a display one.
 type StationMsg struct{ Power lineup.Power }
 
-// mainTrackSlots is how many cards the rolling main-track view shows (FR-3.1).
-const mainTrackSlots = 10
+// MainTrackSlots is how many cards the rolling main-track view shows (FR-3.1).
+//
+// EXPORTED SO IT IS ONE NUMBER, NOT TWO (D-40). The Director fills the line-up
+// to its `Settings.Depth` and the console draws this many; if the two ever
+// disagree the station either holds cards nobody can address, or leaves slots
+// empty for ever. `app` sets the depth from here rather than from a second
+// constant that agrees with it today.
+const MainTrackSlots = 10
 
 // Broadcaster is the operator console's model.
 type Broadcaster struct {
@@ -303,8 +309,8 @@ func (b Broadcaster) lanes() []string {
 	// A ROLLING VIEW OF TEN (FR-3.1). An eleventh card exists in the schedule
 	// and does not reach the frame; the console shows a window onto the
 	// lineup, never a second copy of it.
-	if len(main) > mainTrackSlots {
-		main = main[:mainTrackSlots]
+	if len(main) > MainTrackSlots {
+		main = main[:MainTrackSlots]
 	}
 	if len(main) == 0 {
 		out = append(out, "  (nothing scheduled)")

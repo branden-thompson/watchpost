@@ -96,6 +96,9 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// whose rotation is owned by the schedule and has no composer wired
 		// would queue every report and read none.
 		compose: composeFor(deck, watch),
+		// WHAT THE PRODUCER HAS TO OFFER (0.16.0 P4, D-40). The Director asks
+		// on every publish and takes only what the line-up still needs.
+		propose: proposeFrom(watch),
 		// DR-21's one escalation channel. It reuses the relay-fault window
 		// rather than adding a second error surface: from the listener's chair
 		// "the relay is silent" and "the schedule stopped" are the same event —
@@ -106,7 +109,11 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		return nil // a seam was nil; newExecutors has already said which
 	}
 	run, cancel := context.WithCancel(ctx)
-	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax}, time.Now()), x.run,
+	// THE DEPTH IS THE CONSOLE'S SLOT COUNT, FROM THE CONSOLE (D-40). A second
+	// constant here would agree with it today and drift silently: the station
+	// would hold cards the operator cannot address, or leave slots empty for
+	// ever, and neither reads as a bug from either side.
+	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: tty.MainTrackSlots}, time.Now()), x.run,
 		func(f lineup.Effect, v any) { radioDebugLog("schedule:fault:" + lineup.Describe(f)) })
 	if p == nil {
 		cancel()
@@ -284,4 +291,36 @@ func (s *schedule) stop() {
 	s.cancel()
 	<-s.ticks
 	s.pump.stop()
+}
+
+// proposeFrom turns the listener's watched locations into what the Producer can
+// offer the Director (D-40).
+//
+// THE PRODUCER PROPOSES; THE DIRECTOR CHOOSES. It offers everything it has, in
+// the listener's own order, and does not look at the schedule at all — whether
+// any of it is scheduled, and which, is the Director's, decided from the depth
+// and the watchlist it already holds. That is the role split the HUM LEAD drew:
+// "it's the Producer's job to PROPOSE … the DIRECTOR, as the owner of the
+// lineup, then is the one who gets to choose which card gets the slot."
+//
+// IT KEYS EACH PROPOSAL THE WAY THE ROTATION DOES — `snapshot.Key`, the same
+// ref `radioDeck.needsRead` reports — so `ReadID` gives a location one identity
+// across both paths and the lineup's own refusal of a duplicate is what stops a
+// place being read twice (FR-2.5).
+func proposeFrom(watch func() []snapshot.LocationRef) func() []lineup.Proposal {
+	return func() []lineup.Proposal {
+		if watch == nil {
+			return nil
+		}
+		refs := watch()
+		out := make([]lineup.Proposal, 0, len(refs))
+		for _, r := range refs { // bounded by the watchlist (P10-02)
+			key := string(snapshot.Key(r))
+			if key == "" || r.Label == "" {
+				continue // a location with no key or no name cannot become a card
+			}
+			out = append(out, lineup.Proposal{Ref: key, Headline: r.Label, Slot: lineup.LocationReport})
+		}
+		return out
+	}
 }

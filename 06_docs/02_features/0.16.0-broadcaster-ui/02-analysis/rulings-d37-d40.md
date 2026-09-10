@@ -569,3 +569,62 @@ lower the floor under it.**  That is a layout task, not a constant.
 `notice()` has said the requirement AND the current size since wave 1, which is what the v2 mock
 proposed independently.  What changed is the number it names.  Seven plants, all caught — including the
 floor drifting from the classifier, and 150 slipping from the top of OPTIMA to the bottom of LARGE.
+
+---
+
+# D-53 — PRODUCT FIRST, OPTIMISATION SECOND, AND THE BASELINE IS THE REASON
+
+> *"we never over optimize on theoretical software — we need to make the product (Broadcaster UI) work
+> FIRST, then once we are happy with the product behavior and function, THEN we can look at performance
+> and optimization passes, because we'll have a working baseline to ensure expected behavior and
+> function doesn't regress.  Attempting to do that now would not only be too soon, but may corner us and
+> make intended functionality hard-to-impossible."*
+
+**RULED IN ANSWER TO THE CARD ROW'S ALLOCATION COST** — 14 → 266 per frame at a full line-up (see
+`docs/accepted-costs.md`).
+
+**THE ARGUMENT IS ABOUT CORRECTNESS, NOT EFFORT.**  An optimisation made before the behaviour is settled
+has **no baseline to prove it did not change behaviour** — and it constrains functionality that has not
+been written yet.  Optimising here would be a correctness risk wearing a performance costume.
+
+**What this DOES NOT relax:** the cost is still measured, still recorded, and still surfaced to the
+HUM LEAD with a number.  *"Never make Branden be the one to notice"* is unchanged; what changes is what
+happens next, which is nothing.
+
+---
+
+# D-54 — THE PRODUCER IS WIRED, AND THE LEDGER ROW DISCHARGED ITSELF
+
+**`Event.Offered` has a writer.**  `executors.run`'s `Publish` case asks the producer and returns the
+offer — **no new effect**, because `run` already returns whatever an effect learned, and a publish is
+the moment the schedule has SETTLED, which is exactly when the producer can see what the line-up still
+needs.  That was the HUM LEAD's option 2, unchanged.
+
+**THE CHAIN IS SELF-LIMITING BY THE DEPTH, NOT BY A COUNTER.**  Publish → Offered → the track fills →
+settle publishes → Offered again → nothing left to admit → `onOffered` returns **no effects**, so there
+is no publish and the chain has nowhere to go.  Pinned by
+`TestTheTopOffChainStopsOnceTheLineUpIsFull`, because a feedback loop fed from the effect that publishes
+is the one thing here that could run away.
+
+**THE DEPTH AND THE CONSOLE'S WINDOW ARE ONE NUMBER.**  `tty.MainTrackSlots` is exported and `app` sets
+`Settings.Depth` from it.  A second constant would agree today and drift silently, and the failure reads
+as a bug from NEITHER side: the station either holds cards the operator cannot address, or leaves slots
+empty for ever.
+
+**AND THE PROPOSALS KEY THE WAY THE ROTATION DOES** — `snapshot.Key`, the same ref
+`radioDeck.needsRead` reports — so `ReadID` gives a location ONE identity across both paths, and the
+lineup's own refusal of a duplicate is what stops a place being read twice (FR-2.5).
+
+## The gate discharged its own row
+
+**`wires` reported `STALE EXEMPTION Event.Offered` — "it is WIRED now"** — on the commit that wired it,
+which is the self-expiring ledger doing exactly what it was built for.  The row is gone.
+
+**Two other gates fired and both were right:** `TestExecutorsRefuseToBeBuiltWithoutTheirSeams` refused a
+seam that was neither checked nor declared optional (`propose` is now explicitly optional — a station
+with no producer still broadcasts, it just never tops itself off), and the declaration-set golden
+caught the two new top-level functions.
+
+**A STALE COMMENT WAS FIXED RATHER THAN LEFT** — `TestAPublishIsCarriedAndDeclined` still said the
+publish is "EMITTED and nobody reads it".  The console has read it since P2 and the producer answers it
+now.  That is the **F-69 shape**, caught in the same file it applies to.

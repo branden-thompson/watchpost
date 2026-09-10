@@ -5,6 +5,7 @@ const CatMarine
 const CatStatement
 const CatWarning
 const CatWatch
+const MainTrackSlots
 const ModeRelay
 const ModeSynth
 const RecentCap
@@ -64,7 +65,6 @@ const groupUI
 const helpOneColWidth
 const hourlyWindow
 const inheritEntry
-const mainTrackSlots
 const marFirstW
 const marLabelW
 const marNoteGap
