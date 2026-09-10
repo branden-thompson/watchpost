@@ -196,6 +196,18 @@ type Settings struct {
 	// means never advance — see Programme (T3.2b).
 	Watchlist []string
 	Dwell     time.Duration
+
+	// Depth is how many cards the main track is kept topped up to (D-40).
+	//
+	// THE DIRECTOR'S NUMBER, NOT THE CONSOLE'S, even though the console is what
+	// makes it visible: the schedule is what promises the reads, and a depth
+	// held by the surface would be a second owner of how much the station has
+	// committed to. The console draws what the schedule holds.
+	//
+	// ZERO IS OFF. A station that never set one is not asking to be topped off,
+	// and the safe reading of an unset number is "do nothing" rather than "fill
+	// for ever".
+	Depth int
 }
 
 // Burst is one planned takeover: what is read, in order, and how much was not.

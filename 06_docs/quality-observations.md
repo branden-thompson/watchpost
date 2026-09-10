@@ -1503,3 +1503,33 @@ it fails at random").
 exactly this reason, and had done for releases.  The rule generalises: **anything that sends to the
 program during construction sends from its own goroutine**, because construction is by definition before
 the loop.
+
+
+---
+
+## A surviving mutant on a redundant guard is the rule written twice — and it recurred (0.16.0 P4)
+
+**The top-off's plant `t8` SURVIVED**: flipping `if need <= 0 { return }` to `if need < 0` changed no
+outcome.  It is not a coverage hole.  The walk below it already bounds itself with `took >= need`, so
+the early return could never decide anything — **two carriers of one rule, one of them strictly
+redundant.**
+
+**The codebase had already ruled on this exact shape**, in `card.go`'s `Propose`, about DR-7's guard:
+
+> *"Its mutant survived while it was: deleting a guard that another guard already enforces changes
+> nothing, which is the rule written twice rather than an invariant."*
+
+**So the remedy was precedent, not judgement**: delete the guard, leave the walk's bound as the single
+carrier, and say in the comment that a mutant is why.
+
+**The distinction worth keeping**, because two other plants also survived and were NOT this:
+
+| Plant | Verdict | Why |
+|---|---|---|
+| **t8** — the early `need <= 0` return | **redundant guard** → deleted | one rule, two carriers, one of which can never decide |
+| **t12** — bypassing `card.To(Admitted)` | **equivalent, kept** | `Queue` enforces a DIFFERENT rule ("the lineup holds admitted cards only") that happens to coincide here.  Defence in depth |
+| **t13** — the overshoot invariant | **equivalent, kept** | a postcondition TRIPWIRE, which is the house style — `Queue`, `clone`, `Remove` and `Reorder` all assert what they just did |
+
+**A guard that decides and an invariant that watches are not the same thing**, and only the first kind
+should be deleted when its mutant survives.  Deleting the second kind would strip the tripwires this
+package is built out of.

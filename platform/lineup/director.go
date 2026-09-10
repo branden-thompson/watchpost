@@ -387,8 +387,8 @@ func (d Director) Step(ev Event) (Director, []Effect) {
 		return d.onFailed(e)
 	case Powered:
 		return d.onPowered(e)
-	case NeedsRead:
-		return d.onNeedsRead(e)
+	case NeedsRead, Offered:
+		return d.stepProducer(ev)
 	case Tuned, Programme, Ended, CutOver:
 		return d.stepBed(ev)
 	case Moved, Dropped, Restored:
@@ -397,6 +397,25 @@ func (d Director) Step(ev Event) (Director, []Effect) {
 	// An event nothing handles changes nothing. The set is closed, so this is
 	// unreachable for anything built here — and it is the safe direction for
 	// anything added later without a handler.
+	return d, nil
+}
+
+// stepProducer routes the Producer's acts — what cards should exist (D-40).
+//
+// THE GROUP IS A ROLE, not a bucket. The role model's first row is the Card
+// Producer, whose whole job is "what cards should exist, and when"; a location
+// needing a read and a set of proposals offered are the two ways that reaches
+// the Director, and neither of them says a word about what the card SAYS.
+//
+// It keeps the safe default, as the other two groups do: an event added here
+// without a handler falls through to `Step`'s own and changes nothing.
+func (d Director) stepProducer(ev Event) (Director, []Effect) {
+	switch e := ev.(type) {
+	case NeedsRead:
+		return d.onNeedsRead(e)
+	case Offered:
+		return d.onOffered(e)
+	}
 	return d, nil
 }
 
