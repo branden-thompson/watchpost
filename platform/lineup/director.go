@@ -387,20 +387,54 @@ func (d Director) Step(ev Event) (Director, []Effect) {
 		return d.onFailed(e)
 	case Powered:
 		return d.onPowered(e)
+	case NeedsRead:
+		return d.onNeedsRead(e)
+	case Tuned, Programme, Ended, CutOver:
+		return d.stepBed(ev)
+	case Moved, Dropped, Restored:
+		return d.stepOperator(ev)
+	}
+	// An event nothing handles changes nothing. The set is closed, so this is
+	// unreachable for anything built here — and it is the safe direction for
+	// anything added later without a handler.
+	return d, nil
+}
+
+// stepBed routes what happens to the broadcast the programme rides on.
+//
+// GROUPED BY CONCERN, not to move a number. `Step` crossed P10-04's branch
+// bound when the operator's three acts arrived, and splitting a dispatch into
+// two dispatches merely relocates the count — as this project measured once
+// already, when seamsPresent came out of newExecutors at the same size. What
+// makes this a real split is that the two groups are two subjects, and they are
+// the two files these handlers already live in.
+//
+// EACH GROUP KEEPS THE SAFE DEFAULT. An event added to neither falls through to
+// `Step`'s own, which changes nothing — the same direction as before.
+func (d Director) stepBed(ev Event) (Director, []Effect) {
+	switch e := ev.(type) {
 	case Tuned:
 		return d.onTuned(e)
 	case Programme:
 		return d.onProgramme(e)
 	case Ended:
 		return d.onEnded(e)
-	case NeedsRead:
-		return d.onNeedsRead(e)
 	case CutOver:
 		return d.onCutOver(e)
 	}
-	// An event nothing handles changes nothing. The set is closed, so this is
-	// unreachable for anything built here — and it is the safe direction for
-	// anything added later without a handler.
+	return d, nil
+}
+
+// stepOperator routes the human's three acts on a card (FR-3).
+func (d Director) stepOperator(ev Event) (Director, []Effect) {
+	switch e := ev.(type) {
+	case Moved:
+		return d.onMoved(e)
+	case Dropped:
+		return d.onDropped(e)
+	case Restored:
+		return d.onRestored(e)
+	}
 	return d, nil
 }
 

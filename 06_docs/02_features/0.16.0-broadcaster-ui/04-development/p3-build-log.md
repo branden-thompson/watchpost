@@ -283,3 +283,23 @@ worth running is worth keeping"* a gate rather than an intention.
 **The flip's own plants are NOT here**, and that is deliberate: d1–d12 and e1–e5 target code the revert
 removed, so an entry for them could not apply.  They are recorded in the build log above and will be
 re-planted against whatever replaces the flip.
+
+
+# P10-05 exemption — `tools/wires`, RATIFIED
+
+**HUM LEAD, 2026-09-09: "exemption approved."**
+
+`tools/wires/main.go` measures **0.29 invariant density across 34 changed functions**, against a floor
+of 2.0.
+
+**No checks were added to reach it, deliberately.**  This project's own P10-05 exemptions name the trap:
+*"the vacuous-invariant class: five shipped on 2026-09-02, three of them added to satisfy this same
+meter, and D-2 says name the input that makes a check fail before writing it."*
+
+**A parser's functions are mostly TOTAL.**  `typeNameOf` returns `""` for anything it cannot name;
+`noteEach` does nothing when nothing matches; `sortedKeys` cannot fail.  There is no state for an
+invariant to protect, and a guard on each would be five more of the class above.
+
+**The checks that DO have a failing input are present and load-bearing:** the zero-members guard (INST-2
+— scanning nothing must not read as a clean tree), the ledger fence, and the exit decision, each with
+its own self-test case and each with a sabotage that is caught.
