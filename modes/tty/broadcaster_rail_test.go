@@ -111,9 +111,11 @@ func TestTheSectionLandsOnTheReferencesColumns(t *testing.T) {
 		}
 	}
 
-	// ROW 1, NOT ROW 0: row 0 carries the scroll THUMB in the rail column, which
-	// is the point — the thumb stands where the bar does rather than beside it.
-	framed := []rune(b.framed(rows, 10, 10)[1])
+	// A ROW IN THE MIDDLE. The scroll rail's ▲ and ▼ take the first and last
+	// rows of a zone and its thumb takes one between them (D-70), so the plain
+	// wall is what the rows around them carry.
+	all := b.framed(rows, 10, 10)
+	framed := []rune(all[len(all)-2])
 	if len(framed) != 150 {
 		t.Fatalf("the framed row is the terminal's width; got %d", len(framed))
 	}
@@ -209,10 +211,12 @@ func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
 			last = i
 		}
 	}
-	// FROM BELOW THE OPENING INSET. Those two blank rows ARE the frame's air
-	// (D-68, "Universal 2 line inset like Observer") and are the one place two
-	// blanks in a row is the design rather than a fault.
-	for i := bcInsetRows + 1; i <= last; i++ {
+	// FROM BELOW THE STATION BAND. The opening inset is two blank rows by design
+	// (D-68), and the band's own closing breathing row sits directly above the
+	// bare separator under it — both intended, and both render as whitespace
+	// only because a test draws without colour: the band is a PAINTED region
+	// (D-70), so that row is filled, not empty.
+	for i := bcInsetRows + 10; i <= last; i++ {
 		if strings.TrimSpace(rows[i]) == "" && strings.TrimSpace(rows[i-1]) == "" {
 			t.Errorf("rows %d and %d are both blank — a section's spacing has two owners", i-1, i)
 		}
@@ -237,22 +241,30 @@ func TestEveryDrawnRowClosesTheFrame(t *testing.T) {
 			last = i
 		}
 	}
-	for i := bcInsetRows + 4; i <= last; i++ { // from the station section down; the masthead draws its own box
+	// FROM THE RUNNING ORDER DOWN. The station band above it has NO walls by
+	// design (D-70): it is a painted region, and colour is its edge.
+	for i := bcInsetRows + 10; i <= last; i++ {
 		r := []rune(rows[i])
 		if len(r) != b.width {
 			t.Errorf("row %d is %d cells, want %d", i, len(r), b.width)
 			continue
 		}
-		// THE ONE UNWALLED ROW IS THE SEPARATOR BETWEEN THE STATION SECTION AND
-		// THE RUNNING ORDER, and the HUM LEAD annotated it as deliberate twice:
-		// "Notice the blank line and how it separates the rail — this is
-		// intentional." Two closed boxes with air between them; the air belongs
-		// to neither, so it carries neither's walls.
-		if strings.TrimSpace(rows[i]) == "" {
+		// EVERY ROW OF THE RUNNING ORDER CLOSES ON THE FRAME'S OUTER EDGE.
+		if r[b.width-1] != '|' {
+			t.Errorf("row %d does not close the frame: ends %q\n%.40s", i, string(r[b.width-1]), rows[i])
+		}
+		// AND A ROW THAT OPENS WITH A WALL CLOSES WITH THE INNER ONE. A blank
+		// row opens with neither, because it is a BREAK between two regions and
+		// the HUM LEAD ruled the break deliberate: "the blank row in between
+		// sections needs to be completely blank — the breaks in the mock were
+		// intentional."
+		// A BREAK ROW carries nothing left of the frame's right-hand columns —
+		// at most the scroll rail's own cap, which is exactly what a cap is for.
+		if strings.TrimSpace(string(r[:b.width-bcRightChrome+3])) == "" {
 			continue
 		}
-		if r[0] != '|' || r[b.width-1] != '|' {
-			t.Errorf("row %d does not close the frame: starts %q ends %q\n%.40s", i, string(r[0]), string(r[b.width-1]), rows[i])
+		if r[0] != '|' {
+			t.Errorf("row %d does not open the frame: starts %q\n%.40s", i, string(r[0]), rows[i])
 		}
 	}
 }
@@ -271,17 +283,26 @@ func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	// reference puts it. Every row carries the bar; exactly one carries the
 	// thumb instead. An earlier version blanked the bar and drew the thumb in a
 	// gutter of its own at 145, which gave the frame a column the mock has not.
+	// ▲ OPENS IT AND ▼ CLOSES IT (D-70), which is `Railify`'s own contract —
+	// "callers draw ▲/▼ themselves" — and the HUM LEAD's UAT: "the vertical
+	// control should start and end where the mock says."
+	if got := []rune(framed[0])[b.width-6]; got != '^' {
+		t.Errorf("the rail opens on %q, want the up cap", string(got))
+	}
+	if got := []rune(framed[len(framed)-1])[b.width-6]; got != 'v' {
+		t.Errorf("the rail closes on %q, want the down cap", string(got))
+	}
 	thumbs := 0
-	for i, r := range framed {
+	for i, r := range framed[1 : len(framed)-1] {
 		switch c := []rune(r)[b.width-6]; c {
 		case '#':
 			thumbs++
 		case '|':
 		default:
-			t.Errorf("row %d draws %q in the rail column; a rail is a bar or the thumb:\n%.40s", i, string(c), r)
+			t.Errorf("row %d draws %q in the rail column; a rail is a bar or the thumb:\n%.40s", i+1, string(c), r)
 		}
 	}
 	if thumbs != 1 {
-		t.Errorf("the rail carries exactly one thumb; it carries %d", thumbs)
+		t.Errorf("the rail carries exactly one thumb between its caps; it carries %d", thumbs)
 	}
 }

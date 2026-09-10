@@ -92,40 +92,54 @@ func TestOneBlankRowSeparatesTheRegions(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	rows := strings.Split(b.View().Content, "\n")
-	// BETWEEN THE CARDS, which is what "between the sections" means: the frame
-	// pads its own tail with walled empty rows to fill the terminal, and those
-	// are not gaps between anything.
-	last := 0
+	// BETWEEN THE CARDS: the frame ends where the running order does, so
+	// everything past the last card border is the terminal, not the frame.
+	first, last := -1, 0
 	for i, r := range rows {
-		if strings.Contains(r, "+---") {
+		// A CARD's border, not the masthead's — that box draws `+` corners too,
+		// and anchoring on the glyph alone put `first` on row 2.
+		if strings.Contains(r, "|    +---") {
+			if first < 0 {
+				first = i
+			}
 			last = i
 		}
 	}
-	gaps := 0
-	for _, r := range rows[:last] {
+	if first < 0 {
+		t.Fatal("no cards drawn")
+	}
+	breaks := 0
+	for _, r := range rows[first:last] {
 		cells := []rune(r)
-		if !strings.HasPrefix(r, "|   |") || len(cells) < b.width {
+		if len(cells) < b.width {
 			continue
 		}
-		// The rail's own walls with an EMPTY lane beside them. Checked by column
-		// rather than by trimming, because a card's blank interior row is also
-		// nothing but walls and spaces and the two must not be confused.
-		if strings.TrimSpace(string(cells[bcRailWidth:b.width-bcRightChrome+3])) == "" {
-			gaps++
+		// A BREAK CARRIES NOTHING LEFT OF THE FRAME'S RIGHT-HAND COLUMNS — no
+		// card, and no rail. "The blank row in between sections needs to be
+		// completely blank … the breaks in the mock were intentional."
+		if strings.TrimSpace(string(cells[:b.width-bcRightChrome+3])) != "" {
+			continue
+		}
+		breaks++
+		// AND THE BREAK GOES ALL THE WAY ACROSS. The inner wall at 144 is part
+		// of the same vertical line the left rail is; leaving it drawn would
+		// break the rail on one side of the cards and not the other. The scroll
+		// rail's own caps are the exception, and they are what a cap IS.
+		switch c := cells[b.width-6]; c {
+		case ' ', '^', 'v':
+		default:
+			t.Errorf("a break still draws %q in the rail column:\n%s", string(c), r)
 		}
 	}
-	// ONE PER BOUNDARY, PLUS THE ONE UNDER THE LANE HEADER — which is the same
-	// row by construction: the header is followed by the spacer the reference
-	// draws ("Notice the spacer row"), and a spacer is what a region gap IS.
-	if want := len(bcRegions); gaps != want {
-		t.Errorf("%d blank rows in the running order, want %d", gaps, want)
+	if want := len(bcRegions) - 1; breaks != want {
+		t.Errorf("%d breaks between %d regions, want %d", breaks, len(bcRegions), want)
 	}
 	// AND THE CARDS INSIDE A REGION STAY FLUSH: the LINE UP's five slots draw
 	// twenty rows with nothing between them.
 	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
 	r := bcRegions[len(bcRegions)-1]
 	body := b.slotRows(r, nil, lane)
-	if got, want := len(body), (r.upto-r.from)*4; got != want {
+	if got, want := len(body), (r.upto-r.from)*bcFlatCardRows; got != want {
 		t.Errorf("the last region draws %d rows for %d slots, want %d", got, r.upto-r.from, want)
 	}
 }
@@ -195,5 +209,94 @@ func TestTheFrameKeepsItsInset(t *testing.T) {
 	}
 	if strings.TrimSpace(rows[bcInsetRows]) == "" {
 		t.Error("the masthead follows the inset immediately; a third blank row is not the design")
+	}
+}
+
+// THE STATION BAND IS PAINTED, NOT WALLED (D-70).
+//
+//	"We can remove the lines from the playing section — since we'll use color for
+//	 the differentiation. It should be the same grey taken as the
+//	 'Recent/Searched Locations' on STANDBY and ALERT RED on 'ON AIR'"
+//
+// BOTH TONES ARE TOKENS THAT ALREADY EXIST, named by the HUM LEAD after the
+// thing they already paint: `GroupSectionBG` IS the RECENT/SEARCHED band, and
+// `TickerEmergencyBG` is what MVS-D-62 calls "THE red". A second red mixed here
+// would be a second answer to what red means in this app.
+func TestTheStationBandIsPaintedByItsState(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	b := NewBroadcaster()
+	b.width, b.height = 150, 50
+
+	_, bg := b.stationTone()
+	if want := render.Tok(render.GroupSectionBG); bg != want {
+		t.Errorf("a station at rest wears the RECENT/SEARCHED grey: %q, want %q", bg, want)
+	}
+	b.power = lineup.Running
+	if _, bg = b.stationTone(); bg != render.Tok(render.TickerEmergencyBG) {
+		t.Errorf("a station ON AIR wears THE red: %q", bg)
+	}
+	// AND THE BAND CARRIES THE TONE ON EVERY ONE OF ITS ROWS, including the
+	// breathing rows above and below — a band painted only where there are words
+	// is a stripe, not a region.
+	fg, bg := b.stationTone()
+	for i, r := range strings.Split(b.stationSection(b.opts(), fg, bg), "\n") {
+		if !strings.Contains(r, bg) {
+			t.Errorf("row %d of the band is unpainted: %q", i, r)
+		}
+		if strings.Contains(stripANSITest(r), "│") || strings.Contains(stripANSITest(r), "|") {
+			t.Errorf("row %d of the band still draws a wall; colour is its edge: %q", i, stripANSITest(r))
+		}
+	}
+}
+
+// THE SCROLL CONTROL STARTS AND ENDS WHERE THE REFERENCE PUTS IT (D-70).
+//
+//	"The scroll line is still not right. Even if the LIVE and UP NEXT cards share
+//	 the same width, the vertical control should start and end where the mock
+//	 says."
+//
+// ▲ ON THE BREAK ABOVE THE FIRST SCROLLING CARD and ▼ on a row of its own below
+// the last one — never across a card's border, which is where the down cap
+// landed until the running order learned to close on a blank row.
+func TestTheScrollControlCapsSitOnRowsOfTheirOwn(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	rows := strings.Split(b.View().Content, "\n")
+	up, down := -1, -1
+	for i, r := range rows {
+		switch []rune(r)[b.width-6] {
+		case '^':
+			up = i
+		case 'v':
+			down = i
+		}
+	}
+	if up < 0 || down < 0 {
+		t.Fatal("the scroll control draws both of its caps")
+	}
+	if up >= down {
+		t.Fatalf("the up cap is above the down cap: %d, %d", up, down)
+	}
+	for _, at := range []int{up, down} {
+		cells := []rune(rows[at])
+		if strings.TrimSpace(string(cells[:b.width-bcRightChrome+3])) != "" {
+			t.Errorf("row %d carries a cap AND content; a cap sits on a row of its own:\n%s", at, rows[at])
+		}
+	}
+	// AND THE SCROLLING REGION IS THE ONE THAT SCROLLS. The two read cards are
+	// always the same two, so the control must not begin above them.
+	firstScrolling := 0
+	for i, r := range rows {
+		if strings.Contains(r, chipFor("2")) {
+			firstScrolling = i
+			break
+		}
+	}
+	if firstScrolling == 0 {
+		t.Fatal("the first scheduled card must reach the frame")
+	}
+	if up > firstScrolling {
+		t.Errorf("the control starts at row %d, below the first scrolling card at %d", up, firstScrolling)
 	}
 }
