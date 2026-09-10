@@ -53,6 +53,8 @@ jobs:
       - run: make gate-controls
       - run: make alloc-budget # malloc pins run outside the race detector (quality pass §0.1)
       - run: make dupes # metric D: no duplicate operation without a RATIFIED reason
+      - run: make wires # every closed-set member names a production writer and reader, or is RATIFIED as owed
+      - run: make wires-selftest # and the check itself can still fail: 7 scan scenarios, 4 ledger cases
       - run: make release-matrix
       - run: make install-test
         if: runner.os == 'Linux'
