@@ -67,6 +67,12 @@ func (d Director) onDropped(ev Dropped) (Director, []Effect) {
 	if !held {
 		return d, nil
 	}
+	// NOT THE DIRECTOR'S OWN CARDS (D-44). The operator never saw it, so the
+	// drop cannot have meant it — and a structural card on the undo pile would
+	// offer them a restore of something they never scheduled.
+	if card.Slot.structural() {
+		return d, nil
+	}
 	// THE ON-AIR CARD IS NOT DROPPABLE HERE. Stopping a read in progress is a
 	// different act with a different sound, and DR-24 pairs its own release;
 	// routing it through the running order would take a card off the air with
@@ -148,14 +154,30 @@ func (l Lineup) Reorder(id string, to int) (Lineup, error) {
 	if err := invariant.Check(l.tracks[t][from].State != OnAir, "a card on the air is not in the running order"); err != nil {
 		return l, err
 	}
-	if err := invariant.Check(to >= 0 && to < len(l.tracks[t]), "a card moves to a position the track has"); err != nil {
+	// AND A STRUCTURAL CARD IS NOT IN IT EITHER (D-44). The operator cannot see
+	// one, so they cannot have meant one: a move naming it would be the console
+	// addressing a slot it never drew.
+	if err := invariant.Check(!l.tracks[t][from].Slot.structural(), "the operator moves cards they can see; the Director's own cards are not among them"); err != nil {
 		return l, err
 	}
 	out := l.clone()
 	track := out.tracks[t]
 	card := track[from]
 	track = append(track[:from], track[from+1:]...)
-	track = append(track[:to], append([]Card{card}, track[to:]...)...)
+	out.tracks[t] = track
+	// `to` IS A POSITION IN THE LINE-UP, NOT IN THE SCHEDULE, and this is its
+	// ONE bound. A `to >= 0 && to < len(Projection(t))` guard stood above and its
+	// mutant SURVIVED: the lookup refuses exactly the same set, so the guard
+	// could never decide anything — the rule written twice, which is the second
+	// time today (see topoff.go, and card.go's Propose before it).
+	//
+	// Using the schedule's own index here instead would be a SILENT off-by-N,
+	// because both numbers are valid indices and neither errors.
+	at, ok := out.scheduleIndex(t, to)
+	if err := invariant.Check(ok, "a card moves to a position the RUNNING ORDER has"); err != nil {
+		return l, err
+	}
+	track = append(track[:at], append([]Card{card}, track[at:]...)...)
 	out.tracks[t] = track
 	// MOVES ONE, ADDS NONE, LOSES NONE. A slice reorder written by hand is
 	// exactly where a card goes missing, and a schedule that lost one has

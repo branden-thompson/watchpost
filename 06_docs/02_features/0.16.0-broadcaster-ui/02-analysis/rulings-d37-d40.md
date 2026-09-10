@@ -164,3 +164,87 @@ the request itself.
 `onDropped` and the discard pile all read.
 
 **And verifying it found a live defect** — F-74, fixed the same day.  See the follow-ups.
+
+---
+
+# D-44 — THE LINE-UP IS A PROJECTION OF THE SCHEDULE, AND IT IS OLDER THAN THIS RELEASE
+
+> *"I thought we already built the distinction between the 'schedule' and the 'line-up' — a previous
+> session was the one that highlighted that the line-up is the human-facing PROJECTION, while the
+> schedule was the underlying thing all the other roles saw and used."*
+
+**Correct, and it is on the record.**  `director-build-log.md:1945`, HUM LEAD 2026-09-05:
+
+> *"The operator's view is a **PROJECTION** of the one Lineup, **not a second schedule**; the 'machinery
+> tier' is the closed EFFECT SET, which is deliberately not schedule entries — putting them there would
+> make the Director schedule its own work, which Approach C exists to prevent.  The one-card model
+> **REDUCES the gap** between what the operator sees and what the machine holds, rather than creating
+> it."*
+
+**The reason no code carried it: it was the IDENTITY FUNCTION.**  One card per burst and nothing
+invisible meant `Cards` already WAS the operator's view.  The Director's structural cards are the first
+thing that makes it a real function.
+
+**AND ONE HAS BEEN IN PRODUCTION SINCE 0.14.0.**  `director.go:749` queues the staleness notice — a
+`Transition` — straight onto the main track, so a card the operator never asked for has been sitting in
+their numbered running order the whole time.  That is what let this be built and tested against a real
+card rather than an invented fixture.
+
+## The vocabulary, because the Go type is named for the wrong half
+
+| Call | Is | Read by |
+|---|---|---|
+| `Cards(t)` | **THE SCHEDULE** — every card, structural ones included | the Reader, the Composer, the staleness check |
+| `Projection(t)` | **THE LINE-UP** — what the operator sees, numbers and addresses | the console, `Reorder`, the top-off's depth |
+
+## Three things it fixes, one of them live
+
+- **The console drew the schedule.**  `broadcaster.go` showed the staleness notice as a numbered slot.
+- **`Moved` was a silent off-by-N waiting to happen.**  Its own comment says *"the console already knows
+  every slot number it drew"* — those are LINE-UP numbers, and `Reorder` indexed the SCHEDULE.  Both are
+  valid indices, so nothing would have errored: the operator moves a card and a different one moves.
+  `scheduleIndex` is the one owner of the translation.
+- **The depth was counted in the wrong space** — my own code from this morning.  Ten slots against a
+  schedule counting structural cards tops off at about five real reports and leaves the rest empty.
+
+## The debt this ruling creates, stated rather than hidden
+
+**The 2026-09-05 rationale is that the projection SHRINKS the distance between the two.**  Every
+structural card is a small payment against that, so `structural` is a **field on the slot registry**
+rather than a property anything may claim: the set of cards the operator cannot see is CLOSED, and
+adding to it is a deliberate act with a row to fill in.
+
+**It also names a category that ruling did not contemplate.**  It said the machinery tier is the closed
+EFFECT SET, *"deliberately not schedule entries"*.  A transition IS a schedule entry — it is read aloud,
+it takes the air, DR-24 pairs its release — so it is a third thing: **machinery that must be performed.**
+That is not a contradiction, but it is the reason the gap can now grow, and why it is bounded by a
+registry field instead of a convention.
+
+---
+
+# D-45 — ON AIR IS LOCKED, AND ONLY STANDBY OR CATASTROPHE CHANGES IT
+
+> *"we already agree that once a card is ON-AIR - it's locked from editing.  The ONLY thing that can
+> change that would be a GO TO STANDBY from masterControl (Operator initiated) or some catastrophic
+> error, which we purposefully can never account for and test."*
+
+**This closes something the record left open.**  The same 2026-09-05 entry reads:
+
+> *"**Raised, not yet ruled:** 'once a card is LIVE, only a takeover may interrupt it'.  The code does
+> not express this — `Card.CanBecome` allows ON AIR → Discarded from any cause.  **Wants a decision when
+> operator editing arrives.**"*
+
+**Operator editing has arrived (P4), so the decision is due, and it is made.**
+
+**Every caller already conforms**, checked rather than assumed:
+
+| Writer of `Discarded` | On the air? | |
+|---|---|---|
+| `onDropped` | **refuses it explicitly** | ✓ |
+| `silenceTheProgramme` (`power.go:173`) | takes it off | ✓ — **this IS the ruled exception** |
+| `dropStale` | `firstStale` considers STANDBY only | ✓ |
+| `onFailed` | the card did not happen | ✓ — the catastrophe bucket |
+
+**What is NOT expressed is the type**, which is exactly what the 2026-09-05 note flagged: `CanBecome`
+still permits ON AIR → Discarded from anywhere.  **Narrowing it would be wrong** — `silenceTheProgramme`
+legitimately needs that edge — so the closure is a gate that walks the WRITERS, not a narrower type.

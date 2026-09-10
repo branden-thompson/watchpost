@@ -147,7 +147,9 @@ rebuilt its context from the code would re-derive the WRONG answer for every one
 | **D-40** | **the Producer proposes — several, cheap, name-only — and the DIRECTOR chooses** | nothing reads track depth today, so the lineup holds ~1 card while the mock draws 10 |
 | **D-41** | a card the Operator CHOSE is `FromOperator`, and that origin **outranks** | scope is the CHOICE ranking; where a RESTORED card lands is still unruled |
 | **D-42** | a transition is **never** `FromOperator` — it is the Director's one additive act | held by accident before it was stated: a different rule refused it for an unrelated reason |
-| **D-43** | transitions **bookend** their card and **move with it** on promote/quash | **not built, and nothing supports it** — `Reorder` moves exactly one card.  F-75 |
+| **D-43** | transitions **bookend** their card and **move with it** on promote/quash | **JOIN-owned**, ruled 2026-09-10: derived from the sequence, re-evaluated on every change.  Free, because a transition's words are fixed at proposal |
+| **D-44** | the **line-up** is a PROJECTION of the **schedule** — ruled 2026-09-05, built 2026-09-10 | `Cards()` = the schedule; `Projection()` = what the operator sees, numbers and addresses.  `Moved` carries LINE-UP numbers |
+| **D-45** | ON AIR is locked; only GO TO STANDBY or catastrophe changes it | closes an item the 2026-09-05 log left open *"when operator editing arrives"*.  Every caller conforms; the TYPE still permits it |
 
 **D-40's operator flow, ruled in full:** card in the main track → `[#]` → detail modal → `[D]` Drop →
 confirm ARE YOU SURE → `[enter]` → both modals close → the card leaves → **everything below moves up

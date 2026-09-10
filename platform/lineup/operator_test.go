@@ -298,34 +298,13 @@ func TestARestoreTheScheduleRefusesKeepsTheCardOnThePile(t *testing.T) {
 	}
 }
 
-// The same rule, reached through the OTHER refusal: a structural card can never
-// be re-proposed, because its words are fixed at proposal and the undo
-// deliberately drops the words (they may have gone stale).
-func TestRestoringATransitionKeepsItOnThePileRatherThanEatingIt(t *testing.T) {
-	base := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
-	d := New(Settings{Max: 5}, base)
-	d, _ = d.Step(Powered{To: Running})
-	notice, err := Propose(Card{ID: "t1", Slot: Transition, Origin: FromDirector,
-		Subject: "stale read", Headline: "Report out of date", Script: Say("dropped.")})
-	if err != nil {
-		t.Fatalf("building the fixture transition: %v", err)
-	}
-	admitted, err := notice.To(Admitted)
-	if err != nil {
-		t.Fatalf("admitting the fixture: %v", err)
-	}
-	d.lineup, err = d.lineup.Queue(MainTrack, admitted)
-	if err != nil {
-		t.Fatalf("queueing the fixture: %v", err)
-	}
-
-	d, _ = d.Step(Dropped{ID: "t1"})
-	d, _ = d.Step(Restored{ID: "t1"})
-
-	if got := len(d.lineup.Discarded()); got != 1 {
-		t.Errorf("a transition that cannot be re-proposed stays on the pile; got %d", got)
-	}
-}
+// D-44 SUPERSEDED THE OTHER HALF OF THIS ROW. A test stood here that dropped a
+// TRANSITION and asserted the pile kept it, because a structural card can never
+// be re-proposed. `onDropped` now refuses a structural card outright — the
+// operator never saw it, so the drop cannot have meant it — which makes that
+// scenario unreachable rather than merely handled. The rule it was protecting is
+// pinned by TestARestoreTheScheduleRefusesKeepsTheCardOnThePile above, and the
+// refusal itself by TestTheOperatorCannotAddressAStructuralCard.
 
 // D-42 (HUM LEAD, 2026-09-10): "transition cards are NEVER Origin.fromOperator."
 //
