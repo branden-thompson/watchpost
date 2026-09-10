@@ -375,93 +375,132 @@ func markerStructs(fset *token.FileSet, gen *ast.GenDecl) []*member {
 // type declaring it, are what created the question; counting them as answers
 // would make every member look wired.
 func countUses(fset *token.FileSet, files []*ast.File, decls map[string]*member) {
-	for _, f := range files {
+	for _, f := range files { // bounded by the package (P10-02)
 		ast.Inspect(f, func(n ast.Node) bool {
-			switch v := n.(type) {
-			case *ast.GenDecl:
-				return v.Tok != token.CONST && v.Tok != token.TYPE // skip declarations wholesale
-			case *ast.CompositeLit:
-				// `Foo{…}` or `pkg.Foo{…}` MAKES one.
-				if m := decls[typeNameOf(v.Type)]; m != nil {
-					m.wrote(pos(fset, n.Pos()))
-				}
-				// `[]Track{AlertRail, MainTrack}` — a set written out as a
-				// literal is the walk this codebase uses for precedence, and
-				// listing a member there is naming it as one of the things to
-				// consider. That is a read.
-				for _, e := range v.Elts {
-					if m := decls[typeNameOf(e)]; m != nil {
-						m.read(pos(fset, n.Pos()))
-					}
-				}
-			case *ast.CaseClause:
-				// `case Foo:` READS it — a type switch or a value switch.
-				for _, e := range v.List {
-					if m := decls[typeNameOf(e)]; m != nil {
-						m.read(pos(fset, n.Pos()))
-					}
-				}
-			case *ast.BinaryExpr:
-				// `x == Foo`, `x >= Foo` READS it.
-				for _, e := range []ast.Expr{v.X, v.Y} {
-					if m := decls[typeNameOf(e)]; m != nil {
-						m.read(pos(fset, n.Pos()))
-					}
-				}
-			case *ast.KeyValueExpr:
-				// `Foo: value` — a REGISTRY keyed by the member. That is a
-				// discrimination: the table is how this codebase branches on a
-				// closed set without a switch (originNames, toneFor, the slot
-				// registry), and it is the shape INST-1 asks for. So the KEY
-				// reads.
-				if m := decls[typeNameOf(v.Key)]; m != nil {
-					m.read(pos(fset, n.Pos()))
-				}
-				// `Field: Foo` — the member is the VALUE, so something is being
-				// MADE with it. Missing this called every Power unwritten while
-				// `Powered{To: Running}` sat in two files.
-				if m := decls[typeNameOf(v.Value)]; m != nil {
-					m.wrote(pos(fset, n.Pos()))
-				}
-			case *ast.AssignStmt:
-				// `x = Foo` and `x := Foo` MAKE one.
-				for _, e := range v.Rhs {
-					if m := decls[typeNameOf(e)]; m != nil {
-						m.wrote(pos(fset, n.Pos()))
-					}
-				}
-			case *ast.CallExpr:
-				// `f(Foo)` passes one along, which is making it someone's input.
-				for _, a := range v.Args {
-					if m := decls[typeNameOf(a)]; m != nil {
-						m.wrote(pos(fset, n.Pos()))
-					}
-				}
-			case *ast.ReturnStmt:
-				for _, e := range v.Results {
-					if m := decls[typeNameOf(e)]; m != nil {
-						m.wrote(pos(fset, n.Pos()))
-					}
-				}
+			// ast.Inspect CALLS BACK WITH NIL on the way up, and the split
+			// below dereferences the node to position it — so what used to be
+			// a type switch that quietly matched nothing became a panic. The
+			// self-test found it on the first run, which is the argument for
+			// having one.
+			if n == nil {
+				return false
 			}
+			if gen, ok := n.(*ast.GenDecl); ok {
+				// THE DECLARATION IS NOT A USE. A const block naming a member,
+				// and the struct type declaring it, are what created the
+				// question; counting them as answers would make every member
+				// look wired.
+				return gen.Tok != token.CONST && gen.Tok != token.TYPE
+			}
+			note(decls, n, pos(fset, n.Pos()))
 			return true
 		})
 	}
 }
 
+// note attributes one node to writing a member, reading one, or neither.
+//
+// SPLIT FROM THE WALK, and each arm is its own sentence. As one switch it
+// measured 26 against P10-04's bound of 15 — a function doing eight unrelated
+// jobs because they happened to share a type switch.
+func note(decls map[string]*member, n ast.Node, at string) {
+	switch v := n.(type) {
+	case *ast.CompositeLit:
+		noteComposite(decls, v, at)
+	case *ast.CaseClause:
+		// `case Foo:` READS it — a type switch or a value switch.
+		noteEach(decls, v.List, at, asReader)
+	case *ast.BinaryExpr:
+		// `x == Foo`, `x >= Foo` READS it.
+		noteEach(decls, []ast.Expr{v.X, v.Y}, at, asReader)
+	case *ast.KeyValueExpr:
+		noteKeyValue(decls, v, at)
+	case *ast.AssignStmt:
+		// `x = Foo` and `x := Foo` MAKE one.
+		noteEach(decls, v.Rhs, at, asWriter)
+	case *ast.CallExpr:
+		// `f(Foo)` passes one along, which is making it someone's input.
+		noteEach(decls, v.Args, at, asWriter)
+	case *ast.ReturnStmt:
+		noteEach(decls, v.Results, at, asWriter)
+	}
+}
+
+// noteComposite handles `Foo{…}` and the members listed inside a set literal.
+func noteComposite(decls map[string]*member, v *ast.CompositeLit, at string) {
+	if m := decls[typeNameOf(v.Type)]; m != nil {
+		m.wrote(at)
+	}
+	// `[]Track{AlertRail, MainTrack}` — a set written out as a literal is the
+	// walk this codebase uses for precedence, and listing a member there is
+	// naming it as one of the things to consider. That is a read.
+	noteEach(decls, v.Elts, at, asReader)
+}
+
+// noteKeyValue handles `Foo: value` and `Field: Foo`, which are opposite.
+func noteKeyValue(decls map[string]*member, v *ast.KeyValueExpr, at string) {
+	// A REGISTRY keyed by the member is a discrimination: the table is how this
+	// codebase branches on a closed set without a switch (originNames, the slot
+	// registry, bandNames), and it is the shape INST-1 asks for.
+	if m := decls[typeNameOf(v.Key)]; m != nil {
+		m.read(at)
+	}
+	// The member as the VALUE means something is being MADE with it. Missing
+	// this called every Power unwritten while `Powered{To: Running}` sat in two
+	// files.
+	if m := decls[typeNameOf(v.Value)]; m != nil {
+		m.wrote(at)
+	}
+}
+
+// how is which half of the question a use answers.
+//
+// NAMED asWriter/asReader, NOT wrote/read. P10 resolves by NAME, so a free
+// function `wrote` calling a method `wrote` reads as recursion — the EIGHTH
+// collision of this shape in this release, and every one of them a function on
+// one type against a function on another. The rename is the cheap half.
+type how func(*member, string)
+
+func asWriter(m *member, at string) { m.wrote(at) }
+func asReader(m *member, at string) { m.read(at) }
+
+// noteEach records every expression that names a member.
+func noteEach(decls map[string]*member, es []ast.Expr, at string, h how) {
+	for _, e := range es { // bounded by the expression list (P10-02)
+		if m := decls[typeNameOf(e)]; m != nil {
+			h(m, at)
+		}
+	}
+}
+
 // typeNameOf is the bare identifier an expression names, ignoring a package
 // qualifier and a pointer. "" when it names none.
+// A LOOP, NOT RECURSION (P10-01), and a COUNTED one (P10-02). Every iteration
+// strips exactly one pointer; the bound says how many, where it can be seen,
+// rather than resting on "an expression has finite depth" two files away.
 func typeNameOf(e ast.Expr) string {
-	switch v := e.(type) {
-	case *ast.Ident:
-		return v.Name
-	case *ast.SelectorExpr:
-		return v.Sel.Name
-	case *ast.StarExpr:
-		return typeNameOf(v.X)
+	for range maxPointerDepth { // an EXPLICIT bound, not a condition (P10-02)
+		switch v := e.(type) {
+		case *ast.Ident:
+			return v.Name
+		case *ast.SelectorExpr:
+			return v.Sel.Name
+		case *ast.StarExpr:
+			e = v.X
+		default:
+			return ""
+		}
 	}
 	return ""
 }
+
+// maxPointerDepth is how many pointers this will strip before giving up.
+//
+// EIGHT IS SLACK, NOT A GUESS: `**T` is already exotic in this tree and `***T`
+// appears nowhere in it. Past the bound the answer is "names none", which is
+// the safe direction — a member the walk cannot name is simply not counted,
+// and an uncounted member reports as unwired rather than as wired.
+const maxPointerDepth = 8
 
 // sortedKeys is a stable order for a set, so two runs read the same.
 func sortedKeys(m map[string]bool) []string {
