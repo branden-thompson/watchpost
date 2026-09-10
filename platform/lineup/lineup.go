@@ -133,6 +133,39 @@ func (l Lineup) Queue(t Track, c Card) (Lineup, error) {
 	return out, nil
 }
 
+// insertBefore puts a card immediately ahead of one the lineup already holds.
+//
+// ITS OWN MUTATOR, for the reason Reorder is one: `Queue` appends, and the
+// Director's transitions are the one thing that must land at a PLACE rather than
+// at the end. It takes the position from an identity rather than an index so no
+// caller has to hold a number the schedule may already have changed.
+func (l Lineup) insertBefore(t Track, id string, c Card) (Lineup, error) {
+	if err := invariant.Check(t >= 0 && t < numTracks, "a card is inserted onto one of the declared two tracks"); err != nil {
+		return l, err
+	}
+	if err := invariant.Check(c.State == Admitted, "the lineup holds admitted cards only"); err != nil {
+		return l, err
+	}
+	if err := c.check(); err != nil {
+		return l, err
+	}
+	_, _, taken := l.find(c.ID)
+	if err := invariant.Check(!taken, "no two cards in the lineup share an identity"); err != nil {
+		return l, err
+	}
+	at, _, held := l.find(id)
+	if err := invariant.Check(held && at == t, "a card is inserted ahead of one the track is holding"); err != nil {
+		return l, err
+	}
+	_, i, _ := l.find(id)
+	out := l.clone()
+	out.tracks[t] = slices.Insert(out.tracks[t], i, c)
+	if err := invariant.Check(len(out.tracks[t]) == len(l.tracks[t])+1, "inserting adds exactly one card"); err != nil {
+		return l, err
+	}
+	return out, nil
+}
+
 // held is how many cards the schedule is holding, on both tracks. It is what
 // bounds any walk over the schedule (P10-02).
 func (l Lineup) held() int {

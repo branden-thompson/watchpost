@@ -248,3 +248,66 @@ registry field instead of a convention.
 **What is NOT expressed is the type**, which is exactly what the 2026-09-05 note flagged: `CanBecome`
 still permits ON AIR → Discarded from anywhere.  **Narrowing it would be wrong** — `silenceTheProgramme`
 legitimately needs that edge — so the closure is a gate that walks the WRITERS, not a narrower type.
+
+---
+
+# D-46 — THE PROACTIVE REQUEST: `[shift+N]`, AND IT IS A REQUEST ORDER, NOT A CARD
+
+> *"`[shift+n]` 'New' — 'I want to insert a fire report into slot [3]' -> Opens a modal that allows the
+> operator to 'craft' what is effectively a 'request order' that the Producer will then use to propose
+> to the Director ('Hey, Operator wants fire report for Oceanside, CA 92057' <so
+> `Origin.fromOperator`>)"*
+
+**THE OPERATOR DOES NOT MAKE A CARD.  They make a REQUEST**, and the Producer turns it into a proposal —
+which keeps the role split intact at the one place it was most likely to be broken.  The operator's will
+enters as an order; what cards should exist is still the Producer's, and the running order is still the
+Director's.
+
+**Three things it carries**, each with a consequence already ruled:
+
+| The request carries | Consequence |
+|---|---|
+| a **kind** ("fire report") | **NO SLOT EXISTS FOR IT.**  The registry holds `LocationReport`, `SevereRead`, `BreakingAlert` and `Transition`, and says a slot nobody proposes is dead code (AP-DEAD-01).  D-31's card-types work |
+| a **subject** (Oceanside, CA 92057) | the fence guards it (DR-13), which is where the HUM LEAD put it: *"we should have guards so you can't do that in the first place"* |
+| a **target slot** ("slot [3]") | **LINE-UP space, not schedule space** (D-44) |
+
+**AND IT IS EXPLICITLY HELD FOR UAT** (HUM LEAD): *"I'm not sure if there's any other use-case AT THE
+MOMENT, this will likely need some UAT once the UI is built and I want to actually 'run it'."*  So the
+mechanism is designed now and the shape is not frozen.
+
+---
+
+# D-47 — ORIGIN IS A TERM IN THE RANKING, NOT A TRUMP — AND THAT IS WHAT "IN DOUBT" MEANS
+
+**This resolves a collision between D-41 and the HUM LEAD's own example.**  D-41 says `FromOperator`
+*"automatically gets a higher rank."*  But:
+
+> *"it's a low priority read (station credits) but we're due for a location report because we haven't
+> had one in a while in the line-up, so the Director may say — 'cool, I hear you, but it's been <6
+> minutes> since we've done a location report, so I'm gonna choose that **unless you absolutely tell me
+> not to**.'"*
+
+**Both hold only if origin is a TERM rather than a trump**, and the HUM LEAD's own last clause says so.
+So a request carries an **insistence**:
+
+| Level | The Director | |
+|---|---|---|
+| **Requested** (default) | origin is a strong term; **cadence can outrank it** | **and THIS is D-40's "when in doubt" — the choice modal belongs exactly here** |
+| **Insisted** | does not choose.  It places it | *"unless you absolutely tell me not to"* |
+
+**That collapses three rulings into one mechanism.**  D-40's choice modal was a surfacing with no
+trigger; D-41 was a rank with no scale; the cadence rule was a criterion with nothing to weigh against.
+Together they are one ranking with a defined tie-break and a defined escalation.
+
+**THE COST, AND IT IS STRUCTURAL — see F-76.**  "It's been six minutes since a location report" is a
+question **nothing can answer today**.
+
+---
+
+# THE OPEN CONTENT QUESTION
+
+**What makes a join need something said?**  The mechanism is one function; the RULE is a HUM LEAD
+content ruling and is not yet made.  Candidates raised and not chosen: a change of origin, a change of
+subject, a report following an alert, elapsed time since the last transition.  Built with D-43's stated
+rule — *an operator-originated card is bookended* — as its initial content, because that is concrete,
+it is the HUM LEAD's own words, and it exercises all three of the leading/tailing/both cases.

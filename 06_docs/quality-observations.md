@@ -1590,3 +1590,19 @@ check, not the reverse.
 **The cheap detector is the plant.**  Neither guard was reachable by any test, in either direction, and
 no amount of reading would have said so: both LOOK load-bearing. Only deleting them and watching nothing
 happen settles it.
+
+**A third instance landed the same day**, in `between` — a `prev.Slot.structural() || next.Slot.structural()`
+branch whose mutant survived because the function is only ever asked about the RUNNING ORDER, which
+excludes structural cards by construction.  **It was resolved the other way, and that is the point of
+recording it**: it is a genuine PRECONDITION, so deleting it would have thrown away a real fact about the
+function.  It became an `invariant.Check` — a tripwire that fires if a second caller ever asks the
+question about the schedule instead of the line-up.
+
+**So the rule has two halves, and the plant alone does not tell you which applies:**
+
+- the surviving branch **duplicates another decision** → delete it, keep the better message (`t8`, `p3`);
+- the surviving branch **states a precondition the caller happens to satisfy** → make it an invariant
+  (`j10`).
+
+The question that separates them: *could a DIFFERENT caller make this false?*  If no, it is duplication.
+If yes, it is a precondition and the tripwire is what stops the next caller being the one who finds out.
