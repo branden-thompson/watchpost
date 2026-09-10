@@ -275,3 +275,52 @@ two releases with nothing ever constructing it.
 **And `Moved`, `Dropped` and `Restored` are ratified as owed to P4's UI half**, because the pure half
 deliberately does not invent the CONFIRM that FR-3.7 requires: a confirm is a console control, and
 inventing one here would be the surface deciding the operator's interaction from underneath.
+
+
+---
+
+# Built: the keymap and the STANDBY control, in ONE change (F-72 closed)
+
+**The sequencing constraint held, and it was the whole point of the row.**  `Router.keys` is assigned at
+construction — it never was, for a release — and `mastercontrol.GoToStandby` declares the state
+`canSwap`'s refusal points at.  Installing the keymap ALONE is what would have made the console a
+one-way door, and it would have surfaced as a different batch's bug.
+
+**`TestAnOperatorCanReachTheConsoleAndLeaveItAgain` drives the whole journey through the real key
+path:** arrive, be refused, use the control, leave.
+
+## MasterControl declares, and that sentence was written two releases ago
+
+`role-model.md` recorded the gap in as many words — *"Today: `app/mastercontrol` owns the band and the
+duck.  It does **not** own ON AIR / STANDBY"* — and MVS-D-78 said what should be true instead:
+**"MasterControl DECLARES ON AIR / STANDBY and everyone complies, the Director included."**
+
+`Power.OffAir` had **no producer for three releases**.  Its wires row went stale on this commit, the
+build went red, and it stayed red until the row was deleted.  **That row was RS-3 and F-72.**
+
+## The D-1 guard refused my first shape, and it was right
+
+The toggle needs to know whether the station is live, and reading the console's power made it a **second
+reader** of the swap precondition.  `TestThePowerPreconditionHasOneReaderInTheRouter` refused the commit:
+*"two carriers of one rule is the shape that produced the duck-lift bug."*
+
+**The guard was not narrowed.**  The question got a name — `stationIsLive` — and both askers go through
+it.  A gate that forces a better shape is worth more than one that is satisfied.
+
+## Two plants that survived, and both were the same shape
+
+| Plant | Why it survived |
+|---|---|
+| the router never stores its control | **the tests set the field directly** instead of delivering it by message, so they exercised the toggle and never the WIRE the toggle needs.  The fixture hands it over the way production does now |
+| — | the same shape as a stubbed seam: the test drives PAST the thing it claims to prove |
+
+## And a hang that only `go test ./...` could find
+
+The control is sent with `p.Send` from `startSchedule`, **which runs before the program's loop does** —
+so a synchronous send blocks forever, because the reader is the loop the caller returns to start.
+`TestRunWithoutArgsStartsTheDashboard` hung for the full ten-minute timeout.
+
+**Every gate I had been running was the three packages I touched.**  The hang is in `cmd/watchpost`,
+which none of my edits appear in.  **The package you changed is not the package that breaks**, and the
+fix was already the house pattern: `severeDeck` publishes from its own goroutine for exactly this
+reason.  Recorded in `quality-observations.md`.

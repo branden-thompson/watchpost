@@ -28,7 +28,6 @@ the direction of silence**, and silence here means an unwired member nobody is t
 
 | Member | Why it is unwired | The writer it awaits | Batch |
 |---|---|---|---|
-| `Power.OffAir` | nothing can produce STANDBY, so the state the swap gate points at is unreachable.  **This row IS RS-3 and F-72** | **MasterControl** — it *"declares ON AIR or STANDBY, and everyone complies, the Director included"*, reaching the Director as `Powered{To: OffAir}` from **FR-5.4**'s named control | **P5** |
 | `Event.Moved` | the operator promoting or demoting a card.  The event, the reorder mutator and FR-3.3's own mutant landed in P4's pure half; **the key that presses it is P4's UI half** | **the Operator, through the console** | **P4 (UI)** |
 | `Event.Dropped` | the operator taking a card out of the running order.  **Blocked on FR-3.7's CONFIRM**, which is a console control — the pure half deliberately does not invent one | **the Operator, through the console** | **P4 (UI)** |
 | `Event.Restored` | the operator's undo.  Same half, same block | **the Operator, through the console** | **P4 (UI)** |
@@ -45,6 +44,7 @@ the direction of silence**, and silence here means an unwired member nobody is t
 |---|---|---|
 | `Effect.Duck` | the Director, at P5 | the track-model batch: `givingWay()` decides it from state the Director already holds, and `settle` emits the change |
 | `Effect.Restore` | the Director, at P5 | the same commit — the pair is closed by construction, edge-triggered, so a drain of several cards dips once (MVS-D-67) |
+| `Power.OffAir` | MasterControl, at P5 | **P4's keymap-and-standby slice.**  `mastercontrol.GoToStandby` declares it and carries it to the Director — the sentence 0.14.0's role model left open, *"it does NOT own ON AIR / STANDBY"*, closing.  **This row WAS RS-3 and F-72** |
 | `Origin.FromOperator` | the Operator through the Producer, at P4 | **P4's pure half**: `onRestored` proposes a NEW card from the pile and attributes it to the human who put it back (FR-3.4).  It had existed for two releases with nothing ever constructing it |
 
 **`make wires` went red the moment they gained a writer**, named both rows as STALE EXEMPTIONS, and
