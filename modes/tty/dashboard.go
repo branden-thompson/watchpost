@@ -499,17 +499,30 @@ func (d Dashboard) tickNeeded() bool {
 	return d.anyLoading() // the shimmer (UAT 18.2b)
 }
 
+// armShimmer is THE shimmer-tick arming rule, for whichever surface asks (D-56).
+//
+// WHAT DIFFERS BETWEEN THE SURFACES IS THE PREDICATE, NOT THE ARMING. Observer
+// animates while something is loading; the console animates while a slot is
+// still waiting on the Director. Those are two questions with one answer about
+// what to do with the answer — so the question stays with each surface and this
+// is called with it.
+//
+// It was written out twice, once per surface, and the duplicate gate said so.
+func armShimmer(armed, needed bool, cmd tea.Cmd) (bool, tea.Cmd) {
+	if armed || !needed {
+		return armed, cmd
+	}
+	if cmd == nil {
+		return true, tick()
+	}
+	return true, tea.Batch(cmd, tick())
+}
+
 // armTick starts the shimmer tick when the frame needs one and none is in
 // flight — the shimmer twin of armViz. Called after every Update.
 func (d Dashboard) armTick(cmd tea.Cmd) (tea.Model, tea.Cmd) {
-	if d.tickArmed || !d.tickNeeded() {
-		return d, cmd
-	}
-	d.tickArmed = true
-	if cmd == nil {
-		return d, tick()
-	}
-	return d, tea.Batch(cmd, tick())
+	d.tickArmed, cmd = armShimmer(d.tickArmed, d.tickNeeded(), cmd)
+	return d, cmd
 }
 
 // vizTickMsg drives the visualizer (UAT 92): 20 frames a second, only while

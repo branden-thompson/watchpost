@@ -217,6 +217,7 @@ func (Broadcaster).notice
 func (Broadcaster).opts
 func (Broadcaster).priorityWidth
 func (Broadcaster).region
+func (Broadcaster).regionGap
 func (Broadcaster).section
 func (Broadcaster).sectionWidth
 func (Broadcaster).slotCard
@@ -514,6 +515,7 @@ func alertRecordLines
 func anyFocused
 func apiSummaryOf
 func applyIfChanged
+func armShimmer
 func bcRailLabel
 func blockHeight
 func broadcasterKeyMap

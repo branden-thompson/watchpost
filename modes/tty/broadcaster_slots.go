@@ -52,14 +52,8 @@ func (b Broadcaster) tickNeeded() bool {
 // armTick starts the shimmer when the frame needs one and none is in flight —
 // the console's own twin of the Dashboard's.
 func (b Broadcaster) armTick(cmd tea.Cmd) (Broadcaster, tea.Cmd) {
-	if b.tickArmed || !b.tickNeeded() {
-		return b, cmd
-	}
-	b.tickArmed = true
-	if cmd == nil {
-		return b, tick()
-	}
-	return b, tea.Batch(cmd, tick())
+	b.tickArmed, cmd = armShimmer(b.tickArmed, b.tickNeeded(), cmd)
+	return b, cmd
 }
 
 // slotRows is every slot in a region, decided or waiting.

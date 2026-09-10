@@ -404,7 +404,17 @@ func (b Broadcaster) lanes() []string {
 	}
 	order := []string{}
 	for _, r := range bcRegions {
-		order = append(order, b.region(r, main, lane)...)
+		rows := b.region(r, main, lane)
+		if len(rows) == 0 {
+			continue
+		}
+		// ONE BLANK ROW BETWEEN REGIONS (see regionGap) — never before the first
+		// or after the last, which would be air against the section above and
+		// below rather than between the regions it separates.
+		if len(order) > 0 {
+			order = append(order, b.regionGap())
+		}
+		order = append(order, rows...)
 	}
 
 	// AND THE PRIORITY TRACK IS COMPOSITED ON TOP OF IT (D-61).

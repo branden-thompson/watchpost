@@ -110,6 +110,7 @@ const severeLocW
 const severeMarksW
 const severeNumW
 const severeTimeW
+const sgrReset
 const stationColsW
 const statusGutter
 const tableGutter

@@ -214,6 +214,13 @@ func (d Director) admit(p Proposal) (Lineup, bool) {
 	if trackFor(p.Slot) != MainTrack {
 		return d.lineup, false
 	}
+	// AND A CARD THAT JUST FAILED IS NOT PUT STRAIGHT BACK (see retry.go). The
+	// producer offers what it always offers and cannot know a report would not
+	// compose a moment ago; the Director can, and this is the one place a
+	// proposal becomes a card.
+	if d.sittingOut(p.Ref) {
+		return d.lineup, false
+	}
 	// AND THE DIRECTOR'S OWN CARDS ARE NOT THE PRODUCER'S TO PROPOSE (D-43).
 	// Transitions are derived from the running order; one arriving as a proposal
 	// would be a second author of the same thing.

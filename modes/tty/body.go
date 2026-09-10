@@ -75,13 +75,18 @@ func (d Dashboard) headerRow(o render.Opts) string {
 // 2026-08-30): both are settings now, and both live in [s]. The bindings stay
 // live and both deep-link — [t] opens Settings at the theme picker, [M] at the
 // tone rows — so a listener who knows the keys still lands where the thing is.
+// THROUGH `o.Controls`, LIKE THE CONSOLE'S (one canonical way). The shape was
+// spelled out here by hand and spelled out AGAIN in the console — as string
+// literals with no chips at all, which is the UAT defect of 2026-09-10. Two
+// hand-built control rows are two chances to forget what a control looks like,
+// and one of them did. The output is unchanged.
 func (d Dashboard) headerControls(o render.Opts, form int) string {
-	base := o.KeyCap("s") + " Settings  "
-	tail := o.KeyCap("S") + " Status  " + o.KeyCap("?") + " Help  " + o.KeyCap("q") + " Quit"
+	items := []render.Control{render.Ctl("s", "Settings")}
 	if form == 0 {
-		return base + o.KeyCap("a") + " About  " + tail
+		items = append(items, render.Ctl("a", "About"))
 	}
-	return base + tail
+	items = append(items, render.Ctl("S", "Status"), render.Ctl("?", "Help"), render.Ctl("q", "Quit"))
+	return o.Controls("  ", items...)
 }
 
 // staleAfter is how long the stamp stays green after the last successful

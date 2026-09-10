@@ -107,6 +107,26 @@ func (b Broadcaster) section(label string, rows []string) []string {
 	return out
 }
 
+// regionGap is the blank row BETWEEN two named regions.
+//
+// THE REFERENCE LETS ITS SECTIONS BREATHE and this did not: every card in the
+// running order sat flush against the next, so LIVE, UP NEXT, SCHEDULED and
+// LINE UP read as one undifferentiated stack of boxes and the rail was the only
+// thing saying otherwise (HUM LEAD, UAT 2026-09-10: "the sections of the line up
+// are missing their blank row between the sections like the mocks").
+//
+// BETWEEN REGIONS, NEVER BETWEEN CARDS. Cards inside a region ARE consecutive in
+// the reference — a gap between every card would say each one is its own
+// section, which is the opposite of what the rail is for.
+//
+// IT KEEPS THE RAIL'S OWN WALLS, because it is a row of the frame like any
+// other: an unwalled blank row is a hole in the border, which is how the frame
+// came to look broken between the regions in the first place.
+func (b Broadcaster) regionGap() string {
+	g := b.opts().Glyphs()
+	return railColumn(" ", 1, g)[0] + strings.Repeat(" ", bcRailGap+b.cardBoxWidth())
+}
+
 // bcRailLabel is the widest form of a section's name that fits its height.
 //
 // THE LADDER IS PER LABEL because the abbreviation is a word, not an algorithm:
@@ -204,24 +224,30 @@ func (b Broadcaster) priorityWidth() int { return (b.cardBoxWidth() + 2) / 2 }
 // found and fixed once already.
 //
 // IT IS APPLIED TO THE WHOLE BODY, not per region, because the running order
-// scrolls as one thing. At the reference's 150 columns this puts the wall at
-// 144, the rail at 145 and the frame's edge at 149.
+// scrolls as one thing. At the reference's 150 columns this puts the rail at
+// 144 and the frame's edge at 149.
+//
+// THE WALL AND THE RAIL ARE ONE COLUMN, WHICH IS WHAT THE REFERENCE DRAWS. This
+// built them as two — a wall at 144 and a thumb at 145 — so the console carried
+// a column the mock does not have and everything right of the cards sat a cell
+// off (HUM LEAD, UAT 2026-09-10: "right hand lanes are off"). Counted off the
+// mock: an ordinary row ends `╯   │    │` and the thumb row `█    │`, the thumb
+// standing exactly WHERE the bar was. One column, two glyphs.
 func (b Broadcaster) framed(body []string, shown, total int) []string {
 	g := b.opts().Glyphs()
 	inner := make([]string, len(body))
 	for i, r := range body { // bounded by the body (P10-02)
-		inner[i] = r + "   " + g.Rail
+		inner[i] = r + "   "
 	}
-	// THE GUTTER IS BLANK EXCEPT FOR THE THUMB. `RailGlyphsFor` draws a BAR on
-	// every row, which is right for a window that has its own edge — here the
-	// inner wall is already at 144, and a bar beside it reads as a doubled
-	// border. The reference leaves the column empty and shows only the thumb.
+	// THE BAR IS THE WALL. `RailGlyphsFor` already draws one on every row, and
+	// that is the reference's own inner edge — an earlier version blanked it and
+	// drew a separate wall, which is how the extra column got in.
 	glyphs := render.RailGlyphsFor(b.ascii)
-	glyphs.Bar = " "
-	railed := render.Railify(inner, b.width-4, 0, max(total, 1), max(shown, 1), glyphs)
+	glyphs.Bar = g.Rail
+	railed := render.Railify(inner, b.width-5, 0, max(total, 1), max(shown, 1), glyphs)
 	out := make([]string, len(railed))
 	for i, r := range railed { // bounded by the body (P10-02)
-		out[i] = r + "   " + g.Rail
+		out[i] = r + "    " + g.Rail
 	}
 	return out
 }

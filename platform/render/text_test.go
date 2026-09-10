@@ -2,6 +2,8 @@ package render
 
 import (
 	"strings"
+
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 	"testing"
 )
 
@@ -80,6 +82,45 @@ func TestPlainDropsBidiAndZeroWidthAndTruncateCellsCountsCells(t *testing.T) {
 	}
 	if got := TruncateCells("abc", 10); got != "abc" {
 		t.Fatalf("short stays: %q", got)
+	}
+}
+
+// A CUT NEVER LANDS INSIDE AN ESCAPE SEQUENCE, and never counts one as content.
+//
+// THE UAT DEFECT THIS IS BUILT FROM (HUM LEAD, 2026-09-10): the console's
+// masthead read "WATCHPOS" and then stopped — no top border, no `Updated:`, no
+// API summary — and its colours CHANGED AS THE TERMINAL WAS RESIZED. One cause
+// for all of it: the frame clamps every row to the terminal's width through
+// this function, the wordmark carries a truecolor escape per rune, and the
+// escapes were counted as cells. So a 150-cell row was cut after ten visible
+// characters, THROUGH the middle of an escape — which the terminal then printed
+// as text and left the span open, so the tone bled and moved with the width.
+//
+// `Width` has always stripped ANSI. This is the other half of the same measure,
+// and the two disagreeing is what "one canonical way to do a thing" forbids.
+func TestTruncateCellsDoesNotCountOrCutEscapes(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	styled := Tint("abcdef", "31")
+	if Width(styled) != 6 {
+		t.Fatalf("precondition: Width already strips ANSI, got %d", Width(styled))
+	}
+	got := TruncateCells(styled, 6)
+	if StripSGRForTest(got) != "abcdef" {
+		t.Errorf("a row that already fits is not cut: %q", StripSGRForTest(got))
+	}
+	got = TruncateCells(styled, 3)
+	if StripSGRForTest(got) != "abc" {
+		t.Errorf("cut by CELLS, not bytes: %q", StripSGRForTest(got))
+	}
+	if strings.Contains(StripSGRForTest(got), "\x1b") {
+		t.Errorf("an escape survived the strip, so the cut landed inside one: %q", got)
+	}
+	// AND IT CLOSES WHAT IT OPENED. The frame pads to width after cutting, so a
+	// span left open paints the padding — which is the colour bleed the HUM LEAD
+	// saw travel as the window resized.
+	if !strings.HasSuffix(got, "\x1b[0m") {
+		t.Errorf("a cut inside a coloured span closes it: %q", got)
 	}
 }
 
