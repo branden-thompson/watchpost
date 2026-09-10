@@ -4,7 +4,7 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "REVERTED to the dark state on the HUM LEAD's instruction.  The approach question is OPEN and is the HUM LEAD's."
+status: "REVERTED to the dark state.  THE APPROACH QUESTION IS NOT OPEN — 0.14.0 answered it, and this document said otherwise until the record was read (2026-09-09)."
 ---
 
 # The flip did not work, and twenty gates were green over it
@@ -73,6 +73,32 @@ discipline applied again, answered by reading five live call sites with zero cod
 actual discipline is the opposite: **S0 RAN eight tests.**  Reading five call sites in one direction is
 not a spike.
 
+### 5. The file said not to, three lines above the edit
+
+`app/director.go`'s header has carried this since 0.14.0 shipped:
+
+> `// The broadcast itself (relay or synth) is not a narration: it is what gets`
+> `// ducked.`
+
+**`narrateRotation` was added directly beneath it**, in the same comment block, with a paragraph
+explaining that the rotation joining the class ladder needed *"a value here, not a mechanism
+anywhere."*  The file stated the rule being broken, in the block being edited, and the justification
+reads well.
+
+**This is the cheapest catch that was available and it needed no instrument at all.**  It is worth
+naming separately from the four causes above because those are about measurement, and this one is not:
+no test, plant or gate was required, only reading the paragraph the cursor was sitting in.
+
+### 6. The plants were shell loops, and shell loops evaporate
+
+**Forty-odd plants were run across this batch and not one entered the durable corpus.**
+`06_docs/mutants/` holds 172 mutation scripts that CI runs on every push; every P3 plant was an ad-hoc
+`for` loop in a terminal, verified once and gone.
+
+**A plant that is not in the corpus is a measurement that happened once.**  The next attempt at this
+batch inherits none of what these forty found, which is the same loss as not having run them — with the
+cost already paid.
+
 ### And the batch ran far too long between check-ins
 
 Between the ruling and the reviewer's report: **five commits and roughly two thousand lines**, with no
@@ -90,6 +116,21 @@ HUM LEAD named this before the blockers were known.
 | **P-5** | **A "costs nothing" claim over a call chain must trace BOTH directions** — the take and the give-back — or it is not a measurement | cause 4 |
 | **P-6** | **RUN IT once before asking for a ruling on a shape.**  Reading is not a spike; S0 ran tests | cause 4 |
 | **P-7** | **Check in when the shape is proven, not when the batch is finished.** | the cadence |
+| **P-8** | **Read the release that built the seam before wiring it.**  The disposition sheet says Absorb, Instruct or Leave alone, item by item, and it is written to be honoured or overturned — not skipped | cause 5, and the whole flip |
+| **P-9** | **Read the paragraph the cursor is in.**  Adding a member to a closed set means re-reading the set's own header rule first | cause 5 |
+| **P-10** | **A plant worth running is worth keeping.**  Anything that CAUGHT a real rule goes into `06_docs/mutants/`, or it was a measurement that happened once | cause 6 |
+
+**And the SYSTEMIC fix already has a name, a design, and no implementation.**  0.14.0's debrief:
+
+> *"**The wire is not pinned.**  A rule implemented and pinned in one layer, not carried by the layer
+> that would deliver it.  … **Nine instances in one release.**  Round 3's proposed answer — **a
+> producer/consumer completeness check over the closed sets** — is still unbuilt and is the single
+> highest-value thing 0.15.0 could inherit."*
+
+**This failure is another instance of it, and the check would have caught two of the four blockers
+before a line was written.**  `Duck` and `Restore` are declared with **no producer**; `narrateRotation`
+was added to a closed set with **no check that its consumers could handle it**, and its consumers are
+`admit`'s give-way and `giveWayLocked` — the two things that broke.
 
 **Every one of these is a rule I had already written down somewhere.**  `quality-observations.md`, in a
 commit made the SAME DAY, names *"a gate that watches the STATE and not the WORK"* three times and says
@@ -98,15 +139,63 @@ instance, committed hours after writing the rule.**  Knowing a shape and being u
 it are different skills, and the instrument is what closes the gap — which is the argument for P-1 and
 P-4 being gates rather than habits.
 
-## The open question, and it is the HUM LEAD's
+## The question I called open was answered in 0.14.0
 
-**Was the arbiter the right approach at all?**
+**I wrote that choosing the approach was a SEV-0 ruling still owed.  It was ruled on 2026-09-01 and the
+answer is in three lines of the record.**  Reading them was the whole of what was needed, and it is the
+fifth cause: I did not read the release that built the seams I was wiring.
 
-The arbiter's model is *"a narration speaks OVER the bed"*.  **The rotation is not a narration over the
-bed — it IS the bed.**  Blocker 1 is that mismatch expressed as a duck; blocker 4 is the same mismatch
-expressed as a lane.  Both shapes — A and B — put the rotation through a mechanism built for
-interruptions.
+**BD-9** — `multi-voice-support/04-development/director-build-log.md:809`:
 
-**That question is not answered here, deliberately.**  What this document owes is the account of the
-failure and the process changes; choosing the approach is a SEV-0 architecture ruling, and the last one
-was asked for on the strength of half a trace.
+> *"A report's speak is **the engine Source adapter** — which **IS** the main-track absorb."*
+
+**The charter's disposition sheet** — `multi-voice-support/01-objectives/director-charter.md:172-173`:
+
+> `radioDeck.tune`, `SetMode`, `followMount`, **`startSynth`** — **Instruct**
+>
+> `engine.Suppress` / `Restore` / `giveWayLocked` — *"How the broadcast gives way — **dip for a relay,
+> hold for a report**"* — **Instruct.  The Director says an alert is on air; the engine decides how to
+> yield from the source kind.  **Already the right shape.***
+
+**The deferred end state** — `director-build-log.md:1086`:
+
+> *"**The Director owns all ducking** — the arbiter stops dipping entirely.  **Rejected FOR NOW, and it
+> is the end state.**  … It arrives when everything reads through the Director (T3.2+)."*
+
+### What those three say, together
+
+| | The ruled design | What the flip did |
+|---|---|---|
+| what plays a report | **the engine Source**, with `Speak` as an ADAPTER over it | the narration `speaker`, clip by clip |
+| where `startSynth` goes | **nowhere — Instruct.**  It stays and is told what to do | deleted |
+| who decides the give-way | **the engine**, from the source kind, re-read every tick | the arbiter, once, at admit |
+| who owns the duck eventually | **the Director**, when everything reads through it | unchanged, and asked for the programme |
+
+**"Instruct" is the disposition for a thing that stays where it is.**  Two of the four items I moved or
+deleted were marked Instruct in a sheet written to be honoured or overturned item by item.  I did
+neither: I did not read it.
+
+### And the give-way design I proposed had already been rejected, in a comment recording its cost
+
+`app/radio.go:666-667`:
+
+> *"WHICH WAY the broadcast gives way — a relay dips, a rendered cycle holds — is the engine's, because
+> only the engine knows what is playing at each moment and the source can change while the alert is
+> still reading.  **Asking the deck's mode here fixed an answer the audio could outlive.**"*
+
+The engine re-reads the source kind **every 50 ms tick**, so the answer follows the audio: a relay that
+falls back to synth mid-alert stops dipping and starts holding, by itself.  **Any design that asks
+"which rail is chosen" once, at the start, is the shape that comment was written against.**
+
+## So the approach is not open.  What is open is smaller, and it is P5's
+
+`Duck` and `Restore` are declared effects with working executors and **no producer**, and their own
+comment says why: *"the Director gains it with the main-track absorb (T3.2)."*  The end state is the
+Director emitting them.  Reaching it needs the one thing the record says is genuinely missing — and it
+is already written down twice:
+
+- `rulings-d11-d18.md:53-56`: a paused main track *"is a **fourth condition** the `Power` enum does not
+  yet express."*
+- **FR-5.6**: *"A paused main track is a distinct condition from STANDBY."*
+
+**That is blocker 4, and it is P5's batch, not a new discovery.**
