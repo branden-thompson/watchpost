@@ -390,9 +390,22 @@ func (b Broadcaster) stationLine() []string {
 // produced "…(COASTAL)D•" — a centred title can fit by length and still collide
 // by POSITION. Here that is structural rather than policed.
 type cardLane struct {
-	row  *components.DataTableRow
-	lane int
-	g    render.Glyphs
+	row *components.DataTableRow
+	// marked is the same row with a leading, NON-TRUNCATABLE column for the
+	// fabricated-event mark (D-55). TWO ROWS RATHER THAN ONE, because a fixed
+	// column present on every card would reserve its width on every card — the
+	// real hazards would all sit 14 cells off-centre to make room for a label
+	// they never carry.
+	//
+	// IT IS A COLUMN AND NOT `SetPrefix` BECAUSE THE COMPONENT DOES NOT RENDER
+	// ONE ON DATA ROWS. `SetPrefix` is accounted for in the width calculation
+	// (`prefixWidth`, data_table_row.go:521) and written only by `RenderHeader`
+	// — so a prefix set here reserved its space and printed nothing, which the
+	// test caught. Recorded as an M6 upstream candidate rather than patched
+	// locally: the dependency is not re-implemented, and the gap goes home.
+	marked *components.DataTableRow
+	lane   int
+	g      render.Glyphs
 }
 
 // newCardLane prepares the renderer for a lane of the given width.
@@ -400,30 +413,77 @@ func newCardLane(lane int, g render.Glyphs) cardLane {
 	if lane <= 0 {
 		return cardLane{lane: 0, g: g}
 	}
-	return cardLane{lane: lane, g: g, row: components.NewDataTableRow(lane, []components.ColumnDefinition{{
+	headline := components.ColumnDefinition{
 		Name:              "headline",
 		Fill:              true,
 		Alignment:         "center",
 		Truncatable:       true,
 		TruncatedMinWidth: 8,
 		TruncationTail:    g.Ellipsis,
-	}})}
+	}
+	mark := components.ColumnDefinition{
+		Name:  "mark",
+		Width: render.Width(testEventMark),
+		// NEVER TRUNCATABLE. A half-eaten mark is worse than none: "**TEST EV…"
+		// beside a tornado warning reads as damage rather than as a label.
+		//
+		// FALSE IS THE ZERO VALUE, so this line is documentation with syntax and
+		// its mutant SURVIVES BY DESIGN — the component never needs to shrink
+		// this column at any width the row can be built at, because the fill
+		// column absorbs the squeeze first. It is stated because the guarantee
+		// belongs to a dependency whose sizing this package does not own, and
+		// the backstop below is what actually enforces the rule.
+		Truncatable: false,
+	}
+	return cardLane{
+		lane: lane, g: g,
+		row:    components.NewDataTableRow(lane, []components.ColumnDefinition{headline}),
+		marked: components.NewDataTableRow(lane, []components.ColumnDefinition{mark, headline}),
+	}
 }
 
 // render is one card as the operator reads it.
 func (l cardLane) render(c lineup.Card, handle, badge string) string {
-	if l.row == nil {
+	// Both rows are built together, so one guard answers for both.
+	if l.row == nil || l.marked == nil {
 		return ""
+	}
+	// THE HEADLINE, NOT THE SUBJECT. The headline is what the card is ABOUT in
+	// the words a person reads; the subject is its key.
+	data := map[string]string{"headline": kindFirst(plaintext.Text(c.Headline), l.lane, l.g)}
+	row := l.row
+	if c.Test {
+		// A FABRICATED TAKEOVER SAYS SO, AND SAYS IT FIRST (FR-4.4, D-55).
+		//
+		// THE SAME MARK THE BAND AND THE SEVERE WINDOW USE — one constant, so
+		// the three surfaces cannot come to say different things about one
+		// event. It is its own NON-TRUNCATABLE column (see newCardLane), so the
+		// headline's truncation can never eat it.
+		row, data["mark"] = l.marked, testEventMark
 	}
 	// THE BADGE AND THE HANDLE TRAVEL AS ONE right-anchored unit, which is how
 	// the reference draws them: two cells apart, the handle outermost. Every
 	// badge in the set is the same width, so the space the row reserves for one
-	// is the space it reserves for all — the cards stay aligned down the lane.
-	l.row.SetBadge(l.g.Bullet+badge+l.g.Bullet+"  [ "+handle+" ]", 2)
-	// THE HEADLINE, NOT THE SUBJECT. The headline is what the card is ABOUT in
-	// the words a person reads; the subject is its key.
-	out := l.row.RenderRow(map[string]string{"headline": kindFirst(plaintext.Text(c.Headline), l.lane, l.g)})
-	return render.PadTo(render.TruncateCells(out, l.lane), l.lane)
+	// is the space it reserves for all — the cards stay aligned down the lane,
+	// marked and unmarked alike.
+	row.SetBadge(l.g.Bullet+badge+l.g.Bullet+"  [ "+handle+" ]", 2)
+	out := render.PadTo(render.TruncateCells(row.RenderRow(data), l.lane), l.lane)
+	// A CARD THAT CANNOT BE LABELLED HONESTLY IS NOT DRAWN AT ALL (D-55).
+	//
+	// THE CLAMP ABOVE RUNS AT EVERY WIDTH, INCLUDING BELOW THE FLOOR, and a
+	// test caught it chopping the mark into "**TEST E" — the one output that is
+	// worse than no mark, because a reader takes a broken label for rendering
+	// damage and the warning beside it for real. Dropping the row is the safe
+	// direction: a fabricated takeover drawn WITHOUT its mark is the screenshot
+	// hazard itself, so the only remaining choice is to draw nothing.
+	//
+	// It is unreachable in a supported configuration — below 100 columns the
+	// console renders its notice and never reaches a card (D-50) — which is
+	// exactly why it is a check and not a layout.
+	if c.Test && !strings.Contains(out, testEventMark) {
+		return ""
+	}
+	return out
 }
 
 // kindFirst drops the card's KIND before it touches the subject.

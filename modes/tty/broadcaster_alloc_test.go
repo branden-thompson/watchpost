@@ -54,7 +54,21 @@ const (
 	//
 	// Building the row once per FRAME rather than once per card was tried and
 	// saved 5 of the 51: the cost is inside RenderRow, not construction.
-	bcFrameAllocs = 65
+	// RE-PINNED TO 72 AT D-55: the lane now builds a SECOND row, with a leading
+	// non-truncatable column for the fabricated-event mark. Two rows rather than
+	// one because a fixed column present on every card would reserve its width
+	// on every card — every real hazard would sit 14 cells off-centre to make
+	// room for a label it never carries.
+	//
+	// +7 FOR THE WHOLE FRAME, not per card: the second row is built once in
+	// `newCardLane`, and the per-card cost is unchanged.
+	//
+	// NOT OPTIMISED, ON THE HUM LEAD'S STANDING RULING (D-53): "we never over
+	// optimize on theoretical software … Attempting to do that now would not
+	// only be too soon, but may corner us and make intended functionality
+	// hard-to-impossible." Measure it, record it, surface the number, keep
+	// building.
+	bcFrameAllocs = 72
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

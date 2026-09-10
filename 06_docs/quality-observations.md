@@ -1639,3 +1639,25 @@ wiring has no test.
 `go test ./app` at ~95 s. Re-running them against the NEW tests with `-run TopsTheLineUpOff|ShareOneIdentity`
 took seconds. **Plants should target the tests that are supposed to catch them** — a full-package run
 per plant prices the technique out of the habit it needs to be.
+
+
+---
+
+## Re-examining a safeguard found the gap the NEW surface opened (0.16.0 P4)
+
+**The HUM LEAD proposed removing the production/diagnostic binary split**, on the grounds that every
+surface now labels a fabricated alert `**TEST EVENT**` and the audio says "this is only a test" four
+times over.  **The premise was true for every surface that existed when those safeguards were written —
+and false for the one this release added.**
+
+**`Card` had no `Test` field at all.**  `Arrival.Test` reached `selectBurst`'s ordering and nowhere
+else, so the console drew a fabricated takeover as an ordinary one.
+
+**THE SHAPE TO KEEP: a safeguard implemented PER SURFACE has to be re-audited every time a surface is
+added**, and nothing reminds you.  The band, the severe window and the audio each mark independently;
+adding a fourth reader of the same data added a fourth place the mark had to be, and no gate could see
+that it was missing because there was no data on the card to be missing.
+
+**The cheap detector is the question, not a tool:** when a rule is enforced at RENDER time on N
+surfaces, ask what happens on surface N+1 — and prefer carrying the FACT as data on the value everyone
+reads, so a new surface inherits the question instead of silently answering it wrong.
