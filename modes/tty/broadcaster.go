@@ -71,6 +71,14 @@ type Broadcaster struct {
 	// standbySince is when the station last went silent. Zero while it is not.
 	standbySince time.Time
 
+	// frame is the shimmer's animation phase, and tickArmed keeps exactly one
+	// tick in flight (D-64). ITS OWN, NOT THE DASHBOARD'S: Observer arms its
+	// tick only while IT needs one, and the console needs one whenever a slot
+	// is still waiting on the Director — two different predicates, so a shared
+	// arm would leave whichever surface asked second without an animation.
+	frame     int
+	tickArmed bool
+
 	// version is the build's, inherited from the Dashboard the Router was
 	// built over — the same reason `ascii` is (NewRouter): two surfaces
 	// disagreeing about which build this is would be one fact with two
@@ -160,7 +168,12 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 	// masthead — so both are told, whichever one is on screen.
 	if v, ok := msg.(SnapshotMsg); ok && v.Snap != nil {
 		b.snap = v.Snap
-		return b, nil
+		return b.armTick(nil)
+	}
+	if _, ok := msg.(tickMsg); ok {
+		b.tickArmed = false
+		b.frame++
+		return b.armTick(nil)
 	}
 	switch v := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -206,7 +219,7 @@ func (b Broadcaster) View() tea.View {
 // opts is the console's render options — one owner, so a glyph decision is
 // made in one place rather than at every call site.
 func (b Broadcaster) opts() render.Opts {
-	return render.Opts{Width: b.width, ASCII: b.ascii}
+	return render.Opts{Width: b.width, ASCII: b.ascii, Frame: b.frame}
 }
 
 // minSize is the floor below which the console refuses to draw (FR-7.3).
@@ -413,12 +426,6 @@ func (b Broadcaster) lanes() []string {
 	// whatever the priority track composited onto it — the scroll rail belongs
 	// to the running order as a whole, not to any one region of it.
 	body := b.withPriority(order)
-	// AN EMPTY LINE-UP STILL SAYS SO, AND SAYS IT BELOW THE OVERLAY. It was
-	// drawn into the order itself, so a takeover composited straight over the
-	// one row that explains why the rest is empty.
-	if len(main) == 0 {
-		body = append(body, b.section("LINE UP", []string{render.PadTo("  (nothing scheduled)", b.cardBoxWidth())})...)
-	}
 	// AND THE FRAME RUNS THE FULL HEIGHT OF THE TERMINAL. It stopped at the last
 	// drawn row, so a station with a short line-up showed a fragment floating in
 	// black — the reference carries its walls to the bottom, and a frame that
@@ -486,16 +493,14 @@ func (b Broadcaster) withPriority(order []string) []string {
 	return spliceAt(out, rows, bcPriorityCol)
 }
 
-// region draws one of them, or nothing when the line-up has not reached it.
+// region draws one of them — EVERY slot it holds, decided or waiting (D-64).
+//
+// IT NO LONGER STOPS AT THE LAST DECIDED CARD. A region that drew nothing until
+// the Director had chosen showed an empty frame on first launch, which is what
+// the HUM LEAD found: "if I was a user who came upon this, I would not expect
+// this to be working."
 func (b Broadcaster) region(r bcRegion, cards []lineup.Card, lane cardLane) []string {
-	if r.from >= len(cards) {
-		return nil
-	}
-	rows := []string{}
-	for i := r.from; i < min(r.upto, len(cards)); i++ { // bounded by the window (P10-02)
-		rows = append(rows, lane.box(cards[i], strconv.Itoa(i), "STANDARD")...)
-	}
-	return b.section(r.label, rows)
+	return b.section(r.label, b.slotRows(r, cards, lane))
 }
 
 // bcGainCells is the gain bar's width, from the reference mock: thirty cells,

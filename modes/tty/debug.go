@@ -244,6 +244,14 @@ func (d Dashboard) chooseDebug() (Dashboard, tea.Cmd) {
 	}
 }
 
+// ModalOpen reports whether ANY of Observer's windows is showing (D-65).
+//
+// GENERALISED FROM DiagnosticsOpen. The console advertises Settings, About,
+// Status and Help in its masthead, and the Router composites whichever the
+// operator opened — one door for every window rather than a method per window,
+// which is what a second `OverlayAbout` would have become.
+func (d Dashboard) ModalOpen() bool { return d.modal != modalNone }
+
 // DiagnosticsOpen reports whether the ctrl+d window is showing (D-58).
 //
 // EXPORTED FOR THE ROUTER, which composites this window over the console. It is
@@ -252,8 +260,8 @@ func (d Dashboard) chooseDebug() (Dashboard, tea.Cmd) {
 // exists.
 func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
 
-// OverlayDiagnostics lays the ctrl+d window — and its confirmation — over
-// another surface's frame (D-58).
+// OverlayDiagnostics lays whichever of Observer's windows is open — and its
+// confirmation — over another surface's frame (D-58, generalised at D-65).
 //
 // IT TAKES THE BASE RATHER THAN RETURNING A PRE-COMPOSITED PAIR, and that is a
 // CORRECTNESS requirement, not a style choice. `render.Overlay` centres the
@@ -271,7 +279,7 @@ func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
 // `Dashboard.View` does with them and why it never had this bug. Keeping that
 // rule in one place is the point of the seam (D-56).
 func (d Dashboard) OverlayDiagnostics(base string, termWidth int) string {
-	if !d.DiagnosticsOpen() {
+	if !d.ModalOpen() {
 		return base
 	}
 	o := d.layout().o
