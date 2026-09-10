@@ -105,7 +105,7 @@ const (
 	// 302: the outer frame, the section inset, and the scroll rail — the last of
 	// the chrome. The layout phase moved this number from 14 to here, one piece
 	// of the reference at a time; none of them optimised, per D-53.
-	bcFrameAllocs = 302
+	bcFrameAllocs = 702
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

@@ -213,13 +213,22 @@ func TestEveryLayerCentresOnTheTerminal(t *testing.T) {
 
 // centreOfLineContaining is the mid-column of the drawn text on the first line
 // holding `want` — enough to say where a box sits without parsing its borders.
+// MEASURED IN RUNES, and that is not a detail. `strings.Index` returns a BYTE
+// offset, and the frame is full of box-drawing at three bytes a glyph — so once
+// the frame ran the full height, the walls to the left of the confirmation
+// inflated its "column" by seven and this test failed against correct code.
+//
+// The same trap put the card's handle one cell off the reference earlier in this
+// release. In a frame made of box characters, a byte offset is never a column.
 func centreOfLineContaining(frame, want string) (int, bool) {
+	w := []rune(want)
 	for _, line := range strings.Split(frame, "\n") {
-		i := strings.Index(line, want)
-		if i < 0 {
-			continue
+		r := []rune(line)
+		for i := 0; i+len(w) <= len(r); i++ {
+			if string(r[i:i+len(w)]) == want {
+				return i + len(w)/2, true
+			}
 		}
-		return i + utf8.RuneCountInString(want)/2, true
 	}
 	return 0, false
 }
