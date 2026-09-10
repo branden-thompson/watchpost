@@ -136,6 +136,23 @@ type slotRow struct {
 	// from, so it gets a field.
 	structural bool
 
+	// announced marks a kind that does NOT introduce itself, so the listener is
+	// told what is coming — "please standby for station identification" (D-49).
+	//
+	// MVS-D-80'S REASON, GENERALISED. It rules that a transition does not fire
+	// location-to-location "because the location scripts already announce their
+	// location", which makes self-announcement the property that matters, and a
+	// property of the KIND rather than of a pair.
+	//
+	// NOTHING SETS IT YET, deliberately: station credits will, and credits have
+	// no slot until D-31. A rule nobody has made is not a rule.
+	announced bool
+
+	// handsBack marks a kind that INTERRUPTED the programme, so the listener is
+	// handed back when it ends — "we now return to our regularly scheduled
+	// programming" (MVS-D-80).
+	handsBack bool
+
 	// textAtStandby marks a slot whose words are composed as the card nears the
 	// air (DR-7), rather than when it is proposed. Reports go this way: a report
 	// composed at admission says what the weather was when it was queued, not
@@ -155,7 +172,7 @@ func slots() [numSlots]slotRow {
 	return [numSlots]slotRow{
 		LocationReport: {label: "Location Report", textAtStandby: true},
 		SevereRead:     {label: "Severe-event Read", alertRead: true, textAtStandby: true},
-		BreakingAlert:  {label: "Breaking Alert", alertRead: true, textAtStandby: true},
+		BreakingAlert:  {label: "Breaking Alert", alertRead: true, textAtStandby: true, handsBack: true},
 		Transition:     {label: "Transition", structural: true},
 	}
 }
@@ -202,6 +219,19 @@ func (s Slot) CountsAgainstMax() bool {
 func (s Slot) structural() bool {
 	r, ok := s.row()
 	return ok && r.structural
+}
+
+// announced reports whether the listener is told this kind is coming.
+func (s Slot) announced() bool {
+	r, ok := s.row()
+	return ok && r.announced
+}
+
+// handsBack reports whether the listener is handed back to the programme when a
+// card of this kind ends.
+func (s Slot) handsBack() bool {
+	r, ok := s.row()
+	return ok && r.handsBack
 }
 
 // textAtStandby reports whether this slot's words are composed as it nears the

@@ -133,13 +133,14 @@ func (l Lineup) Queue(t Track, c Card) (Lineup, error) {
 	return out, nil
 }
 
-// insertBefore puts a card immediately ahead of one the lineup already holds.
+// insertBeside puts a card immediately ahead of or behind one the lineup already
+// holds.
 //
 // ITS OWN MUTATOR, for the reason Reorder is one: `Queue` appends, and the
 // Director's transitions are the one thing that must land at a PLACE rather than
 // at the end. It takes the position from an identity rather than an index so no
 // caller has to hold a number the schedule may already have changed.
-func (l Lineup) insertBefore(t Track, id string, c Card) (Lineup, error) {
+func (l Lineup) insertBeside(t Track, id string, c Card, before bool) (Lineup, error) {
 	if err := invariant.Check(t >= 0 && t < numTracks, "a card is inserted onto one of the declared two tracks"); err != nil {
 		return l, err
 	}
@@ -158,6 +159,9 @@ func (l Lineup) insertBefore(t Track, id string, c Card) (Lineup, error) {
 		return l, err
 	}
 	_, i, _ := l.find(id)
+	if !before {
+		i++
+	}
 	out := l.clone()
 	out.tracks[t] = slices.Insert(out.tracks[t], i, c)
 	if err := invariant.Check(len(out.tracks[t]) == len(l.tracks[t])+1, "inserting adds exactly one card"); err != nil {

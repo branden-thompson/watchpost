@@ -222,6 +222,21 @@ type Settings struct {
 	// stop the Director choosing — see cadence.go: the term answers zero for
 	// everything, and zero for everything discriminates nothing.
 	WeighLastRead bool
+
+	// ProgrammeReturn is what the listener is told when something that
+	// interrupted the programme ends — "Watchpost Radio now returns to its
+	// regularly scheduled programming" (MVS-D-80). Announcement is the other
+	// half: what they are told before a kind that does not introduce itself.
+	//
+	// THE WORDS ARE NOT THE DIRECTOR'S. It owns ARRANGEMENT; the script library
+	// owns CONTENT, which is the S-7 boundary T-3 draws. These are composed by
+	// the app from `transition/resume.txt` and handed in, so the sentence has
+	// ONE owner and the Director never invents one.
+	//
+	// EMPTY MEANS SAY NOTHING, and that is the degradation: a station that
+	// speaks a line nobody wrote is worse than one that simply moves on.
+	ProgrammeReturn string
+	Announcement    string
 }
 
 // Burst is one planned takeover: what is read, in order, and how much was not.

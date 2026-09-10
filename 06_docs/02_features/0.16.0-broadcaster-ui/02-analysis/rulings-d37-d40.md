@@ -371,3 +371,80 @@ proposal, `Proposal` carries none, and `check` refuses a wordless transition).
 **STILL NOT BUILT, and deliberately:** the ORIGIN term and the INSISTENCE levels from D-47.  Neither has
 a producer until D-46's request order exists, and a closed-set member with no writer is what the wires
 gate refuses.
+
+---
+
+# D-49 — THE TRANSITION RULE IS A PROPERTY OF THE KIND, AND MVS-D-80 ALREADY RULED IT
+
+**I built the wrong rule first, and the record already had the right one.**  An arm fired on
+`Origin == FromOperator` and spoke words I invented.  **MVS-D-80** (HUM LEAD 2026-09-05,
+`follow-ups.md` F-27):
+
+> Fires when **something that INTERRUPTED THE PROGRAMME leaves the air and the programme resumes**: an
+> alert takeover, and a `[w]` read including one cut short by `[esc]`.  Does **NOT** fire
+> location-to-location — *"the location scripts already announce their location"* — nor between alerts
+> inside a burst.
+
+**And the words were already written and pinned** (`a3c495b`): `transition/resume.txt`, plus
+`transition/masthead.txt` (F-24).  `app/transition.go` carries `programmeReturnLine` and `mastheadLine`,
+both complete, both with zero production callers.  **My arm also fired location-to-location**, which
+**S-5** independently calls *"jarring to a listening audience"*.
+
+## The HUM LEAD's re-reading of D-43, which is what unlocked it
+
+> *"It does not necessarily need transitions — it was an example to show the function of the DIRECTOR
+> understanding how a card fits into the line-up and to determine appropriately if a card actually
+> requires a transition or not."*
+
+**So origin is not the trigger.  THE KIND IS** — and MVS-D-80's own reason generalises into the rule:
+
+| Row | Means | Set by |
+|---|---|---|
+| **`announced`** | this kind does NOT introduce itself, so the listener is told what is coming | **nothing yet** — station credits will, and credits have no slot until D-31 |
+| **`handsBack`** | this kind INTERRUPTED the programme, so the listener is handed back after it | **`BreakingAlert`** |
+
+**Adding an inter-card card is therefore a ROW**, which is the requirement in the HUM LEAD's own words:
+*"the system needs to be flexible enough that adding additional transition or inter-card cards is low
+cost, and doesn't require a complete rewiring."*
+
+## The words are not the Director's
+
+**It owns ARRANGEMENT; the script library owns CONTENT**, which is the S-7 boundary T-3 draws.
+`Settings.ProgrammeReturn` and `Settings.Announcement` are handed in by the app from the script library,
+so the sentence has ONE owner and the Director never invents one.  **Empty means say nothing** — a
+station that speaks a line nobody wrote is worse than one that moves on.
+
+## A failing test moved the design, and F-27 had already said where
+
+The hand-back is minted **while the interrupting read is still ON AIR**, not at admission.  F-27's design
+note asks for exactly that — *"enqueue it while the interrupting read is still on air … the hazard to
+design against is the DUCK-BOUNCE"* — and it also **tells "read" from "never played" with no stored
+association**: a takeover dropped before it aired never had a hand-back to strand.  The first attempt
+minted it at admission, and a dropped takeover left a stray *"we now return to our regularly scheduled
+programming"* with nothing before it.
+
+## PLACEMENT — RE-OPENED, AND FLAGGED FOR RATIFICATION
+
+**MVS-D-80 placed the transition "at the duck"** in `mastercontrol`, because the lift *"is the one point
+that sees the takeover, the `[w]` read and the relay ALIKE."*  **With the relay case ruled out of scope**
+(HUM LEAD 2026-09-10), two of those three are cards — and T-3 says inter-card transitions ARE cards,
+where the Director can adjust and remove them.  So the takeover's hand-back is **a card at the end of the
+rail**.  If that is wrong it costs one registry row, which is what the design was for.
+
+## Two plants survive, and both are named rather than hidden
+
+- **the lead arm is unexercised in production** — nothing sets `announced`, so a mutation to where a
+  lead is placed changes nothing observable.  `insertBeside`'s two sides are pinned directly instead,
+  which is what stops `before` silently meaning "after".  It closes when credits get a slot.
+- **the on-air guard in the prune is equivalent FOR TAILS** — a hand-back at the head is kept by the
+  position rule anyway.  It is a live precondition for the LEAD path, which has no row, so it stays.
+
+## Also settled
+
+**T-3's visibility clause is superseded.**  `lineup-model.md:229` said a transition needs a slot *"where
+the Operator can see and drop it"*; `role-model.md:72` says the operator *"never manages transitions"*,
+and the HUM LEAD confirmed 2026-09-10: *"Operator never deals with transitions, that's the Director's
+job.  The Operator manages the 'main cards' of the lineup (Report types, credits, etc)."*
+
+**The relay hand-back stays out of scope** (HUM LEAD) — it is not a card join, the programme being the
+bed, and F-27 names its hazards: the duck-bounce and the F-D5 lock.  P5's.
