@@ -22,3 +22,14 @@ third_party/go-studs/.local/
 
 # the exposure scan's optional LOCAL identifier supplement (never tracked)
 scripts/quality/exposure-identities.local.txt
+
+# TOOL BINARIES BUILT IN THE ROOT. `go build ./tools/<x>/` drops the binary in
+# the working directory, and one reached a commit before this line existed
+# (4.4 MB of Mach-O, 0.16.0). The tools are RUN with `go run`; nothing needs a
+# built copy, and the project rule is that every binary goes to ./dist/.
+/dupes
+/wires
+/slope
+/geotrim
+/nwrtable
+/alertrec
