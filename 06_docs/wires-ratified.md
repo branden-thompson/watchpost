@@ -19,14 +19,34 @@ ratified here and is no longer unwired.  A promise to clean up later is the exac
 keeps paying for; this one cannot be forgotten, because wiring the member is what breaks the build until
 the row goes.
 
+**Rows are read ONLY between the fence below.**  Without it every table row starting with a backticked
+dotted name was an exemption, so the "already closed" table further down silently re-created two
+obligations that had just been discharged.  **A ledger where writing ABOUT a member exempts it fails in
+the direction of silence**, and silence here means an unwired member nobody is told about.
+
+<!-- wires:exemptions -->
+
 | Member | Why it is unwired | The writer it awaits | Batch |
 |---|---|---|---|
-| `Effect.Duck` | declared with a working executor and no producer.  Its own comment says why: *"the Director gains it with the main-track absorb (T3.2)"* | **the Director** — D-32 makes the duck a decision of the pure `Step`: is a priority card on the air, and is the bed live | **P5** |
-| `Effect.Restore` | Duck's other half, and unwired for the same reason | **the Director** — the pair is closed, so every `Duck` is followed by exactly one `Restore` | **P5** |
 | `Power.OffAir` | nothing can produce STANDBY, so the state the swap gate points at is unreachable.  **This row IS RS-3 and F-72** | **MasterControl** — it *"declares ON AIR or STANDBY, and everyone complies, the Director included"*, reaching the Director as `Powered{To: OffAir}` from **FR-5.4**'s named control | **P5** |
 | `Origin.FromOperator` | the operator's controls do not exist, so no card is ever the operator's | **the Operator, through the Producer** — D-36 makes `[space]` the promote that writes it, and the origin is fixed at proposal and never rewritten | **P4** |
 | `Event.CutOver` | the operator moving the programme between the lanes.  The event and the state landed in the track-model batch; **the control that presses it is P4's** | **the Operator, through the console** — D-11 and FR-4.2's cut-over.  Caught by this gate on the commit that added it, which is what the gate is for | **P4** |
 | `State.Refused` | `Propose` returns an error instead, so nothing reaches the state | **the Director** — D-35's capped discard pile, per DR-1's one writer.  **Not a track**: `held()` counts tracks and a parked card would stop the fault window ever firing | **P4** |
+
+<!-- /wires:exemptions -->
+
+## Rows that have already left, because the wiring landed
+
+**The expiry is not theoretical — it fired on the commit that wired the duck.**
+
+| Member | Was owed to | Closed by |
+|---|---|---|
+| `Effect.Duck` | the Director, at P5 | the track-model batch: `givingWay()` decides it from state the Director already holds, and `settle` emits the change |
+| `Effect.Restore` | the Director, at P5 | the same commit — the pair is closed by construction, edge-triggered, so a drain of several cards dips once (MVS-D-67) |
+
+**`make wires` went red the moment they gained a writer**, named both rows as STALE EXEMPTIONS, and
+stayed red until they were deleted.  That is the whole mechanism working on its second day: the promise
+to remove a row was not remembered, it was enforced.
 
 ## What is NOT here, and why that matters more than what is
 

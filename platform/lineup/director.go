@@ -590,7 +590,18 @@ func (d Director) settle() (Director, []Effect) {
 	if _, busy := d.lineup.OnAir(); !busy && len(air) > 0 {
 		return d, nil // the air was taken and then lost; publish nothing rather than a lie
 	}
-	fx := append(air, prep...)
+	// THE DUCK COMES BEFORE THE CUE, and the effect set's own comment says why:
+	// "a duck that landed after the read had started would be the duck-lift bug
+	// in a new costume". Decided here, on the settled schedule, so the answer is
+	// about what is actually about to happen.
+	//
+	// AND THE STATE IS COMMITTED ONLY ON THIS PATH. Above, an air that was taken
+	// and then lost returns nothing at all; moving the bed's record before that
+	// return would leave the Director believing it had ducked while emitting no
+	// effect to do it.
+	d, give := d.giveOrTakeBack()
+	fx := append(give, air...)
+	fx = append(fx, prep...)
 	fx = append(fx, Publish{Lineup: d.lineup, Power: d.Power()})
 	last := fx[len(fx)-1]
 	_, published := last.(Publish)

@@ -311,10 +311,44 @@ func ledgerCases() []ledgerCase {
 	}
 }
 
+// runFenceCases checks that an exemption is ONLY what sits inside the fence.
+//
+// THE TOOL FOUND THIS IN ITS OWN LEDGER on day two: a prose table listing rows
+// that had been closed re-created them, because any row whose first cell was a
+// backticked dotted name counted. A ledger where writing about a member exempts
+// it fails toward silence.
+func runFenceCases() int {
+	body := "# ledger\n\n| `Set.Outside` | before the fence |\n\n" +
+		ledgerOpen + "\n\n| `Set.Inside` | a real exemption |\n\n" + ledgerClose +
+		"\n\n## closed already\n\n| `Set.After` | this is prose about a member |\n"
+	dir, err := os.MkdirTemp("", "wires-fence")
+	if err != nil {
+		fmt.Printf("  FAIL  the fence: %v\n", err)
+		return 1
+	}
+	defer func() { _ = os.RemoveAll(dir) }()
+	path := filepath.Join(dir, "ledger.md")
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		fmt.Printf("  FAIL  the fence: %v\n", err)
+		return 1
+	}
+	got, err := readLedger(path)
+	if err != nil {
+		fmt.Printf("  FAIL  the fence: %v\n", err)
+		return 1
+	}
+	if len(got) != 1 || !got["Set.Inside"] {
+		fmt.Printf("  FAIL  an exemption is only what sits inside the fence\n        want [Set.Inside], got %v\n", got)
+		return 1
+	}
+	fmt.Println("  ok    an exemption is only what sits inside the fence")
+	return 0
+}
+
 // runLedgerCases checks the triage, which is the half the scenarios above
 // cannot reach.
 func runLedgerCases() int {
-	fail := 0
+	fail := runFenceCases()
 	for _, lc := range ledgerCases() {
 		rat := map[string]bool{}
 		for _, k := range lc.ratified {
