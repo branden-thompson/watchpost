@@ -228,7 +228,7 @@ cache-clean:
 	@go clean -cache -testcache
 	@echo "cache-clean: build and test caches cleared"
 
-verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget dupes mutant-check
+verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget dupes wires wires-selftest mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
@@ -295,10 +295,16 @@ dupes-selftest:
 # highest-value thing 0.15.0 could inherit", and unbuilt until 0.16.0 P3 shipped
 # another instance of the shape it was designed to catch.
 #
-# NOT IN `verify` YET, and saying so is the point: the first run reports eight
-# unwired members and every row of the ledger is a HUM LEAD ratification, never
-# self-issued. It joins `verify` when the ledger is settled, exactly as metric D
-# did — a gate switched on over a red tree teaches people to ignore it.
+# IN `verify` (HUM LEAD, 2026-09-09). The first run reported eight unwired
+# members; three were resolved rather than exempted — one deleted, one a bug in
+# this tool, one a code fix — and the five that remain are RATIFIED AS OWED in
+# 06_docs/wires-ratified.md, each naming the writer it awaits and the batch that
+# owes it.
+#
+# THE LEDGER EXPIRES ITSELF. A row whose member is no longer unwired, or whose
+# member no longer exists, is a STALE EXEMPTION and fails. So wiring the member
+# is what breaks the build until the row goes — the only version of "remember to
+# remove it later" this project has evidence of acting on.
 wires:
 	@go run ./tools/wires
 

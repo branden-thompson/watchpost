@@ -150,22 +150,13 @@ func main() {
 	report(members, ratified, *asJSON, *sites)
 }
 
-// report prints the verdict and exits non-zero if anything is unexplained.
+// report prints the verdict and exits non-zero if anything is unexplained or
+// any ledger row has gone stale.
 func report(members []member, ratified map[string]bool, asJSON, sites bool) {
-	var unexplained, exempt []member
-	for _, m := range members {
-		if !m.unwired() {
-			continue
-		}
-		if ratified[m.Set+"."+m.Name] {
-			exempt = append(exempt, m)
-			continue
-		}
-		unexplained = append(unexplained, m)
-	}
+	unexplained, exempt, stale := triage(members, ratified)
 	if asJSON {
 		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"members": len(members), "unexplained": unexplained, "exempt": len(exempt),
+			"members": len(members), "unexplained": unexplained, "exempt": len(exempt), "stale": stale,
 		})
 	} else {
 		// SILENCE IS A DISTINCT VERDICT (INST-2). Scanning nothing and finding
@@ -177,6 +168,10 @@ func report(members []member, ratified map[string]bool, asJSON, sites bool) {
 		}
 		fmt.Printf("wires: %d member(s) across the closed sets; %d ratified as unwired, %d NOT\n",
 			len(members), len(exempt), len(unexplained))
+		for _, k := range stale {
+			fmt.Printf("  STALE EXEMPTION  %s\n      it is WIRED now — the ledger row was owed until this "+
+				"happened, and its removal is what closes the obligation\n", k)
+		}
 		for _, m := range unexplained {
 			fmt.Printf("  %-28s %s\n      %s\n", m.Set+"."+m.Name, m.Decl, m.why())
 			if sites {
@@ -191,9 +186,50 @@ func report(members []member, ratified map[string]bool, asJSON, sites bool) {
 		fmt.Println("  scope: production code only. A reader is any discrimination, including an")
 		fmt.Println("  ordered comparison — so a member nothing treats SPECIALLY still counts as read.")
 	}
-	if len(unexplained) > 0 {
+	if failing(unexplained, stale) {
 		os.Exit(1)
 	}
+}
+
+// failing is the exit decision, and BOTH halves fail the build.
+//
+// A STALE ROW MUST FAIL, NOT WARN. It is the whole enforcement: the ledger's
+// rows are owed, and what makes "remove it once the wiring lands" true is that
+// wiring the member breaks the build until the row goes. A stale row that only
+// printed a line would be a reminder, and a reminder is what this project has
+// repeatedly proved it does not act on.
+func failing(unexplained []member, stale []string) bool {
+	return len(unexplained) > 0 || len(stale) > 0
+}
+
+// triage splits the members against the ledger: what is unexplained, what is
+// ratified and still earning its row, and which rows have gone STALE.
+//
+// THE LEDGER'S OWN EXPIRY. Every row is OWED, not accepted (HUM LEAD
+// 2026-09-09: "they can join the ledger now, but need to be removed once wiring
+// is in place"), and a promise to clean up later is the exact shape this
+// project keeps paying for. So a row whose member is no longer unwired — or
+// whose member no longer EXISTS — is stale and it fails. Wiring the member is
+// what breaks the build until the row goes, which is the only version of
+// "remember to remove it" that works.
+func triage(members []member, ratified map[string]bool) (unexplained, exempt []member, stale []string) {
+	left := map[string]bool{}
+	for k := range ratified { // bounded by the ledger (P10-02)
+		left[k] = true
+	}
+	for _, m := range members { // bounded by the closed sets (P10-02)
+		key := m.Set + "." + m.Name
+		if !m.unwired() {
+			continue
+		}
+		delete(left, key) // still unwired: the row is still earning its place
+		if ratified[key] {
+			exempt = append(exempt, m)
+			continue
+		}
+		unexplained = append(unexplained, m)
+	}
+	return unexplained, exempt, sortedKeys(left)
 }
 
 // scan walks the tree and returns every closed-set member with its counts.
@@ -425,6 +461,16 @@ func typeNameOf(e ast.Expr) string {
 		return typeNameOf(v.X)
 	}
 	return ""
+}
+
+// sortedKeys is a stable order for a set, so two runs read the same.
+func sortedKeys(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m { // bounded by the map (P10-02)
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func pos(fset *token.FileSet, p token.Pos) string {

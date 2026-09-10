@@ -229,6 +229,87 @@ func only() Loose { return One }
 	}
 }
 
+// ledgerCase is one triage of a known member set against a known ledger.
+//
+// THE EXPIRY IS THE PART THAT MUST NOT ROT. A ledger row is a promise to remove
+// it later, and this project's whole failure this week was a promise nobody
+// checked. These cases are what make the check itself checkable.
+type ledgerCase struct {
+	name      string
+	members   []member
+	ratified  []string
+	wantUnexp []string
+	wantStale []string
+}
+
+func ledgerCases() []ledgerCase {
+	unwired := member{Set: "Effect", Name: "Duck", Writers: 0, Readers: 1}
+	whole := member{Set: "Effect", Name: "Speak", Writers: 1, Readers: 1}
+	return []ledgerCase{
+		{
+			name:      "a row for a still-unwired member is EXEMPT, not stale",
+			members:   []member{unwired, whole},
+			ratified:  []string{"Effect.Duck"},
+			wantUnexp: nil, wantStale: nil,
+		},
+		{
+			name:      "a row for a member that is now WIRED is STALE",
+			members:   []member{whole},
+			ratified:  []string{"Effect.Speak"},
+			wantUnexp: nil, wantStale: []string{"Effect.Speak"},
+		},
+		{
+			name:      "a row for a member that no longer EXISTS is STALE",
+			members:   []member{whole},
+			ratified:  []string{"narrationClass.narrateRotation"},
+			wantUnexp: nil, wantStale: []string{"narrationClass.narrateRotation"},
+		},
+		{
+			name:      "an unwired member with no row is UNEXPLAINED",
+			members:   []member{unwired},
+			ratified:  nil,
+			wantUnexp: []string{"Effect.Duck"}, wantStale: nil,
+		},
+	}
+}
+
+// runLedgerCases checks the triage, which is the half the scenarios above
+// cannot reach.
+func runLedgerCases() int {
+	fail := 0
+	for _, lc := range ledgerCases() {
+		rat := map[string]bool{}
+		for _, k := range lc.ratified {
+			rat[k] = true
+		}
+		unexp, _, stale := triage(lc.members, rat)
+		var names []string
+		for _, m := range unexp {
+			names = append(names, m.Set+"."+m.Name)
+		}
+		sort.Strings(names)
+		if !sameSet(names, lc.wantUnexp) || !sameSet(stale, lc.wantStale) {
+			fmt.Printf("  FAIL  %s\n        want unexplained %v stale %v\n         got unexplained %v stale %v\n",
+				lc.name, lc.wantUnexp, lc.wantStale, names, stale)
+			fail++
+			continue
+		}
+		// AND THE EXIT DECISION, per case. Splitting the triage from the exit
+		// left a sabotage alive: dropping `stale` from the exit condition
+		// passed every case above, because they all check the triage and none
+		// checked what the process DOES with it. A gate that prints and exits
+		// zero is a reminder, not a gate.
+		wantFail := len(lc.wantUnexp) > 0 || len(lc.wantStale) > 0
+		if got := failing(unexp, stale); got != wantFail {
+			fmt.Printf("  FAIL  %s: exit-decision %t, want %t\n", lc.name, got, wantFail)
+			fail++
+			continue
+		}
+		fmt.Printf("  ok    %s\n", lc.name)
+	}
+	return fail
+}
+
 // runSelfTest builds each scenario, runs the real scan over it, and compares.
 // Returns a process exit code.
 func runSelfTest() int {
@@ -247,6 +328,7 @@ func runSelfTest() int {
 		}
 		fmt.Printf("  ok    %s (%d unwired)\n", sc.name, len(got))
 	}
+	fail += runLedgerCases()
 	// THE CONTROL ON THE CONTROLS. A scenario list that ran zero scenarios
 	// would print nothing and exit 0, which is the same false pass this whole
 	// file exists to refuse.
@@ -258,7 +340,8 @@ func runSelfTest() int {
 		fmt.Printf("wires self-test: %d scenario(s) FAILED\n", fail)
 		return 1
 	}
-	fmt.Printf("wires self-test: %d scenarios passed; the instrument discriminates\n", len(selfTestScenarios()))
+	fmt.Printf("wires self-test: %d scan scenario(s) and %d ledger case(s) passed; the instrument discriminates\n",
+		len(selfTestScenarios()), len(ledgerCases()))
 	return 0
 }
 
