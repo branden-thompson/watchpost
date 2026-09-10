@@ -25,6 +25,7 @@ the row goes.
 | `Effect.Restore` | Duck's other half, and unwired for the same reason | **the Director** — the pair is closed, so every `Duck` is followed by exactly one `Restore` | **P5** |
 | `Power.OffAir` | nothing can produce STANDBY, so the state the swap gate points at is unreachable.  **This row IS RS-3 and F-72** | **MasterControl** — it *"declares ON AIR or STANDBY, and everyone complies, the Director included"*, reaching the Director as `Powered{To: OffAir}` from **FR-5.4**'s named control | **P5** |
 | `Origin.FromOperator` | the operator's controls do not exist, so no card is ever the operator's | **the Operator, through the Producer** — D-36 makes `[space]` the promote that writes it, and the origin is fixed at proposal and never rewritten | **P4** |
+| `Event.CutOver` | the operator moving the programme between the lanes.  The event and the state landed in the track-model batch; **the control that presses it is P4's** | **the Operator, through the console** — D-11 and FR-4.2's cut-over.  Caught by this gate on the commit that added it, which is what the gate is for | **P4** |
 | `State.Refused` | `Propose` returns an error instead, so nothing reaches the state | **the Director** — D-35's capped discard pile, per DR-1's one writer.  **Not a track**: `held()` counts tracks and a parked card would stop the fault window ever firing | **P4** |
 
 ## What is NOT here, and why that matters more than what is

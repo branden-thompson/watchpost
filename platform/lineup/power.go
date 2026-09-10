@@ -115,6 +115,18 @@ func (d Director) advances(t Track) bool {
 	if t == AlertRail {
 		return true
 	}
+	// THE BED AND THE MAIN TRACK ARE MUTUALLY EXCLUSIVE (D-11, FR-4.2), and
+	// until now that was true only because the ENGINE has one source — a rule
+	// the product model states and the schedule could not see. A card taking
+	// the air while the operator has the programme on the bed would play over
+	// a relay.
+	//
+	// IT SITS BELOW THE RAIL'S EXEMPTION, deliberately: pausing the programme
+	// must never hold a hazard (FR-2.2, "the priority track always drains
+	// first, INCLUDING while the bed is playing").
+	if d.bed.carries {
+		return false
+	}
 	return d.power == Running
 }
 

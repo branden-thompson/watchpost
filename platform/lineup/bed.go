@@ -43,10 +43,38 @@ type Programme struct {
 }
 
 // bed is what the broadcast is riding on now.
+//
+// TWO KINDS OF STATE LIVE HERE and the comments say which is which: what the
+// deck has OBSERVED (ref, live, since) and what the Director has DECIDED
+// (carries, asked). Reading one for the other is the mistake `carries` exists
+// to prevent.
 type bed struct {
 	ref   string    // the location carrying it; "" = nothing is tuned
 	live  bool      // a relay, which dwells; the synth broadcast does not
 	since time.Time // when it took the bed, for the dwell
+
+	// carries is THE DIRECTOR'S DECISION that the bed holds the programme, so
+	// the main track is paused (FR-4.2, D-32, HUM LEAD 2026-09-09).
+	//
+	// IT IS INTENT, NOT OBSERVATION, and the distinction is load-bearing.
+	// `live` is reported when audio ACTUALLY PLAYS — deliberately, because "a
+	// resolve and a connect can take seconds, and charging those to the
+	// listener's turn would cut every one short". So a `carries` derived from
+	// `live` would be FALSE between the operator pressing cut-over and the
+	// relay connecting, and the main track would advance a card into the gap
+	// the cut-over had just created. The bed already keeps `asked` beside the
+	// observed state for exactly this reason.
+	//
+	// THE PAUSE IS NOT A SECOND FLAG. FR-4.2 makes it the consequence of this
+	// one — "the operator can cut the main track over to the bed; the main
+	// track then pauses" — so one field carries both and no pair can disagree.
+	//
+	// RELAY-ONLY FROM BIRTH (D-33, decision 2). The only thing that sets it is
+	// a cut-over, and a cut-over is to a relay — so this is already the model
+	// the three lanes describe, and nothing about it changes when the main
+	// track gains its own audio. What retires then is `live`, which is a
+	// deletion rather than a redefinition.
+	carries bool
 
 	// asked and askedAt are the tune the Director has issued and not yet seen
 	// land (FR-9.3). A rotation that is told to move and does not is a station
@@ -259,4 +287,33 @@ func (d Director) nextInWatchlist() (string, bool) {
 		}
 	}
 	return q[0], true
+}
+
+// CutOver is the operator moving the programme between the lanes (D-11,
+// FR-4.2): to the bed, or back to the reads.
+//
+// AN EVENT, NOT A REQUEST, like every other member of the set. It says what the
+// operator did; whether the bed is re-tuned, whether a transition is owed and
+// what happens to a card mid-read are the Director's, and they are decided from
+// this plus the schedule it already holds.
+//
+// THE OPERATOR ONLY CARES ABOUT TWO THINGS (HUM LEAD): "switch to the reads" or
+// "switch to the relay bed". Everything between them is the Director's
+// discretion, deliberately.
+type CutOver struct {
+	isEvent
+	ToBed bool
+}
+
+// onCutOver moves the programme, and moves nothing else.
+//
+// A REPEATED COMMAND IS NOT A SECOND EVENT — the rule onPowered already states.
+// Without it a second press would re-tune a relay that is already playing,
+// which costs a resolve, a connect and a gap the listener hears.
+func (d Director) onCutOver(ev CutOver) (Director, []Effect) {
+	if d.bed.carries == ev.ToBed {
+		return d, nil
+	}
+	d.bed.carries = ev.ToBed
+	return d.settle()
 }

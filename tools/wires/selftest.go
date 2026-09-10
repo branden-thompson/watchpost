@@ -30,7 +30,19 @@ type scenario struct {
 	want []string // "Set.Member", sorted
 }
 
+// selfTestScenarios is the whole table, assembled from the three groups
+// below — split because a 182-line literal is past P10-04's bound, and because
+// the groups are genuinely different questions.
 func selfTestScenarios() []scenario {
+	out := enumScenarios()
+	out = append(out, markerScenarios()...)
+	out = append(out, edgeScenarios()...)
+	out = append(out, zeroScenarios()...)
+	return append(out, zeroUnreadScenarios()...)
+}
+
+// enumScenarios cover a sentinel-bounded const block.
+func enumScenarios() []scenario {
 	return []scenario{
 		{
 			name: "a sentinel enum, one member of each kind",
@@ -88,6 +100,12 @@ func fast(l Lane) bool { return l == Fast }
 			// numLanes is the bound, not a member, so nothing is reported.
 			want: nil,
 		},
+	}
+}
+
+// markerScenarios cover a set kept closed by an embedded marker.
+func markerScenarios() []scenario {
+	return []scenario{
 		{
 			name: "a marker set with a member nothing constructs",
 			src: `package probe
@@ -117,6 +135,12 @@ func perform(e Effect) string {
 			// This is the Duck/Restore shape exactly: an executor and no producer.
 			want: []string{"Effect.Duck"},
 		},
+	}
+}
+
+// edgeScenarios are the cases that decide what counts as a use at all.
+func edgeScenarios() []scenario {
+	return []scenario{
 		{
 			name: "a mention inside another declaration is not a use",
 			src: `package probe
@@ -149,6 +173,13 @@ func isAlpha(f Flag) bool { return f == Alpha }
 			// guard exists to refuse (D-2 wants the input that makes it fail).
 			want: []string{"Flag.Beta"},
 		},
+	}
+}
+
+// zeroScenarios cover the type's zero value, which every zero construction
+// writes and none of them names.
+func zeroScenarios() []scenario {
+	return []scenario{
 		{
 			name: "the zero value is written by every zero construction",
 			src: `package probe
@@ -188,6 +219,13 @@ func admit(c Card) Card { c.State = Admitted; return c }
 			// Admitted: written by admit, read by check — NOT reported.
 			want: nil,
 		},
+	}
+}
+
+// zeroUnreadScenarios are the other half of the zero-value rule: the exemption
+// covers the WRITER only, so a default nothing discriminates on is a finding.
+func zeroUnreadScenarios() []scenario {
+	return []scenario{
 		{
 			name: "the zero value is still reported when nothing READS it",
 			src: `package probe
@@ -352,7 +390,7 @@ func scanScenario(src string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 	if err := os.WriteFile(filepath.Join(dir, "probe.go"), []byte(src), 0o644); err != nil {
 		return nil, err
 	}
