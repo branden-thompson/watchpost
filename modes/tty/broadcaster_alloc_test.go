@@ -105,7 +105,9 @@ const (
 	// 302: the outer frame, the section inset, and the scroll rail — the last of
 	// the chrome. The layout phase moved this number from 14 to here, one piece
 	// of the reference at a time; none of them optimised, per D-53.
-	bcFrameAllocs = 702
+	// 873: the console draws its TEN SLOTS always now (D-64), decided or
+	// shimmering, instead of stopping at the last card the Director had chosen.
+	bcFrameAllocs = 873
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

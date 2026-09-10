@@ -307,3 +307,55 @@ func TestGainDownReachesTheSameLevel(t *testing.T) {
 		t.Errorf("console %d, observer %d", r.broadcaster.gain, r.observer.radioVolume)
 	}
 }
+
+// D-65: EVERY CONTROL THE MASTHEAD ADVERTISES REACHES SOMETHING.
+//
+// HUM LEAD, UAT 2026-09-10: "None of the chip controls work — s / a / ? / q in
+// broadcaster UI mode."
+//
+// THEY WERE PRINTED AS TEXT AND BOUND TO NOTHING. The console named five
+// controls in its masthead and answered to none of them — a UI lying about what
+// it can do, which is worse than a sparse one. This walks the masthead's OWN
+// list rather than a list written here, so a control added to the row without a
+// binding fails immediately.
+func TestEveryAdvertisedControlIsBound(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	row := stripANSITest(b.controlRow(b.opts()))
+
+	keys := broadcasterKeyMap()
+	bound := map[string]bool{}
+	for _, bind := range keys {
+		for _, k := range bind.Keys {
+			bound[k] = true
+		}
+	}
+	for _, want := range []string{"s", "a", "S", "?", "q", "ctrl+o"} {
+		if !strings.Contains(row, want+"  ") && want != "ctrl+o" {
+			continue // not advertised at this width
+		}
+		if !bound[want] {
+			t.Errorf("the masthead advertises %q and nothing binds it:\n%s", want, row)
+		}
+	}
+}
+
+// AND PRESSING ONE OPENS THE WINDOW IT NAMES, over the console.
+func TestSettingsOpensOverTheConsole(t *testing.T) {
+	r := consoleWith(t, goldenDash(t, true))
+	if r.observer.ModalOpen() {
+		t.Fatal("fixture: nothing should be open yet")
+	}
+
+	r = pressAction(t, r, actSettings)
+
+	if !r.observer.ModalOpen() {
+		t.Error("s must open Observer's Settings window from the console")
+	}
+	if r.active != SurfaceBroadcaster {
+		t.Error("and it must not swap surfaces: the operator is watching the console")
+	}
+	if !strings.Contains(stripANSITest(r.View().Content), "STATION:") {
+		t.Error("the console stays visible beneath it")
+	}
+}

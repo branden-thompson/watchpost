@@ -52,6 +52,19 @@ const (
 	// answer to how loud the station is.
 	actGainUp   term.Action = "gain-up"
 	actGainDown term.Action = "gain-down"
+
+	// THE MASTHEAD ADVERTISES THESE, so they must reach something (D-65). They
+	// were printed as TEXT and bound to nothing: the console named five controls
+	// and answered to none of them, which is a UI lying about what it can do.
+	//
+	// FORWARDED, NOT REBUILT. Settings, About, Status and Help are Observer's
+	// own windows; the Router composites whichever one opens over the console,
+	// exactly as it does for ctrl+d.
+	actSettings term.Action = "settings"
+	actAbout    term.Action = "about"
+	actStatus   term.Action = "status"
+	actHelp     term.Action = "help"
+	actQuit     term.Action = "quit"
 )
 
 // StationControlMsg hands the console the control it asks ON AIR / STANDBY
@@ -100,6 +113,11 @@ func broadcasterKeyMap() term.KeyMap {
 		// key: one control, one binding, on every surface.
 		actGainUp:        {Keys: []string{"+", "="}, Help: "Gain Up"},
 		actGainDown:      {Keys: []string{"-"}, Help: "Gain Down"},
+		actSettings:      {Keys: []string{"s"}, Help: "Settings"},
+		actAbout:         {Keys: []string{"a"}, Help: "About"},
+		actStatus:        {Keys: []string{"S"}, Help: "Status"},
+		actHelp:          {Keys: []string{"?"}, Help: "Help"},
+		actQuit:          {Keys: []string{"q"}, Help: "Quit"},
 		actStationToggle: {Keys: []string{"shift+enter"}, Help: "ON AIR / STANDBY"},
 	}
 }
@@ -257,7 +275,8 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r.swapTo(SurfaceBroadcaster), nil
 			case actStationToggle:
 				return r.toggleStation(), nil
-			case actGainUp, actGainDown:
+			case actGainUp, actGainDown,
+				actSettings, actAbout, actStatus, actHelp, actQuit:
 				return r.throughToObserver(msg)
 			case actDiagnostics:
 				// FORWARDED TO THE SURFACE THAT OWNS THE WINDOW, and the
@@ -272,7 +291,7 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// must reach IT and not the lanes beneath it. An arrow that promoted a card
 	// while the operator was choosing a scenario would be the console acting on
 	// input meant for the window over it.
-	if r.active == SurfaceBroadcaster && r.observer.DiagnosticsOpen() {
+	if r.active == SurfaceBroadcaster && r.observer.ModalOpen() {
 		if _, isKey := msg.(tea.KeyPressMsg); isKey {
 			return r.throughToObserver(msg)
 		}
@@ -306,7 +325,7 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // activate and drain.
 func (r Router) View() tea.View {
 	v := r.surface().View()
-	if r.active == SurfaceBroadcaster && r.observer.DiagnosticsOpen() {
+	if r.active == SurfaceBroadcaster && r.observer.ModalOpen() {
 		v.Content = r.observer.OverlayDiagnostics(v.Content, r.broadcaster.width)
 	}
 	return v
