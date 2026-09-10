@@ -7,34 +7,26 @@ authority: HUM LEAD
 status: "READY TO RUN.  Reframed twice on 2026-09-09; the second correction is the one that matters."
 ---
 
-# What P3's UAT actually tests: the signal leaving the machine
+# What P3's UAT tests: the audio out, unchanged
 
-**The correction, in the HUM LEAD's words:** *"Broadcaster UI only cares about the audio out working —
-it is the human operator's job to effectively plug the headphone jack from the computer into the radio's
-microphone.  The 'listener UAT' doesn't make much sense."*
+**THE BRIEF ALREADY SAYS THIS, and the first two drafts of this document re-derived it instead of
+citing it.**  Recorded because the error is the interesting part: three framings were reasoned out from
+the code while `01-objectives` had settled the question at DISCOVER.
 
-**That is right, and the first two drafts of this document were confused about who is on the other end.**
+| The question | Where it was already answered |
+|---|---|
+| who is on the other end | **Brief, *Who benefits*:** *"the human listener on the radio channel, who never sees it and feels every mistake made on it."*  There is no listener at the terminal |
+| what "on the air" can even mean | **FR-5.5:** *"Watchpost has NO RADIO PATH — it produces audio, and a separate transmitter the application cannot observe puts it over the air."*  That is the headphone jack, and it is a ratified requirement with its own exit criterion |
+| why the two surfaces share the audio | **Brief, *Summary & Intent*:** *"Watchpost can already run a station.  It cannot yet be OPERATED as one."*  Audio out is audio out; Broadcaster adds operation, not a second pipeline |
 
-| | Observer | Broadcaster |
-|---|---|---|
-| who hears it | **the person at the terminal** | **an audience on a radio channel**, through a physical patch from the audio jack to a microphone input |
-| what the screen is for | the product | **the operator's instrument panel** — they are watching, not listening |
-| "do not speak to me" (`[M]`) | a sensible control: silence my desk | **meaningless, and dangerous**: silencing the programme is DEAD AIR on a live channel |
-| the level control | listening volume | **transmit GAIN** — how hot the signal is into the radio.  The mock draws it that way |
+**So P3's UAT is a SIGNAL-PATH REGRESSION TEST.**  P3 changed **who decides when a report plays** and
+nothing else — not who controls the radio, not what plays, not how it plays.  The question is whether
+the same audio comes out of the machine, continuously and in the same order, now that the schedule owns
+the timing.
 
-**So P3's UAT is a SIGNAL-PATH REGRESSION TEST.**  The question is not "does the listener enjoy it".
-The question is: **does the same audio come out of the machine, continuously, in the same order, as it
-did before the schedule took ownership of it.**
-
-## Observer is the HARNESS, not the subject
-
-**Observer is the only UI currently wired to the audio** — `ctrl+o` / `ctrl+b` do nothing in a running
-build and the console accepts no input at all (F-72, `p3-console-reachability.md`).  So Observer is how
-the signal path gets driven, and that is the only reason it appears here.
-
-**What is being checked is what comes out of the jack.**  The screen-side observations below are
-included because they are Observer regressions in their own right, and they are marked as such —
-**they are not what the Broadcaster cares about.**
+**Observer is the HARNESS, not the subject.**  It is the only UI currently wired to the audio — the
+console reaches nothing, for the reason in `p3-console-reachability.md` — so it is how the signal path
+gets driven, and that is the only reason it appears below.
 
 ## How to run it
 
@@ -81,21 +73,22 @@ operator who is not listening on the other end.
 | **13** | Press **`[M]`** during a report | **the broadcast stopped.**  `[M]` has never silenced the radio, and the merge nearly made it a stop button.  **It is an Observer control and must not follow the operator to the console** — see below |
 | **14** | Press `[M]`, then let an alert arrive | the hazard was read anyway, or consumed silently and never offered again |
 
-## What this raises for the console, and it is not P3's to answer
+## What this sharpens, against requirements that already exist
 
-**`[M]` must not exist on the Broadcaster surface.**  A broadcaster that mutes is a transmitter carrying
-dead air, and the operator — who is watching a screen, not listening — would not know.  P3(d)'s decision
-to scope the mute check to the alert rail alone is consistent with that and was made for a weaker
-reason; **the real reason is that silencing the outgoing programme is not a control a station should
-have.**
+**P3(d) scoped the mute check to the alert rail alone**, and justified it as *"`[M]` has never silenced
+the radio."*  **The stronger reason follows from FR-5.5:** on a broadcaster the programme is going out
+over a transmitter and the operator is watching a screen rather than listening, so a mute is dead air
+nobody would notice.  The decision stands; its justification is now the ratified one.
 
-**Two open questions for P5/P6, recorded here because this is where they surfaced:**
+**Two questions this raises against requirements that are already written:**
 
-1. **Does the alert rail's mute apply on a Broadcaster at all?**  An operator holding hazards means
-   hazards do not go out over the radio.  That is a safety decision, not an implementation one.
-2. **GAIN is a transmit level, not a volume.**  The mock draws `GAIN - ████ + 100`; Observer's control
-   is a listening volume.  They are different quantities that happen to share a widget, and whether they
-   are the same setting is a ruling.
+1. **Does the alert rail's mute apply on a Broadcaster at all?**  `[M]` is not among Broadcaster's
+   controls in the mock, and **FR-5.1** makes STANDBY (`OffAir`) the thing that holds the rail.  Whether
+   a listener-side mute reaches an operator surface at all is a **P6 settings** question — **R-2.2**
+   already divides shared properties from per-surface ones, and this is a candidate for the second list.
+2. **GAIN is a transmit level; Observer's control is a listening volume.**  **R-4.4** requires the GAIN
+   control *"drawn as the mock draws it"* and **C-6** already measured the gap: *"volume exists; gain
+   does not, and nothing persists it."*  So this is P6's, with the answer partly recorded.
 
 ## What this UAT does NOT cover
 
