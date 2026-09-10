@@ -88,7 +88,9 @@ const (
 	// 170 AT D-59's CORRECTION: the masthead now draws what the reference draws
 	// — the version in the title, the `Updated:` stamp with its freshness tone,
 	// and the API summary — instead of the three of those I had dropped.
-	bcFrameAllocs = 170
+	// 175 AT VARIANT C's REFLOW: the station line is composed and padded to the
+	// lane now rather than carrying literal spaces to a fixed column.
+	bcFrameAllocs = 175
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {
