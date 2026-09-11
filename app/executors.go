@@ -55,6 +55,22 @@ type executors struct {
 	// nothing about how a report is assembled.
 	compose func(ctx context.Context, ref string) ([]synth.Segment, error)
 
+	// read performs a MAIN-TRACK card — the programme — and returns whether the
+	// words ran out on their own (F-91, BD-9).
+	//
+	// A SECOND PERFORMER, AND THAT IS THE RULING RATHER THAN A CHOICE. The rail
+	// reads through the arbiter because an alert speaks OVER whatever is on;
+	// D-33 rules that a chosen read REPLACES the bed, so the programme is a
+	// source swap on the broadcast engine and cannot travel the narration path.
+	// The fork is `onTheRail`, in one place, and each side names the other.
+	//
+	// IT BLOCKS FOR THE LENGTH OF THE READ, like the arbiter's Run: the Speak
+	// effect comes home Finished when the card has actually been said.
+	//
+	// Nil is a station with no broadcast engine — the pathless build and the
+	// tests that wire no deck — and the executor declines by name.
+	read func(ctx context.Context, v lineup.Speak) bool
+
 	// propose asks the Producer what cards COULD exist, so the Director can top
 	// the line-up up to its depth (D-40).
 	//
@@ -383,21 +399,26 @@ func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Even
 // a Finished for words never finished would tell the schedule a read happened
 // that did not.
 func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
+	// Card.To(OnAir) refuses this already; refused again here because this
+	// is the last thing between the schedule and a silent hold with a callout
+	// already promised (DR-18).
+	//
+	// ASKED BEFORE THE FORK, because it is true of both readers: a card with no
+	// words is dead air whichever thing would have performed it.
+	if v.Script.Empty() {
+		return x.decline(v, v.ID, "a card took the air with nothing to say")
+	}
 	// ONLY THE RAIL READS THROUGH THE ARBITER (D-33, HUM LEAD 2026-09-09).
 	//
 	// The main track was admitted here for one release and it was wrong: a
 	// chosen read REPLACES the bed rather than speaking over it, so it is not a
-	// narration and it has no business on the narration path. The two declines
-	// this replaces — a slot check that let LocationReport through, and a stage
-	// check that then turned it away — are one check now.
-	if !onTheRail(v.Slot) {
-		return x.decline(v, v.ID, "no reader for this slot: the arbiter reads the rail, and the rail only")
-	}
-	// Card.To(OnAir) refuses this already; refused again here because this
-	// is the last thing between the schedule and a silent hold with a callout
-	// already promised (DR-18).
-	if v.Script.Empty() {
-		return x.decline(v, v.ID, "a card took the air with nothing to say")
+	// narration and it has no business on the narration path. What it IS is the
+	// engine Source adapter (BD-9), and that is what `broadcast` performs.
+	//
+	// THE FORK IS THE TRACK, NOT THE SLOT, and the reason is on the effect: a
+	// transition belongs to whichever lane the card it bookends is on.
+	if v.Track != lineup.AlertRail {
+		return x.broadcast(ctx, v)
 	}
 	// A CARD IS NEVER CONSUMED IN SILENCE (MVS-D-78). The producer already
 	// refuses to send a burst while the listener is muted, but `[M]` can land in
@@ -468,6 +489,48 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	return []lineup.Event{lineup.Finished{ID: v.ID}}
 }
 
+// broadcast performs a MAIN-TRACK card: the programme, on the broadcast engine
+// (F-91, BD-9). It is `speak`'s other half, and the two are one function split
+// at `onTheRail` rather than two readers that happen to be called from the same
+// place.
+//
+// THE LISTENER'S MUTE IS NOT ASKED HERE, and the asymmetry with the rail is the
+// point. `[M]` is "do not speak ALERTS to me" — the rail path declines under it
+// because reading a burst inaudibly would MARK every alert read and swallow a
+// tornado warning (MVS-D-78). A location report marks nothing and consumes
+// nothing: declining it would silence a station the operator has deliberately
+// put ON AIR, over a control that belongs to the other programme. The air is
+// what decides who performs, and the Director has already asked it
+// (`advances(MainTrack)`).
+func (x *executors) broadcast(ctx context.Context, v lineup.Speak) []lineup.Event {
+	// A HAZARD IS NEVER READ AS THE PROGRAMME, and this is the one cross-check
+	// the track cannot perform on itself: `Track`'s zero value is MainTrack, so
+	// an effect built without one arrives HERE by default. A rail card read
+	// down this path would lose its attention tone — the engine source plays
+	// words, and the Script's tone is the arbiter's to sound — and its
+	// per-alert callouts with it: a tornado warning, delivered as the weather.
+	//
+	// The SLOT is what makes that constructible and therefore testable. It is
+	// the direction a mistake would actually go, which is why there is no
+	// matching check on the rail's side.
+	if onTheRail(v.Slot) {
+		return x.decline(v, v.ID, "a rail card reached the programme's reader: its tone and its callouts would be lost")
+	}
+	if x.read == nil {
+		return x.decline(v, v.ID, "no reader for the main track: this station has no broadcast engine")
+	}
+	if !x.read(ctx, v) {
+		// THE SAME VERDICT THE RAIL RETURNS, and for the same reason (DR-24): a
+		// Finished would tell the schedule a read happened that did not, and a
+		// card that says nothing at all stays ON AIR for ever. Routed, because
+		// every way this ends early — the operator went to standby, the pump is
+		// stopping, the voice could not render a line — is either deliberate or
+		// already reported by the path that raised it (I-2).
+		return []lineup.Event{lineup.Failed{ID: v.ID, Reason: "the read ended before the words did", Routed: true}}
+	}
+	return []lineup.Event{lineup.Finished{ID: v.ID}}
+}
+
 // runTune cuts the bed over to the location the Director named (T3.2b).
 //
 // FIRE AND TRUST, like the cue: the schedule does not wait for a relay to
@@ -486,8 +549,13 @@ func (x *executors) runTune(v lineup.Tune) []lineup.Event {
 
 // onTheRail reports whether a slot is one the alert rail reads through the
 // narrator. Named here, in the executor that needs the distinction, rather than
-// as a registry column nobody else asks for: the main track's slots arrive
-// with the absorb that reads them (T3.2), and this list shrinks then.
+// as a registry column nobody else asks for.
+//
+// IT NO LONGER DECIDES WHO READS (F-91). It answered "is there a reader for
+// this at all" for one release, and everything it excluded was declined; both
+// lanes perform now, and which one a card is on is the TRACK, carried on the
+// effect. What is left here is the question only the SLOT can answer: does this
+// kind of card put its own callout up as it reads.
 func onTheRail(s lineup.Slot) bool { return s == lineup.BreakingAlert }
 
 // cue asks the band to show the callout for the card taking the air (DR-18).

@@ -50,11 +50,23 @@ type bench struct {
 	marked      []string // what the read recorded as spoken aloud
 	muted       bool
 	release     chan struct{} // lets a test hold a sequence on the air
+	// reads are the MAIN-TRACK cards that reached the broadcast engine, and
+	// readOK is the verdict it gives them (F-91). The default is a read that
+	// ran to its end; a test that wants DR-24's early exit sets it false.
+	reads  []lineup.Speak
+	readOK bool
+}
+
+// readCalls is what the broadcast engine was asked to perform.
+func (b *bench) readCalls() []lineup.Speak {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return append([]lineup.Speak(nil), b.reads...)
 }
 
 func newBench(t *testing.T, v *scriptVoice) *bench {
 	t.Helper()
-	b := &bench{voice: v, known: map[string]globalfeed.Event{"a1": tornado()}, release: make(chan struct{})}
+	b := &bench{voice: v, known: map[string]globalfeed.Event{"a1": tornado()}, release: make(chan struct{}), readOK: true}
 	// ONE BAND. The arbiter's effector is what the executors write through, so
 	// the capture the test reads must be the one it was built with.
 	band := func(m tea.Msg) { b.mu.Lock(); b.msgs = append(b.msgs, m); b.mu.Unlock() }
@@ -102,7 +114,17 @@ func newBench(t *testing.T, v *scriptVoice) *bench {
 			b.reports = append(b.reports, lineup.Describe(f)+": "+why)
 			b.mu.Unlock()
 		},
-		cutTo:    func(ref string) { b.mu.Lock(); b.tuned = append(b.tuned, ref); b.mu.Unlock() },
+		cutTo: func(ref string) { b.mu.Lock(); b.tuned = append(b.tuned, ref); b.mu.Unlock() },
+		// THE BROADCAST ENGINE, AS A CAPTURE (F-91). The real one is the deck's
+		// synth.Source swap, which needs a voice and an audio device; what this
+		// bench is about is WHICH lane performs a card and what comes home.
+		read: func(_ context.Context, v lineup.Speak) bool {
+			b.mu.Lock()
+			b.reads = append(b.reads, v)
+			ok := b.readOK
+			b.mu.Unlock()
+			return ok
+		},
 		escalate: func(why string) { b.mu.Lock(); b.escalations = append(b.escalations, why); b.mu.Unlock() },
 	})
 	if b.x == nil {
@@ -265,7 +287,7 @@ func TestSpeakReadsThroughTheNarratorAndComesHomeFinished(t *testing.T) {
 		t.Run(slot.String(), func(t *testing.T) {
 			v := &scriptVoice{dur: 2 * time.Second}
 			b := newBench(t, v)
-			out := b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: slot, Script: lineup.Say("a tornado warning is in effect")})
+			out := b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: slot, Track: lineup.AlertRail, Script: lineup.Say("a tornado warning is in effect")})
 			if len(out) != 1 {
 				t.Fatalf("got %v, want one Finished", out)
 			}
@@ -292,7 +314,7 @@ func TestSpeakReadsThroughTheNarratorAndComesHomeFinished(t *testing.T) {
 // the fixed time so the band's callout is readable — never blitted past.
 func TestSpeakWithNoVoiceStillHoldsSoTheCalloutCanBeRead(t *testing.T) {
 	b := newBench(t, nil)
-	out := b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("words")})
+	out := b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("words")})
 	if len(out) != 1 {
 		t.Fatalf("got %v, want one Finished", out)
 	}
@@ -313,7 +335,7 @@ func TestSpeakEndedByTheContextComesHomeFailedNotFinished(t *testing.T) {
 	b := newBench(t, &scriptVoice{dur: time.Second})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	out := b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("words")})
+	out := b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("words")})
 	failed := onlyFailed(t, out)
 	if failed.ID != "a1" {
 		t.Errorf("the failure names %q, want the card whose read was cut", failed.ID)
@@ -334,7 +356,7 @@ func TestSpeakEndedByTheContextComesHomeFailedNotFinished(t *testing.T) {
 func TestSpeakForACardWithNothingToSayIsFailedNotAired(t *testing.T) {
 	v := &scriptVoice{}
 	b := newBench(t, v)
-	failed := onlyFailed(t, b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert}))
+	failed := onlyFailed(t, b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail}))
 	if failed.ID != "a1" {
 		t.Errorf("failed %q, want a1", failed.ID)
 	}
@@ -458,13 +480,13 @@ func TestEffectsNotYetEmittedAreDeclinedNotHalfDone(t *testing.T) {
 		// pin fired at each one — which is exactly what a pin naming the task
 		// that will retire it is for.
 		//
-		// The location-report SPEAK row is GONE from this table because it is
-		// no longer declined at all; it is asserted positively by
-		// TestALocationReportIsSpokenAsTheRotationClass. A row here would have
-		// to assert a decline that no longer happens.
+		// The SPEAK rows are GONE from this table. Both lanes perform now
+		// (F-91): the rail reads through the arbiter and the main track through
+		// the broadcast engine, so a row here would have to assert a decline
+		// that no longer happens. They are asserted positively in
+		// mainread_test.go, the transition by the LANE it bookends.
 		{lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, "r1", "no composer"},
 		{lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, "s1", "severe window"},
-		{lineup.Speak{ID: "t1", Slot: lineup.Transition, Script: lineup.Say("we now return")}, "t1", "no reader for this slot"},
 		{lineup.BuildCard{ID: "h1", Slot: lineup.Transition, Subject: "h1"}, "h1", "proposal"},
 	} {
 		t.Run(lineup.Describe(tc.effect), func(t *testing.T) {
@@ -568,7 +590,7 @@ func TestAMutedReadIsDeclinedAndNothingIsConsumed(t *testing.T) {
 	script := lineup.Script{Tone: "warning", Parts: []lineup.Part{
 		{Kind: lineup.PartLine, Text: "a tornado warning is in effect", Ref: "a1"},
 	}}
-	speak := lineup.Speak{ID: card, Slot: lineup.BreakingAlert, Script: script}
+	speak := lineup.Speak{ID: card, Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: script}
 
 	b := newBench(t, &scriptVoice{})
 	b.muted = true
@@ -722,6 +744,13 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		// relay SELECTOR and the Director agree about whether the bed is
 		// carrying; nil is a build with no console to disagree with.
 		"noteBed": true,
+		// DELIBERATELY OPTIONAL (F-91). nil is a station with no broadcast
+		// engine — the pathless build and every bench that wires no deck. The
+		// executor declines the card BY NAME and the schedule re-plans around
+		// it (DR-21), which is the loud failure; refusing to build without it
+		// would make the schedule depend on there being audio, and the visuals
+		// run on a machine with no sound card.
+		"read": true,
 	}
 	v := reflect.ValueOf(whole())
 	for i := 0; i < v.NumField(); i++ {
@@ -838,8 +867,8 @@ func TestTheBedIsDippedOnceForAWholeDrain(t *testing.T) {
 		if bracketed {
 			b.x.run(ctx, lineup.Duck{})
 		}
-		b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("first")})
-		b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("second")})
+		b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("first")})
+		b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("second")})
 		if bracketed {
 			b.x.run(ctx, lineup.Restore{})
 		}
@@ -1059,7 +1088,7 @@ func TestTheDirectorsSpeakPerformsAScriptsParts(t *testing.T) {
 	b.nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	out := b.x.run(context.Background(), lineup.Speak{
-		ID: "a1", Slot: lineup.BreakingAlert,
+		ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail,
 		Script: lineup.Script{Parts: []lineup.Part{
 			{Kind: lineup.PartHead, Text: "the following alerts have been declared"},
 			{Kind: lineup.PartLine, Text: "a tornado warning is in effect", Ref: "a1"},

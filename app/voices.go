@@ -196,9 +196,7 @@ func (d *radioDeck) PreviewVoice(name string) {
 // voiceNote tells the Voice chooser what the deck is doing (UAT 119); nil
 // program (tests) is a no-op.
 func (d *radioDeck) voiceNote(text string) {
-	if d.p != nil {
-		d.p.Send(tty.VoiceNoteMsg{Text: text})
-	}
+	d.send(tty.VoiceNoteMsg{Text: text})
 }
 
 // VoiceName is the correspondent's label (UAT 91:

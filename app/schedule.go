@@ -115,6 +115,12 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// whose rotation is owned by the schedule and has no composer wired
 		// would queue every report and read none.
 		compose: composeFor(deck, pool),
+		// AND WHAT PERFORMS THEM (F-91, BD-9). The rail reads through the
+		// arbiter above; the programme is a source swap on the broadcast
+		// engine, and this is the deck that owns it. Nil with no deck, which is
+		// every pathless build — the executor declines the card by name rather
+		// than holding it on the air in silence.
+		read: readerFor(deck),
 		// WHAT THE PRODUCER HAS TO OFFER (0.16.0 P4, D-40). The Director asks
 		// on every publish and takes only what the line-up still needs.
 		propose: proposeFrom(pool),

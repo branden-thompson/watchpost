@@ -89,7 +89,7 @@ type radioDeck struct {
 	mu      sync.Mutex
 	station string // label of the station being played
 	detail  string
-	mode    string // "live" | "synth" | ""
+	mode    string // "live" | "synth" | "read" | "" — "read" is a main-track card on the engine (F-91)
 	ref     snapshot.LocationRef
 	gen     uint64         // tune epoch (red-team 0.9.0 C-3): Tune and Stop bump it; a slow Tune that lost the race must not start playback
 	repeat  tty.RepeatMode // [r] Off | One | Watchlist (UAT 83/93)
@@ -102,10 +102,13 @@ type radioDeck struct {
 	// emit hands the Director the bed's facts (T3.2b). It replaced a
 	// time.AfterFunc: the dwell is the Director's now, and this deck only
 	// reports what it alone can see.
-	emit    func(lineup.Event)
-	source  *synth.Source // the running synthesized broadcast, if any
-	voiceID string        // chosen correspondent (UAT 84); "" = the platform default
-	voices  []string      // available correspondents, listed once in the background (UAT 85)
+	emit   func(lineup.Event)
+	source *synth.Source // the running synthesized broadcast, if any
+	// read is the main-track card the engine is carrying, and the channel its
+	// reader is waiting on (F-91). Nil whenever the engine is on the bed.
+	read    *readSession
+	voiceID string   // chosen correspondent (UAT 84); "" = the platform default
+	voices  []string // available correspondents, listed once in the background (UAT 85)
 }
 
 // newRadioDeck wires the player. A resolver failure (a broken vendored
@@ -274,7 +277,7 @@ func tuneList(stations []stream.Station, first stream.Station) ([]string, map[st
 // reached next anyway.
 func (d *radioDeck) onSilence(mount, _ string) {
 	radioDebugLog("relay:silent:" + mount)
-	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(mount)})
+	d.send(tty.RelaySilentMsg{Candidates: d.silentCandidates(mount)})
 }
 
 // onClipSpent says so when a read's watcher gave up on it (FR-9): the player was
@@ -352,6 +355,24 @@ func (d *radioDeck) followMount(mount string) {
 		}
 	}
 	d.setMode("live", d.label(owner), relay)
+}
+
+// send hands the UI a message, or drops it when there is no program to hand it
+// to.
+//
+// THE ONE WRITER, EXTRACTED AT THE FIFTH CALLER. Four of the five sites wrote
+// `d.p.Send` directly and the fifth — voiceNote — guarded the nil first, which
+// is a rule carried in one place out of five. Nil is a deck with no surface:
+// the pathless build, and every unit test that drives the status callback
+// without standing a program up. A never-run program's Send BLOCKS (severe_test
+// records the measurement), so the guard is what makes the status path
+// drivable at all — and P-1 is that a seam a test cannot drive is not a covered
+// seam.
+func (d *radioDeck) send(msg tea.Msg) {
+	if d.p == nil {
+		return
+	}
+	d.p.Send(msg)
 }
 
 // epoch reports whether gen is still the current tune (no Stop or newer
@@ -790,7 +811,7 @@ func (d *radioDeck) restore() { d.engine.Restore() }
 // own station/detail; pushStatus puts the true state back afterwards.
 func (d *radioDeck) overlay(station, short, detail string, spoken time.Duration) {
 	st := d.engine.Status()
-	d.p.Send(tty.RadioStatusMsg{State: "playing", Station: station, Short: short, Detail: detail, Spoken: spoken, Volume: st.Volume})
+	d.send(tty.RadioStatusMsg{State: "playing", Station: station, Short: short, Detail: detail, Spoken: spoken, Volume: st.Volume})
 }
 
 // pushStatus re-sends the deck's current state (after an overlay).
@@ -857,7 +878,7 @@ func (d *radioDeck) setDetailTimed(detail string, spoken time.Duration) {
 	d.detail = detail
 	station, mode, ref, st := d.station, d.mode, d.ref, d.engine.Status()
 	d.mu.Unlock()
-	d.p.Send(tty.RadioStatusMsg{State: string(st.State), Station: station, Detail: detail, Spoken: spoken, Volume: st.Volume, Live: mode == "live", Location: snapshot.Key(ref)})
+	d.send(tty.RadioStatusMsg{State: string(st.State), Station: station, Detail: detail, Spoken: spoken, Volume: st.Volume, Live: mode == "live", Location: snapshot.Key(ref)})
 }
 
 // onStatus forwards engine status to the dashboard; a relay that fails
@@ -866,7 +887,7 @@ func (d *radioDeck) onStatus(st player.Status) {
 	d.logStatus(st)         // WATCHPOST_DEBUG_RADIO: the transitions, for a relay that plays nothing (follow-up F-2)
 	d.followMount(st.Mount) // a later candidate's mount is playing: the label says which (Q1)
 	d.mu.Lock()
-	station, detail, mode, ref, src, gen := d.station, d.detail, d.mode, d.ref, d.source, d.gen
+	station, detail, mode, ref, src, gen, rd := d.station, d.detail, d.mode, d.ref, d.source, d.gen, d.read
 	d.mu.Unlock()
 	state := st.State
 	if st.Title != "" {
@@ -884,7 +905,7 @@ func (d *radioDeck) onStatus(st player.Status) {
 	if state == player.Stopped {
 		station = "" // the row falls back to the focused location's name
 	}
-	d.p.Send(tty.RadioStatusMsg{State: string(state), Station: station, Detail: detail, Volume: st.Volume, Live: mode == "live", Location: snapshot.Key(ref)})
+	d.send(tty.RadioStatusMsg{State: string(state), Station: station, Detail: detail, Volume: st.Volume, Live: mode == "live", Location: snapshot.Key(ref)})
 	// Off the engine goroutine (it is finishing this very status): Halt
 	// inside Tune waits for it. Nothing follows a user's Stop (mode == "").
 	if st.State == player.Failed && mode == "live" {
@@ -902,6 +923,16 @@ func (d *radioDeck) onStatus(st player.Status) {
 	// Director holds the rotation now and a zero dwell is how "not Watchlist"
 	// reaches it, so reporting the fact unconditionally is right and filtering
 	// it here would be a second copy of the rule.
+	// A MAIN-TRACK READ IS NOT THE BED MOVING (F-91). The engine reports the
+	// same three transitions for both, and told about them the Director would
+	// start the monitor's dwell against a card — `Tuned` says the bed landed
+	// somewhere, and `Ended` moves the rotation on from it. What a read's end
+	// means is that the Speak effect can come home, and that goes to the
+	// executor waiting on it rather than to the schedule.
+	if mode == "read" {
+		noteRead(rd, st, ended)
+		return
+	}
 	if ended && mode != "" {
 		d.tell(lineup.Ended{})
 	}
@@ -1101,7 +1132,7 @@ func (d *radioDeck) escalate(reason string) {
 	// stopped for a reason unrelated to the bed leaves none, and the window then
 	// shows the fall-through alone — which is the honest answer: read the
 	// report, because there is nothing else to tune to.
-	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(d.engine.Status().Mount)})
+	d.send(tty.RelaySilentMsg{Candidates: d.silentCandidates(d.engine.Status().Mount)})
 }
 
 // alertTonePCM is a class's attention signal, whole.
