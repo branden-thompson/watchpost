@@ -228,3 +228,124 @@ func TestPD3TheNoticeSaysWhatHappened(t *testing.T) {
 		}
 	}
 }
+
+// A STANDING-BY CARD IS RE-HYDRATED, NOT TOSSED (D-84, HUM LEAD 2026-09-11).
+//
+//	"It's still the same card, it's just like the composer 'filling it' for the
+//	 first time, it's just stale … No need to re-check admission — it's already
+//	 been admitted. No need for the director to choose / move another card — it's
+//	 still the same card, the order has been decided."
+//
+// THE DEFECT THIS CLOSES IS ONE D-84 ITSELF CREATED. The Composer now works on
+// standby so the line is ready the instant the operator goes on air — and a
+// station can sit on standby for an hour. Without a refresh the prepared card is
+// dropped as it takes the air (PD-3) and the station opens by apologising.
+func TestAStandingByCardsWordsAreAskedForAgainRatherThanDropped(t *testing.T) {
+	base := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
+	d := New(Settings{Max: 5, Depth: 3}, base) // STOPPED: the operator is setting up
+	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
+	d, _ = d.Step(Built{ID: ReadID("oceanside"), Script: Say("Currently sixty-one degrees.")})
+
+	before, ok := d.find(ReadID("oceanside"))
+	if !ok || before.State != Standby {
+		t.Fatalf("the fixture needs the card standing by with its words; got %+v", before)
+	}
+
+	// It sits. Nothing happens until its words have aged.
+	d, fx := d.Step(Tick{Now: base.Add(RefreshAfter - time.Minute)})
+	if builds(fx) != 0 {
+		t.Errorf("words a few minutes old were asked for again: %v", describeAll(fx))
+	}
+
+	d, fx = d.Step(Tick{Now: base.Add(RefreshAfter + time.Second)})
+
+	if builds(fx) != 1 {
+		t.Fatalf("aged words were not asked for again: %v", describeAll(fx))
+	}
+	// THE SAME CARD, IN THE SAME PLACE. Not a new proposal, not a re-admission,
+	// not a reorder — the order has already been decided.
+	after, ok := d.find(ReadID("oceanside"))
+	if !ok {
+		t.Fatal("the card was tossed; it only needed new data")
+	}
+	if after.State != Standby {
+		t.Errorf("the card left standby to be re-filled; it is %v", after.State)
+	}
+	if got := ids(d.lineup.Cards(MainTrack)); len(got) != 1 || got[0] != ReadID("oceanside") {
+		t.Errorf("the line-up changed around a re-fill: %v", got)
+	}
+}
+
+// AND IT IS ASKED ONCE, NOT ONCE A SECOND. The schedule ticks every second and a
+// build takes a second or more; without the stamp moving with the ASK, the same
+// card is re-asked on every tick until its words come home — a build storm
+// against the provider the moment a refresh falls due.
+func TestARefreshIsAskedForOnceWhileItIsInFlight(t *testing.T) {
+	base := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
+	d := New(Settings{Max: 5, Depth: 3}, base)
+	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
+	d, _ = d.Step(Built{ID: ReadID("oceanside"), Script: Say("Currently sixty-one degrees.")})
+
+	d, fx := d.Step(Tick{Now: base.Add(RefreshAfter + time.Second)})
+	if builds(fx) != 1 {
+		t.Fatalf("the refresh did not fire: %v", describeAll(fx))
+	}
+	for i := range 5 {
+		d, fx = d.Step(Tick{Now: base.Add(RefreshAfter + time.Duration(2+i)*time.Second)})
+		if builds(fx) != 0 {
+			t.Fatalf("tick %d asked again while the first was still out: %v", i, describeAll(fx))
+		}
+	}
+}
+
+// A RUNNING STATION DOES NOT REFRESH: it replaces its cards as it reads them, so
+// nothing sits. A card that DOES sit on a running station is being held by a
+// rail drain, and PD-3's drop is the right answer there — mid-broadcast there is
+// no time to rebuild, which is the whole reason readInstead exists.
+// THE FIRST VERSION OF THIS TEST COULD NOT FAIL, and a plant said so. It put ONE
+// card on a running station and ticked — but a running station reads that card
+// immediately, so by the tick there was no standing-by card left to refresh and
+// the assertion held whatever the code did. Deleting the guard it exists to pin
+// SURVIVED.
+//
+// The state it has to construct is a card WAITING: one on the air, and one
+// standing by behind it with its words already aged.
+func TestARunningStationDoesNotRefreshTheCardWaitingBehindTheOneOnAir(t *testing.T) {
+	base := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
+	d := New(Settings{Max: 5, Depth: 3}, base)
+	d, _ = d.Step(Aired{To: AirProgramme})
+	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
+	d, _ = d.Step(Built{ID: ReadID("oceanside"), Script: Say("Currently sixty-one degrees.")})
+	d, _ = d.Step(NeedsRead{Ref: "bonsall", Headline: "BONSALL, CA"})
+	d, _ = d.Step(Built{ID: ReadID("bonsall"), Script: Say("Currently fifty-nine degrees.")})
+
+	if c, on := d.lineup.OnAir(MainTrack); !on || c.ID != ReadID("oceanside") {
+		t.Fatalf("the fixture needs the first card reading; the air holds %+v", c)
+	}
+	waiting, ok := d.find(ReadID("bonsall"))
+	if !ok || waiting.State != Standby {
+		t.Fatalf("the fixture needs the second card standing by behind it; got %+v", waiting)
+	}
+
+	_, fx := d.Step(Tick{Now: base.Add(RefreshAfter + time.Second)})
+
+	for _, f := range describeAll(fx) {
+		if strings.HasPrefix(f, "build(read:bonsall)") {
+			t.Errorf("a running station refreshed the card waiting behind the read: %v — "+
+				"it replaces its cards as it reads them, and a card that DOES sit is held by a "+
+				"rail drain, where PD-3's drop is the right answer", describeAll(fx))
+		}
+	}
+}
+
+// builds counts the cards sent to the Composer in one step.
+func builds(fx []Effect) int {
+	n := 0
+	for _, f := range fx {
+		if _, ok := f.(BuildCard); ok {
+			n++
+		}
+	}
+	return n
+}

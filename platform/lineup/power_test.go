@@ -42,36 +42,47 @@ func TestANewDirectorIsStopped(t *testing.T) {
 	}
 }
 
-// TestTheMainTrackDoesNotAdvanceWhileTheRadioIsStopped is PD-1, and the whole
-// reason a running state is built for Observer's own merits: the listener
+// TestTheMainTrackIsPreparedButNotReadWhileTheRadioIsStopped is PD-1, and the
+// whole reason a running state is built for Observer's own merits: the listener
 // stopped the radio, and the programme stays stopped.
 //
-// It is not built, either. A card built while stopped would spend 1.03 s of
-// network on a report that has no cutover to be ready for, and might be stale
-// by the time one comes.
-func TestTheMainTrackDoesNotAdvanceWhileTheRadioIsStopped(t *testing.T) {
+// IT IS BUILT, THOUGH, AND THAT IS D-84. This test used to assert the opposite —
+// "a card built while stopped would spend 1.03 s of network on a report that has
+// no cutover to be ready for" — and the HUM LEAD overturned the first half: the
+// cutover is the operator pressing a key, and the 1.03 s is exactly what they
+// must not hear. "when the operator does — the line **should be ready to go** at
+// that point."
+//
+// WHAT DID NOT CHANGE is the half PD-1 is actually about: nothing SPEAKS.
+func TestTheMainTrackIsPreparedButNotReadWhileTheRadioIsStopped(t *testing.T) {
 	d := programme(t, New(Settings{Max: 10}, planNow), "bonsall", "oceanside")
 
 	d, idle := run(d, Tick{Now: planNow.Add(time.Minute)})
 	for _, f := range idle {
-		if strings.HasPrefix(f, "build(") || strings.HasPrefix(f, "speak(") {
-			t.Errorf("a stopped radio produced %v", idle)
+		if strings.HasPrefix(f, "speak(") {
+			t.Errorf("a stopped radio spoke: %v", idle)
 		}
+	}
+	if !has(idle, "build(bonsall)") {
+		t.Fatalf("a stopped radio produced %v; the Composer works on standby so the line is ready (D-84)", idle)
 	}
 	if _, on := onAirAnywhere(d.Lineup()); on {
 		t.Error("something took the air while the radio was stopped")
 	}
 
-	// And the moment the listener starts it, the programme picks up.
+	// Its words come home while it is still standing by (DR-7).
+	d, _ = d.Step(Built{ID: "bonsall", Script: Say("conditions are fair")})
+
+	// AND THE MOMENT THE OPERATOR GOES ON AIR, THE PREPARED CARD GOES STRAIGHT
+	// ON — with no build in between. That gap is the requirement, stated as a
+	// test rather than as an intention.
 	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
-	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
-	d, started := run(d, Powered{To: Running})
-	if !has(started, "build(bonsall)") {
-		t.Fatalf("starting the radio produced %v, want the report's build", started)
+	_, started := run(d, Powered{To: Running})
+	if !has(started, "speak(bonsall)") {
+		t.Fatalf("going on air produced %v, want the prepared card on the air", started)
 	}
-	_, air := run(d, Built{ID: "bonsall", Script: Say("conditions are fair")})
-	if !has(air, "speak(bonsall)") {
-		t.Errorf("effects %v do not put the report on the air", air)
+	if has(started, "build(bonsall)") {
+		t.Errorf("the operator waited on a build at the moment they went on air: %v", started)
 	}
 }
 

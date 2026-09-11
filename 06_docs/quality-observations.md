@@ -1961,3 +1961,54 @@ nothing putting words in it.  I had reproduced the defect's shape in the tests f
 **The tell, and it generalises:** when a batch adds a function AND a call to it, the tests will
 naturally be written against the function, because that is the thing with the interesting behaviour.
 The call is one line and feels too small to test.  It is the line that was missing for two releases.
+
+---
+
+## 2026-09-11 — D-84: I explained a mechanism instead of questioning it
+
+**The catch, and the HUM LEAD made it.**  He reported that nothing showed in the cards.  I traced it
+correctly to `onOffered`'s `advances(MainTrack)` gate, confirmed the binary was fine, found a
+genuine secondary defect (the shimmer promising cards on a station that had decided not to produce
+any), and told him to press SHIFT+ENTER.
+
+His answer: *"This is wrong, and it makes it impossible for the Human operator to preview and manage
+the lineup PRIOR to going on the air … otherwise the user might as well just use Observer."*
+
+**The shape (new): "explaining the mechanism instead of questioning it."**  Every fact in my answer
+was true.  The diagnosis was right, the code comment I quoted said exactly what the code did, and the
+reasoning in that comment (DR-3, admission is a promise to read) was sound on its own terms.  None of
+that is the same as the behaviour being CORRECT — and a correct trace reads as a verdict, which is
+what makes this expensive: it sounds like the question has been answered.
+
+**The tell:** I was explaining why the product does something the user did not expect, and my
+explanation was entirely internal — a gate, a predicate, a requirement ID.  **Not one sentence of it
+was about what the operator was trying to do.**  When the whole answer lives inside the machine, the
+question "is this what the surface is FOR?" has not been asked.
+
+**How to apply:** when tracing a "why does it do X" report to a deliberate mechanism, say what the
+mechanism costs the user before saying it is deliberate, and ask whether the ruling behind it was
+made with this case in view.  DR-3's gate was written when the console did not exist; it was never
+wrong, it was answering a question nobody had asked yet.
+
+---
+
+## 2026-09-11 — and the same session: the HUM LEAD's "seemed weird to me" was a real defect in my comment
+
+Fixing D-84 I wrote "PLANNING IS NOT PERFORMING … DR-3 inverted".  He flagged it:
+
+> *"Maybe not, I just say a 'admission is a premise to read' now is inverted - which seemed weird to
+> me."*
+
+He was right and it was not a wording quibble.  **DR-3 is not inverted** — nothing admitted is
+dropped unread, and the line-up built on standby is that promise being KEPT.  What was wrong was the
+INFERENCE, "therefore do not admit while stopped".  Left as written, a reader could have concluded
+admitted cards may be silently dropped, which breaks the requirement the comment cites.
+
+**The shape: a comment that overstates its own change.**  Removing a GUARD is not the same as
+overturning the RULE the guard was justified by, and describing it that way turns a narrow fix into a
+licence.  The honest form is usually one more clause: *"admission is a promise to read — it is not a
+promise to read RIGHT NOW."*
+
+**And the corollary I should have reached for first:** the correct framing was already in the tree.
+`reconcileJoins` had carried it since 0.14.0 — *"a stopped station still has a running order; it
+simply is not reading it."*  Third time this release that the answer was already written down.

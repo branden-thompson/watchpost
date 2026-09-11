@@ -27,10 +27,36 @@ import (
 // has just started: the Producer is proposing and the Director is choosing, and
 // the console's job is to say so rather than to report an absence.
 func (b Broadcaster) slotCard(cards []lineup.Card, i int) (lineup.Card, bool) {
-	if i < len(cards) {
+	i -= b.liveOffset()
+	if i >= 0 && i < len(cards) {
 		return cards[i], true
 	}
 	return lineup.Card{}, false
+}
+
+// liveOffset is how far the line-up sits below the LIVE slot (D-84).
+//
+// LIVE IS WHAT IS ON THE AIR, AND ON STANDBY NOTHING IS. The HUM LEAD:
+//
+//	"LIVE should remain EMPTY … The UP NEXT card should be getting the attention
+//	 of the Composer … it will be the first thing that goes ON AIR when the human
+//	 operator hits SHIFT+ENTER."
+//
+// So a station on standby draws its line-up from UP NEXT down, with the LIVE
+// slot empty and waiting. The instant the operator goes on air the head of the
+// queue takes the air and everything moves up one — which is the same movement
+// D-40 already rules for a dropped card, so the operator has seen it before.
+//
+// IT IS THE POWER THAT DECIDES, NOT WHETHER A CARD HAPPENS TO BE ON THE AIR. A
+// running station between two reads — the next card still building — has nothing
+// on the air for a moment, and keying this off that would shunt every card down
+// a row and back for the length of one build. The power is stable; "is something
+// playing right now" is not.
+func (b Broadcaster) liveOffset() int {
+	if b.power == lineup.Running {
+		return 0
+	}
+	return 1
 }
 
 // waiting is the placeholder for a slot the Director has not filled — the same

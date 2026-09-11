@@ -976,16 +976,35 @@ func (d Director) prepareNext() (Director, []Effect) {
 	// Bounded by the schedule: each pass promotes exactly one card out of
 	// ADMITTED, and no card ever returns to it (P10-02).
 	for range d.lineup.held() {
-		next, track, ok := d.lineup.toPrepare()
+		next, _, ok := d.lineup.toPrepare()
 		if !ok {
-			return d, nil
+			// NOTHING NEW TO FILL, SO ASK WHETHER SOMETHING NEEDS RE-FILLING
+			// (D-84). A card that has been standing by since before its data
+			// was superseded needs the SAME thing a card with no words needs —
+			// the HUM LEAD: "it's just like the composer 'filling it' for the
+			// first time, it's just stale." Same card, same slot, same order.
+			//
+			// HERE, AND ONLY AFTER THE WALK, so the two reasons to ask the
+			// Composer have ONE owner and an obvious precedence: a card with no
+			// words at all comes before a card whose words have aged.
+			return d.refreshStandby()
 		}
-		// A build costs 1.03 s of network, and a stopped programme has no
-		// cutover for it to be ready for — the report would only be stale when
-		// one came.
-		if !d.advances(track) {
-			return d, nil
-		}
+		// AND THE COMPOSER WORKS ON STANDBY (D-84, HUM LEAD 2026-09-11): "The UP
+		// NEXT card should be getting the attention of the Composer, who is
+		// populating the script with the right data … it will be the first thing
+		// that goes ON AIR when the human operator hits SHIFT+ENTER — but when
+		// the operator does, the line should be ready to go at that point."
+		//
+		// THIS REFUSED TO BUILD unless the track could advance, on the reasoning
+		// that "a stopped programme has no cutover for it to be ready for — the
+		// report would only be stale when one came". The first half is what the
+		// ruling overturns: the cutover is the operator pressing a key, and the
+		// wait for 1.03 s of network is exactly what they must not hear. The
+		// second half was RIGHT and is answered by `refreshStandby` above, which
+		// re-fills the one built card rather than tossing it.
+		//
+		// IT IS STILL ONE AHEAD AND ONLY ONE (toPrepare), so a station sitting on
+		// standby builds ONE report, not ten.
 		standby, err := next.To(Standby)
 		if err != nil {
 			return d, nil
