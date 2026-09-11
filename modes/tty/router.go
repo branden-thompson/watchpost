@@ -162,6 +162,9 @@ func NewRouter(o Dashboard) Router {
 	// two surfaces disagreeing about which build this is would be the same
 	// two-carriers defect one field along.
 	b.version = o.cfg.Version
+	// AND THE STATION IT IS A CONSOLE FOR (D-72). The area MOVES, so changes
+	// arrive as a message; this is the value it opens with.
+	b.area = o.cfg.StationArea
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver, keys: broadcasterKeyMap()}
 }
 
@@ -210,7 +213,7 @@ func programScoped(msg tea.Msg) bool {
 // operator swaps to in order to trust.
 func consoleScoped(msg tea.Msg) bool {
 	switch msg.(type) {
-	case LineupMsg, StationMsg:
+	case LineupMsg, StationMsg, StationAreaMsg:
 		return true
 	}
 	return false

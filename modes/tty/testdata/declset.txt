@@ -48,9 +48,9 @@ const bcInsetRows
 const bcLabelCells
 const bcMinCols
 const bcMinRows
+const bcNoCoordinates
 const bcNoRelay
-const bcPlaceholderLocation
-const bcPlaceholderRadius
+const bcNoTransmitter
 const bcPriorityCol
 const bcRailGap
 const bcRailWidth
@@ -215,7 +215,6 @@ func (Broadcaster).framed
 func (Broadcaster).header
 func (Broadcaster).headerRows
 func (Broadcaster).heldNotice
-func (Broadcaster).identityRow
 func (Broadcaster).inset
 func (Broadcaster).laneHeader
 func (Broadcaster).laneLabel
@@ -239,8 +238,10 @@ func (Broadcaster).stationSection
 func (Broadcaster).stationTone
 func (Broadcaster).tickNeeded
 func (Broadcaster).tooSmall
+func (Broadcaster).transmitterRow
 func (Broadcaster).waiting
 func (Broadcaster).withPriority
+func (Broadcaster).withSize
 func (Dashboard).DiagnosticsOpen
 func (Dashboard).Init
 func (Dashboard).ModalOpen
@@ -614,6 +615,7 @@ func newCardLane
 func nextGroup
 func nextHours
 func nextRow
+func nonEmpty
 func orDefault
 func panelChromeFor
 func period
@@ -730,6 +732,7 @@ type SevereSource
 type SevereTab
 type SnapshotMsg
 type Station
+type StationAreaMsg
 type StationControlMsg
 type StationMsg
 type Stats

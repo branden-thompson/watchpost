@@ -110,6 +110,8 @@ func (*livePipelines).attachDeck
 func (*livePipelines).attachDiagnostics
 func (*livePipelines).buildDirector
 func (*livePipelines).commit
+func (*livePipelines).currentPool
+func (*livePipelines).currentStation
 func (*livePipelines).currentWatch
 func (*livePipelines).endEventRead
 func (*livePipelines).fireFor
@@ -119,13 +121,17 @@ func (*livePipelines).injectHook
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).narrateEvent
+func (*livePipelines).poolFor
+func (*livePipelines).producer
 func (*livePipelines).providers
+func (*livePipelines).reStation
 func (*livePipelines).readReport
 func (*livePipelines).relayDwell
 func (*livePipelines).relayLang
 func (*livePipelines).seismicFor
 func (*livePipelines).setRelayDwell
 func (*livePipelines).setRelayLang
+func (*livePipelines).setStation
 func (*livePipelines).setWatch
 func (*livePipelines).setup
 func (*livePipelines).sources
@@ -413,6 +419,7 @@ func programmeReturnLine
 func proposeFrom
 func providerEndpoints
 func pruneDumps
+func publishArea
 func radioDebugLog
 func radioDebugName
 func radioDebugOn
@@ -472,6 +479,7 @@ func startPriority
 func startRecent
 func startSchedule
 func startTicker
+func stationFrom
 func subjectOf
 func suggestHook
 func tapeHead
@@ -541,6 +549,7 @@ type schedule
 type seenStore
 type severeDeck
 type speaker
+type stationArea
 type tickerDeck
 type tickerPrefs
 var _
