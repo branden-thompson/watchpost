@@ -167,7 +167,7 @@ func TestTheStationToggleDoesNothingFromObserver(t *testing.T) {
 func TestTheBedsControlsReachTheStation(t *testing.T) {
 	s := &station{}
 	var stepped []int
-	d, err := NewDashboard(Config{StepBedRelay: func(by int) { stepped = append(stepped, by) }})
+	d, err := NewDashboard(Config{StepBedRelay: func(by int) tea.Cmd { stepped = append(stepped, by); return nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,5 +200,39 @@ func TestTheBedsControlsReachTheStation(t *testing.T) {
 	_, _ = after.Update(keyPress(t, "right"))
 	if len(s.bed) != before || len(stepped) != steps {
 		t.Error("a bed control acted from a surface where the operator cannot see what they did")
+	}
+}
+
+// AND A BED KEY DOES NOTHING TO THE BED FROM OBSERVER (D-79).
+//
+// THE ROUTER LOOKS A KEY UP BEFORE EITHER SURFACE SEES IT, so the bed's cases
+// ran on every surface. They returned unconditionally at first, which SWALLOWED
+// `left` and `right` on Observer — where they walk the alerts — and the
+// listener's navigation stopped working. Only a real key sequence through the
+// real binary showed it; every unit test pressed the arrows on the console.
+//
+// WHAT THIS REACHES, SAID PLAINLY (INST-5): it proves the bed is not TOUCHED
+// from Observer. It does NOT prove the key went on to reach the Dashboard —
+// this fixture's Observer has an empty table and an empty injector, so `right`
+// and an unbound key leave it in the same state either way. The pass-through is
+// covered by the pty smoke, which is where it was found.
+func TestABedKeyDoesNothingToTheBedFromObserver(t *testing.T) {
+	s := &station{}
+	d, err := NewDashboard(Config{StepBedRelay: func(int) tea.Cmd { t.Error("the selector acted from Observer"); return nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m tea.Model = withStation(t, NewRouter(d), s)
+	if m.(Router).active != SurfaceObserver {
+		t.Fatal("precondition: the app opens on Observer")
+	}
+	for _, k := range []string{"b", "left", "right"} {
+		m, _ = m.Update(keyPress(t, k))
+	}
+	if len(s.bed) != 0 {
+		t.Errorf("a bed control acted from Observer: %v", s.bed)
+	}
+	if m.(Router).active != SurfaceObserver {
+		t.Error("and none of them moved the operator to another surface")
 	}
 }

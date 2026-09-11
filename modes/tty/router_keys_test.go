@@ -92,6 +92,8 @@ func keyPress(t *testing.T, name string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyLeft}
 	case "right":
 		return tea.KeyPressMsg{Code: tea.KeyRight}
+	case "down":
+		return tea.KeyPressMsg{Code: tea.KeyDown}
 	}
 	if rest, found := strings.CutPrefix(name, "ctrl+"); found {
 		r := []rune(rest)

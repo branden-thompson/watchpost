@@ -499,6 +499,7 @@ func (RepeatMode).next
 func (Router).Init
 func (Router).Update
 func (Router).View
+func (Router).bedControl
 func (Router).canSwap
 func (Router).cutBed
 func (Router).stationIsLive

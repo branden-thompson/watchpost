@@ -180,11 +180,11 @@ type Router struct {
 
 	// onSurface tells the app which surface owns the air, so the alert rail can
 	// be scoped to it (D-73). Nil in tests that do not care.
-	onSurface func(Surface)
+	onSurface func(Surface) tea.Cmd
 
 	// relays steps the bed's selection through what the station's fence reaches
 	// (D-78). Nil where there is no radio.
-	relays func(by int)
+	relays func(by int) tea.Cmd
 }
 
 // NewRouter wraps Observer. The second surface arrives in P1.
@@ -324,17 +324,24 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if a, bound := r.keys.Lookup(k.String()); bound {
 			switch a {
 			case actSwapObserver:
-				return r.swapTo(SurfaceObserver), nil
+				return r.swapTo(SurfaceObserver)
 			case actSwapBroadcaster:
-				return r.swapTo(SurfaceBroadcaster), nil
+				return r.swapTo(SurfaceBroadcaster)
 			case actStationToggle:
 				return r.toggleStation(), nil
-			case actBedCut:
-				return r.cutBed(), nil
-			case actBedPrev:
-				return r.stepBed(-1), nil
-			case actBedNext:
-				return r.stepBed(1), nil
+			// THE BED'S CONTROLS ARE THE CONSOLE'S, AND THEY FALL THROUGH
+			// EVERYWHERE ELSE (D-79). The Router looks a key up BEFORE either
+			// surface sees it, so a case that returned unconditionally would
+			// swallow the ARROWS on Observer — where they walk the table — and
+			// the listener's navigation would simply stop working.
+			//
+			// NOT RETURNING IS THE FALL-THROUGH: execution continues past this
+			// switch to the active surface, which is exactly what an unbound key
+			// does.
+			case actBedCut, actBedPrev, actBedNext:
+				if r.active == SurfaceBroadcaster {
+					return r.bedControl(a)
+				}
 			case actGainUp, actGainDown,
 				actSettings, actAbout, actStatus, actHelp, actQuit:
 				return r.throughToObserver(msg)
@@ -425,11 +432,11 @@ func (r Router) surface() surfaceView {
 
 // swapTo moves to the surface if the gate permits, and records the refusal
 // for the operator when it does not.
-func (r Router) swapTo(to Surface) Router {
+func (r Router) swapTo(to Surface) (Router, tea.Cmd) {
 	ok, why := r.canSwap(to)
 	if !ok {
 		r.refusal = why
-		return r
+		return r, nil
 	}
 	r.refusal = ""
 	r.active = to
@@ -437,10 +444,15 @@ func (r Router) swapTo(to Surface) Router {
 	// granted, rather than from the key handler — a second caller would be a
 	// second answer to which surface owns the air, and the whole reason this
 	// gate exists is that there is exactly one.
+	//
+	// WHAT COMES BACK IS A COMMAND, NOT A DONE DEED (D-79). Taking the air stops
+	// the monitor's audio, and that reaches the player — which calls back into
+	// the program. Run inline it would `Send` to a loop sitting inside this very
+	// Update, and the app froze hard on `ctrl+b` until it was a command.
 	if r.onSurface != nil {
-		r.onSurface(to)
+		return r, r.onSurface(to)
 	}
-	return r
+	return r, nil
 }
 
 // canSwap reports whether the operator may move to the given surface, and
@@ -497,6 +509,23 @@ func (r Router) toggleStation() Router {
 	return r
 }
 
+// bedControl routes one of the console's bed keys.
+//
+// ONE DOOR FOR THE THREE OF THEM, so the "only on the console" rule is stated
+// once rather than three times — and the day a fourth bed control arrives it
+// cannot be added without passing the same gate.
+func (r Router) bedControl(a term.Action) (Router, tea.Cmd) {
+	switch a {
+	case actBedCut:
+		return r.cutBed(), nil
+	case actBedPrev:
+		return r.stepBed(-1)
+	case actBedNext:
+		return r.stepBed(1)
+	}
+	return r, nil
+}
+
 // cutBed moves the programme between the line-up and the bed (D-78).
 //
 // THE CONSOLE ASKS AND IS TOLD, which is `toggleStation`'s rule and the reason
@@ -520,12 +549,14 @@ func (r Router) cutBed() Router {
 // IT IS THE APP'S LIST, NOT THE CONSOLE'S. Which relays are in reach is a fact
 // about the transmitter and the bed's fence (D-77), and a console that held its
 // own copy would be a second answer to what the operator may choose.
-func (r Router) stepBed(by int) Router {
+// IT HANDS BACK A COMMAND (D-79). Landing on a relay TUNES it and tells the
+// console what it landed on, and both reach the program — so run inline, from
+// inside Update, they send to a loop that cannot receive and the app freezes.
+func (r Router) stepBed(by int) (Router, tea.Cmd) {
 	if r.active != SurfaceBroadcaster || r.relays == nil {
-		return r
+		return r, nil
 	}
-	r.relays(by)
-	return r
+	return r, r.relays(by)
 }
 
 // stationIsLive is the ONE reader of the console's power, and it stayed one

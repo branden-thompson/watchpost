@@ -101,12 +101,22 @@ type Config struct {
 	// is exactly this: "when I switch to Broadcaster I don't hear alerts outside
 	// my service radius … when I switch back to Observer, that alert track has
 	// to re-adapt to whatever my filter settings dictate."
-	OnSurface func(active Surface)
+	// IT RETURNS A COMMAND, AND THAT IS LOAD-BEARING (D-79). Taking the air
+	// STOPS THE MONITOR'S AUDIO, and halting the player calls back into the
+	// program — so doing it inline would `Send` to a loop that is inside Update
+	// and cannot receive. The app froze hard on `ctrl+b`, and Observer already
+	// had the answer: `withCmd(func() tea.Msg { radio.Stop(); return nil })`.
+	OnSurface func(active Surface) tea.Cmd
 
 	// StepBedRelay moves the bed's selection through the relays the station's
 	// fence reaches (D-78) — the `←` / `→` controls, which the reference has
 	// drawn since the first wave and which were bound to nothing.
-	StepBedRelay func(by int)
+	// A COMMAND, FOR `OnSurface`'S REASON (D-79). Stepping the selection TUNES
+	// the relay it lands on and tells the console what it landed on — both of
+	// which reach the program, so doing it inline sends to a loop that is inside
+	// Update and cannot receive. This froze the app on the first arrow press
+	// after the first freeze was fixed: the same defect, one function along.
+	StepBedRelay func(by int) tea.Cmd
 
 	// StationArea is where the STATION transmits from and how far it reaches, at
 	// launch (D-72). Changes arrive as `StationAreaMsg`; this is the value the

@@ -74,7 +74,7 @@ func TestASwapTellsTheAppWhoOwnsTheAir(t *testing.T) {
 		t.Fatal(err)
 	}
 	var told []Surface
-	d.cfg.OnSurface = func(s Surface) { told = append(told, s) }
+	d.cfg.OnSurface = func(s Surface) tea.Cmd { told = append(told, s); return nil }
 	var m tea.Model = NewRouter(d)
 
 	m, _ = m.Update(keyPress(t, "ctrl+b"))
