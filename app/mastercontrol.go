@@ -140,6 +140,14 @@ func (m *mastercontrol) railFence() lineup.Fence {
 	return m.fence()
 }
 
+// CutBed moves the programme between the station's line-up and its bed (D-78).
+//
+// THE FIRST PRODUCTION CALLER `lineup.CutOver` HAS EVER HAD. The Director has
+// modelled it since 0.14.0 — FR-4.2, D-11, D-32 — and nothing emitted it, which
+// is why `bed.carries` was false for the life of every process and the pause it
+// governs had never once happened.
+func (m *mastercontrol) CutBed(toBed bool) { m.tell(lineup.CutOver{ToBed: toBed}) }
+
 // StopMonitor stops the operator's own listening.
 //
 // IT IS NOT A STATION EVENT. The line-up does not pause, the rail does not hold

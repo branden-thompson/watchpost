@@ -41,6 +41,21 @@ type LineupMsg struct{ Lineup lineup.Lineup }
 // second carrier would be a safety bug rather than a display one.
 type StationMsg struct{ Power lineup.Power }
 
+// BedMsg carries what the broadcast is riding on (F-79, closed at D-78).
+//
+// THE CONSOLE DREW A CONSTANT BEFORE THIS. `(no relay tuned)` and `○ INACTIVE`
+// were the true things it could say while the schedule published the lineup and
+// the power and nothing about the bed — so the one region D-62 built to answer
+// "what is on the air" was answering two thirds of it.
+type BedMsg struct {
+	// Relay is how the bed's source reads on the row — a call sign, its
+	// frequency and how far out it is. Empty is "nothing is tuned".
+	Relay string
+
+	// Carrying is whether the bed holds the programme right now.
+	Carrying bool
+}
+
 // StationAreaMsg carries WHERE the station transmits from and how far it reaches
 // (D-72).
 //
@@ -106,6 +121,11 @@ type Broadcaster struct {
 	// the Router mirrors it here each update, so the two surfaces cannot
 	// disagree about how loud the station is.
 	gain int
+
+	// bed is what the broadcast is riding on (F-79). Published, never guessed:
+	// the console draws it and holds no opinion of its own, the same rule the
+	// power follows.
+	bed BedMsg
 
 	// area is where the station transmits from and how far it reaches (D-72),
 	// published by the schedule's own owner rather than guessed at here.
@@ -217,6 +237,8 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 		b.lineup = v.Lineup
 	case StationAreaMsg:
 		b.area = v
+	case BedMsg:
+		b.bed = v
 	case StationMsg:
 		// THE CLOCK STARTS ON THE TRANSITION, not on every message: a station
 		// that has been silent an hour must not look freshly quiet because
@@ -779,13 +801,18 @@ func (b Broadcaster) stationLine() []string {
 	// THE BED'S STATE READS AS A SENTENCE AND SITS AT THE RIGHT, where the
 	// station's own transition hint sits — the two facts an operator checks
 	// without reading the row are both in the same column (D-71).
+	// THE BED SAYS WHAT IT IS ACTUALLY DOING (F-79). It said INACTIVE
+	// unconditionally, because nothing published the answer.
 	bed := g.Idle + "  BED IS INACTIVE"
+	if b.bed.Carrying {
+		bed = g.Live + "  BED IS ACTIVE"
+	}
 	return []string{
 		render.PadBetween(label("STATION:")+state, hint, lane),
 		// THE TRANSMITTER'S IDENTITY MOVED HERE FROM THE MASTHEAD (D-71). It is
 		// a fact about the STATION; the masthead is what both surfaces share.
 		render.PadTo(label("TRANSMITTER:")+b.transmitterRow(max(0, lane-bcLabelCells)), lane),
-		render.PadBetween(label(o.KeyCap("B")+" BED:")+b.bedSelector(o), bed, lane),
+		render.PadBetween(label(o.KeyCap("b")+" BED:")+b.bedSelector(o), bed, lane),
 		render.PadBetween(render.TruncateCells(label("")+why, max(0, room)), gain, lane),
 	}
 }
@@ -807,14 +834,18 @@ func (b Broadcaster) bedSelector(o render.Opts) string {
 	// them in WORDS under --ascii (`asciiKey`) — a literal here would print a
 	// glyph a terminal without them cannot draw, in the row that says whether
 	// the station is on the air.
-	// INACTIVE UNTIL THE BED'S STATE IS PUBLISHED (F-79). The schedule carries
-	// the lineup and the power; it does not yet carry which relay is tuned, so
-	// this says the true thing it can say rather than guessing at the other.
+	// THE RELAY IS THE PUBLISHED ONE (F-79, closed at D-78). It was the constant
+	// `(no relay tuned)` while the schedule carried the lineup and the power and
+	// nothing about the bed.
 	//
 	// THE STATE LEFT THIS ROW AT D-71 and sits at the right of the section with
 	// the station's own transition hint; what stays here is the SELECTOR.
 	_ = g
-	return o.KeyCap("←") + "  " + bcNoRelay + "  " + o.KeyCap("→")
+	relay := b.bed.Relay
+	if relay == "" {
+		relay = bcNoRelay
+	}
+	return o.KeyCap("←") + "  " + relay + "  " + o.KeyCap("→")
 }
 
 const (

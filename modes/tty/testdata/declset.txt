@@ -29,6 +29,9 @@ const TickerYellow
 const WatchCap
 const aboutWidth
 const actAbout
+const actBedCut
+const actBedNext
+const actBedPrev
 const actDiagnostics
 const actGainDown
 const actGainUp
@@ -497,7 +500,9 @@ func (Router).Init
 func (Router).Update
 func (Router).View
 func (Router).canSwap
+func (Router).cutBed
 func (Router).stationIsLive
+func (Router).stepBed
 func (Router).surface
 func (Router).swapTo
 func (Router).throughToObserver
@@ -709,6 +714,7 @@ func withoutRef
 func worseStatus
 func wrapPrefixed
 func wrappedIndex
+type BedMsg
 type Broadcaster
 type CastView
 type Config

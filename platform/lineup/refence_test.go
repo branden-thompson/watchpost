@@ -111,3 +111,54 @@ func TestAHeldCardDoesNotBlockTheRail(t *testing.T) {
 		t.Errorf("the held card was offered anyway: %q", next.ID)
 	}
 }
+
+// THE BED'S STATE TRAVELS ON THE PUBLISH (F-79, closed at D-78).
+//
+// A PLANT SAID THIS WAS MISSING. The console's own tests feed it a `BedMsg` and
+// prove it DRAWS one; nothing proved the schedule ever SENDS one, so deleting
+// the bed from the effect left every test green and the row a constant again —
+// which is the defect F-79 was filed for in the first place.
+//
+// ALL THREE FACTS TRAVEL TOGETHER, which is why they are on one effect: D-62
+// consolidated the line-up, the power and the bed into ONE region so the
+// operator reads the air state in a glance, and three facts drawn together and
+// published apart would undo that at the seam.
+func TestThePublishCarriesTheBedsState(t *testing.T) {
+	now := time.Now()
+	d := New(Settings{Max: 5}, now)
+	d, _ = d.Step(Monitored{Running: true})
+	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
+	d, _ = d.Step(Tuned{Ref: "a", Live: true})
+
+	// THE CUT-OVER IS WHAT SETTLES — `lineup.CutOver`'s first production caller
+	// is the console's `[b]` (D-78) — and the publish it produces carries all
+	// three facts the station section draws.
+	_, fx := d.Step(CutOver{ToBed: true})
+	pub, ok := lastPublish(fx)
+	if !ok {
+		t.Fatalf("a cut-over settles and publishes; got %v", fx)
+	}
+	if pub.Bed.Ref != "a" || !pub.Bed.Live {
+		t.Errorf("the publish names what the bed is tuned to; got %+v", pub.Bed)
+	}
+	if !pub.Bed.Carrying {
+		t.Errorf("and that it is carrying; got %+v", pub.Bed)
+	}
+
+	// AND CUTTING BACK SAYS SO, or the row would learn ACTIVE and never unlearn
+	// it — the same constant one state along.
+	d, _ = d.Step(CutOver{ToBed: true})
+	_, fx = d.Step(CutOver{ToBed: false})
+	if pub, ok := lastPublish(fx); !ok || pub.Bed.Carrying {
+		t.Errorf("cutting back publishes a bed that is not carrying; got %+v / %v", pub.Bed, ok)
+	}
+}
+
+func lastPublish(fx []Effect) (Publish, bool) {
+	for i := len(fx) - 1; i >= 0; i-- {
+		if p, ok := fx[i].(Publish); ok {
+			return p, true
+		}
+	}
+	return Publish{}, false
+}

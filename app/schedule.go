@@ -72,7 +72,7 @@ type schedule struct {
 // watched location outside the station's pool stopped resolving and the tune
 // died as `schedule:tune-unknown`, silently. Found by DRAWING THE FLOW for the
 // HUM LEAD rather than by a gate.
-func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg)) *schedule {
+func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), noteBed func(bool)) *schedule {
 	if nar == nil {
 		return nil // no arbiter, no schedule: there is nothing to perform through
 	}
@@ -107,6 +107,10 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// (D-76). It is `advanceBed` that emits this, and `advanceBed` is the
 		// operator's own listening — not the station's.
 		cutTo: tuneTo(deck, watch),
+		// AND WHAT TO CALL IT ON THE CONSOLE (F-79). The same list the cut-over
+		// resolves against, so the row cannot name a place the tune did not go.
+		bedLabel: bedLabelOf(watch),
+		noteBed:  noteBed,
 		// THE MAIN TRACK'S WORDS (0.16.0 P3). Required from P3(d): a station
 		// whose rotation is owned by the schedule and has no composer wired
 		// would queue every report and read none.
@@ -337,5 +341,21 @@ func proposeFrom(watch func() []snapshot.LocationRef) func() []lineup.Proposal {
 			out = append(out, lineup.Proposal{Ref: key, Headline: r.Label, Slot: lineup.LocationReport})
 		}
 		return out
+	}
+}
+
+// bedLabelOf turns the bed's ref into the words the console shows.
+//
+// THE LOCATION'S OWN NAME, which is all the schedule can honestly say today: the
+// relay's call sign, frequency and distance live on the deck's resolved station,
+// and the bed's ref is a LOCATION key. Naming the place the bed is carrying is
+// true; inventing a call sign from a key would not be.
+func bedLabelOf(watch func() []snapshot.LocationRef) func(string) string {
+	return func(ref string) string {
+		r, ok := refFor(watch, ref)
+		if !ok {
+			return ""
+		}
+		return r.Label
 	}
 }

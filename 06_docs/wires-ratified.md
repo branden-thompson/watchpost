@@ -31,10 +31,18 @@ the direction of silence**, and silence here means an unwired member nobody is t
 | `Event.Moved` | the operator promoting or demoting a card.  The event, the reorder mutator and FR-3.3's own mutant landed in P4's pure half; **the key that presses it is P4's UI half** | **the Operator, through the console** | **P4 (UI)** |
 | `Event.Dropped` | the operator taking a card out of the running order.  **Blocked on FR-3.7's CONFIRM**, which is a console control — the pure half deliberately does not invent one | **the Operator, through the console** | **P4 (UI)** |
 | `Event.Restored` | the operator's undo.  Same half, same block | **the Operator, through the console** | **P4 (UI)** |
-| `Event.CutOver` | the operator moving the programme between the lanes.  The event and the state landed in the track-model batch; **the control that presses it is P4's** | **the Operator, through the console** — D-11 and FR-4.2's cut-over.  Caught by this gate on the commit that added it, which is what the gate is for | **P4** |
 | `State.Refused` | `Propose` returns an error instead, so nothing reaches the state | **the Director** — D-35's capped discard pile, per DR-1's one writer.  **Not a track**: `held()` counts tracks and a parked card would stop the fault window ever firing | **P4** |
 
 <!-- /wires:exemptions -->
+
+## Closed
+
+**`Event.CutOver` — wired 2026-09-11 (D-78).**  The row said the control that presses it "is P4's",
+and P4 is where it landed: `[b]` on the console, through `mastercontrol.CutBed`.  **The gate is what
+closed it** — the exemption went STALE on the commit that wired the event, and removing the row is the
+obligation being discharged rather than a note being tidied.  `lineup.CutOver` had been modelled since
+0.14.0 (FR-4.2, D-11, D-32) with no production caller, so `bed.carries` was false for the life of
+every process and the pause it governs had never once happened.
 
 ## Rows that have already left, because the wiring landed
 

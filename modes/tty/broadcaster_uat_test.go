@@ -368,3 +368,38 @@ func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 		t.Errorf("the bed's state reads as a sentence:\n%s", got)
 	}
 }
+
+// THE BED SAYS WHAT IT IS ACTUALLY CARRYING (F-79, closed at D-78).
+//
+// IT SAID `(no relay tuned)` AND `○ INACTIVE` UNCONDITIONALLY, because the
+// schedule published the line-up and the power and nothing about the bed — so
+// the one region D-62 built to answer "what is on the air" answered two thirds
+// of it, and the third was a constant that happened to be true at launch.
+func TestTheBedDrawsWhatWasPublished(t *testing.T) {
+	b := NewBroadcaster().withSize(150, 74)
+
+	// BEFORE IT IS TOLD, it says the true thing it can say.
+	bare := stripANSITest(b.stationSection(b.opts(), "", ""))
+	if !strings.Contains(bare, bcNoRelay) || !strings.Contains(bare, "BED IS INACTIVE") {
+		t.Errorf("an untold bed says so:\n%s", bare)
+	}
+
+	b, _ = b.Update(BedMsg{Relay: "Oceanside, CA", Carrying: true})
+	got := stripANSITest(b.stationSection(b.opts(), "", ""))
+	if !strings.Contains(got, "Oceanside, CA") {
+		t.Errorf("the bed names what it is carrying:\n%s", got)
+	}
+	if !strings.Contains(got, "BED IS ACTIVE") {
+		t.Errorf("and says that it is:\n%s", got)
+	}
+	if strings.Contains(got, bcNoRelay) {
+		t.Errorf("the placeholder outlived the answer:\n%s", got)
+	}
+
+	// AND IT GOES BACK. A bed that only ever learned to say ACTIVE would be the
+	// same constant one state along.
+	b, _ = b.Update(BedMsg{})
+	if back := stripANSITest(b.stationSection(b.opts(), "", "")); !strings.Contains(back, "BED IS INACTIVE") {
+		t.Errorf("cutting the bed away says so:\n%s", back)
+	}
+}

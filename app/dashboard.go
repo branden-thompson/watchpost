@@ -90,6 +90,13 @@ func RunDashboard(version string, opt Options) error {
 	// before then blocks for ever.
 	lp.idx = idx
 	lp.setStation(stationFrom(cfg))
+	// THE BED'S OWN FENCE AND ITS TABLE (D-77/D-78). The table is the embedded
+	// transmitter list; a failure to parse it is a station with no relays to
+	// choose between, which the selector says for itself.
+	if tbl, err := stream.LoadTable(); err == nil {
+		lp.relayTable = tbl
+	}
+	lp.bedRadiusMi = cfg.Broadcaster.BedRadius()
 	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, setRadius, uiHook(prefs.clock)))
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge
@@ -235,7 +242,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// against; the LISTENER's watchlist is what the monitor's rotation moves
 	// through. D-72 moved all three seams to the pool and that was two-thirds
 	// right — the cut-over belongs to the monitor.
-	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.currentWatch, lp.ticker, p.Send)
+	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.currentWatch, lp.ticker, p.Send, lp.noteBedCarrying)
 	lp.wireDeckWarnings()
 	return firstFullNanos
 }
@@ -250,6 +257,8 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		// what moves it between the listener's filter and the station's service
 		// area.
 		OnSurface: lp.takeTheAir,
+		// THE BED'S SELECTOR (D-78), walking the STATION's fence.
+		StepBedRelay: lp.stepBedRelay,
 		// WHERE THE STATION TRANSMITS FROM, AT LAUNCH (D-72). Changes arrive as
 		// a message; this is what the console opens with, because the program's
 		// loop is not running when the pool is first derived.
@@ -588,6 +597,14 @@ type livePipelines struct {
 	idx      *geodata.Index
 	station  stationArea
 	poolRefs []snapshot.LocationRef
+
+	// THE STATION'S BED (D-78): the table its fence is measured against, how far
+	// that fence reaches, which relay the operator has selected, and whether the
+	// bed is carrying as the console last heard.
+	relayTable  *stream.Table
+	bedRadiusMi float64
+	bedPick     int
+	bedOn       bool
 
 	// owner is which surface the operator is looking at, and therefore what the
 	// alert rail is scoped to (D-73, airscope.go).

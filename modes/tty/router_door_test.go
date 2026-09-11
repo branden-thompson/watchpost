@@ -24,10 +24,15 @@ import (
 )
 
 // station records what the console asked of the station's state.
-type station struct{ asked []lineup.Power }
+type station struct {
+	asked []lineup.Power
+	// bed is every cut the console asked for, in order (D-78).
+	bed []bool
+}
 
-func (s *station) GoOnAir()     { s.asked = append(s.asked, lineup.Running) }
-func (s *station) GoToStandby() { s.asked = append(s.asked, lineup.OffAir) }
+func (s *station) GoOnAir()          { s.asked = append(s.asked, lineup.Running) }
+func (s *station) GoToStandby()      { s.asked = append(s.asked, lineup.OffAir) }
+func (s *station) CutBed(toBed bool) { s.bed = append(s.bed, toBed) }
 
 // withStation hands the router its control THE WAY PRODUCTION DOES — through
 // the message, not by assigning the field.
@@ -146,5 +151,54 @@ func TestTheStationToggleDoesNothingFromObserver(t *testing.T) {
 
 	if len(s.asked) != 0 {
 		t.Errorf("Observer's surface does not run the station; got %v", s.asked)
+	}
+}
+
+// THE BED'S CONTROLS REACH THE STATION (D-78).
+//
+// `[B]` IS THE FIRST PRODUCTION CALLER `lineup.CutOver` HAS EVER HAD. The
+// Director has modelled the cut-over since 0.14.0 — FR-4.2, D-11, D-32 — and
+// nothing emitted it, so `bed.carries` was false for the life of every process
+// and the pause it governs had never once happened.
+//
+// DRIVEN THROUGH THE KEYS, for the reason this file's own helper exists: a test
+// that called `cutBed` directly would pass over an unbound control, which is
+// exactly the state these three were in.
+func TestTheBedsControlsReachTheStation(t *testing.T) {
+	s := &station{}
+	var stepped []int
+	d, err := NewDashboard(Config{StepBedRelay: func(by int) { stepped = append(stepped, by) }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m tea.Model = withStation(t, NewRouter(d), s)
+	m, _ = m.Update(keyPress(t, "ctrl+b")) // the controls are the console's
+
+	m, _ = m.Update(keyPress(t, "b"))
+	if len(s.bed) != 1 || !s.bed[0] {
+		t.Fatalf("[b] cuts the programme TO the bed; asked %v", s.bed)
+	}
+	// AND IT IS A DIRECTION, NOT A TOGGLE THE CONSOLE DECIDES. Told the bed is
+	// carrying, the next press asks for the other way.
+	m, _ = m.Update(BedMsg{Carrying: true})
+	m, _ = m.Update(keyPress(t, "b"))
+	if len(s.bed) != 2 || s.bed[1] {
+		t.Errorf("[b] on a carrying bed cuts BACK; asked %v", s.bed)
+	}
+
+	m, _ = m.Update(keyPress(t, "right"))
+	m, _ = m.Update(keyPress(t, "left"))
+	if len(stepped) != 2 || stepped[0] != 1 || stepped[1] != -1 {
+		t.Errorf("the arrows step the relay selection; got %v", stepped)
+	}
+
+	// AND NONE OF THEM ACTS FROM OBSERVER, where the bed is not drawn.
+	r := m.(Router)
+	r.active = SurfaceObserver
+	before, steps := len(s.bed), len(stepped)
+	after, _ := r.Update(keyPress(t, "b"))
+	_, _ = after.Update(keyPress(t, "right"))
+	if len(s.bed) != before || len(stepped) != steps {
+		t.Error("a bed control acted from a surface where the operator cannot see what they did")
 	}
 }

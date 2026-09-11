@@ -711,6 +711,17 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		// one `publish` names: topping the line-up off is an ENRICHMENT of the
 		// schedule, not a precondition for having one.
 		"propose": true,
+		// DELIBERATELY OPTIONAL (F-79, D-78). nil is a station with no radio,
+		// where the bed is never tuned and there is nothing to name. The console
+		// already has its own words for an untuned bed, so a missing label reads
+		// as "nothing is tuned" rather than as a fault — and refusing to build
+		// without it would make the SCHEDULE depend on there being a UI to
+		// describe the bed to, which is `publish`'s wrong direction again.
+		"bedLabel": true,
+		// DELIBERATELY OPTIONAL, for `publish`'s reason (D-78). It exists so the
+		// relay SELECTOR and the Director agree about whether the bed is
+		// carrying; nil is a build with no console to disagree with.
+		"noteBed": true,
 	}
 	v := reflect.ValueOf(whole())
 	for i := 0; i < v.NumField(); i++ {

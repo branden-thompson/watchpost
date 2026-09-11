@@ -103,6 +103,11 @@ type Config struct {
 	// to re-adapt to whatever my filter settings dictate."
 	OnSurface func(active Surface)
 
+	// StepBedRelay moves the bed's selection through the relays the station's
+	// fence reaches (D-78) — the `←` / `→` controls, which the reference has
+	// drawn since the first wave and which were bound to nothing.
+	StepBedRelay func(by int)
+
 	// StationArea is where the STATION transmits from and how far it reaches, at
 	// launch (D-72). Changes arrive as `StationAreaMsg`; this is the value the
 	// console opens with, because a message sent before the program's loop is

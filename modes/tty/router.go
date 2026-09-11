@@ -45,6 +45,14 @@ const (
 	actDiagnostics   term.Action = "diagnostics"
 	actStationToggle term.Action = "station-toggle"
 
+	// THE BED'S OWN CONTROLS (D-78). `[B]` cuts the programme between the
+	// station's line-up and its bed; the arrows move through the relays the
+	// station's fence reaches. The reference mock has drawn all three since the
+	// first wave and none of them was bound to anything.
+	actBedCut  term.Action = "bed-cut"
+	actBedPrev term.Action = "bed-prev"
+	actBedNext term.Action = "bed-next"
+
 	// actGainUp and actGainDown are the station's output level — Observer's VOL
 	// under the station's own word (HUM LEAD, 2026-09-10). They are FORWARDED
 	// rather than reimplemented: the Dashboard owns the level, the step, the
@@ -91,6 +99,16 @@ type StationControlMsg struct{ Control Station }
 type Station interface {
 	GoOnAir()
 	GoToStandby()
+
+	// CutBed moves the programme between the station's line-up and its bed
+	// (D-78) — `[B]`, and the first production caller `lineup.CutOver` has ever
+	// had. The Director has modelled this since 0.14.0 and nothing emitted it.
+	//
+	// TO THE BED IS THE ARGUMENT, not a toggle, for the reason the power's two
+	// controls are two methods: a toggle asks the caller to know the current
+	// state, and the console's whole discipline is that it holds no opinion of
+	// its own — it draws what it is told.
+	CutBed(toBed bool)
 }
 
 // broadcasterKeyMap is the console's bindings.
@@ -119,6 +137,17 @@ func broadcasterKeyMap() term.KeyMap {
 		actHelp:          {Keys: []string{"?"}, Help: "Help"},
 		actQuit:          {Keys: []string{"q"}, Help: "Quit"},
 		actStationToggle: {Keys: []string{"shift+enter"}, Help: "ON AIR / STANDBY"},
+		// THE BED'S OWN CONTROLS (D-78). `[B]` cuts the programme to the bed and
+		// back; the arrows move through the relays the station's fence reaches.
+		// LOWERCASE, BECAUSE `B` IS ALREADY A DOOR. FR-1.6 requires every action
+		// to carry a non-chord key, and `B` is the Broadcaster swap's — an
+		// operator whose multiplexer eats `ctrl+b` would otherwise have no route
+		// to the console at all. One key means one thing (D-56), so the bed
+		// takes `b` and the reference's `[ B ]` chip becomes `[ b ]`. Stated
+		// rather than quietly re-bound: the mock is the record.
+		actBedCut:  {Keys: []string{"b"}, Help: "Bed"},
+		actBedPrev: {Keys: []string{"left"}, Help: "Previous Relay"},
+		actBedNext: {Keys: []string{"right"}, Help: "Next Relay"},
 	}
 }
 
@@ -152,6 +181,10 @@ type Router struct {
 	// onSurface tells the app which surface owns the air, so the alert rail can
 	// be scoped to it (D-73). Nil in tests that do not care.
 	onSurface func(Surface)
+
+	// relays steps the bed's selection through what the station's fence reaches
+	// (D-78). Nil where there is no radio.
+	relays func(by int)
 }
 
 // NewRouter wraps Observer. The second surface arrives in P1.
@@ -170,7 +203,7 @@ func NewRouter(o Dashboard) Router {
 	// arrive as a message; this is the value it opens with.
 	b.area = o.cfg.StationArea
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver,
-		keys: broadcasterKeyMap(), onSurface: o.cfg.OnSurface}
+		keys: broadcasterKeyMap(), onSurface: o.cfg.OnSurface, relays: o.cfg.StepBedRelay}
 }
 
 // Init delegates to the active surface. Observer asks for the terminal's
@@ -218,7 +251,7 @@ func programScoped(msg tea.Msg) bool {
 // operator swaps to in order to trust.
 func consoleScoped(msg tea.Msg) bool {
 	switch msg.(type) {
-	case LineupMsg, StationMsg, StationAreaMsg:
+	case LineupMsg, StationMsg, StationAreaMsg, BedMsg:
 		return true
 	}
 	return false
@@ -296,6 +329,12 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return r.swapTo(SurfaceBroadcaster), nil
 			case actStationToggle:
 				return r.toggleStation(), nil
+			case actBedCut:
+				return r.cutBed(), nil
+			case actBedPrev:
+				return r.stepBed(-1), nil
+			case actBedNext:
+				return r.stepBed(1), nil
 			case actGainUp, actGainDown,
 				actSettings, actAbout, actStatus, actHelp, actQuit:
 				return r.throughToObserver(msg)
@@ -455,6 +494,37 @@ func (r Router) toggleStation() Router {
 		return r
 	}
 	r.station.GoOnAir()
+	return r
+}
+
+// cutBed moves the programme between the line-up and the bed (D-78).
+//
+// THE CONSOLE ASKS AND IS TOLD, which is `toggleStation`'s rule and the reason
+// this takes a DIRECTION rather than toggling: the state it draws comes back
+// from the Director through Publish, so a console that decided for itself could
+// draw a bed the schedule does not have.
+//
+// AND IT ASKS NOTHING FROM OBSERVER. The bed is the STATION's, and a key that
+// moved the programme from a surface where it is not drawn would be a control
+// acting where the operator cannot see what they did.
+func (r Router) cutBed() Router {
+	if r.active != SurfaceBroadcaster || r.station == nil {
+		return r
+	}
+	r.station.CutBed(!r.broadcaster.bed.Carrying)
+	return r
+}
+
+// stepBed moves the selection through the relays the station's fence reaches.
+//
+// IT IS THE APP'S LIST, NOT THE CONSOLE'S. Which relays are in reach is a fact
+// about the transmitter and the bed's fence (D-77), and a console that held its
+// own copy would be a second answer to what the operator may choose.
+func (r Router) stepBed(by int) Router {
+	if r.active != SurfaceBroadcaster || r.relays == nil {
+		return r
+	}
+	r.relays(by)
 	return r
 }
 

@@ -363,3 +363,12 @@ func (d Director) giveOrTakeBack() (Director, []Effect) {
 	}
 	return d, []Effect{Restore{}}
 }
+
+// bedState is the bed as the console draws it (F-79).
+//
+// DERIVED, NEVER STORED. A second copy of these three fields would be a second
+// answer to what the bed is doing, and the whole reason D-62 put the bed in the
+// broadcast section is that the operator should have ONE place to look.
+func (d Director) bedState() BedState {
+	return BedState{Ref: d.bed.ref, Live: d.bed.live, Carrying: d.bed.carries}
+}

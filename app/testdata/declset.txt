@@ -97,6 +97,7 @@ func (*eventReader).run
 func (*executors).build
 func (*executors).cueFor
 func (*executors).decline
+func (*executors).describeBed
 func (*executors).eventsFor
 func (*executors).offer
 func (*executors).run
@@ -111,6 +112,9 @@ func (*injectQueue).wake
 func (*injectQueue).wake
 func (*livePipelines).attachDeck
 func (*livePipelines).attachDiagnostics
+func (*livePipelines).bedCarrying
+func (*livePipelines).bedFenceMi
+func (*livePipelines).bedRelays
 func (*livePipelines).buildDirector
 func (*livePipelines).commit
 func (*livePipelines).currentPool
@@ -125,6 +129,7 @@ func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
 func (*livePipelines).narrateEvent
+func (*livePipelines).noteBedCarrying
 func (*livePipelines).poolFor
 func (*livePipelines).producer
 func (*livePipelines).providers
@@ -141,6 +146,7 @@ func (*livePipelines).setup
 func (*livePipelines).silenceMonitor
 func (*livePipelines).sources
 func (*livePipelines).startPipelines
+func (*livePipelines).stepBedRelay
 func (*livePipelines).stopAll
 func (*livePipelines).takeTheAir
 func (*livePipelines).testLocation
@@ -148,6 +154,7 @@ func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
 func (*livePipelines).wireDeckWarnings
+func (*mastercontrol).CutBed
 func (*mastercontrol).GoOnAir
 func (*mastercontrol).GoToStandby
 func (*mastercontrol).HandAir
@@ -339,6 +346,7 @@ func arrivalsOf
 func assemblerGauges
 func attachRadio
 func bedAdvice
+func bedLabelOf
 func bedReachFor
 func breakingItem
 func breakingLine
@@ -448,6 +456,7 @@ func recentTiers
 func reconcile
 func refFor
 func refsFromConfig
+func relayLine
 func releaseNumbers
 func reloadCast
 func renderSlots
