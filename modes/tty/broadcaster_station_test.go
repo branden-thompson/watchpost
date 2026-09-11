@@ -53,10 +53,13 @@ func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
 		b.width, b.height, b.ascii = w, 74, true
 		b.power = lineup.Running
 		got := b.stationLine()[0]
-		// IT FILLS THE LANE, which is the frame less its gutter — the same
-		// number every lane row is drawn against, from `laneWidth` (D-51).
-		if c, want := utf8.RuneCountInString(got), b.sectionWidth(); c != want {
-			t.Errorf("width %d: the station line is %d cells, want the section's %d\n%q", w, c, want, got)
+		// IT FILLS THE BAND'S TEXT COLUMN — the terminal less the inset it keeps
+		// on EACH side (D-80). It asked `sectionWidth()`, which is the width of
+		// a region inside the frame's WALLS, and this band has had colour for
+		// its edge since D-70: three cells too wide, and the right-hand inset
+		// had nowhere to go.
+		if c, want := utf8.RuneCountInString(got), b.bandWidth(); c != want {
+			t.Errorf("width %d: the station line is %d cells, want the band's %d\n%q", w, c, want, got)
 			continue
 		}
 		if strings.HasSuffix(got, "  ") {
@@ -122,7 +125,7 @@ func TestTheGainControlReflows(t *testing.T) {
 		b.power = lineup.Running
 		b.gain = 55
 		for i, line := range b.stationLine() {
-			if c, want := utf8.RuneCountInString(stripANSITest(line)), b.sectionWidth(); c != want {
+			if c, want := utf8.RuneCountInString(stripANSITest(line)), b.bandWidth(); c != want {
 				t.Errorf("width %d row %d: %d cells, want the section's %d\n%q", w, i, c, want, stripANSITest(line))
 			}
 		}
@@ -325,7 +328,7 @@ func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
 	}
 	// AND EVERY ROW IS STILL THE LANE'S WIDTH.
 	for i, row := range rows {
-		if got, want := utf8.RuneCountInString(stripANSITest(row)), b.sectionWidth(); got != want {
+		if got, want := utf8.RuneCountInString(stripANSITest(row)), b.bandWidth(); got != want {
 			t.Errorf("row %d is %d cells with colour on, want the section's %d", i, got, want)
 		}
 	}
