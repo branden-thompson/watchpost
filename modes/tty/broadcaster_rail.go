@@ -276,9 +276,20 @@ func (b Broadcaster) chrome(body []string, rail bool, shown, total int) []string
 	// and it stays the one owner of where the thumb lands (HUM LEAD, UAT
 	// 2026-09-10: "the vertical control should start and end where the mock
 	// says").
+	// THE MARK COLUMN BELONGS TO THE SCROLL RAIL, AND ONLY TO IT (D-85, HUM
+	// LEAD 2026-09-11): "We need to remove the extra lines on the right side of
+	// the UI next to LIVE and UP NEXT."
+	//
+	// It was the wall on every row, scrolling or not — a second vertical beside
+	// two regions that have nothing to scroll, which reads as a column that
+	// stopped rather than as one that was never there. The reference draws the
+	// read regions one vertical narrower than the ones below them.
 	marks := make([]string, len(body))
 	for i := range marks { // bounded by the body (P10-02)
-		marks[i] = g.Rail
+		marks[i] = " "
+		if rail {
+			marks[i] = g.Rail
+		}
 	}
 	if rail && len(body) >= 3 {
 		marks[0], marks[len(body)-1] = glyphs.Up, glyphs.Down

@@ -190,9 +190,11 @@ func DisplayCondition
 func FgSGR
 func FirstFit
 func FirstOf
+func HeavyBox
 func HumanBytes
 func Italic
 func LiftToAA
+func LightBox
 func ListLabel
 func ModalTone
 func NextTide
@@ -249,6 +251,7 @@ func bgRGB
 func bgTruecolor
 func blend
 func boldFg
+func boxGlyphs
 func boxRule
 func bracketTitle
 func builtinOverrides
@@ -312,6 +315,7 @@ func truncate
 func withAA
 func without
 func xterm256RGB
+type BoxGlyphs
 type Clock
 type Control
 type DayCell

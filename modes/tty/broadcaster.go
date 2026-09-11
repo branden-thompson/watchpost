@@ -1057,22 +1057,28 @@ func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []st
 	}
 	inner := l.inner()
 	g := l.g
-	rule := strings.Repeat(g.Rule, inner)
+	// THE MASTHEAD'S BOX (D-85, HUM LEAD 2026-09-11): "Remove the rounded
+	// corners -> straight corners … All Main track cards should have BOLD lines
+	// (like the masthead)." That is `render.HeavyBox`, which the masthead has
+	// drawn since 0.13.0 — shared rather than copied, so the console and the
+	// header cannot come to disagree about what a border looks like.
+	bx := render.HeavyBox(l.o.ASCII)
+	rule := strings.Repeat(bx.Rule, inner)
 	// The title row is the SAME renderer the flat row used, one width in: the
 	// box does not get to move the handle or re-centre the title.
 	title := newCardLane(inner, g)
 	rows := []string{
-		g.CornerTL + rule + g.CornerTR,
-		g.Rail + title.render(c, handle, badge) + g.Rail,
+		bx.TL + rule + bx.TR,
+		bx.Rail + title.render(c, handle, badge) + bx.Rail,
 		// THE FIRST INTERIOR ROW IS ALWAYS THE CORNERS' ROW, tall or flat: it is
 		// where the fabricated-event marks live (D-57), and a mark that moved
 		// with the card's height would be in a different place on every card.
-		g.Rail + l.corners(inner, c.Test) + g.Rail,
+		bx.Rail + l.corners(inner, c.Test) + bx.Rail,
 	}
 	for _, r := range body { // bounded by the card's own height (P10-02)
-		rows = append(rows, g.Rail+render.PadTo(render.TruncateCells(r, inner), inner)+g.Rail)
+		rows = append(rows, bx.Rail+render.PadTo(render.TruncateCells(r, inner), inner)+bx.Rail)
 	}
-	return append(rows, g.CornerBL+rule+g.CornerBR)
+	return append(rows, bx.BL+rule+bx.BR)
 }
 
 // corners is the card's body row: blank, or D-57's marks at both ends.
