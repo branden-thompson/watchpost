@@ -192,6 +192,33 @@ type Publish struct {
 	isEffect
 	Lineup Lineup
 	Power  Power
+
+	// Bed is what the broadcast is riding on (F-79, closed at D-78).
+	//
+	// IT TRAVELS WITH THE LINEUP AND THE POWER for the reason they travel with
+	// each other: a console told these separately can hold a torn set — a new
+	// line-up beside a stale bed — and D-62 consolidated all three into ONE
+	// region precisely so the operator reads the air state in one glance. Three
+	// facts drawn together and published apart would undo that at the seam.
+	Bed BedState
+}
+
+// BedState is the bed as the console draws it.
+//
+// A VALUE, NOT THE BED ITSELF. `bed` carries the Director's own bookkeeping —
+// when it took the air, what tune is in flight — and none of that is the
+// console's business. This is the three things the reference mock names.
+type BedState struct {
+	// Ref is the location the bed is tuned to, "" when nothing is.
+	Ref string
+
+	// Live is whether a RELAY is carrying it, as observed. The synthesised
+	// broadcast is not live and never dwells.
+	Live bool
+
+	// Carrying is the Director's DECISION that the bed holds the programme —
+	// `bed.carries`, which is intent rather than observation (see bed.go).
+	Carrying bool
 }
 
 // Describe is what an effect IS, in one line.
@@ -718,7 +745,7 @@ func (d Director) settle() (Director, []Effect) {
 	d, give := d.giveOrTakeBack()
 	fx := append(give, air...)
 	fx = append(fx, prep...)
-	fx = append(fx, Publish{Lineup: d.lineup, Power: d.Power()})
+	fx = append(fx, Publish{Lineup: d.lineup, Power: d.Power(), Bed: d.bedState()})
 	last := fx[len(fx)-1]
 	_, published := last.(Publish)
 	// THE READERS ARE TOLD LAST. A subscriber reads the lineup to decide what to

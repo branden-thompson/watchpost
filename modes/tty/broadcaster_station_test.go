@@ -227,7 +227,7 @@ func TestTheBedRidesInTheStationSection(t *testing.T) {
 	bed := bedRowOf(t, rows)
 	// THE KEY IS A CHIP, so this asks the chip renderer — "[ B ]" is only what
 	// the mock draws around it, and only what it falls back to without colour.
-	if !strings.Contains(bed, chipFor("B")) {
+	if !strings.Contains(bed, chipFor("b")) {
 		t.Errorf("and it names the key that reaches it:\n%q", bed)
 	}
 }

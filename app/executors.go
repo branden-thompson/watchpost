@@ -152,6 +152,15 @@ type executors struct {
 	// reach for the exported one.
 	cutTo func(ref string)
 
+	// bedLabel turns the bed's ref into the words the console shows for it
+	// (F-79). Nil in the modes with no radio, where the bed is never tuned.
+	bedLabel func(ref string) string
+
+	// noteBed records whether the bed is carrying, so the relay SELECTOR can
+	// publish a truthful row without asking the Director (F-79, D-78). Nil
+	// where there is no console.
+	noteBed func(carrying bool)
+
 	// escalate is the ONE place a fault reaches a person (DR-21). Nil is not
 	// allowed: newExecutors refuses it, because a fault channel wired to
 	// nothing is the failure this whole requirement exists to remove — the
@@ -244,6 +253,16 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		if x.publish != nil {
 			x.publish(tty.LineupMsg{Lineup: v.Lineup})
 			x.publish(tty.StationMsg{Power: v.Power})
+			// AND WHAT IT IS RIDING ON (F-79, closed at D-78). The third fact
+			// D-62 consolidated into one region, published with the other two so
+			// the console cannot hold a torn set.
+			x.publish(tty.BedMsg{Relay: x.describeBed(v.Bed), Carrying: v.Bed.Carrying})
+			if x.noteBed != nil {
+				// THE SELECTOR NEEDS TO KNOW TOO. It publishes its own BedMsg
+				// when the operator moves, and a message that guessed at
+				// `Carrying` would flicker the row between the two publishers.
+				x.noteBed(v.Bed.Carrying)
+			}
 		}
 		// AND THE PRODUCER IS ASKED TO TOP THE LINE-UP OFF (D-40). No new
 		// effect: `run` already returns what an effect learned, and a publish is
@@ -630,4 +649,20 @@ func (x *executors) eventsFor(refs []string) ([]globalfeed.Event, bool) {
 		out = append(out, e)
 	}
 	return out, true
+}
+
+// describeBed turns the bed's ref into the row the operator reads.
+//
+// THE APP IS WHERE A REF BECOMES A PLACE AGAIN (DR-1), which is `refFor`'s own
+// rule: the card and the bed carry identifiers, and what an identifier MEANS is
+// the app's. A Director that knew a relay's call sign would be a Director that
+// knew about radios.
+//
+// NOTHING TUNED READS AS NOTHING, not as a blank: the console has its own words
+// for that, and inventing a second set here would be two answers to one state.
+func (x *executors) describeBed(b lineup.BedState) string {
+	if b.Ref == "" || x.bedLabel == nil {
+		return ""
+	}
+	return x.bedLabel(b.Ref)
 }
