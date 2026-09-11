@@ -222,3 +222,44 @@ func TestTakingTheAirStopsTheRotationEvenWithNoAudio(t *testing.T) {
 		t.Errorf("a station with no audio still stops its rotation; told %v", told)
 	}
 }
+
+// THE FENCE TRAVELS WITH THE AIR, AND IT IS THE ONE THE DECK COMPUTES (D-75).
+//
+// THE HUM LEAD ASKED WHETHER THE RAIL FILTERS AND EXPANDS WITH THE MODE. New
+// arrivals did; everything already on the rail did not, because the Director
+// learned a fence only on the next ARRIVAL. It learns it on the air now — and
+// from `tickerDeck.fence()`, which is the same translation every arrival already
+// carries, so the fence that re-tests a card and the fence that admitted it
+// cannot be two different readings of one setting.
+func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
+	var told []lineup.Event
+	nar := testDirector(nil, func(tea.Msg) {})
+	nar.mc.mu.Lock()
+	nar.mc.carry = func(ev lineup.Event) { told = append(told, ev) }
+	nar.mc.fence = func() lineup.Fence {
+		return lineup.Fence{RadiusMi: 25, Lat: 33.2881, Lon: -117.2256, HasOrigin: true}
+	}
+	nar.mc.mu.Unlock()
+
+	lp := &livePipelines{director: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
+	lp.takeTheAir(tty.SurfaceBroadcaster)
+
+	var handed *lineup.Aired
+	for i := range told {
+		if a, ok := told[i].(lineup.Aired); ok {
+			handed = &a
+		}
+	}
+	if handed == nil {
+		t.Fatalf("the air was never handed over; told %v", told)
+	}
+	if !handed.Fence.InForce() || handed.Fence.RadiusMi != 25 {
+		t.Errorf("the air carried %+v, want the station's own 25-mile fence", handed.Fence)
+	}
+	// AND A DECK WITH NO RAIL IS "ALL", never a panic — the older tests and the
+	// pathless build, the same rule `fence()` itself states.
+	bare := &mastercontrol{}
+	if bare.railFence().InForce() {
+		t.Error("an effector with no fence to ask is unfenced, not fenced at zero")
+	}
+}

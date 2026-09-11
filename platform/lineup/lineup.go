@@ -228,7 +228,11 @@ func (l Lineup) Next() (Card, Track, bool) {
 			// offered — a card already on the air is not offered twice, and a
 			// finished or discarded one is never re-read. A list of states to
 			// SKIP would grow a hole every time a state was added.
-			if c.State == Admitted || c.State == Standby {
+			// AND THE CURRENT FENCE ADMITS IT (D-75). A card held out of
+			// fence is SKIPPED rather than refused at the air: refusing it
+			// there would let it block every admissible card behind it, and a
+			// hazard in the operator's own town would wait on one that is not.
+			if (c.State == Admitted || c.State == Standby) && !c.OutOfFence {
 				return c, t, true
 			}
 		}

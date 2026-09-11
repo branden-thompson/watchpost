@@ -215,6 +215,15 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// AND THE RAIL LEARNS WHAT IT IS SCOPED TO (D-73). Wired after the deck so
 	// the closure can close over the deck's own radius — one function, asked by
 	// both the fence and the feed's filter.
+	// AND THE EFFECTOR LEARNS WHAT THE RAIL IS SCOPED TO (D-75), so the fence
+	// can travel with the air and the rail can be re-tested when it moves.
+	// Wired after the ticker, because the deck's `fence()` is where a scope
+	// becomes a fence — one translation, not two.
+	if mc := lp.masterControl(); mc != nil {
+		mc.mu.Lock()
+		mc.fence = lp.ticker.fence
+		mc.mu.Unlock()
+	}
 	lp.ticker.scope = func() airScope {
 		return scopeFor(&lp.owner, func() airScope { return listenerScope(prefs.radius, lp.currentWatch) }, lp.currentStation)
 	} // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index

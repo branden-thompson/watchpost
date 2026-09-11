@@ -160,3 +160,26 @@ func (f Fence) Admits(a Arrival) bool {
 	}
 	return km <= a.ReachMi*kmPerMi
 }
+
+// AdmitsAny reports whether a fence admits ANY of the arrivals a card was
+// planned from (D-75).
+//
+// ANY, NOT ALL. A burst is one card carrying several hazards; if even one of
+// them is inside the service area, the card is about something the operator
+// needs to hear. Holding it because a companion alert was farther out would
+// silence a hazard in their own town.
+//
+// A CARD PLANNED FROM NOTHING IS ADMITTED. The Director's own structural cards
+// carry no arrivals, and a fence is a rule about where HAZARDS are — not a
+// reason to hold a transition or a station credit.
+func (f Fence) AdmitsAny(from []Arrival) bool {
+	if len(from) == 0 {
+		return true
+	}
+	for _, a := range from { // bounded by the burst's Max (P10-02)
+		if f.Admits(a) {
+			return true
+		}
+	}
+	return false
+}

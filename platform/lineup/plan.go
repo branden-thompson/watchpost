@@ -303,6 +303,13 @@ func Plan(arrivals []Arrival, s Settings, now time.Time) (Burst, error) {
 	// THE COUNT RIDES ON THE CARD, so the Composer never has to ask a second
 	// time and can never get a different answer (DR-14).
 	takeover.Divert = divert
+	// AND WHAT IT WAS PLANNED FROM (D-75), so a fence that moves later can ask
+	// whether this card still belongs on the air. `chosen` is what the card
+	// READS; the ones diverted are not on it and are not its business.
+	takeover.From = make([]Arrival, 0, len(chosen))
+	for _, c := range chosen { // bounded by the burst's Max (P10-02)
+		takeover.From = append(takeover.From, c.arrival)
+	}
 	b := Burst{Takeover: takeover, Divert: divert}
 	if err := invariant.Check(b.HasTakeover() == (len(chosen) > 0), "a burst with alerts has a takeover, and an empty one has none"); err != nil {
 		return Burst{}, err

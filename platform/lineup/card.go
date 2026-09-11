@@ -308,6 +308,26 @@ type Card struct {
 	// burst head" too; BurstHead was retired when a burst became one card.)
 	Refs []string
 
+	// From is the arrivals this card was planned from, kept so a LATER FENCE can
+	// re-test it (D-75).
+	//
+	// THE ARRIVALS THEMSELVES, NOT A COPY OF THEIR GEOMETRY. `Fence.Admits`
+	// takes an Arrival, and it is the ONE owner of what "inside the fence"
+	// means — a parallel struct holding just the coordinates would be a second
+	// place for that rule to live, and the two would disagree the day the
+	// zone-only exception moved.
+	//
+	// BOUNDED BY `Settings.Max`, which is the burst's own cap: a card holds at
+	// most the alerts it reads.
+	From []Arrival
+
+	// OutOfFence is whether the CURRENT fence admits this card (D-75). A card
+	// that is out of fence is HELD, not dropped: DR-3 says nothing admitted is
+	// dropped unread, and the HUM LEAD's rule says nothing outside the service
+	// area is heard on the console. Holding is what honours both — the card
+	// waits for a surface whose fence admits it.
+	OutOfFence bool
+
 	// Divert is how many alerts this burst COULD have read and did not — the
 	// figure the listener is told aloud (DR-14).
 	//

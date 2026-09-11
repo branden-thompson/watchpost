@@ -117,6 +117,8 @@ func (lp *livePipelines) takeTheAir(s tty.Surface) {
 	// monitor comes back "like if Observer was first opened". The operator
 	// presses play. That is also what keeps a rapid ctrl+b / ctrl+o flip from
 	// re-resolving a relay and re-fetching its products on every swap.
+	// THE FENCE GOES WITH THE AIR (D-75), and it is read AFTER the owner moves
+	// so it is the fence of the surface being taken TO.
 	if mc := lp.masterControl(); mc != nil {
 		if s == tty.SurfaceBroadcaster {
 			mc.HandAir(lineup.AirProgramme)
