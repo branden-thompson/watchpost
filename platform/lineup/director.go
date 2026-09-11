@@ -131,8 +131,35 @@ type BuildCard struct {
 // engine — is decided by what the card is.
 type Speak struct {
 	isEffect
-	ID     string
-	Slot   Slot
+	ID   string
+	Slot Slot
+	// Headline is what the card is called, for whatever the reading path puts
+	// in front of a person while it speaks: the band's callout on the rail
+	// path, the station label on the broadcast engine's.
+	//
+	// CARRIED ON THE EFFECT for the reason BuildCard's Slot and Refs are
+	// (BD-8): the publish for the same step runs concurrently with the
+	// dispatch, so a reader that looked the card up from the published lineup
+	// would race it — and label the broadcast with whatever the console
+	// happened to hold.
+	Headline string
+	// Track is WHICH LANE the card is on, and it is what decides who performs
+	// it (F-91): the alert rail reads through the narration arbiter because a
+	// hazard speaks OVER whatever is playing; the main track is a source swap
+	// on the broadcast engine, because a chosen read REPLACES the bed (D-33).
+	//
+	// THE TRACK, NOT THE SLOT, and the difference is a transition. A
+	// transition's slot says only that the Director minted it; which lane it
+	// belongs to is the lane of the card it bookends — a hand-back after a
+	// takeover is read on the rail with the duck still down, and a stale
+	// notice standing in for a dropped report is read on the programme. One
+	// reader for both would say the wrong thing in the wrong voice, and it is
+	// the SLOT that cannot tell them apart.
+	//
+	// CARRIED ON THE EFFECT for BD-8's reason, like Slot: the publish for the
+	// same step runs concurrently with the dispatch, so an executor that asked
+	// the published lineup which track held the card would race it.
+	Track  Track
 	Script Script
 }
 
@@ -825,7 +852,7 @@ func (d Director) airOnce() (Director, []Effect, bool) {
 	d.lineup = moved
 	return d, []Effect{
 		CueTicker{ID: onAir.ID, Headline: onAir.Headline, Slot: onAir.Slot},
-		Speak{ID: onAir.ID, Slot: onAir.Slot, Script: onAir.Script},
+		Speak{ID: onAir.ID, Slot: onAir.Slot, Headline: onAir.Headline, Track: track, Script: onAir.Script},
 	}, false
 }
 

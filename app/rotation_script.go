@@ -11,6 +11,7 @@ package app
 // and it is deliberately the only new idea in P3(a).
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
@@ -45,4 +46,43 @@ func scriptFromSegments(segs []synth.Segment) lineup.Script {
 		return lineup.Script{}
 	}
 	return lineup.Script{Parts: parts}
+}
+
+// segmentsFromScript is the join read the other way (F-91): a card's SCRIPT
+// becomes the segments the broadcast engine plays.
+//
+// WHY THE ROUND TRIP EXISTS AT ALL. A location report is composed ONCE, at
+// standby, and what survives onto the card is Text — lineup.Part has nowhere to
+// put a Role, a self-introduction or a pause, and DR-1 keeps the domain out of
+// the schedule. So the reader is handed the card's words rather than the
+// segments they came from, and this is where they become playable again.
+//
+// THE CARD IS THE TRUTH, AND THAT IS THE POINT. Recomposing at read time would
+// be a second Composer: eleven more requests, and words that could differ from
+// the ones the operator has been reading in the slot for the last five minutes.
+// A station that says something other than what it showed is the failure
+// stale.go's header is about, arrived at from the other side.
+//
+// THE ROLE IS DELIBERATELY UNSET. synth.Segment's zero Role is cast.All — the
+// root correspondent — so the main track reads in the station's own voice.
+// The rotation's per-report roles do not survive the card (G-7, recorded at
+// p3-flip-design.md and reopened as F-92); what CANNOT differ is the words.
+//
+// THE KEY NAMES THE CARD. A Source caches rendered PCM by (key, voice), and the
+// Source is built per read and discarded with it — but two cards composed for
+// the same location would collide on a key made of the text alone, and the
+// second would play the first's audio. The card's id is what makes them
+// distinct, because it is what the Director guarantees is unique.
+func segmentsFromScript(id string, sc lineup.Script) []synth.Segment {
+	var segs []synth.Segment
+	for i, p := range sc.Parts { // bounded by the script (P10-02)
+		// A BLANK PART IS DROPPED, the rule scriptFromSegments states going the
+		// other way: a segment with nothing in it renders nothing and the
+		// Source treats a failed render as the end of the broadcast.
+		if strings.TrimSpace(p.Text) == "" {
+			continue
+		}
+		segs = append(segs, synth.Segment{Key: "card:" + id + ":" + strconv.Itoa(i), Text: p.Text})
+	}
+	return segs
 }

@@ -94,6 +94,7 @@ func (*eventReader).current
 func (*eventReader).free
 func (*eventReader).mark
 func (*eventReader).run
+func (*executors).broadcast
 func (*executors).build
 func (*executors).cueFor
 func (*executors).decline
@@ -170,6 +171,7 @@ func (*mastercontrol).hold
 func (*mastercontrol).holdLine
 func (*mastercontrol).railFence
 func (*mastercontrol).resumeLine
+func (*mastercontrol).silenceTheProgramme
 func (*mastercontrol).silent
 func (*mastercontrol).stopLine
 func (*mastercontrol).takeBack
@@ -237,6 +239,7 @@ func (*radioDeck).piperSpec
 func (*radioDeck).play
 func (*radioDeck).pushStatus
 func (*radioDeck).rawVoice
+func (*radioDeck).readCard
 func (*radioDeck).readSynth
 func (*radioDeck).recordResolution
 func (*radioDeck).render
@@ -244,6 +247,7 @@ func (*radioDeck).resolveVoice
 func (*radioDeck).restore
 func (*radioDeck).resume
 func (*radioDeck).segments
+func (*radioDeck).send
 func (*radioDeck).setCast
 func (*radioDeck).setDetail
 func (*radioDeck).setDetailTimed
@@ -255,6 +259,7 @@ func (*radioDeck).startBackgroundInstall
 func (*radioDeck).startSynth
 func (*radioDeck).stationFor
 func (*radioDeck).stop
+func (*radioDeck).stopRead
 func (*radioDeck).synthReason
 func (*radioDeck).synthSource
 func (*radioDeck).tell
@@ -267,6 +272,7 @@ func (*radioDeck).voice
 func (*radioDeck).voiceNote
 func (*radioDeck).watchlistDwell
 func (*radioDeck).watchlistLang
+func (*readSession).finish
 func (*reader).openTone
 func (*reader).readPart
 func (*reader).reportSilentTone
@@ -432,6 +438,7 @@ func newReleaseWatch
 func newResolver
 func newSevereDeck
 func notNew
+func noteRead
 func onTheRail
 func pairOf
 func parseLatLon
@@ -452,6 +459,7 @@ func radioDebugOn
 func radioDebugPath
 func reachMiOf
 func readScript
+func readerFor
 func recentTiers
 func reconcile
 func refFor
@@ -482,6 +490,7 @@ func scriptFromSegments
 func scriptText
 func scriptsDir
 func seedRecent
+func segmentsFromScript
 func seismicProviders
 func seismicReportOf
 func seismicRules
@@ -571,6 +580,7 @@ type publisher
 type pump
 type radioDeck
 type readHooks
+type readSession
 type reader
 type recentPipeline
 type releaseWatch

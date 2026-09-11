@@ -75,6 +75,23 @@ type mastercontrol struct {
 	// existed. While the bed is held, a per-sequence take-back is refused.
 	held bool
 
+	// silenceProgramme takes the main track's card off the air (F-91).
+	//
+	// MASTERCONTROL SILENCES, AND THIS IS THE SECOND THING IT SILENCES. The bed
+	// was the first, for the reason `carry` states: the Director holding every
+	// card still leaves audio playing, and that is not dead air. A main-track
+	// card is the same sentence with a different subject — the card leaves the
+	// schedule the moment the power drops, and the WORDS play on regardless,
+	// because a read that has started is a worker blocking on an engine.
+	//
+	// TWO TRIGGERS, AND BOTH ARE THE OPERATOR'S (D-74). The power leaving
+	// Running is STANDBY; the air leaving the programme is the operator moving
+	// back to Observer — which he ruled comes back "like if Observer was first
+	// opened", and Observer first opened is silent.
+	//
+	// Nil where there is no broadcast engine.
+	silenceProgramme func()
+
 	// fence is what the alert rail is scoped to right now (D-75) — the
 	// listener's filter or the station's service area, whichever surface has
 	// the air. It travels with every `Aired`, so the rail is re-tested when the
@@ -114,6 +131,24 @@ func (m *mastercontrol) GoOnAir() {
 // GoToStandby takes the station to dead air.
 func (m *mastercontrol) GoToStandby() { m.declare(lineup.OffAir) }
 
+// silenceTheProgramme stops a main-track card that is mid-read, or does nothing.
+//
+// IT RUNS BEFORE THE DECLARATION, deliberately: the operator asked for silence
+// and the event they triggered is carried to a pump that will get to it. It
+// returns at once (the read is CANCELLED, never halted from here — D-79), so
+// there is no cost to putting it first and the audible answer is immediate.
+func (m *mastercontrol) silenceTheProgramme() {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	silence := m.silenceProgramme
+	m.mu.Unlock()
+	if silence != nil {
+		silence()
+	}
+}
+
 // HandAir gives the air to one programme or the other (D-74).
 //
 // MASTERCONTROL IS THE ONLY DECLARER, which is the rule the power already
@@ -124,6 +159,13 @@ func (m *mastercontrol) GoToStandby() { m.declare(lineup.OffAir) }
 // hazard admitted under the other surface's fence is held rather than read —
 // and released again when the fence widens.
 func (m *mastercontrol) HandAir(to lineup.Air) {
+	// THE AIR LEAVING THE PROGRAMME SILENCES IT (F-91). The Director stops
+	// ADVANCING the main track when the air moves, and a card already reading is
+	// not advancing — it is a worker blocking on the engine, and it would play
+	// to its end over a surface that says the station is not on air.
+	if to != lineup.AirProgramme {
+		m.silenceTheProgramme()
+	}
 	m.tell(lineup.Aired{To: to, Fence: m.railFence()})
 }
 
@@ -173,7 +215,16 @@ func (m *mastercontrol) tell(ev lineup.Event) {
 	carry(ev)
 }
 
-func (m *mastercontrol) declare(p lineup.Power) { m.tell(lineup.Powered{To: p}) }
+func (m *mastercontrol) declare(p lineup.Power) {
+	// STANDBY STOPS THE WORDS, NOT ONLY THE SCHEDULE (F-91). `silenceTheProgramme`
+	// on the Director's side takes the card off the air; this is the other half
+	// the `carry` field's own comment demands — "a Director holding every card
+	// still leaves a relay playing, and that is not dead air."
+	if p != lineup.Running {
+		m.silenceTheProgramme()
+	}
+	m.tell(lineup.Powered{To: p})
+}
 
 // silent reports whether there is no voice to perform with.
 func (m *mastercontrol) silent() bool { return m == nil || m.v == nil }

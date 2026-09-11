@@ -229,6 +229,12 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	if mc := lp.masterControl(); mc != nil {
 		mc.mu.Lock()
 		mc.fence = lp.ticker.fence
+		// AND HOW TO SILENCE THE PROGRAMME (F-91). The deck owns the broadcast
+		// engine; MasterControl owns whether the station is broadcasting at all,
+		// and standby has to reach the words that are already going out.
+		if lp.deck != nil {
+			mc.silenceProgramme = lp.deck.stopRead
+		}
 		mc.mu.Unlock()
 	}
 	lp.ticker.scope = func() airScope {

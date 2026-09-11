@@ -1769,3 +1769,80 @@ pump speed, which the operator sees as the line-up flying through locations.
 path re-enters the same loop.  Both this and the entry above are the same family as the four
 "the unit test sets the field itself" findings in this release — a claim that holds over the states
 that were considered, and nothing saying which states those were.
+
+---
+
+## 2026-09-11 — D-81: the answer was in the required reading, and I was about to ask for it
+
+**The catch:** I had diagnosed F-91 correctly and written the HUM LEAD a message asking him to
+confirm the shape of the fix — *"that shape needs your confirmation before I build it."*  Then the
+session's own mandatory re-read (`00-REQUIRED-READING.md`) turned up **BD-9**, verbatim:
+
+> *"A report's `speak` is the engine Source adapter — which IS the main-track absorb."*
+
+The ruling I was asking for had been made on 2026-09-09 and was sitting in the one file the harness
+requires to be re-read at session start and after every compaction.
+
+**Cost if unasked:** one round trip, and — worse — a ruling re-litigated as though it were open,
+which is exactly the failure `00-REQUIRED-READING.md` was created on 2026-09-09 to prevent.  The
+file's own header says it: *"The record was complete; it was not read."*
+
+**The shape (new):** **"asking for a ruling that has already been made."**  It looks like diligence —
+SEV-0, HUM LEAD, check before building — and it is the same defect as building without asking,
+wearing the opposite costume.  The tell is that the question is about a SHAPE rather than a
+PREFERENCE: a shape has usually been decided once already and written down; a preference has not.
+
+**How to apply:** before putting a design question to the HUM LEAD, search the rulings for its
+subject.  If the question is "which of these two shapes", it is very likely answered.  If the
+question is "how many, how fast, in what order, what colour", it is his and it is genuinely open
+(`feedback-ux-rulings-are-not-mine`).
+
+---
+
+## 2026-09-11 — the same session: a comment that named a defect, three times over
+
+Three separate comments in the tree described defects the code did not prevent, and two of them
+turned out to be the thing I was about to fix:
+
+- `takeOffTheAir`: *"PAIRED WITH THE CUE, not with the card: releasing a band that was never cued
+  would clear whatever callout it is legitimately showing."*  The code checks `wasOnAir`, not
+  `wasCued`.  (Filed as F-71 — so this one was caught, by somebody, and written down.)
+- `clearBand`: an eight-line comment explaining that the release fires for cards that never cued, why
+  it is benign TODAY, and exactly which future change makes it live.
+- `onTheRail`: *"the main track's slots arrive with the absorb that reads them (T3.2), and this list
+  shrinks then."*  A comment describing work that had not happened, on the line that was the blocker.
+
+**This is the second release in which "a comment is not a fix" has been the shape behind a UAT
+defect** (the first: `TruncateCells` counting escapes as cells, diagnosed in a comment at
+`status_table.go` and worked around locally, costing eight UAT symptoms at once).
+
+**What is different this time, and it is worth keeping:** all three comments were RIGHT, and two of
+them correctly reasoned that the defect was not yet live.  `clearBand`'s names the exact trigger.
+That is not the failure mode — that is a comment doing its job.  The failure mode is the comment
+that describes a live defect and stops there.
+
+**How to apply:** when a comment explains why something is wrong-but-harmless, it must name the
+condition that makes it harmful, and that condition should be a FOLLOW-UP ROW, not a sentence.
+`clearBand` did both and F-71 is why it was a thirty-second check rather than a re-diagnosis.
+
+---
+
+## 2026-09-11 — a "wait" that did not wait, and cost nine polling turns
+
+**The catch:** I ran `make verify` in the background, then "waited" for it with
+`Bash({command: "sleep 590; check", run_in_background: true})` — and immediately ran the next
+command.  The sleep went to a background job; nothing waited.  I polled nine times over what I
+believed were fifty minutes and was in fact six.
+
+**Cost:** nine wasted turns, and a running commentary that implied the gate was much slower than it
+is.
+
+**The rule:** `run_in_background` means *"do not wait for this"*.  To actually block, the command
+must be the thing that ends when the condition is true —
+`until grep -q "EXIT=" log; do sleep 10; done` in the background gives ONE notification when it is
+genuinely done.  A `sleep` inside a background job is a timer nobody reads.
+
+**And the related one, learned the same session:** do not edit the tree while `make verify` is
+running.  `mutant-check` patches source files by exact-text anchor, so a concurrent edit reports as
+"the mutant no longer applies" — twelve false STALE verdicts, indistinguishable from real ones until
+re-run on a quiet tree.
