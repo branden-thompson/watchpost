@@ -230,14 +230,12 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// The schedule runs from here, over the SAME arbiter and effector the ticker
 	// was just given. It drives the live alert rail since T3.10b — so a
 	// listener notices nothing; T3.2b is the first thing it owns.
-	// THE SCHEDULE RUNS OVER THE STATION'S POOL, NOT THE LISTENER'S WATCHLIST
-	// (D-72). All three seams it feeds — what the Producer may propose, what the
-	// Composer resolves a ref against, and what the bed cuts to — are the
-	// STATION's business, so all three move together. Feeding one from the pool
-	// and another from the watchlist would let the Director schedule a location
-	// its own Composer could not resolve, which the D-67 cool-off would then
-	// bench for five minutes apiece.
-	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.ticker, p.Send)
+	// TWO LISTS, BECAUSE THERE ARE TWO PROGRAMMES (D-72, corrected at D-76). The
+	// STATION's pool is what its Producer offers and what its Composer resolves
+	// against; the LISTENER's watchlist is what the monitor's rotation moves
+	// through. D-72 moved all three seams to the pool and that was two-thirds
+	// right — the cut-over belongs to the monitor.
+	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.currentWatch, lp.ticker, p.Send)
 	lp.wireDeckWarnings()
 	return firstFullNanos
 }
