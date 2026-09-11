@@ -76,7 +76,12 @@ func TestMovingToTheConsoleSilencesTheMonitor(t *testing.T) {
 	// WIRED THE WAY PRODUCTION WIRES IT, so what is asserted is the seam the app
 	// actually uses rather than a fixture's own answer.
 	deck.air = func() bool { return lp.owner.get() != tty.SurfaceBroadcaster }
-	lp.takeTheAir(tty.SurfaceBroadcaster)
+	// AND THE COMMAND IS RUN, which is what Bubble Tea does with it (D-79).
+	// Silencing the monitor halts the player, so it CANNOT happen inline — a
+	// test that never ran the command would assert the old, frozen shape.
+	if cmd := lp.takeTheAir(tty.SurfaceBroadcaster); cmd != nil {
+		cmd()
+	}
 
 	// THE DECK'S ROTATION IS ENDED, which is what `Stop` reports.
 	stopped := false
@@ -109,11 +114,15 @@ func TestGoingBackToObserverDoesNotResumeTheMonitor(t *testing.T) {
 	deck, _ := offlineDeck(t)
 	lp := &livePipelines{deck: deck, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
 	deck.air = func() bool { return lp.owner.get() != tty.SurfaceBroadcaster }
-	lp.takeTheAir(tty.SurfaceBroadcaster)
+	if cmd := lp.takeTheAir(tty.SurfaceBroadcaster); cmd != nil {
+		cmd()
+	}
 
 	var told []lineup.Event
 	deck.emit = func(ev lineup.Event) { told = append(told, ev) }
-	lp.takeTheAir(tty.SurfaceObserver)
+	if cmd := lp.takeTheAir(tty.SurfaceObserver); cmd != nil {
+		cmd()
+	}
 
 	for _, ev := range told {
 		if m, ok := ev.(lineup.Monitored); ok && m.Running {
@@ -138,7 +147,9 @@ func TestGoingBackToObserverDoesNotResumeTheMonitor(t *testing.T) {
 	nar.mc.mu.Unlock()
 	back := &livePipelines{director: nar, deck: deck, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
 	back.owner.set(tty.SurfaceBroadcaster)
-	back.takeTheAir(tty.SurfaceObserver)
+	if cmd := back.takeTheAir(tty.SurfaceObserver); cmd != nil {
+		cmd()
+	}
 	handed := false
 	for _, ev := range declared {
 		if a, ok := ev.(lineup.Aired); ok && a.To == lineup.AirMonitor {
@@ -210,7 +221,9 @@ func TestTakingTheAirStopsTheRotationEvenWithNoAudio(t *testing.T) {
 	nar.mc.mu.Unlock()
 
 	lp := &livePipelines{director: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}} // no deck
-	lp.takeTheAir(tty.SurfaceBroadcaster)
+	if cmd := lp.takeTheAir(tty.SurfaceBroadcaster); cmd != nil {
+		cmd()
+	}
 
 	stopped := false
 	for _, ev := range told {
@@ -242,7 +255,9 @@ func TestTheAirCarriesTheFenceTheRailIsScopedTo(t *testing.T) {
 	nar.mc.mu.Unlock()
 
 	lp := &livePipelines{director: nar, ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
-	lp.takeTheAir(tty.SurfaceBroadcaster)
+	if cmd := lp.takeTheAir(tty.SurfaceBroadcaster); cmd != nil {
+		cmd()
+	}
 
 	var handed *lineup.Aired
 	for i := range told {

@@ -14,6 +14,8 @@ package app
 // between reads, and keeps it until they choose again.
 
 import (
+	tea "charm.land/bubbletea/v2"
+
 	"strconv"
 
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
@@ -54,10 +56,16 @@ func (lp *livePipelines) bedFenceMi() float64 {
 // was. With one relay in reach it is a no-op that stays on the one relay, which
 // is the honest answer to a fence that reaches one thing — and what the reach
 // advice warns about before they get here (D-77).
-func (lp *livePipelines) stepBedRelay(by int) {
+// IT RETURNS A COMMAND (D-79). Tuning reaches the player and the row reaches the
+// program, and the swap's own stop already taught this lesson once: anything
+// that talks back to the program must not run on the Update loop.
+//
+// THE SELECTION MOVES INLINE, THOUGH. Which relay is chosen has to be TRUE by
+// the time the next frame draws, and only the two things that TALK are deferred.
+func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 	relays := lp.bedRelays()
 	if len(relays) == 0 {
-		return
+		return nil
 	}
 	lp.mu.Lock()
 	next := ((lp.bedPick+by)%len(relays) + len(relays)) % len(relays)
@@ -66,17 +74,21 @@ func (lp *livePipelines) stepBedRelay(by int) {
 	lp.mu.Unlock()
 
 	chosen := relays[next]
-	// THE DECK TUNES IT THROUGH THE ONE FUNCTION THAT ALREADY DOES THIS. The
-	// relay-fault window answers with a call sign the same way (MVS-D-76), so a
-	// second tuning path here would be a second place for the duck to be lifted.
-	if lp.deck != nil {
-		lp.deck.tuneCallsign(chosen.Callsign)
-	}
-	// AND THE CONSOLE IS TOLD WHAT IT LANDED ON. The Director publishes what the
-	// bed is CARRYING; this is what the operator has SELECTED, which is a
-	// different fact until they cut to it.
-	if p != nil {
-		p.Send(tty.BedMsg{Relay: relayLine(chosen), Carrying: lp.bedCarrying()})
+	return func() tea.Msg {
+		// THE DECK TUNES IT THROUGH THE ONE FUNCTION THAT ALREADY DOES THIS. The
+		// relay-fault window answers with a call sign the same way (MVS-D-76),
+		// so a second tuning path here would be a second place for the duck to
+		// be lifted.
+		if lp.deck != nil {
+			lp.deck.tuneCallsign(chosen.Callsign)
+		}
+		// AND THE CONSOLE IS TOLD WHAT IT LANDED ON. The Director publishes what
+		// the bed is CARRYING; this is what the operator has SELECTED, which is
+		// a different fact until they cut to it.
+		if p != nil {
+			p.Send(tty.BedMsg{Relay: relayLine(chosen), Carrying: lp.bedCarrying()})
+		}
+		return nil
 	}
 }
 

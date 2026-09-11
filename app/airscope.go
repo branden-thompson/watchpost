@@ -19,6 +19,8 @@ package app
 // is the safety path; it stays single, and what MOVES is the fence around it.
 
 import (
+	tea "charm.land/bubbletea/v2"
+
 	"sync/atomic"
 
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -104,7 +106,17 @@ func (s airScope) hasOrigin() bool { return s.lat != 0 || s.lon != 0 }
 // it the tape would go on showing the other surface's alerts for up to that
 // long after a swap, which is the opposite of "it just works" in both
 // directions.
-func (lp *livePipelines) takeTheAir(s tty.Surface) {
+// IT RETURNS A COMMAND (D-79). Silencing the monitor HALTS THE PLAYER, and the
+// player calls back into the program — so run inline, from inside `Router.Update`,
+// it sends to a loop that cannot receive and the app freezes hard. Observer has
+// always stopped the radio this way: `withCmd(func() tea.Msg { radio.Stop();
+// return nil })`. This is the same canonical way, reached from the swap.
+//
+// EVERYTHING ELSE STAYS INLINE, deliberately. Recording the owner, declaring the
+// air and nudging the rail are all non-blocking and must be TRUE by the time the
+// next frame draws — deferring them would let one frame render with the old
+// surface's fence.
+func (lp *livePipelines) takeTheAir(s tty.Surface) tea.Cmd {
 	lp.owner.set(s)
 	// THE AIR MOVES WITH THE SURFACE, AND MASTERCONTROL IS WHAT SAYS SO (D-74).
 	//
@@ -127,10 +139,14 @@ func (lp *livePipelines) takeTheAir(s tty.Surface) {
 			mc.HandAir(lineup.AirMonitor)
 		}
 	}
-	if s == tty.SurfaceBroadcaster {
-		lp.silenceMonitor()
-	}
 	lp.ticker.nudgeRescope()
+	if s != tty.SurfaceBroadcaster {
+		return nil
+	}
+	return func() tea.Msg {
+		lp.silenceMonitor()
+		return nil
+	}
 }
 
 // masterControl is the effector, or nil in the modes that have no audio.
@@ -148,6 +164,7 @@ func (lp *livePipelines) masterControl() *mastercontrol {
 // the ROTATION and not the player: a rotation that will not advance still leaves
 // whatever is already playing on the air. Both halves are the same instruction
 // and both are needed.
+// IT RUNS ON A COMMAND'S GOROUTINE, NEVER ON THE UPDATE LOOP — see takeTheAir.
 func (lp *livePipelines) silenceMonitor() {
 	if lp == nil || lp.deck == nil {
 		return

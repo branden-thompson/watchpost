@@ -115,7 +115,9 @@ func TestTheRailAndThePoolShareOneServiceArea(t *testing.T) {
 // the opposite of "it just works", in both directions.
 func TestTakingTheAirAsksTheRailToReScopeAtOnce(t *testing.T) {
 	lp := &livePipelines{ticker: &tickerDeck{rescope: make(chan struct{}, 1)}}
-	lp.takeTheAir(tty.SurfaceBroadcaster)
+	if cmd := lp.takeTheAir(tty.SurfaceBroadcaster); cmd != nil {
+		cmd()
+	}
 	if lp.owner.get() != tty.SurfaceBroadcaster {
 		t.Error("the owner moved with the surface")
 	}
@@ -128,7 +130,9 @@ func TestTakingTheAirAsksTheRailToReScopeAtOnce(t *testing.T) {
 	// AND A FLURRY OF SWAPS IS ONE PENDING RE-SCOPE, not a queue of cycles
 	// doing network work.
 	for range 20 {
-		lp.takeTheAir(tty.SurfaceObserver)
+		if cmd := lp.takeTheAir(tty.SurfaceObserver); cmd != nil {
+			cmd()
+		}
 	}
 	if got := len(lp.ticker.rescope); got != 1 {
 		t.Errorf("twenty swaps left %d pending cycles, want 1", got)
@@ -136,8 +140,8 @@ func TestTakingTheAirAsksTheRailToReScopeAtOnce(t *testing.T) {
 
 	// AND IT NEVER BLOCKS THE PROGRAM'S GOROUTINE. A deck with no channel at
 	// all — the older tests — takes the air without a nudge rather than panicking.
-	(&livePipelines{ticker: &tickerDeck{}}).takeTheAir(tty.SurfaceObserver)
-	(&livePipelines{}).takeTheAir(tty.SurfaceObserver)
+	_ = (&livePipelines{ticker: &tickerDeck{}}).takeTheAir(tty.SurfaceObserver)
+	_ = (&livePipelines{}).takeTheAir(tty.SurfaceObserver)
 }
 
 // AND THE FEED'S FILTER FOLLOWS THE SCOPE TOO — which is the half the operator

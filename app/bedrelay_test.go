@@ -58,17 +58,21 @@ func TestSteppingTheBedWrapsBothWays(t *testing.T) {
 	if n < 2 {
 		t.Fatalf("the fixture needs somewhere to step; got %d relays", n)
 	}
-	lp.stepBedRelay(-1)
+	if cmd := lp.stepBedRelay(-1); cmd != nil {
+		cmd()
+	}
 	if lp.bedPick != n-1 {
 		t.Errorf("stepping back from the first wraps to the last; got %d of %d", lp.bedPick, n)
 	}
-	lp.stepBedRelay(1)
+	if cmd := lp.stepBedRelay(1); cmd != nil {
+		cmd()
+	}
 	if lp.bedPick != 0 {
 		t.Errorf("and forward from the last wraps to the first; got %d", lp.bedPick)
 	}
 	// A STATION WITH NO RELAYS IS A NO-OP, never a panic or a negative index.
 	bare := &livePipelines{relayTable: lp.relayTable}
-	bare.stepBedRelay(1)
+	_ = bare.stepBedRelay(1)
 	if bare.bedPick != 0 {
 		t.Errorf("a fence with nothing in it selects nothing; got %d", bare.bedPick)
 	}
