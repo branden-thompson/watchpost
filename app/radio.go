@@ -47,6 +47,22 @@ type radioDeck struct {
 	analyzer  *spectrum.Analyzer // visualizer bands from the engine's tap (UAT 92)
 	vizBuf    []float64          // one analysis window, reused per frame
 
+	// voiceFor picks who performs a MAIN-TRACK read, and it is a
+	// field so the reader can be driven end to end on any host (F-95, P-1).
+	//
+	// EVERY TEST OF THE READER USED A FAKE `read` SEAM, so the real path — arm a
+	// session, start the engine, come home Finished — had no test at all, and
+	// shipped a defect that killed every card one millisecond after it was asked
+	// for. The real path cannot be driven without a voice, and the host's voice
+	// is `say` on macOS and a 63 MB Piper install elsewhere: neither belongs in
+	// a unit test, and skipping the test on hosts without one is a gate that
+	// does not run.
+	//
+	// Nil is the station's own voice, which is every production path. It is the
+	// same shape `clipBudget` already has in the engine, and for the same stated
+	// reason: a path nobody can drive is a path nobody has watched fail.
+	voiceFor func() (synth.Voice, error)
+
 	// abandonRead ends the read on the air when its audio stops making
 	// progress (FR-9). Set where the Director is built, because the deck is
 	// constructed first and the Director takes it as its voice; nil in tests

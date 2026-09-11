@@ -2012,3 +2012,41 @@ promise to read RIGHT NOW."*
 **And the corollary I should have reached for first:** the correct framing was already in the tree.
 `reconcileJoins` had carried it since 0.14.0 — *"a stopped station still has a running order; it
 simply is not reading it."*  Third time this release that the answer was already written down.
+
+---
+
+## 2026-09-11 — F-95: the defect was in the one line no test drove
+
+**The catch, and the HUM LEAD made it twice.**  `StartSource` halts whatever it is replacing before
+arming the new source, and `halt` ends with `set(Status{State: Stopped})`.  `readCard` arms its
+session before that call — it has to, or a status lands with nothing listening — so every read was
+ended by the halt of the source it displaced, **one millisecond before its own audio started**.
+
+**How it was found: by RUNNING it (P-6).**  Two rounds of reasoning about the call chain produced
+four plausible hypotheses and no answer.  A twenty-line probe that drove the real reader over a real
+engine produced the answer in one line — `ok=false after 1ms`, on a `Stopped` whose `Name` was empty,
+which is a status for a source that was not this one.  **A chain traced in one direction is not a
+measurement**, and this is the second time this release that sentence has been the whole lesson.
+
+**Why it shipped — and this is the part worth keeping.**  Every test of the reader drove the bench's
+FAKE `read` seam.  Those tests are RIGHT for what they assert: which lane performs a card, what comes
+home, what a mute does.  None of them could see the real path, because the real path starts where the
+fake begins.  **P-1, third instance in one session** (`mN5`, the D-83 window; the D-84 vacuous
+running-station test; this).
+
+**The shape, stated for the skill:** *when a batch introduces a SEAM and the thing behind it, the
+tests will land on the seam.*  The seam is where the interesting decisions are and it is cheap to
+drive; the thing behind it needs a device, a network or a host capability, so testing it feels like
+integration work and gets deferred.  **The deferral is the defect.**  The three instances this
+session all have that shape and all three shipped something the unit tests could not see.
+
+**How to apply — and it is cheaper than it looks:** make the real path drivable by injecting the
+capability rather than the behaviour.  `voiceFor` is one field; with a silent voice and a draining
+output the real reader runs on any host in 50 ms and needs neither `say` nor a sound card.  Compare
+that to what the alternative cost: two UAT rounds and a HUM LEAD reporting the same symptom twice.
+
+**And a seam that answers half a question is not a seam.**  The first version of `voiceFor` covered
+the root voice only, and the cast RESOLVER overrode it the moment the Source asked who reads a role —
+the end-to-end test failed with "limited voice is not wired".  `NewSource`'s contract says the root
+voice reads every role UNTIL a resolver is installed, and `readCard` installs one unconditionally, so
+half the seam was moot by construction.  `readCast` now answers both halves in one place.
