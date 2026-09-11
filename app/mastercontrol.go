@@ -92,12 +92,43 @@ func newMastercontrol(v narrationVoice, send func(tea.Msg)) *mastercontrol {
 // draws comes back from the Director through Publish (FR-5.1), so a declaration
 // that never reached the schedule shows as a control that did nothing — which
 // is the honest failure, rather than a banner that lies.
-func (m *mastercontrol) GoOnAir() { m.declare(lineup.Running) }
+// GOING ON AIR HANDS THE AIR TO THE PROGRAMME AS WELL (D-74), and it does so
+// FIRST, so the settle that follows the power already knows who is carrying.
+//
+// IT DOES NOT ASSUME THE SWAP. The air follows the surface and the control only
+// exists on the console, so in practice the programme already holds it — but
+// "in practice" is an invariant maintained somewhere else, and an operator who
+// presses ON AIR is owed a station that can actually broadcast. `onAired`
+// no-ops when nothing changed, so the usual case costs one refused event.
+func (m *mastercontrol) GoOnAir() {
+	m.HandAir(lineup.AirProgramme)
+	m.declare(lineup.Running)
+}
 
 // GoToStandby takes the station to dead air.
 func (m *mastercontrol) GoToStandby() { m.declare(lineup.OffAir) }
 
-func (m *mastercontrol) declare(p lineup.Power) {
+// HandAir gives the air to one programme or the other (D-74).
+//
+// MASTERCONTROL IS THE ONLY DECLARER, which is the rule the power already
+// follows one concept along: the air is something the OPERATOR DID — they moved
+// to a surface — not something a tune happened to imply. Three declarers of the
+// power is exactly how listening on one surface came to put the other ON AIR.
+func (m *mastercontrol) HandAir(to lineup.Air) { m.tell(lineup.Aired{To: to}) }
+
+// StopMonitor stops the operator's own listening.
+//
+// IT IS NOT A STATION EVENT. The line-up does not pause, the rail does not hold
+// and nothing leaves the air: the operator simply stopped listening, which is
+// what taking the air to the console means for them.
+func (m *mastercontrol) StopMonitor() { m.tell(lineup.Monitored{Running: false}) }
+
+// tell carries one event to the schedule, or gives up when there is none.
+//
+// EXTRACTED AT THE SECOND CALLER (`declare` was the first): three producers of
+// "carry this to the Director if there is one" would be three places for the
+// nil check to be forgotten.
+func (m *mastercontrol) tell(ev lineup.Event) {
 	if m == nil {
 		return
 	}
@@ -107,8 +138,10 @@ func (m *mastercontrol) declare(p lineup.Power) {
 	if carry == nil {
 		return // no schedule to declare to
 	}
-	carry(lineup.Powered{To: p})
+	carry(ev)
 }
+
+func (m *mastercontrol) declare(p lineup.Power) { m.tell(lineup.Powered{To: p}) }
 
 // silent reports whether there is no voice to perform with.
 func (m *mastercontrol) silent() bool { return m == nil || m.v == nil }

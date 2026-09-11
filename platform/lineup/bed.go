@@ -149,8 +149,8 @@ func (d Director) stalledRotation() (Director, []Effect) {
 	if d.bed.asked == "" || d.now.Sub(d.bed.askedAt) < tuneLands {
 		return d, nil
 	}
-	if !d.advances(MainTrack) {
-		d.bed.asked = "" // stopped while it was in flight: not a fault, and not pending either
+	if !d.advancesMonitor() {
+		d.bed.asked = "" // the air moved while it was in flight: not a fault, and not pending either
 		return d, nil
 	}
 	ref := d.bed.asked
@@ -240,8 +240,8 @@ func (d Director) onEnded(Ended) (Director, []Effect) {
 	if err := invariant.Check(d.bed.ref != "", "a cycle only ends on a bed that was carrying one"); err != nil {
 		return d, nil
 	}
-	if !d.advances(MainTrack) {
-		return d, nil // stopped: nothing follows a listener's stop
+	if !d.advancesMonitor() {
+		return d, nil // the air is not the monitor's: nothing follows
 	}
 	if d.settings.Dwell <= 0 {
 		return d, nil // not Watchlist: the rotation does not move on by itself
@@ -256,13 +256,12 @@ func (d Director) onEnded(Ended) (Director, []Effect) {
 
 // dwellElapsed reports whether the live relay on the bed has had its turn.
 func (d Director) dwellElapsed() bool {
-	// A STOPPED PROGRAMME DOES NOT ADVANCE. The listener pressed stop; the bed
-	// moving on afterwards would be the station starting itself again five
-	// minutes later. `advances` is the one carrier of that question and the
-	// alert rail is deliberately exempt from it — hazards still speak over a
-	// stopped programme — so this asks it for the MAIN TRACK, which is what the
-	// bed carries.
-	if !d.advances(MainTrack) {
+	// A MONITOR THAT DOES NOT HAVE THE AIR DOES NOT ADVANCE (D-74). It asked
+	// `advances(MainTrack)` — the STATION's gate — which is how one rotation
+	// came to be governed by the other programme's power, and how Observer's
+	// tune came to declare the station ON AIR. The rail is exempt from both,
+	// deliberately: hazards still speak over a stopped programme.
+	if !d.advancesMonitor() {
 		return false
 	}
 	if d.settings.Dwell <= 0 || !d.bed.live || d.bed.ref == "" {

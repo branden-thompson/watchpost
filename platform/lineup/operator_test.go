@@ -22,6 +22,7 @@ func threeQueued(t *testing.T) Director {
 	t.Helper()
 	d := New(Settings{Max: 5}, opBase())
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	for _, ref := range []string{"one", "two", "three"} {
 		d, _ = d.Step(NeedsRead{Ref: ref, Headline: "REPORT FOR " + ref})
 	}
@@ -217,6 +218,7 @@ func TestRestoringSpendsThePileEntry(t *testing.T) {
 func TestARestoredTakeoverGoesBackOnTheRail(t *testing.T) {
 	d := New(Settings{Max: 5}, opBase())
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(Arrived{Arrivals: []Arrival{aTornado()}})
 	if len(d.lineup.Cards(AlertRail)) != 1 {
 		t.Fatal("the fixture needs a live warning on the rail")
@@ -279,6 +281,7 @@ func TestARestoreTheScheduleRefusesKeepsTheCardOnThePile(t *testing.T) {
 	base := time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)
 	d := New(Settings{Max: 5}, base)
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
 
 	d, _ = d.Step(Dropped{ID: ReadID("oceanside")})

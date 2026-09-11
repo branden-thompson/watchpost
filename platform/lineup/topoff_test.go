@@ -19,6 +19,7 @@ func offering(t *testing.T, depth int, watchlist ...string) Director {
 	d := New(Settings{Max: 5, Depth: depth, Watchlist: watchlist},
 		time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	return d
 }
 

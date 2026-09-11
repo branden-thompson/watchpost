@@ -292,6 +292,7 @@ func TestTheRailDrainsBeforeTheMainTrackThroughStep(t *testing.T) {
 	d.lineup = l
 
 	// The listener starts the radio, and the report's build begins (PD-1).
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, started := run(d, Powered{To: Running})
 	if !has(started, "build(bonsall)") {
 		t.Fatalf("starting the radio produced %v, want the report's build", started)

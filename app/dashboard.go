@@ -97,6 +97,12 @@ func RunDashboard(version string, opt Options) error {
 	p, deck, stopRadio := attachRadio(model, client, provider, cfg, tty.ParseRadioMode(cfg.Radio.Mode), lp.fireFor, lp.seismicFor, lp.marineFor) // B4 / UAT 97 / 114 / P4 / 0.14.0
 	defer stopRadio()
 	lp.attachDeck(ctx, p, deck, client, prefs, version, start)
+	// AND THE DECK LEARNS WHO HAS THE AIR (D-74). Wired HERE because the deck
+	// exists from here — and from the owner the Router already maintains, so the
+	// question has one answer and the deck keeps no flag of its own.
+	if deck != nil {
+		deck.air = func() bool { return lp.owner.get() != tty.SurfaceBroadcaster }
+	}
 
 	firstFullNanos := lp.startPipelines(ctx, p, refs, idx, cfg, client, prefs, start)
 	// Cancel BEFORE waiting (red-team 0.9.0 C-2): stopAll waits for every

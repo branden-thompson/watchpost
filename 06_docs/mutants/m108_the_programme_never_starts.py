@@ -8,6 +8,6 @@
 # station is the hardest defect to see, and this is the wire that prevents it.
 import pathlib
 p = pathlib.Path("app/radio.go"); s = p.read_text()
-old = "\td.tell(lineup.Powered{To: lineup.Running})\n"
+old = "\td.tell(lineup.Monitored{Running: true})\n"
 assert s.count(old) == 1, "m108"
-p.write_text(s.replace(old, "\tif false {\n\t\td.tell(lineup.Powered{To: lineup.Running})\n\t}\n"))
+p.write_text(s.replace(old, "\tif false {\n\t\td.tell(lineup.Monitored{Running: true})\n\t}\n"))

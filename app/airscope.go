@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -105,5 +106,49 @@ func (s airScope) hasOrigin() bool { return s.lat != 0 || s.lon != 0 }
 // directions.
 func (lp *livePipelines) takeTheAir(s tty.Surface) {
 	lp.owner.set(s)
+	// THE AIR MOVES WITH THE SURFACE, AND MASTERCONTROL IS WHAT SAYS SO (D-74).
+	//
+	// "IF I'M IN THE BROADCASTER UI, THEN THE OBSERVER MODE MUST BE SILENT"
+	// (HUM LEAD, 2026-09-10). Hearing the operator's own listening while looking
+	// at a console that says STOPPED is the confusion this removes — so moving to
+	// the console takes the air AND stops the monitor, audio and all.
+	//
+	// GOING BACK DOES NOT RESUME IT, which he ruled in the same breath: the
+	// monitor comes back "like if Observer was first opened". The operator
+	// presses play. That is also what keeps a rapid ctrl+b / ctrl+o flip from
+	// re-resolving a relay and re-fetching its products on every swap.
+	if mc := lp.masterControl(); mc != nil {
+		if s == tty.SurfaceBroadcaster {
+			mc.HandAir(lineup.AirProgramme)
+			mc.StopMonitor()
+		} else {
+			mc.HandAir(lineup.AirMonitor)
+		}
+	}
+	if s == tty.SurfaceBroadcaster {
+		lp.silenceMonitor()
+	}
 	lp.ticker.nudgeRescope()
+}
+
+// masterControl is the effector, or nil in the modes that have no audio.
+func (lp *livePipelines) masterControl() *mastercontrol {
+	if lp == nil || lp.director == nil {
+		return nil
+	}
+	return lp.director.mc
+}
+
+// silenceMonitor stops the audio the OPERATOR was listening to, without
+// touching the station.
+//
+// THE DECK IS TOLD DIRECTLY, because the Director's `Monitored` event governs
+// the ROTATION and not the player: a rotation that will not advance still leaves
+// whatever is already playing on the air. Both halves are the same instruction
+// and both are needed.
+func (lp *livePipelines) silenceMonitor() {
+	if lp == nil || lp.deck == nil {
+		return
+	}
+	lp.deck.Stop()
 }

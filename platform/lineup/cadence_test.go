@@ -21,6 +21,7 @@ func cadenceDirector(t *testing.T, weigh bool) Director {
 	d := New(Settings{Max: 5, Depth: 4, WeighLastRead: weigh},
 		time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	return d
 }
 
@@ -97,6 +98,7 @@ func TestTheOperatorCanTurnLastReadOffAndTheDirectorStillChooses(t *testing.T) {
 		Watchlist: []string{"hazard", "oceanside"}},
 		time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d = seedRead(t, d, "s0", "hazard", SevereRead)
 	d.now = d.now.Add(6 * time.Minute)
 
@@ -122,6 +124,7 @@ func TestNothingIsOverdueBeforeAnythingHasBeenRead(t *testing.T) {
 		Watchlist: []string{"hazard", "oceanside"}},
 		time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 
 	d, _ = d.Step(Offered{Proposals: []Proposal{
 		{Ref: "oceanside", Headline: "OCEANSIDE, CA", Slot: LocationReport},

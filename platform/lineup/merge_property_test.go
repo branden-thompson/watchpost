@@ -280,6 +280,7 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 			admits: map[string]int{}, airs: map[string]int{},
 		}
 		now := base
+		m.step(Aired{To: AirProgramme})
 		m.step(Powered{To: Running})
 		stopped := false
 
@@ -297,6 +298,7 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 			// resume gets its own faster path — the stop is still a state with
 			// duration, just a shorter one.
 			if stopped && rng.Intn(3) == 0 {
+				m.step(Aired{To: AirProgramme})
 				m.step(Powered{To: Running})
 				stopped = false
 				continue
@@ -326,6 +328,7 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 				// back, so needs, arrivals, ticks and completions all land
 				// while it is off.
 				if stopped {
+					m.step(Aired{To: AirProgramme})
 					m.step(Powered{To: Running})
 					stopped = false
 					continue
