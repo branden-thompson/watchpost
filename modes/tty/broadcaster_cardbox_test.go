@@ -127,3 +127,38 @@ func TestTheBoxedCardMatchesTheReferenceGeometry(t *testing.T) {
 		t.Errorf("the reference leaves one cell between the handle and the border; got %q want %q", tail, want)
 	}
 }
+
+// THE CARD DRAWS THE MASTHEAD'S BOX (D-85, HUM LEAD 2026-09-11): "Remove the
+// rounded corners -> straight corners … All Main track cards should have BOLD
+// lines (like the masthead)."
+//
+// SHARED, NOT COPIED. `render.HeavyBox` is the set the masthead has drawn since
+// 0.13.0, and the test asks the SAME function rather than repeating the marks —
+// a literal here would pass while the two drifted apart, which is the thing it
+// is meant to prevent.
+func TestACardIsDrawnInTheMastheadsBox(t *testing.T) {
+	bx := render.HeavyBox(false)
+	b := Broadcaster{width: 150}
+	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
+	rows := lane.box(aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")
+
+	if !strings.HasPrefix(rows[0], bx.TL) || !strings.HasSuffix(rows[0], bx.TR) {
+		t.Errorf("the top border is %q; want the masthead's corners %q … %q", rows[0], bx.TL, bx.TR)
+	}
+	last := rows[len(rows)-1]
+	if !strings.HasPrefix(last, bx.BL) || !strings.HasSuffix(last, bx.BR) {
+		t.Errorf("the bottom border is %q; want %q … %q", last, bx.BL, bx.BR)
+	}
+	for i, r := range rows[1 : len(rows)-1] {
+		if !strings.HasPrefix(r, bx.Rail) || !strings.HasSuffix(r, bx.Rail) {
+			t.Errorf("interior row %d is %q; want the masthead's rail %q on both edges", i, r, bx.Rail)
+		}
+	}
+	// AND NOT THE ROUNDED ONES, which is the half the HUM LEAD asked for by
+	// name. They have no user left and are gone from the glyph set.
+	for _, round := range []string{"╭", "╮", "╰", "╯"} {
+		if strings.Contains(strings.Join(rows, ""), round) {
+			t.Errorf("the card still draws the rounded corner %q", round)
+		}
+	}
+}

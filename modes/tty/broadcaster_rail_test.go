@@ -320,3 +320,33 @@ func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 		t.Errorf("the rail carries exactly one thumb between its caps; it carries %d", thumbs)
 	}
 }
+
+// THE MARK COLUMN BELONGS TO THE SCROLL RAIL, AND ONLY TO IT (D-85, HUM LEAD
+// 2026-09-11): "We need to remove the extra lines on the right side of the UI
+// next to LIVE and UP NEXT."
+//
+// It was the wall on EVERY row, scrolling or not — a second vertical beside two
+// regions with nothing to scroll, which reads as a column that stopped rather
+// than as one that was never there.
+func TestTheReadRegionsDrawNoScrollRailBesideThem(t *testing.T) {
+	b := Broadcaster{width: 150}
+	g := b.opts().Glyphs()
+	body := []string{"a card row", "another"}
+
+	quiet := b.chrome(body, false, 0, 0)
+	for i, r := range quiet {
+		// The frame's own right wall is the LAST cell; anything before it in the
+		// mark column is the rail that should not be there.
+		trimmed := strings.TrimSuffix(r, g.Rail)
+		if strings.Contains(strings.TrimRight(trimmed, " "), g.Rail) {
+			t.Errorf("row %d carries a rail beside a region that does not scroll: %q", i, r)
+		}
+	}
+
+	// AND THE SCROLLING REGION STILL HAS ONE, which is what makes the absence
+	// above mean something.
+	scrolled := b.chrome([]string{"a", "b", "c"}, true, 2, 10)
+	if !strings.Contains(scrolled[0], render.RailGlyphsFor(false).Up) {
+		t.Errorf("the scrolling region lost its rail: %q", scrolled[0])
+	}
+}

@@ -102,7 +102,9 @@ type Glyphs struct {
 	// mock draws for a card — the app's WINDOWS use the heavy box `BoxTitled`
 	// owns, and a card is not a window. Through the glyph set so --ascii needs
 	// no special case at the call site.
-	CornerTL, CornerTR, CornerBL, CornerBR string
+	// THE ROUNDED CORNERS RETIRED AT D-85. Their one user was the Broadcaster
+	// card, which draws the masthead's square heavy box now (render.HeavyBox);
+	// a glyph nothing draws is a glyph that can only ever be wrong.
 	// Idle and Live are a thing's own state where it is NAMED — the bed's
 	// ACTIVE / INACTIVE chip (0.16.0, D-62). Not the seismic ramp, which an
 	// early draft borrowed: that ramp means FELT INTENSITY and reusing it here
@@ -128,11 +130,11 @@ func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
 		return Glyphs{Pointer: ">", Play: "*", Pause: "=", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},
 			OK: "+", Fail: "x", Note: "~", Cursor: "_", Fill: ".", Dash: "-", Dot: "|",
-			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#", Rule: "-", Minus: "-", Heart: "<3", Arrow: "->", CornerTL: "+", CornerTR: "+", CornerBL: "+", CornerBR: "+", Idle: "o", Live: "*"}
+			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#", Rule: "-", Minus: "-", Heart: "<3", Arrow: "->", Idle: "o", Live: "*"}
 	}
 	return Glyphs{Pointer: "›", Play: "▶", Pause: "‖", Repeat: "∞", Fire: "◆", Alert: "⚠", Seismic: [3]string{"○", "●", "◉"},
 		OK: "✔", Fail: "✘", Note: "♪", Cursor: "▌", Fill: "░", Dash: "—", Dot: "·",
-		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■", Rule: "─", Minus: "−", Heart: "♥", Arrow: "→", CornerTL: "╭", CornerTR: "╮", CornerBL: "╰", CornerBR: "╯", Idle: "○", Live: "●"}
+		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■", Rule: "─", Minus: "−", Heart: "♥", Arrow: "→", Idle: "○", Live: "●"}
 }
 
 // asciiKey names an arrow key in words for a chip under --ascii — the one
