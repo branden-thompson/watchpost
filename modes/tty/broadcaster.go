@@ -1043,11 +1043,19 @@ func (l cardLane) box(c lineup.Card, handle, badge string) []string {
 // card — the borders, the centred title, the badge and the handle's chip. A
 // second box function would be a second place for the handle to drift, which is
 // the D-56 shape this file has already paid for once.
+// inner is the box's interior width — everything between the two rails.
+//
+// ONE OWNER, because two things measure it now: the box that draws the borders
+// and the script window that has to fit inside them. `bandWidth` was the same
+// lesson at D-80 — a fourth number agreeing with three others by coincidence is
+// what put the station band three cells over its frame.
+func (l cardLane) inner() int { return l.lane - 2 }
+
 func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []string {
 	if l.lane < 4 {
 		return nil
 	}
-	inner := l.lane - 2
+	inner := l.inner()
 	g := l.g
 	rule := strings.Repeat(g.Rule, inner)
 	// The title row is the SAME renderer the flat row used, one width in: the
