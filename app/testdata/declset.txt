@@ -240,6 +240,7 @@ func (*radioDeck).play
 func (*radioDeck).pushStatus
 func (*radioDeck).rawVoice
 func (*radioDeck).readCard
+func (*radioDeck).readCast
 func (*radioDeck).readSynth
 func (*radioDeck).recordResolution
 func (*radioDeck).render
@@ -272,6 +273,8 @@ func (*radioDeck).voice
 func (*radioDeck).voiceNote
 func (*radioDeck).watchlistDwell
 func (*radioDeck).watchlistLang
+func (*readSession).begin
+func (*readSession).begun
 func (*readSession).finish
 func (*reader).openTone
 func (*reader).readPart

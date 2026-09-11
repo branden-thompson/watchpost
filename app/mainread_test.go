@@ -212,6 +212,10 @@ func TestAReadSessionEndsOnceAndDistinguishesTheSignOffFromAHalt(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := &readSession{done: make(chan struct{})}
+			// THIS READ'S OWN AUDIO STARTS FIRST, always: `StartSource` reports
+			// Connecting before anything else, and a terminal status arriving
+			// BEFORE that belongs to the source this read displaced (F-95).
+			noteRead(r, player.Status{State: player.Playing}, false)
 			noteRead(r, tc.st, tc.ended)
 			noteRead(r, tc.st, tc.ended) // a second status must not close a closed channel
 			select {
@@ -232,6 +236,9 @@ func TestAReadSessionEndsOnceAndDistinguishesTheSignOffFromAHalt(t *testing.T) {
 func TestAReadIsNotEndedByAStatusThatIsStillPlaying(t *testing.T) {
 	r := &readSession{done: make(chan struct{})}
 	noteRead(r, player.Status{State: player.Playing, Title: "Oceanside"}, false)
+	if !r.begun() {
+		t.Error("a Playing status is this read's own audio starting; it must arm the ending")
+	}
 	select {
 	case <-r.done:
 		t.Fatal("a Playing status ended the read")

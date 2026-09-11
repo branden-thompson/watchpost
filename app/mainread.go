@@ -69,8 +69,41 @@ type readSession struct {
 	// returns immediately, and the WORKER already waiting on this read does the
 	// halting, on a goroutine that is allowed to block.
 	stop context.CancelFunc
+
+	// mu guards `started`. The status callback is NOT one goroutine: the engine
+	// goroutine reports Playing, and `halt` reports Stopped on whichever
+	// goroutine asked for it.
+	mu sync.Mutex
+	// started is whether THIS read's own audio has been seen to begin, and it is
+	// the difference between a read that ended and a read that never started
+	// (F-95).
+	//
+	// `StartSource` HALTS WHATEVER IT IS REPLACING FIRST, and `halt` ends with
+	// `set(Status{State: Stopped})`. The session is armed before that call — it
+	// has to be, or a status could land with nothing listening — so without this
+	// the displaced source's Stopped came home as THIS read's ending, one
+	// millisecond after it was asked for and before a word was spoken. Every
+	// card failed, was discarded, and benched its location for five minutes; at
+	// twenty-five pool entries the console read "waiting for the line-up" in
+	// every slot. That is the churn the HUM LEAD reported twice.
+	started bool
+
 	once sync.Once
 	ok   bool // written inside once, before done closes; read after it
+}
+
+// begin records that this read's own audio has started.
+func (r *readSession) begin() {
+	r.mu.Lock()
+	r.started = true
+	r.mu.Unlock()
+}
+
+// begun reports whether anything of this read has played yet.
+func (r *readSession) begun() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.started
 }
 
 // finish ends the read, once. A status callback can fire several times for one
@@ -95,6 +128,15 @@ func noteRead(r *readSession, st player.Status, ended bool) {
 		return
 	}
 	switch {
+	case st.State == player.Connecting || st.State == player.Playing:
+		// THIS READ'S OWN AUDIO. `StartSource` reports Connecting before it
+		// reports anything else, so every read passes through here before it can
+		// legitimately end.
+		r.begin()
+	case !r.begun():
+		// A TERMINAL STATUS FOR SOMETHING ELSE (F-95). It belongs to the source
+		// this read displaced — `StartSource` halts it first, and `halt` ends
+		// with a Stopped. Ending here is ending a read that has not begun.
 	case ended:
 		r.finish(true)
 	case st.State == player.Stopped || st.State == player.Failed:
@@ -112,7 +154,7 @@ func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Seg
 	if d == nil || len(segs) == 0 {
 		return false // nothing to say: the executor's empty-script check already refused this
 	}
-	voice, err := d.voice() // may install Piper (minutes): never under a lock
+	voice, resolve, err := d.readCast() // may install Piper (minutes): never under a lock
 	if err != nil {
 		d.engine.Fail(err.Error()) // the reason, in the player (F2)
 		return false
@@ -141,10 +183,7 @@ func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Seg
 	// root correspondent — but installing it here rather than skipping it is
 	// what keeps ONE answer to "who reads this station", so the day a card
 	// carries a role it is already right.
-	src.SetResolver(func(role cast.Role) (synth.Voice, error) {
-		v, _, err := d.resolveVoice(role)
-		return v, err
-	})
+	src.SetResolver(resolve)
 	src.SetHandoffLine(d.composer.HandoffLine)
 	src.Loop(false)
 	d.setMode("read", label, "on the main track")
@@ -179,6 +218,33 @@ func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Seg
 		d.engine.Halt()
 		return false
 	}
+}
+
+// readCast is WHO READS THIS READ: the root voice the Source is built over, and
+// the resolver that answers for each segment's role.
+//
+// ONE ANSWER, NOT TWO. A first version installed the seam on the root voice
+// alone and left the resolver reaching into the cast — so the injected voice was
+// overridden the moment the Source asked who reads a role, and the end-to-end
+// test failed with "limited voice is not wired". A seam that covers half the
+// question is not a seam; `NewSource`'s own contract says the root voice reads
+// every role UNTIL a resolver is installed, and installing one unconditionally
+// is what made the first half moot.
+func (d *radioDeck) readCast() (synth.Voice, func(cast.Role) (synth.Voice, error), error) {
+	d.mu.Lock()
+	pick := d.voiceFor
+	d.mu.Unlock()
+	if pick != nil {
+		v, err := pick()
+		// ONE VOICE READS EVERY ROLE, which is `NewSource`'s documented default
+		// and what a caller with no cast has always got.
+		return v, func(cast.Role) (synth.Voice, error) { return pick() }, err
+	}
+	v, err := d.voice()
+	return v, func(role cast.Role) (synth.Voice, error) {
+		rv, _, err := d.resolveVoice(role)
+		return rv, err
+	}, err
 }
 
 // stopRead takes a main-track card off the air, and returns at once.
