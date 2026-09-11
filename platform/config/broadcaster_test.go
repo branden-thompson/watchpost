@@ -47,3 +47,38 @@ func TestTheTransmitterFallsBackToTheDefaultLocation(t *testing.T) {
 		t.Error("no locations and no transmitter is not a station")
 	}
 }
+
+// THE BED'S FENCE IS ITS OWN SETTING, NOT THE SERVICE RADIUS (D-77).
+//
+//	"Bed fence should be another Broadcaster specific setting … I think it
+//	 should default to 100" — HUM LEAD, 2026-09-10
+//
+// THEY MOVE FOR DIFFERENT REASONS: one is who the station is FOR, the other is
+// what hardware happens to exist nearby. Around Bonsall a 25-mile search reaches
+// ONE transmitter and a 100-mile one reaches eight — so a bed fence derived from
+// a 25-mile service radius would leave the selector with nothing to select.
+func TestTheBedRadiusIsItsOwnClampedSetting(t *testing.T) {
+	for _, c := range []struct {
+		set, want float64
+		why       string
+	}{
+		{0, DefaultBedRadiusMi, "unset takes the default"},
+		{100, 100, "the ruled default is kept"},
+		{25, 25, "the floor is legal"},
+		{150, 150, "so is the ceiling"},
+		{5, MinBedRadiusMi, "under the floor is clamped up"},
+		{900, MaxBedRadiusMi, "over the ceiling is clamped down"},
+	} {
+		if got := (Broadcaster{BedRadiusMi: c.set}).BedRadius(); got != c.want {
+			t.Errorf("%s: %v -> %v, want %v", c.why, c.set, got, c.want)
+		}
+	}
+	// AND IT IS NOT THE SERVICE RADIUS. Setting one must never move the other.
+	b := Broadcaster{ServiceRadiusMi: 25}
+	if b.BedRadius() != DefaultBedRadiusMi {
+		t.Errorf("the service radius moved the bed's fence to %v", b.BedRadius())
+	}
+	if got := (Broadcaster{BedRadiusMi: 150}).ServiceRadius(); got != DefaultServiceRadiusMi {
+		t.Errorf("the bed's fence moved the service radius to %v", got)
+	}
+}

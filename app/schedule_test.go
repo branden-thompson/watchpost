@@ -25,7 +25,7 @@ func scheduleUnderTest(t *testing.T, ctx context.Context) (*schedule, *atomic.In
 	var band atomic.Int64
 	nar := testDirector(nil, func(tea.Msg) { band.Add(1) })
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
-	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil, nil, tick, nil)
+	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil, nil, nil, tick, nil)
 	if s == nil {
 		t.Fatal("the schedule refused to start over a valid arbiter")
 	}
@@ -106,14 +106,14 @@ func TestAScheduleLeavesNoGoroutineBehind(t *testing.T) {
 // on a station that never had audio.
 func TestNoArbiterMeansNoSchedule(t *testing.T) {
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
-	if s := startSchedule(context.Background(), nil, nil, func() render.Clock { return render.Clock12 }, nil, nil, tick, nil); s != nil {
+	if s := startSchedule(context.Background(), nil, nil, func() render.Clock { return render.Clock12 }, nil, nil, nil, tick, nil); s != nil {
 		t.Error("a schedule was built with nothing to perform through")
 	}
 	// AND NO PRODUCER MEANS NO SCHEDULE EITHER. The rail would have nothing to
 	// read, and a schedule that cannot receive an arrival is a station that
 	// silently never sounds a hazard.
 	nar := testDirector(nil, func(tea.Msg) {})
-	if s := startSchedule(context.Background(), nar, nil, func() render.Clock { return render.Clock12 }, nil, nil, nil, nil); s != nil {
+	if s := startSchedule(context.Background(), nar, nil, func() render.Clock { return render.Clock12 }, nil, nil, nil, nil, nil); s != nil {
 		t.Error("a schedule was built with no producer to hear from")
 	}
 	var none *schedule
@@ -259,7 +259,7 @@ func TestTheProducersReachTheSchedule(t *testing.T) {
 	nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	deck := &radioDeck{}
-	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, deck, nil, tick, nil)
+	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, deck, nil, nil, tick, nil)
 	if s == nil {
 		t.Fatal("the schedule refused to start over a valid arbiter and producer")
 	}
@@ -360,7 +360,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 	nar := testDirector(nil, func(tea.Msg) {})
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
-		func() []snapshot.LocationRef { return refs }, tick, publish)
+		func() []snapshot.LocationRef { return refs }, func() []snapshot.LocationRef { return refs }, tick, publish)
 	if s == nil {
 		t.Fatal("the schedule refused to start")
 	}
@@ -478,7 +478,7 @@ func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
 	nar := testDirector(nil, func(tea.Msg) {})
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
-		func() []snapshot.LocationRef { return refs }, tick, publish)
+		func() []snapshot.LocationRef { return refs }, func() []snapshot.LocationRef { return refs }, tick, publish)
 	if s == nil {
 		t.Fatal("the schedule refused to start")
 	}

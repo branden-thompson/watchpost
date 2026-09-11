@@ -2,6 +2,7 @@ const SafetyNext
 const SafetyNote
 const UserAgent
 const bandRecordCap
+const bedFenceFarMi
 const breakingGap
 const breakingHold
 const burstHeadGap
@@ -314,6 +315,7 @@ func (*tickerDeck).tapeItems
 func (*tickerDeck).tell
 func (CastReport).ToneSummary
 func (airScope).hasOrigin
+func (bedReach).Line
 func (diagSources).gauges
 func (hostFacts).Default
 func (hostFacts).Discovered
@@ -336,6 +338,8 @@ func applyThemes
 func arrivalsOf
 func assemblerGauges
 func attachRadio
+func bedAdvice
+func bedReachFor
 func breakingItem
 func breakingLine
 func burstAgencies
@@ -533,6 +537,7 @@ type airOwner
 type airScope
 type alertStore
 type bandRecord
+type bedReach
 type castState
 type clip
 type diagSources

@@ -26,6 +26,21 @@ type Broadcaster struct {
 	// them rather than refused, because a service area is a preference and a
 	// station should still come up.
 	ServiceRadiusMi float64 `toml:"service_radius_mi,omitempty"`
+
+	// BedRadiusMi is how far the station looks for a RELAY to carry on its bed
+	// (D-77) — a different question from how far it READS, and therefore a
+	// different number.
+	//
+	// IT IS WIDER THAN THE SERVICE RADIUS BECAUSE RELAYS ARE SPARSE, and that is
+	// measured rather than assumed. Around Bonsall: 25 miles holds ONE
+	// transmitter, 50 holds three, 100 holds eight. A selector with one choice
+	// in it is not a selector.
+	//
+	// AND IT IS NOT DERIVED FROM THE SERVICE RADIUS. The two move for different
+	// reasons — one is who the station is FOR, the other is what hardware
+	// happens to exist nearby — and deriving one from the other would couple two
+	// numbers that have nothing to say to each other.
+	BedRadiusMi float64 `toml:"bed_radius_mi,omitempty"`
 }
 
 const (
@@ -47,6 +62,23 @@ const (
 	// Director more to choose from than it must schedule, which is what makes
 	// the cadence rule a choice rather than an inventory.
 	DefaultServiceRadiusMi = 25
+
+	// MinBedRadiusMi, MaxBedRadiusMi and DefaultBedRadiusMi bound the relay
+	// search (HUM LEAD, 2026-09-10: "I think it should default to 100").
+	//
+	// MEASURED AT FOUR PLACES, not chosen: at 100 miles Bonsall reaches 8
+	// transmitters, Lone Pine 4, Chicago 16 and Minot 4 — a real choice
+	// everywhere sampled. Below 75 some real stations reach NONE (Lone Pine has
+	// no relay inside fifty miles), which is what the operator is warned about
+	// rather than prevented from choosing.
+	//
+	// THE FLOOR IS 25 BECAUSE EVEN CHICAGO REACHES ONLY ONE THERE, and the
+	// ceiling is 150 because past it the bed is carrying a forecast for a region
+	// the station's listeners are not in — which is the whole objection that
+	// made the bed the station's business in the first place.
+	MinBedRadiusMi     = 25
+	MaxBedRadiusMi     = 150
+	DefaultBedRadiusMi = 100
 )
 
 // ServiceRadiusMi is the fence's radius, defaulted and clamped into the ruled
@@ -60,6 +92,18 @@ func (b Broadcaster) ServiceRadius() float64 {
 		return DefaultServiceRadiusMi
 	}
 	return min(max(b.ServiceRadiusMi, MinServiceRadiusMi), MaxServiceRadiusMi)
+}
+
+// BedRadius is how far the station looks for a relay, defaulted and clamped.
+//
+// CLAMPED, NOT REFUSED, for `ServiceRadius`'s reason: a hand-edited config
+// asking for a wider search is a person asking for more choice, and the answer
+// is the widest search they may have plus a station that comes up.
+func (b Broadcaster) BedRadius() float64 {
+	if b.BedRadiusMi == 0 {
+		return DefaultBedRadiusMi
+	}
+	return min(max(b.BedRadiusMi, MinBedRadiusMi), MaxBedRadiusMi)
 }
 
 // Station is where the station transmits from, falling back to the listener's

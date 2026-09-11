@@ -60,7 +60,19 @@ type schedule struct {
 // ticker's takeovers use — building a second effector here would put the band
 // and the duck back under two owners, which is the defect T2.3 removed and the
 // one this file would be the easiest place to reintroduce.
-func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg)) *schedule {
+// THE TWO LISTS ARE NOT ONE LIST (D-76). `pool` is the STATION's candidates —
+// what its Producer may offer and what its Composer resolves against; `watch` is
+// the LISTENER's, and the bed's cut-over is the MONITOR's rotation moving
+// through it.
+//
+// D-72 MOVED ALL THREE TOGETHER AND THAT WAS TWO-THIRDS RIGHT. The reasoning
+// was that a Director scheduling a location its own Composer cannot resolve gets
+// it benched by D-67's cool-off — true of `propose` and `compose`, and NOT of
+// `cutTo`, which serves a rotation through the listener's own watchlist. A
+// watched location outside the station's pool stopped resolving and the tune
+// died as `schedule:tune-unknown`, silently. Found by DRAWING THE FLOW for the
+// HUM LEAD rather than by a gate.
+func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg)) *schedule {
 	if nar == nil {
 		return nil // no arbiter, no schedule: there is nothing to perform through
 	}
@@ -91,14 +103,17 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		report: func(f lineup.Effect, why string) {
 			radioDebugLog("schedule:declined:" + lineup.Describe(f) + ":" + why)
 		},
+		// THE MONITOR'S ROTATION MOVES THROUGH THE LISTENER'S OWN WATCHLIST
+		// (D-76). It is `advanceBed` that emits this, and `advanceBed` is the
+		// operator's own listening — not the station's.
 		cutTo: tuneTo(deck, watch),
 		// THE MAIN TRACK'S WORDS (0.16.0 P3). Required from P3(d): a station
 		// whose rotation is owned by the schedule and has no composer wired
 		// would queue every report and read none.
-		compose: composeFor(deck, watch),
+		compose: composeFor(deck, pool),
 		// WHAT THE PRODUCER HAS TO OFFER (0.16.0 P4, D-40). The Director asks
 		// on every publish and takes only what the line-up still needs.
-		propose: proposeFrom(watch),
+		propose: proposeFrom(pool),
 		// DR-21's one escalation channel. It reuses the relay-fault window
 		// rather than adding a second error surface: from the listener's chair
 		// "the relay is silent" and "the schedule stopped" are the same event —

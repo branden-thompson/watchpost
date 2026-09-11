@@ -134,7 +134,7 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 	nar := testDirector(nil, func(tea.Msg) {})
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
-		lp.producer(), tick, publish)
+		lp.producer(), lp.currentWatch, tick, publish)
 	if s == nil {
 		t.Fatal("the schedule refused to start")
 	}
@@ -154,5 +154,102 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 	}
 	if got != tty.MainTrackSlots {
 		t.Errorf("the station's pool fills the console's %d slots; it reached %d", tty.MainTrackSlots, got)
+	}
+}
+
+// THE MONITOR'S ROTATION RESOLVES AGAINST THE LISTENER'S WATCHLIST (D-76).
+//
+// THE REGRESSION THIS PINS WAS MINE, AND IT WAS FOUND BY DRAWING THE FLOW rather
+// than by a gate. D-72 moved all three of `startSchedule`'s list-reading seams
+// from the watchlist to the station's pool, on the reasoning that a Director
+// scheduling a location its own Composer cannot resolve gets it benched by
+// D-67's cool-off. True of `propose` and `compose`. NOT true of `cutTo`, which
+// serves `advanceBed` — the operator's own rotation, moving through their own
+// watchlist. A watched location outside the station's pool stopped resolving,
+// and the tune died as `schedule:tune-unknown` with nothing said.
+func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
+	// A LISTENER WATCHING SOMEWHERE THE STATION DOES NOT REACH — the HUM LEAD's
+	// own case: Lone Pine, listened to from a station in Bonsall.
+	lonePine := snapshot.LocationRef{Label: "Lone Pine, CA", Lat: 36.6060, Lon: -118.0640}
+	bishop := snapshot.LocationRef{Label: "Bishop, CA", Lat: 37.3614, Lon: -118.3951}
+	watch := func() []snapshot.LocationRef { return []snapshot.LocationRef{bishop, lonePine} }
+
+	lp := &livePipelines{idx: indexForTest(t)}
+	lp.setStation(stationFrom(config.Config{Locations: []config.Location{bonsallCfg}}))
+	pool := lp.producer()
+
+	// THE FIXTURE IS ASSERTED FIRST: Lone Pine really is outside the station's
+	// pool, so resolving it can only come from the watchlist.
+	for _, r := range pool() {
+		if r.Label == lonePine.Label {
+			t.Fatal("the fixture's location is inside the pool; it pins nothing")
+		}
+	}
+	if _, ok := refFor(pool, string(snapshot.Key(lonePine))); ok {
+		t.Fatal("the pool must not resolve it, or this test proves nothing")
+	}
+	if _, ok := refFor(watch, string(snapshot.Key(lonePine))); !ok {
+		t.Fatal("the monitor's rotation resolves a watched location against the WATCHLIST")
+	}
+
+	// AND THE WIRING USES THE RIGHT ONE, driven through `startSchedule` itself.
+	//
+	// A PLANT SAID THIS WAS NEEDED. The assertions above compare the two lists
+	// and prove nothing about which one `cutTo` is built from — so swapping the
+	// wiring back to the pool SURVIVED them. The same shape as `producer()`'s: a
+	// call site cannot be asserted, so the test has to drive it.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	t.Setenv("WATCHPOST_MAINTRACK", "dark") // so a tune the deck accepts reports it
+	deck, _ := offlineDeck(t)
+	deck.pref = tty.ModeSynth
+	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
+	s := startSchedule(ctx, testDirector(nil, func(tea.Msg) {}), nil,
+		func() render.Clock { return render.Clock12 }, deck, pool, watch, tick, func(tea.Msg) {})
+	if s == nil {
+		t.Fatal("the schedule refused to start")
+	}
+	// OBSERVED AT THE DECK, after the schedule has wired itself: a tune that
+	// RESOLVED reports the need it found, and a tune that did not resolve
+	// reports nothing at all (`schedule:tune-unknown`, silently — which is
+	// exactly how the regression hid).
+	var mu sync.Mutex
+	var tuned []string
+	deck.mu.Lock()
+	deck.emit = func(ev lineup.Event) {
+		if n, ok := ev.(lineup.NeedsRead); ok {
+			mu.Lock()
+			tuned = append(tuned, n.Ref)
+			mu.Unlock()
+		}
+	}
+	deck.mu.Unlock()
+	// THE MONITOR ASKS FOR THE WATCHED LOCATION, which only the watchlist holds.
+	// A ROTATION OF TWO, so there is somewhere to move ON to: the bed advances
+	// from Bishop to Lone Pine, and only the watchlist can resolve either.
+	s.carry(lineup.Programme{
+		Watchlist: []string{string(snapshot.Key(bishop)), string(snapshot.Key(lonePine))},
+		Dwell:     time.Minute,
+	})
+	s.carry(lineup.Monitored{Running: true})
+	s.carry(lineup.Tuned{Ref: string(snapshot.Key(bishop)), Live: true})
+	s.carry(lineup.Ended{})
+
+	deadline := time.Now().Add(5 * time.Second)
+	want := string(snapshot.Key(lonePine))
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		n := len(tuned)
+		mu.Unlock()
+		if n > 0 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	mu.Lock()
+	got := append([]string(nil), tuned...)
+	mu.Unlock()
+	if len(got) == 0 || got[0] != want {
+		t.Errorf("the cut-over never reached the watched location; the deck was asked for %v, want %q", got, want)
 	}
 }
