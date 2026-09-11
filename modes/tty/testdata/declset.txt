@@ -232,6 +232,7 @@ func (Broadcaster).railSpacer
 func (Broadcaster).readBody
 func (Broadcaster).region
 func (Broadcaster).regionGap
+func (Broadcaster).scriptWindow
 func (Broadcaster).section
 func (Broadcaster).slotCard
 func (Broadcaster).slotRows
@@ -512,6 +513,7 @@ func (arrowChips).pick
 func (cardLane).box
 func (cardLane).boxOf
 func (cardLane).corners
+func (cardLane).inner
 func (cardLane).render
 func (endpointRow).counters
 func (radioBP).hasViz
@@ -614,6 +616,7 @@ func mastheadStamp
 func mastheadTitle
 func mmdd
 func modalAlertTone
+func more
 func nearestFirst
 func newArrowChips
 func newCardLane

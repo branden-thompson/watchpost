@@ -1919,3 +1919,45 @@ every other use of the names in it. When a refactor removes one of those uses, t
 compiling rather than stops being true — so a mutant that deletes should prefer `_ = x` over deletion
 where a name would be orphaned. `mA3` reads better for it: it now mutates whether the card leaves the
 air, rather than whether the line exists.
+
+---
+
+## 2026-09-11 — D-83: a follow-up row that was accurate when written and wrong when read
+
+**The catch:** F-84 said the LIVE card had no words because *"`Card` carries a `Subject` and a
+`Headline` and no words."*  That was true the day it was filed and stopped being true at T3.8, when
+`Card.Script` was added for a different reason.  The row was never revisited, and `readBody` carried
+a comment repeating it.  So a job filed as WIRING was a quarter of the size and purely RENDERING.
+
+**Cost:** none this time, because I checked the claim before recommending the work — but the row had
+been steering priority for two releases as something bigger than it was.
+
+**The shape (new): "a row that was accurate when written."**  This is the harder sibling of "a
+comment is not a fix", and the existing entries do not cover it: those are about a comment that
+DESCRIBES a live defect and stops there.  This one was *correct on the day it was committed* and was
+falsified by an unrelated change, which means re-reading it does not help — only re-checking it
+against the code does.
+
+**How to apply:** before scheduling a follow-up, verify its PREMISE, not just its conclusion.  One
+grep is usually enough (`Card.Script` here).  Rows that assert a structural absence — "X does not
+carry Y", "nothing produces Z" — are the ones that rot, because the absence is exactly what a later
+batch is likely to fill in for its own reasons.
+
+**A second instance in the same batch:** `clearBand`'s comment predicted F-71's trigger as "the
+moment P4 gives the band a second writer."  What actually made it live was a second CARD on the air
+(D-82).  The defect was real and the prediction was wrong, so a reader waiting for the named trigger
+would have kept waiting.  **A follow-up should say what BREAKS, not what it is waiting for.**
+
+---
+
+## 2026-09-11 — and the plant that survived said the same thing about my own tests
+
+`mN5` blanks `readBody`'s call to the script window.  Every test written for D-83 stayed green,
+because all of them call `scriptWindow` directly — the wiring between the two was covered by nothing.
+
+That is P-1, and it is **exactly the state F-84 described**: a window built to the right size with
+nothing putting words in it.  I had reproduced the defect's shape in the tests for its fix.
+
+**The tell, and it generalises:** when a batch adds a function AND a call to it, the tests will
+naturally be written against the function, because that is the thing with the interesting behaviour.
+The call is one line and feels too small to test.  It is the line that was missing for two releases.
