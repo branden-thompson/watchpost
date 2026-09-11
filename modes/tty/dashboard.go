@@ -93,6 +93,16 @@ type Config struct {
 	SetCast        func(CastView) error   // save the cast and re-cast the deck
 	SetTones       func(ToneState) error  // save the tone mute; NOT a re-cast ([M] must not disturb the air)
 	VoiceInstalled func(name string) bool // is this voice on the host? (the not-installed note)
+	// OnSurface is called whenever the operator moves between surfaces (D-73).
+	//
+	// THE AIR FOLLOWS THE SURFACE. The alert rail is scoped to the listener's
+	// filter on Observer and to the station's service area on the console — one
+	// rail, one fence, and this is what moves it. The HUM LEAD's acceptance test
+	// is exactly this: "when I switch to Broadcaster I don't hear alerts outside
+	// my service radius … when I switch back to Observer, that alert track has
+	// to re-adapt to whatever my filter settings dictate."
+	OnSurface func(active Surface)
+
 	// StationArea is where the STATION transmits from and how far it reaches, at
 	// launch (D-72). Changes arrive as `StationAreaMsg`; this is the value the
 	// console opens with, because a message sent before the program's loop is

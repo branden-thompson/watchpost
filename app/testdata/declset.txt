@@ -51,6 +51,8 @@ const testEventLife
 const tickerEvery
 const tickerRotate
 const tickerSeenWindow
+func (*airOwner).get
+func (*airOwner).set
 func (*alertStore).capOldest
 func (*alertStore).get
 func (*alertStore).note
@@ -137,6 +139,7 @@ func (*livePipelines).setup
 func (*livePipelines).sources
 func (*livePipelines).startPipelines
 func (*livePipelines).stopAll
+func (*livePipelines).takeTheAir
 func (*livePipelines).testLocation
 func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
@@ -290,8 +293,10 @@ func (*speaker).prepare
 func (*speaker).role
 func (*tickerDeck).Inject
 func (*tickerDeck).clock
+func (*tickerDeck).currentScope
 func (*tickerDeck).cycle
 func (*tickerDeck).fence
+func (*tickerDeck).nudgeRescope
 func (*tickerDeck).run
 func (*tickerDeck).scopeToRadius
 func (*tickerDeck).startTakeover
@@ -301,6 +306,7 @@ func (*tickerDeck).takeInjected
 func (*tickerDeck).tapeItems
 func (*tickerDeck).tell
 func (CastReport).ToneSummary
+func (airScope).hasOrigin
 func (diagSources).gauges
 func (hostFacts).Default
 func (hostFacts).Discovered
@@ -381,6 +387,7 @@ func laneItems
 func laneRowsPerTab
 func laneScenarios
 func lastLineIndex
+func listenerScope
 func live
 func loadSeen
 func loadUserThemes
@@ -450,6 +457,7 @@ func saveRadioMode
 func saveTones
 func scenarioKeyFor
 func scopeEvents
+func scopeFor
 func scriptFromSegments
 func scriptText
 func scriptsDir
@@ -514,6 +522,8 @@ type CastRow
 type Gauge
 type Options
 type SourceHealth
+type airOwner
+type airScope
 type alertStore
 type bandRecord
 type castState

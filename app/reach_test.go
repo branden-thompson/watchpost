@@ -72,7 +72,7 @@ func TestASignificantQuakeReachesAListenerOutsideTheirRadius(t *testing.T) {
 	}
 
 	// THE PRODUCER'S OWN FILTER. This is the half that dropped it first.
-	scoped := deck.scopeToRadius([]globalfeed.Event{local, big}, deck.watch())
+	scoped := deck.scopeToRadius([]globalfeed.Event{local, big})
 	if len(scoped) != 2 {
 		t.Fatalf("the producer's radius filter dropped the significant quake before the Director could see it: kept %d of 2", len(scoped))
 	}
@@ -101,7 +101,7 @@ func TestAnOrdinaryQuakeOutsideTheRadiusStaysOut(t *testing.T) {
 	if lineup.QuakeReachMi(4.0) != 0 {
 		t.Fatal("the fixture's magnitude buys reach; it pins nothing")
 	}
-	if got := deck.scopeToRadius([]globalfeed.Event{small}, deck.watch()); len(got) != 0 {
+	if got := deck.scopeToRadius([]globalfeed.Event{small}); len(got) != 0 {
 		t.Errorf("an M4.0 a hundred miles away reached a 50-mile listener: the exception is not scaled by significance")
 	}
 }

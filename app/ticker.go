@@ -99,14 +99,28 @@ const tickerRotate = 90 * time.Second
 // location, stack them, publish the marquee, and detect genuinely NEW events
 // (the P3 tone/narration will sound those unless muted).
 type tickerDeck struct {
-	send      func(tea.Msg) // publishes to the dashboard (p.Send in production; a capture in tests)
-	sources   []globalfeed.Source
-	watch     func() []snapshot.LocationRef // the current watchlist, for the D5 tie
-	nearest   globalfeed.NearestCity        // the fuzzy "the <metro> area" resolver
-	seen      *seenStore
-	warm      atomic.Bool // false until the first cycle seeds quietly (no launch alert storm)
-	muted     *atomic.Bool
-	radius    *atomic.Int64   // alert-radius filter in miles; 0 = All (global)
+	send    func(tea.Msg) // publishes to the dashboard (p.Send in production; a capture in tests)
+	sources []globalfeed.Source
+	watch   func() []snapshot.LocationRef // the current watchlist, for the D5 tie
+	nearest globalfeed.NearestCity        // the fuzzy "the <metro> area" resolver
+	seen    *seenStore
+	warm    atomic.Bool // false until the first cycle seeds quietly (no launch alert storm)
+	muted   *atomic.Bool
+	radius  *atomic.Int64 // alert-radius filter in miles; 0 = All (global)
+
+	// scope is WHAT THE RAIL IS SCOPED TO RIGHT NOW (D-73, airscope.go). It
+	// follows the surface the operator is looking at: the listener's filter on
+	// Observer, the station's service area on the console. Nil is the older
+	// tests' deck, which falls back to the listener's own radius and watchlist.
+	scope func() airScope
+
+	// rescope wakes the cycle when the rail's fence MOVES — a surface swap
+	// (D-73). Buffered by one and written without blocking, so a flurry of
+	// swaps collapses into a single pending re-scope rather than a queue of
+	// them. The `inject.wake()` arm is the same shape and the same reason: a
+	// cycle that matters now must not wait out a two-minute timer.
+	rescope chan struct{}
+
 	clockPref *atomic.Int32   // how times are written (render.Clock) — Settings changes it live
 	voice     *director       // the narration arbiter (app/director.go); a silent one when there is no audio
 	mc        *mastercontrol  // the band's and the bed's ONE owner, shared with the arbiter (T2.3)
@@ -153,6 +167,9 @@ func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx 
 	}
 	mc := nar.mc
 	t := &tickerDeck{
+		// BUFFERED BY ONE: a flurry of surface swaps is one pending re-scope,
+		// not a queue of cycles (D-73).
+		rescope: make(chan struct{}, 1),
 		severe:  severe,
 		send:    p.Send,
 		mc:      mc,
@@ -203,6 +220,11 @@ func (t *tickerDeck) run(ctx context.Context) {
 			// 2026-09-07). Nil in a release build, where this arm can never
 			// fire.
 			t.cycle(ctx)
+		case <-t.rescope:
+			// NEITHER DOES A SURFACE SWAP (D-73). The fence just moved between
+			// the listener's filter and the station's service area, and a tape
+			// that re-adapted up to two minutes later is not "it just works".
+			t.cycle(ctx)
 		case <-rotate.C:
 			t.send(tty.TickerAdvanceMsg{}) // the 90s lane rotation; the tty skips it when ≤1 lane is active
 		}
@@ -241,7 +263,7 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 	if t.severe != nil {
 		t.severe.SetFeed(events, health) // the window's half of the index — its own copy (SetFeed clones)
 	}
-	events = t.scopeToRadius(events, watch)
+	events = t.scopeToRadius(events)
 	// A superseded alert is kept in `events` (so it is seen-marked below and can
 	// never resurface as "new" if its replacement drops first — P4 delta A1),
 	// but it is excluded from the display and the new-event detection.
@@ -422,21 +444,29 @@ func subjectOf(e globalfeed.Event) string {
 // chose these events. The events reaching the rail are already inside it, so
 // admission here removes nothing further — it decides ORDER.
 func (t *tickerDeck) fence() lineup.Fence {
-	// A DECK WITHOUT A RADIUS OR A WATCHLIST IS "ALL", not a panic. Both are
-	// wired by the pipeline in production; a deck built for one narrow question
-	// has neither, and the rail is the one path that would dereference them.
-	if t.radius == nil || t.watch == nil {
-		return lineup.Fence{}
-	}
-	r := float64(t.radius.Load())
-	if r <= 0 {
+	// IT ASKS WHAT THE RAIL IS SCOPED TO, NOT WHAT THE LISTENER SET (D-73). On
+	// the console that is the station's service area; on Observer it is the
+	// listener's own filter, which is what this always was.
+	//
+	// A DECK WITHOUT A SCOPE IS "ALL", not a panic — the older tests build one
+	// by hand, and the rail is the one path that would dereference it.
+	s := t.currentScope()
+	if !s.set {
 		return lineup.Fence{} // All: no radius, and the ladder's unfenced order
 	}
-	watch := t.watch()
-	if len(watch) == 0 {
-		return lineup.Fence{}
+	if !s.hasOrigin() {
+		return lineup.Fence{} // a radius with nowhere to measure from
 	}
-	return lineup.Fence{RadiusMi: r, Lat: watch[0].Lat, Lon: watch[0].Lon, HasOrigin: true}
+	return lineup.Fence{RadiusMi: s.radiusMi, Lat: s.lat, Lon: s.lon, HasOrigin: true}
+}
+
+// currentScope is the one place the deck asks what it is scoped to, so the
+// fence and the feed's filter cannot come to disagree about one hazard.
+func (t *tickerDeck) currentScope() airScope {
+	if t.scope != nil {
+		return t.scope()
+	}
+	return listenerScope(t.radius, t.watch)
 }
 
 // notNew is every event whose "is this new?" question this cycle can settle on
@@ -554,28 +584,31 @@ func (t *tickerDeck) tapeItems(stack []globalfeed.Event) []tty.TickerItem {
 //
 // Filtered with no default location set shows NOTHING, rather than silently
 // falling back to the global stack the UI says is scoped away.
-func (t *tickerDeck) scopeToRadius(events []globalfeed.Event, watch []snapshot.LocationRef) []globalfeed.Event {
-	// A DECK WITHOUT A RADIUS IS "ALL", not a panic — the same rule fence()
-	// states two functions down, and for the same reason: both are wired by the
-	// pipeline in production, and a deck built for one narrow question has
-	// neither. fence() guarded it and this did not, so the cycle would panic
-	// where the fence returned All. A nil dereference in the ticker cycle takes
-	// the process with it.
-	if t.radius == nil {
-		return events
+// THE WATCHLIST IS NO LONGER A PARAMETER (D-73). It was the ORIGIN — the
+// listener's default location — and the origin now comes from the scope, which
+// is the station's on the console. Leaving it in the signature would leave the
+// next reader a spare answer to the question this function just stopped asking
+// it, which is how a fence comes to be measured from two places.
+//
+// A DECK WITHOUT A SCOPE IS "ALL", not a panic — the same rule `fence()` states,
+// and for the same reason: a deck built for one narrow question has neither a
+// radius nor a watchlist, and a nil dereference in the ticker cycle takes the
+// process with it.
+func (t *tickerDeck) scopeToRadius(events []globalfeed.Event) []globalfeed.Event {
+	s := t.currentScope()
+	if !s.set {
+		return events // All
 	}
-	r := int(t.radius.Load())
-	if r <= 0 {
-		return events
-	}
-	if len(watch) == 0 {
+	if !s.hasOrigin() {
+		// FILTERED WITH NOWHERE TO MEASURE FROM SHOWS NOTHING, rather than
+		// silently falling back to the global stack the UI says is scoped away.
 		return nil
 	}
 	var tracked map[string]bool
 	if t.severe != nil {
-		tracked = t.severe.AlertKeysWithin(watch[0].Lat, watch[0].Lon, float64(r))
+		tracked = t.severe.AlertKeysWithin(s.lat, s.lon, s.radiusMi)
 	}
-	return scopeEvents(events, watch[0].Lat, watch[0].Lon, float64(r), tracked)
+	return scopeEvents(events, s.lat, s.lon, s.radiusMi, tracked)
 }
 
 // laneItems builds the tape items for the location-only categories, in the same
@@ -635,3 +668,19 @@ func laneItems(rows []severe.Row) []tty.TickerItem {
 // the gap read as a decision. The identity removes the arms and the default
 // together, so a lane added later cannot fall through anything.
 func tickerCategory(e globalfeed.Event) tty.TickerCategory { return globalfeed.LaneOf(e) }
+
+// nudgeRescope asks for a cycle because the fence moved.
+//
+// NON-BLOCKING, AND THAT IS THE WHOLE DESIGN. It is called from the program's
+// goroutine on a swap; a send that could block would put the UI behind a cycle
+// doing network work. A full buffer already means "a re-scope is pending",
+// which is the same answer.
+func (t *tickerDeck) nudgeRescope() {
+	if t == nil || t.rescope == nil {
+		return
+	}
+	select {
+	case t.rescope <- struct{}{}:
+	default:
+	}
+}

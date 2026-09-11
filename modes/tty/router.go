@@ -148,6 +148,10 @@ type Router struct {
 	// refusal is why the last swap was refused, shown to the operator. A
 	// refusal they cannot read is indistinguishable from a broken control.
 	refusal string
+
+	// onSurface tells the app which surface owns the air, so the alert rail can
+	// be scoped to it (D-73). Nil in tests that do not care.
+	onSurface func(Surface)
 }
 
 // NewRouter wraps Observer. The second surface arrives in P1.
@@ -165,7 +169,8 @@ func NewRouter(o Dashboard) Router {
 	// AND THE STATION IT IS A CONSOLE FOR (D-72). The area MOVES, so changes
 	// arrive as a message; this is the value it opens with.
 	b.area = o.cfg.StationArea
-	return Router{observer: o, broadcaster: b, active: SurfaceObserver, keys: broadcasterKeyMap()}
+	return Router{observer: o, broadcaster: b, active: SurfaceObserver,
+		keys: broadcasterKeyMap(), onSurface: o.cfg.OnSurface}
 }
 
 // Init delegates to the active surface. Observer asks for the terminal's
@@ -389,6 +394,13 @@ func (r Router) swapTo(to Surface) Router {
 	}
 	r.refusal = ""
 	r.active = to
+	// THE AIR FOLLOWS THE SURFACE (D-73). Told HERE, in the one place a swap is
+	// granted, rather than from the key handler — a second caller would be a
+	// second answer to which surface owns the air, and the whole reason this
+	// gate exists is that there is exactly one.
+	if r.onSurface != nil {
+		r.onSurface(to)
+	}
 	return r
 }
 
