@@ -265,6 +265,13 @@ func aaPairs() []aaPair {
 	bands := []Token{GroupLocationBG, GroupTodayBG, GroupTomorrowBG, GroupExtendedBG, GroupSectionBG}
 	lanes := []Token{TickerDisasterBG, TickerWarningBG, TickerWatchBG, TickerMarineBG, TickerAdvisoryBG, TickerStatementBG, TickerEmergencyBG}
 	tints := categoryTints()
+	// THE BROADCASTER CONSOLE'S GROUNDS (D-86). The rail bands carry the
+	// region's LETTERS in the same tone every band in the app carries its text;
+	// the card grounds carry the card's own words, which are the base text.
+	rails := []Token{RailLiveBG, RailNextBG, RailQueueBG}
+	// A CARD'S WORDS, ON A CARD'S GROUND — and on the hazard tints too, because
+	// an alert card is painted by its category (D-86).
+	cards := append([]Token{CardBG, CardOperatorBG}, tints...)
 	modal := []Token{ModalBGDark, ModalBGLight}
 	pairs := []aaPair{
 		{GroupText, bands}, {TickerFG, lanes}, {TickerMutedFG, append(append([]Token{}, lanes...), GroupSectionBG)},
@@ -278,6 +285,19 @@ func aaPairs() []aaPair {
 		// window (0.14.0 Task 4.9).
 		{ListPointer, modal}, {ListFocus, modal}, {AlertDanger, append([]Token{ModalBGDark}, win...)}, {AlertModalText, append(append([]Token{}, tints...), AlertModalWarnBG, AlertModalAdvBG)},
 		{AlertModalWarnFG, []Token{AlertModalWarnBG}}, {AlertModalAdvFG, []Token{AlertModalAdvBG}},
+		// THE RAIL'S LETTERS, in the tone every band in the app carries its text.
+		//
+		// MEASURED BEFORE IT WAS WRITTEN, because registering a pair is NOT free:
+		// `withAA` lifts a foreground until it reads on EVERY ground it is
+		// registered against, so widening a shared token's ground set changes it
+		// everywhere. GroupText moved in no theme against these three — the rail
+		// grounds sit in the Group bands' own family, which is the point of
+		// deriving them that way.
+		{GroupText, rails},
+		// THE CONSOLE'S CARDS CARRY THEIR OWN TONE so this lift reaches nothing
+		// else: registering TextBase here moved it in two themes and took
+		// Observer's tables with it.
+		{CardText, cards},
 	}
 	// The table tones and the masthead's edition word are painted on the MODAL
 	// ground as well as the window's: [S] lays three tables inside a floating

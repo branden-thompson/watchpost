@@ -18,6 +18,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/plaintext"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -1064,6 +1065,7 @@ func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []st
 	// header cannot come to disagree about what a border looks like.
 	bx := render.HeavyBox(l.o.ASCII)
 	rule := strings.Repeat(bx.Rule, inner)
+	ground := cardTone(c)
 	// The title row is the SAME renderer the flat row used, one width in: the
 	// box does not get to move the handle or re-centre the title.
 	title := newCardLane(inner, g)
@@ -1078,7 +1080,68 @@ func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []st
 	for _, r := range body { // bounded by the card's own height (P10-02)
 		rows = append(rows, bx.Rail+render.PadTo(render.TruncateCells(r, inner), inner)+bx.Rail)
 	}
-	return append(rows, bx.BL+rule+bx.BR)
+	rows = append(rows, bx.BL+rule+bx.BR)
+	// THE WHOLE BOX IS PAINTED, BORDERS INCLUDED (D-86). A card is one object;
+	// a ground that stopped at the border would draw a coloured window inside a
+	// colourless frame, which reads as a fill rather than as a card.
+	for i, r := range rows { // bounded by the card's own height (P10-02)
+		rows[i] = render.TintKeeping(r, ground)
+	}
+	return rows
+}
+
+// cardTone is the ground a card is painted on, and the empty string for a slot
+// that holds no card (D-86).
+//
+// AN EMPTY SLOT IS NOT A CARD. The waiting placeholder and the LIVE slot on a
+// station at rest carry no identity, and painting them would give the operator a
+// coloured card that is not there.
+//
+// A HAZARD WEARS ITS CATEGORY, and it is the [w] window's own tint rather than a
+// second palette: "Alert cards should be color coded to match the most severe
+// alert based on the [w] category bkgs in Observer (they should match)" (HUM
+// LEAD, 2026-09-11). `category.Of(...).Tint` IS that background, so the two
+// match by construction and cannot drift.
+//
+// EVERYTHING ELSE WEARS ITS ORIGIN, narrow by ruling: the station's own
+// proposals on one ground and the operator's requests on another.
+func cardTone(c lineup.Card) string {
+	if c.ID == "" {
+		return ""
+	}
+	fg := render.Tok(render.CardText)
+	if c.Slot == lineup.BreakingAlert {
+		if worst, ok := worstCategory(c.From); ok {
+			return fg + ";" + render.Tok(category.Of(worst).Tint)
+		}
+		// A BURST WITH NO ARRIVAL TO READ A CATEGORY FROM keeps the ordinary
+		// card ground rather than guessing at a severity. Guessing paints a
+		// hazard the wrong colour, which is worse than painting it no colour.
+		return fg + ";" + render.Tok(render.CardBG)
+	}
+	if c.Origin == lineup.FromOperator {
+		return fg + ";" + render.Tok(render.CardOperatorBG)
+	}
+	return fg + ";" + render.Tok(render.CardBG)
+}
+
+// worstCategory is the most severe category among a card's alerts.
+//
+// BY READ RANK, which is the registry's own severity order — the same ladder
+// the Producer plans a burst with. A second notion of "most severe" here would
+// paint a card one colour and read it in another order.
+func worstCategory(from []lineup.Arrival) (category.Category, bool) {
+	worst, found := category.Category(0), false
+	for _, a := range from { // bounded by the burst (P10-02)
+		spec := category.Of(a.Category)
+		if spec.ReadRank == 0 {
+			continue // not a category the rail reads
+		}
+		if !found || spec.ReadRank < category.Of(worst).ReadRank {
+			worst, found = a.Category, true
+		}
+	}
+	return worst, found
 }
 
 // corners is the card's body row: blank, or D-57's marks at both ends.

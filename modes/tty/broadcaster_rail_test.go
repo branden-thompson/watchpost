@@ -9,6 +9,7 @@ package tty
 // shape this release keeps removing.
 
 import (
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -348,5 +349,62 @@ func TestTheReadRegionsDrawNoScrollRailBesideThem(t *testing.T) {
 	scrolled := b.chrome([]string{"a", "b", "c"}, true, 2, 10)
 	if !strings.Contains(scrolled[0], render.RailGlyphsFor(false).Up) {
 		t.Errorf("the scrolling region lost its rail: %q", scrolled[0])
+	}
+}
+
+// THE LEFT RAIL NAMES ITS REGION IN COLOUR (D-86, HUM LEAD 2026-09-11): "Color
+// BKGs for the left RAIL: LIVE = RED, UP NEXT = ORANGE, SCHEDULED LINEUP =
+// BLUE."
+//
+// ASKED OF THE TOKENS, NOT OF A LITERAL. A test carrying the SGR values would
+// pass while a theme changed underneath it, which is the opposite of what
+// "themeable like Observer" means.
+func TestEachRegionsRailCarriesItsOwnGround(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+	g := render.Opts{}.Glyphs()
+
+	for _, tc := range []struct {
+		label string
+		tok   render.Token
+	}{
+		{"LIVE", render.RailLiveBG},
+		{"UP NEXT", render.RailNextBG},
+		{"SCHEDULED", render.RailQueueBG},
+		// ONE GROUND FOR BOTH HALVES OF THE QUEUE: they are one stack of cards
+		// the rail happens to name twice, which is why no break is drawn between
+		// them either.
+		{"LINE UP", render.RailQueueBG},
+	} {
+		t.Run(tc.label, func(t *testing.T) {
+			rows := railColumn(tc.label, 6, g)
+			want := render.Tok(tc.tok)
+			if want == "" {
+				t.Fatalf("%s has no ground token value", tc.label)
+			}
+			for i, r := range rows {
+				if !strings.Contains(r, want) {
+					t.Fatalf("row %d of %s is %q; it does not carry %s", i, tc.label, r, tc.tok)
+				}
+			}
+		})
+	}
+
+	// AND THE REGIONS ARE TOLD APART. Three grounds that resolved to one colour
+	// would draw a rail that says nothing, and would still pass a per-region
+	// check.
+	live, next, queue := render.Tok(render.RailLiveBG), render.Tok(render.RailNextBG), render.Tok(render.RailQueueBG)
+	if live == next || next == queue || live == queue {
+		t.Errorf("the rail's three grounds are not distinct: %q / %q / %q", live, next, queue)
+	}
+
+	// THE PRIORITY RAIL IS NOT A REGION and carries no region's ground: it is
+	// the overlay's own, and it appears only while the rail has something.
+	for _, r := range railColumn("PRIORITY", 4, g) {
+		for _, tok := range []render.Token{render.RailLiveBG, render.RailNextBG, render.RailQueueBG} {
+			if strings.Contains(r, render.Tok(tok)) {
+				t.Errorf("the priority rail wears %s, which belongs to a region of the running order", tok)
+			}
+		}
 	}
 }
