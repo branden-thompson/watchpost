@@ -185,7 +185,7 @@ func seedRead(t *testing.T, d Director, id, subject string, slot Slot) Director 
 		d, _ = d.Step(Built{ID: id, Script: Say("the report for " + subject + ".")})
 	}
 	d, _ = d.settle()
-	if c, live := d.lineup.OnAir(); !live || c.ID != id {
+	if c, live := onAirAnywhere(d.lineup); !live || c.ID != id {
 		t.Fatalf("fixture %s never reached the air (on air: %q)", id, c.ID)
 	}
 	d, _ = d.Step(Finished{ID: id})
@@ -205,7 +205,7 @@ func TestAReadCutOffByStandbyWasNotARead(t *testing.T) {
 	d = seedCard(t, d, "a", "oceanside", LocationReport)
 	d, _ = d.Step(Built{ID: "a", Script: Say("the report for oceanside.")})
 	d, _ = d.settle()
-	if c, live := d.lineup.OnAir(); !live || c.ID != "a" {
+	if c, live := onAirAnywhere(d.lineup); !live || c.ID != "a" {
 		t.Fatalf("fixture: the card must be reading; on air %q", c.ID)
 	}
 

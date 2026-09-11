@@ -106,7 +106,7 @@ func TestManagementActionsSurviveAPausedMainTrack(t *testing.T) {
 func TestTheCardOnTheAirCannotBeMoved(t *testing.T) {
 	d := threeQueued(t)
 	d, _ = d.Step(Built{ID: ReadID("one"), Script: Say("Currently sixty-one degrees.")})
-	if c, ok := d.lineup.OnAir(); !ok || c.ID != ReadID("one") {
+	if c, ok := onAirAnywhere(d.lineup); !ok || c.ID != ReadID("one") {
 		t.Fatal("the fixture needs the first card on the air")
 	}
 	before := order(d)
@@ -252,13 +252,13 @@ func TestARestoredTakeoverGoesBackOnTheRail(t *testing.T) {
 func TestTheCardOnTheAirCannotBeDropped(t *testing.T) {
 	d := threeQueued(t)
 	d, _ = d.Step(Built{ID: ReadID("one"), Script: Say("Currently sixty-one degrees.")})
-	if c, ok := d.lineup.OnAir(); !ok || c.ID != ReadID("one") {
+	if c, ok := onAirAnywhere(d.lineup); !ok || c.ID != ReadID("one") {
 		t.Fatal("the fixture needs the first card on the air")
 	}
 
 	d, _ = d.Step(Dropped{ID: ReadID("one")})
 
-	if c, ok := d.lineup.OnAir(); !ok || c.ID != ReadID("one") {
+	if c, ok := onAirAnywhere(d.lineup); !ok || c.ID != ReadID("one") {
 		t.Error("the card keeps the air: a drop must not silence a read that has already been cued")
 	}
 	if got := d.lineup.Discarded(); len(got) != 0 {

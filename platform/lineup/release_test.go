@@ -46,7 +46,7 @@ func onAirDirector(t *testing.T) (Director, string) {
 		Arrived{Arrivals: many("a", category.Warnings, 2)},
 		Arrived{Arrivals: many("b", category.Warnings, 2)})
 	d, _ = run(d, Built{ID: BurstID("a00"), Script: Say("words")})
-	id, on := d.Lineup().OnAir()
+	id, on := onAirAnywhere(d.Lineup())
 	if !on {
 		t.Fatal("the fixture must have a card on the air")
 	}
@@ -57,9 +57,9 @@ func onAirDirector(t *testing.T) (Director, string) {
 // air leaves a release behind it.
 func stepReleasesTheAir(t *testing.T, d Director, ev Event) {
 	t.Helper()
-	before, wasOn := d.Lineup().OnAir()
+	before, wasOn := onAirAnywhere(d.Lineup())
 	next, fx := d.Step(ev)
-	_, stillOn := next.Lineup().OnAir()
+	_, stillOn := onAirAnywhere(next.Lineup())
 	if !wasOn || stillOn {
 		return // it did not leave the air on this step; nothing is owed
 	}
@@ -115,7 +115,7 @@ func TestDR24AnEventThatKeepsTheAirReleasesNothing(t *testing.T) {
 		Failed{ID: "not-a-card", Reason: "gone"},
 	} {
 		next, fx := d.Step(ev)
-		if _, on := next.Lineup().OnAir(); !on {
+		if _, on := onAirAnywhere(next.Lineup()); !on {
 			t.Fatalf("%T took the card off the air; this case is about events that do not", ev)
 		}
 		for _, f := range fx {
@@ -193,7 +193,7 @@ func TestDR24ACardDiscardedBeforeTheAirReleasesNothing(t *testing.T) {
 		}
 	}
 	// And the card that IS reading keeps the air: the failure was routed around.
-	if id, on := next.Lineup().OnAir(); !on || id.ID != onAir {
+	if id, on := onAirAnywhere(next.Lineup()); !on || id.ID != onAir {
 		t.Errorf("the reading card must keep the air, got %v/%v", id.ID, on)
 	}
 }

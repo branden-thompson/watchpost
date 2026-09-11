@@ -174,6 +174,16 @@ type CueTicker struct {
 	// a single callout for, and the executor cannot ask the lineup without
 	// racing the publish for the same step.
 	Slot Slot
+	// Track is the lane the card is on, and it says whether the band is
+	// involved at all (D-82).
+	//
+	// THE BAND IS THE RAIL'S OUTPUT. It shows HAZARDS — `cueFor` asks the
+	// producer for the alert behind the part being spoken — and a main-track
+	// card has none, so its cue has always been a lookup that finds nothing.
+	// Harmless while one lane could speak; now that both can, a cue and a
+	// release belonging to a REPORT would claim an output the hazard beside it
+	// is using, and the report's exit would clear the hazard's callout (F-71).
+	Track Track
 }
 
 // ReleaseTicker gives the band its rotation back. PAIRED WITH THE CUE (DR-24) —
@@ -181,6 +191,9 @@ type CueTicker struct {
 type ReleaseTicker struct {
 	isEffect
 	ID string
+	// Track is the lane, for CueTicker's reason and paired with it (D-82): the
+	// release of a card that never cued the band must not clear it.
+	Track Track
 }
 
 // Duck and Restore give way over the live bed and take it back. NOT EMITTED BY
@@ -340,10 +353,37 @@ func Holds(e Effect) []Resource {
 	if id, ofCard := CardOf(e); ofCard {
 		out = append(out, Resource("card:"+id))
 	}
-	switch e.(type) {
-	case CueTicker, ReleaseTicker:
-		out = append(out, TheBand)
-	case Duck, Restore, Speak:
+	// THE BAND AND THE BED ARE THE RAIL'S OUTPUTS (D-82), and until the main
+	// track could speak that qualifier cost nothing: only the rail ever reached
+	// here with a card. It is load-bearing now.
+	//
+	// A PROGRAMME READ CLAIMING THE BED PUT THE HAZARD BEHIND IT. Every effect
+	// naming a shared output rides the pump's ONE lane, in order — exactly right
+	// for the rail, whose cards are read one after another and whose duck must
+	// not be overtaken. A report's read BLOCKS for as long as the words take, so
+	// a Speak that claimed the bed held the lane for minutes, and the hazard the
+	// Director had just let onto the air could not be asked for until the
+	// weather finished. MEASURED: TestAHazardsWordsDoNotQueueBehindAReport…
+	//
+	// AND IT IS NOT AN EXEMPTION — it is the truth about what a report touches.
+	// The programme is what the rail speaks OVER; it is not competing for the
+	// band or for the bed. What it holds is its own card's order, which is the
+	// `card:` resource above, and the engine's single source, which the schedule
+	// guarantees by never putting two cards on one lane's air.
+	switch v := e.(type) {
+	case CueTicker:
+		if v.Track == AlertRail {
+			out = append(out, TheBand)
+		}
+	case ReleaseTicker:
+		if v.Track == AlertRail {
+			out = append(out, TheBand)
+		}
+	case Speak:
+		if v.Track == AlertRail {
+			out = append(out, TheBed)
+		}
+	case Duck, Restore:
 		out = append(out, TheBed)
 	}
 	return out
@@ -699,6 +739,10 @@ func (d Director) takeOffTheAir(id string, to State) (Director, []Effect, bool) 
 	if !ok {
 		return d, nil, false
 	}
+	// THE LANE, WHILE THE CARD IS STILL HELD. `Remove` below is what makes it
+	// unfindable, so this is asked here rather than beside the release it ends
+	// up on.
+	track, _, _ := d.lineup.find(id)
 	held := len(d.lineup.tracks[AlertRail]) + len(d.lineup.tracks[MainTrack])
 	wasOnAir := card.State == OnAir
 	gone, err := card.To(to)
@@ -730,7 +774,14 @@ func (d Director) takeOffTheAir(id string, to State) (Director, []Effect, bool) 
 	if wasOnAir {
 		// PAIRED WITH THE CUE, not with the card: releasing a band that was never
 		// cued would clear whatever callout it is legitimately showing.
-		fx = append(fx, ReleaseTicker{ID: id})
+		//
+		// AND THE LANE TRAVELS WITH IT (D-82). The sentence above was the rule
+		// and `wasOnAir` was the whole of the enforcement — the same thing only
+		// while the rail was the only lane that could cue. F-71 recorded the gap
+		// and named its trigger exactly: "the moment P4 gives the band a second
+		// writer". A report reading UNDER a hazard is that moment, and its exit
+		// would clear the hazard's callout.
+		fx = append(fx, ReleaseTicker{ID: id, Track: track})
 	}
 	return d, fx, true
 }
@@ -757,7 +808,7 @@ func (d Director) settle() (Director, []Effect) {
 	if len(air) == 0 {
 		d, air = d.takeTheAir()
 	}
-	if _, busy := d.lineup.OnAir(); !busy && len(air) > 0 {
+	if !d.lineup.anyOnAir() && len(air) > 0 {
 		return d, nil // the air was taken and then lost; publish nothing rather than a lie
 	}
 	// THE DUCK COMES BEFORE THE CUE, and the effect set's own comment says why:
@@ -817,11 +868,21 @@ func (d Director) takeTheAir() (Director, []Effect) {
 // it changed the schedule instead of filling the air — the stale case — so the
 // caller may try the card that replaced it.
 func (d Director) airOnce() (Director, []Effect, bool) {
-	if _, busy := d.lineup.OnAir(); busy {
-		return d, nil, false
-	}
 	next, track, ok := d.lineup.Next()
 	if !ok || next.State != Standby || next.Script.Empty() {
+		return d, nil, false
+	}
+	// THE LANE'S OWN AIR, AND THE ORDER OF THESE TWO LINES IS D-82. Asked before
+	// `Next`, this was "is anything reading anywhere" — so a rail card could not
+	// take the air while a report held it, and a hazard waited out the weather.
+	// Asked after, it is "is THIS lane reading", which is the rule that was
+	// always meant: one voice per lane, and the rail speaks over the programme
+	// (D-24).
+	//
+	// THE MAIN TRACK STILL WAITS FOR THE RAIL, and nothing here says so because
+	// `Next` does: it walks AlertRail first, and reports nothing at all while a
+	// hazard is still reading (DR-3). The precedence is one rule in one place.
+	if _, busy := d.lineup.OnAir(track); busy {
 		return d, nil, false
 	}
 	if !d.advances(track) {
@@ -851,7 +912,7 @@ func (d Director) airOnce() (Director, []Effect, bool) {
 	}
 	d.lineup = moved
 	return d, []Effect{
-		CueTicker{ID: onAir.ID, Headline: onAir.Headline, Slot: onAir.Slot},
+		CueTicker{ID: onAir.ID, Headline: onAir.Headline, Slot: onAir.Slot, Track: track},
 		Speak{ID: onAir.ID, Slot: onAir.Slot, Headline: onAir.Headline, Track: track, Script: onAir.Script},
 	}, false
 }

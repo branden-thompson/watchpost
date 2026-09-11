@@ -348,7 +348,30 @@ func (d Director) onCutOver(ev CutOver) (Director, []Effect) {
 // air: MVS-D-67 restores "only after the tail has played and the rail is
 // empty", so the bed stays down across a drain of several cards.
 func (d Director) givingWay() bool {
-	return d.bed.carries && len(d.lineup.tracks[AlertRail]) > 0
+	if len(d.lineup.tracks[AlertRail]) == 0 {
+		return false
+	}
+	// WHAT IS UNDERNEATH IT — the bed carrying the programme, or a report
+	// reading on the main track (D-82).
+	//
+	// ONE CONDITION BECAME TWO ONLY BECAUSE THERE ARE NOW TWO THINGS THAT CAN BE
+	// UNDER a hazard. D-32 asked "what does the priority duck?" when the main
+	// track had no audio of its own and the answer could only be the bed; D-24
+	// answers the other half — the read PAUSES and resumes mid-sentence — and
+	// this is the two of them said once.
+	//
+	// IT DOES NOT DECIDE DIP-OR-HOLD, AND THAT IS WHY ONE PREDICATE SERVES BOTH.
+	// `engine.giveWayLocked` reads the SOURCE KIND every 50 ms: a relay dips,
+	// because a paused relay resumes into audio that is minutes stale; a
+	// rendered report holds, because dipping loses its words for good. The
+	// Director says only that the rail is speaking over the programme — asking
+	// which medium is on "fixed an answer the audio could outlive" (radio.go),
+	// and that design is not repeated here.
+	if d.bed.carries {
+		return true
+	}
+	_, reading := d.lineup.OnAir(MainTrack)
+	return reading
 }
 
 // giveOrTakeBack emits the change, and only the change.

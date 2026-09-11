@@ -58,7 +58,7 @@ func TestTheMainTrackDoesNotAdvanceWhileTheRadioIsStopped(t *testing.T) {
 			t.Errorf("a stopped radio produced %v", idle)
 		}
 	}
-	if _, on := d.Lineup().OnAir(); on {
+	if _, on := onAirAnywhere(d.Lineup()); on {
 		t.Error("something took the air while the radio was stopped")
 	}
 
@@ -97,7 +97,7 @@ func TestAStoppedRadioStillReadsTheAlertRail(t *testing.T) {
 	if !has(air, "speak("+alert+")") {
 		t.Errorf("effects %v keep an alert off the air because the radio is stopped", air)
 	}
-	if on, _ := d.Lineup().OnAir(); on.ID != alert {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != alert {
 		t.Errorf("the air is held by %q, want the alert", on.ID)
 	}
 }
@@ -110,7 +110,7 @@ func TestStoppingTakesTheProgrammeOffTheAirAndReleasesTheBand(t *testing.T) {
 	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running}, Built{ID: "bonsall", Script: Say("conditions are fair")})
-	if on, _ := d.Lineup().OnAir(); on.ID != "bonsall" {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != "bonsall" {
 		t.Fatalf("the air is held by %q; the stop under test is not being exercised", on.ID)
 	}
 
@@ -118,7 +118,7 @@ func TestStoppingTakesTheProgrammeOffTheAirAndReleasesTheBand(t *testing.T) {
 	if !has(fx, "release(bonsall)") {
 		t.Errorf("effects %v leave the band holding a callout for a read that stopped", fx)
 	}
-	if on, live := d.Lineup().OnAir(); live {
+	if on, live := onAirAnywhere(d.Lineup()); live {
 		t.Errorf("%q is still on the air after the listener stopped the radio", on.ID)
 	}
 	// WHAT WAS PROMISED IS STILL PROMISED. Stopping is not a discard: the rest of
@@ -139,7 +139,7 @@ func TestStoppingDoesNotCutAnAlertShort(t *testing.T) {
 	d, _ := rail(t, "a", "b")
 	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running}, Built{ID: reading, Script: Say("words")})
-	if on, _ := d.Lineup().OnAir(); on.ID != reading {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != reading {
 		t.Fatalf("the air is held by %q; the stop under test is not being exercised", on.ID)
 	}
 	d, fx := run(d, Powered{To: Stopped})
@@ -148,7 +148,7 @@ func TestStoppingDoesNotCutAnAlertShort(t *testing.T) {
 			t.Errorf("effects %v cut an alert short because the listener stopped the programme", fx)
 		}
 	}
-	if on, _ := d.Lineup().OnAir(); on.ID != reading {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != reading {
 		t.Errorf("the air is held by %q, want the alert still reading", on.ID)
 	}
 	// And the rail keeps draining while the radio is stopped.
@@ -221,7 +221,7 @@ func TestPoweringToWhatItAlreadyIsChangesNothing(t *testing.T) {
 	if len(again) != 0 {
 		t.Errorf("starting an already-running radio produced %v, want nothing", again)
 	}
-	if on, _ := d.Lineup().OnAir(); on.ID != "bonsall" {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != "bonsall" {
 		t.Errorf("the air is held by %q after a repeated start", on.ID)
 	}
 	if got := ids(d.Lineup().Cards(MainTrack)); !equal(got, before) {
@@ -233,7 +233,7 @@ func TestPoweringToWhatItAlreadyIsChangesNothing(t *testing.T) {
 	if len(fx) != 0 {
 		t.Errorf("stopping an already-stopped radio produced %v, want nothing", fx)
 	}
-	if _, on := twice.Lineup().OnAir(); on {
+	if _, on := onAirAnywhere(twice.Lineup()); on {
 		t.Error("something is on the air after two stops")
 	}
 }

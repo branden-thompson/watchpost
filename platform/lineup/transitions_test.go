@@ -110,7 +110,7 @@ func airing(t *testing.T, d Director, id string) Director {
 		d, _ = d.Step(Built{ID: id, Script: Say("the read for " + c.Subject + ".")})
 	}
 	d, _ = d.settle()
-	if live, on := d.lineup.OnAir(); !on || live.ID != id {
+	if live, on := onAirAnywhere(d.lineup); !on || live.ID != id {
 		t.Fatalf("%s never reached the air (on air: %q)", id, live.ID)
 	}
 	return d
@@ -219,7 +219,7 @@ func TestATransitionOnTheAirIsNotRemoved(t *testing.T) {
 	d = airing(t, d, "t1")
 	d, _ = d.Step(Finished{ID: "t1"})
 	d, _ = d.settle()
-	if c, live := d.lineup.OnAir(); !live || c.ID != id {
+	if c, live := onAirAnywhere(d.lineup); !live || c.ID != id {
 		t.Fatalf("fixture: the hand-back must be reading; on air %q", c.ID)
 	}
 

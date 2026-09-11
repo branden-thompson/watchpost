@@ -162,7 +162,7 @@ func TestTheNextCardIsBuiltWhileThisOneReads(t *testing.T) {
 	if !has(fx, "build("+second+")") {
 		t.Errorf("effects %v do not start the next build while %s takes the air", fx, first)
 	}
-	if _, on := d.Lineup().OnAir(); !on {
+	if _, on := onAirAnywhere(d.Lineup()); !on {
 		t.Fatal("nothing took the air")
 	}
 	// And when the first finishes, the second's words are already there to
@@ -193,14 +193,14 @@ func TestEveryExitFromTheAirReleasesTheTicker(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			d, _ := burst(t, 2)
 			d, _ = run(d, Built{ID: lead, Script: Say("words")})
-			if _, on := d.Lineup().OnAir(); !on {
+			if _, on := onAirAnywhere(d.Lineup()); !on {
 				t.Fatalf("%s never took the air; the exit under test is not being exercised", lead)
 			}
 			after, fx := run(d, tc.exit)
 			if !has(fx, "release("+lead+")") {
 				t.Errorf("effects %v leave the band holding a stale callout", fx)
 			}
-			if id, on := after.Lineup().OnAir(); on {
+			if id, on := onAirAnywhere(after.Lineup()); on {
 				t.Errorf("%q is still on the air after it left it", id.ID)
 			}
 		})
@@ -311,13 +311,13 @@ func TestTheRailDrainsBeforeTheMainTrackThroughStep(t *testing.T) {
 	if has(ready, "speak(bonsall)") {
 		t.Errorf("effects %v read the report over a waiting alert", ready)
 	}
-	if _, on := d.Lineup().OnAir(); on {
+	if _, on := onAirAnywhere(d.Lineup()); on {
 		t.Error("a ready report took the air while an alert was still being built")
 	}
 
 	// The alert's words arrive, and it takes the air over the ready report.
 	d, air := run(d, Built{ID: alert, Script: Say("words")})
-	if on, _ := d.Lineup().OnAir(); on.ID != alert {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != alert {
 		t.Errorf("the air is held by %q, want the alert", on.ID)
 	}
 	if has(air, "speak(bonsall)") {
@@ -356,7 +356,7 @@ func TestABurstArrivingWhileTheRailDrainsAddsToIt(t *testing.T) {
 	reading := BurstID("a00")
 	d, _ := rail(t, "a", "b")
 	d, _ = run(d, Built{ID: reading, Script: Say("words")})
-	if on, _ := d.Lineup().OnAir(); on.ID != reading {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != reading {
 		t.Fatalf("the air is held by %q; the drain under test is not happening", on.ID)
 	}
 	before := ids(d.Lineup().Cards(AlertRail))
@@ -381,7 +381,7 @@ func TestABurstArrivingWhileTheRailDrainsAddsToIt(t *testing.T) {
 	if len(after) != len(before)+2 {
 		t.Errorf("the rail holds %v, want the %d already promised plus the two that arrived", after, len(before))
 	}
-	if on, _ := d.Lineup().OnAir(); on.ID != reading {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != reading {
 		t.Errorf("the arriving burst took the air from %q mid-read", reading)
 	}
 }
@@ -715,7 +715,7 @@ func TestPreparationNeverRunsAheadOfTheAir(t *testing.T) {
 	if waiting != 1 {
 		t.Errorf("%d cards are standing by while one reads; one ahead means one", waiting)
 	}
-	if on, ok := d.Lineup().OnAir(); !ok || on.ID != first {
+	if on, ok := onAirAnywhere(d.Lineup()); !ok || on.ID != first {
 		t.Errorf("the air holds %q, want %s", on.ID, first)
 	}
 }

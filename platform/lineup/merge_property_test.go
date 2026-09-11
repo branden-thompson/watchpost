@@ -87,6 +87,9 @@ type snap struct {
 	// asked for. A stricter reading than railWaiting, and the one property 5
 	// needs: preparation is the expensive step.
 	railUnprepared bool
+	// onAirPerLane counts the air per lane, which is where "two voices" lives
+	// since D-82.
+	onAirPerLane [numTracks]int
 }
 
 func (m *merged) snapshot() snap {
@@ -97,6 +100,7 @@ func (m *merged) snapshot() snap {
 			s.byTrack[c.ID] = Track(t)
 			if c.State == OnAir {
 				s.onAir[c.ID] = true
+				s.onAirPerLane[t]++
 			}
 			if Track(t) == AlertRail && (c.State == Admitted || c.State == Standby) {
 				s.railWaiting = true
@@ -140,11 +144,25 @@ func (m *merged) step(ev Event) {
 	m.steps++
 	after := m.snapshot()
 
-	// 1. AT MOST ONE CARD HOLDS THE AIR. Counted here rather than asked of
-	// OnAir, which returns "nobody" when its own invariant trips — a violation
-	// would otherwise read as an idle station.
-	if len(after.onAir) > 1 {
-		m.t.Fatalf("step %d (%T): two cards hold the air at once: %v — two voices", m.steps, ev, keys(after.onAir))
+	// 1. AT MOST ONE CARD HOLDS THE AIR *ON A LANE* (D-82). Counted here rather
+	// than asked of OnAir, which returns "nobody" when its own invariant trips —
+	// a violation would otherwise read as an idle station.
+	//
+	// THE QUALIFIER IS THE RULING, not a weakening of the property. The rail
+	// speaks OVER the programme and the programme holds underneath (D-24), so
+	// two cards on the air is one voice and a paused one; two on ONE lane is
+	// still two voices, and that is what this counts.
+	for t, n := range after.onAirPerLane {
+		if n > 1 {
+			m.t.Fatalf("step %d (%T): %d cards hold the air on %v at once: %v — two voices",
+				m.steps, ev, n, Track(t), keys(after.onAir))
+		}
+	}
+	// AND NEVER MORE THAN ONE PER LANE MEANS NEVER MORE THAN THERE ARE LANES.
+	// Stated separately so a third lane appearing does not quietly raise the
+	// ceiling on what "the air" can hold without anyone deciding to.
+	if len(after.onAir) > int(numTracks) {
+		m.t.Fatalf("step %d (%T): %v hold the air across %d lanes", m.steps, ev, keys(after.onAir), int(numTracks))
 	}
 	// 2. NO TWO CARDS SHARE AN IDENTITY. An ambiguous address is a card read
 	// twice, and the schedule is what has to refuse it.

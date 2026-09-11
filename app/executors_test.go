@@ -371,7 +371,7 @@ func TestSpeakForACardWithNothingToSayIsFailedNotAired(t *testing.T) {
 // diagnostic, can read afterwards.
 func TestTheCueReachesTheBandAndIsRecorded(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
-	if out := b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning"}); len(out) != 0 {
+	if out := b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning", Track: lineup.AlertRail}); len(out) != 0 {
 		t.Errorf("a cue came home with %v; it is fire-and-trust", out)
 	}
 	msgs := b.sent()
@@ -390,7 +390,7 @@ func TestTheCueReachesTheBandAndIsRecorded(t *testing.T) {
 // TestTheReleaseReachesTheBandAndIsRecorded — the cue's other half (DR-24).
 func TestTheReleaseReachesTheBandAndIsRecorded(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
-	if out := b.x.run(context.Background(), lineup.ReleaseTicker{ID: "a1"}); len(out) != 0 {
+	if out := b.x.run(context.Background(), lineup.ReleaseTicker{ID: "a1", Track: lineup.AlertRail}); len(out) != 0 {
 		t.Errorf("a release came home with %v", out)
 	}
 	msgs := b.sent()
@@ -410,7 +410,7 @@ func TestTheReleaseReachesTheBandAndIsRecorded(t *testing.T) {
 // to take the card off the air.
 func TestACueTheProducerCannotAccountForIsReportedAndFailsNothing(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
-	if out := b.x.run(context.Background(), lineup.CueTicker{ID: "zz"}); len(out) != 0 {
+	if out := b.x.run(context.Background(), lineup.CueTicker{ID: "zz", Track: lineup.AlertRail}); len(out) != 0 {
 		t.Errorf("a cue that could not be built came home with %v; the read must go on", out)
 	}
 	if len(b.sent()) != 0 {
@@ -829,7 +829,7 @@ func TestTheDuckAndItsRestoreReachTheEffector(t *testing.T) {
 // sending different things for the same event.
 func TestTheBandHasOneWriter(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
-	b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning"})
+	b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning", Track: lineup.AlertRail})
 	msgs := b.sent()
 	if len(msgs) != 1 {
 		t.Fatalf("the band got %v, want one message", msgs)
@@ -1280,5 +1280,40 @@ func TestTheTopOffChainStopsOnceTheLineUpIsFull(t *testing.T) {
 	}
 	if n := len(d.Lineup().Projection(lineup.MainTrack)); n != 2 {
 		t.Errorf("and it holds exactly its depth; got %d", n)
+	}
+}
+
+// A REPORT'S EXIT DOES NOT CLEAR THE HAZARD'S CALLOUT (F-71, closed at D-82).
+//
+// `clearBand` carried this defect in an eight-line comment for two releases,
+// with its trigger named exactly: the release is paired with the CUE and not
+// with the card, `wasOnAir` was the whole of the enforcement, and "a
+// LocationReport is now routinely on the air without a cue … so every rotation
+// turn issues a release for a cue that never happened." It was benign only
+// because ONE card held the air at a time.
+//
+// D-82 IS THAT TRIGGER. A hazard now reads over a report, and the report's exit
+// would wipe the callout for a tornado warning still being spoken — on the one
+// surface DR-24 exists to protect.
+func TestAReportsExitLeavesTheHazardsCalloutUp(t *testing.T) {
+	b := newBench(t, &scriptVoice{})
+	b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning", Track: lineup.AlertRail})
+	if len(b.sent()) != 1 {
+		t.Fatalf("the fixture needs the hazard's callout up; the band got %v", b.sent())
+	}
+
+	// The report underneath it finishes and leaves the air.
+	if out := b.x.run(context.Background(), lineup.ReleaseTicker{ID: "r1", Track: lineup.MainTrack}); len(out) != 0 {
+		t.Errorf("a release came home with %v", out)
+	}
+
+	if msgs := b.sent(); len(msgs) != 1 {
+		t.Fatalf("the band got %v; the report gave back a callout it never took, and the hazard's is gone", msgs)
+	}
+	// AND IT IS NOT IN THE RECORD EITHER. The band record answers "was this card
+	// cued, and released?" — a report that did neither must not read as having
+	// done both.
+	if b.x.band.has("release(r1)") {
+		t.Errorf("the record reads %v; the report claims a release it never made", b.x.band.recent())
 	}
 }

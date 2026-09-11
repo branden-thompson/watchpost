@@ -576,6 +576,15 @@ func (x *executors) runCue(v lineup.CueTicker) []lineup.Event {
 	// The card is NOT looked up before this returns. Asking the producer for a
 	// burst's id and finding nothing is the normal case, and a report on every
 	// takeover would bury the one that means something.
+	// THE BAND IS THE RAIL'S (D-82). It shows HAZARDS — `cueFor` asks the
+	// producer for the alert behind the id — and a main-track card has none, so
+	// this lookup has always found nothing and reported a decline for every
+	// rotation turn. Harmless while the programme could not speak; now that it
+	// can, a report reads UNDER a hazard and the two would be competing for one
+	// callout.
+	if v.Track != lineup.AlertRail {
+		return nil
+	}
 	if onTheRail(v.Slot) {
 		return nil
 	}
@@ -593,7 +602,22 @@ func (x *executors) runCue(v lineup.CueTicker) []lineup.Event {
 }
 
 // release gives the band its rotation back — the cue's other half (DR-24).
+//
+// AND ONLY THE RAIL'S (F-71, closed at D-82). `clearBand`'s own comment named
+// the defect and its trigger: a LocationReport is routinely on the air without a
+// cue, "so every rotation turn issues a release for a cue that never happened",
+// benign only because one card held the air at a time. D-82 put a report and a
+// hazard on the air together, which is that trigger — the report's exit would
+// wipe the callout for a tornado warning still being read.
+//
+// DECIDED HERE, FROM THE EFFECT, which is where `clearBand` said it had to be:
+// making it conditional inside mastercontrol "would put the rule in two places,
+// and the copy here could not see the schedule that decides it." The lane rides
+// on the effect, so the executor can see it without asking anybody.
 func (x *executors) runRelease(v lineup.ReleaseTicker) []lineup.Event {
+	if v.Track != lineup.AlertRail {
+		return nil // it never held the band; giving back what it did not take would take it from the rail
+	}
 	x.mc.clearBand()
 	x.band.note(lineup.Describe(v))
 	return nil
