@@ -205,7 +205,13 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
 	}
-	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.director, lp.scripts, lp.severe) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
+	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.director, lp.scripts, lp.severe)
+	// AND THE RAIL LEARNS WHAT IT IS SCOPED TO (D-73). Wired after the deck so
+	// the closure can close over the deck's own radius — one function, asked by
+	// both the fence and the feed's filter.
+	lp.ticker.scope = func() airScope {
+		return scopeFor(&lp.owner, func() airScope { return listenerScope(prefs.radius, lp.currentWatch) }, lp.currentStation)
+	} // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
 	// The schedule runs from here, over the SAME arbiter and effector the ticker
 	// was just given. It drives the live alert rail since T3.10b — so a
 	// listener notices nothing; T3.2b is the first thing it owns.
@@ -227,6 +233,10 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, cfg config.Config, keyOverrides term.KeyMap, resolver *locations.Resolver, resolverErr error, firmsProv *firms.Provider, setRadius func(int), setUI func(tty.UIPrefs) error) tty.Config {
 	return tty.Config{
 		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
+		// THE AIR FOLLOWS THE SURFACE (D-73). One rail, one fence, and this is
+		// what moves it between the listener's filter and the station's service
+		// area.
+		OnSurface: lp.takeTheAir,
 		// WHERE THE STATION TRANSMITS FROM, AT LAUNCH (D-72). Changes arrive as
 		// a message; this is what the console opens with, because the program's
 		// loop is not running when the pool is first derived.
@@ -565,6 +575,10 @@ type livePipelines struct {
 	idx      *geodata.Index
 	station  stationArea
 	poolRefs []snapshot.LocationRef
+
+	// owner is which surface the operator is looking at, and therefore what the
+	// alert rail is scoped to (D-73, airscope.go).
+	owner airOwner
 
 	// Diagnostics (quality pass Q0): the clients whose counters the [S]
 	// modal sums, the typed providers whose memos the dump gauges, the

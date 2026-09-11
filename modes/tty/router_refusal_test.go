@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -54,5 +56,45 @@ func TestARefusedSwapIsShownToTheOperator(t *testing.T) {
 	m, _ = r.Update(keyPress(t, "ctrl+o"))
 	if m.(Router).active != SurfaceObserver {
 		t.Error("and a station off the air lets the operator leave")
+	}
+}
+
+// THE SWAP TELLS THE APP WHICH SURFACE OWNS THE AIR (D-73).
+//
+// THE ALERT RAIL IS SCOPED TO IT — the listener's filter on Observer, the
+// station's service area on the console — and `swapTo` is the ONE place a swap
+// is granted, so it is the one place that can say so.
+//
+// IT IS ASSERTED THROUGH THE KEYS, not by calling `swapTo`: the defect this
+// release keeps producing is a seam nothing drives, and a test that called the
+// method directly would pass over an unbound control.
+func TestASwapTellsTheAppWhoOwnsTheAir(t *testing.T) {
+	d, err := NewDashboard(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var told []Surface
+	d.cfg.OnSurface = func(s Surface) { told = append(told, s) }
+	var m tea.Model = NewRouter(d)
+
+	m, _ = m.Update(keyPress(t, "ctrl+b"))
+	m, _ = m.Update(keyPress(t, "ctrl+o"))
+	if len(told) != 2 || told[0] != SurfaceBroadcaster || told[1] != SurfaceObserver {
+		t.Fatalf("both swaps are announced, in order; got %v", told)
+	}
+
+	// A REFUSED SWAP ANNOUNCES NOTHING, because nothing moved. Telling the app
+	// the console owns the air while the operator is still on Observer would
+	// scope their alerts to a station they did not reach.
+	r := m.(Router)
+	r.broadcaster.power = lineup.Running
+	r.active = SurfaceBroadcaster
+	told = nil
+	m, _ = r.Update(keyPress(t, "ctrl+o"))
+	if m.(Router).active != SurfaceBroadcaster {
+		t.Fatal("precondition: a live station refuses the swap")
+	}
+	if len(told) != 0 {
+		t.Errorf("a refused swap moved the air: %v", told)
 	}
 }
