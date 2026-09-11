@@ -117,3 +117,96 @@ func (d Director) firstStale() (Card, bool) {
 	}
 	return Card{}, false
 }
+
+// RefreshAfter is how long a card's words may sit BEFORE the schedule asks for
+// them again, and it exists because D-84 lets a card wait indefinitely.
+//
+// THE DEFECT IT CLOSES IS THE ONE THE RULING CREATES. The Composer now works on
+// standby so the line is ready the instant the operator goes on air — and a
+// station can sit on standby for an hour. At `StaleAfter` the prepared card is
+// dropped as it takes the air (PD-3) and the listener's first words are "That
+// report is out of date and has been dropped." The operator sets up a line-up,
+// goes for coffee, presses the key, and the station opens by apologising.
+//
+// HALF THE WINDOW, AND THE DERIVATION IS THE POINT. A rebuild is ~1.03 s of
+// network, so refreshing at half leaves 7.5 minutes of margin — four hundred
+// times the cost of the thing it is racing, which is what makes it impossible
+// for a refresh to be the reason a card goes stale. Refreshing AT StaleAfter
+// would race `takeTheAir`, which runs first in the same settle and would drop
+// the card on the very tick the refresh was due.
+//
+// AND IT IS NOT A SECOND STALENESS RULE. `StaleAfter` still decides what may go
+// on the air; this only decides when to ask for better words while nothing can.
+// Derived from it rather than chosen beside it, so the two cannot drift.
+const RefreshAfter = StaleAfter / 2
+
+// refreshStandby asks for a standing-by card's words again when they have aged
+// past RefreshAfter, or does nothing.
+//
+// IT RE-HYDRATES; IT DOES NOT REPLACE (HUM LEAD, 2026-09-11):
+//
+//	"It's still the same card, it's just like the composer 'filling it' for the
+//	 first time, it's just stale … No need to re-check admission — it's already
+//	 been admitted. No need for the director to choose / move another card — it's
+//	 still the same card, the order has been decided. It just needs to have its
+//	 data updated."
+//
+// So this emits the SAME `BuildCard` the first fill emits, for the same ID. The
+// card is not proposed again, not re-admitted, not re-ordered, and does not move
+// in the line-up: `Built` comes home and `WithScript` overwrites the words and
+// the stamp in place. Nothing else about it changes.
+//
+// ONLY WHILE THE TRACK CANNOT ADVANCE, which bounds the new behaviour to exactly
+// the case that created it. A running station replaces its cards as it reads
+// them, so nothing sits; a card that DOES sit on a running station is being held
+// by a rail drain, and PD-3's drop is the right answer there — mid-broadcast
+// there is no time to rebuild, which is the whole reason `readInstead` exists.
+//
+// ONE CARD, because only one is ever built: `toPrepare` is "one ahead, and only
+// one", so every other card in the line-up has no words to go stale.
+func (d Director) refreshStandby() (Director, []Effect) {
+	if d.advances(MainTrack) {
+		return d, nil
+	}
+	// AND NEVER WHILE THE RAIL HOLDS ANYTHING (DR-3, and the merge property test
+	// caught this within a minute of the refresh being wired).
+	//
+	// THE COMPOSER IS ONE BOUNDED RESOURCE. `toPrepare` stops one card ahead, so
+	// a rail holding [standing-by, admitted] leaves it idle — and this would have
+	// spent the idle moment on a REPORT. The hazard behind it becomes eligible
+	// the instant the one in front leaves the air, and its build would then queue
+	// behind a report's. "The rail is prepared first, not merely aired first" is
+	// property 5, and it was written because a plant that reversed the precedence
+	// in `toPrepare` SURVIVED.
+	//
+	// BLUNTER THAN IT STRICTLY NEEDS TO BE, deliberately: the precise rule is
+	// "no rail card still needs composing", and this refuses while the rail holds
+	// anything at all. On the safety path the cost of being early is a report
+	// whose words are a few minutes older, and the cost of being clever is a
+	// hazard that waits.
+	if len(d.lineup.tracks[AlertRail]) > 0 {
+		return d, nil
+	}
+	for _, c := range d.lineup.tracks[MainTrack] { // bounded by the track (P10-02)
+		if c.State != Standby || c.BuiltAt.IsZero() {
+			continue
+		}
+		if d.now.Sub(c.BuiltAt) < RefreshAfter {
+			return d, nil
+		}
+		// THE STAMP MOVES WITH THE ASK, NOT WITH THE ANSWER. A build takes a
+		// second or more and the schedule ticks every second; without this the
+		// same card is asked for again on every tick until its words come home,
+		// which is a build storm against the provider the moment a refresh is
+		// due. `Built` overwrites it with the true time when it lands.
+		bumped := c
+		bumped.BuiltAt = d.now
+		next, err := d.lineup.Set(bumped)
+		if err != nil {
+			return d, nil
+		}
+		d.lineup = next
+		return d, []Effect{BuildCard{ID: c.ID, Slot: c.Slot, Subject: c.Subject, Refs: c.Refs}}
+	}
+	return d, nil
+}

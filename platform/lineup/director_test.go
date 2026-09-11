@@ -291,12 +291,15 @@ func TestTheRailDrainsBeforeTheMainTrackThroughStep(t *testing.T) {
 	}
 	d.lineup = l
 
-	// The listener starts the radio, and the report's build begins (PD-1).
-	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
-	d, started := run(d, Powered{To: Running})
-	if !has(started, "build(bonsall)") {
-		t.Fatalf("starting the radio produced %v, want the report's build", started)
+	// The report's build begins as soon as the schedule settles — D-84: the
+	// Composer works on standby, so the line is ready before the operator asks
+	// for it. It no longer waits for the power.
+	d, seeded := run(d, Tick{Now: planNow})
+	if !has(seeded, "build(bonsall)") {
+		t.Fatalf("settling produced %v, want the report's build", seeded)
 	}
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
+	d, _ = d.Step(Powered{To: Running})
 
 	// An alert arrives and goes to the head of the queue, so its build starts too.
 	alert := BurstID("a00")

@@ -44,16 +44,12 @@ func ReadID(ref string) string {
 
 // onNeedsRead proposes the location's read as a main-track card.
 //
-// ADMISSION IS A PROMISE TO READ (DR-3), so a track that cannot advance must
-// not accept one. That is why this asks advances rather than testing the power
-// directly: a stopped programme would otherwise pile up a rotation nobody can
-// drop, and every card of it would be owed a read the moment the operator
-// pressed start. One predicate, now three askers — taking the air, preparing
-// what follows, and admitting.
+// ADMISSION IS A PROMISE TO READ, NOT A PROMISE TO READ RIGHT NOW (D-84). This
+// asked `advances` too, for the reason onOffered did, and with the same
+// consequence: a station on standby accepted no cards at all. The predicate now
+// has ONE asker — `airOnce` — and the schedule is planned whether or not it is
+// being read.
 func (d Director) onNeedsRead(ev NeedsRead) (Director, []Effect) {
-	if !d.advances(MainTrack) {
-		return d, nil
-	}
 	card, err := Propose(Card{ID: ReadID(ev.Ref), Slot: LocationReport, Origin: FromDirector,
 		Subject: ev.Ref, Headline: ev.Headline})
 	if err != nil {

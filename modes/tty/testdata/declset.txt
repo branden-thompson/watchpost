@@ -223,6 +223,7 @@ func (Broadcaster).inset
 func (Broadcaster).laneHeader
 func (Broadcaster).laneLabel
 func (Broadcaster).lanes
+func (Broadcaster).liveOffset
 func (Broadcaster).minSize
 func (Broadcaster).notice
 func (Broadcaster).opts

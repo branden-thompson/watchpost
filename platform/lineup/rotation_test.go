@@ -80,12 +80,25 @@ func TestASecondNeedForTheSameLocationDoesNotQueueTwice(t *testing.T) {
 	}
 }
 
-func TestNeedsReadOnAStoppedStationQueuesNothing(t *testing.T) {
+// A STOPPED STATION PLANS, AND DOES NOT PERFORM (D-84, HUM LEAD 2026-09-11).
+//
+// THIS TEST USED TO ASSERT THE OPPOSITE — "a stopped station is not building a
+// programme; got %d cards" — under DR-3's "admission is a promise to read". The
+// ruling overturned it: "being able to see, manage, and change the line up PRIOR
+// to going on air is a fundamental requirement — otherwise the user might as
+// well just use Observer."
+//
+// WHAT IT PINS NOW IS THE HALF THAT DID NOT CHANGE. The card is accepted, and it
+// does not take the air: `airOnce` is the one asker of `advances` left.
+func TestANeedOnAStoppedStationIsQueuedButNotRead(t *testing.T) {
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	d := New(Settings{Max: 5}, base) // STOPPED is the zero value
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
-	if got := len(d.lineup.Cards(MainTrack)); got != 0 {
-		t.Errorf("a stopped station is not building a programme; got %d cards", got)
+	if got := len(d.lineup.Cards(MainTrack)); got != 1 {
+		t.Errorf("the operator must be able to see and manage the line-up before going on air; got %d cards", got)
+	}
+	if c, on := d.lineup.OnAir(MainTrack); on {
+		t.Errorf("a stopped station put %q on the air; planning is not performing", c.ID)
 	}
 }
 

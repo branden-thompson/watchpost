@@ -123,35 +123,51 @@ func TestAnOfferQueuesNothingWhenTheTrackIsAlreadyDeepEnough(t *testing.T) {
 	}
 }
 
-func TestAnOfferQueuesNothingWhileTheProgrammeIsNotRunning(t *testing.T) {
-	// ADMISSION IS A PROMISE TO READ (DR-3), so a track that cannot advance must
-	// not accept one — the same rule onNeedsRead states. Without it a stopped
-	// station piles up a rotation nobody can drop, and every card of it is owed
-	// a read the moment the operator presses start.
+// THE LINE-UP IS PLANNED BEFORE IT IS BROADCAST (D-84, HUM LEAD 2026-09-11).
+//
+// THE INVERSE OF WHAT THIS USED TO ASSERT. It pinned "a stopped programme admits
+// nothing" under DR-3's "admission is a promise to read" — which left the
+// operator with ten empty slots and nothing to inspect, reorder or drop until
+// after they had gone on the air. The ruling: "When the user enters Broadcaster
+// Mode, the station is in STANDBY … At this point Producers should be grabbing
+// locations from the pool, and proposing reports to the Director … The director
+// should be choosing and populating the line-up."
+//
+// THE OLD HAZARD WAS "a rotation nobody can drop", AND THE OPERATOR CAN DROP IT.
+// That is the surface's whole reason to exist.
+func TestAnOfferFillsTheLineUpWhileTheProgrammeIsOnStandby(t *testing.T) {
 	d := New(Settings{Max: 5, Depth: 3, Watchlist: []string{"oceanside"}},
 		time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
 
-	d, fx := d.Step(offers("oceanside", "carlsbad"))
+	d, _ = d.Step(offers("oceanside", "carlsbad"))
 
-	if got := subjects(d); len(got) != 0 {
-		t.Errorf("a stopped programme admits nothing; got %v", got)
+	if got := subjects(d); len(got) != 2 {
+		t.Errorf("a station on standby must fill its line-up so the operator can manage it; got %v", got)
 	}
-	if len(fx) != 0 {
-		t.Errorf("and it does no work; got %d effects", len(fx))
+	// AND NOTHING TAKES THE AIR. Planning is not performing, and `airOnce` is
+	// the one thing left that asks.
+	if c, on := d.lineup.OnAir(MainTrack); on {
+		t.Errorf("a stopped programme put %q on the air", c.ID)
 	}
 }
 
-func TestTheBedHoldingTheProgrammeStopsTheTopOff(t *testing.T) {
-	// The main track and the bed are mutually exclusive (D-11, FR-4.2), and
-	// `advances` is the one carrier of that. Topping off a paused track would
-	// queue reads against a programme that is on the relay.
+// AND A TRACK THE BED HAS PAUSED KEEPS ITS LINE-UP TOPPED OFF (D-84).
+//
+// The same inversion, for the same reason. A cut-over PAUSES the main track
+// (FR-4.2) — it does not abandon it — so the operator can go on planning the
+// reads that resume when they cut back. Refusing to admit here left them
+// managing an empty console while a relay played.
+func TestTheBedHoldingTheProgrammeDoesNotStopTheTopOff(t *testing.T) {
 	d := offering(t, 3, "oceanside", "carlsbad")
 	d, _ = d.Step(CutOver{ToBed: true})
 
-	d, _ = d.Step(offers("oceanside", "carlsbad"))
+	d, _ = d.Step(offers("oceanside", "carlsbad", "bonsall"))
 
-	if got := subjects(d); len(got) != 0 {
-		t.Errorf("a track the bed has paused takes nothing; got %v", got)
+	if got := subjects(d); len(got) == 0 {
+		t.Errorf("a paused track still plans what it will read when it comes back; got %v", got)
+	}
+	if c, on := d.lineup.OnAir(MainTrack); on {
+		t.Errorf("the bed carries the programme and %q took the air anyway", c.ID)
 	}
 }
 

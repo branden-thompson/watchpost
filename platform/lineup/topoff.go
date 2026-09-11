@@ -73,14 +73,34 @@ type Offered struct {
 
 // onOffered fills the main track up to the Director's depth.
 //
-// ADMISSION IS A PROMISE TO READ (DR-3), so this asks `advances` first, exactly
-// as onNeedsRead does. A stopped programme, or one the operator has put on the
-// bed, would otherwise accumulate a rotation nobody can drop — and every card of
-// it would be owed a read the instant the programme came back.
+// ADMISSION IS A PROMISE TO READ. IT IS NOT A PROMISE TO READ *RIGHT NOW*.
+//
+// THE DISTINCTION IS THE WHOLE OF D-84 (HUM LEAD, 2026-09-11), and the first
+// draft of this comment got it wrong by saying DR-3 had been inverted. It has
+// not: nothing admitted is dropped unread, and the line-up the operator builds
+// on standby is that promise being KEPT — it goes to air when they press the
+// key. What was wrong was the INFERENCE, "therefore do not admit while
+// stopped".
+//
+//	"being able to see, manage, and change the line up PRIOR to going on air is
+//	 a fundamental requirement — otherwise the user might as well just use
+//	 Observer."
+//
+// IT ASKED `advances` FIRST, under "admission is a promise to read (DR-3)", so a
+// station on standby admitted NOTHING: the console drew ten empty slots and the
+// operator had nothing to inspect, reorder or drop until after they had gone on
+// the air. The reasoning was that a stopped programme "would accumulate a
+// rotation nobody can drop" — and the answer is that the operator CAN drop it.
+// That is the whole point of the surface.
+//
+// THE RULE THIS PACKAGE ALREADY HAD, one file along: `reconcileJoins` is "NOT
+// GATED ON `advances` … A stopped station still has a running order; it simply
+// is not reading it." Admission now says the same thing, and the gate lives in
+// ONE place — `airOnce`, which is where READING happens.
+//
+// AND EVERY CARD OF IT IS OWED A READ WHEN THE PROGRAMME COMES BACK, which the
+// old comment raised as the hazard. It is the REQUIREMENT.
 func (d Director) onOffered(ev Offered) (Director, []Effect) {
-	if !d.advances(MainTrack) {
-		return d, nil
-	}
 	// COUNTED IN THE LINE-UP, NOT THE SCHEDULE (D-44). The depth is a promise
 	// about what the OPERATOR sees: counting the Director's own cards against it
 	// would top a ten-slot console off at about five real reports and leave the
