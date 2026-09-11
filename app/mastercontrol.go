@@ -74,6 +74,12 @@ type mastercontrol struct {
 	// lifted, dipped and lifted again between them — measured, before this
 	// existed. While the bed is held, a per-sequence take-back is refused.
 	held bool
+
+	// fence is what the alert rail is scoped to right now (D-75) — the
+	// listener's filter or the station's service area, whichever surface has
+	// the air. It travels with every `Aired`, so the rail is re-tested when the
+	// air moves. Nil is "All", which is a deck built for one narrow question.
+	fence func() lineup.Fence
 }
 
 // newMastercontrol wires the effector. A nil voice is legitimate and means no
@@ -114,7 +120,25 @@ func (m *mastercontrol) GoToStandby() { m.declare(lineup.OffAir) }
 // follows one concept along: the air is something the OPERATOR DID — they moved
 // to a surface — not something a tune happened to imply. Three declarers of the
 // power is exactly how listening on one surface came to put the other ON AIR.
-func (m *mastercontrol) HandAir(to lineup.Air) { m.tell(lineup.Aired{To: to}) }
+// THE FENCE TRAVELS WITH IT (D-75). The rail is re-tested against it, so a
+// hazard admitted under the other surface's fence is held rather than read —
+// and released again when the fence widens.
+func (m *mastercontrol) HandAir(to lineup.Air) {
+	m.tell(lineup.Aired{To: to, Fence: m.railFence()})
+}
+
+// railFence is what the rail is scoped to right now.
+//
+// ASKED, NOT PASSED. `GoOnAir` is reached through `tty.Station`, whose signature
+// is the console's contract and has no business carrying a fence — and a fence
+// passed by every caller is a fence every caller could get wrong. One source,
+// asked at the moment it is needed.
+func (m *mastercontrol) railFence() lineup.Fence {
+	if m == nil || m.fence == nil {
+		return lineup.Fence{} // no rail to scope: All, which is what it has always been
+	}
+	return m.fence()
+}
 
 // StopMonitor stops the operator's own listening.
 //

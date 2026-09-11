@@ -160,6 +160,7 @@ func (*mastercontrol).giveWay
 func (*mastercontrol).givenWay
 func (*mastercontrol).hold
 func (*mastercontrol).holdLine
+func (*mastercontrol).railFence
 func (*mastercontrol).resumeLine
 func (*mastercontrol).silent
 func (*mastercontrol).stopLine

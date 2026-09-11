@@ -66,6 +66,18 @@ func (a Air) String() string {
 type Aired struct {
 	isEvent
 	To Air
+
+	// Fence is what the surface taking the air is scoped to (D-75). It travels
+	// WITH the air because it moves with it: the listener's alert filter on
+	// Observer, the station's service area on the console.
+	//
+	// THE RAIL IS RE-TESTED AGAINST IT. Without this the Director would learn
+	// the new fence only on the next ARRIVAL, and everything already on the rail
+	// would go on being read under the fence that admitted it — which is exactly
+	// what the HUM LEAD asked about: "does the alert rail correctly filter /
+	// expand itself based on which mode is active?" Measured before this: it did
+	// not, and a 100-mile hazard survived a narrowing to 25.
+	Fence Fence
 }
 
 // onAired moves the air, and moves nothing else.
@@ -81,6 +93,9 @@ func (d Director) onAired(ev Aired) (Director, []Effect) {
 		return d, nil
 	}
 	d.air = ev.To
+	// AND THE RAIL IS RE-SCOPED TO WHOEVER NOW HAS THE AIR (D-75).
+	d.settings.Fence = ev.Fence
+	d = d.refence()
 	// THE PROGRAMME IS SILENCED WHEN THE AIR LEAVES IT, exactly as a stop
 	// silences it: a card on the air when the operator walks to the other
 	// surface would go on reading into a programme nobody is carrying.
@@ -144,4 +159,39 @@ func monitorWord(running bool) string {
 		return "RUNNING"
 	}
 	return "STOPPED"
+}
+
+// refence marks every rail card according to whether the CURRENT fence admits
+// it (D-75).
+//
+// HELD, NOT DROPPED, and that is the whole ruling. DR-3 says nothing admitted is
+// dropped unread; the HUM LEAD says nothing outside the service area is heard on
+// the console. A card that is out of fence waits for a surface whose fence
+// admits it, and both rules stay true.
+//
+// IT RUNS BOTH WAYS. Widening releases what a narrower fence was holding, which
+// is the "expand itself" half of the question and the half that is easy to leave
+// out: a rail that only ever held would go quiet and stay quiet.
+func (d Director) refence() Director {
+	out := d.lineup.clone()
+	for i := range out.tracks[AlertRail] { // bounded by the rail (P10-02)
+		c := &out.tracks[AlertRail][i]
+		// A CARD ALREADY ON THE AIR IS NOT INTERRUPTED. Cutting a hazard off
+		// mid-sentence because the operator changed surfaces would be a worse
+		// answer than the one this exists to fix.
+		//
+		// A TRIPWIRE, AND ITS MUTANT SURVIVES BY DESIGN — the D-42 shape, stated
+		// for the same reason. Today the rule holds for an UNRELATED one:
+		// `airOnce` returns early while the air is busy, and a card that has
+		// taken the air is never offered again, so marking it would change
+		// nothing anyone reads. That is a rule held by a DIFFERENT rule, and it
+		// vanishes silently the day the other one moves — which is exactly when
+		// a hazard would be cut off mid-sentence.
+		if c.State == OnAir {
+			continue
+		}
+		c.OutOfFence = !d.settings.Fence.AdmitsAny(c.From)
+	}
+	d.lineup = out
+	return d
 }
