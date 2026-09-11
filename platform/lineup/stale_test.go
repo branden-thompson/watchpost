@@ -97,7 +97,7 @@ func TestPD3AStaleCardIsDroppedAndTheListenerIsTold(t *testing.T) {
 	if spoke != staleTransitionText {
 		t.Fatalf("the listener hears the notice, not the stale report; heard %q", spoke)
 	}
-	if _, busy := d.lineup.OnAir(); !busy {
+	if _, busy := onAirAnywhere(d.lineup); !busy {
 		t.Error("the notice takes the air in the same step, or the gap it explains comes first")
 	}
 	// The stale card is GONE, not merely skipped: a card left in the schedule

@@ -7,13 +7,11 @@ import pathlib
 # released unconditionally by the arbiter — the sound came back, so the station
 # seemed fine, and only the band stayed wrong.
 #
-# RE-ANCHORED AT T3.10b, WHERE THE RULE NOW LIVES. The takeover's own closure is
-# gone: the read is an effect, and every exit from the air emits its release from
-# the schedule itself. That is strictly better — the pairing is a property of
-# Step's output rather than a discipline about call sites — and this is the one
-# line that makes it true.
+# RE-ANCHORED TWICE. At T3.10b the rule moved into Step's output; at D-82 the
+# release gained the LANE it belongs to, so that a report's exit cannot clear a
+# hazard's callout (F-71). This is still the one line that makes the pairing true.
 p = pathlib.Path("platform/lineup/director.go"); s = p.read_text()
-old = "\t\tfx = append(fx, ReleaseTicker{ID: id})"
-new = "\t\t_ = id"
+old = "\t\tfx = append(fx, ReleaseTicker{ID: id, Track: track})"
+new = "\t\t_, _ = id, track"
 assert old in s, "mR1"
 p.write_text(s.replace(old, new, 1))

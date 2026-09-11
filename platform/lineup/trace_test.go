@@ -87,7 +87,7 @@ func TestDR23TheTraceShowsEveryCardAndItsState(t *testing.T) {
 	}
 	// It agrees with the lineup because it is READ from it: the card the
 	// schedule says is on the air is the one the line says is on the air.
-	onAir, _ := d.Lineup().OnAir()
+	onAir, _ := onAirAnywhere(d.Lineup())
 	if !strings.Contains(got, onAir.ID+":ON AIR") {
 		t.Errorf("the trace and the schedule disagree about who is reading: %q vs %q", got, onAir.ID)
 	}

@@ -236,31 +236,77 @@ func (l Lineup) Next() (Card, Track, bool) {
 				return c, t, true
 			}
 		}
+		// AND A CARD STILL READING IS PART OF THE DRAIN (D-82). This sentence
+		// was in the paragraph above from the beginning — "normal programming
+		// resumes only when it is dry" — and nothing here enforced it: the
+		// Director's "is anything on the air anywhere" check did, by accident,
+		// and that check had to go so a hazard could interrupt a report.
+		//
+		// Without this the arrow points the other way and the schedule reads a
+		// report UNDER a hazard that is still speaking. Two tests caught it
+		// within a minute of the change, one of them a fixture that had been
+		// relying on the accident to age a card into staleness.
+		//
+		// WRITTEN FOR EITHER LANE, not for the rail. On the main track it says
+		// the same thing the fall-through below says, so there is no second rule
+		// — and a third lane would inherit the right one rather than a special
+		// case naming the rail.
+		if _, reading := l.OnAir(t); reading {
+			return Card{}, t, false
+		}
 	}
 	return Card{}, MainTrack, false
 }
 
-// OnAir is the card being read, if one is.
+// OnAir is the card this LANE is reading, if one is.
 //
 // DERIVED, NEVER STORED. The Director could keep the identity beside the lineup,
 // and then the two could disagree — which is the shape of every rule this
-// release has had to un-split. AT MOST ONE CARD HOLDS THE AIR: two would mean
-// two voices, and the invariant says so where it can be seen to fail rather than
-// in a comment.
-func (l Lineup) OnAir() (Card, bool) {
+// release has had to un-split.
+//
+// AT MOST ONE CARD HOLDS THE AIR *ON A TRACK*, and the qualifier is D-82. Until
+// the main track could speak, "at most one, anywhere" was the same statement and
+// the stronger one was the natural way to write it. It had become the rule that
+// stops a hazard being read: a rail card could not take the air while a report
+// held it, so a tornado warning waited out the weather.
+//
+// TWO CARDS ON THE AIR IS NOT TWO VOICES. The rail speaks OVER the programme and
+// the programme HOLDS underneath it — one `Suppress`, and the engine picks dip
+// or hold from the source kind, re-read every 50 ms. That is D-24 ("we can PAUSE
+// the read, let the alert rail drain … then resume the read at normal volume"),
+// and it is why the lanes are drawn as an overlay rather than as a list.
+//
+// TWO ON ONE LANE would still be two voices, and the invariant says so where it
+// can be seen to fail rather than in a comment.
+func (l Lineup) OnAir(t Track) (Card, bool) {
+	if err := invariant.Check(t >= 0 && t < numTracks, "the air is asked about a declared lane"); err != nil {
+		return Card{}, false
+	}
 	var found Card
 	seen := 0
-	for t := range l.tracks { // bounded by the array, then by each track (P10-02)
-		for _, c := range l.tracks[t] {
-			if c.State == OnAir {
-				found, seen = c, seen+1
-			}
+	for _, c := range l.tracks[t] { // bounded by the track (P10-02)
+		if c.State == OnAir {
+			found, seen = c, seen+1
 		}
 	}
-	if err := invariant.Check(seen <= 1, "at most one card holds the air"); err != nil {
+	if err := invariant.Check(seen <= 1, "at most one card holds the air on a lane"); err != nil {
 		return Card{}, false
 	}
 	return found, seen == 1
+}
+
+// anyOnAir reports whether ANY lane is reading.
+//
+// DERIVED FROM OnAir, NOT A SECOND WALK. The two questions differ by a
+// quantifier and nothing else, and a second traversal would be a second place
+// for "what does on the air mean" to be decided.
+func (l Lineup) anyOnAir() bool {
+	for t := Track(0); t < numTracks; t++ { // bounded by the registry (P10-02)
+		if _, on := l.OnAir(t); on {
+			return true
+		}
+	}
+	return false
 }
 
 // Set replaces a card the lineup already holds, in place. This is how a card

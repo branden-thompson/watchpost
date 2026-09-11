@@ -401,15 +401,16 @@ func (m *mastercontrol) cue(item tty.TickerItem) {
 // THE SENTENCE THAT USED TO FINISH THAT PARAGRAPH — "`leave` releases only what
 // it cued" — WAS WRONG, and 0.16.0 P3 made it visibly so (red team 2026-09-09,
 // finding 7). `leave` releases whatever was ON THE AIR, and a LocationReport is
-// now routinely on the air without a cue: runCue asks the producer for an alert
+// routinely on the air without a cue: runCue asks the producer for an alert
 // under `read:<location>`, finds none, and cues nothing. So every rotation turn
-// issues a release for a cue that never happened.
+// issued a release for a cue that never happened.
 //
-// IT IS BENIGN TODAY AND THE REASON IS NARROW: `cue` is the only writer of
-// TickerBreakingMsg in the tree, `cueFor` is its only caller, and one card holds
-// the air at a time — so the stray clear has nothing to wipe. THE MOMENT P4
-// GIVES THE BAND A SECOND WRITER it is a live defect on the surface DR-24
-// exists to protect, which is why it is F-71 rather than a note.
+// F-71, AND IT IS CLOSED (D-82) — by the caller, exactly as this paragraph
+// argued it had to be. The trigger it named was "the moment the band gets a
+// second writer"; what arrived instead was a second card on the air, when the
+// rail gained the ability to interrupt a report. `runRelease` now asks the LANE,
+// which rides on the effect, so the rule stays where the schedule decides it and
+// this function stays the one unconditional carrier of "give the band back".
 func (m *mastercontrol) clearBand() {
 	if m == nil {
 		return

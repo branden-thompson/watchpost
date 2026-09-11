@@ -1846,3 +1846,76 @@ genuinely done.  A `sleep` inside a background job is a timer nobody reads.
 running.  `mutant-check` patches source files by exact-text anchor, so a concurrent edit reports as
 "the mutant no longer applies" — twelve false STALE verdicts, indistinguishable from real ones until
 re-run on a quiet tree.
+
+---
+
+## 2026-09-11 — D-82: I built a measuring instrument that mutated what it measured
+
+**The catch — and it is mine, found two steps too late.**  To find stale mutant anchors without
+paying for a 20-minute `mutant-check`, I wrote a probe that executes each mutant script with its
+write call neutered, and read back which ones no longer match the tip.
+
+The neutering was a **regex over the script's text**:
+
+```python
+src = re.sub(r'^p\.write_text\(s\.replace.*$', 'pass', src, flags=re.M)
+```
+
+Mutants written any other way — `p.write_text(s)` on its own line, after `s = s.replace(...)` above —
+did not match, and **actually applied**.  Nine production files were mutated behind my back, including
+`bed.go`, where `onEnded` was replaced wholesale by `return d, nil`.
+
+**How it was caught:** the probe reported seven mutants as stale that touch code I had never edited.
+That did not fit, so I checked one — and `git status` showed `domains/severe/severe.go` and
+`platform/category/category.go` modified.
+
+**Cost:** about twenty minutes of recovery, and it could have been far worse.  Three things limited
+it: mutants never write to `_test.go`, so the test work was safe; there was a committed tip to diff
+against; and the damage was auditable hunk by hunk, because every deletion in a file I HAD edited
+was either mine or obviously not.
+
+**Recovery, and it is the general shape:** revert the files with foreign deletions to the tip and
+RE-APPLY the intended edits from the scripts that made them, rather than un-picking mutations by
+hand.  Then prove it: `git diff | grep '^-'` per file, and account for every deleted line.
+
+**The fix to the probe is one line, and it is the lesson:**
+
+```python
+pathlib.Path.write_text = lambda self, *a, **k: None   # the TYPE's writer, not a text pattern
+```
+
+**The shape (new): "a measuring instrument with a side effect."**  This project already has
+`feedback-validate-the-instrument` — *prove a measurement can fail before quoting it*.  This is its
+mirror: **prove a measurement cannot WRITE before running it.**  A probe that intercepts behaviour by
+pattern-matching source is guessing; one that replaces the capability is not.  The general rule: when
+a tool must run untrusted code to observe it, **remove the capability, do not filter the syntax** —
+the same reason a sandbox is not a denylist.
+
+**And the process rule that would have made it cheap regardless:** run the probe against a scratch
+copy of the tree, or with the tree committed.  My tree had ~400 lines of uncommitted work at the time.
+A checkpoint commit before running any tool that executes repository scripts costs nothing.
+
+**Second-order:** I had already recorded, the same session, "do not edit the tree while `make verify`
+is running" for the mirror-image reason — `mutant-check` patches by exact-text anchor.  Both entries
+are the same fact from opposite ends: **the mutants are executable code that edits the tree, and
+anything that runs them owns that.**
+
+**ADDENDUM, same day — the fixed probe still is not the gate, and I over-trusted it again.**
+
+With `write_text` stubbed the probe is side-effect-free and correct about what it measures: does
+this mutant's anchor still MATCH. It says nothing about whether the result COMPILES. Two mutants
+(`mA3`, `m91`) matched cleanly and broke the build, because my own edits had removed the only OTHER
+use of a variable the mutation deletes — `card` in `silenceTheProgramme`, and `OnAir()`'s old
+signature in `settle`. The gate caught both and reported them the right way: *"makes the tree
+uncompilable, so its verdict is no evidence either way."*
+
+**The rule:** the probe is a CHEAP PRE-FILTER for stale anchors, not a substitute for `mutant-check`.
+Anchor-matches is a necessary condition, never a sufficient one. Compile-checking every mutant costs
+roughly what the gate costs, which is the point — there is no cheaper honest version, so do not claim
+one.
+
+**And the shape it reveals is worth its own line:** a mutation that DELETES a statement is coupled to
+every other use of the names in it. When a refactor removes one of those uses, the mutant stops
+compiling rather than stops being true — so a mutant that deletes should prefer `_ = x` over deletion
+where a name would be orphaned. `mA3` reads better for it: it now mutates whether the card leaves the
+air, rather than whether the line exists.

@@ -426,11 +426,27 @@ func TestOnlySharedOutputWorkRidesTheLane(t *testing.T) {
 		in   []lineup.Effect
 		want bool
 	}{
-		{"a cue", []lineup.Effect{lineup.CueTicker{ID: "a1"}}, true},
-		{"a release", []lineup.Effect{lineup.ReleaseTicker{ID: "a1"}}, true},
-		{"a cue and its words", []lineup.Effect{lineup.CueTicker{ID: "a1"}, lineup.Speak{ID: "a1"}}, true},
+		// THE RAIL'S EFFECTS, AND THE LANE IS NOW PART OF THE QUESTION (D-82).
+		// The band and the bed are the rail's outputs; the programme is the thing
+		// they are ABOUT, not a competitor for them.
+		{"a hazard's cue", []lineup.Effect{lineup.CueTicker{ID: "a1", Track: lineup.AlertRail}}, true},
+		{"a hazard's release", []lineup.Effect{lineup.ReleaseTicker{ID: "a1", Track: lineup.AlertRail}}, true},
+		{"a hazard's cue and its words", []lineup.Effect{
+			lineup.CueTicker{ID: "a1", Track: lineup.AlertRail},
+			lineup.Speak{ID: "a1", Track: lineup.AlertRail},
+		}, true},
+		// AND THE PROGRAMME'S DO NOT RIDE IT. A report's read blocks for as long
+		// as the words take, so a run of its holding the lane put the hazard the
+		// Director had just admitted behind the weather — see
+		// TestAHazardsWordsDoNotQueueBehindAReportThatIsReading.
+		{"a report's cue", []lineup.Effect{lineup.CueTicker{ID: "r1", Track: lineup.MainTrack}}, false},
+		{"a report's release", []lineup.Effect{lineup.ReleaseTicker{ID: "r1", Track: lineup.MainTrack}}, false},
+		{"a report's cue and its words", []lineup.Effect{
+			lineup.CueTicker{ID: "r1", Track: lineup.MainTrack},
+			lineup.Speak{ID: "r1", Track: lineup.MainTrack},
+		}, false},
 		{"a build", []lineup.Effect{lineup.BuildCard{ID: "a1"}}, false},
-		{"a read with no cue beside it", []lineup.Effect{lineup.Speak{ID: "a1"}}, true},
+		{"a hazard's read with no cue beside it", []lineup.Effect{lineup.Speak{ID: "a1", Track: lineup.AlertRail}}, true},
 		{"a publish", []lineup.Effect{lineup.Publish{}}, false},
 		{"a duck", []lineup.Effect{lineup.Duck{}}, true},
 		{"a restore", []lineup.Effect{lineup.Restore{}}, true},
@@ -641,8 +657,8 @@ func TestTheDuckIsNotOvertakenByTheReadItBrackets(t *testing.T) {
 
 	p.dispatch(ctx, []lineup.Effect{
 		lineup.Duck{},
-		lineup.CueTicker{ID: "a1", Headline: "h"},
-		lineup.Speak{ID: "a1", Script: lineup.Say("words")},
+		lineup.CueTicker{ID: "a1", Headline: "h", Track: lineup.AlertRail},
+		lineup.Speak{ID: "a1", Track: lineup.AlertRail, Script: lineup.Say("words")},
 		lineup.Restore{},
 	})
 
@@ -688,4 +704,80 @@ func TestTheLaneRetiresWithTheLoop(t *testing.T) {
 		t.Error("the lane is still open after the loop returned; cancelling leaks its goroutine")
 	}
 	p.stop()
+}
+
+// A HAZARD'S WORDS DO NOT QUEUE BEHIND A REPORT THAT IS READING (D-82).
+//
+// THE PUMP'S OTHER HALF OF PRE-EMPTION, and without it the schedule's half is
+// worthless. The Director will now let a rail card take the air over a report
+// (D-82) — but every `Speak` claimed `TheBed`, so every read rode the pump's ONE
+// lane, and the hazard's cue and words queued behind a report that blocks for as
+// long as the words take. The operator would see the takeover on the console and
+// hear it minutes later.
+//
+// It was harmless until F-91 built the main track's reader, because a report's
+// Speak was declined in microseconds. It is the shape of the whole batch: a
+// mechanism that was correct while one lane could speak.
+func TestAHazardsWordsDoNotQueueBehindAReportThatIsReading(t *testing.T) {
+	r := newRecorder()
+	reading := make(chan struct{})
+	r.hold["speak(report)"] = reading
+	p, ctx := startPump(t, r, nil)
+
+	// The programme takes the air, and its read blocks for as long as a real
+	// one does.
+	p.dispatch(ctx, []lineup.Effect{
+		lineup.CueTicker{ID: "report", Headline: "OCEANSIDE, CA", Slot: lineup.LocationReport, Track: lineup.MainTrack},
+		lineup.Speak{ID: "report", Slot: lineup.LocationReport, Track: lineup.MainTrack, Script: lineup.Say("the weather for Oceanside")},
+	})
+	// THE CUE IS THE START SIGNAL, not the speak: a HELD effect is not logged
+	// until it is released, so waiting for the read itself would wait for the
+	// thing this test is holding. The cue is the same run's first effect, so
+	// seeing it means the run has been picked up and its read is what the
+	// worker is now inside.
+	awaitContains(t, r, "cue(report)")
+
+	// A tornado warning arrives while it is still speaking.
+	p.dispatch(ctx, []lineup.Effect{
+		lineup.CueTicker{ID: "a1", Headline: "Tornado Warning", Slot: lineup.BreakingAlert, Track: lineup.AlertRail},
+		lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("a tornado warning is in effect")},
+	})
+
+	// IT MUST BE ASKED FOR NOW, not when the report runs out. awaitContains
+	// fails the test after five seconds, and the report is still held.
+	awaitContains(t, r, "speak(a1)")
+	close(reading)
+}
+
+// AND THE RAIL'S OWN ORDER IS UNTOUCHED. Two hazards still ride the lane in the
+// order the Director described them: the release of the card leaving the air
+// must reach the band before the cue of the one taking it (DR-24), and that is
+// exactly what the lane is for. Freeing the PROGRAMME from the lane must not
+// free the rail from it.
+func TestTwoHazardsStillKeepTheirOrderOnTheLane(t *testing.T) {
+	r := newRecorder()
+	first := make(chan struct{})
+	r.hold["speak(a1)"] = first
+	p, ctx := startPump(t, r, nil)
+
+	p.dispatch(ctx, []lineup.Effect{
+		lineup.CueTicker{ID: "a1", Headline: "one", Slot: lineup.BreakingAlert, Track: lineup.AlertRail},
+		lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("one")},
+	})
+	awaitContains(t, r, "cue(a1)") // the run is on the lane and inside its read
+	p.dispatch(ctx, []lineup.Effect{
+		lineup.ReleaseTicker{ID: "a1", Track: lineup.AlertRail},
+		lineup.CueTicker{ID: "a2", Headline: "two", Slot: lineup.BreakingAlert, Track: lineup.AlertRail},
+		lineup.Speak{ID: "a2", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("two")},
+	})
+
+	time.Sleep(50 * time.Millisecond)
+	if seen := r.log(); containsExact(seen, "speak(a2)") {
+		t.Fatalf("the pump saw %v; the second hazard spoke over the first", seen)
+	}
+	close(first)
+	seen := awaitContains(t, r, "speak(a2)")
+	if rel, cue := indexIn(seen, "release(a1)"), indexIn(seen, "cue(a2)"); rel < 0 || rel > cue {
+		t.Errorf("the pump saw %v; the release must reach the band before the next cue (DR-24)", seen)
+	}
 }
