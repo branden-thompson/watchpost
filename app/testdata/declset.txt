@@ -122,6 +122,7 @@ func (*livePipelines).injectHook
 func (*livePipelines).injectHook
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
+func (*livePipelines).masterControl
 func (*livePipelines).narrateEvent
 func (*livePipelines).poolFor
 func (*livePipelines).producer
@@ -136,6 +137,7 @@ func (*livePipelines).setRelayLang
 func (*livePipelines).setStation
 func (*livePipelines).setWatch
 func (*livePipelines).setup
+func (*livePipelines).silenceMonitor
 func (*livePipelines).sources
 func (*livePipelines).startPipelines
 func (*livePipelines).stopAll
@@ -147,6 +149,8 @@ func (*livePipelines).tuneRelay
 func (*livePipelines).wireDeckWarnings
 func (*mastercontrol).GoOnAir
 func (*mastercontrol).GoToStandby
+func (*mastercontrol).HandAir
+func (*mastercontrol).StopMonitor
 func (*mastercontrol).clearBand
 func (*mastercontrol).cue
 func (*mastercontrol).declare
@@ -160,6 +164,7 @@ func (*mastercontrol).resumeLine
 func (*mastercontrol).silent
 func (*mastercontrol).stopLine
 func (*mastercontrol).takeBack
+func (*mastercontrol).tell
 func (*mastercontrol).unhold
 func (*pipeline).stop
 func (*pipeline).update
@@ -211,6 +216,7 @@ func (*radioDeck).installVoice
 func (*radioDeck).label
 func (*radioDeck).listVoices
 func (*radioDeck).logStatus
+func (*radioDeck).monitorHasTheAir
 func (*radioDeck).needsRead
 func (*radioDeck).noteDirectories
 func (*radioDeck).onClipSpent

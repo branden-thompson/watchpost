@@ -17,6 +17,7 @@ func TestASynthesisedReadBecomesAMainTrackCard(t *testing.T) {
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	d := New(Settings{Max: 5}, base)
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 
 	d, fx := d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
 
@@ -69,6 +70,7 @@ func TestASecondNeedForTheSameLocationDoesNotQueueTwice(t *testing.T) {
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	d := New(Settings{Max: 5}, base)
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
 
@@ -136,6 +138,7 @@ func TestTheLocationCanBeReadAgainOnceItsCardHasLeft(t *testing.T) {
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	d := New(Settings{Max: 5}, base)
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
 
 	// The card is read and leaves the schedule. Reached through the lineup
@@ -158,6 +161,7 @@ func TestARotationCardIsTheDirectorsOwn(t *testing.T) {
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	d := New(Settings{Max: 5}, base)
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
 	cards := d.lineup.Cards(MainTrack)
 	if len(cards) != 1 {
@@ -177,6 +181,7 @@ func TestANeedWithNoHeadlineQueuesNothing(t *testing.T) {
 	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	d := New(Settings{Max: 5}, base)
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside"})
 	// DR-7: a card is showable, loggable and countable from the moment it
 	// exists. An unheadlined card would reach the Broadcaster as a blank slot.

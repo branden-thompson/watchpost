@@ -31,7 +31,7 @@ func bedDirector(t *testing.T, dwell time.Duration) Director {
 	// tests were written without it and passed only because the bed did not yet
 	// consult the power at all.
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b", "c"}, Dwell: dwell}, atNoon())
-	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Monitored{Running: true})
 	d, fx := d.Step(Tuned{Ref: "a", Live: true})
 	if n := len(tunesIn(fx)); n != 0 {
 		t.Fatalf("tuning the bed asked for another tune: %v", fx)
@@ -82,14 +82,14 @@ func TestTheBedHoldsWhenItShould(t *testing.T) {
 		{"the bed is the synthesised broadcast, which ends on its own and needs no turn",
 			func(t *testing.T) Director {
 				d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}, Dwell: time.Minute}, atNoon())
-				d, _ = d.Step(Powered{To: Running})
+				d, _ = d.Step(Monitored{Running: true})
 				d, _ = d.Step(Tuned{Ref: "a", Live: false})
 				return d
 			}},
 		{"the watchlist is empty, so there is nowhere to move to",
 			func(t *testing.T) Director {
 				d := New(Settings{Max: 5, Dwell: time.Minute}, atNoon())
-				d, _ = d.Step(Powered{To: Running})
+				d, _ = d.Step(Monitored{Running: true})
 				d, _ = d.Step(Tuned{Ref: "a", Live: true})
 				return d
 			}},
@@ -108,7 +108,7 @@ func TestTheBedHoldsWhenItShould(t *testing.T) {
 // location they are listening to keeps rotating instead of stopping.
 func TestABedOutsideTheWatchlistRejoinsAtTheTop(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}, Dwell: time.Minute}, atNoon())
-	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Monitored{Running: true})
 	d, _ = d.Step(Tuned{Ref: "gone", Live: true})
 	_, fx := d.Step(Tick{Now: atNoon().Add(time.Minute)})
 	tunes := tunesIn(fx)
@@ -125,7 +125,7 @@ func TestABedOutsideTheWatchlistRejoinsAtTheTop(t *testing.T) {
 // five minutes would cut every turn short by however slow the network was.
 func TestTheDwellRunsFromTheMomentTheBedTookIt(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}, Dwell: time.Minute}, atNoon())
-	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Monitored{Running: true})
 	// Three minutes pass with nothing tuned, then the bed takes it.
 	d, _ = d.Step(Tick{Now: atNoon().Add(3 * time.Minute)})
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
@@ -148,7 +148,7 @@ func TestTheDwellRunsFromTheMomentTheBedTookIt(t *testing.T) {
 // which is the second time a gate has produced a defect rather than a chore.
 func TestAWatchlistOfOneNeverRetunesItself(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a"}, Dwell: time.Minute}, atNoon())
-	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Monitored{Running: true})
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
 
 	for i := 1; i <= 4; i++ { // four dwells' worth: it must never move
@@ -160,7 +160,7 @@ func TestAWatchlistOfOneNeverRetunesItself(t *testing.T) {
 	}
 
 	// And it still advances the moment there is somewhere else to go.
-	d, _ = d.Step(Powered{To: Running}) // a stopped station rotates nowhere; without this these pass vacuously
+	d, _ = d.Step(Monitored{Running: true}) // a stopped station rotates nowhere; without this these pass vacuously
 	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
 	_, fx := d.Step(Tick{Now: atNoon().Add(5 * time.Minute)})
 	if tunes := tunesIn(fx); len(tunes) != 1 || tunes[0].Ref != "b" {
@@ -175,7 +175,7 @@ func TestAWatchlistOfOneNeverRetunesItself(t *testing.T) {
 // reporting anything.
 func TestARotationWithABlankEntryIsRefused(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}, Dwell: time.Minute}, atNoon())
-	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Monitored{Running: true})
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
 	before := d.settings.Watchlist
 
@@ -204,7 +204,7 @@ func TestAStoppedProgrammeDoesNotAdvanceTheBed(t *testing.T) {
 	}
 
 	// And it advances again once the listener starts it.
-	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Monitored{Running: true})
 	if _, fx := d.Step(Tick{Now: atNoon().Add(2 * time.Hour)}); len(tunesIn(fx)) != 1 {
 		t.Errorf("the programme was started again and the bed still would not move: %v", fx)
 	}
@@ -219,7 +219,7 @@ func TestAStoppedProgrammeDoesNotAdvanceTheBed(t *testing.T) {
 // moves at two minutes.
 func TestTheSynthBroadcastAdvancesWhenItsCycleEnds(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}, Dwell: time.Minute}, atNoon())
-	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Monitored{Running: true})
 	d, _ = d.Step(Tuned{Ref: "a", Live: false}) // the synth broadcast
 
 	// Well inside the dwell: a tick moves nothing, because the synth does not dwell.
@@ -239,7 +239,7 @@ func TestTheSynthBroadcastAdvancesWhenItsCycleEnds(t *testing.T) {
 // advances by itself when the listener asked for a rotation.
 func TestACycleEndOutsideWatchlistHoldsTheBed(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}}, atNoon()) // Dwell 0 = not Watchlist
-	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Monitored{Running: true})
 	d, _ = d.Step(Tuned{Ref: "a", Live: false})
 	if _, fx := d.Step(Ended{}); len(tunesIn(fx)) != 0 {
 		t.Errorf("a cycle ended outside Watchlist and the bed moved anyway: %v", fx)
@@ -255,7 +255,7 @@ func TestACycleEndOutsideWatchlistHoldsTheBed(t *testing.T) {
 // it did not until the corpus guard noticed m53 had nothing left to anchor to.
 func TestARepeatedTunedReportDoesNotRestartTheTurn(t *testing.T) {
 	d := New(Settings{Max: 5, Watchlist: []string{"a", "b"}, Dwell: time.Minute}, atNoon())
-	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Monitored{Running: true})
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
 
 	// The relay's title changes twice while its turn runs.
@@ -286,7 +286,7 @@ func TestARepeatedTunedReportDoesNotRestartTheTurn(t *testing.T) {
 // the fault fault.go says a window is for.
 func TestATuneThatNeverLandsIsReported(t *testing.T) {
 	d := New(Settings{Max: 5}, planNow)
-	d, _ = d.Step(Powered{To: Running}) // a stopped station rotates nowhere; without this these pass vacuously
+	d, _ = d.Step(Monitored{Running: true}) // a stopped station rotates nowhere; without this these pass vacuously
 	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
 
@@ -320,7 +320,7 @@ func TestATuneThatNeverLandsIsReported(t *testing.T) {
 // AND A TUNE THAT LANDS IS NOT REPORTED, however long the station then plays.
 func TestATuneThatLandsIsNotReported(t *testing.T) {
 	d := New(Settings{Max: 5}, planNow)
-	d, _ = d.Step(Powered{To: Running}) // a stopped station rotates nowhere; without this these pass vacuously
+	d, _ = d.Step(Monitored{Running: true}) // a stopped station rotates nowhere; without this these pass vacuously
 	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
 	d, _ = d.Step(Ended{})
@@ -340,11 +340,15 @@ func TestATuneThatLandsIsNotReported(t *testing.T) {
 // prevent.
 func TestAStopWhileATuneIsInFlightIsNotAFault(t *testing.T) {
 	d := New(Settings{Max: 5}, planNow)
-	d, _ = d.Step(Powered{To: Running}) // a stopped station rotates nowhere; without this these pass vacuously
+	d, _ = d.Step(Monitored{Running: true}) // a stopped station rotates nowhere; without this these pass vacuously
 	d, _ = d.Step(Programme{Watchlist: []string{"a", "b"}, Dwell: time.Minute})
 	d, _ = d.Step(Tuned{Ref: "a", Live: true})
 	d, _ = d.Step(Ended{})
-	d, _ = d.Step(Powered{To: Stopped}) // the listener stopped it
+	// THE OPERATOR STOPPED LISTENING, which is what this test is about (D-74).
+	// It said `Powered{Stopped}` when the STATION's power and the MONITOR's were
+	// one field — and under the split, stopping the station has nothing to do
+	// with a tune the operator's own rotation asked for.
+	d, _ = d.Step(Monitored{Running: false})
 
 	_, fx := d.Step(Tick{Now: planNow.Add(tuneLands + time.Second)})
 	if hasEscalate(fx) {

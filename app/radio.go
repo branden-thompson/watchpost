@@ -53,6 +53,11 @@ type radioDeck struct {
 	// and in the pathless build.
 	abandonRead func(why string) bool
 
+	// air reports whether the MONITOR — the operator's own listening — may reach
+	// the engine (D-74). Nil in tests and in the pathless build, where there is
+	// no station to take the air and the deck has always been the operator's.
+	air func() bool
+
 	persistMode func(tty.RadioMode) error                      // saves the [m] pick (UAT 97); nil in tests
 	fire        func(snapshot.LocationRef) synth.FireReport    // the location's fire report for the broadcast (UAT 114); nil = skipped
 	seismic     func(snapshot.LocationRef) synth.SeismicReport // the location's seismic report for the broadcast (P4); nil = skipped
@@ -189,7 +194,12 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	// A REPEATED TUNE IS NOT A SECOND START: onPowered no-ops when the power is
 	// already what it is asked for, which is why this needs no transition edge
 	// of its own to guard it.
-	d.tell(lineup.Powered{To: lineup.Running})
+	// THE MONITOR'S OWN POWER, NOT THE STATION'S (D-74). This declared
+	// `Powered{Running}` when the two were one field — which is why listening in
+	// Observer put the CONSOLE on the air, and why `ctrl+o` was refused after a
+	// round trip (D-69's root). The operator tuning something to listen to says
+	// nothing about whether their station is broadcasting.
+	d.tell(lineup.Monitored{Running: true})
 	same := stream.SAMEFromUGC(d.nws.CountyUGC(ctx, ref))
 	stations, statuses := d.resolver.ResolveWithStatus(ctx, ref.Lat, ref.Lon, same)
 	d.noteDirectories(statuses)
@@ -518,6 +528,21 @@ func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) 
 		// about it: its words are composed at standby, minutes later.
 		d.tell(lineup.NeedsRead{Ref: string(snapshot.Key(ref)), Headline: ref.Label})
 	}
+	// AND IT PLAYS IT ONLY WHILE THE MONITOR HAS THE AIR (D-74).
+	//
+	// THIS IS THE HALF THE HUM LEAD HEARD: "audio in Broadcaster is still pulling
+	// audio from Observer." The deck's own rotation and the station's line-up
+	// both reached the one engine, so with the station running the operator
+	// heard both — the line-up they scheduled, and the watchlist they had been
+	// listening to underneath it.
+	//
+	// IT REPORTS EITHER WAY. The need is a FACT — nobody is carrying this
+	// location — and the Director is entitled to it whoever is on the air; what
+	// the air decides is who PERFORMS. That separation is the same one
+	// `needsRead`'s own header states: the deck reports, the Director decides.
+	if !d.monitorHasTheAir() {
+		return
+	}
 	// THE DECK STILL PLAYS IT. There is no stage in which it does not: "live"
 	// meant the card was read through the ARBITER, and D-33 rules that the
 	// programme is not a narration — a chosen read replaces the bed rather
@@ -644,7 +669,10 @@ func (d *radioDeck) Stop() {
 	// NOTHING FOLLOWS A STOP, and the Director has to be told: it holds the
 	// dwell now, and a schedule that never heard about the stop would move the
 	// bed on five minutes later and start the station up again by itself.
-	d.tell(lineup.Powered{To: lineup.Stopped})
+	//
+	// THE MONITOR'S STOP, NOT THE STATION'S (D-74). The operator stopped
+	// LISTENING; the station's power is the console's to declare.
+	d.tell(lineup.Monitored{Running: false})
 	// NOT Restore(): whether an alert is on the air is the takeover's to say,
 	// and it pairs its own. Halt silences the broadcast either way, and a
 	// suppression cleared here would let whatever the listener starts next come
@@ -1093,4 +1121,21 @@ func alertTonePCM(class cast.Class) []byte {
 		out = append(out, one...)
 	}
 	return out
+}
+
+// monitorHasTheAir reports whether the OPERATOR'S OWN listening may reach the
+// engine (D-74).
+//
+// ASKED OF THE EFFECTOR, which is the one thing that declares the air. A flag of
+// the deck's own would be a second carrier of the same question, and two
+// carriers of one rule is the shape that produced the duck-lift bug.
+//
+// A DECK WITH NO EFFECTOR PLAYS, which is the older tests and the pathless
+// build: the air is a thing a STATION has, and a deck with no station to take it
+// has always been the operator's alone.
+func (d *radioDeck) monitorHasTheAir() bool {
+	if d == nil || d.air == nil {
+		return true
+	}
+	return d.air()
 }

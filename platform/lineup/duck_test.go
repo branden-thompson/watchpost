@@ -35,6 +35,7 @@ func onTheBed(t *testing.T) Director {
 	t.Helper()
 	d := New(Settings{Max: 5}, time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(CutOver{ToBed: true})
 	if !d.bed.carries {
 		t.Fatal("the fixture needs the programme on the bed")
@@ -94,6 +95,7 @@ func TestAHazardOverACarryingBedDucksIt(t *testing.T) {
 func TestNothingDucksWhenTheBedIsNotCarrying(t *testing.T) {
 	d := New(Settings{Max: 5}, time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 
 	_, fx := d.Step(Arrived{Arrivals: []Arrival{aTornado()}})
 
@@ -144,6 +146,7 @@ func TestASecondHazardDoesNotDuckAgain(t *testing.T) {
 func TestNothingIsRestoredThatWasNeverDucked(t *testing.T) {
 	d := New(Settings{Max: 5}, time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(Arrived{Arrivals: []Arrival{aTornado()}})
 	d, _ = d.Step(Built{ID: BurstID("a1"), Script: Say("A tornado warning has been declared.")})
 

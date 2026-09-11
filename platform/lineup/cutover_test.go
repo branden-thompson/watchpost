@@ -24,6 +24,7 @@ func running(t *testing.T) Director {
 	t.Helper()
 	d := New(Settings{Max: 5}, cutoverBase())
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
 	if len(d.lineup.Cards(MainTrack)) != 1 {
 		t.Fatalf("the fixture needs one main-track card; got %d", len(d.lineup.Cards(MainTrack)))

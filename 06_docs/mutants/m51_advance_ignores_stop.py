@@ -7,8 +7,8 @@ import pathlib
 # dwell path. Both are needed: a stopped station can be reached either by a tick
 # or by a cycle that was already in flight when the stop landed.
 p = pathlib.Path("platform/lineup/bed.go"); s = p.read_text()
-old = """	if !d.advances(MainTrack) {
-		return d, nil // stopped: nothing follows a listener's stop
+old = """	if !d.advancesMonitor() {
+		return d, nil // the air is not the monitor's: nothing follows
 	}
 """
 assert old in s, "m51"

@@ -34,6 +34,7 @@ func seedT(t *testing.T, s Settings, cards ...Card) Director {
 	}
 	d := New(s, time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	for _, c := range cards {
 		proposed, err := Propose(c)
 		if err != nil {

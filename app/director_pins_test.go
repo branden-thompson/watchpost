@@ -113,8 +113,11 @@ func TestT01TheDeckReportsTheFactsTheDirectorDecidesOn(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("a stop told the Director %d things, want one: %v", len(got), got)
 	}
-	if p, ok := got[0].(lineup.Powered); !ok || p.To != lineup.Stopped {
-		t.Errorf("a stop reported %#v, want Powered{Stopped}", got[0])
+	// THE MONITOR'S STOP, NOT THE STATION'S (D-74). The operator stopped
+	// LISTENING; their station's power is the console's to declare, and the two
+	// being one field is what made a tune put the console on the air.
+	if m, ok := got[0].(lineup.Monitored); !ok || m.Running {
+		t.Errorf("a stop reported %#v, want Monitored{Running: false}", got[0])
 	}
 
 	// THE ROTATION IS REPORTED ON EVERY CHANGE, playing or not — a setting the
@@ -690,18 +693,21 @@ func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 	if len(got) == 0 {
 		t.Fatalf("starting the programme told the Director nothing")
 	}
-	if p, ok := got[0].(lineup.Powered); !ok || p.To != lineup.Running {
-		t.Errorf("starting reported %#v, want Powered{Running} FIRST — a need reported to a "+
-			"stopped Director is a card refused", got[0])
+	// THE MONITOR'S START, AND IT IS STILL FIRST (D-74). A need reported to a
+	// Director that believes nobody is listening is a rotation that never
+	// advances — the same hazard the old wording named, one power along.
+	if m, ok := got[0].(lineup.Monitored); !ok || !m.Running {
+		t.Errorf("starting reported %#v, want Monitored{Running: true} FIRST — a need reported to a "+
+			"Director that believes nobody is listening is a rotation that never advances", got[0])
 	}
 
 	// A MODE CHANGE IS NOT A POWER CHANGE. The deck moving from synth to a
 	// relay tells the Director nothing, because nothing about whether the
-	// programme is running has changed — which is the coupling this fix broke.
+	// operator is listening has changed — which is the coupling this fix broke.
 	got = nil
 	d.setMode("live", "KEC62", "a relay")
 	if len(got) != 0 {
-		t.Errorf("a mode change reported %v; the mode is the deck's business, the power is the listener's", got)
+		t.Errorf("a mode change reported %v; the mode is the deck's business, the monitor's power is the operator's", got)
 	}
 
 	// And a stop is still reported, so the pair is balanced.
@@ -710,8 +716,11 @@ func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("a stop told the Director %d things, want one: %v", len(got), got)
 	}
-	if p, ok := got[0].(lineup.Powered); !ok || p.To != lineup.Stopped {
-		t.Errorf("a stop reported %#v, want Powered{Stopped}", got[0])
+	// THE MONITOR'S STOP, NOT THE STATION'S (D-74). The operator stopped
+	// LISTENING; their station's power is the console's to declare, and the two
+	// being one field is what made a tune put the console on the air.
+	if m, ok := got[0].(lineup.Monitored); !ok || m.Running {
+		t.Errorf("a stop reported %#v, want Monitored{Running: false}", got[0])
 	}
 }
 

@@ -24,6 +24,7 @@ func withNotice(t *testing.T) Director {
 	t.Helper()
 	d := New(Settings{Max: 5, Depth: 0}, time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	for _, c := range []Card{
 		{ID: "r0", Slot: LocationReport, Origin: FromDirector, Subject: "oceanside", Headline: "OCEANSIDE, CA"},
 		{ID: "t0", Slot: Transition, Origin: FromDirector, Subject: "stale read", Headline: "Report out of date", Script: Say("That report is out of date.")},
@@ -62,6 +63,7 @@ func TestTheProjectionIsTheIdentityWhenNothingIsStructural(t *testing.T) {
 	// which is why no code was needed until now.
 	d := New(Settings{Max: 5}, time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC))
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
 
 	if got, want := ids(d.lineup.Projection(MainTrack)), ids(d.lineup.Cards(MainTrack)); !equal(got, want) {

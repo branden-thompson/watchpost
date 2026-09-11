@@ -367,6 +367,7 @@ func TestTheScheduleTopsTheLineUpOffToTheConsolesWindow(t *testing.T) {
 
 	// Starting the programme is what lets the track advance (DR-3), and the
 	// publish that follows is what asks the producer.
+	s.carry(lineup.Aired{To: lineup.AirProgramme}) // the console holds the air (D-74)
 	s.carry(lineup.Powered{To: lineup.Running})
 
 	deadline := time.Now().Add(10 * time.Second)
@@ -422,6 +423,7 @@ func TestAProposalAndARotationReadShareOneIdentity(t *testing.T) {
 	}
 
 	d := lineup.New(lineup.Settings{Max: 5, Depth: 4}, execNow)
+	d, _ = d.Step(lineup.Aired{To: lineup.AirProgramme}) // the console holds the air (D-74)
 	d, _ = d.Step(lineup.Powered{To: lineup.Running})
 	d, _ = d.Step(lineup.Offered{Proposals: ps})
 	if n := len(d.Lineup().Projection(lineup.MainTrack)); n != 1 {

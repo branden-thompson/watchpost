@@ -127,6 +127,14 @@ func (d Director) advances(t Track) bool {
 	if d.bed.carries {
 		return false
 	}
+	// AND THE STATION'S LINE-UP ONLY ADVANCES WHILE THE STATION HAS THE AIR
+	// (D-74). Until now this gate answered for BOTH programmes — the line-up and
+	// the operator's own listening — so a running station could produce two at
+	// once, which is what the HUM LEAD heard. The monitor asks
+	// `advancesMonitor()` now; this is the station's half and it says so.
+	if d.air != AirProgramme {
+		return false
+	}
 	return d.power == Running
 }
 

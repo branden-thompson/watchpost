@@ -63,6 +63,8 @@ func TestTheMainTrackDoesNotAdvanceWhileTheRadioIsStopped(t *testing.T) {
 	}
 
 	// And the moment the listener starts it, the programme picks up.
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, started := run(d, Powered{To: Running})
 	if !has(started, "build(bonsall)") {
 		t.Fatalf("starting the radio produced %v, want the report's build", started)
@@ -105,6 +107,8 @@ func TestAStoppedRadioStillReadsTheAlertRail(t *testing.T) {
 // not be left holding a callout for a read that has ended (DR-24).
 func TestStoppingTakesTheProgrammeOffTheAirAndReleasesTheBand(t *testing.T) {
 	d := programme(t, New(Settings{Max: 10}, planNow), "bonsall", "oceanside")
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running}, Built{ID: "bonsall", Script: Say("conditions are fair")})
 	if on, _ := d.Lineup().OnAir(); on.ID != "bonsall" {
 		t.Fatalf("the air is held by %q; the stop under test is not being exercised", on.ID)
@@ -133,6 +137,7 @@ func TestStoppingDoesNotCutAnAlertShort(t *testing.T) {
 	// and a burst is one card (MVS-D-77).
 	reading, behind := BurstID("a00"), BurstID("b00")
 	d, _ := rail(t, "a", "b")
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running}, Built{ID: reading, Script: Say("words")})
 	if on, _ := d.Lineup().OnAir(); on.ID != reading {
 		t.Fatalf("the air is held by %q; the stop under test is not being exercised", on.ID)
@@ -169,14 +174,16 @@ func TestTheRunningStateIsTheOnlyCarrier(t *testing.T) {
 		{Stopped, AlertRail, true},
 	} {
 		d := New(Settings{Max: 10}, planNow)
-		d.power = tc.power
+		// THE STATION HOLDS THE AIR (D-74). This table is about the POWER, so
+		// the other half of the gate is set out of the way of what it measures.
+		d.power, d.air = tc.power, AirProgramme
 		if got := d.advances(tc.track); got != tc.want {
 			t.Errorf("%v %v: advances = %v, want %v", tc.power, tc.track, got, tc.want)
 		}
 	}
 	// An out-of-range track advances nothing: the safe direction is silence.
 	d := New(Settings{Max: 10}, planNow)
-	d.power = Running
+	d.power, d.air = Running, AirProgramme
 	if d.advances(numTracks) {
 		t.Error("a track outside the registry advances")
 	}
@@ -201,6 +208,7 @@ func TestTheRunningStateIsTheOnlyCarrier(t *testing.T) {
 // stopped radio, and a pump that batches can deliver the same command twice.
 func TestPoweringToWhatItAlreadyIsChangesNothing(t *testing.T) {
 	d := programme(t, New(Settings{Max: 10}, planNow), "bonsall")
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running}, Built{ID: "bonsall", Script: Say("conditions are fair")})
 	before := ids(d.Lineup().Cards(MainTrack))
 
@@ -208,6 +216,7 @@ func TestPoweringToWhatItAlreadyIsChangesNothing(t *testing.T) {
 	// no-op command that still published would re-notify every subscriber — the
 	// synth layer, the fetch layer, the ticker, the deck — about a lineup that
 	// did not change, on every idle keypress.
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, again := run(d, Powered{To: Running})
 	if len(again) != 0 {
 		t.Errorf("starting an already-running radio produced %v, want nothing", again)
@@ -234,6 +243,7 @@ func TestPoweringToWhatItAlreadyIsChangesNothing(t *testing.T) {
 // "running".
 func TestAnUnknownPowerIsRefused(t *testing.T) {
 	d := programme(t, New(Settings{Max: 10}, planNow), "bonsall")
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running})
 	after, _ := run(d, Powered{To: numPowers})
 	if after.Power() != Running {
@@ -273,6 +283,7 @@ func TestAStepPublishesOnceAndLast(t *testing.T) {
 		t.Fatalf("seeding the main track: %v", err)
 	}
 	d.lineup = l
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running})
 	d, _ = run(d, Built{ID: "bonsall", Script: Say("conditions are fair")})
 
@@ -307,7 +318,10 @@ func TestMVSD78EachPowerLetsThroughWhatItShould(t *testing.T) {
 		t.Fatalf("the table covers %d powers, the registry declares %d — a power was added without a row", len(want), numPowers)
 	}
 	for p := Power(0); p < numPowers; p++ {
-		d := Director{power: p}
+		// THE STATION HOLDS THE AIR. This walks the POWER registry, so the
+		// air is held constant at the value that lets the power be measured
+		// at all (D-74).
+		d := Director{power: p, air: AirProgramme}
 		for tr := Track(0); tr < numTracks; tr++ {
 			if got := d.advances(tr); got != want[p][tr] {
 				t.Errorf("%v on %v advances=%v, want %v", p, tr, got, want[p][tr])

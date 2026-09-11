@@ -330,6 +330,16 @@ type Director struct {
 	power    Power
 	bed      bed // what the broadcast rides on, and when it took it (T3.2b)
 
+	// monitor is whether the OPERATOR'S OWN listening is running — the second
+	// power (D-74, air.go). Separate from `power`, which is the STATION's.
+	monitor bool
+
+	// air is WHICH PROGRAMME may reach the engine (D-74, air.go) — the
+	// operator's own listening, or the station's line-up. It is not the power:
+	// power says whether the station broadcasts, the air says which of the two
+	// programmes may. Zero is AirMonitor, which is every build before this one.
+	air Air
+
 	// lastRead is when each KIND of card was last read in full (D-48, F-76).
 	//
 	// AN ARRAY, BOUNDED BY THE REGISTRY, and that is the whole of the ruling:
@@ -363,6 +373,23 @@ func New(s Settings, now time.Time) Director {
 // Lineup is the schedule as it stands — a copy of the value, which readers may
 // hold as long as they like.
 func (d Director) Lineup() Lineup { return d.lineup }
+
+// MonitorRunning reports whether the OPERATOR'S OWN listening is running (D-74)
+// — the second power, and the one a TUNE declares.
+func (d Director) MonitorRunning() bool { return d.monitor }
+
+// Air is which programme may reach the engine.
+func (d Director) Air() Air { return d.air }
+
+// MonitorAdvancesForTest and StationAdvancesForTest expose the two gates so a
+// test in another package can assert they are MUTUALLY EXCLUSIVE (D-74).
+//
+// EXPORTED FOR THAT ONE PROPERTY, and named so. The gates themselves stay
+// unexported because nothing in production may ask them from outside — the
+// Director decides, and a caller that could ask would be a caller that could
+// disagree.
+func (d Director) MonitorAdvancesForTest() bool { return d.advancesMonitor() }
+func (d Director) StationAdvancesForTest() bool { return d.advances(MainTrack) }
 
 // Now is the clock as the last Tick left it.
 func (d Director) Now() time.Time {
@@ -401,6 +428,10 @@ func (d Director) Step(ev Event) (Director, []Effect) {
 		return d.onFailed(e)
 	case Powered:
 		return d.onPowered(e)
+	case Aired:
+		return d.onAired(e)
+	case Monitored:
+		return d.onMonitored(e)
 	case NeedsRead, Offered:
 		return d.stepProducer(ev)
 	case Tuned, Programme, Ended, CutOver:
@@ -917,6 +948,10 @@ func DescribeEvent(ev Event) string {
 		return named("failed", v.ID) + ":" + v.Reason
 	case Powered:
 		return named("powered", v.To.String())
+	case Aired:
+		return named("aired", v.To.String())
+	case Monitored:
+		return named("monitored", monitorWord(v.Running))
 	case Tuned:
 		return named("tuned", v.Ref)
 	case Programme:

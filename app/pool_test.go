@@ -138,6 +138,7 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 	if s == nil {
 		t.Fatal("the schedule refused to start")
 	}
+	s.carry(lineup.Aired{To: lineup.AirProgramme}) // the console holds the air (D-74)
 	s.carry(lineup.Powered{To: lineup.Running})
 
 	deadline := time.Now().Add(10 * time.Second)

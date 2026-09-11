@@ -1226,6 +1226,7 @@ func TestTheTopOffChainStopsOnceTheLineUpIsFull(t *testing.T) {
 		{Ref: "carlsbad", Headline: "CARLSBAD, CA"},
 	}}
 	d := lineup.New(lineup.Settings{Max: 10, Depth: 2}, execNow)
+	d, _ = d.Step(lineup.Aired{To: lineup.AirProgramme}) // the console holds the air (D-74)
 	d, _ = d.Step(lineup.Powered{To: lineup.Running})
 
 	d, first := d.Step(offer)

@@ -41,6 +41,7 @@ import (
 func stagedOn(t *testing.T, track Track, age time.Duration) Director {
 	t.Helper()
 	d := New(Settings{Max: 10}, planNow)
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running})
 
 	slot := LocationReport

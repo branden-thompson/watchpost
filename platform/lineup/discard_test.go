@@ -78,6 +78,7 @@ func TestTheOldestFallsThroughTheTrapdoor(t *testing.T) {
 func TestThePileDoesNotCountAsSchedule(t *testing.T) {
 	d := New(Settings{Max: 5}, discardBase())
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d.lineup = d.lineup.discard(aCard(t, "dropped"))
 
 	if got := d.lineup.held(); got != 0 {
@@ -112,6 +113,7 @@ func TestACloneKeepsThePile(t *testing.T) {
 func TestThePublishedLineupCarriesThePile(t *testing.T) {
 	d := New(Settings{Max: 5}, discardBase())
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d.lineup = d.lineup.discard(aCard(t, "dropped"))
 
 	_, fx := d.Step(Tick{Now: discardBase().Add(time.Second)})
@@ -141,6 +143,7 @@ func TestAStaleDropLandsOnThePile(t *testing.T) {
 	// fixture needs a hazard holding the air while the report ages behind it.
 	d := New(Settings{Max: 5}, discardBase())
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(Arrived{Arrivals: []Arrival{aTornado()}})
 	d, _ = d.Step(Built{ID: BurstID("a1"), Script: Say("A tornado warning has been declared.")})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
@@ -176,6 +179,7 @@ func TestAStaleDropLandsOnThePile(t *testing.T) {
 func TestAFailedCardDoesNotGoOnThePile(t *testing.T) {
 	d := New(Settings{Max: 5}, discardBase())
 	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme})
 	d, _ = d.Step(NeedsRead{Ref: "oceanside", Headline: "OCEANSIDE, CA"})
 
 	d, _ = d.Step(Failed{ID: ReadID("oceanside"), Reason: "the report composed nothing to say", Routed: true})

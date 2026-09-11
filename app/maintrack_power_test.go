@@ -14,8 +14,15 @@ package app
 //
 // THE ASYMMETRY WAS THE DEFECT. Stop is reported where the LISTENER acts
 // (radio.go, Stop); start was reported where the AUDIO happened to begin. The
-// deck now reports the programme running from the same place it reports it
-// stopped — the moment it is asked to carry a location, whatever medium wins.
+// deck now reports from the same place it reports a stop — the moment it is
+// asked to carry a location, whatever medium wins.
+//
+// WHAT IT REPORTS CHANGED AT D-74, AND THE DEFECT DID NOT. It said
+// `Powered{Running}` when the STATION's power and the OPERATOR'S MONITOR were
+// one field; they are two now, and a tune starts the MONITOR. The hazard this
+// pins is the same one in the new shape: a deck asked to carry a location while
+// the Director believes nobody is listening will never rotate, and the station
+// is permanently silent for exactly the old reason.
 //
 // DRIVEN THROUGH tune(), NOT PAST IT. The 0.15.0 build log records being burned
 // twice by driving through the wrong seam, and the red team reproduced this at
@@ -47,14 +54,27 @@ func TestAReportingStationCanActuallyStart(t *testing.T) {
 	d.tune(pinRef("A", 33.19, -117.37))
 	d.engine.Halt()
 
-	if got := dir.Power(); got != lineup.Running {
-		t.Fatalf("the deck was asked to carry a location and the Director is still %v — "+
-			"every main-track card is refused by advances() and the station is permanently silent", got)
+	if !dir.MonitorRunning() {
+		t.Fatal("the deck was asked to carry a location and the Director still believes nobody is listening — " +
+			"the rotation never advances and the station is permanently silent")
 	}
-	// D-33 retired the "live" stage; DARK is the one that reports now. The
-	// defect this pins is unchanged and is not about the stage at all: power
-	// must be reported from where the LISTENER acts, never from the deck's
-	// mode string.
+	// AND THE STATION'S OWN POWER IS UNTOUCHED BY IT (D-74). A tune is the
+	// OPERATOR listening; it must never put their station on the air, which is
+	// the defect D-69 traced and this is the pin for it.
+	if got := dir.Power(); got == lineup.Running {
+		t.Error("a tune put the STATION on the air; listening is not broadcasting")
+	}
+	// AND THE NEED REACHES THE SCHEDULE, which is the other half of the report
+	// and the half that is NOT about power at all.
+	//
+	// THE CONSOLE HAS TO PUT THE STATION ON THE AIR FIRST (D-74). It did not
+	// used to: the tune declared the power itself, so the card was admitted by
+	// the very event that reported it. Two declarations now, by two people — the
+	// operator listening, and the operator broadcasting — and this is the second.
+	dir, _ = dir.Step(lineup.Aired{To: lineup.AirProgramme})
+	dir, _ = dir.Step(lineup.Powered{To: lineup.Running})
+	d.tune(pinRef("A", 33.19, -117.37))
+	d.engine.Halt()
 	cards := dir.Lineup().Cards(lineup.MainTrack)
 	if len(cards) != 1 {
 		t.Fatalf("a reporting tune must put ONE report on the main track; got %d", len(cards))
@@ -86,8 +106,15 @@ func TestARelayTuneAlsoPowersTheDirector(t *testing.T) {
 	d.tune(pinRef("B", 32.71, -117.16))
 	d.engine.Halt()
 
-	if got := dir.Power(); got != lineup.Running {
-		t.Fatalf("asking for a relay is also starting the station; got %v", got)
+	// THE MONITOR STARTS WHICHEVER MEDIUM WINS (D-74). It said "asking for a
+	// relay is also starting the STATION" when the two powers were one field;
+	// the rule it was protecting is the one that survives — the report must not
+	// depend on which branch the tune takes.
+	if !dir.MonitorRunning() {
+		t.Fatal("asking for a relay is also starting the operator's own listening; it reported nothing")
+	}
+	if got := dir.Power(); got == lineup.Running {
+		t.Error("and it must not put the STATION on the air")
 	}
 }
 
@@ -131,14 +158,18 @@ func TestThePowerReportIsNotInsideABranch(t *testing.T) {
 					return true
 				}
 				sel, ok := lit.Type.(*ast.SelectorExpr)
-				if !ok || sel.Sel.Name != "Powered" {
+				// `Monitored` SINCE D-74. The rule is unchanged — the report must
+				// not sit inside a branch — and the event it walks for is the
+				// one a tune now sends: the OPERATOR'S monitor, not the
+				// STATION's power.
+				if !ok || sel.Sel.Name != "Monitored" {
 					return true
 				}
 				found++
 				if _, direct := enclosing.(*ast.ExprStmt); !direct {
-					t.Errorf("%s: the power report sits inside %T — whether the station is on must not "+
-						"depend on which medium wins, and a listener whose relay resolves would take a "+
-						"different answer from one whose does not", fset.Position(lit.Pos()), enclosing)
+					t.Errorf("%s: the monitor report sits inside %T — whether the operator is listening "+
+						"must not depend on which medium wins, and a relay that resolves would take a "+
+						"different answer from one that does not", fset.Position(lit.Pos()), enclosing)
 				}
 				return true
 			})
@@ -147,6 +178,6 @@ func TestThePowerReportIsNotInsideABranch(t *testing.T) {
 	// SILENCE IS A DISTINCT VERDICT (INST-2): no send at all means the walk
 	// broke, or the report has moved out of tune again — which is the defect.
 	if found != 1 {
-		t.Fatalf("want exactly one Powered report in tune; found %d", found)
+		t.Fatalf("want exactly one Monitored report in tune; found %d", found)
 	}
 }
