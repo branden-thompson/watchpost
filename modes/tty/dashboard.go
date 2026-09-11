@@ -87,17 +87,24 @@ type Config struct {
 	// 0.14.0 — the cast, as strings. modes/tty may not import the registry
 	// (make lint-imports), so the app supplies the role keys, the class list
 	// and the hooks, and a parity test in app pins them to the registry.
-	Cast           CastView                       // who reads what, on this host
-	Tones          ToneState                      // the per-class mute state
-	ToneClasses    []ToneClass                    // the mutable classes, in draw order
-	SetCast        func(CastView) error           // save the cast and re-cast the deck
-	SetTones       func(ToneState) error          // save the tone mute; NOT a re-cast ([M] must not disturb the air)
-	VoiceInstalled func(name string) bool         // is this voice on the host? (the not-installed note)
-	Hydrate        func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
-	Credits        []string                       // About "Data Provided by" lines — the app owns the list (UAT 75)
-	Radio          Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
-	Spectrum       func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
-	FireBoldMW     float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
+	Cast           CastView               // who reads what, on this host
+	Tones          ToneState              // the per-class mute state
+	ToneClasses    []ToneClass            // the mutable classes, in draw order
+	SetCast        func(CastView) error   // save the cast and re-cast the deck
+	SetTones       func(ToneState) error  // save the tone mute; NOT a re-cast ([M] must not disturb the air)
+	VoiceInstalled func(name string) bool // is this voice on the host? (the not-installed note)
+	// StationArea is where the STATION transmits from and how far it reaches, at
+	// launch (D-72). Changes arrive as `StationAreaMsg`; this is the value the
+	// console opens with, because a message sent before the program's loop is
+	// running has nobody to receive it — which is exactly how the first version
+	// of this deadlocked the whole app at startup.
+	StationArea StationAreaMsg
+
+	Hydrate    func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
+	Credits    []string                       // About "Data Provided by" lines — the app owns the list (UAT 75)
+	Radio      Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
+	Spectrum   func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
+	FireBoldMW float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)
 
 	// FireRadiusKm and FireIncidentRadiusKm are the two rings the fire section
 	// reports against, and they are TWO because the data is two things: the

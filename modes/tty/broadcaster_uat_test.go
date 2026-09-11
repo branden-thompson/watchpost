@@ -6,6 +6,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -343,11 +344,23 @@ func TestTheLaneCaptionCarriesNoLines(t *testing.T) {
 func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
+	// THE STATION IS TOLD WHERE IT IS (D-72). It was two hard-coded constants
+	// until the station had settings of its own.
+	b, _ = b.Update(StationAreaMsg{
+		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.2881, Lon: -117.2256},
+		RadiusMi:    25,
+	})
 	got := stripANSITest(b.stationSection(b.opts(), "", ""))
-	for _, want := range []string{"TRANSMITTER:", bcPlaceholderLocation, "TOWER GPS", "SERVICE RADIUS"} {
+	for _, want := range []string{"TRANSMITTER:", "Bonsall, CA", "TOWER GPS", "33.2881", "-117.2256", "SERVICE RADIUS: 25 Miles"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("%q is missing from the station section:\n%s", want, got)
 		}
+	}
+	// AND A STATION THAT HAS NOT BEEN TOLD SAYS SO, rather than naming a place
+	// it was compiled with.
+	bare := stripANSITest(NewBroadcaster().withSize(150, 74).stationSection(b.opts(), "", ""))
+	if !strings.Contains(bare, bcNoTransmitter) {
+		t.Errorf("a station with no epicentre says so:\n%s", bare)
 	}
 	// AND THE BED SAYS WHAT IT IS DOING IN A SENTENCE, at the right, in the
 	// column the station's own transition hint occupies.

@@ -41,6 +41,22 @@ type LineupMsg struct{ Lineup lineup.Lineup }
 // second carrier would be a safety bug rather than a display one.
 type StationMsg struct{ Power lineup.Power }
 
+// StationAreaMsg carries WHERE the station transmits from and how far it reaches
+// (D-72).
+//
+// SEPARATE FROM THE LISTENER'S DEFAULT LOCATION, which is the ruling: "Default
+// Location no longer = Transmitter Location — this is Broadcaster epicenter from
+// which the service radius fence radiates from." The console drew both as
+// placeholder constants until now.
+//
+// A MESSAGE, NOT A CONFIG FIELD, because it MOVES: a station borrowing the
+// listener's default location follows it, and the radius is an editable setting.
+// A value read once at construction would be right until the first change.
+type StationAreaMsg struct {
+	Transmitter snapshot.LocationRef
+	RadiusMi    float64
+}
+
 // MainTrackSlots is how many cards the rolling main-track view shows (FR-3.1).
 //
 // EXPORTED SO IT IS ONE NUMBER, NOT TWO (D-40). The Director fills the line-up
@@ -90,6 +106,10 @@ type Broadcaster struct {
 	// the Router mirrors it here each update, so the two surfaces cannot
 	// disagree about how loud the station is.
 	gain int
+
+	// area is where the station transmits from and how far it reaches (D-72),
+	// published by the schedule's own owner rather than guessed at here.
+	area StationAreaMsg
 
 	// statusNote is what the STATION SECTION says on its third row instead of the
 	// power's own words — today, why a swap was refused.
@@ -195,6 +215,8 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 		b.darkBG = v.IsDark()
 	case LineupMsg:
 		b.lineup = v.Lineup
+	case StationAreaMsg:
+		b.area = v
 	case StationMsg:
 		// THE CLOCK STARTS ON THE TRANSITION, not on every message: a station
 		// that has been silent an hour must not look freshly quiet because
@@ -762,7 +784,7 @@ func (b Broadcaster) stationLine() []string {
 		render.PadBetween(label("STATION:")+state, hint, lane),
 		// THE TRANSMITTER'S IDENTITY MOVED HERE FROM THE MASTHEAD (D-71). It is
 		// a fact about the STATION; the masthead is what both surfaces share.
-		render.PadTo(label("TRANSMITTER:")+b.identityRow(max(0, lane-bcLabelCells)), lane),
+		render.PadTo(label("TRANSMITTER:")+b.transmitterRow(max(0, lane-bcLabelCells)), lane),
 		render.PadBetween(label(o.KeyCap("B")+" BED:")+b.bedSelector(o), bed, lane),
 		render.PadBetween(render.TruncateCells(label("")+why, max(0, room)), gain, lane),
 	}
@@ -1064,3 +1086,9 @@ func kindFirst(headline string, lane int, g render.Glyphs) string {
 // ESTIMATE, used only to decide when the kind is dropped — the row itself owns
 // the real arithmetic, and over-estimating here costs a kind, never a subject.
 const bcRowTail = 24
+
+// withSize is a console sized for a test, so a fixture reads as one expression.
+func (b Broadcaster) withSize(w, h int) Broadcaster {
+	b.width, b.height, b.ascii = w, h, true
+	return b
+}

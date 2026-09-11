@@ -87,7 +87,7 @@ func TestTheMastheadShedsTheStampBeforeTheWordmark(t *testing.T) {
 // is left is what both surfaces share, which is what D-59 was for.
 func TestTheMastheadCarriesNoStationIdentity(t *testing.T) {
 	got := stripANSITest(strings.Join(headerOf(t, 150), "\n"))
-	for _, gone := range []string{"TRANSMITTER", "TOWER GPS", "SERVICE RADIUS", bcPlaceholderLocation} {
+	for _, gone := range []string{"TRANSMITTER", "TOWER GPS", "SERVICE RADIUS", "Bonsall"} {
 		if strings.Contains(got, gone) {
 			t.Errorf("%q still rides in the masthead:\n%s", gone, got)
 		}
