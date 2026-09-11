@@ -311,37 +311,12 @@ const (
 	bcMinCols = 100
 )
 
-// sectionWidth is how much room a SECTION'S TEXT has: the lane, less the frame's
-// two walls and the inset the reference leaves inside them.
-//
-// COUNTED BEFORE THE ROWS ARE BUILT, not after. A first version padded the rows
-// to the full lane and THEN added the inset, so every row ran three cells long
-// and the clamp ate the right-hand wall — the frame lost an edge on exactly the
-// section that is supposed to be a painted region.
-func (b Broadcaster) sectionWidth() int {
-	w := b.laneWidth() - len(bcSectionInset)
-	if w < 1 {
-		return 0
-	}
-	return w
-}
-
-// laneWidth is how much room a card actually has, and it is the ONE place that
-// number is decided (D-51).
-//
-// THAT IS THE RIGHT-RAIL SEAM, and it is the whole of what was owed now: above
-// 150 columns a right rail is a LATER RELEASE, and when it arrives it must be a
-// SMALLER NUMBER HANDED TO THE SAME CARD ROW rather than a second renderer. A
-// card that derived its own width from `b.width` would have to be rewritten for
-// every lane it ever appears in — which is exactly how the v1 mock came to be
-// half a card.
-func (b Broadcaster) laneWidth() int {
-	const gutter = 2 // the "  " every lane row is indented by
-	if b.width <= gutter {
-		return 0
-	}
-	return b.width - gutter
-}
+// laneWidth IS GONE (D-80), and its seam is not. It was "the ONE place that
+// number is decided" when the frame was one lane; the layout has three owners
+// now, each of which knows what it is measuring — `cardBoxWidth` for a card
+// (which carries D-51's right-rail seam), `orderWidth` for a row of the running
+// order, `bandWidth` for the station's painted text. A fourth number that agreed
+// with all three by coincidence is what put the band three cells too wide.
 
 // tooSmall reports whether the terminal is below the floor.
 func (b Broadcaster) tooSmall() bool {
@@ -714,10 +689,32 @@ func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
 	//
 	// INSET FROM THE FRAME, as the reference draws it: the section's text begins
 	// four cells in, not hard against the edge.
+	// THE SAME INSET ON BOTH SIDES (HUM LEAD, UAT 2026-09-11): "since it's a
+	// colored bkg, let's ensure we have a consistent inset for content — 1 line
+	// top/bottom, 3 col left/right." It was FOUR on the left and NONE on the
+	// right, which reads as a band the text is sliding out of.
+	//
+	// PADDED TO THE WIDTH LESS THE INSET, THEN THE INSET ADDED — not padded to
+	// the full width and trimmed, which would put the right-hand air inside the
+	// paint and leave the row a different length from every other.
 	for _, r := range append(append([]string{""}, b.stationLine()...), "") {
-		rows = append(rows, render.PadTo(" "+bcSectionInset+r, b.width))
+		rows = append(rows, render.PadTo(bcSectionInset+r, b.width-len(bcSectionInset))+bcSectionInset)
 	}
 	return o.Block(strings.Join(rows, "\n"), fg, bg)
+}
+
+// bandWidth is how much room the station band's TEXT has: the terminal, less
+// the inset it keeps on each side.
+//
+// ONE OWNER, because the rows are built to it and the band is painted to it, and
+// the two disagreeing by three cells is exactly what put the text hard against
+// the right edge of a coloured band.
+func (b Broadcaster) bandWidth() int {
+	w := b.width - 2*len(bcSectionInset)
+	if w < 1 {
+		return 0
+	}
+	return w
 }
 
 // stationTone is the section's colour, by state.
@@ -777,7 +774,12 @@ func (b Broadcaster) stationLine() []string {
 	if b.statusNote != "" {
 		why = b.statusNote
 	}
-	lane := b.sectionWidth()
+	// THE BAND'S TEXT COLUMN: the terminal, less the inset on BOTH sides (D-80).
+	// It read `sectionWidth()` — the width of a region inside the frame's walls,
+	// which this band no longer has since colour became its edge (D-70) — so
+	// every row came out three cells too wide and the right-hand inset had
+	// nowhere to go.
+	lane := b.bandWidth()
 	// THE LABELS SHARE A VALUE COLUMN (D-62). "STATION:" and the bed's label are
 	// different lengths, and a section whose two values began in different
 	// columns would read as two unrelated rows rather than as one region saying

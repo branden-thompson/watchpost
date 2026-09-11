@@ -403,3 +403,52 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 		t.Errorf("cutting the bed away says so:\n%s", back)
 	}
 }
+
+// THE STATION BAND KEEPS THE SAME INSET ON BOTH SIDES (D-80).
+//
+//	"since it's a colored bkg, let's ensure we have a consistent inset for
+//	 content: 1 line top/bottom inset (good); 3 col left/right (currently 4 col
+//	 left; 0 col right)" — HUM LEAD, UAT 2026-09-11
+//
+// ASSERTED WITH COLOUR ON, because that is the only way the RIGHT-hand inset
+// exists: `Block` trims trailing spaces when there is no colour to paint, so a
+// test without it measures a band that has no edges to be inset from.
+func TestTheStationBandIsEvenlyInset(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	b := NewBroadcaster().withSize(150, 74)
+	b.power = lineup.Running
+	fg, bg := b.stationTone()
+	rows := strings.Split(b.stationSection(b.opts(), fg, bg), "\n")
+
+	// ONE BLANK ROW TOP AND BOTTOM — the vertical half, which was already right.
+	if n := len(rows); n != 6 {
+		t.Fatalf("the band is a blank row, four of content and a blank row; got %d", n)
+	}
+	for _, at := range []int{0, len(rows) - 1} {
+		if strings.TrimSpace(stripANSITest(rows[at])) != "" {
+			t.Errorf("row %d is the band's air and carries text: %q", at, stripANSITest(rows[at]))
+		}
+	}
+	for i, r := range rows {
+		if got := render.Width(r); got != b.width {
+			t.Errorf("row %d is %d cells; a painted band is a rectangle", i, got)
+		}
+		p := stripANSITest(r)
+		if strings.TrimSpace(p) == "" {
+			continue // an air row is inset from nothing
+		}
+		// THE INSET IS THE FIRST THREE CELLS, not where the text happens to
+		// begin: the status row's label column is reserved and empty (D-62), so
+		// its words start nineteen cells in and its INSET is still three.
+		if head := p[:len(bcSectionInset)]; strings.TrimSpace(head) != "" {
+			t.Errorf("row %d has no left inset: %q", i, head)
+		}
+		if lead := len(p) - len(strings.TrimLeft(p, " ")); lead < len(bcSectionInset) {
+			t.Errorf("row %d begins %d cells in, want at least %d", i, lead, len(bcSectionInset))
+		}
+		if trail := len(p) - len(strings.TrimRight(p, " ")); trail < len(bcSectionInset) {
+			t.Errorf("row %d ends %d cells short of the edge, want at least %d", i, trail, len(bcSectionInset))
+		}
+	}
+}
