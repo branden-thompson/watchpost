@@ -6,6 +6,9 @@ const AlertModalAdvFG
 const AlertModalText
 const AlertModalWarnBG
 const AlertModalWarnFG
+const CardBG
+const CardOperatorBG
+const CardText
 const ChipFlashDown
 const ChipFlashUp
 const Clock12
@@ -54,6 +57,9 @@ const RadioAccent
 const RadioBG
 const RadioFG
 const RadioStation
+const RailLiveBG
+const RailNextBG
+const RailQueueBG
 const RepeatOn
 const SeismicMark
 const SpectrumHigh
@@ -225,6 +231,7 @@ func Thousands
 func TideTrend
 func Tint
 func TintDefault
+func TintKeeping
 func TintRaw
 func TitleGradient
 func Tok

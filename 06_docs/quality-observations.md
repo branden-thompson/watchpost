@@ -2050,3 +2050,37 @@ the root voice only, and the cast RESOLVER overrode it the moment the Source ask
 the end-to-end test failed with "limited voice is not wired".  `NewSource`'s contract says the root
 voice reads every role UNTIL a resolver is installed, and `readCard` installs one unconditionally, so
 half the seam was moot by construction.  `readCast` now answers both halves in one place.
+
+---
+
+## 2026-09-11 — D-86: registering a contrast pair is a global change, and I found out from a golden
+
+**The catch.**  Adding two background tokens for the Broadcaster's cards, I registered `TextBase`
+against them in the AA table — which is what the completeness gate demands.  Four of Observer's
+goldens then drifted.
+
+**Why:** `withAA` lifts a foreground until it reads on EVERY ground it is registered against.
+Registering a pair does not merely MEASURE it; it changes the token, everywhere that token is
+painted.  The register's own comment says so — *"what the AA gate checks and what registration
+lifts"* — and I read it as one thing rather than two.
+
+**How it was found, and how it was sized:** the goldens said something moved; a twenty-line probe
+dumping every token per theme, with the registration and without, said exactly WHAT — two tokens in
+two themes, `TableMuted` 143→152 in Watchpost and `TextBase` 247→170 in Solarized Night.  Without
+that measurement the choice was between reverting the feature and updating four goldens on a hunch.
+
+**The rule:** a surface that introduces a background introduces a FOREGROUND TOKEN OF ITS OWN unless
+it can show the shared one does not move.  The console's cards carry `CardText`; the rail did not
+need one, and that was *measured*, not assumed — `GroupText` survived because the rail's grounds were
+derived from the Group bands' own family rather than picked.
+
+**The generalisation worth keeping:** *shared-token registries make local changes global.*  The AA
+register, the category registry, the glyph set and the effect set all have this property in this
+codebase — adding a member is cheap, but binding an EXISTING member to a new context changes it for
+every old one.  The tell is "I only added a row", and the check is to diff the resolved values before
+and after.
+
+**And a recorded lesson was applied rather than re-learned:** `mR4` failed to compile because it
+orphaned a variable — the exact shape `mA3` cost a gate run for, with the fix (`_ = x` over deletion)
+already written in this file.  That is the first time this session an entry here saved the cost
+instead of recording it.

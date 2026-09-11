@@ -48,6 +48,8 @@ func builtinOverrides() map[string]map[Token]string {
 			KeyChip: "1;38;5;16;48;5;252", KeyChipMuted: "38;5;250;48;2;70;70;70",
 			GroupLocationBG: "48;2;120;120;120", GroupTodayBG: "48;2;70;110;160",
 			GroupTomorrowBG: "48;2;60;150;150", GroupExtendedBG: "48;2;120;110;170",
+			RailLiveBG: "48;2;170;70;70", RailNextBG: "48;2;180;120;60", RailQueueBG: "48;2;70;110;160",
+			CardBG: "48;2;45;45;45", CardOperatorBG: "48;2;75;65;40", CardText: "255",
 			GroupSectionBG: "48;2;60;60;60", TempHi: "214", TempLo: "87", FireMark: "214", SeismicMark: "177", // bright light-purple, high legibility (0.11.0)
 			TableMuted: "255", TableName: "231", ModalTitle: "1;231", // Q4a-004: the table reads as bright as the rest
 			GradStart: "#FFFFFF", GradMid: "#FFFF5F", GradEnd: "#5FFFFF", // white → its focus yellow → its low cyan
@@ -78,6 +80,11 @@ func builtinOverrides() map[string]map[Token]string {
 			EventCatWatchBG: "48;2;52;52;52", EventCatAdvisoryBG: "48;2;46;46;46", EventCatStmtBG: "48;2;40;40;40", EventCatForecastBG: "48;2;34;34;34",
 			GroupLocationBG: "48;2;70;70;70", GroupTodayBG: "48;2;70;70;70",
 			GroupTomorrowBG: "48;2;70;70;70", GroupExtendedBG: "48;2;70;70;70",
+			// MONOCHROME KEEPS THE THREE APART BY LIGHTNESS, because it has no
+			// hue to keep them apart with — LIVE is the brightest, which is the
+			// same ordering the eye reads from red/orange/blue.
+			RailLiveBG: "48;2;96;96;96", RailNextBG: "48;2;72;72;72", RailQueueBG: "48;2;52;52;52",
+			CardBG: "48;2;30;30;30", CardOperatorBG: "48;2;44;44;44", CardText: "250",
 			AlertLabel: "250", AlertDanger: "255",
 			AlertModalWarnFG: "38;2;235;235;235", AlertModalAdvFG: "38;2;200;200;200",
 			AlertModalWarnBG: "48;2;40;40;40", AlertModalAdvBG: "48;2;30;30;30",
@@ -120,6 +127,8 @@ func builtinOverrides() map[string]map[Token]string {
 			ChipFlashUp: "1;38;5;16;48;5;121", ChipFlashDown: "1;38;5;231;48;5;203",
 			GroupLocationBG: "48;2;52;41;79", GroupTodayBG: "48;2;54;30;90",
 			GroupTomorrowBG: "48;2;30;70;90", GroupExtendedBG: "48;2;80;40;90", GroupSectionBG: "48;2;36;27;47",
+			RailLiveBG: "48;2;110;35;60", RailNextBG: "48;2;110;70;40", RailQueueBG: "48;2;45;55;100",
+			CardBG: "48;2;36;27;47", CardOperatorBG: "48;2;60;48;40", CardText: "231",
 			AlertLabel: "221", AlertDanger: "203",
 			AlertModalWarnFG: "38;2;254;68;80", AlertModalAdvFG: "38;2;254;222;93", AlertModalText: "231",
 			AlertModalWarnBG: "48;2;60;20;40", AlertModalAdvBG: "48;2;60;50;20", ConfirmBG: "48;2;120;40;80",
@@ -135,6 +144,8 @@ func builtinOverrides() map[string]map[Token]string {
 			SpectrumLow: "64", SpectrumMid: "136", SpectrumHigh: "160", FireMark: "166", SeismicMark: "61", // solarized violet (0.11.0)
 			GroupLocationBG: "48;2;7;54;66", GroupTodayBG: "48;2;38;79;120",
 			GroupTomorrowBG: "48;2;42;107;103", GroupExtendedBG: "48;2;108;83;132",
+			RailLiveBG: "48;2;110;44;40", RailNextBG: "48;2;115;74;30", RailQueueBG: "48;2;38;79;120",
+			CardBG: "48;2;7;54;66", CardOperatorBG: "48;2;70;62;30", CardText: "254",
 			GroupSectionBG: "48;2;7;54;66", ModalBGDark: "48;2;0;43;54",
 			WindowBGDark: "#002b36", GradStart: "#D33682", GradMid: "#268BD2", GradEnd: "#2AA198",
 			TitleEdition: "1;109",                                      // solarized's readable blue-grey, its own light blue
@@ -260,6 +271,11 @@ func lightOverrides() map[Token]string {
 		TableMuted: "38;2;95;95;95", TableName: "38;2;0;0;0",
 		GroupText: "1;38;2;20;20;20", GroupLocationBG: "48;2;200;200;200", GroupTodayBG: "48;2;169;196;224",
 		GroupTomorrowBG: "48;2;169;224;224", GroupExtendedBG: "48;2;196;196;224", GroupSectionBG: "48;2;221;221;221",
+		// THE LIGHT THEME INVERTS THE RELATIONSHIP, NOT THE HUE. A band on a
+		// light ground is a PALE wash of the same colour: dark values here would
+		// read as holes punched in the page.
+		RailLiveBG: "48;2;240;200;200", RailNextBG: "48;2;245;215;185", RailQueueBG: "48;2;169;196;224",
+		CardBG: "48;2;235;235;238", CardOperatorBG: "48;2;245;238;215", CardText: "38;2;40;40;40",
 		KeyChip: "1;38;2;0;0;0;48;2;190;190;190", KeyChipMuted: "38;2;120;120;120;48;2;225;225;225",
 		ChipFlashUp: "1;38;2;255;255;255;48;2;0;120;40", ChipFlashDown: "1;38;2;255;255;255;48;2;170;0;0",
 		FocusName: "1;38;2;120;80;0", FocusCell: "38;2;0;70;140", FocusPointer: "1;38;2;0;0;0",

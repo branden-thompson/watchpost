@@ -131,15 +131,24 @@ func quattroForegrounds(p quattroPalette) map[Token]string {
 // modal/window backgrounds, and the title gradient (hex).
 func quattroTiles(p quattroPalette) map[Token]string {
 	return map[Token]string{
-		KeyChip:          chip(p.brightFg, p.muted, true),
-		KeyChipMuted:     chip(p.darkFg, p.selection, false),
-		ChipFlashUp:      chip(p.bg, p.green, true),
-		ChipFlashDown:    chip(p.bg, p.red, true),
-		GroupLocationBG:  bgTruecolor(p.selection),
-		GroupTodayBG:     mix(p.blue, p.darkBg, 0.45),
-		GroupTomorrowBG:  mix(p.cyan, p.darkBg, 0.45),
-		GroupExtendedBG:  mix(p.magenta, p.darkBg, 0.45),
-		GroupSectionBG:   bgTruecolor(p.darkBg),
+		KeyChip:         chip(p.brightFg, p.muted, true),
+		KeyChipMuted:    chip(p.darkFg, p.selection, false),
+		ChipFlashUp:     chip(p.bg, p.green, true),
+		ChipFlashDown:   chip(p.bg, p.red, true),
+		GroupLocationBG: bgTruecolor(p.selection),
+		GroupTodayBG:    mix(p.blue, p.darkBg, 0.45),
+		GroupTomorrowBG: mix(p.cyan, p.darkBg, 0.45),
+		GroupExtendedBG: mix(p.magenta, p.darkBg, 0.45),
+		GroupSectionBG:  bgTruecolor(p.darkBg),
+		// THE CONSOLE'S GROUNDS DERIVE LIKE THE REGION BANDS DO (D-86), at the
+		// same 0.45 mix — so every Quattro theme gets a rail in its own palette
+		// without anybody choosing three more colours seven times.
+		RailLiveBG:       mix(p.red, p.darkBg, 0.45),
+		RailNextBG:       mix(p.orange, p.darkBg, 0.45),
+		RailQueueBG:      mix(p.blue, p.darkBg, 0.45),
+		CardBG:           bgTruecolor(p.darkBg),
+		CardOperatorBG:   mix(p.yellow, p.darkBg, 0.20),
+		CardText:         fgTruecolor(p.fg),
 		ConfirmBG:        mix(p.red, p.darkBg, 0.40),
 		AlertModalWarnBG: mix(p.red, p.darkBg, 0.30),
 		AlertModalAdvBG:  mix(p.yellow, p.darkBg, 0.25),

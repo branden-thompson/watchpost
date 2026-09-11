@@ -41,6 +41,18 @@ const bcRailWidth = 5
 // push the card it names off the bottom of the frame — so the word gives way
 // instead, exactly as the masthead's title does.
 func railColumn(label string, rows int, g render.Glyphs) []string {
+	return railColumnToned(label, rows, g, railTone(label))
+}
+
+// railColumnToned is railColumn with the region's own ground painted behind its
+// letters (D-86, HUM LEAD 2026-09-11): "Color BKGs for the left RAIL: LIVE =
+// RED, UP NEXT = ORANGE, SCHEDULED LINEUP = BLUE."
+//
+// THE WALLS ARE LEFT UNPAINTED. They belong to the frame, which runs the whole
+// height of the console; painting them would make the region's colour bleed
+// into the structure around it and the band would read as a hole in the frame
+// rather than as a label on it.
+func railColumnToned(label string, rows int, g render.Glyphs, bg string) []string {
 	if rows <= 0 {
 		return nil
 	}
@@ -52,9 +64,39 @@ func railColumn(label string, rows int, g render.Glyphs) []string {
 		if i >= top && i-top < len(letters) {
 			cell = string(letters[i-top])
 		}
-		out = append(out, g.Rail+" "+cell+" "+g.Rail)
+		band := " " + cell + " "
+		if render.BGVisible(bg) {
+			band = render.TintRaw(band, render.Tok(render.GroupText)+";"+bg)
+		}
+		out = append(out, g.Rail+band+g.Rail)
 	}
 	return out
+}
+
+// railTone is a region's ground, by name.
+//
+// KEYED ON THE LABEL, which is what the rail already is: `section` is handed a
+// name and draws it, and the region table is the one place those names are
+// declared. A parallel table keyed on the region's INDEX would be a second list
+// to keep in step with `bcRegions`.
+//
+// SCHEDULED AND LINE UP SHARE ONE GROUND, because they are one stack of cards
+// the rail happens to name in two halves — the same reason no break is drawn
+// between them (HUM LEAD, UAT 2026-09-10: "this is one area they should be
+// continuous").
+//
+// ANYTHING ELSE IS UNPAINTED. PRIORITY is the overlay's own rail and carries the
+// takeover's colour, not a region's; the blank spacer has no region at all.
+func railTone(label string) string {
+	switch label {
+	case "LIVE":
+		return render.Tok(render.RailLiveBG)
+	case "UP NEXT":
+		return render.Tok(render.RailNextBG)
+	case "SCHEDULED", "LINE UP":
+		return render.Tok(render.RailQueueBG)
+	}
+	return ""
 }
 
 const (

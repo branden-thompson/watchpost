@@ -109,11 +109,22 @@ func TitleGradient(text string) string {
 // frame opens with the base foreground and every SGR reset re-arms it, so
 // explicitly-colored spans keep their colors and everything else drops to
 // grey 250 (~9:1 on black — comfortably AA). No-op with color off.
-func TintDefault(s string) string {
-	if !colorOn() {
+func TintDefault(s string) string { return TintKeeping(s, "38;5;"+Tok(TextBase)) }
+
+// TintKeeping paints text in `params` and KEEPS whatever is already painted
+// inside it, by making every inner reset fall back to these parameters rather
+// than to the terminal's default.
+//
+// EXTRACTED AT THE SECOND CALLER (D-86). `TintDefault` was the first and the
+// Broadcaster's card grounds are the second: a card's row carries chips with
+// SGR of their own, and a plain wrap would leave the ground behind every chip
+// as a hole in the card. The rule is one line and it was about to be written
+// twice.
+func TintKeeping(s, params string) string {
+	if !colorOn() || params == "" {
 		return s
 	}
-	base := "\x1b[0;38;5;" + Tok(TextBase) + "m"
+	base := "\x1b[0;" + params + "m"
 	return base + strings.ReplaceAll(s, "\x1b[0m", base) + "\x1b[0m"
 }
 

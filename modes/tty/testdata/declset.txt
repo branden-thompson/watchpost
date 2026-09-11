@@ -543,6 +543,7 @@ func blockHeight
 func broadcasterKeyMap
 func bucketSevere
 func buoyNote
+func cardTone
 func castLabel
 func castLineOf
 func castRowOrder
@@ -643,6 +644,8 @@ func providersOf
 func radioBreakpoint
 func radioMark
 func railColumn
+func railColumnToned
+func railTone
 func railify
 func refOf
 func refsOf
@@ -716,6 +719,7 @@ func widest
 func widestBlock
 func withoutRef
 func worseStatus
+func worstCategory
 func wrapPrefixed
 func wrappedIndex
 type BedMsg

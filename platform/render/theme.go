@@ -43,6 +43,47 @@ const (
 	GroupExtendedBG Token = "group.extended.bg"
 	GroupSectionBG  Token = "group.section.bg" // RECENT / SEARCHED section band (UAT 43)
 
+	// The Broadcaster console's own grounds (D-86, HUM LEAD 2026-09-11).
+	//
+	// THEY ARE THE CONSOLE'S, NOT BORROWED, and that is the whole reason they
+	// exist. The rail names a REGION — live, next, queued — while the alert
+	// cards beside it are painted by HAZARD CATEGORY (`category.Of(c).Tint`,
+	// the same tints the [w] window uses). Borrowing a Ticker lane for "UP
+	// NEXT" would make one colour mean "this is an Advisory" in one column and
+	// "this is queued" in the next.
+	//
+	// THE VALUES STAY IN THE REGION-BAND FAMILY, though, because that is the
+	// language Observer already speaks: the Group bands are muted 66/94/122
+	// mixes, and these are the SAME three channel values permuted — red
+	// dominant, mid, blue dominant. Equal perceived weight by construction,
+	// which is what keeps the rail reading as a rail rather than as a warning,
+	// and what gives the AA register one answer for all three.
+	RailLiveBG  Token = "bc.rail.live.bg"  // LIVE — the app's red, at band weight
+	RailNextBG  Token = "bc.rail.next.bg"  // UP NEXT — orange
+	RailQueueBG Token = "bc.rail.queue.bg" // SCHEDULED / LINE UP — blue; GroupTodayBG's own value
+
+	// A main-track card's ground, by ORIGIN (D-86). NARROW, BY RULING: one for
+	// the cards the station proposed for itself and one for the cards the
+	// OPERATOR asked for, rather than a ground per slot — most slots do not
+	// exist yet (D-31), and the report type is already in the card's title.
+	//
+	// WARM MEANS YOURS. The operator's own card is the same lightness in a warm
+	// cast, so it reads as "mine" without changing what the card IS — and
+	// yellow is the one hue the rail does not use, so an operator's card can
+	// never be mistaken for a rail state.
+	CardBG         Token = "bc.card.bg"          // proposed by the station
+	CardOperatorBG Token = "bc.card.operator.bg" // asked for by the operator
+
+	// CardText is what a card's own words are painted in, and it exists so the
+	// AA lift stays inside the console.
+	//
+	// MEASURED, NOT ASSUMED. `withAA` lifts a foreground until it reads on EVERY
+	// ground it is registered against, so registering `TextBase` against these
+	// grounds moved it in two themes — Observer's tables went with it. A colour
+	// the operator's console introduced must not change the listener's. So the
+	// cards carry a tone of their own, and lifting it reaches nothing else.
+	CardText Token = "bc.card.text"
+
 	AlertLabel  Token = "alert.label"  // watch/advisory yellow (panel tints)
 	AlertDanger Token = "alert.danger" // warning red (panel tints, provider down)
 
@@ -169,7 +210,17 @@ func defaultTheme() map[Token]string {
 		GroupTodayBG:    "48;2;66;94;122",
 		GroupTomorrowBG: "48;2;66;122;122",
 		GroupExtendedBG: "48;2;94;94;122",
-		GroupSectionBG:  "48;2;34;34;34", // #222 (UAT 44.2)
+
+		// The console's grounds. The rail's three are GroupTodayBG's own channel
+		// values permuted — see the token declarations for why they are a family
+		// rather than three picks.
+		RailLiveBG:     "48;2;122;66;66",
+		RailNextBG:     "48;2;122;94;66",
+		RailQueueBG:    "48;2;66;94;122",
+		CardBG:         "48;2;36;36;42",
+		CardOperatorBG: "48;2;54;48;36",
+		CardText:       "250",
+		GroupSectionBG: "48;2;34;34;34", // #222 (UAT 44.2)
 
 		AlertLabel:  "220",
 		AlertDanger: "196",
