@@ -20,7 +20,16 @@ import (
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
-func TestTheConsoleAlwaysDrawsItsTenSlots(t *testing.T) {
+// THE CONSOLE DRAWS EVERY SLOT IT HAS ROOM FOR, AND NEVER A DEAD END (D-64).
+//
+// IT USED TO DRAW ALL TEN AT ONCE, and D-87 made the cards taller than that: a
+// card is a manifest now, so the ten slots need about ninety rows and the
+// terminal the reference is drawn at has seventy-four. The queue scrolls, which
+// is what its rail has always been for.
+//
+// WHAT DID NOT CHANGE is the rule D-64 exists for: a station with nothing
+// scheduled shows SLOTS rather than a sentence saying it has nothing.
+func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	rows := strings.Split(stripANSITest(b.View().Content), "\n")
@@ -31,9 +40,8 @@ func TestTheConsoleAlwaysDrawsItsTenSlots(t *testing.T) {
 			boxes++
 		}
 	}
-	// Each card is a box: a top border and a bottom one.
-	if got := boxes / 2; got != MainTrackSlots {
-		t.Errorf("an empty line-up still draws its %d slots; got %d", MainTrackSlots, got)
+	if got := boxes / 2; got < 5 || got > MainTrackSlots {
+		t.Errorf("an empty line-up drew %d slots; want as many as fit, up to %d", got, MainTrackSlots)
 	}
 	if strings.Contains(stripANSITest(b.View().Content), "nothing scheduled") {
 		t.Error(`"(nothing scheduled)" is a dead end; the slots say it better`)
@@ -83,7 +91,10 @@ func TestAnEmptySlotStillCarriesItsHandle(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	got := stripANSITest(b.View().Content)
-	for _, want := range []string{chipFor("0"), chipFor("9")} {
+	// EVERY SLOT THE CONSOLE DRAWS, which since D-87 is as many as fit: the
+	// cards are manifests and the queue scrolls, so slot 9 is below the window
+	// on the reference's own terminal.
+	for _, want := range []string{chipFor("0"), chipFor("1"), chipFor("4")} {
 		if !strings.Contains(got, want) {
 			t.Errorf("every slot is addressable; %q is missing", want)
 		}

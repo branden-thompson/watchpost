@@ -117,7 +117,15 @@ const (
 	// (eleven rows each, carrying a window onto the script), the lane names
 	// itself above them, and the frame opens and closes on Observer's two-row
 	// inset. Reference geometry, not optimisation, per D-53.
-	bcFrameAllocs = 957
+	// 1150: D-87 — the tracks are SPLIT into two columns and joined once, so a
+	// row of the running order is built from three padded columns instead of one
+	// spliced string; and a card is a MANIFEST, whose body is assembled line by
+	// line (a status, a stamp, a heading and its rows) where it used to be five
+	// blanks. Both are the reference. Per D-53 the working layout comes first and
+	// the number is recorded rather than optimised — and the zip is the shape
+	// that makes occlusion impossible, which is worth more than the allocations
+	// the splice saved.
+	bcFrameAllocs = 1150
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

@@ -89,11 +89,11 @@ func railColumnToned(label string, rows int, g render.Glyphs, bg string) []strin
 // takeover's colour, not a region's; the blank spacer has no region at all.
 func railTone(label string) string {
 	switch label {
-	case "LIVE":
+	case "LIVE ON AIR":
 		return render.Tok(render.RailLiveBG)
 	case "UP NEXT":
 		return render.Tok(render.RailNextBG)
-	case "SCHEDULED", "LINE UP":
+	case "SCHEDULED LINE UP":
 		return render.Tok(render.RailQueueBG)
 	}
 	return ""
@@ -104,12 +104,30 @@ const (
 	// the reference: the divider sits at column 4 and the card begins at 9.
 	bcRailGap = 4
 
-	// bcRightChrome is the frame's own columns at the right: three of air, the
-	// inner wall, four more, and the outer wall — where the scroll rail lives.
+	// bcRightChrome is the frame's own columns at the right: three of air and the
+	// scroll rail, and nothing after it (D-87).
 	//
-	//	… ╮   │    │
-	//	    141 144 149      (at the reference's 150)
-	bcRightChrome = 9
+	//	… ┛   │
+	//	  144 148        (at the reference's 150)
+	//
+	// THE OUTER WALL IS GONE (HUM LEAD, 2026-09-11): "Notice the line on the far
+	// right is gone — so ONLY the vertical scroll on positions 2-9 is present on
+	// the right hand side." It carried an inner wall AND an outer one, which the
+	// running order never needed: the cards are boxes with their own borders, so
+	// a frame around them was a second edge saying the same thing.
+	bcRightChrome = 5
+
+	// bcPriorityWidth is the alert column's box, and it is DERIVED FROM WHAT IT
+	// MUST HOLD rather than from a share of the frame.
+	//
+	// Its widest line is an alert's when and where —
+	// `   <LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM   ` — which is 54 cells at
+	// the reference with the card's own inset on both sides. A column narrower
+	// than its one fixed-shape line would wrap every alert in the burst.
+	bcPriorityWidth = 54
+
+	// bcColumnGap is the air between the two tracks' columns.
+	bcColumnGap = 3
 )
 
 // cardBoxWidth is how wide a card's BOX is once the frame has taken its own
@@ -118,75 +136,49 @@ const (
 // At the reference's 150 columns this is 132, which puts the card's borders at
 // 9 and 140 exactly where the mock draws them.
 func (b Broadcaster) cardBoxWidth() int {
-	w := b.width - bcRailWidth - bcRailGap - bcRightChrome
+	w := b.trackArea() - b.priorityWidth() - bcColumnGap
 	if w < 4 {
 		return 0
 	}
 	return w
 }
 
-// section draws one named region of the running order: its rail down the left,
-// its cards' boxes beside it, and the frame's own columns at the right.
-//
-// THE RAIL IS AS TALL AS THE SECTION, which is why it is built from the rows
-// rather than beside them: a label centred over a region it does not measure
-// would drift the moment a card was added.
-func (b Broadcaster) section(label string, rows []string) []string {
-	if len(rows) == 0 {
-		return nil
+// trackArea is everything the two tracks have to share: the frame, less the
+// rail on the left and the scroll on the right.
+func (b Broadcaster) trackArea() int {
+	w := b.width - bcRailWidth - bcRailGap - bcRightChrome
+	if w < 0 {
+		return 0
 	}
-	g := b.opts().Glyphs()
-	rail := railColumn(label, len(rows), g)
-	gap := strings.Repeat(" ", bcRailGap)
-	// THE RIGHT-HAND CHROME IS NOT ADDED HERE. It carries the SCROLL RAIL, and
-	// the rail is ONE continuous column over the whole running order — a thumb
-	// drawn per section would put one in every region and say that each scrolls
-	// on its own. `lanes` adds it once, after the regions are assembled.
-	out := make([]string, 0, len(rows))
-	for i, r := range rows { // bounded by the section (P10-02)
-		out = append(out, rail[i]+gap+r)
-	}
-	return out
+	return w
 }
 
-// regionGap is the blank row BETWEEN two named regions.
+// priorityWidth is the alert column's box (D-87).
 //
-// THE REFERENCE LETS ITS SECTIONS BREATHE and this did not: every card in the
-// running order sat flush against the next, so LIVE, UP NEXT, SCHEDULED and
-// LINE UP read as one undifferentiated stack of boxes and the rail was the only
-// thing saying otherwise (HUM LEAD, UAT 2026-09-10: "the sections of the line up
-// are missing their blank row between the sections like the mocks").
+// THE TRACKS ARE SPLIT, NOT COMPOSITED (HUM LEAD, 2026-09-11): "We're gonna
+// split the PRIORITY and MAIN tracks visually — no more card occlusion, and this
+// works because of the data that we're ACTUALLY showing."
 //
-// BETWEEN REGIONS, NEVER BETWEEN CARDS. Cards inside a region ARE consecutive in
-// the reference — a gap between every card would say each one is its own
-// section, which is the opposite of what the rail is for.
+// SO THE COLUMN IS ALWAYS RESERVED, whether or not the rail holds anything. A
+// width that moved when a hazard arrived would shift every card in the running
+// order sideways at the moment the operator is reading one — which is the same
+// rule the LIVE slot's offset follows (D-84) and the same reason the read cards'
+// height is fixed.
 //
-// IT KEEPS THE RAIL'S OWN WALLS, because it is a row of the frame like any
-// other: an unwalled blank row is a hole in the border, which is how the frame
-// came to look broken between the regions in the first place.
-func (b Broadcaster) regionGap() string {
-	// COMPLETELY BLANK — NO WALLS, NOT EVEN THE RAIL'S (HUM LEAD, UAT
-	// 2026-09-10): "the blank row in between sections needs to be completely
-	// blank — right now the left rail is connected top to bottom; the breaks in
-	// the mock were intentional."
-	//
-	// THE BREAK IS THE SEPARATOR. A rail that runs unbroken from LIVE to the
-	// bottom of the LINE UP draws the four regions as one column with labels in
-	// it; a rail that stops and starts draws four regions. The gap is doing the
-	// work, and a wall through it undoes exactly that.
-	return strings.Repeat(" ", b.orderWidth())
-}
-
-// railSpacer is the row of air UNDER the lane's header, before its first card.
-//
-// IT KEEPS THE RAIL'S WALLS, and a region gap does not — which looks like an
-// inconsistency and is the reference drawn exactly. A gap BETWEEN two regions
-// has to break the rail, because an unbroken rail draws four regions as one
-// column with labels in it. This row breaks nothing: it is the top of the
-// running order, and the rail begins here.
-func (b Broadcaster) railSpacer() string {
-	g := b.opts().Glyphs()
-	return railColumn(" ", 1, g)[0] + strings.Repeat(" ", b.orderWidth()-bcRailWidth)
+// FIXED AT ITS CONTENT'S WIDTH UNTIL THERE IS NOT ROOM, and then it gives way
+// first: the main track is the thing the operator manages, so a frame too narrow
+// for both cuts the column that is empty most of the time. Below half the track
+// area the alert column takes half, which is the point where neither can be
+// drawn honestly and the breakpoint ruling (D-50) takes over.
+func (b Broadcaster) priorityWidth() int {
+	area := b.trackArea() - bcColumnGap
+	if area <= 0 {
+		return 0
+	}
+	if w := bcPriorityWidth; w <= area/2 {
+		return w
+	}
+	return area / 2
 }
 
 // bcRailLabel is the widest form of a section's name that fits its height.
@@ -214,10 +206,16 @@ func bcRailLabel(label string, rows int) string {
 
 // bcRailForms is each section's name, widest first.
 var bcRailForms = map[string][]string{
-	"LIVE":      {"LIVE"},
-	"UP NEXT":   {"UP NEXT", "NEXT", "UP"},
+	"LIVE ON AIR":       {"LIVE ON AIR", "LIVE", "ON AIR", "AIR"},
+	"UP NEXT":           {"UP NEXT", "NEXT", "UP"},
+	"SCHEDULED LINE UP": {"SCHEDULED LINE UP", "SCHEDULED", "SCHED", "SCH"},
+	// THE OLD NAMES KEEP THEIR LADDERS. D-87 merged the two queue regions into
+	// one, and these are what the rail said before it — kept because the ladder
+	// is a property of the WORD, not of the region that happens to use it, and
+	// a caller naming one should not fall through to being cut.
 	"SCHEDULED": {"SCHEDULED", "SCHED", "SCH"},
 	"LINE UP":   {"LINE UP", "LINE", "UP"},
+	"LIVE":      {"LIVE"},
 	"BED":       {"BED"},
 	// THE OVERLAY IS AS TALL AS THE TAKEOVER IT HOLDS, which for a single card
 	// is four rows — too few for eight letters. It sheds to a word rather than
@@ -225,56 +223,6 @@ var bcRailForms = map[string][]string{
 	// something is interrupting the broadcast.
 	"PRIORITY": {"PRIORITY", "ALERT", "!"},
 }
-
-// spliceAt writes `patch` into `base` starting at column `col`, one row per
-// entry, and returns the result.
-//
-// RUNE-ACCURATE, because the frame is full of box-drawing and the badge's
-// bullets are three bytes each — a byte offset here reads as a plausible wrong
-// number, which is how a card's handle came to sit one cell off the reference.
-//
-// IT NEVER GROWS THE FRAME. A patch that ran past the row is cut: the frame is
-// the viewport (D-58), and something composited BESIDE it rather than onto it is
-// the defect UAT found in the diagnostics window.
-// IT SPLICES BY DISPLAY COLUMN, through `render.SpliceCells` — the same measure
-// `Width` and `TruncateCells` use (D-66).
-//
-// IT DID NOT, AND F-85 SAID SO AND WAS NOT ACTED ON. The note reasoned that a
-// rune-accurate splice "holds today by accident of layout", because every escape
-// on the covered rows sat to the right of the span. It stopped holding the first
-// time a takeover was drawn over a real card, and the HUM LEAD saw the card
-// underneath lose its right-hand side (UAT 2026-09-10). **A filed follow-up is
-// not a fix, and "it holds by accident" is a prediction with a date on it.**
-func spliceAt(base []string, patch []string, col int) []string {
-	if col < 0 {
-		return base
-	}
-	out := append([]string(nil), base...)
-	for i, p := range patch { // bounded by the patch (P10-02)
-		if i >= len(out) {
-			break
-		}
-		out[i] = render.SpliceCells(out[i], p, col)
-	}
-	return out
-}
-
-// bcPriorityCol is where the priority overlay's box begins — just past the
-// rail's divider, from the reference: the divider sits at column 4 and the
-// overlay's border at 6.
-const bcPriorityCol = bcRailWidth + 1
-
-// priorityWidth is the overlay box's own width.
-//
-// HALF THE CARD BOX, from the reference: at its 150 columns the card runs 9..140
-// (132 cells) and the overlay 6..72 (67) — so the operator keeps the right-hand
-// half of every card it covers, which is the half carrying the badge and the
-// HANDLE they type.
-//
-// PROPORTIONAL RATHER THAN FIXED, because the reference gives one width and a
-// fixed 67 cells would swallow two thirds of a 100-column frame — the narrowest
-// the station supports (D-50).
-func (b Broadcaster) priorityWidth() int { return (b.cardBoxWidth() + 2) / 2 }
 
 // framed adds the right-hand chrome to the assembled running order: the inner
 // wall, the scroll rail, and the frame's own edge.
@@ -359,7 +307,10 @@ func (b Broadcaster) chrome(body []string, rail bool, shown, total int) []string
 		if strings.TrimSpace(r) == "" && mark != glyphs.Up && mark != glyphs.Down {
 			mark = " "
 		}
-		out[i] = render.PadTo(r+"   ", b.width-6) + mark + "    " + g.Rail
+		// THREE OF AIR AND THE SCROLL, AND NOTHING AFTER IT (D-87). The frame's
+		// outer wall on this side is gone: the cards are boxes with their own
+		// borders, so a wall around them was a second edge saying the same thing.
+		out[i] = render.PadTo(r+"   ", b.width-2) + mark
 	}
 	return out
 }

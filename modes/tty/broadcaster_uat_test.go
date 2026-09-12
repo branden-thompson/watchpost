@@ -99,7 +99,7 @@ func TestOneBlankRowSeparatesTheRegions(t *testing.T) {
 	for i, r := range rows {
 		// A CARD's border, not the masthead's — that box draws `+` corners too,
 		// and anchoring on the glyph alone put `first` on row 2.
-		if strings.Contains(r, "|    +---") {
+		if strings.Contains(r, "   +---") && strings.HasPrefix(r, "|") {
 			if first < 0 {
 				first = i
 			}
@@ -276,7 +276,7 @@ func TestTheScrollControlCapsSitOnRowsOfTheirOwn(t *testing.T) {
 	rows := strings.Split(b.View().Content, "\n")
 	up, down := -1, -1
 	for i, r := range rows {
-		switch []rune(r)[b.width-6] {
+		switch []rune(r)[b.width-2] {
 		case '^':
 			up = i
 		case 'v':
@@ -312,28 +312,37 @@ func TestTheScrollControlCapsSitOnRowsOfTheirOwn(t *testing.T) {
 	}
 }
 
-// THE LANE'S CAPTION IS A BARE ROW (D-71).
+// THE LANE NAMES ITSELF OVER ITS OWN COLUMN (D-87).
 //
-//	"This line: │ … STANDARD … │    │ should have no pipes / lines."
-//
-// It is a caption OVER the running order, not a row of it — so it is written
-// before the frame's own right-hand columns are added rather than inside them.
-func TestTheLaneCaptionCarriesNoLines(t *testing.T) {
+// IT USED TO CARRY NO LINES AT ALL (HUM LEAD, UAT 2026-09-10: "this line …
+// should have no pipes / lines"), because it was written outside the frame's
+// columns. The v2 reference puts it INSIDE them — `│   │ … MAIN SCHEDULE
+// (ROLLING WINDOW)` — so it wears the rail's walls like every other row of the
+// running order, and what it must not carry is a CARD's border.
+func TestTheLaneCaptionSitsOverTheRunningOrder(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	rows := strings.Split(stripANSITest(b.View().Content), "\n")
 	at := -1
 	for i, r := range rows {
-		if strings.Contains(r, "STANDARD") && !strings.Contains(r, "•") && !strings.Contains(r, "*") {
+		if strings.Contains(r, bcLaneLabel) {
 			at = i
 			break
 		}
 	}
 	if at < 0 {
-		t.Fatal("the lane names itself above its cards")
+		t.Fatal("the lane does not name itself above its cards")
 	}
-	if strings.Trim(rows[at], " ") != "STANDARD" {
-		t.Errorf("the caption row carries something other than its word:\n%q", rows[at])
+	if strings.Contains(rows[at], "+--") {
+		t.Errorf("the caption row carries a card's border:\n%q", rows[at])
+	}
+	// AND IT IS CENTRED OVER THE CARDS, which is what makes it read as naming
+	// the column rather than the frame.
+	main := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap
+	lead := strings.Index(rows[at], bcLaneLabel) - main
+	trail := b.cardBoxWidth() - lead - len(bcLaneLabel)
+	if d := lead - trail; d > 1 || d < -1 {
+		t.Errorf("the caption is not centred over the cards: %d left, %d right", lead, trail)
 	}
 }
 

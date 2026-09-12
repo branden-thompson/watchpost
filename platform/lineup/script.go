@@ -57,6 +57,18 @@ type Part struct {
 	Ref  string
 }
 
+// Content is one line of a card's MANIFEST: what a read draws on, and what that
+// source has to say about how much of it there is (D-87).
+//
+// Detail is deliberately loose — a forecast covers a span of dates, a fire
+// report counts hotspots — because the console's heading is "RANGE / INCIDENTS"
+// and a typed field would have to pick one of them.
+//
+// IT LIVES BESIDE Script BECAUSE THEY ARE ONE ANSWER. The words and the summary
+// of the words come from the same compose; putting them in different files
+// would invite a second producer for one of them.
+type Content struct{ Name, Detail string }
+
 // Script is a card's words in the order they are said.
 //
 // Tone is the attention tone that opens the card, as the cast class's key, and

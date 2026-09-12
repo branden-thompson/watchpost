@@ -102,24 +102,16 @@ func TestANarrowLaneKeepsTheSubjectAndDropsTheKind(t *testing.T) {
 	}
 }
 
-// THE TITLE IS CENTRED, and nothing asserted it — a plant that switched the
-// column to left alignment changed no test. It is the one thing about the card
-// that a reader notices immediately and a test never would.
-func TestTheHeadlineIsCentredInWhatIsLeftOfTheLane(t *testing.T) {
-	got := newCardLane(148, render.Opts{ASCII: true}.Glyphs()).
+// THE HEADLINE IS LEFT-ANCHORED, ON THE CARD'S OWN INSET (D-87).
+//
+// IT USED TO BE CENTRED and the v2 reference moved it: every other row of a
+// card's interior begins three cells in, so a centred title was the one line
+// that did not line up with the card it names.
+func TestTheHeadlineSitsOnTheCardsInset(t *testing.T) {
+	row := newCardLane(132, render.Opts{ASCII: true}.Glyphs()).
 		render(aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")
-	i := strings.Index(got, "OCEANSIDE, CA")
-	if i < 0 {
-		t.Fatalf("the headline must be drawn; got %q", got)
-	}
-	// It is centred in the room the badge leaves, so there is real space on BOTH
-	// sides. Left-aligned would put it at or near column 0.
-	if i < 10 {
-		t.Errorf("the headline is centred, not flush left; it starts at column %d in %q", i, got)
-	}
-	after := strings.Index(got, "*STANDARD*") - (i + len("OCEANSIDE, CA"))
-	if after < 5 {
-		t.Errorf("centred means space on the right too; only %d cells before the badge", after)
+	if got := strings.Index(row, "OCEANSIDE"); got != len(bcCardInset) {
+		t.Errorf("the headline starts at column %d, want the card's inset of %d\n%q", got, len(bcCardInset), row)
 	}
 }
 

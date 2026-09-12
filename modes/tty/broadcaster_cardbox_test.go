@@ -21,12 +21,18 @@ func boxOf(t *testing.T, box int, c lineup.Card, handle, badge string) []string 
 	return newCardLane(box, g).box(c, handle, badge)
 }
 
-func TestACardIsFourRowsAndFillsItsBox(t *testing.T) {
+// A CARD FILLS ITS BOX AT EVERY WIDTH.
+//
+// ITS HEIGHT IS THE BODY'S NOW (D-87). The box used to be four rows whatever it
+// held — border, title, the corners' row, border — and the corners retired with
+// the overlay that made them necessary, so what a card is tall is what the
+// region puts inside it.
+func TestACardFillsItsBoxAtEveryWidth(t *testing.T) {
 	c := aCard(t, "LOCATION REPORT • OCEANSIDE, CA 92057")
 	for _, box := range []int{82, 112, 132} {
 		rows := boxOf(t, box, c, "6", "STANDARD")
-		if len(rows) != bcCardRows {
-			t.Fatalf("box %d: a card is %d rows; got %d", box, bcCardRows, len(rows))
+		if len(rows) < 3 {
+			t.Fatalf("box %d: a card is at least a border, a title and a border; got %d rows", box, len(rows))
 		}
 		for i, r := range rows {
 			if w := utf8.RuneCountInString(r); w != box {
@@ -45,9 +51,11 @@ func TestACardHasBordersOnEveryEdge(t *testing.T) {
 	if !strings.HasPrefix(bottom, "+") || !strings.HasSuffix(bottom, "+") {
 		t.Errorf("the bottom row is a border; got %q", bottom[:12])
 	}
-	for _, i := range []int{1, 2} {
-		if !strings.HasPrefix(rows[i], "|") || !strings.HasSuffix(rows[i], "|") {
-			t.Errorf("row %d must be walled on both sides; got %q", i, rows[i])
+	// EVERY INTERIOR ROW, however many the body gives it (D-87 made the height
+	// the body's). A card that lost a wall on one row would read as damage.
+	for i, r := range rows[1 : len(rows)-1] {
+		if !strings.HasPrefix(r, "|") || !strings.HasSuffix(r, "|") {
+			t.Errorf("interior row %d must be walled on both sides; got %q", i+1, r)
 		}
 	}
 }
@@ -62,36 +70,22 @@ func TestTheBoxedCardKeepsItsHandleRightMost(t *testing.T) {
 	}
 }
 
-// D-57: THE TEST MARKS GO IN THE CORNERS.
+// THE CORNERS' MARK RETIRED AT D-87, ON ITS OWN REASONING.
 //
-//	"we have a UI where overlays happen — we can mark 'TEST' on the card corners
-//	of a fabricated event"
+// D-57 put the fabricated-event mark at BOTH ends of a card because "a card can
+// be occluded from either side by the priority overlay, and two corners cannot
+// both be covered by a box that starts at the left." The tracks are columns now
+// and nothing is occluded, so the title row's mark is always visible and the
+// second copy cost every card a row.
 //
-// A SINGLE MARK HAS A SINGLE POINT OF FAILURE, and the priority track sits ON
-// TOP of the main track — so a takeover card is the one most likely to be partly
-// occluded, which makes one mark on that card type the weakest possible
-// placement. Corners cannot all be lost to truncation, occlusion, or a cropped
-// screenshot.
-func TestAFabricatedCardIsMarkedInItsCorners(t *testing.T) {
-	c := aCard(t, "TORNADO WARNING + 2 more")
+// WHAT SURVIVES IS THE FACT ITSELF: a fabricated event still says so, once,
+// where the operator reads the card's name.
+func TestAFabricatedCardStillSaysSoOnItsTitleRow(t *testing.T) {
+	c := aCard(t, "OCEANSIDE, CA")
 	c.Test = true
-	rows := boxOf(t, 132, c, "T", "PRIORITY")
-
+	rows := boxOf(t, 132, c, "6", "STANDARD")
 	if !strings.Contains(rows[1], testEventMark) {
-		t.Errorf("the mark leads the title row:\n%q", rows[1])
-	}
-	corners := rows[2]
-	if strings.Count(corners, "TEST") < 2 {
-		t.Errorf("both bottom corners carry the mark:\n%q", corners)
-	}
-	// LEFT AND RIGHT, not two marks huddled together.
-	l, r := strings.Index(corners, "TEST"), strings.LastIndex(corners, "TEST")
-	if r-l < 40 {
-		t.Errorf("the marks are corners, not neighbours: %d and %d\n%q", l, r, corners)
-	}
-	// AND THE BADGE KEEPS ITS LANE (HUM LEAD: "Keeping PRIORITY is fine").
-	if !strings.Contains(rows[1], "PRIORITY") {
-		t.Errorf("the lane badge is not replaced by the mark:\n%q", rows[1])
+		t.Errorf("a fabricated card does not say so on its title row: %q", rows[1])
 	}
 }
 
