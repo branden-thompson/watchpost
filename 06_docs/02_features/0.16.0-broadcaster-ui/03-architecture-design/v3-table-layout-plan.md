@@ -4,7 +4,7 @@ date: 2026-09-12
 phase: PLAN (re-plan within BUILD)
 sev: SEV-0
 authority: HUM LEAD
-status: "Rulings 1 and 2 settled 2026-09-12.  Three questions still open — see the last section.  NOTHING BUILT."
+status: "All five rulings settled 2026-09-12.  Nothing blocking.  Stage 1 next."
 ---
 
 # The v3 layout — a re-plan
@@ -98,24 +98,74 @@ Each ends green and shippable.
 | **1** | the console renders through `render.LocationRow` | `broadcaster.go`'s direct go-studs use | parity harness first: the same row data must render identically on both surfaces |
 | **2** | **SCHEDULED LINE-UP** table, slots 2..N, with Observer's prefixes and alert tags | the rail, `bcRegions`, `slotRows`, `zipTracks` | the biggest single cut |
 | **3** | **LOCATION POOL** table + `Population` on `LocationRef` + `[l]` pin and eviction + shared pointer | — | population is on `geodata.City` and NOT on `snapshot.LocationRef`; that plumbing is real work |
-| **4** | the top **LIVE NOW / RELAY BED** table, the STATION AIR row and its elapsed timer | **D-89** | folds in the pending **stage C** (the relay-fault window's data flow), since the bed row is here |
+| **4** | the top **LIVE NOW / RELAY BED** table, the STATION AIR row and its elapsed timer, and the **gain split** | **D-89** | folds in the pending **stage C** (the relay-fault window's data flow) and corrects D-91's `SetVolume` row |
 | **5** | **UP NEXT** and **ALERT** boxes side by side, both always present | D-87 stage 1's cards | the manifest content is unchanged |
-| **6** | the per-card **PRESENTER** control | — | **blocked on a ruling** — see below |
+| **6** | the per-card **PRESENTER** control | — | UNBLOCKED: `Card.ReadBy` already exists; the operator sets it, and it wins over the role cast |
 
 ---
 
-## Still open — three questions
+## The three questions — RULED 2026-09-12
 
-1. **Slot count.**  The table runs `02`–`15`, which with LIVE=0 and UP NEXT=1 is **16** slots, not 15.
-   `MainTrackSlots` is 10 today.  Which number?
+### 1 — FIFTEEN slots
 
-2. **Per-card PRESENTER precedence.**  D-18 rows 6/7 rule voices SHARED and per-ROLE; a per-CARD
-   override is a third axis.  Does a card's presenter beat the role cast, and does it persist?
+`MainTrackSlots` 10 → **15**.  LIVE is 0, UP NEXT is 1, and the table draws **2..14 — thirteen rows**.
 
-3. **D-18 row 29 — the gain.**  Row 29 recommends `broadcaster.gain_pct` as **B, persisted**, reasoning
-   that sharing means *"an operator's on-air level changes because someone moved the listening
-   volume"*.  The 2026-09-12 ruling was one volume for the app.  Row 29 is unbuilt so today matches the
-   newer ruling, but that ruling was given against a survey that did not cite row 29.  **Still flagged.**
+*The mock drew fourteen rows numbered `02`–`15`, which would be sixteen slots.  Fifteen is the ruling,
+so the reference is redrawn to match it rather than the other way round.*
+
+### 2 — the per-card presenter WINS, because Broadcaster thinks in beats
+
+**HUM LEAD:** *"Observer is always '1 report at a time' whereas Broadcaster is 'what are the next 15
+reads going to look like?'  In Broadcaster it's beats."*
+
+That settles the precedence and explains it: on Observer a voice is a PREFERENCE, because there is only
+ever one read in flight.  On the console the operator is composing a SEQUENCE, and varying who reads
+which beat is part of composing it.  So:
+
+```
+the card's own presenter  >  the role cast (D-18 rows 6/7)  >  the root voice
+```
+
+**IT USES A FIELD THAT ALREADY EXISTS.**  `Card.ReadBy` is *"the display name of the voice that will
+read this card, resolved against what THIS machine has"* — today it is resolved from the slot's cast
+role.  The change is that the operator may set it.  No new field, no new resolution path.
+
+**AND IT DOES NOT PERSIST, by construction rather than by decision:** a card is a slot in a running
+order, not a setting.  It lives as long as the beat does.  Nothing reaches `config`.
+
+### 3 — TWO stored integers, ONE component
+
+**HUM LEAD:** *"I'm okay with a persistent gain value, it should re-use the code component so we don't
+have two code copies of the same thing — but we can have two different integers stored for 'Observer
+Volume' and 'Broadcaster Gain'.  That seems cheap — 2 copies of the same component code does not."*
+
+**This RESTORES D-18 row 29** — `broadcaster.gain_pct`, persisted — and supersedes the 2026-09-12
+"one volume for the app" reading, which was given against a survey that did not cite row 29.  Row 29's
+own argument is the one that stands: *"sharing them means an operator's on-air level changes because
+someone moved the listening volume."*
+
+| | |
+|---|---|
+| **one** | the control, the bar, and `Engine.Volume` — no second copy |
+| **two** | the stored integers: Observer's volume and the station's gain |
+| **the surface picks** | which integer the control reads and writes, and which is applied on a swap |
+
+**IT CHANGES 0.15.0's BEHAVIOUR, slightly and for the better:** Observer's volume is hard-coded to 55
+at every launch today (D-18 row 29 notes it "is not persisted at all").  It becomes remembered.  That
+is an improvement, and it is still a change to the shipped product, so it is written down rather than
+slipped in.
+
+**AND IT CORRECTS A ROW I SHIPPED YESTERDAY.**  D-91's `airBoundary` classifies `Radio.SetVolume` as
+`airShared` with the reason *"one volume setting for the app"*.  That reason is now wrong.  The seam is
+not shared — it is **routed**: reachable from both surfaces, writing whichever integer the current
+surface owns.  The row's reason and possibly its bucket change with stage 4.
+
+---
+
+## Still open — nothing blocking
+
+Stage 6 is unblocked.  Stage 4 now also carries the gain split, and D-91's `airBoundary` row for
+`Radio.SetVolume` is corrected there.
 
 ## Two smaller notes
 
