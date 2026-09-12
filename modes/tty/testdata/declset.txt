@@ -52,7 +52,6 @@ const bcFlatCardRows
 const bcGainCells
 const bcInsetRows
 const bcLabelCells
-const bcLaneLabel
 const bcLeftInset
 const bcMinCols
 const bcMinRows
@@ -71,6 +70,8 @@ const bcScheduledHeading
 const bcSectionInset
 const bcStandbyNotice
 const bcTakeoverTitle
+const bcUpNextLabel
+const bcUpNextLabelW
 const bottomInset
 const castLabelW
 const castModeOn
@@ -223,6 +224,7 @@ func (Broadcaster).Init
 func (Broadcaster).Update
 func (Broadcaster).View
 func (Broadcaster).airBox
+func (Broadcaster).alertBox
 func (Broadcaster).armTick
 func (Broadcaster).bandWidth
 func (Broadcaster).bedLine
@@ -230,13 +232,13 @@ func (Broadcaster).bedSelector
 func (Broadcaster).burstBody
 func (Broadcaster).cardBoxWidth
 func (Broadcaster).cardDetail
-func (Broadcaster).cardGap
 func (Broadcaster).chrome
 func (Broadcaster).chromeAt
 func (Broadcaster).clamp
 func (Broadcaster).clock
 func (Broadcaster).controlRow
 func (Broadcaster).detailBody
+func (Broadcaster).emptyAlertBox
 func (Broadcaster).flatBody
 func (Broadcaster).frameWidth
 func (Broadcaster).framed
@@ -244,7 +246,6 @@ func (Broadcaster).header
 func (Broadcaster).headerRows
 func (Broadcaster).heldNotice
 func (Broadcaster).inset
-func (Broadcaster).laneLabelRow
 func (Broadcaster).lanes
 func (Broadcaster).lineupRowOf
 func (Broadcaster).lineupRows
@@ -261,6 +262,7 @@ func (Broadcaster).priorityColumn
 func (Broadcaster).priorityWidth
 func (Broadcaster).railed
 func (Broadcaster).readBody
+func (Broadcaster).readPair
 func (Broadcaster).scheduledLines
 func (Broadcaster).scrollQueue
 func (Broadcaster).slotCard
@@ -272,10 +274,11 @@ func (Broadcaster).tickNeeded
 func (Broadcaster).tooSmall
 func (Broadcaster).trackArea
 func (Broadcaster).transmitterRow
+func (Broadcaster).upNextBox
+func (Broadcaster).upNextWidth
 func (Broadcaster).waiting
 func (Broadcaster).withControl
 func (Broadcaster).withSize
-func (Broadcaster).zipTracks
 func (Dashboard).DiagnosticsOpen
 func (Dashboard).Init
 func (Dashboard).ModalOpen
@@ -862,7 +865,6 @@ type tonedRow
 type uiSavedMsg
 type vizTickMsg
 var _
-var bcRailBlank
 var bcRailForms
 var bcRegions
 var heldEscalation

@@ -24,20 +24,31 @@ import (
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
-// AN EMPTY RAIL DRAWS NOTHING AT ALL (D-61). The column is reserved either way —
-// a layout that widened when a hazard arrived would move every card sideways at
-// the moment the operator is reading one — but it stays empty until there is
-// something to put in it.
-func TestAClearPriorityTrackDrawsNothingAtAll(t *testing.T) {
+// D-61 IS SUPERSEDED: THE ALERT BOX IS ALWAYS DRAWN (D-97).
+//
+// HUM LEAD, 2026-09-12: "Up Next and Alert are always present — if there are no
+// active alerts taking over, then the box is simply empty."
+//
+// D-61 ruled the opposite in September: "the PRIORITY rail label ONLY shows up
+// when a priority card sits on top of the main rail — this gives the operator more
+// space to view/manage the main rail during normal operation." That reasoning was
+// about SPACE, and the v3 layout answers it differently: the column is reserved
+// either way (priorityWidth), so hiding the box bought nothing and cost the
+// operator the knowledge of where a hazard will appear.
+//
+// AN EMPTY BOX IS THE POINT. The frame does not move when a hazard arrives, which
+// is the same argument `priorityWidth` already made for reserving the column.
+func TestAClearRailStillDrawsTheAlertBox(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 
-	if rows := b.priorityColumn(40); len(rows) != 0 {
-		t.Errorf("a clear rail drew %d rows", len(rows))
-	}
 	got := stripANSITest(b.View().Content)
-	if strings.Contains(got, bcTakeoverTitle) {
-		t.Error("the takeover's box is drawn with nothing on the rail")
+	if !strings.Contains(got, bcTakeoverTitle) {
+		t.Error("the alert box is missing while the rail is clear; it is ALWAYS present, and empty")
+	}
+	// AND IT IS EMPTY: a box with a hazard in it names one.
+	if strings.Contains(got, "ALERT TYPE") {
+		t.Error("the alert box lists something while the rail is clear")
 	}
 }
 
