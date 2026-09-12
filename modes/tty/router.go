@@ -272,6 +272,12 @@ func programScoped(msg tea.Msg) bool {
 	// that only learned the data while on screen would show a stale masthead the
 	// instant it was swapped to, which is the exact argument `consoleScoped`
 	// already makes for the schedule.
+	// AND THE RECENT SNAPSHOT DOES TOO (D-99). The console's LOCATION POOL draws
+	// weather for the station's candidates, and those ride the recent pipeline —
+	// so the console needs what that pipeline publishes, for the same reason it
+	// needs the priority one.
+	case RecentSnapshotMsg:
+		return true
 	case SnapshotMsg:
 		return true
 	}

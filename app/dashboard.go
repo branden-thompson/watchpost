@@ -205,7 +205,13 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 		lp.severe.SetLocations(0, snap)
 	})
 	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
-	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
+	// THE STATION'S POOL RIDES THE RECENT PIPELINE (D-99). The console's pool table
+	// needs enough weather to decide on a location, and this is the machinery that
+	// already fetches a bounded set at a slow cadence — see withPool.
+	//
+	// `lp.poolRefs` DIRECTLY, not `currentPool()`: the lock is held here.
+	recentRefs := withPool(restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), lp.poolRefs)
+	lp.recent = startRecent(ctx, p, lp.providers(), recentRefs, func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
 	lp.mu.Unlock()
 	lp.markFIRMS()                         // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
 	lp.setWatch(refs)                      // seed the live watchlist the ticker ties events to

@@ -155,3 +155,34 @@ func (lp *livePipelines) reStation(watch []snapshot.LocationRef) (stationArea, [
 	next := stationArea{transmitter: watch[0], radiusMi: now.radiusMi, followsDefault: true}
 	return next, lp.poolFor(next), true
 }
+
+// withPool adds the station's pool to a location set, skipping what is already
+// there (D-99).
+//
+// THE POOL JOINS THE RECENT PIPELINE RATHER THAN GETTING ONE OF ITS OWN. That
+// pipeline already fetches a bounded set at the slow cadence, publishes into one
+// assembler, and coalesces — building a third of it for twenty-five locations
+// would be a second copy of all of that.
+//
+// THE CADENCE IS THAT PIPELINE'S, AND IT IS SLOWER THAN THE RULING ASKED FOR IN
+// THE HALF THAT MATTERS. The HUM LEAD approved fifteen minutes (2026-09-12);
+// `recentTiers` gives observations every TEN — fresher — and the forecast every
+// HOUR, which is the source's own refresh interval and what R-8.2 bounds a cadence
+// by. Fifteen minutes on a forecast NWS republishes hourly would re-read cache
+// four times for the same bytes. Recorded rather than silently substituted.
+//
+// DEDUPED BY KEY, because a watched location inside the service area is one
+// location, and fetching it twice would double its cost for no new data.
+func withPool(recent, pool []snapshot.LocationRef) []snapshot.LocationRef {
+	seen := make(map[snapshot.LocationKey]bool, len(recent)+len(pool))
+	out := make([]snapshot.LocationRef, 0, len(recent)+len(pool))
+	for _, r := range append(append([]snapshot.LocationRef(nil), recent...), pool...) { // bounded (P10-02)
+		k := snapshot.Key(r)
+		if r.Label == "" || seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, r)
+	}
+	return out
+}

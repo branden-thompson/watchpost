@@ -550,6 +550,7 @@ func unread
 func userCacheSubdir
 func vizFor
 func voiceDir
+func withPool
 func worstOf
 func writeProfile
 func writeRadioDebug
