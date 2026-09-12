@@ -66,8 +66,18 @@ func TestTheConsoleNumbersTheMainTrackSlots(t *testing.T) {
 	got := b.View().Content
 	// THE HANDLE IS A CHIP, so the assertion asks the chip renderer rather
 	// than a literal — the brackets are only its no-colour fallback.
-	if !strings.Contains(got, chipFor("0")) || !strings.Contains(got, chipFor("1")) {
-		t.Error("the ten slots are addressable 0-9 (FR-2.4); the frame carries no slot handles")
+	//
+	// FROM [1], NOT FROM [0], ON A STATION AT REST (D-89). The LIVE slot draws
+	// the standby box while nothing is on the air, and that box carries no
+	// handle: `[0]` addressed nothing, opened nothing, and a chip on a slot with
+	// no card behind it is the defect F-97 was filed for. FR-2.4's ten addresses
+	// are the ten a card can be IN — and slot 0 becomes one the moment the
+	// operator goes on air, which the test below proves.
+	if !strings.Contains(got, chipFor("1")) || !strings.Contains(got, chipFor("2")) {
+		t.Error("the slots are addressable (FR-2.4); the frame carries no slot handles")
+	}
+	if strings.Contains(got, chipFor("0")) {
+		t.Error("the standby box carries a handle: [0] addresses nothing while the station is at rest")
 	}
 }
 

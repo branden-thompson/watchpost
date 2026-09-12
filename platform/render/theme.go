@@ -84,6 +84,20 @@ const (
 	// cards carry a tone of their own, and lifting it reaches nothing else.
 	CardText Token = "bc.card.text"
 
+	// CardEmptyBG is the LIVE slot with nothing on the air (D-89).
+	//
+	// GREY BECAUSE GREY IS WHAT DORMANT LOOKS LIKE (HUM LEAD, 2026-09-11: "empty
+	// state needs to be a grey box"). A slot painted in the card family would
+	// read as a card the operator cannot make out; a slot painted in the rail's
+	// red would say the station is live. It is neither a card nor a state, so it
+	// wears the one colour that claims nothing.
+	//
+	// IT IS ITS OWN TOKEN AND NOT `GroupSectionBG`, which is the nearest grey in
+	// the set: that token means "a section header on Observer", and borrowing it
+	// would mean the console's empty slot moved whenever somebody retuned
+	// Observer's bands. One meaning, one token.
+	CardEmptyBG Token = "bc.card.empty.bg"
+
 	AlertLabel  Token = "alert.label"  // watch/advisory yellow (panel tints)
 	AlertDanger Token = "alert.danger" // warning red (panel tints, provider down)
 
@@ -220,6 +234,7 @@ func defaultTheme() map[Token]string {
 		CardBG:         "48;2;36;36;42",
 		CardOperatorBG: "48;2;54;48;36",
 		CardText:       "250",
+		CardEmptyBG:    "48;2;58;58;58", // a neutral grey, lighter than the card family
 		GroupSectionBG: "48;2;34;34;34", // #222 (UAT 44.2)
 
 		AlertLabel:  "220",
