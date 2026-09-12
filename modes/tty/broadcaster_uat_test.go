@@ -136,21 +136,26 @@ func TestOneBlankRowSeparatesTheRegions(t *testing.T) {
 	// the rail names in two halves — "this is one area they should be
 	// continuous" — so the air goes after LIVE and after UP NEXT, and nowhere
 	// else inside the order.
-	want := 0
+	// ONE BREAK BETWEEN THE TWO READ REGIONS (D-94). LIVE and UP NEXT are each a
+	// thing on its own and the air is what says so; the SCHEDULED table below
+	// brings its own leading blank, so the running order proper holds n-1.
+	reads := 0
 	for _, r := range bcRegions {
 		if r.reads {
-			want++
+			reads++
 		}
 	}
-	if breaks != want {
-		t.Errorf("%d breaks in the running order, want %d (one after each read region)", breaks, want)
+	if want := reads - 1; breaks != want {
+		t.Errorf("%d breaks in the running order, want %d (one BETWEEN each pair of read regions)", breaks, want)
 	}
-	// AND THE CARDS INSIDE A REGION STAY FLUSH: the LINE UP's five slots draw
-	// twenty rows with nothing between them.
+	// AND A READ REGION DRAWS ONE CARD OF THE READ HEIGHT (D-94). The flat
+	// ORDERED cards are gone — slots 2 and up are a table — so what is left to
+	// check is that the two remaining regions each draw the tall card the
+	// operator reads from, and nothing else.
 	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
 	r := bcRegions[len(bcRegions)-1]
 	body := b.slotRows(r, nil, lane)
-	if got, want := len(body), (r.upto-r.from)*bcFlatCardRows; got != want {
+	if got, want := len(body), (r.upto-r.from)*bcReadCardRows; got != want {
 		t.Errorf("the last region draws %d rows for %d slots, want %d", got, r.upto-r.from, want)
 	}
 }
@@ -289,23 +294,32 @@ func TestTheScrollControlCapsSitOnRowsOfTheirOwn(t *testing.T) {
 	if up >= down {
 		t.Fatalf("the up cap is above the down cap: %d, %d", up, down)
 	}
-	for _, at := range []int{up, down} {
-		cells := []rune(rows[at])
-		if strings.TrimSpace(string(cells[:b.width-bcRightChrome+3])) != "" {
-			t.Errorf("row %d carries a cap AND content; a cap sits on a row of its own:\n%s", at, rows[at])
-		}
+	// THE RULE IS THE CARD REGION'S, AND ONLY ITS (D-70, narrowed at D-94).
+	//
+	// A cap sharing a row with a CARD read as a mark ON that card, which is why
+	// D-70 gave it a row of its own. The running order is a TABLE below the
+	// cards now, and a rail beside table rows is exactly what Observer draws —
+	// its caps sit on content rows there and always have. So the question is
+	// asked of the cap that lands in the card region and not of the one below it.
+	cells := []rune(rows[up])
+	if strings.TrimSpace(string(cells[:b.width-bcRightChrome+3])) != "" {
+		t.Errorf("row %d carries a cap AND content; in the CARD region a cap sits on a row of its "+
+			"own, or it reads as a mark on the card:\n%s", up, rows[up])
 	}
 	// AND THE SCROLLING REGION IS THE ONE THAT SCROLLS. The two read cards are
 	// always the same two, so the control must not begin above them.
+	//
+	// THE SCROLLING REGION IS THE TABLE (D-94), and it is addressed by its `##.`
+	// column rather than by a chip.
 	firstScrolling := 0
 	for i, r := range rows {
-		if strings.Contains(r, chipFor("2")) {
+		if strings.Contains(r, bcScheduledHeading) {
 			firstScrolling = i
 			break
 		}
 	}
 	if firstScrolling == 0 {
-		t.Fatal("the first scheduled card must reach the frame")
+		t.Fatal("the scheduled line-up must reach the frame")
 	}
 	if up > firstScrolling {
 		t.Errorf("the control starts at row %d, below the first scrolling card at %d", up, firstScrolling)

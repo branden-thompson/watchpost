@@ -125,7 +125,25 @@ const (
 	// the number is recorded rather than optimised — and the zip is the shape
 	// that makes occlusion impossible, which is worth more than the allocations
 	// the splice saved.
-	bcFrameAllocs = 1150
+	// 1870: D-94 — the running order is a go-studs DataTable now, which is
+	// Observer's own table and therefore Observer's own cost: thirteen rows of
+	// nine cells, each with its own style, under two header rows built from
+	// painted segments. MEASURED at 1779 and pinned at ×1.05, the same rule as
+	// every other number in this file.
+	//
+	// IT DRAWS FEWER ROWS AND ALLOCATES MORE, and that is the trade stated
+	// plainly: ten manifest cards were about a hundred and thirty rows, the table
+	// is thirteen — but a table row is assembled cell by cell where a card row
+	// was one padded string. What it buys is the HUM LEAD's requirement that "the
+	// user doesn't have to relearn what certain things mean in between
+	// experiences", and parity is not obtainable at a lower price than the thing
+	// being matched.
+	//
+	// THE LEVER IS NAMED AND NOT PULLED (D-53): Observer memoises its table body
+	// and the console does not, so this rebuilds on every frame including ticks
+	// that changed nothing. That is the optimisation available here, and the
+	// working layout comes first.
+	bcFrameAllocs = 1870
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

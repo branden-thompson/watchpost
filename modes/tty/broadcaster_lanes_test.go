@@ -63,32 +63,42 @@ func TestTheConsoleShowsNothingItWasNotPublished(t *testing.T) {
 
 func TestTheConsoleNumbersTheMainTrackSlots(t *testing.T) {
 	b := bcWith(t, card(t, "a", "ONE"), card(t, "b", "TWO"))
-	got := b.View().Content
-	// THE HANDLE IS A CHIP, so the assertion asks the chip renderer rather
-	// than a literal — the brackets are only its no-colour fallback.
+	got := stripANSITest(b.View().Content)
+
+	// THE READ CARDS KEEP THEIR CHIP, AND THE TABLE KEEPS ITS NUMBER (D-94).
 	//
-	// FROM [1], NOT FROM [0], ON A STATION AT REST (D-89). The LIVE slot draws
-	// the standby box while nothing is on the air, and that box carries no
-	// handle: `[0]` addressed nothing, opened nothing, and a chip on a slot with
-	// no card behind it is the defect F-97 was filed for. FR-2.4's ten addresses
-	// are the ten a card can be IN — and slot 0 becomes one the moment the
-	// operator goes on air, which the test below proves.
-	if !strings.Contains(got, chipFor("1")) || !strings.Contains(got, chipFor("2")) {
-		t.Error("the slots are addressable (FR-2.4); the frame carries no slot handles")
+	// Slots 0 and 1 are the two the operator READS from and they are still cards,
+	// so `[1]` is still a chip on one. Everything below is a table row now, and
+	// the reference addresses those by the `##.` column exactly as Observer's
+	// table does — the number IS the handle, so a chip beside it would be the
+	// address written twice.
+	if !strings.Contains(got, chipFor("1")) {
+		t.Error("the UP NEXT card lost its handle (FR-2.4)")
 	}
 	if strings.Contains(got, chipFor("0")) {
-		t.Error("the standby box carries a handle: [0] addresses nothing while the station is at rest")
+		t.Error("the standby box carries a handle: [0] addresses nothing while the station is at rest (D-89)")
+	}
+	for _, want := range []string{"02.", "03.", "04."} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the running order does not number slot %q; the ##. column IS the address", want)
+		}
 	}
 }
 
-func TestTheConsoleShowsAtMostTenMainTrackCards(t *testing.T) {
+func TestTheConsoleShowsAtMostFifteenMainTrackSlots(t *testing.T) {
 	var cs []lineup.Card
-	for i := 0; i < 14; i++ {
+	for i := 0; i < 20; i++ {
 		cs = append(cs, card(t, string(rune('a'+i)), "LOC"+string(rune('A'+i))))
 	}
-	got := bcWith(t, cs...).View().Content
-	if strings.Contains(got, "[ 10 ]") || strings.Contains(got, "LOCK") {
-		t.Error("the main track is a ROLLING view of ten (FR-3.1); an eleventh card reached the frame")
+	got := stripANSITest(bcWith(t, cs...).View().Content)
+
+	// FIFTEEN, RULED 2026-09-12 (was ten). LIVE is 0, UP NEXT is 1, and the table
+	// draws 2..14 — so a `15.` row is a sixteenth slot that must not exist.
+	if strings.Contains(got, "15.") {
+		t.Error("the main track is a ROLLING view of FIFTEEN; a sixteenth slot reached the frame")
+	}
+	if !strings.Contains(got, "14.") {
+		t.Error("the fifteenth slot did not reach the frame")
 	}
 }
 

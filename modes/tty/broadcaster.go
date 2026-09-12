@@ -94,7 +94,7 @@ type StationAreaMsg struct {
 // disagree the station either holds cards nobody can address, or leaves slots
 // empty for ever. `app` sets the depth from here rather than from a second
 // constant that agrees with it today.
-const MainTrackSlots = 10
+const MainTrackSlots = 15
 
 // Broadcaster is the operator console's model.
 type Broadcaster struct {
@@ -579,6 +579,10 @@ func (b Broadcaster) lanes() []string {
 	}
 	out = append(out, b.chrome(body[:reads], false, 0, 0)...)
 	out = append(out, b.chromeAt(scroll, off, len(body)-reads)...)
+	// AND THE SCHEDULED LINE-UP IS A TABLE BELOW THEM (D-94). It is not a card
+	// region any more, so it is not zipped with the rail or the alert track — it
+	// is Observer's table, full width, under a heading of its own.
+	out = append(out, b.scheduledLines(main, len(out))...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
 	// blank rows to the bottom of the terminal, which is what the reference does
 	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the
@@ -701,8 +705,12 @@ var bcRegions = []bcRegion{
 	// between them already said.
 	{"LIVE ON AIR", 0, 1, true},
 	{"UP NEXT", 1, 2, true},
-	{"SCHEDULED LINE UP", 2, MainTrackSlots, false},
 }
+
+// SCHEDULED IS NO LONGER A CARD REGION (D-94). Slots 2 and up are a TABLE now —
+// Observer's table, through Observer's own machinery — so the region that drew
+// them as flat cards, and the vertical rail that named them, are gone. What the
+// rail said in letters down the side, the table says in a heading above it.
 
 // burstBody is what a takeover box lists: who declared the alerts, and then the
 // alerts themselves (D-87).

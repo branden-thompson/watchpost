@@ -40,8 +40,18 @@ func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 			boxes++
 		}
 	}
-	if got := boxes / 2; got < 5 || got > MainTrackSlots {
-		t.Errorf("an empty line-up drew %d slots; want as many as fit, up to %d", got, MainTrackSlots)
+	// TWO BOXES NOW, NOT TEN (D-94). Slots 0 and 1 are the cards the operator
+	// reads from and keep their boxes; everything below is a TABLE, so counting
+	// boxes counts the read region and nothing else.
+	if got := boxes / 2; got != 2 {
+		t.Errorf("an empty line-up drew %d boxed slots; LIVE and UP NEXT are the two that keep a box", got)
+	}
+	// AND THE TABLE STILL DRAWS ITS SLOTS, which is where the rest of the running
+	// order went.
+	for _, want := range []string{"02.", "03."} {
+		if !strings.Contains(stripANSITest(b.View().Content), want) {
+			t.Errorf("an empty line-up drew no %q row; a slot is an ADDRESS whether or not it is filled", want)
+		}
 	}
 	if strings.Contains(stripANSITest(b.View().Content), "nothing scheduled") {
 		t.Error(`"(nothing scheduled)" is a dead end; the slots say it better`)
@@ -97,12 +107,15 @@ func TestAnEmptySlotStillCarriesItsHandle(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	got := stripANSITest(b.View().Content)
-	// EVERY SLOT THE CONSOLE DRAWS, which since D-87 is as many as fit: the
-	// cards are manifests and the queue scrolls, so slot 9 is below the window
-	// on the reference's own terminal.
-	for _, want := range []string{chipFor("1"), chipFor("2"), chipFor("4")} {
+	// THE READ CARD KEEPS ITS CHIP; THE TABLE ROWS CARRY THEIR NUMBER (D-94).
+	// The `##.` column IS the address, exactly as it is on Observer's table, so a
+	// chip beside it would be the address written twice.
+	if !strings.Contains(got, chipFor("1")) {
+		t.Errorf("the UP NEXT card is not addressable; %q is missing", chipFor("1"))
+	}
+	for _, want := range []string{"02.", "04."} {
 		if !strings.Contains(got, want) {
-			t.Errorf("every slot is addressable; %q is missing", want)
+			t.Errorf("every slot is addressable; the %q row is missing", want)
 		}
 	}
 	if strings.Contains(got, chipFor("0")) {
