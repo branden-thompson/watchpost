@@ -266,7 +266,42 @@ func (o Opts) temp5Or(c *float64, loading bool) string {
 // badge — count beside the glyph ('›  2⚠'), both toned by the most severe
 // alert (yellow advisory-grade, red warning-grade; UAT 20.2/20.3). Split
 // from rowData (P10-04).
-func rowMarks(r LocationRow, g Glyphs) [marksW]string {
+// Marks is the prefix block a table row wears — the pointer, the play mark, the
+// seismic glyph, the fire count and the alert count.
+//
+// A TYPE OF ITS OWN BECAUSE TWO TABLES DRAW IT (D-94). The console's line-up
+// carries the same marks as Observer's locations, deliberately: the HUM LEAD's
+// requirement is that "the user doesn't have to relearn what certain things mean
+// in between experiences". Copying `rowMarks` would have been forty lines of
+// identical logic, which the `dupes` gate refuses at twenty-five nodes and which
+// would drift the day a glyph moved.
+//
+// `LocationRow` KEEPS ITS FLAT FIELDS and adapts into this. Embedding would have
+// been tidier and would have broken all thirty-five of its construction sites,
+// most of them in this package's own tests — churn with no reader.
+type Marks struct {
+	Selected, Playing, Repeat bool
+	Seismic                   int // the felt band, 0 for none
+	Fire                      int // events near the row
+	FireHot                   bool
+	HasAlert, WarnAlert       bool
+	AlertCount                int
+}
+
+// marks is one location row's prefix state.
+func (r LocationRow) marks() Marks {
+	return Marks{
+		Selected: r.Selected, Playing: r.Playing, Repeat: r.Repeat,
+		Seismic: r.Seismic, Fire: r.Fire, FireHot: r.FireHot,
+		HasAlert: r.HasAlert, WarnAlert: r.WarnAlert, AlertCount: r.AlertCount,
+	}
+}
+
+// rowMarks is the location table's marks, through the one drawer.
+func rowMarks(r LocationRow, g Glyphs) [marksW]string { return markCells(r.marks(), g) }
+
+// markCells draws the prefix block. THE ONE COPY (D-94).
+func markCells(r Marks, g Glyphs) [marksW]string {
 	// 0.11.0 mock: `›  ▶ ● 5◆ 3⚠ 009.` — 0 pointer · 1-2 spacers · 3 play ·
 	// 4 spacer · 5 seismic glyph · 6 spacer · 7 fire count · 8 ◆ · 9 spacer ·
 	// 10 alert count · 11 ⚠ · 12 spacer.
@@ -374,7 +409,8 @@ func (o Opts) LocationTable(rows []LocationRow, days int) string {
 		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: data, CellStyles: rowStyles(cols, r, data)})
 	}
 	dt := studs.NewDataTable(o.Width, def)
-	out := []string{o.groupHeader(l, cols, o.Width), o.columnHeader(l, cols, o.Width)}
+	groups := groupsFor(l)
+	out := []string{o.groupHeader(groups, cols, o.Width), o.columnHeader(groups, cols, o.Width)}
 	for _, line := range dt.Rows() {
 		out = append(out, strings.TrimRight(line, " "))
 	}
@@ -514,9 +550,13 @@ func groupsFor(l layout) []groupSpec {
 // like the bands above it; the rows below keep their gutters. The marks
 // column is painted with no label; the EXTENDED spacer is a gap the
 // neighbours share. Colour off: the bands' bracket form, per segment.
-func (o Opts) columnHeader(l layout, cols []studs.ColumnDefinition, tableW int) string {
+// TAKES THE GROUP SPEC, NOT A LAYOUT (D-94). `layout` is the LOCATION table's
+// geometry and this only ever used it to reach `groupsFor`. Passing the spec is
+// what lets the console's line-up draw the same header row rather than a second
+// one that looks like it.
+func (o Opts) columnHeader(groups []groupSpec, cols []studs.ColumnDefinition, tableW int) string {
 	bgOf := map[string]Token{}
-	for _, g := range groupsFor(l) {
+	for _, g := range groups {
 		for _, m := range g.members {
 			bgOf[m] = g.bg
 		}
@@ -569,7 +609,7 @@ func TableHeaderTone(band Token) string {
 // Bands extend to MEET at gutter midpoints (UAT 14.4: labels read as one
 // continuous strip while the columns beneath keep their spacing); the
 // column set and fill width drive every span.
-func (o Opts) groupHeader(l layout, cols []studs.ColumnDefinition, tableW int) string {
+func (o Opts) groupHeader(groups []groupSpec, cols []studs.ColumnDefinition, tableW int) string {
 	geom := tableGeom(cols, tableW)
 	span := func(names []string) (int, int) {
 		lo, hi := -1, -1
@@ -586,7 +626,6 @@ func (o Opts) groupHeader(l layout, cols []studs.ColumnDefinition, tableW int) s
 		}
 		return lo, hi
 	}
-	groups := groupsFor(l)
 	// Resolve every band's raw span, then stretch adjacent bands to MEET at
 	// the midpoint of whatever separates them (plain gutters AND the wider
 	// gutter+spacer gap before EXTENDED - UAT 15.1).
