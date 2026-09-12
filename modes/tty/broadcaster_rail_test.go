@@ -431,9 +431,11 @@ func TestTheQueueScrollsAndItsThumbFollows(t *testing.T) {
 	// ninety rows against the reference's seventy-four. Thirteen TABLE rows fit
 	// in seventy-four with room to spare — which is the improvement — so the
 	// scroll is now exercised where it actually matters: a terminal too short to
-	// hold the running order.  MEASURED — at 150 wide, 64 rows fits all thirteen
-	// and 60 fits nine, so sixty is where the window is genuinely a window.
-	base.width, base.height, base.ascii = 150, 60, true
+	// hold the running order.  MEASURED — at 150 wide, 56 rows fits all thirteen
+	// and 50 fits seven, so fifty is where the window is genuinely a window.  The
+	// frame got SHORTER at D-95 — the air box replaced a thirteen-row LIVE card
+	// with two rows — so this number moved down with it.
+	base.width, base.height, base.ascii = 150, 50, true
 	base.power = lineup.Running
 
 	// THE ROWS THAT SCROLL ARE THE TABLE'S NOW (D-94), not the cards'. The two

@@ -427,6 +427,12 @@ func (b Broadcaster) lanes() []string {
 	fg, bg := b.stationTone()
 	out = append(out, strings.Split(b.stationSection(b.opts(), fg, bg), "\n")...)
 	out = append(out, b.heldNotice()...)
+	// WHAT IS ON THE AIR, AND WHAT IS UNDER IT (D-95) — one box, two rows, above
+	// the running order it is the head of.
+	if air := b.airBox(); len(air) > 0 {
+		out = append(out, "")
+		out = append(out, b.chrome(air, false, 0, 0)...)
+	}
 	// A BARE BLANK ROW SEPARATES THE STATION SECTION FROM THE RUNNING ORDER, and
 	// the HUM LEAD annotated it twice: "Notice the blank line and how it
 	// separates the rail — this is intentional." It carries NO walls, because
@@ -469,13 +475,10 @@ func (b Broadcaster) lanes() []string {
 	// THE LINE-UP, NOT THE SCHEDULE (D-44). The Director's own structural cards
 	// are read on air and never shown: the operator did not ask for them, and a
 	// slot number spent on one is a number they cannot address.
-	main := b.lineup.Projection(lineup.MainTrack)
-	// A ROLLING VIEW OF TEN (FR-3.1). An eleventh card exists in the schedule
-	// and does not reach the frame; the console shows a window onto the lineup,
-	// never a second copy of it.
-	if len(main) > MainTrackSlots {
-		main = main[:MainTrackSlots]
-	}
+	// A ROLLING VIEW (FR-3.1). A sixteenth card exists in the schedule and does
+	// not reach the frame; the console shows a window onto the lineup, never a
+	// second copy of it. ONE OWNER — see mainTrack.
+	main := b.mainTrack()
 	// THE RUNNING ORDER IS IN TWO ZONES, and the boundary is where the scroll
 	// rail starts (D-68). The HUM LEAD, annotating the reference beside the
 	// SCHEDULED region: "Notice the top of the scroll is here, and the left rail
@@ -703,9 +706,13 @@ var bcRegions = []bcRegion{
 	// IS rather than merely where it sits, and "SCHEDULED LINE UP" is one name
 	// for what used to read as two regions — which is what the missing break
 	// between them already said.
-	{"LIVE ON AIR", 0, 1, true},
 	{"UP NEXT", 1, 2, true},
 }
+
+// LIVE IS NOT A CARD REGION EITHER (D-95). What is on the air is one row of the
+// AIR BOX above the running order, beside the bed it is mutually exclusive with —
+// so the exclusivity is drawn rather than described. D-89's standby box retires
+// with it: the wording it carried is now the row's own empty state.
 
 // SCHEDULED IS NO LONGER A CARD REGION (D-94). Slots 2 and up are a TABLE now —
 // Observer's table, through Observer's own machinery — so the region that drew

@@ -40,11 +40,15 @@ func TestTheConsoleDrawsEverySlotItHasRoomFor(t *testing.T) {
 			boxes++
 		}
 	}
-	// TWO BOXES NOW, NOT TEN (D-94). Slots 0 and 1 are the cards the operator
-	// reads from and keep their boxes; everything below is a TABLE, so counting
-	// boxes counts the read region and nothing else.
-	if got := boxes / 2; got != 2 {
-		t.Errorf("an empty line-up drew %d boxed slots; LIVE and UP NEXT are the two that keep a box", got)
+	// FIVE RULED ROWS NOW (D-94, D-95): the AIR box draws three — a top, a
+	// divider between LIVE NOW and RELAY BED, and a bottom — and the one
+	// remaining CARD, UP NEXT, draws two. Everything below is a TABLE.
+	//
+	// COUNTING RULES RATHER THAN BOXES, because the air box is one box with two
+	// cells and dividing by two would call it one and a half.
+	if boxes != 6 {
+		t.Errorf("an empty line-up drew %d ruled rows; want 6 — the masthead's one, the air box's "+
+			"three (top, the LIVE/BED divider, bottom) and UP NEXT's two", boxes)
 	}
 	// AND THE TABLE STILL DRAWS ITS SLOTS, which is where the rest of the running
 	// order went.
