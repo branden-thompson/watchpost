@@ -107,6 +107,45 @@ source.  **Nothing in `platform/lineup` models it** — a paused main track is *
 
 ---
 
+## ONE DECK, ONE AIR — and this is the question that keeps getting re-litigated
+
+**Both surfaces run through the SAME `radioDeck`, on purpose.**  HUM LEAD, 2026-09-12:
+
+> "Both Observer and Broadcaster do synth-based reads and relay streams, and so rather than make
+> copies of code, and prevent the possibilities of 2 decks running at once, we made both modes run
+> through the same deck, which would have its rotation arbitrated by the Director (in both modes — on
+> purpose), and then gated from the air by MasterControl."
+
+**Broadcaster is an EXTENSION of the product, not a standalone.**  All of 0.14.0 and 0.15.0 was spent
+making the shared things genuinely shared — "one canonical way to do a thing" — because the business
+problem is that Observer *can* broadcast a station if needed but is not suited to *operate* one.
+
+**So the model is settled, and it is not a design question:**
+
+| | |
+|---|---|
+| **one deck** | both modes' synth reads and relay streams |
+| **the Director** | arbitrates the rotation in BOTH modes |
+| **MasterControl** | declares the air, and gates the deck from it |
+
+- `advances(MainTrack)` = `power == Running && air == AirProgramme && !bed.carries`
+- `advancesMonitor()`   = `monitor && air == AirMonitor && !bed.carries`
+- **mutually exclusive by construction** — `TestOnlyOneProgrammeCanEverAdvance` states it
+- the ALERT RAIL is exempt from both; its FENCE follows the surface (D-73)
+
+**In Broadcaster mode the Broadcaster ALWAYS has the air** (HUM LEAD, 2026-09-12): "nothing from
+Observer should ever be able to re-tune, take over, or 'sneak under' to get on the air."  The deck
+already has the predicate for this — `radioDeck.monitorHasTheAir()`, which ASKS THE EFFECTOR because a
+flag of the deck's own would be a second carrier.
+
+**WHY THIS PARAGRAPH EXISTS.**  A session called the shared deck "awkward" and proposed splitting it,
+having rebuilt the model from `app/radio.go` instead of from `rulings-d74.md`.  That has now happened
+more than once, across sessions, and the HUM LEAD has had to correct it each time.  **The split is not
+an open question.**  If the deck looks wrong to you, the missing reading is `rulings-d74.md` and
+`role-model.md`, not a new proposal.
+
+---
+
 ## STOP is not STANDBY
 
 |  | Observer STOP | Broadcaster STANDBY |
