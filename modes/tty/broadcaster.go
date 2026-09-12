@@ -485,6 +485,9 @@ func (b Broadcaster) lanes() []string {
 	// by side that the reference draws at the same height.
 	out = append(out, b.chrome(b.readPair(), false, 0, 0)...)
 	out = append(out, b.scheduledLines(b.mainTrack(), len(out))...)
+	// AND THE POOL BELOW IT (D-98) — the candidates the operator promotes FROM,
+	// with enough weather to decide on them.
+	out = append(out, b.poolLines(len(out))...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
 	// blank rows to the bottom of the terminal, which is what the reference does
 	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the

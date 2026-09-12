@@ -161,6 +161,7 @@ func (Opts).LocationTable
 func (Opts).Marks
 func (Opts).Panel
 func (Opts).PanelColored
+func (Opts).PoolTable
 func (Opts).ScrollPanel
 func (Opts).ScrollPanelFooter
 func (Opts).SevereTable
@@ -177,6 +178,8 @@ func (Opts).lineupRowData
 func (Opts).rowData
 func (Opts).scrollBody
 func (Opts).scrollWindow
+func (Opts).tableFor
+func (Opts).tableForDated
 func (Opts).temp5
 func (Opts).temp5Or
 func (Units).Key
@@ -327,6 +330,7 @@ func teens
 func tempTint
 func tens
 func tensWords
+func thousands
 func truncate
 func withAA
 func without

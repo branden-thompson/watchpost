@@ -4,6 +4,7 @@ package render
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	studs "github.com/branden-thompson/watchpost/third_party/go-studs/components"
@@ -21,6 +22,7 @@ type DayCell struct {
 type LocationRow struct {
 	Index              int
 	Name, Tag, Zip     string   // Tag = user 5-char label (mock LABEL column, hidden)
+	Population         int      // the POOL's own column (D-98); 0 draws blank
 	Station            string   // observing station id (WX STN column, UAT 60)
 	StationKM          *float64 // station distance (DIST column, UAT 60)
 	Conditions         string
@@ -66,6 +68,7 @@ func baseColumns() []baseCol {
 		{"wxstn", "WX STN", 6, 1}, // observing station (UAT 60); "WX" keeps it apart from the NOAA radio transmitter
 		{"dist", "DIST", 6, 1},    // "nnn km" / "nnn mi"
 		{"zip", "ZIP", 7, 1},
+		{"pop", "POPULATION", 12, 1}, // the pool only (D-98)
 		{"cond", "CONDITIONS", 12, 2},
 		{"now", "NOW", 8, 2},
 		{"hi", "HI", 5, 2},
@@ -102,6 +105,17 @@ type layout struct {
 	station, zip          bool
 	extDays               int
 	nameMin               int // NAME fill floor: 24, compressing below the minimal layout width (UAT 35)
+
+	// pool draws the Broadcaster's LOCATION POOL rather than the listener's
+	// watchlist (D-98): one extra column, POPULATION, and the group says which
+	// list this is.
+	//
+	// A FLAG ON THE LAYOUT, NOT A SECOND TABLE. The pool IS Observer's weather
+	// table with one column added — the same marks, the same bands, the same
+	// temperatures — and a copy would have duplicated every cell formatter in
+	// this file. It defaults false, so Observer is untouched and its goldens say
+	// so.
+	pool bool
 }
 
 func layoutFor(width, days int) layout {
@@ -191,6 +205,8 @@ func (l layout) hides(c baseCol) bool {
 		return !l.station
 	case "zip":
 		return !l.zip
+	case "pop":
+		return !l.pool
 	case "hi", "lo":
 		return !l.hiLo
 	}
@@ -357,6 +373,9 @@ func (o Opts) rowData(l layout, r LocationRow) []string {
 	if l.zip {
 		data = append(data, r.Zip)
 	}
+	if l.pool {
+		data = append(data, thousands(r.Population))
+	}
 	data = append(data, DisplayCondition(r.Conditions), o.temp5Or(r.Now, r.Loading)+trend)
 	if l.hiLo {
 		data = append(data, o.temp5Or(r.Hi, r.Loading), o.temp5Or(r.Lo, r.Loading))
@@ -396,7 +415,17 @@ func (o Opts) LocationTable(rows []LocationRow, days int) string {
 		}
 		break
 	}
-	l := layoutFor(o.Width, days)
+	return o.tableForDated(layoutFor(o.Width, days), rows, o.Width, dates)
+}
+
+// tableFor assembles a table for a layout. THE SECOND CALLER earned it (D-98):
+// the pool is Observer's table with one more column, and a copy of this would
+// have been a copy of every cell formatter above it.
+func (o Opts) tableFor(l layout, rows []LocationRow, width int) string {
+	return o.tableForDated(l, rows, width, nil)
+}
+
+func (o Opts) tableForDated(l layout, rows []LocationRow, width int, dates []string) string {
 	cols := l.columns(dates)
 	// The theme owns every colour in the table (Q4a-004, L5-F4): cells
 	// through CellStyles, and the kit's own $TERM-gated palette is switched
@@ -408,9 +437,9 @@ func (o Opts) LocationTable(rows []LocationRow, days int) string {
 		data := clampCells(o.rowData(l, r), cols)
 		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: data, CellStyles: rowStyles(cols, r, data)})
 	}
-	dt := studs.NewDataTable(o.Width, def)
+	dt := studs.NewDataTable(width, def)
 	groups := groupsFor(l)
-	out := []string{o.groupHeader(groups, cols, o.Width), o.columnHeader(groups, cols, o.Width)}
+	out := []string{o.groupHeader(groups, cols, width), o.columnHeader(groups, cols, width)}
 	for _, line := range dt.Rows() {
 		out = append(out, strings.TrimRight(line, " "))
 	}
@@ -525,8 +554,14 @@ func groupsFor(l layout) []groupSpec {
 	if l.hiLo {
 		today = append(today, "hi", "lo")
 	}
+	title, members := "L O C A T I O N", []string{"marks", "num", "name", "wxstn", "dist", "zip"}
+	if l.pool {
+		// THE POOL SAYS WHAT IT IS. An operator looking at two tables on one
+		// surface needs the heading to tell them which list they are in.
+		title, members = "L O C A T I O N     P O O L", append(members, "pop")
+	}
 	g := []groupSpec{
-		{"L O C A T I O N", "L O C A T I O N", GroupLocationBG, []string{"marks", "num", "name", "wxstn", "dist", "zip"}}, // '/ STATION' dropped: radio is location-based (UAT 44.3)
+		{title, title, GroupLocationBG, members}, // '/ STATION' dropped: radio is location-based (UAT 44.3)
 		{"T O D A Y", "", GroupTodayBG, today},
 	}
 	if l.tomorrow {
@@ -697,4 +732,35 @@ func (o Opts) StationDistance(km *float64) string {
 		return d
 	}
 	return Tint(d, Tok(NameWarning))
+}
+
+// thousands is a population with separators, and blank for none.
+//
+// BLANK RATHER THAN ZERO, because a place the table has no figure for and a place
+// where nobody lives are different facts, and only one of them is ever true here.
+func thousands(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	s := strconv.Itoa(n)
+	var b strings.Builder
+	for i, c := range s { // bounded by the digits (P10-02)
+		if i > 0 && (len(s)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(c)
+	}
+	return b.String()
+}
+
+// PoolTable is the Broadcaster's LOCATION POOL — Observer's table, with the
+// population column and the group that says which list this is (D-98).
+//
+// THE SAME RENDERER, deliberately: "the same labelling / colorscheme / behavior
+// approach as Observer" is the requirement, and the only way to be sure of it is
+// to be the same code.
+func (o Opts) PoolTable(rows []LocationRow, width int) string {
+	l := layoutFor(width, 0)
+	l.pool = true
+	return o.tableFor(l, rows, width)
 }
