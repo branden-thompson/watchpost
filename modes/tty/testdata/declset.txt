@@ -36,6 +36,8 @@ const actDiagnostics
 const actGainDown
 const actGainUp
 const actHelp
+const actQueueNext
+const actQueuePrev
 const actQuit
 const actSettings
 const actStationToggle
@@ -215,6 +217,7 @@ func (Broadcaster).burstBody
 func (Broadcaster).cardBoxWidth
 func (Broadcaster).cardGap
 func (Broadcaster).chrome
+func (Broadcaster).chromeAt
 func (Broadcaster).clamp
 func (Broadcaster).clock
 func (Broadcaster).controlRow
@@ -233,7 +236,9 @@ func (Broadcaster).notice
 func (Broadcaster).opts
 func (Broadcaster).priorityColumn
 func (Broadcaster).priorityWidth
+func (Broadcaster).railed
 func (Broadcaster).readBody
+func (Broadcaster).scrollQueue
 func (Broadcaster).slotCard
 func (Broadcaster).slotRows
 func (Broadcaster).stationLine
@@ -502,6 +507,7 @@ func (Router).Update
 func (Router).View
 func (Router).bedControl
 func (Router).canSwap
+func (Router).consoleOwnsTheKeys
 func (Router).cutBed
 func (Router).stationIsLive
 func (Router).stepBed
@@ -668,6 +674,7 @@ func rowLoading
 func rows
 func sameLocation
 func sameRefs
+func scrollStep
 func scrollWindow
 func seismicAge
 func seismicAlertSevere

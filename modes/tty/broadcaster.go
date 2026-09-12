@@ -124,6 +124,18 @@ type Broadcaster struct {
 	// disagree about how loud the station is.
 	gain int
 
+	// queueOff is how far the SCHEDULED LINE UP window has been scrolled (D-87).
+	//
+	// THE CARDS OUTGREW THE TERMINAL. A card is a manifest now, so ten of them
+	// need about ninety rows against the reference's seventy-four — and a queue
+	// the operator cannot reach the bottom of is a line-up they cannot manage,
+	// which is the whole reason the surface exists.
+	//
+	// THE READ CARDS NEVER MOVE. There are two of them, they are always the same
+	// two, and the rail begins below them precisely because they do not scroll
+	// (D-68).
+	queueOff int
+
 	// bed is what the broadcast is riding on (F-79). Published, never guessed:
 	// the console draws it and holds no opinion of its own, the same rule the
 	// power follows.
@@ -536,9 +548,14 @@ func (b Broadcaster) lanes() []string {
 	//
 	// THE READ CARDS ARE NEVER WINDOWED. There are two of them, they are always
 	// the same two, and they are the reason the rail begins below them (D-68).
-	scroll := body[reads:]
+	scroll, off := body[reads:], 0
 	if room := b.height - len(out) - len(body[:reads]) - 2*bcInsetRows; room >= 0 && room < len(scroll) {
-		scroll = append([]string(nil), scroll[:room]...)
+		// THE OFFSET IS CLAMPED HERE, NOT WHERE IT IS SET. Only the frame knows
+		// how much room the queue has, and it changes with the terminal — so a
+		// bound applied at the keystroke would be the wrong bound the moment
+		// anybody resized.
+		off = min(b.queueOff, len(scroll)-room)
+		scroll = append([]string(nil), scroll[off:off+room]...)
 		// THE WINDOW ENDS ON A ROW OF ITS OWN, because the scroll rail's ▼ sits
 		// on the last one (D-70) and a cap sharing a row with a card reads as a
 		// mark ON that card. Cutting mid-card is what a window does; giving the
@@ -548,8 +565,7 @@ func (b Broadcaster) lanes() []string {
 		}
 	}
 	out = append(out, b.chrome(body[:reads], false, 0, 0)...)
-	out = append(out, b.chrome(scroll, true,
-		MainTrackSlots, len(b.lineup.Projection(lineup.MainTrack)))...)
+	out = append(out, b.chromeAt(scroll, off, len(body)-reads)...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
 	// blank rows to the bottom of the terminal, which is what the reference does
 	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the
@@ -557,6 +573,20 @@ func (b Broadcaster) lanes() []string {
 	// D-63's rule holds: the frame is the viewport, and `render.Overlay` still
 	// composites against a full-height base.
 	return append(out, b.inset()...)
+}
+
+// scrollQueue moves the queue's window by `by` rows and hands the console back.
+//
+// CLAMPED AT THE ENDS, NEVER WRAPPED. A list that jumped from its last row to
+// its first would lose the operator's place — and on a running order, "where am
+// I" is the question the numbers exist to answer.
+//
+// THE BOTTOM IS WHERE THE LAST CARD IS FULLY DRAWN, not where the rows run out:
+// scrolling past it would leave the operator looking at air with the rail saying
+// there is more.
+func (b Broadcaster) scrollQueue(by int) Broadcaster {
+	b.queueOff = max(0, b.queueOff+by)
+	return b
 }
 
 // inset is the blank air above and below the whole frame — Observer's own, which

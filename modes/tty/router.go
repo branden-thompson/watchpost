@@ -49,9 +49,11 @@ const (
 	// station's line-up and its bed; the arrows move through the relays the
 	// station's fence reaches. The reference mock has drawn all three since the
 	// first wave and none of them was bound to anything.
-	actBedCut  term.Action = "bed-cut"
-	actBedPrev term.Action = "bed-prev"
-	actBedNext term.Action = "bed-next"
+	actBedCut    term.Action = "bed-cut"
+	actBedPrev   term.Action = "bed-prev"
+	actBedNext   term.Action = "bed-next"
+	actQueuePrev term.Action = "queue-prev"
+	actQueueNext term.Action = "queue-next"
 
 	// actGainUp and actGainDown are the station's output level — Observer's VOL
 	// under the station's own word (HUM LEAD, 2026-09-10). They are FORWARDED
@@ -148,7 +150,42 @@ func broadcasterKeyMap() term.KeyMap {
 		actBedCut:  {Keys: []string{"b"}, Help: "Bed"},
 		actBedPrev: {Keys: []string{"left"}, Help: "Previous Relay"},
 		actBedNext: {Keys: []string{"right"}, Help: "Next Relay"},
+		// THE QUEUE SCROLLS (D-87, HUM LEAD 2026-09-11): "that's why we have the
+		// vertical scroll bar so that works like Observer — that section just
+		// needs to be able to scroll up and down."
+		//
+		// THE ARROWS, LIKE EVERYTHING ELSE THAT MOVES THROUGH A LIST. Up and down
+		// are unbound on the console and walk the table on Observer, so they
+		// fall through exactly as the bed's do — one key, one meaning per
+		// surface (D-56).
+		actQueuePrev: {Keys: []string{"up"}, Help: "Scroll Up"},
+		actQueueNext: {Keys: []string{"down"}, Help: "Scroll Down"},
 	}
+}
+
+// consoleOwnsTheKeys reports whether the console's own controls may act.
+//
+// A WINDOW ON TOP OWNS THE KEYBOARD (D-58), and this switch runs BEFORE the
+// check that enforces it — so a console control handled here reaches past an
+// open window and acts on input meant for it.
+//
+// THE BED'S ARROWS HAD THIS BUG SINCE D-78 and nothing saw it: with the
+// diagnostics or status window up, `←`/`→` stepped the relay instead of moving
+// through the window. Adding the queue's `↑`/`↓` is what surfaced it, because
+// those are the keys the modal-reachability gate drives — "a line the keyboard
+// cannot bring on screen is not in the window". The fix is one predicate for
+// both, which is what the bug was for: two controls asking the same question in
+// two places, and only one of them asking it at all.
+func (r Router) consoleOwnsTheKeys() bool {
+	return r.active == SurfaceBroadcaster && !r.observer.ModalOpen()
+}
+
+// scrollStep is which way a queue key moves the window.
+func scrollStep(a term.Action) int {
+	if a == actQueuePrev {
+		return -1
+	}
+	return 1
 }
 
 // Router holds the surfaces and delegates to the active one.
@@ -339,8 +376,16 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// switch to the active surface, which is exactly what an unbound key
 			// does.
 			case actBedCut, actBedPrev, actBedNext:
-				if r.active == SurfaceBroadcaster {
+				if r.consoleOwnsTheKeys() {
 					return r.bedControl(a)
+				}
+			// THE QUEUE'S SCROLL, AND IT FALLS THROUGH FOR THE SAME REASON THE
+			// BED'S ARROWS DO: on Observer these walk the table, and a case that
+			// returned unconditionally would stop the listener's navigation.
+			case actQueuePrev, actQueueNext:
+				if r.consoleOwnsTheKeys() {
+					r.broadcaster = r.broadcaster.scrollQueue(scrollStep(a))
+					return r, nil
 				}
 			case actGainUp, actGainDown,
 				actSettings, actAbout, actStatus, actHelp, actQuit:
