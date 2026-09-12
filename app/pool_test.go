@@ -134,7 +134,7 @@ func TestTheStationsPoolFillsTheConsolesWindow(t *testing.T) {
 	nar := testDirector(nil, func(tea.Msg) {})
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, nar, nil, func() render.Clock { return render.Clock12 }, nil,
-		lp.producer(), lp.currentWatch, tick, publish, nil)
+		lp.producer(), lp.currentWatch, tick, publish, bedSeams{})
 	if s == nil {
 		t.Fatal("the schedule refused to start")
 	}
@@ -205,7 +205,7 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 	deck.pref = tty.ModeSynth
 	tick := &tickerDeck{muted: &atomic.Bool{}, seen: loadSeen(t.TempDir(), time.Hour), alerts: newAlertStore()}
 	s := startSchedule(ctx, testDirector(nil, func(tea.Msg) {}), nil,
-		func() render.Clock { return render.Clock12 }, deck, pool, watch, tick, func(tea.Msg) {}, nil)
+		func() render.Clock { return render.Clock12 }, deck, pool, watch, tick, func(tea.Msg) {}, bedSeams{})
 	if s == nil {
 		t.Fatal("the schedule refused to start")
 	}

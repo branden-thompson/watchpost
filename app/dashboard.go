@@ -248,7 +248,8 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// against; the LISTENER's watchlist is what the monitor's rotation moves
 	// through. D-72 moved all three seams to the pool and that was two-thirds
 	// right — the cut-over belongs to the monitor.
-	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.currentWatch, lp.ticker, p.Send, lp.noteBedCarrying)
+	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.currentWatch, lp.ticker, p.Send,
+		bedSeams{note: lp.noteBedCarrying, selected: lp.selectedRelay})
 	lp.wireDeckWarnings()
 	return firstFullNanos
 }
@@ -611,6 +612,17 @@ type livePipelines struct {
 	bedRadiusMi float64
 	bedPick     int
 	bedOn       bool
+
+	// bedRelay is the relay the operator CHOSE, in the words the row shows, and
+	// "" until they choose one (F-98, D-90).
+	//
+	// REMEMBERED AND NOT MERELY PUBLISHED, which is the whole defect: the
+	// selector sent its relay to the console and kept nothing, so the SETTLE —
+	// which publishes the same row from the DIRECTOR's bed on every tick —
+	// overwrote it a second later and the choice reverted to "(no relay tuned)"
+	// whatever the operator picked. `bedPick` is an INDEX and cannot stand in for
+	// this: its zero value is a real relay, so it cannot say "nothing chosen yet".
+	bedRelay string
 
 	// owner is which surface the operator is looking at, and therefore what the
 	// alert rail is scoped to (D-73, airscope.go).

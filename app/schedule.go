@@ -72,7 +72,23 @@ type schedule struct {
 // watched location outside the station's pool stopped resolving and the tune
 // died as `schedule:tune-unknown`, silently. Found by DRAWING THE FLOW for the
 // HUM LEAD rather than by a gate.
-func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), noteBed func(bool)) *schedule {
+// bedSeams is what the schedule needs from the console's bed row, and it is ONE
+// parameter because it is ONE concern (F-98, D-90).
+//
+// BOTH HALVES EXIST FOR THE SAME REASON: the row has two publishers — the
+// operator's selector and the settle — and each half is how one of them learns
+// what the other knows. `note` records the Director's `Carrying` so the selector
+// does not guess it; `selected` reports the operator's relay so the settle does
+// not overwrite it. Passed separately they were an eleventh and twelfth argument
+// to a function that already had ten, and nothing said they belonged together.
+type bedSeams struct {
+	// note records what the Director says about the bed carrying the programme.
+	note func(carrying bool)
+	// selected is the relay the operator chose, "" until they choose one.
+	selected func() string
+}
+
+func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), bed bedSeams) *schedule {
 	if nar == nil {
 		return nil // no arbiter, no schedule: there is nothing to perform through
 	}
@@ -110,7 +126,10 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// AND WHAT TO CALL IT ON THE CONSOLE (F-79). The same list the cut-over
 		// resolves against, so the row cannot name a place the tune did not go.
 		bedLabel: bedLabelOf(watch),
-		noteBed:  noteBed,
+		// AND WHAT THE OPERATOR CHOSE, which is what the row's own arrows set
+		// (F-98, D-90).
+		selected: bed.selected,
+		noteBed:  bed.note,
 		// THE MAIN TRACK'S WORDS (0.16.0 P3). Required from P3(d): a station
 		// whose rotation is owned by the schedule and has no composer wired
 		// would queue every report and read none.

@@ -172,6 +172,19 @@ type executors struct {
 	// (F-79). Nil in the modes with no radio, where the bed is never tuned.
 	bedLabel func(ref string) string
 
+	// selected is the relay the OPERATOR chose on the console's bed row, and ""
+	// until they choose one (F-98, D-90).
+	//
+	// IT EXISTS BECAUSE THE ROW HAD TWO PUBLISHERS AND THE FREQUENT ONE WAS
+	// BLIND. The selector published the relay it tuned; this executor published
+	// `describeBed` — the DIRECTOR's bed ref, a watchlist LOCATION key the
+	// station's relay selector never touches — on every settle, which is every
+	// tick. The operator's choice reverted to "(no relay tuned)" about a second
+	// after every keypress, whatever they picked (HUM LEAD, UAT 2026-09-11).
+	//
+	// The same shape `noteBed` already fixed for `Carrying`, one field along.
+	selected func() string
+
 	// noteBed records whether the bed is carrying, so the relay SELECTOR can
 	// publish a truthful row without asking the Director (F-79, D-78). Nil
 	// where there is no console.
@@ -753,6 +766,16 @@ func (x *executors) eventsFor(refs []string) ([]globalfeed.Event, bool) {
 // NOTHING TUNED READS AS NOTHING, not as a blank: the console has its own words
 // for that, and inventing a second set here would be two answers to one state.
 func (x *executors) describeBed(b lineup.BedState) string {
+	// THE OPERATOR'S CHOICE WINS, BECAUSE THE OPERATOR'S ARROWS ARE WHAT SET THIS
+	// ROW (F-98, D-90). The Director's bed ref is the MONITOR's rotation — a
+	// watchlist location key — and the console's selector walks the STATION's
+	// fence (D-77/D-78). Two different facts rendered into one row, and the row
+	// belongs to the control beside it.
+	if x.selected != nil {
+		if chosen := x.selected(); chosen != "" {
+			return chosen
+		}
+	}
 	if b.Ref == "" || x.bedLabel == nil {
 		return ""
 	}
