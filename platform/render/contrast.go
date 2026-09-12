@@ -271,7 +271,7 @@ func aaPairs() []aaPair {
 	rails := []Token{RailLiveBG, RailNextBG, RailQueueBG}
 	// A CARD'S WORDS, ON A CARD'S GROUND — and on the hazard tints too, because
 	// an alert card is painted by its category (D-86).
-	cards := append([]Token{CardBG, CardOperatorBG}, tints...)
+	cards := append([]Token{CardBG, CardOperatorBG, CardEmptyBG}, tints...)
 	modal := []Token{ModalBGDark, ModalBGLight}
 	pairs := []aaPair{
 		{GroupText, bands}, {TickerFG, lanes}, {TickerMutedFG, append(append([]Token{}, lanes...), GroupSectionBG)},

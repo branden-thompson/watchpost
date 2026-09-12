@@ -143,12 +143,16 @@ func quattroTiles(p quattroPalette) map[Token]string {
 		// THE CONSOLE'S GROUNDS DERIVE LIKE THE REGION BANDS DO (D-86), at the
 		// same 0.45 mix — so every Quattro theme gets a rail in its own palette
 		// without anybody choosing three more colours seven times.
-		RailLiveBG:       mix(p.red, p.darkBg, 0.45),
-		RailNextBG:       mix(p.orange, p.darkBg, 0.45),
-		RailQueueBG:      mix(p.blue, p.darkBg, 0.45),
-		CardBG:           bgTruecolor(p.darkBg),
-		CardOperatorBG:   mix(p.yellow, p.darkBg, 0.20),
-		CardText:         fgTruecolor(p.fg),
+		RailLiveBG:     mix(p.red, p.darkBg, 0.45),
+		RailNextBG:     mix(p.orange, p.darkBg, 0.45),
+		RailQueueBG:    mix(p.blue, p.darkBg, 0.45),
+		CardBG:         bgTruecolor(p.darkBg),
+		CardOperatorBG: mix(p.yellow, p.darkBg, 0.20),
+		CardText:       fgTruecolor(p.fg),
+		// AND THE EMPTY SLOT IS DERIVED FROM THE PALETTE'S OWN INK AND GROUND
+		// rather than from a hue, which is what makes it grey in every theme
+		// without anybody choosing seven more colours (D-89).
+		CardEmptyBG:      mix(p.fg, p.darkBg, 0.22),
 		ConfirmBG:        mix(p.red, p.darkBg, 0.40),
 		AlertModalWarnBG: mix(p.red, p.darkBg, 0.30),
 		AlertModalAdvBG:  mix(p.yellow, p.darkBg, 0.25),

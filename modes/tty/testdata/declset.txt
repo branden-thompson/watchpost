@@ -65,6 +65,7 @@ const bcReadLines
 const bcRightChrome
 const bcRowTail
 const bcSectionInset
+const bcStandbyNotice
 const bcTakeoverTitle
 const bottomInset
 const castLabelW
@@ -530,6 +531,8 @@ func (cardLane).box
 func (cardLane).boxOf
 func (cardLane).inner
 func (cardLane).render
+func (cardLane).shell
+func (cardLane).standbyBox
 func (endpointRow).counters
 func (radioBP).hasViz
 func (setupState).alertRadiusChoice
@@ -717,6 +720,7 @@ func sortAlerts
 func splitAlertItems
 func splitEscFusion
 func stacked
+func standbyTone
 func stationNote
 func statsFingerprint
 func statusAvail

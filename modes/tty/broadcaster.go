@@ -1182,29 +1182,40 @@ func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []st
 	if l.lane < 4 {
 		return nil
 	}
-	inner := l.inner()
-	g := l.g
-	// THE MASTHEAD'S BOX (D-85, HUM LEAD 2026-09-11): "Remove the rounded
-	// corners -> straight corners … All Main track cards should have BOLD lines
-	// (like the masthead)." That is `render.HeavyBox`, which the masthead has
-	// drawn since 0.13.0 — shared rather than copied, so the console and the
-	// header cannot come to disagree about what a border looks like.
-	bx := render.HeavyBox(l.o.ASCII)
-	rule := boxRule(bx.Rule, cardBoxTitle(c), inner)
-	ground := cardTone(c)
 	// The title row is the SAME renderer the flat row used, one width in: the
 	// box does not get to move the handle or re-centre the title.
-	title := newCardLane(inner, g)
+	title := newCardLane(l.inner(), l.g)
 	// THE CORNERS' ROW RETIRED AT D-87, and its own reason is what retired it.
 	// D-57 put the fabricated-event mark at BOTH ends because "a card can be
 	// occluded from either side by the priority overlay, and two corners cannot
 	// both be covered by a box that starts at the left." There is no overlay any
 	// more — the tracks are columns — so the title row's mark is always visible
 	// and a second statement of it cost a row every card had to spend.
-	rows := []string{
-		bx.TL + rule + bx.TR,
-		bx.Rail + title.render(c, handle, badge) + bx.Rail,
+	rows := append([]string{title.render(c, handle, badge)}, body...)
+	return l.shell(cardBoxTitle(c), rows, cardTone(c))
+}
+
+// shell is a box of the card's shape, around whatever is put in it, painted on
+// one ground.
+//
+// EXTRACTED AT THE SECOND CALLER (D-89), which is the standing modularity rule.
+// The LIVE slot's empty state is a box with no card in it — no title row, no
+// badge, no handle — and drawing it through a second copy of these six lines
+// would be two places for a corner, a rule or a tint to drift. What differs
+// between a card and an empty slot is the CONTENTS, and that is now the only
+// thing that differs.
+func (l cardLane) shell(boxTitle string, body []string, ground string) []string {
+	if l.lane < 4 {
+		return nil
 	}
+	inner := l.inner()
+	// THE MASTHEAD'S BOX (D-85, HUM LEAD 2026-09-11): "Remove the rounded
+	// corners -> straight corners … All Main track cards should have BOLD lines
+	// (like the masthead)." That is `render.HeavyBox`, which the masthead has
+	// drawn since 0.13.0 — shared rather than copied, so the console and the
+	// header cannot come to disagree about what a border looks like.
+	bx := render.HeavyBox(l.o.ASCII)
+	rows := []string{bx.TL + boxRule(bx.Rule, boxTitle, inner) + bx.TR}
 	for _, r := range body { // bounded by the card's own height (P10-02)
 		rows = append(rows, bx.Rail+render.PadTo(render.TruncateCells(r, inner), inner)+bx.Rail)
 	}
@@ -1217,6 +1228,38 @@ func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []st
 	}
 	return rows
 }
+
+// standbyBox is the LIVE slot with nothing on the air (D-89).
+//
+// THE HUM LEAD'S OWN WORDS, 2026-09-11: "empty state needs to be a grey box with
+// a centered text of: NO REPORTS READ OR ACTIVE IN STANDBY MODE". It closes
+// D-84's point 4 — "LIVE should remain EMPTY; we'll need to design an empty-state
+// for that slot" — which was the one part of that ruling left undesigned.
+//
+// IT CARRIES NO TITLE, NO BADGE AND NO HANDLE, and that is a fix as much as a
+// design. The slot drew `LOCATION REPORT •STANDARD• [0]` on an empty box, because
+// `lineup.Card{}`'s zero Slot IS a location report — so the console named a
+// report that did not exist, graded it, and offered a chip that opens nothing.
+// A chip on a slot with no card behind it is F-97 all over again.
+//
+// IT IS THE FULL HEIGHT OF A READ CARD, for the reason readBody's height is
+// fixed: the box is the same shape whether the station is on the air or not, so
+// going on air does not shunt the whole running order up and down. The operator
+// is watching the line-up at that moment.
+func (l cardLane) standbyBox(rows int) []string {
+	if rows < 3 {
+		return nil
+	}
+	// THE TEXT IS CENTRED IN BOTH AXES, which is what "centered" means on a box
+	// this empty — a line pinned to the top would read as a heading for contents
+	// that are not there.
+	body := make([]string, rows-2)
+	body[(len(body)-1)/2] = centerText(bcStandbyNotice, l.inner())
+	return l.shell("", body, standbyTone())
+}
+
+// bcStandbyNotice is the HUM LEAD's wording, verbatim (D-89).
+const bcStandbyNotice = "NO REPORTS READ OR ACTIVE IN STANDBY MODE"
 
 // cardTitle is the card's name as the operator reads it: what KIND of read it is,
 // then what it is about.
@@ -1308,6 +1351,17 @@ func cardTone(c lineup.Card) string {
 		return fg + ";" + render.Tok(render.CardOperatorBG)
 	}
 	return fg + ";" + render.Tok(render.CardBG)
+}
+
+// standbyTone is the ground of the LIVE slot with nothing on the air (D-89).
+//
+// ITS OWN FUNCTION, BESIDE cardTone, because it is the same KIND of decision and
+// this is where that kind of decision is made and measured. `cardTone` returns ""
+// for a slot with no card in it — deliberately, and D-86 tests it — so the standby
+// box cannot reach its answer through there, and a `render.Tok` call buried in the
+// drawing code would be the one tone in the console that no test could ask about.
+func standbyTone() string {
+	return render.Tok(render.CardText) + ";" + render.Tok(render.CardEmptyBG)
 }
 
 // worstCategory is the most severe category among a card's alerts.

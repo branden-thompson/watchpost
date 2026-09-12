@@ -2200,3 +2200,69 @@ without that treatment are the two that were wrong.
 membership check, is a stale list waiting to happen.  Either name every member (and let the compiler
 or `closedset.EachMember` enforce it), or write down beside the list which omissions are deliberate
 and why — `handleNav` now does the latter, because `add` and `remove` are absent on purpose.
+
+---
+
+## 2026-09-11 — D-89: the zero value of an enum is a real value, and it gets drawn
+
+The LIVE slot's empty state was a blank box built from `lineup.Card{}`.  **A zero `lineup.Card` has a
+zero `Slot`, and the zero `Slot` IS `LocationReport`** — so the "empty" box rendered as:
+
+```
+┃   LOCATION REPORT                                           •STANDARD•  [0] ┃
+```
+
+A report that does not exist, graded, with a chip offering to open it.  `[0]` opened nothing, because
+`cardDetail` correctly refuses an undecided slot — which made this **F-97 in miniature, in the release
+that closed F-97**.
+
+**The shape:** *a zero-valued struct passed to a renderer is not "nothing", it is the first member of
+every enum in it.*  `Proposed`, `LocationReport` and `FromObserver` are all zero values chosen
+deliberately — each for a good reason, each documented — and every one of them becomes a visible claim
+the moment a blank struct reaches a drawer.
+
+**How to apply:** "empty" and "the zero value" are different things, and only one of them is safe to
+draw.  A renderer given a blank struct should be given a different CODE PATH, not a blank struct —
+which is what `standbyBox` is.  Where that is impractical, the drawer needs an explicit "is this
+real?" flag, which is exactly what `slotCard`'s `decided` already returns and what this path was
+throwing away.
+
+**It was found by RENDERING IT**, while implementing an unrelated ruling — not by a test, and not by
+UAT.  P-6.
+
+---
+
+## 2026-09-11 — the code you are replacing encodes decisions you have not read
+
+The first draft of the standby box gave the notice to **every read slot**, because the line it
+replaced (`if r.reads && b.power != lineup.Running`) did.  An existing test caught it: a station that
+had just opened reported *"NO REPORTS READ OR ACTIVE IN STANDBY MODE"* in the UP NEXT slot — **the
+slot the Composer is working on right now**.
+
+The old condition was not wrong for what it did (blank both boxes).  It became wrong the moment the
+blank turned into a SENTENCE, because a sentence makes a claim that a blank does not.
+
+**The shape:** *preserving a predicate while changing what it guards is not a safe refactor.*  The
+predicate was tuned to the old consequence.  Widening "draw nothing" to "say nothing is happening"
+changes what the condition has to be true OF.
+
+**How to apply:** when the body of a branch changes KIND — silence to speech, absence to assertion —
+re-derive the condition from the requirement rather than inheriting it.  Here the requirement was
+D-84's, and D-84 puts the Composer on UP NEXT precisely so the line is ready at `SHIFT+ENTER`.
+
+---
+
+## 2026-09-11 — a test that cannot see an escape cannot fail on one
+
+Asserting the standby box's grey initially failed against the rendered frame, because `TintKeeping`
+is gated on `rendering.ColorsEnabled()` and `go test` has no tty.  The first instinct was to drop the
+assertion and check the tone at its seam, the way the existing `cardTone` tests do.
+
+**That would have left the PAINT untested** — the seam would have proved the right colour was
+computed, and nothing would have proved it was applied.  `rendering.SetColorEnabledForTest(true)` has
+been in the package since 0.11.0 and three tests in `radio_panel_test.go` already use it for exactly
+this.
+
+**The shape:** *when an assertion goes quiet, the question is whether it went quiet because the claim
+is true or because the instrument is off.*  A passing test against colour-disabled output is the
+second one, and it looks identical to the first.

@@ -87,6 +87,12 @@ func TestAFilledSlotIsStill(t *testing.T) {
 
 // AND THE SLOT NUMBERS ARE STILL THE ADDRESS. An empty slot is addressable —
 // the operator can put something in it — so it carries its handle.
+//
+// EXCEPT SLOT 0 ON A STATION AT REST (D-89), which is the one slot the operator
+// CANNOT put anything in: the line-up is drawn from UP NEXT down while nothing is
+// on the air (liveOffset), and `SHIFT+ENTER` is what fills slot 0 rather than any
+// per-slot control. It draws the standby box, and that box carries no handle
+// because `[0]` would open nothing — which is the defect F-97 was filed for.
 func TestAnEmptySlotStillCarriesItsHandle(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
@@ -94,10 +100,13 @@ func TestAnEmptySlotStillCarriesItsHandle(t *testing.T) {
 	// EVERY SLOT THE CONSOLE DRAWS, which since D-87 is as many as fit: the
 	// cards are manifests and the queue scrolls, so slot 9 is below the window
 	// on the reference's own terminal.
-	for _, want := range []string{chipFor("0"), chipFor("1"), chipFor("4")} {
+	for _, want := range []string{chipFor("1"), chipFor("2"), chipFor("4")} {
 		if !strings.Contains(got, want) {
 			t.Errorf("every slot is addressable; %q is missing", want)
 		}
+	}
+	if strings.Contains(got, chipFor("0")) {
+		t.Errorf("the standby box carries %q, which addresses nothing", chipFor("0"))
 	}
 }
 

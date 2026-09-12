@@ -93,13 +93,33 @@ func (b Broadcaster) slotRows(r bcRegion, cards []lineup.Card, lane cardLane) []
 			// THE HANDLE IS DRAWN ON AN EMPTY SLOT TOO: it is addressable — the
 			// operator can put something in it — so it carries its address.
 			c = lineup.Card{Headline: b.waiting(o)}
-			// AND A READ SLOT ON A STATION AT REST IS SIMPLY EMPTY (D-68). The
-			// HUM LEAD: "when it's on standby — like it is on first open/play —
-			// that should be blank, we should have an empty state for that live
-			// slot." A shimmer there would promise a read that is not coming,
-			// because nothing is going to air at all.
-			if r.reads && b.power != lineup.Running {
-				c = lineup.Card{}
+			// AND A READ SLOT ON A STATION AT REST GETS THE STANDBY BOX (D-89).
+			// The HUM LEAD: "when it's on standby — like it is on first open/play
+			// — that should be blank, we should have an empty state for that live
+			// slot", and then the design for it: "a grey box with a centered text
+			// of: NO REPORTS READ OR ACTIVE IN STANDBY MODE". A shimmer there
+			// would promise a read that is not coming, because nothing is going
+			// to air at all.
+			//
+			// IT IS NOT A CARD, SO IT IS NOT DRAWN AS ONE. Handing this path a
+			// `lineup.Card{}` gave it a zero Slot — which IS a location report —
+			// and the box came out titled `LOCATION REPORT •STANDARD• [0]`: a
+			// report that does not exist, graded, with a chip that opens nothing.
+			//
+			// THE LIVE SLOT ALONE, AND NOT EVERY READ SLOT. The first draft gave
+			// the notice to both, and a test caught it: an empty UP NEXT on a
+			// station that has just opened is the Director still choosing, which
+			// is what the SHIMMER says. Telling the operator "no reports read or
+			// active" about the slot the Composer is working on right now would be
+			// the console reporting an absence where there is work in progress.
+			//
+			// LIVE IS POSITION 0 BY DEFINITION, which is what `liveOffset` exists
+			// to guarantee: on standby the line-up is drawn from UP NEXT down
+			// precisely so that nothing can be in slot 0 until the operator goes
+			// on air.
+			if i == 0 && b.power != lineup.Running {
+				rows = append(rows, lane.standbyBox(bcReadCardRows)...)
+				continue
 			}
 		}
 		if r.reads {
