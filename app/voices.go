@@ -162,6 +162,20 @@ func (d *radioDeck) SetVoice(name string) {
 // PreviewVoice speaks the sample line in a voice, mixed over the broadcast
 // (UAT 86). Runs on a tea cmd goroutine.
 func (d *radioDeck) PreviewVoice(name string) {
+	// AN AUDITION IS MIXED OVER THE OUTPUT, AND ON THE CONSOLE THAT OUTPUT IS THE
+	// STATION'S (D-91). "ON AIR never means the antenna is radiating" — Watchpost
+	// produces audio and a human patches it into a transmitter — so a sample
+	// played here goes out with the programme. That is "sneaking under to get on
+	// the air" in the HUM LEAD's own words.
+	//
+	// IT COSTS SOMETHING, AND THE COST IS RECORDED RATHER THAN HIDDEN: voices are
+	// SHARED settings (D-18 row 7), so the operator may legitimately choose one
+	// from the console and now cannot hear it first. A cue/PFL bus is the real
+	// answer and Watchpost has one audio out — filed as F-102, a HUM LEAD ruling.
+	if !d.monitorHasTheAir() {
+		d.voiceNote("preview is unavailable while the station holds the air")
+		return
+	}
 	if name == systemVoice {
 		name = ""
 	}
@@ -196,6 +210,13 @@ func (d *radioDeck) PreviewVoice(name string) {
 // voiceNote tells the Voice chooser what the deck is doing (UAT 119); nil
 // program (tests) is a no-op.
 func (d *radioDeck) voiceNote(text string) {
+	// THE SEAM FIRST, and it is nil in production. The chooser's note is the ONLY
+	// observable a refused preview has — the guard returns before any synthesis —
+	// so a test that cannot hear it cannot tell a refusal from a no-op (P-1).
+	if d.note != nil {
+		d.note(text)
+		return
+	}
 	d.send(tty.VoiceNoteMsg{Text: text})
 }
 

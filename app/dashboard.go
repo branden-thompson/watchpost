@@ -893,6 +893,14 @@ func (lp *livePipelines) narrateEvent() func(string) {
 		if lp.deck == nil {
 			return
 		}
+		// THE [w] WINDOW'S READ IS THE OPERATOR'S OWN LISTENING (D-91), and it
+		// ducks the broadcast to happen — so on the console it would duck the
+		// STATION. It is NOT the hazard rail, which D-74 exempts from air
+		// ownership deliberately: the rail reads in either mode, and this is a
+		// person pressing space on a row.
+		if !lp.monitorMayReachTheAir() {
+			return
+		}
 		lp.reader.Toggle(key)
 	}
 }

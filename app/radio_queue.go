@@ -63,7 +63,17 @@ func (d *radioDeck) SetRepeat(mode tty.RepeatMode, watchlist []snapshot.Location
 	d.repeat, d.queue = mode, watchlist
 	src, ref := d.source, d.ref
 	d.mu.Unlock()
-	if src != nil {
+	// THE DIRECTOR IS STILL TOLD; THE LIVE SOURCE IS NOT TOUCHED (D-91).
+	//
+	// THIS IS THE ONE THE HUM LEAD'S RULING WAS MEASURED ON: `d.source` is
+	// whatever is running, and per BD-9 that is the BROADCASTER's card during a
+	// main-track read — so Observer's repeat mode, reached from the Settings
+	// window the console forwards to, set the card ON THE AIR to loop. It would
+	// have read for ever and the line-up would never have advanced.
+	//
+	// THE SETTING STILL APPLIES, which is the `SetTones` standard: "must not
+	// disturb a broadcast in flight". It lands on the monitor's next source.
+	if src != nil && d.monitorHasTheAir() {
 		src.Loop(mode == tty.RepeatOne)
 	}
 	// THE ROTATION IS THE DIRECTOR'S NOW (T3.2b). A zero dwell is how "repeat is

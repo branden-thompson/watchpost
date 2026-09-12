@@ -169,5 +169,10 @@ func (lp *livePipelines) silenceMonitor() {
 	if lp == nil || lp.deck == nil {
 		return
 	}
-	lp.deck.Stop()
+	// `stopMonitor`, NOT `Stop` (D-91). This runs AFTER `owner` has moved to the
+	// console, so the guarded `Stop` would refuse the very silencing the swap
+	// exists to perform — which is what `air_test.go` reported the moment the
+	// guard went on. The swap is not the operator asking to stop listening; it
+	// is the air being handed over, and the monitor goes quiet either way.
+	lp.deck.stopMonitor()
 }

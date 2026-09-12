@@ -129,6 +129,7 @@ func (*livePipelines).injectHook
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
+func (*livePipelines).monitorMayReachTheAir
 func (*livePipelines).narrateEvent
 func (*livePipelines).noteBedCarrying
 func (*livePipelines).poolFor
@@ -261,6 +262,7 @@ func (*radioDeck).startBackgroundInstall
 func (*radioDeck).startSynth
 func (*radioDeck).stationFor
 func (*radioDeck).stop
+func (*radioDeck).stopMonitor
 func (*radioDeck).stopRead
 func (*radioDeck).synthReason
 func (*radioDeck).synthSource
@@ -574,6 +576,7 @@ type hostFacts
 type injectQueue
 type injectQueue
 type livePipelines
+type liveSource
 type mainTrackStage
 type mastercontrol
 type memRecord
@@ -599,6 +602,7 @@ type speaker
 type stationArea
 type tickerDeck
 type tickerPrefs
+var _
 var _
 var _
 var errDumpTooSoon
