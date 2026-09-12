@@ -81,11 +81,18 @@ func (lp *livePipelines) setStation(s stationArea) {
 // just used.
 // IT IS FOR CHANGES ONLY. At launch the console reads the area off `tty.Config`
 // — see setStation for why sending it then cannot work.
-func publishArea(p *tea.Program, s stationArea) {
-	if p == nil {
+// IT TAKES A SEND SEAM, NOT A PROGRAM (D-93). `*tea.Program` cannot be driven by
+// a test without running one, so the only way to check what this publishes was to
+// write a second copy of it in the test — which measures the copy. `func(tea.Msg)`
+// is what the executors' own `publish` seam already is.
+func publishArea(send func(tea.Msg), s stationArea, pool []snapshot.LocationRef) {
+	if send == nil {
 		return // no program (a test), or none attached yet: nothing to tell
 	}
-	p.Send(tty.StationAreaMsg{Transmitter: s.transmitter, RadiusMi: s.radiusMi})
+	// THE POOL GOES WITH IT (D-93). It is derived from the very two fields above,
+	// so sending them apart would let the console hold a pool belonging to an
+	// area it has stopped showing.
+	send(tty.StationAreaMsg{Transmitter: s.transmitter, RadiusMi: s.radiusMi, Pool: pool})
 }
 
 // poolFor derives a station's pool and takes NO LOCK, so a caller already

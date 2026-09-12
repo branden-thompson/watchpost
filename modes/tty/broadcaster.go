@@ -72,6 +72,19 @@ type BedMsg struct {
 type StationAreaMsg struct {
 	Transmitter snapshot.LocationRef
 	RadiusMi    float64
+
+	// Pool is the station's candidate locations, nearest first, as the Producer
+	// itself sees them (D-93).
+	//
+	// IT TRAVELS WITH THE AREA BECAUSE IT IS THE SAME DERIVATION. The pool is a
+	// pure function of the transmitter and the service radius (pool.go), so a
+	// console told them separately could hold a pool that belongs to an area it
+	// is no longer showing — which is D-59's torn pair, one fact along.
+	//
+	// THE CONSOLE READS IT, IT DOES NOT DERIVE IT. `locations.Pool` needs the
+	// geodata index and `modes/tty` may not import a domain; more to the point,
+	// a second derivation would be a second answer to what the station may read.
+	Pool []snapshot.LocationRef
 }
 
 // MainTrackSlots is how many cards the rolling main-track view shows (FR-3.1).
