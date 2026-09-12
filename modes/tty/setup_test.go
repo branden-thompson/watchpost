@@ -532,7 +532,7 @@ func TestTheRelayGroupIsReachableFromTheWindow(t *testing.T) {
 	seen := map[setupGroupID]bool{}
 	for i := 0; i < len(setupGroups())*2; i++ { // twice round, so the wrap is covered
 		seen[setupTable()[d.setup.focus].group] = true
-		d.setup.focus = nextGroup(d.setup.focus)
+		d.setup.focus = stepGroup(d.setup.focus, 1, d.rowVisible)
 	}
 	if !seen[groupRelay] {
 		t.Fatal("tab never reaches the RELAY REPLAY group; the setting is unreachable")
@@ -576,7 +576,7 @@ func TestTheChosenRotationIsSavedToTheRadio(t *testing.T) {
 		if setupTable()[d.setup.focus].group == groupRelay {
 			break
 		}
-		d.setup.focus = nextGroup(d.setup.focus)
+		d.setup.focus = stepGroup(d.setup.focus, 1, d.rowVisible)
 	}
 	if setupTable()[d.setup.focus].group != groupRelay {
 		t.Fatal("never reached the relay group")

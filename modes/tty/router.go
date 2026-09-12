@@ -310,6 +310,12 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// station is.
 	if out, ok := m.(Router); ok {
 		out.broadcaster.gain = out.observer.radioVolume
+		// AND WHICH SURFACE IS ACTIVE, on the same cadence and for the same
+		// reason (D-92): the Settings window is forwarded to Observer from the
+		// console, and D-18 rules that some of its rows belong to one surface
+		// only. A window that could not tell them apart would show the listener's
+		// settings to the operator of a station.
+		out.observer.surface = out.active
 		// AND THE REFUSAL IS CARRIED TO THE SURFACE THAT WAS REFUSED. It was
 		// recorded here and drawn nowhere — under a comment saying a refusal
 		// the operator cannot read is indistinguishable from a broken control,

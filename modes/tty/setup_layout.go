@@ -83,6 +83,12 @@ func (d Dashboard) setupBlocks(o render.Opts) []setupBlock {
 	groups := setupGroups()
 	out := make([]setupBlock, 0, len(groups))
 	for _, g := range groups {
+		// A GROUP THIS SURFACE DRAWS NOTHING IN IS NOT DRAWN (D-92). A heading
+		// over no rows tells the operator a category of settings exists here and
+		// then shows them none of it.
+		if _, drawn := visibleRowOfGroup(g, d.rowVisible); !drawn {
+			continue
+		}
 		out = append(out, d.setupBlock(o, g))
 	}
 	return out
@@ -97,12 +103,17 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 	at := len(b.lines)
 	switch g {
 	case groupData:
-		b.lines = append(b.lines, d.setupLocationLines(o, setupMark(o, focus == rowLocation))...)
-		if focus == rowLocation {
-			b.at, b.end = at, len(b.lines)
+		// DATA IS THE ONE MIXED GROUP (D-92): the default location is the
+		// LISTENER's (D-18 row 1) and the provider key is SHARED (row 3), so this
+		// group is half-drawn on the console rather than skipped.
+		if d.rowVisible(rowLocation) {
+			b.lines = append(b.lines, d.setupLocationLines(o, setupMark(o, focus == rowLocation))...)
+			if focus == rowLocation {
+				b.at, b.end = at, len(b.lines)
+			}
+			b.lines = append(b.lines, "") // the separator between the two DATA rows
+			at = len(b.lines)
 		}
-		b.lines = append(b.lines, "") // the separator between the two DATA rows
-		at = len(b.lines)
 		b.lines = append(b.lines, d.setupKeyLines(o, setupMark(o, focus == rowFIRMSKey))...)
 		if focus == rowFIRMSKey {
 			b.at, b.end = at, len(b.lines)
