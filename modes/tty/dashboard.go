@@ -374,29 +374,55 @@ func defaultKeyMap() term.KeyMap {
 
 // Dashboard is the root TTY model.
 type Dashboard struct {
-	cfg          Config
-	keys         term.KeyMap
-	snap         *snapshot.Snapshot
-	recent       *snapshot.Snapshot
-	width        int
-	height       int
-	units        render.Units
-	clockFmt     render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
-	selected     int
-	alertIdx     int
-	recentOff    int                   // scroll offset (interaction lands with tab section nav)
-	modal        modal                 // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode      string                // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
-	lookupRef    *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: the modal showed the old top RECENT row meanwhile)
-	addErr       string                // resolve failure surfaced in the modal
-	setup        setupState
-	relayFault   relayFaultState
-	debug        debugState
-	voiceIdx     int
-	voiceList    []string     // snapshot of the hook's list, taken when the chooser opens (UAT 85: never from View)
-	radioVoice   string       // the chosen correspondent (chip label)
-	addQuery     string       // add-location search buffer
-	modalScroll  int          // shared scroll for floating modals (UAT 10.4)
+	cfg         Config
+	keys        term.KeyMap
+	snap        *snapshot.Snapshot
+	recent      *snapshot.Snapshot
+	width       int
+	height      int
+	units       render.Units
+	clockFmt    render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
+	selected    int
+	alertIdx    int
+	recentOff   int                   // scroll offset (interaction lands with tab section nav)
+	modal       modal                 // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode     string                // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	lookupRef   *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: the modal showed the old top RECENT row meanwhile)
+	addErr      string                // resolve failure surfaced in the modal
+	setup       setupState
+	relayFault  relayFaultState
+	debug       debugState
+	voiceIdx    int
+	voiceList   []string // snapshot of the hook's list, taken when the chooser opens (UAT 85: never from View)
+	radioVoice  string   // the chosen correspondent (chip label)
+	addQuery    string   // add-location search buffer
+	modalScroll int      // shared scroll for floating modals (UAT 10.4)
+
+	// cardID says WHICH Broadcaster card modalCard is open on and cardRows DRAWS
+	// it, title and all, as the console handed them over (D-88). HANDED, NEVER
+	// REACHED FOR: the Dashboard has no lineup and must not grow one — the same
+	// rule the console follows for the power and the bed.
+	//
+	// A RENDERER AND NOT A SNAPSHOT, and the ASCII parity gate is what settled
+	// that. Anything built once in the console's glyph vocabulary is drawn later
+	// by a window with a vocabulary of its own, and the two disagreed the first
+	// time the gate flipped `--ascii` after the hand-over: the window carried a
+	// bullet in its title and two arrows in its chips, neither with an ASCII form.
+	// Asking the console at DRAW time, with the window's own Opts, means there is
+	// no moment at which the two can differ — and it is why the TITLE comes back
+	// from the renderer too rather than being handed over as a finished string.
+	//
+	// THE IDENTITY IS THE CARD'S ID AND NOT ITS TITLE, which is what `Card.ID` is
+	// for: "ID addresses the card for the life of the lineup." A rendered title
+	// changes with the glyph set, so matching on one would lose the open card the
+	// moment anything about its appearance moved.
+	//
+	// cardGen moves whenever the hand-over changes what would be drawn, and it is
+	// what puts an uncomparable field into a comparable memo key — the stand-in
+	// setupGen already makes for Setup's two maps.
+	cardID       string
+	cardRows     func(render.Opts) (string, []string)
+	cardGen      int
 	ticker       []TickerItem // 0.12.0: the active global alerts (grouped into lanes by Category)
 	tickerCatIdx int          // which non-empty lane is showing (rotates every 90s)
 	tickerScroll int          // tape scroll offset within the current lane
@@ -876,6 +902,16 @@ const (
 	modalSevere     // w / ctrl+s: the Severe Weather / Disaster Events window (0.13.0)
 	modalRelayFault // the relay is up and silent (MVS-D-76)
 	modalDebug      // ctrl+d: diagnostics, and injection in a debug build (F-21)
+
+	// modalCard is a Broadcaster card's full report (D-88, F-97) — the drill-down
+	// D-87's manifest defers to.
+	//
+	// IT IS A DASHBOARD WINDOW THOUGH THE CONSOLE OWNS ITS CONTENT, which is
+	// D-56's split: the console builds the body (broadcaster_detail.go) and hands
+	// it over, and this is the window set that carries the reachability gate, the
+	// margin survey, the memo-completeness walk and the single-value exclusivity
+	// above. A console-private window would have been outside all four.
+	modalCard
 
 	// numModals bounds the set; it is not itself a modal. It exists so the
 	// memo-completeness guard can DERIVE the list of windows rather than carry

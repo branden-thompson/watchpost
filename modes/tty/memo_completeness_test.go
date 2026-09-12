@@ -234,6 +234,8 @@ func modalName(m modal) string {
 		return "relay-fault"
 	case modalDebug:
 		return "debug"
+	case modalCard:
+		return "card"
 	}
 	return "modal-" + strconv.Itoa(int(m))
 }
@@ -265,6 +267,15 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 				Location: "Olathe, KS", Declared: "08/28 08:45 CDT",
 				Record: SevereRecord{Title: "TORNADO WARNING"}}}})
 		d.severeReading = "k"
+	case modalCard:
+		// THE CONSOLE'S OWN BODY, NOT A HAND-WRITTEN ONE. The window draws what
+		// `Broadcaster.cardDetail` produces, and a fixture that typed its own
+		// rows would keep passing on the day the console stopped producing any.
+		id, rows, ok := broadcasterWithOneCard(t).cardDetail(1)
+		if !ok {
+			t.Fatalf("the console produced no card for slot 1; this fixture measures nothing")
+		}
+		d = d.showCard(id, rows, d.opts())
 	}
 	return d.open(m)
 }

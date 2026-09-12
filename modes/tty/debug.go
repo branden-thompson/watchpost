@@ -260,7 +260,7 @@ func (d Dashboard) ModalOpen() bool { return d.modal != modalNone }
 // exists.
 func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
 
-// OverlayDiagnostics lays whichever of Observer's windows is open — and its
+// OverlayWindow lays whichever of Observer's windows is open — and its
 // confirmation — over another surface's frame (D-58, generalised at D-65).
 //
 // IT TAKES THE BASE RATHER THAN RETURNING A PRE-COMPOSITED PAIR, and that is a
@@ -278,7 +278,7 @@ func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
 // BOTH LAYERS GO ONTO THE SAME FULL-SIZE BASE, which is exactly what
 // `Dashboard.View` does with them and why it never had this bug. Keeping that
 // rule in one place is the point of the seam (D-56).
-func (d Dashboard) OverlayDiagnostics(base string, termWidth int) string {
+func (d Dashboard) OverlayWindow(base string, termWidth int) string {
 	if !d.ModalOpen() {
 		return base
 	}
