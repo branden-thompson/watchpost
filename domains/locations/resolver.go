@@ -155,6 +155,9 @@ func cityToRefWith(zip func(geodata.City) string, c geodata.City) snapshot.Locat
 		Label: c.Label(),
 		Zip:   zip(c),
 		Lat:   c.Lat, Lon: c.Lon, TZ: c.TZ,
+		// THE FIGURE THE INDEX ALREADY HELD (D-98). The pool's table draws it;
+		// nothing else reads it, and nothing else has to.
+		Population: c.Population,
 	}
 }
 

@@ -258,6 +258,9 @@ func (Broadcaster).minSize
 func (Broadcaster).notice
 func (Broadcaster).opts
 func (Broadcaster).poolEntry
+func (Broadcaster).poolFooter
+func (Broadcaster).poolLines
+func (Broadcaster).poolRows
 func (Broadcaster).priorityColumn
 func (Broadcaster).priorityWidth
 func (Broadcaster).railed
@@ -267,6 +270,7 @@ func (Broadcaster).scheduledLines
 func (Broadcaster).scrollQueue
 func (Broadcaster).slotCard
 func (Broadcaster).slotRows
+func (Broadcaster).snapshotFor
 func (Broadcaster).stationLine
 func (Broadcaster).stationSection
 func (Broadcaster).stationTone
@@ -629,6 +633,7 @@ func endpointMark
 func endpointRows
 func enterSaves
 func errorWord
+func fillPoolWeather
 func fireCount
 func fireGlyph
 func fireHot

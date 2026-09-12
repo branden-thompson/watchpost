@@ -416,6 +416,17 @@ type LocationRef struct {
 	Lat   float64
 	Lon   float64
 	TZ    string
+
+	// Population is how many people the place holds, 0 when unknown (D-98).
+	//
+	// IT RIDES THE REF BECAUSE THE POOL'S TABLE DRAWS IT and the pool is a list
+	// of refs. `geodata.City` has held the figure since the index was built; it
+	// simply had no reader until the console gained a column for it.
+	//
+	// NOT PART OF THE KEY. `snapshot.Key` is lat,lon at four places, and a
+	// population that changed between census releases must not make a location
+	// into a different one.
+	Population int
 }
 
 // LocationKey is the normalized identity: "lat,lon" at 4 decimal places.

@@ -143,7 +143,16 @@ const (
 	// and the console does not, so this rebuilds on every frame including ticks
 	// that changed nothing. That is the optimisation available here, and the
 	// working layout comes first.
-	bcFrameAllocs = 1870
+	// 1990: D-98 — the LOCATION POOL table joins the frame. MEASURED at 1896 and
+	// pinned at x1.05, the same rule as every other number here. It is a SECOND
+	// go-studs table, and at 150x74 there is barely room for it — the cost is the
+	// table's own construction rather than its rows.
+	//
+	// THE LEVER IS STILL NAMED AND STILL NOT PULLED (D-53, and the HUM LEAD
+	// 2026-09-12: "we'll do the perf optimizations once everything is built and
+	// wired"). Observer memoises its table body; the console memoises neither of
+	// its two.
+	bcFrameAllocs = 1990
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {
