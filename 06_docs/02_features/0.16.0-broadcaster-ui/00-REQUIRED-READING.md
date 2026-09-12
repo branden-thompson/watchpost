@@ -138,6 +138,10 @@ Observer should ever be able to re-tune, take over, or 'sneak under' to get on t
 already has the predicate for this — `radioDeck.monitorHasTheAir()`, which ASKS THE EFFECTOR because a
 flag of the deck's own would be a second carrier.
 
+**THE PICTURE IS DRAWN** in `03-architecture-design/as-built-air-and-deck.md` — the deck, the two
+gates, the surface swap and the guard boundary, as built.  Read it before proposing anything about
+this area.
+
 **WHY THIS PARAGRAPH EXISTS.**  A session called the shared deck "awkward" and proposed splitting it,
 having rebuilt the model from `app/radio.go` instead of from `rulings-d74.md`.  That has now happened
 more than once, across sessions, and the HUM LEAD has had to correct it each time.  **The split is not

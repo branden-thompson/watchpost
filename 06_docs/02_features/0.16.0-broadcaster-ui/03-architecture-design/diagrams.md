@@ -9,6 +9,10 @@ status: "PLAN deliverable under FULL DIAGRAMS.  Four diagrams: the target archit
 
 # Diagrams
 
+> **This is the PLAN's picture (2026-09-09) and is kept as the record of what was INTENDED.**  For the
+> audio path as BUILT — one deck, the air, the guard boundary — see
+> [`as-built-air-and-deck.md`](as-built-air-and-deck.md), redrawn 2026-09-12 after D-91.
+
 **Mermaid, because it renders where these documents are read.**  Each diagram marks what EXISTS today
 against what this release WIRES, because the distinction is the release's central fact: seven
 subsystems were built for it and left without consumers.
