@@ -432,10 +432,6 @@ func (b Broadcaster) notice() []string {
 
 // lanes builds the three lanes from the last published schedule.
 func (b Broadcaster) lanes() []string {
-	g := b.opts().Glyphs()
-	// ONE RENDERER FOR THE WHOLE FRAME (see cardLane): the lane width does not
-	// change between the cards in it.
-	lane := newCardLane(b.cardBoxWidth(), g)
 	// THE FRAME OPENS WITH TWO BLANK ROWS, AS OBSERVER'S DOES (D-68). The HUM
 	// LEAD, annotating his own mock: "Universal 2 line inset like Observer."
 	// The console had its masthead hard against the top of the terminal, which
@@ -483,129 +479,12 @@ func (b Broadcaster) lanes() []string {
 	// every state: putting the lane that interrupts everything below the lane it
 	// interrupts would say the wrong thing about which is which.
 
-	// THE MAIN TRACK IS DRAWN AS NAMED REGIONS (D-60), which is what the
-	// reference's left rail names: the card on the air, the one after it, the
-	// ones scheduled behind that, and the rest of the line-up.
-	//
-	// THE RAIL IS WHY A CARD CARRIES NO STATE OF ITS OWN. An earlier card mock
-	// had a strip saying whether a card was live or scheduled and the HUM LEAD
-	// cut it — the rail already says it, once per region instead of once per
-	// card.
-	//
-	// THE LINE-UP, NOT THE SCHEDULE (D-44). The Director's own structural cards
-	// are read on air and never shown: the operator did not ask for them, and a
-	// slot number spent on one is a number they cannot address.
-	// A ROLLING VIEW (FR-3.1). A sixteenth card exists in the schedule and does
-	// not reach the frame; the console shows a window onto the lineup, never a
-	// second copy of it. ONE OWNER — see mainTrack.
-	main := b.mainTrack()
-	// THE RUNNING ORDER IS IN TWO ZONES, and the boundary is where the scroll
-	// rail starts (D-68). The HUM LEAD, annotating the reference beside the
-	// SCHEDULED region: "Notice the top of the scroll is here, and the left rail
-	// is separated." The cards the operator READS FROM do not scroll — there are
-	// two of them and they are always the same two — so the gutter beside them
-	// is empty and the rail begins below.
-	// THE LANE NAMES ITSELF ABOVE ITS CARDS, and it is part of the BODY rather
-	// than of the chrome above it — so it gets the frame's own right-hand
-	// columns like every other row of the running order. Built here and not in
-	// `out`, which is where the first version put it and why it came out with
-	// no right wall at all.
-	order, reads, after := []string{b.laneLabelRow()}, 0, (*bcRegion)(nil)
-	// THREE COLUMNS, ZIPPED ONCE (D-87). The rail, the alert track and the
-	// running order are built side by side and joined at the end — which is what
-	// makes occlusion IMPOSSIBLE rather than merely avoided, and it is the whole
-	// of the HUM LEAD's ruling: "We're gonna split the PRIORITY and MAIN tracks
-	// visually — no more card occlusion."
-	railCol := railColumn(" ", len(order), b.opts().Glyphs())
-	for r := range bcRegions {
-		reg := bcRegions[r]
-		rows := b.slotRows(reg, main, lane)
-		if len(rows) == 0 {
-			continue
-		}
-		// A BREAK FOLLOWS A READ REGION, AND ONLY A READ REGION (HUM LEAD, UAT
-		// 2026-09-10): "there should be no line break here … this is one area
-		// they should be continuous." SCHEDULED and LINE UP are one stack of
-		// cards that the rail happens to name in two halves; LIVE and UP NEXT
-		// are each a thing on its own, and the air is what says so.
-		if after != nil && after.reads {
-			order = append(order, b.cardGap())
-			railCol = append(railCol, bcRailBlank)
-		}
-		railCol = append(railCol, railColumn(reg.label, len(rows), b.opts().Glyphs())...)
-		order = append(order, rows...)
-		after = &bcRegions[r]
-		if reg.reads {
-			reads = len(order)
-		}
-	}
-	// AND THE RUNNING ORDER CLOSES ON A BLANK ROW, so the scroll rail's ▼ has
-	// one of its own — which is where the reference draws it, under the last
-	// card rather than across its border. Its ▲ already has one: the gap between
-	// UP NEXT and SCHEDULED.
-	if after != nil && reads < len(order) {
-		order = append(order, b.cardGap())
-		railCol = append(railCol, bcRailBlank)
-	}
-
-	// AND THE ALERT TRACK IS A COLUMN BESIDE IT, NOT A BOX ON TOP (D-87).
-	//
-	// IT WORKS BECAUSE THE CARD CHANGED, which is the HUM LEAD's own reasoning:
-	// "this works because of the data that we're ACTUALLY showing. The full
-	// script on the top level card doesn't make sense when I can drill down to
-	// read the whole thing." A card that was a transcript needed the width; a
-	// card that is a MANIFEST does not, so both tracks fit side by side and
-	// neither has to hide the other.
-	//
-	// THE COLUMN IS ALWAYS RESERVED — see priorityWidth. A layout that widened
-	// when a hazard arrived would move every card sideways at the moment the
-	// operator is reading one.
-	// THE ALERT COLUMN STARTS UNDER THE CAPTION, not on it. The caption names
-	// the running order and the tracks begin below it — a box whose top border
-	// shared that row would read as though the caption named the takeover.
-	body := b.zipTracks(railCol, append([]string{""}, b.priorityColumn(len(order)-1)...), order)
-	if reads > len(body) {
-		reads = len(body)
-	}
-	// AND THE FRAME RUNS THE FULL HEIGHT OF THE TERMINAL, LESS ITS CLOSING
-	// INSET. It stopped at the last drawn row, so a station with a short line-up
-	// showed a fragment floating in black — the reference carries its walls to
-	// the bottom, and a frame that ends where its content does is not a frame.
-	// THE SCROLL RAIL ENDS WITH THE CARDS, NOT WITH THE FRAME. Its ▼ sits on the
-	// last row of the running order, which is what the reference draws — filler
-	// below it is the frame reaching the bottom of the terminal, and a rail run
-	// through that would say the line-up continues into empty space.
-	// THE QUEUE IS A WINDOW, NOT A CLIPPING (D-87). A card is a MANIFEST now and
-	// the ten slots need about ninety rows; the reference's terminal has
-	// seventy-four. Emitting them all and letting `clamp` cut the bottom is not
-	// the same thing as scrolling — the frame's own closing inset went with it,
-	// and rows ran past the edge, which FR-7.3 calls a defect rather than a
-	// degradation.
-	//
-	// THE READ CARDS ARE NEVER WINDOWED. There are two of them, they are always
-	// the same two, and they are the reason the rail begins below them (D-68).
-	scroll, off := body[reads:], 0
-	if room := b.height - len(out) - len(body[:reads]) - 2*bcInsetRows; room >= 0 && room < len(scroll) {
-		// THE OFFSET IS CLAMPED HERE, NOT WHERE IT IS SET. Only the frame knows
-		// how much room the queue has, and it changes with the terminal — so a
-		// bound applied at the keystroke would be the wrong bound the moment
-		// anybody resized.
-		off = min(b.queueOff, len(scroll)-room)
-		scroll = append([]string(nil), scroll[off:off+room]...)
-		// THE WINDOW ENDS ON A ROW OF ITS OWN, because the scroll rail's ▼ sits
-		// on the last one (D-70) and a cap sharing a row with a card reads as a
-		// mark ON that card. Cutting mid-card is what a window does; giving the
-		// cap its own row is what says the cut was deliberate.
-		if n := len(scroll); n > 0 {
-			scroll[n-1] = strings.Repeat(" ", render.Width(scroll[n-1]))
-		}
-	}
-	out = append(out, b.chrome(body[:reads], false, 0, 0)...)
-	out = append(out, b.chromeAt(scroll, off, len(body)-reads)...)
-	// AND THE SCHEDULED LINE-UP IS A TABLE BELOW THEM (D-94). It is not a card
-	// region any more, so it is not zipped with the rail or the alert track — it
-	// is Observer's table, full width, under a heading of its own.
-	out = append(out, b.scheduledLines(main, len(out))...)
+	// UP NEXT AND THE TAKEOVER, LEVEL WITH EACH OTHER (D-97). The region machinery
+	// and the vertical rail retire here: LIVE went to the air box (D-95), the
+	// SCHEDULED slots went to the table (D-94), and what is left is two boxes side
+	// by side that the reference draws at the same height.
+	out = append(out, b.chrome(b.readPair(), false, 0, 0)...)
+	out = append(out, b.scheduledLines(b.mainTrack(), len(out))...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
 	// blank rows to the bottom of the terminal, which is what the reference does
 	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the
@@ -642,70 +521,15 @@ func (b Broadcaster) inset() []string {
 // the number is stated once here rather than being folded into a caller.
 const bcInsetRows = 2
 
-// laneHeader names the lane the cards below it belong to, centred over them.
+// THE LANE CAPTION RETIRED AT D-97, and with it `bcLaneLabel`, `laneLabelRow`
+// and `cardGap`. "MAIN SCHEDULE (ROLLING WINDOW)" named a column of cards that no
+// longer exists: LIVE went to the air box (D-95), the ordered slots to the table
+// (D-94), and UP NEXT is one of a pair. What the reference captions now is the
+// TABLE, and `bcScheduledHeading` is that caption.
 //
-// THE REFERENCE DRAWS IT AND THE CONSOLE DID NOT (HUM LEAD, 2026-09-10: "Notice
-// the header line; this should be centered"). It is the STANDARD lane; the
-// priority lane names itself the same way when it has something, which is D-61's
-// rule one row up from the rail label.
-//
-// A BARE BLANK ROW ABOVE IT, deliberately: "Notice the blank line and how it
-// separates the rail — this is intentional." The station section is a closed box
-// and the running order is another; the air between them belongs to neither, so
-// it carries no walls.
-// laneLabelRow is the caption over the running order, in the MAIN column's own
-// cells (D-87).
-//
-// IT IS A ROW OF THE CARD COLUMN NOW, not a row of the frame. The tracks are
-// zipped, so everything that names the running order is measured in the column
-// it names — which is also why it lands at the reference's column 91 without
-// anybody counting to it.
-func (b Broadcaster) laneLabelRow() string {
-	w := b.cardBoxWidth()
-	if w < 1 {
-		return ""
-	}
-	label := bcLaneLabel
-	lead := max(0, (w-render.Width(label))/2)
-	return render.PadTo(strings.Repeat(" ", lead)+label, w)
-}
-
-// bcLaneLabel names the running order, from the v2 reference.
-//
-// "ROLLING WINDOW" IS THE WORD THE CONSOLE ALREADY OWED. FR-3.1 makes the ten
-// slots a window onto a deeper schedule, and until now nothing on the surface
-// said so — an operator counting ten cards had no way to know an eleventh
-// existed.
-const bcLaneLabel = "MAIN SCHEDULE (ROLLING WINDOW)"
-
-// cardGap is a blank row of the CARD column — the break between two regions.
-func (b Broadcaster) cardGap() string { return strings.Repeat(" ", b.cardBoxWidth()) }
-
-// bcRailBlank is a rail cell with no wall: the break between two regions, which
-// the HUM LEAD ruled must be completely blank.
-var bcRailBlank = strings.Repeat(" ", bcRailWidth)
-
-// zipTracks joins the three columns into rows of the frame.
-//
-// ONE JOIN, so the columns cannot disagree about where they start. Each is padded
-// to its own width first: a column that ran short would otherwise pull the ones
-// to its right inward on that row alone, which is how a splice-based layout
-// fails and exactly what D-87 removed.
-func (b Broadcaster) zipTracks(rail, priority, cards []string) []string {
-	n := max(len(rail), max(len(priority), len(cards)))
-	gap, pw, cw := strings.Repeat(" ", bcColumnGap), b.priorityWidth(), b.cardBoxWidth()
-	out := make([]string, 0, n)
-	for i := range n { // bounded by the tallest column (P10-02)
-		at := func(col []string, w int) string {
-			if i < len(col) {
-				return render.PadTo(render.TruncateCells(col[i], w), w)
-			}
-			return strings.Repeat(" ", w)
-		}
-		out = append(out, at(rail, bcRailWidth)+strings.Repeat(" ", bcRailGap)+at(priority, pw)+gap+at(cards, cw))
-	}
-	return out
-}
+// THE WORD IT OWED IS STILL OWED. FR-3.1 makes the slots a window onto a deeper
+// schedule and nothing on the surface says "rolling" any more — the scroll rail
+// implies it, which is weaker. Recorded here rather than lost.
 
 // bcRegion is one named part of the running order, and the slots it holds.
 type bcRegion struct {

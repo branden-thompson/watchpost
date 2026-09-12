@@ -259,12 +259,15 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 		if strings.TrimSpace(r) != "" {
 			last = i
 		}
-		if first < 0 && strings.Contains(r, bcLaneLabel) {
-			first = i + 1 // the running order begins under its caption
+		// THE RUNNING ORDER BEGINS AT THE AIR BOX (D-97). The lane caption retired
+		// with the card regions it named, so the frame's walled half is anchored
+		// on the first thing that draws one.
+		if first < 0 && strings.Contains(r, "LIVE NOW") {
+			first = i
 		}
 	}
 	if first < 0 {
-		t.Fatal("the running order drew no caption, so there is nothing to check")
+		t.Fatal("the frame drew no air box, so there is nothing to check")
 	}
 	belowTheCards := false
 	for i := first; i <= last; i++ {
@@ -297,9 +300,15 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 		}
 		// AT THE INSET, NOT AT COLUMN ZERO (D-96): the frame carries Observer's
 		// three-column left margin now, so its own edge begins there.
+		// AN EDGE, NOT SPECIFICALLY A WALL (D-97). The air box and the UP NEXT /
+		// ALERT pair draw their OWN borders, and in the v3 layout those borders ARE
+		// the frame's left edge — the reference draws no outer wall around them. So
+		// the question is whether the row opens on the frame at all: a rail, or a
+		// corner or tee of a box that starts there.
 		at := len(bcLeftInset)
-		if len(r) <= at || r[at] != '|' {
-			t.Errorf("row %d does not open the frame at column %d\n%.40s", i, at, rows[i])
+		if len(r) <= at || (r[at] != '|' && r[at] != '+') {
+			t.Errorf("row %d does not open the frame at column %d, got %q\n%.40s",
+				i, at, string(r[at]), rows[i])
 		}
 	}
 }
@@ -313,8 +322,14 @@ func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	b.width, b.height, b.ascii = 150, 74, true
 	// THE GUTTER IS MEASURED FROM THE FRAME, NOT THE TERMINAL (D-96): `railed`
 	// builds at `frameWidth` and the margin is added afterwards, in `clamp`.
-	row := strings.Repeat("-", b.cardBoxWidth())
-	body := b.zipTracks(rail("SCHEDULED LINE UP", 3), nil, []string{row, row, row})
+	// A PLAIN BODY AT THE FRAME'S CONTENT WIDTH. This used `zipTracks` to build
+	// its fixture, and that function retired with the three-column layout (D-97):
+	// the rail is gone, and the alert box sits BESIDE the card rather than in a
+	// column zipped with it. What this test is about is the GUTTER, so the body
+	// only has to be the right width.
+	w := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap + b.cardBoxWidth()
+	row := strings.Repeat("-", w)
+	body := []string{row, row, row}
 	framed := b.framed(body, 2, 10)
 
 	// THE RAIL IS COLUMN 148 (D-87), and it is the LAST thing on the row: the

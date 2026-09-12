@@ -81,86 +81,6 @@ func TestTheMastheadsKeysAreChips(t *testing.T) {
 	}
 }
 
-// THE REGIONS BREATHE.
-//
-//	"the sections of the line up are missing their blank row between the
-//	 sections like the mocks"
-//
-// BETWEEN REGIONS, NEVER BETWEEN CARDS — the reference draws its cards flush
-// inside a region, and a gap between every card would say each card is its own
-// section, which is the opposite of what the rail is for.
-func TestOneBlankRowSeparatesTheRegions(t *testing.T) {
-	b := NewBroadcaster()
-	b.width, b.height, b.ascii = 150, 74, true
-	rows := strings.Split(b.View().Content, "\n")
-	// BETWEEN THE CARDS: the frame ends where the running order does, so
-	// everything past the last card border is the terminal, not the frame.
-	first, last := -1, 0
-	for i, r := range rows {
-		// A CARD's border, not the masthead's — that box draws `+` corners too,
-		// and anchoring on the glyph alone put `first` on row 2.
-		// AND THE FRAME OPENS AT THE MARGIN NOW, not at column zero (D-96).
-		if strings.Contains(r, "   +---") && strings.HasPrefix(r, bcLeftInset+"|") {
-			if first < 0 {
-				first = i
-			}
-			last = i
-		}
-	}
-	if first < 0 {
-		t.Fatal("no cards drawn")
-	}
-	breaks := 0
-	for _, r := range rows[first:last] {
-		cells := []rune(r)
-		if len(cells) < b.width {
-			continue
-		}
-		// A BREAK CARRIES NOTHING LEFT OF THE FRAME'S RIGHT-HAND COLUMNS — no
-		// card, and no rail. "The blank row in between sections needs to be
-		// completely blank … the breaks in the mock were intentional."
-		if strings.TrimSpace(string(cells[:b.width-bcRightChrome+3])) != "" {
-			continue
-		}
-		breaks++
-		// AND THE BREAK GOES ALL THE WAY ACROSS. The inner wall at 144 is part
-		// of the same vertical line the left rail is; leaving it drawn would
-		// break the rail on one side of the cards and not the other. The scroll
-		// rail's own caps are the exception, and they are what a cap IS.
-		switch c := cells[b.width-6]; c {
-		case ' ', '^', 'v':
-		default:
-			t.Errorf("a break still draws %q in the rail column:\n%s", string(c), r)
-		}
-	}
-	// ONE PER READ REGION (D-71). SCHEDULED and LINE UP are one stack of cards
-	// the rail names in two halves — "this is one area they should be
-	// continuous" — so the air goes after LIVE and after UP NEXT, and nowhere
-	// else inside the order.
-	// ONE BREAK BETWEEN THE TWO READ REGIONS (D-94). LIVE and UP NEXT are each a
-	// thing on its own and the air is what says so; the SCHEDULED table below
-	// brings its own leading blank, so the running order proper holds n-1.
-	reads := 0
-	for _, r := range bcRegions {
-		if r.reads {
-			reads++
-		}
-	}
-	if want := reads - 1; breaks != want {
-		t.Errorf("%d breaks in the running order, want %d (one BETWEEN each pair of read regions)", breaks, want)
-	}
-	// AND A READ REGION DRAWS ONE CARD OF THE READ HEIGHT (D-94). The flat
-	// ORDERED cards are gone — slots 2 and up are a table — so what is left to
-	// check is that the two remaining regions each draw the tall card the
-	// operator reads from, and nothing else.
-	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
-	r := bcRegions[len(bcRegions)-1]
-	body := b.slotRows(r, nil, lane)
-	if got, want := len(body), (r.upto-r.from)*bcReadCardRows; got != want {
-		t.Errorf("the last region draws %d rows for %d slots, want %d", got, r.upto-r.from, want)
-	}
-}
-
 // THE READ CARDS ARE TALL AND THE ORDERED ONES ARE FLAT (D-68).
 //
 //	"the LIVE CARD should be bigger to support showing at least most the script
@@ -328,42 +248,6 @@ func TestTheScrollControlCapsSitOnRowsOfTheirOwn(t *testing.T) {
 	}
 	if up > firstScrolling {
 		t.Errorf("the control starts at row %d, below the first scrolling card at %d", up, firstScrolling)
-	}
-}
-
-// THE LANE NAMES ITSELF OVER ITS OWN COLUMN (D-87).
-//
-// IT USED TO CARRY NO LINES AT ALL (HUM LEAD, UAT 2026-09-10: "this line …
-// should have no pipes / lines"), because it was written outside the frame's
-// columns. The v2 reference puts it INSIDE them — `│   │ … MAIN SCHEDULE
-// (ROLLING WINDOW)` — so it wears the rail's walls like every other row of the
-// running order, and what it must not carry is a CARD's border.
-func TestTheLaneCaptionSitsOverTheRunningOrder(t *testing.T) {
-	b := NewBroadcaster()
-	b.width, b.height, b.ascii = 150, 74, true
-	rows := strings.Split(stripANSITest(b.View().Content), "\n")
-	at := -1
-	for i, r := range rows {
-		if strings.Contains(r, bcLaneLabel) {
-			at = i
-			break
-		}
-	}
-	if at < 0 {
-		t.Fatal("the lane does not name itself above its cards")
-	}
-	if strings.Contains(rows[at], "+--") {
-		t.Errorf("the caption row carries a card's border:\n%q", rows[at])
-	}
-	// AND IT IS CENTRED OVER THE CARDS, which is what makes it read as naming
-	// the column rather than the frame.
-	// FROM THE FRAME'S EDGE (D-96): the row carries the margin `clamp` added, so
-	// the caption's own offset is measured past it.
-	main := len(bcLeftInset) + bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap
-	lead := strings.Index(rows[at], bcLaneLabel) - main
-	trail := b.cardBoxWidth() - lead - len(bcLaneLabel)
-	if d := lead - trail; d > 1 || d < -1 {
-		t.Errorf("the caption is not centred over the cards: %d left, %d right", lead, trail)
 	}
 }
 
@@ -536,4 +420,45 @@ func openAModal(t *testing.T, d Dashboard) Dashboard {
 		return out
 	}
 	return d
+}
+
+// THE HEADING NAMES THE TABLE, NOT THE PAIR (D-97).
+//
+// TWO TESTS RETIRED HERE and the reason is one sentence: the running order stopped
+// being a column of cards with a caption over it. `TestTheLaneCaptionSitsOverThe
+// RunningOrder` measured a caption the v3 layout does not draw, and
+// `TestOneBlankRowSeparatesTheRegions` measured the air between card REGIONS that
+// no longer exist — LIVE went to the air box (D-95), the SCHEDULED slots to the
+// table (D-94), and UP NEXT is one of a pair (D-97).
+//
+// WHAT REPLACES BOTH is the table's own centred heading, which is what the
+// reference draws and the only caption left in the frame.
+func TestTheScheduledHeadingNamesTheTable(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+
+	at := -1
+	for i, r := range rows {
+		if strings.Contains(r, bcScheduledHeading) {
+			at = i
+		}
+	}
+	if at < 0 {
+		t.Fatal("the running order draws no heading")
+	}
+	// IT IS A CAPTION, NOT A ROW OF THE TABLE: nothing else shares its line.
+	if strings.Count(strings.TrimSpace(rows[at]), "  ") == 0 {
+		t.Errorf("the heading shares its row with something else:\n%q", rows[at])
+	}
+	// AND THE TABLE IS BELOW IT.
+	found := false
+	for _, r := range rows[at:] {
+		if strings.Contains(r, "REPORT TYPE") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("the heading does not sit above the table it names")
+	}
 }
