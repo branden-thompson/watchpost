@@ -12,6 +12,7 @@ import (
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -399,4 +400,88 @@ func TestEachRegionsRailCarriesItsOwnGround(t *testing.T) {
 			}
 		}
 	}
+}
+
+// THE QUEUE SCROLLS, AND THE THUMB TRACKS IT (D-87, HUM LEAD 2026-09-11):
+// "that's why we have the vertical scroll bar so that works like Observer —
+// that section just needs to be able to scroll up and down."
+//
+// THE CARDS OUTGREW THE TERMINAL. A card is a manifest now, so ten of them need
+// about ninety rows against the reference's seventy-four — and a queue the
+// operator cannot reach the bottom of is a line-up they cannot manage.
+func TestTheQueueScrollsAndItsThumbFollows(t *testing.T) {
+	base := NewBroadcaster()
+	base.width, base.height, base.ascii = 150, 74, true
+	base.power = lineup.Running
+
+	slots := func(b Broadcaster) []string {
+		var out []string
+		for _, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
+			if j := strings.Index(r, "*STANDARD*"); j >= 0 {
+				out = append(out, strings.TrimSpace(r[j+10:min(len(r), j+18)]))
+			}
+		}
+		return out
+	}
+	thumb := func(b Broadcaster) int {
+		for i, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
+			if len(r) > b.width-2 && r[b.width-2] == '#' {
+				return i
+			}
+		}
+		return -1
+	}
+
+	top := slots(base)
+	if len(top) < 3 {
+		t.Fatalf("the console drew %d slots; there is nothing to scroll", len(top))
+	}
+	if thumb(base) < 0 {
+		t.Fatal("the rail draws no thumb")
+	}
+
+	// SCROLLING SHOWS SLOTS THAT WERE BELOW THE FOLD.
+	down := base.scrollQueue(6)
+	if got := slots(down); equalStrings(got, top) {
+		t.Errorf("scrolling changed nothing: %v", got)
+	}
+	if thumb(down) <= thumb(base) {
+		t.Errorf("the thumb sat still while the window moved: %d then %d", thumb(base), thumb(down))
+	}
+
+	// THE BOTTOM IS REACHABLE, which is the whole point: the last slot must be
+	// drawable or the operator cannot manage it.
+	end := base
+	for range 40 {
+		end = end.scrollQueue(1)
+	}
+	if got := slots(end); !contains(strings.Join(got, " "), chipFor(strconv.Itoa(MainTrackSlots-1))) {
+		t.Errorf("the last slot is unreachable; the bottom of the queue shows %v", got)
+	}
+	// AND THE THUMB IS STILL DRAWN THERE. A rail that loses its thumb at the end
+	// of the list says the list is gone rather than that it is finished.
+	if thumb(end) < 0 {
+		t.Error("the rail lost its thumb at the bottom of the queue")
+	}
+
+	// CLAMPED, NEVER WRAPPED. A list that jumped from its last row to its first
+	// would lose the operator's place.
+	if got, want := slots(end.scrollQueue(10)), slots(end); !equalStrings(got, want) {
+		t.Errorf("scrolling past the end moved the window: %v then %v", want, got)
+	}
+	if got, want := slots(base.scrollQueue(-5)), top; !equalStrings(got, want) {
+		t.Errorf("scrolling above the top moved the window: %v", got)
+	}
+}
+
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

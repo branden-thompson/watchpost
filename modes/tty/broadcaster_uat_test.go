@@ -461,3 +461,55 @@ func TestTheStationBandIsEvenlyInset(t *testing.T) {
 		}
 	}
 }
+
+// A WINDOW ON TOP OWNS THE KEYBOARD, AND THE CONSOLE'S OWN CONTROLS STAND ASIDE
+// (D-58, enforced at D-87).
+//
+// THE BED'S ARROWS HAD THIS WRONG SINCE D-78. The Router looks a key up BEFORE
+// the check that hands an open window its input, so `←`/`→` stepped the relay
+// while the operator was moving through the status window — and nothing saw it,
+// because no gate drove those keys with a window up. Adding the queue's `↑`/`↓`
+// is what surfaced it: the modal-reachability gate drives exactly those.
+func TestTheConsolesControlsStandAsideForAnOpenWindow(t *testing.T) {
+	d, err := NewDashboard(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := NewRouter(d)
+	r.active = SurfaceBroadcaster
+
+	if !r.consoleOwnsTheKeys() {
+		t.Fatal("with no window open the console owns its own keys")
+	}
+
+	// THE OBSERVER'S WINDOW IS THE ONE THAT COMPOSITES OVER THE CONSOLE, which
+	// is why it is the one asked.
+	open := r
+	open.observer = openAModal(t, r.observer)
+	if !open.observer.ModalOpen() {
+		t.Skip("no modal could be opened in this fixture")
+	}
+	if open.consoleOwnsTheKeys() {
+		t.Error("the console acted on a key meant for the window over it")
+	}
+
+	// AND ON OBSERVER THE CONSOLE NEVER OWNS THEM, window or not: those arrows
+	// walk the listener's table.
+	obs := r
+	obs.active = SurfaceObserver
+	if obs.consoleOwnsTheKeys() {
+		t.Error("the console claimed the arrows while Observer was the surface")
+	}
+}
+
+// openAModal puts the status window up, which is the one the reachability gate
+// drives.
+func openAModal(t *testing.T, d Dashboard) Dashboard {
+	t.Helper()
+	d.width, d.height = 150, 74
+	m, _ := d.Update(keyPress(t, "S"))
+	if out, ok := m.(Dashboard); ok {
+		return out
+	}
+	return d
+}

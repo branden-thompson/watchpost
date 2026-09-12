@@ -253,7 +253,21 @@ func (b Broadcaster) framed(body []string, shown, total int) []string {
 // rail is separated." The two cards the operator reads from are always the same
 // two — there is nothing to scroll past — so the gutter beside them is air, and
 // a thumb drawn there would say they move when they do not.
+// chromeAt is `chrome` for the SCROLLING region, told where its window sits.
+//
+// THE THUMB TRACKS THE WINDOW, and until D-87 it could not: `chrome` passed a
+// hard-coded `lo` of 0 to `Railify`, so the rail drew a thumb that never moved
+// however far the operator scrolled. It was invisible while everything fitted on
+// one screen, and became a lie the moment the cards outgrew the terminal.
+func (b Broadcaster) chromeAt(body []string, off, total int) []string {
+	return b.railed(body, true, off, 0, total)
+}
+
 func (b Broadcaster) chrome(body []string, rail bool, shown, total int) []string {
+	return b.railed(body, rail, 0, shown, total)
+}
+
+func (b Broadcaster) railed(body []string, rail bool, lo, shown, total int) []string {
 	g := b.opts().Glyphs()
 	glyphs := render.RailGlyphsFor(b.ascii)
 	// THE MARK IN COLUMN 144 FOR EACH ROW. Without a rail that is the wall, on
@@ -285,8 +299,17 @@ func (b Broadcaster) chrome(body []string, rail bool, shown, total int) []string
 		marks[0], marks[len(body)-1] = glyphs.Up, glyphs.Down
 		// Width 1 over empty lines asks Railify for the GLYPHS and nothing else:
 		// `PadTo("", 0)` is empty, so each line it returns is the mark alone.
-		for i, m := range render.Railify(make([]string, len(body)-2), 1, 0,
-			max(total, 1), max(shown, 1), glyphs) {
+		//
+		// THE CAPS ARE NOT PART OF THE WINDOW, and getting that wrong lost the
+		// thumb at the bottom of the list. `Railify` places the thumb at
+		// `lo*(window-1)/maxLo` and INDEXES ITS OWN `lines` with it, so its
+		// contract is that the window IS the track it was handed — pass a window
+		// two rows larger (the caps) and the last position falls off the end,
+		// silently drawing no thumb at all. Caught by a test that scrolled to the
+		// bottom and looked; invisible while everything fitted on one screen.
+		track := len(body) - 2
+		for i, m := range render.Railify(make([]string, track), 1, lo,
+			max(total-2, 1), max(track, 1), glyphs) {
 			marks[i+1] = m
 		}
 	}
