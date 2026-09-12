@@ -53,6 +53,7 @@ const bcGainCells
 const bcInsetRows
 const bcLabelCells
 const bcLaneLabel
+const bcLeftInset
 const bcMinCols
 const bcMinRows
 const bcNoCoordinates
@@ -237,6 +238,7 @@ func (Broadcaster).clock
 func (Broadcaster).controlRow
 func (Broadcaster).detailBody
 func (Broadcaster).flatBody
+func (Broadcaster).frameWidth
 func (Broadcaster).framed
 func (Broadcaster).header
 func (Broadcaster).headerRows
