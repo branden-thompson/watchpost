@@ -48,6 +48,28 @@ func scriptFromSegments(segs []synth.Segment) lineup.Script {
 	return lineup.Script{Parts: parts}
 }
 
+// contentsFromSegments is the card's MANIFEST: one line per source, in the order
+// the read will reach them (D-87).
+//
+// THE SAME COMPOSE AS THE WORDS, which is what lets the card promise that its
+// summary describes the read it is about to give. The Composer tags the first
+// segment of each report with what that report IS and what it counted; every
+// other segment carries nothing, so a fire report of nine sentences is one line.
+//
+// UNNAMED SEGMENTS ARE SKIPPED rather than listed as blanks: the lead, the
+// conditions, the alerts and the sign-off are the read's own connective tissue,
+// not sources the operator is deciding about.
+func contentsFromSegments(segs []synth.Segment) []lineup.Content {
+	var out []lineup.Content
+	for _, seg := range segs { // bounded by the compose (P10-02)
+		if seg.Source == "" {
+			continue
+		}
+		out = append(out, lineup.Content{Name: seg.Source, Detail: seg.Detail})
+	}
+	return out
+}
+
 // segmentsFromScript is the join read the other way (F-91): a card's SCRIPT
 // becomes the segments the broadcast engine plays.
 //

@@ -55,6 +55,13 @@ type Built struct {
 	isEvent
 	ID     string
 	Script Script
+	// Contents is what the read is made of, for the console's manifest (D-87).
+	//
+	// IT TRAVELS WITH THE SCRIPT because it comes from the same compose. A
+	// second event carrying it would be a second moment at which a card could be
+	// half-built — words without a summary, or a summary of words that never
+	// arrived.
+	Contents []Content
 }
 
 // Finished is a Speak effect coming home: the card was read in full.
@@ -667,7 +674,7 @@ func (d Director) onBuilt(ev Built) (Director, []Effect) {
 	if !ok {
 		return d, nil // discarded while its build was in flight; ordinary
 	}
-	built, err := card.WithScript(ev.Script, d.now)
+	built, err := card.WithScript(ev.Script, ev.Contents, d.now)
 	if err != nil {
 		return d, nil
 	}

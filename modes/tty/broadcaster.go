@@ -1093,7 +1093,7 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	}
 	// THE HEADLINE, NOT THE SUBJECT. The headline is what the card is ABOUT in
 	// the words a person reads; the subject is its key.
-	headline := kindFirst(plaintext.Text(c.Headline), l.lane, l.g)
+	headline := kindFirst(cardTitle(c, l.g), l.lane, l.g)
 	// A TAKEOVER NAMES ITSELF IN ITS BORDER (D-87), so repeating the headline
 	// inside it would say the same thing twice on a box whose whole job is to be
 	// read at a glance. What the row still carries is the badge and the handle.
@@ -1218,6 +1218,33 @@ func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []st
 	return rows
 }
 
+// cardTitle is the card's name as the operator reads it: what KIND of read it is,
+// then what it is about.
+//
+// THE KIND COMES FROM THE SLOT, NOT FROM THE PRODUCER (D-87). The reference
+// draws "LOCATION REPORT • Oceanside, CA" and the producer supplies only the
+// location — as it should, because what a card is ABOUT and what KIND of card it
+// is are two different facts with two different owners. The slot registry is the
+// one place a kind is named, and `kindFirst` already expects the pair.
+//
+// A CARD WITH NO SUBJECT KEEPS ITS KIND, and one with no kind keeps its subject:
+// a slot outside the registry names nothing rather than drawing "•" with air on
+// one side of it.
+func cardTitle(c lineup.Card, g render.Glyphs) string {
+	head := plaintext.Text(c.Headline)
+	kind := strings.ToUpper(c.Slot.String())
+	switch {
+	case kind == "":
+		return head
+	case head == "":
+		return kind
+	}
+	// THE SEPARATOR COMES FROM THE GLYPH SET, never a literal — the parity gate
+	// found the first draft's bullet, which is the same catch it made on the
+	// station line and on this batch's em-dash.
+	return kind + " " + g.Bullet + " " + head
+}
+
 // cardBoxTitle is what a card carries in its TOP RULE, or nothing.
 //
 // ONLY THE TAKEOVER HAS ONE (D-87), and the reference is emphatic about it:
@@ -1312,7 +1339,7 @@ func worstCategory(from []lineup.Arrival) (category.Category, bool) {
 // Anything that still does not fit is handed to the row's own truncation, which
 // owns the arithmetic.
 func kindFirst(headline string, lane int, g render.Glyphs) string {
-	const sep = " • "
+	sep := " " + g.Bullet + " "
 	head, sub, split := strings.Cut(headline, sep)
 	if !split || head == "" {
 		return headline

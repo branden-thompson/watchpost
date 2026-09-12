@@ -48,7 +48,7 @@ func TestOnStandbyTheLineUpStartsAtUpNextAndLiveIsEmpty(t *testing.T) {
 	for _, id := range []string{"first", "second", "third"} {
 		c := readingCard(t, "the words for "+id)
 		c.ID, c.Subject = id, id
-		c.Headline = "LOCATION REPORT • " + strings.ToUpper(id)
+		c.Headline = strings.ToUpper(id)
 		admitted, err := c.To(lineup.Admitted)
 		if err != nil {
 			t.Fatalf("admitting %s: %v", id, err)

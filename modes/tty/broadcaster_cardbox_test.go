@@ -28,7 +28,7 @@ func boxOf(t *testing.T, box int, c lineup.Card, handle, badge string) []string 
 // the overlay that made them necessary, so what a card is tall is what the
 // region puts inside it.
 func TestACardFillsItsBoxAtEveryWidth(t *testing.T) {
-	c := aCard(t, "LOCATION REPORT • OCEANSIDE, CA 92057")
+	c := aCard(t, "OCEANSIDE, CA 92057")
 	for _, box := range []int{82, 112, 132} {
 		rows := boxOf(t, box, c, "6", "STANDARD")
 		if len(rows) < 3 {
@@ -108,7 +108,7 @@ func TestARealCardHasNoCorners(t *testing.T) {
 // MEASURED IN RUNES, because the badge's bullets are three bytes each and a
 // byte offset here reads as a plausible wrong number.
 func TestTheBoxedCardMatchesTheReferenceGeometry(t *testing.T) {
-	rows := boxOf(t, 132, aCard(t, "LOCATION REPORT • OCEANSIDE, CA 92057"), "6", "STANDARD")
+	rows := boxOf(t, 132, aCard(t, "OCEANSIDE, CA 92057"), "6", "STANDARD")
 	title := []rune(rows[1])
 	if got := len(title); got != 132 {
 		t.Fatalf("the reference's card is 132 cells; got %d", got)

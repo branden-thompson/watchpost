@@ -66,7 +66,7 @@ func stagedOn(t *testing.T, track Track, age time.Duration) Director {
 	if err != nil {
 		t.Fatalf("staging: %v", err)
 	}
-	built, err := standby.WithScript(Say("the report"), planNow.Add(-age))
+	built, err := standby.WithScript(Say("the report"), nil, planNow.Add(-age))
 	if err != nil {
 		t.Fatalf("staging: %v", err)
 	}
@@ -207,10 +207,10 @@ func TestPD3ABuildWithoutAStampIsRefused(t *testing.T) {
 	}
 	c, _ = c.To(Admitted)
 	c, _ = c.To(Standby)
-	if _, err := c.WithScript(Say("words"), time.Time{}); err == nil {
+	if _, err := c.WithScript(Say("words"), nil, time.Time{}); err == nil {
 		t.Error("a build with no stamp must be refused")
 	}
-	got, err := c.WithScript(Say("words"), planNow)
+	got, err := c.WithScript(Say("words"), nil, planNow)
 	if err != nil {
 		t.Fatalf("a stamped build is accepted: %v", err)
 	}

@@ -156,7 +156,7 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 		return append(rows, "")
 	}
 	rows := []string{bcCardInset + "STATUS:  " + cardStatus(c, decided)}
-	rows = append(rows, bcCardInset+cardPulled(o, c, b.now, lane.inner()-2*len(bcCardInset)), "",
+	rows = append(rows, bcCardInset+cardPulled(o, c, b.clock, lane.inner()-2*len(bcCardInset)), "",
 		bcCardInset+"READ CONTENTS", bcCardInset+manifestHeading(lane.inner()-2*len(bcCardInset)))
 	rows = append(rows, b.manifestRows(c, lane.inner()-2*len(bcCardInset))...)
 	return append(rows, "", bcCardInset+" "+o.KeyCap(handle)+"  Report Details")

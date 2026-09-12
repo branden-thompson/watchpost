@@ -392,3 +392,50 @@ func TestStoppingAReadReturnsAtOnceAndEndsTheWait(t *testing.T) {
 		t.Error("stopRead did not end the read's context, so the words play on")
 	}
 }
+
+// THE MANIFEST AND THE WORDS COME FROM ONE COMPOSE (D-87).
+//
+// The card promises the operator that its summary describes the read it is about
+// to give. That holds only because both are built from the SAME segments: the
+// Composer tags the first segment of each source with what it is and what it
+// counted, and the two joins read the same slice.
+func TestTheManifestAndTheScriptDescribeOneRead(t *testing.T) {
+	segs := []synth.Segment{
+		{Key: "lead", Text: "Now, the weather for Oceanside."},
+		{Key: "afd:1", Text: "The forecast.", Source: "NWS Weather Forecast", Detail: "09/11 - 09/17"},
+		{Key: "afd:2", Text: "More forecast."},
+		{Key: "fire:1", Text: "The fire report.", Source: "Watchpost Fire Report", Detail: "3 Hotspots"},
+		{Key: "tail", Text: "This is Watchpost."},
+	}
+
+	sc, contents := scriptFromSegments(segs), contentsFromSegments(segs)
+
+	// EVERY SEGMENT IS A LINE OF THE SCRIPT…
+	if len(sc.Parts) != len(segs) {
+		t.Errorf("the script holds %d parts for %d segments", len(sc.Parts), len(segs))
+	}
+	// …AND ONLY THE TAGGED ONES ARE SOURCES. A report is many segments and one
+	// line on the card; listing every segment would push the other sources off
+	// the manifest entirely.
+	if len(contents) != 2 {
+		t.Fatalf("the manifest lists %d sources, want the two that named themselves: %+v", len(contents), contents)
+	}
+	if contents[0].Name != "NWS Weather Forecast" || contents[0].Detail != "09/11 - 09/17" {
+		t.Errorf("the first source is %+v", contents[0])
+	}
+	// AND IN READ ORDER, which is the order they will be spoken — so the
+	// operator can follow the read down the card.
+	if contents[1].Name != "Watchpost Fire Report" {
+		t.Errorf("the sources are out of read order: %+v", contents)
+	}
+}
+
+// A READ WITH NO NAMED SOURCE HAS NO MANIFEST, rather than a list of blanks: the
+// lead, the conditions and the sign-off are the read's connective tissue, not
+// things the operator is deciding about.
+func TestAReadOfNothingButConnectiveTissueListsNoSources(t *testing.T) {
+	got := contentsFromSegments([]synth.Segment{{Key: "lead", Text: "a"}, {Key: "tail", Text: "b"}})
+	if len(got) != 0 {
+		t.Errorf("the manifest lists %+v; none of those is a source", got)
+	}
+}

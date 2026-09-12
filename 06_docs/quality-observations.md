@@ -2084,3 +2084,49 @@ and after.
 orphaned a variable — the exact shape `mA3` cost a gate run for, with the fix (`_ = x` over deletion)
 already written in this file.  That is the first time this session an entry here saved the cost
 instead of recording it.
+
+---
+
+## 2026-09-11 — D-87: two carriers of one fact, and the tests held the working one
+
+**The catch, and the HUM LEAD made it from a screenshot.**  The console's data stamp read
+`DATA PULLED: Friday September 11, 2026 @ 17:44:56` with no `(2 MIN AGO)` after it.  The age is the
+half that tells an operator whether to trust a report before putting it on the air.
+
+**The cause:** `Broadcaster` has BOTH a `now` field and a `clock()` method that falls back to
+`time.Now`.  Production sets the method's fallback and never the field.  I wrote the stamp against
+the FIELD — so it worked in every test, because every test injects a clock, and failed in the only
+place it mattered.
+
+**The shape (a sharper form of one already here):** *two carriers of one fact, where the tests
+naturally reach for the one that works.*  A test injects a clock because it must be deterministic;
+that injection is exactly what makes the field non-nil.  So the defect is invisible **by
+construction** to the tests, not by oversight — no amount of care in writing them would have caught
+it.  What catches it is asking "what does PRODUCTION pass here", and the answer was one grep away.
+
+**How to apply:** when a type offers both a raw dependency and an accessor over it, the accessor
+exists *because* the raw one can be absent.  Reading the field is then always a bug, and the accessor
+should be the only exported route — `clock()` was already that, and I simply did not look for it
+before adding a parameter.
+
+**The same batch, the same shape, caught by a gate instead:** the card's title lost its KIND because
+I asked the producer's headline for something the SLOT REGISTRY owns.  Two owners again — "what a
+card is about" and "what kind of card it is" — and the one I picked was the one that happened to be
+in hand.
+
+---
+
+## 2026-09-11 — and a test that could not fail, for the third time this session
+
+`mT3` tags EVERY segment of a report instead of the first, which would list one source nine times and
+push the others off the card.  It SURVIVED — because my fixture's product was short enough to produce
+a single segment, so "the first" and "every one" were the same thing.
+
+**Three instances in one session** (`TestARunningStationDoesNotRefresh…`, the D-83 window's `mN5`,
+this).  The pattern in all three: **the fixture was the smallest one that exercised the happy path**,
+and the rule under test only differs from its mutation on a LARGER input.  One card on a running
+station is read immediately; one segment is always the first.
+
+**The cheap defence, now applied:** make the test assert its own premise before asserting the rule —
+`if forecastSegs < 2 { t.Fatalf("with one, this test cannot fail") }`.  It costs two lines and it
+converts a silent false pass into a loud fixture failure.
