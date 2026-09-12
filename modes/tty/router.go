@@ -323,6 +323,13 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			out.refusal = ""
 		}
 		out.broadcaster.statusNote = out.refusal
+		// AND THE OPEN CARD WINDOW IS RE-HANDED, for the same reason and on the
+		// same cadence (D-88). A card the operator is reading can re-hydrate
+		// under them — RefreshAfter is half of StaleAfter — and a window still
+		// showing its first frame while the report changed is the F-30 freeze
+		// with a stale READ in it. showCard bumps its generation only when the
+		// content actually differs, so this costs a comparison and not a redraw.
+		out = out.refreshCardWindow()
 		return out, cmd
 	}
 	return m, cmd
@@ -398,6 +405,23 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	}
+	// A SLOT'S NUMBER OPENS ITS CARD (D-88, F-97). The HUM LEAD: "the operator
+	// should be able to inspect the full text of the report by keying the number
+	// position of either the live card [0] or the UP Next [1] card."
+	//
+	// NOT IN THE KEYMAP, AND THAT IS THE POINT. Ten digits are ten ADDRESSES of
+	// one action, not ten actions — a binding each would put ten rows in the help
+	// for one control, and the chips on the cards already say what the keys are.
+	// The keymap is for controls the operator looks up; a slot number is read off
+	// the thing it addresses.
+	//
+	// AFTER THE KEYMAP, so a digit a binding claims stays that binding's. Before
+	// the console, so the console never has to know about a window.
+	if k, ok := msg.(tea.KeyPressMsg); ok && r.consoleOwnsTheKeys() {
+		if out, opened := r.openCardWindow(k.String()); opened {
+			return out, nil
+		}
+	}
 	// THE WINDOW ON TOP OWNS THE KEYS (D-58). While the diagnostics window is
 	// composited over the console, its own navigation — arrows, enter, esc —
 	// must reach IT and not the lanes beneath it. An arrow that promoted a card
@@ -438,7 +462,7 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (r Router) View() tea.View {
 	v := r.surface().View()
 	if r.active == SurfaceBroadcaster && r.observer.ModalOpen() {
-		v.Content = r.observer.OverlayDiagnostics(v.Content, r.broadcaster.width)
+		v.Content = r.observer.OverlayWindow(v.Content, r.broadcaster.width)
 	}
 	return v
 }
@@ -617,3 +641,50 @@ func (r Router) stepBed(by int) (Router, tea.Cmd) {
 // live, so from a stopped station the operator's control puts it ON the air —
 // which is what a person pressing ON AIR means.
 func (r Router) stationIsLive() bool { return r.broadcaster.power == lineup.Running }
+
+// openCardWindow opens the card at a slot handle, and says whether it did.
+//
+// IT REFUSES QUIETLY ON AN EMPTY SLOT, which is not the same as ignoring the key:
+// `false` means the digit was not consumed, so it falls through to the console
+// exactly as an unbound key does. A handle with no card behind it is a slot the
+// Director has not filled, and opening a window onto that would ask the operator
+// to read the absence of a report (cardDetail).
+func (r Router) openCardWindow(key string) (Router, bool) {
+	if len(key) != 1 || key[0] < '0' || key[0] > '9' {
+		return r, false
+	}
+	id, rows, ok := r.broadcaster.cardDetail(int(key[0] - '0'))
+	if !ok {
+		return r, false
+	}
+	// THE SURFACE DOES NOT CHANGE, for the reason ctrl+d does not change it: the
+	// operator asked about a card ON the console and the console stays drawn
+	// underneath, which is what `View` already composites.
+	r.observer = r.observer.showCard(id, rows, r.observer.opts()).open(modalCard)
+	return r, true
+}
+
+// refreshCardWindow re-hands the open card's body, and does nothing otherwise.
+//
+// THE HANDLE IS NOT REMEMBERED; THE CARD'S ID IS MATCHED. A slot number is a POSITION
+// and the running order moves — a card promoted from [2] to [1] would, under a
+// remembered handle, silently swap the report the operator is reading for the one
+// that took its place. Matching on the card's own ID follows the CARD, and a
+// card that leaves the window's reach simply stops refreshing rather than turning
+// into a different one.
+func (r Router) refreshCardWindow() Router {
+	if r.observer.modal != modalCard {
+		return r
+	}
+	for i := range MainTrackSlots { // bounded by the track (P10-02)
+		if id, rows, ok := r.broadcaster.cardDetail(i); ok && id == r.observer.cardID {
+			// COMPARED AT ONE AGREED VOCABULARY, DRAWN IN THE WINDOW'S OWN. The
+			// generation must move when the REPORT changes and not when the
+			// terminal does, so the comparison is made at a single Opts rather
+			// than at whatever the last frame happened to use.
+			r.observer = r.observer.showCard(id, rows, r.observer.opts())
+			return r
+		}
+	}
+	return r
+}

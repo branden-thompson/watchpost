@@ -82,6 +82,8 @@ func (d Dashboard) renderModal(o render.Opts) string {
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
+	case modalCard:
+		return d.floatModal(o, d.modalWidth(), d.cardTitleOf(o), d.cardLines(o)) // D-88
 	case modalSetup, modalDebug, modalRelayFault:
 		// The chips are a PINNED FOOTER (OP-5): they render after the scroll
 		// window, so at 80x24 they cannot scroll away exactly when a lost
@@ -118,6 +120,12 @@ func (d Dashboard) modalWidth() int {
 		return aboutWidth
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
+	case modalCard:
+		// THE CARD'S CLASS, WHICH IS THE LOCATION WINDOW'S (D-88). Both are one
+		// report read at length, and the console lays its tables out against this
+		// window's FLOOR (bcDetailRoom = 85 - 7) — so the number is shared rather
+		// than chosen twice.
+		return stretch(85)
 	case modalSevere:
 		return 130 // every column at 133 cols (the DETECTION column joined at UAT, 2026-08-28); the ladder below
 	}
@@ -154,6 +162,8 @@ func (d Dashboard) modalLines() []string {
 		raw = d.aboutLines(o)
 	case modalSevere:
 		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
+	case modalCard:
+		raw = d.cardLines(o) // asked of the console, at THIS window's opts (D-88)
 	case modalSetup, modalDebug, modalRelayFault:
 		// The pinned-footer windows are laid out at their own box width and
 		// their scroll follows the focus. Asked at the dashboard's width they

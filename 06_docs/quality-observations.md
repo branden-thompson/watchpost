@@ -2130,3 +2130,73 @@ station is read immediately; one segment is always the first.
 **The cheap defence, now applied:** make the test assert its own premise before asserting the rule —
 `if forecastSegs < 2 { t.Fatalf("with one, this test cannot fail") }`.  It costs two lines and it
 converts a silent false pass into a loud fixture failure.
+
+---
+
+## 2026-09-11 — D-88: joining an existing gate set found three defects in one minute
+
+**The decision:** the Broadcaster's card window is a **Dashboard** window, though the console owns
+every byte of its content.  The console builds; the Dashboard draws.
+
+**The reason is not tidiness, it is coverage.**  Five gates hang off `Dashboard`'s window enum — every
+one of them DERIVES its subjects from that enum rather than from a list somebody maintains.  A
+console-private window would have been outside all five on the day it shipped, and nothing would have
+said so.
+
+Registering it took one line.  Within one test run, three of the five reported a real defect:
+
+1. **`handleNav` routes arrows by a hand-written list of modals.**  A window missing from it does not
+   merely fail to scroll — its arrows fall through to the TABLE UNDERNEATH, which is the exact D-58
+   violation the reachability gate exists to catch.  Four lines unreachable at 80x24.
+2. **The margin survey** reported the window running into its right border by one column, because the
+   table was laid out at the manifest's 78 instead of the window's own `85 - 2 - 3 - 3 = 77`.
+3. **The `--ascii` parity gate** found a design flaw, not a typo (below).
+
+**The shape:** *a gate set is an asset, and the cost of a parallel one is invisible at the moment you
+create it.*  Every argument for a console-private window was about ownership — and ownership was
+already satisfied by the console owning the CONTENT.  What the shared set owns is the QUESTIONS.
+
+---
+
+## 2026-09-11 — a flaw that production cannot reach is still a flaw
+
+The card window's first design handed over a finished `[]string`, built with the **console's** glyph
+`Opts`.  The `--ascii` gate flips `cfg.ASCII` *after* building its fixture, and the window came back
+carrying `•` in its title and `↑↓` in its chips — neither with an ASCII form.
+
+**In production the two can never disagree.**  `NewRouter` copies `cfg.ASCII` into the console once,
+at construction, and nothing writes it again.  The failing case is unreachable by any sequence of
+user actions.
+
+The fix was still to remove it — the window now holds a **renderer**, `func(render.Opts) (string,
+[]string)`, asked at draw time — because "unreachable today" is a property of the current call graph
+and not of the design.  The same reasoning is already written down for `cfg.Version` in
+`nestedExcuse`, and the difference is instructive: there the excuse is RECORDED, with the argument,
+in the gate that would otherwise have flagged it.  An unreachable flaw either gets removed or gets
+written down where the next reader will find it.  What it must not get is silence.
+
+**The second-order win:** chasing the glyph forced the window's identity off the rendered title and
+onto `Card.ID`.  Matching an open window by its *appearance* would have lost the card the moment
+anything about that appearance changed — including the very `--ascii` switch that started this.
+
+---
+
+## 2026-09-11 — "a hand-written list" is now a recognised smell, and it has a fix
+
+Three separate hand-written lists have been touched this session, all of the same shape and all with
+the same failure mode — a member added to the world is not added to the list, and the omission is
+silent:
+
+- `modalLines`' default arm (fixed earlier: every window has a case, `modalNone`/`numModals` named,
+  no default);
+- `reachabilityBaseline` (already fixed: `closedset.EachMember` FAILS on a window with no row);
+- `handleNav`'s "the scrolling windows" (found today, by the gate, not by UAT).
+
+**The fix that works is the closed set**, and the gate that uses it proves it: `reachabilityBaseline`
+cannot go stale, because a window absent from it is a test failure by construction.  The two lists
+without that treatment are the two that were wrong.
+
+**How to apply:** a `switch` over an enum with a `default` arm, or a `map` keyed by an enum with no
+membership check, is a stale list waiting to happen.  Either name every member (and let the compiler
+or `closedset.EachMember` enforce it), or write down beside the list which omissions are deliberate
+and why — `handleNav` now does the latter, because `add` and `remove` are absent on purpose.

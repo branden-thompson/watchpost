@@ -18,7 +18,13 @@ import (
 // priority rows, then the recent rows, auto-scrolling the recent window.
 func (d Dashboard) handleNav(act term.Action) Dashboard {
 	switch d.modal {
-	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout: // the scrolling windows
+	// THE SCROLLING WINDOWS, AND THE LIST IS HAND-WRITTEN — which is why the
+	// card window was absent from it on the day it was built, and why the FR-5
+	// reachability gate is what found that rather than UAT. A window missing
+	// here draws a scroll rail whose arrow keys reach PAST it to the table
+	// underneath; `add` and `remove` are absent on purpose, because their own
+	// keys walk `selected` (modal_location.go).
+	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout, modalCard:
 		return d.handleModalNav(act)
 	case modalSevere:
 		return d.handleSevereNav(act) // 0.13.0: tabs and rows, or the record's scroll

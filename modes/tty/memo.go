@@ -213,13 +213,18 @@ type modalKey struct {
 	addMode, addQuery, addErr string
 	radioVoice                string
 	voiceIdx, nvoices         int
-	setupGen                  uint64   // Setup's state, by generation while it is open
-	stats                     [32]byte // the [S] stats, fingerprinted while it is open
-	darkBG                    bool
-	theme                     uint64
-	minute                    int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
-	second                    int64 // [S] ages, while it is open
-	shimmer                   int   // Details' LoadingDots while a row loads
+	// THE CARD WINDOW'S IDENTITY AND GENERATION (D-88). cardRows is a func and a
+	// key must be comparable, so the generation is what carries what it draws —
+	// the same stand-in setupGen makes for Setup's two maps.
+	cardID   string
+	cardGen  int
+	setupGen uint64   // Setup's state, by generation while it is open
+	stats    [32]byte // the [S] stats, fingerprinted while it is open
+	darkBG   bool
+	theme    uint64
+	minute   int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
+	second   int64 // [S] ages, while it is open
+	shimmer  int   // Details' LoadingDots while a row loads
 	// faultFocus and faultLeft are the relay-fault window's cursor and clock,
 	// BOTH OF WHICH THE FRAME SHOWS. Absent from this key the window rendered
 	// once and the memo replayed that frame for the life of the window: the
@@ -263,7 +268,11 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		severeGen: d.severe.Gen, severeTab: d.severeTab, severeRow: d.severeRow, severeDetail: d.severeDetail,
 		addMode: d.addMode, addQuery: d.addQuery, addErr: d.addErr,
 		radioVoice: d.radioVoice,
-		voiceIdx:   d.voiceIdx, nvoices: len(d.voiceList),
+		// THE CARD WINDOW'S IDENTITY AND ITS GENERATION (D-88). What the window
+		// draws comes from a func, which a key cannot hold — so the generation
+		// stands in for it; see Dashboard.cardGen.
+		cardID: d.cardID, cardGen: d.cardGen,
+		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 	}
 	switch d.modal {

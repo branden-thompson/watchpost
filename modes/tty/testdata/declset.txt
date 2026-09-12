@@ -46,6 +46,7 @@ const actSwapBroadcaster
 const actSwapObserver
 const bcCardInset
 const bcColumnGap
+const bcDetailRoom
 const bcFlatCardRows
 const bcGainCells
 const bcInsetRows
@@ -105,6 +106,7 @@ const maxIssueRows
 const modalAbout
 const modalAdd
 const modalAlerts
+const modalCard
 const modalDebug
 const modalDetails
 const modalHelp
@@ -215,12 +217,14 @@ func (Broadcaster).bandWidth
 func (Broadcaster).bedSelector
 func (Broadcaster).burstBody
 func (Broadcaster).cardBoxWidth
+func (Broadcaster).cardDetail
 func (Broadcaster).cardGap
 func (Broadcaster).chrome
 func (Broadcaster).chromeAt
 func (Broadcaster).clamp
 func (Broadcaster).clock
 func (Broadcaster).controlRow
+func (Broadcaster).detailBody
 func (Broadcaster).flatBody
 func (Broadcaster).framed
 func (Broadcaster).header
@@ -254,7 +258,7 @@ func (Broadcaster).zipTracks
 func (Dashboard).DiagnosticsOpen
 func (Dashboard).Init
 func (Dashboard).ModalOpen
-func (Dashboard).OverlayDiagnostics
+func (Dashboard).OverlayWindow
 func (Dashboard).Update
 func (Dashboard).View
 func (Dashboard).WithCast
@@ -290,6 +294,8 @@ func (Dashboard).bodyKeyFor
 func (Dashboard).canAddFocused
 func (Dashboard).canRemoveFocused
 func (Dashboard).cancelDebugConfirm
+func (Dashboard).cardLines
+func (Dashboard).cardTitleOf
 func (Dashboard).castApplyCmd
 func (Dashboard).castForSave
 func (Dashboard).castLines
@@ -451,6 +457,7 @@ func (Dashboard).severeRowAt
 func (Dashboard).severeTabRow
 func (Dashboard).severeTitle
 func (Dashboard).sharedExtDays
+func (Dashboard).showCard
 func (Dashboard).showingLane
 func (Dashboard).station
 func (Dashboard).stationText
@@ -509,6 +516,8 @@ func (Router).bedControl
 func (Router).canSwap
 func (Router).consoleOwnsTheKeys
 func (Router).cutBed
+func (Router).openCardWindow
+func (Router).refreshCardWindow
 func (Router).stationIsLive
 func (Router).stepBed
 func (Router).surface
@@ -580,7 +589,11 @@ func debugProseWidth
 func defaultKeyMap
 func defaultRelayDwell
 func defaultRelayLang
+func detailContents
+func detailOrigin
+func detailReadBy
 func detailRow
+func detailScript
 func dumpLines
 func ellipsize
 func emptyState
@@ -610,6 +623,7 @@ func hiLo
 func hotspotRows
 func hourCols
 func incidentRows
+func indentBody
 func insetModalLines
 func issueCols
 func issueRows
@@ -639,6 +653,7 @@ func nextHours
 func nextRow
 func nonEmpty
 func orDefault
+func pad2
 func panelChromeFor
 func period
 func pickerCell
@@ -673,6 +688,7 @@ func roleOf
 func roleState
 func rowLoading
 func rows
+func sameCard
 func sameLocation
 func sameRefs
 func scrollStep

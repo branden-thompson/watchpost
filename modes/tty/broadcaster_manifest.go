@@ -12,7 +12,6 @@ package tty
 // the handle.
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -130,7 +129,7 @@ func (b Broadcaster) manifestRows(c lineup.Card, room int) []string {
 		if i >= bcReadLines {
 			break
 		}
-		rows = append(rows, bcCardInset+manifestRow(fmt.Sprintf("%02d.", i+1), m.Name, m.Detail, room))
+		rows = append(rows, bcCardInset+manifestRow(pad2(i+1), m.Name, m.Detail, room))
 	}
 	for len(rows) < bcReadLines { // bounded by the card's height (P10-02)
 		rows = append(rows, "")

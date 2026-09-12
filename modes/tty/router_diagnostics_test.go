@@ -85,11 +85,11 @@ func TestItIsTheObserversOwnWindowAndNotACopy(t *testing.T) {
 	onObserver.observer.width, onObserver.observer.height = 150, 74
 	onObserver.observer = onObserver.observer.openDiagnostics()
 
-	want := onObserver.observer.OverlayDiagnostics(base, 150)
+	want := onObserver.observer.OverlayWindow(base, 150)
 	if want == base {
 		t.Fatal("the observer's own window composited nothing")
 	}
-	if got := viaConsole.observer.OverlayDiagnostics(base, 150); got != want {
+	if got := viaConsole.observer.OverlayWindow(base, 150); got != want {
 		t.Errorf("the console composites a DIFFERENT window than the observer draws:\n got %q\nwant %q",
 			firstLine(got), firstLine(want))
 	}
