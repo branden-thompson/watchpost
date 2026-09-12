@@ -216,8 +216,12 @@ type modalKey struct {
 	// THE CARD WINDOW'S IDENTITY AND GENERATION (D-88). cardRows is a func and a
 	// key must be comparable, so the generation is what carries what it draws —
 	// the same stand-in setupGen makes for Setup's two maps.
-	cardID   string
-	cardGen  int
+	cardID  string
+	cardGen int
+	// THE SURFACE, because the Settings window draws different ROWS on each
+	// (D-92) — a frame that differs must key differently, or the memo replays
+	// Observer's rows over the console.
+	surface  Surface
 	setupGen uint64   // Setup's state, by generation while it is open
 	stats    [32]byte // the [S] stats, fingerprinted while it is open
 	darkBG   bool
@@ -272,6 +276,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		// draws comes from a func, which a key cannot hold — so the generation
 		// stands in for it; see Dashboard.cardGen.
 		cardID: d.cardID, cardGen: d.cardGen,
+		surface:  d.surface,
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 	}

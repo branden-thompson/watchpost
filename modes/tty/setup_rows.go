@@ -105,10 +105,73 @@ const (
 	setupRowCount
 )
 
+// setupScope is which surface a row belongs to (D-92), and it is D-18's ruling
+// made structural.
+//
+// HUM LEAD, 2026-09-12: "Settings that are unique and specific to their mode
+// should only appear in the settings modal of their mode, and should not be able
+// to leak into the mode."
+//
+// THE ZERO VALUE IS UNRULED, DELIBERATELY. A row added without a scope is a row
+// nobody has decided about, and the gate fails on it — the same shape as
+// `reachabilityBaseline`. It still RENDERS at runtime, because a settings row
+// that vanishes silently is worse than one that appears where it should not:
+// the first is invisible, the second is reportable.
+type setupScope int
+
+const (
+	// scopeUnruled is "nobody has decided". Only the gate treats it specially.
+	scopeUnruled setupScope = iota
+	// scopeShared is both surfaces, ONE value — D-18's S.
+	scopeShared
+	// scopeObserver is the listener's own — D-18's O.
+	scopeObserver
+	// scopeBroadcaster is the station's own — D-18's B.
+	scopeBroadcaster
+	// scopeSplit is both surfaces, INDEPENDENT values — D-18's SPLIT. It renders
+	// like scopeShared; the separate storage is D-18's own additive migration and
+	// is not built yet.
+	scopeSplit
+)
+
+// NO `numSetupScopes` SENTINEL, and that is a decision rather than an omission.
+//
+// `wires` enrols a closed set by its bound and then asks every member to name a
+// production WRITER — and `noteComposite` counts a member listed in a table
+// literal as a READ, deliberately: "a set written out as a literal … is naming it
+// as one of the things to consider."  A STATIC CLASSIFICATION therefore never has
+// a writer, because nothing in production ever decides to produce one; the table
+// simply states it.
+//
+// The two closest analogues are in this very file — `setupRowKind` and
+// `setupGroupID`, both static classifications, both without a sentinel — so this
+// matches the convention rather than dodging the gate.  What the gate would have
+// bought is a range check on values that can only come from the table below;
+// what the completeness check actually needs is `scopeUnruled`, and
+// TestEverySettingsRowIsRuledForItsSurface asks for that directly.
+
+// shownOn reports whether a row of this scope is drawn on a surface.
+func (sc setupScope) shownOn(s Surface) bool {
+	switch sc {
+	case scopeObserver:
+		return s != SurfaceBroadcaster
+	case scopeBroadcaster:
+		return s == SurfaceBroadcaster
+	case scopeUnruled:
+		// SHOWN, AND THE GATE FAILS ON IT. A settings row that vanishes silently
+		// is worse than one that appears where it should not: the first is
+		// invisible and the second is reportable.
+		return true
+	}
+	// scopeShared and scopeSplit: both surfaces draw them.
+	return true
+}
+
 // setupRow describes one focusable row.
 type setupRow struct {
 	id    setupRowID
 	group setupGroupID
+	scope setupScope
 	kind  setupRowKind
 
 	// picker is true when the row carries a voice picker in addition to its
@@ -132,38 +195,56 @@ type setupRow struct {
 // and every caller wants its own copy anyway — it is twenty small structs.
 func setupTable() [setupRowCount]setupRow {
 	return [setupRowCount]setupRow{
-		rowLocation: {rowLocation, groupData, rowInput, false, "", ""},
-		rowFIRMSKey: {rowFIRMSKey, groupData, rowInput, false, "", ""},
+		// THE DEFAULT LOCATION IS THE LISTENER'S (D-18 row 1). The station's
+		// epicentre is a different fact with a different owner — D-72 split them.
+		rowLocation: {rowLocation, groupData, scopeObserver, rowInput, false, "", ""},
+		rowFIRMSKey: {rowFIRMSKey, groupData, scopeShared, rowInput, false, "", ""},
 
-		rowTheme:         {rowTheme, groupUI, rowPicker, true, "", ""},
-		rowUnitsImperial: {rowUnitsImperial, groupUI, rowRadio, false, "", ""},
-		rowUnitsMetric:   {rowUnitsMetric, groupUI, rowRadio, false, "", ""},
-		rowClock12:       {rowClock12, groupUI, rowRadio, false, "", ""},
-		rowClock24:       {rowClock24, groupUI, rowRadio, false, "", ""},
-		rowClockMil:      {rowClockMil, groupUI, rowRadio, false, "", ""},
+		// DISPLAY PREFERENCES ARE ONE APP'S (D-18 rows 19, 21, 22).
+		rowTheme:         {rowTheme, groupUI, scopeShared, rowPicker, true, "", ""},
+		rowUnitsImperial: {rowUnitsImperial, groupUI, scopeShared, rowRadio, false, "", ""},
+		rowUnitsMetric:   {rowUnitsMetric, groupUI, scopeShared, rowRadio, false, "", ""},
+		rowClock12:       {rowClock12, groupUI, scopeShared, rowRadio, false, "", ""},
+		rowClock24:       {rowClock24, groupUI, scopeShared, rowRadio, false, "", ""},
+		rowClockMil:      {rowClockMil, groupUI, scopeShared, rowRadio, false, "", ""},
 
-		rowEventsAll:    {rowEventsAll, groupEvents, rowRadio, false, "", ""},
-		rowEventsWithin: {rowEventsWithin, groupEvents, rowRadio, false, "", ""},
+		// OBSERVER'S ALERT RADIUS (D-18 row 25, per D-20): it bounds ARRIVALS over
+		// an unbounded location set. The station's service radius is a HARD bound
+		// on LOOKUPS and a separate setting — two radii, not one.
+		rowEventsAll:    {rowEventsAll, groupEvents, scopeObserver, rowRadio, false, "", ""},
+		rowEventsWithin: {rowEventsWithin, groupEvents, scopeObserver, rowRadio, false, "", ""},
 
-		rowClassDisaster:  {rowClassDisaster, groupTone, rowToggle, false, "", "disaster"},
-		rowClassWarning:   {rowClassWarning, groupTone, rowToggle, false, "", "warning"},
-		rowClassWatch:     {rowClassWatch, groupTone, rowToggle, false, "", "watch"},
-		rowClassAdvisory:  {rowClassAdvisory, groupTone, rowToggle, false, "", "advisory"},
-		rowClassStatement: {rowClassStatement, groupTone, rowToggle, false, "", "statement"},
-		rowClassStorm:     {rowClassStorm, groupTone, rowToggle, false, "", "storm"},
+		// TONES ARE SPLIT (D-18 rows 8, 9): both surfaces have them, with
+		// INDEPENDENT values. They render on both today; the separate storage is
+		// D-18's own additive migration and is not built yet.
+		rowClassDisaster:  {rowClassDisaster, groupTone, scopeSplit, rowToggle, false, "", "disaster"},
+		rowClassWarning:   {rowClassWarning, groupTone, scopeSplit, rowToggle, false, "", "warning"},
+		rowClassWatch:     {rowClassWatch, groupTone, scopeSplit, rowToggle, false, "", "watch"},
+		rowClassAdvisory:  {rowClassAdvisory, groupTone, scopeSplit, rowToggle, false, "", "advisory"},
+		rowClassStatement: {rowClassStatement, groupTone, scopeSplit, rowToggle, false, "", "statement"},
+		rowClassStorm:     {rowClassStorm, groupTone, scopeSplit, rowToggle, false, "", "storm"},
 
-		rowCastAlerts:   {rowCastAlerts, groupCast, rowPicker, true, roleAlerts, ""},
-		rowCastWeather:  {rowCastWeather, groupCast, rowPicker, true, roleWeather, ""},
-		rowCastMaritime: {rowCastMaritime, groupCast, rowPicker, true, roleMaritime, ""},
-		rowCastFire:     {rowCastFire, groupCast, rowPicker, true, roleFire, ""},
-		rowCastSeismic:  {rowCastSeismic, groupCast, rowPicker, true, roleSeismic, ""},
+		// ONE STATION, ONE SOUND (D-18 rows 6, 7, settled by D-11): the main track
+		// is the rotation, so Broadcaster drives the same reads through the same
+		// voices. The cast is SHARED.
+		rowCastAlerts:   {rowCastAlerts, groupCast, scopeShared, rowPicker, true, roleAlerts, ""},
+		rowCastWeather:  {rowCastWeather, groupCast, scopeShared, rowPicker, true, roleWeather, ""},
+		rowCastMaritime: {rowCastMaritime, groupCast, scopeShared, rowPicker, true, roleMaritime, ""},
+		rowCastFire:     {rowCastFire, groupCast, scopeShared, rowPicker, true, roleFire, ""},
+		rowCastSeismic:  {rowCastSeismic, groupCast, scopeShared, rowPicker, true, roleSeismic, ""},
 
+		// THE WATCHLIST ROTATION'S PACING IS THE MONITOR'S. Not in D-18's table
+		// because neither is persisted — they live on the deck — but the rotation
+		// they pace is `advancesMonitor()`'s, which cannot advance at all while the
+		// console holds the air (D-74). A pacing control for something that cannot
+		// happen is a control that lies.
+		//
 		// picker:true is what makes ←→ cycle this row. The field's name says
 		// "voice picker", but setup.go gates the arrow keys on it for EVERY
 		// picker — the theme row sets it for the same reason. False here draws a
 		// perfect, inert control.
-		rowRelayDwell: {rowRelayDwell, groupRelay, rowPicker, true, "", ""},
-		rowRelayLang:  {rowRelayLang, groupRelay, rowPicker, true, "", ""},
+		rowRelayDwell: {rowRelayDwell, groupRelay, scopeObserver, rowPicker, true, "", ""},
+		rowRelayLang:  {rowRelayLang, groupRelay, scopeObserver, rowPicker, true, "", ""},
 	}
 }
 
@@ -207,13 +288,30 @@ func setupGroupTitle(g setupGroupID) string {
 
 // firstOfGroup is the row tab lands on for each group — the five tab stops.
 func firstOfGroup(g setupGroupID) setupRowID {
+	id, _ := visibleRowOfGroup(g, func(setupRowID) bool { return true })
+	return id
+}
+
+// visibleRowOfGroup is the first row of a group that THIS SURFACE draws, and
+// whether the group draws one at all (D-92).
+//
+// ONE FUNCTION FOR BOTH FACTS, because they are one walk. The first draft had
+// `firstVisibleOfGroup` and `groupHasAVisibleRow` side by side and the `dupes`
+// gate reported them as twins at 34 nodes — correctly: the loop was identical and
+// only the return differed. A pair like that is two places for the visibility
+// rule to drift.
+//
+// THE BOOL IS NOT REDUNDANT WITH THE ID. `rowLocation` is a real row AND the
+// zero value, so "found rowLocation" and "found nothing" are indistinguishable
+// without it.
+func visibleRowOfGroup(g setupGroupID, visible func(setupRowID) bool) (setupRowID, bool) {
 	table := setupTable()
-	for id := setupRowID(0); id < setupRowCount; id++ {
-		if table[id].group == g {
-			return id
+	for id := setupRowID(0); id < setupRowCount; id++ { // bounded by the table (P10-02)
+		if table[id].group == g && visible(id) {
+			return id, true
 		}
 	}
-	return rowLocation
+	return rowLocation, false
 }
 
 // setupGroups is every group, in draw order.
@@ -259,28 +357,28 @@ func stepRow(cur setupRowID, step int, visible func(setupRowID) bool) setupRowID
 	return cur
 }
 
-// nextGroup is tab: the first row of the next group, wrapping to the first.
-func nextGroup(cur setupRowID) setupRowID {
+// stepGroup walks to the next group that DRAWS something on this surface (D-92).
+//
+// COUNTER-BOUNDED, like stepRow and for the same reason: with every group hidden
+// an unbounded walk would spin rather than leave the focus alone.
+func stepGroup(cur setupRowID, step int, visible func(setupRowID) bool) setupRowID {
 	table := setupTable()
 	groups := setupGroups()
+	at := 0
 	for i, g := range groups {
 		if g == table[cur].group {
-			return firstOfGroup(groups[(i+1)%len(groups)])
+			at = i
+			break
 		}
 	}
-	return rowLocation
-}
-
-// prevGroup is shift+tab.
-func prevGroup(cur setupRowID) setupRowID {
-	table := setupTable()
-	groups := setupGroups()
-	for i, g := range groups {
-		if g == table[cur].group {
-			return firstOfGroup(groups[(i-1+len(groups))%len(groups)])
+	n := len(groups)
+	for i := 1; i <= n; i++ { // bounded by the group set (P10-02)
+		g := groups[((at+i*step)%n+n)%n]
+		if id, ok := visibleRowOfGroup(g, visible); ok {
+			return id
 		}
 	}
-	return rowLocation
+	return cur
 }
 
 // enterSaves reports whether enter on this row SAVES rather than advancing.

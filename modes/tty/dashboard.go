@@ -398,6 +398,19 @@ type Dashboard struct {
 	addQuery    string   // add-location search buffer
 	modalScroll int      // shared scroll for floating modals (UAT 10.4)
 
+	// surface is which surface the operator is looking at, mirrored by the
+	// Router (D-92).
+	//
+	// THE DASHBOARD IS OBSERVER, AND IT STILL NEEDS THIS. `[s]` is forwarded to
+	// this model from the CONSOLE, so the Settings window can be open over a
+	// surface that is not the one that owns it — and D-18 rules that some rows
+	// belong to one surface only. Without this the window has no way to know
+	// which it is being asked for.
+	//
+	// MIRRORED, NEVER DECIDED. The Router owns which surface is active, exactly
+	// as it owns the gain.
+	surface Surface
+
 	// cardID says WHICH Broadcaster card modalCard is open on and cardRows DRAWS
 	// it, title and all, as the console handed them over (D-88). HANDED, NEVER
 	// REACHED FOR: the Dashboard has no lineup and must not grow one — the same

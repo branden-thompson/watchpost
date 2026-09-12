@@ -157,6 +157,13 @@ func (d Dashboard) openSetup() Dashboard {
 		units:     d.units,
 		clock:     d.clockFmt,
 	}
+	// THE WINDOW OPENS ON A ROW THIS SURFACE ACTUALLY DRAWS (D-92). `setupState{}`
+	// focuses row zero, which is the default LOCATION — the listener's, and hidden
+	// on the console. Opening focused on a row nobody can see is a window whose
+	// first keystroke appears to do nothing.
+	if !d.rowVisible(d.setup.focus) {
+		d.setup.focus = nextRow(d.setup.focus, d.rowVisible)
+	}
 	for i, n := range render.ThemeNames() { // the picker opens on the theme in force
 		if n == render.ThemeName() {
 			d.setup.themeIdx = i
@@ -210,10 +217,10 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d.setup = setupState{}
 		return d, apply
 	case "tab":
-		d.setup.focus, d.setup.err = nextGroup(d.setup.focus), ""
+		d.setup.focus, d.setup.err = stepGroup(d.setup.focus, 1, d.rowVisible), ""
 		return d.settled(), nil
 	case "shift+tab":
-		d.setup.focus, d.setup.err = prevGroup(d.setup.focus), ""
+		d.setup.focus, d.setup.err = stepGroup(d.setup.focus, -1, d.rowVisible), ""
 		return d.settled(), nil
 	}
 	// ONE KEYBOARD RULE for the whole window (the batch's constraint): ↑↓ walk
@@ -396,11 +403,13 @@ func (d Dashboard) rowTakesArrows() bool {
 // only when the group it belongs to cannot act on it — nothing else, so the
 // focus order never depends on scroll position or width.
 func (d Dashboard) rowVisible(id setupRowID) bool {
-	switch id {
-	case rowFIRMSKey:
-		return true
+	if id < 0 || id >= setupRowCount {
+		return false // outside the table: not a row, so not a visible one
 	}
-	return true
+	// D-18's RULING, ASKED HERE (D-92). `stepRow` already walks only visible
+	// rows and `setupBlock` already draws only visible rows — this seam was built
+	// for exactly this and returned `true` for everything until now.
+	return setupTable()[id].scope.shownOn(d.surface)
 }
 
 // setupSpace operates the focused control: select a radio, toggle a checkbox.

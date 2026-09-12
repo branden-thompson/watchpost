@@ -176,6 +176,11 @@ const rowTheme
 const rowToggle
 const rowUnitsImperial
 const rowUnitsMetric
+const scopeBroadcaster
+const scopeObserver
+const scopeShared
+const scopeSplit
+const scopeUnruled
 const secondGap
 const setupOneColWidth
 const setupRowCount
@@ -535,6 +540,7 @@ func (cardLane).shell
 func (cardLane).standbyBox
 func (endpointRow).counters
 func (radioBP).hasViz
+func (setupScope).shownOn
 func (setupState).alertRadiusChoice
 func (setupState).classMuted
 func (setupState).mutedClassKeys
@@ -651,7 +657,6 @@ func modalAlertTone
 func nearestFirst
 func newArrowChips
 func newCardLane
-func nextGroup
 func nextHours
 func nextRow
 func nonEmpty
@@ -666,7 +671,6 @@ func pipelineCols
 func plural
 func prependRef
 func prettyCond
-func prevGroup
 func prevRow
 func programScoped
 func providerTable
@@ -727,6 +731,7 @@ func statusAvail
 func statusFill
 func statusHeader
 func statusRank
+func stepGroup
 func stepRow
 func swellRows
 func tick
@@ -746,6 +751,7 @@ func trend
 func truncateTo
 func twoColumnsWidth
 func unitsRow
+func visibleRowOfGroup
 func vizTick
 func whenTail
 func widest
@@ -828,6 +834,7 @@ type setupGroupID
 type setupRow
 type setupRowID
 type setupRowKind
+type setupScope
 type setupState
 type statusSections
 type surfaceView
