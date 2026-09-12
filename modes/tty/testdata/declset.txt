@@ -64,6 +64,8 @@ const bcReadCardRows
 const bcReadLines
 const bcRightChrome
 const bcRowTail
+const bcScheduledFrom
+const bcScheduledHeading
 const bcSectionInset
 const bcStandbyNotice
 const bcTakeoverTitle
@@ -239,15 +241,20 @@ func (Broadcaster).heldNotice
 func (Broadcaster).inset
 func (Broadcaster).laneLabelRow
 func (Broadcaster).lanes
+func (Broadcaster).lineupRowOf
+func (Broadcaster).lineupRows
 func (Broadcaster).liveOffset
 func (Broadcaster).manifestRows
+func (Broadcaster).milesFromTower
 func (Broadcaster).minSize
 func (Broadcaster).notice
 func (Broadcaster).opts
+func (Broadcaster).poolEntry
 func (Broadcaster).priorityColumn
 func (Broadcaster).priorityWidth
 func (Broadcaster).railed
 func (Broadcaster).readBody
+func (Broadcaster).scheduledLines
 func (Broadcaster).scrollQueue
 func (Broadcaster).slotCard
 func (Broadcaster).slotRows
@@ -672,6 +679,7 @@ func plural
 func prependRef
 func prettyCond
 func prevRow
+func priorityOf
 func programScoped
 func providerTable
 func providersOf
@@ -691,6 +699,8 @@ func relayLabelW
 func relayLangLabel
 func relayLangs
 func relayLineOf
+func reportTypeOf
+func requestedByOf
 func roleOf
 func roleState
 func rowLoading

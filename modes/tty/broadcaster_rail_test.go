@@ -9,10 +9,12 @@ package tty
 // shape this release keeps removing.
 
 import (
+	"fmt"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 	"os"
 	"path/filepath"
-	"strconv"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -255,6 +257,7 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 	if first < 0 {
 		t.Fatal("the running order drew no caption, so there is nothing to check")
 	}
+	belowTheCards := false
 	for i := first; i <= last; i++ {
 		r := []rune(rows[i])
 		if len(r) != b.width {
@@ -265,6 +268,17 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 		// completely blank, walls included (HUM LEAD, UAT 2026-09-10), and the
 		// scroll rail's caps deliberately sit ON those breaks — so the question
 		// is only ever asked of a row the running order actually drew.
+		// THE WALL BELONGS TO THE CARD REGION, AND THE TABLE HAS NONE (D-94).
+		// The reference draws the SCHEDULED LINE-UP wall-less, full width, under
+		// a heading of its own — so the question stops being asked at the
+		// heading, which is where the cards stop.
+		if belowTheCards {
+			break
+		}
+		if strings.Contains(rows[i], bcScheduledHeading) {
+			belowTheCards = true
+			continue
+		}
 		main := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap
 		// THE CARD COLUMN ONLY, not everything right of it: the scroll rail's
 		// caps sit ON the region breaks by design (D-70), so a row carrying just
@@ -411,14 +425,26 @@ func TestEachRegionsRailCarriesItsOwnGround(t *testing.T) {
 // operator cannot reach the bottom of is a line-up they cannot manage.
 func TestTheQueueScrollsAndItsThumbFollows(t *testing.T) {
 	base := NewBroadcaster()
-	base.width, base.height, base.ascii = 150, 74, true
+	// A SHORT TERMINAL, BECAUSE THE TABLE FITS THE REFERENCE'S (D-94).
+	//
+	// This test was written when a card was a manifest and ten of them needed
+	// ninety rows against the reference's seventy-four. Thirteen TABLE rows fit
+	// in seventy-four with room to spare — which is the improvement — so the
+	// scroll is now exercised where it actually matters: a terminal too short to
+	// hold the running order.  MEASURED — at 150 wide, 64 rows fits all thirteen
+	// and 60 fits nine, so sixty is where the window is genuinely a window.
+	base.width, base.height, base.ascii = 150, 60, true
 	base.power = lineup.Running
 
+	// THE ROWS THAT SCROLL ARE THE TABLE'S NOW (D-94), not the cards'. The two
+	// read cards never scrolled and still do not — they are the reason the rail
+	// begins below them (D-68) — so what this walks is the numbered rows of the
+	// running order.
 	slots := func(b Broadcaster) []string {
 		var out []string
 		for _, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
-			if j := strings.Index(r, "*STANDARD*"); j >= 0 {
-				out = append(out, strings.TrimSpace(r[j+10:min(len(r), j+18)]))
+			if m := lineupRowNum.FindStringSubmatch(r); m != nil {
+				out = append(out, m[1])
 			}
 		}
 		return out
@@ -455,8 +481,11 @@ func TestTheQueueScrollsAndItsThumbFollows(t *testing.T) {
 	for range 40 {
 		end = end.scrollQueue(1)
 	}
-	if got := slots(end); !contains(strings.Join(got, " "), chipFor(strconv.Itoa(MainTrackSlots-1))) {
-		t.Errorf("the last slot is unreachable; the bottom of the queue shows %v", got)
+	// THE NUMBER, NOT A CHIP (D-94): the table addresses a slot by its `##.`
+	// column, so the last slot is `14` and not `[14]`.
+	last := fmt.Sprintf("%02d", MainTrackSlots-1)
+	if got := slots(end); !slices.Contains(got, last) {
+		t.Errorf("the last slot (%s) is unreachable; the bottom of the queue shows %v", last, got)
 	}
 	// AND THE THUMB IS STILL DRAWN THERE. A rail that loses its thumb at the end
 	// of the list says the list is gone rather than that it is finished.
@@ -485,3 +514,7 @@ func equalStrings(a, b []string) bool {
 	}
 	return true
 }
+
+// lineupRowNum matches a running-order row by its `##.` column — the address the
+// table draws, which since D-94 is where a slot's number lives.
+var lineupRowNum = regexp.MustCompile(`^\s+(\d\d)\.\s`)

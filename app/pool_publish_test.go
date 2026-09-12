@@ -14,7 +14,6 @@ import (
 
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
-	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -111,9 +110,4 @@ func publishTo(t *testing.T, out *[]tty.StationAreaMsg, s stationArea, pool []sn
 			*out = append(*out, a)
 		}
 	}, s, pool)
-}
-
-// miBetween is how far a pool entry sits from the transmitter, in miles.
-func miBetween(tx, r snapshot.LocationRef) float64 {
-	return geo.HaversineKM(tx.Lat, tx.Lon, r.Lat, r.Lon) * 0.621371
 }

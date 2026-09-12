@@ -56,16 +56,24 @@ type LineupRow struct {
 
 // lineup column widths, measured off the v3 mock.
 func lineupColumns() []baseCol {
+	// MEASURED TO THE FRAME, NOT TO THE MOCK'S PIXELS. The console's band is 144
+	// cells at the reference's 150-wide terminal, and these sum to 128 + eight
+	// gutters = 144 exactly.
+	//
+	// THE MARKS ZONE IS OBSERVER'S THIRTEEN, not the mock's narrower six. Parity
+	// is the whole requirement — "the same prefix / alert tags as the Observer
+	// table … so the user doesn't have to relearn" — so the seven cells it costs
+	// come out of the text columns instead.
 	return []baseCol{
 		{"marks", "", marksW, 0},
 		{"num", "##.", 5, 1},
-		{"type", "REPORT TYPE", 22, 1},
-		{"loc", "LOCATION", 24, 1},
+		{"type", "REPORT TYPE", 20, 1},
+		{"loc", "LOCATION", 22, 1},
 		{"zip", "ZIP", 7, 1},
-		{"dist", "DIST", 7, 1},
-		{"prio", "PRIORITY", 11, 2},
-		{"req", "REQUESTED BY", 18, 2},
-		{"corr", "CORRESPONDENT", 34, 3},
+		{"dist", "DIST", 6, 1},
+		{"prio", "PRIORITY", 10, 2},
+		{"req", "REQUESTED BY", 17, 2},
+		{"corr", "CORRESPONDENT", 28, 3},
 	}
 }
 
