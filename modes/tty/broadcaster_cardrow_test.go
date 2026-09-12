@@ -36,7 +36,7 @@ func aCard(t *testing.T, headline string) lineup.Card {
 }
 
 func TestTheCardRowFillsTheLaneItIsGiven(t *testing.T) {
-	c := aCard(t, "LOCATION REPORT • OCEANSIDE, CA 92057")
+	c := aCard(t, "OCEANSIDE, CA 92057")
 	for _, lane := range []int{98, 118, 128, 148} {
 		got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).render(c, "6", "STANDARD")
 		if w := utf8.RuneCountInString(got); w != lane {
@@ -93,7 +93,7 @@ func TestANarrowLaneKeepsTheSubjectAndDropsTheKind(t *testing.T) {
 	// this test picked a width where nothing was dropped and SKIPPED, which is
 	// not a test.
 	got := newCardLane(56, render.Opts{ASCII: true}.Glyphs()).
-		render(aCard(t, "LOCATION REPORT • OCEANSIDE, CA 92057"), "6", "STANDARD")
+		render(aCard(t, "OCEANSIDE, CA 92057"), "6", "STANDARD")
 	if !strings.Contains(got, "OCEANSIDE") {
 		t.Errorf("the subject identifies the card and must survive; got %q", got)
 	}
@@ -110,8 +110,14 @@ func TestANarrowLaneKeepsTheSubjectAndDropsTheKind(t *testing.T) {
 func TestTheHeadlineSitsOnTheCardsInset(t *testing.T) {
 	row := newCardLane(132, render.Opts{ASCII: true}.Glyphs()).
 		render(aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")
-	if got := strings.Index(row, "OCEANSIDE"); got != len(bcCardInset) {
-		t.Errorf("the headline starts at column %d, want the card's inset of %d\n%q", got, len(bcCardInset), row)
+	// THE TITLE IS THE KIND AND THEN THE SUBJECT (D-87), so what sits on the
+	// inset is the KIND — the slot registry's word, which the console composes
+	// rather than the producer supplying.
+	if got := strings.Index(row, "LOCATION REPORT"); got != len(bcCardInset) {
+		t.Errorf("the title starts at column %d, want the card's inset of %d\n%q", got, len(bcCardInset), row)
+	}
+	if !strings.Contains(row, "OCEANSIDE") {
+		t.Errorf("the subject is missing from the title: %q", row)
 	}
 }
 
@@ -122,7 +128,7 @@ func TestTheHeadlineSitsOnTheCardsInset(t *testing.T) {
 func TestAnAbsurdlyNarrowLaneStillNeverOverflows(t *testing.T) {
 	for _, lane := range []int{1, 4, 12, 20, 30} {
 		got := newCardLane(lane, render.Opts{ASCII: true}.Glyphs()).
-			render(aCard(t, "LOCATION REPORT • OCEANSIDE, CA 92057"), "6", "STANDARD")
+			render(aCard(t, "OCEANSIDE, CA 92057"), "6", "STANDARD")
 		if w := utf8.RuneCountInString(got); w > lane {
 			t.Errorf("lane %d: rendered %d cells — %q", lane, w, got)
 		}

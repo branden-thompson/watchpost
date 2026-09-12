@@ -146,3 +146,63 @@ func TestTheManifestHeadingNamesItsColumns(t *testing.T) {
 			strings.Index(got, "RANGE"), strings.Index(row, "09/11"), got, row)
 	}
 }
+
+// THE KIND COMES FROM THE SLOT REGISTRY, NOT FROM THE PRODUCER (D-87).
+//
+// The reference draws "LOCATION REPORT • Oceanside, CA" and the producer
+// supplies only the location — as it should, because what a card is ABOUT and
+// what KIND of card it is are two facts with two owners. The HUM LEAD saw the
+// consequence in UAT: the cards read "Oceanside, CA" with no kind at all.
+func TestACardsTitleIsItsKindThenItsSubject(t *testing.T) {
+	g := render.Opts{ASCII: true}.Glyphs()
+	got := cardTitle(lineup.Card{Slot: lineup.LocationReport, Headline: "Oceanside, CA"}, g)
+	if !strings.HasPrefix(got, "LOCATION REPORT") {
+		t.Errorf("the title is %q; the kind comes first", got)
+	}
+	if !strings.HasSuffix(got, "Oceanside, CA") {
+		t.Errorf("the title is %q; the subject comes last", got)
+	}
+	// THE SEPARATOR IS THE GLYPH SET'S, so --ascii needs no special case — the
+	// parity gate caught the first draft's literal bullet.
+	if !strings.Contains(got, g.Bullet) {
+		t.Errorf("the title is %q; its separator is not the glyph set's", got)
+	}
+	// A HAZARD NAMES ITSELF TOO, from the same registry.
+	if got := cardTitle(lineup.Card{Slot: lineup.BreakingAlert, Headline: "Tornado Warning"}, g); !strings.HasPrefix(got, "BREAKING ALERT") {
+		t.Errorf("a hazard's title is %q", got)
+	}
+	// AND A CARD MISSING EITHER HALF KEEPS THE OTHER rather than drawing a
+	// separator with air on one side of it.
+	if got := cardTitle(lineup.Card{Slot: lineup.LocationReport}, g); strings.Contains(got, g.Bullet) {
+		t.Errorf("a card with no subject drew a separator: %q", got)
+	}
+}
+
+// THE CONSOLE HAS ONE CLOCK, AND IT IS NEVER NIL (D-87).
+//
+// `Broadcaster.clock` already existed and falls back to `time.Now`; the first
+// draft of the stamp read the raw `now` FIELD instead, which production never
+// sets — so the age the operator uses to decide whether to trust a report was
+// missing in the real app and present in every test. Two carriers of one fact,
+// and the tests had the one that worked.
+func TestTheConsolesStampAlwaysCarriesAnAge(t *testing.T) {
+	b := NewBroadcaster() // no clock injected: production's own state
+	b.width, b.ascii = 150, true
+	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
+	c := lineup.Card{ID: "a", Slot: lineup.LocationReport, Headline: "Oceanside, CA",
+		State: lineup.Standby, BuiltAt: time.Now().Add(-3 * time.Minute)}
+
+	rows := b.readBody(b.opts(), lane, c, "1", true)
+	stamp := ""
+	for _, r := range rows {
+		if strings.Contains(r, "DATA PULLED") {
+			stamp = r
+		}
+	}
+	if stamp == "" {
+		t.Fatal("the card carries no data stamp")
+	}
+	if !strings.Contains(stamp, "AGO)") {
+		t.Errorf("the stamp is %q; without an age the operator cannot tell whether to trust it", stamp)
+	}
+}

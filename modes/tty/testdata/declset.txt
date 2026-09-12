@@ -553,6 +553,7 @@ func burstWhen
 func cardBoxTitle
 func cardPulled
 func cardStatus
+func cardTitle
 func cardTone
 func castLabel
 func castLineOf

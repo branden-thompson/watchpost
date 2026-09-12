@@ -376,6 +376,7 @@ func clockFrom
 func composeFor
 func composeTakeover
 func configLocations
+func contentsFromSegments
 func coveragePhrase
 func credits
 func debugAddr

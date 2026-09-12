@@ -540,7 +540,7 @@ func (c Card) To(next State) (Card, error) {
 // WithText fills in the script. This is DR-7's moment: the card is at standby,
 // its data was fetched just now, and what it will say is decided from that
 // rather than from whatever was true when it was queued.
-func (c Card) WithScript(script Script, builtAt time.Time) (Card, error) {
+func (c Card) WithScript(script Script, contents []Content, builtAt time.Time) (Card, error) {
 	if err := invariant.Check(!script.Empty(), "a card's words are never set to nothing"); err != nil {
 		return c, err
 	}
@@ -561,7 +561,10 @@ func (c Card) WithScript(script Script, builtAt time.Time) (Card, error) {
 	if err := c.check(); err != nil {
 		return c, err
 	}
-	c.Script, c.BuiltAt = script, builtAt
+	// THE MANIFEST LANDS WITH THE WORDS (D-87). Both come from one compose, so
+	// setting them together is what stops a card describing a read it is not
+	// about to give.
+	c.Script, c.Contents, c.BuiltAt = script, contents, builtAt
 	return c, nil
 }
 

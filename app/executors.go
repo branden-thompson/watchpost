@@ -380,14 +380,14 @@ func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Even
 		if err != nil {
 			return x.decline(v, v.ID, "the report could not be composed: "+err.Error())
 		}
-		sc := scriptFromSegments(segs)
+		sc, contents := scriptFromSegments(segs), contentsFromSegments(segs)
 		if sc.Empty() {
 			// A CARD ON THE AIR WITH NO WORDS IS SILENCE under a callout the
 			// band has already promised (DR-18) — the same rule the takeover
 			// path states two cases above.
 			return x.decline(v, v.ID, "the report composed nothing to say")
 		}
-		return []lineup.Event{lineup.Built{ID: v.ID, Script: sc}}
+		return []lineup.Event{lineup.Built{ID: v.ID, Script: sc, Contents: contents}}
 	case lineup.SevereRead:
 		return x.decline(v, v.ID, "read by the severe window's own reader, not the schedule")
 	}

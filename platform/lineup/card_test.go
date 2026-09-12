@@ -195,12 +195,12 @@ func TestAReportsTextMaterialisesAtStandbyAndNowhereElse(t *testing.T) {
 		if s == Admitted {
 			walked = at(t, c, Admitted)
 		}
-		if _, err := walked.WithScript(Say("Conditions are fair."), testBuiltAt); err == nil {
+		if _, err := walked.WithScript(Say("Conditions are fair."), nil, testBuiltAt); err == nil {
 			t.Errorf("WithText accepted at %v; a report's words arrive at standby", s)
 		}
 	}
 	standby := at(t, c, Admitted, Standby)
-	built, err := standby.WithScript(Say("Conditions are fair."), testBuiltAt)
+	built, err := standby.WithScript(Say("Conditions are fair."), nil, testBuiltAt)
 	if err != nil {
 		t.Fatalf("WithText at standby: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestAStructuralCardCarriesItsWordsFromTheStart(t *testing.T) {
 		t.Fatal("the notice lost its words at proposal")
 	}
 	standby := at(t, c, Admitted, Standby)
-	if _, err := standby.WithScript(Say("something else"), testBuiltAt); err == nil {
+	if _, err := standby.WithScript(Say("something else"), nil, testBuiltAt); err == nil {
 		t.Error("WithText accepted on a structural card; its words are fixed when it is proposed")
 	}
 }
@@ -236,7 +236,7 @@ func TestACardTakesTheAirWithItsWordsAlreadyOnIt(t *testing.T) {
 	if _, err := standby.To(OnAir); err == nil {
 		t.Fatal("an empty card took the air")
 	}
-	spoken, err := standby.WithScript(Say("A severe thunderstorm warning is in effect."), testBuiltAt)
+	spoken, err := standby.WithScript(Say("A severe thunderstorm warning is in effect."), nil, testBuiltAt)
 	if err != nil {
 		t.Fatalf("WithText: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestTheVoiceIsResolvedBeforeTheAirAndNotAfter(t *testing.T) {
 // mustText fills a card's script so it can be walked to the air.
 func (c Card) mustText(t *testing.T) Card {
 	t.Helper()
-	out, err := c.WithScript(Say("the script"), testBuiltAt)
+	out, err := c.WithScript(Say("the script"), nil, testBuiltAt)
 	if err != nil {
 		t.Fatalf("%s: WithText: %v", c.ID, err)
 	}
