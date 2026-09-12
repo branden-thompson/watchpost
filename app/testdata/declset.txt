@@ -139,6 +139,7 @@ func (*livePipelines).readReport
 func (*livePipelines).relayDwell
 func (*livePipelines).relayLang
 func (*livePipelines).seismicFor
+func (*livePipelines).selectedRelay
 func (*livePipelines).setRelayDwell
 func (*livePipelines).setRelayLang
 func (*livePipelines).setStation
@@ -560,6 +561,7 @@ type airScope
 type alertStore
 type bandRecord
 type bedReach
+type bedSeams
 type castState
 type clip
 type diagSources

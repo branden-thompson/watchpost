@@ -2266,3 +2266,61 @@ this.
 **The shape:** *when an assertion goes quiet, the question is whether it went quiet because the claim
 is true or because the instrument is off.*  A passing test against colour-disabled output is the
 second one, and it looks identical to the first.
+
+---
+
+## 2026-09-11 — D-90: the frequent publisher wins, and it is usually the one that knows least
+
+The console's relay row had two publishers.  One fired on a keypress and knew what the operator had
+chosen.  The other fired **on every settle — every tick** — and published a different fact entirely
+(the Director's watchlist bed ref, where the console's selector walks the station's NWR fence by
+callsign).  So the operator's choice survived for about a second and then reverted, every time.
+
+**The shape:** *when two writers share one output, the outcome is decided by FREQUENCY, not by
+authority.*  The keypress publisher was the authoritative one and it lost every race, not because of a
+bug in either publisher but because there were two.
+
+**What makes this catchable:** the repo had already hit it **one struct field along**.  `noteBedCarrying`
+exists precisely because the selector and the Director both publish `Carrying`, and `bedrelay_test.go`
+has carried a test for that half since D-78 — *"a selector that GUESSED would flicker the row between
+them."*  The RELAY got no such agreement, in the same file, under the same comment.
+
+**How to apply:** the fix for a shared output is not precedence, it is **one owner asked by both**.
+`selectedRelay()` is that owner; `describeBed` asks it.  And when a fix like `noteBed` is written for
+one field of a message, the question to ask immediately is *which of the other fields has the same two
+writers* — the answer here was sitting twelve lines away.
+
+---
+
+## 2026-09-11 — an index cannot say "nothing yet"
+
+The obvious place to keep the operator's relay choice was `bedPick`, the index the selector already
+moves.  It cannot work: **`bedPick`'s zero value is a real relay**, so a station nobody had touched
+would report its nearest transmitter as though it had been selected — claiming a tune that never
+happened.
+
+This is the D-89 zero-value shape again, one day and one package apart: *the zero value of a type that
+indexes into real things is a claim about a real thing.*  The fix both times was to carry the ANSWER
+rather than a pointer to it — `bedRelay string`, empty until chosen — so "nothing yet" has a
+representation of its own.
+
+Kept as mutant `mY4`, because the wrong version is the version anyone would write first.
+
+---
+
+## 2026-09-11 — a fix that makes a second defect reachable should say so
+
+D-90 made the operator's relay choice stick.  It also made a **stale** row possible for the first time:
+Observer's watchlist dwell can re-tune the deck out from under the operator's selection, and the row
+now keeps showing what they picked.
+
+Before the fix the row was wrong all the time, so there was nothing to go stale.
+
+**The shape:** *correctness can promote a latent design conflict into a visible one.*  The two bed
+owners — the station's fence and the monitor's rotation — have never told each other anything; that was
+harmless while the row was simply broken.
+
+**How to apply:** the fix ships, and the newly-reachable conflict is filed as a RULING (F-99) with the
+options laid out and none of them chosen.  Which owner wins is a UX/authority decision, and the standing
+rule is that those are the HUM LEAD's — the job here is to make the fork visible, not to pick a side
+inside a bug fix.

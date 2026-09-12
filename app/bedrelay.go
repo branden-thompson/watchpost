@@ -70,10 +70,18 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 	lp.mu.Lock()
 	next := ((lp.bedPick+by)%len(relays) + len(relays)) % len(relays)
 	lp.bedPick = next
+	chosen := relays[next]
+	// AND THE CHOICE IS REMEMBERED, not merely published (F-98, D-90). It was
+	// published and nothing else, so the SETTLE — which publishes the same row
+	// from the Director's bed, on every tick — overwrote it about a second later
+	// and the operator's selection reverted to "(no relay tuned)" no matter what
+	// they picked. One fact needs ONE owner, and this is it: the only thing that
+	// tunes the station's bed is the only thing that says what it is tuned to.
+	lp.bedRelay = relayLine(chosen)
+	line := lp.bedRelay
 	p := lp.p
 	lp.mu.Unlock()
 
-	chosen := relays[next]
 	return func() tea.Msg {
 		// THE DECK TUNES IT THROUGH THE ONE FUNCTION THAT ALREADY DOES THIS. The
 		// relay-fault window answers with a call sign the same way (MVS-D-76),
@@ -86,10 +94,29 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 		// the bed is CARRYING; this is what the operator has SELECTED, which is
 		// a different fact until they cut to it.
 		if p != nil {
-			p.Send(tty.BedMsg{Relay: relayLine(chosen), Carrying: lp.bedCarrying()})
+			p.Send(tty.BedMsg{Relay: line, Carrying: lp.bedCarrying()})
 		}
 		return nil
 	}
+}
+
+// selectedRelay is the relay the operator chose, and "" until they choose one.
+//
+// IT IS THE ROW'S ONE ANSWER (F-98, D-90). The settle asks this rather than
+// carrying its own idea, which is the same fix `noteBedCarrying` already made for
+// whether the bed is CARRYING — two publishers of one row, and the frequent one
+// did not know what the operator had done.
+//
+// EMPTY IS A REAL ANSWER, not a missing one: until the operator touches the
+// selector, what the bed is on is the monitor's rotation, and the Director's label
+// is the only honest thing to say about it.
+func (lp *livePipelines) selectedRelay() string {
+	if lp == nil {
+		return ""
+	}
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	return lp.bedRelay
 }
 
 // bedCarrying is whether the bed holds the programme, as the console last heard.

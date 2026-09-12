@@ -744,6 +744,12 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		// relay SELECTOR and the Director agree about whether the bed is
 		// carrying; nil is a build with no console to disagree with.
 		"noteBed": true,
+		// DELIBERATELY OPTIONAL, and the OTHER half of that same agreement
+		// (F-98, D-90). nil is a build with no console to have chosen a relay on,
+		// and the row then names the Director's bed exactly as it did before —
+		// which is why the fallback in `describeBed` is not dead code and has a
+		// test of its own.
+		"selected": true,
 		// DELIBERATELY OPTIONAL (F-91). nil is a station with no broadcast
 		// engine — the pathless build and every bench that wires no deck. The
 		// executor declines the card BY NAME and the schedule re-plans around
