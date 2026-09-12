@@ -118,8 +118,15 @@ type radioDeck struct {
 	// emit hands the Director the bed's facts (T3.2b). It replaced a
 	// time.AfterFunc: the dwell is the Director's now, and this deck only
 	// reports what it alone can see.
-	emit   func(lineup.Event)
-	source *synth.Source // the running synthesized broadcast, if any
+	emit func(lineup.Event)
+
+	// note is where the Voice chooser's status line goes, and it is a SEAM for the
+	// same reason `emit` is: the deck must be able to say something with no running
+	// program, and a test must be able to hear it. Nil means the program, which is
+	// production — see voiceNote.
+	note func(string)
+
+	source liveSource // the running synthesized broadcast, if any (livesource.go)
 	// read is the main-track card the engine is carrying, and the channel its
 	// reader is waiting on (F-91). Nil whenever the engine is on the bed.
 	read    *readSession
@@ -178,7 +185,16 @@ func (d *radioDeck) Spectrum() []float64 {
 // distinction carried by a capital letter: this method lifted the duck and the
 // unexported one did not, and the Watchlist advance called the wrong one. A rule
 // that lives in the case of an identifier is a rule waiting to be missed.
-func (d *radioDeck) Tune(ref snapshot.LocationRef) { d.tune(ref) }
+func (d *radioDeck) Tune(ref snapshot.LocationRef) {
+	// THE MONITOR'S OWN TUNE, AND IT STOPS AT THE CONSOLE (D-91). The lower-case
+	// `tune` stays open because the DIRECTOR uses it — `tuneTo`, the Tune effect,
+	// already gated upstream by `advancesMonitor()`. Guarding the shared half
+	// would break the bed's rotation, which is why the guard is here.
+	if !d.monitorHasTheAir() {
+		return
+	}
+	d.tune(ref)
+}
 
 // tune resolves, then plays the first relayed station — or the synthesized
 // broadcast when nothing relays this location (B4 step 2: 89 % of
@@ -426,6 +442,10 @@ func (d *radioDeck) noteDirectories(statuses []stream.Status) {
 // SetMode implements tty.Radio (UAT 97): [m] picks the source; a playing
 // location re-tunes under the new mode at once.
 func (d *radioDeck) SetMode(mode tty.RadioMode) {
+	// THE PICK IS STILL SAVED; THE RE-TUNE IS WHAT STOPS (D-91). Refusing the
+	// whole call would lose a preference the operator set, and the preference is
+	// not the part that reaches the air.
+	air := d.monitorHasTheAir()
 	d.mu.Lock()
 	d.pref = mode
 	ref, playing, persist := d.ref, d.mode != "", d.persistMode
@@ -433,7 +453,7 @@ func (d *radioDeck) SetMode(mode tty.RadioMode) {
 	if persist != nil {
 		_ = persist(mode) // a failed save is not a playback failure; the pick still applies for this run
 	}
-	if playing && d.engine.Status().State != player.Stopped {
+	if air && playing && d.engine.Status().State != player.Stopped {
 		go d.tune(ref) // Watchlist advance is automatic — stays ducked under a takeover
 	}
 }
@@ -697,6 +717,19 @@ func (d *radioDeck) stationFor(countyUGC string, ref snapshot.LocationRef) synth
 
 // Stop implements tty.Radio.
 func (d *radioDeck) Stop() {
+	// THE OPERATOR STOPPED LISTENING, and on the console there is nothing of
+	// theirs to stop (D-91). `silenceMonitor` calls `stopMonitor` instead — it
+	// runs AFTER `owner` has moved to the console, so a guard here would refuse
+	// the very silencing the swap exists to perform.
+	if !d.monitorHasTheAir() {
+		return
+	}
+	d.stopMonitor()
+}
+
+// stopMonitor is Stop without the air check: the swap's own silencing, which must
+// work precisely when the monitor no longer has the air.
+func (d *radioDeck) stopMonitor() {
 	d.tuneMu.Lock() // one step with the halt: a Tune tail cannot slip in between (N-3)
 	defer d.tuneMu.Unlock()
 	d.mu.Lock()
@@ -965,7 +998,7 @@ func (d *radioDeck) onStatus(st player.Status) {
 // its sign-off; voiceErr is the voice's own failure when the stream ended
 // because a segment could not render (then ended is false — never an
 // advance on it). The diagnostic log records which it was.
-func (d *radioDeck) cycleEnded(st player.Status, src *synth.Source) (ended bool, voiceErr string) {
+func (d *radioDeck) cycleEnded(st player.Status, src liveSource) (ended bool, voiceErr string) {
 	if st.State != player.Stopped || st.Title != player.EndedTitle || src == nil {
 		return st.State == player.Stopped && st.Title == player.EndedTitle, ""
 	}

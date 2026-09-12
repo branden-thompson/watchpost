@@ -525,7 +525,15 @@ func (d *radioDeck) setCast(cfg cast.Config) {
 	src := d.source
 	d.mu.Unlock()
 
-	if src != nil {
+	// THE RECAST REACHES THE LIVE SOURCE ONLY WHILE THE MONITOR HAS THE AIR
+	// (D-91). "The listener is waiting to hear it" is true of the OPERATOR
+	// listening on Observer; on the console the listener is the AUDIENCE, and a
+	// hard recast of the card on the air is Observer reaching through the
+	// Settings window to change what the station is saying mid-sentence.
+	//
+	// THE CAST IS STILL SAVED AND RE-RESOLVED above — only the disturbance stops,
+	// which is exactly what `setTones` already does and says.
+	if src != nil && d.monitorHasTheAir() {
 		src.Recast() // the listener is waiting to hear it: a HARD change
 	}
 	d.castChanged()
