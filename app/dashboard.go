@@ -269,9 +269,13 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		// WHERE THE STATION TRANSMITS FROM, AT LAUNCH (D-72). Changes arrive as
 		// a message; this is what the console opens with, because the program's
 		// loop is not running when the pool is first derived.
+		// AND AT LAUNCH, THE SAME PAIR (D-93). `publishArea` covers every later
+		// change; the program's loop is not running when the pool is first
+		// derived, so this is how the console opens with both.
 		StationArea: tty.StationAreaMsg{
 			Transmitter: lp.currentStation().transmitter,
 			RadiusMi:    lp.currentStation().radiusMi,
+			Pool:        lp.currentPool(),
 		},
 		Stats:          lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
 		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
@@ -752,7 +756,7 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 	var told *tea.Program
 	defer func() {
 		if told != nil {
-			publishArea(told, nextStation)
+			publishArea(told.Send, nextStation, nextPool)
 		}
 	}()
 	lp.mu.Lock()
