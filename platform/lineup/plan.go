@@ -157,6 +157,16 @@ type Arrival struct {
 	Severity int
 	At       time.Time
 
+	// Until is when the hazard expires, and it is carried for the OPERATOR
+	// rather than for the plan (D-87). The console lists a burst's alerts with
+	// the span each one covers — "<LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM" —
+	// and `At` alone gives it half a span.
+	//
+	// IT IS NOT A SORT DIMENSION. Nothing about the ordering reads it; a hazard
+	// that expires sooner is not thereby more urgent, and treating it as one
+	// would quietly reorder the ladder MVS-D-60 ruled.
+	Until time.Time
+
 	// Lat, Lon and HasPoint are where the hazard is, for the fence. A zone-only
 	// alert has no point (globalfeed.Event.HasPoint), and Tracked is whether it
 	// is one the app already follows at a watched location — the only way such

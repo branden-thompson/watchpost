@@ -364,6 +364,18 @@ type Card struct {
 	// from newlines works until an alert contains one.
 	Script Script
 
+	// Contents is what the read CONTAINS, in the order it will be said — the
+	// manifest the console shows before a card goes on the air (D-87).
+	//
+	// A SUMMARY, NOT THE WORDS. `Script` is what will be spoken and this is what
+	// it is made of: one line per source, with whatever that source counts. Both
+	// come from the same compose, so they cannot describe different reads.
+	//
+	// IT STAYS DOMAIN-FREE (DR-1), like Headline: two strings the console shows
+	// and the schedule never reads. What a "Watchpost Fire Report" IS lives in
+	// the domain that produced it.
+	Contents []Content
+
 	// BuiltAt is when this card's words came home, and ZERO when they never
 	// did — a structural card whose text was fixed at proposal was never built
 	// and can never go stale (PD-3). It is the only reason the staleness check

@@ -1,0 +1,93 @@
+0.16.0 — BROADCASTER RUNNING ORDER, v2 (HUM LEAD, 2026-09-11)
+
+SUPERSEDES v1 BELOW THE STATION SECTION.  Two changes of substance:
+
+  1. THE PRIORITY AND MAIN TRACKS ARE SPLIT.  No occlusion: the priority track is
+     its own column beside the running order, not an overlay on top of it.
+  2. A CARD IS A MANIFEST, NOT A TRANSCRIPT.  "The full script on the top level
+     card doesn't make sense when I can drill down to read the whole thing …
+     What DOES MAKE SENSE for the operator is to get a SUMMARY of what the
+     report contains *before* it goes on air."
+
+The right-hand inner wall is GONE.  Only the vertical scroll on positions 2-9.
+
+│   │                                                                                      MAIN SCHEDULE (ROLLING WINDOW)
+│   │    ┏━━━ ! ALERT ! - TAKEOVER ━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓        
+│ L │    ┃                                 • PRIORITY •  A    ┃   ┃   LOCATION REPORT • Oceanside, CA                           •STANDARD•   0  ┃        
+│ I │    ┃                                                    ┃   ┃   STATUS:  READING  (Management Locked; Can be Taken-Over)                  ┃        
+│ V │    ┃   THE FOLLOWING ALERTS HAVE BEEN DECLARED          ┃   ┃   DATA PULLED:  Friday September 11, 2026 @ 23:59:59           (2 MIN AGO)  ┃         
+│ E │    ┃   BY THE <PROVIDERS>:                              ┃   ┃                                                                             ┃        
+│   │    ┃                                                    ┃   ┃   READ CONTENTS                                                             ┃        
+│ O │    ┃   01. SEVERE THUNDERSTORM WARNING                  ┃   ┃   ##. NAME                                      RANGE / INCIDENTS           ┃        
+│ N │    ┃       <LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM   ┃   ┃   01. NWS Weather Forecast                      09/11 - 09/17               ┃        
+│   │    ┃                                                    ┃   ┃   02. NDBC Marine Report                        09/11/2026                  ┃        
+│ A │    ┃   02. FLASH FLOOD WATCH                            ┃   ┃   03. Watchpost Fire Report                     3 Hotspots / 10 incidents   ┃        
+│ I │    ┃       <LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM   ┃   ┃   04. USGS 7-Day Seismic Report                 5 Quakes                    ┃        
+│ R │    ┃                                                    ┃   ┃                                                                             ┃        
+│   │    ┃   03. FLASH FLOOD ADVISORY                         ┃   ┃    0  Report Details                                                        ┃        
+│   │    ┃       <LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM   ┃   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛        
+         ┃                                                    ┃
+│   │    ┃   04. SPECIAL WEATHER STATEMENT                    ┃   ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓        
+│   │    ┃       <LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM   ┃   ┃   LOCATION REPORT • Fallbrook, CA                           •STANDARD•   1  ┃        
+│   │    ┃                                                    ┃   ┃   STATUS:  Ready for Read-Out                                               ┃    
+│ U │    ┃                                                    ┃   ┃   DATA PULLED:  Friday September 11, 2026 @ 23:59:59          (10 MIN AGO)  ┃
+│ P │    ┃   05. TROPICAL STORM NORBERT                       ┃   ┃                                                                             ┃         
+│   │    ┃       <LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM   ┃   ┃   READ CONTENTS                                                             ┃        
+│ N │    ┃                                                    ┃   ┃   ##. NAME                                      RANGE / INCIDENTS           ┃        
+│ E │    ┃   06. TROPICAL STORM OSCAR                         ┃   ┃   01. NWS Weather Forecast                      09/11 - 09/17               ┃        
+│ X │    ┃       <LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM   ┃   ┃   02. NDBC Marine Report                        09/11/2026                  ┃        
+│ T │    ┃                                                    ┃   ┃   03. Watchpost Fire Report                     3 Hotspots / 10 incidents   ┃        
+│   │    ┃   07. TROPICAL STORM PABLO                         ┃   ┃   04. USGS 7-Day Seismic Report                 5 Quakes                    ┃        
+│   │    ┃       <LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM   ┃   ┃                                                                             ┃        
+│   │    ┃                                                    ┃   ┃    1  Report Details                                                        ┃        
+│   │    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛        
+
+│   │                                                             ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   ▲ 
+│ S │                                                             ┃   LOCATION REPORT • Rainbow, CA                             •STANDARD•   2  ┃   █ 
+│ C │                                                             ┃   STATUS:  Scheduled; Awaiting Data                                         ┃   │
+│ H │                                                             ┃                                                                             ┃   │
+│ E │                                                             ┃    2  Report Details                                                        ┃   │
+│ D │                                                             ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │
+│ U │                                                             ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   │
+│ L │                                                             ┃   LOCATION REPORT • Rainbow, CA                             •STANDARD•   3  ┃   │
+│ E │                                                             ┃   STATUS:  Scheduled; Awaiting Data                                         ┃   │
+│ D │                                                             ┃                                                                             ┃   │
+│   │                                                             ┃    3  Report Details                                                        ┃   │
+│ L │                                                             ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │
+│ I │                                                             ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   │
+│ N │                                                             ┃   LOCATION REPORT • Rainbow, CA                             •STANDARD•   4  ┃   │
+│ E │                                                             ┃   STATUS:  Scheduled; Awaiting Data                                         ┃   │
+│   │                                                             ┃                                                                             ┃   │
+│ U │                                                             ┃    4  Report Details                                                        ┃   │
+│ P │                                                             ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │
+│   │                                                             ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   │
+│   │                                                             ┃   LOCATION REPORT • Rainbow, CA                             •STANDARD•   5  ┃   │
+│   │                                                             ┃   STATUS:  Scheduled; Awaiting Data                                         ┃   │
+│   │                                                             ┃                                                                             ┃   │
+│   │                                                             ┃    5  Report Details                                                        ┃   │
+│   │                                                             ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │
+│   │                                                             ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   │
+│   │                                                             ┃   LOCATION REPORT • Rainbow, CA                             •STANDARD•   6  ┃   │
+│   │                                                             ┃   STATUS:  Scheduled; Awaiting Data                                         ┃   │
+│   │                                                             ┃                                                                             ┃   │
+│   │                                                             ┃    6  Report Details                                                        ┃   │
+│   │                                                             ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │
+│   │                                                             ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   │
+│   │                                                             ┃   LOCATION REPORT • Rainbow, CA                             •STANDARD•   7  ┃   │
+│   │                                                             ┃   STATUS:  Scheduled; Awaiting Data                                         ┃   │
+│   │                                                             ┃                                                                             ┃   │
+│   │                                                             ┃    7  Report Details                                                        ┃   │
+│   │                                                             ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │
+│   │                                                             ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   │
+│   │                                                             ┃   LOCATION REPORT • Rainbow, CA                             •STANDARD•   8  ┃   │
+│   │                                                             ┃   STATUS:  Scheduled; Awaiting Data                                         ┃   │
+│   │                                                             ┃                                                                             ┃   │
+│   │                                                             ┃    8  Report Details                                                        ┃   │
+│   │                                                             ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │
+│   │                                                             ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓   │
+│   │                                                             ┃   LOCATION REPORT • Rainbow, CA                             •STANDARD•   9  ┃   │
+│   │                                                             ┃   STATUS:  Scheduled; Awaiting Data                                         ┃   │
+│   │                                                             ┃                                                                             ┃   │
+│   │                                                             ┃    9  Report Details                                                        ┃   │
+│   │                                                             ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   │
+                                                                                                                                                    ▼

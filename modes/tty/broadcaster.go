@@ -12,6 +12,7 @@ package tty
 // the station state is P2 and operator control is P4.
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -411,7 +412,6 @@ func (b Broadcaster) lanes() []string {
 	// … should have no pipes / lines." It is a caption over the running order,
 	// not a row of it — so it is written before the frame's own columns are
 	// added rather than inside them.
-	out = append(out, b.laneLabel("STANDARD"))
 	// NO SEPARATOR HERE. THE SECTION OWNS ITS OWN SPACING — `stationSection`
 	// carries a breathing row above and below, and a second blank appended out
 	// here made a DOUBLE gap that read as a rendering fault (HUM LEAD, UAT
@@ -462,10 +462,16 @@ func (b Broadcaster) lanes() []string {
 	// columns like every other row of the running order. Built here and not in
 	// `out`, which is where the first version put it and why it came out with
 	// no right wall at all.
-	order, reads, after := b.laneHeader(), 0, (*bcRegion)(nil)
+	order, reads, after := []string{b.laneLabelRow()}, 0, (*bcRegion)(nil)
+	// THREE COLUMNS, ZIPPED ONCE (D-87). The rail, the alert track and the
+	// running order are built side by side and joined at the end — which is what
+	// makes occlusion IMPOSSIBLE rather than merely avoided, and it is the whole
+	// of the HUM LEAD's ruling: "We're gonna split the PRIORITY and MAIN tracks
+	// visually — no more card occlusion."
+	railCol := railColumn(" ", len(order), b.opts().Glyphs())
 	for r := range bcRegions {
 		reg := bcRegions[r]
-		rows := b.region(reg, main, lane)
+		rows := b.slotRows(reg, main, lane)
 		if len(rows) == 0 {
 			continue
 		}
@@ -475,8 +481,10 @@ func (b Broadcaster) lanes() []string {
 		// cards that the rail happens to name in two halves; LIVE and UP NEXT
 		// are each a thing on its own, and the air is what says so.
 		if after != nil && after.reads {
-			order = append(order, b.regionGap())
+			order = append(order, b.cardGap())
+			railCol = append(railCol, bcRailBlank)
 		}
+		railCol = append(railCol, railColumn(reg.label, len(rows), b.opts().Glyphs())...)
 		order = append(order, rows...)
 		after = &bcRegions[r]
 		if reg.reads {
@@ -488,28 +496,26 @@ func (b Broadcaster) lanes() []string {
 	// card rather than across its border. Its ▲ already has one: the gap between
 	// UP NEXT and SCHEDULED.
 	if after != nil && reads < len(order) {
-		order = append(order, b.regionGap())
+		order = append(order, b.cardGap())
+		railCol = append(railCol, bcRailBlank)
 	}
 
-	// AND THE PRIORITY TRACK IS COMPOSITED ON TOP OF IT (D-61).
+	// AND THE ALERT TRACK IS A COLUMN BESIDE IT, NOT A BOX ON TOP (D-87).
 	//
-	// "the priority track visually sits ON TOP of the main track — that's
-	// because it's not supposed to always be on, and it signals that it is
-	// TAKING OVER while there are alerts in that line."
+	// IT WORKS BECAUSE THE CARD CHANGED, which is the HUM LEAD's own reasoning:
+	// "this works because of the data that we're ACTUALLY showing. The full
+	// script on the top level card doesn't make sense when I can drill down to
+	// read the whole thing." A card that was a transcript needed the width; a
+	// card that is a MANIFEST does not, so both tracks fit side by side and
+	// neither has to hide the other.
 	//
-	// The running order is drawn at its FULL width underneath, which is what
-	// the reference shows: its cards run 9..140 while the overlay covers 6..72,
-	// so the operator keeps the right-hand half of every card it hides — the
-	// half carrying the badge and the HANDLE they type.
-	//
-	// THE RAIL LABEL COMES WITH IT, which is the whole of the HUM LEAD's
-	// ruling: "the PRIORITY rail label ONLY shows up when a priority card sits
-	// on top of the main rail." While it is up, those rows are the priority
-	// track's and say so.
-	// THE FRAME'S RIGHT-HAND CHROME GOES ON LAST, over the assembled order and
-	// whatever the priority track composited onto it — the scroll rail belongs
-	// to the running order as a whole, not to any one region of it.
-	body := b.withPriority(order, len(b.laneHeader()))
+	// THE COLUMN IS ALWAYS RESERVED — see priorityWidth. A layout that widened
+	// when a hazard arrived would move every card sideways at the moment the
+	// operator is reading one.
+	// THE ALERT COLUMN STARTS UNDER THE CAPTION, not on it. The caption names
+	// the running order and the tracks begin below it — a box whose top border
+	// shared that row would read as though the caption named the takeover.
+	body := b.zipTracks(railCol, append([]string{""}, b.priorityColumn(len(order)-1)...), order)
 	if reads > len(body) {
 		reads = len(body)
 	}
@@ -521,8 +527,28 @@ func (b Broadcaster) lanes() []string {
 	// last row of the running order, which is what the reference draws — filler
 	// below it is the frame reaching the bottom of the terminal, and a rail run
 	// through that would say the line-up continues into empty space.
+	// THE QUEUE IS A WINDOW, NOT A CLIPPING (D-87). A card is a MANIFEST now and
+	// the ten slots need about ninety rows; the reference's terminal has
+	// seventy-four. Emitting them all and letting `clamp` cut the bottom is not
+	// the same thing as scrolling — the frame's own closing inset went with it,
+	// and rows ran past the edge, which FR-7.3 calls a defect rather than a
+	// degradation.
+	//
+	// THE READ CARDS ARE NEVER WINDOWED. There are two of them, they are always
+	// the same two, and they are the reason the rail begins below them (D-68).
+	scroll := body[reads:]
+	if room := b.height - len(out) - len(body[:reads]) - 2*bcInsetRows; room >= 0 && room < len(scroll) {
+		scroll = append([]string(nil), scroll[:room]...)
+		// THE WINDOW ENDS ON A ROW OF ITS OWN, because the scroll rail's ▼ sits
+		// on the last one (D-70) and a cap sharing a row with a card reads as a
+		// mark ON that card. Cutting mid-card is what a window does; giving the
+		// cap its own row is what says the cut was deliberate.
+		if n := len(scroll); n > 0 {
+			scroll[n-1] = strings.Repeat(" ", render.Width(scroll[n-1]))
+		}
+	}
 	out = append(out, b.chrome(body[:reads], false, 0, 0)...)
-	out = append(out, b.chrome(body[reads:], true,
+	out = append(out, b.chrome(scroll, true,
 		MainTrackSlots, len(b.lineup.Projection(lineup.MainTrack)))...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
 	// blank rows to the bottom of the terminal, which is what the reference does
@@ -557,29 +583,59 @@ const bcInsetRows = 2
 // separates the rail — this is intentional." The station section is a closed box
 // and the running order is another; the air between them belongs to neither, so
 // it carries no walls.
-func (b Broadcaster) laneLabel(label string) string {
-	if b.cardBoxWidth() < 1 {
+// laneLabelRow is the caption over the running order, in the MAIN column's own
+// cells (D-87).
+//
+// IT IS A ROW OF THE CARD COLUMN NOW, not a row of the frame. The tracks are
+// zipped, so everything that names the running order is measured in the column
+// it names — which is also why it lands at the reference's column 91 without
+// anybody counting to it.
+func (b Broadcaster) laneLabelRow() string {
+	w := b.cardBoxWidth()
+	if w < 1 {
 		return ""
 	}
-	// CENTRED OVER THE CARDS, not over the row: the caption names the lane, and
-	// the lane is the card column. Measured in cells rather than bytes —
-	// `render.Width` is the one measure (D-66).
-	lead := bcRailWidth + bcRailGap + max(0, (b.cardBoxWidth()-render.Width(label))/2)
-	return render.PadTo(strings.Repeat(" ", lead)+label, b.width)
+	label := bcLaneLabel
+	lead := max(0, (w-render.Width(label))/2)
+	return render.PadTo(strings.Repeat(" ", lead)+label, w)
 }
 
-// laneHeader is the air the running order opens with, under the lane's caption.
-func (b Broadcaster) laneHeader() []string { return []string{b.railSpacer()} }
-
-// orderWidth is how wide a row of the running order is BEFORE the frame's
-// right-hand columns: the rail, the air beside it, and the card.
+// bcLaneLabel names the running order, from the v2 reference.
 //
-// ONE OWNER, because three things build such a row — a region, the gap between
-// two regions, and the lane's header — and the first version of the header used
-// the LANE's width instead. It came out seven cells long, so the chrome's own
-// columns were pushed past the terminal's edge and clamped away, and that row
-// alone lost its walls.
-func (b Broadcaster) orderWidth() int { return bcRailWidth + bcRailGap + b.cardBoxWidth() }
+// "ROLLING WINDOW" IS THE WORD THE CONSOLE ALREADY OWED. FR-3.1 makes the ten
+// slots a window onto a deeper schedule, and until now nothing on the surface
+// said so — an operator counting ten cards had no way to know an eleventh
+// existed.
+const bcLaneLabel = "MAIN SCHEDULE (ROLLING WINDOW)"
+
+// cardGap is a blank row of the CARD column — the break between two regions.
+func (b Broadcaster) cardGap() string { return strings.Repeat(" ", b.cardBoxWidth()) }
+
+// bcRailBlank is a rail cell with no wall: the break between two regions, which
+// the HUM LEAD ruled must be completely blank.
+var bcRailBlank = strings.Repeat(" ", bcRailWidth)
+
+// zipTracks joins the three columns into rows of the frame.
+//
+// ONE JOIN, so the columns cannot disagree about where they start. Each is padded
+// to its own width first: a column that ran short would otherwise pull the ones
+// to its right inward on that row alone, which is how a splice-based layout
+// fails and exactly what D-87 removed.
+func (b Broadcaster) zipTracks(rail, priority, cards []string) []string {
+	n := max(len(rail), max(len(priority), len(cards)))
+	gap, pw, cw := strings.Repeat(" ", bcColumnGap), b.priorityWidth(), b.cardBoxWidth()
+	out := make([]string, 0, n)
+	for i := range n { // bounded by the tallest column (P10-02)
+		at := func(col []string, w int) string {
+			if i < len(col) {
+				return render.PadTo(render.TruncateCells(col[i], w), w)
+			}
+			return strings.Repeat(" ", w)
+		}
+		out = append(out, at(rail, bcRailWidth)+strings.Repeat(" ", bcRailGap)+at(priority, pw)+gap+at(cards, cw))
+	}
+	return out
+}
 
 // bcRegion is one named part of the running order, and the slots it holds.
 type bcRegion struct {
@@ -587,7 +643,7 @@ type bcRegion struct {
 	from, upto int // half-open, in LINE-UP positions
 	// reads is whether the operator READS FROM this region's cards rather than
 	// merely ordering them — the LIVE card and the one after it (D-68). Those
-	// draw the tall box that carries the script; the rest draw the flat one.
+	// draw the tall box that carries the manifest; the rest draw the flat one.
 	reads bool
 }
 
@@ -596,62 +652,93 @@ type bcRegion struct {
 // not part of this table: it is not a card slot, and the schedule cannot put
 // one there (Track's own comment refuses exactly that).
 var bcRegions = []bcRegion{
-	{"LIVE", 0, 1, true},
+	// THE NAMES ARE THE v2 REFERENCE'S (D-87). "LIVE ON AIR" says what the slot
+	// IS rather than merely where it sits, and "SCHEDULED LINE UP" is one name
+	// for what used to read as two regions — which is what the missing break
+	// between them already said.
+	{"LIVE ON AIR", 0, 1, true},
 	{"UP NEXT", 1, 2, true},
-	{"SCHEDULED", 2, 5, false},
-	{"LINE UP", 5, MainTrackSlots, false},
+	{"SCHEDULED LINE UP", 2, MainTrackSlots, false},
 }
 
-// withPriority composites the priority track over the running order, or hands
-// the order back untouched when the rail is clear.
+// burstBody is what a takeover box lists: who declared the alerts, and then the
+// alerts themselves (D-87).
 //
-// AN EMPTY RAIL COMPOSITES NOTHING, and the box being empty is the ONE thing
-// that says so: a `len(rail) > 0` guard stood in the old drawing and its mutant
-// SURVIVED, because a section built from no rows already returned nothing.
-func (b Broadcaster) withPriority(order []string, from int) []string {
-	lane := newCardLane(b.priorityWidth(), b.opts().Glyphs())
-	rows := []string{}
+// THE PREAMBLE IS THE CARD'S OWN HEAD, not a sentence written here. The Composer
+// already put "the following alerts have been declared by …" on the card at
+// standby (MVS-D-77), and a second copy in the console would name a different
+// provider the day the script changed.
+//
+// THE LIST IS THE CARD'S ARRIVALS, which carry what the reference asks for:
+// the hazard's headline, where it is, and the span it covers. They are numbered
+// in READ ORDER — the order the Director planned and the order they will be
+// spoken — so the operator can follow the read down the box.
+func (b Broadcaster) burstBody(c lineup.Card, w int) []string {
+	room := w - 2 - 2*len(bcCardInset)
+	if room < 8 {
+		return nil
+	}
+	rows := []string{""}
+	for _, p := range c.Script.Lines(lineup.PartHead) { // bounded by the script (P10-02)
+		for _, l := range render.WrapLines([]string{plaintext.Text(p.Text)}, room) {
+			rows = append(rows, bcCardInset+l)
+		}
+	}
+	for i, a := range c.From { // bounded by the burst (P10-02)
+		rows = append(rows, "")
+		rows = append(rows, bcCardInset+fmt.Sprintf("%02d. %s", i+1,
+			render.TruncateCells(strings.ToUpper(plaintext.Text(a.Headline)), room-4)))
+		rows = append(rows, bcCardInset+"    "+render.TruncateCells(burstWhen(a, b.opts()), room-4))
+	}
+	return append(rows, "")
+}
+
+// burstWhen is one alert's where and when, in the reference's shape:
+//
+//	<LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM
+//
+// A HAZARD WITH NO EXPIRY SHOWS NONE rather than inventing one. Some feeds give
+// no `until` at all, and a fabricated end time on a safety surface is worse than
+// an absent one.
+func burstWhen(a lineup.Arrival, o render.Opts) string {
+	when := a.At.Format("01/02 15:04")
+	if !a.Until.IsZero() {
+		when += " - " + a.Until.Format("01/02 15:04")
+	}
+	where := plaintext.Text(a.Subject)
+	if where == "" {
+		return when
+	}
+	return where + " " + o.Glyphs().Bullet + " " + when
+}
+
+// priorityColumn is the alert track's own column, as tall as the burst it lists
+// and blank the rest of the way down (D-87).
+//
+// ONE BOX FOR THE BURST, NOT ONE PER ALERT. MVS-D-77 makes a burst ONE card, and
+// the reference draws it as one box listing what it will read — so the column is
+// the rail's cards, each drawn as a box, and in practice that is one.
+//
+// IT FOLLOWS THE BURST'S HEIGHT. A box pinned to the LIVE and UP NEXT block
+// would draw a two-alert takeover as a tall frame mostly full of air, which says
+// the station is holding more than it is.
+func (b Broadcaster) priorityColumn(rows int) []string {
+	w := b.priorityWidth()
+	if w < 4 {
+		return nil
+	}
+	lane := newCardLane(w, b.opts().Glyphs())
+	out := []string{}
 	for _, c := range b.lineup.Cards(lineup.AlertRail) { // bounded by the rail (P10-02)
-		rows = append(rows, lane.box(c, "T", "PRIORITY")...)
+		out = append(out, lane.boxOf(c, "A", "PRIORITY", b.burstBody(c, w))...)
 	}
-	if len(rows) == 0 {
-		return order
+	// IT NEVER GROWS THE FRAME. A burst longer than the running order would draw
+	// past the bottom, which FR-7.3 calls a defect rather than a degradation —
+	// and the operator can still reach every alert through the card itself.
+	if rows > 0 && len(out) > rows {
+		out = out[:rows]
 	}
-	// IT COVERS THE CARDS, NOT THE LANE'S OWN HEADER. The running order now
-	// opens with the header naming the lane and the spacer under it (D-68), and
-	// an overlay spliced from row zero began on those — so the takeover's title
-	// landed on a spacer and the card it is supposed to sit ON was one row down.
-	if from < 0 || from > len(order) {
-		from = 0
-	}
-	head := append([]string(nil), order[:from]...)
-	order = append([]string(nil), order[from:]...)
-	// THE OVERLAY CANNOT BE TALLER THAN WHAT IT COVERS. A takeover with more
-	// rows than the running order would otherwise draw past the bottom of the
-	// frame, which is the overflow FR-7.3 calls a defect rather than a
-	// degradation.
-	for len(order) < len(rows) {
-		order = append(order, b.section("", []string{strings.Repeat(" ", b.cardBoxWidth())})...)
-	}
-	// A BLANK COLUMN AFTER THE BOX, so the overlay reads as sitting ON the
-	// running order rather than merging with it. Without it the box's right
-	// border butts straight into the card's own rule and the two draw as one
-	// wide box — which says the opposite of what the overlay means.
-	for i, r := range rows { // bounded by the overlay (P10-02)
-		rows[i] = r + " "
-	}
-	out := spliceAt(order, railColumn("PRIORITY", len(rows), b.opts().Glyphs()), 0)
-	return append(head, spliceAt(out, rows, bcPriorityCol)...)
-}
-
-// region draws one of them — EVERY slot it holds, decided or waiting (D-64).
-//
-// IT NO LONGER STOPS AT THE LAST DECIDED CARD. A region that drew nothing until
-// the Director had chosen showed an empty frame on first launch, which is what
-// the HUM LEAD found: "if I was a user who came upon this, I would not expect
-// this to be working."
-func (b Broadcaster) region(r bcRegion, cards []lineup.Card, lane cardLane) []string {
-	return b.section(r.label, b.slotRows(r, cards, lane))
+	return out
 }
 
 // bcGainCells is the gain bar's width, from the reference mock: thirty cells,
@@ -928,13 +1015,25 @@ func newCardLane(lane int, g render.Glyphs) cardLane {
 		return cardLane{lane: 0, g: g}
 	}
 	headline := components.ColumnDefinition{
-		Name:              "headline",
-		Fill:              true,
-		Alignment:         "center",
+		Name: "headline",
+		Fill: true,
+		// LEFT, FROM THE v2 REFERENCE (D-87). A centred title floated between
+		// the badge and the border while every other row of the card began at
+		// the same inset — so the one line naming the card was the one line that
+		// did not line up with it.
+		Alignment:         "left",
 		Truncatable:       true,
 		TruncatedMinWidth: 8,
 		TruncationTail:    g.Ellipsis,
 	}
+	// THE CARD'S OWN INSET, AS A COLUMN (D-87). Every row of a card's interior
+	// begins three cells in, and until now the title row began at zero — so the
+	// one line naming the card was the one line that did not line up with it.
+	//
+	// A COLUMN RATHER THAN A PREFIX, because the badge is right-anchored to the
+	// ROW: prefixing would have pushed the row three cells wide and taken the
+	// handle with it.
+	inset := components.ColumnDefinition{Name: "inset", Width: len(bcCardInset)}
 	mark := components.ColumnDefinition{
 		Name:  "mark",
 		Width: render.Width(testEventMark),
@@ -951,7 +1050,7 @@ func newCardLane(lane int, g render.Glyphs) cardLane {
 	}
 	return cardLane{
 		lane: lane, g: g, o: render.Opts{ASCII: g.Rule == "-"},
-		row:    components.NewDataTableRow(lane, []components.ColumnDefinition{headline}),
+		row:    components.NewDataTableRow(lane, []components.ColumnDefinition{inset, headline}),
 		marked: components.NewDataTableRow(lane, []components.ColumnDefinition{mark, headline}),
 	}
 }
@@ -964,7 +1063,14 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	}
 	// THE HEADLINE, NOT THE SUBJECT. The headline is what the card is ABOUT in
 	// the words a person reads; the subject is its key.
-	data := map[string]string{"headline": kindFirst(plaintext.Text(c.Headline), l.lane, l.g)}
+	headline := kindFirst(plaintext.Text(c.Headline), l.lane, l.g)
+	// A TAKEOVER NAMES ITSELF IN ITS BORDER (D-87), so repeating the headline
+	// inside it would say the same thing twice on a box whose whole job is to be
+	// read at a glance. What the row still carries is the badge and the handle.
+	if c.Slot == lineup.BreakingAlert {
+		headline = ""
+	}
+	data := map[string]string{"headline": headline}
 	row := l.row
 	if c.Test {
 		// A FABRICATED TAKEOVER SAYS SO, AND SAYS IT FIRST (FR-4.4, D-55).
@@ -1010,16 +1116,6 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	return out
 }
 
-// bcCardRows is a card's height: a top border, the title, a body row and a
-// bottom border — four, from the reference.
-//
-// EVERY CARD IS THE SAME HEIGHT, fabricated or not. The body row is blank on a
-// real card and carries D-57's corner marks on a test one, rather than a test
-// card growing a fifth row: a lane whose rows moved when an alert was injected
-// would renumber every slot below it, and the slot number is the address the
-// operator types.
-const bcCardRows = 4
-
 // box draws one card as the reference draws it: four rows, walled on every edge.
 //
 // THE BORDERS ARE WHAT D-57's CORNERS NEEDED. The console drew flat rows until
@@ -1064,23 +1160,25 @@ func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []st
 	// drawn since 0.13.0 — shared rather than copied, so the console and the
 	// header cannot come to disagree about what a border looks like.
 	bx := render.HeavyBox(l.o.ASCII)
-	rule := strings.Repeat(bx.Rule, inner)
+	rule := boxRule(bx.Rule, cardBoxTitle(c), inner)
 	ground := cardTone(c)
 	// The title row is the SAME renderer the flat row used, one width in: the
 	// box does not get to move the handle or re-centre the title.
 	title := newCardLane(inner, g)
+	// THE CORNERS' ROW RETIRED AT D-87, and its own reason is what retired it.
+	// D-57 put the fabricated-event mark at BOTH ends because "a card can be
+	// occluded from either side by the priority overlay, and two corners cannot
+	// both be covered by a box that starts at the left." There is no overlay any
+	// more — the tracks are columns — so the title row's mark is always visible
+	// and a second statement of it cost a row every card had to spend.
 	rows := []string{
 		bx.TL + rule + bx.TR,
 		bx.Rail + title.render(c, handle, badge) + bx.Rail,
-		// THE FIRST INTERIOR ROW IS ALWAYS THE CORNERS' ROW, tall or flat: it is
-		// where the fabricated-event marks live (D-57), and a mark that moved
-		// with the card's height would be in a different place on every card.
-		bx.Rail + l.corners(inner, c.Test) + bx.Rail,
 	}
 	for _, r := range body { // bounded by the card's own height (P10-02)
 		rows = append(rows, bx.Rail+render.PadTo(render.TruncateCells(r, inner), inner)+bx.Rail)
 	}
-	rows = append(rows, bx.BL+rule+bx.BR)
+	rows = append(rows, bx.BL+strings.Repeat(bx.Rule, inner)+bx.BR)
 	// THE WHOLE BOX IS PAINTED, BORDERS INCLUDED (D-86). A card is one object;
 	// a ground that stopped at the border would draw a coloured window inside a
 	// colourless frame, which reads as a fill rather than as a card.
@@ -1088,6 +1186,36 @@ func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []st
 		rows[i] = render.TintKeeping(r, ground)
 	}
 	return rows
+}
+
+// cardBoxTitle is what a card carries in its TOP RULE, or nothing.
+//
+// ONLY THE TAKEOVER HAS ONE (D-87), and the reference is emphatic about it:
+// `┏━━━ ! ALERT ! - TAKEOVER ━━━┓`. A hazard interrupting the programme
+// announces itself in the frame around it, not in a row inside it — which is
+// what lets the box be read as an interruption at a glance, from the shape
+// rather than from the words.
+func cardBoxTitle(c lineup.Card) string {
+	if c.Slot == lineup.BreakingAlert {
+		return bcTakeoverTitle
+	}
+	return ""
+}
+
+// bcTakeoverTitle is the takeover box's own name, from the v2 reference.
+const bcTakeoverTitle = "! ALERT ! - TAKEOVER"
+
+// boxRule is a top border carrying a title at its left, in the masthead's shape.
+//
+// THE CORNERS ALWAYS LAND. A title wider than the rule is dropped rather than
+// pushing a corner off the row — the same rule `render.BoxTitled` states, which
+// is where this shape comes from.
+func boxRule(mark, title string, inner int) string {
+	if title == "" || inner < render.Width(title)+6 {
+		return strings.Repeat(mark, inner)
+	}
+	head := strings.Repeat(mark, 3) + " " + title + " "
+	return head + strings.Repeat(mark, inner-render.Width(head))
 }
 
 // cardTone is the ground a card is painted on, and the empty string for a slot
@@ -1143,30 +1271,6 @@ func worstCategory(from []lineup.Arrival) (category.Category, bool) {
 	}
 	return worst, found
 }
-
-// corners is the card's body row: blank, or D-57's marks at both ends.
-//
-// BOTH ENDS, which is the ticker's own reasoning one surface along — it marks a
-// fabricated item at BOTH ends of the tape "because the tape scrolls: a marker
-// at one end only is off-window half the time." A card can be occluded from
-// either side by the priority overlay, and two corners cannot both be covered by
-// a box that starts at the left.
-// PASSED, NOT CARRIED. A first version set a `test` field on the lane inside
-// `render` — which takes a VALUE receiver, so the flag died with the copy and
-// the corners never drew. Hidden state across two methods of a value type is
-// how that happens; the fact travels as an argument now.
-func (l cardLane) corners(inner int, test bool) string {
-	if !test || inner < 2*len(bcCornerMark)+4 {
-		return strings.Repeat(" ", inner)
-	}
-	gap := inner - 2*len(bcCornerMark) - 4
-	return "  " + bcCornerMark + strings.Repeat(" ", gap) + bcCornerMark + "  "
-}
-
-// bcCornerMark is the short form of the test mark, for the corners. The title
-// row carries the full `**TEST EVENT**`; the corners repeat the fact in the
-// space a corner has.
-const bcCornerMark = "TEST"
 
 // kindFirst drops the card's KIND before it touches the subject.
 //

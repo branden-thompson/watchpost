@@ -106,27 +106,29 @@ func (b Broadcaster) slotRows(r bcRegion, cards []lineup.Card, lane cardLane) []
 			rows = append(rows, lane.boxOf(c, handle, "STANDARD", b.readBody(o, lane, c, handle, decided))...)
 			continue
 		}
-		rows = append(rows, lane.box(c, handle, "STANDARD")...)
+		rows = append(rows, lane.boxOf(c, handle, "STANDARD", b.flatBody(o, c, handle, decided))...)
 	}
 	return rows
 }
 
-// bcReadLines is how many lines of the script a read card shows.
+// bcReadLines is how many rows a read card gives its manifest.
 //
-// FIVE, FROM THE REFERENCE — its LIVE card runs eleven rows: the border, the
-// title, a blank, five of script, a blank, the controls, the border. It is a
-// WINDOW onto the read and never the whole of it, which is what `Details (Full
-// Read)` is for.
-const bcReadLines = 5
+// FOUR, FROM THE v2 REFERENCE, which lists a location report's four sources —
+// the forecast, the marine report, the fire report and the seismic report. It is
+// a MANIFEST and never the read itself (D-87, HUM LEAD 2026-09-11): "The full
+// script on the top level card doesn't make sense when I can drill down to read
+// the whole thing. What DOES MAKE SENSE for the operator is to get a SUMMARY of
+// what the report contains *before* it goes on air."
+const bcReadLines = 4
 
 const (
-	// bcFlatCardRows is a card the operator only ORDERS: border, title, a row,
-	// border.
-	bcFlatCardRows = 4
+	// bcFlatCardRows is a card the operator only ORDERS (D-87): border, title,
+	// its status, a blank, its details control, border.
+	bcFlatCardRows = 6
 
-	// bcReadCardRows is a card the operator READS FROM: the flat card plus the
-	// script window, a blank, and the card's own controls.
-	bcReadCardRows = bcFlatCardRows + bcReadLines + 2
+	// bcReadCardRows is a card the operator READS FROM: the flat card's header
+	// plus the data stamp, the manifest and its heading, and the contents.
+	bcReadCardRows = bcFlatCardRows + 3 + bcReadLines
 )
 
 // readBody is the interior of a card the operator reads from, below the row the
@@ -144,89 +146,34 @@ const (
 // hands the console the lineup. The words were already here. What was missing
 // was the drawing.
 func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handle string, decided bool) []string {
-	rows := b.scriptWindow(o, lane, c)
-	rows = append(rows, "")
 	if !decided {
-		return append(rows, "") // nothing to detail, and the shape holds
+		rows := []string{""}
+		// AN EMPTY SLOT HAS NOTHING TO MANIFEST, and drawing the headings over
+		// nothing would promise contents that are not coming.
+		for range bcReadCardRows - bcFlatCardRows + 1 {
+			rows = append(rows, "")
+		}
+		return append(rows, "")
 	}
-	// THE CONTROL IS THE CARD'S OWN HANDLE, which is the reference: `[ 0 ]
-	// Details (Full Read)`. The operator types the address they can already see
-	// on the card, so there is one number to learn per card rather than two.
-	return append(rows, bcCardInset+o.KeyCap(handle)+" Details (Full Read)")
+	rows := []string{bcCardInset + "STATUS:  " + cardStatus(c, decided)}
+	rows = append(rows, bcCardInset+cardPulled(o, c, b.now, lane.inner()-2*len(bcCardInset)), "",
+		bcCardInset+"READ CONTENTS", bcCardInset+manifestHeading(lane.inner()-2*len(bcCardInset)))
+	rows = append(rows, b.manifestRows(c, lane.inner()-2*len(bcCardInset))...)
+	return append(rows, "", bcCardInset+" "+o.KeyCap(handle)+"  Report Details")
+}
+
+// flatBody is the interior of a card the operator only ORDERS (D-87): what it is
+// waiting for, and the way in to the rest of it.
+func (b Broadcaster) flatBody(o render.Opts, c lineup.Card, handle string, decided bool) []string {
+	if !decided {
+		return []string{"", "", ""}
+	}
+	return []string{
+		bcCardInset + "STATUS:  " + cardStatus(c, decided),
+		"",
+		bcCardInset + " " + o.KeyCap(handle) + "  Report Details",
+	}
 }
 
 // bcCardInset is where a read card's own text begins, counted off the reference.
 const bcCardInset = "   "
-
-// scriptWindow is the card's words as the reference draws them: `bcReadLines` of
-// wrapped script, inset to the same column the card's own control sits at.
-//
-// A WINDOW, AND THE OPERATOR KNOWS WHERE THE REST IS (HUM LEAD, 2026-09-11):
-// "The 5 line preview is fine - the operator should be able to inspect the full
-// text of the report by keying the number position of either the live card [0]
-// or the UP Next [1] card." So this shows the OPENING and never apologises for
-// the length; `[ n ] Details (Full Read)` is the way in, and it sits two rows
-// below.
-//
-// AND IT SAYS WHEN THERE IS MORE, on the last line it has room for. A window
-// with no sign of its own edge reads as a short report — which on a station is
-// the difference between "that is all it says" and "that is all it fits". The
-// ellipsis is the glyph set's, so it degrades to "..." with the rest of the
-// console (A11Y) rather than inventing a mark of its own.
-//
-// THE HEIGHT IS FIXED regardless, which is readBody's rule one level up: fewer
-// lines are padded, more are cut, and no card changes shape when its words land.
-//
-// UP NEXT GETS IT TOO, and that falls out rather than being added. D-68 gives
-// slots 0 and 1 the tall box, and a card's words are composed AT STANDBY (DR-7)
-// — so the operator can read one card ahead of the one on the air.
-func (b Broadcaster) scriptWindow(o render.Opts, lane cardLane, c lineup.Card) []string {
-	rows := make([]string, 0, bcReadLines+2)
-	room := lane.inner() - 2*len(bcCardInset)
-	var wrapped []string
-	if room > 0 {
-		lines := make([]string, 0, len(c.Script.Parts))
-		for _, p := range c.Script.Parts { // bounded by the script (P10-02)
-			lines = append(lines, p.Text)
-		}
-		wrapped = render.WrapLines(lines, room)
-	}
-	for i := range bcReadLines { // bounded by the card's height (P10-02)
-		if i >= len(wrapped) {
-			rows = append(rows, "")
-			continue
-		}
-		line := wrapped[i]
-		if i == bcReadLines-1 && len(wrapped) > bcReadLines {
-			line = more(o, line, room)
-		}
-		rows = append(rows, bcCardInset+line)
-	}
-	return rows
-}
-
-// more marks a line as the last one that fits, with words still to come.
-//
-// IT IS SEPARATED FROM THE WORDS WHERE THERE IS ROOM, and that is not cosmetic.
-// The mark means "there is MORE BELOW", not "this line continues" — and set
-// flush against a sentence that ended cleanly it reads as a typo, which is
-// exactly what the first draft produced: "…a high near sixty-eight tomorrow.…".
-// Caught by looking at the rendered card rather than at the test, which is the
-// only way that class of defect is ever caught.
-//
-// IT CUTS ONLY WHEN IT MUST, and then it sets the mark FLUSH — a line that had
-// to be shortened genuinely does continue, so the two cases read differently on
-// purpose. Cutting at all is the fallback because the box truncates what it is
-// given, and a tail appended past the edge would be the one thing the reader
-// needs and the one thing removed.
-func more(o render.Opts, line string, room int) string {
-	tail := o.Glyphs().Ellipsis
-	if render.Width(line)+1+render.Width(tail) <= room {
-		return line + " " + tail
-	}
-	keep := room - render.Width(tail)
-	if keep < 1 {
-		return line // no room to say it; the control two rows down still does
-	}
-	return render.TruncateCells(line, keep) + tail
-}

@@ -402,6 +402,7 @@ func arrivalsOf(fresh []globalfeed.Event) []lineup.Arrival {
 			Subject:  subjectOf(e),
 			Severity: int(e.Severity),
 			At:       e.At,
+			Until:    e.Until,
 			Lat:      e.Lat,
 			Lon:      e.Lon,
 			HasPoint: e.HasPoint,

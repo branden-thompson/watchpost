@@ -10,6 +10,8 @@ package tty
 
 import (
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -82,62 +84,63 @@ func TestTheRailIsWalledOnBothSides(t *testing.T) {
 	}
 }
 
-// THE ASSEMBLED FRAME LANDS ON THE REFERENCE'S OWN COLUMNS.
+// THE TRACKS LAND ON THE REFERENCE'S COLUMNS (D-87).
 //
-// `mock-broadcaster-v1.txt` row 56: the rail's walls at 0 and 4, the card's
-// border at 9 and 140, the inner wall at 144, the scroll rail at 145, and the
-// frame's own edge at 149. Those are the numbers, and they are what a reader
-// checks the drawing against.
-//
-// IN TWO HALVES, because they have two owners: `section` draws the rail and the
-// card, and `framed` adds the right-hand chrome — the scroll rail belongs to the
-// running order as a whole, so it cannot be drawn per region.
-func TestTheSectionLandsOnTheReferencesColumns(t *testing.T) {
+// READ OFF THE MOCK, NOT COPIED OUT OF IT. The numbers live in
+// `mock-broadcaster-v2.txt` and this test finds them there, so the reference and
+// the console cannot drift apart without the drift being the failure — which is
+// the standing rule for this project's mocks and is exactly what a hand-copied
+// 132 stopped being the moment the layout changed.
+func TestTheTracksLandOnTheReferencesColumns(t *testing.T) {
+	left, right := mockTrackColumns(t)
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	if got := b.cardBoxWidth(); got != 132 {
-		t.Fatalf("the reference's card box is 132 cells; got %d", got)
-	}
-	box := newCardLane(b.cardBoxWidth(), b.opts().Glyphs()).
-		box(aCard(t, "LOCATION REPORT • OCEANSIDE, CA 92057"), "6", "STANDARD")
-	rows := b.section("LINE UP", box)
 
-	top := []rune(rows[0])
-	if len(top) != 141 {
-		t.Fatalf("a section ends at the card's border; got %d cells", len(top))
+	start := bcRailWidth + bcRailGap
+	if start != left[0] {
+		t.Errorf("the alert column starts at %d; the reference puts it at %d", start, left[0])
 	}
-	for col, want := range map[int]rune{0: '|', 4: '|', 9: '+', 140: '+'} {
-		if top[col] != want {
-			t.Errorf("column %d is %q, want %q\n%s", col, string(top[col]), string(want), string(top))
-		}
+	if got := start + b.priorityWidth() - 1; got != left[1] {
+		t.Errorf("the alert column ends at %d; the reference ends it at %d", got, left[1])
 	}
+	main := start + b.priorityWidth() + bcColumnGap
+	if main != right[0] {
+		t.Errorf("the running order starts at %d; the reference puts it at %d", main, right[0])
+	}
+	if got := main + b.cardBoxWidth() - 1; got != right[1] {
+		t.Errorf("the running order ends at %d; the reference ends it at %d", got, right[1])
+	}
+}
 
-	// A ROW IN THE MIDDLE. The scroll rail's ▲ and ▼ take the first and last
-	// rows of a zone and its thumb takes one between them (D-70), so the plain
-	// wall is what the rows around them carry.
-	all := b.framed(rows, 10, 10)
-	framed := []rune(all[len(all)-2])
-	if len(framed) != 150 {
-		t.Fatalf("the framed row is the terminal's width; got %d", len(framed))
+// mockTrackColumns is where the v2 reference puts each track's borders, read
+// from the row that carries both.
+func mockTrackColumns(t *testing.T) (left, right [2]int) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "06_docs", "02_features",
+		"0.16.0-broadcaster-ui", "01-objectives", "mock-broadcaster-v2.txt"))
+	if err != nil {
+		t.Fatalf("the reference mock is the source of these numbers: %v", err)
 	}
-	// 144 IS THE WALL AND THE SCROLL RAIL AT ONCE, and 149 is the frame's edge.
-	//
-	// THIS USED TO ASSERT A WALL AT 144 AND A SEPARATE RAIL AT 145, which is a
-	// column the reference does not have — so everything right of the cards sat
-	// a cell off (HUM LEAD, UAT 2026-09-10: "right hand lanes are off"). Counted
-	// off `mock-broadcaster-v1.txt`: an ordinary row ends `╯   │    │` and the
-	// thumb row ends `█    │`, the thumb standing exactly WHERE the bar was.
-	for col, want := range map[int]rune{144: '|', 149: '|'} {
-		if framed[col] != want {
-			t.Errorf("framed column %d is %q, want %q\n%s", col, string(framed[col]), string(want), string(framed))
+	for _, line := range strings.Split(string(raw), "\n") {
+		if !strings.Contains(line, bcTakeoverTitle) {
+			continue
+		}
+		r := []rune(line)
+		var opens, closes []int
+		for i, c := range r {
+			switch c {
+			case '┏':
+				opens = append(opens, i)
+			case '┓':
+				closes = append(closes, i)
+			}
+		}
+		if len(opens) == 2 && len(closes) == 2 {
+			return [2]int{opens[0], closes[0]}, [2]int{opens[1], closes[1]}
 		}
 	}
-	// AND 145..148 ARE AIR. A mark there is the extra column coming back.
-	for col := 145; col < 149; col++ {
-		if framed[col] != ' ' {
-			t.Errorf("column %d is %q; 145..148 are air\n%s", col, string(framed[col]), string(framed))
-		}
-	}
+	t.Fatal("the reference has no row carrying both tracks' borders")
+	return
 }
 
 // A SHORT SECTION GETS A SHORTER WORD, NOT A CUT ONE. A rail reading "SCHEDULE"
@@ -224,39 +227,32 @@ func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
 	}
 }
 
-// THE FRAME CLOSES ON BOTH SIDES, on every drawn row.
+// EVERY ROW OF THE RUNNING ORDER OPENS THE FRAME (D-87).
 //
-// THE BUG THIS PINS was mine and it was invisible: the station section padded
-// its rows to the full lane and THEN added the inset, so every row ran three
-// cells long and `clamp` ate the right-hand wall. The rows were still exactly
-// the terminal's width — the clamp saw to that — so nothing measured wrong.
-// Only the EDGE was gone.
-func TestEveryDrawnRowClosesTheFrame(t *testing.T) {
+// IT USED TO CLOSE IT TOO, and the v2 reference took that edge away: "Notice the
+// line on the far right is gone." What is left on the right is three of air and
+// the scroll, so what a row of the running order still owes is its LEFT wall —
+// the rail's own — and its full width.
+func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	rows := strings.Split(stripANSITest(b.View().Content), "\n")
-	last := 0
+
+	// FROM THE FIRST CARD DOWN. Above it are the masthead's own box, the painted
+	// station band (no walls by design, D-70) and the lane's bare caption (none
+	// either, D-71) — three regions that close themselves or deliberately do not.
+	first, last := -1, 0
 	for i, r := range rows {
 		if strings.TrimSpace(r) != "" {
 			last = i
 		}
-	}
-	// FROM THE RUNNING ORDER DOWN. The station band above it has NO walls by
-	// design (D-70): it is a painted region, and colour is its edge.
-	// FROM THE FIRST CARD DOWN. Above it are the masthead's own box, the painted
-	// station band (which has no walls by design, D-70) and the lane's bare
-	// caption (which has none either, D-71) — three regions that close
-	// themselves, or deliberately do not.
-	first := 0
-	for i, r := range rows {
-		if strings.Contains(r, "|    +---") {
-			first = i
-			break
+		if first < 0 && strings.Contains(r, bcLaneLabel) {
+			first = i + 1 // the running order begins under its caption
 		}
 	}
-	if first == 0 {
-		t.Fatal("no cards drawn")
+	if first < 0 {
+		t.Fatal("the running order drew no caption, so there is nothing to check")
 	}
 	for i := first; i <= last; i++ {
 		r := []rune(rows[i])
@@ -264,18 +260,15 @@ func TestEveryDrawnRowClosesTheFrame(t *testing.T) {
 			t.Errorf("row %d is %d cells, want %d", i, len(r), b.width)
 			continue
 		}
-		// EVERY ROW OF THE RUNNING ORDER CLOSES ON THE FRAME'S OUTER EDGE.
-		if r[b.width-1] != '|' {
-			t.Errorf("row %d does not close the frame: ends %q\n%.40s", i, string(r[b.width-1]), rows[i])
-		}
-		// AND A ROW THAT OPENS WITH A WALL CLOSES WITH THE INNER ONE. A blank
-		// row opens with neither, because it is a BREAK between two regions and
-		// the HUM LEAD ruled the break deliberate: "the blank row in between
-		// sections needs to be completely blank — the breaks in the mock were
-		// intentional."
-		// A BREAK ROW carries nothing left of the frame's right-hand columns —
-		// at most the scroll rail's own cap, which is exactly what a cap is for.
-		if strings.TrimSpace(string(r[:b.width-bcRightChrome+3])) == "" {
+		// A ROW WITH NOTHING IN THE CARD COLUMN OWES NOTHING. A region break is
+		// completely blank, walls included (HUM LEAD, UAT 2026-09-10), and the
+		// scroll rail's caps deliberately sit ON those breaks — so the question
+		// is only ever asked of a row the running order actually drew.
+		main := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap
+		// THE CARD COLUMN ONLY, not everything right of it: the scroll rail's
+		// caps sit ON the region breaks by design (D-70), so a row carrying just
+		// a cap is still a break and still owes no wall.
+		if len(r) < main+b.cardBoxWidth() || strings.TrimSpace(string(r[main:main+b.cardBoxWidth()])) == "" {
 			continue
 		}
 		if r[0] != '|' {
@@ -291,25 +284,26 @@ func TestEveryDrawnRowClosesTheFrame(t *testing.T) {
 func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	body := b.section("LINE UP", []string{strings.Repeat("-", b.cardBoxWidth()), strings.Repeat("-", b.cardBoxWidth()), strings.Repeat("-", b.cardBoxWidth())})
+	row := strings.Repeat("-", b.cardBoxWidth())
+	body := b.zipTracks(rail("SCHEDULED LINE UP", 3), nil, []string{row, row, row})
 	framed := b.framed(body, 2, 10)
 
-	// THE RAIL IS COLUMN 144 — the wall's own column, which is where the
-	// reference puts it. Every row carries the bar; exactly one carries the
-	// thumb instead. An earlier version blanked the bar and drew the thumb in a
-	// gutter of its own at 145, which gave the frame a column the mock has not.
+	// THE RAIL IS COLUMN 148 (D-87), and it is the LAST thing on the row: the
+	// frame's outer wall on this side is gone, because the cards are boxes with
+	// their own borders and a wall around them was a second edge saying the same
+	// thing. Every row carries the bar; exactly one carries the thumb.
 	// ▲ OPENS IT AND ▼ CLOSES IT (D-70), which is `Railify`'s own contract —
 	// "callers draw ▲/▼ themselves" — and the HUM LEAD's UAT: "the vertical
 	// control should start and end where the mock says."
-	if got := []rune(framed[0])[b.width-6]; got != '^' {
+	if got := []rune(framed[0])[b.width-2]; got != '^' {
 		t.Errorf("the rail opens on %q, want the up cap", string(got))
 	}
-	if got := []rune(framed[len(framed)-1])[b.width-6]; got != 'v' {
+	if got := []rune(framed[len(framed)-1])[b.width-2]; got != 'v' {
 		t.Errorf("the rail closes on %q, want the down cap", string(got))
 	}
 	thumbs := 0
 	for i, r := range framed[1 : len(framed)-1] {
-		switch c := []rune(r)[b.width-6]; c {
+		switch c := []rune(r)[b.width-2]; c {
 		case '#':
 			thumbs++
 		case '|':
@@ -368,13 +362,11 @@ func TestEachRegionsRailCarriesItsOwnGround(t *testing.T) {
 		label string
 		tok   render.Token
 	}{
-		{"LIVE", render.RailLiveBG},
+		{"LIVE ON AIR", render.RailLiveBG},
 		{"UP NEXT", render.RailNextBG},
-		{"SCHEDULED", render.RailQueueBG},
-		// ONE GROUND FOR BOTH HALVES OF THE QUEUE: they are one stack of cards
-		// the rail happens to name twice, which is why no break is drawn between
-		// them either.
-		{"LINE UP", render.RailQueueBG},
+		// ONE GROUND FOR THE WHOLE QUEUE, which D-87 made one region as well —
+		// SCHEDULED and LINE UP were one stack of cards the rail named twice.
+		{"SCHEDULED LINE UP", render.RailQueueBG},
 	} {
 		t.Run(tc.label, func(t *testing.T) {
 			rows := railColumn(tc.label, 6, g)
