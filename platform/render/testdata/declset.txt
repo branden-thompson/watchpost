@@ -136,6 +136,7 @@ func (Clock).Time
 func (Clock).TimeSec
 func (Clock).WeekdayDateTime
 func (Clock).layout
+func (LocationRow).marks
 func (Opts).BandHeight
 func (Opts).BandRows
 func (Opts).Block
@@ -153,6 +154,7 @@ func (Opts).KeyCapIf
 func (Opts).KeyCapInverted
 func (Opts).KeyCapWith
 func (Opts).Knots
+func (Opts).LineupTable
 func (Opts).ListMark
 func (Opts).LoadingDots
 func (Opts).LocationTable
@@ -171,6 +173,7 @@ func (Opts).TrendGlyph
 func (Opts).Wind
 func (Opts).columnHeader
 func (Opts).groupHeader
+func (Opts).lineupRowData
 func (Opts).rowData
 func (Opts).scrollBody
 func (Opts).scrollWindow
@@ -281,10 +284,15 @@ func groupsFor
 func hexRGB
 func init
 func isCategoryTint
+func kmOf
 func layoutFor
 func liftAll
 func lightOverrides
+func lineupColumnDefs
+func lineupColumns
+func lineupGroups
 func luminance
+func markCells
 func milHourWords
 func minuteWords
 func mix
@@ -328,7 +336,9 @@ type Clock
 type Control
 type DayCell
 type Glyphs
+type LineupRow
 type LocationRow
+type Marks
 type Opts
 type RailGlyphs
 type SevereCell
