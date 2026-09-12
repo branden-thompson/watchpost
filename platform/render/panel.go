@@ -310,16 +310,26 @@ type BoxGlyphs struct {
 	// rather than for their weight, so a caller reads as drawing a box rather
 	// than as choosing a font.
 	Rule, Rail string
+
+	// The TEES, for a box DIVIDED into cells (D-95): T where a rail meets the
+	// top rule, B where it meets the bottom, L and R where a rule crosses the
+	// outer rails, and X where both cross.
+	//
+	// THEY ARRIVED WITH THE CONSOLE'S AIR BOX, which is one box holding a label
+	// column and two stacked rows — the first thing in the app to divide a box
+	// rather than merely draw one. Under `--ascii` every mark is `+`, exactly as
+	// the corners already are.
+	T, B, L, R, X string
 }
 
 // HeavyBox is the masthead's box: square corners, bold lines.
 func HeavyBox(ascii bool) BoxGlyphs {
-	return boxGlyphs(ascii, "┏", "┓", "┗", "┛", "━", "┃")
+	return boxGlyphs(ascii, "┏", "┓", "┗", "┛", "━", "┃", "┳", "┻", "┣", "┫", "╋")
 }
 
 // LightBox is the panel's box: square corners, light lines (UAT 10.5).
 func LightBox(ascii bool) BoxGlyphs {
-	return boxGlyphs(ascii, "┌", "┐", "└", "┘", "─", "│")
+	return boxGlyphs(ascii, "┌", "┐", "└", "┘", "─", "│", "┬", "┴", "├", "┤", "┼")
 }
 
 // boxGlyphs is one weight's marks, or the ASCII fallback.
@@ -330,9 +340,11 @@ func LightBox(ascii bool) BoxGlyphs {
 // that the ASCII RULE was stated twice — a terminal without box drawing has no
 // weights to distinguish, so every weight falls to the same `+ - |`, and a rule
 // written twice is a rule that can come apart.
-func boxGlyphs(ascii bool, tl, tr, bl, br, rule, rail string) BoxGlyphs {
+func boxGlyphs(ascii bool, tl, tr, bl, br, rule, rail, t, b, l, r, x string) BoxGlyphs {
 	if ascii {
-		return BoxGlyphs{TL: "+", TR: "+", BL: "+", BR: "+", Rule: "-", Rail: "|"}
+		return BoxGlyphs{TL: "+", TR: "+", BL: "+", BR: "+", Rule: "-", Rail: "|",
+			T: "+", B: "+", L: "+", R: "+", X: "+"}
 	}
-	return BoxGlyphs{TL: tl, TR: tr, BL: bl, BR: br, Rule: rule, Rail: rail}
+	return BoxGlyphs{TL: tl, TR: tr, BL: bl, BR: br, Rule: rule, Rail: rail,
+		T: t, B: b, L: l, R: r, X: x}
 }

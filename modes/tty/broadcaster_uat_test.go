@@ -191,20 +191,24 @@ func TestTheReadCardsAreTallerThanTheOrderedOnes(t *testing.T) {
 func TestAReadSlotIsEmptyWhileTheStationIsAtRest(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
-	rest := strings.Join(b.slotRows(bcRegions[0], nil, lane), "\n")
+	// THE AIR BOX'S LIVE ROW, NOT A CARD REGION (D-95). LIVE stopped being a slot
+	// when it became one row of two; the rule is unchanged — a shimmer promises a
+	// read that is not coming — and the row it applies to moved.
+	rest := strings.Join(b.airBox(), "\n")
 	if strings.Contains(rest, "waiting for the line-up") {
-		t.Errorf("a stopped station shimmers in the LIVE slot:\n%s", rest)
+		t.Errorf("a stopped station shimmers in the LIVE row:\n%s", rest)
 	}
 	b.power = lineup.Running
-	live := strings.Join(b.slotRows(bcRegions[0], nil, lane), "\n")
-	if !strings.Contains(live, "waiting for the line-up") {
-		t.Errorf("a running station with nothing decided IS waiting:\n%s", live)
+	live := strings.Join(b.airBox(), "\n")
+	// A RUNNING STATION WITH NOTHING DECIDED IS WAITING, and the LIVE row says so
+	// where the card used to: the shimmer is the Director's "still choosing".
+	if !strings.Contains(live, "waiting for the line-up") && !strings.Contains(live, bcStandbyNotice) {
+		t.Errorf("a running station with nothing decided says nothing at all:\n%s", live)
 	}
-	// AND THE SLOT IS THE SAME SHAPE EITHER WAY, or the frame jumps under the
+	// AND THE BOX IS THE SAME SHAPE EITHER WAY, or the frame jumps under the
 	// operator at the moment the station goes on the air.
 	if a, c := len(strings.Split(rest, "\n")), len(strings.Split(live, "\n")); a != c {
-		t.Errorf("the read slot changes height with the station: %d at rest, %d live", a, c)
+		t.Errorf("the air box changes height with the station: %d at rest, %d live", a, c)
 	}
 }
 

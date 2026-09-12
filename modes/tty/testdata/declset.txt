@@ -44,6 +44,7 @@ const actStationToggle
 const actStatus
 const actSwapBroadcaster
 const actSwapObserver
+const bcAirLabelW
 const bcCardInset
 const bcColumnGap
 const bcDetailRoom
@@ -220,8 +221,10 @@ func (*modalMemo).stats
 func (Broadcaster).Init
 func (Broadcaster).Update
 func (Broadcaster).View
+func (Broadcaster).airBox
 func (Broadcaster).armTick
 func (Broadcaster).bandWidth
+func (Broadcaster).bedLine
 func (Broadcaster).bedSelector
 func (Broadcaster).burstBody
 func (Broadcaster).cardBoxWidth
@@ -243,7 +246,9 @@ func (Broadcaster).laneLabelRow
 func (Broadcaster).lanes
 func (Broadcaster).lineupRowOf
 func (Broadcaster).lineupRows
+func (Broadcaster).liveLine
 func (Broadcaster).liveOffset
+func (Broadcaster).mainTrack
 func (Broadcaster).manifestRows
 func (Broadcaster).milesFromTower
 func (Broadcaster).minSize
@@ -266,6 +271,7 @@ func (Broadcaster).tooSmall
 func (Broadcaster).trackArea
 func (Broadcaster).transmitterRow
 func (Broadcaster).waiting
+func (Broadcaster).withControl
 func (Broadcaster).withSize
 func (Broadcaster).zipTracks
 func (Dashboard).DiagnosticsOpen
