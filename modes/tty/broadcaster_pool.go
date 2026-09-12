@@ -57,12 +57,12 @@ func (b Broadcaster) poolRows() []render.LocationRow {
 // BY KEY, NOT BY NAME: `snapshot.Key` is the identity the whole app matches on,
 // and two centroids of one place are two locations.
 func (b Broadcaster) snapshotFor(ref snapshot.LocationRef) *snapshot.Location {
-	if b.snap == nil {
+	if b.pool == nil {
 		return nil
 	}
 	want := snapshot.Key(ref)
-	for i := range b.snap.Locations { // bounded by the snapshot (P10-02)
-		l := &b.snap.Locations[i]
+	for i := range b.pool.Locations { // bounded by the snapshot (P10-02)
+		l := &b.pool.Locations[i]
 		if snapshot.Key(snapshot.LocationRef{Lat: l.Lat, Lon: l.Lon}) == want {
 			return l
 		}

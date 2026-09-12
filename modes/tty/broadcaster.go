@@ -154,6 +154,12 @@ type Broadcaster struct {
 	// power follows.
 	bed BedMsg
 
+	// pool is the recent pipeline's snapshot — where the LOCATION POOL's weather
+	// comes from (D-99). Never the masthead's: that stamp is the priority
+	// pipeline's, and one field for both would report a freshness the console does
+	// not have.
+	pool *snapshot.Snapshot
+
 	// area is where the station transmits from and how far it reaches (D-72),
 	// published by the schedule's own owner rather than guessed at here.
 	area StationAreaMsg
@@ -248,6 +254,14 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 	// masthead — so both are told, whichever one is on screen.
 	if v, ok := msg.(SnapshotMsg); ok && v.Snap != nil {
 		b.snap = v.Snap
+		return b.armTick(nil)
+	}
+	// AND THE RECENT ONE, WHICH IS WHERE THE POOL'S WEATHER LIVES (D-99). Kept
+	// apart from `snap` deliberately: the masthead's stamp and the API summary are
+	// the PRIORITY pipeline's, and merging the two would make the console report a
+	// freshness it does not have.
+	if v, ok := msg.(RecentSnapshotMsg); ok && v.Snap != nil {
+		b.pool = v.Snap
 		return b.armTick(nil)
 	}
 	if _, ok := msg.(tickMsg); ok {
