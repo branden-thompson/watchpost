@@ -99,6 +99,14 @@ func TestTheTracksLandOnTheReferencesColumns(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 
+	// THE COLUMNS ARE READ FROM THE FRAME'S OWN EDGE, and only its WIDTH moved
+	// (D-96).
+	//
+	// The console carries Observer's three-column left margin now. Every offset
+	// BETWEEN the tracks — the rail, the gap, the alert column, where the card
+	// begins — is measured from the frame and is unchanged by a margin outside it.
+	// What does change is how much room is left: the card is three cells narrower,
+	// so the running order's RIGHT edge is the one number that moves.
 	start := bcRailWidth + bcRailGap
 	if start != left[0] {
 		t.Errorf("the alert column starts at %d; the reference puts it at %d", start, left[0])
@@ -110,8 +118,9 @@ func TestTheTracksLandOnTheReferencesColumns(t *testing.T) {
 	if main != right[0] {
 		t.Errorf("the running order starts at %d; the reference puts it at %d", main, right[0])
 	}
-	if got := main + b.cardBoxWidth() - 1; got != right[1] {
-		t.Errorf("the running order ends at %d; the reference ends it at %d", got, right[1])
+	if got, want := main+b.cardBoxWidth()-1, right[1]-len(bcLeftInset); got != want {
+		t.Errorf("the running order ends at %d; the reference ends it at %d, less the %d-column "+
+			"left margin = %d", got, right[1], len(bcLeftInset), want)
 	}
 }
 
@@ -286,8 +295,11 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 		if len(r) < main+b.cardBoxWidth() || strings.TrimSpace(string(r[main:main+b.cardBoxWidth()])) == "" {
 			continue
 		}
-		if r[0] != '|' {
-			t.Errorf("row %d does not open the frame: starts %q\n%.40s", i, string(r[0]), rows[i])
+		// AT THE INSET, NOT AT COLUMN ZERO (D-96): the frame carries Observer's
+		// three-column left margin now, so its own edge begins there.
+		at := len(bcLeftInset)
+		if len(r) <= at || r[at] != '|' {
+			t.Errorf("row %d does not open the frame at column %d\n%.40s", i, at, rows[i])
 		}
 	}
 }
@@ -299,6 +311,8 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
+	// THE GUTTER IS MEASURED FROM THE FRAME, NOT THE TERMINAL (D-96): `railed`
+	// builds at `frameWidth` and the margin is added afterwards, in `clamp`.
 	row := strings.Repeat("-", b.cardBoxWidth())
 	body := b.zipTracks(rail("SCHEDULED LINE UP", 3), nil, []string{row, row, row})
 	framed := b.framed(body, 2, 10)
@@ -310,15 +324,15 @@ func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	// ▲ OPENS IT AND ▼ CLOSES IT (D-70), which is `Railify`'s own contract —
 	// "callers draw ▲/▼ themselves" — and the HUM LEAD's UAT: "the vertical
 	// control should start and end where the mock says."
-	if got := []rune(framed[0])[b.width-2]; got != '^' {
+	if got := []rune(framed[0])[b.frameWidth()-2]; got != '^' {
 		t.Errorf("the rail opens on %q, want the up cap", string(got))
 	}
-	if got := []rune(framed[len(framed)-1])[b.width-2]; got != 'v' {
+	if got := []rune(framed[len(framed)-1])[b.frameWidth()-2]; got != 'v' {
 		t.Errorf("the rail closes on %q, want the down cap", string(got))
 	}
 	thumbs := 0
 	for i, r := range framed[1 : len(framed)-1] {
-		switch c := []rune(r)[b.width-2]; c {
+		switch c := []rune(r)[b.frameWidth()-2]; c {
 		case '#':
 			thumbs++
 		case '|':

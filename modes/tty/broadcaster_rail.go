@@ -146,7 +146,7 @@ func (b Broadcaster) cardBoxWidth() int {
 // trackArea is everything the two tracks have to share: the frame, less the
 // rail on the left and the scroll on the right.
 func (b Broadcaster) trackArea() int {
-	w := b.width - bcRailWidth - bcRailGap - bcRightChrome
+	w := b.frameWidth() - bcRailWidth - bcRailGap - bcRightChrome
 	if w < 0 {
 		return 0
 	}
@@ -333,7 +333,7 @@ func (b Broadcaster) railed(body []string, rail bool, lo, shown, total int) []st
 		// THREE OF AIR AND THE SCROLL, AND NOTHING AFTER IT (D-87). The frame's
 		// outer wall on this side is gone: the cards are boxes with their own
 		// borders, so a wall around them was a second edge saying the same thing.
-		out[i] = render.PadTo(r+"   ", b.width-2) + mark
+		out[i] = render.PadTo(r+"   ", b.frameWidth()-2) + mark
 	}
 	return out
 }

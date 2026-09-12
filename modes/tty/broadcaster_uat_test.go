@@ -99,7 +99,8 @@ func TestOneBlankRowSeparatesTheRegions(t *testing.T) {
 	for i, r := range rows {
 		// A CARD's border, not the masthead's — that box draws `+` corners too,
 		// and anchoring on the glyph alone put `first` on row 2.
-		if strings.Contains(r, "   +---") && strings.HasPrefix(r, "|") {
+		// AND THE FRAME OPENS AT THE MARGIN NOW, not at column zero (D-96).
+		if strings.Contains(r, "   +---") && strings.HasPrefix(r, bcLeftInset+"|") {
 			if first < 0 {
 				first = i
 			}
@@ -356,7 +357,9 @@ func TestTheLaneCaptionSitsOverTheRunningOrder(t *testing.T) {
 	}
 	// AND IT IS CENTRED OVER THE CARDS, which is what makes it read as naming
 	// the column rather than the frame.
-	main := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap
+	// FROM THE FRAME'S EDGE (D-96): the row carries the margin `clamp` added, so
+	// the caption's own offset is measured past it.
+	main := len(bcLeftInset) + bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap
 	lead := strings.Index(rows[at], bcLaneLabel) - main
 	trail := b.cardBoxWidth() - lead - len(bcLaneLabel)
 	if d := lead - trail; d > 1 || d < -1 {
@@ -458,7 +461,10 @@ func TestTheStationBandIsEvenlyInset(t *testing.T) {
 		}
 	}
 	for i, r := range rows {
-		if got := render.Width(r); got != b.width {
+		// AT THE FRAME'S WIDTH, NOT THE TERMINAL'S (D-96): the band is painted
+		// before `clamp` adds the three-column left margin, and a rectangle is a
+		// rectangle in the space it is drawn in.
+		if got := render.Width(r); got != b.frameWidth() {
 			t.Errorf("row %d is %d cells; a painted band is a rectangle", i, got)
 		}
 		p := stripANSITest(r)

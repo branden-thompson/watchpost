@@ -303,8 +303,20 @@ func (b Broadcaster) View() tea.View {
 // opts is the console's render options — one owner, so a glyph decision is
 // made in one place rather than at every call site.
 func (b Broadcaster) opts() render.Opts {
-	return render.Opts{Width: b.width, ASCII: b.ascii, Frame: b.frame}
+	return render.Opts{Width: b.frameWidth(), ASCII: b.ascii, Frame: b.frame}
 }
+
+// frameWidth is how much room the console's own content has: the terminal, less
+// the left margin the frame adds in `clamp` (D-96).
+//
+// THE LAYOUT IS BUILT AT THIS AND THE MARGIN IS ADDED ONCE. Building at the
+// terminal's width and insetting afterwards would push three columns of every
+// row off the right edge.
+func (b Broadcaster) frameWidth() int { return max(0, b.width-len(bcLeftInset)) }
+
+// bcLeftInset is Observer's own left margin, matched (HUM LEAD, 2026-09-12:
+// "we need the global 3 col left inset as well").
+const bcLeftInset = "   "
 
 // minSize is the floor below which the console refuses to draw (FR-7.3).
 //
@@ -393,7 +405,15 @@ func (b Broadcaster) clamp(lines []string) string {
 			// `render.Overlay` composites against that, so a window centred on
 			// the TERMINAL landed past the frame's right edge and the composite
 			// grew sideways instead of stacking (UAT, 2026-09-10).
-			lines[i] = render.PadTo(render.TruncateCells(l, b.width), b.width)
+			// AND INSET FROM THE LEFT, HERE AND NOWHERE ELSE (D-96). Observer
+			// insets EVERY row by three — masthead, radio panel, ticker, controls
+			// and table alike — and the console now matches it, so the operator's
+			// eye finds the same left edge on both surfaces.
+			//
+			// ONE APPLICATION POINT, because an inset applied per region is an
+			// inset each new region has to remember. The layout is built at
+			// `frameWidth` and the frame adds the margin once.
+			lines[i] = render.PadTo(bcLeftInset+render.TruncateCells(l, b.frameWidth()), b.width)
 		}
 	}
 	return strings.Join(lines, "\n")
@@ -844,7 +864,7 @@ func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
 	// the full width and trimmed, which would put the right-hand air inside the
 	// paint and leave the row a different length from every other.
 	for _, r := range append(append([]string{""}, b.stationLine()...), "") {
-		rows = append(rows, render.PadTo(bcSectionInset+r, b.width-len(bcSectionInset))+bcSectionInset)
+		rows = append(rows, render.PadTo(bcSectionInset+r, b.frameWidth()-len(bcSectionInset))+bcSectionInset)
 	}
 	return o.Block(strings.Join(rows, "\n"), fg, bg)
 }
@@ -856,7 +876,7 @@ func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
 // the two disagreeing by three cells is exactly what put the text hard against
 // the right edge of a coloured band.
 func (b Broadcaster) bandWidth() int {
-	w := b.width - 2*len(bcSectionInset)
+	w := b.frameWidth() - 2*len(bcSectionInset)
 	if w < 1 {
 		return 0
 	}
