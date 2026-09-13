@@ -63,9 +63,38 @@ func (b Broadcaster) cardDetail(handle int) (string, func(render.Opts) (string, 
 	if !decided {
 		return "", nil, false
 	}
-	// THE ID IS THE IDENTITY AND EVERYTHING DRAWN IS A FUNCTION OF THE WINDOW'S
-	// OPTS — including the title, whose separator is a glyph (cardTitle) and whose
-	// ASCII form is therefore not knowable here.
+	return b.cardWindowFor(c)
+}
+
+// alertDetail is the takeover box's way in — the hazard card `[A]` opens.
+//
+// HUM LEAD, UAT 2026-09-13: "[A] Details / Full Read / Manage in the alert window
+// doesn't currently work, it should function just like [1] in the Up Next card."
+// It did not work because nothing bound the key: `burstBody` drew the control and
+// no handler took an `A`, so the box advertised a way in that did not exist.
+//
+// THE HEAD OF THE RAIL, AND ONLY IT, which is the same card the box draws — a
+// burst is ONE card (MVS-D-77), so there is never a second to choose between.
+//
+// IT GOES THROUGH THE SAME DOOR AS A DIGIT. `cardWindowFor` is the one builder
+// of a card window; this reaches it through the alert rail and `cardDetail`
+// reaches it through the main track, so the two cannot come to disagree about
+// what a card looks like — which is the defect that would follow from giving the
+// hazard window a builder of its own.
+func (b Broadcaster) alertDetail() (string, func(render.Opts) (string, []string), bool) {
+	rail := b.lineup.Projection(lineup.AlertRail)
+	if len(rail) == 0 {
+		return "", nil, false
+	}
+	return b.cardWindowFor(rail[0])
+}
+
+// cardWindowFor is the ONE builder of a card's window, whichever track it is on.
+//
+// THE ID IS THE IDENTITY AND EVERYTHING DRAWN IS A FUNCTION OF THE WINDOW'S
+// OPTS — including the title, whose separator is a glyph (cardTitle) and whose
+// ASCII form is therefore not knowable here.
+func (b Broadcaster) cardWindowFor(c lineup.Card) (string, func(render.Opts) (string, []string), bool) {
 	return c.ID, func(o render.Opts) (string, []string) {
 		return cardTitle(c, o.Glyphs()), b.detailBody(o, c)
 	}, true

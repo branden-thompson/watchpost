@@ -242,6 +242,7 @@ func (Broadcaster).View
 func (Broadcaster).airBodyWidth
 func (Broadcaster).airBox
 func (Broadcaster).alertBox
+func (Broadcaster).alertDetail
 func (Broadcaster).anyLoading
 func (Broadcaster).armTick
 func (Broadcaster).bandWidth
@@ -253,6 +254,7 @@ func (Broadcaster).burstBody
 func (Broadcaster).cardBoxWidth
 func (Broadcaster).cardControls
 func (Broadcaster).cardDetail
+func (Broadcaster).cardWindowFor
 func (Broadcaster).chrome
 func (Broadcaster).chromeAt
 func (Broadcaster).clamp

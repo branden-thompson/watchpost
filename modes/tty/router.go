@@ -18,6 +18,7 @@ import (
 	"strconv"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -762,10 +763,25 @@ func (r Router) stationIsLive() bool { return r.broadcaster.power == lineup.Runn
 // Director has not filled, and opening a window onto that would ask the operator
 // to read the absence of a report (cardDetail).
 func (r Router) openCardWindow(key string) (Router, bool) {
-	if len(key) != 1 || key[0] < '0' || key[0] > '9' {
-		return r, false
+	var (
+		id   string
+		rows func(render.Opts) (string, []string)
+		ok   bool
+	)
+	switch {
+	// `A` IS THE TAKEOVER BOX'S HANDLE, and it is an ADDRESS like the digits
+	// rather than a binding (HUM LEAD, UAT 2026-09-13). The box draws the cap; the
+	// operator reads the key off the thing it opens.
+	//
+	// THE CONSOLE'S OWN MEANING FOR IT (D-56). Observer binds `A` to its alert
+	// modal and `a` to About; on the console `A` was unbound and fell through to
+	// nothing at all, which is what the HUM LEAD saw. Only `A` — `a` is About on
+	// BOTH surfaces and taking it here would break a key that already works.
+	case key == "A":
+		id, rows, ok = r.broadcaster.alertDetail()
+	case len(key) == 1 && key[0] >= '0' && key[0] <= '9':
+		id, rows, ok = r.broadcaster.cardDetail(int(key[0] - '0'))
 	}
-	id, rows, ok := r.broadcaster.cardDetail(int(key[0] - '0'))
 	if !ok {
 		return r, false
 	}

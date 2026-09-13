@@ -236,3 +236,61 @@ func TestAnUnchangedCardDoesNotMoveTheGeneration(t *testing.T) {
 			"the window would re-render every frame it is open", gen, r.observer.cardGen)
 	}
 }
+
+// TestTheAlertBoxsWayInOpensThePriorityCard.
+//
+// HUM LEAD, UAT 2026-09-13: "[A] Details / Full Read / Manage in the alert window
+// doesn't currently work, it should function just like [1] in the Up Next card."
+//
+// THE CONTROL WAS DRAWN AND NOTHING BOUND IT. `burstBody` appends
+// "[A]  Details / Full Read / Manage" at the bottom of the takeover box, and no
+// handler anywhere took an `A` — so the box advertised a way in that did not
+// exist. A painted control that does nothing is worse than an absent one: the
+// operator reasonably concludes the report has nothing to show.
+//
+// THE SAME DOOR AS [1], which is the whole of the ruling. `cardWindowFor` is the
+// one builder of a card window; the digit reaches it through the main track and
+// `A` reaches it through the alert rail, so the two windows cannot come to
+// disagree about what a card looks like.
+func TestTheAlertBoxsWayInOpensThePriorityCard(t *testing.T) {
+	alert := card(t, "brk1", "Vista, CA")
+	b := bcWith(t)
+	l, err := b.lineup.Queue(lineup.AlertRail, alert)
+	if err != nil {
+		t.Fatalf("seeding the rail: %v", err)
+	}
+	b, _ = b.Update(LineupMsg{Lineup: l})
+	b.width, b.height, b.ascii = 150, 74, true
+
+	// THE PREMISE: the box actually draws the control this test is about.
+	if frame := stripANSITest(b.View().Content); !strings.Contains(frame, "Details / Full Read / Manage") {
+		t.Fatal("the alert box does not draw its way in; this test would prove nothing")
+	}
+
+	// THROUGH `Update`, THE WAY A TERMINAL DOES. Driving `openCardWindow`
+	// directly is the seam D-121 was caught on this morning: twelve tests passed
+	// against a build whose controls did nothing, because they called the handler
+	// and the operator presses a KEY (P-1).
+	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
+	out := press(t, r, "A")
+	if out.observer.modal != modalCard {
+		t.Fatalf("[A] opened %v, want the card window — the control the box draws does nothing", out.observer.modal)
+	}
+	if out.observer.cardID != alert.ID {
+		t.Errorf("[A] opened card %q, want the rail's own %q", out.observer.cardID, alert.ID)
+	}
+}
+
+// AND WITH NO HAZARD THERE IS NOTHING TO OPEN.
+//
+// It refuses QUIETLY, exactly as a digit on an empty slot does and for the same
+// reason: `false` means the key was not consumed, so it falls through rather
+// than opening a window onto a report that does not exist.
+func TestTheAlertBoxsWayInRefusesWhenTheRailIsEmpty(t *testing.T) {
+	b := bcWith(t)
+	b.width, b.height, b.ascii = 150, 74, true
+	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
+	if out := press(t, r, "A"); out.observer.ModalOpen() {
+		t.Errorf("[A] opened %v with no hazard on the rail", out.observer.modal)
+	}
+}
