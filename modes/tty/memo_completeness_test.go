@@ -149,7 +149,7 @@ func walk[T any](t *testing.T, typ reflect.Type, prefix string, excuse map[strin
 		f := typ.Field(i)
 		path := prefix + f.Name
 		switch f.Type.Kind() {
-		case reflect.Bool, reflect.Int, reflect.Int64, reflect.String:
+		case reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64, reflect.String:
 			idx := i
 			emit(path, func(d *T) { bump(fieldAt(d, idx)) })
 		case reflect.Struct:
@@ -172,7 +172,7 @@ func walkNested[T any](t *testing.T, f reflect.StructField, outer int, excuse ma
 	for j := range f.Type.NumField() {
 		inner := f.Type.Field(j)
 		switch inner.Type.Kind() {
-		case reflect.Bool, reflect.Int, reflect.Int64, reflect.String:
+		case reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64, reflect.String:
 			jdx := j
 			name := f.Name
 			if excuse[name+"."+inner.Name] != "" {
@@ -227,6 +227,12 @@ func bump(v reflect.Value) {
 			return
 		}
 		v.SetInt(v.Int() + 1)
+	// FLOATS WERE NEVER PERTURBED, and the walk did not say so — it listed the
+	// kinds it handled and fell through the rest in silence, which is the same
+	// shape as the hand-written key it exists to check. A float input to a
+	// memoised frame (the fire threshold, a radius) was outside the guard.
+	case reflect.Float64:
+		v.SetFloat(v.Float() + 1)
 	}
 }
 

@@ -237,6 +237,7 @@ func (*Dashboard).advanceTickerCategory
 func (*Dashboard).parkScroll
 func (*Dashboard).setTicker
 func (*bodyMemo).stats
+func (*consoleMemo).stats
 func (*memoStats).counts
 func (*modalMemo).stats
 func (Broadcaster).Init
@@ -245,11 +246,13 @@ func (Broadcaster).View
 func (Broadcaster).airBodyWidth
 func (Broadcaster).airBox
 func (Broadcaster).alertBox
+func (Broadcaster).anyLoading
 func (Broadcaster).armTick
 func (Broadcaster).bandWidth
 func (Broadcaster).bedAvailable
 func (Broadcaster).bedLine
 func (Broadcaster).bedSelector
+func (Broadcaster).buildSpans
 func (Broadcaster).burstBody
 func (Broadcaster).cardBoxWidth
 func (Broadcaster).cardControls
@@ -259,6 +262,8 @@ func (Broadcaster).chromeAt
 func (Broadcaster).clamp
 func (Broadcaster).clock
 func (Broadcaster).consoleControls
+func (Broadcaster).consoleKeyFor
+func (Broadcaster).consoleMemoCounts
 func (Broadcaster).controlRow
 func (Broadcaster).detailBody
 func (Broadcaster).emptyAlertBox
@@ -296,6 +301,7 @@ func (Broadcaster).rowCount
 func (Broadcaster).scheduledSpan
 func (Broadcaster).scrollQueue
 func (Broadcaster).slotCard
+func (Broadcaster).spans
 func (Broadcaster).stationLine
 func (Broadcaster).stationSection
 func (Broadcaster).stationTone
@@ -881,6 +887,8 @@ type cardLane
 type castSavedMsg
 type columns
 type committedMsg
+type consoleKey
+type consoleMemo
 type debugState
 type endpointRow
 type frameLayout

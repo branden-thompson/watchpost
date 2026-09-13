@@ -270,7 +270,7 @@ func NewRouter(o Dashboard) Router {
 	b.fireBoldMW = o.fireBoldMW()
 	// AND THE STATION IT IS A CONSOLE FOR (D-72). The area MOVES, so changes
 	// arrive as a message; this is the value it opens with.
-	b.area = o.cfg.StationArea
+	b.area, b.areaGen = o.cfg.StationArea, b.areaGen+1
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver,
 		keys: broadcasterKeyMap(), onSurface: o.cfg.OnSurface, relays: o.cfg.StepBedRelay}
 }

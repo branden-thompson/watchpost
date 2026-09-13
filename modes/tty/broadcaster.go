@@ -147,6 +147,19 @@ type Broadcaster struct {
 	frame     int
 	tickArmed bool
 
+	// lineupGen and areaGen count the WHOLESALE assignments of the two table
+	// inputs that are not `==` types (a Lineup holds an array of slices, a
+	// StationAreaMsg holds one). The app replaces both from a message and never
+	// edits either in place, so a counter bumped where the assignment happens is
+	// an exact identity for the value — the memo's reason for them.
+	lineupGen, areaGen uint64
+
+	// memo is the two tables' slot. A POINTER, because View() is a value
+	// receiver and every Update copies the console (P10-06) — the cache has to
+	// outlive the copy that filled it. Nil is legal and means no memo: a console
+	// built as a bare literal renders every frame.
+	memo *consoleMemo
+
 	// fireBoldMW is the operator's [fire] bold_frp_mw, inherited RESOLVED from
 	// the Dashboard (NewRouter) so the default lives in one place. Zero means a
 	// console built without a Router; `fireBold` falls back for it.
@@ -229,7 +242,7 @@ type Broadcaster struct {
 }
 
 // NewBroadcaster builds the console.
-func NewBroadcaster() Broadcaster { return Broadcaster{} }
+func NewBroadcaster() Broadcaster { return Broadcaster{memo: &consoleMemo{}} }
 
 // clock is the console's time, real unless a test injected one.
 func (b Broadcaster) clock() time.Time {
@@ -313,9 +326,12 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 	case tea.BackgroundColorMsg:
 		b.darkBG = v.IsDark()
 	case LineupMsg:
-		b.lineup = v.Lineup
+		// THE COUNTER MOVES WITH THE VALUE, on the same line that replaces it.
+		// The memo's key carries the generation because a Lineup cannot be
+		// compared; a bump left behind here is a table that stops redrawing.
+		b.lineup, b.lineupGen = v.Lineup, b.lineupGen+1
 	case StationAreaMsg:
-		b.area = v
+		b.area, b.areaGen = v, b.areaGen+1
 	case BedMsg:
 		b.bed, b.bedTold = v, true
 	case StationMsg:
@@ -606,9 +622,7 @@ func (b Broadcaster) lanes() []string {
 	// column titles, ▼ on its "Showing" line — Observer's own shape.
 	// THE WEATHER IS INDEXED ONCE FOR THE WHOLE FRAME (D-120). Both tables join
 	// against it — forty lookups that were forty linear scans.
-	idx := b.locIndex()
-	sched := b.scheduledSpan(b.mainTrack(), len(out), idx)
-	pool := b.poolSpan(len(out)+len(sched.lines), idx)
+	sched, pool := b.spans(len(out))
 	// THE FIRST REGION THAT SCROLLS OWNS THE CONTROL, and each region is asked
 	// rather than assumed. Reading only the pool's answer made the running
 	// order's `from` a field nothing consulted — so a region could claim a scroll
@@ -621,7 +635,15 @@ func (b Broadcaster) lanes() []string {
 	case pool.from >= 0:
 		from = len(sched.lines) + pool.from
 	}
-	out = append(out, b.chromeAt(append(sched.lines, pool.lines...), from, pool.off, pool.total)...)
+	// JOINED INTO A SLICE OF ITS OWN, NEVER ONTO THE SCHEDULED SPAN. Both spans
+	// may be the memo's copies, and `append(sched.lines, …)` writes into
+	// `sched.lines`' spare capacity when it has any — scribbling the pool's rows
+	// into a cached running order, to be replayed on every hit after. The bug
+	// would appear one frame late and only at some pool sizes.
+	joined := make([]string, 0, len(sched.lines)+len(pool.lines))
+	joined = append(joined, sched.lines...)
+	joined = append(joined, pool.lines...)
+	out = append(out, b.chromeAt(joined, from, pool.off, pool.total)...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
 	// blank rows to the bottom of the terminal, which is what the reference does
 	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the

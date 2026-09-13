@@ -192,11 +192,23 @@ const (
 	// THE DAY CELLS WERE THE REAL ONE: 351 allocations a frame, building five
 	// `DayCell`s per row for two tables that draw neither.
 	//
-	// STILL NOT PULLED: Observer memoises its table body and the console memoises
-	// neither of its two, so this rebuilds on every frame including ticks that
-	// changed nothing. That is the remaining lever, and a bigger one than either
-	// of these.
-	bcFrameAllocs = 9760
+	// AND THE REMAINING LEVER WAS PULLED (D-123): the console memoises its two
+	// tables, so a frame whose inputs have not moved rebuilds neither.
+	//
+	// TWO NUMBERS NOW, BECAUSE THERE ARE TWO PATHS and a single figure would hide
+	// whichever one it did not measure. This budget spent its whole history
+	// measuring a console with no pool; a hit-only budget would repeat that
+	// mistake one layer up — the expensive path present, and unmeasured.
+	//
+	//	bcFrameAllocs      the HIT: the operator is watching, nothing has changed
+	//	bcFrameMissAllocs  the MISS: every input moved, both tables rebuild
+	//
+	// Measured 530 and 9298 on the loaded fixture; budgeted with the same margin
+	// the old number carried. THE MISS IS THE OLD BASELINE, to the allocation —
+	// 9298 before the memo and 9298 after — which is the claim that matters when
+	// a cache is added: it costs nothing on the path it does not help.
+	bcFrameAllocs     = 560
+	bcFrameMissAllocs = 9760
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {
@@ -246,5 +258,30 @@ func TestConsoleFrameAllocBudget(t *testing.T) {
 	if got > bcFrameAllocs {
 		t.Errorf("the console frame allocates %.0f per View(), budget %d — re-pin DELIBERATELY "+
 			"with the reason in the commit, or this is a regression", got, bcFrameAllocs)
+	}
+
+	// AND THE MISS, MEASURED IN THE SAME TEST so the two cannot drift apart. The
+	// slot holds ONE entry, so a selection that alternates never finds it — the
+	// operator holding an arrow key, which is the honest worst case.
+	//
+	// A HIT NUMBER ALONE WOULD BE A CACHE MARKING ITS OWN HOMEWORK: it would go
+	// on reading 530 while the path underneath it grew without limit, because
+	// nothing would ever ask that path what it cost.
+	i := 0
+	missed := testing.AllocsPerRun(50, func() {
+		b.selected = i & 1
+		i++
+		_ = b.View().Content
+	})
+	t.Logf("console frame MISS, %d-location pool: %.0f allocs (budget %d)",
+		loadedPoolSize, missed, bcFrameMissAllocs)
+	if missed <= got {
+		t.Fatalf("the miss (%.0f) costs no more than the hit (%.0f): this is not measuring "+
+			"the rebuild, and the hit number above is guarding nothing", missed, got)
+	}
+	if missed > bcFrameMissAllocs {
+		t.Errorf("the console frame allocates %.0f per MISSED View(), budget %d — re-pin "+
+			"DELIBERATELY with the reason in the commit, or this is a regression",
+			missed, bcFrameMissAllocs)
 	}
 }
