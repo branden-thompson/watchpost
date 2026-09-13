@@ -255,17 +255,68 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	// and with weatherUSA offered again a transmitter can be "relayed" by a
 	// dead mount alone — the engine must fall through to the next live
 	// station, as it did when that transmitter was simply not offered.
-	urls, owners := tuneList(stations, st)
 	d.tuneMu.Lock()
 	defer d.tuneMu.Unlock()
 	if !d.epoch(gen) {
 		return // stopped or re-tuned while resolving: this tune is stale
 	}
+	d.startStation(st, stations)
+}
+
+// startStation points the engine at one resolved station, with the rest of the
+// candidates behind it to fall through to.
+//
+// EXTRACTED AT THE SECOND CALLER (D-117), which is the standing rule. The
+// station's BED tunes a relay too, and it was doing it through `tuneCallsign` —
+// which searches the list the LISTENER's last tune left behind and silently
+// returns when the callsign is not in it. That is why the bed did nothing: the
+// console offered relays from the embedded table and tuned through Observer's
+// resolution, and the two only ever agreed by coincidence.
+//
+// THE CALLER HOLDS `tuneMu`. Both callers resolve first and commit here, so the
+// lock discipline is stated once rather than inferred at two sites.
+func (d *radioDeck) startStation(st stream.Station, rest []stream.Station) {
+	if len(st.Mounts) == 0 {
+		return // nothing to play: a station with no mount is not a relay
+	}
+	urls, owners := tuneList(rest, st)
 	d.mu.Lock()
 	d.mountOwner, d.mountURLs = owners, urls
 	d.mu.Unlock()
 	d.setMode("live", d.label(st), st.Mounts[0].Relay)
 	d.engine.Start(urls, st.Callsign+" "+st.Site) // the dwell arms when the relay reports Playing (onStatus)
+}
+
+// resolveAt is the relay resolution at an arbitrary point — Observer's own, asked
+// somewhere other than where the listener is standing (D-117).
+//
+// THE STATION'S BED NEEDS IT because a broadcaster's transmitter is not the
+// listener's location, and the question "which relays actually stream near HERE"
+// has to be asked about the station's epicentre or the answer is about the wrong
+// place. The covering-transmitter preference comes along: it is what makes a
+// relay the RIGHT one rather than merely the nearest.
+func (d *radioDeck) resolveAt(ctx context.Context, ref snapshot.LocationRef) []stream.Station {
+	if d == nil || d.resolver == nil {
+		return nil
+	}
+	same := stream.SAMEFromUGC(d.nws.CountyUGC(ctx, ref))
+	stations, statuses := d.resolver.ResolveWithStatus(ctx, ref.Lat, ref.Lon, same)
+	d.noteDirectories(statuses)
+	return stations
+}
+
+// tuneResolved points the engine at a station the caller already resolved.
+//
+// IT TAKES THE TUNE LOCK AND BUMPS THE EPOCH, because it is a tune like any
+// other: a bed cut while a listener's tune is still resolving must not be
+// overtaken by it.
+func (d *radioDeck) tuneResolved(st stream.Station, rest []stream.Station) {
+	if d == nil {
+		return
+	}
+	d.tuneMu.Lock()
+	defer d.tuneMu.Unlock()
+	d.startStation(st, rest)
 }
 
 // tuneList flattens the candidate stations' mounts in order and remembers

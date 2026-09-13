@@ -243,7 +243,10 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 		t.Errorf("an untold bed says so:\n%s", bare)
 	}
 
-	b, _ = b.Update(BedMsg{Relay: "Oceanside, CA", Carrying: true})
+	// `Relays` SINCE D-117: how many actually stream within the station's reach.
+	// A bed that is CARRYING one manifestly has one, and a fixture that said
+	// otherwise would be describing a state the Producer never publishes.
+	b, _ = b.Update(BedMsg{Relay: "Oceanside, CA", Carrying: true, Relays: 3})
 	got := stripANSITest(b.stationSection(b.opts(), "", ""))
 	if !strings.Contains(got, "Oceanside, CA") {
 		t.Errorf("the bed names what it is carrying:\n%s", got)
@@ -257,7 +260,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 
 	// AND IT GOES BACK. A bed that only ever learned to say ACTIVE would be the
 	// same constant one state along.
-	b, _ = b.Update(BedMsg{})
+	b, _ = b.Update(BedMsg{Relays: 3})
 	if back := stripANSITest(b.stationSection(b.opts(), "", "")); !strings.Contains(back, "INACTIVE") {
 		t.Errorf("cutting the bed away says so:\n%s", back)
 	}

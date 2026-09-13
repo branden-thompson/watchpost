@@ -425,7 +425,11 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// switch to the active surface, which is exactly what an unbound key
 			// does.
 			case actBedCut, actBedPrev, actBedNext:
-				if r.consoleOwnsTheKeys() {
+				// AND ONLY WHEN THE STATION HAS A RELAY TO CARRY (D-117). Cutting
+				// to a bed nothing streams is dead air on the transmitter, which
+				// is the one outcome this control must not have — so the key is
+				// refused where the chip says it is unavailable.
+				if r.consoleOwnsTheKeys() && r.broadcaster.bedAvailable() {
 					return r.bedControl(a)
 				}
 			// THE QUEUE'S SCROLL, AND IT FALLS THROUGH FOR THE SAME REASON THE

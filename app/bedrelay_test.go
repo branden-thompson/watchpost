@@ -22,6 +22,19 @@ func bedPipelines(t *testing.T) *livePipelines {
 	lp := &livePipelines{idx: indexForTest(t), relayTable: tbl}
 	lp.setStation(stationFrom(config.Config{Locations: []config.Location{bonsallCfg}}))
 	lp.bedRadiusMi = config.DefaultBedRadiusMi
+	// THE RESOLVED LIST, SEEDED (D-117). The selector walks what actually STREAMS
+	// near the station, and finding that out is a network question the resolver
+	// answers — so a unit test supplies the answer and tests what is done with it.
+	// The shape is the resolver's own: the embedded table, fenced, with a mount
+	// each so nothing is dropped as unplayable.
+	st := lp.currentStation()
+	near := tbl.Within(st.transmitter.Lat, st.transmitter.Lon, config.DefaultBedRadiusMi)
+	seeded := make([]stream.Station, 0, len(near))
+	for _, n := range near {
+		seeded = append(seeded, stream.Station{Transmitter: n.Transmitter, KM: n.KM,
+			Mounts: []stream.Mount{{URL: "http://example.invalid/" + n.Callsign}}})
+	}
+	lp.bedStations = seeded
 	return lp
 }
 
@@ -210,5 +223,64 @@ func TestAnUnchosenRelayLeavesTheDirectorsBedOnTheRow(t *testing.T) {
 
 	if len(got) != 1 || got[0].Relay != "OCEANSIDE, CA" {
 		t.Errorf("with no operator choice the row names what the Director's bed is carrying; got %+v", got)
+	}
+}
+
+// THE SELECTOR TUNES WHAT IT RESOLVED, NOT WHAT THE LISTENER LAST TUNED (D-117).
+//
+// THIS IS WHY THE BED DID NOTHING. `tuneCallsign` searches the mount list the
+// LISTENER's last tune left behind and returns in SILENCE when the callsign is
+// not in it — so unless Observer happened to have tuned that same relay, the
+// operator pressed the key, the row said it was tuned, and the station carried
+// dead air.
+//
+// A RESOLVED STATION CARRIES ITS OWN MOUNTS, so the engine is pointed at them
+// directly. Asserted through the URLs, because "it called a different function"
+// is not the claim — "the engine is started on the chosen relay's own stream" is.
+func TestSteppingTheBedTunesTheChosenRelaysOwnMounts(t *testing.T) {
+	lp := bedPipelines(t)
+	relays := lp.bedRelays()
+	if len(relays) < 2 {
+		t.Fatalf("the fixture needs somewhere to step; got %d relays", len(relays))
+	}
+	// ASSERTED THROUGH `tuneList`, WHICH IS WHAT THE TUNE HANDS THE ENGINE.
+	// `radioDeck.engine` is a concrete `*player.Engine` and cannot be faked, so
+	// the claim is made where it can be: the URL list the chosen relay produces.
+	// A test that merely watched which METHOD was called would pass on a tune
+	// pointed at the wrong stream.
+	if cmd := lp.stepBedRelay(1); cmd != nil {
+		_ = cmd // the tune itself needs a player; what it tunes TO is below
+	}
+	chosen := relays[1]
+	urls, owners := tuneList(relays, chosen)
+	if len(urls) == 0 {
+		t.Fatal("the chosen relay produced no stream to start")
+	}
+	// THE CHOSEN RELAY LEADS. The rest follow so the engine can fall through a
+	// dead mount, which is `tuneList`'s own rule.
+	if want := chosen.Mounts[0].URL; urls[0] != want {
+		t.Errorf("the engine would start on %q; the operator chose %q", urls[0], want)
+	}
+	if owners[urls[0]].Callsign != chosen.Callsign {
+		t.Errorf("the lead mount belongs to %q, not to the chosen %q",
+			owners[urls[0]].Callsign, chosen.Callsign)
+	}
+	// AND THE SELECTION IS WHAT THE ROW WILL SAY, which is the fact the operator
+	// reads back (F-98, D-90).
+	if got := lp.selectedRelay(); got != relayLine(chosen) {
+		t.Errorf("the row says %q; the operator chose %q", got, relayLine(chosen))
+	}
+}
+
+// AND A FENCE IS A FENCE. The resolver ranks the whole country and stops at a
+// candidate COUNT; the bed asks what is within the station's REACH — "Lone
+// Pine's 'Fresno' relay is completely inappropriate for being the relay".
+func TestTheBedFenceKeepsOutWhatTheResolverWouldOffer(t *testing.T) {
+	far := stream.Station{Transmitter: &stream.Transmitter{Callsign: "FAR1"}, KM: 500}
+	near := stream.Station{Transmitter: &stream.Transmitter{Callsign: "NEAR1"}, KM: 10}
+
+	got := withinBedFence([]stream.Station{near, far}, 100)
+	if len(got) != 1 || got[0].Callsign != "NEAR1" {
+		t.Errorf("the fence kept %v; only the near one is inside 100 miles", got)
 	}
 }

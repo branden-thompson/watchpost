@@ -144,10 +144,20 @@ func (lp *livePipelines) setServiceRadius(mi int) {
 func (lp *livePipelines) restationTo(s stationArea) {
 	lp.setStation(s)
 	lp.mu.Lock()
-	p, pool := lp.p, lp.poolRefs
+	p, pool, ctx := lp.p, lp.poolRefs, lp.ctx
 	lp.mu.Unlock()
 	if p != nil {
 		publishArea(p.Send, s, pool)
+	}
+	// AND THE BED RE-RESOLVES WITH IT (D-117). Which relays actually stream is a
+	// fact about the station's REGION, so moving the region asks the question
+	// again — otherwise the selector goes on offering the relays of the place the
+	// station has left.
+	//
+	// ON ITS OWN GOROUTINE, because this is network work and the caller is a
+	// settings save the operator is waiting on.
+	if ctx != nil {
+		go lp.refreshBedRelays(ctx)
 	}
 }
 

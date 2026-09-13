@@ -63,6 +63,7 @@ const bcMinCols
 const bcMinRows
 const bcNoCoordinates
 const bcNoRelay
+const bcNoRelaysHere
 const bcNoTransmitter
 const bcPoolChrome
 const bcPoolRows
@@ -241,6 +242,7 @@ func (Broadcaster).airBox
 func (Broadcaster).alertBox
 func (Broadcaster).armTick
 func (Broadcaster).bandWidth
+func (Broadcaster).bedAvailable
 func (Broadcaster).bedLine
 func (Broadcaster).bedSelector
 func (Broadcaster).burstBody

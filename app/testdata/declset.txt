@@ -137,11 +137,13 @@ func (*livePipelines).producer
 func (*livePipelines).providers
 func (*livePipelines).reStation
 func (*livePipelines).readReport
+func (*livePipelines).refreshBedRelays
 func (*livePipelines).relayDwell
 func (*livePipelines).relayLang
 func (*livePipelines).restationTo
 func (*livePipelines).seismicFor
 func (*livePipelines).selectedRelay
+func (*livePipelines).setBedStations
 func (*livePipelines).setRelayDwell
 func (*livePipelines).setRelayLang
 func (*livePipelines).setServiceRadius
@@ -249,6 +251,7 @@ func (*radioDeck).readCast
 func (*radioDeck).readSynth
 func (*radioDeck).recordResolution
 func (*radioDeck).render
+func (*radioDeck).resolveAt
 func (*radioDeck).resolveVoice
 func (*radioDeck).restore
 func (*radioDeck).resume
@@ -262,6 +265,7 @@ func (*radioDeck).setTones
 func (*radioDeck).silentCandidates
 func (*radioDeck).softChanged
 func (*radioDeck).startBackgroundInstall
+func (*radioDeck).startStation
 func (*radioDeck).startSynth
 func (*radioDeck).stationFor
 func (*radioDeck).stop
@@ -274,6 +278,7 @@ func (*radioDeck).tone
 func (*radioDeck).tones
 func (*radioDeck).tune
 func (*radioDeck).tuneCallsign
+func (*radioDeck).tuneResolved
 func (*radioDeck).unrelayedLabel
 func (*radioDeck).voice
 func (*radioDeck).voiceNote
@@ -555,6 +560,7 @@ func userCacheSubdir
 func vizFor
 func voiceDir
 func withPool
+func withinBedFence
 func worstOf
 func writeProfile
 func writeRadioDebug

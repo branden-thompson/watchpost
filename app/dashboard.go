@@ -220,6 +220,11 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	if lp.deck != nil {
 		lp.deck.composer = synth.Composer{Scripts: lp.scripts} // the broadcast, the fire and seismic reports and the voice preview speak from the same tree
 	}
+	// AND THE BED LEARNS WHAT ACTUALLY STREAMS NEAR THE STATION (D-117). After
+	// the deck, because it is the deck that holds the resolver; on its own
+	// goroutine, because it is network work and the dashboard must not wait for
+	// it to open.
+	go lp.refreshBedRelays(ctx)
 	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send) // a read ends with the app (A-08)
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
@@ -629,6 +634,16 @@ type livePipelines struct {
 	bedRadiusMi float64
 	bedPick     int
 	bedOn       bool
+
+	// bedStations is what actually STREAMS near the station (D-117): the
+	// resolver's answer, fenced to the bed's reach, refreshed when the area
+	// moves.
+	//
+	// THE TABLE ABOVE IS NOT THIS. It lists every NOAA transmitter in the
+	// country; being in it says a tower exists, not that anything relays it.
+	// The selector walked the table and the operator could pick a callsign
+	// nothing streams — which then tuned to silence.
+	bedStations []stream.Station
 
 	// bedRelay is the relay the operator CHOSE, in the words the row shows, and
 	// "" until they choose one (F-98, D-90).

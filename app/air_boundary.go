@@ -31,8 +31,14 @@ package app
 //
 // THE GUARD IS AT THE CALLER, NOT THE METHOD, and the survey is what settled
 // that: `tune` serves the monitor's `SetMode` AND the Director's `Tune` effect;
-// `tuneCallsign` serves Observer's relay pick AND the console's own bed selector
-// (D-90). A guard inside either would break the half that is entitled to the air.
+// `tuneCallsign` serves Observer's relay pick (MVS-D-76). A guard inside it would
+// break the half that is entitled to the air.
+//
+// THE CONSOLE'S BED LEFT THAT SEAM AT D-117. It used to tune through
+// `tuneCallsign` too, and that was the defect: the callsign had to already be in
+// the list the LISTENER's last tune left behind, so the bed silently did nothing.
+// It resolves at the STATION's epicentre now and tunes what it resolved
+// (`tuneResolved`), which is a different seam with the same entitlement.
 // The EXPORTED `tty.Radio` methods are the monitor's control surface; the
 // lower-case internals are shared, and that split is the seam.
 

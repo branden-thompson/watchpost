@@ -92,7 +92,11 @@ func (b Broadcaster) bedLine(o render.Opts) string {
 	if b.bed.Carrying {
 		state = "ACTIVE"
 	}
-	return b.withControl(bcCardInset+b.bedSelector(o), state+"   "+o.KeyCap("b"))
+	// AND THE CUT KEY IS DISABLED WITH THE SELECTOR (D-117). `KeyCapIf` draws the
+	// chip muted rather than removing it: the operator still learns the key exists
+	// and that it is not available here, which is what tells them the station's
+	// reach is the thing to change.
+	return b.withControl(bcCardInset+b.bedSelector(o), state+"   "+o.KeyCapIf("b", b.bedAvailable()))
 }
 
 // airBodyWidth is the air box's content column, and it is the ONE owner of that

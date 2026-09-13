@@ -186,7 +186,7 @@ func TestTheBedsControlsReachTheStation(t *testing.T) {
 	}
 	// AND IT IS A DIRECTION, NOT A TOGGLE THE CONSOLE DECIDES. Told the bed is
 	// carrying, the next press asks for the other way.
-	m, _ = m.Update(BedMsg{Carrying: true})
+	m, _ = m.Update(BedMsg{Carrying: true, Relays: 3}) // D-117: a carrying bed has a relay to carry
 	m, _ = m.Update(keyPress(t, "b"))
 	if len(s.bed) != 2 || s.bed[1] {
 		t.Errorf("[b] on a carrying bed cuts BACK; asked %v", s.bed)

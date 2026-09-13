@@ -14,9 +14,10 @@ package app
 // between reads, and keeps it until they choose again.
 
 import (
-	tea "charm.land/bubbletea/v2"
-
+	"context"
 	"strconv"
+
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -28,15 +29,93 @@ import (
 // DERIVED ON EVERY ASK, like the pool: it is a pure function of the transmitter,
 // the bed's fence and the embedded table, and a stored copy would be a second
 // answer that could drift from the settings that produced it.
-func (lp *livePipelines) bedRelays() []stream.Near {
-	if lp == nil || lp.relayTable == nil {
+func (lp *livePipelines) bedRelays() []stream.Station {
+	if lp == nil {
 		return nil
+	}
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	return lp.bedStations
+}
+
+// refreshBedRelays asks which relays actually STREAM near the station, and
+// remembers the answer (D-117).
+//
+// HUM LEAD, 2026-09-13: "When we derive the station lineup from the service
+// radius - we should probably cross-check that against our weatherradio.us and
+// wxradio feeds to see if any of that list is a valid relay in the feed. If none
+// exist in that area - we should probably tell the broadcaster there is no valid
+// relays for their area and disable the BED option so the Operator cannot choose
+// something that will broadcast dead air."
+//
+// THE EMBEDDED TABLE IS NOT THE ANSWER, and that is the whole defect. It lists
+// every NOAA transmitter in the country; being IN it says a tower exists, not
+// that anything relays it to the internet. The selector walked that table, so the
+// operator could choose a callsign nothing streams — and `tuneCallsign` then
+// searched the LISTENER's last tune list, failed to find it, and returned in
+// silence. Dead air, chosen from a list that promised otherwise.
+//
+// `Resolver.order` IS THE CROSS-CHECK, already written: it drops any transmitter
+// the directories carry no mount for, prefers the ones COVERING the station's
+// SAME area, and orders the rest by distance. Asked at the transmitter rather
+// than at the listener, it answers exactly the HUM LEAD's question.
+//
+// IT IS ASYNC AND CACHED, because it is network work and `bedRelays` is asked on
+// every frame. The area moving is what re-asks it.
+func (lp *livePipelines) refreshBedRelays(ctx context.Context) {
+	if lp == nil || lp.deck == nil {
+		return
 	}
 	s := lp.currentStation()
 	if s.transmitter.Lat == 0 && s.transmitter.Lon == 0 {
-		return nil // no epicentre, no region, no relays to choose between
+		lp.setBedStations(nil) // no epicentre, no region, no relays to choose between
+		return
 	}
-	return lp.relayTable.Within(s.transmitter.Lat, s.transmitter.Lon, lp.bedFenceMi())
+	lp.setBedStations(withinBedFence(lp.deck.resolveAt(ctx, s.transmitter), lp.bedFenceMi()))
+}
+
+// withinBedFence keeps the relays inside the station's reach.
+//
+// THE BED'S OWN FENCE, NOT THE RESOLVER'S CAP. The resolver ranks the whole
+// country by distance and stops at a candidate COUNT; the bed asks what is
+// within the station's REACH, which is a different question and the one D-77
+// ruled — "Lone Pine's 'Fresno' relay is completely inappropriate for being the
+// relay".
+//
+// A FUNCTION OF ITS OWN so the rule stays testable without a network: what
+// `refreshBedRelays` adds around it is the resolve, and that is the part a unit
+// test has no business doing.
+func withinBedFence(stations []stream.Station, radiusMi float64) []stream.Station {
+	kept := make([]stream.Station, 0, len(stations))
+	for _, st := range stations { // bounded by the candidate cap (P10-02)
+		if st.KM*0.621371 <= radiusMi {
+			kept = append(kept, st)
+		}
+	}
+	return kept
+}
+
+// setBedStations records the resolved list and tells the console what it can do.
+//
+// THE CONSOLE IS TOLD, NOT LEFT TO INFER. Whether the bed may be cut to at all
+// is a fact about the station's REGION, and the console holds no region — so it
+// arrives the way the relay and the carrying state already do.
+func (lp *livePipelines) setBedStations(st []stream.Station) {
+	lp.mu.Lock()
+	lp.bedStations = st
+	if lp.bedPick >= len(st) {
+		lp.bedPick = 0 // the list moved under the selection
+	}
+	// AND A SELECTION THAT NO LONGER EXISTS IS CLEARED. A remembered relay from a
+	// region the station has left would sit on the row looking tuned.
+	if len(st) == 0 {
+		lp.bedRelay = ""
+	}
+	p, line, carrying := lp.p, lp.bedRelay, lp.bedOn
+	lp.mu.Unlock()
+	if p != nil {
+		p.Send(tty.BedMsg{Relay: line, Carrying: carrying, Relays: len(st)})
+	}
 }
 
 // bedFenceMi is how far the station looks for a relay.
@@ -83,12 +162,19 @@ func (lp *livePipelines) stepBedRelay(by int) tea.Cmd {
 	lp.mu.Unlock()
 
 	return func() tea.Msg {
-		// THE DECK TUNES IT THROUGH THE ONE FUNCTION THAT ALREADY DOES THIS. The
-		// relay-fault window answers with a call sign the same way (MVS-D-76),
-		// so a second tuning path here would be a second place for the duck to
-		// be lifted.
+		// THE STATION'S OWN RESOLUTION TUNES IT (D-117). This called
+		// `tuneCallsign`, which searches the mount list the LISTENER's last tune
+		// left behind and returns in SILENCE when the callsign is not in it — so
+		// the bed did nothing at all unless Observer happened to have tuned that
+		// same relay. The operator pressed the key, the row said it was tuned, and
+		// the station carried dead air.
+		//
+		// `chosen` IS A RESOLVED STATION and carries its own mounts, so the engine
+		// is pointed at them directly, with the rest of the station's reach behind
+		// it to fall through to — which is what `tuneRef` does for the listener,
+		// through the same function.
 		if lp.deck != nil {
-			lp.deck.tuneCallsign(chosen.Callsign)
+			lp.deck.tuneResolved(chosen, relays)
 		}
 		// AND THE CONSOLE IS TOLD WHAT IT LANDED ON. The Director publishes what
 		// the bed is CARRYING; this is what the operator has SELECTED, which is
@@ -128,7 +214,7 @@ func (lp *livePipelines) bedCarrying() bool {
 
 // relayLine is how a relay reads on the bed's row, from the reference:
 // `KIG78 Coachella CA 162.400 MHz · 41mi from TOWER GPS`.
-func relayLine(n stream.Near) string {
+func relayLine(n stream.Station) string {
 	mi := strconv.FormatFloat(n.KM*0.621371, 'f', 0, 64)
 	return n.Callsign + " " + n.Site + " " + n.State + " " + n.FreqMHz + " MHz · " + mi + "mi from TOWER GPS"
 }

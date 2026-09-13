@@ -56,6 +56,19 @@ type BedMsg struct {
 
 	// Carrying is whether the bed holds the programme right now.
 	Carrying bool
+
+	// Relays is how many relays actually STREAM within the station's reach
+	// (D-117). Zero disables the bed.
+	//
+	// HUM LEAD, 2026-09-13: "If none exist in that area - we should probably tell
+	// the broadcaster there is no valid relays for their area and disable the BED
+	// option so the Operator cannot choose something that will broadcast dead
+	// air."
+	//
+	// A COUNT RATHER THAN A BOOL, because the row has something to say with it:
+	// "no relays reach this station" is a different sentence from "(no relay
+	// tuned)", and only the count can tell them apart.
+	Relays int
 }
 
 // StationAreaMsg carries WHERE the station transmits from and how far it reaches
@@ -159,6 +172,11 @@ type Broadcaster struct {
 	// the console draws it and holds no opinion of its own, the same rule the
 	// power follows.
 	bed BedMsg
+	// bedTold is whether the Producer has answered how many relays reach this
+	// station yet (D-117). Until it has, the control is offered: a console that
+	// greyed it out while the resolve was still in flight would refuse a key that
+	// is about to work.
+	bedTold bool
 
 	// pool is the recent pipeline's snapshot — where the LOCATION POOL's weather
 	// comes from (D-99). Never the masthead's: that stamp is the priority
@@ -285,7 +303,7 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 	case StationAreaMsg:
 		b.area = v
 	case BedMsg:
-		b.bed = v
+		b.bed, b.bedTold = v, true
 	case StationMsg:
 		// THE CLOCK STARTS ON THE TRANSITION, not on every message: a station
 		// that has been silent an hour must not look freshly quiet because
@@ -953,6 +971,18 @@ func (b Broadcaster) stationLine() []string {
 	return rows
 }
 
+// bedAvailable is whether the station has any relay it could actually carry
+// (D-117).
+//
+// THE COUNT IS THE PRODUCER'S ANSWER, not the console's guess: it is how many
+// transmitters within the station's reach the directories actually stream. The
+// console holds no region and no directory, so it is told.
+//
+// UNTOLD IS AVAILABLE. `BedMsg` arrives once the resolve lands, and a console
+// that greyed the control out until then would refuse a key that is about to
+// work — which reads as a broken button rather than as a pending answer.
+func (b Broadcaster) bedAvailable() bool { return !b.bedTold || b.bed.Relays > 0 }
+
 // bedRow is the bed's selector and its own state (D-62).
 //
 // THE BED IS THE THIRD CARRIER OF THE AIR STATE, and consolidating the three is
@@ -981,6 +1011,12 @@ func (b Broadcaster) bedSelector(o render.Opts) string {
 	if relay == "" {
 		relay = bcNoRelay
 	}
+	// AND A STATION WITH NOTHING TO TUNE OFFERS NO SELECTOR (D-117). Arrows over
+	// an empty list are a control that cannot act, and the row has something
+	// truer to say with the cells.
+	if !b.bedAvailable() {
+		return bcNoRelaysHere
+	}
 	// SHIFTED (D-111). The bare arrows belong to the card's PRESENTER now, and a
 	// chip here that read `←` would name a key that steps a different control —
 	// which is worse than no chip, because the operator would try it.
@@ -1004,6 +1040,20 @@ const (
 	// own description — its call sign, frequency and distance — arrives with the
 	// bed's state, which the schedule does not publish yet (F-79).
 	bcNoRelay = "(no relay tuned)"
+
+	// bcNoRelaysHere is what the row says when nothing STREAMS within the
+	// station's reach (D-117).
+	//
+	// HUM LEAD, 2026-09-13: "If none exist in that area - we should probably tell
+	// the broadcaster there is no valid relays for their area and disable the BED
+	// option so the Operator cannot choose something that will broadcast dead
+	// air."
+	//
+	// IT IS A DIFFERENT SENTENCE FROM `bcNoRelay`, and the difference is the
+	// point: one says "you have not chosen yet" and the other says "there is
+	// nothing to choose". Told apart, the second is actionable — widen the bed's
+	// fence, or accept that this station has no relay.
+	bcNoRelaysHere = "no relays reach this station"
 )
 
 // cardRow is one lane row: what it is, and the handle that addresses it.
