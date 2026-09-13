@@ -206,7 +206,7 @@ func TestTheScrollControlCapsSitOnRowsOfTheirOwn(t *testing.T) {
 	rows := strings.Split(b.View().Content, "\n")
 	up, down := -1, -1
 	for i, r := range rows {
-		switch []rune(r)[b.width-2] {
+		switch []rune(r)[railAt(b)] {
 		case '^':
 			up = i
 		case 'v':
@@ -226,8 +226,11 @@ func TestTheScrollControlCapsSitOnRowsOfTheirOwn(t *testing.T) {
 	// cards now, and a rail beside table rows is exactly what Observer draws —
 	// its caps sit on content rows there and always have. So the question is
 	// asked of the cap that lands in the card region and not of the one below it.
+	// EVERYTHING LEFT OF THE RAIL, measured from the rail (D-100). The bound was
+	// `b.width-bcRightChrome+3`, tuned for a frame with no right margin — it now
+	// reaches PAST the mark and so counted the cap itself as content.
 	cells := []rune(rows[up])
-	if strings.TrimSpace(string(cells[:b.width-bcRightChrome+3])) != "" {
+	if strings.TrimSpace(string(cells[:railAt(b)])) != "" {
 		t.Errorf("row %d carries a cap AND content; in the CARD region a cap sits on a row of its "+
 			"own, or it reads as a mark on the card:\n%s", up, rows[up])
 	}

@@ -37,6 +37,7 @@ func (b Broadcaster) poolRows() []render.LocationRow {
 			Zip:        ref.Zip,
 			Population: ref.Population,
 			Loading:    true,
+			Selected:   i == b.poolSelection(),
 		}
 		if mi := b.milesFromTower(ref); mi != nil {
 			// THE TABLE'S OWN FORMATTER TAKES KILOMETRES, and `StationDistance` is
@@ -93,7 +94,10 @@ func fillPoolWeather(row render.LocationRow, l *snapshot.Location) render.Locati
 // frame has left.
 func (b Broadcaster) poolLines(used int) []string {
 	w := b.frameWidth()
-	room := b.height - used - 2*bcInsetRows
+	// THE FOOTER IS PART OF THE BUDGET. It is appended after the window is cut, so
+	// a room that did not account for it made the frame one row taller than the
+	// terminal — which FR-7.3 calls a defect rather than a degradation.
+	room := b.height - used - 2*bcInsetRows - 1
 	if w <= 0 || room < 6 {
 		return nil // no room to say anything useful (FR-7.3)
 	}

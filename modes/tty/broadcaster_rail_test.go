@@ -118,9 +118,11 @@ func TestTheTracksLandOnTheReferencesColumns(t *testing.T) {
 	if main != right[0] {
 		t.Errorf("the running order starts at %d; the reference puts it at %d", main, right[0])
 	}
-	if got, want := main+b.cardBoxWidth()-1, right[1]-len(bcLeftInset); got != want {
-		t.Errorf("the running order ends at %d; the reference ends it at %d, less the %d-column "+
-			"left margin = %d", got, right[1], len(bcLeftInset), want)
+	// BOTH MARGINS (D-100): three columns each side, so the reference's right edge
+	// comes in by six.
+	if got, want := main+b.cardBoxWidth()-1, right[1]-2*len(bcLeftInset); got != want {
+		t.Errorf("the running order ends at %d; the reference ends it at %d, less the two %d-column "+
+			"margins = %d", got, right[1], len(bcLeftInset), want)
 	}
 }
 
@@ -287,7 +289,11 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 		if belowTheCards {
 			break
 		}
-		if strings.Contains(rows[i], bcScheduledHeading) {
+		// THE CARD REGION ENDS AT THE CONTROLS ROW (D-102), which is the first
+		// thing drawn below the pair. Anchoring on the HEADING let the controls
+		// row itself be scanned, and in the no-colour form it opens with `[l]` —
+		// so the test read a keycap as a table and reported the frame unopened.
+		if strings.Contains(rows[i], bcScheduledHeading) || strings.Contains(rows[i], "Lookup Location from Pool") {
 			belowTheCards = true
 			continue
 		}
@@ -445,107 +451,95 @@ func TestEachRegionsRailCarriesItsOwnGround(t *testing.T) {
 	}
 }
 
-// THE QUEUE SCROLLS, AND THE THUMB TRACKS IT (D-87, HUM LEAD 2026-09-11):
-// "that's why we have the vertical scroll bar so that works like Observer —
-// that section just needs to be able to scroll up and down."
+// THE POINTER WALKS AND THE WINDOW FOLLOWS IT (D-101, HUM LEAD 2026-09-12: "the
+// pointer for the tables is missing — this is needed because it directs which row
+// <enter> works on").
 //
-// THE CARDS OUTGREW THE TERMINAL. A card is a manifest now, so ten of them need
-// about ninety rows against the reference's seventy-four — and a queue the
-// operator cannot reach the bottom of is a line-up they cannot manage.
-func TestTheQueueScrollsAndItsThumbFollows(t *testing.T) {
+// THIS TEST USED TO ASSERT THAT ONE PRESS MOVED THE WINDOW, and that is no longer
+// what a press does: ↑↓ move the POINTER, and the window moves only when the focus
+// would otherwise leave it — which is Observer's behaviour and what the
+// reference's own footer says ("[↑↓] Navigate"). A window that scrolled under a
+// pointer that had not moved would take the operator's place away from them.
+func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
 	base := NewBroadcaster()
-	// A SHORT TERMINAL, BECAUSE THE TABLE FITS THE REFERENCE'S (D-94).
-	//
-	// This test was written when a card was a manifest and ten of them needed
-	// ninety rows against the reference's seventy-four. Thirteen TABLE rows fit
-	// in seventy-four with room to spare — which is the improvement — so the
-	// scroll is now exercised where it actually matters: a terminal too short to
-	// hold the running order.  MEASURED — at 150 wide, 56 rows fits all thirteen
-	// and 50 fits seven, so fifty is where the window is genuinely a window.  The
-	// frame got SHORTER at D-95 — the air box replaced a thirteen-row LIVE card
-	// with two rows — so this number moved down with it.
+	// MEASURED: at 150x50 the running order has room for eight of its thirteen
+	// rows, so the window has somewhere to go.
 	base.width, base.height, base.ascii = 150, 50, true
 	base.power = lineup.Running
 
-	// THE ROWS THAT SCROLL ARE THE TABLE'S NOW (D-94), not the cards'. The two
-	// read cards never scrolled and still do not — they are the reason the rail
-	// begins below them (D-68) — so what this walks is the numbered rows of the
-	// running order.
-	slots := func(b Broadcaster) []string {
-		var out []string
-		for _, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
-			if m := lineupRowNum.FindStringSubmatch(r); m != nil {
-				out = append(out, m[1])
-			}
-		}
-		return out
+	// ONE PRESS MOVES THE POINTER AND NOT THE WINDOW.
+	one := base.scrollQueue(1)
+	if one.selected != base.selected+1 {
+		t.Errorf("↓ did not move the pointer: %d then %d", base.selected, one.selected)
 	}
-	thumb := func(b Broadcaster) int {
-		for i, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
-			if len(r) > b.width-2 && r[b.width-2] == '#' {
-				return i
-			}
-		}
-		return -1
+	if slots(one)[0] != slots(base)[0] {
+		t.Errorf("↓ moved the window while the pointer was still inside it: %v then %v",
+			slots(base)[0], slots(one)[0])
 	}
 
-	top := slots(base)
-	if len(top) < 3 {
-		t.Fatalf("the console drew %d slots; there is nothing to scroll", len(top))
-	}
-	if thumb(base) < 0 {
-		t.Fatal("the rail draws no thumb")
-	}
-
-	// SCROLLING SHOWS SLOTS THAT WERE BELOW THE FOLD.
-	down := base.scrollQueue(6)
-	if got := slots(down); equalStrings(got, top) {
-		t.Errorf("scrolling changed nothing: %v", got)
-	}
-	if thumb(down) <= thumb(base) {
-		t.Errorf("the thumb sat still while the window moved: %d then %d", thumb(base), thumb(down))
-	}
-
-	// THE BOTTOM IS REACHABLE, which is the whole point: the last slot must be
+	// AND THE BOTTOM IS REACHABLE, which is the whole point: the last slot must be
 	// drawable or the operator cannot manage it.
 	end := base
 	for range 40 {
 		end = end.scrollQueue(1)
 	}
-	// THE NUMBER, NOT A CHIP (D-94): the table addresses a slot by its `##.`
-	// column, so the last slot is `14` and not `[14]`.
 	last := fmt.Sprintf("%02d", MainTrackSlots-1)
 	if got := slots(end); !slices.Contains(got, last) {
 		t.Errorf("the last slot (%s) is unreachable; the bottom of the queue shows %v", last, got)
 	}
-	// AND THE THUMB IS STILL DRAWN THERE. A rail that loses its thumb at the end
-	// of the list says the list is gone rather than that it is finished.
+	// AND THE POINTER IS ON IT.
+	if end.lineupSelection() != MainTrackSlots-bcScheduledFrom-1 {
+		t.Errorf("the pointer stopped at %d, short of the last slot", end.lineupSelection())
+	}
+	// AND THE THUMB MOVED WITH THE WINDOW.
+	if thumb(end) <= thumb(base) {
+		t.Errorf("the thumb sat still while the window moved: %d then %d", thumb(base), thumb(end))
+	}
 	if thumb(end) < 0 {
 		t.Error("the rail lost its thumb at the bottom of the queue")
 	}
-
-	// CLAMPED, NEVER WRAPPED. A list that jumped from its last row to its first
-	// would lose the operator's place.
-	if got, want := slots(end.scrollQueue(10)), slots(end); !equalStrings(got, want) {
-		t.Errorf("scrolling past the end moved the window: %v then %v", want, got)
-	}
-	if got, want := slots(base.scrollQueue(-5)), top; !equalStrings(got, want) {
-		t.Errorf("scrolling above the top moved the window: %v", got)
-	}
-}
-
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // lineupRowNum matches a running-order row by its `##.` column — the address the
 // table draws, which since D-94 is where a slot's number lives.
-var lineupRowNum = regexp.MustCompile(`^\s+(\d\d)\.\s`)
+//
+// THE POINTER IS PART OF THE PREFIX. This matched leading WHITESPACE only, and so
+// silently dropped whichever row the pointer was on — which read as "the last slot
+// is unreachable" when the row was there all along and the helper could not see
+// it. A test helper that filters out exactly the row under test is worse than no
+// helper (D-101).
+var lineupRowNum = regexp.MustCompile(`^[\s>\x{203a}]+(\d\d)\.\s`)
+
+// railAt is the column the scroll rail sits in, on the FINISHED frame.
+//
+// THE FRAME'S LAST COLUMN, NOT THE TERMINAL'S. The tests said `b.width-2` and
+// were right until the frame gained a right margin (D-100) — an absolute column
+// is a measurement a margin invalidates, which is the same lesson the reference's
+// own track columns taught one ruling earlier. Written from the inset and the
+// frame's width, it cannot drift again.
+//
+// MINUS TWO, NOT ONE: `railed` pads a row to `frameWidth-2` and appends the mark,
+// so the mark IS the last cell of a row that is one short of the frame.
+func railAt(b Broadcaster) int { return len(bcLeftInset) + b.frameWidth() - 2 }
+
+// slots is the running order's rows, by the `##.` column that addresses them.
+func slots(b Broadcaster) []string {
+	var out []string
+	for _, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
+		if m := lineupRowNum.FindStringSubmatch(r); m != nil {
+			out = append(out, m[1])
+		}
+	}
+	return out
+}
+
+// thumb is the row the scroll rail's thumb sits on, or -1.
+func thumb(b Broadcaster) int {
+	for i, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
+		rr := []rune(r)
+		if len(rr) > railAt(b) && rr[railAt(b)] == '#' {
+			return i
+		}
+	}
+	return -1
+}
