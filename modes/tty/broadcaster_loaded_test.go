@@ -104,6 +104,40 @@ func TestTheLoadedFixtureActuallyJoins(t *testing.T) {
 	}
 }
 
+// loadedJoins is how many of the console's rows actually carry joined weather.
+//
+// SHARED WITH THE BUDGET, which asks it before reporting a number.
+func loadedJoins(b Broadcaster) int {
+	n := 0
+	for _, r := range b.lineupRows(b.mainTrack(), b.locIndex()) { // bounded by the table (P10-02)
+		if r.Conditions != "" {
+			n++
+		}
+	}
+	return n
+}
+
+// THE CONSOLE'S ROWS CARRY NO EXTENDED DAYS (D-120).
+//
+// PINNED AS A RULE, NOT LEFT TO THE BUDGET. Putting the day cells back costs 351
+// allocations a frame and the budget's own five-percent headroom is 464 — so the
+// ratchet cannot see the regression it was re-based alongside. A mutant proved
+// exactly that by surviving.
+func TestTheConsolesRowsBuildNoDayCells(t *testing.T) {
+	b := loadedConsole(t, loadedPoolSize)
+	for _, r := range b.poolRows(b.locIndex()) { // bounded by the pool (P10-02)
+		if len(r.Extended) != 0 {
+			t.Fatalf("a pool row carries %d extended days; neither console table draws one",
+				len(r.Extended))
+		}
+	}
+	// AND THE PREMISE: the fixture HAS days beyond tomorrow, or this asserts that
+	// nothing was built out of nothing.
+	if len(b.locIndex().at(b.area.Pool[0]).Daily) < 3 {
+		t.Fatal("the fixture carries no extended forecast, so this measures nothing")
+	}
+}
+
 // AND OBSERVER STILL GETS ITS EXTENDED DAYS (D-120).
 //
 // THE CONSOLE SKIPS THEM and Observer draws them, which is the whole shape of

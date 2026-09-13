@@ -231,6 +231,14 @@ func TestConsoleFrameAllocBudget(t *testing.T) {
 	// path. HUM LEAD, 2026-09-13, on being shown that: re-base it. The figure goes
 	// UP because the measurement got honest, not because anything got slower.
 	b := loadedConsole(t, loadedPoolSize)
+	// THE BUDGET VALIDATES ITS OWN FIXTURE (D-120), which is the lesson this
+	// number was re-based for: it spent its whole history measuring a console
+	// with no pool and no snapshot, and nothing said so. A budget that cannot
+	// tell whether it measured the expensive path is a budget reporting on
+	// nothing — so it asks, here, before it reports.
+	if joined := loadedJoins(b); joined == 0 {
+		t.Fatalf("the fixture joined no weather at all; this number is about the cheap path")
+	}
 	_ = b.View().Content
 	got := testing.AllocsPerRun(50, func() { _ = b.View().Content })
 	t.Logf("console frame 150x74, %d-location pool: %.0f allocs (budget %d)",
