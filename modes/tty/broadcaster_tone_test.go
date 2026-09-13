@@ -215,4 +215,65 @@ func TestAReportsWindowKeepsTheStandardGround(t *testing.T) {
 	if got := b.cardWindowGroundFor(1); got != "" {
 		t.Errorf("a location report's window asked for the ground %q; it takes the standard tone", got)
 	}
+
+	// AND THE CASE THAT ACTUALLY DISCRIMINATES. The fixture above cannot: a
+	// location report has no arrivals, so `worstCategory` refuses it and the
+	// ground comes back "" whether or not the SLOT is checked — mutant mAV2
+	// deleted the slot guard and this test passed anyway.
+	//
+	// A NON-HAZARD CARD CARRYING ARRIVALS is the state that separates the two
+	// guards. The app does not produce one today; the rule is "only a HAZARD
+	// carries its ground in", and a rule tested only where a second condition
+	// happens to agree with it is not tested.
+	report := toned("rep", lineup.LocationReport, lineup.FromDirector, category.Warnings)
+	if got := cardWindowGround(report); got != "" {
+		t.Errorf("a LocationReport carrying arrivals asked for the ground %q; only a hazard does", got)
+	}
+}
+
+// TestTheOpenHazardWindowRefreshes.
+//
+// `refreshCardWindow` searched the MAIN TRACK alone — complete while a digit was
+// the only way in, and incomplete the moment `[A]` opened a card on the ALERT
+// RAIL (D-126). A window that never refreshes goes stale exactly where staleness
+// matters most: a burst gains hazards while the operator is reading it, and the
+// window goes on showing the old list.
+func TestTheOpenHazardWindowRefreshes(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+
+	burst := admitted(t, toned("burst", lineup.BreakingAlert, lineup.FromDirector, category.Watches))
+	b := bcWith(t)
+	l, err := b.lineup.Queue(lineup.AlertRail, burst)
+	if err != nil {
+		t.Fatalf("seeding the rail: %v", err)
+	}
+	b, _ = b.Update(LineupMsg{Lineup: l})
+	b.width, b.height, b.ascii = 150, 74, true
+
+	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
+	r = press(t, r, "A")
+	if r.observer.modal != modalCard {
+		t.Fatal("[A] did not open the hazard's window")
+	}
+	gen := r.observer.cardGen
+
+	// THE BURST GAINS AN EMERGENCY while the operator is reading it — the whole
+	// reason the window has to follow the card.
+	worse := admitted(t, toned("burst", lineup.BreakingAlert, lineup.FromDirector,
+		category.Watches, category.Emergency))
+	l2, err := lineup.Lineup{}.Queue(lineup.AlertRail, worse)
+	if err != nil {
+		t.Fatalf("re-seeding the rail: %v", err)
+	}
+	r.broadcaster, _ = r.broadcaster.Update(LineupMsg{Lineup: l2})
+	r = r.refreshCardWindow()
+
+	if r.observer.cardGen == gen {
+		t.Error("the burst changed and the open window did not follow it")
+	}
+	if want := render.Tok(category.Of(category.Emergency).Tint); r.observer.cardGround != want {
+		t.Errorf("the refreshed window floats on %q, the worse burst wears %q",
+			r.observer.cardGround, want)
+	}
 }
