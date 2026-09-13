@@ -37,7 +37,12 @@ func consoleRouter(t *testing.T) Router {
 	}
 	b := bcWith(t, cards...)
 	b.ascii = true
-	return Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster}
+	// WITH THE KEYMAP THE REAL ROUTER IS BUILT WITH. A fixture without it skips
+	// the action switch entirely, so every test through it exercises the
+	// fall-through and none of the bindings — which is F-72's shape ("ASSIGNED AT
+	// CONSTRUCTION, and it was not") wearing a test's clothes.
+	return Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster,
+		keys: broadcasterKeyMap()}
 }
 
 // THE CONTROL SITS WHERE OBSERVER'S SITS (HUM LEAD, UAT 2026-09-12): "the control
@@ -189,5 +194,41 @@ func TestEnterOpensTheRowThePointerIsOn(t *testing.T) {
 	r.broadcaster.selected = MainTrackSlots - bcScheduledFrom
 	if _, opened := r.openPointedCard(); opened {
 		t.Error("enter opened a card window from the pool")
+	}
+}
+
+// A SECOND PRESS CLOSES THE WINDOW THE FIRST ONE OPENED (D-109).
+//
+// HUM LEAD, UAT 2026-09-12: "<enter> (again) flows to Oceanside, CA location card
+// from Observer … hitting <enter> a 2nd time should just close that modal for now
+// (until we write the management controls)."
+//
+// THE CARD WINDOW IS THE CONSOLE'S AND OBSERVER ONLY DRAWS IT. With one open the
+// console stops owning the keys, so `enter` reached Observer — where it means
+// "open the details for the row I have selected", and that row is Observer's own.
+// The operator pressed enter on one location and was shown another.
+func TestASecondEnterClosesTheCardWindow(t *testing.T) {
+	r := consoleRouter(t)
+	r.broadcaster.selected = 0
+
+	opened, ok := r.openPointedCard()
+	if !ok || opened.observer.modal != modalCard {
+		t.Fatal("the first press opened no card window")
+	}
+	// THE PREMISE: Observer has a selection of its own, and it is not the row the
+	// console's pointer is on. Without that this test cannot see the defect.
+	opened.observer.selected = 3
+
+	closed := pressAction(t, opened, actQueueOpen)
+	if closed.observer.modal != modalNone {
+		t.Errorf("a second enter left the window %v open", closed.observer.modal)
+	}
+	// AND IT DID NOT REACH OBSERVER, which is the defect itself: a modal of
+	// Observer's own would mean the key crossed the surface.
+	if closed.observer.modal == modalDetails {
+		t.Error("the key fell through to Observer and opened its own location details")
+	}
+	if closed.active != SurfaceBroadcaster {
+		t.Error("and the operator is still on the console")
 	}
 }

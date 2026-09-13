@@ -420,6 +420,28 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return r, nil
 				}
 			case actQueueOpen:
+				// A SECOND PRESS CLOSES THE WINDOW THE FIRST ONE OPENED (D-109).
+				//
+				// HUM LEAD, UAT 2026-09-12: "<enter> (again) flows to Oceanside, CA
+				// location card from Observer … hitting <enter> a 2nd time should
+				// just close that modal for now (until we write the management
+				// controls)."
+				//
+				// THE CARD WINDOW IS THE CONSOLE'S; OBSERVER ONLY DRAWS IT. With one
+				// open, `consoleOwnsTheKeys` is false and the key fell through to
+				// Observer — where `enter` means "open the details for the row I
+				// have selected", and the row Observer has selected is its own. So
+				// the operator pressed enter on Rancho Penasquitos and was shown
+				// Oceanside: a surface they were not looking at, acting on state
+				// they could not see.
+				//
+				// CLOSING IS THE HONEST ANSWER UNTIL THE MANAGEMENT CONTROLS EXIST.
+				// The window has nothing for a second press to do, and a key that
+				// does nothing is better than a key that does something elsewhere.
+				if r.active == SurfaceBroadcaster && r.observer.modal == modalCard {
+					r.observer = r.observer.close()
+					return r, nil
+				}
 				if r.consoleOwnsTheKeys() {
 					// IT REFUSES QUIETLY, exactly as a digit on an empty slot does,
 					// and for the same reason: the pointer is in the POOL, or the
