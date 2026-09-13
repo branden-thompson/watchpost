@@ -90,29 +90,47 @@ func TestTheTwoTracksNeverShareACell(t *testing.T) {
 	}
 }
 
-// THE BURST'S BOX IS AS TALL AS THE BURST (HUM LEAD, 2026-09-11): "the alert box
-// should be tall enough to fit the data, but doesn't need to 'fill' vertical
-// space just because".
-func TestTheTakeoverBoxIsAsTallAsItsBurstAndNoTaller(t *testing.T) {
+// THE BOX IS AS TALL AS THE CARD BESIDE IT, AND ITS LIST TAKES WHAT IS LEFT
+// (D-103).
+//
+// THIS TEST USED TO HOLD THE OPPOSITE. "The alert box should be tall enough to
+// fit the data, but doesn't need to 'fill' vertical space just because" (HUM
+// LEAD, 2026-09-11) was a ruling about a box in a COLUMN OF ITS OWN, and the v3
+// pair retired that column: UP NEXT and the takeover are level now, so a box that
+// followed its burst would close on a different row than the card next to it.
+//
+// AND THE LIST FOLLOWING THE HEIGHT IS WHAT KEEPS THE CONTROL ROW ON. A constant
+// ten rows overflowed the pair by one, the pair truncated the overflow, and what
+// came off the bottom was the one thing in the box the operator presses.
+func TestTheTakeoverBoxCloseslevelWithUpNext(t *testing.T) {
 	short := withBurst(t, NewBroadcaster(), "one hazard")
 	tall := withBurst(t, NewBroadcaster(), "one hazard", "two", "three", "four", "five")
 
-	s, l := len(short.priorityColumn(60)), len(tall.priorityColumn(60))
-	if s == 0 || l == 0 {
-		t.Fatalf("a burst drew no box: %d / %d rows", s, l)
+	for _, b := range []Broadcaster{short, tall} {
+		pair := b.readPair()
+		if len(pair) == 0 {
+			t.Fatal("the pair drew nothing")
+		}
+		// BOTH BOXES CLOSE ON THE LAST ROW. A short box would leave air under one
+		// side of the pair, which is the misalignment this rule exists to prevent.
+		last := stripANSITest(pair[len(pair)-1])
+		if strings.Count(last, "┗")+strings.Count(last, "+") < 2 {
+			t.Errorf("the pair's last row closes one box, not two:\n%s", strings.Join(pair, "\n"))
+		}
 	}
-	if l <= s {
-		t.Errorf("a five-alert burst drew %d rows and a one-alert burst %d; the box follows the burst", l, s)
+	if len(short.readPair()) != len(tall.readPair()) {
+		t.Error("a five-alert burst drew a different height than a one-alert burst; the pair sets the height")
 	}
 }
 
-// AND IT NEVER GROWS THE FRAME. A burst longer than the running order would
-// otherwise draw past the bottom, which FR-7.3 calls a defect rather than a
-// degradation.
-func TestTheTakeoverBoxIsCutToTheRunningOrdersHeight(t *testing.T) {
-	b := withBurst(t, NewBroadcaster(), "a", "b", "c", "d", "e", "f", "g", "h")
-	if got := len(b.priorityColumn(6)); got > 6 {
-		t.Errorf("the takeover drew %d rows into a running order of 6", got)
+// AND THE WAY IN SURVIVES THE FIT. Whatever the height works out to, the control
+// row is inside it — the defect that sent this rule back to the drawing board was
+// a box whose bottom line was cut off by the truncation above it.
+func TestTheTakeoverBoxKeepsItsControlRow(t *testing.T) {
+	b := withBurst(t, NewBroadcaster(), "a", "b", "c")
+	got := stripANSITest(strings.Join(b.readPair(), "\n"))
+	if !strings.Contains(got, "Details / Full Read / Manage") {
+		t.Errorf("the takeover box has no way in:\n%s", got)
 	}
 }
 

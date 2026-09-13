@@ -45,6 +45,7 @@ const actStatus
 const actSwapBroadcaster
 const actSwapObserver
 const bcAirLabelW
+const bcAlertChrome
 const bcCardInset
 const bcColumnGap
 const bcDetailRoom
@@ -264,7 +265,6 @@ func (Broadcaster).poolFooter
 func (Broadcaster).poolLines
 func (Broadcaster).poolRows
 func (Broadcaster).poolSelection
-func (Broadcaster).priorityColumn
 func (Broadcaster).priorityWidth
 func (Broadcaster).railed
 func (Broadcaster).readBody
@@ -593,7 +593,6 @@ func boxRule
 func broadcasterKeyMap
 func bucketSevere
 func buoyNote
-func burstWhen
 func cardBoxTitle
 func cardPulled
 func cardStatus

@@ -87,61 +87,66 @@ func TestTheRailIsWalledOnBothSides(t *testing.T) {
 	}
 }
 
-// THE TRACKS LAND ON THE REFERENCE'S COLUMNS (D-87).
+// THE PAIR LANDS ON THE REFERENCE'S COLUMNS (D-103).
 //
 // READ OFF THE MOCK, NOT COPIED OUT OF IT. The numbers live in
-// `mock-broadcaster-v2.txt` and this test finds them there, so the reference and
-// the console cannot drift apart without the drift being the failure — which is
-// the standing rule for this project's mocks and is exactly what a hand-copied
-// 132 stopped being the moment the layout changed.
-func TestTheTracksLandOnTheReferencesColumns(t *testing.T) {
-	left, right := mockTrackColumns(t)
+// `mock-broadcaster-v3.txt` and this test finds them there, so the reference and
+// the console cannot drift apart without the drift being the failure.
+//
+// v3 SWAPPED THE SIDES. Under v2 the takeover was its own column to the LEFT of
+// the running order; the pair puts UP NEXT on the left and the takeover on the
+// right, level with it. The mock's row that carries both borders is the same row
+// — what it means changed, so this test says which box is which rather than
+// calling them "left" and "right".
+//
+// AND THE ALERT BOX IS TWO CELLS WIDER THAN THE MOCK'S, deliberately. The mock
+// insets its table by two; every card box on this console insets by three
+// (`bcCardInset`), and two sibling boxes on one row with different insets would
+// read as a rendering fault. What the reference actually FIXES is the TABLE — the
+// fifty-one cells the operator reads offsets off — so the box is sized to hold
+// that at this console's own inset, and the two cells come out of UP NEXT.
+func TestThePairLandsOnTheReferencesColumns(t *testing.T) {
+	upNext, alert := mockTrackColumns(t)
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 
-	// THE COLUMNS ARE READ FROM THE FRAME'S OWN EDGE, and only its WIDTH moved
-	// (D-96).
-	//
-	// The console carries Observer's three-column left margin now. Every offset
-	// BETWEEN the tracks — the rail, the gap, the alert column, where the card
-	// begins — is measured from the frame and is unchanged by a margin outside it.
-	// What does change is how much room is left: the card is three cells narrower,
-	// so the running order's RIGHT edge is the one number that moves.
-	start := bcRailWidth + bcRailGap
-	if start != left[0] {
-		t.Errorf("the alert column starts at %d; the reference puts it at %d", start, left[0])
+	// THE AIR BETWEEN THEM IS THE REFERENCE'S. Where each box STARTS is not a
+	// reference fact any more — the mock's row runs the full 148 cells and this
+	// frame is 144 after D-100's two margins, and UP NEXT absorbs the difference —
+	// but the gap is fixed, and it is what makes the pair read as two things.
+	if got, want := bcColumnGap, alert[0]-upNext[1]-1; got != want {
+		t.Errorf("the boxes are %d cells apart; the reference puts %d between them", got, want)
 	}
-	if got := start + b.priorityWidth() - 1; got != left[1] {
-		t.Errorf("the alert column ends at %d; the reference ends it at %d", got, left[1])
+	// THE TAKEOVER HOLDS ITS TABLE, which is the number the reference actually
+	// pins: `##.` and its cell, ALERT TYPE at twenty-five, LOCATION at twenty-two.
+	if got, want := b.priorityWidth()-2-2*len(bcCardInset), mockAlertTableCells; got != want {
+		t.Errorf("the takeover gives its table %d cells; the reference's table is %d", got, want)
 	}
-	main := start + b.priorityWidth() + bcColumnGap
-	if main != right[0] {
-		t.Errorf("the running order starts at %d; the reference puts it at %d", main, right[0])
-	}
-	// BOTH MARGINS (D-100): three columns each side, so the reference's right edge
-	// comes in by six.
-	if got, want := main+b.cardBoxWidth()-1, right[1]-2*len(bcLeftInset); got != want {
-		t.Errorf("the running order ends at %d; the reference ends it at %d, less the two %d-column "+
-			"margins = %d", got, right[1], len(bcLeftInset), want)
+	// AND THE PAIR SPANS THE FRAME, so nothing is left over on the right.
+	if got, want := b.upNextWidth()+bcColumnGap+b.priorityWidth(), b.frameWidth(); got != want {
+		t.Errorf("the pair spans %d of the frame's %d cells", got, want)
 	}
 }
 
-// mockTrackColumns is where the v2 reference puts each track's borders, read
-// from the row that carries both.
-func mockTrackColumns(t *testing.T) (left, right [2]int) {
+// mockAlertTableCells is the reference's own table width: 4 + 25 + 22.
+const mockAlertTableCells = 51
+
+// mockTrackColumns is where the v3 reference puts each box's borders, read from
+// the row that carries both.
+func mockTrackColumns(t *testing.T) (upNext, alert [2]int) {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "06_docs", "02_features",
-		"0.16.0-broadcaster-ui", "01-objectives", "mock-broadcaster-v2.txt"))
+		"0.16.0-broadcaster-ui", "01-objectives", "mock-broadcaster-v3.txt"))
 	if err != nil {
 		t.Fatalf("the reference mock is the source of these numbers: %v", err)
 	}
-	for _, line := range strings.Split(string(raw), "\n") {
+	for _, line := range strings.Split(string(raw), "\n") { // bounded by the file (P10-02)
 		if !strings.Contains(line, bcTakeoverTitle) {
 			continue
 		}
 		r := []rune(line)
 		var opens, closes []int
-		for i, c := range r {
+		for i, c := range r { // bounded by the row (P10-02)
 			switch c {
 			case '┏':
 				opens = append(opens, i)
@@ -153,7 +158,7 @@ func mockTrackColumns(t *testing.T) (left, right [2]int) {
 			return [2]int{opens[0], closes[0]}, [2]int{opens[1], closes[1]}
 		}
 	}
-	t.Fatal("the reference has no row carrying both tracks' borders")
+	t.Fatal("the reference has no row carrying both boxes' borders")
 	return
 }
 

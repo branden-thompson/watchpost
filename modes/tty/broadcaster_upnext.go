@@ -113,7 +113,10 @@ func (b Broadcaster) alertBox(rows int) []string {
 	if len(rail) == 0 {
 		return b.emptyAlertBox(lane, rows)
 	}
-	out := lane.boxOf(rail[0], "A", "PRIORITY", b.burstBody(rail[0], w))
+	// THE LIST FILLS THE HEIGHT THE CARD BESIDE IT SETS, so the two boxes close on
+	// the same row. Truncating afterwards cut the control row off the bottom —
+	// which is the one thing in the box the operator presses.
+	out := lane.boxOf(rail[0], "A", "PRIORITY", b.burstBody(rail[0], w, rows-bcAlertChrome))
 	if len(out) > rows {
 		out = out[:rows] // it never grows the frame (FR-7.3)
 	}

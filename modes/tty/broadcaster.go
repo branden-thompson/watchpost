@@ -639,85 +639,66 @@ var bcRegions = []bcRegion{
 // them as flat cards, and the vertical rail that named them, are gone. What the
 // rail said in letters down the side, the table says in a heading above it.
 
-// burstBody is what a takeover box lists: who declared the alerts, and then the
-// alerts themselves (D-87).
+// burstBody is what a takeover box lists: the hazards it would read, as a table
+// (D-103).
 //
-// THE PREAMBLE IS THE CARD'S OWN HEAD, not a sentence written here. The Composer
-// already put "the following alerts have been declared by …" on the card at
-// standby (MVS-D-77), and a second copy in the console would name a different
-// provider the day the script changed.
+// IT WAS PROSE UNTIL THE HUM LEAD SAW IT (UAT 2026-09-12): the Composer's header
+// sentence, then each alert wrapped over two lines. That reads as a paragraph, and
+// what the operator is doing is SCANNING a list to decide whether to let it
+// interrupt the programme. The reference draws two columns and ten numbered rows.
 //
-// THE LIST IS THE CARD'S ARRIVALS, which carry what the reference asks for:
-// the hazard's headline, where it is, and the span it covers. They are numbered
-// in READ ORDER — the order the Director planned and the order they will be
-// spoken — so the operator can follow the read down the box.
-func (b Broadcaster) burstBody(c lineup.Card, w int) []string {
+// TEN ROWS WHETHER OR NOT THERE ARE TEN, which is the reference's own idiom and
+// the same rule the running order follows: a slot is an ADDRESS, and the box does
+// not change height because a hazard arrived.
+func (b Broadcaster) burstBody(c lineup.Card, w, list int) []string {
 	room := w - 2 - 2*len(bcCardInset)
 	if room < 8 {
 		return nil
 	}
-	rows := []string{""}
-	for _, p := range c.Script.Lines(lineup.PartHead) { // bounded by the script (P10-02)
-		for _, l := range render.WrapLines([]string{plaintext.Text(p.Text)}, room) {
-			rows = append(rows, bcCardInset+l)
-		}
-	}
-	for i, a := range c.From { // bounded by the burst (P10-02)
-		rows = append(rows, "")
-		rows = append(rows, bcCardInset+fmt.Sprintf("%02d. %s", i+1,
-			render.TruncateCells(strings.ToUpper(plaintext.Text(a.Headline)), room-4)))
-		rows = append(rows, bcCardInset+"    "+render.TruncateCells(burstWhen(a, b.opts()), room-4))
-	}
-	return append(rows, "")
-}
-
-// burstWhen is one alert's where and when, in the reference's shape:
-//
-//	<LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM
-//
-// A HAZARD WITH NO EXPIRY SHOWS NONE rather than inventing one. Some feeds give
-// no `until` at all, and a fabricated end time on a safety surface is worse than
-// an absent one.
-func burstWhen(a lineup.Arrival, o render.Opts) string {
-	when := a.At.Format("01/02 15:04")
-	if !a.Until.IsZero() {
-		when += " - " + a.Until.Format("01/02 15:04")
-	}
-	where := plaintext.Text(a.Subject)
-	if where == "" {
-		return when
-	}
-	return where + " " + o.Glyphs().Bullet + " " + when
-}
-
-// priorityColumn is the alert track's own column, as tall as the burst it lists
-// and blank the rest of the way down (D-87).
-//
-// ONE BOX FOR THE BURST, NOT ONE PER ALERT. MVS-D-77 makes a burst ONE card, and
-// the reference draws it as one box listing what it will read — so the column is
-// the rail's cards, each drawn as a box, and in practice that is one.
-//
-// IT FOLLOWS THE BURST'S HEIGHT. A box pinned to the LIVE and UP NEXT block
-// would draw a two-alert takeover as a tall frame mostly full of air, which says
-// the station is holding more than it is.
-func (b Broadcaster) priorityColumn(rows int) []string {
-	w := b.priorityWidth()
-	if w < 4 {
+	if list < 1 {
 		return nil
 	}
-	lane := newCardLane(w, b.opts().Glyphs())
-	out := []string{}
-	for _, c := range b.lineup.Cards(lineup.AlertRail) { // bounded by the rail (P10-02)
-		out = append(out, lane.boxOf(c, "A", "PRIORITY", b.burstBody(c, w))...)
+	rows := make([]render.AlertRow, 0, list)
+	for i := range list { // bounded by the box (P10-02)
+		r := render.AlertRow{Num: fmt.Sprintf("%02d.", i+1)}
+		if i < len(c.From) {
+			// THE ARRIVAL'S OWN WORDS. `Headline` is the hazard and `Subject` is
+			// where it is — the two facts the operator decides on, and the two the
+			// reference's columns are.
+			r.Kind = strings.ToUpper(plaintext.Text(c.From[i].Headline))
+			r.Location = plaintext.Text(c.From[i].Subject)
+		}
+		rows = append(rows, r)
 	}
-	// IT NEVER GROWS THE FRAME. A burst longer than the running order would draw
-	// past the bottom, which FR-7.3 calls a defect rather than a degradation —
-	// and the operator can still reach every alert through the card itself.
-	if rows > 0 && len(out) > rows {
-		out = out[:rows]
+	out := []string{""}
+	for _, l := range strings.Split(b.opts().AlertTable(rows, room), "\n") { // bounded (P10-02)
+		out = append(out, bcCardInset+l)
 	}
-	return out
+	// AND THE WAY IN, AT THE BOTTOM, where the reference puts it and where the
+	// UP NEXT card already puts its own.
+	return append(out, "", bcCardInset+" "+b.opts().KeyCap("A")+"  Details / Full Read / Manage")
 }
+
+// bcAlertChrome is what the takeover box spends around its list: the two borders,
+// the title row, the air above the table, the table's own header, the air below,
+// and the control row.
+//
+// THE LIST IS WHAT IS LEFT, so the box is exactly as tall as the card beside it
+// (D-103). The reference draws ten rows because its UP NEXT card is that tall; a
+// constant here would have made the two boxes disagree about their own height and
+// cut whichever lost.
+const bcAlertChrome = 7
+
+// THE HAZARD'S TIMES RETIRED WITH THE PROSE (D-103). `burstWhen` drew
+// "<LOCATION> • 09/12 16:02 - 09/12 18:00" on every alert line; the reference's
+// table has three columns and none of them is a span. The times are still on the
+// arrival and still reachable through the card — recorded here because the box
+// stopped saying something it used to say, which is a change and not a tidy-up.
+
+// AND `priorityColumn` RETIRED WITH THE OVERLAY (D-97). It drew the takeover as a
+// column of its own, as tall as the burst; the v3 pair draws it beside UP NEXT at
+// UP NEXT's height. Two drawers of one box is exactly the shape the `dupes` gate
+// is for, and only its tests were still calling this one.
 
 // bcGainCells is the gain bar's width, from the reference mock: thirty cells,
 // which is what the level steps across at the tens.
@@ -1046,7 +1027,11 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	// inside it would say the same thing twice on a box whose whole job is to be
 	// read at a glance. What the row still carries is the badge and the handle.
 	if c.Slot == lineup.BreakingAlert {
+		// AND ITS HANDLE IS AT THE BOTTOM (D-103), where the reference draws it:
+		// "A  Details / Full Read / Manage". A chip in the title row as well would
+		// be the same key offered twice on one box.
 		headline = ""
+		handle = ""
 	}
 	data := map[string]string{"headline": headline}
 	row := l.row
@@ -1074,7 +1059,15 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	// THE TRAILING SPACE IS THE REFERENCE'S: the mock leaves ONE cell between
 	// the handle and the card's right border, and the component right-aligns a
 	// badge flush.
-	row.SetBadge(l.g.Bullet+badge+l.g.Bullet+"  "+l.o.KeyCap(handle)+" ", 2)
+	// AND A CARD WITH NO HANDLE WEARS NO CHIP. An empty `KeyCap` paints an empty
+	// chip — "[]" without colour — which is a control offering no key: worse than
+	// the absent one it stands for. The takeover's way in is the row at the BOTTOM
+	// of its box (D-103), so its title row has no handle to show.
+	chip := l.g.Bullet + badge + l.g.Bullet
+	if handle != "" {
+		chip += "  " + l.o.KeyCap(handle)
+	}
+	row.SetBadge(chip+" ", 2)
 	out := render.PadTo(render.TruncateCells(row.RenderRow(data), l.lane), l.lane)
 	// A CARD THAT CANNOT BE LABELLED HONESTLY IS NOT DRAWN AT ALL (D-55).
 	//

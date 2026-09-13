@@ -120,11 +120,15 @@ const (
 	// bcPriorityWidth is the alert column's box, and it is DERIVED FROM WHAT IT
 	// MUST HOLD rather than from a share of the frame.
 	//
-	// Its widest line is an alert's when and where —
-	// `   <LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM   ` — which is 54 cells at
-	// the reference with the card's own inset on both sides. A column narrower
-	// than its one fixed-shape line would wrap every alert in the burst.
-	bcPriorityWidth = 54
+	// WHAT IT MUST HOLD IS THE TABLE (D-103): `##.` and its cell, ALERT TYPE at
+	// twenty-five, and a place name at twenty-two — fifty-one cells, plus the
+	// card's own inset on both sides and the box's two rails. Fifty-nine.
+	//
+	// IT WAS FIFTY-FOUR, derived from `burstWhen`'s one long line back when the
+	// box drew prose. That line is gone and the number outlived it: the table it
+	// now holds is seven cells wider, so LOCATION was cut to seventeen and every
+	// place name past "Carlsbad, CA" came out as a stub.
+	bcPriorityWidth = 59
 
 	// bcColumnGap is the air between the two tracks' columns.
 	bcColumnGap = 3

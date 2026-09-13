@@ -1,0 +1,90 @@
+0.16.0 — BROADCASTER, v3 (HUM LEAD, 2026-09-12)
+
+SUPERSEDES v2 BELOW THE STATION SECTION.  The console stops being a column of
+cards and becomes what Observer already is: go-studs tables, the same labels, the
+same prefix and alert tags, one shared pointer.
+
+THE HUM LEAD'S OWN NOTES AND MOCK FOLLOW, VERBATIM.  This file is the reference
+the layout tests read their numbers out of, so it is kept exactly as it was
+given — a mock that has been "tidied" is no longer evidence of anything.
+
+The GPS on the STATION line is a placeholder (F-66); real coordinates render only
+on the operator's own screen.
+
+Notes before you look at the mock:
+
+- Tables should follow the same labelling / colorscheme / behavior approach as Observer
+- Up Next and Alert are always present - if there are no active alerts taking over, then the box is simply empty
+- Pointer state is shared across the two go-studs tables (Line-Up / Location Pool) just like it is in the Observer tables (Watchlist / Recent)
+- Location Pool table should fill with our 25 location cap, and should function just like Observer's weather table - RATIONALE: gives the human operator some basic weather info to determin if they want to have that location priotized in the schedule linuep
+
+- Our lineup expands from 10 -> 15.  If it's leveraging the same mechanism as Observer, then Observer's watchlist should also grow from 10 -> 15. It also has all the same prefix / alert tags as the Observer table - this is to ensure the experiences are more consistent and the user doesn't have to "relearn" what certain things mean in between experiences.
+
+This should help harmonize some of the plumbing because now Observer and Broadcaster are actually *closer* in their presentation as a result.
+
+┌── WATCHPOST Broadcaster v 0.16.0 ──────────────────────────────────────────────────────────────────  Updated: 08/28/2026 19:15:08 PDT (Just Now) ──┐
+│   s  Settings  a  About   S  Status  crtl+o  Observer  ?  Help   q  Quit                                                       API: ✔9 ⚠0 ✘0 / 9   │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+                                                                                                                                                 
+   STATION AIR:         { *** ON AIR · BROADCASTING *** - 00d 00h 00m 00s| STANDBY (DEAD AIR)}        GAIN  - ████████████████░░░░░░░░░░░░░░ +  100   
+   BROADCASTIN FROM:    Bonsall, CA    TOWER GPS:  88.8888888, -888.8888888   SERVICE RADIUS: 100 Miles                                               
+   ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  
+   ┃  ⏺ LIVE NOW    ┃   LOCATION REPORT • Oceanside, CA 92057  •  Presented by   System Voice                                     0   Full Read   ┃   
+   ┣━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫    
+   ┃  ○ RELAY BED   ┃   [ ← ] KIG78 Coachella CA 162.400 MHz · 41mi from TOWER GPS      [ → ]                          { INACTIVE | ACTIVE } b    ┃    
+   ┗━━━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   
+                                                                                                                                                     
+┏━━━━━━━━━━━━━━┳━━ LOCATION REPORT • Oceanside, CA 92057 ━━━━━━━━━━━━ • STANDARD • ━━━┓   ┏━━━ ! ALERT ! - TAKEOVER ━━━━━━━━━━━━━ • PRIORITY • ━━━┓ 
+┃              ┃                                                                      ┃   ┃                                                       ┃
+┃              ┃   STATUS: Ready for Readout                                          ┃   ┃  ##. ALERT TYPE               LOCATION                ┃   
+┃              ┃   DATA PULL: mm/dd/yy  23:59:59  (10m ago)                           ┃   ┃  01. SEV. T.STORM WARNING     Long LocationName, CA   ┃
+┃              ┃                                                                      ┃   ┃  02. T.STORM WATCH            Carlsbad, CA            ┃
+┃              ┃                             READ MANIFEST                            ┃   ┃  03. SPEC. WEATHER ADVISORY   Carlsbad, CA            ┃
+┃              ┃   ##. NAME                               RANGE / INCIDENTS           ┃   ┃  04. HIGH SURF ADVISTORY      Carlsbad, CA            ┃
+┃   UP  NEXT   ┃   00. NWS Weather Forecast               09/12 - 09/19               ┃   ┃  05. EXTRMEME HEAT WARNING    Oceanside, CA           ┃
+┃              ┃   02. NDBC Marine Report                 09/11/2026                  ┃   ┃  06. HIGH HEAT ADVISORY       Vista, CA               ┃
+┃              ┃   03. Watchpost Fire Report              3 Hotspots / 10 incidents   ┃   ┃  07.                                                  ┃
+┃              ┃   04. USGS 7-Day Seismic Report          5 Quakes                    ┃   ┃  08.                                                  ┃
+┃              ┃                                                                      ┃   ┃  09.                                                  ┃
+┃              ┃                                                                      ┃   ┃  10.                                                  ┃
+┃              ┃                                                                      ┃   ┃                                                       ┃
+┃              ┃    1   Read / Manage    PRESENTER: [ ← ] System Voice        [ → ]   ┃   ┃   A   Details / Full Read / Manage                    ┃
+┗━━━━━━━━━━━━━━┻━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+ l  Lookup Location from Pool   enter  Details / Manage Slot   r  Request for Line-Up                                                  [↑↓] Navigate
+
+                                                         S C H E D U L E D    L I N E - U P                    
+
+|                         R E A D   O U T S                                 |       D I R E C T I O N       |     P R E S E N T A T I O N      |    
+|     ##. REPORT TYPE             LOCATION                    ZIP     DIST  |  PROIRITY   REQUESTED BY      |          CORRESPONDENT           |   ▲ 
+❯     02. Location Report, Full   Fallbrook, CA              00000    5 mi     Standard   Producer             [ ← ] System Voice        [ → ]     █ 
+      03. NWS Forecast            Rancho Penasquitos, CA     92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │ 
+   8⏺ 04. Surf Report             Carlsbad, CA               92048   10 mi     Priority   Station Operator     [ ← ] Samantha            [ → ]     │
+      05. Fire / Hotspot          Murrieta, CA               00000   30 mi     Standard   Producer             [ ← ] Daniel              [ → ]     │
+      06. Seismic Report          Lake Elsinore, CA          00000   30 mi     Standard   Producer             [ ← ] Daniel              [ → ]     │   
+      07. NWS Forecast            Rainbow, CA                92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │   
+      08. NWS Forecast            Rancho Penasquitos, CA     92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │   
+      09. NWS Forecast            Rancho Penasquitos, CA     92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │   
+      10. NWS Forecast            Rancho Penasquitos, CA     92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │   
+      11. NWS Forecast            Rancho Penasquitos, CA     92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │   
+      12. NWS Forecast            Rancho Penasquitos, CA     92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │   
+      13. NWS Forecast            Rancho Penasquitos, CA     92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │   
+      14. NWS Forecast            Rancho Penasquitos, CA     92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │   
+      15. NWS Forecast            Rancho Penasquitos, CA     92127   25 mi     Standard   Producer             [ ← ] System Voice        [ → ]     │   
+│                                                                   │                                         │                                │   │
+│                    L O C A T I O N     P O O L                    │                T O D A Y                │         T O M O R R O W        │   │  <-- This table should have our 25 location cap and function
+│                                                                   │                                         │                                │   │      like 'recent / searched' - if the human operator looks up a location
+|          LOCATION                  |  ZIP  |  DIST  | POPULATION  │  CONDITIONS   |   NOW  |  HI   |  LOW   │  CONDITIONS      HI      LOW   │   │      within the service radius but NOT in the default pool, it
+❯          Rancho Penasquitos, CA      92127   100 mi      125,000     THUNDERSTORM   100ºF↗   105ºF    65ºF     THUNDERSTORM   105ºF   888ºF      │      gets added, but a location "falls off.
+   ○ 8◆ 8⚠ Fallbrook, CA               92085    15 mi       35,000     PARTLY CLODY    75ºF     88ºF    55ºF     THUNDERSTORM   105ºF    65ºF      │
+           San Diego, CA               92120    50 mi    1,200,000     CLEAR           82ºF     91ºF    62ºF     THUNDERSTORM   105ºF    65ºF      │      It should also be preserved across tool restarts.
+           Rainbow, CA                 92059     3 mi        5,000     CLEAR           97ºF    100ºF    60ºF     THUNDERSTORM   105ºF    65ºF      │
+           Vista, CA                   00000     9 mi      112,000     CLOUDY          85ºF     78ºF    55ºF     THUNDERSTORM   105ºF    65ºF      │
+           Some Other Location, CA     92059     3 mi        5,000     CLEAR           97ºF    100ºF    60ºF     THUNDERSTORM   105ºF    65ºF      │                                                                                                            │
+           Some Other Location, CA     92059     3 mi        5,000     CLEAR           97ºF    100ºF    60ºF     THUNDERSTORM   105ºF    65ºF      │    
+           Some Other Location, CA     92059     3 mi        5,000     CLEAR           97ºF    100ºF    60ºF     THUNDERSTORM   105ºF    65ºF      │    
+           Some Other Location, CA     92059     3 mi        5,000     CLEAR           97ºF    100ºF    60ºF     THUNDERSTORM   105ºF    65ºF      │    
+           Some Other Location, CA     92059     3 mi        5,000     CLEAR           97ºF    100ºF    60ºF     THUNDERSTORM   105ºF    65ºF      │    
+           Some Other Location, CA     92059     3 mi        5,000     CLEAR           97ºF    100ºF    60ºF     THUNDERSTORM   105ºF    65ºF      │    
+           Some Other Location, CA     92059     3 mi        5,000     CLEAR           97ºF    100ºF    60ºF     THUNDERSTORM   105ºF    65ºF      │    
+                                                                                             Showing 1 - <visible> of 25 Location Pool Locations   ▼

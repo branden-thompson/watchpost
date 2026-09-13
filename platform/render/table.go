@@ -600,13 +600,20 @@ func (o Opts) columnHeader(groups []groupSpec, cols []studs.ColumnDefinition, ta
 		lo, hi int
 		title  string
 		bg     Token
+		// at is where the TITLE goes when it may not float: the column's own
+		// offset, or -1 for the centred default.
+		at int
 	}
 	var segs []seg
 	for i, g := range tableGeom(cols, tableW) {
 		if g.name == "extsp" { // the spacer: a gap, not a title
 			continue
 		}
-		segs = append(segs, seg{g.off, g.off + g.w - 1, strings.TrimSpace(cols[i].Header), bgOf[g.name]})
+		at := -1
+		if stencilHeader(g.name) {
+			at = g.off
+		}
+		segs = append(segs, seg{g.off, g.off + g.w - 1, strings.TrimSpace(cols[i].Header), bgOf[g.name], at})
 	}
 	for i := 1; i < len(segs); i++ {
 		mid := (segs[i-1].hi + segs[i].lo) / 2
@@ -616,14 +623,41 @@ func (o Opts) columnHeader(groups []groupSpec, cols []studs.ColumnDefinition, ta
 	for _, s := range segs {
 		b.WriteString(strings.Repeat(" ", max(0, s.lo-displayWidth(b.String()))))
 		w := s.hi - s.lo + 1
+		// THE BAND IS w CELLS EITHER WAY, and only the title's place in it
+		// differs — a stencil starts where its column starts, so it needs the
+		// whole band including the cell the caption form spends on air.
+		cell := " " + centered(s.title, "", w-2) + " "
+		if s.at >= 0 {
+			cell = PadTo(strings.Repeat(" ", max(0, s.at-s.lo))+s.title, w)
+		}
 		if colorOn() {
-			b.WriteString(sgrRaw(" "+centered(s.title, "", w-2)+" ", Tok(GroupText)+";"+TableHeaderTone(s.bg)))
+			b.WriteString(sgrRaw(cell, Tok(GroupText)+";"+TableHeaderTone(s.bg)))
+		} else if s.at >= 0 {
+			// NO BRACKETS ON A STENCIL. They are the colour-off stand-in for the
+			// band's tint, and a bracket in the first cell would put the stencil
+			// back one column off its numbers — the very defect this fixes.
+			b.WriteString(cell)
 		} else {
 			b.WriteString(bracketTitle(s.title, "", w))
 		}
 	}
 	return b.String()
 }
+
+// stencilHeader reports whether a column's title is a STENCIL of its own cells
+// rather than a NAME for them.
+//
+// `##.` IS THE ONLY ONE. It is not a word describing the column, it is what a
+// row number LOOKS like with its digits taken out — so an operator reads it as
+// the first entry in the list and expects the numbers to hang from it. Centred
+// over a five-cell column a three-cell stencil lands one cell right of every
+// number beneath it, which is what the HUM LEAD saw at UAT (2026-09-12: "'##.'
+// column head misaligned").
+//
+// EVERY OTHER HEADER STAYS CENTRED, which is Observer's shipped look and was not
+// what the finding was about. A title that NAMES a column is a caption over it;
+// a stencil belongs in the column.
+func stencilHeader(name string) bool { return name == "num" }
 
 // tableHeaderDip is how far the column-title row sits below its group band:
 // the band's own hue mixed toward black (a darker tint of the parent — HUM

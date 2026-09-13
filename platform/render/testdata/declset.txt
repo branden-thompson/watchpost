@@ -93,6 +93,7 @@ const VizOn
 const WindowBGDark
 const WindowBGLight
 const WordmarkName
+const alertLocMin
 const boxInset
 const categoryBlend
 const clockKey12
@@ -137,6 +138,7 @@ func (Clock).TimeSec
 func (Clock).WeekdayDateTime
 func (Clock).layout
 func (LocationRow).marks
+func (Opts).AlertTable
 func (Opts).BandHeight
 func (Opts).BandRows
 func (Opts).Block
@@ -172,6 +174,7 @@ func (Opts).Temp
 func (Opts).TideHeight
 func (Opts).TrendGlyph
 func (Opts).Wind
+func (Opts).alertHeader
 func (Opts).columnHeader
 func (Opts).groupHeader
 func (Opts).lineupRowData
@@ -255,6 +258,8 @@ func WrapSegments
 func WrapText
 func aaPairs
 func activeTable
+func alertColumnDefs
+func alertColumns
 func asciiKey
 func bandColumns
 func bareRGB
@@ -323,6 +328,7 @@ func spectrumTier
 func splitCells
 func statusCols
 func statusGutters
+func stencilHeader
 func stripANSI
 func tableCellStyles
 func tableGeom
@@ -335,6 +341,7 @@ func truncate
 func withAA
 func without
 func xterm256RGB
+type AlertRow
 type BoxGlyphs
 type Clock
 type Control
