@@ -157,9 +157,23 @@ func broadcasterKeyMap() term.KeyMap {
 		// to the console at all. One key means one thing (D-56), so the bed
 		// takes `b` and the reference's `[ B ]` chip becomes `[ b ]`. Stated
 		// rather than quietly re-bound: the mock is the record.
-		actBedCut:  {Keys: []string{"b"}, Help: "Bed"},
-		actBedPrev: {Keys: []string{"left"}, Help: "Previous Relay"},
-		actBedNext: {Keys: []string{"right"}, Help: "Next Relay"},
+		actBedCut: {Keys: []string{"b"}, Help: "Bed"},
+		// THE BED'S ARROWS ARE SHIFTED (D-111, HUM LEAD 2026-09-12).
+		//
+		// THE REFERENCE DRAWS ARROWS ON TWO CONTROLS — the bed's relay selector and
+		// the card's PRESENTER — and one surface has one pair of arrow keys. The
+		// HUM LEAD gave two ways out: "I think it should follow the pointer … or if
+		// we can do shift+<- and shift+-> that would also solve it (to make that
+		// specific for the Bed control)".
+		//
+		// SHIFT, BECAUSE THE POINTER ANSWER COSTS A SECOND POINTER. Following the
+		// pointer means the bed's row joins the walk, which puts a `❯` in the AIR
+		// section — a second focus mark on a frame that has one, and one more place
+		// for "where am I" to be answered. Shifting the bed's keys makes it what the
+		// HUM LEAD called it: SPECIFIC to that control, reachable from anywhere,
+		// and no ambiguity to resolve at the keystroke.
+		actBedPrev: {Keys: []string{"shift+left"}, Help: "Previous Relay"},
+		actBedNext: {Keys: []string{"shift+right"}, Help: "Next Relay"},
 		// THE QUEUE SCROLLS (D-87, HUM LEAD 2026-09-11): "that's why we have the
 		// vertical scroll bar so that works like Observer — that section just
 		// needs to be able to scroll up and down."
@@ -403,6 +417,9 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// surface sees it, so a case that returned unconditionally would
 			// swallow the ARROWS on Observer — where they walk the table — and
 			// the listener's navigation would simply stop working.
+			//
+			// THEY ARE SHIFTED SINCE D-111, which does not change that rule: an
+			// unbound shift+arrow on Observer must still reach Observer.
 			//
 			// NOT RETURNING IS THE FALL-THROUGH: execution continues past this
 			// switch to the active surface, which is exactly what an unbound key

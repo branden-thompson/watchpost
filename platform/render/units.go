@@ -161,6 +161,13 @@ func asciiKey(key string) string {
 		return "left"
 	case "→":
 		return "right"
+	// SHIFTED ARROWS NAME THE MODIFIER TOO. The bed's relay selector lives on
+	// shift+←/shift+→ (D-111), and a chip that read "left" there would name a key
+	// that steps a different control.
+	case "⇧←":
+		return "shift+left"
+	case "⇧→":
+		return "shift+right"
 	case "↑":
 		return "up"
 	case "↓":

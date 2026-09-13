@@ -274,7 +274,10 @@ func TestTheBedRowCarriesItsSelector(t *testing.T) {
 	// ASKED OF THE CHIP RENDERER, which also names the arrows in WORDS under
 	// --ascii: a terminal that cannot draw them still gets a usable control,
 	// and the test does not have to know which form it got.
-	for _, want := range []string{chipFor("←"), chipFor("→")} {
+	// SHIFTED SINCE D-111, and the chip says so: the bare arrows step the card's
+	// PRESENTER now, so a chip reading `←` here would name a key that moves a
+	// different control.
+	for _, want := range []string{chipFor("⇧←"), chipFor("⇧→")} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the bed's row carries the selector; %q is missing from:\n%q", want, got)
 		}

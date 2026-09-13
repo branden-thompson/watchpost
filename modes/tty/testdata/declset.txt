@@ -248,7 +248,6 @@ func (Broadcaster).consoleControls
 func (Broadcaster).controlRow
 func (Broadcaster).detailBody
 func (Broadcaster).emptyAlertBox
-func (Broadcaster).flatBody
 func (Broadcaster).frameWidth
 func (Broadcaster).framed
 func (Broadcaster).header
@@ -572,7 +571,6 @@ func (cardLane).boxOf
 func (cardLane).inner
 func (cardLane).render
 func (cardLane).shell
-func (cardLane).standbyBox
 func (endpointRow).counters
 func (radioBP).hasViz
 func (setupScope).shownOn
@@ -765,7 +763,6 @@ func sortAlerts
 func splitAlertItems
 func splitEscFusion
 func stacked
-func standbyTone
 func stationNote
 func statsFingerprint
 func statusAvail
@@ -844,7 +841,6 @@ type UIPrefs
 type VoiceNoteMsg
 type alertItem
 type arrowChips
-type bcRegion
 type bodyKey
 type bodyMemo
 type cardLane
@@ -887,5 +883,4 @@ type uiSavedMsg
 type vizTickMsg
 var _
 var bcRailForms
-var bcRegions
 var heldEscalation

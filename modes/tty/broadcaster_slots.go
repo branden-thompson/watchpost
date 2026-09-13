@@ -185,18 +185,9 @@ func (b Broadcaster) cardControls(o render.Opts, c lineup.Card, handle string) s
 	return left + "    PRESENTER: " + detailReadBy(c)
 }
 
-// flatBody is the interior of a card the operator only ORDERS (D-87): what it is
-// waiting for, and the way in to the rest of it.
-func (b Broadcaster) flatBody(o render.Opts, c lineup.Card, handle string, decided bool) []string {
-	if !decided {
-		return []string{"", "", ""}
-	}
-	return []string{
-		bcCardInset + "STATUS:  " + cardStatus(c, decided),
-		"",
-		bcCardInset + " " + o.KeyCap(handle) + "  Report Details",
-	}
-}
+// `flatBody` RETIRED WITH THE CARD COLUMN (D-110). It was the interior of a slot
+// the operator only ORDERS, and those are rows of `LineupTable` now (D-94) — a
+// table cell has no interior to draw.
 
 // bcCardInset is where a read card's own text begins, counted off the reference.
 const bcCardInset = "   "

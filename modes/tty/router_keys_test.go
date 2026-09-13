@@ -101,8 +101,17 @@ func keyPress(t *testing.T, name string) tea.KeyPressMsg {
 			return tea.KeyPressMsg{Code: r[0], Mod: tea.ModCtrl}
 		}
 	}
-	if rest, found := strings.CutPrefix(name, "shift+"); found && rest == "enter" {
-		return tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift}
+	// SHIFT + A NAMED KEY, not just enter (D-111): the bed's relay selector moved
+	// to shift+←/shift+→ so the bare arrows are free for the card's PRESENTER.
+	if rest, found := strings.CutPrefix(name, "shift+"); found {
+		switch rest {
+		case "enter":
+			return tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift}
+		case "left":
+			return tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift}
+		case "right":
+			return tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift}
+		}
 	}
 	r := []rune(name)
 	if len(r) == 1 {

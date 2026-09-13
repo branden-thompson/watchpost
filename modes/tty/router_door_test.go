@@ -66,6 +66,12 @@ func keyFor(t *testing.T, binding string) tea.KeyPressMsg {
 		k = tea.KeyPressMsg{Code: rune(binding[len("ctrl+")]), Mod: tea.ModCtrl}
 	case binding == "shift+enter":
 		k = tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift}
+	// SHIFT + AN ARROW (D-111): the bed's relay selector moved there so the bare
+	// arrows are free for the card's PRESENTER.
+	case binding == "shift+left":
+		k = tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift}
+	case binding == "shift+right":
+		k = tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift}
 	default:
 		k = tea.KeyPressMsg{Code: rune(binding[0]), Text: binding}
 	}
@@ -186,10 +192,18 @@ func TestTheBedsControlsReachTheStation(t *testing.T) {
 		t.Errorf("[b] on a carrying bed cuts BACK; asked %v", s.bed)
 	}
 
-	m, _ = m.Update(keyPress(t, "right"))
-	m, _ = m.Update(keyPress(t, "left"))
+	// SHIFTED SINCE D-111: the reference draws arrows on the bed's selector AND on
+	// the card's PRESENTER, and one surface has one pair of arrow keys. The bed's
+	// are the SPECIFIC ones, reachable wherever the pointer happens to be.
+	m, _ = m.Update(keyPress(t, "shift+right"))
+	m, _ = m.Update(keyPress(t, "shift+left"))
 	if len(stepped) != 2 || stepped[0] != 1 || stepped[1] != -1 {
 		t.Errorf("the arrows step the relay selection; got %v", stepped)
+	}
+	// AND A BARE ARROW DOES NOT, which is what makes them specific.
+	m, _ = m.Update(keyPress(t, "right"))
+	if len(stepped) != 2 {
+		t.Errorf("a bare arrow stepped the relay; got %v", stepped)
 	}
 
 	// AND NONE OF THEM ACTS FROM OBSERVER, where the bed is not drawn.
@@ -197,7 +211,7 @@ func TestTheBedsControlsReachTheStation(t *testing.T) {
 	r.active = SurfaceObserver
 	before, steps := len(s.bed), len(stepped)
 	after, _ := r.Update(keyPress(t, "b"))
-	_, _ = after.Update(keyPress(t, "right"))
+	_, _ = after.Update(keyPress(t, "shift+right"))
 	if len(s.bed) != before || len(stepped) != steps {
 		t.Error("a bed control acted from a surface where the operator cannot see what they did")
 	}

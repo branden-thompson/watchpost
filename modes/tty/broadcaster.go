@@ -670,27 +670,10 @@ const bcInsetRows = 2
 // schedule and nothing on the surface says "rolling" any more — the scroll rail
 // implies it, which is weaker. Recorded here rather than lost.
 
-// bcRegion is one named part of the running order, and the slots it holds.
-type bcRegion struct {
-	label      string
-	from, upto int // half-open, in LINE-UP positions
-	// reads is whether the operator READS FROM this region's cards rather than
-	// merely ordering them — the LIVE card and the one after it (D-68). Those
-	// draw the tall box that carries the manifest; the rest draw the flat one.
-	reads bool
-}
-
-// bcRegions is the reference's own division of the main track, which is what
-// its left rail spells out. The BED sits between UP NEXT and SCHEDULED and is
-// not part of this table: it is not a card slot, and the schedule cannot put
-// one there (Track's own comment refuses exactly that).
-var bcRegions = []bcRegion{
-	// THE NAMES ARE THE v2 REFERENCE'S (D-87). "LIVE ON AIR" says what the slot
-	// IS rather than merely where it sits, and "SCHEDULED LINE UP" is one name
-	// for what used to read as two regions — which is what the missing break
-	// between them already said.
-	{"UP NEXT", 1, 2, true},
-}
+// THE REGIONS RETIRED WITH THE CARD COLUMN (D-110). `bcRegion` and `bcRegions`
+// divided the running order into named bands of cards; LIVE went to the air box
+// (D-95), the ordered slots to the table (D-94), and UP NEXT is one of a pair
+// (D-97). One card is not a region, and a table's regions are its group bands.
 
 // LIVE IS NOT A CARD REGION EITHER (D-95). What is on the air is one row of the
 // AIR BOX above the running order, beside the bed it is mutually exclusive with —
@@ -998,7 +981,10 @@ func (b Broadcaster) bedSelector(o render.Opts) string {
 	if relay == "" {
 		relay = bcNoRelay
 	}
-	return o.KeyCap("←") + "  " + relay + "  " + o.KeyCap("→")
+	// SHIFTED (D-111). The bare arrows belong to the card's PRESENTER now, and a
+	// chip here that read `←` would name a key that steps a different control —
+	// which is worse than no chip, because the operator would try it.
+	return o.KeyCap("⇧←") + "  " + relay + "  " + o.KeyCap("⇧→")
 }
 
 const (
@@ -1271,50 +1257,16 @@ func (l cardLane) shell(boxTitle, boxBadge string, body []string, ground string)
 	return rows
 }
 
-// standbyBox is the LIVE slot with nothing on the air (D-89).
-//
-// THE HUM LEAD'S OWN WORDS, 2026-09-11: "empty state needs to be a grey box with
-// a centered text of: NO REPORTS READ OR ACTIVE IN STANDBY MODE". It closes
-// D-84's point 4 — "LIVE should remain EMPTY; we'll need to design an empty-state
-// for that slot" — which was the one part of that ruling left undesigned.
-//
-// IT CARRIES NO TITLE, NO BADGE AND NO HANDLE, and that is a fix as much as a
-// design. The slot drew `LOCATION REPORT •STANDARD• [0]` on an empty box, because
-// `lineup.Card{}`'s zero Slot IS a location report — so the console named a
-// report that did not exist, graded it, and offered a chip that opens nothing.
-// A chip on a slot with no card behind it is F-97 all over again.
-//
-// IT IS THE FULL HEIGHT OF A READ CARD, for the reason readBody's height is
-// fixed: the box is the same shape whether the station is on the air or not, so
-// going on air does not shunt the whole running order up and down. The operator
-// is watching the line-up at that moment.
-func (l cardLane) standbyBox(rows int) []string {
-	if rows < 3 {
-		return nil
-	}
-	// THE TEXT IS CENTRED IN BOTH AXES, which is what "centered" means on a box
-	// this empty — a line pinned to the top would read as a heading for contents
-	// that are not there.
-	body := make([]string, rows-2)
-	body[(len(body)-1)/2] = centerText(bcStandbyNotice, l.inner())
-	return l.shell("", "", body, standbyTone())
-}
-
-// bcStandbyNotice is the HUM LEAD's wording, verbatim (D-89).
+// bcStandbyNotice is the HUM LEAD's wording, verbatim (D-89): "empty state needs
+// to be a grey box with a centered text of: NO REPORTS READ OR ACTIVE IN STANDBY
+// MODE". The BOX retired at D-95; the SENTENCE is what the LIVE row says.
 const bcStandbyNotice = "NO REPORTS READ OR ACTIVE IN STANDBY MODE"
 
-// cardTitle is the card's name as the operator reads it: what KIND of read it is,
-// then what it is about.
-//
-// THE KIND COMES FROM THE SLOT, NOT FROM THE PRODUCER (D-87). The reference
-// draws "LOCATION REPORT • Oceanside, CA" and the producer supplies only the
-// location — as it should, because what a card is ABOUT and what KIND of card it
-// is are two different facts with two different owners. The slot registry is the
-// one place a kind is named, and `kindFirst` already expects the pair.
-//
-// A CARD WITH NO SUBJECT KEEPS ITS KIND, and one with no kind keeps its subject:
-// a slot outside the registry names nothing rather than drawing "•" with air on
-// one side of it.
+// `standbyBox` RETIRED WITH THE LIVE CARD (D-110). D-89 drew the empty LIVE slot
+// as a grey box — "NO REPORTS READ OR ACTIVE IN STANDBY MODE" — and D-95 made
+// LIVE one ROW of the air box, where `liveLine` says the same sentence in the
+// space a row has. The words survived; the box around them did not.
+
 func cardTitle(c lineup.Card, g render.Glyphs) string {
 	head := plaintext.Text(c.Headline)
 	kind := strings.ToUpper(c.Slot.String())
@@ -1437,17 +1389,6 @@ func cardTone(c lineup.Card) string {
 		return fg + ";" + render.Tok(render.CardOperatorBG)
 	}
 	return fg + ";" + render.Tok(render.CardBG)
-}
-
-// standbyTone is the ground of the LIVE slot with nothing on the air (D-89).
-//
-// ITS OWN FUNCTION, BESIDE cardTone, because it is the same KIND of decision and
-// this is where that kind of decision is made and measured. `cardTone` returns ""
-// for a slot with no card in it — deliberately, and D-86 tests it — so the standby
-// box cannot reach its answer through there, and a `render.Tok` call buried in the
-// drawing code would be the one tone in the console that no test could ask about.
-func standbyTone() string {
-	return render.Tok(render.CardText) + ";" + render.Tok(render.CardEmptyBG)
 }
 
 // worstCategory is the most severe category among a card's alerts.
