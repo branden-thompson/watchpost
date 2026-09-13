@@ -446,3 +446,19 @@ func TestSetupAllocBudget(t *testing.T) {
 		}
 	}
 }
+
+// BenchmarkConsoleFrame is the console's frame on the path that COSTS: a full
+// pool, a full running order, and real snapshots behind both, so every row
+// joins its weather (D-120). A console with no pool measures the cheap path,
+// which is the mistake the alloc budget spent its whole history making.
+func BenchmarkConsoleFrame(b *testing.B) {
+	c := loadedConsole(b, loadedPoolSize)
+	if loadedJoins(c) == 0 {
+		b.Fatal("the fixture joined no weather; this benchmark is about the cheap path")
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_ = c.View().Content
+	}
+}

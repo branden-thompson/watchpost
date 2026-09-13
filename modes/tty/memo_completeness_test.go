@@ -89,20 +89,49 @@ type perturbed struct {
 func perturbations(t *testing.T, base Dashboard) []perturbed {
 	t.Helper()
 	var out []perturbed
-	walk(t, reflect.TypeOf(base), "", func(path string, set func(*Dashboard)) {
-		next := base
-		if !apply(&next, set) {
-			return // the perturbation panicked the copy; not a finding about the key
-		}
+	perturbEach(t, base, nestedExcuse, dashboardWriter, func(path string, next Dashboard) {
 		out = append(out, perturbed{field: path, model: next})
 	})
 	return out
 }
 
+// dashboardWriter models the real writer for a field the app never writes bare.
+//
+// SETUP IS KEYED BY GENERATION, not by its fields: the window carries two maps
+// and fingerprinting it every frame was the largest thing it cost, so every
+// WRITER bumps gen instead (setupState.touch, via settled/castTouched). Writing
+// a field without bumping is not something the app does, so this models the real
+// writer rather than reporting the design as a defect.
+func dashboardWriter(name string, d *Dashboard) {
+	if name == "setup" {
+		d.setup = d.setup.touch()
+	}
+}
+
+// perturbEach is the engine, GENERIC OVER THE MODEL. Two surfaces memoise now,
+// and the guard is the thing that makes a memo safe to have — so a second copy
+// of this walk for the console would be the one duplication that matters: the
+// copy would drift, and the surface whose walk stopped descending would report
+// coverage it did not have while its frames froze.
+//
+// `excuse` names the fields it does NOT descend into, and `writer` models a
+// writer the app pairs with a field (setup's generation). Both belong to the
+// model, not to the walk.
+func perturbEach[T any](t *testing.T, base T, excuse map[string]string, writer func(string, *T), emit func(string, T)) {
+	t.Helper()
+	walk(t, reflect.TypeOf(base), "", excuse, writer, func(path string, set func(*T)) {
+		next := base
+		if !apply(&next, set) {
+			return // the perturbation panicked the copy; not a finding about the key
+		}
+		emit(path, next)
+	})
+}
+
 // apply runs one perturbation, containing a panic from an index a fixture does
 // not support. A field that cannot be perturbed safely is skipped rather than
 // reported: this test is about the KEY, not about render robustness.
-func apply(d *Dashboard, set func(*Dashboard)) (ok bool) {
+func apply[T any](d *T, set func(*T)) (ok bool) {
 	defer func() {
 		if recover() != nil {
 			ok = false
@@ -114,7 +143,7 @@ func apply(d *Dashboard, set func(*Dashboard)) (ok bool) {
 
 // walk visits every field this test knows how to change, one level into nested
 // structs (relayFault, debug and setup all hold their state that way).
-func walk(t *testing.T, typ reflect.Type, prefix string, emit func(string, func(*Dashboard))) {
+func walk[T any](t *testing.T, typ reflect.Type, prefix string, excuse map[string]string, writer func(string, *T), emit func(string, func(*T))) {
 	t.Helper()
 	for i := range typ.NumField() {
 		f := typ.Field(i)
@@ -122,7 +151,7 @@ func walk(t *testing.T, typ reflect.Type, prefix string, emit func(string, func(
 		switch f.Type.Kind() {
 		case reflect.Bool, reflect.Int, reflect.Int64, reflect.String:
 			idx := i
-			emit(path, func(d *Dashboard) { bump(fieldAt(d, prefix, idx)) })
+			emit(path, func(d *T) { bump(fieldAt(d, idx)) })
 		case reflect.Struct:
 			// ONE LEVEL DOWN, INTO EVERY STRUCT THIS FILE HAS NOT EXCUSED
 			// (FR-3.3). It named three — relayFault, debug and setup — so a
@@ -130,15 +159,15 @@ func walk(t *testing.T, typ reflect.Type, prefix string, emit func(string, func(
 			// coverage it did not have. A hand-written list of the windows with
 			// state is the same shape as the hand-written memo key it checks,
 			// and would miss a new window in exactly the same way.
-			if prefix == "" && nestedExcuse[path] == "" {
-				walkNested(t, f, i, emit)
+			if prefix == "" && excuse[path] == "" {
+				walkNested(t, f, i, excuse, writer, emit)
 			}
 		}
 	}
 }
 
 // walkNested is walk for the fields of one nested struct.
-func walkNested(t *testing.T, f reflect.StructField, outer int, emit func(string, func(*Dashboard))) {
+func walkNested[T any](t *testing.T, f reflect.StructField, outer int, excuse map[string]string, writer func(string, *T), emit func(string, func(*T))) {
 	t.Helper()
 	for j := range f.Type.NumField() {
 		inner := f.Type.Field(j)
@@ -146,20 +175,14 @@ func walkNested(t *testing.T, f reflect.StructField, outer int, emit func(string
 		case reflect.Bool, reflect.Int, reflect.Int64, reflect.String:
 			jdx := j
 			name := f.Name
-			if nestedExcuse[name+"."+inner.Name] != "" {
+			if excuse[name+"."+inner.Name] != "" {
 				continue
 			}
-			emit(name+"."+inner.Name, func(d *Dashboard) {
+			emit(name+"."+inner.Name, func(d *T) {
 				v := reflect.ValueOf(d).Elem().Field(outer).Field(jdx)
 				bump(reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem())
-				// SETUP IS KEYED BY GENERATION, not by its fields: the window
-				// carries two maps and fingerprinting it every frame was the
-				// largest thing it cost, so every WRITER bumps gen instead
-				// (setupState.touch, via settled/castTouched). Writing a field
-				// without bumping is not something the app does, so this models
-				// the real writer rather than reporting the design as a defect.
-				if name == "setup" {
-					d.setup = d.setup.touch()
+				if writer != nil {
+					writer(name, d)
 				}
 			})
 		}
@@ -185,8 +208,7 @@ var nestedExcuse = map[string]string{
 }
 
 // fieldAt is one addressable field of d, by index, at the top level.
-func fieldAt(d *Dashboard, prefix string, i int) reflect.Value {
-	_ = prefix
+func fieldAt[T any](d *T, i int) reflect.Value {
 	v := reflect.ValueOf(d).Elem().Field(i)
 	return reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem()
 }
