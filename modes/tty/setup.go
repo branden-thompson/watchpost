@@ -58,6 +58,24 @@ type setupState struct {
 	key    string
 	reveal bool
 
+	// THE STATION'S OWN TWO (D-115). `query`, `hints` and `idx` above are SHARED
+	// with this row's type-ahead and that is safe by construction: the listener's
+	// default location is `scopeObserver` and the transmitter is
+	// `scopeBroadcaster`, so the two are never on screen together and one
+	// type-ahead is only ever filling one of them.
+	//
+	// THE RESOLVED REF IS NOT SHARED, though, and that is the half that matters:
+	// they are different settings with different owners (D-72), and a save that
+	// could write the station's epicentre into the listener's default location
+	// would be the leak the whole scope table exists to prevent.
+	txRef *snapshot.LocationRef
+
+	// serviceMi is the miles buffer for the service radius, and serviceSeeded
+	// says it still holds the STORED value — the same first-digit-replaces rule
+	// the alert radius learned at UAT 2026-09-08, for the same reason.
+	serviceMi     string
+	serviceSeeded bool
+
 	// WATCHPOST RADIO - RELAY REPLAY
 	relayDwell time.Duration
 	// relayLang is the tie-break language for co-located relays.
@@ -192,6 +210,12 @@ func (d Dashboard) openSetup() Dashboard {
 		d.setup.radiusMi = fmt.Sprintf("%d", d.cfg.AlertRadiusMi)
 		d.setup.radiusSeeded = true // the first digit typed replaces it
 	}
+	// THE STATION'S SERVICE RADIUS, SHOWN AS IT IS IN FORCE (D-115). Seeded the
+	// same way and for the same reason: the first digit typed REPLACES it.
+	if d.cfg.ServiceRadiusMi > 0 {
+		d.setup.serviceMi = fmt.Sprintf("%d", d.cfg.ServiceRadiusMi)
+		d.setup.serviceSeeded = true
+	}
 	return d
 }
 
@@ -261,8 +285,13 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // rules did not take.
 func (d Dashboard) setupRowText(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch d.setup.focus {
-	case rowLocation:
+	case rowLocation, rowTransmitter:
+		// ONE TYPE-AHEAD, TWO SETTINGS (D-115). They are never both on screen —
+		// one is `scopeObserver` and the other `scopeBroadcaster` — so the query,
+		// the hints and the index are shared and only the resolved ref is not.
 		return d.setupLocationKey(key)
+	case rowServiceRadius:
+		return d.setupServiceKey(key)
 	case rowFIRMSKey:
 		return d.setupKeyKey(key)
 	case rowEventsAll, rowEventsWithin:
@@ -464,7 +493,8 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 	// and leaving it out of this path meant enter saved four groups of five and
 	// then discarded the fifth with the window state.
 	cmd := sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)),
-		d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd())
+		d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd(),
+		d.transmitterApplyCmd(), d.serviceRadiusApplyCmd())
 	return d.commitToModel(), cmd
 }
 
@@ -496,6 +526,19 @@ func (d Dashboard) commitToModel() Dashboard {
 	if d.cfg.SetRelayDwell != nil && d.setup.relayDwell > 0 {
 		d.cfg.RelayDwell = d.setup.relayDwell
 	}
+	// THE STATION'S TWO, ON THE SAME ROUND TRIP AND FOR THE SAME REASON: their
+	// setters return nothing, so without this the window would re-open showing
+	// the OLD epicentre and the operator would reasonably read the save as failed.
+	// The guards match the ApplyCmds' exactly; if they drift, the model and the
+	// file disagree about what is in force.
+	if d.cfg.SetTransmitter != nil && d.setup.txRef != nil {
+		ref := *d.setup.txRef
+		d.cfg.Transmitter = &ref
+	}
+	if v := d.setup.serviceRadiusChoice(); d.cfg.SetServiceRadius != nil &&
+		v >= serviceRadiusMin && v <= serviceRadiusMax {
+		d.cfg.ServiceRadiusMi = v
+	}
 	if d.cfg.SetRelayLang != nil && d.setup.relayLang != "" {
 		d.cfg.RelayLang = d.setup.relayLang
 	}
@@ -524,6 +567,46 @@ func (d Dashboard) commitToModel() Dashboard {
 func (d Dashboard) radiusApplyCmd() tea.Cmd {
 	// No validity predicate: 0 is "All (global)", a real choice (0.12.0).
 	return applyIfChanged(d.cfg.SetAlertRadius, d.setup.alertRadiusChoice(), d.cfg.AlertRadiusMi, nil)
+}
+
+// transmitterApplyCmd writes the station's epicentre (D-115).
+//
+// IT WRITES ONLY WHAT THE OPERATOR CHOSE. `txRef` is nil until they pick a
+// place, and a nil there means "unchanged" — NOT "clear it". A save that wrote
+// the borrowed fallback back as the station's OWN transmitter would silently end
+// the D-72 split: the station would stop following the listener's default
+// location the first time anyone opened Settings and pressed enter.
+func (d Dashboard) transmitterApplyCmd() tea.Cmd {
+	set := d.cfg.SetTransmitter
+	if set == nil || d.setup.txRef == nil {
+		return nil
+	}
+	next := *d.setup.txRef
+	if cur := d.cfg.Transmitter; cur != nil && snapshot.Key(*cur) == snapshot.Key(next) {
+		return nil // it has not moved
+	}
+	return func() tea.Msg { set(next); return nil }
+}
+
+// serviceRadiusApplyCmd writes how far the station serves (D-115).
+//
+// THE BOUNDS ARE ENFORCED HERE, at the save, rather than at the keystroke: a
+// field that refused "1" on the way to "100" would be fighting the operator over
+// a number they had not finished writing. Out of range writes NOTHING and the
+// stored value stands, which is the same "do nothing for an invalid value" rule
+// `applyIfChanged` states.
+func (d Dashboard) serviceRadiusApplyCmd() tea.Cmd {
+	return applyIfChanged(d.cfg.SetServiceRadius, d.setup.serviceRadiusChoice(), d.cfg.ServiceRadiusMi,
+		func(v int) bool { return v >= serviceRadiusMin && v <= serviceRadiusMax })
+}
+
+// serviceRadiusChoice is the buffer as a number, and zero when it is not one.
+func (st setupState) serviceRadiusChoice() int {
+	n, err := strconv.Atoi(strings.TrimSpace(st.serviceMi))
+	if err != nil {
+		return 0
+	}
+	return n
 }
 
 // applyIfChanged is the write-on-close shape THREE settings share: do nothing
@@ -593,22 +676,33 @@ func (d Dashboard) setupPreview() (tea.Model, tea.Cmd) {
 // pick, keeps the current default when nothing was typed, or resolves the
 // typed text when nothing matched offline — then moves to question 2.
 func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	// WHICH SETTING THIS TYPE-AHEAD IS FILLING (D-115). The station's transmitter
+	// and the listener's default location are the same CONTROL and different
+	// FACTS (D-72), so the keys are shared and the destination is not.
+	into, cur, next := &d.setup.ref, d.currentDefault(), rowFIRMSKey
+	if d.setup.focus == rowTransmitter {
+		into, cur, next = &d.setup.txRef, d.currentTransmitter(), rowServiceRadius
+	}
 	switch key.String() {
 	case "enter":
 		if len(d.setup.hints) > 0 {
 			ref := d.setup.hints[min(d.setup.idx, len(d.setup.hints)-1)]
-			d.setup.ref, d.setup.focus, d.setup.err = &ref, rowFIRMSKey, ""
+			*into, d.setup.focus, d.setup.err = &ref, next, ""
+			// AND THE QUERY IS SPENT. It is shared with the other row, so leaving
+			// it behind would show one setting's search under the other's label
+			// the next time the window opened on the other surface.
+			d.setup.query, d.setup.hints, d.setup.idx = "", nil, 0
 			return d, nil
 		}
 		if q := strings.TrimSpace(d.setup.query); q != "" {
 			return d, d.resolveCmd(q, "setup")
 		}
-		if d.setup.ref != nil { // a location already chosen this visit: keep it, move on (REVIEW C3)
-			d.setup.focus, d.setup.err = rowFIRMSKey, ""
+		if *into != nil { // a location already chosen this visit: keep it, move on (REVIEW C3)
+			d.setup.focus, d.setup.err = next, ""
 			return d, nil
 		}
-		if cur := d.currentDefault(); cur != nil { // a re-run keeps the default with a bare enter (UAT 111.2)
-			d.setup.ref, d.setup.focus, d.setup.err = cur, rowFIRMSKey, ""
+		if cur != nil { // a re-run keeps the default with a bare enter (UAT 111.2)
+			*into, d.setup.focus, d.setup.err = cur, next, ""
 			return d, nil
 		}
 		d.setup.err = "type a city or ZIP first"
@@ -625,6 +719,41 @@ func (d Dashboard) setupLocationKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if key.Text != "" {
 			d.setup.query += key.Text
 			d = d.setupSuggest()
+		}
+	}
+	return d, nil
+}
+
+// setupServiceKey is the station's service radius: digits only, no radio.
+//
+// HUM LEAD, 2026-09-13: it functions "like the Service alerts radius filer
+// option in Settings just without the 'all alerts' option (so no radio button)".
+//
+// THE SAME FIRST-DIGIT-REPLACES RULE the alert radius learned at UAT 2026-09-08,
+// and for the same reason: a field showing a number the operator did not type is
+// a field they are about to type OVER, not one they are appending to. Without it
+// a stored 25 and a typed 50 make 2550.
+//
+// THE BOUNDS ARE CHECKED AT THE SAVE, NOT AT THE KEYSTROKE. Typing "1" on the way
+// to "100" would otherwise be refused as below the floor, which is a field that
+// fights the operator over a number they have not finished writing.
+func (d Dashboard) setupServiceKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "enter":
+		return d.setupAdvance()
+	case "backspace":
+		d.setup.serviceSeeded = false
+		if r := []rune(d.setup.serviceMi); len(r) > 0 {
+			d.setup.serviceMi = string(r[:len(r)-1])
+		}
+	default:
+		if r := key.Text; r >= "0" && r <= "9" {
+			if d.setup.serviceSeeded {
+				d.setup.serviceMi, d.setup.serviceSeeded = "", false
+			}
+			if len([]rune(d.setup.serviceMi)) < 3 { // 100 is the ceiling; three digits hold it
+				d.setup.serviceMi += r
+			}
 		}
 	}
 	return d, nil
@@ -711,6 +840,33 @@ func (d Dashboard) currentDefault() *snapshot.LocationRef {
 	return &ref
 }
 
+// currentTransmitter is where the station transmits from right now — its own
+// setting when it has one, and the listener's default location when it does not
+// (config.Station's own fallback, said the same way here).
+func (d Dashboard) currentTransmitter() *snapshot.LocationRef {
+	if d.cfg.Transmitter != nil {
+		return d.cfg.Transmitter
+	}
+	return d.currentDefault()
+}
+
+// The service radius' floor and ceiling (HUM LEAD, 2026-09-13: "min 2mi - Max
+// 100 mi").
+//
+// A FLOOR, NOT A ZERO. The alert radius has an "All" that means no fence; a
+// service radius does not — a station serves a region or it is not set up. Two
+// miles is the smallest region a transmitter can usefully be the centre of.
+//
+// STATED HERE AS NUMBERS because `modes/tty` may not import `platform/config`
+// (make lint-imports), which is where the same two are the storage's own clamp.
+// `TestSetupServiceBoundsMatchTheConfig` in `app` — which may import both — pins
+// them, so a change in one fails a test rather than letting the window offer a
+// radius the storage would silently clamp.
+const (
+	serviceRadiusMin = 2
+	serviceRadiusMax = 100
+)
+
 // setupSuggest refreshes the hints from the app hook (embedded index only —
 // never the network per keystroke).
 func (d Dashboard) setupSuggest() Dashboard {
@@ -773,3 +929,14 @@ func (d Dashboard) setupFinishCmd(key string) tea.Cmd {
 		return done
 	}
 }
+
+// The service radius' bounds, exposed for the cross-package tie in `app`.
+//
+// IN `platform/` BY THE ARCHITECTURE'S OWN RULE — every `ForTest` export in this
+// tree is here rather than in a domain — and exported because `app` is the only
+// package that may import both this and `platform/config`, which is where the
+// same two numbers are the storage's clamp. See TestSetupServiceBoundsMatchTheConfig.
+const (
+	ServiceRadiusMinForTest = serviceRadiusMin
+	ServiceRadiusMaxForTest = serviceRadiusMax
+)

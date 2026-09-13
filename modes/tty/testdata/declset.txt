@@ -12,6 +12,8 @@ const RecentCap
 const RepeatOff
 const RepeatOne
 const RepeatWatchlist
+const ServiceRadiusMaxForTest
+const ServiceRadiusMinForTest
 const SevereAdvisories
 const SevereDisasters
 const SevereEmergency
@@ -184,8 +186,10 @@ const rowPicker
 const rowRadio
 const rowRelayDwell
 const rowRelayLang
+const rowServiceRadius
 const rowTheme
 const rowToggle
+const rowTransmitter
 const rowUnitsImperial
 const rowUnitsMetric
 const scopeBroadcaster
@@ -194,6 +198,8 @@ const scopeShared
 const scopeSplit
 const scopeUnruled
 const secondGap
+const serviceRadiusMax
+const serviceRadiusMin
 const setupOneColWidth
 const setupRowCount
 const severeBreakingWindow
@@ -353,6 +359,7 @@ func (Dashboard).compact
 func (Dashboard).confirmOverlay
 func (Dashboard).controlRow
 func (Dashboard).currentDefault
+func (Dashboard).currentTransmitter
 func (Dashboard).currentlyRows
 func (Dashboard).cyclePicker
 func (Dashboard).cycleTheme
@@ -461,6 +468,7 @@ func (Dashboard).rowTakesArrows
 func (Dashboard).rowVisible
 func (Dashboard).seismicLookbackDays
 func (Dashboard).selectedLocation
+func (Dashboard).serviceRadiusApplyCmd
 func (Dashboard).setClock
 func (Dashboard).setUnits
 func (Dashboard).settled
@@ -481,8 +489,11 @@ func (Dashboard).setupPreview
 func (Dashboard).setupRowKey
 func (Dashboard).setupRowText
 func (Dashboard).setupSave
+func (Dashboard).setupServiceKey
+func (Dashboard).setupServiceLines
 func (Dashboard).setupSpace
 func (Dashboard).setupSuggest
+func (Dashboard).setupTransmitterLines
 func (Dashboard).setupWidth
 func (Dashboard).severeBrowseLines
 func (Dashboard).severeChips
@@ -529,6 +540,7 @@ func (Dashboard).toggleSevere
 func (Dashboard).toneClassLabels
 func (Dashboard).toneLines
 func (Dashboard).toneStateWord
+func (Dashboard).transmitterApplyCmd
 func (Dashboard).uiApplyCmd
 func (Dashboard).uiForSave
 func (Dashboard).uiLines
@@ -579,6 +591,7 @@ func (setupScope).shownOn
 func (setupState).alertRadiusChoice
 func (setupState).classMuted
 func (setupState).mutedClassKeys
+func (setupState).serviceRadiusChoice
 func (setupState).touch
 func (tonedRow).row
 func NewBroadcaster

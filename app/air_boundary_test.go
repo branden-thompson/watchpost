@@ -128,18 +128,31 @@ var airBoundary = map[string]airMember{
 	"SetTones":       {airNone, "deliberately NOT a recast — the in-tree standard: \"[M] must be instant and must not disturb a broadcast in flight\""},
 	"SetRelayLang":   {airNone, "writes a field; takes effect on the NEXT tune, deliberately, so a language change does not cut a sentence"},
 	"SetAlertRadius": {airNone, "a filter bound; the rail re-scopes without touching the engine"},
-	"SetTheme":       {airNone, "colour"},
-	"SetUI":          {airNone, "display preferences"},
-	"Setup":          {airNone, "persists the default location and the FIRMS key, and keys the live provider"},
-	"Commit":         {airNone, "persists the watchlist and re-stations; publishes the area, touches no engine"},
-	"Resolve":        {airNone, "a location lookup"},
-	"Suggest":        {airNone, "a search"},
-	"Hydrate":        {airNone, "an hourly forecast fetch for a RECENT row"},
-	"Voices":         {airNone, "lists what is installed"},
-	"VoiceInstalled": {airNone, "a query"},
-	"Spectrum":       {airNone, "reads the visualiser tap"},
-	"FIRMSKey":       {airNone, "a key hint for the Settings window"},
-	"Stats":          {airNone, "the [S] counters"},
+
+	// THE STATION'S OWN TWO (D-115). Both persist, re-derive the pool and publish
+	// the new area — and none of those three reaches the engine. What they change
+	// is what the Producer may OFFER on the next cycle, which is a decision about
+	// the next card rather than about the one on the air.
+	//
+	// A NARROWING CAN STRAND A SCHEDULED CARD outside the new region, and that is
+	// the schedule's business rather than the air's: `refence` re-tests the rail
+	// and refuses to mark a card that is already reading, precisely so a hazard is
+	// never cut off mid-sentence. Recorded here because it is the one way these
+	// two could be mistaken for air-touching.
+	"SetTransmitter":   {airNone, "writes the epicentre and re-derives the pool; the Producer's offer changes, the engine does not"},
+	"SetServiceRadius": {airNone, "writes the reach and re-derives the pool; same seam, the other half of the same derivation"},
+	"SetTheme":         {airNone, "colour"},
+	"SetUI":            {airNone, "display preferences"},
+	"Setup":            {airNone, "persists the default location and the FIRMS key, and keys the live provider"},
+	"Commit":           {airNone, "persists the watchlist and re-stations; publishes the area, touches no engine"},
+	"Resolve":          {airNone, "a location lookup"},
+	"Suggest":          {airNone, "a search"},
+	"Hydrate":          {airNone, "an hourly forecast fetch for a RECENT row"},
+	"Voices":           {airNone, "lists what is installed"},
+	"VoiceInstalled":   {airNone, "a query"},
+	"Spectrum":         {airNone, "reads the visualiser tap"},
+	"FIRMSKey":         {airNone, "a key hint for the Settings window"},
+	"Stats":            {airNone, "the [S] counters"},
 }
 
 // TestEverySurfaceSeamIsClassifiedForTheAir is the completeness half, and it

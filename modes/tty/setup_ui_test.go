@@ -209,6 +209,14 @@ func TestSettingsFocusLineFollowsTheBalancedLayout(t *testing.T) {
 	}{{"two columns", 133, 44}, {"stacked", 80, 24}} {
 		for id := setupRowID(0); id < setupRowCount; id++ {
 			d := setupGolden(t, size.w, size.h, false, id)
+			// THE ROWS THIS SURFACE DRAWS (D-92, and D-115 made it bite). A focus
+			// line for a row the surface does not draw is meaningless — and since
+			// the station's transmitter and service radius are Broadcaster-only,
+			// walking every id on Observer asked where a mark was for two rows
+			// that are not there.
+			if !d.rowVisible(id) {
+				continue
+			}
 			lines, at, end := d.setupBody(d.opts())
 			if at < 0 || at >= len(lines) || end < at || end > len(lines) {
 				t.Fatalf("%s: row %v spans [%d,%d] of %d lines", size.name, id, at, end, len(lines))

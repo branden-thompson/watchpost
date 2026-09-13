@@ -56,6 +56,22 @@ type setupRowID int
 const (
 	// DATA
 	rowLocation setupRowID = iota
+
+	// THE STATION'S OWN TWO (D-115, F-87). Where it transmits from and how far
+	// it serves — the settings the whole console is derived from, and until now
+	// the only way to change either was to edit the config file by hand.
+	//
+	// HUM LEAD, 2026-09-13: "Currently I cannot change these settings [without]
+	// direct code changes - we need [them] exposed so I can also UAT the
+	// re-derivation logic."
+	//
+	// THEY SIT WITH THE LISTENER'S DEFAULT LOCATION, in DATA, because they answer
+	// the same question about a different subject — and they are `scopeBroadcaster`
+	// so the two never appear together. D-72 split the facts; this keeps the
+	// split visible in the one window that writes them.
+	rowTransmitter
+	rowServiceRadius
+
 	rowFIRMSKey
 
 	// WATCHPOST UI — the display preferences. The
@@ -198,6 +214,16 @@ func setupTable() [setupRowCount]setupRow {
 		// THE DEFAULT LOCATION IS THE LISTENER'S (D-18 row 1). The station's
 		// epicentre is a different fact with a different owner — D-72 split them.
 		rowLocation: {rowLocation, groupData, scopeObserver, rowInput, false, "", ""},
+
+		// THE STATION'S EPICENTRE AND ITS REACH (D-115). Broadcaster-only: a
+		// listener has no transmitter, and Observer's own default location is the
+		// row above. `rowInput` for both — the HUM LEAD asked for the transmitter
+		// to "function like the Default location setting for Observer" and the
+		// radius "like the Service alerts radius filter option in Settings just
+		// without the 'all alerts' option (so no radio button)".
+		rowTransmitter:   {rowTransmitter, groupData, scopeBroadcaster, rowInput, false, "", ""},
+		rowServiceRadius: {rowServiceRadius, groupData, scopeBroadcaster, rowInput, false, "", ""},
+
 		rowFIRMSKey: {rowFIRMSKey, groupData, scopeShared, rowInput, false, "", ""},
 
 		// DISPLAY PREFERENCES ARE ONE APP'S (D-18 rows 19, 21, 22).

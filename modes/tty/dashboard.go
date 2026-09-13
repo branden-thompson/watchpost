@@ -152,6 +152,22 @@ type Config struct {
 	AlertRadiusMi  int       // 0.12.0: the Alert Notification Preference at launch — 0 = All (global), >0 = only alerts within N mi of the default location
 	SetAlertRadius func(int) // 0.12.0: persist the radius and tell the ticker pipeline to re-scope; nil in tests
 
+	// THE STATION'S OWN TWO (D-115, F-87). Where it transmits from and how far it
+	// serves — the settings the console's whole line-up is derived from, and
+	// until now writable only by editing the config file.
+	//
+	// `Transmitter` IS A POINTER because "not set" is a real and DIFFERENT state
+	// from "set to somewhere": a station with none borrows the listener's default
+	// location, and the window says so rather than showing a choice nobody made.
+	//
+	// The setters persist AND re-derive the pool — a radius the operator changes
+	// is a region the Producer must offer from on the very next cycle, which is
+	// the re-derivation the HUM LEAD asked to be able to UAT.
+	Transmitter      *snapshot.LocationRef
+	SetTransmitter   func(snapshot.LocationRef) // nil in tests
+	ServiceRadiusMi  int
+	SetServiceRadius func(int) // nil in tests
+
 	// RelayDwell is how long Watchlist holds a live relay at launch, and
 	// SetRelayDwell persists a change. Zero means the default (five minutes,
 	// one NWR cycle); nil in tests.

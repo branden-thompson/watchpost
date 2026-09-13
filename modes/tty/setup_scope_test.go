@@ -42,7 +42,33 @@ func setupOn(t *testing.T, s Surface) (Dashboard, string) {
 	t.Helper()
 	d := setupGolden(t, 133, 44, false, rowCastAlerts)
 	d.surface = s
-	return d, stripANSITest(d.View().Content)
+	return d, setupOffers(d)
+}
+
+// setupOffers is everything the window OFFERS on this surface, scroll aside.
+//
+// THE VIEWPORT IS NOT THE QUESTION (D-115). This read `View().Content`, which is
+// the window SCROLLED to the focused row — so the day DATA gained the station's
+// two rows on the console, the group scrolled off the top and a scope test
+// reported that a SHARED group had been lost. It had not; it was two lines up.
+//
+// Scope is what this file is about, and scope is answered by which blocks the
+// surface draws at all.
+func setupOffers(d Dashboard) string {
+	o := d.opts()
+	var b strings.Builder
+	for g := groupData; g <= groupRelay; g++ { // bounded by the group set (P10-02)
+		// A GROUP WITH NO VISIBLE ROW IS NOT DRAWN AT ALL (D-92), heading
+		// included — `setupBlock` builds the heading unconditionally and the
+		// window's own assembly is what skips it.
+		if _, ok := visibleRowOfGroup(g, d.rowVisible); !ok {
+			continue
+		}
+		for _, l := range d.setupBlock(o, g).lines {
+			b.WriteString(stripANSITest(l) + "\n")
+		}
+	}
+	return b.String()
 }
 
 // THE LISTENER'S SETTINGS DO NOT REACH THE OPERATOR OF A STATION, and the

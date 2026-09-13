@@ -44,15 +44,25 @@ type Broadcaster struct {
 }
 
 const (
-	// MinServiceRadiusMi and MaxServiceRadiusMi are the HUM LEAD's ruled bounds
-	// (2026-09-10): "minimum distance is 2 miles, max distance is 50mi."
+	// MinServiceRadiusMi and MaxServiceRadiusMi are the HUM LEAD's ruled bounds.
+	//
+	// 2026-09-10: "minimum distance is 2 miles, max distance is 50mi."
+	// 2026-09-13, SUPERSEDING THE CEILING, with the setting itself: "Need my
+	// service radius setting (min 2mi - Max 100 mi) setting in the Broadcaster
+	// Settings modal."
+	//
+	// THE CEILING MOVED WHEN THE CONTROL DID, and that is not a coincidence worth
+	// smoothing over: fifty was ruled for a value only a hand-edited config could
+	// reach, and a hundred for one the operator can now type. Recorded rather
+	// than replaced, because the older number is still the reason the DEFAULT is
+	// where it is.
 	//
 	// TWO MILES IS LEGAL AND NEARLY EMPTY, and that is measured rather than
 	// feared: around Bonsall a two-mile fence holds NO city and one zip place —
 	// the station's own. The floor is the operator's to choose; what the console
 	// owes them is to say honestly how few it holds (F-83).
 	MinServiceRadiusMi = 2
-	MaxServiceRadiusMi = 50
+	MaxServiceRadiusMi = 100
 
 	// DefaultServiceRadiusMi is what a station that has not chosen gets.
 	//

@@ -73,6 +73,84 @@ func (lp *livePipelines) setStation(s stationArea) {
 	lp.mu.Unlock()
 }
 
+// transmitterOf is the station's OWN transmitter, or nil when it is borrowing
+// the listener's default location (D-115).
+//
+// NIL IS THE POINT. "Not set" and "set to the same place the listener happens to
+// have chosen" are different states — the first MOVES with the watchlist and the
+// second does not — and the window says which one the operator is looking at.
+func transmitterOf(cfg config.Config) *snapshot.LocationRef {
+	tx := cfg.Broadcaster.Transmitter
+	if tx.Lat == 0 && tx.Lon == 0 {
+		return nil
+	}
+	refs := refsFromConfig([]config.Location{tx})
+	if len(refs) == 0 {
+		return nil
+	}
+	return &refs[0]
+}
+
+// setTransmitter records where the station transmits from, re-derives its pool
+// and tells the console (D-115).
+//
+// THE THREE ARE ONE ACT. A transmitter written without re-deriving would leave
+// the Producer offering the old region for the life of the process — which is
+// exactly the defect `reStationOnCommit` exists for on the borrowed path — and a
+// pool re-derived without publishing would leave the console naming a region the
+// station has left.
+//
+// IT STOPS BORROWING. Writing a transmitter of the station's own is what ends
+// the D-72 fallback, so `followsDefault` goes false and the listener's watchlist
+// no longer moves the station.
+func (lp *livePipelines) setTransmitter(ref snapshot.LocationRef) {
+	if err := config.Mutate(func(cfg *config.Config) error {
+		// THROUGH THE ONE CONVERTER, so the station's transmitter is stored in
+		// exactly the shape every other saved location is — the derived tag
+		// included, which is what the config's own reader expects.
+		if out := configLocations([]snapshot.LocationRef{ref}); len(out) == 1 {
+			cfg.Broadcaster.Transmitter = out[0]
+		}
+		return nil
+	}); err != nil {
+		return // the console keeps showing what is in force; nothing was written
+	}
+	lp.restationTo(stationArea{transmitter: ref, radiusMi: lp.currentStation().radiusMi})
+}
+
+// setServiceRadius records how far the station serves, and re-derives with it.
+//
+// THE RADIUS IS HALF THE POOL. `locations.Pool` is a function of the transmitter
+// AND the radius, so a radius written without a re-derivation is a console whose
+// candidate list disagrees with its own stated service area.
+func (lp *livePipelines) setServiceRadius(mi int) {
+	if err := config.Mutate(func(cfg *config.Config) error {
+		cfg.Broadcaster.ServiceRadiusMi = float64(mi)
+		return nil
+	}); err != nil {
+		return
+	}
+	now := lp.currentStation()
+	lp.restationTo(stationArea{transmitter: now.transmitter, radiusMi: float64(mi),
+		followsDefault: now.followsDefault})
+}
+
+// restationTo installs a station area, re-derives its pool and publishes both.
+//
+// EXTRACTED AT THE SECOND CALLER, which is the standing rule: the transmitter
+// and the radius each change one half of the same derivation, and two copies of
+// "set, derive, publish" would be two places for one of the three to be
+// forgotten.
+func (lp *livePipelines) restationTo(s stationArea) {
+	lp.setStation(s)
+	lp.mu.Lock()
+	p, pool := lp.p, lp.poolRefs
+	lp.mu.Unlock()
+	if p != nil {
+		publishArea(p.Send, s, pool)
+	}
+}
+
 // publishArea tells the console where the station transmits from.
 //
 // PUBLISHED RATHER THAN READ. The console draws both facts and holds neither —

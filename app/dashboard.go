@@ -278,6 +278,13 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		// AND AT LAUNCH, THE SAME PAIR (D-93). `publishArea` covers every later
 		// change; the program's loop is not running when the pool is first
 		// derived, so this is how the console opens with both.
+		// AND THE TWO SETTINGS THAT DERIVE IT (D-115, F-87). The console draws
+		// them and writes them; the app persists and RE-DERIVES, which is the half
+		// the HUM LEAD asked to be able to UAT.
+		Transmitter:      transmitterOf(cfg),
+		SetTransmitter:   lp.setTransmitter,
+		ServiceRadiusMi:  int(cfg.Broadcaster.ServiceRadius()),
+		SetServiceRadius: lp.setServiceRadius,
 		StationArea: tty.StationAreaMsg{
 			Transmitter: lp.currentStation().transmitter,
 			RadiusMi:    lp.currentStation().radiusMi,

@@ -139,11 +139,14 @@ func (*livePipelines).reStation
 func (*livePipelines).readReport
 func (*livePipelines).relayDwell
 func (*livePipelines).relayLang
+func (*livePipelines).restationTo
 func (*livePipelines).seismicFor
 func (*livePipelines).selectedRelay
 func (*livePipelines).setRelayDwell
 func (*livePipelines).setRelayLang
+func (*livePipelines).setServiceRadius
 func (*livePipelines).setStation
+func (*livePipelines).setTransmitter
 func (*livePipelines).setWatch
 func (*livePipelines).setup
 func (*livePipelines).silenceMonitor
@@ -543,6 +546,7 @@ func toneClasses
 func toneFromView
 func toneView
 func trace
+func transmitterOf
 func tuneList
 func tuneTo
 func uiHook
