@@ -26,6 +26,21 @@ func TestTheConsoleArmsTheThemesForeground(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 
+	// UNDER THE LIGHT THEME, which is the theme the finding was reported against
+	// AND the one whose `TextBase` is TRUECOLOR. Asked of a palette-index theme
+	// this test cannot see the difference between arming the token properly and
+	// arming it through a hard-coded `38;5;` prefix — which is exactly what a
+	// mutant proved by making that substitution and surviving.
+	was := render.ThemeName()
+	if !render.SetTheme(render.LightThemeName) {
+		t.Fatalf("the Light theme is not registered")
+	}
+	defer render.SetTheme(was)
+	if !strings.HasPrefix(render.Tok(render.TextBase), "38;2;") {
+		t.Fatalf("the Light theme's TextBase is %q, not truecolor; this test measures nothing",
+			render.Tok(render.TextBase))
+	}
+
 	b := manyPool(t, 25)
 	b.width, b.height = 150, 58
 	got := b.View().Content
