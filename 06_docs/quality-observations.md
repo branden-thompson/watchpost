@@ -2374,3 +2374,27 @@ anchor still matches, the mutation still compiles, and it now defends a design t
 deliberately abandoned.  **Nothing in the toolchain can tell a live rule from a dead one.**  A full
 corpus re-run is the only instrument that sees either shape, which is the argument for making it a
 dated obligation at BUILD exit rather than a thing someone thinks to do.
+
+## A defect that lives in the SET, which no single file shows (2026-09-13, D-125)
+
+**The catch.**  `BedMsg` had three publishers and exactly one of them set `Relays` — the count that
+decides whether the BED control is offered at all (D-117).  The console stores the whole message, so
+either of the other two zeroed the resolver's answer and disabled a bed that was carrying.
+
+**Every one of the three files reads correctly.**  The resolver knows the count and sends it.  The
+selector knows the line and whether it is carrying, and sends those.  The deck's state knows the same
+two.  No author was wrong about what they knew.  **The defect is a property of the set of writers, and
+no single file displays the set.**
+
+**How it was found.**  By a mechanical question asked of the whole tree — *"which messages have more
+than one writer?"* — and then reading the two answers.  Not by reading code for correctness, which
+would have passed all three files.
+
+**The rule worth extracting.**  When a message type has more than one publisher, every field must be
+known to every publisher, or the field belongs on a message of its own.  A field only one writer
+understands is a field the others silently retract.  **The cheap detector is the writer count**, and
+it is a grep.
+
+**And it generalises past messages.**  Two carriers of one fact is this release's most frequent shape
+— D-122's frozen tie, the fire threshold's restated default, the service radius' bounds, and now this.
+Three of the four were found by asking who WRITES a thing, rather than by reading what it does.
