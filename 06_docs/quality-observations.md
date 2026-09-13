@@ -2346,3 +2346,31 @@ goes red without it.
 **The rule worth extracting.** When a test asserts that two paths agree about one value, the fixture
 must differ across those paths in exactly the way the code under test is supposed to reconcile.  If
 the same literal can be used on both sides, the test is pinned to nothing.
+
+## An instrument that mirrors the implementation (2026-09-13, mAA2)
+
+**The catch.**  `TestNoSettingsGroupIsDrawnEmpty` asserts that no settings heading is drawn over a
+group with no rows on this surface (D-92).  It reads a helper, `setupOffers` — and that helper looped
+the groups ITSELF and skipped the empty ones with the same `visibleRowOfGroup` call production makes.
+So the test filtered with the predicate it then asserted on, and never called the window's real
+assembly at all.  Deleting the guard from production changed nothing the test could see.
+
+**What was unprotected.**  Measured, not assumed: on the console `ALERTS - EVENTS` and `WATCHPOST
+RADIO - RELAY REPLAY` are both empty.  Without the guard the operator gets two headings announcing
+categories of settings and showing none of them — with every gate green.
+
+**How it was caught.**  Not by a gate.  `make mutant-anchors` says the mutant still finds its line;
+`make mutant-check` says it still compiles; **neither asks whether anything still FAILS when it is
+applied.**  Only re-running the whole corpus did.
+
+**The shape.**  *A test helper that re-derives production's answer cannot check it.*  The test was
+well written and named the right rule; the fixture underneath it was lying.  This is distinct from
+the other four instrument failures of the same day — those were fixable by writing the test more
+carefully, and this one was not.
+
+**And the second shape from the same re-run: a mutant whose RULE was superseded.**  `mAB1` guards
+D-104, one scroll control spanning both tables; D-106 retired that rule and deleted its detector.  The
+anchor still matches, the mutation still compiles, and it now defends a design the product
+deliberately abandoned.  **Nothing in the toolchain can tell a live rule from a dead one.**  A full
+corpus re-run is the only instrument that sees either shape, which is the argument for making it a
+dated obligation at BUILD exit rather than a thing someone thinks to do.

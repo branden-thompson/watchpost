@@ -4,7 +4,7 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "OPEN — grows per batch.  P0 entered."
+status: "OPEN — grows per batch.  P0-P3 entered 2026-09-09; P4-P7 reconstructed 2026-09-13."
 ---
 
 # Gate roster
@@ -374,3 +374,133 @@ theatre, and the honest record is that this one is convention.
 
 **m9b** — both proposal error guards removed, and `Queue`'s own `check()` refuses the card anyway.  The
 guards stay (a discarded error is worse than a redundant branch) and the record says they carry nothing.
+
+---
+
+# P4 onward — reconstructed 2026-09-13
+
+**THE ROSTER STOPPED AT P3(a4) ON 2026-09-09 AND THE WORK DID NOT.**  118 commits and rulings D-32
+through D-123 landed with no roster entry.  Each was gated and mutant-covered at the time; none of it
+was written here.  A roster that lags the code describes a release that no longer exists, and BUILD
+exit is judged on this file.
+
+**THE VERDICTS BELOW WERE RE-RUN ON 2026-09-13, not recalled.**  The whole two-letter corpus was
+re-executed against the tip — 64 mutants outside `app`, 18 inside it — because a verdict remembered
+from a session that has since been compacted is not evidence.  That re-run is itself the finding of
+this pass: see "What a full re-run found that no gate could".
+
+## What a full re-run found that no gate could
+
+**Four mutants that PASS every gate this repository has, and measure nothing.**
+
+`make mutant-anchors` proves each mutant still FINDS its line.  `make mutant-check` proves each still
+COMPILES with its tests.  **Neither asks whether anything still FAILS when it is applied** — and that
+is the only question that makes a corpus evidence rather than decoration.
+
+| Mutant | What it guarded | Why it no longer measures |
+|---|---|---|
+| `mAB1` | D-104 — one scroll control spanning BOTH tables | **THE RULE WAS RETIRED, NOT BROKEN.**  D-106 ruled the line-up does not scroll (*"Location Pool Scrolls, Line-up doesnt"*), and its detector `TestOneScrollControlSpansBothTables` was deleted with it.  The mutant now defends a design the product deliberately abandoned |
+| `mAA2` | D-92 — a settings heading is never drawn over no rows | The detector `TestNoSettingsGroupIsDrawnEmpty` still exists and reads rendered output, so this points at the FIXTURE rather than the rule |
+| `mCA` | BD-8 — the speak names its lane | Escalated: see the verdict table |
+| `mDC` | RD-2/D-82 — the bed is a shared resource | Escalated: see the verdict table |
+
+**THE SHAPE, NAMED:** *a mutant whose RULE was superseded.*  It is not anchor drift — the anchor
+matches perfectly.  It is a corpus entry that outlived the requirement it was written for, and the
+only instrument that can see it is a full re-run.
+
+**THE RECOMMENDATION, FOR THE HUM LEAD RATHER THAN SELF-ISSUED:** a full corpus re-run belongs at
+BUILD exit of every release, as an obligation with a recorded date — not because the mutants rot
+quickly, but because nothing else in the toolchain can tell a live rule from a dead one, and the cost
+(~75 minutes, unattended) is small against a corpus that silently stops measuring.
+
+## The corpus as re-measured, 2026-09-13
+
+**82 two-letter mutants, re-run against the tip.  78 CAUGHT on the first pass; two of the four
+survivors were false — caught by a test in another package, and found only because a survivor is
+escalated to `./...` before it is believed.  Of the two that were real, one was a live coverage
+hole and is fixed; one guards a retired rule.**
+
+| Mutant | Verdict | Detector |
+|---|---|---|
+| `mAA1` — the listeners location leaks to the console | CAUGHT | TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt |
+| `mAA2` — a group heading is drawn over nothing | **SURVIVED → CAUGHT** | nothing, until the helper stopped re-deriving the rule; now `TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt` |
+| `mAA3` — the window opens on a row nobody can see | CAUGHT | TestTheWindowOpensOnARowThisSurfaceDraws |
+| `mAA4` — tab lands in a group this surface hides | CAUGHT | TestTheKeyboardNeverFocusesAHiddenRow |
+| `mAA5` — the window ignores the surface entirely | CAUGHT | TestSetupAllocBudget |
+| `mAB1` — the rail breaks between the tables | **SURVIVED — RULE RETIRED** | nothing: D-106 retired D-104 and its detector was deleted with it.  **Retirement proposed to the HUM LEAD, not self-issued** |
+| `mAB2` — the pool is whatever is left over | CAUGHT | TestTheScrollControlIsThePoolsAlone |
+| `mAB3` — the hazard touches the place | CAUGHT | TestTheHazardNeverTouchesThePlace |
+| `mAB4` — the pointer inherits the digits ceiling | CAUGHT | TestEnterOpensTheRowThePointerIsOn |
+| `mAB5` — the number stencil floats again | CAUGHT | TestTheNumberStencilHangsItsNumbers |
+| `mAB6` — the focused slot is not painted | CAUGHT | TestTheFocusedSlotIsPaintedLikeTheFocusedLocation |
+| `mAC1` — the control claims the running order | CAUGHT | TestThePointerWalksAndTheWindowFollows |
+| `mAC2` — the pools headings scroll away | CAUGHT | TestThePoolTableDrawsTheStationsCandidates |
+| `mAC3` — wx stn outranks zip | CAUGHT | TestThePoolGivesUpWxStnBeforeZip |
+| `mAC4` — population sets against the gutter | CAUGHT | TestPopulationSetsUnderItsOwnHeading |
+| `mAC5` — the bed is drawn twice again | CAUGHT | TestTheBedIsDrawnOnceInsideTheStationSection |
+| `mAC6` — the air box leaves the station section | CAUGHT | TestTheAirBoxAlwaysDrawsBothRows |
+| `mAC7` — the air boxs width gets a second owner | CAUGHT | TestGoingOnAirFillsTheLiveRow |
+| `mAC8` — the console reads the terminals palette | CAUGHT | TestTheConsoleArmsTheThemesForeground |
+| `mAC9` — the frames tint assumes a palette index | CAUGHT | TestTheConsoleArmsTheThemesForeground |
+| `mAD1` — a fabricated card loses its mark | CAUGHT | TestAFabricatedCardStillSaysSoInItsRule |
+| `mAD2` — the mark follows the headline | CAUGHT | TestAFabricatedCardStillSaysSoInItsRule |
+| `mAD3` — an empty slot loses its way in | CAUGHT | TestAnEmptySlotStillCarriesItsHandle |
+| `mAD4` — the manifest caption drifts off centre | CAUGHT | TestTheUpNextCardFollowsTheReferencesOrder |
+| `mAD5` — the card stamp goes long again | CAUGHT | TestTheUpNextCardFollowsTheReferencesOrder |
+| `mAE1` — the bed takes the bare arrows back | CAUGHT | TestTheBedsControlsReachTheStation |
+| `mAE2` — the bed chip names the wrong key | CAUGHT | TestABedWithRelaysIsOffered |
+| `mAF1` — the pool builds its own row | CAUGHT | TestThePoolsWeatherIsObserversWeather |
+| `mAF2` — the pool falls out of the pipeline | CAUGHT | TestTheStationsPoolSurvivesACommit |
+| `mAF3` — a moved station never fetches its pool | CAUGHT | TestARestationedPoolIsWhatGetsFetched |
+| `mAG1` — the pool row loses its fire and seismic | CAUGHT | TestThePoolRowCarriesEveryMark |
+| `mAG2` — the pool row opens observers selection | CAUGHT | TestEnterOnAPoolRowOpensThatLocation |
+| `mAG3` — a second enter only closes a card | CAUGHT | TestEnterOnAPoolRowOpensThatLocation |
+| `mAG4` — the recent pipeline stops fetching seismic | CAUGHT | TestCadenceTableIsTheDoc |
+| `mAH1` — out of fence hazards stay on the frame | CAUGHT | TestAnOutOfFenceCardLeavesTheProjection |
+| `mAH2` — the up next box loses its ground | CAUGHT | TestTheUpNextBoxWearsTheModalsGround |
+| `mAI1` — the station settings leak to observer | CAUGHT | TestSetupAllocBudget |
+| `mAI2` — the typeahead writes the listeners default | CAUGHT | TestTheTransmitterRowResolvesLikeTheDefaultLocation |
+| `mAI3` — a bare save ends the stations fallback | CAUGHT | TestASaveWithNoChoiceLeavesTheStationBorrowing |
+| `mAI4` — a new radius is stored but not derived | CAUGHT | TestSettingTheServiceRadiusReDerivesThePool |
+| `mAI5` — the service radius ignores its bounds | CAUGHT | TestTheServiceRadiusRefusesWhatIsOutOfBounds |
+| `mAI6` — a borrowed epicentre looks chosen | CAUGHT | TestABorrowedEpicentreSaysSo |
+| `mAJ1` — the running order forgets the weather | CAUGHT | TestConsoleFrameAllocBudget |
+| `mAJ2` — the running orders marks are not the places | CAUGHT | TestTheRunningOrderCarriesEachBeatsWeather |
+| `mAK1` — the bed tunes through the listeners list | CAUGHT | TestSteppingTheBedTunesTheChosenRelaysOwnMounts |
+| `mAK2` — the bed offers relays nothing streams | CAUGHT | TestTheBedFenceKeepsOutWhatTheResolverWouldOffer |
+| `mAK3` — the bed is offered with nothing to carry | CAUGHT | TestABedWithNothingToCarryIsNotOffered |
+| `mAK4` — a moved station keeps the old regions relays | CAUGHT | TestAMovedStationReResolvesItsRelays |
+| `mAL1` — a live card is offered management | CAUGHT | TestALiveCardOffersNeitherControl |
+| `mAL2` — an out of range move is sent anyway | CAUGHT | TestChangePositionRefusesWhatIsOutOfRange |
+| `mAL3` — the drop needs no confirmation | CAUGHT | TestDropAsksAndExplainsWhatItDoes |
+| `mAL4` — the question lets keys through | CAUGHT | TestChangePositionSendsTheMove |
+| `mAL5` — the box title is not a modal title | CAUGHT | TestTheBoxTitleReadsLikeAModalTitle |
+| `mAM1` — a move lands one slot low | CAUGHT | TestChangePositionSendsTheMove |
+| `mAM2` — the running order stops at fourteen | CAUGHT | TestTheConsoleShowsAtMostFifteenMainTrackSlots |
+| `mAN1` — the console builds day cells it never draws | CAUGHT | TestTheLineupRowsBuildNoDayCells |
+| `mAN2` — the alloc budget measures an empty console | CAUGHT | TestConsoleFrameAllocBudget |
+| `mAO1` — the keymap answers the card windows keys | CAUGHT | TestChangePositionSendsTheMove |
+| `mAP1` — the fence trusts the arrivals own tie | CAUGHT | TestAPointlessAlertIsAdmittedOnlyByTheTrackedTie |
+| `mAP2` — the fence is built without the tie set | CAUGHT | TestTheDecksFenceCarriesTheScopesTieSet |
+| `mAP3` — the arrival carries its raw id | CAUGHT | TestTheArrivalsKeyAndTheTieSetsKeyAreTheSameKey |
+| `mAP4` — the tie set ignores the scopes radius | CAUGHT | TestTheDecksFenceCarriesTheScopesTieSet |
+| `mAQ1` — the console never inherits the fire threshold | CAUGHT | TestTheConsoleReadsTheOperatorsFireThreshold |
+| `mAQ2` — the console pins the fire threshold again | CAUGHT | TestTheConsoleReadsTheOperatorsFireThreshold |
+| `mAR1` — the memo forgets an input | CAUGHT | TestConsoleFrameAllocBudget |
+| `mAR2` — the memo forgets the running order | CAUGHT | TestTheConsoleMemoKeyCoversEverythingTheTablesShow |
+| `mAR3` — the writer forgets to bump the generation | CAUGHT | TestTheConsoleMemoKeyCoversEverythingTheTablesShow |
+| `mAR4` — the pool is appended onto the cached lineup | CAUGHT | TestTheJoinNeverWritesIntoTheCache |
+| `mAR5` — the index is built on every frame | CAUGHT | TestConsoleFrameAllocBudget |
+| `mAR6` — the memo never hits | CAUGHT | TestConsoleFrameAllocBudget |
+| `mCA` — the lane is dropped from the speak | CAUGHT | TestABurstSoundsOneToneForItsHighestSeverityEvent — **found only by escalating to ** |
+| `mCB` — a hazard is played as the programme | CAUGHT | TestARailCardThatReachesTheProgrammesReaderIsRefused |
+| `mCC` — a halted read comes home finished | CAUGHT | TestAReadHaltedAfterItStartedComesHomeFailed |
+| `mCD` — a cards read moves the bed | CAUGHT | TestAMainTrackReadTellsTheDirectorNothingAboutTheBed |
+| `mCE` — standby leaves the words going out | CAUGHT | TestTheOperatorSilencingTheStationStopsAReadAlreadyGoingOut |
+| `mCF` — the air goes back and the programme reads on | CAUGHT | TestTheOperatorSilencingTheStationStopsAReadAlreadyGoingOut |
+| `mDA` — a step publishes twice | CAUGHT | TestAStepPublishesOnceAndLast |
+| `mDB` — a stranger publishes | CAUGHT | TestAnEventForACardTheLineupDoesNotHoldChangesNothing |
+| `mDC` — the bed is not a shared output | CAUGHT | TestOnlySharedOutputWorkRidesTheLane — **found only by escalating to ** |
+| `mDD` — the lane outlives the loop | CAUGHT | TestTheLaneRetiresWithTheLoop |
+| `mDE` — a queued run is discarded on a coin flip | CAUGHT | the test binary did not survive it: panic: test timed out after 10m0s |
+| `mDF` — an effect is dropped from its run | CAUGHT | TestALongRunningEffectDoesNotDelayTheNextEvent |
