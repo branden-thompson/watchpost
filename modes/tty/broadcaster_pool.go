@@ -31,22 +31,26 @@ func (b Broadcaster) poolRows() []render.LocationRow {
 	pool := b.area.Pool
 	out := make([]render.LocationRow, 0, len(pool))
 	for i, ref := range pool { // bounded by locations.PoolCap (P10-02)
-		row := render.LocationRow{
-			Index:      i + 1,
-			Name:       ref.Label,
-			Zip:        ref.Zip,
-			Population: ref.Population,
-			Loading:    true,
-			Selected:   i == b.poolSelection(),
+		// THE ONE CONVERTER (D-112). `fillPoolWeather` was a second, hand-written
+		// one, and it copied six of sixteen fields — HI, LOW, all of TOMORROW, the
+		// trend arrow and the fire and seismic marks simply never reached the
+		// table. `weatherRow` is what Observer's own rows go through.
+		row := render.LocationRow{Name: ref.Label, Zip: ref.Zip, Loading: true}
+		if loc := b.snapshotFor(ref); loc != nil {
+			row = weatherRow(loc, bcFireBoldMW)
 		}
+		// AND WHAT THE POOL KNOWS THAT THE SNAPSHOT DOES NOT: which row this is,
+		// how many people the place serves, and whether the pointer is on it.
+		row.Index, row.Population, row.Selected = i+1, ref.Population, i == b.poolSelection()
+		// THE DISTANCE IS FROM THE TRANSMITTER, NOT FROM THE OBSERVING STATION.
+		// `weatherRow` fills `StationKM` with how far the WX STN is from the place;
+		// this column answers a different question — how far the PLACE is from the
+		// tower — which is what an operator sizing up a candidate is asking.
 		if mi := b.milesFromTower(ref); mi != nil {
 			// THE TABLE'S OWN FORMATTER TAKES KILOMETRES, and `StationDistance` is
 			// the one owner of how a distance reads in the operator's units.
 			km := *mi / 0.621371
 			row.StationKM = &km
-		}
-		if loc := b.snapshotFor(ref); loc != nil {
-			row = fillPoolWeather(row, loc)
 		}
 		out = append(out, row)
 	}
@@ -71,24 +75,18 @@ func (b Broadcaster) snapshotFor(ref snapshot.LocationRef) *snapshot.Location {
 	return nil
 }
 
-// fillPoolWeather puts what the snapshot knows onto the row.
-func fillPoolWeather(row render.LocationRow, l *snapshot.Location) render.LocationRow {
-	// THE SAME FIELDS OBSERVER'S OWN ROW READS (body.go), through the same
-	// harmonised seam — so a pool row and a watchlist row for one place cannot
-	// disagree about the weather there.
-	row.Loading = rowLoading(l)
-	row.Conditions = l.Harmonized.Condition
-	row.Now = l.Harmonized.Temp
-	row.Station = l.Harmonized.Source.ModelOrStation
-	row.HasAlert = len(l.Alerts) > 0
-	row.AlertCount = len(l.Alerts)
-	for _, al := range l.Alerts { // bounded by the location's alerts (P10-02)
-		if render.AlertIsWarning(al.Event, al.Severity) {
-			row.WarnAlert = true
-		}
-	}
-	return row
-}
+// `fillPoolWeather` RETIRED AT D-112. It was the second converter from a
+// snapshot to a table row, and it had drifted from the first the day it was
+// written: `weatherRow` is now the only one, and both surfaces go through it.
+
+// bcFireBoldMW is the console's threshold for a hotspot that reads emphasized.
+//
+// THE SAME DEFAULT OBSERVER USES (`fireBoldMW`), stated once here because the
+// console has no Config of its own to read the operator's override from — and a
+// pool row and a watchlist row for one place must not disagree about whether a
+// fire is burning hard. When the console gains that setting this becomes a
+// reader of it rather than a constant.
+const bcFireBoldMW = 50
 
 // poolRoom is how many rows the pool takes off the frame before the running
 // order is windowed.

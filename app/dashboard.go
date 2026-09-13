@@ -786,19 +786,35 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 	if lp.priority != nil {
 		lp.priority.update(watch)
 	}
-	if lp.recent != nil {
-		lp.recent.update(recent)
-	}
 	lp.watchRefs = append([]snapshot.LocationRef(nil), watch...) // re-home the ticker's tie to the new watchlist (under lp.mu, already held)
 	// AND THE STATION FOLLOWS, BUT ONLY IF IT WAS BORROWING (D-72). A station
 	// with a transmitter of its own does not move because the listener changed
 	// what they are watching — that is the split.
+	//
+	// IT MOVES BEFORE THE PIPELINE IS RECONCILED (D-112), because the pipeline's
+	// list is the recent locations AND the pool: reconciling first would fetch the
+	// old station's candidates and then evict them a line later.
 	if restation {
 		lp.station, lp.poolRefs = nextStation, nextPool
 		// TOLD, NOT LEFT TO BE NOTICED. The console draws the transmitter and
 		// the radius and holds neither; a pool that moved without saying so
 		// would leave it naming the region the station just left.
 		told = lp.p // read under the lock; sent above, after it
+	}
+	// THE POOL IS PART OF THE LIST, ON EVERY COMMIT AND NOT JUST AT THE SEED
+	// (D-112). This called `update(recent)` with the LISTENER's list alone, so the
+	// first time anything committed — a lookup, a favourite, a watchlist edit —
+	// `SetLocations` saw twenty-five locations that were no longer wanted, stopped
+	// every one of their schedulers and dropped their data. The pool table went
+	// back to shimmering and stayed there, which is what the HUM LEAD was looking
+	// at when rows four and down read `.·.` on a station that had been up for
+	// minutes.
+	//
+	// AND A MOVED STATION FETCHES ITS NEW CANDIDATES. Before this the new pool was
+	// PUBLISHED to the console and never fetched, so the console named a region
+	// whose weather nothing was asking for.
+	if lp.recent != nil {
+		lp.recent.update(withPool(recent, lp.poolRefs))
 	}
 	return nil
 }

@@ -4,10 +4,13 @@ import pathlib
 # present in every test that injects a time. Two carriers of one fact, with the
 # tests holding the one that works.
 #
-# The HUM LEAD saw it in UAT: "DATA PULLED: Friday September 11, 2026 @
-# 17:44:56" with no "(2 MIN AGO)" after it.
+# The HUM LEAD saw it in UAT: "DATA PULLED: Friday September 11, 2026 @ 17:44:56"
+# with no "(2 MIN AGO)" after it.
+#
+# RE-ANCHORED AT D-110: the card's stamp is the SHORT form now, and the window
+# keeps the long one. Same fact, same two carriers, one function along.
 p = pathlib.Path("modes/tty/broadcaster_slots.go"); s = p.read_text()
-old = "cardPulled(o, c, b.clock,"
-new = "cardPulled(o, c, b.now,"
+old = "cardPulledShort(o, c, b.clock)"
+new = "cardPulledShort(o, c, b.now)"
 assert old in s, "mT5"
 p.write_text(s.replace(old, new, 1))

@@ -313,26 +313,55 @@ func railify(table string, width, lo, total, window int, g render.RailGlyphs) st
 
 // row converts a snapshot location to a table row.
 func (d Dashboard) row(i int, loc *snapshot.Location, selected bool) render.LocationRow {
+	row := weatherRow(loc, d.fireBoldMW())
+	row.Index, row.Tag, row.Selected = i+1, loc.Tag, selected
+	// WHAT THE RADIO IS DOING IS OBSERVER'S ALONE. The console has no watchlist
+	// and nothing on the pool is "playing"; a shared converter that carried these
+	// would be describing a listener's radio on a broadcaster's table.
+	row.Playing = d.radioPlaying && d.radioKey == snapshot.Key(snapshot.LocationRef{Lat: loc.Lat, Lon: loc.Lon}) // UAT 80
+	row.Repeat = d.radioRepeat != RepeatOff                                                                      // UAT 83/93: ∞ when the row will come round again
+	return row
+}
+
+// weatherRow is everything a SNAPSHOT knows about a location, as a table row.
+//
+// THE ONE CONVERTER (D-112), and it is one because it was two. The Broadcaster's
+// pool built its own row by hand — `fillPoolWeather` — and copied six of the
+// sixteen fields this sets: no HI, no LOW, no TOMORROW, no trend arrow, no fire
+// or seismic marks. Every one of those columns drew `n/a` on a table whose whole
+// purpose the HUM LEAD stated as "gives the human operator some basic weather
+// info to determine if they want to have that location prioritized".
+//
+// IT DRIFTED IMMEDIATELY AND SILENTLY, which is what two carriers of one
+// conversion always do: the hand-written one was correct for the fields it had on
+// the day it was written, and every field added here since was added to one of
+// them. The pool table and the watchlist table are the SAME renderer already
+// (`render.PoolTable` is `tableFor` with one flag); this makes the data behind
+// them the same too.
+//
+// WHAT IT DOES NOT SET is what belongs to a SURFACE rather than to the weather:
+// the row's number, the operator's pointer, what the radio is playing, and — on
+// the pool — how far the place is from the TRANSMITTER rather than from the
+// station that observed it.
+func weatherRow(loc *snapshot.Location, fireBoldMW float64) render.LocationRow {
 	row := render.LocationRow{
-		Index: i + 1, Name: loc.Label, Tag: loc.Tag, Zip: loc.Zip,
-		Station:    loc.Harmonized.Source.ModelOrStation,                                                           // WX STN / DIST (UAT 60)
-		Playing:    d.radioPlaying && d.radioKey == snapshot.Key(snapshot.LocationRef{Lat: loc.Lat, Lon: loc.Lon}), // UAT 80
-		Repeat:     d.radioRepeat != RepeatOff,                                                                     // UAT 83/93: ∞ when the row will come round again
+		Name:       loc.Label,
+		Zip:        loc.Zip,
+		Station:    loc.Harmonized.Source.ModelOrStation, // WX STN / DIST (UAT 60)
 		StationKM:  loc.Harmonized.Source.DistanceKm,
 		Conditions: loc.Harmonized.Condition, // display mapping in the seam (P.CLOUDY etc)
 		Now:        loc.Harmonized.Temp,
 		Trend:      trend(*loc),
 		HasAlert:   len(loc.Alerts) > 0,
-		AlertCount: len(loc.Alerts),                            // ⚠ badge (UAT 20.2)
-		Fire:       fireCount(loc.Fire),                        // B5 / UAT 110: n◆
-		FireHot:    fireHot(loc.Fire.Hotspots, d.fireBoldMW()), // B5
-		Seismic:    seismicRowLevel(loc.Seismic),               // 0.11.0: the strongest quake's felt-band glyph
-		Selected:   selected,
+		AlertCount: len(loc.Alerts),                        // ⚠ badge (UAT 20.2)
+		Fire:       fireCount(loc.Fire),                    // B5 / UAT 110: n◆
+		FireHot:    fireHot(loc.Fire.Hotspots, fireBoldMW), // B5
+		Seismic:    seismicRowLevel(loc.Seismic),           // 0.11.0: the strongest quake's felt-band glyph
 		// UAT 18.2: shimmer until this location's data lands (obs or daily
 		// still pending); post-load nils stay honest "n/a".
 		Loading: rowLoading(loc),
 	}
-	for _, al := range loc.Alerts {
+	for _, al := range loc.Alerts { // bounded by the location's alerts (P10-02)
 		if render.AlertIsWarning(al.Event, al.Severity) {
 			row.WarnAlert = true // warning-grade outranks advisory (UAT 14.1)
 			break
@@ -345,7 +374,7 @@ func (d Dashboard) row(i int, loc *snapshot.Location, selected bool) render.Loca
 		row.TomorrowConditions = loc.Daily[1].Condition
 		row.TomorrowHi, row.TomorrowLo = loc.Daily[1].TempMax, loc.Daily[1].TempMin
 	}
-	for _, day := range loc.Daily[min(2, len(loc.Daily)):] {
+	for _, day := range loc.Daily[min(2, len(loc.Daily)):] { // bounded by the forecast (P10-02)
 		if len(row.Extended) == 5 {
 			break
 		}
