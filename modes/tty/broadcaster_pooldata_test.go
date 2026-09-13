@@ -4,6 +4,7 @@ package tty
 // (D-112).
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -118,5 +119,51 @@ func poolLoc() *snapshot.Location {
 			{Date: "2026-09-12", Condition: "CLEAR", TempMax: &hi, TempMin: &lo},
 			{Date: "2026-09-13", Condition: "RAIN", TempMax: &thi, TempMin: &tlo},
 		},
+	}
+}
+
+// THE MARKS REACH THE ROW, ALL THREE OF THEM (D-113).
+//
+// HUM LEAD, UAT 2026-09-12: "fix this issues so seismic / fire / alerts show up
+// in the location pool as expected."
+//
+// TWO OF THE THREE COULD NOT APPEAR WHATEVER THE DATA SAID. `fillPoolWeather`
+// copied the alert fields and never touched `Fire` or `Seismic`, so those columns
+// were blank by construction — and a blank mark reads as "nothing is happening
+// there", which on a table for deciding what to put on the air is the wrong
+// answer told confidently.
+func TestThePoolRowCarriesEveryMark(t *testing.T) {
+	loc := poolLoc()
+	frp := 80.0
+	loc.Alerts = []snapshot.Alert{{ID: "a1", Event: "Severe Thunderstorm Warning", Severity: "Severe"}}
+	loc.Fire.Hotspots = []snapshot.Hotspot{{FRPMW: &frp}}
+	loc.Seismic = &snapshot.SeismicState{Quakes: []snapshot.Quake{{Mag: 4.5}}}
+	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon}
+
+	b := bcWith(t, card(t, "a", "Oceanside, CA"))
+	b.width, b.height, b.ascii = 150, 74, true
+	b, _ = b.Update(StationAreaMsg{
+		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
+		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
+	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
+
+	row := b.poolRows()[0]
+	if row.AlertCount != 1 || !row.HasAlert || !row.WarnAlert {
+		t.Errorf("the alert marks are missing: has=%v count=%d warn=%v", row.HasAlert, row.AlertCount, row.WarnAlert)
+	}
+	if row.Fire != 1 || !row.FireHot {
+		t.Errorf("the fire marks are missing: count=%d hot=%v", row.Fire, row.FireHot)
+	}
+	if row.Seismic == 0 {
+		t.Error("the seismic mark is missing")
+	}
+	// AND THEY ARE DRAWN, which is a different claim from being on the row: the
+	// marks block is thirteen cells the table can silently leave blank.
+	drawn := stripANSITest(strings.Split(b.opts().PoolTable(b.poolRows(), 143), "\n")[4])
+	g := b.opts().Glyphs()
+	for _, want := range []string{g.Seismic[row.Seismic-1], g.Fire, g.Alert} {
+		if !strings.Contains(drawn, want) {
+			t.Errorf("the row does not draw %q:\n%q", want, drawn)
+		}
 	}
 }

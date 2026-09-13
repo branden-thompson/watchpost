@@ -498,6 +498,7 @@ func (Dashboard).severeTabRow
 func (Dashboard).severeTitle
 func (Dashboard).sharedExtDays
 func (Dashboard).showCard
+func (Dashboard).showLocation
 func (Dashboard).showingLane
 func (Dashboard).station
 func (Dashboard).stationText

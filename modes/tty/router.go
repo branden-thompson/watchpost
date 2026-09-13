@@ -455,7 +455,16 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// CLOSING IS THE HONEST ANSWER UNTIL THE MANAGEMENT CONTROLS EXIST.
 				// The window has nothing for a second press to do, and a key that
 				// does nothing is better than a key that does something elsewhere.
-				if r.active == SurfaceBroadcaster && r.observer.modal == modalCard {
+				// WHICHEVER WINDOW IT OPENED (D-113). It was the card window alone,
+				// and `enter` on a POOL row now opens Details — so a second press
+				// there fell through to Observer again, one window along from the
+				// defect this rule was written for.
+				//
+				// NAMED, NOT "ANY OPEN MODAL". The diagnostics window uses `enter`
+				// to pick a scenario (D-58) and closing it on that key would take
+				// the console's rule into a window the console does not own.
+				if r.active == SurfaceBroadcaster &&
+					(r.observer.modal == modalCard || r.observer.modal == modalDetails) {
 					r.observer = r.observer.close()
 					return r, nil
 				}
@@ -749,9 +758,21 @@ func (r Router) openCardWindow(key string) (Router, bool) {
 // window, so the row the pointer opens and the row a chip opens cannot come to
 // show different things about one report.
 func (r Router) openPointedCard() (Router, bool) {
+	// THE POOL'S ROWS OPEN THE LOCATION'S DETAILS (D-113, HUM LEAD 2026-09-12:
+	// "make it so <enter> on a location pool row opens the location details (like
+	// observer)"). The pointer walks the two tables as one list, so one key opens
+	// whatever it is on — a card above, a place below.
+	if at := r.broadcaster.poolSelection(); at >= 0 {
+		pool := r.broadcaster.area.Pool
+		if at >= len(pool) {
+			return r, false // the pointer is past the pool; nothing to open
+		}
+		r.observer = r.observer.showLocation(pool[at])
+		return r, true
+	}
 	at := r.broadcaster.lineupSelection()
 	if at < 0 {
-		return r, false // the pointer is in the pool; that window is not built yet
+		return r, false
 	}
 	id, rows, ok := r.broadcaster.cardDetail(at + bcScheduledFrom)
 	if !ok {

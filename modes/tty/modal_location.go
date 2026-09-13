@@ -104,6 +104,33 @@ func (d Dashboard) handleResolved(v resolvedMsg) (tea.Model, tea.Cmd) {
 	return d, d.commitCmd(watch, recent, v.mode)
 }
 
+// showLocation opens Details for a location the CONSOLE pointed at (D-113).
+//
+// HUM LEAD, UAT 2026-09-12: "make it so <enter> on a location pool row opens the
+// location details (like observer)."
+//
+// THROUGH THE LOOKUP'S OWN SEAM, not a second one. A looked-up location is
+// already a location shown in Details that may not be in either list yet — the
+// exact shape a pool candidate is — so `lookupRef` carries it until the recent
+// pipeline's data lands, and `selected` takes over once it has. Building a second
+// way to show a location's Details would be a second answer to which location the
+// modal is about, on a modal that reads five sections off that one fact.
+//
+// THE LABEL IS CLEANED HERE for the same reason the lookup cleans it: the
+// placeholder is drawn before the assembler has been near it (R5-C-05).
+func (d Dashboard) showLocation(ref snapshot.LocationRef) Dashboard {
+	r := ref
+	r.Label, r.Tag, r.Zip = render.PlainLine(r.Label), render.PlainLine(r.Tag), render.PlainLine(r.Zip)
+	d.lookupRef = &r
+	// IF IT IS ALREADY ON THE RECENT LIST, point at it there and drop the
+	// placeholder: the row has real data and the modal should read it, which is
+	// what `applyRecent` does when a lookup's own data arrives.
+	if i := d.lookupIndex(); i >= 0 {
+		d.selected, d.lookupRef = d.numPriority()+i, nil
+	}
+	return d.open(modalDetails)
+}
+
 // commitCmd hands the new ref sets to the app hook (persist + rebuild).
 func (d Dashboard) commitCmd(watch, recent []snapshot.LocationRef, what string) tea.Cmd {
 	commit := d.cfg.Commit

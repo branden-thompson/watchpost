@@ -232,3 +232,44 @@ func TestASecondEnterClosesTheCardWindow(t *testing.T) {
 		t.Error("and the operator is still on the console")
 	}
 }
+
+// AND A POOL ROW OPENS THE LOCATION'S DETAILS (D-113).
+//
+// HUM LEAD, UAT 2026-09-12: "make it so <enter> on a location pool row opens the
+// location details (like observer)."
+//
+// ONE KEY, WHATEVER THE POINTER IS ON. The pointer walks the running order and
+// the pool as one list, so `enter` opens a card above and a place below —
+// and before this it opened a card above and OBSERVER'S OWN selection below.
+func TestEnterOnAPoolRowOpensThatLocation(t *testing.T) {
+	r := consoleRouter(t)
+	pool := []snapshot.LocationRef{
+		{Label: "Fallbrook, CA", Zip: "92028", Lat: 33.37, Lon: -117.25},
+		{Label: "Vista, CA", Zip: "92081", Lat: 33.20, Lon: -117.24},
+	}
+	r.broadcaster, _ = r.broadcaster.Update(StationAreaMsg{
+		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
+		RadiusMi:    50, Pool: pool})
+
+	for want, at := range map[string]int{"Fallbrook, CA": 0, "Vista, CA": 1} {
+		r.broadcaster.selected = MainTrackSlots - bcScheduledFrom + at
+		out, opened := r.openPointedCard()
+		if !opened {
+			t.Fatalf("%s: enter opened nothing on a pool row", want)
+		}
+		if out.observer.modal != modalDetails {
+			t.Errorf("%s: enter opened %v, not the location details", want, out.observer.modal)
+		}
+		// THE LOCATION THE POINTER IS ON, which is the whole finding: it used to
+		// open Observer's own selected row instead.
+		if out.observer.lookupRef == nil || out.observer.lookupRef.Label != want {
+			t.Errorf("the details are about %v, want %q", out.observer.lookupRef, want)
+		}
+	}
+	// AND A SECOND PRESS CLOSES IT, the same rule the card window follows.
+	r.broadcaster.selected = MainTrackSlots - bcScheduledFrom
+	opened, _ := r.openPointedCard()
+	if closed := pressAction(t, opened, actQueueOpen); closed.observer.modal != modalNone {
+		t.Errorf("a second enter left the location details %v open", closed.observer.modal)
+	}
+}
