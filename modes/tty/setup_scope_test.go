@@ -55,16 +55,22 @@ func setupOn(t *testing.T, s Surface) (Dashboard, string) {
 // Scope is what this file is about, and scope is answered by which blocks the
 // surface draws at all.
 func setupOffers(d Dashboard) string {
-	o := d.opts()
+	// THROUGH `setupBlocks`, WHICH IS THE WINDOW'S OWN ASSEMBLY — and it was not.
+	//
+	// THIS HELPER USED TO RE-IMPLEMENT THE RULE IT IS USED TO TEST. It looped the
+	// groups itself and skipped the empty ones with the same `visibleRowOfGroup`
+	// call that production makes, so `TestNoSettingsGroupIsDrawnEmpty` filtered
+	// with the predicate it then asserted on: tautological, and unable to fail.
+	// Deleting the skip from `setupBlocks` changed nothing this helper produced —
+	// mutant mAA2 SURVIVED against the whole tree, and the console would have
+	// drawn "ALERTS - EVENTS" and "WATCHPOST RADIO - RELAY REPLAY" over no rows
+	// with every gate green.
+	//
+	// A HELPER THAT RE-DERIVES PRODUCTION'S ANSWER CANNOT CHECK IT. Asking the
+	// real assembly is the whole of the fix.
 	var b strings.Builder
-	for g := groupData; g <= groupRelay; g++ { // bounded by the group set (P10-02)
-		// A GROUP WITH NO VISIBLE ROW IS NOT DRAWN AT ALL (D-92), heading
-		// included — `setupBlock` builds the heading unconditionally and the
-		// window's own assembly is what skips it.
-		if _, ok := visibleRowOfGroup(g, d.rowVisible); !ok {
-			continue
-		}
-		for _, l := range d.setupBlock(o, g).lines {
+	for _, blk := range d.setupBlocks(d.opts()) { // bounded by the group set (P10-02)
+		for _, l := range blk.lines {
 			b.WriteString(stripANSITest(l) + "\n")
 		}
 	}
