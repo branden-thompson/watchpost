@@ -18,10 +18,15 @@ package app
 //
 // THE FIRST DRAFT REACHED INTO THE DOMAIN INSTEAD, adding `RepeatingForTest` to
 // `synth.Source` and citing `lineup.MonitorAdvancesForTest` as precedent. The
-// HUM LEAD caught it. All four `ForTest` exports in the tree are in `platform/`;
-// there is none in `domains/`, and the rule is that a domain owns its own
-// business and shared things live in `platform`. The precedent did not say what
-// I claimed it said.
+// HUM LEAD caught it. THERE IS NO `ForTest` EXPORT IN `domains/`, and the rule is
+// that a domain owns its own business and shared things live in `platform`. The
+// precedent did not say what I claimed it said.
+//
+// THE COUNT THIS USED TO GIVE — "all four … are in `platform/`" — WENT STALE.
+// There are five, and two of them are `modes/tty`'s service-radius bounds
+// (D-115). The rule the sentence exists to state is unchanged; the census beside
+// it was true when written and became false without anyone touching this file,
+// which is what a hand-kept count in a comment always does.
 //
 // THE SHAPE IS ALREADY IN THIS PACKAGE. `synthSource()` returns
 // `interface{ Cached() (int, int) }` — the same move, one method wide, for the

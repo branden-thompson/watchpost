@@ -932,10 +932,27 @@ func (d Dashboard) setupFinishCmd(key string) tea.Cmd {
 
 // The service radius' bounds, exposed for the cross-package tie in `app`.
 //
-// IN `platform/` BY THE ARCHITECTURE'S OWN RULE — every `ForTest` export in this
-// tree is here rather than in a domain — and exported because `app` is the only
-// package that may import both this and `platform/config`, which is where the
-// same two numbers are the storage's clamp. See TestSetupServiceBoundsMatchTheConfig.
+// THIS COMMENT USED TO SAY "IN `platform/` BY THE ARCHITECTURE'S OWN RULE" AND
+// THIS FILE IS `modes/tty/setup.go`. It stated the rule and asserted compliance
+// in the same breath, while sitting in the package the rule points away from —
+// which is worse than no comment, because the next reader has no reason to doubt
+// it. Found by the pre-BUILD-exit structure pass, 2026-09-13.
+//
+// WHAT IS ACTUALLY TRUE. These are the WINDOW'S validation bounds, and the same
+// two numbers are `config.MinServiceRadiusMi`/`MaxServiceRadiusMi`, the storage's
+// clamp. That is TWO CARRIERS OF ONE FACT, and what stops them drifting is
+// `TestSetupServiceBoundsMatchTheConfig` in `app` — the only package that
+// imports both.
+//
+// WHY NOT SIMPLY IMPORT `platform/config` HERE: nothing forbids it — it compiles
+// and `lint-imports` passes — but NO package under `modes/` does. The UI is
+// HANDED its configuration through `tty.Config` rather than reading storage, and
+// D-91's air boundary is a classification of exactly those seams. This would be
+// the first breach of that, to save a constant.
+//
+// THE STRUCTURAL CHOICE IS THE HUM LEAD'S and is recorded in the structure pass:
+// leave it tied, give the numbers a neutral owner both sides may import, or pass
+// them through `tty.Config` like every other configured value.
 const (
 	ServiceRadiusMinForTest = serviceRadiusMin
 	ServiceRadiusMaxForTest = serviceRadiusMax
