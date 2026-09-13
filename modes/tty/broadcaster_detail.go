@@ -100,6 +100,30 @@ func (b Broadcaster) cardWindowFor(c lineup.Card) (string, func(render.Opts) (st
 	}, true
 }
 
+// cardWindowGroundFor is the ground the window for `handle` floats on, "" for
+// the standard modal tone. Asked separately from the builder so the two doors
+// (a digit, and `[A]`) cannot hand over a body and a ground that disagree.
+func (b Broadcaster) cardWindowGroundFor(handle int) string {
+	main := b.lineup.Projection(lineup.MainTrack)
+	if len(main) > MainTrackSlots {
+		main = main[:MainTrackSlots]
+	}
+	c, decided := b.slotCard(main, handle)
+	if !decided {
+		return ""
+	}
+	return cardWindowGround(c)
+}
+
+// alertWindowGround is the same answer for the takeover box's card.
+func (b Broadcaster) alertWindowGround() string {
+	rail := b.lineup.Projection(lineup.AlertRail)
+	if len(rail) == 0 {
+		return ""
+	}
+	return cardWindowGround(rail[0])
+}
+
 // detailBody is everything the window says about one card, in the order an
 // operator asks it: what it is doing, how fresh it is, who says it, what it is
 // made of, and then the words themselves.
@@ -260,11 +284,15 @@ func detailScript(c lineup.Card) []string {
 // that kept its first frame while the data moved is exactly the freeze F-30 was
 // filed for. Re-handing on every update is how the window cannot lag; comparing
 // before bumping is how it does not redraw for nothing.
-func (d Dashboard) showCard(id string, rows func(render.Opts) (string, []string), at render.Opts) Dashboard {
-	if d.cardID == id && d.cardRows != nil && sameCard(d.cardRows, rows, at) {
+func (d Dashboard) showCard(id string, rows func(render.Opts) (string, []string), ground string, at render.Opts) Dashboard {
+	// THE GROUND IS PART OF "THE SAME WINDOW". Left out of this comparison the
+	// generation would not move when only the tone changed — a burst whose worst
+	// alert is superseded by a more severe one would keep the old colour while
+	// the body updated, which is the memo defect F-30 one field along.
+	if d.cardID == id && d.cardGround == ground && d.cardRows != nil && sameCard(d.cardRows, rows, at) {
 		return d
 	}
-	d.cardID, d.cardRows, d.cardGen = id, rows, d.cardGen+1
+	d.cardID, d.cardRows, d.cardGround, d.cardGen = id, rows, ground, d.cardGen+1
 	return d
 }
 

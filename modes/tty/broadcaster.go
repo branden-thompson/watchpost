@@ -1489,20 +1489,48 @@ func cardTone(c lineup.Card) string {
 	if c.ID == "" {
 		return ""
 	}
-	fg := render.Tok(render.CardText)
+	return render.Tok(render.CardText) + ";" + render.Tok(cardGroundToken(c))
+}
+
+// cardGroundToken is the ground a card is painted on — the ONE owner of that
+// decision, because the card and the WINDOW it opens must not disagree.
+//
+// HUM LEAD, UAT 2026-09-13: "if the Card on the layout is the [w] orange - when I
+// press <shift+a> that modal should MATCH the tone, not be the blue that is
+// currently is." The card wore its category and the window it opened wore the
+// standard modal ground, so the same hazard was two colours one keypress apart.
+func cardGroundToken(c lineup.Card) render.Token {
 	if c.Slot == lineup.BreakingAlert {
 		if worst, ok := worstCategory(c.From); ok {
-			return fg + ";" + render.Tok(category.Of(worst).Tint)
+			return category.Of(worst).Tint
 		}
 		// A BURST WITH NO ARRIVAL TO READ A CATEGORY FROM keeps the ordinary
 		// card ground rather than guessing at a severity. Guessing paints a
 		// hazard the wrong colour, which is worse than painting it no colour.
-		return fg + ";" + render.Tok(render.CardBG)
+		return render.CardBG
 	}
 	if c.Origin == lineup.FromOperator {
-		return fg + ";" + render.Tok(render.CardOperatorBG)
+		return render.CardOperatorBG
 	}
-	return fg + ";" + render.Tok(render.CardBG)
+	return render.CardBG
+}
+
+// cardWindowGround is the ground the card's WINDOW floats on, or "" for the
+// standard modal tone.
+//
+// ONLY A HAZARD CARRIES ITS GROUND INTO THE WINDOW, and that is the narrow
+// reading of the ruling on purpose: a burst is the card whose colour MEANS
+// something — it is the severity the operator is deciding about. An ordinary
+// report's ground is `CardBG`, which is not a severity and not a signal, and
+// carrying it in would restyle every other window to say nothing new.
+func cardWindowGround(c lineup.Card) string {
+	if c.Slot != lineup.BreakingAlert {
+		return ""
+	}
+	if _, ok := worstCategory(c.From); !ok {
+		return ""
+	}
+	return render.Tok(cardGroundToken(c))
 }
 
 // worstCategory is the most severe category among a card's alerts.

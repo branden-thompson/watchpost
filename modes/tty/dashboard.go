@@ -483,11 +483,18 @@ type Dashboard struct {
 	// THE CARD WINDOW'S OWN TWO QUESTIONS (D-118): change this card's position,
 	// or drop it from the running order. Both are drawn OVER the card, so the
 	// operator can still read what they are about to move or discard.
-	cardAct      cardAction
-	cardMoveTo   string // the digits buffer for [P]
-	cardErr      string
-	cardRows     func(render.Opts) (string, []string)
-	cardGen      int
+	cardAct    cardAction
+	cardMoveTo string // the digits buffer for [P]
+	cardErr    string
+	cardRows   func(render.Opts) (string, []string)
+	cardGen    int
+
+	// cardGround is the tile tone `modalCard` floats on, "" for the standard
+	// modal ground (D-127). A breaking alert's window wears the SAME category
+	// tint its card does — HUM LEAD, UAT 2026-09-13: "if the Card on the layout
+	// is the [w] orange … that modal should MATCH the tone, not be the blue that
+	// is currently is."
+	cardGround   string
 	ticker       []TickerItem // 0.12.0: the active global alerts (grouped into lanes by Category)
 	tickerCatIdx int          // which non-empty lane is showing (rotates every 90s)
 	tickerScroll int          // tape scroll offset within the current lane

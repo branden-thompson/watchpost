@@ -243,6 +243,7 @@ func (Broadcaster).airBodyWidth
 func (Broadcaster).airBox
 func (Broadcaster).alertBox
 func (Broadcaster).alertDetail
+func (Broadcaster).alertWindowGround
 func (Broadcaster).anyLoading
 func (Broadcaster).armTick
 func (Broadcaster).bandWidth
@@ -255,6 +256,7 @@ func (Broadcaster).cardBoxWidth
 func (Broadcaster).cardControls
 func (Broadcaster).cardDetail
 func (Broadcaster).cardWindowFor
+func (Broadcaster).cardWindowGroundFor
 func (Broadcaster).chrome
 func (Broadcaster).chromeAt
 func (Broadcaster).clamp
@@ -638,12 +640,14 @@ func broadcasterKeyMap
 func bucketSevere
 func buoyNote
 func cardBoxTitle
+func cardGroundToken
 func cardPulled
 func cardPulledShort
 func cardRuleTitle
 func cardStatus
 func cardTitle
 func cardTone
+func cardWindowGround
 func castLabel
 func castLineOf
 func castRowOrder

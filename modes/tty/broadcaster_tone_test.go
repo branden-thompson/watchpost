@@ -131,3 +131,88 @@ func indexOfSub(s, sub string) int {
 	}
 	return -1
 }
+
+// admitted puts a card through the states the schedule requires before it may be
+// queued — the lineup holds admitted cards only, and a fixture that skips this
+// trips the invariant rather than testing anything.
+func admitted(t *testing.T, c lineup.Card) lineup.Card {
+	t.Helper()
+	c.State = lineup.Proposed
+	out, err := lineup.Propose(c)
+	if err != nil {
+		t.Fatalf("proposing %s: %v", c.ID, err)
+	}
+	if out, err = out.To(lineup.Admitted); err != nil {
+		t.Fatalf("admitting %s: %v", c.ID, err)
+	}
+	return out
+}
+
+// TestTheAlertWindowWearsTheCardsGround.
+//
+// HUM LEAD, UAT 2026-09-13: "I'm talking about the *modal* that is rendered when
+// you press shift+a … So if the Card on the layout is the [w] orange - when I
+// press <shift+a> that modal should MATCH the tone, not be the blue that is
+// currently is."
+//
+// THE CARD AND ITS WINDOW WERE TWO COLOURS ONE KEYPRESS APART. `cardTone` painted
+// the takeover box with the [w] window's category tint — correctly, and that rule
+// stands — and `modalCard` floated on the standard modal ground, so opening the
+// hazard threw its severity away.
+//
+// ASKED OF THE REGISTRY, NOT OF A LITERAL, which is the rule the card's own tint
+// already follows: `category.Of(k).Tint` IS what [w] paints that category, so the
+// three surfaces agree by construction.
+func TestTheAlertWindowWearsTheCardsGround(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+
+	for _, k := range []category.Category{category.Emergency, category.Warnings, category.Watches} {
+		burst := admitted(t, toned("burst", lineup.BreakingAlert, lineup.FromDirector, k))
+		b := bcWith(t)
+		l, err := b.lineup.Queue(lineup.AlertRail, burst)
+		if err != nil {
+			t.Fatalf("seeding the rail: %v", err)
+		}
+		b, _ = b.Update(LineupMsg{Lineup: l})
+		b.width, b.height, b.ascii = 150, 74, true
+
+		r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
+		out := press(t, r, "A")
+		if out.observer.modal != modalCard {
+			t.Fatalf("%v: [A] did not open the card window", k)
+		}
+		// ASSERTED ON THE RENDERED WINDOW, NOT ON THE FIELD. The first version of
+		// this checked `out.observer.cardGround` — the value STORED — and passed
+		// against a build where `modalCard` ignored it entirely. A stored ground
+		// is not a painted one, and the operator sees the paint.
+		want := render.Tok(category.Of(k).Tint)
+		win := out.observer.renderModal(out.observer.opts())
+		if !contains(win, want) {
+			t.Errorf("%v: the window does not paint the card's ground %q", k, want)
+		}
+		if standard := render.Tok(render.ModalBGDark); contains(win, standard) && want != standard {
+			t.Errorf("%v: the window still carries the standard modal ground %q", k, standard)
+		}
+		// AND THE CARD IT CAME FROM AGREES, which is the whole ruling: one
+		// keypress must not change the colour of one hazard.
+		if got := cardTone(burst); !contains(got, want) {
+			t.Errorf("%v: the card is painted %q and the window %q", k, got, want)
+		}
+	}
+}
+
+// AND AN ORDINARY REPORT'S WINDOW IS UNCHANGED.
+//
+// Only a hazard carries its ground in. A location report's ground is `CardBG` —
+// not a severity, not a signal — and floating every other window on it would
+// restyle the whole console to say nothing new.
+func TestAReportsWindowKeepsTheStandardGround(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+
+	b := broadcasterWithOneCard(t)
+	if got := b.cardWindowGroundFor(1); got != "" {
+		t.Errorf("a location report's window asked for the ground %q; it takes the standard tone", got)
+	}
+}

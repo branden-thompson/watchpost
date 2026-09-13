@@ -5,7 +5,7 @@ import pathlib
 # the comparison in showCard exists to avoid, and the reason it compares at one
 # agreed Opts rather than trusting the caller.
 p = pathlib.Path("modes/tty/broadcaster_detail.go"); s = p.read_text()
-old = "	if d.cardID == id && d.cardRows != nil && sameCard(d.cardRows, rows, at) {"
+old = "	if d.cardID == id && d.cardGround == ground && d.cardRows != nil && sameCard(d.cardRows, rows, at) {"
 new = "	if false {"
 assert old in s, "mW6"
 p.write_text(s.replace(old, new, 1))

@@ -768,6 +768,7 @@ func (r Router) openCardWindow(key string) (Router, bool) {
 		rows func(render.Opts) (string, []string)
 		ok   bool
 	)
+	var ground string
 	switch {
 	// `A` IS THE TAKEOVER BOX'S HANDLE, and it is an ADDRESS like the digits
 	// rather than a binding (HUM LEAD, UAT 2026-09-13). The box draws the cap; the
@@ -779,8 +780,10 @@ func (r Router) openCardWindow(key string) (Router, bool) {
 	// BOTH surfaces and taking it here would break a key that already works.
 	case key == "A":
 		id, rows, ok = r.broadcaster.alertDetail()
+		ground = r.broadcaster.alertWindowGround()
 	case len(key) == 1 && key[0] >= '0' && key[0] <= '9':
 		id, rows, ok = r.broadcaster.cardDetail(int(key[0] - '0'))
+		ground = r.broadcaster.cardWindowGroundFor(int(key[0] - '0'))
 	}
 	if !ok {
 		return r, false
@@ -788,7 +791,7 @@ func (r Router) openCardWindow(key string) (Router, bool) {
 	// THE SURFACE DOES NOT CHANGE, for the reason ctrl+d does not change it: the
 	// operator asked about a card ON the console and the console stays drawn
 	// underneath, which is what `View` already composites.
-	r.observer = r.observer.showCard(id, rows, r.observer.opts()).open(modalCard)
+	r.observer = r.observer.showCard(id, rows, ground, r.observer.opts()).open(modalCard)
 	return r, true
 }
 
@@ -940,7 +943,8 @@ func (r Router) openPointedCard() (Router, bool) {
 	if !ok {
 		return r, false
 	}
-	r.observer = r.observer.showCard(id, rows, r.observer.opts()).open(modalCard)
+	r.observer = r.observer.showCard(id, rows,
+		r.broadcaster.cardWindowGroundFor(at+bcScheduledFrom), r.observer.opts()).open(modalCard)
 	return r, true
 }
 
@@ -962,9 +966,17 @@ func (r Router) refreshCardWindow() Router {
 			// generation must move when the REPORT changes and not when the
 			// terminal does, so the comparison is made at a single Opts rather
 			// than at whatever the last frame happened to use.
-			r.observer = r.observer.showCard(id, rows, r.observer.opts())
+			r.observer = r.observer.showCard(id, rows, r.broadcaster.cardWindowGroundFor(i), r.observer.opts())
 			return r
 		}
+	}
+	// AND THE TAKEOVER BOX'S CARD, WHICH THIS WALK COULD NOT REACH. It searched
+	// the MAIN TRACK only, which was complete while a digit was the only way in;
+	// `[A]` opens a card on the ALERT RAIL (D-126), and a window that never
+	// refreshes goes stale exactly where staleness matters most — a burst gains
+	// hazards while the operator is reading it.
+	if id, rows, ok := r.broadcaster.alertDetail(); ok && id == r.observer.cardID {
+		r.observer = r.observer.showCard(id, rows, r.broadcaster.alertWindowGround(), r.observer.opts())
 	}
 	return r
 }

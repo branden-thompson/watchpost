@@ -99,7 +99,14 @@ func (d Dashboard) renderModal(o render.Opts) string {
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
 	case modalCard:
-		return d.floatModal(o, d.modalWidth(), d.cardTitleOf(o), d.cardLines(o)) // D-88
+		// THE WINDOW WEARS THE CARD'S GROUND (D-127). `floatModal` is the same
+		// call with the standard tone, so a card that carries no ground of its
+		// own is unchanged.
+		fg, bg := render.ModalTone(d.darkBG)
+		if d.cardGround != "" {
+			bg = d.cardGround
+		}
+		return d.floatModalToned(o, d.modalWidth(), d.cardTitleOf(o), d.cardLines(o), fg, bg) // D-88
 	case modalSetup, modalDebug, modalRelayFault:
 		// The chips are a PINNED FOOTER (OP-5): they render after the scroll
 		// window, so at 80x24 they cannot scroll away exactly when a lost
