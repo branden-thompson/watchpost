@@ -41,7 +41,16 @@ func TestAWindowWithNoBoundsRefusesEveryRadius(t *testing.T) {
 	if _, _, ok := d.serviceBounds(); ok {
 		t.Fatal("a window with no bounds must not report usable ones")
 	}
-	for _, v := range []int{2, 25, 50, 100} {
+	// ZERO IS IN THIS LIST BECAUSE IT IS THE ONLY VALUE THAT DISCRIMINATES, and
+	// leaving it out is what let mutant mAS3 survive. With the bounds unset, a
+	// check that forgets to ask whether it was TOLD compares `v >= 0 && v <= 0` —
+	// which refuses 2, 25, 50 and 100 exactly as the correct code does, and
+	// ADMITS zero. Zero is what `serviceRadiusChoice` returns for "not a number",
+	// so the one value that slips through is the one meaning nothing was typed.
+	//
+	// A test named "refuses EVERY radius" that omits the only distinguishing
+	// case is a test agreeing with the defect on every input it tries.
+	for _, v := range []int{0, 1, 2, 25, 50, 100, 101} {
 		if d.inServiceRange(v) {
 			t.Errorf("%d mi was admitted by a window that was never told its bounds", v)
 		}
