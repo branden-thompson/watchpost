@@ -501,12 +501,8 @@ func (b Broadcaster) lanes() []string {
 	fg, bg := b.stationTone()
 	out = append(out, strings.Split(b.stationSection(b.opts(), fg, bg), "\n")...)
 	out = append(out, b.heldNotice()...)
-	// WHAT IS ON THE AIR, AND WHAT IS UNDER IT (D-95) — one box, two rows, above
-	// the running order it is the head of.
-	if air := b.airBox(); len(air) > 0 {
-		out = append(out, "")
-		out = append(out, b.chrome(air, false, 0, 0)...)
-	}
+	// THE AIR BOX IS INSIDE THE STATION SECTION NOW (D-107), so nothing is drawn
+	// here: `stationSection` carries it, painted with the section's own ground.
 	// A BARE BLANK ROW SEPARATES THE STATION SECTION FROM THE RUNNING ORDER, and
 	// the HUM LEAD annotated it twice: "Notice the blank line and how it
 	// separates the rail — this is intentional." It carries NO walls, because
@@ -545,15 +541,19 @@ func (b Broadcaster) lanes() []string {
 	// AND THE POOL BELOW IT (D-98) — the candidates the operator promotes FROM,
 	// with enough weather to decide on them.
 	//
-	// ONE SCROLL CONTROL OVER BOTH (D-104, HUM LEAD 2026-09-12). The pointer
-	// already walks the two tables as one list, so the reference draws one rail
-	// beside both — ▲ at the top of the running order, ▼ on the pool's own
-	// "Showing" line. Two rails put two ▲/▼ pairs on the frame and interleaved
-	// them; one rail asks each region where its window sits and adds the answers.
+	// ONE SCROLL CONTROL, AND IT BELONGS TO WHAT SCROLLS (D-106, HUM LEAD
+	// 2026-09-12: "Location Pool Scrolls, Line-up doesnt"). D-104 spanned it over
+	// both tables on the strength of the shared pointer; the running order does
+	// not actually move, so the control was claiming a scroll that never happens
+	// and the pool's headers were inside the window it drew. ▲ on the pool's
+	// column titles, ▼ on its "Showing" line — Observer's own shape.
 	sched := b.scheduledSpan(b.mainTrack(), len(out))
 	pool := b.poolSpan(len(out) + len(sched.lines))
-	out = append(out, b.chromeAt(append(sched.lines, pool.lines...),
-		sched.off+pool.off, sched.total+pool.total)...)
+	from := -1
+	if pool.from >= 0 {
+		from = len(sched.lines) + pool.from
+	}
+	out = append(out, b.chromeAt(append(sched.lines, pool.lines...), from, pool.off, pool.total)...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
 	// blank rows to the bottom of the terminal, which is what the reference does
 	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the
@@ -792,7 +792,18 @@ func (b Broadcaster) stationSection(o render.Opts, fg, bg string) string {
 	// PADDED TO THE WIDTH LESS THE INSET, THEN THE INSET ADDED — not padded to
 	// the full width and trimmed, which would put the right-hand air inside the
 	// paint and leave the row a different length from every other.
-	for _, r := range append(append([]string{""}, b.stationLine()...), "") {
+	// THE AIR BOX IS PART OF THIS SECTION (D-107).
+	//
+	// HUM LEAD, UAT 2026-09-12: "the LIVE NOW / BED Table is also supposed to be
+	// INSIDE the station playing section … this data is also tied DIRECTLY to the
+	// ON AIR state - so it should all be in 1 section."
+	//
+	// AND THAT IS WHAT ENDS THE DUPLICATION. The bed had a row here AND a row in
+	// the box; one section means one place for it. What the box says — which of
+	// the two is carrying — is the same question the STATION AIR row above asks,
+	// so the region answers it once, in the order the reference draws.
+	body := append(append([]string{""}, b.stationLine()...), b.airBox()...)
+	for _, r := range append(body, "") {
 		rows = append(rows, render.PadTo(bcSectionInset+r, b.frameWidth()-len(bcSectionInset))+bcSectionInset)
 	}
 	return o.Block(strings.Join(rows, "\n"), fg, bg)
@@ -900,18 +911,30 @@ func (b Broadcaster) stationLine() []string {
 	// without reading the row are both in the same column (D-71).
 	// THE BED SAYS WHAT IT IS ACTUALLY DOING (F-79). It said INACTIVE
 	// unconditionally, because nothing published the answer.
-	bed := g.Idle + "  BED IS INACTIVE"
-	if b.bed.Carrying {
-		bed = g.Live + "  BED IS ACTIVE"
-	}
-	return []string{
-		render.PadBetween(label("STATION:")+state, hint, lane),
+	rows := []string{
+		// THE GAIN RIDES THE STATE'S OWN ROW, where the reference draws it: how
+		// loud the station is and whether it is on the air are one question asked
+		// twice, and the operator checks them together.
+		render.PadBetween(render.TruncateCells(label("STATION AIR:")+state, max(0, room)), gain, lane),
 		// THE TRANSMITTER'S IDENTITY MOVED HERE FROM THE MASTHEAD (D-71). It is
 		// a fact about the STATION; the masthead is what both surfaces share.
-		render.PadTo(label("TRANSMITTER:")+b.transmitterRow(max(0, lane-bcLabelCells)), lane),
-		render.PadBetween(label(o.KeyCap("b")+" BED:")+b.bedSelector(o), bed, lane),
-		render.PadBetween(render.TruncateCells(label("")+why, max(0, room)), gain, lane),
+		render.PadBetween(label("BROADCASTING FROM:")+b.transmitterRow(max(0, lane-bcLabelCells-render.Width(hint)-2)), hint, lane),
 	}
+	// THE BED'S OWN ROW IS GONE (D-107). It was the SECOND place this console
+	// drew the bed — the selector and its state here, and the same selector and
+	// the same state in the LIVE NOW / RELAY BED box below — which the HUM LEAD
+	// called out exactly: "the BED is now duplicated in the UI - which is
+	// confusing - this data is also tied DIRECTLY to the ON AIR state - so it
+	// should all be in 1 section". The box is that one place.
+
+	// AND THE STANDING PROSE WITH IT. "the programme is stopped; hazards still
+	// read" explained a state the row above already names, and the reference has
+	// no line for it. A NOTICE STILL GETS ONE, because a refusal answers a key the
+	// operator just pressed and has to be somewhere they are looking.
+	if b.statusNote != "" {
+		rows = append(rows, render.TruncateCells(label("")+why, max(0, lane)))
+	}
+	return rows
 }
 
 // bedRow is the bed's selector and its own state (D-62).
@@ -955,7 +978,8 @@ const (
 	//
 	// COUNTED IN DISPLAY CELLS, not bytes — the bed's label is a CHIP followed
 	// by a word, and a chip carries SGR a byte count would charge it for.
-	bcLabelCells = 16
+	// "BROADCASTING FROM:" IS THE LONGEST OF THEM (D-107), at eighteen.
+	bcLabelCells = 21
 
 	// bcNoRelay is what the bed's row says before a relay is tuned. The relay's
 	// own description — its call sign, frequency and distance — arrives with the

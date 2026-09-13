@@ -120,10 +120,21 @@ const (
 	bcPoolChrome = 6
 )
 
-// poolSpan is the LOCATION POOL table and its heading, windowed on the pointer.
+// poolSpan is the LOCATION POOL table, its heading, and where its window sits.
+//
+// THE HEADINGS DO NOT SCROLL (D-106). This used to window the whole block, band
+// and column titles included, so the operator lost the names of the columns the
+// moment they moved down the list — "the top of the vertical scroll aligns with
+// the headers of the table (so they dont disappear when I scroll down)".
+//
+// `head` IS FIXED AND `data` IS THE WINDOW, which is Observer's own division: the
+// band and the column titles are chrome, and the rows are the list.
 func (b Broadcaster) poolSpan(used int) scrollSpan {
 	w := b.tableWidth()
-	room := b.height - used - 2*bcInsetRows - 1
+	// THE CLOSING INSET ONLY (D-107). `used` is the rows already drawn, and those
+	// INCLUDE the opening inset — subtracting both left the pool two rows short of
+	// the frame and the operator two locations short of what fitted.
+	room := b.height - used - bcInsetRows
 	if w <= 0 || room < 6 {
 		return scrollSpan{} // no room to say anything useful (FR-7.3)
 	}
@@ -132,31 +143,30 @@ func (b Broadcaster) poolSpan(used int) scrollSpan {
 	// P O O L", and a centred heading above it said the same thing twice. The
 	// scheduled table needs one because its groups name the three QUESTIONS a row
 	// answers rather than the list itself.
-	lines := append([]string{""}, strings.Split(b.opts().PoolTable(rows, w), "\n")...)
+	table := strings.Split(b.opts().PoolTable(rows, w), "\n")
+	// THE SPLIT IS BY COUNT, taken from the table itself: everything that is not
+	// a row is chrome. Asking the renderer how many rows it drew is the only way
+	// that cannot drift from what it actually drew.
+	headN := len(table) - len(rows)
+	head := append([]string{""}, table[:headN]...)
+	data := table[headN:]
 
-	// THE WINDOW FOLLOWS THE POINTER, the way the running order's does — and for
-	// the same reason: only the frame knows how much room the table has.
-	total, off := len(lines), 0
-	if room < len(lines) {
-		dataAt := len(lines) - len(rows)
-		if sel := b.poolSelection(); sel >= 0 {
-			if at := dataAt + sel; at >= room {
-				off = at - room + 1
-			}
+	window := max(0, room-len(head)-1) // the footer is part of the budget
+	lo := 0
+	if window < len(data) {
+		if sel := b.poolSelection(); sel >= window {
+			lo = sel - window + 1
 		}
-		off = max(0, min(off, len(lines)-room))
-		lines = append([]string(nil), lines[off:off+room]...)
+		lo = max(0, min(lo, len(data)-window))
+		data = data[lo : lo+window]
 	}
-	// THE FOOTER COUNTS WHAT IS ON SCREEN AGAINST WHAT EXISTS, which is the
-	// reference's own row and the only thing that tells the operator the list is
-	// longer than the window. IT COUNTS THE WINDOW IT IS UNDER, so a pool scrolled
-	// to its end reads "Showing 16 - 25" rather than starting at one forever.
-	lo := max(0, off-(total-len(rows)))
-	shown := max(0, min(len(rows)-lo, len(lines)-max(0, (total-len(rows))-off)))
 	return scrollSpan{
-		lines: append(lines, b.poolFooter(lo, lo+shown, len(rows), w)),
-		off:   off,
-		total: total,
+		lines: append(append(head, data...), b.poolFooter(lo, lo+len(data), len(rows), w)),
+		// THE CONTROL STARTS ON THE LAST FIXED ROW — the column titles — so ▲
+		// marks where the list begins rather than where the section does.
+		from:  len(head) - 1,
+		off:   lo,
+		total: len(rows),
 	}
 }
 

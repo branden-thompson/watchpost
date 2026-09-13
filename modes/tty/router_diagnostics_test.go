@@ -59,7 +59,7 @@ func TestTheConsoleIsStillDrawnBeneathTheDiagnosticsWindow(t *testing.T) {
 	// ANCHORED ON THE STATION LINE, NOT ON "LINE UP". The left rail spells its
 	// section names VERTICALLY now (D-60) — L, I, N, E, blank, U, P down the
 	// edge — so the label is no longer a string in the frame at all.
-	if !strings.Contains(before, "STATION:") {
+	if !strings.Contains(before, "STATION AIR:") {
 		t.Fatalf("fixture: the console must be drawing its lanes; got:\n%s", before)
 	}
 
@@ -69,7 +69,7 @@ func TestTheConsoleIsStillDrawnBeneathTheDiagnosticsWindow(t *testing.T) {
 	if got == before {
 		t.Fatal("the frame did not change: nothing was composited over the console")
 	}
-	if !strings.Contains(got, "STATION:") {
+	if !strings.Contains(got, "STATION AIR:") {
 		t.Error("the console must remain visible beneath the window; it was replaced instead")
 	}
 }
@@ -355,7 +355,7 @@ func TestSettingsOpensOverTheConsole(t *testing.T) {
 	if r.active != SurfaceBroadcaster {
 		t.Error("and it must not swap surfaces: the operator is watching the console")
 	}
-	if !strings.Contains(stripANSITest(r.View().Content), "STATION:") {
+	if !strings.Contains(stripANSITest(r.View().Content), "STATION AIR:") {
 		t.Error("the console stays visible beneath it")
 	}
 }

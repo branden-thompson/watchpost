@@ -191,68 +191,19 @@ func TestTheStationBandIsPaintedByItsState(t *testing.T) {
 	}
 }
 
-// THE SCROLL CONTROL STARTS AND ENDS WHERE THE REFERENCE PUTS IT (D-70).
+// THE SCROLL CONTROL'S CAPS RETIRED WITH THE RUNNING ORDER'S RAIL (D-106).
 //
-//	"The scroll line is still not right. Even if the LIVE and UP NEXT cards share
-//	 the same width, the vertical control should start and end where the mock
-//	 says."
+// This held two rules about where the caps sit: ▲ on a row of its own in the
+// CARD region, and never below the first scrolling card. Both were about a rail
+// that spanned the running order — and the HUM LEAD retired that: "Location Pool
+// Scrolls, Line-up doesnt … the scroll is anchored only to the location pool
+// table, and the top of the vertical scroll aligns with the headers of the table".
 //
-// ▲ ON THE BREAK ABOVE THE FIRST SCROLLING CARD and ▼ on a row of its own below
-// the last one — never across a card's border, which is where the down cap
-// landed until the running order learned to close on a blank row.
-func TestTheScrollControlCapsSitOnRowsOfTheirOwn(t *testing.T) {
-	b := NewBroadcaster()
-	b.width, b.height, b.ascii = 150, 74, true
-	rows := strings.Split(b.View().Content, "\n")
-	up, down := -1, -1
-	for i, r := range rows {
-		switch []rune(r)[railAt(b)] {
-		case '^':
-			up = i
-		case 'v':
-			down = i
-		}
-	}
-	if up < 0 || down < 0 {
-		t.Fatal("the scroll control draws both of its caps")
-	}
-	if up >= down {
-		t.Fatalf("the up cap is above the down cap: %d, %d", up, down)
-	}
-	// THE RULE IS THE CARD REGION'S, AND ONLY ITS (D-70, narrowed at D-94).
-	//
-	// A cap sharing a row with a CARD read as a mark ON that card, which is why
-	// D-70 gave it a row of its own. The running order is a TABLE below the
-	// cards now, and a rail beside table rows is exactly what Observer draws —
-	// its caps sit on content rows there and always have. So the question is
-	// asked of the cap that lands in the card region and not of the one below it.
-	// EVERYTHING LEFT OF THE RAIL, measured from the rail (D-100). The bound was
-	// `b.width-bcRightChrome+3`, tuned for a frame with no right margin — it now
-	// reaches PAST the mark and so counted the cap itself as content.
-	cells := []rune(rows[up])
-	if strings.TrimSpace(string(cells[:railAt(b)])) != "" {
-		t.Errorf("row %d carries a cap AND content; in the CARD region a cap sits on a row of its "+
-			"own, or it reads as a mark on the card:\n%s", up, rows[up])
-	}
-	// AND THE SCROLLING REGION IS THE ONE THAT SCROLLS. The two read cards are
-	// always the same two, so the control must not begin above them.
-	//
-	// THE SCROLLING REGION IS THE TABLE (D-94), and it is addressed by its `##.`
-	// column rather than by a chip.
-	firstScrolling := 0
-	for i, r := range rows {
-		if strings.Contains(r, bcScheduledHeading) {
-			firstScrolling = i
-			break
-		}
-	}
-	if firstScrolling == 0 {
-		t.Fatal("the scheduled line-up must reach the frame")
-	}
-	if up > firstScrolling {
-		t.Errorf("the control starts at row %d, below the first scrolling card at %d", up, firstScrolling)
-	}
-}
+// SO THE RULES ARE GONE, NOT WEAKENED, and the test went with them rather than
+// being bent into shape. `TestTheScrollControlIsThePoolsAlone` holds what
+// replaces them, and holds it harder: the caps are pinned to the pool's own
+// heading row and footer BY NAME, not by a region boundary that has to be
+// inferred.
 
 // AND THE STATION'S IDENTITY IS IN THE STATION'S SECTION (D-71).
 //
@@ -268,7 +219,9 @@ func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 		RadiusMi:    25,
 	})
 	got := stripANSITest(b.stationSection(b.opts(), "", ""))
-	for _, want := range []string{"TRANSMITTER:", "Bonsall, CA", "TOWER GPS", "33.2881", "-117.2256", "SERVICE RADIUS: 25 Miles"} {
+	// "BROADCASTING FROM:" SINCE D-107, which is the reference's own label — a
+	// station's word for where it transmits from, not the equipment's.
+	for _, want := range []string{"BROADCASTING FROM:", "Bonsall, CA", "TOWER GPS", "33.2881", "-117.2256", "SERVICE RADIUS: 25 Miles"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("%q is missing from the station section:\n%s", want, got)
 		}
@@ -279,10 +232,10 @@ func TestTheTransmitterIsNamedInTheStationSection(t *testing.T) {
 	if !strings.Contains(bare, bcNoTransmitter) {
 		t.Errorf("a station with no epicentre says so:\n%s", bare)
 	}
-	// AND THE BED SAYS WHAT IT IS DOING IN A SENTENCE, at the right, in the
-	// column the station's own transition hint occupies.
-	if !strings.Contains(got, "BED IS") {
-		t.Errorf("the bed's state reads as a sentence:\n%s", got)
+	// AND THE BED SAYS WHAT IT IS DOING, on its own row of the air box the
+	// section now carries (D-107) rather than on a labelled row beside it.
+	if !strings.Contains(got, "RELAY BED") || !strings.Contains(got, "INACTIVE") {
+		t.Errorf("the bed's state is missing from the section:\n%s", got)
 	}
 }
 
@@ -297,7 +250,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 
 	// BEFORE IT IS TOLD, it says the true thing it can say.
 	bare := stripANSITest(b.stationSection(b.opts(), "", ""))
-	if !strings.Contains(bare, bcNoRelay) || !strings.Contains(bare, "BED IS INACTIVE") {
+	if !strings.Contains(bare, bcNoRelay) || !strings.Contains(bare, "INACTIVE") {
 		t.Errorf("an untold bed says so:\n%s", bare)
 	}
 
@@ -306,7 +259,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 	if !strings.Contains(got, "Oceanside, CA") {
 		t.Errorf("the bed names what it is carrying:\n%s", got)
 	}
-	if !strings.Contains(got, "BED IS ACTIVE") {
+	if !strings.Contains(got, "ACTIVE") {
 		t.Errorf("and says that it is:\n%s", got)
 	}
 	if strings.Contains(got, bcNoRelay) {
@@ -316,7 +269,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 	// AND IT GOES BACK. A bed that only ever learned to say ACTIVE would be the
 	// same constant one state along.
 	b, _ = b.Update(BedMsg{})
-	if back := stripANSITest(b.stationSection(b.opts(), "", "")); !strings.Contains(back, "BED IS INACTIVE") {
+	if back := stripANSITest(b.stationSection(b.opts(), "", "")); !strings.Contains(back, "INACTIVE") {
 		t.Errorf("cutting the bed away says so:\n%s", back)
 	}
 }
@@ -339,8 +292,12 @@ func TestTheStationBandIsEvenlyInset(t *testing.T) {
 	rows := strings.Split(b.stationSection(b.opts(), fg, bg), "\n")
 
 	// ONE BLANK ROW TOP AND BOTTOM — the vertical half, which was already right.
-	if n := len(rows); n != 6 {
-		t.Fatalf("the band is a blank row, four of content and a blank row; got %d", n)
+	//
+	// TWO TEXT ROWS AND FIVE OF AIR BOX BETWEEN THEM (D-107): the state with its
+	// gain, where it broadcasts from with its transition, and the LIVE NOW /
+	// RELAY BED pair the section now carries.
+	if n := len(rows); n != 9 {
+		t.Fatalf("the band is a blank row, seven of content and a blank row; got %d", n)
 	}
 	for _, at := range []int{0, len(rows) - 1} {
 		if strings.TrimSpace(stripANSITest(rows[at])) != "" {

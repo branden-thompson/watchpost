@@ -53,6 +53,23 @@ type LocationRow struct {
 // (marksW + nameMinW = 30), so idx@13, name@18 and everything from LABEL on
 // keeps its offset: label@37,
 // zip@46, cond@55, now@69, hi@79, lo@86, tcond@95, thi@109, tlo@117 → 124.
+// padLeft sets a value against the right edge of a field, and leaves a value
+// that overflows alone.
+func padLeft(s string, width int) string {
+	if pad := width - displayWidth(s); pad > 0 {
+		return strings.Repeat(" ", pad) + s
+	}
+	return s
+}
+
+// popW is the POPULATION column: "POPULATION" is ten cells and the widest US
+// city is "8,336,817", so ten is the floor and twelve is the mock's.
+//
+// QUANTITIES LINE UP ON THEIR UNITS. Left-aligned, "1,200,000" and "5,000" put
+// their thousands in different columns and the operator has to READ each one to
+// compare them; right-aligned the column is a bar chart.
+const popW = 12
+
 type baseCol struct {
 	name, header string
 	width        int
@@ -68,7 +85,7 @@ func baseColumns() []baseCol {
 		{"wxstn", "WX STN", 6, 1}, // observing station (UAT 60); "WX" keeps it apart from the NOAA radio transmitter
 		{"dist", "DIST", 6, 1},    // "nnn km" / "nnn mi"
 		{"zip", "ZIP", 7, 1},
-		{"pop", "POPULATION", 12, 1}, // the pool only (D-98)
+		{"pop", "POPULATION", popW, 1}, // the pool only (D-98)
 		{"cond", "CONDITIONS", 12, 2},
 		{"now", "NOW", 8, 2},
 		{"hi", "HI", 5, 2},
@@ -105,6 +122,11 @@ type layout struct {
 	station, zip          bool
 	extDays               int
 	nameMin               int // NAME fill floor: 24, compressing below the minimal layout width (UAT 35)
+
+	// spaced is whether the five-cell gutter between CATEGORIES is drawn (D-106),
+	// and noWxStn whether WX STN has been given up to pay for the width. Both are
+	// resolved by fitName, in the HUM LEAD's own give-way order.
+	spaced, noWxStn bool
 
 	// pool draws the Broadcaster's LOCATION POOL rather than the listener's
 	// watchlist (D-98): one extra column, POPULATION, and the group says which
@@ -153,14 +175,37 @@ func layoutFor(width, days int) layout {
 // row was two cells wider than the running order's beneath it, which is what the
 // HUM LEAD saw as the tables not respecting the right inset.
 func (l *layout) fitName(width int) {
-	l.nameMin = nameMinW
-	if fixed := rowLen(l.columns(nil)); width-fixed < nameMinW {
-		if width-fixed < 10 {
-			l.zip = false
-			fixed = rowLen(l.columns(nil))
+	// THE LADDER, IN THE HUM LEAD'S OWN ORDER (2026-09-12): "WX STN should be the
+	// first col to get hidden if something doesnt fit". Then the five-cell
+	// category gutter, then ZIP, and NAME compresses last down to a floor of ten.
+	//
+	// A COLUMN BEFORE THE GUTTER IS A REAL CHOICE, and it is the HUM LEAD's: the
+	// gutter is what lets the banded headings touch, and which observing station
+	// reported a place is the least of what deciding to schedule it takes.
+	//
+	// THE POOL PAYS FOR THE GUTTER, AND OBSERVER'S WATCHLIST DOES NOT — yet. The
+	// gutter moves every offset in a shipped table, and whether Observer's own
+	// header row follows the console's is a ruling still open. Holding it to the
+	// pool is what the finding actually named: "Same with CONDITIONS data // both
+	// tables", said of the console's two.
+	//
+	// IT IS A STEP, NOT A TAIL, BECAUSE THE POOL ADDS A COLUMN AFTER THE FACT.
+	// `PoolTable` sets `l.pool` — which brings POPULATION in — on a layout whose
+	// floor had already been measured WITHOUT it, so NAME kept a floor it could no
+	// longer afford and the table drew two cells past its own width.
+	l.spaced, l.noWxStn = l.pool, false
+	room := func() int { return width - rowLen(l.columns(nil)) }
+	for _, give := range []func(){
+		func() { l.noWxStn = l.pool },
+		func() { l.spaced = false },
+		func() { l.zip = false },
+	} { // bounded by the ladder (P10-02)
+		if room() >= nameMinW {
+			break
 		}
-		l.nameMin = max(10, width-fixed)
+		give()
 	}
+	l.nameMin = max(10, min(nameMinW, room()))
 }
 
 // columns assembles the go-studs column spec for a layout.
@@ -186,7 +231,19 @@ func (l layout) columns(dates []string) []studs.ColumnDefinition {
 		if c.name == "wxstn" || c.name == "zip" { // identifiers of (mostly) one length, not arithmetic: centred in the cell (HUM LEAD UAT 2026-08-28)
 			align = "center"
 		}
+		// POPULATION IS SET IN ITS CELL, NOT BY THE COLUMN (HUM LEAD, UAT
+		// 2026-09-12: "right aligned lining up with 'N' in population").
+		//
+		// BECAUSE IT IS THE LAST COLUMN OF ITS CATEGORY, its width carries the
+		// five-cell gutter (D-106) — and a right-aligned column sets against the
+		// far side of that, three cells out from under its own heading. So the
+		// number is set against the column's OWN edge in `rowData` and the gutter
+		// is left as trailing air, which is what a gutter is.
+
 		cols = append(cols, studs.ColumnDefinition{Name: c.name, Header: c.header, Width: c.width, Alignment: align})
+	}
+	if l.spaced {
+		cols = spaceCategories(cols, groupsFor(l))
 	}
 	if l.extDays > 0 {
 		cols = append(cols, studs.ColumnDefinition{Name: "extsp", Width: extSpacerW})
@@ -207,6 +264,48 @@ func (l layout) columns(dates []string) []studs.ColumnDefinition {
 	return cols
 }
 
+// spaceCategories widens the last column of each CATEGORY so the gap at a
+// category boundary is five cells rather than the two between columns inside one
+// (D-106).
+//
+// HUM LEAD, UAT 2026-09-12: "Priority Data should align with its Title - this is
+// because the gutter between categories is 5 col (to allow the row headers that
+// have solid bkgs to 'touch' in the middle of the gutter)."
+//
+// THE BANDS MEET IN THE MIDDLE OF IT, which is what makes them read as one strip
+// of colour rather than as blocks with gaps. `groupHeader` already stretches
+// adjacent bands to the midpoint of whatever separates them — with a two-cell
+// gutter that midpoint falls a cell and a half short of where the column title
+// then centres, so every first-of-category cell sat left of its own heading.
+//
+// IT IS ADDED TO THE COLUMN, NOT BETWEEN THEM, because the kit's gutter is one
+// number for the whole table. A left-aligned column with three more cells of
+// trailing room is the same thing seen from the other side, and it means the
+// geometry, the data rows and the two header rows all get it from one place.
+func spaceCategories(cols []studs.ColumnDefinition, groups []groupSpec) []studs.ColumnDefinition {
+	of := map[string]string{}
+	for _, g := range groups { // bounded by the spec (P10-02)
+		for _, m := range g.members {
+			of[m] = g.title
+		}
+	}
+	out := append([]studs.ColumnDefinition(nil), cols...)
+	for i := range out { // bounded by the spec (P10-02)
+		if i+1 >= len(out) || out[i+1].NoLeadingGutter {
+			continue
+		}
+		here, next := of[out[i].Name], of[out[i+1].Name]
+		if here != "" && next != "" && here != next {
+			out[i].Width += tableCatExtra
+		}
+	}
+	return out
+}
+
+// tableCatExtra is what a category boundary costs over an ordinary gutter: two
+// cells between columns, five between categories.
+const tableCatExtra = 3
+
 // hides is the single owner of the column-drop policy (UAT-2D order): a
 // base column is absent from the layout when its group or switch is off.
 // LABEL stays hidden — ZIP identifies (UAT 11.2); its data is kept.
@@ -214,7 +313,13 @@ func (l layout) hides(c baseCol) bool {
 	switch c.name {
 	case "label":
 		return true
-	case "wxstn", "dist":
+	case "wxstn":
+		// AND IT IS THE FIRST COLUMN TO GO WHEN THE POOL IS SHORT (HUM LEAD, UAT
+		// 2026-09-12: "WX STN should be the first col to get hidden if something
+		// doesnt fit"). The pool's job is deciding whether a place is worth
+		// scheduling; which station observed it is the least of what that takes.
+		return !l.station || l.noWxStn
+	case "dist":
 		return !l.station
 	case "zip":
 		return !l.zip
@@ -381,13 +486,21 @@ func (o Opts) rowData(l layout, r LocationRow) []string {
 		data = append(data, r.Tag)
 	}
 	if l.station {
-		data = append(data, r.Station, o.StationDistance(r.StationKM))
+		// THE CELLS FOLLOW `hides`, WHICH IS THE ONE OWNER OF THE POLICY. Emitting
+		// a WX STN cell for a column the layout had dropped handed the kit one
+		// value too many, and it answered with "Data length does not match column
+		// count" IN PLACE OF THE ROW — every location gone, in a table whose whole
+		// job is to show them.
+		if !l.hides(baseCol{name: "wxstn"}) {
+			data = append(data, r.Station)
+		}
+		data = append(data, o.StationDistance(r.StationKM))
 	}
 	if l.zip {
 		data = append(data, r.Zip)
 	}
 	if l.pool {
-		data = append(data, thousands(r.Population))
+		data = append(data, padLeft(thousands(r.Population), popW))
 	}
 	data = append(data, DisplayCondition(r.Conditions), o.temp5Or(r.Now, r.Loading)+trend)
 	if l.hiLo {

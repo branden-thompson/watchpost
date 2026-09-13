@@ -59,18 +59,24 @@ func TestTheScrollControlSitsInObserversColumn(t *testing.T) {
 	}
 }
 
-// ONE CONTROL, BOTH TABLES (HUM LEAD, UAT 2026-09-12): "Right vertical scroll
-// control not on the location pool table as well (need to span both tables — I
-// can only see 12 locations of the 24 location pool)."
+// THE CONTROL BELONGS TO WHAT SCROLLS (D-106).
 //
-// THE POINTER ALREADY WALKS THEM AS ONE LIST, so the control that says where the
-// operator is has to as well. Two rails put two ▲/▼ pairs on the frame.
-func TestOneScrollControlSpansBothTables(t *testing.T) {
-	b := poolConsole(t)
+// HUM LEAD, UAT 2026-09-12: "Location Pool Scrolls, Line-up doesnt — if the
+// line-up table isnt going to scroll, then it needs to follow the Observer
+// pattern where the scroll is anchored only to the location pool table, and the
+// top of the vertical scroll aligns with the headers of the table (so they dont
+// disappear when I scroll down)."
+//
+// D-104 SPANNED IT OVER BOTH on the strength of the shared pointer. The running
+// order does not actually move — fifteen slots is the whole list — so the control
+// was claiming a scroll that never happens, and the pool's own headings were
+// inside the window it drew.
+func TestTheScrollControlIsThePoolsAlone(t *testing.T) {
+	b := manyPool(t, 25)
 	b.width, b.height, b.ascii = 150, 58, true
 	rows := strings.Split(stripANSITest(b.View().Content), "\n")
 
-	up, down, sched, pool := -1, -1, -1, -1
+	up, down, sched, header, footer := -1, -1, -1, -1, -1
 	for i, r := range rows { // bounded by the frame (P10-02)
 		if at := railAt(b); len([]rune(r)) > at {
 			switch []rune(r)[at] {
@@ -80,32 +86,58 @@ func TestOneScrollControlSpansBothTables(t *testing.T) {
 				down = i
 			}
 		}
-		if strings.Contains(r, "S C H E D U L E D") {
+		switch {
+		case strings.Contains(r, "S C H E D U L E D"):
 			sched = i
+		case strings.Contains(r, "POPULATION"):
+			header = i
+		case strings.Contains(r, "Location Pool Locations"):
+			footer = i
 		}
-		if strings.Contains(r, "L O C A T I O N     P O O L") {
-			pool = i
+	}
+	if up < 0 || down < 0 || sched < 0 || header < 0 || footer < 0 {
+		t.Fatalf("frame incomplete: up %d down %d sched %d header %d footer %d", up, down, sched, header, footer)
+	}
+	// ▲ ON THE POOL'S COLUMN TITLES and ▼ on its "Showing" line — Observer's own
+	// anchoring, and the reason the titles survive a scroll.
+	if up != header {
+		t.Errorf("the control opens on row %d; the pool's headings are row %d", up, header)
+	}
+	if down != footer {
+		t.Errorf("the control closes on row %d; the pool's footer is row %d", down, footer)
+	}
+	if up < sched {
+		t.Fatal("the control opens above the running order; it belongs to the pool")
+	}
+	// AND THE RUNNING ORDER CARRIES NO MARK, which is what "anchored only to the
+	// location pool table" means. Asked of the rows between the running order's
+	// heading and the pool's, because ABOVE those the boxes' own right borders
+	// legitimately stand in this column — and in the no-colour form a border and
+	// a rail are the same character.
+	for i := sched; i < up; i++ { // bounded by the running order (P10-02)
+		if at := railAt(b); len([]rune(rows[i])) > at && []rune(rows[i])[at] != ' ' {
+			t.Errorf("row %d marks the rail column over the running order:\n%s", i, rows[i])
 		}
 	}
-	if up < 0 || down < 0 {
-		t.Fatal("the frame draws no scroll control")
+}
+
+// AND THE POOL'S HEADINGS SURVIVE A SCROLL, which is the point of anchoring it
+// there: the operator moving down the list keeps the names of the columns.
+func TestThePoolsHeadingsDoNotScroll(t *testing.T) {
+	b := manyPool(t, 25)
+	b.width, b.height, b.ascii = 150, 58, true
+	for range 40 { // bounded by the walk (P10-02)
+		b = b.scrollQueue(1)
 	}
-	if sched < 0 || pool < 0 {
-		t.Fatalf("the frame is missing a table: scheduled %d, pool %d", sched, pool)
-	}
-	// EXACTLY ONE OF EACH CAP, and they bracket BOTH tables.
-	if n := strings.Count(stripANSITest(b.View().Content), "^"); n != 1 {
-		t.Errorf("the frame draws %d up caps; one control has one", n)
-	}
-	if up > sched || down < pool {
-		t.Errorf("the control spans rows %d-%d; the tables run %d-%d", up, down, sched, pool)
-	}
-	// AND IT IS UNBROKEN BETWEEN THEM. A hole in the rail reads as two rails,
-	// which is the thing this exists to stop being.
-	for i := up + 1; i < down; i++ {
-		if c := []rune(rows[i])[railAt(b)]; c == ' ' {
-			t.Errorf("row %d leaves the rail column blank between the caps:\n%s", i, rows[i])
+	got := stripANSITest(b.View().Content)
+	for _, want := range []string{"L O C A T I O N     P O O L", "POPULATION", "CONDITIONS"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("scrolled to the bottom, the pool has lost %q:\n%s", want, got)
 		}
+	}
+	// AND IT IS ACTUALLY AT THE BOTTOM, or this proves nothing.
+	if !strings.Contains(got, "of 25 Location Pool Locations") || strings.Contains(got, "Showing 1 - ") {
+		t.Errorf("the pool did not scroll:\n%s", got)
 	}
 }
 

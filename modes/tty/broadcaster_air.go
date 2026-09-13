@@ -34,13 +34,7 @@ func (b Broadcaster) airBox() []string {
 	o := b.opts()
 	g := o.Glyphs()
 	bx := render.HeavyBox(b.ascii)
-	// THE FRAME'S FULL WIDTH, NOT THE BAND'S (D-100). `bandWidth` is the STATION
-	// SECTION's text budget — the frame less its own three-column inset on each
-	// side — and using it here left the air box short of the tables below it.
-	// HUM LEAD: "Live Now / Relay table should fill to the edge of the right 3 col
-	// inset."
-	inner := b.frameWidth() - 2
-	body := inner - bcAirLabelW - 1
+	body := b.airBodyWidth()
 	if body < 12 {
 		return nil // no room to say anything useful; the notice covers this (FR-7.3)
 	}
@@ -101,10 +95,27 @@ func (b Broadcaster) bedLine(o render.Opts) string {
 	return b.withControl(bcCardInset+b.bedSelector(o), state+"   "+o.KeyCap("b"))
 }
 
+// airBodyWidth is the air box's content column, and it is the ONE owner of that
+// number (D-107).
+//
+// THE BAND'S WIDTH, BECAUSE THE BOX IS NOW INSIDE THE BAND. It was built to the
+// frame's full width while it stood on its own below the station section — "Live
+// Now / Relay table should fill to the edge of the right 3 col inset" — and the
+// section it moved into keeps its own three-column inset on each side, which is
+// the edge it now fills to.
+//
+// AND IT WAS COMPUTED TWICE. `withControl` had its own copy of this arithmetic;
+// when the box moved, one copy followed and the other did not, and the `b` chip
+// on the RELAY BED row — the key that cuts to the bed — was pushed off the end.
+// Two carriers of one number, found the way they always are.
+func (b Broadcaster) airBodyWidth() int {
+	return b.bandWidth() - bcAirLabelW - 3 // the two rails, and the label column's
+}
+
 // withControl right-anchors a row's control against the box's own width, so the
 // two rows' keys line up under each other however long their content is.
 func (b Broadcaster) withControl(line, control string) string {
-	body := b.frameWidth() - 2 - bcAirLabelW - 1
+	body := b.airBodyWidth()
 	gap := body - render.Width(line) - render.Width(control) - len(bcCardInset)
 	if gap < 1 {
 		gap = 1

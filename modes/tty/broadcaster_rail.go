@@ -261,15 +261,34 @@ func (b Broadcaster) framed(body []string, shown, total int) []string {
 // hard-coded `lo` of 0 to `Railify`, so the rail drew a thumb that never moved
 // however far the operator scrolled. It was invisible while everything fitted on
 // one screen, and became a lie the moment the cards outgrew the terminal.
-func (b Broadcaster) chromeAt(body []string, off, total int) []string {
-	return b.railed(body, true, off, 0, total)
+func (b Broadcaster) chromeAt(body []string, from, off, total int) []string {
+	return b.railed(body, from, off, 0, total)
 }
 
 func (b Broadcaster) chrome(body []string, rail bool, shown, total int) []string {
-	return b.railed(body, rail, 0, shown, total)
+	from := -1
+	if rail {
+		from = 0
+	}
+	return b.railed(body, from, 0, shown, total)
 }
 
-func (b Broadcaster) railed(body []string, rail bool, lo, shown, total int) []string {
+// railed adds the right-hand column: `from` is the row the scroll control STARTS
+// on, or -1 for a region that does not scroll.
+//
+// THE CONTROL BELONGS TO WHAT SCROLLS, AND ONLY THAT (D-106).
+//
+// HUM LEAD, UAT 2026-09-12: "Location Pool Scrolls, Line-up doesnt — if the
+// line-up table isnt going to scroll, then it needs to follow the Observer
+// pattern where the scroll is anchored only to the location pool table, and the
+// top of the vertical scroll aligns with the headers of the table (so they dont
+// disappear when I scroll down)."
+//
+// SO `from` IS THE POOL'S COLUMN-HEADER ROW, and everything above it — the
+// running order, the pool's own band — carries nothing. This is Observer's shape
+// exactly: `recentSection` puts ▲ on the band's bottom row, the track over the
+// data rows, and ▼ on the "Showing" line.
+func (b Broadcaster) railed(body []string, from, lo, shown, total int) []string {
 	g := b.opts().Glyphs()
 	glyphs := render.RailGlyphsFor(b.ascii)
 	// THE MARK IN COLUMN 144 FOR EACH ROW. Without a rail that is the wall, on
@@ -293,12 +312,12 @@ func (b Broadcaster) railed(body []string, rail bool, lo, shown, total int) []st
 	marks := make([]string, len(body))
 	for i := range marks { // bounded by the body (P10-02)
 		marks[i] = " "
-		if rail {
+		if from >= 0 && i >= from {
 			marks[i] = g.Rail
 		}
 	}
-	if rail && len(body) >= 3 {
-		marks[0], marks[len(body)-1] = glyphs.Up, glyphs.Down
+	if from >= 0 && len(body)-from >= 3 {
+		marks[from], marks[len(body)-1] = glyphs.Up, glyphs.Down
 		// Width 1 over empty lines asks Railify for the GLYPHS and nothing else:
 		// `PadTo("", 0)` is empty, so each line it returns is the mark alone.
 		//
@@ -309,10 +328,13 @@ func (b Broadcaster) railed(body []string, rail bool, lo, shown, total int) []st
 		// two rows larger (the caps) and the last position falls off the end,
 		// silently drawing no thumb at all. Caught by a test that scrolled to the
 		// bottom and looked; invisible while everything fitted on one screen.
-		track := len(body) - 2
+		// THE TOTAL IS THE LIST'S, NOT THE BODY'S (D-106). It used to be the
+		// body's row count less the caps, which was right while the rail spanned
+		// the whole region and wrong the moment it started partway down.
+		track := len(body) - from - 2
 		for i, m := range render.Railify(make([]string, track), 1, lo,
-			max(total-2, 1), max(track, 1), glyphs) {
-			marks[i+1] = m
+			max(total, 1), max(track, 1), glyphs) {
+			marks[from+1+i] = m
 		}
 	}
 	out := make([]string, len(body))

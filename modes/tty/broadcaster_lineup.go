@@ -205,7 +205,7 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int) scrollSpan {
 	// THE POOL GETS ITS SHARE OF THE HEIGHT (D-104). The running order used to
 	// take everything left and the pool drew in whatever remained, which is why
 	// the operator could see twelve of twenty-five locations and no rail said so.
-	off, room := 0, b.height-used-2*bcInsetRows-b.poolRoom()
+	off, room := 0, b.height-used-bcInsetRows-b.poolRoom()
 	if room < 0 {
 		room = 0
 	}
@@ -228,7 +228,12 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int) scrollSpan {
 		off = max(0, min(off, len(lines)-room))
 		lines = append([]string(nil), lines[off:off+room]...)
 	}
-	return scrollSpan{lines: lines, off: off, total: total}
+	// THE RUNNING ORDER CARRIES NO CONTROL OF ITS OWN (D-106). Fifteen slots is
+	// the whole list and it fits; the pool is what scrolls, so the pool is what
+	// the control belongs to. If the frame is ever too short to hold the running
+	// order this still windows it — silently, which is a fork worth raising
+	// rather than a rail worth drawing beside a list that normally does not move.
+	return scrollSpan{lines: lines, from: -1, off: off, total: total}
 }
 
 // scrollSpan is a region that scrolls, and where its window sits in the whole of
@@ -240,7 +245,10 @@ func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int) scrollSpan {
 // draws ONE rail beside both — and a rail over two regions has to be told where
 // each of their windows sits rather than guessing from the rows it was handed.
 type scrollSpan struct {
-	lines      []string
+	lines []string
+	// from is the row within `lines` the scroll control starts on, or -1 for a
+	// region that does not scroll (D-106).
+	from       int
 	off, total int
 }
 

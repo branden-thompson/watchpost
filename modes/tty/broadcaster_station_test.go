@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -33,14 +34,17 @@ func stationAt(t *testing.T, w int, p lineup.Power) []string {
 func TestEveryStationStateSaysWhatItIs(t *testing.T) {
 	for _, p := range []lineup.Power{lineup.Stopped, lineup.Running, lineup.OffAir} {
 		got := stationAt(t, 150, p)
-		if len(got) == 0 || strings.TrimSpace(got[0]) == "" {
+		if len(got) < 2 || strings.TrimSpace(got[0]) == "" {
 			t.Fatalf("power %v draws no station line", p)
 		}
-		if !strings.Contains(got[0], "STATION:") {
+		if !strings.Contains(got[0], "STATION AIR:") {
 			t.Errorf("power %v: Variant C is a LABELLED FIELD; got %q", p, got[0])
 		}
-		if !strings.Contains(got[0], "SHIFT + ENTER") {
-			t.Errorf("power %v: and the transition rides on the same line; got %q", p, got[0])
+		// AND THE TRANSITION RIDES THE SECOND ROW NOW (D-107). The reference puts
+		// the GAIN bar at the right of the state's own row, so the control that
+		// changes the state moved down beside the transmitter it belongs with.
+		if !strings.Contains(got[1], "SHIFT + ENTER") {
+			t.Errorf("power %v: the transition has nowhere to be; got %q", p, got[1])
 		}
 	}
 }
@@ -52,7 +56,7 @@ func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
 		b := NewBroadcaster()
 		b.width, b.height, b.ascii = w, 74, true
 		b.power = lineup.Running
-		got := b.stationLine()[0]
+		got := b.stationLine()[1]
 		// IT FILLS THE BAND'S TEXT COLUMN — the terminal less the inset it keeps
 		// on EACH side (D-80). It asked `sectionWidth()`, which is the width of
 		// a region inside the frame's WALLS, and this band has had colour for
@@ -61,9 +65,6 @@ func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
 		if c, want := utf8.RuneCountInString(got), b.bandWidth(); c != want {
 			t.Errorf("width %d: the station line is %d cells, want the band's %d\n%q", w, c, want, got)
 			continue
-		}
-		if strings.HasSuffix(got, "  ") {
-			t.Errorf("width %d: the transition is not at the right edge:\n%q", w, got)
 		}
 		if !strings.HasSuffix(strings.TrimRight(got, " "), ")") {
 			t.Errorf("width %d: the transition ends the line; got %q", w, got)
@@ -74,13 +75,11 @@ func TestTheTransitionHintIsAnchoredToTheRightEdge(t *testing.T) {
 // AND IT SAYS WHERE IT WOULD GO, which is the whole of Variant C's parenthetical:
 // ON AIR offers STANDBY, and the two stopped states offer ON AIR.
 func TestTheTransitionNamesTheStateItWouldReach(t *testing.T) {
-	live := stationAt(t, 150, lineup.Running)[0]
-	if !strings.Contains(live, "STANDBY") {
+	if live := stationAt(t, 150, lineup.Running)[1]; !strings.Contains(live, "STANDBY") {
 		t.Errorf("a live station's control offers STANDBY; got %q", live)
 	}
 	for _, p := range []lineup.Power{lineup.Stopped, lineup.OffAir} {
-		got := stationAt(t, 150, p)[0]
-		if !strings.Contains(got, "ON AIR") {
+		if got := stationAt(t, 150, p)[1]; !strings.Contains(got, "ON AIR") {
 			t.Errorf("power %v: the control offers ON AIR; got %q", p, got)
 		}
 	}
@@ -94,27 +93,56 @@ func TestTheTransitionNamesTheStateItWouldReach(t *testing.T) {
 // press, and already knows the floor and the ceiling. A second bar here would be
 // a second place for the level to be drawn — and two bars disagreeing about how
 // loud the station is would be worse than either.
+//
+// IT RIDES THE STATE'S OWN ROW (D-107), where the reference draws it: how loud
+// the station is and whether it is on the air are one question asked twice, and
+// the operator checks them together.
 func TestTheStationLineCarriesTheGainControl(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
 	b.gain = 100
-	// THE LAST ROW: the section is STATION, TRANSMITTER, BED, then the status
-	// row that carries the level (D-62, D-71). Indexed from the END, so the
-	// next row the section gains does not move this assertion with it.
-	rows := b.stationLine()
-	got := stripANSITest(rows[len(rows)-1])
+	got := stripANSITest(b.stationLine()[0])
 
 	if !strings.Contains(got, "GAIN") {
 		t.Errorf("the station's word for it is GAIN:\n%q", got)
 	}
-	// IT RIDES ON THE SECOND ROW, beside the explanatory text — the HUM LEAD's
-	// own layout, and the row Variant C left free when it absorbed the control.
-	if !strings.Contains(got, "audio out of this program") {
-		t.Errorf("the second row still says what ON AIR means:\n%q", got)
+	if !strings.Contains(got, "ON AIR") {
+		t.Errorf("and it shares the row with the state:\n%q", got)
 	}
 	if !strings.HasSuffix(strings.TrimRight(got, " "), "100") {
 		t.Errorf("the level ends the row, right-anchored:\n%q", got)
+	}
+}
+
+// THE BED IS DRAWN ONCE, AND THE SECTION HOLDS IT (D-107).
+//
+// HUM LEAD, UAT 2026-09-12: "the LIVE NOW / BED Table is also supposed to be
+// INSIDE the station playing section … the BED is now duplicated in the UI -
+// which is confusing - this data is also tied DIRECTLY to the ON AIR state - so
+// it should all be in 1 section."
+//
+// IT HAD A ROW IN THE STATION LINES *AND* A ROW IN THE AIR BOX, each with its own
+// selector and its own state word — two controls for one bed, which an operator
+// has to test to tell apart.
+func TestTheBedIsDrawnOnceInsideTheStationSection(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	for _, r := range b.stationLine() { // bounded by the section (P10-02)
+		if strings.Contains(stripANSITest(r), "BED") {
+			t.Errorf("the station lines still draw the bed; the air box owns it:\n%q", r)
+		}
+	}
+	sec := stripANSITest(b.stationSection(b.opts(), "", ""))
+	for _, want := range []string{"STATION AIR:", "BROADCASTING FROM:", "LIVE NOW", "RELAY BED"} {
+		if !strings.Contains(sec, want) {
+			t.Errorf("the station section is missing %q:\n%s", want, sec)
+		}
+	}
+	// AND THE WORD APPEARS ONCE IN THE WHOLE FRAME, which is what "1 section"
+	// means: not one row hidden and another shown, but one row.
+	if n := strings.Count(stripANSITest(b.View().Content), "RELAY BED"); n != 1 {
+		t.Errorf("the frame names the relay bed %d times", n)
 	}
 }
 
@@ -220,14 +248,14 @@ func TestTheBedRidesInTheStationSection(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
-	// FOUR ROWS SINCE D-71: the station, the transmitter, the bed, the status
-	// row. Found by the LABEL rather than by index, so the section can gain
-	// another row without moving this assertion — which it just did.
-	rows := b.stationLine()
-	if len(rows) != 4 {
-		t.Fatalf("the section carries the station, the transmitter, the bed and the status row; got %d", len(rows))
+	// TWO TEXT ROWS AND THE AIR BOX SINCE D-107: the station's state with its
+	// gain, where it broadcasts from with its transition, and the LIVE NOW /
+	// RELAY BED pair under them. The bed's own labelled row and the standing
+	// prose went with the duplication.
+	if rows := b.stationLine(); len(rows) != 2 {
+		t.Fatalf("the section's text is the state and the transmitter; got %d rows", len(rows))
 	}
-	bed := bedRowOf(t, rows)
+	bed := bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n"))
 	// THE KEY IS A CHIP, so this asks the chip renderer — "[ B ]" is only what
 	// the mock draws around it, and only what it falls back to without colour.
 	if !strings.Contains(bed, chipFor("b")) {
@@ -242,7 +270,7 @@ func TestTheBedRowCarriesItsSelector(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
 	b.power = lineup.Running
-	got := stripANSITest(bedRowOf(t, b.stationLine()))
+	got := stripANSITest(bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n")))
 	// ASKED OF THE CHIP RENDERER, which also names the arrows in WORDS under
 	// --ascii: a terminal that cannot draw them still gets a usable control,
 	// and the test does not have to know which form it got.
@@ -259,7 +287,7 @@ func TestTheBedRowCarriesItsSelector(t *testing.T) {
 func TestTheBedRowSaysWhetherItIsCarrying(t *testing.T) {
 	b := NewBroadcaster()
 	b.width, b.height, b.ascii = 150, 74, true
-	got := stripANSITest(bedRowOf(t, b.stationLine()))
+	got := stripANSITest(bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n")))
 	if !strings.Contains(got, "INACTIVE") && !strings.Contains(got, "ACTIVE") {
 		t.Errorf("the bed's row says whether it is carrying:\n%q", got)
 	}
@@ -340,10 +368,40 @@ func TestTheValueColumnHoldsWithColourOn(t *testing.T) {
 // transmitter's identity there — so three of them failed at once for a reason
 // none of them was about. A row found by what it SAYS survives the section
 // gaining another.
+// THE BED'S KEY SURVIVES THE BOX MOVING (D-107).
+//
+// `withControl` HAD ITS OWN COPY of the air box's body width. When the box moved
+// inside the station section one copy followed and the other did not, and what
+// fell off the end of the row was the `b` chip — the key that cuts the programme
+// to the bed. Two carriers of one number, found the way they always are.
+func TestTheBedsCutKeyIsInsideTheBox(t *testing.T) {
+	for _, w := range []int{110, 130, 150, 170} {
+		b := NewBroadcaster()
+		b.width, b.height, b.ascii = w, 74, true
+		row := stripANSITest(bedRowOf(t, b.airBox()))
+		if !strings.Contains(row, chipFor("b")) {
+			t.Errorf("width %d: the bed's row has lost its cut key:\n%q", w, row)
+		}
+		// AND THE ROW STILL CLOSES ON THE BOX'S OWN RAIL, so the chip is inside it
+		// rather than having pushed the wall out.
+		if !strings.HasSuffix(row, boxRailFor(b)) {
+			t.Errorf("width %d: the row does not close on the box:\n%q", w, row)
+		}
+	}
+}
+
+// boxRailFor is the vertical the air box closes its rows with.
+func boxRailFor(b Broadcaster) string { return render.HeavyBox(b.ascii).Rail }
+
+// bedRowOf finds the bed's row wherever the section draws it.
+//
+// IT LOOKS IN THE SECTION, NOT IN `stationLine` (D-107). The bed used to have a
+// labelled row of its own there and now has one row of the air box the section
+// carries — the same fact, in the one place the HUM LEAD asked for it.
 func bedRowOf(t *testing.T, rows []string) string {
 	t.Helper()
-	for _, r := range rows {
-		if strings.Contains(stripANSITest(r), "BED:") {
+	for _, r := range rows { // bounded by the section (P10-02)
+		if strings.Contains(stripANSITest(r), "RELAY BED") {
 			return r
 		}
 	}

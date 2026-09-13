@@ -239,7 +239,11 @@ func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
 	// bare separator under it — both intended, and both render as whitespace
 	// only because a test draws without colour: the band is a PAINTED region
 	// (D-70), so that row is filled, not empty.
-	for i := bcInsetRows + 10; i <= last; i++ {
+	// FROM BELOW THE AIR BOX, which the station section now carries (D-107): the
+	// section closes with its own breathing row and the bare separator under it
+	// is the frame's, both intended and both whitespace only because a test draws
+	// without colour.
+	for i := bcInsetRows + 16; i <= last; i++ {
 		if strings.TrimSpace(rows[i]) == "" && strings.TrimSpace(rows[i-1]) == "" {
 			t.Errorf("rows %d and %d are both blank — a section's spacing has two owners", i-1, i)
 		}
@@ -316,11 +320,19 @@ func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 		// the frame's left edge — the reference draws no outer wall around them. So
 		// the question is whether the row opens on the frame at all: a rail, or a
 		// corner or tee of a box that starts there.
-		at := len(bcLeftInset)
-		if len(r) <= at || (r[at] != '|' && r[at] != '+') {
-			t.Errorf("row %d does not open the frame at column %d, got %q\n%.40s",
-				i, at, string(r[at]), rows[i])
+		// AND THE STATION SECTION'S OWN INSET IS AN EDGE TOO (D-107). The air box
+		// moved INSIDE that section, which keeps three columns of its own painted
+		// ground on each side — so those rows open at the section's inset, not at
+		// the frame's. Both are the region's edge; which one depends on whose
+		// region the row belongs to.
+		for _, at := range []int{len(bcLeftInset), len(bcLeftInset) + len(bcSectionInset)} {
+			if len(r) > at && (r[at] == '|' || r[at] == '+') {
+				goto opened
+			}
 		}
+		t.Errorf("row %d opens the frame at neither the frame's inset nor the section's\n%.60s",
+			i, rows[i])
+	opened:
 	}
 }
 
@@ -496,12 +508,12 @@ func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
 	if end.lineupSelection() != MainTrackSlots-bcScheduledFrom-1 {
 		t.Errorf("the pointer stopped at %d, short of the last slot", end.lineupSelection())
 	}
-	// AND THE THUMB MOVED WITH THE WINDOW.
-	if thumb(end) <= thumb(base) {
-		t.Errorf("the thumb sat still while the window moved: %d then %d", thumb(base), thumb(end))
-	}
-	if thumb(end) < 0 {
-		t.Error("the rail lost its thumb at the bottom of the queue")
+	// AND THE RUNNING ORDER CARRIES NO THUMB (D-106). It does not scroll — fifteen
+	// slots is the whole list — so the control belongs to the pool, and a thumb
+	// beside a list that does not move would say it does.
+	// `TestTheScrollControlIsThePoolsAlone` holds where the control actually is.
+	if thumb(end) >= 0 {
+		t.Errorf("row %d draws a thumb beside the running order", thumb(end))
 	}
 }
 

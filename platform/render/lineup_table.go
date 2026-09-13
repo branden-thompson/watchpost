@@ -129,7 +129,7 @@ func lineupColumnDefs(width int) []studs.ColumnDefinition {
 		}
 		out = append(out, studs.ColumnDefinition{Name: c.name, Header: c.header, Width: c.width, Alignment: align})
 	}
-	return out
+	return spaceCategories(out, lineupGroups())
 }
 
 // lineupRowStyles paints the focused row the way the location table paints its

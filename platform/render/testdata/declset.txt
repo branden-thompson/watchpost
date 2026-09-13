@@ -113,6 +113,7 @@ const minFullW
 const minNoTmrwW
 const minStationW
 const nameMinW
+const popW
 const severeDetectW
 const severeEventFloor
 const severeEventMin
@@ -126,6 +127,7 @@ const severeTimeW
 const sgrReset
 const stationColsW
 const statusGutter
+const tableCatExtra
 const tableGutter
 const tableHeaderDip
 const unitsKeyImperial
@@ -315,6 +317,7 @@ func mix
 func mixBG
 func mixToward
 func ones
+func padLeft
 func passesAll
 func phonetic
 func qhex
@@ -332,6 +335,7 @@ func severeHeaderLine
 func severeMarks
 func sgrRaw
 func shrinkToFit
+func spaceCategories
 func spectrumTier
 func splitCells
 func statusCols

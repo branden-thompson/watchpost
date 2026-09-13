@@ -228,6 +228,7 @@ func (*modalMemo).stats
 func (Broadcaster).Init
 func (Broadcaster).Update
 func (Broadcaster).View
+func (Broadcaster).airBodyWidth
 func (Broadcaster).airBox
 func (Broadcaster).alertBox
 func (Broadcaster).armTick
