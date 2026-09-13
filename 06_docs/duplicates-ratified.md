@@ -40,10 +40,11 @@ group fails rather than inheriting its exemption. A row without the word `RATIFI
 | Fingerprint | Sites | Reason |
 |---|---|---|
 | `fbf77287aa96` | `Opts.Distance` · `Opts.TideHeight` | **RATIFIED by the HUM LEAD 2026-09-08.** Same skeleton — nil check, unit branch, two `Sprintf` — over two genuinely independent column contracts. They differ in unit system, precision, sentinel (`""` vs `"n/a"`) and field width, and the widths are pinned by UAT 61 and UAT 62 so a negative low never shifts the column. Collapsing would parameterise five things to save six lines and would couple two specifications that have no reason to move together. |
+| `3462cd9e225c` | `livePipelines.bedRelays` · `mastercontrol.givenWay` | **RATIFIED by the HUM LEAD 2026-09-13.** Unrelated types, unrelated mutexes, unrelated fields, different return types (`[]stream.Station` vs `bool`) and different zeroes. The only thing in common is Go's nil-guarded mutex-read accessor idiom, which a structural fingerprint cannot tell from shared logic. Collapsing needs a generic `read[T](mu, *T) T` that routes two independent locks through one platform function, hands each type's mutex to a stranger, and makes both call sites harder to read — and it would collapse 2 of an unknown N, since the 25-node floor cannot see the smaller accessors at all. **The detector is right about the shape and wrong about the subject.** |
 
 ## Collapsed rather than ratified (2026-09-08)
 
-The detector's first run found ten groups. Nine were collapsed; only the row above earned an
+The detector's first run found ten groups. Nine were collapsed; only `fbf77287aa96` earned an
 exemption.
 
 | Was | Now |
