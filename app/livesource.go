@@ -22,11 +22,14 @@ package app
 // that a domain owns its own business and shared things live in `platform`. The
 // precedent did not say what I claimed it said.
 //
-// THE COUNT THIS USED TO GIVE — "all four … are in `platform/`" — WENT STALE.
-// There are five, and two of them are `modes/tty`'s service-radius bounds
-// (D-115). The rule the sentence exists to state is unchanged; the census beside
-// it was true when written and became false without anyone touching this file,
-// which is what a hand-kept count in a comment always does.
+// AND THERE IS NO COUNT HERE ANY MORE, DELIBERATELY. This said "all four … are
+// in `platform/`"; that went stale when D-115 added two in `modes/tty`. The
+// correction said "five, two outside `platform/`" — and D-124 moved those two
+// out again the same day, making the CORRECTION stale within the hour.
+//
+// A HAND-KEPT CENSUS IN A COMMENT IS A FACT WITH TWO CARRIERS: the code and the
+// sentence about the code. It has now been wrong twice, in both directions. The
+// RULE is what this comment is for, and the rule does not need a number.
 //
 // THE SHAPE IS ALREADY IN THIS PACKAGE. `synthSource()` returns
 // `interface{ Cached() (int, int) }` — the same move, one method wide, for the

@@ -56,20 +56,25 @@ type BedMsg struct {
 
 	// Carrying is whether the bed holds the programme right now.
 	Carrying bool
-
-	// Relays is how many relays actually STREAM within the station's reach
-	// (D-117). Zero disables the bed.
-	//
-	// HUM LEAD, 2026-09-13: "If none exist in that area - we should probably tell
-	// the broadcaster there is no valid relays for their area and disable the BED
-	// option so the Operator cannot choose something that will broadcast dead
-	// air."
-	//
-	// A COUNT RATHER THAN A BOOL, because the row has something to say with it:
-	// "no relays reach this station" is a different sentence from "(no relay
-	// tuned)", and only the count can tell them apart.
-	Relays int
 }
+
+// BedRelaysMsg is how many relays actually STREAM within the station's reach
+// (D-117).  Zero disables the bed.
+//
+// HUM LEAD, 2026-09-13: "If none exist in that area - we should probably tell the
+// broadcaster there is no valid relays for their area and disable the BED option
+// so the Operator cannot choose something that will broadcast dead air."
+//
+// A COUNT RATHER THAN A BOOL, because the row has something to say with it: "no
+// relays reach this station" is a different sentence from "(no relay tuned)", and
+// only the count can tell them apart.
+//
+// ITS OWN MESSAGE, AND D-125 IS WHY. It was a field of `BedMsg`, which has THREE
+// publishers — the resolver, the selector and the deck's state — of which exactly
+// one set it. The other two left it at zero and silently retracted the resolver's
+// answer, so the console disabled a bed that was carrying. One fact, one message,
+// ONE WRITER: `setBedStations`, on the path that resolves them.
+type BedRelaysMsg struct{ Count int }
 
 // StationAreaMsg carries WHERE the station transmits from and how far it reaches
 // (D-72).
@@ -199,11 +204,22 @@ type Broadcaster struct {
 	// the console draws it and holds no opinion of its own, the same rule the
 	// power follows.
 	bed BedMsg
-	// bedTold is whether the Producer has answered how many relays reach this
-	// station yet (D-117). Until it has, the control is offered: a console that
-	// greyed it out while the resolve was still in flight would refuse a key that
-	// is about to work.
-	bedTold bool
+	// bedRelays is how many relays actually STREAM near the station, and
+	// bedRelaysTold is whether the Producer has answered yet (D-117).
+	//
+	// ITS OWN FACT, ARRIVING ON ITS OWN MESSAGE (D-125). It used to be a field of
+	// `BedMsg` — which has three publishers, of which exactly ONE set it. The
+	// selector's message and the deck's state message both left it at zero, so
+	// either of them silently retracted the resolver's answer and the console
+	// disabled a bed that was carrying. D-117 exists so the operator cannot pick
+	// something that broadcasts dead air; that defect told them there was nothing
+	// to pick while a relay was streaming.
+	//
+	// UNTOLD IS NOT ZERO. Before the Producer has answered, the bed is OFFERED —
+	// refusing it on the strength of an answer nobody has given yet would hide
+	// the control for the whole of start-up.
+	bedRelays     int
+	bedRelaysTold bool
 
 	// pool is the recent pipeline's snapshot — where the LOCATION POOL's weather
 	// comes from (D-99). Never the masthead's: that stamp is the priority
@@ -333,7 +349,13 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 	case StationAreaMsg:
 		b.area, b.areaGen = v, b.areaGen+1
 	case BedMsg:
-		b.bed, b.bedTold = v, true
+		b.bed = v
+	case BedRelaysMsg:
+		// THE COUNT ARRIVES ON ITS OWN, and that is the whole fix (D-125). It
+		// used to ride on `BedMsg`, which has THREE publishers of which one set
+		// it — so the selector's message and the deck's state message each zeroed
+		// what the resolver had established.
+		b.bedRelays, b.bedRelaysTold = v.Count, true
 	case StationMsg:
 		// THE CLOCK STARTS ON THE TRANSITION, not on every message: a station
 		// that has been silent an hour must not look freshly quiet because
@@ -1012,7 +1034,7 @@ func (b Broadcaster) stationLine() []string {
 // UNTOLD IS AVAILABLE. `BedMsg` arrives once the resolve lands, and a console
 // that greyed the control out until then would refuse a key that is about to
 // work — which reads as a broken button rather than as a pending answer.
-func (b Broadcaster) bedAvailable() bool { return !b.bedTold || b.bed.Relays > 0 }
+func (b Broadcaster) bedAvailable() bool { return !b.bedRelaysTold || b.bedRelays > 0 }
 
 // bedRow is the bed's selector and its own state (D-62).
 //

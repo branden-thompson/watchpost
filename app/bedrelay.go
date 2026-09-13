@@ -122,7 +122,12 @@ func (lp *livePipelines) setBedStations(st []stream.Station) {
 	p, line, carrying := lp.p, lp.bedRelay, lp.bedOn
 	lp.mu.Unlock()
 	if p != nil {
-		p.Send(tty.BedMsg{Relay: line, Carrying: carrying, Relays: len(st)})
+		// TWO FACTS, TWO MESSAGES, AND THIS IS THE ONLY WRITER OF THE SECOND
+		// (D-125). The count used to ride on `BedMsg`, whose other two publishers
+		// do not know it and left it at zero — retracting this answer and
+		// disabling a bed that was carrying.
+		p.Send(tty.BedMsg{Relay: line, Carrying: carrying})
+		p.Send(tty.BedRelaysMsg{Count: len(st)})
 	}
 }
 

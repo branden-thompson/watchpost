@@ -838,6 +838,7 @@ func worstCategory
 func wrapPrefixed
 func wrappedIndex
 type BedMsg
+type BedRelaysMsg
 type Broadcaster
 type CastView
 type Config
