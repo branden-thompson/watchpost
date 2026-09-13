@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: wires wires-selftest dupes dupes-selftest mutant-anchors cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -267,6 +267,19 @@ journey: build
 		echo "--- dist/journey.log ---"; grep -E "FAIL|M2:" dist/journey.log || true; \
 		test $$rc -eq 0 || { echo "journey: $$rc step(s) FAILED"; exit 1; }; \
 		echo "journey: every step PASSED"
+
+# THE FULL VERDICT SWEEP, owed at BUILD exit and before SHIP.
+#
+# `mutant-anchors` proves each mutant still finds its line; `mutant-check` proves
+# each still compiles. NEITHER ASKS WHETHER ANYTHING STILL FAILS WHEN IT IS
+# APPLIED. On 2026-09-13 a sweep of the release's 82 newest mutants found a live
+# coverage hole (mAA2, a rule pinned by a tautology) and a mutant guarding a rule
+# the product had retired (mAB1) — neither visible to any other gate.
+#
+# NOT IN `verify`: tens of minutes, one mutant at a time. Same standing as
+# `journey`. HUM LEAD approved it as a standing obligation 2026-09-13.
+mutant-verdicts:
+	@./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-verdicts.log
 
 # MUTANT_POLICY decides WHEN the mutant corpus (171 mutants) runs in CI. It is
 # ONE WORD, AND SWITCHING IS EDITING IT: every mode's plumbing already exists in

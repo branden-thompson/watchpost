@@ -408,10 +408,20 @@ is the only question that makes a corpus evidence rather than decoration.
 matches perfectly.  It is a corpus entry that outlived the requirement it was written for, and the
 only instrument that can see it is a full re-run.
 
-**THE RECOMMENDATION, FOR THE HUM LEAD RATHER THAN SELF-ISSUED:** a full corpus re-run belongs at
-BUILD exit of every release, as an obligation with a recorded date — not because the mutants rot
-quickly, but because nothing else in the toolchain can tell a live rule from a dead one, and the cost
-(~75 minutes, unattended) is small against a corpus that silently stops measuring.
+**ADOPTED BY THE HUM LEAD 2026-09-13: `make mutant-verdicts`.**  A full corpus verdict sweep is owed
+at BUILD exit and before SHIP, with the log kept — because nothing else in the toolchain can tell a
+live rule from a dead one.  It is deliberately OUTSIDE `verify` (tens of minutes, one mutant at a
+time), on the same standing as `make journey`.
+
+**A SURVIVOR IS ESCALATED TO `./...` BEFORE IT IS BELIEVED**, and that step is the sweep's own
+control: a mutant run only against the package it EDITS reads as SURVIVED when its detector lives
+elsewhere.  On 2026-09-13 escalation turned two of four apparent survivors into CAUGHT (`mCA`, `mDC`)
+— the check was watched reporting false survivors without it, which is why it is not optional.
+
+**The sweep is a thin driver over `run.sh`**, whose own properties are already gated by
+`mutant-check`: that it reports each verdict with the right exit code, refuses a red baseline and a
+dirty tree, and calls a crash CAUGHT.  The escalation is the only NEW behaviour, and it is the one
+with the watched failure above.
 
 ## The corpus as re-measured, 2026-09-13
 
