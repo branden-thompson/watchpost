@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 func upNextAt(t *testing.T, c lineup.Card) []string {
@@ -126,4 +128,37 @@ func TestTheUpNextCardIsAddressableEmptyOrNot(t *testing.T) {
 			t.Errorf("%s: the footer does not say who will read it: %q", tc.name, last)
 		}
 	}
+}
+
+// THE BOX HAS A GROUND OF ITS OWN (D-114).
+//
+// HUM LEAD, 2026-09-13: "the UP Next Box probably needs a bkg color other than
+// none - I suggest the same Blue as the modal for now."
+//
+// THE MODAL'S OWN TILE, THROUGH `ModalTone`, so it is the same blue and follows
+// the theme. A second colour mixed here would be a second answer to what the
+// app's tile blue is — and the Light theme's is not the dark one's, which is
+// exactly the trap D-108 was about.
+func TestTheUpNextBoxWearsTheModalsGround(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+
+	b := bcWith(t, card(t, "a", "Oceanside, CA 92057"))
+	b.width, b.height, b.darkBG = 150, 74, true
+	rows := b.upNextBox()
+	if len(rows) == 0 {
+		t.Fatal("the card drew nothing")
+	}
+	fg, bg := render.ModalTone(true)
+	for i, r := range rows { // bounded by the box (P10-02)
+		if !strings.Contains(r, bg) {
+			t.Errorf("row %d is not painted on the modal's ground:\n%q", i, r)
+		}
+	}
+	// THE BORDERS TOO, which is the rule `shell` states for a card: a ground that
+	// stopped at the border would read as a fill rather than as a box.
+	if !strings.Contains(rows[0], bg) || !strings.Contains(rows[len(rows)-1], bg) {
+		t.Error("the box's own borders are unpainted")
+	}
+	_ = fg
 }

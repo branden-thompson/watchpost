@@ -44,6 +44,25 @@ func (l Lineup) Projection(t Track) []Card {
 		if c.Slot.structural() {
 			continue
 		}
+		// AND THE CURRENT FENCE ADMITS IT (D-114). `nextForAir` has skipped
+		// out-of-fence cards since D-75 — they are not READ — and the projection
+		// went on returning them, so the console DREW hazards the station would
+		// never broadcast.
+		//
+		// HUM LEAD, 2026-09-13, describing the path exactly: "Starting watchpost →
+		// Defaults to Observer → Alerts queue according to Observer's alert radius
+		// → User ctrl+b → Broadcaster UI loads → Meanwhile the alerts from Observer
+		// carry over". `refence` marks them on the swap; nothing acted on the mark
+		// where the operator could see it.
+		//
+		// A CARD ON THE AIR IS STILL DRAWN, for the same reason `refence` will not
+		// mark one: cutting a hazard out of the frame mid-sentence is a worse
+		// answer than the one this fixes. `refence` never sets the flag on an
+		// OnAir card, so this needs no case of its own — recorded because that is
+		// a rule held HERE by a rule stated THERE.
+		if c.OutOfFence {
+			continue
+		}
 		out = append(out, c)
 	}
 	// THE PROJECTION NEVER INVENTS A CARD. It is a filter, and a filter that

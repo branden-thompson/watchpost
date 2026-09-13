@@ -88,6 +88,20 @@ func (b Broadcaster) upNextBox() []string {
 
 	// THE LABEL SITS AGAINST THE CARD'S MIDDLE, which is where the reference puts
 	// it — a caption beside a tall cell, not a heading over it.
+	// THE BOX HAS A GROUND OF ITS OWN (D-114, HUM LEAD 2026-09-13: "the UP Next
+	// Box probably needs a bkg color other than none - I suggest the same Blue as
+	// the modal for now").
+	//
+	// THE MODAL'S TILE, THROUGH `ModalTone`, so it is the SAME blue and follows the
+	// theme — a second colour mixed here would be a second answer to what the
+	// app's tile blue is, and the Light theme's is not the dark one's.
+	//
+	// "FOR NOW" IS THE HUM LEAD'S OWN WORD and it is recorded rather than
+	// smoothed over: the card family has grounds of its own (`cardTone`, D-86) and
+	// this box may end up wearing one of those instead.
+	fg, bg := render.ModalTone(b.darkBG)
+	ground := fg + ";" + bg
+
 	out := []string{bx.TL + strings.Repeat(bx.Rule, bcUpNextLabelW) + bx.T +
 		boxRule(bx.Rule, cardRuleTitle(c, o.Glyphs()), lane.badgeOf("STANDARD"), body) + bx.TR}
 	at := (len(rows) - 1) / 2
@@ -98,7 +112,15 @@ func (b Broadcaster) upNextBox() []string {
 		}
 		out = append(out, bx.Rail+cell+bx.Rail+render.PadTo(render.TruncateCells(r, body), body)+bx.Rail)
 	}
-	return append(out, bx.BL+strings.Repeat(bx.Rule, bcUpNextLabelW)+bx.B+strings.Repeat(bx.Rule, body)+bx.BR)
+	out = append(out, bx.BL+strings.Repeat(bx.Rule, bcUpNextLabelW)+bx.B+strings.Repeat(bx.Rule, body)+bx.BR)
+	// THE WHOLE BOX IS PAINTED, BORDERS INCLUDED — the rule `shell` states for a
+	// card (D-86): "a ground that stopped at the border would draw a coloured
+	// window inside a colourless frame, which reads as a fill rather than as a
+	// card". `TintKeeping` so the chips and the badge keep their own colours.
+	for i, r := range out { // bounded by the box's height (P10-02)
+		out[i] = render.TintKeeping(r, ground)
+	}
+	return out
 }
 
 // alertBox is the takeover, and it is drawn whether or not one is happening.
