@@ -243,18 +243,20 @@ func TestSteppingTheBedTunesTheChosenRelaysOwnMounts(t *testing.T) {
 	if len(relays) < 2 {
 		t.Fatalf("the fixture needs somewhere to step; got %d relays", len(relays))
 	}
-	// ASSERTED THROUGH `tuneList`, WHICH IS WHAT THE TUNE HANDS THE ENGINE.
-	// `radioDeck.engine` is a concrete `*player.Engine` and cannot be faked, so
-	// the claim is made where it can be: the URL list the chosen relay produces.
-	// A test that merely watched which METHOD was called would pass on a tune
-	// pointed at the wrong stream.
+	// ASSERTED ON THE DECK'S OWN TUNE LIST, which is the difference between the
+	// two paths: `startStation` WRITES `mountURLs` and `tuneCallsign` merely READS
+	// it. A first version of this checked what `tuneList` produces — true either
+	// way — and a mutant that put the bed back on `tuneCallsign` SURVIVED it.
+	lp.deck = &radioDeck{}
 	if cmd := lp.stepBedRelay(1); cmd != nil {
-		_ = cmd // the tune itself needs a player; what it tunes TO is below
+		cmd()
 	}
 	chosen := relays[1]
-	urls, owners := tuneList(relays, chosen)
+	lp.deck.mu.Lock()
+	urls, owners := lp.deck.mountURLs, lp.deck.mountOwner
+	lp.deck.mu.Unlock()
 	if len(urls) == 0 {
-		t.Fatal("the chosen relay produced no stream to start")
+		t.Fatal("stepping the bed tuned nothing: the deck was never pointed at a stream")
 	}
 	// THE CHOSEN RELAY LEADS. The rest follow so the engine can fall through a
 	// dead mount, which is `tuneList`'s own rule.

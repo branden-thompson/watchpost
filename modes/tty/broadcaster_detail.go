@@ -90,9 +90,36 @@ func (b Broadcaster) detailBody(o render.Opts, c lineup.Card) []string {
 	rows = append(rows, detailContents(c)...)
 	rows = append(rows, "", "FULL READ")
 	rows = append(rows, detailScript(c)...)
-	rows = append(rows, "", o.Controls("   ",
-		render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll")))
+	// THE CONSOLE'S OWN CONTROLS (D-118), and they are SPECIFIC TO IT: Observer
+	// has no line-up to reorder and nothing to drop from one.
+	//
+	// HUM LEAD, 2026-09-13: "Every line up position from UP NEXT -> Pos. 14 need
+	// the following controls in the Modal - these are **specific and unique** to
+	// the Broadcaster UI: [P] Change Position [k] Drop from Line-Up."
+	//
+	// THE LIVE CARD IS NOT ONE OF THEM. A card on the air cannot be moved or
+	// dropped — D-45 already rules it "Management Locked", and the card's own
+	// STATUS line has said so since D-87 — so the window that shows that line must
+	// not also offer the two keys it rules out (D-65).
+	ctls := []render.Control{render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll")}
+	if manageable(c) {
+		ctls = append(ctls, render.Ctl("P", "Change Position"), render.Ctl("k", "Drop from Line-Up"))
+	}
+	rows = append(rows, "", o.Controls("   ", ctls...))
 	return indentBody(rows)
+}
+
+// manageable is whether the operator may reorder or drop this card (D-118).
+//
+// A CARD ON THE AIR IS NOT. D-45 rules it "Management Locked; Can be Taken-Over",
+// which the card's own STATUS line has said since D-87 — so the window that shows
+// that line must not also offer the two keys it rules out.
+//
+// A STRUCTURAL CARD NEEDS NO CLAUSE HERE. `Projection` already keeps the
+// schedule's own furniture off the surface, so nothing the console holds is one
+// — and a second filter would be a second answer to what the operator can see.
+func manageable(c lineup.Card) bool {
+	return c.ID != "" && c.State != lineup.OnAir
 }
 
 // detailReadBy is the voice that will say this, or that nothing has resolved one.

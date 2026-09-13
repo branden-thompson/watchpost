@@ -162,3 +162,25 @@ func TestTheUpNextBoxWearsTheModalsGround(t *testing.T) {
 	}
 	_ = fg
 }
+
+// AND THE BOX'S TITLE READS AS A MODAL'S DOES (D-118).
+//
+// HUM LEAD, 2026-09-13: "Let's make the Title 'LOCATION REPORT * <location>'
+// Bold and White like the Modals." Now that the box wears the modal's own tile
+// (D-114), the tone of its name was the only thing still telling them apart.
+func TestTheBoxTitleReadsLikeAModalTitle(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+
+	b := bcWith(t, card(t, "a", "Oceanside, CA 92057"))
+	b.width, b.height, b.darkBG = 150, 74, true
+	rule := b.upNextBox()[0]
+	if !strings.Contains(rule, render.Tok(render.ModalTitle)) {
+		t.Errorf("the box's title is not painted like a window's:\n%q", rule)
+	}
+	// THE RULE'S MARKS KEEP THE GROUND'S TONE: what is picked out is the NAME.
+	_, bg := render.ModalTone(true)
+	if !strings.Contains(rule, bg) {
+		t.Errorf("the rule lost the box's ground:\n%q", rule)
+	}
+}

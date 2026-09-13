@@ -286,6 +286,11 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		// AND THE TWO SETTINGS THAT DERIVE IT (D-115, F-87). The console draws
 		// them and writes them; the app persists and RE-DERIVES, which is the half
 		// the HUM LEAD asked to be able to UAT.
+		// THE OPERATOR'S TWO ACTS ON A CARD (D-118). Told to the schedule as
+		// EVENTS, which is FR-3.3: "an action must never be shown as taken unless
+		// the schedule took it".
+		MoveCard:         lp.moveCard,
+		DropCard:         lp.dropCard,
 		Transmitter:      transmitterOf(cfg),
 		SetTransmitter:   lp.setTransmitter,
 		ServiceRadiusMi:  int(cfg.Broadcaster.ServiceRadius()),

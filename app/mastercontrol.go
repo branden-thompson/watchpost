@@ -182,6 +182,20 @@ func (m *mastercontrol) railFence() lineup.Fence {
 	return m.fence()
 }
 
+// MoveCard and DropCard are the operator's two acts on a scheduled card (D-118).
+//
+// EVENTS, NOT SETTERS, and FR-3.3 says why in as many words: "an action must
+// never be shown as taken unless the schedule took it". The named trap is that
+// `Lineup.Set` refuses to reorder BY DESIGN, so a promote routed through it would
+// update a display and leave `Next()` answering the old order — with nothing to
+// see. The Director owns both, and has since 0.14.0; this is the first thing that
+// has ever emitted either.
+func (m *mastercontrol) MoveCard(id string, to int) { m.tell(lineup.Moved{ID: id, To: to}) }
+
+// DropCard takes a card out of the running order. It is the DESTRUCTIVE one
+// (FR-3.7), which is why the console asks before sending it.
+func (m *mastercontrol) DropCard(id string) { m.tell(lineup.Dropped{ID: id}) }
+
 // CutBed moves the programme between the station's line-up and its bed (D-78).
 //
 // THE FIRST PRODUCTION CALLER `lineup.CutOver` HAS EVER HAD. The Director has

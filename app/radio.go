@@ -280,10 +280,20 @@ func (d *radioDeck) startStation(st stream.Station, rest []stream.Station) {
 		return // nothing to play: a station with no mount is not a relay
 	}
 	urls, owners := tuneList(rest, st)
+	// THE TUNE LIST IS RECORDED FIRST, and it is what a caller can see afterwards:
+	// `tuneCallsign` READS this list and `startStation` WRITES it, which is the
+	// difference between the two paths a test can observe. Without that the bed
+	// tuning through the wrong one is invisible — a mutant proved it (mAK1).
 	d.mu.Lock()
 	d.mountOwner, d.mountURLs = owners, urls
 	d.mu.Unlock()
 	d.setMode("live", d.label(st), st.Mounts[0].Relay)
+	// A BUILD WITH NO AUDIO PATH STILL RECORDS WHAT IT WOULD HAVE TUNED. `engine`
+	// is nil "in tests and in the pathless build" (radioDeck), and the tune list
+	// above is a fact about the station either way.
+	if d.engine == nil {
+		return
+	}
 	d.engine.Start(urls, st.Callsign+" "+st.Site) // the dwell arms when the relay reports Playing (onStatus)
 }
 

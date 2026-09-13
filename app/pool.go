@@ -73,6 +73,26 @@ func (lp *livePipelines) setStation(s stationArea) {
 	lp.mu.Unlock()
 }
 
+// moveCard and dropCard are the console's two card controls, routed to the one
+// thing that may change a schedule (D-118).
+//
+// THROUGH MASTERCONTROL, LIKE EVERY OTHER DECLARATION. It is the band's and the
+// bed's one owner already (T2.3), and a second path into the Director would be a
+// second answer to who may change the running order.
+func (lp *livePipelines) moveCard(id string, to int) {
+	if lp == nil || lp.director == nil {
+		return
+	}
+	lp.director.mc.MoveCard(id, to)
+}
+
+func (lp *livePipelines) dropCard(id string) {
+	if lp == nil || lp.director == nil {
+		return
+	}
+	lp.director.mc.DropCard(id)
+}
+
 // transmitterOf is the station's OWN transmitter, or nil when it is borrowing
 // the listener's default location (D-115).
 //

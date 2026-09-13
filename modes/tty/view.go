@@ -50,10 +50,26 @@ func (d Dashboard) View() tea.View {
 // ONE TODAY: the ctrl+d window's ARE YOU SURE, on the red confirm tile this app
 // uses for exactly one thing — a question whose answer cannot be taken back.
 func (d Dashboard) confirmOverlay(o render.Opts) string {
+	fg, _ := render.ModalTone(d.darkBG)
+	// THE CARD WINDOW'S OWN TWO (D-118), asked on top of the card so the operator
+	// can still read what they are about to move or discard.
+	//
+	// THE DROP IS ON THE CONFIRM TILE and the MOVE is not: red is what this app
+	// uses for exactly one thing — "a question whose answer cannot be taken back"
+	// — and a card in the wrong position is moved again, while a dropped one is
+	// in the discard pile.
+	if d.modal == modalCard {
+		switch d.cardAct {
+		case cardActionMove:
+			return d.floatModal(o, bcManageWidth, "Change Position", d.movePrompt(o))
+		case cardActionDrop:
+			return d.floatModalToned(o, bcManageWidth, "Drop from Line-Up", d.dropPrompt(o), fg, render.Tok(render.ConfirmBG))
+		}
+		return ""
+	}
 	if d.modal != modalDebug || !d.debug.confirm {
 		return ""
 	}
-	fg, _ := render.ModalTone(d.darkBG)
 	return d.floatModalToned(o, debugConfirmWidth, "", d.debugConfirmLines(o), fg, render.Tok(render.ConfirmBG))
 }
 

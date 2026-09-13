@@ -121,6 +121,7 @@ func (*livePipelines).commit
 func (*livePipelines).currentPool
 func (*livePipelines).currentStation
 func (*livePipelines).currentWatch
+func (*livePipelines).dropCard
 func (*livePipelines).endEventRead
 func (*livePipelines).fireFor
 func (*livePipelines).hydrate
@@ -130,6 +131,7 @@ func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
 func (*livePipelines).monitorMayReachTheAir
+func (*livePipelines).moveCard
 func (*livePipelines).narrateEvent
 func (*livePipelines).noteBedCarrying
 func (*livePipelines).poolFor
@@ -163,9 +165,11 @@ func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
 func (*livePipelines).wireDeckWarnings
 func (*mastercontrol).CutBed
+func (*mastercontrol).DropCard
 func (*mastercontrol).GoOnAir
 func (*mastercontrol).GoToStandby
 func (*mastercontrol).HandAir
+func (*mastercontrol).MoveCard
 func (*mastercontrol).StopMonitor
 func (*mastercontrol).clearBand
 func (*mastercontrol).cue

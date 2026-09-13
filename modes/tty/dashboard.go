@@ -163,6 +163,14 @@ type Config struct {
 	// The setters persist AND re-derive the pool — a radius the operator changes
 	// is a region the Producer must offer from on the very next cycle, which is
 	// the re-derivation the HUM LEAD asked to be able to UAT.
+	// THE OPERATOR'S TWO ACTS ON A SCHEDULED CARD (D-118). The schedule owns
+	// both — `lineup.Moved` and `lineup.Dropped` have modelled them since 0.14.0
+	// and nothing could emit either — and FR-3.3 is why they are events rather
+	// than setters: "an action must never be shown as taken unless the schedule
+	// took it". Nil in tests, and on a build with no schedule to tell.
+	MoveCard func(id string, to int)
+	DropCard func(id string)
+
 	Transmitter      *snapshot.LocationRef
 	SetTransmitter   func(snapshot.LocationRef) // nil in tests
 	ServiceRadiusMi  int
@@ -449,7 +457,14 @@ type Dashboard struct {
 	// cardGen moves whenever the hand-over changes what would be drawn, and it is
 	// what puts an uncomparable field into a comparable memo key — the stand-in
 	// setupGen already makes for Setup's two maps.
-	cardID       string
+	cardID string
+
+	// THE CARD WINDOW'S OWN TWO QUESTIONS (D-118): change this card's position,
+	// or drop it from the running order. Both are drawn OVER the card, so the
+	// operator can still read what they are about to move or discard.
+	cardAct      cardAction
+	cardMoveTo   string // the digits buffer for [P]
+	cardErr      string
 	cardRows     func(render.Opts) (string, []string)
 	cardGen      int
 	ticker       []TickerItem // 0.12.0: the active global alerts (grouped into lanes by Category)

@@ -1391,7 +1391,18 @@ func boxRule(mark, title, badge string, inner int) string {
 	if title == "" || inner < render.Width(title)+6 {
 		return strings.Repeat(mark, inner)
 	}
-	head := strings.Repeat(mark, 3) + " " + title + " "
+	// THE TITLE READS AS A MODAL'S DOES (D-118, HUM LEAD 2026-09-13: "Let's make
+	// the Title 'LOCATION REPORT * <location>' Bold and White like the Modals").
+	//
+	// `ModalTitle` IS THAT TREATMENT, and it is the panel's own: `PanelColored`
+	// tints every window title with it, so a box that named itself in the ground's
+	// base grey was the one titled thing on the frame not doing so. Now that the
+	// box wears the modal's tile (D-114) the difference was the only thing left
+	// telling them apart.
+	//
+	// THE RULE'S MARKS KEEP THE GROUND'S TONE. What is being picked out is the
+	// NAME, not the border it sits in.
+	head := strings.Repeat(mark, 3) + " " + render.Tint(title, render.Tok(render.ModalTitle)) + " "
 	// AND THE BADGE RIDES THE SAME RULE, at the right (D-110). The reference
 	// draws both boxes that way — `┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━
 	// • STANDARD • ━━━┓` — so what the card IS and how it is GRADED are read off

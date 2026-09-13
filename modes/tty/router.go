@@ -15,6 +15,7 @@ package tty
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"strconv"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/term"
@@ -509,6 +510,15 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return out, nil
 		}
 	}
+	// THE CARD WINDOW'S OWN CONTROLS (D-118), before the window-on-top rule below
+	// hands everything to Observer. They belong to the CONSOLE — Observer has no
+	// line-up to reorder and nothing to drop from one — and Observer would answer
+	// `P` and `k` with whatever those mean to it, which is the shape D-113 was.
+	if k, ok := msg.(tea.KeyPressMsg); ok && r.active == SurfaceBroadcaster && r.observer.modal == modalCard {
+		if out, taken := r.cardWindowKey(k); taken {
+			return out, nil
+		}
+	}
 	// THE WINDOW ON TOP OWNS THE KEYS (D-58). While the diagnostics window is
 	// composited over the console, its own navigation — arrows, enter, esc —
 	// must reach IT and not the lanes beneath it. An arrow that promoted a card
@@ -749,6 +759,112 @@ func (r Router) openCardWindow(key string) (Router, bool) {
 	// underneath, which is what `View` already composites.
 	r.observer = r.observer.showCard(id, rows, r.observer.opts()).open(modalCard)
 	return r, true
+}
+
+// cardWindowKey is the card window's own keyboard, and it reports whether it
+// took the key (D-118).
+//
+// TWO CONTROLS AND THE TWO WINDOWS THEY OPEN. `[P]` asks where the card should
+// go and `[k]` asks whether to discard it — both drawn OVER the card, so the
+// operator can still read what they are about to act on.
+//
+// AN OPEN QUESTION OWNS THE KEYBOARD, which is D-58's rule one window deeper: a
+// digit typed into the position field must not reach the running order, and
+// `enter` must settle the question rather than closing the card behind it.
+func (r Router) cardWindowKey(k tea.KeyPressMsg) (Router, bool) {
+	switch r.observer.cardAct {
+	case cardActionMove:
+		return r.moveWindowKey(k)
+	case cardActionDrop:
+		return r.dropWindowKey(k)
+	}
+	// NOT ON A CARD THE SCHEDULE WILL REFUSE. A card on the air is "Management
+	// Locked" (D-45) and the window does not draw the two chips for it, so the
+	// keys must not act either — a control that is not offered and still works is
+	// the same lie as one that is offered and does not.
+	if !manageable(r.cardInWindow()) {
+		return r, false
+	}
+	switch k.String() {
+	case "P":
+		r.observer.cardAct, r.observer.cardMoveTo, r.observer.cardErr = cardActionMove, "", ""
+		return r, true
+	case "k":
+		r.observer.cardAct, r.observer.cardErr = cardActionDrop, ""
+		return r, true
+	}
+	return r, false
+}
+
+// moveWindowKey is [P]'s window: digits, enter, esc.
+func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
+	switch k.String() {
+	case "esc":
+		r.observer.cardAct, r.observer.cardMoveTo, r.observer.cardErr = cardActionNone, "", ""
+	case "enter":
+		to := r.observer.moveTarget()
+		if to == 0 {
+			// REFUSED WHERE IT CAN STILL BE FIXED. The schedule would refuse a
+			// position the running order does not have, and it would do it out of
+			// sight — FR-3.3's own rule is that an action is never SHOWN as taken
+			// unless the schedule took it, and the honest form of that here is to
+			// not send it at all.
+			r.observer.cardErr = "positions " + strconv.Itoa(bcScheduledFrom) + " to " +
+				strconv.Itoa(MainTrackSlots-1)
+			return r, true
+		}
+		if move := r.observer.cfg.MoveCard; move != nil {
+			move(r.observer.cardID, to)
+		}
+		// AND THE CARD WINDOW CLOSES WITH IT. The card the operator was reading is
+		// no longer at the position they opened it from, so leaving it up would
+		// show a window whose own title has moved.
+		r.observer = r.observer.close()
+		r.observer.cardAct, r.observer.cardMoveTo = cardActionNone, ""
+	case "backspace":
+		if d := []rune(r.observer.cardMoveTo); len(d) > 0 {
+			r.observer.cardMoveTo = string(d[:len(d)-1])
+		}
+		r.observer.cardErr = ""
+	default:
+		// THE KEY'S OWN NAME, NOT ITS `Text`. A terminal fills `Text` for a
+		// printable key and the harness does not always — so a field that read
+		// only `Text` took digits from a person and none from a test, which is a
+		// control tested through a path nobody uses.
+		if t := k.String(); t >= "0" && t <= "9" && len([]rune(r.observer.cardMoveTo)) < 2 {
+			r.observer.cardMoveTo += t
+			r.observer.cardErr = ""
+		}
+	}
+	return r, true
+}
+
+// dropWindowKey is [k]'s window: a yes, or a no.
+func (r Router) dropWindowKey(k tea.KeyPressMsg) (Router, bool) {
+	switch k.String() {
+	case "esc":
+		r.observer.cardAct = cardActionNone
+	case "enter":
+		if drop := r.observer.cfg.DropCard; drop != nil {
+			drop(r.observer.cardID)
+		}
+		r.observer = r.observer.close()
+		r.observer.cardAct = cardActionNone
+	}
+	// EVERY OTHER KEY IS SWALLOWED. This is the last thing between the operator
+	// and a card leaving the running order; a stray keystroke reaching the console
+	// underneath is how a question gets answered by accident.
+	return r, true
+}
+
+// cardInWindow is the card the window is open on, or a zero card.
+func (r Router) cardInWindow() lineup.Card {
+	for _, c := range r.broadcaster.mainTrack() { // bounded by the track (P10-02)
+		if c.ID == r.observer.cardID {
+			return c
+		}
+	}
+	return lineup.Card{}
 }
 
 // openPointedCard opens the card the running order's pointer is on.

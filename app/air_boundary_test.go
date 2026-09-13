@@ -139,6 +139,22 @@ var airBoundary = map[string]airMember{
 	// and refuses to mark a card that is already reading, precisely so a hazard is
 	// never cut off mid-sentence. Recorded here because it is the one way these
 	// two could be mistaken for air-touching.
+	// THE OPERATOR'S TWO ACTS ON A CARD (D-118). Both are DECLARATIONS to the
+	// schedule, and the schedule decides what they mean for the air.
+	//
+	// `airProgramme` RATHER THAN `airNone`, and the distinction is real: dropping
+	// the card that is about to be read changes what goes out next, and moving one
+	// to position two changes which card that is. They are the console's own
+	// controls over the console's own running order, so guarding them on the air
+	// would break the control they belong to — the same argument the bed selector
+	// carries.
+	//
+	// A CARD ON THE AIR IS ALREADY EXCLUDED, twice: the window does not offer the
+	// keys for one (`manageable`), and the Director refuses to disturb a reading
+	// card whatever it is told.
+	"MoveCard": {airProgramme, "the console reorders its own running order; the schedule decides, and a reading card is refused"},
+	"DropCard": {airProgramme, "the console discards from its own running order; same seam, and the same refusal for a reading card"},
+
 	"SetTransmitter":   {airNone, "writes the epicentre and re-derives the pool; the Producer's offer changes, the engine does not"},
 	"SetServiceRadius": {airNone, "writes the reach and re-derives the pool; same seam, the other half of the same derivation"},
 	"SetTheme":         {airNone, "colour"},

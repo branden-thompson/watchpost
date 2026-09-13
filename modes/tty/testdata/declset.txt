@@ -58,6 +58,7 @@ const bcGainCells
 const bcInsetRows
 const bcLabelCells
 const bcLeftInset
+const bcManageWidth
 const bcManifestCaption
 const bcMinCols
 const bcMinRows
@@ -83,6 +84,9 @@ const bcTakeoverTitle
 const bcUpNextLabel
 const bcUpNextLabelW
 const bottomInset
+const cardActionDrop
+const cardActionMove
+const cardActionNone
 const castLabelW
 const castModeOn
 const castModeSingle
@@ -374,6 +378,7 @@ func (Dashboard).debugTitle
 func (Dashboard).detailLines
 func (Dashboard).detailsModal
 func (Dashboard).dispatch
+func (Dashboard).dropPrompt
 func (Dashboard).fallThroughRelayFault
 func (Dashboard).fireBoldMW
 func (Dashboard).firmsHealth
@@ -423,6 +428,8 @@ func (Dashboard).modalMax
 func (Dashboard).modalMemoCounts
 func (Dashboard).modalView
 func (Dashboard).modalWidth
+func (Dashboard).movePrompt
+func (Dashboard).moveTarget
 func (Dashboard).narrowHead
 func (Dashboard).numPriority
 func (Dashboard).numRecent
@@ -569,8 +576,12 @@ func (Router).Update
 func (Router).View
 func (Router).bedControl
 func (Router).canSwap
+func (Router).cardInWindow
+func (Router).cardWindowKey
 func (Router).consoleOwnsTheKeys
 func (Router).cutBed
+func (Router).dropWindowKey
+func (Router).moveWindowKey
 func (Router).openCardWindow
 func (Router).openPointedCard
 func (Router).refreshCardWindow
@@ -696,6 +707,7 @@ func layoutMarine
 func levelControl
 func locTZ
 func longAge
+func manageable
 func manifestHeading
 func manifestRow
 func marinePair
@@ -861,6 +873,7 @@ type alertItem
 type arrowChips
 type bodyKey
 type bodyMemo
+type cardAction
 type cardLane
 type castSavedMsg
 type columns
