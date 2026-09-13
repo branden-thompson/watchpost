@@ -263,6 +263,7 @@ func (d Dashboard) setupServiceLines(o render.Opts, mark string) []string {
 	st := d.setup
 	head := "  " + mark + settingLabel("Service radius: ", st.focus == rowServiceRadius) +
 		"[" + render.PadTo(st.serviceMi, 4) + "] mi"
+	lo, hi, _ := d.serviceBounds()
 	return []string{head, supportIndent + "how far the station's line-up reaches " +
-		o.Glyphs().Dash + " " + strconv.Itoa(serviceRadiusMin) + " to " + strconv.Itoa(serviceRadiusMax) + " miles"}
+		o.Glyphs().Dash + " " + strconv.Itoa(lo) + " to " + strconv.Itoa(hi) + " miles"}
 }

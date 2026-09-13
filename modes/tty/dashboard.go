@@ -176,6 +176,27 @@ type Config struct {
 	ServiceRadiusMi  int
 	SetServiceRadius func(int) // nil in tests
 
+	// ServiceRadiusMinMi and ServiceRadiusMaxMi are the ruled bounds the window
+	// validates against, HANDED IN rather than restated here.
+	//
+	// THEY USED TO BE `serviceRadiusMin/Max` IN THIS PACKAGE, beside
+	// `config.MinServiceRadiusMi`/`MaxServiceRadiusMi` in the storage — two
+	// carriers of one fact, kept honest by a test in `app` that imported both.
+	// A test that prevents drift is not the same as a fact with one owner, and
+	// the HUM LEAD ruled 2026-09-13 to fix it properly.
+	//
+	// THROUGH `Config` RATHER THAN BY IMPORTING `platform/config`, which would
+	// compile and pass `lint-imports` and would still be wrong: nothing under
+	// `modes/` reads storage. The UI is HANDED what it needs, and D-91's air
+	// boundary is a classification of exactly these seams.
+	//
+	// ZERO IS NOT A DEFAULT, IT IS UNSET, and the window refuses every radius
+	// while it is — see `serviceBounds`. There is deliberately no fallback
+	// constant, because a fallback here would be the second carrier again,
+	// wearing a different name.
+	ServiceRadiusMinMi int
+	ServiceRadiusMaxMi int
+
 	// RelayDwell is how long Watchlist holds a live relay at launch, and
 	// SetRelayDwell persists a change. Zero means the default (five minutes,
 	// one NWR cycle); nil in tests.

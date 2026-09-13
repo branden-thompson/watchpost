@@ -289,12 +289,18 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		// THE OPERATOR'S TWO ACTS ON A CARD (D-118). Told to the schedule as
 		// EVENTS, which is FR-3.3: "an action must never be shown as taken unless
 		// the schedule took it".
-		MoveCard:         lp.moveCard,
-		DropCard:         lp.dropCard,
-		Transmitter:      transmitterOf(cfg),
-		SetTransmitter:   lp.setTransmitter,
-		ServiceRadiusMi:  int(cfg.Broadcaster.ServiceRadius()),
-		SetServiceRadius: lp.setServiceRadius,
+		MoveCard:        lp.moveCard,
+		DropCard:        lp.dropCard,
+		Transmitter:     transmitterOf(cfg),
+		SetTransmitter:  lp.setTransmitter,
+		ServiceRadiusMi: int(cfg.Broadcaster.ServiceRadius()),
+		// THE BOUNDS TRAVEL WITH THE VALUE THEY BOUND (D-124). `platform/config`
+		// owns these two numbers alone now; the window used to restate them and a
+		// test in this package stood between the two copies. Handing them over is
+		// what retires that test — a fact with one owner needs no tie.
+		ServiceRadiusMinMi: config.MinServiceRadiusMi,
+		ServiceRadiusMaxMi: config.MaxServiceRadiusMi,
+		SetServiceRadius:   lp.setServiceRadius,
 		StationArea: tty.StationAreaMsg{
 			Transmitter: lp.currentStation().transmitter,
 			RadiusMi:    lp.currentStation().radiusMi,

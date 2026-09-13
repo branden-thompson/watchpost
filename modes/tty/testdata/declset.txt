@@ -12,8 +12,6 @@ const RecentCap
 const RepeatOff
 const RepeatOne
 const RepeatWatchlist
-const ServiceRadiusMaxForTest
-const ServiceRadiusMinForTest
 const SevereAdvisories
 const SevereDisasters
 const SevereEmergency
@@ -204,8 +202,6 @@ const scopeShared
 const scopeSplit
 const scopeUnruled
 const secondGap
-const serviceRadiusMax
-const serviceRadiusMin
 const setupOneColWidth
 const setupRowCount
 const severeBreakingWindow
@@ -422,6 +418,7 @@ func (Dashboard).helpPlan
 func (Dashboard).helpWidth
 func (Dashboard).hourlyRows
 func (Dashboard).hydrateCmd
+func (Dashboard).inServiceRange
 func (Dashboard).issueLines
 func (Dashboard).layout
 func (Dashboard).layoutWith
@@ -485,6 +482,7 @@ func (Dashboard).rowTakesArrows
 func (Dashboard).rowVisible
 func (Dashboard).seismicLookbackDays
 func (Dashboard).selectedLocation
+func (Dashboard).serviceBounds
 func (Dashboard).serviceRadiusApplyCmd
 func (Dashboard).setClock
 func (Dashboard).setUnits

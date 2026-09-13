@@ -21,7 +21,31 @@ func stationSetup(t *testing.T, at setupRowID) Dashboard {
 	t.Helper()
 	d := setupGolden(t, 133, 44, false, at)
 	d.surface = SurfaceBroadcaster
+	// THE BOUNDS ARE HANDED IN, AS THE APP HANDS THEM IN (D-124). They were
+	// constants in this package and are now `platform/config`'s alone; a fixture
+	// that omits them gets a window which refuses every radius, which is the
+	// deliberate fail-closed behaviour and not something to paper over.
+	d.cfg.ServiceRadiusMinMi, d.cfg.ServiceRadiusMaxMi = 2, 100
 	return d
+}
+
+// TestAWindowWithNoBoundsRefusesEveryRadius. UNSET IS NOT A DEFAULT.
+//
+// The bounds arrive through `Config`, and a build that forgets to send them must
+// not fall back to a guess: the window would offer a radius the storage clamps
+// behind the operator's back, and the setting would silently not be what the
+// screen said. Zero refuses everything, loudly.
+func TestAWindowWithNoBoundsRefusesEveryRadius(t *testing.T) {
+	d := setupGolden(t, 133, 44, false, rowServiceRadius)
+	d.surface = SurfaceBroadcaster // and NO bounds handed in
+	if _, _, ok := d.serviceBounds(); ok {
+		t.Fatal("a window with no bounds must not report usable ones")
+	}
+	for _, v := range []int{2, 25, 50, 100} {
+		if d.inServiceRange(v) {
+			t.Errorf("%d mi was admitted by a window that was never told its bounds", v)
+		}
+	}
 }
 
 // THEY ARE THE CONSOLE'S AND ONLY THE CONSOLE'S (D-72, D-18's M4 metric).

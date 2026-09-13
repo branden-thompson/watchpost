@@ -427,7 +427,7 @@ hole and is fixed; one guards a retired rule.**
 | `mAA3` — the window opens on a row nobody can see | CAUGHT | TestTheWindowOpensOnARowThisSurfaceDraws |
 | `mAA4` — tab lands in a group this surface hides | CAUGHT | TestTheKeyboardNeverFocusesAHiddenRow |
 | `mAA5` — the window ignores the surface entirely | CAUGHT | TestSetupAllocBudget |
-| `mAB1` — the rail breaks between the tables | **SURVIVED — RULE RETIRED** | nothing: D-106 retired D-104 and its detector was deleted with it.  **Retirement proposed to the HUM LEAD, not self-issued** |
+| `mAB1` — the rail breaks between the tables | **RETIRED 2026-09-13** | It guarded D-104 (one control over BOTH tables).  D-106 retired that rule — *"Location Pool Scrolls, Line-up doesnt"* — and deleted its detector with it, so the mutant defended a design the product had abandoned.  **RETIRED BY THE HUM LEAD 2026-09-13**, never self-issued.  The rail's actual behaviour is pinned by `mAC2`, `mAC3` and `TestTheScrollControlIsThePoolsAlone` |
 | `mAB2` — the pool is whatever is left over | CAUGHT | TestTheScrollControlIsThePoolsAlone |
 | `mAB3` — the hazard touches the place | CAUGHT | TestTheHazardNeverTouchesThePlace |
 | `mAB4` — the pointer inherits the digits ceiling | CAUGHT | TestEnterOpensTheRowThePointerIsOn |

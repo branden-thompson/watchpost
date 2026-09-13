@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
-	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -102,19 +101,26 @@ func TestSettingTheServiceRadiusReDerivesThePool(t *testing.T) {
 	}
 }
 
-// THE WINDOW'S BOUNDS ARE THE STORAGE'S BOUNDS.
+// TestTheAppHandsTheWindowItsServiceBounds.
 //
-// `modes/tty` may not import `platform/config` (make lint-imports), so the floor
-// and the ceiling are stated in both places. This is the tie: a change in one
-// fails here rather than letting the window offer a radius the storage would
-// silently clamp — which the operator would read as "my setting was not saved".
-func TestSetupServiceBoundsMatchTheConfig(t *testing.T) {
-	if tty.ServiceRadiusMinForTest != config.MinServiceRadiusMi {
-		t.Errorf("the window's floor is %d and the storage's is %v",
-			tty.ServiceRadiusMinForTest, config.MinServiceRadiusMi)
+// THIS REPLACES A TIE-TEST, and the replacement is the point (D-124). There used
+// to be TWO copies of 2 and 100 — `modes/tty`'s own constants and
+// `platform/config`'s clamp — and `TestSetupServiceBoundsMatchTheConfig` stood
+// between them asserting they were equal. A test that prevents drift is not the
+// same as a fact with one owner.
+//
+// `platform/config` owns them alone now and the window is HANDED them, so there
+// is nothing left to compare. What is left to check is the handing over: a build
+// that forgets it ships a window which refuses every radius the operator types.
+func TestTheAppHandsTheWindowItsServiceBounds(t *testing.T) {
+	lp := &livePipelines{}
+	cfg := lp.ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
+	if cfg.ServiceRadiusMinMi != config.MinServiceRadiusMi {
+		t.Errorf("the window is handed a floor of %d, storage says %v",
+			cfg.ServiceRadiusMinMi, config.MinServiceRadiusMi)
 	}
-	if tty.ServiceRadiusMaxForTest != config.MaxServiceRadiusMi {
-		t.Errorf("the window's ceiling is %d and the storage's is %v",
-			tty.ServiceRadiusMaxForTest, config.MaxServiceRadiusMi)
+	if cfg.ServiceRadiusMaxMi != config.MaxServiceRadiusMi {
+		t.Errorf("the window is handed a ceiling of %d, storage says %v",
+			cfg.ServiceRadiusMaxMi, config.MaxServiceRadiusMi)
 	}
 }

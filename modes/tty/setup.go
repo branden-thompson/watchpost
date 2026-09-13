@@ -535,8 +535,7 @@ func (d Dashboard) commitToModel() Dashboard {
 		ref := *d.setup.txRef
 		d.cfg.Transmitter = &ref
 	}
-	if v := d.setup.serviceRadiusChoice(); d.cfg.SetServiceRadius != nil &&
-		v >= serviceRadiusMin && v <= serviceRadiusMax {
+	if v := d.setup.serviceRadiusChoice(); d.cfg.SetServiceRadius != nil && d.inServiceRange(v) {
 		d.cfg.ServiceRadiusMi = v
 	}
 	if d.cfg.SetRelayLang != nil && d.setup.relayLang != "" {
@@ -597,7 +596,7 @@ func (d Dashboard) transmitterApplyCmd() tea.Cmd {
 // `applyIfChanged` states.
 func (d Dashboard) serviceRadiusApplyCmd() tea.Cmd {
 	return applyIfChanged(d.cfg.SetServiceRadius, d.setup.serviceRadiusChoice(), d.cfg.ServiceRadiusMi,
-		func(v int) bool { return v >= serviceRadiusMin && v <= serviceRadiusMax })
+		d.inServiceRange)
 }
 
 // serviceRadiusChoice is the buffer as a number, and zero when it is not one.
@@ -850,22 +849,34 @@ func (d Dashboard) currentTransmitter() *snapshot.LocationRef {
 	return d.currentDefault()
 }
 
-// The service radius' floor and ceiling (HUM LEAD, 2026-09-13: "min 2mi - Max
-// 100 mi").
+// serviceBounds is the radius' floor and ceiling, as the app handed them over
+// (HUM LEAD, 2026-09-13: "min 2mi - Max 100 mi").
 //
 // A FLOOR, NOT A ZERO. The alert radius has an "All" that means no fence; a
 // service radius does not — a station serves a region or it is not set up. Two
 // miles is the smallest region a transmitter can usefully be the centre of.
 //
-// STATED HERE AS NUMBERS because `modes/tty` may not import `platform/config`
-// (make lint-imports), which is where the same two are the storage's own clamp.
-// `TestSetupServiceBoundsMatchTheConfig` in `app` — which may import both — pins
-// them, so a change in one fails a test rather than letting the window offer a
-// radius the storage would silently clamp.
-const (
-	serviceRadiusMin = 2
-	serviceRadiusMax = 100
-)
+// THEY WERE CONSTANTS HERE, and the comment above them said `modes/tty` "may not
+// import `platform/config` (make lint-imports)". THAT WAS NOT TRUE — it compiles
+// and the gate passes. The real reason is a convention nothing had written down:
+// no package under `modes/` reads storage, because the UI is handed what it
+// needs. So the numbers now arrive through `Config`, `platform/config` owns them
+// alone, and the tie-test that stood between two copies is retired.
+//
+// UNSET REFUSES EVERYTHING, and that is deliberate. `ok` is false until the app
+// supplies the bounds, and `inServiceRange` then admits no radius at all — a
+// window that offered 1..∞ because nobody configured it would write a radius the
+// storage clamps behind the operator's back. Fail closed, visibly.
+func (d Dashboard) serviceBounds() (lo, hi int, ok bool) {
+	lo, hi = d.cfg.ServiceRadiusMinMi, d.cfg.ServiceRadiusMaxMi
+	return lo, hi, lo > 0 && hi >= lo
+}
+
+// inServiceRange is the one question the three sites ask.
+func (d Dashboard) inServiceRange(v int) bool {
+	lo, hi, ok := d.serviceBounds()
+	return ok && v >= lo && v <= hi
+}
 
 // setupSuggest refreshes the hints from the app hook (embedded index only —
 // never the network per keystroke).
@@ -929,31 +940,3 @@ func (d Dashboard) setupFinishCmd(key string) tea.Cmd {
 		return done
 	}
 }
-
-// The service radius' bounds, exposed for the cross-package tie in `app`.
-//
-// THIS COMMENT USED TO SAY "IN `platform/` BY THE ARCHITECTURE'S OWN RULE" AND
-// THIS FILE IS `modes/tty/setup.go`. It stated the rule and asserted compliance
-// in the same breath, while sitting in the package the rule points away from —
-// which is worse than no comment, because the next reader has no reason to doubt
-// it. Found by the pre-BUILD-exit structure pass, 2026-09-13.
-//
-// WHAT IS ACTUALLY TRUE. These are the WINDOW'S validation bounds, and the same
-// two numbers are `config.MinServiceRadiusMi`/`MaxServiceRadiusMi`, the storage's
-// clamp. That is TWO CARRIERS OF ONE FACT, and what stops them drifting is
-// `TestSetupServiceBoundsMatchTheConfig` in `app` — the only package that
-// imports both.
-//
-// WHY NOT SIMPLY IMPORT `platform/config` HERE: nothing forbids it — it compiles
-// and `lint-imports` passes — but NO package under `modes/` does. The UI is
-// HANDED its configuration through `tty.Config` rather than reading storage, and
-// D-91's air boundary is a classification of exactly those seams. This would be
-// the first breach of that, to save a constant.
-//
-// THE STRUCTURAL CHOICE IS THE HUM LEAD'S and is recorded in the structure pass:
-// leave it tied, give the numbers a neutral owner both sides may import, or pass
-// them through `tty.Config` like every other configured value.
-const (
-	ServiceRadiusMinForTest = serviceRadiusMin
-	ServiceRadiusMaxForTest = serviceRadiusMax
-)
