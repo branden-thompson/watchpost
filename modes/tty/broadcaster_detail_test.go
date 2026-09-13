@@ -279,6 +279,26 @@ func TestTheAlertBoxsWayInOpensThePriorityCard(t *testing.T) {
 	if out.observer.cardID != alert.ID {
 		t.Errorf("[A] opened card %q, want the rail's own %q", out.observer.cardID, alert.ID)
 	}
+
+	// AND THE WINDOW IS THE ONE A DIGIT WOULD HAVE BUILT, which is the half an
+	// id check cannot see. Mutant mAU2 gives the hazard window a builder of its
+	// own that composes the same title TODAY — so the two agree by coincidence
+	// rather than by construction, and the next change to `cardTitle` moves one
+	// and not the other. Comparing the id proved they were the same CARD; this
+	// proves they are the same WINDOW.
+	o := out.observer.opts()
+	_, draw, ok := b.alertDetail()
+	if !ok {
+		t.Fatal("there is no hazard window to compare")
+	}
+	gotTitle, gotBody := draw(o)
+	wantTitle, wantBody := cardTitle(alert, o.Glyphs()), b.detailBody(o, alert)
+	if gotTitle != wantTitle {
+		t.Errorf("the hazard window's title is %q, the one builder says %q", gotTitle, wantTitle)
+	}
+	if len(gotBody) != len(wantBody) {
+		t.Errorf("the hazard window draws %d rows, the one builder draws %d", len(gotBody), len(wantBody))
+	}
 }
 
 // AND WITH NO HAZARD THERE IS NOTHING TO OPEN.
