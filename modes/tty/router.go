@@ -814,7 +814,18 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 			return r, true
 		}
 		if move := r.observer.cfg.MoveCard; move != nil {
-			move(r.observer.cardID, to)
+			// THE POSITION THE OPERATOR TYPED IS A SLOT, AND `Reorder` TAKES A
+			// LINE-UP INDEX (D-119). On a station at STANDBY the two differ by
+			// one: LIVE is empty and the line-up is drawn from UP NEXT down
+			// (`liveOffset`, D-84), so slot 9 is the eighth card in the running
+			// order and not the ninth.
+			//
+			// `slotCard` ALREADY OWNS THAT TRANSLATION for reading a slot; this is
+			// the same arithmetic going the other way, and asking the console for
+			// it is what keeps the two from drifting. Sending the typed number
+			// straight through moved the card one place further down than the
+			// operator asked, silently, on the surface's normal state.
+			move(r.observer.cardID, to-r.broadcaster.liveOffset())
 		}
 		// AND THE CARD WINDOW CLOSES WITH IT. The card the operator was reading is
 		// no longer at the position they opened it from, so leaving it up would

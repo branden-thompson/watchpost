@@ -92,13 +92,16 @@ func TestTheConsoleShowsAtMostFifteenMainTrackSlots(t *testing.T) {
 	}
 	got := stripANSITest(bcWith(t, cs...).View().Content)
 
-	// FIFTEEN, RULED 2026-09-12 (was ten). LIVE is 0, UP NEXT is 1, and the table
-	// draws 2..14 — so a `15.` row is a sixteenth slot that must not exist.
-	if strings.Contains(got, "15.") {
-		t.Error("the main track is a ROLLING view of FIFTEEN; a sixteenth slot reached the frame")
+	// POSITIONS 2..15, RULED 2026-09-13 (was 2..14, and ten before that). LIVE is
+	// 0, UP NEXT is 1, and the table runs to POSITION fifteen — which is what
+	// `mock-broadcaster-v3.txt` draws and what the HUM LEAD confirmed: "I did mean
+	// 15 all slots in the scheduled line should be changeable." So a `16.` row is
+	// a seventeenth slot that must not exist.
+	if strings.Contains(got, "16.") {
+		t.Error("the main track runs to POSITION fifteen; a seventeenth slot reached the frame")
 	}
-	if !strings.Contains(got, "14.") {
-		t.Error("the fifteenth slot did not reach the frame")
+	if !strings.Contains(got, "15.") {
+		t.Error("position fifteen did not reach the frame")
 	}
 }
 

@@ -99,8 +99,14 @@ func TestChangePositionSendsTheMove(t *testing.T) {
 	}
 	r = press(t, r, "enter")
 
-	if gotID != want || gotTo != 7 {
-		t.Errorf("the schedule was told (%q, %d); the operator moved %q to 7", gotID, gotTo, want)
+	// THE SLOT THE OPERATOR TYPED, TRANSLATED TO A LINE-UP INDEX (D-119). On a
+	// station at STANDBY the two differ by one — LIVE is empty and the line-up is
+	// drawn from UP NEXT down (D-84) — and `Reorder` takes the INDEX. Sending the
+	// typed number straight through moved the card one place further down than
+	// the operator asked, silently, on the surface's normal state.
+	wantTo := 7 - r.broadcaster.liveOffset()
+	if gotID != want || gotTo != wantTo {
+		t.Errorf("the schedule was told (%q, %d); slot 7 is line-up index %d", gotID, gotTo, wantTo)
 	}
 	// AND THE CARD WINDOW CLOSES WITH IT: the card is no longer at the position
 	// it was opened from, so a window still showing it would have moved under the
@@ -116,7 +122,7 @@ func TestChangePositionSendsTheMove(t *testing.T) {
 // The schedule would refuse it out of sight; the honest form of that rule here is
 // to not send it at all, and to say why on the window the operator is looking at.
 func TestChangePositionRefusesWhatIsOutOfRange(t *testing.T) {
-	for _, typed := range []string{"1", "15", "99", ""} {
+	for _, typed := range []string{"1", "16", "99", ""} {
 		sent := false
 		r := openCard(t, 0)
 		r.observer.cfg.MoveCard = func(string, int) { sent = true }
@@ -203,4 +209,79 @@ func TestAnOpenQuestionOwnsTheKeyboard(t *testing.T) {
 	if _, taken := r.cardWindowKey(tea.KeyPressMsg{Code: 'x', Text: "x"}); !taken {
 		t.Error("a stray key fell through the confirmation to the console beneath it")
 	}
+}
+
+// AND THE TABLE REDRAWS ON THE SCHEDULE'S ANSWER (D-119).
+//
+// HUM LEAD, 2026-09-13: "Once I hit a number and <enter> on re-ordering the
+// lineup - that table DOES need to redraw/update - otherwise the UI lies to me."
+//
+// IT IS THE SCHEDULE'S ANSWER AND NOT THE CONSOLE'S GUESS, which is FR-3.3 and
+// the whole reason these are events: the console does not reorder its own rows
+// and then hope. `Reorder` moves the card, `settle` publishes the new order, and
+// the table draws what it was published. A console that reordered locally would
+// show a move the schedule had refused — which is the "UI lies to me" failure in
+// its worse form, because it would look right.
+//
+// DRIVEN THROUGH THE WHOLE PATH: the operator's keys, the schedule's own
+// `Reorder`, the published line-up, the rows the table builds.
+func TestMovingACardRedrawsTheTable(t *testing.T) {
+	r := openCard(t, 0) // the pointer is on the first row the table draws
+	l := r.broadcaster.lineup
+	moved := r.observer.cardID
+
+	// THE SCHEDULE IS THE ONE THAT MOVES IT. `MoveCard` is wired to this in the
+	// app; here it is wired to the schedule directly, so the test exercises the
+	// same function the Director calls rather than a stand-in.
+	// THE NEW ORDER IS CAPTURED, NOT ASSIGNED THROUGH THE ROUTER. `press` acts on
+	// a COPY and returns it, so a closure writing to `r` mid-press has its work
+	// overwritten by the value press hands back — which is a test that reports the
+	// feature broken for a reason the feature has nothing to do with.
+	var settled lineup.Lineup
+	r.observer.cfg.MoveCard = func(id string, to int) {
+		next, err := l.Reorder(id, to)
+		if err != nil {
+			t.Fatalf("the schedule refused (%q -> %d): %v", id, to, err)
+		}
+		settled = next
+	}
+
+	before := rowNumberOf(t, r.broadcaster, moved)
+	r = press(t, r, "P")
+	for _, k := range []string{"0", "9"} {
+		r = press(t, r, k)
+	}
+	r = press(t, r, "enter")
+
+	// AND THE SCHEDULE'S ANSWER REACHES THE CONSOLE THE WAY IT DOES IN THE APP:
+	// as a published line-up, not as a local edit.
+	r.broadcaster, _ = r.broadcaster.Update(LineupMsg{Lineup: settled})
+
+	after := rowNumberOf(t, r.broadcaster, moved)
+	if after == before {
+		t.Fatalf("the card is still at position %s after being moved to 9; the table did not redraw", after)
+	}
+	if after != "09." {
+		t.Errorf("the card is at %s; the operator moved it to 9", after)
+	}
+	// AND THE FRAME AGREES WITH THE ROWS, which is the claim the operator is
+	// actually making: what they READ has changed.
+	if !strings.Contains(stripANSITest(r.broadcaster.View().Content), "09.") {
+		t.Error("position nine is not on the frame at all")
+	}
+}
+
+// rowNumberOf is the `##.` cell of the row a card is drawn on.
+func rowNumberOf(t *testing.T, b Broadcaster, id string) string {
+	t.Helper()
+	// THE SLOT, NOT THE INDEX. The table numbers its rows by SLOT and reads the
+	// card at `slot - liveOffset()` (D-84), so a test that compared indices would
+	// be asking a different question from the one the operator can see.
+	for i, c := range b.mainTrack() { // bounded by the track (P10-02)
+		if c.ID == id {
+			return pad2(i + b.liveOffset())
+		}
+	}
+	t.Fatalf("card %q is not on the main track at all", id)
+	return ""
 }

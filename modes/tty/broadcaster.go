@@ -107,7 +107,16 @@ type StationAreaMsg struct {
 // disagree the station either holds cards nobody can address, or leaves slots
 // empty for ever. `app` sets the depth from here rather than from a second
 // constant that agrees with it today.
-const MainTrackSlots = 15
+//
+// SIXTEEN, WHICH DRAWS POSITIONS 2 TO 15 (D-119). LIVE is slot 0 and UP NEXT is
+// slot 1, so a scheduled line-up that runs to POSITION fifteen needs sixteen
+// cards behind it — which is what `mock-broadcaster-v3.txt` draws, `02.` through
+// `15.`, and what the HUM LEAD confirmed when the move window offered 2 to 14:
+// "I did mean 15 all slots in the scheduled line should be changeable."
+//
+// IT WAS FIFTEEN and drew 2 to 14, one row short of the reference — a slot the
+// mock has, the operator was promised, and the schedule never held.
+const MainTrackSlots = 16
 
 // Broadcaster is the operator console's model.
 type Broadcaster struct {
