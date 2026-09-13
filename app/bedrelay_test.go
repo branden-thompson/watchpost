@@ -2,8 +2,10 @@ package app
 
 import (
 	"context"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -284,5 +286,32 @@ func TestTheBedFenceKeepsOutWhatTheResolverWouldOffer(t *testing.T) {
 	got := withinBedFence([]stream.Station{near, far}, 100)
 	if len(got) != 1 || got[0].Callsign != "NEAR1" {
 		t.Errorf("the fence kept %v; only the near one is inside 100 miles", got)
+	}
+}
+
+// A MOVED STATION RE-RESOLVES ITS RELAYS (D-117).
+//
+// WHICH RELAYS ACTUALLY STREAM IS A FACT ABOUT THE STATION'S REGION, so moving
+// the region asks the question again. Without this the selector goes on offering
+// the relays of the place the station has LEFT — and tuning one of them points
+// the transmitter at a stream for somewhere else entirely.
+//
+// PINNED THROUGH A SEAM, because the real resolve is network work on a goroutine
+// and a mutant that simply stopped it SURVIVED: nothing could observe whether it
+// had happened.
+func TestAMovedStationReResolvesItsRelays(t *testing.T) {
+	lp := bedPipelines(t)
+	asked := make(chan struct{}, 4)
+	lp.bedRefresh = func(context.Context) { asked <- struct{}{} }
+	lp.ctx = t.Context()
+
+	lp.restationTo(stationArea{
+		transmitter: snapshot.LocationRef{Label: "Boise, ID", Lat: 43.62, Lon: -116.2},
+		radiusMi:    100})
+
+	select {
+	case <-asked:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the station moved and the bed never asked which relays reach it")
 	}
 }

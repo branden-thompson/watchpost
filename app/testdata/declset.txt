@@ -139,6 +139,7 @@ func (*livePipelines).producer
 func (*livePipelines).providers
 func (*livePipelines).reStation
 func (*livePipelines).readReport
+func (*livePipelines).rebed
 func (*livePipelines).refreshBedRelays
 func (*livePipelines).relayDwell
 func (*livePipelines).relayLang

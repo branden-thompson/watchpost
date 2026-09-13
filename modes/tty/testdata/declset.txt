@@ -104,6 +104,7 @@ const detailLabelW
 const detailPrefixW
 const detailRailGutter
 const emptyWrapAt
+const extRowDays
 const flashLeft
 const flashNone
 const flashRight
@@ -273,6 +274,7 @@ func (Broadcaster).lineupRows
 func (Broadcaster).lineupSelection
 func (Broadcaster).liveLine
 func (Broadcaster).liveOffset
+func (Broadcaster).locIndex
 func (Broadcaster).mainTrack
 func (Broadcaster).manifestRows
 func (Broadcaster).milesFromTower
@@ -293,7 +295,6 @@ func (Broadcaster).rowCount
 func (Broadcaster).scheduledSpan
 func (Broadcaster).scrollQueue
 func (Broadcaster).slotCard
-func (Broadcaster).snapshotFor
 func (Broadcaster).stationLine
 func (Broadcaster).stationSection
 func (Broadcaster).stationTone
@@ -599,6 +600,7 @@ func (cardLane).inner
 func (cardLane).render
 func (cardLane).shell
 func (endpointRow).counters
+func (locIndex).at
 func (radioBP).hasViz
 func (setupScope).shownOn
 func (setupState).alertRadiusChoice
@@ -885,6 +887,7 @@ type helpBlock
 type helpGroup
 type issue
 type layoutRows
+type locIndex
 type marineCell
 type memoStats
 type modal

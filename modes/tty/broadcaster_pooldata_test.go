@@ -35,12 +35,12 @@ func TestThePoolsWeatherIsObserversWeather(t *testing.T) {
 		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
 	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
 
-	rows := b.poolRows()
+	rows := b.poolRows(b.locIndex())
 	if len(rows) != 1 {
 		t.Fatalf("the pool drew %d rows for one candidate", len(rows))
 	}
 	got := rows[0]
-	want := weatherRow(loc, bcFireBoldMW)
+	want := weatherRow(loc, bcFireBoldMW, 0)
 
 	for _, tc := range []struct {
 		name      string
@@ -85,7 +85,7 @@ func TestThePoolKeepsItsOwnColumns(t *testing.T) {
 		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
 	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
 
-	got := b.poolRows()[0]
+	got := b.poolRows(b.locIndex())[0]
 	if got.Index != 1 || got.Population != 4000 {
 		t.Errorf("the pool lost its own columns: index %d, population %d", got.Index, got.Population)
 	}
@@ -94,7 +94,7 @@ func TestThePoolKeepsItsOwnColumns(t *testing.T) {
 	if got.StationKM == nil {
 		t.Fatal("the pool row has no distance")
 	}
-	if same := weatherRow(loc, bcFireBoldMW).StationKM; same != nil && *same == *got.StationKM {
+	if same := weatherRow(loc, bcFireBoldMW, 0).StationKM; same != nil && *same == *got.StationKM {
 		t.Error("the pool's DIST is the observing station's, not the transmitter's")
 	}
 }
@@ -148,7 +148,7 @@ func TestThePoolRowCarriesEveryMark(t *testing.T) {
 		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
 	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
 
-	row := b.poolRows()[0]
+	row := b.poolRows(b.locIndex())[0]
 	if row.AlertCount != 1 || !row.HasAlert || !row.WarnAlert {
 		t.Errorf("the alert marks are missing: has=%v count=%d warn=%v", row.HasAlert, row.AlertCount, row.WarnAlert)
 	}
@@ -160,7 +160,7 @@ func TestThePoolRowCarriesEveryMark(t *testing.T) {
 	}
 	// AND THEY ARE DRAWN, which is a different claim from being on the row: the
 	// marks block is thirteen cells the table can silently leave blank.
-	drawn := stripANSITest(strings.Split(b.opts().PoolTable(b.poolRows(), 143), "\n")[4])
+	drawn := stripANSITest(strings.Split(b.opts().PoolTable(b.poolRows(b.locIndex()), 143), "\n")[4])
 	g := b.opts().Glyphs()
 	for _, want := range []string{g.Seismic[row.Seismic-1], g.Fire, g.Alert} {
 		if !strings.Contains(drawn, want) {
@@ -201,7 +201,7 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
 	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
 
-	rows := b.lineupRows(b.mainTrack())
+	rows := b.lineupRows(b.mainTrack(), b.locIndex())
 	var got *render.LineupRow
 	for i := range rows { // bounded by the track (P10-02)
 		if rows[i].Zip == loc.Zip {
@@ -212,7 +212,7 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 	if got == nil {
 		t.Fatalf("no row joined to the pool entry; the card's subject is %q", c.Subject)
 	}
-	want := weatherRow(loc, bcFireBoldMW)
+	want := weatherRow(loc, bcFireBoldMW, 0)
 	if got.Conditions != want.Conditions || got.Now == nil || *got.Now != *want.Now {
 		t.Errorf("the row says %q/%v; the shared converter says %q/%v",
 			got.Conditions, got.Now, want.Conditions, want.Now)

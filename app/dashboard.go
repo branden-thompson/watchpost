@@ -224,7 +224,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// the deck, because it is the deck that holds the resolver; on its own
 	// goroutine, because it is network work and the dashboard must not wait for
 	// it to open.
-	go lp.refreshBedRelays(ctx)
+	go lp.rebed(ctx)
 	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send) // a read ends with the app (A-08)
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
@@ -649,6 +649,10 @@ type livePipelines struct {
 	// The selector walked the table and the operator could pick a callsign
 	// nothing streams — which then tuned to silence.
 	bedStations []stream.Station
+
+	// bedRefresh is how the relays are re-resolved, and it exists so a test can
+	// see that a moved station DOES re-resolve (D-117). Nil is the real one.
+	bedRefresh func(context.Context)
 
 	// bedRelay is the relay the operator CHOSE, in the words the row shows, and
 	// "" until they choose one (F-98, D-90).

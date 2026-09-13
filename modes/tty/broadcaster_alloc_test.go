@@ -164,12 +164,39 @@ const (
 	// fifteen more `weatherRow` conversions per frame — and one of those builds an
 	// `Extended` day slice the running order never draws.
 	//
-	// AND THE LEVER HERE IS A NAMED ONE. `snapshotFor` is a LINEAR SCAN, called
-	// once per pool row and now once per line-up row: forty scans over as many as
-	// seventy-five locations, every frame. Building the key map ONCE per frame
-	// makes both tables cheaper than either is today — it is the measured
-	// follow-up, and it waits with the rest of them until the layout stops moving.
-	bcFrameAllocs = 2215
+	// 9760: D-120 — THE FIXTURE CHANGED, AND THAT IS THE WHOLE JUMP. Every number
+	// above measured a console with NO POOL AND NO SNAPSHOT: `locIndex` was nil,
+	// not one row ever joined its weather, and the pool table drew nothing. The
+	// budget guarded the cheap path while the expensive one — two tables joining
+	// forty rows — was never in it at all. HUM LEAD, 2026-09-13, shown that:
+	// re-base it. MEASURED at 9296 on a loaded console, pinned at x1.05.
+	//
+	// THE NUMBER WENT UP BECAUSE THE MEASUREMENT GOT HONEST, not because anything
+	// got slower. `TestTheLoadedFixtureActuallyJoins` asserts the fixture really
+	// does join, so this cannot quietly go back to measuring nothing.
+	//
+	// AND THE NAMED LEVER WAS PULLED, AND ONLY HALF OF IT PAID. Both halves were
+	// measured on this fixture, A/B, one at a time:
+	//
+	//	the map instead of the scan     9296 -> 9296 allocs, 503us -> 519us
+	//	skipping the unread day cells   9647 -> 9296 allocs
+	//
+	// THE MAP IS NOT A WIN AT TODAY'S CAP, and saying so is the point: it was
+	// predicted to make "both tables cheaper than either is today" and it does
+	// not. At the pool's twenty-five the scan is a few hundred short string
+	// compares against half a millisecond of rendering, and the two timings
+	// overlap. It is KEPT because it is O(1) per row where the scan is O(n·m) and
+	// the cap is the only thing holding m down — a shape choice, not a saving, and
+	// recorded as one so nobody re-derives the same wrong guess.
+	//
+	// THE DAY CELLS WERE THE REAL ONE: 351 allocations a frame, building five
+	// `DayCell`s per row for two tables that draw neither.
+	//
+	// STILL NOT PULLED: Observer memoises its table body and the console memoises
+	// neither of its two, so this rebuilds on every frame including ticks that
+	// changed nothing. That is the remaining lever, and a bigger one than either
+	// of these.
+	bcFrameAllocs = 9760
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {
@@ -197,10 +224,17 @@ func TestConsoleFrameAllocBudget(t *testing.T) {
 	if raceEnabled {
 		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
 	}
-	b := bcWith(t, card(t, "a", "OCEANSIDE"), card(t, "b", "BONSALL"))
+	// A LOADED CONSOLE, WHICH IS THE PATH THAT COSTS (D-120).
+	//
+	// THIS MEASURED A CONSOLE WITH NO POOL AND NO SNAPSHOT — so no row ever joined
+	// its weather, no pool table drew a location, and the number guarded the cheap
+	// path. HUM LEAD, 2026-09-13, on being shown that: re-base it. The figure goes
+	// UP because the measurement got honest, not because anything got slower.
+	b := loadedConsole(t, loadedPoolSize)
 	_ = b.View().Content
 	got := testing.AllocsPerRun(50, func() { _ = b.View().Content })
-	t.Logf("console frame 150x74, two cards: %.0f allocs (budget %d)", got, bcFrameAllocs)
+	t.Logf("console frame 150x74, %d-location pool: %.0f allocs (budget %d)",
+		loadedPoolSize, got, bcFrameAllocs)
 	if got > bcFrameAllocs {
 		t.Errorf("the console frame allocates %.0f per View(), budget %d — re-pin DELIBERATELY "+
 			"with the reason in the commit, or this is a regression", got, bcFrameAllocs)

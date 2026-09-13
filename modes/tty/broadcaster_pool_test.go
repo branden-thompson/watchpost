@@ -60,7 +60,7 @@ func TestAPoolRowWithNoDataYetShimmers(t *testing.T) {
 	if b.pool != nil {
 		t.Fatalf("the fixture has already been given a snapshot; this measures nothing")
 	}
-	for _, r := range b.poolRows() {
+	for _, r := range b.poolRows(b.locIndex()) {
 		if !r.Loading {
 			t.Errorf("%q draws as settled with no snapshot behind it", r.Name)
 		}
@@ -85,7 +85,7 @@ func TestAPoolRowTakesItsWeatherFromTheRecentSnapshot(t *testing.T) {
 	b, _ = b.Update(RecentSnapshotMsg{Snap: snap})
 
 	var found bool
-	for _, r := range b.poolRows() {
+	for _, r := range b.poolRows(b.locIndex()) {
 		if r.Name != "Fallbrook, CA" {
 			continue
 		}

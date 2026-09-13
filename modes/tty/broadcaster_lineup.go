@@ -24,14 +24,14 @@ import (
 // takeover box lists `07.` through `10.` with nothing beside them. A slot is an
 // ADDRESS the operator can put something in, so it is shown whether or not the
 // Director has filled it yet.
-func (b Broadcaster) lineupRows(cards []lineup.Card) []render.LineupRow {
+func (b Broadcaster) lineupRows(cards []lineup.Card, idx locIndex) []render.LineupRow {
 	out := make([]render.LineupRow, 0, MainTrackSlots)
 	for i := bcScheduledFrom; i < MainTrackSlots; i++ { // bounded by the track (P10-02)
 		row := render.LineupRow{Slot: i, Num: fmt.Sprintf("%02d.", i)}
 		row.Marks.Selected = i-bcScheduledFrom == b.lineupSelection()
 		c, decided := b.slotCard(cards, i)
 		if decided {
-			row = b.lineupRowOf(row, c)
+			row = b.lineupRowOf(row, c, idx)
 		}
 		out = append(out, row)
 	}
@@ -39,7 +39,7 @@ func (b Broadcaster) lineupRows(cards []lineup.Card) []render.LineupRow {
 }
 
 // lineupRowOf fills one row from the card in that slot.
-func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card) render.LineupRow {
+func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card, idx locIndex) render.LineupRow {
 	row.ReportType = reportTypeOf(c)
 	row.Location = plaintext.Text(c.Headline)
 	row.Priority = priorityOf(c)
@@ -67,8 +67,11 @@ func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card) render.Lin
 		//
 		// HUM LEAD, 2026-09-13, choosing this over wiring the correspondents:
 		// "Useful information and doesn't require the correspondents wiring work."
-		if loc := b.snapshotFor(ref); loc != nil {
-			w := weatherRow(loc, bcFireBoldMW)
+		if loc := idx.at(ref); loc != nil {
+			// NO EXTENDED DAYS: this table draws CONDITIONS and NOW, and the day
+			// cells `weatherRow` would build are five allocations a row that
+			// nothing on this console reads (D-120).
+			w := weatherRow(loc, bcFireBoldMW, 0)
 			row.Conditions, row.Now, row.Trend, row.Loading = w.Conditions, w.Now, w.Trend, w.Loading
 			// AND THE PREFIX MARKS ARE THE PLACE'S (HUM LEAD: "Relevant Prefix
 			// Alerts"). A report about a town with a warning, a fire and a quake
@@ -187,12 +190,12 @@ const bcScheduledFrom = 2
 // the terminal: emitting every row and letting `clamp` cut the bottom loses the
 // frame's own closing inset and runs rows past the edge, which FR-7.3 calls a
 // defect rather than a degradation.
-func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int) scrollSpan {
+func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int, idx locIndex) scrollSpan {
 	w := b.tableWidth()
 	if w <= 0 {
 		return scrollSpan{}
 	}
-	slots := b.lineupRows(cards)
+	slots := b.lineupRows(cards, idx)
 	// THE CONTROLS SIT ABOVE THE HEADING, WHERE OBSERVER PUTS THEM (D-102, HUM
 	// LEAD 2026-09-12): "control hints missing at the top of the table which
 	// should be right above 'SCHEDULED LINE UP' (just like in Observer)".

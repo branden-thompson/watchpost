@@ -27,7 +27,7 @@ import (
 // A row with no observation draws its temperatures as LOADING rather than as
 // "n/a", which is the same answer Observer gives while its own data is in flight
 // (UAT 18.2) — and the honest one, because the data is coming.
-func (b Broadcaster) poolRows() []render.LocationRow {
+func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 	pool := b.area.Pool
 	out := make([]render.LocationRow, 0, len(pool))
 	for i, ref := range pool { // bounded by locations.PoolCap (P10-02)
@@ -36,8 +36,8 @@ func (b Broadcaster) poolRows() []render.LocationRow {
 		// trend arrow and the fire and seismic marks simply never reached the
 		// table. `weatherRow` is what Observer's own rows go through.
 		row := render.LocationRow{Name: ref.Label, Zip: ref.Zip, Loading: true}
-		if loc := b.snapshotFor(ref); loc != nil {
-			row = weatherRow(loc, bcFireBoldMW)
+		if loc := idx.at(ref); loc != nil {
+			row = weatherRow(loc, bcFireBoldMW, 0)
 		}
 		// AND WHAT THE POOL KNOWS THAT THE SNAPSHOT DOES NOT: which row this is,
 		// how many people the place serves, and whether the pointer is on it.
@@ -57,22 +57,44 @@ func (b Broadcaster) poolRows() []render.LocationRow {
 	return out
 }
 
-// snapshotFor is what the app has fetched for a pool location, or nil.
+// locIndex is the published weather BY KEY, built once per frame (D-120).
+//
+// IT WAS A LINEAR SCAN, ASKED ONCE PER ROW. `snapshotFor` walked the whole
+// snapshot for every pool row and — since D-116 — for every line-up row too:
+// forty lookups over the snapshot, on every frame, including ticks that changed
+// nothing.
+//
+// AND THE SAVING IS SMALLER THAN IT LOOKS, which is worth writing down next to
+// the change rather than leaving for the next person to re-derive. At the pool's
+// cap of twenty-five the scan is a few hundred short string compares against
+// half a millisecond of rendering; the map costs an allocation and twenty-five
+// hashes to build. MEASURED, both ways, on the loaded fixture below — see the
+// budget's own note. It is kept because it is O(1) per row where the scan is
+// O(n), and the pool's cap is the only thing keeping n small.
 //
 // BY KEY, NOT BY NAME: `snapshot.Key` is the identity the whole app matches on,
 // and two centroids of one place are two locations.
-func (b Broadcaster) snapshotFor(ref snapshot.LocationRef) *snapshot.Location {
+type locIndex map[snapshot.LocationKey]*snapshot.Location
+
+// locIndex builds it from the recent snapshot.
+func (b Broadcaster) locIndex() locIndex {
 	if b.pool == nil {
 		return nil
 	}
-	want := snapshot.Key(ref)
+	out := make(locIndex, len(b.pool.Locations))
 	for i := range b.pool.Locations { // bounded by the snapshot (P10-02)
 		l := &b.pool.Locations[i]
-		if snapshot.Key(snapshot.LocationRef{Lat: l.Lat, Lon: l.Lon}) == want {
-			return l
-		}
+		out[snapshot.Key(snapshot.LocationRef{Lat: l.Lat, Lon: l.Lon})] = l
 	}
-	return nil
+	return out
+}
+
+// at is what the app has fetched for a location, or nil.
+func (x locIndex) at(ref snapshot.LocationRef) *snapshot.Location {
+	if x == nil {
+		return nil
+	}
+	return x[snapshot.Key(ref)]
 }
 
 // `fillPoolWeather` RETIRED AT D-112. It was the second converter from a
@@ -127,7 +149,7 @@ const (
 //
 // `head` IS FIXED AND `data` IS THE WINDOW, which is Observer's own division: the
 // band and the column titles are chrome, and the rows are the list.
-func (b Broadcaster) poolSpan(used int) scrollSpan {
+func (b Broadcaster) poolSpan(used int, idx locIndex) scrollSpan {
 	w := b.tableWidth()
 	// THE CLOSING INSET ONLY (D-107). `used` is the rows already drawn, and those
 	// INCLUDE the opening inset — subtracting both left the pool two rows short of
@@ -136,7 +158,7 @@ func (b Broadcaster) poolSpan(used int) scrollSpan {
 	if w <= 0 || room < 6 {
 		return scrollSpan{} // no room to say anything useful (FR-7.3)
 	}
-	rows := b.poolRows()
+	rows := b.poolRows(idx)
 	// NO CAPTION OF ITS OWN: the table's GROUP BAND already reads "L O C A T I O N
 	// P O O L", and a centred heading above it said the same thing twice. The
 	// scheduled table needs one because its groups name the three QUESTIONS a row

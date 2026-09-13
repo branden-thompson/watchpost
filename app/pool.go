@@ -16,6 +16,7 @@ package app
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"context"
 
 	"github.com/branden-thompson/watchpost/domains/locations"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -91,6 +92,23 @@ func (lp *livePipelines) dropCard(id string) {
 		return
 	}
 	lp.director.mc.DropCard(id)
+}
+
+// rebed re-resolves the station's relays, through a seam a test can hold.
+//
+// A SEAM BECAUSE THE REAL ONE IS NETWORK WORK AND A GOROUTINE. A mutant that
+// stopped the re-resolve on a move SURVIVED — nothing could observe whether it
+// happened — and "a moved station goes on offering the relays of the region it
+// left" is exactly the rule that must not be unpinned. `rp.newFor` is the same
+// shape for the same reason.
+func (lp *livePipelines) rebed(ctx context.Context) {
+	lp.mu.Lock()
+	f := lp.bedRefresh
+	lp.mu.Unlock()
+	if f == nil {
+		f = lp.refreshBedRelays
+	}
+	f(ctx)
 }
 
 // transmitterOf is the station's OWN transmitter, or nil when it is borrowing
@@ -177,7 +195,7 @@ func (lp *livePipelines) restationTo(s stationArea) {
 	// ON ITS OWN GOROUTINE, because this is network work and the caller is a
 	// settings save the operator is waiting on.
 	if ctx != nil {
-		go lp.refreshBedRelays(ctx)
+		go lp.rebed(ctx)
 	}
 }
 

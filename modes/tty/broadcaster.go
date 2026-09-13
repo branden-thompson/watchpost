@@ -599,8 +599,11 @@ func (b Broadcaster) lanes() []string {
 	// not actually move, so the control was claiming a scroll that never happens
 	// and the pool's headers were inside the window it drew. ▲ on the pool's
 	// column titles, ▼ on its "Showing" line — Observer's own shape.
-	sched := b.scheduledSpan(b.mainTrack(), len(out))
-	pool := b.poolSpan(len(out) + len(sched.lines))
+	// THE WEATHER IS INDEXED ONCE FOR THE WHOLE FRAME (D-120). Both tables join
+	// against it — forty lookups that were forty linear scans.
+	idx := b.locIndex()
+	sched := b.scheduledSpan(b.mainTrack(), len(out), idx)
+	pool := b.poolSpan(len(out)+len(sched.lines), idx)
 	// THE FIRST REGION THAT SCROLLS OWNS THE CONTROL, and each region is asked
 	// rather than assumed. Reading only the pool's answer made the running
 	// order's `from` a field nothing consulted — so a region could claim a scroll
