@@ -13,6 +13,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -157,5 +158,44 @@ func TestASaveWithNoChoiceLeavesTheStationBorrowing(t *testing.T) {
 	}
 	if wrote {
 		t.Error("a save with no choice wrote a transmitter and ended the fallback")
+	}
+}
+
+// A BORROWED EPICENTRE SAYS SO, ON THE VALUE (D-115, HUM LEAD 2026-09-13).
+//
+// "Borrowing Observer's location when user hasn't set the Broadcaster Location is
+// fine - as long as we inform the user in some way."
+//
+// SO THE HINT IS ONE SENTENCE FOR BOTH STATES and the fact moves to the VALUE,
+// which is the thing it is about: this place is not a choice the operator made,
+// and it WILL move under them the next time they change their watchlist. A
+// borrowed epicentre shown as a plain answer is the setting lying about its own
+// provenance.
+func TestABorrowedEpicentreSaysSo(t *testing.T) {
+	o := render.Opts{ASCII: true}
+
+	borrowing := stationSetup(t, rowTransmitter)
+	borrowing.cfg.Transmitter = nil
+	got := stripANSITest(strings.Join(borrowing.setupTransmitterLines(o, " "), "\n"))
+	if !strings.Contains(got, "following your default location") {
+		t.Errorf("a borrowed epicentre is shown as a choice the operator made:\n%s", got)
+	}
+
+	own := stationSetup(t, rowTransmitter)
+	own.cfg.Transmitter = &snapshot.LocationRef{Label: "Bonsall, CA", Zip: "92003", Lat: 33.28, Lon: -117.23}
+	got = stripANSITest(strings.Join(own.setupTransmitterLines(o, " "), "\n"))
+	if strings.Contains(got, "following your default location") {
+		t.Errorf("a station with its own transmitter is told it is borrowing:\n%s", got)
+	}
+	if !strings.Contains(got, "Bonsall, CA") {
+		t.Errorf("the station's own transmitter is not shown:\n%s", got)
+	}
+
+	// AND THE HINT IS THE SAME SENTENCE EITHER WAY, which is what was asked for.
+	for _, d := range []Dashboard{borrowing, own} {
+		if !strings.Contains(stripANSITest(strings.Join(d.setupTransmitterLines(o, " "), "\n")),
+			"Broadcasting location - Enter City, ST or Zip") {
+			t.Error("the row's hint is not the HUM LEAD's wording")
+		}
 	}
 }

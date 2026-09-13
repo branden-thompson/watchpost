@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -165,5 +166,69 @@ func TestThePoolRowCarriesEveryMark(t *testing.T) {
 		if !strings.Contains(drawn, want) {
 			t.Errorf("the row does not draw %q:\n%q", want, drawn)
 		}
+	}
+}
+
+// THE RUNNING ORDER SHOWS THE WEATHER WHERE EACH BEAT IS (D-116).
+//
+// HUM LEAD, 2026-09-13, choosing this over wiring the correspondents: "I think
+// we change P R E S E N T A T I O N / CORRESPONDENT to C U R R E N T L Y /
+// CONDITIONS NOW … Useful information and doesn't require the correspondents
+// wiring work."
+//
+// THE JOIN IS FREE, and that is why it is the right trade: `producer()` may only
+// offer locations from the station's POOL, so every card on this track is about a
+// place the pool already holds — and the pool's weather is already fetched. No
+// new call, no new cadence.
+func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
+	loc := poolLoc()
+	frp := 80.0
+	loc.Alerts = []snapshot.Alert{{ID: "a1", Event: "Severe Thunderstorm Warning", Severity: "Severe"}}
+	loc.Fire.Hotspots = []snapshot.Hotspot{{FRPMW: &frp}}
+	loc.Seismic = &snapshot.SeismicState{Quakes: []snapshot.Quake{{Mag: 4.5}}}
+	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon}
+
+	// A CARD ABOUT THAT PLACE. `Card.Subject` IS the location key (topoff.go), so
+	// this is the identity the join matches on.
+	// THE TABLE STARTS AT SLOT 2 (`bcScheduledFrom`): slot 0 is LIVE and slot 1 is
+	// the UP NEXT card, so the beat under test needs two ahead of it to be DRAWN
+	// at all. Without them this passed on an empty table for the wrong reason.
+	c := card(t, "c", string(snapshot.Key(ref)))
+	b := bcWith(t, card(t, "a", "live"), card(t, "b", "upnext"), c)
+	b.width, b.height, b.ascii = 150, 74, true
+	b, _ = b.Update(StationAreaMsg{
+		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
+		RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
+	b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
+
+	rows := b.lineupRows(b.mainTrack())
+	var got *render.LineupRow
+	for i := range rows { // bounded by the track (P10-02)
+		if rows[i].Zip == loc.Zip {
+			got = &rows[i]
+			break
+		}
+	}
+	if got == nil {
+		t.Fatalf("no row joined to the pool entry; the card's subject is %q", c.Subject)
+	}
+	want := weatherRow(loc, bcFireBoldMW)
+	if got.Conditions != want.Conditions || got.Now == nil || *got.Now != *want.Now {
+		t.Errorf("the row says %q/%v; the shared converter says %q/%v",
+			got.Conditions, got.Now, want.Conditions, want.Now)
+	}
+	// AND THE PREFIX MARKS ARE THE PLACE'S (HUM LEAD: "Relevant Prefix Alerts").
+	if got.Marks.AlertCount != want.AlertCount || got.Marks.Fire != want.Fire || got.Marks.Seismic != want.Seismic {
+		t.Errorf("the row's marks are alerts=%d fire=%d seismic=%d; the place has %d/%d/%d",
+			got.Marks.AlertCount, got.Marks.Fire, got.Marks.Seismic,
+			want.AlertCount, want.Fire, want.Seismic)
+	}
+	// AND THE CORRESPONDENT COLUMN IS GONE, with the `N/A` it always read.
+	drawn := stripANSITest(b.opts().LineupTable(rows, 143))
+	if strings.Contains(drawn, "CORRESPONDENT") || strings.Contains(drawn, "N/A") {
+		t.Errorf("the running order still carries the correspondent column:\n%s", drawn)
+	}
+	if !strings.Contains(drawn, "C U R R E N T L Y") {
+		t.Errorf("the running order does not name what replaced it:\n%s", drawn)
 	}
 }

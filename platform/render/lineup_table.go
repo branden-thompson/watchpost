@@ -47,9 +47,22 @@ type LineupRow struct {
 	Priority    string
 	RequestedBy string
 
-	// Correspondent is who reads this beat.  The per-card presenter wins over the
-	// role cast (2026-09-12: "In Broadcaster it's beats").
-	Correspondent string
+	// Conditions, Now and Trend are the WEATHER where this beat is about (D-116).
+	//
+	// THEY REPLACED THE CORRESPONDENT (HUM LEAD, 2026-09-13): "I think we change
+	// P R E S E N T A T I O N / CORRESPONDENT to C U R R E N T L Y / CONDITIONS
+	// NOW … Useful information and doesn't require the correspondents wiring
+	// work." The column read `N/A` on every row because nothing calls
+	// `Card.WithReadBy` and main-track segments carry no cast role — so it was
+	// twenty-eight cells of a table saying nothing, where the operator deciding
+	// what to put on the air wanted to know what the weather is doing there.
+	Conditions string
+	Now        *float64
+	Trend      string
+	// Loading shimmers the temperature until this location's data lands, exactly
+	// as the location table does (UAT 18.2) — an honest "still coming" rather
+	// than an "n/a" that reads as "nothing to report".
+	Loading bool
 
 	Marks Marks
 }
@@ -73,7 +86,12 @@ func lineupColumns() []baseCol {
 		{"dist", "DIST", 6, 1},
 		{"prio", "PRIORITY", 10, 2},
 		{"req", "REQUESTED BY", 17, 2},
-		{"corr", "CORRESPONDENT", 28, 3},
+		// CURRENTLY (D-116). The location table's own two columns, at the location
+		// table's own widths, because they show the same two facts — and a
+		// CONDITIONS that was twelve cells there and ten here would put one
+		// vocabulary in two shapes.
+		{"cond", "CONDITIONS", 12, 3},
+		{"now", "NOW", 8, 3},
 	}
 }
 
@@ -82,7 +100,7 @@ func lineupGroups() []groupSpec {
 	return []groupSpec{
 		{"R E A D   O U T S", "R E A D   O U T S", GroupLocationBG, []string{"marks", "num", "type", "loc", "zip", "dist"}},
 		{"D I R E C T I O N", "D I R E C T I O N", GroupTodayBG, []string{"prio", "req"}},
-		{"P R E S E N T A T I O N", "P R E S E N T A T I O N", GroupTomorrowBG, []string{"corr"}},
+		{"C U R R E N T L Y", "C U R R E N T L Y", GroupTomorrowBG, []string{"cond", "now"}},
 	}
 }
 
@@ -175,7 +193,12 @@ func (o Opts) lineupRowData(r LineupRow) []string {
 		o.StationDistance(kmOf(r.DistMi)),
 		r.Priority,
 		r.RequestedBy,
-		r.Correspondent,
+		// THE LOCATION TABLE'S OWN FORMATTERS (D-116), so a place's conditions
+		// read the same on the running order as they do in the pool below it:
+		// `DisplayCondition` is the one vocabulary ("P.CLOUDY") and `temp5Or` is
+		// the one that shimmers while the data is still coming.
+		DisplayCondition(r.Conditions),
+		o.temp5Or(r.Now, r.Loading) + o.TrendGlyph(r.Trend),
 	}
 }
 

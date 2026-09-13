@@ -14,12 +14,16 @@ import (
 
 func lineupFixture() []LineupRow {
 	mi := func(v float64) *float64 { return &v }
+	// CONDITIONS AND NOW SINCE D-116, where the correspondent was: the column read
+	// `N/A` on every row and the HUM LEAD spent it on the weather instead.
 	return []LineupRow{
 		{Slot: 2, Num: "02.", ReportType: "Location Report", Location: "Fallbrook, CA", Zip: "92028",
-			DistMi: mi(5), Priority: "Standard", RequestedBy: "Producer", Correspondent: "System Voice",
+			DistMi: mi(5), Priority: "Standard", RequestedBy: "Producer",
+			Conditions: "CLEAR", Now: mi(20), // °C, as the snapshot stores it: 68°F
 			Marks: Marks{Selected: true}},
 		{Slot: 3, Num: "03.", ReportType: "Location Report", Location: "Carlsbad, CA", Zip: "92008",
-			DistMi: mi(10), Priority: "Priority", RequestedBy: "Station Operator", Correspondent: "Samantha",
+			DistMi: mi(10), Priority: "Priority", RequestedBy: "Station Operator",
+			Conditions: "THUNDERSTORM", Now: mi(31), // 88°F
 			Marks: Marks{Playing: true, HasAlert: true, WarnAlert: true, AlertCount: 8}},
 	}
 }
@@ -52,9 +56,13 @@ func TestTheLineupTableDrawsItsColumnsAndGroups(t *testing.T) {
 	got := o.LineupTable(lineupFixture(), 150)
 
 	for _, want := range []string{
-		"R E A D   O U T S", "D I R E C T I O N", "P R E S E N T A T I O N",
-		"REPORT TYPE", "LOCATION", "ZIP", "DIST", "PRIORITY", "REQUESTED BY", "CORRESPONDENT",
-		"02.", "Fallbrook, CA", "92028", "Station Operator", "Samantha",
+		"R E A D   O U T S", "D I R E C T I O N", "C U R R E N T L Y",
+		"REPORT TYPE", "LOCATION", "ZIP", "DIST", "PRIORITY", "REQUESTED BY", "CONDITIONS", "NOW",
+		"02.", "Fallbrook, CA", "92028", "Station Operator",
+		// AND THE WEATHER WHERE THE BEAT IS (D-116), in the location table's own
+		// vocabulary: "THUNDERSTORM" through `DisplayCondition`, the temperature
+		// through `temp5`.
+		"THUNDERSTORM", "88",
 	} {
 		if !strings.Contains(StripSGRForTest(got), want) {
 			t.Errorf("the line-up table is missing %q:\n%s", want, StripSGRForTest(got))

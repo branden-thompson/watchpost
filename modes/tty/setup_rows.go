@@ -430,6 +430,14 @@ func setupMark(o render.Opts, focused bool) string { return o.ListMark(focused) 
 
 func settingLabel(text string, focused bool) string { return render.ListLabel(text, focused) }
 
+// settingSupport is the grey a note beside a VALUE reads in.
+//
+// QUESTIONS READ WHITE, SUPPORT GREY (UAT 111.5), and this is the one note that
+// does not get its own support LINE: "(following your default location)" is
+// about the value it follows, so it sits on the value's row and takes the
+// support tone to say it is an explanation rather than part of the answer.
+func settingSupport(text string) string { return render.Tint(text, render.Tok(render.TableMuted)) }
+
 // checkMark is a checkbox: [✔] ticked, [ ] not.
 //
 // A TICK, not an ✘ or an x. These boxes say "this class IS muted" and "this

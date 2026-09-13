@@ -152,7 +152,24 @@ const (
 	// 2026-09-12: "we'll do the perf optimizations once everything is built and
 	// wired"). Observer memoises its table body; the console memoises neither of
 	// its two.
-	bcFrameAllocs = 1990
+	//
+	// 2215: D-116 — the running order joins the location's weather onto every
+	// row. MEASURED at 2109 and pinned at x1.05, the same rule as every other
+	// number here.
+	//
+	// THE JOIN COSTS NO FETCH AND NO CADENCE, which is why it was chosen over
+	// wiring the correspondents: `producer()` may only offer locations from the
+	// station's pool, so every card on this track is about a place the pool
+	// already holds and whose weather is already on the machine. What it costs is
+	// fifteen more `weatherRow` conversions per frame — and one of those builds an
+	// `Extended` day slice the running order never draws.
+	//
+	// AND THE LEVER HERE IS A NAMED ONE. `snapshotFor` is a LINEAR SCAN, called
+	// once per pool row and now once per line-up row: forty scans over as many as
+	// seventy-five locations, every frame. Building the key map ONCE per frame
+	// makes both tables cheaper than either is today — it is the measured
+	// follow-up, and it waits with the rest of them until the layout stops moving.
+	bcFrameAllocs = 2215
 )
 
 func TestRouterCostsObserverAlmostNothingPerFrame(t *testing.T) {

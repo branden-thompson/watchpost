@@ -215,29 +215,29 @@ func (d Dashboard) firmsHealth(o render.Opts) string {
 func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
 	st := d.setup
 	head := "  " + mark + settingLabel("Transmitter (epicenter): ", st.focus == rowTransmitter)
-	borrowed := false
+	// THE BORROWING IS SAID ON THE VALUE, NOT IN THE HINT (HUM LEAD, 2026-09-13).
+	// The hint is now one sentence for both states — "Broadcasting location -
+	// Enter City, ST or Zip" — and the ruling that came with it was "borrowing
+	// Observer's location when user hasn't set the Broadcaster Location is fine -
+	// as long as we inform the user in some way". So the fact moves to where the
+	// VALUE is, which is the thing it is about: this place is not a choice the
+	// operator made, and it WILL move when they change their watchlist.
 	switch cur := d.currentTransmitter(); {
 	case st.txRef != nil:
 		head += render.Plain(st.txRef.Label) + " (" + st.txRef.Zip + ")"
 	case cur != nil:
 		head += render.Plain(cur.Label) + " (" + cur.Zip + ")"
-		borrowed = d.cfg.Transmitter == nil
+		if d.cfg.Transmitter == nil {
+			head += "  " + settingSupport("(following your default location)")
+		}
 	default:
 		head += "(not set)"
-		borrowed = true
 	}
 	// ITS OWN WORDING, NOT THE LISTENER ROW'S. The two questions take the same
 	// kind of answer, and a shared hint made the only difference between them a
 	// capital L in the label above — which a test was already relying on and
 	// warning about ("the case is the only thing telling the two apart").
-	hint := "the station's own City, ST or Zip"
-	if borrowed {
-		// THE STATION IS FOLLOWING THE LISTENER, and saying so is the difference
-		// between a setting the operator chose and one that will MOVE under them
-		// the next time they change their watchlist.
-		hint = "following your default location " + o.Glyphs().Dash + " set the station's own: City, ST or Zip"
-	}
-	lines := []string{head, supportIndent + hint}
+	lines := []string{head, supportIndent + "Broadcasting location - Enter City, ST or Zip"}
 	if st.focus == rowTransmitter {
 		lines = append(lines, supportIndent+"Search: "+st.query+o.Glyphs().Cursor)
 		for i, h := range st.hints { // bounded by the suggestion list (P10-02)
