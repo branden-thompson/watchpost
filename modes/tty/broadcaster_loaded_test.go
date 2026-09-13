@@ -162,3 +162,47 @@ func TestObserverKeepsItsExtendedDays(t *testing.T) {
 		t.Errorf("the console's row built %d extended days it never draws", len(got.Extended))
 	}
 }
+
+// THE LINE-UP'S ROWS BUILD NO DAY CELLS EITHER — AND ONLY A MEASUREMENT CAN SAY
+// SO (D-120).
+//
+// `render.LineupRow` HAS NO `Extended` FIELD. The console's running order draws
+// CONDITIONS and NOW, so day cells built for it are DISCARDED — the work costs
+// allocations and changes no output, which means no assertion about what the
+// table SAYS can ever catch it. A mutant that put them back survived a rule
+// asserted on the pool's rows and survived the frame budget too: 351 allocations
+// against 464 of five-percent headroom.
+//
+// SO THE ROWS ARE MEASURED ON THEIR OWN, where 351 is most of the number rather
+// than four percent of it. The budget stays a ratchet for DRIFT; this is the
+// rule.
+func TestTheLineupRowsBuildNoDayCells(t *testing.T) {
+	if raceEnabled {
+		t.Skip("allocation counts are measured without the race detector (make alloc-budget)")
+	}
+	b := loadedConsole(t, loadedPoolSize)
+	idx := b.locIndex()
+	cards := b.mainTrack()
+	// THE PREMISE: the fixture joins, and carries days beyond tomorrow. Without
+	// both, this measures a path that builds nothing and would pass on anything.
+	if loadedJoins(b) == 0 || len(idx.at(b.area.Pool[0]).Daily) < 3 {
+		t.Fatal("the fixture does not exercise the join, so this measures nothing")
+	}
+	_ = b.lineupRows(cards, idx)
+
+	got := testing.AllocsPerRun(50, func() { _ = b.lineupRows(cards, idx) })
+	t.Logf("lineupRows over %d slots: %.0f allocs (budget %d)", MainTrackSlots, got, bcLineupRowAllocs)
+	if got > bcLineupRowAllocs {
+		t.Errorf("building the running order's rows allocates %.0f, budget %d — the day cells "+
+			"nothing draws are %d of them; re-pin DELIBERATELY with the reason",
+			got, bcLineupRowAllocs, 351)
+	}
+}
+
+// bcLineupRowAllocs is what building the running order's rows costs.
+//
+// MEASURED AT 260 AND PINNED AT x1.05. Tight on purpose: the thing it guards is
+// 351 allocations — more than the whole of this number — so a five-percent band
+// around the frame's nine thousand could never see it, and one around this can
+// see it several times over.
+const bcLineupRowAllocs = 273
