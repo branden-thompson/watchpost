@@ -71,7 +71,7 @@ func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card, idx locInd
 			// NO EXTENDED DAYS: this table draws CONDITIONS and NOW, and the day
 			// cells `weatherRow` would build are five allocations a row that
 			// nothing on this console reads (D-120).
-			w := weatherRow(loc, bcFireBoldMW, 0)
+			w := weatherRow(loc, b.fireBold(), 0)
 			row.Conditions, row.Now, row.Trend, row.Loading = w.Conditions, w.Now, w.Trend, w.Loading
 			// AND THE PREFIX MARKS ARE THE PLACE'S (HUM LEAD: "Relevant Prefix
 			// Alerts"). A report about a town with a warning, a fire and a quake

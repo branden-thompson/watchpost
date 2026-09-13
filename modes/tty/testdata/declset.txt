@@ -52,7 +52,6 @@ const bcAlertChrome
 const bcCardInset
 const bcColumnGap
 const bcDetailRoom
-const bcFireBoldMW
 const bcFlatCardRows
 const bcGainCells
 const bcInsetRows
@@ -105,6 +104,7 @@ const detailPrefixW
 const detailRailGutter
 const emptyWrapAt
 const extRowDays
+const fireBoldDefaultMW
 const flashLeft
 const flashNone
 const flashRight
@@ -262,6 +262,7 @@ func (Broadcaster).consoleControls
 func (Broadcaster).controlRow
 func (Broadcaster).detailBody
 func (Broadcaster).emptyAlertBox
+func (Broadcaster).fireBold
 func (Broadcaster).frameWidth
 func (Broadcaster).framed
 func (Broadcaster).header

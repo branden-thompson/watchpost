@@ -288,10 +288,18 @@ func plural(n int) string {
 	return "s"
 }
 
+// fireBoldDefaultMW is the emphasis threshold when the operator has set none.
+//
+// ONE OWNER, TWO READERS — this Dashboard and the console (Broadcaster.fireBold).
+// Written out twice it was written out WRONG once: the console had it as a
+// constant of its own and could not see the override at all, so one location
+// read bold on the watchlist and plain on the console.
+const fireBoldDefaultMW = 50
+
 // fireBoldMW is the emphasis threshold for the FIRE rows (Config, default 50).
 func (d Dashboard) fireBoldMW() float64 {
 	if d.cfg.FireBoldMW > 0 {
 		return d.cfg.FireBoldMW
 	}
-	return 50
+	return fireBoldDefaultMW
 }

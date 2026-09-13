@@ -37,7 +37,7 @@ func (b Broadcaster) poolRows(idx locIndex) []render.LocationRow {
 		// table. `weatherRow` is what Observer's own rows go through.
 		row := render.LocationRow{Name: ref.Label, Zip: ref.Zip, Loading: true}
 		if loc := idx.at(ref); loc != nil {
-			row = weatherRow(loc, bcFireBoldMW, 0)
+			row = weatherRow(loc, b.fireBold(), 0)
 		}
 		// AND WHAT THE POOL KNOWS THAT THE SNAPSHOT DOES NOT: which row this is,
 		// how many people the place serves, and whether the pointer is on it.
@@ -101,14 +101,25 @@ func (x locIndex) at(ref snapshot.LocationRef) *snapshot.Location {
 // snapshot to a table row, and it had drifted from the first the day it was
 // written: `weatherRow` is now the only one, and both surfaces go through it.
 
-// bcFireBoldMW is the console's threshold for a hotspot that reads emphasized.
+// fireBold is the console's threshold for a hotspot that reads emphasized.
 //
-// THE SAME DEFAULT OBSERVER USES (`fireBoldMW`), stated once here because the
-// console has no Config of its own to read the operator's override from — and a
-// pool row and a watchlist row for one place must not disagree about whether a
-// fire is burning hard. When the console gains that setting this becomes a
-// reader of it rather than a constant.
-const bcFireBoldMW = 50
+// IT WAS A CONSTANT (`bcFireBoldMW = 50`) — Observer's default, stated here
+// because the console had no Config to read the operator's override from. That
+// made it a SECOND CARRIER of one fact, and it disagreed: an operator who set
+// `bold_frp_mw` in [fire] saw it honoured on the watchlist and ignored here, so
+// one location could read bold on one surface and plain on the other.
+//
+// RESOLVED BY THE DASHBOARD AND COPIED IN (NewRouter), the way `ascii` and
+// `version` are. `cfg` is written once at construction and never reassigned, so
+// there is nothing later to follow. The zero fallback is for a console built
+// without a Router — the older tests — and it reads THE SAME CONSTANT Observer
+// falls back to, so the two cannot drift apart again.
+func (b Broadcaster) fireBold() float64 {
+	if b.fireBoldMW > 0 {
+		return b.fireBoldMW
+	}
+	return fireBoldDefaultMW
+}
 
 // poolRoom is how many rows the pool takes off the frame before the running
 // order is windowed.

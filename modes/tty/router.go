@@ -264,6 +264,10 @@ func NewRouter(o Dashboard) Router {
 	// two surfaces disagreeing about which build this is would be the same
 	// two-carriers defect one field along.
 	b.version = o.cfg.Version
+	// AND THE SAME FIRE THRESHOLD. RESOLVED, not raw: Observer owns the "unset
+	// means 50" rule, and a console that re-derived it would be the two-carriers
+	// defect the constant this replaces already was.
+	b.fireBoldMW = o.fireBoldMW()
 	// AND THE STATION IT IS A CONSOLE FOR (D-72). The area MOVES, so changes
 	// arrive as a message; this is the value it opens with.
 	b.area = o.cfg.StationArea

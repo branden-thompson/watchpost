@@ -147,6 +147,11 @@ type Broadcaster struct {
 	frame     int
 	tickArmed bool
 
+	// fireBoldMW is the operator's [fire] bold_frp_mw, inherited RESOLVED from
+	// the Dashboard (NewRouter) so the default lives in one place. Zero means a
+	// console built without a Router; `fireBold` falls back for it.
+	fireBoldMW float64
+
 	// version is the build's, inherited from the Dashboard the Router was
 	// built over — the same reason `ascii` is (NewRouter): two surfaces
 	// disagreeing about which build this is would be one fact with two

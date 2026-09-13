@@ -40,7 +40,7 @@ func TestThePoolsWeatherIsObserversWeather(t *testing.T) {
 		t.Fatalf("the pool drew %d rows for one candidate", len(rows))
 	}
 	got := rows[0]
-	want := weatherRow(loc, bcFireBoldMW, 0)
+	want := weatherRow(loc, fireBoldDefaultMW, 0)
 
 	for _, tc := range []struct {
 		name      string
@@ -94,7 +94,7 @@ func TestThePoolKeepsItsOwnColumns(t *testing.T) {
 	if got.StationKM == nil {
 		t.Fatal("the pool row has no distance")
 	}
-	if same := weatherRow(loc, bcFireBoldMW, 0).StationKM; same != nil && *same == *got.StationKM {
+	if same := weatherRow(loc, fireBoldDefaultMW, 0).StationKM; same != nil && *same == *got.StationKM {
 		t.Error("the pool's DIST is the observing station's, not the transmitter's")
 	}
 }
@@ -212,7 +212,7 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 	if got == nil {
 		t.Fatalf("no row joined to the pool entry; the card's subject is %q", c.Subject)
 	}
-	want := weatherRow(loc, bcFireBoldMW, 0)
+	want := weatherRow(loc, fireBoldDefaultMW, 0)
 	if got.Conditions != want.Conditions || got.Now == nil || *got.Now != *want.Now {
 		t.Errorf("the row says %q/%v; the shared converter says %q/%v",
 			got.Conditions, got.Now, want.Conditions, want.Now)
@@ -230,5 +230,67 @@ func TestTheRunningOrderCarriesEachBeatsWeather(t *testing.T) {
 	}
 	if !strings.Contains(drawn, "C U R R E N T L Y") {
 		t.Errorf("the running order does not name what replaced it:\n%s", drawn)
+	}
+}
+
+// TestTheConsoleReadsTheOperatorsFireThreshold.
+//
+// ONE PLACE, ONE ANSWER ABOUT WHETHER A FIRE IS BURNING HARD. The console's
+// threshold was `const bcFireBoldMW = 50` — Observer's DEFAULT, stated as a
+// constant because the console had no Config to read the override from. So an
+// operator who set `bold_frp_mw` in [fire] got their setting honoured on the
+// watchlist and ignored on the console, and one location could show a bold
+// hotspot on one surface and a plain one on the other. Two carriers of one
+// fact, which is the shape this codebase has removed repeatedly.
+//
+// IT IS INHERITED THE WAY `ascii` AND `version` ARE — copied by `NewRouter`
+// from the Dashboard the Router is built over, RESOLVED (`d.fireBoldMW()`)
+// rather than raw, so the default lives in exactly one place and the console
+// cannot re-derive it differently. `cfg` is written once at construction and
+// never reassigned, so there is nothing later to follow.
+func TestTheConsoleReadsTheOperatorsFireThreshold(t *testing.T) {
+	frp := 100.0
+	loc := poolLoc()
+	loc.Fire.Hotspots = []snapshot.Hotspot{{FRPMW: &frp}}
+	ref := snapshot.LocationRef{Label: loc.Label, Zip: loc.Zip, Lat: loc.Lat, Lon: loc.Lon}
+
+	// 100 MW is over the default 50 and under an operator's 200: the one
+	// fixture that can tell the two thresholds apart.
+	for _, tc := range []struct {
+		name    string
+		set     float64
+		wantHot bool
+	}{
+		{"the default, unset", 0, true},
+		{"the operator raised it above this fire", 200, false},
+		{"the operator lowered it below this fire", 25, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d, err := NewDashboard(Config{FireBoldMW: tc.set})
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := NewRouter(d)
+			b := r.broadcaster
+			b.width, b.height, b.ascii = 150, 74, true
+			b, _ = b.Update(StationAreaMsg{
+				Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
+				RadiusMi:    50, Pool: []snapshot.LocationRef{ref}})
+			b, _ = b.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{*loc}}})
+
+			rows := b.poolRows(b.locIndex())
+			if len(rows) != 1 {
+				t.Fatalf("the pool drew %d rows for one candidate", len(rows))
+			}
+			if rows[0].FireHot != tc.wantHot {
+				t.Errorf("a %g MW hotspot with the threshold at %g: the console says hot=%v, want %v",
+					frp, tc.set, rows[0].FireHot, tc.wantHot)
+			}
+			// AND THE TWO SURFACES AGREE, which is the rule the constant broke.
+			if want := fireHot(loc.Fire.Hotspots, d.fireBoldMW()); rows[0].FireHot != want {
+				t.Errorf("the console says hot=%v and Observer says %v for one place",
+					rows[0].FireHot, want)
+			}
+		})
 	}
 }
