@@ -5,7 +5,10 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
+	"github.com/branden-thompson/watchpost/domains/severe"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -185,5 +188,91 @@ func TestTheFeedsFilterFollowsTheScope(t *testing.T) {
 	deck.scope = func() airScope { return airScope{radiusMi: 25, set: true} }
 	if got := deck.scopeToRadius([]globalfeed.Event{near, far}); len(got) != 0 {
 		t.Errorf("filtered with no origin shows nothing; got %d", len(got))
+	}
+}
+
+// TestTheDecksFenceCarriesTheScopesTieSet.
+//
+// A ZONE-ONLY ALERT HAS NO POINT, so the tie set is the ONLY thing that can
+// admit one — and `Fence.Admits` can only ask a set it was given. This drives
+// `deck.fence()`, not `Admits`, because the platform tests already pin the rule
+// and would stay green with the wiring cut: the seam that can be dropped is the
+// handing over, so that is the seam a test has to take (P-1).
+//
+// SCOPED, AND FROM THE SCOPE'S OWN ORIGIN. The set the fence gets is the set the
+// FEED's filter gets, asked with the same latitude, longitude and radius — that
+// agreement is what stops the tape and the burst answering differently about one
+// zone-only hazard (D-122).
+func TestTheDecksFenceCarriesTheScopesTieSet(t *testing.T) {
+	const id = "urn:oid:2.49.0.1.840.0.1.001.1"
+	key, ok := severe.NormalizeID(id)
+	if !ok {
+		t.Fatalf("the fixture's id must normalise; %q did not", id)
+	}
+	near := snapshot.Location{Label: "Bonsall", TZ: "America/Los_Angeles", Lat: 33.2881, Lon: -117.2256,
+		Alerts: []snapshot.Alert{{ID: id, Event: "Flood Warning", Severity: "severe",
+			Sent: time.Now(), Expires: time.Now().Add(time.Hour)}}}
+
+	sev := newSevereDeck(func(tea.Msg) {})
+	sev.SetLocations(0, &snapshot.Snapshot{Locations: []snapshot.Location{near}})
+	deck := &tickerDeck{severe: sev}
+
+	deck.scope = func() airScope { return airScope{lat: near.Lat, lon: near.Lon, radiusMi: 25, set: true} }
+	if f := deck.fence(); !f.Tracked[key] {
+		t.Errorf("the scope follows this alert and its fence does not carry the tie; got %v", f.Tracked)
+	}
+
+	// THE TRANSMITTER MOVES. Same alert, same radius, four hundred miles north —
+	// nothing watched there carries it, so the fence follows nothing and the
+	// zone-only alert has no way in.
+	deck.scope = func() airScope { return airScope{lat: 39.0, lon: -121.0, radiusMi: 25, set: true} }
+	if f := deck.fence(); f.Tracked[key] {
+		t.Error("a fence four hundred miles away inherited the tie set of a scope it is not")
+	}
+}
+
+// TestTheArrivalsKeyAndTheTieSetsKeyAreTheSameKey.
+//
+// THE OVER-CORRECTION IS THE DANGEROUS FAILURE HERE, and it is silent in the
+// wrong direction: if the arrival's key and the tie set's key are normalised
+// differently, NO zone-only alert ever matches, every one of them is fenced out,
+// and a real flood warning at the listener's own watched location is never read.
+// The bypass this replaced admitted too much; getting the halves out of step
+// would admit nothing, which is worse.
+//
+// So the two normalisations are checked against ONE REAL CAP ID, end to end:
+// the id the watched location carries, through `alertKeysOf`, and the id the
+// feed's event carries, through `arrivalsOf` — meeting at `Admits`.
+func TestTheArrivalsKeyAndTheTieSetsKeyAreTheSameKey(t *testing.T) {
+	// THE TWO FORMS ONE ALERT ACTUALLY TAKES, which is the whole reason
+	// NormalizeID exists: the location path carries the bare OID and the ticker
+	// path carries the same OID under the feature URL. A fixture using one form
+	// on both sides normalises to itself and proves NOTHING — it passed against
+	// a build with the normalisation cut out, which is how this was caught.
+	const bare = "urn:oid:2.49.0.1.840.0.1.001.1"
+	const feedID = "https://api.weather.gov/alerts/" + bare
+	watched := snapshot.Location{Label: "Bonsall", TZ: "America/Los_Angeles", Lat: 33.2881, Lon: -117.2256,
+		Alerts: []snapshot.Alert{{ID: bare, Event: "Flood Warning", Severity: "severe",
+			Sent: time.Now(), Expires: time.Now().Add(time.Hour)}}}
+
+	sev := newSevereDeck(func(tea.Msg) {})
+	sev.SetLocations(0, &snapshot.Snapshot{Locations: []snapshot.Location{watched}})
+	deck := &tickerDeck{severe: sev}
+	deck.scope = func() airScope { return airScope{lat: watched.Lat, lon: watched.Lon, radiusMi: 25, set: true} }
+
+	// The SAME alert off the feed, zone-only: no point to measure by.
+	zoneOnly := globalfeed.Event{ID: feedID, Type: "Flood Warning", Place: "San Diego County",
+		Location: "Bonsall, CA", Source: "NWS", At: time.Now(), Severity: globalfeed.SevOrange}
+	if zoneOnly.HasPoint {
+		t.Fatal("the fixture must be zone-only or it proves nothing")
+	}
+
+	a := arrivalsOf([]globalfeed.Event{zoneOnly})[0]
+	if a.TrackedAs == "" {
+		t.Fatalf("a real CAP id must key; arrivalsOf produced %q from %q", a.TrackedAs, feedID)
+	}
+	if !deck.fence().Admits(a) {
+		t.Errorf("the location the app watches carries this exact alert and the fence refused it — "+
+			"the arrival keys as %q and the tie set holds %v", a.TrackedAs, deck.fence().Tracked)
 	}
 }

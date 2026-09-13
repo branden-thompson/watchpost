@@ -110,6 +110,24 @@ type Fence struct {
 	// which returns nil with no watchlist), unchanged.
 	Lat, Lon  float64
 	HasOrigin bool
+
+	// Tracked is the set of alert keys THE SCOPE NOW IN FORCE follows, and it is
+	// the only thing that can admit a zone-only alert.
+	//
+	// IT LIVES ON THE FENCE BECAUSE IT IS A FACT ABOUT THE SCOPE. The same set
+	// the feed's filter is given (app/ticker.go:scopeToRadius asks
+	// severe.AlertKeysWithin for exactly this origin and radius), so the tape
+	// and the burst cannot disagree about one zone-only hazard.
+	//
+	// NIL FOLLOWS NOTHING, and that is the safe direction: a fence built without
+	// one refuses zone-only alerts rather than admitting them, the same way a
+	// fence with no origin admits nothing.
+	Tracked map[string]bool
+}
+
+// tracks reports whether the scope in force follows this alert.
+func (f Fence) tracks(key string) bool {
+	return key != "" && f.Tracked[key]
 }
 
 // InForce reports whether a radius is set.
@@ -138,7 +156,13 @@ func (f Fence) Admits(a Arrival) bool {
 		// only by being one the app is already tracking at a watched location —
 		// today's rule (app/severe.go:scopeEvents), said the same way here so
 		// the tape and the burst cannot disagree about one hazard.
-		return a.Tracked
+		//
+		// ASKED OF THE FENCE, NOT OF THE ARRIVAL (D-122). The arrival's tie was
+		// decided by whichever scope admitted it, and a planned card outlives
+		// its scope: crossing to the console moves the fence to the transmitter,
+		// where the app may follow nothing at all. A cached verdict is a fence
+		// answered by a fence that is no longer in force.
+		return f.tracks(a.TrackedAs)
 	}
 	km := geo.HaversineKM(f.Lat, f.Lon, a.Lat, a.Lon)
 	// A DISTANCE IS A NUMBER, and the failure if it is not is silent in the worst

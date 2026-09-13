@@ -345,6 +345,7 @@ func (*tickerDeck).takeInjected
 func (*tickerDeck).takeInjected
 func (*tickerDeck).tapeItems
 func (*tickerDeck).tell
+func (*tickerDeck).tiesWithin
 func (CastReport).ToneSummary
 func (airScope).hasOrigin
 func (bedReach).Line
@@ -556,6 +557,7 @@ func toneClasses
 func toneFromView
 func toneView
 func trace
+func trackedKey
 func transmitterOf
 func tuneList
 func tuneTo

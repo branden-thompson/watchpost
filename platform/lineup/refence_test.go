@@ -162,3 +162,51 @@ func lastPublish(fx []Effect) (Publish, bool) {
 	}
 	return Publish{}, false
 }
+
+// TestAZoneOnlyCardIsHeldWhenTheNewSCOPEDoesNotFollowIt.
+//
+// THE SAME RULING AS ABOVE, FOR THE HAZARD THAT CANNOT BE MEASURED. D-75 holds
+// what the new fence does not admit — and a zone-only alert has no point, so
+// "admit" cannot mean a distance. It means the app follows this hazard at a
+// watched location, which is a fact about the SCOPE, and the scope is exactly
+// what changed.
+//
+// MEASURED BEFORE THE FIX: the arrival carried `Tracked: true`, frozen by
+// whichever scope planned it, and `Admits` returned it unread. So a zone-only
+// alert tied to a watched location in Observer was read out over a console
+// whose transmitter is four hundred miles away — through a fence, past a radius
+// the HUM LEAD set, with nothing ever measured. It is the one bypass a narrower
+// fence could not close, because the narrowing is not what it consults.
+func TestAZoneOnlyCardIsHeldWhenTheNewScopeDoesNotFollowIt(t *testing.T) {
+	now := time.Now()
+	zoneOnly := Arrival{ID: "NWS.zone.1", TrackedAs: "zone1", Headline: "FLOOD WARNING · zone",
+		Subject: "zone", At: now, Severity: 3} // no point: HasPoint is false
+
+	// OBSERVER FOLLOWS IT. The listener has this alert at a watched location.
+	watching := Fence{RadiusMi: 50, Lat: refLat, Lon: refLon, HasOrigin: true,
+		Tracked: map[string]bool{"zone1": true}}
+	// THE CONSOLE DOES NOT. Same radius, a transmitter four hundred miles north,
+	// and no watched location there carrying this hazard.
+	elsewhere := Fence{RadiusMi: 50, Lat: 39.0, Lon: -121.0, HasOrigin: true}
+
+	d := New(Settings{Max: 10}, now)
+	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Arrived{Arrivals: []Arrival{zoneOnly}, Fence: watching})
+	if n := len(d.lineup.Cards(AlertRail)); n != 1 {
+		t.Fatalf("the scope that follows it admits it; the rail holds %d", n)
+	}
+
+	d, _ = d.Step(Aired{To: AirProgramme, Fence: elsewhere})
+	if n := len(d.lineup.Cards(AlertRail)); n != 1 {
+		t.Errorf("HELD, not dropped — DR-3 — and the rail holds %d", n)
+	}
+	if _, _, ok := d.lineup.Next(); ok {
+		t.Error("a zone-only alert the station's scope does not follow was offered the air")
+	}
+
+	// AND CROSSING BACK RELEASES IT, the same both-ways rule.
+	d, _ = d.Step(Aired{To: AirMonitor, Fence: watching})
+	if _, _, ok := d.lineup.Next(); !ok {
+		t.Error("returning to the scope that follows it must release the card")
+	}
+}

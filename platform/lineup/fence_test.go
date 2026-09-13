@@ -219,13 +219,14 @@ func TestAFenceWithNoOriginAdmitsNothing(t *testing.T) {
 // The fence must say the same thing, or the two surfaces disagree about one
 // hazard — which is the failure that rule exists to prevent.
 func TestAPointlessAlertIsAdmittedOnlyByTheTrackedTie(t *testing.T) {
-	base := Arrival{ID: "zone", Category: category.Warnings, Headline: "h", Subject: "s", At: planNow}
+	base := Arrival{ID: "zone", TrackedAs: "zone", Category: category.Warnings,
+		Headline: "h", Subject: "s", At: planNow}
 	if bonsall.Admits(base) {
 		t.Error("an untracked zone-only alert was admitted through a fence")
 	}
-	tracked := base
-	tracked.Tracked = true
-	if !bonsall.Admits(tracked) {
+	tracked := bonsall
+	tracked.Tracked = map[string]bool{"zone": true}
+	if !tracked.Admits(base) {
 		t.Error("a tracked zone-only alert was fenced out")
 	}
 }
@@ -362,5 +363,46 @@ func TestAnArrivalWithNoRealPointIsRefusedRatherThanSilentlyFencingEverythingOut
 	broken.Lat = math.NaN()
 	if f.Admits(broken) {
 		t.Error("an arrival whose distance is not a number was admitted")
+	}
+}
+
+// TestATrackedTieBelongsToTheScopeNotToTheArrival.
+//
+// THE DEFECT THIS PINS: a zone-only alert has no point, so the only thing that
+// can admit it is the app already following it at a watched location. That is a
+// fact about the SCOPE NOW IN FORCE. Carried on the arrival it is a fact about
+// WHICHEVER SCOPE ADMITTED IT FIRST — frozen at planning time and true for ever
+// after, so a later, narrower fence waves it through without measuring anything.
+//
+// The HUM LEAD's own carryover names the path: Observer admits an alert tied to
+// a watched location, the operator presses ctrl+b, and the console's fence — a
+// different origin and a different radius, possibly a thousand miles away — is
+// asked about the same arrival. It cannot measure a zone-only alert, and it must
+// not inherit somebody else's answer.
+func TestATrackedTieBelongsToTheScopeNotToTheArrival(t *testing.T) {
+	zone := Arrival{ID: "zone", TrackedAs: "zone", Category: category.Warnings,
+		Headline: "h", Subject: "s", At: planNow}
+
+	// The scope that admitted it follows this hazard at a watched location.
+	watching := bonsall
+	watching.Tracked = map[string]bool{"zone": true}
+	if !watching.Admits(zone) {
+		t.Error("a zone-only alert the scope IS following was fenced out")
+	}
+
+	// The station moves. Same arrival, same frozen tie, a scope that follows
+	// nothing here.
+	if bonsall.Admits(zone) {
+		t.Error("a zone-only alert was admitted by a fence that follows nothing — " +
+			"the tie came from a scope that is no longer in force")
+	}
+
+	// AND AN ARRIVAL WITH NO KEY IS NEVER ADMITTED, on scopeEvents' own rule:
+	// NormalizeID refuses an id it cannot recognise, so an alert that cannot be
+	// identified can never be shown to be one the app is tracking.
+	nameless := zone
+	nameless.TrackedAs = ""
+	if watching.Admits(nameless) {
+		t.Error("an unidentifiable zone-only alert was admitted")
 	}
 }

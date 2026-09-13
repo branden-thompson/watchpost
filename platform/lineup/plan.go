@@ -168,12 +168,24 @@ type Arrival struct {
 	Until time.Time
 
 	// Lat, Lon and HasPoint are where the hazard is, for the fence. A zone-only
-	// alert has no point (globalfeed.Event.HasPoint), and Tracked is whether it
-	// is one the app already follows at a watched location — the only way such
-	// an alert reaches a scoped surface today.
-	Lat, Lon float64
-	HasPoint bool
-	Tracked  bool
+	// alert has no point (globalfeed.Event.HasPoint), and reaches a scoped
+	// surface only by being one the app already follows at a watched location —
+	// the only way such an alert reaches one today.
+	//
+	// TrackedAs IS THAT ALERT'S KEY, NOT THE VERDICT ABOUT IT. Whether the app
+	// follows this hazard is a fact about the SCOPE NOW IN FORCE, and the scope
+	// changes under a planned card — the operator crosses to the console and the
+	// fence moves to the transmitter. So `Fence.Tracked` holds the tie and this
+	// holds only the name to look up; a verdict cached here would be the answer
+	// the FIRST scope gave, waved through by every fence after it (D-122).
+	//
+	// EMPTY MEANS UNIDENTIFIABLE and is never admitted, on scopeEvents' own
+	// rule: severe.NormalizeID refuses an id it does not recognise as a CAP
+	// alert, and an alert that cannot be identified can never be shown to be one
+	// the app is tracking.
+	Lat, Lon  float64
+	HasPoint  bool
+	TrackedAs string
 
 	// Test marks an arrival the ctrl+d window fabricated (FR-4.4). It travels
 	// from globalfeed.Event.Fabricated, and the burst treats it as strictly

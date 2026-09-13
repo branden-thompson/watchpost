@@ -2324,3 +2324,25 @@ harmless while the row was simply broken.
 options laid out and none of them chosen.  Which owner wins is a UX/authority decision, and the standing
 rule is that those are the HUM LEAD's — the job here is to make the fork visible, not to pick a side
 inside a bug fix.
+
+## A fixture that cannot tell apart the two things it relates (2026-09-13, D-122)
+
+**The catch.** `TestTheArrivalsKeyAndTheTieSetsKeyAreTheSameKey` was written to prove that an
+arrival's key and the tie set's key normalise the same way.  It passed.  It also passed against a
+build with the normalisation **deleted** — because the fixture used the bare OID on both sides, and
+`NormalizeID` returns a bare OID unchanged.  The test related two things that were already identical.
+
+**The shape.** *A test of a transformation whose fixture is a fixed point of that transformation.*
+It is a specific case of the recurring one: **an instrument that cannot see the thing it is for.**
+It looks like coverage, it names the right rule, and it discriminates nothing.
+
+**How it was caught.** By the standing rule — prove the measurement can fail before quoting it.  The
+mutation was applied on purpose, the test stayed green, and that green was the finding.
+
+**What fixed it.** The two forms one NWS alert actually takes: the feature URL on the ticker path,
+the bare OID on the location path.  Those are the inputs the normaliser exists for, and the test
+goes red without it.
+
+**The rule worth extracting.** When a test asserts that two paths agree about one value, the fixture
+must differ across those paths in exactly the way the code under test is supposed to reconcile.  If
+the same literal can be used on both sides, the test is pinned to nothing.

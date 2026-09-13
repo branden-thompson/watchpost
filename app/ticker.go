@@ -413,10 +413,34 @@ func arrivalsOf(fresh []globalfeed.Event) []lineup.Arrival {
 			// Angeles, ~120 mi, to a listener with a 50-mile radius — was
 			// refused by the fence even once the producer stopped dropping it.
 			ReachMi: reachMiOf(e),
-			Tracked: true, // these events already passed the deck's own scoping
+			// THE KEY, NOT THE VERDICT (D-122). This said `Tracked: true` on the
+			// grounds that "these events already passed the deck's own scoping",
+			// which was true of the scope that planned the card and became false
+			// the moment the operator crossed to the console: the fence moves to
+			// the transmitter, and a frozen `true` waved the alert through it
+			// without measuring anything. The fence now holds the tie and this
+			// holds the name to look it up by.
+			//
+			// AN ID THE NORMALIZER REFUSES YIELDS "", which no fence tracks —
+			// the same guard scopeEvents states, on the same reasoning.
+			TrackedAs: trackedKey(e.ID),
 		})
 	}
 	return out
+}
+
+// trackedKey is an event's id as the tracked set keys it, or "" if the
+// normalizer refuses it.
+//
+// ONE OWNER for the arrival's half of the question; `alertKeysOf` is the same
+// normalizer on the set's half, and the two must agree or a zone-only alert the
+// app follows is fenced out of the burst it belongs in.
+func trackedKey(id string) string {
+	key, ok := severe.NormalizeID(id)
+	if !ok {
+		return ""
+	}
+	return key
 }
 
 // subjectOf is what an alert is ABOUT, and it is never empty.
@@ -458,7 +482,30 @@ func (t *tickerDeck) fence() lineup.Fence {
 	if !s.hasOrigin() {
 		return lineup.Fence{} // a radius with nowhere to measure from
 	}
-	return lineup.Fence{RadiusMi: s.radiusMi, Lat: s.lat, Lon: s.lon, HasOrigin: true}
+	// THE SAME SET THE FEED'S FILTER GETS, from the same origin and radius
+	// (scopeToRadius). A zone-only alert has no point, so this is the only thing
+	// that can admit one — and asking it here, of the scope in force, is what
+	// stops a card planned under Observer's scope from carrying its admission
+	// across to the console (D-122).
+	return lineup.Fence{RadiusMi: s.radiusMi, Lat: s.lat, Lon: s.lon, HasOrigin: true,
+		Tracked: t.tiesWithin(s)}
+}
+
+// tiesWithin is the set of zone-only alerts the app follows inside a scope.
+//
+// ONE OWNER, AND THAT IS THE WHOLE POINT (D-1). Its two callers are the fence
+// and the feed's filter, and the rule they are keeping is that those two must
+// answer the SAME way about one zone-only hazard. Two copies of this expression
+// is exactly how they would come to disagree — one of them widened, one of them
+// not — which is the failure D-122 already cost us once.
+//
+// A DECK WITH NO SEVERE INDEX FOLLOWS NOTHING, which is the safe direction: a
+// zone-only alert is refused rather than admitted unmeasured.
+func (t *tickerDeck) tiesWithin(s airScope) map[string]bool {
+	if t.severe == nil {
+		return nil
+	}
+	return t.severe.AlertKeysWithin(s.lat, s.lon, s.radiusMi)
 }
 
 // currentScope is the one place the deck asks what it is scoped to, so the
@@ -605,11 +652,7 @@ func (t *tickerDeck) scopeToRadius(events []globalfeed.Event) []globalfeed.Event
 		// silently falling back to the global stack the UI says is scoped away.
 		return nil
 	}
-	var tracked map[string]bool
-	if t.severe != nil {
-		tracked = t.severe.AlertKeysWithin(s.lat, s.lon, s.radiusMi)
-	}
-	return scopeEvents(events, s.lat, s.lon, s.radiusMi, tracked)
+	return scopeEvents(events, s.lat, s.lon, s.radiusMi, t.tiesWithin(s))
 }
 
 // laneItems builds the tape items for the location-only categories, in the same
