@@ -203,11 +203,16 @@ const (
 	//	bcFrameAllocs      the HIT: the operator is watching, nothing has changed
 	//	bcFrameMissAllocs  the MISS: every input moved, both tables rebuild
 	//
-	// Measured 530 and 9298 on the loaded fixture; budgeted with the same margin
-	// the old number carried. THE MISS IS THE OLD BASELINE, to the allocation —
+	// Measured 501 and 9296 on the loaded fixture.
+	//
+	// THE HIT'S MARGIN IS DELIBERATELY NARROW — 4%, where the miss carries 5% of
+	// a number twenty times larger. The first cut budgeted 560 and a mutant
+	// walked straight through it: putting `locIndex` back OUTSIDE the memo costs
+	// 29 allocations a frame, and 530 is still under 560. A budget whose slack
+	// is bigger than the regression it is guarding against is not a budget. THE MISS IS THE OLD BASELINE, to the allocation —
 	// 9298 before the memo and 9298 after — which is the claim that matters when
 	// a cache is added: it costs nothing on the path it does not help.
-	bcFrameAllocs     = 560
+	bcFrameAllocs     = 520
 	bcFrameMissAllocs = 9760
 )
 

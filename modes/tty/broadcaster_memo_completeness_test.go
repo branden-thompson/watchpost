@@ -190,3 +190,35 @@ func sameSpan(a, b scrollSpan) bool {
 	}
 	return true
 }
+
+// TestTheJoinNeverWritesIntoTheCache.
+//
+// THE MEMO HANDS OUT ITS OWN SLICES, so anything the frame does to them is done
+// to the cache. `append(sched.lines, pool.lines...)` writes into the scheduled
+// span's spare capacity whenever it has some — and both spans are then replayed,
+// corrupted, on every hit until something invalidates them.
+//
+// IT IS PINNED STRUCTURALLY RATHER THAN BY RENDERING, because whether today's
+// capacities happen to expose it is an accident of how `scheduledSpan` grew its
+// slice. A test that waited for the corruption to become visible would pass for
+// the wrong reason on the day the growth changed.
+func TestTheJoinNeverWritesIntoTheCache(t *testing.T) {
+	// SPARE CAPACITY ON PURPOSE: that is the only condition under which the bad
+	// version misbehaves, so it is the condition worth stating.
+	sched := scrollSpan{lines: append(make([]string, 0, 64), "a", "b", "c")}
+	pool := scrollSpan{lines: []string{"x", "y"}}
+
+	joined := joinSpans(sched, pool)
+	if &joined[0] == &sched.lines[0] {
+		t.Error("the join shares an array with the scheduled span — on a memo hit that span " +
+			"IS the cache, and the pool's rows are being written into it")
+	}
+	if got, want := len(joined), len(sched.lines)+len(pool.lines); got != want {
+		t.Errorf("the join is %d rows, want %d", got, want)
+	}
+	// AND THE SCHEDULED SPAN IS UNTOUCHED PAST ITS END, which is where the
+	// damage would land.
+	if grown := sched.lines[:cap(sched.lines)][3:5]; grown[0] != "" || grown[1] != "" {
+		t.Errorf("the join wrote past the scheduled span's length: %q", grown)
+	}
+}

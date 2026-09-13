@@ -154,3 +154,22 @@ func (b Broadcaster) anyLoading() bool {
 	}
 	return false
 }
+
+// joinSpans lays the pool's rows under the running order's.
+//
+// A SLICE OF ITS OWN, NEVER APPENDED ONTO THE SCHEDULED SPAN. Both spans may be
+// the MEMO'S COPIES, and `append(sched.lines, …)` writes into `sched.lines`'
+// spare capacity whenever it has any — scribbling the pool's rows into a cached
+// running order, to be replayed on every hit afterwards. It would appear one
+// frame late and only at some pool sizes, which is close to the worst shape a
+// defect can have.
+//
+// IT IS A FUNCTION SO THAT THE RULE CAN BE TESTED. Written inline, the only way
+// to catch a regression was to hope the aliasing happened to become visible;
+// here the property — "the result does not share an array with the cache" — is a
+// thing a test can assert directly, whether or not today's capacities expose it.
+func joinSpans(sched, pool scrollSpan) []string {
+	out := make([]string, 0, len(sched.lines)+len(pool.lines))
+	out = append(out, sched.lines...)
+	return append(out, pool.lines...)
+}

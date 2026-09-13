@@ -635,15 +635,7 @@ func (b Broadcaster) lanes() []string {
 	case pool.from >= 0:
 		from = len(sched.lines) + pool.from
 	}
-	// JOINED INTO A SLICE OF ITS OWN, NEVER ONTO THE SCHEDULED SPAN. Both spans
-	// may be the memo's copies, and `append(sched.lines, …)` writes into
-	// `sched.lines`' spare capacity when it has any — scribbling the pool's rows
-	// into a cached running order, to be replayed on every hit after. The bug
-	// would appear one frame late and only at some pool sizes.
-	joined := make([]string, 0, len(sched.lines)+len(pool.lines))
-	joined = append(joined, sched.lines...)
-	joined = append(joined, pool.lines...)
-	out = append(out, b.chromeAt(joined, from, pool.off, pool.total)...)
+	out = append(out, b.chromeAt(joinSpans(sched, pool), from, pool.off, pool.total)...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
 	// blank rows to the bottom of the terminal, which is what the reference does
 	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the

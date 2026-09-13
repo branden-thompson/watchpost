@@ -4,10 +4,9 @@ import pathlib
 # running order's spare capacity — and every hit afterwards replays the
 # corruption. It appears one frame LATE and only at some pool sizes, which is the
 # worst shape a bug can have.
-p = pathlib.Path("modes/tty/broadcaster.go"); s = p.read_text()
-old = """	joined := make([]string, 0, len(sched.lines)+len(pool.lines))
-	joined = append(joined, sched.lines...)
-	joined = append(joined, pool.lines...)
-	out = append(out, b.chromeAt(joined, from, pool.off, pool.total)...)"""
+p = pathlib.Path("modes/tty/broadcaster_memo.go"); s = p.read_text()
+old = """	out := make([]string, 0, len(sched.lines)+len(pool.lines))
+	out = append(out, sched.lines...)
+	return append(out, pool.lines...)"""
 assert old in s, "mAR4"
-p.write_text(s.replace(old, "	out = append(out, b.chromeAt(append(sched.lines, pool.lines...), from, pool.off, pool.total)...)", 1))
+p.write_text(s.replace(old, "	return append(sched.lines, pool.lines...)", 1))

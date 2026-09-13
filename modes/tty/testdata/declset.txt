@@ -710,6 +710,7 @@ func issueCols
 func issueRows
 func issueScope
 func joinBlocks
+func joinSpans
 func kindFirst
 func laneAfter
 func layoutMarine
