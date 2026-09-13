@@ -474,7 +474,32 @@ func (b Broadcaster) clamp(lines []string) string {
 			lines[i] = render.PadTo(bcLeftInset+render.TruncateCells(l, b.frameWidth()), b.width)
 		}
 	}
-	return strings.Join(lines, "\n")
+	// AND THE THEME'S FOREGROUND IS ARMED FOR THE WHOLE FRAME (D-108).
+	//
+	// HUM LEAD, UAT 2026-09-12: "Some of the Broadcaster UIs are not using
+	// themeable token values for colors - particularly in the 'UP NEXT' section -
+	// Watchpost Light has white lines and text when it should be inverted
+	// appropriately."
+	//
+	// NOTHING WAS PAINTING THEM WHITE. They were painted by NOBODY — every
+	// character this console draws without an explicit tint took the TERMINAL's
+	// default foreground, which on a dark terminal is white whatever theme the app
+	// is wearing. On the dark themes that happens to look right, so the whole
+	// surface has been reading the terminal's palette and calling it the theme's.
+	//
+	// OBSERVER HAS ALWAYS DONE THIS, in `frameText`: it arms `TextBase` at the top
+	// of the frame and re-arms it after every inner reset, so tinted spans keep
+	// their colours and everything else is the theme's. This is that rule, applied
+	// where the console finishes its frame — one place, like the inset above it.
+	//
+	// THROUGH `FgSGR`, NOT `TintDefault`. That helper hard-codes a `38;5;` prefix
+	// and the Light theme's `TextBase` is TRUECOLOR — the one theme this finding
+	// was reported against would have come out as a palette index.
+	out := strings.Join(lines, "\n")
+	if render.ColorOn() {
+		out = render.TintKeeping(out, render.FgSGR(render.Tok(render.TextBase)))
+	}
+	return out
 }
 
 // notice is what the operator sees below the floor.
@@ -549,8 +574,16 @@ func (b Broadcaster) lanes() []string {
 	// column titles, ▼ on its "Showing" line — Observer's own shape.
 	sched := b.scheduledSpan(b.mainTrack(), len(out))
 	pool := b.poolSpan(len(out) + len(sched.lines))
+	// THE FIRST REGION THAT SCROLLS OWNS THE CONTROL, and each region is asked
+	// rather than assumed. Reading only the pool's answer made the running
+	// order's `from` a field nothing consulted — so a region could claim a scroll
+	// and the frame would not draw it, which a mutant found by claiming one and
+	// changing nothing.
 	from := -1
-	if pool.from >= 0 {
+	switch {
+	case sched.from >= 0:
+		from = sched.from
+	case pool.from >= 0:
 		from = len(sched.lines) + pool.from
 	}
 	out = append(out, b.chromeAt(append(sched.lines, pool.lines...), from, pool.off, pool.total)...)
