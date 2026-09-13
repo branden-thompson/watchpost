@@ -222,3 +222,31 @@ func TestTheJoinNeverWritesIntoTheCache(t *testing.T) {
 		t.Errorf("the join wrote past the scheduled span's length: %q", grown)
 	}
 }
+
+// TestTheConsoleMemoHitsAndMisses.
+//
+// THE GUARD ABOVE PROVES THE MEMO NEVER LIES. This proves it does something —
+// they are different claims, and only one of them is about performance. A memo
+// keyed on a value that changes every frame is perfectly CORRECT and completely
+// useless, and the frame would look right while the saving quietly never arrived.
+func TestTheConsoleMemoHitsAndMisses(t *testing.T) {
+	b := loadedConsole(t, loadedPoolSize)
+	_ = b.View().Content // the first frame is always a miss: the slot is empty
+
+	h0, m0 := b.consoleMemoCounts()
+	_ = b.View().Content
+	_ = b.View().Content
+	h1, m1 := b.consoleMemoCounts()
+	if h1-h0 != 2 || m1 != m0 {
+		t.Errorf("two frames with nothing changed: %d hits and %d misses, want 2 and 0",
+			h1-h0, m1-m0)
+	}
+
+	// AND THE OPERATOR MOVES THE POINTER, which is an input.
+	b.selected++
+	_ = b.View().Content
+	h2, m2 := b.consoleMemoCounts()
+	if m2-m1 != 1 || h2 != h1 {
+		t.Errorf("after moving the pointer: %d hits and %d misses, want 0 and 1", h2-h1, m2-m1)
+	}
+}
