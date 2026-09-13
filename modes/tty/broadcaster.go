@@ -337,11 +337,33 @@ func (b Broadcaster) opts() render.Opts {
 // THE LAYOUT IS BUILT AT THIS AND THE MARGIN IS ADDED ONCE. Building at the
 // terminal's width and insetting afterwards would push three columns of every
 // row off the right edge.
-func (b Broadcaster) frameWidth() int { return max(0, b.width-2*len(bcLeftInset)) }
+func (b Broadcaster) frameWidth() int {
+	return max(0, b.width-len(bcLeftInset)-bcRightInset)
+}
 
-// bcLeftInset is Observer's own left margin, matched (HUM LEAD, 2026-09-12:
-// "we need the global 3 col left inset as well").
-const bcLeftInset = "   "
+// tableWidth is what a RAILED table gets: the frame, less the scroll control's
+// own column and the blank one in front of it.
+//
+// HUM LEAD, UAT 2026-09-12: "Vertical scroll control on the right hand side needs
+// to match the visual pattern of Observer; Table runs right up to the control,
+// the control is immediately to left of the 2 col right global inset."
+//
+// OBSERVER'S OWN ARITHMETIC, and it is the reason the right margin is TWO and not
+// three: `rail := o.TableRowLen(days) + 2` with the comment "UAT 9.2: one blank
+// col between the last cell and the rail". Table, blank, control, two columns of
+// air. The console was drawing THREE blanks and putting the control a cell short
+// of Observer's, and the pool table was skipping the arithmetic entirely — which
+// is why the two tables ended in different columns.
+func (b Broadcaster) tableWidth() int { return max(0, b.frameWidth()-2) }
+
+const (
+	// bcLeftInset is Observer's own left margin, matched (HUM LEAD, 2026-09-12:
+	// "we need the global 3 col left inset as well").
+	bcLeftInset = "   "
+	// bcRightInset is Observer's own right margin, which is NOT the left one.
+	// The scroll control sits immediately inside it (HUM LEAD, 2026-09-12).
+	bcRightInset = 2
+)
 
 // minSize is the floor below which the console refuses to draw (FR-7.3).
 //
@@ -520,10 +542,18 @@ func (b Broadcaster) lanes() []string {
 	// SCHEDULED slots went to the table (D-94), and what is left is two boxes side
 	// by side that the reference draws at the same height.
 	out = append(out, b.chrome(b.readPair(), false, 0, 0)...)
-	out = append(out, b.scheduledLines(b.mainTrack(), len(out))...)
 	// AND THE POOL BELOW IT (D-98) — the candidates the operator promotes FROM,
 	// with enough weather to decide on them.
-	out = append(out, b.poolLines(len(out))...)
+	//
+	// ONE SCROLL CONTROL OVER BOTH (D-104, HUM LEAD 2026-09-12). The pointer
+	// already walks the two tables as one list, so the reference draws one rail
+	// beside both — ▲ at the top of the running order, ▼ on the pool's own
+	// "Showing" line. Two rails put two ▲/▼ pairs on the frame and interleaved
+	// them; one rail asks each region where its window sits and adds the answers.
+	sched := b.scheduledSpan(b.mainTrack(), len(out))
+	pool := b.poolSpan(len(out) + len(sched.lines))
+	out = append(out, b.chromeAt(append(sched.lines, pool.lines...),
+		sched.off+pool.off, sched.total+pool.total)...)
 	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
 	// blank rows to the bottom of the terminal, which is what the reference does
 	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the
@@ -662,10 +692,8 @@ func (b Broadcaster) burstBody(c lineup.Card, w, list int) []string {
 	for i := range list { // bounded by the box (P10-02)
 		r := render.AlertRow{Num: fmt.Sprintf("%02d.", i+1)}
 		if i < len(c.From) {
-			// THE ARRIVAL'S OWN WORDS. `Headline` is the hazard and `Subject` is
-			// where it is — the two facts the operator decides on, and the two the
-			// reference's columns are.
-			r.Kind = strings.ToUpper(plaintext.Text(c.From[i].Headline))
+			// THE ARRIVAL'S OWN WORDS, ONE FACT PER COLUMN.
+			r.Kind = hazardOf(c.From[i])
 			r.Location = plaintext.Text(c.From[i].Subject)
 		}
 		rows = append(rows, r)
@@ -677,6 +705,26 @@ func (b Broadcaster) burstBody(c lineup.Card, w, list int) []string {
 	// AND THE WAY IN, AT THE BOTTOM, where the reference puts it and where the
 	// UP NEXT card already puts its own.
 	return append(out, "", bcCardInset+" "+b.opts().KeyCap("A")+"  Details / Full Read / Manage")
+}
+
+// hazardOf is the hazard an arrival names, WITHOUT the place it names after it.
+//
+// `Arrival.Headline` IS THE TAPE'S LINE, not the hazard's name: `tapeHead`
+// composes it as `<title> · <location>` because the ticker is one line and has to
+// carry both. This table has a LOCATION COLUMN, so the composition arrives back
+// as the place said twice — which is what the HUM LEAD saw, "SEVERE THUNDERSTORM
+// WARN…Harper, KS", the hazard cut short to make room for a repeat.
+//
+// IT TAKES THE TITLE BACK RATHER THAN CHANGING WHAT `Headline` MEANS. That field
+// reaches the card, the ticker cue and the SPOKEN script; a hazard read on air
+// without its location would be a far worse defect than a crowded column. The
+// separator is the app's own constant, so this is a split on a known join.
+func hazardOf(a lineup.Arrival) string {
+	head := plaintext.Text(a.Headline)
+	if at := strings.Index(head, render.HeadlineJoin); at >= 0 {
+		head = head[:at]
+	}
+	return strings.ToUpper(head)
 }
 
 // bcAlertChrome is what the takeover box spends around its list: the two borders,

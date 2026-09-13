@@ -37,6 +37,7 @@ const actGainDown
 const actGainUp
 const actHelp
 const actQueueNext
+const actQueueOpen
 const actQueuePrev
 const actQuit
 const actSettings
@@ -59,12 +60,15 @@ const bcMinRows
 const bcNoCoordinates
 const bcNoRelay
 const bcNoTransmitter
+const bcPoolChrome
+const bcPoolRows
 const bcPriorityWidth
 const bcRailGap
 const bcRailWidth
 const bcReadCardRows
 const bcReadLines
 const bcRightChrome
+const bcRightInset
 const bcRowTail
 const bcScheduledFrom
 const bcScheduledHeading
@@ -262,15 +266,16 @@ func (Broadcaster).notice
 func (Broadcaster).opts
 func (Broadcaster).poolEntry
 func (Broadcaster).poolFooter
-func (Broadcaster).poolLines
+func (Broadcaster).poolRoom
 func (Broadcaster).poolRows
 func (Broadcaster).poolSelection
+func (Broadcaster).poolSpan
 func (Broadcaster).priorityWidth
 func (Broadcaster).railed
 func (Broadcaster).readBody
 func (Broadcaster).readPair
 func (Broadcaster).rowCount
-func (Broadcaster).scheduledLines
+func (Broadcaster).scheduledSpan
 func (Broadcaster).scrollQueue
 func (Broadcaster).slotCard
 func (Broadcaster).slotRows
@@ -278,6 +283,7 @@ func (Broadcaster).snapshotFor
 func (Broadcaster).stationLine
 func (Broadcaster).stationSection
 func (Broadcaster).stationTone
+func (Broadcaster).tableWidth
 func (Broadcaster).tickNeeded
 func (Broadcaster).tooSmall
 func (Broadcaster).trackArea
@@ -549,6 +555,7 @@ func (Router).canSwap
 func (Router).consoleOwnsTheKeys
 func (Router).cutBed
 func (Router).openCardWindow
+func (Router).openPointedCard
 func (Router).refreshCardWindow
 func (Router).stationIsLive
 func (Router).stepBed
@@ -651,6 +658,7 @@ func foldWarnings
 func formatAlertBody
 func frameText
 func gridRow
+func hazardOf
 func helpColumnWidth
 func helpGroups
 func helpTwoColumns
@@ -858,6 +866,7 @@ type relayDwell
 type relayFaultState
 type relayLang
 type resolvedMsg
+type scrollSpan
 type setupBlock
 type setupGroupID
 type setupRow

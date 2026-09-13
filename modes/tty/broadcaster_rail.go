@@ -12,8 +12,6 @@ package tty
 // rather than once per section.
 
 import (
-	"strings"
-
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -320,24 +318,23 @@ func (b Broadcaster) railed(body []string, rail bool, lo, shown, total int) []st
 	out := make([]string, len(body))
 	for i, r := range body { // bounded by the body (P10-02)
 		mark := marks[i]
-		// A BREAK IS A BREAK, ON BOTH SIDES (HUM LEAD, UAT 2026-09-10): "the
-		// blank row in between sections needs to be completely blank — right now
-		// the left rail is connected top to bottom; the breaks in the mock were
-		// intentional." A row of the running order that is entirely blank IS the
-		// separator between two regions, so the inner wall stops with the rail
-		// column beside it — the frame's outer edge carries on, which is what
-		// the reference draws.
+		// THE RAIL IS CONTINUOUS OVER WHAT IT SCROLLS (D-104), including the
+		// blank row between the running order and the pool — which the reference
+		// draws with a `│` in the rail column like every other row of the region.
 		//
-		// THE SCROLL RAIL'S END CAPS ARE THE EXCEPTION, and they are exactly why
-		// they sit on blank rows: ▲ and ▼ say where the scrolling region begins
-		// and ends, which is a thing to say IN the break rather than despite it.
-		if strings.TrimSpace(r) == "" && mark != glyphs.Up && mark != glyphs.Down {
-			mark = " "
-		}
-		// THREE OF AIR AND THE SCROLL, AND NOTHING AFTER IT (D-87). The frame's
-		// outer wall on this side is gone: the cards are boxes with their own
-		// borders, so a wall around them was a second edge saying the same thing.
-		out[i] = render.PadTo(r+"   ", b.frameWidth()-2) + mark
+		// A BREAK USED TO BREAK THE RAIL TOO (HUM LEAD, UAT 2026-09-10: "the
+		// blank row in between sections needs to be completely blank"). That
+		// ruling was about the CARD regions' walls, and the rail then ran beside
+		// them; it does not any more (D-95, D-97), so the only blank rows left
+		// under a rail are INSIDE one scrolling region — and a rail with a hole in
+		// it reads as two rails, which is the thing D-104 exists to stop being.
+		// A region with no rail carries no mark at all, one line above.
+		// ONE BLANK COLUMN AND THE SCROLL, AND NOTHING AFTER IT (D-104). The
+		// frame's outer wall on this side is gone: the cards are boxes with their
+		// own borders, so a wall around them was a second edge saying the same
+		// thing — and the blank is Observer's single cell (UAT 9.2), which comes
+		// from the table being `tableWidth` rather than from air added here.
+		out[i] = render.PadTo(r, b.frameWidth()-1) + mark
 	}
 	return out
 }

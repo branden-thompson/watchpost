@@ -83,3 +83,41 @@ func TestBothTablesDrawTheirHeadersThroughTheSameFunction(t *testing.T) {
 		t.Errorf("the shared group header stopped drawing Observer's: %q", locHead)
 	}
 }
+
+// THE FOCUSED ROW IS PAINTED, NOT MERELY POINTED AT (D-105).
+//
+// HUM LEAD, UAT 2026-09-12: "Rows in the Scheduled Line up should highlight just
+// like the location pool table." The pool's focused row reads light blue with its
+// name picked out; this one wore the pointer glyph and nothing else, so one
+// pointer looked like two different things on two tables the operator walks with
+// one key.
+func TestTheFocusedSlotIsPaintedLikeTheFocusedLocation(t *testing.T) {
+	cols := lineupColumnDefs(144)
+	r := LineupRow{Num: "02.", ReportType: "Location Report", Location: "Vista, CA"}
+	data := Opts{}.lineupRowData(r)
+
+	plain := lineupRowStyles(cols, r, data)
+	r.Marks.Selected = true
+	focused := lineupRowStyles(cols, r, data)
+
+	var loc, typ int
+	for i, c := range cols {
+		switch c.Name {
+		case "loc":
+			loc = i
+		case "type":
+			typ = i
+		}
+	}
+	if focused[loc] != Tok(FocusName) {
+		t.Errorf("the focused row's LOCATION reads %q, not the focus name tone", focused[loc])
+	}
+	if focused[typ] != Tok(FocusCell) {
+		t.Errorf("the focused row's cells read %q, not the focus cell tone", focused[typ])
+	}
+	// AND AN UNFOCUSED ROW IS UNTOUCHED, which is what makes the tint mean
+	// something.
+	if plain[loc] == Tok(FocusName) || plain[typ] == Tok(FocusCell) {
+		t.Error("an unfocused row is painted as the focused one")
+	}
+}

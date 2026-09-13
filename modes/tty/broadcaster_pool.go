@@ -90,16 +90,42 @@ func fillPoolWeather(row render.LocationRow, l *snapshot.Location) render.Locati
 	return row
 }
 
-// poolLines is the LOCATION POOL table and its heading, in whatever height the
-// frame has left.
-func (b Broadcaster) poolLines(used int) []string {
-	w := b.frameWidth()
-	// THE FOOTER IS PART OF THE BUDGET. It is appended after the window is cut, so
-	// a room that did not account for it made the frame one row taller than the
-	// terminal — which FR-7.3 calls a defect rather than a degradation.
+// poolRoom is how many rows the pool takes off the frame before the running
+// order is windowed.
+//
+// THE POOL IS NOT WHAT IS LEFT OVER (D-104). It used to be, and the arithmetic
+// showed: the running order took every row it could and the pool drew twelve of
+// twenty-five locations with nothing on the frame to say so — which is what the
+// HUM LEAD reported ("I can only see 12 locations of the 24 location pool").
+//
+// TEN ROWS OF LOCATIONS, plus the band, the column header, the air above and the
+// footer. It is a FLOOR, not a share: on a short terminal the running order gives
+// way first, because the pool is where the operator SHOPS and the running order
+// is what they are running.
+func (b Broadcaster) poolRoom() int {
+	if b.height-2*bcInsetRows < bcMinRows {
+		return 0
+	}
+	// IT NEVER RESERVES ROOM FOR LOCATIONS THAT DO NOT EXIST. A station with two
+	// candidates would otherwise hold ten rows of air out of the running order's
+	// reach, which is the opposite of what a floor is for.
+	return min(bcPoolRows, len(b.area.Pool)) + bcPoolChrome
+}
+
+const (
+	// bcPoolRows is how many locations the pool shows before it scrolls.
+	bcPoolRows = 10
+	// bcPoolChrome is what the pool spends around them: the air above, the three
+	// band rows, the column header, and the "Showing" footer.
+	bcPoolChrome = 6
+)
+
+// poolSpan is the LOCATION POOL table and its heading, windowed on the pointer.
+func (b Broadcaster) poolSpan(used int) scrollSpan {
+	w := b.tableWidth()
 	room := b.height - used - 2*bcInsetRows - 1
 	if w <= 0 || room < 6 {
-		return nil // no room to say anything useful (FR-7.3)
+		return scrollSpan{} // no room to say anything useful (FR-7.3)
 	}
 	rows := b.poolRows()
 	// NO CAPTION OF ITS OWN: the table's GROUP BAND already reads "L O C A T I O N
@@ -108,28 +134,37 @@ func (b Broadcaster) poolLines(used int) []string {
 	// answers rather than the list itself.
 	lines := append([]string{""}, strings.Split(b.opts().PoolTable(rows, w), "\n")...)
 
+	// THE WINDOW FOLLOWS THE POINTER, the way the running order's does — and for
+	// the same reason: only the frame knows how much room the table has.
+	total, off := len(lines), 0
+	if room < len(lines) {
+		dataAt := len(lines) - len(rows)
+		if sel := b.poolSelection(); sel >= 0 {
+			if at := dataAt + sel; at >= room {
+				off = at - room + 1
+			}
+		}
+		off = max(0, min(off, len(lines)-room))
+		lines = append([]string(nil), lines[off:off+room]...)
+	}
 	// THE FOOTER COUNTS WHAT IS ON SCREEN AGAINST WHAT EXISTS, which is the
 	// reference's own row and the only thing that tells the operator the list is
-	// longer than the window.
-	shown := max(0, min(len(rows), room-len(lines)+len(rows)))
-	if len(lines) > room {
-		lines = lines[:room]
+	// longer than the window. IT COUNTS THE WINDOW IT IS UNDER, so a pool scrolled
+	// to its end reads "Showing 16 - 25" rather than starting at one forever.
+	lo := max(0, off-(total-len(rows)))
+	shown := max(0, min(len(rows)-lo, len(lines)-max(0, (total-len(rows))-off)))
+	return scrollSpan{
+		lines: append(lines, b.poolFooter(lo, lo+shown, len(rows), w)),
+		off:   off,
+		total: total,
 	}
-	// NO RAIL OF ITS OWN, YET. The reference draws ONE rail down the right of the
-	// whole running order — the scheduled table AND the pool under it, with a
-	// single ▲ at the top and ▼ at the bottom. Two rails put two ▲/▼ pairs on the
-	// frame and interleaved them, which a test caught immediately: "the up cap is
-	// above the down cap". One rail over two scrolling regions is its own piece of
-	// work; until then the scheduled table keeps the rail and the pool does not
-	// pretend to have one.
-	return append(lines, b.poolFooter(shown, len(rows), w))
 }
 
 // poolFooter is the reference's "Showing 1 - n of N" line.
-func (b Broadcaster) poolFooter(shown, total, w int) string {
+func (b Broadcaster) poolFooter(lo, hi, total, w int) string {
 	if total == 0 {
 		return ""
 	}
-	s := "Showing 1 - " + strconv.Itoa(shown) + " of " + strconv.Itoa(total) + " Location Pool Locations"
-	return render.PadTo(strings.Repeat(" ", max(0, w-len(s)-2))+s, w)
+	s := "Showing " + strconv.Itoa(lo+1) + " - " + strconv.Itoa(hi) + " of " + strconv.Itoa(total) + " Location Pool Locations"
+	return render.PadTo(strings.Repeat(" ", max(0, w-len(s)))+s, w)
 }

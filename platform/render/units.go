@@ -126,6 +126,18 @@ type Glyphs struct {
 // Glyphs resolves the mark set for these options. Under --ascii the play
 // mark is its own form (`*`), never the pointer's `>` (HUM LEAD ruling
 // 2026-08-29, B-08b).
+// HeadlineJoin is how a hazard's TITLE and its PLACE are joined into the one
+// line the ticker has room for: `SEVERE THUNDERSTORM WARNING · HARPER, KS`.
+//
+// IT IS A LITERAL, NOT THE GLYPH SET'S BULLET, because the join happens where
+// the arrival is built and travels with it — through the card, the cue and the
+// spoken script — long before any surface knows whether it is drawing ASCII.
+//
+// ONE OWNER SO IT CAN BE UNDONE. The takeover's table has a LOCATION column of
+// its own and has to take the title back; a second copy of " · " on that side
+// would work until one of them changed.
+const HeadlineJoin = " · "
+
 func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
 		return Glyphs{Pointer: ">", Play: "*", Pause: "=", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},

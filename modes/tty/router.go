@@ -55,6 +55,16 @@ const (
 	actQueuePrev term.Action = "queue-prev"
 	actQueueNext term.Action = "queue-next"
 
+	// actQueueOpen is the pointer's own way in (D-105, HUM LEAD 2026-09-12):
+	// "hitting <enter> on the row should be the equivalent of what happened when
+	// we pressed [0-9] - this is more important now for positions [10-14]".
+	//
+	// TEN DIGITS CANNOT ADDRESS FIFTEEN SLOTS. The chips on the cards address the
+	// first ten and the running order now runs to fifteen, so the last five had no
+	// key at all — the console drew rows the operator could point at and not open.
+	// The POINTER is the address that has no ceiling.
+	actQueueOpen term.Action = "queue-open"
+
 	// actGainUp and actGainDown are the station's output level — Observer's VOL
 	// under the station's own word (HUM LEAD, 2026-09-10). They are FORWARDED
 	// rather than reimplemented: the Dashboard owns the level, the step, the
@@ -160,6 +170,9 @@ func broadcasterKeyMap() term.KeyMap {
 		// surface (D-56).
 		actQueuePrev: {Keys: []string{"up"}, Help: "Scroll Up"},
 		actQueueNext: {Keys: []string{"down"}, Help: "Scroll Down"},
+		// AND IT FALLS THROUGH LIKE THEY DO: `enter` opens a location's Details on
+		// Observer, and the console's own row is a different thing at the same key.
+		actQueueOpen: {Keys: []string{"enter"}, Help: "Details / Manage Slot"},
 	}
 }
 
@@ -405,6 +418,16 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if r.consoleOwnsTheKeys() {
 					r.broadcaster = r.broadcaster.scrollQueue(scrollStep(a))
 					return r, nil
+				}
+			case actQueueOpen:
+				if r.consoleOwnsTheKeys() {
+					// IT REFUSES QUIETLY, exactly as a digit on an empty slot does,
+					// and for the same reason: the pointer is in the POOL, or the
+					// Director has not filled the slot it is on. Falling through
+					// leaves `enter` free for whatever else is drawn.
+					if out, opened := r.openPointedCard(); opened {
+						return out, nil
+					}
 				}
 			case actGainUp, actGainDown,
 				actSettings, actAbout, actStatus, actHelp, actQuit:
@@ -672,6 +695,29 @@ func (r Router) openCardWindow(key string) (Router, bool) {
 	// THE SURFACE DOES NOT CHANGE, for the reason ctrl+d does not change it: the
 	// operator asked about a card ON the console and the console stays drawn
 	// underneath, which is what `View` already composites.
+	r.observer = r.observer.showCard(id, rows, r.observer.opts()).open(modalCard)
+	return r, true
+}
+
+// openPointedCard opens the card the running order's pointer is on.
+//
+// THE POINTER IS THE ADDRESS, NOT A DIGIT (D-105). `openCardWindow` reads a slot
+// number off the key, which tops out at nine; the running order runs to fifteen.
+// This asks the console where its pointer IS and opens THAT — so every row the
+// operator can reach is a row they can open, at any length of list.
+//
+// IT GOES THROUGH THE SAME DOOR. `cardDetail` is the one builder of a card
+// window, so the row the pointer opens and the row a chip opens cannot come to
+// show different things about one report.
+func (r Router) openPointedCard() (Router, bool) {
+	at := r.broadcaster.lineupSelection()
+	if at < 0 {
+		return r, false // the pointer is in the pool; that window is not built yet
+	}
+	id, rows, ok := r.broadcaster.cardDetail(at + bcScheduledFrom)
+	if !ok {
+		return r, false
+	}
 	r.observer = r.observer.showCard(id, rows, r.observer.opts()).open(modalCard)
 	return r, true
 }

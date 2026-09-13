@@ -136,9 +136,23 @@ func layoutFor(width, days int) layout {
 	default:
 		l.tomorrow, l.hiLo = false, false
 	}
-	// Very narrow terminals: the fixed columns of the minimal layout are 44
-	// cells; let NAME shrink (floor 10) so the table never exceeds the width,
-	// and drop ZIP (the last identity column to leave) before NAME breaks.
+	l.fitName(width)
+	return l
+}
+
+// fitName gives NAME the slack, and shrinks it when there is none.
+//
+// Very narrow terminals: the fixed columns of the minimal layout are 44 cells;
+// let NAME shrink (floor 10) so the table never exceeds the width, and drop ZIP
+// (the last identity column to leave) before NAME breaks.
+//
+// IT IS A STEP, NOT A TAIL, BECAUSE THE POOL ADDS A COLUMN AFTER THE FACT
+// (D-104). `PoolTable` sets `l.pool` — which brings POPULATION in — on a layout
+// whose floor had already been measured WITHOUT it, so NAME kept a floor it could
+// no longer afford and the table drew two cells past its own width. Every band
+// row was two cells wider than the running order's beneath it, which is what the
+// HUM LEAD saw as the tables not respecting the right inset.
+func (l *layout) fitName(width int) {
 	l.nameMin = nameMinW
 	if fixed := rowLen(l.columns(nil)); width-fixed < nameMinW {
 		if width-fixed < 10 {
@@ -147,7 +161,6 @@ func layoutFor(width, days int) layout {
 		}
 		l.nameMin = max(10, width-fixed)
 	}
-	return l
 }
 
 // columns assembles the go-studs column spec for a layout.
@@ -796,5 +809,6 @@ func thousands(n int) string {
 func (o Opts) PoolTable(rows []LocationRow, width int) string {
 	l := layoutFor(width, 0)
 	l.pool = true
+	l.fitName(width) // POPULATION is in now; NAME's floor is measured again with it
 	return o.tableFor(l, rows, width)
 }

@@ -350,15 +350,15 @@ func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	// ▲ OPENS IT AND ▼ CLOSES IT (D-70), which is `Railify`'s own contract —
 	// "callers draw ▲/▼ themselves" — and the HUM LEAD's UAT: "the vertical
 	// control should start and end where the mock says."
-	if got := []rune(framed[0])[b.frameWidth()-2]; got != '^' {
+	if got := []rune(framed[0])[railAt(b)-len(bcLeftInset)]; got != '^' {
 		t.Errorf("the rail opens on %q, want the up cap", string(got))
 	}
-	if got := []rune(framed[len(framed)-1])[b.frameWidth()-2]; got != 'v' {
+	if got := []rune(framed[len(framed)-1])[railAt(b)-len(bcLeftInset)]; got != 'v' {
 		t.Errorf("the rail closes on %q, want the down cap", string(got))
 	}
 	thumbs := 0
 	for i, r := range framed[1 : len(framed)-1] {
-		switch c := []rune(r)[b.frameWidth()-2]; c {
+		switch c := []rune(r)[railAt(b)-len(bcLeftInset)]; c {
 		case '#':
 			thumbs++
 		case '|':
@@ -525,7 +525,9 @@ var lineupRowNum = regexp.MustCompile(`^[\s>\x{203a}]+(\d\d)\.\s`)
 //
 // MINUS TWO, NOT ONE: `railed` pads a row to `frameWidth-2` and appends the mark,
 // so the mark IS the last cell of a row that is one short of the frame.
-func railAt(b Broadcaster) int { return len(bcLeftInset) + b.frameWidth() - 2 }
+// railAt is the terminal column the scroll control lives in: the LAST column of
+// the frame, with the two-column right margin outside it (D-104).
+func railAt(b Broadcaster) int { return len(bcLeftInset) + b.frameWidth() - 1 }
 
 // slots is the running order's rows, by the `##.` column that addresses them.
 func slots(b Broadcaster) []string {

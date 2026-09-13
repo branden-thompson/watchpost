@@ -41,6 +41,7 @@ const GroupSectionBG
 const GroupText
 const GroupTodayBG
 const GroupTomorrowBG
+const HeadlineJoin
 const KeyChip
 const KeyChipMuted
 const LightThemeName
@@ -93,7 +94,11 @@ const VizOn
 const WindowBGDark
 const WindowBGLight
 const WordmarkName
+const alertGap1
+const alertGap2
+const alertKindW
 const alertLocMin
+const alertNumW
 const boxInset
 const categoryBlend
 const clockKey12
@@ -125,6 +130,7 @@ const tableGutter
 const tableHeaderDip
 const unitsKeyImperial
 const unitsKeyMetric
+func (*layout).fitName
 func (Clock).DateTime
 func (Clock).DateTimeZone
 func (Clock).Key
@@ -229,6 +235,7 @@ func SeismicLevel
 func SetTheme
 func SevereHeaderTone
 func SevereTableTokens
+func ShortHazard
 func Spectrum
 func SpliceCells
 func StatusNaturalWidth
@@ -259,7 +266,7 @@ func WrapText
 func aaPairs
 func activeTable
 func alertColumnDefs
-func alertColumns
+func alertWidths
 func asciiKey
 func bandColumns
 func bareRGB
@@ -299,6 +306,7 @@ func lightOverrides
 func lineupColumnDefs
 func lineupColumns
 func lineupGroups
+func lineupRowStyles
 func luminance
 func markCells
 func milHourWords
@@ -365,6 +373,7 @@ type layout
 type quattroPalette
 type severeCol
 var asciiMarks
+var hazardShorthand
 var themeGen
 var themeMu
 var themeName

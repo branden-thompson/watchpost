@@ -163,10 +163,10 @@ const bcScheduledFrom = 2
 // the terminal: emitting every row and letting `clamp` cut the bottom loses the
 // frame's own closing inset and runs rows past the edge, which FR-7.3 calls a
 // defect rather than a degradation.
-func (b Broadcaster) scheduledLines(cards []lineup.Card, used int) []string {
-	w := b.bandWidth()
+func (b Broadcaster) scheduledSpan(cards []lineup.Card, used int) scrollSpan {
+	w := b.tableWidth()
 	if w <= 0 {
-		return nil
+		return scrollSpan{}
 	}
 	slots := b.lineupRows(cards)
 	// THE CONTROLS SIT ABOVE THE HEADING, WHERE OBSERVER PUTS THEM (D-102, HUM
@@ -202,7 +202,10 @@ func (b Broadcaster) scheduledLines(cards []lineup.Card, used int) []string {
 	// the window's own length told `railed` there was nothing below it, and the
 	// rail drew no caps at any height — the scroll worked and said it did not.
 	total := len(lines)
-	off, room := 0, b.height-used-2*bcInsetRows
+	// THE POOL GETS ITS SHARE OF THE HEIGHT (D-104). The running order used to
+	// take everything left and the pool drew in whatever remained, which is why
+	// the operator could see twelve of twenty-five locations and no rail said so.
+	off, room := 0, b.height-used-2*bcInsetRows-b.poolRoom()
 	if room < 0 {
 		room = 0
 	}
@@ -225,7 +228,20 @@ func (b Broadcaster) scheduledLines(cards []lineup.Card, used int) []string {
 		off = max(0, min(off, len(lines)-room))
 		lines = append([]string(nil), lines[off:off+room]...)
 	}
-	return b.chromeAt(lines, off, total)
+	return scrollSpan{lines: lines, off: off, total: total}
+}
+
+// scrollSpan is a region that scrolls, and where its window sits in the whole of
+// it: the two facts a scroll control needs and the two a region knows about
+// itself.
+//
+// IT EXISTS SO THE TWO TABLES CAN SHARE ONE CONTROL (D-104). The pointer already
+// walks the running order and the pool as one list (`rowCount`), so the reference
+// draws ONE rail beside both — and a rail over two regions has to be told where
+// each of their windows sits rather than guessing from the rows it was handed.
+type scrollSpan struct {
+	lines      []string
+	off, total int
 }
 
 // bcScheduledHeading is the caption the reference draws over the running order.

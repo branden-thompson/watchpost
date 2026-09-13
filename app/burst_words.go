@@ -150,7 +150,7 @@ func worstOf(evs []globalfeed.Event) globalfeed.Event {
 // its active window's end when it has one (HUM LEAD 2026-08-27, #1). The lane
 // label already names the category, so the line names the specific alert.
 func tapeHead(e globalfeed.Event) string {
-	s := e.Title() + " · " + e.Location // a named storm reads by name (SAM-D-14)
+	s := e.Title() + render.HeadlineJoin + e.Location // a named storm reads by name (SAM-D-14)
 	// Feed text reaches the terminal here — strip any escape/control sequences a
 	// hostile or compromised feed could smuggle in (OSC-52 clipboard, title
 	// spoof, CSI frame corruption), the same defence the snapshot path applies

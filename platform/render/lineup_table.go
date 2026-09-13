@@ -99,7 +99,7 @@ func (o Opts) LineupTable(rows []LineupRow, width int) string {
 	def := &studs.DataTableDefinition{Columns: cols, GutterWidth: tableGutter, NoAutoStyle: true}
 	for _, r := range rows { // bounded by the running order (P10-02)
 		data := clampCells(o.lineupRowData(r), cols)
-		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: data, CellStyles: tableCellStyles(data)})
+		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: data, CellStyles: lineupRowStyles(cols, r, data)})
 	}
 	dt := studs.NewDataTable(width, def)
 	groups := lineupGroups()
@@ -130,6 +130,36 @@ func lineupColumnDefs(width int) []studs.ColumnDefinition {
 		out = append(out, studs.ColumnDefinition{Name: c.name, Header: c.header, Width: c.width, Alignment: align})
 	}
 	return out
+}
+
+// lineupRowStyles paints the focused row the way the location table paints its
+// own (D-105).
+//
+// HUM LEAD, UAT 2026-09-12: "Rows in the Scheduled Line up should highlight just
+// like the location pool table."
+//
+// THE POINTER WALKS BOTH TABLES AND ONLY ONE OF THEM ANSWERED. The pool's focused
+// row reads light blue with its name picked out; the running order's wore the
+// pointer glyph and nothing else, so the operator's eye had one cell to find on a
+// fifteen-row list — and the two halves of one pointer looked like two pointers.
+//
+// LOCATION IS THE NAME HERE, which is what `rowStyles` picks out on the other
+// table: the cell that says WHICH row this is.
+func lineupRowStyles(cols []studs.ColumnDefinition, r LineupRow, data []string) map[int]string {
+	m := tableCellStyles(data)
+	if !r.Marks.Selected {
+		return m
+	}
+	for i, c := range cols { // bounded by the spec (P10-02)
+		switch c.Name {
+		case "marks":
+		case "loc":
+			m[i] = Tok(FocusName)
+		default:
+			m[i] = Tok(FocusCell)
+		}
+	}
+	return m
 }
 
 // lineupRowData formats one row into the spec's cells.
