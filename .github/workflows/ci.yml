@@ -55,6 +55,13 @@ jobs:
       - run: make dupes # metric D: no duplicate operation without a RATIFIED reason
       - run: make wires # every closed-set member names a production writer and reader, or is RATIFIED as owed
       - run: make wires-selftest # and the check itself can still fail: 7 scan scenarios, 4 ledger cases
+      # EVERY RUN, EVERY PLATFORM, because it costs two tenths of a second and
+      # the gate it front-runs does not run here most of the time: mutant-check
+      # is policy-scheduled below (push / nightly / label), so on an ordinary PR
+      # nothing asks the corpus anything at all. A drifted anchor could reach
+      # main unremarked until the next scheduled run — and a drifted mutant is an
+      # UNMEASURED rule, which is the one failure a corpus must not have quietly.
+      - run: make mutant-anchors
       - run: make release-matrix
       - run: make install-test
         if: runner.os == 'Linux'

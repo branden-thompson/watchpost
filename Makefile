@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: wires wires-selftest dupes dupes-selftest cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: wires wires-selftest dupes dupes-selftest mutant-anchors cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -103,6 +103,19 @@ gate-controls:
 	@./scripts/quality/p10-unmatched_test.sh
 	@./scripts/quality/ledger-ratified.sh --self-test
 	@go run ./tools/dupes -self-test
+	@./scripts/quality/mutant-anchors.sh --self-test
+
+# THE CHEAP HALF OF `mutant-check`, RUNNABLE BEFORE A COMMIT. It asks only
+# whether every mutant still FINDS its line — three tenths of a second against
+# 400 for the full gate, which also compiles each mutation and is the reason that
+# one cannot be run casually.
+#
+# IT SITS BEFORE `mutant-check` IN `verify` so the corpus's cheapest failure is
+# also its fastest: a drifted anchor is found in a moment rather than seven
+# minutes in. It does not replace it — compiling every mutation is the other half
+# of the question and only the slow gate answers it.
+mutant-anchors:
+	@./scripts/quality/mutant-anchors.sh
 
 # The mutation corpus and the harness that reads it (06_docs/mutants, Go, behind
 # the `mutants` build tag so its ~140s does not land in `go test ./...` and thus
@@ -228,7 +241,7 @@ cache-clean:
 	@go clean -cache -testcache
 	@echo "cache-clean: build and test caches cleared"
 
-verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget dupes wires wires-selftest mutant-check
+verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget dupes wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
