@@ -93,7 +93,12 @@ func TestAFilledSlotIsStill(t *testing.T) {
 
 	rows := strings.Split(stripANSITest(b.View().Content), "\n")
 	for _, r := range rows {
-		if strings.Contains(r, "OCEANSIDE") && strings.Contains(r, "...") {
+		// THE SHIMMER IS THE WAITING PLACEHOLDER, not any three dots. This asked
+		// for "..." and matched the TRUNCATION ELLIPSIS the moment the card lost
+		// three columns to the right margin (D-100) — a card whose title is
+		// abbreviated is not a card that is loading, and only one of those is a
+		// defect.
+		if strings.Contains(r, "OCEANSIDE") && strings.Contains(r, "waiting for the line-up") {
 			t.Errorf("a decided card must not shimmer:\n%q", r)
 		}
 	}

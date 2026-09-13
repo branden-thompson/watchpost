@@ -236,6 +236,7 @@ func (Broadcaster).chrome
 func (Broadcaster).chromeAt
 func (Broadcaster).clamp
 func (Broadcaster).clock
+func (Broadcaster).consoleControls
 func (Broadcaster).controlRow
 func (Broadcaster).detailBody
 func (Broadcaster).emptyAlertBox
@@ -249,6 +250,7 @@ func (Broadcaster).inset
 func (Broadcaster).lanes
 func (Broadcaster).lineupRowOf
 func (Broadcaster).lineupRows
+func (Broadcaster).lineupSelection
 func (Broadcaster).liveLine
 func (Broadcaster).liveOffset
 func (Broadcaster).mainTrack
@@ -261,11 +263,13 @@ func (Broadcaster).poolEntry
 func (Broadcaster).poolFooter
 func (Broadcaster).poolLines
 func (Broadcaster).poolRows
+func (Broadcaster).poolSelection
 func (Broadcaster).priorityColumn
 func (Broadcaster).priorityWidth
 func (Broadcaster).railed
 func (Broadcaster).readBody
 func (Broadcaster).readPair
+func (Broadcaster).rowCount
 func (Broadcaster).scheduledLines
 func (Broadcaster).scrollQueue
 func (Broadcaster).slotCard

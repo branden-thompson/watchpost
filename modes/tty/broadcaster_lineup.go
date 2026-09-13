@@ -28,6 +28,7 @@ func (b Broadcaster) lineupRows(cards []lineup.Card) []render.LineupRow {
 	out := make([]render.LineupRow, 0, MainTrackSlots)
 	for i := bcScheduledFrom; i < MainTrackSlots; i++ { // bounded by the track (P10-02)
 		row := render.LineupRow{Slot: i, Num: fmt.Sprintf("%02d.", i)}
+		row.Marks.Selected = i-bcScheduledFrom == b.lineupSelection()
 		c, decided := b.slotCard(cards, i)
 		if decided {
 			row = b.lineupRowOf(row, c)
@@ -44,7 +45,12 @@ func (b Broadcaster) lineupRowOf(row render.LineupRow, c lineup.Card) render.Lin
 	row.Priority = priorityOf(c)
 	row.RequestedBy = requestedByOf(c)
 	row.Correspondent = detailReadBy(c)
+	// THE POINTER SURVIVES THE FILL. This assigned a fresh `Marks` and threw the
+	// caller's `Selected` away with it, so the pointer vanished on every row that
+	// actually had a card in it — visible only once a card existed, which is why
+	// the empty frame looked right.
 	row.Marks = render.Marks{
+		Selected:  row.Marks.Selected,
 		Playing:   c.State == lineup.OnAir,
 		HasAlert:  c.Slot == lineup.BreakingAlert,
 		WarnAlert: c.Slot == lineup.BreakingAlert,
@@ -162,21 +168,91 @@ func (b Broadcaster) scheduledLines(cards []lineup.Card, used int) []string {
 	if w <= 0 {
 		return nil
 	}
-	lines := []string{"", centerText(bcScheduledHeading, w), ""}
-	lines = append(lines, strings.Split(b.opts().LineupTable(b.lineupRows(cards), w), "\n")...)
+	slots := b.lineupRows(cards)
+	// THE CONTROLS SIT ABOVE THE HEADING, WHERE OBSERVER PUTS THEM (D-102, HUM
+	// LEAD 2026-09-12): "control hints missing at the top of the table which
+	// should be right above 'SCHEDULED LINE UP' (just like in Observer)".
+	//
+	// SAME SHAPE, SAME SPACING, SAME `[↑↓] Navigate` PUSHED RIGHT — `PadBetween`
+	// is Observer's own, so the two rows cannot drift apart.
+	lines := []string{""}
+	// SPLIT, NOT EMBEDDED. `consoleControls` wraps on a narrow terminal, and a
+	// multi-line string held as ONE element counted as one row in the height
+	// budget and escaped the per-row padding — so the frame ran a row past the
+	// terminal at 100x44 and a row measured 91 cells instead of 100. Two symptoms,
+	// one cause.
+	lines = append(lines, strings.Split(b.consoleControls(w), "\n")...)
+	// THE HEADING IS A BAND, IN OBSERVER'S OWN TONE (D-102, HUM LEAD 2026-09-12):
+	// "let's make the 'SCHEDULE LINE UP' 3 rows have the same background color as
+	// Observer's 'RECENT / SEARCHED LOCATIONS' row (so it can be themed)".
+	//
+	// `GroupSectionBG` IS THAT TONE — `radio_panel.go` names it in as many words,
+	// "GroupSectionBG, the RECENT / SEARCHED tone" — so the two bands are one
+	// token and a theme moves both together.
+	//
+	// THREE ROWS: the air above, the words, the air below. A band is a region, and
+	// its breathing room is painted or it is a stripe.
+	band := render.Tok(render.GroupText) + ";" + render.Tok(render.GroupSectionBG)
+	for _, r := range []string{"", centerText(bcScheduledHeading, w), ""} {
+		lines = append(lines, render.TintKeeping(render.PadTo(r, w), band))
+	}
+	lines = append(lines, strings.Split(b.opts().LineupTable(slots, w), "\n")...)
 
+	// THE TOTAL IS THE UNTRUNCATED COUNT, taken BEFORE the window is cut. Passing
+	// the window's own length told `railed` there was nothing below it, and the
+	// rail drew no caps at any height — the scroll worked and said it did not.
+	total := len(lines)
 	off, room := 0, b.height-used-2*bcInsetRows
 	if room < 0 {
 		room = 0
 	}
 	if room < len(lines) {
-		// THE OFFSET IS CLAMPED HERE, NOT WHERE IT IS SET — only the frame knows
-		// how much room the table has, and it changes with the terminal.
-		off = min(b.queueOff, len(lines)-room)
+		// THE WINDOW FOLLOWS THE POINTER, AND IT IS COMPUTED HERE (D-101) because
+		// only the frame knows how much room the table has — the same argument the
+		// offset was already clamped here for. A `queueOff` moved at the keystroke
+		// could not know the room, so it scrolled one way and never came back.
+		dataAt := len(lines) - len(slots)
+		if sel := b.lineupSelection(); sel >= 0 {
+			at := dataAt + sel
+			if at >= room {
+				off = at - room + 1
+			}
+		} else {
+			// THE POINTER IS IN THE POOL, so the running order shows its END: the
+			// operator has walked past it and the row they came from is the last.
+			off = len(lines) - room
+		}
+		off = max(0, min(off, len(lines)-room))
 		lines = append([]string(nil), lines[off:off+room]...)
 	}
-	return b.chromeAt(lines, off, len(lines)+off)
+	return b.chromeAt(lines, off, total)
 }
 
 // bcScheduledHeading is the caption the reference draws over the running order.
 const bcScheduledHeading = "S C H E D U L E D    L I N E - U P"
+
+// consoleControls is the running order's own control hints.
+//
+// WHAT THE OPERATOR CAN DO TO THE LIST THEY ARE POINTING AT, which is why it sits
+// over the table and not in the masthead: the masthead's row is what the SURFACE
+// offers, and this is what the ROW under the pointer offers.
+func (b Broadcaster) consoleControls(w int) string {
+	o := b.opts()
+	segs := []string{
+		o.KeyCap("l") + " Lookup Location from Pool",
+		o.KeyCap("enter") + " Details / Manage Slot",
+		o.KeyCap("r") + " Request for Line-Up",
+	}
+	nav := o.KeyCap("↑↓") + " Navigate"
+	line := strings.Join(segs, "   ")
+	if render.Width(line)+render.Width(nav)+2 <= w {
+		return render.PadTo(render.PadBetween(line, nav, w), w)
+	}
+	// PADDED TO THE FRAME, like every other row. The wrap path returned ragged
+	// lines, and the colour gate measures every row against the frame's width.
+	wrapped := render.WrapSegments(append(segs, nav), w, "   ")
+	for i, l := range wrapped { // bounded by the segments (P10-02)
+		wrapped[i] = render.PadTo(l, w)
+	}
+	return strings.Join(wrapped, "\n")
+}

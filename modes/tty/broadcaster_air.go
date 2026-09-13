@@ -34,7 +34,12 @@ func (b Broadcaster) airBox() []string {
 	o := b.opts()
 	g := o.Glyphs()
 	bx := render.HeavyBox(b.ascii)
-	inner := b.bandWidth() - 2
+	// THE FRAME'S FULL WIDTH, NOT THE BAND'S (D-100). `bandWidth` is the STATION
+	// SECTION's text budget — the frame less its own three-column inset on each
+	// side — and using it here left the air box short of the tables below it.
+	// HUM LEAD: "Live Now / Relay table should fill to the edge of the right 3 col
+	// inset."
+	inner := b.frameWidth() - 2
 	body := inner - bcAirLabelW - 1
 	if body < 12 {
 		return nil // no room to say anything useful; the notice covers this (FR-7.3)
@@ -99,7 +104,7 @@ func (b Broadcaster) bedLine(o render.Opts) string {
 // withControl right-anchors a row's control against the box's own width, so the
 // two rows' keys line up under each other however long their content is.
 func (b Broadcaster) withControl(line, control string) string {
-	body := b.bandWidth() - 2 - bcAirLabelW - 1
+	body := b.frameWidth() - 2 - bcAirLabelW - 1
 	gap := body - render.Width(line) - render.Width(control) - len(bcCardInset)
 	if gap < 1 {
 		gap = 1

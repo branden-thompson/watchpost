@@ -137,17 +137,23 @@ type Broadcaster struct {
 	// disagree about how loud the station is.
 	gain int
 
-	// queueOff is how far the SCHEDULED LINE UP window has been scrolled (D-87).
+	// THE WINDOW'S OFFSET RETIRED AT D-101, and `selected` replaced it. The queue
+	// used to be scrolled directly and had no notion of a focused row; now the
+	// POINTER is what moves and the window follows it at render time, where the
+	// room is known (scheduledLines). An offset held on the model could not know
+	// how many rows fit, which is exactly how the first attempt scrolled one way
+	// and never came back.
+
+	// selected is the focused row, indexed across BOTH tables — the running order
+	// first, the pool after it (D-101).
 	//
-	// THE CARDS OUTGREW THE TERMINAL. A card is a manifest now, so ten of them
-	// need about ninety rows against the reference's seventy-four — and a queue
-	// the operator cannot reach the bottom of is a line-up they cannot manage,
-	// which is the whole reason the surface exists.
-	//
-	// THE READ CARDS NEVER MOVE. There are two of them, they are always the same
-	// two, and the rail begins below them precisely because they do not scroll
-	// (D-68).
-	queueOff int
+	// ONE POINTER OVER TWO TABLES, which is Observer's own shape: `d.selected`
+	// spans the watchlist and RECENT through `numPriority`, and the operator
+	// walks from one into the other without noticing a boundary. The HUM LEAD
+	// asked for the same here — "pointer state is shared across the two go-studs
+	// tables … just like it is in the Observer tables" — and it is what `enter`
+	// acts on, so a surface without it has a key with no target.
+	selected int
 
 	// bed is what the broadcast is riding on (F-79). Published, never guessed:
 	// the console draws it and holds no opinion of its own, the same rule the
@@ -321,12 +327,17 @@ func (b Broadcaster) opts() render.Opts {
 }
 
 // frameWidth is how much room the console's own content has: the terminal, less
-// the left margin the frame adds in `clamp` (D-96).
+// the margin on BOTH sides (D-96, D-100).
+//
+// THREE COLUMNS EACH SIDE. The first cut took only the left, and the HUM LEAD saw
+// the result immediately: "3 col right inset not respected by the tables" — every
+// table ran to the terminal's edge while the boxes above stopped short of it. A
+// margin on one side is not a margin, it is a shift.
 //
 // THE LAYOUT IS BUILT AT THIS AND THE MARGIN IS ADDED ONCE. Building at the
 // terminal's width and insetting afterwards would push three columns of every
 // row off the right edge.
-func (b Broadcaster) frameWidth() int { return max(0, b.width-len(bcLeftInset)) }
+func (b Broadcaster) frameWidth() int { return max(0, b.width-2*len(bcLeftInset)) }
 
 // bcLeftInset is Observer's own left margin, matched (HUM LEAD, 2026-09-12:
 // "we need the global 3 col left inset as well").
@@ -410,6 +421,17 @@ func (b Broadcaster) clamp(lines []string) string {
 	// (UAT, 2026-09-10). The frame is the viewport, and it has to say so.
 	for b.height > 0 && len(lines) < b.height {
 		lines = append(lines, "")
+	}
+	// AND CUT TO IT, WHICH THE WIDTH SIDE HAS ALWAYS DONE (D-102). The rule below
+	// is already stated — "the frame IS the viewport, in both dimensions" — and
+	// only one dimension enforced it: height padded and never truncated, so a
+	// region that mis-budgeted by a row drew past the bottom of the terminal.
+	//
+	// IT IS A BACKSTOP, NOT THE BUDGET. Each region still windows itself
+	// (scheduledLines, poolLines), and this is what makes a mistake there a
+	// missing row rather than a broken frame.
+	if b.height > 0 && len(lines) > b.height {
+		lines = lines[:b.height]
 	}
 	if b.width > 0 {
 		for i, l := range lines {
@@ -521,8 +543,45 @@ func (b Broadcaster) lanes() []string {
 // scrolling past it would leave the operator looking at air with the rail saying
 // there is more.
 func (b Broadcaster) scrollQueue(by int) Broadcaster {
-	b.queueOff = max(0, b.queueOff+by)
+	// THE ARROWS MOVE THE POINTER AND THE WINDOW FOLLOWS (D-101), which is what
+	// the reference's own footer says they do — "[↑↓] Navigate" — and what
+	// Observer does. They used to move the WINDOW and nothing else, so the
+	// operator could scroll a list they had no position in.
+	n := b.rowCount()
+	if n == 0 {
+		return b
+	}
+	b.selected = max(0, min(n-1, b.selected+by))
+	// THE WINDOW IS NOT MOVED HERE. It follows the pointer at RENDER time, where
+	// the room is known (scheduledLines) — a offset chosen at the keystroke cannot
+	// know how many rows fit, and the first attempt scrolled one way and never
+	// came back.
 	return b
+}
+
+// rowCount is how many rows the two tables hold between them — the space the
+// pointer walks.
+func (b Broadcaster) rowCount() int {
+	return max(0, MainTrackSlots-bcScheduledFrom) + len(b.area.Pool)
+}
+
+// lineupSelection is the focused row WITHIN the running order, or -1.
+func (b Broadcaster) lineupSelection() int {
+	if b.selected < MainTrackSlots-bcScheduledFrom {
+		return b.selected
+	}
+	return -1
+}
+
+// poolSelection is the focused row within the pool, or -1.
+//
+// THE POOL BEGINS WHERE THE RUNNING ORDER ENDS, which is the one place that
+// arithmetic is written — `numPriority` is Observer's twin of it.
+func (b Broadcaster) poolSelection() int {
+	if at := b.selected - (MainTrackSlots - bcScheduledFrom); at >= 0 {
+		return at
+	}
+	return -1
 }
 
 // inset is the blank air above and below the whole frame — Observer's own, which
