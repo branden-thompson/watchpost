@@ -15,10 +15,17 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
+// boxOf draws one card as a box, with nothing in it.
+//
+// `cardLane.box` RETIRED AT D-110 — it drew the flat, ordered slots of the
+// pre-table running order, and those became rows of `LineupTable` at D-94. What
+// this file is about is the BOX, which is still drawn, so the fixture reaches the
+// drawer that still exists rather than keeping a wrapper alive for one caller.
 func boxOf(t *testing.T, box int, c lineup.Card, handle, badge string) []string {
 	t.Helper()
+	_ = handle // the handle left the title row at D-110; the way in is the footer
 	g := render.Opts{ASCII: true}.Glyphs()
-	return newCardLane(box, g).box(c, handle, badge)
+	return newCardLane(box, g).boxOf(c, badge, nil)
 }
 
 // A CARD FILLS ITS BOX AT EVERY WIDTH.
@@ -31,8 +38,11 @@ func TestACardFillsItsBoxAtEveryWidth(t *testing.T) {
 	c := aCard(t, "OCEANSIDE, CA 92057")
 	for _, box := range []int{82, 112, 132} {
 		rows := boxOf(t, box, c, "6", "STANDARD")
-		if len(rows) < 3 {
-			t.Fatalf("box %d: a card is at least a border, a title and a border; got %d rows", box, len(rows))
+		// TWO ROWS WITH AN EMPTY BODY (D-110): a card is its BORDERS and whatever
+		// is put between them. The title row it used to open with moved into the
+		// top border, where the reference draws it.
+		if len(rows) < 2 {
+			t.Fatalf("box %d: a card is at least two borders; got %d rows", box, len(rows))
 		}
 		for i, r := range rows {
 			if w := utf8.RuneCountInString(r); w != box {
@@ -60,13 +70,23 @@ func TestACardHasBordersOnEveryEdge(t *testing.T) {
 	}
 }
 
-// THE TITLE STILL OBEYS THE ANCHORING RULE, one width in from the borders. The
-// box does not get to move the handle.
-func TestTheBoxedCardKeepsItsHandleRightMost(t *testing.T) {
-	rows := boxOf(t, 132, aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")
-	title := strings.TrimSuffix(strings.TrimPrefix(rows[1], "|"), "|")
-	if !strings.HasSuffix(strings.TrimRight(title, " "), chipFor("6")) {
-		t.Errorf("the handle is right-most inside the box; got %q", title)
+// THE BADGE RIDES THE RULE, at its right (D-110).
+//
+// THIS USED TO PIN THE HANDLE right-most on the title ROW. The reference moved
+// both: the badge to the border — `━━━ • STANDARD • ━━━` — and the handle to the
+// footer beside the presenter, so the row that carried them is gone. What
+// survives is that the box says what GRADE the card is without spending a line.
+func TestTheBoxsRuleCarriesTheGrade(t *testing.T) {
+	rule := boxOf(t, 132, aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")[0]
+	if !strings.Contains(rule, "STANDARD") {
+		t.Errorf("the box's rule does not grade the card: %q", rule)
+	}
+	// AT THE RIGHT, and with the rule's own marks still closing the corner.
+	if !strings.HasSuffix(rule, "---+") {
+		t.Errorf("the badge pushed the corner off the rule: %q", rule)
+	}
+	if at := strings.Index(rule, "STANDARD"); at < len([]rune(rule))/2 {
+		t.Errorf("the badge sits at %d of %d; the reference puts it at the right", at, len([]rune(rule)))
 	}
 }
 
@@ -80,12 +100,27 @@ func TestTheBoxedCardKeepsItsHandleRightMost(t *testing.T) {
 //
 // WHAT SURVIVES IS THE FACT ITSELF: a fabricated event still says so, once,
 // where the operator reads the card's name.
-func TestAFabricatedCardStillSaysSoOnItsTitleRow(t *testing.T) {
+// AND IT SAYS SO IN THE RULE NOW (D-110), because that is where the card's name
+// went. Without this the mark would simply have stopped being drawn when the
+// title row retired — a fabricated event that looks exactly like a real one,
+// which is the screenshot hazard FR-4.4 exists to prevent.
+func TestAFabricatedCardStillSaysSoInItsRule(t *testing.T) {
 	c := aCard(t, "OCEANSIDE, CA")
 	c.Test = true
 	rows := boxOf(t, 132, c, "6", "STANDARD")
-	if !strings.Contains(rows[1], testEventMark) {
-		t.Errorf("a fabricated card does not say so on its title row: %q", rows[1])
+	if !strings.Contains(rows[0], testEventMark) {
+		t.Errorf("a fabricated card does not say so in its rule: %q", rows[0])
+	}
+	// FIRST, BEFORE THE HEADLINE. `boxRule` drops a title the box cannot hold, so
+	// a mark behind the headline would be the first thing to go — and the whole
+	// point of the mark is that it cannot be the thing that is missing.
+	if at, head := strings.Index(rows[0], testEventMark), strings.Index(rows[0], "OCEANSIDE"); head >= 0 && at > head {
+		t.Errorf("the mark follows the headline it is warning about: %q", rows[0])
+	}
+	// AND A TAKEOVER SAYS IT TOO, which is the card the rule was written for.
+	c.Slot = lineup.BreakingAlert
+	if burst := boxOf(t, 132, c, "A", "PRIORITY")[0]; !strings.Contains(burst, testEventMark) {
+		t.Errorf("a fabricated takeover does not say so in its rule: %q", burst)
 	}
 }
 
@@ -107,18 +142,21 @@ func TestARealCardHasNoCorners(t *testing.T) {
 //
 // MEASURED IN RUNES, because the badge's bullets are three bytes each and a
 // byte offset here reads as a plausible wrong number.
-func TestTheBoxedCardMatchesTheReferenceGeometry(t *testing.T) {
-	rows := boxOf(t, 132, aCard(t, "OCEANSIDE, CA 92057"), "6", "STANDARD")
-	title := []rune(rows[1])
-	if got := len(title); got != 132 {
+// THE REFERENCE'S OWN RULE, at the reference's own card width (D-110).
+//
+// THE HANDLE'S GEOMETRY RETIRED WITH THE TITLE ROW. What the v3 reference fixes
+// is the RULE: the card's name three marks in from the corner, the grade three
+// marks in from the other, and the corners landing whatever the title's length.
+func TestTheBoxsRuleMatchesTheReferenceGeometry(t *testing.T) {
+	rule := []rune(boxOf(t, 132, aCard(t, "OCEANSIDE, CA 92057"), "6", "STANDARD")[0])
+	if got := len(rule); got != 132 {
 		t.Fatalf("the reference's card is 132 cells; got %d", got)
 	}
-	// ONE CELL BETWEEN THE CHIP AND THE BORDER, whatever the chip's own width
-	// is: in colour it paints " 6 " (five cells, the reference's `[ 6 ]`) and
-	// without colour it falls back to "[6]".
-	tail := string(title[len(title)-len([]rune(chipFor("6")))-2:])
-	if want := chipFor("6") + " |"; tail != want {
-		t.Errorf("the reference leaves one cell between the handle and the border; got %q want %q", tail, want)
+	if got := string(rule[:5]); got != "+--- " {
+		t.Errorf("the reference opens the rule with three marks and a space; got %q", got)
+	}
+	if got := string(rule[len(rule)-5:]); got != " ---+" {
+		t.Errorf("and closes it with three; got %q", got)
 	}
 }
 
@@ -134,7 +172,7 @@ func TestACardIsDrawnInTheMastheadsBox(t *testing.T) {
 	bx := render.HeavyBox(false)
 	b := Broadcaster{width: 150}
 	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
-	rows := lane.box(aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")
+	rows := lane.boxOf(aCard(t, "OCEANSIDE, CA"), "STANDARD", nil)
 
 	if !strings.HasPrefix(rows[0], bx.TL) || !strings.HasSuffix(rows[0], bx.TR) {
 		t.Errorf("the top border is %q; want the masthead's corners %q … %q", rows[0], bx.TL, bx.TR)

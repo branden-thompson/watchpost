@@ -13,8 +13,6 @@ package tty
 // this is the console ADOPTING that rather than inventing a second answer.
 
 import (
-	"strconv"
-
 	tea "charm.land/bubbletea/v2"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -82,54 +80,11 @@ func (b Broadcaster) armTick(cmd tea.Cmd) (Broadcaster, tea.Cmd) {
 	return b, cmd
 }
 
-// slotRows is every slot in a region, decided or waiting.
-func (b Broadcaster) slotRows(r bcRegion, cards []lineup.Card, lane cardLane) []string {
-	o := b.opts()
-	rows := []string{}
-	for i := r.from; i < r.upto; i++ { // bounded by the region (P10-02)
-		handle := strconv.Itoa(i)
-		c, decided := b.slotCard(cards, i)
-		if !decided {
-			// THE HANDLE IS DRAWN ON AN EMPTY SLOT TOO: it is addressable — the
-			// operator can put something in it — so it carries its address.
-			c = lineup.Card{Headline: b.waiting(o)}
-			// AND A READ SLOT ON A STATION AT REST GETS THE STANDBY BOX (D-89).
-			// The HUM LEAD: "when it's on standby — like it is on first open/play
-			// — that should be blank, we should have an empty state for that live
-			// slot", and then the design for it: "a grey box with a centered text
-			// of: NO REPORTS READ OR ACTIVE IN STANDBY MODE". A shimmer there
-			// would promise a read that is not coming, because nothing is going
-			// to air at all.
-			//
-			// IT IS NOT A CARD, SO IT IS NOT DRAWN AS ONE. Handing this path a
-			// `lineup.Card{}` gave it a zero Slot — which IS a location report —
-			// and the box came out titled `LOCATION REPORT •STANDARD• [0]`: a
-			// report that does not exist, graded, with a chip that opens nothing.
-			//
-			// THE LIVE SLOT ALONE, AND NOT EVERY READ SLOT. The first draft gave
-			// the notice to both, and a test caught it: an empty UP NEXT on a
-			// station that has just opened is the Director still choosing, which
-			// is what the SHIMMER says. Telling the operator "no reports read or
-			// active" about the slot the Composer is working on right now would be
-			// the console reporting an absence where there is work in progress.
-			//
-			// LIVE IS POSITION 0 BY DEFINITION, which is what `liveOffset` exists
-			// to guarantee: on standby the line-up is drawn from UP NEXT down
-			// precisely so that nothing can be in slot 0 until the operator goes
-			// on air.
-			if i == 0 && b.power != lineup.Running {
-				rows = append(rows, lane.standbyBox(bcReadCardRows)...)
-				continue
-			}
-		}
-		if r.reads {
-			rows = append(rows, lane.boxOf(c, handle, "STANDARD", b.readBody(o, lane, c, handle, decided))...)
-			continue
-		}
-		rows = append(rows, lane.boxOf(c, handle, "STANDARD", b.flatBody(o, c, handle, decided))...)
-	}
-	return rows
-}
+// `slotRows` RETIRED WITH THE CARD COLUMN (D-110). It drew a REGION of the
+// running order as a column of boxes — the shape D-94 replaced with a table and
+// D-97 replaced above it with the UP NEXT / takeover pair. Nothing but its own
+// tests had called it since; two drawers of one running order is exactly what the
+// `dupes` gate exists for, and this one had already stopped being called.
 
 // bcReadLines is how many rows a read card gives its manifest.
 //
@@ -167,19 +122,67 @@ const (
 // was the drawing.
 func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handle string, decided bool) []string {
 	if !decided {
-		rows := []string{""}
 		// AN EMPTY SLOT HAS NOTHING TO MANIFEST, and drawing the headings over
 		// nothing would promise contents that are not coming.
-		for range bcReadCardRows - bcFlatCardRows + 1 {
-			rows = append(rows, "")
+		//
+		// IT STILL CARRIES ITS HANDLE, WHICH IS F-97 (D-110). The chip used to ride
+		// the title row and an undecided slot got one anyway; the way in moved to
+		// the footer, and a first draft gave the footer only to a decided card —
+		// which would have made the slot unaddressable again, one row along.
+		rows := make([]string, bcReadCardRows-1)
+		for i := range rows { // bounded by the card's height (P10-02)
+			rows[i] = ""
 		}
-		return append(rows, "")
+		return append(rows, b.cardControls(o, c, handle))
 	}
-	rows := []string{bcCardInset + "STATUS:  " + cardStatus(c, decided)}
-	rows = append(rows, bcCardInset+cardPulled(o, c, b.clock, lane.inner()-2*len(bcCardInset)), "",
-		bcCardInset+"READ CONTENTS", bcCardInset+manifestHeading(lane.inner()-2*len(bcCardInset)))
-	rows = append(rows, b.manifestRows(c, lane.inner()-2*len(bcCardInset))...)
-	return append(rows, "", bcCardInset+" "+o.KeyCap(handle)+"  Report Details")
+	room := lane.inner() - 2*len(bcCardInset)
+	// THE REFERENCE'S OWN ORDER (D-110): air, what it is doing and how fresh it
+	// is, air, the manifest under a centred caption, and the way in at the bottom.
+	//
+	// THE AIR IS PART OF IT. The card is the one thing on this console an operator
+	// READS rather than scans, and the reference gives its three questions room to
+	// be separate answers instead of a block of labels.
+	rows := []string{
+		"",
+		bcCardInset + "STATUS: " + cardStatus(c, decided),
+		bcCardInset + "DATA PULL: " + cardPulledShort(o, c, b.clock),
+		"",
+		// "READ MANIFEST", CENTRED, and it is a CAPTION over the table rather than
+		// a row of it — which is what the centring says and what "READ CONTENTS"
+		// hard against the left margin did not.
+		// CENTRED OVER THE CELL THE ROW IS DRAWN IN, not over the lane's interior.
+		// The rows this returns are padded to the CELL's width by the box around
+		// them, so centring two cells short put the caption three cells left of
+		// the middle — visible, and the kind of thing only a measurement catches.
+		centerText(bcManifestCaption, lane.lane),
+		bcCardInset + manifestHeading(room),
+	}
+	rows = append(rows, b.manifestRows(c, room)...)
+	for len(rows) < bcReadCardRows-1 { // bounded by the card's height (P10-02)
+		rows = append(rows, "")
+	}
+	return append(rows, b.cardControls(o, c, handle))
+}
+
+// bcManifestCaption is what the reference calls the contents table.
+//
+// "READ MANIFEST", NOT "READ CONTENTS" (D-110). The word is the HUM LEAD's own
+// from D-87 — "a SUMMARY of what the report contains *before* it goes on air" —
+// and a manifest is exactly that: a list of what is aboard, not the cargo.
+const bcManifestCaption = "READ MANIFEST"
+
+// cardControls is the row along the bottom of a read card: the way in, and who
+// is going to say it.
+//
+// THE PRESENTER IS NAMED BUT NOT YET STEPPED (D-110). The reference draws it with
+// arrows — `PRESENTER: [ ← ] System Voice [ → ]` — and this console already binds
+// ← and → to the relay bed's selector, which the same reference also draws with
+// arrows. Which control owns them is a ruling, not a guess, so the row states the
+// fact and offers no key: a control that cannot act is worse than an absent one
+// (D-65), and a fact is worth saying either way.
+func (b Broadcaster) cardControls(o render.Opts, c lineup.Card, handle string) string {
+	left := bcCardInset + " " + o.KeyCap(handle) + "  Read / Manage"
+	return left + "    PRESENTER: " + detailReadBy(c)
 }
 
 // flatBody is the interior of a card the operator only ORDERS (D-87): what it is

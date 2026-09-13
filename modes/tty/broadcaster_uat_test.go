@@ -81,25 +81,14 @@ func TestTheMastheadsKeysAreChips(t *testing.T) {
 	}
 }
 
-// THE READ CARDS ARE TALL AND THE ORDERED ONES ARE FLAT (D-68).
+// THE READ CARDS ARE TALL AND THE ORDERED ONES ARE FLAT (D-68) — RETIRED.
 //
-//	"the LIVE CARD should be bigger to support showing at least most the script
-//	 being played … UP NEXT should also be bigger"
-func TestTheReadCardsAreTallerThanTheOrderedOnes(t *testing.T) {
-	b := NewBroadcaster()
-	b.width, b.height, b.ascii = 150, 74, true
-	lane := newCardLane(b.cardBoxWidth(), b.opts().Glyphs())
-	for _, r := range bcRegions {
-		got := len(b.slotRows(r, nil, lane)) / (r.upto - r.from)
-		want := bcFlatCardRows
-		if r.reads {
-			want = bcReadCardRows
-		}
-		if got != want {
-			t.Errorf("%s draws %d rows per card, want %d", r.label, got, want)
-		}
-	}
-}
+// This measured `slotRows`, which drew a REGION of the running order as a column
+// of boxes. D-94 replaced the ordered slots with a table and D-97 replaced what
+// was above them with the UP NEXT / takeover pair, so there is no longer a FLAT
+// card to be shorter than a READ one: there is one read card, and the rest are
+// rows. The rule is gone, not weakened, and the test went with it rather than
+// being bent into shape.
 
 // AND A READ SLOT ON A STATION AT REST IS EMPTY, NOT SHIMMERING.
 //

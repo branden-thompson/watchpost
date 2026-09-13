@@ -76,14 +76,20 @@ func (b Broadcaster) upNextBox() []string {
 	if !decided {
 		c = lineup.Card{Headline: b.waiting(o)}
 	}
-	// THE TITLE ROW GOES THROUGH THE LANE, not in as plain text: that is what
-	// carries the badge and the handle's CHIP, and a card the operator cannot
-	// address is the defect F-97 was filed for.
-	rows := append([]string{lane.render(c, "1", "STANDARD")}, b.readBody(o, lane, c, "1", decided)...)
+	// THE CARD NAMES ITSELF IN ITS OWN BORDER (D-110), which is where the
+	// reference puts it: `┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━ • STANDARD
+	// • ━━━┓`. It used to be a ROW inside the box, and that row cost the manifest
+	// a line to say what the frame around it could say for free.
+	//
+	// AND THE HANDLE LEAVES THE TITLE WITH IT. The chip rode the title row; the
+	// reference puts the way in at the BOTTOM, beside the presenter — one row for
+	// what the operator DOES with this card, rather than a key in the caption.
+	rows := b.readBody(o, lane, c, "1", decided)
 
 	// THE LABEL SITS AGAINST THE CARD'S MIDDLE, which is where the reference puts
 	// it — a caption beside a tall cell, not a heading over it.
-	out := []string{bx.TL + strings.Repeat(bx.Rule, bcUpNextLabelW) + bx.T + strings.Repeat(bx.Rule, body) + bx.TR}
+	out := []string{bx.TL + strings.Repeat(bx.Rule, bcUpNextLabelW) + bx.T +
+		boxRule(bx.Rule, cardRuleTitle(c, o.Glyphs()), lane.badgeOf("STANDARD"), body) + bx.TR}
 	at := (len(rows) - 1) / 2
 	for i, r := range rows { // bounded by the card's own height (P10-02)
 		cell := strings.Repeat(" ", bcUpNextLabelW)
@@ -116,7 +122,7 @@ func (b Broadcaster) alertBox(rows int) []string {
 	// THE LIST FILLS THE HEIGHT THE CARD BESIDE IT SETS, so the two boxes close on
 	// the same row. Truncating afterwards cut the control row off the bottom —
 	// which is the one thing in the box the operator presses.
-	out := lane.boxOf(rail[0], "A", "PRIORITY", b.burstBody(rail[0], w, rows-bcAlertChrome))
+	out := lane.boxOf(rail[0], "PRIORITY", b.burstBody(rail[0], w, rows-bcAlertChrome))
 	if len(out) > rows {
 		out = out[:rows] // it never grows the frame (FR-7.3)
 	}
@@ -125,9 +131,9 @@ func (b Broadcaster) alertBox(rows int) []string {
 
 // emptyAlertBox is the takeover's box with nothing in it.
 func (b Broadcaster) emptyAlertBox(lane cardLane, rows int) []string {
-	body := make([]string, max(0, rows-3))
+	body := make([]string, max(0, rows-2))
 	for i := range body { // bounded by the box's height (P10-02)
 		body[i] = ""
 	}
-	return lane.boxOf(lineup.Card{Slot: lineup.BreakingAlert}, "A", "PRIORITY", body)
+	return lane.boxOf(lineup.Card{Slot: lineup.BreakingAlert}, "PRIORITY", body)
 }

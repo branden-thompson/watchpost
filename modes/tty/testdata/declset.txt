@@ -55,6 +55,7 @@ const bcGainCells
 const bcInsetRows
 const bcLabelCells
 const bcLeftInset
+const bcManifestCaption
 const bcMinCols
 const bcMinRows
 const bcNoCoordinates
@@ -237,6 +238,7 @@ func (Broadcaster).bedLine
 func (Broadcaster).bedSelector
 func (Broadcaster).burstBody
 func (Broadcaster).cardBoxWidth
+func (Broadcaster).cardControls
 func (Broadcaster).cardDetail
 func (Broadcaster).chrome
 func (Broadcaster).chromeAt
@@ -279,7 +281,6 @@ func (Broadcaster).rowCount
 func (Broadcaster).scheduledSpan
 func (Broadcaster).scrollQueue
 func (Broadcaster).slotCard
-func (Broadcaster).slotRows
 func (Broadcaster).snapshotFor
 func (Broadcaster).stationLine
 func (Broadcaster).stationSection
@@ -566,7 +567,7 @@ func (Router).throughToObserver
 func (Router).toggleStation
 func (Router).update
 func (arrowChips).pick
-func (cardLane).box
+func (cardLane).badgeOf
 func (cardLane).boxOf
 func (cardLane).inner
 func (cardLane).render
@@ -603,6 +604,8 @@ func bucketSevere
 func buoyNote
 func cardBoxTitle
 func cardPulled
+func cardPulledShort
+func cardRuleTitle
 func cardStatus
 func cardTitle
 func cardTone

@@ -761,14 +761,14 @@ func hazardOf(a lineup.Arrival) string {
 }
 
 // bcAlertChrome is what the takeover box spends around its list: the two borders,
-// the title row, the air above the table, the table's own header, the air below,
-// and the control row.
+// the air above the table, the table's own header, the air below, and the control
+// row. The TITLE ROW left at D-110 — the box names itself in its rule.
 //
 // THE LIST IS WHAT IS LEFT, so the box is exactly as tall as the card beside it
 // (D-103). The reference draws ten rows because its UP NEXT card is that tall; a
 // constant here would have made the two boxes disagree about their own height and
 // cut whichever lost.
-const bcAlertChrome = 7
+const bcAlertChrome = 6
 
 // THE HAZARD'S TIMES RETIRED WITH THE PROSE (D-103). `burstWhen` drew
 // "<LOCATION> • 09/12 16:02 - 09/12 18:00" on every alert line; the reference's
@@ -1192,16 +1192,9 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 	return out
 }
 
-// box draws one card as the reference draws it: four rows, walled on every edge.
-//
-// THE BORDERS ARE WHAT D-57's CORNERS NEEDED. The console drew flat rows until
-// now, so a fabricated card had exactly one place to be marked — and the
-// priority track sits ON TOP of the main track, which makes a takeover the card
-// most likely to be partly occluded and one mark on it the weakest possible
-// placement.
-func (l cardLane) box(c lineup.Card, handle, badge string) []string {
-	return l.boxOf(c, handle, badge, nil)
-}
+// `box` RETIRED WITH THE CARD COLUMN (D-110). It drew a card with no interior —
+// the flat, ordered slots of the pre-table running order — and those became rows
+// of `LineupTable` at D-94. Its one remaining caller was itself.
 
 // boxOf is the card, with whatever the region puts INSIDE it below the first
 // row (D-68).
@@ -1212,10 +1205,18 @@ func (l cardLane) box(c lineup.Card, handle, badge string) []string {
 // bigger." A card the operator READS FROM needs the words on it; a card they are
 // merely deciding the ORDER of needs its name and its handle.
 //
-// ONE DRAWER FOR BOTH, because everything except the interior is the same
-// card — the borders, the centred title, the badge and the handle's chip. A
-// second box function would be a second place for the handle to drift, which is
-// the D-56 shape this file has already paid for once.
+// boxOf is a card as a BOX: the borders name it, and the body is whatever the
+// caller puts inside (D-110).
+//
+// THE TITLE ROW RETIRED WITH D-110. A card used to open with a row carrying its
+// headline, its badge and its handle's chip; the reference puts the headline and
+// the badge in the RULE and the handle at the BOTTOM beside the presenter — so
+// the row was saying three things the frame and the footer now say, and costing
+// the manifest a line to do it.
+//
+// ONE DRAWER FOR BOTH, because everything except the interior is the same card.
+// A second box function would be a second place for a corner or a tint to drift,
+// which is the D-56 shape this file has already paid for once.
 // inner is the box's interior width — everything between the two rails.
 //
 // ONE OWNER, because two things measure it now: the box that draws the borders
@@ -1224,21 +1225,16 @@ func (l cardLane) box(c lineup.Card, handle, badge string) []string {
 // what put the station band three cells over its frame.
 func (l cardLane) inner() int { return l.lane - 2 }
 
-func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []string {
-	if l.lane < 4 {
-		return nil
+func (l cardLane) boxOf(c lineup.Card, badge string, body []string) []string {
+	return l.shell(cardBoxTitle(c, l.g), l.badgeOf(badge), body, cardTone(c))
+}
+
+// badgeOf is how a card's grade reads in the box's own rule: `• STANDARD •`.
+func (l cardLane) badgeOf(badge string) string {
+	if badge == "" {
+		return ""
 	}
-	// The title row is the SAME renderer the flat row used, one width in: the
-	// box does not get to move the handle or re-centre the title.
-	title := newCardLane(l.inner(), l.g)
-	// THE CORNERS' ROW RETIRED AT D-87, and its own reason is what retired it.
-	// D-57 put the fabricated-event mark at BOTH ends because "a card can be
-	// occluded from either side by the priority overlay, and two corners cannot
-	// both be covered by a box that starts at the left." There is no overlay any
-	// more — the tracks are columns — so the title row's mark is always visible
-	// and a second statement of it cost a row every card had to spend.
-	rows := append([]string{title.render(c, handle, badge)}, body...)
-	return l.shell(cardBoxTitle(c), rows, cardTone(c))
+	return l.g.Bullet + " " + badge + " " + l.g.Bullet
 }
 
 // shell is a box of the card's shape, around whatever is put in it, painted on
@@ -1250,7 +1246,7 @@ func (l cardLane) boxOf(c lineup.Card, handle, badge string, body []string) []st
 // would be two places for a corner, a rule or a tint to drift. What differs
 // between a card and an empty slot is the CONTENTS, and that is now the only
 // thing that differs.
-func (l cardLane) shell(boxTitle string, body []string, ground string) []string {
+func (l cardLane) shell(boxTitle, boxBadge string, body []string, ground string) []string {
 	if l.lane < 4 {
 		return nil
 	}
@@ -1261,7 +1257,7 @@ func (l cardLane) shell(boxTitle string, body []string, ground string) []string 
 	// drawn since 0.13.0 — shared rather than copied, so the console and the
 	// header cannot come to disagree about what a border looks like.
 	bx := render.HeavyBox(l.o.ASCII)
-	rows := []string{bx.TL + boxRule(bx.Rule, boxTitle, inner) + bx.TR}
+	rows := []string{bx.TL + boxRule(bx.Rule, boxTitle, boxBadge, inner) + bx.TR}
 	for _, r := range body { // bounded by the card's own height (P10-02)
 		rows = append(rows, bx.Rail+render.PadTo(render.TruncateCells(r, inner), inner)+bx.Rail)
 	}
@@ -1301,7 +1297,7 @@ func (l cardLane) standbyBox(rows int) []string {
 	// that are not there.
 	body := make([]string, rows-2)
 	body[(len(body)-1)/2] = centerText(bcStandbyNotice, l.inner())
-	return l.shell("", body, standbyTone())
+	return l.shell("", "", body, standbyTone())
 }
 
 // bcStandbyNotice is the HUM LEAD's wording, verbatim (D-89).
@@ -1334,6 +1330,30 @@ func cardTitle(c lineup.Card, g render.Glyphs) string {
 	return kind + " " + g.Bullet + " " + head
 }
 
+// cardRuleTitle is what a box's rule NAMES: the card, with a fabricated event
+// saying so before anything else (D-110).
+//
+// THE MARK MOVED HERE WITH THE TITLE. A fabricated takeover used to be marked on
+// the card's title ROW — its own non-truncatable column, so the headline could
+// never eat it — and D-110 put the title in the rule. Without this the mark would
+// simply have stopped being drawn, which is the screenshot hazard FR-4.4 exists
+// to prevent: a test event that looks exactly like a real one.
+//
+// FIRST, AND BEFORE THE HEADLINE CAN GIVE WAY. `boxRule` drops the whole title
+// when the box is too narrow for it, so a rule that fits ANYTHING fits the mark —
+// and a box too narrow for even that draws no title at all rather than a title
+// with the mark cut off it, which is D-55's own direction.
+func cardRuleTitle(c lineup.Card, g render.Glyphs) string {
+	title := cardTitle(c, g)
+	if !c.Test {
+		return title
+	}
+	if title == "" {
+		return testEventMark
+	}
+	return testEventMark + " " + title
+}
+
 // cardBoxTitle is what a card carries in its TOP RULE, or nothing.
 //
 // ONLY THE TAKEOVER HAS ONE (D-87), and the reference is emphatic about it:
@@ -1341,11 +1361,20 @@ func cardTitle(c lineup.Card, g render.Glyphs) string {
 // announces itself in the frame around it, not in a row inside it — which is
 // what lets the box be read as an interruption at a glance, from the shape
 // rather than from the words.
-func cardBoxTitle(c lineup.Card) string {
+func cardBoxTitle(c lineup.Card, g render.Glyphs) string {
 	if c.Slot == lineup.BreakingAlert {
+		// A TAKEOVER NAMES WHAT IT IS, NOT WHICH ONE. It interrupts the programme,
+		// and what the operator needs off the frame is that something has — the
+		// hazards themselves are the list inside it (D-103).
+		if c.Test {
+			return testEventMark + " " + bcTakeoverTitle
+		}
 		return bcTakeoverTitle
 	}
-	return ""
+	// EVERY OTHER CARD NAMES ITSELF (D-110). The rule used to say nothing for
+	// anything but a takeover, because the card had a title ROW; the reference
+	// puts `LOCATION REPORT • Oceanside, CA 92057` in the border.
+	return cardRuleTitle(c, g)
 }
 
 // bcTakeoverTitle is the takeover box's own name, from the v2 reference.
@@ -1356,12 +1385,23 @@ const bcTakeoverTitle = "! ALERT ! - TAKEOVER"
 // THE CORNERS ALWAYS LAND. A title wider than the rule is dropped rather than
 // pushing a corner off the row — the same rule `render.BoxTitled` states, which
 // is where this shape comes from.
-func boxRule(mark, title string, inner int) string {
+func boxRule(mark, title, badge string, inner int) string {
 	if title == "" || inner < render.Width(title)+6 {
 		return strings.Repeat(mark, inner)
 	}
 	head := strings.Repeat(mark, 3) + " " + title + " "
-	return head + strings.Repeat(mark, inner-render.Width(head))
+	// AND THE BADGE RIDES THE SAME RULE, at the right (D-110). The reference
+	// draws both boxes that way — `┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━
+	// • STANDARD • ━━━┓` — so what the card IS and how it is GRADED are read off
+	// the frame, and the row they used to occupy goes to the manifest.
+	//
+	// IT GIVES WAY FIRST, because the title says WHICH card and the badge only
+	// says what kind: a box too narrow for both keeps the one that identifies it.
+	tail := ""
+	if badge != "" && inner-render.Width(head) >= render.Width(badge)+6 {
+		tail = " " + badge + " " + strings.Repeat(mark, 3)
+	}
+	return head + strings.Repeat(mark, inner-render.Width(head)-render.Width(tail)) + tail
 }
 
 // cardTone is the ground a card is painted on, and the empty string for a slot

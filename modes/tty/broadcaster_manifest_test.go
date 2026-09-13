@@ -195,7 +195,9 @@ func TestTheConsolesStampAlwaysCarriesAnAge(t *testing.T) {
 	rows := b.readBody(b.opts(), lane, c, "1", true)
 	stamp := ""
 	for _, r := range rows {
-		if strings.Contains(r, "DATA PULLED") {
+		// "DATA PULL:" SINCE D-110, which is the reference's own label and the
+		// short form with it — the card is glanced at, the window is read.
+		if strings.Contains(r, "DATA PULL") {
 			stamp = r
 		}
 	}
