@@ -24,11 +24,19 @@ import (
 	"github.com/branden-thompson/watchpost/platform/config"
 )
 
-// bedRelays is what the station's fence reaches, nearest first.
+// bedRelays is what the station can actually carry, nearest first.
 //
-// DERIVED ON EVERY ASK, like the pool: it is a pure function of the transmitter,
-// the bed's fence and the embedded table, and a stored copy would be a second
-// answer that could drift from the settings that produced it.
+// REMEMBERED, NOT DERIVED, AND D-117 IS WHY. This comment used to read "DERIVED
+// ON EVERY ASK, like the pool: a pure function of the transmitter, the bed's
+// fence and the embedded table" — true when the list came from a static CSV of
+// every NOAA tower in the country, and false the moment the list became the
+// answer to "which of them does a directory actually stream". That is network
+// work; it is resolved when the AREA MOVES (`refreshBedRelays`) and read from
+// here.
+//
+// THE DRIFT THE OLD COMMENT FEARED IS REAL AND IS HANDLED WHERE IT ARISES: the
+// stored copy is replaced whole every time the station's region changes, which
+// is the only thing that can invalidate it.
 func (lp *livePipelines) bedRelays() []stream.Station {
 	if lp == nil {
 		return nil

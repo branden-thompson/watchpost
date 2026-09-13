@@ -401,6 +401,26 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		r.broadcaster, bc = r.broadcaster.Update(msg)
 		return r, tea.Batch(oc, bc)
 	}
+	// THE CARD WINDOW'S OWN CONTROLS, BEFORE THE KEYMAP (D-118, placed here by
+	// D-121). They belong to the CONSOLE — Observer has no line-up to reorder and
+	// nothing to drop from one.
+	//
+	// AND AN OPEN QUESTION OWNS THE KEYBOARD, which is the rule D-118 states and
+	// which this position is what actually enforces. Below the keymap it did not:
+	// `enter` is bound to `actQueueOpen`, that case closed the card window, and
+	// the move was never sent. The operator typed a position, pressed enter, both
+	// windows closed and the running order did not move — HUM LEAD, 2026-09-13:
+	// "Table does not update / redraw … my entry is remembered, but it doesnt seem
+	// to propogate."
+	//
+	// WITH NO QUESTION OPEN this takes only `P` and `k` and falls through for
+	// everything else, so `enter` still closes the card window (D-109) and every
+	// other binding is untouched.
+	if k, ok := msg.(tea.KeyPressMsg); ok && r.active == SurfaceBroadcaster && r.observer.modal == modalCard {
+		if out, taken := r.cardWindowKey(k); taken {
+			return out, nil
+		}
+	}
 	// A SWAP REQUEST GOES THROUGH canSwap AND NOWHERE ELSE. Handling it here,
 	// before the message reaches either surface, is what keeps the D-1 rule to
 	// one carrier — a binding that switched surfaces itself would be a second.
@@ -507,15 +527,6 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// the console, so the console never has to know about a window.
 	if k, ok := msg.(tea.KeyPressMsg); ok && r.consoleOwnsTheKeys() {
 		if out, opened := r.openCardWindow(k.String()); opened {
-			return out, nil
-		}
-	}
-	// THE CARD WINDOW'S OWN CONTROLS (D-118), before the window-on-top rule below
-	// hands everything to Observer. They belong to the CONSOLE — Observer has no
-	// line-up to reorder and nothing to drop from one — and Observer would answer
-	// `P` and `k` with whatever those mean to it, which is the shape D-113 was.
-	if k, ok := msg.(tea.KeyPressMsg); ok && r.active == SurfaceBroadcaster && r.observer.modal == modalCard {
-		if out, taken := r.cardWindowKey(k); taken {
 			return out, nil
 		}
 	}
