@@ -529,7 +529,7 @@ has been read**, and these split three ways.
 | `mS0` | a column never bleeds into its neighbour | **No caller could express the fault.**  Both boxes are built by `shell`, which already pads every row, so the pad in the join is a no-op.  Extracted to `joinColumns` and driven directly |
 | `m42` | only the Air Quality Alert is an "Alert" by name | **A rule held by a DIFFERENT rule.**  The only other "… Alert" product is Blue Alert, which the civil-emergency table decides first.  Tested as a POLICY, with products from other programmes |
 | `m25` | an alert already read aloud is not offered again | **A test that proves the door opens says nothing about whether it closes.**  The path is covered end to end and drives an UNREAD event; nothing drove one already said |
-| `mK3` | two presses cannot race the same reader | see below |
+| `mK3` | two presses cannot race the same reader | **A FALSE SURVIVOR, and the cause is the SWEEP.**  Its detector was already there and documents its own reliability: "20/20 under -race, but only ~81/100 without it, with batch-to-batch swings from 50% to 92% … the guarantee is `make race`."  **`run.sh` does not use `-race`**, so the sweep read a probabilistic detector on its bad days.  A deterministic test was added anyway — see below |
 
 ### Two owe NOTHING, and the code already says so
 
@@ -544,3 +544,28 @@ has been read**, and these split three ways.
 **Both are KEPT rather than retired.**  Each guards a rule that is true today because of a
 *neighbouring* rule; if that neighbour moves — the civil-emergency table, `alertKeysOf`, the NWS
 catalogue — the mutant becomes catchable and the next sweep says so.
+
+### The sweep's own blind spot, found by using it
+
+**`mK3` was never a coverage gap.**  Its detector existed, and the sweep could not see it work:
+`run.sh` runs `go test <pkgs>` with **no `-race`**, and that test is only reliable under the race
+detector — its own comment says so, with numbers.
+
+**SO A MUTANT WHOSE ONLY DETECTOR NEEDS `-race` READS AS SURVIVED.**  That is a third way to get a
+false survivor, beside the two already known:
+
+| cause | fix |
+|---|---|
+| run against only the package it EDITS, detector lives elsewhere | escalate to `./...` — already done |
+| the detector is probabilistic and needs `-race` | **not handled** |
+| the rule was genuinely retired | HUM LEAD retirement |
+
+**RECOMMENDED, NOT SELF-ISSUED:** the escalation step should re-run a survivor under `-race` as well
+as against `./...` before reporting it.  Only survivors pay, so the cost is bounded by how many there
+are — seven, this time, against 314 mutants.  Without it every sweep will keep reporting the same
+false survivor and someone will keep spending an hour on it.
+
+**AND `mK3` NOW HAS A DETERMINISTIC TEST REGARDLESS**, because a detector that needs a flag and a
+coin-flip is a poor guarantee for a hazard path: `TestTwoPressesCannotRaceTheSameReader` stands in the
+middle of the critical section at `send` and asks whether a second press can get in.  It catches the
+mutant without `-race` and without repetition.
