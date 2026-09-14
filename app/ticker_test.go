@@ -1079,3 +1079,66 @@ func TestEveryFeedLaneSurvivesTheMarqueeMap(t *testing.T) {
 		}
 	}
 }
+
+// TestAnAlreadyReadAlertIsNotOfferedAgain.
+//
+// "ALREADY READ ALOUD IS NOT NEW. The executors mark each alert as its line is
+// said, so this is what keeps a burst from being offered twice." The consequence
+// of losing it is a station that reads the same hazard over and over — the
+// listener hears a tornado warning announced on every cycle for as long as it is
+// active.
+//
+// MUTANT m25 REMOVED THE GUARD AND SURVIVED THE WHOLE 2026-09-13 CORPUS SWEEP.
+// The path is covered end to end by the wiring test in schedule_test.go, which
+// drives ONE event through and asserts it IS read; nothing drove an event that
+// had ALREADY been read. A test that proves the door opens says nothing about
+// whether it closes.
+func TestAnAlreadyReadAlertIsNotOfferedAgain(t *testing.T) {
+	ev := globalfeed.Event{ID: "twice1", Source: "NWS", Class: globalfeed.ClassSevereWx,
+		Type: "Tornado Warning", Location: "Bonsall, CA", Severity: globalfeed.SevRed,
+		At: time.Now().Add(-time.Minute), Until: time.Now().Add(time.Hour)}
+
+	deck := func() (*tickerDeck, *[]lineup.Event) {
+		var told []lineup.Event
+		d := &tickerDeck{
+			seen:  &seenStore{ids: map[string]time.Time{}, window: time.Hour},
+			muted: &atomic.Bool{}, // a POINTER on the deck; the takeover asks it first
+		}
+		// AN UNSET SCOPE IS "ALL", which is the rule `fence()` states for a deck
+		// built by hand — and it has to be SAID, because the fallback reads the
+		// listener's radius and watchlist hooks and this deck has neither.
+		d.scope = func() airScope { return airScope{} }
+		d.emit = func(e lineup.Event) { told = append(told, e) }
+		return d, &told
+	}
+
+	// THE CONTROL FIRST: an alert nobody has read IS offered. Without this the
+	// test below passes on a deck that offers nothing at all, which is the
+	// failure it is supposed to detect.
+	fresh, told := deck()
+	fresh.startTakeover([]globalfeed.Event{ev})
+	if len(*told) != 1 {
+		t.Fatalf("an unread hazard was offered %d times, want 1 — this fixture proves nothing", len(*told))
+	}
+
+	// AND NOW THE SAME ALERT, ALREADY SAID.
+	again, toldAgain := deck()
+	again.seen.mark([]globalfeed.Event{ev}, time.Now())
+	again.startTakeover([]globalfeed.Event{ev})
+	if len(*toldAgain) != 0 {
+		t.Errorf("a hazard already read aloud was offered again (%d times); the station would "+
+			"announce it on every cycle for as long as it is active", len(*toldAgain))
+	}
+
+	// AND A BURST THAT IS ONLY PARTLY READ still offers the part that is not.
+	// Dropping the whole burst would be the same defect in the other direction:
+	// a new hazard silenced because it arrived beside an old one.
+	other := ev
+	other.ID, other.Type = "twice2", "Severe Thunderstorm Warning"
+	mixed, toldMixed := deck()
+	mixed.seen.mark([]globalfeed.Event{ev}, time.Now())
+	mixed.startTakeover([]globalfeed.Event{ev, other})
+	if len(*toldMixed) != 1 {
+		t.Errorf("a burst with one unread hazard was offered %d times, want 1", len(*toldMixed))
+	}
+}
