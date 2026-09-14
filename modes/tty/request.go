@@ -63,6 +63,20 @@ type requestState struct {
 	slot       string
 }
 
+// requestFields is the window's fields, in the order the keyboard walks them.
+//
+// NAMED RATHER THAN COUNTED, and the `wires` gate is why: `field++` produces
+// every state and CONSTRUCTS none of them, so nothing in production ever said
+// the words `requestReports` or `requestPosition` and a reader could not grep
+// for where those states are entered. A closed set whose members are reached
+// only by arithmetic is a set nobody can trace.
+//
+// It also makes the order a decision rather than a consequence of the
+// declaration order.
+func requestFields() []requestField {
+	return []requestField{requestLocation, requestReports, requestPosition}
+}
+
 // requestRows is the report rows, in registry order.
 //
 // ASKED OF THE REGISTRY EVERY TIME. A cached slice here would be the second
@@ -285,14 +299,23 @@ func (d Dashboard) handleRequestNav(act term.Action) Dashboard {
 }
 
 // next is one step down the window.
+//
+// EACH TRANSITION NAMES ITS DESTINATION. `field++` produced every state and
+// CONSTRUCTED none of them — nothing in production ever said the words
+// `requestReports` or `requestPosition`, so `wires` reported both as having no
+// writer, and it was right: a state reachable only by arithmetic is one no
+// reader can grep for. It also reads better, which is the usual way round.
 func (st requestState) next() requestState {
-	switch {
-	case st.field == requestReports && st.at < len(requestRows())-1:
-		st.at++
-	case st.field < numRequestFields-1:
-		st.field++
-		st.at = 0
-	default:
+	switch st.field {
+	case requestLocation:
+		st.field, st.at = requestReports, 0
+	case requestReports:
+		if st.at < len(requestRows())-1 {
+			st.at++ // down walks THROUGH the rows, not over them
+			return st
+		}
+		st.field, st.at = requestPosition, 0
+	case requestPosition:
 		// IT WRAPS, like every other list in this app: the operator who holds
 		// down arrives back at the top rather than at a dead key.
 		st.field, st.at = requestLocation, 0
@@ -302,16 +325,17 @@ func (st requestState) next() requestState {
 
 // prev is one step up.
 func (st requestState) prev() requestState {
-	switch {
-	case st.field == requestReports && st.at > 0:
-		st.at--
-	case st.field > requestLocation:
-		st.field--
-		if st.field == requestReports {
-			st.at = len(requestRows()) - 1
+	switch st.field {
+	case requestLocation:
+		st.field, st.at = requestPosition, 0
+	case requestReports:
+		if st.at > 0 {
+			st.at--
+			return st
 		}
-	default:
-		st.field = numRequestFields - 1
+		st.field, st.at = requestLocation, 0
+	case requestPosition:
+		st.field, st.at = requestReports, len(requestRows())-1
 	}
 	return st
 }
@@ -339,8 +363,12 @@ func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "tab":
 		// TAB IS THE FIELD, ↓ IS THE LINE. One walks the form, the other walks
 		// whatever the focused field contains — the same split Settings uses.
-		d.request.field = (d.request.field + 1) % numRequestFields
-		d.request.at = 0
+		// TAB IS `next` WITHOUT THE ROWS: it moves to the next FIELD, where ↓
+		// walks whatever the focused field contains. One order, not two.
+		d.request.field, d.request.at = d.request.next().field, 0
+		if d.request.field == requestReports && d.request.at != 0 {
+			d.request.at = 0
+		}
 		return d, nil
 	case " ":
 		return d.requestToggle(), nil

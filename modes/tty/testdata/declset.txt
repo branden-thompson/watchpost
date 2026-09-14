@@ -796,6 +796,7 @@ func relayLangLabel
 func relayLangs
 func relayLineOf
 func reportTypeOf
+func requestFields
 func requestOpen
 func requestRows
 func requestedByOf
