@@ -353,3 +353,39 @@ func TestByTabDropsRowsThatIndexNoTab(t *testing.T) {
 		t.Errorf("only the row with a real tab is bucketed, got %d rows across the tabs", total)
 	}
 }
+
+// TestOnlyTheAirQualityAlertIsAnAlertByName.
+//
+// MVS-D-58 names the trap in the code itself: the Air Quality Alert is matched
+// EXACTLY "rather than matching 'Alert', which would sweep in products from
+// other programmes on a coincidence."
+//
+// THE RULE IS ABOUT PRODUCTS THAT DO NOT EXIST YET, which is why it is tested
+// with a name the Weather Service does not issue. Two products contain "Alert"
+// today — Air Quality Alert, and Blue Alert, which the civil-emergency table
+// decides BEFORE these arms are reached. So a loose match changes nothing about
+// today's catalogue, and mutant m42 SURVIVED the 2026-09-13 corpus sweep for
+// exactly that reason: the rule is held by a DIFFERENT rule, and it vanishes
+// silently the day that one moves or a new "… Alert" product is issued.
+//
+// That is the D-42 shape, and the answer to it is a test that states the policy
+// rather than the catalogue.
+func TestOnlyTheAirQualityAlertIsAnAlertByName(t *testing.T) {
+	if got, ok := Classify(globalfeed.ClassSevereWx, "Air Quality Alert"); !ok || got != TabAdvisories {
+		t.Errorf("the Air Quality Alert is an advisory by name in everything but the word; got %v/%v", got, ok)
+	}
+	// A PRODUCT FROM ANOTHER PROGRAMME that merely ends in the same word. It is
+	// not shown, because nothing here knows what it is — and quietly filing it
+	// under Advisories would tell the listener it had been assessed.
+	for _, product := range []string{"Beach Hazards Alert", "Space Weather Alert", "Alert"} {
+		if got, ok := Classify(globalfeed.ClassSevereWx, product); ok || got != TabNone {
+			t.Errorf("%q was swept into %v on the word alone; only the Air Quality Alert is named here",
+				product, got)
+		}
+	}
+	// AND THE ONE THAT IS DECIDED EARLIER STAYS DECIDED EARLIER. Blue Alert is a
+	// civil emergency, and it must not depend on this arm to stay one.
+	if got, ok := Classify(globalfeed.ClassSevereWx, "Blue Alert"); !ok || got == TabAdvisories {
+		t.Errorf("Blue Alert classified as %v/%v; the civil-emergency table decides it", got, ok)
+	}
+}
