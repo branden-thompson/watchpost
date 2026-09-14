@@ -63,20 +63,6 @@ type requestState struct {
 	slot       string
 }
 
-// requestFields is the window's fields, in the order the keyboard walks them.
-//
-// NAMED RATHER THAN COUNTED, and the `wires` gate is why: `field++` produces
-// every state and CONSTRUCTS none of them, so nothing in production ever said
-// the words `requestReports` or `requestPosition` and a reader could not grep
-// for where those states are entered. A closed set whose members are reached
-// only by arithmetic is a set nobody can trace.
-//
-// It also makes the order a decision rather than a consequence of the
-// declaration order.
-func requestFields() []requestField {
-	return []requestField{requestLocation, requestReports, requestPosition}
-}
-
 // requestRows is the report rows, in registry order.
 //
 // ASKED OF THE REGISTRY EVERY TIME. A cached slice here would be the second
