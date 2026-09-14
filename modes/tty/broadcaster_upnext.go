@@ -37,6 +37,25 @@ func (b Broadcaster) readPair() []string {
 	gap := strings.Repeat(" ", bcColumnGap)
 	lw, rw := b.upNextWidth(), b.priorityWidth()
 
+	return joinColumns(left, right, lw, rw, gap)
+}
+
+// joinColumns lays two boxes side by side, each held to its OWN width.
+//
+// EVERY CELL IS PADDED AND TRUNCATED TO ITS COLUMN, and that is the rule: a row
+// that comes in short pulls its neighbour leftward on that row alone, which is
+// occlusion arriving by accident rather than by design. HUM LEAD, 2026-09-11:
+// "no more card occlusion."
+//
+// IT IS A FUNCTION SO THE RULE CAN BE TESTED, and that is the whole reason it
+// moved out of `readPair`. Both boxes are built by `shell`, which already pads
+// every row to the box's own width — so with today's callers the pad here is a
+// no-op and mutant mS0 removed it without changing a single frame. The rule it
+// guards is a width DISAGREEMENT between the box and the join, which is the
+// defect `withControl` actually shipped (a second copy of the air box's width,
+// and the `b` chip fell off the row). A guard whose fault no caller can express
+// is still a guard; it just cannot be tested THROUGH those callers.
+func joinColumns(left, right []string, lw, rw int, gap string) []string {
 	n := max(len(left), len(right))
 	out := make([]string, 0, n)
 	for i := range n { // bounded by the taller box (P10-02)

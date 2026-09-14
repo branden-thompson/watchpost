@@ -714,6 +714,7 @@ func issueCols
 func issueRows
 func issueScope
 func joinBlocks
+func joinColumns
 func joinSpans
 func kindFirst
 func laneAfter

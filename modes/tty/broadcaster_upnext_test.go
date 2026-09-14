@@ -184,3 +184,60 @@ func TestTheBoxTitleReadsLikeAModalTitle(t *testing.T) {
 		t.Errorf("the rule lost the box's ground:\n%q", rule)
 	}
 }
+
+// TestTheColumnsNeverBleedIntoEachOther.
+//
+// HUM LEAD, 2026-09-11: "no more card occlusion."
+//
+// A ROW THAT COMES IN SHORT PULLS ITS NEIGHBOUR LEFTWARD on that row alone, and
+// the result reads as a rendering fault rather than as a layout: the right box's
+// wall zig-zags down the frame. `joinColumns` holds every cell to its own column,
+// which is what stops it.
+//
+// DRIVEN DIRECTLY, BECAUSE NO CALLER CAN EXPRESS THE FAULT. Both boxes are built
+// by `shell`, which pads every row to the box's width — so through `readPair` the
+// pad is a no-op, and mutant mS0 deleted it without changing a single frame. It
+// SURVIVED the whole 2026-09-13 corpus sweep for exactly that reason. The rule
+// guards a width DISAGREEMENT between the box and the join, which is the defect
+// `withControl` really did ship: a second copy of the air box's width, and the
+// `b` chip fell off the row.
+func TestTheColumnsNeverBleedIntoEachOther(t *testing.T) {
+	const lw, rw = 10, 6
+	gap := "  "
+	left := []string{
+		"1234567890",      // exactly the column
+		"short",           // UNDER it — the case the rule is for
+		"1234567890EXTRA", // OVER it
+	}
+	right := []string{"|abcd|", "|efgh|", "|ijkl|"}
+
+	rows := joinColumns(left, right, lw, rw, gap)
+	if len(rows) != 3 {
+		t.Fatalf("joined %d rows, want 3", len(rows))
+	}
+	for i, r := range rows {
+		if got, want := render.Width(r), lw+len(gap)+rw; got != want {
+			t.Errorf("row %d is %d cells, want %d: %q", i, got, want, r)
+		}
+		// AND THE RIGHT COLUMN STARTS IN THE SAME PLACE ON EVERY ROW, which is
+		// the thing the operator actually sees go wrong.
+		if got := []rune(r)[lw+len(gap)]; got != '|' {
+			t.Errorf("row %d starts the right column with %q, not its wall: %q", i, string(got), r)
+		}
+	}
+}
+
+// AND A SHORTER COLUMN IS AIR, NOT A RAGGED EDGE. The two boxes are not the same
+// height — the takeover lists ten slots whether or not there are ten — so the
+// rows past the end of one column must still hold their width open.
+func TestTheShorterColumnHoldsItsWidthOpen(t *testing.T) {
+	rows := joinColumns([]string{"abc"}, []string{"|x|", "|y|", "|z|"}, 3, 3, " ")
+	if len(rows) != 3 {
+		t.Fatalf("joined %d rows, want 3", len(rows))
+	}
+	for i, r := range rows {
+		if got, want := render.Width(r), 3+1+3; got != want {
+			t.Errorf("row %d is %d cells, want %d: %q", i, got, want, r)
+		}
+	}
+}

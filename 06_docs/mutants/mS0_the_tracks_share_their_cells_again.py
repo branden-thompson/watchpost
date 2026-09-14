@@ -10,6 +10,10 @@ import pathlib
 # SUPERSEDES the four mN mutants that guarded D-83's script window, deleted at
 # D-87: the window was replaced by a manifest, so they guarded a rule that no
 # longer exists. HUM LEAD, 2026-09-11: "no more card occlusion."
+# Re-pointed 2026-09-14: the join moved into `joinColumns` so the rule could be
+# tested at all. It SURVIVED the 2026-09-13 corpus sweep because both boxes are
+# built by `shell`, which already pads every row — so through `readPair` the pad
+# is a no-op and no fixture could express the fault it guards.
 p = pathlib.Path("modes/tty/broadcaster_upnext.go"); s = p.read_text()
 old = '\t\t\t\treturn render.PadTo(render.TruncateCells(col[i], w), w)'
 new = '\t\t\t\treturn col[i]'

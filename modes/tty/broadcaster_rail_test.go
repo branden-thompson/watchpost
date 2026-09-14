@@ -562,3 +562,53 @@ func thumb(b Broadcaster) int {
 	}
 	return -1
 }
+
+// TestTheThumbMovesWithTheWindow.
+//
+// THE RULE IS WRITTEN DOWN AND WAS NOT TESTED. `chromeAt`'s own comment: "THE
+// THUMB TRACKS THE WINDOW, and until D-87 it could not: `chrome` passed a
+// hard-coded `lo` of 0 to `Railify`, so the rail drew a thumb that never moved."
+// It was a real defect, it was fixed, and nothing pinned the fix — mutant mS4
+// puts the hard-coded zero back and SURVIVED the whole corpus sweep on
+// 2026-09-13.
+//
+// A CONTROL THAT SAYS THE SAME THING IN EVERY STATE IS WORSE THAN NO CONTROL:
+// it looks like it is reporting a position, so the operator reads it and is
+// told nothing. `TestTheScrollGutterCarriesOnlyTheThumb` asserts there is
+// exactly ONE thumb, which stays true when it never moves — the two tests are
+// different questions and only one of them was being asked.
+func TestTheThumbMovesWithTheWindow(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	w := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap + b.cardBoxWidth()
+	row := strings.Repeat("-", w)
+	body := make([]string, 12) // bounded by the fixture (P10-02)
+	for i := range body {
+		body[i] = row
+	}
+
+	thumbAt := func(off int) int {
+		t.Helper()
+		framed := b.chromeAt(body, 0, off, 100)
+		for i, r := range framed {
+			if []rune(r)[railAt(b)-len(bcLeftInset)] == '#' {
+				return i
+			}
+		}
+		t.Fatalf("no thumb in the rail at offset %d", off)
+		return -1
+	}
+
+	// THE WINDOW WALKS THE LIST and the thumb has to follow it. Measured at the
+	// two ends and the middle rather than at one point, because a thumb pinned
+	// to the TOP and a thumb pinned to the BOTTOM are both "not moving" and only
+	// one of them is what the defect looked like.
+	top, mid, bottom := thumbAt(0), thumbAt(50), thumbAt(90)
+	if top == bottom {
+		t.Errorf("the thumb sits on row %d at both ends of the list; it is not tracking the window", top)
+	}
+	if !(top <= mid && mid <= bottom) {
+		t.Errorf("the thumb runs %d → %d → %d as the window descends; it must not go backwards",
+			top, mid, bottom)
+	}
+}
