@@ -112,9 +112,9 @@ note — the ETA work stops a wrong estimate, this stops half the cost.
 
 | | |
 |---|---|
-| **One baseline per package** |  skips the clean-tree TEST RUN and nothing else.  The clean-tree CHECK is not skippable, which is the whole safety argument — a mutant that failed to restore is refused before the baseline question arises.  Two controls watch that: , and its partner proving the knob still reaches a verdict rather than making the sweep fast and worthless.  ~6.5 h → ~3.5 h |
-| ** on escalation** | Only survivors pay.  's detector measures 20/20 under  and ~81/100 without, so the sweep read it on a bad day and reported an unmeasured rule.  A survivor that needs the race detector is not a survivor |
-| **A measured ETA, and position counters** | Every run records seconds-per-mutant per package; the next run reads them.  With no history it SAYS SO rather than inventing a number.  Every line carries  |
+| **One baseline per package** | `MUTANT_BASELINE=assumed` skips the clean-tree TEST RUN and nothing else.  The clean-tree CHECK is not skippable, which is the whole safety argument — a mutant that failed to restore is refused before the baseline question arises.  Two controls watch that: `TestAnAssumedBaselineStillRefusesADirtyTree`, and its partner proving the knob still reaches a verdict rather than making the sweep fast and worthless.  ~6.5 h → ~3.5 h |
+| **`-race` on escalation** | Only survivors pay.  `mK3`'s detector measures 20/20 under `-race` and ~81/100 without, so the sweep read it on a bad day and reported an unmeasured rule.  A survivor that needs the race detector is not a survivor |
+| **A measured ETA, and position counters** | Every run records seconds-per-mutant per package; the next run reads them.  With no history it SAYS SO rather than inventing a number.  Every line carries `[n/total]`, so any read of the log says where the run is |
 
 ## And the two defects the smoke tests found in the fix itself
 
