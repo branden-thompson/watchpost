@@ -607,7 +607,7 @@ func TestTheThumbMovesWithTheWindow(t *testing.T) {
 	if top == bottom {
 		t.Errorf("the thumb sits on row %d at both ends of the list; it is not tracking the window", top)
 	}
-	if !(top <= mid && mid <= bottom) {
+	if top > mid || mid > bottom {
 		t.Errorf("the thumb runs %d → %d → %d as the window descends; it must not go backwards",
 			top, mid, bottom)
 	}
