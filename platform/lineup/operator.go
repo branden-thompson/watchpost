@@ -14,7 +14,11 @@ package lineup
 // updates a display and leaves `Next()` answering the old order, with nothing
 // to see. Reordering needs its own mutator, and it is below.
 
-import "github.com/branden-thompson/watchpost/platform/invariant"
+import (
+	"errors"
+
+	"github.com/branden-thompson/watchpost/platform/invariant"
+)
 
 // Moved is the operator putting a card at a position on its own track.
 //
@@ -48,6 +52,44 @@ type Dropped struct {
 type Restored struct {
 	isEvent
 	ID string
+}
+
+// Requested is the operator asking for a report, at a position (R3).
+//
+// THE CARD ARRIVES BUILT. The Director does not mint cards — D-40's whole split
+// is "the Producer proposes, the Director chooses" — so the app composes and
+// admits it, and this says WHERE the operator wants it. The same shape `Moved`
+// has, one field wider.
+//
+// `To` IS A RUNNING-ORDER POSITION, the same number `Moved.To` carries, and
+// PRIORITIZE is simply zero: the front of the running order, which is UP NEXT.
+//
+// THE DIRECTOR DOES NOT REFUSE IT (HUM LEAD, 2026-09-14): "The Director also
+// executes the will of the Operator, so the only time a Director would refuse is
+// if the card request is not valid … For 0.16.0 that answer should be NO, it
+// doesn't refuse the human operator. The only thing that would supersede an
+// operator action is again, a valid alert within the broadcast service radius."
+// A hazard still interrupts, because the rail outranks the main track by
+// construction — not by refusing this.
+type Requested struct {
+	isEvent
+	Card Card
+	To   int
+}
+
+// onRequested puts the operator's card where they asked for it.
+//
+// IT CANNOT FAIL ON THE OPERATOR'S ACCOUNT. `Insert` refuses only a card that is
+// not a card — unadmitted, identity-less, or one whose id the lineup already
+// holds — and every one of those is the Producer having built it wrong rather
+// than the operator having asked for something unreasonable.
+func (d Director) onRequested(ev Requested) (Director, []Effect) {
+	next, err := d.lineup.Insert(MainTrack, ev.Card, ev.To)
+	if err != nil {
+		return d, nil
+	}
+	d.lineup = next
+	return d.settle()
 }
 
 // onMoved puts the card where the operator put it.
@@ -186,4 +228,97 @@ func (l Lineup) Reorder(id string, to int) (Lineup, error) {
 		return l, err
 	}
 	return out, nil
+}
+
+// MainTrackCap is how many cards the running order holds.
+//
+// THE SCHEDULE'S NUMBER, NOT THE SCREEN'S. `modes/tty` had it as
+// `MainTrackSlots` and the console is where it was first needed, but "the last
+// card falls off" is a SCHEDULE rule — the discard pile it falls into belongs to
+// the Lineup, and a cap the UI owned would be a bound the domain could not
+// enforce. The console reads this now, so there is one number (the D-124
+// standing: a test that prevents drift is not the same as a fact with one owner).
+//
+// SIXTEEN: the card on the air, UP NEXT, and fourteen behind them.
+const MainTrackCap = 16
+
+// Insert puts a card INTO the running order at `to`, pushing the rest down.
+//
+// HUM LEAD, 2026-09-14: "Line-Up Slot: ___ / Cards from this position will be
+// pushed down by 1", and PRIORITIZE is the same act at position zero — "Move to
+// 'UP NEXT' / Pushes all existing line-up cards down by 1".
+//
+// THE LAST CARD FALLS OFF INTO THE DISCARD PILE, which is the ruling: "Last Card
+// fall off, can go into our discard pile and the producer can re-request a copy
+// of that card if needed, otherwise if the user really wants that location they
+// can look it up and manually re-place it into the bottom slot."
+//
+// A FULL TRACK IS NOT A REASON TO REFUSE THE OPERATOR. Refusing would be the
+// console saying no to a request the schedule could honour, and FR-3.3's rule
+// runs the other way: an action must never be SHOWN as taken unless the schedule
+// took it. This takes it, and says what it cost.
+//
+// `to` IS A RUNNING-ORDER POSITION, the same number `Reorder` takes, resolved by
+// the same `scheduleIndex` — so an operator who types 4 gets the fourth thing
+// they can SEE, whatever structural cards the Director has between them.
+func (l Lineup) Insert(t Track, c Card, to int) (Lineup, error) {
+	if err := invariant.Check(t >= 0 && t < numTracks, "a card is inserted onto one of the declared two tracks"); err != nil {
+		return l, err
+	}
+	if err := invariant.Check(c.State == Admitted, "the lineup holds admitted cards only"); err != nil {
+		return l, err
+	}
+	if err := c.check(); err != nil {
+		return l, err
+	}
+	if _, _, taken := l.find(c.ID); taken {
+		// NOT AN INVARIANT, A REFUSAL. Asking twice for the same report is a
+		// thing an operator can reasonably do by accident, and the schedule
+		// already holding it is the honest answer rather than a broken rule.
+		return l, errors.New("the running order already holds " + c.ID)
+	}
+	at, ok := l.scheduleIndex(t, to)
+	if err := invariant.Check(ok, "a card is inserted at a position the RUNNING ORDER has"); err != nil {
+		return l, err
+	}
+	out := l.clone()
+	track := out.tracks[t]
+	track = append(track[:at], append([]Card{c}, track[at:]...)...)
+	out.tracks[t] = track
+
+	// AND THE OVERFLOW FALLS OFF THE BOTTOM, one card for the one that came in.
+	// Counted over what the operator can SEE: the Director's structural cards are
+	// not in the running order and must not be pushed out of it.
+	for out.visible(t) > MainTrackCap {
+		last, ok := out.lastVisible(t)
+		if !ok {
+			break // nothing left to shed; the cap is smaller than the structure
+		}
+		fallen := out.tracks[t][last]
+		out.tracks[t] = append(out.tracks[t][:last], out.tracks[t][last+1:]...)
+		out = out.discard(fallen)
+	}
+	return out, nil
+}
+
+// visible is how many cards of a track the operator can see — the running
+// order's own length, which is what the cap counts.
+func (l Lineup) visible(t Track) int {
+	n := 0
+	for _, c := range l.tracks[t] { // bounded by the track (P10-02)
+		if !c.Slot.structural() {
+			n++
+		}
+	}
+	return n
+}
+
+// lastVisible is the schedule index of the last card in the running order.
+func (l Lineup) lastVisible(t Track) (int, bool) {
+	for i := len(l.tracks[t]) - 1; i >= 0; i-- { // bounded by the track (P10-02)
+		if !l.tracks[t][i].Slot.structural() {
+			return i, true
+		}
+	}
+	return 0, false
 }
