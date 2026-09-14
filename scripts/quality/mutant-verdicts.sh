@@ -130,8 +130,16 @@ for m in $list; do
 		esac
 		;;
 	esac
-	# KEYED BY THE PACKAGE `pkgof` NAMES, so the next run's lookup matches.
-	echo "$pk $(( $(date +%s) - start ))" >> "$timings.new"
+	# ONLY A REAL VERDICT IS TIMED. A SKIPPED run takes no time and means nothing,
+	# and a history full of them makes the next ETA say "~0 min" — which is how
+	# this script's first smoke test reported a three-hour corpus. Timing what did
+	# not happen is worse than having no history, because it looks like history.
+	case "$v" in
+	CAUGHT* | SURVIVED*)
+		# KEYED BY THE PACKAGE `pkgof` NAMES, so the next run's lookup matches.
+		echo "$pk $(( $(date +%s) - start ))" >> "$timings.new"
+		;;
+	esac
 	case "$v" in
 	CAUGHT*) caught=$((caught + 1)) ;;
 	SURVIVED*) survived=$((survived + 1)) ;;
@@ -144,7 +152,13 @@ for m in $list; do
 	esac
 	echo "[$n/$total] $v" | tee -a "$out"
 done
-mv "$timings.new" "$timings"
+# AND A HISTORY IS ONLY REPLACED BY A HISTORY. A run that measured nothing must
+# not wipe the rates the last good run recorded.
+if [ -s "$timings.new" ]; then
+	mv "$timings.new" "$timings"
+else
+	rm -f "$timings.new"
+fi
 
 echo "" | tee -a "$out"
 echo "mutant-verdicts: $total mutant(s) — $caught CAUGHT, $survived SURVIVED, $noevidence NO EVIDENCE" | tee -a "$out"
