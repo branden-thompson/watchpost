@@ -246,6 +246,7 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 	out = append(out, "", "  Scheduled as: "+st.chosen.Describe(), "")
 
 	// THE POSITION.
+	posAt := len(out)
 	out = append(out, settingLabel("Position:", st.field == requestPosition))
 	pri, slot := "( )", "( )"
 	if st.prioritize {
@@ -260,7 +261,7 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 	out = append(out, " "+pri+"  "+
 		render.Bold(render.Tint("PRIORITIZE", render.Tok(render.NameAdvisory)))+
 		" "+o.Glyphs().Dash+" Move to UP NEXT")
-	out = append(out, "      Everything below moves down by 1")
+	out = append(out, "      Everything below moves down by 1", "")
 	out = append(out, " "+slot+"  Line-Up Slot: ["+render.PadTo(st.slot, 3)+"]")
 	out = append(out, "      Cards below it move down by 1")
 
@@ -283,7 +284,11 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 	case requestReports:
 		return out, 5, 5 + len(requestRows()) + 2
 	case requestPosition:
-		return out, len(out) - 4, len(out) - 1
+		// FROM THE HEADING TO THE END, not a count backwards from it. The range
+		// was `len(out)-4` and adding one blank line between the two options
+		// moved it silently — an offset measured from the bottom is an offset
+		// that every later edit has to remember.
+		return out, posAt, len(out) - 1
 	}
 	return out, 0, 0
 }
