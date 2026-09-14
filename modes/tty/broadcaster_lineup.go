@@ -117,6 +117,18 @@ func (b Broadcaster) poolEntry(subject string) (snapshot.LocationRef, bool) {
 // running text, so it is title-cased — the NAME still has one owner, and D-31's
 // finer taxonomy needs no change here when it lands.
 func reportTypeOf(c lineup.Card) string {
+	// WHAT THE CARD ACTUALLY CARRIES, WHEN IT SAYS (R5). HUM LEAD, 2026-09-14:
+	// "only the Label in the Scheduled-Line up table in the base Broadcaster UI
+	// as comma delimited list: 02. NWS, FIRE, QUAKE".
+	//
+	// THE SET DESCRIBES ITSELF (platform/report) — everything reads "Location
+	// Report, Full" and anything less is the labels in registry order. A card
+	// with no set of its own falls through to the slot's name, which is every
+	// card the Director makes for itself and every card in the tree before an
+	// operator asked for one.
+	if named := c.Reports.Describe(); named != "" {
+		return named
+	}
 	name := c.Slot.String()
 	if name == "" {
 		return ""
