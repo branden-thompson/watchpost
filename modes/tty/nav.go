@@ -32,6 +32,8 @@ func (d Dashboard) handleNav(act term.Action) Dashboard {
 		return d.handleRelayFaultNav(act) // MVS-D-76: the three ways out of a dead relay
 	case modalDebug:
 		return d.handleDebugNav(act) // F-21
+	case modalRequest:
+		return d.handleRequestNav(act) // R4: a form, walked field by field
 	}
 	switch act {
 	case "nav-up":

@@ -133,10 +133,12 @@ const modalInset
 const modalNone
 const modalRelayFault
 const modalRemove
+const modalRequest
 const modalSetup
 const modalSevere
 const modalStatus
 const numModals
+const numRequestFields
 const numSurfaces
 const panelFrame
 const panelRail
@@ -159,6 +161,10 @@ const relayFaultSeconds
 const relayFaultWidth
 const relayLangLabelText
 const relayRowH
+const requestLocation
+const requestPosition
+const requestReports
+const requestTitle
 const roleAlerts
 const roleFire
 const roleMaritime
@@ -406,6 +412,7 @@ func (Dashboard).handleNav
 func (Dashboard).handleRadio
 func (Dashboard).handleRelayFaultNav
 func (Dashboard).handleRemoveKey
+func (Dashboard).handleRequestNav
 func (Dashboard).handleResolved
 func (Dashboard).handleSettingsSaved
 func (Dashboard).handleSetupKey
@@ -479,6 +486,8 @@ func (Dashboard).relayLangApplyCmd
 func (Dashboard).relayLines
 func (Dashboard).removeLines
 func (Dashboard).renderModal
+func (Dashboard).requestBody
+func (Dashboard).requestChips
 func (Dashboard).resolveCmd
 func (Dashboard).rootDisplayName
 func (Dashboard).row
@@ -611,6 +620,13 @@ func (cardLane).shell
 func (endpointRow).counters
 func (locIndex).at
 func (radioBP).hasViz
+func (requestState).blocker
+func (requestState).next
+func (requestState).note
+func (requestState).position
+func (requestState).positionOK
+func (requestState).prev
+func (requestState).valid
 func (setupScope).shownOn
 func (setupState).alertRadiusChoice
 func (setupState).classMuted
@@ -772,6 +788,8 @@ func relayLangLabel
 func relayLangs
 func relayLineOf
 func reportTypeOf
+func requestOpen
+func requestRows
 func requestedByOf
 func roleOf
 func roleState
@@ -915,6 +933,8 @@ type radioParts
 type relayDwell
 type relayFaultState
 type relayLang
+type requestField
+type requestState
 type resolvedMsg
 type scrollSpan
 type setupBlock

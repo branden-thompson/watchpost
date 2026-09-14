@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -252,6 +253,17 @@ type modalKey struct {
 	// replayed the pre-pause frame. modalSevere is not in tickNeeded either, so
 	// nothing else invalidated it.
 	severeReadPause bool
+
+	// THE REQUEST WINDOW'S OWN STATE (R4). Every field of it that the window
+	// DRAWS, because F-30's guard caught all four the moment the window existed
+	// — which is the guard doing exactly what it is for, on a window that was
+	// minutes old.
+	reqField                requestField
+	reqQuery, reqSlot       string
+	reqRef                  string
+	reqOutside, reqPriority bool
+	reqAt                   int
+	reqChosen               report.Set
 }
 
 // modalMemo is the single slot.
@@ -281,6 +293,19 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 	}
 	switch d.modal {
+	case modalRequest:
+		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was
+		// missing the moment the window existed — `field`, `query`, `outside`
+		// and `prioritize` — which is the guard doing exactly what it is for on
+		// a window minutes old. The ref is keyed by its LABEL because a pointer
+		// moves without the frame changing.
+		st := d.request
+		k.reqField, k.reqQuery, k.reqSlot = st.field, st.query, st.slot
+		k.reqOutside, k.reqPriority = st.outside, st.prioritize
+		k.reqAt, k.reqChosen = st.at, st.chosen
+		if st.ref != nil {
+			k.reqRef = st.ref.Label
+		}
 	case modalSetup:
 		// The GENERATION, not the state. Formatting the whole struct — which
 		// carries two maps — ran on every frame and grew with them; it was the

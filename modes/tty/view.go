@@ -107,7 +107,7 @@ func (d Dashboard) renderModal(o render.Opts) string {
 			bg = d.cardGround
 		}
 		return d.floatModalToned(o, d.modalWidth(), d.cardTitleOf(o), d.cardLines(o), fg, bg) // D-88
-	case modalSetup, modalDebug, modalRelayFault:
+	case modalSetup, modalDebug, modalRelayFault, modalRequest:
 		// The chips are a PINNED FOOTER (OP-5): they render after the scroll
 		// window, so at 80x24 they cannot scroll away exactly when a lost
 		// listener needs them.
@@ -187,7 +187,7 @@ func (d Dashboard) modalLines() []string {
 		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
 	case modalCard:
 		raw = d.cardLines(o) // asked of the console, at THIS window's opts (D-88)
-	case modalSetup, modalDebug, modalRelayFault:
+	case modalSetup, modalDebug, modalRelayFault, modalRequest:
 		// The pinned-footer windows are laid out at their own box width and
 		// their scroll follows the focus. Asked at the dashboard's width they
 		// would report a body nobody draws.
@@ -251,6 +251,8 @@ func (d Dashboard) footerModalChrome(o render.Opts) (width int, title string, fo
 		// THE WARNING RIDES THE BORDER (HUM LEAD mock, 2026-09-07), so it cannot
 		// scroll away from the control it is about.
 		return debugWidth, d.debugTitle(o, min(o.Width, debugWidth)), d.debugChips(o)
+	case modalRequest:
+		return d.modalWidth(), requestTitle, d.requestChips(o)
 	case modalRelayFault:
 		// No title in the frame: the mock puts *** ERROR *** on its own line
 		// inside the box, over a plain top border.

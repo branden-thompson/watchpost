@@ -332,6 +332,8 @@ func (d Dashboard) focusBody(o render.Opts) (lines []string, at, end int) {
 		return d.relayFaultLines(o)
 	case modalDebug:
 		return d.debugLines(o)
+	case modalRequest:
+		return d.requestBody(o)
 	}
 	return nil, -1, -1
 }

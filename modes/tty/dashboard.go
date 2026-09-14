@@ -419,23 +419,26 @@ func defaultKeyMap() term.KeyMap {
 
 // Dashboard is the root TTY model.
 type Dashboard struct {
-	cfg         Config
-	keys        term.KeyMap
-	snap        *snapshot.Snapshot
-	recent      *snapshot.Snapshot
-	width       int
-	height      int
-	units       render.Units
-	clockFmt    render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
-	selected    int
-	alertIdx    int
-	recentOff   int                   // scroll offset (interaction lands with tab section nav)
-	modal       modal                 // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode     string                // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
-	lookupRef   *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: the modal showed the old top RECENT row meanwhile)
-	addErr      string                // resolve failure surfaced in the modal
-	setup       setupState
-	relayFault  relayFaultState
+	cfg        Config
+	keys       term.KeyMap
+	snap       *snapshot.Snapshot
+	recent     *snapshot.Snapshot
+	width      int
+	height     int
+	units      render.Units
+	clockFmt   render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
+	selected   int
+	alertIdx   int
+	recentOff  int                   // scroll offset (interaction lands with tab section nav)
+	modal      modal                 // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode    string                // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	lookupRef  *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: the modal showed the old top RECENT row meanwhile)
+	addErr     string                // resolve failure surfaced in the modal
+	setup      setupState
+	relayFault relayFaultState
+
+	// request is the Line-Up Request window's own model (R4).
+	request     requestState
 	debug       debugState
 	voiceIdx    int
 	voiceList   []string // snapshot of the hook's list, taken when the chooser opens (UAT 85: never from View)
@@ -984,6 +987,15 @@ const (
 	// margin survey, the memo-completeness walk and the single-value exclusivity
 	// above. A console-private window would have been outside all four.
 	modalCard
+
+	// modalRequest is the operator asking for a report at a position (R4).
+	//
+	// A DASHBOARD WINDOW FOR THE SAME REASON `modalCard` IS (D-56): the console
+	// owns what it is ABOUT — the pool it validates against, the slot it targets
+	// — and this is the window set carrying the reachability gate, the margin
+	// survey and the memo-completeness walk. A console-private window would be
+	// outside all three.
+	modalRequest
 
 	// numModals bounds the set; it is not itself a modal. It exists so the
 	// memo-completeness guard can DERIVE the list of windows rather than carry

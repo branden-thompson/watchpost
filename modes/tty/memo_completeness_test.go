@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 	"unsafe"
+
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // memo_completeness_test.go — F-30, mechanised.
@@ -264,6 +266,8 @@ func modalName(m modal) string {
 		return "debug"
 	case modalCard:
 		return "card"
+	case modalRequest:
+		return "request"
 	}
 	return "modal-" + strconv.Itoa(int(m))
 }
@@ -295,6 +299,15 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 				Location: "Olathe, KS", Declared: "08/28 08:45 CDT",
 				Record: SevereRecord{Title: "TORNADO WARNING"}}}})
 		d.severeReading = "k"
+	case modalRequest:
+		// EVERY FIELD CARRYING SOMETHING, because a window whose fields are all
+		// empty draws the same frame however the model moves — and the guard
+		// below would then report a key covering a window that says nothing.
+		d.request = requestOpen()
+		d.request.query = "Oceanside, CA"
+		ref := snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057"}
+		d.request.ref = &ref
+		d.request.slot = "4"
 	case modalCard:
 		// THE CONSOLE'S OWN BODY, NOT A HAND-WRITTEN ONE. The window draws what
 		// `Broadcaster.cardDetail` produces, and a fixture that typed its own
