@@ -136,18 +136,24 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 	}
 	lines, _, _ := d.requestBody(d.opts())
 
+	// EACH LINE ON ITS OWN. The first version of this joined them and asked
+	// whether the TINT appeared anywhere in the result — so removing it from the
+	// fact was masked by the aside still carrying it, and mutant mBB1 survived.
+	// Two lines, two assertions.
 	want := render.Tok(render.NameWarning)
-	var helper string
+	seen := 0
 	for _, l := range lines {
-		if strings.Contains(stripANSITest(l), "not found in Pool") ||
-			strings.Contains(stripANSITest(l), "Observer supports") {
-			helper += l
+		plain := stripANSITest(l)
+		if !strings.Contains(plain, "not found in Pool") && !strings.Contains(plain, "Observer supports") {
+			continue
+		}
+		seen++
+		if !strings.Contains(l, want) {
+			t.Errorf("this helper line is not tinted %q: %q", want, plain)
 		}
 	}
-	if helper == "" {
-		t.Fatal("the window drew no helper text for a location outside the radius")
-	}
-	if !strings.Contains(helper, want) {
-		t.Errorf("the helper is not tinted %q — it wears Observer's own caveat tone", want)
+	if seen != 2 {
+		t.Fatalf("the window drew %d helper lines for a location outside the radius, want 2 — "+
+			"the fact and the way out", seen)
 	}
 }
