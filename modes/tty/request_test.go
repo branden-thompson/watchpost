@@ -135,6 +135,10 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 		d = d.requestType(string(r))
 	}
 	lines, _, _ := d.requestBody(d.opts())
+	fact, aside := d.request.note()
+	if fact == "" || aside == "" {
+		t.Fatalf("the window has nothing to say about a location outside the radius: %q / %q", fact, aside)
+	}
 
 	// EACH LINE ON ITS OWN. The first version of this joined them and asked
 	// whether the TINT appeared anywhere in the result — so removing it from the
@@ -143,8 +147,13 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 	want := render.Tok(render.NameWarning)
 	seen := 0
 	for _, l := range lines {
+		// MATCHED ON WHAT `note` ACTUALLY SAYS, asked of it rather than retyped.
+		// The first version looked for "not found in Pool", which is the
+		// NOT-FOUND case's wording — the OUTSIDE case says "Outside the
+		// station's service radius", so only one line ever matched and the test
+		// failed for a reason that was about the test.
 		plain := stripANSITest(l)
-		if !strings.Contains(plain, "not found in Pool") && !strings.Contains(plain, "Observer supports") {
+		if !strings.Contains(plain, fact) && !strings.Contains(plain, aside) {
 			continue
 		}
 		seen++
