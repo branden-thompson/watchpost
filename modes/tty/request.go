@@ -174,13 +174,17 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 	// THE LOCATION, AND WHAT IS WRONG WITH IT.
 	out = append(out, settingLabel("Location: ", st.field == requestLocation)+"["+render.PadTo(st.query, 22)+"]")
 	if fact, aside := st.note(); fact != "" {
-		// THE HOUSE PATTERN, WHICH IS THE SETUP FORM'S: the alert glyph and the
-		// fact, then what the operator can do instead. The HUM LEAD asked for
-		// the aside in yellow italics and called the wording "not hard and
-		// fast" — COLOUR IS THEIR OWN PASS, so this draws the shape and leaves
-		// the tone to it rather than inventing a token.
-		out = append(out, "  "+o.Glyphs().Alert+" "+fact)
-		out = append(out, "    "+aside)
+		// THE TONE OBSERVER ALREADY USES FOR THIS EXACT MEANING (HUM LEAD, UAT
+		// 2026-09-14): "similar to the red used by the 'this is not your local
+		// station' color in Observer". That line is
+		// `Italic(Tint(…, NameWarning))` in detail.go, and it says the same kind
+		// of thing — what you are looking at is not what you think it is.
+		//
+		// THE TOKEN, NOT A COLOUR. Borrowing Observer's own means the two cannot
+		// drift and the theme moves both together; a new token here would be a
+		// second answer to "what does a caveat look like".
+		out = append(out, "  "+o.Glyphs().Alert+" "+render.Tint(fact, render.Tok(render.NameWarning)))
+		out = append(out, "    "+render.Italic(render.Tint(aside, render.Tok(render.NameWarning))))
 	} else if st.ref != nil {
 		out = append(out, "    "+st.ref.Label)
 	} else {

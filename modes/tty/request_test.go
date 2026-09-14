@@ -1,10 +1,13 @@
 package tty
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // requestDash is a dashboard with the request window open and a pool behind it.
@@ -109,5 +112,42 @@ func TestALocationOutsideTheRadiusIsNamedRatherThanRefused(t *testing.T) {
 	fact, aside := d.request.note()
 	if fact == "" || aside == "" {
 		t.Errorf("the window says %q / %q; it owes both the fact and the way out", fact, aside)
+	}
+}
+
+// TestTheOutOfRadiusHelperWearsObserversCaveatTone.
+//
+// HUM LEAD, UAT 2026-09-14: "Location not found helper color can be orange/red
+// (similar to the red used by the 'this is not your local station' color in
+// Observer)."
+//
+// ASKED OF THE TOKEN OBSERVER USES, not of a colour. `NameWarning` is what
+// detail.go tints "This is not your local station" with, and it says the same
+// kind of thing — what you are looking at is not what you think it is. Borrowing
+// it means the two cannot drift and one theme change moves both.
+func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+
+	var sent int
+	d := requestDash(t, &sent)
+	for _, r := range "denver, co" {
+		d = d.requestType(string(r))
+	}
+	lines, _, _ := d.requestBody(d.opts())
+
+	want := render.Tok(render.NameWarning)
+	var helper string
+	for _, l := range lines {
+		if strings.Contains(stripANSITest(l), "not found in Pool") ||
+			strings.Contains(stripANSITest(l), "Observer supports") {
+			helper += l
+		}
+	}
+	if helper == "" {
+		t.Fatal("the window drew no helper text for a location outside the radius")
+	}
+	if !strings.Contains(helper, want) {
+		t.Errorf("the helper is not tinted %q — it wears Observer's own caveat tone", want)
 	}
 }
