@@ -292,7 +292,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MoveCard: lp.moveCard,
 		DropCard: lp.dropCard,
 		// THE OPERATOR'S REQUEST, AND THE LOOKUP THAT VALIDATES IT (R4).
-		PoolLookup:      func(q string) (snapshot.LocationRef, bool, bool) { return lp.lookInPool(resolver, q) },
+		PoolLookup:      lp.lookInPool,
 		RequestCard:     lp.requestCard,
 		Transmitter:     transmitterOf(cfg),
 		SetTransmitter:  lp.setTransmitter,

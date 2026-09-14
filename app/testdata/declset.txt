@@ -32,7 +32,6 @@ const narrateBreaking
 const narrateRead
 const numMainTrackStages
 const numNarrationClasses
-const poolLookupBudget
 const publishCoalesce
 const pumpBacklog
 const radioDebugEnv

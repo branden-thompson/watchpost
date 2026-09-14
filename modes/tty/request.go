@@ -75,7 +75,14 @@ func requestRows() []report.Kind { return report.All() }
 // putting it at the front unless they say otherwise would make the safe act the
 // one they have to remember to choose.
 func requestOpen() requestState {
-	return requestState{chosen: report.Everything()}
+	// THE BOTTOM OF THE RUNNING ORDER (HUM LEAD, 2026-09-14: "default to the
+	// bottom - position 15"). A request that has to go SOMEWHERE goes where it
+	// disturbs nothing — PRIORITIZE pushes every card down, and the disruptive
+	// act should be the one chosen rather than the one arrived at.
+	return requestState{
+		chosen: report.Everything(),
+		slot:   strconv.Itoa(lineup.MainTrackCap - 1),
+	}
 }
 
 // requestValid reports whether the window can be scheduled.
@@ -246,7 +253,13 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 	} else {
 		slot = "(" + o.Glyphs().OK + ")"
 	}
-	out = append(out, " "+pri+"  PRIORITIZE "+o.Glyphs().Dash+" Move to UP NEXT")
+	// PRIORITIZE IS BOLD AND YELLOW (HUM LEAD, 2026-09-14). It is the one choice
+	// in this window that moves every other card, and the advisory tone is the
+	// app's own word for "this one is different" — the same family `NameWarning`
+	// belongs to, a step down in urgency.
+	out = append(out, " "+pri+"  "+
+		render.Bold(render.Tint("PRIORITIZE", render.Tok(render.NameAdvisory)))+
+		" "+o.Glyphs().Dash+" Move to UP NEXT")
 	out = append(out, "      Everything below moves down by 1")
 	out = append(out, " "+slot+"  Line-Up Slot: ["+render.PadTo(st.slot, 3)+"]")
 	out = append(out, "      Cards below it move down by 1")

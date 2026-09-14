@@ -16,10 +16,10 @@ package app
 
 import (
 	"strings"
-	"time"
+
+	"context"
 
 	tea "charm.land/bubbletea/v2"
-	"context"
 
 	"github.com/branden-thompson/watchpost/domains/locations"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -324,14 +324,8 @@ func withPool(recent, pool []snapshot.LocationRef) []snapshot.LocationRef {
 // service radius is NOT a lookup failure — it is a real place the window names
 // and points at Observer for, which is only possible if the two are kept apart.
 //
-// THE POOL FIRST, THE INDEX SECOND. A match inside the station's own area is the
-// answer the operator wants and the cheapest to find; the resolver is only asked
-// when the pool has nothing, which is what turns "not here" into "not here, and
-// here is where it is".
-//
-// The resolver is handed in because it is built beside the Dashboard rather
-// than held by the pipelines.
-func (lp *livePipelines) lookInPool(res *locations.Resolver, query string) (snapshot.LocationRef, bool, bool) {
+// THE POOL AND NOTHING ELSE, which is what makes it safe to run on a keystroke.
+func (lp *livePipelines) lookInPool(query string) (snapshot.LocationRef, bool, bool) {
 	if lp == nil {
 		return snapshot.LocationRef{}, false, false
 	}
@@ -344,27 +338,18 @@ func (lp *livePipelines) lookInPool(res *locations.Resolver, query string) (snap
 			return ref, true, true
 		}
 	}
-	// OUTSIDE THE RADIUS, OR NOWHERE AT ALL. The resolver knows the difference
-	// and the window says which — "Location not found in Pool" for a place that
-	// exists elsewhere, and the same line for one that does not, because from
-	// the console's point of view they are the same fact: not broadcastable.
-	if res != nil {
-		// A BOUNDED LOOKUP, because this runs on a keystroke. The window asks on
-		// every character typed, and a resolver left to its own devices would
-		// hold the Update loop while the network answered (D-79: anything that
-		// talks back to the program must not run on the Update loop).
-		ctx, cancel := context.WithTimeout(context.Background(), poolLookupBudget)
-		defer cancel()
-		if ref, _, err := res.Resolve(ctx, query); err == nil && ref.Label != "" {
-			return ref, false, true
-		}
-	}
+	// AND NOTHING ELSE IS ASKED. This used to fall through to the RESOLVER when
+	// the pool had no match, so it could tell "outside the radius" from "nowhere
+	// at all" — one network call PER KEYSTROKE, on a field the operator types
+	// into.
+	//
+	// HUM LEAD, 2026-09-14: "Whatever helps performance - the end result is
+	// transparent to the end user - either what they type is a valid location
+	// within the service radius or not." That is the binary the window needs,
+	// and the pool alone answers it. The distinction the resolver bought was two
+	// helper sentences that both point at Observer.
 	return snapshot.LocationRef{}, false, false
 }
-
-// poolLookupBudget bounds a keystroke's lookup. Short, because the operator is
-// still typing and a slow answer is a wrong answer by the time it arrives.
-const poolLookupBudget = 400 * time.Millisecond
 
 // matchesQuery is how a typed string names a pooled location: its label or its
 // zip, case-folded, matched as a prefix so a half-typed city still resolves.

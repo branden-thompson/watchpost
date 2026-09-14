@@ -332,3 +332,7 @@ func StripSGRForTest(s string) string { return stripANSI(s) }
 // inverse, some ignore it — so it may only ever ADD emphasis to a line that
 // reads correctly without it (NFR-6).
 func Italic(s string) string { return sgrRaw(s, "3") }
+
+// Bold is the weight, on its own — a token that bakes it in (FocusName's
+// "1;255") cannot be applied to text that already has a colour of its own.
+func Bold(s string) string { return sgrRaw(s, "1") }

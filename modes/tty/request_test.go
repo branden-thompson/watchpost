@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -177,4 +178,73 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 			t.Errorf("the window drew no helper line carrying %q", probe)
 		}
 	}
+}
+
+// TestTheWindowOpensOnTheBottomSlot.
+//
+// HUM LEAD, 2026-09-14: "default to the bottom - position 15."
+//
+// A REQUEST HAS TO GO SOMEWHERE, and the bottom is where it disturbs nothing.
+// PRIORITIZE pushes every card down, so the disruptive act is the one CHOSEN
+// rather than the one arrived at by not deciding — which is what an unset
+// position used to force.
+func TestTheWindowOpensOnTheBottomSlot(t *testing.T) {
+	st := requestOpen()
+	if st.prioritize {
+		t.Error("the window opens on PRIORITIZE; the bottom is the default")
+	}
+	if got, want := st.position(), lineup.MainTrackCap-1; got != want {
+		t.Errorf("the window opens on position %d, want %d — the bottom of the running order", got, want)
+	}
+	if !st.positionOK() {
+		t.Error("the default position is not one the running order has")
+	}
+}
+
+// AND THE WINDOW IS SCHEDULABLE AS SOON AS A LOCATION RESOLVES, because the
+// reports and the position both start with an answer.
+func TestOnlyTheLocationIsOwedWhenTheWindowOpens(t *testing.T) {
+	var sent int
+	d := requestDash(t, &sent)
+	if got := d.request.blocker(); got != "Choose a location" {
+		t.Errorf("a fresh window is blocked on %q; only the location is owed", got)
+	}
+	for _, r := range "vista" {
+		d = d.requestType(string(r))
+	}
+	if !d.request.valid() {
+		t.Errorf("a resolved location is still not schedulable: %s", d.request.blocker())
+	}
+}
+
+// TestPrioritizeIsBoldAndYellow.
+//
+// HUM LEAD, 2026-09-14: "make 'PRIORITIZE' bold and yellow in the request modal."
+//
+// IT IS THE ONE CHOICE IN THIS WINDOW THAT MOVES EVERY OTHER CARD, and the
+// advisory tone is the app's own word for "this one is different" — the family
+// `NameWarning` belongs to, a step down in urgency.
+func TestPrioritizeIsBoldAndYellow(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+
+	var sent int
+	d := requestDash(t, &sent)
+	d.width, d.height = 120, 40
+	for _, l := range strings.Split(d.renderModal(d.opts()), "\n") {
+		if !strings.Contains(stripANSITest(l), "PRIORITIZE") {
+			continue
+		}
+		if want := render.Tok(render.NameAdvisory); !strings.Contains(l, want) {
+			t.Errorf("PRIORITIZE is not tinted %q: %q", want, stripANSITest(l))
+		}
+		// BOLD IS `1`, and it is asserted on the rendered line for the same
+		// reason the tint is: the operator sees the frame, not the string that
+		// went into it.
+		if !strings.Contains(l, "\x1b[1m") && !strings.Contains(l, ";1m") && !strings.Contains(l, "[1;") {
+			t.Errorf("PRIORITIZE is not bold: %q", l)
+		}
+		return
+	}
+	t.Fatal("the window drew no PRIORITIZE line")
 }
