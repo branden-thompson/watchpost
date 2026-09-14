@@ -12,6 +12,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/domains/radio/synth"
+	"github.com/branden-thompson/watchpost/domains/weather/nws"
+	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -53,7 +57,7 @@ func TestAKeyForNothingWatchedResolvesToNothing(t *testing.T) {
 }
 
 func TestComposingForAnUnknownLocationFailsByName(t *testing.T) {
-	compose := composeFor(&radioDeck{}, watchOf(refOceanside))
+	compose := composeFor(&radioDeck{}, watchOf(refOceanside), nil)
 	segs, err := compose(context.Background(), string(snapshot.Key(refBonsall)))
 	if err == nil {
 		t.Fatal("a card for a location nobody watches must fail, not compose an empty report — " +
@@ -67,8 +71,61 @@ func TestComposingForAnUnknownLocationFailsByName(t *testing.T) {
 func TestComposingWithNoDeckFailsRatherThanPanics(t *testing.T) {
 	// A STATION WITH NO AUDIO IS A SUPPORTED CONFIGURATION, and the schedule
 	// still runs on it.
-	compose := composeFor(nil, watchOf(refOceanside))
+	compose := composeFor(nil, watchOf(refOceanside), nil)
 	if _, err := compose(context.Background(), string(snapshot.Key(refOceanside))); err == nil {
 		t.Error("no deck composes no words, and says so")
+	}
+}
+
+// TestOnlyTheChosenKindsAreGathered.
+//
+// R2's whole claim: a report carries what was asked for and nothing else, and
+// the sources nobody asked for are not even FETCHED. That second half is the
+// point — skipping them at composition time would still pay for the network.
+//
+// DRIVEN THROUGH THE HOOKS THE DECK ACTUALLY USES. `d.fire`, `d.seismic` and
+// `d.marine` are the seams `segments` calls; counting their calls is how this
+// asks "did you go and get it" rather than "did you say it".
+func TestOnlyTheChosenKindsAreGathered(t *testing.T) {
+	for _, tc := range []struct {
+		name                  string
+		want                  report.Set
+		fire, seismic, marine bool
+	}{
+		{"everything", report.Everything(), true, true, true},
+		{"fire alone", report.Set(0).Add(report.Fire), true, false, false},
+		{"quake alone", report.Set(0).Add(report.Seismic), false, true, false},
+		{"marine alone", report.Set(0).Add(report.Marine), false, false, true},
+		{"NWS alone asks for none of the three", report.Set(0).Add(report.NWS), false, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var gotFire, gotSeismic, gotMarine bool
+			// A REAL PROVIDER OVER A CLIENT THAT ANSWERS NOTHING. `segments` asks
+			// the NWS provider before it reaches the three hooks, and a nil
+			// provider dereferences rather than declining — so the fixture needs
+			// one even though the question here is about the OTHER three.
+			client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: t.TempDir()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			d := &radioDeck{
+				nws:      nws.New(client, ""),
+				products: synth.NewProducts(client, ""),
+				fire:     func(snapshot.LocationRef) synth.FireReport { gotFire = true; return synth.FireReport{} },
+				seismic:  func(snapshot.LocationRef) synth.SeismicReport { gotSeismic = true; return synth.SeismicReport{} },
+				marine:   func(snapshot.LocationRef) synth.MarineReport { gotMarine = true; return synth.MarineReport{} },
+			}
+			_, _ = d.segments(context.Background(), refOceanside, synth.VoiceToken, tc.want)
+
+			if gotFire != tc.fire {
+				t.Errorf("fire fetched=%v, want %v", gotFire, tc.fire)
+			}
+			if gotSeismic != tc.seismic {
+				t.Errorf("seismic fetched=%v, want %v", gotSeismic, tc.seismic)
+			}
+			if gotMarine != tc.marine {
+				t.Errorf("marine fetched=%v, want %v", gotMarine, tc.marine)
+			}
+		})
 	}
 }

@@ -18,8 +18,12 @@ import (
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
-// report is a main-track card as the Director emits it.
-func report(id string, words ...string) lineup.Speak {
+// speakCard is a main-track card as the Director emits it.
+//
+// RENAMED FROM `report` AT R2: `platform/report` is a package this file's
+// own package now imports, and a helper sharing its name shadows it — the
+// collision is invisible until something in the package needs the import.
+func speakCard(id string, words ...string) lineup.Speak {
 	var parts []lineup.Part
 	for _, w := range words {
 		parts = append(parts, lineup.Part{Kind: lineup.PartLine, Text: w})
@@ -38,7 +42,7 @@ func TestTheProgrammeIsPerformedOnTheBroadcastEngineAndNotThroughTheArbiter(t *t
 	v := &scriptVoice{}
 	b := newBench(t, v)
 
-	out := b.x.run(context.Background(), report("r1", "Now, the weather for Oceanside."))
+	out := b.x.run(context.Background(), speakCard("r1", "Now, the weather for Oceanside."))
 
 	if len(out) != 1 {
 		t.Fatalf("a read that finished comes home with one event; got %v", out)
@@ -68,7 +72,7 @@ func TestAProgrammeReadThatEndedEarlyFailsTheCardRatherThanFinishingIt(t *testin
 	b := newBench(t, &scriptVoice{})
 	b.readOK = false
 
-	out := b.x.run(context.Background(), report("r1", "Now, the weather for Oceanside."))
+	out := b.x.run(context.Background(), speakCard("r1", "Now, the weather for Oceanside."))
 
 	f := onlyFailed(t, out)
 	if f.ID != "r1" {
@@ -89,7 +93,7 @@ func TestAStationWithNoBroadcastEngineDeclinesTheProgrammeByName(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
 	b.x.read = nil
 
-	out := b.x.run(context.Background(), report("r1", "Now, the weather for Oceanside."))
+	out := b.x.run(context.Background(), speakCard("r1", "Now, the weather for Oceanside."))
 
 	if f := onlyFailed(t, out); f.ID != "r1" {
 		t.Errorf("failed %q, want r1", f.ID)
@@ -143,7 +147,7 @@ func TestTheListenersAlertMuteDoesNotSilenceTheProgramme(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
 	b.muted = true
 
-	out := b.x.run(context.Background(), report("r1", "Now, the weather for Oceanside."))
+	out := b.x.run(context.Background(), speakCard("r1", "Now, the weather for Oceanside."))
 
 	if len(out) != 1 {
 		t.Fatalf("got %v", out)

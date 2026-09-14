@@ -23,6 +23,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -690,7 +691,12 @@ func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64)
 		return
 	}
 	// The sign-off names whichever voice reaches it (UAT 94: the voice may change mid-cycle).
-	src, err := synth.NewSource(voice, func(ctx context.Context) ([]synth.Segment, error) { return d.segments(ctx, ref, synth.VoiceToken) },
+	src, err := synth.NewSource(voice, func(ctx context.Context) ([]synth.Segment, error) {
+		// THE ROTATION READS THE WHOLE REPORT. Nobody chose a subset here — this
+		// is Watchlist's own cycle, not an operator's request — and `Everything`
+		// says that rather than leaving a zero Set to mean it by accident.
+		return d.segments(ctx, ref, synth.VoiceToken, report.Everything())
+	},
 		func(seg synth.Segment, spoken time.Duration) {
 			d.debugLog(fmt.Sprintf("segment key=%q spoken=%s", seg.Key, spoken.Round(time.Millisecond))) // WATCHPOST_DEBUG_RADIO: which segment the stream reached (UAT 2026-08-28: a cycle that ended before its tail)
 			d.setDetailTimed(seg.Text, spoken)
@@ -718,7 +724,27 @@ func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64)
 // segments composes one broadcast cycle: the location's current
 // observation and alerts (from the provider, served by the client cache)
 // plus the office's latest products.
-func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voiceName string) ([]synth.Segment, error) {
+// segments composes the spoken report for one location, carrying ONLY the kinds
+// `want` names (R2, HUM LEAD 2026-09-14).
+//
+// EACH SOURCE IS GATHERED ONLY IF IT WAS ASKED FOR, and that is the whole of the
+// change: `synth.Compose` was ALREADY conditional on every one of them — the
+// products loop over an empty slice, and marine, fire and seismic each sit behind
+// `if len(...) > 0` with comments saying "skipped without fire data". So a subset
+// report needed no new composition rule, only the discipline not to FETCH what
+// nobody asked for.
+//
+// MEASURED BEFORE IT WAS BUILT ON, because it was the plan's named risk: NWS is
+// the backbone every other source hangs off, and a FIRE-only request had to read
+// as a report rather than a broken forecast. On the standard fixture: full 7
+// segments, NWS-only 5, FIRE-only 6, nothing-chosen 4.
+//
+// THE FOUR THAT REMAIN WHEN NOTHING IS CHOSEN ARE THE FRAME — the station lead,
+// the current conditions and the tail. They are not one of the kinds and are not
+// selectable: they say WHO is broadcasting, WHERE, and WHEN, which a report
+// without is not a report. Recorded rather than assumed, in case the HUM LEAD
+// wants conditions to belong to NWS instead.
+func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voiceName string, want report.Set) ([]synth.Segment, error) {
 	asm := snapshot.NewAssembler([]snapshot.LocationRef{ref}, []string{d.nws.ID()})
 	for _, kind := range []snapshot.FetchKind{snapshot.KindObs, snapshot.KindAlerts} {
 		if frag, err := d.nws.Fetch(ctx, snapshot.FetchReq{Kind: kind, Locations: []snapshot.LocationRef{ref}}); err == nil {
@@ -730,26 +756,33 @@ func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voic
 		return nil, fmt.Errorf("no location")
 	}
 	office := d.nws.Office(ctx, ref)
-	products, _ := d.products.Latest(ctx, office) // a product outage still leaves the observation and alerts to read
 	zone, county := d.nws.ForecastZone(ctx, ref), d.nws.CountyUGC(ctx, ref)
-	for i := range products {
-		products[i].Text = synth.FilterUGC(products[i].Text, zone, county) // this location's blocks only (UAT 81)
+	var products []synth.Product
+	if want.Has(report.NWS) {
+		products, _ = d.products.Latest(ctx, office) // a product outage still leaves the observation and alerts to read
+		for i := range products {
+			products[i].Text = synth.FilterUGC(products[i].Text, zone, county) // this location's blocks only (UAT 81)
+		}
 	}
 	now := time.Now()
 	if z, err := time.LoadLocation(ref.TZ); err == nil && ref.TZ != "" {
 		now = now.In(z)
 	}
 	var fire synth.FireReport
-	if d.fire != nil {
+	if want.Has(report.Fire) && d.fire != nil {
 		fire = d.fire(ref)
 	}
 	var seismic synth.SeismicReport
-	if d.seismic != nil {
+	if want.Has(report.Seismic) && d.seismic != nil {
 		seismic = d.seismic(ref)
 	}
 	var maritime synth.MarineReport
-	if d.marine != nil {
+	if want.Has(report.Marine) && d.marine != nil {
 		maritime = d.marine(ref)
+		// THE COASTAL FORECAST COMES OUT OF THE NWS PRODUCTS, so a MARINE report
+		// without NWS carries the buoys and no forecast text. That is correct
+		// rather than a gap: the operator asked for marine and not for the
+		// forecast, and `products` is empty here precisely because they did not.
 		maritime.Forecast = synth.CoastalForecast(products, zone)
 	}
 	return d.composer.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), synth.Reports{Fire: fire, Seismic: seismic, Maritime: maritime}, d.clock()), nil

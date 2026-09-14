@@ -33,6 +33,7 @@ import (
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -133,7 +134,11 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// THE MAIN TRACK'S WORDS (0.16.0 P3). Required from P3(d): a station
 		// whose rotation is owned by the schedule and has no composer wired
 		// would queue every report and read none.
-		compose: composeFor(deck, pool),
+		// NIL WANTS UNTIL R3, AND THAT IS THE BATCH BOUNDARY SAID OUT LOUD. The
+		// card does not carry a report set yet — `Card.Reports` lands with the
+		// `Requested` event — so every card composes a FULL report, which is
+		// exactly what every card is today. R3 replaces this with the lookup.
+		compose: composeFor(deck, pool, nil),
 		// AND WHAT PERFORMS THEM (F-91, BD-9). The rail reads through the
 		// arbiter above; the programme is a source swap on the broadcast
 		// engine, and this is the deck that owns it. Nil with no deck, which is
@@ -280,7 +285,7 @@ func refFor(watch func() []snapshot.LocationRef, ref string) (snapshot.LocationR
 //
 // That is a live question for the flip and it is recorded there, not resolved
 // here (04-development/p3-flip-design.md, G-7).
-func composeFor(deck *radioDeck, watch func() []snapshot.LocationRef) func(context.Context, string) ([]synth.Segment, error) {
+func composeFor(deck *radioDeck, watch func() []snapshot.LocationRef, wants func(string) report.Set) func(context.Context, string) ([]synth.Segment, error) {
 	return func(ctx context.Context, ref string) ([]synth.Segment, error) {
 		if deck == nil {
 			return nil, errors.New("no audio deck to compose a report")
@@ -292,7 +297,16 @@ func composeFor(deck *radioDeck, watch func() []snapshot.LocationRef) func(conte
 			// removed is exactly the case that produces it.
 			return nil, errors.New("no watched location for " + ref)
 		}
-		return deck.segments(ctx, r, synth.VoiceToken)
+		// WHAT THIS CARD ASKED FOR, and `Everything` when nothing says otherwise
+		// — a card the Director composed on its own is a full report, which is
+		// every card in the tree until an operator requests one (R2).
+		want := report.Everything()
+		if wants != nil {
+			if w := wants(ref); !w.Empty() {
+				want = w
+			}
+		}
+		return deck.segments(ctx, r, synth.VoiceToken, want)
 	}
 }
 
