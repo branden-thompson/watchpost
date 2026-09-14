@@ -68,7 +68,11 @@ say_eta() {
 		[ -z "$r" ] && r=$(awk '{s+=$2; n++} END {if (n) printf "%d", s/n; else print 30}' "$timings")
 		secs=$((secs + r))
 	done
-	echo "  ETA: ~$((secs / 60)) min, from the per-package rates this corpus actually ran at"
+	if [ "$secs" -lt 90 ]; then
+		echo "  ETA: under a minute, from the per-package rates this corpus actually ran at"
+	else
+		echo "  ETA: ~$((secs / 60)) min, from the per-package rates this corpus actually ran at"
+	fi
 }
 
 echo "mutant-verdicts: $total mutant(s)" | tee -a "$out"
