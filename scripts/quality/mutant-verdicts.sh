@@ -38,33 +38,127 @@ set -eu
 out=${1:-dist/mutant-verdicts.log}
 mkdir -p "$(dirname "$out")"
 : > "$out"
+timings="$(dirname "$out")/mutant-verdicts.timings"
 
-total=0 caught=0 survived=0
-for m in 06_docs/mutants/m*.py; do
-  total=$((total + 1))
-  tgt=$(sed -n 's/.*pathlib\.Path("\([^"]*\)").*/\1/p' "$m" | head -1)
-  pkg="./$(dirname "$tgt")/"
-  v=$(./06_docs/mutants/run.sh "$m" "$pkg" 2>&1 | tail -1)
-  case "$v" in
-    SURVIVED*)
-      v=$(./06_docs/mutants/run.sh "$m" ./... 2>&1 | tail -1)
-      case "$v" in
-        CAUGHT*) v="$v [caught only against ./...]" ;;
-      esac
-      ;;
-  esac
-  case "$v" in
-    CAUGHT*)   caught=$((caught + 1)) ;;
-    SURVIVED*) survived=$((survived + 1)) ;;
-  esac
-  echo "$v" | tee -a "$out"
+list=$(ls 06_docs/mutants/m*.py)
+total=$(echo "$list" | wc -l | tr -d ' ')
+
+pkgof() { sed -n 's/.*pathlib\.Path("\([^"]*\)").*/\1/p' "$1" | head -1 | xargs dirname; }
+
+# THE ETA IS MEASURED, NOT GUESSED, and that is the whole of this block.
+#
+# A HUMAN ESTIMATE OF THIS WAS WRONG BY 4x (2026-09-13: "~95 minutes", actual
+# 6.5 hours). It was extrapolated from a sample of 18 mutants chosen for being
+# RECENT rather than representative — their detectors fail early, so `go test`
+# exits early — while a single direct measurement taken minutes earlier said 201 s
+# and was discarded for disagreeing. So the estimate stops being a judgement call:
+# every run records seconds-per-mutant per package, and the next run reads them.
+#
+# NO HISTORY MEANS NO ESTIMATE, said out loud. A made-up number is what this
+# exists to stop.
+say_eta() {
+	if [ ! -f "$timings" ]; then
+		echo "  ETA: unavailable — no timing history yet ($timings). This run will record it."
+		return
+	fi
+	secs=0
+	for m in $list; do
+		p=$(pkgof "$m")
+		r=$(grep "^$p " "$timings" 2>/dev/null | tail -1 | awk '{print $2}')
+		[ -z "$r" ] && r=$(awk '{s+=$2; n++} END {if (n) printf "%d", s/n; else print 30}' "$timings")
+		secs=$((secs + r))
+	done
+	echo "  ETA: ~$((secs / 60)) min, from the per-package rates this corpus actually ran at"
+}
+
+echo "mutant-verdicts: $total mutant(s)" | tee -a "$out"
+echo "  log: $out  (watch this file; the run streams into it)" | tee -a "$out"
+say_eta | tee -a "$out"
+echo "  every line carries its position, so any read of this file says where the run is" | tee -a "$out"
+echo "" | tee -a "$out"
+
+# THE BASELINE IS ESTABLISHED ONCE PER PACKAGE, not once per mutant.
+#
+# `run.sh` proves the unmutated tree is green before every mutation, which is
+# right for single use and is the same ~100 s answer 99 times over on ./app. The
+# sweep holds ONE clean tree across the whole run — `run.sh` refuses a dirty one,
+# and that check is NOT skipped — so the answer cannot differ between mutants in
+# a package. Measured: it halves a full sweep.
+baseline_ok=""
+ensure_baseline() {
+	case " $baseline_ok " in *" $1 "*) return 0 ;; esac
+	printf 'baseline %s ... ' "$1" | tee -a "$out"
+	if ! go test "$1" -count=1 >/dev/null 2>&1; then
+		echo "RED — the unmutated tree is not green; fix that first" | tee -a "$out"
+		exit 2
+	fi
+	echo "green" | tee -a "$out"
+	baseline_ok="$baseline_ok $1"
+}
+
+: > "$timings.new"
+n=0 caught=0 survived=0 noevidence=0
+for m in $list; do
+	n=$((n + 1))
+	pk=$(pkgof "$m")
+	pkg="./$pk/"
+	ensure_baseline "$pkg"
+	start=$(date +%s)
+	v=$(MUTANT_BASELINE=assumed ./06_docs/mutants/run.sh "$m" "$pkg" 2>&1 | tail -1)
+	case "$v" in
+	SURVIVED*)
+		# A SURVIVOR IS ESCALATED TWICE BEFORE IT IS BELIEVED, and only survivors
+		# pay for it.
+		#
+		# ./... because a mutant run against the package it EDITS reads as
+		# SURVIVED when its detector lives elsewhere — that turned two of four
+		# apparent survivors into CAUGHT on 2026-09-13.
+		#
+		# AND THEN -race, because some detectors only work under it. The press
+		# gate's own test measures 20/20 with it and ~81/100 without, so this
+		# sweep reported that rule as unmeasured and an hour went into finding
+		# out why. A survivor that needs the race detector is not a survivor.
+		v=$(MUTANT_BASELINE=assumed ./06_docs/mutants/run.sh "$m" ./... 2>&1 | tail -1)
+		case "$v" in
+		SURVIVED*)
+			v=$(MUTANT_RACE=1 ./06_docs/mutants/run.sh "$m" "$pkg" 2>&1 | tail -1)
+			case "$v" in
+			CAUGHT*) v="$v [caught only under -race]" ;;
+			esac
+			;;
+		CAUGHT*) v="$v [caught only against ./...]" ;;
+		esac
+		;;
+	esac
+	# KEYED BY THE PACKAGE `pkgof` NAMES, so the next run's lookup matches.
+	echo "$pk $(( $(date +%s) - start ))" >> "$timings.new"
+	case "$v" in
+	CAUGHT*) caught=$((caught + 1)) ;;
+	SURVIVED*) survived=$((survived + 1)) ;;
+	# SKIPPED, UNAPPLIED AND INVALID ARE NOT VERDICTS. Each means the mutation
+	# was never measured — a dirty tree, an anchor that no longer matches, an
+	# edit that will not compile — and a sweep that counts them as nothing at all
+	# reports "0 CAUGHT, 0 SURVIVED" and exits 0. THAT IS A GREEN WALL, and this
+	# script wrote one on its first smoke test.
+	*) noevidence=$((noevidence + 1)) ;;
+	esac
+	echo "[$n/$total] $v" | tee -a "$out"
 done
+mv "$timings.new" "$timings"
 
 echo "" | tee -a "$out"
-echo "mutant-verdicts: $total mutant(s) — $caught CAUGHT, $survived SURVIVED" | tee -a "$out"
+echo "mutant-verdicts: $total mutant(s) — $caught CAUGHT, $survived SURVIVED, $noevidence NO EVIDENCE" | tee -a "$out"
+echo "  per-mutant timings recorded in $timings; the next run estimates from them" | tee -a "$out"
+if [ "$noevidence" -ne 0 ]; then
+	echo "NO EVIDENCE is not a pass. $noevidence mutant(s) were never measured —" | tee -a "$out"
+	echo "SKIPPED (dirty tree), UNAPPLIED (the anchor moved) or INVALID (the edit" | tee -a "$out"
+	echo "does not compile). A sweep that reports only what it managed to run is a" | tee -a "$out"
+	echo "sweep whose green means nothing." | tee -a "$out"
+	exit 1
+fi
 if [ "$survived" -ne 0 ]; then
-  echo "A SURVIVOR IS A RULE NOTHING MEASURES. Either the behaviour is unpinned and" | tee -a "$out"
-  echo "owes a test, or the rule was retired and the mutant owes a HUM LEAD" | tee -a "$out"
-  echo "retirement — which is RATIFIED, never self-issued." | tee -a "$out"
-  exit 1
+	echo "A SURVIVOR IS A RULE NOTHING MEASURES. Either the behaviour is unpinned and" | tee -a "$out"
+	echo "owes a test, or the rule was retired and the mutant owes a HUM LEAD" | tee -a "$out"
+	echo "retirement — which is RATIFIED, never self-issued." | tee -a "$out"
+	exit 1
 fi
