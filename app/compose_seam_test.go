@@ -129,3 +129,68 @@ func TestOnlyTheChosenKindsAreGathered(t *testing.T) {
 		})
 	}
 }
+
+// TestTheForecastProductsAreNotPulledUnlessAsked.
+//
+// THE PRODUCTS ARE THE MOST EXPENSIVE OF THE FOUR — a forecast-office lookup and
+// the UGC filtering after it — and the one most often not wanted: a FIRE-only
+// card has no use for a zone forecast.
+//
+// MUTANT mAX2 MADE THEM UNCONDITIONAL AND SURVIVED, because the test above counts
+// the deck's three HOOKS and the products do not go through one. They go over the
+// wire, so this counts requests instead — which is the only way to ask "did you
+// go and get it" of a source that has no seam of its own.
+func TestTheForecastProductsAreNotPulledUnlessAsked(t *testing.T) {
+	load := func(want report.Set) int64 {
+		t.Helper()
+		client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: t.TempDir()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		d := &radioDeck{nws: nws.New(client, ""), products: synth.NewProducts(client, "")}
+		_, _ = d.segments(context.Background(), refOceanside, synth.VoiceToken, want)
+		r := totalRequests(client)
+		return r.net + r.cache
+	}
+	// THE FRAME STILL FETCHES: the observation and the alerts are asked for
+	// whatever was chosen, so this is a COMPARISON rather than an absolute — the
+	// question is whether asking for NWS costs more than not asking for it.
+	withNWS := load(report.Set(0).Add(report.NWS))
+	without := load(report.Set(0).Add(report.Fire))
+	if withNWS <= without {
+		t.Errorf("asking for the NWS forecast made %d requests and not asking made %d; "+
+			"the products are being pulled either way", withNWS, without)
+	}
+}
+
+// TestACardThatNamesNoSetStillComposesAFullReport.
+//
+// EVERY CARD IN THE TREE IS IN THAT STATE. The Director's own cards carry no
+// report set — only an operator's request does — so "no set" has to mean the
+// whole report, not an empty one. Read the other way round, the station would
+// compose a frame with nothing in it and the rotation would go quiet.
+//
+// MUTANT mAX3 MADE THE DEFAULT EMPTY AND SURVIVED: nothing drove `composeFor`'s
+// default at all, because the one test that reaches it is about a location
+// NOBODY WATCHES and fails before composing.
+func TestACardThatNamesNoSetStillComposesAFullReport(t *testing.T) {
+	var gotFire, gotSeismic, gotMarine bool
+	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := &radioDeck{
+		nws: nws.New(client, ""), products: synth.NewProducts(client, ""),
+		fire:    func(snapshot.LocationRef) synth.FireReport { gotFire = true; return synth.FireReport{} },
+		seismic: func(snapshot.LocationRef) synth.SeismicReport { gotSeismic = true; return synth.SeismicReport{} },
+		marine:  func(snapshot.LocationRef) synth.MarineReport { gotMarine = true; return synth.MarineReport{} },
+	}
+	compose := composeFor(d, watchOf(refOceanside), nil) // nil wants: no card names a set yet (R2)
+	_, _ = compose(context.Background(), string(snapshot.Key(refOceanside)))
+
+	if !gotFire || !gotSeismic || !gotMarine {
+		t.Errorf("a card naming no report set gathered fire=%v seismic=%v marine=%v; "+
+			"no set means the WHOLE report, or the rotation composes an empty one",
+			gotFire, gotSeismic, gotMarine)
+	}
+}
