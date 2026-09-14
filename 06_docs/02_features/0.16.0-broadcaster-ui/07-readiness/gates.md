@@ -514,3 +514,33 @@ hole and is fixed; one guards a retired rule.**
 | `mDD` — the lane outlives the loop | CAUGHT | TestTheLaneRetiresWithTheLoop |
 | `mDE` — a queued run is discarded on a coin flip | CAUGHT | the test binary did not survive it: panic: test timed out after 10m0s |
 | `mDF` — an effect is dropped from its run | CAUGHT | TestALongRunningEffectDoesNotDelayTheNextEvent |
+
+## The 2026-09-13 corpus sweep: seven survivors, and what each was owed
+
+**`make mutant-verdicts` over all 314 mutants — 307 CAUGHT, 7 SURVIVED.**  Nothing from this release
+survived; all seven predate 0.16.0.  **A survivor is not a defect and it is not a bad plant until it
+has been read**, and these split three ways.
+
+### Five owed a test, and have one
+
+| Mutant | The rule nothing measured | Why it survived |
+|---|---|---|
+| `mS4` | the scroll thumb tracks the window | **A past defect with no pin.** `chromeAt` records it: "until D-87 … the rail drew a thumb that never moved."  The near miss was `TestTheScrollGutterCarriesOnlyTheThumb`, which asserts there is exactly ONE thumb — still true when it is frozen |
+| `mS0` | a column never bleeds into its neighbour | **No caller could express the fault.**  Both boxes are built by `shell`, which already pads every row, so the pad in the join is a no-op.  Extracted to `joinColumns` and driven directly |
+| `m42` | only the Air Quality Alert is an "Alert" by name | **A rule held by a DIFFERENT rule.**  The only other "… Alert" product is Blue Alert, which the civil-emergency table decides first.  Tested as a POLICY, with products from other programmes |
+| `m25` | an alert already read aloud is not offered again | **A test that proves the door opens says nothing about whether it closes.**  The path is covered end to end and drives an UNREAD event; nothing drove one already said |
+| `mK3` | two presses cannot race the same reader | see below |
+
+### Two owe NOTHING, and the code already says so
+
+**These are equivalent mutants, and recording them is the honest disposition** — the same standing
+`s5` and `m9b` were given at P3.
+
+| Mutant | Why no test can catch it |
+|---|---|
+| `m16` | `scopeEvents`' `ok` check is **defence in depth on the hazard path**.  Verified rather than taken on trust: BOTH builders of the tracked set go through `alertKeysOf`, which inserts a key only when `NormalizeID` returns ok — so no unusable key can ever be in the set to match.  The source states it in as many words, including "deleting it changes no behaviour, and no test can catch that, which is stated here rather than left to look like coverage" |
+| `m43` | The Marine arm matches `Contains(product, "Marine")` and the live catalogue contains exactly ONE such product — Marine Weather Statement — because every other marine product names warning, watch or advisory and is decided above.  **Narrowing it changes nothing without inventing a product the Weather Service does not issue.**  This is the distinction from `m42`: that rule is about products that do not exist YET and is therefore testable as policy; this one is about the catalogue as it stands, and "whether marine products belong here at all is an open ruling" |
+
+**Both are KEPT rather than retired.**  Each guards a rule that is true today because of a
+*neighbouring* rule; if that neighbour moves — the civil-emergency table, `alertKeysOf`, the NWS
+catalogue — the mutant becomes catchable and the next sweep says so.
