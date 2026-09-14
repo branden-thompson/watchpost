@@ -111,3 +111,56 @@ footprint counts compressed memory and dirty private pages; btop's `MemB` is clo
 **Three definitions.** The HUM LEAD's standing observation that Arch numbers read consistently lower
 than macOS is therefore partly a measurement-definition artifact, not only a platform difference.
 **`rss_kb` is the one column defined the same on both** — compare that, or compare nothing.
+
+
+---
+
+## The card build is not the slow thing (measured 2026-09-14)
+
+**HUM LEAD:** *"Data requests in both Observer and Broadcaster 'feel' a little slow - can we take a
+measurement/sounding of that to evaluate and make a data-drive recommendation (if any)."*
+
+**Measured with the repo's own instruments** — `TestCardBuildCost` and `TestCardBuildConcurrentFloor`,
+both gated behind `WATCHPOST_LIVE_PERF=1`, n=5 against the live services:
+
+| | median | range |
+|---|---|---|
+| cold build, serial (today) | **449 ms** | 424–514 ms |
+| cold build, concurrent floor | **449 ms** | 425–501 ms |
+| warm build | **1–2 ms** | — |
+
+Eleven network requests either way, 24 segments.
+
+**SO THE CARD BUILD IS NOT THE ANSWER, and PL-3's ruling stands unchanged**: the build is *not*
+latency-parallelisable, because the calls funnel through a shared `/points` resolution that serialises
+however they are issued. 449 ms is already under the ≈0.7 s output buffer (perf-protocol §1), and a
+warm build is free.
+
+### The first sample said 3.599 s, and it was wrong
+
+**One sample would have bought an 8x concurrency rewrite of a path a ratified measurement had already
+closed.** The 3.599 s was the session's FIRST request — DNS, TLS, cold everything — and every run
+after it was ~450 ms.
+
+**The rule, stated because this is the second time in one day:** when a new measurement disagrees with
+a recorded one by an order of magnitude, **the disagreement is the finding**. Reconcile it before
+using either. The same mistake sized a 6.5-hour corpus sweep at 95 minutes that morning, from a sample
+chosen for being recent rather than representative.
+
+### Where the felt slowness must actually be, and what would settle it
+
+The card build is ~450 ms cold and free warm, so it cannot be what "feels slow". Three candidates
+remain, in the order they are worth measuring:
+
+1. **Time-to-first-data for a location.** A row added or a pool derived shows `n/a` until its first
+   fetch lands, and the cadence table's own figures mean an observation can be **90 s** behind on a
+   priority location and **10 min** on a recent one. That is by design and may be the whole of what
+   is being felt — in which case the answer is presentation, not speed.
+2. **The scheduler's serial provider walk** (accepted-costs §4). Its re-open trigger is stated: *a
+   tier's cycle longer than its own cadence*. 0.16.0 added the station pool, so the feed count has
+   grown — this is the one measurement the acceptance itself asks for.
+3. **Start-up fan-out**: priority plus up to 50 RECENT locations, each with six tiers.
+
+**None of these is measurable from a unit test** — they need a running instance, which is what
+`soak.sh` is for. That is the sounding to take next, and it is the "standard workload" gap this
+document already names as the only piece 0.16.0 actually needs.
