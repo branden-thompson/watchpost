@@ -412,6 +412,7 @@ func (Dashboard).handleNav
 func (Dashboard).handleRadio
 func (Dashboard).handleRelayFaultNav
 func (Dashboard).handleRemoveKey
+func (Dashboard).handleRequestKey
 func (Dashboard).handleRequestNav
 func (Dashboard).handleResolved
 func (Dashboard).handleSettingsSaved
@@ -453,6 +454,7 @@ func (Dashboard).onTick
 func (Dashboard).open
 func (Dashboard).openDiagnostics
 func (Dashboard).openRelayFault
+func (Dashboard).openRequest
 func (Dashboard).openSetup
 func (Dashboard).openSetupAt
 func (Dashboard).openSevere
@@ -488,6 +490,11 @@ func (Dashboard).removeLines
 func (Dashboard).renderModal
 func (Dashboard).requestBody
 func (Dashboard).requestChips
+func (Dashboard).requestErase
+func (Dashboard).requestResolve
+func (Dashboard).requestSchedule
+func (Dashboard).requestToggle
+func (Dashboard).requestType
 func (Dashboard).resolveCmd
 func (Dashboard).rootDisplayName
 func (Dashboard).row
@@ -600,6 +607,7 @@ func (Router).cardWindowKey
 func (Router).consoleOwnsTheKeys
 func (Router).cutBed
 func (Router).dropWindowKey
+func (Router).lookupPointedLocation
 func (Router).moveWindowKey
 func (Router).openCardWindow
 func (Router).openPointedCard

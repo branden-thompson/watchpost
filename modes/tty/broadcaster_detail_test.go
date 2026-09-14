@@ -15,6 +15,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // bcDetailAt is a fixed moment, so the window's age line is a fact rather than
@@ -312,5 +313,68 @@ func TestTheAlertBoxsWayInRefusesWhenTheRailIsEmpty(t *testing.T) {
 	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
 	if out := press(t, r, "A"); out.observer.ModalOpen() {
 		t.Errorf("[A] opened %v with no hazard on the rail", out.observer.modal)
+	}
+}
+
+// TestTheConsolesTwoDrawnControlsAreBound.
+//
+// `[l] Lookup Location from Pool` AND `[r] Request for Line-Up` have been DRAWN
+// in the console's control row since D-102 with nothing bound to either (R4b).
+// HUM LEAD, 2026-09-14: "i'll need r and l to be bound in broadcaster before I
+// can UAT."
+//
+// THROUGH `Update`, THE WAY A TERMINAL DOES — the seam D-121 was caught on, and
+// the reason twelve tests once passed against a build whose controls did nothing.
+func TestTheConsolesTwoDrawnControlsAreBound(t *testing.T) {
+	// THE CARD'S SUBJECT IS THE POOL ENTRY'S KEY, which is how the running order
+	// finds the weather for a card — so the fixture uses the same key rather
+	// than a label, or `[l]` has nothing to resolve from the line-up.
+	vista := snapshot.LocationRef{Label: "Vista, CA", Zip: "92084", Lat: 33.2, Lon: -117.24}
+	// ENOUGH CARDS THAT A SCHEDULED ROW EXISTS. The line-up pointer addresses
+	// positions 2..15 — LIVE and UP NEXT are read FROM, not navigated to — so a
+	// fixture with one card leaves the pointer on an empty slot and every
+	// control refuses, correctly and uninformatively.
+	// AND THE POOL-KEYED CARD IS THE SECOND ONE, because at standby the line-up
+	// draws from UP NEXT down (D-84's `liveOffset`): the pointer's position 0 is
+	// slot 2, which is the second card. The same off-by-one that once put a move
+	// one slot low, and it is a FIXTURE fact rather than a behaviour — which is
+	// why it is written down here instead of being discovered again.
+	b := bcWith(t,
+		card(t, "c0", "first"),
+		card(t, "c1", string(snapshot.Key(vista))),
+		card(t, "c2", "third"))
+	b.width, b.height, b.ascii = 150, 74, true
+	b, _ = b.Update(StationAreaMsg{
+		Transmitter: snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.28, Lon: -117.23},
+		RadiusMi:    50,
+		Pool:        []snapshot.LocationRef{vista},
+	})
+
+	// THE PREMISE: the row really does draw both, or this proves nothing.
+	frame := stripANSITest(b.View().Content)
+	for _, cap := range []string{"Lookup Location from Pool", "Request for Line-Up"} {
+		if !strings.Contains(frame, cap) {
+			t.Fatalf("the control row does not draw %q; this test measures nothing", cap)
+		}
+	}
+
+	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
+	if out := press(t, r, "r"); out.observer.modal != modalRequest {
+		t.Errorf("[r] opened %v, want the Line-Up Request window", out.observer.modal)
+	}
+	if out := press(t, r, "l"); out.observer.modal != modalDetails {
+		t.Errorf("[l] opened %v, want the location's details", out.observer.modal)
+	}
+}
+
+// AND `a` STAYS ABOUT ON BOTH SURFACES. `[r]` and `[l]` are the console's own,
+// but About is not — taking a key that already works would be a regression
+// dressed as a feature (D-56: one key, one meaning PER SURFACE).
+func TestTheConsolesNewKeysDoNotTakeAboutsKey(t *testing.T) {
+	b := bcWith(t)
+	b.width, b.height, b.ascii = 150, 74, true
+	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
+	if out := press(t, r, "a"); out.observer.modal == modalRequest {
+		t.Error("[a] opened the request window; it is About on both surfaces")
 	}
 }

@@ -14,6 +14,8 @@ package tty
 // and no line below mentions a kind by name.
 
 import (
+	tea "charm.land/bubbletea/v2"
+
 	"strconv"
 	"strings"
 
@@ -312,4 +314,142 @@ func (st requestState) prev() requestState {
 		st.field = numRequestFields - 1
 	}
 	return st
+}
+
+// handleRequestKey owns the keyboard while the request window is open.
+//
+// A WINDOW ON TOP OWNS THE KEYS (D-58), and a form owns them twice over: a
+// digit typed into the slot field must not reach the running order, and a
+// letter typed into the location must not be a console control.
+//
+// ESC CANCELS AND LOSES THE FORM, deliberately. A half-filled request kept
+// across a close is a window that reopens saying something the operator did not
+// mean to still be asking for.
+func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch key.String() {
+	case "esc":
+		d.request = requestState{}
+		return d.close(), nil
+	case "enter":
+		return d.requestSchedule()
+	case "up":
+		return d.handleRequestNav("nav-up"), nil
+	case "down":
+		return d.handleRequestNav("nav-down"), nil
+	case "tab":
+		// TAB IS THE FIELD, ↓ IS THE LINE. One walks the form, the other walks
+		// whatever the focused field contains — the same split Settings uses.
+		d.request.field = (d.request.field + 1) % numRequestFields
+		d.request.at = 0
+		return d, nil
+	case " ":
+		return d.requestToggle(), nil
+	case "backspace":
+		return d.requestErase(), nil
+	}
+	if r := key.String(); len(r) == 1 {
+		return d.requestType(r), nil
+	}
+	return d, nil
+}
+
+// requestToggle is what [space] does, which depends on where the focus is.
+func (d Dashboard) requestToggle() Dashboard {
+	switch d.request.field {
+	case requestReports:
+		rows := requestRows()
+		if d.request.at < len(rows) {
+			d.request.chosen = d.request.chosen.Toggle(rows[d.request.at])
+		}
+	case requestPosition:
+		// ONE CHOICE OF TWO, so space flips between them rather than setting
+		// one — there is no state where neither is chosen.
+		d.request.prioritize = !d.request.prioritize
+	}
+	return d
+}
+
+// requestType is a printable key, into whichever field takes text.
+func (d Dashboard) requestType(r string) Dashboard {
+	switch d.request.field {
+	case requestLocation:
+		d.request.query += r
+		// THE RESOLUTION IS STALE THE MOMENT THE QUERY CHANGES. Keeping the old
+		// ref would let the window show one place and schedule another.
+		d.request.ref, d.request.outside = nil, false
+		return d.requestResolve()
+	case requestPosition:
+		if r >= "0" && r <= "9" {
+			d.request.slot += r
+			d.request.prioritize = false // typing a slot IS choosing the slot
+		}
+	}
+	return d
+}
+
+// requestErase is backspace, into whichever field takes text.
+func (d Dashboard) requestErase() Dashboard {
+	switch d.request.field {
+	case requestLocation:
+		if n := len(d.request.query); n > 0 {
+			d.request.query = d.request.query[:n-1]
+		}
+		d.request.ref, d.request.outside = nil, false
+		return d.requestResolve()
+	case requestPosition:
+		if n := len(d.request.slot); n > 0 {
+			d.request.slot = d.request.slot[:n-1]
+		}
+	}
+	return d
+}
+
+// requestResolve asks the console's pool what the operator typed means.
+//
+// THE POOL IS THE ANSWER, NOT THE GEOCODER (ruling 2). A location the station
+// cannot broadcast about is not an error and not a lookup failure — it is a real
+// place outside the service radius, and the window says so and points at
+// Observer rather than refusing to understand.
+func (d Dashboard) requestResolve() Dashboard {
+	q := strings.TrimSpace(strings.ToLower(d.request.query))
+	if q == "" || d.cfg.PoolLookup == nil {
+		return d
+	}
+	ref, inPool, found := d.cfg.PoolLookup(q)
+	switch {
+	case !found:
+		d.request.ref, d.request.outside = nil, false
+	case !inPool:
+		r := ref
+		d.request.ref, d.request.outside = &r, true
+	default:
+		r := ref
+		d.request.ref, d.request.outside = &r, false
+	}
+	return d
+}
+
+// requestSchedule is [enter]: the form becomes a request, or says why it cannot.
+//
+// IT CLOSES ONLY WHEN THE SCHEDULE WAS TOLD. FR-3.3 — "an action must never be
+// shown as taken unless the schedule took it" — and a window that closed on an
+// invalid form would be exactly that: the operator would believe they had
+// scheduled something.
+func (d Dashboard) requestSchedule() (tea.Model, tea.Cmd) {
+	if !d.request.valid() || d.cfg.RequestCard == nil {
+		return d, nil
+	}
+	ref, at, kinds := *d.request.ref, d.request.position(), d.request.chosen
+	d.request = requestState{}
+	d = d.close()
+	return d, func() tea.Msg {
+		d.cfg.RequestCard(ref, kinds, at)
+		return nil
+	}
+}
+
+// openRequest opens a fresh Line-Up Request window.
+func (d Dashboard) openRequest() Dashboard {
+	d.request = requestOpen()
+	return d.open(modalRequest)
 }

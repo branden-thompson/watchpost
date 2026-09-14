@@ -206,7 +206,7 @@ func (d Director) refreshStandby() (Director, []Effect) {
 			return d, nil
 		}
 		d.lineup = next
-		return d, []Effect{BuildCard{ID: c.ID, Slot: c.Slot, Subject: c.Subject, Refs: c.Refs}}
+		return d, []Effect{BuildCard{ID: c.ID, Slot: c.Slot, Subject: c.Subject, Refs: c.Refs, Reports: c.Reports}}
 	}
 	return d, nil
 }

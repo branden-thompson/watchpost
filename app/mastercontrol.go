@@ -31,6 +31,8 @@ import (
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/report"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // mastercontrol performs on the two outputs a card reaches the listener through.
@@ -195,6 +197,31 @@ func (m *mastercontrol) MoveCard(id string, to int) { m.tell(lineup.Moved{ID: id
 // DropCard takes a card out of the running order. It is the DESTRUCTIVE one
 // (FR-3.7), which is why the console asks before sending it.
 func (m *mastercontrol) DropCard(id string) { m.tell(lineup.Dropped{ID: id}) }
+
+// RequestCard is the operator asking for a report at a position (R4).
+//
+// THE CARD IS BUILT HERE, WHICH IS D-40's SPLIT: the Producer proposes and the
+// Director chooses, so the app mints and admits it and the event says only WHERE.
+// A console that built cards would be a surface deciding what may go on the air.
+//
+// IT IS THE OPERATOR'S (FR-3.4), so `FromOperator` — the same origin a restore
+// carries, and the reason the running order can tell a human's card from the
+// rotation's.
+func (m *mastercontrol) RequestCard(ref snapshot.LocationRef, kinds report.Set, at int) {
+	key := string(snapshot.Key(ref))
+	card, err := lineup.Propose(lineup.Card{
+		ID: lineup.ReadID(key), Slot: lineup.LocationReport, Origin: lineup.FromOperator,
+		Subject: key, Headline: ref.Label, Reports: kinds,
+	})
+	if err != nil {
+		return // it cannot be proposed; nothing is shown as taken (FR-3.3)
+	}
+	admitted, err := card.To(lineup.Admitted)
+	if err != nil {
+		return
+	}
+	m.tell(lineup.Requested{Card: admitted, To: at})
+}
 
 // CutBed moves the programme between the station's line-up and its bed (D-78).
 //

@@ -20,6 +20,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
@@ -170,6 +171,23 @@ type Config struct {
 	// took it". Nil in tests, and on a build with no schedule to tell.
 	MoveCard func(id string, to int)
 	DropCard func(id string)
+
+	// PoolLookup resolves what the operator typed into the request window, and
+	// says whether the station can broadcast about it (R4).
+	//
+	// THREE ANSWERS, NOT TWO. `found` is whether the place exists at all;
+	// `inPool` is whether it is inside the station's service radius. A location
+	// outside is NOT a lookup failure — HUM LEAD, 2026-09-14: it gets helper
+	// text saying "Observer supports location lookup outside Broadcast Radius",
+	// which is only possible if the two answers are kept apart.
+	PoolLookup func(query string) (ref snapshot.LocationRef, inPool, found bool)
+
+	// RequestCard is the operator asking for a report at a position (R4).
+	//
+	// THE APP IS THE PRODUCER (D-40). This hands over WHAT was asked for; the
+	// app composes the card, admits it and carries `Requested` to the Director.
+	// The console does not mint cards.
+	RequestCard func(ref snapshot.LocationRef, kinds report.Set, at int)
 
 	Transmitter      *snapshot.LocationRef
 	SetTransmitter   func(snapshot.LocationRef) // nil in tests
@@ -873,6 +891,8 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return d.handleAddKey(key)
 	case modalRemove:
 		return d.handleRemoveKey(key)
+	case modalRequest:
+		return d.handleRequestKey(key)
 	}
 	act, bound := d.keys.Lookup(key.String())
 	if !bound {

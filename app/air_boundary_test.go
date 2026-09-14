@@ -122,7 +122,20 @@ var airBoundary = map[string]airMember{
 	"StepBedRelay":  {airProgramme, "the console's own bed selector (D-90); guarding it would break the control it belongs to"},
 	"TuneRelay":     {airProgramme, "the relay-fault window's pick. HUM LEAD 2026-09-12 ruled it must stay usable and be routed correctly — F-101, stage C"},
 	"OnSurface":     {airDeclares, "`takeTheAir` — this is the thing that MOVES the air, so it cannot be gated on it"},
-	"InjectAlert":   {airShared, "feeds the hazard RAIL, which D-74 exempts from air ownership deliberately: hazards read in either mode"},
+	// THE OPERATOR'S REQUEST (R4). It reaches the AIR eventually — a scheduled
+	// card is read — but it reaches it the way every other card does: through
+	// the running order, in its turn, and never ahead of a hazard. The Director
+	// decides when; this only says WHAT and WHERE.
+	//
+	// AND IT DOES NOT INTERRUPT. `Insert` puts a card in the running order and
+	// the rail still outranks the main track by construction, so a request made
+	// during a hazard read waits exactly as a rotation card would.
+	"RequestCard": {airProgramme, "schedules a card the Director reads in its turn; the rail still outranks the main track, so it cannot cut a hazard short"},
+	// A LOOKUP ANSWERS A QUESTION AND CHANGES NOTHING. It resolves what the
+	// operator typed against the station's pool; no card, no tune, no cue.
+	"PoolLookup": {airNone, "a query answered from the pool and the resolver; it writes nothing and reaches no output"},
+
+	"InjectAlert": {airShared, "feeds the hazard RAIL, which D-74 exempts from air ownership deliberately: hazards read in either mode"},
 
 	// --- tty.Config: cannot reach the air ---------------------------------
 	"SetTones":       {airNone, "deliberately NOT a recast — the in-tree standard: \"[M] must be instant and must not disturb a broadcast in flight\""},

@@ -11,6 +11,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 )
 
 // P3: the executors can BUILD a location-report card.
@@ -32,7 +33,7 @@ func buildDeps(t *testing.T, segs []synth.Segment, err error) *executors {
 		report:    func(lineup.Effect, string) {},
 		cutTo:     func(string) {},
 		escalate:  func(string) {},
-		compose:   func(ctx context.Context, ref string) ([]synth.Segment, error) { return segs, err },
+		compose:   func(ctx context.Context, ref string, _ report.Set) ([]synth.Segment, error) { return segs, err },
 	})
 	if x == nil {
 		t.Fatal("the executors refused to build with a composer")

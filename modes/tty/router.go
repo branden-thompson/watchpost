@@ -534,6 +534,28 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if out, opened := r.openCardWindow(k.String()); opened {
 			return out, nil
 		}
+		// THE CONSOLE'S TWO REMAINING CONTROLS, both of which the control row
+		// has DRAWN since D-102 with nothing bound to them (R4b). A painted
+		// control that does nothing is worse than an absent one — the operator
+		// presses it, sees nothing, and concludes the feature is broken.
+		switch k.String() {
+		case "r":
+			// THE REQUEST WINDOW (R4). Lower case: `r` is Observer's repeat and
+			// this is the console, which is D-56's rule — one key, one meaning
+			// PER SURFACE — and the control row draws `[r]`.
+			r.observer = r.observer.openRequest()
+			return r, nil
+		case "l":
+			// LOOKUP LOCATION FROM POOL. It opens the DETAILS of the location
+			// the pointer is on, wherever the pointer is: on a pool row that is
+			// the row itself, and on a running-order row it is the location that
+			// card is ABOUT — which is the question "lookup location from pool"
+			// asks from the line-up, and the one `enter` does not answer there
+			// because it opens the CARD.
+			if out, opened := r.lookupPointedLocation(); opened {
+				return out, nil
+			}
+		}
 	}
 	// THE WINDOW ON TOP OWNS THE KEYS (D-58). While the diagnostics window is
 	// composited over the console, its own navigation — arrows, enter, esc —
@@ -979,4 +1001,47 @@ func (r Router) refreshCardWindow() Router {
 		r.observer = r.observer.showCard(id, rows, r.broadcaster.alertWindowGround(), r.observer.opts())
 	}
 	return r
+}
+
+// lookupPointedLocation opens the LOCATION the pointer is on, wherever it is.
+//
+// `[l] Lookup Location from Pool` HAS BEEN DRAWN SINCE D-102 WITH NOTHING BOUND
+// TO IT, found while reading for the request plan and bound here so the console
+// can be UAT'd (R4b).
+//
+// IT IS NOT `enter`, AND THE DIFFERENCE IS THE RUNNING ORDER. On a pool row the
+// two agree — both open the place. On a running-order row `enter` opens the
+// CARD, which is the report and its manifest, and this opens the LOCATION that
+// card is about: the weather, the alerts, the station. That is the question
+// "lookup location from pool" asks from the line-up, and the one nothing else
+// answered there.
+//
+// IT REFUSES QUIETLY on a slot the Director has not filled, the way every other
+// console control does: `false` means the key was not consumed.
+func (r Router) lookupPointedLocation() (Router, bool) {
+	pool := r.broadcaster.area.Pool
+	if at := r.broadcaster.poolSelection(); at >= 0 {
+		if at >= len(pool) {
+			return r, false
+		}
+		r.observer = r.observer.showLocation(pool[at])
+		return r, true
+	}
+	at := r.broadcaster.lineupSelection()
+	if at < 0 {
+		return r, false
+	}
+	c, decided := r.broadcaster.slotCard(r.broadcaster.mainTrack(), at+bcScheduledFrom)
+	if !decided {
+		return r, false
+	}
+	// THE CARD'S OWN SUBJECT, resolved against the station's pool — the same
+	// lookup the running order uses to draw the card's weather, so the window
+	// and the row cannot disagree about which place this is.
+	ref, ok := r.broadcaster.poolEntry(c.Subject)
+	if !ok {
+		return r, false
+	}
+	r.observer = r.observer.showLocation(ref)
+	return r, true
 }

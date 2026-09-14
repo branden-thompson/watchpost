@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/report"
 )
 
 // State is where a card is in its life. The zero value is Proposed, which is
@@ -307,6 +308,15 @@ type Card struct {
 	// Only a card assembled FROM producer records carries them. (It said "a
 	// burst head" too; BurstHead was retired when a burst became one card.)
 	Refs []string
+
+	// Reports is which sources this card's report carries (R4).
+	//
+	// EMPTY MEANS THE WHOLE REPORT, NOT NONE. Every card the Director makes for
+	// itself is in that state — only an operator's request names a subset — so
+	// the zero value has to be the ordinary case, or the rotation would compose
+	// a frame with nothing in it. `composeFor` states the same rule at the other
+	// end of the wire, and mutant mAX3 is the pair of them.
+	Reports report.Set
 
 	// From is the arrivals this card was planned from, kept so a LATER FENCE can
 	// re-test it (D-75).

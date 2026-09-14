@@ -44,7 +44,7 @@ func equal(a, b []string) bool {
 // moment at which something can be cut.
 func TestTheLineupTakesAdmittedCardsAndNothingElse(t *testing.T) {
 	for s := State(0); s < numStates; s++ {
-		c := report("Bonsall")
+		c := locationCard("Bonsall")
 		c.State = s
 		_, err := Lineup{}.Queue(MainTrack, c)
 		if got, want := err == nil, s == Admitted; got != want {
@@ -56,8 +56,8 @@ func TestTheLineupTakesAdmittedCardsAndNothingElse(t *testing.T) {
 // TestTheLineupRefusesACardItCannotAddress: two cards under one identity make
 // Set and Remove ambiguous, and an ambiguous Remove is a card read twice.
 func TestTheLineupRefusesACardItCannotAddress(t *testing.T) {
-	l := queued(t, Lineup{}, MainTrack, report("Bonsall"))
-	twin := at(t, proposed(t, report("Bonsall")), Admitted)
+	l := queued(t, Lineup{}, MainTrack, locationCard("Bonsall"))
+	twin := at(t, proposed(t, locationCard("Bonsall")), Admitted)
 	if _, err := l.Queue(AlertRail, twin); err == nil {
 		t.Error("the lineup took a second card under one identity")
 	}
@@ -70,8 +70,8 @@ func TestTheLineupRefusesACardItCannotAddress(t *testing.T) {
 // always present and usually empty; when it holds anything, those cards are read
 // first and in order, and normal programming resumes only when it is dry.
 func TestTheAlertRailDrainsBeforeTheMainTrack(t *testing.T) {
-	l := queued(t, Lineup{}, MainTrack, report("Bonsall"))
-	l = queued(t, l, MainTrack, report("Oceanside"))
+	l := queued(t, Lineup{}, MainTrack, locationCard("Bonsall"))
+	l = queued(t, l, MainTrack, locationCard("Oceanside"))
 	if c, track, ok := l.Next(); !ok || c.ID != "Bonsall" || track != MainTrack {
 		t.Fatalf("Next() = %q on %v (ok=%v), want Bonsall on the main track", c.ID, track, ok)
 	}
@@ -90,7 +90,7 @@ func TestTheAlertRailDrainsBeforeTheMainTrack(t *testing.T) {
 func TestNoAdmittedCardIsEverSkipped(t *testing.T) {
 	l := Lineup{}
 	for _, id := range []string{"Bonsall", "Oceanside", "Ramona"} {
-		l = queued(t, l, MainTrack, report(id))
+		l = queued(t, l, MainTrack, locationCard(id))
 	}
 	for _, id := range []string{"a1", "a2"} {
 		l = queued(t, l, AlertRail, alert(id))
@@ -119,7 +119,7 @@ func TestNoAdmittedCardIsEverSkipped(t *testing.T) {
 // list of states to skip grows a hole every time a state is added.
 func TestACardOnTheAirIsNotOfferedAgain(t *testing.T) {
 	for s := State(0); s < numStates; s++ {
-		l := queued(t, Lineup{}, MainTrack, report("Bonsall"))
+		l := queued(t, Lineup{}, MainTrack, locationCard("Bonsall"))
 		held := l.Cards(MainTrack)[0]
 		held.State = s
 		if s == OnAir || s == Standby {
@@ -142,7 +142,7 @@ func TestACardOnTheAirIsNotOfferedAgain(t *testing.T) {
 // the air would wedge the station, which is exactly the failure the Lineup
 // exists to make impossible.
 func TestACardOnTheAirRefusesEditsButMayStillLeaveTheAir(t *testing.T) {
-	l := queued(t, Lineup{}, MainTrack, report("Bonsall"))
+	l := queued(t, Lineup{}, MainTrack, locationCard("Bonsall"))
 	held := l.Cards(MainTrack)[0]
 	held = at(t, held, Standby).mustText(t)
 	held = at(t, held, OnAir)
@@ -173,7 +173,7 @@ func TestACardOnTheAirRefusesEditsButMayStillLeaveTheAir(t *testing.T) {
 // and fill in its words; swapping what a card IS under a live identity would
 // change what is read without changing what the lineup says is read.
 func TestACardKeepsItsSlotAndItsOriginForLife(t *testing.T) {
-	l := queued(t, Lineup{}, MainTrack, report("Bonsall"))
+	l := queued(t, Lineup{}, MainTrack, locationCard("Bonsall"))
 	held := l.Cards(MainTrack)[0]
 
 	swapped := held
@@ -186,7 +186,7 @@ func TestACardKeepsItsSlotAndItsOriginForLife(t *testing.T) {
 	if _, err := l.Set(swapped); err == nil {
 		t.Error("a card changed origin under a live identity")
 	}
-	if _, err := l.Set(at(t, proposed(t, report("Ramona")), Admitted)); err == nil {
+	if _, err := l.Set(at(t, proposed(t, locationCard("Ramona")), Admitted)); err == nil {
 		t.Error("Set added a card the lineup was not holding")
 	}
 	if _, err := l.Remove("Ramona"); err == nil {
@@ -200,7 +200,7 @@ func TestACardKeepsItsSlotAndItsOriginForLife(t *testing.T) {
 func TestSetReplacesACardWithoutMovingIt(t *testing.T) {
 	l := Lineup{}
 	for _, id := range []string{"Bonsall", "Oceanside", "Ramona"} {
-		l = queued(t, l, MainTrack, report(id))
+		l = queued(t, l, MainTrack, locationCard(id))
 	}
 	middle := at(t, l.Cards(MainTrack)[1], Standby)
 	moved, err := l.Set(middle)
@@ -221,7 +221,7 @@ func TestSetReplacesACardWithoutMovingIt(t *testing.T) {
 // this package can assign to them, but a slice handed out would alias the same
 // backing array and make every reader a second writer.
 func TestAReaderCannotReachTheLineupsOwnStorage(t *testing.T) {
-	l := queued(t, Lineup{}, MainTrack, report("Bonsall"))
+	l := queued(t, Lineup{}, MainTrack, locationCard("Bonsall"))
 	got := l.Cards(MainTrack)
 	got[0].ID = "vandalised"
 	got[0].State = Done
@@ -241,14 +241,14 @@ func TestAReaderCannotReachTheLineupsOwnStorage(t *testing.T) {
 func TestTwoLineupsBuiltFromOneNeverShareStorage(t *testing.T) {
 	base := Lineup{}
 	for _, id := range []string{"Bonsall", "Oceanside", "Ramona"} {
-		base = queued(t, base, MainTrack, report(id))
+		base = queued(t, base, MainTrack, locationCard(id))
 	}
 	base, err := base.Remove("Ramona") // leaves capacity behind the length
 	if err != nil {
 		t.Fatalf("Remove: %v", err)
 	}
-	one := queued(t, base, MainTrack, report("Fallbrook"))
-	two := queued(t, base, MainTrack, report("Vista"))
+	one := queued(t, base, MainTrack, locationCard("Fallbrook"))
+	two := queued(t, base, MainTrack, locationCard("Vista"))
 
 	if got, want := ids(one.Cards(MainTrack)), []string{"Bonsall", "Oceanside", "Fallbrook"}; !equal(got, want) {
 		t.Errorf("the first lineup reads %v, want %v", got, want)
@@ -265,7 +265,7 @@ func TestTwoLineupsBuiltFromOneNeverShareStorage(t *testing.T) {
 // writer: Set indexes into a track and assigns, which without a copy first
 // would edit the receiver in place.
 func TestSetDoesNotDisturbTheLineupItCameFrom(t *testing.T) {
-	base := queued(t, Lineup{}, MainTrack, report("Bonsall"))
+	base := queued(t, Lineup{}, MainTrack, locationCard("Bonsall"))
 	moved, err := base.Set(at(t, base.Cards(MainTrack)[0], Standby))
 	if err != nil {
 		t.Fatalf("Set: %v", err)
@@ -282,7 +282,7 @@ func TestSetDoesNotDisturbTheLineupItCameFrom(t *testing.T) {
 func TestRemoveDoesNotDisturbTheLineupItCameFrom(t *testing.T) {
 	base := Lineup{}
 	for _, id := range []string{"Bonsall", "Oceanside", "Ramona"} {
-		base = queued(t, base, MainTrack, report(id))
+		base = queued(t, base, MainTrack, locationCard(id))
 	}
 	shorter, err := base.Remove("Oceanside")
 	if err != nil {

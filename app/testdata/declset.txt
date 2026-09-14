@@ -32,6 +32,7 @@ const narrateBreaking
 const narrateRead
 const numMainTrackStages
 const numNarrationClasses
+const poolLookupBudget
 const publishCoalesce
 const pumpBacklog
 const radioDebugEnv
@@ -127,6 +128,7 @@ func (*livePipelines).fireFor
 func (*livePipelines).hydrate
 func (*livePipelines).injectHook
 func (*livePipelines).injectHook
+func (*livePipelines).lookInPool
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
@@ -143,6 +145,7 @@ func (*livePipelines).rebed
 func (*livePipelines).refreshBedRelays
 func (*livePipelines).relayDwell
 func (*livePipelines).relayLang
+func (*livePipelines).requestCard
 func (*livePipelines).restationTo
 func (*livePipelines).seismicFor
 func (*livePipelines).selectedRelay
@@ -171,6 +174,7 @@ func (*mastercontrol).GoOnAir
 func (*mastercontrol).GoToStandby
 func (*mastercontrol).HandAir
 func (*mastercontrol).MoveCard
+func (*mastercontrol).RequestCard
 func (*mastercontrol).StopMonitor
 func (*mastercontrol).clearBand
 func (*mastercontrol).cue
@@ -441,6 +445,7 @@ func macVoices
 func mainTrack
 func marineReportOf
 func mastheadLine
+func matchesQuery
 func narrateDebug
 func nearestMetro
 func newAlertStore

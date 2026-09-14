@@ -289,8 +289,11 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		// THE OPERATOR'S TWO ACTS ON A CARD (D-118). Told to the schedule as
 		// EVENTS, which is FR-3.3: "an action must never be shown as taken unless
 		// the schedule took it".
-		MoveCard:        lp.moveCard,
-		DropCard:        lp.dropCard,
+		MoveCard: lp.moveCard,
+		DropCard: lp.dropCard,
+		// THE OPERATOR'S REQUEST, AND THE LOOKUP THAT VALIDATES IT (R4).
+		PoolLookup:      func(q string) (snapshot.LocationRef, bool, bool) { return lp.lookInPool(resolver, q) },
+		RequestCard:     lp.requestCard,
 		Transmitter:     transmitterOf(cfg),
 		SetTransmitter:  lp.setTransmitter,
 		ServiceRadiusMi: int(cfg.Broadcaster.ServiceRadius()),

@@ -29,6 +29,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 
 	"github.com/branden-thompson/watchpost/modes/tty"
 )
@@ -53,7 +54,7 @@ type executors struct {
 	// P3). It is the deck's own composition, reached as a SEAM rather than a
 	// dependency: the executors know how to turn segments into a script and
 	// nothing about how a report is assembled.
-	compose func(ctx context.Context, ref string) ([]synth.Segment, error)
+	compose func(ctx context.Context, ref string, want report.Set) ([]synth.Segment, error)
 
 	// read performs a MAIN-TRACK card — the programme — and returns whether the
 	// words ran out on their own (F-91, BD-9).
@@ -389,7 +390,7 @@ func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Even
 		if x.compose == nil {
 			return x.decline(v, v.ID, "no composer is wired for the main track")
 		}
-		segs, err := x.compose(ctx, v.Subject)
+		segs, err := x.compose(ctx, v.Subject, v.Reports)
 		if err != nil {
 			return x.decline(v, v.ID, "the report could not be composed: "+err.Error())
 		}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/report"
 )
 
 // Event is something that happened. The clock is one of them (Tick), which is
@@ -128,6 +129,15 @@ type BuildCard struct {
 	// looking them up from the published lineup would race the dispatch, since
 	// the publish for the same step runs concurrently with the build.
 	Refs []string
+
+	// Reports is which sources the card asked to carry (R4).
+	//
+	// ON THE EFFECT, FOR THE SAME REASON THE SLOT AND THE REFS ARE (BD-8):
+	// looking it up from the published lineup would race the dispatch, since
+	// the publish for the same step runs concurrently with the build. It also
+	// means there is no table to keep beside the running order — the fact
+	// travels with the work, which is D-124's standing.
+	Reports report.Set
 	// Divert is how many the burst left unread, for the notice that says so
 	// (DR-14). It rides here for the reason Refs does (BD-8).
 	Divert int
@@ -1044,7 +1054,7 @@ func (d Director) prepareNext() (Director, []Effect) {
 		if err := invariant.Check(standby.Script.Empty(), "a card waiting to be built has no words yet"); err != nil {
 			return d, nil
 		}
-		return d, []Effect{BuildCard{ID: standby.ID, Slot: standby.Slot, Subject: standby.Subject,
+		return d, []Effect{BuildCard{ID: standby.ID, Slot: standby.Slot, Subject: standby.Subject, Reports: standby.Reports,
 			Refs: standby.Refs, Divert: standby.Divert}}
 	}
 	return d, nil

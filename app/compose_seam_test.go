@@ -57,8 +57,8 @@ func TestAKeyForNothingWatchedResolvesToNothing(t *testing.T) {
 }
 
 func TestComposingForAnUnknownLocationFailsByName(t *testing.T) {
-	compose := composeFor(&radioDeck{}, watchOf(refOceanside), nil)
-	segs, err := compose(context.Background(), string(snapshot.Key(refBonsall)))
+	compose := composeFor(&radioDeck{}, watchOf(refOceanside))
+	segs, err := compose(context.Background(), string(snapshot.Key(refBonsall)), 0)
 	if err == nil {
 		t.Fatal("a card for a location nobody watches must fail, not compose an empty report — " +
 			"an empty report becomes a card on the air with nothing to say")
@@ -71,8 +71,8 @@ func TestComposingForAnUnknownLocationFailsByName(t *testing.T) {
 func TestComposingWithNoDeckFailsRatherThanPanics(t *testing.T) {
 	// A STATION WITH NO AUDIO IS A SUPPORTED CONFIGURATION, and the schedule
 	// still runs on it.
-	compose := composeFor(nil, watchOf(refOceanside), nil)
-	if _, err := compose(context.Background(), string(snapshot.Key(refOceanside))); err == nil {
+	compose := composeFor(nil, watchOf(refOceanside))
+	if _, err := compose(context.Background(), string(snapshot.Key(refOceanside)), 0); err == nil {
 		t.Error("no deck composes no words, and says so")
 	}
 }
@@ -185,8 +185,10 @@ func TestACardThatNamesNoSetStillComposesAFullReport(t *testing.T) {
 		seismic: func(snapshot.LocationRef) synth.SeismicReport { gotSeismic = true; return synth.SeismicReport{} },
 		marine:  func(snapshot.LocationRef) synth.MarineReport { gotMarine = true; return synth.MarineReport{} },
 	}
-	compose := composeFor(d, watchOf(refOceanside), nil) // nil wants: no card names a set yet (R2)
-	_, _ = compose(context.Background(), string(snapshot.Key(refOceanside)))
+	compose := composeFor(d, watchOf(refOceanside)) // nil wants: no card names a set yet (R2)
+	// AN EMPTY SET, which is what every card the Director makes for itself
+	// carries — and must mean the WHOLE report.
+	_, _ = compose(context.Background(), string(snapshot.Key(refOceanside)), 0)
 
 	if !gotFire || !gotSeismic || !gotMarine {
 		t.Errorf("a card naming no report set gathered fire=%v seismic=%v marine=%v; "+
