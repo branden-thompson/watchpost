@@ -133,6 +133,16 @@ func (st requestState) note() (string, string) {
 // requestTitle is the window's own name.
 const requestTitle = "Line-Up Request"
 
+// requestHelperWidth is how much room a helper line has before the window wraps
+// it: the panel's content, less this window's own inset and the helper's lead.
+//
+// COMPUTED, NOT GUESSED. A constant here would be right at one modal width and
+// wrong at every other, and the whole reason the helper lost its colour is that
+// something wrapped where nobody expected it to.
+func requestHelperWidth(o render.Opts) int {
+	return max(12, o.Width-4-2*modalInset-4)
+}
+
 // requestChips is the window's pinned footer.
 //
 // PINNED, NOT SCROLLED (OP-5): "enter Schedule / esc Cancel" is what a lost
@@ -183,8 +193,23 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 		// THE TOKEN, NOT A COLOUR. Borrowing Observer's own means the two cannot
 		// drift and the theme moves both together; a new token here would be a
 		// second answer to "what does a caveat look like".
-		out = append(out, "  "+o.Glyphs().Alert+" "+render.Tint(fact, render.Tok(render.NameWarning)))
-		out = append(out, "    "+render.Italic(render.Tint(aside, render.Tok(render.NameWarning))))
+		// WRAPPED HERE, AND EACH LINE TINTED SEPARATELY.
+		//
+		// THE WINDOW WRAPS WHAT IT IS GIVEN, and a tint applied to the whole
+		// string is a pair of escape codes at its two ENDS — so the wrap put
+		// "Broadcast Radius" on a second line with no colour on it at all, and
+		// the caveat trailed off into plain grey mid-sentence (HUM LEAD, UAT
+		// 2026-09-14, with the screenshot).
+		//
+		// STYLING SURVIVES A WRAP ONLY IF EVERY LINE CARRIES IT, so the text is
+		// broken up first and each piece is tinted on its own.
+		tone := render.Tok(render.NameWarning)
+		for _, l := range render.WrapText(fact, requestHelperWidth(o)) { // bounded by the text (P10-02)
+			out = append(out, "  "+o.Glyphs().Alert+" "+render.Tint(l, tone))
+		}
+		for _, l := range render.WrapText(aside, requestHelperWidth(o)) { // bounded by the text (P10-02)
+			out = append(out, "    "+render.Italic(render.Tint(l, tone)))
+		}
 	} else if st.ref != nil {
 		out = append(out, "    "+st.ref.Label)
 	} else {

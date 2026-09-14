@@ -134,7 +134,15 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 	for _, r := range "denver, co" {
 		d = d.requestType(string(r))
 	}
-	lines, _, _ := d.requestBody(d.opts())
+	// THE RENDERED WINDOW, NOT THE BODY.
+	//
+	// THIS TEST READ `requestBody` AND PASSED WHILE THE COLOUR WAS BROKEN. The
+	// body is PRE-WRAP; the window wraps it afterwards, and the wrap is what
+	// dropped the tint — "Broadcast Radius" landed on a second line in plain
+	// grey and no assertion here could see it, because no assertion here looked
+	// at what the operator does.
+	d.width, d.height = 120, 40
+	lines := strings.Split(d.renderModal(d.opts()), "\n")
 	fact, aside := d.request.note()
 	if fact == "" || aside == "" {
 		t.Fatalf("the window has nothing to say about a location outside the radius: %q / %q", fact, aside)
@@ -144,25 +152,29 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 	// whether the TINT appeared anywhere in the result — so removing it from the
 	// fact was masked by the aside still carrying it, and mutant mBB1 survived.
 	// Two lines, two assertions.
+	// THREE PROBES, NAMED RATHER THAN MATCHED BY WORDS. A generic word matcher
+	// caught the FOOTER chip, which shares "outside", "service" and "radius"
+	// with the fact — so each probe is a word that appears in the helper and
+	// nowhere else in the window.
+	//
+	// "Radius" IS THE ONE THAT MATTERS: it is the wrapped continuation of the
+	// aside, the line that lost its colour, and the reason this test now reads
+	// the RENDERED window instead of the body.
 	want := render.Tok(render.NameWarning)
-	seen := 0
-	for _, l := range lines {
-		// MATCHED ON WHAT `note` ACTUALLY SAYS, asked of it rather than retyped.
-		// The first version looked for "not found in Pool", which is the
-		// NOT-FOUND case's wording — the OUTSIDE case says "Outside the
-		// station's service radius", so only one line ever matched and the test
-		// failed for a reason that was about the test.
-		plain := stripANSITest(l)
-		if !strings.Contains(plain, fact) && !strings.Contains(plain, aside) {
-			continue
+	for _, probe := range []string{"station's", "Observer", "Radius"} {
+		found := false
+		for _, l := range lines {
+			if !strings.Contains(stripANSITest(l), probe) {
+				continue
+			}
+			found = true
+			if !strings.Contains(l, want) {
+				t.Errorf("the helper line carrying %q is not tinted %q: %q",
+					probe, want, stripANSITest(l))
+			}
 		}
-		seen++
-		if !strings.Contains(l, want) {
-			t.Errorf("this helper line is not tinted %q: %q", want, plain)
+		if !found {
+			t.Errorf("the window drew no helper line carrying %q", probe)
 		}
-	}
-	if seen != 2 {
-		t.Fatalf("the window drew %d helper lines for a location outside the radius, want 2 — "+
-			"the fact and the way out", seen)
 	}
 }
