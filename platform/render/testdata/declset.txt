@@ -201,6 +201,7 @@ func AlertIsWarning
 func AlertTone
 func BGVisible
 func Band
+func Bold
 func BoxHeight
 func CategoryTone
 func ClockByKey
