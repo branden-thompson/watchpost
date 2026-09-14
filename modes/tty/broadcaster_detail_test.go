@@ -358,12 +358,32 @@ func TestTheConsolesTwoDrawnControlsAreBound(t *testing.T) {
 		}
 	}
 
-	r := Router{observer: Dashboard{}, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
+	// A REAL OBSERVER BEHIND THE CONSOLE, because `[l]` is FORWARDED to it and a
+	// zero Dashboard has no keymap to forward into — the fixture would report
+	// the key as dead when the routing is fine.
+	obs, err := NewDashboard(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := Router{observer: obs, broadcaster: b, active: SurfaceBroadcaster, keys: broadcasterKeyMap()}
 	if out := press(t, r, "r"); out.observer.modal != modalRequest {
 		t.Errorf("[r] opened %v, want the Line-Up Request window", out.observer.modal)
 	}
-	if out := press(t, r, "l"); out.observer.modal != modalDetails {
-		t.Errorf("[l] opened %v, want the location's details", out.observer.modal)
+	// `[l]` IS THE LOCATION SEARCH BOX, NOT THE POINTED ROW'S DETAILS.
+	//
+	// HUM LEAD, UAT 2026-09-14: "the <l> press is in Broadcaster UI EXPECTING the
+	// location search modal, not the line-up location details modal." The first
+	// build of this read the control's label — "Lookup Location from Pool" — as
+	// "open the location the pointer is on", and that was wrong: it is a LOOKUP,
+	// which is a search.
+	//
+	// IT IS OBSERVER'S OWN WINDOW, forwarded rather than reimplemented, so there
+	// is one search box with one behaviour.
+	if out := press(t, r, "l"); out.observer.modal != modalAdd {
+		t.Errorf("[l] opened %v, want the location search box", out.observer.modal)
+	}
+	if out := press(t, r, "l"); out.observer.addMode != "lookup" {
+		t.Errorf("[l] opened the search box in %q mode, want lookup", out.observer.addMode)
 	}
 }
 

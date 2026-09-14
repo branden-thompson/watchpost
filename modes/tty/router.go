@@ -84,9 +84,20 @@ const (
 	// exactly as it does for ctrl+d.
 	actSettings term.Action = "settings"
 	actAbout    term.Action = "about"
-	actStatus   term.Action = "status"
-	actHelp     term.Action = "help"
-	actQuit     term.Action = "quit"
+
+	// actLookup is `[l] Lookup Location from Pool`, and it is OBSERVER'S OWN
+	// action name (dashboard.go binds "lookup" to the same key).
+	//
+	// IT FORWARDS RATHER THAN REIMPLEMENTING. The console needs the location
+	// SEARCH box, which Observer already owns — HUM LEAD, UAT 2026-09-14:
+	// "Expected: Location Search Modal pops up." Routing the key through means
+	// one search window with one behaviour, and D-56's rule holds for the
+	// ordinary reason rather than the exceptional one: the key means the same
+	// thing on both surfaces.
+	actLookup term.Action = "lookup"
+	actStatus term.Action = "status"
+	actHelp   term.Action = "help"
+	actQuit   term.Action = "quit"
 )
 
 // StationControlMsg hands the console the control it asks ON AIR / STANDBY
@@ -143,10 +154,13 @@ func broadcasterKeyMap() term.KeyMap {
 		actDiagnostics: {Keys: []string{"ctrl+d"}, Help: "Diagnostics"},
 		// THE SAME KEYS OBSERVER USES, for the same reason ctrl+d is the same
 		// key: one control, one binding, on every surface.
-		actGainUp:        {Keys: []string{"+", "="}, Help: "Gain Up"},
-		actGainDown:      {Keys: []string{"-"}, Help: "Gain Down"},
-		actSettings:      {Keys: []string{"s"}, Help: "Settings"},
-		actAbout:         {Keys: []string{"a"}, Help: "About"},
+		actGainUp:   {Keys: []string{"+", "="}, Help: "Gain Up"},
+		actGainDown: {Keys: []string{"-"}, Help: "Gain Down"},
+		actSettings: {Keys: []string{"s"}, Help: "Settings"},
+		actAbout:    {Keys: []string{"a"}, Help: "About"},
+		// THE CONSOLE'S CONTROL ROW HAS DRAWN `[l]` SINCE D-102, and it is
+		// Observer's search box that belongs behind it.
+		actLookup:        {Keys: []string{"l"}, Help: "Lookup Location"},
 		actStatus:        {Keys: []string{"S"}, Help: "Status"},
 		actHelp:          {Keys: []string{"?"}, Help: "Help"},
 		actQuit:          {Keys: []string{"q"}, Help: "Quit"},
@@ -508,7 +522,7 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case actGainUp, actGainDown,
-				actSettings, actAbout, actStatus, actHelp, actQuit:
+				actSettings, actAbout, actStatus, actHelp, actQuit, actLookup:
 				return r.throughToObserver(msg)
 			case actDiagnostics:
 				// FORWARDED TO THE SURFACE THAT OWNS THE WINDOW, and the
@@ -545,16 +559,6 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// PER SURFACE — and the control row draws `[r]`.
 			r.observer = r.observer.openRequest()
 			return r, nil
-		case "l":
-			// LOOKUP LOCATION FROM POOL. It opens the DETAILS of the location
-			// the pointer is on, wherever the pointer is: on a pool row that is
-			// the row itself, and on a running-order row it is the location that
-			// card is ABOUT — which is the question "lookup location from pool"
-			// asks from the line-up, and the one `enter` does not answer there
-			// because it opens the CARD.
-			if out, opened := r.lookupPointedLocation(); opened {
-				return out, nil
-			}
 		}
 	}
 	// THE WINDOW ON TOP OWNS THE KEYS (D-58). While the diagnostics window is
@@ -1001,47 +1005,4 @@ func (r Router) refreshCardWindow() Router {
 		r.observer = r.observer.showCard(id, rows, r.broadcaster.alertWindowGround(), r.observer.opts())
 	}
 	return r
-}
-
-// lookupPointedLocation opens the LOCATION the pointer is on, wherever it is.
-//
-// `[l] Lookup Location from Pool` HAS BEEN DRAWN SINCE D-102 WITH NOTHING BOUND
-// TO IT, found while reading for the request plan and bound here so the console
-// can be UAT'd (R4b).
-//
-// IT IS NOT `enter`, AND THE DIFFERENCE IS THE RUNNING ORDER. On a pool row the
-// two agree — both open the place. On a running-order row `enter` opens the
-// CARD, which is the report and its manifest, and this opens the LOCATION that
-// card is about: the weather, the alerts, the station. That is the question
-// "lookup location from pool" asks from the line-up, and the one nothing else
-// answered there.
-//
-// IT REFUSES QUIETLY on a slot the Director has not filled, the way every other
-// console control does: `false` means the key was not consumed.
-func (r Router) lookupPointedLocation() (Router, bool) {
-	pool := r.broadcaster.area.Pool
-	if at := r.broadcaster.poolSelection(); at >= 0 {
-		if at >= len(pool) {
-			return r, false
-		}
-		r.observer = r.observer.showLocation(pool[at])
-		return r, true
-	}
-	at := r.broadcaster.lineupSelection()
-	if at < 0 {
-		return r, false
-	}
-	c, decided := r.broadcaster.slotCard(r.broadcaster.mainTrack(), at+bcScheduledFrom)
-	if !decided {
-		return r, false
-	}
-	// THE CARD'S OWN SUBJECT, resolved against the station's pool — the same
-	// lookup the running order uses to draw the card's weather, so the window
-	// and the row cannot disagree about which place this is.
-	ref, ok := r.broadcaster.poolEntry(c.Subject)
-	if !ok {
-		return r, false
-	}
-	r.observer = r.observer.showLocation(ref)
-	return r, true
 }
