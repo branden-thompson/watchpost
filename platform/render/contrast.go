@@ -304,7 +304,8 @@ func aaPairs() []aaPair {
 	// window, and the About box carries the wordmark. A tone registered against
 	// one ground only is never lifted for the other, and no test measures it
 	// there.
-	onBoth := []Token{TableMuted, TableName, ProviderOK, ProviderDown, AlertLabel, TextBase, TextBright, TitleEdition}
+	onBoth := []Token{TableMuted, TableName, ProviderOK, ProviderDown, AlertLabel, TextBase, TextBright, TitleEdition, TitleEditionBroadcaster,
+		DataNew, DataFresh, DataUsable, DataAged, DataStale}
 	for _, fg := range onBoth {
 		pairs = append(pairs, aaPair{fg, append(append([]Token{}, win...), modal...)})
 	}

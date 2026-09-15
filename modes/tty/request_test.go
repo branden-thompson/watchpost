@@ -1,6 +1,8 @@
 package tty
 
 import (
+	tea "charm.land/bubbletea/v2"
+
 	"strings"
 	"testing"
 
@@ -16,7 +18,7 @@ func requestDash(t *testing.T, sent *int) Dashboard {
 	t.Helper()
 	vista := snapshot.LocationRef{Label: "Vista, CA", Zip: "92084", Lat: 33.2, Lon: -117.24}
 	d, err := NewDashboard(Config{
-		PoolLookup: func(q string) (snapshot.LocationRef, bool, bool) {
+		LocateInRadius: func(q string) (snapshot.LocationRef, bool, bool) {
 			switch q {
 			case "vista, ca", "vista":
 				return vista, true, true
@@ -57,18 +59,50 @@ func TestAnIncompleteRequestIsNotScheduledAndTheWindowStaysOpen(t *testing.T) {
 			"believe the report was scheduled")
 	}
 	// AND THE CHIP SAYS WHICH THING IS MISSING rather than going quiet.
+	//
+	// THIS ASSERTION ALONE CANNOT SEE A CONSTANT FUNCTION, and for a release it
+	// did not: `blocker()` returned this string unconditionally and this test
+	// passed throughout. The discrimination is proved in
+	// request_blocker_test.go — TestTheBlockerIsNotAConstantFunction — which is
+	// where a reader should look before trusting this line.
 	if got := out.request.blocker(); got != "Choose a location" {
 		t.Errorf("the chip says %q; it names the first unmet condition", got)
 	}
+}
+
+// typeLocation types into the Location field AND lets the debounce run to its
+// answer, which is what the operator experiences: keys, a pause, a verdict.
+//
+// IT DRIVES THE REAL PATH (D-130). A test that set `locate` directly would keep
+// passing on the day the pause stopped arming or the verdict stopped being
+// filed — and those two are the whole mechanism.
+func typeLocation(t *testing.T, d Dashboard, text string) Dashboard {
+	t.Helper()
+	var m tea.Model = d
+	var cmd tea.Cmd
+	for _, r := range text {
+		m, cmd = m.(Dashboard).requestType(string(r))
+	}
+	if cmd == nil {
+		t.Fatal("typing into the Location field armed no pause: the debounce is not wired")
+	}
+	pause, ok := cmd().(locatePauseMsg)
+	if !ok {
+		t.Fatalf("the Location field armed something other than a pause: %T", cmd())
+	}
+	m, cmd = m.(Dashboard).handleLocatePause(pause)
+	if cmd == nil {
+		t.Fatal("the pause asked nothing")
+	}
+	m, _ = m.(Dashboard).handleLocateVerdict(cmd().(locateVerdictMsg))
+	return m.(Dashboard)
 }
 
 // AND A COMPLETE ONE IS SENT ONCE, AND CLOSES.
 func TestACompleteRequestIsScheduledAndTheWindowCloses(t *testing.T) {
 	var sent int
 	d := requestDash(t, &sent)
-	for _, r := range "vista" {
-		d = d.requestType(string(r))
-	}
+	d = typeLocation(t, d, "vista")
 	// AND A POSITION, WHICH IS NOT DEFAULTED. The operator came here to schedule
 	// something and must say WHERE — putting it at the front unless they choose
 	// otherwise would make the most disruptive act the one they get by not
@@ -98,13 +132,11 @@ func TestACompleteRequestIsScheduledAndTheWindowCloses(t *testing.T) {
 func TestALocationOutsideTheRadiusIsNamedRatherThanRefused(t *testing.T) {
 	var sent int
 	d := requestDash(t, &sent)
-	for _, r := range "denver, co" {
-		d = d.requestType(string(r))
-	}
-	if d.request.ref == nil {
+	d = typeLocation(t, d, "denver, co")
+	if d.request.locate.ref == nil {
 		t.Fatal("a real location outside the radius resolved to nothing; it is not a typo")
 	}
-	if !d.request.outside {
+	if d.request.locate.within {
 		t.Error("a location outside the service radius was accepted as broadcastable")
 	}
 	if d.request.valid() {
@@ -132,9 +164,7 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 
 	var sent int
 	d := requestDash(t, &sent)
-	for _, r := range "denver, co" {
-		d = d.requestType(string(r))
-	}
+	d = typeLocation(t, d, "denver, co")
 	// THE RENDERED WINDOW, NOT THE BODY.
 	//
 	// THIS TEST READ `requestBody` AND PASSED WHILE THE COLOUR WAS BROKEN. The
@@ -206,12 +236,12 @@ func TestTheWindowOpensOnTheBottomSlot(t *testing.T) {
 func TestOnlyTheLocationIsOwedWhenTheWindowOpens(t *testing.T) {
 	var sent int
 	d := requestDash(t, &sent)
+	// SAME CAVEAT AS ABOVE: true of a constant function too. The non-location
+	// blockers are pinned in request_blocker_test.go.
 	if got := d.request.blocker(); got != "Choose a location" {
 		t.Errorf("a fresh window is blocked on %q; only the location is owed", got)
 	}
-	for _, r := range "vista" {
-		d = d.requestType(string(r))
-	}
+	d = typeLocation(t, d, "vista")
 	if !d.request.valid() {
 		t.Errorf("a resolved location is still not schedulable: %s", d.request.blocker())
 	}

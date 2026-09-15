@@ -133,7 +133,7 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 		for i := range rows { // bounded by the card's height (P10-02)
 			rows[i] = ""
 		}
-		return append(rows, b.cardControls(o, c, handle))
+		return append(rows, b.cardControls(o, handle))
 	}
 	room := lane.inner() - 2*len(bcCardInset)
 	// THE REFERENCE'S OWN ORDER (D-110): air, what it is doing and how fresh it
@@ -161,7 +161,7 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 	for len(rows) < bcReadCardRows-1 { // bounded by the card's height (P10-02)
 		rows = append(rows, "")
 	}
-	return append(rows, b.cardControls(o, c, handle))
+	return append(rows, b.cardControls(o, handle))
 }
 
 // bcManifestCaption is what the reference calls the contents table.
@@ -171,18 +171,22 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 // and a manifest is exactly that: a list of what is aboard, not the cargo.
 const bcManifestCaption = "READ MANIFEST"
 
-// cardControls is the row along the bottom of a read card: the way in, and who
-// is going to say it.
+// cardControls is the row along the bottom of a read card: the way in.
 //
-// THE PRESENTER IS NAMED BUT NOT YET STEPPED (D-110). The reference draws it with
-// arrows — `PRESENTER: [ ← ] System Voice [ → ]` — and this console already binds
-// ← and → to the relay bed's selector, which the same reference also draws with
-// arrows. Which control owns them is a ruling, not a guess, so the row states the
-// fact and offers no key: a control that cannot act is worse than an absent one
-// (D-65), and a fact is worth saying either way.
-func (b Broadcaster) cardControls(o render.Opts, c lineup.Card, handle string) string {
-	left := bcCardInset + " " + o.KeyCap(handle) + "  Read / Manage"
-	return left + "    PRESENTER: " + detailReadBy(c)
+// THE PRESENTER IS GONE WITH THE CONTROL IT BELONGED TO (D-131). The v3 plan's
+// item 6 was "the per-card PRESENTER control"; that was dropped, and the row
+// went on drawing `PRESENTER: N/A` — the label of a control that no longer
+// exists, reporting nothing, on every card — HUM LEAD, UAT 2026-09-14: "since
+// we removed per card presenters, we need to remove the PRESENTER - N/A from
+// the Up Next Card."
+//
+// THE VOICE ITSELF IS NOT GONE, and this is the distinction worth keeping.
+// `Card.ReadBy` is still resolved from the role cast and is still SAID where it
+// is a fact rather than a control: the LIVE NOW row names who is presenting the
+// card on air, and the detail window carries READ BY. What was removed is the
+// per-card OVERRIDE and its label, not the answer to "who reads this".
+func (b Broadcaster) cardControls(o render.Opts, handle string) string {
+	return bcCardInset + " " + o.KeyCap(handle) + "  Read / Manage"
 }
 
 // `flatBody` RETIRED WITH THE CARD COLUMN (D-110). It was the interior of a slot

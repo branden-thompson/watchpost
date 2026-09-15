@@ -49,6 +49,25 @@ func tellUnder(mu *sync.Mutex, emit *func(lineup.Event), ev lineup.Event) {
 	}
 }
 
+// setUnder writes one field under its owner's mutex.
+//
+// EXTRACTED AT THE SECOND CALLER (D-147), and the `dupes` gate is what found
+// the second: `mastercontrol.unhold` and `tickerDeck.setScope` were the same
+// twenty-six nodes — nil guard, lock, one assignment, unlock. The gate refused
+// the pair and a reason is RATIFIED, never self-issued, so this is the collapse
+// rather than an exemption.
+//
+// IT SITS BESIDE `tellUnder` BECAUSE IT IS THE OTHER HALF OF ONE DISCIPLINE:
+// that one reads a callback under the lock and calls it OUTSIDE; this one
+// writes a field under the lock and returns. Both take the field by pointer for
+// the same stated reason — passing it by value would touch it without the lock,
+// which is the exact discipline these exist to own.
+func setUnder[T any](mu *sync.Mutex, dst *T, v T) {
+	mu.Lock()
+	*dst = v
+	mu.Unlock()
+}
+
 // discoveredIn is the closed allowlist both hosts apply: the curated list until
 // `say -v ?` has answered, the intersection afterwards, and the macOS sentinel
 // always present.

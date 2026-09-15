@@ -78,18 +78,18 @@ func TestAConsoleWithNoEpicentreKeepsTheListenersFence(t *testing.T) {
 // for it, which is the wiring shape this release keeps rebuilding.
 func TestTheDecksFenceFollowsTheScope(t *testing.T) {
 	deck := &tickerDeck{}
-	deck.scope = func() airScope { return airScope{lat: 33.2881, lon: -117.2256, radiusMi: 25, set: true} }
+	deck.setScope(func() airScope { return airScope{lat: 33.2881, lon: -117.2256, radiusMi: 25, set: true} })
 	f := deck.fence()
 	if !f.InForce() || f.RadiusMi != 25 || !f.HasOrigin {
 		t.Errorf("the rail's fence is the scope's; got %+v", f)
 	}
-	deck.scope = func() airScope { return airScope{} }
+	deck.setScope(func() airScope { return airScope{} })
 	if deck.fence().InForce() {
 		t.Error("an unscoped rail is All, which is what it has always been")
 	}
 	// A RADIUS WITH NOWHERE TO MEASURE FROM ADMITS NOTHING, which is the
 	// filtered-with-no-default rule stated as a fence.
-	deck.scope = func() airScope { return airScope{radiusMi: 25, set: true} }
+	deck.setScope(func() airScope { return airScope{radiusMi: 25, set: true} })
 	if deck.fence().InForce() {
 		t.Error("a fence with no origin is not in force")
 	}
@@ -165,27 +165,27 @@ func TestTheFeedsFilterFollowsTheScope(t *testing.T) {
 	deck := &tickerDeck{}
 
 	// THE LISTENER'S WIDE FILTER KEEPS BOTH.
-	deck.scope = func() airScope { return airScope{lat: 33.2881, lon: -117.2256, radiusMi: 150, set: true} }
+	deck.setScope(func() airScope { return airScope{lat: 33.2881, lon: -117.2256, radiusMi: 150, set: true} })
 	if got := deck.scopeToRadius([]globalfeed.Event{near, far}); len(got) != 2 {
 		t.Errorf("a 150-mile filter keeps both; got %d", len(got))
 	}
 	// THE STATION'S SERVICE AREA DROPS WHAT IS OUTSIDE IT.
-	deck.scope = func() airScope { return airScope{lat: 33.2881, lon: -117.2256, radiusMi: 25, set: true} }
+	deck.setScope(func() airScope { return airScope{lat: 33.2881, lon: -117.2256, radiusMi: 25, set: true} })
 	got := deck.scopeToRadius([]globalfeed.Event{near, far})
 	if len(got) != 1 || got[0].ID != "near" {
 		t.Errorf("a 25-mile service area keeps only what is inside it; got %v", got)
 	}
 	// AND GOING BACK RE-ADAPTS, which is the second half of the ruling.
-	deck.scope = func() airScope { return airScope{lat: 33.2881, lon: -117.2256, radiusMi: 150, set: true} }
+	deck.setScope(func() airScope { return airScope{lat: 33.2881, lon: -117.2256, radiusMi: 150, set: true} })
 	if got := deck.scopeToRadius([]globalfeed.Event{near, far}); len(got) != 2 {
 		t.Errorf("the filter widens again with the listener's own; got %d", len(got))
 	}
 	// UNSCOPED IS ALL, and a radius with nowhere to measure from is nothing.
-	deck.scope = func() airScope { return airScope{} }
+	deck.setScope(func() airScope { return airScope{} })
 	if got := deck.scopeToRadius([]globalfeed.Event{near, far}); len(got) != 2 {
 		t.Errorf("an unscoped rail is All; got %d", len(got))
 	}
-	deck.scope = func() airScope { return airScope{radiusMi: 25, set: true} }
+	deck.setScope(func() airScope { return airScope{radiusMi: 25, set: true} })
 	if got := deck.scopeToRadius([]globalfeed.Event{near, far}); len(got) != 0 {
 		t.Errorf("filtered with no origin shows nothing; got %d", len(got))
 	}
@@ -217,7 +217,7 @@ func TestTheDecksFenceCarriesTheScopesTieSet(t *testing.T) {
 	sev.SetLocations(0, &snapshot.Snapshot{Locations: []snapshot.Location{near}})
 	deck := &tickerDeck{severe: sev}
 
-	deck.scope = func() airScope { return airScope{lat: near.Lat, lon: near.Lon, radiusMi: 25, set: true} }
+	deck.setScope(func() airScope { return airScope{lat: near.Lat, lon: near.Lon, radiusMi: 25, set: true} })
 	if f := deck.fence(); !f.Tracked[key] {
 		t.Errorf("the scope follows this alert and its fence does not carry the tie; got %v", f.Tracked)
 	}
@@ -225,7 +225,7 @@ func TestTheDecksFenceCarriesTheScopesTieSet(t *testing.T) {
 	// THE TRANSMITTER MOVES. Same alert, same radius, four hundred miles north —
 	// nothing watched there carries it, so the fence follows nothing and the
 	// zone-only alert has no way in.
-	deck.scope = func() airScope { return airScope{lat: 39.0, lon: -121.0, radiusMi: 25, set: true} }
+	deck.setScope(func() airScope { return airScope{lat: 39.0, lon: -121.0, radiusMi: 25, set: true} })
 	if f := deck.fence(); f.Tracked[key] {
 		t.Error("a fence four hundred miles away inherited the tie set of a scope it is not")
 	}
@@ -258,7 +258,7 @@ func TestTheArrivalsKeyAndTheTieSetsKeyAreTheSameKey(t *testing.T) {
 	sev := newSevereDeck(func(tea.Msg) {})
 	sev.SetLocations(0, &snapshot.Snapshot{Locations: []snapshot.Location{watched}})
 	deck := &tickerDeck{severe: sev}
-	deck.scope = func() airScope { return airScope{lat: watched.Lat, lon: watched.Lon, radiusMi: 25, set: true} }
+	deck.setScope(func() airScope { return airScope{lat: watched.Lat, lon: watched.Lon, radiusMi: 25, set: true} })
 
 	// The SAME alert off the feed, zone-only: no point to measure by.
 	zoneOnly := globalfeed.Event{ID: feedID, Type: "Flood Warning", Place: "San Diego County",

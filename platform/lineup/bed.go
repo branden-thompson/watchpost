@@ -348,7 +348,21 @@ func (d Director) onCutOver(ev CutOver) (Director, []Effect) {
 // air: MVS-D-67 restores "only after the tail has played and the rail is
 // empty", so the bed stays down across a drain of several cards.
 func (d Director) givingWay() bool {
-	if len(d.lineup.tracks[AlertRail]) == 0 {
+	// WHAT THE RAIL CAN READ, NOT WHAT IT HOLDS (D-139). This asked the RAW
+	// TRACK where every other rail reader asks the PROJECTION, which drops
+	// out-of-fence cards precisely because "they are not READ".
+	//
+	// A RAIL OF CARDS THE FENCE EXCLUDES KEPT THIS TRUE FOR EVER: Duck was
+	// emitted and Restore never was, so the station broadcast the relay at duck
+	// gain indefinitely with nothing speaking over it. Measured by red team at
+	// BUILD exit — 200 minutes of ticks, still ducked, nothing on the rail that
+	// could ever speak.
+	//
+	// THE OTHER HALF OF THE RULE IS UNCHANGED, and it is why this asks whether
+	// the rail holds anything rather than whether a card is ON THE AIR:
+	// MVS-D-67 restores "only after the tail has played and the rail is empty",
+	// so the bed stays down across a drain of several cards.
+	if len(d.lineup.Projection(AlertRail)) == 0 {
 		return false
 	}
 	// WHAT IS UNDERNEATH IT — the bed carrying the programme, or a report

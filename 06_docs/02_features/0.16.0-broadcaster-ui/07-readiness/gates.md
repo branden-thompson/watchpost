@@ -569,3 +569,47 @@ false survivor and someone will keep spending an hour on it.
 coin-flip is a poor guarantee for a hazard path: `TestTwoPressesCannotRaceTheSameReader` stands in the
 middle of the critical section at `send` and asks whether a second press can get in.  It catches the
 mutant without `-race` and without repetition.
+
+---
+
+## Roster reconciliation — 2026-09-15, at BUILD exit
+
+**This file states its own standard at the top — *"Every gate this release adds carries an evidence
+line naming a failure that was actually WATCHED"* — and at the bottom that **BUILD exit is judged on
+this file**.  Red team checked it: of the 141 `Test*` names it cites, **16 no longer exist**.  Two
+were already recorded as retired (`TestOneScrollControlSpansBothTables` above, and
+`TestNeedsReadOnAStoppedStationQueuesNothing`).  The other 14 were not, and this table is their
+correction.
+
+**This is roster drift, not a coverage hole.**  Every row below names the successor that carries the
+same property, and each was checked to exist.  But the rows above still cite the dead names, and a
+reader auditing this release would find 10% of its evidence pointing at nothing — which is precisely
+the failure mode this file names at `gates.md:382-388` about the roster lagging the code by 118
+commits, reproduced one layer up.
+
+| Cited gate (no longer exists) | Retired by | What now carries the property |
+| --- | --- | --- |
+| `TestTheBannerReadsTheDirectorsPowerNotALocalFlag` — **labelled a SAFETY gate** | `19eae8f` | `TestEveryStationStateSaysWhatItIs`, `TestTheTransitionNamesTheStateItWouldReach` (`broadcaster_station_test.go`) |
+| `TestTheStateIsLegibleWithoutColour` (FR-5.3) | `19eae8f` | `TestEveryStationStateSaysWhatItIs` — the words carry the state; `TestEachTickerLaneNamesItselfWithoutColour` holds the same rule for the tape |
+| `TestTheOnAirBoundaryIsStatedToTheOperator` | `19eae8f` | `TestEveryStationStateSaysWhatItIs` (the boundary sentence is part of the state's own words) |
+| `TestTheBannerIsVariantC` | `19eae8f` | `TestTheStationLineCarriesTheGainControl`, `TestTheTransitionHintIsAnchoredToTheRightEdge` |
+| `TestTheConsoleShowsAtMostTenMainTrackCards` (FR-3.1) | `29ddb8e` | `TestTheConsoleShowsAtMostFifteenMainTrackSlots` — the cap moved from 10 to 15; named at `gates.md:489` |
+| `TestALocationReportIsSpokenAsTheRotationClass` | `92e288c` | `TestARotationCardIsTheDirectorsOwn`, `TestARotationCardIsNamedAfterItsLocationAndNothingElse` |
+| `TestARotationReadIsSuspendedByASevereRead` | `92e288c` | D-82's give-way: `TestTheAlertRailDrainsBeforeTheMainTrack` |
+| `TestARotationReadIsSuspendedByATakeover` | `92e288c` | as above |
+| `TestADarkMainTrackCardIsDeclinedAtTheAirAndNeverReachesTheVoice` | `92e288c` | `TestOnlyDarkReportsAndNothingElseChanges`, `TestTheDarkRunRecordsTheNeedItWouldHaveActedOn` |
+| `TestOnlyLiveOwnsTheAirAndDarkStillReports` | `92e288c` | as above |
+| `TestTheAlertRailReadsWhateverTheMainTrackStageIs` | `92e288c` | `TestAStoppedRadioStillReadsTheAlertRail` |
+| `TestTheDeckReportsTheNeedAndLeavesTheAirAlone` | `92e288c` | `TestTheDarkRunRecordsTheNeedItWouldHaveActedOn` |
+| `TestTheRotationIsTheLowestClass` | `92e288c` | `TestAProposalAndARotationReadShareOneIdentity` and the tone-class tests in `domains/radio/cast` |
+| `TestTheUpNextBoxWearsTheModalsGround` | D-134/D-136, 2026-09-15 | `TestTheUpNextBoxWearsTwoGrounds`, `TestTheUpNextBoxWearsTheSameBlueAsTheDirectionBand` — the ruling changed, and the gate changed with it |
+
+**The corpus figure at `gates.md:520` is also superseded.**  It reads *"over all 314 mutants — 307
+CAUGHT, 7 SURVIVED"*.  The current corpus is larger and the survivor count is lower; the authoritative
+record is `07-readiness/mutant-verdicts.log`, re-run and promoted at this exit, and the figure there
+is the one to cite.
+
+**The lesson, recorded rather than smoothed over.**  A roster is evidence, and evidence rots at the
+rate the code changes.  Deleting a test is not the defect — the successors are real and were verified
+to exist.  Not recording the deletion in the document that is *judged at exit* is.  `gates.md:402`
+and `:440` already show the correct form; fourteen rows simply never got one.

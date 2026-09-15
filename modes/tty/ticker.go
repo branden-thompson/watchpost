@@ -229,18 +229,21 @@ func centerText(text string, width int) string {
 
 // clipToWidth truncates text to at most width display cells (wide runes count
 // as their cell width, so the result never overflows the band).
+//
+// ONE OWNER (D-141). This walked runes asking `render.Width` for each: a lone
+// \x1b measures 0, but '[', '1' and 'm' measure 1 apiece, so EVERY BOLD SPAN
+// COST EIGHT PHANTOM CELLS. Text that fitted was cut anyway, the cut landed
+// mid-escape leaving a bare \x1b in the frame, and the SGR was never closed so
+// the weight bled into whatever followed.
+//
+// `render.TruncateCells` ALREADY KNEW ALL OF THIS — it skips escape sequences
+// when counting and remembers whether the last one was a reset, so it can close
+// a span it cuts through. This function was a second, naive copy of a decision
+// that had one correct owner, which is the same shape as D-129a (a caveat
+// wrapped to the wrong width) and D-138 (a band centred instead of wrapped).
+// Width measurement is not a thing to reimplement per caller.
 func clipToWidth(text string, width int) string {
-	var b strings.Builder
-	used := 0
-	for _, r := range text {
-		cw := render.Width(string(r))
-		if used+cw > width {
-			break
-		}
-		b.WriteRune(r)
-		used += cw
-	}
-	return b.String()
+	return render.TruncateCells(text, width)
 }
 
 // scrollWindow returns a width-cell window into text at the given offset; a

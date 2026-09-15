@@ -194,6 +194,25 @@ func (l Lineup) held() int {
 func (l Lineup) toPrepare() (Card, Track, bool) {
 	for _, t := range []Track{AlertRail, MainTrack} { // the precedence, in one line
 		for _, c := range l.tracks[t] { // bounded by the track (P10-02)
+			// THE FENCE IS ASKED HERE TOO (D-139). `Next` has skipped
+			// out-of-fence cards since D-75 and says why in as many words:
+			// "refusing it there would let it block every admissible card
+			// behind it, and a hazard in the operator's own town would wait on
+			// one that is not." That is precisely what happened one function
+			// along, because the rule was taught to the AIR and not to the walk
+			// that feeds it.
+			//
+			// IT SKIPS BEFORE BOTH ARMS, AND THAT IS THE WHOLE FIX. An
+			// out-of-fence card is one the air will never offer, so preparing
+			// it is wasted — and letting it STOP THE WALK as a report standing
+			// by is a permanent stall: nothing behind it is ever built, so
+			// nothing behind it can ever be aired, and `dropStale` is only
+			// reachable through the air. Found by red team at BUILD exit,
+			// reproduced through this release's own headline journey (Observer
+			// queues under a wide fence, ctrl+b re-fences to the station's).
+			if c.OutOfFence {
+				continue
+			}
 			if c.State == Admitted {
 				return c, t, true
 			}

@@ -38,7 +38,20 @@ set -eu
 out=${1:-dist/mutant-verdicts.log}
 mkdir -p "$(dirname "$out")"
 : > "$out"
-timings="$(dirname "$out")/mutant-verdicts.timings"
+
+# THE TIMINGS DO NOT FOLLOW THE LOG, and after 2026-09-15 that matters: the log
+# is PROMOTED out of dist into the release's readiness tree, because it is the
+# run's record and the hygiene protocol requires a record to be durable and
+# tracked. The timings are neither.
+#
+# THEY ARE AN OPERATIONAL INPUT, NOT A RECORD. The next run reads them to
+# compute a MEASURED eta rather than a guessed one — which is the whole reason
+# they exist, after an estimate came in 4x short. They are regenerable from any
+# run, so committing them would put a machine-specific stopwatch into the
+# repository's history for no reader. They stay in dist, and `HYGIENE_KEEP`
+# names them so the cleanup spares them.
+timings=${MUTANT_TIMINGS:-dist/mutant-verdicts.timings}
+mkdir -p "$(dirname "$timings")"
 
 list=$(ls 06_docs/mutants/m*.py)
 total=$(echo "$list" | wc -l | tr -d ' ')

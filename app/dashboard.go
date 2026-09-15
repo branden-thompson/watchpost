@@ -248,9 +248,9 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 		}
 		mc.mu.Unlock()
 	}
-	lp.ticker.scope = func() airScope {
+	lp.ticker.setScope(func() airScope {
 		return scopeFor(&lp.owner, func() airScope { return listenerScope(prefs.radius, lp.currentWatch) }, lp.currentStation)
-	} // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
+	}) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
 	// The schedule runs from here, over the SAME arbiter and effector the ticker
 	// was just given. It drives the live alert rail since T3.10b — so a
 	// listener notices nothing; T3.2b is the first thing it owns.
@@ -259,7 +259,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// against; the LISTENER's watchlist is what the monitor's rotation moves
 	// through. D-72 moved all three seams to the pool and that was two-thirds
 	// right — the cut-over belongs to the monitor.
-	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.currentWatch, lp.ticker, p.Send,
+	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.resolvable, lp.currentWatch, lp.ticker, p.Send,
 		bedSeams{note: lp.noteBedCarrying, selected: lp.selectedRelay})
 	lp.wireDeckWarnings()
 	return firstFullNanos
@@ -292,7 +292,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MoveCard: lp.moveCard,
 		DropCard: lp.dropCard,
 		// THE OPERATOR'S REQUEST, AND THE LOOKUP THAT VALIDATES IT (R4).
-		PoolLookup:      lp.lookInPool,
+		LocateInRadius:  lp.locateInRadius(resolver),
 		RequestCard:     lp.requestCard,
 		Transmitter:     transmitterOf(cfg),
 		SetTransmitter:  lp.setTransmitter,
@@ -640,6 +640,11 @@ type livePipelines struct {
 	idx      *geodata.Index
 	station  stationArea
 	poolRefs []snapshot.LocationRef
+
+	// requestedRefs are the locations the OPERATOR asked for that the pool does
+	// not hold (D-140). The Composer resolves against pool + these; the
+	// Producer still offers the pool alone.
+	requestedRefs []snapshot.LocationRef
 
 	// THE STATION'S BED (D-78): the table its fence is measured against, how far
 	// that fence reaches, which relay the operator has selected, and whether the

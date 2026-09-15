@@ -211,3 +211,29 @@ func TestWrapNeverBreaksInsideAnEscape(t *testing.T) {
 		}
 	}
 }
+
+// THE NON-SGR ESCAPE CASE IS A RECORDED LIMIT, NOT A PASSING TEST (D-145).
+//
+// `TruncateCells` returns its input uncut when given an escape it cannot
+// terminate. That is real, and it is UNREACHABLE: text from outside crosses
+// `plaintext.Text` at the boundary. It is not fixed here because this function
+// must measure what `Width` measures, and `Width` is `plaintext.StripSGR` —
+// teaching one half about OSC would make the cutter and the measurer disagree,
+// which is the class of defect that caused the 2026-09-10 masthead failure.
+//
+// WHAT IS PINNED IS THE INVARIANT THAT MATTERS: the two agree.
+func TestTruncateCellsAgreesWithWidthAboutEscapes(t *testing.T) {
+	for _, s := range []string{
+		"\x1b[31mABCDEFGHIJ\x1b[0m",
+		"plain text",
+		"\x1b[1m\x1b[38;5;208mbold orange\x1b[0m tail",
+	} {
+		if got := TruncateCells(s, 4); Width(got) != 4 {
+			t.Errorf("cut to %d cells, want 4: %q", Width(got), got)
+		}
+	}
+	// AND A ROW THAT FITS IS RETURNED WHOLE, which is the fast path.
+	if got := TruncateCells("abc", 10); got != "abc" {
+		t.Errorf("a row that fits was altered: %q", got)
+	}
+}

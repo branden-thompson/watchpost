@@ -51,6 +51,17 @@ type schedule struct {
 	ctx    context.Context // the schedule's own: a late producer gives up rather than blocking
 	cancel context.CancelFunc
 	ticks  chan struct{} // closed by the tick goroutine when it returns
+
+	// x is what this schedule actually wired, KEPT SO THE WIRING CAN BE DRIVEN
+	// (D-140). It is the same remedy `producer()` carries in pool.go, for the
+	// same stated reason: "A FUNCTION RATHER THAN A CALL SITE, deliberately …
+	// a call site cannot be asserted; this can, and a test does."
+	//
+	// THE DEFECT THAT ASKED FOR IT: the Composer resolved against the pool while
+	// the operator could request a wider set, and every test of the widening
+	// passed because each exercised the SET directly and none asked what the
+	// schedule had been handed. Reverting the wiring broke nothing.
+	x *executors
 }
 
 // startSchedule builds the Director, its executors and the pump, and starts
@@ -61,10 +72,12 @@ type schedule struct {
 // ticker's takeovers use — building a second effector here would put the band
 // and the duck back under two owners, which is the defect T2.3 removed and the
 // one this file would be the easiest place to reintroduce.
-// THE TWO LISTS ARE NOT ONE LIST (D-76). `pool` is the STATION's candidates —
-// what its Producer may offer and what its Composer resolves against; `watch` is
-// the LISTENER's, and the bed's cut-over is the MONITOR's rotation moving
-// through it.
+// THE LISTS ARE NOT ONE LIST (D-76, split again at D-140). `pool` is the
+// STATION's candidates — what its Producer may OFFER. `resolvable` is what its
+// Composer may RESOLVE, which is the pool plus whatever the operator has
+// requested: D-130 let them request anywhere inside the service radius, and
+// this sentence used to say pool was both. `watch` is the LISTENER's, and the
+// bed's cut-over is the MONITOR's rotation moving through it.
 //
 // D-72 MOVED ALL THREE TOGETHER AND THAT WAS TWO-THIRDS RIGHT. The reasoning
 // was that a Director scheduling a location its own Composer cannot resolve gets
@@ -89,7 +102,7 @@ type bedSeams struct {
 	selected func() string
 }
 
-func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), bed bedSeams) *schedule {
+func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, resolvable, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), bed bedSeams) *schedule {
 	if nar == nil {
 		return nil // no arbiter, no schedule: there is nothing to perform through
 	}
@@ -138,7 +151,12 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// was a `wants` callback in R2; `BuildCard` carries it now, for the same
 		// reason it carries the slot and the refs — looking it up from the
 		// published lineup would race the dispatch.
-		compose: composeFor(deck, pool),
+		// AND IT RESOLVES AGAINST MORE THAN THE POOL (D-140). A card carries a
+		// KEY; the Composer turns it back into a location. The operator may now
+		// request anywhere inside the SERVICE RADIUS (D-130), which is wider
+		// than the capped pool — so resolving against the pool alone failed to
+		// build exactly the cards the widening was ruled for, silently.
+		compose: composeFor(deck, resolvable),
 		// AND WHAT PERFORMS THEM (F-91, BD-9). The rail reads through the
 		// arbiter above; the programme is a source swap on the broadcast
 		// engine, and this is the deck that owns it. Nil with no deck, which is
@@ -168,7 +186,7 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		cancel()
 		return nil
 	}
-	s := &schedule{pump: p, ctx: run, cancel: cancel, ticks: make(chan struct{})}
+	s := &schedule{pump: p, ctx: run, cancel: cancel, ticks: make(chan struct{}), x: x}
 	go p.loop(run)
 	go s.tick(run)
 	// THE PRODUCERS REPORT INTO IT, WIRED HERE (T3.10b).

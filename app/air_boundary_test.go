@@ -133,7 +133,7 @@ var airBoundary = map[string]airMember{
 	"RequestCard": {airProgramme, "schedules a card the Director reads in its turn; the rail still outranks the main track, so it cannot cut a hazard short"},
 	// A LOOKUP ANSWERS A QUESTION AND CHANGES NOTHING. It resolves what the
 	// operator typed against the station's pool; no card, no tune, no cue.
-	"PoolLookup": {airNone, "a query answered from the pool and the resolver; it writes nothing and reaches no output"},
+	"LocateInRadius": {airNone, "a query answered from the pool, the offline index and the geocoder; it writes nothing and reaches no output (D-130)"},
 
 	"InjectAlert": {airShared, "feeds the hazard RAIL, which D-74 exempts from air ownership deliberately: hazards read in either mode"},
 

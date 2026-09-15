@@ -212,8 +212,14 @@ type modalKey struct {
 	breakingID                string // the ▶ mark on the event being read (while the window is open)
 	readingKey                string // the ▶ on the event being read
 	addMode, addQuery, addErr string
-	radioVoice                string
-	voiceIdx, nvoices         int
+	// THE POOL'S VERDICT ON WHAT IS TYPED (D-129). Derived from addQuery AND
+	// from the pool, so addQuery alone does not cover it: a station-area change
+	// moves the pool under an open window, and the refusal on screen would be
+	// answering a service radius the operator has already left.
+	addRef            string
+	addState          uint8
+	radioVoice        string
+	voiceIdx, nvoices int
 	// THE CARD WINDOW'S IDENTITY AND GENERATION (D-88). cardRows is a func and a
 	// key must be comparable, so the generation is what carries what it draws —
 	// the same stand-in setupGen makes for Setup's two maps.
@@ -258,12 +264,13 @@ type modalKey struct {
 	// DRAWS, because F-30's guard caught all four the moment the window existed
 	// — which is the guard doing exactly what it is for, on a window that was
 	// minutes old.
-	reqField                requestField
-	reqQuery, reqSlot       string
-	reqRef                  string
-	reqOutside, reqPriority bool
-	reqAt                   int
-	reqChosen               report.Set
+	reqField          requestField
+	reqQuery, reqSlot string
+	reqRef            string
+	reqPriority       bool
+	reqState          uint8
+	reqAt             int
+	reqChosen         report.Set
 }
 
 // modalMemo is the single slot.
@@ -283,6 +290,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		snap:   d.snap, recent: d.recent,
 		severeGen: d.severe.Gen, severeTab: d.severeTab, severeRow: d.severeRow, severeDetail: d.severeDetail,
 		addMode: d.addMode, addQuery: d.addQuery, addErr: d.addErr,
+		addRef: d.addLocate.keyLabel(), addState: d.addLocate.keyState(),
 		radioVoice: d.radioVoice,
 		// THE CARD WINDOW'S IDENTITY AND ITS GENERATION (D-88). What the window
 		// draws comes from a func, which a key cannot hold — so the generation
@@ -301,11 +309,9 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		// moves without the frame changing.
 		st := d.request
 		k.reqField, k.reqQuery, k.reqSlot = st.field, st.query, st.slot
-		k.reqOutside, k.reqPriority = st.outside, st.prioritize
+		k.reqState, k.reqPriority = st.locate.keyState(), st.prioritize
 		k.reqAt, k.reqChosen = st.at, st.chosen
-		if st.ref != nil {
-			k.reqRef = st.ref.Label
-		}
+		k.reqRef = st.locate.keyLabel()
 	case modalSetup:
 		// The GENERATION, not the state. Formatting the whole struct — which
 		// carries two maps — ran on every frame and grew with them; it was the

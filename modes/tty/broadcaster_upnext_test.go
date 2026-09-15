@@ -124,22 +124,31 @@ func TestTheUpNextCardIsAddressableEmptyOrNot(t *testing.T) {
 		if !strings.Contains(last, chipFor("1")) {
 			t.Errorf("%s: the card is not addressable; %q is missing from %q", tc.name, chipFor("1"), last)
 		}
-		if !strings.Contains(last, "PRESENTER:") {
-			t.Errorf("%s: the footer does not say who will read it: %q", tc.name, last)
+		// AND IT NO LONGER NAMES A PRESENTER (D-131). The per-card PRESENTER
+		// control was dropped; the label outlived it and drew `PRESENTER: N/A`
+		// on every card — HUM LEAD, UAT 2026-09-14. Pinned as an ABSENCE
+		// because that is what regresses: the label is easy to put back beside
+		// a field that still exists.
+		if strings.Contains(last, "PRESENTER") {
+			t.Errorf("%s: the footer still names the removed per-card presenter: %q", tc.name, last)
 		}
 	}
 }
 
-// THE BOX HAS A GROUND OF ITS OWN (D-114).
+// THE BOX HAS TWO GROUNDS (D-114, D-134, corrected by D-136).
 //
 // HUM LEAD, 2026-09-13: "the UP Next Box probably needs a bkg color other than
-// none - I suggest the same Blue as the modal for now."
+// none - I suggest the same Blue as the modal FOR NOW."  Then 2026-09-15: "make
+// the cell background color of the UP NEXT box the same 'blue' token color used
+// as the bkg for 'DIRECTION' and 'TODAY' column."  Then, with a diagram, the
+// correction: the LABEL CELL is that blue; the report beside it is "STANDARD
+// MODAL BLUE" and its "content ... should not be all bold and white, but the
+// standard text color".
 //
-// THE MODAL'S OWN TILE, THROUGH `ModalTone`, so it is the same blue and follows
-// the theme. A second colour mixed here would be a second answer to what the
-// app's tile blue is — and the Light theme's is not the dark one's, which is
-// exactly the trap D-108 was about.
-func TestTheUpNextBoxWearsTheModalsGround(t *testing.T) {
+// SO THE TEST MEASURES BOTH, and would have caught the over-application: the
+// first version asked only whether every row carried the bands' blue, which a
+// box painted entirely in it passes perfectly.
+func TestTheUpNextBoxWearsTwoGrounds(t *testing.T) {
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
 
@@ -149,18 +158,48 @@ func TestTheUpNextBoxWearsTheModalsGround(t *testing.T) {
 	if len(rows) == 0 {
 		t.Fatal("the card drew nothing")
 	}
-	fg, bg := render.ModalTone(true)
+	today := render.Tok(render.GroupTodayBG)
+	_, modal := render.ModalTone(true)
+
+	// THE REPORT IS ON THE MODAL'S TILE, every row of it, borders included —
+	// the rule `shell` states for a card: a ground that stopped at the border
+	// would read as a fill rather than as a box.
 	for i, r := range rows { // bounded by the box (P10-02)
-		if !strings.Contains(r, bg) {
-			t.Errorf("row %d is not painted on the modal's ground:\n%q", i, r)
+		if !strings.Contains(r, modal) {
+			t.Errorf("row %d does not carry the report's modal ground:\n%q", i, r)
 		}
 	}
-	// THE BORDERS TOO, which is the rule `shell` states for a card: a ground that
-	// stopped at the border would read as a fill rather than as a box.
-	if !strings.Contains(rows[0], bg) || !strings.Contains(rows[len(rows)-1], bg) {
-		t.Error("the box's own borders are unpainted")
+	// AND THE LABEL CELL IS THE BANDS' BLUE — on the rows that HAVE a cell.
+	var seen bool
+	for _, r := range rows {
+		if strings.Contains(r, today) {
+			seen = true
+		}
 	}
-	_ = fg
+	if !seen {
+		t.Error("no row carries the bands' blue: the label cell lost its ground")
+	}
+	// AND THE REPORT'S OWN TEXT IS NOT PAINTED IN THE LABEL CELL'S BLUE — the
+	// half the HUM LEAD reported in words: "should not be all bold and white".
+	//
+	// THE GROUND IN FORCE WHERE THE TEXT IS, not "does this row mention the
+	// blue". EVERY body row carries a label cell, so the blue appears on all of
+	// them and a Contains check answers the wrong question. What paints a run of
+	// text is the last ground opened before it.
+	for _, r := range rows {
+		plain := stripANSITest(r)
+		if !strings.Contains(plain, "STATUS:") {
+			continue
+		}
+		head := r[:strings.Index(r, "STATUS:")]
+		all := bgRe.FindAllString(head, -1)
+		if len(all) == 0 {
+			t.Fatalf("the report's row opens no ground at all:\n%q", r)
+		}
+		if got := all[len(all)-1]; got != modal {
+			t.Errorf("the report's text is painted on %q, not the modal tile %q:\n%q", got, modal, r)
+		}
+	}
 }
 
 // AND THE BOX'S TITLE READS AS A MODAL'S DOES (D-118).
@@ -179,8 +218,9 @@ func TestTheBoxTitleReadsLikeAModalTitle(t *testing.T) {
 		t.Errorf("the box's title is not painted like a window's:\n%q", rule)
 	}
 	// THE RULE'S MARKS KEEP THE GROUND'S TONE: what is picked out is the NAME.
-	_, bg := render.ModalTone(true)
-	if !strings.Contains(rule, bg) {
+	// The title rides the REPORT's half of the box, which is the modal tile
+	// (D-136) — the bands' blue belongs to the label cell alone.
+	if _, bg := render.ModalTone(true); !strings.Contains(rule, bg) {
 		t.Errorf("the rule lost the box's ground:\n%q", rule)
 	}
 }

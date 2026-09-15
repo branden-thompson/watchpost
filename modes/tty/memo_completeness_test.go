@@ -151,7 +151,7 @@ func walk[T any](t *testing.T, typ reflect.Type, prefix string, excuse map[strin
 		f := typ.Field(i)
 		path := prefix + f.Name
 		switch f.Type.Kind() {
-		case reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64, reflect.String:
+		case reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64, reflect.String, reflect.Pointer:
 			idx := i
 			emit(path, func(d *T) { bump(fieldAt(d, idx)) })
 		case reflect.Struct:
@@ -235,6 +235,35 @@ func bump(v reflect.Value) {
 	// memoised frame (the fire threshold, a radius) was outside the guard.
 	case reflect.Float64:
 		v.SetFloat(v.Float() + 1)
+	// AND POINTERS WERE THE SAME HOLE AGAIN, a third time (D-129). A *ref the
+	// frame READS THROUGH — the search window's pooled match — was not an
+	// emitted kind at all, so the guard reported the window covered while the
+	// field behind half its sentences was never perturbed.
+	//
+	// A COPY, NEVER THE SHARED POINTEE. perturbEach copies the MODEL, and a
+	// copy of a struct shares every pointer in it — so bumping through one
+	// would move the BASE as well, `before` and `after` would agree, and the
+	// guard would pass by changing nothing. That hazard is why pointers were
+	// excluded rather than missed, and cloning is what makes including them
+	// safe: a fresh pointee leaves the baseline untouched, and the new POINTER
+	// is itself a difference any key holding it will see.
+	//
+	// NIL IS LEFT ALONE. Production gives these windows nil; minting a value
+	// there would perturb into a state the app never has.
+	case reflect.Pointer:
+		if v.IsNil() {
+			return
+		}
+		fresh := reflect.New(v.Type().Elem())
+		fresh.Elem().Set(v.Elem())
+		if fresh.Elem().Kind() == reflect.Struct {
+			if f := fresh.Elem().Field(0); f.CanSet() {
+				bump(f)
+			}
+		} else {
+			bump(fresh.Elem())
+		}
+		v.Set(fresh)
 	}
 }
 
@@ -299,14 +328,39 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 				Location: "Olathe, KS", Declared: "08/28 08:45 CDT",
 				Record: SevereRecord{Title: "TORNADO WARNING"}}}})
 		d.severeReading = "k"
+	case modalAdd:
+		// THE SEARCH WINDOW AS THE CONSOLE SEES IT (D-129), because that is the
+		// only mode in which it draws the location verdict at all. Opened the
+		// way it was before — Observer's surface, no hook wired — the window is
+		// unscoped, the note never reaches the frame, and the verdict fields
+		// were invisible to this guard: a hole shaped exactly like coverage,
+		// which is what the modalRequest arm below already says in as many
+		// words.
+		//
+		// A SETTLED MATCH, NOT A MISS, and driven through the REAL path. On a
+		// miss the ref is nil and `within` cannot reach the frame at all — the
+		// refusal reads the same either way — so the fixture would cover
+		// neither field while looking like it covered the window.
+		d.surface, d.addMode, d.addQuery = SurfaceBroadcaster, "lookup", "Vista"
+		d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool) {
+			return snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true
+		}
+		d.addLocate = settledLocate(locateLookup, "Vista",
+			snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true)
 	case modalRequest:
 		// EVERY FIELD CARRYING SOMETHING, because a window whose fields are all
 		// empty draws the same frame however the model moves — and the guard
 		// below would then report a key covering a window that says nothing.
+		//
+		// AND IT SETS THE STATE THE WINDOW ACTUALLY READS. Until 2026-09-15
+		// this assigned `d.request.ref` — the field D-130 orphaned, which
+		// nothing in production writes and only the dead half of `blocker()`
+		// read. The fixture was carrying a value the frame could not see, so
+		// this arm exercised less than it appeared to.
 		d.request = requestOpen()
 		d.request.query = "Oceanside, CA"
-		ref := snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057"}
-		d.request.ref = &ref
+		d.request.locate = settledLocate(locateRequest, "Oceanside, CA",
+			snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057"}, true, true)
 		d.request.slot = "4"
 	case modalCard:
 		// THE CONSOLE'S OWN BODY, NOT A HAND-WRITTEN ONE. The window draws what

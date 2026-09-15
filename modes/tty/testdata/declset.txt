@@ -41,6 +41,7 @@ const actQueueNext
 const actQueueOpen
 const actQueuePrev
 const actQuit
+const actRequest
 const actSettings
 const actStationToggle
 const actStatus
@@ -117,6 +118,8 @@ const groupUI
 const helpOneColWidth
 const hourlyWindow
 const inheritEntry
+const locateLookup
+const locateRequest
 const marFirstW
 const marLabelW
 const marNoteGap
@@ -279,6 +282,7 @@ func (Broadcaster).frameWidth
 func (Broadcaster).framed
 func (Broadcaster).header
 func (Broadcaster).headerRows
+func (Broadcaster).heldBand
 func (Broadcaster).heldNotice
 func (Broadcaster).inset
 func (Broadcaster).lanes
@@ -336,6 +340,8 @@ func (Dashboard).WithVoices
 func (Dashboard).aboutLines
 func (Dashboard).addFocused
 func (Dashboard).addLines
+func (Dashboard).afterLookupEdit
+func (Dashboard).afterRequestEdit
 func (Dashboard).alertArea
 func (Dashboard).alertDetailLines
 func (Dashboard).alertDetailsModal
@@ -408,6 +414,8 @@ func (Dashboard).handleAddKey
 func (Dashboard).handleDebugNav
 func (Dashboard).handleKey
 func (Dashboard).handleKeyPress
+func (Dashboard).handleLocatePause
+func (Dashboard).handleLocateVerdict
 func (Dashboard).handleModalNav
 func (Dashboard).handleNav
 func (Dashboard).handleRadio
@@ -425,6 +433,8 @@ func (Dashboard).header
 func (Dashboard).headerControls
 func (Dashboard).headerRow
 func (Dashboard).helpBlocks
+func (Dashboard).helpKeys
+func (Dashboard).helpLegend
 func (Dashboard).helpLines
 func (Dashboard).helpModal
 func (Dashboard).helpPlan
@@ -435,7 +445,9 @@ func (Dashboard).inServiceRange
 func (Dashboard).issueLines
 func (Dashboard).layout
 func (Dashboard).layoutWith
+func (Dashboard).locateCmd
 func (Dashboard).lookupIndex
+func (Dashboard).lookupIsScoped
 func (Dashboard).lookupKey
 func (Dashboard).marqueeProgress
 func (Dashboard).marqueeTrack
@@ -492,7 +504,6 @@ func (Dashboard).renderModal
 func (Dashboard).requestBody
 func (Dashboard).requestChips
 func (Dashboard).requestErase
-func (Dashboard).requestResolve
 func (Dashboard).requestSchedule
 func (Dashboard).requestToggle
 func (Dashboard).requestType
@@ -627,6 +638,13 @@ func (cardLane).render
 func (cardLane).shell
 func (endpointRow).counters
 func (locIndex).at
+func (locateState).apply
+func (locateState).edit
+func (locateState).keyLabel
+func (locateState).keyState
+func (locateState).locateNote
+func (locateState).reachable
+func (locateState).settled
 func (radioBP).hasViz
 func (requestState).blocker
 func (requestState).next
@@ -647,6 +665,7 @@ func NewDashboard
 func NewRouter
 func ParseRadioMode
 func abs
+func afterPause
 func agoWords
 func alertBlocks
 func alertClock
@@ -691,6 +710,7 @@ func cycleIn
 func cycleRelayDwell
 func cycleRelayLang
 func dashIfEmpty
+func dataAgeTone
 func dataAsOf
 func dayCols
 func debugProseWidth
@@ -704,6 +724,7 @@ func detailRow
 func detailScript
 func dumpLines
 func ellipsize
+func emphasiseHeld
 func emptyState
 func endpointCells
 func endpointMark
@@ -757,12 +778,14 @@ func mastheadStamp
 func mastheadTitle
 func mmdd
 func modalAlertTone
+func modalHelperWidth
 func nearestFirst
 func newArrowChips
 func newCardLane
 func nextHours
 func nextRow
 func nonEmpty
+func observerScoped
 func orDefault
 func pad2
 func panelChromeFor
@@ -772,6 +795,8 @@ func pickerCellW
 func pipeRow
 func pipelineCols
 func plural
+func poolNote
+func poolNoteLines
 func prependRef
 func prettyCond
 func prevRow
@@ -931,6 +956,10 @@ type helpGroup
 type issue
 type layoutRows
 type locIndex
+type locateField
+type locatePauseMsg
+type locateState
+type locateVerdictMsg
 type marineCell
 type memoStats
 type modal

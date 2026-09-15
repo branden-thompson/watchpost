@@ -281,6 +281,23 @@ func TruncateCells(s string, n int) string {
 	cut, cells, escAt, open := -1, 0, -1, false
 	for i, r := range s {
 		if escAt >= 0 { // inside a sequence: it ends at its terminator
+			// TERMINATED ON 'm' ONLY, AND DELIBERATELY SO (D-145).
+			//
+			// A non-SGR escape — an OSC title, "\x1b]0;…\x07" — leaves this
+			// scanner "inside a sequence" for every byte that follows, so the
+			// count stops and the function returns its input UNCUT. Red team
+			// found it at BUILD exit and it is REAL but UNREACHABLE: everything
+			// from outside crosses `plaintext.Text` at the boundary, which
+			// strips escapes, so nothing in this app can present one here.
+			//
+			// AND THE OBVIOUS FIX IS WORSE THAN THE BUG. This function's
+			// contract is the line above — IT MEASURES WHAT `Width` MEASURES —
+			// and `Width` is `plaintext.StripSGR`, which knows SGR alone.
+			// Teaching only this half about OSC would make the measurer and the
+			// cutter DISAGREE, which is precisely the class of defect that
+			// produced the 2026-09-10 masthead failure recorded below. The two
+			// move together or not at all; carried as a follow-up rather than
+			// half-fixed here.
 			if r == 'm' {
 				open = s[escAt:i+1] != sgrReset
 				escAt = -1

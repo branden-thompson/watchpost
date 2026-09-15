@@ -37,6 +37,7 @@ const pumpBacklog
 const radioDebugEnv
 const radioDebugMax
 const radioDebugNameMax
+const radiusLookupBudget
 const readingHoldMax
 const readingHoldPerRune
 const recentAlertsEvery
@@ -46,6 +47,7 @@ const recentPublishCoalesce
 const recentStartDelay
 const recentStartStagger
 const releaseAPI
+const requestedCap
 const scheduleTick
 const systemVoice
 const testEventLife
@@ -127,7 +129,9 @@ func (*livePipelines).fireFor
 func (*livePipelines).hydrate
 func (*livePipelines).injectHook
 func (*livePipelines).injectHook
+func (*livePipelines).locateInRadius
 func (*livePipelines).lookInPool
+func (*livePipelines).lookupCtx
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
@@ -144,7 +148,9 @@ func (*livePipelines).rebed
 func (*livePipelines).refreshBedRelays
 func (*livePipelines).relayDwell
 func (*livePipelines).relayLang
+func (*livePipelines).rememberRequested
 func (*livePipelines).requestCard
+func (*livePipelines).resolvable
 func (*livePipelines).restationTo
 func (*livePipelines).seismicFor
 func (*livePipelines).selectedRelay
@@ -342,6 +348,7 @@ func (*tickerDeck).fence
 func (*tickerDeck).nudgeRescope
 func (*tickerDeck).run
 func (*tickerDeck).scopeToRadius
+func (*tickerDeck).setScope
 func (*tickerDeck).startTakeover
 func (*tickerDeck).stop
 func (*tickerDeck).takeInjected
@@ -525,6 +532,7 @@ func setHalf
 func setRuntimeGOOS
 func setThemeHook
 func setUIHook
+func setUnder
 func settingsRoles
 func sharesAnOutput
 func sleepCtx

@@ -22,23 +22,83 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if d.addMode == "add" && d.watchlistFull() {
 			return d, nil // chip is muted; the press is inert (UAT 26.3)
 		}
+		// THE CONSOLE REFUSES WHAT IT CANNOT REACH, and it refuses it HERE
+		// rather than by asking and discarding the answer. The chip is already
+		// drawn unavailable; a key that acted anyway would contradict the
+		// window's own sentence — HUM LEAD, UAT 2026-09-14: "<enter> opens
+		// location details modal for Lone Pine, CA".
+		if d.lookupIsScoped() {
+			// A DEFINITE NO IS REFUSED; "not yet known" IS NOT (D-130). The
+			// check can take 300ms plus a geocoder round trip, and a key that
+			// went inert while the field was still thinking would be the same
+			// dead control this rule exists to prevent — so enter is refused
+			// only once there IS an answer and the answer is no.
+			if d.addLocate.settled() && !d.addLocate.reachable() {
+				return d, nil
+			}
+			if d.addLocate.reachable() {
+				// AND THE ANSWER ALREADY HELD IS THE ANSWER. Re-asking would be
+				// a second round trip to re-learn it, and a second authority
+				// that can disagree with the first.
+				ref := *d.addLocate.ref
+				return d, func() tea.Msg { return resolvedMsg{mode: d.addMode, ref: ref} }
+			}
+			// NOT YET KNOWN: ASK THE SCOPED HOOK NOW (D-141).
+			//
+			// THIS FELL THROUGH TO `cfg.Resolve` — the UNSCOPED geocoder — so
+			// the console's own scope was escapable by pressing enter inside the
+			// 300 ms pause, which is the defect D-129 was filed for, still
+			// reachable. The press is held on the field and honoured when the
+			// verdict lands, so the key is neither inert nor a way out.
+			d.addLocate.submitted = true
+			return d, d.locateCmd(locateLookup, d.addLocate.gate.Seq(), d.addLocate.query)
+		}
 		if q := strings.TrimSpace(d.addQuery); q != "" {
 			return d, d.resolveCmd(q, d.addMode)
 		}
 		return d, nil
 	case "esc", "ctrl+a":
 		d = d.close()
-		d.addQuery, d.addErr = "", ""
+		d.addQuery, d.addErr, d.addLocate = "", "", locateState{}
 	case "backspace":
 		if r := []rune(d.addQuery); len(r) > 0 {
 			d.addQuery = string(r[:len(r)-1])
 		}
+		return d.afterLookupEdit()
 	default:
 		if key.Text != "" {
 			d.addQuery += key.Text
+			return d.afterLookupEdit()
 		}
 	}
 	return d, nil
+}
+
+// afterLookupEdit restarts the pause after a change to the search box.
+//
+// EVERY EDIT RESETS IT, which is the rule the HUM LEAD asked for: "Everytime
+// the human user presses an alpha-numeric key in the text field, we can infer
+// they're still typing, and we can reset that timer."
+func (d Dashboard) afterLookupEdit() (tea.Model, tea.Cmd) {
+	if !d.lookupIsScoped() {
+		return d, nil
+	}
+	var cmd tea.Cmd
+	d.addLocate, cmd = d.addLocate.edit(locateLookup, d.addQuery)
+	return d, cmd
+}
+
+// lookupIsScoped: the search window is serving the CONSOLE (D-129).
+//
+// D-56 — ONE KEY, ONE MEANING PER SURFACE — IS WHAT MAKES THIS CORRECT RATHER
+// THAN INCONSISTENT. `[l]` means "find me a place" on both surfaces; what
+// differs is what a place IS. The listener may look anywhere, which is what
+// Observer is for. The station can only broadcast about what it can reach, so
+// on the console a location outside the service radius is not a location —
+// HUM LEAD: "either what they type is a valid location within the service
+// radius or not."
+func (d Dashboard) lookupIsScoped() bool {
+	return d.addMode == "lookup" && d.surface == SurfaceBroadcaster && d.cfg.LocateInRadius != nil
 }
 
 // The two list caps (UAT 48: 10 favourites + 50 most-recent = 60 tracked
@@ -244,11 +304,32 @@ func (d Dashboard) addLines(o render.Opts) []string {
 	if d.addErr != "" {
 		lines = append(lines, "  "+o.Glyphs().Alert+" "+d.addErr, "")
 	}
+	// WHAT THE POOL SAYS ABOUT IT, IN THE REQUEST WINDOW'S OWN WORDS (D-129).
+	// Shown as it is typed rather than on enter, because a refusal that waits
+	// for the key it is going to refuse teaches the operator nothing.
+	if fact, aside := d.addLocate.locateNote(); d.lookupIsScoped() && fact != "" {
+		lines = append(lines, poolNoteLines(o, fact, aside, modalHelperWidth(d.modalWidth()))...)
+		lines = append(lines, "")
+	} else if d.lookupIsScoped() && d.addLocate.reachable() {
+		// AND IT SAYS WHAT IT MATCHED. A prefix match means "Vis" is already a
+		// hit, so without the name the operator cannot tell WHICH pooled place
+		// enter is about to open — the request window names it for the same
+		// reason.
+		lines = append(lines, "    "+d.addLocate.ref.Label, "")
+	}
 	lines = append(lines, "  Type a city name or ZIP code.", "")
 	verb := "Add"
 	enabled := d.addMode != "add" || !d.watchlistFull()
 	if d.addMode == "lookup" {
 		verb = "Lookup"
+	}
+	// AND THE CHIP SAYS SO. CtlIf draws an unavailable control as unavailable,
+	// which is the only honest state for a key the window will refuse.
+	if d.lookupIsScoped() {
+		// UNKNOWN READS AS AVAILABLE. The field is only briefly unsettled, and
+		// greying the key while it thinks would flicker the control on every
+		// keystroke.
+		enabled = !d.addLocate.settled() || d.addLocate.reachable()
 	}
 	return append(lines, "  "+o.Controls("   ", render.CtlIf("enter", verb, enabled), render.Ctl("esc", "Cancel")))
 }

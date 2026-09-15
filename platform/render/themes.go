@@ -55,6 +55,9 @@ func builtinOverrides() map[string]map[Token]string {
 			TableMuted: "255", TableName: "231", ModalTitle: "1;231", // Q4a-004: the table reads as bright as the rest
 			GradStart: "#FFFFFF", GradMid: "#FFFF5F", GradEnd: "#5FFFFF", // white → its focus yellow → its low cyan
 			TitleEdition: "1;159", // its own pale blue, at this theme's brightness
+			// AND THE CONSOLE'S WORD IN THIS THEME'S OWN ORANGE — 214, which is
+			// already its TempHi and FireMark, so the masthead is on-palette (D-133).
+			TitleEditionBroadcaster: "1;214",
 		},
 		"Monochrome": {
 			TempHi: "255", TempLo: "250", TrendUp: "250", TrendDown: "250",
@@ -109,7 +112,12 @@ func builtinOverrides() map[string]map[Token]string {
 			// No blue to be had: BOLD WHITE says "edition" the only way this
 			// theme can say anything, the same choice its list focus makes.
 			TitleEdition: "1;255",
-			ChipFlashUp:  "1;38;5;16;48;5;255", ChipFlashDown: "1;38;5;255;48;5;240",
+			// MONOCHROME HAS NO ORANGE, and inventing one would be the one thing
+			// this theme exists to refuse. Both editions wear the same tone here,
+			// and the WORD still differs — which is the fallback every surface in
+			// this theme already relies on (D-133).
+			TitleEditionBroadcaster: "1;255",
+			ChipFlashUp:             "1;38;5;16;48;5;255", ChipFlashDown: "1;38;5;255;48;5;240",
 			// A LIST's focus, in this theme's vocabulary. The default carries it in
 			// yellow and leaves the label unbolded, because the colour is doing the
 			// work; here there is no colour, so BOLD does it — the same
@@ -139,8 +147,9 @@ func builtinOverrides() map[string]map[Token]string {
 			AlertModalWarnBG: "48;2;60;20;40", AlertModalAdvBG: "48;2;60;50;20", ConfirmBG: "48;2;120;40;80",
 			ModalFG: "38;5;231", ModalBGDark: "48;2;36;27;47", ModalBGLight: "48;2;52;41;79",
 			WindowBGDark: "#262335", GradStart: "#FF7EDB", GradMid: "#36F9F6", GradEnd: "#FEDE5D",
-			TitleEdition: "1;159",                                      // pale neon blue, on-palette beside the cyan
-			TableMuted:   "146", TableName: "231", ModalTitle: "1;231", // Q4a-004: lavender attributes (≥ 4.5:1 on #262335)
+			TitleEdition:            "1;159",                                      // pale neon blue, on-palette beside the cyan
+			TitleEditionBroadcaster: "1;215",                                      // the theme's own warm orange, beside its FireMark (D-133)
+			TableMuted:              "146", TableName: "231", ModalTitle: "1;231", // Q4a-004: lavender attributes (≥ 4.5:1 on #262335)
 		},
 		"Solarized Night": {
 			TextBase: "247", TextBright: "254", TempHi: "166", TempLo: "37", TrendUp: "136", TrendDown: "33",
@@ -154,8 +163,9 @@ func builtinOverrides() map[string]map[Token]string {
 			CardEmptyBG:    "48;2;46;62;68", // solarized's own grey-slate, one step off base02
 			GroupSectionBG: "48;2;7;54;66", ModalBGDark: "48;2;0;43;54",
 			WindowBGDark: "#002b36", GradStart: "#D33682", GradMid: "#268BD2", GradEnd: "#2AA198",
-			TitleEdition: "1;109",                                      // solarized's readable blue-grey, its own light blue
-			TableMuted:   "247", TableName: "254", ModalTitle: "1;254", // Q4a-004: solarized attributes (≥ 4.5:1 on #002b36)
+			TitleEdition:            "1;109",                                      // solarized's readable blue-grey, its own light blue
+			TitleEditionBroadcaster: "1;166",                                      // solarized's own orange (D-133)
+			TableMuted:              "247", TableName: "254", ModalTitle: "1;254", // Q4a-004: solarized attributes (≥ 4.5:1 on #002b36)
 		},
 	}
 	// The Omarchy Quattro palettes, mapped systematically (quattro.go).
@@ -198,7 +208,7 @@ func RegisterTheme(name string, overrides map[Token]string) {
 	}
 	themeMu.Lock()
 	defer themeMu.Unlock()
-	themeTable[name] = withAA(full)
+	themeTable[name] = withAA(withAgeLadder(full, overrides))
 	themeGen.Add(1)
 }
 
@@ -291,7 +301,10 @@ func lightOverrides() map[Token]string {
 		// DARK blue on the light ground: "light blue" is a relationship to the
 		// paper, not an absolute, and a pale one here would vanish.
 		TitleEdition: "1;38;2;0;70;140",
-		NameAdvisory: "38;2;110;100;0", NameWarning: "38;2;150;30;30", ProviderOK: "38;2;0;110;40", ProviderDown: "38;2;170;0;0",
+		// A DARK ORANGE FOR A LIGHT GROUND, the same move the blue above makes:
+		// the dark themes' bright orange is unreadable on white (D-133).
+		TitleEditionBroadcaster: "1;38;2;166;72;0",
+		NameAdvisory:            "38;2;110;100;0", NameWarning: "38;2;150;30;30", ProviderOK: "38;2;0;110;40", ProviderDown: "38;2;170;0;0",
 		AlertLabel: "38;2;120;90;0", AlertDanger: "38;2;170;0;0",
 		RadioFG: "38;2;40;40;40", RadioAccent: "38;2;0;110;40", StateStopped: "1;38;2;110;110;110", StatePlaying: "1;38;2;0;110;40",
 		RadioStation: "1;38;2;120;90;0", RepeatOn: "1;38;2;0;110;40", VizOn: "1;38;2;0;110;40",

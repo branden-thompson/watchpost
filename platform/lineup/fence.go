@@ -207,3 +207,16 @@ func (f Fence) AdmitsAny(from []Arrival) bool {
 	}
 	return false
 }
+
+// RefencedForTest marks a line-up's rail against a fence, the way `refence`
+// does on a surface swap — so a surface test can build the state the operator
+// actually meets without reaching inside this package.
+//
+// IT LIVES IN platform/ BECAUSE EVERY `ForTest` EXPORT DOES (D-124), and it
+// exists because the console's held-hazard band has to be tested against a rail
+// the fence EXCLUDES: that is the case where the band was telling the operator
+// to go on air and read something going on air would not read.
+func RefencedForTest(l Lineup, f Fence) Lineup {
+	d := Director{lineup: l, settings: Settings{Fence: f}}
+	return d.refence().lineup
+}

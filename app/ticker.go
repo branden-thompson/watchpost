@@ -108,12 +108,6 @@ type tickerDeck struct {
 	muted   *atomic.Bool
 	radius  *atomic.Int64 // alert-radius filter in miles; 0 = All (global)
 
-	// scope is WHAT THE RAIL IS SCOPED TO RIGHT NOW (D-73, airscope.go). It
-	// follows the surface the operator is looking at: the listener's filter on
-	// Observer, the station's service area on the console. Nil is the older
-	// tests' deck, which falls back to the listener's own radius and watchlist.
-	scope func() airScope
-
 	// rescope wakes the cycle when the rail's fence MOVES — a surface swap
 	// (D-73). Buffered by one and written without blocking, so a flurry of
 	// swaps collapses into a single pending re-scope rather than a queue of
@@ -134,10 +128,25 @@ type tickerDeck struct {
 	// the ids; this is the other half.
 	alerts *alertStore
 
-	// mu guards emit, which is wired after the deck is built: the schedule needs
-	// the deck to exist before it can be started.
-	mu   sync.Mutex
-	emit func(lineup.Event) // nil until the schedule is wired
+	// mu guards emit AND scope, both of which are wired after the deck is built:
+	// the schedule needs the deck to exist before it can be started.
+	//
+	// SCOPE JOINED IT AT D-144. It had exactly `emit`'s shape — a func field
+	// assigned from the setup goroutine AFTER `go t.run(ctx)` has started, and
+	// read by the cycle — and it was the only one of the pair left unguarded.
+	// Bounded impact (a pointer-sized write, first cycle only) is not the same
+	// as no impact, and the fix is the pattern already sitting beside it.
+	mu    sync.Mutex
+	emit  func(lineup.Event) // nil until the schedule is wired
+	scope func() airScope    // nil until the surfaces are wired; see setScope
+}
+
+// setScope wires what the rail is scoped to, from outside the cycle.
+func (t *tickerDeck) setScope(f func() airScope) {
+	if t == nil {
+		return
+	}
+	setUnder(&t.mu, &t.scope, f)
 }
 
 // clock is the listener's clock, or the 12-hour default when nothing set one
@@ -511,8 +520,15 @@ func (t *tickerDeck) tiesWithin(s airScope) map[string]bool {
 // currentScope is the one place the deck asks what it is scoped to, so the
 // fence and the feed's filter cannot come to disagree about one hazard.
 func (t *tickerDeck) currentScope() airScope {
-	if t.scope != nil {
-		return t.scope()
+	// READ UNDER THE LOCK, CALLED OUTSIDE IT (D-144). The scope function reaches
+	// back into the pipelines and the console; calling it while holding this
+	// deck's mutex would put a second lock order into the one place the cycle
+	// and the setup goroutine already meet.
+	t.mu.Lock()
+	f := t.scope
+	t.mu.Unlock()
+	if f != nil {
+		return f()
 	}
 	return listenerScope(t.radius, t.watch)
 }

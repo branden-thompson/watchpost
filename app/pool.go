@@ -15,15 +15,17 @@ package app
 // a change to either setting.
 
 import (
-	"strings"
-
 	"context"
+	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/locations"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
+	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -338,17 +340,99 @@ func (lp *livePipelines) lookInPool(query string) (snapshot.LocationRef, bool, b
 			return ref, true, true
 		}
 	}
-	// AND NOTHING ELSE IS ASKED. This used to fall through to the RESOLVER when
-	// the pool had no match, so it could tell "outside the radius" from "nowhere
-	// at all" — one network call PER KEYSTROKE, on a field the operator types
-	// into.
-	//
-	// HUM LEAD, 2026-09-14: "Whatever helps performance - the end result is
-	// transparent to the end user - either what they type is a valid location
-	// within the service radius or not." That is the binary the window needs,
-	// and the pool alone answers it. The distinction the resolver bought was two
-	// helper sentences that both point at Observer.
 	return snapshot.LocationRef{}, false, false
+}
+
+// radiusLookupBudget bounds the resolve behind a location field. It is the
+// Resolve hook's own budget, for the same reason: the operator is waiting.
+const radiusLookupBudget = 5 * time.Second
+
+// locateInRadius answers the ONE question both location fields ask: CAN THE
+// STATION BROADCAST ABOUT THE PLACE THIS NAMES?
+//
+// THE POOL IS NOT THE TEST, AND THAT WAS THE DEFECT (D-130). The pool is capped
+// at 25 (locations.PoolCap) and is a DELIBERATE subset of the fence — so a real
+// place inside the service radius answered "not found" merely for being the
+// 26th. HUM LEAD, UAT 2026-09-14: "location search should accept any value
+// WITHIN the service radius, not just the 25 slot location pool. Example:
+// 'Rainbow, CA' is a valid location within a 25 mi radius of Oceanside, but now
+// it says that it's not a valid location."
+//
+// AND THE OFFLINE DATA CANNOT ANSWER IT ALONE. Measured 2026-09-14: the
+// embedded index holds 34,106 cities and 41,490 zips, and Rainbow, CA is in
+// NEITHER — it is an unincorporated community with no postal code of its own.
+// The geocoder places it 14.7 miles from Oceanside, inside a 25-mile radius.
+// So the network is not an optimisation to avoid here; for a whole class of
+// small places it is the only thing that knows they exist.
+//
+// WHICH IS WHY THE CALLER DEBOUNCES (platform/debounce). `setup.go` already
+// carries the rule this would otherwise break — never the network per keystroke
+// (AI-8, ToS) — and a 300 ms pause is what reconciles "ask the geocoder" with
+// it. This function is therefore SLOW BY CONTRACT and must never be called from
+// a render path or a key handler.
+//
+// AND THE HYPER-LOCAL CASE IS THE POINT, NOT AN EDGE (HUM LEAD, ratified
+// 2026-09-14): "the human operator should be able to lookup any valid location
+// within their service radius, even if the initial sorting didn't include it
+// into the default location pool. That value here again is exactly the
+// hyper-local (Rainbow, CA) use case for human operator broadcasting a short
+// range FRS/GMRS/CBRS station."
+//
+// THE POOL'S SORT IS WHY IT CANNOT BE THE TEST. `locations.Pool` fills from a
+// POPULATION-FILTERED table, nearest first — so the 25 it keeps are structurally
+// the BIGGEST places in range, and a short-range station's listeners are
+// standing in the small ones. Rainbow is not an unlucky 26th; a pool ordered
+// that way can never surface it, however large the cap.
+//
+// THREE ANSWERS, NOT TWO. `within` distinguishes a real place the station
+// cannot reach from a name that means nothing — the first points the operator
+// at Observer, the second asks them to try again.
+func (lp *livePipelines) locateInRadius(r *locations.Resolver) func(string) (snapshot.LocationRef, bool, bool) {
+	return func(query string) (snapshot.LocationRef, bool, bool) {
+		if lp == nil {
+			return snapshot.LocationRef{}, false, false
+		}
+		q := strings.TrimSpace(query)
+		if q == "" {
+			return snapshot.LocationRef{}, false, false
+		}
+		// THE POOL FIRST, because it is free and it is what the Director already
+		// offers. A prefix match here is the common case and never leaves the
+		// machine.
+		if ref, _, ok := lp.lookInPool(q); ok {
+			return ref, true, true
+		}
+		if r == nil {
+			return snapshot.LocationRef{}, false, false
+		}
+		ctx, done := context.WithTimeout(lp.lookupCtx(), radiusLookupBudget)
+		defer done()
+		ref, _, err := r.Resolve(ctx, q)
+		if err != nil {
+			return snapshot.LocationRef{}, false, false
+		}
+		if ref.Tag == "" {
+			ref.Tag = deriveTag(ref.Label) // the same backfill Resolve does; a card names one
+		}
+		// AND THEN THE FENCE. A station with nowhere to transmit from reaches
+		// nothing, which is the same reading `locations.Pool` and `lineup.Fence`
+		// both take of an unset epicentre.
+		s := lp.currentStation()
+		if s.transmitter.Lat == 0 && s.transmitter.Lon == 0 {
+			return ref, false, true
+		}
+		within := globalfeed.WithinMiles(s.transmitter.Lat, s.transmitter.Lon, ref.Lat, ref.Lon, s.radiusMi)
+		return ref, within, true
+	}
+}
+
+// lookupCtx is the pipeline's context when it has one, so a lookup in flight is
+// cancelled at shutdown rather than holding the teardown for its budget.
+func (lp *livePipelines) lookupCtx() context.Context {
+	if lp.ctx != nil {
+		return lp.ctx
+	}
+	return context.Background()
 }
 
 // matchesQuery is how a typed string names a pooled location: its label or its
@@ -358,9 +442,76 @@ func matchesQuery(ref snapshot.LocationRef, q string) bool {
 }
 
 // requestCard carries the operator's request to the Director.
+//
+// IT REMEMBERS THE REF BEFORE IT ASKS, and that ordering is the fix (D-140).
+// The card the Director mints carries only a KEY; the Composer turns that key
+// back into a location by looking it up. Until 2026-09-15 it looked only in the
+// station's POOL — so a request for somewhere inside the service radius but
+// outside the capped 25 minted fine, closed the window as though scheduled, and
+// then failed to build. `Failed{Routed:true}` is treated as deliberate and
+// self-healing, so nothing surfaced: the operator was shown an action nothing
+// took, which is FR-3.3's named trap.
+//
+// IT REMEMBERS EVEN WITH NO DIRECTOR. The remembering is about what this
+// process must be able to RESOLVE, not about what it managed to schedule.
 func (lp *livePipelines) requestCard(ref snapshot.LocationRef, kinds report.Set, at int) {
-	if lp == nil || lp.director == nil {
+	if lp == nil {
+		return
+	}
+	lp.rememberRequested(ref)
+	if lp.director == nil {
 		return
 	}
 	lp.director.mc.RequestCard(ref, kinds, at)
+}
+
+// requestedCap bounds what the operator's requests may cost in memory.
+//
+// THE MAIN TRACK'S OWN DEPTH, because that is the most that can be outstanding:
+// a request that has fallen off the bottom of the running order can no longer be
+// built, so holding its ref buys nothing. Oldest out first.
+const requestedCap = lineup.MainTrackCap
+
+// rememberRequested records a location the operator asked for, so the Composer
+// can resolve it later.
+//
+// DEDUPED BY IDENTITY, NOT BY LABEL. `snapshot.Key` is what the schedule uses
+// to refuse a duplicate card, so it is what this must agree with; two zip
+// centroids of one town are two locations to everything downstream.
+func (lp *livePipelines) rememberRequested(ref snapshot.LocationRef) {
+	if lp == nil || ref.Label == "" {
+		return
+	}
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	key := snapshot.Key(ref)
+	for _, have := range lp.requestedRefs { // bounded by requestedCap (P10-02)
+		if snapshot.Key(have) == key {
+			return
+		}
+	}
+	lp.requestedRefs = append(lp.requestedRefs, ref)
+	if n := len(lp.requestedRefs) - requestedCap; n > 0 {
+		lp.requestedRefs = lp.requestedRefs[n:]
+	}
+}
+
+// resolvable is what the COMPOSER may turn a card's key back into: the station's
+// pool, plus whatever the operator has asked for.
+//
+// TWO QUESTIONS, NOT ONE (D-140). `schedule.go` said pool was "what its Producer
+// may offer AND what its Composer resolves against" — one list serving two
+// questions, which held only while the operator could request nothing else.
+// D-130 made that false. The Producer is still bounded by the pool: widening
+// what may be PROPOSED would let the station offer a location it never chose.
+func (lp *livePipelines) resolvable() []snapshot.LocationRef {
+	if lp == nil {
+		return nil
+	}
+	pool := lp.currentPool()
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	out := make([]snapshot.LocationRef, 0, len(pool)+len(lp.requestedRefs))
+	out = append(out, pool...)
+	return append(out, lp.requestedRefs...)
 }

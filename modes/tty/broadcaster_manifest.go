@@ -36,11 +36,49 @@ func cardStatus(c lineup.Card, decided bool) string {
 	}
 	switch c.State {
 	case lineup.OnAir:
-		return "READING  (Management Locked; Can be Taken-Over)"
+		// ON AIR IS THE ONE THE OPERATOR MUST NOT MISREAD, so it keeps the
+		// section's alert red — it is the state a key press can disrupt.
+		return render.Tint("READING  (Management Locked; Can be Taken-Over)", render.Tok(render.ProviderDown))
 	case lineup.Standby:
-		return "Ready for Read-Out"
+		// GREEN: the card has its data and the operator may put it on the air
+		// (HUM LEAD, 2026-09-15: "let's make 'Ready for Read-Out' Green").
+		return render.Tint("Ready for Read-Out", render.Tok(render.ProviderOK))
 	}
-	return "Scheduled; Awaiting Data"
+	// YELLOW, AND NOT BOLD — the HUM LEAD said so in the same breath. The card
+	// exists and is waiting on a fetch; that is a caution, not a fault, and
+	// weight here would make every unfilled slot shout.
+	//
+	// THE TOKENS ARE ALREADY REGISTERED ON THIS GROUND. ProviderOK, ProviderDown
+	// and AlertLabel are in `aaPairs`' `onBoth` list, so they read at AA on the
+	// modal tile this card is painted on without widening anything.
+	return render.Tint("Scheduled; Awaiting Data", render.Tok(render.AlertLabel))
+}
+
+// dataAgeTone is which rung of the data-age ladder a span sits on (D-137).
+//
+// HUM LEAD, 2026-09-15: "< 2 min - BLUE, < 5 min - GREEN, < 10 min - YELLOW,
+// < 15 min - ORANGE ( we refresh at 15m max so It should never get to 'red' )."
+//
+// AND PAST FIFTEEN IT STAYS ORANGE rather than gaining a rung. The cadence caps
+// the age, so anything beyond is a refresh that did not happen — which the
+// STATUS line is the honest place to say, not a colour the ladder promised the
+// operator they would never see.
+func dataAgeTone(d time.Duration) render.Token {
+	switch {
+	case d < 2*time.Minute:
+		return render.DataNew
+	case d < 5*time.Minute:
+		return render.DataFresh
+	case d < 10*time.Minute:
+		return render.DataUsable
+	case d < 15*time.Minute:
+		return render.DataAged
+	}
+	// PAST THE CADENCE. The refresh caps the age at fifteen minutes, so this
+	// rung means a pull that did not happen — named so a theme can tell it apart
+	// later, and wearing the same tone as DataAged today because the ruling
+	// promises the operator no colour beyond orange.
+	return render.DataStale
 }
 
 // cardPulled is when the card's data was fetched, and how long ago.
@@ -92,7 +130,8 @@ func cardPulledShort(o render.Opts, c lineup.Card, now func() time.Time) string 
 	if now == nil {
 		return out
 	}
-	return out + "  (" + shortAgo(now().Sub(c.BuiltAt)) + ")"
+	age := now().Sub(c.BuiltAt)
+	return out + "  " + render.Tint("("+shortAgo(age)+")", render.Tok(dataAgeTone(age)))
 }
 
 // shortAgo is the reference's own form of an elapsed span: "2 MIN AGO".

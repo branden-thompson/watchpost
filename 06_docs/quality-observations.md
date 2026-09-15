@@ -2398,3 +2398,273 @@ it is a grep.
 **And it generalises past messages.**  Two carriers of one fact is this release's most frequent shape
 — D-122's frozen tie, the fire threshold's restated default, the service radius' bounds, and now this.
 Three of the four were found by asking who WRITES a thing, rather than by reading what it does.
+
+## An assertion that is true for the wrong reason (2026-09-14)
+
+**SHAPE.** A test asserts a property that the defect does not violate, passes, and is reported as
+coverage.  It is not a weak test — it is a test of something else that reads like the right one.
+
+**THE CASE.** The caveat under a search field lost its colour on the second line of a wrap.  The
+guard asserted each caveat line `Contains("\x1b[")`.  The panel tints its own background on every
+line it draws, so that predicate is true of every line in the window — including the plain one in
+the screenshot, and including a blank one.  The guard passed against the exact build that was
+reported broken.  Asserting the **italic** instead — carried by the caveat and never by the frame —
+failed against that build and passed against the fix.
+
+**WHY IT KEEPS HAPPENING.** The cheap predicate is usually the first one that comes to hand, and it
+is usually *nearly* right.  Three instances in two days: the stored card ground rather than the
+painted one; `requestBody` pre-wrap rather than the rendered window; the handler rather than the key
+path.
+
+**THE COUNTER, WHICH ALREADY EXISTS AND WAS APPLIED ONE STEP LATE.**  Run the assertion against the
+BROKEN build before believing the green one.  A guard written after a fix has no failing state on
+record, and that is the only evidence that it measures the defect rather than its neighbourhood.
+
+**COST-PER-DEFECT.** One UAT round per occurrence, plus the credibility cost of reporting a fix that
+the HUM LEAD then has to disprove from a screenshot.
+
+## A gate that is only clean because a different gate ran (2026-09-15)
+
+**THE CATCH, and it was the HUM LEAD's:** *"This sounds like our hygiene process has failed, we
+should never get to a point where there's only 1.5gb free on the drive, as we should be deleting our
+cache and stray binaries once we've recorded our durable results, right?  We have documentation that
+should be prescribing this process."*
+
+**The process had not failed — it had a hole exactly where the largest producer is.**  `make
+mutant-verdicts` compiles the whole tree once per mutant across ~3 hours and called NEITHER
+`cache-clean` NOR `hygiene`.  `mutant-check` does the same volume of compiles and cleans up; the
+sweep beside it did not.  The 2026-09-06 incident that produced the protocol — 274 GB of Go build
+cache, 1.2 GiB free of 926 GiB — was exactly this shape of run.
+
+**WHY IT SURVIVED A WHOLE SESSION UNNOTICED.** The disk was healthy when the question was asked: 263
+GiB free, 2.8 MB of cache.  But that was **luck, not design** — seven `make verify` runs followed the
+sweep, and each one's `mutant-check → cache-clean` swept up after it.  *A gate that is only clean
+because a different gate ran is not clean*, and the measurement that looks like proof of health is
+the thing that hides the hole.
+
+**THE SHAPE, for the skill.** When a protocol is enforced by attaching it to a target, the question
+is never "does the protocol work" — it is **"name every path that produces the thing, and check each
+one is attached."**  Two of three were.  The third was the biggest, and the audit that would have
+caught it is a two-line grep: `grep -n cache-clean Makefile` against `grep -n "go test" Makefile`.
+
+**A SECOND GAP IN THE SAME TARGET, in the durable half.**  The protocol is *do the thing → collect the
+results → put them somewhere durable → VERIFY they are there → delete the build variants*.
+`mutant-verdicts` writes to `dist/`, and `hygiene` refuses a `RESULTS` inside `dist/` by design and
+empties everything there but `HYGIENE_KEEP`.  So the sweep satisfied neither half: it deleted nothing,
+and its record — including the `.timings` file the NEXT run's measured ETA reads — sat on a path the
+protocol exists to delete.
+
+**COST-PER-DEFECT.** Zero this time, paid by coincidence.  The full cost is the 2026-09-06 one: a
+contaminated 14.2 s measurement that had to be re-taken, three journey steps failing as data
+conditions, and a day's results thrown away.
+
+### The dry run that was not dry (2026-09-15, same session)
+
+**`make -n mutant-verdicts` RAN THE SWEEP SCRIPT.** GNU make executes a recipe line containing
+`$(MAKE)` even under `-n`, so that the sub-make can be traced — and the whole recipe was one shell
+command, joined by backslashes, with `$(MAKE) cache-clean` inside it.  The script opens its log with
+`: > "$out"` and **truncated the 3-hour sweep's record to three lines** while I was verifying the very
+change meant to make that record durable.
+
+**Recovered only by luck**, from the run's stdout still sitting in a harness task file.  Had the fix
+been in place an hour earlier, the promoted copy would have been the recovery path — which is the
+argument for the change, delivered by its own absence.
+
+**THE SHAPE:** *a dry run that mutates is worse than no dry run*, because it is trusted.  `-n`, `--just-print`
+and their kin are safe only for recipes with no sub-make; the moment one appears, the flag stops
+meaning what it says.  To see what a target does, READ it.
+
+---
+
+# For upstream: red-team and build skill candidates (2026-09-15, 0.16.0 BUILD exit)
+
+**HUM LEAD:** *"'catching consequences of my own remediation' — this is a very common pattern not just
+of this session, but of all agents I use.  This is why the red-team skillfamily exists in A2DH."*
+
+Everything below is from one release and every item names the catch that earned it.  They are written
+as **probes an agent can execute**, not as principles to agree with.
+
+## 0. THE FRAME: a fix is new code, and it arrives with less scrutiny than the code it replaces
+
+The code being fixed was reviewed, tested and shipped.  **The fix is written under time pressure, by
+the person who just proved they misunderstood this area, and is usually merged on the strength of
+"the test passes now."**  In this release the remediation of nine red-team findings introduced three
+new defects, each caught by an automated gate rather than by me:
+
+| The fix | What it introduced | What caught it |
+| --- | --- | --- |
+| Guarding a data race with a mutex | A structural duplicate of `mastercontrol.unhold` | `dupes` |
+| Collapsing that duplicate into `setUnder` | A corpus anchor pointing at a line that no longer existed | `mutant-anchors` |
+| Teaching `TruncateCells` about non-SGR escapes | The cutter and the measurer disagreeing — the exact class behind an earlier UAT defect | Reading the function's own stated contract |
+
+**RULE: remediation is a change, and takes the change's full gate set.**  Not "re-run the failing
+test."  In this session the third one was caught only because the contract was written down IN THE
+FUNCTION; had it been tribal knowledge, the "fix" would have shipped.
+
+## 1. THE DOMINANT FAILURE: a test that cannot fail
+
+**Seven instances in one release, five of them mine, three found only by blind red team.**
+
+- `blocker()` returned one string unconditionally; both its tests asserted that string.  Either would
+  have passed with the entire switch deleted.
+- A bed-ducking test passed because the fixture never set the bed carrying — so the function returned
+  false for a reason unrelated to the defect.
+- A wiring test exercised the SET the fix widened and never asked what the caller had been handed;
+  reverting the wiring left it green.
+- A bold-text test compared against `render.Bold(s)` as a literal, but painting rewrites inner
+  resets, so it failed against a correct build and would have passed against an unpainted one.
+- A centring test ran with colour OFF, where the renderer trims trailing spaces — every row looked
+  right-aligned and the measurement meant nothing.
+- A styling test asserted `Contains(line, "\x1b[")` on a surface that paints every line.
+- A width sweep asserted a contiguous substring across a CENTRED wrap, and reported a correct
+  frame as truncated.
+
+### The probe
+
+> **For every test added or changed in the diff, answer in one sentence: what would this catch?**
+> Then answer the harder one: **is the assertion true for a reason other than the behaviour it
+> names?**  Look specifically for
+> - an assertion satisfied by a CONSTANT (one expected value, asked once);
+> - a fixture that does not put the system in the state the defect needs;
+> - a comparison against a PRE-RENDERED value where the pipeline transforms it;
+> - a global that silences the property (colour off, animation off, clock frozen);
+> - a predicate true of every row/line/case, not only the one under test;
+> - byte offsets used where cells or runes are meant.
+
+### The counter, and it is cheap
+
+> **A test written after a fix has NO FAILING STATE ON RECORD.**  Re-apply the defect — revert the
+> hunk, or flip the predicate — and watch the new test fail.  If it does not, the test is measuring
+> its neighbourhood.  This costs one command and caught three of the seven above.
+
+**Cost-per-defect when skipped:** each of these shipped a defect the HUM LEAD then found in UAT, or
+that a blind agent found at the exit gate.
+
+## 2. A RULE TAUGHT TO ONE CALLER AND NOT ITS NEIGHBOURS
+
+**Both CRITICAL findings at this exit were one root:** a fence predicate was taught to the function
+that AIRS a card and to the one that DRAWS it, and not to the one that PREPARES it, the one that
+decides whether to duck the bed, or the one that counts what is being withheld.  Each of the three
+had a neighbour that was correct, and each said so in a comment describing the hazard it had already
+avoided.  One stalled the hazard rail permanently; one ducked the broadcast for ever.
+
+### The probe
+
+> **Take every predicate in the diff that expresses a POLICY** (a fence, a cap, an eligibility test,
+> a visibility filter).  `grep` for every site that asks a RELATED question about the same
+> collection.  For each, ask: *should this one ask the predicate too?*  A policy with two askers and
+> three non-askers is the shape.
+
+Secondary tell, and it is nearly diagnostic: **a comment on one call site explaining why the rule is
+needed there.**  That comment is evidence the author reasoned about it ONCE, at ONE site.
+
+## 3. A COMMENT THAT WAS TRUE WHEN IT WAS WRITTEN
+
+`app/executors.go` asserted *"Nothing in production constructs either effect … hold(), unhold() … are
+all inert,"* and it was correct at the review that produced it.  A later phase wired it, the comment
+was not revisited, and **a paragraph telling every reader the path could not run sat on that path
+while it ran** — over a critical section and a lock-order warning that had therefore never been
+reviewed as live.  The project's own wiring ledger already recorded the truth.
+
+### The probe
+
+> **Grep the tree for comments asserting ABSENCE** — "nothing calls", "never reached", "not emitted",
+> "no production caller", "inert", "dead". Each is a claim with an expiry date and no test.  Verify
+> every one against the call graph.  Where a ledger or gate already tracks it, the two disagreeing is
+> the finding.
+
+**This generalises past comments:** any documented claim of the form "X never happens" that no gate
+enforces is a candidate.  Prefer converting it into a test; where that is impossible, date it.
+
+## 4. INVALID IS NOT SURVIVED
+
+Two mutations reported SURVIVED and both were **build failures** — deleting the code orphaned an
+import.  A crude harness that counts failing tests reads "nothing failed" as "the rule is unmeasured"
+when the truth is "nothing ran."
+
+### The probe
+
+> **Three outcomes minimum, never a boolean: CAUGHT / SURVIVED / INVALID.**  Any verdict loop must
+> distinguish "the suite failed" from "the suite did not compile" from "the suite passed."  A
+> mutation that does not build is not evidence in either direction.
+
+Corollary, caught twice here: **when writing a mutation, keep the code's imports used** — replace a
+value rather than deleting a call.
+
+## 5. A GATE THAT IS ONLY CLEAN BECAUSE A DIFFERENT GATE RAN
+
+The corpus sweep — the largest producer of build artifacts in the repo — called no cleanup.  The disk
+looked healthy, and that apparent proof of health is what hid the hole: an unrelated gate's cleanup
+had been sweeping up after it.
+
+### The probe
+
+> When a protocol is enforced by attaching it to a target, the question is never *"does the protocol
+> work"* — it is **"name every path that produces the thing, and check each one is attached."**
+> `grep` the build file for every invocation of the producing command and diff against the list that
+> invokes the protocol.
+
+## 6. MEASURE THE PROPERTY, NOT THE ENCODING
+
+Four instances: a token's table value compared against its RENDERED expansion; a bold literal
+compared against painted output where resets are rewritten; a byte index used to measure a column in
+a string containing multi-byte box glyphs; a "does it have colour" check on a surface that paints
+every line.
+
+### The probe
+
+> **Ask what the operator would SEE, then assert that.**  If the assertion names an escape sequence,
+> a byte offset, or an internal representation, ask whether a correct build could fail it and an
+> incorrect one pass it.  Prefer *the last style opened before this text* over *does this string
+> contain that literal*.
+
+## 7. THE FIX THAT MAKES TWO OWNERS DISAGREE IS WORSE THAN THE BUG
+
+A truncator ignored a class of escape; the obvious fix taught it about them.  But its contract was
+*"it measures what `Width` measures,"* and `Width` knew only the other class — so the fix would have
+made the cutter and the measurer disagree, which is the class of defect behind an earlier shipped
+UAT failure.  The bug was real, unreachable, and correctly left alone with the reasoning recorded.
+
+### The probe
+
+> **Before fixing a shared primitive, find its partner** — the function whose answer it must agree
+> with.  If the fix moves one and not the other, it is not a fix.  Either move both in one change or
+> record it as a bounded, named limitation.
+
+**RULE: "unreachable + would break an invariant" is a legitimate DON'T FIX**, provided the reasoning
+is written where the next reader will meet it.
+
+## 8. A DRY RUN THAT MUTATES
+
+`make -n` executes recipe lines containing `$(MAKE)`, so a "dry run" of a sweep target ran the sweep
+script and truncated the record of the previous run.  Recovered only by luck.
+
+### The probe
+
+> `-n` / `--just-print` are safe only for recipes with no sub-make.  **To see what a target does,
+> READ it.**
+
+## 9. WHAT BLIND AGENTS FOUND THAT SELF-REVIEW DID NOT
+
+Two independent agents, given no context, on the axes *code-quality + safety-critical* and
+*docs-quality + project-hygiene*, found **2 critical and 7 important** findings in code that had
+passed 104 gates, a 355-mutant corpus and an all-green `verify`.
+
+**The gates were not wrong.**  Every one of those findings is outside what a gate can express: a rule
+absent from a neighbour, a comment that decayed, a test that cannot fail, a roster that rotted.
+
+**What made them productive, and is worth encoding in the skill:**
+1. **Blind.** No prior context, so no inherited assumption about what was already checked.
+2. **Axed.** Each had two named axes and was told the other agent covered the rest — no overlap, no
+   hedging.
+3. **Told to verify before asserting**, and told a clean report was a valid result.  Neither padded.
+4. **Pointed at the diff**, with the domain's stakes stated in one line (*"safety-critical means a
+   hazard missed, shown as taken, silently dropped, or misattributed"*).
+5. **Given the known failure shapes to hunt** — including "tests that cannot fail", which is how one
+   of them found `blocker()`.
+6. **Fenced off the expensive gates**, so they spent their budget reading rather than waiting.
+
+**And the honest counter-observation:** the docs/hygiene agent's single most valuable finding was
+that **the tree was uncommitted** — the release being judged was a working tree, and 88% of the
+build log existed only on disk.  No code-quality axis would have found that.  *The axes are not
+decoration; the second agent found the thing the first could not see.*

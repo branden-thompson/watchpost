@@ -95,9 +95,24 @@ const (
 	// ordinary reason rather than the exceptional one: the key means the same
 	// thing on both surfaces.
 	actLookup term.Action = "lookup"
-	actStatus term.Action = "status"
-	actHelp   term.Action = "help"
-	actQuit   term.Action = "quit"
+
+	// actRequest is `[r] Line-Up Request`, and it is a BINDING now (D-135).
+	//
+	// IT WAS A BARE `case "r":` IN A KEY SWITCH, which broke D-15 — keys are
+	// data — in both directions that rule exists for: the key could not be
+	// rebound, and, because the Help window is built from the keymap, a control
+	// the console DRAWS could not be documented. HUM LEAD, UAT 2026-09-15:
+	// "Once the user in the Broadcaster UI, they key bindings share/rempapped
+	// for that mode do not update their help (like 'r')."
+	//
+	// LOWER CASE, AND GATED ON THE CONSOLE OWNING THE KEYS: `r` is Observer's
+	// repeat, which is D-56 — one key, one meaning PER SURFACE. The lookup runs
+	// on both surfaces because the Router holds one keymap, so the gate is what
+	// keeps the listener's repeat working.
+	actRequest term.Action = "request"
+	actStatus  term.Action = "status"
+	actHelp    term.Action = "help"
+	actQuit    term.Action = "quit"
 )
 
 // StationControlMsg hands the console the control it asks ON AIR / STANDBY
@@ -161,6 +176,7 @@ func broadcasterKeyMap() term.KeyMap {
 		// THE CONSOLE'S CONTROL ROW HAS DRAWN `[l]` SINCE D-102, and it is
 		// Observer's search box that belongs behind it.
 		actLookup:        {Keys: []string{"l"}, Help: "Lookup Location"},
+		actRequest:       {Keys: []string{"r"}, Help: "Line-Up Request"},
 		actStatus:        {Keys: []string{"S"}, Help: "Status"},
 		actHelp:          {Keys: []string{"?"}, Help: "Help"},
 		actQuit:          {Keys: []string{"q"}, Help: "Quit"},
@@ -347,6 +363,42 @@ func consoleScoped(msg tea.Msg) bool {
 	return false
 }
 
+// observerScoped reports whether a message is the ANSWER to something only an
+// Observer window could have asked, and it is the third category for the same
+// reason the other two exist: a message delivered to the wrong surface is a
+// message nobody reads.
+//
+// D-58 SAYS THE WINDOW ON TOP OWNS THE KEYBOARD, AND THAT WAS ONLY HALF OF IT.
+// The Router forwarded KEY PRESSES to a window composited over the console and
+// stopped there, so the search window received `enter`, issued its resolve, and
+// the `resolvedMsg` that came back went to the CONSOLE — which has no idea what
+// one is. The operator typed a location, pressed enter, and the window sat
+// there: no result, no error, nothing — HUM LEAD, UAT 2026-09-14: "location
+// search doesn't work at all … pressing <enter> does nothing."
+//
+// A KEY IS ONE HALF OF A CONVERSATION. Forwarding the question without the
+// answer is what made every one of these windows look broken from the console
+// rather than just the one that was reported.
+//
+// THESE FOUR AND NOT A CATEGORY. They are unexported replies to unexported
+// commands, so a Dashboard is the only thing that can have issued them and the
+// only thing that can read them — which is what makes the routing decidable
+// from the type alone. The two TICK messages are deliberately NOT here: they
+// are Observer's own animation cadence, not an answer owed to a window, and
+// sweeping them in would change what the console does on every frame.
+func observerScoped(msg tea.Msg) bool {
+	switch msg.(type) {
+	// AND THE DEBOUNCE'S TWO (D-130). The pause and the verdict are both
+	// answers a LOCATION FIELD is waiting for, and the field is Observer's —
+	// delivered to the console they would be dropped and the search box would
+	// never settle, which is D-128's defect with a timer in front of it.
+	case resolvedMsg, committedMsg, castSavedMsg, uiSavedMsg,
+		locatePauseMsg, locateVerdictMsg:
+		return true
+	}
+	return false
+}
+
 // Update routes the message and keeps the Router as the program's model.
 //
 // PROGRAM-SCOPED MESSAGES GO TO BOTH SURFACES; everything else goes to the
@@ -408,6 +460,13 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		r.broadcaster, cmd = r.broadcaster.Update(msg)
 		return r, cmd
+	}
+	// AND THE ANSWER GOES BACK TO WHOEVER ASKED, wherever the operator is
+	// looking. Unconditional rather than gated on an open window: when Observer
+	// is the active surface the switch below already delivers these, so the gate
+	// would only be a second place for the two paths to disagree.
+	if observerScoped(msg) {
+		return r.throughToObserver(msg)
 	}
 	if programScoped(msg) {
 		var oc, bc tea.Cmd
@@ -521,6 +580,17 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return out, nil
 					}
 				}
+			// THE REQUEST WINDOW (R4), through the keymap since D-135.
+			//
+			// IT FALLS THROUGH ON OBSERVER rather than returning, for the same
+			// reason the bed's and the queue's controls do: `r` is the
+			// listener's repeat, and a case that returned unconditionally would
+			// take it away.
+			case actRequest:
+				if r.consoleOwnsTheKeys() {
+					r.observer = r.observer.openRequest()
+					return r, nil
+				}
 			case actGainUp, actGainDown,
 				actSettings, actAbout, actStatus, actHelp, actQuit, actLookup:
 				return r.throughToObserver(msg)
@@ -547,18 +617,6 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if k, ok := msg.(tea.KeyPressMsg); ok && r.consoleOwnsTheKeys() {
 		if out, opened := r.openCardWindow(k.String()); opened {
 			return out, nil
-		}
-		// THE CONSOLE'S TWO REMAINING CONTROLS, both of which the control row
-		// has DRAWN since D-102 with nothing bound to them (R4b). A painted
-		// control that does nothing is worse than an absent one — the operator
-		// presses it, sees nothing, and concludes the feature is broken.
-		switch k.String() {
-		case "r":
-			// THE REQUEST WINDOW (R4). Lower case: `r` is Observer's repeat and
-			// this is the console, which is D-56's rule — one key, one meaning
-			// PER SURFACE — and the control row draws `[r]`.
-			r.observer = r.observer.openRequest()
-			return r, nil
 		}
 	}
 	// THE WINDOW ON TOP OWNS THE KEYS (D-58). While the diagnostics window is

@@ -185,14 +185,91 @@ const (
 	// in most themes and have nothing to do with each other, and the second
 	// edition will want to differ.
 	TitleEdition Token = "title.edition"
+
+	// TitleEditionBroadcaster is the SECOND edition's word, and it is the "will
+	// want to differ" above arriving (HUM LEAD, 2026-09-14): "Let's make
+	// 'Broadcaster' text in the mastHead Orange vs. the Bold Light Blue - so:
+	// Observer - Bold Light Blue / Broadcaster - Bold Orange."
+	//
+	// THE MASTHEAD IS THE ONE PLACE AN OPERATOR CAN BE SURE WHICH SURFACE THEY
+	// ARE ON. Both editions draw the same wordmark, the same ladders and the
+	// same stamp, and ctrl+o / ctrl+b swap between them in place — so the word
+	// beside the wordmark is the distinction, and two editions sharing one tone
+	// made it a distinction you had to READ rather than see.
+	//
+	// EACH THEME'S OWN ORANGE, the way TitleEdition takes each theme's own
+	// light blue. Monochrome is the honest exception and says so at its entry.
+	TitleEditionBroadcaster Token = "title.edition.broadcaster"
+
+	// THE DATA AGE LADDER (D-137, HUM LEAD 2026-09-15): "< 2 min - BLUE, < 5 min
+	// - GREEN, < 10 min - YELLOW, < 15 min - ORANGE ( we refresh at 15m max so
+	// It should never get to 'red' )."
+	//
+	// NAMED FOR THE DATA, NEVER FOR THE COLOUR — the HUM LEAD's own correction,
+	// with the reason: "that way the color/implementation detail isn't in the
+	// token name (and can be remapped to other colors later)". A `DataBlue`
+	// would have to be renamed the day a theme wanted it teal, and a theme that
+	// could not rename it would paint a token called blue in orange. The rungs
+	// say how much the operator can trust what they are reading; the palette
+	// says what that looks like.
+	//
+	// FIVE RUNGS FOR FOUR THRESHOLDS, so every duration maps to a rung instead
+	// of falling into an implicit "everything else". `DataStale` is the state
+	// the cadence is supposed to prevent — a refresh that did not happen — and
+	// naming it is what lets a theme distinguish it later without a code change.
+	// IT IS NOT RED TODAY: no rung promises a colour the ruling said the
+	// operator should never meet.
+	//
+	// FIVE TOKENS AND NOT FIVE BORROWED ONES, and that was MEASURED rather than
+	// assumed. The obvious move is to reuse FocusCell, ProviderOK, AlertLabel
+	// and FireMark — but registering those against the MODAL ground, which the
+	// card is painted on, lifts them until they read there, and the probe found
+	// it moved FireMark in five themes and FocusCell in one. Observer's ▲ fire
+	// marks would have changed colour to make a console caption legible, which
+	// is exactly what `aaPairs` warns about: "widening a shared token's ground
+	// set changes it everywhere".
+	//
+	// THEY ARE FILLED FROM THE THEME'S OWN COLOURS (withAgeLadder) rather than
+	// listed per theme, so every theme — including the Quattro palettes nobody
+	// hand-writes — gets an on-palette ladder for free, and any theme that wants
+	// its own may still name all five.
+	DataNew    Token = "data.new"    // < 2 min
+	DataFresh  Token = "data.fresh"  // < 5 min
+	DataUsable Token = "data.usable" // < 10 min
+	DataAged   Token = "data.aged"   // < 15 min
+	DataStale  Token = "data.stale"  // beyond the refresh cadence: a pull that did not happen
 )
+
+// withAgeLadder fills the data-pull ladder from the theme's own palette when
+// the theme has not named it, so a ladder exists everywhere without a single
+// per-theme entry — and without lifting the tokens it borrows FROM, which stay
+// registered only against the grounds they are actually painted on.
+func withAgeLadder(t map[Token]string, named map[Token]string) map[Token]string {
+	for _, f := range []struct{ dst, src Token }{
+		{DataNew, FocusCell},     // the theme's own light blue
+		{DataFresh, ProviderOK},  // the green it already calls "healthy"
+		{DataUsable, AlertLabel}, // the yellow it already calls "caution"
+		{DataAged, FireMark},     // the orange it already calls "hot"
+		{DataStale, FireMark},    // the same orange TODAY: the ruling promises no red rung
+	} {
+		// "DID THIS THEME NAME IT", NOT "IS IT EMPTY". A registered theme starts
+		// from a COPY OF THE DEFAULT, so by the time this runs the slot is
+		// already full of the default's blue — and an emptiness test would leave
+		// every theme wearing Watchpost's ladder. Monochrome caught it at once:
+		// a theme whose whole purpose is to have no colour was handed four.
+		if _, ok := named[f.dst]; !ok {
+			t[f.dst] = t[f.src]
+		}
+	}
+	return t
+}
 
 // defaultTheme is the HUM-LEAD-directed B3 palette, built fresh on each
 // call: the theme registry (themes.go) owns the active table and every
 // registered theme copies from this one (quality pass Q1, L3-F17 — no
 // package-level map to guard).
 func defaultTheme() map[Token]string {
-	return withAA(map[Token]string{
+	return withAA(withAgeLadder(map[Token]string{
 		TextBase:   "250",
 		TextBright: "97",
 
@@ -314,7 +391,11 @@ func defaultTheme() map[Token]string {
 		GradEnd:   "#7CE3B3",
 
 		TitleEdition: "1;117", // bold light blue — 117 is what this palette already calls light blue (FocusCell)
-	})
+		// AND THE CONSOLE'S WORD IN BOLD ORANGE (D-133, HUM LEAD 2026-09-14).
+		// 208 is this palette's own orange — what TempHi and FireMark already
+		// use — so the masthead borrows rather than introduces a colour.
+		TitleEditionBroadcaster: "1;208",
+	}, nil))
 }
 
 // Tok resolves a semantic token to its SGR params (or hex for window/

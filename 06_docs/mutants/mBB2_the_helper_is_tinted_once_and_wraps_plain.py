@@ -6,9 +6,12 @@ import pathlib
 # A TINT IS TWO ESCAPE CODES AT THE ENDS OF A STRING. Anything that splits the
 # string between them drops the styling on everything after the break, and the
 # window wraps whatever it is given.
-p = pathlib.Path("modes/tty/request.go"); s = p.read_text()
-old = """		for _, l := range render.WrapText(aside, requestHelperWidth(o)) { // bounded by the text (P10-02)
-			out = append(out, "    "+render.Italic(render.Tint(l, tone)))
-		}"""
+#
+# Re-pointed 2026-09-14 (D-129): the drawing moved to poolnote.go, shared by the
+# request window and the console's lookup.
+p = pathlib.Path("modes/tty/poolnote.go"); s = p.read_text()
+old = """	for _, l := range render.WrapText(aside, width) { // bounded by the text (P10-02)
+		out = append(out, "    "+render.Italic(render.Tint(l, tone)))
+	}"""
 assert old in s, "mBB2"
-p.write_text(s.replace(old, """		out = append(out, "    "+render.Italic(render.Tint(aside, tone)))""", 1))
+p.write_text(s.replace(old, """	out = append(out, "    "+render.Italic(render.Tint(aside, tone)))""", 1))

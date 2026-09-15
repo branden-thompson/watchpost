@@ -63,8 +63,21 @@ func alertWidths(rows []AlertRow, width int) (kind, loc int) {
 	// floor before the place name is cut at all, which is the reference's own
 	// priority: an operator can place "Rancho Pen…" and cannot place "SEV. T.ST…".
 	loc = min(loc, max(alertLocMin, room-alertKindW))
-	return max(0, room-loc), loc
+	// THE HAZARD COLUMN NEVER REACHES ZERO (D-146). `max(0, …)` let it, and a
+	// zero-width column FAILS OPEN: `truncate(s, 0)` returns the string
+	// unchanged, so the box that lists what is about to be read would spill its
+	// widest row through the right-hand border rather than cutting it.
+	//
+	// UNREACHABLE TODAY behind the 100-column refusal, and pinned anyway —
+	// this is the surface naming the hazards, and "held by a rule stated
+	// somewhere else" is how the out-of-fence defects at this exit happened.
+	return max(alertKindMin, room-loc), loc
 }
+
+// alertKindMin is the floor the hazard column keeps. One cell is enough to make
+// `truncate` CUT rather than pass the row through untouched, which is the
+// failure mode this floor exists to refuse.
+const alertKindMin = 1
 
 // AlertTable draws the takeover's contents.
 //

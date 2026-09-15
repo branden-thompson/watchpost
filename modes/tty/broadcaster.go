@@ -278,16 +278,117 @@ func (b Broadcaster) heldNotice() []string {
 	if b.power != lineup.OffAir {
 		return nil
 	}
-	held := len(b.lineup.Cards(lineup.AlertRail))
+	// HAZARDS, NOT CARDS — AND ONLY READABLE ONES (D-142).
+	//
+	// TWO DEFECTS IN ONE LINE, on the console's loudest safety surface. It
+	// counted CARDS: a burst is ONE card carrying many arrivals (MVS-D-77), so
+	// five hazards held read "1 HAZARD(S) HELD", and the escalation ladder keys
+	// off that number. And it read `Cards()` where every other rail reader
+	// reads `Projection()`, which drops out-of-fence cards precisely because
+	// they are NOT READ — so a rail the fence excluded still said "Go ON AIR to
+	// read them", an instruction that would read nothing, escalating to "may be
+	// dropped unread".
+	//
+	// `Projection` IS THE ONE OWNER OF "WHAT THIS RAIL CAN ACTUALLY SAY", and
+	// counting its arrivals is the same question the takeover box answers — so
+	// the band and the box can no longer disagree about whether anything is
+	// being withheld.
+	var held int
+	for _, c := range b.lineup.Projection(lineup.AlertRail) { // bounded by the rail (P10-02)
+		if n := len(c.From); n > 0 {
+			held += n
+			continue
+		}
+		held++ // a card with no arrivals recorded is still one hazard held
+	}
 	if held == 0 {
 		return nil
 	}
 	for _, s := range heldEscalation {
 		if b.standbySince.IsZero() || b.clock().Sub(b.standbySince) >= s.after {
-			return []string{"", s.mark + "  " + strconv.Itoa(held) + " HAZARD(S) HELD — the station is in STANDBY and nothing is going to air. " + s.say}
+			return b.heldBand(held, s.mark, s.say)
 		}
 	}
 	return nil
+}
+
+// heldBand draws the notice as a BAND rather than a line (D-138).
+//
+// HUM LEAD, 2026-09-15: "Let's make that look like the ticker I almost missed
+// this: 3 lines, message in the center, 3 line bkg should be the darker yellow
+// (not orange, not red) use the same tint as the 'LOCAL ALERT Advisory BKG'."
+//
+// ALMOST MISSED IS THE WHOLE FINDING. The notice was one unpainted row among
+// painted regions, which is the least visible thing a frame can contain — and
+// this is the one row that says a hazard is being held off the air. Its words
+// were right and nobody's eye stopped on them.
+//
+// `AlertModalAdvBG` IS THE TINT NAMED: the LOCAL ALERT window's advisory tile,
+// "muted yellow" in its own comment — not `TickerAdvisoryBG`, which is the
+// burnt orange of the tape's advisory lane and the colour the ruling excludes.
+// `AlertModalText` comes with it: `aaPairs` already registers that pair, so the
+// band inherits a contrast answer measured in every theme.
+//
+// BUILT THE WAY THE STATION SECTION IS BUILT — padded to the frame less the
+// inset, the inset added, then painted in one Block call. Two adjacent bands
+// assembled two different ways is how a three-cell disagreement gets in.
+func (b Broadcaster) heldBand(held int, mark, say string) []string {
+	o := b.opts()
+	// THE COUNT SHOUTS AND THE PROSE DOES NOT (the ruling, line by line):
+	// "'1 HAZARD(S) HELD' - BOLD WHITE / -- the station is in STANDBY and
+	// nothing is going to air. <- normal text color / 'ON AIR' - BOLD".
+	//
+	// BOLD ON THE BAND'S OWN WHITE, NOT A SECOND WHITE. `AlertModalText` is
+	// white already, so weight is the only thing added — and weight is not
+	// contrast, so no AA answer moves (the same argument D-134 makes).
+	count := strconv.Itoa(held) + " HAZARD(S) HELD"
+	plain := mark + "  " + count + " — the station is in STANDBY and nothing is going to air. " + say
+
+	// WRAPPED BEFORE IT IS STYLED, WHICH IS D-129a's RULE AND THE REASON THIS
+	// IS NOT ONE `centerText` CALL. Centring alone CLIPS: the !!! rung's
+	// sentence is ~149 cells and the band is 127 at the HUM LEAD's width, so
+	// the most severe message on the console lost its ending — "may be drop".
+	// The previous single line wrapped in the terminal instead, so clipping
+	// would have been a regression introduced by making it prettier.
+	//
+	// AND THE EMPHASIS IS APPLIED PER LINE, AFTER the wrap, for the same reason
+	// the caveat's tint is: styling spans do not survive being cut in half.
+	//
+	// THREE LINES IS THE COMMON CASE, not a promise the band breaks to keep. At
+	// any width where the sentence fits — which is every rung but the last on a
+	// wide terminal — this is exactly the blank, message, blank the ruling asks
+	// for; where it does not fit, the band grows rather than the message
+	// shrinking, because a truncated hazard notice is the one outcome this
+	// notice exists to prevent.
+	body := make([]string, 0, 3)
+	for _, l := range render.WrapText(plain, b.bandWidth()) { // bounded by the text (P10-02)
+		body = append(body, centerText(emphasiseHeld(l, count), b.bandWidth()))
+	}
+
+	// ONE BLANK ABOVE AND BELOW, which is what makes it a band instead of a
+	// coloured row.
+	rows := make([]string, 0, len(body)+2)
+	for _, r := range append(append([]string{""}, body...), "") {
+		rows = append(rows, render.PadTo(bcSectionInset+r, b.frameWidth()-len(bcSectionInset))+bcSectionInset)
+	}
+	band := o.Block(strings.Join(rows, "\n"), render.Tok(render.AlertModalText), render.Tok(render.AlertModalAdvBG))
+	// AND A BARE ROW ABOVE IT, unpainted, so the band does not fuse with the
+	// station section it follows — the same air the frame keeps between every
+	// pair of regions.
+	return append([]string{""}, strings.Split(band, "\n")...)
+}
+
+// emphasiseHeld picks out the two things the ruling names on ONE wrapped line:
+// the count, and the action the operator must take.
+//
+// PER LINE, AND ONLY WHAT THAT LINE HOLDS. A phrase split across a wrap is left
+// plain rather than half-bolded — the alternative is an escape opened on one
+// row and closed on the next, which is the defect D-129a was filed for.
+func emphasiseHeld(line, count string) string {
+	for _, phrase := range []string{count, "ON AIR"} {
+		line = strings.ReplaceAll(line, phrase, render.Bold(phrase))
+	}
+	return line
 }
 
 // heldEscalation is the ladder, LONGEST FIRST so the walk returns the most
@@ -949,7 +1050,21 @@ func (b Broadcaster) stationLine() []string {
 	state, why, to := "STOPPED", "the programme is stopped; hazards still read", "ON AIR"
 	switch b.power {
 	case lineup.Running:
-		state = "*** ON AIR " + g.Dot + " BROADCASTING ***"
+		// BOLD WHITE ON THE SECTION'S RED (HUM LEAD, 2026-09-15): "When
+		// Broadcaster is Actively broadcasting, let's make this string *** ON
+		// AIR · BROADCASTING *** BOLD WHITE."
+		//
+		// THE SECTION'S OWN TEXT TOKEN, NOT A NEW WHITE. `stationTone` already
+		// paints this band `AlertModalText` on `TickerEmergencyBG`, and
+		// AlertModalText IS white — so this states the tone the row already
+		// wears and adds the WEIGHT. Registering TextBright against the
+		// emergency ground instead would have lifted TextBright everywhere it
+		// is painted, which `aaPairs` warns about in as many words: "widening a
+		// shared token's ground set changes it everywhere".
+		//
+		// WEIGHT IS NOT CONTRAST, so this changes no AA answer: the pair is
+		// already in production and is unchanged.
+		state = render.Bold(render.Tint("*** ON AIR "+g.Dot+" BROADCASTING ***", render.Tok(render.AlertModalText)))
 		why = "audio out of this program; Watchpost does not observe a transmitter"
 		to = "STANDBY"
 	case lineup.OffAir:

@@ -12,8 +12,6 @@ package config
 // THEY MAY WELL BE THE SAME PLACE, and on an existing install they start that
 // way — see `Station`. What changed is that they no longer have to be.
 
-import "github.com/branden-thompson/watchpost/platform/invariant"
-
 // Broadcaster is the station's settings: where it transmits from, and how far
 // its service area reaches.
 type Broadcaster struct {
@@ -127,9 +125,6 @@ func (b Broadcaster) BedRadius() float64 {
 func (c Config) Station() (Location, bool) {
 	if c.Broadcaster.Transmitter.Lat != 0 || c.Broadcaster.Transmitter.Lon != 0 {
 		return c.Broadcaster.Transmitter, true
-	}
-	if err := invariant.Check(len(c.Locations) >= 0, "a configuration has a location list, empty or not"); err != nil {
-		return Location{}, false
 	}
 	if len(c.Locations) == 0 {
 		return Location{}, false

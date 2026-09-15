@@ -365,9 +365,7 @@ func (m *mastercontrol) unhold() {
 	if m == nil {
 		return
 	}
-	m.mu.Lock()
-	m.held = false
-	m.mu.Unlock()
+	setUnder(&m.mu, &m.held, false)
 }
 
 // givenWay reports whether the broadcast is currently ducked.

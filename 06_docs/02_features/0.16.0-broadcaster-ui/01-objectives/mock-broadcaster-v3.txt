@@ -27,7 +27,7 @@ This should help harmonize some of the plumbing because now Observer and Broadca
 └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
                                                                                                                                                  
    STATION AIR:         { *** ON AIR · BROADCASTING *** - 00d 00h 00m 00s| STANDBY (DEAD AIR)}        GAIN  - ████████████████░░░░░░░░░░░░░░ +  100   
-   BROADCASTIN FROM:    Bonsall, CA    TOWER GPS:  88.8888888, -888.8888888   SERVICE RADIUS: 100 Miles                                               
+   BROADCASTIN FROM:    Bonsall, CA    TOWER GPS:  <lat>, <lon>               SERVICE RADIUS: 100 Miles                                               
    ┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓  
    ┃  ⏺ LIVE NOW    ┃   LOCATION REPORT • Oceanside, CA 92057  •  Presented by   System Voice                                     0   Full Read   ┃   
    ┣━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫    

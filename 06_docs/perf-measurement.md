@@ -164,3 +164,46 @@ remain, in the order they are worth measuring:
 **None of these is measurable from a unit test** — they need a running instance, which is what
 `soak.sh` is for. That is the sounding to take next, and it is the "standard workload" gap this
 document already names as the only piece 0.16.0 actually needs.
+
+## The location lookup: the index is free, the network is the whole cost (measured 2026-09-14)
+
+**`[l]`'s cost is one geocoder round trip, and nothing else on the path is measurable.** The question
+that prompted this was whether Broadcaster's `[l]` should be scoped to the station pool the way the
+request window's Location field is. The measurement says the scoping decision cannot be a performance
+decision, because every offline candidate is already four to five orders of magnitude below the one
+step that costs anything.
+
+| Path | Cost | What takes it |
+| --- | --- | --- |
+| Offline index, zip | **2 µs** | `92084` |
+| Offline index, partial miss | **1 µs** | `lone` — refused before any work |
+| Offline index, city hit | **15 µs** | `San Diego, CA` |
+| Pool scan | below the index | a prefix compare per pooled ref |
+| **Geocoder fallback, warm** | **~200 ms** | n=4, 201/203/204/208 ms |
+| **Geocoder fallback, first call** | **939 ms** | DNS and TLS, once per session |
+
+*Instrument:* a scratch benchmark in `domains/locations` at `-benchtime 200x` for the offline rows,
+and five live `openmeteo.Geocoder.Resolve` calls for the network rows.  Both files were removed after
+the run; the tree is the evidence that they were scratch.  n=5 rather than n=1, per the rule this
+document states one section above — and the first sample was again the outlier, again by 4.6x.
+
+### What decides whether the network is reached
+
+`Resolver.Resolve` takes the offline index only for a **zip** or an **exact** city name, optionally
+qualified `City, ST`.  `pickCity` deliberately refuses a prefix-only match — *"San F should not
+silently resolve to San Francisco on a full Resolve"* — so a **partial name falls through to the
+geocoder**.  That is the felt behaviour exactly: `Lone Pine, CA` answers in 15 µs, and `lone` answers
+in 200 ms because it left the machine.
+
+**Therefore pool-scoping `[l]` buys 15 µs and costs the out-of-radius lookup** that Observer exists to
+provide and that the request window's own helper text points the operator toward.  It is not the
+trade the performance ruling was written for.
+
+### Carried to 0.16.5
+
+- **Warm the geocoder connection at start-up.** The first lookup of a session pays 939 ms against a
+  200 ms steady state; the ~700 ms delta is one handshake, and it lands on the operator's first
+  search rather than on anything they can see coming.
+- **Decide whether a partial name may resolve from the pool.** It is the only change that removes the
+  round trip rather than hiding it, and it is a behaviour ruling, not an optimisation — see the fork
+  recorded for the HUM LEAD.

@@ -111,13 +111,31 @@ func (b Broadcaster) upNextBox() []string {
 	// Box probably needs a bkg color other than none - I suggest the same Blue as
 	// the modal for now").
 	//
-	// THE MODAL'S TILE, THROUGH `ModalTone`, so it is the SAME blue and follows the
-	// theme — a second colour mixed here would be a second answer to what the
-	// app's tile blue is, and the Light theme's is not the dark one's.
+	// "FOR NOW" ENDED ON 2026-09-15, exactly as that note anticipated: "let's
+	// make the cell background color of the UP NEXT box the same 'blue' token
+	// color used as the bkg for 'DIRECTION' and 'TODAY' column - this will help
+	// add a bit of visual distinction that will also be themeable."
 	//
-	// "FOR NOW" IS THE HUM LEAD'S OWN WORD and it is recorded rather than
-	// smoothed over: the card family has grounds of its own (`cardTone`, D-86) and
-	// this box may end up wearing one of those instead.
+	// TWO GROUNDS, NOT ONE, AND THAT IS THE CORRECTION (D-136). The first pass
+	// read "the cell background color of the UP NEXT box" as the BOX and painted
+	// all of it — label and report together — in the bands' blue and the bands'
+	// bold white. HUM LEAD, UAT 2026-09-15, with a diagram: the LABEL CELL is
+	// TODAY BLUE; the report beside it is "STANDARD MODAL BLUE", and its
+	// "content ... should not be all bold and white, but the standard text
+	// color".
+	//
+	// THE WORD WAS "CELL" AND IT MEANT CELL. A label cell beside a report is
+	// exactly the shape `D I R E C T I O N` has beside its rows, which is why
+	// that band was the colour named — the point was the CELL, not the box.
+	//
+	// `GroupTodayBG` IS THAT BLUE, AND IT IS THE SAME OBJECT — not a colour
+	// matched by eye. It is the ground under `D I R E C T I O N` in the console's
+	// own line-up table (render/lineup_table.go) and under `T O D A Y` in
+	// Observer's (render/table.go), so the three cannot drift and a theme moves
+	// all of them together. `GroupText` comes with it: the tone every band in the
+	// app carries its text in, and `aaPairs` already registers {GroupText, bands},
+	// so the cell inherits a contrast answer measured in every theme.
+	labelGround := render.Tok(render.GroupText) + ";" + render.Tok(render.GroupTodayBG)
 	fg, bg := render.ModalTone(b.darkBG)
 	ground := fg + ";" + bg
 
@@ -127,9 +145,32 @@ func (b Broadcaster) upNextBox() []string {
 	for i, r := range rows { // bounded by the card's own height (P10-02)
 		cell := strings.Repeat(" ", bcUpNextLabelW)
 		if i == at {
-			cell = render.PadTo(centerText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW)
+			// BOLD WHITE, RULED (HUM LEAD, 2026-09-14): "Let's make 'UP NEXT' in
+			// the up next box BOLD WHITE so it contrasts a bit more." The box
+			// wears the modal's blue ground (D-114) and the caption was plain
+			// text on it, which at this size reads as part of the fill.
+			//
+			// THE TOKEN, NOT "white". `TextBright` is what this app already
+			// calls emphasized plain text, so the caption moves with the theme
+			// — the Light theme's bright is not the dark one's, and a literal
+			// here would be a second answer to a question the theme owns.
+			//
+			// THE CELL'S WIDTH IS UNCHANGED, and the reason is `PadTo` and
+			// `centerText` both measuring with `displayWidth` — escape codes
+			// are skipped, so styling cannot inflate the pad and shift the
+			// card's column. Checked rather than assumed: the mutation that
+			// pads AFTER tinting changes no frame at all, so it was written and
+			// then DISCARDED rather than committed as a rule nothing measures.
+			cell = render.Bold(render.Tint(
+				render.PadTo(centerText(bcUpNextLabel, bcUpNextLabelW), bcUpNextLabelW),
+				render.Tok(render.TextBright)))
 		}
-		out = append(out, bx.Rail+cell+bx.Rail+render.PadTo(render.TruncateCells(r, body), body)+bx.Rail)
+		// THE CELL IS PAINTED BEFORE THE ROW IS, and the row's own paint keeps
+		// it: `TintKeeping` rewrites an inner RESET to the outer ground, and the
+		// cell's opening escape is not a reset — so the label block survives and
+		// the report beside it returns to the modal tone at the rail.
+		out = append(out, bx.Rail+render.TintKeeping(cell, labelGround)+bx.Rail+
+			render.PadTo(render.TruncateCells(r, body), body)+bx.Rail)
 	}
 	out = append(out, bx.BL+strings.Repeat(bx.Rule, bcUpNextLabelW)+bx.B+strings.Repeat(bx.Rule, body)+bx.BR)
 	// THE WHOLE BOX IS PAINTED, BORDERS INCLUDED — the rule `shell` states for a

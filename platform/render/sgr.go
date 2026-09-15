@@ -58,19 +58,35 @@ const (
 )
 
 // Wordmark is the masthead: the gradient wordmark, and the edition word beside
-// it in the theme's own light blue. An empty edition is the wordmark alone —
-// the narrowest rung of the header's ladder, and what a surface with no room
-// for the distinction shows.
+// it in that edition's own tone. An empty edition is the wordmark alone — the
+// narrowest rung of the header's ladder, and what a surface with no room for
+// the distinction shows.
 //
 // ONE OWNER, because the header and the About window both draw it and a build
 // whose masthead and About box disagreed about which edition it is would be
 // worse than either wording on its own.
+//
+// AND THE TONE IS PART OF WHAT IT OWNS (D-133). Picking the token here rather
+// than at the two call sites is what keeps the masthead and the About window
+// from disagreeing about the COLOUR as well as the word.
 func Wordmark(edition string) string {
 	mark := TitleGradient(WordmarkName)
 	if edition == "" {
 		return mark
 	}
-	return mark + " " + Tint(edition, Tok(TitleEdition))
+	return mark + " " + Tint(edition, Tok(editionTone(edition)))
+}
+
+// editionTone is which token an edition's word wears.
+//
+// BY THE EDITION CONSTANT, NOT BY A BOOLEAN. A third edition adds a case here
+// and a token beside it; a bool would have to be rewritten into something else
+// the day it stopped being a question with two answers.
+func editionTone(edition string) Token {
+	if edition == EditionBroadcaster {
+		return TitleEditionBroadcaster
+	}
+	return TitleEdition
 }
 
 // TitleGradient renders the app title bold with the reference-CLI interpolated

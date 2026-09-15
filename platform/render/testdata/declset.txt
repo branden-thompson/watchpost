@@ -16,6 +16,11 @@ const Clock12
 const Clock24
 const ClockMil
 const ConfirmBG
+const DataAged
+const DataFresh
+const DataNew
+const DataStale
+const DataUsable
 const DefaultThemeName
 const DetailGutter
 const EditionBroadcaster
@@ -86,6 +91,7 @@ const TickerStatementBG
 const TickerWarningBG
 const TickerWatchBG
 const TitleEdition
+const TitleEditionBroadcaster
 const TrendDown
 const TrendUp
 const UnitC
@@ -96,6 +102,7 @@ const WindowBGLight
 const WordmarkName
 const alertGap1
 const alertGap2
+const alertKindMin
 const alertKindW
 const alertLocMin
 const alertNumW
@@ -293,6 +300,7 @@ func contrastRatio
 func deepenToAA
 func defaultTheme
 func displayWidth
+func editionTone
 func fgLuminance
 func fgRGB
 func fgTruecolor
@@ -352,6 +360,7 @@ func tensWords
 func thousands
 func truncate
 func withAA
+func withAgeLadder
 func without
 func xterm256RGB
 type AlertRow

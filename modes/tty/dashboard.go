@@ -172,15 +172,23 @@ type Config struct {
 	MoveCard func(id string, to int)
 	DropCard func(id string)
 
-	// PoolLookup resolves what the operator typed into the request window, and
-	// says whether the station can broadcast about it (R4).
+	// LocateInRadius resolves what the operator typed into a location field and
+	// says whether the station can broadcast about it (R4, D-130).
 	//
 	// THREE ANSWERS, NOT TWO. `found` is whether the place exists at all;
-	// `inPool` is whether it is inside the station's service radius. A location
-	// outside is NOT a lookup failure — HUM LEAD, 2026-09-14: it gets helper
-	// text saying "Observer supports location lookup outside Broadcast Radius",
-	// which is only possible if the two answers are kept apart.
-	PoolLookup func(query string) (ref snapshot.LocationRef, inPool, found bool)
+	// `within` is whether it is inside the station's SERVICE RADIUS — not
+	// whether it is one of the 25 the pool happens to hold, which is the
+	// distinction D-130 was filed for. A location outside is NOT a lookup
+	// failure — HUM LEAD, 2026-09-14: it gets helper text saying "Observer
+	// supports location lookup outside Broadcast Radius", which is only
+	// possible if the two answers are kept apart.
+	//
+	// IT MAY REACH THE NETWORK, and therefore it is called ONLY from a command,
+	// behind platform/debounce — never from a key handler or a render. The
+	// embedded index does not hold the small places (Rainbow, CA is in neither
+	// the city nor the zip table), so for them the geocoder is the only
+	// authority there is.
+	LocateInRadius func(query string) (ref snapshot.LocationRef, within, found bool)
 
 	// RequestCard is the operator asking for a report at a position (R4).
 	//
@@ -437,19 +445,24 @@ func defaultKeyMap() term.KeyMap {
 
 // Dashboard is the root TTY model.
 type Dashboard struct {
-	cfg        Config
-	keys       term.KeyMap
-	snap       *snapshot.Snapshot
-	recent     *snapshot.Snapshot
-	width      int
-	height     int
-	units      render.Units
-	clockFmt   render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
-	selected   int
-	alertIdx   int
-	recentOff  int                   // scroll offset (interaction lands with tab section nav)
-	modal      modal                 // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode    string                // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	cfg       Config
+	keys      term.KeyMap
+	snap      *snapshot.Snapshot
+	recent    *snapshot.Snapshot
+	width     int
+	height    int
+	units     render.Units
+	clockFmt  render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
+	selected  int
+	alertIdx  int
+	recentOff int    // scroll offset (interaction lands with tab section nav)
+	modal     modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode   string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	// addLocate is the DEBOUNCED answer about what has been typed into the
+	// search box, kept only while the window is serving the CONSOLE (D-129,
+	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
+	// and has nothing to check.
+	addLocate  locateState
 	lookupRef  *snapshot.LocationRef // the location a lookup opened Details for, until its data lands (HUM LEAD UAT 2026-08-28: the modal showed the old top RECENT row meanwhile)
 	addErr     string                // resolve failure surfaced in the modal
 	setup      setupState
@@ -739,6 +752,10 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d, nil
 	case resolvedMsg:
 		return d.handleResolved(v)
+	case locatePauseMsg:
+		return d.handleLocatePause(v)
+	case locateVerdictMsg:
+		return d.handleLocateVerdict(v)
 	case committedMsg:
 		return d.applyCommitted(v), nil
 	case RadioStatusMsg, VoiceNoteMsg, RelaySilentMsg:
@@ -1137,6 +1154,7 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 	case "lookup":
 		d = d.toggle(modalAdd) // UAT 26.4: search a location into RECENT and open its details
 		d.addMode, d.addQuery, d.addErr = "lookup", "", ""
+		d.addLocate = locateState{} // a fresh window has judged nothing yet
 		return d, true
 	case "remove":
 		if d.selected < d.numPriority() {

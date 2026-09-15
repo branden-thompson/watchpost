@@ -304,24 +304,29 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		// left to admit → `onOffered` returns NO EFFECTS, so there is no publish
 		// and the chain has nowhere to go.
 		return x.offer()
-	// DUCK AND RESTORE ARE WIRED AND UNREACHED (red team 2026-09-05, I-5).
+	// DUCK AND RESTORE ARE WIRED AND **REACHED** (corrected 2026-09-15, D-139).
 	//
-	// Nothing in production constructs either effect — the Director emits
-	// BuildCard, Speak, CueTicker, ReleaseTicker, Publish, Tune and Escalate,
-	// and no more — so mastercontrol.held is never true, and hold(), unhold(),
-	// takeBack()'s held branch and director.releaseBed() are all inert. That is
-	// stated here because those functions carry some of the heaviest comments
-	// in the release (the F-D5 critical section, the lock-order warning) in the
-	// present tense, and a reader is entitled to know the path is not taken.
+	// THIS COMMENT SAID THE OPPOSITE UNTIL BUILD EXIT, and it was true when it
+	// was written: at the 2026-09-05 red team (I-5) nothing in production
+	// constructed either effect. **P5's track-model batch wired them** —
+	// `Director.givingWay` decides from state the Director already holds and
+	// `settle` emits the change (`bed.go:392`, reached from `director.go:842`)
+	// — and `06_docs/wires-ratified.md:51-52` records exactly that. The comment
+	// was not revisited, so a paragraph asserting a path is never taken sat on
+	// the path while it ran.
 	//
-	// IT IS HARMLESS TODAY FOR A REASON WORTH WRITING DOWN. MVS-D-67 — one dip
-	// per drain, the rail owning the bed until its tail has played — was about
-	// a rail of MANY cards bouncing the bed between them. MVS-D-77 made a burst
-	// ONE card, so one Speak is one arbiter sequence and the per-sequence
-	// giveWay/takeBack dips once anyway. The ruling's problem dissolved rather
-	// than being solved by `held`. F-27's design is built on this path, so it
-	// is kept rather than deleted (AP-DEAD-01), and whoever wires it must know
-	// it has never run.
+	// WHY IT MATTERS MORE THAN AN OUT-OF-DATE SENTENCE: the functions below
+	// carry some of the heaviest reasoning in the release — the F-D5 critical
+	// section and the lock-order warning — and this note told every reader they
+	// were describing dead code. Found by red team at BUILD exit, which
+	// measured `effect lineup.Duck = duck()` live and said so.
+	//
+	// MVS-D-67 IS STILL SATISFIED, and by a different mechanism than `held`.
+	// The ruling — one dip per drain, the rail owning the bed until its tail
+	// has played — was about a rail of MANY cards bouncing the bed between
+	// them. MVS-D-77 made a burst ONE card, and `giveOrTakeBack` is
+	// EDGE-TRIGGERED: it emits only the change, so a drain of several cards
+	// dips once whether or not `held` is ever set.
 	case lineup.Duck:
 		// The bed gives way. IDEMPOTENT AT THE OWNER, so this and the narration
 		// arbiter's own duck cannot dip twice between them.

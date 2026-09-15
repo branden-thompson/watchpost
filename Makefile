@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -212,7 +212,13 @@ test-platforms:
 # `.gitignore` now re-includes `06_docs/**/*.log`; the check below is what
 # proves it for any path you pass. hygiene also names any record still sitting
 # in dist, so it gets promoted rather than lost on the next run.
-HYGIENE_KEEP := watchpost watchpost-0.14.1
+# AND THE SWEEP'S TIMINGS (2026-09-15). `mutant-verdicts.timings` is NOT a
+# record — it is the stopwatch the NEXT sweep reads to print a MEASURED eta
+# instead of a guessed one, which is what stopped an estimate coming in 4x
+# short. It is regenerable from any run, so it does not belong in the
+# repository's history; it is also the one thing in dist whose deletion costs
+# something, so it is named here rather than left to luck.
+HYGIENE_KEEP := watchpost watchpost-0.14.1 mutant-verdicts.timings
 
 hygiene:
 	@test -n "$(RESULTS)" || { echo "hygiene: RESULTS must name the run's record; refusing to delete"; exit 1; }
@@ -278,8 +284,58 @@ journey: build
 #
 # NOT IN `verify`: tens of minutes, one mutant at a time. Same standing as
 # `journey`. HUM LEAD approved it as a standing obligation 2026-09-13.
+# VERDICTS_RECORD is where the sweep's RECORD lives once it is durable.
+#
+# IT MOVES WITH THE RELEASE, exactly as HYGIENE_KEEP's pinned comparator does:
+# a sweep is evidence about the corpus as it stood for one release, and filing
+# them all in one place would make the newest silently overwrite the last.
+VERDICTS_RECORD := 06_docs/02_features/0.16.0-broadcaster-ui/07-readiness/mutant-verdicts.log
+
+# promote-verdicts is the protocol's THIRD AND FOURTH STEPS for this target —
+# put the results somewhere durable, then VERIFY they are there — and it runs
+# before the cleanup, never after (HUM LEAD, 2026-09-15).
+#
+# THE ORDER IS THE WHOLE POINT, and `hygiene`'s own comment says why: without
+# the verify step "this target is `rm` with a comment, and the first time a run
+# dies early it would delete the artefacts and the evidence together".
+#
+# IT REFUSES RATHER THAN OVERWRITES A GOOD RECORD WITH A BAD ONE. An empty or
+# missing log means the sweep died before it said anything, and copying that
+# over the last real one would destroy the evidence this step exists to keep.
+# DO NOT `make -n` THIS TARGET OR `mutant-verdicts` (learned the hard way,
+# 2026-09-15). GNU make EXECUTES a recipe line containing $(MAKE) even under
+# -n, so a "dry run" of `mutant-verdicts` runs the sweep script — which opens
+# its log with `: >` and truncates the record of the last real run. It cost
+# this session's 3-hour sweep log, recoverable only because the run's stdout
+# happened to survive elsewhere. To see what a target would do, read it.
+promote-verdicts:
+	@test -s "$(DIST)/mutant-verdicts.log" || { echo "promote-verdicts: $(DIST)/mutant-verdicts.log is missing or empty — the sweep left no record, so NOTHING is promoted"; exit 1; }
+	@mkdir -p $(dir $(VERDICTS_RECORD))
+	@cp "$(DIST)/mutant-verdicts.log" "$(VERDICTS_RECORD)"
+	@test -s "$(VERDICTS_RECORD)" || { echo "promote-verdicts: the copy to $(VERDICTS_RECORD) did not land; refusing to report it durable"; exit 1; }
+	@! git check-ignore -q "$(VERDICTS_RECORD)" || { echo "promote-verdicts: $(VERDICTS_RECORD) is git-ignored — filed is not committed; fix .gitignore or choose a tracked path"; exit 1; }
+	@echo "promote-verdicts: record durable in $(VERDICTS_RECORD) ($$(wc -l < $(VERDICTS_RECORD) | tr -d ' ') lines, tracked path)"
+
+# AND IT CLEANS UP AFTER ITSELF, exactly as `mutant-check` does (HUM LEAD,
+# 2026-09-15). This target is the LARGEST producer of build variants in the
+# repo — one full-tree compile per mutant across ~3 hours — and it was the one
+# path calling neither `cache-clean` nor `hygiene`. The 2026-09-06 incident was
+# 274 GB of Go build cache from exactly this shape of run.
+#
+# IT WAS MASKED BY LUCK, WHICH IS WHY IT SURVIVED A WHOLE SESSION UNNOTICED:
+# every `make verify` afterwards runs `mutant-check`, whose own `cache-clean`
+# swept up the sweep's leavings. A gate that is only clean because a different
+# gate ran is not clean.
+#
+# THE CLEAN RUNS ON FAILURE TOO, and the verdict is preserved across it — a
+# sweep that exits non-zero because something SURVIVED is the run most likely
+# to be followed by triage, editing and re-running, which is when the disk is
+# under most pressure.
 mutant-verdicts:
-	@./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-verdicts.log
+	@./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-verdicts.log; rc=$$?; \
+	  $(MAKE) --no-print-directory promote-verdicts || exit 1; \
+	  $(MAKE) --no-print-directory cache-clean || exit 1; \
+	  exit $$rc
 
 # MUTANT_POLICY decides WHEN the mutant corpus (171 mutants) runs in CI. It is
 # ONE WORD, AND SWITCHING IS EDITING IT: every mode's plumbing already exists in

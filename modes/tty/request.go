@@ -22,7 +22,6 @@ import (
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
-	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -44,14 +43,18 @@ const (
 type requestState struct {
 	field requestField
 
-	// query is what the operator typed, and ref is what it resolved to. A
-	// resolved ref with a query that has since changed is stale by
-	// construction: `resolve` clears it.
+	// query is what the operator typed. WHAT IT RESOLVED TO LIVES IN `locate`
+	// (D-130) — this held a `ref` of its own until 2026-09-15, and the field
+	// outlived the refactor that replaced it: nothing assigned it, and
+	// `blocker()` read it, so the chip named one condition for ever. A field
+	// nobody writes is not dead weight, it is a wrong answer with a type.
 	query string
-	ref   *snapshot.LocationRef
-	// outside says the location was found but is NOT in the station's pool —
-	// the case that gets helper text rather than a refusal (ruling 2).
-	outside bool
+
+	// locate is the DEBOUNCED answer about the Location field (D-130), and it
+	// replaces the ref/outside pair this window kept for itself. The console's
+	// `[l]` asks the same question of the same hook; two copies of the
+	// bookkeeping would be two ideas of what "valid" means.
+	locate locateState
 
 	// at is which report row the pointer is on; chosen is the set.
 	at     int
@@ -90,7 +93,7 @@ func requestOpen() requestState {
 // THREE THINGS MUST BE TRUE and each has its own helper text, so a refused
 // `enter` never leaves the operator guessing which one.
 func (st requestState) valid() bool {
-	return st.ref != nil && !st.outside && !st.chosen.Empty() && st.positionOK()
+	return st.locate.reachable() && !st.chosen.Empty() && st.positionOK()
 }
 
 // positionOK reports whether the requested position is one the running order
@@ -126,15 +129,7 @@ func (st requestState) position() int {
 // can do about it. A location outside the service radius is NOT an error — it is
 // a real place the station cannot broadcast about, and Observer can show it.
 func (st requestState) note() (string, string) {
-	switch {
-	case strings.TrimSpace(st.query) == "":
-		return "", ""
-	case st.ref == nil:
-		return "Location not found in Pool.", "Observer supports location lookup outside Broadcast Radius"
-	case st.outside:
-		return "Outside the station's service radius.", "Observer supports location lookup outside Broadcast Radius"
-	}
-	return "", ""
+	return st.locate.locateNote()
 }
 
 // requestTitle is the window's own name.
@@ -147,7 +142,7 @@ const requestTitle = "Line-Up Request"
 // wrong at every other, and the whole reason the helper lost its colour is that
 // something wrapped where nobody expected it to.
 func requestHelperWidth(o render.Opts) int {
-	return max(12, o.Width-4-2*modalInset-4)
+	return modalHelperWidth(o.Width)
 }
 
 // requestChips is the window's pinned footer.
@@ -191,34 +186,12 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 	// THE LOCATION, AND WHAT IS WRONG WITH IT.
 	out = append(out, settingLabel("Location: ", st.field == requestLocation)+"["+render.PadTo(st.query, 22)+"]")
 	if fact, aside := st.note(); fact != "" {
-		// THE TONE OBSERVER ALREADY USES FOR THIS EXACT MEANING (HUM LEAD, UAT
-		// 2026-09-14): "similar to the red used by the 'this is not your local
-		// station' color in Observer". That line is
-		// `Italic(Tint(…, NameWarning))` in detail.go, and it says the same kind
-		// of thing — what you are looking at is not what you think it is.
-		//
-		// THE TOKEN, NOT A COLOUR. Borrowing Observer's own means the two cannot
-		// drift and the theme moves both together; a new token here would be a
-		// second answer to "what does a caveat look like".
-		// WRAPPED HERE, AND EACH LINE TINTED SEPARATELY.
-		//
-		// THE WINDOW WRAPS WHAT IT IS GIVEN, and a tint applied to the whole
-		// string is a pair of escape codes at its two ENDS — so the wrap put
-		// "Broadcast Radius" on a second line with no colour on it at all, and
-		// the caveat trailed off into plain grey mid-sentence (HUM LEAD, UAT
-		// 2026-09-14, with the screenshot).
-		//
-		// STYLING SURVIVES A WRAP ONLY IF EVERY LINE CARRIES IT, so the text is
-		// broken up first and each piece is tinted on its own.
-		tone := render.Tok(render.NameWarning)
-		for _, l := range render.WrapText(fact, requestHelperWidth(o)) { // bounded by the text (P10-02)
-			out = append(out, "  "+o.Glyphs().Alert+" "+render.Tint(l, tone))
-		}
-		for _, l := range render.WrapText(aside, requestHelperWidth(o)) { // bounded by the text (P10-02)
-			out = append(out, "    "+render.Italic(render.Tint(l, tone)))
-		}
-	} else if st.ref != nil {
-		out = append(out, "    "+st.ref.Label)
+		// THE WORDING AND THE TINT ARE SHARED WITH THE CONSOLE'S LOOKUP (D-129).
+		// Two windows ask the pool the same question, so poolnote.go answers it
+		// once — including the reason the wrap has to come before the colour.
+		out = append(out, poolNoteLines(o, fact, aside, requestHelperWidth(o))...)
+	} else if st.locate.reachable() {
+		out = append(out, "    "+st.locate.ref.Label)
 	} else {
 		out = append(out, "")
 	}
@@ -301,9 +274,13 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 // working on.
 func (st requestState) blocker() string {
 	switch {
-	case st.ref == nil:
+	// NOT SETTLED IS NOT FOUND, and both mean the same thing to an operator:
+	// this window cannot act on what is in the Location field yet. The check
+	// reaches `locate` because that is where the answer is — the `ref` this
+	// used to read was never written.
+	case !st.locate.settled() || !st.locate.found:
 		return "Choose a location"
-	case st.outside:
+	case !st.locate.within:
 		return "Location is outside the service radius"
 	case st.chosen.Empty():
 		return "Choose at least one report"
@@ -406,10 +383,10 @@ func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		return d.requestToggle(), nil
 	case "backspace":
-		return d.requestErase(), nil
+		return d.requestErase()
 	}
 	if r := key.String(); len(r) == 1 {
-		return d.requestType(r), nil
+		return d.requestType(r)
 	}
 	return d, nil
 }
@@ -431,63 +408,48 @@ func (d Dashboard) requestToggle() Dashboard {
 }
 
 // requestType is a printable key, into whichever field takes text.
-func (d Dashboard) requestType(r string) Dashboard {
+func (d Dashboard) requestType(r string) (Dashboard, tea.Cmd) {
 	switch d.request.field {
 	case requestLocation:
 		d.request.query += r
-		// THE RESOLUTION IS STALE THE MOMENT THE QUERY CHANGES. Keeping the old
-		// ref would let the window show one place and schedule another.
-		d.request.ref, d.request.outside = nil, false
-		return d.requestResolve()
+		// THE ANSWER IS STALE THE MOMENT THE QUERY CHANGES. Keeping the old ref
+		// would let the window show one place and schedule another — `edit`
+		// discards it and starts the pause again.
+		return d.afterRequestEdit()
 	case requestPosition:
 		if r >= "0" && r <= "9" {
 			d.request.slot += r
 			d.request.prioritize = false // typing a slot IS choosing the slot
 		}
 	}
-	return d
+	return d, nil
 }
 
 // requestErase is backspace, into whichever field takes text.
-func (d Dashboard) requestErase() Dashboard {
+func (d Dashboard) requestErase() (Dashboard, tea.Cmd) {
 	switch d.request.field {
 	case requestLocation:
 		if n := len(d.request.query); n > 0 {
 			d.request.query = d.request.query[:n-1]
 		}
-		d.request.ref, d.request.outside = nil, false
-		return d.requestResolve()
+		return d.afterRequestEdit()
 	case requestPosition:
 		if n := len(d.request.slot); n > 0 {
 			d.request.slot = d.request.slot[:n-1]
 		}
 	}
-	return d
+	return d, nil
 }
 
-// requestResolve asks the console's pool what the operator typed means.
+// afterRequestEdit restarts the pause after a change to the Location field.
 //
-// THE POOL IS THE ANSWER, NOT THE GEOCODER (ruling 2). A location the station
-// cannot broadcast about is not an error and not a lookup failure — it is a real
-// place outside the service radius, and the window says so and points at
-// Observer rather than refusing to understand.
-func (d Dashboard) requestResolve() Dashboard {
-	q := strings.TrimSpace(strings.ToLower(d.request.query))
-	if q == "" || d.cfg.PoolLookup == nil {
-		return d
-	}
-	ref, inPool, found := d.cfg.PoolLookup(q)
-	switch {
-	case !found:
-		d.request.ref, d.request.outside = nil, false
-	case !inPool:
-		r := ref
-		d.request.ref, d.request.outside = &r, true
-	default:
-		r := ref
-		d.request.ref, d.request.outside = &r, false
-	}
-	return d
+// THE SAME MECHANISM THE CONSOLE'S SEARCH BOX USES (D-130). It reaches the
+// network for the small places the embedded index does not hold, so it waits
+// for the operator to stop typing rather than asking on every key.
+func (d Dashboard) afterRequestEdit() (Dashboard, tea.Cmd) {
+	var cmd tea.Cmd
+	d.request.locate, cmd = d.request.locate.edit(locateRequest, d.request.query)
+	return d, cmd
 }
 
 // requestSchedule is [enter]: the form becomes a request, or says why it cannot.
@@ -500,7 +462,7 @@ func (d Dashboard) requestSchedule() (tea.Model, tea.Cmd) {
 	if !d.request.valid() || d.cfg.RequestCard == nil {
 		return d, nil
 	}
-	ref, at, kinds := *d.request.ref, d.request.position(), d.request.chosen
+	ref, at, kinds := *d.request.locate.ref, d.request.position(), d.request.chosen
 	d.request = requestState{}
 	d = d.close()
 	return d, func() tea.Msg {
