@@ -1,11 +1,11 @@
 ---
 title: "0.16.0 BUILD exit — red team"
-status: "Two rounds, four blind agents, 2026-09-15.  Round 2's code verdict was NOT SAFE; every finding is dispositioned below."
+status: "Three rounds, nine blind agents, 2026-09-15 to 2026-09-16.  Round 2's code verdict was NOT SAFE and round 3's was DO NOT PASS; every finding is dispositioned below."
 ---
 
 # Red team — 0.16.0 BUILD exit
 
-**Two rounds, two blind agents each, on the A2DH axes** — *code-quality + safety-critical* and
+**Three rounds. Rounds 1 and 2 ran two blind agents each, on the A2DH axes** — *code-quality + safety-critical* and
 *docs-quality + project-hygiene*.  Every agent was given no prior context, told to verify before
 asserting, told a clean report was a valid result, and fenced off the long gates so it spent its
 budget reading.
@@ -61,6 +61,58 @@ remediation — on the default path of the release's headline control.
 | I8 | docs | `06-key_learnings/` absent — SEV-0 folder completeness still unmet | FIXED — opened |
 | I9 | docs | The headline evidence was uncommitted again | FIXED |
 | minors | both | Stale line citations, "361 commits" vs 362, two garbled sentences, 6 baselined lint findings unmentioned, M7–M10 | Corrected in the report |
+
+## Round 3 — five blind agents, told to be critical of the first two
+
+**The brief, from the HUM LEAD:** blind agents on the A2DH axes and personas,
+*"do not ad-lib"*; code-quality, Distinguished Engineer and junior-dev the most important; every
+finding backed by evidence; **"no findings is also a finding"**; and the Distinguished Engineer axis
+explicitly *"critical of the last 2 rounds of remediation"*.  The standard: survive an adversarial
+review by an external model, and let a human engineer approach the code and contribute — this is a
+public repository.
+
+**Nine findings.  Six were defects and all six are fixed; two are dispositioned as NOT defects; one
+was a corpus figure the sweep settled.  Three of the six were introduced or left standing by rounds 1
+and 2** — which is what round 3 was asked to test, and it is upheld.
+
+| # | Axis / persona | Finding | Disposition |
+|---|---|---|---|
+| SC-1 | safety-critical | A lapsed hazard never left the rail — a 30-minute tornado warning still there six hours later, invisible to staleness, counted by `heldNotice`, escalated to its loudest rung, offered the air | **FIXED, D-155.**  The report's framing was WRONG and corrected before fixing: it claimed the listener heard a stale read; `eventsFor` declines an expired alert, so the listener heard nothing.  The defect is the inverse — the console asserted a pending read the schedule could never take, forever.  FR-3.3 read backwards |
+| SC-2 | safety-critical | The fence never re-scoped when the service radius changed | **FIXED, D-154.**  Root was deeper than reported: `d.settings.Fence` had ONE assignment in the package, behind the air-moved guard, so the settings trigger reached nothing at all.  Fixing the guard alone would have left it broken |
+| F-110 | (found by the fix) | A lapsed hazard suppressed its live siblings — the composer declined the whole burst if any ref had lapsed | **FIXED by HUM LEAD ruling A**, 2026-09-16: *"valid alerts need to be read, expired alerts must never be"*, and the per-hazard half belongs to the composer |
+| DE-1 / SC-3 | Distinguished Engineer + safety-critical, **independently** | The Line-Up Request window sent the typed SLOT where the schedule takes an INDEX | **FIXED, D-156.**  Two agents found it separately, which is what moved it from plausible to confirmed.  `Requested.To` is documented as "the same number `Moved.To` carries" and the move path has subtracted `liveOffset` since D-119 |
+| DE-2 | Distinguished Engineer | `couldNotAsk` taught to one of two fields sharing `locateState` | **FIXED, D-157.**  Three sentences in one window disagreeing: helper said "press enter to try again", chip said "Choose a location", key did neither |
+| JD-1 / JD-2 | junior-dev | **FR-1.5 was never met**, its gate green for the whole release | **FIXED, D-158.**  The most serious finding of all three rounds — see below |
+| SC-5 | safety-critical / P10 | "P10 gate is RED — do not report P10 compliant" | **NOT A DEFECT.**  The BUILD report already says *"P10 is not in `verify`.  Its ledger is ratified at gates, never self-issued, so the 42 are presented here for the HUM LEAD rather than accepted by me."*  It never claimed compliance.  Closed as already-satisfied rather than made into work |
+| CQ-n | code-quality | `radio.go`'s four `want.Has` branches are hard-coded | **REFRAMED, F-111.**  The branches are not the defect: each answers a different TYPED hook, and table-driving them would erase the types.  What was missing is that NOTHING NOTICES A FIFTH — `report.Kind` is a closed set the operator now picks from (FR-3.4), so a new kind would appear in the registry, the modal and the labels and compose to nothing.  A completeness guard was written; it counts rather than names, because a test listing the four by hand is a second closed set drifting from the first |
+| — | project-hygiene | Corpus 358 on disk vs 355 promoted | **SETTLED by the sweep.**  `mCL1`/`mCL2`/`mCL3` — round 2's own remediation mutants — had never been run.  All three CAUGHT |
+
+### FR-1.5 is the finding that should sting
+
+The requirement's exit sentence is *"an override in the user's key table changes the chord"*.  The
+gate asserted the swap actions **are in the key map** — and a map no override can reach satisfies
+that perfectly.  `broadcasterKeyMap()` went to the Router raw, so no `[keys]` entry could change a
+single console binding, including **`ctrl+b`, tmux's own default prefix** and the exact key the
+multiplexer survey FR-1.5 cites says an operator will need to rebind.  The 2026-09-09 plant that
+"caught" it was real and caught what it aimed at; **what it aimed at was not the requirement.**
+
+The proxy gate is withdrawn in `gates.md` with its reasoning and renamed to what it does measure.
+
+### What the sweep then found about the remediation itself
+
+The 358-mutant sweep returned **352 CAUGHT, 2 SURVIVED, 4 NO EVIDENCE** — and every one of the four
+unmeasured was **UNAPPLIED because this round's own fixes had moved its anchor**: `mAM1` and `mP6`
+onto `indexForSlot`, `mAZ3` onto the restructured `requestSchedule`, `mCB2` onto the `onSubmit`
+switch.  The same shape as `mE5` earlier in this release, caught by the same gate.  All four
+re-pointed and re-verified CAUGHT; **eleven new mutants** added for D-154…D-158, plus two for F-109.
+
+### Two things no agent found, recorded because they are real
+
+- **`actStationToggle` has no modal guard** and is answered before D-58's *"the window on top owns
+  the keys"* rule.  Believed deliberate — taking a station off air must never be captured by a form —
+  but undocumented, and it is why the live offset is read per key rather than stamped at window-open.
+- **The decline reason for a lapsed alert** read *"the producer holds no alert for this card"* when
+  the producer held it fine.
 
 ## What both rounds say about the process
 
