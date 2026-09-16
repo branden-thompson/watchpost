@@ -293,10 +293,10 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 	// A GENUINE FIRST RUN SEEDS QUIETLY. A RELAUNCH DOES NOT (C-4).
 	//
 	// The seed exists so a new listener is not met with every active hazard in
-	// the country at once. It used to run on the first cycle of EVERY launch,
-	// and that swallowed the one set a returning listener has not heard: the
+	// the country at once, and it runs on a GENUINE first run only. On every
+	// launch it would swallow the one set a returning listener has not heard: the
 	// persistent store already stops a restart re-announcing what was announced
-	// before, so the only thing the blanket seed added was suppression of the
+	// before, so the only thing a blanket seed adds is suppression of the
 	// alerts that arrived WHILE THE APP WAS CLOSED. Lid shut at 2pm, tornado
 	// warning at 2:40, relaunched at 3:00 — on the tape, never spoken, and
 	// filtered by unread for ever after.
@@ -325,7 +325,7 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 // THIS IS THE PRODUCER, AND ONLY THE PRODUCER. It decides what has arrived and
 // what each arrival IS; the Director decides which of them are read and in what
 // order, the Composer decides what is said, and the Reader decides how it
-// sounds. This function used to be all four.
+// sounds. Any one of those decided here would be a second authority on it.
 //
 // WHAT WENT WITH THE SWAP, and why none of it is a loss:
 //
@@ -342,14 +342,14 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 func (t *tickerDeck) startTakeover(fresh []globalfeed.Event) {
 	// STANDBY HOLDS THE BURST; IT DOES NOT SPEND IT (MVS-D-78).
 	//
-	// [M] used to let the takeover run inaudibly: it cued the band, held, and
-	// MARKED EACH ALERT READ — so a tornado warning arriving while muted was
-	// consumed in silence and never sounded, even on unmuting a minute later.
-	// The visual channel still showed it, so nothing was hidden; the audio
-	// channel simply swallowed a hazard.
+	// A TAKEOVER THAT RAN INAUDIBLY WOULD SPEND THE BURST: it would cue the band,
+	// hold, and MARK EACH ALERT READ, so a tornado warning arriving while muted
+	// is consumed in silence and never sounds, even on unmuting a minute later.
+	// The visual channel would still show it, so nothing is hidden; the audio
+	// channel simply swallows a hazard.
 	//
-	// IT RETURNS BEFORE ANYTHING IS SENT, which is the same rule one layer up
-	// from where it used to sit. A muted burst must not reach the Director at
+	// IT RETURNS BEFORE ANYTHING IS SENT. A muted burst must not reach the
+	// Director at
 	// all: admitted to the rail it would be a promise to read (DR-3), and the
 	// executors' own mute check would then decline it every time it came round.
 	// The tick has already sent the severe index and the ticker tape — both
@@ -395,11 +395,11 @@ func unread(burst []globalfeed.Event, seen map[string]bool) []globalfeed.Event {
 // arrivalsOf is the producer's translation: domain events in, the Director's
 // domain-free arrivals out (DR-1).
 //
-// THE CHOOSING IS NOT HERE, AND NO LONGER IS ANYWHERE IN THIS FILE (T3.10b).
-// This used to plan the burst itself and hand the chosen events to a takeover
-// it also ran — a second planner beside the Director's, agreeing with it only
-// as long as both were passed the same settings. Now it states what arrived and
-// the Director decides the rest, which is the whole point of ONE carrier of the
+// THE CHOOSING IS NOT HERE, AND IS NOWHERE IN THIS FILE (T3.10b). Planning the
+// burst here and handing the chosen events to a takeover this file also ran
+// would be a second planner beside the Director's, agreeing with it only as long
+// as both were passed the same settings. This states what arrived and the
+// Director decides the rest, which is the whole point of ONE carrier of the
 // ladder (D-1).
 func arrivalsOf(fresh []globalfeed.Event) []lineup.Arrival {
 	out := make([]lineup.Arrival, 0, len(fresh))
@@ -714,10 +714,10 @@ func laneItems(rows []severe.Row) []tty.TickerItem {
 // unchanged. globalfeed.Lane and tty.TickerCategory are both aliases of
 // category.Category, so there is nothing here to translate.
 //
-// IT USED TO TRANSLATE, AND THAT IS THE BUG (#15). A four-arm switch over the
-// lanes, with a default of Warnings, had no arm for LaneEmergency — so an
-// Evacuation Immediate was laned Emergency by the feed and relabelled a
-// Warning on its way to the band, shown in warning colours beside a
+// TRANSLATING HERE IS THE BUG (#15). A four-arm switch over the lanes, with a
+// default of Warnings, has no arm for LaneEmergency — so an Evacuation Immediate
+// laned Emergency by the feed is relabelled a Warning on its way to the band,
+// shown in warning colours beside a
 // thunderstorm warning. The window and the read ladder had it right; only the
 // screen was wrong. C-2 pinned the ruling where the lane is decided during
 // 0.14.0, and this layer, the one that delivers the lane to a listener, was

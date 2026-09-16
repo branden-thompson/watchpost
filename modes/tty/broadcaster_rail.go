@@ -211,10 +211,9 @@ var bcRailForms = map[string][]string{
 	"LIVE ON AIR":       {"LIVE ON AIR", "LIVE", "ON AIR", "AIR"},
 	"UP NEXT":           {"UP NEXT", "NEXT", "UP"},
 	"SCHEDULED LINE UP": {"SCHEDULED LINE UP", "SCHEDULED", "SCHED", "SCH"},
-	// THE OLD NAMES KEEP THEIR LADDERS. D-87 merged the two queue regions into
-	// one, and these are what the rail said before it — kept because the ladder
-	// is a property of the WORD, not of the region that happens to use it, and
-	// a caller naming one should not fall through to being cut.
+	// THE SUPERSEDED REGION NAMES KEEP THEIR LADDERS. A ladder is a property of
+	// the WORD, not of the region that happens to use it, and a caller naming one
+	// should not fall through to being cut.
 	"SCHEDULED": {"SCHEDULED", "SCHED", "SCH"},
 	"LINE UP":   {"LINE UP", "LINE", "UP"},
 	"LIVE":      {"LIVE"},
@@ -258,10 +257,10 @@ func (b Broadcaster) framed(body []string, total int) []string {
 
 // chromeAt is `chrome` for the SCROLLING region, told where its window sits.
 //
-// THE THUMB TRACKS THE WINDOW, and until D-87 it could not: `chrome` passed a
-// hard-coded `lo` of 0 to `Railify`, so the rail drew a thumb that never moved
-// however far the operator scrolled. It was invisible while everything fitted on
-// one screen, and became a lie the moment the cards outgrew the terminal.
+// THE THUMB TRACKS THE WINDOW, which is why the window's position is a parameter
+// (D-87). A hard-coded `lo` of 0 to `Railify` draws a thumb that never moves
+// however far the operator scrolls — invisible while everything fits on one
+// screen, and a lie the moment the cards outgrow the terminal.
 func (b Broadcaster) chromeAt(body []string, from, off, total int) []string {
 	return b.railed(body, from, off, total)
 }
@@ -336,9 +335,9 @@ func (b Broadcaster) railed(body []string, from, lo, total int) []string {
 		// two rows larger (the caps) and the last position falls off the end,
 		// silently drawing no thumb at all. Caught by a test that scrolled to the
 		// bottom and looked; invisible while everything fitted on one screen.
-		// THE TOTAL IS THE LIST'S, NOT THE BODY'S (D-106). It used to be the
-		// body's row count less the caps, which was right while the rail spanned
-		// the whole region and wrong the moment it started partway down.
+		// THE TOTAL IS THE LIST'S, NOT THE BODY'S (D-106). The body's row count
+		// less the caps is right only while the rail spans the whole region, and
+		// wrong the moment it starts partway down.
 		track := len(body) - from - 2
 		for i, m := range render.Railify(make([]string, track), 1, lo,
 			max(total, 1), max(track, 1), glyphs) {
@@ -352,10 +351,10 @@ func (b Broadcaster) railed(body []string, from, lo, total int) []string {
 		// blank row between the running order and the pool — which the reference
 		// draws with a `│` in the rail column like every other row of the region.
 		//
-		// A BREAK USED TO BREAK THE RAIL TOO (HUM LEAD, UAT 2026-09-10: "the
-		// blank row in between sections needs to be completely blank"). That
-		// ruling was about the CARD regions' walls, and the rail then ran beside
-		// them; it does not any more (D-95, D-97), so the only blank rows left
+		// A BREAK DOES NOT BREAK THE RAIL (HUM LEAD, UAT 2026-09-10: "the blank
+		// row in between sections needs to be completely blank"). That ruling is
+		// about the CARD regions' walls, and the rail no longer runs beside them
+		// (D-95, D-97), so the only blank rows left
 		// under a rail are INSIDE one scrolling region — and a rail with a hole in
 		// it reads as two rails, which is the thing D-104 exists to stop being.
 		// A region with no rail carries no mark at all, one line above.

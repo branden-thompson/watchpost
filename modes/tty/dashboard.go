@@ -210,9 +210,9 @@ type Config struct {
 	// ServiceRadiusMinMi and ServiceRadiusMaxMi are the ruled bounds the window
 	// validates against, HANDED IN rather than restated here.
 	//
-	// THEY USED TO BE `serviceRadiusMin/Max` IN THIS PACKAGE, beside
-	// `config.MinServiceRadiusMi`/`MaxServiceRadiusMi` in the storage — two
-	// carriers of one fact, kept honest by a test in `app` that imported both.
+	// ONE CARRIER, NOT TWO. Holding them here as well as
+	// `config.MinServiceRadiusMi`/`MaxServiceRadiusMi` would be two carriers of
+	// one fact, kept honest only by a test importing both.
 	// A test that prevents drift is not the same as a fact with one owner, and
 	// the HUM LEAD ruled 2026-09-13 to fix it properly.
 	//
@@ -388,10 +388,9 @@ func (m RepeatMode) next() RepeatMode { return (m + 1) % 3 }
 // progress, the model loading — so a ten-second wait on Linux never reads as
 // "broken". "" clears the line.
 //
-// IT GOES TO SETTINGS NOW, not to the [V] chooser this comment used to name.
-// The chooser retired at MVS-D-3 and took the only thing that drew these words
-// with it; they were still being sent, and were dropped on arrival, until F-41.
-// The Settings cast rows draw them, under the row that asked.
+// IT GOES TO SETTINGS (F-41). The Settings cast rows draw these words, under the
+// row that asked — without a drawer they are sent and dropped on arrival, which
+// is a preview that is silent when it works and silent when it fails.
 //
 // THAT IS ALSO WHY IT STAYS ON THE NFR-8 GREP LIST AND WHY THE LIST CANNOT READ
 // ZERO. The list was written expecting this message to die with the chooser. It
@@ -1107,8 +1106,8 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "ticker-mute":
 		// [M] now OPENS Settings at the tone rows rather than toggling them
 		//. The six classes are separately mutable, and
-		// one key cannot mean six things — it took a listener to the group that
-		// does, which is also where the header chip used to point them.
+		// one key cannot mean six things, so it takes a listener to the group that
+		// does — the same place the header chip points them.
 		return d.openSetupAt(firstOfGroup(groupTone)), nil
 	default:
 		if act == "add-location" {
@@ -1258,9 +1257,9 @@ func (d Dashboard) handleRadio(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RadioStatusMsg:
 		return d.applyRadioStatus(v).armViz().takeCmd()
 	case VoiceNoteMsg:
-		// THE DECK'S WORDS REACH THE ROW THAT ASKED (F-41). They used to land in
-		// d.voiceNote, which the retired [V] chooser drew and nothing has drawn
-		// since — so a preview was silent while it worked and silent when it
+		// THE DECK'S WORDS REACH THE ROW THAT ASKED (F-41). Landing them in
+		// d.voiceNote would put them where nothing draws them, so a preview would
+		// be silent while it worked and silent when it
 		// failed. castNote already renders exactly this ("the deck's own words:
 		// progress, or why it failed"); the wire went to the wrong field.
 		//
