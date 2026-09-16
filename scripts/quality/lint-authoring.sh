@@ -17,43 +17,43 @@
 set -eu
 
 BASE=${1:-$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD)}
-files=$(git diff --name-only --diff-filter=ACM "$BASE"...HEAD -- '*.go' 2>/dev/null | grep -v '^third_party/' || true)
-[ -n "$files" ] || { echo "lint-authoring: no changed Go files"; exit 0; }
+# ADDED LINES ONLY, not whole changed files. The question a lint can answer is
+# "did this change introduce one", and scanning a whole file because one line in
+# it moved reports a backlog the author did not write — which is the fastest way
+# to make a lint something people learn to ignore.
+diff=$(git diff -U0 --diff-filter=ACM "$BASE"...HEAD -- '*.go' ':(exclude)third_party/*' 2>/dev/null || true)
+[ -n "$diff" ] || { echo "lint-authoring: no changed Go"; exit 0; }
 
 fail=0
 
 # --- AP-HIST-01: comments describe the code, not the history that led to it ---
 #
-# THE PHRASES ARE THE CATALOGUE'S OWN ANTI-SPECIMENS plus the shapes this
-# repository produced: a remediation narrating its own correction. It is the
-# narration that is banned, not the reasoning — "the boundary errs towards
-# telling the listener" is the code as it stands and passes; "corrected at
-# D-160" is a past the reader does not have and does not.
-HIST='used to (be|do|have|return|call)|(^|[^a-z])legacy( compatibility|:)|for backward compat|backwards compat|the old (API|behaviour|behavior|field|name|way)|an earlier version|previously (it|this|we)|this (used|was) (to|previously)|corrected at D-[0-9]|(found|caught) by (a |the )?(blind|red[- ]team)|red[- ]?team.s (round|second|third|final)|said the opposite|the first fix|for a fortnight|until D-[0-9]|stayed in place after|was [0-9]+, bumped'
+# THE PHRASES ARE THE CATALOGUE'S OWN ANTI-SPECIMENS plus the shapes a
+# remediation produces: an account of its own correction. It is the NARRATION
+# that is banned, not the reasoning — "the boundary errs towards telling the
+# listener" is the code as it stands and passes; "corrected at D-160" is a past
+# the reader does not have and does not.
+HIST='used to (be|do|have|return|call)|(^|[^a-z])legacy( compatibility|:)|for backward compat|backwards compat|the old (API|behaviour|behavior|field|name|way)|an earlier version|previously (it|this|we)|corrected at D-[0-9]|(found|caught) by (a |the )?(blind|red[- ]team)|red[- ]?team.s (round|second|third|final)|said the opposite|the first fix|for a fortnight|until D-[0-9]|stayed in place after|was [0-9]+, bumped'
 
-for f in $files; do
-  hits=$(grep -nEi "^[[:space:]]*(//|\*)" "$f" 2>/dev/null | grep -nEi "$HIST" || true)
-  if [ -n "$hits" ]; then
-    echo "lint-authoring: AP-HIST-01 — comments narrating history in $f"
-    printf '%s\n' "$hits" | head -6 | sed 's/^/    /'
-    fail=1
-  fi
-done
+hits=$(printf '%s\n' "$diff" | grep -E '^\+' | grep -vE '^\+\+\+' | grep -E '^\+[[:space:]]*(//|\*)' | grep -Ei "$HIST" || true)
+if [ -n "$hits" ]; then
+  echo "lint-authoring: AP-HIST-01 — this change ADDS comments that narrate history"
+  printf '%s\n' "$hits" | head -12 | sed 's/^/    /'
+  fail=1
+fi
 
 # --- AP-DEAD-01: a declaration kept alive only by a blank assignment ---
 #
 # `_ = x` on its own line is how unused code survives the compiler. The P10
 # checker reads it as a USE, which is exactly how a dead closure sat in the
 # request window for two weeks with a gate watching the file.
-for f in $files; do
-  hits=$(grep -nE '^[[:space:]]*_ = [a-zA-Z][a-zA-Z0-9_]*[[:space:]]*$' "$f" 2>/dev/null || true)
-  if [ -n "$hits" ]; then
-    echo "lint-authoring: AP-DEAD-01 — declaration kept alive by a blank assignment in $f"
-    printf '%s\n' "$hits" | head -4 | sed 's/^/    /'
-    echo "    If it is genuinely needed, say why on the line; if not, delete the declaration."
-    fail=1
-  fi
-done
+dead=$(printf '%s\n' "$diff" | grep -E '^\+' | grep -vE '^\+\+\+' | grep -E '^\+[[:space:]]*_ = [a-zA-Z][a-zA-Z0-9_]*[[:space:]]*$' || true)
+if [ -n "$dead" ]; then
+  echo "lint-authoring: AP-DEAD-01 — a declaration kept alive by a blank assignment"
+  printf '%s\n' "$dead" | head -4 | sed 's/^/    /'
+  echo "    If it is genuinely needed, say why on the line; if not, delete the declaration."
+  fail=1
+fi
 
 if [ "$fail" -ne 0 ]; then
   echo

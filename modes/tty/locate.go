@@ -199,12 +199,13 @@ const (
 // ordered switch rather than a run of `if`s spread across two windows is what
 // makes the ORDER reviewable in one place.
 //
-// IT DOES NOT MAKE A MISSING ARM COMPILE-VISIBLE, and an earlier version of this
-// comment claimed it did. Go has no switch exhaustiveness check and no linter
-// here enables one — `requestSchedule` switches on this answer with no default,
-// so a fifth `submitAnswer` would fall through it in exactly the silence that
-// claim promised to prevent. Corrected at D-160. If a fifth is ever added, the
-// consumers must be found by grep, and there are two.
+// IT DOES NOT MAKE A MISSING ARM COMPILE-VISIBLE. Go has no switch exhaustiveness
+// check and no linter here enables one, and `requestSchedule` switches on this
+// answer with no default. A fifth `submitAnswer` must therefore be carried to its
+// consumers by hand, and there are FOUR: the two switches (`requestSchedule`,
+// `modal_location.go`) and two boolean comparisons against `submitRetry` and
+// `submitRefuse` — the comparisons are the ones that would mis-handle a fifth
+// silently rather than fall through visibly.
 func (st locateState) onSubmit() submitAnswer {
 	switch {
 	case !st.settled():

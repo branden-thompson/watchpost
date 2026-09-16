@@ -109,11 +109,6 @@ func dropColumns(out []StatusColumn, rows []StatusRow, drop map[int]bool) ([]Sta
 // The excess comes off the Truncatable columns in order, each floored at its
 // MinWidth. A table with none keeps its width, and the caller's clamp is then
 // the honest outcome: nothing in it volunteered to be shortened.
-//
-// (Restored at D-160: this block had fused with the helper's doc below it — no
-// blank line between them — so godoc bound the whole of it to the helper and
-// left this function undocumented. Three of the release's extractions did the
-// same thing; found by a blind review.)
 func shrinkToFit(cols []StatusColumn, rows []StatusRow, inner, gutter int) ([]StatusColumn, []StatusRow) {
 	out := append([]StatusColumn(nil), cols...)
 	natural := 0

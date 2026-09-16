@@ -425,9 +425,9 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// BEFORE THE DISPATCH, NOT AFTER. The gain and the surface below are mirrored
 	// on the way OUT because they are DRAWN; this is READ by a handler while the
 	// message is being processed, so a value written afterwards is a value the
-	// handler never saw. Mirroring it beside them was the first fix and it did
-	// not work — the test caught it, which is the whole reason the test drives
-	// the Router instead of calling `requestSchedule`.
+	// handler never saw. `TestARequestSubmittedFromObserverStillLandsInTheTypedSlot`
+	// drives the Router rather than calling `requestSchedule`, which is what makes
+	// the ordering observable.
 	r.observer.liveOffset = r.broadcaster.liveOffset()
 	m, cmd := r.update(msg)
 	// THE LEVEL IS MIRRORED, NEVER OWNED TWICE (D-56). The Dashboard holds it —

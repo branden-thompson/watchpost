@@ -729,11 +729,7 @@ func (x *executors) cueFor(ref string) bool {
 // SKIPPED and its live siblings are read. Declining the whole card instead
 // silenced a live tornado warning because a flood advisory beside it had
 // expired.
-//
-// CORRECTED AT D-160: this paragraph still said "a card that cannot be composed
-// in full is declined" for a fortnight after F-110 made that false. On the
-// hazard path it is the highest-value comment in the function.
-//
+
 // AND IT RE-ASKS WHETHER THE ALERT IS STILL LIVE (red team 2026-09-05, I-8).
 // The record is snapshotted when the burst ARRIVES and the card is composed
 // later, so an alert that expired in between was read aloud as current, with

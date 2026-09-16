@@ -301,11 +301,6 @@ func (a *Assembler) mergeLocationLocked(k LocationKey, pd PartialData, provider 
 // PerLocation cannot answer this: a provider that returned nothing for a
 // location looks exactly like one nobody asked about, and telling those apart is
 // the whole of issue #13.
-//
-// (Restored at D-160: this block had fused with the helper's doc below it — no
-// blank line between them — so godoc bound the whole of it to the helper and
-// left this function undocumented. Three of the release's extractions did the
-// same thing; found by a blind review.)
 func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	a.mu.Lock()
 	defer a.mu.Unlock()

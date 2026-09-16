@@ -31,7 +31,6 @@ import (
 // composer actually answers. P-9: read the paragraph before adding to a closed
 // set; this is the paragraph, made executable.
 //
-// FOUND BY RED TEAM ROUND 3 (code-quality axis) as "four hard-coded branches".
 // The branches are not the defect and are not changed. The absence of anything
 // that notices a fifth is.
 func TestEveryReportKindReachesTheComposer(t *testing.T) {
@@ -75,7 +74,6 @@ func TestEveryReportKindReachesTheComposer(t *testing.T) {
 
 	// THE KIND NAMES, DERIVED FROM THE REGISTRY'S OWN SOURCE — not listed here.
 	//
-	// AN EARLIER VERSION COMPARED COUNTS, and a blind review caught what that
 	// misses: answer a new kind and drop `Seismic` and the count is still four,
 	// still green, with a kind the operator can choose and the composer never
 	// reads. A gate measuring a PROXY for the requirement instead of the

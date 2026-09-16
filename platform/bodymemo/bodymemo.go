@@ -49,17 +49,12 @@ type entry[V any] struct {
 
 // New builds a memo holding at most max entries.
 //
-// A CAP BELOW ONE IS THE CALLER'S MISTAKE, AND IT USED TO BE SILENT. It clamped
-// to 1 and said nothing, so `Parsed`'s bound check then measured the CLAMPED
-// value and could never see the caller's error — a check asserting the proxy
-// rather than the requirement, which is this project's own definition of a
-// defective gate. Found by red team round 3, on the invariant added earlier the
-// same day to close a different hole in this file.
-//
-// IT STILL CLAMPS, because returning nil would move a construction-time mistake
-// into a nil dereference at the first read, and a memo is built at start-up
-// where nothing is watching. What changes is that it no longer pretends: the
-// violation is named at the moment it happens.
+// A CAP BELOW ONE IS CLAMPED TO ONE AND NOT REPORTED. Returning nil would move a
+// construction-time mistake into a nil dereference at the first read, and a memo
+// is built at start-up where nothing is watching; there is no error channel here
+// to name it on. The bound that CAN break — that the memo never exceeds max — is
+// checked in `Parsed`, against the clamped value, which is the only value that
+// governs eviction.
 func New[K comparable, V any](max int) *Memo[K, V] {
 	if max < 1 {
 		// THE CLAMP IS ALL THERE IS, AND SAYING SO IS THE POINT. An earlier
