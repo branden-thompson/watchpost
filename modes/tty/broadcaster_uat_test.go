@@ -292,8 +292,11 @@ func TestTheStationBandIsEvenlyInset(t *testing.T) {
 	// TWO TEXT ROWS AND FIVE OF AIR BOX BETWEEN THEM (D-107): the state with its
 	// gain, where it broadcasts from with its transition, and the LIVE NOW /
 	// RELAY BED pair the section now carries.
-	if n := len(rows); n != 9 {
-		t.Fatalf("the band is a blank row, seven of content and a blank row; got %d", n)
+	//
+	// PLUS FR-5.5'S OWN LINE WHILE RUNNING (F-109, ruled 2026-09-16), which this
+	// fixture is. Eight of content, not seven.
+	if n := len(rows); n != 10 {
+		t.Fatalf("ON AIR the band is a blank row, eight of content and a blank row; got %d", n)
 	}
 	for _, at := range []int{0, len(rows) - 1} {
 		if strings.TrimSpace(stripANSITest(rows[at])) != "" {

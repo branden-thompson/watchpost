@@ -38,48 +38,76 @@ import (
 // restoring the sentence changes a layout the HUM LEAD ruled — two rows of text,
 // a band of seven — and that is a ruling, not an edit. When F-109 is ruled, this
 // test is what gets inverted.
-// FR-5.5 — THE BOUNDARY IS STATED WHERE THE OPERATOR READS THE STATE (F-109).
+// FR-5.5 — THE BOUNDARY IS STATED, ON A LINE OF ITS OWN (F-109).
 //
 // THIS TEST WAS THE TRIPWIRE AND IS NOW THE GATE. It asserted the sentence did
 // NOT render — D-153's dead end — and instructed its own inversion on the day
-// F-109 was ruled. HUM LEAD, 2026-09-16: option C, "on the STATION AIR row
-// between the state and GAIN, in a shortened wording".
+// F-109 was ruled.
 //
 // THE TRIPWIRE HAD A HOLE WORTH RECORDING: it watched for the literal string
-// "does not observe a transmitter", which is the FULL assigned wording. Ruling C
-// is a SHORTENED wording, so the tripwire would have stayed green straight
+// "does not observe a transmitter", the FULL assigned wording. Every ruling
+// since has shortened it, so the tripwire would have stayed green straight
 // through its own fix — a gate keyed to one PHRASING of a rule rather than to
-// the rule. It reads the ladder itself now, so no wording change slips past it.
-func TestTheOnAirBoundaryIsStatedOnTheStationRow(t *testing.T) {
-	b := broadcasterWithOneCard(t)
-	b.width = 144 // the console's reference width — the rail's own column
-	b, _ = b.Update(StationMsg{Power: lineup.Running})
-	got := stripANSITest(b.View().Content)
+// the rule. It reads the ladder itself now, so no rewording slips past it.
+//
+// AND THE PLACEMENT WAS RULED TWICE. Option C put it on the STATION AIR row;
+// measured, it rendered only at 160 cells and above, leaving FR-5.5 dead at
+// every width the console is actually drawn at. HUM LEAD, 2026-09-16: "Give
+// F109C its own line in the section area then if it creates new defects." A
+// line of its own covers EVERY DRAWABLE WIDTH, which is what this pins.
+func TestTheOnAirBoundaryIsStatedAtEveryDrawableWidth(t *testing.T) {
+	// THE CONSOLE'S FLOOR IS 100 COLUMNS — below it the frame is a refusal, not
+	// a console, so there is no station section to carry anything.
+	for _, w := range []int{100, 110, 120, 132, 144, 160, 200} {
+		b := broadcasterWithOneCard(t)
+		b.width = w
+		b, _ = b.Update(StationMsg{Power: lineup.Running})
+		got := stripANSITest(b.View().Content)
 
-	var said string
-	for _, words := range bcAirBoundaries {
-		if strings.Contains(got, words) {
-			said = words
-			break
-		}
-	}
-	if said == "" {
-		t.Fatalf("FR-5.5's boundary is not on the surface at the reference width.\n"+
-			"An operator reading a confident ON AIR may infer their antenna is radiating;\n"+
-			"Watchpost produces audio and cannot verify the transmitter that carries it.\nFrame:\n%s", got)
-	}
-	// IT RIDES THE STATE'S OWN ROW, not some other part of the frame. A boundary
-	// three rows from the claim it qualifies is one the operator reads
-	// separately, or not at all.
-	for _, line := range strings.Split(got, "\n") {
-		if strings.Contains(line, "STATION AIR:") {
-			if !strings.Contains(line, said) {
-				t.Errorf("the boundary renders somewhere, but not on the STATION AIR row (ruling C):\n  %s", line)
+		var said string
+		for _, words := range bcAirBoundaries {
+			if strings.Contains(got, words) {
+				said = words
+				break
 			}
-			return
+		}
+		if said == "" {
+			t.Errorf("width %d: FR-5.5's boundary is not on the surface.\n"+
+				"An operator reading a confident ON AIR may infer their antenna is radiating;\n"+
+				"Watchpost produces audio and cannot verify the transmitter that carries it.", w)
+			continue
+		}
+		// A LINE OF ITS OWN, which is the ruling. Sharing the STATION AIR row is
+		// what could not be made to fit.
+		for _, line := range strings.Split(got, "\n") {
+			if strings.Contains(line, said) {
+				if strings.Contains(line, "STATION AIR:") {
+					t.Errorf("width %d: the boundary is back on the STATION AIR row, not its own line", w)
+				}
+				break
+			}
 		}
 	}
-	t.Error("no STATION AIR row in the frame")
+}
+
+// AND OFF THE AIR THERE IS NO BOUNDARY TO STATE.
+//
+// STOPPED AND STANDBY ASSERT NOTHING ABOUT A TRANSMITTER, so a standing line
+// there would be the prose row D-107 deliberately removed — "it explained a
+// state the row above already names". This one qualifies a claim the row above
+// MAKES, which is why it belongs only where the claim is.
+func TestTheBoundaryIsAbsentWhenTheStationIsNotOnAir(t *testing.T) {
+	for _, power := range []lineup.Power{lineup.OffAir, lineup.Stopped} {
+		b := broadcasterWithOneCard(t)
+		b.width = 150
+		b, _ = b.Update(StationMsg{Power: power})
+		got := stripANSITest(b.View().Content)
+		for _, words := range bcAirBoundaries {
+			if strings.Contains(got, words) {
+				t.Errorf("power %v: the console states an ON AIR boundary while it is not on the air: %q", power, words)
+			}
+		}
+	}
 }
 
 // AND EVERY RUNG NEGATES THE INFERENCE THAT MATTERS.
@@ -106,44 +134,38 @@ func TestEveryBoundaryRungStillDeniesTheTransmitter(t *testing.T) {
 // Measured at 120 cells, dropping the fit check renders "· audio on" — complete,
 // reassuring, and the opposite of what it was cut from.
 func TestTheOnAirBoundaryFallsAwayRatherThanBeingCut(t *testing.T) {
-	for _, w := range []int{80, 100, 120, 132, 144, 160, 200} {
+	for _, w := range []int{100, 110, 120, 132, 144, 160, 200} {
 		b := broadcasterWithOneCard(t)
 		b.width = w
 		b, _ = b.Update(StationMsg{Power: lineup.Running})
-		// THE STATION AIR ROW ONLY. The frame says "(no transmitter set)" two rows
-		// down — the operator's CONFIGURATION, a different fact — and a whole-frame
-		// scan reads that as a cut rung. Scoping it here is also what makes this
-		// measure ruling C's placement rather than the frame's vocabulary.
-		var row string
-		for _, line := range strings.Split(stripANSITest(b.View().Content), "\n") {
-			if strings.Contains(line, "STATION AIR:") {
-				row = line
+		got := stripANSITest(b.View().Content)
+		whole := false
+		for _, words := range bcAirBoundaries {
+			if strings.Contains(got, words) {
+				whole = true
 				break
 			}
 		}
-		if row == "" {
-			continue // below the floor the console draws a notice instead
-		}
-		whole := false
-		for _, words := range bcAirBoundaries {
-			if strings.Contains(row, words) {
-				whole = true
-			}
-		}
-		if whole {
+		if !whole {
+			t.Errorf("width %d: no rung renders whole", w)
 			continue
 		}
-		// NOTHING WHOLE IS PRESENT, so no PREFIX of any rung may be either.
+		// AND NO LONGER RUNG APPEARS HALF-SAID. A rung that fits is taken entire;
+		// a longer one that does not fit must be absent, never truncated to a
+		// prefix that reads as a complete thought.
 		for _, words := range bcAirBoundaries {
-			for n := 8; n < len(words); n++ {
-				if strings.Contains(row, words[:n]) {
-					t.Errorf("width %d: the boundary is cut to %q — a half-said safety sentence\n  %s",
-						w, words[:n], row)
+			if strings.Contains(got, words) {
+				break // this is the rung in force; longer ones were tested above it
+			}
+			for n := 12; n < len(words); n++ {
+				if strings.Contains(got, words[:n]) {
+					t.Errorf("width %d: a longer rung is cut to %q — a half-said safety sentence", w, words[:n])
 					break
 				}
 			}
 		}
 	}
+
 }
 
 // FR-5.3 — the WORDS carry the state, so a reader with no colour still reads it.

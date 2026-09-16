@@ -252,8 +252,20 @@ func TestTheBedRidesInTheStationSection(t *testing.T) {
 	// gain, where it broadcasts from with its transition, and the LIVE NOW /
 	// RELAY BED pair under them. The bed's own labelled row and the standing
 	// prose went with the duplication.
-	if rows := b.stationLine(); len(rows) != 2 {
-		t.Fatalf("the section's text is the state and the transmitter; got %d rows", len(rows))
+	//
+	// AND A THIRD WHILE RUNNING, RULED 2026-09-16 (F-109): FR-5.5's boundary has
+	// a line of its own. It is not the standing prose D-107 removed — that
+	// explained a state the row above already names, and this qualifies a claim
+	// the row above MAKES. It appears only ON AIR, which is the only state that
+	// can mislead, so the band is one row taller in the state that already
+	// changes its colour entire.
+	if rows := b.stationLine(); len(rows) != 3 {
+		t.Fatalf("ON AIR the section is the state, the transmitter and FR-5.5's boundary; got %d rows", len(rows))
+	}
+	off := b
+	off.power = lineup.OffAir
+	if rows := off.stationLine(); len(rows) != 2 {
+		t.Fatalf("off the air there is no boundary to state; got %d rows", len(rows))
 	}
 	bed := bedRowOf(t, strings.Split(b.stationSection(b.opts(), "", ""), "\n"))
 	// THE KEY IS A CHIP, so this asks the chip renderer — "[ B ]" is only what

@@ -1054,7 +1054,8 @@ func (b Broadcaster) stationTone() (fg, bg string) {
 // missed, it is a permanent property of the product. "unverified" is true of
 // every station, configured or not.
 var bcAirBoundaries = []string{
-	"audio only; transmitter unverified",
+	"ON AIR means audio is leaving this program; Watchpost cannot verify a transmitter is carrying it.",
+	"Watchpost cannot verify a transmitter is carrying this audio.",
 	"transmitter unverified",
 }
 
@@ -1158,31 +1159,52 @@ func (b Broadcaster) stationLine() []string {
 	// boundary wears the tone and not the bold, so it reads as the qualifier it
 	// is. A dim token would be a NEW pair against the emergency ground, which
 	// `aaPairs` warns about in as many words.
-	air := label("STATION AIR:") + state
-	if b.power == lineup.Running {
-		// WHOLE OR NOT AT ALL, RUNG BY RUNG. Everything on this row yields to the
-		// gain control before it (`room`), and a safety sentence cut mid-word is
-		// worse than an absent one — it reads as a different, shorter claim.
-		// Measured at 120 cells the cut renders as "· audio on", which is a
-		// complete and reassuring phrase saying the opposite of the sentence it
-		// came from. Below the shortest rung the operator gets the state alone,
-		// which is what they had before this.
-		for _, words := range bcAirBoundaries { // bounded by the ladder (P10-02)
-			rung := air + " " + g.Dot + " " + render.Tint(words, render.Tok(render.AlertModalText))
-			if render.Width(rung) <= max(0, room) {
-				air = rung
-				break
-			}
-		}
-	}
 	rows := []string{
 		// THE GAIN RIDES THE STATE'S OWN ROW, where the reference draws it: how
 		// loud the station is and whether it is on the air are one question asked
 		// twice, and the operator checks them together.
-		render.PadBetween(render.TruncateCells(air, max(0, room)), gain, lane),
+		render.PadBetween(render.TruncateCells(label("STATION AIR:")+state, max(0, room)), gain, lane),
 		// THE TRANSMITTER'S IDENTITY MOVED HERE FROM THE MASTHEAD (D-71). It is
 		// a fact about the STATION; the masthead is what both surfaces share.
 		render.PadBetween(label("BROADCASTING FROM:")+b.transmitterRow(max(0, lane-bcLabelCells-render.Width(hint)-2)), hint, lane),
+	}
+	// FR-5.5'S BOUNDARY GETS A LINE OF ITS OWN (F-109, HUM LEAD 2026-09-16:
+	// "Give F109C its own line in the section area then if it creates new
+	// defects").
+	//
+	// RULING C PUT IT ON THE STATION AIR ROW AND THAT CREATED TWO. Measured on
+	// the real frame, the row's spare space beside the state and the gain control
+	// is 35 cells at 144 — the console's own reference width — so the shortened
+	// sentence rendered only at 160 and above. FR-5.5 would have been dead at
+	// every width the console is actually used at: D-153's defect reimplemented
+	// inside its own fix. And the wording that DID fit sat two rows above
+	// "(no transmitter set)", so the operator reads a permanent property of the
+	// product as a setup step they missed, and concludes that choosing a
+	// transmitter clears it — the requirement inverted.
+	//
+	// A LINE OF ITS OWN HAS ROOM TO SAY IT PROPERLY, which is the whole gain:
+	// the full sentence names what IS happening (audio is leaving this program)
+	// before what cannot be known (whether a transmitter carries it), and a
+	// boundary that only ever half-appeared now appears whole at every width.
+	//
+	// ONLY WHILE RUNNING, because that is the claim that can mislead. STOPPED and
+	// STANDBY assert nothing about a transmitter, and a standing line there would
+	// be the prose row D-107 deliberately removed — "it explained a state the row
+	// above already names". The band is one row taller ON AIR, which is the state
+	// that already changes the band's colour entire.
+	if b.power == lineup.Running {
+		// WHOLE OR NOT AT ALL, RUNG BY RUNG. A safety sentence cut mid-word is a
+		// different claim, not a shorter one: on the old placement the cut
+		// rendered as "· audio on" at 120 cells — complete, reassuring, and the
+		// opposite of the sentence it came from. Each rung is taken only if it
+		// fits ENTIRE, longest first, and the shortest fits any width this
+		// console draws at.
+		for _, words := range bcAirBoundaries { // bounded by the ladder (P10-02)
+			if render.Width(words) <= lane {
+				rows = append(rows, render.PadTo(render.Tint(words, render.Tok(render.AlertModalText)), lane))
+				break
+			}
+		}
 	}
 	// THE BED'S OWN ROW IS GONE (D-107). It was the SECOND place this console
 	// drew the bed — the selector and its state here, and the same selector and
