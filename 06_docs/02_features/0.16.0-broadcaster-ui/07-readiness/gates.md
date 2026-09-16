@@ -630,3 +630,26 @@ is the one to cite.
 rate the code changes.  Deleting a test is not the defect — the successors are real and were verified
 to exist.  Not recording the deletion in the document that is *judged at exit* is.  `gates.md:402`
 and `:440` already show the correct form; fourteen rows simply never got one.
+
+## Survivors that survive BY DESIGN, added at this exit
+
+Three mutants in the corpus are **tripwires**: they guard a rule that is currently held by a
+*different* rule, so the mutation changes nothing any test can see and the sweep reports SURVIVED.
+That is the D-42 shape `platform/lineup/air.go` already states in as many words — *"A TRIPWIRE, AND
+ITS MUTANT SURVIVES BY DESIGN"* — and the reason to keep them is that the protecting rule can move.
+
+**Each was CHECKED before being called a tripwire, not assumed.**  A mutant that survives because the
+rule is unguarded and a mutant that survives because the rule is doubly guarded look identical in the
+log, and the difference is the whole verdict.
+
+| Mutant | Why it cannot fail today | What makes it fail later |
+|---|---|---|
+| `mSC3` | `routeKey` keeps its own Router when `keyAction` declines a key.  No fall-through path in that switch mutates, so taking the returned model instead is equivalent | The day a case mutates `r` *before* falling through, the surface below silently receives a Router already half-changed by a rule that declined to act |
+| `mBM1` | `bodymemo`'s bound invariant only fires when eviction is already wrong.  Three tests drive the bound itself and stay green under this mutation, correctly | The day the eviction condition is edited — `!ok && len(m.items) >= m.max` is one `&&` away from never evicting — the cache grows without limit with every observable still reading correct |
+| `mBM2` | `delete` on a key the map does not hold is a no-op in Go, and every real call site reaches `evictLocked` only when the map is occupied | The day `evictLocked` is called from a path that does not already know the map is non-empty |
+
+**`mGL1` is recorded here for the opposite reason: its FIRST version was a bad mutant and was
+replaced.**  It deleted the build-time guard that is itself a test — so it could not be caught *by*
+that test, which is the tautology P-1 warns about: a test cannot be the instrument and the subject at
+once.  It now mutates the `Glyphs` struct, which is the production change the guard exists to see,
+and it is CAUGHT.
