@@ -40,6 +40,7 @@ func typeInto(t *testing.T, r Router, text string) Router {
 // submit presses enter AND RUNS WHAT COMES BACK, then feeds the reply to the
 // Router the way bubbletea does. A test that stopped at the key press would
 // measure that a command was returned, not that anybody received its answer.
+
 // enterKey is the press both lookup files send; named so neither builds its own.
 func enterKey() tea.KeyPressMsg { return tea.KeyPressMsg{Code: tea.KeyEnter} }
 

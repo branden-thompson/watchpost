@@ -121,6 +121,7 @@ func agoWords(age time.Duration) string {
 // has not answered yet counts in the total only (the three never sum past
 // it; a shortfall means "still loading"). The total is the active set,
 // padded to two columns (UAT 102: "reserve 2 col for growth").
+
 // apiSummaryOf counts the providers' health for the masthead — the ONE owner,
 // called by both surfaces (D-59). Two counts of one snapshot could disagree, and
 // the number is a health claim.

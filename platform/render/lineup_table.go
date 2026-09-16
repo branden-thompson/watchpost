@@ -135,6 +135,7 @@ func (o Opts) LineupTable(rows []LineupRow, width int) string {
 // The HUM LEAD ruled the second fill column on 2026-09-16 (F-112), which is what
 // made the doc line above — "giving the two WIDEST COLUMNS the slack" — true
 // rather than something to correct away.
+
 // lineupNaturalWidth is the width this table occupies with every column at its
 // declared size and no surplus to share.
 //

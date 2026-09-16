@@ -53,6 +53,7 @@ type LocationRow struct {
 // (marksW + nameMinW = 30), so idx@13, name@18 and everything from LABEL on
 // keeps its offset: label@37,
 // zip@46, cond@55, now@69, hi@79, lo@86, tcond@95, thi@109, tlo@117 → 124.
+
 // padLeft sets a value against the right edge of a field, and leaves a value
 // that overflows alone.
 func padLeft(s string, width int) string {

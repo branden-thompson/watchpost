@@ -225,6 +225,7 @@ func (d Dashboard) vizRows(inner, rows int) []string {
 // The player's track (HUM LEAD UAT 2026-08-28): the marquee row and the
 // visualizer rows sit between two │ rails spanning the module; an idle
 // marquee is a ░ fill, the voice's window slides over it while it speaks.
+
 // trackIdle is the marquee band's idle fill — through Glyphs (░, or . under --ascii).
 func trackIdle(o render.Opts) string { return o.Glyphs().Fill }
 

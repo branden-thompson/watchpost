@@ -13,6 +13,7 @@ import (
 // Band renders a full-width section band in the group-header chip style
 // (UAT 43: the RECENT / SEARCHED separator becomes a band like the column
 // groups). Bracketed form when color is off.
+
 // BandRows is a band at the height the options set: the label row alone
 // when thin, else a blank band row above and below it.
 func (o Opts) BandRows(title, short string, width int, bg Token) []string {

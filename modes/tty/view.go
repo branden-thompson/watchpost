@@ -308,6 +308,7 @@ func (d Dashboard) floatModal(o render.Opts, width int, title string, lines []st
 // the [A] alert modal carries its severity tint (UAT 22). Body lines WRAP
 // to the modal width here, in the component (UAT 25: truncation is not a
 // bug any caller can reintroduce).
+
 // floatModalFooter is floatModal with rows PINNED below the scroll window: the
 // body scrolls, the footer does not.
 //

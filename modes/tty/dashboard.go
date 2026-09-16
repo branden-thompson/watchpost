@@ -1349,10 +1349,6 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 	return d, false
 }
 
-// toggleSevere owns the severe window's actions (0.13.0, split from
-// toggleModal for P10-04): w / ctrl+s open it, enter drills into the focused
-// event (FR-4), esc backs out of the record — the second esc falls through to
-// close like any window.
 // toggleSevere routes the WINDOW actions: opening one, and the keys that belong
 // to whichever one is open.
 //

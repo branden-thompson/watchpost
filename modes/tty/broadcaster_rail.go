@@ -255,6 +255,7 @@ func (b Broadcaster) framed(body []string, total int) []string {
 // rail is separated." The two cards the operator reads from are always the same
 // two — there is nothing to scroll past — so the gutter beside them is air, and
 // a thumb drawn there would say they move when they do not.
+
 // chromeAt is `chrome` for the SCROLLING region, told where its window sits.
 //
 // THE THUMB TRACKS THE WINDOW, and until D-87 it could not: `chrome` passed a

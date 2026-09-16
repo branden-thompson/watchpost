@@ -871,6 +871,7 @@ func (d *radioDeck) duck() { d.engine.Suppress() }
 //
 // The class parameter arrives with the Station Director in Task 2.6; until then
 // every alert sounds the classic tone, exactly as 0.13.0 did.
+
 // clock is the listener's clock, the 12-hour default when nothing set one (the
 // older tests, which build a deck by hand).
 func (d *radioDeck) clock() render.Clock {

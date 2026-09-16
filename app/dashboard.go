@@ -427,6 +427,7 @@ func (lp *livePipelines) setWatch(refs []snapshot.LocationRef) {
 
 // tickerAlert is the ticker's breaking-news audio — the radio deck, or nil when
 // there is no audio (a nil deck: tests, no device).
+
 // scriptsDir is where the user's script overrides live: <config dir>/scripts
 // — the same directory as config.toml, a scripts/ folder beside it. "" when
 // the config dir cannot resolve (built-in scripts only).
@@ -580,8 +581,6 @@ func saveRadioMode(mode tty.RadioMode) error {
 	return savePreference(func(cfg *config.Config) { cfg.Radio.Mode = mode.Key() })
 }
 
-// savePreference loads, edits and saves the config — the one path for a
-// persisted UI preference (voice, radio mode).
 // savePreference is the no-error convenience over config.Mutate, for the
 // preference writes that cannot fail. It is an ADAPTER now, not a second write
 // path: it once called itself "the one path" while five siblings bypassed it,
@@ -915,6 +914,7 @@ func (lp *livePipelines) hydrate(ref snapshot.LocationRef) { lp.recent.hydrateHo
 // the press, not at wiring: with no deck to speak through the press is inert
 // — no ▶ mark, no busy reader for a silent record (R5-B-04; VALIDATE
 // 2026-08-29 found the wiring-time check had muted the chip for everyone).
+
 // relayDwell is what the Settings window opens showing. Nil-safe: the deck is
 // not built in every mode, and a window that cannot show the setting is better
 // than one that cannot open.

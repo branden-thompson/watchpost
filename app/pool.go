@@ -283,6 +283,7 @@ func (lp *livePipelines) currentStation() stationArea {
 // default location when the station has no transmitter, so changing that
 // default silently moves the station's epicentre — and a pool derived once at
 // startup would go on offering the old region for the life of the process.
+
 // reStation is the station and pool a commit should leave behind, computed
 // WITHOUT the lock so `commit` can assign them under the one it already holds.
 //

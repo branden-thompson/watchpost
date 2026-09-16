@@ -495,7 +495,6 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return r, nil
 }
 
-// View renders the active surface, unchanged.
 // View draws the active surface, and composites the diagnostics window over it
 // when that window is open on another surface (D-58).
 //

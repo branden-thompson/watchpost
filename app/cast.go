@@ -400,6 +400,7 @@ func (d *radioDeck) buildVoice(name string) (synth.Voice, error) {
 // startBackgroundInstall fetches a named-but-missing Piper voice, once, without
 // blocking anything. It is the only place the session cap and the failure
 // memory are applied.
+
 // canInstall reports whether this deck can carry out a background install: it
 // needs something to PLAY the voice on and something to REPORT progress to.
 //

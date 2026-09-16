@@ -1533,6 +1533,7 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 // ONE DRAWER FOR BOTH, because everything except the interior is the same card.
 // A second box function would be a second place for a corner or a tint to drift,
 // which is the D-56 shape this file has already paid for once.
+
 // inner is the box's interior width — everything between the two rails.
 //
 // ONE OWNER, because two things measure it now: the box that draws the borders

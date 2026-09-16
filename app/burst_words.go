@@ -52,6 +52,7 @@ func burstAgencies(evs []globalfeed.Event) string {
 // spokenList joins names the way a person says a list: "A", "A and B",
 // "A, B, and C". Extracted at the second caller (the masthead's provider list,
 // F-24) rather than written twice.
+
 // burstHead is the one opening of a multi-event burst: who declared what is
 // about to be read. "" when no source could be named, in which case the burst
 // simply starts with its first alert — a head that named nobody would be worse
@@ -80,6 +81,7 @@ func burstTitle(e globalfeed.Event, c render.Clock, now time.Time) string {
 
 // breakingLine is the line to speak for one event: a single event carries its
 // own broadcast tail; a burst event's line has none (the tail comes once).
+
 // testHead is what a diagnostic read opens with, and what the [w] report for a
 // fabricated event leads with. Same fallback rule as testLine.
 func testHead(lib *script.Library) string {

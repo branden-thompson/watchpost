@@ -115,6 +115,7 @@ func (p *Provider) FireWeatherZone(ctx context.Context, ref snapshot.LocationRef
 // ForecastZone is the location's forecast zone UGC ("CAZ043") from the
 // cached point resolution — the synthesized broadcast reads only that
 // zone's block of a product (UAT 81). "" when unresolvable.
+
 // ugcOfKind is the one UGC lookup: the zones this ref resolves to, filtered to
 // the kind wanted. A UGC code is six characters with the kind at index 2 — 'Z'
 // for a forecast zone, 'C' for a county — and stating that shape twice is how

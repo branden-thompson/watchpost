@@ -41,6 +41,7 @@ func relayDwells() []relayDwell {
 }
 
 // defaultRelayDwell is the entry a listener who has set nothing lands on.
+
 // relayLabelW is the group's own label column, and relayCellW its own picker
 // cell. Both rows use both, so the chips line up down the group the way they do
 // in every other group — the shared rowControlW is 21 and the rotation's label

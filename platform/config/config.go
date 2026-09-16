@@ -397,6 +397,7 @@ func mergeUnknown(marshalled []byte, path string) ([]byte, bool) {
 // would make first-run undetectable forever (B0 red-team F5). Callers that want
 // an empty config on disk clear FirstRun first; "has locations" checks belong
 // on len(cfg.Locations), never FirstRun.
+
 // Mutate is the ONE write path for the config file: it loads, applies edit, and
 // saves, with the whole sequence held under one lock.
 //

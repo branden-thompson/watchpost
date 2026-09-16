@@ -195,6 +195,7 @@ func TestASCIIFramesCarryNothingButASCII(t *testing.T) {
 //
 // The producer is the modal enum, so a window added to the app is scanned the
 // day it lands rather than the day someone remembers to add it here.
+
 // populated gives the detail modal DATA, because fixtureFor gives it none and a
 // window scanned empty is a window scanned in the one state whose glyphs are
 // missing (red team, 2026-09-08).
