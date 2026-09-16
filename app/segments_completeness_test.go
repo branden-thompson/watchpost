@@ -151,3 +151,157 @@ func kindIdents(t *testing.T) []string {
 	}
 	return out
 }
+
+// AND THE BRANCH MUST REACH THE COMPOSER, not merely name the kind.
+//
+// THE GUARD ABOVE HAS A HOLE AND THIS IS IT. `TestEveryReportKindReachesTheComposer`
+// records a kind as answered when `report.X` appears inside a `want.Has(...)`
+// call, so `if want.Has(report.AirQuality) { }` — an empty branch — satisfies it.
+// `wires` agrees for the same reason: the registry key is a READER and the call
+// argument is a WRITER, and an empty branch supplies both. Two gates, one hole,
+// and through it walks F-111's own defect one level down: the operator requests
+// a kind, the card is built, and nothing they asked for is in it.
+//
+// SO THIS ASKS WHERE THE VALUE GOES. Every kind's branch must assign an
+// identifier that arrives at the `Compose` call — which is what "answering a
+// kind" actually means, and what an empty branch cannot fake.
+//
+// WHAT IT STILL CANNOT SEE, stated because a number without its blind spots is
+// worse than no number (INST-5): a hook that is permanently nil assigns in the
+// source and returns a zero value at run time. Statically that is indistinguishable
+// from a working branch. The last step of adding a kind is therefore a FIXTURE
+// proving data arrives, and no gate performs it.
+func TestEveryKindsBranchReachesTheComposer(t *testing.T) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "radio.go", nil, 0)
+	if err != nil {
+		t.Fatalf("radio.go could not be parsed: %v", err)
+	}
+	fn := funcNamed(f, "segments")
+	if fn == nil {
+		t.Fatal("radioDeck.segments not found — this guard has lost its subject and must be re-pointed, not deleted")
+	}
+
+	reaching := composeArgs(t, fn)
+	for kind, assigned := range branchAssignments(fn) { // bounded by the registry (P10-02)
+		var lands bool
+		for _, name := range assigned { // bounded by the branch (P10-02)
+			if reaching[name] {
+				lands = true
+				break
+			}
+		}
+		if !lands {
+			t.Errorf("`report.%s`'s branch in `segments` assigns %v, and none of it reaches Compose.\n"+
+				"A branch that names the kind and hands the Composer nothing is the operator being told "+
+				"their report was built while the thing they asked for is absent from it.\n"+
+				"Assign the kind's value and pass it to Compose; do not satisfy this by editing the test.", kind, assigned)
+		}
+	}
+}
+
+// composeArgs is every identifier appearing anywhere in the Compose call's
+// arguments, composite literals included — `synth.Reports{Fire: fire}` counts
+// `fire` as arriving.
+func composeArgs(t *testing.T, fn *ast.FuncDecl) map[string]bool {
+	t.Helper()
+	out := map[string]bool{}
+	ast.Inspect(fn, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "Compose" {
+			return true
+		}
+		for _, arg := range call.Args { // bounded by the signature (P10-02)
+			ast.Inspect(arg, func(m ast.Node) bool {
+				if id, ok := m.(*ast.Ident); ok {
+					out[id.Name] = true
+				}
+				return true
+			})
+		}
+		return true
+	})
+	if len(out) == 0 {
+		t.Fatal("no Compose call found in segments; this guard has lost its subject")
+	}
+	return out
+}
+
+// branchAssignments maps each kind named in an `if want.Has(report.X)` condition
+// to the identifiers its branch assigns.
+func branchAssignments(fn *ast.FuncDecl) map[string][]string {
+	out := map[string][]string{}
+	ast.Inspect(fn, func(n ast.Node) bool {
+		ifs, ok := n.(*ast.IfStmt)
+		if !ok {
+			return true
+		}
+		kind := kindInCondition(ifs.Cond)
+		if kind == "" {
+			return true
+		}
+		var names []string
+		ast.Inspect(ifs.Body, func(m ast.Node) bool {
+			as, ok := m.(*ast.AssignStmt)
+			if !ok {
+				return true
+			}
+			for _, lhs := range as.Lhs { // bounded by the statement (P10-02)
+				switch v := lhs.(type) {
+				case *ast.Ident:
+					names = append(names, v.Name)
+				case *ast.SelectorExpr: // maritime.Forecast = … still lands on `maritime`
+					if id, ok := v.X.(*ast.Ident); ok {
+						names = append(names, id.Name)
+					}
+				case *ast.IndexExpr: // products[i].Text = … lands on `products`
+					if id, ok := v.X.(*ast.Ident); ok {
+						names = append(names, id.Name)
+					}
+				}
+			}
+			return true
+		})
+		out[kind] = names
+		return true
+	})
+	return out
+}
+
+// kindInCondition is the `report.X` a condition asks `want.Has` about, or "".
+func kindInCondition(cond ast.Expr) string {
+	var kind string
+	ast.Inspect(cond, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || len(call.Args) != 1 {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "Has" {
+			return true
+		}
+		if arg, ok := call.Args[0].(*ast.SelectorExpr); ok {
+			if pkg, ok := arg.X.(*ast.Ident); ok && pkg.Name == "report" {
+				kind = arg.Sel.Name
+			}
+		}
+		return true
+	})
+	return kind
+}
+
+// funcNamed is the top-level or method declaration called name.
+func funcNamed(f *ast.File, name string) *ast.FuncDecl {
+	var out *ast.FuncDecl
+	ast.Inspect(f, func(n ast.Node) bool {
+		if d, ok := n.(*ast.FuncDecl); ok && d.Name.Name == name {
+			out = d
+		}
+		return out == nil
+	})
+	return out
+}
