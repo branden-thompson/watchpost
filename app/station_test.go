@@ -2,13 +2,12 @@ package app
 
 // station_test.go — the shipped path, driven synchronously (T3.10b).
 //
-// WHY A HARNESS AND NOT A SHIM. The read used to be `tickerDeck.breaking`, and
-// twenty-five tests called it directly. It is now the Director's: the producer
-// states what arrived, the Director schedules it, the Composer writes it and the
-// Reader performs it. A test-only `breaking` kept alive beside that would be a
-// pin on a path nobody ships — which is D-12's defect, three tests passing over
-// an inert Settings row because they called the cycle function instead of
-// pressing the key.
+// WHY A HARNESS AND NOT A SHIM. The read is the Director's: the producer states
+// what arrived, the Director schedules it, the Composer writes it and the Reader
+// performs it. A test-only entry point beside that — a `tickerDeck.breaking` the
+// tests call directly — would be a pin on a path nobody ships, which is D-12's
+// defect: three tests passing over an inert Settings row because they called the
+// cycle function instead of pressing the key.
 //
 // So this drives the REAL path, end to end, and the only thing it replaces is
 // the pump's concurrency: effects run in this goroutine and their events feed
@@ -138,9 +137,9 @@ func (s *station) run(ctx context.Context, evs ...lineup.Event) {
 	// fixed number of effects, so this terminates — the cap guards against a
 	// future cycle rather than a real limit.
 	//
-	// AND IT FAILS LOUDLY, which the comment used to CLAIM while the loop simply
-	// returned with work still queued (red team 2026-09-05). A silent truncation
-	// here leaves every assertion in the caller running over a PARTIAL sequence,
+	// AND IT FAILS LOUDLY when the cap is reached, rather than returning with work
+	// still queued. A silent truncation here leaves every assertion in the caller
+	// running over a PARTIAL sequence,
 	// which is this release's own recorded failure mode wearing the harness's
 	// clothes.
 	steps := 0

@@ -688,12 +688,12 @@ func TestEveryLiveAlertIsEventuallyReadAloud(t *testing.T) {
 // TestTheTickerCuesThroughTheOneOwnerNotItsOwnSend — D-1, pinned for the LIVE
 // takeover path.
 //
-// The band's takeover message used to be constructed here AND in
-// app/executors.go, so one rule had two carriers in two files and they could
-// drift into sending different things for one event. Asserting that a cue
-// "reaches the band" cannot see the difference, because both writers reach the
-// same band in production. So this deck's own send and its effector's band are
-// DIFFERENT captures, and the cue must land on the effector's.
+// The band's takeover message has ONE carrier, in app/executors.go. Constructed
+// here as well, one rule would have two carriers in two files, free to drift
+// into sending different things for one event. Asserting that a cue "reaches the
+// band" cannot see that difference, because both writers reach the same band in
+// production. So this deck's own send and its effector's band are DIFFERENT
+// captures, and the cue must land on the effector's.
 func TestTheTickerCuesThroughTheOneOwnerNotItsOwnSend(t *testing.T) {
 	var mu sync.Mutex
 	var direct, throughOwner []string
@@ -927,9 +927,10 @@ func TestMutingAToneClassDoesNotSilenceTheStationAtTheNextLaunch(t *testing.T) {
 
 // MVS-D-78 — STANDBY HOLDS A BURST; IT DOES NOT SPEND IT.
 //
-// [M] used to let the takeover run inaudibly: it cued the band, held, and
-// marked each alert READ. A tornado warning arriving while muted was consumed
-// in silence and never sounded, even on unmuting a minute later.
+// [M] must not let the takeover run inaudibly — cueing the band, holding, and
+// marking each alert READ. That spends the burst: a tornado warning arriving
+// while muted is consumed in silence and never sounds, even on unmuting a
+// minute later.
 //
 // The visual half is asserted alongside, because the whole ruling turns on it:
 // muting silences the AUDIO channel and leaves the visual one alone (the TV

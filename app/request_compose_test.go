@@ -3,14 +3,14 @@ package app
 // request_compose_test.go — a location the operator may REQUEST must be a
 // location the Composer can RESOLVE.
 //
-// FOUND BY RED TEAM AT BUILD EXIT, 0.16.0 (2026-09-15). D-130 widened the
-// lookup past the 25-slot pool on the HUM LEAD's ruling — the hyper-local case,
-// Rainbow CA, is inside the service radius and in neither the city nor the zip
-// table. The COMPOSER was not widened with it: `composeFor(deck, pool)` resolves
-// a card's Subject against `currentPool()`, so a requested out-of-pool ref
-// errored, the Director declined it, and `Failed{Routed:true}` is treated as
-// deliberate and self-healing — so NOTHING was surfaced and the card vanished
-// after the window had closed as though it were scheduled.
+// D-130 WIDENS THE LOOKUP PAST THE 25-SLOT POOL, and the Composer has to be
+// widened with it. The hyper-local case, Rainbow CA, is inside the service
+// radius and in neither the city nor the zip table. A `composeFor(deck, pool)`
+// that resolves a card's Subject against `currentPool()` alone errors on a
+// requested out-of-pool ref; the Director then declines it, and
+// `Failed{Routed:true}` reads as deliberate and self-healing — so nothing is
+// surfaced and the card vanishes after the window has closed as though it were
+// scheduled.
 //
 // THAT IS FR-3.3's NAMED TRAP VERBATIM: "an action must never be shown as taken
 // unless the schedule took it."
@@ -152,11 +152,11 @@ func TestTheSchedulesComposerResolvesARequestedLocation(t *testing.T) {
 
 // THE CAP EVICTS, AND ONLY PAST ITS OWN BOUND (D-152).
 //
-// FOUND BY RED TEAM (round 2): the cap's justification described an eviction the
-// code does not perform — it drops the OLDEST REMEMBERED while `Insert` sheds
-// the LAST VISIBLE, which with the window's default slot are opposite ends. The
-// constant is now sized so eviction is unreachable in a session rather than
-// pretending to track the schedule, and this pins both halves.
+// THE TWO ENDS ARE OPPOSITE ENDS: this cap drops the OLDEST REMEMBERED while
+// `Insert` sheds the LAST VISIBLE, and with the window's default slot those are
+// not the same element. So the constant is sized to put eviction out of reach
+// within a session rather than to track the schedule, and this pins both
+// halves.
 func TestTheRequestedListIsBoundedAndKeepsARealSessionsWorth(t *testing.T) {
 	lp := &livePipelines{}
 	// A SESSION'S WORTH stays resolvable — the number an operator could plausibly

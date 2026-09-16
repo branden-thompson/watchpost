@@ -372,10 +372,11 @@ func (m *mastercontrol) hold() {
 // THE DECISION IS NOT THIS TYPE'S, and the lock order is why. The arbiter takes
 // its own lock and then this one — settle calls takeBack while holding d.mu — so
 // a release that took THIS lock and then asked the arbiter would invert the
-// order and deadlock. Worse, an earlier version asked outside the lock and acted
-// on the stale answer: a job admitted between the question and the lift had the
-// bed restored out from under it, which is the broadcast surging to full volume
-// over a read in progress. The caller decides under its own lock; see
+// order and deadlock. Asking outside the lock is worse still, because the answer
+// is stale by the time it is acted on: a job admitted between the question and
+// the lift would have the bed restored out from under it, which is the broadcast
+// surging to full volume over a read in progress. The caller decides under its
+// own lock; see
 // director.releaseBed.
 func (m *mastercontrol) unhold() {
 	if m == nil {
@@ -453,19 +454,17 @@ func (m *mastercontrol) cue(item tty.TickerItem) {
 // Director emits. Making it conditional here would put the rule in two places,
 // and the copy here could not see the schedule that decides it.
 //
-// THE SENTENCE THAT USED TO FINISH THAT PARAGRAPH — "`leave` releases only what
-// it cued" — WAS WRONG, and 0.16.0 P3 made it visibly so (red team 2026-09-09,
-// finding 7). `leave` releases whatever was ON THE AIR, and a LocationReport is
-// routinely on the air without a cue: runCue asks the producer for an alert
-// under `read:<location>`, finds none, and cues nothing. So every rotation turn
-// issued a release for a cue that never happened.
+// `leave` RELEASES WHATEVER WAS ON THE AIR, not only what it cued. A
+// LocationReport is routinely on the air without a cue: runCue asks the producer
+// for an alert under `read:<location>`, finds none, and cues nothing. Pairing
+// the release with the cue HERE would therefore issue a release for a cue that
+// never happened on every rotation turn.
 //
-// F-71, AND IT IS CLOSED (D-82) — by the caller, exactly as this paragraph
-// argued it had to be. The trigger it named was "the moment the band gets a
-// second writer"; what arrived instead was a second card on the air, when the
-// rail gained the ability to interrupt a report. `runRelease` now asks the LANE,
-// which rides on the effect, so the rule stays where the schedule decides it and
-// this function stays the one unconditional carrier of "give the band back".
+// F-71 IS CLOSED (D-82), in the caller. `runRelease` asks the LANE, which rides
+// on the effect, so the rule stays where the schedule decides it and this
+// function stays the one unconditional carrier of "give the band back". The
+// condition that forces the question is a second card on the air — the rail
+// interrupting a report — not a second writer to the band.
 func (m *mastercontrol) clearBand() {
 	if m == nil {
 		return

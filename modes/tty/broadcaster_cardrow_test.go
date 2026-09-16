@@ -89,9 +89,8 @@ func TestANarrowLaneKeepsTheSubjectAndDropsTheKind(t *testing.T) {
 	// almost nothing there; the subject is the only part that says WHICH card
 	// this is, so it is what survives.
 	//
-	// The lane is chosen so the drop actually happens — an earlier version of
-	// this test picked a width where nothing was dropped and SKIPPED, which is
-	// not a test.
+	// The lane is chosen so the drop actually happens. A width at which nothing
+	// is dropped makes this SKIP, which is not a test.
 	got := newCardLane(56, render.Opts{ASCII: true}.Glyphs()).
 		render(aCard(t, "OCEANSIDE, CA 92057"), "6", "STANDARD")
 	if !strings.Contains(got, "OCEANSIDE") {
@@ -104,9 +103,9 @@ func TestANarrowLaneKeepsTheSubjectAndDropsTheKind(t *testing.T) {
 
 // THE HEADLINE IS LEFT-ANCHORED, ON THE CARD'S OWN INSET (D-87).
 //
-// IT USED TO BE CENTRED and the v2 reference moved it: every other row of a
-// card's interior begins three cells in, so a centred title was the one line
-// that did not line up with the card it names.
+// IT IS NOT CENTRED: every other row of a card's interior begins three cells in,
+// so a centred title is the one line that does not line up with the card it
+// names.
 func TestTheHeadlineSitsOnTheCardsInset(t *testing.T) {
 	row := newCardLane(132, render.Opts{ASCII: true}.Glyphs()).
 		render(aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")

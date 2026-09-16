@@ -75,8 +75,8 @@ type schedule struct {
 // THE LISTS ARE NOT ONE LIST (D-76, split again at D-140). `pool` is the
 // STATION's candidates — what its Producer may OFFER. `resolvable` is what its
 // Composer may RESOLVE, which is the pool plus whatever the operator has
-// requested: D-130 let them request anywhere inside the service radius, and
-// this sentence used to say pool was both. `watch` is the LISTENER's, and the
+// requested: D-130 lets them request anywhere inside the service radius, so the
+// two are not interchangeable. `watch` is the LISTENER's, and the
 // bed's cut-over is the MONITOR's rotation moving through it.
 //
 // D-72 MOVED ALL THREE TOGETHER AND THAT WAS TWO-THIRDS RIGHT. The reasoning
@@ -243,10 +243,10 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 //
 // THE UNEXPORTED tune, DELIBERATELY. Every tune the Director asks for is
 // automatic — a dwell elapsed, a cycle ended — and lifting the alert duck on an
-// automatic transition brought the next location's report in at full volume over
-// a breaking alert still reading. That distinction used to live in the case of an
-// identifier; T2.3 gave the duck one owner instead, and this calls the path that
-// has never lifted it.
+// automatic transition would bring the next location's report in at full volume
+// over a breaking alert still reading. T2.3 gave the duck ONE OWNER rather than
+// making that distinction a case of an identifier, and this calls the path that
+// never lifts it.
 //
 // A KEY THAT NAMES NOTHING IS DROPPED, not guessed at. The listener can remove a
 // location from the watchlist between the Director planning a move and the move

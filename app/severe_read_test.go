@@ -906,15 +906,14 @@ func TestAPauseNeverClaimsACancelledRead(t *testing.T) {
 //
 // Five functions need to know where a read can be and whether it still counts —
 // pausing, resuming, reporting a hold, choosing what to promote, and deciding
-// whether the bed may come back. Each used to walk the state itself, and they
-// drifted exactly as carriers of one rule always do. Four review rounds went
-// into finding the places one at a time; `live` and `reads` are the answer
-// written once.
+// whether the bed may come back. Five functions each walking the state
+// themselves are five carriers of one rule, and they drift; `live` and `reads`
+// are that rule written once, and this asserts the five agree.
 //
-// EACH CELL CARRIES ITS OWN EXPECTATION. An earlier version asserted "nothing is
-// held" for every cell, which is only true where every read is dead — it failed
-// on the one cell that has a live paused read in it, and the failure was the
-// test being wrong rather than the code.
+// EACH CELL CARRIES ITS OWN EXPECTATION. A blanket "nothing is held" across
+// every cell is only true where every read is dead, and this table deliberately
+// includes a cell holding a LIVE paused read — a uniform assertion fails there,
+// and it fails as the test being wrong rather than the code.
 func TestThePauseAndTheReportNeverDisagree(t *testing.T) {
 	dead, kill := context.WithCancel(context.Background())
 	kill()

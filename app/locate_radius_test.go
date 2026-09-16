@@ -132,14 +132,14 @@ func TestAStationWithNoTransmitterReachesNothing(t *testing.T) {
 
 // A LOOKUP THAT COULD NOT BE MADE IS NOT "NO SUCH PLACE" (D-151).
 //
-// FOUND BY RED TEAM (round 2): a 5-second timeout, a DNS blip or a cancelled
-// context returned `found=false` — identical to a genuine no-match — so the
-// window told the operator a real location does not exist and disabled the key
-// that would have retried it.
+// A 5-second timeout, a DNS blip or a cancelled context must not read as
+// `found=false`: that is identical to a genuine no-match, and it tells the
+// operator a real location does not exist while disabling the key that would
+// have retried it.
 //
-// AND THE MUTANT FOUND THE GAP IN THE FIRST FIX'S TESTS: the console-side test
-// built the fourth state from a verdict message directly, so nothing exercised
-// the APP mapping an error onto it. `mCL3` survived until this existed.
+// THE MAPPING IS THE APP'S, AND THIS IS WHERE IT IS EXERCISED. A console-side
+// test that builds the fourth state from a verdict message directly proves the
+// window and not the mapping of an error onto it; `mCL3` tells the two apart.
 func TestATimedOutLookupReportsThatItCouldNotAsk(t *testing.T) {
 	idx, err := geodata.Load()
 	if err != nil {
