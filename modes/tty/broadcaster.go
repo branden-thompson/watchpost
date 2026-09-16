@@ -1027,6 +1027,37 @@ func (b Broadcaster) stationTone() (fg, bg string) {
 	return render.Tok(render.TextBase), render.Tok(render.GroupSectionBG)
 }
 
+// bcAirBoundaries is FR-5.5 in the words the STATION AIR row has space for,
+// longest form first.
+//
+// SHORTENED, NOT SOFTENED. The assigned sentence — "audio out of this program;
+// Watchpost does not observe a transmitter" — is the full statement and does not
+// fit beside the state and the gain control at any width this console is used at.
+//
+// A LADDER, BECAUSE ONE WORDING CANNOT SERVE BOTH ENDS. Measured on the real
+// frame: the row's spare space after the state and the gain control is 51 cells
+// at 160, 35 at 144, and 11 at 120. A single 35-cell sentence renders only at 160
+// and above — which would have left FR-5.5 dead at the console's own reference
+// width, the D-153 defect reimplemented. Caught by measuring rather than by
+// assuming it fit.
+//
+// EVERY RUNG NEGATES THE SAME INFERENCE. The danger is an operator reading a
+// confident ON AIR and concluding their antenna is radiating, so the half that
+// can never be dropped is the one about the transmitter. "audio only" says what
+// Watchpost does produce and is the first thing to go.
+//
+// AND IT MUST NOT READ AS CONFIGURATION STATE, which the first wording did. The
+// BROADCASTING FROM row two lines down already says "(no transmitter set)" when
+// the operator has not chosen one — so "no transmitter observed" beside it reads
+// as the same complaint, and the operator concludes that SETTING a transmitter
+// will clear it. That inverts FR-5.5: the boundary is not a setup step they have
+// missed, it is a permanent property of the product. "unverified" is true of
+// every station, configured or not.
+var bcAirBoundaries = []string{
+	"audio only; transmitter unverified",
+	"transmitter unverified",
+}
+
 // stationLine is the station's state, Variant C (D-21): a labelled field with
 // the transition named in parentheses.
 //
@@ -1108,11 +1139,47 @@ func (b Broadcaster) stationLine() []string {
 	// without reading the row are both in the same column (D-71).
 	// THE BED SAYS WHAT IT IS ACTUALLY DOING (F-79). It said INACTIVE
 	// unconditionally, because nothing published the answer.
+	// FR-5.5'S BOUNDARY, ON THE ROW THAT COULD MISLEAD (F-109, HUM LEAD ruling C,
+	// 2026-09-16: "C is fine for now").
+	//
+	// IT WAS ASSIGNED AND NEVER RENDERED (D-153). `why` carried the sentence per
+	// state and the row that drew it is reached only when a `statusNote` exists —
+	// by which point the note has already REPLACED it. So the one sentence FR-5.5
+	// exists for was dead in a variable, while this function's own comment claimed
+	// the boundary is stated "HERE, where they read it — not only in a design
+	// document". Four placements were put to the HUM LEAD; C is this one.
+	//
+	// ONLY WHILE RUNNING, because that is the claim that can mislead. STOPPED and
+	// STANDBY assert nothing about a transmitter, so a boundary there would be
+	// noise on the two rows that are already honest.
+	//
+	// THE ROW'S OWN TOKEN, WITHOUT THE WEIGHT. `stationTone` paints this band
+	// `AlertModalText` on `TickerEmergencyBG` and the state wears both; the
+	// boundary wears the tone and not the bold, so it reads as the qualifier it
+	// is. A dim token would be a NEW pair against the emergency ground, which
+	// `aaPairs` warns about in as many words.
+	air := label("STATION AIR:") + state
+	if b.power == lineup.Running {
+		// WHOLE OR NOT AT ALL, RUNG BY RUNG. Everything on this row yields to the
+		// gain control before it (`room`), and a safety sentence cut mid-word is
+		// worse than an absent one — it reads as a different, shorter claim.
+		// Measured at 120 cells the cut renders as "· audio on", which is a
+		// complete and reassuring phrase saying the opposite of the sentence it
+		// came from. Below the shortest rung the operator gets the state alone,
+		// which is what they had before this.
+		for _, words := range bcAirBoundaries { // bounded by the ladder (P10-02)
+			rung := air + " " + g.Dot + " " + render.Tint(words, render.Tok(render.AlertModalText))
+			if render.Width(rung) <= max(0, room) {
+				air = rung
+				break
+			}
+		}
+	}
 	rows := []string{
 		// THE GAIN RIDES THE STATE'S OWN ROW, where the reference draws it: how
 		// loud the station is and whether it is on the air are one question asked
 		// twice, and the operator checks them together.
-		render.PadBetween(render.TruncateCells(label("STATION AIR:")+state, max(0, room)), gain, lane),
+		render.PadBetween(render.TruncateCells(air, max(0, room)), gain, lane),
 		// THE TRANSMITTER'S IDENTITY MOVED HERE FROM THE MASTHEAD (D-71). It is
 		// a fact about the STATION; the masthead is what both surfaces share.
 		render.PadBetween(label("BROADCASTING FROM:")+b.transmitterRow(max(0, lane-bcLabelCells-render.Width(hint)-2)), hint, lane),

@@ -1000,5 +1000,6 @@ type tonedRow
 type uiSavedMsg
 type vizTickMsg
 var _
+var bcAirBoundaries
 var bcRailForms
 var heldEscalation
