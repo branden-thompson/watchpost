@@ -5,6 +5,7 @@ package main
 // (or method) is declared there, so the flow map cannot drift from the code.
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -138,4 +139,77 @@ func TestAcceptedCostsNamesRealSymbols(t *testing.T) {
 	if triggers := strings.Count(body, "**What would re-open it.**"); triggers != entries {
 		t.Errorf("%d entries but %d re-open triggers — every accepted cost states its own way back", entries, triggers)
 	}
+}
+
+// testRef matches a test named in prose: a backticked identifier beginning
+// `Test`, which is the only form follow-ups.md uses to cite its evidence.
+var testRef = regexp.MustCompile("`(Test[A-Za-z0-9_]+)`")
+
+// A FOLLOW-UP'S CITED TEST EXISTS (FR-8).
+//
+// THE ROW IS THE CLAIM AND THE TEST IS THE EVIDENCE. A row reading CLOSED and
+// citing a test that no longer exists is worse than an open row: it says the
+// property is pinned, so nobody looks, and the pin is gone. F-114 sat that way
+// — CLOSED against `TestAnOverrideLegalOnObserverCanRefuseTheConsole` after the
+// refusal it named had been replaced by scoping.
+//
+// IT CHECKS EXISTENCE, NOT RELEVANCE. Whether the test still asserts what the
+// row claims is a reader's judgement and stays one; a name that resolves to
+// nothing at all is a fact, and facts are what a gate can hold.
+func TestFollowUpsCiteTestsThatExist(t *testing.T) {
+	root := filepath.Join("..", "..")
+	raw, err := os.ReadFile(filepath.Join(root, "06_docs", "follow-ups.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cited := testRef.FindAllStringSubmatch(string(raw), -1)
+	if len(cited) < 10 {
+		t.Fatalf("follow-ups.md should cite at least 10 tests, found %d: the page has stopped "+
+			"naming its evidence, or this pattern no longer matches how it does", len(cited))
+	}
+	have := testNames(t, root)
+	for _, m := range cited {
+		if !have[m[1]] {
+			t.Errorf("follow-ups.md cites %s and no such test exists.\n"+
+				"A row citing a test that is gone reads as pinned and is not — re-point the row "+
+				"at the test that carries the property now, or reopen it.", m[1])
+		}
+	}
+}
+
+// testNames is every `func TestX` in the tree, less the vendored kit.
+func testNames(t *testing.T, root string) map[string]bool {
+	t.Helper()
+	re := regexp.MustCompile(`(?m)^func (Test[A-Za-z0-9_]+)\(`)
+	out := map[string]bool{}
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			// third_party is somebody else's tests; .git is not source.
+			if n := d.Name(); n == "third_party" || n == ".git" {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(p, "_test.go") {
+			return nil
+		}
+		src, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		for _, m := range re.FindAllStringSubmatch(string(src), -1) {
+			out[m[1]] = true
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) == 0 {
+		t.Fatal("no tests found in the tree; this check measures nothing")
+	}
+	return out
 }
