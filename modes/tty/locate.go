@@ -195,9 +195,16 @@ const (
 //
 // THE ORDER IS THE RULE. "Not settled" outranks everything because a field still
 // thinking has no answer to refuse on; "could not ask" outranks "not reachable"
-// because a timeout is not a verdict about the place. Reading them as a switch
-// rather than a run of `if`s is what makes a missing arm a compile-visible gap
-// instead of a silent fall-through.
+// because a timeout is not a verdict about the place. Reading them as one
+// ordered switch rather than a run of `if`s spread across two windows is what
+// makes the ORDER reviewable in one place.
+//
+// IT DOES NOT MAKE A MISSING ARM COMPILE-VISIBLE, and an earlier version of this
+// comment claimed it did. Go has no switch exhaustiveness check and no linter
+// here enables one — `requestSchedule` switches on this answer with no default,
+// so a fifth `submitAnswer` would fall through it in exactly the silence that
+// claim promised to prevent. Corrected at D-160. If a fifth is ever added, the
+// consumers must be found by grep, and there are two.
 func (st locateState) onSubmit() submitAnswer {
 	switch {
 	case !st.settled():

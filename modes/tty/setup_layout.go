@@ -94,9 +94,6 @@ func (d Dashboard) setupBlocks(o render.Opts) []setupBlock {
 	return out
 }
 
-// setupBlock builds one group: the blank line, its heading, the blank under it
-// and its rows. Each row records where it began, so the scroll reads the same
-// geometry the renderer produced rather than a second guess at it.
 // dataGroupLines draws the DATA group, which is the only one that cannot be a
 // single lines function.
 //
@@ -148,6 +145,14 @@ func (d Dashboard) dataGroupLines(o render.Opts, b setupBlock, at int, focus set
 	return b
 }
 
+// setupBlock builds one group: the blank line, its heading, the blank under it
+// and its rows. Each row records where it began, so the scroll reads the same
+// geometry the renderer produced rather than a second guess at it.
+//
+// (Restored at D-160: this block had fused with the helper's doc below it — no
+// blank line between them — so godoc bound the whole of it to the helper and
+// left this function undocumented. Three of the release's extractions did the
+// same thing; found by a blind review.)
 func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 	focus := d.setup.focus
 	b := setupBlock{lines: []string{"", setupGroup(setupGroupTitle(g)), ""}, focused: setupTable()[focus].group == g}

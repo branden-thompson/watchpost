@@ -53,19 +53,6 @@ func fitColumns(cols []StatusColumn, rows []StatusRow) []StatusColumn {
 	return out
 }
 
-// shrinkToFit takes an overflow out of the columns that said they could lose
-// it, and leaves the rest alone.
-//
-// FIT SIZES A COLUMN TO ITS CONTENT, which means a long value makes a wide
-// column and the kit — believing every column fits — never truncates anything.
-// The row then runs past the section and is CUT, with no tail, in the middle of
-// a word: "PAGER — Almost certainly" for "PAGER — Almost certainly felt". A cut
-// is what a clamp does to a line; a truncation is what a column does to a
-// value, and only the second one leaves a mark saying so.
-//
-// The excess comes off the Truncatable columns in order, each floored at its
-// MinWidth. A table with none keeps its width, and the caller's clamp is then
-// the honest outcome: nothing in it volunteered to be shortened.
 // dropColumns rebuilds the columns and the rows without the ones that were cut,
 // keeping every cell's style with its cell.
 //
@@ -78,9 +65,6 @@ func fitColumns(cols []StatusColumn, rows []StatusRow) []StatusColumn {
 // (data_table_row.go:539), so a "dropped" column would stretch to take
 // everything that is left — the exact opposite of dropping it.
 func dropColumns(out []StatusColumn, rows []StatusRow, drop map[int]bool) ([]StatusColumn, []StatusRow) {
-	// REMOVED, NOT ZEROED. A zero width means FILL in the kit
-	// (data_table_row.go:539), so a "dropped" column would stretch to take
-	// everything that is left — the exact opposite of dropping it.
 	kept := make([]StatusColumn, 0, len(out))
 	shift := make([]int, len(out)) // old index -> new, for the per-cell styles
 	for i, c := range out {
@@ -112,6 +96,24 @@ func dropColumns(out []StatusColumn, rows []StatusRow, drop map[int]bool) ([]Sta
 	return kept, trimmed
 }
 
+// shrinkToFit takes an overflow out of the columns that said they could lose
+// it, and leaves the rest alone.
+//
+// FIT SIZES A COLUMN TO ITS CONTENT, which means a long value makes a wide
+// column and the kit — believing every column fits — never truncates anything.
+// The row then runs past the section and is CUT, with no tail, in the middle of
+// a word: "PAGER — Almost certainly" for "PAGER — Almost certainly felt". A cut
+// is what a clamp does to a line; a truncation is what a column does to a
+// value, and only the second one leaves a mark saying so.
+//
+// The excess comes off the Truncatable columns in order, each floored at its
+// MinWidth. A table with none keeps its width, and the caller's clamp is then
+// the honest outcome: nothing in it volunteered to be shortened.
+//
+// (Restored at D-160: this block had fused with the helper's doc below it — no
+// blank line between them — so godoc bound the whole of it to the helper and
+// left this function undocumented. Three of the release's extractions did the
+// same thing; found by a blind review.)
 func shrinkToFit(cols []StatusColumn, rows []StatusRow, inner, gutter int) ([]StatusColumn, []StatusRow) {
 	out := append([]StatusColumn(nil), cols...)
 	natural := 0

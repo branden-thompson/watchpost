@@ -62,12 +62,21 @@ type entry[V any] struct {
 // violation is named at the moment it happens.
 func New[K comparable, V any](max int) *Memo[K, V] {
 	if max < 1 {
-		if err := invariant.Check(false, "a memo is built with room for at least one entry"); err != nil {
-			// NAMED, NOT SWALLOWED. There is no error channel here; the check
-			// exists so the violation appears in the invariant record rather
-			// than being absorbed by the clamp below it.
-			_ = err
-		}
+		// THE CLAMP IS ALL THERE IS, AND SAYING SO IS THE POINT. An earlier
+		// version called `invariant.Check(false, …)` here and discarded the
+		// error under a comment claiming the violation "appears in the invariant
+		// record". There is no invariant record: `platform/invariant` is
+		// SIDE-EFFECT-FREE — `Check` builds an error and the CALLER'S return is
+		// the recovery — and this function returns no error, so nothing
+		// happened. A check that satisfies a density metric and produces no
+		// observable effect is the proxy-gate pattern this codebase treats as a
+		// defect, and it was added the same day as a fix for that pattern.
+		//
+		// RETURNING AN ERROR INSTEAD WAS CONSIDERED AND NOT TAKEN: a memo is
+		// built at start-up where nothing is watching, and turning a sizing
+		// mistake into a nil dereference at the first read is worse than
+		// clamping. The bound that MATTERS — that the memo never exceeds max —
+		// is checked in `Parsed`, where it can actually break.
 		max = 1
 	}
 	return &Memo[K, V]{max: max, items: make(map[K]*entry[V], 64)}

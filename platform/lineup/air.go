@@ -116,9 +116,19 @@ func (d Director) onRefenced(ev Refenced) (Director, []Effect) {
 
 // onAired moves the air, and moves nothing else.
 //
-// A REPEATED COMMAND IS NOT A SECOND EVENT — the rule `onPowered` and
-// `onCutOver` already state, for the same reason: the operator swapping to a
-// surface they are already on must not re-settle the schedule.
+// A REPEATED COMMAND DOES NOT MOVE THE AIR — the rule `onPowered` and
+// `onCutOver` state for themselves. IT IS NO LONGER SETTLE-FREE, and the
+// difference matters to anyone writing a rule downstream of it: the repeat now
+// delegates to `onRefenced`, which installs the fence, re-tests the rail and
+// ENDS IN `settle()`. So a repeated swap emits a `Publish` where it previously
+// emitted nothing.
+//
+// THAT IS DELIBERATE AND IT IS BENIGN: `takeTheAir` and `prepareNext` are each
+// guarded, so settling twice decides nothing twice — and the alternative is the
+// defect below, where the fence is dropped because the air did not move. The
+// older wording said a repeat "must not re-settle the schedule" and stayed in
+// place after this change made it false; corrected at D-160 after a blind review
+// read the comment and the code together.
 //
 // BUT A REPEAT STILL CARRIES A FENCE, and returning `d, nil` dropped it whole.
 // The guard is written for the AIR; the fence is a different fact riding the

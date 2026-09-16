@@ -230,22 +230,6 @@ func (a *Assembler) SetLocations(refs []LocationRef) (added, removed []LocationR
 	return added, removed
 }
 
-// Apply merges one Fragment: last-write-wins per (provider, location,
-// domain-section). A failed Fragment (Err != nil) degrades the provider and
-// appends a provider_error Warning, but whatever it DID fetch still lands
-// (B3 UAT 59: one bad location must not blank the rest of the batch);
-// locations it could not serve keep their prior data (§10.1; obs_stale
-// never degrades status — see Warn).
-// asked is which locations the fetch COVERED. It is a PARAMETER, not a field on
-// Fragment, because a field can be forgotten and a parameter cannot: the first
-// version carried it on the Fragment, three of the four call sites set it, and
-// the one that did not — platform/sched, the ONLY path the dashboard refreshes
-// through — silently recorded no attempt for any location, ever. The fix ran in
-// `watchpost report` and nowhere a listener could see it (red team, 2026-09-08).
-//
-// PerLocation cannot answer this: a provider that returned nothing for a
-// location looks exactly like one nobody asked about, and telling those apart is
-// the whole of issue #13.
 // mergeLocationLocked copies one location's payload into the snapshot under
 // construction. THE CALLER HOLDS a.mu.
 //
@@ -301,6 +285,27 @@ func (a *Assembler) mergeLocationLocked(k LocationKey, pd PartialData, provider 
 	}
 }
 
+// Apply merges one Fragment: last-write-wins per (provider, location,
+// domain-section). A failed Fragment (Err != nil) degrades the provider and
+// appends a provider_error Warning, but whatever it DID fetch still lands
+// (B3 UAT 59: one bad location must not blank the rest of the batch);
+// locations it could not serve keep their prior data (§10.1; obs_stale
+// never degrades status — see Warn).
+// asked is which locations the fetch COVERED. It is a PARAMETER, not a field on
+// Fragment, because a field can be forgotten and a parameter cannot: the first
+// version carried it on the Fragment, three of the four call sites set it, and
+// the one that did not — platform/sched, the ONLY path the dashboard refreshes
+// through — silently recorded no attempt for any location, ever. The fix ran in
+// `watchpost report` and nowhere a listener could see it (red team, 2026-09-08).
+//
+// PerLocation cannot answer this: a provider that returned nothing for a
+// location looks exactly like one nobody asked about, and telling those apart is
+// the whole of issue #13.
+//
+// (Restored at D-160: this block had fused with the helper's doc below it — no
+// blank line between them — so godoc bound the whole of it to the helper and
+// left this function undocumented. Three of the release's extractions did the
+// same thing; found by a blind review.)
 func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	a.mu.Lock()
 	defer a.mu.Unlock()

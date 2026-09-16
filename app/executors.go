@@ -715,10 +715,24 @@ func (x *executors) cueFor(ref string) bool {
 
 // eventsFor is the producer's records for a card's refs, in the card's order.
 //
-// ALL OR NOTHING. A burst missing one of its alerts would read as a shorter
-// burst than the one the schedule planned and the operator saw — quieter than
-// the truth, with nothing to say a line went absent. A card that cannot be
-// composed in full is declined and reported.
+// ALL OR NOTHING FOR WHAT IT CANNOT SEE; SKIP WHAT HAS LAPSED (F-110).
+//
+// A burst missing one of its alerts reads as a shorter burst than the one the
+// schedule planned — quieter than the truth, with nothing to say a line went
+// absent. That still governs the two exits below that mean "I do not know": a
+// ref the producer does not hold, and one already read aloud. Both decline the
+// whole card, and declining is self-healing because nothing was marked.
+//
+// A LAPSED ALERT IS DIFFERENT, AND THE HUM LEAD RULED IT (2026-09-16): "valid
+// alerts need to be read, expired alerts must never be." An expired hazard is
+// not a line that went missing, it is a line that must not be spoken — so it is
+// SKIPPED and its live siblings are read. Declining the whole card instead
+// silenced a live tornado warning because a flood advisory beside it had
+// expired.
+//
+// CORRECTED AT D-160: this paragraph still said "a card that cannot be composed
+// in full is declined" for a fortnight after F-110 made that false. On the
+// hazard path it is the highest-value comment in the function.
 //
 // AND IT RE-ASKS WHETHER THE ALERT IS STILL LIVE (red team 2026-09-05, I-8).
 // The record is snapshotted when the burst ARRIVES and the card is composed
