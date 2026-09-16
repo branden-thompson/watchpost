@@ -26,9 +26,9 @@ import (
 
 // bedRelays is what the station can actually carry, nearest first.
 //
-// REMEMBERED, NOT DERIVED, AND D-117 IS WHY. This comment used to read "DERIVED
-// ON EVERY ASK, like the pool: a pure function of the transmitter, the bed's
-// fence and the embedded table" — true when the list came from a static CSV of
+// REMEMBERED, NOT DERIVED, AND D-117 IS WHY. Deriving it on every ask — a pure
+// function of the transmitter, the bed's fence and the embedded table — holds
+// only while the list comes from a static CSV of
 // every NOAA tower in the country, and false the moment the list became the
 // answer to "which of them does a directory actually stream". That is network
 // work; it is resolved when the AREA MOVES (`refreshBedRelays`) and read from
@@ -123,9 +123,9 @@ func (lp *livePipelines) setBedStations(st []stream.Station) {
 	lp.mu.Unlock()
 	if p != nil {
 		// TWO FACTS, TWO MESSAGES, AND THIS IS THE ONLY WRITER OF THE SECOND
-		// (D-125). The count used to ride on `BedMsg`, whose other two publishers
-		// do not know it and left it at zero — retracting this answer and
-		// disabling a bed that was carrying.
+		// (D-125). On `BedMsg` the count would have two other publishers that do
+		// not know it and leave it at zero — retracting this answer and disabling a
+		// bed that is carrying.
 		p.Send(tty.BedMsg{Relay: line, Carrying: carrying})
 		p.Send(tty.BedRelaysMsg{Count: len(st)})
 	}

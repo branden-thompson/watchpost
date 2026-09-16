@@ -71,9 +71,9 @@ type merged struct {
 	steps  int
 
 	// whileStopped counts events stepped against a stopped Director. It is a
-	// REACH figure, not a property: the driver used to stop and start in one
-	// atomic pair, so this was structurally zero and the merge's whole power
-	// asymmetry went untested (red team finding 3).
+	// REACH figure, not a property: a driver that stops and starts in one atomic
+	// pair makes this structurally zero, leaving the merge's whole power asymmetry
+	// untested.
 	whileStopped int
 }
 
@@ -124,9 +124,9 @@ func (m *merged) step(ev Event) {
 	next, fx := m.d.Step(ev)
 	m.d = next
 	// ONLY WHAT THE DRIVER CAN ANSWER GOES INTO THE BACKLOG (red team blind
-	// spot 7, measured). Every effect used to be queued and every service call
-	// drew one at random, but only a BuildCard or a Speak comes home as an
-	// event — and a Publish is emitted on EVERY settle, so the queue filled
+	// spot 7, measured). Queuing every effect and drawing one at random per
+	// service call is wrong because only a BuildCard or a Speak comes home as an
+	// event — and a Publish is emitted on EVERY settle, so the queue fills
 	// with effects the driver could only discard. Measured: 29,798 service
 	// calls, 4,680 of them actionable — 15.7% — and the ratio worsens through a
 	// run, which makes the DELAYED BUILD this test exists for rarer the longer
@@ -334,9 +334,9 @@ func TestTheMergedStationHoldsItsPropertiesUnderRandomTiming(t *testing.T) {
 				m.step(Tuned{Ref: ref, Live: rng.Intn(2) == 0})
 			case 7:
 				// A STOP IS A STATE WITH DURATION, NOT AN INSTANT (red team
-				// finding 3). This used to step Stopped and Running as an
-				// atomic pair, so across 300 runs and 2,630 needs, NOT ONE
-				// ordinary event was ever stepped against a stopped Director —
+				// finding 3). Stepping Stopped and Running as an atomic pair
+				// means that across 300 runs and 2,630 needs, NOT ONE
+				// ordinary event is ever stepped against a stopped Director —
 				// and the whole asymmetry the merge turns on (DR-3: the rail
 				// advances while the programme is stopped, the main track does
 				// not) went unexercised. A neutralised PD-1 guard passed every

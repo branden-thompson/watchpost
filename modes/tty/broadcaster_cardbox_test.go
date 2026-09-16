@@ -30,17 +30,17 @@ func boxOf(t *testing.T, box int, c lineup.Card, handle, badge string) []string 
 
 // A CARD FILLS ITS BOX AT EVERY WIDTH.
 //
-// ITS HEIGHT IS THE BODY'S NOW (D-87). The box used to be four rows whatever it
-// held — border, title, the corners' row, border — and the corners retired with
-// the overlay that made them necessary, so what a card is tall is what the
+// ITS HEIGHT IS THE BODY'S (D-87). A fixed four rows whatever it held — border,
+// title, the corners' row, border — belongs to an overlay this console does not
+// draw, so what a card is tall is what the
 // region puts inside it.
 func TestACardFillsItsBoxAtEveryWidth(t *testing.T) {
 	c := aCard(t, "OCEANSIDE, CA 92057")
 	for _, box := range []int{82, 112, 132} {
 		rows := boxOf(t, box, c, "6", "STANDARD")
 		// TWO ROWS WITH AN EMPTY BODY (D-110): a card is its BORDERS and whatever
-		// is put between them. The title row it used to open with moved into the
-		// top border, where the reference draws it.
+		// is put between them. The title is in the top border, where the reference
+		// draws it.
 		if len(rows) < 2 {
 			t.Fatalf("box %d: a card is at least two borders; got %d rows", box, len(rows))
 		}
@@ -72,9 +72,9 @@ func TestACardHasBordersOnEveryEdge(t *testing.T) {
 
 // THE BADGE RIDES THE RULE, at its right (D-110).
 //
-// THIS USED TO PIN THE HANDLE right-most on the title ROW. The reference moved
-// both: the badge to the border — `━━━ • STANDARD • ━━━` — and the handle to the
-// footer beside the presenter, so the row that carried them is gone. What
+// THE HANDLE IS NOT ON THIS ROW. The reference puts the badge in the border —
+// `━━━ • STANDARD • ━━━` — and the handle in the footer beside the presenter, so
+// no row carries them both. What
 // survives is that the box says what GRADE the card is without spending a line.
 func TestTheBoxsRuleCarriesTheGrade(t *testing.T) {
 	rule := boxOf(t, 132, aCard(t, "OCEANSIDE, CA"), "6", "STANDARD")[0]

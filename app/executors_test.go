@@ -187,9 +187,9 @@ func onlyFailed(t *testing.T, out []lineup.Event) lineup.Failed {
 //
 // THE TWO FORMS ARE THE CARD'S NOW, NOT THE PRODUCER'S (MVS-D-77, T3.10b). One
 // alert carries its own broadcast tail inside its line; several get a head, a
-// line each and a closing tail. The choice used to be a flag the producer set
-// beside each alert — which meant the producer decided the SHAPE of a burst it
-// did not schedule. It follows from how many records the card reads, which is
+// line each and a closing tail. A flag the producer set beside each alert would
+// let the producer decide the SHAPE of a burst it did not schedule. It follows
+// from how many records the card reads, which is
 // the one thing that cannot disagree with the burst the Director planned.
 func TestABreakingAlertIsBuiltFromTheProducersRecord(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
@@ -912,9 +912,9 @@ func TestTheHeldBedIsGivenBackEvenIfNothingElseSpeaks(t *testing.T) {
 // TestTheRailNeverLiftsTheBedOverALiveRead — the finding a fresh review found
 // and its mutant proved unpinned.
 //
-// Releasing the hold used to ask the arbiter whether it was idle and then act on
-// that answer, with the question answered outside the effector's lock: a job
-// admitted between the two had the bed restored out from under it, and the
+// Asking the arbiter whether it is idle and then acting on that answer puts the
+// question outside the effector's lock: a job admitted between the two has the
+// bed restored out from under it, and the
 // listener heard the broadcast surge to full volume over a read in progress —
 // the exact class the single-owner work exists to prevent.
 //

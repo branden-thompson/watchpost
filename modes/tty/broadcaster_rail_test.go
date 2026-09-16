@@ -252,9 +252,9 @@ func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
 
 // EVERY ROW OF THE RUNNING ORDER OPENS THE FRAME (D-87).
 //
-// IT USED TO CLOSE IT TOO, and the v2 reference took that edge away: "Notice the
-// line on the far right is gone." What is left on the right is three of air and
-// the scroll, so what a row of the running order still owes is its LEFT wall —
+// IT DOES NOT CLOSE IT: the v2 reference has no right-hand edge — "Notice the
+// line on the far right is gone." What is on the right is three of air and the
+// scroll, so what a row of the running order owes is its LEFT wall —
 // the rail's own — and its full width.
 func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
 	b := NewBroadcaster()
@@ -472,9 +472,9 @@ func TestEachRegionsRailCarriesItsOwnGround(t *testing.T) {
 // pointer for the tables is missing — this is needed because it directs which row
 // <enter> works on").
 //
-// THIS TEST USED TO ASSERT THAT ONE PRESS MOVED THE WINDOW, and that is no longer
-// what a press does: ↑↓ move the POINTER, and the window moves only when the focus
-// would otherwise leave it — which is Observer's behaviour and what the
+// ONE PRESS MOVES THE POINTER, NOT THE WINDOW: ↑↓ move the POINTER, and the
+// window moves only when the focus would otherwise leave it — which is
+// Observer's behaviour and what the
 // reference's own footer says ("[↑↓] Navigate"). A window that scrolled under a
 // pointer that had not moved would take the operator's place away from them.
 func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
@@ -565,10 +565,10 @@ func thumb(b Broadcaster) int {
 
 // TestTheThumbMovesWithTheWindow.
 //
-// THE RULE IS WRITTEN DOWN AND WAS NOT TESTED. `chromeAt`'s own comment: "THE
-// THUMB TRACKS THE WINDOW, and until D-87 it could not: `chrome` passed a
-// hard-coded `lo` of 0 to `Railify`, so the rail drew a thumb that never moved."
-// It was a real defect, it was fixed, and nothing pinned the fix — mutant mS4
+// THE RULE IS WRITTEN DOWN AND NEEDS A TEST. `chromeAt`'s own comment: "THE
+// THUMB TRACKS THE WINDOW, which is why the window's position is a parameter" —
+// a hard-coded `lo` of 0 to `Railify` draws a thumb that never moves. Nothing
+// pinned that until here — mutant mS4
 // puts the hard-coded zero back and SURVIVED the whole corpus sweep on
 // 2026-09-13.
 //
