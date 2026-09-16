@@ -66,38 +66,18 @@ func fitColumns(cols []StatusColumn, rows []StatusRow) []StatusColumn {
 // The excess comes off the Truncatable columns in order, each floored at its
 // MinWidth. A table with none keeps its width, and the caller's clamp is then
 // the honest outcome: nothing in it volunteered to be shortened.
-func shrinkToFit(cols []StatusColumn, rows []StatusRow, inner, gutter int) ([]StatusColumn, []StatusRow) {
-	out := append([]StatusColumn(nil), cols...)
-	natural := 0
-	for i, c := range out {
-		natural += c.Width
-		if i >= 3 && !c.NoGutter { // the kit's own rule: a gutter precedes columns 3..last
-			natural += gutter
-		}
-	}
-	over := natural - inner
-	drop := map[int]bool{}
-	for i := range out { // bounded by the columns (P10-02)
-		if over <= 0 || !out[i].Truncatable {
-			continue
-		}
-		// SHRINK TO ITS FLOOR, THEN DROP IT ENTIRELY. MinWidth on a truncatable
-		// column is the width below which its value stops meaning anything: an
-		// age cut to three cells renders "...", a cell shaped like a value that
-		// says nothing. Past that the column goes, because an absent column
-		// reads better than an empty one.
-		if take := min(over, out[i].Width-out[i].MinWidth); take > 0 {
-			out[i].Width -= take
-			over -= take
-		}
-		if over > 0 {
-			over -= out[i].Width + gutter
-			drop[i] = true
-		}
-	}
-	if len(drop) == 0 {
-		return out, rows
-	}
+// dropColumns rebuilds the columns and the rows without the ones that were cut,
+// keeping every cell's style with its cell.
+//
+// EXTRACTED AT THE COMPLEXITY CEILING (P10-04, D-159), and the two halves of
+// `shrinkToFit` are genuinely separate: the first DECIDES what will not fit, and
+// this one REBUILDS around that decision. It walks the same slices the caller
+// already holds, so the split adds no allocation on a render path.
+//
+// REMOVED, NOT ZEROED. A zero width means FILL in the kit
+// (data_table_row.go:539), so a "dropped" column would stretch to take
+// everything that is left — the exact opposite of dropping it.
+func dropColumns(out []StatusColumn, rows []StatusRow, drop map[int]bool) ([]StatusColumn, []StatusRow) {
 	// REMOVED, NOT ZEROED. A zero width means FILL in the kit
 	// (data_table_row.go:539), so a "dropped" column would stretch to take
 	// everything that is left — the exact opposite of dropping it.
@@ -130,6 +110,41 @@ func shrinkToFit(cols []StatusColumn, rows []StatusRow, inner, gutter int) ([]St
 		trimmed[j] = StatusRow{Cells: cells, Styles: styles}
 	}
 	return kept, trimmed
+}
+
+func shrinkToFit(cols []StatusColumn, rows []StatusRow, inner, gutter int) ([]StatusColumn, []StatusRow) {
+	out := append([]StatusColumn(nil), cols...)
+	natural := 0
+	for i, c := range out {
+		natural += c.Width
+		if i >= 3 && !c.NoGutter { // the kit's own rule: a gutter precedes columns 3..last
+			natural += gutter
+		}
+	}
+	over := natural - inner
+	drop := map[int]bool{}
+	for i := range out { // bounded by the columns (P10-02)
+		if over <= 0 || !out[i].Truncatable {
+			continue
+		}
+		// SHRINK TO ITS FLOOR, THEN DROP IT ENTIRELY. MinWidth on a truncatable
+		// column is the width below which its value stops meaning anything: an
+		// age cut to three cells renders "...", a cell shaped like a value that
+		// says nothing. Past that the column goes, because an absent column
+		// reads better than an empty one.
+		if take := min(over, out[i].Width-out[i].MinWidth); take > 0 {
+			out[i].Width -= take
+			over -= take
+		}
+		if over > 0 {
+			over -= out[i].Width + gutter
+			drop[i] = true
+		}
+	}
+	if len(drop) == 0 {
+		return out, rows
+	}
+	return dropColumns(out, rows, drop)
 }
 
 // DetailTable lays out rows at inner cells wide and returns them, no header.

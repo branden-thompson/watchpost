@@ -459,7 +459,7 @@ type Dashboard struct {
 	clockFmt  render.Clock // how times of day are written (render/clock.go); `clock()` is the wall clock
 	selected  int
 	alertIdx  int
-	recentOff int    // scroll offset (interaction lands with tab section nav)
+	recentOff int // scroll offset (interaction lands with tab section nav)
 	// consoleKeys is the console's bindings with the user's [keys] overrides
 	// folded in (FR-1.5, D-158). Merged here because this is where the merge
 	// error is already actionable; the Router and the help view both read it, so
@@ -481,8 +481,8 @@ type Dashboard struct {
 	// was before D-156 and nothing would say so.
 	liveOffset int
 
-	modal     modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode   string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	modal   modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
 	// search box, kept only while the window is serving the CONSOLE (D-129,
 	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
@@ -1234,37 +1234,75 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 // toggleModal for P10-04): w / ctrl+s open it, enter drills into the focused
 // event (FR-4), esc backs out of the record — the second esc falls through to
 // close like any window.
+// toggleSevere routes the WINDOW actions: opening one, and the keys that belong
+// to whichever one is open.
+//
+// SPLIT BY WINDOW AT THE COMPLEXITY CEILING (P10-04, D-159). The cases mixed
+// `act` with `d.modal` and with `d.debug.confirm`, so three windows' handling
+// sat in one body and the reader had to hold all three to follow any one. Every
+// case named its modal exactly, which is what makes the split ORDER-PRESERVING:
+// a case that could only match one window moves to that window's function, and
+// nothing that could match two is separated.
 func (d Dashboard) toggleSevere(act term.Action) (Dashboard, bool) {
-	switch {
-	case act == "severe":
+	switch act {
+	case "severe":
 		return d.openSevere(), true
-	case act == "debug":
+	case "debug":
 		return d.toggle(modalDebug), true
-	case act == "details" && d.modal == modalDebug && !d.debug.confirm:
+	}
+	switch d.modal {
+	case modalDebug:
+		return d.debugAction(act)
+	case modalRelayFault:
+		return d.relayFaultAction(act)
+	case modalSevere:
+		return d.severeAction(act)
+	}
+	return d, false
+}
+
+// debugAction is the injection window's own keys.
+func (d Dashboard) debugAction(act term.Action) (Dashboard, bool) {
+	switch {
+	case act == "details" && !d.debug.confirm:
 		// enter ASKS. Nothing here injects: an injected alert cannot be stopped
 		// once it is under way, and what it produces goes out over the
 		// operator's own broadcast (HUM LEAD mock, 2026-09-07).
 		return d.askDebugConfirm(), true
-	case act == "details" && d.modal == modalDebug:
+	case act == "details":
 		next, cmd := d.chooseDebug()
 		return next.withCmd(cmd), true
-	case act == "close" && d.modal == modalDebug && d.debug.confirm:
+	case act == "close" && d.debug.confirm:
 		// esc answers the question "no" and leaves the window open. Closing the
 		// tool because a confirmation was declined would be the app deciding
 		// what the operator meant.
 		return d.cancelDebugConfirm(), true
-	case act == "details" && d.modal == modalRelayFault:
-		// enter takes the focused way out (MVS-D-76). Handled here with the
-		// other windows' actions rather than in the nav switch: choosing is not
-		// navigating, and it ends the window.
-		// The command is CARRIED OUT, not dropped: this switch returns no cmd of
-		// its own, and a tune that never runs is the window doing nothing while
-		// looking like it worked.
-		next, cmd := d.chooseRelayFault()
-		return next.withCmd(cmd), true
-	case act == "details" && d.modal == modalSevere:
+	}
+	return d, false
+}
+
+// relayFaultAction is the relay-fault window's own key.
+//
+// enter TAKES THE FOCUSED WAY OUT (MVS-D-76). Handled with the other windows'
+// actions rather than in the nav switch: choosing is not navigating, and it ends
+// the window.
+//
+// THE COMMAND IS CARRIED OUT, NOT DROPPED. A tune that never runs is the window
+// doing nothing while looking like it worked.
+func (d Dashboard) relayFaultAction(act term.Action) (Dashboard, bool) {
+	if act != "details" {
+		return d, false
+	}
+	next, cmd := d.chooseRelayFault()
+	return next.withCmd(cmd), true
+}
+
+// severeAction is the severe-events window's own keys.
+func (d Dashboard) severeAction(act term.Action) (Dashboard, bool) {
+	switch {
+	case act == "details":
 		return d.openSevereDetail(), true
-	case act == "close" && d.modal == modalSevere && d.severeDetail:
+	case act == "close" && d.severeDetail:
 		return d.closeSevereDetail(), true
 	}
 	return d, false

@@ -397,6 +397,7 @@ func (Dashboard).currentlyRows
 func (Dashboard).cyclePicker
 func (Dashboard).cycleTheme
 func (Dashboard).dataGroupLines
+func (Dashboard).debugAction
 func (Dashboard).debugChips
 func (Dashboard).debugConfirmLines
 func (Dashboard).debugLines
@@ -501,6 +502,7 @@ func (Dashboard).readFocusedEvent
 func (Dashboard).recentLocations
 func (Dashboard).recentSection
 func (Dashboard).relayApplyCmd
+func (Dashboard).relayFaultAction
 func (Dashboard).relayFaultChips
 func (Dashboard).relayFaultLines
 func (Dashboard).relayFaultRows
@@ -549,6 +551,7 @@ func (Dashboard).setupSpace
 func (Dashboard).setupSuggest
 func (Dashboard).setupTransmitterLines
 func (Dashboard).setupWidth
+func (Dashboard).severeAction
 func (Dashboard).severeBrowseLines
 func (Dashboard).severeChips
 func (Dashboard).severeCount

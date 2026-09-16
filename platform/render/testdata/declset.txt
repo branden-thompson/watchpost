@@ -300,6 +300,7 @@ func contrastRatio
 func deepenToAA
 func defaultTheme
 func displayWidth
+func dropColumns
 func editionTone
 func fgLuminance
 func fgRGB
