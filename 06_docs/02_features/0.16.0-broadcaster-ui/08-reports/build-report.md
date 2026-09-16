@@ -1,19 +1,32 @@
 ---
 title: "0.16.0 Broadcaster UI — BUILD report"
 phase: "BUILD"
-status: "PRESENTED for HUM LEAD approval, 2026-09-15"
+status: "DRAFT — not yet presented.  Awaiting HUM LEAD approval for BUILD exit"
 sev: "SEV-0"
-gates: "verify: ALL GATES GREEN — 16 required gates · mutant-check across 355 mutants"
+gates: "verify: 16 required gates green on 2026-09-15 · mutant corpus 358 · re-run pending after round-3 remediation"
+rounds: "Three blind red-team rounds; round 3 closed 2026-09-16"
 ---
 
 # BUILD report — 0.16.0 Broadcaster UI
 
 ## The one-line version
 
-**The console is built, the UAT round is closed, and a blind red team found two CRITICAL defects on
-the hazard path that a green gate set and a 355-mutant corpus did not.**  Both are fixed, both were
-reproduced independently before being touched, and both came from one root.  Three requirements are
-genuinely open and named below rather than argued away.
+**The console is built and three blind red-team rounds have been run.  Round 3 — the last, and the
+one told to be critical of the first two — found six more defects, two of them on the hazard path,
+and one requirement that was never met at all with a green gate standing beside it.**  All six are
+fixed.  Every fix was reproduced before it was touched and every new test was proven able to fail; in
+six cases the mutation that proved it was the literal shipped code.
+
+**A correction to this report's own earlier status.**  Its frontmatter read *"PRESENTED for HUM LEAD
+approval, 2026-09-15"* for a draft that was committed and never presented.  That is the same class of
+claim FR-3.3 forbids the console — an action shown as taken that was not taken — made by the document
+whose job is to be the record.  It is stated here rather than quietly edited out.
+
+**What the three rounds cost, and what that says.**  Round 1 found the record was on disk rather than
+committed.  Round 2 found two criticals on the hazard path.  Round 3 found six more, **three of which
+rounds 1 and 2 introduced or left standing** — which is the charge round 3 was explicitly asked to
+test, and it is upheld.  A remediation is a change, and this release now has the evidence that
+changes made under gate pressure need their own adversary.
 
 ## What this release is
 
@@ -80,11 +93,64 @@ one lower than the mid-release record.
 
 ## Critical analysis — blind red team at the exit gate
 
-**Two independent agents, no prior context**, on the A2DH axes: *code-quality + safety-critical* and
-*docs-quality + project-hygiene*.  **Every finding from BOTH rounds is below, including the ones that were inconvenient.**  Round 1's
-docs/hygiene findings were fixed before this report existed and were missing from its first draft —
-red team round 2 caught that omission, and they are restored under *The record's own findings*.  Nine were actionable: **eight are fixed and one is deferred to REVIEW** (finding 4, below); twelve minors are dispositioned, six of
-them recorded as follow-ups because each needs a ruling rather than an edit.
+**Three rounds, every agent blind — no prior context, no sight of this report.**  Rounds 1 and 2 ran
+two agents each on the A2DH axes *code-quality + safety-critical* and *docs-quality +
+project-hygiene*.  Round 3 ran five, adding the **Distinguished Engineer** phase lens and the
+**junior-dev** persona, and was told to be critical of the two rounds before it.
+
+**Every finding from ALL THREE rounds is below, including the ones that were inconvenient** — and the
+history of this section is itself one of them.  Round 1's docs/hygiene findings were fixed before this
+report existed and were **missing from its first draft**; round 2 caught that omission and they are
+restored under *The record's own findings*.  Round 3 then found that this report cited none of the
+release's own five measures of value, which is now its own section.
+
+**A report that has had to be corrected by each successive round is the strongest argument in it for
+having run three.**
+
+### Round 3 — five blind agents, told to be critical of the first two rounds
+
+**The brief, from the HUM LEAD:** blind agents on the A2DH axes and personas, *"do not ad-lib"*;
+code-quality, Distinguished Engineer and junior-dev the most important; every finding backed by
+evidence; **"no findings is also a finding"**; and the Distinguished Engineer axis explicitly
+*"critical of the last 2 rounds of remediation"*.  The standard it was held to: survive an adversarial
+review by an external model, and let a human engineer approach the code and contribute — this is a
+public repository.
+
+**Six defects, all fixed.  Three were introduced or left standing by rounds 1 and 2.**  Two were found
+by two agents independently, which is the corroboration that moved them from plausible to confirmed.
+
+| # | Finding | Where it ended | Ruling |
+|---|---|---|---|
+| **SC-1** | A lapsed hazard never left the rail.  A tornado warning valid for 30 minutes, admitted at a silent station, was still there six hours later — invisible to staleness, counted by `heldNotice`, escalated to its loudest rung, and offered the air | **The operator.**  The console asserted a pending read the schedule could never take, forever — FR-3.3 read backwards | **D-155** |
+| **SC-2** | The fence never re-scoped when the service radius changed.  `d.settings.Fence` had ONE assignment in the package, behind the air-moved guard | **The listener's scope.**  The same sentence `Aired.Fence` claims to have fixed — *"a 100-mile hazard survived a narrowing to 25"* — reachable by a route nobody wired | **D-154** |
+| **F-110** | A lapsed hazard suppressed its live siblings: the composer declined the whole burst if any ref had lapsed | **The listener.**  A live tornado warning went unread because a flood advisory beside it had expired | **HUM LEAD ruling A**, 2026-09-16 |
+| **DE-1 / SC-3** | The Line-Up Request window sent the typed SLOT where the schedule takes an INDEX.  Found independently by two agents | **The operator.**  The card landed a row below the slot they typed, silently, on STANDBY — the console's normal state — with the window naming the slot they asked for | **D-156** |
+| **DE-2** | `couldNotAsk` was taught to one of two fields sharing `locateState` | **The operator.**  Three sentences in one window disagreeing: the helper said *"press enter to try again"*, the chip said *"Choose a location"*, and the key did neither | **D-157** |
+| **JD-1 / JD-2** | **FR-1.5 was never met**, and its gate was green for the whole release | **The requirement.**  See below — this is the most serious finding of the three rounds | **D-158** |
+
+**FR-1.5 deserves its own paragraph.**  The requirement's exit sentence is *"an override in the user's
+key table changes the chord"*.  The gate asserted that the swap actions **are in the key map** — and a
+map no override can reach satisfies that perfectly.  `broadcasterKeyMap()` went to the Router raw, so
+no `[keys]` entry could change a single console binding, including **`ctrl+b`, which is tmux's own
+default prefix** and the exact key the multiplexer survey FR-1.5 cites says an operator will need to
+rebind.  The console's map now takes the same overrides, validated the same way (D-15), and the help
+view reads the same owner so what the operator presses and what the help *prints* cannot disagree.
+The proxy gate is withdrawn in `gates.md` with its reasoning and renamed to what it does measure.
+**The 2026-09-09 plant that "caught" it was real and caught what it aimed at; what it aimed at was not
+the requirement.**
+
+**Two things the agents did not find, recorded because they are real.**  `actStationToggle` has no
+modal guard and is answered before D-58's *"the window on top owns the keys"* rule — believed
+deliberate, since taking a station off air must never be captured by a form, but undocumented, and it
+is why the live offset is read per key rather than stamped at window-open.  And the decline reason for
+a lapsed alert read *"the producer holds no alert for this card"* when the producer held it fine.
+
+**One correction I made to a finding before fixing it.**  SC-1 was reported as *"ON AIR reads a
+six-hour-old tornado warning as current"*.  That is wrong: `eventsFor` declines to build an expired
+alert, so the listener heard nothing.  The defect is the inverse and still serious, and it is stated
+above as what it is rather than as what was reported.
+
+### Rounds 1 and 2
 
 ### CRITICAL — both on the hazard path, both fixed
 
@@ -215,6 +281,35 @@ pins the dead end and fails the day the sentence renders.  FR-10.1 requires gain
 to be *distinct* from Observer's; D-56 ruled the opposite and the code, the test and the architecture
 survey all follow the ruling.  **The requirement was never updated to match it.**  That is a document
 contradicting a ruling, and it is recorded here rather than left to read as a gap.
+
+## Measures of value — M1 to M5
+
+**This section was absent from the first two drafts of this report, and its absence is itself a
+finding** (red team round 3, business-quality axis).  `problem-statement.md` §5 defines five measures
+and hardens each against a named anti-solution.  A release cannot claim its own value while citing
+none of them, and sixteen green gates are not a substitute: the gates say the code does what it was
+built to do, and the measures say whether that was worth doing.
+
+**Read the "Measured in" column as the phase that owns each one.**  Two of these are automated and
+therefore BUILD's to deliver; two are operator-UAT and belong to REVIEW/VALIDATE; one is split.
+
+| # | Name | Type | Target | Owner | Status at BUILD exit |
+|---|---|---|---|---|---|
+| **M1** | Next-item certainty (`NIC`) | **Primary** | 100% | Operator UAT | **Not yet measured — correctly.**  It needs randomised, unrehearsed prompts drawn from the live schedule, which is a REVIEW/VALIDATE instrument.  The UAT rounds this release ran were defect-finding, not scored.  **Nothing here claims it.** |
+| **M2** | Time to correct the running order (`TCO`) | **Primary** | Lower is better | Operator UAT, wall clock | **Not yet measured — correctly.**  Same phase.  The capability it scores landed (D-118's move/drop through the Director, FR-3.7's confirm), and the bound "*with audio output never interrupted*" is gated separately by `TestPressingTheSwapKeyOnALiveStationDoesNotSwitch` and the D-79 cancel path |
+| **M3** | Unsafe mode switches (`UMS`) | **Primary** | 0 | Scripted PTY **plus** operator UAT | **PARTIAL, and the automated half is BUILD's.**  `make pty-severe` drives the shipped binary with the Router as its model — eight keystroke assertions, green.  The measure asks for **"at least ten switches taken deliberately mid-utterance"**, and the PTY run does not take any.  So the scripted half is present in *mechanism* and absent in *coverage* |
+| **M4** | Settings bleed (`SB`) | Secondary | 0 | **Automated round-trip test** | **NOT MEASURED, and this one is a BUILD gap.**  No such test exists.  `mS0` is a column-rendering mutant and is not this.  The measure is automated by its own definition, so no later phase inherits it |
+| **M5** | Silent overflow (`SO`) | Secondary | 0 | **Automated size sweep** | **MET.**  `TestNoSizeRendersPastTheTerminal` sweeps widths derived from the breakpoint boundaries unioned with a stride of 5, and caught the F-55 shape on its first run before a fix existed.  `TestBelowTheFloorTheConsoleSaysSoRatherThanOverflowing` asserts the notice itself fits — which closes **M5's own anti-solution**, a notice that overflows letting the sweep report zero |
+
+**The honest summary: of the three measures BUILD owes in whole or in part, one is met (M5), one is
+partial (M3's PTY half), and one was never built (M4).**  The two Primary measures that are
+unmeasured are unmeasured *for the right reason* — they are operator instruments and this is not
+their phase — but M3 and M4 are not covered by that, and neither should be waved through on it.
+
+**What this does not say.**  It does not say the release has no value; M5 is met outright, and the
+capabilities M1 and M2 score are built and gated.  It says the release **cannot yet demonstrate**
+three of its five measures, and that two of those three are BUILD's own debt rather than a later
+phase's work.
 
 ## Honest assessment
 
