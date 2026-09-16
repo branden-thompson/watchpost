@@ -16,13 +16,17 @@
 # tree is a rule nobody can act on.
 set -eu
 
-BASE=${1:-$(git merge-base origin/main HEAD 2>/dev/null || echo HEAD)}
-# ADDED LINES ONLY, not whole changed files. The question a lint can answer is
-# "did this change introduce one", and scanning a whole file because one line in
-# it moved reports a backlog the author did not write — which is the fastest way
-# to make a lint something people learn to ignore.
-diff=$(git diff -U0 --diff-filter=ACM "$BASE"...HEAD -- '*.go' ':(exclude)third_party/*' 2>/dev/null || true)
-[ -n "$diff" ] || { echo "lint-authoring: no changed Go"; exit 0; }
+# THE WHOLE TREE, NOT THE DIFF. An anti-pattern is not excused by predating the
+# session that finds it: walking into a room that is already a mess does not make
+# the mess someone else's. A contributor leaves the place better than they found
+# it, so the check asks "does this repository contain one", never "did I write
+# one" — and a check scoped to authorship is a check that can be made quiet by
+# narrowing it, which is exactly what happened to this file's first version.
+#
+# EXCLUDES `third_party/` ONLY, because that tree is vendored and not ours to
+# rewrite; its gaps go upstream instead.
+files=$(git ls-files '*.go' | grep -v '^third_party/' || true)
+[ -n "$files" ] || { echo "lint-authoring: no Go files"; exit 0; }
 
 fail=0
 
@@ -35,23 +39,25 @@ fail=0
 # the reader does not have and does not.
 HIST='used to (be|do|have|return|call)|(^|[^a-z])legacy( compatibility|:)|for backward compat|backwards compat|the old (API|behaviour|behavior|field|name|way)|an earlier version|previously (it|this|we)|corrected at D-[0-9]|(found|caught) by (a |the )?(blind|red[- ]team)|red[- ]?team.s (round|second|third|final)|said the opposite|the first fix|for a fortnight|until D-[0-9]|stayed in place after|was [0-9]+, bumped'
 
-hits=$(printf '%s\n' "$diff" | grep -E '^\+' | grep -vE '^\+\+\+' | grep -E '^\+[[:space:]]*(//|\*)' | grep -Ei "$HIST" || true)
-if [ -n "$hits" ]; then
-  echo "lint-authoring: AP-HIST-01 — this change ADDS comments that narrate history"
-  printf '%s\n' "$hits" | head -12 | sed 's/^/    /'
+hist=$(grep -nEi "^[[:space:]]*(//|\*)" $files 2>/dev/null | grep -Ei "$HIST" || true)
+if [ -n "$hist" ]; then
+  n=$(printf '%s\n' "$hist" | wc -l | tr -d ' ')
+  echo "lint-authoring: AP-HIST-01 — $n comment(s) narrate history"
+  printf '%s\n' "$hist" | head -12 | sed 's/^/    /'
+  [ "$n" -gt 12 ] && echo "    … and $((n - 12)) more"
   fail=1
 fi
 
-# --- AP-DEAD-01: a declaration kept alive only by a blank assignment ---
+# --- AP-DEAD-01: a declaration kept alive by a blank assignment ---
 #
 # `_ = x` on its own line is how unused code survives the compiler. The P10
-# checker reads it as a USE, which is exactly how a dead closure sat in the
-# request window for two weeks with a gate watching the file.
-dead=$(printf '%s\n' "$diff" | grep -E '^\+' | grep -vE '^\+\+\+' | grep -E '^\+[[:space:]]*_ = [a-zA-Z][a-zA-Z0-9_]*[[:space:]]*$' || true)
+# checker reads it as a USE, which is how a dead closure sat in the request
+# window with a gate watching the file.
+dead=$(grep -nE '^[[:space:]]*_ = [a-zA-Z][a-zA-Z0-9_]*[[:space:]]*$' $files 2>/dev/null || true)
 if [ -n "$dead" ]; then
-  echo "lint-authoring: AP-DEAD-01 — a declaration kept alive by a blank assignment"
-  printf '%s\n' "$dead" | head -4 | sed 's/^/    /'
-  echo "    If it is genuinely needed, say why on the line; if not, delete the declaration."
+  n=$(printf '%s\n' "$dead" | wc -l | tr -d ' ')
+  echo "lint-authoring: AP-DEAD-01 — $n declaration(s) kept alive by a blank assignment"
+  printf '%s\n' "$dead" | head -6 | sed 's/^/    /'
   fail=1
 fi
 

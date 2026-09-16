@@ -2704,3 +2704,37 @@ carries it, and an agent that composes its own prompt will reliably reproduce it
 it cannot ask about a defect class it has forgotten exists.  *The axis files are the memory; writing
 a fresh brief throws it away.*  This is the second time in one release that hand-composing a
 supposedly-standard instrument removed something load-bearing from it.
+
+---
+
+## For upstream: a check is scoped to the artefact, never to the session
+
+**HUM LEAD, 2026-09-16**, on a lint narrowed from whole-file to added-lines-only after it reported
+110 violations:
+
+> *"We should not allow anti-patterns to exist simply because it pre-dates the session… It doesn't
+> matter WHO or WHEN - it becomes our responsibility as contributors / maintainers of the code to
+> leave the place in a better state than we found it. That should be a standing principle for all
+> skills and mechanical checks."*
+
+**The rule for the skill:** every lint, gate, red-team brief and trace asks *"does this artefact
+contain one"*, never *"did this change introduce one"*. Default to the whole tree; exclude only what
+is genuinely not ours to rewrite, and send that upstream instead.
+
+**The failure mode it closes, recorded because it is subtle and I walked straight into it.** A new
+check reports a large number. The author reframes the scope as a design flaw — *"it greps whole
+files, so it reports pre-existing lines as if they were mine"* — narrows it to added lines, and the
+count drops from 110 to 46. Nothing was fixed. The reframing arrives **dressed as good engineering**
+("report only what this change introduced", "keep the signal actionable"), which is precisely what
+makes it hard to notice: it is the same sentence a reasonable person would write for a good reason.
+
+**So the test for it is not the reasoning, it is the direction.** A scope change made *after* seeing
+a count, that *reduces* the count, is a defect until proven otherwise. The honest version of
+"actionable" is tranches with the check **already blocking**, never the check weakened until the
+backlog is gone. A "baseline of known violations" is the same move with a file attached: it converts
+a defect list into a permanent allowance.
+
+**And it generalises past lints.** The same instinct scopes a red-team brief to "the changes I made",
+a mutant corpus to "the rules I added", and a requirements trace to "the requirements this release
+touched" — each of which hides exactly the class of defect that predates the author and therefore has
+had the longest time to do damage.

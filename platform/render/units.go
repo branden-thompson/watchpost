@@ -321,8 +321,7 @@ var asciiMarks = sync.OnceValue(func() *strings.Replacer {
 			// added to one set and forgotten in the other cannot slip through. A
 			// `Glyphs` field of any other kind — a nested struct, a map, a slice —
 			// would be SILENTLY SKIPPED, which is the forgotten glyph arriving by the
-			// one route the guard was bought to close. Found by red team round 3, on
-			// the very row that ratifies this `reflect` import as a safety device.
+			// one route the guard was bought to close.
 			//
 			// A `default` ARM WOULD HAVE TO PANIC, and this is a render path reached
 			// through `sync.OnceValue` with no error channel. `TestEveryGlyphFieldCanBePaired`

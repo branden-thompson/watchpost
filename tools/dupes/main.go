@@ -64,17 +64,14 @@ type group struct {
 // REPORTING are three jobs; the first two are three lines each and this one is
 // the rest of the function.
 //
-// THE SCOPE LINE IS NOT DECORATION. The count was published for a fortnight with
-// its blind spots recorded only in a document that QUOTES it, which is the
-// weaker reading of "where the number is published" (junior-dev review,
-// 2026-09-08). A floor presented as a total is a number that lies by omission.
+// THE SCOPE LINE IS NOT DECORATION. A floor presented as a total is a number
+// that lies by omission, so where the number is published the blind spots are
+// published beside it (INST-5).
 func reportText(groups, unratified []group, drift []string, min int, withTests bool) {
 	fmt.Printf("dupes: %d duplicate group(s) at >= %d nodes; %d ratified, %d NOT\n",
 		len(groups), min, len(groups)-len(unratified), len(unratified))
-	// INST-5, applied to the instrument that earned the rule. The count was
-	// published for a fortnight with its blind spots recorded only in a
-	// document that quotes it — which is the weaker reading of "where the
-	// number is published" (junior-dev review, 2026-09-08).
+	// INST-5: where the number is published, its blind spots are published
+	// beside it — a floor presented as a total is a number that lies by omission.
 	scope := "production code only"
 	if withTests {
 		scope = "including _test.go"
