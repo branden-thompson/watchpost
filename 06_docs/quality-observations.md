@@ -2874,3 +2874,82 @@ the more actionable half, and a single reviewer cannot produce it at all.
 **"which of your own mistakes would the tooling catch, and which would reach a reviewer?"** — asked of
 someone who had to plan a real change first. Every reviewer answered it concretely, and two of the
 three findings that closed this round came out of that question rather than out of reading the code.
+
+---
+
+## The defect lives inside its own guard
+
+**Five instances in one day**, every one found by a blind reviewer and none by a gate:
+
+1. The test whose purpose is stopping two lists from disagreeing carried a hardcoded second copy of
+   one of its own lists.
+2. The gate written to catch *"controls that exist and are not run"* did not check that a control runs.
+3. Its fix scoped which targets are read, and still counted a **commented-out** line as a control.
+4. The guard written to close the empty-branch hole **has** the empty-branch hole — a one-character
+   `:=` shadow passes it, and the whole package suite stays green.
+5. The reason-floor test, written to close the exemption tables' last hole, is itself a hand-written
+   enumeration whose own subject check cannot fire.
+
+**The mechanism, and it is not carelessness.** The author who has just understood a defect class well
+enough to build a detector for it is, at that moment, the person least able to see a member of that
+class in their own code. The understanding and the blindness come from the same place: the class has
+been compressed into a rule, and the rule is now being applied outward, not inward.
+
+**So the countermeasure is structural, not attentional.** Telling the author to look harder does not
+work — they did look, and they built a detector. What works is a different reader, and specifically
+one who is told to CONSTRUCT the defect rather than read for it. Every reviewer who built the attack
+found something; every finding that came from reading alone was weaker.
+
+**The corollary for gate code:** a gate is the one artefact where the author's blind spot and the
+artefact's subject are guaranteed to coincide. **Gate code should be adversarially reviewed by
+someone who did not write it, as a rule, not as a courtesy.**
+
+---
+
+## A remediation loop that is not converging should be stopped, not continued
+
+**The evidence.** Three consecutive rounds on one surface. Round 1 found gates that did not exist.
+Round 2 found gates that could not fail. Round 3 found that the fixes from round 2 could not fail —
+and one round-3 fix made things actively worse, adding a conjunct that narrowed a working scan and
+reinstated a hole the pre-fix version had caught.
+
+**The defect count per round did not drop.** That is the signal, and it is available early: not "are
+we finding defects" (always yes) but "is the rate falling". A fourth round would have found defects
+in the third round's fixes, and the honest read is that the layer needed consolidation and deletion
+rather than another layer.
+
+**Why it is hard to notice from inside.** Every individual round looks like progress — real defects
+found, real fixes made, each verified. The failure is only visible in the derivative, and the person
+writing the fixes is measuring the integral.
+
+**The related trap: "verified" means "verified against the spelling I thought of".** One finding was
+closed three times. Each time a real attack was constructed and really did fail the gate. Each time a
+cheaper spelling was never tried — and the third time, a junior reviewer found it in minutes by
+trying the key in a different position. Two documents still claimed both attacks were verified.
+**A verification is only as wide as the adversary's imagination, and the author is the worst
+available adversary.**
+
+---
+
+## Derived gates survive attack; listed gates do not
+
+Across a seven-reviewer adversarial round against a freshly built gate layer, the result split
+cleanly along one line:
+
+- **Every gate that enumerates from the artefact held** — the git index, the Makefile, the AST, the
+  registry's own const block. Reviewers attacked them and reported them sound.
+- **Every gate with a hand-written list was defeated**, usually in one line, usually by adding a row
+  rather than by attacking the logic.
+
+Eight exemption tables had accumulated across three files. Each was individually justified; together
+they were an attack surface, and they grew fastest in the rounds where gates were added quickest. The
+junior reviewer's formulation is the one to keep:
+
+> *"Every table is a one-line escape, and the only thing standing behind it is a reviewer noticing a
+> plausible sentence. The gates that would be hard to silence — the derived ones — are the ones with
+> no table."*
+
+**The rule to extract:** an exemption table is a cost, not a feature. If a check needs one, the reason
+string must be mandatory and machine-checked for staleness in BOTH directions, and the number of
+tables is itself a metric worth watching. A check that needs no table is worth more than a stricter
+check that needs one.
