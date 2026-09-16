@@ -26,6 +26,8 @@ package bodymemo
 import (
 	"crypto/sha256"
 	"math"
+
+	"github.com/branden-thompson/watchpost/platform/invariant"
 	"sync"
 )
 
@@ -78,11 +80,32 @@ func (m *Memo[K, V]) Parsed(k K, raw []byte, parse func([]byte) (V, error)) (V, 
 		m.evictLocked()
 	}
 	m.items[k] = &entry[V]{sum: sum, val: val, used: m.tick}
+	// THE BOUND IS THIS PACKAGE'S THIRD RULE, CHECKED WHERE IT CAN BREAK (P10-05).
+	// OQ-9 states it in the package doc — "It is bounded. At most max entries,
+	// least-recently-used out" — and nothing asserted it: the eviction is
+	// conditional on a miss, so the day that condition is wrong the memo grows
+	// without bound and every observable (a hit returns what a parse would,
+	// parses counts misses) goes on reading correct.
+	//
+	// ON THE MISS PATH ONLY, deliberately. Rule 2 is that a HIT does not parse,
+	// and the providers' allocation pins hold a hit at ZERO — so a check on the
+	// hit path would be measured by those pins rather than by this package.
+	// A miss has already parsed and allocated; this costs nothing it did not
+	// already spend.
+	if err := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); err != nil {
+		return val, err
+	}
 	return val, nil
 }
 
 // evictLocked drops the least-recently-used entry (caller holds mu).
 func (m *Memo[K, V]) evictLocked() {
+	// AN EVICTION WITH NOTHING TO EVICT DELETES THE ZERO KEY, which is silent:
+	// `delete` on an absent key is a no-op, so an empty memo would "evict"
+	// for ever and the caller's bound would never be reached.
+	if len(m.items) == 0 {
+		return
+	}
 	var victim K
 	oldest := uint64(math.MaxUint64)
 	for k, e := range m.items {
