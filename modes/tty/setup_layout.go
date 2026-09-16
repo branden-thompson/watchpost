@@ -105,11 +105,13 @@ func (d Dashboard) setupBlocks(o render.Opts) []setupBlock {
 // function, and this one inlined thirty-odd statements beside them. The fix is
 // the pattern its own neighbours already use.
 //
-// IT TAKES AND RETURNS BOTH THE BLOCK AND THE CURSOR, because the two move
-// together: each row appended shifts where the NEXT row's focus span begins, and
-// a helper that returned only the block would leave the caller to re-derive `at`
-// — which is the arithmetic the focus scroll rides on.
-func (d Dashboard) dataGroupLines(o render.Opts, b setupBlock, at int, focus setupRowID) (setupBlock, int) {
+// IT TAKES THE CURSOR AND DOES NOT RETURN IT. Each row appended shifts where the
+// NEXT row's focus span begins, so `at` moves all the way down this group — but
+// the group is the last thing its case does, and nothing after it reads the
+// cursor again. An earlier version of this comment claimed the caller needed it
+// back; the caller does not, and returning it made the assignment ineffectual.
+// Caught by the same P10 run that asked for the extraction.
+func (d Dashboard) dataGroupLines(o render.Opts, b setupBlock, at int, focus setupRowID) setupBlock {
 	// DATA IS THE ONE MIXED GROUP (D-92): the default location is the
 	// LISTENER's (D-18 row 1) and the provider key is SHARED (row 3), so this
 	// group is half-drawn on the console rather than skipped.
@@ -143,7 +145,7 @@ func (d Dashboard) dataGroupLines(o render.Opts, b setupBlock, at int, focus set
 	if focus == rowFIRMSKey {
 		b.at, b.end = at, len(b.lines)
 	}
-	return b, at
+	return b
 }
 
 func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
@@ -152,7 +154,7 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 	at := len(b.lines)
 	switch g {
 	case groupData:
-		b, at = d.dataGroupLines(o, b, at, focus)
+		b = d.dataGroupLines(o, b, at, focus)
 	case groupUI:
 		ui, uiAt := d.uiLines(o)
 		b.lines = append(b.lines, ui...)

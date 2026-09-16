@@ -35,6 +35,7 @@ func (*Assembler).SetLocations
 func (*Assembler).Size
 func (*Assembler).Snapshot
 func (*Assembler).Warn
+func (*Assembler).mergeLocationLocked
 func (*Assembler).weatherAsOf
 func (*Marine).Clone
 func (Hotspot).FRPOrMissing

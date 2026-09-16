@@ -246,6 +246,61 @@ func (a *Assembler) SetLocations(refs []LocationRef) (added, removed []LocationR
 // PerLocation cannot answer this: a provider that returned nothing for a
 // location looks exactly like one nobody asked about, and telling those apart is
 // the whole of issue #13.
+// mergeLocationLocked copies one location's payload into the snapshot under
+// construction. THE CALLER HOLDS a.mu.
+//
+// EXTRACTED AT THE COMPLEXITY CEILING (P10-04, D-159), and the cut is placed
+// where it is for a reason worth stating: everything ABOVE it in `Apply` is
+// issue #13's correctness argument — the attempt-not-result stamping, the
+// answersTheRow storage filter and the per-location reachability rule — and
+// every comment explaining those stays attached to the code it governs.
+//
+// NOTHING HERE DECIDES WHAT A ROW SAYS. This is payload copying: the question of
+// whether a location was ASKED, and what its absence means, is settled before
+// this runs and is not re-opened by it. A comment here claiming otherwise would
+// be the false attribution `Apply`'s own notes warn about.
+//
+// IT COPIES RATHER THAN ALIASES, throughout. A fragment is the provider's own
+// slice and it may reuse it on the next cycle; a snapshot that aliased it would
+// change under a reader who is already drawing from it.
+func (a *Assembler) mergeLocationLocked(k LocationKey, pd PartialData, provider string) {
+	secs, ok := a.sections[k]
+	if !ok {
+		return // unknown location: fragment for a place we no longer watch
+	}
+	sec := secs[provider]
+	if sec == nil {
+		sec = &Section{}
+		secs[provider] = sec
+	}
+	if pd.Current != nil {
+		c := *pd.Current
+		sec.Current = &c
+	}
+	if pd.Hourly != nil {
+		sec.Hourly = append([]Hourly(nil), pd.Hourly...)
+	}
+	if pd.Daily != nil {
+		sec.Daily = append([]Daily(nil), pd.Daily...)
+	}
+	if pd.Marine != nil {
+		sec.Marine = pd.Marine.Clone()
+	}
+	if pd.Alerts != nil {
+		a.alerts[k] = append([]Alert(nil), pd.Alerts...)
+	}
+	if pd.Fire != nil {
+		fs := *pd.Fire
+		if a.fire[k] == nil {
+			a.fire[k] = map[string]*FireState{}
+		}
+		a.fire[k][provider] = &fs // this provider's part; the others keep theirs
+	}
+	if pd.Seismic != nil {
+		a.seismic[k] = pd.Seismic // the one seismic provider's latest state (0.11.0)
+	}
+}
+
 func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -322,42 +377,8 @@ func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 		}
 	}
 
-	for k, pd := range f.PerLocation {
-		secs, ok := a.sections[k]
-		if !ok {
-			continue // unknown location: fragment for a place we no longer watch
-		}
-		sec := secs[f.Provider]
-		if sec == nil {
-			sec = &Section{}
-			secs[f.Provider] = sec
-		}
-		if pd.Current != nil {
-			c := *pd.Current
-			sec.Current = &c
-		}
-		if pd.Hourly != nil {
-			sec.Hourly = append([]Hourly(nil), pd.Hourly...)
-		}
-		if pd.Daily != nil {
-			sec.Daily = append([]Daily(nil), pd.Daily...)
-		}
-		if pd.Marine != nil {
-			sec.Marine = pd.Marine.Clone()
-		}
-		if pd.Alerts != nil {
-			a.alerts[k] = append([]Alert(nil), pd.Alerts...)
-		}
-		if pd.Fire != nil {
-			fs := *pd.Fire
-			if a.fire[k] == nil {
-				a.fire[k] = map[string]*FireState{}
-			}
-			a.fire[k][f.Provider] = &fs // this provider's part; the others keep theirs
-		}
-		if pd.Seismic != nil {
-			a.seismic[k] = pd.Seismic // the one seismic provider's latest state (0.11.0)
-		}
+	for k, pd := range f.PerLocation { // bounded by the fragment (P10-02)
+		a.mergeLocationLocked(k, pd, f.Provider)
 	}
 }
 

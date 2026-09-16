@@ -137,7 +137,6 @@ func runProgram(p *tea.Program) error {
 			"for a one-shot text report that needs no terminal, use `watchpost report`")
 	}
 	return fmt.Errorf("dashboard failed: %w", err)
-	return nil
 }
 
 // giveItAStation settles everything the console needs to exist BEFORE it is
