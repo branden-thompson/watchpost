@@ -97,45 +97,62 @@ func (d Dashboard) setupBlocks(o render.Opts) []setupBlock {
 // setupBlock builds one group: the blank line, its heading, the blank under it
 // and its rows. Each row records where it began, so the scroll reads the same
 // geometry the renderer produced rather than a second guess at it.
+// dataGroupLines draws the DATA group, which is the only one that cannot be a
+// single lines function.
+//
+// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), and it is the case that
+// broke the budget: the other five groups each delegate to one per-group lines
+// function, and this one inlined thirty-odd statements beside them. The fix is
+// the pattern its own neighbours already use.
+//
+// IT TAKES AND RETURNS BOTH THE BLOCK AND THE CURSOR, because the two move
+// together: each row appended shifts where the NEXT row's focus span begins, and
+// a helper that returned only the block would leave the caller to re-derive `at`
+// — which is the arithmetic the focus scroll rides on.
+func (d Dashboard) dataGroupLines(o render.Opts, b setupBlock, at int, focus setupRowID) (setupBlock, int) {
+	// DATA IS THE ONE MIXED GROUP (D-92): the default location is the
+	// LISTENER's (D-18 row 1) and the provider key is SHARED (row 3), so this
+	// group is half-drawn on the console rather than skipped.
+	if d.rowVisible(rowLocation) {
+		b.lines = append(b.lines, d.setupLocationLines(o, setupMark(o, focus == rowLocation))...)
+		if focus == rowLocation {
+			b.at, b.end = at, len(b.lines)
+		}
+		b.lines = append(b.lines, "") // the separator between the two DATA rows
+		at = len(b.lines)
+	}
+	// AND THE STATION'S OWN TWO (D-115), drawn on the console where the
+	// listener's default location is not. The same half-drawn shape, one row
+	// along: DATA answers "where is this app pointed" for whichever subject
+	// the surface has.
+	if d.rowVisible(rowTransmitter) {
+		b.lines = append(b.lines, d.setupTransmitterLines(o, setupMark(o, focus == rowTransmitter))...)
+		if focus == rowTransmitter {
+			b.at, b.end = at, len(b.lines)
+		}
+		b.lines = append(b.lines, "")
+		at = len(b.lines)
+		b.lines = append(b.lines, d.setupServiceLines(o, setupMark(o, focus == rowServiceRadius))...)
+		if focus == rowServiceRadius {
+			b.at, b.end = at, len(b.lines)
+		}
+		b.lines = append(b.lines, "")
+		at = len(b.lines)
+	}
+	b.lines = append(b.lines, d.setupKeyLines(o, setupMark(o, focus == rowFIRMSKey))...)
+	if focus == rowFIRMSKey {
+		b.at, b.end = at, len(b.lines)
+	}
+	return b, at
+}
+
 func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 	focus := d.setup.focus
 	b := setupBlock{lines: []string{"", setupGroup(setupGroupTitle(g)), ""}, focused: setupTable()[focus].group == g}
 	at := len(b.lines)
 	switch g {
 	case groupData:
-		// DATA IS THE ONE MIXED GROUP (D-92): the default location is the
-		// LISTENER's (D-18 row 1) and the provider key is SHARED (row 3), so this
-		// group is half-drawn on the console rather than skipped.
-		if d.rowVisible(rowLocation) {
-			b.lines = append(b.lines, d.setupLocationLines(o, setupMark(o, focus == rowLocation))...)
-			if focus == rowLocation {
-				b.at, b.end = at, len(b.lines)
-			}
-			b.lines = append(b.lines, "") // the separator between the two DATA rows
-			at = len(b.lines)
-		}
-		// AND THE STATION'S OWN TWO (D-115), drawn on the console where the
-		// listener's default location is not. The same half-drawn shape, one row
-		// along: DATA answers "where is this app pointed" for whichever subject
-		// the surface has.
-		if d.rowVisible(rowTransmitter) {
-			b.lines = append(b.lines, d.setupTransmitterLines(o, setupMark(o, focus == rowTransmitter))...)
-			if focus == rowTransmitter {
-				b.at, b.end = at, len(b.lines)
-			}
-			b.lines = append(b.lines, "")
-			at = len(b.lines)
-			b.lines = append(b.lines, d.setupServiceLines(o, setupMark(o, focus == rowServiceRadius))...)
-			if focus == rowServiceRadius {
-				b.at, b.end = at, len(b.lines)
-			}
-			b.lines = append(b.lines, "")
-			at = len(b.lines)
-		}
-		b.lines = append(b.lines, d.setupKeyLines(o, setupMark(o, focus == rowFIRMSKey))...)
-		if focus == rowFIRMSKey {
-			b.at, b.end = at, len(b.lines)
-		}
+		b, at = d.dataGroupLines(o, b, at, focus)
 	case groupUI:
 		ui, uiAt := d.uiLines(o)
 		b.lines = append(b.lines, ui...)

@@ -396,6 +396,7 @@ func (Dashboard).currentTransmitter
 func (Dashboard).currentlyRows
 func (Dashboard).cyclePicker
 func (Dashboard).cycleTheme
+func (Dashboard).dataGroupLines
 func (Dashboard).debugChips
 func (Dashboard).debugConfirmLines
 func (Dashboard).debugLines

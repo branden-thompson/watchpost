@@ -117,21 +117,41 @@ func RunDashboard(version string, opt Options) error {
 	// would otherwise sit through pacing waits and retries.
 	defer func() { cancel(); lp.stopAll() }()
 
-	if _, err := p.Run(); err != nil {
-		// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team,
-		// 2026-09-08). Piping or redirecting stdin surfaced "bubbletea: error
-		// opening TTY: … open /dev/tty: device not configured", which names a
-		// dependency the listener did not choose and no step they can take.
-		// Watchpost is a full-screen program: without a terminal it has nothing
-		// to draw on, and the fix is to run it in one.
-		if strings.Contains(err.Error(), "TTY") || strings.Contains(err.Error(), "/dev/tty") {
-			return fmt.Errorf("watchpost needs a terminal to draw in, and this one has no TTY " +
-				"(stdin looks piped or redirected). Run `watchpost` directly in a terminal window; " +
-				"for a one-shot text report that needs no terminal, use `watchpost report`")
-		}
-		return fmt.Errorf("dashboard failed: %w", err)
+	if err := runProgram(p); err != nil {
+		return err
 	}
 	reportTiming(time.Duration(firstFullNanos.Load()))
+	return nil
+}
+
+// runProgram runs the terminal program and turns its failure into one the
+// listener can act on.
+//
+// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), and this file already
+// names the remedy: `tickerState` carries the comment "one owner so RunDashboard
+// stays within its statement budget". The budget drifted back over, so the same
+// answer is applied again rather than the rule exempted.
+//
+// THE TRANSLATION IS THE POINT, not the call. A terminal library's "open
+// /dev/tty: device not configured" names a dependency the listener did not
+// choose and no step they can take; the sentence below names the step.
+func runProgram(p *tea.Program) error {
+	_, err := p.Run()
+	if err == nil {
+		return nil
+	}
+	// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team,
+	// 2026-09-08). Piping or redirecting stdin surfaced "bubbletea: error
+	// opening TTY: … open /dev/tty: device not configured", which names a
+	// dependency the listener did not choose and no step they can take.
+	// Watchpost is a full-screen program: without a terminal it has nothing
+	// to draw on, and the fix is to run it in one.
+	if strings.Contains(err.Error(), "TTY") || strings.Contains(err.Error(), "/dev/tty") {
+		return fmt.Errorf("watchpost needs a terminal to draw in, and this one has no TTY " +
+			"(stdin looks piped or redirected). Run `watchpost` directly in a terminal window; " +
+			"for a one-shot text report that needs no terminal, use `watchpost report`")
+	}
+	return fmt.Errorf("dashboard failed: %w", err)
 	return nil
 }
 

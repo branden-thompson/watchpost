@@ -510,6 +510,7 @@ func resolveQuery
 func restoreRecent
 func roleVoiceOf
 func rowClock
+func runProgram
 func runsOf
 func runtimeCounts
 func runtimeGOOS
