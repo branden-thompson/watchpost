@@ -73,7 +73,11 @@ func TestAHazardStillInForceIsNotDropped(t *testing.T) {
 		t.Fatalf("a warning with half an hour left is still in force; the rail holds %d", n)
 	}
 	if _, _, ok := d.lineup.Next(); !ok {
-		t.Error("a hazard in force is offered the air")
+		// THE MESSAGE SAYS WHAT HAPPENED, NOT WHAT SHOULD. It read "a hazard in
+		// force is offered the air" — the rule, printed at the moment the rule
+		// was broken, telling a reader debugging the failure the opposite of the
+		// truth.
+		t.Error("a hazard still in force is NOT offered the air")
 	}
 }
 

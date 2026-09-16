@@ -8,10 +8,20 @@
 // time is critical."
 //
 // SO THE TEST OF THIS PACKAGE IS NOT THAT IT DESCRIBES FOUR KINDS. It is what a
-// FIFTH costs — and the answer is one row in `all()`. Nothing else: not the card
-// it travels on, not the event that requests it, not the naming rule, not the
-// modal, not the running order. `TestAFifthKindCostsOneRow` is that claim made
-// checkable rather than promised.
+// FIFTH costs — and inside this package the answer is one row in `all()`.
+// Nothing else here: not the card it travels on, not the event that requests it,
+// not the naming rule, not the modal, not the running order.
+// `TestAFifthKindCostsOneRow` is that claim made checkable rather than promised.
+//
+// IT COSTS ONE THING OUTSIDE THIS PACKAGE, AND THIS SENTENCE USED TO DENY IT
+// (F-111, corrected at D-160). `radioDeck.segments` answers each kind with its
+// OWN typed hook, so a fifth needs a branch there or the report is requested,
+// built, and silently missing what was asked for. The branches are not a defect
+// — they cannot be table-driven without erasing the types — but the absence of
+// anything NOTICING a fifth was, and `TestEveryReportKindReachesTheComposer`
+// (in `app`) is what notices now. A contributor who read only the paragraph
+// above would add the row, watch this package's tests go green, and ship a
+// silently empty report kind.
 //
 // Modelled on `platform/category`, whose registry states the same rule: "A
 // function rather than a package variable (P10-06), and the ONLY place a

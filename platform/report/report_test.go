@@ -55,8 +55,15 @@ func TestDescribeIsStableWhateverOrderTheyWereChosen(t *testing.T) {
 //
 // So the claim is not "four kinds work".  It is that a FIFTH costs ONE ROW — and
 // a claim nobody checks is a promise.  This walks every kind the registry knows
-// through everything that consumes one, so the day a row is added the only way
-// for this test to fail is for something to have hard-coded four.
+// through everything IN THIS PACKAGE that consumes one — `Of`, the set
+// operations, `Describe`, `Everything` — so the day a row is added the only way
+// for this test to fail is for something HERE to have hard-coded four.
+//
+// IT DOES NOT REACH THE MODAL, THE RUNNING ORDER OR THE COMPOSER, and an earlier
+// wording ("everything that consumes one") implied it did.  A reader took that
+// for the whole-system gate and would have shipped a kind the composer never
+// answers.  The cross-package half is `app.TestEveryReportKindReachesTheComposer`
+// (F-111).  Corrected at D-160.
 func TestAFifthKindCostsOneRow(t *testing.T) {
 	kinds := All()
 	if len(kinds) != int(numKinds) {

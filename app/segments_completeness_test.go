@@ -4,9 +4,8 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"slices"
 	"testing"
-
-	"github.com/branden-thompson/watchpost/platform/report"
 )
 
 // EVERY REPORT KIND THE OPERATOR CAN CHOOSE REACHES THE COMPOSER (F-111).
@@ -74,19 +73,82 @@ func TestEveryReportKindReachesTheComposer(t *testing.T) {
 		return true
 	})
 
-	if got, want := len(asked), len(report.All()); got != want {
-		t.Errorf("the registry holds %d report kinds and `segments` answers %d (%v).\n"+
-			"A kind the operator can choose and the composer never reads is a report\n"+
-			"that is requested, built, and silently missing the thing it was asked for.\n"+
-			"Add the branch in radio.go; do not add a name to this test.",
-			want, got, keysOf(asked))
+	// THE KIND NAMES, DERIVED FROM THE REGISTRY'S OWN SOURCE — not listed here.
+	//
+	// AN EARLIER VERSION COMPARED COUNTS, and a blind review caught what that
+	// misses: answer a new kind and drop `Seismic` and the count is still four,
+	// still green, with a kind the operator can choose and the composer never
+	// reads. A gate measuring a PROXY for the requirement instead of the
+	// requirement is this project's own definition of a defect — and this one was
+	// written the same day that defect was made the centrepiece of a red-team
+	// round.
+	//
+	// BOTH SIDES STAY DERIVED, which is what kept the count form tempting. The
+	// registry's identifiers come from `report.go`'s own const block, so a fifth
+	// kind is picked up here with no edit; the answered set comes from the AST.
+	// Neither is a hand-written list that can drift from the other.
+	want := kindIdents(t)
+	for _, k := range want {
+		if !asked[k] {
+			t.Errorf("`report.%s` is a kind the operator can choose and `segments` never reads.\n"+
+				"A report requested with it is built and silently missing what was asked for.\n"+
+				"Add the branch in radio.go; do not add a name to this test.", k)
+		}
+	}
+	for k := range asked {
+		if !slices.Contains(want, k) {
+			t.Errorf("`segments` reads `report.%s`, which the registry does not declare", k)
+		}
 	}
 }
 
-func keysOf(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
+// kindIdents is every `Kind` the registry declares, read off its own const block.
+//
+// DERIVED, NOT LISTED. A hand-written list here would be a SECOND closed set,
+// drifting from the first exactly when the first changes — which is the defect
+// this guard exists to catch, moved one file along.
+func kindIdents(t *testing.T) []string {
+	t.Helper()
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "../platform/report/report.go", nil, 0)
+	if err != nil {
+		t.Fatalf("the kind registry could not be parsed: %v", err)
+	}
+	var out []string
+	ast.Inspect(f, func(n ast.Node) bool {
+		gd, ok := n.(*ast.GenDecl)
+		if !ok || gd.Tok != token.CONST {
+			return true
+		}
+		// THE BLOCK THAT DECLARES `Kind`, NOT EVERY CONST IN THE FILE. The first
+		// spec names the type — `NWS Kind = iota` — and the rest inherit it.
+		// Without this the walk also collected the display-string constants and
+		// reported them as kinds nobody composes, which is a guard failing for a
+		// reason that has nothing to do with what it guards.
+		first, ok := gd.Specs[0].(*ast.ValueSpec)
+		if !ok || first.Type == nil {
+			return true
+		}
+		if id, ok := first.Type.(*ast.Ident); !ok || id.Name != "Kind" {
+			return true
+		}
+		for _, sp := range gd.Specs {
+			vs, ok := sp.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			for _, id := range vs.Names {
+				// `numKinds` is the sentinel, not a kind.
+				if id.Name == "numKinds" {
+					return false
+				}
+				out = append(out, id.Name)
+			}
+		}
+		return false
+	})
+	if len(out) == 0 {
+		t.Fatal("no Kind constants found; this guard has lost its subject and must be re-pointed, not deleted")
 	}
 	return out
 }
