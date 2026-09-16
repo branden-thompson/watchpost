@@ -58,6 +58,7 @@ jobs:
       - run: make alloc-budget # malloc pins run outside the race detector (quality pass §0.1)
       - run: make dupes # metric D: no duplicate operation without a RATIFIED reason
       - run: make wires # every closed-set member names a production writer and reader, or is RATIFIED as owed
+      - run: make dupes-selftest # and the duplicate check itself can still fire: both positive controls
       - run: make wires-selftest # and the check itself can still fail: 7 scan scenarios, 4 ledger cases
       # EVERY RUN, EVERY PLATFORM, because it costs two tenths of a second and
       # the gate it front-runs does not run here most of the time: mutant-check

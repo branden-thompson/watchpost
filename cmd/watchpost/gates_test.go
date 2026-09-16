@@ -35,7 +35,9 @@ var ciOnly = map[string]string{
 //
 // A reason is not a silencer — a row for a gate that runs in both fails, and so
 // does one for a gate that runs in neither.
-var verifyOnly = map[string]string{}
+var verifyOnly = map[string]string{
+	"p10": "the P10 harness CLI and its exemptions ledger live OUTSIDE the public tree (the ledger is .gitignore'd, red-team R2-2), so CI has no `a2dh` and no file to read; it is a local gate that must fail loud rather than skip",
+}
 
 // mutantModes are the schedules the mutant corpus can be put on.
 //
@@ -172,11 +174,19 @@ func TestEveryRequiredGateIsStillRun(t *testing.T) {
 		if ciOnlyOK[g] && !has(ci, g) {
 			t.Errorf("%s is required and CI-only, and CI does not run it either — it now runs NOWHERE", g)
 		}
+		// TWO GATES ARE LEGITIMATELY ABSENT FROM CI, AND BOTH SAY SO WHERE THE
+		// REASON LIVES. `verifyOnly` carries the declared local-only gates;
 		// mutant-check runs on a schedule CI decides (MUTANT_POLICY), so its
-		// absence from a given workflow read is not a finding; every other
+		// absence from a given workflow read is not a finding. Every other
 		// required gate must be on both machines.
-		if g != "mutant-check" && !has(ci, g) {
-			t.Errorf("%s is required and CI does not run it", g)
+		//
+		// IT READS `verifyOnly` RATHER THAN NAMING THE GATES AGAIN. A condition
+		// listing them here would be a second copy of the map above, free to
+		// disagree with it — which is the defect this whole file exists to stop,
+		// committed inside the file that stops it.
+		if _, localOnly := verifyOnly[g]; !localOnly && g != "mutant-check" && !has(ci, g) {
+			t.Errorf("%s is required and CI does not run it, and nothing declares it local-only: "+
+				"add a row to `verifyOnly` with the reason, or wire it into ci.yml", g)
 		}
 	}
 }
@@ -340,4 +350,112 @@ func TestEveryBuildTargetTrimsThePath(t *testing.T) {
 		}
 	}
 	t.Logf("%d build targets, all trimmed", len(built))
+}
+
+// unlisted are gate-shaped Makefile targets deliberately on NO gate list, with
+// the reason. A reason is not a silencer: a row for a target that starts being
+// listed fails here, and so does one for a target that no longer exists.
+var unlisted = map[string]string{
+	"quality-bench":   "a measurement, not a gate — it reports numbers and has no pass condition (INST-5)",
+	"pty-severe":      "it drives a real pty, which CI has no terminal for",
+	"journey":         "the VALIDATE journey against LIVE feeds; its exit code is a FAIL count, run deliberately at release",
+	"test":            "`go test ./...` without the race detector; `race` supersedes it on every gate path, and running both would double the suite for no extra property",
+	"test-platforms":  "it re-runs the app suite under WATCHPOST_TEST_GOOS for two other platforms; release-matrix is the cross-platform gate and this is the manual probe behind it",
+	"mutant-verdicts": "the corpus SWEEP — hours, and its verdicts are promoted into the release record by hand; mutant-anchors and mutant-check are the per-push halves",
+	"tree-free":       "it ASKS whether a gate run is in flight and reports; it asserts nothing about the code",
+}
+
+// EVERY GATE-SHAPED TARGET IS ON A LIST, OR SAYS WHY NOT.
+//
+// THE THREE-LIST RULE HAS A HOLE AND THIS IS IT. `required-gates.txt` makes a
+// gate need three edits to LEAVE; it has no answer to a gate that never
+// ARRIVES. `make p10` is declared "must fail loud, never skip", was RED on a
+// clean tip, and appeared in verify, ci.yml and required-gates.txt zero times —
+// so TestGateListsAgree could not see it, because that test compares verify
+// against CI and a gate on neither list is invisible to a comparison of the two.
+//
+// SO THIS ASKS THE MAKEFILE, not the lists. A target whose recipe runs a gate
+// script or a `go test` must be named by `required-gates.txt` or carry a row
+// above saying why it is not. The cost of a gate that runs nowhere becomes a
+// line a reviewer reads, which is the whole of the fix.
+func TestEveryGateShapedTargetIsListedOrExempt(t *testing.T) {
+	required := requiredGates(t)
+	for _, target := range gateShapedTargets(t) { // bounded by the Makefile (P10-02)
+		_, listed := required[target]
+		why, exempt := unlisted[target]
+		switch {
+		case listed && exempt:
+			t.Errorf("%s is on required-gates.txt AND declared unlisted (%q): delete the row, or the "+
+				"reason is describing a state that is not true", target, why)
+		case !listed && !exempt:
+			t.Errorf("%s runs a gate and is on no list.\n"+
+				"A gate nothing invokes is a gate that cannot fail — `make p10` sat that way, red, "+
+				"while verify reported ALL GATES GREEN.\n"+
+				"Add it to 06_docs/required-gates.txt and to the verify/CI paths, or add a row to "+
+				"`unlisted` in this file saying why it runs nowhere.", target)
+		}
+	}
+	for target, why := range unlisted { // bounded by the exemption table (P10-02)
+		if _, ok := targetDeps(t, target); !ok {
+			t.Errorf("%s is declared unlisted (%q) and the Makefile has no such target: the row "+
+				"outlived the gate", target, why)
+		}
+	}
+}
+
+// requiredGates is 06_docs/required-gates.txt as a set, comments dropped.
+func requiredGates(t *testing.T) map[string]bool {
+	t.Helper()
+	out := map[string]bool{}
+	for _, line := range strings.Split(read(t, "../../06_docs/required-gates.txt"), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		out[line] = true
+	}
+	if len(out) == 0 {
+		t.Fatal("required-gates.txt lists nothing; this check measures nothing")
+	}
+	return out
+}
+
+// gateShapedTargets are the Makefile targets whose recipe RUNS a check.
+//
+// THE SHAPE, NOT A LIST — a list here would be the same enumeration that let
+// `p10` hide. A target qualifies when its recipe invokes a script under
+// scripts/, a `go test`, or a tool's own self-test, since those are the three
+// forms every gate in this repository takes. Aggregators are excluded: they
+// name other targets rather than running a check themselves.
+func gateShapedTargets(t *testing.T) []string {
+	t.Helper()
+	aggregate := map[string]bool{"verify": true, "verify-gates": true, "gate-controls": true, "p10-mirror": true}
+	runsACheck := regexp.MustCompile(`(\./scripts/|go test|go run \./tools/|-self-test|--self-test)`)
+	target := regexp.MustCompile(`^([a-z][a-z0-9-]*):`)
+
+	var out []string
+	var cur string
+	for _, line := range makeLines(t) { // bounded by the Makefile (P10-02)
+		if m := target.FindStringSubmatch(line); m != nil {
+			cur = m[1]
+			continue
+		}
+		if cur == "" || !strings.HasPrefix(line, "\t") {
+			if !strings.HasPrefix(line, "\t") {
+				cur = ""
+			}
+			continue
+		}
+		if aggregate[cur] || !runsACheck.MatchString(line) {
+			continue
+		}
+		if !contains(out, cur) {
+			out = append(out, cur)
+		}
+	}
+	if len(out) < 5 {
+		t.Fatalf("found %d gate-shaped targets; the Makefile shape has changed and this check has "+
+			"lost its subject", len(out))
+	}
+	return sorted(out)
 }

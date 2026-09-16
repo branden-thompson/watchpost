@@ -271,7 +271,7 @@ cache-clean:
 verify:
 	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
 
-verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest gate-controls alloc-budget dupes wires wires-selftest mutant-anchors mutant-check
+verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest p10 gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # The lock is a gate like any other: a lock that never locks passes every

@@ -88,6 +88,40 @@ func scan(root string) ([]Finding, int, error) {
 	return out, files, err
 }
 
+// report prints the findings grouped by rule, longest-standing rule first.
+//
+// EXTRACTED AT THE STATEMENT CEILING (P10-04). `main` is argument parsing, one
+// branch per output mode, and an exit code; the grouping and the printing are a
+// second job that was making it a page and a half.
+//
+// THE `Why` COMES FROM THE FIRST FINDING because it is a property of the RULE,
+// not of the site — every finding a rule emits carries the same remedy, and
+// printing it once per rule is what keeps a 125-finding run readable.
+func report(found []Finding, limit int) {
+	byRule := map[string][]Finding{}
+	for _, f := range found { // bounded by the findings (P10-02)
+		byRule[f.Rule] = append(byRule[f.Rule], f)
+	}
+	rules := make([]string, 0, len(byRule))
+	for r := range byRule { // bounded by the catalogue (P10-02)
+		rules = append(rules, r)
+	}
+	sort.Strings(rules)
+
+	for _, r := range rules { // bounded by the catalogue (P10-02)
+		fs := byRule[r]
+		fmt.Printf("authoring: %s — %d finding(s)\n", r, len(fs))
+		for i, f := range fs { // bounded by the findings (P10-02)
+			if i >= limit {
+				fmt.Printf("    … and %d more\n", len(fs)-limit)
+				break
+			}
+			fmt.Printf("    %s:%d  %s\n", f.File, f.Line, f.Text)
+		}
+		fmt.Printf("    -> %s\n", fs[0].Why)
+	}
+}
+
 func main() {
 	root := flag.String("root", ".", "the tree to scan")
 	asJSON := flag.Bool("json", false, "machine-readable output")
@@ -112,28 +146,7 @@ func main() {
 		return
 	}
 
-	byRule := map[string][]Finding{}
-	for _, f := range found { // bounded by the findings (P10-02)
-		byRule[f.Rule] = append(byRule[f.Rule], f)
-	}
-	rules := make([]string, 0, len(byRule))
-	for r := range byRule {
-		rules = append(rules, r)
-	}
-	sort.Strings(rules)
-
-	for _, r := range rules { // bounded by the catalogue (P10-02)
-		fs := byRule[r]
-		fmt.Printf("authoring: %s — %d finding(s)\n", r, len(fs))
-		for i, f := range fs { // bounded by the findings (P10-02)
-			if i >= *limit {
-				fmt.Printf("    … and %d more\n", len(fs)-*limit)
-				break
-			}
-			fmt.Printf("    %s:%d  %s\n", f.File, f.Line, f.Text)
-		}
-		fmt.Printf("    -> %s\n", fs[0].Why)
-	}
+	report(found, *limit)
 
 	if len(found) > 0 {
 		fmt.Fprintf(os.Stderr, "\nauthoring: %d finding(s) across %d Go file(s).\n", len(found), files)
