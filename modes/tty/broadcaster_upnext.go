@@ -97,8 +97,8 @@ func (b Broadcaster) upNextBox() []string {
 	}
 	// THE CARD NAMES ITSELF IN ITS OWN BORDER (D-110), which is where the
 	// reference puts it: `┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━ • STANDARD
-	// • ━━━┓`. It used to be a ROW inside the box, and that row cost the manifest
-	// a line to say what the frame around it could say for free.
+	// • ━━━┓`. A ROW inside the box costs the manifest a line to say what the frame
+	// around it says for free.
 	//
 	// AND THE HANDLE LEAVES THE TITLE WITH IT. The chip rode the title row; the
 	// reference puts the way in at the BOTTOM, beside the presenter — one row for

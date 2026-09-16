@@ -263,7 +263,7 @@ func TestTheBedDrawsWhatWasPublished(t *testing.T) {
 	// same constant one state along.
 	// THE BED IS CUT AWAY AND THE COUNT STANDS — which is the D-125 split doing
 	// its job. Clearing what is tuned says nothing about how many relays reach
-	// the station, and it used to say "none".
+	// the station, and a shared field would have it say "none".
 	b, _ = b.Update(BedMsg{})
 	if back := stripANSITest(b.stationSection(b.opts(), "", "")); !strings.Contains(back, "INACTIVE") {
 		t.Errorf("cutting the bed away says so:\n%s", back)

@@ -2,11 +2,11 @@ package tty
 
 // clip_ansi_test.go — clipping must count CELLS, not bytes.
 //
-// FOUND BY RED TEAM AT BUILD EXIT, 0.16.0 (2026-09-15). `clipToWidth` walked
-// runes calling render.Width per rune: for a lone \x1b that is 0, but '[', '1'
-// and 'm' each measure 1 — so every bold span cost eight phantom cells. Text
-// that fitted was cut anyway, and the cut landed mid-escape, leaving the SGR
-// unterminated so the weight bled into whatever followed.
+// `clipToWidth` MUST SKIP THE ESCAPE, not measure it. Walking runes and calling
+// render.Width per rune, a lone \x1b is 0 but '[', '1' and 'm' each measure 1 —
+// so every bold span costs eight phantom cells. Text that fits is cut anyway, and
+// the cut lands mid-escape, leaving the SGR unterminated so the weight bleeds
+// into whatever follows.
 //
 // IT IS D-138's DEFECT ONE FUNCTION LATER. `centerText` takes the clip branch
 // whenever the text measures at least the width — exactly what `WrapText`

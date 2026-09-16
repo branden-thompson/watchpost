@@ -410,9 +410,9 @@ func boxRailFor(b Broadcaster) string { return render.HeavyBox(b.ascii).Rail }
 
 // bedRowOf finds the bed's row wherever the section draws it.
 //
-// IT LOOKS IN THE SECTION, NOT IN `stationLine` (D-107). The bed used to have a
-// labelled row of its own there and now has one row of the air box the section
-// carries — the same fact, in the one place the HUM LEAD asked for it.
+// IT LOOKS IN THE SECTION, NOT IN `stationLine` (D-107). The bed has no labelled
+// row of its own; it has one row of the air box the section carries — the same
+// fact, in the one place the HUM LEAD asked for it.
 func bedRowOf(t *testing.T, rows []string) string {
 	t.Helper()
 	for _, r := range rows { // bounded by the section (P10-02)

@@ -45,9 +45,9 @@ func TestTheConsoleMemoKeyCoversEverythingTheTablesShow(t *testing.T) {
 	// fixture they were pinned against.
 	// TEN MEGAWATTS, UNDER THE DEFAULT AND OVER THE PERTURBATION. `bump` adds 1
 	// to a float, so the threshold moves 50 → 1 — and a 100 MW fire is over BOTH,
-	// which is why the first fixture here still did not catch a dropped
-	// `fireBoldMW`. A perturbation that cannot cross the boundary it is testing
-	// is not a perturbation.
+	// so a 100 MW fixture cannot catch a dropped `fireBoldMW` at all. A
+	// perturbation that cannot cross the boundary it is testing is not a
+	// perturbation.
 	frp := 10.0
 	base.pool.Locations[0].Fire.Hotspots = []snapshot.Hotspot{{FRPMW: &frp}}
 

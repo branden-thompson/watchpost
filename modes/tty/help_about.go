@@ -183,9 +183,9 @@ type helpGroup struct {
 // helpGroups is the one owner of the grouping; a binding's group is its
 // action, so a rebound key stays in its section (D-15: keys are data).
 //
-// AND THE SURFACE CHOOSES THE GROUPING (D-135). The window used to build
-// Observer's sections whatever the operator was looking at, so a console
-// operator pressing `?` was handed the listener's manual — HUM LEAD, UAT
+// AND THE SURFACE CHOOSES THE GROUPING (D-135). Building Observer's sections
+// whatever the operator is looking at hands a console operator pressing `?` the
+// listener's manual — HUM LEAD, UAT
 // 2026-09-15: "right now the help window only shows Observer key bindings …
 // Once the user in the Broadcaster UI, they key bindings share/rempapped for
 // that mode do not update their help (like 'r')."

@@ -31,11 +31,11 @@ func openCard(t *testing.T, at int) Router {
 
 // press sends a key THROUGH `Update`, the way a terminal does.
 //
-// IT USED TO CALL `cardWindowKey` DIRECTLY, and that is why every one of these
-// tests passed against a build where the controls did not work at all: `enter`
-// is bound to `actQueueOpen`, the keymap switch ran FIRST, and it closed the card
-// window before the card window's own handler was ever reached. The move was
-// never sent. Driving the handler measured the handler; the operator drives the
+// IT DOES NOT CALL `cardWindowKey` DIRECTLY, and the difference is every one of
+// these tests passing against a build where the controls do not work at all:
+// `enter` is bound to `actQueueOpen`, the keymap switch runs FIRST, and it closes
+// the card window before the card window's own handler is reached, so the move is
+// never sent. Driving the handler measures the handler; the operator drives the
 // ROUTER (HUM LEAD, 2026-09-13: "Table does not update / redraw").
 //
 // A SEAM A TEST CAN DRIVE IS NOT THE SAME AS THE SEAM THE KEY TAKES (P-1).

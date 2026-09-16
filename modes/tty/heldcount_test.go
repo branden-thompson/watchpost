@@ -3,8 +3,7 @@ package tty
 // heldcount_test.go — the held-hazard band must count HAZARDS, and only the
 // ones the station could actually read.
 //
-// FOUND BY RED TEAM AT BUILD EXIT, 0.16.0 (2026-09-15). Two defects in one
-// line, on the console's loudest safety surface:
+// TWO WAYS TO GET ONE LINE WRONG, on the console's loudest safety surface:
 //
 //  1. It counted CARDS. A burst is ONE card carrying many arrivals (MVS-D-77),
 //     so five hazards held read "1 HAZARD(S) HELD" — and the escalation ladder

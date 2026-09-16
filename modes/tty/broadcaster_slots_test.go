@@ -22,10 +22,10 @@ import (
 
 // THE CONSOLE DRAWS EVERY SLOT IT HAS ROOM FOR, AND NEVER A DEAD END (D-64).
 //
-// IT USED TO DRAW ALL TEN AT ONCE, and D-87 made the cards taller than that: a
-// card is a manifest now, so the ten slots need about ninety rows and the
-// terminal the reference is drawn at has seventy-four. The queue scrolls, which
-// is what its rail has always been for.
+// IT DOES NOT DRAW ALL TEN AT ONCE, because D-87's cards are taller than that: a
+// card is a manifest, so the ten slots need about ninety rows and the terminal
+// the reference is drawn at has seventy-four. The queue scrolls, which is what
+// its rail is for.
 //
 // WHAT DID NOT CHANGE is the rule D-64 exists for: a station with nothing
 // scheduled shows SLOTS rather than a sentence saying it has nothing.

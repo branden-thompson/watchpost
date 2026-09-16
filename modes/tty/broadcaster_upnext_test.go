@@ -106,9 +106,9 @@ func TestTheUpNextCardFollowsTheReferencesOrder(t *testing.T) {
 // THE WAY IN IS AT THE BOTTOM, BESIDE WHO WILL SAY IT — and an undecided slot
 // still has one.
 //
-// F-97 ONE ROW ALONG. The chip used to ride the title row and an empty slot got
-// one anyway; the way in moved to the footer, and a footer given only to a
-// decided card would have made the slot unaddressable again.
+// F-97 ONE ROW ALONG. The way in is in the footer, and a footer given only to a
+// decided card puts an empty slot out of reach — the same defect the chip riding
+// the title row was moved to close.
 func TestTheUpNextCardIsAddressableEmptyOrNot(t *testing.T) {
 	empty := NewBroadcaster()
 	empty.width, empty.height, empty.ascii = 150, 74, true

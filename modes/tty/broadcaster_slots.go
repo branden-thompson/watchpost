@@ -144,10 +144,10 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 		// AN EMPTY SLOT HAS NOTHING TO MANIFEST, and drawing the headings over
 		// nothing would promise contents that are not coming.
 		//
-		// IT STILL CARRIES ITS HANDLE, WHICH IS F-97 (D-110). The chip used to ride
-		// the title row and an undecided slot got one anyway; the way in moved to
-		// the footer, and a first draft gave the footer only to a decided card —
-		// which would have made the slot unaddressable again, one row along.
+		// IT STILL CARRIES ITS HANDLE, WHICH IS F-97 (D-110). The way in is in the
+		// FOOTER, and an undecided slot gets one: a footer drawn only for a decided
+		// card puts the slot back out of reach, one row along from where the chip
+		// riding the title row would have left it.
 		rows := make([]string, bcReadCardRows-1)
 		for i := range rows { // bounded by the card's height (P10-02)
 			rows[i] = ""

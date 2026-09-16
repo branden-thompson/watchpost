@@ -32,9 +32,9 @@ var bedFixtureRelays int
 
 // A STATION NOTHING STREAMS TO SAYS SO, AND OFFERS NO CONTROL.
 //
-// DEAD AIR IS THE OUTCOME THIS PREVENTS. The selector used to walk the embedded
-// transmitter table — every NOAA tower in the country — so the operator could
-// choose a callsign no directory carries, and cutting to it put silence on the
+// DEAD AIR IS THE OUTCOME THIS PREVENTS. A selector walking the embedded
+// transmitter table — every NOAA tower in the country — lets the operator choose
+// a callsign no directory carries, and cutting to it puts silence on the
 // transmitter with the row still reading as tuned.
 func TestABedWithNothingToCarryIsNotOffered(t *testing.T) {
 	bedFixtureRelays = 0

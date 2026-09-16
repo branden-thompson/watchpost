@@ -188,10 +188,10 @@ func firstOf(lines []string, _, _ int) []string { return lines }
 // AND THE WINDOW A RELEASE BUILD SHIPS IS READABLE AT THE FLOOR (FR-5).
 //
 // Injection is compiled out of a release binary, so the shipped ctrl+d window
-// is prose and no question. It used to run past the fold at 80x24 with the
-// scroll pinned at zero — every line of what it exists to say unreachable by
-// any key, in the build that ships. It FITS now, and both halves are asserted:
-// that it fits, and that every line of it is on screen.
+// is prose and no question. Running past the fold at 80x24 with the scroll pinned
+// at zero puts every line of what it exists to say out of reach of any key, in
+// the build that ships. So both halves are asserted: that it fits, and that every
+// line of it is on screen.
 func TestTheShippedDiagnosticsWindowIsReadableAtTheFloor(t *testing.T) {
 	d := debugAtTheFloor(t)
 	d.cfg.InjectAlert, d.cfg.DebugScenarios = nil, nil // a release build

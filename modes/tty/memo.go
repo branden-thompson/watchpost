@@ -156,11 +156,11 @@ func (d Dashboard) anyLoading() bool {
 // rowLoading: shimmer while the data is still COMING, never after it has been
 // asked for and not arrived (issue #13).
 //
-// It used to be the first clause alone, and an empty location is empty in
-// exactly the same way whether the feed has not answered yet or has answered
-// and had nothing for this place — so a location the API does not cover
-// shimmered for ever, across restarts, reading as "still loading" until the
-// listener removed the row themselves.
+// THE SECOND CLAUSE IS WHAT ENDS THE SHIMMER. An empty location is empty in
+// exactly the same way whether the feed has not answered yet or has answered and
+// had nothing for this place, so on the first clause alone a location the API
+// does not cover shimmers for ever, across restarts, reading as "still loading"
+// until the listener removes the row themselves.
 //
 // WeatherAsOf is what makes the two distinguishable: the reference provider
 // stamps it when a fetch COVERING this location completes. Once it is set, a

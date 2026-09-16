@@ -207,8 +207,8 @@ func incidentRows(o render.Opts, loc *snapshot.Location, ins []snapshot.Incident
 		// THE AGE IS THE COLUMN THAT VOLUNTEERS (HUM LEAD, 2026-09-07: "Age can
 		// be truncatable - containment is more important"). The name is never
 		// shortened, so an unusually long one has to come out of something —
-		// and it used to come out of the right edge, silently, taking the
-		// containment with it.
+		// and with nothing volunteering it comes out of the right edge,
+		// silently, taking the containment with it.
 		{Right: true, Truncatable: true, MinWidth: 6}, // when it was found — "8d ago" or nothing
 	}
 	var rows []render.StatusRow

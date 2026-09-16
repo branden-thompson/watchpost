@@ -120,8 +120,8 @@ const (
 	// 1150: D-87 — the tracks are SPLIT into two columns and joined once, so a
 	// row of the running order is built from three padded columns instead of one
 	// spliced string; and a card is a MANIFEST, whose body is assembled line by
-	// line (a status, a stamp, a heading and its rows) where it used to be five
-	// blanks. Both are the reference. Per D-53 the working layout comes first and
+	// line (a status, a stamp, a heading and its rows) rather than five blanks.
+	// Both are the reference. Per D-53 the working layout comes first and
 	// the number is recorded rather than optimised — and the zip is the shape
 	// that makes occlusion impossible, which is worth more than the allocations
 	// the splice saved.

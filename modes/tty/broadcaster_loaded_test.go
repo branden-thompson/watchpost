@@ -2,10 +2,10 @@ package tty
 
 // broadcaster_loaded_test.go — a console with everything on it (D-120).
 //
-// THE FIXTURE THE ALLOCATION BUDGET MEASURES, and the reason it exists: the
-// budget used to build a console with no pool and no snapshot, so the path that
-// actually costs — two tables joining weather for forty rows — was never in the
-// number at all.
+// THE FIXTURE THE ALLOCATION BUDGET MEASURES, and the reason it exists: a budget
+// built against a console with no pool and no snapshot leaves the path that
+// actually costs — two tables joining weather for forty rows — out of the number
+// altogether.
 
 import (
 	"fmt"
