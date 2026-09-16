@@ -459,3 +459,177 @@ func gateShapedTargets(t *testing.T) []string {
 	}
 	return sorted(out)
 }
+
+// cacheableGate are gate recipes whose `go test` deliberately omits -count=1.
+//
+// A reason is not a silencer: a row for a recipe that gains the flag fails here,
+// and so does one for a target that no longer exists.
+var cacheableGate = map[string]string{
+	"test":          "not a gate — it is the plain suite, declared `unlisted`; `race` is what runs on every gate path and it carries the flag",
+	"quality-bench": "a benchmark with `-count 10`, which is the sample size rather than a cache defence; benchmarks are not cached",
+}
+
+// NO GATE IS ANSWERABLE FROM CACHE (AP-STALE-01).
+//
+// `go test` caches a package's result and replays it when nothing it depends on
+// has changed. That is right for a developer loop and wrong for a gate: a gate
+// exists to answer a question about the tree as it stands NOW, and a replayed
+// PASS answers it about a tree that may be several edits old. The failure is
+// silent and in the worst direction — the gate reports success, quickly, which
+// is exactly what a green run looks like.
+//
+// THE PROJECT ALREADY KNOWS THIS, which is why almost every recipe carries
+// `-count=1` already. This makes the convention mechanical, so the next recipe
+// cannot quietly omit it.
+func TestNoGateIsAnswerableFromCache(t *testing.T) {
+	goTest := regexp.MustCompile(`go test\b`)
+	target := regexp.MustCompile(`^([a-z][a-z0-9-]*):`)
+
+	var cur string
+	var checked int
+	for _, line := range makeLines(t) { // bounded by the Makefile (P10-02)
+		if m := target.FindStringSubmatch(line); m != nil {
+			cur = m[1]
+			continue
+		}
+		if !strings.HasPrefix(line, "\t") {
+			cur = ""
+			continue
+		}
+		if cur == "" || !goTest.MatchString(line) {
+			continue
+		}
+		checked++
+		if strings.Contains(line, "-count=1") || strings.Contains(line, "-count 1") {
+			continue
+		}
+		if why, ok := cacheableGate[cur]; ok {
+			_ = why
+			continue
+		}
+		t.Errorf("%s runs `go test` without -count=1.\n"+
+			"A cached PASS answers the question about a tree that may be several edits old, and it "+
+			"looks exactly like a green run.\n"+
+			"Add -count=1, or add a row to `cacheableGate` in this file saying why this one may be "+
+			"answered from cache.", cur)
+	}
+	if checked < 5 {
+		t.Fatalf("found %d `go test` recipes; the Makefile shape has changed and this check has lost "+
+			"its subject", checked)
+	}
+	for target, why := range cacheableGate { // bounded by the exemption table (P10-02)
+		if _, ok := targetDeps(t, target); !ok {
+			t.Errorf("%s is declared cacheable (%q) and the Makefile has no such target: the row "+
+				"outlived the recipe", target, why)
+		}
+	}
+}
+
+// conditionalStep are CI steps for a REQUIRED gate that legitimately carry a
+// condition, with the reason. A reason is not a silencer: a row for a step that
+// loses its condition fails here, and so does one for a gate CI no longer runs.
+var conditionalStep = map[string]string{
+	"install-test": "the matrix runs three operating systems and this installs what release-matrix built; doing it once, on Linux, is the test",
+	"mutant-check": "MUTANT_POLICY decides its schedule (push / nightly / label) and all three conditions are written out, so switching between them is a word in the Makefile rather than an edit here",
+}
+
+// A REQUIRED GATE'S CI STEP MAY NOT BE SILENCED WITHOUT A REASON.
+//
+// THE CHEAPEST ATTACK ON THE THREE-LIST RULE, and the one it could not see.
+// `ciTargets` matches `run: make <target>` and nothing else, so adding
+// `if: false` — or `continue-on-error: true` — leaves the Makefile, ci.yml and
+// required-gates.txt in perfect agreement while the gate never runs, or never
+// fails. Conditional steps already exist in this workflow for good reasons, so
+// one more would read as unremarkable in review: the shape is camouflage.
+//
+// IT DOES NOT BAN CONDITIONS, it bans UNDECLARED ones. `continue-on-error` is
+// refused outright for a required gate, because a gate that cannot fail is not a
+// gate whatever the reason.
+//
+// PARSED BY INDENTATION RATHER THAN BY A YAML LIBRARY. The project's tooling is
+// stdlib-only on purpose, and a dependency taken for one test is a dependency the
+// whole build carries. The shape this reads — a step opening with `- ` and its
+// keys indented under it — is the shape of every step in the file, and the
+// subject check below fails if that stops being true.
+func TestNoRequiredGatesCIStepIsSilentlyConditional(t *testing.T) {
+	required := requiredGates(t)
+	steps := ciSteps(t)
+	if len(steps) < 10 {
+		t.Fatalf("parsed %d CI steps; the workflow's shape has changed and this check has lost its subject", len(steps))
+	}
+
+	seen := map[string]bool{}
+	makeTarget := regexp.MustCompile(`make\s+([a-z][a-z0-9-]*)`)
+	for _, step := range steps { // bounded by the workflow (P10-02)
+		m := makeTarget.FindStringSubmatch(step)
+		if m == nil || !required[m[1]] {
+			continue
+		}
+		gate := m[1]
+		seen[gate] = true
+		conditional := regexp.MustCompile(`(?m)^\s+if:`).MatchString(step)
+		tolerant := regexp.MustCompile(`(?m)^\s+continue-on-error:\s*true`).MatchString(step)
+		why, declared := conditionalStep[gate]
+
+		if tolerant {
+			t.Errorf("%s is a REQUIRED gate and its CI step sets continue-on-error: true.\n"+
+				"A gate that cannot fail is not a gate. Remove it, or remove the gate from "+
+				"06_docs/required-gates.txt and say so.", gate)
+		}
+		switch {
+		case conditional && !declared:
+			t.Errorf("%s is a REQUIRED gate and its CI step carries an `if:` that nothing declares.\n"+
+				"All three gate lists agree while the step may never run — which is the cheapest way "+
+				"to retire a gate without deleting it.\n"+
+				"Add a row to `conditionalStep` in this file with the reason, or remove the condition.", gate)
+		case !conditional && declared:
+			t.Errorf("%s is declared conditional (%q) and its CI step carries no condition: the row "+
+				"outlived the reason", gate, why)
+		}
+	}
+	for gate := range conditionalStep { // bounded by the exemption table (P10-02)
+		if !seen[gate] {
+			t.Errorf("%s is declared conditional and CI runs no such required gate: the row outlived the step", gate)
+		}
+	}
+}
+
+// ciSteps splits the workflow into one string per step, keys included.
+//
+// A step opens with `- ` and owns every following line indented deeper than its
+// own dash — which covers a block scalar (`if: >-`) without understanding one.
+func ciSteps(t *testing.T) []string {
+	t.Helper()
+	dash := regexp.MustCompile(`^(\s*)-\s`)
+	var out []string
+	var cur strings.Builder
+	indent := -1
+	flush := func() {
+		if cur.Len() > 0 {
+			out = append(out, cur.String())
+			cur.Reset()
+		}
+	}
+	for _, line := range strings.Split(read(t, "../../.github/workflows/ci.yml"), "\n") {
+		if m := dash.FindStringSubmatch(line); m != nil {
+			flush()
+			indent = len(m[1])
+			cur.WriteString(line + "\n")
+			continue
+		}
+		if indent < 0 {
+			continue
+		}
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if len(line)-len(strings.TrimLeft(line, " ")) > indent {
+			cur.WriteString(line + "\n")
+			continue
+		}
+		flush()
+		indent = -1
+	}
+	flush()
+	return out
+}
