@@ -2668,3 +2668,41 @@ absent from a neighbour, a comment that decayed, a test that cannot fail, a rost
 that **the tree was uncommitted** — the release being judged was a working tree, and 88% of the
 build log existed only on disk.  No code-quality axis would have found that.  *The axes are not
 decoration; the second agent found the thing the first could not see.*
+
+---
+
+## For upstream: comments describe the code, not its history (A2DH coding/build skills)
+
+**HUM LEAD ruling, 2026-09-16:** *"Historical comments are an anti pattern - in code comments should
+describe current state of code, not the history that led to it."*
+
+**The rule for the skill:** a comment states what the code does and WHY it is as it is. It does not
+state what it used to be, who found the defect, which review round raised it, or when it was
+corrected. That history is already recorded — durably and in the right place — in `git log`, the
+follow-ups register, the gate roster, and the red-team reports.
+
+**The shape that produces it, which is the part worth encoding.** It does not arrive by itself; it
+arrives during REMEDIATION. A round of review finds comments that assert what the code does not do,
+the agent rewrites them — and writes the rewrite as an account of the correction, because that is
+what is in its head at the time. Commit-message prose migrates into the comment. Measured on this
+release: one remediation round introduced **29 separate pieces of historical narration across 20
+files**, every one of them added while fixing a different comment defect.
+
+**So the check belongs at the end of a remediation pass, not at the end of a feature.** The prompt
+that catches it is: *"read this comment as someone who has never seen the previous version — is any
+sentence here about a state of the code they will never encounter?"*
+
+**The distinction a skill has to carry, because the naive rule over-corrects:**
+
+| Keep — the code as it stands | Remove — a past the reader does not have |
+|---|---|
+| Rationale: *"the boundary errs towards telling the listener"* | *"an earlier version claimed X"* |
+| Current-state measurement: *"97 cells does not fit every width"* | *"corrected at D-160"*, *"this said the opposite for a fortnight"* |
+| A lock or ordering contract: *"the caller holds `a.mu`"* | *"found by red team round 3"*, *"caught by a blind review"* |
+| A ruling cited as AUTHORITY: *"one key, one meaning per surface (D-56)"* | The same ruling ID used to narrate a change |
+| A rule stated with its counter-case: *"EVERY, not ANY"* | *"the first fix did not work"* |
+
+**Why it matters more than it looks.** Every fix adds a layer, so the narration grows without bound
+while the code it describes stays the same size — and a reader must filter all of it to find the one
+sentence that tells them what the function does now. It is the same failure as a stale comment, with
+the decay built in from the first line.
