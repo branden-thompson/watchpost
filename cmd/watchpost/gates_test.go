@@ -503,8 +503,7 @@ func TestNoGateIsAnswerableFromCache(t *testing.T) {
 		if strings.Contains(line, "-count=1") || strings.Contains(line, "-count 1") {
 			continue
 		}
-		if why, ok := cacheableGate[cur]; ok {
-			_ = why
+		if _, ok := cacheableGate[cur]; ok {
 			continue
 		}
 		t.Errorf("%s runs `go test` without -count=1.\n"+
@@ -673,8 +672,7 @@ func TestEveryRequiredGatesCheckerHasAControl(t *testing.T) {
 			if exercised[checker] {
 				continue
 			}
-			if why, ok := uncontrolled[checker]; ok {
-				_ = why
+			if _, ok := uncontrolled[checker]; ok {
 				continue
 			}
 			t.Errorf("%s is invoked by the required gate %s and nothing exercises it with a self-test.\n"+
