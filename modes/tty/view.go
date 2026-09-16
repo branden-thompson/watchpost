@@ -280,10 +280,9 @@ func (d Dashboard) detailsModal(o render.Opts) string {
 		// named "Lookup opens Details on Vista FROM THE FIRST FRAME", which is
 		// the property that was quietly not holding.
 		//
-		// The field already exists for precisely this — "the location a lookup
-		// opened Details for, until its data lands" — and was added when the
-		// modal used to show the old top RECENT row instead (UAT 2026-08-28).
-		// The title simply never consulted it.
+		// The field exists for precisely this — "the location a lookup opened
+		// Details for, until its data lands" — and the title must consult it, or
+		// the modal shows the old top RECENT row instead (UAT 2026-08-28).
 		title = d.lookupRef.Label + " " + d.lookupRef.Zip
 	}
 	if d.snap != nil {
@@ -320,9 +319,9 @@ func (d Dashboard) floatModalFooter(o render.Opts) string {
 	width, title, footer := d.footerModalChrome(o)
 	fg, bg := render.ModalTone(d.darkBG)
 	o.Width = min(o.Width, width)
-	// THE BODY IS BUILT AT THE WIDTH IT IS DRAWN AT. The caller used to pass it
-	// in, computed from the unnarrowed opts, so setup laid itself out for one
-	// width and was measured at another.
+	// THE BODY IS BUILT AT THE WIDTH IT IS DRAWN AT. A width passed in by the
+	// caller is computed from the unnarrowed opts, which lays setup out for one
+	// width and measures it at another.
 	lines, at, end := d.focusBody(o)
 	wrapped, wrapAt := d.wrapModalAt(lines, o.Width)
 	foot := d.wrapModal(footer, o.Width)

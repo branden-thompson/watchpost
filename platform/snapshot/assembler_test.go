@@ -166,14 +166,13 @@ func TestTheReferenceFetchRecordsWhichLocationsItCovered(t *testing.T) {
 		t.Errorf("a location outside the fetch was not attempted; stamping it would report a wait as a fact: %v", got)
 	}
 
-	// A FRAGMENT CARRYING AN ERROR STILL RECORDS THE ATTEMPT, and this assertion
-	// is the reverse of what it said before (red team, 2026-09-08).
+	// A FRAGMENT CARRYING AN ERROR STILL RECORDS THE ATTEMPT.
 	//
 	// FetchEach JOINS per-location errors into one Fragment.Err, so a single
 	// location the API cannot serve marks the whole fragment failed — and "the
-	// API does not answer for this location" IS issue #13. The old rule skipped
-	// the stamp on any error, which meant the one case the field existed for was
-	// the one case it never recorded. Reaching Apply means the provider
+	// API does not answer for this location" IS issue #13. Skipping the stamp on
+	// any error therefore skips it in the one case the field exists for.
+	// Reaching Apply means the provider
 	// responded; a transport failure returns an error from Fetch and never
 	// arrives here.
 	// SERVED IS THE PROOF THE PROVIDER WAS REACHABLE. A fragment that carries an
@@ -279,14 +278,13 @@ func TestAnUnreachableProviderDoesNotAnswerForAnyLocation(t *testing.T) {
 	}
 }
 
-// ONLY THE FETCHES THAT ANSWER THE ROW END ITS SHIMMER (red team, 2026-09-08).
+// ONLY THE FETCHES THAT ANSWER THE ROW END ITS SHIMMER.
 //
 // The alerts tier is a single GET and starts at the same instant as obs, which
-// is three chained GETs, so it lands first. Stamping on it ended the shimmer
+// is three chained GETs, so it lands first. Stamping on it ends the shimmer
 // across the whole board a second into every cold start — flashing "n/a" for
-// temperatures that were on their way. app/pipelines.go already refused to stamp
-// on the supplementary hourly fetch for exactly this reason; the same hazard was
-// left standing on the path that matters.
+// temperatures that are on their way. app/pipelines.go refuses to stamp on the
+// supplementary hourly fetch for the same reason.
 func TestOnlyTheAnsweringFetchesEndTheShimmer(t *testing.T) {
 	ref := LocationRef{Label: "A", Lat: 33.2, Lon: -117.38}
 	at := time.Date(2026, 9, 8, 12, 0, 0, 0, time.UTC)

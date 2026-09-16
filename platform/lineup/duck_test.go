@@ -82,9 +82,9 @@ func TestAHazardOverACarryingBedDucksIt(t *testing.T) {
 	// at admission, when the card has no words and nothing can air; the falling
 	// edge is at the last Finished, and nothing can be cued alongside it.
 	//
-	// D-82 RELAXED EXCLUSIVITY AND THIS STAYED UNREACHABLE — re-checked rather
-	// than assumed, because the sentence above used to rest on it. A hazard can
-	// now take the air over a report, so there are two ways a cue could fall
+	// D-82 RELAXES EXCLUSIVITY AND THIS STAYS UNREACHABLE — checked rather than
+	// assumed, because the sentence above does not rest on exclusivity. A hazard
+	// can take the air over a report, so there are two ways a cue could fall
 	// beside a falling edge, and both are closed: while the bed carries, the
 	// main track does not advance at all (FR-4.2); and with a report reading, it
 	// is that report holding the lane's air, so the next one cannot be cued
@@ -99,13 +99,13 @@ func TestAHazardOverACarryingBedDucksIt(t *testing.T) {
 // THE OTHER HALF OF D-32, and it is the half that broke a release. Nothing ducks
 // when there is no programme UNDERNEATH the hazard.
 //
-// ITS REASON WAS REWRITTEN AT D-82, and the distinction matters. It used to read
-// "a chosen read REPLACES the bed rather than playing over it, so there is
-// nothing underneath to dip" — true of the bed, and true here because this
-// station has nothing on the air at all. What is NOT true any more is the
-// generalisation: a report READING is something underneath, and the rail holds
-// it for the whole drain (TestTheProgrammeIsHeldForAWholeRailDrainNotPerHazard).
-// This case is the one that stays: no bed carrying, no card reading, nothing to
+// ITS REASON IS NARROW, AND THE DISTINCTION MATTERS (D-82). "A chosen read
+// REPLACES the bed rather than playing over it, so there is nothing underneath to
+// dip" is true of the bed, and true here because this station has nothing on the
+// air at all. What does NOT follow is the generalisation: a report READING is
+// something underneath, and the rail holds it for the whole drain
+// (TestTheProgrammeIsHeldForAWholeRailDrainNotPerHazard). This case is the narrow
+// one: no bed carrying, no card reading, nothing to
 // give way — and a Restore paired to a Duck nobody emitted would lift a bed some
 // other owner had put down.
 func TestNothingDucksWhenTheBedIsNotCarrying(t *testing.T) {

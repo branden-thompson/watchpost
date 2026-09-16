@@ -124,10 +124,10 @@ func (b Broadcaster) fireBold() float64 {
 // poolRoom is how many rows the pool takes off the frame before the running
 // order is windowed.
 //
-// THE POOL IS NOT WHAT IS LEFT OVER (D-104). It used to be, and the arithmetic
-// showed: the running order took every row it could and the pool drew twelve of
-// twenty-five locations with nothing on the frame to say so — which is what the
-// HUM LEAD reported ("I can only see 12 locations of the 24 location pool").
+// THE POOL IS NOT WHAT IS LEFT OVER (D-104). Left over, the arithmetic shows:
+// the running order takes every row it can and the pool draws twelve of
+// twenty-five locations with nothing on the frame to say so — which is how the
+// HUM LEAD read it ("I can only see 12 locations of the 24 location pool").
 //
 // TEN ROWS OF LOCATIONS, plus the band, the column header, the air above and the
 // footer. It is a FLOOR, not a share: on a short terminal the running order gives
@@ -153,10 +153,10 @@ const (
 
 // poolSpan is the LOCATION POOL table, its heading, and where its window sits.
 //
-// THE HEADINGS DO NOT SCROLL (D-106). This used to window the whole block, band
-// and column titles included, so the operator lost the names of the columns the
-// moment they moved down the list — "the top of the vertical scroll aligns with
-// the headers of the table (so they dont disappear when I scroll down)".
+// THE HEADINGS DO NOT SCROLL (D-106). Windowing the whole block, band and column
+// titles included, loses the operator the names of the columns the moment they
+// move down the list — "the top of the vertical scroll aligns with the headers of
+// the table (so they dont disappear when I scroll down)".
 //
 // `head` IS FIXED AND `data` IS THE WINDOW, which is Observer's own division: the
 // band and the column titles are chrome, and the rows are the list.

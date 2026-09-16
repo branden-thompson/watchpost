@@ -57,7 +57,7 @@ func newAssembler(refs []LocationRef, providerIDs []string) *Assembler {
 		a.order = append(a.order, k)
 		a.sections[k] = map[string]*Section{}
 	}
-	a.refs = kept // order and refs stay aligned (red-team 0.9.0 F4: a duplicate used to publish an EMPTY snapshot forever)
+	a.refs = kept // order and refs stay aligned; misaligned, a duplicate publishes an EMPTY snapshot for ever (F4)
 	for _, id := range providerIDs {
 		if err := invariant.Check(id != "" && a.status[id] == nil, "provider id must be unique and non-empty"); err != nil {
 			continue
@@ -340,12 +340,11 @@ func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	// claiming it lives here would be the same false attribution this round has
 	// been removing.
 	//
-	// WHY REACHABILITY MATTERS, PER LOCATION. An earlier version stamped every
-	// asked location whenever the fragment served ANYBODY, on the reasoning that
-	// a served location proves the provider answered. That is right for a total
-	// outage and WRONG FOR A PARTIAL ONE: with A served and B refused, B was
-	// stamped and its row read "n/a" — asserting an absence for a location the
-	// request never reached.
+	// WHY REACHABILITY MATTERS, PER LOCATION. Stamping every asked location
+	// whenever the fragment served ANYBODY reasons that a served location proves
+	// the provider answered. That is right for a total outage and WRONG FOR A
+	// PARTIAL ONE: with A served and B refused, B is stamped and its row reads
+	// "n/a" — asserting an absence for a location the request never reached.
 	//
 	// Fragment.Failed now says which locations failed and why, so the question is
 	// asked per location rather than per fragment. A 404 for a point outside the

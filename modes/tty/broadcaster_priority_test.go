@@ -2,9 +2,9 @@ package tty
 
 // broadcaster_priority_test.go — the alert track as a COLUMN (D-87).
 //
-// THIS FILE USED TO PIN AN OVERLAY. The priority track was composited on top of
-// the running order and six tests held that shape: the splice, what it covered,
-// what survived underneath it, and the rail label that travelled with it.
+// THE TRACK IS A COLUMN, NOT AN OVERLAY. Composited on top of the running order
+// it needs a different set of pins entirely — the splice, what it covers, what
+// survives underneath it, and the rail label travelling with it.
 //
 // HUM LEAD, 2026-09-11: "We're gonna split the PRIORITY and MAIN tracks visually
 // — no more card occlusion, and this works because of the data that we're
@@ -93,11 +93,11 @@ func TestTheTwoTracksNeverShareACell(t *testing.T) {
 // THE BOX IS AS TALL AS THE CARD BESIDE IT, AND ITS LIST TAKES WHAT IS LEFT
 // (D-103).
 //
-// THIS TEST USED TO HOLD THE OPPOSITE. "The alert box should be tall enough to
-// fit the data, but doesn't need to 'fill' vertical space just because" (HUM
-// LEAD, 2026-09-11) was a ruling about a box in a COLUMN OF ITS OWN, and the v3
-// pair retired that column: UP NEXT and the takeover are level now, so a box that
-// followed its burst would close on a different row than the card next to it.
+// THE OPPOSITE RULING DOES NOT APPLY HERE. "The alert box should be tall enough
+// to fit the data, but doesn't need to 'fill' vertical space just because" (HUM
+// LEAD, 2026-09-11) is about a box in a COLUMN OF ITS OWN, and the v3 pair has
+// no such column: UP NEXT and the takeover are level, so a box that followed its
+// burst would close on a different row than the card next to it.
 //
 // AND THE LIST FOLLOWING THE HEIGHT IS WHAT KEEPS THE CONTROL ROW ON. A constant
 // ten rows overflowed the pair by one, the pair truncated the overflow, and what

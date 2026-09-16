@@ -3,12 +3,11 @@ package lineup
 // bed_fence_test.go — the bed must come back up when nothing on the rail can
 // ever be read.
 //
-// FOUND BY RED TEAM AT BUILD EXIT, 0.16.0 (2026-09-15). `givingWay` asked the
-// RAW TRACK — "does the rail hold anything" — where every other rail reader
-// asks the PROJECTION, which drops out-of-fence cards precisely because they
-// are not READ. A rail holding only cards the fence excludes kept the answer
-// true for ever: Duck was emitted and Restore never was, so the station
-// broadcast the relay at duck gain indefinitely with no voice over it.
+// `givingWay` ASKS THE PROJECTION, like every other rail reader, and not the RAW
+// TRACK. The projection drops out-of-fence cards precisely because they are not
+// READ; asking the track, a rail holding only cards the fence excludes keeps the
+// answer true for ever, so Duck is emitted and Restore never is and the station
+// broadcasts the relay at duck gain indefinitely with no voice over it.
 
 import (
 	"testing"
@@ -116,11 +115,10 @@ func TestTheBedGivesWayOnceAndTakesItBackOnce(t *testing.T) {
 
 // AND THE FOURTH CALL SITE OF THE SAME RULE (D-150).
 //
-// FOUND BY RED TEAM (round 2) AT BUILD EXIT: the fence was taught to `Next`,
-// `Projection`, `toPrepare` and `givingWay` — and NOT to `refreshStandby`, the
-// last raw-track "does the rail hold anything" question in the package. The
-// first round's two criticals were this exact shape, and the remediation stopped
-// one site short of finishing it.
+// The fence belongs to `Next`, `Projection`, `toPrepare`, `givingWay` AND
+// `refreshStandby` — five sites, and `refreshStandby` is the one easiest to miss
+// because it is the last raw-track "does the rail hold anything" question in the
+// package. Four of five is the same defect as none.
 //
 // THE INTERACTION IS WHAT MAKES IT WORSE THAN A MISSED SITE. After D-139 an
 // out-of-fence rail card is IMMORTAL and INVISIBLE: `Next` skips it, `toPrepare`

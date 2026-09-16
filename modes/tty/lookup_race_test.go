@@ -2,13 +2,12 @@ package tty
 
 // lookup_race_test.go — the console's scope cannot be escaped by being quick.
 //
-// FOUND BY RED TEAM AT BUILD EXIT, 0.16.0 (2026-09-15). D-130's gate is
-// three-state — a definite no is refused, "not yet known" is not — and the
-// not-yet-known branch fell through to `cfg.Resolve`, the UNSCOPED geocoder.
-// So the UAT defect D-129 was filed for was still reachable: type a location
-// outside the service radius and press enter before the 300 ms pause elapses,
-// and it opens. The chip is drawn AVAILABLE while unsettled, so the operator
-// has no cue to wait.
+// D-130's GATE IS THREE-STATE — a definite no is refused, "not yet known" is
+// not — and the not-yet-known branch must not fall through to `cfg.Resolve`, the
+// UNSCOPED geocoder. Falling through leaves the UAT defect D-129 was filed for
+// reachable: type a location outside the service radius and press enter before
+// the 300 ms pause elapses, and it opens. The chip is drawn AVAILABLE while
+// unsettled, so the operator has no cue to wait.
 
 import (
 	"strings"
@@ -115,11 +114,11 @@ func TestAnEnterHeldOverAReachableAnswerStillOpens(t *testing.T) {
 
 // A CHECK THAT COULD NOT BE MADE IS NOT "NO SUCH PLACE" (D-151).
 //
-// FOUND BY RED TEAM (round 2). A 5-second timeout, a DNS blip or a cancelled
-// context returned `found=false` — the same value a genuine no-match returns —
-// so the window told the operator a real location does not exist AND disabled
-// the key that would have retried it. `locateInRadius`'s own comment claimed
-// "THREE ANSWERS, NOT TWO"; there was a fourth, reported as the second.
+// A 5-second timeout, a DNS blip or a cancelled context must not return
+// `found=false` — the value a genuine no-match returns — or the window tells the
+// operator a real location does not exist AND disables the key that would have
+// retried it. `locateInRadius` answers in FOUR states, not the three its shape
+// suggests, and the fourth must never be reported as the second.
 func TestALookupThatCouldNotBeMadeSaysSoAndStaysRetryable(t *testing.T) {
 	d := goldenDash(t, false)
 	d.surface, d.addMode, d.addQuery = SurfaceBroadcaster, "lookup", "Rainbow, CA"
