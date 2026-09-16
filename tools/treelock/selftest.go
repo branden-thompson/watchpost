@@ -32,8 +32,10 @@ func selfTest() int {
 	if err != nil {
 		return fail("could not make a scratch lock: %v", err)
 	}
-	defer os.RemoveAll(dir)
-	os.Setenv("WATCHPOST_TREELOCK_PATH", filepath.Join(dir, "lock"))
+	defer func() { _ = os.RemoveAll(dir) }() // scratch, and the OS reclaims it either way
+	if err := os.Setenv("WATCHPOST_TREELOCK_PATH", filepath.Join(dir, "lock")); err != nil {
+		return fail("could not point the self-test at its own lock: %v", err)
+	}
 
 	if who, held := holder(); held {
 		return fail("a lock nothing has taken reports itself held by %s", who)
@@ -50,11 +52,16 @@ func selfTest() int {
 		return fail("the lock is taken and `holder` reports the tree free")
 	}
 	if code := childCheck(); code != 1 {
-		f.Close()
+		_ = f.Close()
 		return fail("a second process was ADMITTED while the lock was held (-check exited %d)", code)
 	}
 
-	f.Close()
+	// THE RELEASE IS PART OF WHAT IS BEING TESTED, so its error is checked where
+	// the two above are not: a close that failed leaves the lock held, and every
+	// assertion after this one would be measuring that instead of the mechanism.
+	if err := f.Close(); err != nil {
+		return fail("the lock could not be released: %v", err)
+	}
 	if who, held := holder(); held {
 		return fail("the lock was released and `holder` still reports %s", who)
 	}

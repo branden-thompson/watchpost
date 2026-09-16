@@ -99,19 +99,19 @@ func acquire(name string) (*os.File, string, error) {
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		who := read(f)
-		f.Close()
+		_ = f.Close() // the flock is released with the descriptor; a close error changes nothing
 		if errors.Is(err, syscall.EWOULDBLOCK) {
 			return nil, who, nil
 		}
 		return nil, who, err
 	}
 	if err := f.Truncate(0); err != nil {
-		f.Close()
+		_ = f.Close() // the flock is released with the descriptor; a close error changes nothing
 		return nil, "", err
 	}
 	if _, err := f.WriteAt([]byte(name+" (pid "+strconv.Itoa(os.Getpid())+", since "+
 		time.Now().Format("15:04:05")+")\n"), 0); err != nil {
-		f.Close()
+		_ = f.Close() // the flock is released with the descriptor; a close error changes nothing
 		return nil, "", err
 	}
 	return f, "", nil
@@ -126,7 +126,7 @@ func holder() (string, bool) {
 	if err != nil {
 		return "", false // no file at all is a tree nobody has locked
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // releasing the flock is the point; the close error is not actionable
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		return read(f), true
 	}
@@ -164,7 +164,7 @@ func run(name string, argv []string) int {
 		fmt.Fprintln(os.Stderr, "  Wait for it, or stop it, and run this again.")
 		return 1
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // releasing the flock is the point; the close error is not actionable
 
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
