@@ -113,7 +113,7 @@ func (o Opts) LineupTable(rows []LineupRow, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	cols := lineupColumnDefs()
+	cols := lineupColumnDefs(width)
 	def := &studs.DataTableDefinition{Columns: cols, GutterWidth: tableGutter, NoAutoStyle: true}
 	for _, r := range rows { // bounded by the running order (P10-02)
 		data := clampCells(o.lineupRowData(r), cols)
@@ -130,18 +130,63 @@ func (o Opts) LineupTable(rows []LineupRow, width int) string {
 
 // lineupColumnDefs turns the spec into the kit's definitions.
 //
-// LOCATION TAKES THE SLACK, and the kit's own `Fill` is what grants it — so this
-// needs no width. It TOOK one and never read it (P10-07), and the doc line above
-// it said "giving the two WIDEST COLUMNS the slack" while exactly one column is
-// filled. The parameter is removed and this sentence now says what the code
-// does; whether a second column should fill is a layout question for the HUM
-// LEAD and is recorded rather than answered by a silent edit (F-112).
-func lineupColumnDefs() []studs.ColumnDefinition {
+// LOCATION AND REPORT TYPE TAKE THE SLACK, and the kit's own `Fill` is what
+// grants it — so this needs no width. It TOOK one and never read it (P10-07).
+// The HUM LEAD ruled the second fill column on 2026-09-16 (F-112), which is what
+// made the doc line above — "giving the two WIDEST COLUMNS the slack" — true
+// rather than something to correct away.
+// lineupNaturalWidth is what the spec sums to before any surplus: every column
+// at its declared width, plus the gutter between each pair.
+//
+// DERIVED, NOT THE LITERAL 144. The comment on `lineupColumns` says "these sum to
+// 128 + eight gutters = 144 exactly" at the reference terminal, and a constant
+// here would be that sentence written a second time — free to drift the day a
+// column changes width, which is the two-carriers defect this release has spent
+// its length removing.
+func lineupNaturalWidth() int {
+	cols := lineupColumns()
+	total := 0
+	for _, c := range cols { // bounded by the spec (P10-02)
+		total += c.width
+	}
+	if n := len(cols) - 1; n > 0 {
+		total += n * tableGutter
+	}
+	return total
+}
+
+func lineupColumnDefs(width int) []studs.ColumnDefinition {
 	out := make([]studs.ColumnDefinition, 0, len(lineupColumns()))
 	for _, c := range lineupColumns() { // bounded by the spec (P10-02)
+		// LOCATION AND REPORT TYPE SHARE THE SLACK (F-112, HUM LEAD 2026-09-16:
+		// "give fill to both report type and location").
+		//
 		// LOCATION IS THE FILL COLUMN, as NAME is on Observer's table and for the
 		// same reason: a place name is the one cell whose length nobody controls,
 		// so it takes the slack and gives way first.
+		//
+		// AND REPORT TYPE TAKES HALF THE SURPLUS AS A FIXED WIDTH, computed here
+		// rather than by marking it `Fill` as well. THE KIT CANNOT DO TWO FILL
+		// COLUMNS CORRECTLY: `data_table_row.go` computes the space to share as
+		// `terminalWidth - usedWidth` where `usedWidth` counts the FIXED columns
+		// and NOT the gutters, so the gutter allowance is handed out once per
+		// fill column. With one that error is absorbed; with two it is counted
+		// twice — measured, a 144-cell band rendered 190. An upstream candidate
+		// (M6); patched around here rather than reimplemented, which is the
+		// standing rule for this kit.
+		//
+		// SO THE SPLIT IS OURS AND THE FILL IS THEIRS: REPORT TYPE grows by half
+		// the surplus, LOCATION fills whatever is left, and the total stays the
+		// band the caller asked for.
+		if c.name == "type" {
+			w := c.width
+			if extra := (width - lineupNaturalWidth()) / 2; extra > 0 {
+				w += extra
+			}
+			out = append(out, studs.ColumnDefinition{Name: c.name, Header: c.header,
+				Width: w, Alignment: "left"})
+			continue
+		}
 		if c.name == "loc" {
 			out = append(out, studs.ColumnDefinition{Name: c.name, Header: c.header,
 				Fill: true, MinWidth: c.width, Truncatable: true, TruncatedMinWidth: 10, Alignment: "left"})

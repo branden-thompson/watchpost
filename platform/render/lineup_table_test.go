@@ -78,7 +78,7 @@ func TestTheLineupTableDrawsItsColumnsAndGroups(t *testing.T) {
 func TestBothTablesDrawTheirHeadersThroughTheSameFunction(t *testing.T) {
 	o := Opts{Width: 150}
 	groups := lineupGroups()
-	cols := lineupColumnDefs()
+	cols := lineupColumnDefs(150)
 
 	head := StripSGRForTest(o.groupHeader(groups, cols, 150))
 	if !strings.Contains(head, "R E A D   O U T S") {
@@ -100,7 +100,7 @@ func TestBothTablesDrawTheirHeadersThroughTheSameFunction(t *testing.T) {
 // pointer looked like two different things on two tables the operator walks with
 // one key.
 func TestTheFocusedSlotIsPaintedLikeTheFocusedLocation(t *testing.T) {
-	cols := lineupColumnDefs()
+	cols := lineupColumnDefs(150)
 	r := LineupRow{Num: "02.", ReportType: "Location Report", Location: "Vista, CA"}
 	data := Opts{}.lineupRowData(r)
 

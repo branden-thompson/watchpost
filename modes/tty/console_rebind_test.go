@@ -94,45 +94,82 @@ func TestAnOverrideForTheOtherSurfaceDoesNotBreakTheConsole(t *testing.T) {
 	}
 }
 
-// A CONFIG THAT 0.15.0 ACCEPTED CAN NOW REFUSE TO LAUNCH (F-114).
+// ONE SURFACE'S REBIND DOES NOT BREAK THE OTHER (F-114).
 //
-// THIS RELEASE IS THE FIRST TO APPLY `[keys]` TO THE CONSOLE (D-158), and
-// several actions live in BOTH scopes — lookup, settings, about, status, help,
-// quit, the gain pair, diagnostics. A key free on Observer may already be taken
-// on the console, so an override that was legal becomes a hard start-up failure:
-// `lookup = "b"` collides with the bed, `settings = "r"` with the request window.
+// HUM LEAD, 2026-09-16: collisions are reconciled, and a key binding functions as
+// expected. This test was the opposite assertion for one commit — it pinned the
+// REFUSAL that D-158 introduced — and is inverted here rather than deleted,
+// because the refusal was real and the record should show it was replaced.
 //
-// THE COLLISION IS REAL and D-15 says a conflict is never a silent win — but
-// `term.Merge`'s own doc argues the other way for exactly this case: "losing a
-// binding is a nuisance; refusing to launch over one is a broken upgrade". WHICH
-// ONE WINS IS THE HUM LEAD'S CALL, recorded as F-114.
+// THE UPGRADE THAT BROKE. `lookup = "b"` was valid in 0.15.0: `b` was unused on
+// Observer. 0.16.0 adds a console that binds `b` to the relay bed, and D-158
+// applied `[keys]` to the console for the first time — so the listener's own
+// override collided with a binding they had never seen and the app refused to
+// start. `term.Merge`'s own doc names that outcome: "refusing to launch over one
+// is a broken upgrade".
 //
-// THIS TEST PINS THE BEHAVIOUR AS IT SHIPS so the ruling changes a gate rather
-// than a surprise, and asserts the error EXPLAINS ITSELF: the operator did
-// nothing, and a message naming only the conflict would read as their mistake.
-func TestAnOverrideLegalOnObserverCanRefuseTheConsole(t *testing.T) {
-	for _, tc := range []struct {
-		act           term.Action
-		key, collides string
-	}{
-		{actLookup, "b", "bed-cut"},
-		{actSettings, "r", "request"},
-	} {
-		_, err := NewDashboard(Config{KeyOverrides: term.KeyMap{
-			tc.act: {Keys: []string{tc.key}, Help: "x"},
-		}})
-		if err == nil {
-			t.Errorf("%q=%q was accepted; it collides with %q on the console", tc.act, tc.key, tc.collides)
-			continue
-		}
-		if !strings.Contains(err.Error(), tc.collides) {
-			t.Errorf("the error does not name what it collides with: %v", err)
-		}
-		// IT SAYS WHY THIS IS NEW. Without that the operator reads a config they
-		// did not change as a config they got wrong.
-		if !strings.Contains(err.Error(), "first to apply") {
-			t.Errorf("the error does not explain that this release is the first to apply "+
-				"[keys] to the console, so a previously-valid file can now fail: %v", err)
-		}
+// WHAT HAPPENS NOW: the rebind applies where it fits and is withheld where it
+// would collide. Both surfaces do what the operator expects, and the withholding
+// is REPORTED — nothing is silently lost.
+func TestARebindOnOneSurfaceDoesNotBreakTheOther(t *testing.T) {
+	d, err := NewDashboard(Config{KeyOverrides: term.KeyMap{
+		actLookup: {Keys: []string{"b"}, Help: "Lookup Location"},
+	}})
+	if err != nil {
+		t.Fatalf("a config that 0.15.0 accepted must still launch: %v", err)
+	}
+	if got := d.keys[actLookup].Keys; len(got) == 0 || got[0] != "b" {
+		t.Errorf("Observer lookup is %v; the operator's table says b", got)
+	}
+	if got := d.consoleKeyMap()[actLookup].Keys; len(got) == 0 || got[0] != "l" {
+		t.Errorf("the console's lookup is %v; it should keep its own key, not take one that collides", got)
+	}
+	if got := d.consoleKeyMap()[actBedCut].Keys; len(got) == 0 || got[0] != "b" {
+		t.Errorf("the console's bed lost its key to another surface's override: %v", got)
+	}
+	// AND IT IS NOT SILENT. D-15 refuses a conflicting override rather than
+	// letting one win quietly; withholding is the reconciliation, and the
+	// operator is told which entry did not reach the console.
+	if len(d.keysWithheld) != 1 || !strings.Contains(d.keysWithheld[0], "bed-cut") {
+		t.Errorf("the withheld override was not reported: %v", d.keysWithheld)
+	}
+}
+
+// AND A CONFLICT THE OPERATOR MADE INSIDE ONE SCOPE IS STILL A BUILD ERROR.
+//
+// D-15: never a silent win. Withholding is for an override aimed at the OTHER
+// surface; a console-only action rebound onto another console key has nowhere
+// else to apply, so there is nothing to reconcile and the file is wrong.
+func TestAConsoleOnlyConflictIsStillRefused(t *testing.T) {
+	_, err := NewDashboard(Config{KeyOverrides: term.KeyMap{
+		// `bed-cut` exists only on the console, and `r` is the request window's.
+		actBedCut: {Keys: []string{"r"}, Help: "Bed"},
+	}})
+	if err == nil {
+		t.Fatal("a console-only action rebound onto another console key was accepted; D-15 says that is a build error")
+	}
+}
+
+// AND AN OVERRIDE THAT RESOLVES ITS OWN COLLISION IS HONOURED.
+//
+// If the operator moves the bed off `b` and lookup onto it in the same file,
+// both apply: the collision they would have caused is one they also resolved,
+// and refusing it would be the tool arguing with a decision already made.
+func TestOverridesThatVacateAKeyAreBothApplied(t *testing.T) {
+	d, err := NewDashboard(Config{KeyOverrides: term.KeyMap{
+		actBedCut: {Keys: []string{"k"}, Help: "Bed"},
+		actLookup: {Keys: []string{"b"}, Help: "Lookup Location"},
+	}})
+	if err != nil {
+		t.Fatalf("an operator who resolved their own collision was refused: %v", err)
+	}
+	if got := d.consoleKeyMap()[actBedCut].Keys; len(got) == 0 || got[0] != "k" {
+		t.Errorf("the bed did not move to k: %v", got)
+	}
+	if got := d.consoleKeyMap()[actLookup].Keys; len(got) == 0 || got[0] != "b" {
+		t.Errorf("lookup did not take the key the bed vacated: %v", got)
+	}
+	if len(d.keysWithheld) != 0 {
+		t.Errorf("nothing should have been withheld: %v", d.keysWithheld)
 	}
 }

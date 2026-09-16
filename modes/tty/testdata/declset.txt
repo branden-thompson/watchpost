@@ -850,6 +850,7 @@ func rows
 func sameCard
 func sameLocation
 func sameRefs
+func scopedOverrides
 func scrollStep
 func scrollWindow
 func seismicAge
@@ -874,6 +875,7 @@ func severityLevel
 func shortAgo
 func sideBySide
 func sortAlerts
+func sortedActions
 func splitAlertItems
 func splitEscFusion
 func stacked

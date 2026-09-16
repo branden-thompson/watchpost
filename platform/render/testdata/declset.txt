@@ -319,6 +319,7 @@ func lightOverrides
 func lineupColumnDefs
 func lineupColumns
 func lineupGroups
+func lineupNaturalWidth
 func lineupRowStyles
 func luminance
 func markCells

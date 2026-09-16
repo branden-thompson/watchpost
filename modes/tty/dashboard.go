@@ -12,6 +12,7 @@ package tty
 
 import (
 	"fmt"
+	"sort"
 	"time"
 	"unicode"
 
@@ -466,6 +467,11 @@ type Dashboard struct {
 	// what the operator presses and what the help PRINTS cannot disagree.
 	consoleKeys term.KeyMap
 
+	// keysWithheld names [keys] overrides that apply on Observer but would have
+	// collided on the console, so the console kept its own (F-114). Reported
+	// rather than silently lost.
+	keysWithheld []string
+
 	// liveOffset is how far the CONSOLE'S line-up sits below its LIVE slot,
 	// mirrored onto this surface by the Router on every update (D-156, D-160).
 	//
@@ -605,6 +611,80 @@ type Dashboard struct {
 	severeReadPause bool   // that read is PAUSED by the listener (MVS-D-74) — the mark stays, the glyph changes
 }
 
+// scopedOverrides decides which `[keys]` entries the CONSOLE can take without
+// colliding with a binding it already has (F-114).
+//
+// THE TWO MAPS ARE SEPARATE SCOPES BY DESIGN — D-56 is "one key, one meaning PER
+// SURFACE" — and several actions appear in both. A listener who rebinds a shared
+// action is aiming at the surface they use; merging that into the console's
+// scope as well is what turned a valid config into a failed launch.
+//
+// A KEY THE OVERRIDES THEMSELVES VACATE IS NOT TAKEN. If the operator moves the
+// bed off `b` and lookup onto it in the same file, both apply: the collision
+// they would have caused is one they also resolved, and refusing it would be the
+// tool arguing with a decision the operator already made.
+//
+// AN OVERRIDE FOR AN ACTION THE CONSOLE DOES NOT HAVE IS LEFT TO `term.Merge`,
+// which drops it with a note (FR-14) — that is a different question and it
+// already has an answer.
+func scopedOverrides(base, observer, over term.KeyMap) (term.KeyMap, []string) {
+	if len(over) == 0 {
+		return over, nil
+	}
+	// WHAT THE CONSOLE HOLDS, LESS WHAT THE OVERRIDES MOVE AWAY.
+	taken := map[string]term.Action{}
+	for act, b := range base {
+		if _, rebound := over[act]; rebound {
+			continue // this action's old keys are being vacated
+		}
+		for _, k := range b.Keys {
+			taken[k] = act
+		}
+	}
+	out, withheld := term.KeyMap{}, []string(nil)
+	for _, act := range sortedActions(over) {
+		b := over[act]
+		if _, console := base[act]; !console {
+			out[act] = b // not the console's action; Merge will note the drop
+			continue
+		}
+		clash := ""
+		for _, k := range b.Keys {
+			if held, ok := taken[k]; ok && held != act {
+				clash = k + " (" + string(held) + ")"
+				break
+			}
+		}
+		if clash != "" {
+			if _, alsoObserver := observer[act]; alsoObserver {
+				withheld = append(withheld, string(act)+" -> "+clash)
+				continue // the override still applies on Observer
+			}
+			// A CONSOLE-ONLY ACTION WITH NOWHERE TO GO is a conflict the operator
+			// created inside one scope, and D-15 says that is a build error
+			// rather than a silent win. Left for `term.Merge` to refuse.
+			out[act] = b
+			continue
+		}
+		for _, k := range b.Keys {
+			taken[k] = act
+		}
+		out[act] = b
+	}
+	return out, withheld
+}
+
+// sortedActions gives `scopedOverrides` a deterministic order, so which entry
+// wins a race between two overrides for one key is the same on every run.
+func sortedActions(m term.KeyMap) []term.Action {
+	out := make([]term.Action, 0, len(m))
+	for a := range m {
+		out = append(out, a)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
 // NewDashboard builds the model, merging user key overrides with validation
 // (a conflicting override is a build error, never a silent win — D-15).
 func NewDashboard(cfg Config) (Dashboard, error) {
@@ -612,47 +692,36 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("key bindings invalid: %w", err)
 	}
-	// AND THE CONSOLE'S BINDINGS TAKE THE SAME OVERRIDES (FR-1.5, D-158).
+	// AND THE CONSOLE'S BINDINGS TAKE THE SAME OVERRIDES (FR-1.5, D-158),
+	// SCOPED SO ONE SURFACE'S REBIND CANNOT BREAK THE OTHER (F-114, HUM LEAD
+	// 2026-09-16: collisions are reconciled, and a binding functions as expected).
 	//
 	// THE REQUIREMENT WAS UNMET AND ITS GATE DID NOT SAY SO. FR-1.5's exit is
 	// "an override in the user's key table changes the chord"; the test asserted
-	// that the swap ACTIONS ARE IN THE MAP, which is a proxy that passes while
-	// the requirement fails. `broadcasterKeyMap()` went to the Router raw, so no
-	// `[keys]` entry could reach a single console binding — including the swap
-	// chords FR-1.5 is about, and `ctrl+b`, which is tmux's own prefix and the
-	// exact key the survey said an operator would need to rebind.
+	// that the swap ACTIONS ARE IN THE MAP, which a map no override can reach
+	// satisfies perfectly. `broadcasterKeyMap()` went to the Router raw, so no
+	// `[keys]` entry could change a single console binding — including `ctrl+b`,
+	// tmux's own prefix.
 	//
-	// TWO SCOPES, TWO MERGES, ONE OVERRIDE TABLE. Folding them into one map
-	// would make Observer's `l` and the console's `l` a conflict, and D-56 is
-	// "one key, one meaning PER SURFACE". `Merge` drops an override naming an
-	// action the other scope does not have, with a note rather than an error
-	// (FR-14) — which is the same tolerance that lets a retired binding survive
-	// an upgrade.
-	console, _, err := term.Merge(broadcasterKeyMap(), cfg.KeyOverrides)
+	// AND FIXING THAT BROKE UPGRADES UNTIL THIS. Several actions live in BOTH
+	// scopes — lookup, settings, about, status, help, quit, the gain pair,
+	// diagnostics — so a key free on Observer may already be taken on the
+	// console. `lookup = "b"` was valid in 0.15.0 and `b` is the console's bed,
+	// so applying it to both scopes made a config the operator did not change
+	// refuse to launch. `term.Merge`'s own doc names that outcome: "losing a
+	// binding is a nuisance; refusing to launch over one is a broken upgrade".
+	//
+	// SO AN OVERRIDE IS APPLIED WHERE IT FITS AND WITHHELD WHERE IT WOULD
+	// COLLIDE. The listener's `b` binds lookup on Observer; the console keeps `b`
+	// for the bed and `l` for lookup, and both surfaces do what the operator
+	// expects. Nothing is silently lost — the withheld entries are reported, and
+	// a genuine conflict INSIDE one scope is still a build error (D-15).
+	consoleOver, withheld := scopedOverrides(broadcasterKeyMap(), keys, cfg.KeyOverrides)
+	console, _, err := term.Merge(broadcasterKeyMap(), consoleOver)
 	if err != nil {
-		// AND IT CAN REFUSE A CONFIG THAT 0.15.0 ACCEPTED (F-114). The console's
-		// map is merged for the first time in this release, and several actions
-		// live in BOTH scopes — lookup, settings, about, status, help, quit, the
-		// gain pair, diagnostics. A key free on Observer may already be taken on
-		// the console: `lookup = "b"` was legal, and `b` is the bed's.
-		//
-		// THE COLLISION IS REAL — `b` would mean two things on one surface, which
-		// is D-56 — so this does not silently drop the override (D-15: never a
-		// silent win). But `term.Merge`'s own doc argues the other way for the
-		// upgrade case — "losing a binding is a nuisance; refusing to launch over
-		// one is a broken upgrade" — and this is that case. The error therefore
-		// has to say what changed and what to do, because the operator did
-		// nothing: their file was valid yesterday.
-		//
-		// WHETHER IT SHOULD REFUSE AT ALL IS THE HUM LEAD'S, and it is recorded
-		// as F-114 rather than decided here.
-		return Dashboard{}, fmt.Errorf("console key bindings invalid: %w\n"+
-			"  The Broadcaster console has its own keys, and this release is the first to apply "+
-			"your [keys] overrides to them. A binding that was free on Observer may already be "+
-			"taken there, so a file that worked before can fail now. Rebind the key in [keys]; "+
-			"nothing else in your config has to change", err)
+		return Dashboard{}, fmt.Errorf("console key bindings invalid: %w", err)
 	}
-	d := Dashboard{cfg: cfg, keys: keys, consoleKeys: console, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
