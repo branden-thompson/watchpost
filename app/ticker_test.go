@@ -471,9 +471,9 @@ func TestABurstSoundsOneToneNamesItsAgenciesOnceAndReadsTitles(t *testing.T) {
 
 // (1) ONE tone, by the most severe alert (MVS-D-12) — asked of the WHOLE burst.
 //
-// `breaking` used to classify the FIRST event, which was right only while the
-// burst was sorted by severity. T3.1's ladder orders by rung, so the first card
-// can be the milder hazard; `worstOf` is what the rule actually needs.
+// Classifying the FIRST event is right only while the burst is sorted by
+// severity. T3.1's ladder orders by rung, so the first card can be the milder
+// hazard; `worstOf` is what the rule actually needs.
 func TestTheBurstsToneComesFromItsWorstHazardNotItsFirst(t *testing.T) {
 	now := time.Now()
 	fresh := []globalfeed.Event{
@@ -488,7 +488,7 @@ func TestTheBurstsToneComesFromItsWorstHazardNotItsFirst(t *testing.T) {
 		t.Errorf("the burst's tone must not come from the least severe lane, got %v", got)
 	}
 	// A TIE GOES TO THE LOUDER TONE, NOT THE EARLIER CARD (MVS-D-73, which
-	// supersedes the positional rule this test used to assert).
+	// supersedes the positional rule).
 	//
 	// These two are the INAUDIBLE case, and it is the one worth pinning: a
 	// Tornado Warning and an Earthquake share the dual-tone preset, so a listener
@@ -524,9 +524,9 @@ func TestASingleEventHasNoBurstHead(t *testing.T) {
 // between alert tone, the ticker showing the centered takeover and the
 // readout").
 //
-// The centred takeover used to be sent from readBreaking — after the burst head
-// had been rendered AND spoken — so the band lagged the sound by a render and a
-// whole sentence. The tone is the cue; the frame that answers it must be the
+// Sent from readBreaking — after the burst head is rendered AND spoken — the
+// band would lag the sound by a render and a whole sentence. The tone is the
+// cue; the frame that answers it must be the
 // next thing that happens, before any words are rendered.
 func TestTheCentredTakeoverLandsWithTheToneNotAfterTheWords(t *testing.T) {
 	audio := &fakeBreakingAudio{dur: time.Millisecond, toneDur: time.Millisecond}

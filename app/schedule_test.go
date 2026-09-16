@@ -85,9 +85,9 @@ func TestAScheduleLeavesNoGoroutineBehind(t *testing.T) {
 	before := settle()
 
 	// NO EXTERNAL CANCEL — `stop` must be the only thing that shuts this down.
-	// An earlier version cancelled the context itself right after stopping, so
-	// the goroutines exited on that instead and the count came back to baseline
-	// no matter what `stop` did. It stayed green with `stop` gutted entirely,
+	// Cancelling the context here would let the goroutines exit on that instead,
+	// so the count returns to baseline no matter what `stop` does — green with
+	// `stop` gutted entirely,
 	// which is a leak detector that cannot detect a leak.
 	s, _ := scheduleUnderTest(t, context.Background())
 	s.pump.send(context.Background(), lineup.Tick{Now: time.Now()})
@@ -122,9 +122,8 @@ func TestNoArbiterMeansNoSchedule(t *testing.T) {
 
 // everyTick RUNS ON THE INTERVAL AND STOPS WITH THE CONTEXT.
 //
-// It carries the single P10-02 exemption that used to be one per poller, so it
-// is worth more than the loops it replaced were individually: a defect here is
-// a defect in every poller at once.
+// It carries the single P10-02 exemption for every poller, so it is worth more
+// than any one of them: a defect here is a defect in every poller at once.
 func TestEveryTickRunsUntilTheContextEnds(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var runs atomic.Int64
@@ -179,9 +178,9 @@ func TestEveryTickRefusesANonPositiveInterval(t *testing.T) {
 // Every tune the Director asks for is AUTOMATIC — a dwell elapsed, a cycle
 // ended — and nobody pressed anything. Lifting the dip on an automatic
 // transition brought the next location's report in at full volume over a
-// breaking alert that was still reading; the distinction used to live in the
-// case of an identifier, `Tune` versus `tune`, and a listener heard the
-// difference. T2.3 gave the duck one owner, and this asserts the absorb kept it.
+// breaking alert that was still reading — a distinction that rested on the case
+// of an identifier, `Tune` versus `tune`, where a listener heard the difference.
+// T2.3 gave the duck one owner, and this asserts the absorb keeps it.
 func TestTheDirectorsTuneLeavesTheDuckAlone(t *testing.T) {
 	v := &scriptVoice{dur: time.Millisecond}
 	nar := testDirector(v, nil)
@@ -462,9 +461,9 @@ func TestGoingOnAirFillsAnEmptyLineUp(t *testing.T) {
 			Label: "Town " + strconv.Itoa(i) + ", CA", Zip: "9210" + strconv.Itoa(i%10),
 			Lat: 33 + float64(i)/100, Lon: -117 - float64(i)/100, TZ: "America/Los_Angeles"})
 	}
-	// THE DEEPEST EVER PUBLISHED, for the reason the top-off test states: the
-	// deck is nil, so every card fails to compose, and until D-67 the failures
-	// refilled the track fast enough that a poll always caught ten.
+	// THE DEEPEST EVER PUBLISHED, for the reason the top-off test states: the deck
+	// is nil, so every card fails to compose, and without D-67's bound the
+	// failures refill the track fast enough that a poll always catches ten.
 	var mu sync.Mutex
 	var last lineup.Lineup
 	deepest := 0

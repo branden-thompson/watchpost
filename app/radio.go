@@ -212,9 +212,10 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	// the listener asked for a location, and NOT wherever the audio happens to
 	// begin (red team 2026-09-09, finding 1).
 	//
-	// IT USED TO RIDE ON setMode's transition edge, which made "the programme
-	// is running" a side effect of the DECK changing mode. On the synthesised
-	// path setMode is reached only from startSynth, and the merged station does
+	// IT DOES NOT RIDE ON setMode's TRANSITION EDGE, which would make "the
+	// programme is running" a side effect of the DECK changing mode. On the
+	// synthesised path setMode is reached only from startSynth, and the merged
+	// station does
 	// not call startSynth — so the first need arrived at a Director still
 	// Stopped, advances(MainTrack) refused the card, no mode ever changed, and
 	// the Director was never powered. Every subsequent need was refused the
@@ -998,9 +999,9 @@ func (d *radioDeck) unrelayedLabel(same string, ref snapshot.LocationRef) string
 
 func (d *radioDeck) setMode(mode, station, detail string) {
 	// THE POWER IS NOT REPORTED FROM HERE ANY MORE (red team 2026-09-09,
-	// finding 1). This used to send Powered{Running} on the transition out of
-	// an empty mode, which made "the programme is running" a fact about the
-	// DECK's mode string rather than about the listener. `tune` reports it now,
+	// finding 1). Sending Powered{Running} on the transition out of an empty mode
+	// would make "the programme is running" a fact about the DECK's mode string
+	// rather than about the listener. `tune` reports it,
 	// where the listener asks for a location and before the relay/synth fork —
 	// so a station whose audio is owned by the schedule still starts.
 	//
@@ -1055,9 +1056,9 @@ func (d *radioDeck) onStatus(st player.Status) {
 	if st.State == player.Failed && mode == "live" {
 		go d.needsRead(ref, "relay unavailable — "+st.Err, gen)
 	}
-	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). What used to be a
-	// time.AfterFunc here — armDwell setting a five-minute timer, advanceQueue
-	// firing on it — is now two facts the deck is the only thing able to
+	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). A time.AfterFunc here —
+	// armDwell setting a five-minute timer, advanceQueue firing on it — would put
+	// the decision in the deck. These are two facts the deck is the only thing able to
 	// observe: that a synthesised cycle ran to its end, and where the bed landed
 	// and when it actually started playing. Whether either moves the rotation on
 	// is the Director's, and it is a pure function of those facts, the

@@ -162,9 +162,9 @@ type executors struct {
 	// function rather than the deck itself. Every tune the Director asks for is
 	// AUTOMATIC — the dwell elapsed, a cycle ended — and nobody pressed
 	// anything. Lifting the dip here would bring the next location's report in
-	// at full volume over a breaking alert still reading, which is the defect a
-	// capital letter used to carry (radioDeck.Tune vs tune) and which T2.3
-	// removed by giving the duck one owner. The wiring calls the deck's
+	// at full volume over a breaking alert still reading — a distinction that
+	// rested on the case of an identifier (radioDeck.Tune vs tune) until T2.3 gave
+	// the duck one owner. The wiring calls the deck's
 	// unexported tune, and this comment is here so a future caller does not
 	// reach for the exported one.
 	cutTo func(ref string)
@@ -306,9 +306,8 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		return x.offer()
 	// DUCK AND RESTORE ARE WIRED AND **REACHED** (corrected 2026-09-15, D-139).
 	//
-	// THIS COMMENT SAID THE OPPOSITE UNTIL BUILD EXIT, and it was true when it
-	// was written: at the 2026-09-05 red team (I-5) nothing in production
-	// constructed either effect. **P5's track-model batch wired them** —
+	// BOTH EFFECTS ARE CONSTRUCTED IN PRODUCTION. P5's track-model batch wired
+	// them —
 	// `Director.givingWay` decides from state the Director already holds and
 	// `settle` emits the change (`bed.go:392`, reached from `director.go:842`)
 	// — and `06_docs/wires-ratified.md:51-52` records exactly that. The comment
@@ -317,9 +316,8 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 	//
 	// WHY IT MATTERS MORE THAN AN OUT-OF-DATE SENTENCE: the functions below
 	// carry some of the heaviest reasoning in the release — the F-D5 critical
-	// section and the lock-order warning — and this note told every reader they
-	// were describing dead code. Found by red team at BUILD exit, which
-	// measured `effect lineup.Duck = duck()` live and said so.
+	// section and the lock-order warning — and a note calling them dead would send
+	// every reader past all of it.
 	//
 	// MVS-D-67 IS STILL SATISFIED, and by a different mechanism than `held`.
 	// The ruling — one dip per drain, the rail owning the bed until its tail

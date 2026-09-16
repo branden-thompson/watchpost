@@ -155,9 +155,9 @@ func TestT02AnAutomaticAdvanceDoesNotTakeAnAlertOffTheAir(t *testing.T) {
 	d.repeat, d.queue, d.mode = tty.RepeatWatchlist, []snapshot.LocationRef{a, b}, "synth"
 
 	d.engine.Suppress() // a takeover is reading an alert
-	// THE PATH THE DIRECTOR NOW TAKES (T3.2b). The advance used to be
-	// advanceQueue's; it is the Director's decision now and reaches the deck
-	// through the executor's tune seam, which calls exactly this. The rule is
+	// THE PATH THE DIRECTOR TAKES (T3.2b). The advance is the Director's decision
+	// and reaches the deck through the executor's tune seam, which calls exactly
+	// this. The rule is
 	// unchanged and so is what it is asserted against.
 	d.tune(b)
 	if snapshot.Key(d.ref) != snapshot.Key(b) {
@@ -404,9 +404,9 @@ func TestT03TheCuePrecedesTheWordsForEveryEvent(t *testing.T) {
 
 // T0.3b / DR-24 — A TAKEOVER CUT SHORT STILL RELEASES THE BAND.
 //
-// INVERTED AT T3.5, AND THE INVERSION IS THE PROOF. This test used to assert
-// the defect: TickerBreakingDoneMsg was sent on ONE path — the last line of the
-// takeover closure — with four early returns above it that sent nothing, while
+// THE BAND IS RELEASED ON EVERY PATH, WHICH IS WHAT THIS PINS (T3.5).
+// TickerBreakingDoneMsg sent on ONE path — the last line of the takeover closure
+// — leaves four early returns above it sending nothing, while
 // the audio side was released unconditionally by the arbiter. That asymmetry is
 // why it went unnoticed for so long: the sound came back, so the station seemed
 // fine, and only the band sat frozen on an alert nobody was reading.
@@ -477,9 +477,9 @@ func (o *heldOutput) count() int {
 
 // NO RENDER SITS BETWEEN A CUE AND ITS WORDS (T3.3, the pre-build).
 //
-// A render costs about a second and it used to run inside the pause before the
-// line it belongs to: cue the band, render, speak. Every gap in a burst carried
-// it, so the listener heard tone → a second of nothing → header, and about two
+// A render costs about a second, so running it inside the pause before the line
+// it belongs to — cue the band, render, speak — puts it in every gap of a burst:
+// the listener hears tone → a second of nothing → header, and about two
 // and a half seconds between alerts where the ruling says one. Heard on a real
 // alert at UAT 2026-09-03: "the uniform 2-3s pause in between every sentence
 // feels like something is broken".
@@ -673,10 +673,9 @@ func TestTheRetryPathAlsoCuesNothingOnceTheSequenceEnded(t *testing.T) {
 // tests supplied what production had forgotten, which is the one thing a fixture
 // must never do for a wiring seam.
 //
-// MOVED TO tune AT 0.16.0 P3, and the same defect came back through the door
-// the first fix left open (red team 2026-09-09, finding 1). The report rode on
-// setMode's transition edge, which made "the programme is running" a fact about
-// the DECK's mode string; the merged station does not change the deck's mode at
+// THE REPORT BELONGS TO tune, NOT TO setMode (0.16.0 P3). Riding setMode's
+// transition edge makes "the programme is running" a fact about the DECK's mode
+// string; the merged station does not change the deck's mode at
 // all, so it was never powered and never read anything. THIS TEST DROVE setMode
 // DIRECTLY, so it passed throughout — a pin on the carrier rather than on the
 // rule, which is why it could not see the carrier become the wrong one.

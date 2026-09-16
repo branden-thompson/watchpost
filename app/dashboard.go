@@ -208,8 +208,8 @@ func uiHook(clock *atomic.Int32) func(tty.UIPrefs) error {
 // They travel together because they are one thing — a preference a running
 // pipeline must see change — and because threading a third atomic through two
 // signatures was one too many. The clock joined them at 0.14.0: the ticker
-// builds its tape in this package, so a tape that kept the launch-time clock
-// would be the one surface left writing times the old way.
+// builds its tape in this package, so a tape holding the launch-time clock would
+// be the one surface not following the listener's choice.
 type tickerPrefs struct {
 	muted  *atomic.Bool
 	radius *atomic.Int64
@@ -297,7 +297,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// The schedule runs from here, over the SAME arbiter and effector the ticker
 	// was just given. It drives the live alert rail since T3.10b — so a
 	// listener notices nothing; T3.2b is the first thing it owns.
-	// TWO LISTS, BECAUSE THERE ARE TWO PROGRAMMES (D-72, corrected at D-76). The
+	// TWO LISTS, BECAUSE THERE ARE TWO PROGRAMMES (D-72, D-76). The
 	// STATION's pool is what its Producer offers and what its Composer resolves
 	// against; the LISTENER's watchlist is what the monitor's rotation moves
 	// through. D-72 moved all three seams to the pool and that was two-thirds
@@ -341,9 +341,9 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		SetTransmitter:  lp.setTransmitter,
 		ServiceRadiusMi: int(cfg.Broadcaster.ServiceRadius()),
 		// THE BOUNDS TRAVEL WITH THE VALUE THEY BOUND (D-124). `platform/config`
-		// owns these two numbers alone now; the window used to restate them and a
-		// test in this package stood between the two copies. Handing them over is
-		// what retires that test — a fact with one owner needs no tie.
+		// owns these two numbers alone. Restating them in the window would put a
+		// test in this package between two copies, and a fact with one owner needs
+		// no such tie.
 		ServiceRadiusMinMi: config.MinServiceRadiusMi,
 		ServiceRadiusMaxMi: config.MaxServiceRadiusMi,
 		SetServiceRadius:   lp.setServiceRadius,
