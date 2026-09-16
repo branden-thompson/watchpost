@@ -11,6 +11,7 @@ package tty
 // has no cue to wait.
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -24,8 +25,8 @@ func consoleLookupTyping(t *testing.T, resolved *int) Dashboard {
 	t.Helper()
 	d := goldenDash(t, false)
 	d.surface, d.addMode, d.addQuery = SurfaceBroadcaster, "lookup", "Lone Pine, CA"
-	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool) {
-		return snapshot.LocationRef{Label: "Lone Pine, CA"}, false, true // real, out of radius
+	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool, bool) {
+		return snapshot.LocationRef{Label: "Lone Pine, CA"}, false, true, true // real, out of radius
 	}
 	// THE TEMPTING ANSWER MUST BE AVAILABLE and refused, or the test passes for
 	// the wrong reason: this is the hook the leak went through.
@@ -66,9 +67,9 @@ func TestEnterBeforeTheAnswerAsksTheScopedHookAtOnce(t *testing.T) {
 	var resolved int
 	asked := 0
 	d := consoleLookupTyping(t, &resolved)
-	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool) {
+	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool, bool) {
 		asked++
-		return snapshot.LocationRef{Label: "Lone Pine, CA"}, false, true
+		return snapshot.LocationRef{Label: "Lone Pine, CA"}, false, true, true
 	}
 
 	_, cmd := d.handleAddKey(enterKey())
@@ -88,8 +89,8 @@ func TestEnterBeforeTheAnswerAsksTheScopedHookAtOnce(t *testing.T) {
 func TestAnEnterHeldOverAReachableAnswerStillOpens(t *testing.T) {
 	d := goldenDash(t, false)
 	d.surface, d.addMode, d.addQuery = SurfaceBroadcaster, "lookup", "Vista"
-	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool) {
-		return snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true
+	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool, bool) {
+		return snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true, true
 	}
 	m0, _ := d.afterLookupEdit()
 	d = m0.(Dashboard).open(modalAdd)
@@ -109,5 +110,38 @@ func TestAnEnterHeldOverAReachableAnswerStillOpens(t *testing.T) {
 	}
 	if out := m2.(Dashboard); out.modal == modalAdd {
 		t.Error("a reachable location did not open after the answer landed: the enter was swallowed")
+	}
+}
+
+// A CHECK THAT COULD NOT BE MADE IS NOT "NO SUCH PLACE" (D-151).
+//
+// FOUND BY RED TEAM (round 2). A 5-second timeout, a DNS blip or a cancelled
+// context returned `found=false` — the same value a genuine no-match returns —
+// so the window told the operator a real location does not exist AND disabled
+// the key that would have retried it. `locateInRadius`'s own comment claimed
+// "THREE ANSWERS, NOT TWO"; there was a fourth, reported as the second.
+func TestALookupThatCouldNotBeMadeSaysSoAndStaysRetryable(t *testing.T) {
+	d := goldenDash(t, false)
+	d.surface, d.addMode, d.addQuery = SurfaceBroadcaster, "lookup", "Rainbow, CA"
+	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool, bool) {
+		return snapshot.LocationRef{}, false, false, false // the question could not be put
+	}
+	m0, _ := d.afterLookupEdit()
+	d = m0.(Dashboard).open(modalAdd)
+	d.addLocate = d.addLocate.apply(locateVerdictMsg{
+		field: locateLookup, seq: d.addLocate.gate.Seq(), query: "Rainbow, CA", asked: false,
+	})
+
+	fact, aside := d.addLocate.locateNote()
+	if strings.Contains(fact, "not found") {
+		t.Errorf("a failed check is reported as a missing place: %q", fact)
+	}
+	if fact == "" || aside == "" {
+		t.Errorf("the operator is told nothing: %q / %q", fact, aside)
+	}
+	// AND ENTER MUST STILL WORK — it is the retry.
+	if _, cmd := d.handleAddKey(enterKey()); cmd == nil {
+		t.Error("enter is inert after a failed check: the operator has a real location they " +
+			"cannot request and no way to ask again")
 	}
 }

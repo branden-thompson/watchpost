@@ -33,8 +33,16 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			// went inert while the field was still thinking would be the same
 			// dead control this rule exists to prevent — so enter is refused
 			// only once there IS an answer and the answer is no.
-			if d.addLocate.settled() && !d.addLocate.reachable() {
+			// A DEFINITE NO IS REFUSED; "COULD NOT ASK" IS NOT (D-151). A
+			// timeout answers nothing, so refusing the key on it would leave
+			// the operator with a real location they cannot request and no way
+			// to retry — the dead control again, arrived at from the other side.
+			if d.addLocate.settled() && d.addLocate.asked && !d.addLocate.reachable() {
 				return d, nil
+			}
+			if d.addLocate.couldNotAsk() {
+				d.addLocate.submitted = true
+				return d, d.locateCmd(locateLookup, d.addLocate.gate.Seq(), d.addLocate.query)
 			}
 			if d.addLocate.reachable() {
 				// AND THE ANSWER ALREADY HELD IS THE ANSWER. Re-asking would be
@@ -329,7 +337,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 		// UNKNOWN READS AS AVAILABLE. The field is only briefly unsettled, and
 		// greying the key while it thinks would flicker the control on every
 		// keystroke.
-		enabled = !d.addLocate.settled() || d.addLocate.reachable()
+		enabled = !d.addLocate.settled() || d.addLocate.reachable() || d.addLocate.couldNotAsk()
 	}
 	return append(lines, "  "+o.Controls("   ", render.CtlIf("enter", verb, enabled), render.Ctl("esc", "Cancel")))
 }

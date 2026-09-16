@@ -41,6 +41,12 @@ type locateVerdictMsg struct {
 	ref    snapshot.LocationRef
 	within bool
 	found  bool
+
+	// asked is whether the question reached an answer at all (D-151). False
+	// means the check could not be MADE — a timeout, a dropped connection, a
+	// cancelled context — which is a different thing from "no such place" and
+	// must not be drawn as one.
+	asked bool
 }
 
 // afterPause is the tea half of the debounce, GENERIC OVER THE MESSAGE so any
@@ -64,6 +70,12 @@ type locateState struct {
 	within bool
 	found  bool
 
+	// asked is whether the question reached an answer at all (D-151). False
+	// after settling means the check could not be MADE — a timeout, a dropped
+	// connection, a cancelled context — which is a different thing from "no
+	// such place" and must not be drawn as one.
+	asked bool
+
 	// submitted is an ENTER pressed before the answer arrived (D-141).
 	//
 	// THE PRESS IS HELD, NOT DISCARDED AND NOT OBEYED. Discarding it makes the
@@ -85,7 +97,7 @@ type locateState struct {
 // text the operator has already corrected.
 func (st locateState) edit(f locateField, query string) (locateState, tea.Cmd) {
 	st.gate = st.gate.Edit()
-	st.query, st.ref, st.within, st.found = query, nil, false, false
+	st.query, st.ref, st.within, st.found, st.asked = query, nil, false, false, false
 	st.submitted = false // a new keystroke supersedes a press waiting on the old text
 	seq := st.gate.Seq()
 	return st, afterPause(seq, func(s int) locatePauseMsg { return locatePauseMsg{field: f, seq: s} })
@@ -102,7 +114,7 @@ func (st locateState) apply(v locateVerdictMsg) locateState {
 		return st
 	}
 	ref := v.ref
-	st.gate, st.found, st.within = gate, v.found, v.within
+	st.gate, st.found, st.within, st.asked = gate, v.found, v.within, v.asked
 	if v.found {
 		st.ref = &ref
 	} else {
@@ -124,8 +136,9 @@ func (d Dashboard) locateCmd(f locateField, seq int, query string) tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		ref, within, found := look(query)
-		return locateVerdictMsg{field: f, seq: seq, query: query, ref: ref, within: within, found: found}
+		ref, within, found, asked := look(query)
+		return locateVerdictMsg{field: f, seq: seq, query: query, ref: ref,
+			within: within, found: found, asked: asked}
 	}
 }
 
@@ -134,11 +147,20 @@ func (st locateState) locateNote() (string, string) {
 	if !st.settled() {
 		return "", "" // asked and not yet answered: the window does not know
 	}
+	// THE QUESTION COULD NOT BE PUT (D-151). Saying "not found" here tells the
+	// operator a real place does not exist, on the evidence of a timeout — and
+	// the chip that would let them retry is disabled by the same answer.
+	if !st.asked {
+		return "Could not check this location.", "The lookup did not answer; press enter to try again"
+	}
 	if !st.found {
 		return poolNote(st.query, nil, false)
 	}
 	return poolNote(st.query, st.ref, !st.within)
 }
+
+// couldNotAsk reports the fourth state: settled, and the check never happened.
+func (st locateState) couldNotAsk() bool { return st.settled() && !st.asked }
 
 // handleLocatePause is the pause expiring: ask, but only if this is still the
 // pause that follows the LAST keystroke.
@@ -173,7 +195,15 @@ func (d Dashboard) handleLocateVerdict(v locateVerdictMsg) (tea.Model, tea.Cmd) 
 			return d, func() tea.Msg { return resolvedMsg{mode: d.addMode, ref: ref} }
 		}
 	case locateRequest:
+		held := d.request.locate.submitted
 		d.request.locate = d.request.locate.apply(v)
+		// THE SAME HONOURING AS THE LOOKUP BOX (D-151). A press that was waiting
+		// on this answer schedules; anything else leaves the window open with
+		// its reason showing.
+		if held && d.request.locate.reachable() {
+			d.request.locate.submitted = false
+			return d.requestSchedule()
+		}
 	}
 	return d, nil
 }
@@ -197,6 +227,8 @@ func (st locateState) keyState() uint8 {
 	switch {
 	case !st.settled():
 		return 0 // thinking: the window says nothing
+	case !st.asked:
+		return 4 // the question could not be put (D-151) — a fourth frame
 	case !st.found:
 		return 1 // no such place
 	case !st.within:

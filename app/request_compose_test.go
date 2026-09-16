@@ -149,3 +149,33 @@ func TestTheSchedulesComposerResolvesARequestedLocation(t *testing.T) {
 			"this control is what proves the check above discriminates", err)
 	}
 }
+
+// THE CAP EVICTS, AND ONLY PAST ITS OWN BOUND (D-152).
+//
+// FOUND BY RED TEAM (round 2): the cap's justification described an eviction the
+// code does not perform — it drops the OLDEST REMEMBERED while `Insert` sheds
+// the LAST VISIBLE, which with the window's default slot are opposite ends. The
+// constant is now sized so eviction is unreachable in a session rather than
+// pretending to track the schedule, and this pins both halves.
+func TestTheRequestedListIsBoundedAndKeepsARealSessionsWorth(t *testing.T) {
+	lp := &livePipelines{}
+	// A SESSION'S WORTH stays resolvable — the number an operator could plausibly
+	// request before anything is forgotten.
+	for i := range requestedCap {
+		lp.rememberRequested(snapshot.LocationRef{
+			Label: "Place " + string(rune('A'+i%26)) + string(rune('0'+i/26)),
+			Lat:   33.0 + float64(i)/1000, Lon: -117.0 - float64(i)/1000,
+		})
+	}
+	if got := len(lp.resolvable()); got != requestedCap {
+		t.Fatalf("held %d of %d requested refs", got, requestedCap)
+	}
+	// AND IT IS BOUNDED: one past the cap evicts exactly one (P10-02).
+	lp.rememberRequested(snapshot.LocationRef{Label: "One More", Lat: 34, Lon: -118})
+	if got := len(lp.resolvable()); got != requestedCap {
+		t.Errorf("the list grew to %d; it is bounded at %d", got, requestedCap)
+	}
+	if _, ok := refFor(lp.resolvable, string(snapshot.Key(snapshot.LocationRef{Label: "One More", Lat: 34, Lon: -118}))); !ok {
+		t.Error("the newest request was evicted instead of the oldest")
+	}
+}

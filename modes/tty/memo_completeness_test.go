@@ -342,8 +342,8 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 		// refusal reads the same either way — so the fixture would cover
 		// neither field while looking like it covered the window.
 		d.surface, d.addMode, d.addQuery = SurfaceBroadcaster, "lookup", "Vista"
-		d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool) {
-			return snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true
+		d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool, bool) {
+			return snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true, true
 		}
 		d.addLocate = settledLocate(locateLookup, "Vista",
 			snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true)

@@ -11,12 +11,18 @@ own work took `location` from 137 files to 139 while nobody intended it. **Re-de
 cite.**"*  0.16.0 shipped `scripts/quality/exposure-scan.py` and then did not run it for itself —
 found by red team at BUILD exit.  This is that re-derivation.
 
-## The numbers, re-derived 2026-09-15
+## The numbers, re-derived 2026-09-16 (corrected)
+
+**THE FIRST VERSION OF THIS TABLE WAS DERIVED BEFORE THE COMMIT IT LIVES IN.**  Red team round 2
+caught it: the scan reads `git ls-files`, and `2d7c21e` added 49 files — including the 572 lines of
+the P7 build log — so the numbers this document published were already stale when it was committed.
+The document whose thesis is *"re-derive rather than cite"* had cited itself.  These are the figures
+from the tree as it now stands.
 
 | Category | Tracked tree (files / occurrences) | 0.15.0 | Δ | Git history | Tags |
 | --- | --- | --- | --- | --- | --- |
-| **identity** | 115 / 274 | 23 / 133 | **+92 files** | 1,354 | 19/19 |
-| **location** | 192 / 690 | 139 / 464 | **+53 files** | 7,059 | 19/19 |
+| **identity** | 116 / 275 | 23 / 133 | **+93 files** | 1,367 | 19/19 |
+| **location** | 203 / 723 | 139 / 464 | **+64 files** | 7,173 | 19/19 |
 | **host** | 12 / 28 | 11 / 23 | +1 file | 211 | 19/19 |
 | **internal-url** | 0 / 0 | 0 | — | 0 | 0/19 |
 | **credential** | 7 files / 11 matches, **2 distinct, both fixtures** | 2 distinct | **no change** | 68 | 19/19 |
@@ -24,7 +30,7 @@ found by red team at BUILD exit.  This is that re-derivation.
 
 ## What changed, and what it means
 
-**`location` grew by 53 files, and the growth is the release's own documentation.**  The Broadcaster
+**`location` grew by 64 files, and the growth is the release's own documentation.**  The Broadcaster
 is a geographic product: its rulings, its mocks and its build logs name Oceanside, Vista, Bonsall,
 Rainbow and the rest because those are what the fence, the pool and the hyper-local case are ABOUT.
 ~19 of the new occurrences are Go test files added on this branch (`app/airscope_test.go:31`,
@@ -35,7 +41,7 @@ Rainbow and the rest because those are what the fence, the pool and the hyper-lo
 *"keep as is for now"* on 2026-09-08 (0.15.0's statement).  **The digits added by 0.16.0 fall inside
 that standing ruling.**  What 0.16.0 owes is the count, and here it is.
 
-**`identity` grew by 92 files** — the release's documentation tree carries the author's name in
+**`identity` grew by 93 files** — the release's documentation tree carries the author's name in
 frontmatter and in quoted rulings throughout.  Deliberate, and the same disposition 0.15.0 recorded:
 this is a personal project published under its author's own name.
 
@@ -56,6 +62,12 @@ likely to be wrong and it is the one that did not move.
 - **Built artifacts** carry `identity` and `path` in the hundreds per binary.  That is Go embedding
   the build path, it is unchanged from 0.15.0's finding, and `dist/` is git-ignored — nothing there
   is published except through a release asset, which is the same disposition as before.
+- **A 4.4 MB tool binary was in this branch's HISTORY**, added in two commits and untracked in a
+  third.  None of the three is an ancestor of `origin/main`, so merging 0.16.0 would have published
+  the blob permanently.  Found by red team round 2; **the HUM LEAD ruled it out — "No binaries in git
+  branch history per standard best practices"** — and the branch history was rewritten to remove it.
+  An earlier version of this statement asserted *"nothing there is published"* while the blob sat in
+  the history this release proposes to merge.
 
 ## Standing instruction, restated for 0.17.0
 

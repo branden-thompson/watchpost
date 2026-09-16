@@ -629,6 +629,7 @@ func (Router).surface
 func (Router).swapTo
 func (Router).throughToObserver
 func (Router).toggleStation
+func (Router).typingInAWindow
 func (Router).update
 func (arrowChips).pick
 func (cardLane).badgeOf
@@ -639,6 +640,7 @@ func (cardLane).shell
 func (endpointRow).counters
 func (locIndex).at
 func (locateState).apply
+func (locateState).couldNotAsk
 func (locateState).edit
 func (locateState).keyLabel
 func (locateState).keyState

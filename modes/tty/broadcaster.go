@@ -1128,6 +1128,27 @@ func (b Broadcaster) stationLine() []string {
 	// read" explained a state the row above already names, and the reference has
 	// no line for it. A NOTICE STILL GETS ONE, because a refusal answers a key the
 	// operator just pressed and has to be somewhere they are looking.
+	// FR-5.5's BOUNDARY SENTENCE IS ASSIGNED AND NEVER RENDERED (D-153).
+	//
+	// `why` carries a sentence per state, and this row is drawn ONLY when a
+	// `statusNote` exists — in which case the note has already REPLACED `why`
+	// two blocks up. So every per-state sentence here is dead, including the one
+	// FR-5.5 exists for: "audio out of this program; Watchpost does not observe
+	// a transmitter". D-107 removed the standing prose row and took the boundary
+	// with it; the comment on `stationLine` still says the boundary is stated
+	// "HERE, where they read it — not only in a design document", and it is not.
+	//
+	// FOUND BY RED TEAM'S SECOND ROUND. The gate cited as this property's
+	// successor asserts something else, so the requirement had no test AND no
+	// implementation, behind a citation that looked like a retirement.
+	//
+	// NOT FIXED HERE, AND DELIBERATELY. Restoring it as a row makes the station
+	// section three rows of text where the HUM LEAD ruled two, and turns the band
+	// from seven content rows into eight — both pinned by tests
+	// (`TestTheBedRidesInTheStationSection`, `TestTheStationBandIsEvenlyInset`).
+	// WHERE a safety sentence goes on a ruled layout is the HUM LEAD's call, not
+	// this function's. Recorded as F-109 with the fork; FR-5.5 is reported OPEN
+	// in the BUILD report rather than closed by a citation.
 	if b.statusNote != "" {
 		rows = append(rows, render.TruncateCells(label("")+why, max(0, lane)))
 	}

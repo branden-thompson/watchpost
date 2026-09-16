@@ -98,6 +98,18 @@ func (l Lineup) scheduleIndex(t Track, to int) (int, bool) {
 		}
 		seen++
 	}
+	// AN EXACT MATCH IS THE END; ANYTHING FURTHER IS NOT A POSITION (D-149).
+	//
+	// THIS FUNCTION SERVES TWO DIFFERENT QUESTIONS and must stay strict for one
+	// of them. `Reorder` asks where an EXISTING card goes among the cards the
+	// operator can SEE — a slot the running order never drew is meaningless and
+	// is refused (TestAMoveBeyondTheProjectionIsRefused). `Insert` asks where a
+	// NEW card goes, and there "past the last card" has an obvious meaning: the
+	// bottom.
+	//
+	// SO THE CLAMP LIVES AT THE REQUEST PATH, NOT HERE. A first fix relaxed this
+	// to `to >= seen` and broke the move rule in the same edit — one function
+	// answering two questions, given one answer.
 	if to == seen {
 		return len(l.tracks[t]), true // the end of the running order
 	}

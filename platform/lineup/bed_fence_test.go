@@ -10,7 +10,10 @@ package lineup
 // true for ever: Duck was emitted and Restore never was, so the station
 // broadcast the relay at duck gain indefinitely with no voice over it.
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 // A RAIL THAT CAN NEVER SPEAK MUST NOT HOLD THE BED DOWN.
 func TestARailOfUnreadableCardsGivesTheBedBack(t *testing.T) {
@@ -108,5 +111,59 @@ func TestTheBedGivesWayOnceAndTakesItBackOnce(t *testing.T) {
 	}
 	if _, ok := back[0].(Restore); !ok {
 		t.Fatalf("emitted %T, want Restore", back[0])
+	}
+}
+
+// AND THE FOURTH CALL SITE OF THE SAME RULE (D-150).
+//
+// FOUND BY RED TEAM (round 2) AT BUILD EXIT: the fence was taught to `Next`,
+// `Projection`, `toPrepare` and `givingWay` — and NOT to `refreshStandby`, the
+// last raw-track "does the rail hold anything" question in the package. The
+// first round's two criticals were this exact shape, and the remediation stopped
+// one site short of finishing it.
+//
+// THE INTERACTION IS WHAT MAKES IT WORSE THAN A MISSED SITE. After D-139 an
+// out-of-fence rail card is IMMORTAL and INVISIBLE: `Next` skips it, `toPrepare`
+// skips it so it never reaches Standby with a BuiltAt and can never be dropped
+// as stale, and `Projection` hides it so the operator cannot drop it either. So
+// this guard stayed permanently true and the main track's standing-by report was
+// never re-hydrated for the life of the fence — until it aged past StaleAfter
+// and the listener heard "That report is out of date and has been dropped."
+func TestAnUnreadableRailDoesNotFreezeTheMainTracksRefresh(t *testing.T) {
+	far := aBurst(t, "far", 37.2, -99.8) // Kansas, from an Oceanside station
+	rep, err := Propose(Card{ID: "rep", Slot: LocationReport, Subject: "rep",
+		Headline: "Oceanside, CA", State: Proposed})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adm, err := rep.To(Admitted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	standby, err := adm.To(Standby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	standby.BuiltAt = time.Now().Add(-14 * time.Minute) // past RefreshAfter
+
+	var l Lineup
+	if l, err = l.Queue(AlertRail, far); err != nil {
+		t.Fatal(err)
+	}
+	l.tracks[MainTrack] = append(l.tracks[MainTrack], standby)
+
+	d := Director{lineup: l, settings: Settings{
+		Fence: Fence{RadiusMi: 25, Lat: 33.24, Lon: -117.29, HasOrigin: true}}}
+	d = d.refence()
+	d.now = time.Now()
+
+	if len(d.lineup.Projection(AlertRail)) != 0 {
+		t.Fatal("fixture: nothing on this rail is readable")
+	}
+	_, fx := d.refreshStandby()
+	if len(fx) == 0 {
+		t.Error("the main track's standing-by report is never refreshed while an unreadable card " +
+			"sits on the rail — and that card can never leave, so the report ages out and the " +
+			"listener is told a report was dropped")
 	}
 }

@@ -16,6 +16,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -25,7 +26,6 @@ import (
 	"github.com/branden-thompson/watchpost/domains/locations"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
-	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -387,29 +387,33 @@ const radiusLookupBudget = 5 * time.Second
 // THREE ANSWERS, NOT TWO. `within` distinguishes a real place the station
 // cannot reach from a name that means nothing — the first points the operator
 // at Observer, the second asks them to try again.
-func (lp *livePipelines) locateInRadius(r *locations.Resolver) func(string) (snapshot.LocationRef, bool, bool) {
-	return func(query string) (snapshot.LocationRef, bool, bool) {
+func (lp *livePipelines) locateInRadius(r *locations.Resolver) func(string) (snapshot.LocationRef, bool, bool, bool) {
+	return func(query string) (snapshot.LocationRef, bool, bool, bool) {
 		if lp == nil {
-			return snapshot.LocationRef{}, false, false
+			return snapshot.LocationRef{}, false, false, true
 		}
 		q := strings.TrimSpace(query)
 		if q == "" {
-			return snapshot.LocationRef{}, false, false
+			return snapshot.LocationRef{}, false, false, true // nothing typed: answered, and the answer is nothing
 		}
 		// THE POOL FIRST, because it is free and it is what the Director already
 		// offers. A prefix match here is the common case and never leaves the
 		// machine.
 		if ref, _, ok := lp.lookInPool(q); ok {
-			return ref, true, true
+			return ref, true, true, true
 		}
 		if r == nil {
-			return snapshot.LocationRef{}, false, false
+			return snapshot.LocationRef{}, false, false, false // no resolver: the question cannot be put
 		}
 		ctx, done := context.WithTimeout(lp.lookupCtx(), radiusLookupBudget)
 		defer done()
 		ref, _, err := r.Resolve(ctx, q)
 		if err != nil {
-			return snapshot.LocationRef{}, false, false
+			// A TIMEOUT IS NOT AN ANSWER (D-151). `found=false` is what a genuine
+			// no-match returns, and reporting a failed lookup the same way told
+			// the operator a real place does not exist — then disabled the key
+			// that would have retried it.
+			return snapshot.LocationRef{}, false, false, !isLookupFailure(err)
 		}
 		if ref.Tag == "" {
 			ref.Tag = deriveTag(ref.Label) // the same backfill Resolve does; a card names one
@@ -419,10 +423,10 @@ func (lp *livePipelines) locateInRadius(r *locations.Resolver) func(string) (sna
 		// both take of an unset epicentre.
 		s := lp.currentStation()
 		if s.transmitter.Lat == 0 && s.transmitter.Lon == 0 {
-			return ref, false, true
+			return ref, false, true, true
 		}
 		within := globalfeed.WithinMiles(s.transmitter.Lat, s.transmitter.Lon, ref.Lat, ref.Lon, s.radiusMi)
-		return ref, within, true
+		return ref, within, true, true
 	}
 }
 
@@ -467,10 +471,26 @@ func (lp *livePipelines) requestCard(ref snapshot.LocationRef, kinds report.Set,
 
 // requestedCap bounds what the operator's requests may cost in memory.
 //
-// THE MAIN TRACK'S OWN DEPTH, because that is the most that can be outstanding:
-// a request that has fallen off the bottom of the running order can no longer be
-// built, so holding its ref buys nothing. Oldest out first.
-const requestedCap = lineup.MainTrackCap
+// NOT THE MAIN TRACK'S DEPTH, AND THE FIRST VERSION SAID IT WAS (D-152). That
+// justification — "a request that has fallen off the bottom of the running order
+// can no longer be built" — described an eviction this code does not perform:
+// it drops the OLDEST REMEMBERED, while `Insert` sheds the LAST VISIBLE. With
+// the request window's default slot those are opposite ends, so sixteen requests
+// at the bottom would evict the ref of the card sitting at the TOP, still
+// unbuilt — and D-140's defect returns silently. Found by red team's second
+// round.
+//
+// SO THE CAP IS SIZED TO MAKE EVICTION UNREACHABLE IN A SESSION rather than
+// pretending to track the schedule. A `snapshot.LocationRef` is about a hundred
+// bytes; sixty-four of them is single-figure kilobytes, and an operator would
+// have to request sixty-four DISTINCT locations — repeats are deduped by
+// identity — before the oldest is forgotten. The cost of being wrong the other
+// way is a card the Composer cannot resolve, which is silent.
+//
+// TYING IT TO THE RUNNING ORDER PROPERLY would mean dropping a ref when its card
+// leaves the schedule, which needs the schedule here. That is a wiring decision,
+// not a constant, and it is recorded rather than guessed at.
+const requestedCap = 64
 
 // rememberRequested records a location the operator asked for, so the Composer
 // can resolve it later.
@@ -514,4 +534,15 @@ func (lp *livePipelines) resolvable() []snapshot.LocationRef {
 	out := make([]snapshot.LocationRef, 0, len(pool)+len(lp.requestedRefs))
 	out = append(out, pool...)
 	return append(out, lp.requestedRefs...)
+}
+
+// isLookupFailure separates "the question could not be put" from "there is no
+// such place" (D-151).
+//
+// A CANCELLED OR TIMED-OUT CONTEXT IS THE FORMER, and so is a resolver that
+// failed to build. Anything else — the offline index refusing a name, the
+// geocoder answering with nothing — is a real no-match, which the window is
+// right to draw as one.
+func isLookupFailure(err error) bool {
+	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
 }

@@ -63,10 +63,11 @@ func TestTheConsoleLookupsCaveatKeepsItsColourAcrossTheWrap(t *testing.T) {
 	// THE HOOK MUST BE WIRED EVEN THOUGH THE VERDICT IS PRE-SETTLED: its
 	// presence is what puts the window in the console's scoped mode at all, so
 	// a fixture without it draws no caveat and the test measures a blank frame.
-	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool) {
-		return snapshot.LocationRef{}, false, false
+	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool, bool) {
+		return snapshot.LocationRef{}, false, false, true
 	}
 	d.addLocate = settledLocate(locateLookup, "lone pine", snapshot.LocationRef{}, false, false)
+	d.addLocate.asked = true // the lookup ANSWERED; "no such place" is the answer
 	d = d.open(modalAdd)
 
 	everyCaveatLineIsStyled(t, colouredFrame(t, d), "the console's lookup window")
@@ -80,6 +81,7 @@ func TestTheRequestWindowsCaveatKeepsItsColourAcrossTheWrap(t *testing.T) {
 	d.request = requestOpen()
 	d.request.query = "Lone Pine, CA"
 	d.request.locate = settledLocate(locateRequest, "Lone Pine, CA", snapshot.LocationRef{}, false, false)
+	d.request.locate.asked = true
 	d = d.open(modalRequest)
 
 	everyCaveatLineIsStyled(t, colouredFrame(t, d), "the request window")

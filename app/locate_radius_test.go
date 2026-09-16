@@ -60,7 +60,7 @@ func TestAPlaceInsideTheRadiusButOutsideThePoolIsValid(t *testing.T) {
 		t.Fatal("fixture: Rainbow is supposed to be OUTSIDE the 25-slot pool")
 	}
 
-	ref, within, found := lp.locateInRadius(r)("Rainbow, CA")
+	ref, within, found, _ := lp.locateInRadius(r)("Rainbow, CA")
 
 	if !found {
 		t.Fatal("a real place the geocoder knows answered 'no such location'")
@@ -78,7 +78,7 @@ func TestAPlaceInsideTheRadiusButOutsideThePoolIsValid(t *testing.T) {
 func TestARealPlaceOutsideTheRadiusIsNamedButNotWithin(t *testing.T) {
 	lp, r, _ := locateFixture(t)
 
-	ref, within, found := lp.locateInRadius(r)("Lone Pine, CA")
+	ref, within, found, _ := lp.locateInRadius(r)("Lone Pine, CA")
 
 	if !found {
 		t.Fatal("a real place must resolve; 'outside the radius' is not 'does not exist'")
@@ -93,7 +93,7 @@ func TestARealPlaceOutsideTheRadiusIsNamedButNotWithin(t *testing.T) {
 // retype for the other.
 func TestANameThatResolvesToNothingIsNotFound(t *testing.T) {
 	lp, r, _ := locateFixture(t)
-	if _, _, found := lp.locateInRadius(r)("zzzzzzzz"); found {
+	if _, _, found, _ := lp.locateInRadius(r)("zzzzzzzz"); found {
 		t.Error("a name nothing knows was reported as a real place")
 	}
 }
@@ -104,7 +104,7 @@ func TestANameThatResolvesToNothingIsNotFound(t *testing.T) {
 func TestAPooledLocationNeverReachesTheGeocoder(t *testing.T) {
 	lp, r, geo := locateFixture(t)
 
-	_, within, found := lp.locateInRadius(r)("Vista")
+	_, within, found, _ := lp.locateInRadius(r)("Vista")
 
 	if !found || !within {
 		t.Fatalf("a pooled location must answer reachable: found=%v within=%v", found, within)
@@ -120,7 +120,7 @@ func TestAStationWithNoTransmitterReachesNothing(t *testing.T) {
 	lp, r, _ := locateFixture(t)
 	lp.setStation(stationArea{radiusMi: 25})
 
-	_, within, found := lp.locateInRadius(r)("Rainbow, CA")
+	_, within, found, _ := lp.locateInRadius(r)("Rainbow, CA")
 
 	if !found {
 		t.Fatal("the place still exists; only the station's reach is in question")
@@ -128,4 +128,51 @@ func TestAStationWithNoTransmitterReachesNothing(t *testing.T) {
 	if within {
 		t.Error("a station with no epicentre claimed to reach somewhere")
 	}
+}
+
+// A LOOKUP THAT COULD NOT BE MADE IS NOT "NO SUCH PLACE" (D-151).
+//
+// FOUND BY RED TEAM (round 2): a 5-second timeout, a DNS blip or a cancelled
+// context returned `found=false` — identical to a genuine no-match — so the
+// window told the operator a real location does not exist and disabled the key
+// that would have retried it.
+//
+// AND THE MUTANT FOUND THE GAP IN THE FIRST FIX'S TESTS: the console-side test
+// built the fourth state from a verdict message directly, so nothing exercised
+// the APP mapping an error onto it. `mCL3` survived until this existed.
+func TestATimedOutLookupReportsThatItCouldNotAsk(t *testing.T) {
+	idx, err := geodata.Load()
+	if err != nil {
+		t.Fatalf("the embedded table: %v", err)
+	}
+	// A FALLBACK THAT NEVER ANSWERS. The name is absent from the offline index,
+	// so the resolver reaches this and the context expires.
+	r, err := locations.New(idx, hangingGeocoder{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oceanside := snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057", Lat: 33.2407, Lon: -117.3025}
+	lp := &livePipelines{idx: idx}
+	lp.setStation(stationArea{transmitter: oceanside, radiusMi: 25})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // the question cannot be put at all
+	lp.ctx = ctx
+
+	_, _, found, asked := lp.locateInRadius(r)("Rainbow, CA")
+	if found {
+		t.Fatal("a lookup that never answered reported a place")
+	}
+	if asked {
+		t.Error("a failed lookup is reported as a genuine no-match: the operator is told a real " +
+			"location does not exist, and the retry key is disabled by the same answer")
+	}
+}
+
+// hangingGeocoder never answers; the context decides.
+type hangingGeocoder struct{}
+
+func (hangingGeocoder) Resolve(ctx context.Context, _ string) (snapshot.LocationRef, error) {
+	<-ctx.Done()
+	return snapshot.LocationRef{}, ctx.Err()
 }

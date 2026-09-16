@@ -184,7 +184,19 @@ func (d Director) refreshStandby() (Director, []Effect) {
 	// anything at all. On the safety path the cost of being early is a report
 	// whose words are a few minutes older, and the cost of being clever is a
 	// hazard that waits.
-	if len(d.lineup.tracks[AlertRail]) > 0 {
+	// WHAT THE RAIL CAN READ, NOT WHAT IT HOLDS (D-150) — the FOURTH call site
+	// of the rule D-139 taught to `toPrepare` and `givingWay`, and the one that
+	// remediation stopped short of. Found by red team's second round.
+	//
+	// THE INTERACTION IS WHY IT MATTERS MORE THAN A MISSED SITE. Since D-139 an
+	// out-of-fence rail card is IMMORTAL AND INVISIBLE: `Next` skips it,
+	// `toPrepare` skips it — so it never reaches Standby with a `BuiltAt` and
+	// `firstStale` can never drop it — and `Projection` hides it, so the
+	// operator cannot drop it either. Asking the raw track therefore stayed
+	// permanently true, and the main track's standing-by report was never
+	// re-hydrated for the life of the fence: it aged past `StaleAfter` and the
+	// listener heard "That report is out of date and has been dropped."
+	if len(d.lineup.Projection(AlertRail)) > 0 {
 		return d, nil
 	}
 	for _, c := range d.lineup.tracks[MainTrack] { // bounded by the track (P10-02)

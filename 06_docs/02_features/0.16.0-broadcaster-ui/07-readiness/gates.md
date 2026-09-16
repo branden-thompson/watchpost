@@ -517,6 +517,20 @@ hole and is fixed; one guards a retired rule.**
 
 ## The 2026-09-13 corpus sweep: seven survivors, and what each was owed
 
+**SUPERSEDED 2026-09-15 — see the line below.  The figures in this paragraph describe the corpus as
+it stood mid-release and are kept because the reasoning around them is still the record of how those
+seven were triaged.**
+
+> **CURRENT, at BUILD exit on the COMMITTED tree: `make mutant-verdicts` over all 355 mutants — 353
+> CAUGHT, 2 SURVIVED, 0 NO EVIDENCE.**  The two survivors are `m16_scopeevents_drops_ok` and
+> `m43_marine_narrowed`, the equivalents dispositioned at the end of this file.  The five that have
+> since gone were retired or re-pointed as the code moved; the authoritative per-mutant record is
+> `07-readiness/mutant-verdicts.log`, promoted by the target itself.
+>
+> **This is the first sweep run against a committed tree.**  `run.sh` refuses a dirty one, and until
+> 2026-09-15 there was not one — which is why the filed record had been 22 mutants behind the corpus
+> it described (red team, I3).
+
 **`make mutant-verdicts` over all 314 mutants — 307 CAUGHT, 7 SURVIVED.**  Nothing from this release
 survived; all seven predate 0.16.0.  **A survivor is not a defect and it is not a bad plant until it
 has been read**, and these split three ways.
@@ -604,7 +618,7 @@ commits, reproduced one layer up.
 | `TestTheRotationIsTheLowestClass` | `92e288c` | `TestAProposalAndARotationReadShareOneIdentity` and the tone-class tests in `domains/radio/cast` |
 | `TestTheUpNextBoxWearsTheModalsGround` | D-134/D-136, 2026-09-15 | `TestTheUpNextBoxWearsTwoGrounds`, `TestTheUpNextBoxWearsTheSameBlueAsTheDirectionBand` — the ruling changed, and the gate changed with it |
 
-**The corpus figure at `gates.md:520` is also superseded.**  It reads *"over all 314 mutants — 307
+**The corpus figure earlier in this file is also superseded** (the *"2026-09-13 corpus sweep"* section).  It reads *"over all 314 mutants — 307
 CAUGHT, 7 SURVIVED"*.  The current corpus is larger and the survivor count is lower; the authoritative
 record is `07-readiness/mutant-verdicts.log`, re-run and promoted at this exit, and the figure there
 is the one to cite.

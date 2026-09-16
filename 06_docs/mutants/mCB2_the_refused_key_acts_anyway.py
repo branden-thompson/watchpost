@@ -8,7 +8,10 @@ import pathlib
 # still let enter through (D-130) — the mutation keeps that and drops only the
 # definite NO, which is exactly the refusal the operator was shown.
 p = pathlib.Path("modes/tty/modal_location.go"); s = p.read_text()
-old = """			if d.addLocate.settled() && !d.addLocate.reachable() {
+# Re-pointed 2026-09-16 (D-151): the gate gained a fourth state — a check that
+# could not be MADE is no longer a refusal — so the definite-no arm now asks
+# `asked` too. Same rule, same refusal.
+old = """			if d.addLocate.settled() && d.addLocate.asked && !d.addLocate.reachable() {
 				return d, nil
 			}"""
 new = """			if false {

@@ -277,6 +277,24 @@ func (l Lineup) Insert(t Track, c Card, to int) (Lineup, error) {
 		// already holding it is the honest answer rather than a broken rule.
 		return l, errors.New("the running order already holds " + c.ID)
 	}
+	// PAST THE END MEANS THE END (D-149). The Line-Up Request window opens at
+	// slot 15 — the HUM LEAD's ruled default, "default to the bottom" — and a
+	// running order of three cards is the ordinary case, so the position the
+	// window offers by default named no visible card.
+	//
+	// IT WAS REFUSED SILENTLY, AND THE WINDOW HAD ALREADY CLOSED. `Insert`'s
+	// invariant failed, `onRequested` returned no effects, nothing was queued,
+	// and `requestSchedule` closes on `valid()` — so the operator was shown a
+	// scheduled request the schedule never took, which is FR-3.3's named trap on
+	// this release's headline control. The console compounds it: it draws slots
+	// 02..15 as empty ADDRESSES, and every one of them was refused.
+	//
+	// CLAMPED HERE RATHER THAN IN `scheduleIndex`, because that function also
+	// serves `Reorder`, where a slot the running order never drew is meaningless
+	// and must stay refused.
+	if n := l.visible(t); to > n {
+		to = n
+	}
 	at, ok := l.scheduleIndex(t, to)
 	if err := invariant.Check(ok, "a card is inserted at a position the RUNNING ORDER has"); err != nil {
 		return l, err

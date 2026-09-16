@@ -18,8 +18,11 @@ import (
 func settledLocate(f locateField, query string, ref snapshot.LocationRef, within, found bool) locateState {
 	var st locateState
 	st, _ = st.edit(f, query)
+	// `asked: true` — this helper means THE HOOK ANSWERED. A check that could
+	// not be made is its own state (D-151) and is built explicitly where it is
+	// being tested, never inherited by every fixture that wanted a verdict.
 	return st.apply(locateVerdictMsg{
-		field: f, seq: st.gate.Seq(), query: query, ref: ref, within: within, found: found,
+		field: f, seq: st.gate.Seq(), query: query, ref: ref, within: within, found: found, asked: true,
 	})
 }
 
@@ -30,9 +33,9 @@ func TestTypingNeverReachesTheResolver(t *testing.T) {
 	asked := 0
 	d := goldenDash(t, false)
 	d.surface, d.addMode = SurfaceBroadcaster, "lookup"
-	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool) {
+	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool, bool) {
 		asked++
-		return snapshot.LocationRef{}, false, false
+		return snapshot.LocationRef{}, false, false, true
 	}
 	d = d.open(modalAdd)
 
@@ -51,9 +54,9 @@ func TestOnlyTheLastPauseAsks(t *testing.T) {
 	asked := []string{}
 	d := goldenDash(t, false)
 	d.surface, d.addMode = SurfaceBroadcaster, "lookup"
-	d.cfg.LocateInRadius = func(q string) (snapshot.LocationRef, bool, bool) {
+	d.cfg.LocateInRadius = func(q string) (snapshot.LocationRef, bool, bool, bool) {
 		asked = append(asked, q)
-		return snapshot.LocationRef{Label: "Rainbow, CA"}, true, true
+		return snapshot.LocationRef{Label: "Rainbow, CA"}, true, true, true
 	}
 	d = d.open(modalAdd)
 
@@ -86,8 +89,8 @@ func TestOnlyTheLastPauseAsks(t *testing.T) {
 func TestALateAnswerAboutOldTextIsDropped(t *testing.T) {
 	d := goldenDash(t, false)
 	d.surface, d.addMode = SurfaceBroadcaster, "lookup"
-	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool) {
-		return snapshot.LocationRef{}, false, false
+	d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool, bool) {
+		return snapshot.LocationRef{}, false, false, true
 	}
 	d = d.open(modalAdd)
 

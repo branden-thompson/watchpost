@@ -18,14 +18,14 @@ func requestDash(t *testing.T, sent *int) Dashboard {
 	t.Helper()
 	vista := snapshot.LocationRef{Label: "Vista, CA", Zip: "92084", Lat: 33.2, Lon: -117.24}
 	d, err := NewDashboard(Config{
-		LocateInRadius: func(q string) (snapshot.LocationRef, bool, bool) {
+		LocateInRadius: func(q string) (snapshot.LocationRef, bool, bool, bool) {
 			switch q {
 			case "vista, ca", "vista":
-				return vista, true, true
+				return vista, true, true, true
 			case "denver, co":
-				return snapshot.LocationRef{Label: "Denver, CO"}, false, true // real, outside the radius
+				return snapshot.LocationRef{Label: "Denver, CO"}, false, true, true // real, outside the radius
 			}
-			return snapshot.LocationRef{}, false, false
+			return snapshot.LocationRef{}, false, false, true
 		},
 		RequestCard: func(snapshot.LocationRef, report.Set, int) { *sent++ },
 	})

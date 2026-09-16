@@ -436,6 +436,7 @@ func holdRest
 func indexKey
 func init
 func injectedEvents
+func isLookupFailure
 func itemsOf
 func itoaN
 func laneForKey

@@ -459,6 +459,17 @@ func (d Dashboard) afterRequestEdit() (Dashboard, tea.Cmd) {
 // invalid form would be exactly that: the operator would believe they had
 // scheduled something.
 func (d Dashboard) requestSchedule() (tea.Model, tea.Cmd) {
+	// AN ENTER PRESSED BEFORE THE ANSWER IS HELD, NOT SWALLOWED (D-151), and
+	// this is the twin of the rule `modal_location.go` already carries. Found by
+	// red team's second round: the held-press rule was taught to ONE of the two
+	// fields that share `locateState`, so inside the 300 ms pause plus a
+	// geocoder round trip this returned `d, nil` and the chip read "Choose a
+	// location" about a location the operator had already typed.
+	if d.cfg.RequestCard != nil && !d.request.locate.settled() &&
+		strings.TrimSpace(d.request.query) != "" {
+		d.request.locate.submitted = true
+		return d, d.locateCmd(locateRequest, d.request.locate.gate.Seq(), d.request.locate.query)
+	}
 	if !d.request.valid() || d.cfg.RequestCard == nil {
 		return d, nil
 	}

@@ -188,7 +188,11 @@ type Config struct {
 	// embedded index does not hold the small places (Rainbow, CA is in neither
 	// the city nor the zip table), so for them the geocoder is the only
 	// authority there is.
-	LocateInRadius func(query string) (ref snapshot.LocationRef, within, found bool)
+	// FOUR ANSWERS, NOT THREE (D-151). `asked` is whether the question could be
+	// PUT AT ALL: a 5-second timeout, a DNS blip or a cancelled context is not
+	// the same as "no such place", and reporting it as one tells the operator a
+	// real location does not exist AND disables the key that would retry it.
+	LocateInRadius func(query string) (ref snapshot.LocationRef, within, found, asked bool)
 
 	// RequestCard is the operator asking for a report at a position (R4).
 	//

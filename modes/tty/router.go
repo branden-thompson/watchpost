@@ -505,9 +505,35 @@ func (r Router) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if k, ok := msg.(tea.KeyPressMsg); ok && r.keys != nil {
 		if a, bound := r.keys.Lookup(k.String()); bound {
 			switch a {
+			// THE SWAP IS BOUND TO A LETTER, AND A LETTER IS TEXT (D-148).
+			//
+			// `O` and `B` swap surfaces, and this switch returned on them
+			// UNCONDITIONALLY — above the "a window on top owns the keys" check
+			// below, which is the rule D-58 already states and which every
+			// GUARDED case in this switch observes. So typing a place name into
+			// either location field lost those letters, and `O` swapped the
+			// surface MID-WORD:
+			//
+			//	"Oceanside" -> "ceanside", and the operator is on Observer
+			//	"Bonsall"   -> "onsall"
+			//
+			// Those are the HUM LEAD's own station and the hyper-local case
+			// D-130 was ruled for. The UAT missed it because "Lone Pine",
+			// "Rainbow" and "Vista" carry no capital B or O.
+			//
+			// ONLY THE PRINTABLE FORM IS WITHHELD. `ctrl+o` and `ctrl+b` carry
+			// no text, so no field can want them — they still swap out of an
+			// open window, which is the escape hatch an operator needs. With
+			// nothing open, the letters swap exactly as before.
 			case actSwapObserver:
+				if r.typingInAWindow(k) {
+					break
+				}
 				return r.swapTo(SurfaceObserver)
 			case actSwapBroadcaster:
+				if r.typingInAWindow(k) {
+					break
+				}
 				return r.swapTo(SurfaceBroadcaster)
 			case actStationToggle:
 				return r.toggleStation(), nil
@@ -662,6 +688,16 @@ func (r Router) View() tea.View {
 		v.Content = r.observer.OverlayWindow(v.Content, r.broadcaster.width)
 	}
 	return v
+}
+
+// typingInAWindow reports whether this key is a PRINTABLE character and a window
+// is open to receive it (D-148).
+//
+// IT ASKS ABOUT THE KEY, NOT ONLY ABOUT THE WINDOW. A binding on a letter is a
+// binding on text, and text belongs to whatever field is open; a binding on a
+// control chord is not, so it keeps working as the way out.
+func (r Router) typingInAWindow(k tea.KeyPressMsg) bool {
+	return k.Text != "" && r.observer.ModalOpen()
 }
 
 // throughToObserver hands a message to the surface that owns the diagnostics

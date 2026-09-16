@@ -20,15 +20,15 @@ import (
 
 // poolOf wires a LocateInRadius over a fixed set, the way app's pool arm
 // lookInPool answers: in the pool or nowhere.
-func poolOf(refs ...snapshot.LocationRef) func(string) (snapshot.LocationRef, bool, bool) {
-	return func(q string) (snapshot.LocationRef, bool, bool) {
+func poolOf(refs ...snapshot.LocationRef) func(string) (snapshot.LocationRef, bool, bool, bool) {
+	return func(q string) (snapshot.LocationRef, bool, bool, bool) {
 		q = strings.ToLower(strings.TrimSpace(q))
 		for _, r := range refs {
 			if strings.HasPrefix(strings.ToLower(r.Label), q) || strings.HasPrefix(r.Zip, q) {
-				return r, true, true
+				return r, true, true, true
 			}
 		}
-		return snapshot.LocationRef{}, false, false
+		return snapshot.LocationRef{}, false, false, true
 	}
 }
 
