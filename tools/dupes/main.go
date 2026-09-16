@@ -128,7 +128,10 @@ func main() {
 // fingerprintBody reduces a body to its token STRUCTURE: every identifier and
 // literal becomes a placeholder, so a renamed copy fingerprints the same as its
 // original. Comments are already excluded — the scanner does not emit them.
-func fingerprintBody(fset *token.FileSet, src []byte, body *ast.BlockStmt) (string, int) {
+// IT TOOK A `*token.FileSet` AND NEVER READ IT (P10-07). Positions are not part
+// of a structural fingerprint — that is the whole point of one — so the file set
+// was carried through only because its neighbours take it.
+func fingerprintBody(src []byte, body *ast.BlockStmt) (string, int) {
 	var b strings.Builder
 	n := 0
 	ast.Inspect(body, func(node ast.Node) bool {
@@ -196,7 +199,7 @@ func scan(root string, min int, withTests bool) ([]group, error) {
 			if !ok || fn.Body == nil {
 				continue
 			}
-			fp, n := fingerprintBody(fset, src, fn.Body)
+			fp, n := fingerprintBody(src, fn.Body)
 			if n < min {
 				continue
 			}

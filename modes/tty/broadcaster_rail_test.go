@@ -353,7 +353,7 @@ func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
 	w := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap + b.cardBoxWidth()
 	row := strings.Repeat("-", w)
 	body := []string{row, row, row}
-	framed := b.framed(body, 2, 10)
+	framed := b.framed(body, 10)
 
 	// THE RAIL IS COLUMN 148 (D-87), and it is the LAST thing on the row: the
 	// frame's outer wall on this side is gone, because the cards are boxes with
@@ -395,7 +395,7 @@ func TestTheReadRegionsDrawNoScrollRailBesideThem(t *testing.T) {
 	g := b.opts().Glyphs()
 	body := []string{"a card row", "another"}
 
-	quiet := b.chrome(body, false, 0, 0)
+	quiet := b.chrome(body, false, 0)
 	for i, r := range quiet {
 		// The frame's own right wall is the LAST cell; anything before it in the
 		// mark column is the rail that should not be there.
@@ -407,7 +407,7 @@ func TestTheReadRegionsDrawNoScrollRailBesideThem(t *testing.T) {
 
 	// AND THE SCROLLING REGION STILL HAS ONE, which is what makes the absence
 	// above mean something.
-	scrolled := b.chrome([]string{"a", "b", "c"}, true, 2, 10)
+	scrolled := b.chrome([]string{"a", "b", "c"}, true, 10)
 	if !strings.Contains(scrolled[0], render.RailGlyphsFor(false).Up) {
 		t.Errorf("the scrolling region lost its rail: %q", scrolled[0])
 	}

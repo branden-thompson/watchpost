@@ -106,7 +106,11 @@ func rows(o render.Opts, lines []string) []string {
 
 // fireNone is what a list says when its ring admitted nothing. It names the
 // RING, not "the fire ring", because there are two.
-func fireNone(o render.Opts) []string {
+//
+// IT TOOK AN `Opts` AND NEVER READ IT (P10-07). The muted tone comes from the
+// token, which needs no options to resolve; the parameter was the shape of the
+// functions around it rather than anything this one uses.
+func fireNone() []string {
 	return []string{render.Tint("none within this radius", render.Tok(render.TableMuted))}
 }
 
@@ -123,7 +127,7 @@ func fireNone(o render.Opts) []string {
 // columns, and the mock's NAME and ACRES have no source on this side.
 func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, now time.Time, boldMW float64, cw int) []string {
 	if len(hs) == 0 {
-		return fireNone(o)
+		return fireNone()
 	}
 	hs = nearestFirst(hs, func(h snapshot.Hotspot) *float64 { return h.DistanceKm })
 	// FIT, NOT FILL (HUM LEAD, 2026-09-07): every column is as wide as its own
@@ -190,7 +194,7 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 // that just like the USGS seismic section does not worry about it."*
 func incidentRows(o render.Opts, loc *snapshot.Location, ins []snapshot.Incident, now time.Time, cw int) []string {
 	if len(ins) == 0 {
-		return fireNone(o)
+		return fireNone()
 	}
 	ins = nearestFirst(ins, func(in snapshot.Incident) *float64 { return in.Source.DistanceKm })
 	cols := []render.StatusColumn{

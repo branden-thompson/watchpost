@@ -113,7 +113,7 @@ func (o Opts) LineupTable(rows []LineupRow, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	cols := lineupColumnDefs(width)
+	cols := lineupColumnDefs()
 	def := &studs.DataTableDefinition{Columns: cols, GutterWidth: tableGutter, NoAutoStyle: true}
 	for _, r := range rows { // bounded by the running order (P10-02)
 		data := clampCells(o.lineupRowData(r), cols)
@@ -128,9 +128,15 @@ func (o Opts) LineupTable(rows []LineupRow, width int) string {
 	return strings.Join(out, "\n")
 }
 
-// lineupColumnDefs turns the spec into the kit's definitions, giving the two
-// widest columns the slack when the terminal is wider than the mock.
-func lineupColumnDefs(width int) []studs.ColumnDefinition {
+// lineupColumnDefs turns the spec into the kit's definitions.
+//
+// LOCATION TAKES THE SLACK, and the kit's own `Fill` is what grants it — so this
+// needs no width. It TOOK one and never read it (P10-07), and the doc line above
+// it said "giving the two WIDEST COLUMNS the slack" while exactly one column is
+// filled. The parameter is removed and this sentence now says what the code
+// does; whether a second column should fill is a layout question for the HUM
+// LEAD and is recorded rather than answered by a silent edit (F-112).
+func lineupColumnDefs() []studs.ColumnDefinition {
 	out := make([]studs.ColumnDefinition, 0, len(lineupColumns()))
 	for _, c := range lineupColumns() { // bounded by the spec (P10-02)
 		// LOCATION IS THE FILL COLUMN, as NAME is on Observer's table and for the

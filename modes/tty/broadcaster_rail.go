@@ -244,8 +244,8 @@ var bcRailForms = map[string][]string{
 // off (HUM LEAD, UAT 2026-09-10: "right hand lanes are off"). Counted off the
 // mock: an ordinary row ends `╯   │    │` and the thumb row `█    │`, the thumb
 // standing exactly WHERE the bar was. One column, two glyphs.
-func (b Broadcaster) framed(body []string, shown, total int) []string {
-	return b.chrome(body, true, shown, total)
+func (b Broadcaster) framed(body []string, total int) []string {
+	return b.chrome(body, true, total)
 }
 
 // chrome adds the right-hand columns, with or without the scroll rail.
@@ -262,15 +262,15 @@ func (b Broadcaster) framed(body []string, shown, total int) []string {
 // however far the operator scrolled. It was invisible while everything fitted on
 // one screen, and became a lie the moment the cards outgrew the terminal.
 func (b Broadcaster) chromeAt(body []string, from, off, total int) []string {
-	return b.railed(body, from, off, 0, total)
+	return b.railed(body, from, off, total)
 }
 
-func (b Broadcaster) chrome(body []string, rail bool, shown, total int) []string {
+func (b Broadcaster) chrome(body []string, rail bool, total int) []string {
 	from := -1
 	if rail {
 		from = 0
 	}
-	return b.railed(body, from, 0, shown, total)
+	return b.railed(body, from, 0, total)
 }
 
 // railed adds the right-hand column: `from` is the row the scroll control STARTS
@@ -288,7 +288,14 @@ func (b Broadcaster) chrome(body []string, rail bool, shown, total int) []string
 // running order, the pool's own band — carries nothing. This is Observer's shape
 // exactly: `recentSection` puts ▲ on the band's bottom row, the track over the
 // data rows, and ▼ on the "Showing" line.
-func (b Broadcaster) railed(body []string, from, lo, shown, total int) []string {
+// `shown` WAS A PARAMETER AND NOTHING READ IT (P10-07). The visible count is
+// DERIVED here — `track` is `len(body) - from - 2`, the body less its own caps —
+// and that is the number `Railify` is handed as its window. A second answer to
+// "how many rows are showing", passed by callers and silently ignored, is the
+// shape this file's own neighbours warn about: a value every caller computes and
+// nothing reads is a wrong answer with a type, and the day someone fixes a thumb
+// by correcting it, nothing changes and the real cause stays hidden.
+func (b Broadcaster) railed(body []string, from, lo, total int) []string {
 	g := b.opts().Glyphs()
 	glyphs := render.RailGlyphsFor(b.ascii)
 	// THE MARK IN COLUMN 144 FOR EACH ROW. Without a rail that is the wall, on

@@ -728,7 +728,7 @@ func (b Broadcaster) lanes() []string {
 	// and the vertical rail retire here: LIVE went to the air box (D-95), the
 	// SCHEDULED slots went to the table (D-94), and what is left is two boxes side
 	// by side that the reference draws at the same height.
-	out = append(out, b.chrome(b.readPair(), false, 0, 0)...)
+	out = append(out, b.chrome(b.readPair(), false, 0)...)
 	// AND THE POOL BELOW IT (D-98) — the candidates the operator promotes FROM,
 	// with enough weather to decide on them.
 	//

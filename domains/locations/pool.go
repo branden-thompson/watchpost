@@ -53,16 +53,20 @@ func Pool(idx *geodata.Index, transmitter snapshot.LocationRef, radiusMi float64
 	// repeated — Vista has four zip centroids inside twenty miles of Bonsall,
 	// and all four have different keys.
 	keys, names := map[snapshot.LocationKey]bool{}, map[string]bool{}
-	add := func(r snapshot.LocationRef) bool {
+	// IT RETURNED A VERDICT NOBODY READ (P10-07). "Was it added" is a real fact
+	// and every one of the call sites below discards it, which makes it a value
+	// that can be wrong for ever without anything noticing — and the day a caller
+	// starts trusting it, the bug is older than the line that reads it. The
+	// refusals are unchanged; only the unread answer is gone.
+	add := func(r snapshot.LocationRef) {
 		if r.Label == "" || len(out) >= limit {
-			return false
+			return
 		}
 		if k := snapshot.Key(r); keys[k] || names[r.Label] {
-			return false
+			return
 		}
 		keys[snapshot.Key(r)], names[r.Label] = true, true
 		out = append(out, r)
-		return true
 	}
 
 	// TIER ONE — HOME. A station reads where it transmits from first: it is the
