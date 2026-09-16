@@ -2738,3 +2738,59 @@ a defect list into a permanent allowance.
 a mutant corpus to "the rules I added", and a requirements trace to "the requirements this release
 touched" — each of which hides exactly the class of defect that predates the author and therefore has
 had the longest time to do damage.
+
+---
+
+## A blind reviewer finds what the brief asks about, and nothing else
+
+**The catch.** Two agents were dispatched at 0.16.0 BUILD exit with a brief composed from memory,
+and neither reported a single `AP-HIST-01` — an anti-pattern the red-team skill's own code-quality
+axis names in so many words. The tree held 194 of them. The reviewers were not wrong; they were not
+asked.
+
+**The gap upstream.** li-A2DH's red-team skill requires every dispatch prompt to "satisfy the
+Subagent Prompt Discipline" and ships no template that does. A requirement with nothing to point at
+is a requirement met from memory, and memory supplies whatever was most recently worked on — which
+is the one area a blind reviewer adds least to.
+
+**The fix, and the shape worth extracting.** `06_docs/red-team-brief.md` is the template, with the
+four axes reproduced rather than linked so a contributor without the harness can still run the review
+the project expects. Two rules in it earned their place here:
+
+- **Every axis question is answered by name, in order, including the ones that found nothing.** A
+  question silently skipped is indistinguishable in the report from a question that passed, and the
+  two are not the same result. This is the specific thing that would have caught the miss above.
+- **Where a rule is mechanically decided, say so in the brief.** `make lint-authoring` decides
+  `AP-HIST-01`, `AP-DEAD-01` and `SN-02`, so a reviewer reporting one is reporting that the lint is
+  off. Their attention belongs on the larger class the tool cannot see: a comment that is not
+  narration but is simply WRONG.
+
+**Cost per defect.** The template is one page and is reused every round. The ad-libbed brief cost two
+full agent dispatches that returned nothing on an axis with 194 findings sitting in it.
+
+---
+
+## A lock, because `pgrep` does not answer the question it was asked
+
+**The catch.** Four times this release, uncommitted work was destroyed by an edit landing inside a
+mutant sweep's edit-gate-revert cycle. The guard in place was a name-matched process search before
+touching the tree. It does not work: killing a sweep's parent leaves its `go test` child running,
+and a search for the parent's command line does not see the child — which then reverts the next
+edit with the mutant, and reports nothing, because reverting is what it is for.
+
+**Why a lock and not more discipline.** The operations genuinely cannot share a working tree:
+`verify` cleans the build cache and then measures, and a concurrent `go test` voids the run while
+still reporting exit 0. An advisory `flock` is held by a PROCESS, so an orphaned child still holds
+it, and the kernel releases it however the holder exits — so a crash cannot wedge the tree, which is
+the failure mode that makes people stop using lock files.
+
+**It refuses rather than queues.** Two overlapping gate runs are not slow, they are wrong, and a
+caller that waited would hide that from whoever started the second one.
+
+**The shape worth extracting: the self-test takes a lock of its own.** A lock that never locks
+passes every optimistic test — `acquire` still returns a file, the command still runs, every gate
+still goes green, while two sweeps edit one tree. So the assertion is a SECOND PROCESS being refused
+while the first holds, checked by actually starting one. And because the self-test points at a
+temporary path via an environment variable, it runs as a gate INSIDE a verify that is already
+holding the real lock. A self-test that could only run on an idle tree would be a self-test that
+never ran when it mattered.
