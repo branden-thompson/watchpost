@@ -137,10 +137,12 @@ func main() {
 
 	if len(found) > 0 {
 		fmt.Fprintf(os.Stderr, "\nauthoring: %d finding(s) across %d Go file(s).\n", len(found), files)
+		fmt.Fprintln(os.Stderr, "  Each rule, with examples of the accepted form, is in 06_docs/code-standards.md.")
 		os.Exit(1)
 	}
 	fmt.Printf("authoring: OK — %d Go file(s), no findings\n", files)
 	fmt.Println("  scope: the WHOLE tree, less vendored third_party and the mutant corpus.")
 	fmt.Println("  It decides three rules a syntax tree can decide. It cannot see a comment that is")
 	fmt.Println("  merely WRONG — the larger class, which still needs a reader.")
+	fmt.Println("  The rules are written out in 06_docs/code-standards.md.")
 }

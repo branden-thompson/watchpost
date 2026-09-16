@@ -349,6 +349,13 @@ benchmark harness lives in `scripts/quality/` and `make quality-bench`. The term
 MIT, same author) is carried in-tree under `third_party/go-studs` (its LICENSE and NOTICE.md ride with
 it; import paths rewritten), so the tree builds anywhere with no private access.
 
+**The code standards are written down and machine-checked**, in
+[`06_docs/code-standards.md`](06_docs/code-standards.md) — what comments are for, when a discard needs
+a reason, how a doc comment binds to its declaration, and which gates hold what. Every check runs with
+the Go toolchain alone: `make lint-authoring`, or `go run ./tools/authoring`. Each one also carries
+`-self-test`, which proves the instrument can fail before anyone quotes a number from it — a checker
+that reported nothing on any input would print a clean bill of health for ever.
+
 ## Licence
 
 MIT — see `LICENSE`. Use it freely; keep the copyright and permission notice (attribution).
