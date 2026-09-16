@@ -91,6 +91,17 @@ lint-imports:
 	@./scripts/lint-imports.sh
 
 # Human-Accountability Attribution gate: no AI watermarks in tracked files or commit messages.
+# The A2DH code-authoring rules a grep can decide, over the WHOLE TREE.
+#
+# SCOPED TO THE ARTEFACT, NEVER TO THE SESSION (HUM LEAD, 2026-09-16). An
+# anti-pattern is not excused by predating the change that finds it: a
+# contributor leaves the place better than they found it, so this asks whether
+# the repository contains one, not whether this branch wrote it. A check scoped
+# to authorship is a check that can be silenced by narrowing it.
+lint-authoring:
+	@go run ./tools/authoring -self-test
+	@go run ./tools/authoring
+
 lint-watermark:
 	@./scripts/lint-watermark.sh
 
@@ -247,7 +258,7 @@ cache-clean:
 	@go clean -cache -testcache
 	@echo "cache-clean: build and test caches cleared"
 
-verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget dupes wires wires-selftest mutant-anchors mutant-check
+verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring gate-controls alloc-budget dupes wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race

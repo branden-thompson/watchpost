@@ -21,6 +21,7 @@ race
 lint
 lint-imports
 lint-watermark
+lint-authoring
 gate-controls
 alloc-budget
 dupes

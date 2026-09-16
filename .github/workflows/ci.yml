@@ -50,6 +50,7 @@ jobs:
       - run: make race
       - run: make lint-imports
       - run: make lint-watermark
+      - run: make lint-authoring
       - run: make gate-controls
       - run: make alloc-budget # malloc pins run outside the race detector (quality pass §0.1)
       - run: make dupes # metric D: no duplicate operation without a RATIFIED reason
