@@ -126,6 +126,7 @@ func (*livePipelines).currentWatch
 func (*livePipelines).dropCard
 func (*livePipelines).endEventRead
 func (*livePipelines).fireFor
+func (*livePipelines).giveItAStation
 func (*livePipelines).hydrate
 func (*livePipelines).injectHook
 func (*livePipelines).injectHook
@@ -447,6 +448,7 @@ func laneScenarios
 func lastLineIndex
 func listenerScope
 func live
+func loadGeodata
 func loadSeen
 func loadUserThemes
 func macVoices

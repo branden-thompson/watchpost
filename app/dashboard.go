@@ -79,24 +79,9 @@ func RunDashboard(version string, opt Options) error {
 		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides}
 	lp.attachDiagnostics(ctx, start)
-	idx, idxErr := geodata.Load()                             // ONCE: the resolver and the seed list share it (Q3, L1-F21/L4-F5)
-	resolver, resolverErr := newResolver(client, idx, idxErr) // one resolver serves Resolve and Suggest
-	lp.unknownKeys = append([]string(nil), cfg.Unknown...)
+	idx, resolver, resolverErr := loadGeodata(client)
 	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
-	// THE STATION'S POOL IS DERIVED BEFORE THE CONSOLE IS BUILT (D-72). The
-	// console opens showing where the station transmits from, and `ttyConfig`
-	// reads it from here — so it has to exist by now. It cannot be published
-	// instead: the program's loop does not start until `p.Run()`, and a Send
-	// before then blocks for ever.
-	lp.idx = idx
-	lp.setStation(stationFrom(cfg))
-	// THE BED'S OWN FENCE AND ITS TABLE (D-77/D-78). The table is the embedded
-	// transmitter list; a failure to parse it is a station with no relays to
-	// choose between, which the selector says for itself.
-	if tbl, err := stream.LoadTable(); err == nil {
-		lp.relayTable = tbl
-	}
-	lp.bedRadiusMi = cfg.Broadcaster.BedRadius()
+	lp.giveItAStation(cfg, idx)
 	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, setRadius, uiHook(prefs.clock)))
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge
@@ -153,6 +138,45 @@ func runProgram(p *tea.Program) error {
 	}
 	return fmt.Errorf("dashboard failed: %w", err)
 	return nil
+}
+
+// giveItAStation settles everything the console needs to exist BEFORE it is
+// built (D-72).
+//
+// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), and it is a phase rather
+// than a grab-bag: every line here answers "where is this station, and what can
+// it reach", which is the one question `ttyConfig` reads out a moment later.
+//
+// IT CANNOT BE PUBLISHED INSTEAD. The console opens showing where the station
+// transmits from; the program's loop does not start until `p.Run()`, and a Send
+// before then blocks for ever. So it has to be TRUE by now, not announced later.
+func (lp *livePipelines) giveItAStation(cfg config.Config, idx *geodata.Index) {
+	lp.unknownKeys = append([]string(nil), cfg.Unknown...)
+	lp.idx = idx
+	lp.setStation(stationFrom(cfg))
+	// THE BED'S OWN FENCE AND ITS TABLE (D-77/D-78). The table is the embedded
+	// transmitter list; a failure to parse it is a station with no relays to
+	// choose between, which the selector says for itself.
+	if tbl, err := stream.LoadTable(); err == nil {
+		lp.relayTable = tbl
+	}
+	lp.bedRadiusMi = cfg.Broadcaster.BedRadius()
+}
+
+// loadGeodata loads the embedded location index ONCE and builds the resolver
+// that shares it.
+//
+// ONE CONCERN, AND IT ALREADY SAID SO (Q3, L1-F21/L4-F5): the resolver and the
+// seed list read the same index, and loading it twice would be two answers to
+// where a place is. Extracted at the statement ceiling (P10-04, D-159).
+//
+// A FAILED LOAD IS NOT A FAILED START. The index's error travels INTO the
+// resolver rather than out of here — the app runs without it, and the surfaces
+// that need a place say so themselves.
+func loadGeodata(client *httpx.Client) (*geodata.Index, *locations.Resolver, error) {
+	idx, idxErr := geodata.Load()
+	r, err := newResolver(client, idx, idxErr) // one resolver serves Resolve and Suggest
+	return idx, r, err
 }
 
 // tickerState builds the shared [M] mute flag and the alert-radius value, each
