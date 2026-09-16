@@ -24,12 +24,20 @@ third_party/go-studs/.local/
 scripts/quality/exposure-identities.local.txt
 
 # TOOL BINARIES BUILT IN THE ROOT. `go build ./tools/<x>/` drops the binary in
-# the working directory, and one reached a commit before this line existed
-# (4.4 MB of Mach-O, 0.16.0). The tools are RUN with `go run`; nothing needs a
-# built copy, and the project rule is that every binary goes to ./dist/.
+# the working directory, and the project rule is that every binary goes to
+# ./dist/. The tools are RUN with `go run`; nothing needs a built copy.
+#
+# A DENYLIST HERE IS NOT THE GUARD, and this file is the evidence. Two tool
+# binaries reached commits while these lines stood — the second AFTER this
+# paragraph was written, by an author who had read it. A list of names cannot
+# cover a tool that does not exist yet, so the standing check is
+# `TestNoTrackedBinaries` in cmd/watchpost: it asks what the INDEX holds, not
+# what someone remembered to name. These entries keep the working tree tidy.
 /dupes
 /wires
 /slope
 /geotrim
 /nwrtable
 /alertrec
+/authoring
+/treelock
