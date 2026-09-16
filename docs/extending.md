@@ -40,7 +40,7 @@ Goal: a new source that needs a user key. `domains/fire/firms` is the worked exa
 | 1 | `domains/<domain>/<name>/<name>.go` | Implement `snapshot.Provider`: `ID()`, `Domains()` (`["fire"]`, `["weather"]`, …) and `Fetch(ctx, req)` returning a `Fragment` with `PerLocation`. Use `platform/httpx` for every request — a 32-hex path segment or a `key`/`api_key` query value is redacted from every error and log line; cache with `httpx.TTL(d)` where the server sends no cache headers. |
 | 2 | Key wiring | Take the key in the constructor **and** behind a lock with `SetKey` / `Enabled()` (`firms.go`): the Setup window keys a provider while the dashboard runs. Validate the key's shape before it is stored or used (`firms.CheckKey`) so the redaction never depends on a well-formed paste, and scrub it from transport errors yourself (`redactKey`). Users store it in the Setup window (`s`) or `[providers.<name>]\nkey = "…"` in config.toml (0600); `app` reads `cfg.Providers["<name>"].Key`. Keys never appear in output: the no-secret golden asserts it. |
 | 3 | `app/fire.go` (or a sibling) + `app/dashboard.go` | Build the provider in one place (`fireProviders`), add it to the pipeline's provider set (`livePipelines.fire` / `marine` / `providers()`), give `newAssembler` its attribution case (About renders it), and add it to `credits.go` (≤ 52 cells). Register it **always**; mark it `off` while unkeyed with `Assembler.SetInactive` (`livePipelines.markFIRMS`) so the API status never says "ok" for a feed that contributes nothing. |
-| 4 | Scheduler | Cadence is per-**kind**: an existing kind (weather, obs, marine) rides its tier for free; a **new** kind needs a `snapshot.Kind`, a tier line in `startPriority` and one in `newFor` (RECENT), and `Domains()` on the provider — B5 added `KindFire` at 10 / 15 minutes. |
+| 4 | Scheduler | Cadence is per-**kind**: an existing kind (weather, obs, marine) rides its tier for free; a **new** kind needs a `snapshot.FetchKind`, a tier line in `startPriority` and one in `newFor` (RECENT), and `Domains()` on the provider — B5 added `KindFire` at 10 / 15 minutes. |
 | 5 | Tests | A fixture-backed `Fetch` test (httptest, recorded body) that also asserts the request shape; a key test (stored trimmed, malformed refused without echo); and, for a new kind, the assembler merge test. |
 
 Schema note: `by_provider` is additive — a new provider id needs no schema version bump (schema
@@ -63,6 +63,46 @@ Controls live where they act: a key in `defaultKeyMap()`, a case in `toggleRadio
 `radioControlLines`, a method on the `tty.Radio` interface, and its implementation on
 `app/radio.go`'s `radioDeck` — which runs off the update loop (`withCmd`/`takeCmd`) and reports
 back through `RadioStatusMsg`. `[m] Mode` (UAT 97) is the smallest complete example.
+
+## Walkthrough 4 — add a report kind
+
+The growth axis this codebase was designed around, and the one a newcomer is most likely to be handed.
+`platform/report/report.go`'s package comment is the authority; this is the route to it.
+
+**The registry's cost is one row. The FEATURE's cost is not.** `report-requests-plan.md` committed to
+"one row and nothing else" and F-111 disproved it; that document is amended, and this table is what a
+fifth kind actually costs.
+
+| # | Where | What |
+|---|---|---|
+| 1 | `platform/report/report.go` | A `Kind` constant before `numKinds`, and a row in `all()`. Everything derived — the request window's rows, `Set.Describe()`, the running-order label — picks it up with no further edit. **This is the part that really is one row.** |
+| 2 | `app/radio.go` (`segments`) | A branch under `want.Has(report.X)` that assigns a value **and passes it to `Compose`**. Naming the kind is not enough: `TestEveryKindsBranchReachesTheComposer` fails a branch whose value never arrives. |
+| 3 | `domains/radio/synth/compose.go` | A field on `synth.Reports`, and a tagging block if the kind is spoken. |
+| 4 | `domains/radio/synth/<kind>.go` | The segments themselves, plus a source name and counts helper in `manifest.go`. |
+| 5 | `domains/radio/script/scripts/<kind>/` | The script templates. **Wired by folder name, not by code** — a missing phrase is simply not spoken, and no gate reads this tree. |
+| 6 | `domains/radio/cast/cast.go` | A `Role` and a row in `Assignable()`, or the kind reads in an inherited voice. |
+| 7 | `modes/tty/setup_cast.go` | `castRowOrder()` and `castLabel` are **hand-written** and derive from nothing. Miss this and the operator cannot cast the correspondent — silently. |
+| 8 | A data source, if none exists | Walkthrough 2 in full: provider, `snapshot.FetchKind`, cadence tier, assembler merge, `credits.go`, and — for a new top-level block — a schema change with `modes/report` parity fixtures. |
+
+**The two guards, and what they do not cover.** `TestEveryReportKindReachesTheComposer` and
+`TestEveryKindsBranchReachesTheComposer` both derive their expectations from the registry, so neither
+can be satisfied by editing a test. Neither can see a hook that is permanently `nil`: it assigns in the
+source and returns a zero value at run time. **The last step is a fixture proving data arrives**, and no
+gate performs it for you.
+
+**Three things that are ratified, so do not "fix" them:**
+
+- **The card manifest shows four sources** (`bcReadLines`, `modes/tty/broadcaster_slots.go`). The card's
+  height is fixed so cards below it do not move; the fifth source appears in the detail window, which
+  has a scroll rail. See `modes/tty/broadcaster_detail.go` — and note its test fixture is already named
+  for an air-quality report.
+- **The script folder is wired by name**, not by a registry. That is the design.
+- **`synth.Reports` carries typed fields, not a table keyed by `Kind`.** A table erases the types that
+  make the branches readable (`platform/report/report.go`).
+
+**One thing that is not ruled:** nothing constrains `Spec.Label`'s width. `REPORT TYPE` is 20 cells at
+its declared width and `FullLabel` is already 21; `render.PadTo` pads and never truncates, so a long
+label shifts its neighbour rather than clipping. Ask before choosing one.
 
 ## Rules you inherit for free
 
@@ -108,9 +148,13 @@ back through `RadioStatusMsg`. `[m] Mode` (UAT 97) is the smallest complete exam
   would re-open it; that trigger, measured, is the only route back, and the sites themselves carry
   `ACCEPTED COST` comments pointing at it.
 
-- `make verify` runs `fmt vet tidy vuln race lint-imports lint-watermark gate-controls`. `vuln` is
-  `govulncheck`, which downloads the tool on each run — the one step that needs the network. Run it
-  before every commit.
+- `make verify` runs every gate in `06_docs/required-gates.txt` — twenty of them, not the handful
+  this line used to name. Read that file rather than a list here, which is the point of it: the
+  Makefile, `ci.yml` and that file are checked against each other by `cmd/watchpost/gates_test.go`,
+  and a gate on none of them is caught by `TestEveryGateShapedTargetIsListedOrExempt`.
+- `vuln` is `govulncheck`, which downloads the tool on each run — the one step that needs the
+  network. `make tree-free` says whether a gate run is already in flight; do not edit the tree while
+  one is.
 - New render primitives are built **on demand** — add them when a view needs them, never
   speculatively (PD/§10.10.5).
 - Every package carries a package comment stating its contract; follow the pattern in

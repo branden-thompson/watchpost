@@ -20,9 +20,26 @@ correct place to do this work, despite the risk."*
 > vs. trying to bolt it on later when additional features may code us into a corner."*
 
 **So the acceptance test for this design is not "does it show four reports".  It is: what does adding
-a FIFTH cost?**  The answer this plan commits to is **one row in one registry**, and nothing else —
+a FIFTH cost?**  The answer this plan committed to was **one row in one registry**, and nothing else —
 no new field, no new branch in the modal, no new case in the naming rule, no change to the card, the
 event or the table.
+
+> **AMENDED AT BUILD EXIT, 2026-09-16 — the shipped cost is one row PLUS one branch.**
+>
+> F-111 disproved the claim above and this paragraph was not corrected with it, so the document
+> asserted a cost the code had already stopped charging.  `radioDeck.segments` answers each kind with
+> its OWN typed hook, which is deliberate — the branches "cannot be table-driven without erasing the
+> types that make them readable" (`platform/report/report.go:16-24`) — so a fifth kind costs a
+> registry row **and** a branch that reaches the Composer.  Two guards hold that:
+> `TestEveryReportKindReachesTheComposer` and `TestEveryKindsBranchReachesTheComposer`.
+>
+> **One row is the REGISTRY's cost, not the FEATURE's.**  A kind that is read aloud also needs a
+> `synth.Reports` field, a script folder, and a `cast.Role`; a kind with no existing data source needs
+> a provider, a `FetchKind`, a cadence tier and a schema block besides.  Three blind reviewers each
+> budgeted this change differently, and each of them cited this paragraph.
+>
+> Where this document and `platform/report/report.go` disagree, **the package doc wins** and this
+> document is the one to correct.
 
 That is the same shape `platform/category` already has, and its comment is the standard being copied:
 *"A function rather than a package variable (P10-06), and the ONLY place a category is described."*
@@ -44,7 +61,7 @@ That is the same shape `platform/category` already has, and its comment is the s
 
 ```go
 type Kind uint8                 // NWSForecast, Marine, Fire, Seismic, …
-type Spec struct{ FullName, Label string; Order int }
+type Spec struct{ FullName, Label string } // AS SHIPPED: no `Order` — the registry's own declaration order is the order
 func Of(k Kind) Spec            // the registry, a function (P10-06)
 func All() []Kind
 type Set uint32                 // one bit per Kind — room to grow without a shape change
@@ -67,7 +84,7 @@ A fifth kind changes none of that: it is a row, and `All()` grows.
 |---|---|
 | `platform/report` | **new** — the registry, `Set`, and the naming rule |
 | `platform/lineup` | `Card.Reports report.Set`; a new operator event `Requested`; and **`Insert`**, the mutator that does not exist today — push-down with the last card falling to the discard pile (ruling 4) |
-| `app` | gathers **per kind** rather than unconditionally: the four sources `segments()` already collects become a table keyed by `Kind`.  **This is where the risk is** — see below |
+| `app` | gathers **per kind** rather than unconditionally.  *As shipped:* the four sources stayed TYPED HOOKS rather than becoming a table keyed by `Kind` — a table erases the types that make the branches readable (`platform/report/report.go:16-24`).  **This is where the risk is** — see below |
 | `modes/tty` | the modal, and the running order drawing `Set.Describe()` |
 
 ### The risk, stated before it is built

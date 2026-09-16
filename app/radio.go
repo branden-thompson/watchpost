@@ -722,11 +722,13 @@ func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64)
 	d.engine.StartSource("Watchpost Synth ("+voice.Name()+")", src.Rate(), src.Open)
 }
 
-// segments composes one broadcast cycle: the location's current
-// observation and alerts (from the provider, served by the client cache)
-// plus the office's latest products.
 // segments composes the spoken report for one location, carrying ONLY the kinds
 // `want` names (R2, HUM LEAD 2026-09-14).
+//
+// THE OBSERVATION AND THE ALERTS ARE NOT SELECTABLE and are fetched every time;
+// the office's PRODUCTS are, and are gathered only under `report.NWS`. A reader
+// who takes "observation, alerts and products" as one unconditional list plans
+// against a contract this function does not have.
 //
 // EACH SOURCE IS GATHERED ONLY IF IT WAS ASKED FOR, and that is the whole of the
 // change: `synth.Compose` was ALREADY conditional on every one of them — the
