@@ -136,18 +136,35 @@ func alertColumnDefs(kind, loc int) []studs.ColumnDefinition {
 func ShortHazard(s string) string {
 	out := strings.Fields(s)
 	for i, w := range out { // bounded by the name (P10-02)
-		if short, ok := hazardShorthand[w]; ok {
+		if short, ok := hazardShort(w); ok {
 			out[i] = short
 		}
 	}
 	return strings.Join(out, " ")
 }
 
-// hazardShorthand is the vocabulary, read off `mock-broadcaster-v3.txt`.
-var hazardShorthand = map[string]string{
-	"SEVERE":       "SEV.",
-	"THUNDERSTORM": "T.STORM",
-	"SPECIAL":      "SPEC.",
+// hazardShort is the vocabulary, read off `mock-broadcaster-v3.txt`.
+//
+// A FUNCTION RATHER THAN A PACKAGE VARIABLE (P10-06), and a SWITCH rather than a
+// function returning a map. The convention `report.all` states is a function;
+// the reason a few tables here keep a package var anyway is that rebuilding a
+// map per call allocates on a render path — and this one is consulted per WORD
+// inside `ShortHazard`'s loop, per row, per frame. A three-case switch has
+// neither problem: no package state, and nothing to rebuild.
+//
+// THE SET IS THE REFERENCE'S OWN and grows by ruling, not by guess. A fourth
+// entry is a fourth case, which is also the point at which someone should ask
+// whether a table has earned itself back.
+func hazardShort(w string) (string, bool) {
+	switch w {
+	case "SEVERE":
+		return "SEV.", true
+	case "THUNDERSTORM":
+		return "T.STORM", true
+	case "SPECIAL":
+		return "SPEC.", true
+	}
+	return "", false
 }
 
 // alertHeader is the column titles, unpainted.

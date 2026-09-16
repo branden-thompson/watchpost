@@ -314,6 +314,25 @@ var asciiMarks = sync.OnceValue(func() *strings.Replacer {
 			for j := range u.Len() {
 				pairs = append(pairs, u.Index(j).String(), a.Index(j).String())
 			}
+		default:
+			// A KIND THIS WALK DOES NOT KNOW IS THE FAILURE IT EXISTS TO PREVENT.
+			//
+			// The whole point of deriving the pairing by reflection is that a
+			// glyph added to one set and forgotten in the other cannot slip
+			// through. A `Glyphs` field of any other kind — a nested struct, a
+			// map, a slice — was SILENTLY SKIPPED, which is the forgotten glyph
+			// arriving by the one route the guard was bought to close. Found by
+			// red team round 3 on the very row that ratifies this `reflect`
+			// import as a safety device.
+			//
+			// IT CANNOT RETURN AN ERROR — `sync.OnceValue` has no channel for one
+			// and callers render text — so it fails LOUD at construction rather
+			// than quiet at every frame. This runs once, at first use.
+			panic("render: Glyphs gained a " + u.Kind().String() +
+				" field; asciiMarks derives its ASCII pairing by reflection and " +
+				"cannot pair this kind. Add a case here, or the new glyph has no " +
+				"--ascii fallback and renders as a missing character on exactly " +
+				"the terminals that cannot show the Unicode one.")
 		}
 	}
 	return strings.NewReplacer(pairs...)

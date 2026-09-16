@@ -307,6 +307,7 @@ func fgTruecolor
 func fitColumns
 func fracBlock
 func groupsFor
+func hazardShort
 func hexRGB
 func init
 func isCategoryTint
@@ -387,7 +388,6 @@ type layout
 type quattroPalette
 type severeCol
 var asciiMarks
-var hazardShorthand
 var themeGen
 var themeMu
 var themeName

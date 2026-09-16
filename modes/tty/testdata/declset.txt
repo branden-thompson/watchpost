@@ -759,6 +759,7 @@ func formatAlertBody
 func frameText
 func gridRow
 func hazardOf
+func heldEscalation
 func helpColumnWidth
 func helpGroups
 func helpTwoColumns
@@ -1005,4 +1006,3 @@ type uiSavedMsg
 type vizTickMsg
 var _
 var bcRailForms
-var heldEscalation

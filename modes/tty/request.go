@@ -197,13 +197,6 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 	// the other. `pad` is the one place the window's own indent is decided, so
 	// there is nothing to keep in step.
 	// `inset` is applied to every line at the END, in one place.
-	mark := func(f requestField) int {
-		if st.field == f {
-			return len(out)
-		}
-		return -1
-	}
-	_ = mark
 	out = []string{""}
 
 	// THE LOCATION, AND WHAT IS WRONG WITH IT.

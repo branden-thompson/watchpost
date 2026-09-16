@@ -304,7 +304,7 @@ func (b Broadcaster) heldNotice() []string {
 	if held == 0 {
 		return nil
 	}
-	for _, s := range heldEscalation {
+	for _, s := range heldEscalation() { // bounded by the ladder (P10-02)
 		if b.standbySince.IsZero() || b.clock().Sub(b.standbySince) >= s.after {
 			return b.heldBand(held, s.mark, s.say)
 		}
@@ -396,14 +396,29 @@ func emphasiseHeld(line, count string) string {
 //
 // The rungs are a PARAMETER, written down the way a threshold is meant to be
 // (INST-1 scopes its rule to the SET being iterated, not to the numbers).
-var heldEscalation = []struct {
+// heldEscalation is the notice's ladder: how long a hazard has been held, the
+// mark that rung wears, and what it says.
+//
+// A FUNCTION RATHER THAN A PACKAGE VARIABLE (P10-06), which is the convention
+// `report.all` states in as many words. The reason a map here would stay a var
+// does not apply: this is a fixed-size array of small values returned BY VALUE,
+// so there is nothing to rebuild on the heap and the table cannot be reassigned
+// by anything in the package — which for an escalation ladder on the console's
+// loudest safety surface is the point.
+func heldEscalation() [3]struct {
 	after time.Duration
 	mark  string
 	say   string
-}{
-	{15 * time.Minute, "!!!", "They have been held past the staleness bound and may be dropped unread."},
-	{5 * time.Minute, "!!", "Go ON AIR or stand the station down."},
-	{0, "!", "Go ON AIR to read them."},
+} {
+	return [3]struct {
+		after time.Duration
+		mark  string
+		say   string
+	}{
+		{15 * time.Minute, "!!!", "They have been held past the staleness bound and may be dropped unread."},
+		{5 * time.Minute, "!!", "Go ON AIR or stand the station down."},
+		{0, "!", "Go ON AIR to read them."},
+	}
 }
 
 func (b Broadcaster) Init() tea.Cmd { return nil }
