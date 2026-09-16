@@ -2671,38 +2671,36 @@ decoration; the second agent found the thing the first could not see.*
 
 ---
 
-## For upstream: comments describe the code, not its history (A2DH coding/build skills)
+## Not a new rule: `AP-HIST-01` already existed, and two mechanisms that should have caught it did not
 
-**HUM LEAD ruling, 2026-09-16:** *"Historical comments are an anti pattern - in code comments should
-describe current state of code, not the history that led to it."*
+**HUM LEAD, 2026-09-16:** *"Historical comments are an anti pattern."*  Then: *"I think something
+like this is already there - we should check and see."*  It was.
 
-**The rule for the skill:** a comment states what the code does and WHY it is as it is. It does not
-state what it used to be, who found the defect, which review round raised it, or when it was
-corrected. That history is already recorded — durably and in the right place — in `git log`, the
-follow-ups register, the gate roster, and the red-team reports.
+**The rule is `AP-HIST-01`**, in `02_skills/implementation/common-anti-patterns/SKILL.md`: *"Write
+comments that describe what the code does and why NOW. Never narrate what it used to do."*  It is
+cited by `code-documentation`, by `semantic-code`, and by the red-team axes.  The thin install's own
+routing table points at it by name.  **Nothing needed to be added upstream.**  The observation worth
+recording is why it was violated 29 times anyway, in one remediation pass, across 20 files.
 
-**The shape that produces it, which is the part worth encoding.** It does not arrive by itself; it
-arrives during REMEDIATION. A round of review finds comments that assert what the code does not do,
-the agent rewrites them — and writes the rewrite as an account of the correction, because that is
-what is in its head at the time. Commit-message prose migrates into the comment. Measured on this
-release: one remediation round introduced **29 separate pieces of historical narration across 20
-files**, every one of them added while fixing a different comment defect.
+### 1. The author-time skill was never loaded
 
-**So the check belongs at the end of a remediation pass, not at the end of a feature.** The prompt
-that catches it is: *"read this comment as someone who has never seen the previous version — is any
-sentence here about a state of the code they will never encounter?"*
+`AP-HIST-01` is an AUTHOR-TIME rule, and the harness routes to it on the phrase *"history in
+comments"* — which only helps an agent that already suspects the problem.  Nothing in the BUILD
+loop put the anti-pattern catalogue in front of the author BEFORE writing.  **The trigger that
+matters is not a topic, it is a moment:** rewriting a comment during remediation is when
+commit-message prose migrates into the source, because the correction is what is in the author's
+head.  A skill that loads on "I am fixing a comment a review flagged" would have caught all 29.
 
-**The distinction a skill has to carry, because the naive rule over-corrects:**
+### 2. The detector existed and was bypassed — by me, not by the tool
 
-| Keep — the code as it stands | Remove — a past the reader does not have |
-|---|---|
-| Rationale: *"the boundary errs towards telling the listener"* | *"an earlier version claimed X"* |
-| Current-state measurement: *"97 cells does not fit every width"* | *"corrected at D-160"*, *"this said the opposite for a fortnight"* |
-| A lock or ordering contract: *"the caller holds `a.mu`"* | *"found by red team round 3"*, *"caught by a blind review"* |
-| A ruling cited as AUTHORITY: *"one key, one meaning per surface (D-56)"* | The same ruling ID used to narrate a change |
-| A rule stated with its counter-case: *"EVERY, not ANY"* | *"the first fix did not work"* |
+`axes/code-quality.md` asks, in as many words: *"Do comments describe current state, not history
+(catalog `AP-HIST-01`)?"*  Two blind code-quality agents ran over this surface and neither reported
+it, because **I wrote their briefs by hand instead of using the axis files.**  The HUM LEAD's
+standing instruction for these rounds is *"Use the A2DH axes and personas (do not ad-lib)"*, and an
+ad-libbed brief is a brief with the catalogue silently removed from it.
 
-**Why it matters more than it looks.** Every fix adds a layer, so the narration grows without bound
-while the code it describes stays the same size — and a reader must filter all of it to find the one
-sentence that tells them what the function does now. It is the same failure as a stale comment, with
-the decay built in from the first line.
+**The lesson is about the harness, not the rule:** a red-team axis is only as good as the prompt that
+carries it, and an agent that composes its own prompt will reliably reproduce its own blind spots —
+it cannot ask about a defect class it has forgotten exists.  *The axis files are the memory; writing
+a fresh brief throws it away.*  This is the second time in one release that hand-composing a
+supposedly-standard instrument removed something load-bearing from it.
