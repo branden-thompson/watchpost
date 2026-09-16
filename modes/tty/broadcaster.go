@@ -1275,7 +1275,6 @@ func (b Broadcaster) bedAvailable() bool { return !b.bedRelaysTold || b.bedRelay
 // when Variant C absorbed the control row, and the ruling put it on this row
 // rather than restoring a separate card at the bottom of the frame.
 func (b Broadcaster) bedSelector(o render.Opts) string {
-	g := o.Glyphs()
 	// THE ARROWS GO THROUGH KeyCap, which is the one owner that already names
 	// them in WORDS under --ascii (`asciiKey`) — a literal here would print a
 	// glyph a terminal without them cannot draw, in the row that says whether
@@ -1286,7 +1285,6 @@ func (b Broadcaster) bedSelector(o render.Opts) string {
 	//
 	// THE STATE LEFT THIS ROW AT D-71 and sits at the right of the section with
 	// the station's own transition hint; what stays here is the SELECTOR.
-	_ = g
 	relay := b.bed.Relay
 	if relay == "" {
 		relay = bcNoRelay

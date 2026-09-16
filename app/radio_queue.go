@@ -61,7 +61,7 @@ func chooseNearest(stations []stream.Station, prefer string) (stream.Station, bo
 func (d *radioDeck) SetRepeat(mode tty.RepeatMode, watchlist []snapshot.LocationRef) {
 	d.mu.Lock()
 	d.repeat, d.queue = mode, watchlist
-	src, ref := d.source, d.ref
+	src := d.source
 	d.mu.Unlock()
 	// THE DIRECTOR IS STILL TOLD; THE LIVE SOURCE IS NOT TOUCHED (D-91).
 	//
@@ -91,5 +91,4 @@ func (d *radioDeck) SetRepeat(mode tty.RepeatMode, watchlist []snapshot.Location
 		keys = append(keys, string(snapshot.Key(r)))
 	}
 	d.tell(lineup.Programme{Watchlist: keys, Dwell: dwell})
-	_ = ref
 }

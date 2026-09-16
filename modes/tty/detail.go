@@ -180,7 +180,6 @@ func (d Dashboard) todayRows(o render.Opts, loc *snapshot.Location, cw int) []st
 	if len(loc.Daily) == 0 {
 		return []string{detailRow(o, "TODAY", o.LoadingDots())}
 	}
-	_ = cw
 	day := loc.Daily[0]
 	out := []string{detailRow(o, "TODAY", gridRow(prettyCond(day.Condition), "", hiLo(o, day)))}
 	tz := time.Local
