@@ -105,7 +105,7 @@ func TestDR24TheReleaseNamesTheCardThatWasReading(t *testing.T) {
 // card is still reading clears the callout for the thing being read — the same
 // stale-band defect, arrived at from the opposite side.
 func TestDR24AnEventThatKeepsTheAirReleasesNothing(t *testing.T) {
-	d, id := onAirDirector(t)
+	d, _ := onAirDirector(t)
 	for _, ev := range []Event{
 		Tick{Now: planNow.Add(time.Minute)},
 		Arrived{Arrivals: many("c", category.Warnings, 1)},
@@ -123,7 +123,6 @@ func TestDR24AnEventThatKeepsTheAirReleasesNothing(t *testing.T) {
 				t.Errorf("%T released %q while it was still reading", ev, r.ID)
 			}
 		}
-		_ = id
 	}
 }
 

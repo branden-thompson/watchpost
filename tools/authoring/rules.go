@@ -115,6 +115,14 @@ func checkBlankKeepAlive(fset *token.FileSet, f *ast.File, path string) []Findin
 		if !ok || rhs.Name == "_" {
 			return true
 		}
+		// A REASON ON THE LINE IS THE ANSWER THIS RULE ASKS FOR. The finding's own
+		// remedy is "delete the declaration, or say why on the line", so a trailing
+		// comment is the author having answered it — a fuzz test discarding an
+		// expected error, a helper keeping a parameter its caller still passes.
+		// Demanding deletion regardless would make the rule unanswerable.
+		if trailingComment(fset, f, as.Pos()) {
+			return true
+		}
 		out = append(out, Finding{
 			Rule: "AP-DEAD-01", File: path, Line: fset.Position(as.Pos()).Line,
 			Text: "_ = " + rhs.Name,
@@ -189,3 +197,17 @@ func itoa(n int) string { return strconv.Itoa(n) }
 // godocOpener matches the convention a doc comment opens with: the subject's own
 // name, then a verb.
 var godocOpener = regexp.MustCompile(`^//\s+([A-Za-z]\w*) (?:is|are|does|reports|returns|builds|draws|takes|copies|names|decides|holds|walks|turns|gives|answers|removes|routes|hands|puts|says|sets|tells|wraps|adds|counts)\b`)
+
+// trailingComment reports whether a comment sits on the same line as pos — the
+// author's reason, written where the rule asks for it.
+func trailingComment(fset *token.FileSet, f *ast.File, pos token.Pos) bool {
+	line := fset.Position(pos).Line
+	for _, g := range f.Comments { // bounded by the file's comments (P10-02)
+		for _, c := range g.List { // bounded by the group (P10-02)
+			if fset.Position(c.Pos()).Line == line {
+				return true
+			}
+		}
+	}
+	return false
+}

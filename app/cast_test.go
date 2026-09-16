@@ -913,5 +913,4 @@ func TestNoProductionFileInAppBuildsANameOnlyVoiceSpec(t *testing.T) {
 	if _, ok := piperInstallFor(t.TempDir(), "not-a-voice"); ok {
 		t.Fatal("control: piperInstallFor found a voice that cannot exist; it is not doing the lookup")
 	}
-	_ = found
 }
