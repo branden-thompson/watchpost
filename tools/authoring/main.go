@@ -88,7 +88,7 @@ func scan(root string) ([]Finding, int, error) {
 	return out, files, err
 }
 
-// report prints the findings grouped by rule, longest-standing rule first.
+// report prints the findings grouped by rule, rule IDs in alphabetical order.
 //
 // EXTRACTED AT THE STATEMENT CEILING (P10-04). `main` is argument parsing, one
 // branch per output mode, and an exit code; the grouping and the printing are a

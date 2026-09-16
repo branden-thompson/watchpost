@@ -166,7 +166,14 @@ func TestEveryRequiredGateIsStillRun(t *testing.T) {
 	// A REQUIRED GATE RUNS SOMEWHERE, and CI-only is a legitimate somewhere:
 	// release-matrix inspects the published artifacts, which do not exist when
 	// verify runs. What is not legitimate is running NOWHERE.
-	ciOnlyOK := map[string]bool{"release-matrix": true, "install-test": true}
+	// DERIVED FROM `ciOnly`, NOT WRITTEN AGAIN. A literal here is a second copy of
+	// the map above, free to disagree with it — which is the defect this file
+	// exists to prevent, committed inside the file that prevents it. It erred safe
+	// while the two happened to match; "happened to" is the objection.
+	ciOnlyOK := map[string]bool{}
+	for g := range ciOnly { // bounded by the exemption table (P10-02)
+		ciOnlyOK[g] = true
+	}
 	for _, g := range required {
 		if !has(verify, g) && !ciOnlyOK[g] {
 			t.Errorf("%s is required and `make verify` does not run it", g)
@@ -336,7 +343,15 @@ func TestEveryBuildTargetTrimsThePath(t *testing.T) {
 		// "go build". One Make variable — $(GO) build — hid a whole target
 		// from this scan (red team, 2026-09-08), and a target invisible to
 		// the gate is a target that ships the path it was compiled from.
-		if strings.HasPrefix(strings.TrimSpace(l), "#") || !strings.Contains(l, "build ") || !strings.Contains(l, "./cmd/") {
+		//
+		// AND THE PACKAGE MAY BE A VARIABLE TOO. Requiring a literal `./cmd/`
+		// closed the verb and left the OBJECT open: `go build -o dist/x $(PKG)`
+		// passed unseen, which is the same hole one argument along. A line that
+		// builds to an output path is a build whatever names the package.
+		trimmed := strings.TrimSpace(l)
+		buildsSomething := strings.Contains(l, "build ") && strings.Contains(l, "-o ")
+		namesAPackage := strings.Contains(l, "./cmd/") || strings.Contains(l, "$(")
+		if strings.HasPrefix(trimmed, "#") || !buildsSomething || !namesAPackage {
 			continue
 		}
 		built = append(built, strings.TrimSpace(l))
@@ -401,6 +416,12 @@ func TestEveryGateShapedTargetIsListedOrExempt(t *testing.T) {
 				"outlived the gate", target, why)
 		}
 	}
+	for target, why := range aggregateTargets { // bounded by the exemption table (P10-02)
+		if _, ok := targetDeps(t, target); !ok {
+			t.Errorf("%s is declared an aggregate (%q) and the Makefile has no such target: the row "+
+				"outlived the target", target, why)
+		}
+	}
 }
 
 // requiredGates is 06_docs/required-gates.txt as a set, comments dropped.
@@ -420,6 +441,21 @@ func requiredGates(t *testing.T) map[string]bool {
 	return out
 }
 
+// aggregateTargets name OTHER targets rather than running a check themselves, so
+// they are not gate-shaped and are excluded from the listed-or-exempt rule.
+//
+// IT CARRIES REASONS AND IS CHECKED FOR STALENESS, like every other exemption
+// table in this file. The first version was a bare `map[string]bool` written
+// inline — no reason per row and no reverse check — and it had already acquired a
+// row for `p10-mirror`, a target that exists in no Makefile, no workflow and no
+// gate list. A silencing table with no staleness check is where a name goes to
+// outlive its subject, which is the defect this whole file is about.
+var aggregateTargets = map[string]string{
+	"verify":        "the entry point; it takes the tree lock and delegates the gate list to verify-gates",
+	"verify-gates":  "the gate list itself — it names every gate and runs none of them directly",
+	"gate-controls": "it runs the POSITIVE CONTROLS for the other gates, so it is checked by TestEveryRequiredGatesCheckerHasAControl rather than by the listed-or-exempt rule",
+}
+
 // gateShapedTargets are the Makefile targets whose recipe RUNS a check.
 //
 // THE SHAPE, NOT A LIST — a list here would be the same enumeration that let
@@ -429,7 +465,7 @@ func requiredGates(t *testing.T) map[string]bool {
 // name other targets rather than running a check themselves.
 func gateShapedTargets(t *testing.T) []string {
 	t.Helper()
-	aggregate := map[string]bool{"verify": true, "verify-gates": true, "gate-controls": true, "p10-mirror": true}
+	aggregate := aggregateTargets
 	runsACheck := regexp.MustCompile(`(\./scripts/|go test|go run \./tools/|-self-test|--self-test)`)
 	target := regexp.MustCompile(`^([a-z][a-z0-9-]*):`)
 
@@ -446,7 +482,7 @@ func gateShapedTargets(t *testing.T) []string {
 			}
 			continue
 		}
-		if aggregate[cur] || !runsACheck.MatchString(line) {
+		if _, isAggregate := aggregate[cur]; isAggregate || !runsACheck.MatchString(line) {
 			continue
 		}
 		if !contains(out, cur) {
@@ -555,6 +591,24 @@ func TestNoRequiredGatesCIStepIsSilentlyConditional(t *testing.T) {
 	steps := ciSteps(t)
 	if len(steps) < 10 {
 		t.Fatalf("parsed %d CI steps; the workflow's shape has changed and this check has lost its subject", len(steps))
+	}
+
+	// THE JOB IS ABOVE THE STEP, AND CHEAPER. `jobs.verify.if: false` is ONE line
+	// higher in the same file and silences every gate the job runs — twenty of
+	// them — while every step below it still reads `run: make <target>` and every
+	// list still agrees. A check that guards the steps and not the job guards the
+	// dearer of the two attacks and names itself after the cheaper.
+	for job, keys := range ciJobKeys(t) { // bounded by the workflow (P10-02)
+		if keys["continue-on-error"] {
+			t.Errorf("the CI job %q sets continue-on-error at JOB level, so no gate it runs can fail "+
+				"the build.\nA gate that cannot fail is not a gate. Put it on the one step that needs "+
+				"it, with a reason.", job)
+		}
+		if keys["if"] {
+			t.Errorf("the CI job %q carries a job-level `if:`, which silences EVERY gate in it at once "+
+				"while all three lists still agree.\nPut the condition on the individual steps that "+
+				"need it and declare them in `conditionalStep`.", job)
+		}
 	}
 
 	seen := map[string]bool{}
@@ -713,25 +767,39 @@ func checkersInvokedBy(t *testing.T, target string) []string {
 	return out
 }
 
-// controlledCheckers is every checker exercised with a self-test anywhere in the
-// Makefile — by gate-controls, or by its own gate line as lint-authoring does.
+// controlledCheckers is every checker exercised with a self-test BY A GATE THAT
+// RUNS — the recipes of the targets on `required-gates.txt`, and nowhere else.
+//
+// THE SCOPE IS THE WHOLE POINT, and the first version of this function did not
+// have it. Scanning every recipe in the Makefile counts a `--self-test` sitting
+// in a target nothing invokes — `journey`, say, which this file's own `unlisted`
+// table declares is run deliberately at release — so a control could be moved
+// off the gate path and this check would still call it controlled. That is
+// precisely the defect the test above exists to catch, committed inside the
+// function that catches it.
 //
 // A SIBLING `_test.sh` COUNTS. `p10-unmatched.sh`'s control is a separate script
 // rather than a flag, which is a shape and not an omission.
+//
+// AND THE FLAG MUST BE ON THE CHECKER, not merely on the line: `a.sh && b.sh
+// --self-test` runs a control for `b.sh` alone, so each command on a compound
+// line is read separately.
 func controlledCheckers(t *testing.T) map[string]bool {
 	t.Helper()
 	out := map[string]bool{}
 	selfTest := regexp.MustCompile(`--?self-test`)
-	for _, line := range makeLines(t) { // bounded by the Makefile (P10-02)
-		if !strings.HasPrefix(line, "\t") {
-			continue
-		}
-		for _, m := range checkerRef.FindAllStringSubmatch(line, -1) {
-			switch {
-			case selfTest.MatchString(line):
-				out[m[1]] = true
-			case strings.HasSuffix(m[1], "_test.sh"):
-				out[strings.TrimSuffix(m[1], "_test.sh")+".sh"] = true
+	splitCommands := regexp.MustCompile(`&&|\|\||;`)
+	for gate := range requiredGates(t) { // bounded by the gate list (P10-02)
+		for _, line := range recipeOf(t, gate) { // bounded by the recipe (P10-02)
+			for _, cmd := range splitCommands.Split(line, -1) { // bounded by the line (P10-02)
+				for _, m := range checkerRef.FindAllStringSubmatch(cmd, -1) {
+					switch {
+					case selfTest.MatchString(cmd):
+						out[m[1]] = true
+					case strings.HasSuffix(m[1], "_test.sh"):
+						out[strings.TrimSuffix(m[1], "_test.sh")+".sh"] = true
+					}
+				}
 			}
 		}
 	}
@@ -761,4 +829,90 @@ func recipeOf(t *testing.T, target string) []string {
 		break
 	}
 	return out
+}
+
+// ciJobKeys is each job's own top-level keys — the ones indented under
+// `jobs.<name>:` and above its `steps:`.
+//
+// PARSED BY INDENTATION, like ciSteps and for the same reason: the project's
+// tooling is stdlib-only and a dependency taken for one test is one the whole
+// build carries. `jobs:` sits at column 0, a job name two spaces in, and its
+// keys four — and the subject check in the caller fails if that stops holding.
+func ciJobKeys(t *testing.T) map[string]map[string]bool {
+	t.Helper()
+	out := map[string]map[string]bool{}
+	body := read(t, "../../.github/workflows/ci.yml")
+	jobName := regexp.MustCompile(`^  ([a-zA-Z][A-Za-z0-9_-]*):\s*$`)
+	jobKey := regexp.MustCompile(`^    ([a-z][a-z-]*):`)
+
+	var cur string
+	var inJobs bool
+	for _, line := range strings.Split(body, "\n") { // bounded by the workflow (P10-02)
+		if strings.HasPrefix(line, "jobs:") {
+			inJobs = true
+			continue
+		}
+		if !inJobs {
+			continue
+		}
+		if len(line) > 0 && !strings.HasPrefix(line, " ") && strings.TrimSpace(line) != "" {
+			inJobs = false // a new top-level key ends the jobs block
+			continue
+		}
+		if m := jobName.FindStringSubmatch(line); m != nil {
+			cur = m[1]
+			out[cur] = map[string]bool{}
+			continue
+		}
+		if cur == "" {
+			continue
+		}
+		if m := jobKey.FindStringSubmatch(line); m != nil {
+			out[cur][m[1]] = true
+		}
+	}
+	if len(out) == 0 {
+		t.Fatal("no CI jobs parsed; the workflow's shape has changed and this check has lost its subject")
+	}
+	return out
+}
+
+// EVERY EXEMPTION ROW CARRIES A REAL REASON.
+//
+// A REASON IS THE PRICE OF AN EXEMPTION, and an empty string pays nothing while
+// looking identical to a row that paid. Seven tables in this package silence a
+// check when a name appears in them; two rejected `""` and five did not, so the
+// cheapest way to retire any of those gates was a row with no words in it.
+//
+// THE FLOOR IS DELIBERATELY LOW — a reason must exist and be a sentence rather
+// than a shrug. A gate cannot judge whether a reason is GOOD; that is the
+// reviewer's job, and it is the reviewer this exists to put in front of.
+func TestEveryExemptionRowCarriesAReason(t *testing.T) {
+	tables := map[string]map[string]string{
+		"ciOnly":           ciOnly,
+		"verifyOnly":       verifyOnly,
+		"unlisted":         unlisted,
+		"aggregateTargets": aggregateTargets,
+		"cacheableGate":    cacheableGate,
+		"conditionalStep":  conditionalStep,
+		"uncontrolled":     uncontrolled,
+		"largeAllowed":     largeAllowed,
+	}
+	const floor = 20 // a short sentence; "ok" and "n/a" are not reasons
+	var rows int
+	for name, table := range tables { // bounded by the table list (P10-02)
+		for key, why := range table { // bounded by the table (P10-02)
+			rows++
+			if len(strings.TrimSpace(why)) >= floor {
+				continue
+			}
+			t.Errorf("%s[%q] is exempt with the reason %q.\n"+
+				"An exemption with no reason costs nothing to add and reads exactly like one that was "+
+				"argued for. Say what makes this row true, or delete it.", name, key, why)
+		}
+	}
+	if rows < 15 {
+		t.Fatalf("checked %d exemption rows across %d tables; a table has been dropped from this list "+
+			"and is now unguarded", rows, len(tables))
+	}
 }

@@ -148,10 +148,13 @@ label shifts its neighbour rather than clipping. Ask before choosing one.
   would re-open it; that trigger, measured, is the only route back, and the sites themselves carry
   `ACCEPTED COST` comments pointing at it.
 
-- `make verify` runs every gate in `06_docs/required-gates.txt` — twenty of them, not the handful
-  this line used to name. Read that file rather than a list here, which is the point of it: the
-  Makefile, `ci.yml` and that file are checked against each other by `cmd/watchpost/gates_test.go`,
-  and a gate on none of them is caught by `TestEveryGateShapedTargetIsListedOrExempt`.
+- **`make verify` runs 21 of the 23 gates in `06_docs/required-gates.txt`, and the two it skips
+  matter.** `release-matrix` and `install-test` are CI-only — they build five platforms and install
+  what was built — and they are the **only callers of `scripts/lint-injector.sh`**, the check standing
+  between a debug-injector build and a release. A green local `verify` does not cover it; a green CI
+  run does. Read `required-gates.txt` rather than any list of gates written in prose: the Makefile,
+  `ci.yml` and that file are checked against each other by `cmd/watchpost/gates_test.go`, and a gate
+  on none of them is caught by `TestEveryGateShapedTargetIsListedOrExempt`.
 - `vuln` is `govulncheck`, which downloads the tool on each run — the one step that needs the
   network. `make tree-free` says whether a gate run is already in flight; do not edit the tree while
   one is.
