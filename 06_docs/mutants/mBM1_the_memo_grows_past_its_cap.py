@@ -16,10 +16,15 @@ import pathlib
 # CONDITION is edited — `!ok && len(m.items) >= m.max` is one `&&` away from
 # never evicting — and on that day this mutant stops surviving and the invariant
 # starts earning its place.
+#
+# IT OVERRIDES THE CHECK RATHER THAN DELETING IT, and that is not tidiness. This
+# is now the file's ONLY use of `invariant` — the other one was a no-op removed at
+# D-160 — so cutting the block outright orphans the import and the mutant fails to
+# COMPILE, which `mutant-check` reads as a broken mutant rather than as evidence.
+# An INVALID mutation measures nothing; the `true` keeps the call and takes away
+# what it decides.
 p = pathlib.Path("platform/bodymemo/bodymemo.go"); s = p.read_text()
-old = """	if err := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); err != nil {
-		return val, err
-	}
-"""
+old = """	if err := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); err != nil {"""
+new = """	if err := invariant.Check(true, "the memo holds at most max entries"); err != nil {"""
 assert old in s, "mBM1"
-p.write_text(s.replace(old, "", 1))
+p.write_text(s.replace(old, new, 1))
