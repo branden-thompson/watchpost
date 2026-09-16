@@ -113,6 +113,7 @@ gate-controls:
 	@./scripts/sync-go-studs.sh --self-test
 	@./scripts/quality/p10-unmatched_test.sh
 	@./scripts/quality/ledger-ratified.sh --self-test
+	@./scripts/quality/lint-ledger.sh --self-test
 	@go run ./tools/dupes -self-test
 	@./scripts/quality/mutant-anchors.sh --self-test
 # THE INJECTOR CONTROL BELONGS HERE AND WAS NOT HERE. lint-injector is the only

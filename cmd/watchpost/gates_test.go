@@ -633,3 +633,134 @@ func ciSteps(t *testing.T) []string {
 	flush()
 	return out
 }
+
+// uncontrolled are custom checkers a required gate invokes that have no positive
+// control, with the reason. A reason is not a silencer: a row for a checker that
+// gains a control fails here, and so does one no required gate invokes any more.
+//
+// EVERY ROW HERE IS A GATE WE ARE TRUSTING WITHOUT EVIDENCE. The list is meant
+// to be short and to shrink; it is not a place to park work.
+var uncontrolled = map[string]string{
+	"scripts/lint.sh":                      "F-118 — it discards golangci-lint's exit code with `|| true` and treats non-empty JSON as liveness, so it does not fail closed. A control would pin the behaviour we intend to CHANGE; it is slated for conversion to Go",
+	"scripts/install-test.sh":              "it installs and runs a built artifact, so a control would be a second installation on a machine that has just done one; it is CI-only and runs on a clean runner",
+	"scripts/quality/p10-ledger-mirror.py": "a GENERATOR, and its control is the linter that runs immediately after it: `lint-ledger.sh` reads the file this writes, in the same recipe, and that linter has its own self-test",
+}
+
+// EVERY REQUIRED GATE'S CHECKER HAS A POSITIVE CONTROL, AND THE CONTROL RUNS.
+//
+// THE PROJECT'S OWN CALIBRATION SAYS SO ("Guard Tests Require Positive Controls")
+// and `gate-controls` is a HAND-WRITTEN LIST, which is the enumerate-don't-discover
+// shape this repository warns against elsewhere. Two controls were found this
+// round that existed and were invoked by nothing — `lint-injector`'s, the only
+// thing between a hazard-fabricating build and a release, and `dupes-selftest`.
+// Both were reachable by reading; neither was reachable by any gate.
+//
+// SO THIS DISCOVERS THE CHECKERS rather than listing them: every script under
+// `scripts/` and every `go run ./tools/<x>` that a REQUIRED gate invokes must be
+// exercised somewhere with a self-test flag, or by a sibling `_test.sh`.
+//
+// THE STANDARD TOOLCHAIN NEEDS NO CONTROL. `gofmt`, `go vet`, `go test`,
+// `go mod` and `govulncheck` are not ours, and a positive control for `go vet`
+// would be a test of Go. Only the checkers this project wrote are in scope.
+func TestEveryRequiredGatesCheckerHasAControl(t *testing.T) {
+	required := requiredGates(t)
+	exercised := controlledCheckers(t)
+
+	var checked int
+	for gate := range required { // bounded by the gate list (P10-02)
+		for _, checker := range checkersInvokedBy(t, gate) { // bounded by the recipe (P10-02)
+			checked++
+			if exercised[checker] {
+				continue
+			}
+			if why, ok := uncontrolled[checker]; ok {
+				_ = why
+				continue
+			}
+			t.Errorf("%s is invoked by the required gate %s and nothing exercises it with a self-test.\n"+
+				"A control that does not run is the same as no control, with the paperwork of one — "+
+				"two were found that way this release.\n"+
+				"Add `<checker> --self-test` to gate-controls, or add a row to `uncontrolled` in this "+
+				"file saying why this checker is trusted without evidence.", checker, gate)
+		}
+	}
+	if checked < 5 {
+		t.Fatalf("resolved %d checkers across the required gates; the Makefile shape has changed and "+
+			"this check has lost its subject", checked)
+	}
+	for checker, why := range uncontrolled { // bounded by the exemption table (P10-02)
+		if exercised[checker] {
+			t.Errorf("%s is declared uncontrolled (%q) and IS exercised: delete the row", checker, why)
+		}
+	}
+}
+
+// checkerRef finds a project-written checker in a recipe line.
+var checkerRef = regexp.MustCompile(`(?:\./)?(scripts/[A-Za-z0-9_/.-]+\.(?:sh|py)|tools/[a-z][a-z0-9]*)`)
+
+// checkersInvokedBy is every project-written checker one target's recipe runs.
+func checkersInvokedBy(t *testing.T, target string) []string {
+	t.Helper()
+	var out []string
+	for _, line := range recipeOf(t, target) { // bounded by the recipe (P10-02)
+		for _, m := range checkerRef.FindAllStringSubmatch(line, -1) {
+			if strings.HasSuffix(m[1], "_test.sh") { // a control is not a checker
+				continue
+			}
+			if !contains(out, m[1]) {
+				out = append(out, m[1])
+			}
+		}
+	}
+	return out
+}
+
+// controlledCheckers is every checker exercised with a self-test anywhere in the
+// Makefile — by gate-controls, or by its own gate line as lint-authoring does.
+//
+// A SIBLING `_test.sh` COUNTS. `p10-unmatched.sh`'s control is a separate script
+// rather than a flag, which is a shape and not an omission.
+func controlledCheckers(t *testing.T) map[string]bool {
+	t.Helper()
+	out := map[string]bool{}
+	selfTest := regexp.MustCompile(`--?self-test`)
+	for _, line := range makeLines(t) { // bounded by the Makefile (P10-02)
+		if !strings.HasPrefix(line, "\t") {
+			continue
+		}
+		for _, m := range checkerRef.FindAllStringSubmatch(line, -1) {
+			switch {
+			case selfTest.MatchString(line):
+				out[m[1]] = true
+			case strings.HasSuffix(m[1], "_test.sh"):
+				out[strings.TrimSuffix(m[1], "_test.sh")+".sh"] = true
+			}
+		}
+	}
+	return out
+}
+
+// recipeOf is one target's recipe lines.
+func recipeOf(t *testing.T, target string) []string {
+	t.Helper()
+	var out []string
+	var in bool
+	for _, line := range makeLines(t) { // bounded by the Makefile (P10-02)
+		if strings.HasPrefix(line, target+":") {
+			in = true
+			continue
+		}
+		if !in {
+			continue
+		}
+		if strings.HasPrefix(line, "\t") {
+			out = append(out, line)
+			continue
+		}
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		break
+	}
+	return out
+}
