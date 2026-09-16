@@ -754,6 +754,7 @@ func fireHot
 func fireNone
 func fireRows
 func fireSectionHead
+func firstClash
 func firstOfGroup
 func fixedAge
 func fixedAgeTrim

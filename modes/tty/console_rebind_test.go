@@ -173,3 +173,36 @@ func TestOverridesThatVacateAKeyAreBothApplied(t *testing.T) {
 		t.Errorf("nothing should have been withheld: %v", d.keysWithheld)
 	}
 }
+
+// A ROTATION OF SHARED KEYS DOES NOT REFUSE THE CONSOLE.
+//
+// `about = "l"` and `lookup = "b"` are both legal on Observer and neither names
+// a console binding the operator has ever seen. Deciding in one pass grants
+// `about` the `l` that `lookup` was about to vacate, then withholds `lookup` —
+// which returns it to `l` — and the console holds `l` twice, so the app refuses
+// to start with a collision the tool created.
+//
+// THE FILE BINDS NOTHING TWICE. Any message blaming the operator here is wrong.
+func TestARotationOfSharedKeysStillLaunches(t *testing.T) {
+	d, err := NewDashboard(Config{KeyOverrides: term.KeyMap{
+		actAbout:  {Keys: []string{"l"}, Help: "About"},
+		actLookup: {Keys: []string{"b"}, Help: "Lookup Location"},
+	}})
+	if err != nil {
+		t.Fatalf("a rotation of two shared keys must not refuse the console: %v", err)
+	}
+	// AND THE CONSOLE'S MAP HOLDS NO KEY TWICE.
+	seen := map[string]term.Action{}
+	for act, b := range d.consoleKeyMap() {
+		for _, k := range b.Keys {
+			if held, dup := seen[k]; dup {
+				t.Errorf("the console binds %q to both %q and %q", k, held, act)
+			}
+			seen[k] = act
+		}
+	}
+	// AND THE BED KEEPS ITS KEY, since `lookup -> b` is the override that gave way.
+	if got := d.consoleKeyMap()[actBedCut].Keys; len(got) == 0 || got[0] != "b" {
+		t.Errorf("the bed lost its key: %v", got)
+	}
+}

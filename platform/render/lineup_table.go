@@ -135,24 +135,21 @@ func (o Opts) LineupTable(rows []LineupRow, width int) string {
 // The HUM LEAD ruled the second fill column on 2026-09-16 (F-112), which is what
 // made the doc line above — "giving the two WIDEST COLUMNS the slack" — true
 // rather than something to correct away.
-// lineupNaturalWidth is what the spec sums to before any surplus: every column
-// at its declared width, plus the gutter between each pair.
+// lineupNaturalWidth is the width this table occupies with every column at its
+// declared size and no surplus to share.
 //
-// DERIVED, NOT THE LITERAL 144. The comment on `lineupColumns` says "these sum to
-// 128 + eight gutters = 144 exactly" at the reference terminal, and a constant
-// here would be that sentence written a second time — free to drift the day a
-// column changes width, which is the two-carriers defect this release has spent
-// its length removing.
+// IT ASKS `rowLen`, WHICH OWNS THE GEOMETRY. A gutter precedes columns 3..last
+// and the category spacer widens two of them, so the sum is not the column
+// widths plus one gutter per pair — re-deriving that here produced 138 for a
+// table that occupies 140, and a surplus computed from a wrong base mis-splits
+// the day a column changes group or width.
 func lineupNaturalWidth() int {
 	cols := lineupColumns()
-	total := 0
+	defs := make([]studs.ColumnDefinition, 0, len(cols))
 	for _, c := range cols { // bounded by the spec (P10-02)
-		total += c.width
+		defs = append(defs, studs.ColumnDefinition{Name: c.name, Header: c.header, Width: c.width})
 	}
-	if n := len(cols) - 1; n > 0 {
-		total += n * tableGutter
-	}
-	return total
+	return rowLen(spaceCategories(defs, lineupGroups()))
 }
 
 func lineupColumnDefs(width int) []studs.ColumnDefinition {

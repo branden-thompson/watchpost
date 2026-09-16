@@ -612,66 +612,95 @@ type Dashboard struct {
 }
 
 // scopedOverrides decides which `[keys]` entries the CONSOLE can take without
-// colliding with a binding it already has (F-114).
+// colliding with a binding it already has.
 //
-// THE TWO MAPS ARE SEPARATE SCOPES BY DESIGN — D-56 is "one key, one meaning PER
-// SURFACE" — and several actions appear in both. A listener who rebinds a shared
-// action is aiming at the surface they use; merging that into the console's
-// scope as well is what turned a valid config into a failed launch.
+// THE TWO MAPS ARE SEPARATE SCOPES — D-56 is "one key, one meaning PER SURFACE" —
+// and five actions appear in both: lookup, about, status, help and quit. A
+// listener who rebinds one of those is aiming at the surface they use, so
+// merging it into the console's scope as well can collide with a binding they
+// have never seen.
 //
-// A KEY THE OVERRIDES THEMSELVES VACATE IS NOT TAKEN. If the operator moves the
-// bed off `b` and lookup onto it in the same file, both apply: the collision
-// they would have caused is one they also resolved, and refusing it would be the
-// tool arguing with a decision the operator already made.
+// AN OVERRIDE FOR A CONSOLE-ONLY ACTION IS NEVER WITHHELD. It has no other scope
+// to apply in, so a collision there is one the operator made inside a single
+// surface, and D-15 says that is a build error rather than a silent win. It is
+// passed through for `term.Merge` to refuse.
 //
-// AN OVERRIDE FOR AN ACTION THE CONSOLE DOES NOT HAVE IS LEFT TO `term.Merge`,
-// which drops it with a note (FR-14) — that is a different question and it
+// AN OVERRIDE FOR AN ACTION THE CONSOLE DOES NOT HAVE is passed through too:
+// `term.Merge` drops it with a note (FR-14), which is a different question that
 // already has an answer.
+//
+// IT WITHHOLDS TO A FIXED POINT, and that is the part worth reading. Withholding
+// one override returns its action to the console's own key — which may then
+// collide with an override already granted. Deciding in one pass grants `about`
+// the `l` that `lookup` was about to vacate, then withholds `lookup` so it keeps
+// `l`, and the console ends with `l` twice. So each pass resolves ONE collision
+// and the map is rebuilt from scratch, until a pass finds none.
 func scopedOverrides(base, observer, over term.KeyMap) (term.KeyMap, []string) {
 	if len(over) == 0 {
 		return over, nil
 	}
-	// WHAT THE CONSOLE HOLDS, LESS WHAT THE OVERRIDES MOVE AWAY.
-	taken := map[string]term.Action{}
-	for act, b := range base {
-		if _, rebound := over[act]; rebound {
-			continue // this action's old keys are being vacated
+	withheld := map[term.Action]bool{}
+	var notes []string
+	// Bounded by the overrides: every pass adds one to `withheld`, and an action
+	// is never withheld twice (P10-02).
+	for range len(over) {
+		act, key, held := firstClash(base, over, withheld)
+		if act == "" {
+			break
 		}
-		for _, k := range b.Keys {
-			taken[k] = act
+		if _, shared := observer[act]; !shared {
+			break // console-only: nothing to reconcile, let Merge refuse it
 		}
+		withheld[act] = true
+		notes = append(notes, string(act)+" -> "+key+" ("+string(held)+")")
 	}
-	out, withheld := term.KeyMap{}, []string(nil)
-	for _, act := range sortedActions(over) {
-		b := over[act]
-		if _, console := base[act]; !console {
-			out[act] = b // not the console's action; Merge will note the drop
-			continue
-		}
-		clash := ""
-		for _, k := range b.Keys {
-			if held, ok := taken[k]; ok && held != act {
-				clash = k + " (" + string(held) + ")"
-				break
-			}
-		}
-		if clash != "" {
-			if _, alsoObserver := observer[act]; alsoObserver {
-				withheld = append(withheld, string(act)+" -> "+clash)
-				continue // the override still applies on Observer
-			}
-			// A CONSOLE-ONLY ACTION WITH NOWHERE TO GO is a conflict the operator
-			// created inside one scope, and D-15 says that is a build error
-			// rather than a silent win. Left for `term.Merge` to refuse.
+	out := term.KeyMap{}
+	for act, b := range over {
+		if !withheld[act] {
 			out[act] = b
+		}
+	}
+	return out, notes
+}
+
+// firstClash is the first key two actions would both claim once the overrides
+// are applied, naming the one to withhold and the incumbent it collides with.
+//
+// IT READS THE EFFECTIVE MAP, not the base: an override that has already been
+// withheld leaves its action on the console's own key, and that key is then
+// taken by whoever holds it. Answering from the base instead is what let a
+// vacated key be granted twice.
+//
+// THE CLASH IT REPORTS IS THE OVERRIDDEN ACTION, because that is the one with
+// somewhere else to go. The incumbent keeps what it had.
+func firstClash(base, over term.KeyMap, withheld map[term.Action]bool) (term.Action, string, term.Action) {
+	eff := term.KeyMap{}
+	for act, b := range base {
+		eff[act] = b
+	}
+	for _, act := range sortedActions(over) {
+		if _, console := base[act]; !console || withheld[act] {
 			continue
 		}
-		for _, k := range b.Keys {
-			taken[k] = act
-		}
-		out[act] = b
+		eff[act] = over[act]
 	}
-	return out, withheld
+	owner := map[string]term.Action{}
+	for _, act := range sortedActions(eff) { // deterministic: one answer per run
+		for _, k := range eff[act].Keys {
+			if held, dup := owner[k]; dup {
+				// PREFER TO WITHHOLD THE ONE THAT WAS OVERRIDDEN.
+				if _, ok := over[act]; ok && !withheld[act] {
+					return act, k, held
+				}
+				if _, ok := over[held]; ok && !withheld[held] {
+					return held, k, act
+				}
+				return act, k, held
+			}
+			owner[k] = act
+		}
+	}
+	return "", "", ""
 }
 
 // sortedActions gives `scopedOverrides` a deterministic order, so which entry
@@ -703,10 +732,11 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	// `[keys]` entry could change a single console binding — including `ctrl+b`,
 	// tmux's own prefix.
 	//
-	// AND FIXING THAT BROKE UPGRADES UNTIL THIS. Several actions live in BOTH
-	// scopes — lookup, settings, about, status, help, quit, the gain pair,
-	// diagnostics — so a key free on Observer may already be taken on the
-	// console. `lookup = "b"` was valid in 0.15.0 and `b` is the console's bed,
+	// AND FIXING THAT CAN BREAK AN UPGRADE. FIVE actions live in both scopes —
+	// lookup, about, status, help and quit — so a key free on Observer may
+	// already be taken on the console. Settings, diagnostics and the gain pair
+	// LOOK shared and are not: each surface names its own, so an override for one
+	// does not reach the other. `lookup = "b"` was valid in 0.15.0 and `b` is the console's bed,
 	// so applying it to both scopes made a config the operator did not change
 	// refuse to launch. `term.Merge`'s own doc names that outcome: "losing a
 	// binding is a nuisance; refusing to launch over one is a broken upgrade".
