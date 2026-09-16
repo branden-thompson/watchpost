@@ -1,10 +1,12 @@
 import pathlib
-# The cap counts EVERY card on the track rather than the ones the operator can
-# see, so the Director's structural cards — transitions, station credits — eat
-# the running order's slots. The console then draws fewer reports than the
-# schedule holds, and an insert sheds a card to make room for a transition the
-# operator never asked about.
+# D-149/D-152. The overflow shed counts the RAW TRACK rather than what the
+# operator can SEE, so the Director's own structural cards — not in the running
+# order — count toward the cap and push real cards off the bottom.
+#
+# Re-pointed 2026-09-16 (P10-02): the shed loop gained an explicit bound, so the
+# condition this mutates now sits in the body rather than the loop header.
 p = pathlib.Path("platform/lineup/operator.go"); s = p.read_text()
-old = "	for out.visible(t) > MainTrackCap {"
+old = "\t\tif out.visible(t) <= MainTrackCap {"
+new = "\t\tif len(out.tracks[t]) <= MainTrackCap {"
 assert old in s, "mAY3"
-p.write_text(s.replace(old, "	for len(out.tracks[t]) > MainTrackCap {", 1))
+p.write_text(s.replace(old, new, 1))

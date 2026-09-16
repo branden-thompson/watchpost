@@ -1,16 +1,14 @@
 import pathlib
-# `[r]` stops opening the request window. The control row still DRAWS it, so the
-# console goes on advertising a way in that does nothing — which is how it
-# shipped, and what the HUM LEAD needed bound before they could UAT at all.
+# D-135. `[r]` no longer opens the Line-Up Request window on the console: the
+# guard is never satisfied, so the key falls through to Observer, where `r` is
+# the listener's repeat. The control row draws a chip for a key that does
+# something else entirely.
 #
-# Re-pointed 2026-09-15 (D-135): `r` is a BINDING now, not a bare key case, so
-# the way to kill it is to refuse the action rather than to rename the key. The
-# binding itself stays — mCH4 is the mutant that removes THAT — so this one still
-# measures "the key is drawn and does nothing" and not "the key is undocumented".
+# Re-pointed 2026-09-16 (D-159): the keymap switch moved into `keyAction`.
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
-old = """			case actRequest:
-				if r.consoleOwnsTheKeys() {"""
-new = """			case actRequest:
-				if false {"""
+old = """\tcase actRequest:
+\t\tif r.consoleOwnsTheKeys() {"""
+new = """\tcase actRequest:
+\t\tif false {"""
 assert old in s, "mAZ1"
 p.write_text(s.replace(old, new, 1))

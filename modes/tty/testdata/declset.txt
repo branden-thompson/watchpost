@@ -625,10 +625,13 @@ func (Router).cardWindowKey
 func (Router).consoleOwnsTheKeys
 func (Router).cutBed
 func (Router).dropWindowKey
+func (Router).keyAction
 func (Router).moveWindowKey
 func (Router).openCardWindow
 func (Router).openPointedCard
 func (Router).refreshCardWindow
+func (Router).routeKey
+func (Router).scopedMessage
 func (Router).stationIsLive
 func (Router).stepBed
 func (Router).surface
