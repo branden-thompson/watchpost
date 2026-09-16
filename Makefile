@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
 
 BINARY := watchpost
 DIST   := dist
@@ -258,8 +258,37 @@ cache-clean:
 	@go clean -cache -testcache
 	@echo "cache-clean: build and test caches cleared"
 
-verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring gate-controls alloc-budget dupes wires wires-selftest mutant-anchors mutant-check
+# THE GATES RUN UNDER THE TREE LOCK, and that is a correctness requirement
+# rather than a courtesy. `verify` cleans the build cache and then measures; a
+# `go test` started beside it races that clean and the run reports exit 0 over a
+# cache it no longer owns (HUM LEAD: read the LOG, never the notification). A
+# mutant sweep is worse — it edits, gates, and reverts, so an edit made beside it
+# is reverted with it and lost with no error anywhere.
+#
+# `treelock` REFUSES; IT DOES NOT QUEUE. Two overlapping gate runs are not slow,
+# they are wrong, and a caller that waited would hide that from whoever started
+# the second one.
+verify:
+	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
+
+verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest gate-controls alloc-budget dupes wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
+
+# The lock is a gate like any other: a lock that never locks passes every
+# optimistic test while two sweeps edit one tree. The self-test takes a lock of
+# its OWN — pointed elsewhere by WATCHPOST_TREELOCK_PATH — so it can run here,
+# inside a verify that is already holding the real one.
+treelock-selftest:
+	@go run ./tools/treelock -self-test
+
+# tree-free answers "is it safe to edit right now" in one command.
+#
+# IT EXISTS BECAUSE `pgrep` DOES NOT ANSWER IT. Killing a sweep's parent leaves
+# its `go test` child running under the next edit, and a name-matched search for
+# the parent does not see the child. The lock is held by a PROCESS, so a child
+# outliving its parent still holds it.
+tree-free:
+	@go run ./tools/treelock -check
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
 # detector distorts, so they run in their own non-race step (red-team R2-8); under

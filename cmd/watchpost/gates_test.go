@@ -207,15 +207,67 @@ func makeLines(t *testing.T) []string {
 }
 
 // verifyTargets is the verify recipe's prerequisites, from the Makefile.
+// verifyTargets is every gate `make verify` reaches.
+//
+// IT FOLLOWS THE DELEGATION. `verify` holds the tree lock and hands the gate
+// list to `verify-gates`, so reading `verify:`'s own prerequisites would find a
+// list of one and report every CI gate as unrun. A target whose prerequisites
+// are a single other target IS that target for this test's purposes — and the
+// substitution is bounded to one hop, because a chain is a place for a gate to
+// hide.
 func verifyTargets(t *testing.T) []string {
 	t.Helper()
+	deps, ok := targetDeps(t, "verify")
+	if !ok {
+		t.Fatal("the Makefile has no verify target; this test measures nothing")
+	}
+	if len(deps) == 0 {
+		inner, found := targetDeps(t, delegate(t, "verify"))
+		if !found || len(inner) == 0 {
+			t.Fatal("verify has neither gates nor a target to delegate them to; this test measures nothing")
+		}
+		return sorted(inner)
+	}
+	return sorted(deps)
+}
+
+// targetDeps is one target's prerequisites, and whether it has a rule at all.
+func targetDeps(t *testing.T, name string) ([]string, bool) {
+	t.Helper()
+	if name == "" {
+		return nil, false
+	}
 	for _, line := range makeLines(t) {
-		if after, ok := strings.CutPrefix(line, "verify:"); ok {
-			return sorted(strings.Fields(after))
+		if after, ok := strings.CutPrefix(line, name+":"); ok {
+			return strings.Fields(after), true
 		}
 	}
-	t.Fatal("the Makefile has no verify target; this test measures nothing")
-	return nil
+	return nil, false
+}
+
+// delegate is the target a prerequisite-less rule hands its work to.
+//
+// ONE HOP, AND ONLY FROM A RULE WITH NO PREREQUISITES. A chain of delegations
+// is a place for a gate to hide, and following an arbitrary depth would make
+// this test agree with a Makefile no reader could follow.
+func delegate(t *testing.T, name string) string {
+	t.Helper()
+	re := regexp.MustCompile(`\$\(MAKE\)(?:\s+--[a-z-]+)*\s+([a-z][a-z0-9-]*)`)
+	lines := makeLines(t)
+	for i, line := range lines {
+		if !strings.HasPrefix(line, name+":") {
+			continue
+		}
+		for _, r := range lines[i+1:] { // bounded by the file (P10-02)
+			if !strings.HasPrefix(r, "\t") {
+				return "" // the recipe ended without delegating
+			}
+			if m := re.FindStringSubmatch(r); m != nil {
+				return m[1]
+			}
+		}
+	}
+	return ""
 }
 
 // ciTargets is every `make <target>` ci.yml runs.

@@ -22,6 +22,7 @@ lint
 lint-imports
 lint-watermark
 lint-authoring
+treelock-selftest
 gate-controls
 alloc-budget
 dupes
