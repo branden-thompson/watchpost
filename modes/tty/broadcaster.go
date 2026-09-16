@@ -1047,19 +1047,23 @@ func (b Broadcaster) stationTone() (fg, bg string) {
 	return render.Tok(render.TextBase), render.Tok(render.GroupSectionBG)
 }
 
-// bcAirBoundaries is FR-5.5 in the words the STATION AIR row has space for,
-// longest form first.
+// bcAirBoundaries is FR-5.5 in the words its own line has room for, longest form
+// first.
 //
-// SHORTENED, NOT SOFTENED. The assigned sentence — "audio out of this program;
-// Watchpost does not observe a transmitter" — is the full statement and does not
-// fit beside the state and the gain control at any width this console is used at.
+// A LADDER, BECAUSE ONE WORDING CANNOT SERVE EVERY WIDTH. The rungs are 97, 61
+// and 22 cells and each is taken only if it fits the band ENTIRE. Measured on the
+// real frame: the full sentence renders from 120 columns up, the middle form at
+// 100, and 99 is below the console's floor — where the frame is a refusal rather
+// than a console. So every DRAWABLE width states the boundary.
 //
-// A LADDER, BECAUSE ONE WORDING CANNOT SERVE BOTH ENDS. Measured on the real
-// frame: the row's spare space after the state and the gain control is 51 cells
-// at 160, 35 at 144, and 11 at 120. A single 35-cell sentence renders only at 160
-// and above — which would have left FR-5.5 dead at the console's own reference
-// width, the D-153 defect reimplemented. Caught by measuring rather than by
-// assuming it fit.
+// THE MEASUREMENTS THIS PARAGRAPH ONCE QUOTED WERE THE OTHER PLACEMENT'S (D-160).
+// Ruling C put the boundary beside the state and the gain control, where the
+// spare space is 51 cells at 160 and 35 at 144 — so the shortened sentence
+// rendered only from 160 up, leaving FR-5.5 dead at the console's own reference
+// width: the D-153 defect reimplemented inside its own fix. The HUM LEAD then
+// ruled it a line of its own, which is what removed the constraint the rung
+// lengths were sized against. They are kept because 97 cells still does not fit
+// every width — but not for the reason the old text gave.
 //
 // EVERY RUNG NEGATES THE SAME INFERENCE. The danger is an operator reading a
 // confident ON AIR and concluding their antenna is radiating, so the half that
@@ -1105,7 +1109,7 @@ func (b Broadcaster) stationLine() []string {
 	// closed by sweeping every power state.
 	o := b.opts()
 	g := o.Glyphs()
-	state, why, to := "STOPPED", "the programme is stopped; hazards still read", "ON AIR"
+	state, to := "STOPPED", "ON AIR"
 	switch b.power {
 	case lineup.Running:
 		// BOLD WHITE ON THE SECTION'S RED (HUM LEAD, 2026-09-15): "When
@@ -1123,18 +1127,19 @@ func (b Broadcaster) stationLine() []string {
 		// WEIGHT IS NOT CONTRAST, so this changes no AA answer: the pair is
 		// already in production and is unchanged.
 		state = render.Bold(render.Tint("*** ON AIR "+g.Dot+" BROADCASTING ***", render.Tok(render.AlertModalText)))
-		why = "audio out of this program; Watchpost does not observe a transmitter"
 		to = "STANDBY"
 	case lineup.OffAir:
 		state = "STANDBY (DEAD AIR)"
-		why = "nothing is broadcast, hazards included; the schedule holds what it has not said"
 	}
-	// A NOTICE DISPLACES THE PROSE. The state's own words describe a station at
-	// rest; a refusal describes something the operator JUST DID, and the row
-	// they are looking at has to answer the key they just pressed.
-	if b.statusNote != "" {
-		why = b.statusNote
-	}
+	// A NOTICE IS THE ONLY PROSE THIS ROW HAS LEFT. The per-state sentences that
+	// used to sit beside it were assigned three ways and READ IN NO PATH: the
+	// assignment below overwrote them unconditionally, and the single read is
+	// itself gated on the same condition — so every one of them was a value
+	// computed and never used (P10-07), which is the class removed from four
+	// other functions in this same release. Deleted at D-160.
+	//
+	// A REFUSAL DESCRIBES SOMETHING THE OPERATOR JUST DID, and the row they are
+	// looking at has to answer the key they just pressed. That is what survives.
 	// THE BAND'S TEXT COLUMN: the terminal, less the inset on BOTH sides (D-80).
 	// It read `sectionWidth()` — the width of a region inside the frame's walls,
 	// which this band no longer has since colour became its edge (D-70) — so
@@ -1166,25 +1171,6 @@ func (b Broadcaster) stationLine() []string {
 	// without reading the row are both in the same column (D-71).
 	// THE BED SAYS WHAT IT IS ACTUALLY DOING (F-79). It said INACTIVE
 	// unconditionally, because nothing published the answer.
-	// FR-5.5'S BOUNDARY, ON THE ROW THAT COULD MISLEAD (F-109, HUM LEAD ruling C,
-	// 2026-09-16: "C is fine for now").
-	//
-	// IT WAS ASSIGNED AND NEVER RENDERED (D-153). `why` carried the sentence per
-	// state and the row that drew it is reached only when a `statusNote` exists —
-	// by which point the note has already REPLACED it. So the one sentence FR-5.5
-	// exists for was dead in a variable, while this function's own comment claimed
-	// the boundary is stated "HERE, where they read it — not only in a design
-	// document". Four placements were put to the HUM LEAD; C is this one.
-	//
-	// ONLY WHILE RUNNING, because that is the claim that can mislead. STOPPED and
-	// STANDBY assert nothing about a transmitter, so a boundary there would be
-	// noise on the two rows that are already honest.
-	//
-	// THE ROW'S OWN TOKEN, WITHOUT THE WEIGHT. `stationTone` paints this band
-	// `AlertModalText` on `TickerEmergencyBG` and the state wears both; the
-	// boundary wears the tone and not the bold, so it reads as the qualifier it
-	// is. A dim token would be a NEW pair against the emergency ground, which
-	// `aaPairs` warns about in as many words.
 	rows := []string{
 		// THE GAIN RIDES THE STATE'S OWN ROW, where the reference draws it: how
 		// loud the station is and whether it is on the air are one question asked
@@ -1243,29 +1229,27 @@ func (b Broadcaster) stationLine() []string {
 	// read" explained a state the row above already names, and the reference has
 	// no line for it. A NOTICE STILL GETS ONE, because a refusal answers a key the
 	// operator just pressed and has to be somewhere they are looking.
-	// FR-5.5's BOUNDARY SENTENCE IS ASSIGNED AND NEVER RENDERED (D-153).
+	// FR-5.5's BOUNDARY WAS ASSIGNED AND NEVER RENDERED, AND IT IS NOW BOTH
+	// (D-153 found it, F-109 ruled it, D-160 corrected this paragraph).
 	//
-	// `why` carries a sentence per state, and this row is drawn ONLY when a
-	// `statusNote` exists — in which case the note has already REPLACED `why`
-	// two blocks up. So every per-state sentence here is dead, including the one
-	// FR-5.5 exists for: "audio out of this program; Watchpost does not observe
-	// a transmitter". D-107 removed the standing prose row and took the boundary
-	// with it; the comment on `stationLine` still says the boundary is stated
-	// "HERE, where they read it — not only in a design document", and it is not.
+	// WHAT D-153 FOUND: `why` carried a sentence per state and this row is drawn
+	// ONLY when a `statusNote` exists — by which point the note had already
+	// replaced it. So every per-state sentence was dead, including the one FR-5.5
+	// exists for. D-107 had removed the standing prose row and taken the boundary
+	// with it, while `stationLine`'s own comment still claimed the boundary is
+	// stated "HERE, where they read it — not only in a design document".
 	//
-	// FOUND BY RED TEAM'S SECOND ROUND. The gate cited as this property's
-	// successor asserts something else, so the requirement had no test AND no
-	// implementation, behind a citation that looked like a retirement.
+	// WHAT CHANGED: the HUM LEAD ruled the placement (F-109), the boundary now
+	// renders on a line of its own above, and the dead `why` values were deleted.
+	// The two layout gates this paragraph once cited as reasons NOT to fix it —
+	// `TestTheBedRidesInTheStationSection` and `TestTheStationBandIsEvenlyInset` —
+	// were updated to the ruled shape rather than worked around.
 	//
-	// NOT FIXED HERE, AND DELIBERATELY. Restoring it as a row makes the station
-	// section three rows of text where the HUM LEAD ruled two, and turns the band
-	// from seven content rows into eight — both pinned by tests
-	// (`TestTheBedRidesInTheStationSection`, `TestTheStationBandIsEvenlyInset`).
-	// WHERE a safety sentence goes on a ruled layout is the HUM LEAD's call, not
-	// this function's. Recorded as F-109 with the fork; FR-5.5 is reported OPEN
-	// in the BUILD report rather than closed by a citation.
+	// IT IS KEPT AS HISTORY BECAUSE THE SHAPE RECURS: a requirement can have no
+	// test and no implementation while a citation makes it look retired, and that
+	// is what red team's second round actually found here.
 	if b.statusNote != "" {
-		rows = append(rows, render.TruncateCells(label("")+why, max(0, lane)))
+		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, lane)))
 	}
 	return rows
 }
