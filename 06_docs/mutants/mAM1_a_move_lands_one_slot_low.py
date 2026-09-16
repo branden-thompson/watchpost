@@ -3,7 +3,11 @@ import pathlib
 # at standby the two differ by one — LIVE is empty and the line-up is drawn from
 # UP NEXT down (D-84) — so the card lands one place further down than the operator
 # asked, silently, on the surface's normal state (D-119).
+#
+# Re-pointed 2026-09-16 (D-156): the arithmetic moved into
+# `Broadcaster.indexForSlot`, its ONE owner, when the Line-Up Request window
+# became its third caller. Same rule, same slip, asked of the new owner.
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
-old = """			move(r.observer.cardID, to-r.broadcaster.liveOffset())"""
+old = """			move(r.observer.cardID, r.broadcaster.indexForSlot(to))"""
 assert old in s, "mAM1"
 p.write_text(s.replace(old, """			move(r.observer.cardID, to)""", 1))

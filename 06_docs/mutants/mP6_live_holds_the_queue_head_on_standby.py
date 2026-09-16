@@ -6,7 +6,10 @@ import pathlib
 #
 # HUM LEAD: "LIVE should remain EMPTY … The UP NEXT card … will be the first thing
 # that goes ON AIR when the human operator hits SHIFT+ENTER."
+#
+# Re-pointed 2026-09-16 (D-156): `i -= b.liveOffset()` became
+# `i = b.indexForSlot(i)` when the arithmetic got one owner at its third caller.
 p = pathlib.Path("modes/tty/broadcaster_slots.go"); s = p.read_text()
-old = "\ti -= b.liveOffset()\n"
+old = "\ti = b.indexForSlot(i)\n"
 assert old in s, "mP6"
 p.write_text(s.replace(old, "", 1))
