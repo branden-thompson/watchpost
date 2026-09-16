@@ -41,6 +41,12 @@ func skipDir(base string) bool {
 	switch base {
 	case ".git", "third_party", "mutants", "dist", "node_modules":
 		return true
+	// THIS TOOL'S OWN SOURCE holds the anti-specimens as data — the phrase table
+	// and the self-test's planted comments. A detector that flagged its own
+	// detector would be reporting its correctness as a defect, and the specimens
+	// are exactly what must NOT be edited away.
+	case "authoring":
+		return true
 	}
 	return false
 }

@@ -177,11 +177,9 @@ type Broadcaster struct {
 	// disagree about how loud the station is.
 	gain int
 
-	// THE WINDOW'S OFFSET RETIRED AT D-101, and `selected` replaced it. The queue
-	// used to be scrolled directly and had no notion of a focused row; now the
-	// POINTER is what moves and the window follows it at render time, where the
-	// room is known (scheduledLines). An offset held on the model could not know
-	// how many rows fit, which is exactly how the first attempt scrolled one way
+	// THE POINTER MOVES AND THE WINDOW FOLLOWS IT at render time, where the room
+	// is known (scheduledLines, D-101). An offset held on the MODEL cannot know
+	// how many rows fit, which is why the window is derived rather than stored
 	// and never came back.
 
 	// selected is the focused row, indexed across BOTH tables — the running order
@@ -202,10 +200,10 @@ type Broadcaster struct {
 	// bedRelays is how many relays actually STREAM near the station, and
 	// bedRelaysTold is whether the Producer has answered yet (D-117).
 	//
-	// ITS OWN FACT, ARRIVING ON ITS OWN MESSAGE (D-125). It used to be a field of
-	// `BedMsg` — which has three publishers, of which exactly ONE set it. The
-	// selector's message and the deck's state message both left it at zero, so
-	// either of them silently retracted the resolver's answer and the console
+	// ITS OWN FACT, ARRIVING ON ITS OWN MESSAGE (D-125). Carried on `BedMsg` it
+	// would have three publishers of which exactly ONE sets it, so the selector's
+	// message and the deck's state message would each leave it at zero — silently
+	// retracting the resolver's answer, and the console
 	// disabled a bed that was carrying. D-117 exists so the operator cannot pick
 	// something that broadcasts dead air; that defect told them there was nothing
 	// to pick while a relay was streaming.
@@ -462,10 +460,9 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 	case BedMsg:
 		b.bed = v
 	case BedRelaysMsg:
-		// THE COUNT ARRIVES ON ITS OWN, and that is the whole fix (D-125). It
-		// used to ride on `BedMsg`, which has THREE publishers of which one set
-		// it — so the selector's message and the deck's state message each zeroed
-		// what the resolver had established.
+		// THE COUNT ARRIVES ON ITS OWN (D-125). On `BedMsg` it would have three
+		// publishers of which one sets it, so the selector's message and the
+		// deck's state message would each zero what the resolver established.
 		b.bedRelays, b.bedRelaysTold = v.Count, true
 	case StationMsg:
 		// THE CLOCK STARTS ON THE TRANSITION, not on every message: a station
@@ -774,10 +771,10 @@ func (b Broadcaster) lanes() []string {
 		from = len(sched.lines) + pool.from
 	}
 	out = append(out, b.chromeAt(joinSpans(sched, pool), from, pool.off, pool.total)...)
-	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES. It used to carry walled
-	// blank rows to the bottom of the terminal, which is what the reference does
-	// NOT do — its frame closes under the scroll rail's ▼ and the rest of the
-	// screen is empty. `clamp` still pads the view to the terminal's height, so
+	// AND THE FRAME ENDS WHERE THE RUNNING ORDER DOES, as the reference draws it:
+	// the frame closes under the scroll rail's ▼ and the rest of the screen is
+	// empty, rather than carrying walled blank rows to the bottom of the
+	// terminal. `clamp` still pads the view to the terminal's height, so
 	// D-63's rule holds: the frame is the viewport, and `render.Overlay` still
 	// composites against a full-height base.
 	return append(out, b.inset()...)
@@ -795,8 +792,8 @@ func (b Broadcaster) lanes() []string {
 func (b Broadcaster) scrollQueue(by int) Broadcaster {
 	// THE ARROWS MOVE THE POINTER AND THE WINDOW FOLLOWS (D-101), which is what
 	// the reference's own footer says they do — "[↑↓] Navigate" — and what
-	// Observer does. They used to move the WINDOW and nothing else, so the
-	// operator could scroll a list they had no position in.
+	// Observer does. Moving the WINDOW alone would let the operator scroll a list
+	// they have no position in.
 	n := b.rowCount()
 	if n == 0 {
 		return b
@@ -943,8 +940,7 @@ const bcAlertChrome = 6
 // THE HAZARD'S TIMES RETIRED WITH THE PROSE (D-103). `burstWhen` drew
 // "<LOCATION> • 09/12 16:02 - 09/12 18:00" on every alert line; the reference's
 // table has three columns and none of them is a span. The times are still on the
-// arrival and still reachable through the card — recorded here because the box
-// stopped saying something it used to say, which is a change and not a tidy-up.
+// arrival and still reachable through the card.
 
 // AND `priorityColumn` RETIRED WITH THE OVERLAY (D-97). It drew the takeover as a
 // column of its own, as tall as the burst; the v3 pair draws it beside UP NEXT at
@@ -1131,15 +1127,10 @@ func (b Broadcaster) stationLine() []string {
 	case lineup.OffAir:
 		state = "STANDBY (DEAD AIR)"
 	}
-	// A NOTICE IS THE ONLY PROSE THIS ROW HAS LEFT. The per-state sentences that
-	// used to sit beside it were assigned three ways and READ IN NO PATH: the
-	// assignment below overwrote them unconditionally, and the single read is
-	// itself gated on the same condition — so every one of them was a value
-	// computed and never used (P10-07), which is the class removed from four
-	// other functions in this same release. Deleted at D-160.
-	//
-	// A REFUSAL DESCRIBES SOMETHING THE OPERATOR JUST DID, and the row they are
-	// looking at has to answer the key they just pressed. That is what survives.
+	// A NOTICE IS THE ONLY PROSE THIS ROW CARRIES. A refusal describes something
+	// the operator JUST DID, and the row they are looking at has to answer the key
+	// they just pressed; a sentence describing the state instead says what the row
+	// above it already names.
 	// THE BAND'S TEXT COLUMN: the terminal, less the inset on BOTH sides (D-80).
 	// It read `sectionWidth()` — the width of a region inside the frame's walls,
 	// which this band no longer has since colour became its edge (D-70) — so
@@ -1522,10 +1513,9 @@ func (l cardLane) render(c lineup.Card, handle, badge string) string {
 // boxOf is a card as a BOX: the borders name it, and the body is whatever the
 // caller puts inside (D-110).
 //
-// THE TITLE ROW RETIRED WITH D-110. A card used to open with a row carrying its
-// headline, its badge and its handle's chip; the reference puts the headline and
-// the badge in the RULE and the handle at the BOTTOM beside the presenter — so
-// the row was saying three things the frame and the footer now say, and costing
+// THERE IS NO TITLE ROW (D-110). The reference puts the headline and the badge in
+// the RULE and the handle at the BOTTOM beside the presenter, so a row carrying
+// all three would say what the frame and the footer say, and cost
 // the manifest a line to do it.
 //
 // ONE DRAWER FOR BOTH, because everything except the interior is the same card.
@@ -1614,10 +1604,9 @@ func cardTitle(c lineup.Card, g render.Glyphs) string {
 // cardRuleTitle is what a box's rule NAMES: the card, with a fabricated event
 // saying so before anything else (D-110).
 //
-// THE MARK MOVED HERE WITH THE TITLE. A fabricated takeover used to be marked on
-// the card's title ROW — its own non-truncatable column, so the headline could
-// never eat it — and D-110 put the title in the rule. Without this the mark would
-// simply have stopped being drawn, which is the screenshot hazard FR-4.4 exists
+// THE MARK IS IN THE RULE, WITH THE TITLE (D-110), and it is non-truncatable so
+// the headline can never eat it. Drawn anywhere the title is not, the mark would
+// simply be absent, which is the screenshot hazard FR-4.4 exists
 // to prevent: a test event that looks exactly like a real one.
 //
 // FIRST, AND BEFORE THE HEADLINE CAN GIVE WAY. `boxRule` drops the whole title
@@ -1652,9 +1641,8 @@ func cardBoxTitle(c lineup.Card, g render.Glyphs) string {
 		}
 		return bcTakeoverTitle
 	}
-	// EVERY OTHER CARD NAMES ITSELF (D-110). The rule used to say nothing for
-	// anything but a takeover, because the card had a title ROW; the reference
-	// puts `LOCATION REPORT • Oceanside, CA 92057` in the border.
+	// EVERY OTHER CARD NAMES ITSELF IN THE RULE (D-110): the reference puts
+	// `LOCATION REPORT • Oceanside, CA 92057` in the border.
 	return cardRuleTitle(c, g)
 }
 
@@ -1685,7 +1673,7 @@ func boxRule(mark, title, badge string, inner int) string {
 	// AND THE BADGE RIDES THE SAME RULE, at the right (D-110). The reference
 	// draws both boxes that way — `┏━━ LOCATION REPORT • Oceanside, CA 92057 ━━━
 	// • STANDARD • ━━━┓` — so what the card IS and how it is GRADED are read off
-	// the frame, and the row they used to occupy goes to the manifest.
+	// the frame, and the manifest has the row instead.
 	//
 	// IT GIVES WAY FIRST, because the title says WHICH card and the badge only
 	// says what kind: a box too narrow for both keeps the one that identifies it.
