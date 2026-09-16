@@ -607,8 +607,13 @@ func (b Broadcaster) clamp(lines []string) string {
 	// `render.Overlay` centres vertically on the BASE's height, so a ten-line
 	// frame in a seventy-four-line terminal pinned every window to the top rail
 	// (UAT, 2026-09-10). The frame is the viewport, and it has to say so.
-	for b.height > 0 && len(lines) < b.height {
-		lines = append(lines, "")
+	// THE BOUND IS IN THE SHAPE (P10-02). The frame pads to the viewport's
+	// height, and that count is knowable before the loop rather than re-asked
+	// on every pass.
+	if b.height > 0 {
+		for range max(0, b.height-len(lines)) {
+			lines = append(lines, "")
+		}
 	}
 	// AND CUT TO IT, WHICH THE WIDTH SIDE HAS ALWAYS DONE (D-102). The rule below
 	// is already stated — "the frame IS the viewport, in both dimensions" — and
@@ -1053,10 +1058,16 @@ func (b Broadcaster) stationTone() (fg, bg string) {
 // will clear it. That inverts FR-5.5: the boundary is not a setup step they have
 // missed, it is a permanent property of the product. "unverified" is true of
 // every station, configured or not.
-var bcAirBoundaries = []string{
-	"ON AIR means audio is leaving this program; Watchpost cannot verify a transmitter is carrying it.",
-	"Watchpost cannot verify a transmitter is carrying this audio.",
-	"transmitter unverified",
+// A FUNCTION RATHER THAN A PACKAGE VARIABLE (P10-06), which is the convention
+// `report.all` already states for the same reason: an immutable table with no
+// run-time writer, and Go has no const slice. A package-level var here would be
+// a rung of a SAFETY sentence that anything in the package could reassign.
+func bcAirBoundaries() []string {
+	return []string{
+		"ON AIR means audio is leaving this program; Watchpost cannot verify a transmitter is carrying it.",
+		"Watchpost cannot verify a transmitter is carrying this audio.",
+		"transmitter unverified",
+	}
 }
 
 // stationLine is the station's state, Variant C (D-21): a labelled field with
@@ -1199,7 +1210,7 @@ func (b Broadcaster) stationLine() []string {
 		// opposite of the sentence it came from. Each rung is taken only if it
 		// fits ENTIRE, longest first, and the shortest fits any width this
 		// console draws at.
-		for _, words := range bcAirBoundaries { // bounded by the ladder (P10-02)
+		for _, words := range bcAirBoundaries() { // bounded by the ladder (P10-02)
 			if render.Width(words) <= lane {
 				rows = append(rows, render.PadTo(render.Tint(words, render.Tok(render.AlertModalText)), lane))
 				break

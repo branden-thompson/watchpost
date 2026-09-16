@@ -685,6 +685,7 @@ func anyFocused
 func apiSummaryOf
 func applyIfChanged
 func armShimmer
+func bcAirBoundaries
 func bcRailLabel
 func blockHeight
 func boxRule
@@ -1000,6 +1001,5 @@ type tonedRow
 type uiSavedMsg
 type vizTickMsg
 var _
-var bcAirBoundaries
 var bcRailForms
 var heldEscalation

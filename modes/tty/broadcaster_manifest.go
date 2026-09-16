@@ -191,7 +191,11 @@ func (b Broadcaster) manifestRows(c lineup.Card, room int) []string {
 		}
 		rows = append(rows, bcCardInset+manifestRow(pad2(i+1), m.Name, m.Detail, room))
 	}
-	for len(rows) < bcReadLines { // bounded by the card's height (P10-02)
+	// THE BOUND IS IN THE SHAPE, NOT IN A COMMENT (P10-02). It carried the
+	// sentence "bounded by the card's height" and was still a condition-only
+	// loop, which is what the rule is actually about: a bound the reader has to
+	// derive is a bound the next edit can remove without noticing.
+	for range max(0, bcReadLines-len(rows)) {
 		rows = append(rows, "")
 	}
 	return rows

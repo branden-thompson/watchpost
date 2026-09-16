@@ -307,7 +307,15 @@ func (l Lineup) Insert(t Track, c Card, to int) (Lineup, error) {
 	// AND THE OVERFLOW FALLS OFF THE BOTTOM, one card for the one that came in.
 	// Counted over what the operator can SEE: the Director's structural cards are
 	// not in the running order and must not be pushed out of it.
-	for out.visible(t) > MainTrackCap {
+	// THE BOUND IS IN THE SHAPE (P10-02). Each pass sheds exactly one visible
+	// card, so the count of them is the ceiling — and stating it here rather than
+	// leaving it to be derived is the difference the rule is about: a loop that
+	// is bounded in FACT and not in SHAPE stays correct only while the body keeps
+	// shedding, and nothing says so.
+	for range out.visible(t) {
+		if out.visible(t) <= MainTrackCap {
+			break
+		}
 		last, ok := out.lastVisible(t)
 		if !ok {
 			break // nothing left to shed; the cap is smaller than the structure

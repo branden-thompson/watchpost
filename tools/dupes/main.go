@@ -128,10 +128,16 @@ func main() {
 // fingerprintBody reduces a body to its token STRUCTURE: every identifier and
 // literal becomes a placeholder, so a renamed copy fingerprints the same as its
 // original. Comments are already excluded — the scanner does not emit them.
-// IT TOOK A `*token.FileSet` AND NEVER READ IT (P10-07). Positions are not part
-// of a structural fingerprint — that is the whole point of one — so the file set
-// was carried through only because its neighbours take it.
-func fingerprintBody(src []byte, body *ast.BlockStmt) (string, int) {
+// IT TOOK A `*token.FileSet` AND THE SOURCE BYTES AND READ NEITHER (P10-07).
+// Positions are not part of a structural fingerprint and neither is the original
+// text — that is the whole point of one: it walks the AST and writes a
+// placeholder per node. Both were carried through because the functions around
+// this one take them.
+//
+// THE SECOND WAS HIDDEN BY THE FIRST. Removing `fset` is what made `src` visible
+// to the same check, which is the argument for fixing these rather than
+// exempting them: one dead parameter conceals the next.
+func fingerprintBody(body *ast.BlockStmt) (string, int) {
 	var b strings.Builder
 	n := 0
 	ast.Inspect(body, func(node ast.Node) bool {
@@ -199,7 +205,7 @@ func scan(root string, min int, withTests bool) ([]group, error) {
 			if !ok || fn.Body == nil {
 				continue
 			}
-			fp, n := fingerprintBody(src, fn.Body)
+			fp, n := fingerprintBody(fn.Body)
 			if n < min {
 				continue
 			}

@@ -65,7 +65,7 @@ func TestTheOnAirBoundaryIsStatedAtEveryDrawableWidth(t *testing.T) {
 		got := stripANSITest(b.View().Content)
 
 		var said string
-		for _, words := range bcAirBoundaries {
+		for _, words := range bcAirBoundaries() {
 			if strings.Contains(got, words) {
 				said = words
 				break
@@ -102,7 +102,7 @@ func TestTheBoundaryIsAbsentWhenTheStationIsNotOnAir(t *testing.T) {
 		b.width = 150
 		b, _ = b.Update(StationMsg{Power: power})
 		got := stripANSITest(b.View().Content)
-		for _, words := range bcAirBoundaries {
+		for _, words := range bcAirBoundaries() {
 			if strings.Contains(got, words) {
 				t.Errorf("power %v: the console states an ON AIR boundary while it is not on the air: %q", power, words)
 			}
@@ -117,10 +117,10 @@ func TestTheBoundaryIsAbsentWhenTheStationIsNotOnAir(t *testing.T) {
 // whole safety content, and a rung without it reads as reassurance while
 // claiming to be the boundary.
 func TestEveryBoundaryRungStillDeniesTheTransmitter(t *testing.T) {
-	if len(bcAirBoundaries) == 0 {
+	if len(bcAirBoundaries()) == 0 {
 		t.Fatal("the ladder is empty; FR-5.5 has no words at any width")
 	}
-	for _, words := range bcAirBoundaries {
+	for _, words := range bcAirBoundaries() {
 		if !strings.Contains(words, "transmitter") {
 			t.Errorf("rung %q does not mention the transmitter — the inference it exists to deny "+
 				"is that the operator's antenna is radiating", words)
@@ -140,7 +140,7 @@ func TestTheOnAirBoundaryFallsAwayRatherThanBeingCut(t *testing.T) {
 		b, _ = b.Update(StationMsg{Power: lineup.Running})
 		got := stripANSITest(b.View().Content)
 		whole := false
-		for _, words := range bcAirBoundaries {
+		for _, words := range bcAirBoundaries() {
 			if strings.Contains(got, words) {
 				whole = true
 				break
@@ -153,7 +153,7 @@ func TestTheOnAirBoundaryFallsAwayRatherThanBeingCut(t *testing.T) {
 		// AND NO LONGER RUNG APPEARS HALF-SAID. A rung that fits is taken entire;
 		// a longer one that does not fit must be absent, never truncated to a
 		// prefix that reads as a complete thought.
-		for _, words := range bcAirBoundaries {
+		for _, words := range bcAirBoundaries() {
 			if strings.Contains(got, words) {
 				break // this is the rung in force; longer ones were tested above it
 			}

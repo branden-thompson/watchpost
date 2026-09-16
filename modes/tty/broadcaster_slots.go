@@ -177,7 +177,8 @@ func (b Broadcaster) readBody(o render.Opts, lane cardLane, c lineup.Card, handl
 		bcCardInset + manifestHeading(room),
 	}
 	rows = append(rows, b.manifestRows(c, room)...)
-	for len(rows) < bcReadCardRows-1 { // bounded by the card's height (P10-02)
+	// THE BOUND IS IN THE SHAPE (P10-02), as on the manifest's own padding.
+	for range max(0, bcReadCardRows-1-len(rows)) {
 		rows = append(rows, "")
 	}
 	return append(rows, b.cardControls(o, handle))
