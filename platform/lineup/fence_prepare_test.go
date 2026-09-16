@@ -3,11 +3,10 @@ package lineup
 // fence_prepare_test.go — an out-of-fence card must not block the rail at
 // PREPARATION, the way it already cannot block it at the air.
 //
-// FOUND BY RED TEAM AT BUILD EXIT, 0.16.0 (2026-09-15), reproduced through this
-// release's own headline journey: Observer queues alerts under a wide fence,
-// the operator swaps to Broadcaster, and `refence` narrows to the station's
-// own radius. The far card was already STANDBY, so it stayed STANDBY — and
-// `toPrepare` stops at any report standing by.
+// THE JOURNEY THAT REACHES IT is this release's own headline one: Observer queues
+// alerts under a wide fence, the operator swaps to Broadcaster, and `refence`
+// narrows to the station's own radius. A far card already at STANDBY stays
+// STANDBY — and `toPrepare` stops at any report standing by.
 //
 // `Next` HAS CARRIED THE SKIP SINCE D-75 AND SAYS WHY IN AS MANY WORDS:
 // "refusing it there would let it block every admissible card behind it, and a

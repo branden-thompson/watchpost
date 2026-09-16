@@ -42,10 +42,9 @@ func bedDirector(t *testing.T, dwell time.Duration) Director {
 // A LIVE RELAY HOLDS THE BED FOR ITS DWELL AND THEN THE NEXT ONE TAKES IT
 // (T3.2b, UAT 93's rule, moved off a timer).
 //
-// Stated as a schedule rather than observed with a clock: the dwell used to be a
-// time.AfterFunc inside the radio deck, so the only way to see it was to wait
-// five real minutes. Here it is a pure function of the bed, the settings and
-// now.
+// Stated as a schedule rather than observed with a clock. As a time.AfterFunc
+// inside the radio deck the dwell can only be seen by waiting five real minutes;
+// here it is a pure function of the bed, the settings and now.
 func TestALiveRelayAdvancesWhenItsDwellElapses(t *testing.T) {
 	d := bedDirector(t, 5*time.Minute)
 

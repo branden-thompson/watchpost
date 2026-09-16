@@ -289,9 +289,8 @@ func (d Director) refreshStandby() (Director, []Effect) {
 	// anything at all. On the safety path the cost of being early is a report
 	// whose words are a few minutes older, and the cost of being clever is a
 	// hazard that waits.
-	// WHAT THE RAIL CAN READ, NOT WHAT IT HOLDS (D-150) — the FOURTH call site
-	// of the rule D-139 taught to `toPrepare` and `givingWay`, and the one that
-	// remediation stopped short of. Found by red team's second round.
+	// WHAT THE RAIL CAN READ, NOT WHAT IT HOLDS (D-150) — the same rule D-139
+	// carries in `toPrepare` and `givingWay`, at the call site easiest to miss.
 	//
 	// THE INTERACTION IS WHY IT MATTERS MORE THAN A MISSED SITE. Since D-139 an
 	// out-of-fence rail card is IMMORTAL AND INVISIBLE: `Next` skips it,

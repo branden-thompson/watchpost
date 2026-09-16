@@ -30,7 +30,7 @@ func WrapSegments(segs []string, width int, sep string) []string {
 	if cur != "" {
 		lines = append(lines, cur)
 	}
-	return lines // one entry per row (Q6, L3-F13: callers used to re-split on "\n")
+	return lines // one entry per row, so no caller re-splits on "\n" (Q6, L3-F13)
 }
 
 // Thousands groups a whole number ("12,915") — the one owner of the

@@ -26,12 +26,12 @@ package lineup
 // additional transition or inter-card cards is low cost, and doesn't require a
 // complete rewiring of the line-up flow and logic."
 //
-// AN EARLIER VERSION FIRED ON `Origin == FromOperator` AND WAS WRONG. D-43's
-// bookended operator card was "an example to show the function of the DIRECTOR
-// understanding how a card fits into the line-up" — not a rule — and as a rule
-// it fired location-to-location, which MVS-D-80 forbids and S-5 independently
-// calls "jarring to a listening audience". It was written without reading F-27,
-// which is the failure 00-REQUIRED-READING.md exists for.
+// IT DOES NOT FIRE ON `Origin == FromOperator`. D-43's bookended operator card is
+// "an example to show the function of the DIRECTOR understanding how a card fits
+// into the line-up" — not a rule — and as a rule it fires location-to-location,
+// which MVS-D-80 forbids and S-5 independently calls "jarring to a listening
+// audience". Reading F-27 is what settles it, and that is the reading
+// 00-REQUIRED-READING.md exists to make unavoidable.
 //
 // THE WORDS ARE NOT THE DIRECTOR'S. It owns ARRANGEMENT; the script library owns
 // CONTENT, and that is the S-7 boundary T-3 draws. The station hands the lines in

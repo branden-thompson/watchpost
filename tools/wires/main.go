@@ -380,10 +380,9 @@ func countUses(fset *token.FileSet, files []*ast.File, decls map[string]*member)
 	for _, f := range files { // bounded by the package (P10-02)
 		ast.Inspect(f, func(n ast.Node) bool {
 			// ast.Inspect CALLS BACK WITH NIL on the way up, and the split
-			// below dereferences the node to position it — so what used to be
-			// a type switch that quietly matched nothing became a panic. The
-			// self-test found it on the first run, which is the argument for
-			// having one.
+			// below dereferences the node to position it — so a type switch
+			// that would quietly match nothing here panics instead. The
+			// self-test is what catches it.
 			if n == nil {
 				return false
 			}

@@ -37,9 +37,9 @@ func TestTheMemoNeverHoldsMoreThanItsCap(t *testing.T) {
 
 // AND AN EVICTION WITH NOTHING TO EVICT DOES NOT DELETE THE ZERO KEY.
 //
-// With an empty map the walk found no victim and `delete` ran on the zero value
-// of K — a silent no-op, so an empty memo would "evict" for ever and the caller's
-// bound would never be reached. Found by red team round 3.
+// With an empty map the walk finds no victim, and `delete` on the zero value of K
+// is a silent no-op — so an empty memo would "evict" for ever and the caller's
+// bound would never be reached.
 func TestAnEmptyMemoHasNothingToEvict(t *testing.T) {
 	m := New[string, string](1)
 	m.evictLocked() // the caller would hold mu; nothing is running concurrently here

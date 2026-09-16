@@ -170,9 +170,9 @@ func (d Director) silenceTheProgramme() (Director, []Effect) {
 	if d.power == Running {
 		return d, nil
 	}
-	// THE MAIN TRACK'S OWN AIR (D-82). This used to ask which card was reading
-	// and then check it was not the rail's; the lane is the question, so it is
-	// now the argument. The ALERT is left alone either way — whether a hazard is
+	// THE MAIN TRACK'S OWN AIR (D-82). The LANE is the question, so it is the
+	// argument — asking which card is reading and then checking it is not the
+	// rail's asks it twice. The ALERT is left alone either way — whether a hazard is
 	// on the air is the takeover's to say, and it pairs its own release.
 	card, live := d.lineup.OnAir(MainTrack)
 	if !live {

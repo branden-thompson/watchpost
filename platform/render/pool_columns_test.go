@@ -20,10 +20,9 @@ func poolAt(t *testing.T, w int) []string {
 // WX STN GOES FIRST (HUM LEAD, UAT 2026-09-12: "WX STN should be the first col to
 // get hidden if something doesnt fit").
 //
-// IT USED TO BE ZIP, and the difference is what the operator is doing: the pool's
-// job is deciding whether a place is worth scheduling, and which observing
-// station reported it is the least of what that takes. A postcode identifies the
-// place.
+// NOT ZIP, and the difference is what the operator is doing: the pool's job is
+// deciding whether a place is worth scheduling, and which observing station
+// reported it is the least of what that takes. A postcode identifies the place.
 func TestThePoolGivesUpWxStnBeforeZip(t *testing.T) {
 	got := strings.Join(poolAt(t, 143), "\n")
 	if strings.Contains(got, "WX STN") {

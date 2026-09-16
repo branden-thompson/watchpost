@@ -58,12 +58,13 @@ func (o Opts) StatusTable(cols []StatusColumn, rows []StatusRow, inner int, head
 	// inputs — an empty row for the header, the row's own cells for a row — and
 	// come out a cell apart; the window needs a rectangle, so this is where it
 	// becomes one, padded up and clamped down by OUR measure.
-	// TruncateCells, WHICH NOW MEASURES WHAT `Width` MEASURES. This used to reach
-	// for `splitCells` because "TruncateCells counts an escape sequence's bytes
-	// as content and will cut through the middle of one" — true when it was
-	// written, and worked around HERE instead of fixed THERE. The console's
-	// masthead then hit the same bug through the same function and lost half its
-	// content (HUM LEAD, UAT 2026-09-10). A known-wrong shared function with a
+	// TruncateCells, WHICH MEASURES WHAT `Width` MEASURES. Reaching for
+	// `splitCells` instead — because "TruncateCells counts an escape sequence's
+	// bytes as content and will cut through the middle of one" — works the defect
+	// around HERE rather than fixing it THERE, and leaves every other caller on
+	// it: the console's masthead hits the same bug through the same function and
+	// loses half its content (HUM LEAD, UAT 2026-09-10). A known-wrong shared
+	// function with a
 	// local detour around it is the shape "one canonical way" exists to stop.
 	fit := func(line string) string { return PadTo(TruncateCells(line, inner), inner) }
 	out := []string{fit(dt.RenderHeader())}

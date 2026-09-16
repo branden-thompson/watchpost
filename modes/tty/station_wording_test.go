@@ -2,9 +2,9 @@ package tty
 
 // station_wording_test.go — the two sentences FR-5.3 and FR-5.5 are about.
 //
-// FOUND BY RED TEAM (round 2) AT BUILD EXIT, 0.16.0.  `gates.md`'s roster
-// reconciliation named successors for two retired gates that do NOT carry their
-// property:
+// A SUCCESSOR HAS TO CARRY THE PROPERTY, not merely the subject.  `gates.md`'s
+// roster reconciliation names one for each of two retired gates, and neither
+// substitute holds what its predecessor held:
 //
 //   - `TestTheOnAirBoundaryIsStatedToTheOperator` (FR-5.5) asserted the frame
 //     contains the boundary sentence.  Its claimed successor asserts only

@@ -82,9 +82,9 @@ func TestASecondNeedForTheSameLocationDoesNotQueueTwice(t *testing.T) {
 
 // A STOPPED STATION PLANS, AND DOES NOT PERFORM (D-84, HUM LEAD 2026-09-11).
 //
-// THIS TEST USED TO ASSERT THE OPPOSITE — "a stopped station is not building a
-// programme; got %d cards" — under DR-3's "admission is a promise to read". The
-// ruling overturned it: "being able to see, manage, and change the line up PRIOR
+// THE OPPOSITE READING — "a stopped station is not building a programme" — comes
+// from DR-3's "admission is a promise to read", and the ruling overturns it:
+// "being able to see, manage, and change the line up PRIOR
 // to going on air is a fundamental requirement — otherwise the user might as
 // well just use Observer."
 //

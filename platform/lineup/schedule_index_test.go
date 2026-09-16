@@ -3,12 +3,12 @@ package lineup
 // schedule_index_test.go — a position past the end of a SHORT running order is
 // the end, not a refusal.
 //
-// FOUND BY RED TEAM (round 2) AT BUILD EXIT, 0.16.0.  The Line-Up Request
-// window defaults to slot 15 — the HUM LEAD's own ruling, "default to the bottom
-// - position 15" — and `scheduleIndex` accepted a position only when it named a
-// VISIBLE card or fell exactly at the end.  With a three-card running order, the
-// normal case, `to=15` was refused: `Insert`'s invariant failed, `onRequested`
-// returned no effects, nothing was queued — and `requestSchedule` had ALREADY
+// THE REQUEST WINDOW DEFAULTS TO SLOT 15 — the HUM LEAD's own ruling, "default to
+// the bottom - position 15" — so `scheduleIndex` cannot accept a position only
+// when it names a VISIBLE card or falls exactly at the end.  With a three-card
+// running order, the normal case, `to=15` is then refused: `Insert`'s invariant
+// fails, `onRequested` returns no effects, nothing is queued — and
+// `requestSchedule` has ALREADY
 // closed the window on `valid()`.
 //
 // THE OPERATOR WAS SHOWN A SCHEDULED REQUEST THAT WAS NEVER TAKEN, which is

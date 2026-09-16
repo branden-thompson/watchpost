@@ -566,12 +566,12 @@ func onTheRail(t *testing.T, d Director, cards ...Card) Director {
 // moment they are proposed (DR-7): the divert notice's count is decided when
 // the burst is planned, so there is nothing to build for them.
 //
-// prepareNext used to REFUSE such a card — its invariant said a card waiting to
-// be built has no words yet — so the card never left ADMITTED. Next offers a
-// card at ADMITTED or STANDBY, and only a STANDBY card can take the air: the
-// card sat at the head of the queue for ever and EVERY CARD BEHIND IT WENT
+// prepareNext MUST NOT REFUSE such a card on an invariant that a card waiting to
+// be built has no words yet: refused, it never leaves ADMITTED. Next offers a
+// card at ADMITTED or STANDBY, and only a STANDBY card can take the air, so the
+// card sits at the head of the queue for ever and EVERY CARD BEHIND IT GOES
 // UNREAD. That is DR-3's guarantee failing from the other side, and no fixture
-// could see it, because the planner proposes only breaking alerts today.
+// can see it, because the planner proposes only breaking alerts today.
 func TestACardThatArrivesWithItsWordsTakesTheAirAndIsNeverBuilt(t *testing.T) {
 	d := New(Settings{Max: 10}, planNow)
 	d = onTheRail(t, d,

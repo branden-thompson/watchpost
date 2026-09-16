@@ -125,10 +125,10 @@ func TestAnOfferQueuesNothingWhenTheTrackIsAlreadyDeepEnough(t *testing.T) {
 
 // THE LINE-UP IS PLANNED BEFORE IT IS BROADCAST (D-84, HUM LEAD 2026-09-11).
 //
-// THE INVERSE OF WHAT THIS USED TO ASSERT. It pinned "a stopped programme admits
-// nothing" under DR-3's "admission is a promise to read" — which left the
-// operator with ten empty slots and nothing to inspect, reorder or drop until
-// after they had gone on the air. The ruling: "When the user enters Broadcaster
+// THE INVERSE OF DR-3 READ LITERALLY. "A stopped programme admits nothing"
+// follows from "admission is a promise to read", and it leaves the operator with
+// ten empty slots and nothing to inspect, reorder or drop until after they have
+// gone on the air. The ruling: "When the user enters Broadcaster
 // Mode, the station is in STANDBY … At this point Producers should be grabbing
 // locations from the pool, and proposing reports to the Director … The director
 // should be choosing and populating the line-up."

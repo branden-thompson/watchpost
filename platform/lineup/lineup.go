@@ -207,9 +207,9 @@ func (l Lineup) toPrepare() (Card, Track, bool) {
 			// it is wasted — and letting it STOP THE WALK as a report standing
 			// by is a permanent stall: nothing behind it is ever built, so
 			// nothing behind it can ever be aired, and `dropStale` is only
-			// reachable through the air. Found by red team at BUILD exit,
-			// reproduced through this release's own headline journey (Observer
-			// queues under a wide fence, ctrl+b re-fences to the station's).
+			// reachable through the air. The journey that reaches it is this
+			// release's own headline one: Observer queues under a wide fence,
+			// ctrl+b re-fences to the station's.
 			if c.OutOfFence {
 				continue
 			}

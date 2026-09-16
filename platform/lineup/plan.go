@@ -266,13 +266,12 @@ type Burst struct {
 	// Takeover is the ONE card the schedule holds for this burst (MVS-D-77), and
 	// its Refs are the SELECTION: the alerts it reads, in read order.
 	//
-	// THERE IS ONE ORDERING, AND IT IS THIS ONE (red team 2026-09-05). A
-	// `Cards []Card` used to sit beside it, derived from the same selection by a
-	// second walk, and every rule about the order — the ladder, emergency orders
-	// leading, the fence, freshness, ties, the divert count — was asserted
-	// against THAT. Production read only the takeover. Renaming the field and
-	// building the tree proved it had no production consumer at all, so
-	// takeoverOf could have dropped, reordered or truncated its refs with all
+	// THERE IS ONE ORDERING, AND IT IS THIS ONE. A `Cards []Card` beside it,
+	// derived from the same selection by a second walk, is a second ordering for
+	// every rule about the order — the ladder, emergency orders leading, the
+	// fence, freshness, ties, the divert count — to be asserted against, while
+	// production reads only the takeover. With no production consumer,
+	// takeoverOf could drop, reorder or truncate its refs with all
 	// forty pins still green. The pins are on this now.
 	Takeover Card
 

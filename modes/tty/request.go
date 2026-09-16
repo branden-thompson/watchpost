@@ -303,8 +303,8 @@ func (st requestState) blocker() string {
 		return "Try again"
 	// NOT SETTLED IS NOT FOUND, and both mean the same thing to an operator:
 	// this window cannot act on what is in the Location field yet. The check
-	// reaches `locate` because that is where the answer is — the `ref` this
-	// used to read was never written.
+	// reaches `locate` because that is where the answer is; the `requestState`
+	// has no separate `ref` for it to read.
 	case !st.locate.settled() || !st.locate.found:
 		return "Choose a location"
 	case !st.locate.within:

@@ -2,11 +2,10 @@ package tty
 
 // router_typing_test.go — an open text field owns every printable key.
 //
-// FOUND BY RED TEAM (round 2) AT BUILD EXIT, 0.16.0.  The swap keys are bound to
-// capital `B` and `O` as well as ctrl+b / ctrl+o, and the Router's keymap switch
-// returned UNCONDITIONALLY — above the "a window on top owns the keys" check.
-// So typing a place name into either new location field lost those letters, and
-// `O` SWAPPED THE SURFACE MID-WORD:
+// THE SWAP KEYS ARE BOUND TO CAPITAL `B` AND `O` as well as ctrl+b / ctrl+o, so
+// a Router keymap switch that returns UNCONDITIONALLY — above the "a window on
+// top owns the keys" check — loses those letters out of either new location
+// field, and `O` SWAPS THE SURFACE MID-WORD:
 //
 //	typed "Oceanside" -> box "ceanside"  active=Observer
 //	typed "Bonsall"   -> box "onsall"

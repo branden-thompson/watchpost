@@ -41,9 +41,9 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 	// line under it, where the other groups keep theirs.
 	head := "  " + mark + settingLabel("Default location: ", st.focus == rowLocation)
 	// THE APPLICATION'S DEFAULT IS SHOWN, AND SAID TO BE ONE (T4.2, R-4). With
-	// no watchlist and nothing chosen, the row used to read "Default location: "
-	// and then nothing at all, which tells a listener neither what the station
-	// would reason from nor that it is waiting on them. Bonsall is named, and
+	// no watchlist and nothing chosen, a bare "Default location: " and then
+	// nothing at all tells a listener neither what the station would reason from
+	// nor that it is waiting on them. Bonsall is named, and
 	// LABELLED as the application's rather than theirs — "shown in Settings as
 	// the Default, never used silently".
 	switch cur := d.currentDefault(); {

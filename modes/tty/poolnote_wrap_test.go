@@ -4,11 +4,11 @@ package tty
 // END, in every window that draws it.
 //
 // HUM LEAD, UAT 2026-09-14 (second report, with a screenshot): "'Broadcast
-// Radius' bug is back". The first fix wrapped the text and tinted each line, so
-// the tint could survive a wrap. This one was the OTHER half of the same rule:
-// the lines were wrapped to the REQUEST window's width (119 cells at 133 cols)
-// and handed to a window 56 cells wide, which wrapped them AGAIN — and the
-// second wrap is the frame's, after the tint, so the tail came out plain.
+// Radius' bug is back". Wrapping the text and tinting each line is only half the
+// rule — it lets the tint survive A wrap. The other half is WHOSE width it was
+// wrapped to: lines wrapped to the REQUEST window's width (119 cells at 133 cols)
+// and handed to a window 56 cells wide are wrapped AGAIN, and the second wrap is
+// the frame's, after the tint, so the tail comes out plain.
 //
 // A TINT IS TWO ESCAPE CODES AT THE ENDS OF A STRING. Wrapping to the wrong
 // width is the same defect as not wrapping at all.

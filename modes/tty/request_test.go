@@ -216,8 +216,8 @@ func TestTheOutOfRadiusHelperWearsObserversCaveatTone(t *testing.T) {
 //
 // A REQUEST HAS TO GO SOMEWHERE, and the bottom is where it disturbs nothing.
 // PRIORITIZE pushes every card down, so the disruptive act is the one CHOSEN
-// rather than the one arrived at by not deciding — which is what an unset
-// position used to force.
+// rather than the one arrived at by not deciding, which is where an unset
+// position leaves it.
 func TestTheWindowOpensOnTheBottomSlot(t *testing.T) {
 	st := requestOpen()
 	if st.prioritize {

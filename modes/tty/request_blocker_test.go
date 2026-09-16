@@ -3,11 +3,11 @@ package tty
 // request_blocker_test.go — the chip must name the thing that is actually
 // missing.
 //
-// FOUND BY RED TEAM AT BUILD EXIT, 0.16.0 (2026-09-15). D-130 replaced
-// `requestState.ref` with `locate` and LEFT THE FIELD BEHIND. Nothing assigned
-// it, so `blocker()` returned "Choose a location" unconditionally and three of
-// its four cases were dead — an operator with a correctly-filled Location field
-// and no reports chosen was told to fix the location.
+// D-130 REPLACED `requestState.ref` WITH `locate`, and a field left behind is
+// worse than a field deleted: nothing assigns it, so `blocker()` returns "Choose
+// a location" unconditionally and three of its four cases are dead — an operator
+// with a correctly-filled Location field and no reports chosen is told to fix the
+// location.
 //
 // AND ITS TWO EXISTING TESTS COULD NOT FAIL: both asserted
 // `blocker() == "Choose a location"`, which is true of a constant function, so

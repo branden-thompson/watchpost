@@ -46,12 +46,12 @@ func TestANewDirectorIsStopped(t *testing.T) {
 // whole reason a running state is built for Observer's own merits: the listener
 // stopped the radio, and the programme stays stopped.
 //
-// IT IS BUILT, THOUGH, AND THAT IS D-84. This test used to assert the opposite —
-// "a card built while stopped would spend 1.03 s of network on a report that has
-// no cutover to be ready for" — and the HUM LEAD overturned the first half: the
-// cutover is the operator pressing a key, and the 1.03 s is exactly what they
-// must not hear. "when the operator does — the line **should be ready to go** at
-// that point."
+// IT IS BUILT, THOUGH, AND THAT IS D-84. The argument against — "a card built
+// while stopped would spend 1.03 s of network on a report that has no cutover to
+// be ready for" — is half right and the HUM LEAD overturned the half that
+// matters: the cutover IS the operator pressing a key, and the 1.03 s is exactly
+// what they must not hear. "when the operator does — the line **should be ready
+// to go** at that point."
 //
 // WHAT DID NOT CHANGE is the half PD-1 is actually about: nothing SPEAKS.
 func TestTheMainTrackIsPreparedButNotReadWhileTheRadioIsStopped(t *testing.T) {

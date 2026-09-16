@@ -58,9 +58,9 @@ func TestAssemblerMergesFireFromEveryProvider(t *testing.T) {
 }
 
 func TestAssemblerDedupesLocationsAndBoundsWarnings(t *testing.T) {
-	// Red-team 0.9.0 F4: a duplicate ref (a re-run setup, a config edit)
-	// used to leave order and refs misaligned and publish an EMPTY snapshot
-	// forever. F6: warnings are bounded to the newest maxWarnings.
+	// F4: a duplicate ref (a re-run setup, a config edit) must not leave order and
+	// refs misaligned, which publishes an EMPTY snapshot for ever. F6: warnings
+	// are bounded to the newest maxWarnings.
 	twice := LocationRef{Label: "Oceanside, CA", Lat: 33.24, Lon: -117.29}
 	a := NewAssembler([]LocationRef{twice, twice, {Label: "Carlsbad, CA", Lat: 33.16, Lon: -117.35}}, []string{"nws"})
 	if s := a.Snapshot(); len(s.Locations) != 2 || s.Locations[0].Label != "Oceanside, CA" || s.Locations[1].Label != "Carlsbad, CA" {

@@ -11,10 +11,10 @@ import (
 
 // THE STENCIL SITS EXACTLY WHERE ITS NUMBERS SIT, on both tables that have one.
 //
-// IT USED TO SIT ONE CELL RIGHT. The column-title row centres each title inside
+// CENTRING PUTS IT ONE CELL RIGHT. The column-title row centres each title inside
 // its band, which is right for a title that NAMES a column and wrong for one that
 // is a picture of its own cells: `##.` is three cells centred in five, so every
-// number beneath it hung one cell left of it.
+// number beneath it hangs one cell left of it.
 //
 // BOTH TABLES, ONE RULE. The pool's numbers are four cells and the running
 // order's are three, so a fix that merely nudged one of them would have broken

@@ -9,7 +9,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/geo"
 )
 
-// The listener, and the two places the HUM LEAD used to state the rule.
+// The listener, and the two places the HUM LEAD named in stating the rule.
 var (
 	bonsall   = Fence{RadiusMi: 50, Lat: 33.2886, Lon: -117.2247, HasOrigin: true}
 	losAngels = [2]float64{34.0522, -118.2437}
