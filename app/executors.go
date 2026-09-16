@@ -745,11 +745,30 @@ func (x *executors) eventsFor(refs []string) ([]globalfeed.Event, bool) {
 		if !ok {
 			return nil, false
 		}
-		// THE SAME TEST globalfeed.Active APPLIES, said the same way: an alert
-		// with no Until (a quake's instant) never expires, and one expiring
-		// exactly now is KEPT — the boundary errs towards telling the listener.
+		// A LAPSED ALERT IS SKIPPED, NOT A REASON TO DROP THE CARD (F-110).
+		//
+		// HUM LEAD, 2026-09-16: "expired hazards should never make it to the
+		// air, and ensuring that seems like the job of either the reader or the
+		// composer, either way I agree with the end-user experience — valid
+		// alerts need to be read, expired alerts must never be."
+		//
+		// THIS IS THE COMPOSER'S SEAM, which is why the rule lives here rather
+		// than in the schedule. The Director's `firstExpired` removes a card
+		// with NOTHING live left on it (D-155); a burst is one card carrying
+		// many hazards (MVS-D-77), so the per-hazard half has to be decided
+		// where the words are made.
+		//
+		// DECLINING THE WHOLE CARD IS WHAT IT DID, and that failed both ways at
+		// once: a tornado warning went unread because a flood advisory beside it
+		// had lapsed, and the card was re-offered and re-declined every cycle
+		// with `heldNotice` counting it the whole time — held by the Director,
+		// refused here, forever.
+		//
+		// THE BOUNDARY IS globalfeed.Active's, said the same way: an alert with
+		// no Until (a quake's instant) never expires, and one expiring exactly
+		// now is KEPT — the boundary errs towards telling the listener.
 		if !e.Until.IsZero() && now.After(e.Until) {
-			return nil, false
+			continue
 		}
 		// ALREADY SAID IS NOT SAID AGAIN (I-7). Declining is the same
 		// self-healing exit as the two above: nothing was marked, so the
@@ -758,6 +777,12 @@ func (x *executors) eventsFor(refs []string) ([]globalfeed.Event, bool) {
 			return nil, false
 		}
 		out = append(out, e)
+	}
+	// NOTHING LIVE IS NOTHING TO SAY. Every hazard on the card has lapsed, so
+	// there are no words to make — and the Director's own sweep takes the card
+	// off the rail on the next tick rather than leaving it to be re-offered.
+	if len(out) == 0 {
+		return nil, false
 	}
 	return out, true
 }

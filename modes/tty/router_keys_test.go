@@ -10,20 +10,32 @@ import (
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
-// FR-1.5 / FR-1.6: the swap is rebindable, and THE CHORD IS NOT THE ONLY
-// DOOR.
+// FR-1.6: THE CHORD IS NOT THE ONLY DOOR.
 //
 // The accessibility lens found the switch reachable only by a modifier chord
 // and leaned toward blocking on it. A terminal, a multiplexer or an assistive
 // tool can intercept a chord — tmux takes ctrl+b by default — and an operator
 // who loses the chord loses the only route back.
 
-func TestTheSwapActionsAreInTheKeyMapAndSoAreRebindable(t *testing.T) {
+// TestEveryConsoleSwapActionHasKeysAndHelp is a STRUCTURAL check, and it is
+// named for what it measures (D-158).
+//
+// IT CLAIMED FR-1.5 AND DID NOT MEET IT. Under its old name —
+// `TestTheSwapActionsAreInTheKeyMapAndSoAreRebindable` — "is in the key map"
+// stood in for "a user can rebind it", and a map no override could reach
+// satisfies it perfectly. `broadcasterKeyMap()` went to the Router raw for the
+// whole of 0.16.0 with this gate green beside it. The requirement's own exit
+// sentence is driven by `TestAnOverrideInTheKeyTableChangesTheConsolesChord`.
+//
+// IT IS KEPT BECAUSE WHAT IT DOES MEASURE IS REAL: an action with no key, or
+// with no help text, cannot be discovered from the key row whatever the
+// override table says.
+func TestEveryConsoleSwapActionHasKeysAndHelp(t *testing.T) {
 	km := broadcasterKeyMap()
 	for _, a := range []term.Action{actSwapObserver, actSwapBroadcaster, actStationToggle} {
 		b, ok := km[a]
 		if !ok {
-			t.Errorf("%q is not in the key map, so a user cannot rebind it (FR-1.5)", a)
+			t.Errorf("%q is not in the console key map at all", a)
 			continue
 		}
 		if len(b.Keys) == 0 {

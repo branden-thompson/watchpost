@@ -99,6 +99,111 @@ func (d Director) dropStale() (Director, Card, bool) {
 	return d, notice, true
 }
 
+// dropExpired removes every STANDBY card whose hazards have all lapsed (D-155).
+//
+// A SECOND KIND OF OLD, AND THE ONE NOTHING WAS ASKING ABOUT. `firstStale`
+// judges the WORDS — how long ago they were composed — and skips a card with a
+// zero `BuiltAt` because a card that was never built has no words to go off.
+// True, and it left a hazard that was ADMITTED BUT NEVER BUILT invisible to
+// every age rule in the package. Measured: a tornado warning valid for thirty
+// minutes, admitted at a silent station, still sat on the rail six hours later —
+// `firstStale` found nothing, `Projection` counted it, `heldNotice` escalated to
+// its loudest rung telling the operator to go ON AIR and read it, and `Next()`
+// offered it the air. The executor declines to build an expired alert
+// (`eventsFor`), so the LISTENER heard nothing — the console asserted a pending
+// read the schedule could never take, which is FR-3.3 read backwards.
+//
+// IT RUNS ON THE TICK, NOT WHERE THE AIR IS TAKEN, and that is the split from
+// `dropStale`. Staleness is a question about a card ABOUT TO BE READ, so judging
+// it early would discard a schedule the listener has not resumed. Expiry is a
+// question about the WORLD: the hazard is over whether or not anyone is
+// listening, and standby is exactly the window where the notice lies loudest.
+//
+// IT MINTS NO TRANSITION. `dropStale`'s "That report is out of date and has been
+// dropped" exists because PD-3 takes a read away AS IT REACHES THE AIR, and the
+// listener is owed the gap's explanation. Nothing was promised here — the card
+// was never read and never announced — so an apology would be words about a
+// silence nobody noticed.
+//
+// ON THE OPERATOR'S PILE, because the alternative is the defect the discard pile
+// was built to end: before it, a dropped card "simply vanished, with nothing
+// able to say what had gone or why" (D-35). A hazard leaving the rail is exactly
+// what the operator must be able to account for.
+func (d Director) dropExpired() Director {
+	// Bounded by the schedule: each pass removes one card, and a removed card is
+	// never held again (P10-02).
+	for range d.lineup.held() {
+		card, ok := d.firstExpired()
+		if !ok {
+			return d
+		}
+		gone, err := card.To(Discarded)
+		if err != nil {
+			return d
+		}
+		next, err := d.lineup.Remove(gone.ID)
+		if err != nil {
+			return d
+		}
+		if err := invariant.Check(next.held() < d.lineup.held(), "dropping an expired card shortens the schedule"); err != nil {
+			return d
+		}
+		d.lineup = next.discard(gone)
+	}
+	return d
+}
+
+// firstExpired is the first STANDBY card with no hazard left in force.
+//
+// EVERY ARRIVAL, NOT ANY. A burst is ONE card carrying many hazards (MVS-D-77),
+// and dropping the card the moment the first of five lapses would take four
+// hazards that are still in force off the air. The conservative direction is the
+// safe one here: a card is removed only when there is nothing live left on it.
+//
+// THE PER-HAZARD BOUNDARY IS `eventsFor`'S, SAID THE SAME WAY, and it has to
+// be — the Director decides what reaches the air and the executor decides what
+// can be built, so a hazard the one considers live and the other considers
+// lapsed is a card offered forever and declined forever. An alert with no
+// `Until` (a quake's instant) never expires, and one expiring EXACTLY now is
+// KEPT: the boundary errs towards telling the listener.
+//
+// AND THE PER-CARD RULE NOW AGREES WITH `eventsFor` TOO (F-110). It declined the
+// WHOLE burst when ANY of its refs had lapsed, so a card holding one lapsed and
+// one live hazard sat in the gap — held here, refused there, offered and
+// declined every cycle. The HUM LEAD ruled the end-user answer (2026-09-16:
+// "valid alerts need to be read, expired alerts must never be") and put the
+// per-hazard half where the words are made: the composer SKIPS a lapsed alert
+// and reads its live siblings, and declines only when nothing live is left —
+// which is the same card this function has already taken off the rail.
+//
+// A CARD WITH NO ARRIVALS IS NEVER EXPIRED. That is the structural card — the
+// transition, whose words were fixed at proposal — and it is the exemption
+// `firstStale` was reaching for when it tested `BuiltAt` instead. Tested on what
+// the card IS rather than on whether it happens to have been built yet.
+func (d Director) firstExpired() (Card, bool) {
+	for t := Track(0); t < numTracks; t++ { // bounded by the registry (P10-02)
+		for _, c := range d.lineup.Cards(t) { // bounded by the schedule (P10-02)
+			// A CARD ON THE AIR IS NOT INTERRUPTED, the rule `refence` states
+			// for the same reason: cutting a hazard off mid-sentence is a worse
+			// answer than the one this exists to fix.
+			if c.State != Standby || len(c.From) == 0 {
+				continue
+			}
+			live := false
+			for _, a := range c.From { // bounded by the card (P10-02)
+				if a.Until.IsZero() || !d.now.After(a.Until) {
+					live = true
+					break
+				}
+			}
+			if !live {
+				return c, true
+			}
+		}
+	}
+	return Card{}, false
+}
+
 // firstStale is the first STANDBY card whose build has aged out.
 //
 // A card that was never built — a structural card, whose words were fixed at

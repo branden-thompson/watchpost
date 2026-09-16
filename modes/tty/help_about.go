@@ -229,13 +229,13 @@ func helpGroups(surface Surface) []helpGroup {
 // neither keymap carries it and neither help could show it.
 func (d Dashboard) helpKeys() term.KeyMap {
 	if d.surface == SurfaceBroadcaster {
-		return broadcasterKeyMap()
+		return d.consoleKeyMap()
 	}
 	out := term.KeyMap{}
 	for act, bind := range d.keys {
 		out[act] = bind
 	}
-	bc := broadcasterKeyMap()
+	bc := d.consoleKeyMap()
 	for _, act := range []term.Action{actSwapObserver, actSwapBroadcaster} {
 		if bind, ok := bc[act]; ok {
 			out[act] = bind

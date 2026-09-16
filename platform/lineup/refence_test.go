@@ -210,3 +210,74 @@ func TestAZoneOnlyCardIsHeldWhenTheNewScopeDoesNotFollowIt(t *testing.T) {
 		t.Error("returning to the scope that follows it must release the card")
 	}
 }
+
+// AND THE FENCE MOVES WHEN THE AIR DOES NOT (D-154).
+//
+// THE GAP THE TWO TESTS ABOVE LEAVE, and they leave it in the same shape: both
+// move the air on every step, so both only ever exercise the trigger `Aired`
+// already serves. The operator who narrows the STATION'S SERVICE AREA in
+// Settings moves no air at all — and `d.settings.Fence` had exactly one
+// assignment in this package, behind the air-moved guard, so the narrowing
+// reached nothing.
+//
+// IT IS THE SAME SENTENCE, THROUGH A DIFFERENT DOOR: a hundred-mile hazard
+// survived a narrowing to twenty-five. `Aired.Fence`'s own comment claims that
+// defect fixed. It was fixed for one of the two ways a fence changes.
+func TestTheRailIsReScopedWhenTheServiceAreaNarrowsUnderAStandingAir(t *testing.T) {
+	now := time.Now()
+	wide := Fence{RadiusMi: 150, Lat: refLat, Lon: refLon, HasOrigin: true}
+	narrow := Fence{RadiusMi: 25, Lat: refLat, Lon: refLon, HasOrigin: true}
+
+	d := New(Settings{Max: 10}, now)
+	d, _ = d.Step(Powered{To: Running})
+	// THE OPERATOR IS ON THE CONSOLE, service area a hundred and fifty miles,
+	// and a hazard a hundred miles out is admitted under it.
+	d, _ = d.Step(Aired{To: AirProgramme, Fence: wide})
+	d, _ = d.Step(Arrived{Arrivals: []Arrival{hazard("lancaster", 34.60, -118.20, now)}, Fence: wide})
+	if _, _, ok := d.lineup.Next(); !ok {
+		t.Fatal("the wide service area admits it: it is offered the air")
+	}
+
+	// THEY NARROW THE SERVICE AREA TO TWENTY-FIVE. The air does not move —
+	// there is no surface change here, only a setting.
+	d, _ = d.Step(Refenced{Fence: narrow})
+
+	if n := len(d.lineup.Cards(AlertRail)); n != 1 {
+		t.Errorf("the card is HELD, not dropped — DR-3 — and the rail holds %d", n)
+	}
+	if next, _, ok := d.lineup.Next(); ok {
+		t.Errorf("a hazard %s outside the narrowed service area is offered the air anyway", next.ID)
+	}
+
+	// AND WIDENING IT AGAIN RELEASES THE CARD, with the air still standing.
+	d, _ = d.Step(Refenced{Fence: wide})
+	if _, _, ok := d.lineup.Next(); !ok {
+		t.Error("widening the service area releases what it held")
+	}
+}
+
+// AND A REPEATED `Aired` CARRIES ITS FENCE THROUGH THE REPEAT GUARD.
+//
+// THE SECOND HALF OF THE SAME DEFECT. `onAired` returned `d, nil` the moment the
+// air matched, which is right for the AIR and wrong for the FENCE riding the
+// same event: the operator who changes a setting and then keys the surface they
+// are already on is not sending a no-op, and the whole event was dropped.
+func TestARepeatedAirStillCarriesANarrowedFence(t *testing.T) {
+	now := time.Now()
+	wide := Fence{RadiusMi: 150, Lat: refLat, Lon: refLon, HasOrigin: true}
+	narrow := Fence{RadiusMi: 25, Lat: refLat, Lon: refLon, HasOrigin: true}
+
+	d := New(Settings{Max: 10}, now)
+	d, _ = d.Step(Powered{To: Running})
+	d, _ = d.Step(Aired{To: AirProgramme, Fence: wide})
+	d, _ = d.Step(Arrived{Arrivals: []Arrival{hazard("lancaster", 34.60, -118.20, now)}, Fence: wide})
+	if _, _, ok := d.lineup.Next(); !ok {
+		t.Fatal("the wide service area admits it: it is offered the air")
+	}
+
+	// THE SAME AIR, A NARROWER FENCE.
+	d, _ = d.Step(Aired{To: AirProgramme, Fence: narrow})
+	if next, _, ok := d.lineup.Next(); ok {
+		t.Errorf("the repeat guard dropped the fence: %s is still offered the air", next.ID)
+	}
+}

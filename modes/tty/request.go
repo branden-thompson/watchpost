@@ -111,12 +111,35 @@ func (st requestState) positionOK() bool {
 // PRIORITIZE IS ZERO — the front of the running order, which is UP NEXT and
 // never LIVE (ruling 3): the card on the air is not in the running order at
 // all, so there is no index that could name it.
-func (st requestState) position() int {
+//
+// THE TYPED NUMBER IS A SLOT AND THIS RETURNS AN INDEX (D-119). It returned the
+// slot verbatim, and `Requested.To` is documented as "the same number `Moved.To`
+// carries" — the number the card window's move path has subtracted `liveOffset`
+// from since D-119. So the two operator paths into one field disagreed by one
+// on STANDBY, which is the console's normal state: the requested card landed a
+// place lower than the slot the operator typed, silently, with the window's own
+// confirmation naming the slot they asked for.
+//
+// THE OFFSET IS PASSED, NOT ASKED, because the arithmetic's owner is
+// `Broadcaster.indexForSlot` and this surface cannot reach the console. The
+// Router carries it across (D-156).
+func (st requestState) position(liveOffset int) int {
 	if st.prioritize {
 		return 0
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(st.slot))
 	if err != nil {
+		return 0
+	}
+	// THE FRONT OF THE RUNNING ORDER IS THE FLOOR, and it is a TRIPWIRE: the
+	// D-42 shape, stated for the same reason as `refence`'s. Today it cannot
+	// fire — `valid()` gates this behind `positionOK`, which refuses anything
+	// below `bcScheduledFrom` (2), and `liveOffset` is never more than 1, so the
+	// lowest reachable index is 1. That is a rule held by a DIFFERENT rule, and
+	// it vanishes silently the day the table starts drawing from slot 1 or the
+	// window learns to type UP NEXT — which is exactly when `Insert` would be
+	// handed a negative and refuse the operator's card with nothing to see.
+	if n -= liveOffset; n < 0 {
 		return 0
 	}
 	return n
@@ -274,6 +297,17 @@ func (d Dashboard) requestBody(o render.Opts) (out []string, focusAt, focusEnd i
 // working on.
 func (st requestState) blocker() string {
 	switch {
+	// THE QUESTION COULD NOT BE PUT, AND THAT IS NOT "CHOOSE ANOTHER" (D-157).
+	// It fell to the case below and the chip read "Choose a location" — about a
+	// location that may well be real and was never actually checked — while the
+	// helper line under the same field read "The lookup did not answer; press
+	// enter to try again". Two sentences in one window disagreeing about what
+	// the operator should do, and the one on the key was the wrong one.
+	//
+	// IT OUTRANKS `!found` BECAUSE A TIMEOUT SETS IT. There is no verdict to
+	// report, so every test below this asks about an answer that does not exist.
+	case st.locate.onSubmit() == submitRetry:
+		return "Try again"
 	// NOT SETTLED IS NOT FOUND, and both mean the same thing to an operator:
 	// this window cannot act on what is in the Location field yet. The check
 	// reaches `locate` because that is where the answer is — the `ref` this
@@ -459,21 +493,34 @@ func (d Dashboard) afterRequestEdit() (Dashboard, tea.Cmd) {
 // invalid form would be exactly that: the operator would believe they had
 // scheduled something.
 func (d Dashboard) requestSchedule() (tea.Model, tea.Cmd) {
-	// AN ENTER PRESSED BEFORE THE ANSWER IS HELD, NOT SWALLOWED (D-151), and
-	// this is the twin of the rule `modal_location.go` already carries. Found by
-	// red team's second round: the held-press rule was taught to ONE of the two
-	// fields that share `locateState`, so inside the 300 ms pause plus a
-	// geocoder round trip this returned `d, nil` and the chip read "Choose a
-	// location" about a location the operator had already typed.
-	if d.cfg.RequestCard != nil && !d.request.locate.settled() &&
-		strings.TrimSpace(d.request.query) != "" {
-		d.request.locate.submitted = true
-		return d, d.locateCmd(locateRequest, d.request.locate.gate.Seq(), d.request.locate.query)
-	}
-	if !d.request.valid() || d.cfg.RequestCard == nil {
+	if d.cfg.RequestCard == nil {
 		return d, nil
 	}
-	ref, at, kinds := *d.request.locate.ref, d.request.position(), d.request.chosen
+	// WHAT [ENTER] MEANS IS `onSubmit`'S TO SAY, AND BOTH WINDOWS NOW ASK IT
+	// (D-157). This carried TWO of the four states and `modal_location.go`
+	// carried all four, which is the same defect twice over:
+	//
+	// D-151, red team round 2 — an enter pressed INSIDE the 300 ms pause plus a
+	// geocoder round trip returned `d, nil`, and the chip read "Choose a
+	// location" about a location the operator had already typed.
+	//
+	// D-157, red team round 3 — an enter pressed when the lookup COULD NOT BE
+	// ASKED did nothing at all, while `locateNote` — shared, and therefore
+	// right — printed "The lookup did not answer; press enter to try again".
+	// The window instructed an action the window refused. A timeout is not a
+	// verdict about a place, and treating it as one leaves the operator with a
+	// real location they cannot request and no way to retry.
+	if strings.TrimSpace(d.request.query) != "" {
+		switch d.request.locate.onSubmit() {
+		case submitAsk, submitRetry:
+			d.request.locate.submitted = true
+			return d, d.locateCmd(locateRequest, d.request.locate.gate.Seq(), d.request.locate.query)
+		}
+	}
+	if !d.request.valid() {
+		return d, nil
+	}
+	ref, at, kinds := *d.request.locate.ref, d.request.position(d.liveOffset), d.request.chosen
 	d.request = requestState{}
 	d = d.close()
 	return d, func() tea.Msg {

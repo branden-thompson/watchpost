@@ -28,38 +28,35 @@ func (d Dashboard) handleAddKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// window's own sentence — HUM LEAD, UAT 2026-09-14: "<enter> opens
 		// location details modal for Lone Pine, CA".
 		if d.lookupIsScoped() {
-			// A DEFINITE NO IS REFUSED; "not yet known" IS NOT (D-130). The
-			// check can take 300ms plus a geocoder round trip, and a key that
-			// went inert while the field was still thinking would be the same
-			// dead control this rule exists to prevent — so enter is refused
-			// only once there IS an answer and the answer is no.
-			// A DEFINITE NO IS REFUSED; "COULD NOT ASK" IS NOT (D-151). A
-			// timeout answers nothing, so refusing the key on it would leave
-			// the operator with a real location they cannot request and no way
-			// to retry — the dead control again, arrived at from the other side.
-			if d.addLocate.settled() && d.addLocate.asked && !d.addLocate.reachable() {
+			// WHAT [ENTER] MEANS IS `onSubmit`'S TO SAY (D-157), and the
+			// Line-Up Request window asks the same question of the same
+			// answer. This was an ordered run of `if`s here and a shorter run
+			// there, which is how the request window came to refuse a state
+			// whose own helper text says "press enter to try again".
+			switch d.addLocate.onSubmit() {
+			// A DEFINITE NO IS REFUSED, and refused HERE rather than by asking
+			// and discarding the answer. The chip is already drawn unavailable;
+			// a key that acted anyway would contradict the window's sentence.
+			case submitRefuse:
 				return d, nil
-			}
-			if d.addLocate.couldNotAsk() {
-				d.addLocate.submitted = true
-				return d, d.locateCmd(locateLookup, d.addLocate.gate.Seq(), d.addLocate.query)
-			}
-			if d.addLocate.reachable() {
-				// AND THE ANSWER ALREADY HELD IS THE ANSWER. Re-asking would be
-				// a second round trip to re-learn it, and a second authority
-				// that can disagree with the first.
+			// THE ANSWER ALREADY HELD IS THE ANSWER. Re-asking would be a
+			// second round trip to re-learn it, and a second authority that can
+			// disagree with the first.
+			case submitGo:
 				ref := *d.addLocate.ref
 				return d, func() tea.Msg { return resolvedMsg{mode: d.addMode, ref: ref} }
-			}
-			// NOT YET KNOWN: ASK THE SCOPED HOOK NOW (D-141).
+			// NOT YET KNOWN, OR THE QUESTION COULD NOT BE PUT: ASK THE SCOPED
+			// HOOK NOW (D-141, D-151).
 			//
 			// THIS FELL THROUGH TO `cfg.Resolve` — the UNSCOPED geocoder — so
 			// the console's own scope was escapable by pressing enter inside the
 			// 300 ms pause, which is the defect D-129 was filed for, still
 			// reachable. The press is held on the field and honoured when the
 			// verdict lands, so the key is neither inert nor a way out.
-			d.addLocate.submitted = true
-			return d, d.locateCmd(locateLookup, d.addLocate.gate.Seq(), d.addLocate.query)
+			default:
+				d.addLocate.submitted = true
+				return d, d.locateCmd(locateLookup, d.addLocate.gate.Seq(), d.addLocate.query)
+			}
 		}
 		if q := strings.TrimSpace(d.addQuery); q != "" {
 			return d, d.resolveCmd(q, d.addMode)
@@ -337,7 +334,7 @@ func (d Dashboard) addLines(o render.Opts) []string {
 		// UNKNOWN READS AS AVAILABLE. The field is only briefly unsettled, and
 		// greying the key while it thinks would flicker the control on every
 		// keystroke.
-		enabled = !d.addLocate.settled() || d.addLocate.reachable() || d.addLocate.couldNotAsk()
+		enabled = d.addLocate.onSubmit() != submitRefuse
 	}
 	return append(lines, "  "+o.Controls("   ", render.CtlIf("enter", verb, enabled), render.Ctl("esc", "Cancel")))
 }

@@ -223,11 +223,19 @@ func TestTheWindowOpensOnTheBottomSlot(t *testing.T) {
 	if st.prioritize {
 		t.Error("the window opens on PRIORITIZE; the bottom is the default")
 	}
-	if got, want := st.position(), lineup.MainTrackCap-1; got != want {
+	// ON A RUNNING STATION THE SLOT AND THE INDEX COINCIDE (liveOffset 0), so
+	// this is the default slot read straight.
+	if got, want := st.position(0), lineup.MainTrackCap-1; got != want {
 		t.Errorf("the window opens on position %d, want %d — the bottom of the running order", got, want)
 	}
 	if !st.positionOK() {
 		t.Error("the default position is not one the running order has")
+	}
+	// AND ON STANDBY IT IS ONE LOWER, because LIVE is empty and the line-up is
+	// drawn from UP NEXT down (D-84). The same translation the card window's
+	// move path has applied since D-119.
+	if got, want := st.position(1), lineup.MainTrackCap-2; got != want {
+		t.Errorf("on standby the bottom slot is index %d, want %d", got, want)
 	}
 }
 

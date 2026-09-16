@@ -80,17 +80,56 @@ type Aired struct {
 	Fence Fence
 }
 
+// Refenced re-scopes the rail without moving the air (D-154).
+//
+// THE SECOND TRIGGER, AND THE ONE D-75 MISSED. `Aired` carries a fence because
+// the fence travels with the air — true, and it left the OTHER way a fence
+// changes with no path to the Director at all: the operator narrowing the
+// STATION'S SERVICE AREA while the air stays exactly where it is. Measured:
+// `d.settings.Fence` had one assignment in the package, behind the air-moved
+// guard, so a narrowing from 100 to 25 never reached the rail — the same
+// sentence `Aired.Fence` claims to have fixed, reachable by a route nobody
+// wired.
+//
+// ITS EMITTER IS `restationTo`, which is already the single owner of "the
+// station's region moved" and re-resolves the bed for this very reason (D-117).
+type Refenced struct {
+	isEvent
+
+	// Fence is what the rail is scoped to NOW. Asked, never accumulated: a
+	// fence built from the scope in force at the moment the region changed.
+	Fence Fence
+}
+
+// onRefenced installs a fence and re-tests the rail against it.
+//
+// ONE OWNER FOR WHAT A FENCE CHANGE MEANS, reached by both triggers. `onAired`
+// delegates its repeat case here rather than restating the three steps, because
+// two copies of "install, re-test, settle" is two places for the settle to be
+// forgotten — and a rail marked out-of-fence that never settles goes on
+// offering a card `toPrepare` would skip.
+func (d Director) onRefenced(ev Refenced) (Director, []Effect) {
+	d.settings.Fence = ev.Fence
+	d = d.refence()
+	return d.settle()
+}
+
 // onAired moves the air, and moves nothing else.
 //
 // A REPEATED COMMAND IS NOT A SECOND EVENT — the rule `onPowered` and
 // `onCutOver` already state, for the same reason: the operator swapping to a
 // surface they are already on must not re-settle the schedule.
+//
+// BUT A REPEAT STILL CARRIES A FENCE, and returning `d, nil` dropped it whole.
+// The guard is written for the AIR; the fence is a different fact riding the
+// same event, and the operator who narrows the service area and then keys the
+// surface they are already on is not sending a no-op.
 func (d Director) onAired(ev Aired) (Director, []Effect) {
 	if err := invariant.Check(ev.To >= 0 && ev.To < numAirs, "the air is handed to a declared programme"); err != nil {
 		return d, nil
 	}
 	if d.air == ev.To {
-		return d, nil
+		return d.onRefenced(Refenced{Fence: ev.Fence})
 	}
 	d.air = ev.To
 	// AND THE RAIL IS RE-SCOPED TO WHOEVER NOW HAS THE AIR (D-75).

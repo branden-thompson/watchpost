@@ -171,6 +171,22 @@ func (m *mastercontrol) HandAir(to lineup.Air) {
 	m.tell(lineup.Aired{To: to, Fence: m.railFence()})
 }
 
+// Refence tells the Director the station's service area moved (D-154).
+//
+// THE AIR DOES NOT MOVE AND MUST NOT. `HandAir` would do the re-scoping as a
+// side effect, but it also SILENCES THE PROGRAMME on its way past — so routing
+// a radius change through it would cut a card off mid-sentence for changing a
+// setting. The two facts are separate events because they are separate facts.
+//
+// IT ASKS THE FENCE THE SAME WAY `HandAir` does, from the one source, at the
+// moment it is needed.
+func (m *mastercontrol) Refence() {
+	if m == nil {
+		return
+	}
+	m.tell(lineup.Refenced{Fence: m.railFence()})
+}
+
 // railFence is what the rail is scoped to right now.
 //
 // ASKED, NOT PASSED. `GoOnAir` is reached through `tty.Station`, whose signature

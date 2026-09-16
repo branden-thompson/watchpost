@@ -460,6 +460,27 @@ type Dashboard struct {
 	selected  int
 	alertIdx  int
 	recentOff int    // scroll offset (interaction lands with tab section nav)
+	// consoleKeys is the console's bindings with the user's [keys] overrides
+	// folded in (FR-1.5, D-158). Merged here because this is where the merge
+	// error is already actionable; the Router and the help view both read it, so
+	// what the operator presses and what the help PRINTS cannot disagree.
+	consoleKeys term.KeyMap
+
+	// liveOffset is how far the CONSOLE'S line-up sits below its LIVE slot,
+	// carried across by the Router on every key it routes here (D-156).
+	//
+	// OBSERVER DRAWS THESE WINDOWS; THE CONSOLE OWNS WHAT THEY ACT ON. The
+	// Line-Up Request window turns the slot the operator typed into a
+	// running-order index (D-119), and the arithmetic belongs to
+	// `Broadcaster.indexForSlot` — which this surface cannot reach. Only the
+	// Router holds both.
+	//
+	// ZERO IS THE RUNNING STATION'S ANSWER, which is also what an unset field
+	// reads as — so `requestSchedule` is tested through the Router rather than
+	// by calling it directly, or the wiring would be exactly as absent as it
+	// was before D-156 and nothing would say so.
+	liveOffset int
+
 	modal     modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode   string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
@@ -591,11 +612,49 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("key bindings invalid: %w", err)
 	}
-	d := Dashboard{cfg: cfg, keys: keys, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	// AND THE CONSOLE'S BINDINGS TAKE THE SAME OVERRIDES (FR-1.5, D-158).
+	//
+	// THE REQUIREMENT WAS UNMET AND ITS GATE DID NOT SAY SO. FR-1.5's exit is
+	// "an override in the user's key table changes the chord"; the test asserted
+	// that the swap ACTIONS ARE IN THE MAP, which is a proxy that passes while
+	// the requirement fails. `broadcasterKeyMap()` went to the Router raw, so no
+	// `[keys]` entry could reach a single console binding — including the swap
+	// chords FR-1.5 is about, and `ctrl+b`, which is tmux's own prefix and the
+	// exact key the survey said an operator would need to rebind.
+	//
+	// TWO SCOPES, TWO MERGES, ONE OVERRIDE TABLE. Folding them into one map
+	// would make Observer's `l` and the console's `l` a conflict, and D-56 is
+	// "one key, one meaning PER SURFACE". `Merge` drops an override naming an
+	// action the other scope does not have, with a note rather than an error
+	// (FR-14) — which is the same tolerance that lets a retired binding survive
+	// an upgrade.
+	console, _, err := term.Merge(broadcasterKeyMap(), cfg.KeyOverrides)
+	if err != nil {
+		return Dashboard{}, fmt.Errorf("console key bindings invalid: %w", err)
+	}
+	d := Dashboard{cfg: cfg, keys: keys, consoleKeys: console, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
 	return d, nil
+}
+
+// consoleKeyMap is the console's bindings as the OPERATOR has them.
+//
+// ONE OWNER, READ BY BOTH THE ROUTER AND THE HELP VIEW. They each reached for
+// `broadcasterKeyMap()` directly, so a rebound chord would have been answered by
+// the Router and mis-printed by the help — the surface whose entire job is to
+// tell the operator which key to press.
+//
+// A HAND-BUILT DASHBOARD FALLS BACK TO THE DEFAULTS. Tests construct
+// `Dashboard{}` literals, and a nil map would leave the Router with no bindings
+// at all — which is F-72 exactly: with `keys` nil the swap branch is skipped and
+// the console cannot be arrived at.
+func (d Dashboard) consoleKeyMap() term.KeyMap {
+	if d.consoleKeys == nil {
+		return broadcasterKeyMap()
+	}
+	return d.consoleKeys
 }
 
 // resolvedMsg returns from the app Resolve hook (ELM: cmd out, msg in).

@@ -25,11 +25,30 @@ import (
 // has just started: the Producer is proposing and the Director is choosing, and
 // the console's job is to say so rather than to report an absence.
 func (b Broadcaster) slotCard(cards []lineup.Card, i int) (lineup.Card, bool) {
-	i -= b.liveOffset()
+	i = b.indexForSlot(i)
 	if i >= 0 && i < len(cards) {
 		return cards[i], true
 	}
 	return lineup.Card{}, false
+}
+
+// indexForSlot turns a SLOT NUMBER — what the operator sees and types — into a
+// RUNNING-ORDER INDEX, which is what the schedule takes (D-119).
+//
+// ONE OWNER, AT THE THIRD CALLER. `slotCard` did this arithmetic to READ a slot;
+// the card window's move did it again to WRITE one; and the Line-Up Request
+// window did not do it at all, which is D-119's own defect surviving in the one
+// path that never got the fix. Three copies of `i - liveOffset()` is three
+// places for the sign to be wrong, and the one that was wrong was silent: the
+// card landed one place further down than the operator asked, on STANDBY, which
+// is the surface's normal state.
+//
+// IT CAN RETURN A NEGATIVE, and every caller must say what that means for it.
+// Reading, it is a slot above the line-up (LIVE itself); writing, it is the
+// front of the running order. Clamping here would make the two agree by
+// accident.
+func (b Broadcaster) indexForSlot(slot int) int {
+	return slot - b.liveOffset()
 }
 
 // liveOffset is how far the line-up sits below the LIVE slot (D-84).

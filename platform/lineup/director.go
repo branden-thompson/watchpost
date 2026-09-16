@@ -541,6 +541,8 @@ func (d Director) Step(ev Event) (Director, []Effect) {
 		return d.onPowered(e)
 	case Aired:
 		return d.onAired(e)
+	case Refenced:
+		return d.onRefenced(e)
 	case Monitored:
 		return d.onMonitored(e)
 	case NeedsRead, Offered:
@@ -665,6 +667,10 @@ func (d Director) onTick(ev Tick) (Director, []Effect) {
 	if err := invariant.Check(!d.now.Before(was), "the clock never runs backwards"); err != nil {
 		return d, nil
 	}
+	// AND SO IS A LAPSED HAZARD (D-155). Expiry is a fact about the clock, so
+	// the tick is where it is noticed — before `settle`, so the schedule that
+	// settles is the one with nothing dead left on it.
+	d = d.dropExpired()
 	// THE BED'S DWELL IS A TICK'S BUSINESS TOO (T3.2b). It was a time.AfterFunc
 	// inside the radio deck, which made "when does the bed move" observable only
 	// by waiting five minutes with a real clock.
@@ -1103,6 +1109,11 @@ func DescribeEvent(ev Event) string {
 		return named("powered", v.To.String())
 	case Aired:
 		return named("aired", v.To.String())
+	case Refenced:
+		if !v.Fence.InForce() {
+			return named("refenced", "all")
+		}
+		return named("refenced", fmt.Sprintf("%.0fmi", v.Fence.RadiusMi))
 	case Monitored:
 		return named("monitored", monitorWord(v.Running))
 	case Tuned:

@@ -223,6 +223,10 @@ const statusEndpointMax
 const statusForms
 const statusInset
 const statusMarkW
+const submitAsk
+const submitGo
+const submitRefuse
+const submitRetry
 const supportIndent
 const tableBreakpoint
 const testEventMark
@@ -284,6 +288,7 @@ func (Broadcaster).header
 func (Broadcaster).headerRows
 func (Broadcaster).heldBand
 func (Broadcaster).heldNotice
+func (Broadcaster).indexForSlot
 func (Broadcaster).inset
 func (Broadcaster).lanes
 func (Broadcaster).lineupRowOf
@@ -384,6 +389,7 @@ func (Dashboard).commitCmd
 func (Dashboard).commitToModel
 func (Dashboard).compact
 func (Dashboard).confirmOverlay
+func (Dashboard).consoleKeyMap
 func (Dashboard).controlRow
 func (Dashboard).currentDefault
 func (Dashboard).currentTransmitter
@@ -645,6 +651,7 @@ func (locateState).edit
 func (locateState).keyLabel
 func (locateState).keyState
 func (locateState).locateNote
+func (locateState).onSubmit
 func (locateState).reachable
 func (locateState).settled
 func (radioBP).hasViz
@@ -985,6 +992,7 @@ type setupRowKind
 type setupScope
 type setupState
 type statusSections
+type submitAnswer
 type surfaceView
 type tickMsg
 type tonedCell

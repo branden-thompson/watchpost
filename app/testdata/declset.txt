@@ -179,6 +179,7 @@ func (*mastercontrol).GoOnAir
 func (*mastercontrol).GoToStandby
 func (*mastercontrol).HandAir
 func (*mastercontrol).MoveCard
+func (*mastercontrol).Refence
 func (*mastercontrol).RequestCard
 func (*mastercontrol).StopMonitor
 func (*mastercontrol).clearBand

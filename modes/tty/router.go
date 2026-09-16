@@ -303,7 +303,7 @@ func NewRouter(o Dashboard) Router {
 	// arrive as a message; this is the value it opens with.
 	b.area, b.areaGen = o.cfg.StationArea, b.areaGen+1
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver,
-		keys: broadcasterKeyMap(), onSurface: o.cfg.OnSurface, relays: o.cfg.StepBedRelay}
+		keys: o.consoleKeyMap(), onSurface: o.cfg.OnSurface, relays: o.cfg.StepBedRelay}
 }
 
 // Init delegates to the active surface. Observer asks for the terminal's
@@ -702,7 +702,22 @@ func (r Router) typingInAWindow(k tea.KeyPressMsg) bool {
 
 // throughToObserver hands a message to the surface that owns the diagnostics
 // window, WITHOUT changing which surface is drawn.
+//
+// IT CARRIES THE LIVE OFFSET ACROSS WITH IT (D-156). The windows the console
+// reaches through here are drawn by Observer and act on the CONSOLE'S running
+// order, and the Line-Up Request window has to turn the slot the operator typed
+// into a running-order index (D-119). Only the Router holds both surfaces, and
+// this is the single funnel every one of those keys passes through.
+//
+// REFRESHED ON EVERY KEY, NOT STAMPED WHEN THE WINDOW OPENS, because the power
+// can change underneath an open window: `actStationToggle` is answered in the
+// keymap switch above, which runs BEFORE the "window on top owns the keys" rule
+// — deliberately, since taking the station off the air is the one control that
+// must never be captured by a form. An offset read at open time would be a
+// stale answer for exactly the operator who went ON AIR while composing a
+// request.
 func (r Router) throughToObserver(msg tea.Msg) (tea.Model, tea.Cmd) {
+	r.observer.liveOffset = r.broadcaster.liveOffset()
 	m, cmd := r.observer.Update(msg)
 	if d, ok := m.(Dashboard); ok {
 		r.observer = d
@@ -979,7 +994,7 @@ func (r Router) moveWindowKey(k tea.KeyPressMsg) (Router, bool) {
 			// it is what keeps the two from drifting. Sending the typed number
 			// straight through moved the card one place further down than the
 			// operator asked, silently, on the surface's normal state.
-			move(r.observer.cardID, to-r.broadcaster.liveOffset())
+			move(r.observer.cardID, r.broadcaster.indexForSlot(to))
 		}
 		// AND THE CARD WINDOW CLOSES WITH IT. The card the operator was reading is
 		// no longer at the position they opened it from, so leaving it up would

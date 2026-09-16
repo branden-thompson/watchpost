@@ -193,6 +193,23 @@ func (lp *livePipelines) restationTo(s stationArea) {
 	if p != nil {
 		publishArea(p.Send, s, pool)
 	}
+	// AND THE RAIL IS RE-TESTED AGAINST THE NEW FENCE (D-154). The station's
+	// service area IS the rail's fence on the console, so moving the region
+	// moves the fence — and everything already admitted was admitted under the
+	// old one. Without this a narrowing from 100 miles to 25 left a 100-mile
+	// hazard sitting on the rail, which is the sentence `Aired.Fence` claims to
+	// have fixed and did not: its guard is written for the air, and the air does
+	// not move when a setting changes.
+	//
+	// AFTER `setStation`, NOT BEFORE. The fence is ASKED of the scope in force,
+	// and the scope in force is the one that was just installed a few lines up —
+	// asking first would re-fence the rail to the region the station has left.
+	//
+	// SYNCHRONOUS, UNLIKE THE BED. This is an event handed to a pump, not
+	// network work; the operator waiting on the save is not waiting on it.
+	if mc := lp.masterControl(); mc != nil {
+		mc.Refence()
+	}
 	// AND THE BED RE-RESOLVES WITH IT (D-117). Which relays actually stream is a
 	// fact about the station's REGION, so moving the region asks the question
 	// again — otherwise the selector goes on offering the relays of the place the

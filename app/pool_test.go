@@ -253,3 +253,52 @@ func TestTheCutOverResolvesAgainstTheWatchlistNotThePool(t *testing.T) {
 		t.Errorf("the cut-over never reached the watched location; the deck was asked for %v, want %q", got, want)
 	}
 }
+
+// AND MOVING THE STATION'S REGION RE-SCOPES THE RAIL (D-154).
+//
+// THE TRIGGER `Aired` DOES NOT SERVE. The fence travels with the air, which is
+// true and was taken for the whole of it — so `d.settings.Fence` had exactly one
+// assignment in `platform/lineup`, behind the air-moved guard, and the operator
+// who narrows the service radius in Settings moves no air at all. Measured
+// before this: a hundred-mile hazard survived a narrowing to twenty-five, which
+// is the sentence `Aired.Fence`'s own comment claims to have fixed.
+//
+// IT IS CHECKED HERE RATHER THAN ON THE DIRECTOR because the Director's half is
+// already covered (`TestTheRailIsReScopedWhenTheServiceAreaNarrows...`) and this
+// is the half that was missing: the WIRING, and the fence it asks for. A handler
+// nothing calls is the defect, not the fix.
+func TestMovingTheStationsRegionTellsTheDirectorTheNewFence(t *testing.T) {
+	var told []lineup.Event
+	nar := testDirector(nil, func(tea.Msg) {})
+	nar.mc.mu.Lock()
+	nar.mc.carry = func(ev lineup.Event) { told = append(told, ev) }
+	// THE DECK'S OWN TRANSLATION, stubbed to the radius the region now has.
+	nar.mc.fence = func() lineup.Fence {
+		return lineup.Fence{RadiusMi: 25, Lat: 33.2881, Lon: -117.2256, HasOrigin: true}
+	}
+	nar.mc.mu.Unlock()
+
+	lp := &livePipelines{director: nar}
+	lp.restationTo(stationArea{radiusMi: 25})
+
+	var refenced *lineup.Refenced
+	for i := range told {
+		if r, ok := told[i].(lineup.Refenced); ok {
+			refenced = &r
+		}
+	}
+	if refenced == nil {
+		t.Fatalf("the region moved and the rail was never re-scoped; told %v", told)
+	}
+	if !refenced.Fence.InForce() || refenced.Fence.RadiusMi != 25 {
+		t.Errorf("the rail was re-scoped to %+v, want the region's own 25-mile fence", refenced.Fence)
+	}
+	// AND THE AIR IS NOT TOUCHED. Routing this through `HandAir` would have
+	// worked and would also have SILENCED THE PROGRAMME on the way past — a card
+	// cut off mid-sentence because the operator changed a setting.
+	for i := range told {
+		if a, ok := told[i].(lineup.Aired); ok {
+			t.Errorf("changing a setting handed the air to %v", a.To)
+		}
+	}
+}

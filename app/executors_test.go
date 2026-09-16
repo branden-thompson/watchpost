@@ -1323,3 +1323,61 @@ func TestAReportsExitLeavesTheHazardsCalloutUp(t *testing.T) {
 		t.Errorf("the record reads %v; the report claims a release it never made", b.x.band.recent())
 	}
 }
+
+// A LAPSED HAZARD IS SKIPPED AND ITS LIVE SIBLINGS ARE STILL READ (F-110).
+//
+// HUM LEAD, 2026-09-16: "expired hazards should never make it to the air … valid
+// alerts need to be read, expired alerts must never be." Both halves are here,
+// on one card, because a burst is ONE card carrying many hazards (MVS-D-77).
+//
+// IT DECLINED THE WHOLE BURST, and that failed in both directions at once. A
+// live tornado warning went unread because a flash flood warning beside it had
+// lapsed — and the card was re-offered and re-declined every cycle, held by the
+// Director and refused here, with `heldNotice` counting it the whole time.
+func TestALapsedAlertIsSkippedAndItsLiveSiblingsAreRead(t *testing.T) {
+	b := newBench(t, nil)
+	// ONE LIVE, ONE LAPSED — the flood warning expired a minute ago.
+	b.known["a2"] = globalfeed.Event{ID: "a2", Class: globalfeed.ClassSevereWx, Type: "Flash Flood Warning",
+		Location: "Fallbrook, CA", At: execNow.Add(-2 * time.Hour), Until: execNow.Add(-time.Minute), Source: "NWS"}
+
+	built := onlyBuilt(t, b.x.run(context.Background(), lineup.BuildCard{
+		ID: "burst:mixed", Slot: lineup.BreakingAlert, Subject: "a1", Refs: []string{"a1", "a2"}}))
+
+	lines := built.Script.Lines(lineup.PartLine)
+	if len(lines) != 1 {
+		t.Fatalf("the card composed %d lines; the live hazard is read and the lapsed one is not", len(lines))
+	}
+	if strings.Contains(built.Script.Text(), "Flash Flood") {
+		t.Errorf("a hazard that expired a minute ago reached the air:\n  %q", built.Script.Text())
+	}
+	if !strings.Contains(built.Script.Text(), "Tornado Warning") {
+		t.Errorf("the live hazard was silenced by its lapsed sibling:\n  %q", built.Script.Text())
+	}
+	// AND IT READS AS A LONE ALERT, because that is what is left of it: one
+	// hazard carries its own tail, so a head and a tail here would frame a
+	// burst the listener is not getting.
+	if n := len(built.Script.Lines(lineup.PartHead)) + len(built.Script.Lines(lineup.PartTail)); n != 0 {
+		t.Errorf("one live hazard composed %d structural parts; it carries its own tail", n)
+	}
+}
+
+// AND A CARD WITH NOTHING LIVE LEFT ON IT IS DECLINED.
+//
+// THE OTHER HALF OF THE SAME RULING. Skipping is not silence-by-default: when
+// every hazard has lapsed there are no words to make, and the Director's own
+// sweep (D-155) takes the card off the rail rather than leaving it to be
+// re-offered forever.
+func TestACardWhoseHazardsHaveAllLapsedIsDeclined(t *testing.T) {
+	b := newBench(t, nil)
+	gone := globalfeed.Event{ID: "dead", Class: globalfeed.ClassSevereWx, Type: "Flash Flood Warning",
+		Location: "Fallbrook, CA", At: execNow.Add(-3 * time.Hour), Until: execNow.Add(-time.Hour), Source: "NWS"}
+	b.known["dead"] = gone
+
+	fx := b.x.run(context.Background(), lineup.BuildCard{
+		ID: "burst:dead", Slot: lineup.BreakingAlert, Subject: "dead", Refs: []string{"dead"}})
+	for _, f := range fx {
+		if v, ok := f.(lineup.Built); ok {
+			t.Fatalf("a card with nothing in force was built anyway: %q", v.Script.Text())
+		}
+	}
+}
