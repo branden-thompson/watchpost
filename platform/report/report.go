@@ -13,8 +13,8 @@
 // not the naming rule, not the modal, not the running order.
 // `TestAFifthKindCostsOneRow` is that claim made checkable rather than promised.
 //
-// IT COSTS ONE THING OUTSIDE THIS PACKAGE, AND THIS SENTENCE USED TO DENY IT
-// (F-111, corrected at D-160). `radioDeck.segments` answers each kind with its
+// IT COSTS ONE THING OUTSIDE THIS PACKAGE (F-111). `radioDeck.segments`
+// answers each kind with its
 // OWN typed hook, so a fifth needs a branch there or the report is requested,
 // built, and silently missing what was asked for. The branches are not a defect
 // — they cannot be table-driven without erasing the types — but the absence of

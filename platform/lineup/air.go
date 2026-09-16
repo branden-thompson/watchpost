@@ -125,10 +125,7 @@ func (d Director) onRefenced(ev Refenced) (Director, []Effect) {
 //
 // THAT IS DELIBERATE AND IT IS BENIGN: `takeTheAir` and `prepareNext` are each
 // guarded, so settling twice decides nothing twice — and the alternative is the
-// defect below, where the fence is dropped because the air did not move. The
-// older wording said a repeat "must not re-settle the schedule" and stayed in
-// place after this change made it false; corrected at D-160 after a blind review
-// read the comment and the code together.
+// defect below, where the fence is dropped because the air did not move.
 //
 // BUT A REPEAT STILL CARRIES A FENCE, and returning `d, nil` dropped it whole.
 // The guard is written for the AIR; the fence is a different fact riding the

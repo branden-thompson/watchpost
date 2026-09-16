@@ -165,10 +165,9 @@ func TestTheRequestWindowRetriesALookupThatCouldNotBeAsked(t *testing.T) {
 // with the window's own confirmation naming the slot they asked for. That is
 // D-119 verbatim, surviving inside its own fix.
 //
-// FOUND BY A BLIND CODE-QUALITY REVIEW, which noted that
-// `TestARequestedCardLandsInTheSlotTheOperatorTyped` had the right reasoning —
-// drive it through the Router, because a direct call passes with the wiring
-// absent — and simply did not extend it to the other surface.
+// IT DRIVES THE ROUTER, like its sibling above, because a direct call to
+// `requestSchedule` passes with the wiring absent: the offset field reads zero
+// unset, which is exactly the buggy answer.
 func TestARequestSubmittedFromObserverStillLandsInTheTypedSlot(t *testing.T) {
 	var got int
 	var sent bool

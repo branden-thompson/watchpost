@@ -11,8 +11,7 @@ import (
 // reflection, precisely so a glyph added to one set and forgotten in the other
 // cannot slip through. Its switch handles `String` and `Array` — and a field of
 // any OTHER kind was silently skipped, which is the forgotten glyph arriving by
-// the one route the derivation exists to close. Found by red team round 3, on
-// the row that ratifies that `reflect` import as a safety device.
+// the one route the derivation exists to close.
 //
 // THE CHECK IS HERE RATHER THAN IN A `default` ARM because the walk runs on a
 // render path through `sync.OnceValue`, which has no error channel: the only
@@ -21,10 +20,8 @@ import (
 // build time instead.
 //
 // IF THIS FAILS, ADD THE CASE IN BOTH PLACES: the pairing arm in `asciiMarks`
-// AND the accepted-kinds list below. An earlier version of this comment said
-// "do not add the kind here", which read literally leaves the test red for ever
-// — the list below is the set of kinds the walk can pair, so it has to learn the
-// new one too. Corrected at D-160 after a newcomer followed it as written. The
+// AND the accepted-kinds list below, which is the set of kinds the walk can
+// pair. The
 // consequence of not doing so is a missing character on exactly the terminals
 // that cannot render the Unicode alternative, which is invisible to anyone
 // developing on a capable one.

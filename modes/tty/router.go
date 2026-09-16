@@ -407,7 +407,7 @@ func observerScoped(msg tea.Msg) bool {
 // exactly the moment they asked for it.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// HOW FAR THE CONSOLE'S LINE-UP SITS BELOW ITS LIVE SLOT, CARRIED BEFORE THE
-	// MESSAGE IS DISPATCHED (D-156, corrected at D-160).
+	// MESSAGE IS DISPATCHED (D-156).
 	//
 	// IT WAS SET IN `throughToObserver` ALONE — the path the console uses to
 	// reach a window it does not own — and NOT on the path taken when Observer

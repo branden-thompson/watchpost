@@ -103,11 +103,9 @@ func (d Dashboard) setupBlocks(o render.Opts) []setupBlock {
 // the pattern its own neighbours already use.
 //
 // IT TAKES THE CURSOR AND DOES NOT RETURN IT. Each row appended shifts where the
-// NEXT row's focus span begins, so `at` moves all the way down this group — but
-// the group is the last thing its case does, and nothing after it reads the
-// cursor again. An earlier version of this comment claimed the caller needed it
-// back; the caller does not, and returning it made the assignment ineffectual.
-// Caught by the same P10 run that asked for the extraction.
+// NEXT row's focus span begins, so `at` moves all the way down this group — and
+// the group is the last thing its case does, so nothing after it reads the cursor
+// again.
 func (d Dashboard) dataGroupLines(o render.Opts, b setupBlock, at int, focus setupRowID) setupBlock {
 	// DATA IS THE ONE MIXED GROUP (D-92): the default location is the
 	// LISTENER's (D-18 row 1) and the provider key is SHARED (row 3), so this

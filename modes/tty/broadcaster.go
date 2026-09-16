@@ -1245,9 +1245,6 @@ func (b Broadcaster) stationLine() []string {
 	// `TestTheBedRidesInTheStationSection` and `TestTheStationBandIsEvenlyInset` —
 	// were updated to the ruled shape rather than worked around.
 	//
-	// IT IS KEPT AS HISTORY BECAUSE THE SHAPE RECURS: a requirement can have no
-	// test and no implementation while a citation makes it look retired, and that
-	// is what red team's second round actually found here.
 	if b.statusNote != "" {
 		rows = append(rows, render.TruncateCells(label("")+b.statusNote, max(0, lane)))
 	}

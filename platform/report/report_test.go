@@ -63,7 +63,7 @@ func TestDescribeIsStableWhateverOrderTheyWereChosen(t *testing.T) {
 // wording ("everything that consumes one") implied it did.  A reader took that
 // for the whole-system gate and would have shipped a kind the composer never
 // answers.  The cross-package half is `app.TestEveryReportKindReachesTheComposer`
-// (F-111).  Corrected at D-160.
+// (F-111).
 func TestAFifthKindCostsOneRow(t *testing.T) {
 	kinds := All()
 	if len(kinds) != int(numKinds) {
