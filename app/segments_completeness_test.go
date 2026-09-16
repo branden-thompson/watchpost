@@ -24,12 +24,14 @@ import (
 // report, the card is built, and the thing they asked for is simply absent from
 // what goes out. No error, no fault, no gap in the log.
 //
-// IT COUNTS RATHER THAN NAMES. A test listing the four kinds by hand would be a
-// SECOND closed set, drifting from the first exactly when the first changes —
-// which is the defect, moved. `report.All()` is the registry's own enumeration,
-// and the count of distinct `want.Has(...)` conditions in `segments` is what the
-// composer actually answers. P-9: read the paragraph before adding to a closed
-// set; this is the paragraph, made executable.
+// IT COMPARES TWO DERIVED SETS, AND NEITHER IS WRITTEN HERE. A test listing the
+// four kinds by hand would be a SECOND closed set, drifting from the first
+// exactly when the first changes — which is the defect, moved. The kinds come off
+// `report.go`'s own const block; the answered set is every `report.X` the AST
+// finds inside a `want.Has(...)` call in `segments`. A COUNT of the two would not
+// do: answer a new kind and drop `Seismic` and the count is still four, still
+// green. P-9: read the paragraph before adding to a closed set; this is the
+// paragraph, made executable.
 //
 // The branches are not the defect and are not changed. The absence of anything
 // that notices a fifth is.
@@ -74,14 +76,13 @@ func TestEveryReportKindReachesTheComposer(t *testing.T) {
 
 	// THE KIND NAMES, DERIVED FROM THE REGISTRY'S OWN SOURCE — not listed here.
 	//
-	// misses: answer a new kind and drop `Seismic` and the count is still four,
-	// still green, with a kind the operator can choose and the composer never
-	// reads. A gate measuring a PROXY for the requirement instead of the
-	// requirement is this project's own definition of a defect — and this one was
-	// written the same day that defect was made the centrepiece of a red-team
-	// round.
+	// A COUNT MISSES THE CASE THAT MATTERS: answer a new kind and drop `Seismic`
+	// and the count is still four, still green, with a kind the operator can
+	// choose and the composer never reads. A gate measuring a PROXY for the
+	// requirement instead of the requirement is this project's own definition of
+	// a defect.
 	//
-	// BOTH SIDES STAY DERIVED, which is what kept the count form tempting. The
+	// BOTH SIDES STAY DERIVED, which is what makes the count form tempting. The
 	// registry's identifiers come from `report.go`'s own const block, so a fifth
 	// kind is picked up here with no edit; the answered set comes from the AST.
 	// Neither is a hand-written list that can drift from the other.

@@ -467,8 +467,13 @@ type Dashboard struct {
 	consoleKeys term.KeyMap
 
 	// keysWithheld names [keys] overrides that apply on Observer but would have
-	// collided on the console, so the console kept its own (F-114). Reported
-	// rather than silently lost.
+	// collided on the console, so the console kept its own (F-114).
+	//
+	// IT IS DRAWN, and that is what makes withholding legal under D-15. A
+	// conflicting override is never a silent win; the console's help window is
+	// where the entry did NOT apply, so it is the window that says so. Held
+	// without a reader, this field would be the silence D-15 forbids wearing a
+	// name that denies it.
 	keysWithheld []string
 
 	// liveOffset is how far the CONSOLE'S line-up sits below its LIVE slot,
@@ -651,7 +656,7 @@ func scopedOverrides(base, observer, over term.KeyMap) (term.KeyMap, []string) {
 			break // console-only: nothing to reconcile, let Merge refuse it
 		}
 		withheld[act] = true
-		notes = append(notes, string(act)+" -> "+key+" ("+string(held)+")")
+		notes = append(notes, string(act)+": "+key+" is the console's "+string(held))
 	}
 	out := term.KeyMap{}
 	for act, b := range over {

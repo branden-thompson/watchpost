@@ -112,7 +112,26 @@ func (d Dashboard) helpLines(o render.Opts) []string {
 		}
 	}
 	lines = append(lines, d.helpLegend(o))
+	lines = append(lines, d.helpWithheld()...)
 	return append(lines, "", "  "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll"))) // chips like every other modal (UAT 68.2)
+}
+
+// helpWithheld names the `[keys]` entries that did not reach THIS surface.
+//
+// D-15 REFUSES A SILENT WIN, and withholding is only not-silent if the operator
+// is shown it. The console is the surface the entry did not reach, so it is the
+// one that has to report it; Observer got the binding the file asked for and has
+// nothing to say. Without this the reconciliation is a conflicting override
+// losing quietly, which is the outcome D-15 exists to forbid.
+func (d Dashboard) helpWithheld() []string {
+	if d.surface != SurfaceBroadcaster || len(d.keysWithheld) == 0 {
+		return nil
+	}
+	out := []string{"", " Your [keys] file, not applied here (this surface keeps its own):"}
+	for _, w := range d.keysWithheld { // bounded by the override table (P10-02)
+		out = append(out, "   "+w)
+	}
+	return out
 }
 
 // helpLegend is the line under the groups: what the operator will SEE that no

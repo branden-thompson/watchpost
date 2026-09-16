@@ -447,6 +447,7 @@ func (Dashboard).helpLines
 func (Dashboard).helpModal
 func (Dashboard).helpPlan
 func (Dashboard).helpWidth
+func (Dashboard).helpWithheld
 func (Dashboard).hourlyRows
 func (Dashboard).hydrateCmd
 func (Dashboard).inServiceRange

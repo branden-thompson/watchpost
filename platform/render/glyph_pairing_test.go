@@ -20,9 +20,8 @@ import (
 // build time instead.
 //
 // IF THIS FAILS, ADD THE CASE IN BOTH PLACES: the pairing arm in `asciiMarks`
-// AND the accepted-kinds list below, which is the set of kinds the walk can
-// pair. The
-// consequence of not doing so is a missing character on exactly the terminals
+// AND the accepted-kinds list below, which is the set of kinds the walk can pair.
+// The consequence of not doing so is a missing character on exactly the terminals
 // that cannot render the Unicode alternative, which is invisible to anyone
 // developing on a capable one.
 func TestEveryGlyphFieldCanBePaired(t *testing.T) {
@@ -38,7 +37,8 @@ func TestEveryGlyphFieldCanBePaired(t *testing.T) {
 			t.Errorf("Glyphs.%s is a %s, which asciiMarks cannot pair — it is skipped "+
 				"silently, so this glyph has no --ascii fallback and renders as a missing "+
 				"character on the terminals that cannot show the Unicode one. "+
-				"Add a case to asciiMarks.", f.Name, g.Field(i).Kind())
+				"Add the case in BOTH places: the pairing arm in asciiMarks, and the "+
+				"accepted kinds in this switch.", f.Name, g.Field(i).Kind())
 		}
 	}
 }

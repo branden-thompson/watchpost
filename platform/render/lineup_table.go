@@ -128,14 +128,6 @@ func (o Opts) LineupTable(rows []LineupRow, width int) string {
 	return strings.Join(out, "\n")
 }
 
-// lineupColumnDefs turns the spec into the kit's definitions.
-//
-// LOCATION AND REPORT TYPE TAKE THE SLACK, and the kit's own `Fill` is what
-// grants it — so this needs no width. It TOOK one and never read it (P10-07).
-// The HUM LEAD ruled the second fill column on 2026-09-16 (F-112), which is what
-// made the doc line above — "giving the two WIDEST COLUMNS the slack" — true
-// rather than something to correct away.
-
 // lineupNaturalWidth is the width this table occupies with every column at its
 // declared size and no surplus to share.
 //
@@ -153,6 +145,11 @@ func lineupNaturalWidth() int {
 	return rowLen(spaceCategories(defs, lineupGroups()))
 }
 
+// lineupColumnDefs turns the spec into the kit's definitions at a given band.
+//
+// LOCATION AND REPORT TYPE TAKE THE SLACK (F-112). `width` is the band the caller
+// asked for, and the surplus over `lineupNaturalWidth` is split between the two —
+// which is why this needs a width where a single-fill table would not.
 func lineupColumnDefs(width int) []studs.ColumnDefinition {
 	out := make([]studs.ColumnDefinition, 0, len(lineupColumns()))
 	for _, c := range lineupColumns() { // bounded by the spec (P10-02)

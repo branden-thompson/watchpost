@@ -97,20 +97,18 @@ func TestAnOverrideForTheOtherSurfaceDoesNotBreakTheConsole(t *testing.T) {
 // ONE SURFACE'S REBIND DOES NOT BREAK THE OTHER (F-114).
 //
 // HUM LEAD, 2026-09-16: collisions are reconciled, and a key binding functions as
-// expected. This test was the opposite assertion for one commit — it pinned the
-// REFUSAL that D-158 introduced — and is inverted here rather than deleted,
-// because the refusal was real and the record should show it was replaced.
+// expected.
 //
-// THE UPGRADE THAT BROKE. `lookup = "b"` was valid in 0.15.0: `b` was unused on
+// THE UPGRADE THIS PROTECTS. `lookup = "b"` is valid in 0.15.0: `b` is unused on
 // Observer. 0.16.0 adds a console that binds `b` to the relay bed, and D-158
-// applied `[keys]` to the console for the first time — so the listener's own
-// override collided with a binding they had never seen and the app refused to
-// start. `term.Merge`'s own doc names that outcome: "refusing to launch over one
+// applies `[keys]` to the console for the first time — so a refusal on collision
+// stops the app starting over a binding the listener has never seen and did not
+// change. `term.Merge`'s own doc names that outcome: "refusing to launch over one
 // is a broken upgrade".
 //
-// WHAT HAPPENS NOW: the rebind applies where it fits and is withheld where it
-// would collide. Both surfaces do what the operator expects, and the withholding
-// is REPORTED — nothing is silently lost.
+// SO THE REBIND APPLIES WHERE IT FITS AND IS WITHHELD WHERE IT WOULD COLLIDE.
+// Both surfaces do what the operator expects, and the withholding is REPORTED in
+// the console's help window — nothing is silently lost.
 func TestARebindOnOneSurfaceDoesNotBreakTheOther(t *testing.T) {
 	d, err := NewDashboard(Config{KeyOverrides: term.KeyMap{
 		actLookup: {Keys: []string{"b"}, Help: "Lookup Location"},
@@ -204,5 +202,33 @@ func TestARotationOfSharedKeysStillLaunches(t *testing.T) {
 	// AND THE BED KEEPS ITS KEY, since `lookup -> b` is the override that gave way.
 	if got := d.consoleKeyMap()[actBedCut].Keys; len(got) == 0 || got[0] != "b" {
 		t.Errorf("the bed lost its key: %v", got)
+	}
+}
+
+// AND THE OPERATOR IS TOLD IN THE WINDOW THEY WOULD OPEN TO ASK.
+//
+// "Reported" is only true of a field something DRAWS. `keysWithheld` written and
+// never read is the silent win D-15 forbids, with a name that says it is not —
+// the worst of both, because the comment beside it stops anyone looking.
+//
+// THE CONSOLE'S WINDOW, NOT OBSERVER'S. The console is the surface the entry did
+// not reach; Observer got the binding the file asked for and would be reporting
+// a loss that did not happen to it.
+func TestTheConsoleHelpNamesAWithheldOverride(t *testing.T) {
+	d, err := NewDashboard(Config{KeyOverrides: term.KeyMap{
+		actLookup: {Keys: []string{"b"}, Help: "Lookup Location"},
+	}})
+	if err != nil {
+		t.Fatalf("a config that 0.15.0 accepted must still launch: %v", err)
+	}
+	d.surface, d.width, d.height = SurfaceBroadcaster, 150, 74
+	body := strings.Join(d.helpLines(d.opts()), "\n")
+	if !strings.Contains(body, "bed-cut") {
+		t.Errorf("the console's help does not name the override it withheld:\n%s", body)
+	}
+	// AND OBSERVER DOES NOT CLAIM A LOSS IT DID NOT TAKE.
+	d.surface = SurfaceObserver
+	if obs := strings.Join(d.helpLines(d.opts()), "\n"); strings.Contains(obs, "not applied here") {
+		t.Errorf("Observer applied the override and must not report it withheld:\n%s", obs)
 	}
 }
