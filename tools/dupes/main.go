@@ -56,6 +56,43 @@ type group struct {
 	Sites       []site `json:"sites"`
 }
 
+// reportText prints the human-readable result, including the scope line that
+// says what the number cannot see.
+//
+// INST-5, APPLIED TO THE INSTRUMENT THAT EARNED THE RULE, and separated from
+// `main` at the length ceiling (P10-04, D-159). Flag parsing, orchestration and
+// REPORTING are three jobs; the first two are three lines each and this one is
+// the rest of the function.
+//
+// THE SCOPE LINE IS NOT DECORATION. The count was published for a fortnight with
+// its blind spots recorded only in a document that QUOTES it, which is the
+// weaker reading of "where the number is published" (junior-dev review,
+// 2026-09-08). A floor presented as a total is a number that lies by omission.
+func reportText(groups, unratified []group, drift []string, min int, withTests bool) {
+	fmt.Printf("dupes: %d duplicate group(s) at >= %d nodes; %d ratified, %d NOT\n",
+		len(groups), min, len(groups)-len(unratified), len(unratified))
+	// INST-5, applied to the instrument that earned the rule. The count was
+	// published for a fortnight with its blind spots recorded only in a
+	// document that quotes it — which is the weaker reading of "where the
+	// number is published" (junior-dev review, 2026-09-08).
+	scope := "production code only"
+	if withTests {
+		scope = "including _test.go"
+	}
+	fmt.Printf("  scope: %s. A FLOOR, not a total: structural fingerprints miss a near-duplicate\n"+
+		"  that differs by one statement (two 3-copy groups were reported as pairs), and nothing\n"+
+		"  below %d nodes is looked at.\n", scope, min)
+	for _, d := range drift {
+		fmt.Printf("\n  RATIFIED GROUP CHANGED — %s\n", d)
+	}
+	for _, g := range unratified {
+		fmt.Printf("\n  %s  (%d nodes, %d copies)\n", g.Fingerprint, g.Nodes, len(g.Sites))
+		for _, s := range g.Sites {
+			fmt.Printf("    %s:%d  %s\n", s.File, s.Line, s.Func)
+		}
+	}
+}
+
 func main() {
 	min := flag.Int("min", 25, "minimum body AST-node count to consider (calibrated; see the note above)")
 	withTests := flag.Bool("tests", false, "include _test.go files")
@@ -93,28 +130,7 @@ func main() {
 			"groups": groups, "unratified": unratified, "min_nodes": *min,
 		})
 	} else {
-		fmt.Printf("dupes: %d duplicate group(s) at >= %d nodes; %d ratified, %d NOT\n",
-			len(groups), *min, len(groups)-len(unratified), len(unratified))
-		// INST-5, applied to the instrument that earned the rule. The count was
-		// published for a fortnight with its blind spots recorded only in a
-		// document that quotes it — which is the weaker reading of "where the
-		// number is published" (junior-dev review, 2026-09-08).
-		scope := "production code only"
-		if *withTests {
-			scope = "including _test.go"
-		}
-		fmt.Printf("  scope: %s. A FLOOR, not a total: structural fingerprints miss a near-duplicate\n"+
-			"  that differs by one statement (two 3-copy groups were reported as pairs), and nothing\n"+
-			"  below %d nodes is looked at.\n", scope, *min)
-		for _, d := range drift {
-			fmt.Printf("\n  RATIFIED GROUP CHANGED — %s\n", d)
-		}
-		for _, g := range unratified {
-			fmt.Printf("\n  %s  (%d nodes, %d copies)\n", g.Fingerprint, g.Nodes, len(g.Sites))
-			for _, s := range g.Sites {
-				fmt.Printf("    %s:%d  %s\n", s.File, s.Line, s.Func)
-			}
-		}
+		reportText(groups, unratified, drift, *min, *withTests)
 	}
 	if len(unratified) > 0 {
 		fmt.Fprintf(os.Stderr, "\ndupes: %d duplicate group(s) carry no ratified reason.\n"+
@@ -167,6 +183,53 @@ func hash(s string) uint64 {
 	return h
 }
 
+// funcName is the name a PERSON would write for this declaration.
+//
+// "Opts.Distance", NOT "(recv).Distance". A site name goes into a ratified row
+// and is compared against it, so a placeholder that makes two different methods
+// look identical would let a ratified reason cover a group it was never read
+// against. Extracted from `scan` at the complexity ceiling (P10-04, D-159).
+func funcName(fn *ast.FuncDecl) string {
+	name := fn.Name.Name
+	if fn.Recv == nil || len(fn.Recv.List) == 0 {
+		return name
+	}
+	t := fn.Recv.List[0].Type
+	if star, ok := t.(*ast.StarExpr); ok {
+		t = star.X
+	}
+	switch v := t.(type) {
+	case *ast.Ident:
+		return v.Name + "." + name
+	case *ast.IndexExpr: // a generic receiver
+		if id, ok := v.X.(*ast.Ident); ok {
+			return id.Name + "." + name
+		}
+	}
+	return name
+}
+
+// skipDir names the trees this detector must not read.
+//
+// third_party is vendored and not ours to collapse; 06_docs/mutants holds
+// deliberately mutated copies of real code, which is the ONE place in this
+// repository where duplication is the point.
+func skipDir(base string) bool {
+	switch base {
+	case ".git", "third_party", "mutants", "dist":
+		return true
+	}
+	return false
+}
+
+// scannable reports whether this file is production Go the detector should read.
+func scannable(path string, withTests bool) bool {
+	if !strings.HasSuffix(path, ".go") {
+		return false
+	}
+	return withTests || !strings.HasSuffix(path, "_test.go")
+}
+
 func scan(root string, min int, withTests bool) ([]group, error) {
 	fset := token.NewFileSet()
 	byPrint := map[string][]site{}
@@ -177,19 +240,12 @@ func scan(root string, min int, withTests bool) ([]group, error) {
 			return nil
 		}
 		if info.IsDir() {
-			base := filepath.Base(path)
-			// third_party is vendored and not ours to collapse; 06_docs/mutants
-			// holds deliberately mutated copies of real code, which is the one
-			// place duplication is the POINT.
-			if base == ".git" || base == "third_party" || base == "mutants" || base == "dist" {
+			if skipDir(filepath.Base(path)) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if !strings.HasSuffix(path, ".go") {
-			return nil
-		}
-		if !withTests && strings.HasSuffix(path, "_test.go") {
+		if !scannable(path, withTests) {
 			return nil
 		}
 		src, err := os.ReadFile(path)
@@ -213,21 +269,7 @@ func scan(root string, min int, withTests bool) ([]group, error) {
 			// ratified row and is compared against it, so it has to be the
 			// name a person would write — "Opts.Distance", not a placeholder
 			// that makes two different methods look identical.
-			name := fn.Name.Name
-			if fn.Recv != nil && len(fn.Recv.List) > 0 {
-				t := fn.Recv.List[0].Type
-				if star, ok := t.(*ast.StarExpr); ok {
-					t = star.X
-				}
-				if id, ok := t.(*ast.Ident); ok {
-					name = id.Name + "." + name
-				} else if idx, ok := t.(*ast.IndexExpr); ok { // a generic receiver
-					if id, ok := idx.X.(*ast.Ident); ok {
-						name = id.Name + "." + name
-					}
-				}
-			}
-			byPrint[fp] = append(byPrint[fp], site{Func: name, File: path, Line: fset.Position(fn.Pos()).Line})
+			byPrint[fp] = append(byPrint[fp], site{Func: funcName(fn), File: path, Line: fset.Position(fn.Pos()).Line})
 			nodes[fp] = n
 		}
 		return nil
