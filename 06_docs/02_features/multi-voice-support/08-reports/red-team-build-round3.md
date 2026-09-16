@@ -286,7 +286,7 @@ Stated plainly, because a coverage claim is worth less than a coverage gap.
   defect 6 was "remediated, never reviewed", and it still is.
 - **The 08-reports bundle was not diffed for cross-document consistency**, and the disposition of
   every finding in the five prior reports was not re-walked. Two of this round's findings (R-8 and
-  the published `/Users/bthompso` paths) are re-openings hit by accident while grepping, which
+  the published `/Users/<account>` paths) are re-openings hit by accident while grepping, which
   suggests a full disposition re-walk would find more.
 - **No image was opened**, so the stale-screenshot finding rests on an empty `docs/img/` diff.
 - **Windows and Linux paths** were reviewed by reading only.

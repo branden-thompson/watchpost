@@ -3,7 +3,7 @@
 # set DIR to this directory to re-run against the retained binaries/sources.
 # usage: measure.sh <mode> <dur> <url> <label>
 set -u
-DIR=/private/tmp/claude-5932/-Users-bthompso-Desktop-PERSONAL-PROJECTS-watchpost/0102dbfd-9988-47f0-ab80-799ebbcfda44/scratchpad/spike-s1
+DIR=${DIR:-$(cd "$(dirname "$0")" && pwd)}   # the original session scratchpad is gone; default to this directory
 MODE=$1; DUR=$2; URL=$3; LABEL=$4
 LOG=$DIR/$LABEL.log
 SAMPLES=$DIR/$LABEL.samples

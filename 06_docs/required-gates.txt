@@ -21,6 +21,7 @@ race
 lint
 lint-imports
 lint-watermark
+lint-identity
 lint-authoring
 treelock-selftest
 p10

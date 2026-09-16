@@ -105,6 +105,16 @@ lint-authoring:
 lint-watermark:
 	@./scripts/lint-watermark.sh
 
+# THE PUBLISHED TREE NAMES NO PERSON AND NO MACHINE. A home directory, an
+# agent-harness scratchpad path, an internal project tree or an email address
+# reaching a PUBLIC repository cannot be taken back once someone clones it.
+#
+# THE RULE EXISTED AND WAS SCOPED TO ONE FILE: lint-ledger.sh refuses these
+# patterns in the P10 ledger mirror alone, and printed "no machine paths" while
+# the class was live in 21 other tracked files across two pushed branches.
+lint-identity:
+	@go test ./cmd/watchpost/ -run PublishedTreeNames -count=1
+
 # Positive controls: prove the custom gates still fire on known-bad input (calibration:
 # "Guard Tests Require Positive Controls"). Runs the linters against embedded bad fixtures.
 gate-controls:
@@ -279,7 +289,7 @@ cache-clean:
 verify:
 	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
 
-verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest p10 gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
+verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest p10 lint-identity gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # The lock is a gate like any other: a lock that never locks passes every

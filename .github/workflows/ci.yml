@@ -51,6 +51,8 @@ jobs:
       - run: make lint-imports
       - run: make lint-watermark
       - run: make lint-authoring
+      # No home directory, harness path, internal tree or email in a PUBLIC tree.
+      - run: make lint-identity
       # The lock that keeps two gate runs off one tree. It takes a lock of its own,
       # so it is safe inside a locked verify and safe as a step of its own here.
       - run: make treelock-selftest
