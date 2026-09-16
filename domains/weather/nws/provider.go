@@ -44,8 +44,8 @@ const fetchConcurrency = 6
 
 // Provider implements snapshot.Provider for api.weather.gov.
 // maxGrids is the grid memo's ceiling. Retain prunes it by LIVENESS every
-// cycle, so this is a backstop rather than the bound that does the work: a leak
-// in Retain used to mean unbounded growth and now means 240 entries.
+// cycle, so this is a backstop rather than the bound that does the work: it
+// turns a leak in Retain from unbounded growth into 240 entries.
 const maxGrids = 240
 
 type Provider struct {

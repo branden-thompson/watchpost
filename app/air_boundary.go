@@ -34,11 +34,11 @@ package app
 // `tuneCallsign` serves Observer's relay pick (MVS-D-76). A guard inside it would
 // break the half that is entitled to the air.
 //
-// THE CONSOLE'S BED LEFT THAT SEAM AT D-117. It used to tune through
-// `tuneCallsign` too, and that was the defect: the callsign had to already be in
-// the list the LISTENER's last tune left behind, so the bed silently did nothing.
-// It resolves at the STATION's epicentre now and tunes what it resolved
-// (`tuneResolved`), which is a different seam with the same entitlement.
+// THE CONSOLE'S BED IS ON THE OTHER SIDE OF THAT SEAM (D-117). Tuning it through
+// `tuneCallsign` requires the callsign to already be in the list the LISTENER's
+// last tune left behind, so the bed silently does nothing. It resolves at the
+// STATION's epicentre and tunes what it resolved (`tuneResolved`), which is a
+// different seam with the same entitlement.
 // The EXPORTED `tty.Radio` methods are the monitor's control surface; the
 // lower-case internals are shared, and that split is the seam.
 

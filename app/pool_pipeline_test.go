@@ -71,9 +71,9 @@ func TestTheStationsPoolSurvivesACommit(t *testing.T) {
 
 // AND A MOVED STATION FETCHES ITS NEW CANDIDATES.
 //
-// THE ORDER IS THE WHOLE FIX. The pipeline used to be reconciled BEFORE the
-// station moved, so a restationed console was PUBLISHED a new pool and fetched
-// the old one — it named a region whose weather nothing was asking for.
+// THE ORDER IS THE WHOLE OF IT. Reconciling the pipeline BEFORE the station
+// moves PUBLISHES a restationed console a new pool and fetches the old one — it
+// names a region whose weather nothing is asking for.
 func TestARestationedPoolIsWhatGetsFetched(t *testing.T) {
 	was := snapshot.LocationRef{Label: "Somewhere Else, NV", Lat: 39.5, Lon: -119.8}
 	lp := poolPipes(t, []snapshot.LocationRef{was})

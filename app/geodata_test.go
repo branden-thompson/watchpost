@@ -3,8 +3,8 @@ package app
 // Quality pass Q3 (L1-F21, L4-F5): the embedded geodata index (36 ms,
 // 19 MB, 500k allocations to load) is loaded once on the dashboard path —
 // the resolver and the seed list share it. This pin reads the source: one
-// Load call in RunDashboard, one on the one-shot report path, none in the
-// helpers that used to load their own copy.
+// Load call in RunDashboard, one on the one-shot report path, and none in the
+// helpers, which take the loaded index rather than loading a copy.
 
 import (
 	"os"

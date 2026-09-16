@@ -2,12 +2,11 @@ package cast
 
 // emergency_mute_test.go — leave-now cannot be silenced.
 //
-// FOUND BY RED TEAM AT BUILD EXIT, 0.16.0 (2026-09-15). `emergency_tone_test.go`
-// states the rule and enforces half of it: ClassEmergency is excluded from
-// `Classes()`, so no Setup row can mute it. But `Muted` answers TRUE for every
-// class when the mode is mute and the list is empty — Emergency included — and
-// `Config.withToneCompat` migrates a pre-0.14.0 `ticker_muted = true` into
-// exactly that state.
+// `emergency_tone_test.go` STATES THE RULE AND ENFORCES HALF OF IT: ClassEmergency
+// is excluded from `Classes()`, so no Setup row can mute it. The other half is
+// `Muted`, which answers TRUE for every class when the mode is mute and the list
+// is empty — Emergency included — and `Config.withToneCompat` migrates a
+// pre-0.14.0 `ticker_muted = true` into exactly that state.
 //
 // SO AN UPGRADING LISTENER LOST THE ATTENTION TONE SILENTLY. The words still
 // read, so the alert is not lost; what is lost is the three-repeat tone that

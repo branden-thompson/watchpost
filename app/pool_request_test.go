@@ -12,10 +12,10 @@ import (
 // transparent to the end user - either what they type is a valid location within
 // the service radius or not."
 //
-// SO THE POOL IS THE WHOLE ANSWER. It used to fall through to the RESOLVER when
-// the pool had no match, to tell "outside the radius" from "nowhere at all" —
-// one network call PER KEYSTROKE, on a field the operator types into, for a
-// distinction that bought two helper sentences both pointing at Observer.
+// SO THE POOL IS THE WHOLE ANSWER, with no fall-through to the RESOLVER when the
+// pool has no match. Telling "outside the radius" from "nowhere at all" costs one
+// network call PER KEYSTROKE, on a field the operator types into, and buys two
+// helper sentences both pointing at Observer.
 //
 // AND THAT MAKES THIS CHECK THE ONLY THING between a typo and a scheduled card,
 // which is why a lookup that admits anything is a mutant worth having.

@@ -179,10 +179,10 @@ func TestALongRunningEffectDoesNotDelayTheNextEvent(t *testing.T) {
 // words as a LIST ORDER (DR-18); concurrent dispatch would throw that away, and
 // the band would promise a callout after the read had started.
 //
-// IT IS ASSERTED BY BLOCKING, NOT BY READING BACK AN ORDER. An earlier version
-// let both effects run and compared their positions in the log — which catches a
-// broken grouping only when the race happens to go the wrong way. Under mB1 it
-// passed at -count=1 and failed at -count=20: a pin that reports CAUGHT or
+// IT IS ASSERTED BY BLOCKING, NOT BY READING BACK AN ORDER. Letting both effects
+// run and comparing their positions in the log catches a broken grouping only
+// when the race happens to go the wrong way. Under mB1 that passes at -count=1
+// and fails at -count=20: a pin that reports CAUGHT or
 // SURVIVED depending on the scheduler is not a pin, and on the hazard path it is
 // the worst kind, because it will be green on the run that matters.
 //

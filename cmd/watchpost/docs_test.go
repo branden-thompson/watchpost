@@ -15,10 +15,10 @@ import (
 // symbolRef matches both forms the pages use: `path/file.go:Func` and the
 // package-scoped `path/pkg:Func`.
 //
-// THE `.go` USED TO BE MANDATORY, so 12 of the flow map's 163 refs were
-// invisible to this test — including both entries rewritten in 0.14.0 (red team
-// 2026-09-05, R-13). The page's own header promises it "cannot drift silently",
-// and a reader's stated reason to trust it was false for the newest rows.
+// THE `.go` IS OPTIONAL, and it has to be: made mandatory, 12 of the flow map's
+// 163 refs go invisible to this test (R-13). The page's own header promises it
+// "cannot drift silently", so a ref this pattern cannot see makes the reader's
+// stated reason to trust the page false.
 var symbolRef = regexp.MustCompile("`([a-z0-9_/]+(?:\\.go)?):([A-Za-z_][A-Za-z0-9_]*)`")
 
 // declares reports whether src declares sym as a function or a method.

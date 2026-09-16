@@ -76,6 +76,9 @@ func m() {}`, nil},
 func OldThing() {}`, nil},
 		{"the phrase inside a string literal is not a comment", `package p
 func f() string { return "this used to be the old API" }`, nil},
+		{"a word ENDING in used is not the phrase", `package p
+// A director that refused to be built is not a schedule.
+func n() {}`, nil},
 	}
 }
 

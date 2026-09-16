@@ -262,13 +262,13 @@ const breakingHold = 5 * time.Second
 // THESE ARE WHAT THE LISTENER HEARS. A takeover's clip is speech and nothing
 // else, so the wait IS the pause.
 //
-// An earlier version subtracted synth.SegmentGap from each, on the premise that
-// "every spoken clip already ends with 400 ms of silence inside its own buffer".
-// That is true of the BROADCAST segment stream — synth.Source.write pads between
-// segments — and false of this path: a takeover renders through
+// synth.SegmentGap IS NOT SUBTRACTED FROM THESE. The premise that would justify
+// it — "every spoken clip already ends with 400 ms of silence inside its own
+// buffer" — is true of the BROADCAST segment stream, where synth.Source.write
+// pads between segments, and false of this path: a takeover renders through
 // speaker.prepare → radioDeck.render → synth.AlertNarration, which is Say plus a
-// stereo conversion and pads nothing. Every gap in the burst therefore came out
-// 400 ms short of its ruling, measured at 0.6 s where MVS-D-72 says 1 s. The
+// stereo conversion and pads nothing. Subtracting it puts every gap in the burst
+// 400 ms short of its ruling, 0.6 s where MVS-D-72 says 1 s. The
 // premise was never checked against the path that uses it.
 //
 // The 2 s after the tone is not here because it is not a wait: the tone preset

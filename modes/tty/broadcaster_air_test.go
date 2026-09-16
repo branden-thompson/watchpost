@@ -53,9 +53,9 @@ func TestTheLiveRowCarriesTheStandbyNoticeAtRest(t *testing.T) {
 	}
 }
 
-// AND IT NAMES NO REPORT. The row used to be a card built from `lineup.Card{}`,
-// whose zero Slot IS a location report — so it drew `LOCATION REPORT •STANDARD•
-// [0]`: a report that does not exist, graded, with a chip that opens nothing.
+// AND IT NAMES NO REPORT. Built from `lineup.Card{}`, whose zero Slot IS a
+// location report, the row draws `LOCATION REPORT •STANDARD• [0]`: a report that
+// does not exist, graded, with a chip that opens nothing.
 func TestTheLiveRowNamesNoReportAtRest(t *testing.T) {
 	b := bcWith(t, card(t, "a", "Oceanside, CA"))
 	rows := airRows(t, stripANSITest(b.View().Content))

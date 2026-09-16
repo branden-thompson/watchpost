@@ -37,8 +37,12 @@ type Finding struct {
 // IT MATCHES NARRATION, NOT REASONING. "the boundary errs towards telling the
 // listener" is the code as it stands and must pass; "corrected at D-160" is a
 // past the reader does not have and must not.
+//
+// THE WORD BOUNDARY ON `used to` IS LOAD-BEARING: without it "refUSED TO be
+// built" is a finding, and the author is asked to rewrite a sentence that
+// narrates nothing.
 var histPhrases = regexp.MustCompile(`(?i)` + strings.Join([]string{
-	`used to \w+`,
+	`\bused to \w+`,
 	`(^|[^a-z])legacy( compatibility|:)`,
 	`for backwards? compat`,
 	`the old (api|behaviour|behavior|field|name|way|rule)`,

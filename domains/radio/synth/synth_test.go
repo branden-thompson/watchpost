@@ -566,13 +566,13 @@ func TestRecastHandsOverMidSegmentAtTheSameSpot(t *testing.T) {
 	// WHAT WAS HEARD, NOT WHAT WAS RENDERED — F-14, and the whole of its
 	// three-sighting flake.
 	//
-	// This used to classify `b.texts()`, which is what Bravo was asked to
-	// RENDER. The render goroutine works a segment ahead and PRE-RENDERS a
-	// hand-over line in case the next segment needs one; when the voice has
-	// already changed mid-segment it is not needed, `announce` skips it, and
-	// nothing is played — but the render happened and `b.texts()` records it.
-	// So Bravo appeared to introduce itself twice, and the old classifier
-	// (`default: takeover = x`) kept whichever came LAST. Which one that was
+	// Classifying `b.texts()` classifies what Bravo was asked to RENDER. The
+	// render goroutine works a segment ahead and PRE-RENDERS a hand-over line in
+	// case the next segment needs one; when the voice has already changed
+	// mid-segment it is not needed, `announce` skips it, and nothing is played —
+	// but the render happened and `b.texts()` records it. So Bravo appears to
+	// introduce itself twice, and a classifier that keeps the LAST
+	// (`default: takeover = x`) keeps whichever came last. Which one that is
 	// depended on scheduling, so the test passed or failed by timing while the
 	// product was correct both ways.
 	//

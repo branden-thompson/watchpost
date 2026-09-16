@@ -495,8 +495,7 @@ func (lp *livePipelines) requestCard(ref snapshot.LocationRef, kinds report.Set,
 // it drops the OLDEST REMEMBERED, while `Insert` sheds the LAST VISIBLE. With
 // the request window's default slot those are opposite ends, so sixteen requests
 // at the bottom would evict the ref of the card sitting at the TOP, still
-// unbuilt — and D-140's defect returns silently. Found by red team's second
-// round.
+// unbuilt — and D-140's defect returns silently.
 //
 // SO THE CAP IS SIZED TO MAKE EVICTION UNREACHABLE IN A SESSION rather than
 // pretending to track the schedule. A `snapshot.LocationRef` is about a hundred

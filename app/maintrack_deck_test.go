@@ -34,9 +34,9 @@ var testRef = snapshot.LocationRef{Label: "OCEANSIDE, CA", Lat: 33.1959, Lon: -1
 // D-33 RETIRED "LEAVES THE AIR ALONE". There is no stage in which the deck
 // reports and does not also play: "live" meant the card was read through the
 // arbiter, and the programme is not a narration. What survives is the half that
-// still matters — WHAT the deck reports — and it is driven against a real deck
-// now, because the bare struct this used to use only worked while a stage
-// existed that never touched the audio.
+// still matters — WHAT the deck reports — and it is driven against a REAL deck,
+// because a bare struct only works while a stage exists that never touches the
+// audio.
 func TestTheDeckReportsWhatTheCardNeedsToBeShown(t *testing.T) {
 	t.Setenv("WATCHPOST_MAINTRACK", "dark")
 	d, _ := offlineDeck(t)

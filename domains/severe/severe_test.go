@@ -242,9 +242,10 @@ func TestSevereImportsNoNetwork(t *testing.T) {
 
 // EVERY PRODUCT THE OFFICE ISSUES REACHES A TAB IT BELONGS IN (MVS-D-57).
 //
-// A statement that was not the Special Weather Statement used to fall through
-// to "not shown": the office had told the listener something and the app quietly
-// decided not to pass it on. Warning, watch and advisory are decided first, so a
+// A statement that is not the Special Weather Statement must not fall through to
+// "not shown": that is the office telling the listener something and the app
+// quietly deciding not to pass it on. Warning, watch and advisory are decided
+// first, so a
 // Special Marine Warning is a warning and not marine furniture.
 func TestClassifyPlacesEveryStatementAndMarineProduct(t *testing.T) {
 	for _, c := range []struct {

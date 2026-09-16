@@ -353,9 +353,9 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 // watchClip follows one clip to its end and says how it ended.
 //
 // EXTRACTED FROM `playClip` AT THE STATEMENT CEILING (P10-04, D-159). It is the
-// whole of the goroutine `playClip` used to spell out inline, and lifting it
-// makes FR-9's bound something a test can drive directly rather than only
-// through an audio device.
+// whole of the goroutine `playClip` starts, and standing apart it makes FR-9's
+// bound something a test can drive directly rather than only through an audio
+// device.
 //
 // THE LOOP IS BOUNDED IN AIR TIME, NOT WALL TIME, and that is the requirement
 // rather than an oversight: `i` advances only while the player is NOT held, so a

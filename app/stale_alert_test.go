@@ -76,8 +76,8 @@ func TestALiveAlertAndAnAlertWithNoExpiryStillRead(t *testing.T) {
 // lineup.New returns a zero Director on a zero clock or a negative Max, and a
 // zero Director refuses every event for ever with nothing observable from
 // outside: Step fails its clock invariant and returns unchanged, and Now()
-// fails quiet too. The pump checked its two closures and not the thing it was
-// built to drive.
+// fails quiet too, so the pump must check the thing it is built to drive and not
+// only its two closures.
 func TestAPumpRefusesADirectorThatWasNeverBuilt(t *testing.T) {
 	run := func(context.Context, lineup.Effect) []lineup.Event { return nil }
 	onFault := func(lineup.Effect, any) {}

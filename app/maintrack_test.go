@@ -27,10 +27,10 @@ func TestTheMergeIsOffUntilItIsAskedFor(t *testing.T) {
 	}
 }
 
-// D-33 RETIRED THE LIVE STAGE, and with it the question this test used to ask.
-// "live" meant the card was read through the ARBITER; the programme is not a
-// narration, so no stage can hand it over that way. What is left is the one
-// distinction that still means something: does the deck TELL the Director.
+// D-33 RETIRED THE LIVE STAGE, and with it the question about handing the card
+// to the ARBITER: the programme is not a narration, so no stage can hand it over
+// that way. What is left is the one distinction that means something: does the
+// deck TELL the Director.
 func TestOnlyDarkReportsAndNothingElseChanges(t *testing.T) {
 	if mainTrackOff.reports() {
 		t.Error("the default tells the Director nothing; a build nobody asked must be a no-op")

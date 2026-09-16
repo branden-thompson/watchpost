@@ -19,9 +19,9 @@ package app
 // shown — a card has to know what it says before it says it. The only
 // observable difference is a burst that spans MIDNIGHT while reading an event
 // declared the day before: `spokenWhen` compares the event's date against
-// `now`, so a line composed at 23:59 and read at 00:01 says "at 11:59 PM" where
-// it used to say "on September 4 at 11:59 PM". A burst lasts seconds; this needs
-// both the boundary and a stale event to appear at all.
+// `now`, so a line composed at 23:59 and read at 00:01 says "at 11:59 PM" rather
+// than "on September 4 at 11:59 PM". A burst lasts seconds; this needs both the
+// boundary and a stale event to appear at all.
 
 import (
 	"time"
