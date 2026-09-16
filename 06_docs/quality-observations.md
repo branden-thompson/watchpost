@@ -2794,3 +2794,83 @@ while the first holds, checked by actually starting one. And because the self-te
 temporary path via an environment variable, it runs as a gate INSIDE a verify that is already
 holding the real lock. A self-test that could only run on an idle tree would be a self-test that
 never ran when it mattered.
+
+---
+
+## A gate that never ARRIVES is invisible to a rule about gates that LEAVE
+
+**The catch.** `make p10` was declared "must fail loud, never skip", was RED on a clean tip, and
+appeared in `verify`, `ci.yml` and `required-gates.txt` **zero times**. Two full `make verify` runs
+reported ALL GATES GREEN over it, and the check written expressly to stop a gate existing without
+running could not see it.
+
+**Why it could not.** `TestGateListsAgree` compares `verify` against CI. A gate on *neither* list is
+invisible to a comparison of the two. The junior reviewer who found it said it best: **"`required-gates.txt`
+makes a gate need three edits to LEAVE; it has no answer to one that never ARRIVES."**
+
+**The fix, and the shape worth extracting: ask the ARTEFACT, not the list.** `TestEveryGateShapedTargetIsListedOrExempt`
+reads the Makefile and asks which targets *run a check* — a script under `scripts/`, a `go test`, a
+tool self-test — then requires each to be listed or to carry a written reason. On its first run it
+found seven more gaps, including that `required-gates.txt` was itself missing three gates `verify`
+actually runs, and that `dupes-selftest` passed while nothing invoked it.
+
+**This is the same shape as the tracked-binary gate on the same day**, and that is why it is worth
+recording as a shape rather than two incidents: *a list of names cannot cover the case it was not
+written for, and the case it was not written for is the only one that ever asks it anything.* The
+durable form of a check is one that enumerates from the artefact — the git index, the Makefile, the
+AST — and treats the hand-written list as the exception table, not the source of truth.
+
+---
+
+## The denylist that narrated the incident, one tool before repeating it
+
+**The catch.** A 4.7 MB Mach-O binary was committed at the repo root — `go build ./tools/<x>/` drops
+its output in the working directory and `git add -A` sweeps it in. It was the largest file in HEAD and
+survived two full `verify` runs, because nothing looked at the index.
+
+**What makes it worth recording.** `.gitignore` already carried a six-name denylist and a paragraph
+narrating *the previous occurrence of this exact defect*, one tool earlier. The author who committed
+the second binary had read that paragraph. **Knowing about a failure mode, in the file where it is
+documented, at the moment of committing it, prevented nothing.**
+
+**So the lesson is not "be careful with `git add -A`".** It is that a denylist is a record of past
+incidents wearing the costume of a control. It cannot name a tool that does not exist yet, which is
+precisely when a new tool arrives and asks it. `TestNoTrackedBinaries` asks the index for executable
+magic instead, and found a second undeclared payload on its first run.
+
+**Cost per defect:** thirty lines of Go against a 4.7 MB blob in permanent history — which, had it
+been pushed, would have been unrewritable without a force-push nobody wanted.
+
+---
+
+## Three juniors are an instrument; one junior is an opinion
+
+**The method.** Three blind agents, same brief, same hypothetical ticket, no shared context; then each
+was given the other two's reports and asked how they would land the change *together*, with an explicit
+instruction not to converge for the sake of agreement.
+
+**What the independent phase bought.** Unanimity is evidence. All three reached the same package
+comment by grep after failing to find it through the documentation, all three lost time to the same
+stale doc opener, and all three named the same missing walkthrough. One reviewer reporting that is a
+data point; three reaching it separately is a measurement.
+
+**What the collaboration phase bought, and it was more.** The juniors corrected each other in ways no
+single reviewer could:
+
+- One proposed raising a ratified cap — the only change in the round that would have broken a written
+  ruling. Another caught it by reading four lines further into the same file, where the reason was
+  stated *and its test fixture was named for the exact hypothetical ticket*.
+- Two independently reached for the wrong registry to derive a hand-written list; the third knew why
+  it was wrong (the list holds cast rows, not report kinds).
+- One asserted a gate caught the empty-branch case; another read the tool's source and proved it did
+  not. **The disagreement is what produced the finding** — both reviewers had been confident, and the
+  one who checked was right.
+
+**The shape:** ask independently, then make them argue. Convergence across isolated reviewers measures
+the repository; disagreement between them measures what the repository fails to RULE. The second is
+the more actionable half, and a single reviewer cannot produce it at all.
+
+**And the brief is the instrument.** The question that produced the most was not "find defects" but
+**"which of your own mistakes would the tooling catch, and which would reach a reviewer?"** — asked of
+someone who had to plan a real change first. Every reviewer answered it concretely, and two of the
+three findings that closed this round came out of that question rather than out of reading the code.

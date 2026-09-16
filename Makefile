@@ -159,7 +159,7 @@ mutant-check:
 # clean-up inside a 900-line log while verify still reported green (0.14.2), and
 # then a 730-line file rewritten on every verify when that was "fixed" wrong.
 # -timeout IS NOT DECORATION HERE, and the numbers are the argument. go test
-# defaults to 10 minutes. This corpus at 172 mutants takes 250s on the
+# defaults to 10 minutes. This corpus takes about 400s on the
 # developer's machine and ran 396s, 486s and 602s across three ubuntu-latest
 # jobs on 2026-09-09 — a 1.5x spread on the SAME commit and platform. The
 # margin is invisible locally because local has more cores.
@@ -384,7 +384,7 @@ mutant-verdicts:
 	  $(MAKE) --no-print-directory cache-clean || exit 1; \
 	  exit $$rc
 
-# MUTANT_POLICY decides WHEN the mutant corpus (171 mutants) runs in CI. It is
+# MUTANT_POLICY decides WHEN the mutant corpus runs in CI. It is
 # ONE WORD, AND SWITCHING IS EDITING IT: every mode's plumbing already exists in
 # the CI workflow — the schedule trigger, the label trigger and the per-push
 # path are all present whatever this says — so a change of mind costs a word
