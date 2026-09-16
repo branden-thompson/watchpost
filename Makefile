@@ -410,6 +410,15 @@ alloc-budget:
 quality-bench:
 	go test ./modes/tty ./platform/snapshot ./domains/fire/hms ./platform/render -run '^$$' -bench . -benchmem -count 10 | tee $(DIST)/bench.txt
 
+# THE PUBLIC MIRROR IS REGENERATED AND LINTED HERE, with the other two ledger
+# checks, because it is part of the same claim: the gate reads a MACHINE-LOCAL
+# ledger — `.gitignore` keeps the harness out of this public repository, rightly
+# — so without the mirror every HUM LEAD ratification would live on one disk, a
+# fresh clone would report every finding as unratified, and the record of what
+# was approved would be one disk failure from gone. Regenerating it here means it
+# cannot drift from the ledger it mirrors, and the lint means a machine path
+# cannot reach the public tree through it.
+#
 # P10 safety-critical check (quality pass §1, red-team R2-2). The harness CLI and the
 # exemptions ledger live outside the public tree, so this is a LOCAL gate that must fail
 # loud, never skip, when the CLI is absent. A2DH=/path/to/a2dh overrides the lookup.
@@ -421,6 +430,8 @@ p10:
 	@$(A2DH) p10 check --json > $(P10_OUT) || { echo "p10: live findings — see $(P10_OUT)"; exit 1; }
 	@./scripts/quality/p10-unmatched.sh $(P10_OUT)
 	@./scripts/quality/ledger-ratified.sh
+	@python3 ./scripts/quality/p10-ledger-mirror.py
+	@./scripts/quality/lint-ledger.sh
 	@echo "p10: 0 live, 0 unmatched, 0 unratified ($(P10_OUT))"
 
 # T-M (§10.12): cross-compile matrix — every milestone proves it stays green.
