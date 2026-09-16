@@ -115,6 +115,13 @@ gate-controls:
 	@./scripts/quality/ledger-ratified.sh --self-test
 	@go run ./tools/dupes -self-test
 	@./scripts/quality/mutant-anchors.sh --self-test
+# THE INJECTOR CONTROL BELONGS HERE AND WAS NOT HERE. lint-injector is the only
+# thing standing between a build that can fabricate hazards and a release, and
+# its control — which proves the check can tell a stripped debug binary from a
+# stripped clean one — was invoked by nothing: the two real callers pass
+# artefacts, not `--self-test`. A control that exists and does not run is the
+# same as no control, with the paperwork of one.
+	@./scripts/lint-injector.sh --self-test
 
 # THE CHEAP HALF OF `mutant-check`, RUNNABLE BEFORE A COMMIT. It asks only
 # whether every mutant still FINDS its line — three tenths of a second against
@@ -442,8 +449,19 @@ lint:
 lint-update:
 	@scripts/lint.sh --update
 
+# THE PATTERN IS NOT ANCHORED, and that is a fix rather than sloppiness.
+# `AllocBudget$$` selected seven of the eight pins: the eighth is
+# TestTickAdvanceAllocBudgetWithATestEventOnTheTape, whose name says what its
+# fixture carries AFTER the budget it measures, so the anchor excluded it. Its
+# own doc reads "the existing pin cannot see this change" — and the new pin was
+# the one nothing ran.
+#
+# An anchor makes the gate depend on a naming convention nothing enforces, and
+# the failure is silent in the worst direction: the test passes locally, is
+# listed by `go test -list`, and is never selected. Unanchored, a pin is reached
+# because of what it IS rather than what it was remembered to be called.
 alloc-budget:
-	go test -count=1 -run 'AllocBudget$$' ./...
+	go test -count=1 -run 'AllocBudget' ./...
 
 # Wall-clock benchmarks: recorded, never gated (quality pass §0.1). Local, HUM LEAD.
 # Needs benchstat: go install golang.org/x/perf/cmd/benchstat@latest
