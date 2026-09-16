@@ -749,10 +749,24 @@ func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64)
 // wants conditions to belong to NWS instead.
 func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voiceName string, want report.Set) ([]synth.Segment, error) {
 	asm := snapshot.NewAssembler([]snapshot.LocationRef{ref}, []string{d.nws.ID()})
+	// A FAILED ALERTS FETCH IS CARRIED, NOT DISCARDED (FR-8.10).
+	//
+	// Both fetches leave the snapshot short on failure, and for the observation
+	// that is recoverable — the report reads without current conditions and the
+	// listener can hear that something is missing. For ALERTS it is not: an empty
+	// list reads exactly like a quiet day, so a 502 becomes a report that sounds
+	// complete and names no hazard. The provider chips cannot correct it either,
+	// because they are fed by the pipeline's cycle and not by this read.
+	var hazardsUnavailable bool
 	for _, kind := range []snapshot.FetchKind{snapshot.KindObs, snapshot.KindAlerts} {
-		if frag, err := d.nws.Fetch(ctx, snapshot.FetchReq{Kind: kind, Locations: []snapshot.LocationRef{ref}}); err == nil {
-			asm.Apply(frag, nil) // a read-driven fetch, not the cycle that answers the row (see pipelines.go)
+		frag, err := d.nws.Fetch(ctx, snapshot.FetchReq{Kind: kind, Locations: []snapshot.LocationRef{ref}})
+		if err != nil {
+			if kind == snapshot.KindAlerts {
+				hazardsUnavailable = true
+			}
+			continue
 		}
+		asm.Apply(frag, nil) // a read-driven fetch, not the cycle that answers the row (see pipelines.go)
 	}
 	snap := asm.Snapshot()
 	if len(snap.Locations) == 0 {
@@ -788,7 +802,7 @@ func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voic
 		// forecast, and `products` is empty here precisely because they did not.
 		maritime.Forecast = synth.CoastalForecast(products, zone)
 	}
-	return d.composer.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), synth.Reports{Fire: fire, Seismic: seismic, Maritime: maritime}, d.clock()), nil
+	return d.composer.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), synth.Reports{Fire: fire, Seismic: seismic, Maritime: maritime, HazardsUnavailable: hazardsUnavailable}, d.clock()), nil
 }
 
 // stationFor names the NWR transmitter the lead points listeners to (UAT

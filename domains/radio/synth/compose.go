@@ -92,6 +92,17 @@ type Reports struct {
 	Fire     FireReport
 	Seismic  SeismicReport
 	Maritime MarineReport
+
+	// HazardsUnavailable says the alert feed could not be reached for this read
+	// (FR-8.10).
+	//
+	// AN EMPTY ALERT LIST IS NOT "NO ALERTS" WHEN THE FETCH FAILED. The two are
+	// the same value here and they mean opposite things to a listener: one is a
+	// quiet day, the other is a station that does not know. Broadcasting the
+	// first when the second is true is the report presenting stale-or-absent data
+	// as current, which is precisely what FR-8.10 forbids and what the listener
+	// has no way to detect — the report sounds complete.
+	HazardsUnavailable bool
 }
 
 // Compose builds one broadcast cycle the way NWR does (AI-13): the lead
@@ -112,6 +123,17 @@ func (c Composer) Compose(loc snapshot.Location, products []Product, now time.Ti
 		for i, piece := range Segments([]string{ExpandStates(text)}) {
 			segs = append(segs, Segment{Key: fmt.Sprintf("alert:%s:%d", a.ID, i), Text: piece, Role: cast.Weather})
 		}
+	}
+	// AND THE LISTENER IS TOLD WHEN THE STATION DOES NOT KNOW (FR-8.10).
+	//
+	// THE WORDS ARE A LITERAL, NOT A SCRIPT LOOKUP, and that is deliberate. A
+	// phrase the script library does not carry is simply not spoken — silence is
+	// how a missing template fails here — so routing this sentence through
+	// `c.say` would make the fix disappear in exactly the case it exists for.
+	// Every other line in this function can afford that; this one cannot.
+	if reports.HazardsUnavailable {
+		const unreachable = "Hazard information is unavailable for this location. The alert feed could not be reached."
+		segs = append(segs, Segment{Key: "alerts-unavailable:" + loc.Label, Text: unreachable, Role: cast.Weather})
 	}
 	for _, p := range products {
 		for i, piece := range Segments(Normalize(p.Text)) {

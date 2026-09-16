@@ -95,3 +95,37 @@ func TestComposeStillPlacesTheReportsCarriedInReports(t *testing.T) {
 		t.Errorf("the segment before the seismic report pauses %v, want the report pause %v (UAT 115)", got, reportPause)
 	}
 }
+
+// A FAILED ALERT FEED IS SPOKEN, NOT OMITTED (FR-8.10).
+//
+// THE TWO STATES ARE THE SAME VALUE AND OPPOSITE FACTS. `loc.Alerts` is empty on
+// a quiet day and empty when the feed returned a 502, and from the air the
+// listener cannot tell them apart: the report runs lead, conditions, forecast,
+// sign-off, and sounds complete. FR-8.10 exists because "the worst day is severe
+// weather with a failing feed", and its exit is that the spoken output says the
+// data is unavailable or omits it — never presents it as current.
+//
+// THE CONTROL IS THE HALF THAT MATTERS. A test asserting only that the sentence
+// appears would pass on a composer that said it on every read, which would train
+// a listener to ignore it inside a day. So the quiet day is asserted beside it.
+func TestAFailedAlertFeedIsSaidAloudAndAQuietDayIsNot(t *testing.T) {
+	loc := snapshot.Location{Label: "Oceanside, CA"}
+	at := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
+
+	spoken := func(r Reports) string {
+		var b strings.Builder
+		for _, s := range std.Compose(loc, nil, at, true, "Alpha", Station{}, r, render.Clock12) {
+			b.WriteString(s.Text + " ")
+		}
+		return b.String()
+	}
+
+	const says = "Hazard information is unavailable"
+	if got := spoken(Reports{HazardsUnavailable: true}); !strings.Contains(got, says) {
+		t.Errorf("the alert feed failed and the report does not say so — it sounds like a quiet day:\n%s", got)
+	}
+	// AND A QUIET DAY STAYS QUIET.
+	if got := spoken(Reports{}); strings.Contains(got, says) {
+		t.Errorf("no feed failed and the report claimed hazard data was unavailable:\n%s", got)
+	}
+}
