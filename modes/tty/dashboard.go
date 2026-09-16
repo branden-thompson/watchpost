@@ -467,7 +467,7 @@ type Dashboard struct {
 	consoleKeys term.KeyMap
 
 	// liveOffset is how far the CONSOLE'S line-up sits below its LIVE slot,
-	// carried across by the Router on every key it routes here (D-156).
+	// mirrored onto this surface by the Router on every update (D-156, D-160).
 	//
 	// OBSERVER DRAWS THESE WINDOWS; THE CONSOLE OWNS WHAT THEY ACT ON. The
 	// Line-Up Request window turns the slot the operator typed into a

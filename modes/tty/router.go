@@ -406,6 +406,29 @@ func observerScoped(msg tea.Msg) bool {
 // instant it is swapped to, and the operator would meet a broken frame at
 // exactly the moment they asked for it.
 func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// HOW FAR THE CONSOLE'S LINE-UP SITS BELOW ITS LIVE SLOT, CARRIED BEFORE THE
+	// MESSAGE IS DISPATCHED (D-156, corrected at D-160).
+	//
+	// IT WAS SET IN `throughToObserver` ALONE — the path the console uses to
+	// reach a window it does not own — and NOT on the path taken when Observer
+	// is the ACTIVE surface, where `update` calls `r.observer.Update` directly.
+	//
+	// THE WINDOW OUTLIVES THE SURFACE THAT OPENED IT, which is what made that a
+	// live defect rather than a tidiness one. `ctrl+o` deliberately still swaps
+	// out of an open window — the escape hatch an operator needs — so a Line-Up
+	// Request opened with `r` on the console can be filled in and submitted with
+	// Observer active. There the offset read ZERO, which is the RUNNING station's
+	// answer, and on STANDBY it is wrong by one: the card lands a row below the
+	// slot the operator typed, with the window's own confirmation naming the slot
+	// they asked for. D-119 verbatim, surviving inside its own fix.
+	//
+	// BEFORE THE DISPATCH, NOT AFTER. The gain and the surface below are mirrored
+	// on the way OUT because they are DRAWN; this is READ by a handler while the
+	// message is being processed, so a value written afterwards is a value the
+	// handler never saw. Mirroring it beside them was the first fix and it did
+	// not work — the test caught it, which is the whole reason the test drives
+	// the Router instead of calling `requestSchedule`.
+	r.observer.liveOffset = r.broadcaster.liveOffset()
 	m, cmd := r.update(msg)
 	// THE LEVEL IS MIRRORED, NEVER OWNED TWICE (D-56). The Dashboard holds it —
 	// it has the engine call, the step and the chip flash — and the console
@@ -795,21 +818,13 @@ func (r Router) keyAction(msg tea.Msg, k tea.KeyPressMsg, a term.Action) (tea.Mo
 // throughToObserver hands a message to the surface that owns the diagnostics
 // window, WITHOUT changing which surface is drawn.
 //
-// IT CARRIES THE LIVE OFFSET ACROSS WITH IT (D-156). The windows the console
-// reaches through here are drawn by Observer and act on the CONSOLE'S running
-// order, and the Line-Up Request window has to turn the slot the operator typed
-// into a running-order index (D-119). Only the Router holds both surfaces, and
-// this is the single funnel every one of those keys passes through.
-//
-// REFRESHED ON EVERY KEY, NOT STAMPED WHEN THE WINDOW OPENS, because the power
-// can change underneath an open window: `actStationToggle` is answered in the
-// keymap switch above, which runs BEFORE the "window on top owns the keys" rule
-// — deliberately, since taking the station off the air is the one control that
-// must never be captured by a form. An offset read at open time would be a
-// stale answer for exactly the operator who went ON AIR while composing a
-// request.
+// THE LIVE OFFSET IS NOT CARRIED HERE, AND THAT IS THE CORRECTION (D-160). It
+// was — and this being the ONLY place that carried it is exactly what left the
+// Observer-active path unwired, because `update` reaches that surface directly
+// and never comes through this funnel. `Update` now mirrors it before every
+// dispatch, so this line would be a SECOND CARRIER of one rule: the shape this
+// release has spent three red-team rounds removing.
 func (r Router) throughToObserver(msg tea.Msg) (tea.Model, tea.Cmd) {
-	r.observer.liveOffset = r.broadcaster.liveOffset()
 	m, cmd := r.observer.Update(msg)
 	if d, ok := m.(Dashboard); ok {
 		r.observer = d

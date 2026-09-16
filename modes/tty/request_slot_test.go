@@ -150,3 +150,66 @@ func TestTheRequestWindowRetriesALookupThatCouldNotBeAsked(t *testing.T) {
 		t.Error("enter produced a command that did not put the question again")
 	}
 }
+
+// AND THE SLOT IS STILL RIGHT WHEN THE WINDOW IS SUBMITTED FROM OBSERVER (D-160).
+//
+// THE PATH D-156 DID NOT WIRE, and it is reachable by a route the console
+// deliberately supports. `ctrl+o` swaps out of an open window on purpose — the
+// escape hatch an operator needs — so the Line-Up Request window opened with `r`
+// on the console outlives the surface that opened it. With Observer active,
+// `update` calls `r.observer.Update` DIRECTLY; `throughToObserver`, the only
+// place that carried the offset, is never reached.
+//
+// SO THE OFFSET READ ZERO, which is the RUNNING station's answer, and on STANDBY
+// it is wrong by one: the card lands a row below the slot the operator typed,
+// with the window's own confirmation naming the slot they asked for. That is
+// D-119 verbatim, surviving inside its own fix.
+//
+// FOUND BY A BLIND CODE-QUALITY REVIEW, which noted that
+// `TestARequestedCardLandsInTheSlotTheOperatorTyped` had the right reasoning —
+// drive it through the Router, because a direct call passes with the wiring
+// absent — and simply did not extend it to the other surface.
+func TestARequestSubmittedFromObserverStillLandsInTheTypedSlot(t *testing.T) {
+	var got int
+	var sent bool
+	vista := snapshot.LocationRef{Label: "Vista, CA"}
+	d, err := NewDashboard(Config{
+		LocateInRadius: func(string) (snapshot.LocationRef, bool, bool, bool) {
+			return vista, true, true, true
+		},
+		RequestCard: func(_ snapshot.LocationRef, _ report.Set, at int) { got, sent = at, true },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := NewRouter(d)
+	// THE OPERATOR OPENS IT ON THE CONSOLE, at STANDBY.
+	r.active = SurfaceBroadcaster
+	r.broadcaster.power = lineup.OffAir
+	r.observer = r.observer.openRequest()
+	// AND THEN SWAPS TO OBSERVER WITH IT OPEN, which `ctrl+o` is meant to allow.
+	r.active = SurfaceObserver
+
+	st := r.observer.request
+	st.locate.ref, st.locate.found, st.locate.within = &vista, true, true
+	st.locate.asked = true
+	st.slot, st.prioritize = "4", false
+	r.observer.request = st
+
+	m, cmd := r.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if rr, ok := m.(Router); ok {
+		r = rr
+	}
+	if cmd != nil {
+		cmd()
+	}
+	if !sent {
+		t.Fatal("the request was never scheduled; the form was valid")
+	}
+	// STANDBY: LIVE is empty and the line-up is drawn from UP NEXT down, so slot
+	// 4 is the third card in the running order.
+	if got != 3 {
+		t.Errorf("slot 4 submitted from Observer reached the schedule as index %d, want 3 — "+
+			"the console's live offset did not cross to the window", got)
+	}
+}
