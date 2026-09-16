@@ -1,6 +1,7 @@
 package tty
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -89,6 +90,49 @@ func TestAnOverrideForTheOtherSurfaceDoesNotBreakTheConsole(t *testing.T) {
 	for act := range broadcasterKeyMap() {
 		if _, ok := d.consoleKeyMap()[act]; !ok {
 			t.Errorf("the console lost %q to the merge", act)
+		}
+	}
+}
+
+// A CONFIG THAT 0.15.0 ACCEPTED CAN NOW REFUSE TO LAUNCH (F-114).
+//
+// THIS RELEASE IS THE FIRST TO APPLY `[keys]` TO THE CONSOLE (D-158), and
+// several actions live in BOTH scopes — lookup, settings, about, status, help,
+// quit, the gain pair, diagnostics. A key free on Observer may already be taken
+// on the console, so an override that was legal becomes a hard start-up failure:
+// `lookup = "b"` collides with the bed, `settings = "r"` with the request window.
+//
+// THE COLLISION IS REAL and D-15 says a conflict is never a silent win — but
+// `term.Merge`'s own doc argues the other way for exactly this case: "losing a
+// binding is a nuisance; refusing to launch over one is a broken upgrade". WHICH
+// ONE WINS IS THE HUM LEAD'S CALL, recorded as F-114.
+//
+// THIS TEST PINS THE BEHAVIOUR AS IT SHIPS so the ruling changes a gate rather
+// than a surprise, and asserts the error EXPLAINS ITSELF: the operator did
+// nothing, and a message naming only the conflict would read as their mistake.
+func TestAnOverrideLegalOnObserverCanRefuseTheConsole(t *testing.T) {
+	for _, tc := range []struct {
+		act           term.Action
+		key, collides string
+	}{
+		{actLookup, "b", "bed-cut"},
+		{actSettings, "r", "request"},
+	} {
+		_, err := NewDashboard(Config{KeyOverrides: term.KeyMap{
+			tc.act: {Keys: []string{tc.key}, Help: "x"},
+		}})
+		if err == nil {
+			t.Errorf("%q=%q was accepted; it collides with %q on the console", tc.act, tc.key, tc.collides)
+			continue
+		}
+		if !strings.Contains(err.Error(), tc.collides) {
+			t.Errorf("the error does not name what it collides with: %v", err)
+		}
+		// IT SAYS WHY THIS IS NEW. Without that the operator reads a config they
+		// did not change as a config they got wrong.
+		if !strings.Contains(err.Error(), "first to apply") {
+			t.Errorf("the error does not explain that this release is the first to apply "+
+				"[keys] to the console, so a previously-valid file can now fail: %v", err)
 		}
 	}
 }

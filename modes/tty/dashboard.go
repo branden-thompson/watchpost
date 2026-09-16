@@ -630,7 +630,27 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	// an upgrade.
 	console, _, err := term.Merge(broadcasterKeyMap(), cfg.KeyOverrides)
 	if err != nil {
-		return Dashboard{}, fmt.Errorf("console key bindings invalid: %w", err)
+		// AND IT CAN REFUSE A CONFIG THAT 0.15.0 ACCEPTED (F-114). The console's
+		// map is merged for the first time in this release, and several actions
+		// live in BOTH scopes — lookup, settings, about, status, help, quit, the
+		// gain pair, diagnostics. A key free on Observer may already be taken on
+		// the console: `lookup = "b"` was legal, and `b` is the bed's.
+		//
+		// THE COLLISION IS REAL — `b` would mean two things on one surface, which
+		// is D-56 — so this does not silently drop the override (D-15: never a
+		// silent win). But `term.Merge`'s own doc argues the other way for the
+		// upgrade case — "losing a binding is a nuisance; refusing to launch over
+		// one is a broken upgrade" — and this is that case. The error therefore
+		// has to say what changed and what to do, because the operator did
+		// nothing: their file was valid yesterday.
+		//
+		// WHETHER IT SHOULD REFUSE AT ALL IS THE HUM LEAD'S, and it is recorded
+		// as F-114 rather than decided here.
+		return Dashboard{}, fmt.Errorf("console key bindings invalid: %w\n"+
+			"  The Broadcaster console has its own keys, and this release is the first to apply "+
+			"your [keys] overrides to them. A binding that was free on Observer may already be "+
+			"taken there, so a file that worked before can fail now. Rebind the key in [keys]; "+
+			"nothing else in your config has to change", err)
 	}
 	d := Dashboard{cfg: cfg, keys: keys, consoleKeys: console, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
