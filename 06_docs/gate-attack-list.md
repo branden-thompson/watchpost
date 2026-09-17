@@ -232,3 +232,54 @@ building rather than stopping.
 - **A real tool that succeeds on an empty tree** (`/usr/local/go/bin/gofmt -l .` by absolute path, `find … -exec gofmt`) makes the oracle refuse a gate that CAN fail — the false-positive direction, loud, never silent.
 - **A double-colon rule** whose second part is empty overwrites the first in the database parse — loud, never silent.
 - **The CI half** remains a ratchet; G2–G4 stand.
+
+---
+
+# Round four: paint one thing, not the world
+
+**Written and committed before the fix.** A fourth blind adversary found three Criticals and named
+them as one shape: *the oracle paints the WORLD, then asks one bit.* Green-under-green proves the
+gate is judgeable; red-under-red proves it is red when EVERYTHING is red — and neither proves it is
+red BECAUSE OF ITS OWN CHECK. `./scripts/x.sh || exit 0` followed by `go version` is green under
+green, red under red, and neutered. In the real Makefile: `mutant-check`'s verdict replaced by
+`exit 0` read as sound (the `$(MAKE) cache-clean` stub reds it); `lint-injector … || true` — the sole
+debug-injector check before a release — read as sound (release-matrix's `go build` stub reds it).
+
+**The fix is the control proof's own method, applied everywhere.** For each required gate, for each
+stub its recipe REACHES — its own checkers, every toolchain sub-command, its prerequisites' recipes,
+the targets it recurses into with `$(MAKE)` — paint ONLY that one red and require the gate red.
+Toolchain stubs answer by sub-command (`go test` ≠ `go clean` ≠ `go build`), or `mutant-check`'s
+two `go` calls are the same stub and the discard stays invisible. The count fell 6 → 4 → 3 across
+rounds and each round's Criticals collapsed to one mechanism; this is convergence, and the reason a
+fourth batch is built rather than stopped.
+
+## M. Red for the wrong reason — closed by per-key painting
+
+| # | Attack | Must |
+|---|---|---|
+| M1 | `./scripts/x.sh \|\| exit 0` then `go version` — red-under-red from the wrong stub | CAUGHT — with only `scripts/x.sh` red, the gate is green |
+| M2 | `gate: other-gate` as a prerequisite, own line `\|\| exit 0` — the prerequisite reds it | CAUGHT |
+| M3 | `OK := $(shell go version && echo yes)` at parse time, `test "$(OK)" = yes \|\| exit 1` before `\|\| exit 0` | CAUGHT |
+| M4 | **Real tree:** `mutant-check`'s `exit $$rc` → `exit 0` | CAUGHT — paint `go:test` alone red; the gate must go red |
+| M5 | **Real tree:** `install-test.sh \|\| true` behind `release-matrix`'s red `go build` | CAUGHT |
+| M6 | **Real tree:** `lint-injector.sh … \|\| true` — the debug-injector check | CAUGHT |
+| M7 | `verify: lint` as a prerequisite, `-@` on treelock — verify red for `lint`'s sake and green for every other gate's | CAUGHT — every invoked checker is painted in turn and verify must go red each time; not `invoked[0]` |
+| **M-ok** | The real Makefile: every required gate goes red for EACH stub it reaches, painted alone | PASSES — or the recipe has a status discard, named by key |
+
+## N. The escapes — closed by deletion and by walking
+
+| # | Attack | Must |
+|---|---|---|
+| N1 | Delete a gate's rule, prepend `.DEFAULT:` green, add a 20-character `ciOnly` row — every executed check skipped, `make <gate>` prints "skipped" and exits 0 | CAUGHT — **a `ciOnly` row exempts a gate from `verify`, never from having a phony rule.** A required gate absent from the database is an error unconditionally |
+| N2 | `gate: gate-run` with the recipe on `gate-run`, which is not phony — `touch gate-run` silences it while `gate` is phony | CAUGHT — the audit walks prerequisites; every non-phony node WITH a recipe is the finding |
+| N3 | `exists: s != absentNonce` — the nonce is a package constant a table can name; or match by shape `HasPrefix("__registry")` | CAUGHT — a fresh random string per call, no fixed prefix, never a package identifier |
+| N4 | `MAKEFLAGS=i` in the environment — the oracle runs inside `make race`, so a parent `-i` or `-n` reaches every child make | CAUGHT — `MAKEFLAGS` and `MAKELEVEL` are stripped from the child environment |
+
+## Declared this round
+
+- The `go` stub's treelock contract matches `go run ./tools/treelock` exactly. `./tools/treelock/`,
+  `github.com/…/tools/treelock`, or another wrapper make `verify` UNJUDGEABLE — **the green run
+  must reach the gates, and now says so when it does not** rather than diagnosing a `-` that is not
+  there.
+- A checker referenced nowhere by a `scripts/` token (`cd scripts && ./x.sh`) is red under green —
+  loud.
