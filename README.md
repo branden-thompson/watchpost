@@ -132,6 +132,7 @@ tidal current.
 | `f` `c` | Fahrenheit / Celsius |
 | `t` | the colour theme — thirteen built in, **Watchpost Light** for a light terminal |
 | `s` `a` `S` `?` `q` | Settings · About and data credits · the status of every data source · help · quit (`ctrl+c` too) |
+| `ctrl+b` / `B` · `ctrl+o` / `O` | the **Broadcaster** console for your station · back to the Observer (refused while the station is ON AIR — go to STANDBY first) |
 
 (`ctrl+s` also opens the severe window — unless your shell or tmux has it reserved for flow control,
 which is why `w` is the key to remember.)
@@ -170,6 +171,20 @@ is waiting.
 
 ![Nearest Relay: the live transmitter streamed — KIG78 Coachella, CA on 162.400 MHz, 81 miles away, LIVE RADIO across the band](docs/img/relay.png)
 
+
+## Broadcaster
+
+`ctrl+b` (or `B`) opens the **Broadcaster** console: the same radio, run as a *station* rather than
+listened to as a place. You set a **transmitter** — where the station broadcasts from — and a **service
+radius**, and the console keeps a **line-up**: a main track of location reports for the places inside
+the radius, in rotation, and a priority track for alerts, which always drains first. The station is
+**STANDBY** or **ON AIR**, the state is written in words as well as colour, and ON AIR means the
+programme is going to the audio out of this machine — Watchpost does not observe a real transmitter.
+Every card shows where its words came from and when its data last arrived; you can promote, demote and
+drop cards, cut the main track over to a live relay on the **bed**, and nothing is ever shown as taken
+unless the schedule took it. Your tower's position stays on this machine, in `config.toml`, and is
+never sent anywhere or written to a debug dump. `ctrl+o` (or `O`) returns to the Observer, and is refused
+while the station is ON AIR.
 
 ## Quakes
 
@@ -344,7 +359,9 @@ falls back to `radio`.
 Go 1.25 is the floor (`go.mod`); CI and the releases build with 1.27. `make build` (binary in
 `./dist`, version stamped from `git describe`), `make verify` (fmt, vet, tidy, vulnerability, race,
 import-direction, watermark and control gates with positive controls), `make release-matrix` (all
-targets, CGO off), `make install-test` (installer end to end against a local server). The soak and
+targets, CGO off), `make install-test` (installer end to end against a local server). One gate, `p10`, needs the
+out-of-tree `a2dh` CLI and fails loud without it rather than skipping — so from a clean clone
+`make verify` stops there by design; every other gate runs from the tree alone. The soak and
 benchmark harness lives in `scripts/quality/` and `make quality-bench`. The terminal UI kit (`go-studs`,
 MIT, same author) is carried in-tree under `third_party/go-studs` (its LICENSE and NOTICE.md ride with
 it; import paths rewritten), so the tree builds anywhere with no private access.

@@ -11,22 +11,24 @@ own work took `location` from 137 files to 139 while nobody intended it. **Re-de
 cite.**"*  0.16.0 shipped `scripts/quality/exposure-scan.py` and then did not run it for itself —
 found by red team at BUILD exit.  This is that re-derivation.
 
-## The numbers, re-derived 2026-09-16 (corrected)
+## The numbers, re-derived 2026-09-17 (third derivation)
 
 **THE FIRST VERSION OF THIS TABLE WAS DERIVED BEFORE THE COMMIT IT LIVES IN.**  Red team round 2
 caught it: the scan reads `git ls-files`, and `2d7c21e` added 49 files — including the 572 lines of
 the P7 build log — so the numbers this document published were already stale when it was committed.
 The document whose thesis is *"re-derive rather than cite"* had cited itself.  These are the figures
-from the tree as it now stands.
+from the tree as it now stands. **Re-derived again at BUILD exit, 2026-09-17** (red team F-145: the
+second table was already wrong against its own scanner): `python3 scripts/quality/exposure-scan.py` at
+`59c8b38`. The tags column reads 21 because two local safety-net tags exist; the published set is 19.
 
 | Category | Tracked tree (files / occurrences) | 0.15.0 | Δ | Git history | Tags |
 | --- | --- | --- | --- | --- | --- |
-| **identity** | 116 / 275 | 23 / 133 | **+93 files** | 1,367 | 19/19 |
-| **location** | 203 / 723 | 139 / 464 | **+64 files** | 7,173 | 19/19 |
-| **host** | 12 / 28 | 11 / 23 | +1 file | 211 | 19/19 |
-| **internal-url** | 0 / 0 | 0 | — | 0 | 0/19 |
-| **credential** | 7 files / 11 matches, **2 distinct, both fixtures** | 2 distinct | **no change** | 68 | 19/19 |
-| **path** | 14 / 83 | — | — | 119 | 19/19 |
+| **identity** | 137 / 339 | 23 / 133 | **+114 files** | 2,504 | 21/21 |
+| **location** | 212 / 746 | 139 / 464 | **+73 files** | 7,665 | 21/21 |
+| **host** | 12 / 28 | 11 / 23 | +1 file | 226 | 21/21 |
+| **internal-url** | 0 / 0 | 0 | — | 0 | 0/21 |
+| **credential** | 7 files / 11 matches, **2 distinct, both fixtures** | 2 distinct | **no change** | 69 | 21/21 |
+| **path** | 4 / 5 | — | — | 137 | 21/21 |
 
 ## What changed, and what it means
 
@@ -75,3 +77,22 @@ likely to be wrong and it is the one that did not move.
 release.  `python3 scripts/quality/exposure-scan.py`, and write the delta down — the release that
 built the scanner is the release that forgot to run it, which is exactly how a standing instruction
 decays.
+
+## `path` — the disposition the table lacked
+
+**What it is.** A `path` hit is an absolute filesystem path naming a machine — a home directory, a
+harness scratchpad, a build root. It is the category the 2026-09-16 identity leak fell into: twelve
+files carried `/Users/<account>/…` and ten carried an agent-harness path, on both pushed branches.
+
+**Disposition.** Fixed forward, never rewritten: the dead artefacts were deleted, the records scrubbed of
+the account name with their findings kept, and `TestThePublishedTreeNamesNoPersonOrMachine` now asks
+the WHOLE index (it had been scoped to one file while the class was live in twenty-one others). The
+tracked tree stands at **4 files / 5 occurrences**, each a documentation example of the `/Users/you/…`
+kind, which the gate's `reservedForDocs` pattern admits by name. **History keeps its 137**, as every
+category does — `git rm` removes none of these, and published history is never rewritten. **Built
+artifacts** carry `path` in the hundreds per binary because Go embeds the build path; `dist/` is
+git-ignored, `release-matrix` builds with `-trimpath`, and `TestEveryBuildTargetTrimsThePath` holds it.
+
+**Blind spot.** The scan reads the tracked tree and git objects; it does not read a contributor's
+untracked files, and a path without a `/Users/`, `/home/` or harness prefix is not a `path` to it.
+

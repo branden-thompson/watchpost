@@ -154,6 +154,8 @@ imagination, and the author is the worst available adversary.**
    collapses six near-identical staleness loops, and makes "eight tables" a design rather than an
    accumulation. Consider deleting `modes/tty/declset_test.go` (F-122) and the `declaredLocals`
    helper (36 lines that close one token and miss the shadow).
+**2026-09-17, BUILD exit in progress:** items 2, 3 and 4 below are DONE (`c48e4a9`, `59c8b38`, and the records commit that follows); the sweep runs on the clean tree next; then item 6. Two rulings owed: F-140, and the two untraced requirements (FR-5.4, FR-8.6) the derived traceability table found.
+
 2. **Fix F-125…F-129 as one batch** — they are five holes in three gates, and fixing them separately
    is what produced them. **Have someone else construct the attacks**, or write the attack list
    *before* the fix.

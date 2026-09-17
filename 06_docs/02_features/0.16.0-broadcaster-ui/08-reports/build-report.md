@@ -268,8 +268,83 @@ the table is the answer to *"is this citation drift or open scope?"* and it is *
 | **FR-11.4** | A surviving plant indicts the plant first | **CLOSED by practice** | Both survivors (`m16`, `m43`) are dispositioned at `gates.md`'s survivor dispositions (end of file) as equivalent mutants, HUM-LEAD-kept. Two mutations at this exit reported SURVIVED and were re-examined as INVALID (build failures). |
 | **FR-11.5** | Every published count states its blind spot in its own output | **CLOSED** | `dupes`, `wires` and `mutant-anchors` each print their scope line (*"A FLOOR, not a total…"*) |
 
-**Four are genuinely open — FR-3.6, FR-5.5, FR-8.3, FR-8.8 — three are PARTIAL, and one is
-SUPERSEDED.**
+**The thirteen rows above are the red team's list, kept as written. The sentence that used to follow
+them — "Four are genuinely open" — generalised thirteen rows to sixty requirements and could not be
+defended (F-148). What follows is the whole set, derived.**
+
+**Derived, not remembered (2026-09-17, F-148).** The table below is every one of the 60 FRs in
+`requirements.md`, each with what names it: a roster row in `gates.md`, a test file that cites the ID,
+or a row of the red team's 13-row disposition table above (kept as written). **48 are traced by ID, 9 more by a test that holds the property without citing the ID (each named), one is withdrawn, one is a scope statement, and 2 are UNTRACED — FR-5.4, FR-8.6 — with no test found to hold them.** An untraced FR is not an
+unmet one: the 0.16.0 gates cite rulings (D-nn) and properties far more often than FR IDs, and several
+untraced FRs are held by tests that never wrote the ID down. But the earlier sentence — *"Four are
+genuinely open"* — generalised from thirteen rows to sixty, and this table is what replaces it: the
+untraced list is the BUILD-exit review's worklist, with each row either pinned to a test by ID or
+dispositioned in this table before exit.
+
+Untraced at BUILD exit: FR-5.4, FR-8.6 — each needs a test or a HUM LEAD disposition before exit.
+
+| FR | Requirement (abridged) | Disposition | Evidence |
+| --- | --- | --- | --- |
+| **FR-1.1** | A thin router is the Bubble Tea model handed to the program. `Dashboard` stays the | TRACED | `app/router_owner_test.go`, `platform/config/one_writer_test.go` |
+| **FR-1.2** | The router fans the program-scoped messages to the surfaces: window size, background | TRACED | 1 roster row(s), `modes/tty/router_test.go` |
+| **FR-1.3** | All senders that today capture the program handle receive the router's send instead. | TRACED | `modes/tty/one_band_writer_test.go` |
+| **FR-1.4** | Swapping to Observer is refused unless Broadcaster is in STANDBY, and the refusal is | TRACED | 1 roster row(s), `app/arbiter_race_test.go`, `modes/tty/router_door_test.go`, `modes/tty/router_refusal_test.go` … |
+| **FR-1.5** | The swap chords are rebindable, and the defaults are chosen at PLAN against the | TRACED | 3 roster row(s), `modes/tty/console_rebind_test.go`, `modes/tty/router_keys_test.go` |
+| **FR-1.6** | The chord is not the only door. Switching surfaces is reachable without a modifier | TRACED | 2 roster row(s), `modes/tty/router_keys_test.go` |
+| **FR-2.1** | The console shows a main track of ten cards — the rotation — a priority track for | TRACED (no ID) | `TestTheConsoleShowsAtMostFifteenMainTrackSlots`, `TestTheConsoleNumbersTheMainTrackSlots` — the cap moved from ten to fifteen by ruling (`gates.md:489`); the requirement text still says ten |
+| **FR-2.2** | The priority track always drains first, including while the bed is playing. *Exit: | TRACED | `app/classifier_crosstable_test.go`, `app/ticker_test.go`, `platform/lineup/cutover_test.go` |
+| **FR-2.3** | The console reads its schedule from the `Publish` effect, not from a second source of | TRACED (no ID) | the console reads the lineup's projection, never the schedule: `TestAMoveIsInProjectionSpaceNotScheduleSpace`, `TestAMoveBeyondTheProjectionIsRefused` |
+| **FR-2.4** | The ten slots are addressable `0`-`9`, and the takeover layer has its own handles. | TRACED | 1 roster row(s), `modes/tty/broadcaster_lanes_test.go` |
+| **FR-2.5** | No report is ever read twice by two audio owners. The rotation drives the engine | TRACED | 1 roster row(s), `app/schedule_test.go`, `platform/lineup/merge_property_test.go`, `platform/lineup/rotation_test.go` … |
+| **FR-2.6** | All external text in the new lanes routes through the existing plaintext clamp — the | TRACED | 1 roster row(s), `modes/tty/broadcaster_lanes_test.go` |
+| **FR-3.1** | Selecting a slot opens a modal for that card showing its detail. *Exit: the modal | TRACED | 2 roster row(s) |
+| **FR-3.2** | The operator can promote, demote and drop a card. *Exit: each action changes the | TRACED | `platform/lineup/operator_test.go` |
+| **FR-3.3** | An action must never be shown as taken unless the schedule took it. `Lineup.Set` | TRACED | `app/request_compose_test.go`, `modes/tty/broadcaster_manage_test.go`, `modes/tty/memo_completeness_test.go` … |
+| **FR-3.4** | An operator edit is attributable: the card records that a human placed it. | TRACED | `app/segments_completeness_test.go`, `platform/lineup/operator_test.go` |
+| **FR-3.5** | Actions remain available while the main track is paused (FR-4.2). *Exit: promote, | TRACED | `platform/lineup/operator_test.go` |
+| **FR-3.6** | A card the operator holds past the fifteen-minute staleness bound is dropped by the | **OPEN** | `dropStale` → `readInstead` (`director.go:946`) queues a **listener**-facing notice; the requirement itself says *"The listener is already told."* No operator-f |
+| **FR-3.7** | A mis-action is recoverable — BOTH a confirm AND an undo (D-26). Dropping a card is | TRACED | `platform/lineup/discard_test.go`, `platform/lineup/operator_test.go` |
+| **FR-4.1** | The operator selects the bed's relay from candidates bounded by the service radius. | TRACED | `app/inject_scenarios_test.go` |
+| **FR-4.2** | The operator can cut the main track over to the bed. The main track then pauses: | TRACED | `app/inject_scenarios_test.go`, `modes/tty/broadcaster_air_test.go`, `modes/tty/router_door_test.go` … |
+| **FR-4.3** | The cut-over is operator-initiated, and the duck's behaviour on it is decided | TRACED | `app/inject_scenarios_test.go` |
+| **FR-4.4** | The bed row shows callsign, site, state, frequency, and distance in miles from the | TRACED | `app/test_event_test.go`, `modes/tty/broadcaster_cardbox_test.go`, `modes/tty/severe_test.go` … |
+| **FR-5.1** | The station is ON AIR or STANDBY, and STANDBY is `lineup.Power.OffAir` — the existing, | TRACED | 1 roster row(s) |
+| **FR-5.2** | ON AIR is mock for this release — it does not assert a continuous carrier, and the | STATEMENT | a scope statement (ON AIR is mock; no continuous stream is asserted); its operator-facing consequence is FR-5.5's boundary sentence, dispositioned above |
+| **FR-5.3** | The station state is legible without reading, via a background treatment in the manner | TRACED | 2 roster row(s), `modes/tty/station_wording_test.go` |
+| **FR-5.4** | The operator changes the state with a named control, and the control is a requirement | **UNTRACED** | the named control is `broadcasterKeyMap()`'s power action; no test cites FR-5.4 and none is obviously its pin — a test or a citation at review |
+| **FR-5.5** | THE BOUNDARY OF "ON AIR" IS STATED, NOT IMPLIED. Watchpost has no radio path — it | TRACED | 1 roster row(s), `modes/tty/broadcaster_station_test.go`, `modes/tty/broadcaster_uat_test.go`, `modes/tty/station_wording_test.go` |
+| **FR-5.6** | A paused main track is a distinct condition from STANDBY. `OffAir` holds the rail; | TRACED | `platform/lineup/cutover_test.go` |
+| **FR-6.1** | Broadcaster has its own settings modal. *Exit: it opens, it edits only the fields | **CLOSED** | `TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt` (`setup_scope_test.go:82`).  A first draft cited `TestAnUndeclaredSurfaceIsRefused`, which is a ROUTER surface |
+| **FR-6.2** | The split is exactly as ruled in the field table: shared theme, units, clock, update | **PARTIAL** | `TestEverySettingsRowIsRuledForItsSurface` asserts every row carries a ruled scope — it does NOT read the field table, and asserts nothing about values survivin |
+| **FR-6.3** | The migration is purely additive. A 0.15.0 config decodes unchanged and the user | TRACED | 1 roster row(s), `platform/config/fixture0150_test.go` |
+| **FR-6.4** | `broadcaster.tower` is a single table, never an array of tables, because the unknown-key | TRACED | `modes/tty/relayfault_test.go` |
+| **FR-6.5** | WITHDRAWN by D-20. There is no rename and no unification: Observer's alert radius | WITHDRAWN | by D-20, in the requirement's own text |
+| **FR-6.6** | Key-binding overrides gain per-surface scoping before their sharing question is | TRACED (no ID) | `TestAnOverrideForTheOtherSurfaceDoesNotBreakTheConsole` (planted and CAUGHT 2026-09-17), `TestAScopedWindowWithNoDefaultShowsNothing` |
+| **FR-7.1** | Broadcaster uses the platform breakpoint vocabulary, whose boundaries are redefined | TRACED | 1 roster row(s), `app/release_test.go`, `modes/tty/broadcaster_size_test.go` |
+| **FR-7.2** | The console renders correctly at every supported class, decomposing as ruled — the | TRACED (no ID) | `TestEveryClassIsListedOrDeclared`, `TestEveryBreakpointIsNamed`, `TestBreakpoints` |
+| **FR-7.3** | Below the minimum, the console shows a clear notice and does not render past the | TRACED | `modes/tty/broadcaster_cardrow_test.go`, `modes/tty/broadcaster_size_test.go` |
+| **FR-7.4** | The minimum height is far below the mock's 74 lines. *Exit: the fixed chrome plus one | **CLOSED** | `TestAboveTheFloorTheConsoleRendersLanes`, `TestBelowTheFloorTheConsoleSaysSoRatherThanOverflowing` |
+| **FR-8.1** | Observer's alert radius is unchanged. It filters *arrivals* into an unbounded | TRACED (no ID) | `TestTheAlertRadiusScopesTheSevereWindowsLocationRows` — Observer's radius filters arrivals; the Broadcaster fence is a different value |
+| **FR-8.2** | Broadcaster's service radius is a HARD boundary on LOOKUPS. It bounds which locations | TRACED (no ID) | the fence tests: `TestAFenceWithNoOriginAdmitsNothing`, `TestAConsoleWithNoEpicentreKeepsTheListenersFence`, `TestABedFenceWithNoRadiusHoldsNothing` |
+| **FR-8.3** | A hyper-local station is a supported case, not an edge. Three miles is the HUM LEAD's | **OPEN** | No test exercises a 3-mile radius. The mechanism exists (D-122's zone-only arm, `Fence.Tracked`) and `TestAStationWithNoEpicentreOffersNothing` covers the degen |
+| **FR-8.4** | A tiny radius must still receive county and zone products. The mechanism already | TRACED (no ID) | `TestAZoneOnlyAlertTheAppIsTrackingSurvivesTheRadius` (D-122's zone-only arm), `TestCountyUGCFromResolvedPoint` |
+| **FR-8.5** | Locations inside the service radius are fetched at the priority cadence. *Exit: inside | **PARTIAL** | The pool derivation is closed (`TestARestationedPoolIsWhatGetsFetched`); the CADENCE half is asserted by `TestCadenceTableIsTheDoc` for the table, not for the s |
+| **FR-8.6** | A hard cap bounds the priority tier, filled population-descending, and behaves | **UNTRACED** | `TestFetchCapsASwarm` caps the fetch; nothing found asserts the tier is filled population-descending — a test or a citation at review |
+| **FR-8.7** | Cadences stay bounded by each source's own refresh and the client's politeness limits. | **PARTIAL** | `TestCadenceTableIsTheDoc` diffs a generated table against `testdata/cadences.md` and is self-updating with `-update-cadences` — a change-detector.  The generat |
+| **FR-8.8** | The operator can see effective freshness — when each kind last arrived. *Exit: the | **OPEN** | The card shows one per-CARD stamp (`DATA PULL … (n MIN AGO)`, now colour-coded by D-137's ladder). There is no per-KIND last-arrival. |
+| **FR-8.10** | The station behaves defined-ly when a feed fails while broadcasting. Visibility of | TRACED | `domains/radio/synth/composer_test.go` |
+| **FR-8.9** | A national-scope exemption is investigated and either built or dropped with a recorded | TRACED (no ID) | the exemption was BUILT: `TestTheNationalQueryAsksForTheEmergencyOrders` |
+| **FR-9.1** | The broadcast location's name and coordinates are one fact with one source of truth. | **PARTIAL** — structurally closed, not tested as written | One source: `config.Station()` → `stationFrom` → `refsFromConfig` (`app/pool.go:49`). `TestARestationedPoolIsWhatGetsFetched`, `TestABorrowedEpicentreSaysSo`, ` |
+| **FR-9.2** | The coordinate pair is a first-class value, not a string assembled for the masthead, | TRACED | `app/arbiter_race_test.go`, `app/cast_test.go`, `app/director_pins_test.go` … |
+| **FR-9.3** | The service radius and the relay selection both measure from that pair. *Exit: both | TRACED | `platform/lineup/bed_test.go` |
+| **FR-9.4** | The tower's storage boundary is stated to the operator. The tower is a real person's | TRACED | 2 roster row(s), `app/dump_test.go`, `modes/tty/setup_station_test.go` |
+| **FR-10.1** | Gain is Broadcaster's own and persisted, distinct from Observer's unpersisted | **SUPERSEDED** | D-56 ruled the opposite: *"THE LEVEL IS MIRRORED, NEVER OWNED TWICE"* (`router.go:410`), and `air-reachability-survey.md:51` records `SetVolume` in bucket 5 — * |
+| **FR-11.1** | Every gate this release adds carries a watched failure — a plant applied, compiled, | TRACED | 1 roster row(s) |
+| **FR-11.2** | Every subject list is derived (INST-1): the size sweep walks the breakpoint | TRACED | `cmd/watchpost/exemptions_test.go` |
+| **FR-11.3** | Silence is a distinct verdict (INST-2): not-applicable, could-not-run and not-covered | **CLOSED** | `TestABlindMatcherCannotPass`, `TestAnAssumedBaselineStillReachesAVerdict`; `mutant-verdicts.sh`'s NO-EVIDENCE counter fails the run |
+| **FR-11.4** | A surviving plant indicts the plant first (INST-3). *Exit: any SURVIVED verdict is | **CLOSED by practice** | Both survivors (`m16`, `m43`) are dispositioned at `gates.md`'s survivor dispositions (end of file) as equivalent mutants, HUM-LEAD-kept. Two mutations at this  |
+| **FR-11.5** | Every published count states its blind spot in its own output (INST-5). *Exit: the | **CLOSED** | `dupes`, `wires` and `mutant-anchors` each print their scope line (*"A FLOOR, not a total…"*) |
+| **FR-11.6** | An instrument answers a KNOWN case before it is believed about an unknown one | TRACED | `cmd/watchpost/exemptions_test.go`, `tools/gateoracle/stub_test.go` |
 
 **FR-5.5 was not in red team's list of 13 and is the most serious of them.**  Its boundary sentence —
 *"audio out of this program; Watchpost does not observe a transmitter"* — is assigned per state and

@@ -52,6 +52,12 @@ this paragraph is now true. The per-file headers say what a file holds; this pag
 | A time is written or spoken | `platform/render/clock.go` is the one owner: `:Time` / `:Since` / `:Stamp` write it, `:Spoken` says it and `:SpokenID` reads a callsign in NATO phonetics under the military convention. The listener's choice is Settings → WATCHPOST UI → Radio Convention |
 | The app checks for a newer release | `app/release.go:start` asks ONCE at startup, and only when `update_check` is set (0.15.0 FR-7.1; it polled hourly before); `app/release.go:checkAt` asks GitHub and keeps the parsed numbers, never the published tag |
 | A [S] table is laid out | `modes/tty/status.go:providerLines`, `:pipelineLines` and `:issueLines` build cells; `platform/render/status_table.go:StatusTable` lays them out on the go-studs table, and each table drops columns down a ladder rather than clipping one |
+| The Broadcaster console opens, or the operator returns to the Observer | `modes/tty/router.go:canSwap` decides (arriving is always permitted; leaving is refused while the station is ON AIR) → `modes/tty/router.go:swapTo` |
+| The station's transmitter and radius are set | the setup form's own question `modes/tty/setup_form.go:setupTransmitterLines` (it states the storage boundary, FR-9.4) → `platform/config/broadcaster.go:Station` falls back to the default location until one is set |
+| A location needs reading, on the main track | the deck reports the need from one seam `app/radio.go:needsRead` → the Director proposes and queues the card `platform/lineup/rotation.go:onNeedsRead` |
+| A card cannot be performed | `app/executors.go:decline` (deliberate: muted, nothing held, another reader's card — routed) or `app/executors.go:fault` (no composer, an empty report, no reader — not routed) → `platform/lineup/fault.go:escalation` raises DR-21's window only for a fault that stops the schedule |
+| A hazard takes the air | the burst's takeover is chosen in `platform/lineup/plan.go:takeoverOf`; the console draws the air and the lanes from the lineup's projection in `modes/tty/broadcaster_air.go` |
+| The STANDBY notice is drawn | `modes/tty/broadcaster.go:heldBand` — the count shouts, the prose does not, only while the station is OffAir |
 
 ## Why something is slow on purpose
 

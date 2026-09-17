@@ -67,7 +67,7 @@ Absorb, Instruct, or Leave alone, and it is written to be **honoured or overturn
 - a **rendered report** HOLDS — it has nowhere to be, so dipping loses its words for good.
 
 **A give-way keyed on which RAIL is chosen was rejected, in a comment that records what it cost**
-(`app/radio.go:666-667`):
+(`app/radio.go:875-876`):
 
 > *"Asking the deck's mode here fixed an answer the audio could outlive."*
 
@@ -143,10 +143,10 @@ gates, the surface swap and the guard boundary, as built.  Read it before propos
 this area.
 
 **WHY THIS PARAGRAPH EXISTS.**  A session called the shared deck "awkward" and proposed splitting it,
-having rebuilt the model from `app/radio.go` instead of from `rulings-d74.md`.  That has now happened
+having rebuilt the model from `app/radio.go` instead of from `02-analysis/rulings-d74.md`.  That has now happened
 more than once, across sessions, and the HUM LEAD has had to correct it each time.  **The split is not
-an open question.**  If the deck looks wrong to you, the missing reading is `rulings-d74.md` and
-`role-model.md`, not a new proposal.
+an open question.**  If the deck looks wrong to you, the missing reading is `02-analysis/rulings-d74.md` and
+`../multi-voice-support/03-architecture-design/role-model.md`, not a new proposal.
 
 ---
 

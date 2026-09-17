@@ -4,8 +4,10 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE AGAIN.  Superseded when the flip landed, restored when the flip was reverted on 2026-09-09.  The staged switch it describes is back in the tree, and this is the protocol for the state the branch is actually in."
+status: "SUPERSEDED 2026-09-17 — the console is LIVE: the flip landed (P3(a4), gates.md), ctrl+b/B are bound and advertised, and the live UAT is modes/tty/broadcaster_uat_test.go with the P3(a4) roster rows. What follows records the dark state and stands as history. Formerly: LIVE AGAIN.  Superseded when the flip landed, restored when the flip was reverted on 2026-09-09.  The staged switch it describes is back in the tree, and this is the protocol for the state the branch is actually in."
 ---
+
+**SUPERSEDED 2026-09-17.** The console ships live; the live UAT record is `modes/tty/broadcaster_uat_test.go` and the P3(a4) rows of `gates.md`. This document records the dark state it was written for.
 
 # The dark run — LIVE AGAIN
 
