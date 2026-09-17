@@ -1,13 +1,11 @@
 # 0.16.0 — handoff
 
-**Status: BUILD EXITED at `557a40f`, 2026-09-17 (HUM LEAD: "Recommendation approved; Go 4 Review"). In
-REVIEW. Not yet shipped.** `make verify` ALL GATES GREEN on the exit commit; 379 mutants — 374 caught,
-5 survived by design; 60/60 requirements traced; the three exit rulings closed as recommended. The
-paragraph that follows is the state this document was written in, kept as the record of why the day
-between went where it did.
-
-**As of 2026-09-16:** Seven blind reviewers returned NOT CLEAR.
-The product is in good shape; the layer built to *prove* the product is not, and it stopped converging.
+**Status: BUILD EXITED at `557a40f` (2026-09-17, HUM LEAD: "Recommendation approved; Go 4 Review").
+IN REVIEW — remediations R1–R7 landed; REVIEW exit not yet presented. Not shipped.** The four-axis
+REVIEW red team returned *do not ship* on 557a40f; every Critical was either fixed (the release path,
+the traceability method, the fail-open verifiers, the F-150 fault class — twice, under two blind
+reviewers) or is a HUM CALL recorded below. The figures in §1 are re-derived at the commit named there;
+a figure with no commit beside it is stale and should be read as such.
 
 **Read this before touching the gate layer.** The "What did not work" section is the reason this
 handoff exists, and it is more useful than the findings list.
@@ -18,13 +16,13 @@ handoff exists, and it is more useful than the findings list.
 
 | | |
 |---|---|
-| Branch | `feature/0.16.0-broadcaster-ui` |
-| Pushed | `origin/main` @ `fd761ab` (0.15.0) and `origin/feature/0.16.0-broadcaster-ui` @ `66dc88d` — **both diverged from local HEAD; neither carries the rewritten history** |
-| `make verify` | **ALL GATES GREEN on `557a40f`, the BUILD-exit commit (2026-09-17, 17 min, GNU Make 4.4.1); also on `6bf6544`, `df2aa60`, `d7523e6`, `7c916c2` before it)** — 24 gates including the 379-anchor mutant check. The four verifies before it each stopped at a gate only a full run reaches (`tidy`, `race`, `lint`, `p10`), and every one of those notifications said exit 0 while the log said `Error 1` |
-| `go test ./...` | green |
-| `make p10` | 0 live, 0 unmatched, 0 unratified, 152 ratified rows |
-| Mutation sweep | **RUN 2026-09-17 on `e956747`: 379 mutants — 374 CAUGHT, 5 SURVIVED (all five the roster's by-design set), 0 NO EVIDENCE**, 4 h 46 min; the record is `07-readiness/mutant-verdicts.log` |
-| Open findings | `06_docs/follow-ups.md` — rounds one through eight on the gate layer are disposed there; F-156 (port the 23 `scripts/` sources to Go) is the standing backlog; F-115…F-151 from the earlier rounds where not closed since |
+| Branch | `feature/0.16.0-broadcaster-ui`; the REVIEW tip at the time of writing is named in §4 |
+| Pushed | `origin/main` @ `fd761ab` (0.15.0). The feature branch on origin is stale and will be deleted at SHIP; **the release is a squash-merge release branch** (HUM LEAD ruling, 2026-09-17), one commit onto `main`, so nothing in this branch's history — including the 15 MB blob at `6b1b621` — reaches the remote |
+| `make verify` | green on every REVIEW commit that changed code (see §4 for the final run); `p10` moved OUT of verify to `make quality` (phase-exit) at R1, because the release workflow runs verify and has no `a2dh` |
+| `make quality` (P10) | 0 live, 0 unmatched, 0 unratified at `f7fe5fa` (153 ratified rows, `06_docs/p10-ledger.md`) |
+| Mutation sweep | the last full run is `e956747` (BUILD exit): 379 mutants, 374 CAUGHT, 5 SURVIVED by design, 0 NO EVIDENCE, 4 h 46 min. The corpus is 380 since R2 round two (mCL4). **The REVIEW-exit sweep is run on the final commit and its figure replaces this one** (§4) |
+| Requirements | 60 in `requirements.md`: 31 traced by ID, 13 by a named test without the ID, 4 OPEN with follow-up rows (FR-3.6 F-161, FR-8.3 F-157, FR-8.8 F-162, FR-9.2 F-160), the rest closed/partial/superseded in the red team's own rows — derived by roster test NAME scoped to this release (`build-report.md`, ruling 9) |
+| Open findings | `06_docs/follow-ups.md`: F-156 (port the shell) is the standing backlog; F-157…F-163 are this REVIEW's rows; three HUM CALLS are open (rulings 10, 11, 12 below) |
 
 **The product reviewed clean.** Code Quality found zero unused parameters, zero dead functions and
 zero live P10 findings across 62,419 added lines. Business Quality probed FR-3.3's own surface and
@@ -39,9 +37,10 @@ was rewritten with `git filter-branch --index-filter` to drop them. Verified aft
 objects over 400 KB in the whole release range**, and `git diff pre-blob-rewrite HEAD` is empty, so
 every tree is byte-identical.
 
-**To finish the job when you are satisfied** (the blobs still exist in the local object database,
-held alive by the safety net; they cannot reach a remote because only the rewritten branch is
-pushable):
+**Moot under the release ruling (2026-09-17):** the release is a squash-merge branch — one commit
+onto `main` — so neither the rewritten range nor the 15 MB blob at `6b1b621` (found by the hygiene
+reviewer at REVIEW) can reach the remote, and the feature branch is deleted on origin at SHIP. The
+local cleanup below is optional housekeeping, not a release step:
 
 ```
 git tag -d pre-blob-rewrite
@@ -156,30 +155,29 @@ imagination, and the author is the worst available adversary.**
 
 ## 4. Recommended next steps, in order
 
-1. ~~**Do not add another gate.** Consolidate~~ **DONE 2026-09-16** — one model, one registry, two deletions (`1ed3a93`); then, after a blind adversary defeated the parsed model six ways, **the Makefile half was made to EXECUTE** (`fa022cb`): make and sh are the oracle, 68 specimens run on every invocation, and the attack lists were written before both. The CI half is an honestly-labelled ratchet. Then three more blind rounds each found the same defect — text standing in for execution — one layer down, until the stubs were made to RECORD what make ran (`8a5c121`): nothing in the executed half reads a recipe, and its first run against the shipped tree found a discard the regex could not see (O10). A sixth round found the scratch tree itself was the last lie — empty, where the repository is not — so the oracle now runs in a clone of the tree with stubs by PATH alone; a seventh shaped that clone as CI has it (detached, no tags, no ignored files) and tightened the instrument's joints. Round seven was the first with no single cause behind its findings. Round eight's count rose, and the look found the threat model: the oracle enforces DRIFT and declares EVASION (`gate-attack-list.md`, round eight); the instrument moved to `tools/gateoracle/` as a Go package with no shell in it, under two standing rules — everything is Go unless absolutely necessary, and test code is a product — both mechanised (`AP-SHELL-01`, the shell ledger). Round nine, the first drift-briefed round, found the fourth verdict — a tool's ABSENCE — and closed it; Criticals across nine rounds: 6 → 4 → 3 → 6 → 6 → 5 → 2 → 4 → 1. GNU Make ≥ 3.82 is required (F-153 closed). The original item, for the record — consolidate: one `assertRowsResolve(t, name, table, resolve)` helper
-   collapses six near-identical staleness loops, and makes "eight tables" a design rather than an
-   accumulation. Consider deleting `modes/tty/declset_test.go` (F-122) and the `declaredLocals`
-   helper (36 lines that close one token and miss the shadow).
-**2026-09-17, BUILD exit in progress:** items 2, 3 and 4 below are DONE (`c48e4a9`, `59c8b38`, and the records commit that follows); the sweep runs on the clean tree next; then item 6. Two rulings owed: F-140, and the two untraced requirements (FR-5.4, FR-8.6) the derived traceability table found.
+The gate-layer history that used to sit here (nine adversarial rounds on the oracle, the consolidation,
+the RECORD/DRIFT/EVASION threat model) is in `06_docs/gate-attack-list.md` and `quality-observations.md`;
+this list is what is left to do.
 
-2. **Fix F-125…F-129 as one batch** — they are five holes in three gates, and fixing them separately
-   is what produced them. **Have someone else construct the attacks**, or write the attack list
-   *before* the fix.
-3. **Fix the false published numbers**: F-143 (accepted-costs, wrong by 35×), F-136
-   (lint-authoring's scope banner), F-145 (exposure statement), F-148 (traceability completeness),
-   and the F-117 row that says CLOSED and OPEN in one line.
-4. **Then the reader-facing gaps**: F-146 (README has no Broadcaster), F-147, F-144, F-123
-   (`where-things-happen.md` has no Broadcaster rows).
-5. **Then the mutation sweep** — 379 mutants, ~3 hours — for the build report's figures. **It was
-   deliberately not run**: a sweep against a surface that is about to change produces numbers you
-   throw away. Run it when the tree is stable.
-6. **Then re-present BUILD exit** with corrected figures.
-7. **Before the release branch is cut — a final local build and a regression pass of everything
+1. **HUM CALLS still open from REVIEW** — ruling 10: the README's privacy sentence vs the opt-in radio
+   log (`app/radio.go` writes `ref=<lat,lon>` under `WATCHPOST_DEBUG_RADIO`; recommended: redact `ref=`
+   to the place's label and extend FR-9.4's gate); ruling 12: a key table for the console section of the
+   README, matching the Observer sections; F-163: the fault band's two semantics (a `Run: 0` escalation
+   is dropped by the console; does a decline break a run).
+2. **REVIEW exit**: `make verify` and the mutation sweep on the final REVIEW commit, the figures in §1
+   replaced from those runs, the exposure statement re-run at that commit, then present.
+3. **Before the release branch is cut — a final local build and a regression pass of everything
    signed off before BUILD exit** (HUM LEAD, 2026-09-17: REVIEW made "lots of code changes to the
    product", which is fine, and the signed-off functionality must be shown not to have regressed
    before `release/v0.16.0` exists). Build from the REVIEW-exit commit with the documented
    commands, run the UAT checklists that were signed off, and record the result beside the exit.
-   The live-audio UAT (ruling 11, cases 2/6/10) belongs to the same pass.
+   **The live-audio UAT (ruling 11: `p3-uat.md` cases 2, 6 and 10 — dead air, the hand-over between
+   voices, the thirty-minute rotation) has NOT been run and belongs to this pass.**
+4. **SHIP**: the squash-merge release branch (one commit onto `main`), the tag, the push, the feature
+   branch deleted on origin — every step outward-facing and on the HUM LEAD's word.
+5. **0.16.5 (the dedicated quality pass)** opens with the rows tagged for it in `follow-ups.md`:
+   F-156 (shell → Go), F-157 (tier three), F-159 (carry the fault on `Publish`), F-160…F-162 (the
+   open requirements), the tenth oracle round, and F-137's undetected history comments.
 
 `06_docs/tooling-backlog.md` holds the ranked mechanisable rules **and the do-not-build list**. Read
 the second half first.
