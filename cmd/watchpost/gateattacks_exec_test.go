@@ -29,11 +29,11 @@ type execSpecimen struct {
 }
 
 func canFail(t reporter, o *oracleTree, req []string) {
-	assertEveryRequiredGateCanFail(t, o, req, ciOnly)
+	assertEveryRequiredGateCanFail(t, o, req)
 }
 func verifyFails(t reporter, o *oracleTree, req []string) { assertVerifyCanFail(t, o, req) }
 func phony(t reporter, o *oracleTree, req []string) {
-	assertEveryRequiredGateIsPhony(t, o, req, ciOnly)
+	assertEveryRequiredGateIsPhony(t, o, req)
 }
 func controlsReached(t reporter, o *oracleTree, req []string) {
 	assertEveryControlIsReached(t, o, req, map[string]string{"scripts/install-test.sh": "no control in the base fixture, by design"})
@@ -104,6 +104,38 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			mk: sub("\t@./scripts/lint-a.sh --self-test\n\t@./scripts/lint-b.sh --self-test\n", "\t@./scripts/lint-a.sh --self-test && ./scripts/lint-b.sh --self-test\n"), assert: controlsReached, caught: false},
 		{name: "A7 a control made unreachable: true || x --self-test (executed)",
 			mk: sub("\t@./scripts/lint-a.sh --self-test", "\t@true || ./scripts/lint-a.sh --self-test"), assert: controlsReached, caught: true},
+		// ---- M. red for the wrong reason — per-key painting ------------------------
+		{name: "M1 || exit 0 then go version — red-under-red from the wrong stub",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@./scripts/lint-a.sh || exit 0\n\t@go version\n"), assert: canFail, caught: true},
+		{name: "M2 a prerequisite reds it, own line || exit 0",
+			mk: sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a: race\n\t@./scripts/lint-a.sh || exit 0\n"), assert: canFail, caught: true},
+		{name: "M3 a parse-time $(shell go version) preflight before || exit 0",
+			mk: func(s string) string {
+				s = sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@test \"$(GO_OK)\" = yes || exit 1\n\t@./scripts/lint-a.sh || exit 0\n")(s)
+				return "GO_OK := $(shell go version >/dev/null 2>&1 && echo yes)\n" + s
+			}, assert: canFail, caught: true},
+		{name: "M4 the verdict of a gate with two go calls replaced by exit 0",
+			mk: sub("mutant-check:\n\t@go test -tags mutants -count=1 ./06_docs/mutants/\n",
+				"mutant-check:\n\t@go test -tags mutants -count=1 ./06_docs/mutants/; rc=$$?; go clean -testcache || exit 1; exit 0\n"),
+			assert: canFail, caught: true},
+		{name: "M7 verify: lint-a as a prerequisite, -@ on treelock",
+			mk: sub("verify:\n\t@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates",
+				"verify: lint-a\n\t-@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates"),
+			assert: verifyFails, caught: true},
+		{name: "M-ok a gate with two go calls whose verdict is kept",
+			mk: sub("mutant-check:\n\t@go test -tags mutants -count=1 ./06_docs/mutants/\n",
+				"mutant-check:\n\t@go test -tags mutants -count=1 ./06_docs/mutants/; rc=$$?; go clean -testcache || exit 1; exit $$rc\n"),
+			assert: canFail, caught: false},
+
+		// ---- N. the escapes --------------------------------------------------------------
+		{name: "N1 rule deleted, .DEFAULT green — no row excuses it",
+			mk: func(s string) string {
+				s = sub("lint-a:\n\t@./scripts/lint-a.sh\n", "")(s)
+				s = sub(" lint-a lint-b ", " lint-b ")(s)
+				return ".DEFAULT:\n\t@echo \"$@: no rule here, skipped\"\n" + s
+			}, assert: phony, caught: true},
+		{name: "N2 the recipe on a non-phony node the gate reaches",
+			mk: sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a: lint-a-run\nlint-a-run:\n\t@./scripts/lint-a.sh\n"), assert: phony, caught: true},
 		{name: "A10 a control deleted outright (executed)",
 			mk: sub("\t@./scripts/lint-a.sh --self-test\n", ""), assert: controlsReached, caught: true},
 
@@ -161,7 +193,7 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@echo starting\n# make ignores this\n\t@./scripts/lint-a.sh\n"),
 			assert: canFail, caught: false},
 	}
-	if len(specimens) < 35 {
+	if len(specimens) < 43 {
 		t.Fatalf("%d execution specimens; sections E, H, J and K plus the re-executed round-one attacks", len(specimens))
 	}
 	req := parseRequired(baseRequired)
@@ -185,12 +217,29 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 	}
 }
 
+// N4: A PARENT MAKE'S FLAGS DO NOT REACH THE ORACLE. The oracle runs inside
+// `make race`; with MAKEFLAGS=i in the environment every child make ignores
+// errors and every gate reads as "cannot fail". The child env strips it.
+func TestAParentMakesFlagsDoNotReachTheOracle(t *testing.T) {
+	t.Setenv("MAKEFLAGS", "i")
+	fired, _ := verdictOf(func(r reporter) {
+		o := newOracleTree(r, baseMakefile, baseRequired, nil)
+		defer os.RemoveAll(o.dir)
+		assertEveryRequiredGateCanFail(r, o, parseRequired(baseRequired))
+	})
+	if fired {
+		t.Error("with MAKEFLAGS=i in the parent environment the oracle reported gates that cannot fail — the flag reached the child make")
+	}
+}
+
 // ---- F. the registry, over synthetic tables ------------------------------------------
 
 func TestTheRegistryAttackList(t *testing.T) {
 	yes := func(*testing.T, string) bool { return true }
 	// honest answers a known-absent subject and a known-satisfied one correctly.
-	honestExists := func(_ *testing.T, s string) bool { return s != "absent-thing" && s != absentNonce }
+	honestExists := func(_ *testing.T, s string) bool {
+		return s != "absent-thing" && !strings.HasSuffix(s, "/no/such/subject")
+	}
 	honestNeeded := func(_ *testing.T, s string) bool { return s != "satisfied-thing" }
 	good := func(rows map[string]string) *exemptionTable {
 		return &exemptionTable{name: "specimen", rows: rows, exists: honestExists, stillNeeded: honestNeeded,
@@ -213,6 +262,8 @@ func TestTheRegistryAttackList(t *testing.T) {
 			exists: yes, stillNeeded: honestNeeded, satisfied: "satisfied-thing"}, true},
 		{"L1 exists honest only for a subject the table would have chosen", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason},
 			exists: func(_ *testing.T, s string) bool { return s != "absent-thing" }, stillNeeded: honestNeeded, satisfied: "satisfied-thing"}, true},
+		{"N3 exists that matches the nonce by SHAPE (a fixed prefix)", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason},
+			exists: func(_ *testing.T, s string) bool { return !strings.HasPrefix(s, "__registry") }, stillNeeded: honestNeeded, satisfied: "satisfied-thing"}, true},
 		{"F2 stillNeeded that cannot return false", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason},
 			exists: honestExists, stillNeeded: yes, satisfied: "satisfied-thing"}, true},
 		{"F1 a table with no satisfied subject declared", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason},

@@ -24,6 +24,8 @@ package main
 // notice — a NEW table simply never being added (A33).
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -58,8 +60,18 @@ type exemptionTable struct {
 	satisfied string
 }
 
-// absentNonce is a subject that exists nowhere, chosen by the registry.
-const absentNonce = "__registry-absent-nonce-7f3a9c__/no/such/subject"
+// absentNonce is a subject that exists nowhere, FRESH ON EVERY CALL. A package
+// constant was a name a table could compare against, and a fixed prefix a shape
+// it could match (N3); random hex with no prefix is neither. A function still
+// sees its argument, so a table honest for "random-looking strings" remains the
+// declared ceiling — but it can no longer be honest for THE nonce by name.
+func absentNonce() string {
+	var b [12]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(b[:]) + "/no/such/subject"
+}
 
 // registry is every table declared in this package. Tables append themselves
 // at declaration, so the list is the set of declarations, not a copy of it.
@@ -111,7 +123,7 @@ func assertRegistry(t reporter, tables []*exemptionTable) {
 		// THE NEGATIVE CONTROLS FIRST. A table whose functions cannot return false
 		// passes every row and proves nothing; these two calls are the evidence
 		// that they can.
-		if tbl.exists(tt, absentNonce) {
+		if tbl.exists(tt, absentNonce()) {
 			t.Errorf("table %s: exists(<a nonce that exists nowhere>) is TRUE — the function cannot return "+
 				"false, so every row's existence check is worthless", tbl.name)
 		}

@@ -1,36 +1,44 @@
 package main
 
-// gateoracle_test.go — the Makefile half of the gate layer, EXECUTED rather than
-// parsed.
+// gateoracle_test.go — the Makefile half of the gate layer, EXECUTED, one thing
+// painted at a time.
 //
 // WHY EXECUTION. A blind reviewer defeated the parsed model six ways in one
 // sitting and named the cause: a semantic question ("can this gate fail?")
 // decided by pattern on a fragment, in a language whose global constructs the
-// parser never reads. No number of regexes closes that. So make and sh are the
-// oracle: every project checker is a stub, every toolchain command on PATH is a
-// stub, and `make <gate>` is RUN.
+// parser never reads. So make and sh are the oracle: every project checker and
+// every toolchain command is a stub, and `make <gate>` is RUN.
 //
-// WHY A POSITIVE CONTROL. A second reviewer found the class execution creates:
-// the scratch tree is not the real tree, so a recipe can be red here for a
-// reason unrelated to its check — `test -f go.mod || exit 1` — and green
-// forever in the tree it judges, with `|| exit 0` sitting behind the preflight.
-// One bit of exit status cannot tell "the check failed" from "something else
-// did". So every gate is run GREEN first: with every stub exiting 0 it must exit
-// 0, or it is UNJUDGEABLE and says so by name — never "sound" (FR-11.6: an
-// instrument answers a known case before it is believed about an unknown one).
+// WHY ONE THING AT A TIME. Two more reviewers found the two things execution
+// introduces. First, the scratch tree is not the real tree: a preflight red only
+// here masks `|| exit 0` behind it — so every gate runs GREEN first, and red
+// under green is UNJUDGEABLE by name (FR-11.6). Second, and the deeper one: red
+// under RED proves only that the gate is red when EVERYTHING is red. `x.sh ||
+// exit 0` followed by `go version` is green-under-green, red-under-red, and
+// neutered — and in the real Makefile `mutant-check` with its verdict replaced by
+// `exit 0`, and `lint-injector … || true`, both read as sound. So for each gate,
+// for each stub its recipe REACHES — its checkers, each toolchain sub-command,
+// its prerequisites, the targets it recurses into — that ONE is painted red and
+// the gate must go red. The control proof already worked this way; now
+// everything does.
 //
-// WHY STUBS ANSWER BY ARGUMENT. A control is proved reached by painting it red
-// and watching its carrier go red — but a carrier that also runs the checker
-// went red for the checker's sake, and a neutered control passed behind it. So
-// a stub exits with one status for `--self-test` and another for anything
-// else, and the proof paints the CONTROL status alone.
+// WHY STUBS ANSWER BY SUB-COMMAND. `go test` and `go clean` are the same `go`;
+// if the stub had one status, painting "go" red would red `mutant-check` for its
+// cache-clean and hide the discarded verdict. `go:test`, `go:clean`, `go:build`
+// are separate keys, and `--self-test` is a separate key on every checker.
 //
-// WHY THE PHONY AUDIT. Four required gates were not in .PHONY, so `touch
-// lint-identity` made `make lint-identity` say "is up to date" and exit 0 in
-// the real tree — nothing ran. A required make target must be phony, and make's
-// own database says whether it is.
+// WHY THE PHONY AUDIT WALKS. Four required gates were not in .PHONY, so `touch
+// lint-identity` silenced the real tree. And `gate: gate-run` with the recipe on
+// a non-phony `gate-run` is the same hole one hop along — so every node a gate
+// reaches through prerequisites that has a recipe must be phony too.
 //
-// IT RUNS IN A SCRATCH TREE, NEVER THE REPOSITORY, and requires the make CI runs.
+// WHY ABSENCE IS ALWAYS AN ERROR. If a `ciOnly` row excused a required gate from
+// the database, then a deleted rule, a green `.DEFAULT:`, and one row would skip
+// every executed check for it. A `ciOnly` row exempts a gate from `verify`; it
+// never exempts it from having a phony rule.
+//
+// IT RUNS IN A SCRATCH TREE, NEVER THE REPOSITORY, with MAKEFLAGS stripped so a
+// parent make's -i or -n cannot reach it, and requires the make CI runs.
 
 import (
 	"fmt"
@@ -38,17 +46,17 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 )
 
-// toolchain are the commands a gate recipe reaches on PATH. Each is a stub that
-// exits with the CHECKER status; `go` additionally honours treelock's contract.
-var toolchain = []string{"go", "gofmt", "a2dh", "python3", "expect", "golangci-lint", "govulncheck", "shasum"}
+// tools are the toolchain commands a gate recipe reaches on PATH.
+var tools = []string{"go", "gofmt", "a2dh", "python3", "expect", "golangci-lint", "govulncheck", "shasum"}
 
-// minMake is the oldest GNU make the oracle will judge with. CI runs 4.x; macOS
-// ships 3.81, which has no .SHELLFLAGS, so a gate silenced that way would read
-// as sound here and silenced there. Two verdicts for one Makefile is not a gate.
+// goSubs are the `go` sub-commands with their own status key (`go:test`…).
+var goSubs = []string{"test", "build", "run", "clean", "vet", "version", "generate", "install", "mod:tidy", "mod:verify", "mod:download"}
+
 const minMake = "3.82"
 
 var makeVersionLine = regexp.MustCompile(`GNU Make (\d+)\.(\d+)`)
@@ -73,13 +81,16 @@ func requireMake(t reporter) {
 	}
 }
 
-// oracleTree is a scratch directory holding one Makefile, the stubs it reaches,
-// and make's own database of it.
+// oracleTree is a scratch directory: one Makefile, make's own database of it,
+// and a status per stub KEY. Keys are `scripts/x.sh` (the checker), `ctl:scripts/x.sh`
+// (its --self-test answer), `scripts/x_test.sh` (a sibling control), `go:test`
+// and the other sub-commands, and the remaining tools by name.
 type oracleTree struct {
 	dir      string
-	checkers []string // every scripts/… path the database's recipes name
-	siblings []string // every scripts/…_test.sh — a control in its own script
 	db       map[string]*target
+	checkers []string // scripts/… the database's recipes name, minus siblings
+	siblings []string // scripts/…_test.sh
+	status   map[string]int
 }
 
 func newOracleTree(t reporter, makefile, requiredList string, extra map[string]string) *oracleTree {
@@ -102,8 +113,8 @@ func newOracleTree(t reporter, makefile, requiredList string, extra map[string]s
 		must(os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644))
 	}
 	must(os.MkdirAll(filepath.Join(dir, "bin"), 0o755))
-	o := &oracleTree{dir: dir}
-	o.paintToolchain(t, 3)
+	o := &oracleTree{dir: dir, status: map[string]int{}}
+	o.paintAll(t, 3, 3) // tools exist before make -pn runs $(shell …)
 	o.db = o.database(t)
 	sibling := regexp.MustCompile(`(scripts/[A-Za-z0-9_/.-]+_test\.sh)`)
 	for _, tg := range o.db { // bounded by the database (P10-02)
@@ -124,83 +135,105 @@ func newOracleTree(t reporter, makefile, requiredList string, extra map[string]s
 	return o
 }
 
-// ---- stubs ---------------------------------------------------------------------------
+// ---- stubs, rendered from the status map ------------------------------------------------
 
-// checkerStub answers `--self-test` with ctl and anything else with chk (K1).
-func checkerStub(chk, ctl int) string {
-	return fmt.Sprintf("#!/bin/sh\ncase \"$1\" in --self-test|-self-test) exit %d;; *) exit %d;; esac\n", ctl, chk)
+func (o *oracleTree) st(key string, def int) int {
+	if v, ok := o.status[key]; ok {
+		return v
+	}
+	return def
 }
 
-// goStub exits with the checker status — EXCEPT `go run ./tools/treelock … --
-// CMD…`, which execs CMD, because that is treelock's contract and `verify`
-// delegates to the gates through it. Without this, verify would be judged on
-// one stub call and never reach the gates below it (H5).
-func goStub(status int) string {
-	return fmt.Sprintf(`#!/bin/sh
+// render writes every stub from the status map. The checker stub answers
+// `--self-test` with its ctl key; the go stub answers by sub-command and honours
+// treelock's `--` contract so `verify` is judged through to the gates.
+func (o *oracleTree) render(t reporter) {
+	t.Helper()
+	w := func(path, body string) {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("COULD NOT RUN — %v", err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
+			t.Fatalf("COULD NOT RUN — writing %s: %v", path, err)
+		}
+	}
+	for _, k := range o.checkers { // bounded by the checker list (P10-02)
+		w(filepath.Join(o.dir, k), fmt.Sprintf("#!/bin/sh\ncase \"$1\" in --self-test|-self-test) exit %d;; *) exit %d;; esac\n",
+			o.st("ctl:"+k, 3), o.st(k, 3)))
+	}
+	for _, s := range o.siblings { // bounded by the sibling list (P10-02)
+		w(filepath.Join(o.dir, s), fmt.Sprintf("#!/bin/sh\nexit %d\n", o.st(s, 3)))
+	}
+	for _, tool := range tools { // bounded by the tool list (P10-02)
+		if tool != "go" {
+			// AN INTERPRETER RUNS ITS SCRIPT. `python3 scripts/x.py` and `expect
+			// scripts/x.expect` never exec the script themselves, so painting the
+			// script red would land nowhere; the stub interpreter execs a scripts/
+			// argument, and the script's own stub answers.
+			// A BROKEN INTERPRETER FAILS EVERYTHING: its own status is consulted
+			// before it execs anything, so painting `python3` red is "python3 is
+			// gone" and every gate that needs it must go red.
+			w(filepath.Join(o.dir, "bin", tool), fmt.Sprintf(`#!/bin/sh
+st=%d
+[ "$st" -ne 0 ] && exit "$st"
+case "$1" in scripts/*|./scripts/*) exec "$@";; esac
+exit "$st"
+`, o.st(tool, 3)))
+			continue
+		}
+		var cases strings.Builder
+		for _, sub := range goSubs { // bounded by the sub-command list (P10-02)
+			cases.WriteString(fmt.Sprintf("  %s) exit %d;;\n", sub, o.st("go:"+sub, 3)))
+		}
+		w(filepath.Join(o.dir, "bin", "go"), fmt.Sprintf(`#!/bin/sh
+key="$1"; [ "$1" = mod ] && key="mod:$2"
 if [ "$1" = run ] && [ "$2" = ./tools/treelock ]; then
   while [ $# -gt 0 ]; do
     if [ "$1" = -- ]; then shift; exec "$@"; fi
     shift
   done
 fi
-exit %d
-`, status)
-}
-
-func writeExec(path, body string) error { return os.WriteFile(path, []byte(body), 0o755) }
-
-func (o *oracleTree) paintToolchain(t reporter, status int) {
-	t.Helper()
-	for _, tool := range toolchain { // bounded by the toolchain list (P10-02)
-		body := fmt.Sprintf("#!/bin/sh\nexit %d\n", status)
-		if tool == "go" {
-			body = goStub(status)
-		}
-		if err := writeExec(filepath.Join(o.dir, "bin", tool), body); err != nil {
-			t.Fatalf("COULD NOT RUN — painting %s: %v", tool, err)
-		}
+case "$key" in
+%s  *) exit %d;;
+esac
+`, cases.String(), o.st("go:*", 3)))
 	}
 }
 
-// paintChecker sets one checker's two statuses.
-func (o *oracleTree) paintChecker(t reporter, k string, chk, ctl int) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Join(o.dir, filepath.Dir(k)), 0o755); err != nil {
-		t.Fatalf("COULD NOT RUN — %v", err)
-	}
-	if err := writeExec(filepath.Join(o.dir, k), checkerStub(chk, ctl)); err != nil {
-		t.Fatalf("COULD NOT RUN — painting %s: %v", k, err)
-	}
-}
-
-// paintSibling sets a `_test.sh` control's status.
-func (o *oracleTree) paintSibling(t reporter, sib string, status int) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Join(o.dir, filepath.Dir(sib)), 0o755); err != nil {
-		t.Fatalf("COULD NOT RUN — %v", err)
-	}
-	if err := writeExec(filepath.Join(o.dir, sib), fmt.Sprintf("#!/bin/sh\nexit %d\n", status)); err != nil {
-		t.Fatalf("COULD NOT RUN — painting %s: %v", sib, err)
-	}
-}
-
-// paintAll sets every checker (chk, ctl), every sibling (ctl) and the toolchain (chk).
+// paintAll sets every checker to chk, every control and sibling to ctl, and every
+// tool key to chk.
 func (o *oracleTree) paintAll(t reporter, chk, ctl int) {
 	t.Helper()
-	o.paintToolchain(t, chk)
+	o.status = map[string]int{}
 	for _, k := range o.checkers { // bounded by the checker list (P10-02)
-		o.paintChecker(t, k, chk, ctl)
+		o.status[k], o.status["ctl:"+k] = chk, ctl
 	}
 	for _, s := range o.siblings { // bounded by the sibling list (P10-02)
-		o.paintSibling(t, s, ctl)
+		o.status[s] = ctl
 	}
+	for _, tool := range tools { // bounded by the tool list (P10-02)
+		o.status[tool] = chk
+	}
+	for _, sub := range goSubs { // bounded by the sub-command list (P10-02)
+		o.status["go:"+sub] = chk
+	}
+	o.status["go:*"] = chk
+	o.render(t)
 }
 
-// run executes `make <gate>` with the stub PATH in front and returns the status.
+// paintKey sets ONE key and re-renders.
+func (o *oracleTree) paintKey(t reporter, key string, status int) {
+	t.Helper()
+	o.status[key] = status
+	o.render(t)
+}
+
+// run executes `make <gate>` with the stub PATH in front, MAKEFLAGS stripped, and
+// returns the status.
 func (o *oracleTree) run(gate string) int {
 	cmd := exec.Command("make", "-s", gate)
 	cmd.Dir = o.dir
-	cmd.Env = append(os.Environ(), "PATH="+filepath.Join(o.dir, "bin")+":"+os.Getenv("PATH"))
+	cmd.Env = o.env()
 	if err := cmd.Run(); err != nil {
 		if ex, ok := err.(*exec.ExitError); ok {
 			return ex.ExitCode()
@@ -210,17 +243,30 @@ func (o *oracleTree) run(gate string) int {
 	return 0
 }
 
-// ---- make's database ------------------------------------------------------------------
+// env is the parent environment minus what a parent make would hand down — a
+// `-i` or `-n` in MAKEFLAGS reaches every child make, and the oracle runs inside
+// `make race` (N4).
+func (o *oracleTree) env() []string {
+	var out []string
+	for _, kv := range os.Environ() { // bounded by the environment (P10-02)
+		switch strings.SplitN(kv, "=", 2)[0] {
+		case "MAKEFLAGS", "MAKELEVEL", "MFLAGS", "MAKE_TERMOUT", "MAKE_TERMERR", "PATH":
+			continue
+		}
+		out = append(out, kv)
+	}
+	return append(out, "PATH="+filepath.Join(o.dir, "bin")+":"+os.Getenv("PATH"))
+}
+
+// ---- make's database --------------------------------------------------------------------
 
 // database is `make -pn`'s view: every real target, its expanded recipe, and
-// whether make calls it phony. A target named through `$(VAR):`, brought in by
-// `include`, or chosen by `ifeq` appears here as make will run it; a name that
-// is not a target is preceded by `# Not a target:`.
+// whether make calls it phony.
 func (o *oracleTree) database(t reporter) map[string]*target {
 	t.Helper()
 	cmd := exec.Command("make", "-pn", "-f", "Makefile")
 	cmd.Dir = o.dir
-	cmd.Env = append(os.Environ(), "PATH="+filepath.Join(o.dir, "bin")+":"+os.Getenv("PATH"))
+	cmd.Env = o.env()
 	out, _ := cmd.Output()
 	if len(out) == 0 {
 		t.Fatalf("COULD NOT RUN — `make -pn` printed nothing; the Makefile does not parse")
@@ -252,73 +298,143 @@ func (o *oracleTree) database(t reporter) map[string]*target {
 				continue
 			}
 			cur = &target{name: mm[1]}
+			after := line[len(mm[1])+1:]
+			for _, d := range strings.Fields(after) { // bounded by the rule (P10-02)
+				if !strings.HasPrefix(d, "#") && !strings.HasPrefix(d, "|") {
+					cur.deps = append(cur.deps, d)
+				}
+			}
 			targets[mm[1]] = cur
 		}
 	}
 	return targets
 }
 
-// checkersInvoked is every scripts/… checker any REQUIRED gate's recipe names.
+// ---- reach -----------------------------------------------------------------------------------
+
+var (
+	goSubCall = regexp.MustCompile(`(?:^|[\s@=;&|(])(?:go|\$\(GO\))\s+(mod\s+\w+|\w+)`)
+	// NOT PRECEDED BY `/`: `go run golang.org/x/vuln/cmd/govulncheck` reaches `go:run`,
+	// not a govulncheck binary that is never exec'd.
+	toolCall   = regexp.MustCompile(`(?:^|[\s@=;&|(])(gofmt|a2dh|python3|expect|golangci-lint|govulncheck|shasum)\b`)
+	makeRecurs = regexp.MustCompile(`\$\(MAKE\)(?:\s+--[a-z-]+)*\s+([a-z][a-z0-9-]*)`)
+)
+
+// reach is every stub KEY a gate can touch: the checkers and tool sub-commands in
+// its own recipe, in its prerequisites' recipes, and in the targets it recurses
+// into with `$(MAKE)`. Bounded by a visited set.
+func (o *oracleTree) reach(gate string) []string {
+	seen := map[string]bool{}
+	var keys []string
+	add := func(k string) {
+		if !contains(keys, k) {
+			keys = append(keys, k)
+		}
+	}
+	var walk func(name string)
+	walk = func(name string) {
+		tg := o.db[name]
+		if tg == nil || seen[name] {
+			return
+		}
+		seen[name] = true
+		for _, d := range tg.deps { // bounded by the rule (P10-02)
+			walk(d)
+		}
+		for _, c := range tg.cmds { // bounded by the recipe (P10-02)
+			for _, sg := range c.segs { // bounded by the command (P10-02)
+				if sg.orchestration {
+					continue
+				}
+				selfTest := strings.Contains(sg.text, "-self-test")
+				for _, m := range checkerRef.FindAllStringSubmatch(sg.text, -1) {
+					k := m[1]
+					switch {
+					case !strings.HasPrefix(k, "scripts/"):
+					case strings.HasSuffix(k, "_test.sh"):
+						add(k) // a sibling control is its own key
+					case selfTest:
+						add("ctl:" + k) // the control answer, not the check
+					default:
+						add(k)
+					}
+				}
+			}
+			for _, m := range goSubCall.FindAllStringSubmatch(c.text, -1) {
+				sub := strings.Join(strings.Fields(m[1]), ":")
+				if contains(goSubs, sub) {
+					add("go:" + sub)
+				} else {
+					add("go:*")
+				}
+			}
+			for _, m := range toolCall.FindAllStringSubmatch(c.text, -1) {
+				add(m[1])
+			}
+			for _, m := range makeRecurs.FindAllStringSubmatch(c.text, -1) {
+				walk(m[1])
+			}
+		}
+	}
+	walk(gate)
+	sort.Strings(keys)
+	return keys
+}
+
+// checkersInvoked is every checker any REQUIRED gate reaches.
 func (o *oracleTree) checkersInvoked(required []string) []string {
 	var out []string
 	for _, g := range required { // bounded by the gate list (P10-02)
-		tg := o.db[g]
-		if tg == nil {
-			continue
-		}
-		for _, c := range tg.cmds { // bounded by the recipe (P10-02)
-			for _, k := range c.checkers() { // bounded by the command (P10-02)
-				if strings.HasPrefix(k, "scripts/") && !strings.HasSuffix(k, "_test.sh") && !contains(out, k) {
-					out = append(out, k)
-				}
+		for _, k := range o.reach(g) { // bounded by the reach (P10-02)
+			if strings.HasPrefix(k, "scripts/") && !strings.HasSuffix(k, "_test.sh") && !contains(out, k) {
+				out = append(out, k)
 			}
 		}
 	}
 	return out
 }
 
-// ---- the executed assertions ----------------------------------------------------------
+// ---- the executed assertions -----------------------------------------------------------------
 
-// EVERY REQUIRED MAKE TARGET IS PHONY, AND EVERY REQUIRED GATE IS A MAKE TARGET
-// OR IS DECLARED CI-ONLY (J1–J3).
-//
-// A non-phony gate is silenced by a file with its name: make reports it "up to
-// date" and runs nothing. A required gate absent from make's database — a
-// pattern rule, a .DEFAULT, a deleted rule — is not "CI-only by omission"; it
-// is either declared so, with a reason, or it is a finding.
-func assertEveryRequiredGateIsPhony(t reporter, o *oracleTree, required []string, ciOnlyRows map[string]string) {
+// EVERY REQUIRED GATE IS A PHONY MAKE TARGET, AND SO IS EVERY RECIPE-BEARING
+// NODE IT REACHES (J1–J3, N1, N2).
+func assertEveryRequiredGateIsPhony(t reporter, o *oracleTree, required []string) {
 	t.Helper()
 	var checked int
 	for _, g := range required { // bounded by the gate list (P10-02)
-		tg := o.db[g]
-		if tg == nil {
-			if _, declared := ciOnlyRows[g]; !declared {
-				t.Errorf("%s is a REQUIRED gate and make's database has no such target — a pattern rule, "+
-					".DEFAULT, or a deleted rule may still 'run' it, and nothing declares it CI-only.\n"+
-					"Give it a rule, or add a `ciOnly` row with the reason.", g)
-			}
+		if o.db[g] == nil {
+			t.Errorf("%s is a REQUIRED gate and make's database has no such target. A pattern rule, "+
+				".DEFAULT, or a deleted rule may still 'run' it green. A ciOnly row exempts a gate from "+
+				"`verify`; it never exempts it from having a phony rule. Give it one.", g)
 			continue
 		}
 		checked++
-		if !tg.phony {
-			t.Errorf("%s is a REQUIRED gate and is not in .PHONY. A file named `%s` in the tree makes "+
-				"`make %s` say \"is up to date\" and exit 0 having run NOTHING — four gates sat that way.\n"+
-				"Add it to .PHONY.", g, g, g)
+		seen := map[string]bool{}
+		var walk func(name string)
+		walk = func(name string) {
+			tg := o.db[name]
+			if tg == nil || seen[name] {
+				return
+			}
+			seen[name] = true
+			if !tg.phony && len(tg.cmds) > 0 {
+				t.Errorf("%s (reached from the required gate %s) has a recipe and is not in .PHONY. A file "+
+					"named `%s` makes make say \"is up to date\" and run NOTHING.\nAdd it to .PHONY.", name, g, name)
+			}
+			for _, d := range tg.deps { // bounded by the rule (P10-02)
+				walk(d)
+			}
 		}
+		walk(g)
 	}
 	if checked < 5 {
 		t.Fatalf("COULD NOT RUN — only %d required gate(s) are make targets", checked)
 	}
 }
 
-// EVERY REQUIRED GATE GOES GREEN WHEN ITS CHECKS DO, AND RED WHEN THEY DO NOT.
-//
-// The green half is the positive control (FR-11.6): a gate red under green
-// stubs is red for a reason other than its check — a preflight the scratch tree
-// cannot satisfy, a prerequisite that is red here — and its red-under-red
-// verdict would mean nothing. It is UNJUDGEABLE, reported by name, and never
-// counted as sound. The red half is the property.
-func assertEveryRequiredGateCanFail(t reporter, o *oracleTree, required []string, ciOnlyRows map[string]string) {
+// EVERY REQUIRED GATE GOES GREEN WHEN EVERYTHING IS, AND RED FOR EACH THING IT
+// REACHES, PAINTED ALONE (H1–H4, M1–M7).
+func assertEveryRequiredGateCanFail(t reporter, o *oracleTree, required []string) {
 	t.Helper()
 	var checked int
 	for _, g := range required { // bounded by the gate list (P10-02)
@@ -328,16 +444,25 @@ func assertEveryRequiredGateCanFail(t reporter, o *oracleTree, required []string
 		checked++
 		o.paintAll(t, 0, 0)
 		if code := o.run(g); code != 0 {
-			t.Errorf("UNJUDGEABLE — `make %s` exits %d with EVERY check stubbed GREEN. Something in its "+
-				"recipe or a prerequisite is red for a reason that is not its check (a preflight the scratch "+
-				"tree cannot satisfy, a real tool run on an empty tree), so a red-under-red verdict would prove "+
-				"nothing. This is COULD-NOT-RUN, not a pass: make the recipe judgeable, or declare the gate.", g, code)
+			t.Errorf("UNJUDGEABLE — `make %s` exits %d with EVERY stub GREEN. Something it reaches is red for a "+
+				"reason that is not a check (a preflight the scratch tree cannot satisfy, a real tool on an empty "+
+				"tree). COULD-NOT-RUN, not a pass: make the recipe judgeable, or declare the gate.", g, code)
 			continue
 		}
-		o.paintAll(t, 3, 3)
-		if code := o.run(g); code == 0 {
-			t.Errorf("%s is a REQUIRED gate and `make %s` exits 0 with every check it runs stubbed RED.\n"+
-				"The gate cannot fail — its status is discarded somewhere, and make has already said so.", g, g)
+		keys := o.reach(g)
+		if len(keys) == 0 {
+			t.Errorf("%s is a REQUIRED gate and reaches no checker and no toolchain command: nothing it runs "+
+				"can fail.", g)
+			continue
+		}
+		for _, k := range keys { // bounded by the reach (P10-02)
+			o.paintAll(t, 0, 0)
+			o.paintKey(t, k, 3)
+			if code := o.run(g); code == 0 {
+				t.Errorf("%s is a REQUIRED gate and `make %s` exits 0 with ONLY %s red.\nThe gate reaches %s and "+
+					"does not fail when it does — its status is discarded somewhere on that path, and make has "+
+					"already said so.", g, g, k, k)
+			}
 		}
 	}
 	o.paintAll(t, 3, 3)
@@ -346,43 +471,52 @@ func assertEveryRequiredGateCanFail(t reporter, o *oracleTree, required []string
 	}
 }
 
-// `make verify` REACHES THE GATES AND GOES RED WHEN ONE DOES (H5).
-//
-// Green first: with everything green verify must exit 0, or the entry point is
-// unjudgeable. Then ONE checker red and everything else green: verify must exit
-// non-zero, or the entry point discards the failure — a `-` on the treelock
-// line — and release.yml, which reads that exit, would ship a red release.
+// `make verify` REACHES THE GATES AND GOES RED FOR EACH CHECKER, PAINTED ALONE
+// (H5, M7).
 func assertVerifyCanFail(t reporter, o *oracleTree, required []string) {
 	t.Helper()
 	if o.db["verify"] == nil {
 		t.Fatalf("COULD NOT RUN — no verify target")
 	}
-	invoked := o.checkersInvoked(required)
-	if len(invoked) == 0 {
-		t.Fatalf("COULD NOT RUN — no required gate invokes a checker; nothing to paint red")
-	}
 	o.paintAll(t, 0, 0)
 	if code := o.run("verify"); code != 0 {
-		t.Errorf("UNJUDGEABLE — `make verify` exits %d with every check green; the entry point is red for a "+
+		t.Errorf("UNJUDGEABLE — `make verify` exits %d with every stub green; the entry point is red for a "+
 			"reason that is not a gate", code)
 		return
 	}
-	o.paintChecker(t, invoked[0], 3, 0)
+	// THE ENTRY POINT MUST ACTUALLY REACH THE GATES. If verify is green with every
+	// stub red, its delegation never ran them — a wrapper the go stub's treelock
+	// contract does not match — and that is UNJUDGEABLE, not "discards the failure".
+	o.paintAll(t, 3, 3)
 	if code := o.run("verify"); code == 0 {
-		t.Errorf("`make verify` exits 0 with %s red and everything else green. The entry point discards "+
-			"the failure — release.yml reads this exit, so a red release would ship.", invoked[0])
+		t.Errorf("UNJUDGEABLE — `make verify` exits 0 with EVERY stub red: the entry point never reaches the " +
+			"gates. The oracle's go stub delegates only for `go run ./tools/treelock … -- CMD`; a different " +
+			"spelling or wrapper is not judged, and this is COULD-NOT-RUN.")
+		return
+	}
+	// WHAT VERIFY REACHES, not what every required gate does: a CI-only gate's
+	// checker is never run by verify and cannot make it red.
+	var invoked []string
+	for _, k := range o.reach("verify") { // bounded by the reach (P10-02)
+		if strings.HasPrefix(k, "scripts/") || strings.HasPrefix(k, "ctl:") {
+			invoked = append(invoked, k)
+		}
+	}
+	if len(invoked) == 0 {
+		t.Fatalf("COULD NOT RUN — verify reaches no checker; nothing to paint red")
+	}
+	for _, k := range invoked { // bounded by the checker list (P10-02)
+		o.paintAll(t, 0, 0)
+		o.paintKey(t, k, 3)
+		if code := o.run("verify"); code == 0 {
+			t.Errorf("`make verify` exits 0 with ONLY %s red. The entry point discards that gate's failure — "+
+				"release.yml reads this exit, so a red release would ship.", k)
+		}
 	}
 	o.paintAll(t, 3, 3)
 }
 
-// EVERY CONTROL IS REACHED (K1–K3).
-//
-// For each checker a required gate invokes: everything green, then ONLY that
-// checker's CONTROL red — the `--self-test` status for a flag, the sibling
-// script for a `_test.sh` — and every carrier tried. If none goes red, the
-// control does not run: commented out, behind `|| true`, inside a define, or
-// in a target nothing invokes. The checker status stays green throughout, so a
-// carrier cannot go red for the checker's sake.
+// EVERY CONTROL IS REACHED (K1–K4): only the CONTROL red, every carrier tried.
 func assertEveryControlIsReached(t reporter, o *oracleTree, required []string, uncontrolledRows map[string]string) {
 	t.Helper()
 	invoked := o.checkersInvoked(required)
@@ -402,9 +536,9 @@ func assertEveryControlIsReached(t reporter, o *oracleTree, required []string, u
 		}
 		o.paintAll(t, 0, 0)
 		if viaSibling {
-			o.paintSibling(t, strings.TrimSuffix(k, ".sh")+"_test.sh", 3)
+			o.paintKey(t, strings.TrimSuffix(k, ".sh")+"_test.sh", 3)
 		} else {
-			o.paintChecker(t, k, 0, 3)
+			o.paintKey(t, "ctl:"+k, 3)
 		}
 		var reached bool
 		for _, g := range carriers { // bounded by the carrier list (P10-02)
@@ -426,8 +560,7 @@ func assertEveryControlIsReached(t reporter, o *oracleTree, required []string, u
 }
 
 // controlsOf is every required gate whose recipe names a control for k, and
-// whether that control is the sibling script. Text finds CANDIDATES; execution
-// decides. Every carrier is returned (K2): none is preferred over another.
+// whether that control is the sibling script. Every carrier is returned.
 func (o *oracleTree) controlsOf(k string, required []string) (carriers []string, viaSibling bool) {
 	sib := strings.TrimSuffix(k, ".sh") + "_test.sh"
 	for _, g := range required { // bounded by the gate list (P10-02)
@@ -449,7 +582,7 @@ func (o *oracleTree) controlsOf(k string, required []string) (carriers []string,
 	return carriers, viaSibling
 }
 
-// ---- the production gates ---------------------------------------------------------------
+// ---- the production gates ----------------------------------------------------------------------
 
 func realOracle(t *testing.T) (*oracleTree, []string) {
 	t.Helper()
@@ -461,12 +594,12 @@ func realOracle(t *testing.T) (*oracleTree, []string) {
 
 func TestEveryRequiredGateIsPhony(t *testing.T) {
 	o, required := realOracle(t)
-	assertEveryRequiredGateIsPhony(t, o, required, ciOnly)
+	assertEveryRequiredGateIsPhony(t, o, required)
 }
 
 func TestEveryRequiredGateCanFail(t *testing.T) {
 	o, required := realOracle(t)
-	assertEveryRequiredGateCanFail(t, o, required, ciOnly)
+	assertEveryRequiredGateCanFail(t, o, required)
 }
 
 func TestVerifyCanFail(t *testing.T) {
