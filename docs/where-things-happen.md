@@ -11,7 +11,8 @@ this paragraph is now true. The per-file headers say what a file holds; this pag
 | Event | Where |
 |---|---|
 | The program starts | `app/dashboard.go:RunDashboard` (composition root) → `app/pipelines.go:startPriority`, `app/pipelines.go:startRecent` |
-| A key is pressed | `modes/tty/dashboard.go:handleKey` → a modal opens via `modes/tty/dashboard.go:toggleModal`; the radio keys via `modes/tty/radio_panel.go:toggleRadio` |
+| A key is pressed | `modes/tty/router.go:Update` → `routeKey` decides which surface owns it (the swap chords and the station toggle are the Router's own) → Observer `modes/tty/dashboard.go:handleKey` (a modal opens via `toggleModal`; the radio keys via `modes/tty/radio_panel.go:toggleRadio`) or Broadcaster `modes/tty/broadcaster.go:Update` |
+| A location is typed, and becomes a place | the ONE resolver serves both halves so the suggestions and the commit cannot disagree: `app/resolve.go:newResolver` builds it over the embedded index, `domains/locations/resolver.go:TypeAhead` answers each keystroke from that index alone (never the network — a per-keystroke fetch is how a search box becomes a rate limit), and `domains/locations/resolver.go:Resolve` is the commit, which MAY reach the network and reports `fellBack` when it could not match exactly. `app/resolve.go:resolveHook` is what Settings and Lookup call, and it answers with the build error on every query when the index failed to load, so a broken resolver says why instead of returning nothing |
 | A window opens or closes | `modes/tty/dashboard.go:toggleModal` → `modes/tty/dashboard.go:open` / `modes/tty/dashboard.go:close` (one `modal` value, so opening one closes the rest); drawn by `modes/tty/view.go:renderModal` through the modal memo `modes/tty/memo.go:modalView` (0.13.0: one render per input change, keyed by `modes/tty/memo.go:modalKeyFor`) |
 | `enter` opens Location Details | `modes/tty/dashboard.go:toggleModal` → the body `modes/tty/detail.go:detailLines` (+ `modes/tty/detail_fire.go:fireRows`, `modes/tty/detail_marine.go:maritimeRows`) |
 | A word is pronounced | the voice-only pass `domains/radio/synth/normalize.go:Pronounce` (every Say) and the product normaliser `domains/radio/synth/normalize.go:Normalize` load their tables by name from `domains/radio/pronounce/pronounce.go:Table` — `rules/<table>.txt`, one rule per line |
@@ -95,6 +96,12 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | synth | the synthesized broadcast of the location's own NWS products | `domains/radio/synth` |
 | token | a theme colour key (`Tok(name)`), never a literal SGR in views | `platform/render/theme.go` |
 | the seam | `platform/render` — the only non-test package that imports go-studs (`table.go` is the table seam) | `platform/render/table.go` |
+| the Director | the pure state machine that owns the schedule: Events in, Effects out; the executors perform the Effects | `platform/lineup/director.go`, `app/executors.go` |
+| a card | one scheduled read, from proposed to on-air to done | `platform/lineup/card.go` |
+| the line-up | the schedule the Director publishes: the main track and the alert rail | `platform/lineup/lineup.go` |
+| the main track / the rail | the rotation of ordinary reads (fifteen slots) / the priority queue for severe-weather takeovers, which always drains first | `platform/lineup/lineup.go` |
+| the bed | the live relay stream the programme rides on — a resource the Director cuts over to, not a track | `platform/lineup/bed.go` |
+| the fence | the hard boundary on which alerts reach the schedule at all | `platform/lineup/fence.go` |
 
 ## Record IDs
 
@@ -107,7 +114,6 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | JD/CQ/PA/PR/A11/BQ/IS/PH/DQ/SC/PF/RT/R2-n | red-team findings | `…/08-reports/red-team-plan.md` |
 | P10-nn | safety-critical rules (`make p10`, the harness CLI's check) | the harness's P10 skill (outside the public tree) |
 | C1–C5, OQ-n, D1/D2 | decisions, open questions, defects of the quality pass | `…/08-reports/discover-report.md`, `project-brief.md` |
-| A location is typed, and becomes a place | the ONE resolver serves both halves so the suggestions and the commit cannot disagree: `app/resolve.go:newResolver` builds it over the embedded index, `domains/locations/resolver.go:TypeAhead` answers each keystroke from that index alone (never the network — a per-keystroke fetch is how a search box becomes a rate limit), and `domains/locations/resolver.go:Resolve` is the commit, which MAY reach the network and reports `fellBack` when it could not match exactly. `app/resolve.go:resolveHook` is what Settings and Lookup call, and it answers with the build error on every query when the index failed to load, so a broken resolver says why instead of returning nothing |
 
 ## Rules, and where they are stated
 

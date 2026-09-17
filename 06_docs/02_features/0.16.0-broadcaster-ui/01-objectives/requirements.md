@@ -46,7 +46,7 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 |---|---|
 | **Source** | R-3, **D-11** |
 
-- **FR-2.1** The console shows a **main track of ten cards** — the rotation — a **priority track** for
+- **FR-2.1** The console shows a **main track of fifteen cards** *(amended 2026-09-17: ten at PLAN; the cap moved to fifteen at P3, `TestTheConsoleShowsAtMostFifteenMainTrackSlots`)* — the rotation — a **priority track** for
   takeovers, and the **bed**.  *Exit: a golden render at the ruled minimum size shows all three, with
   invariant assertions on lane identity, not only byte pins.*
 - **FR-2.2** The priority track **always drains first**, including while the bed is playing.  *Exit:
@@ -55,7 +55,7 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 - **FR-2.3** The console reads its schedule from the **`Publish` effect**, not from a second source of
   truth.  *Exit: the console's model is populated only by a published lineup; no second read path
   exists.*
-- **FR-2.4** The ten slots are addressable **`0`-`9`**, and the takeover layer has its own handles.
+- **FR-2.4** The slots are addressable **`0`-`9`** *(amended 2026-09-17: the track runs to fifteen; the number keys top out at nine and the running order is the door to the rest — `modes/tty/router.go`)*, and the takeover layer has its own handles.
   *Exit: each handle opens the card it names, driven through the real key path.*
 - **FR-2.5** **No report is ever read twice by two audio owners.**  The rotation drives the engine
   directly while the rail goes through the narrator arbiter, and nothing dedupes between them today.
@@ -73,7 +73,7 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 | **Source** | R-3.3, R-3.4, D-11 |
 
 - **FR-3.1** Selecting a slot opens a **modal for that card** showing its detail.  *Exit: the modal
-  opens for every one of the ten slots and the takeover handles, driven through the real key path, and
+  opens for every one of the fifteen slots *(amended 2026-09-17 with FR-2.1)* and the takeover handles, driven through the real key path, and
   its content is the card the handle names.*
 - **FR-3.2** The operator can **promote, demote and drop** a card.  *Exit: each action changes the
   order the schedule actually walks — asserted against `Next()`, never against a display field.*
@@ -268,8 +268,11 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 |---|---|
 | **Source** | R-4.4, D-19 |
 
-- **FR-10.1** Gain is **Broadcaster's own and persisted**, distinct from Observer's unpersisted
-  listening volume.  *Exit: changing one does not move the other, across a restart.*
+- **FR-10.1** ~~Gain is **Broadcaster's own and persisted**, distinct from Observer's unpersisted
+  listening volume.  *Exit: changing one does not move the other, across a restart.*~~ **SUPERSEDED
+  2026-09-17 by D-56:** *"the level is MIRRORED, never owned twice"* — one gain, shown on both
+  surfaces (`modes/tty/router.go`). Recorded here so the requirement and the ruling cannot be read
+  apart.
 
 ## FR-11 — The instruments (`FULL INST`)
 
@@ -306,13 +309,13 @@ throughout the requirements and is defined only in a previous release's files.
 
 | Term | What it means here | Defined in |
 |---|---|---|
-| **the main track** | The rotation: the queue of ordinary reads, shown as the ten-card stack | `platform/lineup/lineup.go:15` |
-| **the (alert) rail** | The priority queue for severe-weather takeovers.  It **always drains first** | `platform/lineup/lineup.go:16,171-188` |
+| **the main track** | The rotation: the queue of ordinary reads, shown as the fifteen-card running order | `platform/lineup/lineup.go` |
+| **the (alert) rail** | The priority queue for severe-weather takeovers.  It **always drains first** | `platform/lineup/lineup.go` (`held`, the rail's precedence in `settle`) |
 | **the bed** | The live NOAA relay stream the programme rides on.  Deliberately **not** a track — a resource the Director cuts over to, not a queue | `platform/lineup/lineup.go:9-12`, `bed.go:2-3` |
-| **a card** | One scheduled read, with a state machine from proposed to on-air to done | `platform/lineup/card.go:233-307` |
-| **a takeover** | The one card a severe-weather burst produces, queued to the rail | `platform/lineup/plan.go:188-200` |
+| **a card** | One scheduled read, with a state machine from proposed to on-air to done | `platform/lineup/card.go` (`Card`, `Slot`) |
+| **a takeover** | The one card a severe-weather burst produces, queued to the rail | `platform/lineup/plan.go` |
 | **the fence** | A **hard** boundary on which alerts reach the schedule at all.  What it excludes is *"not read, not counted and not pointed at"* | `platform/lineup/fence.go:95-97` |
-| **the duck** | Dipping the relay's volume so a spoken alert is audible over it.  **One owner**, and lifting it is the defect a prior release removed | `app/mastercontrol.go:12`, `app/executors.go:113-123` |
+| **the duck** | Dipping the relay's volume so a spoken alert is audible over it.  **One owner**, and lifting it is the defect a prior release removed | `app/mastercontrol.go` (the one owner) |
 | **dead air** | The station is on but broadcasting nothing.  Modelled as `Power.OffAir`; **it holds the rail too** | `platform/lineup/power.go:26-33` |
 | **STANDBY** | **Overloaded, deliberately.**  A *card* on standby is READY TO AIR; a *station* on standby is OFF air.  The code says `OffAir` for the station to keep them apart; the operator-facing word stays STANDBY | `platform/lineup/power.go:36-42` |
 
@@ -352,9 +355,9 @@ in this feature's own folder.)*
 | **RS-2** | **The operator cut-over lifts the duck** and brings a report in over an alert still reading | **HIGH** | FR-4.3 decides it explicitly at the seam; test the alert-still-reading case |
 | **RS-3** | **A mocked ON AIR drifts from the real audio state** while the swap gate depends on it | MED | FR-5.1 reads the Director's power, not a UI flag |
 | **RS-4** | **The breaking-alert message pair is split by the router**, leaving the marquee stuck | MED | The pair's ordering is a router test; flush before a swap |
-| **RS-5** | **A dense service area multiplies fetch load** until the client throttles | MED | FR-8.3's cap, population-ordered |
+| **RS-5** | **A dense service area multiplies fetch load** until the client throttles | MED | FR-8.6's cap, nearest-first (amended 2026-09-17; it was population-ordered) |
 | **RS-6** | **The settings split leaks or loses a value** on upgrade | MED | FR-6.3's captured-file round trip, per field |
-| **RS-7** | **A sparse town inside the radius is excluded by the cap** and the operator cannot tell why | LOW | FR-8.3 states the rule where the operator reads it |
+| **RS-7** | **A sparse town inside the radius is excluded by the cap** and the operator cannot tell why | LOW | FR-8.6 states the rule, and the pool footer says how many places are in reach (REVIEW 2026-09-17, ruling 8) |
 | **RS-8** | **Broadcaster becomes a third breakpoint implementation** | LOW | Closed by D-13 |
 | **RS-9** | **A hyper-local radius starves the station.**  A 3-mile radius could admit one location and few alerts | MED | FR-8.4 — the zone mechanism already delivers county products to a tracked location.  **Asserted, not assumed**, because FR-8.3's viability rests on it |
 | **RS-10** | **The location-set bound is new work with no precedent.**  Nothing today bounds which locations may exist; the fence bounds arrivals only | MED | FR-8.2 is scoped as new rather than as a reuse, so it is estimated honestly at PLAN |

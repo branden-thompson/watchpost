@@ -619,7 +619,7 @@ commits, reproduced one layer up.
 | `TestTheStateIsLegibleWithoutColour` (FR-5.3) | `19eae8f` | `TestEveryStationStateSaysWhatItIs` — the words carry the state; `TestEachTickerLaneNamesItselfWithoutColour` holds the same rule for the tape |
 | `TestTheOnAirBoundaryIsStatedToTheOperator` | `19eae8f` | `TestEveryStationStateSaysWhatItIs` (the boundary sentence is part of the state's own words) |
 | `TestTheBannerIsVariantC` | `19eae8f` | `TestTheStationLineCarriesTheGainControl`, `TestTheTransitionHintIsAnchoredToTheRightEdge` |
-| `TestTheConsoleShowsAtMostTenMainTrackCards` (FR-3.1) | `29ddb8e` | `TestTheConsoleShowsAtMostFifteenMainTrackSlots` — the cap moved from 10 to 15; named at `gates.md:489` |
+| `TestTheConsoleShowsAtMostTenMainTrackCards` (FR-3.1) | `29ddb8e` | `TestTheConsoleShowsAtMostFifteenMainTrackSlots` — the cap moved from 10 to 15; named at the `mAM2` row of the sweep table |
 | `TestALocationReportIsSpokenAsTheRotationClass` | `92e288c` | `TestARotationCardIsTheDirectorsOwn`, `TestARotationCardIsNamedAfterItsLocationAndNothingElse` |
 | `TestARotationReadIsSuspendedByASevereRead` | `92e288c` | D-82's give-way: `TestTheAlertRailDrainsBeforeTheMainTrack` |
 | `TestARotationReadIsSuspendedByATakeover` | `92e288c` | as above |

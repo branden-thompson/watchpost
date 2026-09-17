@@ -2,8 +2,9 @@
 
 > **Status:** everything named here exists and the steps are verified against the shipped code
 > (Documented-Commands-Execute rule). The planned `app/registry.go` / `View` interface
-> was not built — one dashboard model plus keybindings-as-data covered v0.x; see architecture
-> §11.9. When a second top-level view arrives (the playlist cycler, B6), the registry comes with it.
+> was not built. The second top-level view arrived in 0.16.0 — the Broadcaster console — and it
+> came with a thin **Router** (`modes/tty/router.go`), not a registry: the Router is the Bubble Tea
+> model handed to the program, and it fans messages to the two surfaces (FR-1.1, FR-1.2).
 
 watchpost is organized so you can find a feature by its name (`domains/…`) and extend it by
 touching **one folder plus one wiring line**. Two invariants keep everything honest — the import
@@ -12,8 +13,9 @@ linter in `make verify` enforces the first; `term.Merge` plus its tests enforce 
 1. **Data flows one way:** domains write `platform/snapshot`; `modes/` (all rendering: TTY and
    `report`) read ONLY the snapshot — never a domain. Anything the dashboard needs from a domain
    arrives as an app-provided hook in `tty.Config` (radio, voices, hydrate, spectrum).
-2. **Keybindings are data** (D-15): `modes/tty/dashboard.go` `defaultKeyMap()` is the only place a
-   key is named; users override any of them via `[keys]` in config.toml; `?` is reserved for help,
+2. **Keybindings are data** (D-15): a key is named in exactly two places — `defaultKeyMap()` in
+   `modes/tty/dashboard.go` for the Observer and `broadcasterKeyMap()` in `modes/tty/router.go` for
+   the console; users override any of them via `[keys]` in config.toml; `?` is reserved for help,
    which renders from the merged map so it is always truthful.
 
 ---
@@ -148,11 +150,13 @@ label shifts its neighbour rather than clipping. Ask before choosing one.
   would re-open it; that trigger, measured, is the only route back, and the sites themselves carry
   `ACCEPTED COST` comments pointing at it.
 
-- **`make verify` runs 21 of the 23 gates in `06_docs/required-gates.txt`, and the two it skips
-  matter.** `release-matrix` and `install-test` are CI-only — they build five platforms and install
-  what was built — and they are the **only callers of `scripts/lint-injector.sh`**, the check standing
-  between a debug-injector build and a release. A green local `verify` does not cover it; a green CI
-  run does. Read `required-gates.txt` rather than any list of gates written in prose: the Makefile,
+- **`make verify` runs every gate in `06_docs/required-gates.txt` except three, and the three it
+  skips matter.** `release-matrix` and `install-test` are CI-only — they build five platforms and
+  install what was built — and they are the **only callers of `scripts/lint-injector.sh`**, the check
+  standing between a debug-injector build and a release. `p10` is a phase-exit gate, run by
+  `make quality` at BUILD and REVIEW exit rather than on every verify. A green local `verify` does
+  not cover them; a green CI run and a green `quality` do. Read `required-gates.txt` rather than any
+  count written in prose (this page names none): the Makefile,
   `ci.yml` and that file are checked against each other by `cmd/watchpost/gates_test.go`, and a gate
   on none of them is caught by `TestEveryGateShapedTargetIsListedOrExempt`.
 - **The gate oracle needs GNU Make 3.82 or newer** — the make CI runs. macOS ships 3.81 (2006), which

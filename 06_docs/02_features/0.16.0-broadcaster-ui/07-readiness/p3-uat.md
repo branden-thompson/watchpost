@@ -4,10 +4,10 @@ date: 2026-09-09
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "SUPERSEDED 2026-09-17 — the console is LIVE: the flip landed (P3(a4), gates.md), ctrl+b/B are bound and advertised, and the live UAT is modes/tty/broadcaster_uat_test.go with the P3(a4) roster rows. What follows records the dark state and stands as history. Formerly: NOT READY.  The flip it was written for was reverted on 2026-09-09.  Against the dark state there is nothing to regress: Observer's audio path is untouched by design, and the ten signal cases have no subject until the flip lands again."
+status: "SUPERSEDED 2026-09-17 — the console is LIVE: the flip landed (P3(a4), gates.md), ctrl+b/B are bound and advertised, and the P3(a4) roster rows of gates.md are its record. modes/tty/broadcaster_uat_test.go is ten RENDERING tests, not this checklist; the ten audio signal cases below were NOT run against the live console as of 2026-09-17 (REVIEW, ruling 11 — cases 2, 6 and 10 need a human ear and are the HUM LEAD UAT owed before SHIP). What follows records the dark state and stands as history. Formerly: NOT READY.  The flip it was written for was reverted on 2026-09-09.  Against the dark state there is nothing to regress: Observer's audio path is untouched by design, and the ten signal cases have no subject until the flip lands again."
 ---
 
-**SUPERSEDED 2026-09-17.** The console ships live; the live UAT record is `modes/tty/broadcaster_uat_test.go` and the P3(a4) rows of `gates.md`. This document records the dark state it was written for.
+**SUPERSEDED 2026-09-17.** The console ships live; the P3(a4) rows of `gates.md` are its gate record. **The ten audio signal cases below have NOT been run against the live console** — `modes/tty/broadcaster_uat_test.go` is ten rendering tests for one truncation defect, not this checklist. Cases 2, 6 and 10 (dead air, the hand-over between voices, the thirty-minute rotation) need a human ear and are the HUM LEAD UAT owed before SHIP (REVIEW 2026-09-17, ruling 11). This document records the dark state it was written for.
 
 # HELD — there is nothing to test yet
 
