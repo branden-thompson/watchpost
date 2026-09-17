@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"os"
 	"path/filepath"
 	"strings"
@@ -134,5 +135,26 @@ func TestTheRadioDiagnosticRotatesPastItsCeiling(t *testing.T) {
 	}
 	if fi.Mode().Perm() != 0o600 {
 		t.Errorf("the log is %v, want 0600", fi.Mode().Perm())
+	}
+}
+
+// FR-9.4, THE RADIO DIAGNOSTIC TOO (REVIEW 2026-09-17, ruling 10). The
+// operator is told their tower's position is never written to a debug dump —
+// and the transmitter is itself a pool member, so a diagnostic line that named
+// places by coordinate named the antenna. Places are named by their label; a
+// place with no label by its ZIP; never by the pair.
+func TestTheRadioDiagnosticNamesPlacesNotCoordinates(t *testing.T) {
+	ref := snapshot.LocationRef{Label: "Bonsall, CA", Zip: "92003", Lat: 33.2887, Lon: -117.2253}
+	line := needsReadLine(mainTrackDark, true, ref, "the dwell elapsed")
+	if !strings.Contains(line, "Bonsall, CA") {
+		t.Errorf("the line does not name the place: %q", line)
+	}
+	for _, word := range []string{"33.28", "117.22", "lat", "lon"} { // bounded by the word list (P10-02)
+		if strings.Contains(strings.ToLower(line), word) {
+			t.Errorf("the diagnostic carries %q — it must not name where the operator is (FR-9.4): %q", word, line)
+		}
+	}
+	if got := needsReadLine(mainTrackDark, false, snapshot.LocationRef{Zip: "92003", Lat: 1, Lon: 2}, "x"); !strings.Contains(got, "92003") || strings.Contains(got, "1.0000") {
+		t.Errorf("a place with no label is named by its ZIP, not its pair: %q", got)
 	}
 }

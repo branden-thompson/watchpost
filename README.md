@@ -183,8 +183,22 @@ programme is going to the audio out of this machine — Watchpost does not obser
 Every card shows where its words came from and when its data last arrived; you can promote, demote and
 drop cards, cut the main track over to a live relay on the **bed**, and nothing is ever shown as taken
 unless the schedule took it. Your tower's position stays on this machine, in `config.toml`, and is
-never sent anywhere or written to a debug dump. `ctrl+o` (or `O`) returns to the Observer, and is refused
-while the station is ON AIR.
+never sent anywhere or written to a debug dump — the opt-in radio diagnostic names places by their
+labels, never by coordinate. `ctrl+o` (or `O`) returns to the Observer, and is refused while the
+station is ON AIR.
+
+| Key | Does |
+|-----|------|
+| `shift+enter` | **ON AIR / STANDBY** — the station toggle (held while a window is open) |
+| `↑` `↓` / `enter` | scroll the running order · open the slot: the card in full, and promote, demote, drop |
+| `0`-`9` | open a card by its handle (the first ten; the running order scrolls to the rest) |
+| `r` | **Line-Up Request** — ask for a place inside the radius, by name |
+| `l` | look up any city or ZIP |
+| `b` / `shift+←` `shift+→` | cut the main track over to the **bed** (the live relay) / previous and next relay |
+| `+` `=` `-` | gain up and down — one level, mirrored with the Observer's volume |
+| `ctrl+d` | Diagnostics |
+| `s` `a` `S` `?` `q` | Settings · About · the status of every data source · help · quit |
+| `ctrl+o` / `O` | back to the Observer (refused while the station is ON AIR — go to STANDBY first) |
 
 ## Quakes
 

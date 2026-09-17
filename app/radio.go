@@ -638,7 +638,7 @@ func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) 
 	// the diagnostic is on, because the concatenation is pure cost otherwise
 	// (the shape radioDebugOn exists for).
 	if radioDebugOn() {
-		d.debugLog(fmt.Sprintf("needs-read stage=%s fresh=%t ref=%s why=%s", stage, fresh, snapshot.Key(ref), why))
+		d.debugLog(needsReadLine(stage, fresh, ref, why))
 	}
 	if !fresh {
 		return // the listener stopped, or moved on: this need is about a location nobody is on
@@ -1127,6 +1127,19 @@ func (d *radioDeck) cycleEnded(st player.Status, src liveSource) (ended bool, vo
 // 90 seconds" needs to become a cause. Never a secret: mounts are public URLs.
 func (d *radioDeck) logStatus(st player.Status) {
 	d.debugLog(fmt.Sprintf("%-12s mount=%q err=%q title=%q vol=%d", st.State, st.Mount, st.Err, st.Title, st.Volume))
+}
+
+// needsReadLine is the diagnostic's record of one need. IT NAMES THE PLACE,
+// NEVER THE PAIR (FR-9.4): the transmitter is a pool member, so a line keyed
+// by coordinate wrote the operator's antenna position to a file the README
+// says never carries it. The label is the name; a place with no label is its
+// ZIP.
+func needsReadLine(stage mainTrackStage, fresh bool, ref snapshot.LocationRef, why string) string {
+	place := ref.Label
+	if place == "" {
+		place = ref.Zip
+	}
+	return fmt.Sprintf("needs-read stage=%s fresh=%t place=%q why=%s", stage, fresh, place, why)
 }
 
 // debugLog appends one timestamped line to the file named by

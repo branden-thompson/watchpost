@@ -355,8 +355,14 @@ func (b Broadcaster) heldBand(held int, mark, say string) []string {
 // faultNotice is the band an ON AIR station shows when it could not perform a
 // run of cards (F-150): the count shouts, the reason says what to check.
 func (b Broadcaster) faultNotice() []string {
-	if b.power != lineup.Running || b.fault.Run == 0 {
+	if b.power != lineup.Running || b.fault == (StationFaultMsg{}) { // the zero message is the clear
 		return nil
+	}
+	if b.fault.Run == 0 {
+		// AN ESCALATION WITH NO RUN — a bed that could not be tuned, a schedule
+		// emptied on standby — is shown by its reason alone (F-163, HUM LEAD
+		// 2026-09-17); a band keyed on the count dropped it.
+		return b.noticeBand("STATION FAULT", "!!!  STATION FAULT — "+b.fault.Reason)
 	}
 	count := strconv.Itoa(b.fault.Run) + " CARD(S) FAILED"
 	return b.noticeBand(count, "!!!  "+count+" — the station could not perform them: "+b.fault.Reason)

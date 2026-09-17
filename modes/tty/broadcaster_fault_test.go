@@ -81,3 +81,27 @@ func TestThePoolFooterSaysHowManyPlacesAreInReach(t *testing.T) {
 		t.Errorf("an empty pool says nothing about its reach:\n%s", got)
 	}
 }
+
+// F-163 (HUM LEAD 2026-09-17, "recommendations approved") — AN ESCALATION WITH
+// NO RUN IS SHOWN BY ITS REASON ALONE. A bed that could not be tuned, or a
+// one-card schedule emptied by a compose fault on standby, escalates with
+// Run 0 and a reason, and the band shows the reason. The zero message is the
+// clear.
+func TestAFaultWithNoRunShowsItsReasonAlone(t *testing.T) {
+	b := bcStandby(t, true, 0)
+	b, _ = b.Update(StationMsg{Power: lineup.Running})
+	b, _ = b.Update(StationFaultMsg{Run: 0, Reason: "the relay could not be tuned: no mount answered"})
+	got := stripANSITest(b.View().Content)
+	for _, want := range []string{"STATION FAULT", "no mount answered"} { // bounded by the phrases (P10-02)
+		if !strings.Contains(got, want) {
+			t.Errorf("an ON AIR station with a fault and no run shows no %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "CARD(S) FAILED") {
+		t.Error("a fault with no run was shown as a count of cards")
+	}
+	cleared, _ := b.Update(StationFaultMsg{})
+	if strings.Contains(stripANSITest(cleared.View().Content), "STATION FAULT") {
+		t.Error("the zero message did not clear the reason-only band")
+	}
+}

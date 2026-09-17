@@ -159,11 +159,11 @@ The gate-layer history that used to sit here (nine adversarial rounds on the ora
 the RECORD/DRIFT/EVASION threat model) is in `06_docs/gate-attack-list.md` and `quality-observations.md`;
 this list is what is left to do.
 
-1. **HUM CALLS still open from REVIEW** — ruling 10: the README's privacy sentence vs the opt-in radio
-   log (`app/radio.go` writes `ref=<lat,lon>` under `WATCHPOST_DEBUG_RADIO`; recommended: redact `ref=`
-   to the place's label and extend FR-9.4's gate); ruling 12: a key table for the console section of the
-   README, matching the Observer sections; F-163: the fault band's two semantics (a `Run: 0` escalation
-   is dropped by the console; does a decline break a run).
+1. ~~HUM CALLS still open from REVIEW~~ **RULED 2026-09-17 ("recommendations approved") and done:**
+   ruling 10 — the radio diagnostic names places by label, never by coordinate, and FR-9.4's gate
+   covers it (`TestTheRadioDiagnosticNamesPlacesNotCoordinates`); ruling 12 — the README's Broadcaster
+   section carries its key table; F-163 — a `Run: 0` escalation is shown by its reason alone, and a
+   decline does not break a run.
 2. **REVIEW exit**: `make verify` and the mutation sweep on the final REVIEW commit, the figures in §1
    replaced from those runs, the exposure statement re-run at that commit, then present.
 3. **Before the release branch is cut — a final local build and a regression pass of everything
