@@ -17,6 +17,18 @@ func TestReplaceKeysRewritesEveryPairAndNothingElse(t *testing.T) {
 	if HasKey(ReplaceKeys(line, Opaque)) {
 		t.Errorf("an Opaque rewrite still carries a pair: %q", ReplaceKeys(line, Opaque))
 	}
+	// THE BOUND IS WIDER THAN KEY'S OWN SPELLING: a pair that reaches a writer
+	// through free text — `%.6f,%.6f`, the `%v` of a LocationRef — is a pair.
+	for _, free := range []string{"33.288700,-117.225300", "{Bonsall, CA  92003 33.2887 -117.2253  0}", "at 33.29, -117.23 now"} { // bounded by the probes (P10-02)
+		if !HasKey(free) || HasKey(ReplaceKeys(free, Opaque)) {
+			t.Errorf("a pair in free text escaped the bound: %q -> %q", free, ReplaceKeys(free, Opaque))
+		}
+	}
+	for _, plain := range []string{"spoken=1.5s", "version 1.27.0", "12.5 mi at 14:30", "run=3 of 380"} { // bounded by the probes (P10-02)
+		if HasKey(plain) {
+			t.Errorf("text with no pair was taken for one: %q", plain)
+		}
+	}
 }
 
 func TestOpaqueIsStableDistinctAndNotAPosition(t *testing.T) {

@@ -6,9 +6,15 @@ import (
 	"regexp"
 )
 
-// keyPattern is the shape Key prints: two signed decimals with four places,
-// comma-joined. A card's ID, a tune's ref and a trace line all carry it.
-var keyPattern = regexp.MustCompile(`-?\d+\.\d{4},-?\d+\.\d{4}`)
+// keyPattern is a coordinate pair in any spelling a writer is likely to reach
+// for: two signed decimals of at least two places, each with a latitude- or
+// longitude-sized whole part, joined by a comma and/or whitespace. Key's own
+// form (four places, comma-joined) is the common case; `%.6f,%.6f` and the
+// `%v` of a LocationRef (`33.2887 -117.2253`) are inside the bound too, so a
+// pair that reaches a writer through free text — an error, a panic value — is
+// still rewritten. The bound is stated, not assumed: a pair spelled with one
+// decimal place, or in degrees-minutes, is outside it.
+var keyPattern = regexp.MustCompile(`-?\d{1,3}\.\d{2,}(?:,\s*|\s+)-?\d{1,3}\.\d{2,}`)
 
 // HasKey reports whether s carries a location key — a coordinate pair.
 func HasKey(s string) bool { return keyPattern.MatchString(s) }
