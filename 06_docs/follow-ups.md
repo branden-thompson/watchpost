@@ -289,3 +289,15 @@ A third blind adversary found four Criticals in the executed oracle and named th
 | M1 a real tool succeeding on an empty tree refuses a gate that can fail; M2 double-colon overwrite | **DECLARED** — the false-positive direction, loud, never silent. |
 | **F-154** *(new)* The adversary's K-ok row was wrong in the LIST: `a; b` discards `a`'s status and the oracle was right to refuse it | **CLOSED** — the row is now K4 CAUGHT, `&&` is K-ok. An attack list can be wrong in the passing direction too. |
 
+## Round four on the gate layer, 2026-09-16 — paint one thing, not the world
+
+| Finding | Disposition |
+|---|---|
+| C1 red-under-red from ANY stub — `mutant-check`'s discarded verdict and `lint-injector … \|\| true` read as sound in the real tree | **CLOSED by per-key painting.** Each stub a gate reaches is painted red alone; toolchain stubs answer by sub-command. M1–M6. |
+| C2 `verify` judged on `invoked[0]`; `verify: lint` + `-@` survived | **CLOSED** — every checker verify reaches through its own delegation, in turn. M7. |
+| C3 the `ciOnly` escape — rule deleted, `.DEFAULT` green, one row | **CLOSED by deletion of the hatch.** Absence from the database is an error unconditionally. N1. |
+| I1 the phony audit read the gate's name, not the chain | **CLOSED** — it walks prerequisites; a recipe on a non-phony node is the finding. N2. |
+| I2 `absentNonce` a package constant | **CLOSED** — fresh random hex per call. N3. |
+| MINOR `MAKEFLAGS=i` from a parent make; wrong diagnostic when the go stub never delegates | **CLOSED** — env stripped (N4); red-everywhere-still-green is UNJUDGEABLE by name. |
+| **F-155** *(process)* Three reviewers left `zz_review*_test.go` in a shared scratch directory, breaking the package build for the next | **OPEN — a brief rule:** every adversary works in a fresh directory of its own. Added to the brief template. |
+

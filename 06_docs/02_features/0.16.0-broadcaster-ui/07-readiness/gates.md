@@ -702,3 +702,13 @@ parsing. Every checker is stubbed red and `make <gate>` is RUN; make and sh are 
 | `TestEveryControlIsReached` (by argument) | the stub answers `--self-test` with the control status and anything else with the checker status; the proof paints the control alone and tries every carrier | **By construction:** K1, K2, K3, K4 CAUGHT; K-ok (`&&`) PASSES |
 | the registry's nonce | `exists` is proved against a subject the REGISTRY chose, not the table | **By construction:** L1 CAUGHT; `satisfied` remains a declared ceiling |
 
+### Round four: paint one thing, not the world (2026-09-16)
+
+| Gate | Property | Evidence |
+|---|---|---|
+| `TestEveryRequiredGateCanFail` (per key) | for each stub a gate REACHES — checkers, toolchain sub-commands, prerequisites, `$(MAKE)` recursion — painted red ALONE, the gate goes red | **By construction:** M1–M4, M-ok. **On the real tree:** `mutant-check` with `exit $$rc` → `exit 0` CAUGHT; `lint-injector … \|\| true` CAUGHT — both had read as sound under whole-world painting |
+| `TestVerifyCanFail` (per checker) | `make verify` goes red for each checker it reaches through its own delegation; green everywhere first; red-everywhere must reach the gates or it is UNJUDGEABLE | **By construction:** M7. **On the real tree:** `verify: lint` + `-@` CAUGHT |
+| `TestEveryRequiredGateIsPhony` (walking) | every recipe-bearing node a required gate reaches is phony; absence from the database is an error unconditionally | **By construction:** N1, N2. **On the real tree:** rule deleted + `.DEFAULT` + a `ciOnly` row CAUGHT |
+| the registry's nonce (per call) | `exists` is proved against fresh random hex, not a constant a table can name | **By construction:** N3 |
+| the child environment | `MAKEFLAGS`/`MAKELEVEL` stripped, so a parent make's `-i` cannot reach the oracle | **By construction:** N4 |
+

@@ -34,7 +34,7 @@ the axis content is reproduced below rather than linked for that reason.
 > **What NOT to tell you.** `[Nothing, unless a current disposition would anchor them. If this
 > review exists to check a conclusion, say the question and never the answer.]`
 >
-> **Work read-only.** Do not edit the tree. `[If the reviewer needs to run something, name a
+> **Work read-only, in a FRESH scratch directory of your own.** Do not edit the tree, and do not reuse another reviewer's scratch: one left test files that broke the package build for the next (F-155). `[If the reviewer needs to run something, name a
 > scratchpad path.]` A sweep or a gate run may be in flight; `make tree-free` says whether it is.
 >
 > **Answer every question in the axis below, in order, by name.** A question you found nothing for
