@@ -3065,3 +3065,19 @@ seam; two owners is a finding on its own, before any sequence is constructed. Th
 second channel outright (the seam, its invariant, its closure, the method and its test) rather than
 guarding it, and the first blind reviewer's remaining design point — carry the state on `Publish`,
 one source — is F-159.
+
+## A privacy claim is held at the writer, not at the caller
+
+REVIEW 2026-09-17, ruling 10. The README says the tower's position is never written to a debug dump.
+The first fix redacted the one diagnostic line a reviewer had named (`needs-read … ref=<lat,lon>`) and
+pinned it with a test of the pure line-builder. The blind reviewer of that commit put the tower on
+the main track, read the log from disk and found six more lines carrying the pair — the Director's
+trace describes every event, effect and card by its key, and a bed that cannot be tuned names its
+target the same way. One line of seven was fixed, and the gate could not see the other six because it
+never read the file. **The shape:** a claim about what a FILE carries is held at the one function
+that writes the file (every pair rewritten there, whatever a caller composed) and gated by a test
+that reads the file back with the sensitive value in play. A test of the builder proves the builder.
+Same round, the same commit shipped with two red tests in the package because only `-run <subset>`
+was run before committing; the reviewer's baseline caught it. **The rule already existed** — full
+gate set on a remediation — and it was skipped for a 110-second package run. Cost of the skip: one
+extra review round.
