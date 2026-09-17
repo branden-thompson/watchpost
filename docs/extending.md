@@ -155,6 +155,10 @@ label shifts its neighbour rather than clipping. Ask before choosing one.
   run does. Read `required-gates.txt` rather than any list of gates written in prose: the Makefile,
   `ci.yml` and that file are checked against each other by `cmd/watchpost/gates_test.go`, and a gate
   on none of them is caught by `TestEveryGateShapedTargetIsListedOrExempt`.
+- **The gate oracle needs GNU Make 3.82 or newer** — the make CI runs. macOS ships 3.81 (2006), which
+  has no `.SHELLFLAGS`, so a Makefile silenced that way would pass here and fail on CI. `make verify`
+  refuses to run the oracle under 3.81 and says so by name. On macOS: `brew install make`, then put
+  `/opt/homebrew/opt/make/libexec/gnubin` at the front of `PATH` so `make` resolves to 4.x.
 - `vuln` is `govulncheck`, which downloads the tool on each run — the one step that needs the
   network. `make tree-free` says whether a gate run is already in flight; do not edit the tree while
   one is.

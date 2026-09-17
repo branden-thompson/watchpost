@@ -131,7 +131,7 @@ Every row: plant the edit in a scratch copy, stub every checker red, run `make <
 | E1 | `.IGNORE:` at the top of the Makefile — every recipe's status ignored | CAUGHT |
 | E2 | `MAKEFLAGS += -i` | CAUGHT |
 | E3 | `SHELL := /usr/bin/true` — every recipe "succeeds" | CAUGHT |
-| E4 | `.SHELLFLAGS := -c true; #` | CAUGHT on GNU Make ≥ 3.82 (CI); **not applicable** on 3.81 (macOS ships it) and skipped by name there. The oracle's verdict is only as good as the make it runs under |
+| E4 | `.SHELLFLAGS := -c :` — **the reviewer's spelling, `-c true; #`, was inert** on 3.81 AND 4.4.1, probed directly; `-c :`, `-c "true ;"` and `-c true \#` all silence the gate | CAUGHT. **The oracle requires GNU Make ≥ 3.82** (macOS ships 3.81; `brew install make`) so its verdict is the one CI would give |
 | E5 | `-` prefix on the check line | CAUGHT |
 | E6 | `\|\| exit 0` | CAUGHT |
 | E7 | `\|\| echo skipped` — any word that succeeds | CAUGHT |

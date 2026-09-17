@@ -15,10 +15,7 @@ package main
 // second review).
 
 import (
-	"fmt"
 	"os"
-	"os/exec"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -29,33 +26,6 @@ type execSpecimen struct {
 	extra  map[string]string // an `include`d file, say
 	assert func(reporter, *oracleTree, []string)
 	caught bool
-	// needsMake is the make version the attack first exists in. THE ORACLE'S
-	// VERDICT IS ONLY AS GOOD AS THE MAKE IT RUNS UNDER: `.SHELLFLAGS` is a 3.82
-	// feature, macOS ships 3.81, and an attack the local make cannot express is
-	// not-applicable here — a distinct verdict (FR-11.3), skipped by name, and
-	// run for real on CI's 4.x.
-	needsMake string
-}
-
-// makeVersion is the local GNU make's major.minor, or "" if it cannot be read.
-func makeVersion() string {
-	out, err := exec.Command("make", "--version").Output()
-	if err != nil {
-		return ""
-	}
-	m := regexp.MustCompile(`GNU Make (\d+\.\d+)`).FindStringSubmatch(string(out))
-	if m == nil {
-		return ""
-	}
-	return m[1]
-}
-
-// olderThan says whether version a is older than b, on major.minor.
-func olderThan(a, b string) bool {
-	var am, an, bm, bn int
-	fmt.Sscanf(a, "%d.%d", &am, &an)
-	fmt.Sscanf(b, "%d.%d", &bm, &bn)
-	return am < bm || (am == bm && an < bn)
 }
 
 func canFail(t reporter, o *oracleTree, req []string)   { assertEveryRequiredGateCanFail(t, o, req) }
@@ -83,7 +53,11 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		{name: "E1 .IGNORE: at the top", mk: prepend(".IGNORE:"), assert: canFail, caught: true},
 		{name: "E2 MAKEFLAGS += -i", mk: prepend("MAKEFLAGS += -i"), assert: canFail, caught: true},
 		{name: "E3 SHELL := /usr/bin/true", mk: prepend("SHELL := /usr/bin/true"), assert: canFail, caught: true},
-		{name: "E4 .SHELLFLAGS := -c true; #", mk: prepend(".SHELLFLAGS := -c true; #"), assert: canFail, caught: true, needsMake: "3.82"},
+		// THE REVIEWER'S SPELLING WAS INERT. `.SHELLFLAGS := -c true; #` leaves the
+		// recipe red on 3.81 (no .SHELLFLAGS) AND on 4.4.1 — probed directly. The
+		// class is real: `-c :`, `-c "true ;"` and `-c true \#` all exit 0. A
+		// specimen must be an attack that works, or it proves nothing.
+		{name: "E4 .SHELLFLAGS := -c : (a spelling that works)", mk: prepend(".SHELLFLAGS := -c :"), assert: canFail, caught: true},
 		{name: "E5 a - prefix on the check line",
 			mk: sub("\t@./scripts/lint-a.sh\n", "\t-@./scripts/lint-a.sh\n"), assert: canFail, caught: true},
 		{name: "E6 || exit 0",
@@ -133,12 +107,8 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		t.Fatalf("%d execution specimens; section E has 16 rows plus the re-executed round-one attacks", len(specimens))
 	}
 	req := parseRequired(baseRequired)
-	local := makeVersion()
 	for _, sp := range specimens { // bounded by the specimen table (P10-02)
 		t.Run(sp.name, func(t *testing.T) {
-			if sp.needsMake != "" && (local == "" || olderThan(local, sp.needsMake)) {
-				t.Skipf("NOT APPLICABLE on GNU Make %s — this attack needs %s; it runs for real on CI's make", local, sp.needsMake)
-			}
 			var o *oracleTree
 			fired, said := verdictOf(func(r reporter) {
 				o = newOracleTree(r, sp.mk(baseMakefile), baseRequired, sp.extra)

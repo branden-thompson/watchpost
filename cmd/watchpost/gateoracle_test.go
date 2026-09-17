@@ -27,6 +27,7 @@ package main
 // the same path.
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -63,6 +64,7 @@ type oracleTree struct {
 // missing checker is not a gate that cannot fail.
 func newOracleTree(t reporter, makefile, requiredList string, extra map[string]string) *oracleTree {
 	t.Helper()
+	requireMake(t)
 	dir, err := os.MkdirTemp("", "gate-oracle-*")
 	if err != nil {
 		t.Fatalf("COULD NOT RUN — no scratch directory: %v", err)
@@ -105,6 +107,39 @@ func newOracleTree(t reporter, makefile, requiredList string, extra map[string]s
 		must(writeStub(filepath.Join(dir, k), 3))
 	}
 	return o
+}
+
+// minMake is the oldest GNU make the oracle will judge with.
+//
+// THE ORACLE'S VERDICT IS ONLY AS GOOD AS THE MAKE IT RUNS UNDER, and CI runs
+// 4.x. macOS ships 3.81 (2006, the last GPLv2 release), which has no
+// `.SHELLFLAGS` — so a gate silenced by it would read as sound here and as
+// silenced on CI. Two verdicts for one Makefile is not a gate. Below the floor
+// the oracle is COULD-NOT-RUN, by name, with the fix: `brew install make` and
+// `/opt/homebrew/opt/make/libexec/gnubin` at the front of PATH.
+const minMake = "3.82"
+
+var makeVersionLine = regexp.MustCompile(`GNU Make (\d+)\.(\d+)`)
+
+func requireMake(t reporter) {
+	t.Helper()
+	out, err := exec.Command("make", "--version").Output()
+	if err != nil {
+		t.Fatalf("COULD NOT RUN — `make --version` failed: %v", err)
+	}
+	m := makeVersionLine.FindStringSubmatch(string(out))
+	if m == nil {
+		t.Fatalf("COULD NOT RUN — `make` is not GNU make: %q", strings.SplitN(string(out), "\n", 2)[0])
+	}
+	var major, minor, wantMajor, wantMinor int
+	fmt.Sscanf(m[1]+" "+m[2], "%d %d", &major, &minor)
+	fmt.Sscanf(strings.ReplaceAll(minMake, ".", " "), "%d %d", &wantMajor, &wantMinor)
+	if major < wantMajor || (major == wantMajor && minor < wantMinor) {
+		t.Fatalf("COULD NOT RUN — GNU Make %s.%s is on PATH and the oracle needs %s or newer, the make CI "+
+			"runs. On macOS: `brew install make`, then put /opt/homebrew/opt/make/libexec/gnubin at the "+
+			"front of PATH so `make` is 4.x. A gate judged by a different make than the one CI uses has "+
+			"two verdicts, and that is not a gate.", m[1], m[2], minMake)
+	}
 }
 
 func writeStub(path string, exit int) error {
