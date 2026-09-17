@@ -516,3 +516,42 @@ remembered. The layer moves to `tools/gateoracle/` as a product of its own.
   untracked-unignored file.
 - The ordinal under real concurrency: the lock serialises the append, not which of two parallel
   invocations takes `#1`.
+
+---
+
+# Round nine: absence must be loud
+
+**Written and committed before the fix.** The first drift-briefed adversary: 1 Critical, 4 Important,
+6 Minor, and three evasion lines reported separately and not counted. The Critical is a verdict the
+oracle had never asked for: a tool's ABSENCE. The stub for every tool is always on PATH, so
+`command -v a2dh || exit 0` takes the live branch in the scratch and the skip branch on any machine
+without the tool — and the shipped `p10` preflight, flipped from `exit 1` to `exit 0` (the drift its
+own comment forbids), passed every gate. The Importants are the instrument's own state leaking
+between runs: a stamp a gate touches, the developer's uncommitted files, a parse-time invocation
+counted once where sub-makes re-parse, and a refusal swallowed by `|| true`.
+
+## S. Absence, state, and the instrument's own tests
+
+| # | Attack | Must |
+|---|---|---|
+| S1 | `command -v a2dh >/dev/null \|\| exit 0` before the check; `which golangci-lint \|\| exit 0`; `ifeq (,$(shell command -v a2dh))` skipping at parse time — **the shipped `p10` line with `exit 0`** | CAUGHT — for every tool key a gate recorded, the gate is run with that tool ABSENT from PATH and must go red |
+| S1-ok | the shipped `p10` line with `exit 1` | PASSES |
+| S2 | `python3 -m pyflakes … \|\| true` beside a live script; `./06_docs/mutants/run.sh \|\| true` (an executable outside `scripts/`) | CAUGHT — a refusal is RECORDED as `unjudged:<role>` and any `unjudged:` in a green reach is UNJUDGEABLE; the shebang rule covers every tracked executable, not `scripts/` alone |
+| S3 | `GOBIN := $(shell go env GOPATH)/bin` at the top, with `verify` and `mutant-check` re-parsing through `$(MAKE)` | PASSES — parse-time invocations are subtracted once per makefile read the run reports |
+| S4 | a non-phony gate that leaves `touch $@` behind; other non-phony rules phony | CAUGHT for the RIGHT reason — the absent-node set is taken before the green run, and the scratch is reset to its commit between runs |
+| S5 | P1 (`git diff --quiet … && exit 0`) from a DIRTY working tree | CAUGHT — the overlaid files are committed in the scratch (no tag), so cleanliness answers as CI |
+| S6 | `cd tools/x && go run .` as the only check, no control | CAUGHT — a relative package resolves against the working directory, and `go:run:.` is local |
+| S7-ok | `go test -c -o out/ ./tools/x && out/x.test`; `go build -o $(CURDIR)/out ./tools/x` | PASSES — `test -c` into a directory writes `<pkg>.test`; an absolute directory is not joined onto cwd |
+| S8 | the ceiling sentence | prints the tool NAMES, pinned by a unit test — it printed a function pointer |
+| S9 | `LC_ALL` unset, a translated make | the walk's lines are read under `LC_ALL=C` |
+| S10 | the instrument's own tests | `builtKey`, `writeBuiltStub`, `realCommand`, `moduleOf`, `envShebang`, the database parser and `ParseRequired` each have a unit test; O8, Q7 and H2 are renamed for the property that actually catches them |
+
+## Declared
+
+- `-go build -o out/x` then `out/x`: the discarded build status is invisible when no binary exists;
+  CI-faithful (a clean runner has no stale binary). (F9)
+- An unlisted `test` target supplying the `go:test` count under a `FAST=1` verify: the per-key count
+  is the ceiling. (F10)
+- `go vet -vettool=$$(go env GOPATH)/bin/shadow` is refused (O9's class); spell it
+  `p=$$(go env GOPATH) && go vet …`. (A10)
+- The parent's `CI`/`GITHUB_ACTIONS` pass through `env()`: in CI the oracle sees the skip. Evasion.
