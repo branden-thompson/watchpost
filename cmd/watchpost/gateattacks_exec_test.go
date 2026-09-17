@@ -161,7 +161,6 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 
 func TestTheRegistryAttackList(t *testing.T) {
 	yes := func(*testing.T, string) bool { return true }
-	no := func(*testing.T, string) bool { return false }
 	// honest answers a known-absent subject and a known-satisfied one correctly.
 	honestExists := func(_ *testing.T, s string) bool { return s != "absent-thing" }
 	honestNeeded := func(_ *testing.T, s string) bool { return s != "satisfied-thing" }
@@ -191,7 +190,6 @@ func TestTheRegistryAttackList(t *testing.T) {
 		{"a table with no functions at all", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason}}, true},
 		{"the no functions never called on a good table", good(map[string]string{"thing": realReason}), false},
 	}
-	_ = no
 	for _, sp := range specimens { // bounded by the specimen table (P10-02)
 		t.Run(sp.name, func(t *testing.T) {
 			fired, said := verdictOf(func(r reporter) { assertRegistry(r, []*exemptionTable{sp.table}) })

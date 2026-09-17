@@ -97,8 +97,7 @@ func TestEveryExemptionRowIsRealAndStillNeeded(t *testing.T) {
 // over a synthetic table.
 func assertRegistry(t reporter, tables []*exemptionTable) {
 	t.Helper()
-	tt, _ := t.(*testing.T) // the table functions take *testing.T; a nil one is accepted by every table here
-	var rows int
+	tt, _ := t.(*testing.T)      // the table functions take *testing.T; a nil one is accepted by every table here
 	for _, tbl := range tables { // bounded by the registry (P10-02)
 		if tbl.exists == nil || tbl.stillNeeded == nil {
 			t.Errorf("table %s registered without both an `exists` and a `stillNeeded` check: a table "+
@@ -122,7 +121,6 @@ func assertRegistry(t reporter, tables []*exemptionTable) {
 			}
 		}
 		for subject, why := range tbl.rows { // bounded by the table (P10-02)
-			rows++
 			w := strings.ToLower(strings.TrimSpace(why))
 			if shrugs[w] || len(w) < reasonFloor {
 				t.Errorf("%s[%q] is exempt with the reason %q.\n"+
@@ -140,7 +138,6 @@ func assertRegistry(t reporter, tables []*exemptionTable) {
 			}
 		}
 	}
-	_ = rows
 }
 
 // EVERY `map[string]string` DECLARED IN THIS PACKAGE'S TESTS IS REGISTERED.
