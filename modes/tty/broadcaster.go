@@ -510,19 +510,24 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 	case StationFaultMsg:
 		b.fault = v
 	case StationMsg:
-		// THE CLOCK STARTS ON THE TRANSITION, not on every message: a station
-		// that has been silent an hour must not look freshly quiet because
-		// another message arrived.
-		if v.Power != b.power {
-			b.standbySince = time.Time{}
-			if v.Power == lineup.OffAir {
-				b.standbySince = b.clock()
-				b.fault = StationFaultMsg{} // standby is the operator acting on it
-			}
-		}
-		b.power = v.Power
+		b = b.powered(v.Power)
 	}
 	return b, nil
+}
+
+// powered takes the station's power state, and starts the standby clock on
+// the TRANSITION, not on every message: a station that has been silent an hour
+// must not look freshly quiet because another message arrived.
+func (b Broadcaster) powered(to lineup.Power) Broadcaster {
+	if to != b.power {
+		b.standbySince = time.Time{}
+		if to == lineup.OffAir {
+			b.standbySince = b.clock()
+			b.fault = StationFaultMsg{} // standby is the operator acting on it
+		}
+	}
+	b.power = to
+	return b
 }
 
 // View renders the console: the priority track, the main track, the bed.
