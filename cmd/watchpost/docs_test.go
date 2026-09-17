@@ -213,3 +213,40 @@ func testNames(t *testing.T, root string) map[string]bool {
 	}
 	return out
 }
+
+// THE ROSTER NAMES TESTS THAT EXIST (F-142, the third recurrence of one drift).
+// BUILD exit is judged on gates.md, and three times a row kept naming a test
+// that had been renamed or deleted, so the row read as pinned and was not. A
+// gone test may be named in exactly two places: struck through (`~~Test…~~`),
+// or in the "Roster reconciliation" section, which is the ledger of what
+// replaced what. Everywhere else, a name must resolve to a `func Test…(`.
+func TestTheRosterCitesTestsThatExist(t *testing.T) {
+	root := filepath.Join("..", "..")
+	raw, err := os.ReadFile(filepath.Join(root, "06_docs", "02_features", "0.16.0-broadcaster-ui", "07-readiness", "gates.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	have := testNames(t, root)
+	struck := regexp.MustCompile("~~[^~\n]*~~")
+	var cited, missing int
+	inReconciliation := false
+	for _, line := range strings.Split(string(raw), "\n") { // bounded by the roster (P10-02)
+		if strings.HasPrefix(line, "## ") {
+			inReconciliation = strings.Contains(line, "Roster reconciliation")
+		}
+		if inReconciliation {
+			continue
+		}
+		for _, m := range testRef.FindAllStringSubmatch(struck.ReplaceAllString(line, ""), -1) { // bounded by the line (P10-02)
+			cited++
+			if !have[m[1]] {
+				missing++
+				t.Errorf("gates.md names %s and no such test exists. Strike it through with its successor beside it, "+
+					"or move it to the reconciliation ledger — a live row naming a gone test reads as pinned and is not.", m[1])
+			}
+		}
+	}
+	if cited < 50 {
+		t.Fatalf("the roster cites %d tests; the pattern has stopped matching how it names them", cited)
+	}
+}

@@ -48,9 +48,9 @@ which is why it was deferred rather than skipped.
 | Gate | What it asserts | Evidence: a failure watched |
 |---|---|---|
 | `TestTheConsoleShowsTheMainTrackItWasPublished` | The console shows the cards the schedule PUBLISHED | **By the watched RED**: the stub stored the lineup and rendered `BROADCASTER`, and the test named the missing headline |
-| `TestTheConsoleShowsNothingItWasNotPublished` | It invents nothing | Passes on an empty lineup; the negative direction of the row above |
+| `TestTheConsoleShowsNothingItWasNotPublished` | It invents nothing | Passes on an empty lineup; the negative direction of the row above. **Plant 2026-09-17:** a card appended to the projection the schedule never published → **CAUGHT** |
 | `TestTheConsoleNumbersTheMainTrackSlots` | The ten slots are addressable `0`-`9` (FR-2.4) | **Plant 2026-09-09, and THE FIRST ATTEMPT WAS INVALID.**  v1 deleted `strconv.Itoa(i)` and left `i` and the import unused → **BUILD FAILURE, which is not evidence either way** (the removed-a-use shape).  v2 computed the index, discarded it, and returned a constant handle → **CAUGHT** |
-| `TestTheConsoleShowsAtMostTenMainTrackCards` | A rolling view of ten; an eleventh does not reach the frame (FR-3.1) | **Plant 2026-09-09:** the bound removed → **CAUGHT** (`an eleventh card reached the frame`) |
+| ~~`TestTheConsoleShowsAtMostTenMainTrackCards`~~ → `TestTheConsoleShowsAtMostFifteenMainTrackSlots` | A rolling view of ten; an eleventh does not reach the frame (FR-3.1) | **Plant 2026-09-09:** the bound removed → **CAUGHT** (`an eleventh card reached the frame`) |
 | `TestAHostileHeadlineIsClampedInTheNewLanes` | **FR-2.6** — external text in the NEW lanes goes through the EXISTING clamp, not a second path | **Plant 2026-09-09, v1 ALSO INVALID** — removing the clamp call left its import unused → build failure.  v2 CALLED the clamp and discarded its result → **CAUGHT** (`escapes intact`) |
 
 **Two invalid plants in one batch, same shape, and it is a documented one.**  A mutation that removes
@@ -112,10 +112,10 @@ it — the bad plant recorded in 0.15.0's own roster.  These assign to a package
 
 | Gate | What it asserts | Evidence: a failure watched |
 |---|---|---|
-| `TestTheBannerReadsTheDirectorsPowerNotALocalFlag` | **FR-5.1** — the state is the Director's, never a local flag | **Plant 2026-09-09:** the published state ignored and a local flag kept → **CAUGHT** (`got STOPPED`).  This is a SAFETY gate, not a display one: the swap gate depends on this value |
-| `TestTheBannerIsVariantC` | **D-21** — a labelled field with the transition in parentheses | By the watched RED: the field existed, nothing rendered it, and the test named each missing part |
-| `TestTheStateIsLegibleWithoutColour` | **FR-5.3** — the words carry the state, not the colour | By the watched RED under `--ascii` |
-| `TestTheOnAirBoundaryIsStatedToTheOperator` | **FR-5.5** — the console says what ON AIR means | **Plant 2026-09-09:** the boundary line blanked → **CAUGHT** |
+| ~~`TestTheBannerReadsTheDirectorsPowerNotALocalFlag`~~ → `TestEveryStationStateSaysWhatItIs` | **FR-5.1** — the state is the Director's, never a local flag | **Plant 2026-09-09:** the published state ignored and a local flag kept → **CAUGHT** (`got STOPPED`).  This is a SAFETY gate, not a display one: the swap gate depends on this value |
+| ~~`TestTheBannerIsVariantC`~~ → `TestTheStationLineCarriesTheGainControl` | **D-21** — a labelled field with the transition in parentheses | By the watched RED: the field existed, nothing rendered it, and the test named each missing part |
+| ~~`TestTheStateIsLegibleWithoutColour`~~ → `TestEveryStationStateSaysWhatItIs` | **FR-5.3** — the words carry the state, not the colour | By the watched RED under `--ascii` |
+| ~~`TestTheOnAirBoundaryIsStatedToTheOperator`~~ → `TestEveryStationStateSaysWhatItIs` | **FR-5.5** — the console says what ON AIR means | **Plant 2026-09-09:** the boundary line blanked → **CAUGHT** |
 | `TestTheConsoleCarriesNoNonASCIIUnderASCII` **(strengthened)** | Now sweeps **every power state**, derived | **I PUT A NON-ASCII SEPARATOR IN THE ON AIR BANNER AND MY OWN GATE MISSED IT** — its fixture left the station STOPPED, whose line carries no separator.  The sweep now walks the power set by asking `Power.String()` where it ends.  **Plant 2026-09-09:** the literal restored → **CAUGHT**, and the message names the state: `--ascii (power=RUNNING): the frame carries "·"` |
 
 **The lesson is the one INST-1 keeps making.**  A single fixture is a hand-written subject list of size
@@ -144,7 +144,7 @@ roster that only shows catches teaches the easy half.
 |---|---|---|
 | `TestSwappingAwayIsRefusedWhileTheStationIsLive` | **FR-1.4** — a swap away from a RUNNING station is refused | **Plant 2026-09-09:** the refusal made unreachable (`&& false`, so the identifiers stay used) → **CAUGHT** |
 | `TestSwappingAwayIsPermittedFromStandby` · `...WhenStopped` | STANDBY and STOPPED both permit it | **By the watched RED**: the fail-closed stub refused everything, and these two were the red half — which also proved the stub genuinely failed closed |
-| `TestSwappingTOTheConsoleIsAlwaysPermitted` | Arriving is not the hazard the ruling bounds | Swept across **every power state, derived** from `Power.String()`'s end |
+| `TestSwappingTOTheConsoleIsAlwaysPermitted` | Arriving is not the hazard the ruling bounds | Swept across **every power state, derived** from `Power.String()`'s end. **Plant 2026-09-17:** arriving refused while the station is live → **CAUGHT** |
 | `TestAnUndeclaredSurfaceIsRefused` | Fail closed on a corrupt value | **Plant 2026-09-09:** the default opened → **CAUGHT** |
 | `TestThePowerPreconditionHasOneReaderInTheRouter` | **The rule has exactly ONE carrier** — an AST walk, derived, not a remembered file list | **Plant 2026-09-09:** a second read added in `View` → **CAUGHT** (`has 2 readers`).  Reports **"the check did not run"** rather than passing if the walk finds nothing (INST-2), and states its blind spot (INST-5) |
 
@@ -164,11 +164,11 @@ exit 1`.  P2(a) chained with `;` and pushed a red gate to `origin`.
 |---|---|---|
 | `TestAnOverrideInTheKeyTableChangesTheConsolesChord` | **FR-1.5** — an override in the user's `[keys]` table changes the chord, the Router answers the new key, and the help PRINTS it | **Plant 2026-09-16:** the Router given the raw map → **CAUGHT** (`the console answers [ctrl+b B]; the operator's table says ctrl+g`).  Help given the raw map → **CAUGHT** |
 | `TestAConsoleOverrideThatCollidesIsRefusedAtBuild` | **FR-1.5 / D-15** — a console override colliding inside the console's own scope is a build error, never a silent win | **Plant 2026-09-16:** the merge left unvalidated → **CAUGHT** |
-| `TestAnOverrideForTheOtherSurfaceDoesNotBreakTheConsole` | **FR-14** — two scopes share one override table, so an entry meant for the other is DROPPED with a note, not refused | — |
+| `TestAnOverrideForTheOtherSurfaceDoesNotBreakTheConsole` | **FR-14** — two scopes share one override table, so an entry meant for the other is DROPPED with a note, not refused | —. **Plant 2026-09-17:** the merge dropping the console's swap action → **CAUGHT** |
 | ~~`TestTheSwapActionsAreInTheKeyMapAndSoAreRebindable`~~ → `TestEveryConsoleSwapActionHasKeysAndHelp` | **WITHDRAWN 2026-09-16 (D-158).**  It asserted the swap actions were IN the key map — a PROXY for FR-1.5, whose exit sentence is "an override in the user's key table changes the chord".  `broadcasterKeyMap()` reached the Router unmerged, so no `[keys]` entry could change any console binding: the requirement was unmet for the whole of 0.16.0 and this gate was green beside it.  The 2026-09-09 plant was real and caught what it aimed at; what it aimed at was not the requirement | **Red team round 3** (junior-dev lens) |
 | `TestTheSwapHasANonChordRoute` | **FR-1.6** — the chord is NOT the only door | **Plant 2026-09-09:** the plain key removed, leaving only `ctrl+o` → **CAUGHT**.  The accessibility lens leaned toward blocking on this at DISCOVER; it is now a gate |
 | `TestPressingTheSwapKeyOnALiveStationDoesNotSwitch` | The binding goes THROUGH `canSwap` | **Plant 2026-09-09:** the gate asked and its answer ignored → **CAUGHT** (`the binding bypassed canSwap, which makes the key a second carrier of the D-1 rule`) |
-| `TestPressingTheSwapKeyFromStandbySwitches` | Both routes work from STANDBY | Sweeps **every bound key** for the action, not just the first — testing only the chord would leave FR-1.6's own subject untested |
+| `TestPressingTheSwapKeyFromStandbySwitches` | Both routes work from STANDBY | Sweeps **every bound key** for the action, not just the first — testing only the chord would leave FR-1.6's own subject untested. **Plant 2026-09-17:** only the first bound key honoured → **CAUGHT** |
 
 **The fixture refused to fake a chord.**  `keyPress` fatals rather than guessing when it cannot express
 a key name, so a test cannot quietly drive past the real key path — the seam the 0.15.0 build log
@@ -186,7 +186,7 @@ hazard that is neither broadcast nor visible, and the operator is the only perso
 | `TestAHeldAlertInStandbyRaisesANotice` | A hazard held while silent is visible | By the watched RED — the notice was a `nil` stub |
 | `TestTheHeldNoticeEscalatesWithTime` | **NFR-7's exit** — it escalates rather than sitting unchanged | **Plant 2026-09-09:** the ladder flattened to one rung → **CAUGHT** (`reads identically at 30s and at 20m`) |
 | `TestAnEmptyRailInStandbyRaisesNothing` | A station holding NOTHING is at rest, not a hazard withheld | **Plant 2026-09-09:** the empty-rail return made unreachable → **CAUGHT**.  Crying wolf here would train the operator to ignore the notice that matters |
-| `TestARunningStationRaisesNoStandbyNotice` | It does not persist once the station is draining | Passes; the negative direction |
+| `TestARunningStationRaisesNoStandbyNotice` | It does not persist once the station is draining | Passes; the negative direction. **Plant 2026-09-17:** the notice drawn for RUNNING too → **CAUGHT** |
 | `TestARepeatedStationMessageDoesNotRestartTheStandbyClock` | A repeat of the same power is a refresh, **not a transition** | **WRITTEN BECAUSE A PLANT SURVIVED — see below** |
 
 ### A plant survived, and this time the PLANT was right
@@ -239,9 +239,9 @@ constant and nothing else.
 
 | Gate | What it asserts | Evidence: a failure watched |
 |---|---|---|
-| `TestTheRotationIsTheLowestClass` | Everything interrupts the programme | **By the watched RED**: the class was added deliberately in the WRONG position first, so the failure was an assertion (`it is 2`) rather than a compile error.  **Plant 2026-09-09:** placed above the severe read → **CAUGHT**.  Walks the class type by its sentinel, so a class added later is covered without editing it |
-| `TestARotationReadIsSuspendedByASevereRead` | A severe read suspends the rotation, which then RESUMES | **Plant 2026-09-09:** the ordering inverted → **CAUGHT** (`got: duck,speak:rotation-line,speak:read-line,restore` — no pause at all) |
-| `TestARotationReadIsSuspendedByATakeover` | A takeover suspends the rotation | **WRITTEN WEAK, THEN FIXED — see below** |
+| ~~`TestTheRotationIsTheLowestClass`~~ → `TestAProposalAndARotationReadShareOneIdentity` | Everything interrupts the programme | **By the watched RED**: the class was added deliberately in the WRONG position first, so the failure was an assertion (`it is 2`) rather than a compile error.  **Plant 2026-09-09:** placed above the severe read → **CAUGHT**.  Walks the class type by its sentinel, so a class added later is covered without editing it |
+| ~~`TestARotationReadIsSuspendedByASevereRead`~~ → `TestTheAlertRailDrainsBeforeTheMainTrack` | A severe read suspends the rotation, which then RESUMES | **Plant 2026-09-09:** the ordering inverted → **CAUGHT** (`got: duck,speak:rotation-line,speak:read-line,restore` — no pause at all) |
+| ~~`TestARotationReadIsSuspendedByATakeover`~~ → `TestTheAlertRailDrainsBeforeTheMainTrack` | A takeover suspends the rotation | **WRITTEN WEAK, THEN FIXED — see below** |
 | The 5 pre-existing suspension pins | The shared arbiter did not regress | All still green.  **This is the regression evidence that matters** for a change to an arbiter three paths share |
 
 ### A second surviving plant, the same shape as the first
@@ -322,7 +322,7 @@ worth copying.
 
 | Gate | What it asserts | Evidence: a failure watched |
 |---|---|---|
-| `TestALocationReportIsSpokenAsTheRotationClass` | The rotation reads as `narrateRotation` in the standard voice — **not as a takeover** | **Plant 2026-09-09:** the class selection made unreachable, so it read as a takeover → **CAUGHT** (`duck,aside:...` — the aside is a takeover's line, whose visualizer does not follow it) |
+| ~~`TestALocationReportIsSpokenAsTheRotationClass`~~ → `TestARotationCardIsTheDirectorsOwn` | The rotation reads as `narrateRotation` in the standard voice — **not as a takeover** | **Plant 2026-09-09:** the class selection made unreachable, so it read as a takeover → **CAUGHT** (`duck,aside:...` — the aside is a takeover's line, whose visualizer does not follow it) |
 | `TestEffectsNotYetEmittedAreDeclinedNotHalfDone` | An unknown slot is DECLINED, not silently spoken | **Plant 2026-09-09:** the decline made unreachable → **CAUGHT** |
 
 ### The pin fired at both halves, which is what it is for
@@ -344,19 +344,19 @@ listener who has not asked for it, and every gate names the failure it was watch
 | `TestASynthesisedReadBecomesAMainTrackCard` | A need becomes ONE `LocationReport` card on `MainTrack`, **and the step also asks for its words** | **Plant m6 2026-09-09:** the settle skipped → **SURVIVED first**, because the test threw the effects away with `_ = fx`.  Gate rewritten to require a `BuildCard` for that card and a `Publish` after it; re-planted → **CAUGHT** |
 | `TestASecondNeedForTheSameLocationDoesNotQueueTwice` | FR-2.5 at the schedule level | **Plant m2:** `ReadID` made non-deterministic → **CAUGHT** |
 | `TestARotationCardIsNamedAfterItsLocationAndNothingElse` | **The MECHANISM**: the id is a pure function of the ref, and does not collide with a burst's | The duplicate gate above would pass under a remembered-set implementation; this one would not.  Written because two earlier plants survived by asserting an outcome that occurs either way |
-| `TestTheLocationCanBeReadAgainOnceItsCardHasLeft` | A rotation comes ROUND | Without it, a permanent refusal reads each location once and then plays nothing, and the duplicate gate above would still pass |
-| `TestNeedsReadOnAStoppedStationQueuesNothing` | Admission is a promise to read (DR-3), so a track that cannot advance takes none | **Plant m1:** the gate deleted → **CAUGHT** |
+| `TestTheLocationCanBeReadAgainOnceItsCardHasLeft` | A rotation comes ROUND | Without it, a permanent refusal reads each location once and then plays nothing, and the duplicate gate above would still pass. **Plant 2026-09-17:** a permanent refusal (each location read once) → **CAUGHT** |
+| ~~`TestNeedsReadOnAStoppedStationQueuesNothing`~~ → `TestANeedOnAStoppedStationIsQueuedButNotRead` | Admission is a promise to read (DR-3), so a track that cannot advance takes none | **Plant m1:** the gate deleted → **CAUGHT** |
 | `TestARotationCardIsTheDirectorsOwn` | The origin is `FromDirector`, matching the stale-tune transition | **Plant m4:** origin set to Observer's → **CAUGHT** |
 | `TestANeedWithNoHeadlineQueuesNothing` | A card is showable from proposal (DR-7) | **Plant m7b:** the headline replaced by the ref → **CAUGHT** |
 | `TestTheMergeIsOffUntilItIsAskedFor` | An unrecognised `WATCHPOST_MAINTRACK` is **off**, never live | **Plant n1:** any non-empty value reads as live → **CAUGHT**.  Nine values checked, including `1`, `true`, `LIVE` and `" live"` |
-| `TestOnlyLiveOwnsTheAirAndDarkStillReports` | Dark observes the REAL producer and still does not own the air | **Plants n2, n3** → **CAUGHT** |
+| ~~`TestOnlyLiveOwnsTheAirAndDarkStillReports`~~ → `TestOnlyDarkReportsAndNothingElseChanges` | Dark observes the REAL producer and still does not own the air | **Plants n2, n3** → **CAUGHT** |
 | `TestEveryStageNamesItself` | Every stage names itself, **walked from the registry** (INST-1), and a corrupt value says `undeclared` rather than reading as `off` | **Plants s1, s2, s3** → **CAUGHT** |
-| `TestTheDeckReportsTheNeedAndLeavesTheAirAlone` | Live reports the fact and **does not also start audio** | **Plants n5, n6, n7** → **CAUGHT**.  The air half is proved by a blank `mode`: `setMode` is `startSynth`'s second statement |
+| ~~`TestTheDeckReportsTheNeedAndLeavesTheAirAlone`~~ → `TestTheDarkRunRecordsTheNeedItWouldHaveActedOn` | Live reports the fact and **does not also start audio** | **Plants n5, n6, n7** → **CAUGHT**.  The air half is proved by a blank `mode`: `setMode` is `startSynth`'s second statement |
 | `TestAStaleNeedIsNotReported` | A need that arrived after the listener moved on queues nothing, **at every stage** | **Plant n4:** the epoch guard deleted → **CAUGHT** |
-| `TestADarkMainTrackCardIsDeclinedAtTheAirAndNeverReachesTheVoice` | The card stops one call short of the voice, and the decline is **Routed** | **Plants n8, n10** → **CAUGHT**.  Unrouted would raise a RELAY FAULT window every rotation turn while dark (I-2) |
-| `TestTheAlertRailReadsWhateverTheMainTrackStageIs` | **The rail is not staged** | **Plant n9:** the decline widened to every slot → **CAUGHT**.  This is the gate that stops the merge silencing hazards |
-| `TestEveryPathToASynthesisedReadGoesThroughTheOneSeam` | `startSynth` has exactly one caller, **derived by walking the AST** (INST-1) | A fourth call site is correct in isolation and wrong in company, so no behavioural test sees it.  **Zero callers is a FATAL** here, not a pass (INST-2) — and at P3(d) zero becomes the right answer and this gate is rewritten to say so |
-| `TestTheNeedIsReportedFromTheOneSeam` | `lineup.NeedsRead` is constructed in exactly one place | A second site would queue the card under a staleness rule only one of them checks |
+| ~~`TestADarkMainTrackCardIsDeclinedAtTheAirAndNeverReachesTheVoice`~~ → `TestOnlyDarkReportsAndNothingElseChanges` | The card stops one call short of the voice, and the decline is **Routed** | **Plants n8, n10** → **CAUGHT**.  Unrouted would raise a RELAY FAULT window every rotation turn while dark (I-2) |
+| ~~`TestTheAlertRailReadsWhateverTheMainTrackStageIs`~~ → `TestAStoppedRadioStillReadsTheAlertRail` | **The rail is not staged** | **Plant n9:** the decline widened to every slot → **CAUGHT**.  This is the gate that stops the merge silencing hazards |
+| `TestEveryPathToASynthesisedReadGoesThroughTheOneSeam` | `startSynth` has exactly one caller, **derived by walking the AST** (INST-1) | A fourth call site is correct in isolation and wrong in company, so no behavioural test sees it.  **Zero callers is a FATAL** here, not a pass (INST-2) — and at P3(d) zero becomes the right answer and this gate is rewritten to say so. **Plant 2026-09-17:** a second caller of `startSynth` in a throwaway file → **CAUGHT**, named by file and function |
+| `TestTheNeedIsReportedFromTheOneSeam` | `lineup.NeedsRead` is constructed in exactly one place | A second site would queue the card under a staleness rule only one of them checks. **Plant 2026-09-17:** a second `lineup.NeedsRead` literal in a throwaway file → **CAUGHT** |
 | `TestACardsKeyResolvesBackToTheLocationItNames` | A card's key resolves to the right location, **including the second entry** | **Plant c1:** the resolver returns the first entry always → **CAUGHT** |
 | `TestComposingForAnUnknownLocationFailsByName` | A location the listener removed fails by NAME, not as an empty report | **Plants c2, c3, c4** → **CAUGHT**.  An empty report becomes a card on the air with nothing to say |
 | `TestTheDarkRunRecordsTheNeedItWouldHaveActedOn` | The dark run's only instrument exists, names the stage **from the switch**, and carries `fresh=` | **Plants s4, s6, s7** → **CAUGHT**.  A dark run missing this line is not a quiet run, it is a run that proves nothing |
@@ -402,7 +402,7 @@ is the only question that makes a corpus evidence rather than decoration.
 
 | Mutant | What it guarded | Why it no longer measures |
 |---|---|---|
-| `mAB1` | D-104 — one scroll control spanning BOTH tables | **THE RULE WAS RETIRED, NOT BROKEN.**  D-106 ruled the line-up does not scroll (*"Location Pool Scrolls, Line-up doesnt"*), and its detector `TestOneScrollControlSpansBothTables` was deleted with it.  The mutant now defends a design the product deliberately abandoned |
+| `mAB1` | D-104 — one scroll control spanning BOTH tables | **THE RULE WAS RETIRED, NOT BROKEN.**  D-106 ruled the line-up does not scroll (*"Location Pool Scrolls, Line-up doesnt"*), and its detector ~~`TestOneScrollControlSpansBothTables`~~ → retired with D-106 (the line-up does not scroll) was deleted with it.  The mutant now defends a design the product deliberately abandoned |
 | `mAA2` | D-92 — a settings heading is never drawn over no rows | The detector `TestNoSettingsGroupIsDrawnEmpty` still exists and reads rendered output, so this points at the FIXTURE rather than the rule |
 | `mCA` | BD-8 — the speak names its lane | Escalated: see the verdict table |
 | `mDC` | RD-2/D-82 — the bed is a shared resource | Escalated: see the verdict table |
@@ -670,9 +670,9 @@ both files before the fix was trusted.
 | `TestEveryGateShapedTargetIsListedOrExempt` | a target that runs a check is listed or says why not | **By construction:** A1–A4 CAUGHT. **On the real tree:** found `build-diag` and `lint-update`, which the regex it replaced could not see |
 | `TestNoRequiredGatesCIStepIsSilenced` | no step-level or job-level `if:`/continue-on-error/`\|\| true` on a required gate without a reason | **By construction:** A19–A25 CAUGHT — including `- if: false` as a step's first key, the spelling that defeated three rounds; B-ok1, B-ok2 PASS |
 | `TestNoGateIsAnswerableFromCache` | no gate's `go test` omits `-count=1` | **By construction:** A11 CAUGHT |
-| `TestNoRequiredGateRecipeCannotFail` | no required gate's recipe discards its exit status | **By construction:** A8 CAUGHT |
-| `TestEveryRequiredGatesCheckerHasAControl` | every project checker a required gate runs is exercised by a self-test that RUNS | **By construction:** A5, A6, A7, A9, A10 CAUGHT; A-ok1 PASSES |
-| `TestEveryRequiredGateRunsACheck` | a required gate's recipe runs something that can fail | **By construction:** A18 CAUGHT; A37 PASSES. **On the real tree:** its first run found the parser dropping every recipe line after a column-0 comment — the real `mutant-check` read as running nothing |
+| ~~`TestNoRequiredGateRecipeCannotFail`~~ → `TestEveryRequiredGateCanFail` | no required gate's recipe discards its exit status | **By construction:** A8 CAUGHT |
+| ~~`TestEveryRequiredGatesCheckerHasAControl`~~ → `TestEveryControlIsReached` | every project checker a required gate runs is exercised by a self-test that RUNS | **By construction:** A5, A6, A7, A9, A10 CAUGHT; A-ok1 PASSES |
+| ~~`TestEveryRequiredGateRunsACheck`~~ → `TestEveryRequiredGateCanFail` | a required gate's recipe runs something that can fail | **By construction:** A18 CAUGHT; A37 PASSES. **On the real tree:** its first run found the parser dropping every recipe line after a column-0 comment — the real `mutant-check` read as running nothing |
 | `TestEveryBuildTargetTrimsThePath` | every `go build` carries `$(TRIMPATH)` | **By construction:** A12–A15 CAUGHT; A-ok3 PASSES |
 | `TestTheAllocBudgetSelectsItsPins` | the alloc pattern reaches its pins; reaching nothing fails | **On the real tree:** eight pins counted; a pattern reaching none fails under the floor |
 | `TestEveryExemptionRowIsRealAndStillNeeded` | every row of every registered table: real reason, subject exists, rule would still fire | **On the real tree:** its first run found three `identityExempt` rows that matched nothing — no-ops reading as considered exceptions — and they were deleted |
@@ -796,4 +796,13 @@ Minor; evasion reported separately. The Critical was a verdict the oracle had ne
 | `TestTheTransmitterQuestionStatesTheStorageBoundary` | FR-9.4: the storage boundary is stated where the operator sets the tower | **By the watched RED:** three phrases absent before the support line existed |
 | `TestADumpCarriesNoCoordinates` | FR-9.4: no JSON the dumper writes names a coordinate | **By the watched RED:** a `lat` field planted in `dumpRecord` was reported and reverted |
 | `TestAStationThatCannotComposeFaultsAndAListenerWhoDeclinedIsRouted` | F-150: a station that cannot perform FAULTS (not routed) and DR-21's window is owed; a deliberate non-delivery stays routed | **By the watched RED:** "no composer" and "a card with nothing to say" were `Routed: true` before the split |
+
+### F-142 closed: the roster names tests that exist, and every gate names a failure it watched (2026-09-17)
+
+Eighteen live rows named tests that had been renamed or deleted; each is now struck through with its
+successor beside it, and the reconciliation ledger is the one section where a gone name may stand
+alone. `TestTheRosterCitesTestsThatExist` holds that from now on — the drift's third recurrence is the
+one that got a gate. Eight rows carried no watched failure; each now records a plant of 2026-09-17,
+every verdict read from the test's own `--- FAIL` line, with a plant that failed to compile named
+INVALID and redone rather than counted.
 
