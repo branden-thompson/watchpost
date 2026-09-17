@@ -102,6 +102,8 @@ func (*executors).cueFor
 func (*executors).decline
 func (*executors).describeBed
 func (*executors).eventsFor
+func (*executors).failed
+func (*executors).fault
 func (*executors).offer
 func (*executors).run
 func (*executors).runCue

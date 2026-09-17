@@ -237,7 +237,11 @@ func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
 	// kind of answer, and a shared hint made the only difference between them a
 	// capital L in the label above — which a test was already relying on and
 	// warning about ("the case is the only thing telling the two apart").
-	lines := []string{head, supportIndent + "Broadcasting location - Enter City, ST or Zip"}
+	// THE STORAGE BOUNDARY, STATED WHERE THE TOWER IS SET (FR-9.4). A transmitter
+	// is a real person's antenna at metre precision; the operator is told once,
+	// here, what the application does with it — and a test holds the dump to it.
+	lines := []string{head, supportIndent + "Broadcasting location - Enter City, ST or Zip",
+		supportIndent + settingSupport("Your tower's position stays on this machine, in config.toml. It is never sent anywhere and never written to a debug dump or export.")}
 	if st.focus == rowTransmitter {
 		lines = append(lines, supportIndent+"Search: "+st.query+o.Glyphs().Cursor)
 		for i, h := range st.hints { // bounded by the suggestion list (P10-02)

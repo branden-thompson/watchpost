@@ -1381,3 +1381,35 @@ func TestACardWhoseHazardsHaveAllLapsedIsDeclined(t *testing.T) {
 		}
 	}
 }
+
+// F-150 — A FAULT IS NOT A DECLINE. `escalation()` grades a failure by whether
+// it was DELIBERATE (Routed), and a decline was routed by definition — so a
+// compose error, a missing composer and an empty report all took the
+// deliberate-non-delivery exit and the operator saw nothing. The executors now
+// say which it was: a station that cannot do what it is wired to do FAULTS,
+// and DR-21's window is the cue when that stops the schedule.
+func TestAStationThatCannotComposeFaultsAndAListenerWhoDeclinedIsRouted(t *testing.T) {
+	script := lineup.Script{Tone: "warning", Parts: []lineup.Part{{Kind: lineup.PartLine, Text: "a warning", Ref: "a1"}}}
+	for _, tc := range []struct {
+		name   string
+		effect lineup.Effect
+		muted  bool
+		routed bool
+	}{
+		{"no composer is wired", lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, false, false},
+		{"the severe window reads its own card", lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, false, true},
+		{"a structural card has no builder", lineup.BuildCard{ID: "h1", Slot: lineup.Transition, Subject: "h1"}, false, true},
+		{"the listener is muted", lineup.Speak{ID: lineup.BurstID("a1"), Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: script}, true, true},
+		{"a card took the air with nothing to say", lineup.Speak{ID: lineup.BurstID("a2"), Slot: lineup.BreakingAlert, Track: lineup.AlertRail}, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := newBench(t, &scriptVoice{})
+			b.muted = tc.muted
+			f := onlyFailed(t, b.x.run(context.Background(), tc.effect))
+			if f.Routed != tc.routed {
+				t.Errorf("Routed = %v, want %v — %s (%q)", f.Routed, tc.routed,
+					map[bool]string{true: "a deliberate non-delivery is not a fault", false: "a station that cannot perform has faulted, and the window is owed"}[tc.routed], f.Reason)
+			}
+		})
+	}
+}

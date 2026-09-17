@@ -217,3 +217,38 @@ func TestTheDumpHintNeverShowsTheHomePath(t *testing.T) {
 		t.Errorf("a sibling sharing the prefix was rewritten: %q", out)
 	}
 }
+
+// FR-9.4 — A DEBUG DUMP CARRIES NO COORDINATES. The transmitter is a real
+// person's antenna at metre precision; the operator is told it never reaches a
+// dump, and this is the assertion behind that sentence: nothing the dumper
+// writes names a latitude, a longitude, a transmitter, or a location.
+func TestADumpCarriesNoCoordinates(t *testing.T) {
+	dir := t.TempDir()
+	d := testDumper(t, dir, time.Now())
+	path, err := d.Dump(time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) == 0 {
+		t.Fatal("the dump wrote nothing; there is nothing to assert over")
+	}
+	for _, e := range entries { // bounded by the dump's files (P10-02)
+		if !strings.HasSuffix(e.Name(), ".json") {
+			continue // runtime profiles: heap, allocs, goroutine, threadcreate
+		}
+		raw, err := os.ReadFile(filepath.Join(path, e.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := strings.ToLower(string(raw))
+		for _, word := range []string{`"lat"`, `"lon"`, "transmitter", "location", "coordinate"} { // bounded by the word list (P10-02)
+			if strings.Contains(body, word) {
+				t.Errorf("%s carries %q — a dump must not name where the operator is (FR-9.4)", e.Name(), word)
+			}
+		}
+	}
+}

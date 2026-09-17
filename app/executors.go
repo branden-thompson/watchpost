@@ -354,7 +354,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 	// The set is closed, so this is unreachable for anything declared today.
 	// It is the safe direction for a member added later without an executor:
 	// reported, never silently dropped.
-	return x.decline(f, "", "the effect set grew a member with no executor")
+	return x.fault(f, "", "the effect set grew a member with no executor")
 }
 
 // build composes a card's words at standby (DR-7).
@@ -379,7 +379,7 @@ func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Even
 		// card would sit at standby for ever. Today an empty line is a silent
 		// hold; under the lineup it is a card that cannot be delivered.
 		if sc.Empty() {
-			return x.decline(v, v.ID, "the script rendered nothing to say")
+			return x.fault(v, v.ID, "the script rendered nothing to say")
 		}
 		return []lineup.Event{lineup.Built{ID: v.ID, Script: sc}}
 	case lineup.LocationReport:
@@ -391,18 +391,18 @@ func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Even
 		// owns what a report IS, exactly as the producer owns what an alert is
 		// on the rail path.
 		if x.compose == nil {
-			return x.decline(v, v.ID, "no composer is wired for the main track")
+			return x.fault(v, v.ID, "no composer is wired for the main track")
 		}
 		segs, err := x.compose(ctx, v.Subject, v.Reports)
 		if err != nil {
-			return x.decline(v, v.ID, "the report could not be composed: "+err.Error())
+			return x.fault(v, v.ID, "the report could not be composed: "+err.Error())
 		}
 		sc, contents := scriptFromSegments(segs), contentsFromSegments(segs)
 		if sc.Empty() {
 			// A CARD ON THE AIR WITH NO WORDS IS SILENCE under a callout the
 			// band has already promised (DR-18) — the same rule the takeover
 			// path states two cases above.
-			return x.decline(v, v.ID, "the report composed nothing to say")
+			return x.fault(v, v.ID, "the report composed nothing to say")
 		}
 		return []lineup.Event{lineup.Built{ID: v.ID, Script: sc, Contents: contents}}
 	case lineup.SevereRead:
@@ -423,7 +423,7 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	// ASKED BEFORE THE FORK, because it is true of both readers: a card with no
 	// words is dead air whichever thing would have performed it.
 	if v.Script.Empty() {
-		return x.decline(v, v.ID, "a card took the air with nothing to say")
+		return x.fault(v, v.ID, "a card took the air with nothing to say")
 	}
 	// ONLY THE RAIL READS THROUGH THE ARBITER (D-33, HUM LEAD 2026-09-09).
 	//
@@ -531,10 +531,10 @@ func (x *executors) broadcast(ctx context.Context, v lineup.Speak) []lineup.Even
 	// the direction a mistake would actually go, which is why there is no
 	// matching check on the rail's side.
 	if onTheRail(v.Slot) {
-		return x.decline(v, v.ID, "a rail card reached the programme's reader: its tone and its callouts would be lost")
+		return x.fault(v, v.ID, "a rail card reached the programme's reader: its tone and its callouts would be lost")
 	}
 	if x.read == nil {
-		return x.decline(v, v.ID, "no reader for the main track: this station has no broadcast engine")
+		return x.fault(v, v.ID, "no reader for the main track: this station has no broadcast engine")
 	}
 	if !x.read(ctx, v) {
 		// THE SAME VERDICT THE RAIL RETURNS, and for the same reason (DR-24): a
@@ -640,17 +640,29 @@ func (x *executors) runRelease(v lineup.ReleaseTicker) []lineup.Event {
 	return nil
 }
 
-// decline reports an effect that will not be performed and, when it named a
-// card, fails that card so the schedule re-plans around it (DR-21).
+// decline reports an effect the station will DELIBERATELY not perform — a
+// muted listener, a producer holding nothing, a card another reader owns — and,
+// when it named a card, fails that card so the schedule re-plans around it
+// (DR-21). A decline is ROUTED: the executor refused by name and said why, and
+// the producer offers the alerts again. It is not the station going quiet.
 func (x *executors) decline(f lineup.Effect, id, why string) []lineup.Event {
+	return x.failed(f, id, why, true)
+}
+
+// fault reports an effect the station CANNOT perform as wired — no composer, a
+// compose error, a report with no words, no reader at all. It is NOT routed:
+// `escalation()` grades a failure by whether it was deliberate (I-2), and when
+// a fault stops the schedule the operator is owed the window (F-150).
+func (x *executors) fault(f lineup.Effect, id, why string) []lineup.Event {
+	return x.failed(f, id, why, false)
+}
+
+func (x *executors) failed(f lineup.Effect, id, why string, routed bool) []lineup.Event {
 	x.report(f, why)
 	if id == "" {
 		return nil
 	}
-	// A DECLINE IS ROUTED BY DEFINITION: the executor refused BY NAME and said
-	// why, and the producer offers the alerts again. It is not the station
-	// going quiet, which is what the fault window is for (I-2).
-	return []lineup.Event{lineup.Failed{ID: id, Reason: why, Routed: true}}
+	return []lineup.Event{lineup.Failed{ID: id, Reason: why, Routed: routed}}
 }
 
 // bandRecord is what the band was asked, most recent last, bounded (P10-03).

@@ -232,3 +232,17 @@ func TestABorrowedEpicentreSaysSo(t *testing.T) {
 		}
 	}
 }
+
+// FR-9.4 — THE STORAGE BOUNDARY IS STATED WHERE THE OPERATOR SETS THE TOWER:
+// the transmitter is a real antenna at metre precision, and the question that
+// asks for it says what the application does with it, in the support text the
+// operator reads while answering.
+func TestTheTransmitterQuestionStatesTheStorageBoundary(t *testing.T) {
+	o := render.Opts{ASCII: true}
+	got := stripANSITest(strings.Join(stationSetup(t, rowTransmitter).setupTransmitterLines(o, " "), "\n"))
+	for _, want := range []string{"stays on this machine", "never sent", "debug dump"} { // bounded by the phrase list (P10-02)
+		if !strings.Contains(got, want) {
+			t.Errorf("the transmitter question does not say %q; the operator is owed the storage boundary (FR-9.4):\n%s", want, got)
+		}
+	}
+}

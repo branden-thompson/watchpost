@@ -788,3 +788,12 @@ Minor; evasion reported separately. The Critical was a verdict the oracle had ne
 | parse-time subtraction | once per makefile read the run reports | **By construction:** S3-ok |
 | the instrument's own tests | eight more pure functions unit-tested; the ceiling's text pinned; three specimens renamed for the property that catches them | `stub_test.go` |
 
+### BUILD-exit batch A: the three product rows the red team left open (2026-09-17)
+
+| Gate | Property | Evidence |
+|---|---|---|
+| `TestA0150ConfigRoundTripsUnchangedAndGainsOnlyDefaults` | FR-6.3 / RS-6: a file v0.15.0 itself wrote decodes unchanged, gains only 0.16.0 defaults, and survives a 0.16.0 Save byte for byte | **By the watched RED:** the captured fixture carried `cast = "on"`, which the loader refused — a capture error, and the test said so before anything else could |
+| `TestTheTransmitterQuestionStatesTheStorageBoundary` | FR-9.4: the storage boundary is stated where the operator sets the tower | **By the watched RED:** three phrases absent before the support line existed |
+| `TestADumpCarriesNoCoordinates` | FR-9.4: no JSON the dumper writes names a coordinate | **By the watched RED:** a `lat` field planted in `dumpRecord` was reported and reverted |
+| `TestAStationThatCannotComposeFaultsAndAListenerWhoDeclinedIsRouted` | F-150: a station that cannot perform FAULTS (not routed) and DR-21's window is owed; a deliberate non-delivery stays routed | **By the watched RED:** "no composer" and "a card with nothing to say" were `Routed: true` before the split |
+
