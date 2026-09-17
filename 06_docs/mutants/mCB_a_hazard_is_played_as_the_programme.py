@@ -4,7 +4,7 @@ import pathlib
 # engine. Its attention tone never sounds and its per-alert callouts never go up:
 # a tornado warning, delivered as the weather.
 p = pathlib.Path("app/executors.go"); s = p.read_text()
-old = '\tif onTheRail(v.Slot) {\n\t\treturn x.decline(v, v.ID, "a rail card reached the programme\'s reader: its tone and its callouts would be lost")\n\t}\n'
+old = '\tif onTheRail(v.Slot) {\n\t\treturn x.fault(v, v.ID, "a rail card reached the programme\'s reader: its tone and its callouts would be lost")\n\t}\n'
 new = ""
 assert old in s, "mCB"
 p.write_text(s.replace(old, new, 1))

@@ -6,7 +6,7 @@ import pathlib
 # Routed, and a comment sits between the guard and the return. The mutation is
 # unchanged — the guard is widened so the card is never failed.
 p = pathlib.Path("app/executors.go"); s = p.read_text()
-old = '\tif id == "" {\n\t\treturn nil\n\t}\n\t// A DECLINE IS ROUTED BY DEFINITION: the executor refused BY NAME and said\n\t// why, and the producer offers the alerts again. It is not the station\n\t// going quiet, which is what the fault window is for (I-2).\n\treturn []lineup.Event{lineup.Failed{ID: id, Reason: why, Routed: true}}\n'
-new = '\tif id == "" || id != "" {\n\t\treturn nil\n\t}\n\t// A DECLINE IS ROUTED BY DEFINITION: the executor refused BY NAME and said\n\t// why, and the producer offers the alerts again. It is not the station\n\t// going quiet, which is what the fault window is for (I-2).\n\treturn []lineup.Event{lineup.Failed{ID: id, Reason: why, Routed: true}}\n'
+old = '\tif id == "" {\n\t\treturn nil\n\t}\n\treturn []lineup.Event{lineup.Failed{ID: id, Reason: why, Routed: routed}}\n'
+new = '\tif id == "" || id != "" {\n\t\treturn nil\n\t}\n\treturn []lineup.Event{lineup.Failed{ID: id, Reason: why, Routed: routed}}\n'
 assert old in s, "mC3"
 p.write_text(s.replace(old, new, 1))
