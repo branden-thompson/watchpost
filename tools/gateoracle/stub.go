@@ -13,25 +13,26 @@ import (
 
 // The stubs read these from the environment; the oracle sets them per run.
 const (
-	EnvLog     = "ORACLE_LOG"     // the record every invocation appends to
-	EnvStatus  = "ORACLE_STATUS"  // the directory of painted statuses
-	EnvDefault = "ORACLE_DEFAULT" // the status an unpainted key answers with
-	EnvRoot    = "ORACLE_ROOT"    // the tree, for resolving script paths
-	EnvBin     = "ORACLE_BIN"     // the stub directory, to find the REAL shell past it
-	EnvBuilt   = "ORACLE_BUILT"   // the list of stubs `go build -o` has written
+	EnvLog    = "ORACLE_LOG"    // the record every invocation appends to
+	EnvStatus = "ORACLE_STATUS" // the directory of painted statuses
+	EnvRoot   = "ORACLE_ROOT"   // the tree, for resolving script paths
+	EnvBin    = "ORACLE_BIN"    // the stub directory, to find the REAL shell past it
+	EnvBuilt  = "ORACLE_BUILT"  // the list of stubs `go build -o` has written
 )
 
 // tools are the toolchain commands the oracle stubs on PATH. A command NOT here
 // is real; adding a checker that is neither a script nor `go run` nor built by
 // `go build -o` means adding it here.
-var tools = []string{"go", "gofmt", "a2dh", "golangci-lint", "govulncheck", "shasum", "sha256sum"}
+func tools() []string {
+	return []string{"go", "gofmt", "a2dh", "golangci-lint", "govulncheck", "shasum", "sha256sum"}
+}
 
 // interpreters answer for their `scripts/` argument — a script's own shebang
 // brings it here through `env` — and refuse anything else, so `python3 -m x` is
 // UNJUDGEABLE rather than unseen. The shells run the REAL shell for `-c`.
-var interpreters = []string{"sh", "bash", "python3", "expect"}
+func interpreters() []string { return []string{"sh", "bash", "python3", "expect"} }
 
-var shells = []string{"sh", "bash"}
+func shells() []string { return []string{"sh", "bash"} }
 
 // StubMain is the stub binary's main: the role is argv[0]'s name — bin/go,
 // bin/sh, a tool, or a binary `go build -o` wrote — and the result is the exit
@@ -44,9 +45,9 @@ func StubMain(argv []string) int {
 	switch {
 	case role == "go":
 		return goStub(args)
-	case contains(interpreters, role):
+	case contains(interpreters(), role):
 		return interpreterStub(role, args)
-	case contains(tools, role):
+	case contains(tools(), role):
 		return answer(role, args)
 	}
 	if key, ok := builtKey(argv[0]); ok {
@@ -57,7 +58,7 @@ func StubMain(argv []string) int {
 }
 
 // answer records the invocation and exits with the status painted for it, else
-// for its key, else the default. `--self-test` before `--` makes it a control.
+// for its key, else 0. `--self-test` before `--` makes it a control.
 func answer(key string, args []string) int {
 	if isSelfTest(args) {
 		key = "ctl:" + key
@@ -74,8 +75,7 @@ func answer(key string, args []string) int {
 			}
 		}
 	}
-	code, _ := strconv.Atoi(os.Getenv(EnvDefault))
-	return code
+	return 0
 }
 
 // goStub answers by sub-command, honours treelock's `--` contract (`go run … --
@@ -106,7 +106,7 @@ func goStub(args []string) int {
 // a command string (`-c` anywhere in its leading flags) runs the REAL shell, and
 // the script inside the string records through its own shebang.
 func interpreterStub(role string, args []string) int {
-	if contains(shells, role) && hasShellCommandFlag(args) {
+	if contains(shells(), role) && hasShellCommandFlag(args) {
 		real := realCommand(role)
 		if real == "" {
 			fmt.Fprintf(os.Stderr, "oracle: no real %s past the stubs\n", role)

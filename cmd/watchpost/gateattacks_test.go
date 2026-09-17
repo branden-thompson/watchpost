@@ -177,7 +177,11 @@ func TestTheGateAttackList(t *testing.T) {
 	}
 	for _, sp := range specimens { // bounded by the specimen table (P10-02)
 		t.Run(sp.name, func(t *testing.T) {
-			m := newBuildModel(sp.mk(gateoracle.BaseMakefile), sp.ci(baseWorkflow), sp.req(gateoracle.BaseRequired))
+			mk := sp.mk(gateoracle.BaseMakefile)
+			if anchor := gateoracle.MissingAnchor(mk); anchor != "" {
+				t.Fatalf("the specimen's anchor is not in the base fixture: %q", anchor)
+			}
+			m := newBuildModel(mk, sp.ci(baseWorkflow), sp.req(gateoracle.BaseRequired))
 			fired, said := gateoracle.VerdictOf(func(r reporter) { sp.assert(r, m) })
 			switch {
 			case sp.caught && !fired:

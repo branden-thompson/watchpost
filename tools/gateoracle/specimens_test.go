@@ -378,9 +378,13 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		t.Run(sp.name, func(t *testing.T) {
 			t.Parallel() // each specimen owns its scratch tree
 			var done func()
+			mk := sp.mk(BaseMakefile)
+			if anchor := MissingAnchor(mk); anchor != "" {
+				t.Fatalf("the specimen's anchor is not in the base fixture: %q", anchor)
+			}
 			fired, said := VerdictOf(func(r Reporter) {
 				var o *Oracle
-				o, done = SpecimenOracle(r, sp.mk(BaseMakefile), BaseRequired, baseScripts, sp.extra)
+				o, done = SpecimenOracle(r, mk, BaseRequired, baseScripts, sp.extra)
 				sp.assert(r, o, req)
 			})
 			if done != nil {

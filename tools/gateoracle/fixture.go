@@ -139,13 +139,29 @@ release-matrix
 install-test
 `
 
+// AnchorMissing is what Sub leaves in a Makefile when its anchor was not found,
+// so the specimen runner refuses it by name instead of judging the wrong text.
+const AnchorMissing = "# ORACLE-ANCHOR-MISSING: "
+
+// Sub is a Makefile mutation: old replaced by new, exactly once. A missing
+// anchor is reported through AnchorMissing rather than by aborting here.
 func Sub(old, new string) func(string) string {
 	return func(s string) string {
 		if !strings.Contains(s, old) {
-			panic("specimen anchor not found: " + old)
+			return s + "\n" + AnchorMissing + strings.ReplaceAll(old, "\n", "\\n") + "\n"
 		}
 		return strings.Replace(s, old, new, 1)
 	}
+}
+
+// MissingAnchor is the anchor a mutated Makefile says it could not find, or "".
+func MissingAnchor(mutated string) string {
+	if i := strings.Index(mutated, AnchorMissing); i >= 0 {
+		rest := mutated[i+len(AnchorMissing):]
+		anchor, _, _ := strings.Cut(rest, "\n")
+		return anchor
+	}
+	return ""
 }
 
 func Same(s string) string { return s }

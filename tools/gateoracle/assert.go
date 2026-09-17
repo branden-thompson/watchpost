@@ -85,7 +85,7 @@ func (o *Oracle) silencedBy(t Reporter, g string, base run, set []string) (broke
 		_ = os.MkdirAll(filepath.Dir(path), 0o755)
 		_ = os.WriteFile(path, nil, 0o644)
 	}
-	o.paint(0)
+	o.paint()
 	touched := o.runGate(g)
 	for _, node := range set { // bounded by the set (P10-02)
 		_ = os.Remove(filepath.Join(o.tree, node))
@@ -127,7 +127,7 @@ func AssertEveryRequiredGateCanFail(t Reporter, o *Oracle, required []string) {
 		}
 		for _, inv := range base.reach { // bounded by the reach (P10-02)
 			judged++
-			o.paint(0, inv)
+			o.paint(inv)
 			if o.runGate(g).code == 0 {
 				t.Errorf("%s is a REQUIRED gate and `make %s` exits 0 with ONLY %s red.\nThe gate ran it and does "+
 					"not fail when it does — its status is discarded somewhere on that path, and make has already "+
@@ -136,7 +136,7 @@ func AssertEveryRequiredGateCanFail(t Reporter, o *Oracle, required []string) {
 			}
 		}
 	}
-	o.paint(0)
+	o.paint()
 	if checked == 0 {
 		t.Fatalf("COULD NOT RUN — no required gate is a make rule")
 	}
@@ -155,20 +155,38 @@ func AssertVerifyCanFail(t Reporter, o *Oracle, required []string, ciOnlyRows ma
 	if base.code != 0 {
 		return
 	}
-	var checkers int
-	for _, k := range base.reach { // bounded by the reach (P10-02)
-		if strings.HasPrefix(k, "scripts/") || strings.HasPrefix(k, "ctl:") {
-			checkers++
-		}
-	}
-	if checkers == 0 {
+	if !reachesACheck(base.reach) {
 		t.Errorf("UNJUDGEABLE — `make verify` exits 0 and ran no checker: the entry point never reaches the " +
 			"gates. The oracle's go stub delegates only for `go run ./tools/treelock … -- CMD`; a different " +
 			"spelling or wrapper is not judged, and this is COULD-NOT-RUN.")
 		return
 	}
-	// BY COUNT, NOT BY KEY: a variable passed down that a gate skips ONE of two
-	// `go test` calls under leaves the key present and the check gone.
+	o.verifyCoversEachGate(t, base, required, ciOnlyRows)
+	for _, inv := range base.reach { // bounded by the reach (P10-02)
+		o.paint(inv)
+		if o.runGate("verify").code == 0 {
+			t.Errorf("`make verify` exits 0 with ONLY %s red. The entry point discards that failure — "+
+				"release.yml reads this exit, so a red release would ship.", inv)
+		}
+	}
+	o.paint()
+	ceiling(t, fmt.Sprintf("verify judged for %d invocations", len(base.reach)))
+}
+
+func reachesACheck(reach []string) bool {
+	for _, k := range reach { // bounded by the reach (P10-02)
+		if strings.HasPrefix(k, "scripts/") || strings.HasPrefix(k, "ctl:") {
+			return true
+		}
+	}
+	return false
+}
+
+// verifyCoversEachGate: BY COUNT, NOT BY KEY. A variable passed down that a gate
+// skips ONE of two `go test` calls under leaves the key present and the check
+// gone.
+func (o *Oracle) verifyCoversEachGate(t Reporter, base run, required []string, ciOnlyRows map[string]string) {
+	t.Helper()
 	verifyCounts, need := countsOf(base.reach), map[string]int{}
 	for _, g := range required { // bounded by the gate list (P10-02)
 		if _, ci := ciOnlyRows[g]; ci || !o.known(g) {
@@ -190,15 +208,6 @@ func AssertVerifyCanFail(t Reporter, o *Oracle, required []string, ciOnlyRows ma
 				k, verifyCounts[k], need[k])
 		}
 	}
-	for _, inv := range base.reach { // bounded by the reach (P10-02)
-		o.paint(0, inv)
-		if o.runGate("verify").code == 0 {
-			t.Errorf("`make verify` exits 0 with ONLY %s red. The entry point discards that failure — "+
-				"release.yml reads this exit, so a red release would ship.", inv)
-		}
-	}
-	o.paint(0)
-	ceiling(t, fmt.Sprintf("verify judged for %d invocations", len(base.reach)))
 }
 
 // isChecker: a project-written checker owes a control. Scripts (not `_test.sh`
@@ -219,32 +228,14 @@ func isChecker(key string) bool {
 // sibling `<key>_test.sh`; its carriers are the required gates that recorded it.
 func AssertEveryControlIsReached(t Reporter, o *Oracle, required []string, uncontrolledRows map[string]string) {
 	t.Helper()
-	var invoked []string
-	for _, g := range required { // bounded by the gate list (P10-02)
-		for _, k := range keysOf(o.green(t, g).reach) { // bounded by the reach (P10-02)
-			if isChecker(k) && !contains(invoked, k) {
-				invoked = append(invoked, k)
-			}
-		}
-	}
-	sort.Strings(invoked)
 	var checked int
-	for _, k := range invoked { // bounded by the checker list (P10-02)
+	for _, k := range o.checkersInvoked(t, required) { // bounded by the checker list (P10-02)
 		if _, declared := uncontrolledRows[k]; declared {
 			continue
 		}
 		checked++
-		ctl, sib := "ctl:"+k, ""
-		if strings.HasPrefix(k, "scripts/") {
-			sib = strings.TrimSuffix(k, ".sh") + "_test.sh"
-		}
-		var carriers []string
-		for _, g := range required { // bounded by the gate list (P10-02)
-			keys := keysOf(o.green(t, g).reach)
-			if contains(keys, ctl) || (sib != "" && contains(keys, sib)) {
-				carriers = append(carriers, g)
-			}
-		}
+		ctl, sib := controlsFor(k)
+		carriers := o.carriersOf(t, required, ctl, sib)
 		if len(carriers) == 0 {
 			orSibling := ""
 			if sib != "" {
@@ -256,22 +247,62 @@ func AssertEveryControlIsReached(t Reporter, o *Oracle, required []string, uncon
 				"this checker is trusted without evidence.", k, k, orSibling)
 			continue
 		}
-		o.paint(0, ctl, sib)
-		var reached bool
-		for _, g := range carriers { // bounded by the carrier list (P10-02)
-			if o.runGate(g).code != 0 {
-				reached = true
-				break
-			}
-		}
-		if !reached {
+		o.paint(ctl, sib)
+		if !o.anyRed(carriers) {
 			t.Errorf("%s's control ran in %v and its failure is DISCARDED: with only that control red, every "+
 				"carrier stays green — `|| true`, `;`, a `-` prefix — and make has said so.", k, carriers)
 		}
 	}
-	o.paint(0)
+	o.paint()
 	if checked == 0 {
 		t.Fatalf("COULD NOT RUN — no checker is run by a required gate")
 	}
 	ceiling(t, fmt.Sprintf("%d checkers' controls judged", checked))
+}
+
+// checkersInvoked is every checker key any required gate recorded, sorted.
+func (o *Oracle) checkersInvoked(t Reporter, required []string) []string {
+	t.Helper()
+	var invoked []string
+	for _, g := range required { // bounded by the gate list (P10-02)
+		for _, k := range keysOf(o.green(t, g).reach) { // bounded by the reach (P10-02)
+			if isChecker(k) && !contains(invoked, k) {
+				invoked = append(invoked, k)
+			}
+		}
+	}
+	sort.Strings(invoked)
+	return invoked
+}
+
+// controlsFor is a checker's control key and, for a script, its sibling.
+func controlsFor(k string) (ctl, sib string) {
+	ctl = "ctl:" + k
+	if strings.HasPrefix(k, "scripts/") {
+		sib = strings.TrimSuffix(k, ".sh") + "_test.sh"
+	}
+	return ctl, sib
+}
+
+// carriersOf is every required gate whose green run recorded ctl or sib.
+func (o *Oracle) carriersOf(t Reporter, required []string, ctl, sib string) []string {
+	t.Helper()
+	var carriers []string
+	for _, g := range required { // bounded by the gate list (P10-02)
+		keys := keysOf(o.green(t, g).reach)
+		if contains(keys, ctl) || (sib != "" && contains(keys, sib)) {
+			carriers = append(carriers, g)
+		}
+	}
+	return carriers
+}
+
+// anyRed runs each gate as painted and says whether one went red.
+func (o *Oracle) anyRed(gates []string) bool {
+	for _, g := range gates { // bounded by the gate list (P10-02)
+		if o.runGate(g).code != 0 {
+			return true
+		}
+	}
+	return false
 }

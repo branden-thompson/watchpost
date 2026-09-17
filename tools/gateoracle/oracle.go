@@ -1,7 +1,6 @@
 package gateoracle
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -10,7 +9,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 var makeVersionLine = regexp.MustCompile(`GNU Make (\d+)\.(\d+)`)
@@ -42,7 +40,6 @@ func requireMake(t Reporter) {
 type Oracle struct {
 	root        string
 	tree        string
-	def         int             // the status every unpainted key answers with
 	rules       map[string]bool // every rule make -pn lists, true where make calls it phony
 	parseCounts map[string]int  // invocations the Makefile itself makes at parse time, per key
 	greens      map[string]run
@@ -57,7 +54,9 @@ type run struct {
 
 // envShebang is DERIVED from the interpreter list and anchored: `python3.12` is
 // a real interpreter the oracle does not stub.
-var envShebang = regexp.MustCompile(`^#!/usr/bin/env (` + strings.Join(interpreters, "|") + `)[ \t\r]*$`)
+func envShebang() *regexp.Regexp {
+	return regexp.MustCompile(`^#!/usr/bin/env (` + strings.Join(interpreters(), "|") + `)[ \t\r]*$`)
+}
 
 // New judges the Makefile in tree, a directory CloneForOracle laid out; the
 // oracle owns everything beside it.
@@ -69,19 +68,19 @@ func New(t Reporter, tree string) *Oracle {
 		t.Fatalf("COULD NOT RUN — %v", err)
 	}
 	o := &Oracle{root: root, tree: filepath.Join(root, filepath.Base(tree)), greens: map[string]run{}}
-	exe := stubBinary(t)
 	for _, dir := range []string{"bin", "status"} { // bounded by the layout (P10-02)
 		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
 			t.Fatalf("COULD NOT RUN — %v", err)
 		}
 	}
-	for _, name := range append(append([]string{}, tools...), interpreters...) { // bounded by the stub list (P10-02)
+	exe := buildStub(t, filepath.Join(root, "bin", "oraclestub"))
+	for _, name := range append(tools(), interpreters()...) { // bounded by the stub list (P10-02)
 		if err := os.Symlink(exe, filepath.Join(root, "bin", name)); err != nil {
 			t.Fatalf("COULD NOT RUN — linking the %s stub: %v", name, err)
 		}
 	}
 	o.refuseScriptsThatBypassPath(t)
-	o.paint(0)
+	o.paint()
 	o.rules, o.parseCounts = o.database(t)
 	return o
 }
@@ -104,19 +103,18 @@ func (o *Oracle) refuseScriptsThatBypassPath(t Reporter) {
 			return nil
 		}
 		first, _, _ := strings.Cut(string(body), "\n")
-		if !envShebang.MatchString(first) {
+		if !envShebang().MatchString(first) {
 			t.Errorf("COULD NOT JUDGE %s — its first line is not `#!/usr/bin/env <%s>`, so the kernel runs the "+
 				"interpreter by absolute path, the oracle's stub is never reached, and the script would run for "+
-				"real and record nothing. Use an env shebang.", strings.TrimPrefix(path, o.tree+"/"), strings.Join(interpreters, "|"))
+				"real and record nothing. Use an env shebang.", strings.TrimPrefix(path, o.tree+"/"), strings.Join(interpreters(), "|"))
 		}
 		return nil
 	})
 }
 
-// paint sets the default every key answers with and paints the named keys —
-// invocations (`go:test#2`) or whole keys (`go:test`) — red.
-func (o *Oracle) paint(def int, red ...string) {
-	o.def = def
+// paint makes every key green except the named ones — invocations (`go:test#2`)
+// or whole keys (`go:test`) — which answer red.
+func (o *Oracle) paint(red ...string) {
 	status := filepath.Join(o.root, "status")
 	_ = os.RemoveAll(status)
 	_ = os.MkdirAll(status, 0o755)
@@ -181,7 +179,7 @@ func (o *Oracle) green(t Reporter, gate string) run {
 	if g, ok := o.greens[gate]; ok {
 		return g
 	}
-	o.paint(0)
+	o.paint()
 	g := o.runGate(gate)
 	o.greens[gate] = g
 	if g.code != 0 {
@@ -200,7 +198,7 @@ func (o *Oracle) env() []string {
 	for _, kv := range os.Environ() { // bounded by the environment (P10-02)
 		switch strings.SplitN(kv, "=", 2)[0] {
 		case "MAKEFLAGS", "GNUMAKEFLAGS", "MFLAGS", "MAKELEVEL", "MAKEFILES", "MAKE", "MAKEOVERRIDES",
-			"MAKE_TERMOUT", "MAKE_TERMERR", "PATH", EnvLog, EnvStatus, EnvDefault, EnvRoot, EnvBin, EnvBuilt:
+			"MAKE_TERMOUT", "MAKE_TERMERR", "PATH", EnvLog, EnvStatus, EnvRoot, EnvBin, EnvBuilt:
 			continue
 		}
 		out = append(out, kv)
@@ -212,8 +210,7 @@ func (o *Oracle) env() []string {
 		EnvStatus+"="+filepath.Join(o.root, "status"),
 		EnvRoot+"="+o.tree,
 		EnvBin+"="+bin,
-		EnvBuilt+"="+filepath.Join(o.root, "built"),
-		fmt.Sprintf("%s=%d", EnvDefault, o.def))
+		EnvBuilt+"="+filepath.Join(o.root, "built"))
 }
 
 // database is `make -pn`'s view: every rule by name, true where make reports
@@ -258,13 +255,13 @@ func (o *Oracle) database(t Reporter) (map[string]bool, map[string]int) {
 	return rules, countsOf(readLog(log))
 }
 
-// specialTargets are GNU make's own, which the database lists as rules and
+// specialTarget: GNU make's own targets, which the database lists as rules and
 // which are not nodes a file can silence. Any other dot-name is a node.
-var specialTargets = []string{".PHONY", ".SUFFIXES", ".DEFAULT", ".PRECIOUS", ".INTERMEDIATE", ".NOTINTERMEDIATE",
-	".SECONDARY", ".SECONDEXPANSION", ".DELETE_ON_ERROR", ".IGNORE", ".LOW_RESOLUTION_TIME", ".SILENT",
-	".EXPORT_ALL_VARIABLES", ".NOTPARALLEL", ".ONESHELL", ".POSIX", ".WAIT"}
-
-func specialTarget(name string) bool { return contains(specialTargets, name) }
+func specialTarget(name string) bool {
+	return contains([]string{".PHONY", ".SUFFIXES", ".DEFAULT", ".PRECIOUS", ".INTERMEDIATE", ".NOTINTERMEDIATE",
+		".SECONDARY", ".SECONDEXPANSION", ".DELETE_ON_ERROR", ".IGNORE", ".LOW_RESOLUTION_TIME", ".SILENT",
+		".EXPORT_ALL_VARIABLES", ".NOTPARALLEL", ".ONESHELL", ".POSIX", ".WAIT"}, name)
+}
 
 // known says whether make lists a rule by that name.
 func (o *Oracle) known(name string) bool {
@@ -278,37 +275,19 @@ func (o *Oracle) absent(node string) bool {
 	return err != nil
 }
 
-var (
-	stubOnce sync.Once
-	stubPath string
-	stubErr  error
-)
-
-// stubBinary builds tools/gateoracle/stub ONCE per test process and returns
-// its path. It is built here rather than being this test binary re-exec'd
-// because under the race detector every exec of an instrumented binary costs
-// ten times more, and make execs the stub thousands of times per run.
-func stubBinary(t Reporter) string {
+// buildStub builds tools/gateoracle/stub at path. It is built rather than being
+// this test binary re-exec'd because under the race detector every exec of an
+// instrumented binary costs ten times more, and make execs the stub thousands
+// of times per run; the build cache makes the second build nearly free.
+func buildStub(t Reporter, path string) string {
 	t.Helper()
-	stubOnce.Do(func() {
-		_, thisFile, _, ok := runtime.Caller(0)
-		if !ok {
-			stubErr = fmt.Errorf("no caller information for the stub's source")
-			return
-		}
-		dir, err := os.MkdirTemp("", "gate-oracle-stub-*")
-		if err != nil {
-			stubErr = err
-			return
-		}
-		stubPath = filepath.Join(dir, "oraclestub")
-		build := exec.Command("go", "build", "-o", stubPath, filepath.Join(filepath.Dir(thisFile), "stub"))
-		if out, err := build.CombinedOutput(); err != nil {
-			stubErr = fmt.Errorf("building the stub: %v\n%s", err, out)
-		}
-	})
-	if stubErr != nil {
-		t.Fatalf("COULD NOT RUN — %v", stubErr)
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatalf("COULD NOT RUN — no caller information for the stub's source")
 	}
-	return stubPath
+	build := exec.Command("go", "build", "-o", path, filepath.Join(filepath.Dir(thisFile), "stub"))
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("COULD NOT RUN — building the stub: %v\n%s", err, out)
+	}
+	return path
 }
