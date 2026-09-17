@@ -408,6 +408,13 @@ row each: F-133, F-137, F-139, F-156. **Two rulings owed:** F-140 (delete the ra
 symbol is gone, and teach `lint-ledger.sh` the existence check) and the two UNTRACED requirements the
 derived table found — FR-5.4 and FR-8.6 — each needs a test or a disposition.
 
+**A second catch, by a gate of this release's own:** the F-143 edit to `docs/accepted-costs.md`
+replaced an EMPTY slice (the end marker sat before the heading in that file), which inserted the new
+paragraph between every character — a 15 MB Markdown file, committed in `6b1b621`. `TestNoTrackedBinaries`
+refused it inside the sweep, which read the two known survivors as INVALID; the sweep was stopped at
+87, the file restored and re-edited on the right slice (`e956747`), and the sweep re-run to completion.
+The gate written on 2026-09-16 against tracked binaries caught its author's own commit the next day.
+
 **A process catch of this exit's own:** the mutant sweep refuses a dirty tree, and the first run was
 started while records were still being edited — 372 of 379 mutants SKIPPED, a void run whose promoted
 log was restored, not committed. The rule "never work during verify" is the rule "never work during a

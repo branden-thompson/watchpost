@@ -58,6 +58,13 @@ defect it closed:
 
 ## Gate evidence, on the committed tree
 
+**The corpus sweep, 2026-09-17, on `e956747`: 379 mutants — 374 CAUGHT, 5 SURVIVED, 0 NO EVIDENCE**
+(4 h 46 min). Every survivor is one the roster already dispositions as surviving by design (`gates.md`,
+"Survivors that survive BY DESIGN"): `m16`, `m43`, `mBM1`, `mBM2`, `mSC3`. The figure this section
+quoted before — 355 / 353 / 2 — is the 2026-09-15 sweep; the corpus gained 24 mutants and three were
+re-anchored at the fault/decline split on the day.
+
+
 Every figure below was read from the gate's own log, never from a task notification — a distinction
 this session had to learn twice (see *Honest assessment*).
 

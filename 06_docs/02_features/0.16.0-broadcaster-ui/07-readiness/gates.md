@@ -524,8 +524,17 @@ hole and is fixed; one guards a retired rule.**
 it stood mid-release and are kept because the reasoning around them is still the record of how those
 seven were triaged.**
 
-> **CURRENT, at BUILD exit on the COMMITTED tree: `make mutant-verdicts` over all 355 mutants — 353
-> CAUGHT, 2 SURVIVED, 0 NO EVIDENCE.**  The two survivors are `m16_scopeevents_drops_ok` and
+> **CURRENT, 2026-09-17, on the COMMITTED tree `e956747`: `make mutant-verdicts` over all 379 mutants —
+> 374 CAUGHT, 5 SURVIVED, 0 NO EVIDENCE**, 4 h 46 min wall clock. The five survivors are exactly the
+> by-design set dispositioned at the end of this file — `m16`, `m43`, `mBM1`, `mBM2`, `mSC3` — and
+> none is new. The per-mutant record is `mutant-verdicts.log` beside this file (403 lines). **A first
+> run of the same day was VOID and was not recorded**: started on a tree still being edited, 372 of
+> 379 SKIPPED (dirty tree); a second, on `6b1b621`, read the two known survivors as INVALID because a
+> record file had grown to 15 MB in a bad edit and `TestNoTrackedBinaries` was red on the unmutated
+> tree — the gate built two days earlier refusing its author's own commit. Stopped at 87, fixed, run
+> a third time to completion.
+>
+> The 2026-09-15 figure, kept for the record: 355 mutants — 353 CAUGHT, 2 SURVIVED, 0 NO EVIDENCE.  The two survivors are `m16_scopeevents_drops_ok` and
 > `m43_marine_narrowed`, the equivalents dispositioned at the end of this file.  The five that have
 > since gone were retired or re-pointed as the code moved; the authoritative per-mutant record is
 > `07-readiness/mutant-verdicts.log`, promoted by the target itself.

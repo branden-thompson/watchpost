@@ -17,7 +17,7 @@ handoff exists, and it is more useful than the findings list.
 | `make verify` | **ALL GATES GREEN on `d7523e6` (2026-09-17, 17 min, GNU Make 4.4.1; also on `7c916c2` before round nine)** — 24 gates including the 379-anchor mutant check. The four verifies before it each stopped at a gate only a full run reaches (`tidy`, `race`, `lint`, `p10`), and every one of those notifications said exit 0 while the log said `Error 1` |
 | `go test ./...` | green |
 | `make p10` | 0 live, 0 unmatched, 0 unratified, 152 ratified rows |
-| Mutation sweep | **NOT RUN.** Deliberately deferred — see §4 |
+| Mutation sweep | **RUN 2026-09-17 on `e956747`: 379 mutants — 374 CAUGHT, 5 SURVIVED (all five the roster's by-design set), 0 NO EVIDENCE**, 4 h 46 min; the record is `07-readiness/mutant-verdicts.log` |
 | Open findings | `06_docs/follow-ups.md` — rounds one through eight on the gate layer are disposed there; F-156 (port the 23 `scripts/` sources to Go) is the standing backlog; F-115…F-151 from the earlier rounds where not closed since |
 
 **The product reviewed clean.** Code Quality found zero unused parameters, zero dead functions and
