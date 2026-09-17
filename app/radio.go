@@ -1130,16 +1130,15 @@ func (d *radioDeck) logStatus(st player.Status) {
 }
 
 // needsReadLine is the diagnostic's record of one need. IT NAMES THE PLACE,
-// NEVER THE PAIR (FR-9.4): the transmitter is a pool member, so a line keyed
-// by coordinate wrote the operator's antenna position to a file the README
-// says never carries it. The label is the name; a place with no label is its
-// ZIP.
+// NEVER THE PAIR (FR-9.4): the label, and an opaque id so that two places with
+// one label (geodata holds 138 such pairs) stay two places in the dark-vs-live
+// comparison the line exists for.
 func needsReadLine(stage mainTrackStage, fresh bool, ref snapshot.LocationRef, why string) string {
 	place := ref.Label
 	if place == "" {
 		place = ref.Zip
 	}
-	return fmt.Sprintf("needs-read stage=%s fresh=%t place=%q why=%s", stage, fresh, place, why)
+	return fmt.Sprintf("needs-read stage=%s fresh=%t place=%q id=%s why=%s", stage, fresh, place, snapshot.Opaque(snapshot.Key(ref)), why)
 }
 
 // debugLog appends one timestamped line to the file named by
@@ -1234,6 +1233,12 @@ func radioDebugPath() string {
 // 0600 ON BOTH THE FILE AND THE DIRECTORY. It carries station names, mount
 // URLs and the listener's own locations.
 func writeRadioDebug(path, line string) {
+	// NO LINE CARRIES A POSITION (FR-9.4). Card IDs, tune refs and the
+	// Director's trace are keyed by the coordinate pair, and the transmitter is
+	// a pool member: the ONE writer rewrites every pair to an opaque, stable
+	// name, so the file never names where the operator is whatever a caller
+	// composed. TestTheRadioDiagnosticFileCarriesNoCoordinates reads the file.
+	line = snapshot.ReplaceKeys(line, snapshot.Opaque)
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return
 	}

@@ -82,11 +82,9 @@ func TestThePoolFooterSaysHowManyPlacesAreInReach(t *testing.T) {
 	}
 }
 
-// F-163 (HUM LEAD 2026-09-17, "recommendations approved") — AN ESCALATION WITH
-// NO RUN IS SHOWN BY ITS REASON ALONE. A bed that could not be tuned, or a
-// one-card schedule emptied by a compose fault on standby, escalates with
-// Run 0 and a reason, and the band shows the reason. The zero message is the
-// clear.
+// F-163 — AN ESCALATION WITH NO RUN IS SHOWN BY ITS REASON ALONE. A bed that
+// could not be tuned, or a one-card schedule emptied by a compose fault on
+// standby, escalates with Run 0 and a reason. The zero message is the clear.
 func TestAFaultWithNoRunShowsItsReasonAlone(t *testing.T) {
 	b := bcStandby(t, true, 0)
 	b, _ = b.Update(StationMsg{Power: lineup.Running})
@@ -103,5 +101,27 @@ func TestAFaultWithNoRunShowsItsReasonAlone(t *testing.T) {
 	cleared, _ := b.Update(StationFaultMsg{})
 	if strings.Contains(stripANSITest(cleared.View().Content), "STATION FAULT") {
 		t.Error("the zero message did not clear the reason-only band")
+	}
+}
+
+// FR-9.4 ON THE SCREEN — THE BAND NAMES PLACES, NOT PAIRS. The Director's
+// escalation for a bed that could not be tuned names its target by key; the
+// console knows the pool and says the label, or an opaque name for a key it
+// does not know.
+func TestTheFaultBandNamesPlacesNotCoordinates(t *testing.T) {
+	b := bcStandby(t, true, 0)
+	b, _ = b.Update(StationMsg{Power: lineup.Running})
+	bonsall := snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.2887, Lon: -117.2253}
+	b.area.Pool = []snapshot.LocationRef{bonsall}
+	b.areaGen++
+	key := string(snapshot.Key(bonsall))
+	b, _ = b.Update(StationFaultMsg{Reason: "the station was asked to move to " + key + " and did not"})
+	got := stripANSITest(b.View().Content)
+	if !strings.Contains(got, "move to Bonsall, CA") || snapshot.HasKey(got) || strings.Contains(got, "33.28") {
+		t.Errorf("the band names where the operator is, or not the place:\n%s", got)
+	}
+	b, _ = b.Update(StationFaultMsg{Run: 2, Reason: "no reader for read:" + string(snapshot.Key(snapshot.LocationRef{Lat: 1, Lon: 2}))})
+	if got := stripANSITest(b.View().Content); snapshot.HasKey(got) || !strings.Contains(got, "place:") {
+		t.Errorf("a key the console does not know was not made opaque:\n%s", got)
 	}
 }

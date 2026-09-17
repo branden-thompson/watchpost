@@ -459,6 +459,7 @@ func mastheadLine
 func matchesQuery
 func narrateDebug
 func nearestMetro
+func needsReadLine
 func newAlertStore
 func newAssembler
 func newCoops

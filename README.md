@@ -189,9 +189,9 @@ station is ON AIR.
 
 | Key | Does |
 |-----|------|
-| `shift+enter` | **ON AIR / STANDBY** — the station toggle (held while a window is open) |
+| `shift+enter` | **ON AIR / STANDBY** — the station toggle (ignored while a window is open) |
 | `↑` `↓` / `enter` | scroll the running order · open the slot: the card in full, and promote, demote, drop |
-| `0`-`9` | open a card by its handle (the first ten; the running order scrolls to the rest) |
+| `0`-`9` / `A` | open a card by its handle (the first ten; the running order scrolls to the rest) / the takeover's card |
 | `r` | **Line-Up Request** — ask for a place inside the radius, by name |
 | `l` | look up any city or ZIP |
 | `b` / `shift+←` `shift+→` | cut the main track over to the **bed** (the live relay) / previous and next relay |

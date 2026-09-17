@@ -13,6 +13,7 @@ package app
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -125,9 +126,10 @@ func TestTheDarkRunRecordsTheNeedItWouldHaveActedOn(t *testing.T) {
 		line := strings.TrimSpace(string(b))
 		want := []string{
 			"needs-read",
-			"stage=" + mainTrack().String(), // DERIVED from the switch, never spelled out here
-			"fresh=false",                   // and it says WHY nothing followed
-			"ref=" + string(snapshot.Key(testRef)),
+			"stage=" + mainTrack().String(),         // DERIVED from the switch, never spelled out here
+			"fresh=false",                           // and it says WHY nothing followed
+			"place=" + strconv.Quote(testRef.Label), // the place, never the pair (FR-9.4)
+			"id=" + snapshot.Opaque(snapshot.Key(testRef)),
 			"why=no NWR relay in reach",
 		}
 		for _, w := range want {

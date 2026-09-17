@@ -44,8 +44,10 @@ type LineupMsg struct{ Lineup lineup.Lineup }
 type StationMsg struct{ Power lineup.Power }
 
 // StationFaultMsg is the Director's escalation reaching the console: Run cards
-// in a row the station could not perform, and the last reason. Run 0 clears
-// it — a read that finished, or STANDBY (F-150, REVIEW 2026-09-17).
+// in a row the station could not perform, and the reason. The zero message
+// clears it — a read that finished, or STANDBY; a Run of 0 WITH a reason is a
+// fault with no count (a bed that could not be tuned) and is shown by the
+// reason (F-150, F-163).
 type StationFaultMsg struct {
 	Run    int
 	Reason string
@@ -358,14 +360,33 @@ func (b Broadcaster) faultNotice() []string {
 	if b.power != lineup.Running || b.fault == (StationFaultMsg{}) { // the zero message is the clear
 		return nil
 	}
+	// THE REASON NAMES PLACES, NOT PAIRS. The Director speaks in keys — a bed
+	// that could not be tuned names its target by coordinate — and the console
+	// knows the pool, so it says the label (FR-9.4 on the screen as in the log).
+	reason := b.placeNames(b.fault.Reason)
 	if b.fault.Run == 0 {
-		// AN ESCALATION WITH NO RUN — a bed that could not be tuned, a schedule
-		// emptied on standby — is shown by its reason alone (F-163, HUM LEAD
-		// 2026-09-17); a band keyed on the count dropped it.
-		return b.noticeBand("STATION FAULT", "!!!  STATION FAULT — "+b.fault.Reason)
+		// A fault with no count — a bed that could not be tuned, a schedule
+		// emptied on standby — is shown by its reason (F-163).
+		return b.noticeBand("STATION FAULT", "!!!  STATION FAULT — "+reason)
 	}
 	count := strconv.Itoa(b.fault.Run) + " CARD(S) FAILED"
-	return b.noticeBand(count, "!!!  "+count+" — the station could not perform them: "+b.fault.Reason)
+	return b.noticeBand(count, "!!!  "+count+" — the station could not perform them: "+reason)
+}
+
+// placeNames rewrites every location key in s to the pool's label for it, or
+// to an opaque name when the key is not a place the console knows.
+func (b Broadcaster) placeNames(s string) string {
+	return snapshot.ReplaceKeys(s, func(k snapshot.LocationKey) string {
+		if snapshot.Key(b.area.Transmitter) == k && b.area.Transmitter.Label != "" {
+			return b.area.Transmitter.Label
+		}
+		for _, p := range b.area.Pool { // bounded by the pool (P10-02)
+			if snapshot.Key(p) == k && p.Label != "" {
+				return p.Label
+			}
+		}
+		return snapshot.Opaque(k)
+	})
 }
 
 // muteNotice is the band an ON AIR station shows while the listener's [M]
