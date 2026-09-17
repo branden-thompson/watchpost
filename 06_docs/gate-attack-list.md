@@ -340,3 +340,69 @@ every Critical this layer has ever had.
   is real. A real tool on an empty tree is red under green (loud), but a real tool that HAPPENS to
   exit 0 on an empty tree under `\|\| true` is not judged. Adding a checker that is neither a
   script nor `go run` means adding it to the list — and O10 is what forgetting looks like.
+
+---
+
+# Round six: the tree is the tree
+
+**Written and committed before the fix.** A sixth blind adversary, against the recorded oracle,
+found three Criticals with one cause — **the scratch tree is empty**, so anything a recipe asks of
+the tree answers the opposite of what it answers in the repository:
+
+- `git diff --quiet HEAD -- '*.go' && exit 0; ./scripts/x.sh` — in scratch git fails, the checker
+  runs, and the gate is certified; in a clean clone (what CI is) the checker is skipped forever.
+- `go build -o $(DIST)/x ./tools/x` then `$(DIST)/x || true` — the check is a binary the oracle
+  never stubbed; `go:build` carries the gate and the discard is invisible.
+- two `go test` calls in one gate share one key, so a live second call carries a discarded first
+  (O1 had closed this for `go run` only).
+
+Round two closed "the scratch tree is not the real tree" in the RED direction only (a preflight
+that fails in scratch). This is the GREEN direction: a predicate that passes in scratch and skips
+in the repo. Same cause, other sign.
+
+**So the oracle runs in the tree.** The scratch is a shared clone of the repository with the
+working tree copied over it — every file, the `.git`, `go.mod`, the real `scripts/` — and the
+stubs interpose by PATH alone. A script is answered through its `#!/usr/bin/env sh` shebang, so
+not one byte of the tree is rewritten; every file under `scripts/` must carry an `env` shebang,
+and the oracle refuses one that does not (a `#!/bin/sh` shebang bypasses PATH and the script
+would run for real, unrecorded). The `go build` stub WRITES a recording stub at `-o`, so a
+compiled checker is a key like any other. Every invocation carries an ordinal (`go:test#1`,
+`go:test#2`) and each is painted alone. Nodes come from the real green run's `--debug=v`, not a
+`-n` walk. And `verify`'s reach must cover every non-ciOnly required gate's own reach.
+
+## P. The tree, the binary, the ordinal
+
+| # | Attack | Must |
+|---|---|---|
+| P1 | `git diff --quiet HEAD -- '*.go' && exit 0; ./scripts/x.sh` — skip on a clean tree | CAUGHT — the scratch IS a clean repository; the gate records nothing |
+| P1-ok | `git diff --quiet HEAD \|\| echo dirty; ./scripts/x.sh` | PASSES |
+| P2 | `go test -race ./... \|\| echo flaky` then a live `go test ./x` | CAUGHT — `go:test#1` painted alone stays green |
+| P2-ok | two live `go test` calls | PASSES |
+| P3 | `go build -o out/lint ./tools/lint` then `out/lint \|\| true` | CAUGHT — the built stub records `built:out/lint`; painted alone, the gate stays green |
+| P3-ok | the same with `out/lint` live | PASSES |
+| P4 | a non-phony gate with `gate: go.mod` — `go.mod` exists in the tree, so a file named `gate` is up to date | CAUGHT — the silence audit creates the file in a tree where `go.mod` is real |
+| P5 | `ifeq (,$(findstring n,$(MAKEFLAGS)))` hiding a non-phony node from a `-n` walk | CAUGHT — nodes come from the real run |
+| P6 | `verify` passes `FAST=1` and `lint` skips under it; `verify-gates` still lists `lint` | CAUGHT — `lint`'s own reach has `scripts/lint.sh`; `verify`'s does not |
+| P7 | `cd scripts && ./x.sh \|\| true` | CAUGHT — the key is resolved from the working directory |
+| P7-ok | `cd scripts && ./x.sh` | PASSES |
+| P8 | `go run ./tools/x` as a required gate's only check, with no `-self-test` anywhere | CAUGHT — a `go run ./tools/…` checker needs a control like a script does |
+| P9 | `.ONESHELL:` | CAUGHT (the reviewer observed 19 discards named; kept as a specimen) |
+| P10-ok | `find . -name '*.go' \| xargs gofmt -l` | PASSES — the tree has Go files, so BSD xargs runs gofmt |
+| P11 | `x.sh --check \|\| true; x.sh --help` — one script twice | CAUGHT — `scripts/x.sh#1` alone |
+
+## Declared — the ceiling, stated once
+
+- **A toolchain reached by absolute path** (`/usr/local/go/bin/go vet \|\| true`) runs for real and
+  is not recorded. **A recipe that erases its environment** (`env -i … ./scripts/x.sh \|\| true`)
+  runs the real interpreter and is not recorded. **The stubs are detectable** (`head -c 2 $(command
+  -v go)` is `#!` only under the oracle). These are the same thing: a recipe written to escape the
+  oracle escapes it. They are review findings, not mechanism findings, and the mechanism says so on
+  every passing run (FR-11.5).
+- `go build` with no `-o` writes its binary where make's cwd is; that binary is not stubbed.
+- A recipe predicate on tree state is judged against the tree AS IT IS: clean after a commit and in
+  CI, which is when the oracle's verdict is read.
+- The tool list is still the one list (`go gofmt a2dh golangci-lint govulncheck shasum sha256sum`,
+  plus the interpreters `sh bash python3 expect`).
+- `make -n mutant-check` in the real tree starts the sweep, because the line carries `$(MAKE)` and
+  GNU make executes such lines under `-n`. Known, documented at the recipe; the oracle no longer
+  uses `-n`.
