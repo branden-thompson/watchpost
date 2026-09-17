@@ -24,7 +24,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
-	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -186,14 +185,11 @@ func planned(t testing.TB, deck *tickerDeck, evs []globalfeed.Event) ([]globalfe
 	return out, b.Divert
 }
 
-// escalated is every escalation the schedule raised, as its reason — the fault
-// messages published with a run or a reason; the zero message is the clear.
+// escalated is every escalation the schedule raised, as its reason.
 func (s *station) escalated() []string {
 	var out []string
-	for _, f := range faultsIn(s.published) { // bounded by what was published (P10-02)
-		if f != (tty.StationFaultMsg{}) {
-			out = append(out, f.Reason)
-		}
+	for _, f := range escalationsIn(s.published) { // bounded by what was published (P10-02)
+		out = append(out, f.Reason)
 	}
 	return out
 }

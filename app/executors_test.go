@@ -1089,13 +1089,24 @@ func (b *bench) faults() []tty.StationFaultMsg {
 	return faultsIn(b.published)
 }
 
-// faultsIn is every fault-band message among the published ones, in order —
-// the ONE definition of "an escalation reached the console" for every harness
-// in this package.
+// faultsIn is every fault-band message among the published ones, in order:
+// the escalations and the clears alike. escalationsIn is the escalations
+// alone — the ONE definition of "an escalation reached the console" for every
+// harness in this package.
 func faultsIn(msgs []tea.Msg) []tty.StationFaultMsg {
 	var out []tty.StationFaultMsg
 	for _, m := range msgs { // bounded by what was published (P10-02)
 		if f, ok := m.(tty.StationFaultMsg); ok {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+func escalationsIn(msgs []tea.Msg) []tty.StationFaultMsg {
+	var out []tty.StationFaultMsg
+	for _, f := range faultsIn(msgs) { // bounded by what was published (P10-02)
+		if f != (tty.StationFaultMsg{}) { // the zero message is the clear
 			out = append(out, f)
 		}
 	}

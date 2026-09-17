@@ -56,7 +56,7 @@ func TestAnEscalationReachesAPersonWithItsReason(t *testing.T) {
 	nar := testDirector(&scriptVoice{}, nil)
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: loadSeen(t.TempDir(), time.Hour)}
 	st := newStation(t, deck)
-	st.x.run(context.Background(), lineup.Escalate{ID: "burst:a", Reason: "the schedule stopped"})
+	st.x.run(context.Background(), lineup.Escalate{ID: "burst:a", Run: 1, Reason: "the schedule stopped"})
 	if len(st.escalated()) != 1 {
 		t.Fatalf("DR-21's one channel delivered %d escalations, want 1", len(st.escalated()))
 	}
