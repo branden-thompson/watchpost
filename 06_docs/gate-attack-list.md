@@ -407,3 +407,46 @@ compiled checker is a key like any other. Every invocation carries an ordinal (`
 - `make -n mutant-check` in the real tree starts the sweep, because the line carries `$(MAKE)` and
   GNU make executes such lines under `-n`. Known, documented at the recipe; the oracle no longer
   uses `-n`.
+
+---
+
+# Round seven: the tree as CI has it, and the instrument's own joints
+
+**Written and committed before the fix.** A seventh blind adversary against the in-tree oracle
+found two Criticals and four Importants. The Criticals are round six one step further — the clone
+is the tree but not the tree AS CI HAS IT: `git clone` re-attaches a detached HEAD, keeps tags a
+depth-1 checkout does not have, and rsync carries git-ignored files (`AGENTS.md` here) that CI
+never sees; and `verify`'s coverage compared keys, so a variable that skips one of two `go test`
+calls in a gate shipped. The Importants are joints in the instrument itself: a filename encoding
+that is not injective, a `go run` key taken from `$2` (which is `-tags` when there are flags), a
+shebang regex with `\b` where `$` was meant, and a `$(MAKE)` hop whose debug output was redirected.
+
+**The count fell 5 → 2 and the cause count is no longer one.** The method held; its joints did not.
+
+## Q. The tree as CI has it; the joints
+
+| # | Attack | Must |
+|---|---|---|
+| Q1 | `test "$$(git rev-parse --abbrev-ref HEAD)" != HEAD \|\| exit 0; <check>` — skip when detached (CI is detached on `pull_request` and on the tag push `release.yml` runs `verify` under) | CAUGHT — the scratch's HEAD is DETACHED at the source's commit |
+| Q2 | `git describe --tags >/dev/null 2>&1 \|\| exit 0; <check>` — skip without tags (ci.yml is depth 1) | CAUGHT — the scratch has NO tags |
+| Q3 | `test -f AGENTS.md \|\| exit 0; <check>` — a git-ignored file present on the dev machine | CAUGHT — only tracked and untracked-unignored files are copied |
+| Q4 | `verify-gates FAST=1`; `race:` runs `go test` live, then `test -n "$(FAST)" \|\| go test ./x` | CAUGHT — for every key, verify's invocation COUNT ≥ the sum of the non-CI-only gates' own counts |
+| Q5 | `./scripts/quality_lint.sh \|\| true` beside a live `./scripts/quality/lint.sh` — `tr / _` maps both to one status file | CAUGHT — the encoding is reversible |
+| Q6 | `go run -tags foo ./tools/x` with no control; `go run <module>/tools/x`; `go build -o out/x ./tools/x` then `out/x` — none reaches the control obligation | CAUGHT — the key is the first non-flag argument, a module-prefixed package is normalised to `./`, and `built:` keys need a control |
+| Q7 | `scripts/check.py` with `#!/usr/bin/env python3.12` — a real interpreter the `\b` admits | CAUGHT — the shebang rule is anchored and DERIVED from the interpreter list |
+| Q8 | `@$(MAKE) --no-print-directory x-run >/dev/null`, `--debug=n`, `MAKEFLAGS= $(MAKE)` — the hop's node hidden from the observed walk, recipe on a non-phony node | CAUGHT — every non-phony rule make's database lists is added to the all-at-once file set |
+| Q9 | `go build -o out/ ./tools/x` (directory form) then `out/x \|\| true` | CAUGHT — the stub is written at `out/x` |
+| Q10 | `ORACLE_LOG=/dev/null ./scripts/x.sh \|\| true` | DECLARED — an oracle-aware recipe; the ceiling sentence names `ORACLE_*` |
+| Q11-ok | `bash -c 'set -o pipefail; ./scripts/x.sh 2>&1 \| tee out.log'` | PASSES — `sh -c`/`bash -c` run the REAL shell; the script records through its shebang |
+| Q12-ok | a symlinked directory under `scripts/` | PASSES — not a script; the rule follows the link and skips directories |
+| Q13 | two `go test` in parallel (`&` … `wait`, `-j2`) — the ordinal's read-count-append | CAUGHT (not reproduced as a race in 12 runs) — a lock closes it by construction |
+
+## Declared
+
+- Git metadata is judged as CI has it: HEAD detached at the commit, no tags. Branch name, remote and
+  depth are otherwise as the source has them.
+- A control for a Go tool is its `-self-test`; `go test ./tools/x` is not accepted as one, by
+  design — a tool's tests prove the tool, the self-test proves the tool CAN FAIL in this tree.
+- A discard moved INSIDE a script is the script's business; the oracle judges the Makefile.
+- A prerequisite shared by two required gates runs once under `verify` and twice in their own runs;
+  the count comparison then refuses it, loudly. Give each gate its own.
