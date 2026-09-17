@@ -286,3 +286,20 @@ func TestPrioritizeIsBoldAndYellow(t *testing.T) {
 	}
 	t.Fatal("the window drew no PRIORITIZE line")
 }
+
+// REVIEW 2026-09-17 (ruling 7-i) — THE REQUEST WINDOW KEEPS NON-ASCII. Typing
+// "Peña" gave "Pea": the handler took a key only when its String() was one
+// BYTE, so every ñ, é and ü in the gazetteer's 676 such names was dropped,
+// on a station whose whole point is hyper-local places. The Lookup window
+// already keeps them through key.Text; this holds the Request window to the
+// same rule through the real key path.
+func TestTheRequestWindowKeepsNonASCIILetters(t *testing.T) {
+	var sent int
+	var m tea.Model = requestDash(t, &sent)
+	for _, r := range "Peña" { // bounded by the word (P10-02)
+		m, _ = m.(Dashboard).handleRequestKey(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	if got := m.(Dashboard).request.query; got != "Peña" {
+		t.Errorf("the Request window holds %q after typing Peña; an operator in Peñasquitos cannot ask for it", got)
+	}
+}

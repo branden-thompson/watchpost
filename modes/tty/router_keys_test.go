@@ -163,3 +163,21 @@ func TestTheStationToggleAsksTheDirectorForTheOtherState(t *testing.T) {
 		}
 	}
 }
+
+// REVIEW 2026-09-17 (ruling 7-ii) — THE STATION TOGGLE IS REFUSED WHILE A WINDOW
+// IS OPEN. shift+enter put the station ON AIR behind an open Request, Help or
+// About window: the toggle gated on the surface only. The swap keys already
+// hold back while a window is open (D-130); the toggle holds to the same rule.
+func TestTheStationToggleIsRefusedWhileAWindowIsOpen(t *testing.T) {
+	for _, k := range broadcasterKeyMap()[actStationToggle].Keys { // bounded by the bound keys (P10-02)
+		st := &station{}
+		r := routerAt(lineup.OffAir, SurfaceBroadcaster)
+		r.keys = broadcasterKeyMap()
+		r.station = st
+		r.observer.modal = modalRequest
+		r.Update(keyPress(t, k))
+		if len(st.asked) != 0 {
+			t.Errorf("%q behind an open window asked the Director for %v; a window open is not the operator's hand on the station", k, st.asked)
+		}
+	}
+}

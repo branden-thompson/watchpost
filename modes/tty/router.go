@@ -547,6 +547,7 @@ func (r Router) scopedMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 	}
 	if consoleScoped(msg) {
 		var cmd tea.Cmd
+		r.broadcaster.listenerMuted = r.observer.tickerMuted // the Observer's [M], shown on air (ruling 6-ii)
 		r.broadcaster, cmd = r.broadcaster.Update(msg)
 		return r, cmd, true
 	}
@@ -566,6 +567,7 @@ func (r Router) scopedMessage(msg tea.Msg) (tea.Model, tea.Cmd, bool) {
 			}
 			oc = c
 		}
+		r.broadcaster.listenerMuted = r.observer.tickerMuted
 		r.broadcaster, bc = r.broadcaster.Update(msg)
 		return r, tea.Batch(oc, bc), true
 	}
@@ -922,6 +924,13 @@ func (r Router) canSwap(to Surface) (bool, string) {
 // the schedule says is true rather than from what this surface last drew.
 func (r Router) toggleStation() Router {
 	if r.active != SurfaceBroadcaster || r.station == nil {
+		return r
+	}
+	// NOT BEHIND A WINDOW. shift+enter over an open Request, Help or About put
+	// the station ON AIR while the operator was looking at something else; the
+	// swap keys already hold back behind a window (D-130), and so does this
+	// (REVIEW 2026-09-17, ruling 7-ii).
+	if r.observer.ModalOpen() {
 		return r
 	}
 	if r.stationIsLive() {

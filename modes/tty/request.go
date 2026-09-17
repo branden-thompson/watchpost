@@ -412,8 +412,11 @@ func (d Dashboard) handleRequestKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "backspace":
 		return d.requestErase()
 	}
-	if r := key.String(); len(r) == 1 {
-		return d.requestType(r)
+	// THE TEXT, NOT THE BYTE COUNT: "Peña" typed as one byte per key gave "Pea"
+	// (REVIEW 2026-09-17). The Lookup window keeps a letter through key.Text;
+	// so does this one.
+	if key.Text != "" {
+		return d.requestType(key.Text)
 	}
 	return d, nil
 }

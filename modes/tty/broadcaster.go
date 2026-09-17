@@ -151,6 +151,11 @@ type Broadcaster struct {
 	// a read finishes or the station goes to STANDBY.
 	fault StationFaultMsg
 
+	// listenerMuted is the Observer's [M], handed across by the Router: while it
+	// holds, every hazard read on this station is declined, and the console
+	// says so while ON AIR (REVIEW 2026-09-17, ruling 6-ii).
+	listenerMuted bool
+
 	// frame is the shimmer's animation phase, and tickArmed keeps exactly one
 	// tick in flight (D-64). ITS OWN, NOT THE DASHBOARD'S: Observer arms its
 	// tick only while IT needs one, and the console needs one whenever a slot
@@ -355,6 +360,17 @@ func (b Broadcaster) faultNotice() []string {
 	}
 	count := strconv.Itoa(b.fault.Run) + " CARD(S) FAILED"
 	return b.noticeBand(count, "!!!  "+count+" — the station could not perform them: "+b.fault.Reason)
+}
+
+// muteNotice is the band an ON AIR station shows while the listener's [M]
+// holds: every hazard read is declined while it does, and a console that said
+// nothing let a station broadcast silence (REVIEW 2026-09-17, ruling 6-ii).
+func (b Broadcaster) muteNotice() []string {
+	if b.power != lineup.Running || !b.listenerMuted {
+		return nil
+	}
+	const count = "LISTENER MUTED"
+	return b.noticeBand(count, "!!!  "+count+" — [M] in the Observer is on, so no hazard is read aloud on this station until it is lifted.")
 }
 
 // noticeBand draws one band under the station section — the COUNT in bold on
@@ -740,6 +756,7 @@ func (b Broadcaster) lanes() []string {
 	out = append(out, strings.Split(b.stationSection(b.opts(), fg, bg), "\n")...)
 	out = append(out, b.heldNotice()...)
 	out = append(out, b.faultNotice()...)
+	out = append(out, b.muteNotice()...)
 	// THE AIR BOX IS INSIDE THE STATION SECTION NOW (D-107), so nothing is drawn
 	// here: `stationSection` carries it, painted with the section's own ground.
 	// A BARE BLANK ROW SEPARATES THE STATION SECTION FROM THE RUNNING ORDER, and
