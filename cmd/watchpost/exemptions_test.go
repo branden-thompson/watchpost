@@ -46,6 +46,15 @@ type exemptionTable struct {
 	// row. A row for a subject the rule already accepts is stale in the other
 	// direction — it reads as a considered exception and is a no-op (A31).
 	stillNeeded func(t *testing.T, subject string) bool
+	// absent is a subject that does NOT exist, and satisfied is one the rule
+	// already accepts. THE REGISTRY CANNOT SEE INSIDE A FUNCTION, so a table
+	// registering `exists: func(…) bool { return true }` would pass every row
+	// (F1, F2). These two are the known cases an instrument must answer before
+	// it is believed about an unknown one (FR-11.6): `exists(absent)` must be
+	// false and `stillNeeded(satisfied)` must be false, or the table's functions
+	// have never been shown to return false at all.
+	absent    string
+	satisfied string
 }
 
 // registry is every table declared in this package. Tables append themselves
@@ -70,12 +79,47 @@ func TestEveryExemptionRowIsRealAndStillNeeded(t *testing.T) {
 		t.Fatalf("the registry holds %d table(s); tables have stopped registering and this check "+
 			"has lost its subject", len(registry))
 	}
+	assertRegistry(t, registry)
+	// THE SUBJECT FLOOR BELONGS HERE, over the real registry — a synthetic one-row
+	// table handed to assertRegistry by the specimen table is not an emptied
+	// registry, it is a specimen.
 	var rows int
 	for _, tbl := range registry { // bounded by the registry (P10-02)
+		rows += len(tbl.rows)
+	}
+	if rows < 15 {
+		t.Fatalf("checked %d row(s) across %d table(s); the registry has emptied and this check has "+
+			"lost its subject", rows, len(registry))
+	}
+}
+
+// assertRegistry is the property, separated so the specimen table can run it
+// over a synthetic table.
+func assertRegistry(t reporter, tables []*exemptionTable) {
+	t.Helper()
+	tt, _ := t.(*testing.T) // the table functions take *testing.T; a nil one is accepted by every table here
+	var rows int
+	for _, tbl := range tables { // bounded by the registry (P10-02)
 		if tbl.exists == nil || tbl.stillNeeded == nil {
 			t.Errorf("table %s registered without both an `exists` and a `stillNeeded` check: a table "+
 				"that cannot say whether its rows are stale is a list nobody can audit", tbl.name)
 			continue
+		}
+		// THE NEGATIVE CONTROLS FIRST. A table whose functions cannot return false
+		// passes every row and proves nothing; these two calls are the evidence
+		// that they can.
+		if tbl.absent == "" || tbl.satisfied == "" {
+			t.Errorf("table %s registered without an `absent` and a `satisfied` control subject: nothing "+
+				"shows its exists/stillNeeded can ever return false (FR-11.6)", tbl.name)
+		} else {
+			if tbl.exists(tt, tbl.absent) {
+				t.Errorf("table %s: exists(%q) is TRUE for a subject declared absent — the function cannot "+
+					"return false, so every row's existence check is worthless", tbl.name, tbl.absent)
+			}
+			if tbl.stillNeeded(tt, tbl.satisfied) {
+				t.Errorf("table %s: stillNeeded(%q) is TRUE for a subject declared satisfied — the function "+
+					"cannot return false, so every row's staleness check is worthless", tbl.name, tbl.satisfied)
+			}
 		}
 		for subject, why := range tbl.rows { // bounded by the table (P10-02)
 			rows++
@@ -85,21 +129,18 @@ func TestEveryExemptionRowIsRealAndStillNeeded(t *testing.T) {
 					"An exemption with no reason costs nothing to add and reads exactly like one that was "+
 					"argued for. Say what makes this row true, or delete it.", tbl.name, subject, why)
 			}
-			if !tbl.exists(t, subject) {
+			if !tbl.exists(tt, subject) {
 				t.Errorf("%s[%q] is exempt (%q) and its subject no longer exists: the row outlived it.\n"+
 					"Delete the row.", tbl.name, subject, why)
 				continue
 			}
-			if !tbl.stillNeeded(t, subject) {
+			if !tbl.stillNeeded(tt, subject) {
 				t.Errorf("%s[%q] is exempt (%q) and the rule would no longer fire on it: the row is a "+
 					"no-op that reads as a considered exception.\nDelete the row.", tbl.name, subject, why)
 			}
 		}
 	}
-	if rows < 15 {
-		t.Fatalf("checked %d row(s) across %d table(s); the registry has emptied and this check has "+
-			"lost its subject", rows, len(registry))
-	}
+	_ = rows
 }
 
 // EVERY `map[string]string` DECLARED IN THIS PACKAGE'S TESTS IS REGISTERED.
@@ -137,6 +178,13 @@ func TestEveryExemptionTableIsRegistered(t *testing.T) {
 				"renamed or removed without its registration", name)
 		}
 	}
+	// AND THE ESCAPE LIST IS ITSELF AUDITED. A name in notATable that no longer
+	// exists is a row that outlived its subject, by the same rule as every table.
+	for _, name := range notATable { // bounded by the escape list (P10-02)
+		if !contains(declared, name) {
+			t.Errorf("notATable names %q and no such declaration exists: the row outlived the subject", name)
+		}
+	}
 }
 
 // notATable names package-level map[string]string vars that are NOT exemption
@@ -158,7 +206,9 @@ func packageLevelStringMaps(t *testing.T) []string {
 		t.Fatal(err)
 	}
 	for _, e := range entries { // bounded by the directory (P10-02)
-		if !strings.HasSuffix(e.Name(), "_test.go") {
+		// EVERY .go FILE IN THE PACKAGE, not only the tests. A table declared in a
+		// non-test file of package main is still a silencing table (F4).
+		if !strings.HasSuffix(e.Name(), ".go") {
 			continue
 		}
 		f, err := parser.ParseFile(fset, e.Name(), nil, 0)
@@ -172,10 +222,16 @@ func packageLevelStringMaps(t *testing.T) []string {
 			}
 			for _, spec := range gd.Specs { // bounded by the declaration (P10-02)
 				vs, ok := spec.(*ast.ValueSpec)
-				if !ok || len(vs.Names) != 1 || len(vs.Values) != 1 {
+				if !ok || len(vs.Names) != 1 {
 					continue
 				}
-				if isStringMapOrExempt(vs.Values[0]) {
+				// `var x map[string]string` filled in init() has a TYPE and no value
+				// (F3); `var x = map[string]string{…}` has a value. Both are tables.
+				if vs.Type != nil && isStringMapType(vs.Type) {
+					out = append(out, vs.Names[0].Name)
+					continue
+				}
+				if len(vs.Values) == 1 && isStringMapOrExempt(vs.Values[0]) {
 					out = append(out, vs.Names[0].Name)
 				}
 			}
@@ -190,18 +246,26 @@ func packageLevelStringMaps(t *testing.T) []string {
 func isStringMapOrExempt(e ast.Expr) bool {
 	switch v := e.(type) {
 	case *ast.CompositeLit:
-		mt, ok := v.Type.(*ast.MapType)
-		if !ok {
-			return false
-		}
-		k, kok := mt.Key.(*ast.Ident)
-		val, vok := mt.Value.(*ast.Ident)
-		return kok && vok && k.Name == "string" && (val.Name == "string" || val.Name == "bool")
+		return isStringMapType(v.Type)
 	case *ast.CallExpr:
 		id, ok := v.Fun.(*ast.Ident)
 		return ok && id.Name == "exempt"
 	}
 	return false
+}
+
+// isStringMapType is `map[string]string` or `map[string]bool` written out. A
+// type ALIAS to one of those is not seen — no type-checker is loaded and one
+// will not be taken for a test — and that ceiling is declared in the attack
+// list (F-ceiling).
+func isStringMapType(e ast.Expr) bool {
+	mt, ok := e.(*ast.MapType)
+	if !ok {
+		return false
+	}
+	k, kok := mt.Key.(*ast.Ident)
+	val, vok := mt.Value.(*ast.Ident)
+	return kok && vok && k.Name == "string" && (val.Name == "string" || val.Name == "bool")
 }
 
 // fileExists is the `exists` check for tables whose subjects are paths.

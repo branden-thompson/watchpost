@@ -47,7 +47,14 @@ race:
 	go test -race -count=1 ./...
 
 fmt:
-	@test -z "$$(gofmt -l . | grep -v '^06_docs/')" || (gofmt -l . | grep -v '^06_docs/'; echo 'gofmt: files need formatting'; exit 1)
+# GOFMT'S OWN STATUS IS READ. `test -z "$$(gofmt -l …)"` is true when gofmt prints
+# nothing — and a gofmt that failed to RUN prints nothing, so the gate passed with
+# the tool broken. The oracle found it: every checker stubbed red, `make fmt`
+# exited 0. Could-not-run is a verdict, never a pass (FR-11.3).
+	@out=$$(gofmt -l . 2>&1); rc=$$?; \
+	  test $$rc -eq 0 || { echo "fmt: gofmt failed ($$rc): $$out"; exit 1; }; \
+	  bad=$$(printf '%s\n' "$$out" | grep -v '^06_docs/' | grep -v '^$$' || true); \
+	  test -z "$$bad" || { printf '%s\n' "$$bad"; exit 1; }
 
 vet:
 	go vet ./...

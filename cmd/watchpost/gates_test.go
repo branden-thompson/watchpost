@@ -28,7 +28,7 @@ import (
 
 // ciOnly are gates CI runs that a local `make verify` deliberately does not.
 var ciOnly = exempt(&exemptionTable{
-	name: "ciOnly",
+	name: "ciOnly", absent: "no-such-gate", satisfied: "race",
 	rows: map[string]string{
 		"release-matrix": "it builds five platforms; a local verify would spend minutes producing artifacts nobody is about to publish",
 		"install-test":   "it installs the artifacts release-matrix built, so it cannot run without them",
@@ -39,7 +39,7 @@ var ciOnly = exempt(&exemptionTable{
 
 // verifyOnly are gates a local `make verify` runs that CI does not.
 var verifyOnly = exempt(&exemptionTable{
-	name: "verifyOnly",
+	name: "verifyOnly", absent: "no-such-gate", satisfied: "race",
 	rows: map[string]string{
 		"p10": "the P10 harness CLI and its exemptions ledger live OUTSIDE the public tree (the ledger is .gitignore'd, red-team R2-2), so CI has no `a2dh` and no file to read; it is a local gate that must fail loud rather than skip",
 	},
@@ -49,7 +49,7 @@ var verifyOnly = exempt(&exemptionTable{
 
 // unlisted are gate-shaped Makefile targets deliberately on NO gate list.
 var unlisted = exempt(&exemptionTable{
-	name: "unlisted",
+	name: "unlisted", absent: "no-such-target", satisfied: "race",
 	rows: map[string]string{
 		"quality-bench":   "a measurement, not a gate — it reports numbers and has no pass condition (INST-5)",
 		"pty-severe":      "it drives a real pty, which CI has no terminal for",
@@ -70,7 +70,7 @@ var unlisted = exempt(&exemptionTable{
 
 // cacheableGate are gate recipes whose `go test` deliberately omits -count=1.
 var cacheableGate = exempt(&exemptionTable{
-	name: "cacheableGate",
+	name: "cacheableGate", absent: "no-such-target", satisfied: "race",
 	rows: map[string]string{
 		"test":          "not a gate — it is the plain suite, declared `unlisted`; `race` is what runs on every gate path and it carries the flag",
 		"quality-bench": "a benchmark with `-count 10`, which is the sample size rather than a cache defence; benchmarks are not cached",
@@ -88,7 +88,7 @@ var cacheableGate = exempt(&exemptionTable{
 
 // conditionalStep are required gates whose CI step legitimately carries `if:`.
 var conditionalStep = exempt(&exemptionTable{
-	name: "conditionalStep",
+	name: "conditionalStep", absent: "no-such-gate", satisfied: "race",
 	rows: map[string]string{
 		"install-test": "the matrix runs three operating systems and this installs what release-matrix built; doing it once, on Linux, is the test",
 		"mutant-check": "MUTANT_POLICY decides its schedule (push / nightly / label) and all three conditions are written out, so switching between them is a word in the Makefile rather than an edit here",
@@ -105,7 +105,7 @@ var conditionalStep = exempt(&exemptionTable{
 // control. EVERY ROW IS A GATE TRUSTED WITHOUT EVIDENCE; the list is meant to
 // shrink.
 var uncontrolled = exempt(&exemptionTable{
-	name: "uncontrolled",
+	name: "uncontrolled", absent: "scripts/no-such.sh", satisfied: "scripts/lint-imports.sh",
 	rows: map[string]string{
 		"scripts/lint.sh":                      "F-118 — it discards golangci-lint's exit code with `|| true` and treats non-empty JSON as liveness, so it does not fail closed. A control would pin the behaviour we intend to CHANGE; it is slated for conversion to Go",
 		"scripts/install-test.sh":              "it installs and runs a built artifact, so a control would be a second installation on a machine that has just done one; it is CI-only and runs on a clean runner",

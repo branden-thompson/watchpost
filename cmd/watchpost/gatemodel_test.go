@@ -524,6 +524,14 @@ func (m *buildModel) builds() []command {
 
 // parseWorkflow reads jobs, their own keys, and their steps, by indentation.
 //
+// THIS IS A RATCHET ON SPELLINGS, NOT A PROOF, and the gates over it say so.
+// Nothing here executes GitHub Actions, so there is no oracle: a required job
+// made to `needs:` a job that never runs, an `on.push.branches` that matches
+// nothing, or an empty matrix all silence every gate and are invisible here
+// (G2–G4, declared in the attack list). The guard for CI is that CI runs and its
+// one-step-per-gate results are READ. What this catches is the cheap edits that
+// would otherwise pass review as unremarkable.
+//
 // STDLIB ONLY, ON PURPOSE: a YAML dependency taken for one test is one the whole
 // build carries. `jobs:` is at column 0, a job name at 2, its keys at 4, a step's
 // dash at 6 and its keys at 8 — and a key on the DASH LINE belongs to that step
@@ -531,10 +539,11 @@ func (m *buildModel) builds() []command {
 func parseWorkflow(src string) map[string]*ciJob {
 	out := map[string]*ciJob{}
 	jobName := regexp.MustCompile(`^  ([A-Za-z][A-Za-z0-9_-]*):\s*$`)
-	jobKey := regexp.MustCompile(`^    ([a-z][a-z-]*):\s*(.*)$`)
+	// `if : false` — a space before the colon — is the key `if` to YAML (G1).
+	jobKey := regexp.MustCompile(`^    ([a-z][a-z-]*)\s*:\s*(.*)$`)
 	stepDash := regexp.MustCompile(`^      -\s*(.*)$`)
-	stepKey := regexp.MustCompile(`^        ([a-z][a-z-]*):\s*(.*)$`)
-	keyValue := regexp.MustCompile(`^([a-z][a-z-]*):\s*(.*)$`)
+	stepKey := regexp.MustCompile(`^        ([a-z][a-z-]*)\s*:\s*(.*)$`)
+	keyValue := regexp.MustCompile(`^([a-z][a-z-]*)\s*:\s*(.*)$`)
 
 	var cur *ciJob
 	var inJobs bool

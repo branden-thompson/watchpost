@@ -59,7 +59,7 @@ var identityPatterns = []struct {
 // contain the thing it refuses. A row here is a file a reviewer has agreed may
 // name one of these; it is not a place to park a leak.
 var identityExempt = exempt(&exemptionTable{
-	name: "identityExempt",
+	name: "identityExempt", absent: "no/such/file.md", satisfied: "go.mod",
 	rows: map[string]string{
 		"cmd/watchpost/identity_test.go":                                       "this file — the patterns and their exemptions have to be written down somewhere",
 		"scripts/quality/lint-ledger.sh":                                       "the ledger linter's own rules and its self-test probes, which must contain what they refuse",
