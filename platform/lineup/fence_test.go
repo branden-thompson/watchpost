@@ -406,3 +406,26 @@ func TestATrackedTieBelongsToTheScopeNotToTheArrival(t *testing.T) {
 		t.Error("an unidentifiable zone-only alert was admitted")
 	}
 }
+
+// FR-8.4 — A THREE-MILE STATION STILL RECEIVES ITS COUNTY WARNING. The fence at
+// three miles admits almost nothing by distance; the county product carries no
+// point and reaches the schedule by the tracked tie alone, which is what makes
+// a hyper-local station (FR-8.3) viable at all. Asserted at the radius the HUM
+// LEAD named, against a point alert five miles out that the same fence refuses
+// (REVIEW 2026-09-17: the row cited an Observer test at 100 miles).
+func TestAThreeMileStationStillReceivesItsCountyWarning(t *testing.T) {
+	three := bonsall
+	three.RadiusMi = 3
+	three.Tracked = map[string]bool{"CAC073": true}
+	county := Arrival{ID: "county", TrackedAs: "CAC073", Category: category.Warnings,
+		Headline: "Tornado Warning", Subject: "San Diego County", At: planNow}
+	if !three.Admits(county) {
+		t.Error("a three-mile station fenced out the county warning for the place it tracks")
+	}
+	const degPerKm = 1 / 111.19492664455873
+	nearby := Arrival{ID: "point", Category: category.Warnings, Headline: "h", Subject: "s",
+		Lat: bonsall.Lat + 5*kmPerMi*degPerKm, Lon: bonsall.Lon, HasPoint: true}
+	if three.Admits(nearby) {
+		t.Error("a three-mile fence admitted a point alert five miles out — the radius is not in force")
+	}
+}
