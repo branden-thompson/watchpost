@@ -65,7 +65,7 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		// ---- H. scratch-tree divergence: the green control -----------------------
 		{name: "H1 a preflight red only in scratch, || exit 0 behind it",
 			mk: Sub("\t@./scripts/lint-a.sh\n", "\t@test -f go.mod || { echo run from the repo root; exit 1; }\n\t@./scripts/lint-a.sh || exit 0\n"), assert: canFail, caught: true},
-		{name: "H2 go version as the preflight",
+		{name: "H2 a preflight red only in scratch (/usr/bin/false stands in for a missing toolchain) — UNJUDGEABLE",
 			mk: Sub("\t@./scripts/lint-a.sh\n", "\t@/usr/bin/false || { echo go toolchain missing; exit 1; }\n\t@./scripts/lint-a.sh || exit 0\n"), assert: canFail, caught: true},
 		{name: "H3 the dirty-tree refusal this project writes",
 			mk: Sub("\t@./scripts/lint-a.sh\n", "\t@git diff --quiet || { echo refusing on a dirty tree; exit 1; }\n\t@./scripts/lint-a.sh || exit 0\n"), assert: canFail, caught: true},
@@ -190,7 +190,7 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			assert: silenced, caught: false},
 		{name: "O-ok a python checker by absolute path",
 			mk: Sub("\t@./scripts/lint-a.sh\n", "\t@python3 $(CURDIR)/scripts/lint-a.sh\n"), assert: canFail, caught: false},
-		{name: "O8 python3 -m: not a scripts/ argument, refused rather than unseen",
+		{name: "O8 python3 -m: not a scripts/ argument — refused as UNJUDGEABLE, not unseen",
 			mk: Sub("\t@./scripts/lint-a.sh\n", "\t@python3 -m lint_a || true\n"), assert: canFail, caught: true},
 		{name: "O9 a diagnostic under || true is refused, not tolerated",
 			mk: Sub("\t@./scripts/lint-a.sh\n", "\t@go version || true\n\t@./scripts/lint-a.sh\n"), assert: canFail, caught: true},
@@ -273,7 +273,7 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			mk: Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go build -o out/lintb ./tools/lintb\n\t@out/lintb\n"), assert: controlsReached, caught: true},
 		{name: "Q6-ok go run -tags foo ./tools/x, controlled",
 			mk: Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go run -tags foo ./tools/lintb -self-test\n\t@go run -tags foo ./tools/lintb\n"), assert: controlsReached, caught: false},
-		{name: "Q7 a script with a #!/usr/bin/env python3.12 shebang, || true",
+		{name: "Q7 a script whose #!/usr/bin/env python3.12 shebang bypasses the stubs — refused by the shebang rule",
 			mk:     Sub("\t@./scripts/lint-a.sh\n", "\t@go version\n\t@./scripts/check.py || true\n"),
 			extra:  map[string]string{"scripts/check.py": "#!/usr/bin/env python3.12\n"},
 			assert: canFail, caught: true},
@@ -292,6 +292,51 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		{name: "Q13 two go tests in parallel, the first || true",
 			mk:     Sub("race:\n\tgo test -race -count=1 ./...\n", "race:\n\t{ go test -race -count=1 ./... || true; } & go test -count=1 ./cmd/x; wait\n"),
 			assert: canFail, caught: true},
+
+		// ---- S. absence must be loud ----------------------------------------------------
+		// THE SKIP MUST BE IN THE SAME SHELL AS THE CHECK. `… || exit 0` on its own
+		// line exits that line's shell only; the next line runs the tool, gets 127,
+		// and the gate is red — loud by accident of a line break. An earlier draft
+		// of this table called the two-line form CAUGHT and the oracle was right.
+		{name: "S1 command -v a2dh || exit 0; a2dh … in one shell",
+			mk:     Sub("lint-b:\n\t@scripts/lint-b.sh\n", "A2DH ?= a2dh\nlint-b:\n\t@command -v $(A2DH) >/dev/null 2>&1 || { echo 'a2dh not found, skipping'; exit 0; }; $(A2DH) p10 check\n"),
+			assert: canFail, caught: true},
+		{name: "S1-ok the skip on its own line — the next line is loud without the tool",
+			mk:     Sub("lint-b:\n\t@scripts/lint-b.sh\n", "A2DH ?= a2dh\nlint-b:\n\t@command -v $(A2DH) >/dev/null 2>&1 || { echo 'a2dh not found, skipping'; exit 0; }\n\t@$(A2DH) p10 check\n"),
+			assert: canFail, caught: false},
+		{name: "S1 which golangci-lint || exit 0; golangci-lint … in one shell",
+			mk:     Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@which golangci-lint >/dev/null 2>&1 || exit 0; golangci-lint run ./...\n"),
+			assert: canFail, caught: true},
+		{name: "S1 a parse-time skip when the tool is absent",
+			mk:     Sub("lint-b:\n\t@scripts/lint-b.sh\n", "ifeq (,$(shell command -v a2dh))\nlint-b:\n\t@echo no a2dh, skipping\nelse\nlint-b:\n\t@a2dh p10 check\nendif\n"),
+			assert: canFail, caught: true},
+		{name: "S1-ok the shipped p10 line with exit 1",
+			mk:     Sub("lint-b:\n\t@scripts/lint-b.sh\n", "A2DH ?= a2dh\nlint-b:\n\t@command -v $(A2DH) >/dev/null 2>&1 || { echo 'a2dh not found — this gate cannot be skipped'; exit 1; }\n\t@$(A2DH) p10 check\n"),
+			assert: canFail, caught: false},
+		{name: "S1-ok a designed fallback: sha256sum, else shasum (the shipped checksum line)",
+			mk:     Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@if command -v sha256sum >/dev/null; then sha256sum go.mod > sums.txt; else shasum -a 256 go.mod > sums.txt; fi\n"),
+			assert: canFail, caught: false},
+		{name: "S2 python3 -m under || true beside a live script",
+			mk: Sub("\t@./scripts/lint-a.sh\n", "\t@python3 -m pyflakes . || true\n\t@./scripts/lint-a.sh\n"), assert: canFail, caught: true},
+		{name: "S2 an executable outside scripts/ with a #!/bin/sh shebang, || true",
+			mk:     Sub("\t@./scripts/lint-a.sh\n", "\t@./tools/run.sh || true\n\t@./scripts/lint-a.sh\n"),
+			extra:  map[string]string{"tools/run.sh": "#!/bin/sh\n"},
+			assert: canFail, caught: true},
+		{name: "S3-ok a parse-time $(shell go env) with verify re-parsing through $(MAKE)",
+			mk: prepend("GOBIN := $(shell go env GOPATH)/bin"), assert: verifyFails, caught: false},
+		{name: "S4 a non-phony gate that leaves touch $@ behind",
+			mk: func(s string) string {
+				s = Sub(" lint-a lint-b ", " lint-b ")(s)
+				return Sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@./scripts/lint-a.sh && touch $@\n")(s)
+			}, assert: silenced, caught: true},
+		{name: "S6 cd tools/x && go run . as the only check, no control",
+			mk: Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@cd tools/lintb && go run .\n"), extra: map[string]string{"tools/lintb/main.go": "package main\n"}, assert: controlsReached, caught: true},
+		{name: "S6-ok cd tools/x && go run . with its control",
+			mk: Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@cd tools/lintb && go run . -self-test\n\t@cd tools/lintb && go run .\n"), extra: map[string]string{"tools/lintb/main.go": "package main\n"}, assert: controlsReached, caught: false},
+		{name: "S7-ok go test -c into a directory, then <pkg>.test",
+			mk: Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@mkdir -p out && go test -c -o out/ ./tools/lintb\n\t@out/lintb.test\n"), assert: canFail, caught: false},
+		{name: "S7-ok go build -o $(CURDIR)/out (an absolute directory)",
+			mk: Sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@mkdir -p out && go build -o $(CURDIR)/out ./tools/lintb\n\t@out/lintb\n"), assert: canFail, caught: false},
 
 		// ---- R. drift, round eight ------------------------------------------------------
 		{name: "R1 bash -ec with the script inside the string, || echo — flags before -c",
@@ -370,8 +415,8 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			mk:     Sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@echo starting\n# make ignores this\n\t@./scripts/lint-a.sh\n"),
 			assert: canFail, caught: false},
 	}
-	if len(specimens) < 100 {
-		t.Fatalf("%d execution specimens; sections E, H, J, K, M, N, O, P, Q and R plus the re-executed round-one attacks", len(specimens))
+	if len(specimens) < 112 {
+		t.Fatalf("%d execution specimens; sections E, H, J, K, M, N, O, P, Q, R and S plus the re-executed round-one attacks", len(specimens))
 	}
 	req := ParseRequired(BaseRequired)
 	for _, sp := range specimens { // bounded by the specimen table (P10-02)
@@ -435,4 +480,27 @@ func TestAParentMakesEnvironmentDoesNotReachTheOracle(t *testing.T) {
 			t.Error("SURVIVED — with MAKEFILES setting .SHELLFLAGS := -ec in the parent environment, `x.sh; exit 0` read as a gate that can fail")
 		}
 	})
+}
+
+// S5: THE VERDICT DOES NOT DEPEND ON WHAT THE DEVELOPER HAS UNCOMMITTED. P1
+// (`git diff --quiet … && exit 0`) must be CAUGHT from a dirty source too,
+// because the scratch commits the working tree it was given.
+func TestADirtySourceTreeIsJudgedAsCIWouldHaveIt(t *testing.T) {
+	root, err := os.MkdirTemp("", "gate-oracle-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.RemoveAll(root) }() // a scratch that lingers costs disk, not a verdict
+	mk := Sub("\t@./scripts/lint-a.sh\n", "\t@git diff --quiet HEAD -- '*.go' 2>/dev/null && { echo skipped; exit 0; }; ./scripts/lint-a.sh\n")(BaseMakefile)
+	source := FixtureSource(t, root, mk, BaseRequired, baseScripts, nil)
+	if err := os.WriteFile(filepath.Join(source, "main.go"), []byte("package main\n\nfunc main() { _ = 1 }\n"), 0o644); err != nil {
+		t.Fatal(err) // dirty: a tracked Go file modified and not committed
+	}
+	fired, _ := VerdictOf(func(r Reporter) {
+		o := New(r, CloneForOracle(r, source, filepath.Join(root, "oracle")))
+		AssertEveryRequiredGateCanFail(r, o, ParseRequired(BaseRequired))
+	})
+	if !fired {
+		t.Error("SURVIVED — a skip-on-clean-tree predicate was certified because the developer's tree was dirty")
+	}
 }

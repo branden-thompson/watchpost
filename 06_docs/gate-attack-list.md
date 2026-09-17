@@ -534,8 +534,11 @@ counted once where sub-makes re-parse, and a refusal swallowed by `|| true`.
 
 | # | Attack | Must |
 |---|---|---|
-| S1 | `command -v a2dh >/dev/null \|\| exit 0` before the check; `which golangci-lint \|\| exit 0`; `ifeq (,$(shell command -v a2dh))` skipping at parse time — **the shipped `p10` line with `exit 0`** | CAUGHT — for every tool key a gate recorded, the gate is run with that tool ABSENT from PATH and must go red |
+| S1 | `command -v a2dh >/dev/null \|\| exit 0; a2dh …` IN ONE SHELL; `which golangci-lint \|\| exit 0; golangci-lint …`; `ifeq (,$(shell command -v a2dh))` skipping at parse time | CAUGHT — for every tool key a gate recorded, the gate is run with that tool ABSENT from PATH and must go red |
+| S1-ok | the skip on its OWN line, then the tool on the next — **the shipped `p10` shape with `exit 0`** | PASSES — **corrected while building: the reviewer's "passes every gate" held only because absence was never simulated.** `\|\| { …; exit 0; }` exits that line's shell; the next line runs the tool, gets 127, and the gate is red. Loud by accident of a line break, and the oracle was right to say so |
 | S1-ok | the shipped `p10` line with `exit 1` | PASSES |
+| S1-ok | `if command -v sha256sum; then sha256sum …; else shasum …; fi` — **the shipped checksum line** | PASSES — **found while building:** absence must be loud OR a fallback must be observed; with `sha256sum` absent the run records `shasum`, which the green run did not. Derived from the record, no list of fallbacks |
+| S11 | four executable record artefacts under `06_docs/` (spikes, a sampler) with `#!/bin/sh` shebangs | a record is not executable — `chmod -x`; the shebang rule and the ledger both key on the executable bit, so neither needs an exclusion |
 | S2 | `python3 -m pyflakes … \|\| true` beside a live script; `./06_docs/mutants/run.sh \|\| true` (an executable outside `scripts/`) | CAUGHT — a refusal is RECORDED as `unjudged:<role>` and any `unjudged:` in a green reach is UNJUDGEABLE; the shebang rule covers every tracked executable, not `scripts/` alone |
 | S3 | `GOBIN := $(shell go env GOPATH)/bin` at the top, with `verify` and `mutant-check` re-parsing through `$(MAKE)` | PASSES — parse-time invocations are subtracted once per makefile read the run reports |
 | S4 | a non-phony gate that leaves `touch $@` behind; other non-phony rules phony | CAUGHT for the RIGHT reason — the absent-node set is taken before the green run, and the scratch is reset to its commit between runs |

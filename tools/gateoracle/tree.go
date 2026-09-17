@@ -34,6 +34,13 @@ func CloneForOracle(t Reporter, source, root string) string {
 		}
 		copyEntry(t, filepath.Join(source, rel), filepath.Join(tree, rel), rel)
 	}
+	// THE WORKING TREE IS COMMITTED IN THE SCRATCH, so a predicate on cleanliness
+	// answers as it does in CI whatever the developer has uncommitted, and every
+	// run can reset to this commit.
+	git(tree, "add", "-A")
+	if status := git(tree, "status", "--porcelain"); strings.TrimSpace(status) != "" {
+		git(tree, "-c", "user.name=oracle", "-c", "user.email=oracle", "commit", "-q", "--no-verify", "-m", "oracle: the working tree")
+	}
 	return tree
 }
 

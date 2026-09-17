@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Regenerates the embedded geodata payloads (JD2: the previously-undocumented
 # S2 trim pipeline). Run from the repo root; requires curl, awk, python3.
 # Data: GeoNames (CC-BY 4.0) — attribution stays in the About view (OQ-15).

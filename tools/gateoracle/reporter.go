@@ -18,10 +18,10 @@ type Reporter interface {
 // assertion the way testing.T's does — the goroutine exits — and VerdictOf runs
 // the assertion on a goroutine of its own for that reason, reading the record
 // only after that goroutine is done.
-type Recorder struct{ errs []string }
+type Recorder struct{ errs, logs []string }
 
 func (r *Recorder) Helper()                   {}
-func (r *Recorder) Logf(string, ...any)       {}
+func (r *Recorder) Logf(f string, a ...any)   { r.logs = append(r.logs, fmt.Sprintf(f, a...)) }
 func (r *Recorder) Errorf(f string, a ...any) { r.errs = append(r.errs, fmt.Sprintf(f, a...)) }
 func (r *Recorder) Fatalf(f string, a ...any) {
 	r.Errorf(f, a...)

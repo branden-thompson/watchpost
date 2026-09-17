@@ -50,6 +50,7 @@ func AssertNoFileSilencesARequiredGate(t Reporter, o *Oracle, required []string)
 
 func (o *Oracle) auditSilence(t Reporter, g string, base run) {
 	t.Helper()
+	o.reset() // absence is judged against the commit, not against what the green run left behind
 	var nodes []string
 	for name, phony := range o.rules { // bounded by the database (P10-02)
 		if !phony && o.absent(name) {
@@ -80,16 +81,15 @@ func (o *Oracle) auditSilence(t Reporter, g string, base run) {
 // record; it returns whether the files broke the run instead.
 func (o *Oracle) silencedBy(t Reporter, g string, base run, set []string) (broke bool) {
 	t.Helper()
+	o.reset()
 	for _, node := range set { // bounded by the set (P10-02)
 		path := filepath.Join(o.tree, node)
 		_ = os.MkdirAll(filepath.Dir(path), 0o755)
 		_ = os.WriteFile(path, nil, 0o644)
 	}
 	o.paint()
-	touched := o.runGate(g)
-	for _, node := range set { // bounded by the set (P10-02)
-		_ = os.Remove(filepath.Join(o.tree, node))
-	}
+	touched := o.runGateAsIs(g, o.env())
+	o.reset()
 	if touched.code != 0 {
 		return true
 	}
@@ -133,6 +133,17 @@ func AssertEveryRequiredGateCanFail(t Reporter, o *Oracle, required []string) {
 					"not fail when it does — its status is discarded somewhere on that path, and make has already "+
 					"said so. A diagnostic under `|| true` is refused for the same reason: move it out of the gate "+
 					"or let it fail.", g, g, inv)
+			}
+		}
+		o.paint()
+		for _, tool := range absentable(keysOf(base.reach)) { // bounded by the reach (P10-02)
+			judged++
+			without := o.runGateEnv(g, o.withoutTool(t, tool))
+			if without.code == 0 && fallbackOf(base, without) == "" {
+				t.Errorf("%s is a REQUIRED gate and `make %s` exits 0 with %s ABSENT from PATH and nothing taking its "+
+					"place.\nThe gate ran %s when it was there and is green when it is not: a `command -v … || exit 0` "+
+					"or `which … || true` skips the check on any machine without the tool. Absence must be loud — "+
+					"exit 1 — or a fallback must run.", g, g, tool, tool)
 			}
 		}
 	}
@@ -210,6 +221,30 @@ func (o *Oracle) verifyCoversEachGate(t Reporter, base run, required []string, c
 	}
 }
 
+// fallbackOf is a tool key the run without a tool recorded that the green run
+// did not — `shasum` standing in for an absent `sha256sum` — or "".
+func fallbackOf(base, without run) string {
+	had := keysOf(base.reach)
+	for _, k := range keysOf(without.reach) { // bounded by the reach (P10-02)
+		if contains(tools(), k) && !contains(had, k) {
+			return k
+		}
+	}
+	return ""
+}
+
+// absentable is every stubbed tool a reach names whose absence PATH can
+// simulate: not `go` (nothing runs without it), not what the OS ships.
+func absentable(keys []string) []string {
+	var out []string
+	for _, k := range keys { // bounded by the reach (P10-02)
+		if k != "go" && contains(tools(), k) && !contains(osShipped(), k) && !contains(out, k) {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
 // isChecker: a project-written checker owes a control. Scripts (not `_test.sh`
 // siblings), local `go run ./…` packages, and binaries `go build -o` wrote. A
 // third-party `go run host.tld/…` tool carries no `-self-test` contract of ours.
@@ -217,7 +252,7 @@ func isChecker(key string) bool {
 	switch {
 	case strings.HasPrefix(key, "scripts/"):
 		return !strings.HasSuffix(key, "_test.sh")
-	case strings.HasPrefix(key, "go:run:./"), strings.HasPrefix(key, "built:"):
+	case key == "go:run:.", strings.HasPrefix(key, "go:run:./"), strings.HasPrefix(key, "built:"):
 		return true
 	}
 	return false

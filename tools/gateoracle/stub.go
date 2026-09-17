@@ -34,6 +34,20 @@ func interpreters() []string { return []string{"sh", "bash", "python3", "expect"
 
 func shells() []string { return []string{"sh", "bash"} }
 
+// osShipped is every stubbed name the OS itself provides under /usr/bin or
+// /bin; their ABSENCE cannot be simulated by PATH, and the ceiling says so.
+func osShipped() []string {
+	var out []string
+	for _, name := range append(tools(), interpreters()...) { // bounded by the stub list (P10-02)
+		for _, dir := range []string{"/usr/bin", "/bin"} { // bounded by the two OS directories (P10-02)
+			if isExecutable(filepath.Join(dir, name)) && !contains(out, name) {
+				out = append(out, name)
+			}
+		}
+	}
+	return out
+}
+
 // StubMain is the stub binary's main: the role is argv[0]'s name — bin/go,
 // bin/sh, a tool, or a binary `go build -o` wrote — and the result is the exit
 // status.
@@ -53,7 +67,16 @@ func StubMain(argv []string) int {
 	if key, ok := builtKey(argv[0]); ok {
 		return answer("built:"+key, args)
 	}
-	fmt.Fprintf(os.Stderr, "oracle: %s is not a role the stub plays\n", role)
+	return unjudged(role, "is not a role the stub plays")
+}
+
+// unjudged RECORDS a refusal — `unjudged:<role>` — so a refusal under `|| true`
+// is seen by the oracle rather than swallowed, and exits 3.
+func unjudged(role, why string) int {
+	if _, err := recordInvocation(os.Getenv(EnvLog), "unjudged:"+role); err != nil {
+		fmt.Fprintf(os.Stderr, "oracle: cannot record the refusal of %s: %v\n", role, err)
+	}
+	fmt.Fprintf(os.Stderr, "oracle: %s %s — not judged\n", role, why)
 	return 3
 }
 
@@ -82,7 +105,13 @@ func answer(key string, args []string) int {
 // CMD` runs CMD once its own status is green), and when it "builds" writes a
 // recording stub — a symlink to this binary — at the output path.
 func goStub(args []string) int {
-	if code := answer(goKey(args, moduleOf(os.Getenv(EnvRoot))), args); code != 0 {
+	cwd, _ := os.Getwd()
+	root := os.Getenv(EnvRoot)
+	key := goKey(args, moduleOf(root))
+	if pkg, ok := strings.CutPrefix(key, "go:run:"); ok {
+		key = "go:run:" + localPackage(pkg, cwd, root)
+	}
+	if code := answer(key, args); code != 0 {
 		return code
 	}
 	if len(args) > 0 && args[0] == "run" {
@@ -92,7 +121,6 @@ func goStub(args []string) int {
 			}
 		}
 	}
-	cwd, _ := os.Getwd()
 	if out := buildOutput(args, cwd); out != "" {
 		if err := writeBuiltStub(out); err != nil {
 			fmt.Fprintf(os.Stderr, "oracle: cannot write the built stub %s: %v\n", out, err)
@@ -109,8 +137,7 @@ func interpreterStub(role string, args []string) int {
 	if contains(shells(), role) && hasShellCommandFlag(args) {
 		real := realCommand(role)
 		if real == "" {
-			fmt.Fprintf(os.Stderr, "oracle: no real %s past the stubs\n", role)
-			return 3
+			return unjudged(role, "has no real shell past the stubs")
 		}
 		return execArgs(append([]string{real}, args...))
 	}
@@ -118,8 +145,7 @@ func interpreterStub(role string, args []string) int {
 	if s := scriptArg(args, cwd, os.Getenv(EnvRoot)); s != "" {
 		return answer(s, args)
 	}
-	fmt.Fprintf(os.Stderr, "oracle: %s run without a scripts/ file argument is not judged\n", role)
-	return 3
+	return unjudged(role, "run without a scripts/ file argument")
 }
 
 // ---- the decisions, as functions -----------------------------------------------------------
@@ -140,17 +166,23 @@ func goKey(args []string, module string) string {
 	return "go:" + args[0]
 }
 
-// packageOf is the first argument shaped like a package, before `--`.
+// packageOf is the first argument shaped like a package, before `--`. The
+// value after `-o` is an output path, never a package, whatever it looks like.
 func packageOf(args []string, module string) string {
+	skip := false
 	for _, a := range args { // bounded by the arguments (P10-02)
-		if a == "--" {
-			break
-		}
-		if strings.HasPrefix(a, "-") {
-			continue
-		}
-		if p, ok := packageShaped(a, module); ok {
-			return p
+		switch {
+		case a == "--":
+			return ""
+		case skip:
+			skip = false
+		case a == "-o":
+			skip = true
+		case strings.HasPrefix(a, "-"):
+		default:
+			if p, ok := packageShaped(a, module); ok {
+				return p
+			}
 		}
 	}
 	return ""
@@ -174,6 +206,25 @@ func packageShaped(a, module string) (string, bool) {
 		return a, true
 	}
 	return "", false
+}
+
+// localPackage resolves a relative package (`.`, `./x`, `../y`) against the
+// working directory and names it from the tree root, so `cd tools/x && go run
+// .` is `./tools/x`. A package that is not relative, or lies outside the tree,
+// is returned as it is (absolute if outside).
+func localPackage(pkg, cwd, root string) string {
+	if pkg != "." && !strings.HasPrefix(pkg, "./") && !strings.HasPrefix(pkg, "../") {
+		return pkg
+	}
+	abs := filepath.Clean(filepath.Join(cwd, pkg))
+	rel, err := filepath.Rel(root, abs)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return abs
+	}
+	if rel == "." {
+		return "."
+	}
+	return "./" + filepath.ToSlash(rel)
 }
 
 // localClean cleans a local package path, takes a file's directory, and keeps
@@ -212,10 +263,17 @@ func buildOutput(args []string, cwd string) string {
 		return ""
 	}
 	base := path.Base(packageOf(args[1:], ""))
+	if args[0] == "test" {
+		base += ".test" // what `go test -c` names a binary written into a directory
+	}
 	if strings.HasSuffix(out, "/") {
 		return path.Join(out, base)
 	}
-	if info, err := os.Stat(filepath.Join(cwd, out)); err == nil && info.IsDir() {
+	dir := out
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(cwd, out)
+	}
+	if info, err := os.Stat(dir); err == nil && info.IsDir() {
 		return path.Join(out, base)
 	}
 	return out

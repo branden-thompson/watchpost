@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # run.sh — apply one mutant, decide whether the tests catch it, restore.
 #
 # A mutant is only evidence if it COMPILES. A mutation that breaks the build

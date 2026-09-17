@@ -1,7 +1,6 @@
 package gateoracle
 
 import (
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,6 +49,7 @@ type run struct {
 	code  int
 	reach []string // invocations recorded, sorted
 	nodes []string // every target make reported considering, in order
+	reads int      // how many times a makefile was read — each read re-runs $(shell)
 }
 
 // envShebang is DERIVED from the interpreter list and anchored: `python3.12` is
@@ -85,31 +85,49 @@ func New(t Reporter, tree string) *Oracle {
 	return o
 }
 
-// refuseScriptsThatBypassPath: every EXECUTABLE under scripts/ must reach the
-// stubs through an env shebang. `#!/bin/sh` bypasses PATH — the script would run
-// for real and record nothing, the quiet direction — so it is refused here. A
-// file without an executable bit is data; a directory is not a script.
+// tracked is every file git lists in the tree.
+func (o *Oracle) tracked(t Reporter) []string {
+	t.Helper()
+	cmd := exec.Command("git", "ls-files", "-z")
+	cmd.Dir = o.tree
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("COULD NOT RUN — git ls-files in the scratch: %v", err)
+	}
+	var files []string
+	for _, rel := range strings.Split(string(out), "\x00") { // bounded by the file list (P10-02)
+		if rel != "" {
+			files = append(files, rel)
+		}
+	}
+	return files
+}
+
+// refuseScriptsThatBypassPath: every tracked EXECUTABLE must reach the stubs
+// through an env shebang. `#!/bin/sh` bypasses PATH — the script would run for
+// real and record nothing, the quiet direction — so it is refused here. A file
+// without an executable bit is data; a directory is not a script.
 func (o *Oracle) refuseScriptsThatBypassPath(t Reporter) {
 	t.Helper()
-	_ = filepath.WalkDir(filepath.Join(o.tree, "scripts"), func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		if !isExecutable(path) {
-			return nil
+	for _, rel := range o.tracked(t) { // bounded by the file list (P10-02)
+		path := filepath.Join(o.tree, rel)
+		if info, e := os.Stat(path); e != nil || info.IsDir() || info.Mode()&0o111 == 0 {
+			continue
 		}
 		body, e := os.ReadFile(path)
 		if e != nil {
-			return nil
+			continue
 		}
 		first, _, _ := strings.Cut(string(body), "\n")
+		if !strings.HasPrefix(first, "#!") {
+			continue // a binary, or a file whose executable bit means nothing to make
+		}
 		if !envShebang().MatchString(first) {
 			t.Errorf("COULD NOT JUDGE %s — its first line is not `#!/usr/bin/env <%s>`, so the kernel runs the "+
 				"interpreter by absolute path, the oracle's stub is never reached, and the script would run for "+
-				"real and record nothing. Use an env shebang.", strings.TrimPrefix(path, o.tree+"/"), strings.Join(interpreters(), "|"))
+				"real and record nothing. Use an env shebang.", rel, strings.Join(interpreters(), "|"))
 		}
-		return nil
-	})
+	}
 }
 
 // paint makes every key green except the named ones — invocations (`go:test#2`)
@@ -123,17 +141,32 @@ func (o *Oracle) paint(red ...string) {
 	}
 }
 
-var considered = regexp.MustCompile("Considering target file [`'](.+)'\\.")
+var (
+	considered = regexp.MustCompile("Considering target file [`'](.+)'\\.")
+	reading    = regexp.MustCompile("Reading makefile [`'][^'`]+'")
+)
 
-// runMake executes make with args in the tree, stubs first on PATH, and returns
-// its status, the invocations recorded, and the targets it reported considering.
-func (o *Oracle) runMake(args ...string) run {
+// reset returns the tree to its commit: a stamp a gate touched, a binary it
+// built, a file the silence audit created — none of it reaches the next run.
+func (o *Oracle) reset() {
+	for _, args := range [][]string{{"reset", "-q", "--hard"}, {"clean", "-fdxq"}} { // bounded by the two commands (P10-02)
+		cmd := exec.Command("git", args...)
+		cmd.Dir = o.tree
+		_ = cmd.Run()
+	}
+}
+
+// runMake executes make with args in the tree as it stands and returns its
+// status, the invocations recorded, the targets it reported considering, and
+// how many times it read a makefile. Callers reset the tree first, except the
+// silence audit, which resets and THEN creates the files it is asking about.
+func (o *Oracle) runMake(env []string, args ...string) run {
 	log := filepath.Join(o.root, "reached")
 	_ = os.WriteFile(log, nil, 0o644)
 	_ = os.WriteFile(filepath.Join(o.root, "built"), nil, 0o644)
 	cmd := exec.Command("make", args...)
 	cmd.Dir = o.tree
-	cmd.Env = o.env()
+	cmd.Env = env
 	out, err := cmd.Output()
 	r := run{}
 	if err != nil {
@@ -148,17 +181,32 @@ func (o *Oracle) runMake(args ...string) run {
 			r.nodes = append(r.nodes, m[1])
 		}
 	}
+	r.reads = len(reading.FindAllString(string(out), -1))
 	return r
 }
 
 // runGate is `make -s --debug=v <gate>` with the Makefile's own parse-time
-// invocations subtracted: a `$(shell go env …)` at the top belongs to the
-// Makefile, not to the gate.
+// invocations subtracted — once per makefile read the run reported, because a
+// `$(MAKE)` hop re-parses and a `$(shell go env …)` at the top runs again.
 func (o *Oracle) runGate(gate string) run {
-	r := o.runMake("-s", "--debug=v", gate)
+	return o.runGateEnv(gate, o.env())
+}
+
+func (o *Oracle) runGateEnv(gate string, env []string) run {
+	o.reset()
+	return o.runGateAsIs(gate, env)
+}
+
+// runGateAsIs runs the gate on the tree exactly as it stands.
+func (o *Oracle) runGateAsIs(gate string, env []string) run {
+	r := o.runMake(env, "-s", "--debug=v", gate)
+	reads := r.reads
+	if reads < 1 {
+		reads = 1
+	}
 	remaining := map[string]int{}
 	for k, n := range o.parseCounts { // bounded by the parse-time record (P10-02)
-		remaining[k] = n
+		remaining[k] = n * reads
 	}
 	var reach []string
 	for _, inv := range r.reach { // bounded by the reach (P10-02)
@@ -173,7 +221,7 @@ func (o *Oracle) runGate(gate string) run {
 }
 
 // green is the gate's run with every key green, cached, and reported ONCE as
-// UNJUDGEABLE if it is red.
+// UNJUDGEABLE if it is red or if a stub refused something on its path.
 func (o *Oracle) green(t Reporter, gate string) run {
 	t.Helper()
 	if g, ok := o.greens[gate]; ok {
@@ -182,6 +230,16 @@ func (o *Oracle) green(t Reporter, gate string) run {
 	o.paint()
 	g := o.runGate(gate)
 	o.greens[gate] = g
+	for _, inv := range g.reach { // bounded by the reach (P10-02)
+		if role, ok := strings.CutPrefix(keyOf(inv), "unjudged:"); ok {
+			t.Errorf("UNJUDGEABLE — `make %s` ran %s in a way the oracle does not judge (an interpreter with no "+
+				"scripts/ file, a role the stub does not play), and the recipe went on. COULD-NOT-RUN, not a "+
+				"pass: run a scripts/ file or a `go run` package, or declare the gate.", gate, role)
+			g.code = 3
+			o.greens[gate] = g
+			return g
+		}
+	}
 	if g.code != 0 {
 		t.Errorf("UNJUDGEABLE — `make %s` exits %d with EVERY stub GREEN. Something it reaches is red for a "+
 			"reason that is not a check (a real tool the tree cannot satisfy, an interpreter run without a "+
@@ -192,20 +250,26 @@ func (o *Oracle) green(t Reporter, gate string) run {
 }
 
 // env is the parent environment minus everything a parent make hands down, plus
-// the stub PATH and the stubs' own variables.
+// the stub PATH, the C locale (the walk reads make's English), and the stubs'
+// own variables.
 func (o *Oracle) env() []string {
+	return o.envWith(filepath.Join(o.root, "bin") + ":" + os.Getenv("PATH"))
+}
+
+func (o *Oracle) envWith(path string) []string {
 	var out []string
 	for _, kv := range os.Environ() { // bounded by the environment (P10-02)
 		switch strings.SplitN(kv, "=", 2)[0] {
 		case "MAKEFLAGS", "GNUMAKEFLAGS", "MFLAGS", "MAKELEVEL", "MAKEFILES", "MAKE", "MAKEOVERRIDES",
-			"MAKE_TERMOUT", "MAKE_TERMERR", "PATH", EnvLog, EnvStatus, EnvRoot, EnvBin, EnvBuilt:
+			"MAKE_TERMOUT", "MAKE_TERMERR", "PATH", "LC_ALL", "LANG", "LC_MESSAGES", EnvLog, EnvStatus, EnvRoot, EnvBin, EnvBuilt:
 			continue
 		}
 		out = append(out, kv)
 	}
 	bin := filepath.Join(o.root, "bin")
 	return append(out,
-		"PATH="+bin+":"+os.Getenv("PATH"),
+		"PATH="+path,
+		"LC_ALL=C",
 		EnvLog+"="+filepath.Join(o.root, "reached"),
 		EnvStatus+"="+filepath.Join(o.root, "status"),
 		EnvRoot+"="+o.tree,
@@ -230,11 +294,18 @@ func (o *Oracle) database(t Reporter) (map[string]bool, map[string]int) {
 	if len(out) == 0 {
 		t.Fatalf("COULD NOT RUN — `make -pn` printed nothing; the Makefile does not parse")
 	}
+	return parseDatabase(string(out)), countsOf(readLog(log))
+}
+
+// parseDatabase reads `make -p`'s rules: a name at column 0 followed by `:`
+// that is not under `# Not a target:` and not one of make's own targets; true
+// where the next comment says `#  Phony target`.
+func parseDatabase(out string) map[string]bool {
 	rules := map[string]bool{}
 	ruleLine := regexp.MustCompile(`^([A-Za-z0-9_./-][^:=#\s]*):(?:[^=]|$)`)
 	var notATarget bool
 	cur := ""
-	for _, line := range strings.Split(string(out), "\n") { // bounded by the database (P10-02)
+	for _, line := range strings.Split(out, "\n") { // bounded by the database (P10-02)
 		switch {
 		case line == "# Not a target:":
 			notATarget = true
@@ -252,7 +323,27 @@ func (o *Oracle) database(t Reporter) (map[string]bool, map[string]int) {
 			notATarget = false
 		}
 	}
-	return rules, countsOf(readLog(log))
+	return rules
+}
+
+// withoutTool is an environment whose PATH has every stub but this one and only
+// the OS's own directories after it, so `command -v <tool>` fails as it does on
+// a machine without the tool.
+func (o *Oracle) withoutTool(t Reporter, tool string) []string {
+	t.Helper()
+	dir := filepath.Join(o.root, "bin-without-"+tool)
+	if _, err := os.Stat(dir); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("COULD NOT RUN — %v", err)
+		}
+		exe := filepath.Join(o.root, "bin", "oraclestub")
+		for _, name := range append(tools(), interpreters()...) { // bounded by the stub list (P10-02)
+			if name != tool {
+				_ = os.Symlink(exe, filepath.Join(dir, name))
+			}
+		}
+	}
+	return o.envWith(dir + ":/usr/bin:/bin")
 }
 
 // specialTarget: GNU make's own targets, which the database lists as rules and

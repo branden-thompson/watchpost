@@ -775,3 +775,16 @@ findings no longer share one cause.**
 | `TestEveryShellScriptHasALedgerRow` | every non-Go source under `scripts/` has a ratified row; derived from the tree | 23 rows, F-156 |
 | ci.yml `gnu-make` step | macOS runner installs GNU make ≥ 3.82 so the oracle is not COULD-NOT-RUN on one OS | R7; `TestNoRequiredGatesCIStepIsSilenced` accepts the step's `if:` because it is not a gate |
 
+### Round nine: absence must be loud (2026-09-17)
+
+The first round briefed to attack DRIFT under the written threat model: 1 Critical, 4 Important, 6
+Minor; evasion reported separately. The Critical was a verdict the oracle had never asked for.
+
+| Gate | Property | Evidence |
+|---|---|---|
+| `AssertEveryRequiredGateCanFail` (absent-alone) | for every stubbed tool a gate recorded — not `go`, not what the OS ships (`osShipped()`, derived) — the gate is run with that tool ABSENT from PATH and must go red, or record a fallback the green run did not | **By construction:** S1 ×3 CAUGHT, S1-ok ×3 (own-line skip is loud by its next line; the shipped checksum fallback). **Real tree:** 24 gates, 56 invocations (52 red-alone + 4 absent-alone) |
+| `green()` | an `unjudged:<role>` in a green reach is UNJUDGEABLE; the shebang rule covers every tracked executable | **By construction:** S2 ×2 |
+| the scratch between runs | `git reset --hard && git clean -fdx` before every run; the working tree committed in the scratch, so cleanliness answers as CI whatever is uncommitted here | **By construction:** S4, `TestADirtySourceTreeIsJudgedAsCIWouldHaveIt` |
+| parse-time subtraction | once per makefile read the run reports | **By construction:** S3-ok |
+| the instrument's own tests | eight more pure functions unit-tested; the ceiling's text pinned; three specimens renamed for the property that catches them | `stub_test.go` |
+

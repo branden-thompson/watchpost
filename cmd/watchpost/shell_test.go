@@ -7,8 +7,8 @@ package main
 // keeps shell out of Go files; this keeps new shell files out of the tree.
 
 import (
-	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -43,37 +43,55 @@ var shellScripts = exempt(&exemptionTable{
 		"scripts/quality/soak-phases.expect":        "drives the TUI under expect; expect has no Go equivalent in the tree yet, F-156",
 		"scripts/quality/soak.sh":                   "the soak harness around the expect scripts; ports with them, F-156",
 		"scripts/quality/validate-journey.expect":   "drives the TUI under expect; expect has no Go equivalent in the tree yet, F-156",
+		"06_docs/mutants/run.sh":                    "runs the mutant corpus by hand outside make; port candidate F-156",
+		"tools/geotrim/refresh.sh":                  "refreshes geotrim's fixture data; port candidate F-156",
 	},
 	exists:      func(t *testing.T, p string) bool { _, err := os.Stat(filepath.Join("../..", p)); return err == nil },
 	stillNeeded: func(t *testing.T, p string) bool { return isNonGoSource(filepath.Join("../..", p)) },
 })
 
-// isNonGoSource: a regular file under scripts/ that is not Go and not data.
+// isNonGoSource: a regular file that is not Go and not data, and is either
+// under scripts/ or an executable with a shebang anywhere in the tree.
 func isNonGoSource(path string) bool {
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() || strings.HasSuffix(path, ".go") || strings.HasSuffix(path, ".txt") {
 		return false
 	}
-	return strings.Contains(filepath.ToSlash(path), "/scripts/")
+	if strings.Contains(filepath.ToSlash(path), "/scripts/") {
+		return true
+	}
+	if info.Mode()&0o111 == 0 {
+		return false
+	}
+	head := make([]byte, 2)
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	n, _ := f.Read(head)
+	_ = f.Close() // read only; nothing to lose on close
+	return n == 2 && string(head) == "#!"
 }
 
-// EVERY NON-GO SOURCE UNDER scripts/ HAS A RATIFIED ROW. Derived from the tree,
-// never from a list of names.
+// EVERY NON-GO SOURCE — under scripts/, or any tracked executable with a
+// shebang — HAS A RATIFIED ROW. Derived from git's index, never from a list.
 func TestEveryShellScriptHasALedgerRow(t *testing.T) {
+	out, err := exec.Command("git", "-C", "../..", "ls-files", "-z").Output()
+	if err != nil {
+		t.Fatalf("COULD NOT RUN — git ls-files: %v", err)
+	}
 	var seen int
-	err := filepath.WalkDir("../../scripts", func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !isNonGoSource(path) {
-			return err
+	for _, rel := range strings.Split(string(out), "\x00") { // bounded by the index (P10-02)
+		if rel == "" || strings.HasPrefix(rel, "third_party/") || !isNonGoSource(filepath.Join("../..", rel)) {
+			continue
 		}
 		seen++
-		rel := filepath.ToSlash(strings.TrimPrefix(path, "../../"))
 		if _, ok := shellScripts[rel]; !ok {
-			t.Errorf("%s is a non-Go source under scripts/ with no row in the shell ledger. Everything is Go unless "+
-				"absolutely necessary; a new script needs a ruling, and the ruling is a row here.", rel)
+			t.Errorf("%s is a non-Go source with no row in the shell ledger. Everything is Go unless absolutely "+
+				"necessary; a new script needs a ruling, and the ruling is a row here.", rel)
 		}
-		return nil
-	})
-	if err != nil || seen == 0 {
-		t.Fatalf("COULD NOT RUN — walking scripts/: %v (%d files)", err, seen)
+	}
+	if seen == 0 {
+		t.Fatalf("COULD NOT RUN — no non-Go source found in the index")
 	}
 }

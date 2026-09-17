@@ -3023,6 +3023,13 @@ session."* The same session produced the second rule: **test and tooling code is
 gets shipped-code rigor; `tools/gateoracle/` with a `doc.go`, a package boundary and thin callers
 is what that looks like, and `make dupes` caught the first duplicate the move introduced.
 
+**Round nine, the first drift-briefed round:** 1 Critical, and it was a VERDICT the oracle had never
+asked for — a tool's absence. Red-alone proves a check is read; absent-alone proves a check is not
+skipped when its tool is missing. The instrument had three verdicts (green, red-alone, silenced)
+and needed four. **The list of verdicts an instrument gives is itself a subject for the adversary.**
+And a reviewer's Critical was half right: the shipped line it named is loud by accident of a line
+break, which the oracle said and the reviewer did not — the attack list records both.
+
 **The residue is one list** (the toolchain commands to stub), and it is declared with its blind spot
 rather than derived, because the alternative — a PATH with nothing real on it — makes every recipe
 that uses `cat` or `mkdir` UNJUDGEABLE. Every other list in the executed half is gone.

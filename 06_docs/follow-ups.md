@@ -384,3 +384,18 @@ mechanised, because a rule an agent has to remember is a rule some session skips
 | **F-156** *(new)* Port the 23 non-Go sources under `scripts/` to `tools/` | **OPEN.** Each has a ratified row in the shell ledger (`cmd/watchpost/shell_test.go`) saying why it is still shell; a new script needs a row, and a row is a ruling. The five `expect` scripts are the hard ones (a Go pty driver is the port). |
 | **AP-SHELL-01** *(new rule)* | A shebang-plus-body string literal or `exec.Command("sh"\|"bash", …, "-c", …)` in any Go file is a lint finding with no exemption marker. Self-tested in both directions; it found four in the tree on its first run (the oracle's own fixture bodies) and they are gone. |
 
+## Round nine on the gate layer, 2026-09-17 — absence must be loud (the first drift-briefed round)
+
+1 Critical / 4 Important / 6 Minor under the drift threat model; three evasion lines reported
+separately and not counted. Criticals across nine rounds: 6 → 4 → 3 → 6 → 6 → 5 → 2 → 4 → 1.
+
+| Finding | Disposition |
+|---|---|
+| F1 (Critical) a tool's ABSENCE is never exercised — the stub is always on PATH, so `command -v a2dh \|\| exit 0` takes the live branch in the scratch and the skip branch on a machine without the tool | **CLOSED — the fourth verdict.** For every stubbed tool a gate recorded (not `go`, not what the OS ships), the gate is run with that tool absent from PATH and must go red OR record a fallback the green run did not (`shasum` for `sha256sum`, the shipped checksum line). S1 ×3, S1-ok ×3. **Corrected while building:** the reviewer's "the shipped p10 line with `exit 0` passes every gate" held only because absence was never simulated — `\|\| { …; exit 0; }` exits that line's shell and the next line gets 127. The oracle was right; the specimen moved to the single-shell form that actually skips. |
+| F2 (Important) a refused invocation under `\|\| true` was unseen; executables outside `scripts/` were outside the shebang rule | **CLOSED.** A refusal is recorded as `unjudged:<role>` and any `unjudged:` in a green reach is UNJUDGEABLE; the shebang rule covers every tracked executable. S2 ×2. Five record artefacts under `06_docs/` lost their executable bit (a record is not a program); `06_docs/mutants/run.sh` and `tools/geotrim/refresh.sh` got env shebangs and ledger rows. |
+| F3 (Important) FALSE POSITIVE — a parse-time `$(shell go env)` subtracted once where `$(MAKE)` hops re-parse | **CLOSED** — subtracted once per makefile read the run reports. S3-ok. |
+| F4 (Important) the absent-node set was read after the green run mutated the tree (`touch $@`) | **CLOSED** — the scratch is `git reset --hard && git clean -fdx` before every run, and the silence audit resets before creating its files. S4. **Found while building:** the first placement of the reset deleted the audit's own files and every silence specimen SURVIVED; moved before the files, not after. |
+| F5 (Important) the verdict depended on the developer's uncommitted files | **CLOSED** — the overlaid working tree is committed in the scratch. `TestADirtySourceTreeIsJudgedAsCIWouldHaveIt`. |
+| F6 `go run .` not a checker; F7 `go test -c -o dir/` and an absolute `-o` dir; F8 the ceiling printed a function pointer; F9/F10/A10 declared; F11 `LC_ALL=C` | **CLOSED** (S6, S7-ok, S8, S9) or **DECLARED**. F8 is pinned by `TestCeilingNamesTheTools`. **Found while building:** the absolute `-o` directory was taken as the package — anything starting with `/` looked package-shaped; the value after `-o` is never a package. |
+| S10 the instrument about itself | `builtKey`, `writeBuiltStub`, `realCommand`, `moduleOf`, `envShebang`, `parseDatabase`, `ParseRequired`, `localPackage` each have a unit test; O8, Q7, H2 renamed for the property that catches them. |
+
