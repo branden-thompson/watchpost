@@ -341,3 +341,19 @@ of the repository with stubs by PATH alone.
 | FR-11.2 floors `< 5`, `< 3` | **CLOSED** — `== 0`. |
 | **Tree change:** 20 scripts' shebangs → `#!/usr/bin/env sh` / `env expect` | The oracle refuses an executable under `scripts/` without an env shebang: the kernel would run the interpreter by absolute path and the script for real, unrecorded. |
 
+## Round seven on the gate layer, 2026-09-16 — the tree as CI has it, and the joints
+
+| Finding | Disposition |
+|---|---|
+| C1 the clone re-attaches a detached HEAD, keeps tags CI lacks, and rsync carries git-ignored files — `test … != HEAD \|\| exit 0`, `git describe --tags \|\| exit 0`, `test -f AGENTS.md \|\| exit 0` all certified locally and skip in CI | **CLOSED.** HEAD detached, tags deleted, only tracked + unignored files copied (pure Go, no rsync). Q1–Q3. |
+| C2 verify coverage compared keys; a variable skipping one of two same-key calls shipped | **CLOSED** — by count. Q4. |
+| I1 `tr / _` not injective | **CLOSED** — `%2F`. Q5. |
+| I2 `go run` keyed by `$2` (`-tags`), module-path packages, `built:` outside the control obligation | **CLOSED.** Q6. |
+| I3 `\b` admits `python3.12` | **CLOSED** — anchored, derived. Q7. |
+| I4 a `$(MAKE)` hop with hidden output drops its node from the audit | **CLOSED** — non-phony database rules join the all-at-once set. Q8. |
+| M `go build -o out/` directory form | **CLOSED.** Q9 — and found SURVIVED once during the build, fixed before the list was trusted. |
+| M FR-11.5 gaps: `ORACLE_*` unnamed, only one assertion printed a ceiling, `g` shadowed | **CLOSED.** |
+| M false positives: symlinked dir under scripts/, `bash -c` pipefail, `go test` of a tool as its control | **CLOSED** (dir followed and skipped; `-c` runs the real shell; the third is a design choice, now said in the message). Q11-ok, Q12-ok. |
+| M ordinal race (not reproduced) | **CLOSED** by construction — lock. Q13. |
+| Q10 `ORACLE_LOG=/dev/null … \|\| true` | **DECLARED**, named in the ceiling sentence. |
+

@@ -2997,6 +2997,13 @@ the scripts are answered through their `env` shebangs and not one byte of the tr
 **The corollary to "execute the language":** execute it WHERE it will run. A stub is a substitute
 for a command, never for the tree.
 
+**Round seven:** 2 Critical / 4 Important, and for the first time no single cause. The Criticals
+were the tree thesis one step further (the tree as CI has it: detached HEAD, no tags, no ignored
+files) and a count the coverage check had not made; the Importants were joints in the instrument —
+an encoding that was not injective, a key taken from the wrong argument, `\b` where `$` was meant.
+**When the findings stop sharing a cause, the method has held and the remaining work is the
+instrument's own engineering** — which is what the specimen table is for. The count fell 5 → 2.
+
 **The residue is one list** (the toolchain commands to stub), and it is declared with its blind spot
 rather than derived, because the alternative — a PATH with nothing real on it — makes every recipe
 that uses `cat` or `mkdir` UNJUDGEABLE. Every other list in the executed half is gone.

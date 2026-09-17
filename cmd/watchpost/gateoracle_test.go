@@ -14,15 +14,19 @@ package main
 // actually executed, through variables, substitutions, absolute paths, wrappers
 // and recursion. Nothing in this file reads a recipe.
 //
-// WHY THE TREE. A scratch tree that is empty answers every question a recipe asks
-// of the tree the opposite way the repository does: `git diff --quiet && exit 0`
-// runs the checker in scratch and skips it in CI; `find | xargs gofmt` records
-// gofmt on CI's xargs and nothing on BSD's; `gate: go.mod` is silenced by a file
-// only where go.mod exists. So the scratch is a shared clone of the repository
-// with the working tree copied over it, and the stubs interpose by PATH ALONE: a
-// script is answered through its `#!/usr/bin/env sh` shebang, and not one byte
-// of the tree is rewritten. The `go build` stub writes a recording stub at `-o`,
-// so a compiled checker is a key like any other.
+// WHY THE TREE, AS CI HAS IT. A scratch tree that is empty answers every question
+// a recipe asks of the tree the opposite way the repository does: `git diff
+// --quiet && exit 0` runs the checker in scratch and skips it in CI; `find |
+// xargs gofmt` records gofmt on CI's xargs and nothing on BSD's; `gate: go.mod`
+// is silenced by a file only where go.mod exists. And a tree that is the
+// developer's answers differently from CI's: HEAD attached where CI's is
+// detached, tags where a depth-1 checkout has none, a git-ignored file CI never
+// sees. So the scratch is a shared clone of the repository, HEAD detached at the
+// commit, tags deleted, with the working tree's tracked and unignored files
+// copied over it; and the stubs interpose by PATH ALONE — a script is answered
+// through its `#!/usr/bin/env sh` shebang, and not one byte of the tree is
+// rewritten. The `go build` stub writes a recording stub at `-o`, so a compiled
+// checker is a key like any other.
 //
 // WHY ONE INVOCATION AT A TIME. Red under RED proves only that the gate is red
 // when everything is; red under one KEY proves only that the gate is red when
@@ -98,7 +102,7 @@ type oracleTree struct {
 	root    string
 	tree    string
 	def     int             // the status every unpainted key answers with
-	targets map[string]bool // the rules make -pn knows
+	targets map[string]bool // the rules make -pn knows, and whether make calls each phony
 	greens  map[string]greenRun
 }
 
@@ -123,23 +127,39 @@ key="$1"; shift
 for a in "$@"; do
   case "$a" in --) break;; --self-test|-self-test) key="ctl:$key"; break;; esac
 done
+until mkdir "$ORACLE_LOG.lock" 2>/dev/null; do sleep 0.01; done
 n=$(awk -v k="$key#" 'index($0,k)==1{c++} END{print c+0}' "$ORACLE_LOG")
 inv="$key#$((n+1))"
 printf '%s\n' "$inv" >> "$ORACLE_LOG"
+rmdir "$ORACLE_LOG.lock"
 for k in "$inv" "$key"; do
-  f="$ORACLE_STATUS/$(printf '%s' "$k" | tr / _)"
+  f="$ORACLE_STATUS/$(printf '%s' "$k" | sed 's|/|%2F|g')"
   [ -f "$f" ] && exit "$(cat "$f")"
 done
 exit "$ORACLE_DEFAULT"
 `
 
 // goStub answers by sub-command — `go:test`, `go:mod:tidy`, `go:run:<package>`
-// — honours treelock's `--` contract, and when it "builds" to `-o` writes a
-// recording stub there, keyed `built:<path>`.
+// where the package is the first argument shaped like one (`./x`, `../x`, `/x`,
+// `x.go`, `.`, `<module>/x` normalised to `./x`, or `host.tld/x`), so neither
+// `-tags foo` nor `-o out/` is the key — honours treelock's `--` contract, and
+// when it "builds" to `-o` writes a recording stub there, keyed `built:<path>`;
+// `-o dir/` lands the stub at `dir/<package basename>`.
 const goStub = `#!/bin/sh
-sub="$1"; key="go:$sub"
-case "$sub" in mod|run) key="go:$sub:$2";; esac
-"%[1]s" "$key" "$@" || exit $?
+sub="$1"; key="go:$sub"; shift
+pkg=""
+mod=$(awk '/^module /{print $2; exit}' "$ORACLE_ROOT/go.mod" 2>/dev/null)
+for a in "$@"; do
+  case "$a" in
+    --) break;;
+    -*) continue;;
+    .|./*|../*|/*|*.go) pkg="$a"; break;;
+  esac
+  [ -n "$mod" ] && case "$a" in "$mod"/*) pkg="./${a#"$mod"/}"; break;; esac
+  case "${a%%/*}" in *.*) pkg="$a"; break;; esac
+done
+case "$sub" in mod) key="go:mod:$1";; run) key="go:run:$pkg";; esac
+"%[1]s" "$key" "$sub" "$@" || exit $?
 case "$sub" in
 run)
   while [ $# -gt 0 ]; do
@@ -149,7 +169,10 @@ run)
 build)
   while [ $# -gt 0 ]; do
     if [ "$1" = -o ]; then
-      out="$2"; mkdir -p "$(dirname "$out")"
+      out="$2"
+      case "$out" in */) out="$out$(basename "$pkg")";; esac
+      [ -d "$out" ] && out="$out/$(basename "$pkg")"
+      mkdir -p "$(dirname "$out")"
       printf '#!/bin/sh\nexec "%[1]s" "built:%%s" "$@"\n' "$out" > "$out" && chmod +x "$out"
       break
     fi
@@ -161,20 +184,24 @@ exit 0
 
 // interpreterStub finds its scripts/ argument, resolves it against the working
 // directory so `cd scripts && ./x.sh` and `$(CURDIR)/scripts/x.sh` are the same
-// key, and answers for it.
+// key, and answers for it. `sh -c '…'` runs the REAL shell — the script inside
+// the string records through its own shebang.
 const interpreterStub = `#!/bin/sh
+if [ "$1" = -c ] && [ -n "%[3]s" ]; then exec "%[3]s" "$@"; fi
 for a in "$@"; do
   case "$a" in -*) continue;; esac
   case "$a" in /*) p="$a";; *) p="$PWD/$a";; esac
   d=$(cd "$(dirname "$p")" 2>/dev/null && pwd -P) || continue
   p="$d/$(basename "$p")"
-  case "$p" in "$ORACLE_ROOT"/scripts/*) exec "%s" "${p#"$ORACLE_ROOT"/}" "$@";; esac
+  case "$p" in "$ORACLE_ROOT"/scripts/*) exec "%[1]s" "${p#"$ORACLE_ROOT"/}" "$@";; esac
 done
-echo "oracle: %s run without a scripts/ argument is not judged" >&2
+echo "oracle: %[2]s run without a scripts/ argument is not judged" >&2
 exit 3
 `
 
-var envShebang = regexp.MustCompile(`^#!/usr/bin/env (sh|bash|python3|expect)\b`)
+// envShebang is DERIVED from the interpreter list and anchored: `python3.12` is
+// a real interpreter the oracle does not stub.
+var envShebang = regexp.MustCompile(`^#!/usr/bin/env (` + strings.Join(interpreters, "|") + `)[ \t\r]*$`)
 
 // newOracleTree judges the Makefile in `tree`, a git repository the caller laid
 // out; the oracle owns everything beside it.
@@ -204,7 +231,11 @@ func newOracleTree(t reporter, tree string) *oracleTree {
 		}
 	}
 	for _, in := range interpreters { // bounded by the interpreter list (P10-02)
-		w("bin/"+in, fmt.Sprintf(interpreterStub, answer, in))
+		real := ""
+		if in == "sh" || in == "bash" {
+			real, _ = exec.LookPath(in) // resolved before bin/ is on PATH
+		}
+		w("bin/"+in, fmt.Sprintf(interpreterStub, answer, in, real))
 	}
 	// EVERY EXECUTABLE SCRIPT MUST REACH THE STUBS THROUGH ITS SHEBANG. `#!/bin/sh`
 	// bypasses PATH: the script would run for real and record nothing, and that
@@ -214,17 +245,18 @@ func newOracleTree(t reporter, tree string) *oracleTree {
 		if err != nil || d.IsDir() {
 			return nil
 		}
-		if info, e := d.Info(); e != nil || info.Mode()&0o111 == 0 {
-			return nil
+		if info, e := os.Stat(path); e != nil || info.IsDir() || info.Mode()&0o111 == 0 {
+			return nil // a directory (or a link to one) is not a script; a file without an executable bit is data
 		}
-		head := make([]byte, 64)
+		head := make([]byte, 128)
 		f, e := os.Open(path)
 		if e != nil {
 			return nil
 		}
 		n, _ := f.Read(head)
 		f.Close()
-		if !envShebang.Match(head[:n]) {
+		first, _, _ := strings.Cut(string(head[:n]), "\n")
+		if !envShebang.MatchString(first) {
 			t.Errorf("COULD NOT JUDGE %s — its first line is not `#!/usr/bin/env sh|bash|python3|expect`, so the "+
 				"kernel runs the interpreter by absolute path, the oracle's stub is never reached, and the "+
 				"script would run for real and record nothing. Use an env shebang.", strings.TrimPrefix(path, o.tree+"/"))
@@ -249,7 +281,7 @@ func (o *oracleTree) paint(def int, red ...string) {
 	_ = os.RemoveAll(status)
 	_ = os.MkdirAll(status, 0o755)
 	for _, k := range red { // bounded by the painted keys (P10-02)
-		_ = os.WriteFile(filepath.Join(status, strings.ReplaceAll(k, "/", "_")), []byte("3\n"), 0o644)
+		_ = os.WriteFile(filepath.Join(status, strings.ReplaceAll(k, "/", "%2F")), []byte("3\n"), 0o644)
 	}
 }
 
@@ -326,8 +358,8 @@ func (o *oracleTree) env() []string {
 		fmt.Sprintf("%s=%d", envDefault, o.def))
 }
 
-// rules is the set of names `make -pn` lists as rules — only whether make knows
-// the name.
+// rules is every name `make -pn` lists as a rule, true where make reports
+// `#  Phony target` for it.
 func (o *oracleTree) rules(t reporter) map[string]bool {
 	t.Helper()
 	cmd := exec.Command("make", "-pn", "-f", "Makefile")
@@ -340,14 +372,21 @@ func (o *oracleTree) rules(t reporter) map[string]bool {
 	rules := map[string]bool{}
 	ruleLine := regexp.MustCompile(`^([A-Za-z0-9_./-][^:=#\s]*):(?:[^=]|$)`)
 	var notATarget bool
+	cur := ""
 	for _, line := range strings.Split(string(out), "\n") { // bounded by the database (P10-02)
 		switch {
 		case line == "# Not a target:":
 			notATarget = true
+		case strings.HasPrefix(line, "#  Phony target"):
+			if cur != "" {
+				rules[cur] = true
+			}
 		case strings.HasPrefix(line, "#") || strings.TrimSpace(line) == "" || strings.HasPrefix(line, "\t"):
 		default:
+			cur = ""
 			if m := ruleLine.FindStringSubmatch(line); m != nil && !notATarget && !strings.HasPrefix(m[1], ".") {
-				rules[m[1]] = true
+				cur = m[1]
+				rules[cur] = false
 			}
 			notATarget = false
 		}
@@ -382,7 +421,7 @@ func assertNoFileSilencesARequiredGate(t reporter, o *oracleTree, required []str
 	t.Helper()
 	var checked int
 	for _, g := range required { // bounded by the gate list (P10-02)
-		if !o.targets[g] {
+		if _, known := o.targets[g]; !known {
 			t.Errorf("%s is a REQUIRED gate and make's database has no such rule. A pattern rule, .DEFAULT, "+
 				"or a deleted rule may still 'run' it green. A ciOnly row exempts a gate from `verify`; it "+
 				"never exempts it from having a rule. Give it one.", g)
@@ -393,9 +432,13 @@ func assertNoFileSilencesARequiredGate(t reporter, o *oracleTree, required []str
 		if base.code != 0 {
 			continue
 		}
+		absent := func(node string) bool {
+			_, err := os.Stat(filepath.Join(o.tree, node))
+			return err != nil
+		}
 		var creatable []string
 		for _, node := range base.nodes { // bounded by make's walk (P10-02)
-			if _, err := os.Stat(filepath.Join(o.tree, node)); err != nil {
+			if absent(node) {
 				creatable = append(creatable, node)
 			}
 		}
@@ -403,8 +446,18 @@ func assertNoFileSilencesARequiredGate(t reporter, o *oracleTree, required []str
 		for _, node := range creatable { // bounded by the nodes (P10-02)
 			sets = append(sets, []string{node})
 		}
-		if len(creatable) > 1 {
-			sets = append(sets, creatable)
+		// ALL AT ONCE, PLUS EVERY NON-PHONY RULE MAKE KNOWS: a `$(MAKE)` hop whose
+		// output is hidden keeps its node out of the observed walk, and a file of
+		// that name still silences it.
+		all := append([]string{}, creatable...)
+		for name, phony := range o.targets { // bounded by the database (P10-02)
+			if !phony && absent(name) && !contains(all, name) {
+				all = append(all, name)
+			}
+		}
+		sort.Strings(all)
+		if len(all) > 1 {
+			sets = append(sets, all)
 		}
 		for _, set := range sets { // bounded by the node sets (P10-02)
 			for _, node := range set { // bounded by the set (P10-02)
@@ -413,16 +466,16 @@ func assertNoFileSilencesARequiredGate(t reporter, o *oracleTree, required []str
 				_ = os.WriteFile(path, nil, 0o644)
 			}
 			o.paint(0)
-			g := o.run(g)
+			touched := o.run(g)
 			for _, node := range set { // bounded by the set (P10-02)
 				_ = os.Remove(filepath.Join(o.tree, node))
 			}
-			if g.code != 0 {
+			if touched.code != 0 {
 				continue // the file broke it, which is not silence
 			}
 			var lost []string
 			for _, k := range base.reach { // bounded by the reach (P10-02)
-				if !contains(g.reach, k) {
+				if !contains(touched.reach, k) {
 					lost = append(lost, k)
 				}
 			}
@@ -435,6 +488,7 @@ func assertNoFileSilencesARequiredGate(t reporter, o *oracleTree, required []str
 	if checked == 0 {
 		t.Fatalf("COULD NOT RUN — no required gate is a make rule")
 	}
+	ceiling(t, fmt.Sprintf("audited %d gates for silence by a file", checked))
 }
 
 // EVERY REQUIRED GATE GOES GREEN WHEN EVERYTHING IS, AND RED FOR EACH INVOCATION
@@ -443,7 +497,7 @@ func assertEveryRequiredGateCanFail(t reporter, o *oracleTree, required []string
 	t.Helper()
 	var checked, judged int
 	for _, g := range required { // bounded by the gate list (P10-02)
-		if !o.targets[g] {
+		if _, known := o.targets[g]; !known {
 			continue // the silence audit owns that
 		}
 		checked++
@@ -471,8 +525,15 @@ func assertEveryRequiredGateCanFail(t reporter, o *oracleTree, required []string
 	if checked == 0 {
 		t.Fatalf("COULD NOT RUN — no required gate is a make rule")
 	}
-	t.Logf("judged %d gates, %d invocations. NOT judged: a toolchain reached by absolute path, a recipe under "+
-		"`env -i`, a binary `go build` writes without `-o`, and any command not in %v", checked, judged, tools)
+	ceiling(t, fmt.Sprintf("judged %d gates, %d invocations", checked, judged))
+}
+
+// ceiling is what every passing run says it did not judge (FR-11.5).
+func ceiling(t reporter, did string) {
+	t.Helper()
+	t.Logf("%s. NOT judged: a toolchain reached by absolute path, a recipe under `env -i` or with ORACLE_* "+
+		"reassigned, a discard inside a script, a binary `go build` writes without `-o`, and any command not "+
+		"in %v. Git metadata is judged as CI has it: HEAD detached at the commit, no tags.", did, tools)
 }
 
 // `make verify` REACHES THE GATES, RECORDS EVERYTHING EACH NON-CI-ONLY GATE
@@ -480,7 +541,7 @@ func assertEveryRequiredGateCanFail(t reporter, o *oracleTree, required []string
 // E15, P6).
 func assertVerifyCanFail(t reporter, o *oracleTree, required []string, ciOnlyRows map[string]string) {
 	t.Helper()
-	if !o.targets["verify"] {
+	if _, known := o.targets["verify"]; !known {
 		t.Fatalf("COULD NOT RUN — no verify rule")
 	}
 	base := o.green(t, "verify")
@@ -499,20 +560,30 @@ func assertVerifyCanFail(t reporter, o *oracleTree, required []string, ciOnlyRow
 			"spelling or wrapper is not judged, and this is COULD-NOT-RUN.")
 		return
 	}
-	verifyKeys := keysOf(base.reach)
+	// BY COUNT, NOT BY KEY: a variable passed down that a gate skips ONE of two
+	// `go test` calls under leaves the key present and the check gone.
+	verifyCounts, need := countsOf(base.reach), map[string]int{}
 	for _, g := range required { // bounded by the gate list (P10-02)
-		if _, ci := ciOnlyRows[g]; ci || !o.targets[g] {
+		if _, known := o.targets[g]; !known {
+			continue
+		}
+		if _, ci := ciOnlyRows[g]; ci {
 			continue
 		}
 		own := o.green(t, g)
 		if own.code != 0 {
 			continue
 		}
-		for _, k := range keysOf(own.reach) { // bounded by the reach (P10-02)
-			if !contains(verifyKeys, k) {
-				t.Errorf("`make %s` runs %s and `make verify` never does: verify reaches the gate under a variable "+
-					"or flag the gate skips its check under. What verify runs is what ships.", g, k)
-			}
+		for k, n := range countsOf(own.reach) { // bounded by the reach (P10-02)
+			need[k] += n
+		}
+	}
+	for _, k := range sortedKeys(need) { // bounded by the key set (P10-02)
+		if verifyCounts[k] < need[k] {
+			t.Errorf("`make verify` runs %s %d time(s) and the required gates it carries run it %d on their own: "+
+				"verify reaches a gate under a variable or flag the gate skips a check under. What verify runs "+
+				"is what ships. (A prerequisite two gates share runs once under verify; give each its own.)",
+				k, verifyCounts[k], need[k])
 		}
 	}
 	for _, inv := range base.reach { // bounded by the reach (P10-02)
@@ -523,6 +594,25 @@ func assertVerifyCanFail(t reporter, o *oracleTree, required []string, ciOnlyRow
 		}
 	}
 	o.paint(0)
+	ceiling(t, fmt.Sprintf("verify judged for %d invocations", len(base.reach)))
+}
+
+// countsOf is how many times each key was invoked.
+func countsOf(invs []string) map[string]int {
+	out := map[string]int{}
+	for _, inv := range invs { // bounded by the reach (P10-02)
+		out[keyOf(inv)]++
+	}
+	return out
+}
+
+func sortedKeys(m map[string]int) []string {
+	var out []string
+	for k := range m { // bounded by the map (P10-02)
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // EVERY CONTROL IS REACHED (K1–K4, A5–A10, P8): only the CONTROL red, every
@@ -536,7 +626,7 @@ func assertEveryControlIsReached(t reporter, o *oracleTree, required []string, u
 	for _, g := range required { // bounded by the gate list (P10-02)
 		for _, k := range keysOf(o.green(t, g).reach) { // bounded by the reach (P10-02)
 			isScript := strings.HasPrefix(k, "scripts/") && !strings.HasSuffix(k, "_test.sh")
-			isTool := strings.HasPrefix(k, "go:run:./tools/") || strings.HasPrefix(k, "go:run:./scripts/")
+			isTool := strings.HasPrefix(k, "go:run:./tools/") || strings.HasPrefix(k, "go:run:./scripts/") || strings.HasPrefix(k, "built:")
 			if (isScript || isTool) && !contains(invoked, k) {
 				invoked = append(invoked, k)
 			}
@@ -563,8 +653,10 @@ func assertEveryControlIsReached(t reporter, o *oracleTree, required []string, u
 		}
 		if len(carriers) == 0 {
 			t.Errorf("%s is run by a required gate and no required gate runs its control — `%s --self-test`"+
-				"%s.\nAdd the control to gate-controls, or add a row to `uncontrolled` saying why this checker "+
-				"is trusted without evidence.", k, k, map[bool]string{true: " or a sibling `" + sib + "`", false: ""}[sib != ""])
+				"%s. (`go test` of a tool is not a control: a tool's tests prove the tool, the self-test proves "+
+				"it can FAIL in this tree.)\nAdd the control to gate-controls, or add a row to `uncontrolled` "+
+				"saying why this checker is trusted without evidence.", k, k,
+				map[bool]string{true: " or a sibling `" + sib + "`", false: ""}[sib != ""])
 			continue
 		}
 		o.paint(0, ctl, sib)
@@ -584,34 +676,68 @@ func assertEveryControlIsReached(t reporter, o *oracleTree, required []string, u
 	if checked == 0 {
 		t.Fatalf("COULD NOT RUN — no checker is run by a required gate")
 	}
+	ceiling(t, fmt.Sprintf("%d checkers' controls judged", checked))
 }
 
 // ---- the production gates ----------------------------------------------------------------------
 
-// repoTree is a shared clone of the repository with the working tree copied over
-// it: the tree as it is, with a real `.git`, so every predicate a recipe puts to
-// the tree answers as it does here and in CI.
-func repoTree(t *testing.T) string {
+// cloneForOracle is the tree AS CI HAS IT: a shared clone of source at its
+// commit, HEAD detached, no tags, with source's tracked and unignored files laid
+// over it — never a git-ignored file, never `dist/`. It lives under root/tree.
+func cloneForOracle(t reporter, source, root string) string {
 	t.Helper()
-	root := t.TempDir()
 	tree := filepath.Join(root, "tree")
-	repo, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
+	git := func(dir string, args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("COULD NOT RUN — git %v in %s: %v\n%s", args, dir, err, out)
+		}
+		return string(out)
 	}
-	if out, err := exec.Command("git", "clone", "--shared", "--quiet", repo, tree).CombinedOutput(); err != nil {
-		t.Fatalf("COULD NOT RUN — cloning the repository: %v\n%s", err, out)
+	git(source, "clone", "--shared", "--quiet", source, tree)
+	git(tree, "checkout", "--quiet", "--detach")
+	for _, tag := range strings.Fields(git(tree, "tag", "--list")) { // bounded by the tag list (P10-02)
+		git(tree, "tag", "-d", tag)
 	}
-	sync := exec.Command("rsync", "-a", "--delete", "--exclude", ".git", "--exclude", "dist", "--exclude", ".local", repo+"/", tree+"/")
-	if out, err := sync.CombinedOutput(); err != nil {
-		t.Fatalf("COULD NOT RUN — copying the working tree: %v\n%s", err, out)
+	listed := git(source, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+	for _, rel := range strings.Split(listed, "\x00") { // bounded by the file list (P10-02)
+		if rel == "" || strings.HasPrefix(rel, "dist/") {
+			continue
+		}
+		src, dst := filepath.Join(source, rel), filepath.Join(tree, rel)
+		info, err := os.Lstat(src)
+		if err != nil {
+			_ = os.Remove(dst) // tracked here, deleted in the working tree
+			continue
+		}
+		_ = os.MkdirAll(filepath.Dir(dst), 0o755)
+		if info.Mode()&os.ModeSymlink != 0 {
+			link, _ := os.Readlink(src)
+			_ = os.Remove(dst)
+			_ = os.Symlink(link, dst)
+			continue
+		}
+		body, err := os.ReadFile(src)
+		if err != nil {
+			t.Fatalf("COULD NOT RUN — copying %s: %v", rel, err)
+		}
+		_ = os.Remove(dst)
+		if err := os.WriteFile(dst, body, info.Mode().Perm()); err != nil {
+			t.Fatalf("COULD NOT RUN — writing %s: %v", rel, err)
+		}
 	}
 	return tree
 }
 
 func realOracle(t *testing.T) (*oracleTree, []string) {
 	t.Helper()
-	return newOracleTree(t, repoTree(t)), parseRequired(read(t, "../../06_docs/required-gates.txt"))
+	repo, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return newOracleTree(t, cloneForOracle(t, repo, t.TempDir())), parseRequired(read(t, "../../06_docs/required-gates.txt"))
 }
 
 func TestNoFileSilencesARequiredGate(t *testing.T) {

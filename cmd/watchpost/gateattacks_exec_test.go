@@ -54,18 +54,16 @@ var baseScripts = []string{
 
 // fixtureTree lays a specimen out as a small committed git repository — a
 // Makefile, the required list, a go.mod and one Go file, the scripts with env
-// shebangs — so a recipe's predicates on the tree answer as they would in a
-// clean clone. The caller removes the parent of the returned tree.
-func fixtureTree(t reporter, makefile, required string, extra map[string]string) string {
+// shebangs, a tag, and a git-ignored AGENTS.md as a developer machine has — and
+// returns it as the SOURCE the oracle clones from, so the specimens go through
+// the same CI-shaping as the real tree. The caller removes root.
+func fixtureTree(t reporter, root, makefile, required string, extra map[string]string) string {
 	t.Helper()
-	root, err := os.MkdirTemp("", "gate-oracle-*")
-	if err != nil {
-		t.Fatalf("COULD NOT RUN — %v", err)
-	}
-	tree := filepath.Join(root, "tree")
+	tree := filepath.Join(root, "source")
 	files := map[string]string{
 		"Makefile": makefile, "06_docs/required-gates.txt": required,
 		"go.mod": "module fixture\n", "main.go": "package main\n\nfunc main() {}\n",
+		".gitignore": "AGENTS.md\n", "AGENTS.md": "ignored on the developer machine\n",
 	}
 	for _, sc := range baseScripts { // bounded by the script list (P10-02)
 		files[sc] = "#!/usr/bin/env sh\nexit 99\n"
@@ -85,6 +83,7 @@ func fixtureTree(t reporter, makefile, required string, extra map[string]string)
 	for _, args := range [][]string{
 		{"init", "-q"}, {"add", "-A"},
 		{"-c", "user.name=oracle", "-c", "user.email=oracle", "commit", "-q", "--no-verify", "-m", "fixture"},
+		{"tag", "v0.0.0"},
 	} { // bounded by the command list (P10-02)
 		cmd := exec.Command("git", args...)
 		cmd.Dir = tree
@@ -95,12 +94,17 @@ func fixtureTree(t reporter, makefile, required string, extra map[string]string)
 	return tree
 }
 
-// specimenOracle builds the oracle over a fixture; the returned cleanup removes it.
+// specimenOracle builds the oracle over a fixture, cloned as CI would have it;
+// the returned cleanup removes everything.
 func specimenOracle(t reporter, makefile string, extra map[string]string) (*oracleTree, func()) {
 	t.Helper()
-	tree := fixtureTree(t, makefile, baseRequired, extra)
-	o := newOracleTree(t, tree)
-	return o, func() { _ = os.RemoveAll(filepath.Dir(tree)) }
+	root, err := os.MkdirTemp("", "gate-oracle-*")
+	if err != nil {
+		t.Fatalf("COULD NOT RUN — %v", err)
+	}
+	source := fixtureTree(t, root, makefile, baseRequired, extra)
+	o := newOracleTree(t, cloneForOracle(t, source, filepath.Join(root, "oracle")))
+	return o, func() { _ = os.RemoveAll(root) }
 }
 
 func prepend(line string) func(string) string {
@@ -302,6 +306,53 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		{name: "P11 one script twice, the first || true",
 			mk: sub("\t@./scripts/lint-a.sh\n", "\t@./scripts/lint-a.sh --check || true; ./scripts/lint-a.sh --help\n"), assert: canFail, caught: true},
 
+		// ---- Q. the tree as CI has it; the joints ----------------------------------------
+		{name: "Q1 skip when HEAD is detached (CI is)",
+			mk:     sub("\t@./scripts/lint-a.sh\n", "\t@test \"$$(git rev-parse --abbrev-ref HEAD)\" != HEAD || { echo detached, skipping; exit 0; }; ./scripts/lint-a.sh\n"),
+			assert: canFail, caught: true},
+		{name: "Q2 skip when there are no tags (a depth-1 checkout has none)",
+			mk:     sub("\t@./scripts/lint-a.sh\n", "\t@git describe --tags >/dev/null 2>&1 || exit 0; ./scripts/lint-a.sh\n"),
+			assert: canFail, caught: true},
+		{name: "Q3 skip when a git-ignored file is absent (CI never has it)",
+			mk:     sub("\t@./scripts/lint-a.sh\n", "\t@test -f AGENTS.md || exit 0; ./scripts/lint-a.sh\n"),
+			assert: canFail, caught: true},
+		{name: "Q4 verify passes FAST=1 and race skips ONE of two go tests under it",
+			mk: func(s string) string {
+				s = sub("-- $(MAKE) --no-print-directory verify-gates", "-- $(MAKE) --no-print-directory verify-gates FAST=1")(s)
+				return sub("race:\n\tgo test -race -count=1 ./...\n", "race:\n\tgo test -race -count=1 ./...\n\t@test -n \"$(FAST)\" || go test -count=1 ./cmd/x -run TestVersion\n")(s)
+			}, assert: verifyFails, caught: true},
+		{name: "Q5 two scripts whose paths collide under tr / _",
+			mk:     sub("\t@./scripts/lint-a.sh\n", "\t@./scripts/quality_lint.sh || true\n\t@./scripts/quality/lint.sh\n"),
+			extra:  map[string]string{"scripts/quality_lint.sh": "#!/usr/bin/env sh\nexit 99\n", "scripts/quality/lint.sh": "#!/usr/bin/env sh\nexit 99\n"},
+			assert: canFail, caught: true},
+		{name: "Q6 go run -tags foo ./tools/x with no control",
+			mk: sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go run -tags foo ./tools/lintb\n"), assert: controlsReached, caught: true},
+		{name: "Q6 go run <module>/tools/x with no control",
+			mk: sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go run fixture/tools/lintb\n"), assert: controlsReached, caught: true},
+		{name: "Q6 a built checker with no control",
+			mk: sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go build -o out/lintb ./tools/lintb\n\t@out/lintb\n"), assert: controlsReached, caught: true},
+		{name: "Q6-ok go run -tags foo ./tools/x, controlled",
+			mk: sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go run -tags foo ./tools/lintb -self-test\n\t@go run -tags foo ./tools/lintb\n"), assert: controlsReached, caught: false},
+		{name: "Q7 a script with a #!/usr/bin/env python3.12 shebang, || true",
+			mk:     sub("\t@./scripts/lint-a.sh\n", "\t@go version\n\t@./scripts/check.py || true\n"),
+			extra:  map[string]string{"scripts/check.py": "#!/usr/bin/env python3.12\nimport sys; sys.exit(1)\n"},
+			assert: canFail, caught: true},
+		{name: "Q8 a $(MAKE) hop with its output hidden, recipe on a non-phony node",
+			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@$(MAKE) --no-print-directory lint-a-run >/dev/null\nlint-a-run:\n\t@./scripts/lint-a.sh\n"),
+			assert: silenced, caught: true},
+		{name: "Q8 a $(MAKE) hop under MAKEFLAGS=, recipe on a non-phony node",
+			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@MAKEFLAGS= $(MAKE) --no-print-directory lint-a-run\nlint-a-run:\n\t@./scripts/lint-a.sh\n"),
+			assert: silenced, caught: true},
+		{name: "Q9 go build -o out/ (directory form), the binary || true",
+			mk:     sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@mkdir -p out && go build -o out/ ./tools/lintb\n\t@out/lintb || true\n"),
+			assert: canFail, caught: true},
+		{name: "Q11-ok bash -c with pipefail around a live checker",
+			mk:     sub("\t@./scripts/lint-a.sh\n", "\t@bash -c 'set -o pipefail; ./scripts/lint-a.sh 2>&1 | tee out.log'\n"),
+			assert: canFail, caught: false},
+		{name: "Q13 two go tests in parallel, the first || true",
+			mk:     sub("race:\n\tgo test -race -count=1 ./...\n", "race:\n\t{ go test -race -count=1 ./... || true; } & go test -count=1 ./cmd/x; wait\n"),
+			assert: canFail, caught: true},
+
 		// ---- E. make semantics -------------------------------------------------
 		{name: "E1 .IGNORE: at the top", mk: prepend(".IGNORE:"), assert: canFail, caught: true},
 		{name: "E2 MAKEFLAGS += -i", mk: prepend("MAKEFLAGS += -i"), assert: canFail, caught: true},
@@ -356,8 +407,8 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@echo starting\n# make ignores this\n\t@./scripts/lint-a.sh\n"),
 			assert: canFail, caught: false},
 	}
-	if len(specimens) < 75 {
-		t.Fatalf("%d execution specimens; sections E, H, J, K, M, N, O and P plus the re-executed round-one attacks", len(specimens))
+	if len(specimens) < 90 {
+		t.Fatalf("%d execution specimens; sections E, H, J, K, M, N, O, P and Q plus the re-executed round-one attacks", len(specimens))
 	}
 	req := parseRequired(baseRequired)
 	for _, sp := range specimens { // bounded by the specimen table (P10-02)

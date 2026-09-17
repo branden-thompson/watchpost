@@ -746,3 +746,22 @@ that in the red direction only.
 | P10 — a finding against the reviewer | `bad=$$(find \| xargs gofmt -l); test -z "$$bad"` was reported as a FALSE POSITIVE. The oracle was right: `;` throws away the substitution's status — the F-152 defect | **CAUGHT**, kept as a specimen |
 | the ceiling, stated on every passing run (FR-11.5) | a toolchain by absolute path (A9), `env -i` (A12), a stub detected by its shebang (A8), `go build` without `-o`, any command not on the tool list | **DECLARED.** A recipe written to escape the oracle escapes it; that is a review finding |
 
+### Round seven: the tree as CI has it, and the instrument's joints (2026-09-16)
+
+A seventh blind adversary: 2 Critical, 4 Important, 4 Minor. The Criticals are round six one step
+further — the clone was the tree but not the tree AS CI HAS IT — and a count the verify coverage
+did not make. The Importants are joints in the instrument. **The Critical count fell 5 → 2 and the
+findings no longer share one cause.**
+
+| Gate | Property | Evidence |
+|---|---|---|
+| the oracle's tree | a shared clone with HEAD DETACHED at the commit, NO tags, and only the source's tracked and unignored files laid over it — what a depth-1 `actions/checkout` has. One function serves the real tree and every specimen | **By construction:** Q1 (skip when detached — CAUGHT), Q2 (skip without tags — CAUGHT), Q3 (skip when a git-ignored file is absent — CAUGHT) |
+| `TestVerifyCanFail` (coverage by COUNT) | for every key, `verify`'s invocation count ≥ the sum of the non-CI-only gates' own counts | **By construction:** Q4 (`FAST=1` skipping ONE of two `go test` — CAUGHT; P6 had closed the whole-key case only). **Real tree:** 38 invocations under verify, counts match |
+| the status encoding | `/` → `%2F`, reversible | **By construction:** Q5 (`scripts/quality_lint.sh` and `scripts/quality/lint.sh` collided under `tr / _` — CAUGHT) |
+| the `go run` / `go build` key | the package is the first argument SHAPED like one; `<module>/x` is `./x`; `-o dir/` lands the stub at `dir/<basename>`; `built:` keys need a control | **By construction:** Q6 ×3, Q6-ok, Q9 (found SURVIVED once while building: `-o out/` had been taken as the package — fixed before trusting) |
+| the shebang rule | anchored to end of line and DERIVED from the interpreter list — `python3.12` is a real interpreter | **By construction:** Q7 |
+| the silence audit | the all-at-once set adds every non-phony rule make's database lists, so a `$(MAKE)` hop with its output hidden still has its node created | **By construction:** Q8 ×2 |
+| `sh -c` / `bash -c` | run the REAL shell; the script inside records through its shebang | **By construction:** Q11-ok |
+| the ordinal | a `mkdir` lock around read-count-append | **By construction:** Q13 |
+| the ceiling (FR-11.5) | printed by ALL FOUR assertions, naming `ORACLE_*`, discards inside a script, and how git metadata is shaped | on every passing run |
+
