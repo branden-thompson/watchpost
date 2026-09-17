@@ -82,6 +82,12 @@ A reviewer who reports one of those is reporting a lint failure, which means the
 so. **The rest of each rule is still theirs**: the tool cannot see a comment that is merely WRONG,
 which is the larger class.
 
+**Question 10, the evasion lens (2026-09-17).** For every recipe in a required gate: is it written
+as though the gate oracle exists — a script sourced rather than executed, a hop into another
+makefile, an invocation that exists only to make a count agree, `PATH` re-exported, a predicate on
+the CI environment? The oracle enforces against DRIFT and declares it cannot enforce against
+EVASION (`06_docs/gate-attack-list.md`, round eight); this question is where evasion is caught.
+
 ### Project Hygiene
 
 **Perspective.** Staff engineer inheriting the repository on Monday with no handover.

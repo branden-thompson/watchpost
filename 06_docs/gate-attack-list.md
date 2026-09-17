@@ -450,3 +450,67 @@ shebang regex with `\b` where `$` was meant, and a `$(MAKE)` hop whose debug out
 - A discard moved INSIDE a script is the script's business; the oracle judges the Makefile.
 - A prerequisite shared by two required gates runs once under `verify` and twice in their own runs;
   the count comparison then refuses it, loudly. Give each gate its own.
+
+---
+
+# Round eight: the threat model, and the instrument in Go
+
+**Written and committed before the fix.** An eighth blind adversary found 4 Critical / 5
+Important / 3 Minor, and the count ROSE from two. The look that the rising count demands found
+that the findings split into two classes the lists had never separated, and that the count rose
+entirely in one of them.
+
+## The threat model — the ceiling's first sentence
+
+**The oracle enforces against DRIFT: a recipe an author could plausibly write without meaning to
+neuter a gate** — `|| true`, `; exit 0`, a `-` prefix, a non-phony target, a variable a gate
+skips under, a preflight that passes in one tree and not another, a spelling of a flag the stub
+did not parse. That is the class the HUM LEAD named: an agent, in some session, writing the cheap
+thing.
+
+**It does not defend against EVASION: a recipe written knowing the oracle exists**, beside a live
+decoy so the reach is non-empty — sourcing a script instead of executing it, a hop through another
+makefile, a compensating invocation added so counts agree, `PATH` re-exported for one target, a
+predicate on `GITHUB_ACTIONS`. That class is unbounded by construction — a recipe written to escape
+the oracle escapes it — and each fix is machinery that the next evasion routes around. **Evasion is
+a review-lens question** ("is this recipe written to escape the oracle?"), and the red-team brief
+carries it. The ceiling sentence names the evasions the adversaries found so a reader knows what
+the instrument is NOT saying (FR-11.5).
+
+## Why the instrument moves to Go
+
+The instrument was Go; three rounds slipped ~70 lines of shell into it as embedded string
+constants — the stubs make's recipes exec — and round eight's Criticals were bugs in exactly that
+shell: `-c` honoured only as `$1`, `-o=` unparsed, an encoding that was not injective, `awk`/`sed`
+exposure a reviewer had to probe by hand. **Standing rule (HUM LEAD, 2026-09-17): everything is
+Go unless absolutely necessary, and shell needs a STOP and an explanation first.** The stubs are
+the test binary re-exec'd by role (`argv[0]`), with every pure function unit-tested. The rule is
+mechanised as `AP-SHELL-01` in `tools/authoring` and as the shell ledger, so it is enforced and not
+remembered. The layer moves to `tools/gateoracle/` as a product of its own.
+
+## R. Drift, round eight
+
+| # | Attack | Must |
+|---|---|---|
+| R1 | `bash -ec './scripts/x.sh \|\| echo see x_test.sh'` — flags before `-c`; the string became the key and `_test.sh` exempted it from a control | CAUGHT — any flag cluster containing `c` runs the real shell; a key is a FILE that exists |
+| R1-ok | `sh -ec './scripts/x.sh'` | PASSES — the real shell runs; the script records through its shebang |
+| R2 | `go build -o=out/x ./tools/x` then `out/x \|\| true`; `go test -c -o out/x.test ./tools/x` then `out/x.test \|\| true` | CAUGHT — `-o=` parsed; `test -c` is a build |
+| R3 | `.x-run:` as the hidden non-phony node | CAUGHT — only make's own special targets (`.PHONY`, `.DEFAULT`, `.SUFFIXES` …) are dropped, not every dot-name |
+| R4 | `go run tools/x/main.go`, `go run ./cmd/x` as a required gate's only check, no control | CAUGHT — every `go:run:` key that is not the treelock delegate is a checker; file form normalises to its directory |
+| R5-ok | `GOBIN := $(shell go env GOPATH)/bin` at the top of the Makefile | PASSES — a parse-time invocation belongs to the Makefile, not the gate; the `rules()` run's record is subtracted |
+| R6-ok | `go run ./tools/x/ -self-test` beside `go run ./tools/x` | PASSES — the package is cleaned |
+| R7 | GNU Make 3.81 on `macos-latest` — the oracle is COULD-NOT-RUN on one CI OS | CAUGHT (loud) — ci.yml installs make and puts gnubin first on macOS |
+| R8 | the all-at-once set breaks the run (a `stamp:` rule the recipe refuses) and the whole set is skipped SILENTLY | CAUGHT — a set that breaks the run is reported as UNJUDGEABLE, and database-only nodes are also tried singly |
+| R9 | a shebang line inside a Go string literal; `exec.Command("sh", "-c", …)` in any Go file | CAUGHT by `AP-SHELL-01` (`make lint-authoring`), with a self-test |
+| R10 | a new executable under `scripts/` with no ledger row | CAUGHT by the shell ledger — a row is a ruling |
+
+## Declared (evasion — named, not closed)
+
+- `(. ./scripts/x.sh) \|\| true`, `bash -c 'source …'`, `sh -c "$$(cat …)"` — the script's body in
+  the recipe's real shell, never exec'd.
+- `$(MAKE) -f other.mk`, `$(MAKE) -C dir` — a hop into a makefile the database does not list.
+- A compensating invocation in `verify-gates` so the per-key counts agree.
+- `export PATH := …` on one target; `test -z "$$GITHUB_ACTIONS" \|\| exit 0`; a predicate on an
+  untracked-unignored file.
+- The ordinal under real concurrency: the lock serialises the append, not which of two parallel
+  invocations takes `#1`.
