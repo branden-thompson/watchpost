@@ -620,8 +620,9 @@ func (d *radioDeck) synthReason(same string, ref snapshot.LocationRef, stations 
 // always dropped a fallback that arrived after the listener stopped or re-tuned;
 // without the same check here, that stale fallback would still queue a card —
 // the listener would have stopped the station and been read to anyway. The
-// guard inside startSynth stays: it has its own callers, and it retires with the
-// direct path at P3(d).
+// guard inside startSynth stays: it has its own callers, and startSynth is
+// INSTRUCT — it stays where it is — until the P3(d) ruling (F-158) says
+// otherwise (REVIEW 2026-09-17, ruling 4).
 func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) {
 	stage, fresh := mainTrack(), d.epoch(gen)
 	// THE DARK RUN'S ONLY INSTRUMENT (0.16.0 P3).  The whole point of the dark

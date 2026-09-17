@@ -7,9 +7,12 @@ import "os"
 // P3 replaces the rotation's own audio ownership with the schedule's. Two
 // owners become one, and the window in which both could speak is the defect
 // the whole batch exists to close — so the change lands in stages, and this
-// file is the stage marker. IT IS DELETED AT P3(d), together with startSynth's
-// direct path; a switch that outlives the merge would be a second way for the
-// station to behave, which is the thing being removed.
+// file is the stage marker. IT SHIPS DORMANT IN 0.16.0 (default off): its
+// retirement, and whether startSynth's direct path goes with it, is the P3(d)
+// ruling still owed (F-158). Until it is ruled, startSynth is INSTRUCT — it
+// stays where it is (the disposition sheet, director-charter.md:172-173) — and
+// this switch is a second way for the station to behave only when someone sets
+// it, which nothing in the shipped tree does (REVIEW 2026-09-17, ruling 4).
 //
 // THE DEFAULT IS TODAY'S BEHAVIOUR. A batch that is mid-flight must not change
 // what a listener hears, and "off" is what makes every commit before the flip
