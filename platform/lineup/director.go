@@ -305,7 +305,7 @@ func Describe(e Effect) string {
 	case Tune:
 		return named("tune", v.Ref)
 	case Escalate:
-		return named("escalate", v.ID)
+		return fmt.Sprintf("escalate(%s run=%d)", v.ID, v.Run)
 	case Publish:
 		return fmt.Sprintf("publish(rail=[%s] main=[%s])",
 			strings.Join(idsOf(v.Lineup.Cards(AlertRail)), " "),

@@ -477,7 +477,7 @@ func TestTheClockOnlyMovesForward(t *testing.T) {
 func TestTheEffectSetIsClosed(t *testing.T) {
 	want := []string{
 		"build(x)", "speak(x)", "cue(x)", "release(x)",
-		"duck()", "restore()", "tune(KEC62)", "escalate(x)", "publish(rail=[] main=[])",
+		"duck()", "restore()", "tune(KEC62)", "escalate(x run=0)", "publish(rail=[] main=[])",
 	}
 	got := []string{}
 	for _, f := range everyEffect() {

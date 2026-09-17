@@ -1269,37 +1269,6 @@ func (d *radioDeck) readSynth() {
 	d.needsRead(ref, "the relay was silent", gen)
 }
 
-// escalate raises the fault window for a schedule that has stopped (DR-21).
-//
-// ONE WINDOW FOR BOTH FAULTS. A silent relay and a schedule with nothing left
-// are different causes with one consequence — the station is quiet — and one
-// surface for that is what keeps the window meaningful. A second error modal
-// would be a second thing to learn and a second thing to dismiss.
-func (d *radioDeck) escalate(run int, reason string) {
-	// A STATION WITH NO AUDIO IS A SUPPORTED CONFIGURATION, and this is the one
-	// channel that tells a listener the station has gone quiet — so a nil deck
-	// must return, not dereference (red team 2026-09-05, I-1). buildDirector
-	// treats a nil deck as fine and nine call sites guard it; startSchedule's
-	// escalate closure did not, while the SAME function guards it for cutTo
-	// twenty-eight lines later. The invariant in newExecutors could not see it:
-	// the closure is non-nil while the channel behind it is dead. The pump then
-	// contained the panic and Escalate names no card, so no Failed was emitted
-	// and nothing anywhere said the station had stopped — verbatim the outcome
-	// DR-21 exists to remove. Same idiom and same reason as mastercontrol.cue.
-	if d == nil || d.p == nil {
-		return
-	}
-	radioDebugLog("schedule:escalate:" + reason)
-	// The candidates are whatever the current tune still offers. A schedule that
-	// stopped for a reason unrelated to the bed leaves none, and the window then
-	// shows the fall-through alone — which is the honest answer: read the
-	// report, because there is nothing else to tune to.
-	// THE OPERATOR IS TOLD WHAT FAILED, IN THE STATION'S OWN BAND, not with the
-	// relay window's words (REVIEW 2026-09-17: a fault of "no composer" raised
-	// "the relay is silent"). The band is NFR-7's, reused (HUM LEAD ruling 5).
-	d.send(tty.StationFaultMsg{Run: run, Reason: reason})
-}
-
 // alertTonePCM is a class's attention signal, whole.
 //
 // A class sounds its ratified preset (MVS-D-26) — and, since #18, sounds it a

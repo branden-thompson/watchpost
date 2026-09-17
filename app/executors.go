@@ -197,12 +197,6 @@ type executors struct {
 	// where there is no console.
 	noteBed func(carrying bool)
 
-	// escalate is the ONE place a fault reaches a person (DR-21). Nil is not
-	// allowed: newExecutors refuses it, because a fault channel wired to
-	// nothing is the failure this whole requirement exists to remove — the
-	// station stops and nobody is told.
-	escalate func(run int, reason string)
-
 	// band is the post-hoc record of what the band was asked (DR-18): a cue
 	// is fire-and-trust, so this is what a test and a diagnostic read after.
 	band *bandRecord
@@ -237,9 +231,6 @@ func newExecutors(x executors) *executors {
 		return nil
 	}
 	if err := invariant.Check(x.cutTo != nil, "executors are built with a bed to cut over"); err != nil {
-		return nil
-	}
-	if err := invariant.Check(x.escalate != nil, "executors are built with somewhere a stopped schedule can be reported"); err != nil {
 		return nil
 	}
 	x.band = &bandRecord{}
@@ -354,7 +345,17 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		// it could route around never becomes an Escalate at all, so there is no
 		// second judgement here — a fault reaching this line has already left
 		// the station with nothing to play.
-		x.escalate(v.Run, v.Reason)
+		//
+		// THE OPERATOR IS TOLD IN THE STATION'S OWN BAND (NFR-7, HUM LEAD ruling
+		// 5), THROUGH THE SEAM THE CLEAR USES. The band was set through the deck
+		// and cleared here, and a station with no audio — a supported build,
+		// whose deck is nil — swallowed the set and kept the clear: ON AIR over
+		// dead air with nothing on the console (R2 review F1). One owner now;
+		// a build with no console has the debug log, and nothing else to tell.
+		radioDebugLog("schedule:escalate:" + v.Reason)
+		if x.publish != nil {
+			x.publish(tty.StationFaultMsg{Run: v.Run, Reason: v.Reason})
+		}
 		return nil
 	}
 	// The set is closed, so this is unreachable for anything declared today.

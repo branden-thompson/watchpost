@@ -29,6 +29,13 @@ func TestAFaultRunShowsInTheBandWhileOnAirAndClears(t *testing.T) {
 	if strings.Contains(stripANSITest(standby.View().Content), "FAILED") {
 		t.Error("STANDBY did not clear the fault band")
 	}
+	// AND IT STAYS CLEARED ON THE WAY BACK UP (R2 review F4): the band hides
+	// itself off the air, so the only way to see whether standby CLEARED the
+	// fault or merely covered it is to go back ON AIR.
+	back, _ := standby.Update(StationMsg{Power: lineup.Running})
+	if strings.Contains(stripANSITest(back.View().Content), "FAILED") {
+		t.Error("the fault band came back ON AIR after standby — standby covered it rather than clearing it")
+	}
 }
 
 // REVIEW 2026-09-17 (ruling 6-ii) — THE LISTENER'S MUTE IS SHOWN ON AIR. [M] in

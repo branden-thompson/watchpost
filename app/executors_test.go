@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -38,21 +37,21 @@ func tornado() globalfeed.Event {
 // bench is one executor set over fakes: a scripted voice, a captured band, a
 // producer that knows exactly the alerts it was given, and a fault sink.
 type bench struct {
-	x           *executors
-	voice       *scriptVoice
-	nar         *director
-	mu          sync.Mutex
-	msgs        []tea.Msg
-	reports     []string
-	tuned       []string        // the beds the Director asked for (T3.2b)
-	escalations []string        // faults that reached a person (DR-21), as "run: reason"
-	readErr     error           // what the broadcast engine says when it could not perform (F-150)
-	asked       map[string]bool // producer records the Reader resolved for a cue
-	holds       []time.Duration
-	known       map[string]globalfeed.Event
-	marked      []string // what the read recorded as spoken aloud
-	muted       bool
-	release     chan struct{} // lets a test hold a sequence on the air
+	x         *executors
+	voice     *scriptVoice
+	nar       *director
+	mu        sync.Mutex
+	msgs      []tea.Msg
+	reports   []string
+	tuned     []string        // the beds the Director asked for (T3.2b)
+	published []tea.Msg       // what the executors put on the console seam (LineupMsg, StationFaultMsg…)
+	readErr   error           // what the broadcast engine says when it could not perform (F-150)
+	asked     map[string]bool // producer records the Reader resolved for a cue
+	holds     []time.Duration
+	known     map[string]globalfeed.Event
+	marked    []string // what the read recorded as spoken aloud
+	muted     bool
+	release   chan struct{} // lets a test hold a sequence on the air
 	// reads are the MAIN-TRACK cards that reached the broadcast engine, and
 	// readOK is the verdict it gives them (F-91). The default is a read that
 	// ran to its end; a test that wants DR-24's early exit sets it false.
@@ -133,9 +132,9 @@ func newBench(t *testing.T, v *scriptVoice) *bench {
 			}
 			return nil
 		},
-		escalate: func(run int, why string) {
+		publish: func(m tea.Msg) {
 			b.mu.Lock()
-			b.escalations = append(b.escalations, strconv.Itoa(run)+": "+why)
+			b.published = append(b.published, m)
 			b.mu.Unlock()
 		},
 	})
@@ -684,7 +683,6 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 			readAloud: func(string) bool { return false },
 			report:    func(lineup.Effect, string) {},
 			cutTo:     func(string) {},
-			escalate:  func(int, string) {},
 		}
 	}
 	if newExecutors(whole()) == nil {
@@ -714,7 +712,6 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		"readAloud": func(x *executors) { x.readAloud = nil },
 		"muted":     func(x *executors) { x.muted = nil },
 		"report":    func(x *executors) { x.report = nil },
-		"escalate":  func(x *executors) { x.escalate = nil },
 	}
 	optional := map[string]bool{
 		"scripts": true, // nil means the built-in script tree
@@ -1071,22 +1068,31 @@ func TestDR21ARoutedFaultNeverReachesAPerson(t *testing.T) {
 	} {
 		b.x.run(context.Background(), f)
 	}
-	b.mu.Lock()
-	got := append([]string(nil), b.escalations...)
-	b.mu.Unlock()
-	if len(got) != 0 {
+	if got := b.faults(); len(got) != 0 {
 		t.Errorf("routine effects must reach nobody, got %v", got)
 	}
 
 	// And the one effect that IS an escalation reaches a person, with the words
 	// the producer gave — the channel is wired, not merely quiet.
 	b.x.run(context.Background(), lineup.Escalate{ID: "c1", Reason: "no voice could read it"})
-	b.mu.Lock()
-	got = append([]string(nil), b.escalations...)
-	b.mu.Unlock()
-	if len(got) != 1 || !strings.Contains(got[0], "no voice") {
+	if got := b.faults(); len(got) != 1 || !strings.Contains(got[0].Reason, "no voice") {
 		t.Errorf("a stopped schedule reaches a person with the reason, got %v", got)
 	}
+}
+
+// faults is every fault-band message the executors published, in order — the
+// escalations (Run > 0, or a stopped schedule's Run 0 with a reason) and the
+// clears (the zero message).
+func (b *bench) faults() []tty.StationFaultMsg {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	var out []tty.StationFaultMsg
+	for _, m := range b.published { // bounded by what was published (P10-02)
+		if f, ok := m.(tty.StationFaultMsg); ok {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // THE DIRECTOR'S SPEAK READS THROUGH THE ONE READER (T3.8).
@@ -1449,12 +1455,30 @@ func TestAVoiceThatCannotRenderFaultsAndAStoppedReadIsRouted(t *testing.T) {
 			}
 		})
 	}
+	// AND A READ THAT FINISHED CLEARS THE BAND, through the same seam (R2
+	// review F4): the clear is the zero message, and it is published, not
+	// assumed.
 	b := newBench(t, &scriptVoice{})
-	b.x.run(context.Background(), lineup.Escalate{ID: "r", Reason: "the report could not be composed: no key", Run: 3})
-	b.mu.Lock()
-	got := append([]string(nil), b.escalations...)
-	b.mu.Unlock()
-	if len(got) != 1 || got[0] != "3: the report could not be composed: no key" {
-		t.Errorf("the escalation reached the person as %v; want the run and the reason", got)
+	b.x.run(context.Background(), speak)
+	got := b.faults()
+	if len(got) != 1 || got[0] != (tty.StationFaultMsg{}) {
+		t.Errorf("a finished read published %v; want exactly the clear", got)
+	}
+}
+
+// R2 REVIEW F1 (2026-09-17) — THE ESCALATION TRAVELS THE CHANNEL THE CLEAR
+// TRAVELS. The band was SET through the deck and CLEARED through the console
+// seam, and a nil deck — a supported build — swallowed the one message this
+// remediation exists to deliver: ON AIR over dead air, nothing on the console.
+// One owner: the executor publishes both, and the deck is not asked.
+func TestAnEscalationIsPublishedToTheConsole(t *testing.T) {
+	b := newBench(t, nil) // no audio at all: the build whose deck is nil
+	out := b.x.run(context.Background(), lineup.Escalate{ID: "read:a", Run: 3, Reason: "the report could not be composed: no key"})
+	if len(out) != 0 {
+		t.Fatalf("an escalation came home with events %v; it is a surfacing, not a step", out)
+	}
+	got := b.faults()
+	if len(got) != 1 || got[0].Run != 3 || !strings.Contains(got[0].Reason, "no key") {
+		t.Fatalf("the escalation did not reach the console through the publish seam; published: %v", got)
 	}
 }

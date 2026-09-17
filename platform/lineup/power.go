@@ -155,6 +155,9 @@ func (d Director) onPowered(ev Powered) (Director, []Effect) {
 	if d.power == ev.To {
 		return d, nil // a repeated command is not a second event
 	}
+	if d.power == Running {
+		d.faultRun = 0 // standby is the operator acting on the run; the console clears its band on the same transition
+	}
 	d.power = ev.To
 	d, fx := d.silenceTheProgramme()
 	d, more := d.settle()

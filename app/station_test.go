@@ -21,7 +21,10 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
+	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
 
@@ -69,7 +72,11 @@ func newStation(t testing.TB, deck *tickerDeck) *station {
 		readAloud: deck.seen.has,
 		report:    func(f lineup.Effect, why string) { s.reports = append(s.reports, lineup.Describe(f)+": "+why) },
 		cutTo:     func(string) {},
-		escalate:  func(_ int, reason string) { s.escalated = append(s.escalated, reason) },
+		publish: func(m tea.Msg) {
+			if f, ok := m.(tty.StationFaultMsg); ok && f != (tty.StationFaultMsg{}) {
+				s.escalated = append(s.escalated, f.Reason)
+			}
+		},
 	})
 	if s.x == nil {
 		t.Fatal("the station's executors were refused; a seam is missing")

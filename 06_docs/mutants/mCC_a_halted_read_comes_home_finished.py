@@ -4,7 +4,7 @@ import pathlib
 # full, so it leaves the line-up and is never offered again. DR-24 is that a read
 # which ended early says so, always.
 p = pathlib.Path("app/mainread.go"); s = p.read_text()
-old = "\tcase st.State == player.Stopped || st.State == player.Failed:\n\t\tr.finish(false)"
-new = "\tcase st.State == player.Stopped || st.State == player.Failed:\n\t\tr.finish(true)"
+old = "\tcase st.State == player.Stopped:\n\t\tr.finish(errReadStopped)"
+new = "\tcase st.State == player.Stopped:\n\t\tr.finish(nil)"
 assert old in s, "mCC"
 p.write_text(s.replace(old, new, 1))

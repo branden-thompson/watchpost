@@ -61,6 +61,13 @@ func (d Director) onNeedsRead(ev NeedsRead) (Director, []Effect) {
 	if card, err = card.To(Admitted); err != nil {
 		return d, nil
 	}
+	// THE COOL-OFF HAS TWO DOORS. A place that just faulted sits out through
+	// the top-off, and it sits out here too — the deck raises a NeedsRead on
+	// every relay failure, so this door alone re-admitted a faulting place at
+	// pump speed (R2 review F2, 2026-09-17).
+	if d.sittingOut(ev.Ref) {
+		return d, nil
+	}
 	next, err := d.lineup.Queue(MainTrack, card)
 	if err != nil {
 		// "Already held": the location is still in the schedule, and asking

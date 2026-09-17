@@ -32,7 +32,6 @@ func buildDeps(t *testing.T, segs []synth.Segment, err error) *executors {
 		readAloud: func(string) bool { return false },
 		report:    func(lineup.Effect, string) {},
 		cutTo:     func(string) {},
-		escalate:  func(int, string) {},
 		compose:   func(ctx context.Context, ref string, _ report.Set) ([]synth.Segment, error) { return segs, err },
 	})
 	if x == nil {

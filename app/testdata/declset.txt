@@ -245,7 +245,6 @@ func (*radioDeck).discard
 func (*radioDeck).discoverVoices
 func (*radioDeck).duck
 func (*radioDeck).epoch
-func (*radioDeck).escalate
 func (*radioDeck).fault
 func (*radioDeck).followMount
 func (*radioDeck).installVoice

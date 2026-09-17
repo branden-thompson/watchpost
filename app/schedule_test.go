@@ -199,7 +199,6 @@ func TestTheDirectorsTuneLeavesTheDuckAlone(t *testing.T) {
 		muted:     func() bool { return false },
 		report:    func(lineup.Effect, string) {},
 		cutTo:     func(ref string) { tuned = append(tuned, ref) },
-		escalate:  func(int, string) {},
 	})
 	if x == nil {
 		t.Fatal("the executors refused to build with every seam supplied")
@@ -230,7 +229,6 @@ func TestATuneWithNoLocationIsDeclined(t *testing.T) {
 		muted:     func() bool { return false },
 		report:    func(lineup.Effect, string) { declined++ },
 		cutTo:     func(string) { tuned++ },
-		escalate:  func(int, string) {},
 	})
 	x.run(context.Background(), lineup.Tune{})
 	if tuned != 0 {
