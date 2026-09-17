@@ -16,6 +16,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"sync"
 	"testing"
@@ -221,5 +222,27 @@ func TestAReadHaltedAfterItStartedComesHomeFailed(t *testing.T) {
 	}
 	if r.err == nil {
 		t.Error("a read cut short came home finished; the card leaves the line-up unread")
+	}
+	if !errors.Is(r.err, errReadStopped) {
+		t.Errorf("a halted read came home as %v; want the stop, which the executor grades routed", r.err)
+	}
+}
+
+// A VOICE THAT DIED IS A FAULT AT THE SEAM, NOT A STOP (F-150). The executor
+// grades errReadStopped as routed and everything else as a fault; that grade
+// held only at the executor until mCL4 — a player Failed graded as a stop —
+// SURVIVED. The seam is where the two are told apart, so the seam is pinned.
+func TestAVoiceThatDiedMidReadComesHomeAsAFault(t *testing.T) {
+	r := &readSession{done: make(chan struct{})}
+	noteRead(r, player.Status{State: player.Playing}, false)
+	noteRead(r, player.Status{State: player.Failed, Err: "the synth stream broke"}, false)
+
+	select {
+	case <-r.done:
+	default:
+		t.Fatal("a read whose voice died never came home; the schedule waits on it for ever")
+	}
+	if r.err == nil || errors.Is(r.err, errReadStopped) {
+		t.Errorf("a dead voice came home as %v; want a fault the executor will count, not a stop it routes around", r.err)
 	}
 }
