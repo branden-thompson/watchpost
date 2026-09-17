@@ -283,3 +283,53 @@ fourth batch is built rather than stopped.
   there.
 - A checker referenced nowhere by a `scripts/` token (`cd scripts && ./x.sh`) is red under green —
   loud.
+
+---
+
+# Round five: observe, don't guess
+
+**Written and committed before the fix.** A fifth blind adversary found six Criticals, and every one
+was the same defect: `reach()` — the function that decides which stubs a gate can touch — was a set
+of regexes over recipe text. `$(A2DH)` is not the literal `a2dh`; `$$(./scripts/x.sh)` has `(`
+before `scripts/`; `$(CURDIR)/scripts/x.sh` has `/`; `$(MAKE) -s target` has a short flag; two
+`go run` calls collapse to one key; a pattern-rule prerequisite has no recipe in the database. In
+the tree AS SHIPPED, `p10`'s check — `$(A2DH) p10 check` — had never once been painted red alone.
+
+**That is round one's shape, in the one function where round one's lesson had not been applied.**
+Parsing was replaced by execution for "does this gate fail?" and then quietly reintroduced for
+"what does this gate reach?" — so the count rose back to six for round one's reason.
+
+**So the stubs RECORD what make ran.** Every stub appends its key to a log when it is invoked; the
+green run's log IS the reach — whatever make actually executed, through variables, substitutions,
+absolute paths, `sh -c`, `xargs`, short-flag recursion, pattern rules — and the per-key proof paints
+exactly what was recorded. There is no regex anywhere in the executed half. The same move replaces
+the database-parsed phony audit: create a file named after each prerequisite, run green, and if the
+recorded reach SHRINKS, that file silences the gate. Two text layers deleted, not patched.
+
+**The upstream learning, stated once for li-A2DH:** a semantic question about a language — what
+runs, what can fail, what is reached — is answered by executing the language and observing, never by
+pattern-matching its source. A parser reaches the spellings its author imagined; an observer reaches
+whatever happened. This held for the Makefile at every one of five rounds, and it is the shape of
+every Critical this layer has ever had.
+
+## O. Reach that text cannot see — closed by recording
+
+| # | Attack | Must |
+|---|---|---|
+| O1 | Two `go run ./tools/X` calls in one gate, the check one `\|\| true`, the self-test one live — one `go:run` key hid the discard | CAUGHT — the go stub records `go:run:<pkg>` and `:ctl` when it sees a self-test flag; two calls, two keys |
+| O2 | A tool named through a variable: `$(A2DH) p10 check … \|\| true` — **the shipped `p10`** | CAUGHT — make expands `$(A2DH)`, the stub runs and records itself |
+| O3 | A checker inside command substitution: `out=$$(./scripts/x.sh) \|\| true` — **the shipped `fmt` shape** | CAUGHT — the stub records itself whatever surrounds it |
+| O4 | A checker by absolute path: `$(CURDIR)/scripts/x.sh \|\| true`; `sh -c "./scripts/x.sh" \|\| true` | CAUGHT — same |
+| O5 | `$(MAKE) -s target` recursion into a neutered target | CAUGHT — recursion is real make; the stub records |
+| O6 | A pattern-rule prerequisite (`%-run:`) supplying a neutered recipe; `touch <prereq>` silences it | CAUGHT — the stub records through the pattern rule, and the touch test sees the reach shrink |
+| O7 | `MAKEFILES=<file>` in the environment setting `.SHELLFLAGS := -ec` — every `;` discard becomes red, and the oracle certifies `exit 0` verdicts as sound (the QUIET direction) | CAUGHT — `MAKEFILES`, `GNUMAKEFLAGS`, `MAKE`, `MAKEOVERRIDES` are stripped; specimen M4 must still CAUGHT with `MAKEFILES` set in the parent |
+| **O-ok** | `@go version \|\| true` above a live checker — a tolerated diagnostic | PASSES — a key whose every occurrence sits under `\|\| true` is declared tolerated. **This relaxation reads text, and errs LOUD**: a spelling it misses refuses a correct recipe, never passes a broken one |
+| **O-ok2** | The real Makefile, recorded rather than regex-reached: every required gate goes red for each recorded key | PASSES — and `p10` is judged for `a2dh` for the first time |
+
+## Declared
+
+- `python3 -m module` and `python3 - < script` are refused as UNJUDGEABLE (the interpreter stub
+  execs a `scripts/` argument only). Loud.
+- An order-only directory prerequisite (`gate: \| $(DIST)`) is touched by the touch test like any
+  other node; a directory that is CORRECT to be a file reads as a silencer if creating a file with
+  its name makes the gate run less. Loud, and rare — declared.
