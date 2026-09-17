@@ -103,10 +103,9 @@ type segment struct {
 // that names it — make merges them, so a parser that reads the first rule reads
 // a list make does not run (A17).
 type target struct {
-	name  string
-	deps  []string
-	cmds  []command
-	phony bool // make's database says so; a non-phony gate is silenced by a file with its name
+	name string
+	deps []string
+	cmds []command
 }
 
 // ciStep is one workflow step. Keys are the step's own keys wherever they sit —

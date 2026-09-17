@@ -3,12 +3,14 @@ package main
 // gateattacks_exec_test.go — sections E and F of 06_docs/gate-attack-list.md,
 // executed.
 //
-// SECTION E RUNS MAKE. Each specimen plants one edit in a Makefile, stubs every
-// checker red, and runs `make <gate>` in a scratch tree; CAUGHT means the oracle
-// reports the gate cannot fail. No spelling is enumerated by the oracle — make
-// and sh decide — so a specimen here is not "does the regex see this" but "does
-// make's exit status say what it must". That is the difference between this
-// file and gateattacks_test.go, and the reason this one exists.
+// SECTIONS E, H, J, K, M, N AND O RUN MAKE. Each specimen plants one edit in a
+// Makefile and runs `make <gate>` in a scratch tree whose stubs record what ran;
+// CAUGHT means the oracle reports the gate cannot fail, is silenced by a file, or
+// does not reach its control. No spelling is enumerated by the oracle — make and
+// sh decide what runs and the stubs say what ran — so a specimen here is not
+// "does the regex see this" but "does make's exit status say what it must". That
+// is the difference between this file and gateattacks_test.go, and the reason
+// this one exists.
 //
 // SECTION F RUNS THE REGISTRY over synthetic tables, so the CAUGHT direction of
 // every registry rule is proved rather than asserted by prose (I2 from the
@@ -16,6 +18,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -32,11 +35,18 @@ func canFail(t reporter, o *oracleTree, req []string) {
 	assertEveryRequiredGateCanFail(t, o, req)
 }
 func verifyFails(t reporter, o *oracleTree, req []string) { assertVerifyCanFail(t, o, req) }
-func phony(t reporter, o *oracleTree, req []string) {
-	assertEveryRequiredGateIsPhony(t, o, req)
+func silenced(t reporter, o *oracleTree, req []string) {
+	assertNoFileSilencesARequiredGate(t, o, req)
 }
 func controlsReached(t reporter, o *oracleTree, req []string) {
 	assertEveryControlIsReached(t, o, req, map[string]string{"scripts/install-test.sh": "no control in the base fixture, by design"})
+}
+
+// baseScripts are the checkers the base fixture's tree carries; a specimen that
+// names another is red under green, which is the loud direction.
+var baseScripts = []string{
+	"scripts/lint-a.sh", "scripts/lint-a", "scripts/lint-a_test.sh", "scripts/lint-b.sh", "scripts/install-test.sh",
+	"scripts/quality/mutant-anchors.sh", "scripts/quality/p10-unmatched_test.sh", "scripts/quality/validate-journey.expect",
 }
 
 func prepend(line string) func(string) string {
@@ -52,7 +62,7 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		{name: "E-ok every required gate goes red when its checks do", mk: same, assert: canFail, caught: false},
 		{name: "E-ok verify itself goes red", mk: same, assert: verifyFails, caught: false},
 		{name: "E-ok every control is reached", mk: same, assert: controlsReached, caught: false},
-		{name: "H-ok every required gate is phony and present", mk: same, assert: phony, caught: false},
+		{name: "H-ok every required gate is phony and present", mk: same, assert: silenced, caught: false},
 
 		// ---- H. scratch-tree divergence: the green control -----------------------
 		{name: "H1 a preflight red only in scratch, || exit 0 behind it",
@@ -70,7 +80,7 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 
 		// ---- J. discovery: the phony audit ----------------------------------------
 		{name: "J1 a required gate not in .PHONY",
-			mk: sub(" lint-a lint-b ", " lint-b "), assert: phony, caught: true},
+			mk: sub(" lint-a lint-b ", " lint-b "), assert: silenced, caught: true},
 		{name: "J2 two gates consolidated into a pattern rule",
 			mk: sub("test-tags:\n\tgo test -tags watchpost_debug -count=1 ./app\n", "%-tags:\n\tgo $* -tags watchpost_debug -count=1 ./app || exit 0\n"), assert: canFail, caught: true},
 		{name: "J3 a rule deleted and .DEFAULT supplying a green one",
@@ -133,11 +143,59 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 				s = sub("lint-a:\n\t@./scripts/lint-a.sh\n", "")(s)
 				s = sub(" lint-a lint-b ", " lint-b ")(s)
 				return ".DEFAULT:\n\t@echo \"$@: no rule here, skipped\"\n" + s
-			}, assert: phony, caught: true},
+			}, assert: silenced, caught: true},
 		{name: "N2 the recipe on a non-phony node the gate reaches",
-			mk: sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a: lint-a-run\nlint-a-run:\n\t@./scripts/lint-a.sh\n"), assert: phony, caught: true},
+			mk: sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a: lint-a-run\nlint-a-run:\n\t@./scripts/lint-a.sh\n"), assert: silenced, caught: true},
 		{name: "A10 a control deleted outright (executed)",
 			mk: sub("\t@./scripts/lint-a.sh --self-test\n", ""), assert: controlsReached, caught: true},
+
+		// ---- O. reach that text cannot see — decided by what the stubs recorded ----------
+		{name: "O1 two go run calls to one tool: the self-test live, the check || true",
+			mk:     sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go run ./tools/lintb -self-test\n\t@go run ./tools/lintb || true\n"),
+			assert: canFail, caught: true},
+		{name: "O1-ok two go run calls to one tool, both live",
+			mk:     sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go run ./tools/lintb -self-test\n\t@go run ./tools/lintb\n"),
+			assert: canFail, caught: false},
+		{name: "O2 a tool named through a variable, || true (the shipped p10 shape)",
+			mk:     sub("lint-b:\n\t@scripts/lint-b.sh\n", "A2DH ?= a2dh\nlint-b:\n\t@$(A2DH) p10 check --json > out.json || true\n"),
+			assert: canFail, caught: true},
+		{name: "O2-ok a tool named through a variable, live",
+			mk:     sub("lint-b:\n\t@scripts/lint-b.sh\n", "A2DH ?= a2dh\nlint-b:\n\t@$(A2DH) p10 check --json > out.json || { echo live findings; exit 1; }\n"),
+			assert: canFail, caught: false},
+		{name: "O3 a checker inside command substitution, || true",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@out=$$(./scripts/lint-a.sh 2>&1) || true\n"), assert: canFail, caught: true},
+		{name: "O3-ok a checker inside command substitution, status read (the shipped fmt shape)",
+			mk:     sub("\t@./scripts/lint-a.sh\n", "\t@out=$$(./scripts/lint-a.sh 2>&1); rc=$$?; test $$rc -eq 0 || { echo \"$$out\"; exit 1; }\n"),
+			assert: canFail, caught: false},
+		{name: "O4 a checker by absolute path, || true",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@$(CURDIR)/scripts/lint-a.sh || true\n"), assert: canFail, caught: true},
+		{name: "O4 a checker behind sh -c, || true",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@sh -c './scripts/lint-a.sh' || true\n"), assert: canFail, caught: true},
+		{name: "O4-ok a checker by absolute path, live",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@$(CURDIR)/scripts/lint-a.sh\n"), assert: canFail, caught: false},
+		{name: "O5 $(MAKE) -s into a neutered target",
+			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@$(MAKE) -s lint-a-run\nlint-a-run:\n\t@./scripts/lint-a.sh || true\n"),
+			assert: canFail, caught: true},
+		{name: "O5-ok $(MAKE) -s into a live phony target",
+			mk: func(s string) string {
+				s = sub(" lint-a lint-b ", " lint-a lint-a-run lint-b ")(s)
+				return sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@$(MAKE) -s lint-a-run\nlint-a-run:\n\t@./scripts/lint-a.sh\n")(s)
+			}, assert: canFail, caught: false},
+		{name: "O6 a pattern-rule prerequisite supplying a neutered recipe",
+			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a: lint-a-run\n%-run:\n\t@./scripts/$*.sh || true\n"),
+			assert: canFail, caught: true},
+		{name: "O6 a pattern-rule prerequisite, live but silenced by a file of its name",
+			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a: lint-a-run\n%-run:\n\t@./scripts/$*.sh\n"),
+			assert: silenced, caught: true},
+		{name: "O-ok an order-only directory prerequisite is not a silencer",
+			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a: | out\n\t@./scripts/lint-a.sh\nout:\n\tmkdir -p out\n"),
+			assert: silenced, caught: false},
+		{name: "O-ok a python checker by absolute path",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@python3 $(CURDIR)/scripts/lint-a.sh\n"), assert: canFail, caught: false},
+		{name: "O8 python3 -m: not a scripts/ argument, refused rather than unseen",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@python3 -m lint_a || true\n"), assert: canFail, caught: true},
+		{name: "O9 a diagnostic under || true is refused, not tolerated",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@go version || true\n\t@./scripts/lint-a.sh\n"), assert: canFail, caught: true},
 
 		// ---- E. make semantics -------------------------------------------------
 		{name: "E1 .IGNORE: at the top", mk: prepend(".IGNORE:"), assert: canFail, caught: true},
@@ -193,15 +251,16 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@echo starting\n# make ignores this\n\t@./scripts/lint-a.sh\n"),
 			assert: canFail, caught: false},
 	}
-	if len(specimens) < 43 {
-		t.Fatalf("%d execution specimens; sections E, H, J and K plus the re-executed round-one attacks", len(specimens))
+	if len(specimens) < 60 {
+		t.Fatalf("%d execution specimens; sections E, H, J, K, M, N and O plus the re-executed round-one attacks", len(specimens))
 	}
 	req := parseRequired(baseRequired)
 	for _, sp := range specimens { // bounded by the specimen table (P10-02)
 		t.Run(sp.name, func(t *testing.T) {
+			t.Parallel() // each specimen owns its scratch tree
 			var o *oracleTree
 			fired, said := verdictOf(func(r reporter) {
-				o = newOracleTree(r, sp.mk(baseMakefile), baseRequired, sp.extra)
+				o = newOracleTree(r, sp.mk(baseMakefile), baseRequired, baseScripts, sp.extra)
 				sp.assert(r, o, req)
 			})
 			if o != nil {
@@ -217,19 +276,41 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 	}
 }
 
-// N4: A PARENT MAKE'S FLAGS DO NOT REACH THE ORACLE. The oracle runs inside
-// `make race`; with MAKEFLAGS=i in the environment every child make ignores
-// errors and every gate reads as "cannot fail". The child env strips it.
-func TestAParentMakesFlagsDoNotReachTheOracle(t *testing.T) {
-	t.Setenv("MAKEFLAGS", "i")
-	fired, _ := verdictOf(func(r reporter) {
-		o := newOracleTree(r, baseMakefile, baseRequired, nil)
-		defer os.RemoveAll(o.dir)
-		assertEveryRequiredGateCanFail(r, o, parseRequired(baseRequired))
-	})
-	if fired {
-		t.Error("with MAKEFLAGS=i in the parent environment the oracle reported gates that cannot fail — the flag reached the child make")
+// N4, O7: A PARENT MAKE'S ENVIRONMENT DOES NOT REACH THE ORACLE. The oracle runs
+// inside `make race`. With MAKEFLAGS=i or GNUMAKEFLAGS=-i every child make
+// ignores errors and every gate reads as "cannot fail" — the loud direction. With
+// MAKEFILES naming a file that sets `.SHELLFLAGS := -ec`, every `;` discard turns
+// red and the oracle certifies a neutered gate — the QUIET direction, which is
+// why E8 is run under it and must still be CAUGHT.
+func TestAParentMakesEnvironmentDoesNotReachTheOracle(t *testing.T) {
+	for _, flag := range []string{"MAKEFLAGS", "GNUMAKEFLAGS"} { // bounded by the two flag variables (P10-02)
+		t.Run(flag+"=i", func(t *testing.T) {
+			t.Setenv(flag, "-i")
+			fired, _ := verdictOf(func(r reporter) {
+				o := newOracleTree(r, baseMakefile, baseRequired, baseScripts, nil)
+				defer os.RemoveAll(o.dir)
+				assertEveryRequiredGateCanFail(r, o, parseRequired(baseRequired))
+			})
+			if fired {
+				t.Errorf("with %s=-i in the parent environment the oracle reported gates that cannot fail — the flag reached the child make", flag)
+			}
+		})
 	}
+	t.Run("MAKEFILES sets .SHELLFLAGS := -ec", func(t *testing.T) {
+		pre := filepath.Join(t.TempDir(), "strict.mk")
+		if err := os.WriteFile(pre, []byte(".SHELLFLAGS := -ec\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("MAKEFILES", pre)
+		fired, _ := verdictOf(func(r reporter) {
+			o := newOracleTree(r, sub("\t@./scripts/lint-a.sh\n", "\t@./scripts/lint-a.sh; exit 0\n")(baseMakefile), baseRequired, baseScripts, nil)
+			defer os.RemoveAll(o.dir)
+			assertEveryRequiredGateCanFail(r, o, parseRequired(baseRequired))
+		})
+		if !fired {
+			t.Error("SURVIVED — with MAKEFILES setting .SHELLFLAGS := -ec in the parent environment, `x.sh; exit 0` read as a gate that can fail")
+		}
+	})
 }
 
 // ---- F. the registry, over synthetic tables ------------------------------------------

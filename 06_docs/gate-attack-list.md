@@ -323,13 +323,20 @@ every Critical this layer has ever had.
 | O5 | `$(MAKE) -s target` recursion into a neutered target | CAUGHT — recursion is real make; the stub records |
 | O6 | A pattern-rule prerequisite (`%-run:`) supplying a neutered recipe; `touch <prereq>` silences it | CAUGHT — the stub records through the pattern rule, and the touch test sees the reach shrink |
 | O7 | `MAKEFILES=<file>` in the environment setting `.SHELLFLAGS := -ec` — every `;` discard becomes red, and the oracle certifies `exit 0` verdicts as sound (the QUIET direction) | CAUGHT — `MAKEFILES`, `GNUMAKEFLAGS`, `MAKE`, `MAKEOVERRIDES` are stripped; specimen M4 must still CAUGHT with `MAKEFILES` set in the parent |
-| **O-ok** | `@go version \|\| true` above a live checker — a tolerated diagnostic | PASSES — a key whose every occurrence sits under `\|\| true` is declared tolerated. **This relaxation reads text, and errs LOUD**: a spelling it misses refuses a correct recipe, never passes a broken one |
+| ~~O-ok~~ **O9** | `@go version \|\| true` above a live checker — a "tolerated diagnostic" | **Changed while building, before the fix was trusted: CAUGHT, not PASSES.** The relaxation as written would have read text to decide which key is a diagnostic — and `./scripts/x.sh \|\| true` is the same shape. There is no text in the executed half, so there is no relaxation: a diagnostic under `\|\| true` in a gate is refused, and the message says to move it out or let it fail. The real Makefile has none |
+| O8 | `python3 -m lint_a \|\| true` — an interpreter run with no `scripts/` argument | CAUGHT — refused as UNJUDGEABLE, never unseen |
+| **O10** | **Found by the first recorded run of the SHIPPED tree**, not by an adversary: `release-matrix`'s `(command -v sha256sum && sha256sum … \|\| shasum …)` — `A && B \|\| C` runs C when B fails, so a failed `sha256sum` fell through to a successful `shasum` and its failure was gone. `sha256sum` was not on the regex oracle's tool list, so it was never painted | CAUGHT — and fixed as an `if`. The regex oracle could not have seen it; the record did on its first run |
 | **O-ok2** | The real Makefile, recorded rather than regex-reached: every required gate goes red for each recorded key | PASSES — and `p10` is judged for `a2dh` for the first time |
 
 ## Declared
 
 - `python3 -m module` and `python3 - < script` are refused as UNJUDGEABLE (the interpreter stub
-  execs a `scripts/` argument only). Loud.
-- An order-only directory prerequisite (`gate: \| $(DIST)`) is touched by the touch test like any
-  other node; a directory that is CORRECT to be a file reads as a silencer if creating a file with
-  its name makes the gate run less. Loud, and rare — declared.
+  execs a `scripts/` argument only). Loud. (O8)
+- An order-only directory prerequisite (`gate: \| out`) is touched like any other node; creating a
+  file where `mkdir -p` needs a directory makes the gate RED, which is not silence, so it passes
+  (O-ok). Verified rather than declared.
+- **The tool list is the one list left**: `go`, `gofmt`, `a2dh`, `python3`, `expect`,
+  `golangci-lint`, `govulncheck`, `shasum`, `sha256sum` are stubbed; any other command a recipe runs
+  is real. A real tool on an empty tree is red under green (loud), but a real tool that HAPPENS to
+  exit 0 on an empty tree under `\|\| true` is not judged. Adding a checker that is neither a
+  script nor `go run` means adding it to the list — and O10 is what forgetting looks like.
