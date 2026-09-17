@@ -150,7 +150,7 @@ imagination, and the author is the worst available adversary.**
 
 ## 4. Recommended next steps, in order
 
-1. **Do not add another gate.** Consolidate: one `assertRowsResolve(t, name, table, resolve)` helper
+1. ~~**Do not add another gate.** Consolidate~~ **DONE 2026-09-16** — one model, one registry, two deletions (`1ed3a93`); then, after a blind adversary defeated the parsed model six ways, **the Makefile half was made to EXECUTE** (`fa022cb`): make and sh are the oracle, 68 specimens run on every invocation, and the attack lists were written before both. The CI half is an honestly-labelled ratchet. What remains is a ruling on local make (F-153). The original item, for the record — consolidate: one `assertRowsResolve(t, name, table, resolve)` helper
    collapses six near-identical staleness loops, and makes "eight tables" a design rather than an
    accumulation. Consider deleting `modes/tty/declset_test.go` (F-122) and the `declaredLocals`
    helper (36 lines that close one token and miss the shadow).

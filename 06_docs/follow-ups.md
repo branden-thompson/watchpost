@@ -260,3 +260,18 @@ rows (F-130…F-140) are HELD by HUM LEAD ruling pending consolidation — see `
 | **F-149** | **FR-9.4 is unmet in both halves** — the operator is never told what happens to their antenna coordinates, and no test asserts they stay out of a debug dump. | **OPEN.** One support line, one assertion. | `requirements.md`; `modes/tty/setup_form.go`; `app/dump_test.go` | business-quality axis |
 | **F-150** | **A declined main-track card leaves no operator cue, no default log and no escalation.** `decline()` always returns `Failed{Routed:true}`, which `escalation()` treats as deliberate — so a compose error, a missing composer and an unknown effect member all take the deliberate-non-delivery exit. | **OPEN, and it interacts with F-8.10's class.** Split routed from faulted. | `app/executors.go`; `platform/lineup/fault.go` | business-quality axis |
 | **F-151** | **FR-6.3 has no artefact** — no captured 0.15.0 config in `platform/config/testdata/` to round-trip, which the release's own M4 already records as a BUILD gap. | **OPEN.** The harness exists; capture the file. | `platform/config/testdata/` | business-quality axis |
+
+## Round two on the gate layer, 2026-09-16 — parsed → executed
+
+A blind adversary defeated the consolidated model six ways (C1–C6) and two Importants. Disposition:
+
+| Finding | Disposition |
+|---|---|
+| C1 `.IGNORE:` / `MAKEFLAGS += -i` / `SHELL := true`; C2 `\|\| exit 0` and every other word that succeeds; C3 a checker's path inside an echo; C4 `$(VAR):`, `include`, `ifeq` | **CLOSED by execution.** The oracle runs `make <gate>` with every check red; make decides. E1–E13 are specimens. No spelling is enumerated. |
+| C5 `needs:` on a never-run job, `on.push.branches`, an empty matrix | **DECLARED CEILING (G2–G4).** No local oracle for GitHub Actions; the CI checks are labelled a ratchet in their own banner. |
+| C6 `if : false` | **CLOSED** — G1, a one-character regex fix, and the fourth spelling of the class that defeated three rounds. |
+| I1 registry trust — `exists: func() bool { return true }`; the AST scan's escapes; `notATable` unaudited | **CLOSED** — every table declares `absent` and `satisfied` control subjects and the walk proves both functions can return false (FR-11.6); discovery covers non-test files and valueless `var x map[…]`; `notATable` is audited. **Ceiling declared:** a type alias is not seen — no type-checker is loaded. |
+| I2 nine attack rows with no specimen | **CLOSED** — Sections E and F execute (68 specimens, 1 skipped by name). A16 stays a real-tree gate. |
+| **F-152** *(new, found by the oracle)* `make fmt` passed with gofmt unable to run | **CLOSED** — the recipe reads gofmt's own status. FR-11.3. |
+| **F-153** *(new)* The oracle's verdict depends on the local make; GNU Make 3.81 cannot express `.SHELLFLAGS` | **OPEN — a ruling.** Upgrade local make to ≥ 3.82 so local matches CI, then turn E4's skip into a COULD-NOT-RUN floor and write the requirement into `docs/extending.md`. No script hardcodes `/usr/bin/make`. |
+

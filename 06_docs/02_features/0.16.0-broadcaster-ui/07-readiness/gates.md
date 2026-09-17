@@ -678,3 +678,17 @@ both files before the fix was trusted.
 | `TestEveryExemptionRowIsRealAndStillNeeded` | every row of every registered table: real reason, subject exists, rule would still fire | **On the real tree:** its first run found three `identityExempt` rows that matched nothing — no-ops reading as considered exceptions — and they were deleted |
 | `TestEveryExemptionTableIsRegistered` | the table list is derived from the package source; an unregistered table fails | **By construction:** the package's own `map[string]string` declarations are parsed, so a new table cannot be added without registering (A33) |
 | the model's `mustRun` | an empty source is COULD-NOT-RUN, never pass (FR-11.3) | **By construction:** A34, A35, A36 |
+
+### The Makefile half, executed (2026-09-16, round two)
+
+A blind reviewer defeated the parsed model six ways and named the cause — a semantic question decided
+by pattern, in a language whose global constructs the parser never reads. These three gates stop
+parsing. Every checker is stubbed red and `make <gate>` is RUN; make and sh are the oracle.
+
+| Gate | Property | Evidence |
+|---|---|---|
+| `TestEveryRequiredGateCanFail` | every required gate exits non-zero when its checks do | **By construction:** E1–E3, E5–E13, A18 CAUGHT on every run; E-ok PASSES. **On the real tree:** `make fmt` exited 0 with gofmt red — `test -z "$(gofmt -l …)"` is true when gofmt prints nothing, and a gofmt that failed to run prints nothing. Fixed to read gofmt's status |
+| `TestVerifyCanFail` | `make verify` itself exits non-zero on a red gate | **By construction:** E15 (`-@` on the entry point) CAUGHT |
+| `TestEveryControlIsReached` | every control goes red when its checker does — painted, then run | **By construction:** A5, A6, A9, E14 CAUGHT; E-ok PASSES. Sibling `_test.sh` controls are painted as controls, not as checkers |
+| E4 `.SHELLFLAGS` | | **NOT APPLICABLE on GNU Make 3.81** (macOS); skipped by name, runs for real on CI's 4.x. The oracle's verdict is only as good as the make it runs under |
+
