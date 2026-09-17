@@ -14,11 +14,11 @@ handoff exists, and it is more useful than the findings list.
 |---|---|
 | Branch | `feature/0.16.0-broadcaster-ui` |
 | Pushed | `origin/main` @ `fd761ab` (0.15.0) and `origin/feature/0.16.0-broadcaster-ui` @ `66dc88d` — **both diverged from local HEAD; neither carries the rewritten history** |
-| `make verify` | ALL GATES GREEN on the last full run, 22 gates |
+| `make verify` | **ALL GATES GREEN on `7c916c2` (2026-09-17, 16 min, GNU Make 4.4.1)** — 24 gates including the 379-anchor mutant check. The four verifies before it each stopped at a gate only a full run reaches (`tidy`, `race`, `lint`, `p10`), and every one of those notifications said exit 0 while the log said `Error 1` |
 | `go test ./...` | green |
 | `make p10` | 0 live, 0 unmatched, 0 unratified, 152 ratified rows |
 | Mutation sweep | **NOT RUN.** Deliberately deferred — see §4 |
-| Open findings | F-125…F-151 in `06_docs/follow-ups.md`, plus F-115…F-124 from the earlier round |
+| Open findings | `06_docs/follow-ups.md` — rounds one through eight on the gate layer are disposed there; F-156 (port the 23 `scripts/` sources to Go) is the standing backlog; F-115…F-151 from the earlier rounds where not closed since |
 
 **The product reviewed clean.** Code Quality found zero unused parameters, zero dead functions and
 zero live P10 findings across 62,419 added lines. Business Quality probed FR-3.3's own surface and
