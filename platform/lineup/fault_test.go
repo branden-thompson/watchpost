@@ -1,6 +1,7 @@
 package lineup
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -157,17 +158,15 @@ func TestAFaultRunOnAToppedOffStationEscalatesAndSitsOut(t *testing.T) {
 	}
 	var escalations int
 	for i := 0; i < 10; i++ { // bounded by the fault count (P10-02)
-		cards := d.lineup.Cards(MainTrack)
-		if len(cards) == 0 {
-			// the schedule emptied — refill as the producer would, so the
-			// station stays live and stopped() stays false
-			for _, ref := range []string{"a", "b", "c"} { // bounded by the fixture (P10-02)
-				d, _ = run(d, NeedsRead{Ref: ref, Headline: ref})
-			}
-			cards = d.lineup.Cards(MainTrack)
+		// THE PRODUCER REFILLS WITH FRESH PLACES ON EVERY PUBLISH, so the schedule
+		// never empties and stopped() is never true — the reviewer's condition,
+		// and the one a plant found the first draft of this test not holding.
+		for _, ref := range []string{"p" + strconv.Itoa(i) + "a", "p" + strconv.Itoa(i) + "b"} { // bounded by the fixture (P10-02)
+			d, _ = run(d, NeedsRead{Ref: ref, Headline: ref})
 		}
-		if len(cards) == 0 {
-			break // everything sits out: that is the cool-off working
+		cards := d.lineup.Cards(MainTrack)
+		if len(cards) < 2 {
+			t.Fatalf("fault %d: the station is not topped off (%d cards); stopped() would decide, not the run", i+1, len(cards))
 		}
 		var fx []string
 		d, fx = run(d, Failed{ID: cards[0].ID, Reason: "the report could not be composed: no key", Routed: false})
