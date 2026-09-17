@@ -301,3 +301,23 @@ A third blind adversary found four Criticals in the executed oracle and named th
 | MINOR `MAKEFLAGS=i` from a parent make; wrong diagnostic when the go stub never delegates | **CLOSED** — env stripped (N4); red-everywhere-still-green is UNJUDGEABLE by name. |
 | **F-155** *(process)* Three reviewers left `zz_review*_test.go` in a shared scratch directory, breaking the package build for the next | **OPEN — a brief rule:** every adversary works in a fresh directory of its own. Added to the brief template. |
 
+## Round five on the gate layer, 2026-09-16 — observe, don't guess
+
+A fifth blind adversary found six Criticals, and every one was `reach()` reading recipe text — the
+round-one defect reintroduced in the one function execution had not replaced. The count had risen
+3→6, which by the layer's own rule is the signal to stop and look, and the look found one cause.
+
+| Finding | Disposition |
+|---|---|
+| C1 two `go run ./tools/X` calls collapsed to one `go:run` key (`lint-authoring`'s self-test hid its check's discard) | **CLOSED by recording.** The go stub records `go:run:<package>`, and `ctl:` in front when it sees a self-test flag. O1. |
+| C2 `$(A2DH)` never matched the regex — **the shipped `p10` safety check had never been painted red alone** | **CLOSED.** make expands it; the stub records itself. O2. Verified on the real tree: `a2dh` is in `p10`'s recorded reach. |
+| C3 `$$(./scripts/x.sh)` — `(` not in the prefix class | **CLOSED.** O3. |
+| C4 `$(CURDIR)/scripts/x.sh`, `sh -c "./scripts/x.sh"` | **CLOSED.** O4. |
+| C5 `$(MAKE) -s target` — a short flag un-walked the recursion | **CLOSED.** Recursion is real make; the child's stubs record to the same log. O5. |
+| C6 a pattern-rule prerequisite escaped both the walk and the reach | **CLOSED.** The reach is recorded through the pattern rule; the silence audit creates a file for every node make reports considering. O6. |
+| I1 `MAKEFILES` not stripped — with `.SHELLFLAGS := -ec`, `;` discards turn red and the oracle certifies them (the QUIET direction) | **CLOSED.** `MAKEFILES`, `GNUMAKEFLAGS`, `MAKE`, `MAKEOVERRIDES` stripped; O7 runs E8 under a parent `MAKEFILES` and it must still be CAUGHT. |
+| MINOR one-key-red is too strong for a tolerated diagnostic (`go version \|\| true`) | **REFUSED, deliberately (O9).** The relaxation would read text to decide which key is a diagnostic, and `./scripts/x.sh \|\| true` is the same shape. A diagnostic under `\|\| true` in a gate is refused with a message saying to move it out or let it fail. The real Makefile has none. |
+| MINOR the phony walk refused a correct order-only directory prerequisite | **CLOSED by construction of the silence audit.** A file where `mkdir -p` needs a directory makes the gate red, which is not silence. O-ok. |
+| **O10 — found by the first recorded run of the shipped tree, not by an adversary:** `release-matrix`'s `(command -v sha256sum && sha256sum … \|\| shasum …)` — `A && B \|\| C` runs C when B fails, so a failed `sha256sum` fell through to a successful `shasum` | **FIXED** as an `if`. `sha256sum` was never on the regex oracle's list, so it was never painted; the record painted it on its first run. |
+| the tool list | **DECLARED.** The one enumerated list left in the executed half; a real command that exits 0 on an empty tree under `\|\| true` is not judged. |
+

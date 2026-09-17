@@ -2953,3 +2953,48 @@ junior reviewer's formulation is the one to keep:
 string must be mandatory and machine-checked for staleness in BOTH directions, and the number of
 tables is itself a metric worth watching. A check that needs no table is worth more than a stricter
 check that needs one.
+
+---
+
+## Observe, don't guess — a semantic question is answered by executing the language
+
+Five blind adversarial rounds against one Makefile gate oracle, and every Critical in every round
+had the same shape: **a semantic question about a language — what runs, what can fail, what is
+reached — answered by pattern-matching the language's source.**
+
+| Round | What was parsed | What defeated it | What replaced it |
+|---|---|---|---|
+| 1 | recipe text, for "can this gate fail?" | `.IGNORE:`, `SHELL := true`, `include`, `ifeq`, `define` — six global constructs the fragment parser never read | run `make <gate>`; read the exit status |
+| 2 | — | red under green (a preflight only the scratch tree fails) read as "can fail" | the positive control: green first, or UNJUDGEABLE by name |
+| 3 | `.PHONY` by name | the recipe one hop along, on a node that was not phony | walk the database |
+| 4 | one status per stub | red-under-red: red when EVERYTHING is red, not because of its own check | paint one key at a time |
+| 5 | recipe text, for "what does this gate reach?" | `$(A2DH)`, `$$(…)`, `$(CURDIR)/`, `$(MAKE) -s`, a pattern rule, two `go run` calls as one key | **the stubs record what ran; the record is the reach** |
+
+Round five is round one again, in the one function execution had not replaced. Parsing was removed
+for "does it fail?" and quietly kept for "what does it reach?" — and the count went 6 → 4 → 3 → 6.
+**A count that rises is the signal to stop and look for one cause**, and there was one.
+
+**The rule to extract:** when a check must answer a semantic question about an artefact written in a
+language (a Makefile, a workflow, a shell script, a Go file), **execute the language and observe** —
+stub what it calls, run it, record what happened. A parser reaches the spellings its author
+imagined; an observer reaches whatever happened. The corollary is the test for whether a check is
+parsing: **can a new spelling of the same thing defeat it?** If yes, it is reading text.
+
+Two things happened on the first observed run of the shipped tree that no earlier round could
+produce: a safety-critical check (`p10`'s `a2dh`) was judged for the first time, because make
+expanded the variable the regex never matched; and a live discard (`A && B || C` on the checksum
+line) was found by the instrument rather than by a reviewer, because a tool that was not on any
+list was recorded anyway. **The mechanism found a defect in the tree it was built to guard, on the
+day it was built, without being told what to look for.** That is what "the rule an agent must
+remember is skipped in some session; the rule make enforces is enforced" looks like in practice.
+
+**The residue is one list** (the toolchain commands to stub), and it is declared with its blind spot
+rather than derived, because the alternative — a PATH with nothing real on it — makes every recipe
+that uses `cat` or `mkdir` UNJUDGEABLE. Every other list in the executed half is gone.
+
+**For li-A2DH:** an instrument-design rule beside INST-1..5 — *a check on a language executes the
+language*; and a review-lens question for any gate — *name a new spelling of the thing this gate
+catches; does the gate still catch it?* This project's `06_docs/gate-attack-list.md` is the worked
+example, and the attack-list-first discipline (write the attacks, commit them, then build) is what
+made the rounds converge once the cause was named.
+

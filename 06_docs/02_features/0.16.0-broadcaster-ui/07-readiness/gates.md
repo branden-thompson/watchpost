@@ -712,3 +712,19 @@ parsing. Every checker is stubbed red and `make <gate>` is RUN; make and sh are 
 | the registry's nonce (per call) | `exists` is proved against fresh random hex, not a constant a table can name | **By construction:** N3 |
 | the child environment | `MAKEFLAGS`/`MAKELEVEL` stripped, so a parent make's `-i` cannot reach the oracle | **By construction:** N4 |
 
+### Round five: observe, don't guess (2026-09-16)
+
+A fifth blind adversary found six Criticals with one cause: `reach()` was regexes over recipe text —
+round one's defect, in the one function execution had not replaced. In the SHIPPED tree, `p10`'s
+`$(A2DH) p10 check` had never been painted red alone. The stubs now RECORD what ran, and nothing in
+the executed half reads a recipe.
+
+| Gate | Property | Evidence |
+|---|---|---|
+| `TestEveryRequiredGateCanFail` (recorded) | a gate's reach is what its stubs RECORDED during the green run — through `$(VAR)`, `$$(…)`, `$(CURDIR)/…`, `sh -c`, `$(MAKE) -s`, pattern rules — and each recorded key is painted red alone | **By construction:** O1–O9. **On the real tree:** `p10` is judged for `a2dh` for the first time (recorded reach: `a2dh python3 ledger-ratified.sh lint-ledger.sh p10-ledger-mirror.py p10-unmatched.sh`); **and the first recorded run CAUGHT a live discard the regex oracle could not see** — `release-matrix`'s `(… && sha256sum … \|\| shasum …)` dropped a failed `sha256sum` (O10). Fixed |
+| `TestVerifyCanFail` (recorded) | `make verify` goes red for EVERY key its own delegation recorded — 34 on the real tree — not only the checkers | **By construction:** H5, M7, E15 still CAUGHT; E-ok passes |
+| `TestNoFileSilencesARequiredGate` (replaces the phony audit) | for every node make itself reports considering (`make -n --debug=v`), a file of that name is created and the gate re-run green; if it RECORDS LESS, that file silences it. No database walk, no `.PHONY` parse | **By construction:** J1–J3, N1, N2, O6; O-ok (an order-only directory prerequisite is NOT a silencer — the file makes `mkdir -p` red, which is not silence) |
+| `TestEveryControlIsReached` (recorded) | carriers are the required gates whose green run RECORDED the control | **By construction:** K1–K4, A5–A10 still CAUGHT |
+| the child environment | `MAKEFILES`, `GNUMAKEFLAGS`, `MAKE`, `MAKEOVERRIDES` stripped as well; a `MAKEFILES` that sets `.SHELLFLAGS := -ec` would turn every `;` discard red and certify a neutered gate (the QUIET direction) | **By construction:** O7 — E8 is run with `MAKEFILES` set in the parent and must still be CAUGHT |
+| the one list left | the toolchain stubs (`go gofmt a2dh python3 expect golangci-lint govulncheck shasum sha256sum`) are enumerated. A command not on it is real: red under green (loud), except a real command that exits 0 on an empty tree under `\|\| true`, which is not judged | **DECLARED** in the attack list; O10 is what forgetting one looked like |
+
