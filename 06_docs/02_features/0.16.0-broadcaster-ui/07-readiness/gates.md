@@ -815,3 +815,11 @@ one that got a gate. Eight rows carried no watched failure; each now records a p
 every verdict read from the test's own `--- FAIL` line, with a plant that failed to compile named
 INVALID and redone rather than counted.
 
+### BUILD exit, the three rulings (2026-09-17)
+
+| Gate | Property | Evidence |
+|---|---|---|
+| `TestTheStationToggleAsksTheDirectorForTheOtherState` | FR-5.4: the bound control asks the Director for the other state, from STANDBY and from ON AIR, through the real key path | **By the watched RED:** the toggle made inert, both rows failed |
+| `TestEveryRatifiedP10RowNamesCodeThatExists` | every ratified row in the ledger mirror names a file that exists and a symbol it still holds (F-140) | **By the watched RED:** `app/radio_queue.go · stopDwell` — the one stale row — named before its deletion, and nothing else |
+| FR-8.6, amended | the pool is nearest-first from the population-filtered table, capped at `locations.PoolCap`; `TestThePoolIsCapped` and `TestAPoolWithNoFenceIsJustTheStation` hold the cap at N > cap and N = 1 | the requirement now says what the code does |
+

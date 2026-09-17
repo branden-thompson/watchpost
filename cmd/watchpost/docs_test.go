@@ -250,3 +250,41 @@ func TestTheRosterCitesTestsThatExist(t *testing.T) {
 		t.Fatalf("the roster cites %d tests; the pattern has stopped matching how it names them", cited)
 	}
 }
+
+// EVERY RATIFIED P10 ROW NAMES CODE THAT EXISTS (F-140). A ratified exemption
+// whose file or symbol is gone addresses nothing — it is an UNGUARDED rule
+// wearing a ratification — and the narrowing script cannot see it because the
+// finding it matched is gone too. This reads the public mirror, the one record
+// of what was ratified, and asks the tree.
+func TestEveryRatifiedP10RowNamesCodeThatExists(t *testing.T) {
+	root := filepath.Join("..", "..")
+	raw, err := os.ReadFile(filepath.Join(root, "06_docs", "p10-ledger.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := regexp.MustCompile("(?m)^\\| `([^`]+)` \\| `([^`]+)` \\| ")
+	rows := row.FindAllStringSubmatch(string(raw), -1)
+	if len(rows) < 50 {
+		t.Fatalf("the ledger mirror has %d rows; the pattern has stopped matching how it writes them", len(rows))
+	}
+	for _, m := range rows { // bounded by the ledger (P10-02)
+		file, symbol := m[1], m[2]
+		info, err := os.Stat(filepath.Join(root, file))
+		if err != nil {
+			t.Errorf("a ratified row names `%s` · `%s`, and no such file exists. Delete the row from the local "+
+				"ledger and regenerate the mirror — a ratification of nothing guards nothing.", file, symbol)
+			continue
+		}
+		if symbol == "package" || info.IsDir() {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(root, file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !regexp.MustCompile(`\b` + regexp.QuoteMeta(symbol) + `\b`).Match(body) {
+			t.Errorf("a ratified row names `%s` · `%s`, and %s no longer holds that identifier. Delete the row "+
+				"from the local ledger and regenerate the mirror; if the code moved, re-present it.", file, symbol, file)
+		}
+	}
+}

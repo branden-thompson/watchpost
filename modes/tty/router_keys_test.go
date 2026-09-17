@@ -142,3 +142,24 @@ func firstKey(t *testing.T, km term.KeyMap, a term.Action) string {
 	}
 	return km[a].Keys[0]
 }
+
+// FR-5.4 — THE OPERATOR CHANGES THE STATE WITH A NAMED CONTROL, and the control
+// asks the Director rather than flipping a flag: from STANDBY the bound key asks
+// for ON AIR, from ON AIR it asks for STANDBY, through the real key path.
+func TestTheStationToggleAsksTheDirectorForTheOtherState(t *testing.T) {
+	for _, tc := range []struct {
+		from lineup.Power
+		want lineup.Power
+	}{{lineup.OffAir, lineup.Running}, {lineup.Running, lineup.OffAir}} {
+		for _, k := range broadcasterKeyMap()[actStationToggle].Keys { // bounded by the bound keys (P10-02)
+			st := &station{}
+			r := routerAt(tc.from, SurfaceBroadcaster)
+			r.keys = broadcasterKeyMap()
+			r.station = st
+			r.Update(keyPress(t, k))
+			if n := len(st.asked); n != 1 || st.asked[0] != tc.want {
+				t.Errorf("from %v, %q asked the Director for %v; want exactly one request for %v (FR-5.4)", tc.from, k, st.asked, tc.want)
+			}
+		}
+	}
+}

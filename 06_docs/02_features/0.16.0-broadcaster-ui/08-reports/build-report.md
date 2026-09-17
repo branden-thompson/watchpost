@@ -281,14 +281,14 @@ defended (F-148). What follows is the whole set, derived.**
 
 **Derived, not remembered (2026-09-17, F-148).** The table below is every one of the 60 FRs in
 `requirements.md`, each with what names it: a roster row in `gates.md`, a test file that cites the ID,
-or a row of the red team's 13-row disposition table above (kept as written). **48 are traced by ID, 9 more by a test that holds the property without citing the ID (each named), one is withdrawn, one is a scope statement, and 2 are UNTRACED — FR-5.4, FR-8.6 — with no test found to hold them.** An untraced FR is not an
+or a row of the red team's 13-row disposition table above (kept as written). **48 are traced by ID, 9 more by a test that holds the property without citing the ID (each named), one is withdrawn, one is a scope statement, and none is untraced: FR-5.4 gained its test and FR-8.6 was amended to the rule the code follows, both at exit on 2026-09-17.** An untraced FR is not an
 unmet one: the 0.16.0 gates cite rulings (D-nn) and properties far more often than FR IDs, and several
 untraced FRs are held by tests that never wrote the ID down. But the earlier sentence — *"Four are
 genuinely open"* — generalised from thirteen rows to sixty, and this table is what replaces it: the
 untraced list is the BUILD-exit review's worklist, with each row either pinned to a test by ID or
 dispositioned in this table before exit.
 
-Untraced at BUILD exit: FR-5.4, FR-8.6 — each needs a test or a HUM LEAD disposition before exit.
+Untraced at BUILD exit: none.
 
 | FR | Requirement (abridged) | Disposition | Evidence |
 | --- | --- | --- | --- |
@@ -318,7 +318,7 @@ Untraced at BUILD exit: FR-5.4, FR-8.6 — each needs a test or a HUM LEAD dispo
 | **FR-5.1** | The station is ON AIR or STANDBY, and STANDBY is `lineup.Power.OffAir` — the existing, | TRACED | 1 roster row(s) |
 | **FR-5.2** | ON AIR is mock for this release — it does not assert a continuous carrier, and the | STATEMENT | a scope statement (ON AIR is mock; no continuous stream is asserted); its operator-facing consequence is FR-5.5's boundary sentence, dispositioned above |
 | **FR-5.3** | The station state is legible without reading, via a background treatment in the manner | TRACED | 2 roster row(s), `modes/tty/station_wording_test.go` |
-| **FR-5.4** | The operator changes the state with a named control, and the control is a requirement | **UNTRACED** | the named control is `broadcasterKeyMap()`'s power action; no test cites FR-5.4 and none is obviously its pin — a test or a citation at review |
+| **FR-5.4** | The operator changes the state with a named control, and the control is a requirement | TRACED | `TestTheStationToggleAsksTheDirectorForTheOtherState` — the bound key asks the Director for the other state through the real key path; red under a planted inert toggle (2026-09-17) |
 | **FR-5.5** | THE BOUNDARY OF "ON AIR" IS STATED, NOT IMPLIED. Watchpost has no radio path — it | TRACED | 1 roster row(s), `modes/tty/broadcaster_station_test.go`, `modes/tty/broadcaster_uat_test.go`, `modes/tty/station_wording_test.go` |
 | **FR-5.6** | A paused main track is a distinct condition from STANDBY. `OffAir` holds the rail; | TRACED | `platform/lineup/cutover_test.go` |
 | **FR-6.1** | Broadcaster has its own settings modal. *Exit: it opens, it edits only the fields | **CLOSED** | `TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt` (`setup_scope_test.go:82`).  A first draft cited `TestAnUndeclaredSurfaceIsRefused`, which is a ROUTER surface |
@@ -336,7 +336,7 @@ Untraced at BUILD exit: FR-5.4, FR-8.6 — each needs a test or a HUM LEAD dispo
 | **FR-8.3** | A hyper-local station is a supported case, not an edge. Three miles is the HUM LEAD's | **OPEN** | No test exercises a 3-mile radius. The mechanism exists (D-122's zone-only arm, `Fence.Tracked`) and `TestAStationWithNoEpicentreOffersNothing` covers the degen |
 | **FR-8.4** | A tiny radius must still receive county and zone products. The mechanism already | TRACED (no ID) | `TestAZoneOnlyAlertTheAppIsTrackingSurvivesTheRadius` (D-122's zone-only arm), `TestCountyUGCFromResolvedPoint` |
 | **FR-8.5** | Locations inside the service radius are fetched at the priority cadence. *Exit: inside | **PARTIAL** | The pool derivation is closed (`TestARestationedPoolIsWhatGetsFetched`); the CADENCE half is asserted by `TestCadenceTableIsTheDoc` for the table, not for the s |
-| **FR-8.6** | A hard cap bounds the priority tier, filled population-descending, and behaves | **UNTRACED** | `TestFetchCapsASwarm` caps the fetch; nothing found asserts the tier is filled population-descending — a test or a citation at review |
+| **FR-8.6** | A hard cap bounds the priority tier, filled population-descending, and behaves | TRACED (amended) | the requirement was AMENDED at exit to the pool's real rule — nearest-first from the population-filtered table, capped at `locations.PoolCap` — and is held by `TestThePoolIsCapped` (N > cap) and `TestAPoolWithNoFenceIsJustTheStation` (N = 1) |
 | **FR-8.7** | Cadences stay bounded by each source's own refresh and the client's politeness limits. | **PARTIAL** | `TestCadenceTableIsTheDoc` diffs a generated table against `testdata/cadences.md` and is self-updating with `-update-cadences` — a change-detector.  The generat |
 | **FR-8.8** | The operator can see effective freshness — when each kind last arrived. *Exit: the | **OPEN** | The card shows one per-CARD stamp (`DATA PULL … (n MIN AGO)`, now colour-coded by D-137's ladder). There is no per-KIND last-arrival. |
 | **FR-8.10** | The station behaves defined-ly when a feed fails while broadcasting. Visibility of | TRACED | `domains/radio/synth/composer_test.go` |
