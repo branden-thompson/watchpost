@@ -74,7 +74,7 @@ PY
 }
 
 if [ "${1:-}" = "--self-test" ]; then
-  # TWO CONTROLS, AND BOTH MUST FIRE. A gate that has only ever been watched
+  # FIVE CONTROLS, AND ALL MUST FIRE. A gate that has only ever been watched
   # passing has not been watched at all: this one's failure mode is reporting a
   # clean corpus, which looks exactly like success.
   tmp=$(mktemp -d)
@@ -104,8 +104,18 @@ assert old in s, "missing"
 p.write_text(s.replace(old, "", 1))
 PY
 
-  out=$(driver "$tmp/m/good.py" "$tmp/m/drifted.py" "$tmp/m/missing.py")
   fired=0
+  # A CRASHED DRIVER MUST NOT REPORT A COUNT: a mutant that raises SystemExit
+  # takes the whole driver down, and the guard above the self-test turns that
+  # silence into a failure.
+  cat > "$tmp/m/crash.py" <<PY
+raise SystemExit(3)
+PY
+  crashed=$(driver "$tmp/m/good.py" "$tmp/m/crash.py" 2>/dev/null || true)
+  echo "$crashed" | grep -q '^__COUNT__' \
+    && echo "mutant-anchors self-test: a driver a mutant crashed still reported a count" >&2 \
+    || fired=$((fired + 1))
+  out=$(driver "$tmp/m/good.py" "$tmp/m/drifted.py" "$tmp/m/missing.py")
   echo "$out" | grep -q "DRIFTED  drifted.py" && fired=$((fired + 1)) \
     || echo "mutant-anchors self-test: a DRIFTED anchor was not reported" >&2
   echo "$out" | grep -q "MISSING  missing.py" && fired=$((fired + 1)) \
@@ -120,11 +130,11 @@ PY
   else
     echo "mutant-anchors self-test: the check WROTE to the tree; it must not" >&2
   fi
-  if [ "$fired" -ne 4 ]; then
-    echo "mutant-anchors self-test: $fired of 4 controls fired" >&2
+  if [ "$fired" -ne 5 ]; then
+    echo "mutant-anchors self-test: $fired of 5 controls fired" >&2
     exit 1
   fi
-  echo "mutant-anchors self-test: all 4 controls fired (OK)"
+  echo "mutant-anchors self-test: all 5 controls fired (OK)"
   exit 0
 fi
 
@@ -133,6 +143,13 @@ count=$(echo "$out" | sed -n 's/^__COUNT__ \([0-9]*\) \([0-9]*\)$/\1 \2/p')
 set -- $count
 total=${1:-0}
 bad=${2:-0}
+# A DRIVER THAT DIED LEAVES NO COUNT, and a run that measured nothing is not a
+# pass (REVIEW 2026-09-17): a mutant raising SystemExit took the whole driver
+# down and this printed "0 mutant(s), every anchor still matches".
+if [ -z "$count" ] || [ "$total" -eq 0 ]; then
+  echo "mutant-anchors: the driver reported no count — the run measured nothing and does not pass" >&2
+  exit 1
+fi
 echo "$out" | grep -v '^__COUNT__' || true
 if [ "$bad" -ne 0 ]; then
   echo "mutant-anchors: $bad of $total mutant(s) no longer match the tip."

@@ -156,18 +156,18 @@ func main() {
 // any ledger row has gone stale.
 func report(members []member, ratified map[string]bool, asJSON, sites bool) {
 	unexplained, exempt, stale := triage(members, ratified)
+	// SILENCE IS A DISTINCT VERDICT (INST-2), IN BOTH OUTPUT MODES. Scanning
+	// nothing and finding nothing is a broken walk, not a clean tree, and it must
+	// not read as a pass — the JSON branch used to (REVIEW 2026-09-17).
+	if len(members) == 0 {
+		fmt.Fprintln(os.Stderr, "wires: found no closed sets at all — the walk did not run")
+		os.Exit(2)
+	}
 	if asJSON {
 		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{
 			"members": len(members), "unexplained": unexplained, "exempt": len(exempt), "stale": stale,
 		})
 	} else {
-		// SILENCE IS A DISTINCT VERDICT (INST-2). Scanning nothing and finding
-		// nothing is a broken walk, not a clean tree, and it must not read as
-		// a pass.
-		if len(members) == 0 {
-			fmt.Fprintln(os.Stderr, "wires: found no closed sets at all — the walk did not run")
-			os.Exit(2)
-		}
 		fmt.Printf("wires: %d member(s) across the closed sets; %d ratified as unwired, %d NOT\n",
 			len(members), len(exempt), len(unexplained))
 		for _, k := range stale {

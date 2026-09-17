@@ -41,6 +41,8 @@ var identityPatterns = []struct {
 }{
 	{"an absolute home directory", regexp.MustCompile(`(^|[^A-Za-z0-9._-])/(Users|home)/[a-z][a-z0-9._-]{2,}`),
 		"it names a person's account and a layout nobody outside can use"},
+	{"a home-relative personal path", regexp.MustCompile("(^|[\\s\"'`(])~/Desktop/|~/[A-Za-z0-9._-]*PERSONAL"),
+		"it names one person's desktop layout, which tells a public reader nothing"},
 	{"an agent-harness scratchpad path", regexp.MustCompile(`/private/tmp/claude-[0-9]+/`),
 		"it names the tooling a human used and the session they used it in"},
 	{"an internal project tree", regexp.MustCompile(`LI_PROJECTS|DESIGN_FOUNDATIONS`),
@@ -66,6 +68,8 @@ var identityExempt = exempt(&exemptionTable{
 		"scripts/quality/p10-ledger-mirror.py":                                 "the mirror generator's own refusal table — it names the classes it strips, so it must contain them",
 		"THIRD_PARTY_LICENSES.md":                                              "upstream authorship, reproduced because the licences require it; the addresses are the copyright holders' own",
 		"06_docs/02_features/severe-alerts-modals/04-development/p1-domain.md": "a public NOAA office contact, quoted as domain research — it is published by the agency and names no one here",
+		"domains/globalfeed/testdata/nws_active_unfiltered_trimmed.json":       "a captured NWS payload; the webmaster address in it is the agency's own, and rewriting a fixture forges it",
+		"domains/radio/stream/testdata/weatherusa.json":                        "a captured WeatherUSA payload; the support address in it is the service's own, and rewriting a fixture forges it",
 	},
 	exists: fileExists,
 	stillNeeded: func(t *testing.T, rel string) bool {
@@ -99,11 +103,12 @@ func TestThePublishedTreeNamesNoPersonOrMachine(t *testing.T) {
 
 	var scanned int
 	for _, p := range paths { // bounded by the index (P10-02)
-		// RECORDED UPSTREAM PAYLOADS ARE NOT OURS TO EDIT. A fixture under
-		// testdata/ is a captured API response; the addresses in it belong to the
-		// service that sent it, and rewriting one would make the fixture a
-		// forgery of the thing it exists to reproduce.
-		if p == "" || identityExempt[p] != "" || isBinaryPath(p) || strings.Contains(p, "testdata/") {
+		// A FIXTURE IS EXEMPTED BY NAME, NOT BY DIRECTORY. A captured upstream
+		// payload under testdata/ keeps the addresses the service sent (rewriting
+		// one would forge the thing it reproduces), but each such file is a row
+		// in identityExempt with that reason — a blanket testdata/ skip would
+		// let the next fixture carry anything (REVIEW 2026-09-17).
+		if p == "" || identityExempt[p] != "" || isBinaryPath(p) {
 			continue
 		}
 		body, err := os.ReadFile(filepath.Join(root, p))

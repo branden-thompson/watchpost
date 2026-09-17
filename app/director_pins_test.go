@@ -39,6 +39,25 @@ import (
 // Each pin is mutation-validated in T0.4: deleting the rule it guards must make
 // it fail. A pin that has never failed protects nothing.
 
+// offlineClient is an httpx client over a server of the test's own, and the
+// server's URL for the providers to point at. The handler is what the test
+// wants upstream to say — nothing at all for a deck that must run offline, the
+// NWS fixtures for a seam that needs a location to exist — and no unit test
+// reaches api.weather.gov, which the compose-seam tests did (REVIEW
+// 2026-09-17). The cache is memory-only on purpose: a disk tier starts a writer
+// goroutine that outlives the test and races the removal of t.TempDir(), which
+// is F-102's mechanism.
+func offlineClient(t *testing.T, upstream http.Handler) (*httpx.Client, string) {
+	t.Helper()
+	srv := httptest.NewServer(upstream)
+	t.Cleanup(srv.Close)
+	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 1000, MaxRetries: 1})
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+	return client, srv.URL
+}
+
 // offlineDeck is a radioDeck that can run tune() END TO END with no network: an
 // httptest server that 404s everything, the NWS provider and BOTH relay
 // directories pointed at it, and a fake audio output.
@@ -60,15 +79,8 @@ func offlineDeck(t *testing.T) (*radioDeck, *heldOutput) {
 	// These five tests are about the Director's advance and the duck. The host's
 	// voice catalogue is not the subject, so it is pinned rather than inherited.
 	asPlatform(t, "darwin")
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "offline", http.StatusNotFound)
-	}))
-	t.Cleanup(srv.Close)
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 1000, CacheDir: t.TempDir()})
-	if err != nil {
-		t.Fatalf("client: %v", err)
-	}
-	res, err := stream.NewResolver(stream.NewDirectory(client, srv.URL, srv.URL))
+	client, base := offlineClient(t, http.NotFoundHandler())
+	res, err := stream.NewResolver(stream.NewDirectory(client, base, base))
 	if err != nil {
 		t.Fatalf("resolver: %v", err)
 	}
@@ -79,7 +91,7 @@ func offlineDeck(t *testing.T) (*radioDeck, *heldOutput) {
 	}
 	t.Cleanup(eng.Halt)
 	return &radioDeck{
-		nws: nws.New(client, srv.URL), resolver: res, engine: eng,
+		nws: nws.New(client, base), resolver: res, engine: eng,
 		limiter: synth.NewLimiter(2, synth.ReservedSlots), voiceDir: t.TempDir(),
 	}, out
 }

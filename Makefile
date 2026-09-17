@@ -384,7 +384,7 @@ VERDICTS_RECORD := 06_docs/02_features/0.16.0-broadcaster-ui/07-readiness/mutant
 promote-verdicts:
 	@test -s "$(DIST)/mutant-verdicts.log" || { echo "promote-verdicts: $(DIST)/mutant-verdicts.log is missing or empty — the sweep left no record, so NOTHING is promoted"; exit 1; }
 	@mkdir -p $(dir $(VERDICTS_RECORD))
-	@cp "$(DIST)/mutant-verdicts.log" "$(VERDICTS_RECORD)"
+	@{ echo "tree: $$(git rev-parse HEAD) — $$(date -u +%Y-%m-%dT%H:%MZ)"; cat "$(DIST)/mutant-verdicts.log"; } > "$(VERDICTS_RECORD)"
 	@test -s "$(VERDICTS_RECORD)" || { echo "promote-verdicts: the copy to $(VERDICTS_RECORD) did not land; refusing to report it durable"; exit 1; }
 	@! git check-ignore -q "$(VERDICTS_RECORD)" || { echo "promote-verdicts: $(VERDICTS_RECORD) is git-ignored — filed is not committed; fix .gitignore or choose a tracked path"; exit 1; }
 	@echo "promote-verdicts: record durable in $(VERDICTS_RECORD) ($$(wc -l < $(VERDICTS_RECORD) | tr -d ' ') lines, tracked path)"

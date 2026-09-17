@@ -204,7 +204,7 @@ func measureCardBuild(t testing.TB, d *radioDeck, client *httpx.Client, ref snap
 	return cardBuild{elapsed: elapsed, net: after.net - before.net, cache: after.cache - before.cache, segments: len(segs)}
 }
 
-type reqTotals struct{ net, cache int64 }
+type reqTotals struct{ net, cache, attempts int64 }
 
 // totalRequests sums every host's counters, because the card build spans
 // several services and the question is how many round-trips it costs in all.
@@ -213,6 +213,7 @@ func totalRequests(client *httpx.Client) reqTotals {
 	for _, h := range client.RequestStats().Hosts {
 		out.net += h.Net
 		out.cache += h.Cache
+		out.attempts += h.Attempts
 	}
 	return out
 }

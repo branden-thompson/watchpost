@@ -506,3 +506,35 @@ func notUnderVerify() map[string]string {
 	}
 	return out
 }
+
+// THE IDENTITY GATE SELECTS ITS TEST (REVIEW 2026-09-17, Code Quality). The
+// recipe is `go test ./cmd/watchpost -run PublishedTreeNames`; rename the test
+// and zero tests run, exit 0 — the gate passes by asking nothing. The alloc
+// budget got this guard; this is the same guard for the same shape.
+func TestTheIdentityGateSelectsItsTest(t *testing.T) {
+	m := loadBuildModel(t)
+	m.mustRun(t)
+	tg := m.targets["lint-identity"]
+	if tg == nil {
+		t.Fatal("COULD NOT RUN — no lint-identity target")
+	}
+	pattern := ""
+	for _, c := range tg.cmds { // bounded by the recipe (P10-02)
+		if mm := regexp.MustCompile(`-run\s+'?([^'\s]+)'?`).FindStringSubmatch(c.text); mm != nil {
+			pattern = mm[1]
+		}
+	}
+	if pattern == "" {
+		t.Fatal("COULD NOT RUN — lint-identity names no -run pattern")
+	}
+	re := regexp.MustCompile(pattern)
+	var matched int
+	for name := range testNames(t, "../..") { // bounded by the tree (P10-02)
+		if re.MatchString(name) {
+			matched++
+		}
+	}
+	if matched == 0 {
+		t.Errorf("lint-identity's -run pattern %q selects no test: the gate would run zero tests and exit 0", pattern)
+	}
+}

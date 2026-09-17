@@ -53,7 +53,10 @@ func prepend(line string) func(string) string {
 
 func TestTheGateAttackListExecuted(t *testing.T) {
 	if _, err := os.Stat("/usr/bin/true"); err != nil {
-		t.Skip("E3 needs /usr/bin/true") // the only skip here, and it names what it needs
+		// A VERIFIER THAT CANNOT VERIFY FAILS. E3 and H2 exec /usr/bin/true and
+		// /usr/bin/false; a host without them would skip nothing quietly — it
+		// would fail here, by name, rather than pass 100+ specimens unrun.
+		t.Fatal("COULD NOT RUN — E3 and H2 need /usr/bin/true and /usr/bin/false")
 	}
 	specimens := []execSpecimen{
 		// ---- the control: the base itself, every checker red ----------------
@@ -434,6 +437,14 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			})
 			if done != nil {
 				done()
+			}
+			// AN ORACLE THAT COULD NOT RUN IS NOT A CATCH. Its fatal reads as
+			// `fired`, and a specimen expected to be caught would count a broken
+			// scratch clone as a verdict; that is INVALID, in either column.
+			for _, line := range said { // bounded by what the oracle said (P10-02)
+				if strings.Contains(line, "COULD NOT RUN") {
+					t.Fatalf("INVALID — the oracle could not run this specimen:\n  %s", line)
+				}
 			}
 			switch {
 			case sp.caught && !fired:

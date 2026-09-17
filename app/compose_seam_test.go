@@ -10,6 +10,10 @@ package app
 
 import (
 	"context"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/branden-thompson/watchpost/domains/radio/synth"
@@ -25,6 +29,49 @@ var (
 	refOceanside = oceanside()
 	refBonsall   = snapshot.LocationRef{Label: "Bonsall, CA", Zip: "92003", Lat: 33.2887, Lon: -117.2253, TZ: "America/Los_Angeles"}
 )
+
+// offlineProviders builds the two providers `segments` asks before it reaches
+// the hooks, over a server of the test's own that answers with the NWS
+// package's recorded fixtures. `segments` returns "no location" before it asks
+// for anything else when the observation AND the alerts both fail, so the seam
+// questions here need an upstream that at least resolves the point; the
+// products themselves are not served, and a 404 there is the deck's problem to
+// route around, which it does.
+func offlineProviders(t *testing.T) (*httpx.Client, *nws.Provider, *synth.Products) {
+	t.Helper()
+	client, base := offlineClient(t, nwsFixtures(t))
+	return client, nws.New(client, base), synth.NewProducts(client, base)
+}
+
+// nwsFixtures serves the NWS package's recorded responses for the point,
+// station, observation and alert routes, and nothing for any other.
+func nwsFixtures(t *testing.T) http.Handler {
+	t.Helper()
+	serve := func(w http.ResponseWriter, name string) {
+		body, err := os.ReadFile(filepath.Join("..", "domains", "weather", "nws", "testdata", name))
+		if err != nil {
+			t.Errorf("COULD NOT RUN — the NWS fixture %s: %v", name, err)
+			http.Error(w, "no fixture", http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write(body)
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		switch {
+		case strings.HasPrefix(p, "/points/"):
+			serve(w, "points.json")
+		case strings.HasSuffix(p, "/stations"):
+			serve(w, "stations.json")
+		case strings.HasSuffix(p, "/observations/latest"):
+			serve(w, "obs.json")
+		case p == "/alerts/active":
+			serve(w, "alerts.json")
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
 
 func watchOf(refs ...snapshot.LocationRef) func() []snapshot.LocationRef {
 	return func() []snapshot.LocationRef { return refs }
@@ -100,17 +147,14 @@ func TestOnlyTheChosenKindsAreGathered(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var gotFire, gotSeismic, gotMarine bool
-			// A REAL PROVIDER OVER A CLIENT THAT ANSWERS NOTHING. `segments` asks
+			// A REAL PROVIDER OVER A SERVER THAT ANSWERS NOTHING. `segments` asks
 			// the NWS provider before it reaches the three hooks, and a nil
 			// provider dereferences rather than declining — so the fixture needs
 			// one even though the question here is about the OTHER three.
-			client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: t.TempDir()})
-			if err != nil {
-				t.Fatal(err)
-			}
+			_, weather, products := offlineProviders(t)
 			d := &radioDeck{
-				nws:      nws.New(client, ""),
-				products: synth.NewProducts(client, ""),
+				nws:      weather,
+				products: products,
 				fire:     func(snapshot.LocationRef) synth.FireReport { gotFire = true; return synth.FireReport{} },
 				seismic:  func(snapshot.LocationRef) synth.SeismicReport { gotSeismic = true; return synth.SeismicReport{} },
 				marine:   func(snapshot.LocationRef) synth.MarineReport { gotMarine = true; return synth.MarineReport{} },
@@ -143,14 +187,12 @@ func TestOnlyTheChosenKindsAreGathered(t *testing.T) {
 func TestTheForecastProductsAreNotPulledUnlessAsked(t *testing.T) {
 	load := func(want report.Set) int64 {
 		t.Helper()
-		client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: t.TempDir()})
-		if err != nil {
-			t.Fatal(err)
-		}
-		d := &radioDeck{nws: nws.New(client, ""), products: synth.NewProducts(client, "")}
+		client, weather, products := offlineProviders(t)
+		d := &radioDeck{nws: weather, products: products}
 		_, _ = d.segments(context.Background(), refOceanside, synth.VoiceToken, want)
-		r := totalRequests(client)
-		return r.net + r.cache
+		// ATTEMPTS, NOT BODIES: the server answers nothing, and the question is
+		// whether the deck went and asked, not whether it got an answer.
+		return totalRequests(client).attempts
 	}
 	// THE FRAME STILL FETCHES: the observation and the alerts are asked for
 	// whatever was chosen, so this is a COMPARISON rather than an absolute — the
@@ -175,12 +217,9 @@ func TestTheForecastProductsAreNotPulledUnlessAsked(t *testing.T) {
 // NOBODY WATCHES and fails before composing.
 func TestACardThatNamesNoSetStillComposesAFullReport(t *testing.T) {
 	var gotFire, gotSeismic, gotMarine bool
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 30, MaxRetries: 1, CacheDir: t.TempDir()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, weather, products := offlineProviders(t)
 	d := &radioDeck{
-		nws: nws.New(client, ""), products: synth.NewProducts(client, ""),
+		nws: weather, products: products,
 		fire:    func(snapshot.LocationRef) synth.FireReport { gotFire = true; return synth.FireReport{} },
 		seismic: func(snapshot.LocationRef) synth.SeismicReport { gotSeismic = true; return synth.SeismicReport{} },
 		marine:  func(snapshot.LocationRef) synth.MarineReport { gotMarine = true; return synth.MarineReport{} },
