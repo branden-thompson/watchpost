@@ -227,8 +227,8 @@ func TestAReadSessionEndsOnceAndDistinguishesTheSignOffFromAHalt(t *testing.T) {
 			default:
 				t.Fatal("a terminal status must end the read; the executor waits for ever otherwise")
 			}
-			if r.ok != tc.want {
-				t.Errorf("ok=%t, want %t", r.ok, tc.want)
+			if ok := r.err == nil; ok != tc.want {
+				t.Errorf("ok=%t (err=%v), want %t", ok, r.err, tc.want)
 			}
 		})
 	}

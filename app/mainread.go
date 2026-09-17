@@ -24,6 +24,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -40,11 +41,11 @@ import (
 // card's words have to be performed and nothing about what performs them. A
 // station with no deck has no reader, and the executor declines by name rather
 // than reaching through a nil.
-func readerFor(deck *radioDeck) func(context.Context, lineup.Speak) bool {
+func readerFor(deck *radioDeck) func(context.Context, lineup.Speak) error {
 	if deck == nil {
 		return nil // no audio: newExecutors leaves the seam nil and speak declines
 	}
-	return func(ctx context.Context, v lineup.Speak) bool {
+	return func(ctx context.Context, v lineup.Speak) error {
 		return deck.readCard(ctx, v.Headline, segmentsFromScript(v.ID, v.Script))
 	}
 }
@@ -89,7 +90,7 @@ type readSession struct {
 	started bool
 
 	once sync.Once
-	ok   bool // written inside once, before done closes; read after it
+	err  error // written inside once, before done closes; read after it
 }
 
 // begin records that this read's own audio has started.
@@ -108,9 +109,9 @@ func (r *readSession) begun() bool {
 
 // finish ends the read, once. A status callback can fire several times for one
 // stream — a title change, then the stop — and a second close would panic.
-func (r *readSession) finish(ok bool) {
+func (r *readSession) finish(err error) {
 	r.once.Do(func() {
-		r.ok = ok
+		r.err = err
 		close(r.done)
 	})
 }
@@ -138,9 +139,11 @@ func noteRead(r *readSession, st player.Status, ended bool) {
 		// this read displaced — `StartSource` halts it first, and `halt` ends
 		// with a Stopped. Ending here is ending a read that has not begun.
 	case ended:
-		r.finish(true)
-	case st.State == player.Stopped || st.State == player.Failed:
-		r.finish(false)
+		r.finish(nil)
+	case st.State == player.Failed:
+		r.finish(errors.New("the player failed: " + st.Err))
+	case st.State == player.Stopped:
+		r.finish(errReadStopped)
 	}
 }
 
@@ -150,14 +153,19 @@ func noteRead(r *readSession, st player.Status, ended bool) {
 // as the work takes — it runs on a worker, never the pump — and a Speak that
 // returned before the words did would let the Director step the next card onto
 // an engine still carrying this one.
-func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Segment) bool {
+// errReadStopped is a read that something DELIBERATE ended early — standby,
+// the pump stopping, the air handed back — as opposed to one the station could
+// not perform. The executor grades the two differently (F-150).
+var errReadStopped = errors.New("the read was stopped")
+
+func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Segment) error {
 	if d == nil || len(segs) == 0 {
-		return false // nothing to say: the executor's empty-script check already refused this
+		return errors.New("nothing to say") // the executor's empty-script check already refused this
 	}
 	voice, resolve, err := d.readCast() // may install Piper (minutes): never under a lock
 	if err != nil {
 		d.engine.Fail(err.Error()) // the reason, in the player (F2)
-		return false
+		return err
 	}
 	// THE READ'S OWN CONTEXT, so it can be ended without ending the effect's.
 	// It is a CHILD of the pump's, so a stopping schedule still takes the words
@@ -176,7 +184,7 @@ func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Seg
 		})
 	if err != nil {
 		d.engine.Fail(err.Error())
-		return false
+		return err
 	}
 	// THE SAME CAST AS THE ROTATION'S. Every segment this card carries is
 	// cast.All today (segmentsFromScript), so the resolver answers with the
@@ -204,7 +212,7 @@ func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Seg
 	d.tuneMu.Unlock()
 	select {
 	case <-sess.done:
-		return sess.ok
+		return sess.err
 	case <-rctx.Done():
 		// THE STATION STOPPED BROADCASTING THIS — the pump is shutting down, the
 		// operator went to standby, or the air went back to the monitor. Halt,
@@ -216,7 +224,7 @@ func (d *radioDeck) readCard(ctx context.Context, label string, segs []synth.Seg
 		// wait for the audio device, and in the one case that matters could not
 		// have afforded to (D-79).
 		d.engine.Halt()
-		return false
+		return errReadStopped
 	}
 }
 

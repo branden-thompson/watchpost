@@ -64,9 +64,9 @@ func TestAFailedCardSitsOutBeforeItIsOfferedAgain(t *testing.T) {
 func TestTheDeclineMemoryIsBounded(t *testing.T) {
 	d := offering(t, 1, "bonsall")
 	for i := range retryMemory * 3 {
-		d = d.noteDeclined(string(rune('a'+i%26)) + string(rune('a'+i/26)))
+		d = d.noteFailed(string(rune('a'+i%26)) + string(rune('a'+i/26)))
 	}
-	if got := len(d.declined); got > retryMemory {
+	if got := len(d.failed); got > retryMemory {
 		t.Errorf("the decline memory holds %d refs; it is bounded at %d", got, retryMemory)
 	}
 }

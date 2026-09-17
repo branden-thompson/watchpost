@@ -43,6 +43,14 @@ type LineupMsg struct{ Lineup lineup.Lineup }
 // second carrier would be a safety bug rather than a display one.
 type StationMsg struct{ Power lineup.Power }
 
+// StationFaultMsg is the Director's escalation reaching the console: Run cards
+// in a row the station could not perform, and the last reason. Run 0 clears
+// it — a read that finished, or STANDBY (F-150, REVIEW 2026-09-17).
+type StationFaultMsg struct {
+	Run    int
+	Reason string
+}
+
 // BedMsg carries what the broadcast is riding on (F-79, closed at D-78).
 //
 // THE CONSOLE DREW A CONSTANT BEFORE THIS. `(no relay tuned)` and `○ INACTIVE`
@@ -138,6 +146,10 @@ type Broadcaster struct {
 
 	// standbySince is when the station last went silent. Zero while it is not.
 	standbySince time.Time
+
+	// fault is the last StationFaultMsg, shown in the band while ON AIR until
+	// a read finishes or the station goes to STANDBY.
+	fault StationFaultMsg
 
 	// frame is the shimmer's animation phase, and tickArmed keeps exactly one
 	// tick in flight (D-64). ITS OWN, NOT THE DASHBOARD'S: Observer arms its
@@ -331,6 +343,24 @@ func (b Broadcaster) heldNotice() []string {
 // inset, the inset added, then painted in one Block call. Two adjacent bands
 // assembled two different ways is how a three-cell disagreement gets in.
 func (b Broadcaster) heldBand(held int, mark, say string) []string {
+	count := strconv.Itoa(held) + " HAZARD(S) HELD"
+	return b.noticeBand(count, mark+"  "+count+" — the station is in STANDBY and nothing is going to air. "+say)
+}
+
+// faultNotice is the band an ON AIR station shows when it could not perform a
+// run of cards (F-150): the count shouts, the reason says what to check.
+func (b Broadcaster) faultNotice() []string {
+	if b.power != lineup.Running || b.fault.Run == 0 {
+		return nil
+	}
+	count := strconv.Itoa(b.fault.Run) + " CARD(S) FAILED"
+	return b.noticeBand(count, "!!!  "+count+" — the station could not perform them: "+b.fault.Reason)
+}
+
+// noticeBand draws one band under the station section — the COUNT in bold on
+// the band's own white, the prose plain, wrapped before it is styled — for the
+// held notice and the fault notice alike.
+func (b Broadcaster) noticeBand(count, plain string) []string {
 	o := b.opts()
 	// THE COUNT SHOUTS AND THE PROSE DOES NOT (the ruling, line by line):
 	// "'1 HAZARD(S) HELD' - BOLD WHITE / -- the station is in STANDBY and
@@ -339,9 +369,6 @@ func (b Broadcaster) heldBand(held int, mark, say string) []string {
 	// BOLD ON THE BAND'S OWN WHITE, NOT A SECOND WHITE. `AlertModalText` is
 	// white already, so weight is the only thing added — and weight is not
 	// contrast, so no AA answer moves (the same argument D-134 makes).
-	count := strconv.Itoa(held) + " HAZARD(S) HELD"
-	plain := mark + "  " + count + " — the station is in STANDBY and nothing is going to air. " + say
-
 	// WRAPPED BEFORE IT IS STYLED, WHICH IS D-129a's RULE AND THE REASON THIS
 	// IS NOT ONE `centerText` CALL. Centring alone CLIPS: the !!! rung's
 	// sentence is ~149 cells and the band is 127 at the HUM LEAD's width, so
@@ -464,6 +491,8 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 		// publishers of which one sets it, so the selector's message and the
 		// deck's state message would each zero what the resolver established.
 		b.bedRelays, b.bedRelaysTold = v.Count, true
+	case StationFaultMsg:
+		b.fault = v
 	case StationMsg:
 		// THE CLOCK STARTS ON THE TRANSITION, not on every message: a station
 		// that has been silent an hour must not look freshly quiet because
@@ -472,6 +501,7 @@ func (b Broadcaster) Update(msg tea.Msg) (Broadcaster, tea.Cmd) {
 			b.standbySince = time.Time{}
 			if v.Power == lineup.OffAir {
 				b.standbySince = b.clock()
+				b.fault = StationFaultMsg{} // standby is the operator acting on it
 			}
 		}
 		b.power = v.Power
@@ -709,6 +739,7 @@ func (b Broadcaster) lanes() []string {
 	fg, bg := b.stationTone()
 	out = append(out, strings.Split(b.stationSection(b.opts(), fg, bg), "\n")...)
 	out = append(out, b.heldNotice()...)
+	out = append(out, b.faultNotice()...)
 	// THE AIR BOX IS INSIDE THE STATION SECTION NOW (D-107), so nothing is drawn
 	// here: `stationSection` carries it, painted with the section's own ground.
 	// A BARE BLANK ROW SEPARATES THE STATION SECTION FROM THE RUNNING ORDER, and

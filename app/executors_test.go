@@ -2,12 +2,14 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -43,7 +45,8 @@ type bench struct {
 	msgs        []tea.Msg
 	reports     []string
 	tuned       []string        // the beds the Director asked for (T3.2b)
-	escalations []string        // faults that reached a person (DR-21)
+	escalations []string        // faults that reached a person (DR-21), as "run: reason"
+	readErr     error           // what the broadcast engine says when it could not perform (F-150)
 	asked       map[string]bool // producer records the Reader resolved for a cue
 	holds       []time.Duration
 	known       map[string]globalfeed.Event
@@ -118,14 +121,23 @@ func newBench(t *testing.T, v *scriptVoice) *bench {
 		// THE BROADCAST ENGINE, AS A CAPTURE (F-91). The real one is the deck's
 		// synth.Source swap, which needs a voice and an audio device; what this
 		// bench is about is WHICH lane performs a card and what comes home.
-		read: func(_ context.Context, v lineup.Speak) bool {
+		read: func(_ context.Context, v lineup.Speak) error {
 			b.mu.Lock()
+			defer b.mu.Unlock()
 			b.reads = append(b.reads, v)
-			ok := b.readOK
-			b.mu.Unlock()
-			return ok
+			if b.readErr != nil {
+				return b.readErr
+			}
+			if !b.readOK {
+				return errReadStopped
+			}
+			return nil
 		},
-		escalate: func(why string) { b.mu.Lock(); b.escalations = append(b.escalations, why); b.mu.Unlock() },
+		escalate: func(run int, why string) {
+			b.mu.Lock()
+			b.escalations = append(b.escalations, strconv.Itoa(run)+": "+why)
+			b.mu.Unlock()
+		},
 	})
 	if b.x == nil {
 		t.Fatal("newExecutors refused a well-formed set")
@@ -672,7 +684,7 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 			readAloud: func(string) bool { return false },
 			report:    func(lineup.Effect, string) {},
 			cutTo:     func(string) {},
-			escalate:  func(string) {},
+			escalate:  func(int, string) {},
 		}
 	}
 	if newExecutors(whole()) == nil {
@@ -1411,5 +1423,38 @@ func TestAStationThatCannotComposeFaultsAndAListenerWhoDeclinedIsRouted(t *testi
 					map[bool]string{true: "a deliberate non-delivery is not a fault", false: "a station that cannot perform has faulted, and the window is owed"}[tc.routed], f.Reason)
 			}
 		})
+	}
+}
+
+// F-150, REVIEW — A VOICE THAT COULD NOT RENDER IS A FAULT; a read something
+// deliberate stopped is routed. And an Escalate reaches the person with its
+// run and its reason, not the relay window's words.
+func TestAVoiceThatCannotRenderFaultsAndAStoppedReadIsRouted(t *testing.T) {
+	script := lineup.Script{Tone: "report", Parts: []lineup.Part{{Kind: lineup.PartLine, Text: "the forecast"}}}
+	speak := lineup.Speak{ID: lineup.ReadID("bonsall"), Slot: lineup.LocationReport, Track: lineup.MainTrack, Script: script}
+	for _, tc := range []struct {
+		name   string
+		err    error
+		routed bool
+	}{
+		{"the voice could not render", errors.New("piper: install failed"), false},
+		{"something deliberate stopped the read", errReadStopped, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := newBench(t, &scriptVoice{})
+			b.readErr = tc.err
+			f := onlyFailed(t, b.x.run(context.Background(), speak))
+			if f.Routed != tc.routed {
+				t.Errorf("Routed = %v, want %v (%q)", f.Routed, tc.routed, f.Reason)
+			}
+		})
+	}
+	b := newBench(t, &scriptVoice{})
+	b.x.run(context.Background(), lineup.Escalate{ID: "r", Reason: "the report could not be composed: no key", Run: 3})
+	b.mu.Lock()
+	got := append([]string(nil), b.escalations...)
+	b.mu.Unlock()
+	if len(got) != 1 || got[0] != "3: the report could not be composed: no key" {
+		t.Errorf("the escalation reached the person as %v; want the run and the reason", got)
 	}
 }

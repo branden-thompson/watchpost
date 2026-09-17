@@ -1274,7 +1274,7 @@ func (d *radioDeck) readSynth() {
 // are different causes with one consequence — the station is quiet — and one
 // surface for that is what keeps the window meaningful. A second error modal
 // would be a second thing to learn and a second thing to dismiss.
-func (d *radioDeck) escalate(reason string) {
+func (d *radioDeck) escalate(run int, reason string) {
 	// A STATION WITH NO AUDIO IS A SUPPORTED CONFIGURATION, and this is the one
 	// channel that tells a listener the station has gone quiet — so a nil deck
 	// must return, not dereference (red team 2026-09-05, I-1). buildDirector
@@ -1293,7 +1293,10 @@ func (d *radioDeck) escalate(reason string) {
 	// stopped for a reason unrelated to the bed leaves none, and the window then
 	// shows the fall-through alone — which is the honest answer: read the
 	// report, because there is nothing else to tune to.
-	d.send(tty.RelaySilentMsg{Candidates: d.silentCandidates(d.engine.Status().Mount)})
+	// THE OPERATOR IS TOLD WHAT FAILED, IN THE STATION'S OWN BAND, not with the
+	// relay window's words (REVIEW 2026-09-17: a fault of "no composer" raised
+	// "the relay is silent"). The band is NFR-7's, reused (HUM LEAD ruling 5).
+	d.send(tty.StationFaultMsg{Run: run, Reason: reason})
 }
 
 // alertTonePCM is a class's attention signal, whole.

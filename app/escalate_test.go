@@ -6,7 +6,7 @@ import "testing"
 //
 // A nil deck is first-class: buildDirector handles it explicitly and its own
 // comment says "a nil deck (no audio) is fine". startSchedule wires
-// `escalate: func(reason string) { deck.escalate(reason) }` with no guard,
+// `escalate: func(run int, reason string) { deck.escalate(run, reason) }` with no guard,
 // while the same function guards `if deck != nil` for cutTo further down.
 //
 // NOTHING ELSE COULD SEE THIS, which is why it is pinned at the receiver. The
@@ -22,5 +22,5 @@ func TestEscalatingOnAStationWithNoAudioIsRefusedNotFatal(t *testing.T) {
 			t.Fatalf("the fault channel panicked on a station with no audio: %v", r)
 		}
 	}()
-	deck.escalate("the schedule stopped")
+	deck.escalate(0, "the schedule stopped")
 }

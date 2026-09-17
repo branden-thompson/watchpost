@@ -459,11 +459,17 @@ type Director struct {
 	// or own. See cadence.go.
 	lastRead [numSlots]time.Time
 
-	// declined is the ref of each card that recently left the schedule WITHOUT
-	// reaching the air, and when (see retry.go). A ring, oldest evicted, so the
+	// failed is the ref of each card that recently left the schedule WITHOUT
+	// reaching the air — declined OR faulted — and when (see retry.go). A ring, oldest evicted, so the
 	// Director's memory of the past cannot grow — the same bound D-48 was ruled
 	// to keep.
-	declined []declineNote
+	failed []failNote
+
+	// faultRun is how many cards in a row the station could not perform —
+	// non-routed failures with no Finished between them. A topped-off station
+	// is never stopped(), so this is the count that owes the operator the
+	// window (F-150, REVIEW 2026-09-17).
+	faultRun int
 }
 
 // New is a Director with the listener's settings and a clock already set.
@@ -708,10 +714,11 @@ func (d Director) onBuilt(ev Built) (Director, []Effect) {
 }
 
 // onFinished takes a card off the air, read in full.
-func (d Director) onFinished(ev Finished) (Director, []Effect) { return d.leave(ev.ID, Done) }
+func (d Director) onFinished(ev Finished) (Director, []Effect) {
+	d.faultRun = 0 // a read that finished ends the run
+	return d.leave(ev.ID, Done)
+}
 
-// onFailed takes a card off the schedule: it could not be delivered at all, and
-// the Director re-plans around it rather than waiting (DR-21).
 // onFailed takes a card off the schedule and grades what that leaves (DR-21).
 //
 // THE GRADE IS DECIDED AFTER THE SETTLE, not before. A burst whose second alert
@@ -725,8 +732,15 @@ func (d Director) onFailed(ev Failed) (Director, []Effect) {
 	// exactly the one the producer will offer again (see retry.go): without
 	// this, that offer arrives on the publish this very step is about to
 	// describe, and the station spins.
-	if card, ok := d.find(ev.ID); ok && ev.Routed {
-		d = d.noteDeclined(card.Subject)
+	// THE COOL-OFF IS ABOUT THE LOOP, NOT THE GRADE. A location that could not
+	// be composed re-enters at pump speed exactly as a declined one does; both
+	// sit out (F-150, REVIEW 2026-09-17 — the loop UAT 2026-09-10 found, back
+	// for the class the fault/decline split created).
+	if card, ok := d.find(ev.ID); ok {
+		d = d.noteFailed(card.Subject)
+	}
+	if !ev.Routed {
+		d.faultRun++
 	}
 	d, fx := d.leave(ev.ID, Discarded)
 	return d, append(fx, d.escalation(ev)...)

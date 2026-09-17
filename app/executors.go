@@ -17,6 +17,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -70,7 +71,12 @@ type executors struct {
 	//
 	// Nil is a station with no broadcast engine — the pathless build and the
 	// tests that wire no deck — and the executor declines by name.
-	read func(ctx context.Context, v lineup.Speak) bool
+	// read puts a main-track card on the air and returns nil when its words
+	// ran out, errReadStopped when something deliberate ended it early (the
+	// operator went to standby, the pump is stopping), and any other error
+	// when the station could not perform — a voice that would not render, a
+	// player that failed (F-150, REVIEW 2026-09-17).
+	read func(ctx context.Context, v lineup.Speak) error
 
 	// propose asks the Producer what cards COULD exist, so the Director can top
 	// the line-up up to its depth (D-40).
@@ -195,7 +201,7 @@ type executors struct {
 	// allowed: newExecutors refuses it, because a fault channel wired to
 	// nothing is the failure this whole requirement exists to remove — the
 	// station stops and nobody is told.
-	escalate func(reason string)
+	escalate func(run int, reason string)
 
 	// band is the post-hoc record of what the band was asked (DR-18): a cue
 	// is fire-and-trust, so this is what a test and a diagnostic read after.
@@ -348,7 +354,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		// it could route around never becomes an Escalate at all, so there is no
 		// second judgement here — a fault reaching this line has already left
 		// the station with nothing to play.
-		x.escalate(v.Reason)
+		x.escalate(v.Run, v.Reason)
 		return nil
 	}
 	// The set is closed, so this is unreachable for anything declared today.
@@ -536,14 +542,20 @@ func (x *executors) broadcast(ctx context.Context, v lineup.Speak) []lineup.Even
 	if x.read == nil {
 		return x.fault(v, v.ID, "no reader for the main track: this station has no broadcast engine")
 	}
-	if !x.read(ctx, v) {
+	if err := x.read(ctx, v); err != nil {
 		// THE SAME VERDICT THE RAIL RETURNS, and for the same reason (DR-24): a
 		// Finished would tell the schedule a read happened that did not, and a
-		// card that says nothing at all stays ON AIR for ever. Routed, because
-		// every way this ends early — the operator went to standby, the pump is
-		// stopping, the voice could not render a line — is either deliberate or
-		// already reported by the path that raised it (I-2).
-		return []lineup.Event{lineup.Failed{ID: v.ID, Reason: "the read ended before the words did", Routed: true}}
+		// card that says nothing at all stays ON AIR for ever. A DELIBERATE end
+		// — the operator went to standby, the pump is stopping — is routed; a
+		// voice that could not render is the station failing to perform, and
+		// that is a fault the operator is owed (F-150, REVIEW 2026-09-17).
+		if errors.Is(err, errReadStopped) {
+			return []lineup.Event{lineup.Failed{ID: v.ID, Reason: "the read ended before the words did", Routed: true}}
+		}
+		return x.fault(v, v.ID, "the voice could not render the card: "+err.Error())
+	}
+	if x.publish != nil {
+		x.publish(tty.StationFaultMsg{}) // a read that finished clears the fault band
 	}
 	return []lineup.Event{lineup.Finished{ID: v.ID}}
 }

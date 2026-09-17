@@ -170,7 +170,7 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// rather than adding a second error surface: from the listener's chair
 		// "the relay is silent" and "the schedule stopped" are the same event —
 		// the station has gone quiet and they are being offered the way back.
-		escalate: func(reason string) { deck.escalate(reason) },
+		escalate: func(run int, reason string) { deck.escalate(run, reason) },
 	})
 	if x == nil {
 		return nil // a seam was nil; newExecutors has already said which

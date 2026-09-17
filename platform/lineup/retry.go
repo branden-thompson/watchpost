@@ -62,40 +62,40 @@ const (
 	retryMemory = 32
 )
 
-// declineNote is one refused ref and when it was refused.
-type declineNote struct {
+// failNote is one refused ref and when it was refused.
+type failNote struct {
 	ref string
 	at  time.Time
 }
 
-// noteDeclined records that a ref's card left the schedule without reaching the
+// noteFailed records that a ref's card left the schedule without reaching the
 // air, so the Director can keep it out of the next few offers.
 //
 // AN EMPTY REF IS NOT RECORDED. A card with no subject cannot be proposed again
 // by ref, so remembering it would spend a slot of the ring on nothing.
-func (d Director) noteDeclined(ref string) Director {
+func (d Director) noteFailed(ref string) Director {
 	if ref == "" {
 		return d
 	}
-	if err := invariant.Check(!d.now.IsZero(), "the clock was set before a decline was timed"); err != nil {
+	if err := invariant.Check(!d.now.IsZero(), "the clock was set before a failure was timed"); err != nil {
 		return d
 	}
 	// ONE ENTRY PER REF. A location that fails repeatedly must move its own
 	// timestamp forward rather than fill the ring with copies of itself — which
 	// would evict every OTHER location's cool-off and let them all back in.
-	out := append([]declineNote(nil), d.declined...)
+	out := append([]failNote(nil), d.failed...)
 	for i := range out { // bounded by the ring (P10-02)
 		if out[i].ref == ref {
 			out[i].at = d.now
-			d.declined = out
+			d.failed = out
 			return d
 		}
 	}
-	out = append(out, declineNote{ref: ref, at: d.now})
+	out = append(out, failNote{ref: ref, at: d.now})
 	if len(out) > retryMemory {
 		out = out[len(out)-retryMemory:]
 	}
-	d.declined = out
+	d.failed = out
 	return d
 }
 
@@ -109,7 +109,7 @@ func (d Director) sittingOut(ref string) bool {
 	if ref == "" || d.now.IsZero() {
 		return false
 	}
-	for _, n := range d.declined { // bounded by the ring (P10-02)
+	for _, n := range d.failed { // bounded by the ring (P10-02)
 		if n.ref == ref {
 			return d.now.Sub(n.at) < retryAfter
 		}

@@ -69,7 +69,7 @@ func newStation(t testing.TB, deck *tickerDeck) *station {
 		readAloud: deck.seen.has,
 		report:    func(f lineup.Effect, why string) { s.reports = append(s.reports, lineup.Describe(f)+": "+why) },
 		cutTo:     func(string) {},
-		escalate:  func(reason string) { s.escalated = append(s.escalated, reason) },
+		escalate:  func(_ int, reason string) { s.escalated = append(s.escalated, reason) },
 	})
 	if s.x == nil {
 		t.Fatal("the station's executors were refused; a seam is missing")

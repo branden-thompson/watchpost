@@ -138,3 +138,64 @@ func describeAll(fx []Effect) []string {
 }
 
 var _ = time.Second
+
+// F-150 — A FAULT ON A LIVE STATION MUST STILL BE HEARD. `stopped()` is never
+// true on a topped-off station (the producer refills on every publish), so a
+// fault that only escalates when the schedule is empty escalates never; and a
+// cool-off that is noted only for ROUTED failures leaves the one class that is
+// NOT deliberate — a compose error, no composer, an empty report — free to be
+// re-admitted at pump speed. Ten consecutive faults, three cards deep:
+// every failed location sits out, and the window is owed by the third.
+func TestAFaultRunOnAToppedOffStationEscalatesAndSitsOut(t *testing.T) {
+	d := New(Settings{Max: 10}, planNow)
+	d, _ = run(d, Powered{To: Running})
+	for _, ref := range []string{"a", "b", "c"} { // bounded by the fixture (P10-02)
+		d, _ = run(d, NeedsRead{Ref: ref, Headline: ref})
+	}
+	if got := len(d.lineup.Cards(MainTrack)); got != 3 {
+		t.Fatalf("the fixture holds %d main-track cards, want 3", got)
+	}
+	var escalations int
+	for i := 0; i < 10; i++ { // bounded by the fault count (P10-02)
+		cards := d.lineup.Cards(MainTrack)
+		if len(cards) == 0 {
+			// the schedule emptied — refill as the producer would, so the
+			// station stays live and stopped() stays false
+			for _, ref := range []string{"a", "b", "c"} { // bounded by the fixture (P10-02)
+				d, _ = run(d, NeedsRead{Ref: ref, Headline: ref})
+			}
+			cards = d.lineup.Cards(MainTrack)
+		}
+		if len(cards) == 0 {
+			break // everything sits out: that is the cool-off working
+		}
+		var fx []string
+		d, fx = run(d, Failed{ID: cards[0].ID, Reason: "the report could not be composed: no key", Routed: false})
+		for _, f := range fx { // bounded by the effects (P10-02)
+			if strings.Contains(strings.ToLower(f), "escalat") {
+				escalations++
+			}
+		}
+		if !d.sittingOut(cards[0].Subject) {
+			t.Errorf("fault %d: %s was not put in cool-off — it will be re-admitted at pump speed", i+1, cards[0].Subject)
+		}
+		if i == 2 && escalations == 0 {
+			t.Errorf("three consecutive faults on a live station raised no escalation; the operator sees ON AIR over dead air")
+		}
+	}
+	if escalations == 0 {
+		t.Errorf("ten consecutive faults raised no escalation")
+	}
+	// THE CONTROL: routed failures never escalate on a live station, and a
+	// Finished between faults resets the run.
+	c := New(Settings{Max: 10}, planNow)
+	c, _ = run(c, Powered{To: Running})
+	c, _ = run(c, NeedsRead{Ref: "x", Headline: "x"})
+	id := c.lineup.Cards(MainTrack)[0].ID
+	_, fx := run(c, Failed{ID: id, Reason: "muted", Routed: true})
+	for _, f := range fx { // bounded by the effects (P10-02)
+		if strings.Contains(strings.ToLower(f), "escalat") {
+			t.Errorf("a routed decline escalated: %s", f)
+		}
+	}
+}

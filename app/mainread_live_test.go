@@ -109,7 +109,7 @@ func aReport(id string, lines ...string) lineup.Speak {
 func TestAReadComesHomeFinishedOverARealEngine(t *testing.T) {
 	d := liveDeck(t)
 
-	done := make(chan bool, 1)
+	done := make(chan error, 1)
 	start := time.Now()
 	go func() {
 		done <- readerFor(d)(context.Background(), aReport("r1",
@@ -117,8 +117,8 @@ func TestAReadComesHomeFinishedOverARealEngine(t *testing.T) {
 	}()
 
 	select {
-	case ok := <-done:
-		if !ok {
+	case err := <-done:
+		if err != nil {
 			if d.source != nil {
 				t.Logf("TRACE source err = %v", d.source.Err())
 			}
@@ -148,8 +148,8 @@ func TestTheReadPlaysTheCardsOwnWords(t *testing.T) {
 		return recordingVoice{say: func(text string) { mu.Lock(); said = append(said, text); mu.Unlock() }}, nil
 	}
 
-	if !readerFor(d)(context.Background(), aReport("r1", "first line", "second line")) {
-		t.Fatal("the read failed")
+	if err := readerFor(d)(context.Background(), aReport("r1", "first line", "second line")); err != nil {
+		t.Fatalf("the read failed: %v", err)
 	}
 	mu.Lock()
 	defer mu.Unlock()
@@ -202,8 +202,8 @@ func TestAReadIsNotEndedByTheHaltOfTheSourceItReplaced(t *testing.T) {
 	default:
 		t.Fatal("the read never came home")
 	}
-	if !r.ok {
-		t.Error("a read that played to its sign-off came home failed")
+	if r.err != nil {
+		t.Errorf("a read that played to its sign-off came home failed: %v", r.err)
 	}
 }
 
@@ -219,7 +219,7 @@ func TestAReadHaltedAfterItStartedComesHomeFailed(t *testing.T) {
 	default:
 		t.Fatal("a read halted mid-sentence never came home; the schedule waits on it for ever")
 	}
-	if r.ok {
+	if r.err == nil {
 		t.Error("a read cut short came home finished; the card leaves the line-up unread")
 	}
 }

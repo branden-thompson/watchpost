@@ -643,4 +643,5 @@ var _
 var _
 var _
 var errDumpTooSoon
+var errReadStopped
 var goosSeam
