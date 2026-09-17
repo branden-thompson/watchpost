@@ -3040,3 +3040,28 @@ catches; does the gate still catch it?* This project's `06_docs/gate-attack-list
 example, and the attack-list-first discipline (write the attacks, commit them, then build) is what
 made the rounds converge once the cause was named.
 
+## A plant that the instrument is designed to ignore is not a plant
+
+REVIEW 2026-09-17, R6. The identity gate's blanket `testdata/` skip was replaced by per-file
+exemption rows, and the plant to prove it — a tracked fixture carrying an address — PASSED. The
+address was `someone@example.org`, and `reservedForDocs` allows RFC 2606 example domains on
+purpose. The second plant, `someone@realmail.net`, was CAUGHT. **The catch:** a plant has to be
+constructed OUTSIDE the instrument's allow-list, or it measures the allow-list and not the check.
+Read the allow-list before choosing the plant's value. The same round, `goimports` resolved a
+missing `tea` import to `github.com/charmbracelet/bubbletea` (the tree uses `charm.land/bubbletea/v2`)
+and wrote 26 lines into `go.mod`/`go.sum` — restored from the index before anything ran. **The
+catch:** an import fixer is a module editor; on a tree with a replaced or forked module path it
+must not be run unattended, and `git status go.mod go.sum` after any formatter is cheap.
+
+## The second owner of a message is where the message is lost
+
+REVIEW 2026-09-17, R2 round two. The fault band was SET through the deck (`deck.escalate`) and
+CLEARED through the executor's publish seam. Every path had a guard and every guard was
+individually right — and a build with no audio (nil deck) swallowed the set while keeping the
+clear, which is the exact defect the remediation existed to remove. A blind reviewer found it
+structurally in under twenty minutes; three rounds of the author's own plants had not, because each
+plant tested one owner. **The shape:** when a state has a SET and a CLEAR, they must travel the same
+seam; two owners is a finding on its own, before any sequence is constructed. The fix deleted the
+second channel outright (the seam, its invariant, its closure, the method and its test) rather than
+guarding it, and the first blind reviewer's remaining design point — carry the state on `Publish`,
+one source — is F-159.

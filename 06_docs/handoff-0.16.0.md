@@ -174,6 +174,12 @@ imagination, and the author is the worst available adversary.**
    deliberately not run**: a sweep against a surface that is about to change produces numbers you
    throw away. Run it when the tree is stable.
 6. **Then re-present BUILD exit** with corrected figures.
+7. **Before the release branch is cut — a final local build and a regression pass of everything
+   signed off before BUILD exit** (HUM LEAD, 2026-09-17: REVIEW made "lots of code changes to the
+   product", which is fine, and the signed-off functionality must be shown not to have regressed
+   before `release/v0.16.0` exists). Build from the REVIEW-exit commit with the documented
+   commands, run the UAT checklists that were signed off, and record the result beside the exit.
+   The live-audio UAT (ruling 11, cases 2/6/10) belongs to the same pass.
 
 `06_docs/tooling-backlog.md` holds the ranked mechanisable rules **and the do-not-build list**. Read
 the second half first.
