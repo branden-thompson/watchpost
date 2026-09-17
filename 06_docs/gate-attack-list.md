@@ -206,7 +206,7 @@ building rather than stopping.
 | # | Attack | Must |
 |---|---|---|
 | J1 | A required gate not in `.PHONY`: `touch <gate>` in the tree → "is up to date", exit 0, nothing ran. **Four required gates were in this state in the real Makefile with no edit at all** | CAUGHT — every required make target must be `#  Phony target` in make's database |
-| J2 | Two gates consolidated into a pattern rule `%-tags:` with a neutered recipe — absent from the database, still run by make | CAUGHT — a required gate absent from the database is an error unless DECLARED CI-only; "missing" no longer means "fine" |
+| J2 | Two gates consolidated into a pattern rule `%-tags:` with a neutered recipe | CAUGHT — if the gate is NOT in `.PHONY` it is absent from the database (J1's audit); if it IS, make says "nothing to be done" and exits 0, which the green/red run catches. Either way |
 | J3 | A gate's rule deleted and `.DEFAULT:` supplying a green recipe for any name | CAUGHT — same rule as J2 |
 | J4 | A prerequisite that is red under green stubs (e.g. `release-matrix` running `shasum` over nothing) | UNJUDGEABLE, by name |
 
@@ -217,7 +217,8 @@ building rather than stopping.
 | K1 | The carrier runs the checker AND its `--self-test \|\| exit 0`: painting the checker red makes the carrier red for the checker's sake, and the neutered control passes | CAUGHT — the stub answers `--self-test` with the CONTROL status and anything else with the CHECKER status; the proof paints the control status alone |
 | K2 | Sibling `_test.sh \|\| exit 0` in one gate and the flag behind `\|\| exit 0` in another; `controlOf` is last-gate-wins | CAUGHT — every carrier is painted and tried |
 | K3 | A checker with no extension (`scripts/lint-x`) or `.bash` — not a checker to the regex, so no stub and no control proof | CAUGHT — any `scripts/…` token is a checker |
-| **K-ok** | Two controls joined by `;` in one carrier | PASSES (each is reached) |
+| K4 | Two controls joined by `;` in one carrier — the line's status is the LAST command's, so the first control's failure is discarded | CAUGHT (an earlier draft of this row said PASSES; the reviewer's R4c was right) |
+| **K-ok** | Two controls joined by `&&` | PASSES — both reached |
 
 ## L. The registry chooses its own control — narrowed
 

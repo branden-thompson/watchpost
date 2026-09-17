@@ -41,7 +41,7 @@ var execMagic = [][]byte{
 // and the embedded place-name table. A new row is a deliberate act, which is the
 // point — the cost of adding one is naming it here, in front of a reviewer.
 var largeAllowed = exempt(&exemptionTable{
-	name: "largeAllowed", absent: "no/such/file.bin", satisfied: "go.mod",
+	name: "largeAllowed", satisfied: "go.mod",
 	rows: map[string]string{
 		"domains/locations/geodata/data/cities_trim.tsv.gz": "the embedded place-name index; the app cannot resolve a location without it",
 		"domains/locations/geodata/data/zips_trim.tsv.gz":   "the embedded postcode table, the other half of the offline resolver",

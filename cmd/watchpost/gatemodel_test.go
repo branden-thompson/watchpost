@@ -103,9 +103,10 @@ type segment struct {
 // that names it — make merges them, so a parser that reads the first rule reads
 // a list make does not run (A17).
 type target struct {
-	name string
-	deps []string
-	cmds []command
+	name  string
+	deps  []string
+	cmds  []command
+	phony bool // make's database says so; a non-phony gate is silenced by a file with its name
 }
 
 // ciStep is one workflow step. Keys are the step's own keys wherever they sit —
@@ -288,10 +289,11 @@ func newCommand(body string) command {
 	return c
 }
 
-// checkerRef finds a project-written checker: a script under scripts/ with or
-// without `./`, with or without an interpreter in front (A2, A3, A4), or a tool
-// run with `go run ./tools/<x>`.
-var checkerRef = regexp.MustCompile(`(?:^|[\s@=])(?:(?:python3|bash|sh|expect)\s+)?(?:\./)?(scripts/[A-Za-z0-9_/.-]+\.(?:sh|py|expect)|tools/[a-z][a-z0-9-]*)`)
+// checkerRef finds a project-written checker: ANY path under scripts/ — no
+// extension required, because `scripts/lint-x` and `scripts/lint-x.bash` are
+// checkers the extension list missed (K3) — with or without `./`, with or
+// without an interpreter in front (A2–A4), or a tool run with `go run ./tools/<x>`.
+var checkerRef = regexp.MustCompile(`(?:^|[\s@=])(?:(?:python3|bash|sh|expect)\s+)?(?:\./)?(scripts/[A-Za-z0-9_/.-]+|tools/[a-z][a-z0-9-]*)`)
 
 // isCheck says whether one segment is the shape of a gate: a project checker, a
 // `go test`, or a self-test — and is live.

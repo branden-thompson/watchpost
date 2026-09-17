@@ -28,11 +28,15 @@ type execSpecimen struct {
 	caught bool
 }
 
-func canFail(t reporter, o *oracleTree, req []string)   { assertEveryRequiredGateCanFail(t, o, req) }
-func verifyFails(t reporter, o *oracleTree, _ []string) { assertVerifyCanFail(t, o) }
+func canFail(t reporter, o *oracleTree, req []string) {
+	assertEveryRequiredGateCanFail(t, o, req, ciOnly)
+}
+func verifyFails(t reporter, o *oracleTree, req []string) { assertVerifyCanFail(t, o, req) }
+func phony(t reporter, o *oracleTree, req []string) {
+	assertEveryRequiredGateIsPhony(t, o, req, ciOnly)
+}
 func controlsReached(t reporter, o *oracleTree, req []string) {
-	o.checkers = o.checkersInvoked(req)
-	assertEveryControlIsReached(t, o, req, map[string]string{})
+	assertEveryControlIsReached(t, o, req, map[string]string{"scripts/install-test.sh": "no control in the base fixture, by design"})
 }
 
 func prepend(line string) func(string) string {
@@ -48,6 +52,60 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		{name: "E-ok every required gate goes red when its checks do", mk: same, assert: canFail, caught: false},
 		{name: "E-ok verify itself goes red", mk: same, assert: verifyFails, caught: false},
 		{name: "E-ok every control is reached", mk: same, assert: controlsReached, caught: false},
+		{name: "H-ok every required gate is phony and present", mk: same, assert: phony, caught: false},
+
+		// ---- H. scratch-tree divergence: the green control -----------------------
+		{name: "H1 a preflight red only in scratch, || exit 0 behind it",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@test -f go.mod || { echo run from the repo root; exit 1; }\n\t@./scripts/lint-a.sh || exit 0\n"), assert: canFail, caught: true},
+		{name: "H2 go version as the preflight",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@/usr/bin/false || { echo go toolchain missing; exit 1; }\n\t@./scripts/lint-a.sh || exit 0\n"), assert: canFail, caught: true},
+		{name: "H3 the dirty-tree refusal this project writes",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@git diff --quiet || { echo refusing on a dirty tree; exit 1; }\n\t@./scripts/lint-a.sh || exit 0\n"), assert: canFail, caught: true},
+		{name: "H4 a prerequisite red under green stubs",
+			mk: sub("release-matrix:\n\tgo build $(TRIMPATH) -o dist/x-linux ./cmd/watchpost\n", "release-matrix:\n\t@ls dist/nothing\n"), assert: canFail, caught: true},
+		{name: "H5 verify with a preflight and -@ on treelock",
+			mk: sub("\t@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates",
+				"\t@true\n\t-@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates"),
+			assert: verifyFails, caught: true},
+
+		// ---- J. discovery: the phony audit ----------------------------------------
+		{name: "J1 a required gate not in .PHONY",
+			mk: sub(" lint-a lint-b ", " lint-b "), assert: phony, caught: true},
+		{name: "J2 two gates consolidated into a pattern rule",
+			mk: sub("test-tags:\n\tgo test -tags watchpost_debug -count=1 ./app\n", "%-tags:\n\tgo $* -tags watchpost_debug -count=1 ./app || exit 0\n"), assert: canFail, caught: true},
+		{name: "J3 a rule deleted and .DEFAULT supplying a green one",
+			mk: func(s string) string {
+				s = sub("lint-a:\n\t@./scripts/lint-a.sh\n", "")(s)
+				return ".DEFAULT:\n\t@echo \"$@: no rule, skipped\"\n" + s
+			}, assert: canFail, caught: true},
+
+		// ---- K. the control proof paints the control, not the checker ------------------
+		{name: "K1 the carrier runs the checker and a neutered control",
+			mk: func(s string) string {
+				s = sub("\t@./scripts/lint-a.sh --self-test\n", "")(s)
+				return sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@./scripts/lint-a.sh\n\t@./scripts/lint-a.sh --self-test || exit 0\n")(s)
+			}, assert: controlsReached, caught: true},
+		{name: "K2 sibling || exit 0 in one gate, flag || exit 0 in another",
+			mk: func(s string) string {
+				s = sub("\t@./scripts/lint-a.sh --self-test\n", "\t@./scripts/lint-a.sh --self-test || exit 0\n")(s)
+				return sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@./scripts/lint-a.sh\n\t@./scripts/lint-a_test.sh || exit 0\n")(s)
+			}, assert: controlsReached, caught: true},
+		{name: "K3 a checker with no extension, control removed",
+			mk: func(s string) string {
+				s = sub("\t@./scripts/lint-a.sh --self-test\n", "")(s)
+				return sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@./scripts/lint-a\n")(s)
+			}, assert: controlsReached, caught: true},
+		// `;` DISCARDS THE FIRST CONTROL'S STATUS — the line exits with the last
+		// command's. The reviewer's R4c called this CAUGHT and was right; an earlier
+		// draft of this table called it PASSES and was wrong. `&&` is the passing shape.
+		{name: "K4 two controls joined by ; — the first's failure is lost",
+			mk: sub("\t@./scripts/lint-a.sh --self-test\n\t@./scripts/lint-b.sh --self-test\n", "\t@./scripts/lint-a.sh --self-test; ./scripts/lint-b.sh --self-test\n"), assert: controlsReached, caught: true},
+		{name: "K-ok two controls joined by && — both reached",
+			mk: sub("\t@./scripts/lint-a.sh --self-test\n\t@./scripts/lint-b.sh --self-test\n", "\t@./scripts/lint-a.sh --self-test && ./scripts/lint-b.sh --self-test\n"), assert: controlsReached, caught: false},
+		{name: "A7 a control made unreachable: true || x --self-test (executed)",
+			mk: sub("\t@./scripts/lint-a.sh --self-test", "\t@true || ./scripts/lint-a.sh --self-test"), assert: controlsReached, caught: true},
+		{name: "A10 a control deleted outright (executed)",
+			mk: sub("\t@./scripts/lint-a.sh --self-test\n", ""), assert: controlsReached, caught: true},
 
 		// ---- E. make semantics -------------------------------------------------
 		{name: "E1 .IGNORE: at the top", mk: prepend(".IGNORE:"), assert: canFail, caught: true},
@@ -103,8 +161,8 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@echo starting\n# make ignores this\n\t@./scripts/lint-a.sh\n"),
 			assert: canFail, caught: false},
 	}
-	if len(specimens) < 20 {
-		t.Fatalf("%d execution specimens; section E has 16 rows plus the re-executed round-one attacks", len(specimens))
+	if len(specimens) < 35 {
+		t.Fatalf("%d execution specimens; sections E, H, J and K plus the re-executed round-one attacks", len(specimens))
 	}
 	req := parseRequired(baseRequired)
 	for _, sp := range specimens { // bounded by the specimen table (P10-02)
@@ -132,11 +190,11 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 func TestTheRegistryAttackList(t *testing.T) {
 	yes := func(*testing.T, string) bool { return true }
 	// honest answers a known-absent subject and a known-satisfied one correctly.
-	honestExists := func(_ *testing.T, s string) bool { return s != "absent-thing" }
+	honestExists := func(_ *testing.T, s string) bool { return s != "absent-thing" && s != absentNonce }
 	honestNeeded := func(_ *testing.T, s string) bool { return s != "satisfied-thing" }
 	good := func(rows map[string]string) *exemptionTable {
 		return &exemptionTable{name: "specimen", rows: rows, exists: honestExists, stillNeeded: honestNeeded,
-			absent: "absent-thing", satisfied: "satisfied-thing"}
+			satisfied: "satisfied-thing"}
 	}
 	realReason := "a real sentence explaining why this row is true today"
 
@@ -152,10 +210,12 @@ func TestTheRegistryAttackList(t *testing.T) {
 		{"A30 a subject that no longer exists", good(map[string]string{"absent-thing": realReason}), true},
 		{"A31 a subject the rule already accepts", good(map[string]string{"satisfied-thing": realReason}), true},
 		{"F1 exists that cannot return false", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason},
-			exists: yes, stillNeeded: honestNeeded, absent: "absent-thing", satisfied: "satisfied-thing"}, true},
+			exists: yes, stillNeeded: honestNeeded, satisfied: "satisfied-thing"}, true},
+		{"L1 exists honest only for a subject the table would have chosen", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason},
+			exists: func(_ *testing.T, s string) bool { return s != "absent-thing" }, stillNeeded: honestNeeded, satisfied: "satisfied-thing"}, true},
 		{"F2 stillNeeded that cannot return false", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason},
-			exists: honestExists, stillNeeded: yes, absent: "absent-thing", satisfied: "satisfied-thing"}, true},
-		{"F1 a table with no control subjects declared", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason},
+			exists: honestExists, stillNeeded: yes, satisfied: "satisfied-thing"}, true},
+		{"F1 a table with no satisfied subject declared", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason},
 			exists: honestExists, stillNeeded: honestNeeded}, true},
 		{"a table with no functions at all", &exemptionTable{name: "s", rows: map[string]string{"thing": realReason}}, true},
 		{"the no functions never called on a good table", good(map[string]string{"thing": realReason}), false},

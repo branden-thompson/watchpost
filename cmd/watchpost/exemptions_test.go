@@ -46,16 +46,20 @@ type exemptionTable struct {
 	// row. A row for a subject the rule already accepts is stale in the other
 	// direction — it reads as a considered exception and is a no-op (A31).
 	stillNeeded func(t *testing.T, subject string) bool
-	// absent is a subject that does NOT exist, and satisfied is one the rule
-	// already accepts. THE REGISTRY CANNOT SEE INSIDE A FUNCTION, so a table
-	// registering `exists: func(…) bool { return true }` would pass every row
-	// (F1, F2). These two are the known cases an instrument must answer before
-	// it is believed about an unknown one (FR-11.6): `exists(absent)` must be
-	// false and `stillNeeded(satisfied)` must be false, or the table's functions
-	// have never been shown to return false at all.
-	absent    string
+	// satisfied is a subject the rule already accepts. THE REGISTRY CANNOT SEE
+	// INSIDE A FUNCTION, so a table registering `stillNeeded: func(…) bool {
+	// return true }` would pass every row (F2); `stillNeeded(satisfied)` must be
+	// false, or the function has never been shown to return false at all
+	// (FR-11.6). The absent subject for `exists` is NOT the table's to choose —
+	// the registry generates a nonce (L1) — because a subject the table names is
+	// a subject it can special-case. `satisfied` has no such fix: only the table
+	// knows what its rule accepts, and a table honest for that one subject and
+	// dishonest elsewhere is a declared ceiling (L-ceiling).
 	satisfied string
 }
+
+// absentNonce is a subject that exists nowhere, chosen by the registry.
+const absentNonce = "__registry-absent-nonce-7f3a9c__/no/such/subject"
 
 // registry is every table declared in this package. Tables append themselves
 // at declaration, so the list is the set of declarations, not a copy of it.
@@ -107,18 +111,16 @@ func assertRegistry(t reporter, tables []*exemptionTable) {
 		// THE NEGATIVE CONTROLS FIRST. A table whose functions cannot return false
 		// passes every row and proves nothing; these two calls are the evidence
 		// that they can.
-		if tbl.absent == "" || tbl.satisfied == "" {
-			t.Errorf("table %s registered without an `absent` and a `satisfied` control subject: nothing "+
-				"shows its exists/stillNeeded can ever return false (FR-11.6)", tbl.name)
-		} else {
-			if tbl.exists(tt, tbl.absent) {
-				t.Errorf("table %s: exists(%q) is TRUE for a subject declared absent — the function cannot "+
-					"return false, so every row's existence check is worthless", tbl.name, tbl.absent)
-			}
-			if tbl.stillNeeded(tt, tbl.satisfied) {
-				t.Errorf("table %s: stillNeeded(%q) is TRUE for a subject declared satisfied — the function "+
-					"cannot return false, so every row's staleness check is worthless", tbl.name, tbl.satisfied)
-			}
+		if tbl.exists(tt, absentNonce) {
+			t.Errorf("table %s: exists(<a nonce that exists nowhere>) is TRUE — the function cannot return "+
+				"false, so every row's existence check is worthless", tbl.name)
+		}
+		if tbl.satisfied == "" {
+			t.Errorf("table %s registered without a `satisfied` control subject: nothing shows its "+
+				"stillNeeded can ever return false (FR-11.6)", tbl.name)
+		} else if tbl.stillNeeded(tt, tbl.satisfied) {
+			t.Errorf("table %s: stillNeeded(%q) is TRUE for a subject declared satisfied — the function "+
+				"cannot return false, so every row's staleness check is worthless", tbl.name, tbl.satisfied)
 		}
 		for subject, why := range tbl.rows { // bounded by the table (P10-02)
 			w := strings.ToLower(strings.TrimSpace(why))

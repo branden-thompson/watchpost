@@ -28,7 +28,7 @@ import (
 
 // ciOnly are gates CI runs that a local `make verify` deliberately does not.
 var ciOnly = exempt(&exemptionTable{
-	name: "ciOnly", absent: "no-such-gate", satisfied: "race",
+	name: "ciOnly", satisfied: "race",
 	rows: map[string]string{
 		"release-matrix": "it builds five platforms; a local verify would spend minutes producing artifacts nobody is about to publish",
 		"install-test":   "it installs the artifacts release-matrix built, so it cannot run without them",
@@ -39,7 +39,7 @@ var ciOnly = exempt(&exemptionTable{
 
 // verifyOnly are gates a local `make verify` runs that CI does not.
 var verifyOnly = exempt(&exemptionTable{
-	name: "verifyOnly", absent: "no-such-gate", satisfied: "race",
+	name: "verifyOnly", satisfied: "race",
 	rows: map[string]string{
 		"p10": "the P10 harness CLI and its exemptions ledger live OUTSIDE the public tree (the ledger is .gitignore'd, red-team R2-2), so CI has no `a2dh` and no file to read; it is a local gate that must fail loud rather than skip",
 	},
@@ -49,7 +49,7 @@ var verifyOnly = exempt(&exemptionTable{
 
 // unlisted are gate-shaped Makefile targets deliberately on NO gate list.
 var unlisted = exempt(&exemptionTable{
-	name: "unlisted", absent: "no-such-target", satisfied: "race",
+	name: "unlisted", satisfied: "race",
 	rows: map[string]string{
 		"quality-bench":   "a measurement, not a gate — it reports numbers and has no pass condition (INST-5)",
 		"pty-severe":      "it drives a real pty, which CI has no terminal for",
@@ -70,7 +70,7 @@ var unlisted = exempt(&exemptionTable{
 
 // cacheableGate are gate recipes whose `go test` deliberately omits -count=1.
 var cacheableGate = exempt(&exemptionTable{
-	name: "cacheableGate", absent: "no-such-target", satisfied: "race",
+	name: "cacheableGate", satisfied: "race",
 	rows: map[string]string{
 		"test":          "not a gate — it is the plain suite, declared `unlisted`; `race` is what runs on every gate path and it carries the flag",
 		"quality-bench": "a benchmark with `-count 10`, which is the sample size rather than a cache defence; benchmarks are not cached",
@@ -88,7 +88,7 @@ var cacheableGate = exempt(&exemptionTable{
 
 // conditionalStep are required gates whose CI step legitimately carries `if:`.
 var conditionalStep = exempt(&exemptionTable{
-	name: "conditionalStep", absent: "no-such-gate", satisfied: "race",
+	name: "conditionalStep", satisfied: "race",
 	rows: map[string]string{
 		"install-test": "the matrix runs three operating systems and this installs what release-matrix built; doing it once, on Linux, is the test",
 		"mutant-check": "MUTANT_POLICY decides its schedule (push / nightly / label) and all three conditions are written out, so switching between them is a word in the Makefile rather than an edit here",
@@ -105,7 +105,7 @@ var conditionalStep = exempt(&exemptionTable{
 // control. EVERY ROW IS A GATE TRUSTED WITHOUT EVIDENCE; the list is meant to
 // shrink.
 var uncontrolled = exempt(&exemptionTable{
-	name: "uncontrolled", absent: "scripts/no-such.sh", satisfied: "scripts/lint-imports.sh",
+	name: "uncontrolled", satisfied: "scripts/lint-imports.sh",
 	rows: map[string]string{
 		"scripts/lint.sh":                      "F-118 — it discards golangci-lint's exit code with `|| true` and treats non-empty JSON as liveness, so it does not fail closed. A control would pin the behaviour we intend to CHANGE; it is slated for conversion to Go",
 		"scripts/install-test.sh":              "it installs and runs a built artifact, so a control would be a second installation on a machine that has just done one; it is CI-only and runs on a clean runner",
@@ -324,72 +324,6 @@ func assertNoCachedGate(t reporter, m *buildModel) {
 	if checked < 5 {
 		t.Fatalf("COULD NOT RUN — found %d `go test` recipes; the Makefile shape has changed and "+
 			"this check has lost its subject", checked)
-	}
-}
-
-// NO GATE'S RECIPE DISCARDS ITS OWN EXIT STATUS.
-//
-// A leading `-` or a trailing `|| true` makes a required gate unable to fail
-// with no condition at all — a cheaper silencing than any CI attack, and one no
-// list comparison can see.
-func TestNoRequiredGateRecipeCannotFail(t *testing.T) {
-	m := loadBuildModel(t)
-	m.mustRun(t)
-	assertNoUnfailableRecipe(t, m)
-}
-
-func assertNoUnfailableRecipe(t reporter, m *buildModel) {
-	t.Helper()
-	for _, g := range m.required { // bounded by the gate list (P10-02)
-		tg := m.targets[g]
-		if tg == nil {
-			continue
-		}
-		for _, c := range tg.cmds { // bounded by the recipe (P10-02)
-			if c.checkCannotFail() {
-				t.Errorf("%s is a REQUIRED gate and a line of its recipe discards its exit status:\n  %s\n"+
-					"A gate that cannot fail is not a gate. Remove the `-` prefix or the `|| true`.", g, c.text)
-			}
-		}
-	}
-}
-
-// EVERY REQUIRED GATE'S CHECKER HAS A POSITIVE CONTROL, AND THE CONTROL RUNS.
-//
-// Every project-written checker a required gate invokes must be exercised with
-// a self-test by a gate that runs — on a live line, in a required gate's own
-// recipe. A control in a target nothing invokes, a commented-out control, or one
-// behind `|| true` is the same as no control with the paperwork of one. The
-// standard toolchain needs no control: a positive control for `go vet` would be
-// a test of Go.
-func TestEveryRequiredGatesCheckerHasAControl(t *testing.T) {
-	m := loadBuildModel(t)
-	m.mustRun(t)
-	assertEveryCheckerControlled(t, m)
-}
-
-func assertEveryCheckerControlled(t reporter, m *buildModel) {
-	t.Helper()
-	exercised := m.controlled()
-	var checked int
-	for _, g := range m.required { // bounded by the gate list (P10-02)
-		for _, k := range m.checkersOf(g) { // bounded by the recipe (P10-02)
-			checked++
-			if exercised[k] {
-				continue
-			}
-			if _, declared := uncontrolled[k]; declared {
-				continue
-			}
-			t.Errorf("%s is invoked by the required gate %s and nothing exercises it with a self-test.\n"+
-				"A control that does not run is the same as no control, with the paperwork of one.\n"+
-				"Add `<checker> --self-test` to gate-controls, or add a row to `uncontrolled` saying why "+
-				"this checker is trusted without evidence.", k, g)
-		}
-	}
-	if checked < 5 {
-		t.Fatalf("COULD NOT RUN — resolved %d checker(s) across the required gates; the Makefile shape "+
-			"has changed and this check has lost its subject", checked)
 	}
 }
 

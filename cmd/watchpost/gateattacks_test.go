@@ -20,7 +20,7 @@ import (
 
 // baseMakefile is a small Makefile that is CORRECT under every gate.
 const baseMakefile = `
-.PHONY: verify verify-gates
+.PHONY: verify verify-gates race test-tags lint-a lint-b gate-controls alloc-budget build-check mutant-anchors mutant-check release-matrix install-test
 verify:
 	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
 
@@ -59,6 +59,12 @@ build-check:
 
 mutant-check:
 	@go test -tags mutants -count=1 ./06_docs/mutants/
+
+release-matrix:
+	go build $(TRIMPATH) -o dist/x-linux ./cmd/watchpost
+
+install-test: release-matrix
+	@./scripts/install-test.sh
 
 quality-bench:
 	go test ./x -run '^$$' -bench . -count 10
@@ -144,8 +150,6 @@ func all(t reporter, m *buildModel) {
 	assertGateShapedListed(t, m)
 	assertNoSilencedCIStep(t, m)
 	assertNoCachedGate(t, m)
-	assertNoUnfailableRecipe(t, m)
-	assertEveryCheckerControlled(t, m)
 	assertEveryBuildTrimmed(t, m)
 }
 
@@ -167,27 +171,6 @@ func TestTheGateAttackList(t *testing.T) {
 		{name: "A4 a gate spelled bash scripts/x.sh",
 			mk: sub("quality-bench:", "sneaky:\n\t@bash scripts/sneaky.sh\n\nquality-bench:"), ci: same, req: same,
 			assert: assertGateShapedListed, caught: true},
-		{name: "A5 a control commented out with a tab-indented #",
-			mk: sub("\t@./scripts/lint-a.sh --self-test", "\t# ./scripts/lint-a.sh --self-test"), ci: same, req: same,
-			assert: assertEveryCheckerControlled, caught: true},
-		{name: "A6 a control neutered with || true",
-			mk: sub("\t@./scripts/lint-a.sh --self-test", "\t@./scripts/lint-a.sh --self-test || true"), ci: same, req: same,
-			assert: assertEveryCheckerControlled, caught: true},
-		{name: "A7 a control made unreachable: true || x --self-test",
-			mk: sub("\t@./scripts/lint-a.sh --self-test", "\t@true || ./scripts/lint-a.sh --self-test"), ci: same, req: same,
-			assert: assertEveryCheckerControlled, caught: true},
-		{name: "A8 a required gate's recipe prefixed - to ignore its exit",
-			mk: sub("\t@./scripts/lint-a.sh\n", "\t-@./scripts/lint-a.sh\n"), ci: same, req: same,
-			assert: assertNoUnfailableRecipe, caught: true},
-		{name: "A9 a control moved into a target that runs nowhere",
-			mk: func(s string) string {
-				s = sub("\t@./scripts/lint-a.sh --self-test\n", "")(s)
-				return sub("journey: build\n", "journey: build\n\t@./scripts/lint-a.sh --self-test\n")(s)
-			}, ci: same, req: same,
-			assert: assertEveryCheckerControlled, caught: true},
-		{name: "A10 a control deleted outright",
-			mk: sub("\t@./scripts/lint-a.sh --self-test\n", ""), ci: same, req: same,
-			assert: assertEveryCheckerControlled, caught: true},
 		{name: "A11 a gate running go test without -count=1",
 			mk: sub("go test -race -count=1 ./...", "go test -race ./..."), ci: same, req: same,
 			assert: assertNoCachedGate, caught: true},
@@ -206,14 +189,6 @@ func TestTheGateAttackList(t *testing.T) {
 		{name: "A17 a second verify-gates rule appending a gate CI never runs",
 			mk: sub("quality-bench:", "verify-gates: extra-gate\n\nextra-gate:\n\t@./scripts/extra.sh\n\nquality-bench:"), ci: same, req: same,
 			assert: assertThreeListsAgree, caught: true},
-		{name: "A18 a required gate's recipe emptied to @true",
-			mk: sub("\t@./scripts/lint-a.sh\n", "\t@true\n"), ci: same, req: same,
-			assert: assertEveryCheckerControlled, caught: false}, // see note below
-		{name: "A37 a column-0 comment between two recipe lines does not end the recipe",
-			mk: sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@echo starting\n# make ignores this; the recipe continues\n\t@./scripts/lint-a.sh\n"), ci: same, req: same,
-			assert: assertEveryRequiredGateRunsACheck, caught: false},
-		{name: "A-ok1 a tab-indented comment beside a live control",
-			mk: same, ci: same, req: same, assert: assertEveryCheckerControlled, caught: false},
 		{name: "A-ok3 a correct build line",
 			mk: same, ci: same, req: same, assert: assertEveryBuildTrimmed, caught: false},
 
@@ -244,7 +219,11 @@ func TestTheGateAttackList(t *testing.T) {
 			assert: assertThreeListsAgree, caught: true},
 		{name: "A27 a required gate removed from all three lists",
 			mk: func(s string) string {
-				s = sub(" lint-a ", " ")(s)
+				// EXPLICIT ANCHORS: `.PHONY` also names lint-a now, and a bare " lint-a "
+				// would hit it first and leave verify's list intact.
+				s = sub("verify-gates: race test-tags lint-a lint-b", "verify-gates: race test-tags lint-b")(s)
+				s = sub("gate-controls alloc-budget build-check mutant-anchors mutant-check release-matrix install-test\nverify:",
+					"gate-controls alloc-budget build-check mutant-anchors mutant-check release-matrix install-test\nverify:")(s)
 				return sub("lint-a:\n\t@./scripts/lint-a.sh\n", "")(s)
 			},
 			ci:  sub("      - run: make lint-a\n", ""),
@@ -268,8 +247,11 @@ func TestTheGateAttackList(t *testing.T) {
 			mk: same, ci: same, req: func(string) string { return "# none\n" }, assert: all, caught: true},
 	}
 
-	if len(specimens) < 30 {
-		t.Fatalf("%d specimens; the attack list has 37 rows and this table has lost most of them", len(specimens))
+	// THE FLOOR IS THE COUNT. Nine rows moved to the executed table when the
+	// Makefile half stopped being parsed; a floor left at the old number would
+	// let three more vanish unnoticed.
+	if len(specimens) < 26 {
+		t.Fatalf("%d specimens; the parsed table holds 26 and this one has lost some", len(specimens))
 	}
 	for _, sp := range specimens { // bounded by the specimen table (P10-02)
 		t.Run(sp.name, func(t *testing.T) {
@@ -284,75 +266,5 @@ func TestTheGateAttackList(t *testing.T) {
 					"A gate that flags correct code trains authors to delete it.", strings.Join(said, "\n  "))
 			}
 		})
-	}
-}
-
-// A18 IS RECORDED AS NOT CAUGHT, AND THAT IS HONEST. A required gate whose
-// recipe is `@true` has no checker to be uncontrolled and no exit status to
-// discard; every list still names it and CI still runs it. The model can see
-// that the recipe runs no check — it is not gate-shaped — but a required gate
-// that is not gate-shaped is a different property from the ones above, and is
-// asserted by TestEveryRequiredGateRunsACheck.
-
-// EVERY REQUIRED GATE ACTUALLY RUNS A CHECK (A18).
-//
-// The three-list rule proves a required gate is NAMED everywhere. It cannot
-// prove the name is attached to anything: `fmt: @true` satisfies all three
-// lists. So every required gate whose recipe this model can read must run at
-// least one live check — the standard toolchain counts, a project checker
-// counts, a recursive make counts as the thing it delegates to.
-func TestEveryRequiredGateRunsACheck(t *testing.T) {
-	m := loadBuildModel(t)
-	m.mustRun(t)
-	assertEveryRequiredGateRunsACheck(t, m)
-}
-
-func assertEveryRequiredGateRunsACheck(t reporter, m *buildModel) {
-	t.Helper()
-	toolchain := []string{"gofmt", "go vet", "go test", "go mod", "go build", "govulncheck", "golangci"}
-	for _, g := range m.required { // bounded by the gate list (P10-02)
-		tg := m.targets[g]
-		if tg == nil {
-			continue // CI-only targets that exist only as workflow steps are the list check's question
-		}
-		var runs bool
-		for _, c := range tg.cmds { // bounded by the recipe (P10-02)
-			if c.checkCannotFail() {
-				continue
-			}
-			if c.runsACheck() || strings.Contains(c.text, "$(MAKE)") {
-				runs = true
-				break
-			}
-			for _, tool := range toolchain { // bounded by the tool list (P10-02)
-				if strings.Contains(c.text, tool) {
-					runs = true
-				}
-			}
-		}
-		if !runs {
-			t.Errorf("%s is a REQUIRED gate and its recipe runs no check that can fail:\n  %v\n"+
-				"Every list names it and CI runs it, and it asserts nothing.", g, recipeText(tg))
-		}
-	}
-}
-
-func recipeText(tg *target) []string {
-	var out []string
-	for _, c := range tg.cmds { // bounded by the recipe (P10-02)
-		out = append(out, c.text)
-	}
-	return out
-}
-
-func TestA18ARequiredGateEmptiedToTrueIsCaught(t *testing.T) {
-	m := newBuildModel(sub("\t@./scripts/lint-a.sh\n", "\t@true\n")(baseMakefile), baseWorkflow, baseRequired)
-	if fired, _ := verdictOf(func(r reporter) { assertEveryRequiredGateRunsACheck(r, m) }); !fired {
-		t.Error("SURVIVED — a required gate whose recipe is `@true` was not caught")
-	}
-	if fired, said := verdictOf(func(r reporter) {
-		assertEveryRequiredGateRunsACheck(r, newBuildModel(baseMakefile, baseWorkflow, baseRequired))
-	}); fired {
-		t.Errorf("FALSE POSITIVE on the base fixture:\n  %s", strings.Join(said, "\n  "))
 	}
 }
