@@ -218,8 +218,9 @@ runs under `FULL INST`, where the instrument that checks a thing is part of the 
 - **FR-8.5** Locations inside the service radius are fetched at the **priority cadence**.  *Exit: inside
   is fast, outside does not exist for the station at all.*
 - **FR-8.6** A **hard cap** bounds the priority tier — `locations.PoolCap`, 25 — filled **nearest-first
-  from the population-filtered table** (D-98), and it **behaves when the radius admits very few
-  locations — possibly one.**  *Exit: the cap is correct at N=1 and at N greater than the cap; the rule
+  from the population-filtered table** (D-98), with the zip-code places of tier three admitted only
+  once tier two leaves room (which at fifty miles it never does — recorded as F-157 for 0.16.5), and it
+  **behaves when the radius admits very few locations — possibly one.**  *Exit: the cap is correct at N=1 and at N greater than the cap; the rule
   is stated where the operator reads it.*  *(Amended 2026-09-17, BUILD exit, HUM LEAD: the original said
   "population-descending", which the pool never did and which the station-context ruling names as the
   wrong validity test for a short-range station — the pool's own header at `app/pool.go` says why a

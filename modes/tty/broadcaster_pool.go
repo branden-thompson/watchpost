@@ -203,9 +203,24 @@ func (b Broadcaster) poolSpan(used int, idx locIndex) scrollSpan {
 
 // poolFooter is the reference's "Showing 1 - n of N" line.
 func (b Broadcaster) poolFooter(lo, hi, total, w int) string {
+	// HOW MANY PLACES ARE IN REACH, AND AT WHAT RADIUS (REVIEW 2026-09-17,
+	// ruling 8): a three-mile station has a pool of ONE, and a console that only
+	// listed it read like a fifty-mile station that was slow. An empty pool says
+	// so rather than going quiet (F-83).
+	reach := ""
+	if b.area.RadiusMi > 0 {
+		reach = strconv.Itoa(total) + " in reach at " + strconv.FormatFloat(b.area.RadiusMi, 'f', -1, 64) + " mi"
+	}
 	if total == 0 {
-		return ""
+		if reach == "" {
+			return ""
+		}
+		s := "0 places in reach at " + strconv.FormatFloat(b.area.RadiusMi, 'f', -1, 64) + " mi"
+		return render.PadTo(strings.Repeat(" ", max(0, w-len(s)))+s, w)
 	}
 	s := "Showing " + strconv.Itoa(lo+1) + " - " + strconv.Itoa(hi) + " of " + strconv.Itoa(total) + " Location Pool Locations"
+	if reach != "" {
+		s += " · " + reach
+	}
 	return render.PadTo(strings.Repeat(" ", max(0, w-len(s)))+s, w)
 }

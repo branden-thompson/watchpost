@@ -402,6 +402,10 @@ const radiusLookupBudget = 5 * time.Second
 // standing in the small ones. Rainbow is not an unlucky 26th; a pool ordered
 // that way can never surface it, however large the cap.
 //
+// THE CONSOLE SAYS HOW MANY PLACES ARE IN REACH (REVIEW 2026-09-17, ruling 8), so
+// a three-mile station reads "1 in reach at 3 mi" rather than looking like a
+// fifty-mile one that is slow; the tiering itself is F-157, for 0.16.5.
+//
 // THREE ANSWERS, NOT TWO. `within` distinguishes a real place the station
 // cannot reach from a name that means nothing — the first points the operator
 // at Observer, the second asks them to try again.

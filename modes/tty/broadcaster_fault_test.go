@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // F-150, REVIEW — THE OPERATOR SEES A FAULT RUN ON THE CONSOLE, in the station's
@@ -50,5 +51,26 @@ func TestAMutedListenerIsShownWhileTheStationIsOnAir(t *testing.T) {
 	m, _ := r.Update(StationMsg{Power: lineup.Running})
 	if !m.(Router).broadcaster.listenerMuted {
 		t.Error("the Router did not hand the Observer's mute to the console")
+	}
+}
+
+// REVIEW 2026-09-17 (ruling 8) — THE CONSOLE SAYS HOW MANY PLACES ARE IN REACH
+// AT THE STATION'S RADIUS. Measured around the real index, a three-mile station
+// has a pool of ONE place; a console that only lists it reads like a fifty-mile
+// station that is slow. The pool's footer states the count and the radius, and
+// an empty pool says so rather than going quiet.
+func TestThePoolFooterSaysHowManyPlacesAreInReach(t *testing.T) {
+	b := bcStandby(t, false, 0)
+	b, _ = b.Update(StationMsg{Power: lineup.Running})
+	b.area.Pool = []snapshot.LocationRef{{Label: "Bonsall, CA", Lat: 33.2889, Lon: -117.2153}}
+	b.area.RadiusMi = 3
+	b.areaGen++ // the memo keys on the area generation, which the real area message bumps
+	if got := stripANSITest(b.View().Content); !strings.Contains(got, "1 in reach at 3 mi") {
+		t.Errorf("a three-mile station with one place shows no reach line:\n%s", got)
+	}
+	b.area.Pool = nil
+	b.areaGen++
+	if got := stripANSITest(b.View().Content); !strings.Contains(got, "0 places in reach at 3 mi") {
+		t.Errorf("an empty pool says nothing about its reach:\n%s", got)
 	}
 }
