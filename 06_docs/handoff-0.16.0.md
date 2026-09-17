@@ -1,6 +1,12 @@
 # 0.16.0 — handoff
 
-**Status: BUILD, not exited. Do not ship.** Seven blind reviewers returned NOT CLEAR on 2026-09-16.
+**Status: BUILD EXITED at `557a40f`, 2026-09-17 (HUM LEAD: "Recommendation approved; Go 4 Review"). In
+REVIEW. Not yet shipped.** `make verify` ALL GATES GREEN on the exit commit; 379 mutants — 374 caught,
+5 survived by design; 60/60 requirements traced; the three exit rulings closed as recommended. The
+paragraph that follows is the state this document was written in, kept as the record of why the day
+between went where it did.
+
+**As of 2026-09-16:** Seven blind reviewers returned NOT CLEAR.
 The product is in good shape; the layer built to *prove* the product is not, and it stopped converging.
 
 **Read this before touching the gate layer.** The "What did not work" section is the reason this
@@ -14,7 +20,7 @@ handoff exists, and it is more useful than the findings list.
 |---|---|
 | Branch | `feature/0.16.0-broadcaster-ui` |
 | Pushed | `origin/main` @ `fd761ab` (0.15.0) and `origin/feature/0.16.0-broadcaster-ui` @ `66dc88d` — **both diverged from local HEAD; neither carries the rewritten history** |
-| `make verify` | **ALL GATES GREEN on `d7523e6` (2026-09-17, 17 min, GNU Make 4.4.1; also on `7c916c2` before round nine)** — 24 gates including the 379-anchor mutant check. The four verifies before it each stopped at a gate only a full run reaches (`tidy`, `race`, `lint`, `p10`), and every one of those notifications said exit 0 while the log said `Error 1` |
+| `make verify` | **ALL GATES GREEN on `557a40f`, the BUILD-exit commit (2026-09-17, 17 min, GNU Make 4.4.1); also on `6bf6544`, `df2aa60`, `d7523e6`, `7c916c2` before it)** — 24 gates including the 379-anchor mutant check. The four verifies before it each stopped at a gate only a full run reaches (`tidy`, `race`, `lint`, `p10`), and every one of those notifications said exit 0 while the log said `Error 1` |
 | `go test ./...` | green |
 | `make p10` | 0 live, 0 unmatched, 0 unratified, 152 ratified rows |
 | Mutation sweep | **RUN 2026-09-17 on `e956747`: 379 mutants — 374 CAUGHT, 5 SURVIVED (all five the roster's by-design set), 0 NO EVIDENCE**, 4 h 46 min; the record is `07-readiness/mutant-verdicts.log` |
