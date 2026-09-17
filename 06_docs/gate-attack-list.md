@@ -38,6 +38,7 @@ and is useless. Every CAUGHT specimen has a PASSES twin that must stay green.
 | A16 | `alloc-budget`'s `-run` pattern selecting **nothing** | CAUGHT |
 | A17 | A **second** `verify-gates:` rule appending prerequisites (make accumulates; a first-match parser reads one list while make runs another) | CAUGHT |
 | A18 | A required gate whose recipe is emptied to `@true` | CAUGHT |
+| A37 | A **column-0 comment between two recipe lines** — make ignores it and the recipe continues; a parser that resets on it drops every line after (found by the real `mutant-check`, which carries four paragraphs between its `mkdir` and its `go test`) | the second line is still a live check — PASSES |
 | **A-ok1** | A legitimate tab-indented comment *beside* a live control on the next line | PASSES |
 | **A-ok2** | `scripts/lint.sh` genuinely exempt, with its reason | PASSES |
 | **A-ok3** | A build line that is correct: `-o`, `$(TRIMPATH)`, `./cmd/watchpost` | PASSES |

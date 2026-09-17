@@ -40,10 +40,18 @@ var execMagic = [][]byte{
 // EVERY ROW IS A THING A READER DOWNLOADS ON PURPOSE: the documentation images
 // and the embedded place-name table. A new row is a deliberate act, which is the
 // point — the cost of adding one is naming it here, in front of a reviewer.
-var largeAllowed = map[string]string{
-	"domains/locations/geodata/data/cities_trim.tsv.gz": "the embedded place-name index; the app cannot resolve a location without it",
-	"domains/locations/geodata/data/zips_trim.tsv.gz":   "the embedded postcode table, the other half of the offline resolver",
-}
+var largeAllowed = exempt(&exemptionTable{
+	name: "largeAllowed",
+	rows: map[string]string{
+		"domains/locations/geodata/data/cities_trim.tsv.gz": "the embedded place-name index; the app cannot resolve a location without it",
+		"domains/locations/geodata/data/zips_trim.tsv.gz":   "the embedded postcode table, the other half of the offline resolver",
+	},
+	exists: fileExists,
+	stillNeeded: func(t *testing.T, rel string) bool {
+		info, err := os.Stat(filepath.Join("..", "..", rel))
+		return err == nil && info.Size() > sizeFloor && !isDocAsset(rel)
+	},
+})
 
 // sizeFloor is where a tracked file stops being source and starts being a
 // payload. Documentation images sit above it legitimately and are matched by

@@ -58,16 +58,29 @@ var identityPatterns = []struct {
 // THE ONLY LEGITIMATE CASES ARE THE RULES THEMSELVES, and a fixture that must
 // contain the thing it refuses. A row here is a file a reviewer has agreed may
 // name one of these; it is not a place to park a leak.
-var identityExempt = map[string]string{
-	"cmd/watchpost/identity_test.go":                                       "this file — the patterns and their exemptions have to be written down somewhere",
-	"scripts/quality/lint-ledger.sh":                                       "the ledger linter's own rules and its self-test probes, which must contain what they refuse",
-	"scripts/quality/exposure-scan.py":                                     "the survey's own pattern table",
-	"scripts/quality/p10-ledger-mirror.py":                                 "the mirror generator's own refusal table — it names the classes it strips, so it must contain them",
-	"THIRD_PARTY_LICENSES.md":                                              "upstream authorship, reproduced because the licences require it; the addresses are the copyright holders' own",
-	"06_docs/02_features/severe-alerts-modals/04-development/p1-domain.md": "a public NOAA office contact, quoted as domain research — it is published by the agency and names no one here",
-	"scripts/lint-watermark.sh":                                            "the attribution linter's own pattern table",
-	"06_docs/code-standards.md":                                            "the published rule reference, which quotes the patterns so a contributor can read them",
-}
+var identityExempt = exempt(&exemptionTable{
+	name: "identityExempt",
+	rows: map[string]string{
+		"cmd/watchpost/identity_test.go":                                       "this file — the patterns and their exemptions have to be written down somewhere",
+		"scripts/quality/lint-ledger.sh":                                       "the ledger linter's own rules and its self-test probes, which must contain what they refuse",
+		"scripts/quality/p10-ledger-mirror.py":                                 "the mirror generator's own refusal table — it names the classes it strips, so it must contain them",
+		"THIRD_PARTY_LICENSES.md":                                              "upstream authorship, reproduced because the licences require it; the addresses are the copyright holders' own",
+		"06_docs/02_features/severe-alerts-modals/04-development/p1-domain.md": "a public NOAA office contact, quoted as domain research — it is published by the agency and names no one here",
+	},
+	exists: fileExists,
+	stillNeeded: func(t *testing.T, rel string) bool {
+		body, err := os.ReadFile(filepath.Join("..", "..", rel))
+		if err != nil {
+			return false
+		}
+		for _, pat := range identityPatterns { // bounded by the pattern list (P10-02)
+			if m := pat.re.FindString(string(body)); m != "" && !reservedForDocs.MatchString(m) {
+				return true
+			}
+		}
+		return false
+	},
+})
 
 // reservedForDocs are the names RFC 2606 and 6761 set aside for examples. A
 // match on one of these is a fixture doing the right thing.
@@ -113,11 +126,6 @@ func TestThePublishedTreeNamesNoPersonOrMachine(t *testing.T) {
 	}
 	if scanned < 100 {
 		t.Fatalf("scanned %d text files; this check has lost its subject", scanned)
-	}
-	for p, why := range identityExempt { // bounded by the exemption table (P10-02)
-		if _, err := os.Stat(filepath.Join(root, p)); err != nil {
-			t.Errorf("%s is exempt (%q) and does not exist: the row outlived the file", p, why)
-		}
 	}
 }
 

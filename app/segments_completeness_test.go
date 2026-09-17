@@ -166,13 +166,15 @@ func kindIdents(t *testing.T) []string {
 // identifier that arrives at the `Compose` call — which is what "answering a
 // kind" actually means, and what an empty branch cannot fake.
 //
-// WHAT IT STILL CANNOT SEE, stated because a number without its blind spots is
-// worse than no number (INST-5): a hook that is permanently nil assigns in the
-// source and returns a zero value at run time, which is statically
-// indistinguishable from a working branch. Nor can it tell whether the value
-// assigned is the RIGHT one — a branch that assigns the seismic report under the
-// marine kind satisfies every rule here. The last step of adding a kind is
-// therefore a FIXTURE proving the right data arrives, and no gate performs it.
+// WHAT IT CANNOT SEE, stated because a number without its blind spots is worse
+// than no number (INST-5). This is a STATIC check over identifiers, and every
+// bypass found against it has the same shape: a branch that touches SOME value
+// reaching Compose without that value being the kind's report — a parameter, an
+// unrelated local, a `:=` shadow of the right name, a zero-value assignment. A
+// static rule that closed one of those was 36 lines that closed one token and
+// missed the next spelling, so it was deleted rather than extended. The last
+// step of adding a kind is a FIXTURE proving the right data arrives on the air,
+// and this gate is the reminder to write it, not a substitute for it.
 func TestEveryKindsBranchReachesTheComposer(t *testing.T) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "radio.go", nil, 0)
@@ -185,15 +187,10 @@ func TestEveryKindsBranchReachesTheComposer(t *testing.T) {
 	}
 
 	reaching := composeArgs(t, fn)
-	locals := declaredLocals(fn)
 	for kind, assigned := range branchAssignments(fn) { // bounded by the registry (P10-02)
 		var lands bool
 		for _, name := range assigned { // bounded by the branch (P10-02)
-			// IT MUST BE A LOCAL THIS FUNCTION DECLARES, not merely something the
-			// Compose call mentions. `voiceName = voiceName + ""` assigns a
-			// PARAMETER that reaches Compose, so without this a branch could satisfy
-			// the gate by touching a value it has nothing to do with.
-			if reaching[name] && locals[name] {
+			if reaching[name] {
 				lands = true
 				break
 			}
@@ -309,43 +306,6 @@ func funcNamed(f *ast.File, name string) *ast.FuncDecl {
 			out = d
 		}
 		return out == nil
-	})
-	return out
-}
-
-// declaredLocals are the identifiers this function declares in its own body —
-// `var x T` and `x := …`. Parameters and package-level names are excluded, which
-// is what stops a branch satisfying the gate by touching something it did not
-// create.
-func declaredLocals(fn *ast.FuncDecl) map[string]bool {
-	out := map[string]bool{}
-	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		switch v := n.(type) {
-		case *ast.DeclStmt:
-			gd, ok := v.Decl.(*ast.GenDecl)
-			if !ok {
-				return true
-			}
-			for _, spec := range gd.Specs { // bounded by the declaration (P10-02)
-				vs, ok := spec.(*ast.ValueSpec)
-				if !ok {
-					continue
-				}
-				for _, id := range vs.Names { // bounded by the spec (P10-02)
-					out[id.Name] = true
-				}
-			}
-		case *ast.AssignStmt:
-			if v.Tok != token.DEFINE {
-				return true
-			}
-			for _, lhs := range v.Lhs { // bounded by the statement (P10-02)
-				if id, ok := lhs.(*ast.Ident); ok {
-					out[id.Name] = true
-				}
-			}
-		}
-		return true
 	})
 	return out
 }

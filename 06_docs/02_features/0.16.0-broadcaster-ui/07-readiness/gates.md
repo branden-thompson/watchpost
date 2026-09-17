@@ -653,3 +653,28 @@ replaced.**  It deleted the build-time guard that is itself a test — so it cou
 that test, which is the tautology P-1 warns about: a test cannot be the instrument and the subject at
 once.  It now mutates the `Glyphs` struct, which is the production change the guard exists to see,
 and it is CAUGHT.
+
+## The gate layer, consolidated (2026-09-16)
+
+Eight gates over one model of the build system, and one registry over every exemption table. **Every
+one's watched failure is BY CONSTRUCTION**: `cmd/watchpost/gateattacks_test.go` runs 36 attack
+specimens on every invocation — each a plant against a synthetic Makefile, workflow and gate list —
+and fails if any attack survives or any correct spelling is refused. The attack list was written and
+committed BEFORE the model (`06_docs/gate-attack-list.md`), which inverts the order that failed three
+remediation rounds. One attack was found by the real tree during implementation (A37) and added to
+both files before the fix was trusted.
+
+| Gate | Property | Evidence |
+|---|---|---|
+| `TestTheThreeGateListsAgree` | verify, CI and required-gates.txt agree, every difference declared | **By construction:** A17, A26 CAUGHT; base fixture PASSES |
+| `TestEveryGateShapedTargetIsListedOrExempt` | a target that runs a check is listed or says why not | **By construction:** A1–A4 CAUGHT. **On the real tree:** found `build-diag` and `lint-update`, which the regex it replaced could not see |
+| `TestNoRequiredGatesCIStepIsSilenced` | no step-level or job-level `if:`/continue-on-error/`\|\| true` on a required gate without a reason | **By construction:** A19–A25 CAUGHT — including `- if: false` as a step's first key, the spelling that defeated three rounds; B-ok1, B-ok2 PASS |
+| `TestNoGateIsAnswerableFromCache` | no gate's `go test` omits `-count=1` | **By construction:** A11 CAUGHT |
+| `TestNoRequiredGateRecipeCannotFail` | no required gate's recipe discards its exit status | **By construction:** A8 CAUGHT |
+| `TestEveryRequiredGatesCheckerHasAControl` | every project checker a required gate runs is exercised by a self-test that RUNS | **By construction:** A5, A6, A7, A9, A10 CAUGHT; A-ok1 PASSES |
+| `TestEveryRequiredGateRunsACheck` | a required gate's recipe runs something that can fail | **By construction:** A18 CAUGHT; A37 PASSES. **On the real tree:** its first run found the parser dropping every recipe line after a column-0 comment — the real `mutant-check` read as running nothing |
+| `TestEveryBuildTargetTrimsThePath` | every `go build` carries `$(TRIMPATH)` | **By construction:** A12–A15 CAUGHT; A-ok3 PASSES |
+| `TestTheAllocBudgetSelectsItsPins` | the alloc pattern reaches its pins; reaching nothing fails | **On the real tree:** eight pins counted; a pattern reaching none fails under the floor |
+| `TestEveryExemptionRowIsRealAndStillNeeded` | every row of every registered table: real reason, subject exists, rule would still fire | **On the real tree:** its first run found three `identityExempt` rows that matched nothing — no-ops reading as considered exceptions — and they were deleted |
+| `TestEveryExemptionTableIsRegistered` | the table list is derived from the package source; an unregistered table fails | **By construction:** the package's own `map[string]string` declarations are parsed, so a new table cannot be added without registering (A33) |
+| the model's `mustRun` | an empty source is COULD-NOT-RUN, never pass (FR-11.3) | **By construction:** A34, A35, A36 |
