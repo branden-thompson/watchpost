@@ -36,12 +36,11 @@ type station struct {
 	dir     lineup.Director
 	x       *executors
 	reports []string
-	// escalated is every DR-21 escalation the schedule raised — the thing a
-	// LISTENER is told. It was an empty stub, which is what let a nil-deref on
-	// this channel (I-1) and a modal for every deliberate decline (I-2) both
-	// through: the composition "a rail card fails, a person is told" existed in
-	// three pieces and was never joined (red team 2026-09-05, R-11).
-	escalated []string
+	// published is what the executors put on the console seam; escalated()
+	// reads the DR-21 escalations off it — the thing a LISTENER is told. It
+	// was an empty stub once, which is what let a nil-deref on this channel
+	// (I-1) and a modal for every deliberate decline (I-2) both through.
+	published []tea.Msg
 
 	mu      sync.Mutex
 	pending []lineup.Event // what the producer has told the Director, not yet stepped
@@ -72,11 +71,7 @@ func newStation(t testing.TB, deck *tickerDeck) *station {
 		readAloud: deck.seen.has,
 		report:    func(f lineup.Effect, why string) { s.reports = append(s.reports, lineup.Describe(f)+": "+why) },
 		cutTo:     func(string) {},
-		publish: func(m tea.Msg) {
-			if f, ok := m.(tty.StationFaultMsg); ok && f != (tty.StationFaultMsg{}) {
-				s.escalated = append(s.escalated, f.Reason)
-			}
-		},
+		publish: func(m tea.Msg) { s.published = append(s.published, m) },
 	})
 	if s.x == nil {
 		t.Fatal("the station's executors were refused; a seam is missing")
@@ -189,4 +184,16 @@ func planned(t testing.TB, deck *tickerDeck, evs []globalfeed.Event) ([]globalfe
 		}
 	}
 	return out, b.Divert
+}
+
+// escalated is every escalation the schedule raised, as its reason — the fault
+// messages published with a run or a reason; the zero message is the clear.
+func (s *station) escalated() []string {
+	var out []string
+	for _, f := range faultsIn(s.published) { // bounded by what was published (P10-02)
+		if f != (tty.StationFaultMsg{}) {
+			out = append(out, f.Reason)
+		}
+	}
+	return out
 }

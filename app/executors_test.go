@@ -1074,7 +1074,7 @@ func TestDR21ARoutedFaultNeverReachesAPerson(t *testing.T) {
 
 	// And the one effect that IS an escalation reaches a person, with the words
 	// the producer gave — the channel is wired, not merely quiet.
-	b.x.run(context.Background(), lineup.Escalate{ID: "c1", Reason: "no voice could read it"})
+	b.x.run(context.Background(), lineup.Escalate{ID: "c1", Run: 1, Reason: "no voice could read it"})
 	if got := b.faults(); len(got) != 1 || !strings.Contains(got[0].Reason, "no voice") {
 		t.Errorf("a stopped schedule reaches a person with the reason, got %v", got)
 	}
@@ -1086,8 +1086,15 @@ func TestDR21ARoutedFaultNeverReachesAPerson(t *testing.T) {
 func (b *bench) faults() []tty.StationFaultMsg {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	return faultsIn(b.published)
+}
+
+// faultsIn is every fault-band message among the published ones, in order —
+// the ONE definition of "an escalation reached the console" for every harness
+// in this package.
+func faultsIn(msgs []tea.Msg) []tty.StationFaultMsg {
 	var out []tty.StationFaultMsg
-	for _, m := range b.published { // bounded by what was published (P10-02)
+	for _, m := range msgs { // bounded by what was published (P10-02)
 		if f, ok := m.(tty.StationFaultMsg); ok {
 			out = append(out, f)
 		}
@@ -1472,7 +1479,7 @@ func TestAVoiceThatCannotRenderFaultsAndAStoppedReadIsRouted(t *testing.T) {
 // remediation exists to deliver: ON AIR over dead air, nothing on the console.
 // One owner: the executor publishes both, and the deck is not asked.
 func TestAnEscalationIsPublishedToTheConsole(t *testing.T) {
-	b := newBench(t, nil) // no audio at all: the build whose deck is nil
+	b := newBench(t, nil) // no voice; the executors never ask a deck, so none is built
 	out := b.x.run(context.Background(), lineup.Escalate{ID: "read:a", Run: 3, Reason: "the report could not be composed: no key"})
 	if len(out) != 0 {
 		t.Fatalf("an escalation came home with events %v; it is a surfacing, not a step", out)

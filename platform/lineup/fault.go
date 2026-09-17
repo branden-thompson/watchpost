@@ -24,7 +24,8 @@ type Escalate struct {
 	isEffect
 	ID, Reason string
 	// Run is how many cards in a row the station could not perform when this
-	// was raised — 0 when the schedule simply stopped.
+	// was raised; 0 when the escalation is not about a run at all — a bed that
+	// could not be tuned (bed.go) raises one with a reason and no count.
 	Run int
 }
 

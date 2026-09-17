@@ -61,10 +61,9 @@ func (d Director) onNeedsRead(ev NeedsRead) (Director, []Effect) {
 	if card, err = card.To(Admitted); err != nil {
 		return d, nil
 	}
-	// THE COOL-OFF HAS TWO DOORS. A place that just faulted sits out through
-	// the top-off, and it sits out here too — the deck raises a NeedsRead on
-	// every relay failure, so this door alone re-admitted a faulting place at
-	// pump speed (R2 review F2, 2026-09-17).
+	// THE COOL-OFF HAS TWO DOORS, AND THIS IS THE SECOND. A place that just
+	// failed sits out through the top-off and through here alike; the deck
+	// raises a NeedsRead on every relay failure, at pump speed.
 	if d.sittingOut(ev.Ref) {
 		return d, nil
 	}

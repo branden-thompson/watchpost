@@ -166,10 +166,6 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		// WHAT THE PRODUCER HAS TO OFFER (0.16.0 P4, D-40). The Director asks
 		// on every publish and takes only what the line-up still needs.
 		propose: proposeFrom(pool),
-		// DR-21's one escalation channel. It reuses the relay-fault window
-		// rather than adding a second error surface: from the listener's chair
-		// "the relay is silent" and "the schedule stopped" are the same event —
-		// the station has gone quiet and they are being offered the way back.
 	})
 	if x == nil {
 		return nil // a seam was nil; newExecutors has already said which

@@ -347,11 +347,9 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		// the station with nothing to play.
 		//
 		// THE OPERATOR IS TOLD IN THE STATION'S OWN BAND (NFR-7, HUM LEAD ruling
-		// 5), THROUGH THE SEAM THE CLEAR USES. The band was set through the deck
-		// and cleared here, and a station with no audio — a supported build,
-		// whose deck is nil — swallowed the set and kept the clear: ON AIR over
-		// dead air with nothing on the console (R2 review F1). One owner now;
-		// a build with no console has the debug log, and nothing else to tell.
+		// 5), THROUGH THE SEAM THE CLEAR USES — one owner for the set and the
+		// clear, so no build (a station with no audio has no deck) can deliver
+		// one without the other. A build with no console has the debug log.
 		radioDebugLog("schedule:escalate:" + v.Reason)
 		if x.publish != nil {
 			x.publish(tty.StationFaultMsg{Run: v.Run, Reason: v.Reason})

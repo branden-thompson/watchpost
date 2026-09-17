@@ -229,9 +229,8 @@ func TestAReadHaltedAfterItStartedComesHomeFailed(t *testing.T) {
 }
 
 // A VOICE THAT DIED IS A FAULT AT THE SEAM, NOT A STOP (F-150). The executor
-// grades errReadStopped as routed and everything else as a fault; that grade
-// held only at the executor until mCL4 — a player Failed graded as a stop —
-// SURVIVED. The seam is where the two are told apart, so the seam is pinned.
+// grades errReadStopped as routed and everything else as a fault, and the seam
+// is where the two are told apart — so the seam is pinned (mutant mCL4).
 func TestAVoiceThatDiedMidReadComesHomeAsAFault(t *testing.T) {
 	r := &readSession{done: make(chan struct{})}
 	noteRead(r, player.Status{State: player.Playing}, false)

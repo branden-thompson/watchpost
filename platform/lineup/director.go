@@ -465,10 +465,10 @@ type Director struct {
 	// to keep.
 	failed []failNote
 
-	// faultRun is how many cards in a row the station could not perform —
-	// non-routed failures with no Finished between them. A topped-off station
-	// is never stopped(), so this is the count that owes the operator the
-	// window (F-150, REVIEW 2026-09-17).
+	// faultRun is how many cards in a row a LIVE station could not perform:
+	// non-routed failures while Running, with no Finished for a held card
+	// between them; standby ends it. A topped-off station is never stopped(),
+	// so this is the count that owes the operator the band (F-150).
 	faultRun int
 }
 
@@ -715,7 +715,13 @@ func (d Director) onBuilt(ev Built) (Director, []Effect) {
 
 // onFinished takes a card off the air, read in full.
 func (d Director) onFinished(ev Finished) (Director, []Effect) {
-	d.faultRun = 0 // a read that finished ends the run
+	// A READ THAT FINISHED ENDS THE RUN — a read of a card the schedule holds.
+	// A Finished for a card it does not hold is a stale completion from a
+	// superseded read, and it must not disturb the count any more than it
+	// disturbs the schedule (leave says the same of the card).
+	if _, held := d.find(ev.ID); held {
+		d.faultRun = 0
+	}
 	return d.leave(ev.ID, Done)
 }
 
@@ -739,8 +745,8 @@ func (d Director) onFailed(ev Failed) (Director, []Effect) {
 	if card, ok := d.find(ev.ID); ok {
 		d = d.noteFailed(card.Subject)
 	}
-	if !ev.Routed {
-		d.faultRun++
+	if !ev.Routed && d.power == Running {
+		d.faultRun++ // a fault OFF AIR is not a card the listeners missed
 	}
 	d, fx := d.leave(ev.ID, Discarded)
 	return d, append(fx, d.escalation(ev)...)

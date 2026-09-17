@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/branden-thompson/watchpost/platform/category"
 )
@@ -138,8 +137,6 @@ func describeAll(fx []Effect) []string {
 	return out
 }
 
-var _ = time.Second
-
 // F-150 — A FAULT ON A LIVE STATION MUST STILL BE HEARD. `stopped()` is never
 // true on a topped-off station (the producer refills on every publish), so a
 // fault that only escalates when the schedule is empty escalates never; and a
@@ -159,24 +156,16 @@ func TestAFaultRunOnAToppedOffStationEscalatesAndSitsOut(t *testing.T) {
 	var escalations int
 	for i := 0; i < 10; i++ { // bounded by the fault count (P10-02)
 		// THE PRODUCER REFILLS WITH FRESH PLACES ON EVERY PUBLISH, so the schedule
-		// never empties and stopped() is never true — the reviewer's condition,
-		// and the one a plant found the first draft of this test not holding.
-		for _, ref := range []string{"p" + strconv.Itoa(i) + "a", "p" + strconv.Itoa(i) + "b"} { // bounded by the fixture (P10-02)
-			d, _ = run(d, NeedsRead{Ref: ref, Headline: ref})
-		}
-		cards := d.lineup.Cards(MainTrack)
-		if len(cards) < 2 {
-			t.Fatalf("fault %d: the station is not topped off (%d cards); stopped() would decide, not the run", i+1, len(cards))
-		}
+		// never empties and stopped() is never true; the run, not emptiness, is
+		// what decides.
+		tag := "p" + strconv.Itoa(i)
 		var fx []string
-		d, fx = run(d, Failed{ID: cards[0].ID, Reason: "the report could not be composed: no key", Routed: false})
-		for _, f := range fx { // bounded by the effects (P10-02)
-			if strings.Contains(strings.ToLower(f), "escalat") {
-				escalations++
-			}
+		d, fx = faultOnce(t, d, tag)
+		if escalated(fx) {
+			escalations++
 		}
-		if !d.sittingOut(cards[0].Subject) {
-			t.Errorf("fault %d: %s was not put in cool-off — it will be re-admitted at pump speed", i+1, cards[0].Subject)
+		if !d.sittingOut(tag + "a") {
+			t.Errorf("fault %d: %s was not put in cool-off — it will be re-admitted at pump speed", i+1, tag+"a")
 		}
 		if i == 2 && escalations == 0 {
 			t.Errorf("three consecutive faults on a live station raised no escalation; the operator sees ON AIR over dead air")
@@ -185,17 +174,14 @@ func TestAFaultRunOnAToppedOffStationEscalatesAndSitsOut(t *testing.T) {
 	if escalations == 0 {
 		t.Errorf("ten consecutive faults raised no escalation")
 	}
-	// THE CONTROL: routed failures never escalate on a live station, and a
-	// Finished between faults resets the run.
+	// THE CONTROL: a routed decline never escalates on a live station.
 	c := New(Settings{Max: 10}, planNow)
 	c, _ = run(c, Powered{To: Running})
 	c, _ = run(c, NeedsRead{Ref: "x", Headline: "x"})
 	id := c.lineup.Cards(MainTrack)[0].ID
 	_, fx := run(c, Failed{ID: id, Reason: "muted", Routed: true})
-	for _, f := range fx { // bounded by the effects (P10-02)
-		if strings.Contains(strings.ToLower(f), "escalat") {
-			t.Errorf("a routed decline escalated: %s", f)
-		}
+	if escalated(fx) {
+		t.Errorf("a routed decline escalated: %v", fx)
 	}
 }
 
@@ -300,5 +286,49 @@ func TestStandbyEndsTheFaultRun(t *testing.T) {
 	_, fx = faultOnce(t, d, "s5")
 	if !escalated(fx) {
 		t.Fatalf("three faults after standby did not escalate: %v", fx)
+	}
+}
+
+// R2b REVIEW S1 — A FINISHED FOR A CARD THE SCHEDULE DOES NOT HOLD IS NOT A
+// READ. A stale Finished from a superseded read arrives exactly in the churn
+// where faults happen; if it reset the run, the count the band exists to
+// deliver would be wiped by a ghost.
+func TestAGhostFinishedDoesNotResetTheRun(t *testing.T) {
+	d := New(Settings{Max: 10}, planNow)
+	d, _ = run(d, Powered{To: Running})
+	d, _ = faultOnce(t, d, "g1")
+	d, _ = faultOnce(t, d, "g2")
+	d, _ = run(d, Finished{ID: "read:ghost"})
+	_, fx := faultOnce(t, d, "g3")
+	if !escalated(fx) {
+		t.Fatalf("a Finished for a card the schedule never held reset the run — the third fault did not escalate: %v", fx)
+	}
+}
+
+// R2b REVIEW S4 — THE RUN IS A LIVE STATION'S. A fault that lands while the
+// station is OFF AIR (one in-flight compose, say) is not a card the operator's
+// listeners missed, and it does not count toward the run that owes them the
+// band; standby ends the run on the way down, and this keeps it ended.
+func TestFaultsOffAirDoNotCountTowardTheRun(t *testing.T) {
+	d := New(Settings{Max: 10}, planNow)
+	d, _ = run(d, Powered{To: Running})
+	d, _ = run(d, Powered{To: OffAir})
+	for _, tag := range []string{"o1", "o2", "o3"} { // bounded by the fixture (P10-02)
+		var fx []string
+		d, fx = faultOnce(t, d, tag)
+		if escalated(fx) {
+			t.Fatalf("a fault while OFF AIR escalated: %v", fx)
+		}
+	}
+	d, _ = run(d, Powered{To: Running})
+	d, _ = faultOnce(t, d, "o4")
+	var fx []string
+	d, fx = faultOnce(t, d, "o5")
+	if escalated(fx) {
+		t.Fatalf("two faults after coming back ON AIR escalated — the off-air faults were counted: %v", fx)
+	}
+	_, fx = faultOnce(t, d, "o6")
+	if !escalated(fx) {
+		t.Fatalf("three faults ON AIR did not escalate: %v", fx)
 	}
 }
