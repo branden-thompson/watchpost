@@ -19,12 +19,6 @@ import (
 	"testing"
 )
 
-// TestMain hands the process to the stubs when it was exec'd as one.
-func TestMain(m *testing.M) {
-	MaybeStub()
-	os.Exit(m.Run())
-}
-
 type execSpecimen struct {
 	name   string
 	mk     func(string) string

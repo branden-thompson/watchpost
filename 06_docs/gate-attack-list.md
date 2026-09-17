@@ -483,8 +483,10 @@ The instrument was Go; three rounds slipped ~70 lines of shell into it as embedd
 constants — the stubs make's recipes exec — and round eight's Criticals were bugs in exactly that
 shell: `-c` honoured only as `$1`, `-o=` unparsed, an encoding that was not injective, `awk`/`sed`
 exposure a reviewer had to probe by hand. **Standing rule (HUM LEAD, 2026-09-17): everything is
-Go unless absolutely necessary, and shell needs a STOP and an explanation first.** The stubs are
-the test binary re-exec'd by role (`argv[0]`), with every pure function unit-tested. The rule is
+Go unless absolutely necessary, and shell needs a STOP and an explanation first.** The stub is a
+small Go program built once per test process — uninstrumented, because under the race detector an
+instrumented stub cost ten times per exec and the first `make race` timed out — with every decision a
+unit-tested function. The rule is
 mechanised as `AP-SHELL-01` in `tools/authoring` and as the shell ledger, so it is enforced and not
 remembered. The layer moves to `tools/gateoracle/` as a product of its own.
 

@@ -3016,7 +3016,7 @@ method means the adversary has changed class, and the answer is to name the clas
 **The instrument was Go; its stubs had become shell.** Three rounds slipped ~70 lines of sh into
 string constants and the eighth adversary's Criticals were bugs in that shell. Standing rule
 (HUM LEAD, 2026-09-17): everything is Go unless absolutely necessary, and shell needs a STOP and an
-explanation. The stubs are now the test binary re-exec'd by role, every decision a unit-tested
+explanation. The stub is now a small Go program built at test time, every decision a unit-tested
 function, and the rule is a lint (`AP-SHELL-01`) plus a ledger — because, in the HUM LEAD's words,
 *"a memory an agent has to remember is a memory the agent will eventually skip over in some
 session."* The same session produced the second rule: **test and tooling code is a product** and

@@ -119,8 +119,8 @@ running a program directly (`exec.Command("git", "-c", …)`) is allowed.
 **Why.** Standing rule, HUM LEAD 2026-09-17: everything is Go unless absolutely necessary, and
 "necessary" is a ruling to ask for, not a comment to write. The gate oracle is the worked example:
 three rounds slipped ~70 lines of shell into it as stubs, and the next blind adversary's Criticals
-were bugs in exactly that shell. A stub is the test binary re-exec'd by role
-(`tools/gateoracle/stub.go`); a checker is a `tools/` main.
+were bugs in exactly that shell. A stub is a small Go program built at test time
+(`tools/gateoracle/stub`); a checker is a `tools/` main.
 
 **No exemption marker.** A lint that accepts `// shell: because` accepts every because. If shell
 is genuinely necessary, stop and bring the lines and the reason to the HUM LEAD; a ruling adds a

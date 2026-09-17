@@ -25,11 +25,12 @@
 // name (FR-11.6) — then each recorded invocation (`go:test#2`) is painted red
 // alone and the gate must go red.
 //
-// WHY THE STUBS ARE THIS BINARY. Three rounds slipped shell into the stubs and the
-// next adversary's Criticals were bugs in that shell. The stubs are the test
-// binary re-exec'd by role: bin/go, bin/sh and the rest are symlinks to it, and
-// TestMain hands the process to MaybeStub. Every decision a stub makes is a Go
-// function with a unit test.
+// WHY THE STUBS ARE A GO PROGRAM. Three rounds slipped shell into the stubs and
+// the next adversary's Criticals were bugs in that shell. The stub is
+// tools/gateoracle/stub, built once per test process and uninstrumented (under
+// the race detector an instrumented stub cost ten times more per exec, and make
+// execs it thousands of times); bin/go, bin/sh and the rest are symlinks to it.
+// Every decision it makes is a Go function in this package with a unit test.
 //
 // WHAT IT ENFORCES AGAINST. Drift: a recipe an author could plausibly write
 // without meaning to neuter a gate. Not evasion: a recipe written knowing the

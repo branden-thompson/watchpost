@@ -230,7 +230,7 @@ func checkShell(fset *token.FileSet, f *ast.File, path string) []Finding {
 				out = append(out, Finding{
 					Rule: "AP-SHELL-01", File: path, Line: fset.Position(x.Pos()).Line,
 					Text: "a shell program in a Go string literal",
-					Why:  "write it in Go; a stub is the test binary re-exec'd by role, a checker is a tools/ main",
+					Why:  "write it in Go; a stub is a small tools/ main built at test time, a checker is a tools/ main",
 				})
 			}
 		case *ast.CallExpr:

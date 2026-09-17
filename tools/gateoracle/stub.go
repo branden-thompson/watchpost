@@ -33,25 +33,27 @@ var interpreters = []string{"sh", "bash", "python3", "expect"}
 
 var shells = []string{"sh", "bash"}
 
-// MaybeStub is called from TestMain. When this process was exec'd as a stub —
-// bin/go, bin/sh, a built binary — it plays the role and exits; otherwise it
-// returns and the tests run.
-func MaybeStub() {
-	if os.Getenv(EnvLog) == "" {
-		return
+// StubMain is the stub binary's main: the role is argv[0]'s name — bin/go,
+// bin/sh, a tool, or a binary `go build -o` wrote — and the result is the exit
+// status.
+func StubMain(argv []string) int {
+	if len(argv) == 0 {
+		return 3
 	}
-	role, args := filepath.Base(os.Args[0]), os.Args[1:]
+	role, args := filepath.Base(argv[0]), argv[1:]
 	switch {
 	case role == "go":
-		os.Exit(goStub(args))
+		return goStub(args)
 	case contains(interpreters, role):
-		os.Exit(interpreterStub(role, args))
+		return interpreterStub(role, args)
 	case contains(tools, role):
-		os.Exit(answer(role, args))
+		return answer(role, args)
 	}
-	if key, ok := builtKey(os.Args[0]); ok {
-		os.Exit(answer("built:"+key, args))
+	if key, ok := builtKey(argv[0]); ok {
+		return answer("built:"+key, args)
 	}
+	fmt.Fprintf(os.Stderr, "oracle: %s is not a role the stub plays\n", role)
+	return 3
 }
 
 // answer records the invocation and exits with the status painted for it, else

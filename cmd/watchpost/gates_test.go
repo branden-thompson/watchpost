@@ -450,12 +450,6 @@ func contains(hay []string, want string) bool {
 
 // ---- the executed half: the oracle over THIS tree ---------------------------------------
 
-// TestMain hands the process to the oracle's stubs when it was exec'd as one.
-func TestMain(m *testing.M) {
-	gateoracle.MaybeStub()
-	os.Exit(m.Run())
-}
-
 func realOracle(t *testing.T) (*gateoracle.Oracle, []string) {
 	t.Helper()
 	repo, err := filepath.Abs("../..")

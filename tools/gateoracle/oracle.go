@@ -7,7 +7,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+	"sync"
 )
 
 const minMake = "3.82"
@@ -68,10 +70,7 @@ func New(t Reporter, tree string) *Oracle {
 		t.Fatalf("COULD NOT RUN — %v", err)
 	}
 	o := &Oracle{root: root, tree: filepath.Join(root, filepath.Base(tree)), greens: map[string]run{}}
-	exe, err := os.Executable()
-	if err != nil {
-		t.Fatalf("COULD NOT RUN — %v", err)
-	}
+	exe := stubBinary(t)
 	for _, dir := range []string{"bin", "status"} { // bounded by the layout (P10-02)
 		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
 			t.Fatalf("COULD NOT RUN — %v", err)
@@ -281,4 +280,39 @@ func (o *Oracle) known(name string) bool {
 func (o *Oracle) absent(node string) bool {
 	_, err := os.Lstat(filepath.Join(o.tree, node))
 	return err != nil
+}
+
+var (
+	stubOnce sync.Once
+	stubPath string
+	stubErr  error
+)
+
+// stubBinary builds tools/gateoracle/stub ONCE per test process and returns
+// its path. It is built here rather than being this test binary re-exec'd
+// because under the race detector every exec of an instrumented binary costs
+// ten times more, and make execs the stub thousands of times per run.
+func stubBinary(t Reporter) string {
+	t.Helper()
+	stubOnce.Do(func() {
+		_, thisFile, _, ok := runtime.Caller(0)
+		if !ok {
+			stubErr = fmt.Errorf("no caller information for the stub's source")
+			return
+		}
+		dir, err := os.MkdirTemp("", "gate-oracle-stub-*")
+		if err != nil {
+			stubErr = err
+			return
+		}
+		stubPath = filepath.Join(dir, "oraclestub")
+		build := exec.Command("go", "build", "-o", stubPath, filepath.Join(filepath.Dir(thisFile), "stub"))
+		if out, err := build.CombinedOutput(); err != nil {
+			stubErr = fmt.Errorf("building the stub: %v\n%s", err, out)
+		}
+	})
+	if stubErr != nil {
+		t.Fatalf("COULD NOT RUN — %v", stubErr)
+	}
+	return stubPath
 }
