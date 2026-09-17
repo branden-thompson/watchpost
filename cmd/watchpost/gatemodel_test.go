@@ -26,7 +26,7 @@ package main
 // `couldNotRun`, and the gate that consults it fails with the reason.
 
 import (
-	"fmt"
+	"github.com/branden-thompson/watchpost/tools/gateoracle"
 	"regexp"
 	"strings"
 	"testing"
@@ -34,44 +34,12 @@ import (
 
 // ---- reporting -----------------------------------------------------------------
 
-// reporter is the slice of testing.T the assertions use, so the specimen table
-// can hand them a recorder and read the verdict instead of failing the parent.
-type reporter interface {
-	Helper()
-	Logf(format string, args ...any)
-	Errorf(format string, args ...any)
-	Fatalf(format string, args ...any)
-}
+// reporter, recorder and verdictOf are the gate oracle's: one Reporter for
+// every gate in the repository, so a specimen table reads a verdict instead of
+// failing its parent.
+type reporter = gateoracle.Reporter
 
-// recorder captures what an assertion would have reported. Fatalf aborts the
-// assertion the way testing.T would, by unwinding to the harness.
-type recorder struct{ errs []string }
-
-type fatalSentinel struct{}
-
-func (r *recorder) Helper()                   {}
-func (r *recorder) Logf(string, ...any)       {}
-func (r *recorder) Errorf(f string, a ...any) { r.errs = append(r.errs, fmt.Sprintf(f, a...)) }
-func (r *recorder) Fatalf(f string, a ...any) {
-	r.errs = append(r.errs, fmt.Sprintf(f, a...))
-	panic(fatalSentinel{})
-}
-
-// verdictOf runs an assertion against a recorder and says whether it fired.
-func verdictOf(fn func(reporter)) (fired bool, said []string) {
-	r := &recorder{}
-	func() {
-		defer func() {
-			if x := recover(); x != nil {
-				if _, ok := x.(fatalSentinel); !ok {
-					panic(x)
-				}
-			}
-		}()
-		fn(r)
-	}()
-	return len(r.errs) > 0, r.errs
-}
+func verdictOf(fn func(reporter)) (fired bool, said []string) { return gateoracle.VerdictOf(fn) }
 
 // ---- the model -------------------------------------------------------------------
 
@@ -607,12 +575,4 @@ func parseWorkflow(src string) map[string]*ciJob {
 
 // ---- the required list ------------------------------------------------------------------
 
-func parseRequired(src string) []string {
-	var out []string
-	for _, l := range strings.Split(src, "\n") { // bounded by the file (P10-02)
-		if l = strings.TrimSpace(l); l != "" && !strings.HasPrefix(l, "#") {
-			out = append(out, l)
-		}
-	}
-	return out
-}
+func parseRequired(src string) []string { return gateoracle.ParseRequired(src) }

@@ -3004,6 +3004,25 @@ an encoding that was not injective, a key taken from the wrong argument, `\b` wh
 **When the findings stop sharing a cause, the method has held and the remaining work is the
 instrument's own engineering** — which is what the specimen table is for. The count fell 5 → 2.
 
+**Round eight — the count rose, and the look found the threat model.** 4 Critical after 2. The
+findings split into DRIFT (a spelling an author could write without meaning harm — `bash -ec`,
+`-o=`, a dot-named node) and EVASION (a recipe written knowing the oracle exists — a sourced
+script beside a live decoy, a hop through another makefile, a compensating invocation so counts
+agree). The rise was entirely evasion, and evasion is unbounded by construction. **The ruling that
+ended the arms race was a threat model, not a fix**: the mechanism enforces drift and declares
+evasion on every passing run; evasion is a review-lens question. **A rising count under a stable
+method means the adversary has changed class, and the answer is to name the class, not to build.**
+
+**The instrument was Go; its stubs had become shell.** Three rounds slipped ~70 lines of sh into
+string constants and the eighth adversary's Criticals were bugs in that shell. Standing rule
+(HUM LEAD, 2026-09-17): everything is Go unless absolutely necessary, and shell needs a STOP and an
+explanation. The stubs are now the test binary re-exec'd by role, every decision a unit-tested
+function, and the rule is a lint (`AP-SHELL-01`) plus a ledger — because, in the HUM LEAD's words,
+*"a memory an agent has to remember is a memory the agent will eventually skip over in some
+session."* The same session produced the second rule: **test and tooling code is a product** and
+gets shipped-code rigor; `tools/gateoracle/` with a `doc.go`, a package boundary and thin callers
+is what that looks like, and `make dupes` caught the first duplicate the move introduced.
+
 **The residue is one list** (the toolchain commands to stub), and it is declared with its blind spot
 rather than derived, because the alternative — a PATH with nothing real on it — makes every recipe
 that uses `cat` or `mkdir` UNJUDGEABLE. Every other list in the executed half is gone.

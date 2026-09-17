@@ -765,3 +765,13 @@ findings no longer share one cause.**
 | the ordinal | a `mkdir` lock around read-count-append | **By construction:** Q13 |
 | the ceiling (FR-11.5) | printed by ALL FOUR assertions, naming `ORACLE_*`, discards inside a script, and how git metadata is shaped | on every passing run |
 
+### Round eight: the threat model, and the instrument in Go (2026-09-17)
+
+| Gate | Property | Evidence |
+|---|---|---|
+| `tools/gateoracle` (package) | the oracle is a library with a `doc.go`; the stubs are the test binary re-exec'd by role (`MaybeStub` from `TestMain`), so `bin/go`, `bin/sh` … are symlinks and no Go file carries shell; every decision — `goKey`, `packageShaped`, `buildOutput`, `hasShellCommandFlag`, `scriptArg`, `isSelfTest`, `encodeKey`, `specialTarget` — is a function with a known-case-first unit test | `stub_test.go`; `make lint-authoring` (AP-SHELL-01) refuses shell in Go; `make dupes` caught the one duplicate the move introduced |
+| the threat model | DRIFT enforced; EVASION declared on every passing run and carried by the brief's question 10 | the ceiling sentence, all four assertions |
+| `AssertEveryRequiredGateCanFail` etc. (drift, round eight) | `-c` anywhere in leading flags; `-o=`; `go test -c`; dot-named nodes; database-only nodes singly and the harmless set together; local `go run` and `built:` keys under the control obligation; parse-time invocations subtracted from a database run with a goal that does not exist | **By construction:** R1–R8 (100+ executed specimens). **Real tree:** 24 gates / 52 invocations, verify 38, 10 controls — unchanged from round seven, in half the time |
+| `TestEveryShellScriptHasALedgerRow` | every non-Go source under `scripts/` has a ratified row; derived from the tree | 23 rows, F-156 |
+| ci.yml `gnu-make` step | macOS runner installs GNU make ≥ 3.82 so the oracle is not COULD-NOT-RUN on one OS | R7; `TestNoRequiredGatesCIStepIsSilenced` accepts the step's `if:` because it is not a gate |
+

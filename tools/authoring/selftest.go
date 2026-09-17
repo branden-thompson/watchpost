@@ -35,7 +35,21 @@ type specimen struct {
 }
 
 func specimens() []specimen {
-	return append(append(histSpecimens(), deadSpecimens()...), docSpecimens()...)
+	return append(append(append(histSpecimens(), deadSpecimens()...), docSpecimens()...), shellSpecimens()...)
+}
+
+// shellSpecimens covers AP-SHELL-01 in both directions.
+func shellSpecimens() []specimen {
+	return []specimen{
+		{"shell-stub-in-string", "package p\n\nconst stub = `#!/bin/sh\nkey=\"$1\"; exit 3\n`\n", []string{"AP-SHELL-01"}},
+		{"shell-env-shebang-with-body", "package p\n\nconst stub = \"#!/usr/bin/env bash\\nset -e\\n\"\n", []string{"AP-SHELL-01"}},
+		{"shell-exec-sh-c", "package p\n\nimport \"os/exec\"\n\nvar c = exec.Command(\"sh\", \"-c\", \"./x.sh\")\n", []string{"AP-SHELL-01"}},
+		{"shell-exec-bash-flags-then-c", "package p\n\nimport \"os/exec\"\n\nvar c = exec.Command(\"bash\", \"-e\", \"-c\", \"x\")\n", []string{"AP-SHELL-01"}},
+		{"shell-ok-shebang-alone-is-a-header", "package p\n\nconst header = \"#!/usr/bin/env sh\\n\"\n", nil},
+		{"shell-ok-shebang-regex", "package p\n\nconst re = `^#!/usr/bin/env (sh|bash)$`\n", nil},
+		{"shell-ok-exec-a-program", "package p\n\nimport \"os/exec\"\n\nvar c = exec.Command(\"git\", \"-c\", \"user.name=x\", \"commit\")\n", nil},
+		{"shell-ok-mentions-shell", "package p\n\nconst why = \"a stub is the test binary, never sh -c\"\n", nil},
+	}
 }
 
 // histSpecimens covers AP-HIST-01 in both directions.
@@ -146,10 +160,11 @@ func runSelfTest() int {
 		}
 		var got []string
 		seen := map[string]bool{}
-		for _, fd := range append(append(
+		for _, fd := range append(append(append(
 			checkHistory(fset, f, s.name),
 			checkBlankKeepAlive(fset, f, s.name)...),
-			checkDocAttached(fset, f, s.name)...) {
+			checkDocAttached(fset, f, s.name)...),
+			checkShell(fset, f, s.name)...) {
 			if !seen[fd.Rule] {
 				seen[fd.Rule] = true
 				got = append(got, fd.Rule)

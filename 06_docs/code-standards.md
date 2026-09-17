@@ -109,6 +109,24 @@ arrives partway down its doc has lines above it belonging to something else.
 
 ---
 
+## `AP-SHELL-01` — everything is Go; shell needs a ruling
+
+**Rule.** A Go file never carries a program in shell: no string literal that is a shebang line
+followed by a body, and no `exec.Command("sh"|"bash", …, "-c", …)`. A shebang line ALONE is a file
+header (the gate oracle's fixtures write one) and is allowed; a regex about shebangs is allowed;
+running a program directly (`exec.Command("git", "-c", …)`) is allowed.
+
+**Why.** Standing rule, HUM LEAD 2026-09-17: everything is Go unless absolutely necessary, and
+"necessary" is a ruling to ask for, not a comment to write. The gate oracle is the worked example:
+three rounds slipped ~70 lines of shell into it as stubs, and the next blind adversary's Criticals
+were bugs in exactly that shell. A stub is the test binary re-exec'd by role
+(`tools/gateoracle/stub.go`); a checker is a `tools/` main.
+
+**No exemption marker.** A lint that accepts `// shell: because` accepts every because. If shell
+is genuinely necessary, stop and bring the lines and the reason to the HUM LEAD; a ruling adds a
+row to the shell ledger (`cmd/watchpost/shell_test.go`), which is the same path every existing
+`scripts/*.sh` is on — each row is a port candidate.
+
 ## The other gates
 
 | Command | What it holds |

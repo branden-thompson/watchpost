@@ -215,3 +215,74 @@ func trailingComment(fset *token.FileSet, f *ast.File, pos token.Pos) bool {
 	}
 	return false
 }
+
+// checkShell reports Go that carries a program in shell (AP-SHELL-01): a string
+// literal that is a shebang line FOLLOWED BY A BODY (a shebang alone is a file
+// header the oracle's fixtures write), and `exec.Command("sh"|"bash", …, "-c", …)`.
+// Everything is Go unless absolutely necessary, and "necessary" is a ruling,
+// not a comment — so there is no exemption marker.
+func checkShell(fset *token.FileSet, f *ast.File, path string) []Finding {
+	var out []Finding
+	ast.Inspect(f, func(n ast.Node) bool {
+		switch x := n.(type) {
+		case *ast.BasicLit:
+			if x.Kind == token.STRING && shellProgram(x.Value) {
+				out = append(out, Finding{
+					Rule: "AP-SHELL-01", File: path, Line: fset.Position(x.Pos()).Line,
+					Text: "a shell program in a Go string literal",
+					Why:  "write it in Go; a stub is the test binary re-exec'd by role, a checker is a tools/ main",
+				})
+			}
+		case *ast.CallExpr:
+			if shellDashC(x) {
+				out = append(out, Finding{
+					Rule: "AP-SHELL-01", File: path, Line: fset.Position(x.Pos()).Line,
+					Text: "exec.Command runs a shell with -c",
+					Why:  "run the program directly with exec.Command(prog, args...), or write it in Go",
+				})
+			}
+		}
+		return true
+	})
+	return out
+}
+
+// shellProgram: the literal's first line is a shebang and at least one more
+// non-blank line follows it.
+func shellProgram(lit string) bool {
+	body, err := strconv.Unquote(lit)
+	if err != nil {
+		return false
+	}
+	lines := strings.Split(body, "\n")
+	if !strings.HasPrefix(lines[0], "#!") {
+		return false
+	}
+	for _, l := range lines[1:] { // bounded by the literal (P10-02)
+		if strings.TrimSpace(l) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// shellDashC: exec.Command(<"sh"|"bash" literal>, …, "-c", …).
+func shellDashC(call *ast.CallExpr) bool {
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok || sel.Sel.Name != "Command" || len(call.Args) < 2 {
+		return false
+	}
+	if id, ok := sel.X.(*ast.Ident); !ok || id.Name != "exec" {
+		return false
+	}
+	prog, ok := call.Args[0].(*ast.BasicLit)
+	if !ok || (prog.Value != `"sh"` && prog.Value != `"bash"`) {
+		return false
+	}
+	for _, a := range call.Args[1:] { // bounded by the arguments (P10-02)
+		if lit, ok := a.(*ast.BasicLit); ok && lit.Value == `"-c"` {
+			return true
+		}
+	}
+	return false
+}

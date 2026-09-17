@@ -89,3 +89,14 @@ Recorded because a known attack is cheaper to close than to rediscover:
 4. **Two copies of one decision.** *(closed 2026-09-16)* `TestEveryRequiredGateIsStillRun` hardcoded the gates `verifyOnly` declares. It now reads the map.
 
 Also social rather than mechanical: deleting a gate from all three places is three one-line deletions in one commit. `required-gates.txt` requires a HUM LEAD ruling in `gates.md`; nothing checks for one.
+
+## "Test code is a product" — what is mechanised, and the residue (2026-09-17)
+
+| Aspect | Mechanised by | Residue |
+|---|---|---|
+| no shell in Go | `AP-SHELL-01` (`make lint-authoring`), self-tested | — |
+| no new shell files | the shell ledger (`cmd/watchpost/shell_test.go`), derived from the tree | the 23 ports (F-156) |
+| no repeated code | `make dupes` (≥ 25 nodes, production AND tooling) | near-duplicates under the floor |
+| comments describe now | `AP-HIST-01`, `AP-DEAD-01`, `SN-02` over every Go file, tests included | a comment that is merely WRONG |
+| structure | `tools/gateoracle/` as a package with `doc.go`; `cmd/watchpost` thin | **not mechanisable**: package boundaries, naming, the size smell — the review axes carry it. The parsed CI model, the registry and the doc gates still live in `cmd/watchpost` and are the next move |
+

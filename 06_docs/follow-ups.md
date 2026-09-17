@@ -357,3 +357,29 @@ of the repository with stubs by PATH alone.
 | M ordinal race (not reproduced) | **CLOSED** by construction — lock. Q13. |
 | Q10 `ORACLE_LOG=/dev/null … \|\| true` | **DECLARED**, named in the ceiling sentence. |
 
+## Round eight on the gate layer, 2026-09-17 — the threat model, and the instrument in Go
+
+The eighth adversary's count ROSE (2 → 4 Critical). The look found two classes the lists had never
+separated: DRIFT (a spelling an author could plausibly write) and EVASION (a recipe written knowing
+the oracle exists). The count rose entirely in the second. HUM LEAD ruling: the oracle enforces
+against drift; evasion is a review lens (`red-team-brief.md`, question 10). Two standing rules
+came with it: **everything is Go unless absolutely necessary, and shell needs a STOP and an
+explanation**; **test and tooling code is a product and gets shipped-code rigor.** Both are
+mechanised, because a rule an agent has to remember is a rule some session skips.
+
+| Finding | Disposition |
+|---|---|
+| C2 `bash -ec '…'` — `-c` honoured only as `$1`; the command string became the key | **CLOSED.** The stubs are Go: any `c` in the leading flags runs the real shell; a key is a file that exists. R1, R1-ok, unit-tested. |
+| I1 `-o=path` unparsed; `go test -c` not a build | **CLOSED.** R2 ×2, unit-tested. |
+| C3b `.x-run:` dropped as a dot-name | **CLOSED** — only GNU make's own special targets are dropped. R3. |
+| C3c a stamp the recipe refuses masks the all-at-once set | **CLOSED** — database-only nodes are tried singly; the all-set is the harmless ones; a set that still breaks is UNJUDGEABLE. R8. |
+| I5 the control obligation was a prefix list | **CLOSED** — every local `go run ./…` and every `built:` key is a checker; a third-party `go run host.tld/…` tool is declared trusted. R4 ×2. |
+| M1 FALSE POSITIVE `$(shell go env)` at parse time | **CLOSED** — the database run's record is subtracted; and the database run now asks for a goal that does not exist, because `make -pn` makes the default goal under `-n` and `$(MAKE)` lines run even then. R5-ok. |
+| M2 FALSE POSITIVE `./tools/x/` vs `./tools/x` | **CLOSED** — cleaned. R6-ok. |
+| I4 `macos-latest` ships make 3.81; the oracle FAILS on that runner | **CLOSED** — ci.yml installs GNU make and puts gnubin first on macOS. R7. |
+| M3 the ordinal under real concurrency | **DECLARED** in the ceiling. |
+| C1 sourcing, C3a `-f`/`-C`, C4 a compensating invocation, I2 `export PATH`, I3 `GITHUB_ACTIONS` / untracked files | **EVASION — declared** in the ceiling sentence and carried by the brief's question 10. |
+| ~70 lines of shell inside the oracle | **GONE.** `tools/gateoracle/` is a package: the stubs are the test binary re-exec'd by role, every decision a unit-tested function (`stub_test.go`), the four assertions a library, `cmd/watchpost` a thin caller. Found while building: one `itoa` duplicated `app/inject_debug.go`'s — `make dupes` caught it; `strconv.Itoa` now. |
+| **F-156** *(new)* Port the 23 non-Go sources under `scripts/` to `tools/` | **OPEN.** Each has a ratified row in the shell ledger (`cmd/watchpost/shell_test.go`) saying why it is still shell; a new script needs a row, and a row is a ruling. The five `expect` scripts are the hard ones (a Go pty driver is the port). |
+| **AP-SHELL-01** *(new rule)* | A shebang-plus-body string literal or `exec.Command("sh"\|"bash", …, "-c", …)` in any Go file is a lint finding with no exemption marker. Self-tested in both directions; it found four in the tree on its first run (the oracle's own fixture bodies) and they are gone. |
+

@@ -77,6 +77,7 @@ func scan(root string) ([]Finding, int, error) {
 		out = append(out, checkHistory(fset, f, rel)...)
 		out = append(out, checkBlankKeepAlive(fset, f, rel)...)
 		out = append(out, checkDocAttached(fset, f, rel)...)
+		out = append(out, checkShell(fset, f, rel)...)
 		return nil
 	})
 	sort.Slice(out, func(i, j int) bool {

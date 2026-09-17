@@ -17,7 +17,9 @@ package main
 // a test.
 
 import (
+	"github.com/branden-thompson/watchpost/tools/gateoracle"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -444,4 +446,42 @@ func contains(hay []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// ---- the executed half: the oracle over THIS tree ---------------------------------------
+
+// TestMain hands the process to the oracle's stubs when it was exec'd as one.
+func TestMain(m *testing.M) {
+	gateoracle.MaybeStub()
+	os.Exit(m.Run())
+}
+
+func realOracle(t *testing.T) (*gateoracle.Oracle, []string) {
+	t.Helper()
+	repo, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := gateoracle.New(t, gateoracle.CloneForOracle(t, repo, t.TempDir()))
+	return o, parseRequired(read(t, "../../06_docs/required-gates.txt"))
+}
+
+func TestNoFileSilencesARequiredGate(t *testing.T) {
+	o, required := realOracle(t)
+	gateoracle.AssertNoFileSilencesARequiredGate(t, o, required)
+}
+
+func TestEveryRequiredGateCanFail(t *testing.T) {
+	o, required := realOracle(t)
+	gateoracle.AssertEveryRequiredGateCanFail(t, o, required)
+}
+
+func TestVerifyCanFail(t *testing.T) {
+	o, required := realOracle(t)
+	gateoracle.AssertVerifyCanFail(t, o, required, ciOnly)
+}
+
+func TestEveryControlIsReached(t *testing.T) {
+	o, required := realOracle(t)
+	gateoracle.AssertEveryControlIsReached(t, o, required, uncontrolled)
 }
