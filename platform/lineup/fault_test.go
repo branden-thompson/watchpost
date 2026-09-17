@@ -199,12 +199,19 @@ func topOff(t *testing.T, d Director, tag string) (Director, []Card) {
 	return d, cards
 }
 
-// faultOnce fails the first main-track card as a fault and returns the effects.
+// faultOnce tops the station off with the tag's places and fails the first of
+// them as a fault, returning the effects; the place is then `tag+"a"`.
 func faultOnce(t *testing.T, d Director, tag string) (Director, []string) {
 	t.Helper()
 	var cards []Card
 	d, cards = topOff(t, d, tag)
-	return run(d, Failed{ID: cards[0].ID, Reason: "the report could not be composed: no key", Routed: false})
+	for _, c := range cards { // bounded by the schedule (P10-02)
+		if c.Subject == tag+"a" {
+			return run(d, Failed{ID: c.ID, Reason: "the report could not be composed: no key", Routed: false})
+		}
+	}
+	t.Fatalf("%s: the topped-off station does not hold %sa", tag, tag)
+	return d, nil
 }
 
 func escalated(fx []string) bool {

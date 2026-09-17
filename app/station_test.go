@@ -71,7 +71,7 @@ func newStation(t testing.TB, deck *tickerDeck) *station {
 		readAloud: deck.seen.has,
 		report:    func(f lineup.Effect, why string) { s.reports = append(s.reports, lineup.Describe(f)+": "+why) },
 		cutTo:     func(string) {},
-		publish: func(m tea.Msg) { s.published = append(s.published, m) },
+		publish:   func(m tea.Msg) { s.published = append(s.published, m) },
 	})
 	if s.x == nil {
 		t.Fatal("the station's executors were refused; a seam is missing")
