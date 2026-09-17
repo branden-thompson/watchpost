@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Import-direction gate (architecture.md §1): no file under modes/ may import
 # github.com/branden-thompson/watchpost/domains/... . Discovers consumers by walk,
 # never a hardcoded list (calibration: Discover Consumers, Don't Enumerate Them).

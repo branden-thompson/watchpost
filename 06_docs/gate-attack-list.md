@@ -281,8 +281,8 @@ fourth batch is built rather than stopped.
   `github.com/…/tools/treelock`, or another wrapper make `verify` UNJUDGEABLE — **the green run
   must reach the gates, and now says so when it does not** rather than diagnosing a `-` that is not
   there.
-- A checker referenced nowhere by a `scripts/` token (`cd scripts && ./x.sh`) is red under green —
-  loud.
+- `cd scripts && ./x.sh` is RECORDED — the interpreter stub resolves the script against the working
+  directory (P7). An earlier draft of this line called it red-under-green; the sixth adversary ran it.
 
 ---
 
@@ -387,7 +387,8 @@ compiled checker is a key like any other. Every invocation carries an ordinal (`
 | P7-ok | `cd scripts && ./x.sh` | PASSES |
 | P8 | `go run ./tools/x` as a required gate's only check, with no `-self-test` anywhere | CAUGHT — a `go run ./tools/…` checker needs a control like a script does |
 | P9 | `.ONESHELL:` | CAUGHT (the reviewer observed 19 discards named; kept as a specimen) |
-| P10-ok | `find . -name '*.go' \| xargs gofmt -l` | PASSES — the tree has Go files, so BSD xargs runs gofmt |
+| P10 | `bad=$$(find . -name '*.go' \| xargs gofmt -l); test -z "$$bad"` — the reviewer's "correct" gate | **Changed while building: CAUGHT, and the oracle was right.** The `;` throws away the substitution's status; a gofmt that fails to RUN prints nothing and passes — the F-152 defect the shipped `fmt` was fixed for. The reviewer called this a false positive; it was a true one |
+| P10-ok | the same with `&&` — `bad=$$(…) && test -z "$$bad"` | PASSES — the tree has Go files, so BSD xargs runs gofmt, and the status is read |
 | P11 | `x.sh --check \|\| true; x.sh --help` — one script twice | CAUGHT — `scripts/x.sh#1` alone |
 
 ## Declared — the ceiling, stated once

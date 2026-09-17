@@ -697,7 +697,7 @@ parsing. Every checker is stubbed red and `make <gate>` is RUN; make and sh are 
 | Gate | Property | Evidence |
 |---|---|---|
 | `TestEveryRequiredGateCanFail` (green half) | every required gate exits 0 with every stub green — the POSITIVE CONTROL; red under green is UNJUDGEABLE by name, never "sound" | **By construction:** H1–H4 report UNJUDGEABLE; H-ok PASSES both halves |
-| `TestEveryRequiredGateIsPhony` | every required make target is `#  Phony target` in make's database; absent from the database is an error unless declared CI-only | **By construction:** J1 CAUGHT. **On the real tree:** four required gates were not in `.PHONY`; `touch lint-identity && make lint-identity` said "is up to date" and exited 0 having run nothing |
+| `TestNoFileSilencesARequiredGate` (then named for the phony audit) | every required make target is `#  Phony target` in make's database; absent from the database is an error unless declared CI-only | **By construction:** J1 CAUGHT. **On the real tree:** four required gates were not in `.PHONY`; `touch lint-identity && make lint-identity` said "is up to date" and exited 0 having run nothing |
 | `TestVerifyCanFail` (reach) | green everywhere → `make verify` exits 0; ONE checker red → exits non-zero, through treelock's delegation | **By construction:** H5 CAUGHT; E-ok PASSES |
 | `TestEveryControlIsReached` (by argument) | the stub answers `--self-test` with the control status and anything else with the checker status; the proof paints the control alone and tries every carrier | **By construction:** K1, K2, K3, K4 CAUGHT; K-ok (`&&`) PASSES |
 | the registry's nonce | `exists` is proved against a subject the REGISTRY chose, not the table | **By construction:** L1 CAUGHT; `satisfied` remains a declared ceiling |
@@ -708,7 +708,7 @@ parsing. Every checker is stubbed red and `make <gate>` is RUN; make and sh are 
 |---|---|---|
 | `TestEveryRequiredGateCanFail` (per key) | for each stub a gate REACHES — checkers, toolchain sub-commands, prerequisites, `$(MAKE)` recursion — painted red ALONE, the gate goes red | **By construction:** M1–M4, M-ok. **On the real tree:** `mutant-check` with `exit $$rc` → `exit 0` CAUGHT; `lint-injector … \|\| true` CAUGHT — both had read as sound under whole-world painting |
 | `TestVerifyCanFail` (per checker) | `make verify` goes red for each checker it reaches through its own delegation; green everywhere first; red-everywhere must reach the gates or it is UNJUDGEABLE | **By construction:** M7. **On the real tree:** `verify: lint` + `-@` CAUGHT |
-| `TestEveryRequiredGateIsPhony` (walking) | every recipe-bearing node a required gate reaches is phony; absence from the database is an error unconditionally | **By construction:** N1, N2. **On the real tree:** rule deleted + `.DEFAULT` + a `ciOnly` row CAUGHT |
+| `TestNoFileSilencesARequiredGate` (then named for the phony audit) (walking) | every recipe-bearing node a required gate reaches is phony; absence from the database is an error unconditionally | **By construction:** N1, N2. **On the real tree:** rule deleted + `.DEFAULT` + a `ciOnly` row CAUGHT |
 | the registry's nonce (per call) | `exists` is proved against fresh random hex, not a constant a table can name | **By construction:** N3 |
 | the child environment | `MAKEFLAGS`/`MAKELEVEL` stripped, so a parent make's `-i` cannot reach the oracle | **By construction:** N4 |
 
@@ -727,4 +727,22 @@ the executed half reads a recipe.
 | `TestEveryControlIsReached` (recorded) | carriers are the required gates whose green run RECORDED the control | **By construction:** K1–K4, A5–A10 still CAUGHT |
 | the child environment | `MAKEFILES`, `GNUMAKEFLAGS`, `MAKE`, `MAKEOVERRIDES` stripped as well; a `MAKEFILES` that sets `.SHELLFLAGS := -ec` would turn every `;` discard red and certify a neutered gate (the QUIET direction) | **By construction:** O7 — E8 is run with `MAKEFILES` set in the parent and must still be CAUGHT |
 | the one list left | the toolchain stubs (`go gofmt a2dh python3 expect golangci-lint govulncheck shasum sha256sum`) are enumerated. A command not on it is real: red under green (loud), except a real command that exits 0 on an empty tree under `\|\| true`, which is not judged | **DECLARED** in the attack list; O10 is what forgetting one looked like |
+
+### Round six: the tree is the tree (2026-09-16)
+
+A sixth blind adversary ran twelve attacks against the recorded oracle: 9 SURVIVED, 1 CAUGHT, 1
+false positive, 1 correct pass. Every survivor was one cause — **the scratch tree was empty**, so
+whatever a recipe asked of the tree answered the opposite of the repository. Round two had closed
+that in the red direction only.
+
+| Gate | Property | Evidence |
+|---|---|---|
+| the oracle's tree | a shared clone of the repository with the working tree copied over it — a real `.git`, `go.mod`, the real `scripts/` — and stubs by PATH ALONE, reached through each script's `#!/usr/bin/env` shebang; not one byte of the tree is rewritten. An executable under `scripts/` without an env shebang is refused (it would run for real, unrecorded) | **By construction:** P1 (`git diff --quiet && exit 0` skips in a clean repo — CAUGHT), P1-ok, P4 (`gate: go.mod` silenced by a file — CAUGHT because `go.mod` is real), P10-ok (`find \| xargs gofmt` records on BSD xargs because the tree has Go files). **On the real tree:** 16 `#!/bin/sh` and 4 `#!/usr/bin/expect -f` shebangs changed to `env` |
+| `TestEveryRequiredGateCanFail` (per invocation) | every INVOCATION is a key — `go:test#1`, `go:test#2`, `scripts/x.sh#1` — painted alone | **By construction:** P2 (two `go test`, the first `\|\| echo` — CAUGHT), P11 (one script twice). **On the real tree:** 24 gates, 52 invocations |
+| the `go build` stub | writes a recording stub at `-o`, so a compiled checker is a key (`built:out/x`) | **By construction:** P3 CAUGHT, P3-ok |
+| `TestNoFileSilencesARequiredGate` | nodes from the REAL green run's `--debug=v`, never `-n`; one file at a time, then all at once | **By construction:** P5 (`ifeq (,$(findstring n,$(MAKEFLAGS)))` hiding a node from a dry run — CAUGHT) |
+| `TestVerifyCanFail` (coverage) | `verify`'s record contains every key each non-CI-only gate records on its own | **By construction:** P6 (`verify-gates FAST=1`, `lint` skips under it — CAUGHT; three text layers had passed it) |
+| `TestEveryControlIsReached` | a `go run ./tools/…` checker needs a control like a script does | **By construction:** P8 |
+| P10 — a finding against the reviewer | `bad=$$(find \| xargs gofmt -l); test -z "$$bad"` was reported as a FALSE POSITIVE. The oracle was right: `;` throws away the substitution's status — the F-152 defect | **CAUGHT**, kept as a specimen |
+| the ceiling, stated on every passing run (FR-11.5) | a toolchain by absolute path (A9), `env -i` (A12), a stub detected by its shebang (A8), `go build` without `-o`, any command not on the tool list | **DECLARED.** A recipe written to escape the oracle escapes it; that is a review finding |
 

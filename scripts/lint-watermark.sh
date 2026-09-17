@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Human-Accountability Attribution gate: no AI watermarks in tracked files or the
 # branch's commit messages (calibration 2026-08-19). Patterns checked as literals.
 set -eu

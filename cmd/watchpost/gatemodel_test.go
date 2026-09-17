@@ -38,6 +38,7 @@ import (
 // can hand them a recorder and read the verdict instead of failing the parent.
 type reporter interface {
 	Helper()
+	Logf(format string, args ...any)
 	Errorf(format string, args ...any)
 	Fatalf(format string, args ...any)
 }
@@ -49,6 +50,7 @@ type recorder struct{ errs []string }
 type fatalSentinel struct{}
 
 func (r *recorder) Helper()                   {}
+func (r *recorder) Logf(string, ...any)       {}
 func (r *recorder) Errorf(f string, a ...any) { r.errs = append(r.errs, fmt.Sprintf(f, a...)) }
 func (r *recorder) Fatalf(f string, a ...any) {
 	r.errs = append(r.errs, fmt.Sprintf(f, a...))

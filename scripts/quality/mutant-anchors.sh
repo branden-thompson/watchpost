@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Mutant anchor gate: every mutant in the corpus must still MATCH the tip.
 #
 # WHY THIS EXISTS WHEN `mutant-check` ALREADY ANSWERS IT. It answers it in ~400

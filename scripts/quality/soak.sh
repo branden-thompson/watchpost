@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # soak.sh — the quality pass's soak sampler (plan §2.1, Q0 task 6; R2-1, RT-10).
 #
 # Samples one running watchpost every INTERVAL seconds for HOURS hours and

@@ -1,4 +1,4 @@
-#!/usr/bin/expect -f
+#!/usr/bin/env expect
 # severe-modal.expect — machine-verifies the Notable Events and Forecasts window (modes/tty/severe.go
 # severeWindowName; "Severe Weather / Disaster Events" until 349401c renamed it) on a real pty
 # (0.13.0, 04-development/p4-verify.md Task 4.3; calibration "PTY Machine-Verify"): w opens the

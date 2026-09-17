@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # The full corpus VERDICT sweep: apply every mutant, run the tests, record what
 # each one actually returns.
 #

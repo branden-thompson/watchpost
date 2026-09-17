@@ -1,4 +1,4 @@
-#!/usr/bin/expect -f
+#!/usr/bin/env expect
 # validate-journey.expect — the 0.13.0 VALIDATE core journey (STANDARD tier: P0 + P1) on the real
 # binary, real feeds, a fresh HOME (a first run): Setup → dashboard → the severe window (tabs, a
 # record, esc/esc) → Lookup → Details → [A] → Theme (Watchpost Light) → Status → Help → quit.

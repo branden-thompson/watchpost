@@ -2988,6 +2988,15 @@ list was recorded anyway. **The mechanism found a defect in the tree it was buil
 day it was built, without being told what to look for.** That is what "the rule an agent must
 remember is skipped in some session; the rule make enforces is enforced" looks like in practice.
 
+**Round six, the same day:** a sixth adversary ran twelve attacks and nine survived — every one
+because the scratch tree was EMPTY, so `git diff --quiet && exit 0` ran the checker in the oracle
+and skipped it in CI. Round two had closed "the scratch tree is not the real tree" in one direction
+(a preflight that fails in scratch) and not the other (a predicate that passes in scratch). The
+oracle now runs in a clone of the repository with the working tree over it and stubs by PATH alone;
+the scripts are answered through their `env` shebangs and not one byte of the tree is rewritten.
+**The corollary to "execute the language":** execute it WHERE it will run. A stub is a substitute
+for a command, never for the tree.
+
 **The residue is one list** (the toolchain commands to stub), and it is declared with its blind spot
 rather than derived, because the alternative — a PATH with nothing real on it — makes every recipe
 that uses `cat` or `mkdir` UNJUDGEABLE. Every other list in the executed half is gone.

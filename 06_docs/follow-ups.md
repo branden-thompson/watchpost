@@ -282,7 +282,7 @@ A third blind adversary found four Criticals in the executed oracle and named th
 | Finding | Disposition |
 |---|---|
 | C1–C3 a preflight red only in the scratch tree (`test -f go.mod`, `go version`, `git diff --quiet`) masks `\|\| exit 0` behind it; `verify`'s own preflight + `-@` | **CLOSED by the POSITIVE CONTROL (FR-11.6).** Every gate is run green first; red under green is UNJUDGEABLE, by name. `verify` is judged through treelock's delegation with one checker red. H1–H5. |
-| C4 four required gates not in `.PHONY`; `touch <gate>` silences them in the real tree today; pattern rules and `.DEFAULT` hide a gate from the database and "missing" read as CI-only | **CLOSED.** The four are in `.PHONY`; `TestEveryRequiredGateIsPhony` reads make's own database; absence is an error unless DECLARED CI-only. J1–J3. |
+| C4 four required gates not in `.PHONY`; `touch <gate>` silences them in the real tree today; pattern rules and `.DEFAULT` hide a gate from the database and "missing" read as CI-only | **CLOSED.** The four are in `.PHONY`; `TestNoFileSilencesARequiredGate` (then named for the phony audit) reads make's own database; absence is an error unless DECLARED CI-only. J1–J3. |
 | I1 the control proof painted the checker, so a carrier went red for the wrong reason; last-gate-wins | **CLOSED.** Stubs answer by argument; the control status is painted alone; every carrier is tried. K1, K2. |
 | I2 a checker with no extension or `.bash` had no stub and no control proof | **CLOSED.** Any `scripts/…` token is a checker. K3. |
 | M3 a table chooses its own `absent` control | **CLOSED for `exists`** — the registry generates a nonce (L1). **DECLARED for `stillNeeded`** (L-ceiling). |
@@ -320,4 +320,24 @@ round-one defect reintroduced in the one function execution had not replaced. Th
 | MINOR the phony walk refused a correct order-only directory prerequisite | **CLOSED by construction of the silence audit.** A file where `mkdir -p` needs a directory makes the gate red, which is not silence. O-ok. |
 | **O10 — found by the first recorded run of the shipped tree, not by an adversary:** `release-matrix`'s `(command -v sha256sum && sha256sum … \|\| shasum …)` — `A && B \|\| C` runs C when B fails, so a failed `sha256sum` fell through to a successful `shasum` | **FIXED** as an `if`. `sha256sum` was never on the regex oracle's list, so it was never painted; the record painted it on its first run. |
 | the tool list | **DECLARED.** The one enumerated list left in the executed half; a real command that exits 0 on an empty tree under `\|\| true` is not judged. |
+
+## Round six on the gate layer, 2026-09-16 — the tree is the tree
+
+Twelve attacks, nine survived, one cause: the scratch tree was empty. The oracle now runs in a clone
+of the repository with stubs by PATH alone.
+
+| Finding | Disposition |
+|---|---|
+| A1 `git diff --quiet HEAD -- '*.go' && exit 0` — runs the checker in scratch, skips it in a clean clone | **CLOSED.** The scratch IS a clean repository. P1. |
+| A2 two `go test` calls share `go:test`; a `\|\| echo` on the first is carried by the second | **CLOSED.** Every invocation is a key (`go:test#1`). P2, P11. |
+| A3 `go build -o dist/x; dist/x \|\| true` — a compiled checker no list names; `go:build` carries the gate | **CLOSED.** The `go build` stub writes a recording stub at `-o`. P3. |
+| A5 FALSE POSITIVE — `find \| xargs gofmt` refused on an empty tree | **CLOSED** by the tree (P10-ok) — **and the reviewer's spelling was itself the F-152 defect**: `bad=$$(…); test -z` throws the status away. Kept as P10, CAUGHT. |
+| A6 a non-phony gate depending on `go.mod`, silenced by a file only where `go.mod` exists | **CLOSED.** P4. |
+| A10 `verify-gates FAST=1` with `lint` skipping under it — three text layers passed it | **CLOSED.** `verify`'s record must contain every non-CI-only gate's own record. P6. |
+| A11 `ifeq (,$(findstring n,$(MAKEFLAGS)))` hiding a node from the `-n` walk | **CLOSED.** Nodes come from the real green run. P5. |
+| A7 `cd scripts && ./x.sh` — the list said red-under-green; it is recorded | **CORRECTED** in the list; P7/P7-ok. |
+| A8 stub detection (`head -c 2 $(command -v go)`), A9 toolchain by absolute path, A12 `env -i` | **DECLARED** — a recipe written to escape the oracle escapes it. Printed on every passing run. |
+| MINOR `make -n mutant-check` starts the sweep (the line carries `$(MAKE)`) | **KNOWN**, documented at the recipe since 0.15.0; the oracle no longer uses `-n`. |
+| FR-11.2 floors `< 5`, `< 3` | **CLOSED** — `== 0`. |
+| **Tree change:** 20 scripts' shebangs → `#!/usr/bin/env sh` / `env expect` | The oracle refuses an executable under `scripts/` without an env shebang: the kernel would run the interpreter by absolute path and the script for real, unrecorded. |
 

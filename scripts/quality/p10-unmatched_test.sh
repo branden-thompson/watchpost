@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # p10-unmatched_test.sh — the scope helper's own tests (0.14.0 P1 Task 1.0).
 #
 # Three fixture repositories, each a complete little history, exercise the two

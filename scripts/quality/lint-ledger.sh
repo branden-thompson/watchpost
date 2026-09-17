@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # The public mirror of the P10 ledger must not name anything a public reader
 # cannot reach.
 #

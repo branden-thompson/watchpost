@@ -18,6 +18,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -34,7 +35,9 @@ type execSpecimen struct {
 func canFail(t reporter, o *oracleTree, req []string) {
 	assertEveryRequiredGateCanFail(t, o, req)
 }
-func verifyFails(t reporter, o *oracleTree, req []string) { assertVerifyCanFail(t, o, req) }
+func verifyFails(t reporter, o *oracleTree, req []string) {
+	assertVerifyCanFail(t, o, req, map[string]string{"release-matrix": "CI-only in the base fixture", "install-test": "CI-only in the base fixture"})
+}
 func silenced(t reporter, o *oracleTree, req []string) {
 	assertNoFileSilencesARequiredGate(t, o, req)
 }
@@ -47,6 +50,57 @@ func controlsReached(t reporter, o *oracleTree, req []string) {
 var baseScripts = []string{
 	"scripts/lint-a.sh", "scripts/lint-a", "scripts/lint-a_test.sh", "scripts/lint-b.sh", "scripts/install-test.sh",
 	"scripts/quality/mutant-anchors.sh", "scripts/quality/p10-unmatched_test.sh", "scripts/quality/validate-journey.expect",
+}
+
+// fixtureTree lays a specimen out as a small committed git repository — a
+// Makefile, the required list, a go.mod and one Go file, the scripts with env
+// shebangs — so a recipe's predicates on the tree answer as they would in a
+// clean clone. The caller removes the parent of the returned tree.
+func fixtureTree(t reporter, makefile, required string, extra map[string]string) string {
+	t.Helper()
+	root, err := os.MkdirTemp("", "gate-oracle-*")
+	if err != nil {
+		t.Fatalf("COULD NOT RUN — %v", err)
+	}
+	tree := filepath.Join(root, "tree")
+	files := map[string]string{
+		"Makefile": makefile, "06_docs/required-gates.txt": required,
+		"go.mod": "module fixture\n", "main.go": "package main\n\nfunc main() {}\n",
+	}
+	for _, sc := range baseScripts { // bounded by the script list (P10-02)
+		files[sc] = "#!/usr/bin/env sh\nexit 99\n"
+	}
+	for name, body := range extra { // bounded by the extra-file map (P10-02)
+		files[name] = body
+	}
+	for name, body := range files { // bounded by the file map (P10-02)
+		path := filepath.Join(tree, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatalf("COULD NOT RUN — %v", err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
+			t.Fatalf("COULD NOT RUN — %v", err)
+		}
+	}
+	for _, args := range [][]string{
+		{"init", "-q"}, {"add", "-A"},
+		{"-c", "user.name=oracle", "-c", "user.email=oracle", "commit", "-q", "--no-verify", "-m", "fixture"},
+	} { // bounded by the command list (P10-02)
+		cmd := exec.Command("git", args...)
+		cmd.Dir = tree
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("COULD NOT RUN — git %v: %v\n%s", args, err, out)
+		}
+	}
+	return tree
+}
+
+// specimenOracle builds the oracle over a fixture; the returned cleanup removes it.
+func specimenOracle(t reporter, makefile string, extra map[string]string) (*oracleTree, func()) {
+	t.Helper()
+	tree := fixtureTree(t, makefile, baseRequired, extra)
+	o := newOracleTree(t, tree)
+	return o, func() { _ = os.RemoveAll(filepath.Dir(tree)) }
 }
 
 func prepend(line string) func(string) string {
@@ -197,6 +251,57 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 		{name: "O9 a diagnostic under || true is refused, not tolerated",
 			mk: sub("\t@./scripts/lint-a.sh\n", "\t@go version || true\n\t@./scripts/lint-a.sh\n"), assert: canFail, caught: true},
 
+		// ---- P. the tree, the binary, the ordinal -------------------------------------
+		{name: "P1 skip the checker on a clean tree",
+			mk:     sub("\t@./scripts/lint-a.sh\n", "\t@git diff --quiet HEAD -- '*.go' 2>/dev/null && { echo skipped; exit 0; }; ./scripts/lint-a.sh\n"),
+			assert: canFail, caught: true},
+		{name: "P1-ok a tree predicate that only narrates",
+			mk:     sub("\t@./scripts/lint-a.sh\n", "\t@git diff --quiet HEAD -- '*.go' || echo dirty; ./scripts/lint-a.sh\n"),
+			assert: canFail, caught: false},
+		{name: "P2 two go test calls, the first || echo",
+			mk:     sub("race:\n\tgo test -race -count=1 ./...\n", "race:\n\tgo test -race -count=1 ./... || echo flaky\n\tgo test -count=1 ./cmd/x -run TestVersion\n"),
+			assert: canFail, caught: true},
+		{name: "P2-ok two live go test calls",
+			mk:     sub("race:\n\tgo test -race -count=1 ./...\n", "race:\n\tgo test -race -count=1 ./...\n\tgo test -count=1 ./cmd/x -run TestVersion\n"),
+			assert: canFail, caught: false},
+		{name: "P3 a compiled checker, || true",
+			mk:     sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go build -o out/lintb ./tools/lintb\n\t@out/lintb || true\n"),
+			assert: canFail, caught: true},
+		{name: "P3-ok a compiled checker, live",
+			mk:     sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go build -o out/lintb ./tools/lintb\n\t@out/lintb\n"),
+			assert: canFail, caught: false},
+		{name: "P4 a non-phony gate depending on go.mod, which the tree has",
+			mk: func(s string) string {
+				s = sub(" lint-a lint-b ", " lint-b ")(s)
+				return sub("lint-a:\n\t@./scripts/lint-a.sh\n", "go.mod go.sum: ;\nlint-a: go.mod\n\t@./scripts/lint-a.sh\n")(s)
+			}, assert: silenced, caught: true},
+		{name: "P5 a non-phony node hidden from a dry-run walk",
+			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "ifeq (,$(findstring n,$(MAKEFLAGS)))\nlint-a: lint-a-run\nendif\nlint-a-run:\n\t@./scripts/lint-a.sh\n"),
+			assert: silenced, caught: true},
+		{name: "P6 verify passes FAST=1 and lint-a skips under it",
+			mk: func(s string) string {
+				s = sub("-- $(MAKE) --no-print-directory verify-gates", "-- $(MAKE) --no-print-directory verify-gates FAST=1")(s)
+				return sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@test -n \"$(FAST)\" || ./scripts/lint-a.sh\n")(s)
+			}, assert: verifyFails, caught: true},
+		{name: "P7 cd scripts && ./x.sh || true",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@cd scripts && ./lint-a.sh || true\n"), assert: canFail, caught: true},
+		{name: "P7-ok cd scripts && ./x.sh",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@cd scripts && ./lint-a.sh\n"), assert: canFail, caught: false},
+		{name: "P8 go run ./tools/x with no control anywhere",
+			mk: sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@go run ./tools/lintb\n"), assert: controlsReached, caught: true},
+		{name: "P9 .ONESHELL:", mk: prepend(".ONESHELL:"), assert: canFail, caught: true},
+		// THE REVIEWER'S "CORRECT" SPELLING IS THE F-152 DEFECT: `bad=$$(…); test -z`
+		// throws away the substitution's status, so a gofmt that fails to RUN prints
+		// nothing and passes. The oracle refused it and was right; `&&` keeps it.
+		{name: "P10 find | xargs gofmt, the status thrown away by ;",
+			mk:     sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@bad=$$(find . -name '*.go' | xargs gofmt -l); test -z \"$$bad\"\n"),
+			assert: canFail, caught: true},
+		{name: "P10-ok find | xargs gofmt on a tree with Go files, status kept",
+			mk:     sub("lint-b:\n\t@scripts/lint-b.sh\n", "lint-b:\n\t@bad=$$(find . -name '*.go' | xargs gofmt -l) && test -z \"$$bad\"\n"),
+			assert: canFail, caught: false},
+		{name: "P11 one script twice, the first || true",
+			mk: sub("\t@./scripts/lint-a.sh\n", "\t@./scripts/lint-a.sh --check || true; ./scripts/lint-a.sh --help\n"), assert: canFail, caught: true},
+
 		// ---- E. make semantics -------------------------------------------------
 		{name: "E1 .IGNORE: at the top", mk: prepend(".IGNORE:"), assert: canFail, caught: true},
 		{name: "E2 MAKEFLAGS += -i", mk: prepend("MAKEFLAGS += -i"), assert: canFail, caught: true},
@@ -251,20 +356,21 @@ func TestTheGateAttackListExecuted(t *testing.T) {
 			mk:     sub("lint-a:\n\t@./scripts/lint-a.sh\n", "lint-a:\n\t@echo starting\n# make ignores this\n\t@./scripts/lint-a.sh\n"),
 			assert: canFail, caught: false},
 	}
-	if len(specimens) < 60 {
-		t.Fatalf("%d execution specimens; sections E, H, J, K, M, N and O plus the re-executed round-one attacks", len(specimens))
+	if len(specimens) < 75 {
+		t.Fatalf("%d execution specimens; sections E, H, J, K, M, N, O and P plus the re-executed round-one attacks", len(specimens))
 	}
 	req := parseRequired(baseRequired)
 	for _, sp := range specimens { // bounded by the specimen table (P10-02)
 		t.Run(sp.name, func(t *testing.T) {
 			t.Parallel() // each specimen owns its scratch tree
-			var o *oracleTree
+			var done func()
 			fired, said := verdictOf(func(r reporter) {
-				o = newOracleTree(r, sp.mk(baseMakefile), baseRequired, baseScripts, sp.extra)
+				var o *oracleTree
+				o, done = specimenOracle(r, sp.mk(baseMakefile), sp.extra)
 				sp.assert(r, o, req)
 			})
-			if o != nil {
-				_ = os.RemoveAll(o.dir)
+			if done != nil {
+				done()
 			}
 			switch {
 			case sp.caught && !fired:
@@ -287,8 +393,8 @@ func TestAParentMakesEnvironmentDoesNotReachTheOracle(t *testing.T) {
 		t.Run(flag+"=i", func(t *testing.T) {
 			t.Setenv(flag, "-i")
 			fired, _ := verdictOf(func(r reporter) {
-				o := newOracleTree(r, baseMakefile, baseRequired, baseScripts, nil)
-				defer os.RemoveAll(o.dir)
+				o, done := specimenOracle(r, baseMakefile, nil)
+				defer done()
 				assertEveryRequiredGateCanFail(r, o, parseRequired(baseRequired))
 			})
 			if fired {
@@ -303,8 +409,8 @@ func TestAParentMakesEnvironmentDoesNotReachTheOracle(t *testing.T) {
 		}
 		t.Setenv("MAKEFILES", pre)
 		fired, _ := verdictOf(func(r reporter) {
-			o := newOracleTree(r, sub("\t@./scripts/lint-a.sh\n", "\t@./scripts/lint-a.sh; exit 0\n")(baseMakefile), baseRequired, baseScripts, nil)
-			defer os.RemoveAll(o.dir)
+			o, done := specimenOracle(r, sub("\t@./scripts/lint-a.sh\n", "\t@./scripts/lint-a.sh; exit 0\n")(baseMakefile), nil)
+			defer done()
 			assertEveryRequiredGateCanFail(r, o, parseRequired(baseRequired))
 		})
 		if !fired {

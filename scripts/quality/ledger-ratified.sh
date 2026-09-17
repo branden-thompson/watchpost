@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # P10 ledger gate (FR-7.3): no exemption may name a gate it is waiting for
 # without carrying a ratification.
 #
