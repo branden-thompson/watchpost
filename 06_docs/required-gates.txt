@@ -24,6 +24,10 @@ lint-watermark
 lint-identity
 lint-authoring
 treelock-selftest
+# PHASE-EXIT: p10 runs under `make quality` at BUILD and REVIEW exit, not in
+# `make verify` and not in CI — its checker and ledger live outside the public
+# tree, and a gate that fails loud without them would break the release runner,
+# which is a clean clone (REVIEW red team, HUM LEAD ruling, 2026-09-17).
 p10
 gate-controls
 alloc-budget

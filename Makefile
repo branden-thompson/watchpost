@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms vet-tags test-tags lint-identity install-test
+.PHONY: quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms vet-tags test-tags lint-identity install-test
 
 BINARY := watchpost
 DIST   := dist
@@ -296,8 +296,16 @@ cache-clean:
 verify:
 	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
 
-verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest p10 lint-identity gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
+verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest lint-identity gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
+
+# quality is the PHASE-EXIT set: gates a release runs at BUILD and REVIEW exit,
+# by the HUM LEAD, and records in the roster — not on every verify and not in
+# CI. p10 lives here because its checker and its ledger are outside the public
+# tree: it fails loud without `a2dh`, which is right for a gate and wrong for a
+# release runner, which is a clean clone (REVIEW red team, 2026-09-17).
+quality: p10
+	@echo "quality: PHASE-EXIT GATES GREEN"
 
 # The lock is a gate like any other: a lock that never locks passes every
 # optimistic test while two sweeps edit one tree. The self-test takes a lock of

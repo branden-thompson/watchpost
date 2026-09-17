@@ -40,13 +40,25 @@ var ciOnly = exempt(&exemptionTable{
 })
 
 // verifyOnly are gates a local `make verify` runs that CI does not.
-var verifyOnly = exempt(&exemptionTable{
-	name: "verifyOnly", satisfied: "race",
+// phaseExit are required gates that run at BUILD and REVIEW exit under `make
+// quality`, by the HUM LEAD, and are recorded in the roster — not on every
+// `make verify` and not in CI. The release workflow runs `make verify` on a
+// clean clone, so a gate that needs something outside the public tree cannot
+// live in verify without breaking the tag by construction (REVIEW red team,
+// 2026-09-17, HUM LEAD ruling 1).
+var phaseExit = exempt(&exemptionTable{
+	name: "phaseExit", satisfied: "race",
 	rows: map[string]string{
-		"p10": "the P10 harness CLI and its exemptions ledger live OUTSIDE the public tree (the ledger is .gitignore'd, red-team R2-2), so CI has no `a2dh` and no file to read; it is a local gate that must fail loud rather than skip",
+		"p10": "the P10 harness CLI and its exemptions ledger live OUTSIDE the public tree, so CI and the release runner have no `a2dh`; it fails loud rather than skips, which is right for a gate and wrong for a release runner, so it runs under `make quality` at phase exit and its 0/0/0 is recorded in the roster",
 	},
-	exists:      func(t *testing.T, g string) bool { return contains(loadBuildModel(t).verifyGates(), g) },
-	stillNeeded: func(t *testing.T, g string) bool { _, ok := loadBuildModel(t).ciGates()[g]; return !ok },
+	exists: func(t *testing.T, g string) bool {
+		return contains(loadBuildModel(t).required, g) && loadBuildModel(t).hasTarget(g)
+	},
+	stillNeeded: func(t *testing.T, g string) bool {
+		m := loadBuildModel(t)
+		_, ci := m.ciGates()[g]
+		return !contains(m.verifyGates(), g) && !ci
+	},
 })
 
 // unlisted are gate-shaped Makefile targets deliberately on NO gate list.
@@ -181,10 +193,8 @@ func assertThreeListsAgree(t reporter, m *buildModel) {
 		if _, ok := ci[g]; ok {
 			continue
 		}
-		if _, declared := verifyOnly[g]; !declared {
-			t.Errorf("`make verify` runs %s and CI does not, and nothing says why: a gate that only "+
-				"runs on one machine is a gate that passes on the other by not being asked", g)
-		}
+		t.Errorf("`make verify` runs %s and CI does not, and nothing says why: a gate that only "+
+			"runs on one machine is a gate that passes on the other by not being asked", g)
 	}
 	for g := range ci { // bounded by the workflow (P10-02)
 		if contains(verify, g) {
@@ -194,21 +204,25 @@ func assertThreeListsAgree(t reporter, m *buildModel) {
 			t.Errorf("CI runs %s and `make verify` does not, and nothing says why", g)
 		}
 	}
-	// A REQUIRED GATE RUNS SOMEWHERE. CI-only is a legitimate somewhere; running
+	// A REQUIRED GATE RUNS SOMEWHERE. CI-only is a legitimate somewhere, and so
+	// is phase exit under `make quality` when the gate is a real target; running
 	// NOWHERE is not, and neither is running only on one machine undeclared.
 	for _, g := range m.required { // bounded by the gate list (P10-02)
 		_, onCI := ci[g]
 		onVerify := contains(verify, g)
 		_, isCIOnly := ciOnly[g]
-		_, isVerifyOnly := verifyOnly[g]
+		_, isPhaseExit := phaseExit[g]
 		switch {
+		case isPhaseExit && (onVerify || onCI):
+			t.Errorf("%s is declared a phase-exit gate and also runs in verify or CI; one of the two is stale", g)
+		case isPhaseExit && !m.hasTarget(g):
+			t.Errorf("%s is declared a phase-exit gate and is not a make target `make quality` can run", g)
+		case isPhaseExit:
 		case !onVerify && !onCI:
-			t.Errorf("%s is required and runs NOWHERE — not in verify, not in CI", g)
+			t.Errorf("%s is required and runs NOWHERE — not in verify, not in CI, not declared phase-exit", g)
 		case !onVerify && !isCIOnly:
 			t.Errorf("%s is required and `make verify` does not run it, and nothing declares it CI-only", g)
-		case !onCI && !isVerifyOnly && g != "mutant-check":
-			// mutant-check runs on a schedule CI decides; its absence from one
-			// read of the workflow is not a finding.
+		case !onCI:
 			t.Errorf("%s is required and CI does not run it, and nothing declares it local-only", g)
 		}
 	}
@@ -472,10 +486,23 @@ func TestEveryRequiredGateCanFail(t *testing.T) {
 
 func TestVerifyCanFail(t *testing.T) {
 	o, required := realOracle(t)
-	gateoracle.AssertVerifyCanFail(t, o, required, ciOnly)
+	gateoracle.AssertVerifyCanFail(t, o, required, notUnderVerify())
 }
 
 func TestEveryControlIsReached(t *testing.T) {
 	o, required := realOracle(t)
 	gateoracle.AssertEveryControlIsReached(t, o, required, uncontrolled)
+}
+
+// notUnderVerify is every required gate `make verify` is declared not to run —
+// CI-only and phase-exit — so the oracle's coverage check asks verify only for
+// the gates verify carries.
+func notUnderVerify() map[string]string {
+	out := map[string]string{}
+	for _, tbl := range []map[string]string{ciOnly, phaseExit} { // bounded by the two tables (P10-02)
+		for g, why := range tbl { // bounded by the table (P10-02)
+			out[g] = why
+		}
+	}
+	return out
 }

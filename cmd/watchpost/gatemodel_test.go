@@ -367,6 +367,7 @@ func (m *buildModel) gateShaped() []string {
 // verifyGates follows ONE hop of `$(MAKE) <target>` delegation from `verify`,
 // because verify takes the tree lock and hands the list to verify-gates. One
 // hop, not a chain — a chain is a place for a gate to hide.
+
 func (m *buildModel) verifyGates() []string {
 	v := m.targets["verify"]
 	if v == nil {
@@ -384,6 +385,12 @@ func (m *buildModel) verifyGates() []string {
 		}
 	}
 	return nil
+}
+
+// hasTarget says whether the Makefile has a rule of that name.
+func (m *buildModel) hasTarget(name string) bool {
+	_, ok := m.targets[name]
+	return ok
 }
 
 // ciGate is what the workflow does with one `make <gate>` step.

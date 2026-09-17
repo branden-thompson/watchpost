@@ -359,9 +359,10 @@ falls back to `radio`.
 Go 1.25 is the floor (`go.mod`); CI and the releases build with 1.27. `make build` (binary in
 `./dist`, version stamped from `git describe`), `make verify` (fmt, vet, tidy, vulnerability, race,
 import-direction, watermark and control gates with positive controls), `make release-matrix` (all
-targets, CGO off), `make install-test` (installer end to end against a local server). One gate, `p10`, needs the
-out-of-tree `a2dh` CLI and fails loud without it rather than skipping — so from a clean clone
-`make verify` stops there by design; every other gate runs from the tree alone. The soak and
+targets, CGO off), `make install-test` (installer end to end against a local server). `make verify` runs from a clean
+clone with nothing outside the tree. `make quality` is the phase-exit set — today the Power-of-Ten
+gate `p10`, which needs the out-of-tree `a2dh` CLI and fails loud without it rather than skipping;
+it is run at BUILD and REVIEW exit and its result is recorded in the release's gate roster. The soak and
 benchmark harness lives in `scripts/quality/` and `make quality-bench`. The terminal UI kit (`go-studs`,
 MIT, same author) is carried in-tree under `third_party/go-studs` (its LICENSE and NOTICE.md ride with
 it; import paths rewritten), so the tree builds anywhere with no private access.
