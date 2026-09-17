@@ -275,3 +275,17 @@ A blind adversary defeated the consolidated model six ways (C1–C6) and two Imp
 | **F-152** *(new, found by the oracle)* `make fmt` passed with gofmt unable to run | **CLOSED** — the recipe reads gofmt's own status. FR-11.3. |
 | **F-153** The oracle's verdict depends on the local make; GNU Make 3.81 cannot express `.SHELLFLAGS` | **CLOSED 2026-09-16.** GNU Make 4.4.1 installed (`brew install make`); the oracle now REQUIRES ≥ 3.82 and is COULD-NOT-RUN by name below it, so its verdict is the one CI gives; the requirement is in `docs/extending.md`. And the reviewer's E4 spelling was inert on both makes — probed directly — so E4 now uses `.SHELLFLAGS := -c :`, which works. 34/34 executed specimens pass under 4.4.1. |
 
+## Round three on the gate layer, 2026-09-16 — what execution introduced
+
+A third blind adversary found four Criticals in the executed oracle and named the missing instrument.
+
+| Finding | Disposition |
+|---|---|
+| C1–C3 a preflight red only in the scratch tree (`test -f go.mod`, `go version`, `git diff --quiet`) masks `\|\| exit 0` behind it; `verify`'s own preflight + `-@` | **CLOSED by the POSITIVE CONTROL (FR-11.6).** Every gate is run green first; red under green is UNJUDGEABLE, by name. `verify` is judged through treelock's delegation with one checker red. H1–H5. |
+| C4 four required gates not in `.PHONY`; `touch <gate>` silences them in the real tree today; pattern rules and `.DEFAULT` hide a gate from the database and "missing" read as CI-only | **CLOSED.** The four are in `.PHONY`; `TestEveryRequiredGateIsPhony` reads make's own database; absence is an error unless DECLARED CI-only. J1–J3. |
+| I1 the control proof painted the checker, so a carrier went red for the wrong reason; last-gate-wins | **CLOSED.** Stubs answer by argument; the control status is painted alone; every carrier is tried. K1, K2. |
+| I2 a checker with no extension or `.bash` had no stub and no control proof | **CLOSED.** Any `scripts/…` token is a checker. K3. |
+| M3 a table chooses its own `absent` control | **CLOSED for `exists`** — the registry generates a nonce (L1). **DECLARED for `stillNeeded`** (L-ceiling). |
+| M1 a real tool succeeding on an empty tree refuses a gate that can fail; M2 double-colon overwrite | **DECLARED** — the false-positive direction, loud, never silent. |
+| **F-154** *(new)* The adversary's K-ok row was wrong in the LIST: `a; b` discards `a`'s status and the oracle was right to refuse it | **CLOSED** — the row is now K4 CAUGHT, `&&` is K-ok. An attack list can be wrong in the passing direction too. |
+

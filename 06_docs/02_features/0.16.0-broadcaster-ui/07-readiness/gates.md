@@ -692,3 +692,13 @@ parsing. Every checker is stubbed red and `make <gate>` is RUN; make and sh are 
 | `TestEveryControlIsReached` | every control goes red when its checker does — painted, then run | **By construction:** A5, A6, A9, E14 CAUGHT; E-ok PASSES. Sibling `_test.sh` controls are painted as controls, not as checkers |
 | E4 `.SHELLFLAGS` | | **NOT APPLICABLE on GNU Make 3.81** (macOS); skipped by name, runs for real on CI's 4.x. The oracle's verdict is only as good as the make it runs under |
 
+### Round three: the green control, the phony audit, stubs that answer by argument (2026-09-16)
+
+| Gate | Property | Evidence |
+|---|---|---|
+| `TestEveryRequiredGateCanFail` (green half) | every required gate exits 0 with every stub green — the POSITIVE CONTROL; red under green is UNJUDGEABLE by name, never "sound" | **By construction:** H1–H4 report UNJUDGEABLE; H-ok PASSES both halves |
+| `TestEveryRequiredGateIsPhony` | every required make target is `#  Phony target` in make's database; absent from the database is an error unless declared CI-only | **By construction:** J1 CAUGHT. **On the real tree:** four required gates were not in `.PHONY`; `touch lint-identity && make lint-identity` said "is up to date" and exited 0 having run nothing |
+| `TestVerifyCanFail` (reach) | green everywhere → `make verify` exits 0; ONE checker red → exits non-zero, through treelock's delegation | **By construction:** H5 CAUGHT; E-ok PASSES |
+| `TestEveryControlIsReached` (by argument) | the stub answers `--self-test` with the control status and anything else with the checker status; the proof paints the control alone and tries every carrier | **By construction:** K1, K2, K3, K4 CAUGHT; K-ok (`&&`) PASSES |
+| the registry's nonce | `exists` is proved against a subject the REGISTRY chose, not the table | **By construction:** L1 CAUGHT; `satisfied` remains a declared ceiling |
+
