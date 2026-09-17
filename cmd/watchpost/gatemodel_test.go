@@ -285,17 +285,6 @@ func (c command) runsACheck() bool {
 	return false
 }
 
-// checkCannotFail says whether the command CARRIES a check whose failure is
-// discarded — the thing a required gate must never do.
-func (c command) checkCannotFail() bool {
-	for _, sg := range c.segs { // bounded by the command (P10-02)
-		if !sg.orchestration && sg.cannotFail && (checkerRef.MatchString(sg.text) || strings.Contains(sg.text, "go test")) {
-			return true
-		}
-	}
-	return false
-}
-
 // checkers is every project-written checker the command invokes, one per
 // segment, minus sibling `_test.sh` controls (those are controls, not checkers)
 // and minus orchestration.

@@ -56,7 +56,7 @@ func recordInvocation(logPath, key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer lock.Close()
+	defer func() { _ = lock.Close() }() // closing the lock file cannot change what was recorded
 	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
 		return "", err
 	}
@@ -72,13 +72,21 @@ func recordInvocation(logPath, key string) (string, error) {
 		}
 	}
 	inv := key + "#" + strconv.Itoa(n+1)
-	f, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY, 0o644)
+	return inv, appendLine(logPath, inv)
+}
+
+// appendLine appends one line and reports the write OR the close failing —
+// a record that did not reach the disk is not a record.
+func appendLine(path, line string) error {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		return "", err
+		return err
 	}
-	defer f.Close()
-	_, err = f.WriteString(inv + "\n")
-	return inv, err
+	_, err = f.WriteString(line + "\n")
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	return err
 }
 
 // readLog is the invocations a run recorded, deduplicated, in order.

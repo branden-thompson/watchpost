@@ -350,13 +350,7 @@ func writeBuiltStub(out string) error {
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(os.Getenv(EnvBuilt), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = f.WriteString(abs + "\n")
-	return err
+	return appendLine(os.Getenv(EnvBuilt), abs)
 }
 
 // builtKey is the tree-relative path of a built stub invoked as argv0, if it

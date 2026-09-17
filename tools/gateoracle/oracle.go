@@ -8,11 +8,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 )
-
-const minMake = "3.82"
 
 var makeVersionLine = regexp.MustCompile(`GNU Make (\d+)\.(\d+)`)
 
@@ -27,13 +26,13 @@ func requireMake(t Reporter) {
 	if m == nil {
 		t.Fatalf("COULD NOT RUN — `make` is not GNU make: %q", strings.SplitN(string(out), "\n", 2)[0])
 	}
-	var major, minor, wantMajor, wantMinor int
-	fmt.Sscanf(m[1]+" "+m[2], "%d %d", &major, &minor)
-	fmt.Sscanf(strings.ReplaceAll(minMake, ".", " "), "%d %d", &wantMajor, &wantMinor)
+	major, _ := strconv.Atoi(m[1]) // the regex admits digits only
+	minor, _ := strconv.Atoi(m[2])
+	wantMajor, wantMinor := 3, 82
 	if major < wantMajor || (major == wantMajor && minor < wantMinor) {
-		t.Fatalf("COULD NOT RUN — GNU Make %s.%s is on PATH and the oracle needs %s or newer, the make CI "+
+		t.Fatalf("COULD NOT RUN — GNU Make %s.%s is on PATH and the oracle needs %d.%d or newer, the make CI "+
 			"runs. On macOS: `brew install make`, then put /opt/homebrew/opt/make/libexec/gnubin at the "+
-			"front of PATH so `make` is 4.x.", m[1], m[2], minMake)
+			"front of PATH so `make` is 4.x.", m[1], m[2], wantMajor, wantMinor)
 	}
 }
 
@@ -100,14 +99,11 @@ func (o *Oracle) refuseScriptsThatBypassPath(t Reporter) {
 		if !isExecutable(path) {
 			return nil
 		}
-		head := make([]byte, 128)
-		f, e := os.Open(path)
+		body, e := os.ReadFile(path)
 		if e != nil {
 			return nil
 		}
-		n, _ := f.Read(head)
-		f.Close()
-		first, _, _ := strings.Cut(string(head[:n]), "\n")
+		first, _, _ := strings.Cut(string(body), "\n")
 		if !envShebang.MatchString(first) {
 			t.Errorf("COULD NOT JUDGE %s — its first line is not `#!/usr/bin/env <%s>`, so the kernel runs the "+
 				"interpreter by absolute path, the oracle's stub is never reached, and the script would run for "+
