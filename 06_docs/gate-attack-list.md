@@ -99,3 +99,76 @@ and is useless. Every CAUGHT specimen has a PASSES twin that must stay green.
 **An attack that is thought of after the fix does not count as a verification.** If an attack occurs
 to anyone during or after implementation, it is added here **and to the specimen table**, and the
 list is re-run — it is never verified ad hoc and declared closed.
+
+---
+
+# Round two: attacks the parser cannot see, and the oracle that can
+
+**Written and committed before the oracle it holds to account.** A blind reviewer defeated the
+consolidated model six ways in one sitting, and named the cause exactly: *every Critical is the model
+deciding a semantic question — does this line run, can it fail, is this a check — by pattern on a
+fragment, in a language whose global constructs it never reads. The attack list enumerates spellings;
+the parser enumerates the same spellings back.*
+
+**So the Makefile half stops parsing and starts EXECUTING.** Every project checker is replaced by a
+stub that exits non-zero, every toolchain command on PATH likewise, and `make <gate>` is run for every
+required gate. **If make exits zero, the gate cannot fail, whatever the spelling.** Make and sh are
+the oracle; the list below no longer has to imagine every way a status can be discarded, because the
+shell decides. Target discovery comes from `make -pn` — make's own expanded database — so a target
+named through a variable, an include or a conditional is found because make found it.
+
+**The CI half has no oracle.** Nothing here executes GitHub Actions. Its checks are a **ratchet on
+spellings** and are labelled as one; the guard for CI is that CI runs and its per-gate results are
+read, which the workflow's one-step-per-gate shape already provides. Section G states the ceiling.
+
+## E. Make semantics — executed, never parsed
+
+Every row: plant the edit in a scratch copy, stub every checker red, run `make <gate>`, assert
+**non-zero**. `CAUGHT` means the oracle reports the gate cannot fail.
+
+| # | Attack | Must |
+|---|---|---|
+| E1 | `.IGNORE:` at the top of the Makefile — every recipe's status ignored | CAUGHT |
+| E2 | `MAKEFLAGS += -i` | CAUGHT |
+| E3 | `SHELL := /usr/bin/true` — every recipe "succeeds" | CAUGHT |
+| E4 | `.SHELLFLAGS := -c true; #` | CAUGHT |
+| E5 | `-` prefix on the check line | CAUGHT |
+| E6 | `\|\| exit 0` | CAUGHT |
+| E7 | `\|\| echo skipped` — any word that succeeds | CAUGHT |
+| E8 | `; exit 0` | CAUGHT |
+| E9 | `\| tee log` with no `pipefail` — the status is tee's | CAUGHT |
+| E10 | The check replaced by `echo "…scripts/x.sh…"` — the path is text, nothing runs | CAUGHT |
+| E11 | The gate's target named through a variable, `$(GATE):`, with a neutered recipe | CAUGHT — `make -pn` resolves the name; the oracle executes it |
+| E12 | The gate defined in an `include`d file, neutered there | CAUGHT — `make -pn` follows the include |
+| E13 | `ifeq` with a real branch and a `@true` branch, the `@true` branch active | CAUGHT — `make -pn` shows the active branch; the oracle executes it |
+| E14 | A `define`/`endef` block holding a control that looks live | not a control — the database lists no recipe for it |
+| E15 | `-@go run ./tools/treelock … $(MAKE) verify-gates` — `make verify` itself exits 0 on a red gate | CAUGHT |
+| **E-ok** | The real Makefile, every checker stubbed red: every required gate exits non-zero | PASSES — this is the control, and the whole oracle is void if it does not hold |
+
+## F. The registry's own trust (FR-11.6)
+
+An instrument answers a KNOWN case before it is believed about an unknown one. Every table must
+prove its two functions CAN return false.
+
+| # | Attack | Must |
+|---|---|---|
+| F1 | A table whose `exists` always returns true | CAUGHT — the table's declared `absent` subject must resolve to false |
+| F2 | A table whose `stillNeeded` always returns true | CAUGHT — the table's declared `satisfied` subject must resolve to false |
+| F3 | A table declared `var x map[string]string` and filled in `init()` | discovered |
+| F4 | A table declared in a non-`_test.go` file of the package | discovered |
+| F5 | A name in `notATable` that no longer exists | CAUGHT |
+| F6 | A28–A33 from round one, each now an executable specimen | CAUGHT, and C-ok1 PASSES |
+| **F-ceiling** | A table registered under a type alias (`type rowsT = map[string]string`) | **NOT caught** — no type-checker is loaded, and one will not be taken for a test. Declared |
+
+## G. CI — the ceiling, declared
+
+| # | Attack | Verdict |
+|---|---|---|
+| G1 | `if : false` — a space before the colon, which YAML strips | CAUGHT (a one-character fix, and the fourth spelling of the class that defeated three rounds) |
+| G2 | A required job made to `needs:` a job that never runs | **NOT catchable** without workflow semantics. Declared |
+| G3 | `on.push.branches: [never-exists]` | **NOT catchable**. Declared |
+| G4 | `strategy.matrix: ${{ fromJSON('{"os":[]}') }}` | **NOT catchable**. Declared |
+| G5 | `run: \|` block scalar with `make x` on the second line | reads as ABSENT — fires, wrong reason; the false-positive direction only |
+
+**The CI checks' banner must say this.** A check that claims to close a class it cannot see is the
+defect this project names most often.
