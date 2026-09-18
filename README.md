@@ -63,6 +63,8 @@ Real data, 133×44, the default theme unless noted (0.14.0).
 
 ![Watchpost Status: uptime and version, every endpoint's health and request counters, the pipelines, and the issues with what failed and whose fault it looks like](docs/img/status.png)
 
+![The Broadcaster console: the station banner, the UP NEXT card beside the alert takeover slot, the scheduled line-up of location reports by distance, and the location pool with each place's weather](docs/img/broadcaster.png)
+
 ## Get it running
 
 The one-line install at the top of this page covers macOS and Linux (Intel or Apple silicon / amd64 or

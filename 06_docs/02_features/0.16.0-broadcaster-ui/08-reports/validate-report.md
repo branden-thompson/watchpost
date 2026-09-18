@@ -6,7 +6,7 @@ level: LEVEL-1
 sev: SEV-0
 authority: HUM LEAD
 directives: FULL GIT; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD; FULL INST
-status: "Awaiting HUM LEAD approval to exit VALIDATE and enter SHIP"
+status: "VALIDATE APPROVED by the HUM LEAD 2026-09-18 (\"VALIDATE APPROVED; GO 4 SHIP\"); case 10 signed off; F-164 ruled (a)"
 ---
 
 # 0.16.0 — Broadcaster UI — VALIDATE REPORT
@@ -103,7 +103,7 @@ HUM LEAD, 2026-09-18, on a local build of `35de36a` (the REVIEW-exit records com
 |---|---|
 | Observer pass (the signed-off functionality before BUILD exit) | good |
 | Broadcaster pass (`p3-uat.md`, the audio signal cases) | good, except case 10 |
-| Case 10 — the thirty-minute Watchlist rotation | **not signed off** — not run, or run and not held: the HUM LEAD's to say |
+| Case 10 — the thirty-minute Watchlist rotation | **good** — HUM LEAD, 2026-09-18: "30 min works fine on my testing" |
 
 This pass is also the HUM LEAD's standing step before the release branch: a final local build and a
 regression pass of everything signed off before BUILD exit.
@@ -112,8 +112,8 @@ regression pass of everything signed off before BUILD exit.
 
 | Item | Why it is not a blocker |
 |---|---|
-| **`p3-uat.md` case 10** | The one UAT case that needs the clock; its state is the HUM LEAD's to rule, and a stall is what the dwell and the fault band now cover at the Director |
-| **The `Tuned{Live:false}` fork** | With the cut-over surviving a fall-through to synth, the main track stays paused while the bed plays synth — the reviewer of the fix is asked to construct what follows; presented to the HUM LEAD with the sequence, not ruled here |
+| ~~`p3-uat.md` case 10~~ | Signed off 2026-09-18 ("30 min works fine on my testing") |
+| ~~The `Tuned{Live:false}` fork (F-164)~~ | Ruled (a) by the HUM LEAD 2026-09-18 — as the code is today; D-159 |
 | **F-158, F-159, F-160…F-162, F-157, F-156, F-137** | 0.16.5's rows, each with the reason it is carried |
 | **D-89's wording on an ON AIR LIVE NOW row** | A HUM CALL on an ON AIR variant |
 | **`CHANGELOG.md` 0.16.0 entry** | Written and dated on the day it ships, checked at tag time |
@@ -134,5 +134,5 @@ independent review as a phase gate, and it is also the reason 0.16.5 is a qualit
 
 ## VALIDATE exit — recommendation
 
-**Exit VALIDATE, enter SHIP**, on the HUM LEAD's word, with case 10 and the `Live:false` fork ruled or
-carried explicitly.
+**Exit VALIDATE, enter SHIP.** Approved by the HUM LEAD 2026-09-18, with case 10 signed off and
+F-164 ruled (a).

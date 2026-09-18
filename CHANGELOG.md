@@ -2,6 +2,56 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.16.0] — 2026-09-18
+
+### Added
+- **The Broadcaster console** — the same radio, run as a *station* rather than listened to as a
+  place. `ctrl+b` (or `B`) opens it; `ctrl+o` (or `O`) returns to the Observer. You set a
+  **transmitter** and a **service radius**, and the console keeps a **line-up**: a main track of
+  location reports for the places inside the radius, in rotation, and a priority track for alerts,
+  which always drains first. The station is STOPPED until you start it, then **STANDBY** or **ON
+  AIR**, written in words as well as colour; ON AIR means audio is leaving this program, and the
+  banner says so — Watchpost does not observe a real transmitter. Every card shows where its words
+  came from and when its data last arrived; you can promote, demote and drop cards, request a place
+  by name, look up any place in the pool, and cut the main track over to a live relay on the
+  **bed**. Nothing is ever shown as taken unless the schedule took it (#10).
+- **The station's own settings** — the transmitter (following your default location until you set
+  one), the service radius (2–100 miles), and a relay-search radius for the bed that is wider on
+  purpose, because relays are sparse.
+- **A fault band on the console.** Three cards in a row the station could not perform, or a bed it
+  could not tune, are shown ON AIR in the station's own band, with the reason; a read that finishes,
+  or STANDBY, clears it. A place that could not be read sits out a cool-off before it is offered
+  again, through every door back into the schedule.
+- **The pool footer says how many places are in reach** at the service radius, so a three-mile
+  station reads as the small station it is rather than a fifty-mile station that is slow.
+
+### Fixed
+- **The Request window keeps non-ASCII letters** — typing "Peña" no longer yields "Pea".
+- **The station toggle is ignored while a window is open**, so `shift+enter` cannot put the station
+  ON AIR behind a Request, Help or About window.
+- **The listener's mute is shown on the console** while the station is ON AIR: `[M]` in the Observer
+  declines every hazard read, and the console said nothing.
+- **The operator's cut-over survives the bed stepping to another relay.** Stepping the relay used to
+  resume the main track over the bed the operator had chosen. A relay that falls through to the
+  synthesized broadcast releases the cut-over, as before.
+- **A tune that lands is no longer reported as a stall** thirty seconds later (a regression the fix
+  above introduced, caught in review before release).
+
+### Changed
+- **Where your tower's position goes, stated exactly.** It stays in `config.toml`; it goes to the
+  National Weather Service in the same forecast request every place you watch makes, and nowhere
+  else; the opt-in radio diagnostic names places by their labels and an opaque id, never by
+  coordinate — every line, whatever wrote it.
+- **The release workflow's time cap is derived from the tree's own bound** (60 minutes) rather than
+  guessed; a 20-minute cap would have produced a tag with no release.
+
+### Notes
+- **A hyper-local station serves few places.** Around a real index, a three-mile station's pool is
+  one place and the console says so; the "zip places" tier never reaches a slot because the nearer
+  tier fills the cap first. Recorded for 0.16.5 (F-157).
+- **The direct read path ships dormant** behind `WATCHPOST_MAINTRACK`, default off; `startSynth` is
+  current. Whether the switch and the direct path retire together is a ruling owed (F-158).
+
 ## [0.15.0] — 2026-09-09
 
 ### Fixed

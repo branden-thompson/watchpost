@@ -58,8 +58,8 @@ the remote, because only the squashed tree does.
   releases 13.0 → 13.6 → 13.7 → 16.1; this branch's last ubuntu verify 21.5). A 20-minute cap would
   have produced a tag with no release (VALIDATE, hygiene reviewer). **Record the measured job time
   here after the release run.**
-- [ ] **F-164 ruled or explicitly carried** — what a relay falling through to synth does to the
-  operator's cut-over ((a) release it, the code today; (b) hold; (c) re-tune).
+- [x] **F-164 ruled (a)** — a relay falling through to synth releases the operator's cut-over, as the
+  code is today (HUM LEAD 2026-09-18; D-159).
 
 ## The release
 
@@ -84,7 +84,7 @@ the remote, because only the squashed tree does.
 
 ## After
 
-- [ ] **`p3-uat.md` case 10** — the thirty-minute rotation — ruled: not run, or run and not held.
+- [x] **`p3-uat.md` case 10** — signed off 2026-09-18 ("30 min works fine on my testing").
 - [ ] **VALIDATE on the Linux box against the installed release**, as 0.15.0 asked and did not get.
 - [ ] **DEBRIEF written** — `08-reports/debrief.md`.
 - [ ] **Carried items recorded in `project-watchpost-follow-ups`**: F-156, F-157, F-158, F-159,
