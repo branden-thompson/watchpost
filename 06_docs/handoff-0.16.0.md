@@ -171,8 +171,9 @@ this list is what is left to do.
    product", which is fine, and the signed-off functionality must be shown not to have regressed
    before `release/v0.16.0` exists). Build from the REVIEW-exit commit with the documented
    commands, run the UAT checklists that were signed off, and record the result beside the exit.
-   **The live-audio UAT (ruling 11: `p3-uat.md` cases 2, 6 and 10 — dead air, the hand-over between
-   voices, the thirty-minute rotation) has NOT been run and belongs to this pass.**
+   **Done 2026-09-18 (HUM LEAD): the Observer pass — good; the Broadcaster pass — good, except the
+   thirty-minute rotation (`p3-uat.md` case 10), which is not signed off and is carried into VALIDATE
+   with its state to be ruled.** REVIEW APPROVED; GO 4 VALIDATE.
 4. **SHIP**: the squash-merge release branch (one commit onto `main`), the tag, the push, the feature
    branch deleted on origin — every step outward-facing and on the HUM LEAD's word.
 5. **0.16.5 (the dedicated quality pass)** opens with the rows tagged for it in `follow-ups.md`:
