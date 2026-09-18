@@ -314,6 +314,20 @@ mode  = ""                # "" every class sounds | "mute" silence the classes b
 muted = ["warning"]       # class keys; EMPTY under mute means every class
 ```
 
+**The station's own keys** (`[broadcaster]`; every one is also a row in the console's Settings):
+
+```toml
+[broadcaster]
+transmitter        = { }   # where the station broadcasts from — a location like the default one;
+                           # empty means "the default location", which is where every install starts
+service_radius_mi  = 25    # how far the line-up reaches, 2–100; the pool footer says how many places are in reach
+bed_radius_mi      = 100   # how far the bed looks for a relay, 25–150 — wider than the service area because relays are sparse
+```
+
+The transmitter and the default location are two settings because they are two jobs: the default
+location is where the listener lives, the transmitter is where the station broadcasts from. They may
+be the same place, and on an existing install they start that way.
+
 **Four voice roles are config-only, on purpose.** Settings has a row for the five a listener picks
 between — *Alerts / Takeovers*, *Location Report*, *Marine Report*, *Fire/Hotspots*, *Seismic
 Reports* — and **`breaking`, `severe_read`, `standard` and `station` have no row**. They are set by
