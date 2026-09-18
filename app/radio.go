@@ -23,6 +23,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -47,11 +48,32 @@ type radioDeck struct {
 	analyzer  *spectrum.Analyzer // visualizer bands from the engine's tap (UAT 92)
 	vizBuf    []float64          // one analysis window, reused per frame
 
+	// voiceFor picks who performs a MAIN-TRACK read, and it is a
+	// field so the reader can be driven end to end on any host (F-95, P-1).
+	//
+	// EVERY TEST OF THE READER USED A FAKE `read` SEAM, so the real path — arm a
+	// session, start the engine, come home Finished — had no test at all, and
+	// shipped a defect that killed every card one millisecond after it was asked
+	// for. The real path cannot be driven without a voice, and the host's voice
+	// is `say` on macOS and a 63 MB Piper install elsewhere: neither belongs in
+	// a unit test, and skipping the test on hosts without one is a gate that
+	// does not run.
+	//
+	// Nil is the station's own voice, which is every production path. It is the
+	// same shape `clipBudget` already has in the engine, and for the same stated
+	// reason: a path nobody can drive is a path nobody has watched fail.
+	voiceFor func() (synth.Voice, error)
+
 	// abandonRead ends the read on the air when its audio stops making
 	// progress (FR-9). Set where the Director is built, because the deck is
 	// constructed first and the Director takes it as its voice; nil in tests
 	// and in the pathless build.
 	abandonRead func(why string) bool
+
+	// air reports whether the MONITOR — the operator's own listening — may reach
+	// the engine (D-74). Nil in tests and in the pathless build, where there is
+	// no station to take the air and the deck has always been the operator's.
+	air func() bool
 
 	persistMode func(tty.RadioMode) error                      // saves the [m] pick (UAT 97); nil in tests
 	fire        func(snapshot.LocationRef) synth.FireReport    // the location's fire report for the broadcast (UAT 114); nil = skipped
@@ -84,7 +106,7 @@ type radioDeck struct {
 	mu      sync.Mutex
 	station string // label of the station being played
 	detail  string
-	mode    string // "live" | "synth" | ""
+	mode    string // "live" | "synth" | "read" | "" — "read" is a main-track card on the engine (F-91)
 	ref     snapshot.LocationRef
 	gen     uint64         // tune epoch (red-team 0.9.0 C-3): Tune and Stop bump it; a slow Tune that lost the race must not start playback
 	repeat  tty.RepeatMode // [r] Off | One | Watchlist (UAT 83/93)
@@ -97,10 +119,20 @@ type radioDeck struct {
 	// emit hands the Director the bed's facts (T3.2b). It replaced a
 	// time.AfterFunc: the dwell is the Director's now, and this deck only
 	// reports what it alone can see.
-	emit    func(lineup.Event)
-	source  *synth.Source // the running synthesized broadcast, if any
-	voiceID string        // chosen correspondent (UAT 84); "" = the platform default
-	voices  []string      // available correspondents, listed once in the background (UAT 85)
+	emit func(lineup.Event)
+
+	// note is where the Voice chooser's status line goes, and it is a SEAM for the
+	// same reason `emit` is: the deck must be able to say something with no running
+	// program, and a test must be able to hear it. Nil means the program, which is
+	// production — see voiceNote.
+	note func(string)
+
+	source liveSource // the running synthesized broadcast, if any (livesource.go)
+	// read is the main-track card the engine is carrying, and the channel its
+	// reader is waiting on (F-91). Nil whenever the engine is on the bed.
+	read    *readSession
+	voiceID string   // chosen correspondent (UAT 84); "" = the platform default
+	voices  []string // available correspondents, listed once in the background (UAT 85)
 }
 
 // newRadioDeck wires the player. A resolver failure (a broken vendored
@@ -154,7 +186,16 @@ func (d *radioDeck) Spectrum() []float64 {
 // distinction carried by a capital letter: this method lifted the duck and the
 // unexported one did not, and the Watchlist advance called the wrong one. A rule
 // that lives in the case of an identifier is a rule waiting to be missed.
-func (d *radioDeck) Tune(ref snapshot.LocationRef) { d.tune(ref) }
+func (d *radioDeck) Tune(ref snapshot.LocationRef) {
+	// THE MONITOR'S OWN TUNE, AND IT STOPS AT THE CONSOLE (D-91). The lower-case
+	// `tune` stays open because the DIRECTOR uses it — `tuneTo`, the Tune effect,
+	// already gated upstream by `advancesMonitor()`. Guarding the shared half
+	// would break the bed's rotation, which is why the guard is here.
+	if !d.monitorHasTheAir() {
+		return
+	}
+	d.tune(ref)
+}
 
 // tune resolves, then plays the first relayed station — or the synthesized
 // broadcast when nothing relays this location (B4 step 2: 89 % of
@@ -167,6 +208,35 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	d.gen++
 	gen, pref := d.gen, d.pref
 	d.mu.Unlock()
+	// THE PROGRAMME IS RUNNING, AND THE DIRECTOR HAS TO BE TOLD — HERE, where
+	// the listener asked for a location, and NOT wherever the audio happens to
+	// begin (red team 2026-09-09, finding 1).
+	//
+	// IT DOES NOT RIDE ON setMode's TRANSITION EDGE, which would make "the
+	// programme is running" a side effect of the DECK changing mode. On the
+	// synthesised path setMode is reached only from startSynth, and the merged
+	// station does
+	// not call startSynth — so the first need arrived at a Director still
+	// Stopped, advances(MainTrack) refused the card, no mode ever changed, and
+	// the Director was never powered. Every subsequent need was refused the
+	// same way: a permanently silent station with a permanently empty lineup
+	// and no fault raised, because nothing failed and nothing was ever
+	// admitted.
+	//
+	// THE ASYMMETRY WAS THE DEFECT. Stop is reported from Stop, where the
+	// listener acts. Start is now reported from here, for the same reason and
+	// in the same terms — and BEFORE the relay/synth fork, so which medium wins
+	// cannot change whether the station is on.
+	//
+	// A REPEATED TUNE IS NOT A SECOND START: onPowered no-ops when the power is
+	// already what it is asked for, which is why this needs no transition edge
+	// of its own to guard it.
+	// THE MONITOR'S OWN POWER, NOT THE STATION'S (D-74). This declared
+	// `Powered{Running}` when the two were one field — which is why listening in
+	// Observer put the CONSOLE on the air, and why `ctrl+o` was refused after a
+	// round trip (D-69's root). The operator tuning something to listen to says
+	// nothing about whether their station is broadcasting.
+	d.tell(lineup.Monitored{Running: true})
 	same := stream.SAMEFromUGC(d.nws.CountyUGC(ctx, ref))
 	stations, statuses := d.resolver.ResolveWithStatus(ctx, ref.Lat, ref.Lon, same)
 	d.noteDirectories(statuses)
@@ -179,7 +249,7 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 		st, live = chooseNearest(stations, d.watchlistLang())
 	}
 	if !live {
-		d.startSynth(ref, d.synthReason(same, ref, stations), gen)
+		d.needsRead(ref, d.synthReason(same, ref, stations), gen)
 		return
 	}
 	// The tune list spans every candidate station in the resolver's order
@@ -187,17 +257,78 @@ func (d *radioDeck) tune(ref snapshot.LocationRef) {
 	// and with weatherUSA offered again a transmitter can be "relayed" by a
 	// dead mount alone — the engine must fall through to the next live
 	// station, as it did when that transmitter was simply not offered.
-	urls, owners := tuneList(stations, st)
 	d.tuneMu.Lock()
 	defer d.tuneMu.Unlock()
 	if !d.epoch(gen) {
 		return // stopped or re-tuned while resolving: this tune is stale
 	}
+	d.startStation(st, stations)
+}
+
+// startStation points the engine at one resolved station, with the rest of the
+// candidates behind it to fall through to.
+//
+// EXTRACTED AT THE SECOND CALLER (D-117), which is the standing rule. The
+// station's BED tunes a relay too, and it was doing it through `tuneCallsign` —
+// which searches the list the LISTENER's last tune left behind and silently
+// returns when the callsign is not in it. That is why the bed did nothing: the
+// console offered relays from the embedded table and tuned through Observer's
+// resolution, and the two only ever agreed by coincidence.
+//
+// THE CALLER HOLDS `tuneMu`. Both callers resolve first and commit here, so the
+// lock discipline is stated once rather than inferred at two sites.
+func (d *radioDeck) startStation(st stream.Station, rest []stream.Station) {
+	if len(st.Mounts) == 0 {
+		return // nothing to play: a station with no mount is not a relay
+	}
+	urls, owners := tuneList(rest, st)
+	// THE TUNE LIST IS RECORDED FIRST, and it is what a caller can see afterwards:
+	// `tuneCallsign` READS this list and `startStation` WRITES it, which is the
+	// difference between the two paths a test can observe. Without that the bed
+	// tuning through the wrong one is invisible — a mutant proved it (mAK1).
 	d.mu.Lock()
 	d.mountOwner, d.mountURLs = owners, urls
 	d.mu.Unlock()
 	d.setMode("live", d.label(st), st.Mounts[0].Relay)
+	// A BUILD WITH NO AUDIO PATH STILL RECORDS WHAT IT WOULD HAVE TUNED. `engine`
+	// is nil "in tests and in the pathless build" (radioDeck), and the tune list
+	// above is a fact about the station either way.
+	if d.engine == nil {
+		return
+	}
 	d.engine.Start(urls, st.Callsign+" "+st.Site) // the dwell arms when the relay reports Playing (onStatus)
+}
+
+// resolveAt is the relay resolution at an arbitrary point — Observer's own, asked
+// somewhere other than where the listener is standing (D-117).
+//
+// THE STATION'S BED NEEDS IT because a broadcaster's transmitter is not the
+// listener's location, and the question "which relays actually stream near HERE"
+// has to be asked about the station's epicentre or the answer is about the wrong
+// place. The covering-transmitter preference comes along: it is what makes a
+// relay the RIGHT one rather than merely the nearest.
+func (d *radioDeck) resolveAt(ctx context.Context, ref snapshot.LocationRef) []stream.Station {
+	if d == nil || d.resolver == nil {
+		return nil
+	}
+	same := stream.SAMEFromUGC(d.nws.CountyUGC(ctx, ref))
+	stations, statuses := d.resolver.ResolveWithStatus(ctx, ref.Lat, ref.Lon, same)
+	d.noteDirectories(statuses)
+	return stations
+}
+
+// tuneResolved points the engine at a station the caller already resolved.
+//
+// IT TAKES THE TUNE LOCK AND BUMPS THE EPOCH, because it is a tune like any
+// other: a bed cut while a listener's tune is still resolving must not be
+// overtaken by it.
+func (d *radioDeck) tuneResolved(st stream.Station, rest []stream.Station) {
+	if d == nil {
+		return
+	}
+	d.tuneMu.Lock()
+	defer d.tuneMu.Unlock()
+	d.startStation(st, rest)
 }
 
 // tuneList flattens the candidate stations' mounts in order and remembers
@@ -241,7 +372,7 @@ func tuneList(stations []stream.Station, first stream.Station) ([]string, map[st
 // reached next anyway.
 func (d *radioDeck) onSilence(mount, _ string) {
 	radioDebugLog("relay:silent:" + mount)
-	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(mount)})
+	d.send(tty.RelaySilentMsg{Candidates: d.silentCandidates(mount)})
 }
 
 // onClipSpent says so when a read's watcher gave up on it (FR-9): the player was
@@ -321,6 +452,24 @@ func (d *radioDeck) followMount(mount string) {
 	d.setMode("live", d.label(owner), relay)
 }
 
+// send hands the UI a message, or drops it when there is no program to hand it
+// to.
+//
+// THE ONE WRITER, EXTRACTED AT THE FIFTH CALLER. Four of the five sites wrote
+// `d.p.Send` directly and the fifth — voiceNote — guarded the nil first, which
+// is a rule carried in one place out of five. Nil is a deck with no surface:
+// the pathless build, and every unit test that drives the status callback
+// without standing a program up. A never-run program's Send BLOCKS (severe_test
+// records the measurement), so the guard is what makes the status path
+// drivable at all — and P-1 is that a seam a test cannot drive is not a covered
+// seam.
+func (d *radioDeck) send(msg tea.Msg) {
+	if d.p == nil {
+		return
+	}
+	d.p.Send(msg)
+}
+
 // epoch reports whether gen is still the current tune (no Stop or newer
 // Tune since it began).
 func (d *radioDeck) epoch(gen uint64) bool {
@@ -356,6 +505,10 @@ func (d *radioDeck) noteDirectories(statuses []stream.Status) {
 // SetMode implements tty.Radio (UAT 97): [m] picks the source; a playing
 // location re-tunes under the new mode at once.
 func (d *radioDeck) SetMode(mode tty.RadioMode) {
+	// THE PICK IS STILL SAVED; THE RE-TUNE IS WHAT STOPS (D-91). Refusing the
+	// whole call would lose a preference the operator set, and the preference is
+	// not the part that reaches the air.
+	air := d.monitorHasTheAir()
 	d.mu.Lock()
 	d.pref = mode
 	ref, playing, persist := d.ref, d.mode != "", d.persistMode
@@ -363,7 +516,7 @@ func (d *radioDeck) SetMode(mode tty.RadioMode) {
 	if persist != nil {
 		_ = persist(mode) // a failed save is not a playback failure; the pick still applies for this run
 	}
-	if playing && d.engine.Status().State != player.Stopped {
+	if air && playing && d.engine.Status().State != player.Stopped {
 		go d.tune(ref) // Watchlist advance is automatic — stays ducked under a takeover
 	}
 }
@@ -449,6 +602,77 @@ func (d *radioDeck) synthReason(same string, ref snapshot.LocationRef, stations 
 	return reason
 }
 
+// needsRead is THE ONE SEAM at which a location becomes a synthesised read,
+// and the merge's whole surface area (0.16.0 P3).
+//
+// THREE SITES REACH IT, and until now each started audio itself: the ordinary
+// tune when nothing live carries this location, the relay that failed while
+// playing, and the relay that went silent. They are three different facts with
+// one consequence — nobody is carrying this location, so the station must read
+// it — and that consequence is what the schedule now owns.
+//
+// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b), which is the rule the
+// neighbouring dwell case already states. What travels is the fact; whether it
+// becomes a card, where it sits, and whether it is read twice are the
+// Director's, and it answers all three from the schedule it holds.
+//
+// THE STALENESS CHECK GUARDS THE REPORT, not just the audio. startSynth has
+// always dropped a fallback that arrived after the listener stopped or re-tuned;
+// without the same check here, that stale fallback would still queue a card —
+// the listener would have stopped the station and been read to anyway. The
+// guard inside startSynth stays: it has its own callers, and startSynth is
+// INSTRUCT — it stays where it is — until the P3(d) ruling (F-158) says
+// otherwise (REVIEW 2026-09-17, ruling 4).
+func (d *radioDeck) needsRead(ref snapshot.LocationRef, why string, gen uint64) {
+	stage, fresh := mainTrack(), d.epoch(gen)
+	// THE DARK RUN'S ONLY INSTRUMENT (0.16.0 P3).  The whole point of the dark
+	// stage is that the producer's decisions can be compared against the live
+	// path's, and neither is visible without this: the live path logs its
+	// engine transitions and its segments, and the need that produced them was
+	// logged nowhere at all.
+	//
+	// RECORDED BEFORE THE STALENESS CHECK, AND CARRYING ITS ANSWER.  A need
+	// dropped as stale is exactly the kind of thing the comparison is looking
+	// for — "the live path started a read here and the producer did not" has
+	// two possible causes, and this is what tells them apart.  Built only when
+	// the diagnostic is on, because the concatenation is pure cost otherwise
+	// (the shape radioDebugOn exists for).
+	if radioDebugOn() {
+		d.debugLog(needsReadLine(stage, fresh, ref, why))
+	}
+	if !fresh {
+		return // the listener stopped, or moved on: this need is about a location nobody is on
+	}
+	if stage.reports() {
+		// THE HEADLINE IS THE LOCATION'S OWN NAME. A card is showable from the
+		// moment it exists (DR-7), and at this point there is nothing else true
+		// about it: its words are composed at standby, minutes later.
+		d.tell(lineup.NeedsRead{Ref: string(snapshot.Key(ref)), Headline: ref.Label})
+	}
+	// AND IT PLAYS IT ONLY WHILE THE MONITOR HAS THE AIR (D-74).
+	//
+	// THIS IS THE HALF THE HUM LEAD HEARD: "audio in Broadcaster is still pulling
+	// audio from Observer." The deck's own rotation and the station's line-up
+	// both reached the one engine, so with the station running the operator
+	// heard both — the line-up they scheduled, and the watchlist they had been
+	// listening to underneath it.
+	//
+	// IT REPORTS EITHER WAY. The need is a FACT — nobody is carrying this
+	// location — and the Director is entitled to it whoever is on the air; what
+	// the air decides is who PERFORMS. That separation is the same one
+	// `needsRead`'s own header states: the deck reports, the Director decides.
+	if !d.monitorHasTheAir() {
+		return
+	}
+	// THE DECK STILL PLAYS IT. There is no stage in which it does not: "live"
+	// meant the card was read through the ARBITER, and D-33 rules that the
+	// programme is not a narration — a chosen read replaces the bed rather
+	// than speaking over it. What the schedule eventually takes over is WHEN
+	// this happens, not what performs it (BD-9: a report's speak is the engine
+	// Source adapter).
+	d.startSynth(ref, why, gen)
+}
+
 // startSynth voices the location's NWS products (architecture §5 Synth):
 // the voice is the built-in `say` on macOS, Piper elsewhere — installed on
 // first use with progress shown in the player (HUM LEAD: first-run install).
@@ -469,7 +693,12 @@ func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64)
 		return
 	}
 	// The sign-off names whichever voice reaches it (UAT 94: the voice may change mid-cycle).
-	src, err := synth.NewSource(voice, func(ctx context.Context) ([]synth.Segment, error) { return d.segments(ctx, ref, synth.VoiceToken) },
+	src, err := synth.NewSource(voice, func(ctx context.Context) ([]synth.Segment, error) {
+		// THE ROTATION READS THE WHOLE REPORT. Nobody chose a subset here — this
+		// is Watchlist's own cycle, not an operator's request — and `Everything`
+		// says that rather than leaving a zero Set to mean it by accident.
+		return d.segments(ctx, ref, synth.VoiceToken, report.Everything())
+	},
 		func(seg synth.Segment, spoken time.Duration) {
 			d.debugLog(fmt.Sprintf("segment key=%q spoken=%s", seg.Key, spoken.Round(time.Millisecond))) // WATCHPOST_DEBUG_RADIO: which segment the stream reached (UAT 2026-08-28: a cycle that ended before its tail)
 			d.setDetailTimed(seg.Text, spoken)
@@ -494,44 +723,87 @@ func (d *radioDeck) startSynth(ref snapshot.LocationRef, why string, gen uint64)
 	d.engine.StartSource("Watchpost Synth ("+voice.Name()+")", src.Rate(), src.Open)
 }
 
-// segments composes one broadcast cycle: the location's current
-// observation and alerts (from the provider, served by the client cache)
-// plus the office's latest products.
-func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voiceName string) ([]synth.Segment, error) {
+// segments composes the spoken report for one location, carrying ONLY the kinds
+// `want` names (R2, HUM LEAD 2026-09-14).
+//
+// THE OBSERVATION AND THE ALERTS ARE NOT SELECTABLE and are fetched every time;
+// the office's PRODUCTS are, and are gathered only under `report.NWS`. A reader
+// who takes "observation, alerts and products" as one unconditional list plans
+// against a contract this function does not have.
+//
+// EACH SOURCE IS GATHERED ONLY IF IT WAS ASKED FOR, and that is the whole of the
+// change: `synth.Compose` was ALREADY conditional on every one of them — the
+// products loop over an empty slice, and marine, fire and seismic each sit behind
+// `if len(...) > 0` with comments saying "skipped without fire data". So a subset
+// report needed no new composition rule, only the discipline not to FETCH what
+// nobody asked for.
+//
+// MEASURED BEFORE IT WAS BUILT ON, because it was the plan's named risk: NWS is
+// the backbone every other source hangs off, and a FIRE-only request had to read
+// as a report rather than a broken forecast. On the standard fixture: full 7
+// segments, NWS-only 5, FIRE-only 6, nothing-chosen 4.
+//
+// THE FOUR THAT REMAIN WHEN NOTHING IS CHOSEN ARE THE FRAME — the station lead,
+// the current conditions and the tail. They are not one of the kinds and are not
+// selectable: they say WHO is broadcasting, WHERE, and WHEN, which a report
+// without is not a report. Recorded rather than assumed, in case the HUM LEAD
+// wants conditions to belong to NWS instead.
+func (d *radioDeck) segments(ctx context.Context, ref snapshot.LocationRef, voiceName string, want report.Set) ([]synth.Segment, error) {
 	asm := snapshot.NewAssembler([]snapshot.LocationRef{ref}, []string{d.nws.ID()})
+	// A FAILED ALERTS FETCH IS CARRIED, NOT DISCARDED (FR-8.10).
+	//
+	// Both fetches leave the snapshot short on failure, and for the observation
+	// that is recoverable — the report reads without current conditions and the
+	// listener can hear that something is missing. For ALERTS it is not: an empty
+	// list reads exactly like a quiet day, so a 502 becomes a report that sounds
+	// complete and names no hazard. The provider chips cannot correct it either,
+	// because they are fed by the pipeline's cycle and not by this read.
+	var hazardsUnavailable bool
 	for _, kind := range []snapshot.FetchKind{snapshot.KindObs, snapshot.KindAlerts} {
-		if frag, err := d.nws.Fetch(ctx, snapshot.FetchReq{Kind: kind, Locations: []snapshot.LocationRef{ref}}); err == nil {
-			asm.Apply(frag, nil) // a read-driven fetch, not the cycle that answers the row (see pipelines.go)
+		frag, err := d.nws.Fetch(ctx, snapshot.FetchReq{Kind: kind, Locations: []snapshot.LocationRef{ref}})
+		if err != nil {
+			if kind == snapshot.KindAlerts {
+				hazardsUnavailable = true
+			}
+			continue
 		}
+		asm.Apply(frag, nil) // a read-driven fetch, not the cycle that answers the row (see pipelines.go)
 	}
 	snap := asm.Snapshot()
 	if len(snap.Locations) == 0 {
 		return nil, fmt.Errorf("no location")
 	}
 	office := d.nws.Office(ctx, ref)
-	products, _ := d.products.Latest(ctx, office) // a product outage still leaves the observation and alerts to read
 	zone, county := d.nws.ForecastZone(ctx, ref), d.nws.CountyUGC(ctx, ref)
-	for i := range products {
-		products[i].Text = synth.FilterUGC(products[i].Text, zone, county) // this location's blocks only (UAT 81)
+	var products []synth.Product
+	if want.Has(report.NWS) {
+		products, _ = d.products.Latest(ctx, office) // a product outage still leaves the observation and alerts to read
+		for i := range products {
+			products[i].Text = synth.FilterUGC(products[i].Text, zone, county) // this location's blocks only (UAT 81)
+		}
 	}
 	now := time.Now()
 	if z, err := time.LoadLocation(ref.TZ); err == nil && ref.TZ != "" {
 		now = now.In(z)
 	}
 	var fire synth.FireReport
-	if d.fire != nil {
+	if want.Has(report.Fire) && d.fire != nil {
 		fire = d.fire(ref)
 	}
 	var seismic synth.SeismicReport
-	if d.seismic != nil {
+	if want.Has(report.Seismic) && d.seismic != nil {
 		seismic = d.seismic(ref)
 	}
 	var maritime synth.MarineReport
-	if d.marine != nil {
+	if want.Has(report.Marine) && d.marine != nil {
 		maritime = d.marine(ref)
+		// THE COASTAL FORECAST COMES OUT OF THE NWS PRODUCTS, so a MARINE report
+		// without NWS carries the buoys and no forecast text. That is correct
+		// rather than a gap: the operator asked for marine and not for the
+		// forecast, and `products` is empty here precisely because they did not.
 		maritime.Forecast = synth.CoastalForecast(products, zone)
 	}
-	return d.composer.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), synth.Reports{Fire: fire, Seismic: seismic, Maritime: maritime}, d.clock()), nil
+	return d.composer.Compose(snap.Locations[0], products, now, d.units == render.UnitF, voiceName, d.stationFor(county, ref), synth.Reports{Fire: fire, Seismic: seismic, Maritime: maritime, HazardsUnavailable: hazardsUnavailable}, d.clock()), nil
 }
 
 // stationFor names the NWR transmitter the lead points listeners to (UAT
@@ -557,6 +829,19 @@ func (d *radioDeck) stationFor(countyUGC string, ref snapshot.LocationRef) synth
 
 // Stop implements tty.Radio.
 func (d *radioDeck) Stop() {
+	// THE OPERATOR STOPPED LISTENING, and on the console there is nothing of
+	// theirs to stop (D-91). `silenceMonitor` calls `stopMonitor` instead — it
+	// runs AFTER `owner` has moved to the console, so a guard here would refuse
+	// the very silencing the swap exists to perform.
+	if !d.monitorHasTheAir() {
+		return
+	}
+	d.stopMonitor()
+}
+
+// stopMonitor is Stop without the air check: the swap's own silencing, which must
+// work precisely when the monitor no longer has the air.
+func (d *radioDeck) stopMonitor() {
 	d.tuneMu.Lock() // one step with the halt: a Tune tail cannot slip in between (N-3)
 	defer d.tuneMu.Unlock()
 	d.mu.Lock()
@@ -566,7 +851,10 @@ func (d *radioDeck) Stop() {
 	// NOTHING FOLLOWS A STOP, and the Director has to be told: it holds the
 	// dwell now, and a schedule that never heard about the stop would move the
 	// bed on five minutes later and start the station up again by itself.
-	d.tell(lineup.Powered{To: lineup.Stopped})
+	//
+	// THE MONITOR'S STOP, NOT THE STATION'S (D-74). The operator stopped
+	// LISTENING; the station's power is the console's to declare.
+	d.tell(lineup.Monitored{Running: false})
 	// NOT Restore(): whether an alert is on the air is the takeover's to say,
 	// and it pairs its own. Halt silences the broadcast either way, and a
 	// suppression cleared here would let whatever the listener starts next come
@@ -601,6 +889,7 @@ func (d *radioDeck) duck() { d.engine.Suppress() }
 //
 // The class parameter arrives with the Station Director in Task 2.6; until then
 // every alert sounds the classic tone, exactly as 0.13.0 did.
+
 // clock is the listener's clock, the 12-hour default when nothing set one (the
 // older tests, which build a deck by hand).
 func (d *radioDeck) clock() render.Clock {
@@ -684,7 +973,7 @@ func (d *radioDeck) restore() { d.engine.Restore() }
 // own station/detail; pushStatus puts the true state back afterwards.
 func (d *radioDeck) overlay(station, short, detail string, spoken time.Duration) {
 	st := d.engine.Status()
-	d.p.Send(tty.RadioStatusMsg{State: "playing", Station: station, Short: short, Detail: detail, Spoken: spoken, Volume: st.Volume})
+	d.send(tty.RadioStatusMsg{State: "playing", Station: station, Short: short, Detail: detail, Spoken: spoken, Volume: st.Volume})
 }
 
 // pushStatus re-sends the deck's current state (after an overlay).
@@ -726,22 +1015,18 @@ func (d *radioDeck) unrelayedLabel(same string, ref snapshot.LocationRef) string
 }
 
 func (d *radioDeck) setMode(mode, station, detail string) {
-	d.mu.Lock()
-	was := d.mode
-	d.mode, d.station, d.detail = mode, station, detail
-	d.mu.Unlock()
-	// THE PROGRAMME IS RUNNING, AND THE DIRECTOR HAS TO BE TOLD. It starts
-	// Stopped — deliberately, so a station comes up silent — and Stop was the
-	// only power it ever heard about, so `advances(MainTrack)` was permanently
-	// false and the bed never moved on at all. Watchlist looked like it simply
-	// did nothing.
+	// THE POWER IS NOT REPORTED FROM HERE ANY MORE (red team 2026-09-09,
+	// finding 1). Sending Powered{Running} on the transition out of an empty mode
+	// would make "the programme is running" a fact about the DECK's mode string
+	// rather than about the listener. `tune` reports it,
+	// where the listener asks for a location and before the relay/synth fork —
+	// so a station whose audio is owned by the schedule still starts.
 	//
-	// Only the TRANSITION is reported, not every tune: the Director's own
-	// handler is not a no-op on a repeat, and a station that re-announced itself
-	// on every relay change would be telling it something that had not changed.
-	if was == "" && mode != "" {
-		d.tell(lineup.Powered{To: lineup.Running})
-	}
+	// The transition variable went with it: it existed only to guard that send,
+	// and a local kept "in case" is a reader's question with no answer.
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.mode, d.station, d.detail = mode, station, detail
 }
 
 // setDetail updates the detail line and pushes it to the UI at once
@@ -755,7 +1040,7 @@ func (d *radioDeck) setDetailTimed(detail string, spoken time.Duration) {
 	d.detail = detail
 	station, mode, ref, st := d.station, d.mode, d.ref, d.engine.Status()
 	d.mu.Unlock()
-	d.p.Send(tty.RadioStatusMsg{State: string(st.State), Station: station, Detail: detail, Spoken: spoken, Volume: st.Volume, Live: mode == "live", Location: snapshot.Key(ref)})
+	d.send(tty.RadioStatusMsg{State: string(st.State), Station: station, Detail: detail, Spoken: spoken, Volume: st.Volume, Live: mode == "live", Location: snapshot.Key(ref)})
 }
 
 // onStatus forwards engine status to the dashboard; a relay that fails
@@ -764,7 +1049,7 @@ func (d *radioDeck) onStatus(st player.Status) {
 	d.logStatus(st)         // WATCHPOST_DEBUG_RADIO: the transitions, for a relay that plays nothing (follow-up F-2)
 	d.followMount(st.Mount) // a later candidate's mount is playing: the label says which (Q1)
 	d.mu.Lock()
-	station, detail, mode, ref, src, gen := d.station, d.detail, d.mode, d.ref, d.source, d.gen
+	station, detail, mode, ref, src, gen, rd := d.station, d.detail, d.mode, d.ref, d.source, d.gen, d.read
 	d.mu.Unlock()
 	state := st.State
 	if st.Title != "" {
@@ -782,15 +1067,15 @@ func (d *radioDeck) onStatus(st player.Status) {
 	if state == player.Stopped {
 		station = "" // the row falls back to the focused location's name
 	}
-	d.p.Send(tty.RadioStatusMsg{State: string(state), Station: station, Detail: detail, Volume: st.Volume, Live: mode == "live", Location: snapshot.Key(ref)})
+	d.send(tty.RadioStatusMsg{State: string(state), Station: station, Detail: detail, Volume: st.Volume, Live: mode == "live", Location: snapshot.Key(ref)})
 	// Off the engine goroutine (it is finishing this very status): Halt
 	// inside Tune waits for it. Nothing follows a user's Stop (mode == "").
 	if st.State == player.Failed && mode == "live" {
-		go d.startSynth(ref, "relay unavailable — "+st.Err, gen)
+		go d.needsRead(ref, "relay unavailable — "+st.Err, gen)
 	}
-	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). What used to be a
-	// time.AfterFunc here — armDwell setting a five-minute timer, advanceQueue
-	// firing on it — is now two facts the deck is the only thing able to
+	// THE DECK REPORTS, THE DIRECTOR DECIDES (T3.2b). A time.AfterFunc here —
+	// armDwell setting a five-minute timer, advanceQueue firing on it — would put
+	// the decision in the deck. These are two facts the deck is the only thing able to
 	// observe: that a synthesised cycle ran to its end, and where the bed landed
 	// and when it actually started playing. Whether either moves the rotation on
 	// is the Director's, and it is a pure function of those facts, the
@@ -800,6 +1085,16 @@ func (d *radioDeck) onStatus(st player.Status) {
 	// Director holds the rotation now and a zero dwell is how "not Watchlist"
 	// reaches it, so reporting the fact unconditionally is right and filtering
 	// it here would be a second copy of the rule.
+	// A MAIN-TRACK READ IS NOT THE BED MOVING (F-91). The engine reports the
+	// same three transitions for both, and told about them the Director would
+	// start the monitor's dwell against a card — `Tuned` says the bed landed
+	// somewhere, and `Ended` moves the rotation on from it. What a read's end
+	// means is that the Speak effect can come home, and that goes to the
+	// executor waiting on it rather than to the schedule.
+	if mode == "read" {
+		noteRead(rd, st, ended)
+		return
+	}
 	if ended && mode != "" {
 		d.tell(lineup.Ended{})
 	}
@@ -816,7 +1111,7 @@ func (d *radioDeck) onStatus(st player.Status) {
 // its sign-off; voiceErr is the voice's own failure when the stream ended
 // because a segment could not render (then ended is false — never an
 // advance on it). The diagnostic log records which it was.
-func (d *radioDeck) cycleEnded(st player.Status, src *synth.Source) (ended bool, voiceErr string) {
+func (d *radioDeck) cycleEnded(st player.Status, src liveSource) (ended bool, voiceErr string) {
 	if st.State != player.Stopped || st.Title != player.EndedTitle || src == nil {
 		return st.State == player.Stopped && st.Title == player.EndedTitle, ""
 	}
@@ -832,6 +1127,18 @@ func (d *radioDeck) cycleEnded(st player.Status, src *synth.Source) (ended bool,
 // 90 seconds" needs to become a cause. Never a secret: mounts are public URLs.
 func (d *radioDeck) logStatus(st player.Status) {
 	d.debugLog(fmt.Sprintf("%-12s mount=%q err=%q title=%q vol=%d", st.State, st.Mount, st.Err, st.Title, st.Volume))
+}
+
+// needsReadLine is the diagnostic's record of one need. IT NAMES THE PLACE,
+// NEVER THE PAIR (FR-9.4): the label, and an opaque id so that two places with
+// one label (geodata holds 138 such pairs) stay two places in the dark-vs-live
+// comparison the line exists for.
+func needsReadLine(stage mainTrackStage, fresh bool, ref snapshot.LocationRef, why string) string {
+	place := ref.Label
+	if place == "" {
+		place = ref.Zip
+	}
+	return fmt.Sprintf("needs-read stage=%s fresh=%t place=%q id=%s why=%s", stage, fresh, place, snapshot.Opaque(snapshot.Key(ref)), why)
 }
 
 // debugLog appends one timestamped line to the file named by
@@ -926,6 +1233,12 @@ func radioDebugPath() string {
 // 0600 ON BOTH THE FILE AND THE DIRECTORY. It carries station names, mount
 // URLs and the listener's own locations.
 func writeRadioDebug(path, line string) {
+	// NO LINE CARRIES A POSITION (FR-9.4). Card IDs, tune refs and the
+	// Director's trace are keyed by the coordinate pair, and the transmitter is
+	// a pool member: the ONE writer rewrites every pair to an opaque, stable
+	// name, so the file never names where the operator is whatever a caller
+	// composed. TestTheRadioDiagnosticFileCarriesNoCoordinates reads the file.
+	line = snapshot.ReplaceKeys(line, snapshot.Opaque)
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return
 	}
@@ -971,35 +1284,7 @@ func (d *radioDeck) readSynth() {
 	d.mu.Lock()
 	ref, gen := d.ref, d.gen
 	d.mu.Unlock()
-	d.startSynth(ref, "the relay was silent", gen)
-}
-
-// escalate raises the fault window for a schedule that has stopped (DR-21).
-//
-// ONE WINDOW FOR BOTH FAULTS. A silent relay and a schedule with nothing left
-// are different causes with one consequence — the station is quiet — and one
-// surface for that is what keeps the window meaningful. A second error modal
-// would be a second thing to learn and a second thing to dismiss.
-func (d *radioDeck) escalate(reason string) {
-	// A STATION WITH NO AUDIO IS A SUPPORTED CONFIGURATION, and this is the one
-	// channel that tells a listener the station has gone quiet — so a nil deck
-	// must return, not dereference (red team 2026-09-05, I-1). buildDirector
-	// treats a nil deck as fine and nine call sites guard it; startSchedule's
-	// escalate closure did not, while the SAME function guards it for cutTo
-	// twenty-eight lines later. The invariant in newExecutors could not see it:
-	// the closure is non-nil while the channel behind it is dead. The pump then
-	// contained the panic and Escalate names no card, so no Failed was emitted
-	// and nothing anywhere said the station had stopped — verbatim the outcome
-	// DR-21 exists to remove. Same idiom and same reason as mastercontrol.cue.
-	if d == nil || d.p == nil {
-		return
-	}
-	radioDebugLog("schedule:escalate:" + reason)
-	// The candidates are whatever the current tune still offers. A schedule that
-	// stopped for a reason unrelated to the bed leaves none, and the window then
-	// shows the fall-through alone — which is the honest answer: read the
-	// report, because there is nothing else to tune to.
-	d.p.Send(tty.RelaySilentMsg{Candidates: d.silentCandidates(d.engine.Status().Mount)})
+	d.needsRead(ref, "the relay was silent", gen)
 }
 
 // alertTonePCM is a class's attention signal, whole.
@@ -1019,4 +1304,21 @@ func alertTonePCM(class cast.Class) []byte {
 		out = append(out, one...)
 	}
 	return out
+}
+
+// monitorHasTheAir reports whether the OPERATOR'S OWN listening may reach the
+// engine (D-74).
+//
+// ASKED OF THE EFFECTOR, which is the one thing that declares the air. A flag of
+// the deck's own would be a second carrier of the same question, and two
+// carriers of one rule is the shape that produced the duck-lift bug.
+//
+// A DECK WITH NO EFFECTOR PLAYS, which is the older tests and the pathless
+// build: the air is a thing a STATION has, and a deck with no station to take it
+// has always been the operator's alone.
+func (d *radioDeck) monitorHasTheAir() bool {
+	if d == nil || d.air == nil {
+		return true
+	}
+	return d.air()
 }

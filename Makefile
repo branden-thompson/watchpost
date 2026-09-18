@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: dupes dupes-selftest cache-clean build build-diag lint lint-update mutant-policy test race verify fmt vet tidy vuln lint-imports lint-watermark gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms
+.PHONY: quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms vet-tags test-tags lint-identity install-test
 
 BINARY := watchpost
 DIST   := dist
@@ -47,7 +47,14 @@ race:
 	go test -race -count=1 ./...
 
 fmt:
-	@test -z "$$(gofmt -l . | grep -v '^06_docs/')" || (gofmt -l . | grep -v '^06_docs/'; echo 'gofmt: files need formatting'; exit 1)
+# GOFMT'S OWN STATUS IS READ. `test -z "$$(gofmt -l …)"` is true when gofmt prints
+# nothing — and a gofmt that failed to RUN prints nothing, so the gate passed with
+# the tool broken. The oracle found it: every checker stubbed red, `make fmt`
+# exited 0. Could-not-run is a verdict, never a pass (FR-11.3).
+	@out=$$(gofmt -l . 2>&1); rc=$$?; \
+	  test $$rc -eq 0 || { echo "fmt: gofmt failed ($$rc): $$out"; exit 1; }; \
+	  bad=$$(printf '%s\n' "$$out" | grep -v '^06_docs/' | grep -v '^$$' || true); \
+	  test -z "$$bad" || { printf '%s\n' "$$bad"; exit 1; }
 
 vet:
 	go vet ./...
@@ -91,8 +98,29 @@ lint-imports:
 	@./scripts/lint-imports.sh
 
 # Human-Accountability Attribution gate: no AI watermarks in tracked files or commit messages.
+# The A2DH code-authoring rules a grep can decide, over the WHOLE TREE.
+#
+# SCOPED TO THE ARTEFACT, NEVER TO THE SESSION (HUM LEAD, 2026-09-16). An
+# anti-pattern is not excused by predating the change that finds it: a
+# contributor leaves the place better than they found it, so this asks whether
+# the repository contains one, not whether this branch wrote it. A check scoped
+# to authorship is a check that can be silenced by narrowing it.
+lint-authoring:
+	@go run ./tools/authoring -self-test
+	@go run ./tools/authoring
+
 lint-watermark:
 	@./scripts/lint-watermark.sh
+
+# THE PUBLISHED TREE NAMES NO PERSON AND NO MACHINE. A home directory, an
+# agent-harness scratchpad path, an internal project tree or an email address
+# reaching a PUBLIC repository cannot be taken back once someone clones it.
+#
+# THE RULE EXISTED AND WAS SCOPED TO ONE FILE: lint-ledger.sh refuses these
+# patterns in the P10 ledger mirror alone, and printed "no machine paths" while
+# the class was live in 21 other tracked files across two pushed branches.
+lint-identity:
+	@go test ./cmd/watchpost/ -run PublishedTreeNames -count=1
 
 # Positive controls: prove the custom gates still fire on known-bad input (calibration:
 # "Guard Tests Require Positive Controls"). Runs the linters against embedded bad fixtures.
@@ -102,7 +130,28 @@ gate-controls:
 	@./scripts/sync-go-studs.sh --self-test
 	@./scripts/quality/p10-unmatched_test.sh
 	@./scripts/quality/ledger-ratified.sh --self-test
+	@./scripts/quality/lint-ledger.sh --self-test
 	@go run ./tools/dupes -self-test
+	@./scripts/quality/mutant-anchors.sh --self-test
+# THE INJECTOR CONTROL BELONGS HERE AND WAS NOT HERE. lint-injector is the only
+# thing standing between a build that can fabricate hazards and a release, and
+# its control — which proves the check can tell a stripped debug binary from a
+# stripped clean one — was invoked by nothing: the two real callers pass
+# artefacts, not `--self-test`. A control that exists and does not run is the
+# same as no control, with the paperwork of one.
+	@./scripts/lint-injector.sh --self-test
+
+# THE CHEAP HALF OF `mutant-check`, RUNNABLE BEFORE A COMMIT. It asks only
+# whether every mutant still FINDS its line — three tenths of a second against
+# 400 for the full gate, which also compiles each mutation and is the reason that
+# one cannot be run casually.
+#
+# IT SITS BEFORE `mutant-check` IN `verify` so the corpus's cheapest failure is
+# also its fastest: a drifted anchor is found in a moment rather than seven
+# minutes in. It does not replace it — compiling every mutation is the other half
+# of the question and only the slow gate answers it.
+mutant-anchors:
+	@./scripts/quality/mutant-anchors.sh
 
 # The mutation corpus and the harness that reads it (06_docs/mutants, Go, behind
 # the `mutants` build tag so its ~140s does not land in `go test ./...` and thus
@@ -128,7 +177,7 @@ mutant-check:
 # clean-up inside a 900-line log while verify still reported green (0.14.2), and
 # then a 730-line file rewritten on every verify when that was "fixed" wrong.
 # -timeout IS NOT DECORATION HERE, and the numbers are the argument. go test
-# defaults to 10 minutes. This corpus at 172 mutants takes 250s on the
+# defaults to 10 minutes. This corpus takes about 400s on the
 # developer's machine and ran 396s, 486s and 602s across three ubuntu-latest
 # jobs on 2026-09-09 — a 1.5x spread on the SAME commit and platform. The
 # margin is invisible locally because local has more cores.
@@ -199,7 +248,13 @@ test-platforms:
 # `.gitignore` now re-includes `06_docs/**/*.log`; the check below is what
 # proves it for any path you pass. hygiene also names any record still sitting
 # in dist, so it gets promoted rather than lost on the next run.
-HYGIENE_KEEP := watchpost watchpost-0.14.1
+# AND THE SWEEP'S TIMINGS (2026-09-15). `mutant-verdicts.timings` is NOT a
+# record — it is the stopwatch the NEXT sweep reads to print a MEASURED eta
+# instead of a guessed one, which is what stopped an estimate coming in 4x
+# short. It is regenerable from any run, so it does not belong in the
+# repository's history; it is also the one thing in dist whose deletion costs
+# something, so it is named here rather than left to luck.
+HYGIENE_KEEP := watchpost watchpost-0.14.1 mutant-verdicts.timings
 
 hygiene:
 	@test -n "$(RESULTS)" || { echo "hygiene: RESULTS must name the run's record; refusing to delete"; exit 1; }
@@ -228,8 +283,45 @@ cache-clean:
 	@go clean -cache -testcache
 	@echo "cache-clean: build and test caches cleared"
 
-verify: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark gate-controls alloc-budget dupes mutant-check
+# THE GATES RUN UNDER THE TREE LOCK, and that is a correctness requirement
+# rather than a courtesy. `verify` cleans the build cache and then measures; a
+# `go test` started beside it races that clean and the run reports exit 0 over a
+# cache it no longer owns (HUM LEAD: read the LOG, never the notification). A
+# mutant sweep is worse — it edits, gates, and reverts, so an edit made beside it
+# is reverted with it and lost with no error anywhere.
+#
+# `treelock` REFUSES; IT DOES NOT QUEUE. Two overlapping gate runs are not slow,
+# they are wrong, and a caller that waited would hide that from whoever started
+# the second one.
+verify:
+	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
+
+verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest lint-identity gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
+
+# quality is the PHASE-EXIT set: gates a release runs at BUILD and REVIEW exit,
+# by the HUM LEAD, and records in the roster — not on every verify and not in
+# CI. p10 lives here because its checker and its ledger are outside the public
+# tree: it fails loud without `a2dh`, which is right for a gate and wrong for a
+# release runner, which is a clean clone (REVIEW red team, 2026-09-17).
+quality: p10
+	@echo "quality: PHASE-EXIT GATES GREEN"
+
+# The lock is a gate like any other: a lock that never locks passes every
+# optimistic test while two sweeps edit one tree. The self-test takes a lock of
+# its OWN — pointed elsewhere by WATCHPOST_TREELOCK_PATH — so it can run here,
+# inside a verify that is already holding the real one.
+treelock-selftest:
+	@go run ./tools/treelock -self-test
+
+# tree-free answers "is it safe to edit right now" in one command.
+#
+# IT EXISTS BECAUSE `pgrep` DOES NOT ANSWER IT. Killing a sweep's parent leaves
+# its `go test` child running under the next edit, and a name-matched search for
+# the parent does not see the child. The lock is held by a PROCESS, so a child
+# outliving its parent still holds it.
+tree-free:
+	@go run ./tools/treelock -check
 
 # Deterministic allocation pins (quality pass §1). They count mallocs, which the race
 # detector distorts, so they run in their own non-race step (red-team R2-8); under
@@ -255,7 +347,70 @@ journey: build
 		test $$rc -eq 0 || { echo "journey: $$rc step(s) FAILED"; exit 1; }; \
 		echo "journey: every step PASSED"
 
-# MUTANT_POLICY decides WHEN the mutant corpus (171 mutants) runs in CI. It is
+# THE FULL VERDICT SWEEP, owed at BUILD exit and before SHIP.
+#
+# `mutant-anchors` proves each mutant still finds its line; `mutant-check` proves
+# each still compiles. NEITHER ASKS WHETHER ANYTHING STILL FAILS WHEN IT IS
+# APPLIED. On 2026-09-13 a sweep of the release's 82 newest mutants found a live
+# coverage hole (mAA2, a rule pinned by a tautology) and a mutant guarding a rule
+# the product had retired (mAB1) — neither visible to any other gate.
+#
+# NOT IN `verify`: tens of minutes, one mutant at a time. Same standing as
+# `journey`. HUM LEAD approved it as a standing obligation 2026-09-13.
+# VERDICTS_RECORD is where the sweep's RECORD lives once it is durable.
+#
+# IT MOVES WITH THE RELEASE, exactly as HYGIENE_KEEP's pinned comparator does:
+# a sweep is evidence about the corpus as it stood for one release, and filing
+# them all in one place would make the newest silently overwrite the last.
+VERDICTS_RECORD := 06_docs/02_features/0.16.0-broadcaster-ui/07-readiness/mutant-verdicts.log
+
+# promote-verdicts is the protocol's THIRD AND FOURTH STEPS for this target —
+# put the results somewhere durable, then VERIFY they are there — and it runs
+# before the cleanup, never after (HUM LEAD, 2026-09-15).
+#
+# THE ORDER IS THE WHOLE POINT, and `hygiene`'s own comment says why: without
+# the verify step "this target is `rm` with a comment, and the first time a run
+# dies early it would delete the artefacts and the evidence together".
+#
+# IT REFUSES RATHER THAN OVERWRITES A GOOD RECORD WITH A BAD ONE. An empty or
+# missing log means the sweep died before it said anything, and copying that
+# over the last real one would destroy the evidence this step exists to keep.
+# DO NOT `make -n` THIS TARGET OR `mutant-verdicts` (learned the hard way,
+# 2026-09-15). GNU make EXECUTES a recipe line containing $(MAKE) even under
+# -n, so a "dry run" of `mutant-verdicts` runs the sweep script — which opens
+# its log with `: >` and truncates the record of the last real run. It cost
+# this session's 3-hour sweep log, recoverable only because the run's stdout
+# happened to survive elsewhere. To see what a target would do, read it.
+promote-verdicts:
+	@test -s "$(DIST)/mutant-verdicts.log" || { echo "promote-verdicts: $(DIST)/mutant-verdicts.log is missing or empty — the sweep left no record, so NOTHING is promoted"; exit 1; }
+	@mkdir -p $(dir $(VERDICTS_RECORD))
+	@{ echo "commit: $$(git rev-parse HEAD) — $$(date -u +%Y-%m-%dT%H:%MZ)"; cat "$(DIST)/mutant-verdicts.log"; } > "$(VERDICTS_RECORD)"
+	@test -s "$(VERDICTS_RECORD)" || { echo "promote-verdicts: the copy to $(VERDICTS_RECORD) did not land; refusing to report it durable"; exit 1; }
+	@! git check-ignore -q "$(VERDICTS_RECORD)" || { echo "promote-verdicts: $(VERDICTS_RECORD) is git-ignored — filed is not committed; fix .gitignore or choose a tracked path"; exit 1; }
+	@echo "promote-verdicts: record durable in $(VERDICTS_RECORD) ($$(wc -l < $(VERDICTS_RECORD) | tr -d ' ') lines, tracked path)"
+
+# AND IT CLEANS UP AFTER ITSELF, exactly as `mutant-check` does (HUM LEAD,
+# 2026-09-15). This target is the LARGEST producer of build variants in the
+# repo — one full-tree compile per mutant across ~3 hours — and it was the one
+# path calling neither `cache-clean` nor `hygiene`. The 2026-09-06 incident was
+# 274 GB of Go build cache from exactly this shape of run.
+#
+# IT WAS MASKED BY LUCK, WHICH IS WHY IT SURVIVED A WHOLE SESSION UNNOTICED:
+# every `make verify` afterwards runs `mutant-check`, whose own `cache-clean`
+# swept up the sweep's leavings. A gate that is only clean because a different
+# gate ran is not clean.
+#
+# THE CLEAN RUNS ON FAILURE TOO, and the verdict is preserved across it — a
+# sweep that exits non-zero because something SURVIVED is the run most likely
+# to be followed by triage, editing and re-running, which is when the disk is
+# under most pressure.
+mutant-verdicts:
+	@./scripts/quality/mutant-verdicts.sh $(DIST)/mutant-verdicts.log; rc=$$?; \
+	  $(MAKE) --no-print-directory promote-verdicts || exit 1; \
+	  $(MAKE) --no-print-directory cache-clean || exit 1; \
+	  exit $$rc
+
+# MUTANT_POLICY decides WHEN the mutant corpus runs in CI. It is
 # ONE WORD, AND SWITCHING IS EDITING IT: every mode's plumbing already exists in
 # the CI workflow — the schedule trigger, the label trigger and the per-push
 # path are all present whatever this says — so a change of mind costs a word
@@ -290,6 +445,27 @@ dupes:
 dupes-selftest:
 	@go run ./tools/dupes -self-test
 
+# THE PRODUCER/CONSUMER COMPLETENESS CHECK over the closed sets. Proposed at
+# 0.14.0's round-3 red team, named in that release's debrief as "the single
+# highest-value thing 0.15.0 could inherit", and unbuilt until 0.16.0 P3 shipped
+# another instance of the shape it was designed to catch.
+#
+# IN `verify` (HUM LEAD, 2026-09-09). The first run reported eight unwired
+# members; three were resolved rather than exempted — one deleted, one a bug in
+# this tool, one a code fix — and the five that remain are RATIFIED AS OWED in
+# 06_docs/wires-ratified.md, each naming the writer it awaits and the batch that
+# owes it.
+#
+# THE LEDGER EXPIRES ITSELF. A row whose member is no longer unwired, or whose
+# member no longer exists, is a STALE EXEMPTION and fails. So wiring the member
+# is what breaks the build until the row goes — the only version of "remember to
+# remove it later" this project has evidence of acting on.
+wires:
+	@go run ./tools/wires
+
+wires-selftest:
+	@go run ./tools/wires -self-test
+
 # lint is golangci-lint (which runs staticcheck) as a BASELINE + RATCHET: this
 # tree's known findings are recorded once and anything else fails the build.
 # `make lint-update` re-records them, and is the only way an entry leaves.
@@ -299,14 +475,34 @@ lint:
 lint-update:
 	@scripts/lint.sh --update
 
+# THE PATTERN IS NOT ANCHORED, and that is a fix rather than sloppiness.
+# `AllocBudget$$` selected seven of the eight pins: the eighth is
+# TestTickAdvanceAllocBudgetWithATestEventOnTheTape, whose name says what its
+# fixture carries AFTER the budget it measures, so the anchor excluded it. Its
+# own doc reads "the existing pin cannot see this change" — and the new pin was
+# the one nothing ran.
+#
+# An anchor makes the gate depend on a naming convention nothing enforces, and
+# the failure is silent in the worst direction: the test passes locally, is
+# listed by `go test -list`, and is never selected. Unanchored, a pin is reached
+# because of what it IS rather than what it was remembered to be called.
 alloc-budget:
-	go test -count=1 -run 'AllocBudget$$' ./...
+	go test -count=1 -run 'AllocBudget' ./...
 
 # Wall-clock benchmarks: recorded, never gated (quality pass §0.1). Local, HUM LEAD.
 # Needs benchstat: go install golang.org/x/perf/cmd/benchstat@latest
 quality-bench:
 	go test ./modes/tty ./platform/snapshot ./domains/fire/hms ./platform/render -run '^$$' -bench . -benchmem -count 10 | tee $(DIST)/bench.txt
 
+# THE PUBLIC MIRROR IS REGENERATED AND LINTED HERE, with the other two ledger
+# checks, because it is part of the same claim: the gate reads a MACHINE-LOCAL
+# ledger — `.gitignore` keeps the harness out of this public repository, rightly
+# — so without the mirror every HUM LEAD ratification would live on one disk, a
+# fresh clone would report every finding as unratified, and the record of what
+# was approved would be one disk failure from gone. Regenerating it here means it
+# cannot drift from the ledger it mirrors, and the lint means a machine path
+# cannot reach the public tree through it.
+#
 # P10 safety-critical check (quality pass §1, red-team R2-2). The harness CLI and the
 # exemptions ledger live outside the public tree, so this is a LOCAL gate that must fail
 # loud, never skip, when the CLI is absent. A2DH=/path/to/a2dh overrides the lookup.
@@ -318,6 +514,8 @@ p10:
 	@$(A2DH) p10 check --json > $(P10_OUT) || { echo "p10: live findings — see $(P10_OUT)"; exit 1; }
 	@./scripts/quality/p10-unmatched.sh $(P10_OUT)
 	@./scripts/quality/ledger-ratified.sh
+	@python3 ./scripts/quality/p10-ledger-mirror.py
+	@./scripts/quality/lint-ledger.sh
 	@echo "p10: 0 live, 0 unmatched, 0 unratified ($(P10_OUT))"
 
 # T-M (§10.12): cross-compile matrix — every milestone proves it stays green.
@@ -328,7 +526,10 @@ release-matrix:
 	  echo "  building $$os/$$arch"; \
 	  CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build $(TRIMPATH) -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY)-$$os-$$arch$$ext ./cmd/watchpost || exit 1; \
 	done
-	@cd $(DIST) && (command -v sha256sum >/dev/null && sha256sum $(BINARY)-* || shasum -a 256 $(BINARY)-*) > checksums.txt
+# `A && B || C` RUNS C WHEN B FAILS: a sha256sum that failed fell through to
+# shasum, which succeeded, and the failure was gone. The oracle painted
+# sha256sum red alone and release-matrix stayed green.
+	@cd $(DIST) && if command -v sha256sum >/dev/null; then sha256sum $(BINARY)-* > checksums.txt; else shasum -a 256 $(BINARY)-* > checksums.txt; fi
 # NFR-2, AND IT RUNS HERE RATHER THAN IN verify FOR A REASON. verify runs before
 # the published artifacts exist, so a check living there inspects a binary nobody
 # ships. These are the files the release workflow uploads.

@@ -12,7 +12,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 90   # derived, twice the measurement: the Linux CI job that runs these same gates (verify, release-matrix, install-test) took 38 min on the 0.16.0 release branch (2026-09-18, runs 35390965873 and 35391681475); publish adds a minute. A cap under the job leaves a tag with no release behind it.
     steps:
       # Actions pinned by commit (red-team 0.9.0 S-F9): the release job has
       # contents: write, so a moved tag must not be able to swap the code.

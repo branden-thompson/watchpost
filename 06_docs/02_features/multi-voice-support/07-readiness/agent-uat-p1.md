@@ -42,7 +42,7 @@ Setup pickers are **P4**. What is being checked here is:
 ## 0. Set up a sandbox (does not touch `~/.config/watchpost`)
 
 ```sh
-cd ~/Desktop/PERSONAL_PROJECTS/watchpost
+cd <the repository>
 make build
 
 export UAT=$(mktemp -d)/cfg && mkdir -p "$UAT/watchpost"

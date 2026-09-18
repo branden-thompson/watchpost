@@ -5,6 +5,7 @@ package main
 // (or method) is declared there, so the flow map cannot drift from the code.
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,10 +16,10 @@ import (
 // symbolRef matches both forms the pages use: `path/file.go:Func` and the
 // package-scoped `path/pkg:Func`.
 //
-// THE `.go` USED TO BE MANDATORY, so 12 of the flow map's 163 refs were
-// invisible to this test — including both entries rewritten in 0.14.0 (red team
-// 2026-09-05, R-13). The page's own header promises it "cannot drift silently",
-// and a reader's stated reason to trust it was false for the newest rows.
+// THE `.go` IS OPTIONAL, and it has to be: made mandatory, 12 of the flow map's
+// 163 refs go invisible to this test (R-13). The page's own header promises it
+// "cannot drift silently", so a ref this pattern cannot see makes the reader's
+// stated reason to trust the page false.
 var symbolRef = regexp.MustCompile("`([a-z0-9_/]+(?:\\.go)?):([A-Za-z_][A-Za-z0-9_]*)`")
 
 // declares reports whether src declares sym as a function or a method.
@@ -137,5 +138,153 @@ func TestAcceptedCostsNamesRealSymbols(t *testing.T) {
 	entries := strings.Count(body, "\n## ") - strings.Count(body, "\n## Older accepted non-decisions")
 	if triggers := strings.Count(body, "**What would re-open it.**"); triggers != entries {
 		t.Errorf("%d entries but %d re-open triggers — every accepted cost states its own way back", entries, triggers)
+	}
+}
+
+// testRef matches a test named in prose: a backticked identifier beginning
+// `Test`, which is the only form follow-ups.md uses to cite its evidence.
+var testRef = regexp.MustCompile("`(Test[A-Za-z0-9_]+)`")
+
+// A FOLLOW-UP'S CITED TEST EXISTS (FR-8).
+//
+// THE ROW IS THE CLAIM AND THE TEST IS THE EVIDENCE. A row reading CLOSED and
+// citing a test that no longer exists is worse than an open row: it says the
+// property is pinned, so nobody looks, and the pin is gone. F-114 sat that way
+// — CLOSED against `TestAnOverrideLegalOnObserverCanRefuseTheConsole` after the
+// refusal it named had been replaced by scoping.
+//
+// IT CHECKS EXISTENCE, NOT RELEVANCE. Whether the test still asserts what the
+// row claims is a reader's judgement and stays one; a name that resolves to
+// nothing at all is a fact, and facts are what a gate can hold.
+func TestFollowUpsCiteTestsThatExist(t *testing.T) {
+	root := filepath.Join("..", "..")
+	raw, err := os.ReadFile(filepath.Join(root, "06_docs", "follow-ups.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cited := testRef.FindAllStringSubmatch(string(raw), -1)
+	if len(cited) < 10 {
+		t.Fatalf("follow-ups.md should cite at least 10 tests, found %d: the page has stopped "+
+			"naming its evidence, or this pattern no longer matches how it does", len(cited))
+	}
+	have := testNames(t, root)
+	for _, m := range cited {
+		if !have[m[1]] {
+			t.Errorf("follow-ups.md cites %s and no such test exists.\n"+
+				"A row citing a test that is gone reads as pinned and is not — re-point the row "+
+				"at the test that carries the property now, or reopen it.", m[1])
+		}
+	}
+}
+
+// testNames is every `func TestX` in the tree, less the vendored kit.
+func testNames(t *testing.T, root string) map[string]bool {
+	t.Helper()
+	re := regexp.MustCompile(`(?m)^func (Test[A-Za-z0-9_]+)\(`)
+	out := map[string]bool{}
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			// third_party is somebody else's tests; .git is not source.
+			if n := d.Name(); n == "third_party" || n == ".git" {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(p, "_test.go") {
+			return nil
+		}
+		src, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		for _, m := range re.FindAllStringSubmatch(string(src), -1) {
+			out[m[1]] = true
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(out) == 0 {
+		t.Fatal("no tests found in the tree; this check measures nothing")
+	}
+	return out
+}
+
+// THE ROSTER NAMES TESTS THAT EXIST (F-142, the third recurrence of one drift).
+// BUILD exit is judged on gates.md, and three times a row kept naming a test
+// that had been renamed or deleted, so the row read as pinned and was not. A
+// gone test may be named in exactly two places: struck through (`~~Test…~~`),
+// or in the "Roster reconciliation" section, which is the ledger of what
+// replaced what. Everywhere else, a name must resolve to a `func Test…(`.
+func TestTheRosterCitesTestsThatExist(t *testing.T) {
+	root := filepath.Join("..", "..")
+	raw, err := os.ReadFile(filepath.Join(root, "06_docs", "02_features", "0.16.0-broadcaster-ui", "07-readiness", "gates.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	have := testNames(t, root)
+	struck := regexp.MustCompile("~~[^~\n]*~~")
+	var cited, missing int
+	inReconciliation := false
+	for _, line := range strings.Split(string(raw), "\n") { // bounded by the roster (P10-02)
+		if strings.HasPrefix(line, "## ") {
+			inReconciliation = strings.Contains(line, "Roster reconciliation")
+		}
+		if inReconciliation {
+			continue
+		}
+		for _, m := range testRef.FindAllStringSubmatch(struck.ReplaceAllString(line, ""), -1) { // bounded by the line (P10-02)
+			cited++
+			if !have[m[1]] {
+				missing++
+				t.Errorf("gates.md names %s and no such test exists. Strike it through with its successor beside it, "+
+					"or move it to the reconciliation ledger — a live row naming a gone test reads as pinned and is not.", m[1])
+			}
+		}
+	}
+	if cited < 50 {
+		t.Fatalf("the roster cites %d tests; the pattern has stopped matching how it names them", cited)
+	}
+}
+
+// EVERY RATIFIED P10 ROW NAMES CODE THAT EXISTS (F-140). A ratified exemption
+// whose file or symbol is gone addresses nothing — it is an UNGUARDED rule
+// wearing a ratification — and the narrowing script cannot see it because the
+// finding it matched is gone too. This reads the public mirror, the one record
+// of what was ratified, and asks the tree.
+func TestEveryRatifiedP10RowNamesCodeThatExists(t *testing.T) {
+	root := filepath.Join("..", "..")
+	raw, err := os.ReadFile(filepath.Join(root, "06_docs", "p10-ledger.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := regexp.MustCompile("(?m)^\\| `([^`]+)` \\| `([^`]+)` \\| ")
+	rows := row.FindAllStringSubmatch(string(raw), -1)
+	if len(rows) < 50 {
+		t.Fatalf("the ledger mirror has %d rows; the pattern has stopped matching how it writes them", len(rows))
+	}
+	for _, m := range rows { // bounded by the ledger (P10-02)
+		file, symbol := m[1], m[2]
+		info, err := os.Stat(filepath.Join(root, file))
+		if err != nil {
+			t.Errorf("a ratified row names `%s` · `%s`, and no such file exists. Delete the row from the local "+
+				"ledger and regenerate the mirror — a ratification of nothing guards nothing.", file, symbol)
+			continue
+		}
+		if symbol == "package" || info.IsDir() {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(root, file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !regexp.MustCompile(`\b` + regexp.QuoteMeta(symbol) + `\b`).Match(body) {
+			t.Errorf("a ratified row names `%s` · `%s`, and %s no longer holds that identifier. Delete the row "+
+				"from the local ledger and regenerate the mirror; if the code moved, re-present it.", file, symbol, file)
+		}
 	}
 }

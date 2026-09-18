@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/report"
 )
 
 // Event is something that happened. The clock is one of them (Tick), which is
@@ -55,6 +56,13 @@ type Built struct {
 	isEvent
 	ID     string
 	Script Script
+	// Contents is what the read is made of, for the console's manifest (D-87).
+	//
+	// IT TRAVELS WITH THE SCRIPT because it comes from the same compose. A
+	// second event carrying it would be a second moment at which a card could be
+	// half-built — words without a summary, or a summary of words that never
+	// arrived.
+	Contents []Content
 }
 
 // Finished is a Speak effect coming home: the card was read in full.
@@ -121,6 +129,15 @@ type BuildCard struct {
 	// looking them up from the published lineup would race the dispatch, since
 	// the publish for the same step runs concurrently with the build.
 	Refs []string
+
+	// Reports is which sources the card asked to carry (R4).
+	//
+	// ON THE EFFECT, FOR THE SAME REASON THE SLOT AND THE REFS ARE (BD-8):
+	// looking it up from the published lineup would race the dispatch, since
+	// the publish for the same step runs concurrently with the build. It also
+	// means there is no table to keep beside the running order — the fact
+	// travels with the work, which is D-124's standing.
+	Reports report.Set
 	// Divert is how many the burst left unread, for the notice that says so
 	// (DR-14). It rides here for the reason Refs does (BD-8).
 	Divert int
@@ -131,8 +148,35 @@ type BuildCard struct {
 // engine — is decided by what the card is.
 type Speak struct {
 	isEffect
-	ID     string
-	Slot   Slot
+	ID   string
+	Slot Slot
+	// Headline is what the card is called, for whatever the reading path puts
+	// in front of a person while it speaks: the band's callout on the rail
+	// path, the station label on the broadcast engine's.
+	//
+	// CARRIED ON THE EFFECT for the reason BuildCard's Slot and Refs are
+	// (BD-8): the publish for the same step runs concurrently with the
+	// dispatch, so a reader that looked the card up from the published lineup
+	// would race it — and label the broadcast with whatever the console
+	// happened to hold.
+	Headline string
+	// Track is WHICH LANE the card is on, and it is what decides who performs
+	// it (F-91): the alert rail reads through the narration arbiter because a
+	// hazard speaks OVER whatever is playing; the main track is a source swap
+	// on the broadcast engine, because a chosen read REPLACES the bed (D-33).
+	//
+	// THE TRACK, NOT THE SLOT, and the difference is a transition. A
+	// transition's slot says only that the Director minted it; which lane it
+	// belongs to is the lane of the card it bookends — a hand-back after a
+	// takeover is read on the rail with the duck still down, and a stale
+	// notice standing in for a dropped report is read on the programme. One
+	// reader for both would say the wrong thing in the wrong voice, and it is
+	// the SLOT that cannot tell them apart.
+	//
+	// CARRIED ON THE EFFECT for BD-8's reason, like Slot: the publish for the
+	// same step runs concurrently with the dispatch, so an executor that asked
+	// the published lineup which track held the card would race it.
+	Track  Track
 	Script Script
 }
 
@@ -147,6 +191,16 @@ type CueTicker struct {
 	// a single callout for, and the executor cannot ask the lineup without
 	// racing the publish for the same step.
 	Slot Slot
+	// Track is the lane the card is on, and it says whether the band is
+	// involved at all (D-82).
+	//
+	// THE BAND IS THE RAIL'S OUTPUT. It shows HAZARDS — `cueFor` asks the
+	// producer for the alert behind the part being spoken — and a main-track
+	// card has none, so its cue has always been a lookup that finds nothing.
+	// Harmless while one lane could speak; now that both can, a cue and a
+	// release belonging to a REPORT would claim an output the hazard beside it
+	// is using, and the report's exit would clear the hazard's callout (F-71).
+	Track Track
 }
 
 // ReleaseTicker gives the band its rotation back. PAIRED WITH THE CUE (DR-24) —
@@ -154,6 +208,9 @@ type CueTicker struct {
 type ReleaseTicker struct {
 	isEffect
 	ID string
+	// Track is the lane, for CueTicker's reason and paired with it (D-82): the
+	// release of a card that never cued the band must not clear it.
+	Track Track
 }
 
 // Duck and Restore give way over the live bed and take it back. NOT EMITTED BY
@@ -182,9 +239,43 @@ type Tune struct {
 // asynchronously, so a reader that fetched the Director's current lineup when
 // the effect ran would get whatever it had become by then, not what was
 // published.
+//
+// IT CARRIES THE POWER TOO (0.16.0 P2), and for the same reason it carries
+// the lineup by value: a reader told the schedule and the station's state
+// SEPARATELY can hold a torn pair — a new lineup beside a stale power — and
+// the console's whole job is to show what is actually going to air. One
+// message, one consistent moment.
 type Publish struct {
 	isEffect
 	Lineup Lineup
+	Power  Power
+
+	// Bed is what the broadcast is riding on (F-79, closed at D-78).
+	//
+	// IT TRAVELS WITH THE LINEUP AND THE POWER for the reason they travel with
+	// each other: a console told these separately can hold a torn set — a new
+	// line-up beside a stale bed — and D-62 consolidated all three into ONE
+	// region precisely so the operator reads the air state in one glance. Three
+	// facts drawn together and published apart would undo that at the seam.
+	Bed BedState
+}
+
+// BedState is the bed as the console draws it.
+//
+// A VALUE, NOT THE BED ITSELF. `bed` carries the Director's own bookkeeping —
+// when it took the air, what tune is in flight — and none of that is the
+// console's business. This is the three things the reference mock names.
+type BedState struct {
+	// Ref is the location the bed is tuned to, "" when nothing is.
+	Ref string
+
+	// Live is whether a RELAY is carrying it, as observed. The synthesised
+	// broadcast is not live and never dwells.
+	Live bool
+
+	// Carrying is the Director's DECISION that the bed holds the programme —
+	// `bed.carries`, which is intent rather than observation (see bed.go).
+	Carrying bool
 }
 
 // Describe is what an effect IS, in one line.
@@ -214,7 +305,7 @@ func Describe(e Effect) string {
 	case Tune:
 		return named("tune", v.Ref)
 	case Escalate:
-		return named("escalate", v.ID)
+		return fmt.Sprintf("escalate(%s run=%d)", v.ID, v.Run)
 	case Publish:
 		return fmt.Sprintf("publish(rail=[%s] main=[%s])",
 			strings.Join(idsOf(v.Lineup.Cards(AlertRail)), " "),
@@ -279,10 +370,37 @@ func Holds(e Effect) []Resource {
 	if id, ofCard := CardOf(e); ofCard {
 		out = append(out, Resource("card:"+id))
 	}
-	switch e.(type) {
-	case CueTicker, ReleaseTicker:
-		out = append(out, TheBand)
-	case Duck, Restore, Speak:
+	// THE BAND AND THE BED ARE THE RAIL'S OUTPUTS (D-82), and until the main
+	// track could speak that qualifier cost nothing: only the rail ever reached
+	// here with a card. It is load-bearing now.
+	//
+	// A PROGRAMME READ CLAIMING THE BED PUT THE HAZARD BEHIND IT. Every effect
+	// naming a shared output rides the pump's ONE lane, in order — exactly right
+	// for the rail, whose cards are read one after another and whose duck must
+	// not be overtaken. A report's read BLOCKS for as long as the words take, so
+	// a Speak that claimed the bed held the lane for minutes, and the hazard the
+	// Director had just let onto the air could not be asked for until the
+	// weather finished. MEASURED: TestAHazardsWordsDoNotQueueBehindAReport…
+	//
+	// AND IT IS NOT AN EXEMPTION — it is the truth about what a report touches.
+	// The programme is what the rail speaks OVER; it is not competing for the
+	// band or for the bed. What it holds is its own card's order, which is the
+	// `card:` resource above, and the engine's single source, which the schedule
+	// guarantees by never putting two cards on one lane's air.
+	switch v := e.(type) {
+	case CueTicker:
+		if v.Track == AlertRail {
+			out = append(out, TheBand)
+		}
+	case ReleaseTicker:
+		if v.Track == AlertRail {
+			out = append(out, TheBand)
+		}
+	case Speak:
+		if v.Track == AlertRail {
+			out = append(out, TheBed)
+		}
+	case Duck, Restore:
 		out = append(out, TheBed)
 	}
 	return out
@@ -322,6 +440,36 @@ type Director struct {
 	now      time.Time
 	power    Power
 	bed      bed // what the broadcast rides on, and when it took it (T3.2b)
+
+	// monitor is whether the OPERATOR'S OWN listening is running — the second
+	// power (D-74, air.go). Separate from `power`, which is the STATION's.
+	monitor bool
+
+	// air is WHICH PROGRAMME may reach the engine (D-74, air.go) — the
+	// operator's own listening, or the station's line-up. It is not the power:
+	// power says whether the station broadcasts, the air says which of the two
+	// programmes may. Zero is AirMonitor, which is every build before this one.
+	air Air
+
+	// lastRead is when each KIND of card was last read in full (D-48, F-76).
+	//
+	// AN ARRAY, BOUNDED BY THE REGISTRY, and that is the whole of the ruling:
+	// "read history is too overweight and violates our 'done/discarded cards
+	// can pile up' concern." It cannot grow, so there is nothing to cap, evict
+	// or own. See cadence.go.
+	lastRead [numSlots]time.Time
+
+	// failed is the ref of each card that recently left the schedule WITHOUT
+	// reaching the air — declined OR faulted — and when (see retry.go). A ring, oldest evicted, so the
+	// Director's memory of the past cannot grow — the same bound D-48 was ruled
+	// to keep.
+	failed []failNote
+
+	// faultRun is how many cards in a row a LIVE station could not perform:
+	// non-routed failures while Running, with no Finished for a held card
+	// between them; standby ends it. A topped-off station is never stopped(),
+	// so this is the count that owes the operator the band (F-150).
+	faultRun int
 }
 
 // New is a Director with the listener's settings and a clock already set.
@@ -342,6 +490,23 @@ func New(s Settings, now time.Time) Director {
 // Lineup is the schedule as it stands — a copy of the value, which readers may
 // hold as long as they like.
 func (d Director) Lineup() Lineup { return d.lineup }
+
+// MonitorRunning reports whether the OPERATOR'S OWN listening is running (D-74)
+// — the second power, and the one a TUNE declares.
+func (d Director) MonitorRunning() bool { return d.monitor }
+
+// Air is which programme may reach the engine.
+func (d Director) Air() Air { return d.air }
+
+// MonitorAdvancesForTest and StationAdvancesForTest expose the two gates so a
+// test in another package can assert they are MUTUALLY EXCLUSIVE (D-74).
+//
+// EXPORTED FOR THAT ONE PROPERTY, and named so. The gates themselves stay
+// unexported because nothing in production may ask them from outside — the
+// Director decides, and a caller that could ask would be a caller that could
+// disagree.
+func (d Director) MonitorAdvancesForTest() bool { return d.advancesMonitor() }
+func (d Director) StationAdvancesForTest() bool { return d.advances(MainTrack) }
 
 // Now is the clock as the last Tick left it.
 func (d Director) Now() time.Time {
@@ -380,16 +545,81 @@ func (d Director) Step(ev Event) (Director, []Effect) {
 		return d.onFailed(e)
 	case Powered:
 		return d.onPowered(e)
+	case Aired:
+		return d.onAired(e)
+	case Refenced:
+		return d.onRefenced(e)
+	case Monitored:
+		return d.onMonitored(e)
+	case NeedsRead, Offered:
+		return d.stepProducer(ev)
+	case Tuned, Programme, Ended, CutOver:
+		return d.stepBed(ev)
+	case Moved, Dropped, Restored, Requested:
+		return d.stepOperator(ev)
+	}
+	// An event nothing handles changes nothing. The set is closed, so this is
+	// unreachable for anything built here — and it is the safe direction for
+	// anything added later without a handler.
+	return d, nil
+}
+
+// stepProducer routes the Producer's acts — what cards should exist (D-40).
+//
+// THE GROUP IS A ROLE, not a bucket. The role model's first row is the Card
+// Producer, whose whole job is "what cards should exist, and when"; a location
+// needing a read and a set of proposals offered are the two ways that reaches
+// the Director, and neither of them says a word about what the card SAYS.
+//
+// It keeps the safe default, as the other two groups do: an event added here
+// without a handler falls through to `Step`'s own and changes nothing.
+func (d Director) stepProducer(ev Event) (Director, []Effect) {
+	switch e := ev.(type) {
+	case NeedsRead:
+		return d.onNeedsRead(e)
+	case Offered:
+		return d.onOffered(e)
+	}
+	return d, nil
+}
+
+// stepBed routes what happens to the broadcast the programme rides on.
+//
+// GROUPED BY CONCERN, not to move a number. `Step` crossed P10-04's branch
+// bound when the operator's three acts arrived, and splitting a dispatch into
+// two dispatches merely relocates the count — as this project measured once
+// already, when seamsPresent came out of newExecutors at the same size. What
+// makes this a real split is that the two groups are two subjects, and they are
+// the two files these handlers already live in.
+//
+// EACH GROUP KEEPS THE SAFE DEFAULT. An event added to neither falls through to
+// `Step`'s own, which changes nothing — the same direction as before.
+func (d Director) stepBed(ev Event) (Director, []Effect) {
+	switch e := ev.(type) {
 	case Tuned:
 		return d.onTuned(e)
 	case Programme:
 		return d.onProgramme(e)
 	case Ended:
 		return d.onEnded(e)
+	case CutOver:
+		return d.onCutOver(e)
 	}
-	// An event nothing handles changes nothing. The set is closed, so this is
-	// unreachable for anything built here — and it is the safe direction for
-	// anything added later without a handler.
+	return d, nil
+}
+
+// stepOperator routes the human's three acts on a card (FR-3).
+func (d Director) stepOperator(ev Event) (Director, []Effect) {
+	switch e := ev.(type) {
+	case Moved:
+		return d.onMoved(e)
+	case Requested:
+		return d.onRequested(e)
+	case Dropped:
+		return d.onDropped(e)
+	case Restored:
+		return d.onRestored(e)
+	}
 	return d, nil
 }
 
@@ -443,6 +673,10 @@ func (d Director) onTick(ev Tick) (Director, []Effect) {
 	if err := invariant.Check(!d.now.Before(was), "the clock never runs backwards"); err != nil {
 		return d, nil
 	}
+	// AND SO IS A LAPSED HAZARD (D-155). Expiry is a fact about the clock, so
+	// the tick is where it is noticed — before `settle`, so the schedule that
+	// settles is the one with nothing dead left on it.
+	d = d.dropExpired()
 	// THE BED'S DWELL IS A TICK'S BUSINESS TOO (T3.2b). It was a time.AfterFunc
 	// inside the radio deck, which made "when does the bed move" observable only
 	// by waiting five minutes with a real clock.
@@ -464,7 +698,7 @@ func (d Director) onBuilt(ev Built) (Director, []Effect) {
 	if !ok {
 		return d, nil // discarded while its build was in flight; ordinary
 	}
-	built, err := card.WithScript(ev.Script, d.now)
+	built, err := card.WithScript(ev.Script, ev.Contents, d.now)
 	if err != nil {
 		return d, nil
 	}
@@ -480,10 +714,17 @@ func (d Director) onBuilt(ev Built) (Director, []Effect) {
 }
 
 // onFinished takes a card off the air, read in full.
-func (d Director) onFinished(ev Finished) (Director, []Effect) { return d.leave(ev.ID, Done) }
+func (d Director) onFinished(ev Finished) (Director, []Effect) {
+	// A READ THAT FINISHED ENDS THE RUN — a read of a card the schedule holds.
+	// A Finished for a card it does not hold is a stale completion from a
+	// superseded read, and it must not disturb the count any more than it
+	// disturbs the schedule (leave says the same of the card).
+	if _, held := d.find(ev.ID); held {
+		d.faultRun = 0
+	}
+	return d.leave(ev.ID, Done)
+}
 
-// onFailed takes a card off the schedule: it could not be delivered at all, and
-// the Director re-plans around it rather than waiting (DR-21).
 // onFailed takes a card off the schedule and grades what that leaves (DR-21).
 //
 // THE GRADE IS DECIDED AFTER THE SETTLE, not before. A burst whose second alert
@@ -492,6 +733,21 @@ func (d Director) onFinished(ev Finished) (Director, []Effect) { return d.leave(
 // failure on the last card leaves the station silent, which is the one case a
 // person has to be told about.
 func (d Director) onFailed(ev Failed) (Director, []Effect) {
+	// WHAT FAILED IS REMEMBERED BEFORE IT IS FORGOTTEN. The ref has to be read
+	// off the card while the schedule still holds it, and a ROUTED failure is
+	// exactly the one the producer will offer again (see retry.go): without
+	// this, that offer arrives on the publish this very step is about to
+	// describe, and the station spins.
+	// THE COOL-OFF IS ABOUT THE LOOP, NOT THE GRADE. A location that could not
+	// be composed re-enters at pump speed exactly as a declined one does; both
+	// sit out (F-150, REVIEW 2026-09-17 — the loop UAT 2026-09-10 found, back
+	// for the class the fault/decline split created).
+	if card, ok := d.find(ev.ID); ok {
+		d = d.noteFailed(card.Subject)
+	}
+	if !ev.Routed && d.power == Running {
+		d.faultRun++ // a fault OFF AIR is not a card the listeners missed
+	}
 	d, fx := d.leave(ev.ID, Discarded)
 	return d, append(fx, d.escalation(ev)...)
 }
@@ -528,6 +784,10 @@ func (d Director) takeOffTheAir(id string, to State) (Director, []Effect, bool) 
 	if !ok {
 		return d, nil, false
 	}
+	// THE LANE, WHILE THE CARD IS STILL HELD. `Remove` below is what makes it
+	// unfindable, so this is asked here rather than beside the release it ends
+	// up on.
+	track, _, _ := d.lineup.find(id)
 	held := len(d.lineup.tracks[AlertRail]) + len(d.lineup.tracks[MainTrack])
 	wasOnAir := card.State == OnAir
 	gone, err := card.To(to)
@@ -549,11 +809,24 @@ func (d Director) takeOffTheAir(id string, to State) (Director, []Effect, bool) 
 		"a card leaving the schedule shortens it"); err != nil {
 		return d, nil, false
 	}
+	// THE ONE WRITER OF THE CADENCE RECORD (D-48). Here rather than in
+	// onFinished because this is where a card actually LEAVES the air read in
+	// full, and `leave` is not the only caller.
+	if to == Done {
+		d = d.noteRead(gone.Slot)
+	}
 	var fx []Effect
 	if wasOnAir {
 		// PAIRED WITH THE CUE, not with the card: releasing a band that was never
 		// cued would clear whatever callout it is legitimately showing.
-		fx = append(fx, ReleaseTicker{ID: id})
+		//
+		// AND THE LANE TRAVELS WITH IT (D-82). The sentence above was the rule
+		// and `wasOnAir` was the whole of the enforcement — the same thing only
+		// while the rail was the only lane that could cue. F-71 recorded the gap
+		// and named its trigger exactly: "the moment P4 gives the band a second
+		// writer". A report reading UNDER a hazard is that moment, and its exit
+		// would clear the hazard's callout.
+		fx = append(fx, ReleaseTicker{ID: id, Track: track})
 	}
 	return d, fx, true
 }
@@ -566,6 +839,10 @@ func (d Director) takeOffTheAir(id string, to State) (Director, []Effect, bool) 
 // DR-7 and the 1.03 s finding, structural rather than scheduled. Publishing last
 // means a subscriber never sees a state this same step is still changing.
 func (d Director) settle() (Director, []Effect) {
+	// THE ORDER IS DECIDED BEFORE ANYTHING READS IT (D-43). A transition the
+	// running order now calls for may be the very next thing spoken, so it must
+	// exist before the air is taken and before preparation looks ahead.
+	d = d.reconcileJoins()
 	d, air := d.takeTheAir()
 	d, prep := d.prepareNext()
 	// A card that arrived with its own words reached standby just now, in this
@@ -576,11 +853,22 @@ func (d Director) settle() (Director, []Effect) {
 	if len(air) == 0 {
 		d, air = d.takeTheAir()
 	}
-	if _, busy := d.lineup.OnAir(); !busy && len(air) > 0 {
+	if !d.lineup.anyOnAir() && len(air) > 0 {
 		return d, nil // the air was taken and then lost; publish nothing rather than a lie
 	}
-	fx := append(air, prep...)
-	fx = append(fx, Publish{Lineup: d.lineup})
+	// THE DUCK COMES BEFORE THE CUE, and the effect set's own comment says why:
+	// "a duck that landed after the read had started would be the duck-lift bug
+	// in a new costume". Decided here, on the settled schedule, so the answer is
+	// about what is actually about to happen.
+	//
+	// AND THE STATE IS COMMITTED ONLY ON THIS PATH. Above, an air that was taken
+	// and then lost returns nothing at all; moving the bed's record before that
+	// return would leave the Director believing it had ducked while emitting no
+	// effect to do it.
+	d, give := d.giveOrTakeBack()
+	fx := append(give, air...)
+	fx = append(fx, prep...)
+	fx = append(fx, Publish{Lineup: d.lineup, Power: d.Power(), Bed: d.bedState()})
 	last := fx[len(fx)-1]
 	_, published := last.(Publish)
 	// THE READERS ARE TOLD LAST. A subscriber reads the lineup to decide what to
@@ -625,11 +913,21 @@ func (d Director) takeTheAir() (Director, []Effect) {
 // it changed the schedule instead of filling the air — the stale case — so the
 // caller may try the card that replaced it.
 func (d Director) airOnce() (Director, []Effect, bool) {
-	if _, busy := d.lineup.OnAir(); busy {
-		return d, nil, false
-	}
 	next, track, ok := d.lineup.Next()
 	if !ok || next.State != Standby || next.Script.Empty() {
+		return d, nil, false
+	}
+	// THE LANE'S OWN AIR, AND THE ORDER OF THESE TWO LINES IS D-82. Asked before
+	// `Next`, this was "is anything reading anywhere" — so a rail card could not
+	// take the air while a report held it, and a hazard waited out the weather.
+	// Asked after, it is "is THIS lane reading", which is the rule that was
+	// always meant: one voice per lane, and the rail speaks over the programme
+	// (D-24).
+	//
+	// THE MAIN TRACK STILL WAITS FOR THE RAIL, and nothing here says so because
+	// `Next` does: it walks AlertRail first, and reports nothing at all while a
+	// hazard is still reading (DR-3). The precedence is one rule in one place.
+	if _, busy := d.lineup.OnAir(track); busy {
 		return d, nil, false
 	}
 	if !d.advances(track) {
@@ -659,8 +957,8 @@ func (d Director) airOnce() (Director, []Effect, bool) {
 	}
 	d.lineup = moved
 	return d, []Effect{
-		CueTicker{ID: onAir.ID, Headline: onAir.Headline, Slot: onAir.Slot},
-		Speak{ID: onAir.ID, Slot: onAir.Slot, Script: onAir.Script},
+		CueTicker{ID: onAir.ID, Headline: onAir.Headline, Slot: onAir.Slot, Track: track},
+		Speak{ID: onAir.ID, Slot: onAir.Slot, Headline: onAir.Headline, Track: track, Script: onAir.Script},
 	}, false
 }
 
@@ -723,16 +1021,35 @@ func (d Director) prepareNext() (Director, []Effect) {
 	// Bounded by the schedule: each pass promotes exactly one card out of
 	// ADMITTED, and no card ever returns to it (P10-02).
 	for range d.lineup.held() {
-		next, track, ok := d.lineup.toPrepare()
+		next, _, ok := d.lineup.toPrepare()
 		if !ok {
-			return d, nil
+			// NOTHING NEW TO FILL, SO ASK WHETHER SOMETHING NEEDS RE-FILLING
+			// (D-84). A card that has been standing by since before its data
+			// was superseded needs the SAME thing a card with no words needs —
+			// the HUM LEAD: "it's just like the composer 'filling it' for the
+			// first time, it's just stale." Same card, same slot, same order.
+			//
+			// HERE, AND ONLY AFTER THE WALK, so the two reasons to ask the
+			// Composer have ONE owner and an obvious precedence: a card with no
+			// words at all comes before a card whose words have aged.
+			return d.refreshStandby()
 		}
-		// A build costs 1.03 s of network, and a stopped programme has no
-		// cutover for it to be ready for — the report would only be stale when
-		// one came.
-		if !d.advances(track) {
-			return d, nil
-		}
+		// AND THE COMPOSER WORKS ON STANDBY (D-84, HUM LEAD 2026-09-11): "The UP
+		// NEXT card should be getting the attention of the Composer, who is
+		// populating the script with the right data … it will be the first thing
+		// that goes ON AIR when the human operator hits SHIFT+ENTER — but when
+		// the operator does, the line should be ready to go at that point."
+		//
+		// THIS REFUSED TO BUILD unless the track could advance, on the reasoning
+		// that "a stopped programme has no cutover for it to be ready for — the
+		// report would only be stale when one came". The first half is what the
+		// ruling overturns: the cutover is the operator pressing a key, and the
+		// wait for 1.03 s of network is exactly what they must not hear. The
+		// second half was RIGHT and is answered by `refreshStandby` above, which
+		// re-fills the one built card rather than tossing it.
+		//
+		// IT IS STILL ONE AHEAD AND ONLY ONE (toPrepare), so a station sitting on
+		// standby builds ONE report, not ten.
 		standby, err := next.To(Standby)
 		if err != nil {
 			return d, nil
@@ -763,7 +1080,7 @@ func (d Director) prepareNext() (Director, []Effect) {
 		if err := invariant.Check(standby.Script.Empty(), "a card waiting to be built has no words yet"); err != nil {
 			return d, nil
 		}
-		return d, []Effect{BuildCard{ID: standby.ID, Slot: standby.Slot, Subject: standby.Subject,
+		return d, []Effect{BuildCard{ID: standby.ID, Slot: standby.Slot, Subject: standby.Subject, Reports: standby.Reports,
 			Refs: standby.Refs, Divert: standby.Divert}}
 	}
 	return d, nil
@@ -810,6 +1127,15 @@ func DescribeEvent(ev Event) string {
 		return named("failed", v.ID) + ":" + v.Reason
 	case Powered:
 		return named("powered", v.To.String())
+	case Aired:
+		return named("aired", v.To.String())
+	case Refenced:
+		if !v.Fence.InForce() {
+			return named("refenced", "all")
+		}
+		return named("refenced", fmt.Sprintf("%.0fmi", v.Fence.RadiusMi))
+	case Monitored:
+		return named("monitored", monitorWord(v.Running))
 	case Tuned:
 		return named("tuned", v.Ref)
 	case Programme:

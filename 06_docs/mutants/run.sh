@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # run.sh — apply one mutant, decide whether the tests catch it, restore.
 #
 # A mutant is only evidence if it COMPILES. A mutation that breaks the build
@@ -11,6 +11,28 @@
 set -u
 mutant=$1; shift
 pkgs=${*:-./...}
+
+# TWO OPT-IN KNOBS, BOTH OFF BY DEFAULT, so a bare `run.sh` is the same tool it
+# has always been and the harness's own gated properties still hold.
+#
+# MUTANT_BASELINE=assumed skips the clean-tree test run. THE CALLER IS ASSERTING
+# IT ALREADY ESTABLISHED THAT BASELINE, which only a SWEEP can honestly say: it
+# holds one clean tree across hundreds of mutants and the answer cannot differ
+# between them. Per mutant that run is ~100 s on ./app and it is the same answer
+# every time — 56 app mutants cost 112 runs of it where 57 would do.
+#
+# THE CLEAN-TREE CHECK BELOW IS WHAT MAKES THIS SAFE and it is NOT skippable. If
+# a previous mutant failed to restore, the tree is dirty and this refuses before
+# the baseline question arises. Skipping the baseline while still proving the
+# tree is pristine is the whole of the trade.
+#
+# MUTANT_RACE=1 adds -race. Some detectors only work under it — the press-gate
+# test measures 20/20 with it and ~81/100 without — so a sweep that never sets it
+# reports those rules as UNMEASURED. It is for ESCALATING A SURVIVOR, not for
+# every mutant: -race makes a suite several times slower.
+baseline=${MUTANT_BASELINE:-run}
+raceflag=""
+[ "${MUTANT_RACE:-0}" = "1" ] && raceflag="-race"
 root=$(git rev-parse --show-toplevel)
 cd "$root" || exit 2
 
@@ -39,9 +61,11 @@ trap restore EXIT
 # A mutant is only evidence against a GREEN baseline. A tree that is already
 # failing — a stale declset, a flaky timing test — makes every mutant look
 # caught, which is the same false-coverage bug in a different costume.
-if ! go test $pkgs -count=1 >/dev/null 2>&1; then
-	echo "SKIPPED $mutant — the unmutated tree is not green; fix that first"
-	exit 2
+if [ "$baseline" != "assumed" ]; then
+	if ! go test $raceflag $pkgs -count=1 >/dev/null 2>&1; then
+		echo "SKIPPED $mutant — the unmutated tree is not green; fix that first"
+		exit 2
+	fi
 fi
 
 python3 "$mutant" || { echo "UNAPPLIED $mutant — the mutation did not match"; exit 2; }
@@ -57,7 +81,7 @@ if ! go build ./... 2>/dev/null || ! go vet $pkgs >/dev/null 2>&1; then
 	exit 2
 fi
 
-out=$(go test $pkgs -count=1 2>&1); code=$?
+out=$(go test $raceflag $pkgs -count=1 2>&1); code=$?
 if echo "$out" | grep -q "build failed"; then
 	echo "INVALID  $mutant — test build failed"
 	exit 2

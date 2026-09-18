@@ -16,7 +16,7 @@ Roughly 30–40 minutes. Steps 1–4 are the feature; 5–7 are the things most 
 ## 0. Build, on your real config
 
 ```sh
-cd ~/Desktop/PERSONAL_PROJECTS/watchpost && make build && ./dist/watchpost
+cd <the repository> && make build && ./dist/watchpost
 ```
 
 Your own config this time — the point is the journey a listener takes. Nothing here can lose a setting: a

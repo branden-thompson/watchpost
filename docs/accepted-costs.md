@@ -218,3 +218,40 @@ scanner.
 
 Its §4 table states the bound on every cache and memo in the app. If you are about to add one, put its
 bound and its gauge there.
+
+---
+
+## The console's frame costs 520 allocations, and a loaded console 9,760 (0.16.0 P4, re-based D-120)
+
+**The numbers, as pinned.** `bcFrameAllocs = 520` and `bcFrameMissAllocs = 9760`
+(`modes/tty/broadcaster_alloc_test.go`). The first is a frame on a console with a pool and a snapshot
+where every row's weather is already joined (the memo hit); the second is the miss — two tables
+joining forty rows — measured at 9,296 and pinned at ×1.05. **An earlier version of this entry
+published ~266 per frame; that figure measured a console with NO POOL AND NO SNAPSHOT** (`locIndex`
+nil, no row ever joined its weather), which is why D-120 re-based the budget: the number went up because
+the measurement got honest, not because anything got slower.
+
+**The blind spot, stated with the number** (the test's own words): the pin guards the path the fixture
+walks; a cache that helps one path and not another shows up as the difference between the two pins,
+and a regression smaller than the pin's slack (26 allocations at 520) is invisible to it.
+
+**Why it stands.** The card row is a **go-studs `data_table_row`**, and two standing rules decide this
+rather than a judgement call: *any table is a go-studs table*, and *a dependency is never re-implemented
+for speed — patch narrowly, go upstream, or accept and record the cost.*
+
+**And the component is buying correctness, not convenience.** It sizes the fill column with the badge's
+width **already reserved**, so a centred title cannot run into the badge. The hand-rolled row written
+while generating the card mock did exactly that — a title short enough to FIT BY LENGTH still collided
+BY POSITION once centred, producing `…(COASTAL)D•` and eating the badge. Hand-rolling it back would
+re-open a defect that is invisible until a location has a long name.
+
+**What was tried.** Building the row once per FRAME rather than once per card: it saved 5 of the 51
+added. The cost is inside `RenderRow`, not construction.
+
+**What would re-open it.** A measured frame cost that matters — the console redraws on a tick, so this
+is thousands of allocations per second at most, and `perf-measurement.md`'s method is the instrument,
+not this counter. Or an upstream go-studs change that lowers `RenderRow`'s per-call cost, which is an
+**M6 upstream candidate** rather than a local patch.
+
+**Evidence.** `modes/tty/broadcaster_alloc_test.go`'s `bcFrameAllocs` comment carries the table and the
+measurement date.

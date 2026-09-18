@@ -280,7 +280,12 @@ func TestEmptyStatesStandWhereTheTablesWill(t *testing.T) {
 		t.Fatalf("narrow: the message wraps, never truncates:\n%s", nv)
 	}
 	model, _ = model.Update(SnapshotMsg{Snap: snap()})
-	if v := stripANSITest(model.(Dashboard).View().Content); strings.Contains(v, "to your Watchlist") || !strings.Contains(v, "[##.][") {
+	// THE TABLE IS THERE, ASKED THE WAY THE EMPTY STATE IS ASKED. `"[##.]["` was
+	// the bracket form of the stencil band, and D-103 flushed that stencil to its
+	// own column so the numbers hang from it — so the proxy went stale while the
+	// thing it stood for was fine. `CONDITIONS` is the header the assertion above
+	// already uses to mean "no table yet", which makes the pair say one thing.
+	if v := stripANSITest(model.(Dashboard).View().Content); strings.Contains(v, "to your Watchlist") || !strings.Contains(v, "CONDITIONS") {
 		t.Fatalf("data replaces the watchlist empty state:\n%s", v)
 	}
 }

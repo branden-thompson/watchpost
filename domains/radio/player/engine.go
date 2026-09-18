@@ -346,50 +346,64 @@ func (e *Engine) playClip(rate int, pcm io.Reader, tapped, inFlight bool) error 
 	e.mu.Unlock()
 	e.debugf("player:clip:start n=%d tapped=%v inFlight=%v", n, tapped, inFlight)
 	p.Play()
-	go func() {
-		// Bounded per P10-02: 10 min of PLAY is the ceiling (an event read
-		// speaks a whole record — minutes, not seconds); a held line does
-		// not spend its budget.
-		//
-		// THE BUDGET IS ALSO FR-9's BOUND, and it was already the right shape:
-		// held-excluded elapsed time, on the read's own player, never on the
-		// live stream. What was missing was anyone being told how it ended.
-		spent := true
-		budget := e.clipBudget()
-		i := 0
-		for i < budget {
-			e.mu.Lock()
-			held := e.held[p]
-			if !held {
-				p.SetVolume(e.volume) // the knob follows a minutes-long read (round 4, A-07)
-			}
-			e.mu.Unlock()
-			if !held && !p.IsPlaying() {
-				spent = false // the player ran out of audio: the clip was heard
-				break
-			}
-			time.Sleep(50 * time.Millisecond)
-			if !held {
-				i++
-			}
-		}
-		e.mu.Lock()
-		if e.preview == p {
-			e.preview = nil
-		}
-		delete(e.held, p)
-		e.mu.Unlock()
-		e.debugf("player:clip:end n=%d spent=%v", n, spent)
-		_ = p.Close()
-		if spent {
-			// THE CLIP NEITHER FINISHED NOR ERRORED (FR-9): the player was
-			// still claiming to play after ten minutes of AIR time and has been
-			// closed from under it. Reported off this goroutine, like every
-			// other report the engine makes.
-			e.reportClipSpent()
-		}
-	}()
+	go e.watchClip(p, n)
 	return nil
+}
+
+// watchClip follows one clip to its end and says how it ended.
+//
+// EXTRACTED FROM `playClip` AT THE STATEMENT CEILING (P10-04, D-159). It is the
+// whole of the goroutine `playClip` starts, and standing apart it makes FR-9's
+// bound something a test can drive directly rather than only through an audio
+// device.
+//
+// THE LOOP IS BOUNDED IN AIR TIME, NOT WALL TIME, and that is the requirement
+// rather than an oversight: `i` advances only while the player is NOT held, so a
+// read the operator has paused does not spend its budget. A counted loop over
+// wall time would time out a held read, which is why this carries a ratified
+// P10-02 exemption instead of a restructure.
+func (e *Engine) watchClip(p Player, n int) {
+	// Bounded per P10-02: 10 min of PLAY is the ceiling (an event read
+	// speaks a whole record — minutes, not seconds); a held line does
+	// not spend its budget.
+	//
+	// THE BUDGET IS ALSO FR-9's BOUND, and it was already the right shape:
+	// held-excluded elapsed time, on the read's own player, never on the
+	// live stream. What was missing was anyone being told how it ended.
+	spent := true
+	budget := e.clipBudget()
+	i := 0
+	for i < budget {
+		e.mu.Lock()
+		held := e.held[p]
+		if !held {
+			p.SetVolume(e.volume) // the knob follows a minutes-long read (round 4, A-07)
+		}
+		e.mu.Unlock()
+		if !held && !p.IsPlaying() {
+			spent = false // the player ran out of audio: the clip was heard
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+		if !held {
+			i++
+		}
+	}
+	e.mu.Lock()
+	if e.preview == p {
+		e.preview = nil
+	}
+	delete(e.held, p)
+	e.mu.Unlock()
+	e.debugf("player:clip:end n=%d spent=%v", n, spent)
+	_ = p.Close()
+	if spent {
+		// THE CLIP NEITHER FINISHED NOR ERRORED (FR-9): the player was
+		// still claiming to play after ten minutes of AIR time and has been
+		// closed from under it. Reported off this goroutine, like every
+		// other report the engine makes.
+		e.reportClipSpent()
+	}
 }
 
 // defaultClipBudget is the watcher's ceiling in 50 ms polls: ten minutes of AIR

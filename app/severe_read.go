@@ -171,13 +171,12 @@ func (r *eventReader) Read(key string) {
 // the goroutine finished", which nobody closing a window is asking.
 func (r *eventReader) Cancel() {
 	r.mu.Lock()
-	cancel, had := r.cancel, r.busy
+	cancel := r.cancel
 	r.free()
 	r.mu.Unlock()
 	if cancel != nil {
 		cancel()
 	}
-	_ = had
 }
 
 // clearMarkUnlessReplaced takes the row's mark down, unless a NEWER read has

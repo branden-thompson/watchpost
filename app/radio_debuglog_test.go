@@ -1,6 +1,8 @@
 package app
 
 import (
+	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"os"
 	"path/filepath"
 	"strings"
@@ -134,5 +136,57 @@ func TestTheRadioDiagnosticRotatesPastItsCeiling(t *testing.T) {
 	}
 	if fi.Mode().Perm() != 0o600 {
 		t.Errorf("the log is %v, want 0600", fi.Mode().Perm())
+	}
+}
+
+// FR-9.4, THE RADIO DIAGNOSTIC TOO (ruling 10). The operator is told their
+// tower's position is never written to a debug dump, and the transmitter is a
+// pool member: the need line names a place by its label and an opaque id,
+// never by the pair; a place with no label is its ZIP.
+func TestTheRadioDiagnosticNamesPlacesNotCoordinates(t *testing.T) {
+	ref := snapshot.LocationRef{Label: "Bonsall, CA", Zip: "92003", Lat: 33.2887, Lon: -117.2253}
+	line := needsReadLine(mainTrackDark, true, ref, "the dwell elapsed")
+	if !strings.Contains(line, "Bonsall, CA") {
+		t.Errorf("the line does not name the place: %q", line)
+	}
+	for _, word := range []string{"33.28", "117.22", "lat", "lon"} { // bounded by the word list (P10-02)
+		if strings.Contains(strings.ToLower(line), word) {
+			t.Errorf("the diagnostic carries %q — it must not name where the operator is (FR-9.4): %q", word, line)
+		}
+	}
+	if got := needsReadLine(mainTrackDark, false, snapshot.LocationRef{Zip: "92003", Lat: 1, Lon: 2}, "x"); !strings.Contains(got, "92003") || strings.Contains(got, "1.0000") {
+		t.Errorf("a place with no label is named by its ZIP, not its pair: %q", got)
+	}
+}
+
+// AND THE FILE ITSELF CARRIES NO PAIR, WHATEVER WAS WRITTEN TO IT. The Director's
+// trace describes every event, effect and card by key — `tuned(<pair>)`,
+// `read:<pair>` — and a bed that cannot be tuned names its target the same way.
+// The gate is over the FILE: every writer goes through one function, and this
+// reads what it wrote back with the tower on the main track.
+func TestTheRadioDiagnosticFileCarriesNoCoordinates(t *testing.T) {
+	path := radioDebugTo(t, "1")
+	tower := snapshot.LocationRef{Label: "Bonsall, CA", Lat: 33.2887, Lon: -117.2253}
+	key := string(snapshot.Key(tower))
+	d := &radioDeck{}
+	d.needsRead(tower, "the dwell elapsed", 99)
+	trace(lineup.Tuned{Ref: key}, []lineup.Effect{
+		lineup.Tune{Ref: key},
+		lineup.Escalate{Reason: "the station was asked to move to " + key + " and did not"},
+	}, lineup.Lineup{})
+	radioDebugLog("director:cards:MAIN TRACK=[read:" + key + ":ADMITTED]")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(b)
+	if strings.Count(body, "\n") < 4 {
+		t.Fatalf("the diagnostic wrote too little to assert over:\n%s", body)
+	}
+	if snapshot.HasKey(body) || strings.Contains(body, "33.28") || strings.Contains(body, "117.22") {
+		t.Errorf("the diagnostic names where the operator is (FR-9.4):\n%s", body)
+	}
+	if !strings.Contains(body, snapshot.Opaque(snapshot.LocationKey(key))) || !strings.Contains(body, "Bonsall, CA") {
+		t.Errorf("the place is not followable across lines by its opaque id and label:\n%s", body)
 	}
 }

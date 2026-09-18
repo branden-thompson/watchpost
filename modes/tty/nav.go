@@ -18,7 +18,13 @@ import (
 // priority rows, then the recent rows, auto-scrolling the recent window.
 func (d Dashboard) handleNav(act term.Action) Dashboard {
 	switch d.modal {
-	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout: // the scrolling windows
+	// THE SCROLLING WINDOWS, AND THE LIST IS HAND-WRITTEN — which is why the
+	// card window was absent from it on the day it was built, and why the FR-5
+	// reachability gate is what found that rather than UAT. A window missing
+	// here draws a scroll rail whose arrow keys reach PAST it to the table
+	// underneath; `add` and `remove` are absent on purpose, because their own
+	// keys walk `selected` (modal_location.go).
+	case modalHelp, modalDetails, modalAlerts, modalStatus, modalAbout, modalCard:
 		return d.handleModalNav(act)
 	case modalSevere:
 		return d.handleSevereNav(act) // 0.13.0: tabs and rows, or the record's scroll
@@ -26,6 +32,8 @@ func (d Dashboard) handleNav(act term.Action) Dashboard {
 		return d.handleRelayFaultNav(act) // MVS-D-76: the three ways out of a dead relay
 	case modalDebug:
 		return d.handleDebugNav(act) // F-21
+	case modalRequest:
+		return d.handleRequestNav(act) // R4: a form, walked field by field
 	}
 	switch act {
 	case "nav-up":
@@ -136,9 +144,9 @@ func (d Dashboard) numRecent() int {
 // recentLocations is the RECENT list AS THE TABLE DRAWS IT: the snapshot's
 // locations, with the looked-up one PREPENDED while its data is still coming.
 //
-// A lookup used to put nothing in the table until the rebuilt snapshot arrived,
-// so the row simply appeared some seconds later — which reads as the app having
-// missed the keystroke. The placeholder carries no
+// Without the prepend a lookup puts nothing in the table until the rebuilt
+// snapshot arrives, so the row simply appears some seconds later — which reads as
+// the app having missed the keystroke. The placeholder carries no
 // readings, so rowLoading marks it and the temperature cells shimmer, exactly as
 // they do for a location still loading on first launch. The row is there from
 // the first frame and fills in where it stands.

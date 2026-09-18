@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/report"
 )
 
 // State is where a card is in its life. The zero value is Proposed, which is
@@ -125,6 +126,34 @@ type slotRow struct {
 	// burst, not the rotation.
 	alertRead bool
 
+	// structural marks one of THE DIRECTOR'S OWN CARDS — a card the schedule
+	// reads but the operator never asked for and never sees (D-44).
+	//
+	// STATED, NOT INFERRED. This row's own comment already said "a slot that
+	// neither spends the Max nor composes at standby is one of the Director's
+	// own structural cards" — a rule carried by the CONJUNCTION OF TWO ZERO
+	// VALUES, which is a rule nobody can find and any new slot can break by
+	// accident. It is the filter the operator's whole running order is derived
+	// from, so it gets a field.
+	structural bool
+
+	// announced marks a kind that does NOT introduce itself, so the listener is
+	// told what is coming — "please standby for station identification" (D-49).
+	//
+	// MVS-D-80'S REASON, GENERALISED. It rules that a transition does not fire
+	// location-to-location "because the location scripts already announce their
+	// location", which makes self-announcement the property that matters, and a
+	// property of the KIND rather than of a pair.
+	//
+	// NOTHING SETS IT YET, deliberately: station credits will, and credits have
+	// no slot until D-31. A rule nobody has made is not a rule.
+	announced bool
+
+	// handsBack marks a kind that INTERRUPTED the programme, so the listener is
+	// handed back when it ends — "we now return to our regularly scheduled
+	// programming" (MVS-D-80).
+	handsBack bool
+
 	// textAtStandby marks a slot whose words are composed as the card nears the
 	// air (DR-7), rather than when it is proposed. Reports go this way: a report
 	// composed at admission says what the weather was when it was queued, not
@@ -144,8 +173,8 @@ func slots() [numSlots]slotRow {
 	return [numSlots]slotRow{
 		LocationReport: {label: "Location Report", textAtStandby: true},
 		SevereRead:     {label: "Severe-event Read", alertRead: true, textAtStandby: true},
-		BreakingAlert:  {label: "Breaking Alert", alertRead: true, textAtStandby: true},
-		Transition:     {label: "Transition"},
+		BreakingAlert:  {label: "Breaking Alert", alertRead: true, textAtStandby: true, handsBack: true},
+		Transition:     {label: "Transition", structural: true},
 	}
 }
 
@@ -183,6 +212,27 @@ func (s Slot) String() string {
 func (s Slot) CountsAgainstMax() bool {
 	r, ok := s.row()
 	return ok && r.alertRead
+}
+
+// structural reports whether this is one of the Director's own cards, which the
+// operator neither sees nor addresses. Unexported for the reason textAtStandby
+// is: it is the card model's own rule, asked through Lineup.Projection.
+func (s Slot) structural() bool {
+	r, ok := s.row()
+	return ok && r.structural
+}
+
+// announced reports whether the listener is told this kind is coming.
+func (s Slot) announced() bool {
+	r, ok := s.row()
+	return ok && r.announced
+}
+
+// handsBack reports whether the listener is handed back to the programme when a
+// card of this kind ends.
+func (s Slot) handsBack() bool {
+	r, ok := s.row()
+	return ok && r.handsBack
 }
 
 // textAtStandby reports whether this slot's words are composed as it nears the
@@ -259,6 +309,35 @@ type Card struct {
 	// burst head" too; BurstHead was retired when a burst became one card.)
 	Refs []string
 
+	// Reports is which sources this card's report carries (R4).
+	//
+	// EMPTY MEANS THE WHOLE REPORT, NOT NONE. Every card the Director makes for
+	// itself is in that state — only an operator's request names a subset — so
+	// the zero value has to be the ordinary case, or the rotation would compose
+	// a frame with nothing in it. `composeFor` states the same rule at the other
+	// end of the wire, and mutant mAX3 is the pair of them.
+	Reports report.Set
+
+	// From is the arrivals this card was planned from, kept so a LATER FENCE can
+	// re-test it (D-75).
+	//
+	// THE ARRIVALS THEMSELVES, NOT A COPY OF THEIR GEOMETRY. `Fence.Admits`
+	// takes an Arrival, and it is the ONE owner of what "inside the fence"
+	// means — a parallel struct holding just the coordinates would be a second
+	// place for that rule to live, and the two would disagree the day the
+	// zone-only exception moved.
+	//
+	// BOUNDED BY `Settings.Max`, which is the burst's own cap: a card holds at
+	// most the alerts it reads.
+	From []Arrival
+
+	// OutOfFence is whether the CURRENT fence admits this card (D-75). A card
+	// that is out of fence is HELD, not dropped: DR-3 says nothing admitted is
+	// dropped unread, and the HUM LEAD's rule says nothing outside the service
+	// area is heard on the console. Holding is what honours both — the card
+	// waits for a surface whose fence admits it.
+	OutOfFence bool
+
 	// Divert is how many alerts this burst COULD have read and did not — the
 	// figure the listener is told aloud (DR-14).
 	//
@@ -295,11 +374,40 @@ type Card struct {
 	// from newlines works until an alert contains one.
 	Script Script
 
+	// Contents is what the read CONTAINS, in the order it will be said — the
+	// manifest the console shows before a card goes on the air (D-87).
+	//
+	// A SUMMARY, NOT THE WORDS. `Script` is what will be spoken and this is what
+	// it is made of: one line per source, with whatever that source counts. Both
+	// come from the same compose, so they cannot describe different reads.
+	//
+	// IT STAYS DOMAIN-FREE (DR-1), like Headline: two strings the console shows
+	// and the schedule never reads. What a "Watchpost Fire Report" IS lives in
+	// the domain that produced it.
+	Contents []Content
+
 	// BuiltAt is when this card's words came home, and ZERO when they never
 	// did — a structural card whose text was fixed at proposal was never built
 	// and can never go stale (PD-3). It is the only reason the staleness check
 	// cannot discard the very transition it raises.
 	BuiltAt time.Time
+
+	// Test marks a card assembled ENTIRELY from fabricated alerts — the ctrl+d
+	// window's injection (FR-4.4, D-55).
+	//
+	// IT TRAVELS AS DATA AND IS RENDERED PER SURFACE, which is the call the
+	// severe window already made and stated: the mark is added "HERE rather than
+	// to the row's Product: the [w] read speaks that field, and a product with
+	// three asterisks in it would be read aloud as asterisks." Baking it into
+	// Headline would put asterisks in the operator's own words and in anything
+	// that ever speaks them.
+	//
+	// EVERY ALERT IN THE BURST, NOT ANY OF THEM. One card carries the whole
+	// burst (MVS-D-77), so a burst holding one REAL hazard is not a test —
+	// marking it would hide a live alert behind a label that says to ignore it.
+	// The audio path makes exactly this call (`allFabricated`), and the card
+	// must not disagree with what is being spoken.
+	Test bool
 
 	// State is where the card is in its life, and the only thing about it that
 	// may change while it is on the air.
@@ -382,6 +490,22 @@ func (c Card) check() error {
 		"a card whose words are fixed at proposal never exists without them"); err != nil {
 		return err
 	}
+	// D-42 (HUM LEAD, 2026-09-10): "transition cards are NEVER
+	// Origin.fromOperator." A transition is the DIRECTOR'S one additive act —
+	// the role model's own words — so an operator-originated one is a category
+	// error: the human asks for a report, and the hand-off around it is the
+	// Director's consequence of that choice, never the request itself.
+	//
+	// IT HELD BY ACCIDENT BEFORE THIS LINE. The guard above refuses a wordless
+	// transition, and the undo deliberately drops the words, so the one path
+	// that could have built such a card failed for an unrelated reason — a rule
+	// held by a DIFFERENT rule, which is the shape this package keeps having to
+	// un-split. Stated here, it survives the day a transition carries its words
+	// through.
+	if err := invariant.Check(c.Slot != Transition || c.Origin != FromOperator,
+		"a transition is the Director's own structural card; the operator never originates one"); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -426,7 +550,7 @@ func (c Card) To(next State) (Card, error) {
 // WithText fills in the script. This is DR-7's moment: the card is at standby,
 // its data was fetched just now, and what it will say is decided from that
 // rather than from whatever was true when it was queued.
-func (c Card) WithScript(script Script, builtAt time.Time) (Card, error) {
+func (c Card) WithScript(script Script, contents []Content, builtAt time.Time) (Card, error) {
 	if err := invariant.Check(!script.Empty(), "a card's words are never set to nothing"); err != nil {
 		return c, err
 	}
@@ -447,7 +571,10 @@ func (c Card) WithScript(script Script, builtAt time.Time) (Card, error) {
 	if err := c.check(); err != nil {
 		return c, err
 	}
-	c.Script, c.BuiltAt = script, builtAt
+	// THE MANIFEST LANDS WITH THE WORDS (D-87). Both come from one compose, so
+	// setting them together is what stops a card describing a read it is not
+	// about to give.
+	c.Script, c.Contents, c.BuiltAt = script, contents, builtAt
 	return c, nil
 }
 

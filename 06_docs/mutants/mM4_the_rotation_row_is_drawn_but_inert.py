@@ -7,8 +7,11 @@ import pathlib
 # press. This was the real state of the row when it was first written, and three
 # tests passed over it: they called cycleRelayDwell directly and never touched a
 # key.
+#
+# RE-ANCHORED 2026-09-12 (D-92): the row gained a `scope` field between its group
+# and its kind.  The rule it guards is unchanged.
 p = pathlib.Path("modes/tty/setup_rows.go"); s = p.read_text()
-old = "rowRelayDwell: {rowRelayDwell, groupRelay, rowPicker, true,"
-new = "rowRelayDwell: {rowRelayDwell, groupRelay, rowPicker, false,"
+old = "rowRelayDwell: {rowRelayDwell, groupRelay, scopeObserver, rowPicker, true,"
+new = "rowRelayDwell: {rowRelayDwell, groupRelay, scopeObserver, rowPicker, false,"
 assert old in s, "mM4"
 p.write_text(s.replace(old, new, 1))

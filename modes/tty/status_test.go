@@ -150,9 +150,9 @@ func TestStatusModalShowsRequestAndDumpRows(t *testing.T) {
 	}
 }
 
-// ONE COLUMN since 0.14.0: PROVIDERS used to sit beside REQUESTS, and REQUESTS
-// is gone — its counters are columns of the providers table now, because they
-// are per HOST and that is what the table is keyed by. Every remaining block is
+// ONE COLUMN: there is no REQUESTS section to sit beside PROVIDERS — its
+// counters are columns of the providers table, because they are per HOST and that
+// is what the table is keyed by. Every remaining block is
 // a wide table with nothing to pair it with. A blank line of air under the
 // title; the sections in order; no line ever exceeds the terminal.
 func TestStatusIsOneColumnAndFitsItsTerminal(t *testing.T) {

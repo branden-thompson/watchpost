@@ -39,6 +39,25 @@ import (
 // Each pin is mutation-validated in T0.4: deleting the rule it guards must make
 // it fail. A pin that has never failed protects nothing.
 
+// offlineClient is an httpx client over a server of the test's own, and the
+// server's URL for the providers to point at. The handler is what the test
+// wants upstream to say — nothing at all for a deck that must run offline, the
+// NWS fixtures for a seam that needs a location to exist — and no unit test
+// reaches api.weather.gov, which the compose-seam tests did (REVIEW
+// 2026-09-17). The cache is memory-only on purpose: a disk tier starts a writer
+// goroutine that outlives the test and races the removal of t.TempDir(), which
+// is F-102's mechanism.
+func offlineClient(t *testing.T, upstream http.Handler) (*httpx.Client, string) {
+	t.Helper()
+	srv := httptest.NewServer(upstream)
+	t.Cleanup(srv.Close)
+	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 1000, MaxRetries: 1})
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+	return client, srv.URL
+}
+
 // offlineDeck is a radioDeck that can run tune() END TO END with no network: an
 // httptest server that 404s everything, the NWS provider and BOTH relay
 // directories pointed at it, and a fake audio output.
@@ -60,15 +79,8 @@ func offlineDeck(t *testing.T) (*radioDeck, *heldOutput) {
 	// These five tests are about the Director's advance and the duck. The host's
 	// voice catalogue is not the subject, so it is pinned rather than inherited.
 	asPlatform(t, "darwin")
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "offline", http.StatusNotFound)
-	}))
-	t.Cleanup(srv.Close)
-	client, err := httpx.New(httpx.Config{UserAgent: UserAgent, RatePerSec: 1000, CacheDir: t.TempDir()})
-	if err != nil {
-		t.Fatalf("client: %v", err)
-	}
-	res, err := stream.NewResolver(stream.NewDirectory(client, srv.URL, srv.URL))
+	client, base := offlineClient(t, http.NotFoundHandler())
+	res, err := stream.NewResolver(stream.NewDirectory(client, base, base))
 	if err != nil {
 		t.Fatalf("resolver: %v", err)
 	}
@@ -79,7 +91,7 @@ func offlineDeck(t *testing.T) (*radioDeck, *heldOutput) {
 	}
 	t.Cleanup(eng.Halt)
 	return &radioDeck{
-		nws: nws.New(client, srv.URL), resolver: res, engine: eng,
+		nws: nws.New(client, base), resolver: res, engine: eng,
 		limiter: synth.NewLimiter(2, synth.ReservedSlots), voiceDir: t.TempDir(),
 	}, out
 }
@@ -113,8 +125,11 @@ func TestT01TheDeckReportsTheFactsTheDirectorDecidesOn(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("a stop told the Director %d things, want one: %v", len(got), got)
 	}
-	if p, ok := got[0].(lineup.Powered); !ok || p.To != lineup.Stopped {
-		t.Errorf("a stop reported %#v, want Powered{Stopped}", got[0])
+	// THE MONITOR'S STOP, NOT THE STATION'S (D-74). The operator stopped
+	// LISTENING; their station's power is the console's to declare, and the two
+	// being one field is what made a tune put the console on the air.
+	if m, ok := got[0].(lineup.Monitored); !ok || m.Running {
+		t.Errorf("a stop reported %#v, want Monitored{Running: false}", got[0])
 	}
 
 	// THE ROTATION IS REPORTED ON EVERY CHANGE, playing or not — a setting the
@@ -152,9 +167,9 @@ func TestT02AnAutomaticAdvanceDoesNotTakeAnAlertOffTheAir(t *testing.T) {
 	d.repeat, d.queue, d.mode = tty.RepeatWatchlist, []snapshot.LocationRef{a, b}, "synth"
 
 	d.engine.Suppress() // a takeover is reading an alert
-	// THE PATH THE DIRECTOR NOW TAKES (T3.2b). The advance used to be
-	// advanceQueue's; it is the Director's decision now and reaches the deck
-	// through the executor's tune seam, which calls exactly this. The rule is
+	// THE PATH THE DIRECTOR TAKES (T3.2b). The advance is the Director's decision
+	// and reaches the deck through the executor's tune seam, which calls exactly
+	// this. The rule is
 	// unchanged and so is what it is asserted against.
 	d.tune(b)
 	if snapshot.Key(d.ref) != snapshot.Key(b) {
@@ -401,9 +416,9 @@ func TestT03TheCuePrecedesTheWordsForEveryEvent(t *testing.T) {
 
 // T0.3b / DR-24 — A TAKEOVER CUT SHORT STILL RELEASES THE BAND.
 //
-// INVERTED AT T3.5, AND THE INVERSION IS THE PROOF. This test used to assert
-// the defect: TickerBreakingDoneMsg was sent on ONE path — the last line of the
-// takeover closure — with four early returns above it that sent nothing, while
+// THE BAND IS RELEASED ON EVERY PATH, WHICH IS WHAT THIS PINS (T3.5).
+// TickerBreakingDoneMsg sent on ONE path — the last line of the takeover closure
+// — leaves four early returns above it sending nothing, while
 // the audio side was released unconditionally by the arbiter. That asymmetry is
 // why it went unnoticed for so long: the sound came back, so the station seemed
 // fine, and only the band sat frozen on an alert nobody was reading.
@@ -474,9 +489,9 @@ func (o *heldOutput) count() int {
 
 // NO RENDER SITS BETWEEN A CUE AND ITS WORDS (T3.3, the pre-build).
 //
-// A render costs about a second and it used to run inside the pause before the
-// line it belongs to: cue the band, render, speak. Every gap in a burst carried
-// it, so the listener heard tone → a second of nothing → header, and about two
+// A render costs about a second, so running it inside the pause before the line
+// it belongs to — cue the band, render, speak — puts it in every gap of a burst:
+// the listener hears tone → a second of nothing → header, and about two
 // and a half seconds between alerts where the ruling says one. Heard on a real
 // alert at UAT 2026-09-03: "the uniform 2-3s pause in between every sentence
 // feels like something is broken".
@@ -669,25 +684,41 @@ func TestTheRetryPathAlsoCuesNothingOnceTheSequenceEnded(t *testing.T) {
 // NO TEST CAUGHT IT BECAUSE EVERY FIXTURE SENT Powered{Running} ITSELF. The
 // tests supplied what production had forgotten, which is the one thing a fixture
 // must never do for a wiring seam.
+//
+// THE REPORT BELONGS TO tune, NOT TO setMode (0.16.0 P3). Riding setMode's
+// transition edge makes "the programme is running" a fact about the DECK's mode
+// string; the merged station does not change the deck's mode at
+// all, so it was never powered and never read anything. THIS TEST DROVE setMode
+// DIRECTLY, so it passed throughout — a pin on the carrier rather than on the
+// rule, which is why it could not see the carrier become the wrong one.
+//
+// It drives `tune` now: the thing the LISTENER does. A pin that names the
+// listener's act survives the next time the audio path is rearranged.
 func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 	d, _ := offlineDeck(t)
 	var got []lineup.Event
 	d.emit = func(ev lineup.Event) { got = append(got, ev) }
 
-	d.setMode("synth", "Oceanside, CA", "the broadcast")
-	if len(got) != 1 {
-		t.Fatalf("starting the programme told the Director %d things, want one: %v", len(got), got)
+	d.tune(pinRef("A", 33.19, -117.37))
+	d.engine.Halt()
+	if len(got) == 0 {
+		t.Fatalf("starting the programme told the Director nothing")
 	}
-	if p, ok := got[0].(lineup.Powered); !ok || p.To != lineup.Running {
-		t.Errorf("starting reported %#v, want Powered{Running}", got[0])
+	// THE MONITOR'S START, AND IT IS STILL FIRST (D-74). A need reported to a
+	// Director that believes nobody is listening is a rotation that never
+	// advances — the same hazard the old wording named, one power along.
+	if m, ok := got[0].(lineup.Monitored); !ok || !m.Running {
+		t.Errorf("starting reported %#v, want Monitored{Running: true} FIRST — a need reported to a "+
+			"Director that believes nobody is listening is a rotation that never advances", got[0])
 	}
 
-	// ONLY THE TRANSITION. A station re-announcing itself on every relay change
-	// would be telling the Director something that had not changed.
+	// A MODE CHANGE IS NOT A POWER CHANGE. The deck moving from synth to a
+	// relay tells the Director nothing, because nothing about whether the
+	// operator is listening has changed — which is the coupling this fix broke.
 	got = nil
 	d.setMode("live", "KEC62", "a relay")
 	if len(got) != 0 {
-		t.Errorf("a mode change on an already-running station reported %v", got)
+		t.Errorf("a mode change reported %v; the mode is the deck's business, the monitor's power is the operator's", got)
 	}
 
 	// And a stop is still reported, so the pair is balanced.
@@ -696,8 +727,11 @@ func TestTheDeckReportsThatTheProgrammeIsRunning(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("a stop told the Director %d things, want one: %v", len(got), got)
 	}
-	if p, ok := got[0].(lineup.Powered); !ok || p.To != lineup.Stopped {
-		t.Errorf("a stop reported %#v, want Powered{Stopped}", got[0])
+	// THE MONITOR'S STOP, NOT THE STATION'S (D-74). The operator stopped
+	// LISTENING; their station's power is the console's to declare, and the two
+	// being one field is what made a tune put the console on the air.
+	if m, ok := got[0].(lineup.Monitored); !ok || m.Running {
+		t.Errorf("a stop reported %#v, want Monitored{Running: false}", got[0])
 	}
 }
 

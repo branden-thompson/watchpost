@@ -240,8 +240,14 @@ type Config struct {
 	Radio     Radio               `toml:"radio,omitempty"`
 	Fire      Fire                `toml:"fire,omitempty"`    // wildfire rules (B5)
 	Seismic   Seismic             `toml:"seismic,omitempty"` // earthquake rules (0.11.0)
-	Theme     string              `toml:"theme,omitempty"`   // active color theme (UAT 53)
-	Voice     string              `toml:"voice,omitempty"`   // radio correspondent voice (UAT 84)
+
+	// Broadcaster is the STATION's settings — where it transmits from and how
+	// far it reaches (D-72, broadcaster.go). Separate from Locations, which is
+	// the LISTENER's world: the two were one field doing two jobs.
+	Broadcaster Broadcaster `toml:"broadcaster,omitempty"`
+
+	Theme string `toml:"theme,omitempty"` // active color theme (UAT 53)
+	Voice string `toml:"voice,omitempty"` // radio correspondent voice (UAT 84)
 
 	// Display preferences — 0.14.0's WATCHPOST UI group. Both were live-only
 	// before: [f]/[c] swapped the units for the session and nothing remembered
@@ -391,6 +397,7 @@ func mergeUnknown(marshalled []byte, path string) ([]byte, bool) {
 // would make first-run undetectable forever (B0 red-team F5). Callers that want
 // an empty config on disk clear FirstRun first; "has locations" checks belong
 // on len(cfg.Locations), never FirstRun.
+
 // Mutate is the ONE write path for the config file: it loads, applies edit, and
 // saves, with the whole sequence held under one lock.
 //

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 	"unsafe"
+
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // memo_completeness_test.go — F-30, mechanised.
@@ -89,20 +91,49 @@ type perturbed struct {
 func perturbations(t *testing.T, base Dashboard) []perturbed {
 	t.Helper()
 	var out []perturbed
-	walk(t, reflect.TypeOf(base), "", func(path string, set func(*Dashboard)) {
-		next := base
-		if !apply(&next, set) {
-			return // the perturbation panicked the copy; not a finding about the key
-		}
+	perturbEach(t, base, nestedExcuse, dashboardWriter, func(path string, next Dashboard) {
 		out = append(out, perturbed{field: path, model: next})
 	})
 	return out
 }
 
+// dashboardWriter models the real writer for a field the app never writes bare.
+//
+// SETUP IS KEYED BY GENERATION, not by its fields: the window carries two maps
+// and fingerprinting it every frame was the largest thing it cost, so every
+// WRITER bumps gen instead (setupState.touch, via settled/castTouched). Writing
+// a field without bumping is not something the app does, so this models the real
+// writer rather than reporting the design as a defect.
+func dashboardWriter(name string, d *Dashboard) {
+	if name == "setup" {
+		d.setup = d.setup.touch()
+	}
+}
+
+// perturbEach is the engine, GENERIC OVER THE MODEL. Two surfaces memoise now,
+// and the guard is the thing that makes a memo safe to have — so a second copy
+// of this walk for the console would be the one duplication that matters: the
+// copy would drift, and the surface whose walk stopped descending would report
+// coverage it did not have while its frames froze.
+//
+// `excuse` names the fields it does NOT descend into, and `writer` models a
+// writer the app pairs with a field (setup's generation). Both belong to the
+// model, not to the walk.
+func perturbEach[T any](t *testing.T, base T, excuse map[string]string, writer func(string, *T), emit func(string, T)) {
+	t.Helper()
+	walk(t, reflect.TypeOf(base), "", excuse, writer, func(path string, set func(*T)) {
+		next := base
+		if !apply(&next, set) {
+			return // the perturbation panicked the copy; not a finding about the key
+		}
+		emit(path, next)
+	})
+}
+
 // apply runs one perturbation, containing a panic from an index a fixture does
 // not support. A field that cannot be perturbed safely is skipped rather than
 // reported: this test is about the KEY, not about render robustness.
-func apply(d *Dashboard, set func(*Dashboard)) (ok bool) {
+func apply[T any](d *T, set func(*T)) (ok bool) {
 	defer func() {
 		if recover() != nil {
 			ok = false
@@ -114,15 +145,15 @@ func apply(d *Dashboard, set func(*Dashboard)) (ok bool) {
 
 // walk visits every field this test knows how to change, one level into nested
 // structs (relayFault, debug and setup all hold their state that way).
-func walk(t *testing.T, typ reflect.Type, prefix string, emit func(string, func(*Dashboard))) {
+func walk[T any](t *testing.T, typ reflect.Type, prefix string, excuse map[string]string, writer func(string, *T), emit func(string, func(*T))) {
 	t.Helper()
 	for i := range typ.NumField() {
 		f := typ.Field(i)
 		path := prefix + f.Name
 		switch f.Type.Kind() {
-		case reflect.Bool, reflect.Int, reflect.Int64, reflect.String:
+		case reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64, reflect.String, reflect.Pointer:
 			idx := i
-			emit(path, func(d *Dashboard) { bump(fieldAt(d, prefix, idx)) })
+			emit(path, func(d *T) { bump(fieldAt(d, idx)) })
 		case reflect.Struct:
 			// ONE LEVEL DOWN, INTO EVERY STRUCT THIS FILE HAS NOT EXCUSED
 			// (FR-3.3). It named three — relayFault, debug and setup — so a
@@ -130,36 +161,30 @@ func walk(t *testing.T, typ reflect.Type, prefix string, emit func(string, func(
 			// coverage it did not have. A hand-written list of the windows with
 			// state is the same shape as the hand-written memo key it checks,
 			// and would miss a new window in exactly the same way.
-			if prefix == "" && nestedExcuse[path] == "" {
-				walkNested(t, f, i, emit)
+			if prefix == "" && excuse[path] == "" {
+				walkNested(t, f, i, excuse, writer, emit)
 			}
 		}
 	}
 }
 
 // walkNested is walk for the fields of one nested struct.
-func walkNested(t *testing.T, f reflect.StructField, outer int, emit func(string, func(*Dashboard))) {
+func walkNested[T any](t *testing.T, f reflect.StructField, outer int, excuse map[string]string, writer func(string, *T), emit func(string, func(*T))) {
 	t.Helper()
 	for j := range f.Type.NumField() {
 		inner := f.Type.Field(j)
 		switch inner.Type.Kind() {
-		case reflect.Bool, reflect.Int, reflect.Int64, reflect.String:
+		case reflect.Bool, reflect.Int, reflect.Int64, reflect.Float64, reflect.String:
 			jdx := j
 			name := f.Name
-			if nestedExcuse[name+"."+inner.Name] != "" {
+			if excuse[name+"."+inner.Name] != "" {
 				continue
 			}
-			emit(name+"."+inner.Name, func(d *Dashboard) {
+			emit(name+"."+inner.Name, func(d *T) {
 				v := reflect.ValueOf(d).Elem().Field(outer).Field(jdx)
 				bump(reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem())
-				// SETUP IS KEYED BY GENERATION, not by its fields: the window
-				// carries two maps and fingerprinting it every frame was the
-				// largest thing it cost, so every WRITER bumps gen instead
-				// (setupState.touch, via settled/castTouched). Writing a field
-				// without bumping is not something the app does, so this models
-				// the real writer rather than reporting the design as a defect.
-				if name == "setup" {
-					d.setup = d.setup.touch()
+				if writer != nil {
+					writer(name, d)
 				}
 			})
 		}
@@ -185,8 +210,7 @@ var nestedExcuse = map[string]string{
 }
 
 // fieldAt is one addressable field of d, by index, at the top level.
-func fieldAt(d *Dashboard, prefix string, i int) reflect.Value {
-	_ = prefix
+func fieldAt[T any](d *T, i int) reflect.Value {
 	v := reflect.ValueOf(d).Elem().Field(i)
 	return reflect.NewAt(v.Type(), unsafe.Pointer(v.UnsafeAddr())).Elem()
 }
@@ -205,6 +229,41 @@ func bump(v reflect.Value) {
 			return
 		}
 		v.SetInt(v.Int() + 1)
+	// FLOATS WERE NEVER PERTURBED, and the walk did not say so — it listed the
+	// kinds it handled and fell through the rest in silence, which is the same
+	// shape as the hand-written key it exists to check. A float input to a
+	// memoised frame (the fire threshold, a radius) was outside the guard.
+	case reflect.Float64:
+		v.SetFloat(v.Float() + 1)
+	// AND POINTERS WERE THE SAME HOLE AGAIN, a third time (D-129). A *ref the
+	// frame READS THROUGH — the search window's pooled match — was not an
+	// emitted kind at all, so the guard reported the window covered while the
+	// field behind half its sentences was never perturbed.
+	//
+	// A COPY, NEVER THE SHARED POINTEE. perturbEach copies the MODEL, and a
+	// copy of a struct shares every pointer in it — so bumping through one
+	// would move the BASE as well, `before` and `after` would agree, and the
+	// guard would pass by changing nothing. That hazard is why pointers were
+	// excluded rather than missed, and cloning is what makes including them
+	// safe: a fresh pointee leaves the baseline untouched, and the new POINTER
+	// is itself a difference any key holding it will see.
+	//
+	// NIL IS LEFT ALONE. Production gives these windows nil; minting a value
+	// there would perturb into a state the app never has.
+	case reflect.Pointer:
+		if v.IsNil() {
+			return
+		}
+		fresh := reflect.New(v.Type().Elem())
+		fresh.Elem().Set(v.Elem())
+		if fresh.Elem().Kind() == reflect.Struct {
+			if f := fresh.Elem().Field(0); f.CanSet() {
+				bump(f)
+			}
+		} else {
+			bump(fresh.Elem())
+		}
+		v.Set(fresh)
 	}
 }
 
@@ -234,6 +293,10 @@ func modalName(m modal) string {
 		return "relay-fault"
 	case modalDebug:
 		return "debug"
+	case modalCard:
+		return "card"
+	case modalRequest:
+		return "request"
 	}
 	return "modal-" + strconv.Itoa(int(m))
 }
@@ -244,6 +307,13 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 	t.Helper()
 	d := dash(t).(Dashboard)
 	d.width, d.height = 133, 44
+	// THE CLOCK IS PINNED. The Status window's FETCHED column is an age read
+	// off d.now at minute resolution; on the real clock a run that straddles a
+	// minute boundary between building the lines and rendering them holds a
+	// text no frame ever draws, and the reachability guard reports it as a
+	// line the keyboard cannot reach (CI, 2026-09-18, once in a Linux leg and
+	// never locally in forty runs). An hour after the fixture's observation.
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 2, 0, 0, 0, time.UTC) }
 	switch m {
 	case modalRelayFault:
 		return d.openRelayFault(RelaySilentMsg{Candidates: []RelayCandidate{
@@ -265,6 +335,50 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 				Location: "Olathe, KS", Declared: "08/28 08:45 CDT",
 				Record: SevereRecord{Title: "TORNADO WARNING"}}}})
 		d.severeReading = "k"
+	case modalAdd:
+		// THE SEARCH WINDOW AS THE CONSOLE SEES IT (D-129), because that is the
+		// only mode in which it draws the location verdict at all. Opened the
+		// way it was before — Observer's surface, no hook wired — the window is
+		// unscoped, the note never reaches the frame, and the verdict fields
+		// were invisible to this guard: a hole shaped exactly like coverage,
+		// which is what the modalRequest arm below already says in as many
+		// words.
+		//
+		// A SETTLED MATCH, NOT A MISS, and driven through the REAL path. On a
+		// miss the ref is nil and `within` cannot reach the frame at all — the
+		// refusal reads the same either way — so the fixture would cover
+		// neither field while looking like it covered the window.
+		d.surface, d.addMode, d.addQuery = SurfaceBroadcaster, "lookup", "Vista"
+		d.cfg.LocateInRadius = func(string) (snapshot.LocationRef, bool, bool, bool) {
+			return snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true, true
+		}
+		d.addLocate = settledLocate(locateLookup, "Vista",
+			snapshot.LocationRef{Label: "Vista, CA", Zip: "92084"}, true, true)
+	case modalRequest:
+		// EVERY FIELD CARRYING SOMETHING, because a window whose fields are all
+		// empty draws the same frame however the model moves — and the guard
+		// below would then report a key covering a window that says nothing.
+		//
+		// AND IT SETS THE STATE THE WINDOW ACTUALLY READS. Until 2026-09-15
+		// this assigned `d.request.ref` — the field D-130 orphaned, which
+		// nothing in production writes and only the dead half of `blocker()`
+		// read. The fixture was carrying a value the frame could not see, so
+		// this arm exercised less than it appeared to.
+		d.request = requestOpen()
+		d.request.query = "Oceanside, CA"
+		d.request.locate = settledLocate(locateRequest, "Oceanside, CA",
+			snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057"}, true, true)
+		d.request.slot = "4"
+	case modalCard:
+		// THE CONSOLE'S OWN BODY, NOT A HAND-WRITTEN ONE. The window draws what
+		// `Broadcaster.cardDetail` produces, and a fixture that typed its own
+		// rows would keep passing on the day the console stopped producing any.
+		bc := broadcasterWithOneCard(t)
+		id, rows, ok := bc.cardDetail(1)
+		if !ok {
+			t.Fatalf("the console produced no card for slot 1; this fixture measures nothing")
+		}
+		d = d.showCard(id, rows, bc.cardWindowGroundFor(1), d.opts())
 	}
 	return d.open(m)
 }

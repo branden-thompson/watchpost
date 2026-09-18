@@ -2,6 +2,8 @@ package render
 
 import (
 	"strings"
+
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 	"testing"
 )
 
@@ -83,6 +85,85 @@ func TestPlainDropsBidiAndZeroWidthAndTruncateCellsCountsCells(t *testing.T) {
 	}
 }
 
+// A SPLICE LANDS ON A DISPLAY COLUMN, NOT A RUNE INDEX.
+//
+// THE UAT DEFECT (HUM LEAD, 2026-09-10): "Alert card appearing (correct) causes
+// the row render of the right hand side of the LIVE card to truncate
+// inappropriately." The console lays the priority overlay ON the running order
+// at a column; the rows underneath carry a tinted headline, a badge and the
+// handle's chip; and the splice walked `[]rune`, so every escape character it
+// passed counted as a cell and every escape it landed on was overwritten.
+//
+// It is D-66's defect one function along, and it was FILED as F-85 rather than
+// fixed — on the reasoning that it held "by accident of layout". It stopped
+// holding the moment a takeover was injected over a real card.
+func TestSpliceCellsLandsOnColumnsAndKeepsWhatItPassed(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	base := "ab" + Tint("cdef", "31") + "ghij"
+	if Width(base) != 10 {
+		t.Fatalf("precondition: ten cells, got %d", Width(base))
+	}
+	got := SpliceCells(base, "XY", 4)
+	if want := "abcdXYghij"; StripSGRForTest(got) != want {
+		t.Errorf("splice at column 4: %q, want %q", StripSGRForTest(got), want)
+	}
+	if Width(got) != Width(base) {
+		t.Errorf("a splice never changes the row's width: %d, want %d", Width(got), Width(base))
+	}
+	if strings.Contains(StripSGRForTest(got), "\x1b") {
+		t.Errorf("the splice cut through an escape: %q", got)
+	}
+	// IT NEVER GROWS THE ROW. A patch that would run past the end is cut to fit,
+	// because the caller's frame has already been sized.
+	if got := SpliceCells(base, "ZZZZ", 8); Width(got) != Width(base) {
+		t.Errorf("a patch past the end grew the row to %d", Width(got))
+	}
+	// AND A COLUMN PAST THE END CHANGES NOTHING.
+	if got := SpliceCells(base, "ZZ", 99); got != base {
+		t.Errorf("a splice past the end altered the row: %q", got)
+	}
+}
+
+// A CUT NEVER LANDS INSIDE AN ESCAPE SEQUENCE, and never counts one as content.
+//
+// THE UAT DEFECT THIS IS BUILT FROM (HUM LEAD, 2026-09-10): the console's
+// masthead read "WATCHPOS" and then stopped — no top border, no `Updated:`, no
+// API summary — and its colours CHANGED AS THE TERMINAL WAS RESIZED. One cause
+// for all of it: the frame clamps every row to the terminal's width through
+// this function, the wordmark carries a truecolor escape per rune, and the
+// escapes were counted as cells. So a 150-cell row was cut after ten visible
+// characters, THROUGH the middle of an escape — which the terminal then printed
+// as text and left the span open, so the tone bled and moved with the width.
+//
+// `Width` has always stripped ANSI. This is the other half of the same measure,
+// and the two disagreeing is what "one canonical way to do a thing" forbids.
+func TestTruncateCellsDoesNotCountOrCutEscapes(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	defer rendering.SetColorEnabledForTest(false)
+	styled := Tint("abcdef", "31")
+	if Width(styled) != 6 {
+		t.Fatalf("precondition: Width already strips ANSI, got %d", Width(styled))
+	}
+	got := TruncateCells(styled, 6)
+	if StripSGRForTest(got) != "abcdef" {
+		t.Errorf("a row that already fits is not cut: %q", StripSGRForTest(got))
+	}
+	got = TruncateCells(styled, 3)
+	if StripSGRForTest(got) != "abc" {
+		t.Errorf("cut by CELLS, not bytes: %q", StripSGRForTest(got))
+	}
+	if strings.Contains(StripSGRForTest(got), "\x1b") {
+		t.Errorf("an escape survived the strip, so the cut landed inside one: %q", got)
+	}
+	// AND IT CLOSES WHAT IT OPENED. The frame pads to width after cutting, so a
+	// span left open paints the padding — which is the colour bleed the HUM LEAD
+	// saw travel as the window resized.
+	if !strings.HasSuffix(got, "\x1b[0m") {
+		t.Errorf("a cut inside a coloured span closes it: %q", got)
+	}
+}
+
 // A WORD WIDER THAN THE LINE IS BROKEN, NOT LEFT TO OVERFLOW (HUM LEAD, UAT
 // 2026-08-30).
 //
@@ -128,5 +209,31 @@ func TestWrapNeverBreaksInsideAnEscape(t *testing.T) {
 		if Width(l) > 12 {
 			t.Errorf("%d cells: %q", Width(l), l)
 		}
+	}
+}
+
+// THE NON-SGR ESCAPE CASE IS A RECORDED LIMIT, NOT A PASSING TEST (D-145).
+//
+// `TruncateCells` returns its input uncut when given an escape it cannot
+// terminate. That is real, and it is UNREACHABLE: text from outside crosses
+// `plaintext.Text` at the boundary. It is not fixed here because this function
+// must measure what `Width` measures, and `Width` is `plaintext.StripSGR` —
+// teaching one half about OSC would make the cutter and the measurer disagree,
+// which is the class of defect that caused the 2026-09-10 masthead failure.
+//
+// WHAT IS PINNED IS THE INVARIANT THAT MATTERS: the two agree.
+func TestTruncateCellsAgreesWithWidthAboutEscapes(t *testing.T) {
+	for _, s := range []string{
+		"\x1b[31mABCDEFGHIJ\x1b[0m",
+		"plain text",
+		"\x1b[1m\x1b[38;5;208mbold orange\x1b[0m tail",
+	} {
+		if got := TruncateCells(s, 4); Width(got) != 4 {
+			t.Errorf("cut to %d cells, want 4: %q", Width(got), got)
+		}
+	}
+	// AND A ROW THAT FITS IS RETURNED WHOLE, which is the fast path.
+	if got := TruncateCells("abc", 10); got != "abc" {
+		t.Errorf("a row that fits was altered: %q", got)
 	}
 }

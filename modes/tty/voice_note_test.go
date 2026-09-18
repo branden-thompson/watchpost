@@ -13,9 +13,9 @@ import (
 //
 // A voice preview takes seconds (Piper reads its model on every run) and can
 // fail. The deck says so — "loading <voice>…", "preview failed: <err>" — and
-// those words used to land in d.voiceNote, which the retired [V] chooser drew
-// and nothing has drawn since. So `p` was silent while it worked and silent when
-// it failed, which is UAT 119's complaint with the feedback removed.
+// those words land in d.voiceNote, which the retired [V] chooser drew and nothing
+// else does. Unless the frame reads it, `p` is silent while it works and silent
+// when it fails, which is UAT 119's complaint with the feedback removed.
 //
 // TWO ASSERTIONS, AND THE SECOND IS THE ONE THAT BITES. The text must be in the
 // frame; and the frame must CHANGE when the note arrives. Settings is memoised

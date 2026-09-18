@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Regenerates THIRD_PARTY_LICENSES.md: the licence text of every module the
 # binary links (Apache-2.0 and BSD-3 require the text to accompany a binary
 # distribution). Reads the module cache — run after `go mod tidy`. Modules

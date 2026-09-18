@@ -115,6 +115,26 @@ func (d Director) advances(t Track) bool {
 	if t == AlertRail {
 		return true
 	}
+	// THE BED AND THE MAIN TRACK ARE MUTUALLY EXCLUSIVE (D-11, FR-4.2), and
+	// until now that was true only because the ENGINE has one source — a rule
+	// the product model states and the schedule could not see. A card taking
+	// the air while the operator has the programme on the bed would play over
+	// a relay.
+	//
+	// IT SITS BELOW THE RAIL'S EXEMPTION, deliberately: pausing the programme
+	// must never hold a hazard (FR-2.2, "the priority track always drains
+	// first, INCLUDING while the bed is playing").
+	if d.bed.carries {
+		return false
+	}
+	// AND THE STATION'S LINE-UP ONLY ADVANCES WHILE THE STATION HAS THE AIR
+	// (D-74). Until now this gate answered for BOTH programmes — the line-up and
+	// the operator's own listening — so a running station could produce two at
+	// once, which is what the HUM LEAD heard. The monitor asks
+	// `advancesMonitor()` now; this is the station's half and it says so.
+	if d.air != AirProgramme {
+		return false
+	}
 	return d.power == Running
 }
 
@@ -135,6 +155,9 @@ func (d Director) onPowered(ev Powered) (Director, []Effect) {
 	if d.power == ev.To {
 		return d, nil // a repeated command is not a second event
 	}
+	if d.power == Running {
+		d.faultRun = 0 // standby is the operator acting on the run; the console clears its band on the same transition
+	}
 	d.power = ev.To
 	d, fx := d.silenceTheProgramme()
 	d, more := d.settle()
@@ -150,12 +173,12 @@ func (d Director) silenceTheProgramme() (Director, []Effect) {
 	if d.power == Running {
 		return d, nil
 	}
-	card, live := d.lineup.OnAir()
+	// THE MAIN TRACK'S OWN AIR (D-82). The LANE is the question, so it is the
+	// argument — asking which card is reading and then checking it is not the
+	// rail's asks it twice. The ALERT is left alone either way — whether a hazard is
+	// on the air is the takeover's to say, and it pairs its own release.
+	card, live := d.lineup.OnAir(MainTrack)
 	if !live {
-		return d, nil
-	}
-	track, _, held := d.lineup.find(card.ID)
-	if !held || track == AlertRail {
 		return d, nil
 	}
 	d, fx, _ := d.takeOffTheAir(card.ID, Discarded) // onPowered settles once, after this

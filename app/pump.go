@@ -60,8 +60,8 @@ func newPump(d lineup.Director, run runEffect, onFault func(lineup.Effect, any))
 	if err := invariant.Check(onFault != nil, "a pump is built with somewhere to report a contained panic"); err != nil {
 		return nil
 	}
-	// A DIRECTOR THAT REFUSED TO BE BUILT IS NOT A SCHEDULE (red team
-	// 2026-09-05, I-9). lineup.New returns a zero Director on a zero clock or a
+	// A DIRECTOR THAT REFUSED TO BE BUILT IS NOT A SCHEDULE (I-9).
+	// lineup.New returns a zero Director on a zero clock or a
 	// negative Max, and a zero Director refuses every event for ever — Step
 	// fails its own clock invariant and returns unchanged, and Now() fails
 	// quiet too, so the state is unobservable from out here. The station would
@@ -103,8 +103,8 @@ const laneBacklog = 64
 func (p *pump) loop(ctx context.Context) {
 	defer close(p.done)
 	// The lane is closed HERE, by the only goroutine that sends to it, so it
-	// retires with the loop rather than outliving it: cancelling the context
-	// used to leave it running until someone called stop.
+	// retires with the loop rather than outliving it. Closed anywhere else, a
+	// cancelled context would leave it running until someone called stop.
 	defer close(p.lane)
 	go p.runLane(ctx)
 	for { // bounded by the context (P10-02): every exit is a cancel

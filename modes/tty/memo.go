@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -155,11 +156,11 @@ func (d Dashboard) anyLoading() bool {
 // rowLoading: shimmer while the data is still COMING, never after it has been
 // asked for and not arrived (issue #13).
 //
-// It used to be the first clause alone, and an empty location is empty in
-// exactly the same way whether the feed has not answered yet or has answered
-// and had nothing for this place — so a location the API does not cover
-// shimmered for ever, across restarts, reading as "still loading" until the
-// listener removed the row themselves.
+// THE SECOND CLAUSE IS WHAT ENDS THE SHIMMER. An empty location is empty in
+// exactly the same way whether the feed has not answered yet or has answered and
+// had nothing for this place, so on the first clause alone a location the API
+// does not cover shimmers for ever, across restarts, reading as "still loading"
+// until the listener removes the row themselves.
 //
 // WeatherAsOf is what makes the two distinguishable: the reference provider
 // stamps it when a fetch COVERING this location completes. Once it is set, a
@@ -211,15 +212,30 @@ type modalKey struct {
 	breakingID                string // the ▶ mark on the event being read (while the window is open)
 	readingKey                string // the ▶ on the event being read
 	addMode, addQuery, addErr string
-	radioVoice                string
-	voiceIdx, nvoices         int
-	setupGen                  uint64   // Setup's state, by generation while it is open
-	stats                     [32]byte // the [S] stats, fingerprinted while it is open
-	darkBG                    bool
-	theme                     uint64
-	minute                    int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
-	second                    int64 // [S] ages, while it is open
-	shimmer                   int   // Details' LoadingDots while a row loads
+	// THE POOL'S VERDICT ON WHAT IS TYPED (D-129). Derived from addQuery AND
+	// from the pool, so addQuery alone does not cover it: a station-area change
+	// moves the pool under an open window, and the refusal on screen would be
+	// answering a service radius the operator has already left.
+	addRef            string
+	addState          uint8
+	radioVoice        string
+	voiceIdx, nvoices int
+	// THE CARD WINDOW'S IDENTITY AND GENERATION (D-88). cardRows is a func and a
+	// key must be comparable, so the generation is what carries what it draws —
+	// the same stand-in setupGen makes for Setup's two maps.
+	cardID  string
+	cardGen int
+	// THE SURFACE, because the Settings window draws different ROWS on each
+	// (D-92) — a frame that differs must key differently, or the memo replays
+	// Observer's rows over the console.
+	surface  Surface
+	setupGen uint64   // Setup's state, by generation while it is open
+	stats    [32]byte // the [S] stats, fingerprinted while it is open
+	darkBG   bool
+	theme    uint64
+	minute   int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
+	second   int64 // [S] ages, while it is open
+	shimmer  int   // Details' LoadingDots while a row loads
 	// faultFocus and faultLeft are the relay-fault window's cursor and clock,
 	// BOTH OF WHICH THE FRAME SHOWS. Absent from this key the window rendered
 	// once and the memo replayed that frame for the life of the window: the
@@ -243,6 +259,18 @@ type modalKey struct {
 	// replayed the pre-pause frame. modalSevere is not in tickNeeded either, so
 	// nothing else invalidated it.
 	severeReadPause bool
+
+	// THE REQUEST WINDOW'S OWN STATE (R4). Every field of it that the window
+	// DRAWS, because F-30's guard caught all four the moment the window existed
+	// — which is the guard doing exactly what it is for, on a window that was
+	// minutes old.
+	reqField          requestField
+	reqQuery, reqSlot string
+	reqRef            string
+	reqPriority       bool
+	reqState          uint8
+	reqAt             int
+	reqChosen         report.Set
 }
 
 // modalMemo is the single slot.
@@ -262,11 +290,28 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		snap:   d.snap, recent: d.recent,
 		severeGen: d.severe.Gen, severeTab: d.severeTab, severeRow: d.severeRow, severeDetail: d.severeDetail,
 		addMode: d.addMode, addQuery: d.addQuery, addErr: d.addErr,
+		addRef: d.addLocate.keyLabel(), addState: d.addLocate.keyState(),
 		radioVoice: d.radioVoice,
-		voiceIdx:   d.voiceIdx, nvoices: len(d.voiceList),
+		// THE CARD WINDOW'S IDENTITY AND ITS GENERATION (D-88). What the window
+		// draws comes from a func, which a key cannot hold — so the generation
+		// stands in for it; see Dashboard.cardGen.
+		cardID: d.cardID, cardGen: d.cardGen,
+		surface:  d.surface,
+		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 	}
 	switch d.modal {
+	case modalRequest:
+		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was
+		// missing the moment the window existed — `field`, `query`, `outside`
+		// and `prioritize` — which is the guard doing exactly what it is for on
+		// a window minutes old. The ref is keyed by its LABEL because a pointer
+		// moves without the frame changing.
+		st := d.request
+		k.reqField, k.reqQuery, k.reqSlot = st.field, st.query, st.slot
+		k.reqState, k.reqPriority = st.locate.keyState(), st.prioritize
+		k.reqAt, k.reqChosen = st.at, st.chosen
+		k.reqRef = st.locate.keyLabel()
 	case modalSetup:
 		// The GENERATION, not the state. Formatting the whole struct — which
 		// carries two maps — ran on every frame and grew with them; it was the

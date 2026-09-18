@@ -157,11 +157,11 @@ func TestClockAndUnitsRoundTripTheirConfigWords(t *testing.T) {
 
 // The two columns BALANCE THEMSELVES.
 //
-// The groups used to be assigned to columns by hand, and every group added made
-// that worse — by 0.14.0 four stood against one, so the right column ended a
-// dozen rows short and the window was a dozen rows taller than it needed to be.
-// The point of computing the split is that adding the NEXT group needs no
-// tweak, so that is what this asserts: a property, not today's arrangement.
+// Assigning the groups to columns by hand gets worse with every group added —
+// four against one leaves the right column a dozen rows short and the window a
+// dozen rows taller than it needs to be. The point of computing the split is that
+// adding the NEXT group needs no tweak, so that is what this asserts: a property,
+// not today's arrangement.
 func TestSettingsColumnsBalanceThemselves(t *testing.T) {
 	d := setupGolden(t, 133, 44, false, rowCastAlerts)
 	o := d.opts()
@@ -209,6 +209,14 @@ func TestSettingsFocusLineFollowsTheBalancedLayout(t *testing.T) {
 	}{{"two columns", 133, 44}, {"stacked", 80, 24}} {
 		for id := setupRowID(0); id < setupRowCount; id++ {
 			d := setupGolden(t, size.w, size.h, false, id)
+			// THE ROWS THIS SURFACE DRAWS (D-92, and D-115 made it bite). A focus
+			// line for a row the surface does not draw is meaningless — and since
+			// the station's transmitter and service radius are Broadcaster-only,
+			// walking every id on Observer asked where a mark was for two rows
+			// that are not there.
+			if !d.rowVisible(id) {
+				continue
+			}
 			lines, at, end := d.setupBody(d.opts())
 			if at < 0 || at >= len(lines) || end < at || end > len(lines) {
 				t.Fatalf("%s: row %v spans [%d,%d] of %d lines", size.name, id, at, end, len(lines))

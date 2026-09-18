@@ -1,0 +1,560 @@
+# The gate attack list
+
+**Written BEFORE the consolidation it holds to account, and committed first on purpose.** Three
+remediation rounds on this layer each verified a fix against the spellings its author happened to
+think of, and each was defeated by a cheaper spelling within hours. The order that failed was
+*fix → think of an attack → verify*. This inverts it.
+
+**Every row below must become an executable specimen.** A row that is only prose is a row that gets
+verified against itself. The model under test therefore parses **strings, not paths** — production
+gates hand it the real files, and the specimen table hands it synthetic ones — which is the same
+shape `tools/authoring`'s 17-specimen self-test already uses and the reason that detector has never
+been defeated.
+
+**The control direction is half the table.** A gate that flags everything passes every attack here
+and is useless. Every CAUGHT specimen has a PASSES twin that must stay green.
+
+---
+
+## A. The Makefile model
+
+| # | Attack | Must |
+|---|---|---|
+| A1 | A gate-shaped target on none of the three lists | CAUGHT |
+| A2 | A gate spelled `@scripts/x.sh` — no `./` (the Makefile already spells two targets this way) | CAUGHT |
+| A3 | A gate spelled `@python3 scripts/x.py` | CAUGHT |
+| A4 | A gate spelled `@bash scripts/x.sh` | CAUGHT |
+| A5 | A control commented out with a **tab-indented** `#` (a comment to make, a live command to a naive parser) | CAUGHT |
+| A6 | A control neutered with `|| true` | CAUGHT |
+| A7 | A control made unreachable: `@true \|\| ./scripts/x.sh --self-test` | CAUGHT |
+| A8 | A recipe line prefixed `-` so make ignores its exit code | CAUGHT |
+| A9 | A control moved out of a gate recipe into a target that runs nowhere | CAUGHT |
+| A10 | A control deleted outright | CAUGHT |
+| A11 | A gate running `go test` without `-count=1` | CAUGHT |
+| A12 | A build line with **no** `-o` — drops an untrimmed binary in the working directory | CAUGHT |
+| A13 | A build line with `-o=path` (no space) | CAUGHT |
+| A14 | A build line whose package is a variable, `$(PKG)` | CAUGHT |
+| A15 | A build line missing `$(TRIMPATH)` | CAUGHT |
+| A16 | `alloc-budget`'s `-run` pattern selecting **nothing** | CAUGHT |
+| A17 | A **second** `verify-gates:` rule appending prerequisites (make accumulates; a first-match parser reads one list while make runs another) | CAUGHT |
+| A18 | A required gate whose recipe is emptied to `@true` | CAUGHT |
+| A37 | A **column-0 comment between two recipe lines** — make ignores it and the recipe continues; a parser that resets on it drops every line after (found by the real `mutant-check`, which carries four paragraphs between its `mkdir` and its `go test`) | the second line is still a live check — PASSES |
+| **A-ok1** | A legitimate tab-indented comment *beside* a live control on the next line | PASSES |
+| **A-ok2** | `scripts/lint.sh` genuinely exempt, with its reason | PASSES |
+| **A-ok3** | A build line that is correct: `-o`, `$(TRIMPATH)`, `./cmd/watchpost` | PASSES |
+
+## B. The CI model
+
+| # | Attack | Must |
+|---|---|---|
+| A19 | `- run: make X` with `if: false` on the following line | CAUGHT |
+| A20 | `- if: false` as the step's **first** key — the dash sits between indent and key (**this is the spelling that defeated three rounds**) | CAUGHT |
+| A21 | `- continue-on-error: true` as the step's first key | CAUGHT |
+| A22 | Job-level `if: false` — silences every gate in the job at once | CAUGHT |
+| A23 | Job-level `continue-on-error: true` | CAUGHT |
+| A24 | `continue-on-error: ${{ true }}` — the expression form, not the literal | CAUGHT |
+| A25 | `- run: make X \|\| true` — no condition at all, and the gate cannot fail | CAUGHT |
+| A26 | A required gate removed from `ci.yml` only | CAUGHT |
+| A27 | A required gate removed from **all three** lists in one commit | CAUGHT |
+| **B-ok1** | The two legitimately conditional steps, with their declared reasons | PASSES |
+| **B-ok2** | A non-required step carrying `if:` | PASSES |
+
+## C. The exemption registry
+
+| # | Attack | Must |
+|---|---|---|
+| A28 | A row with an empty reason | CAUGHT |
+| A29 | A row with a shrug for a reason — `"n/a"`, `"ok"`, `"todo"` | CAUGHT |
+| A30 | A row whose subject no longer exists | CAUGHT |
+| A31 | A row whose subject now **satisfies** the rule it is exempt from (stale in the other direction) | CAUGHT |
+| A32 | A whole table dropped from the meta-check | CAUGHT |
+| A33 | A **new** table added and never registered — the case a hand-written list can never notice | CAUGHT |
+| **C-ok1** | Every row in the tree today, with its real reason | PASSES |
+
+## D. The model's own silence (FR-11.3)
+
+`not-applicable`, `could-not-run` and `not-covered` must never render as passed.
+
+| # | Attack | Must |
+|---|---|---|
+| A34 | A Makefile the model finds **zero** gate-shaped targets in | COULD-NOT-RUN, never pass |
+| A35 | A `ci.yml` the model finds **zero** steps in | COULD-NOT-RUN, never pass |
+| A36 | An empty `required-gates.txt` | COULD-NOT-RUN, never pass |
+
+---
+
+## What this list does not cover, stated so nobody reads it as wider than it is
+
+- **`app/segments_completeness_test.go`** (F-129, the `:=` shadow) is an AST gate over a different
+  artefact. It is a point fix and a fixture, not part of this model.
+- **`scripts/quality/lint-ledger.sh`** (F-133, a private copy of its own rule list) is shell, and its
+  fix is to count its own rules. Point fix.
+- **`tools/authoring`** (F-136, a banner claiming a scope it does not have) is a separate tool.
+- **The CI matrix** (F-139, a P10 arm no runner can execute). Point fix.
+- This list attacks **parsing and semantics**. It cannot tell whether a gate asserts the *right*
+  property — only whether it can be silenced.
+
+## The rule this list exists to enforce
+
+**An attack that is thought of after the fix does not count as a verification.** If an attack occurs
+to anyone during or after implementation, it is added here **and to the specimen table**, and the
+list is re-run — it is never verified ad hoc and declared closed.
+
+---
+
+# Round two: attacks the parser cannot see, and the oracle that can
+
+**Written and committed before the oracle it holds to account.** A blind reviewer defeated the
+consolidated model six ways in one sitting, and named the cause exactly: *every Critical is the model
+deciding a semantic question — does this line run, can it fail, is this a check — by pattern on a
+fragment, in a language whose global constructs it never reads. The attack list enumerates spellings;
+the parser enumerates the same spellings back.*
+
+**So the Makefile half stops parsing and starts EXECUTING.** Every project checker is replaced by a
+stub that exits non-zero, every toolchain command on PATH likewise, and `make <gate>` is run for every
+required gate. **If make exits zero, the gate cannot fail, whatever the spelling.** Make and sh are
+the oracle; the list below no longer has to imagine every way a status can be discarded, because the
+shell decides. Target discovery comes from `make -pn` — make's own expanded database — so a target
+named through a variable, an include or a conditional is found because make found it.
+
+**The CI half has no oracle.** Nothing here executes GitHub Actions. Its checks are a **ratchet on
+spellings** and are labelled as one; the guard for CI is that CI runs and its per-gate results are
+read, which the workflow's one-step-per-gate shape already provides. Section G states the ceiling.
+
+## E. Make semantics — executed, never parsed
+
+Every row: plant the edit in a scratch copy, stub every checker red, run `make <gate>`, assert
+**non-zero**. `CAUGHT` means the oracle reports the gate cannot fail.
+
+| # | Attack | Must |
+|---|---|---|
+| E1 | `.IGNORE:` at the top of the Makefile — every recipe's status ignored | CAUGHT |
+| E2 | `MAKEFLAGS += -i` | CAUGHT |
+| E3 | `SHELL := /usr/bin/true` — every recipe "succeeds" | CAUGHT |
+| E4 | `.SHELLFLAGS := -c :` — **the reviewer's spelling, `-c true; #`, was inert** on 3.81 AND 4.4.1, probed directly; `-c :`, `-c "true ;"` and `-c true \#` all silence the gate | CAUGHT. **The oracle requires GNU Make ≥ 3.82** (macOS ships 3.81; `brew install make`) so its verdict is the one CI would give |
+| E5 | `-` prefix on the check line | CAUGHT |
+| E6 | `\|\| exit 0` | CAUGHT |
+| E7 | `\|\| echo skipped` — any word that succeeds | CAUGHT |
+| E8 | `; exit 0` | CAUGHT |
+| E9 | `\| tee log` with no `pipefail` — the status is tee's | CAUGHT |
+| E10 | The check replaced by `echo "…scripts/x.sh…"` — the path is text, nothing runs | CAUGHT |
+| E11 | The gate's target named through a variable, `$(GATE):`, with a neutered recipe | CAUGHT — `make -pn` resolves the name; the oracle executes it |
+| E12 | The gate defined in an `include`d file, neutered there | CAUGHT — `make -pn` follows the include |
+| E13 | `ifeq` with a real branch and a `@true` branch, the `@true` branch active | CAUGHT — `make -pn` shows the active branch; the oracle executes it |
+| E14 | A `define`/`endef` block holding a control that looks live | not a control — the database lists no recipe for it |
+| E15 | `-@go run ./tools/treelock … $(MAKE) verify-gates` — `make verify` itself exits 0 on a red gate | CAUGHT |
+| **E-ok** | The real Makefile, every checker stubbed red: every required gate exits non-zero | PASSES — this is the control, and the whole oracle is void if it does not hold |
+
+## F. The registry's own trust (FR-11.6)
+
+An instrument answers a KNOWN case before it is believed about an unknown one. Every table must
+prove its two functions CAN return false.
+
+| # | Attack | Must |
+|---|---|---|
+| F1 | A table whose `exists` always returns true | CAUGHT — the table's declared `absent` subject must resolve to false |
+| F2 | A table whose `stillNeeded` always returns true | CAUGHT — the table's declared `satisfied` subject must resolve to false |
+| F3 | A table declared `var x map[string]string` and filled in `init()` | discovered |
+| F4 | A table declared in a non-`_test.go` file of the package | discovered |
+| F5 | A name in `notATable` that no longer exists | CAUGHT |
+| F6 | A28–A33 from round one, each now an executable specimen | CAUGHT, and C-ok1 PASSES |
+| **F-ceiling** | A table registered under a type alias (`type rowsT = map[string]string`) | **NOT caught** — no type-checker is loaded, and one will not be taken for a test. Declared |
+
+## G. CI — the ceiling, declared
+
+| # | Attack | Verdict |
+|---|---|---|
+| G1 | `if : false` — a space before the colon, which YAML strips | CAUGHT (a one-character fix, and the fourth spelling of the class that defeated three rounds) |
+| G2 | A required job made to `needs:` a job that never runs | **NOT catchable** without workflow semantics. Declared |
+| G3 | `on.push.branches: [never-exists]` | **NOT catchable**. Declared |
+| G4 | `strategy.matrix: ${{ fromJSON('{"os":[]}') }}` | **NOT catchable**. Declared |
+| G5 | `run: \|` block scalar with `make x` on the second line | reads as ABSENT — fires, wrong reason; the false-positive direction only |
+
+**The CI checks' banner must say this.** A check that claims to close a class it cannot see is the
+defect this project names most often.
+
+---
+
+# Round three: what execution introduces that parsing did not have
+
+**Written and committed before the fixes.** A blind adversary found four Criticals in the executed
+oracle, three of them one class — **the scratch tree is not the real tree**, so a gate can be red in
+the oracle for a reason unrelated to its check and green forever in the tree it judges — and named
+the missing instrument: **the oracle had no positive control.** Nothing proved a gate goes GREEN when
+every stub is green. FR-11.6: an instrument answers a KNOWN case before it is believed about an
+unknown one. Every executed assertion now runs the green case first, and a gate that is red under
+green stubs is **UNJUDGEABLE — COULD-NOT-RUN, by name** — never "sound".
+
+**Why this round is different from the last two.** Round one found six spellings and needed six
+regexes. Round two found four Criticals with **one mechanism** behind three of them. The count fell
+and the fixes changed kind. That is the convergence signal, and it is why a third batch is worth
+building rather than stopping.
+
+## H. Scratch-tree divergence — closed by the green control
+
+| # | Attack | Must |
+|---|---|---|
+| H1 | `@test -f go.mod \|\| exit 1` as a preflight, then `./scripts/x.sh \|\| exit 0` — red in scratch (no go.mod), green in the tree | **UNJUDGEABLE** under green stubs (the preflight is red) — reported by name, never "can fail" |
+| H2 | `@go version >/dev/null \|\| exit 1` as the preflight | UNJUDGEABLE, by name |
+| H3 | `@git diff --quiet \|\| exit 1` — the dirty-tree refusal this project already writes | UNJUDGEABLE, by name |
+| H4 | A required gate whose PREREQUISITE is red under stubs (`install-test: release-matrix`), its own line `\|\| exit 0` | UNJUDGEABLE, by name — forces a decision instead of a false "sound" |
+| H5 | `verify:` with a preflight, then `-@go run ./tools/treelock … $(MAKE) verify-gates` | CAUGHT — with ONE checker red and everything else green, `make verify` must go red; the `-` makes it exit 0 |
+| **H-ok** | The real Makefile: every required gate exits 0 with every stub green, and non-zero with every stub red | PASSES — both halves, or the oracle is void |
+
+## J. Discovery is `.PHONY`-dependent — closed by the phony audit
+
+| # | Attack | Must |
+|---|---|---|
+| J1 | A required gate not in `.PHONY`: `touch <gate>` in the tree → "is up to date", exit 0, nothing ran. **Four required gates were in this state in the real Makefile with no edit at all** | CAUGHT — every required make target must be `#  Phony target` in make's database |
+| J2 | Two gates consolidated into a pattern rule `%-tags:` with a neutered recipe | CAUGHT — if the gate is NOT in `.PHONY` it is absent from the database (J1's audit); if it IS, make says "nothing to be done" and exits 0, which the green/red run catches. Either way |
+| J3 | A gate's rule deleted and `.DEFAULT:` supplying a green recipe for any name | CAUGHT — same rule as J2 |
+| J4 | A prerequisite that is red under green stubs (e.g. `release-matrix` running `shasum` over nothing) | UNJUDGEABLE, by name |
+
+## K. The control proof paints the wrong thing — closed by stubs that answer by argument
+
+| # | Attack | Must |
+|---|---|---|
+| K1 | The carrier runs the checker AND its `--self-test \|\| exit 0`: painting the checker red makes the carrier red for the checker's sake, and the neutered control passes | CAUGHT — the stub answers `--self-test` with the CONTROL status and anything else with the CHECKER status; the proof paints the control status alone |
+| K2 | Sibling `_test.sh \|\| exit 0` in one gate and the flag behind `\|\| exit 0` in another; `controlOf` is last-gate-wins | CAUGHT — every carrier is painted and tried |
+| K3 | A checker with no extension (`scripts/lint-x`) or `.bash` — not a checker to the regex, so no stub and no control proof | CAUGHT — any `scripts/…` token is a checker |
+| K4 | Two controls joined by `;` in one carrier — the line's status is the LAST command's, so the first control's failure is discarded | CAUGHT (an earlier draft of this row said PASSES; the reviewer's R4c was right) |
+| **K-ok** | Two controls joined by `&&` | PASSES — both reached |
+
+## L. The registry chooses its own control — narrowed
+
+| # | Attack | Verdict |
+|---|---|---|
+| L1 | `exists: func(_, s) bool { return s != "absent-thing" }` — honest for the declared control, dishonest for everything else | **CLOSED for `exists`:** the REGISTRY generates the absent subject (a nonce) so a table cannot choose it |
+| L-ceiling | The same shape on `stillNeeded`, whose `satisfied` subject the table must name because only the table knows what satisfies its rule | **Declared.** A table can be honest for one subject and dishonest elsewhere; the registry cannot see inside a function |
+
+## What round three still cannot see, declared
+
+- **A real tool that succeeds on an empty tree** (`/usr/local/go/bin/gofmt -l .` by absolute path, `find … -exec gofmt`) makes the oracle refuse a gate that CAN fail — the false-positive direction, loud, never silent.
+- **A double-colon rule** whose second part is empty overwrites the first in the database parse — loud, never silent.
+- **The CI half** remains a ratchet; G2–G4 stand.
+
+---
+
+# Round four: paint one thing, not the world
+
+**Written and committed before the fix.** A fourth blind adversary found three Criticals and named
+them as one shape: *the oracle paints the WORLD, then asks one bit.* Green-under-green proves the
+gate is judgeable; red-under-red proves it is red when EVERYTHING is red — and neither proves it is
+red BECAUSE OF ITS OWN CHECK. `./scripts/x.sh || exit 0` followed by `go version` is green under
+green, red under red, and neutered. In the real Makefile: `mutant-check`'s verdict replaced by
+`exit 0` read as sound (the `$(MAKE) cache-clean` stub reds it); `lint-injector … || true` — the sole
+debug-injector check before a release — read as sound (release-matrix's `go build` stub reds it).
+
+**The fix is the control proof's own method, applied everywhere.** For each required gate, for each
+stub its recipe REACHES — its own checkers, every toolchain sub-command, its prerequisites' recipes,
+the targets it recurses into with `$(MAKE)` — paint ONLY that one red and require the gate red.
+Toolchain stubs answer by sub-command (`go test` ≠ `go clean` ≠ `go build`), or `mutant-check`'s
+two `go` calls are the same stub and the discard stays invisible. The count fell 6 → 4 → 3 across
+rounds and each round's Criticals collapsed to one mechanism; this is convergence, and the reason a
+fourth batch is built rather than stopped.
+
+## M. Red for the wrong reason — closed by per-key painting
+
+| # | Attack | Must |
+|---|---|---|
+| M1 | `./scripts/x.sh \|\| exit 0` then `go version` — red-under-red from the wrong stub | CAUGHT — with only `scripts/x.sh` red, the gate is green |
+| M2 | `gate: other-gate` as a prerequisite, own line `\|\| exit 0` — the prerequisite reds it | CAUGHT |
+| M3 | `OK := $(shell go version && echo yes)` at parse time, `test "$(OK)" = yes \|\| exit 1` before `\|\| exit 0` | CAUGHT |
+| M4 | **Real tree:** `mutant-check`'s `exit $$rc` → `exit 0` | CAUGHT — paint `go:test` alone red; the gate must go red |
+| M5 | **Real tree:** `install-test.sh \|\| true` behind `release-matrix`'s red `go build` | CAUGHT |
+| M6 | **Real tree:** `lint-injector.sh … \|\| true` — the debug-injector check | CAUGHT |
+| M7 | `verify: lint` as a prerequisite, `-@` on treelock — verify red for `lint`'s sake and green for every other gate's | CAUGHT — every invoked checker is painted in turn and verify must go red each time; not `invoked[0]` |
+| **M-ok** | The real Makefile: every required gate goes red for EACH stub it reaches, painted alone | PASSES — or the recipe has a status discard, named by key |
+
+## N. The escapes — closed by deletion and by walking
+
+| # | Attack | Must |
+|---|---|---|
+| N1 | Delete a gate's rule, prepend `.DEFAULT:` green, add a 20-character `ciOnly` row — every executed check skipped, `make <gate>` prints "skipped" and exits 0 | CAUGHT — **a `ciOnly` row exempts a gate from `verify`, never from having a phony rule.** A required gate absent from the database is an error unconditionally |
+| N2 | `gate: gate-run` with the recipe on `gate-run`, which is not phony — `touch gate-run` silences it while `gate` is phony | CAUGHT — the audit walks prerequisites; every non-phony node WITH a recipe is the finding |
+| N3 | `exists: s != absentNonce` — the nonce is a package constant a table can name; or match by shape `HasPrefix("__registry")` | CAUGHT — a fresh random string per call, no fixed prefix, never a package identifier |
+| N4 | `MAKEFLAGS=i` in the environment — the oracle runs inside `make race`, so a parent `-i` or `-n` reaches every child make | CAUGHT — `MAKEFLAGS` and `MAKELEVEL` are stripped from the child environment |
+
+## Declared this round
+
+- The `go` stub's treelock contract matches `go run ./tools/treelock` exactly. `./tools/treelock/`,
+  `github.com/…/tools/treelock`, or another wrapper make `verify` UNJUDGEABLE — **the green run
+  must reach the gates, and now says so when it does not** rather than diagnosing a `-` that is not
+  there.
+- `cd scripts && ./x.sh` is RECORDED — the interpreter stub resolves the script against the working
+  directory (P7). An earlier draft of this line called it red-under-green; the sixth adversary ran it.
+
+---
+
+# Round five: observe, don't guess
+
+**Written and committed before the fix.** A fifth blind adversary found six Criticals, and every one
+was the same defect: `reach()` — the function that decides which stubs a gate can touch — was a set
+of regexes over recipe text. `$(A2DH)` is not the literal `a2dh`; `$$(./scripts/x.sh)` has `(`
+before `scripts/`; `$(CURDIR)/scripts/x.sh` has `/`; `$(MAKE) -s target` has a short flag; two
+`go run` calls collapse to one key; a pattern-rule prerequisite has no recipe in the database. In
+the tree AS SHIPPED, `p10`'s check — `$(A2DH) p10 check` — had never once been painted red alone.
+
+**That is round one's shape, in the one function where round one's lesson had not been applied.**
+Parsing was replaced by execution for "does this gate fail?" and then quietly reintroduced for
+"what does this gate reach?" — so the count rose back to six for round one's reason.
+
+**So the stubs RECORD what make ran.** Every stub appends its key to a log when it is invoked; the
+green run's log IS the reach — whatever make actually executed, through variables, substitutions,
+absolute paths, `sh -c`, `xargs`, short-flag recursion, pattern rules — and the per-key proof paints
+exactly what was recorded. There is no regex anywhere in the executed half. The same move replaces
+the database-parsed phony audit: create a file named after each prerequisite, run green, and if the
+recorded reach SHRINKS, that file silences the gate. Two text layers deleted, not patched.
+
+**The upstream learning, stated once for li-A2DH:** a semantic question about a language — what
+runs, what can fail, what is reached — is answered by executing the language and observing, never by
+pattern-matching its source. A parser reaches the spellings its author imagined; an observer reaches
+whatever happened. This held for the Makefile at every one of five rounds, and it is the shape of
+every Critical this layer has ever had.
+
+## O. Reach that text cannot see — closed by recording
+
+| # | Attack | Must |
+|---|---|---|
+| O1 | Two `go run ./tools/X` calls in one gate, the check one `\|\| true`, the self-test one live — one `go:run` key hid the discard | CAUGHT — the go stub records `go:run:<pkg>` and `:ctl` when it sees a self-test flag; two calls, two keys |
+| O2 | A tool named through a variable: `$(A2DH) p10 check … \|\| true` — **the shipped `p10`** | CAUGHT — make expands `$(A2DH)`, the stub runs and records itself |
+| O3 | A checker inside command substitution: `out=$$(./scripts/x.sh) \|\| true` — **the shipped `fmt` shape** | CAUGHT — the stub records itself whatever surrounds it |
+| O4 | A checker by absolute path: `$(CURDIR)/scripts/x.sh \|\| true`; `sh -c "./scripts/x.sh" \|\| true` | CAUGHT — same |
+| O5 | `$(MAKE) -s target` recursion into a neutered target | CAUGHT — recursion is real make; the stub records |
+| O6 | A pattern-rule prerequisite (`%-run:`) supplying a neutered recipe; `touch <prereq>` silences it | CAUGHT — the stub records through the pattern rule, and the touch test sees the reach shrink |
+| O7 | `MAKEFILES=<file>` in the environment setting `.SHELLFLAGS := -ec` — every `;` discard becomes red, and the oracle certifies `exit 0` verdicts as sound (the QUIET direction) | CAUGHT — `MAKEFILES`, `GNUMAKEFLAGS`, `MAKE`, `MAKEOVERRIDES` are stripped; specimen M4 must still CAUGHT with `MAKEFILES` set in the parent |
+| ~~O-ok~~ **O9** | `@go version \|\| true` above a live checker — a "tolerated diagnostic" | **Changed while building, before the fix was trusted: CAUGHT, not PASSES.** The relaxation as written would have read text to decide which key is a diagnostic — and `./scripts/x.sh \|\| true` is the same shape. There is no text in the executed half, so there is no relaxation: a diagnostic under `\|\| true` in a gate is refused, and the message says to move it out or let it fail. The real Makefile has none |
+| O8 | `python3 -m lint_a \|\| true` — an interpreter run with no `scripts/` argument | CAUGHT — refused as UNJUDGEABLE, never unseen |
+| **O10** | **Found by the first recorded run of the SHIPPED tree**, not by an adversary: `release-matrix`'s `(command -v sha256sum && sha256sum … \|\| shasum …)` — `A && B \|\| C` runs C when B fails, so a failed `sha256sum` fell through to a successful `shasum` and its failure was gone. `sha256sum` was not on the regex oracle's tool list, so it was never painted | CAUGHT — and fixed as an `if`. The regex oracle could not have seen it; the record did on its first run |
+| **O-ok2** | The real Makefile, recorded rather than regex-reached: every required gate goes red for each recorded key | PASSES — and `p10` is judged for `a2dh` for the first time |
+
+## Declared
+
+- `python3 -m module` and `python3 - < script` are refused as UNJUDGEABLE (the interpreter stub
+  execs a `scripts/` argument only). Loud. (O8)
+- An order-only directory prerequisite (`gate: \| out`) is touched like any other node; creating a
+  file where `mkdir -p` needs a directory makes the gate RED, which is not silence, so it passes
+  (O-ok). Verified rather than declared.
+- **The tool list is the one list left**: `go`, `gofmt`, `a2dh`, `python3`, `expect`,
+  `golangci-lint`, `govulncheck`, `shasum`, `sha256sum` are stubbed; any other command a recipe runs
+  is real. A real tool on an empty tree is red under green (loud), but a real tool that HAPPENS to
+  exit 0 on an empty tree under `\|\| true` is not judged. Adding a checker that is neither a
+  script nor `go run` means adding it to the list — and O10 is what forgetting looks like.
+
+---
+
+# Round six: the tree is the tree
+
+**Written and committed before the fix.** A sixth blind adversary, against the recorded oracle,
+found three Criticals with one cause — **the scratch tree is empty**, so anything a recipe asks of
+the tree answers the opposite of what it answers in the repository:
+
+- `git diff --quiet HEAD -- '*.go' && exit 0; ./scripts/x.sh` — in scratch git fails, the checker
+  runs, and the gate is certified; in a clean clone (what CI is) the checker is skipped forever.
+- `go build -o $(DIST)/x ./tools/x` then `$(DIST)/x || true` — the check is a binary the oracle
+  never stubbed; `go:build` carries the gate and the discard is invisible.
+- two `go test` calls in one gate share one key, so a live second call carries a discarded first
+  (O1 had closed this for `go run` only).
+
+Round two closed "the scratch tree is not the real tree" in the RED direction only (a preflight
+that fails in scratch). This is the GREEN direction: a predicate that passes in scratch and skips
+in the repo. Same cause, other sign.
+
+**So the oracle runs in the tree.** The scratch is a shared clone of the repository with the
+working tree copied over it — every file, the `.git`, `go.mod`, the real `scripts/` — and the
+stubs interpose by PATH alone. A script is answered through its `#!/usr/bin/env sh` shebang, so
+not one byte of the tree is rewritten; every file under `scripts/` must carry an `env` shebang,
+and the oracle refuses one that does not (a `#!/bin/sh` shebang bypasses PATH and the script
+would run for real, unrecorded). The `go build` stub WRITES a recording stub at `-o`, so a
+compiled checker is a key like any other. Every invocation carries an ordinal (`go:test#1`,
+`go:test#2`) and each is painted alone. Nodes come from the real green run's `--debug=v`, not a
+`-n` walk. And `verify`'s reach must cover every non-ciOnly required gate's own reach.
+
+## P. The tree, the binary, the ordinal
+
+| # | Attack | Must |
+|---|---|---|
+| P1 | `git diff --quiet HEAD -- '*.go' && exit 0; ./scripts/x.sh` — skip on a clean tree | CAUGHT — the scratch IS a clean repository; the gate records nothing |
+| P1-ok | `git diff --quiet HEAD \|\| echo dirty; ./scripts/x.sh` | PASSES |
+| P2 | `go test -race ./... \|\| echo flaky` then a live `go test ./x` | CAUGHT — `go:test#1` painted alone stays green |
+| P2-ok | two live `go test` calls | PASSES |
+| P3 | `go build -o out/lint ./tools/lint` then `out/lint \|\| true` | CAUGHT — the built stub records `built:out/lint`; painted alone, the gate stays green |
+| P3-ok | the same with `out/lint` live | PASSES |
+| P4 | a non-phony gate with `gate: go.mod` — `go.mod` exists in the tree, so a file named `gate` is up to date | CAUGHT — the silence audit creates the file in a tree where `go.mod` is real |
+| P5 | `ifeq (,$(findstring n,$(MAKEFLAGS)))` hiding a non-phony node from a `-n` walk | CAUGHT — nodes come from the real run |
+| P6 | `verify` passes `FAST=1` and `lint` skips under it; `verify-gates` still lists `lint` | CAUGHT — `lint`'s own reach has `scripts/lint.sh`; `verify`'s does not |
+| P7 | `cd scripts && ./x.sh \|\| true` | CAUGHT — the key is resolved from the working directory |
+| P7-ok | `cd scripts && ./x.sh` | PASSES |
+| P8 | `go run ./tools/x` as a required gate's only check, with no `-self-test` anywhere | CAUGHT — a `go run ./tools/…` checker needs a control like a script does |
+| P9 | `.ONESHELL:` | CAUGHT (the reviewer observed 19 discards named; kept as a specimen) |
+| P10 | `bad=$$(find . -name '*.go' \| xargs gofmt -l); test -z "$$bad"` — the reviewer's "correct" gate | **Changed while building: CAUGHT, and the oracle was right.** The `;` throws away the substitution's status; a gofmt that fails to RUN prints nothing and passes — the F-152 defect the shipped `fmt` was fixed for. The reviewer called this a false positive; it was a true one |
+| P10-ok | the same with `&&` — `bad=$$(…) && test -z "$$bad"` | PASSES — the tree has Go files, so BSD xargs runs gofmt, and the status is read |
+| P11 | `x.sh --check \|\| true; x.sh --help` — one script twice | CAUGHT — `scripts/x.sh#1` alone |
+
+## Declared — the ceiling, stated once
+
+- **A toolchain reached by absolute path** (`/usr/local/go/bin/go vet \|\| true`) runs for real and
+  is not recorded. **A recipe that erases its environment** (`env -i … ./scripts/x.sh \|\| true`)
+  runs the real interpreter and is not recorded. **The stubs are detectable** (`head -c 2 $(command
+  -v go)` is `#!` only under the oracle). These are the same thing: a recipe written to escape the
+  oracle escapes it. They are review findings, not mechanism findings, and the mechanism says so on
+  every passing run (FR-11.5).
+- `go build` with no `-o` writes its binary where make's cwd is; that binary is not stubbed.
+- A recipe predicate on tree state is judged against the tree AS IT IS: clean after a commit and in
+  CI, which is when the oracle's verdict is read.
+- The tool list is still the one list (`go gofmt a2dh golangci-lint govulncheck shasum sha256sum`,
+  plus the interpreters `sh bash python3 expect`).
+- `make -n mutant-check` in the real tree starts the sweep, because the line carries `$(MAKE)` and
+  GNU make executes such lines under `-n`. Known, documented at the recipe; the oracle no longer
+  uses `-n`.
+
+---
+
+# Round seven: the tree as CI has it, and the instrument's own joints
+
+**Written and committed before the fix.** A seventh blind adversary against the in-tree oracle
+found two Criticals and four Importants. The Criticals are round six one step further — the clone
+is the tree but not the tree AS CI HAS IT: `git clone` re-attaches a detached HEAD, keeps tags a
+depth-1 checkout does not have, and rsync carries git-ignored files (`AGENTS.md` here) that CI
+never sees; and `verify`'s coverage compared keys, so a variable that skips one of two `go test`
+calls in a gate shipped. The Importants are joints in the instrument itself: a filename encoding
+that is not injective, a `go run` key taken from `$2` (which is `-tags` when there are flags), a
+shebang regex with `\b` where `$` was meant, and a `$(MAKE)` hop whose debug output was redirected.
+
+**The count fell 5 → 2 and the cause count is no longer one.** The method held; its joints did not.
+
+## Q. The tree as CI has it; the joints
+
+| # | Attack | Must |
+|---|---|---|
+| Q1 | `test "$$(git rev-parse --abbrev-ref HEAD)" != HEAD \|\| exit 0; <check>` — skip when detached (CI is detached on `pull_request` and on the tag push `release.yml` runs `verify` under) | CAUGHT — the scratch's HEAD is DETACHED at the source's commit |
+| Q2 | `git describe --tags >/dev/null 2>&1 \|\| exit 0; <check>` — skip without tags (ci.yml is depth 1) | CAUGHT — the scratch has NO tags |
+| Q3 | `test -f AGENTS.md \|\| exit 0; <check>` — a git-ignored file present on the dev machine | CAUGHT — only tracked and untracked-unignored files are copied |
+| Q4 | `verify-gates FAST=1`; `race:` runs `go test` live, then `test -n "$(FAST)" \|\| go test ./x` | CAUGHT — for every key, verify's invocation COUNT ≥ the sum of the non-CI-only gates' own counts |
+| Q5 | `./scripts/quality_lint.sh \|\| true` beside a live `./scripts/quality/lint.sh` — `tr / _` maps both to one status file | CAUGHT — the encoding is reversible |
+| Q6 | `go run -tags foo ./tools/x` with no control; `go run <module>/tools/x`; `go build -o out/x ./tools/x` then `out/x` — none reaches the control obligation | CAUGHT — the key is the first non-flag argument, a module-prefixed package is normalised to `./`, and `built:` keys need a control |
+| Q7 | `scripts/check.py` with `#!/usr/bin/env python3.12` — a real interpreter the `\b` admits | CAUGHT — the shebang rule is anchored and DERIVED from the interpreter list |
+| Q8 | `@$(MAKE) --no-print-directory x-run >/dev/null`, `--debug=n`, `MAKEFLAGS= $(MAKE)` — the hop's node hidden from the observed walk, recipe on a non-phony node | CAUGHT — every non-phony rule make's database lists is added to the all-at-once file set |
+| Q9 | `go build -o out/ ./tools/x` (directory form) then `out/x \|\| true` | CAUGHT — the stub is written at `out/x` |
+| Q10 | `ORACLE_LOG=/dev/null ./scripts/x.sh \|\| true` | DECLARED — an oracle-aware recipe; the ceiling sentence names `ORACLE_*` |
+| Q11-ok | `bash -c 'set -o pipefail; ./scripts/x.sh 2>&1 \| tee out.log'` | PASSES — `sh -c`/`bash -c` run the REAL shell; the script records through its shebang |
+| Q12-ok | a symlinked directory under `scripts/` | PASSES — not a script; the rule follows the link and skips directories |
+| Q13 | two `go test` in parallel (`&` … `wait`, `-j2`) — the ordinal's read-count-append | CAUGHT (not reproduced as a race in 12 runs) — a lock closes it by construction |
+
+## Declared
+
+- Git metadata is judged as CI has it: HEAD detached at the commit, no tags. Branch name, remote and
+  depth are otherwise as the source has them.
+- A control for a Go tool is its `-self-test`; `go test ./tools/x` is not accepted as one, by
+  design — a tool's tests prove the tool, the self-test proves the tool CAN FAIL in this tree.
+- A discard moved INSIDE a script is the script's business; the oracle judges the Makefile.
+- A prerequisite shared by two required gates runs once under `verify` and twice in their own runs;
+  the count comparison then refuses it, loudly. Give each gate its own.
+
+---
+
+# Round eight: the threat model, and the instrument in Go
+
+**Written and committed before the fix.** An eighth blind adversary found 4 Critical / 5
+Important / 3 Minor, and the count ROSE from two. The look that the rising count demands found
+that the findings split into two classes the lists had never separated, and that the count rose
+entirely in one of them.
+
+## The threat model — the ceiling's first sentence
+
+**The oracle enforces against DRIFT: a recipe an author could plausibly write without meaning to
+neuter a gate** — `|| true`, `; exit 0`, a `-` prefix, a non-phony target, a variable a gate
+skips under, a preflight that passes in one tree and not another, a spelling of a flag the stub
+did not parse. That is the class the HUM LEAD named: an agent, in some session, writing the cheap
+thing.
+
+**It does not defend against EVASION: a recipe written knowing the oracle exists**, beside a live
+decoy so the reach is non-empty — sourcing a script instead of executing it, a hop through another
+makefile, a compensating invocation added so counts agree, `PATH` re-exported for one target, a
+predicate on `GITHUB_ACTIONS`. That class is unbounded by construction — a recipe written to escape
+the oracle escapes it — and each fix is machinery that the next evasion routes around. **Evasion is
+a review-lens question** ("is this recipe written to escape the oracle?"), and the red-team brief
+carries it. The ceiling sentence names the evasions the adversaries found so a reader knows what
+the instrument is NOT saying (FR-11.5).
+
+## Why the instrument moves to Go
+
+The instrument was Go; three rounds slipped ~70 lines of shell into it as embedded string
+constants — the stubs make's recipes exec — and round eight's Criticals were bugs in exactly that
+shell: `-c` honoured only as `$1`, `-o=` unparsed, an encoding that was not injective, `awk`/`sed`
+exposure a reviewer had to probe by hand. **Standing rule (HUM LEAD, 2026-09-17): everything is
+Go unless absolutely necessary, and shell needs a STOP and an explanation first.** The stub is a
+small Go program built once per test process — uninstrumented, because under the race detector an
+instrumented stub cost ten times per exec and the first `make race` timed out — with every decision a
+unit-tested function. The rule is
+mechanised as `AP-SHELL-01` in `tools/authoring` and as the shell ledger, so it is enforced and not
+remembered. The layer moves to `tools/gateoracle/` as a product of its own.
+
+## R. Drift, round eight
+
+| # | Attack | Must |
+|---|---|---|
+| R1 | `bash -ec './scripts/x.sh \|\| echo see x_test.sh'` — flags before `-c`; the string became the key and `_test.sh` exempted it from a control | CAUGHT — any flag cluster containing `c` runs the real shell; a key is a FILE that exists |
+| R1-ok | `sh -ec './scripts/x.sh'` | PASSES — the real shell runs; the script records through its shebang |
+| R2 | `go build -o=out/x ./tools/x` then `out/x \|\| true`; `go test -c -o out/x.test ./tools/x` then `out/x.test \|\| true` | CAUGHT — `-o=` parsed; `test -c` is a build |
+| R3 | `.x-run:` as the hidden non-phony node | CAUGHT — only make's own special targets (`.PHONY`, `.DEFAULT`, `.SUFFIXES` …) are dropped, not every dot-name |
+| R4 | `go run tools/x/main.go`, `go run ./cmd/x` as a required gate's only check, no control | CAUGHT — every `go:run:` key that is not the treelock delegate is a checker; file form normalises to its directory |
+| R5-ok | `GOBIN := $(shell go env GOPATH)/bin` at the top of the Makefile | PASSES — a parse-time invocation belongs to the Makefile, not the gate; the `rules()` run's record is subtracted |
+| R6-ok | `go run ./tools/x/ -self-test` beside `go run ./tools/x` | PASSES — the package is cleaned |
+| R7 | GNU Make 3.81 on `macos-latest` — the oracle is COULD-NOT-RUN on one CI OS | CAUGHT (loud) — ci.yml installs make and puts gnubin first on macOS |
+| R8 | the all-at-once set breaks the run (a `stamp:` rule the recipe refuses) and the whole set is skipped SILENTLY | CAUGHT — a set that breaks the run is reported as UNJUDGEABLE, and database-only nodes are also tried singly |
+| R9 | a shebang line inside a Go string literal; `exec.Command("sh", "-c", …)` in any Go file | CAUGHT by `AP-SHELL-01` (`make lint-authoring`), with a self-test |
+| R10 | a new executable under `scripts/` with no ledger row | CAUGHT by the shell ledger — a row is a ruling |
+
+## Declared (evasion — named, not closed)
+
+- `(. ./scripts/x.sh) \|\| true`, `bash -c 'source …'`, `sh -c "$$(cat …)"` — the script's body in
+  the recipe's real shell, never exec'd.
+- `$(MAKE) -f other.mk`, `$(MAKE) -C dir` — a hop into a makefile the database does not list.
+- A compensating invocation in `verify-gates` so the per-key counts agree.
+- `export PATH := …` on one target; `test -z "$$GITHUB_ACTIONS" \|\| exit 0`; a predicate on an
+  untracked-unignored file.
+- The ordinal under real concurrency: the lock serialises the append, not which of two parallel
+  invocations takes `#1`.
+
+---
+
+# Round nine: absence must be loud
+
+**Written and committed before the fix.** The first drift-briefed adversary: 1 Critical, 4 Important,
+6 Minor, and three evasion lines reported separately and not counted. The Critical is a verdict the
+oracle had never asked for: a tool's ABSENCE. The stub for every tool is always on PATH, so
+`command -v a2dh || exit 0` takes the live branch in the scratch and the skip branch on any machine
+without the tool — and the shipped `p10` preflight, flipped from `exit 1` to `exit 0` (the drift its
+own comment forbids), passed every gate. The Importants are the instrument's own state leaking
+between runs: a stamp a gate touches, the developer's uncommitted files, a parse-time invocation
+counted once where sub-makes re-parse, and a refusal swallowed by `|| true`.
+
+## S. Absence, state, and the instrument's own tests
+
+| # | Attack | Must |
+|---|---|---|
+| S1 | `command -v a2dh >/dev/null \|\| exit 0; a2dh …` IN ONE SHELL; `which golangci-lint \|\| exit 0; golangci-lint …`; `ifeq (,$(shell command -v a2dh))` skipping at parse time | CAUGHT — for every tool key a gate recorded, the gate is run with that tool ABSENT from PATH and must go red |
+| S1-ok | the skip on its OWN line, then the tool on the next — **the shipped `p10` shape with `exit 0`** | PASSES — **corrected while building: the reviewer's "passes every gate" held only because absence was never simulated.** `\|\| { …; exit 0; }` exits that line's shell; the next line runs the tool, gets 127, and the gate is red. Loud by accident of a line break, and the oracle was right to say so |
+| S1-ok | the shipped `p10` line with `exit 1` | PASSES |
+| S1-ok | `if command -v sha256sum; then sha256sum …; else shasum …; fi` — **the shipped checksum line** | PASSES — **found while building:** absence must be loud OR a fallback must be observed; with `sha256sum` absent the run records `shasum`, which the green run did not. Derived from the record, no list of fallbacks |
+| S11 | four executable record artefacts under `06_docs/` (spikes, a sampler) with `#!/bin/sh` shebangs | a record is not executable — `chmod -x`; the shebang rule and the ledger both key on the executable bit, so neither needs an exclusion |
+| S2 | `python3 -m pyflakes … \|\| true` beside a live script; `./06_docs/mutants/run.sh \|\| true` (an executable outside `scripts/`) | CAUGHT — a refusal is RECORDED as `unjudged:<role>` and any `unjudged:` in a green reach is UNJUDGEABLE; the shebang rule covers every tracked executable, not `scripts/` alone |
+| S3 | `GOBIN := $(shell go env GOPATH)/bin` at the top, with `verify` and `mutant-check` re-parsing through `$(MAKE)` | PASSES — parse-time invocations are subtracted once per makefile read the run reports |
+| S4 | a non-phony gate that leaves `touch $@` behind; other non-phony rules phony | CAUGHT for the RIGHT reason — the absent-node set is taken before the green run, and the scratch is reset to its commit between runs |
+| S5 | P1 (`git diff --quiet … && exit 0`) from a DIRTY working tree | CAUGHT — the overlaid files are committed in the scratch (no tag), so cleanliness answers as CI |
+| S6 | `cd tools/x && go run .` as the only check, no control | CAUGHT — a relative package resolves against the working directory, and `go:run:.` is local |
+| S7-ok | `go test -c -o out/ ./tools/x && out/x.test`; `go build -o $(CURDIR)/out ./tools/x` | PASSES — `test -c` into a directory writes `<pkg>.test`; an absolute directory is not joined onto cwd |
+| S8 | the ceiling sentence | prints the tool NAMES, pinned by a unit test — it printed a function pointer |
+| S9 | `LC_ALL` unset, a translated make | the walk's lines are read under `LC_ALL=C` |
+| S10 | the instrument's own tests | `builtKey`, `writeBuiltStub`, `realCommand`, `moduleOf`, `envShebang`, the database parser and `ParseRequired` each have a unit test; O8, Q7 and H2 are renamed for the property that actually catches them |
+
+## Declared
+
+- `-go build -o out/x` then `out/x`: the discarded build status is invisible when no binary exists;
+  CI-faithful (a clean runner has no stale binary). (F9)
+- An unlisted `test` target supplying the `go:test` count under a `FAST=1` verify: the per-key count
+  is the ceiling. (F10)
+- `go vet -vettool=$$(go env GOPATH)/bin/shadow` is refused (O9's class); spell it
+  `p=$$(go env GOPATH) && go vet …`. (A10)
+- The parent's `CI`/`GITHUB_ACTIONS` pass through `env()`: in CI the oracle sees the skip. Evasion.

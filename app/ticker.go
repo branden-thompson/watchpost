@@ -99,14 +99,22 @@ const tickerRotate = 90 * time.Second
 // location, stack them, publish the marquee, and detect genuinely NEW events
 // (the P3 tone/narration will sound those unless muted).
 type tickerDeck struct {
-	send      func(tea.Msg) // publishes to the dashboard (p.Send in production; a capture in tests)
-	sources   []globalfeed.Source
-	watch     func() []snapshot.LocationRef // the current watchlist, for the D5 tie
-	nearest   globalfeed.NearestCity        // the fuzzy "the <metro> area" resolver
-	seen      *seenStore
-	warm      atomic.Bool // false until the first cycle seeds quietly (no launch alert storm)
-	muted     *atomic.Bool
-	radius    *atomic.Int64   // alert-radius filter in miles; 0 = All (global)
+	send    func(tea.Msg) // publishes to the dashboard (p.Send in production; a capture in tests)
+	sources []globalfeed.Source
+	watch   func() []snapshot.LocationRef // the current watchlist, for the D5 tie
+	nearest globalfeed.NearestCity        // the fuzzy "the <metro> area" resolver
+	seen    *seenStore
+	warm    atomic.Bool // false until the first cycle seeds quietly (no launch alert storm)
+	muted   *atomic.Bool
+	radius  *atomic.Int64 // alert-radius filter in miles; 0 = All (global)
+
+	// rescope wakes the cycle when the rail's fence MOVES — a surface swap
+	// (D-73). Buffered by one and written without blocking, so a flurry of
+	// swaps collapses into a single pending re-scope rather than a queue of
+	// them. The `inject.wake()` arm is the same shape and the same reason: a
+	// cycle that matters now must not wait out a two-minute timer.
+	rescope chan struct{}
+
 	clockPref *atomic.Int32   // how times are written (render.Clock) — Settings changes it live
 	voice     *director       // the narration arbiter (app/director.go); a silent one when there is no audio
 	mc        *mastercontrol  // the band's and the bed's ONE owner, shared with the arbiter (T2.3)
@@ -120,10 +128,25 @@ type tickerDeck struct {
 	// the ids; this is the other half.
 	alerts *alertStore
 
-	// mu guards emit, which is wired after the deck is built: the schedule needs
-	// the deck to exist before it can be started.
-	mu   sync.Mutex
-	emit func(lineup.Event) // nil until the schedule is wired
+	// mu guards emit AND scope, both of which are wired after the deck is built:
+	// the schedule needs the deck to exist before it can be started.
+	//
+	// SCOPE JOINED IT AT D-144. It had exactly `emit`'s shape — a func field
+	// assigned from the setup goroutine AFTER `go t.run(ctx)` has started, and
+	// read by the cycle — and it was the only one of the pair left unguarded.
+	// Bounded impact (a pointer-sized write, first cycle only) is not the same
+	// as no impact, and the fix is the pattern already sitting beside it.
+	mu    sync.Mutex
+	emit  func(lineup.Event) // nil until the schedule is wired
+	scope func() airScope    // nil until the surfaces are wired; see setScope
+}
+
+// setScope wires what the rail is scoped to, from outside the cycle.
+func (t *tickerDeck) setScope(f func() airScope) {
+	if t == nil {
+		return
+	}
+	setUnder(&t.mu, &t.scope, f)
 }
 
 // clock is the listener's clock, or the 12-hour default when nothing set one
@@ -153,6 +176,9 @@ func startTicker(ctx context.Context, p *tea.Program, client *httpx.Client, idx 
 	}
 	mc := nar.mc
 	t := &tickerDeck{
+		// BUFFERED BY ONE: a flurry of surface swaps is one pending re-scope,
+		// not a queue of cycles (D-73).
+		rescope: make(chan struct{}, 1),
 		severe:  severe,
 		send:    p.Send,
 		mc:      mc,
@@ -203,6 +229,11 @@ func (t *tickerDeck) run(ctx context.Context) {
 			// 2026-09-07). Nil in a release build, where this arm can never
 			// fire.
 			t.cycle(ctx)
+		case <-t.rescope:
+			// NEITHER DOES A SURFACE SWAP (D-73). The fence just moved between
+			// the listener's filter and the station's service area, and a tape
+			// that re-adapted up to two minutes later is not "it just works".
+			t.cycle(ctx)
 		case <-rotate.C:
 			t.send(tty.TickerAdvanceMsg{}) // the 90s lane rotation; the tty skips it when ≤1 lane is active
 		}
@@ -241,7 +272,7 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 	if t.severe != nil {
 		t.severe.SetFeed(events, health) // the window's half of the index — its own copy (SetFeed clones)
 	}
-	events = t.scopeToRadius(events, watch)
+	events = t.scopeToRadius(events)
 	// A superseded alert is kept in `events` (so it is seen-marked below and can
 	// never resurface as "new" if its replacement drops first — P4 delta A1),
 	// but it is excluded from the display and the new-event detection.
@@ -262,10 +293,10 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 	// A GENUINE FIRST RUN SEEDS QUIETLY. A RELAUNCH DOES NOT (C-4).
 	//
 	// The seed exists so a new listener is not met with every active hazard in
-	// the country at once. It used to run on the first cycle of EVERY launch,
-	// and that swallowed the one set a returning listener has not heard: the
+	// the country at once, and it runs on a GENUINE first run only. On every
+	// launch it would swallow the one set a returning listener has not heard: the
 	// persistent store already stops a restart re-announcing what was announced
-	// before, so the only thing the blanket seed added was suppression of the
+	// before, so the only thing a blanket seed adds is suppression of the
 	// alerts that arrived WHILE THE APP WAS CLOSED. Lid shut at 2pm, tornado
 	// warning at 2:40, relaunched at 3:00 — on the tape, never spoken, and
 	// filtered by unread for ever after.
@@ -294,7 +325,7 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 // THIS IS THE PRODUCER, AND ONLY THE PRODUCER. It decides what has arrived and
 // what each arrival IS; the Director decides which of them are read and in what
 // order, the Composer decides what is said, and the Reader decides how it
-// sounds. This function used to be all four.
+// sounds. Any one of those decided here would be a second authority on it.
 //
 // WHAT WENT WITH THE SWAP, and why none of it is a loss:
 //
@@ -311,14 +342,14 @@ func (t *tickerDeck) cycle(ctx context.Context) {
 func (t *tickerDeck) startTakeover(fresh []globalfeed.Event) {
 	// STANDBY HOLDS THE BURST; IT DOES NOT SPEND IT (MVS-D-78).
 	//
-	// [M] used to let the takeover run inaudibly: it cued the band, held, and
-	// MARKED EACH ALERT READ — so a tornado warning arriving while muted was
-	// consumed in silence and never sounded, even on unmuting a minute later.
-	// The visual channel still showed it, so nothing was hidden; the audio
-	// channel simply swallowed a hazard.
+	// A TAKEOVER THAT RAN INAUDIBLY WOULD SPEND THE BURST: it would cue the band,
+	// hold, and MARK EACH ALERT READ, so a tornado warning arriving while muted
+	// is consumed in silence and never sounds, even on unmuting a minute later.
+	// The visual channel would still show it, so nothing is hidden; the audio
+	// channel simply swallows a hazard.
 	//
-	// IT RETURNS BEFORE ANYTHING IS SENT, which is the same rule one layer up
-	// from where it used to sit. A muted burst must not reach the Director at
+	// IT RETURNS BEFORE ANYTHING IS SENT. A muted burst must not reach the
+	// Director at
 	// all: admitted to the rail it would be a promise to read (DR-3), and the
 	// executors' own mute check would then decline it every time it came round.
 	// The tick has already sent the severe index and the ticker tape — both
@@ -364,11 +395,11 @@ func unread(burst []globalfeed.Event, seen map[string]bool) []globalfeed.Event {
 // arrivalsOf is the producer's translation: domain events in, the Director's
 // domain-free arrivals out (DR-1).
 //
-// THE CHOOSING IS NOT HERE, AND NO LONGER IS ANYWHERE IN THIS FILE (T3.10b).
-// This used to plan the burst itself and hand the chosen events to a takeover
-// it also ran — a second planner beside the Director's, agreeing with it only
-// as long as both were passed the same settings. Now it states what arrived and
-// the Director decides the rest, which is the whole point of ONE carrier of the
+// THE CHOOSING IS NOT HERE, AND IS NOWHERE IN THIS FILE (T3.10b). Planning the
+// burst here and handing the chosen events to a takeover this file also ran
+// would be a second planner beside the Director's, agreeing with it only as long
+// as both were passed the same settings. This states what arrived and the
+// Director decides the rest, which is the whole point of ONE carrier of the
 // ladder (D-1).
 func arrivalsOf(fresh []globalfeed.Event) []lineup.Arrival {
 	out := make([]lineup.Arrival, 0, len(fresh))
@@ -380,6 +411,7 @@ func arrivalsOf(fresh []globalfeed.Event) []lineup.Arrival {
 			Subject:  subjectOf(e),
 			Severity: int(e.Severity),
 			At:       e.At,
+			Until:    e.Until,
 			Lat:      e.Lat,
 			Lon:      e.Lon,
 			HasPoint: e.HasPoint,
@@ -390,10 +422,34 @@ func arrivalsOf(fresh []globalfeed.Event) []lineup.Arrival {
 			// Angeles, ~120 mi, to a listener with a 50-mile radius — was
 			// refused by the fence even once the producer stopped dropping it.
 			ReachMi: reachMiOf(e),
-			Tracked: true, // these events already passed the deck's own scoping
+			// THE KEY, NOT THE VERDICT (D-122). This said `Tracked: true` on the
+			// grounds that "these events already passed the deck's own scoping",
+			// which was true of the scope that planned the card and became false
+			// the moment the operator crossed to the console: the fence moves to
+			// the transmitter, and a frozen `true` waved the alert through it
+			// without measuring anything. The fence now holds the tie and this
+			// holds the name to look it up by.
+			//
+			// AN ID THE NORMALIZER REFUSES YIELDS "", which no fence tracks —
+			// the same guard scopeEvents states, on the same reasoning.
+			TrackedAs: trackedKey(e.ID),
 		})
 	}
 	return out
+}
+
+// trackedKey is an event's id as the tracked set keys it, or "" if the
+// normalizer refuses it.
+//
+// ONE OWNER for the arrival's half of the question; `alertKeysOf` is the same
+// normalizer on the set's half, and the two must agree or a zone-only alert the
+// app follows is fenced out of the burst it belongs in.
+func trackedKey(id string) string {
+	key, ok := severe.NormalizeID(id)
+	if !ok {
+		return ""
+	}
+	return key
 }
 
 // subjectOf is what an alert is ABOUT, and it is never empty.
@@ -422,21 +478,59 @@ func subjectOf(e globalfeed.Event) string {
 // chose these events. The events reaching the rail are already inside it, so
 // admission here removes nothing further — it decides ORDER.
 func (t *tickerDeck) fence() lineup.Fence {
-	// A DECK WITHOUT A RADIUS OR A WATCHLIST IS "ALL", not a panic. Both are
-	// wired by the pipeline in production; a deck built for one narrow question
-	// has neither, and the rail is the one path that would dereference them.
-	if t.radius == nil || t.watch == nil {
-		return lineup.Fence{}
-	}
-	r := float64(t.radius.Load())
-	if r <= 0 {
+	// IT ASKS WHAT THE RAIL IS SCOPED TO, NOT WHAT THE LISTENER SET (D-73). On
+	// the console that is the station's service area; on Observer it is the
+	// listener's own filter, which is what this always was.
+	//
+	// A DECK WITHOUT A SCOPE IS "ALL", not a panic — the older tests build one
+	// by hand, and the rail is the one path that would dereference it.
+	s := t.currentScope()
+	if !s.set {
 		return lineup.Fence{} // All: no radius, and the ladder's unfenced order
 	}
-	watch := t.watch()
-	if len(watch) == 0 {
-		return lineup.Fence{}
+	if !s.hasOrigin() {
+		return lineup.Fence{} // a radius with nowhere to measure from
 	}
-	return lineup.Fence{RadiusMi: r, Lat: watch[0].Lat, Lon: watch[0].Lon, HasOrigin: true}
+	// THE SAME SET THE FEED'S FILTER GETS, from the same origin and radius
+	// (scopeToRadius). A zone-only alert has no point, so this is the only thing
+	// that can admit one — and asking it here, of the scope in force, is what
+	// stops a card planned under Observer's scope from carrying its admission
+	// across to the console (D-122).
+	return lineup.Fence{RadiusMi: s.radiusMi, Lat: s.lat, Lon: s.lon, HasOrigin: true,
+		Tracked: t.tiesWithin(s)}
+}
+
+// tiesWithin is the set of zone-only alerts the app follows inside a scope.
+//
+// ONE OWNER, AND THAT IS THE WHOLE POINT (D-1). Its two callers are the fence
+// and the feed's filter, and the rule they are keeping is that those two must
+// answer the SAME way about one zone-only hazard. Two copies of this expression
+// is exactly how they would come to disagree — one of them widened, one of them
+// not — which is the failure D-122 already cost us once.
+//
+// A DECK WITH NO SEVERE INDEX FOLLOWS NOTHING, which is the safe direction: a
+// zone-only alert is refused rather than admitted unmeasured.
+func (t *tickerDeck) tiesWithin(s airScope) map[string]bool {
+	if t.severe == nil {
+		return nil
+	}
+	return t.severe.AlertKeysWithin(s.lat, s.lon, s.radiusMi)
+}
+
+// currentScope is the one place the deck asks what it is scoped to, so the
+// fence and the feed's filter cannot come to disagree about one hazard.
+func (t *tickerDeck) currentScope() airScope {
+	// READ UNDER THE LOCK, CALLED OUTSIDE IT (D-144). The scope function reaches
+	// back into the pipelines and the console; calling it while holding this
+	// deck's mutex would put a second lock order into the one place the cycle
+	// and the setup goroutine already meet.
+	t.mu.Lock()
+	f := t.scope
+	t.mu.Unlock()
+	if f != nil {
+		return f()
+	}
+	return listenerScope(t.radius, t.watch)
 }
 
 // notNew is every event whose "is this new?" question this cycle can settle on
@@ -554,28 +648,27 @@ func (t *tickerDeck) tapeItems(stack []globalfeed.Event) []tty.TickerItem {
 //
 // Filtered with no default location set shows NOTHING, rather than silently
 // falling back to the global stack the UI says is scoped away.
-func (t *tickerDeck) scopeToRadius(events []globalfeed.Event, watch []snapshot.LocationRef) []globalfeed.Event {
-	// A DECK WITHOUT A RADIUS IS "ALL", not a panic — the same rule fence()
-	// states two functions down, and for the same reason: both are wired by the
-	// pipeline in production, and a deck built for one narrow question has
-	// neither. fence() guarded it and this did not, so the cycle would panic
-	// where the fence returned All. A nil dereference in the ticker cycle takes
-	// the process with it.
-	if t.radius == nil {
-		return events
+// THE WATCHLIST IS NO LONGER A PARAMETER (D-73). It was the ORIGIN — the
+// listener's default location — and the origin now comes from the scope, which
+// is the station's on the console. Leaving it in the signature would leave the
+// next reader a spare answer to the question this function just stopped asking
+// it, which is how a fence comes to be measured from two places.
+//
+// A DECK WITHOUT A SCOPE IS "ALL", not a panic — the same rule `fence()` states,
+// and for the same reason: a deck built for one narrow question has neither a
+// radius nor a watchlist, and a nil dereference in the ticker cycle takes the
+// process with it.
+func (t *tickerDeck) scopeToRadius(events []globalfeed.Event) []globalfeed.Event {
+	s := t.currentScope()
+	if !s.set {
+		return events // All
 	}
-	r := int(t.radius.Load())
-	if r <= 0 {
-		return events
-	}
-	if len(watch) == 0 {
+	if !s.hasOrigin() {
+		// FILTERED WITH NOWHERE TO MEASURE FROM SHOWS NOTHING, rather than
+		// silently falling back to the global stack the UI says is scoped away.
 		return nil
 	}
-	var tracked map[string]bool
-	if t.severe != nil {
-		tracked = t.severe.AlertKeysWithin(watch[0].Lat, watch[0].Lon, float64(r))
-	}
-	return scopeEvents(events, watch[0].Lat, watch[0].Lon, float64(r), tracked)
+	return scopeEvents(events, s.lat, s.lon, s.radiusMi, t.tiesWithin(s))
 }
 
 // laneItems builds the tape items for the location-only categories, in the same
@@ -621,10 +714,10 @@ func laneItems(rows []severe.Row) []tty.TickerItem {
 // unchanged. globalfeed.Lane and tty.TickerCategory are both aliases of
 // category.Category, so there is nothing here to translate.
 //
-// IT USED TO TRANSLATE, AND THAT IS THE BUG (#15). A four-arm switch over the
-// lanes, with a default of Warnings, had no arm for LaneEmergency — so an
-// Evacuation Immediate was laned Emergency by the feed and relabelled a
-// Warning on its way to the band, shown in warning colours beside a
+// TRANSLATING HERE IS THE BUG (#15). A four-arm switch over the lanes, with a
+// default of Warnings, has no arm for LaneEmergency — so an Evacuation Immediate
+// laned Emergency by the feed is relabelled a Warning on its way to the band,
+// shown in warning colours beside a
 // thunderstorm warning. The window and the read ladder had it right; only the
 // screen was wrong. C-2 pinned the ruling where the lane is decided during
 // 0.14.0, and this layer, the one that delivers the lane to a listener, was
@@ -635,3 +728,19 @@ func laneItems(rows []severe.Row) []tty.TickerItem {
 // the gap read as a decision. The identity removes the arms and the default
 // together, so a lane added later cannot fall through anything.
 func tickerCategory(e globalfeed.Event) tty.TickerCategory { return globalfeed.LaneOf(e) }
+
+// nudgeRescope asks for a cycle because the fence moved.
+//
+// NON-BLOCKING, AND THAT IS THE WHOLE DESIGN. It is called from the program's
+// goroutine on a swap; a send that could block would put the UI behind a cycle
+// doing network work. A full buffer already means "a re-scope is pending",
+// which is the same answer.
+func (t *tickerDeck) nudgeRescope() {
+	if t == nil || t.rescope == nil {
+		return
+	}
+	select {
+	case t.rescope <- struct{}{}:
+	default:
+	}
+}

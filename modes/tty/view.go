@@ -50,10 +50,26 @@ func (d Dashboard) View() tea.View {
 // ONE TODAY: the ctrl+d window's ARE YOU SURE, on the red confirm tile this app
 // uses for exactly one thing — a question whose answer cannot be taken back.
 func (d Dashboard) confirmOverlay(o render.Opts) string {
+	fg, _ := render.ModalTone(d.darkBG)
+	// THE CARD WINDOW'S OWN TWO (D-118), asked on top of the card so the operator
+	// can still read what they are about to move or discard.
+	//
+	// THE DROP IS ON THE CONFIRM TILE and the MOVE is not: red is what this app
+	// uses for exactly one thing — "a question whose answer cannot be taken back"
+	// — and a card in the wrong position is moved again, while a dropped one is
+	// in the discard pile.
+	if d.modal == modalCard {
+		switch d.cardAct {
+		case cardActionMove:
+			return d.floatModal(o, bcManageWidth, "Change Position", d.movePrompt(o))
+		case cardActionDrop:
+			return d.floatModalToned(o, bcManageWidth, "Drop from Line-Up", d.dropPrompt(o), fg, render.Tok(render.ConfirmBG))
+		}
+		return ""
+	}
 	if d.modal != modalDebug || !d.debug.confirm {
 		return ""
 	}
-	fg, _ := render.ModalTone(d.darkBG)
 	return d.floatModalToned(o, debugConfirmWidth, "", d.debugConfirmLines(o), fg, render.Tok(render.ConfirmBG))
 }
 
@@ -82,7 +98,16 @@ func (d Dashboard) renderModal(o render.Opts) string {
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
-	case modalSetup, modalDebug, modalRelayFault:
+	case modalCard:
+		// THE WINDOW WEARS THE CARD'S GROUND (D-127). `floatModal` is the same
+		// call with the standard tone, so a card that carries no ground of its
+		// own is unchanged.
+		fg, bg := render.ModalTone(d.darkBG)
+		if d.cardGround != "" {
+			bg = d.cardGround
+		}
+		return d.floatModalToned(o, d.modalWidth(), d.cardTitleOf(o), d.cardLines(o), fg, bg) // D-88
+	case modalSetup, modalDebug, modalRelayFault, modalRequest:
 		// The chips are a PINNED FOOTER (OP-5): they render after the scroll
 		// window, so at 80x24 they cannot scroll away exactly when a lost
 		// listener needs them.
@@ -118,6 +143,12 @@ func (d Dashboard) modalWidth() int {
 		return aboutWidth
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
+	case modalCard:
+		// THE CARD'S CLASS, WHICH IS THE LOCATION WINDOW'S (D-88). Both are one
+		// report read at length, and the console lays its tables out against this
+		// window's FLOOR (bcDetailRoom = 85 - 7) — so the number is shared rather
+		// than chosen twice.
+		return stretch(85)
 	case modalSevere:
 		return 130 // every column at 133 cols (the DETECTION column joined at UAT, 2026-08-28); the ladder below
 	}
@@ -154,7 +185,9 @@ func (d Dashboard) modalLines() []string {
 		raw = d.aboutLines(o)
 	case modalSevere:
 		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
-	case modalSetup, modalDebug, modalRelayFault:
+	case modalCard:
+		raw = d.cardLines(o) // asked of the console, at THIS window's opts (D-88)
+	case modalSetup, modalDebug, modalRelayFault, modalRequest:
 		// The pinned-footer windows are laid out at their own box width and
 		// their scroll follows the focus. Asked at the dashboard's width they
 		// would report a body nobody draws.
@@ -218,6 +251,8 @@ func (d Dashboard) footerModalChrome(o render.Opts) (width int, title string, fo
 		// THE WARNING RIDES THE BORDER (HUM LEAD mock, 2026-09-07), so it cannot
 		// scroll away from the control it is about.
 		return debugWidth, d.debugTitle(o, min(o.Width, debugWidth)), d.debugChips(o)
+	case modalRequest:
+		return d.modalWidth(), requestTitle, d.requestChips(o)
 	case modalRelayFault:
 		// No title in the frame: the mock puts *** ERROR *** on its own line
 		// inside the box, over a plain top border.
@@ -245,10 +280,9 @@ func (d Dashboard) detailsModal(o render.Opts) string {
 		// named "Lookup opens Details on Vista FROM THE FIRST FRAME", which is
 		// the property that was quietly not holding.
 		//
-		// The field already exists for precisely this — "the location a lookup
-		// opened Details for, until its data lands" — and was added when the
-		// modal used to show the old top RECENT row instead (UAT 2026-08-28).
-		// The title simply never consulted it.
+		// The field exists for precisely this — "the location a lookup opened
+		// Details for, until its data lands" — and the title must consult it, or
+		// the modal shows the old top RECENT row instead (UAT 2026-08-28).
 		title = d.lookupRef.Label + " " + d.lookupRef.Zip
 	}
 	if d.snap != nil {
@@ -273,6 +307,7 @@ func (d Dashboard) floatModal(o render.Opts, width int, title string, lines []st
 // the [A] alert modal carries its severity tint (UAT 22). Body lines WRAP
 // to the modal width here, in the component (UAT 25: truncation is not a
 // bug any caller can reintroduce).
+
 // floatModalFooter is floatModal with rows PINNED below the scroll window: the
 // body scrolls, the footer does not.
 //
@@ -284,9 +319,9 @@ func (d Dashboard) floatModalFooter(o render.Opts) string {
 	width, title, footer := d.footerModalChrome(o)
 	fg, bg := render.ModalTone(d.darkBG)
 	o.Width = min(o.Width, width)
-	// THE BODY IS BUILT AT THE WIDTH IT IS DRAWN AT. The caller used to pass it
-	// in, computed from the unnarrowed opts, so setup laid itself out for one
-	// width and was measured at another.
+	// THE BODY IS BUILT AT THE WIDTH IT IS DRAWN AT. A width passed in by the
+	// caller is computed from the unnarrowed opts, which lays setup out for one
+	// width and measures it at another.
 	lines, at, end := d.focusBody(o)
 	wrapped, wrapAt := d.wrapModalAt(lines, o.Width)
 	foot := d.wrapModal(footer, o.Width)

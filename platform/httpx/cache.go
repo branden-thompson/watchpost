@@ -86,11 +86,11 @@ const (
 	maxDiskRead = 4
 )
 
-// Large-entry tier (0.12.0 memory pass): an entry over maxMemEntry used to be
-// disk-only and re-read from disk on every access — a large, hot, slow-changing
-// feed (the HMS smoke KMZ, the NWS active-alerts feed in an outbreak, the
-// significant-quake feed) was thus read from disk dozens of times a window and
-// became the app's largest allocator. These keep the recently-read large
+// Large-entry tier: an entry over maxMemEntry is otherwise disk-only and re-read
+// from disk on every access — a large, hot, slow-changing feed (the HMS smoke
+// KMZ, the NWS active-alerts feed in an outbreak, the significant-quake feed) is
+// then read from disk dozens of times a window, which makes it the app's largest
+// allocator. These keep the recently-read large
 // entries resident under their own bounded LRU, so each is read from disk once
 // per change; an entry larger than the whole tier stays disk-only.
 const (

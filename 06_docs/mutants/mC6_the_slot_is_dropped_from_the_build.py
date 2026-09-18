@@ -5,7 +5,7 @@ import pathlib
 # BD-8 undone: the build no longer says what kind of card it is for, so every card
 # reads as the zero slot — a location report — and every alert is declined.
 p = pathlib.Path("platform/lineup/director.go"); s = p.read_text()
-old = """\t\treturn d, []Effect{BuildCard{ID: standby.ID, Slot: standby.Slot, Subject: standby.Subject,
+old = """\t\treturn d, []Effect{BuildCard{ID: standby.ID, Slot: standby.Slot, Subject: standby.Subject, Reports: standby.Reports,
 \t\t\tRefs: standby.Refs, Divert: standby.Divert}}"""
 new = """\t\treturn d, []Effect{BuildCard{ID: standby.ID, Subject: standby.Subject,
 \t\t\tRefs: standby.Refs, Divert: standby.Divert}}"""

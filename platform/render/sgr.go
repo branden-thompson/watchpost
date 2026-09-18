@@ -49,22 +49,44 @@ func ColorOn() bool { return colorOn() }
 const (
 	WordmarkName    = "WATCHPOST"
 	EditionObserver = "Observer"
+
+	// EditionBroadcaster is the station-running dashboard, arriving as the word
+	// this block was written to hold (0.16.0). It is the ONE place either
+	// edition is spelled, so the masthead and the About window cannot disagree
+	// about which experience the build is.
+	EditionBroadcaster = "Broadcaster"
 )
 
 // Wordmark is the masthead: the gradient wordmark, and the edition word beside
-// it in the theme's own light blue. An empty edition is the wordmark alone —
-// the narrowest rung of the header's ladder, and what a surface with no room
-// for the distinction shows.
+// it in that edition's own tone. An empty edition is the wordmark alone — the
+// narrowest rung of the header's ladder, and what a surface with no room for
+// the distinction shows.
 //
 // ONE OWNER, because the header and the About window both draw it and a build
 // whose masthead and About box disagreed about which edition it is would be
 // worse than either wording on its own.
+//
+// AND THE TONE IS PART OF WHAT IT OWNS (D-133). Picking the token here rather
+// than at the two call sites is what keeps the masthead and the About window
+// from disagreeing about the COLOUR as well as the word.
 func Wordmark(edition string) string {
 	mark := TitleGradient(WordmarkName)
 	if edition == "" {
 		return mark
 	}
-	return mark + " " + Tint(edition, Tok(TitleEdition))
+	return mark + " " + Tint(edition, Tok(editionTone(edition)))
+}
+
+// editionTone is which token an edition's word wears.
+//
+// BY THE EDITION CONSTANT, NOT BY A BOOLEAN. A third edition adds a case here
+// and a token beside it; a bool would have to be rewritten into something else
+// the day it stopped being a question with two answers.
+func editionTone(edition string) Token {
+	if edition == EditionBroadcaster {
+		return TitleEditionBroadcaster
+	}
+	return TitleEdition
 }
 
 // TitleGradient renders the app title bold with the reference-CLI interpolated
@@ -103,11 +125,22 @@ func TitleGradient(text string) string {
 // frame opens with the base foreground and every SGR reset re-arms it, so
 // explicitly-colored spans keep their colors and everything else drops to
 // grey 250 (~9:1 on black — comfortably AA). No-op with color off.
-func TintDefault(s string) string {
-	if !colorOn() {
+func TintDefault(s string) string { return TintKeeping(s, "38;5;"+Tok(TextBase)) }
+
+// TintKeeping paints text in `params` and KEEPS whatever is already painted
+// inside it, by making every inner reset fall back to these parameters rather
+// than to the terminal's default.
+//
+// EXTRACTED AT THE SECOND CALLER (D-86). `TintDefault` was the first and the
+// Broadcaster's card grounds are the second: a card's row carries chips with
+// SGR of their own, and a plain wrap would leave the ground behind every chip
+// as a hole in the card. The rule is one line and it was about to be written
+// twice.
+func TintKeeping(s, params string) string {
+	if !colorOn() || params == "" {
 		return s
 	}
-	base := "\x1b[0;38;5;" + Tok(TextBase) + "m"
+	base := "\x1b[0;" + params + "m"
 	return base + strings.ReplaceAll(s, "\x1b[0m", base) + "\x1b[0m"
 }
 
@@ -315,3 +348,7 @@ func StripSGRForTest(s string) string { return stripANSI(s) }
 // inverse, some ignore it — so it may only ever ADD emphasis to a line that
 // reads correctly without it (NFR-6).
 func Italic(s string) string { return sgrRaw(s, "3") }
+
+// Bold is the weight, on its own — a token that bakes it in (FocusName's
+// "1;255") cannot be applied to text that already has a colour of its own.
+func Bold(s string) string { return sgrRaw(s, "1") }

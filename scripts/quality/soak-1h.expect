@@ -1,4 +1,4 @@
-#!/usr/bin/expect -f
+#!/usr/bin/env expect
 # soak-1h.expect — the 0.13.0 VALIDATE soak (RS-8, plan 4.5): one hour of the real dashboard on a pty,
 # radio off, viz off, the severe window opened every ten minutes so the index and its memo cycle under load.
 # Sample beside it with scripts/quality/soak.sh <pid> 1 soak.csv 300 (WATCHPOST_DEBUG_PPROF_ADDR=127.0.0.1:6064).

@@ -1,0 +1,70 @@
+theme = 'catppuccin'
+voice = 'Rishi'
+units = 'metric'
+clock = '24h'
+update_check = true
+ticker_muted = true
+ticker_radius_mi = 75
+
+[[locations]]
+label = 'Bonsall, CA'
+tag = 'BNSL'
+zip = '92003'
+lat = 33.2889
+lon = -117.2153
+tz = 'America/Los_Angeles'
+
+[[locations]]
+label = 'Oceanside, CA'
+tag = 'OCEAN'
+zip = '92054'
+lat = 33.1959
+lon = -117.3795
+tz = 'America/Los_Angeles'
+
+[[recent]]
+label = 'Julian, CA'
+zip = '92036'
+lat = 33.0786
+lon = -116.6017
+tz = 'America/Los_Angeles'
+
+[providers]
+[providers.firms]
+key = 'firms-key-for-the-fixture-not-a-credential'
+
+[keys]
+lookup = ['l']
+quit = ['q', 'ctrl+c']
+
+[radio]
+mode = 'relay'
+cast = 'cast'
+
+[radio.voices]
+[radio.voices.alerts]
+macos = 'Rishi'
+piper = 'en_US-ryan-medium'
+
+[radio.voices.weather]
+macos = 'Samantha'
+piper = 'en_US-amy-medium'
+
+[radio.voices.station]
+macos = 'Daniel'
+
+[radio.tones]
+mode = 'mute'
+muted = ['watch', 'advisory']
+
+[fire]
+radius_km = 80.0
+incident_radius_km = 120.0
+min_frp_mw = 5.0
+bold_frp_mw = 50.0
+min_confidence = 'nominal'
+
+[seismic]
+enabled = true
+lookback_days = 14
+types = ['earthquake', 'quarry blast']

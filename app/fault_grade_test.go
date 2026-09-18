@@ -41,10 +41,10 @@ func TestADeliberateDeclineDoesNotRaiseTheFaultWindow(t *testing.T) {
 	muted.Store(true)
 	st.drain(context.Background())
 
-	if len(st.escalated) != 0 {
+	if len(st.escalated()) != 0 {
 		t.Errorf("a muted read raised the relay-fault window: %q\n"+
 			"That modal says the station is dead; here the listener had simply asked for quiet, "+
-			"and training them to dismiss it is the noise regression fault.go names.", st.escalated)
+			"and training them to dismiss it is the noise regression fault.go names.", st.escalated())
 	}
 }
 
@@ -56,12 +56,12 @@ func TestAnEscalationReachesAPersonWithItsReason(t *testing.T) {
 	nar := testDirector(&scriptVoice{}, nil)
 	deck := &tickerDeck{send: func(tea.Msg) {}, muted: &atomic.Bool{}, voice: nar, seen: loadSeen(t.TempDir(), time.Hour)}
 	st := newStation(t, deck)
-	st.x.run(context.Background(), lineup.Escalate{ID: "burst:a", Reason: "the schedule stopped"})
-	if len(st.escalated) != 1 {
-		t.Fatalf("DR-21's one channel delivered %d escalations, want 1", len(st.escalated))
+	st.x.run(context.Background(), lineup.Escalate{ID: "burst:a", Run: 1, Reason: "the schedule stopped"})
+	if len(st.escalated()) != 1 {
+		t.Fatalf("DR-21's one channel delivered %d escalations, want 1", len(st.escalated()))
 	}
-	if !strings.Contains(st.escalated[0], "the schedule stopped") {
+	if !strings.Contains(st.escalated()[0], "the schedule stopped") {
 		t.Errorf("the escalation lost its reason: %q — a window that says only that the station is quiet "+
-			"tells a listener what they already knew", st.escalated[0])
+			"tells a listener what they already knew", st.escalated()[0])
 	}
 }

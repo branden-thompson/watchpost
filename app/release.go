@@ -62,10 +62,10 @@ func (w *releaseWatch) Status() (running, latest string, behind bool) {
 
 // start asks ONCE, at startup, and is then done (FR-7.1, HUM LEAD 2026-09-08).
 //
-// It used to poll hourly, and that poller is what made this file look like a
-// data feed: a goroutine, an interval, a cancellation path — the shape of a
-// provider, on something that is not one. Deleting it is what makes the ruling
-// visible in the code rather than only in the architecture note.
+// THERE IS NO POLLER. An hourly one makes this file look like a data feed — a
+// goroutine, an interval, a cancellation path: the shape of a provider, on
+// something that is not one. Its absence is what makes the ruling visible in the
+// code rather than only in the architecture note.
 //
 // IT ALSO RETIRES A P10 EXEMPTION rather than carrying one. The ledger row for
 // this function was granted because an hourly ticker is "an unbounded event

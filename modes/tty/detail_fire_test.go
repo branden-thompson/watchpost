@@ -147,9 +147,10 @@ func ellipsizeName(n string) string { return ellipsize(n, 11, false) }
 // A LONG NAME COSTS THE AGE COLUMN, NOT THE CONTAINMENT (HUM LEAD, 2026-09-07).
 //
 // The name is never shortened — that is the ruling this table was built on — so
-// an unusually long one has to come out of something. It used to come out of
-// the RIGHT EDGE: the row ran past the section and was clamped, silently, which
-// took the containment and the age together and left no mark saying so.
+// an unusually long one has to come out of something. With nothing volunteering
+// it comes out of the RIGHT EDGE: the row runs past the section and is clamped,
+// silently, taking the containment and the age together and leaving no mark
+// saying so.
 //
 // "Age can be truncatable - containment is more important." So the age is the
 // column that volunteers, and it goes WHOLE rather than shrinking to "...",

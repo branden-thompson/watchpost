@@ -16,11 +16,10 @@ import (
 // come only from the zones of the listener's own locations. Nothing else on that
 // screen can explain the asymmetry.
 //
-// The note used to appear ONLY when the watchlist was empty, which is the case
-// where a listener already knows why the tab is bare. With locations set — the
-// case where it looks like a national view that has missed something — it said
-// nothing. Found at UAT 2026-09-06 against a real Alabama statement seen in
-// another app.
+// A note shown ONLY on an empty watchlist appears in the one case where a
+// listener already knows why the tab is bare, and says nothing in the case where
+// it looks like a national view that has missed something (UAT 2026-09-06,
+// against a real Alabama statement seen in another app).
 func TestAnEmptyWatchlistTabExplainsItsScopeEvenWithLocationsSet(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	for _, tc := range []struct {

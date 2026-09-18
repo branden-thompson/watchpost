@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Watchpost installer — POSIX sh, no bash-isms; safe under `curl -fsSL <url> | sh`.
 #
 #   curl -fsSL https://raw.githubusercontent.com/branden-thompson/watchpost/main/scripts/install.sh | sh

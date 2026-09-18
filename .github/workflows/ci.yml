@@ -39,6 +39,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with: { go-version: "1.27.0" } # the toolchain the gates are proven on; setup-go pins GOTOOLCHAIN=local, so go.mod's go directive alone would run an older stdlib (quality pass Q1)
+      # The gate oracle needs GNU Make >= 3.82 and refuses older by name; Apple's
+      # /usr/bin/make is 3.81, so the macOS runner installs make and puts gnubin first.
+      - name: gnu-make
+        if: runner.os == 'macOS'
+        run: brew install make && echo "$(brew --prefix)/opt/make/libexec/gnubin" >> "$GITHUB_PATH"
       # One step per gate so a red run names its gate from the API (quality pass PH-3).
       - run: make fmt
       - run: make vet
@@ -50,9 +55,25 @@ jobs:
       - run: make race
       - run: make lint-imports
       - run: make lint-watermark
+      - run: make lint-authoring
+      # No home directory, harness path, internal tree or email in a PUBLIC tree.
+      - run: make lint-identity
+      # The lock that keeps two gate runs off one tree. It takes a lock of its own,
+      # so it is safe inside a locked verify and safe as a step of its own here.
+      - run: make treelock-selftest
       - run: make gate-controls
       - run: make alloc-budget # malloc pins run outside the race detector (quality pass §0.1)
       - run: make dupes # metric D: no duplicate operation without a RATIFIED reason
+      - run: make wires # every closed-set member names a production writer and reader, or is RATIFIED as owed
+      - run: make dupes-selftest # and the duplicate check itself can still fire: both positive controls
+      - run: make wires-selftest # and the check itself can still fail: 7 scan scenarios, 4 ledger cases
+      # EVERY RUN, EVERY PLATFORM, because it costs two tenths of a second and
+      # the gate it front-runs does not run here most of the time: mutant-check
+      # is policy-scheduled below (push / nightly / label), so on an ordinary PR
+      # nothing asks the corpus anything at all. A drifted anchor could reach
+      # main unremarked until the next scheduled run — and a drifted mutant is an
+      # UNMEASURED rule, which is the one failure a corpus must not have quietly.
+      - run: make mutant-anchors
       - run: make release-matrix
       - run: make install-test
         if: runner.os == 'Linux'

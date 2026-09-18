@@ -37,6 +37,21 @@ type Segment struct {
 	SelfIntro bool
 
 	Pause time.Duration // extra silence after the text, beyond the standard gap (UAT 112.3)
+
+	// Source and Detail name the REPORT this segment opens, and they are set on
+	// the first segment of each one only (D-87).
+	//
+	// THE MANIFEST TRAVELS WITH THE WORDS IT SUMMARISES. The console shows the
+	// operator what a read contains before it goes on the air — "01. Watchpost
+	// Fire Report · 3 Hotspots / 10 incidents" — and those counts are things the
+	// Composer works out while composing and used to throw away. Carrying them
+	// on the segment means the summary and the script come from ONE compose and
+	// cannot describe different reads, which is the whole claim the card makes.
+	//
+	// EMPTY ON EVERY OTHER SEGMENT, which is what makes the manifest a list of
+	// SOURCES rather than of sentences: a fire report is many segments and one
+	// line on the card.
+	Source, Detail string
 }
 
 // handoverBuiltin is the line a correspondent speaks when taking over. It is
@@ -77,6 +92,17 @@ type Reports struct {
 	Fire     FireReport
 	Seismic  SeismicReport
 	Maritime MarineReport
+
+	// HazardsUnavailable says the alert feed could not be reached for this read
+	// (FR-8.10).
+	//
+	// AN EMPTY ALERT LIST IS NOT "NO ALERTS" WHEN THE FETCH FAILED. The two are
+	// the same value here and they mean opposite things to a listener: one is a
+	// quiet day, the other is a station that does not know. Broadcasting the
+	// first when the second is true is the report presenting stale-or-absent data
+	// as current, which is precisely what FR-8.10 forbids and what the listener
+	// has no way to detect — the report sounds complete.
+	HazardsUnavailable bool
 }
 
 // Compose builds one broadcast cycle the way NWR does (AI-13): the lead
@@ -98,9 +124,24 @@ func (c Composer) Compose(loc snapshot.Location, products []Product, now time.Ti
 			segs = append(segs, Segment{Key: fmt.Sprintf("alert:%s:%d", a.ID, i), Text: piece, Role: cast.Weather})
 		}
 	}
+	// AND THE LISTENER IS TOLD WHEN THE STATION DOES NOT KNOW (FR-8.10).
+	//
+	// THE WORDS ARE A LITERAL, NOT A SCRIPT LOOKUP, and that is deliberate. A
+	// phrase the script library does not carry is simply not spoken — silence is
+	// how a missing template fails here — so routing this sentence through
+	// `c.say` would make the fix disappear in exactly the case it exists for.
+	// Every other line in this function can afford that; this one cannot.
+	if reports.HazardsUnavailable {
+		const unreachable = "Hazard information is unavailable for this location. The alert feed could not be reached."
+		segs = append(segs, Segment{Key: "alerts-unavailable:" + loc.Label, Text: unreachable, Role: cast.Weather})
+	}
 	for _, p := range products {
 		for i, piece := range Segments(Normalize(p.Text)) {
-			segs = append(segs, Segment{Key: fmt.Sprintf("%s:%s:%d", p.Type, p.ID, i), Text: piece, Role: cast.Weather})
+			seg := Segment{Key: fmt.Sprintf("%s:%s:%d", p.Type, p.ID, i), Text: piece, Role: cast.Weather}
+			if i == 0 {
+				seg.Source, seg.Detail = forecastSource, productSpan(p, now)
+			}
+			segs = append(segs, seg)
 		}
 	}
 	// UAT 115: two seconds of air between reports (forecast → fire → …),
@@ -109,14 +150,17 @@ func (c Composer) Compose(loc snapshot.Location, products []Product, now time.Ti
 	// with the same two seconds of air between reports.
 	if marineSegs := c.MarineSegments(loc.Label, reports.Maritime, imperial, now); len(marineSegs) > 0 {
 		pauseLast(segs, reportPause)
+		marineSegs[0].Source, marineSegs[0].Detail = marineSource, marineSpan(reports.Maritime, now)
 		segs = append(segs, marineSegs...)
 	}
 	if fireSegs := c.FireSegments(loc.Label, reports.Fire, imperial, now); len(fireSegs) > 0 { // UAT 114: after the forecast, before the tail; skipped without fire data
 		pauseLast(segs, reportPause)
+		fireSegs[0].Source, fireSegs[0].Detail = fireSource, fireCounts(reports.Fire)
 		segs = append(segs, fireSegs...)
 	}
 	if seismicSegs := c.SeismicSegments(loc.Label, reports.Seismic, imperial, now); len(seismicSegs) > 0 { // P4: after the fire report; skipped without seismic entries
 		pauseLast(segs, reportPause)
+		seismicSegs[0].Source, seismicSegs[0].Detail = seismicSource, seismicCounts(reports.Seismic)
 		segs = append(segs, seismicSegs...)
 	}
 	pauseLast(segs, tailPause)

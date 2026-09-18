@@ -20,11 +20,10 @@ import (
 // statusLines is the [S] API diagnostics body: three tables — the endpoints and
 // their request counters, the pipelines, and the issues — plus the dumps.
 //
-// ONE COLUMN since 0.14.0. PROVIDERS used to sit beside REQUESTS, and REQUESTS
-// is gone: its counters are columns of the providers table now, because httpx
-// counts per HOST and that is what the table is keyed by (HUM LEAD, UAT
-// 2026-08-30). Every remaining block is a wide table with nothing to pair it
-// with.
+// ONE COLUMN. There is no REQUESTS section to sit beside PROVIDERS: its counters
+// are columns of the providers table, because httpx counts per HOST and that is
+// what the table is keyed by (HUM LEAD, UAT 2026-08-30). Every remaining block is
+// a wide table with nothing to pair it with.
 func (d Dashboard) statusLines() []string {
 	o := d.opts()
 	// Built twice: once at NATURAL width to decide how wide the window wants to

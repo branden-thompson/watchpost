@@ -243,3 +243,58 @@ func (d Dashboard) chooseDebug() (Dashboard, tea.Cmd) {
 		return nil
 	}
 }
+
+// ModalOpen reports whether ANY of Observer's windows is showing (D-65).
+//
+// GENERALISED FROM DiagnosticsOpen. The console advertises Settings, About,
+// Status and Help in its masthead, and the Router composites whichever the
+// operator opened — one door for every window rather than a method per window,
+// which is what a second `OverlayAbout` would have become.
+func (d Dashboard) ModalOpen() bool { return d.modal != modalNone }
+
+// DiagnosticsOpen reports whether the ctrl+d window is showing (D-58).
+//
+// EXPORTED FOR THE ROUTER, which composites this window over the console. It is
+// a narrow, named seam rather than the Router reaching into `d.modal`: the
+// Dashboard owns what "open" means, including the day a second modal state
+// exists.
+func (d Dashboard) DiagnosticsOpen() bool { return d.modal == modalDebug }
+
+// OverlayWindow lays whichever of Observer's windows is open — and its
+// confirmation — over another surface's frame (D-58, generalised at D-65).
+//
+// IT TAKES THE BASE RATHER THAN RETURNING A PRE-COMPOSITED PAIR, and that is a
+// CORRECTNESS requirement, not a style choice. `render.Overlay` centres the
+// modal on the TERMINAL width and positions it against the BASE's height:
+//
+//	x := max(0, (termWidth-Width(modal))/2)
+//	y := max(0, (Height(base)-Height(modal))/2)
+//
+// So compositing the confirmation onto the BARE WINDOW put it at x=70 in a
+// 200-column terminal — past the right edge of the 70-wide box it was meant to
+// cover — and the two rendered SIDE BY SIDE. Found in UAT, on screen, because
+// the test asserted only that the frame CHANGED.
+//
+// BOTH LAYERS GO ONTO THE SAME FULL-SIZE BASE, which is exactly what
+// `Dashboard.View` does with them and why it never had this bug. Keeping that
+// rule in one place is the point of the seam (D-56).
+func (d Dashboard) OverlayWindow(base string, termWidth int) string {
+	if !d.ModalOpen() {
+		return base
+	}
+	o := d.layout().o
+	if win := d.modalView(o); win != "" {
+		base = render.Overlay(base, win, termWidth)
+	}
+	// AND THE CONFIRMATION OVER THAT — a second layer rather than a swapped
+	// body, which is the HUM LEAD's own mock: the red box sits ON TOP of the
+	// diagnostics window and the window underneath is unchanged.
+	if box := d.confirmOverlay(o); box != "" {
+		base = render.Overlay(base, box, termWidth)
+	}
+	return base
+}
+
+// openDiagnostics opens the window directly, for tests that need it open
+// without pressing a key on a particular surface.
+func (d Dashboard) openDiagnostics() Dashboard { return d.toggle(modalDebug) }

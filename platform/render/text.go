@@ -30,7 +30,7 @@ func WrapSegments(segs []string, width int, sep string) []string {
 	if cur != "" {
 		lines = append(lines, cur)
 	}
-	return lines // one entry per row (Q6, L3-F13: callers used to re-split on "\n")
+	return lines // one entry per row, so no caller re-splits on "\n" (Q6, L3-F13)
 }
 
 // Thousands groups a whole number ("12,915") — the one owner of the
@@ -252,19 +252,135 @@ func Plain(s string) string { return plaintext.Text(s) }
 // TruncateCells cuts s to at most n display cells (a wide rune counts two),
 // with no ellipsis — the one owner of "cut to fit" for a row that must not
 // overflow (R5-C-10).
+//
+// IT MEASURES WHAT `Width` MEASURES. An SGR sequence occupies no cells, is
+// never cut through, and a span still open at the cut is CLOSED — the three
+// things that make a cut safe on styled text.
+//
+// IT DID NOT, AND THAT IS THE UAT DEFECT OF 2026-09-10 (HUM LEAD): the console
+// clamps every row of its frame to the terminal's width through here, the
+// masthead's wordmark carries a truecolor escape PER RUNE, and the escapes were
+// counted as content. A 150-cell row was cut after ten visible characters and
+// through the middle of an escape — so the masthead read "WATCHPOS", lost its
+// border, its `Updated:` stamp and its API summary, printed the escape's tail as
+// text, and left a span open that painted the padding a colour that MOVED as the
+// terminal resized. One measure, six symptoms.
+//
+// `Width` has stripped ANSI since it was written. Two measures of the same
+// quantity disagreeing is what "one canonical way to do a thing" forbids, and
+// the disagreement was even NOTED at `status_table.go` and worked around there
+// rather than fixed here — a comment is not a fix.
 func TruncateCells(s string, n int) string {
 	if n <= 0 {
 		return ""
 	}
-	cells := 0
+	// ONE COUNTING PASS FIRST, so the common case — a row that already fits —
+	// returns the string ITSELF and allocates nothing, which is what this did
+	// before it learned about escapes. `open` remembers whether the last
+	// sequence seen was a reset, and it is read only if the cut happens.
+	cut, cells, escAt, open := -1, 0, -1, false
 	for i, r := range s {
+		if escAt >= 0 { // inside a sequence: it ends at its terminator
+			// TERMINATED ON 'm' ONLY, AND DELIBERATELY SO (D-145).
+			//
+			// A non-SGR escape — an OSC title, "\x1b]0;…\x07" — leaves this
+			// scanner "inside a sequence" for every byte that follows, so the
+			// count stops and the function returns its input UNCUT. Red team
+			// found it at BUILD exit and it is REAL but UNREACHABLE: everything
+			// from outside crosses `plaintext.Text` at the boundary, which
+			// strips escapes, so nothing in this app can present one here.
+			//
+			// AND THE OBVIOUS FIX IS WORSE THAN THE BUG. This function's
+			// contract is the line above — IT MEASURES WHAT `Width` MEASURES —
+			// and `Width` is `plaintext.StripSGR`, which knows SGR alone.
+			// Teaching only this half about OSC would make the measurer and the
+			// cutter DISAGREE, which is precisely the class of defect that
+			// produced the 2026-09-10 masthead failure recorded below. The two
+			// move together or not at all; carried as a follow-up rather than
+			// half-fixed here.
+			if r == 'm' {
+				open = s[escAt:i+1] != sgrReset
+				escAt = -1
+			}
+			continue
+		}
+		if r == 0x1b {
+			escAt = i
+			continue
+		}
 		w := RuneCells(r)
 		if cells+w > n {
-			return s[:i]
+			cut = i
+			break
 		}
 		cells += w
 	}
-	return s
+	if cut < 0 {
+		return s
+	}
+	// CLOSE WHAT WAS OPENED, because the caller pads after cutting and an open
+	// span paints the padding.
+	if open {
+		return s[:cut] + sgrReset
+	}
+	return s[:cut]
+}
+
+// sgrReset ends a span. Spelled once so a truncation and a tint cannot disagree
+// about what "off" is.
+const sgrReset = "\x1b[0m"
+
+// SpliceCells replaces the display columns [col, col+Width(patch)) of s with
+// patch, keeping every escape sequence s carries outside that span and never
+// changing the row's width.
+//
+// THE SAME MEASURE AS `Width` AND `TruncateCells` (D-66). A splice by rune index
+// counts an escape's characters as columns and overwrites the escapes it lands
+// on — which is how the priority overlay truncated the card underneath it the
+// first time a takeover was drawn over a real one (HUM LEAD, UAT 2026-09-10).
+//
+// THE BASE'S ESCAPES INSIDE THE SPAN ARE KEPT, cells and all discarded. They
+// cost nothing to draw and they leave the tone AFTER the span exactly as the row
+// intended it — the alternative is guessing what to restore, and a splice that
+// guesses is a splice that recolours a row it was only meant to cover.
+func SpliceCells(s, patch string, col int) string {
+	w := Width(patch)
+	if col < 0 || w == 0 {
+		return s
+	}
+	room := Width(s) - col
+	if room <= 0 {
+		return s // the row ends before the span begins: nothing to cover
+	}
+	if w > room {
+		patch, w = TruncateCells(patch, room), room
+	}
+	var b strings.Builder
+	cells, inEscape, written := 0, false, false
+	for _, r := range s { // one pass over the runes, like splitCells
+		switch {
+		case inEscape:
+			b.WriteRune(r)
+			inEscape = r != 'm'
+			continue
+		case r == 0x1b:
+			b.WriteRune(r)
+			inEscape = true
+			continue
+		}
+		cw := RuneCells(r)
+		switch {
+		case cells+cw <= col, cells >= col+w:
+			b.WriteRune(r)
+		case !written:
+			// THE PATCH ARRIVES ON A CLEAN SLATE and leaves one, so the tone the
+			// row was carrying cannot bleed into it or out of it.
+			b.WriteString(sgrReset + patch + sgrReset)
+			written = true
+		}
+		cells += cw
+	}
+	return b.String()
 }
 
 // RuneCells is one rune's display width (a wide rune is two) — the per-rune

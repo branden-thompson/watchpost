@@ -21,12 +21,12 @@ import (
 //   - In a segment's KEY it marks where the rendering voice belongs, and the
 //     Source substitutes it when composing the CACHE key.
 //
-// The second use is 0.14.0's, and it fixes a latent bug. The tail used to be
-// keyed "tail:" + voiceName, which meant a change of correspondent minted a new
-// SEGMENT identity — the segment was "different" because somebody else was
-// reading it. With a cast that is wrong in a way a listener would notice: every
-// hand-over would invalidate the sign-off. A segment key names WHAT is said; a
-// cache key names what was said AND BY WHOM.
+// THE SECOND USE IS WHY THE TOKEN AND NOT THE NAME. Keying a tail directly as
+// "tail:" + voiceName mints a new SEGMENT identity on a change of correspondent
+// — the segment is "different" because somebody else is reading it — and with a
+// cast that is wrong in a way a listener notices, because every hand-over
+// invalidates the sign-off. A segment key names WHAT is said; a cache key names
+// what was said AND BY WHOM.
 const VoiceToken = "{{voice}}"
 
 // writerKey marks the context the WRITER goroutine renders under.
@@ -563,10 +563,10 @@ func (s *Source) render(ctx context.Context, seg Segment, v Voice) ([]byte, uint
 // hand-over lines both come through it, so the cache bound covers everything
 // the Source holds.
 //
-// The result is stored UNCONDITIONALLY. An earlier design refused to cache a
-// render that straddled a voice change, on the theory that it might be stale —
-// but the key already names the voice, so it cannot be: audio keyed to the
-// voice that produced it stays correct forever, whoever is reading now.
+// The result is stored UNCONDITIONALLY, including a render that straddles a
+// voice change. Such a render cannot be stale, because the key already names the
+// voice: audio keyed to the voice that produced it stays correct forever,
+// whoever is reading now.
 func (s *Source) renderText(ctx context.Context, key string, v Voice, text string) ([]byte, error) {
 	s.mu.Lock()
 	if pcm, ok := s.cache[key]; ok {

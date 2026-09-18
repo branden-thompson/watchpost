@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # dump.sh — ask a running watchpost for a diagnostic dump and print the
 # directory it wrote (plan §2.1, Q0 task 6).
 #

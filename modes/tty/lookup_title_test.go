@@ -17,8 +17,8 @@ import (
 // by the PTY journey on a step named for the property that was not holding.
 //
 // The ref is right there: lookupRef is "the location a lookup opened Details
-// for, until its data lands", added when the modal used to show the old top
-// RECENT row instead. The title just never consulted it.
+// for, until its data lands". A title that does not consult it falls back to the
+// old top RECENT row.
 func TestDetailsFromALookupNamesThePlaceBeforeItsDataLands(t *testing.T) {
 	rendering.SetColorEnabledForTest(false)
 	d := dash(t).(Dashboard)

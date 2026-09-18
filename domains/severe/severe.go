@@ -159,9 +159,9 @@ func Classify(class globalfeed.Class, product string) (Tab, bool) {
 		return TabForecasts, true
 	case strings.Contains(product, "Statement"):
 		// EVERY remaining statement, not only the Special Weather Statement
-		// (MVS-D-57). A Coastal Flood Statement used to fall through to "not
-		// shown", so the office had told the listener something and the app
-		// had quietly decided not to pass it on.
+		// (MVS-D-57). A Coastal Flood Statement falling through to "not shown"
+		// means the office told the listener something and the app quietly
+		// decided not to pass it on.
 		return TabStatements, true
 	}
 	return TabNone, false

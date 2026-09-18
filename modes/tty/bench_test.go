@@ -446,3 +446,42 @@ func TestSetupAllocBudget(t *testing.T) {
 		}
 	}
 }
+
+// BenchmarkConsoleFrame is the console's frame on the path that COSTS: a full
+// pool, a full running order, and real snapshots behind both, so every row
+// joins its weather (D-120). A console with no pool measures the cheap path,
+// which is the mistake the alloc budget spent its whole history making.
+func BenchmarkConsoleFrame(b *testing.B) {
+	c := loadedConsole(b, loadedPoolSize)
+	if loadedJoins(c) == 0 {
+		b.Fatal("the fixture joined no weather; this benchmark is about the cheap path")
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_ = c.View().Content
+	}
+}
+
+// BenchmarkConsoleFrame_Miss is the memo's OTHER path, and it is the one a
+// hit-only number would hide.
+//
+// THE OPERATOR HOLDING AN ARROW KEY IS THE REAL WORST CASE: the slot holds ONE
+// entry, so a selection that alternates never finds it. Every frame here rebuilds
+// both tables and the location index — which is what the console cost on every
+// frame before the memo, so this number should land near the old baseline and
+// says how much the memo can cost when it never helps.
+func BenchmarkConsoleFrame_Miss(b *testing.B) {
+	c := loadedConsole(b, loadedPoolSize)
+	if loadedJoins(c) == 0 {
+		b.Fatal("the fixture joined no weather; this benchmark is about the cheap path")
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+	i := 0
+	for b.Loop() {
+		c.selected = i & 1
+		_ = c.View().Content
+		i++
+	}
+}

@@ -4,6 +4,7 @@ package render
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	studs "github.com/branden-thompson/watchpost/third_party/go-studs/components"
@@ -21,6 +22,7 @@ type DayCell struct {
 type LocationRow struct {
 	Index              int
 	Name, Tag, Zip     string   // Tag = user 5-char label (mock LABEL column, hidden)
+	Population         int      // the POOL's own column (D-98); 0 draws blank
 	Station            string   // observing station id (WX STN column, UAT 60)
 	StationKM          *float64 // station distance (DIST column, UAT 60)
 	Conditions         string
@@ -51,6 +53,24 @@ type LocationRow struct {
 // (marksW + nameMinW = 30), so idx@13, name@18 and everything from LABEL on
 // keeps its offset: label@37,
 // zip@46, cond@55, now@69, hi@79, lo@86, tcond@95, thi@109, tlo@117 → 124.
+
+// padLeft sets a value against the right edge of a field, and leaves a value
+// that overflows alone.
+func padLeft(s string, width int) string {
+	if pad := width - displayWidth(s); pad > 0 {
+		return strings.Repeat(" ", pad) + s
+	}
+	return s
+}
+
+// popW is the POPULATION column: "POPULATION" is ten cells and the widest US
+// city is "8,336,817", so ten is the floor and twelve is the mock's.
+//
+// QUANTITIES LINE UP ON THEIR UNITS. Left-aligned, "1,200,000" and "5,000" put
+// their thousands in different columns and the operator has to READ each one to
+// compare them; right-aligned the column is a bar chart.
+const popW = 12
+
 type baseCol struct {
 	name, header string
 	width        int
@@ -66,6 +86,7 @@ func baseColumns() []baseCol {
 		{"wxstn", "WX STN", 6, 1}, // observing station (UAT 60); "WX" keeps it apart from the NOAA radio transmitter
 		{"dist", "DIST", 6, 1},    // "nnn km" / "nnn mi"
 		{"zip", "ZIP", 7, 1},
+		{"pop", "POPULATION", popW, 1}, // the pool only (D-98)
 		{"cond", "CONDITIONS", 12, 2},
 		{"now", "NOW", 8, 2},
 		{"hi", "HI", 5, 2},
@@ -102,6 +123,22 @@ type layout struct {
 	station, zip          bool
 	extDays               int
 	nameMin               int // NAME fill floor: 24, compressing below the minimal layout width (UAT 35)
+
+	// spaced is whether the five-cell gutter between CATEGORIES is drawn (D-106),
+	// and noWxStn whether WX STN has been given up to pay for the width. Both are
+	// resolved by fitName, in the HUM LEAD's own give-way order.
+	spaced, noWxStn bool
+
+	// pool draws the Broadcaster's LOCATION POOL rather than the listener's
+	// watchlist (D-98): one extra column, POPULATION, and the group says which
+	// list this is.
+	//
+	// A FLAG ON THE LAYOUT, NOT A SECOND TABLE. The pool IS Observer's weather
+	// table with one column added — the same marks, the same bands, the same
+	// temperatures — and a copy would have duplicated every cell formatter in
+	// this file. It defaults false, so Observer is untouched and its goldens say
+	// so.
+	pool bool
 }
 
 func layoutFor(width, days int) layout {
@@ -122,18 +159,54 @@ func layoutFor(width, days int) layout {
 	default:
 		l.tomorrow, l.hiLo = false, false
 	}
-	// Very narrow terminals: the fixed columns of the minimal layout are 44
-	// cells; let NAME shrink (floor 10) so the table never exceeds the width,
-	// and drop ZIP (the last identity column to leave) before NAME breaks.
-	l.nameMin = nameMinW
-	if fixed := rowLen(l.columns(nil)); width-fixed < nameMinW {
-		if width-fixed < 10 {
-			l.zip = false
-			fixed = rowLen(l.columns(nil))
-		}
-		l.nameMin = max(10, width-fixed)
-	}
+	l.fitName(width)
 	return l
+}
+
+// fitName gives NAME the slack, and shrinks it when there is none.
+//
+// Very narrow terminals: the fixed columns of the minimal layout are 44 cells;
+// let NAME shrink (floor 10) so the table never exceeds the width, and drop ZIP
+// (the last identity column to leave) before NAME breaks.
+//
+// IT IS A STEP, NOT A TAIL, BECAUSE THE POOL ADDS A COLUMN AFTER THE FACT
+// (D-104). `PoolTable` sets `l.pool` — which brings POPULATION in — on a layout
+// whose floor had already been measured WITHOUT it, so NAME kept a floor it could
+// no longer afford and the table drew two cells past its own width. Every band
+// row was two cells wider than the running order's beneath it, which is what the
+// HUM LEAD saw as the tables not respecting the right inset.
+func (l *layout) fitName(width int) {
+	// THE LADDER, IN THE HUM LEAD'S OWN ORDER (2026-09-12): "WX STN should be the
+	// first col to get hidden if something doesnt fit". Then the five-cell
+	// category gutter, then ZIP, and NAME compresses last down to a floor of ten.
+	//
+	// A COLUMN BEFORE THE GUTTER IS A REAL CHOICE, and it is the HUM LEAD's: the
+	// gutter is what lets the banded headings touch, and which observing station
+	// reported a place is the least of what deciding to schedule it takes.
+	//
+	// THE POOL PAYS FOR THE GUTTER, AND OBSERVER'S WATCHLIST DOES NOT — yet. The
+	// gutter moves every offset in a shipped table, and whether Observer's own
+	// header row follows the console's is a ruling still open. Holding it to the
+	// pool is what the finding actually named: "Same with CONDITIONS data // both
+	// tables", said of the console's two.
+	//
+	// IT IS A STEP, NOT A TAIL, BECAUSE THE POOL ADDS A COLUMN AFTER THE FACT.
+	// `PoolTable` sets `l.pool` — which brings POPULATION in — on a layout whose
+	// floor had already been measured WITHOUT it, so NAME kept a floor it could no
+	// longer afford and the table drew two cells past its own width.
+	l.spaced, l.noWxStn = l.pool, false
+	room := func() int { return width - rowLen(l.columns(nil)) }
+	for _, give := range []func(){
+		func() { l.noWxStn = l.pool },
+		func() { l.spaced = false },
+		func() { l.zip = false },
+	} { // bounded by the ladder (P10-02)
+		if room() >= nameMinW {
+			break
+		}
+		give()
+	}
+	l.nameMin = max(10, min(nameMinW, room()))
 }
 
 // columns assembles the go-studs column spec for a layout.
@@ -159,7 +232,19 @@ func (l layout) columns(dates []string) []studs.ColumnDefinition {
 		if c.name == "wxstn" || c.name == "zip" { // identifiers of (mostly) one length, not arithmetic: centred in the cell (HUM LEAD UAT 2026-08-28)
 			align = "center"
 		}
+		// POPULATION IS SET IN ITS CELL, NOT BY THE COLUMN (HUM LEAD, UAT
+		// 2026-09-12: "right aligned lining up with 'N' in population").
+		//
+		// BECAUSE IT IS THE LAST COLUMN OF ITS CATEGORY, its width carries the
+		// five-cell gutter (D-106) — and a right-aligned column sets against the
+		// far side of that, three cells out from under its own heading. So the
+		// number is set against the column's OWN edge in `rowData` and the gutter
+		// is left as trailing air, which is what a gutter is.
+
 		cols = append(cols, studs.ColumnDefinition{Name: c.name, Header: c.header, Width: c.width, Alignment: align})
+	}
+	if l.spaced {
+		cols = spaceCategories(cols, groupsFor(l))
 	}
 	if l.extDays > 0 {
 		cols = append(cols, studs.ColumnDefinition{Name: "extsp", Width: extSpacerW})
@@ -180,6 +265,48 @@ func (l layout) columns(dates []string) []studs.ColumnDefinition {
 	return cols
 }
 
+// spaceCategories widens the last column of each CATEGORY so the gap at a
+// category boundary is five cells rather than the two between columns inside one
+// (D-106).
+//
+// HUM LEAD, UAT 2026-09-12: "Priority Data should align with its Title - this is
+// because the gutter between categories is 5 col (to allow the row headers that
+// have solid bkgs to 'touch' in the middle of the gutter)."
+//
+// THE BANDS MEET IN THE MIDDLE OF IT, which is what makes them read as one strip
+// of colour rather than as blocks with gaps. `groupHeader` already stretches
+// adjacent bands to the midpoint of whatever separates them — with a two-cell
+// gutter that midpoint falls a cell and a half short of where the column title
+// then centres, so every first-of-category cell sat left of its own heading.
+//
+// IT IS ADDED TO THE COLUMN, NOT BETWEEN THEM, because the kit's gutter is one
+// number for the whole table. A left-aligned column with three more cells of
+// trailing room is the same thing seen from the other side, and it means the
+// geometry, the data rows and the two header rows all get it from one place.
+func spaceCategories(cols []studs.ColumnDefinition, groups []groupSpec) []studs.ColumnDefinition {
+	of := map[string]string{}
+	for _, g := range groups { // bounded by the spec (P10-02)
+		for _, m := range g.members {
+			of[m] = g.title
+		}
+	}
+	out := append([]studs.ColumnDefinition(nil), cols...)
+	for i := range out { // bounded by the spec (P10-02)
+		if i+1 >= len(out) || out[i+1].NoLeadingGutter {
+			continue
+		}
+		here, next := of[out[i].Name], of[out[i+1].Name]
+		if here != "" && next != "" && here != next {
+			out[i].Width += tableCatExtra
+		}
+	}
+	return out
+}
+
+// tableCatExtra is what a category boundary costs over an ordinary gutter: two
+// cells between columns, five between categories.
+const tableCatExtra = 3
+
 // hides is the single owner of the column-drop policy (UAT-2D order): a
 // base column is absent from the layout when its group or switch is off.
 // LABEL stays hidden — ZIP identifies (UAT 11.2); its data is kept.
@@ -187,10 +314,18 @@ func (l layout) hides(c baseCol) bool {
 	switch c.name {
 	case "label":
 		return true
-	case "wxstn", "dist":
+	case "wxstn":
+		// AND IT IS THE FIRST COLUMN TO GO WHEN THE POOL IS SHORT (HUM LEAD, UAT
+		// 2026-09-12: "WX STN should be the first col to get hidden if something
+		// doesnt fit"). The pool's job is deciding whether a place is worth
+		// scheduling; which station observed it is the least of what that takes.
+		return !l.station || l.noWxStn
+	case "dist":
 		return !l.station
 	case "zip":
 		return !l.zip
+	case "pop":
+		return !l.pool
 	case "hi", "lo":
 		return !l.hiLo
 	}
@@ -266,7 +401,42 @@ func (o Opts) temp5Or(c *float64, loading bool) string {
 // badge — count beside the glyph ('›  2⚠'), both toned by the most severe
 // alert (yellow advisory-grade, red warning-grade; UAT 20.2/20.3). Split
 // from rowData (P10-04).
-func rowMarks(r LocationRow, g Glyphs) [marksW]string {
+// Marks is the prefix block a table row wears — the pointer, the play mark, the
+// seismic glyph, the fire count and the alert count.
+//
+// A TYPE OF ITS OWN BECAUSE TWO TABLES DRAW IT (D-94). The console's line-up
+// carries the same marks as Observer's locations, deliberately: the HUM LEAD's
+// requirement is that "the user doesn't have to relearn what certain things mean
+// in between experiences". Copying `rowMarks` would have been forty lines of
+// identical logic, which the `dupes` gate refuses at twenty-five nodes and which
+// would drift the day a glyph moved.
+//
+// `LocationRow` KEEPS ITS FLAT FIELDS and adapts into this. Embedding would have
+// been tidier and would have broken all thirty-five of its construction sites,
+// most of them in this package's own tests — churn with no reader.
+type Marks struct {
+	Selected, Playing, Repeat bool
+	Seismic                   int // the felt band, 0 for none
+	Fire                      int // events near the row
+	FireHot                   bool
+	HasAlert, WarnAlert       bool
+	AlertCount                int
+}
+
+// marks is one location row's prefix state.
+func (r LocationRow) marks() Marks {
+	return Marks{
+		Selected: r.Selected, Playing: r.Playing, Repeat: r.Repeat,
+		Seismic: r.Seismic, Fire: r.Fire, FireHot: r.FireHot,
+		HasAlert: r.HasAlert, WarnAlert: r.WarnAlert, AlertCount: r.AlertCount,
+	}
+}
+
+// rowMarks is the location table's marks, through the one drawer.
+func rowMarks(r LocationRow, g Glyphs) [marksW]string { return markCells(r.marks(), g) }
+
+// markCells draws the prefix block. THE ONE COPY (D-94).
+func markCells(r Marks, g Glyphs) [marksW]string {
 	// 0.11.0 mock: `›  ▶ ● 5◆ 3⚠ 009.` — 0 pointer · 1-2 spacers · 3 play ·
 	// 4 spacer · 5 seismic glyph · 6 spacer · 7 fire count · 8 ◆ · 9 spacer ·
 	// 10 alert count · 11 ⚠ · 12 spacer.
@@ -317,10 +487,21 @@ func (o Opts) rowData(l layout, r LocationRow) []string {
 		data = append(data, r.Tag)
 	}
 	if l.station {
-		data = append(data, r.Station, o.StationDistance(r.StationKM))
+		// THE CELLS FOLLOW `hides`, WHICH IS THE ONE OWNER OF THE POLICY. Emitting
+		// a WX STN cell for a column the layout had dropped handed the kit one
+		// value too many, and it answered with "Data length does not match column
+		// count" IN PLACE OF THE ROW — every location gone, in a table whose whole
+		// job is to show them.
+		if !l.hides(baseCol{name: "wxstn"}) {
+			data = append(data, r.Station)
+		}
+		data = append(data, o.StationDistance(r.StationKM))
 	}
 	if l.zip {
 		data = append(data, r.Zip)
+	}
+	if l.pool {
+		data = append(data, padLeft(thousands(r.Population), popW))
 	}
 	data = append(data, DisplayCondition(r.Conditions), o.temp5Or(r.Now, r.Loading)+trend)
 	if l.hiLo {
@@ -361,7 +542,17 @@ func (o Opts) LocationTable(rows []LocationRow, days int) string {
 		}
 		break
 	}
-	l := layoutFor(o.Width, days)
+	return o.tableForDated(layoutFor(o.Width, days), rows, o.Width, dates)
+}
+
+// tableFor assembles a table for a layout. THE SECOND CALLER earned it (D-98):
+// the pool is Observer's table with one more column, and a copy of this would
+// have been a copy of every cell formatter above it.
+func (o Opts) tableFor(l layout, rows []LocationRow, width int) string {
+	return o.tableForDated(l, rows, width, nil)
+}
+
+func (o Opts) tableForDated(l layout, rows []LocationRow, width int, dates []string) string {
 	cols := l.columns(dates)
 	// The theme owns every colour in the table (Q4a-004, L5-F4): cells
 	// through CellStyles, and the kit's own $TERM-gated palette is switched
@@ -373,8 +564,9 @@ func (o Opts) LocationTable(rows []LocationRow, days int) string {
 		data := clampCells(o.rowData(l, r), cols)
 		def.Rows = append(def.Rows, studs.EnhancedTableRow{Data: data, CellStyles: rowStyles(cols, r, data)})
 	}
-	dt := studs.NewDataTable(o.Width, def)
-	out := []string{o.groupHeader(l, cols, o.Width), o.columnHeader(l, cols, o.Width)}
+	dt := studs.NewDataTable(width, def)
+	groups := groupsFor(l)
+	out := []string{o.groupHeader(groups, cols, width), o.columnHeader(groups, cols, width)}
 	for _, line := range dt.Rows() {
 		out = append(out, strings.TrimRight(line, " "))
 	}
@@ -489,8 +681,14 @@ func groupsFor(l layout) []groupSpec {
 	if l.hiLo {
 		today = append(today, "hi", "lo")
 	}
+	title, members := "L O C A T I O N", []string{"marks", "num", "name", "wxstn", "dist", "zip"}
+	if l.pool {
+		// THE POOL SAYS WHAT IT IS. An operator looking at two tables on one
+		// surface needs the heading to tell them which list they are in.
+		title, members = "L O C A T I O N     P O O L", append(members, "pop")
+	}
 	g := []groupSpec{
-		{"L O C A T I O N", "L O C A T I O N", GroupLocationBG, []string{"marks", "num", "name", "wxstn", "dist", "zip"}}, // '/ STATION' dropped: radio is location-based (UAT 44.3)
+		{title, title, GroupLocationBG, members}, // '/ STATION' dropped: radio is location-based (UAT 44.3)
 		{"T O D A Y", "", GroupTodayBG, today},
 	}
 	if l.tomorrow {
@@ -514,9 +712,13 @@ func groupsFor(l layout) []groupSpec {
 // like the bands above it; the rows below keep their gutters. The marks
 // column is painted with no label; the EXTENDED spacer is a gap the
 // neighbours share. Colour off: the bands' bracket form, per segment.
-func (o Opts) columnHeader(l layout, cols []studs.ColumnDefinition, tableW int) string {
+// TAKES THE GROUP SPEC, NOT A LAYOUT (D-94). `layout` is the LOCATION table's
+// geometry and this only ever used it to reach `groupsFor`. Passing the spec is
+// what lets the console's line-up draw the same header row rather than a second
+// one that looks like it.
+func (o Opts) columnHeader(groups []groupSpec, cols []studs.ColumnDefinition, tableW int) string {
 	bgOf := map[string]Token{}
-	for _, g := range groupsFor(l) {
+	for _, g := range groups {
 		for _, m := range g.members {
 			bgOf[m] = g.bg
 		}
@@ -525,13 +727,20 @@ func (o Opts) columnHeader(l layout, cols []studs.ColumnDefinition, tableW int) 
 		lo, hi int
 		title  string
 		bg     Token
+		// at is where the TITLE goes when it may not float: the column's own
+		// offset, or -1 for the centred default.
+		at int
 	}
 	var segs []seg
 	for i, g := range tableGeom(cols, tableW) {
 		if g.name == "extsp" { // the spacer: a gap, not a title
 			continue
 		}
-		segs = append(segs, seg{g.off, g.off + g.w - 1, strings.TrimSpace(cols[i].Header), bgOf[g.name]})
+		at := -1
+		if stencilHeader(g.name) {
+			at = g.off
+		}
+		segs = append(segs, seg{g.off, g.off + g.w - 1, strings.TrimSpace(cols[i].Header), bgOf[g.name], at})
 	}
 	for i := 1; i < len(segs); i++ {
 		mid := (segs[i-1].hi + segs[i].lo) / 2
@@ -541,14 +750,41 @@ func (o Opts) columnHeader(l layout, cols []studs.ColumnDefinition, tableW int) 
 	for _, s := range segs {
 		b.WriteString(strings.Repeat(" ", max(0, s.lo-displayWidth(b.String()))))
 		w := s.hi - s.lo + 1
+		// THE BAND IS w CELLS EITHER WAY, and only the title's place in it
+		// differs — a stencil starts where its column starts, so it needs the
+		// whole band including the cell the caption form spends on air.
+		cell := " " + centered(s.title, "", w-2) + " "
+		if s.at >= 0 {
+			cell = PadTo(strings.Repeat(" ", max(0, s.at-s.lo))+s.title, w)
+		}
 		if colorOn() {
-			b.WriteString(sgrRaw(" "+centered(s.title, "", w-2)+" ", Tok(GroupText)+";"+TableHeaderTone(s.bg)))
+			b.WriteString(sgrRaw(cell, Tok(GroupText)+";"+TableHeaderTone(s.bg)))
+		} else if s.at >= 0 {
+			// NO BRACKETS ON A STENCIL. They are the colour-off stand-in for the
+			// band's tint, and a bracket in the first cell would put the stencil
+			// back one column off its numbers — the very defect this fixes.
+			b.WriteString(cell)
 		} else {
 			b.WriteString(bracketTitle(s.title, "", w))
 		}
 	}
 	return b.String()
 }
+
+// stencilHeader reports whether a column's title is a STENCIL of its own cells
+// rather than a NAME for them.
+//
+// `##.` IS THE ONLY ONE. It is not a word describing the column, it is what a
+// row number LOOKS like with its digits taken out — so an operator reads it as
+// the first entry in the list and expects the numbers to hang from it. Centred
+// over a five-cell column a three-cell stencil lands one cell right of every
+// number beneath it, which is what the HUM LEAD saw at UAT (2026-09-12: "'##.'
+// column head misaligned").
+//
+// EVERY OTHER HEADER STAYS CENTRED, which is Observer's shipped look and was not
+// what the finding was about. A title that NAMES a column is a caption over it;
+// a stencil belongs in the column.
+func stencilHeader(name string) bool { return name == "num" }
 
 // tableHeaderDip is how far the column-title row sits below its group band:
 // the band's own hue mixed toward black (a darker tint of the parent — HUM
@@ -569,7 +805,7 @@ func TableHeaderTone(band Token) string {
 // Bands extend to MEET at gutter midpoints (UAT 14.4: labels read as one
 // continuous strip while the columns beneath keep their spacing); the
 // column set and fill width drive every span.
-func (o Opts) groupHeader(l layout, cols []studs.ColumnDefinition, tableW int) string {
+func (o Opts) groupHeader(groups []groupSpec, cols []studs.ColumnDefinition, tableW int) string {
 	geom := tableGeom(cols, tableW)
 	span := func(names []string) (int, int) {
 		lo, hi := -1, -1
@@ -586,7 +822,6 @@ func (o Opts) groupHeader(l layout, cols []studs.ColumnDefinition, tableW int) s
 		}
 		return lo, hi
 	}
-	groups := groupsFor(l)
 	// Resolve every band's raw span, then stretch adjacent bands to MEET at
 	// the midpoint of whatever separates them (plain gutters AND the wider
 	// gutter+spacer gap before EXTENDED - UAT 15.1).
@@ -658,4 +893,36 @@ func (o Opts) StationDistance(km *float64) string {
 		return d
 	}
 	return Tint(d, Tok(NameWarning))
+}
+
+// thousands is a population with separators, and blank for none.
+//
+// BLANK RATHER THAN ZERO, because a place the table has no figure for and a place
+// where nobody lives are different facts, and only one of them is ever true here.
+func thousands(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	s := strconv.Itoa(n)
+	var b strings.Builder
+	for i, c := range s { // bounded by the digits (P10-02)
+		if i > 0 && (len(s)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(c)
+	}
+	return b.String()
+}
+
+// PoolTable is the Broadcaster's LOCATION POOL — Observer's table, with the
+// population column and the group that says which list this is (D-98).
+//
+// THE SAME RENDERER, deliberately: "the same labelling / colorscheme / behavior
+// approach as Observer" is the requirement, and the only way to be sure of it is
+// to be the same code.
+func (o Opts) PoolTable(rows []LocationRow, width int) string {
+	l := layoutFor(width, 0)
+	l.pool = true
+	l.fitName(width) // POPULATION is in now; NAME's floor is measured again with it
+	return o.tableFor(l, rows, width)
 }

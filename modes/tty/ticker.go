@@ -52,13 +52,13 @@ func tickerCatOrder() []TickerCategory { return category.Lanes() }
 // TickerItem is one active alert as the marquee shows it. The app composes Text
 // ("Tornado Warning · the Oklahoma City area  declared 3:42 PM · expires
 // 4:15 PM") from a globalfeed.Event; Category picks the lane and the colour.
-// The item carries the FACTS, not a finished line. It used to arrive
-// pre-formatted from the app, which meant the times on it were written at the
-// moment the ticker cycled — so changing the clock in Settings did nothing until
-// the next cycle up to two minutes later, and the tape sat there in the old
-// format (HUM LEAD, UAT 2026-08-30: "there's a delay").
+// The item carries the FACTS, not a finished line. Arriving pre-formatted from
+// the app, its times would be written at the moment the ticker cycled — so
+// changing the clock in Settings would do nothing until the next cycle up to two
+// minutes later, and the tape would sit there in the old format (HUM LEAD, UAT
+// 2026-08-30: "there's a delay").
 //
-// Formatting here fixes that by construction: the tape is composed from
+// Formatting here settles that by construction: the tape is composed from
 // render.Opts every frame, so the clock preference reaches it the same way the
 // theme does — immediately, because there is nothing older to repaint.
 type TickerItem struct {
@@ -229,18 +229,21 @@ func centerText(text string, width int) string {
 
 // clipToWidth truncates text to at most width display cells (wide runes count
 // as their cell width, so the result never overflows the band).
+//
+// ONE OWNER (D-141). This walked runes asking `render.Width` for each: a lone
+// \x1b measures 0, but '[', '1' and 'm' measure 1 apiece, so EVERY BOLD SPAN
+// COST EIGHT PHANTOM CELLS. Text that fitted was cut anyway, the cut landed
+// mid-escape leaving a bare \x1b in the frame, and the SGR was never closed so
+// the weight bled into whatever followed.
+//
+// `render.TruncateCells` ALREADY KNEW ALL OF THIS — it skips escape sequences
+// when counting and remembers whether the last one was a reset, so it can close
+// a span it cuts through. This function was a second, naive copy of a decision
+// that had one correct owner, which is the same shape as D-129a (a caveat
+// wrapped to the wrong width) and D-138 (a band centred instead of wrapped).
+// Width measurement is not a thing to reimplement per caller.
 func clipToWidth(text string, width int) string {
-	var b strings.Builder
-	used := 0
-	for _, r := range text {
-		cw := render.Width(string(r))
-		if used+cw > width {
-			break
-		}
-		b.WriteRune(r)
-		used += cw
-	}
-	return b.String()
+	return render.TruncateCells(text, width)
 }
 
 // scrollWindow returns a width-cell window into text at the given offset; a
@@ -366,14 +369,13 @@ func laneAfter(cats []TickerCategory, want TickerCategory) int {
 // IT WAS SHOWING.
 //
 // tickerCatIdx is a position in the PRESENT lanes, and the present set changes
-// on every publish as alerts arrive and expire. This used to keep the index in
-// range with `idx %= len(cats)`, which silently teleports it the moment the set
-// shrinks: on [Disasters, Marine, Warnings, Watches] showing Watches (3), a
-// publish where Disasters has gone quiet leaves three lanes and 3 % 3 = 0 —
-// Marine. Disasters and Marine come from the national feed, so they are almost
-// always present AND first in the order, and every shrink dragged the band back
-// onto them. It looked like the rotation was stuck on those two, which is what
-// the HUM LEAD saw.
+// on every publish as alerts arrive and expire. Keeping the index in range with
+// `idx %= len(cats)` silently teleports it the moment the set shrinks: on
+// [Disasters, Marine, Warnings, Watches] showing Watches (3), a publish where
+// Disasters has gone quiet leaves three lanes and 3 % 3 = 0 — Marine. Disasters
+// and Marine come from the national feed, so they are almost always present AND
+// first in the order, and every shrink would drag the band back onto them. From
+// the chair the rotation looks stuck on those two.
 //
 // So the lane is carried as an IDENTITY across the swap: still present, still
 // showing. Only a lane that has actually emptied hands over, and it hands over

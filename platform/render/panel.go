@@ -13,6 +13,7 @@ import (
 // Band renders a full-width section band in the group-header chip style
 // (UAT 43: the RECENT / SEARCHED separator becomes a band like the column
 // groups). Bracketed form when color is off.
+
 // BandRows is a band at the height the options set: the label row alone
 // when thin, else a blank band row above and below it.
 func (o Opts) BandRows(title, short string, width int, bg Token) []string {
@@ -59,10 +60,8 @@ func (o Opts) Panel(title, content string) string { return o.PanelColored(title,
 // the alert module reads red or yellow by statement class (UAT 4.6).
 func (o Opts) PanelColored(title, content, fg string) string {
 	w := max(o.Width, 20)
-	tl, tr, bl, br, hz, vt := "┌", "┐", "└", "┘", "─", "│" // square corners (UAT 10.5)
-	if o.ASCII {
-		tl, tr, bl, br, hz, vt = "+", "+", "+", "+", "-", "|"
-	}
+	bx := LightBox(o.ASCII) // square corners (UAT 10.5)
+	tl, tr, bl, br, hz, vt := bx.TL, bx.TR, bx.BL, bx.BR, bx.Rule, bx.Rail
 	tint := func(t string) string {
 		if fg == "" {
 			return t
@@ -112,10 +111,8 @@ func (o Opts) Box(lines []string, fg, bg string) string { return o.BoxTitled(lin
 // land.
 func (o Opts) BoxTitled(lines []string, title, stamp, fg, bg string) string {
 	w := max(o.Width, 20)
-	tl, tr, bl, br, hz, vt := "┏", "┓", "┗", "┛", "━", "┃"
-	if o.ASCII {
-		tl, tr, bl, br, hz, vt = "+", "+", "+", "+", "-", "|"
-	}
+	bx := HeavyBox(o.ASCII)
+	tl, tr, bl, br, hz, vt := bx.TL, bx.TR, bx.BL, bx.BR, bx.Rule, bx.Rail
 	inset := strings.Repeat(" ", boxInset)
 	out := make([]string, 0, len(lines)+2)
 	out = append(out, tl+boxRule(hz, title, stamp, w-2)+tr)
@@ -299,4 +296,56 @@ func Overlay(base, modal string, termWidth int) string {
 		lipgloss.NewLayer(base),
 		lipgloss.NewLayer(modal).X(x).Y(y).Z(1),
 	).Render()
+}
+
+// BoxGlyphs is one box's border marks.
+//
+// EXTRACTED AT THE SECOND CALLER (D-85). `BoxTitled` spelled the heavy set out
+// inline, and the Broadcaster's cards now draw the same box — "All Main track
+// cards should have BOLD lines (like the masthead)" (HUM LEAD, 2026-09-11). Two
+// literals of six marks each is two places for a corner to drift, and the
+// modularity standard says extract at the second caller.
+type BoxGlyphs struct {
+	TL, TR, BL, BR string
+	// Rule and Rail are the horizontal and the vertical. Named for what they DO
+	// rather than for their weight, so a caller reads as drawing a box rather
+	// than as choosing a font.
+	Rule, Rail string
+
+	// The TEES, for a box DIVIDED into cells (D-95): T where a rail meets the
+	// top rule, B where it meets the bottom, L and R where a rule crosses the
+	// outer rails, and X where both cross.
+	//
+	// THEY ARRIVED WITH THE CONSOLE'S AIR BOX, which is one box holding a label
+	// column and two stacked rows — the first thing in the app to divide a box
+	// rather than merely draw one. Under `--ascii` every mark is `+`, exactly as
+	// the corners already are.
+	T, B, L, R, X string
+}
+
+// HeavyBox is the masthead's box: square corners, bold lines.
+func HeavyBox(ascii bool) BoxGlyphs {
+	return boxGlyphs(ascii, "┏", "┓", "┗", "┛", "━", "┃", "┳", "┻", "┣", "┫", "╋")
+}
+
+// LightBox is the panel's box: square corners, light lines (UAT 10.5).
+func LightBox(ascii bool) BoxGlyphs {
+	return boxGlyphs(ascii, "┌", "┐", "└", "┘", "─", "│", "┬", "┴", "├", "┤", "┼")
+}
+
+// boxGlyphs is one weight's marks, or the ASCII fallback.
+//
+// COLLAPSED BY THE `dupes` GATE, and it was right to: the two sets above were
+// structurally identical and differed only in six literals, which is a
+// duplicate however differently they read. What the collapse actually fixes is
+// that the ASCII RULE was stated twice — a terminal without box drawing has no
+// weights to distinguish, so every weight falls to the same `+ - |`, and a rule
+// written twice is a rule that can come apart.
+func boxGlyphs(ascii bool, tl, tr, bl, br, rule, rail, t, b, l, r, x string) BoxGlyphs {
+	if ascii {
+		return BoxGlyphs{TL: "+", TR: "+", BL: "+", BR: "+", Rule: "-", Rail: "|",
+			T: "+", B: "+", L: "+", R: "+", X: "+"}
+	}
+	return BoxGlyphs{TL: tl, TR: tr, BL: bl, BR: br, Rule: rule, Rail: rail,
+		T: t, B: b, L: l, R: r, X: x}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -194,7 +195,7 @@ func measureCardBuild(t testing.TB, d *radioDeck, client *httpx.Client, ref snap
 	t.Helper()
 	before := totalRequests(client)
 	start := time.Now()
-	segs, err := d.segments(context.Background(), ref, synth.VoiceToken)
+	segs, err := d.segments(context.Background(), ref, synth.VoiceToken, report.Everything())
 	elapsed := time.Since(start)
 	if err != nil {
 		t.Fatalf("segments: %v", err)
@@ -203,7 +204,7 @@ func measureCardBuild(t testing.TB, d *radioDeck, client *httpx.Client, ref snap
 	return cardBuild{elapsed: elapsed, net: after.net - before.net, cache: after.cache - before.cache, segments: len(segs)}
 }
 
-type reqTotals struct{ net, cache int64 }
+type reqTotals struct{ net, cache, attempts int64 }
 
 // totalRequests sums every host's counters, because the card build spans
 // several services and the question is how many round-trips it costs in all.
@@ -212,6 +213,7 @@ func totalRequests(client *httpx.Client) reqTotals {
 	for _, h := range client.RequestStats().Hosts {
 		out.net += h.Net
 		out.cache += h.Cache
+		out.attempts += h.Attempts
 	}
 	return out
 }

@@ -17,15 +17,22 @@ package app
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/cast"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
+	"github.com/branden-thompson/watchpost/domains/radio/synth"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
+
+	"github.com/branden-thompson/watchpost/modes/tty"
 )
 
 // executors performs effects. Every field is a seam into the running station,
@@ -44,6 +51,51 @@ type executors struct {
 	// written from here AND from app/ticker.go, two files constructing the same
 	// takeover message, which is two carriers of one rule (D-1).
 	mc *mastercontrol
+	// compose builds a location report's segments for the card path (0.16.0
+	// P3). It is the deck's own composition, reached as a SEAM rather than a
+	// dependency: the executors know how to turn segments into a script and
+	// nothing about how a report is assembled.
+	compose func(ctx context.Context, ref string, want report.Set) ([]synth.Segment, error)
+
+	// read performs a MAIN-TRACK card — the programme — and returns whether the
+	// words ran out on their own (F-91, BD-9).
+	//
+	// A SECOND PERFORMER, AND THAT IS THE RULING RATHER THAN A CHOICE. The rail
+	// reads through the arbiter because an alert speaks OVER whatever is on;
+	// D-33 rules that a chosen read REPLACES the bed, so the programme is a
+	// source swap on the broadcast engine and cannot travel the narration path.
+	// The fork is `onTheRail`, in one place, and each side names the other.
+	//
+	// IT BLOCKS FOR THE LENGTH OF THE READ, like the arbiter's Run: the Speak
+	// effect comes home Finished when the card has actually been said.
+	//
+	// Nil is a station with no broadcast engine — the pathless build and the
+	// tests that wire no deck — and the executor declines by name.
+	// read puts a main-track card on the air and returns nil when its words
+	// ran out, errReadStopped when something deliberate ended it early (the
+	// operator went to standby, the pump is stopping), and any other error
+	// when the station could not perform — a voice that would not render, a
+	// player that failed (F-150, REVIEW 2026-09-17).
+	read func(ctx context.Context, v lineup.Speak) error
+
+	// propose asks the Producer what cards COULD exist, so the Director can top
+	// the line-up up to its depth (D-40).
+	//
+	// A SEAM, LIKE compose, and for the same reason: the executors know how to
+	// carry an offer and nothing about where locations come from. The producer
+	// may offer more than the Director needs, may offer what is already
+	// scheduled, and may offer on every publish — none of that costs anything,
+	// because THE DIRECTOR HOLDS THE DEPTH. Proposing is cheap by construction:
+	// a proposal is a name and a headline, and DR-7 puts the words at standby.
+	//
+	// Nil is a station with no producer, which offers nothing.
+	propose func() []lineup.Proposal
+
+	// publish hands the settled schedule to the console. Nil when no surface
+	// is listening, which is every build before 0.16.0 and every test that
+	// does not care.
+	publish func(tea.Msg)
+
 	// audible is false when there is nothing to hear — no device, no voice. The
 	// visuals still run and nothing dips: a station with no sound card still
 	// shows the alert on the band.
@@ -116,18 +168,34 @@ type executors struct {
 	// function rather than the deck itself. Every tune the Director asks for is
 	// AUTOMATIC — the dwell elapsed, a cycle ended — and nobody pressed
 	// anything. Lifting the dip here would bring the next location's report in
-	// at full volume over a breaking alert still reading, which is the defect a
-	// capital letter used to carry (radioDeck.Tune vs tune) and which T2.3
-	// removed by giving the duck one owner. The wiring calls the deck's
+	// at full volume over a breaking alert still reading — a distinction that
+	// rested on the case of an identifier (radioDeck.Tune vs tune) until T2.3 gave
+	// the duck one owner. The wiring calls the deck's
 	// unexported tune, and this comment is here so a future caller does not
 	// reach for the exported one.
 	cutTo func(ref string)
 
-	// escalate is the ONE place a fault reaches a person (DR-21). Nil is not
-	// allowed: newExecutors refuses it, because a fault channel wired to
-	// nothing is the failure this whole requirement exists to remove — the
-	// station stops and nobody is told.
-	escalate func(reason string)
+	// bedLabel turns the bed's ref into the words the console shows for it
+	// (F-79). Nil in the modes with no radio, where the bed is never tuned.
+	bedLabel func(ref string) string
+
+	// selected is the relay the OPERATOR chose on the console's bed row, and ""
+	// until they choose one (F-98, D-90).
+	//
+	// IT EXISTS BECAUSE THE ROW HAD TWO PUBLISHERS AND THE FREQUENT ONE WAS
+	// BLIND. The selector published the relay it tuned; this executor published
+	// `describeBed` — the DIRECTOR's bed ref, a watchlist LOCATION key the
+	// station's relay selector never touches — on every settle, which is every
+	// tick. The operator's choice reverted to "(no relay tuned)" about a second
+	// after every keypress, whatever they picked (HUM LEAD, UAT 2026-09-11).
+	//
+	// The same shape `noteBed` already fixed for `Carrying`, one field along.
+	selected func() string
+
+	// noteBed records whether the bed is carrying, so the relay SELECTOR can
+	// publish a truthful row without asking the Director (F-79, D-78). Nil
+	// where there is no console.
+	noteBed func(carrying bool)
 
 	// band is the post-hoc record of what the band was asked (DR-18): a cue
 	// is fire-and-trust, so this is what a test and a diagnostic read after.
@@ -165,11 +233,23 @@ func newExecutors(x executors) *executors {
 	if err := invariant.Check(x.cutTo != nil, "executors are built with a bed to cut over"); err != nil {
 		return nil
 	}
-	if err := invariant.Check(x.escalate != nil, "executors are built with somewhere a stopped schedule can be reported"); err != nil {
-		return nil
-	}
 	x.band = &bandRecord{}
 	return &x
+}
+
+// offer is the producer's answer to a settled schedule, or nothing.
+//
+// AN EMPTY OFFER IS NOT AN EVENT. Returning `Offered{}` with no proposals would
+// be a step the Director takes for no reason, once per publish, for ever.
+func (x *executors) offer() []lineup.Event {
+	if x.propose == nil {
+		return nil // a station with no producer offers nothing
+	}
+	ps := x.propose()
+	if len(ps) == 0 {
+		return nil
+	}
+	return []lineup.Event{lineup.Offered{Proposals: ps}}
 }
 
 // run is the pump's runEffect: one effect in, what it learned out. It may
@@ -180,7 +260,7 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 	}
 	switch v := f.(type) {
 	case lineup.BuildCard:
-		return x.build(v)
+		return x.build(ctx, v)
 	case lineup.Speak:
 		return x.speak(ctx, v)
 	case lineup.CueTicker:
@@ -188,35 +268,60 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 	case lineup.ReleaseTicker:
 		return x.runRelease(v)
 	case lineup.Publish:
-		// NOBODY READS THE LINEUP YET, and the seam that pretended otherwise is
-		// gone (red team 2026-09-05). It was `func(lineup.Lineup) {}` — a no-op
-		// with a nil-guard around it, dispatched every second — which reads as a
-		// wired feature and is not one. The Broadcaster surface that consumes a
-		// published lineup is 0.15.0's; Observer's marquee is driven by the cue
-		// and release effects instead.
+		// THE CONSOLE READS THE LINEUP NOW (0.16.0 P2). This executor was
+		// deliberately empty through 0.15.0 and said so — the seam existed and
+		// had no consumer, which is a very different thing from a no-op that
+		// pretends to be wired.
 		//
-		// THE EFFECT STAYS. It is architecture (PL-6) and the "readers are told
-		// last" ordering depends on it being emitted; what is declined here is
-		// performing it, by name, the way every other unemitted member is.
-		return nil
-	// DUCK AND RESTORE ARE WIRED AND UNREACHED (red team 2026-09-05, I-5).
+		// BOTH FACTS TRAVEL TOGETHER because the effect carries both. A console
+		// told the schedule and the station's state separately can hold a torn
+		// pair — a new lineup beside a stale power — and showing what is
+		// actually going to air is the console's whole job.
+		if x.publish != nil {
+			x.publish(tty.LineupMsg{Lineup: v.Lineup})
+			x.publish(tty.StationMsg{Power: v.Power})
+			// AND WHAT IT IS RIDING ON (F-79, closed at D-78). The third fact
+			// D-62 consolidated into one region, published with the other two so
+			// the console cannot hold a torn set.
+			x.publish(tty.BedMsg{Relay: x.describeBed(v.Bed), Carrying: v.Bed.Carrying})
+			if x.noteBed != nil {
+				// THE SELECTOR NEEDS TO KNOW TOO. It publishes its own BedMsg
+				// when the operator moves, and a message that guessed at
+				// `Carrying` would flicker the row between the two publishers.
+				x.noteBed(v.Bed.Carrying)
+			}
+		}
+		// AND THE PRODUCER IS ASKED TO TOP THE LINE-UP OFF (D-40). No new
+		// effect: `run` already returns what an effect learned, and a publish is
+		// the moment the schedule has SETTLED — which is exactly when the
+		// producer can see what the line-up still needs.
+		//
+		// THE CHAIN IS SELF-LIMITING BY THE DEPTH, not by a counter. Publish →
+		// Offered → the track fills → settle publishes → Offered again → nothing
+		// left to admit → `onOffered` returns NO EFFECTS, so there is no publish
+		// and the chain has nowhere to go.
+		return x.offer()
+	// DUCK AND RESTORE ARE WIRED AND **REACHED** (corrected 2026-09-15, D-139).
 	//
-	// Nothing in production constructs either effect — the Director emits
-	// BuildCard, Speak, CueTicker, ReleaseTicker, Publish, Tune and Escalate,
-	// and no more — so mastercontrol.held is never true, and hold(), unhold(),
-	// takeBack()'s held branch and director.releaseBed() are all inert. That is
-	// stated here because those functions carry some of the heaviest comments
-	// in the release (the F-D5 critical section, the lock-order warning) in the
-	// present tense, and a reader is entitled to know the path is not taken.
+	// BOTH EFFECTS ARE CONSTRUCTED IN PRODUCTION. P5's track-model batch wired
+	// them —
+	// `Director.givingWay` decides from state the Director already holds and
+	// `settle` emits the change (`bed.go:392`, reached from `director.go:842`)
+	// — and `06_docs/wires-ratified.md:51-52` records exactly that. The comment
+	// was not revisited, so a paragraph asserting a path is never taken sat on
+	// the path while it ran.
 	//
-	// IT IS HARMLESS TODAY FOR A REASON WORTH WRITING DOWN. MVS-D-67 — one dip
-	// per drain, the rail owning the bed until its tail has played — was about
-	// a rail of MANY cards bouncing the bed between them. MVS-D-77 made a burst
-	// ONE card, so one Speak is one arbiter sequence and the per-sequence
-	// giveWay/takeBack dips once anyway. The ruling's problem dissolved rather
-	// than being solved by `held`. F-27's design is built on this path, so it
-	// is kept rather than deleted (AP-DEAD-01), and whoever wires it must know
-	// it has never run.
+	// WHY IT MATTERS MORE THAN AN OUT-OF-DATE SENTENCE: the functions below
+	// carry some of the heaviest reasoning in the release — the F-D5 critical
+	// section and the lock-order warning — and a note calling them dead would send
+	// every reader past all of it.
+	//
+	// MVS-D-67 IS STILL SATISFIED, and by a different mechanism than `held`.
+	// The ruling — one dip per drain, the rail owning the bed until its tail
+	// has played — was about a rail of MANY cards bouncing the bed between
+	// them. MVS-D-77 made a burst ONE card, and `giveOrTakeBack` is
+	// EDGE-TRIGGERED: it emits only the change, so a drain of several cards
+	// dips once whether or not `held` is ever set.
 	case lineup.Duck:
 		// The bed gives way. IDEMPOTENT AT THE OWNER, so this and the narration
 		// arbiter's own duck cannot dip twice between them.
@@ -240,17 +345,25 @@ func (x *executors) run(ctx context.Context, f lineup.Effect) []lineup.Event {
 		// it could route around never becomes an Escalate at all, so there is no
 		// second judgement here — a fault reaching this line has already left
 		// the station with nothing to play.
-		x.escalate(v.Reason)
+		//
+		// THE OPERATOR IS TOLD IN THE STATION'S OWN BAND (NFR-7, HUM LEAD ruling
+		// 5), THROUGH THE SEAM THE CLEAR USES — one owner for the set and the
+		// clear, so no build (a station with no audio has no deck) can deliver
+		// one without the other. A build with no console has the debug log.
+		radioDebugLog("schedule:escalate:" + v.Reason)
+		if x.publish != nil {
+			x.publish(tty.StationFaultMsg{Run: v.Run, Reason: v.Reason})
+		}
 		return nil
 	}
 	// The set is closed, so this is unreachable for anything declared today.
 	// It is the safe direction for a member added later without an executor:
 	// reported, never silently dropped.
-	return x.decline(f, "", "the effect set grew a member with no executor")
+	return x.fault(f, "", "the effect set grew a member with no executor")
 }
 
 // build composes a card's words at standby (DR-7).
-func (x *executors) build(v lineup.BuildCard) []lineup.Event {
+func (x *executors) build(ctx context.Context, v lineup.BuildCard) []lineup.Event {
 	switch v.Slot {
 	case lineup.BreakingAlert:
 		// THE COMPOSER, ON THE DIRECTOR'S ORDER (MVS-D-77, S-7). The Refs are
@@ -271,11 +384,34 @@ func (x *executors) build(v lineup.BuildCard) []lineup.Event {
 		// card would sit at standby for ever. Today an empty line is a silent
 		// hold; under the lineup it is a card that cannot be delivered.
 		if sc.Empty() {
-			return x.decline(v, v.ID, "the script rendered nothing to say")
+			return x.fault(v, v.ID, "the script rendered nothing to say")
 		}
 		return []lineup.Event{lineup.Built{ID: v.ID, Script: sc}}
-	case lineup.LocationReport, lineup.SevereRead:
-		return x.decline(v, v.ID, "read by the main track, which arrives with T3.2")
+	case lineup.LocationReport:
+		// THE MAIN TRACK ARRIVED (0.16.0 P3). This decline read "read by the
+		// main track, which arrives with T3.2" from 0.14.0 until now.
+		//
+		// THE EXECUTOR KNOWS NOTHING ABOUT HOW A REPORT IS ASSEMBLED. It asks
+		// the composer for segments and turns them into a script; the deck
+		// owns what a report IS, exactly as the producer owns what an alert is
+		// on the rail path.
+		if x.compose == nil {
+			return x.fault(v, v.ID, "no composer is wired for the main track")
+		}
+		segs, err := x.compose(ctx, v.Subject, v.Reports)
+		if err != nil {
+			return x.fault(v, v.ID, "the report could not be composed: "+err.Error())
+		}
+		sc, contents := scriptFromSegments(segs), contentsFromSegments(segs)
+		if sc.Empty() {
+			// A CARD ON THE AIR WITH NO WORDS IS SILENCE under a callout the
+			// band has already promised (DR-18) — the same rule the takeover
+			// path states two cases above.
+			return x.fault(v, v.ID, "the report composed nothing to say")
+		}
+		return []lineup.Event{lineup.Built{ID: v.ID, Script: sc, Contents: contents}}
+	case lineup.SevereRead:
+		return x.decline(v, v.ID, "read by the severe window's own reader, not the schedule")
 	}
 	return x.decline(v, v.ID, "a structural card's words are fixed at proposal; nothing builds them")
 }
@@ -285,14 +421,26 @@ func (x *executors) build(v lineup.BuildCard) []lineup.Event {
 // a Finished for words never finished would tell the schedule a read happened
 // that did not.
 func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
-	if !onTheRail(v.Slot) {
-		return x.decline(v, v.ID, "read by the main track, which arrives with T3.2")
-	}
 	// Card.To(OnAir) refuses this already; refused again here because this
 	// is the last thing between the schedule and a silent hold with a callout
 	// already promised (DR-18).
+	//
+	// ASKED BEFORE THE FORK, because it is true of both readers: a card with no
+	// words is dead air whichever thing would have performed it.
 	if v.Script.Empty() {
-		return x.decline(v, v.ID, "a card took the air with nothing to say")
+		return x.fault(v, v.ID, "a card took the air with nothing to say")
+	}
+	// ONLY THE RAIL READS THROUGH THE ARBITER (D-33, HUM LEAD 2026-09-09).
+	//
+	// The main track was admitted here for one release and it was wrong: a
+	// chosen read REPLACES the bed rather than speaking over it, so it is not a
+	// narration and it has no business on the narration path. What it IS is the
+	// engine Source adapter (BD-9), and that is what `broadcast` performs.
+	//
+	// THE FORK IS THE TRACK, NOT THE SLOT, and the reason is on the effect: a
+	// transition belongs to whichever lane the card it bookends is on.
+	if v.Track != lineup.AlertRail {
+		return x.broadcast(ctx, v)
 	}
 	// A CARD IS NEVER CONSUMED IN SILENCE (MVS-D-78). The producer already
 	// refuses to send a burst while the listener is muted, but `[M]` can land in
@@ -320,7 +468,11 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	// pauses, the overlap that keeps a render out of every gap — and the live
 	// takeover reads through the same function. Two implementations of a ruling
 	// the HUM LEAD found BY EAR would be two places for it to drift.
-	x.voice.Run(ctx, narrateBreaking, cast.Breaking, x.audible(), func(ctx context.Context, s *speaker) {
+	// ONE CLASS REACHES HERE, because one lane does (D-33). The rotation had a
+	// class of its own for one release; it was retired with the design that
+	// put the programme on the narration path at all.
+	class, role := narrateBreaking, cast.Breaking
+	x.voice.Run(ctx, class, role, x.audible(), func(ctx context.Context, s *speaker) {
 		read = readScript(s, v.Script, readHooks{
 			cue: func(ref string) {
 				// THE READ'S OWN CUES ARE RECORDED TOO (red team 2026-09-05).
@@ -359,6 +511,54 @@ func (x *executors) speak(ctx context.Context, v lineup.Speak) []lineup.Event {
 	return []lineup.Event{lineup.Finished{ID: v.ID}}
 }
 
+// broadcast performs a MAIN-TRACK card: the programme, on the broadcast engine
+// (F-91, BD-9). It is `speak`'s other half, and the two are one function split
+// at `onTheRail` rather than two readers that happen to be called from the same
+// place.
+//
+// THE LISTENER'S MUTE IS NOT ASKED HERE, and the asymmetry with the rail is the
+// point. `[M]` is "do not speak ALERTS to me" — the rail path declines under it
+// because reading a burst inaudibly would MARK every alert read and swallow a
+// tornado warning (MVS-D-78). A location report marks nothing and consumes
+// nothing: declining it would silence a station the operator has deliberately
+// put ON AIR, over a control that belongs to the other programme. The air is
+// what decides who performs, and the Director has already asked it
+// (`advances(MainTrack)`).
+func (x *executors) broadcast(ctx context.Context, v lineup.Speak) []lineup.Event {
+	// A HAZARD IS NEVER READ AS THE PROGRAMME, and this is the one cross-check
+	// the track cannot perform on itself: `Track`'s zero value is MainTrack, so
+	// an effect built without one arrives HERE by default. A rail card read
+	// down this path would lose its attention tone — the engine source plays
+	// words, and the Script's tone is the arbiter's to sound — and its
+	// per-alert callouts with it: a tornado warning, delivered as the weather.
+	//
+	// The SLOT is what makes that constructible and therefore testable. It is
+	// the direction a mistake would actually go, which is why there is no
+	// matching check on the rail's side.
+	if onTheRail(v.Slot) {
+		return x.fault(v, v.ID, "a rail card reached the programme's reader: its tone and its callouts would be lost")
+	}
+	if x.read == nil {
+		return x.fault(v, v.ID, "no reader for the main track: this station has no broadcast engine")
+	}
+	if err := x.read(ctx, v); err != nil {
+		// THE SAME VERDICT THE RAIL RETURNS, and for the same reason (DR-24): a
+		// Finished would tell the schedule a read happened that did not, and a
+		// card that says nothing at all stays ON AIR for ever. A DELIBERATE end
+		// — the operator went to standby, the pump is stopping — is routed; a
+		// voice that could not render is the station failing to perform, and
+		// that is a fault the operator is owed (F-150, REVIEW 2026-09-17).
+		if errors.Is(err, errReadStopped) {
+			return []lineup.Event{lineup.Failed{ID: v.ID, Reason: "the read ended before the words did", Routed: true}}
+		}
+		return x.fault(v, v.ID, "the voice could not render the card: "+err.Error())
+	}
+	if x.publish != nil {
+		x.publish(tty.StationFaultMsg{}) // a read that finished clears the fault band
+	}
+	return []lineup.Event{lineup.Finished{ID: v.ID}}
+}
+
 // runTune cuts the bed over to the location the Director named (T3.2b).
 //
 // FIRE AND TRUST, like the cue: the schedule does not wait for a relay to
@@ -377,8 +577,13 @@ func (x *executors) runTune(v lineup.Tune) []lineup.Event {
 
 // onTheRail reports whether a slot is one the alert rail reads through the
 // narrator. Named here, in the executor that needs the distinction, rather than
-// as a registry column nobody else asks for: the main track's slots arrive
-// with the absorb that reads them (T3.2), and this list shrinks then.
+// as a registry column nobody else asks for.
+//
+// IT NO LONGER DECIDES WHO READS (F-91). It answered "is there a reader for
+// this at all" for one release, and everything it excluded was declined; both
+// lanes perform now, and which one a card is on is the TRACK, carried on the
+// effect. What is left here is the question only the SLOT can answer: does this
+// kind of card put its own callout up as it reads.
 func onTheRail(s lineup.Slot) bool { return s == lineup.BreakingAlert }
 
 // cue asks the band to show the callout for the card taking the air (DR-18).
@@ -399,6 +604,15 @@ func (x *executors) runCue(v lineup.CueTicker) []lineup.Event {
 	// The card is NOT looked up before this returns. Asking the producer for a
 	// burst's id and finding nothing is the normal case, and a report on every
 	// takeover would bury the one that means something.
+	// THE BAND IS THE RAIL'S (D-82). It shows HAZARDS — `cueFor` asks the
+	// producer for the alert behind the id — and a main-track card has none, so
+	// this lookup has always found nothing and reported a decline for every
+	// rotation turn. Harmless while the programme could not speak; now that it
+	// can, a report reads UNDER a hazard and the two would be competing for one
+	// callout.
+	if v.Track != lineup.AlertRail {
+		return nil
+	}
 	if onTheRail(v.Slot) {
 		return nil
 	}
@@ -416,23 +630,50 @@ func (x *executors) runCue(v lineup.CueTicker) []lineup.Event {
 }
 
 // release gives the band its rotation back — the cue's other half (DR-24).
+//
+// AND ONLY THE RAIL'S (F-71, closed at D-82). `clearBand`'s own comment named
+// the defect and its trigger: a LocationReport is routinely on the air without a
+// cue, "so every rotation turn issues a release for a cue that never happened",
+// benign only because one card held the air at a time. D-82 put a report and a
+// hazard on the air together, which is that trigger — the report's exit would
+// wipe the callout for a tornado warning still being read.
+//
+// DECIDED HERE, FROM THE EFFECT, which is where `clearBand` said it had to be:
+// making it conditional inside mastercontrol "would put the rule in two places,
+// and the copy here could not see the schedule that decides it." The lane rides
+// on the effect, so the executor can see it without asking anybody.
 func (x *executors) runRelease(v lineup.ReleaseTicker) []lineup.Event {
+	if v.Track != lineup.AlertRail {
+		return nil // it never held the band; giving back what it did not take would take it from the rail
+	}
 	x.mc.clearBand()
 	x.band.note(lineup.Describe(v))
 	return nil
 }
 
-// decline reports an effect that will not be performed and, when it named a
-// card, fails that card so the schedule re-plans around it (DR-21).
+// decline reports an effect the station will DELIBERATELY not perform — a
+// muted listener, a producer holding nothing, a card another reader owns — and,
+// when it named a card, fails that card so the schedule re-plans around it
+// (DR-21). A decline is ROUTED: the executor refused by name and said why, and
+// the producer offers the alerts again. It is not the station going quiet.
 func (x *executors) decline(f lineup.Effect, id, why string) []lineup.Event {
+	return x.failed(f, id, why, true)
+}
+
+// fault reports an effect the station CANNOT perform as wired — no composer, a
+// compose error, a report with no words, no reader at all. It is NOT routed:
+// `escalation()` grades a failure by whether it was deliberate (I-2), and when
+// a fault stops the schedule the operator is owed the window (F-150).
+func (x *executors) fault(f lineup.Effect, id, why string) []lineup.Event {
+	return x.failed(f, id, why, false)
+}
+
+func (x *executors) failed(f lineup.Effect, id, why string, routed bool) []lineup.Event {
 	x.report(f, why)
 	if id == "" {
 		return nil
 	}
-	// A DECLINE IS ROUTED BY DEFINITION: the executor refused BY NAME and said
-	// why, and the producer offers the alerts again. It is not the station
-	// going quiet, which is what the fault window is for (I-2).
-	return []lineup.Event{lineup.Failed{ID: id, Reason: why, Routed: true}}
+	return []lineup.Event{lineup.Failed{ID: id, Reason: why, Routed: routed}}
 }
 
 // bandRecord is what the band was asked, most recent last, bounded (P10-03).
@@ -495,11 +736,21 @@ func (x *executors) cueFor(ref string) bool {
 
 // eventsFor is the producer's records for a card's refs, in the card's order.
 //
-// ALL OR NOTHING. A burst missing one of its alerts would read as a shorter
-// burst than the one the schedule planned and the operator saw — quieter than
-// the truth, with nothing to say a line went absent. A card that cannot be
-// composed in full is declined and reported.
+// ALL OR NOTHING FOR WHAT IT CANNOT SEE; SKIP WHAT HAS LAPSED (F-110).
 //
+// A burst missing one of its alerts reads as a shorter burst than the one the
+// schedule planned — quieter than the truth, with nothing to say a line went
+// absent. That still governs the two exits below that mean "I do not know": a
+// ref the producer does not hold, and one already read aloud. Both decline the
+// whole card, and declining is self-healing because nothing was marked.
+//
+// A LAPSED ALERT IS DIFFERENT, AND THE HUM LEAD RULED IT (2026-09-16): "valid
+// alerts need to be read, expired alerts must never be." An expired hazard is
+// not a line that went missing, it is a line that must not be spoken — so it is
+// SKIPPED and its live siblings are read. Declining the whole card instead
+// silenced a live tornado warning because a flood advisory beside it had
+// expired.
+
 // AND IT RE-ASKS WHETHER THE ALERT IS STILL LIVE (red team 2026-09-05, I-8).
 // The record is snapshotted when the burst ARRIVES and the card is composed
 // later, so an alert that expired in between was read aloud as current, with
@@ -525,11 +776,30 @@ func (x *executors) eventsFor(refs []string) ([]globalfeed.Event, bool) {
 		if !ok {
 			return nil, false
 		}
-		// THE SAME TEST globalfeed.Active APPLIES, said the same way: an alert
-		// with no Until (a quake's instant) never expires, and one expiring
-		// exactly now is KEPT — the boundary errs towards telling the listener.
+		// A LAPSED ALERT IS SKIPPED, NOT A REASON TO DROP THE CARD (F-110).
+		//
+		// HUM LEAD, 2026-09-16: "expired hazards should never make it to the
+		// air, and ensuring that seems like the job of either the reader or the
+		// composer, either way I agree with the end-user experience — valid
+		// alerts need to be read, expired alerts must never be."
+		//
+		// THIS IS THE COMPOSER'S SEAM, which is why the rule lives here rather
+		// than in the schedule. The Director's `firstExpired` removes a card
+		// with NOTHING live left on it (D-155); a burst is one card carrying
+		// many hazards (MVS-D-77), so the per-hazard half has to be decided
+		// where the words are made.
+		//
+		// DECLINING THE WHOLE CARD IS WHAT IT DID, and that failed both ways at
+		// once: a tornado warning went unread because a flood advisory beside it
+		// had lapsed, and the card was re-offered and re-declined every cycle
+		// with `heldNotice` counting it the whole time — held by the Director,
+		// refused here, forever.
+		//
+		// THE BOUNDARY IS globalfeed.Active's, said the same way: an alert with
+		// no Until (a quake's instant) never expires, and one expiring exactly
+		// now is KEPT — the boundary errs towards telling the listener.
 		if !e.Until.IsZero() && now.After(e.Until) {
-			return nil, false
+			continue
 		}
 		// ALREADY SAID IS NOT SAID AGAIN (I-7). Declining is the same
 		// self-healing exit as the two above: nothing was marked, so the
@@ -539,5 +809,37 @@ func (x *executors) eventsFor(refs []string) ([]globalfeed.Event, bool) {
 		}
 		out = append(out, e)
 	}
+	// NOTHING LIVE IS NOTHING TO SAY. Every hazard on the card has lapsed, so
+	// there are no words to make — and the Director's own sweep takes the card
+	// off the rail on the next tick rather than leaving it to be re-offered.
+	if len(out) == 0 {
+		return nil, false
+	}
 	return out, true
+}
+
+// describeBed turns the bed's ref into the row the operator reads.
+//
+// THE APP IS WHERE A REF BECOMES A PLACE AGAIN (DR-1), which is `refFor`'s own
+// rule: the card and the bed carry identifiers, and what an identifier MEANS is
+// the app's. A Director that knew a relay's call sign would be a Director that
+// knew about radios.
+//
+// NOTHING TUNED READS AS NOTHING, not as a blank: the console has its own words
+// for that, and inventing a second set here would be two answers to one state.
+func (x *executors) describeBed(b lineup.BedState) string {
+	// THE OPERATOR'S CHOICE WINS, BECAUSE THE OPERATOR'S ARROWS ARE WHAT SET THIS
+	// ROW (F-98, D-90). The Director's bed ref is the MONITOR's rotation — a
+	// watchlist location key — and the console's selector walks the STATION's
+	// fence (D-77/D-78). Two different facts rendered into one row, and the row
+	// belongs to the control beside it.
+	if x.selected != nil {
+		if chosen := x.selected(); chosen != "" {
+			return chosen
+		}
+	}
+	if b.Ref == "" || x.bedLabel == nil {
+		return ""
+	}
+	return x.bedLabel(b.Ref)
 }

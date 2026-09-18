@@ -2,13 +2,12 @@ package app
 
 // station_test.go — the shipped path, driven synchronously (T3.10b).
 //
-// WHY A HARNESS AND NOT A SHIM. The read used to be `tickerDeck.breaking`, and
-// twenty-five tests called it directly. It is now the Director's: the producer
-// states what arrived, the Director schedules it, the Composer writes it and the
-// Reader performs it. A test-only `breaking` kept alive beside that would be a
-// pin on a path nobody ships — which is D-12's defect, three tests passing over
-// an inert Settings row because they called the cycle function instead of
-// pressing the key.
+// WHY A HARNESS AND NOT A SHIM. The read is the Director's: the producer states
+// what arrived, the Director schedules it, the Composer writes it and the Reader
+// performs it. A test-only entry point beside that — a `tickerDeck.breaking` the
+// tests call directly — would be a pin on a path nobody ships, which is D-12's
+// defect: three tests passing over an inert Settings row because they called the
+// cycle function instead of pressing the key.
 //
 // So this drives the REAL path, end to end, and the only thing it replaces is
 // the pump's concurrency: effects run in this goroutine and their events feed
@@ -22,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 )
@@ -34,12 +35,11 @@ type station struct {
 	dir     lineup.Director
 	x       *executors
 	reports []string
-	// escalated is every DR-21 escalation the schedule raised — the thing a
-	// LISTENER is told. It was an empty stub, which is what let a nil-deref on
-	// this channel (I-1) and a modal for every deliberate decline (I-2) both
-	// through: the composition "a rail card fails, a person is told" existed in
-	// three pieces and was never joined (red team 2026-09-05, R-11).
-	escalated []string
+	// published is what the executors put on the console seam; escalated()
+	// reads the DR-21 escalations off it — the thing a LISTENER is told. It
+	// was an empty stub once, which is what let a nil-deref on this channel
+	// (I-1) and a modal for every deliberate decline (I-2) both through.
+	published []tea.Msg
 
 	mu      sync.Mutex
 	pending []lineup.Event // what the producer has told the Director, not yet stepped
@@ -70,7 +70,7 @@ func newStation(t testing.TB, deck *tickerDeck) *station {
 		readAloud: deck.seen.has,
 		report:    func(f lineup.Effect, why string) { s.reports = append(s.reports, lineup.Describe(f)+": "+why) },
 		cutTo:     func(string) {},
-		escalate:  func(reason string) { s.escalated = append(s.escalated, reason) },
+		publish:   func(m tea.Msg) { s.published = append(s.published, m) },
 	})
 	if s.x == nil {
 		t.Fatal("the station's executors were refused; a seam is missing")
@@ -138,9 +138,9 @@ func (s *station) run(ctx context.Context, evs ...lineup.Event) {
 	// fixed number of effects, so this terminates — the cap guards against a
 	// future cycle rather than a real limit.
 	//
-	// AND IT FAILS LOUDLY, which the comment used to CLAIM while the loop simply
-	// returned with work still queued (red team 2026-09-05). A silent truncation
-	// here leaves every assertion in the caller running over a PARTIAL sequence,
+	// AND IT FAILS LOUDLY when the cap is reached, rather than returning with work
+	// still queued. A silent truncation here leaves every assertion in the caller
+	// running over a PARTIAL sequence,
 	// which is this release's own recorded failure mode wearing the harness's
 	// clothes.
 	steps := 0
@@ -183,4 +183,13 @@ func planned(t testing.TB, deck *tickerDeck, evs []globalfeed.Event) ([]globalfe
 		}
 	}
 	return out, b.Divert
+}
+
+// escalated is every escalation the schedule raised, as its reason.
+func (s *station) escalated() []string {
+	var out []string
+	for _, f := range escalationsIn(s.published) { // bounded by what was published (P10-02)
+		out = append(out, f.Reason)
+	}
+	return out
 }
