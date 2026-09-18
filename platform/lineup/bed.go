@@ -124,7 +124,10 @@ func (d Director) onTuned(ev Tuned) (Director, []Effect) {
 	if d.bed.ref == ev.Ref && d.bed.live == ev.Live && !d.bed.since.IsZero() {
 		return d, nil // the same bed, still carrying: its turn is already running
 	}
-	d.bed = bed{ref: ev.Ref, live: ev.Live, since: d.now}
+	// ONLY WHAT WAS OBSERVED CHANGES. `carries` is the operator's decision,
+	// `asked` a tune in flight, `ducked` the rail's — a Tuned reports where the
+	// bed went and nothing about any of them.
+	d.bed.ref, d.bed.live, d.bed.since = ev.Ref, ev.Live, d.now
 	return d, nil
 }
 
