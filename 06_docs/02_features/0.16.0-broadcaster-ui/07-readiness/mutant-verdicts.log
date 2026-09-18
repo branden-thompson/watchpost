@@ -1,7 +1,7 @@
-commit: 73bce2bfabbdb695b64ad122becd081b64e85f8c — 2026-09-18T04:27Z
+commit: 4d1cb84696943ccf88c66ae5141ff0d7210e6dce — 2026-09-18T19:50Z
 mutant-verdicts: 380 mutant(s)
   log: dist/mutant-verdicts.log  (watch this file; the run streams into it)
-  ETA: ~86 min, from the per-package rates this corpus actually ran at
+  ETA: ~78 min, from the per-package rates this corpus actually ran at
   every line carries its position, so any read of this file says where the run is
 
 baseline ./platform/lineup/ ... green
@@ -22,8 +22,8 @@ baseline ./app/ ... green
 baseline ./domains/globalfeed/ ... green
 [14/380] CAUGHT   06_docs/mutants/m26_keepworst_removed.py — TestTheCapKeepsTheMostSevereNotTheMostRecent (0.00s)
 baseline ./domains/radio/player/ ... green
-[15/380] CAUGHT   06_docs/mutants/m30_open_ignores_the_dip.py — TestARelayOpenedUnderAnAlertComesUpDipped (0.11s)
-[16/380] CAUGHT   06_docs/mutants/m31_play_before_volume.py — TestARelayOpenedUnderAnAlertComesUpDipped (0.16s)
+[15/380] CAUGHT   06_docs/mutants/m30_open_ignores_the_dip.py — TestARelayOpenedUnderAnAlertComesUpDipped (0.10s)
+[16/380] CAUGHT   06_docs/mutants/m31_play_before_volume.py — TestARelayOpenedUnderAnAlertComesUpDipped (0.15s)
 [17/380] CAUGHT   06_docs/mutants/m33_lane_cut_leaks_into_the_window.py — TestTheLaneCutDoesNotReorderTheWindow (0.00s)
 [18/380] CAUGHT   06_docs/mutants/m34_setlive_false_dropped.py — TestStartingASourceRecordsWhetherItIsLive (0.10s)
 [19/380] CAUGHT   06_docs/mutants/m35_dip_is_no_dip.py — TestTheDipDepthIsPinned (0.00s)
@@ -42,7 +42,7 @@ baseline ./platform/category/ ... green
 [29/380] CAUGHT   06_docs/mutants/m45_forecast_tone_is_marines.py — TestEveryCategoryIsFullyDescribed (0.00s)
 [30/380] CAUGHT   06_docs/mutants/m46_forecasts_hint_false.py — TestTheRulingsThatDecidedThisOrder (0.00s)
 [31/380] CAUGHT   06_docs/mutants/m48_cue_send_deleted.py — TestT03TheCuePrecedesTheWordsForEveryEvent (0.00s)
-[32/380] CAUGHT   06_docs/mutants/m49_cue_after_the_words.py — TestT03TheCuePrecedesTheWordsForEveryEvent (0.01s)
+[32/380] CAUGHT   06_docs/mutants/m49_cue_after_the_words.py — TestT03TheCuePrecedesTheWordsForEveryEvent (0.02s)
 [33/380] CAUGHT   06_docs/mutants/m51_advance_ignores_stop.py — TestAStoppedProgrammeDoesNotAdvanceTheBed (0.00s)
 [34/380] CAUGHT   06_docs/mutants/m52_dwell_arms_for_any_mode.py — TestACycleEndOutsideWatchlistHoldsTheBed (0.00s)
 [35/380] CAUGHT   06_docs/mutants/m53_dwell_restarts_on_every_arm.py — TestARepeatedTunedReportDoesNotRestartTheTurn (0.00s)
@@ -100,10 +100,10 @@ baseline ./platform/category/ ... green
 [87/380] CAUGHT   06_docs/mutants/mA8_the_head_of_the_queue_is_skipped.py — TestTheRailDrainsBeforeTheMainTrackThroughStep (0.00s)
 baseline ./modes/tty/ ... green
 [88/380] CAUGHT   06_docs/mutants/mAA1_the_listeners_location_leaks_to_the_console.py — TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt (0.00s)
-[89/380] CAUGHT   06_docs/mutants/mAA2_a_group_heading_is_drawn_over_nothing.py — TestSettingsOpensOverTheConsole (0.01s)
+[89/380] CAUGHT   06_docs/mutants/mAA2_a_group_heading_is_drawn_over_nothing.py — TestSettingsOpensOverTheConsole (0.00s)
 [90/380] CAUGHT   06_docs/mutants/mAA3_the_window_opens_on_a_row_nobody_can_see.py — TestTheWindowOpensOnARowThisSurfaceDraws (0.00s)
 [91/380] CAUGHT   06_docs/mutants/mAA4_tab_lands_in_a_group_this_surface_hides.py — TestTheKeyboardNeverFocusesAHiddenRow (0.00s)
-[92/380] CAUGHT   06_docs/mutants/mAA5_the_window_ignores_the_surface_entirely.py — TestSetupAllocBudget (0.11s)
+[92/380] CAUGHT   06_docs/mutants/mAA5_the_window_ignores_the_surface_entirely.py — TestSetupAllocBudget (0.12s)
 [93/380] CAUGHT   06_docs/mutants/mAB2_the_pool_is_whatever_is_left_over.py — TestTheScrollControlIsThePoolsAlone (0.00s)
 baseline ./platform/render/ ... green
 [94/380] CAUGHT   06_docs/mutants/mAB3_the_hazard_touches_the_place.py — TestTheHazardNeverTouchesThePlace (0.00s)
@@ -127,18 +127,18 @@ baseline ./platform/render/ ... green
 [112/380] CAUGHT   06_docs/mutants/mAE1_the_bed_takes_the_bare_arrows_back.py — TestTheBedsControlsReachTheStation (0.00s)
 [113/380] CAUGHT   06_docs/mutants/mAE2_the_bed_chip_names_the_wrong_key.py — TestABedWithRelaysIsOffered (0.00s)
 [114/380] CAUGHT   06_docs/mutants/mAF1_the_pool_builds_its_own_row.py — TestThePoolsWeatherIsObserversWeather (0.00s)
-[115/380] CAUGHT   06_docs/mutants/mAF2_the_pool_falls_out_of_the_pipeline.py — TestTheStationsPoolSurvivesACommit (0.03s)
-[116/380] CAUGHT   06_docs/mutants/mAF3_a_moved_station_never_fetches_its_pool.py — TestARestationedPoolIsWhatGetsFetched (0.09s)
+[115/380] CAUGHT   06_docs/mutants/mAF2_the_pool_falls_out_of_the_pipeline.py — TestTheStationsPoolSurvivesACommit (0.04s)
+[116/380] CAUGHT   06_docs/mutants/mAF3_a_moved_station_never_fetches_its_pool.py — TestARestationedPoolIsWhatGetsFetched (0.12s)
 [117/380] CAUGHT   06_docs/mutants/mAG1_the_pool_row_loses_its_fire_and_seismic.py — TestThePoolRowCarriesEveryMark (0.00s)
 [118/380] CAUGHT   06_docs/mutants/mAG2_the_pool_row_opens_observers_selection.py — TestEnterOnAPoolRowOpensThatLocation (0.00s)
 [119/380] CAUGHT   06_docs/mutants/mAG3_a_second_enter_only_closes_a_card.py — TestEnterOnAPoolRowOpensThatLocation (0.00s)
 [120/380] CAUGHT   06_docs/mutants/mAG4_the_recent_pipeline_stops_fetching_seismic.py — TestCadenceTableIsTheDoc (0.00s)
 [121/380] CAUGHT   06_docs/mutants/mAH1_out_of_fence_hazards_stay_on_the_frame.py — TestARailOfUnreadableCardsGivesTheBedBack (0.00s)
 [122/380] CAUGHT   06_docs/mutants/mAH2_the_up_next_box_loses_its_ground.py — TestTheUpNextBoxWearsTwoGrounds (0.00s)
-[123/380] CAUGHT   06_docs/mutants/mAI1_the_station_settings_leak_to_observer.py — TestSetupAllocBudget (0.11s)
+[123/380] CAUGHT   06_docs/mutants/mAI1_the_station_settings_leak_to_observer.py — TestSetupAllocBudget (0.12s)
 [124/380] CAUGHT   06_docs/mutants/mAI2_the_typeahead_writes_the_listeners_default.py — TestTheTransmitterRowResolvesLikeTheDefaultLocation (0.00s)
 [125/380] CAUGHT   06_docs/mutants/mAI3_a_bare_save_ends_the_stations_fallback.py — TestASaveWithNoChoiceLeavesTheStationBorrowing (0.00s)
-[126/380] CAUGHT   06_docs/mutants/mAI4_a_new_radius_is_stored_but_not_derived.py — TestSettingTheServiceRadiusReDerivesThePool (0.07s)
+[126/380] CAUGHT   06_docs/mutants/mAI4_a_new_radius_is_stored_but_not_derived.py — TestSettingTheServiceRadiusReDerivesThePool (0.08s)
 [127/380] CAUGHT   06_docs/mutants/mAI5_the_service_radius_ignores_its_bounds.py — TestTheServiceRadiusRefusesWhatIsOutOfBounds (0.00s)
 [128/380] CAUGHT   06_docs/mutants/mAI6_a_borrowed_epicentre_looks_chosen.py — TestABorrowedEpicentreSaysSo (0.00s)
 [129/380] CAUGHT   06_docs/mutants/mAJ1_the_running_order_forgets_the_weather.py — TestConsoleFrameAllocBudget (0.00s)
@@ -209,7 +209,7 @@ baseline ./platform/report/ ... green
 [193/380] CAUGHT   06_docs/mutants/mBC3_the_lookup_admits_anything.py — TestAPlaceInsideTheRadiusButOutsideThePoolIsValid (0.06s)
 baseline ./platform/bodymemo/ ... green
 [194/380] SURVIVED 06_docs/mutants/mBM1_the_memo_grows_past_its_cap.py — NOTHING FAILS. This behaviour is unpinned.
-[195/380] CAUGHT   06_docs/mutants/mBM2_an_empty_memo_evicts_the_zero_key.py — TestOnlyMastercontrolWritesTheBand (0.04s) [caught only against ./...]
+[195/380] SURVIVED 06_docs/mutants/mBM2_an_empty_memo_evicts_the_zero_key.py — NOTHING FAILS. This behaviour is unpinned.
 [196/380] CAUGHT   06_docs/mutants/mC0_a_read_the_context_ended_still_comes_home_finished.py — TestSpeakEndedByTheContextComesHomeFailedNotFinished (0.00s)
 [197/380] CAUGHT   06_docs/mutants/mC1_an_empty_script_is_built_as_silence.py — TestAScriptThatRendersNothingFailsTheCardRatherThanBuildingSilence (0.00s)
 [198/380] CAUGHT   06_docs/mutants/mC2_the_cue_is_not_recorded.py — TestTheCueReachesTheBandAndIsRecorded (0.00s)
@@ -227,7 +227,7 @@ baseline ./platform/bodymemo/ ... green
 [210/380] CAUGHT   06_docs/mutants/mCB2_the_refused_key_acts_anyway.py — TestEnterIsRefusedForAnUnreachableLocationOnTheConsole (0.00s)
 [211/380] CAUGHT   06_docs/mutants/mCC_a_halted_read_comes_home_finished.py — TestAReadHaltedAfterItStartedComesHomeFailed (0.00s)
 [212/380] CAUGHT   06_docs/mutants/mCC1_the_pool_is_the_service_radius_again.py — TestAPlaceInsideTheRadiusButOutsideThePoolIsValid (0.06s)
-[213/380] CAUGHT   06_docs/mutants/mCC2_the_fence_admits_everywhere.py — TestARealPlaceOutsideTheRadiusIsNamedButNotWithin (0.05s)
+[213/380] CAUGHT   06_docs/mutants/mCC2_the_fence_admits_everywhere.py — TestARealPlaceOutsideTheRadiusIsNamedButNotWithin (0.06s)
 baseline ./platform/debounce/ ... green
 [214/380] CAUGHT   06_docs/mutants/mCC3_the_debounce_takes_a_stale_answer.py — TestAnAnswerForAnOlderEditIsRefused (0.00s)
 [215/380] CAUGHT   06_docs/mutants/mCC4_every_keystroke_asks.py — TestThePauseIsLongEnoughToBeAPause (0.00s)
@@ -258,7 +258,7 @@ baseline ./platform/debounce/ ... green
 [240/380] CAUGHT   06_docs/mutants/mD3_a_card_with_words_is_built_anyway.py — TestACardThatArrivesWithItsWordsTakesTheAirAndIsNeverBuilt (0.00s)
 [241/380] CAUGHT   06_docs/mutants/mD4_the_card_takes_the_air_and_nobody_is_told.py — TestACardThatArrivesWithItsWordsTakesTheAirAndIsNeverBuilt (0.00s)
 [242/380] CAUGHT   06_docs/mutants/mD5_the_one_ahead_is_lost_behind_a_structural_card.py — TestACardThatArrivesWithItsWordsTakesTheAirAndIsNeverBuilt (0.00s)
-[243/380] CAUGHT   06_docs/mutants/mD6_the_lane_is_fed_from_the_worker.py — TestTheBandIsReleasedBeforeTheNextCardIsCued (0.05s)
+[243/380] CAUGHT   06_docs/mutants/mD6_the_lane_is_fed_from_the_worker.py — TestTheDuckIsNotOvertakenByTheReadItBrackets (0.05s)
 [244/380] CAUGHT   06_docs/mutants/mD8_preparation_runs_ahead_of_the_air.py — TestAnArrivalIsPlannedQueuedPreparedAndPublished (0.00s)
 [245/380] CAUGHT   06_docs/mutants/mD9_the_second_door_is_left_open.py — TestOnlyAReportComposesItsTextAtStandby (0.00s)
 [246/380] CAUGHT   06_docs/mutants/mDA_a_step_publishes_twice.py — TestAStepPublishesOnceAndLast (0.00s)
@@ -267,26 +267,26 @@ baseline ./platform/debounce/ ... green
 [249/380] CAUGHT   06_docs/mutants/mDD_the_lane_outlives_the_loop.py — TestTheLaneRetiresWithTheLoop (0.00s)
 [250/380] CAUGHT   06_docs/mutants/mDE_a_queued_run_is_discarded_on_a_coin_flip.py — the test binary did not survive it: panic: test timed out after 10m0s
 [251/380] CAUGHT   06_docs/mutants/mDF_an_effect_is_dropped_from_its_run.py — TestALongRunningEffectDoesNotDelayTheNextEvent (5.00s)
-[252/380] CAUGHT   06_docs/mutants/mE0_the_duck_is_not_idempotent.py — TestDirectorBreakingSuspendsAndResumesARead (0.51s)
+[252/380] CAUGHT   06_docs/mutants/mE0_the_duck_is_not_idempotent.py — TestDirectorBreakingSuspendsAndResumesARead (0.50s)
 [253/380] CAUGHT   06_docs/mutants/mE1_the_bed_is_taken_back_when_nobody_dipped_it.py — TestDirectorMutedAndSilentNeverDuck (0.00s)
 [254/380] CAUGHT   06_docs/mutants/mE3_the_duck_effect_never_reaches_the_bed.py — TestTheDuckAndItsRestoreReachTheEffector (0.00s)
 [255/380] CAUGHT   06_docs/mutants/mE4_a_held_bed_is_lifted_between_cards.py — TestTheBedIsDippedOnceForAWholeDrain (0.00s)
 [256/380] CAUGHT   06_docs/mutants/mE5_the_held_bed_is_never_given_back.py — TestTheDuckAndItsRestoreReachTheEffector (0.00s)
 [257/380] CAUGHT   06_docs/mutants/mE6_the_rail_lifts_the_bed_over_a_live_read.py — TestTheRailNeverLiftsTheBedOverALiveRead (0.00s)
-[258/380] CAUGHT   06_docs/mutants/mE7_the_dip_and_the_claim_are_not_atomic.py — TestTheBedIsNeverLiftedBetweenTheDipAndTheClaim (0.01s)
+[258/380] CAUGHT   06_docs/mutants/mE7_the_dip_and_the_claim_are_not_atomic.py — TestTheBedIsNeverLiftedBetweenTheDipAndTheClaim (0.04s)
 [259/380] CAUGHT   06_docs/mutants/mF0_the_space_read_sounds_a_tone_again.py — TestEventReaderDucksSpeaksRestoresAndOverlaysThePanel (0.01s)
 [260/380] CAUGHT   06_docs/mutants/mF1_the_bed_barely_dips.py — TestTheDipDepthIsPinned (0.00s)
 [261/380] CAUGHT   06_docs/mutants/mFR55_the_on_air_boundary_leaves_the_surface.py — TestTheBedRidesInTheStationSection (0.00s)
 [262/380] CAUGHT   06_docs/mutants/mFR56_the_boundary_is_cut_mid_sentence.py — TestTheGainControlReflows (0.00s)
-[263/380] CAUGHT   06_docs/mutants/mG0_a_bound_returns_mid_read.py — TestBreakingBurstIsOneSequentialScriptNoOverlap (4.08s)
-[264/380] CAUGHT   06_docs/mutants/mG1_the_tone_follows_the_running_order.py — TestABurstSoundsOneToneForItsHighestSeverityEvent (18.34s)
+[263/380] CAUGHT   06_docs/mutants/mG0_a_bound_returns_mid_read.py — TestBreakingBurstIsOneSequentialScriptNoOverlap (4.04s)
+[264/380] CAUGHT   06_docs/mutants/mG1_the_tone_follows_the_running_order.py — TestABurstSoundsOneToneForItsHighestSeverityEvent (18.16s)
 [265/380] CAUGHT   06_docs/mutants/mG2_the_render_moves_back_into_the_pause.py — TestTheRetryPathAlsoCuesNothingOnceTheSequenceEnded (0.00s)
 [266/380] CAUGHT   06_docs/mutants/mG3_the_first_alert_renders_in_the_heads_pause.py — TestT03TheCuePrecedesTheWordsForEveryEvent (0.00s)
 [267/380] CAUGHT   06_docs/mutants/mG4_the_tone_tie_falls_back_to_position.py — TestTheToneComesFromTheWorstEventNotTheFirst (0.00s)
 [268/380] CAUGHT   06_docs/mutants/mGL1_a_glyph_kind_is_skipped_without_notice.py — TestEveryGlyphFieldCanBePaired (0.00s)
 [269/380] CAUGHT   06_docs/mutants/mH0_nothing_left_to_wait_skips_the_check.py — TestHoldRestChecksTheAirWhenTheWorkOutranTheSound (0.00s)
 [270/380] CAUGHT   06_docs/mutants/mH2_the_cue_goes_up_without_checking_the_air.py — TestTheRetryPathAlsoCuesNothingOnceTheSequenceEnded (0.00s)
-[271/380] CAUGHT   06_docs/mutants/mI0_the_schedule_abandons_its_goroutines.py — TestAScheduleLeavesNoGoroutineBehind (0.35s)
+[271/380] CAUGHT   06_docs/mutants/mI0_the_schedule_abandons_its_goroutines.py — TestAScheduleLeavesNoGoroutineBehind (0.30s)
 [272/380] CAUGHT   06_docs/mutants/mJ0_a_paused_read_holds_the_bed.py — TestAPausedReadReleasesTheBedAndResumesOnRequest (2.00s)
 [273/380] CAUGHT   06_docs/mutants/mJ1_settle_promotes_a_paused_read.py — TestAPausedReadReleasesTheBedAndResumesOnRequest (2.00s)
 [274/380] CAUGHT   06_docs/mutants/mJ2_closing_the_window_waits_for_the_read.py — TestTheWindowsCloseHookDoesNotWaitForTheRead (0.00s)
@@ -295,7 +295,7 @@ baseline ./platform/debounce/ ... green
 [277/380] CAUGHT   06_docs/mutants/mK0_the_dwell_does_not_restart_at_the_decision.py — TestALiveRelayAdvancesWhenItsDwellElapses (0.00s)
 [278/380] CAUGHT   06_docs/mutants/mK1_the_synth_broadcast_dwells_like_a_relay.py — TestTheBedHoldsWhenItShould (0.00s)
 [279/380] CAUGHT   06_docs/mutants/mK2_a_takeover_cannot_be_paused_through.py — TestAPausedReadReleasesTheBedAndResumesOnRequest (0.00s)
-[280/380] CAUGHT   06_docs/mutants/mK3_two_presses_race_the_same_reader.py — TestConcurrentPressesNeverMarkARowThatIsNotReading (0.00s)
+[280/380] CAUGHT   06_docs/mutants/mK3_two_presses_race_the_same_reader.py — TestTwoPressesCannotRaceTheSameReader (0.00s)
 [281/380] CAUGHT   06_docs/mutants/mK4_a_lone_station_retunes_itself.py — TestAWatchlistOfOneNeverRetunesItself (0.00s)
 [282/380] CAUGHT   06_docs/mutants/mK5_a_queued_read_cannot_be_paused.py — TestAQueuedReadCanBePausedBeforeItTakesTheAir (0.00s)
 [283/380] CAUGHT   06_docs/mutants/mK6_a_pause_claims_a_dead_read.py — TestAPauseNeverClaimsACancelledRead (0.00s)
@@ -304,7 +304,7 @@ baseline ./platform/debounce/ ... green
 [286/380] CAUGHT   06_docs/mutants/mKB1_the_console_ignores_the_users_key_table.py — TestAnOverrideInTheKeyTableChangesTheConsolesChord (0.00s)
 [287/380] CAUGHT   06_docs/mutants/mKB2_the_help_prints_a_chord_the_operator_rebound.py — TestAnOverrideInTheKeyTableChangesTheConsolesChord (0.00s)
 [288/380] CAUGHT   06_docs/mutants/mL0_the_on_air_pause_claims_a_dead_read.py — TestThePauseAndTheReportNeverDisagree (0.00s)
-[289/380] CAUGHT   06_docs/mutants/mL1_a_paused_queued_read_holds_the_bed.py — TestAPausedQueuedReadGivesTheBedBack (2.01s)
+[289/380] CAUGHT   06_docs/mutants/mL1_a_paused_queued_read_holds_the_bed.py — TestAPausedQueuedReadGivesTheBedBack (2.00s)
 [290/380] CAUGHT   06_docs/mutants/mL2_a_dead_read_is_promoted_to_the_air.py — TestThePauseAndTheReportNeverDisagree (0.00s)
 [291/380] CAUGHT   06_docs/mutants/mL3_a_dead_waiting_read_holds_the_bed.py — TestADeadWaitingReadDoesNotHoldTheBed (0.00s)
 [292/380] CAUGHT   06_docs/mutants/mL4_the_enumerations_on_air_third_is_dropped.py — TestAPausedReadReleasesTheBedAndResumesOnRequest (0.00s)
@@ -323,7 +323,7 @@ baseline ./platform/debounce/ ... green
 [305/380] CAUGHT   06_docs/mutants/mP1_the_composer_waits_for_the_power.py — TestAnArrivalIsPlannedQueuedPreparedAndPublished (0.00s)
 [306/380] CAUGHT   06_docs/mutants/mP2_a_stale_card_is_tossed_instead_of_rehydrated.py — TestAStandingByCardsWordsAreAskedForAgainRatherThanDropped (0.00s)
 [307/380] CAUGHT   06_docs/mutants/mP3_the_refresh_asks_again_every_tick.py — TestARefreshIsAskedForOnceWhileItIsInFlight (0.00s)
-[308/380] CAUGHT   06_docs/mutants/mP4_the_refresh_competes_with_the_rail.py — TestTheMergedStationHoldsItsPropertiesUnderRandomTiming (0.02s)
+[308/380] CAUGHT   06_docs/mutants/mP4_the_refresh_competes_with_the_rail.py — TestTheMergedStationHoldsItsPropertiesUnderRandomTiming (0.03s)
 [309/380] CAUGHT   06_docs/mutants/mP5_a_running_station_refreshes_the_card_behind_the_read.py — TestARunningStationDoesNotRefreshTheCardWaitingBehindTheOneOnAir (0.00s)
 [310/380] CAUGHT   06_docs/mutants/mP6_live_holds_the_queue_head_on_standby.py — TestTheLiveRowCarriesTheStandbyNoticeAtRest (0.00s)
 [311/380] CAUGHT   06_docs/mutants/mP7_the_live_slot_shunts_between_reads.py — TestGoingOnAirFillsTheLiveRow (0.00s)
@@ -372,14 +372,14 @@ baseline ./domains/radio/synth/ ... green
 [353/380] CAUGHT   06_docs/mutants/mV0_the_fault_window_arms_no_tick.py — TestTheRelayFaultWindowRespondsToTheKeys (0.00s)
 [354/380] CAUGHT   06_docs/mutants/mV1_the_fault_window_marks_focus_its_own_way.py — TestASCIIFramesCarryNothingButASCII (0.01s)
 [355/380] CAUGHT   06_docs/mutants/mV2_a_repeat_silence_report_rebuilds_the_window.py — TestASecondSilenceReportDoesNotDisturbTheOpenWindow (0.00s)
-[356/380] CAUGHT   06_docs/mutants/mV3_the_fault_windows_moving_parts_leave_the_memo_key.py — TestTheMemoKeyCoversEverythingTheFrameShows (0.09s)
+[356/380] CAUGHT   06_docs/mutants/mV3_the_fault_windows_moving_parts_leave_the_memo_key.py — TestTheMemoKeyCoversEverythingTheFrameShows (0.10s)
 [357/380] CAUGHT   06_docs/mutants/mV4_the_debug_windows_cursor_leaves_the_memo_key.py — TestTheMemoKeyCoversEverythingTheFrameShows (0.09s)
 [358/380] CAUGHT   06_docs/mutants/mV5_a_wrapped_row_falls_back_to_the_margin.py — TestARowWrapsUnderItsOwnValue (0.00s) [caught only against ./...]
 [359/380] CAUGHT   06_docs/mutants/mV6_the_body_is_cut_instead_of_wrapped.py — TestDropAsksAndExplainsWhatItDoes (0.00s)
 [360/380] CAUGHT   06_docs/mutants/mW1_an_empty_slot_still_opens_a_window.py — TestAnEmptySlotNumberOpensNothing (0.00s)
 [361/380] CAUGHT   06_docs/mutants/mW2_the_open_window_follows_the_slot_not_the_card.py — TestTheOpenWindowRefreshesWithTheCardAndNotWithTheSlot (0.00s)
 [362/380] CAUGHT   06_docs/mutants/mW3_the_open_window_keeps_its_first_frame.py — TestTheOpenWindowRefreshesWithTheCardAndNotWithTheSlot (0.00s)
-[363/380] CAUGHT   06_docs/mutants/mW4_the_arrows_reach_past_the_card_window.py — TestEveryLineOfEveryWindowIsReachableAtTheFloor (0.14s)
+[363/380] CAUGHT   06_docs/mutants/mW4_the_arrows_reach_past_the_card_window.py — TestEveryLineOfEveryWindowIsReachableAtTheFloor (0.15s)
 [364/380] CAUGHT   06_docs/mutants/mW5_the_window_is_drawn_in_the_consoles_glyphs.py — TestTheAlertBoxsWayInOpensThePriorityCard (0.00s)
 [365/380] CAUGHT   06_docs/mutants/mW6_the_generation_moves_every_frame.py — TestAnUnchangedCardDoesNotMoveTheGeneration (0.00s)
 [366/380] CAUGHT   06_docs/mutants/mX1_the_empty_live_slot_says_nothing.py — TestTheLiveRowCarriesTheStandbyNoticeAtRest (0.00s)
@@ -393,12 +393,12 @@ baseline ./domains/radio/synth/ ... green
 [374/380] CAUGHT   06_docs/mutants/mY4_the_index_stands_in_for_the_choice.py — TestAStationNobodyHasTouchedHasChosenNoRelay (0.05s)
 [375/380] CAUGHT   06_docs/mutants/mZ1_observers_repeat_loops_the_card_on_the_air.py — TestObserversRepeatModeCannotLoopTheCardOnTheAir (0.00s)
 [376/380] CAUGHT   06_docs/mutants/mZ2_observers_cast_recasts_the_card_on_the_air.py — TestObserversCastChangeCannotRecastTheCardOnTheAir (0.00s)
-[377/380] CAUGHT   06_docs/mutants/mZ3_the_swap_silences_through_the_guarded_stop.py — TestMovingToTheConsoleSilencesTheMonitor (0.00s)
+[377/380] CAUGHT   06_docs/mutants/mZ3_the_swap_silences_through_the_guarded_stop.py — TestMovingToTheConsoleSilencesTheMonitor (0.01s)
 [378/380] CAUGHT   06_docs/mutants/mZ4_the_monitors_tune_reaches_the_console.py — TestTheMonitorsTuneStopsAtTheConsole (0.00s)
 [379/380] CAUGHT   06_docs/mutants/mZ5_a_boundary_seam_loses_its_row.py — TestEverySurfaceSeamIsClassifiedForTheAir (0.00s)
-[380/380] CAUGHT   06_docs/mutants/mZ6_the_voice_audition_plays_over_the_station.py — TestTheVoiceAuditionStopsAtTheConsole (1.33s)
+[380/380] CAUGHT   06_docs/mutants/mZ6_the_voice_audition_plays_over_the_station.py — TestTheVoiceAuditionStopsAtTheConsole (0.98s)
 
-mutant-verdicts: 380 mutant(s) — 376 CAUGHT, 4 SURVIVED, 0 NO EVIDENCE
+mutant-verdicts: 380 mutant(s) — 375 CAUGHT, 5 SURVIVED, 0 NO EVIDENCE
   per-mutant timings recorded in dist/mutant-verdicts.timings; the next run estimates from them
 A SURVIVOR IS A RULE NOTHING MEASURES. Either the behaviour is unpinned and
 owes a test, or the rule was retired and the mutant owes a HUM LEAD

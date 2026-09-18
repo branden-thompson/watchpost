@@ -58,11 +58,11 @@ defect it closed:
 
 ## Gate evidence, on the committed tree
 
-**The corpus sweep at REVIEW exit, 2026-09-18, on `73bce2b`: 380 mutants — 376 CAUGHT, 4 SURVIVED,
+**The corpus sweep at VALIDATE exit, 2026-09-18, on `4d1cb84`: 380 mutants — 375 CAUGHT, 5 SURVIVED,
 0 NO EVIDENCE** (`07-readiness/mutant-verdicts.log`, which opens with the commit hash). Every survivor
 is one the roster dispositions as surviving by design (`gates.md`, "Survivors that survive BY
-DESIGN"): `m16`, `m43`, `mBM1`, `mSC3`. `mBM2`, the fifth of that set at BUILD exit, is CAUGHT now
-(`TestOnlyMastercontrolWritesTheBand`, against `./...`). **Blind spot beside the number (INST-5):** a
+DESIGN"): `m16`, `m43`, `mBM1`, `mBM2`, `mSC3`. The REVIEW-exit sweep on `73bce2b` read 376 / 4 / 0
+because `mBM2` was caught "only against `./...`" — ordering, not a pin. **Blind spot beside the number (INST-5):** a
 detector that needs `-race` reads as SURVIVED under this sweep, which runs without it (`gates.md`,
 "The sweep's own blind spot"). The BUILD-exit sweep on `e956747` was 379 — 374 / 5 / 0 (4 h 46 min);
 the one mutant added since is `mCL4`, a sibling written at R2 round two.
@@ -75,7 +75,7 @@ this session had to learn twice (see *Honest assessment*).
 | --- | --- | --- |
 | `make verify` | **ALL GATES GREEN on `73bce2b`** — every gate `06_docs/required-gates.txt` names except the two CI-only ones and `p10`, which is a phase-exit gate under `make quality` (`dist/verify-review-73bce2b.log`, 2026-09-18) | `dist/verify-remediated3.log` (the log's verdict line carries no count; an earlier draft of this report published "104", which is the number of `ok <package>` lines in it, not a gate count) |
 | `mutant-check` | green across **380** mutants (658 s, inside the verify above) | same log |
-| **`mutant-verdicts`** | **380 — 376 CAUGHT, 4 SURVIVED (by design), 0 NO EVIDENCE**, on `73bce2b` | `07-readiness/mutant-verdicts.log`, promoted by the target, opening with the commit hash |
+| **`mutant-verdicts`** | **380 — 375 CAUGHT, 5 SURVIVED (by design), 0 NO EVIDENCE**, on `4d1cb84` (VALIDATE exit) | `07-readiness/mutant-verdicts.log`, promoted by the target, opening with the commit hash |
 | `mutant-anchors` | 380, every anchor matches the tip | same |
 | `a2dh validate` | **100% (18/18)** | run at BUILD exit; it was 94.44% until `a2dh p10 check` cleared a stale run record, which is a hard gate on the exit sequence |
 | `-race` | green on `app` and `platform/lineup` | run directly after each hazard-path fix |
@@ -85,11 +85,12 @@ this session had to learn twice (see *Honest assessment*).
 | `lint-watermark` | OK — **zero AI attribution** across every commit on this branch and every tracked file | verified independently before staging, and again after the tip commit, which the cited gate run predates |
 | P10 (`make quality`, phase-exit) | **0 live, 0 unmatched, 0 unratified** — 153 ratified rows (`06_docs/p10-ledger.md`), at `f7fe5fa` | `dist/p10.json`, re-run at BUILD exit.  An earlier draft quoted these figures while the artefact on disk was still the 2026-09-10 run — red team round 2 caught that the evidence did not exist.  Base is `merge-base:origin/main`, i.e. the whole release |
 
-**The four survivors owe nothing.**  `m16_scopeevents_drops_ok` — the `ok` check is defence in depth on
+**The five survivors owe nothing.**  `m16_scopeevents_drops_ok` — the `ok` check is defence in depth on
 the hazard path, and both builders of the tracked set go through `alertKeysOf`, so no unusable key can
 be in the set to match.  `m43_marine_narrowed` — the Marine arm matches `Contains(product, "Marine")`
-and the live catalogue holds exactly one such product.  `mBM1` (a memo cap that nothing observes past)
-and `mSC3` (the Router taking a model it did not handle) are dispositioned the same way.  All four are
+and the live catalogue holds exactly one such product.  `mBM1` (a memo cap that nothing observes past),
+`mBM2` (a delete on a key the map does not hold) and `mSC3` (the Router taking a model it did not
+handle) are dispositioned the same way.  All five are
 equivalents, kept rather than retired, at `gates.md`'s survivor dispositions (end of file).  **A retirement is RATIFIED, never self-issued**, which
 is why the sweep exits non-zero and that is correct.
 

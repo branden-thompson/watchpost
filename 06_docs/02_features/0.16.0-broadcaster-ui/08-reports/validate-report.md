@@ -26,8 +26,8 @@ audited whole against the code by a blind reader: three Important findings, ever
 this week, every one fixed — the privacy sentence now says exactly where the tower's position goes.
 The HUM LEAD's UAT passed both surfaces, with one case carried.
 
-**Recommendation: exit VALIDATE.** `make verify` ALL GATES GREEN and the sweep re-run on the final
-code commit `ab1f04d` (figures in §1); `make quality` PHASE-EXIT GATES GREEN and `a2dh validate`
+**Recommendation: exit VALIDATE.** `make verify` ALL GATES GREEN on the exit commit `4d1cb84` and the
+sweep re-run on it — 380: 375 / 5 by design / 0 (§1); `make quality` PHASE-EXIT GATES GREEN and `a2dh validate`
 100 % (18/18) at the exit commit.
 
 ## 1. Exit gates
@@ -40,7 +40,7 @@ code commit `ab1f04d` (figures in §1); `make quality` PHASE-EXIT GATES GREEN an
 | `stakeholder_acceptance` | HUM LEAD UAT 2026-09-18 (§4) |
 | `critical_analysis_complete` | Two blind agents on the docs-quality and hygiene + safety axes, plus a fresh reviewer on the bed fix (§2) |
 | `make quality` / `a2dh validate` | PHASE-EXIT GATES GREEN (P10 0 live, 0 unmatched, 0 unratified) and 100 % (18/18), run on the exit tree |
-| Sweep on the final code commit | *filled from the run on `ab1f04d`* |
+| Sweep on the exit commit | **`4d1cb84`: 380 mutants — 375 CAUGHT, 5 SURVIVED by design (`m16`, `m43`, `mBM1`, `mBM2`, `mSC3`), 0 NO EVIDENCE**, 4 h 28 min (`07-readiness/mutant-verdicts.log`). `mBM2` was caught at the REVIEW sweep only against `./...` — an ordering-dependent catch, not a pin — and is back in the by-design set; its row says so. Blind spot beside the number: a `-race`-only detector reads as SURVIVED |
 | `report_published` | This document |
 
 ## 2. Critical analysis
