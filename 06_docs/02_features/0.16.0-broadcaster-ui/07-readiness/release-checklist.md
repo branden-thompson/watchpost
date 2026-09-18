@@ -83,7 +83,10 @@ the remote, because only the squashed tree does.
   cap had been derived from a 21.5-minute Linux verify; the job is 38 now on this tree, and 60 left
   22 minutes of headroom, under the two-times rule the VALIDATE reviewer named. **Raised to 90 (twice
   the measurement) as round 3**, one YAML line, rather than ship on a margin that had just halved.
-- [ ] **CI round 3 (the cap): green on every leg.**
+- [x] **CI round 3 (`0d45077`, the cap): GREEN on every leg** — `policy` 6–7 s, macOS verify 10 m 47 s
+  and 11 m 40 s, Linux verify 26 m 38 s and 36 m 10 s. Observed Linux range on this branch across
+  two green rounds: **26–38 min**, against a 90-minute release cap. Merge state CLEAN; `origin/main`
+  unchanged at `fd761ab` throughout; the CHANGELOG's date (2026-09-18) matches the merge day.
 - [ ] Squash-merged; CHANGELOG date re-checked against the merge day before tagging; the merged tree
   verified byte-identical to the feature tip.
 - [ ] `v0.16.0` annotated on the merged commit, pushed; the release workflow re-runs `make verify`
