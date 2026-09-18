@@ -238,7 +238,7 @@ Tip is clean: no tracked binary, no harness file (`CLAUDE.md`/`AGENTS.md`/`_a2dh
 
 **F1. The 15 MB Markdown blob is still in the branch history.** `6b1b621` introduced blob `d57a9ac6` (15,235,221 B, `docs/accepted-costs.md`); `e956747` fixed the file but the object ships with the push. `handoff-0.16.0.md:33` claims "zero objects over 400 KB in the whole release range" — true when written, false now. Severity: Important. Simplify/Delete: Y. Action: the ruling at `handoff-0.16.0.md:31` says unpublished history is cleaned; rewrite `6b1b621` before push or accept the blob forever, and re-state line 33.
 
-**F2. Home-relative personal paths survive `lint-identity`.** `06_docs/02_features/multi-voice-support/07-readiness/agent-uat-p1.md:45` and `.../uat-p4.md:19` carry `cd ~/Desktop/PERSONAL_PROJECTS/watchpost`. `cmd/watchpost/identity_test.go:40` only matches `/Users/...`. Severity: Minor. Action: scrub both lines; add a `~/` class to the pattern.
+**F2. Home-relative personal paths survive `lint-identity`.** `06_docs/02_features/multi-voice-support/07-readiness/agent-uat-p1.md:45` and `.../uat-p4.md:19` carry `cd ~/<a personal desktop path>`. `cmd/watchpost/identity_test.go:40` only matches `/Users/...`. Severity: Minor. Action: scrub both lines; add a `~/` class to the pattern.
 
 ## Q2 — Build from a clean clone
 
@@ -432,9 +432,11 @@ The band clears only on a MAIN-TRACK finish (`executors.go:557`), the Director r
 
 ## Remediation review — R2 round two (three passes to LGTM)
 
+### Pass 1 of 3
+
 ## REVIEW R2b — `3c67d88..4748f5d` (ad30d79, 4748f5d)
 
-Clone at `…/scratchpad/review-r2b/wp`, checked out `4748f5d`. Baseline `go test ./platform/lineup ./app ./modes/tty`: all ok.
+Clone at `<scratch>/review-r2b/wp`, checked out `4748f5d`. Baseline `go test ./platform/lineup ./app ./modes/tty`: all ok.
 
 ### Does it close F1–F5?
 
@@ -494,3 +496,146 @@ Yes. `app/dashboard.go:305` passes `p.Send` as `publish` unconditionally (no dec
 ### Verdict
 
 **LGTM with conditions** — F1–F4 are closed with plants that fail for the stated reason; F5 is closed for the interleaving the tests state. Fix first: **S1 / `director.go:718`** — a ghost `Finished` resets the fault run, which silently defeats the count the whole remediation exists to deliver; one-line fix, one test. T1 (Run 0 dropped at `broadcaster.go:358`) should follow as F-16x with a HUM LEAD ruling on whether the tune-failure escalation belongs in this band.
+
+### Pass 2 of 3
+
+## REVIEW R2b — verification of `4748f5d..b0c1d70`
+
+Fresh clone `<scratch>/review-r2b/wp2` at `b0c1d70`, read-only. Baseline `go test ./platform/lineup ./app ./modes/tty`: all ok.
+
+### Conditions, verified
+
+| Condition | Held? | Evidence |
+|---|---|---|
+| S1 ghost `Finished` no longer resets the run | **Yes** | `platform/lineup/director.go:722-724` gates on `d.find(ev.ID)`. Plant P1 (`if true`) CAUGHT: `fault_test.go:311: a Finished for a card the schedule never held reset the run…`. Plant P3 (`if false`) CAUGHT by the older test `fault_test.go:259`, so the two tests hold opposite edges. |
+| S4 faults OFF AIR do not count | **Yes** | `director.go:748-749` `!ev.Routed && d.power == Running`. Plant P2 (gate removed) CAUGHT `fault_test.go:327: a fault while OFF AIR escalated…`. Plant P4 (gate inverted) CAUGHT by three tests (`:171,175,267` and `TestStandbyEndsTheFaultRun`). |
+| Q1 orphaned `schedule.go` comment | **Deleted** | `app/schedule.go:166-169` now ends at `propose:`. |
+| Q4 inline loops folded, `time` keeper gone, one filter | **Yes** | `fault_test.go:160-168` uses `faultOnce`/`escalated`; import list `:3-8` has no `time`; `executors_test.go:1092-1103 faultsIn` is the one definition, `station_test.go:190-198 escalated()` derives from it. Plant P5 (filter inverted) CAUGHT `fault_grade_test.go:61`. |
+| Q5 bench comment | **Reworded** | `executors_test.go:1482`. |
+| Q6 history narration | **Current** | `executors.go:349-352`, `rotation.go:64-66`, `mainread_live_test.go:231-233`, `director.go:468-471`, `fault.go:26-28` all state the rule, not the draft. |
+| Q9(a)/(b) | **Yes** | `executors_test.go:1077` raises `Run: 1`; `fault_test.go:177` control claim narrowed. |
+
+### What the fix moved, observed
+
+- **S7 (new).** Single held card, `OffAir`, non-routed `Failed`: `escalate(read:x run=0)`. The S4 gate leaves `faultRun` at 0, `stopped()` is true, and the escalation now carries `Run 0` — which `broadcaster.go:358` drops. Before this fix the same event carried `Run 1` and showed on the way back ON AIR. This is a real narrowing: a compose fault that empties the schedule while on standby is now told to nobody. Realistic? One in-flight compose across the transition, with a one-card schedule — rare, but the producer refills only on the next publish. **Minor**, and it belongs in the same ruling as T1. Evidence `director.go:748-749`, `fault.go:64-73`, `broadcaster.go:358`. Delete? N. Action: fold into the T1 follow-up; the cheapest fix is the console showing `Run 0` escalations with the reason alone (the band already has a reason-only shape via `noticeBand`).
+- **S8/S9.** A `Finished` for a held-but-queued card and a rail `Finished` both reset the run (observed `run=0`). Both are inside F-159's recorded scope; not new.
+
+### Findings
+
+1. **F-163 is not in the tree.** The coordinator's message says T1 and S3 are recorded as F-163 with rulings owed; `grep -rn F-163 06_docs` is empty at `b0c1d70`, and no added line in the range mentions the Run 0 drop or the decline question (`06_docs/follow-ups.md` gains F-118's close and F-159–F-162 only). Two Important findings from R2b (T1 at `broadcaster.go:358`, S3 fork) have no record. **Important** — the standing rule is that a deferred defect is recorded before REVIEW exits, and the evidence for "recorded" is the row. Evidence `06_docs/follow-ups.md:386-390`. Action: add the row; include S7 above.
+2. `app/fault_grade_test.go:59` still raises `Escalate{ID:"burst:a", Reason:"the schedule stopped"}` with `Run 0` and asserts at `:60-61` that "DR-21's one channel delivered" it — the same shape Q9(a) fixed in `executors_test.go:1077`, and the console drops it. **Minor.** Delete? N. Action: `Run: 1`, or assert against what the console shows.
+3. `station_test.go:190-198 escalated()` re-derives "an escalation" as `f != zero` while `faultsIn`'s doc (`executors_test.go:1093-1095`) calls itself "the ONE definition". Two harnesses still hold two rules (one counts the clear, one does not). **Minor.** Delete? Y. Action: have `faultsIn` take the filter, or give it a sibling `escalationsIn` used by both.
+
+### Code Quality, in order
+
+1 Understandability — clean. 2 Maintainability — finding 3. 3 Complexity — clean; two one-line gates. 4 Necessity — `station.escalated()` is the only removable element (finding 3). 5 Names — clean; `faultOnce`'s doc now says which place fails (`fault_test.go:202-203`). 6 Documentation — clean; every comment I flagged states current rule. 7 Testability — clean; S7 is the untested edge. 8 P10 — loops annotated (`fault_test.go:208,216,323`), no recursion. 9 Evidence soundness — finding 2; and the coordinator's claim "recorded as F-163" is unsupported by the tree (finding 1).
+
+### Verdict
+
+**NOT LGTM**, on one condition only: the F-163 row does not exist at `b0c1d70`, so two Important findings are neither fixed nor recorded. The code changes for S1 and S4 are correct, plant-verified, and their comments are current. Fix first: write the F-163 row (T1 Run-0 drop, S3 decline fork, and S7 above), then this is LGTM without a further code change.
+
+### Pass 3 of 3
+
+## REVIEW R2b — final verdict at `9e318ac` (range `b0c1d70..9e318ac`, with `620bce5`)
+
+Fresh clone `<scratch>/review-r2b/wp3`, read-only. Baseline `go test ./platform/lineup ./app ./modes/tty`: all ok.
+
+**Condition — F-163 recorded.** `06_docs/follow-ups.md:386` now holds one row with (i) T1 (`Run: 0` from `bed.go` dropped at `faultNotice`), (ii) S3 (does a decline break a run; today fault/decline/fault/decline/fault escalates at run=3), (iii) S7 (a one-card schedule emptied by a compose fault on standby escalates with `Run: 0`), status **OPEN — HUM CALL**, and the reason-only band named as the cheapest close for (i) and (iii). It says what the code does, not more. Held.
+
+**Finding 2.** `app/fault_grade_test.go:59` raises `Run: 1`; the test now asserts an escalation the console would show. Held.
+
+**Finding 3.** `app/executors_test.go:1106-1114 escalationsIn` is the one filter; `station_test.go:188-194 escalated()` derives from it and drops its own `tty` import; `bench.faults()` keeps the clears for `executors_test.go:1465` which asserts one. Plant (filter inverted) CAUGHT: `fault_grade_test.go:61: DR-21's one channel delivered 0 escalations, want 1`. Held.
+
+**In-range change not on my list.** `f7fe5fa` moves the console's power transition into `Broadcaster.powered` (`modes/tty/broadcaster.go:518-529`) for P10-04. Behaviour is unchanged line for line; the standby clear now sits at `:526`. Re-planted (clear deleted) — CAUGHT: `broadcaster_fault_test.go:37: the fault band came back ON AIR after standby…`. Clean.
+
+Nothing else in the range touches production code. No stale references, no duplicated assertions, no history-narrating comments introduced.
+
+**LGTM.**
+
+## Remediation review — rulings 10/12/F-163 and FR-9.4 at the writer (two passes to LGTM)
+
+### Pass 1 of 2
+
+## REVIEW R10 — commit 9944b5c (0963b36..9944b5c), fresh clone, read-only
+
+Baseline at 9944b5c: `modes/tty` ok, `platform/lineup` ok, **`app` FAIL** (two tests; both green at 0963b36).
+
+### (1) Privacy — the coordinates still reach the log, on every Director step
+**`app/pump.go:314-319`** with `platform/lineup/director.go:306,1140`, `platform/lineup/rotation.go:42`, `platform/lineup/director.go:1157-1180`, `app/executors.go:353`. Severity **Critical**.
+Evidence (scratch test in the clone, tower `33.2887,-117.2253` as a pool member, log read from disk under `WATCHPOST_DEBUG_RADIO`):
+```
+LEAK director:ev:tuned(33.2887,-117.2253)
+LEAK director:fx:tune(33.2887,-117.2253)
+LEAK director:fx:build(read:33.2887,-117.2253)
+LEAK director:fx:escalate(read:33.2887,-117.2253 run=1)
+LEAK director:cards:MAIN TRACK=[read:33.2887,-117.2253:ADMITTED]
+LEAK schedule:escalate:the station was asked to move to 33.2887,-117.2253 and did not
+ok   needs-read stage=dark fresh=true place="Bonsall, CA" why=why
+```
+A card's ID is `"read:"+snapshot.Key(ref)`, `Tune.Ref`/`Tuned.Ref` are the key (`app/radio.go:1106`), and `trace()` writes `Describe`/`DescribeEvent`/`Lineup.Trace()` for every effect. The commit redacted one line of seven; the README sentence is false at this commit. Also on-screen: the bed reason (`platform/lineup/bed.go:158`) puts the pair in the new STATION FAULT band. Simplify/Delete? N. Action: the key is identity and must stay in the Director; redact at the one describer boundary (a label lookup by key when the trace is written, or `speak(<label>)`), and the bed reason names the relay's label. Not excused by predating the change.
+
+**Test is not a gate.** `app/radio_debuglog_test.go:143-158` — Important. `TestTheRadioDiagnosticNamesPlacesNotCoordinates` calls the pure `needsReadLine`; it never reads a log. Plant A1 (call site at `app/radio.go:641` reverted to `snapshot.Key(ref)`, function untouched): **SURVIVED** — `ok app 0.494s` while the file carried the pair. Not enough for the README sentence. Action: assert over the file after `d.needsRead(...)` (as `maintrack_deck_test.go:117` already does) and after one `trace()` step with the tower on the main track — one sweep over the whole log for the tower's digits.
+
+**Red suite shipped.** `app/maintrack_deck_test.go:127` and `app/declset_test.go:34` — **Critical**. `TestTheDarkRunRecordsTheNeedItWouldHaveActedOn` still wants `ref=33.1959,-117.3795` (fails ×3 stages); `TestDeclarationSetUnchanged` reports `added: [func needsReadLine]`. Both green at the parent. `go test ./app/` was not run before the handoff wrote "done". Action: retarget the dark-run instrument's assertion to `place=`, refresh the declaration baseline, and record the run.
+
+Other cache-dir files: HTTP cache is `sha256(url).cache` (`platform/httpx/cache.go:610`), profiles dump carries counters only, ticker `seen` — no coordinates found. Only the radio log leaks.
+
+### (2) Label-only loses identity
+`app/radio.go:1137-1140` — Important. Geodata has 138 duplicate `(name, admin1)` labels; two in CA (`Brentwood, CA` ×2, `Vincent, CA` ×2). The ZIP is used only when the label is empty; `Tag` never. Two pool members with one label produce identical lines and the dark-vs-live comparison the line exists for (`maintrack_deck_test.go:103-109`) cannot tell them apart. Action: `place=%q tag=%q` (the operator's 5-char tag, which is not a position) — HUM CALL on granularity.
+
+### (3) Console sequences (driven through `Broadcaster.Update`, band read from `View`)
+- Running, `{0,"the relay could not be tuned"}` → `!!! STATION FAULT — the relay could not be tuned`; then `{}` → no band.
+- OffAir, `{0,"emptied on standby"}` → no band; then Running → `!!! STATION FAULT — emptied on standby` (the standby escalation surfaces on the next ON AIR — correct for S7; note it).
+- `{3,"voice down"}` after Run 0 → `!!! 3 CARD(S) FAILED — the station could not perform them: voice down`.
+- `{0, bed reason}` after Run 3 → STATION FAULT with the coordinate pair on screen (see 1).
+- STANDBY then ON AIR → cleared.
+`{Run:0, Reason:""}` as a fault: not today — `platform/lineup/fault.go:70-73` defaults an empty reason and `bed.go:158` is literal. It is a convention, not a type; acceptable, record it.
+
+**Comment contradicts the rule.** `modes/tty/broadcaster.go:46-49` — Important. The type doc says "Run 0 clears it"; `faultNotice` now shows Run 0 with a reason. Delete? N. Action: "the zero message clears it; a Run of 0 with a reason is a fault with no count."
+
+### (4) README table vs keymap (`README.md:190-201`, `modes/tty/router.go:162-222`)
+- Missing from the table: **`A`** (`router.go:1031`, the takeover box's handle, an address like the digits — the HUM LEAD asked for it at UAT 2026-09-13); `ctrl+b`/`B` (bound, a no-op on the console — omission fine, but the table claims to be the console's keys).
+- In the table, not in the keymap: `0`-`9` and `A`-less — by design (`router.go:630`). Correct.
+- Wording: `README.md:192` "(held while a window is open)" — `router.go:929-935` *refuses* the toggle behind a window; "held" reads as key-held. Minor. Say "ignored while a window is open". `0`-`9` "the first ten" — true (`MainTrackCap = 16`, `operator.go:243`; digits address ten). Gain "mirrored with the Observer's volume" — true (`router.go:804-806` forwards to Observer).
+
+### (5) Plants
+- A1 call-site revert: **SURVIVED** (above).
+- A2 function body revert: **CAUGHT** — `radio_debuglog_test.go:150: the line does not name the place: "needs-read stage=dark fresh=true ref=33.2887,-117.2253 …"` (+ :154 ×2, :158).
+- B delete the Run-0 branch: **CAUGHT** — `broadcaster_fault_test.go:97: an ON AIR station with a fault and no run shows no "STATION FAULT": !!! 0 CARD(S) FAILED — …` and `:101 a fault with no run was shown as a count of cards`.
+
+### (6) Necessity / comments — Minor
+`app/radio.go:1132-1136` and `modes/tty/broadcaster.go:362-364` narrate the defect ("wrote the operator's antenna position…", "a band keyed on the count dropped it"); the test comments at `radio_debuglog_test.go:141-145` and `broadcaster_fault_test.go:85-89` repeat it. State the rule; the history is in the record. Nothing else removable.
+
+## Verdict: NOT LGTM
+Fix first: the Director trace (`app/pump.go:314-319`) — the tower's pair is written on every step the diagnostic records, and the gate that would have shown it reads a string, not the file. The two red `app` tests ride along with that fix.
+
+### Pass 2 of 2
+
+## REVIEW R11 — commit 000d61a (9944b5c..000d61a), fresh clone, read-only
+
+**Baseline at 000d61a:** `app` ok (111s), `modes/tty` ok, `platform/snapshot` ok, `platform/lineup` ok. The two tests red at 9944b5c are green.
+
+**Leak construction re-run** (tower `33.2887,-117.2253` as a pool member; a `trace()` step with Tuned, Tune, BuildCard, Escalate, Publish; the bed reason; `needsReadLine`; log read from disk). What the file carries:
+```
+director:ev:tuned(place:b2245476)
+director:fx:tune(place:b2245476)
+director:fx:build(read:place:b2245476)
+director:fx:escalate(read:place:b2245476 run=1)
+director:fx:publish(rail=[] main=[read:place:b2245476])
+director:cards:MAIN TRACK=[read:place:b2245476:ADMITTED]
+schedule:escalate:the station was asked to move to place:b2245476 and did not
+needs-read stage=dark fresh=true place="Bonsall, CA" id=place:b2245476 why=why
+```
+No pair, and one place is followable across every line by one id — `app/radio.go:1241` rewrites at the single writer, so the seven lines that leaked at 9944b5c are covered by construction. `needs-read` carries `place=` and `id=` (`app/radio.go:1141`), which answers Q2 without a HUM CALL. The band rewrites a known key to the pool's label and an unknown one to `place:…` (`modes/tty/broadcaster.go:366-389`). The type doc (`broadcaster.go:46-50`) now states the rule; the README row for `A` and "ignored while a window is open" (`README.md:192-194`) match `router.go:929-935` and `:1031`.
+
+**Plants, run myself:**
+- P1 delete `line = snapshot.ReplaceKeys(...)` at `app/radio.go:1241`: **CAUGHT** — `radio_debuglog_test.go:187: the diagnostic names where the operator is (FR-9.4)`.
+- P2 `reason := b.fault.Reason` at `broadcaster.go:366`: **CAUGHT** — `broadcaster_fault_test.go:121` and `:125`.
+
+**One finding, Minor.** `platform/snapshot/redact.go:11` — the fence is `Key`'s shape (exactly four decimals, comma-joined). Two probe lines I wrote through the writer escaped it: `%.6f,%.6f` → `33.288700,-117.225300`, and `%v` of a `LocationRef` → `{Bonsall, CA  92003 33.2887 -117.2253  0}`. I swept every real writer: none composes either shape today; the only free text reaching the trace is `Failed.Reason` (`platform/lineup/director.go:1127`), which `app/pump.go:289` fills from a recovered panic value with `%v`. Evidence: probes above; sweep of `radioDebugLog(`/`debugLog(`/`x.fault(` arguments. Simplify/Delete? N. Action: state the bound in `ReplaceKeys`'s doc ("a pair in Key's form; free text from an error or a panic value is outside it"), or widen `keyPattern` to any two signed decimals joined by comma or whitespace — HUM CALL; not a blocker, because no writer produces those shapes and a panic value that carries a ref is a defect with its own gate.
+
+Nothing removable; no comment narrates history.
+
+## LGTM
+Fix first (post-review, at the HUM LEAD's call): the `keyPattern` bound at `platform/snapshot/redact.go:11`.
+
