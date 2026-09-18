@@ -14,6 +14,7 @@ package tty
 // SPLIT FROM setup.go (2026-09-06), a pure move.
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -40,9 +41,9 @@ func (d Dashboard) setupLocationLines(o render.Opts, mark string) []string {
 	// line under it, where the other groups keep theirs.
 	head := "  " + mark + settingLabel("Default location: ", st.focus == rowLocation)
 	// THE APPLICATION'S DEFAULT IS SHOWN, AND SAID TO BE ONE (T4.2, R-4). With
-	// no watchlist and nothing chosen, the row used to read "Default location: "
-	// and then nothing at all, which tells a listener neither what the station
-	// would reason from nor that it is waiting on them. Bonsall is named, and
+	// no watchlist and nothing chosen, a bare "Default location: " and then
+	// nothing at all tells a listener neither what the station would reason from
+	// nor that it is waiting on them. Bonsall is named, and
 	// LABELLED as the application's rather than theirs — "shown in Settings as
 	// the Default, never used silently".
 	switch cur := d.currentDefault(); {
@@ -197,4 +198,76 @@ func (d Dashboard) firmsHealth(o render.Opts) string {
 		return render.Tint(d.opts().Glyphs().Fail+" degraded (see [S] Status)", render.Tok(render.ProviderDown))
 	}
 	return "no report yet"
+}
+
+// setupTransmitterLines is the station's epicentre (D-115, F-87).
+//
+// HUM LEAD, 2026-09-13: it "should *function* like the Default location setting
+// for Observer" — so it is the same type-ahead, drawn the same way, and it reads
+// the same shared `query`/`hints`/`idx` because the two rows are never both on
+// screen (setupState).
+//
+// AND IT SAYS WHEN IT IS BORROWING. A station with no transmitter of its own
+// falls back to the listener's default location (config.Station), and D-72's
+// whole point is that those are different facts — so a borrowed epicentre is
+// LABELLED as one rather than shown as a choice the operator made. It is the
+// same rule the row above follows for the application's own default.
+func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
+	st := d.setup
+	head := "  " + mark + settingLabel("Transmitter (epicenter): ", st.focus == rowTransmitter)
+	// THE BORROWING IS SAID ON THE VALUE, NOT IN THE HINT (HUM LEAD, 2026-09-13).
+	// The hint is now one sentence for both states — "Broadcasting location -
+	// Enter City, ST or Zip" — and the ruling that came with it was "borrowing
+	// Observer's location when user hasn't set the Broadcaster Location is fine -
+	// as long as we inform the user in some way". So the fact moves to where the
+	// VALUE is, which is the thing it is about: this place is not a choice the
+	// operator made, and it WILL move when they change their watchlist.
+	switch cur := d.currentTransmitter(); {
+	case st.txRef != nil:
+		head += render.Plain(st.txRef.Label) + " (" + st.txRef.Zip + ")"
+	case cur != nil:
+		head += render.Plain(cur.Label) + " (" + cur.Zip + ")"
+		if d.cfg.Transmitter == nil {
+			head += "  " + settingSupport("(following your default location)")
+		}
+	default:
+		head += "(not set)"
+	}
+	// ITS OWN WORDING, NOT THE LISTENER ROW'S. The two questions take the same
+	// kind of answer, and a shared hint made the only difference between them a
+	// capital L in the label above — which a test was already relying on and
+	// warning about ("the case is the only thing telling the two apart").
+	// THE STORAGE BOUNDARY, STATED WHERE THE TOWER IS SET (FR-9.4). A transmitter
+	// is a real person's antenna at metre precision; the operator is told once,
+	// here, what the application does with it — and a test holds the dump to it.
+	lines := []string{head, supportIndent + "Broadcasting location - Enter City, ST or Zip",
+		supportIndent + settingSupport("Your tower's position stays on this machine, in config.toml. It goes only to the National Weather Service, as every place you watch does, and is never written to a debug dump or export.")}
+	if st.focus == rowTransmitter {
+		lines = append(lines, supportIndent+"Search: "+st.query+o.Glyphs().Cursor)
+		for i, h := range st.hints { // bounded by the suggestion list (P10-02)
+			focused := i == st.idx
+			lines = append(lines, supportIndent+o.ListMark(focused)+
+				render.ListLabel(render.Plain(h.Label)+" ("+h.Zip+")", focused))
+		}
+	}
+	if st.err != "" && st.focus == rowTransmitter {
+		lines = append(lines, supportIndent+o.Glyphs().Alert+" "+st.err)
+	}
+	return lines
+}
+
+// setupServiceLines is how far the station serves (D-115, F-87).
+//
+// HUM LEAD, 2026-09-13: it "should *function* like the Service alerts radius
+// filter option in Settings just without the 'all alerts' option (so no radio
+// button)". So: the same digits field, and NO radio — because there is no "All"
+// to choose. A station without a radius is not a station that serves everywhere;
+// it is one that has not been set up, and the floor says so.
+func (d Dashboard) setupServiceLines(o render.Opts, mark string) []string {
+	st := d.setup
+	head := "  " + mark + settingLabel("Service radius: ", st.focus == rowServiceRadius) +
+		"[" + render.PadTo(st.serviceMi, 4) + "] mi"
+	lo, hi, _ := d.serviceBounds()
+	return []string{head, supportIndent + "how far the station's line-up reaches " +
+		o.Glyphs().Dash + " " + strconv.Itoa(lo) + " to " + strconv.Itoa(hi) + " miles"}
 }

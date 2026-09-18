@@ -162,9 +162,9 @@ func (p PiperVoice) Name() string {
 func (p PiperVoice) Rate() int { return p.Install.SampleRate }
 
 // withLibPath is the process environment with LD_LIBRARY_PATH set to dir —
-// replacing, not duplicating, any existing value (red-team 0.9.0 S-F8:
-// glibc honours the first occurrence, so a user's own setting used to win
-// and Piper failed to load its bundled onnxruntime).
+// replacing, not duplicating, any existing value: glibc honours the FIRST
+// occurrence, so a duplicate lets a user's own setting win and Piper fails to
+// load its bundled onnxruntime (S-F8).
 func withLibPath(dir string) []string {
 	env := make([]string, 0, len(os.Environ())+1)
 	for _, kv := range os.Environ() {

@@ -53,6 +53,49 @@ func fitColumns(cols []StatusColumn, rows []StatusRow) []StatusColumn {
 	return out
 }
 
+// dropColumns rebuilds the columns and the rows without the ones that were cut,
+// keeping every cell's style with its cell.
+//
+// EXTRACTED AT THE COMPLEXITY CEILING (P10-04, D-159), and the two halves of
+// `shrinkToFit` are genuinely separate: the first DECIDES what will not fit, and
+// this one REBUILDS around that decision. It walks the same slices the caller
+// already holds, so the split adds no allocation on a render path.
+//
+// REMOVED, NOT ZEROED. A zero width means FILL in the kit
+// (data_table_row.go:539), so a "dropped" column would stretch to take
+// everything that is left — the exact opposite of dropping it.
+func dropColumns(out []StatusColumn, rows []StatusRow, drop map[int]bool) ([]StatusColumn, []StatusRow) {
+	kept := make([]StatusColumn, 0, len(out))
+	shift := make([]int, len(out)) // old index -> new, for the per-cell styles
+	for i, c := range out {
+		if drop[i] {
+			shift[i] = -1
+			continue
+		}
+		shift[i] = len(kept)
+		kept = append(kept, c)
+	}
+	trimmed := make([]StatusRow, len(rows))
+	for j, r := range rows {
+		cells := make([]string, 0, len(kept))
+		var styles map[int]string
+		for i, cell := range r.Cells {
+			if i >= len(shift) || shift[i] < 0 {
+				continue
+			}
+			if s, ok := r.Styles[i]; ok {
+				if styles == nil {
+					styles = map[int]string{}
+				}
+				styles[shift[i]] = s
+			}
+			cells = append(cells, cell)
+		}
+		trimmed[j] = StatusRow{Cells: cells, Styles: styles}
+	}
+	return kept, trimmed
+}
+
 // shrinkToFit takes an overflow out of the columns that said they could lose
 // it, and leaves the rest alone.
 //
@@ -98,38 +141,7 @@ func shrinkToFit(cols []StatusColumn, rows []StatusRow, inner, gutter int) ([]St
 	if len(drop) == 0 {
 		return out, rows
 	}
-	// REMOVED, NOT ZEROED. A zero width means FILL in the kit
-	// (data_table_row.go:539), so a "dropped" column would stretch to take
-	// everything that is left — the exact opposite of dropping it.
-	kept := make([]StatusColumn, 0, len(out))
-	shift := make([]int, len(out)) // old index -> new, for the per-cell styles
-	for i, c := range out {
-		if drop[i] {
-			shift[i] = -1
-			continue
-		}
-		shift[i] = len(kept)
-		kept = append(kept, c)
-	}
-	trimmed := make([]StatusRow, len(rows))
-	for j, r := range rows {
-		cells := make([]string, 0, len(kept))
-		var styles map[int]string
-		for i, cell := range r.Cells {
-			if i >= len(shift) || shift[i] < 0 {
-				continue
-			}
-			if s, ok := r.Styles[i]; ok {
-				if styles == nil {
-					styles = map[int]string{}
-				}
-				styles[shift[i]] = s
-			}
-			cells = append(cells, cell)
-		}
-		trimmed[j] = StatusRow{Cells: cells, Styles: styles}
-	}
-	return kept, trimmed
+	return dropColumns(out, rows, drop)
 }
 
 // DetailTable lays out rows at inner cells wide and returns them, no header.

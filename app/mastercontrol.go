@@ -30,6 +30,9 @@ import (
 
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/invariant"
+	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/report"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // mastercontrol performs on the two outputs a card reaches the listener through.
@@ -48,6 +51,22 @@ type mastercontrol struct {
 	// ducked is whether the broadcast is currently given way to. THE ONE COPY.
 	ducked bool
 
+	// carry hands the Director a DECLARATION. Nil until the schedule is wired,
+	// and on a station with no schedule it stays nil — silent rather than a
+	// panic on the one path that has none.
+	//
+	// MASTERCONTROL DECLARES ON AIR / STANDBY, and everyone complies, the
+	// Director included (MVS-D-78). 0.14.0's role model recorded the gap in as
+	// many words — "Today: app/mastercontrol owns the band and the duck. It
+	// does NOT own ON AIR / STANDBY" — and this is that sentence closing.
+	//
+	// IT DECLARES; IT DOES NOT PERFORM. Two entities act on the declaration and
+	// neither alone suffices: the Director holds the schedule, because gating
+	// only the audio would let cards be marked read and consumed silently, and
+	// MasterControl silences the bed, because a Director holding every card
+	// still leaves a relay playing and that is not dead air.
+	carry func(lineup.Event)
+
 	// held is whether something owns the bed for longer than one sequence.
 	//
 	// MVS-D-67: "stays at its lowered volume until the rail is cleared and then
@@ -57,6 +76,29 @@ type mastercontrol struct {
 	// lifted, dipped and lifted again between them — measured, before this
 	// existed. While the bed is held, a per-sequence take-back is refused.
 	held bool
+
+	// silenceProgramme takes the main track's card off the air (F-91).
+	//
+	// MASTERCONTROL SILENCES, AND THIS IS THE SECOND THING IT SILENCES. The bed
+	// was the first, for the reason `carry` states: the Director holding every
+	// card still leaves audio playing, and that is not dead air. A main-track
+	// card is the same sentence with a different subject — the card leaves the
+	// schedule the moment the power drops, and the WORDS play on regardless,
+	// because a read that has started is a worker blocking on an engine.
+	//
+	// TWO TRIGGERS, AND BOTH ARE THE OPERATOR'S (D-74). The power leaving
+	// Running is STANDBY; the air leaving the programme is the operator moving
+	// back to Observer — which he ruled comes back "like if Observer was first
+	// opened", and Observer first opened is silent.
+	//
+	// Nil where there is no broadcast engine.
+	silenceProgramme func()
+
+	// fence is what the alert rail is scoped to right now (D-75) — the
+	// listener's filter or the station's service area, whichever surface has
+	// the air. It travels with every `Aired`, so the rail is re-tested when the
+	// air moves. Nil is "All", which is a deck built for one narrow question.
+	fence func() lineup.Fence
 }
 
 // newMastercontrol wires the effector. A nil voice is legitimate and means no
@@ -66,6 +108,179 @@ func newMastercontrol(v narrationVoice, send func(tea.Msg)) *mastercontrol {
 		return nil
 	}
 	return &mastercontrol{v: v, send: send}
+}
+
+// GoOnAir and GoToStandby are the operator's control (FR-5.4), and they are
+// the ONLY producers of a power change from the console.
+//
+// THE CONSOLE ASKS AND IS TOLD. It does not set a flag of its own: the state it
+// draws comes back from the Director through Publish (FR-5.1), so a declaration
+// that never reached the schedule shows as a control that did nothing — which
+// is the honest failure, rather than a banner that lies.
+// GOING ON AIR HANDS THE AIR TO THE PROGRAMME AS WELL (D-74), and it does so
+// FIRST, so the settle that follows the power already knows who is carrying.
+//
+// IT DOES NOT ASSUME THE SWAP. The air follows the surface and the control only
+// exists on the console, so in practice the programme already holds it — but
+// "in practice" is an invariant maintained somewhere else, and an operator who
+// presses ON AIR is owed a station that can actually broadcast. `onAired`
+// no-ops when nothing changed, so the usual case costs one refused event.
+func (m *mastercontrol) GoOnAir() {
+	m.HandAir(lineup.AirProgramme)
+	m.declare(lineup.Running)
+}
+
+// GoToStandby takes the station to dead air.
+func (m *mastercontrol) GoToStandby() { m.declare(lineup.OffAir) }
+
+// silenceTheProgramme stops a main-track card that is mid-read, or does nothing.
+//
+// IT RUNS BEFORE THE DECLARATION, deliberately: the operator asked for silence
+// and the event they triggered is carried to a pump that will get to it. It
+// returns at once (the read is CANCELLED, never halted from here — D-79), so
+// there is no cost to putting it first and the audible answer is immediate.
+func (m *mastercontrol) silenceTheProgramme() {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	silence := m.silenceProgramme
+	m.mu.Unlock()
+	if silence != nil {
+		silence()
+	}
+}
+
+// HandAir gives the air to one programme or the other (D-74).
+//
+// MASTERCONTROL IS THE ONLY DECLARER, which is the rule the power already
+// follows one concept along: the air is something the OPERATOR DID — they moved
+// to a surface — not something a tune happened to imply. Three declarers of the
+// power is exactly how listening on one surface came to put the other ON AIR.
+// THE FENCE TRAVELS WITH IT (D-75). The rail is re-tested against it, so a
+// hazard admitted under the other surface's fence is held rather than read —
+// and released again when the fence widens.
+func (m *mastercontrol) HandAir(to lineup.Air) {
+	// THE AIR LEAVING THE PROGRAMME SILENCES IT (F-91). The Director stops
+	// ADVANCING the main track when the air moves, and a card already reading is
+	// not advancing — it is a worker blocking on the engine, and it would play
+	// to its end over a surface that says the station is not on air.
+	if to != lineup.AirProgramme {
+		m.silenceTheProgramme()
+	}
+	m.tell(lineup.Aired{To: to, Fence: m.railFence()})
+}
+
+// Refence tells the Director the station's service area moved (D-154).
+//
+// THE AIR DOES NOT MOVE AND MUST NOT. `HandAir` would do the re-scoping as a
+// side effect, but it also SILENCES THE PROGRAMME on its way past — so routing
+// a radius change through it would cut a card off mid-sentence for changing a
+// setting. The two facts are separate events because they are separate facts.
+//
+// IT ASKS THE FENCE THE SAME WAY `HandAir` does, from the one source, at the
+// moment it is needed.
+func (m *mastercontrol) Refence() {
+	if m == nil {
+		return
+	}
+	m.tell(lineup.Refenced{Fence: m.railFence()})
+}
+
+// railFence is what the rail is scoped to right now.
+//
+// ASKED, NOT PASSED. `GoOnAir` is reached through `tty.Station`, whose signature
+// is the console's contract and has no business carrying a fence — and a fence
+// passed by every caller is a fence every caller could get wrong. One source,
+// asked at the moment it is needed.
+func (m *mastercontrol) railFence() lineup.Fence {
+	if m == nil || m.fence == nil {
+		return lineup.Fence{} // no rail to scope: All, which is what it has always been
+	}
+	return m.fence()
+}
+
+// MoveCard and DropCard are the operator's two acts on a scheduled card (D-118).
+//
+// EVENTS, NOT SETTERS, and FR-3.3 says why in as many words: "an action must
+// never be shown as taken unless the schedule took it". The named trap is that
+// `Lineup.Set` refuses to reorder BY DESIGN, so a promote routed through it would
+// update a display and leave `Next()` answering the old order — with nothing to
+// see. The Director owns both, and has since 0.14.0; this is the first thing that
+// has ever emitted either.
+func (m *mastercontrol) MoveCard(id string, to int) { m.tell(lineup.Moved{ID: id, To: to}) }
+
+// DropCard takes a card out of the running order. It is the DESTRUCTIVE one
+// (FR-3.7), which is why the console asks before sending it.
+func (m *mastercontrol) DropCard(id string) { m.tell(lineup.Dropped{ID: id}) }
+
+// RequestCard is the operator asking for a report at a position (R4).
+//
+// THE CARD IS BUILT HERE, WHICH IS D-40's SPLIT: the Producer proposes and the
+// Director chooses, so the app mints and admits it and the event says only WHERE.
+// A console that built cards would be a surface deciding what may go on the air.
+//
+// IT IS THE OPERATOR'S (FR-3.4), so `FromOperator` — the same origin a restore
+// carries, and the reason the running order can tell a human's card from the
+// rotation's.
+func (m *mastercontrol) RequestCard(ref snapshot.LocationRef, kinds report.Set, at int) {
+	key := string(snapshot.Key(ref))
+	card, err := lineup.Propose(lineup.Card{
+		ID: lineup.ReadID(key), Slot: lineup.LocationReport, Origin: lineup.FromOperator,
+		Subject: key, Headline: ref.Label, Reports: kinds,
+	})
+	if err != nil {
+		return // it cannot be proposed; nothing is shown as taken (FR-3.3)
+	}
+	admitted, err := card.To(lineup.Admitted)
+	if err != nil {
+		return
+	}
+	m.tell(lineup.Requested{Card: admitted, To: at})
+}
+
+// CutBed moves the programme between the station's line-up and its bed (D-78).
+//
+// THE FIRST PRODUCTION CALLER `lineup.CutOver` HAS EVER HAD. The Director has
+// modelled it since 0.14.0 — FR-4.2, D-11, D-32 — and nothing emitted it, which
+// is why `bed.carries` was false for the life of every process and the pause it
+// governs had never once happened.
+func (m *mastercontrol) CutBed(toBed bool) { m.tell(lineup.CutOver{ToBed: toBed}) }
+
+// StopMonitor stops the operator's own listening.
+//
+// IT IS NOT A STATION EVENT. The line-up does not pause, the rail does not hold
+// and nothing leaves the air: the operator simply stopped listening, which is
+// what taking the air to the console means for them.
+func (m *mastercontrol) StopMonitor() { m.tell(lineup.Monitored{Running: false}) }
+
+// tell carries one event to the schedule, or gives up when there is none.
+//
+// EXTRACTED AT THE SECOND CALLER (`declare` was the first): three producers of
+// "carry this to the Director if there is one" would be three places for the
+// nil check to be forgotten.
+func (m *mastercontrol) tell(ev lineup.Event) {
+	if m == nil {
+		return
+	}
+	m.mu.Lock()
+	carry := m.carry
+	m.mu.Unlock()
+	if carry == nil {
+		return // no schedule to declare to
+	}
+	carry(ev)
+}
+
+func (m *mastercontrol) declare(p lineup.Power) {
+	// STANDBY STOPS THE WORDS, NOT ONLY THE SCHEDULE (F-91). `silenceTheProgramme`
+	// on the Director's side takes the card off the air; this is the other half
+	// the `carry` field's own comment demands — "a Director holding every card
+	// still leaves a relay playing, and that is not dead air."
+	if p != lineup.Running {
+		m.silenceTheProgramme()
+	}
+	m.tell(lineup.Powered{To: p})
 }
 
 // silent reports whether there is no voice to perform with.
@@ -157,18 +372,17 @@ func (m *mastercontrol) hold() {
 // THE DECISION IS NOT THIS TYPE'S, and the lock order is why. The arbiter takes
 // its own lock and then this one — settle calls takeBack while holding d.mu — so
 // a release that took THIS lock and then asked the arbiter would invert the
-// order and deadlock. Worse, an earlier version asked outside the lock and acted
-// on the stale answer: a job admitted between the question and the lift had the
-// bed restored out from under it, which is the broadcast surging to full volume
-// over a read in progress. The caller decides under its own lock; see
+// order and deadlock. Asking outside the lock is worse still, because the answer
+// is stale by the time it is acted on: a job admitted between the question and
+// the lift would have the bed restored out from under it, which is the broadcast
+// surging to full volume over a read in progress. The caller decides under its
+// own lock; see
 // director.releaseBed.
 func (m *mastercontrol) unhold() {
 	if m == nil {
 		return
 	}
-	m.mu.Lock()
-	m.held = false
-	m.mu.Unlock()
+	setUnder(&m.mu, &m.held, false)
 }
 
 // givenWay reports whether the broadcast is currently ducked.
@@ -237,9 +451,20 @@ func (m *mastercontrol) cue(item tty.TickerItem) {
 //
 // IT IS UNCONDITIONAL, deliberately and for now. DR-24 pairs a release with the
 // CUE rather than with the card, and that pairing is a property of what the
-// Director emits — `leave` releases only what it cued. Making it conditional
-// here would put the rule in two places, and the copy here could not see the
-// schedule that decides it.
+// Director emits. Making it conditional here would put the rule in two places,
+// and the copy here could not see the schedule that decides it.
+//
+// `leave` RELEASES WHATEVER WAS ON THE AIR, not only what it cued. A
+// LocationReport is routinely on the air without a cue: runCue asks the producer
+// for an alert under `read:<location>`, finds none, and cues nothing. Pairing
+// the release with the cue HERE would therefore issue a release for a cue that
+// never happened on every rotation turn.
+//
+// F-71 IS CLOSED (D-82), in the caller. `runRelease` asks the LANE, which rides
+// on the effect, so the rule stays where the schedule decides it and this
+// function stays the one unconditional carrier of "give the band back". The
+// condition that forces the question is a second card on the air — the rail
+// interrupting a report — not a second writer to the band.
 func (m *mastercontrol) clearBand() {
 	if m == nil {
 		return

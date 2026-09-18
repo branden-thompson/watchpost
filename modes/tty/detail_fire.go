@@ -106,7 +106,11 @@ func rows(o render.Opts, lines []string) []string {
 
 // fireNone is what a list says when its ring admitted nothing. It names the
 // RING, not "the fire ring", because there are two.
-func fireNone(o render.Opts) []string {
+//
+// IT TOOK AN `Opts` AND NEVER READ IT (P10-07). The muted tone comes from the
+// token, which needs no options to resolve; the parameter was the shape of the
+// functions around it rather than anything this one uses.
+func fireNone() []string {
 	return []string{render.Tint("none within this radius", render.Tok(render.TableMuted))}
 }
 
@@ -123,7 +127,7 @@ func fireNone(o render.Opts) []string {
 // columns, and the mock's NAME and ACRES have no source on this side.
 func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, now time.Time, boldMW float64, cw int) []string {
 	if len(hs) == 0 {
-		return fireNone(o)
+		return fireNone()
 	}
 	hs = nearestFirst(hs, func(h snapshot.Hotspot) *float64 { return h.DistanceKm })
 	// FIT, NOT FILL (HUM LEAD, 2026-09-07): every column is as wide as its own
@@ -190,7 +194,7 @@ func hotspotRows(o render.Opts, loc *snapshot.Location, hs []snapshot.Hotspot, n
 // that just like the USGS seismic section does not worry about it."*
 func incidentRows(o render.Opts, loc *snapshot.Location, ins []snapshot.Incident, now time.Time, cw int) []string {
 	if len(ins) == 0 {
-		return fireNone(o)
+		return fireNone()
 	}
 	ins = nearestFirst(ins, func(in snapshot.Incident) *float64 { return in.Source.DistanceKm })
 	cols := []render.StatusColumn{
@@ -203,8 +207,8 @@ func incidentRows(o render.Opts, loc *snapshot.Location, ins []snapshot.Incident
 		// THE AGE IS THE COLUMN THAT VOLUNTEERS (HUM LEAD, 2026-09-07: "Age can
 		// be truncatable - containment is more important"). The name is never
 		// shortened, so an unusually long one has to come out of something —
-		// and it used to come out of the right edge, silently, taking the
-		// containment with it.
+		// and with nothing volunteering it comes out of the right edge,
+		// silently, taking the containment with it.
 		{Right: true, Truncatable: true, MinWidth: 6}, // when it was found — "8d ago" or nothing
 	}
 	var rows []render.StatusRow
@@ -288,10 +292,18 @@ func plural(n int) string {
 	return "s"
 }
 
+// fireBoldDefaultMW is the emphasis threshold when the operator has set none.
+//
+// ONE OWNER, TWO READERS — this Dashboard and the console (Broadcaster.fireBold).
+// Written out twice it was written out WRONG once: the console had it as a
+// constant of its own and could not see the override at all, so one location
+// read bold on the watchlist and plain on the console.
+const fireBoldDefaultMW = 50
+
 // fireBoldMW is the emphasis threshold for the FIRE rows (Config, default 50).
 func (d Dashboard) fireBoldMW() float64 {
 	if d.cfg.FireBoldMW > 0 {
 		return d.cfg.FireBoldMW
 	}
-	return 50
+	return fireBoldDefaultMW
 }

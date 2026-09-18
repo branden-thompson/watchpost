@@ -18,10 +18,11 @@ import (
 // fakeClock drives the scheduler's time. IT SYNCHRONISES; IT DOES NOT GUESS
 // (F-29, 2026-09-06).
 //
-// Advance used to fire the due waiters and then `time.Sleep(5 * time.Millisecond)`
-// — "give the scheduler goroutines a beat to run their fetch cycle". That beat
-// is a WALL-CLOCK GUESS against work of unbounded cost, and under `-race` on a
-// busy machine the guess is sometimes wrong: the caller then asserts before the
+// Advance fires the due waiters and does NOT then `time.Sleep(5 *
+// time.Millisecond)` to "give the scheduler goroutines a beat to run their fetch
+// cycle". That beat is a WALL-CLOCK GUESS against work of unbounded cost, and
+// under `-race` on a busy machine the guess is sometimes wrong: the caller then
+// asserts before the
 // work it is waiting for has happened, and the test fails for a reason that has
 // nothing to do with the grid arithmetic it is named for. A gate that fails for
 // unrelated reasons teaches people to re-run rather than read it.

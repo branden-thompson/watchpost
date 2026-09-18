@@ -122,11 +122,9 @@ func TestNarrowTerminalRowsFitAndModalsCenter(t *testing.T) {
 		if strings.Contains(l, "Watchpost Status") {
 			// Measure the modal by its own box span: base rows can peek out
 			// past the modal's right edge on narrow terminals.
-			r := []rune(l)
 			start, end := strings.IndexRune(l, '┌'), strings.IndexRune(l, '┐')
 			startCol := len([]rune(l[:start]))
 			modalW := len([]rune(l[:end])) - startCol + 1
-			_ = r
 			if want := (70 - modalW) / 2; startCol < want-1 || startCol > want+1 {
 				t.Fatalf("modal must center on the terminal: starts at %d, want ~%d (modal %d wide)", startCol, want, modalW)
 			}

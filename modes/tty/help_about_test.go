@@ -178,14 +178,31 @@ func TestHelpLaysOutOneOrTwoColumns(t *testing.T) {
 			t.Fatalf("%d cols: a blank line under the title, got %q", c.w, lines[0])
 		}
 		text := stripANSITest(strings.Join(lines, "\n"))
+		// TWO COLUMNS IS "SOME LINE CARRIES TWO GROUP HEADERS", not "NAVIGATE
+		// sits beside WATCHLIST". That named pairing was a proxy for the
+		// layout, and it broke the day a group was ADDED (D-135's SURFACES)
+		// and the balance point moved — reporting one column on a window that
+		// was plainly drawing two. The proxy was measuring the split, not the
+		// thing the test is named for.
+		var names []string
+		for _, g := range helpGroups(d.surface) {
+			names = append(names, g.name)
+		}
+		names = append(names, "OTHER")
 		pairs := 0
 		for _, l := range strings.Split(text, "\n") {
-			if strings.Contains(l, "NAVIGATE") && strings.Contains(l, "WATCHLIST") {
+			n := 0
+			for _, name := range names {
+				if strings.Contains(l, name) {
+					n++
+				}
+			}
+			if n >= 2 {
 				pairs++
 			}
 		}
-		if (pairs == 1) != c.twoCol {
-			t.Fatalf("%d cols: two columns = %v, want %v:\n%s", c.w, pairs == 1, c.twoCol, text)
+		if (pairs > 0) != c.twoCol {
+			t.Fatalf("%d cols: two columns = %v, want %v:\n%s", c.w, pairs > 0, c.twoCol, text)
 		}
 		for _, bind := range d.keys { // every binding once, whatever the layout
 			if row := fmt.Sprintf("   %-12s - ", strings.Join(bind.Keys, ", ")); strings.Count(text, row) != 1 {

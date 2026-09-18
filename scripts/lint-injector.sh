@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # NFR-2: no shipped artifact may be able to fabricate a hazard.
 #
 # THE PREDICATE IS A STRING, AND THAT IS NOT A COMPROMISE — IT IS THE ONLY THING

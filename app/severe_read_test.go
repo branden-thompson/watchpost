@@ -906,15 +906,14 @@ func TestAPauseNeverClaimsACancelledRead(t *testing.T) {
 //
 // Five functions need to know where a read can be and whether it still counts —
 // pausing, resuming, reporting a hold, choosing what to promote, and deciding
-// whether the bed may come back. Each used to walk the state itself, and they
-// drifted exactly as carriers of one rule always do. Four review rounds went
-// into finding the places one at a time; `live` and `reads` are the answer
-// written once.
+// whether the bed may come back. Five functions each walking the state
+// themselves are five carriers of one rule, and they drift; `live` and `reads`
+// are that rule written once, and this asserts the five agree.
 //
-// EACH CELL CARRIES ITS OWN EXPECTATION. An earlier version asserted "nothing is
-// held" for every cell, which is only true where every read is dead — it failed
-// on the one cell that has a live paused read in it, and the failure was the
-// test being wrong rather than the code.
+// EACH CELL CARRIES ITS OWN EXPECTATION. A blanket "nothing is held" across
+// every cell is only true where every read is dead, and this table deliberately
+// includes a cell holding a LIVE paused read — a uniform assertion fails there,
+// and it fails as the test being wrong rather than the code.
 func TestThePauseAndTheReportNeverDisagree(t *testing.T) {
 	dead, kill := context.WithCancel(context.Background())
 	kill()
@@ -1124,5 +1123,75 @@ func TestAReadThatFinishesIsNeverCutOff(t *testing.T) {
 	}
 	if strings.Contains(v.got(), "stop") {
 		t.Errorf("a completed read is not stopped: %s", v.got())
+	}
+}
+
+// TestTwoPressesCannotRaceTheSameReader.
+//
+// `Toggle`'s own comment records the defect and its rate: "two fast presses are
+// genuinely concurrent Toggles — not serialised by the update loop. Each read its
+// state, released the lock, and then acted on a snapshot the other had already
+// invalidated: the loser could pause the read the winner had just started, and
+// marked the row with the OLD key … Measured at about 2 % of presses, and
+// INVISIBLE TO THE RACE DETECTOR because it is a logic race, not a data one."
+//
+// SO `make race` CANNOT SEE IT AND NOR COULD ANYTHING ELSE: mutant mK3 removes
+// the press gate and survived the whole 2026-09-13 corpus sweep. A 2%-of-presses
+// defect is also not something a stress test can pin without being flaky.
+//
+// DRIVEN AT A CONTROLLED INTERLEAVING POINT INSTEAD. `mark` calls `send` from
+// INSIDE the decision, so the fixture's `send` is a place to stand in the middle
+// of the critical section and ask whether a second press can get in. With the
+// gate it blocks; without it, it walks straight through. Deterministic, and it
+// tests the gate's actual contract — the decision is serialised — rather than
+// hoping to observe the symptom.
+func TestTwoPressesCannotRaceTheSameReader(t *testing.T) {
+	r := &eventReader{nar: &director{}, ctx: context.Background()}
+	// THE SAME-ROW BRANCH: a press on the row already reading is a play/pause,
+	// and it reaches `mark` without starting a narration — the shortest path
+	// through the decision that still holds the gate.
+	r.busy, r.key = true, "k"
+
+	// NOT `sync.Once`, AND THAT IS THE WHOLE INSTRUMENT. `Do` BLOCKS concurrent
+	// callers until the first returns — so the second press stalled inside
+	// `send` waiting for this orchestration to finish, at exactly the point
+	// being measured, and the test passed with the gate removed. An atomic swap
+	// lets every later `send` return immediately, which is what makes the
+	// second press's progress observable.
+	var armed atomic.Bool
+	secondIn := make(chan struct{})
+	secondDone := make(chan struct{})
+	raced := make(chan struct{})
+
+	r.send = func(tea.Msg) {
+		if !armed.CompareAndSwap(false, true) {
+			return // a later press: return AT ONCE so its progress is visible
+		}
+		func() {
+			go func() {
+				close(secondIn)
+				r.Toggle("k") // must not proceed while the first is in here
+				close(secondDone)
+			}()
+			<-secondIn // the second press has been ASKED for
+			select {
+			case <-secondDone:
+				close(raced)
+			case <-time.After(250 * time.Millisecond):
+			}
+		}()
+	}
+
+	r.Toggle("k")
+	select {
+	case <-secondDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the second press never completed after the first released the gate")
+	}
+	select {
+	case <-raced:
+		t.Error("a second press entered the decision while the first was still inside it — " +
+			"the loser can pause the read the winner just started and mark the wrong row")
+	default:
 	}
 }

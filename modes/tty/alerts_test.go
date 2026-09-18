@@ -97,9 +97,7 @@ func TestPagingChipsMuteWhenInert(t *testing.T) {
 	// flows from the model (ELM) through render.KeyCapIf.
 	rendering.SetColorEnabledForTest(true)
 	defer rendering.SetColorEnabledForTest(false)
-	muted, full := "48;2;43;43;43", "48;2;86;86;86"
-
-	_ = full
+	muted := "48;2;43;43;43"
 	// Count muted chips in the alert header row only (the control row's
 	// Favorite/Unfavorite are gated separately — UAT 2026-08-27): [A] is
 	// always live, ← / → mute when their press would do nothing.

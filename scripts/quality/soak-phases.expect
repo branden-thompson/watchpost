@@ -1,4 +1,4 @@
-#!/usr/bin/expect -f
+#!/usr/bin/env expect
 # soak-phases.expect — the 72 h phase schedule of 07-readiness/soak-profile.md, driven on a pty,
 # then idle to day 7 (quality pass Q7). Runs the same on macOS and Linux:
 #   scripts/quality/soak-phases.expect <soak-phases.log> [<http cache dir>]   (Linux: $XDG_CACHE_HOME/watchpost/http)

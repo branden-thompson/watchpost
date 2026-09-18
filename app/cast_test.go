@@ -557,10 +557,10 @@ func TestABurstSoundsOneToneForItsHighestSeverityEvent(t *testing.T) {
 	declared := time.Now().Add(-10 * time.Minute)
 	// THE RUNG AND THE SEVERITY MUST DISAGREE, or this pins nothing.
 	//
-	// An earlier version of this test used a Watch and a Warning — rungs 4 and 3,
-	// severities orange and red — where the ladder's order and the severity order
-	// happen to coincide, so it stayed green through a commit that broke the very
-	// rule it is named for. A quake is rung 2 and leads the READ; the tornado
+	// A Watch and a Warning — rungs 4 and 3, severities orange and red — is the
+	// pairing to avoid: the ladder's order and the severity order coincide there,
+	// so the test stays green through a commit that breaks the very rule it is
+	// named for. A quake is rung 2 and leads the READ; the tornado
 	// warning is rung 3 and is the worst thing coming. The tone follows the
 	// hazard, not the running order.
 	evs := []globalfeed.Event{
@@ -913,5 +913,4 @@ func TestNoProductionFileInAppBuildsANameOnlyVoiceSpec(t *testing.T) {
 	if _, ok := piperInstallFor(t.TempDir(), "not-a-voice"); ok {
 		t.Fatal("control: piperInstallFor found a voice that cannot exist; it is not doing the lookup")
 	}
-	_ = found
 }

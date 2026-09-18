@@ -48,10 +48,16 @@ func builtinOverrides() map[string]map[Token]string {
 			KeyChip: "1;38;5;16;48;5;252", KeyChipMuted: "38;5;250;48;2;70;70;70",
 			GroupLocationBG: "48;2;120;120;120", GroupTodayBG: "48;2;70;110;160",
 			GroupTomorrowBG: "48;2;60;150;150", GroupExtendedBG: "48;2;120;110;170",
+			RailLiveBG: "48;2;170;70;70", RailNextBG: "48;2;180;120;60", RailQueueBG: "48;2;70;110;160",
+			CardBG: "48;2;45;45;45", CardOperatorBG: "48;2;75;65;40", CardText: "255",
+			CardEmptyBG:    "48;2;100;100;100",                                                                // this theme separates by LIGHTNESS, so its grey is the brightest
 			GroupSectionBG: "48;2;60;60;60", TempHi: "214", TempLo: "87", FireMark: "214", SeismicMark: "177", // bright light-purple, high legibility (0.11.0)
 			TableMuted: "255", TableName: "231", ModalTitle: "1;231", // Q4a-004: the table reads as bright as the rest
 			GradStart: "#FFFFFF", GradMid: "#FFFF5F", GradEnd: "#5FFFFF", // white → its focus yellow → its low cyan
 			TitleEdition: "1;159", // its own pale blue, at this theme's brightness
+			// AND THE CONSOLE'S WORD IN THIS THEME'S OWN ORANGE — 214, which is
+			// already its TempHi and FireMark, so the masthead is on-palette (D-133).
+			TitleEditionBroadcaster: "1;214",
 		},
 		"Monochrome": {
 			TempHi: "255", TempLo: "250", TrendUp: "250", TrendDown: "250",
@@ -78,7 +84,15 @@ func builtinOverrides() map[string]map[Token]string {
 			EventCatWatchBG: "48;2;52;52;52", EventCatAdvisoryBG: "48;2;46;46;46", EventCatStmtBG: "48;2;40;40;40", EventCatForecastBG: "48;2;34;34;34",
 			GroupLocationBG: "48;2;70;70;70", GroupTodayBG: "48;2;70;70;70",
 			GroupTomorrowBG: "48;2;70;70;70", GroupExtendedBG: "48;2;70;70;70",
-			AlertLabel: "250", AlertDanger: "255",
+			// MONOCHROME KEEPS THE THREE APART BY LIGHTNESS, because it has no
+			// hue to keep them apart with — LIVE is the brightest, which is the
+			// same ordering the eye reads from red/orange/blue.
+			RailLiveBG: "48;2;96;96;96", RailNextBG: "48;2;72;72;72", RailQueueBG: "48;2;52;52;52",
+			CardBG: "48;2;30;30;30", CardOperatorBG: "48;2;44;44;44", CardText: "250",
+			// AND MONOCHROME HAS ONLY LIGHTNESS, so the empty slot sits above both
+			// card grounds and below the rail's brightest band.
+			CardEmptyBG: "48;2;62;62;62",
+			AlertLabel:  "250", AlertDanger: "255",
 			AlertModalWarnFG: "38;2;235;235;235", AlertModalAdvFG: "38;2;200;200;200",
 			AlertModalWarnBG: "48;2;40;40;40", AlertModalAdvBG: "48;2;30;30;30",
 			// The modal TILE and the destructive-confirm tile, which every other
@@ -98,7 +112,12 @@ func builtinOverrides() map[string]map[Token]string {
 			// No blue to be had: BOLD WHITE says "edition" the only way this
 			// theme can say anything, the same choice its list focus makes.
 			TitleEdition: "1;255",
-			ChipFlashUp:  "1;38;5;16;48;5;255", ChipFlashDown: "1;38;5;255;48;5;240",
+			// MONOCHROME HAS NO ORANGE, and inventing one would be the one thing
+			// this theme exists to refuse. Both editions wear the same tone here,
+			// and the WORD still differs — which is the fallback every surface in
+			// this theme already relies on (D-133).
+			TitleEditionBroadcaster: "1;255",
+			ChipFlashUp:             "1;38;5;16;48;5;255", ChipFlashDown: "1;38;5;255;48;5;240",
 			// A LIST's focus, in this theme's vocabulary. The default carries it in
 			// yellow and leaves the label unbolded, because the colour is doing the
 			// work; here there is no colour, so BOLD does it — the same
@@ -120,13 +139,17 @@ func builtinOverrides() map[string]map[Token]string {
 			ChipFlashUp: "1;38;5;16;48;5;121", ChipFlashDown: "1;38;5;231;48;5;203",
 			GroupLocationBG: "48;2;52;41;79", GroupTodayBG: "48;2;54;30;90",
 			GroupTomorrowBG: "48;2;30;70;90", GroupExtendedBG: "48;2;80;40;90", GroupSectionBG: "48;2;36;27;47",
-			AlertLabel: "221", AlertDanger: "203",
+			RailLiveBG: "48;2;110;35;60", RailNextBG: "48;2;110;70;40", RailQueueBG: "48;2;45;55;100",
+			CardBG: "48;2;36;27;47", CardOperatorBG: "48;2;60;48;40", CardText: "231",
+			CardEmptyBG: "48;2;62;56;70", // desaturated toward grey, still in this theme's family
+			AlertLabel:  "221", AlertDanger: "203",
 			AlertModalWarnFG: "38;2;254;68;80", AlertModalAdvFG: "38;2;254;222;93", AlertModalText: "231",
 			AlertModalWarnBG: "48;2;60;20;40", AlertModalAdvBG: "48;2;60;50;20", ConfirmBG: "48;2;120;40;80",
 			ModalFG: "38;5;231", ModalBGDark: "48;2;36;27;47", ModalBGLight: "48;2;52;41;79",
 			WindowBGDark: "#262335", GradStart: "#FF7EDB", GradMid: "#36F9F6", GradEnd: "#FEDE5D",
-			TitleEdition: "1;159",                                      // pale neon blue, on-palette beside the cyan
-			TableMuted:   "146", TableName: "231", ModalTitle: "1;231", // Q4a-004: lavender attributes (≥ 4.5:1 on #262335)
+			TitleEdition:            "1;159",                                      // pale neon blue, on-palette beside the cyan
+			TitleEditionBroadcaster: "1;215",                                      // the theme's own warm orange, beside its FireMark (D-133)
+			TableMuted:              "146", TableName: "231", ModalTitle: "1;231", // Q4a-004: lavender attributes (≥ 4.5:1 on #262335)
 		},
 		"Solarized Night": {
 			TextBase: "247", TextBright: "254", TempHi: "166", TempLo: "37", TrendUp: "136", TrendDown: "33",
@@ -135,10 +158,14 @@ func builtinOverrides() map[string]map[Token]string {
 			SpectrumLow: "64", SpectrumMid: "136", SpectrumHigh: "160", FireMark: "166", SeismicMark: "61", // solarized violet (0.11.0)
 			GroupLocationBG: "48;2;7;54;66", GroupTodayBG: "48;2;38;79;120",
 			GroupTomorrowBG: "48;2;42;107;103", GroupExtendedBG: "48;2;108;83;132",
+			RailLiveBG: "48;2;110;44;40", RailNextBG: "48;2;115;74;30", RailQueueBG: "48;2;38;79;120",
+			CardBG: "48;2;7;54;66", CardOperatorBG: "48;2;70;62;30", CardText: "254",
+			CardEmptyBG:    "48;2;46;62;68", // solarized's own grey-slate, one step off base02
 			GroupSectionBG: "48;2;7;54;66", ModalBGDark: "48;2;0;43;54",
 			WindowBGDark: "#002b36", GradStart: "#D33682", GradMid: "#268BD2", GradEnd: "#2AA198",
-			TitleEdition: "1;109",                                      // solarized's readable blue-grey, its own light blue
-			TableMuted:   "247", TableName: "254", ModalTitle: "1;254", // Q4a-004: solarized attributes (≥ 4.5:1 on #002b36)
+			TitleEdition:            "1;109",                                      // solarized's readable blue-grey, its own light blue
+			TitleEditionBroadcaster: "1;166",                                      // solarized's own orange (D-133)
+			TableMuted:              "247", TableName: "254", ModalTitle: "1;254", // Q4a-004: solarized attributes (≥ 4.5:1 on #002b36)
 		},
 	}
 	// The Omarchy Quattro palettes, mapped systematically (quattro.go).
@@ -181,7 +208,7 @@ func RegisterTheme(name string, overrides map[Token]string) {
 	}
 	themeMu.Lock()
 	defer themeMu.Unlock()
-	themeTable[name] = withAA(full)
+	themeTable[name] = withAA(withAgeLadder(full, overrides))
 	themeGen.Add(1)
 }
 
@@ -260,13 +287,24 @@ func lightOverrides() map[Token]string {
 		TableMuted: "38;2;95;95;95", TableName: "38;2;0;0;0",
 		GroupText: "1;38;2;20;20;20", GroupLocationBG: "48;2;200;200;200", GroupTodayBG: "48;2;169;196;224",
 		GroupTomorrowBG: "48;2;169;224;224", GroupExtendedBG: "48;2;196;196;224", GroupSectionBG: "48;2;221;221;221",
-		KeyChip: "1;38;2;0;0;0;48;2;190;190;190", KeyChipMuted: "38;2;120;120;120;48;2;225;225;225",
+		// THE LIGHT THEME INVERTS THE RELATIONSHIP, NOT THE HUE. A band on a
+		// light ground is a PALE wash of the same colour: dark values here would
+		// read as holes punched in the page.
+		RailLiveBG: "48;2;240;200;200", RailNextBG: "48;2;245;215;185", RailQueueBG: "48;2;169;196;224",
+		CardBG: "48;2;235;235;238", CardOperatorBG: "48;2;245;238;215", CardText: "38;2;40;40;40",
+		// AND THE LIGHT THEME GOES DARKER, not lighter: on a light ground the
+		// dormant slot is the one that recedes, and recede means grey-toward-ink.
+		CardEmptyBG: "48;2;209;209;212",
+		KeyChip:     "1;38;2;0;0;0;48;2;190;190;190", KeyChipMuted: "38;2;120;120;120;48;2;225;225;225",
 		ChipFlashUp: "1;38;2;255;255;255;48;2;0;120;40", ChipFlashDown: "1;38;2;255;255;255;48;2;170;0;0",
 		FocusName: "1;38;2;120;80;0", FocusCell: "38;2;0;70;140", FocusPointer: "1;38;2;0;0;0",
 		// DARK blue on the light ground: "light blue" is a relationship to the
 		// paper, not an absolute, and a pale one here would vanish.
 		TitleEdition: "1;38;2;0;70;140",
-		NameAdvisory: "38;2;110;100;0", NameWarning: "38;2;150;30;30", ProviderOK: "38;2;0;110;40", ProviderDown: "38;2;170;0;0",
+		// A DARK ORANGE FOR A LIGHT GROUND, the same move the blue above makes:
+		// the dark themes' bright orange is unreadable on white (D-133).
+		TitleEditionBroadcaster: "1;38;2;166;72;0",
+		NameAdvisory:            "38;2;110;100;0", NameWarning: "38;2;150;30;30", ProviderOK: "38;2;0;110;40", ProviderDown: "38;2;170;0;0",
 		AlertLabel: "38;2;120;90;0", AlertDanger: "38;2;170;0;0",
 		RadioFG: "38;2;40;40;40", RadioAccent: "38;2;0;110;40", StateStopped: "1;38;2;110;110;110", StatePlaying: "1;38;2;0;110;40",
 		RadioStation: "1;38;2;120;90;0", RepeatOn: "1;38;2;0;110;40", VizOn: "1;38;2;0;110;40",

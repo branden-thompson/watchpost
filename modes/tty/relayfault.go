@@ -253,10 +253,10 @@ func (d Dashboard) handleRelayFaultNav(act term.Action) Dashboard {
 // that doing nothing has the same shape as choosing Fall-Thru; two paths to it
 // would be two chances for them to drift.
 func (d Dashboard) chooseRelayFault() (Dashboard, tea.Cmd) {
-	// THE FOCUS CANNOT BE OUT OF RANGE, so the range check that used to sit
-	// here was a branch with no failing input (D-2): it is reset to zero on
-	// open, moved only by a modulo, and openRelayFault now refuses to touch an
-	// open window, so the row list cannot shrink underneath it.
+	// THE FOCUS CANNOT BE OUT OF RANGE, so a range check here would be a branch
+	// with no failing input (D-2): it is reset to zero on open, moved only by a
+	// modulo, and openRelayFault refuses to touch an open window, so the row list
+	// cannot shrink underneath it.
 	rows := d.relayFaultRows()
 	if err := invariant.Check(d.relayFault.focus >= 0 && d.relayFault.focus < len(rows),
 		"the focused way out is one the window is offering"); err != nil {
@@ -295,11 +295,10 @@ func (d Dashboard) fallThroughRelayFault() (Dashboard, tea.Cmd) { return d.takeR
 // next mount on the tune list, and a station broadcasting silence on every mount
 // — which is the outage this whole window was built for — gives each new mount
 // its own reader, its own detection and its own report, one about every five
-// seconds. Each one used to rebuild the state: THE LISTENER'S CURSOR SNAPPED
-// BACK TO THE FIRST ROW AND THE COUNTDOWN RESTARTED AT TEN. From the chair that
-// is arrows that do not work and a clock that never moves, which is exactly how
-// it was reported — and no test could see it, because every one of them opened
-// the window once.
+// seconds. Rebuilding the state on each one SNAPS THE LISTENER'S CURSOR BACK TO
+// THE FIRST ROW AND RESTARTS THE COUNTDOWN AT TEN. From the chair that is arrows
+// that do not work and a clock that never moves — and a test that opens the
+// window once cannot see it.
 //
 // The ways out do not go stale: the candidates are the OTHER mounts on the tune
 // list, and one more of them going quiet does not make the rest worse. So the

@@ -1,0 +1,19 @@
+VARIANT A — one state shown, the alternative lives on the control line
+│                                                        { *** ON AIR  |  BROADCASTING *** }                                                         │
+│    [ SHIFT + ENTER ] GO TO STANDBY                                                                                                                 │
+│   ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮                         │
+│   │  [ ← ] KIG78 Coachella CA 162.400 MHz · 41mi from TOWER GPS   [ → ]                              ○ NOT CARRYING  [ B ] │                       │
+│   ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯                         │
+
+VARIANT B — both states shown, a filled glyph marks the live one
+│                                               ● ON AIR · BROADCASTING          ○ STANDBY · DEAD AIR                                                │
+│    [ SHIFT + ENTER ] GO TO STANDBY                                                                                                                 │
+│   ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮                         │
+│   │  [ ← ] KIG78 Coachella CA 162.400 MHz · 41mi from TOWER GPS   [ → ]                                    ○ IDLE  [ B ] │                         │
+│   ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯                         │
+
+VARIANT C — the station state as a labelled field, the transition in parentheses
+│   STATION:  *** ON AIR · BROADCASTING ***                                        ( SHIFT + ENTER  →  STANDBY )                                     │
+│   ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮                         │
+│   │  [ ← ] KIG78 Coachella CA 162.400 MHz · 41mi from TOWER GPS   [ → ]                                  ○ OFF BED  [ B ] │                        │
+│   ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯                         │

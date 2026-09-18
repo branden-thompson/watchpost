@@ -81,13 +81,20 @@ func TestGivingUpAfterTheToneIsTraced(t *testing.T) {
 		cancel()
 		return c.Err() == nil
 	}
-	ok := nar.Run(ctx, narrateBreaking, cast.Breaking, true, func(_ context.Context, s *speaker) {
+	started := nar.Run(ctx, narrateBreaking, cast.Breaking, true, func(_ context.Context, s *speaker) {
 		readScript(s, lineup.Script{
 			Tone:  cast.ClassWarning.Key(),
 			Parts: []lineup.Part{{Kind: lineup.PartLine, Text: "a tornado warning", Ref: "a"}},
 		}, readHooks{})
 	})
-	_ = ok
+	// THE READ MUST NOT COMPLETE, because giving up during the tone's hold IS the
+	// scenario. Pinning it here means a change that let the read finish fails on
+	// this line rather than on the missing trace below, where the cause would
+	// have to be reconstructed a second time — which is the cost this test exists
+	// to stop paying.
+	if started {
+		t.Fatal("the read completed; this test needs one that gives up during the tone")
+	}
 	cancel()
 
 	b, _ := os.ReadFile(log)

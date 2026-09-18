@@ -29,15 +29,27 @@ const (
 	numBands
 )
 
+// bandNames is the registry, indexed by Band.
+//
+// A REGISTRY, NOT A CONDITIONAL, and the reason is the house pattern rather
+// than taste: origins, states and slots are all named this way, so every member
+// appears once and adding one that nobody named fails to compile rather than
+// falling through to the other arm. The conditional this replaces handled
+// RemainingBand by name and let CloseBand fall through, which is idiomatic Go
+// and left the closer of the two bands mentioned nowhere.
+func bandNames() [numBands]string {
+	return [numBands]string{
+		CloseBand:     "CLOSE",
+		RemainingBand: "REMAINING",
+	}
+}
+
 // String names the band for the transition log (DR-23).
 func (b Band) String() string {
 	if b < 0 || b >= numBands {
 		return ""
 	}
-	if b == RemainingBand {
-		return "REMAINING"
-	}
-	return "CLOSE"
+	return bandNames()[b]
 }
 
 // Rung is one step of the ratified ladder: a band and a category.
@@ -145,13 +157,35 @@ type Arrival struct {
 	Severity int
 	At       time.Time
 
+	// Until is when the hazard expires, and it is carried for the OPERATOR
+	// rather than for the plan (D-87). The console lists a burst's alerts with
+	// the span each one covers — "<LOCATION> • <MM/DD> HH:MM - <MM/DD> HH:MM" —
+	// and `At` alone gives it half a span.
+	//
+	// IT IS NOT A SORT DIMENSION. Nothing about the ordering reads it; a hazard
+	// that expires sooner is not thereby more urgent, and treating it as one
+	// would quietly reorder the ladder MVS-D-60 ruled.
+	Until time.Time
+
 	// Lat, Lon and HasPoint are where the hazard is, for the fence. A zone-only
-	// alert has no point (globalfeed.Event.HasPoint), and Tracked is whether it
-	// is one the app already follows at a watched location — the only way such
-	// an alert reaches a scoped surface today.
-	Lat, Lon float64
-	HasPoint bool
-	Tracked  bool
+	// alert has no point (globalfeed.Event.HasPoint), and reaches a scoped
+	// surface only by being one the app already follows at a watched location —
+	// the only way such an alert reaches one today.
+	//
+	// TrackedAs IS THAT ALERT'S KEY, NOT THE VERDICT ABOUT IT. Whether the app
+	// follows this hazard is a fact about the SCOPE NOW IN FORCE, and the scope
+	// changes under a planned card — the operator crosses to the console and the
+	// fence moves to the transmitter. So `Fence.Tracked` holds the tie and this
+	// holds only the name to look up; a verdict cached here would be the answer
+	// the FIRST scope gave, waved through by every fence after it (D-122).
+	//
+	// EMPTY MEANS UNIDENTIFIABLE and is never admitted, on scopeEvents' own
+	// rule: severe.NormalizeID refuses an id it does not recognise as a CAP
+	// alert, and an alert that cannot be identified can never be shown to be one
+	// the app is tracking.
+	Lat, Lon  float64
+	HasPoint  bool
+	TrackedAs string
 
 	// Test marks an arrival the ctrl+d window fabricated (FR-4.4). It travels
 	// from globalfeed.Event.Fabricated, and the burst treats it as strictly
@@ -184,6 +218,47 @@ type Settings struct {
 	// means never advance — see Programme (T3.2b).
 	Watchlist []string
 	Dwell     time.Duration
+
+	// Depth is how many cards the main track is kept topped up to (D-40).
+	//
+	// THE DIRECTOR'S NUMBER, NOT THE CONSOLE'S, even though the console is what
+	// makes it visible: the schedule is what promises the reads, and a depth
+	// held by the surface would be a second owner of how much the station has
+	// committed to. The console draws what the schedule holds.
+	//
+	// ZERO IS OFF. A station that never set one is not asking to be topped off,
+	// and the safe reading of an unset number is "do nothing" rather than "fill
+	// for ever".
+	Depth int
+
+	// WeighLastRead is the operator's switch on the cadence term (D-48).
+	//
+	// A BROADCASTER SETTING, and the HUM LEAD asked for it by name: "where the
+	// Operator does/does not want 'last read' to be a factor in Director
+	// prioritization." Some stations run a fixed rotation and want the
+	// watchlist honoured exactly; others want the Director to notice that a
+	// kind of read has gone quiet.
+	//
+	// FALSE IS OFF AND IS THE ZERO VALUE, so a station that never chose gets
+	// the behaviour that existed before the term did. Turning it off must never
+	// stop the Director choosing — see cadence.go: the term answers zero for
+	// everything, and zero for everything discriminates nothing.
+	WeighLastRead bool
+
+	// ProgrammeReturn is what the listener is told when something that
+	// interrupted the programme ends — "Watchpost Radio now returns to its
+	// regularly scheduled programming" (MVS-D-80). Announcement is the other
+	// half: what they are told before a kind that does not introduce itself.
+	//
+	// THE WORDS ARE NOT THE DIRECTOR'S. It owns ARRANGEMENT; the script library
+	// owns CONTENT, which is the S-7 boundary T-3 draws. These are composed by
+	// the app from `transition/resume.txt` and handed in, so the sentence has
+	// ONE owner and the Director never invents one.
+	//
+	// EMPTY MEANS SAY NOTHING, and that is the degradation: a station that
+	// speaks a line nobody wrote is worse than one that simply moves on.
+	ProgrammeReturn string
+	Announcement    string
 }
 
 // Burst is one planned takeover: what is read, in order, and how much was not.
@@ -191,13 +266,12 @@ type Burst struct {
 	// Takeover is the ONE card the schedule holds for this burst (MVS-D-77), and
 	// its Refs are the SELECTION: the alerts it reads, in read order.
 	//
-	// THERE IS ONE ORDERING, AND IT IS THIS ONE (red team 2026-09-05). A
-	// `Cards []Card` used to sit beside it, derived from the same selection by a
-	// second walk, and every rule about the order — the ladder, emergency orders
-	// leading, the fence, freshness, ties, the divert count — was asserted
-	// against THAT. Production read only the takeover. Renaming the field and
-	// building the tree proved it had no production consumer at all, so
-	// takeoverOf could have dropped, reordered or truncated its refs with all
+	// THERE IS ONE ORDERING, AND IT IS THIS ONE. A `Cards []Card` beside it,
+	// derived from the same selection by a second walk, is a second ordering for
+	// every rule about the order — the ladder, emergency orders leading, the
+	// fence, freshness, ties, the divert count — to be asserted against, while
+	// production reads only the takeover. With no production consumer,
+	// takeoverOf could drop, reorder or truncate its refs with all
 	// forty pins still green. The pins are on this now.
 	Takeover Card
 
@@ -250,6 +324,13 @@ func Plan(arrivals []Arrival, s Settings, now time.Time) (Burst, error) {
 	// THE COUNT RIDES ON THE CARD, so the Composer never has to ask a second
 	// time and can never get a different answer (DR-14).
 	takeover.Divert = divert
+	// AND WHAT IT WAS PLANNED FROM (D-75), so a fence that moves later can ask
+	// whether this card still belongs on the air. `chosen` is what the card
+	// READS; the ones diverted are not on it and are not its business.
+	takeover.From = make([]Arrival, 0, len(chosen))
+	for _, c := range chosen { // bounded by the burst's Max (P10-02)
+		takeover.From = append(takeover.From, c.arrival)
+	}
 	b := Burst{Takeover: takeover, Divert: divert}
 	if err := invariant.Check(b.HasTakeover() == (len(chosen) > 0), "a burst with alerts has a takeover, and an empty one has none"); err != nil {
 		return Burst{}, err
@@ -463,8 +544,21 @@ func takeoverOf(p []placed) (Card, error) {
 	for _, c := range p {
 		refs = append(refs, c.arrival.ID)
 	}
+	// EVERY ALERT, NOT ANY ALERT (FR-4.4, D-55). A burst that carries one real
+	// hazard is not a test: marking it would hide a live alert behind a label
+	// that tells the operator to ignore it. This is the same call
+	// `app/compose_takeover.go:allFabricated` makes about the WORDS, and the two
+	// must not disagree — the card would say "test" while the voice read a real
+	// warning, or the reverse.
+	fabricated := true
+	for _, c := range p { // bounded by the selection (P10-02)
+		if !c.arrival.Test {
+			fabricated = false
+			break
+		}
+	}
 	card, err := Propose(Card{ID: BurstID(head.ID), Slot: BreakingAlert, Origin: FromObserver,
-		Subject: head.Subject, Headline: headline, Refs: refs})
+		Subject: head.Subject, Headline: headline, Refs: refs, Test: fabricated})
 	if err != nil {
 		return Card{}, err
 	}

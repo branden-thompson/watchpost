@@ -11,7 +11,8 @@ this paragraph is now true. The per-file headers say what a file holds; this pag
 | Event | Where |
 |---|---|
 | The program starts | `app/dashboard.go:RunDashboard` (composition root) → `app/pipelines.go:startPriority`, `app/pipelines.go:startRecent` |
-| A key is pressed | `modes/tty/dashboard.go:handleKey` → a modal opens via `modes/tty/dashboard.go:toggleModal`; the radio keys via `modes/tty/radio_panel.go:toggleRadio` |
+| A key is pressed | `modes/tty/router.go:Update` → `routeKey` decides which surface owns it (the swap chords and the station toggle are the Router's own) → Observer `modes/tty/dashboard.go:handleKey` (a modal opens via `toggleModal`; the radio keys via `modes/tty/radio_panel.go:toggleRadio`) or Broadcaster `modes/tty/broadcaster.go:Update` |
+| A location is typed, and becomes a place | the ONE resolver serves both halves so the suggestions and the commit cannot disagree: `app/resolve.go:newResolver` builds it over the embedded index, `domains/locations/resolver.go:TypeAhead` answers each keystroke from that index alone (never the network — a per-keystroke fetch is how a search box becomes a rate limit), and `domains/locations/resolver.go:Resolve` is the commit, which MAY reach the network and reports `fellBack` when it could not match exactly. `app/resolve.go:resolveHook` is what Settings and Lookup call, and it answers with the build error on every query when the index failed to load, so a broken resolver says why instead of returning nothing |
 | A window opens or closes | `modes/tty/dashboard.go:toggleModal` → `modes/tty/dashboard.go:open` / `modes/tty/dashboard.go:close` (one `modal` value, so opening one closes the rest); drawn by `modes/tty/view.go:renderModal` through the modal memo `modes/tty/memo.go:modalView` (0.13.0: one render per input change, keyed by `modes/tty/memo.go:modalKeyFor`) |
 | `enter` opens Location Details | `modes/tty/dashboard.go:toggleModal` → the body `modes/tty/detail.go:detailLines` (+ `modes/tty/detail_fire.go:fireRows`, `modes/tty/detail_marine.go:maritimeRows`) |
 | A word is pronounced | the voice-only pass `domains/radio/synth/normalize.go:Pronounce` (every Say) and the product normaliser `domains/radio/synth/normalize.go:Normalize` load their tables by name from `domains/radio/pronounce/pronounce.go:Table` — `rules/<table>.txt`, one rule per line |
@@ -52,6 +53,12 @@ this paragraph is now true. The per-file headers say what a file holds; this pag
 | A time is written or spoken | `platform/render/clock.go` is the one owner: `:Time` / `:Since` / `:Stamp` write it, `:Spoken` says it and `:SpokenID` reads a callsign in NATO phonetics under the military convention. The listener's choice is Settings → WATCHPOST UI → Radio Convention |
 | The app checks for a newer release | `app/release.go:start` asks ONCE at startup, and only when `update_check` is set (0.15.0 FR-7.1; it polled hourly before); `app/release.go:checkAt` asks GitHub and keeps the parsed numbers, never the published tag |
 | A [S] table is laid out | `modes/tty/status.go:providerLines`, `:pipelineLines` and `:issueLines` build cells; `platform/render/status_table.go:StatusTable` lays them out on the go-studs table, and each table drops columns down a ladder rather than clipping one |
+| The Broadcaster console opens, or the operator returns to the Observer | `modes/tty/router.go:canSwap` decides (arriving is always permitted; leaving is refused while the station is ON AIR) → `modes/tty/router.go:swapTo` |
+| The station's transmitter and radius are set | the setup form's own question `modes/tty/setup_form.go:setupTransmitterLines` (it states the storage boundary, FR-9.4) → `platform/config/broadcaster.go:Station` falls back to the default location until one is set |
+| A location needs reading, on the main track | the deck reports the need from one seam `app/radio.go:needsRead` → the Director proposes and queues the card `platform/lineup/rotation.go:onNeedsRead` |
+| A card cannot be performed | `app/executors.go:decline` (deliberate: muted, nothing held, another reader's card — routed) or `app/executors.go:fault` (no composer, an empty report, no reader — not routed) → `platform/lineup/fault.go:escalation` raises DR-21's window only for a fault that stops the schedule |
+| A hazard takes the air | the burst's takeover is chosen in `platform/lineup/plan.go:takeoverOf`; the console draws the air and the lanes from the lineup's projection in `modes/tty/broadcaster_air.go` |
+| The STANDBY notice is drawn | `modes/tty/broadcaster.go:heldBand` — the count shouts, the prose does not, only while the station is OffAir |
 
 ## Why something is slow on purpose
 
@@ -89,6 +96,12 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | synth | the synthesized broadcast of the location's own NWS products | `domains/radio/synth` |
 | token | a theme colour key (`Tok(name)`), never a literal SGR in views | `platform/render/theme.go` |
 | the seam | `platform/render` — the only non-test package that imports go-studs (`table.go` is the table seam) | `platform/render/table.go` |
+| the Director | the pure state machine that owns the schedule: Events in, Effects out; the executors perform the Effects | `platform/lineup/director.go`, `app/executors.go` |
+| a card | one scheduled read, from proposed to on-air to done | `platform/lineup/card.go` |
+| the line-up | the schedule the Director publishes: the main track and the alert rail | `platform/lineup/lineup.go` |
+| the main track / the rail | the rotation of ordinary reads (sixteen cards: the one on the air, UP NEXT, and fourteen behind them) / the priority queue for severe-weather takeovers, which always drains first | `platform/lineup/lineup.go` |
+| the bed | the live relay stream the programme rides on — a resource the Director cuts over to, not a track | `platform/lineup/bed.go` |
+| the fence | the hard boundary on which alerts reach the schedule at all | `platform/lineup/fence.go` |
 
 ## Record IDs
 
@@ -101,7 +114,6 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | JD/CQ/PA/PR/A11/BQ/IS/PH/DQ/SC/PF/RT/R2-n | red-team findings | `…/08-reports/red-team-plan.md` |
 | P10-nn | safety-critical rules (`make p10`, the harness CLI's check) | the harness's P10 skill (outside the public tree) |
 | C1–C5, OQ-n, D1/D2 | decisions, open questions, defects of the quality pass | `…/08-reports/discover-report.md`, `project-brief.md` |
-| A location is typed, and becomes a place | the ONE resolver serves both halves so the suggestions and the commit cannot disagree: `app/resolve.go:newResolver` builds it over the embedded index, `domains/locations/resolver.go:TypeAhead` answers each keystroke from that index alone (never the network — a per-keystroke fetch is how a search box becomes a rate limit), and `domains/locations/resolver.go:Resolve` is the commit, which MAY reach the network and reports `fellBack` when it could not match exactly. `app/resolve.go:resolveHook` is what Settings and Lookup call, and it answers with the build error on every query when the index failed to load, so a broken resolver says why instead of returning nothing |
 
 ## Rules, and where they are stated
 

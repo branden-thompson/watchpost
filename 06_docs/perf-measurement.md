@@ -1,0 +1,209 @@
+# Performance measurement — the standing method, and what we deliberately did NOT build
+
+**Repo-level and release-spanning.** `perf-protocol.md` lives inside a feature folder and records one
+release's measurements; this file records how measurement is DONE here and which decisions have
+already been made, so a new session does not re-litigate them.
+
+## The ruling (HUM LEAD, 2026-09-09): no performance-toolset project before 0.16.0
+
+A three-tier profiling toolset — short, mid and long term — was proposed and **declined after
+rubber-ducking, because two of the three tiers already exist and the third has no reported need.**
+Recorded here rather than dropped, because "we considered this and chose not to" is worth more to the
+next session than silence, and the reasons are the part that will still be true later.
+
+**What already exists, verified 2026-09-09 rather than assumed:**
+
+| Tier | Status | How |
+|---|---|---|
+| Short term (1–3 h, frequent samples) | **Exists — as arguments** | `scripts/quality/soak.sh <pid> <hours> <out.csv> [interval_s]` already takes both. 3 h at 30 s is `soak.sh <pid> 3 out.csv 30` |
+| Mid term (8 h+) | **Exists** | The same script; `tools/slope` rules on the series |
+| Trend analysis at SHORT horizons | **Exists** | `slope` has `-window` and `-warmup`. The "8 buckets" floor is STATISTICAL, not a duration — 3 h at `-window 20m` clears it |
+| Long term (days–weeks, live stations) | **Not built, deliberately** | See below |
+
+`soak.sh` already records 14 columns per sample — `rss_kb`, `footprint_kb`, `threads`, `pcpu`,
+`heap_alloc`, `heap_inuse`, `heap_objects`, `goroutines`, `fds`, the disk gauges and
+`publishes_recent` — and `/debug/dump` carries `runtime.ReadMemStats` including `NumGC` on demand.
+**There is no instrument the standard Go toolchain offers that this repo is not already using.**
+
+## The real gap, which is not a tool
+
+**The failure that started this was never an inability to measure.** An hour of sampling with existing
+tools gave a clean answer. The failure was that the 0.13.0 baseline used **50 locations with the radio
+off** and the observation used **10 with it on**, so a good number could not be compared to a good
+number.
+
+**No tool fixes that; a defined workload does.** The missing thing is a versioned standard workload —
+one fixture config, a stated terminal size, radio-off and radio-on variants — plus one command that
+runs against it and emits a comparable record. **Estimated at an afternoon, and it is the only piece
+of this that 0.16.0 actually needs**, because a Broadcaster-UI "after" number is worthless without a
+"before" taken on the same workload.
+
+## Why the long-term tier waits
+
+Days-to-weeks on live stations is **not a soak harness — it is telemetry from someone else's machine.**
+That drags in what is collected, where it is stored, whether it ever leaves the box, and how a user
+hands it back: product and privacy decisions for an app whose whole posture is local-first.
+Off-the-shelf continuous profiling (Parca, Pyroscope) is the do-not-reinvent answer **if** it is ever
+wanted, and attaching a profiling agent to a personal weather station is a heavy thing to carry for a
+question nobody has asked. **Build it when there is a report, and let the report choose the shape.**
+
+## Why not before 0.16.0
+
+- **It would tune instruments for a surface not yet visible.** Broadcaster UI is a RENDERING feature;
+  its plausible costs are frame time and allocations per frame, already pinned by
+  `modes/tty/bench_test.go` and `make alloc-budget` — not by RSS sampling. A memory-focused toolset
+  built now may instrument the wrong axis.
+- **SEV-0 process buys nothing here.** Severity should match blast radius, and this one's is a CSV.
+- **New tooling owes new controls.** After 0.15.0, an instrument is not believed until it has been
+  watched failing (INST-1..5) — the right price for a gate, a poor one for something used twice
+  before 0.16.0 changes the question.
+
+## What to do instead — hours, not a project
+
+1. **Run the 8-hour soak overnight.** Free; settles the RSS-vs-footprint divergence below and gives
+   `slope` a series it will actually rule on.
+2. **Define the standard workload as a fixture** and take the 0.15.0 baseline against it, radio-off and
+   radio-on.
+3. **Record both in `perf-protocol.md`** as the numbers 0.16.0 is compared against.
+
+## What would reopen the toolset decision
+
+- The overnight run showing a real upward trend in **physical footprint** — not RSS; see below.
+- The Broadcaster UI plan adding a **background writer or a second render path**, which would put
+  measurement on the critical path.
+
+Either makes the question specific, which is what the three-tier proposal lacked.
+
+## The 0.15.0 macOS measurement (2026-09-09)
+
+Live instance, **10 locations, radio configured**, 12 samples over an hour at 5-minute spacing, from
+13 → 68 min uptime. Series: `02_features/0.15.0-pre-broadcaster-ui-improvements/07-readiness/soak-macos-1h.csv`.
+
+| Measure | Range | Median | Trend | Verdict |
+|---|---|---|---|---|
+| RSS | 106.8 – **115.3** MB | 109.6 | +6.31 MB/h — **an artifact, see below** | **PASS** vs the ≤126 MB gate, 10.7 MB margin |
+| Physical footprint | 93.7 – 100.2 MB | 96.2 | **−0.28 MB/h** | flat |
+| Threads | **26, flat** | | none | better than 0.13.0 (26 → 32 after 25 min) |
+
+**The ~127 MB impression did not reproduce**; the highest single sample was 115.3 MB and the run ended
+at 110.1 MB.
+
+**RSS and footprint disagree, and the disagreement is the finding.** Physical footprint is what macOS
+charges a process — dirty private pages plus compressed memory. RSS also counts clean, file-backed,
+reclaimable pages. RSS rising while footprint does not is the signature of mapped-file residency, not
+a growing heap. The series shows it: ~109–110 MB for seven samples, a 115.3 MB shelf for three around
+48–58 min, then **back down** to 110.1. A least-squares line through twelve oscillating points always
+returns a slope; that one's +151 MB/day projection is an artifact of fitting a line to a plateau.
+
+**`tools/slope` refused the series** — `only 0 buckets after warm-up; need at least 8` — which is the
+correct behaviour and the honest verdict: **no leak is demonstrated and none is excluded.**
+
+**Two limits, stated so the numbers are not over-quoted later.** The workload is not the 0.13.0
+baseline's, so this is a fresh self-baseline for real usage rather than a 0.13.0 → 0.15.0 comparison.
+And no launch burst was captured — the first sample was at 13 min uptime, so the baseline's "116 MB at
+launch" row has no counterpart.
+
+## Cross-platform comparisons: read the column, not the number
+
+`soak.sh` deliberately records **different quantities per platform** — `vmmap` **physical footprint**
+on Darwin, **Pss** from `smaps_rollup` on Linux. Pss divides shared pages by their sharer count;
+footprint counts compressed memory and dirty private pages; btop's `MemB` is closer to RSS again.
+**Three definitions.** The HUM LEAD's standing observation that Arch numbers read consistently lower
+than macOS is therefore partly a measurement-definition artifact, not only a platform difference.
+**`rss_kb` is the one column defined the same on both** — compare that, or compare nothing.
+
+
+---
+
+## The card build is not the slow thing (measured 2026-09-14)
+
+**HUM LEAD:** *"Data requests in both Observer and Broadcaster 'feel' a little slow - can we take a
+measurement/sounding of that to evaluate and make a data-drive recommendation (if any)."*
+
+**Measured with the repo's own instruments** — `TestCardBuildCost` and `TestCardBuildConcurrentFloor`,
+both gated behind `WATCHPOST_LIVE_PERF=1`, n=5 against the live services:
+
+| | median | range |
+|---|---|---|
+| cold build, serial (today) | **449 ms** | 424–514 ms |
+| cold build, concurrent floor | **449 ms** | 425–501 ms |
+| warm build | **1–2 ms** | — |
+
+Eleven network requests either way, 24 segments.
+
+**SO THE CARD BUILD IS NOT THE ANSWER, and PL-3's ruling stands unchanged**: the build is *not*
+latency-parallelisable, because the calls funnel through a shared `/points` resolution that serialises
+however they are issued. 449 ms is already under the ≈0.7 s output buffer (perf-protocol §1), and a
+warm build is free.
+
+### The first sample said 3.599 s, and it was wrong
+
+**One sample would have bought an 8x concurrency rewrite of a path a ratified measurement had already
+closed.** The 3.599 s was the session's FIRST request — DNS, TLS, cold everything — and every run
+after it was ~450 ms.
+
+**The rule, stated because this is the second time in one day:** when a new measurement disagrees with
+a recorded one by an order of magnitude, **the disagreement is the finding**. Reconcile it before
+using either. The same mistake sized a 6.5-hour corpus sweep at 95 minutes that morning, from a sample
+chosen for being recent rather than representative.
+
+### Where the felt slowness must actually be, and what would settle it
+
+The card build is ~450 ms cold and free warm, so it cannot be what "feels slow". Three candidates
+remain, in the order they are worth measuring:
+
+1. **Time-to-first-data for a location.** A row added or a pool derived shows `n/a` until its first
+   fetch lands, and the cadence table's own figures mean an observation can be **90 s** behind on a
+   priority location and **10 min** on a recent one. That is by design and may be the whole of what
+   is being felt — in which case the answer is presentation, not speed.
+2. **The scheduler's serial provider walk** (accepted-costs §4). Its re-open trigger is stated: *a
+   tier's cycle longer than its own cadence*. 0.16.0 added the station pool, so the feed count has
+   grown — this is the one measurement the acceptance itself asks for.
+3. **Start-up fan-out**: priority plus up to 50 RECENT locations, each with six tiers.
+
+**None of these is measurable from a unit test** — they need a running instance, which is what
+`soak.sh` is for. That is the sounding to take next, and it is the "standard workload" gap this
+document already names as the only piece 0.16.0 actually needs.
+
+## The location lookup: the index is free, the network is the whole cost (measured 2026-09-14)
+
+**`[l]`'s cost is one geocoder round trip, and nothing else on the path is measurable.** The question
+that prompted this was whether Broadcaster's `[l]` should be scoped to the station pool the way the
+request window's Location field is. The measurement says the scoping decision cannot be a performance
+decision, because every offline candidate is already four to five orders of magnitude below the one
+step that costs anything.
+
+| Path | Cost | What takes it |
+| --- | --- | --- |
+| Offline index, zip | **2 µs** | `92084` |
+| Offline index, partial miss | **1 µs** | `lone` — refused before any work |
+| Offline index, city hit | **15 µs** | `San Diego, CA` |
+| Pool scan | below the index | a prefix compare per pooled ref |
+| **Geocoder fallback, warm** | **~200 ms** | n=4, 201/203/204/208 ms |
+| **Geocoder fallback, first call** | **939 ms** | DNS and TLS, once per session |
+
+*Instrument:* a scratch benchmark in `domains/locations` at `-benchtime 200x` for the offline rows,
+and five live `openmeteo.Geocoder.Resolve` calls for the network rows.  Both files were removed after
+the run; the tree is the evidence that they were scratch.  n=5 rather than n=1, per the rule this
+document states one section above — and the first sample was again the outlier, again by 4.6x.
+
+### What decides whether the network is reached
+
+`Resolver.Resolve` takes the offline index only for a **zip** or an **exact** city name, optionally
+qualified `City, ST`.  `pickCity` deliberately refuses a prefix-only match — *"San F should not
+silently resolve to San Francisco on a full Resolve"* — so a **partial name falls through to the
+geocoder**.  That is the felt behaviour exactly: `Lone Pine, CA` answers in 15 µs, and `lone` answers
+in 200 ms because it left the machine.
+
+**Therefore pool-scoping `[l]` buys 15 µs and costs the out-of-radius lookup** that Observer exists to
+provide and that the request window's own helper text points the operator toward.  It is not the
+trade the performance ruling was written for.
+
+### Carried to 0.16.5
+
+- **Warm the geocoder connection at start-up.** The first lookup of a session pays 939 ms against a
+  200 ms steady state; the ~700 ms delta is one handshake, and it lands on the operator's first
+  search rather than on anything they can see coming.
+- **Decide whether a partial name may resolve from the pool.** It is the only change that removes the
+  round trip rather than hiding it, and it is a behaviour ruling, not an optimisation — see the fork
+  recorded for the HUM LEAD.

@@ -23,7 +23,17 @@ import "github.com/branden-thompson/watchpost/platform/invariant"
 type Escalate struct {
 	isEffect
 	ID, Reason string
+	// Run is how many cards in a row the station could not perform when this
+	// was raised; 0 when the escalation is not about a run at all — a bed that
+	// could not be tuned (bed.go) raises one with a reason and no count.
+	Run int
 }
+
+// faultRunLimit is how many consecutive non-routed failures a LIVE station may
+// take before the operator is owed the window. A topped-off station is never
+// stopped(), so without this the fault class escalates never. THREE, proposed
+// at REVIEW and ruled by the HUM LEAD 2026-09-17 ("recommendations approved").
+const faultRunLimit = 3
 
 // stopped reports whether the schedule has nothing left to do: nothing on the
 // air, and nothing held that could take it.
@@ -50,8 +60,8 @@ func (d Director) escalation(ev Failed) []Effect {
 	if ev.Routed {
 		return nil
 	}
-	if !d.stopped() {
-		return nil // something else is on the air or waiting: it was routed around
+	if !d.stopped() && d.faultRun < faultRunLimit {
+		return nil // something else is on the air or waiting, and the run is short: routed around
 	}
 	if err := invariant.Check(ev.ID != "", "an escalation names the card that failed"); err != nil {
 		return nil
@@ -60,5 +70,5 @@ func (d Director) escalation(ev Failed) []Effect {
 	if reason == "" {
 		reason = "the card could not be delivered"
 	}
-	return []Effect{Escalate{ID: ev.ID, Reason: reason}}
+	return []Effect{Escalate{ID: ev.ID, Reason: reason, Run: d.faultRun}}
 }

@@ -357,9 +357,9 @@ func (d *director) release(job *narrationJob) {
 	defer d.mu.Unlock()
 	if d.onAir == job {
 		d.onAir = nil
-		// THE LINE GOES WITH THE JOB (MVS-D-75). Cancelling a read used to end
-		// its SEQUENCE and leave its audio playing: the air was released, the
-		// suspended location read resumed underneath, and the listener heard
+		// THE LINE GOES WITH THE JOB (MVS-D-75). Ending only the SEQUENCE leaves
+		// the audio playing: the air is released, the suspended location read
+		// resumes underneath, and the listener hears
 		// both at once. The sound is part of what a job holds, so it is given
 		// back on the one path a job leaves the air by.
 		//
@@ -675,9 +675,9 @@ func (d *director) remove(job *narrationJob) {
 // A job on the air, waiting or suspended leaves the bed down, and whichever
 // sequence finishes last lifts it by the ordinary path.
 //
-// AN EARLIER VERSION ASKED AND THEN ACTED, with the question answered outside
-// the effector's lock and the lift taken after it: a job admitted in between had
-// the bed restored out from under it, which is the broadcast surging to full
+// ASKING AND THEN ACTING would answer the question outside the effector's lock
+// and take the lift after it: a job admitted in between has the bed restored out
+// from under it, which is the broadcast surging to full
 // volume over a read in progress. Holding the effector's lock across the
 // question instead would invert the lock order every other path takes — settle
 // calls into the effector while holding this lock — and deadlock.

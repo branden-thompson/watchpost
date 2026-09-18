@@ -5,12 +5,12 @@ import "github.com/branden-thompson/watchpost/platform/category"
 // civil.go — the civil-emergency family: the products that are an INSTRUCTION
 // rather than a description.
 //
-// ONE OWNER (D-1, and F-2's fourth classifier). This table used to live inside
-// domains/severe.Classify, where only the [w] window could see it. The producer
-// asks the same question when it hands an arrival to the Director, and
-// domains/severe imports this package rather than the other way round, so the
-// window's copy was the only one and the marquee's lane had no arm for the
-// family at all. An evacuation order was therefore laned as an ordinary warning
+// ONE OWNER (D-1, and F-2's fourth classifier). Inside domains/severe.Classify
+// only the [w] window can see this table. The producer asks the same question
+// when it hands an arrival to the Director, and domains/severe imports this
+// package rather than the other way round, so the window's copy would be the only
+// one and the marquee's lane would have no arm for the family at all. An
+// evacuation order is then laned as an ordinary warning
 // — one rung below the rung the ladder reserves for it — and, because the
 // national query never asked for the product, it never arrived to be laned
 // wrongly in the first place (red team 2026-09-05, C-2).

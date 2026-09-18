@@ -340,3 +340,70 @@ func TestFlaky(t *testing.T) {
 		t.Errorf("an unattributable failure is not evidence either way; the harness said %s", got)
 	}
 }
+
+// TestAnAssumedBaselineStillRefusesADirtyTree.
+//
+// `MUTANT_BASELINE=assumed` lets a SWEEP skip the clean-tree test run — the same
+// ~100 s answer recomputed for every mutant in a package, where once will do.
+// What makes that safe is not the caller's promise: it is that the clean-tree
+// CHECK is not skippable, so a mutant that failed to restore is refused before
+// the baseline question can arise.
+//
+// THAT IS THE ONE PROPERTY THE OPTIMISATION RESTS ON, so it is watched rather
+// than asserted. Without it the knob would silently convert "a previous mutant
+// left the tree mutated" into "every verdict after it is measured against that
+// mutation" — which is the contamination the restore test exists to prevent,
+// arriving through the door the speed-up opened.
+func TestAnAssumedBaselineStillRefusesADirtyTree(t *testing.T) {
+	t.Parallel()
+	dir := probeRepo(t)
+	precious := filepath.Join(dir, "rule.go")
+	before, err := os.ReadFile(precious)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dirty := string(before) + "\n// a mutation a previous run failed to put back\n"
+	if err := os.WriteFile(precious, []byte(dirty), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "m.py"), []byte(patch("return x > 0", "return true")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run := exec.Command("./run.sh", "m.py", "./...")
+	run.Dir = dir
+	run.Env = append(os.Environ(), "MUTANT_BASELINE=assumed")
+	out, _ := run.CombinedOutput()
+	if !strings.Contains(string(out), "SKIPPED") {
+		t.Errorf("with the baseline assumed and the tree dirty the harness said %q, want SKIPPED",
+			strings.TrimSpace(string(out)))
+	}
+	after, err := os.ReadFile(precious)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != dirty {
+		t.Error("the harness reverted work on the path where it declined to do anything")
+	}
+}
+
+// AND AN ASSUMED BASELINE STILL DECIDES A VERDICT. The knob must skip the
+// baseline RUN and nothing else — a version that also skipped the mutated run,
+// or reported without deciding, would make a sweep fast and worthless.
+func TestAnAssumedBaselineStillReachesAVerdict(t *testing.T) {
+	t.Parallel()
+	dir := probeRepo(t)
+	if err := os.WriteFile(filepath.Join(dir, "m.py"), []byte(patch("return x > 0", "return true")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// COMMITTED, or the mutant FILE is the dirt and the harness refuses before it
+	// has decided anything — which is what the test above is for, and would make
+	// this one pass for the wrong reason.
+	commitAll(t, dir, "mutant")
+	run := exec.Command("./run.sh", "m.py", "./...")
+	run.Dir = dir
+	run.Env = append(os.Environ(), "MUTANT_BASELINE=assumed")
+	out, _ := run.CombinedOutput()
+	if !strings.Contains(string(out), "CAUGHT") {
+		t.Errorf("with the baseline assumed the harness said %q, want CAUGHT", strings.TrimSpace(string(out)))
+	}
+}

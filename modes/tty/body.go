@@ -27,51 +27,15 @@ import (
 // the version leaves the title before the title would; the row inside
 // ladders the same way (headerRow). The header never exceeds the width.
 func (d Dashboard) header(o render.Opts) string {
-	// WATCHPOST Observer (HUM LEAD, 2026-08-30): the wordmark keeps its
-	// gradient and the EDITION rides beside it, naming which experience this
-	// build is. Broadcaster — the station-running dashboard — is the second one,
-	// and it arrives as a different word here rather than as a rename.
-	full := render.Wordmark(render.EditionObserver)
-	// The stamp: the widest form carries the age
-	// ("(2 Minutes Ago)"); it reads green while the data is fresh, yellow
-	// once no fetch has succeeded for staleAfter, grey before the first data.
-	stamps, tone := []string{"awaiting first data..."}, render.Tok(render.TextBase)
-	if d.snap != nil {
-		at := dataAsOf(d.snap)
-		age := d.clock().Sub(at)
-		full := "Updated: " + o.Clock.Stamp(at.Local())
-		short := o.Clock.TimeSec(at.Local())
-		stamps = []string{full + " (" + agoWords(age) + ")", full, "Updated: " + short, short}
-		tone = render.Tok(render.ProviderOK)
-		if age > staleAfter {
-			tone = render.Tok(render.AlertLabel)
-		}
-	}
+	// THE LADDERS ARE SHARED WITH THE CONSOLE (D-59, masthead.go). They were
+	// here first and this is still their only behavioural home — what moved is
+	// the CODE, so that the two surfaces cannot come to draw different
+	// mastheads, which is exactly what had happened.
 	rule := o.BoxRuleWidth()
-	// The title's own ladder: the version leaves first, then the edition — the
-	// wordmark is the last thing to go, because a masthead that cannot say what
-	// the app is has stopped being a masthead.
-	//
-	// Each rung is built only if the one above it did not fit. Passing all three
-	// to FirstFit would render the bare wordmark on every frame — a second
-	// per-rune gradient pass — for a form only a terminal under about 46
-	// columns ever shows.
-	title := full + "  v" + d.cfg.Version
-	switch {
-	case render.Width(title)+4 <= rule:
-	case render.Width(full)+4 <= rule:
-		title = full
-	default:
-		title = render.Wordmark("")
-	}
-	stamp := ""
-	for _, form := range stamps { // the widest form the rule carries beside the title
-		if render.Width(title)+4+render.Width(form)+5 <= rule {
-			stamp = render.Tint(form, tone)
-			break
-		}
-	}
-	return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "") // no tone of its own: the frame's base grey paints it (round 4, B-01)
+	title := mastheadTitle(render.EditionObserver, d.cfg.Version, rule)
+	stamp := mastheadStamp(o, title, d.snap, d.clock(), rule)
+	// no tone of its own: the frame's base grey paints it (round 4, B-01)
+	return o.BoxTitled([]string{d.headerRow(o)}, title, stamp, "", "")
 }
 
 // headerRow is the masthead's inner row: the controls at the left, the API
@@ -111,13 +75,18 @@ func (d Dashboard) headerRow(o render.Opts) string {
 // 2026-08-30): both are settings now, and both live in [s]. The bindings stay
 // live and both deep-link — [t] opens Settings at the theme picker, [M] at the
 // tone rows — so a listener who knows the keys still lands where the thing is.
+// THROUGH `o.Controls`, LIKE THE CONSOLE'S (one canonical way). The shape was
+// spelled out here by hand and spelled out AGAIN in the console — as string
+// literals with no chips at all, which is the UAT defect of 2026-09-10. Two
+// hand-built control rows are two chances to forget what a control looks like,
+// and one of them did. The output is unchanged.
 func (d Dashboard) headerControls(o render.Opts, form int) string {
-	base := o.KeyCap("s") + " Settings  "
-	tail := o.KeyCap("S") + " Status  " + o.KeyCap("?") + " Help  " + o.KeyCap("q") + " Quit"
+	items := []render.Control{render.Ctl("s", "Settings")}
 	if form == 0 {
-		return base + o.KeyCap("a") + " About  " + tail
+		items = append(items, render.Ctl("a", "About"))
 	}
-	return base + tail
+	items = append(items, render.Ctl("S", "Status"), render.Ctl("?", "Help"), render.Ctl("q", "Quit"))
+	return o.Controls("  ", items...)
 }
 
 // staleAfter is how long the stamp stays green after the last successful
@@ -152,9 +121,13 @@ func agoWords(age time.Duration) string {
 // has not answered yet counts in the total only (the three never sum past
 // it; a shortfall means "still loading"). The total is the active set,
 // padded to two columns (UAT 102: "reserve 2 col for growth").
-func (d Dashboard) apiSummary(o render.Opts) string {
+
+// apiSummaryOf counts the providers' health for the masthead — the ONE owner,
+// called by both surfaces (D-59). Two counts of one snapshot could disagree, and
+// the number is a health claim.
+func apiSummaryOf(o render.Opts, snap *snapshot.Snapshot) string {
 	ok, stale, down, total := 0, 0, 0, 0
-	for _, p := range providersOf(d.snap) {
+	for _, p := range providersOf(snap) {
 		switch {
 		case p.Status == snapshot.ProviderOff:
 			continue
@@ -179,6 +152,9 @@ func (d Dashboard) apiSummary(o render.Opts) string {
 		render.Tint(gStale, render.Tok(render.AlertLabel)), stale,
 		render.Tint(gDown, render.Tok(render.ProviderDown)), down, total)
 }
+
+// apiSummary is the Dashboard's own reading of it.
+func (d Dashboard) apiSummary(o render.Opts) string { return apiSummaryOf(o, d.snap) }
 
 // body is the frame below the header: radio module, alert area, the
 // control row, then the two tables from the memo (Q3).
@@ -338,26 +314,60 @@ func railify(table string, width, lo, total, window int, g render.RailGlyphs) st
 
 // row converts a snapshot location to a table row.
 func (d Dashboard) row(i int, loc *snapshot.Location, selected bool) render.LocationRow {
+	row := weatherRow(loc, d.fireBoldMW(), extRowDays)
+	row.Index, row.Tag, row.Selected = i+1, loc.Tag, selected
+	// WHAT THE RADIO IS DOING IS OBSERVER'S ALONE. The console has no watchlist
+	// and nothing on the pool is "playing"; a shared converter that carried these
+	// would be describing a listener's radio on a broadcaster's table.
+	row.Playing = d.radioPlaying && d.radioKey == snapshot.Key(snapshot.LocationRef{Lat: loc.Lat, Lon: loc.Lon}) // UAT 80
+	row.Repeat = d.radioRepeat != RepeatOff                                                                      // UAT 83/93: ∞ when the row will come round again
+	return row
+}
+
+// extRowDays is how many EXTENDED day cells Observer's rows carry: the mock's
+// five, which `render`'s own `extMaxDays` is the other half of. Stated here
+// because `modes/tty` builds the row and `platform/render` owns the columns.
+const extRowDays = 5
+
+// weatherRow is everything a SNAPSHOT knows about a location, as a table row.
+//
+// THE ONE CONVERTER (D-112), and it is one because it was two. The Broadcaster's
+// pool built its own row by hand — `fillPoolWeather` — and copied six of the
+// sixteen fields this sets: no HI, no LOW, no TOMORROW, no trend arrow, no fire
+// or seismic marks. Every one of those columns drew `n/a` on a table whose whole
+// purpose the HUM LEAD stated as "gives the human operator some basic weather
+// info to determine if they want to have that location prioritized".
+//
+// IT DRIFTED IMMEDIATELY AND SILENTLY, which is what two carriers of one
+// conversion always do: the hand-written one was correct for the fields it had on
+// the day it was written, and every field added here since was added to one of
+// them. The pool table and the watchlist table are the SAME renderer already
+// (`render.PoolTable` is `tableFor` with one flag); this makes the data behind
+// them the same too.
+//
+// WHAT IT DOES NOT SET is what belongs to a SURFACE rather than to the weather:
+// the row's number, the operator's pointer, what the radio is playing, and — on
+// the pool — how far the place is from the TRANSMITTER rather than from the
+// station that observed it.
+func weatherRow(loc *snapshot.Location, fireBoldMW float64, extDays int) render.LocationRow {
 	row := render.LocationRow{
-		Index: i + 1, Name: loc.Label, Tag: loc.Tag, Zip: loc.Zip,
-		Station:    loc.Harmonized.Source.ModelOrStation,                                                           // WX STN / DIST (UAT 60)
-		Playing:    d.radioPlaying && d.radioKey == snapshot.Key(snapshot.LocationRef{Lat: loc.Lat, Lon: loc.Lon}), // UAT 80
-		Repeat:     d.radioRepeat != RepeatOff,                                                                     // UAT 83/93: ∞ when the row will come round again
+		Name:       loc.Label,
+		Zip:        loc.Zip,
+		Station:    loc.Harmonized.Source.ModelOrStation, // WX STN / DIST (UAT 60)
 		StationKM:  loc.Harmonized.Source.DistanceKm,
 		Conditions: loc.Harmonized.Condition, // display mapping in the seam (P.CLOUDY etc)
 		Now:        loc.Harmonized.Temp,
 		Trend:      trend(*loc),
 		HasAlert:   len(loc.Alerts) > 0,
-		AlertCount: len(loc.Alerts),                            // ⚠ badge (UAT 20.2)
-		Fire:       fireCount(loc.Fire),                        // B5 / UAT 110: n◆
-		FireHot:    fireHot(loc.Fire.Hotspots, d.fireBoldMW()), // B5
-		Seismic:    seismicRowLevel(loc.Seismic),               // 0.11.0: the strongest quake's felt-band glyph
-		Selected:   selected,
+		AlertCount: len(loc.Alerts),                        // ⚠ badge (UAT 20.2)
+		Fire:       fireCount(loc.Fire),                    // B5 / UAT 110: n◆
+		FireHot:    fireHot(loc.Fire.Hotspots, fireBoldMW), // B5
+		Seismic:    seismicRowLevel(loc.Seismic),           // 0.11.0: the strongest quake's felt-band glyph
 		// UAT 18.2: shimmer until this location's data lands (obs or daily
 		// still pending); post-load nils stay honest "n/a".
 		Loading: rowLoading(loc),
 	}
-	for _, al := range loc.Alerts {
+	for _, al := range loc.Alerts { // bounded by the location's alerts (P10-02)
 		if render.AlertIsWarning(al.Event, al.Severity) {
 			row.WarnAlert = true // warning-grade outranks advisory (UAT 14.1)
 			break
@@ -370,8 +380,11 @@ func (d Dashboard) row(i int, loc *snapshot.Location, selected bool) render.Loca
 		row.TomorrowConditions = loc.Daily[1].Condition
 		row.TomorrowHi, row.TomorrowLo = loc.Daily[1].TempMax, loc.Daily[1].TempMin
 	}
-	for _, day := range loc.Daily[min(2, len(loc.Daily)):] {
-		if len(row.Extended) == 5 {
+	// THE EXTENDED DAYS ARE THE CALLER'S ASK (D-120). Observer's ultra-wide
+	// columns draw them; the console's two tables do not, and building five day
+	// cells a row for a table that never reads them is work spent on nothing.
+	for _, day := range loc.Daily[min(2, len(loc.Daily)):] { // bounded by the forecast (P10-02)
+		if len(row.Extended) >= extDays {
 			break
 		}
 		row.Extended = append(row.Extended, render.DayCell{Date: mmdd(day.Date), Hi: day.TempMax, Lo: day.TempMin})

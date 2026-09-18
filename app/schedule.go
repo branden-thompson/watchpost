@@ -21,13 +21,19 @@ package app
 // changes — and every later Phase 3 task needs this half regardless.
 
 import (
+	tea "charm.land/bubbletea/v2"
+
 	"context"
+	"errors"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/domains/radio/script"
+	"github.com/branden-thompson/watchpost/domains/radio/synth"
+	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/lineup"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -45,6 +51,17 @@ type schedule struct {
 	ctx    context.Context // the schedule's own: a late producer gives up rather than blocking
 	cancel context.CancelFunc
 	ticks  chan struct{} // closed by the tick goroutine when it returns
+
+	// x is what this schedule actually wired, KEPT SO THE WIRING CAN BE DRIVEN
+	// (D-140). It is the same remedy `producer()` carries in pool.go, for the
+	// same stated reason: "A FUNCTION RATHER THAN A CALL SITE, deliberately …
+	// a call site cannot be asserted; this can, and a test does."
+	//
+	// THE DEFECT THAT ASKED FOR IT: the Composer resolved against the pool while
+	// the operator could request a wider set, and every test of the widening
+	// passed because each exercised the SET directly and none asked what the
+	// schedule had been handed. Reverting the wiring broke nothing.
+	x *executors
 }
 
 // startSchedule builds the Director, its executors and the pump, and starts
@@ -55,7 +72,37 @@ type schedule struct {
 // ticker's takeovers use — building a second effector here would put the band
 // and the duck back under two owners, which is the defect T2.3 removed and the
 // one this file would be the easiest place to reintroduce.
-func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, watch func() []snapshot.LocationRef, tick *tickerDeck) *schedule {
+// THE LISTS ARE NOT ONE LIST (D-76, split again at D-140). `pool` is the
+// STATION's candidates — what its Producer may OFFER. `resolvable` is what its
+// Composer may RESOLVE, which is the pool plus whatever the operator has
+// requested: D-130 lets them request anywhere inside the service radius, so the
+// two are not interchangeable. `watch` is the LISTENER's, and the
+// bed's cut-over is the MONITOR's rotation moving through it.
+//
+// D-72 MOVED ALL THREE TOGETHER AND THAT WAS TWO-THIRDS RIGHT. The reasoning
+// was that a Director scheduling a location its own Composer cannot resolve gets
+// it benched by D-67's cool-off — true of `propose` and `compose`, and NOT of
+// `cutTo`, which serves a rotation through the listener's own watchlist. A
+// watched location outside the station's pool stopped resolving and the tune
+// died as `schedule:tune-unknown`, silently. Found by DRAWING THE FLOW for the
+// HUM LEAD rather than by a gate.
+// bedSeams is what the schedule needs from the console's bed row, and it is ONE
+// parameter because it is ONE concern (F-98, D-90).
+//
+// BOTH HALVES EXIST FOR THE SAME REASON: the row has two publishers — the
+// operator's selector and the settle — and each half is how one of them learns
+// what the other knows. `note` records the Director's `Carrying` so the selector
+// does not guess it; `selected` reports the operator's relay so the settle does
+// not overwrite it. Passed separately they were an eleventh and twelfth argument
+// to a function that already had ten, and nothing said they belonged together.
+type bedSeams struct {
+	// note records what the Director says about the bed carrying the programme.
+	note func(carrying bool)
+	// selected is the relay the operator chose, "" until they choose one.
+	selected func() string
+}
+
+func startSchedule(ctx context.Context, nar *director, scripts *script.Library, clock func() render.Clock, deck *radioDeck, pool, resolvable, watch func() []snapshot.LocationRef, tick *tickerDeck, publish func(tea.Msg), bed bedSeams) *schedule {
 	if nar == nil {
 		return nil // no arbiter, no schedule: there is nothing to perform through
 	}
@@ -63,7 +110,10 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		return nil // no producer, no arrivals: the rail would have nothing to read
 	}
 	x := newExecutors(executors{
-		voice:   nar,
+		voice: nar,
+		// THE CONSOLE'S ONLY SOURCE (0.16.0 P2). It never reads the Director
+		// directly — it is told, at the moment the schedule settles.
+		publish: publish,
 		scripts: scripts,
 		clock:   clock,
 		now:     time.Now,
@@ -83,24 +133,55 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		report: func(f lineup.Effect, why string) {
 			radioDebugLog("schedule:declined:" + lineup.Describe(f) + ":" + why)
 		},
+		// THE MONITOR'S ROTATION MOVES THROUGH THE LISTENER'S OWN WATCHLIST
+		// (D-76). It is `advanceBed` that emits this, and `advanceBed` is the
+		// operator's own listening — not the station's.
 		cutTo: tuneTo(deck, watch),
-		// DR-21's one escalation channel. It reuses the relay-fault window
-		// rather than adding a second error surface: from the listener's chair
-		// "the relay is silent" and "the schedule stopped" are the same event —
-		// the station has gone quiet and they are being offered the way back.
-		escalate: func(reason string) { deck.escalate(reason) },
+		// AND WHAT TO CALL IT ON THE CONSOLE (F-79). The same list the cut-over
+		// resolves against, so the row cannot name a place the tune did not go.
+		bedLabel: bedLabelOf(watch),
+		// AND WHAT THE OPERATOR CHOSE, which is what the row's own arrows set
+		// (F-98, D-90).
+		selected: bed.selected,
+		noteBed:  bed.note,
+		// THE MAIN TRACK'S WORDS (0.16.0 P3). Required from P3(d): a station
+		// whose rotation is owned by the schedule and has no composer wired
+		// would queue every report and read none.
+		// THE SET TRAVELS ON THE EFFECT, so there is no lookup here (R4b). It
+		// was a `wants` callback in R2; `BuildCard` carries it now, for the same
+		// reason it carries the slot and the refs — looking it up from the
+		// published lineup would race the dispatch.
+		// AND IT RESOLVES AGAINST MORE THAN THE POOL (D-140). A card carries a
+		// KEY; the Composer turns it back into a location. The operator may now
+		// request anywhere inside the SERVICE RADIUS (D-130), which is wider
+		// than the capped pool — so resolving against the pool alone failed to
+		// build exactly the cards the widening was ruled for, silently.
+		compose: composeFor(deck, resolvable),
+		// AND WHAT PERFORMS THEM (F-91, BD-9). The rail reads through the
+		// arbiter above; the programme is a source swap on the broadcast
+		// engine, and this is the deck that owns it. Nil with no deck, which is
+		// every pathless build — the executor declines the card by name rather
+		// than holding it on the air in silence.
+		read: readerFor(deck),
+		// WHAT THE PRODUCER HAS TO OFFER (0.16.0 P4, D-40). The Director asks
+		// on every publish and takes only what the line-up still needs.
+		propose: proposeFrom(pool),
 	})
 	if x == nil {
 		return nil // a seam was nil; newExecutors has already said which
 	}
 	run, cancel := context.WithCancel(ctx)
-	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax}, time.Now()), x.run,
+	// THE DEPTH IS THE CONSOLE'S SLOT COUNT, FROM THE CONSOLE (D-40). A second
+	// constant here would agree with it today and drift silently: the station
+	// would hold cards the operator cannot address, or leave slots empty for
+	// ever, and neither reads as a bug from either side.
+	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: tty.MainTrackSlots}, time.Now()), x.run,
 		func(f lineup.Effect, v any) { radioDebugLog("schedule:fault:" + lineup.Describe(f)) })
 	if p == nil {
 		cancel()
 		return nil
 	}
-	s := &schedule{pump: p, ctx: run, cancel: cancel, ticks: make(chan struct{})}
+	s := &schedule{pump: p, ctx: run, cancel: cancel, ticks: make(chan struct{}), x: x}
 	go p.loop(run)
 	go s.tick(run)
 	// THE PRODUCERS REPORT INTO IT, WIRED HERE (T3.10b).
@@ -121,6 +202,34 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 		deck.emit = s.carry
 		deck.mu.Unlock()
 	}
+	// AND MASTERCONTROL DECLARES ON AIR / STANDBY (MVS-D-78, FR-5.4). It is the
+	// third thing that speaks to the Director and the only one that speaks for
+	// the OPERATOR — the ticker reports arrivals, the deck reports the bed, and
+	// this carries a decision a human made.
+	if nar != nil && nar.mc != nil {
+		nar.mc.mu.Lock()
+		nar.mc.carry = s.carry
+		nar.mc.mu.Unlock()
+		// AND THE CONSOLE IS HANDED THE CONTROL (FR-5.4). Without this the
+		// operator's ON AIR / STANDBY key reaches a nil seam and does nothing,
+		// which is the console being a surface with no controls — the trap
+		// F-72 recorded, arriving by a different route.
+		//
+		// ON ITS OWN GOROUTINE, AND THAT IS NOT STYLE. `publish` is the
+		// program's Send, and THIS RUNS BEFORE THE PROGRAM'S LOOP DOES: a
+		// synchronous send here blocks until something reads it, and nothing
+		// will, because the reader is the loop this function returns to start.
+		// Measured: `TestRunWithoutArgsStartsTheDashboard` hung for the full
+		// ten-minute test timeout, with the trace pointing at this line.
+		//
+		// It is the shape every other startup-time sender already has —
+		// severeDeck publishes from its own goroutine for the same reason — and
+		// `Send` selects on the program's context, so a program that never
+		// starts unblocks it at shutdown rather than leaking.
+		if publish != nil {
+			go publish(tty.StationControlMsg{Control: nar.mc})
+		}
+	}
 	return s
 }
 
@@ -129,10 +238,10 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 //
 // THE UNEXPORTED tune, DELIBERATELY. Every tune the Director asks for is
 // automatic — a dwell elapsed, a cycle ended — and lifting the alert duck on an
-// automatic transition brought the next location's report in at full volume over
-// a breaking alert still reading. That distinction used to live in the case of an
-// identifier; T2.3 gave the duck one owner instead, and this calls the path that
-// has never lifted it.
+// automatic transition would bring the next location's report in at full volume
+// over a breaking alert still reading. T2.3 gave the duck ONE OWNER rather than
+// making that distinction a case of an identifier, and this calls the path that
+// never lifts it.
 //
 // A KEY THAT NAMES NOTHING IS DROPPED, not guessed at. The listener can remove a
 // location from the watchlist between the Director planning a move and the move
@@ -140,16 +249,75 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 // station on the air they had just taken away.
 func tuneTo(deck *radioDeck, watch func() []snapshot.LocationRef) func(string) {
 	return func(ref string) {
-		if deck == nil || watch == nil {
-			return // no audio, or no watchlist to resolve against
+		if deck == nil {
+			return // no audio
 		}
-		for _, r := range watch() { // bounded by the watchlist (P10-02)
-			if string(snapshot.Key(r)) == ref {
-				deck.tune(r)
-				return
-			}
+		r, ok := refFor(watch, ref)
+		if !ok {
+			radioDebugLog("schedule:tune-unknown:" + ref)
+			return
 		}
-		radioDebugLog("schedule:tune-unknown:" + ref)
+		deck.tune(r)
+	}
+}
+
+// refFor resolves the key a card carries back to the location it names.
+//
+// THE CARD STAYS DOMAIN-FREE (DR-1), so what travels through the schedule is an
+// identifier and nothing more, and the app is where it becomes a place again.
+// EXTRACTED AT THE SECOND CALLER: the cut-over asked this question first, and
+// the main-track composer asks the same one — two walks of the watchlist
+// comparing the same key would be two places for "what is a location's identity"
+// to drift.
+func refFor(watch func() []snapshot.LocationRef, ref string) (snapshot.LocationRef, bool) {
+	if watch == nil {
+		return snapshot.LocationRef{}, false // no watchlist to resolve against
+	}
+	for _, r := range watch() { // bounded by the watchlist (P10-02)
+		if string(snapshot.Key(r)) == ref {
+			return r, true
+		}
+	}
+	return snapshot.LocationRef{}, false
+}
+
+// composeFor is how a main-track card gets its words (0.16.0 P3).
+//
+// THE EXECUTOR KNOWS NOTHING ABOUT HOW A REPORT IS ASSEMBLED, and this is the
+// other side of that: the deck owns what a location report IS — the observation,
+// the alerts, the office products, the sign-off — and hands back the segments it
+// would have voiced. It is the same call startSynth makes for its own source.
+//
+// WHAT IS SHARED IS THE TEXT, NOT THE DELIVERY, and the first draft of this
+// comment overclaimed it (red team 2026-09-09, finding 5). A synth.Segment
+// carries Key, Text, Role, SelfIntro and Pause; scriptFromSegments keeps Text
+// and drops the rest, because lineup.Part has nowhere to put them. The source
+// consumes all five. So the two paths cannot say different WORDS — and can
+// still differ in which correspondent says them, whether an introduction is
+// suppressed, and how long the pauses are.
+//
+// That is a live question for the flip and it is recorded there, not resolved
+// here (04-development/p3-flip-design.md, G-7).
+func composeFor(deck *radioDeck, watch func() []snapshot.LocationRef) func(context.Context, string, report.Set) ([]synth.Segment, error) {
+	return func(ctx context.Context, ref string, want report.Set) ([]synth.Segment, error) {
+		if deck == nil {
+			return nil, errors.New("no audio deck to compose a report")
+		}
+		r, ok := refFor(watch, ref)
+		if !ok {
+			// NAMED, NOT EMPTY. The executor turns this into a decline that
+			// says why, and a card for a location the listener has since
+			// removed is exactly the case that produces it.
+			return nil, errors.New("no watched location for " + ref)
+		}
+		// EMPTY MEANS THE WHOLE REPORT. Every card the Director makes for itself
+		// is in that state — only an operator's request names a subset — so the
+		// zero value is the ordinary case, and reading it the other way would
+		// compose a frame with nothing in it (mAX3).
+		if want.Empty() {
+			want = report.Everything()
+		}
+		return deck.segments(ctx, r, synth.VoiceToken, want)
 	}
 }
 
@@ -192,4 +360,52 @@ func (s *schedule) stop() {
 	s.cancel()
 	<-s.ticks
 	s.pump.stop()
+}
+
+// proposeFrom turns the listener's watched locations into what the Producer can
+// offer the Director (D-40).
+//
+// THE PRODUCER PROPOSES; THE DIRECTOR CHOOSES. It offers everything it has, in
+// the listener's own order, and does not look at the schedule at all — whether
+// any of it is scheduled, and which, is the Director's, decided from the depth
+// and the watchlist it already holds. That is the role split the HUM LEAD drew:
+// "it's the Producer's job to PROPOSE … the DIRECTOR, as the owner of the
+// lineup, then is the one who gets to choose which card gets the slot."
+//
+// IT KEYS EACH PROPOSAL THE WAY THE ROTATION DOES — `snapshot.Key`, the same
+// ref `radioDeck.needsRead` reports — so `ReadID` gives a location one identity
+// across both paths and the lineup's own refusal of a duplicate is what stops a
+// place being read twice (FR-2.5).
+func proposeFrom(watch func() []snapshot.LocationRef) func() []lineup.Proposal {
+	return func() []lineup.Proposal {
+		if watch == nil {
+			return nil
+		}
+		refs := watch()
+		out := make([]lineup.Proposal, 0, len(refs))
+		for _, r := range refs { // bounded by the watchlist (P10-02)
+			key := string(snapshot.Key(r))
+			if key == "" || r.Label == "" {
+				continue // a location with no key or no name cannot become a card
+			}
+			out = append(out, lineup.Proposal{Ref: key, Headline: r.Label, Slot: lineup.LocationReport})
+		}
+		return out
+	}
+}
+
+// bedLabelOf turns the bed's ref into the words the console shows.
+//
+// THE LOCATION'S OWN NAME, which is all the schedule can honestly say today: the
+// relay's call sign, frequency and distance live on the deck's resolved station,
+// and the bed's ref is a LOCATION key. Naming the place the bed is carrying is
+// true; inventing a call sign from a key would not be.
+func bedLabelOf(watch func() []snapshot.LocationRef) func(string) string {
+	return func(ref string) string {
+		r, ok := refFor(watch, ref)
+		if !ok {
+			return ""
+		}
+		return r.Label
+	}
 }

@@ -41,6 +41,7 @@ func relayDwells() []relayDwell {
 }
 
 // defaultRelayDwell is the entry a listener who has set nothing lands on.
+
 // relayLabelW is the group's own label column, and relayCellW its own picker
 // cell. Both rows use both, so the chips line up down the group the way they do
 // in every other group — the shared rowControlW is 21 and the rotation's label
@@ -104,11 +105,11 @@ func defaultRelayDwell() time.Duration { return 5 * time.Minute }
 // anything the list does not carry — a config written by hand, or a value from
 // a later build with more choices.
 func relayDwellLabel(d time.Duration) string {
-	// ONE PASS, TWO ANSWERS. This used to fall back by calling itself with the
-	// default — which reads fine and is a stack overflow the day the default
-	// leaves the list, because nothing in the types says it is in there. The
-	// fallback label is found in the same walk instead, and an empty one is
-	// impossible rather than merely unlikely.
+	// ONE PASS, TWO ANSWERS. Falling back by calling itself with the default reads
+	// fine and is a stack overflow the day the default leaves the list, because
+	// nothing in the types says it is in there. The fallback label is found in the
+	// same walk instead, and an empty one is impossible rather than merely
+	// unlikely.
 	fallback, def := "", defaultRelayDwell()
 	for _, c := range relayDwells() { // bounded by the list (P10-02)
 		if c.d == d {

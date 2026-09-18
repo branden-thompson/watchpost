@@ -57,7 +57,7 @@ func newAssembler(refs []LocationRef, providerIDs []string) *Assembler {
 		a.order = append(a.order, k)
 		a.sections[k] = map[string]*Section{}
 	}
-	a.refs = kept // order and refs stay aligned (red-team 0.9.0 F4: a duplicate used to publish an EMPTY snapshot forever)
+	a.refs = kept // order and refs stay aligned; misaligned, a duplicate publishes an EMPTY snapshot for ever (F4)
 	for _, id := range providerIDs {
 		if err := invariant.Check(id != "" && a.status[id] == nil, "provider id must be unique and non-empty"); err != nil {
 			continue
@@ -230,6 +230,61 @@ func (a *Assembler) SetLocations(refs []LocationRef) (added, removed []LocationR
 	return added, removed
 }
 
+// mergeLocationLocked copies one location's payload into the snapshot under
+// construction. THE CALLER HOLDS a.mu.
+//
+// EXTRACTED AT THE COMPLEXITY CEILING (P10-04, D-159), and the cut is placed
+// where it is for a reason worth stating: everything ABOVE it in `Apply` is
+// issue #13's correctness argument — the attempt-not-result stamping, the
+// answersTheRow storage filter and the per-location reachability rule — and
+// every comment explaining those stays attached to the code it governs.
+//
+// NOTHING HERE DECIDES WHAT A ROW SAYS. This is payload copying: the question of
+// whether a location was ASKED, and what its absence means, is settled before
+// this runs and is not re-opened by it. A comment here claiming otherwise would
+// be the false attribution `Apply`'s own notes warn about.
+//
+// IT COPIES RATHER THAN ALIASES, throughout. A fragment is the provider's own
+// slice and it may reuse it on the next cycle; a snapshot that aliased it would
+// change under a reader who is already drawing from it.
+func (a *Assembler) mergeLocationLocked(k LocationKey, pd PartialData, provider string) {
+	secs, ok := a.sections[k]
+	if !ok {
+		return // unknown location: fragment for a place we no longer watch
+	}
+	sec := secs[provider]
+	if sec == nil {
+		sec = &Section{}
+		secs[provider] = sec
+	}
+	if pd.Current != nil {
+		c := *pd.Current
+		sec.Current = &c
+	}
+	if pd.Hourly != nil {
+		sec.Hourly = append([]Hourly(nil), pd.Hourly...)
+	}
+	if pd.Daily != nil {
+		sec.Daily = append([]Daily(nil), pd.Daily...)
+	}
+	if pd.Marine != nil {
+		sec.Marine = pd.Marine.Clone()
+	}
+	if pd.Alerts != nil {
+		a.alerts[k] = append([]Alert(nil), pd.Alerts...)
+	}
+	if pd.Fire != nil {
+		fs := *pd.Fire
+		if a.fire[k] == nil {
+			a.fire[k] = map[string]*FireState{}
+		}
+		a.fire[k][provider] = &fs // this provider's part; the others keep theirs
+	}
+	if pd.Seismic != nil {
+		a.seismic[k] = pd.Seismic // the one seismic provider's latest state (0.11.0)
+	}
+}
+
 // Apply merges one Fragment: last-write-wins per (provider, location,
 // domain-section). A failed Fragment (Err != nil) degrades the provider and
 // appends a provider_error Warning, but whatever it DID fetch still lands
@@ -285,12 +340,11 @@ func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 	// claiming it lives here would be the same false attribution this round has
 	// been removing.
 	//
-	// WHY REACHABILITY MATTERS, PER LOCATION. An earlier version stamped every
-	// asked location whenever the fragment served ANYBODY, on the reasoning that
-	// a served location proves the provider answered. That is right for a total
-	// outage and WRONG FOR A PARTIAL ONE: with A served and B refused, B was
-	// stamped and its row read "n/a" — asserting an absence for a location the
-	// request never reached.
+	// WHY REACHABILITY MATTERS, PER LOCATION. Stamping every asked location
+	// whenever the fragment served ANYBODY reasons that a served location proves
+	// the provider answered. That is right for a total outage and WRONG FOR A
+	// PARTIAL ONE: with A served and B refused, B is stamped and its row reads
+	// "n/a" — asserting an absence for a location the request never reached.
 	//
 	// Fragment.Failed now says which locations failed and why, so the question is
 	// asked per location rather than per fragment. A 404 for a point outside the
@@ -322,42 +376,8 @@ func (a *Assembler) Apply(f Fragment, asked []LocationKey) {
 		}
 	}
 
-	for k, pd := range f.PerLocation {
-		secs, ok := a.sections[k]
-		if !ok {
-			continue // unknown location: fragment for a place we no longer watch
-		}
-		sec := secs[f.Provider]
-		if sec == nil {
-			sec = &Section{}
-			secs[f.Provider] = sec
-		}
-		if pd.Current != nil {
-			c := *pd.Current
-			sec.Current = &c
-		}
-		if pd.Hourly != nil {
-			sec.Hourly = append([]Hourly(nil), pd.Hourly...)
-		}
-		if pd.Daily != nil {
-			sec.Daily = append([]Daily(nil), pd.Daily...)
-		}
-		if pd.Marine != nil {
-			sec.Marine = pd.Marine.Clone()
-		}
-		if pd.Alerts != nil {
-			a.alerts[k] = append([]Alert(nil), pd.Alerts...)
-		}
-		if pd.Fire != nil {
-			fs := *pd.Fire
-			if a.fire[k] == nil {
-				a.fire[k] = map[string]*FireState{}
-			}
-			a.fire[k][f.Provider] = &fs // this provider's part; the others keep theirs
-		}
-		if pd.Seismic != nil {
-			a.seismic[k] = pd.Seismic // the one seismic provider's latest state (0.11.0)
-		}
+	for k, pd := range f.PerLocation { // bounded by the fragment (P10-02)
+		a.mergeLocationLocked(k, pd, f.Provider)
 	}
 }
 

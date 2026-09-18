@@ -67,12 +67,12 @@ type severeDeck struct {
 
 	// radius is the ALERTS - EVENTS preference in miles, live (0 = All).
 	//
-	// The window used to list the PRE-radius set while the tape listed the
-	// filtered one, which meant the two disagreed and the STATEMENTS and
-	// ADVISORIES tabs — whose rows come only from the tracked locations, never
-	// from the national feed — were bounded by nothing but which locations
-	// happened to be on the watchlist. "Filtered by what data is saved", as the
-	// HUM LEAD put it. One preference governs both now.
+	// ONE PREFERENCE GOVERNS BOTH the window and the tape. Listing the PRE-radius
+	// set in one and the filtered set in the other makes the two disagree, and
+	// leaves the STATEMENTS and ADVISORIES tabs — whose rows come only from the
+	// tracked locations, never from the national feed — bounded by nothing but
+	// which locations happen to be on the watchlist. "Filtered by what data is
+	// saved", as the HUM LEAD put it.
 	radius *atomic.Int64
 }
 

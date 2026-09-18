@@ -26,9 +26,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -131,7 +133,7 @@ func (l *Library) Reports() []string {
 	for _, n := range l.files() {
 		seen[filepath.Dir(n)] = true
 	}
-	return sortedKeys(seen)
+	return slices.Sorted(maps.Keys(seen))
 }
 
 // Parts lists a report's own parts on file, sorted (global's are not
@@ -143,7 +145,7 @@ func (l *Library) Parts(report string) []string {
 			seen[strings.TrimSuffix(filepath.Base(n), Ext)] = true
 		}
 	}
-	return sortedKeys(seen)
+	return slices.Sorted(maps.Keys(seen))
 }
 
 // load parses (and caches) the template for a part: the override file when
@@ -220,7 +222,7 @@ func (l *Library) files() []string {
 			}
 		}
 	}
-	return sortedKeys(seen)
+	return slices.Sorted(maps.Keys(seen))
 }
 
 // BuiltinFiles lists the built-in script files as "<report>/<part>.txt"
@@ -233,15 +235,6 @@ func BuiltinFiles() []string {
 		}
 		return nil
 	})
-	sort.Strings(out)
-	return out
-}
-
-func sortedKeys(m map[string]bool) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
 	sort.Strings(out)
 	return out
 }

@@ -43,10 +43,49 @@ type Programme struct {
 }
 
 // bed is what the broadcast is riding on now.
+//
+// TWO KINDS OF STATE LIVE HERE and the comments say which is which: what the
+// deck has OBSERVED (ref, live, since) and what the Director has DECIDED
+// (carries, asked). Reading one for the other is the mistake `carries` exists
+// to prevent.
 type bed struct {
 	ref   string    // the location carrying it; "" = nothing is tuned
 	live  bool      // a relay, which dwells; the synth broadcast does not
 	since time.Time // when it took the bed, for the dwell
+
+	// carries is THE DIRECTOR'S DECISION that the bed holds the programme, so
+	// the main track is paused (FR-4.2, D-32, HUM LEAD 2026-09-09).
+	//
+	// IT IS INTENT, NOT OBSERVATION, and the distinction is load-bearing.
+	// `live` is reported when audio ACTUALLY PLAYS — deliberately, because "a
+	// resolve and a connect can take seconds, and charging those to the
+	// listener's turn would cut every one short". So a `carries` derived from
+	// `live` would be FALSE between the operator pressing cut-over and the
+	// relay connecting, and the main track would advance a card into the gap
+	// the cut-over had just created. The bed already keeps `asked` beside the
+	// observed state for exactly this reason.
+	//
+	// THE PAUSE IS NOT A SECOND FLAG. FR-4.2 makes it the consequence of this
+	// one — "the operator can cut the main track over to the bed; the main
+	// track then pauses" — so one field carries both and no pair can disagree.
+	//
+	// RELAY-ONLY FROM BIRTH (D-33, decision 2). The only thing that sets it is
+	// a cut-over, and a cut-over is to a relay — so this is already the model
+	// the three lanes describe, and nothing about it changes when the main
+	// track gains its own audio. What retires then is `live`, which is a
+	// deletion rather than a redefinition.
+	carries bool
+
+	// ducked is whether the Director has ASKED for the bed to give way, so the
+	// pair can be closed (DR-24). It is the Director's record of what it has
+	// emitted, never a claim about the engine: mastercontrol owns the duck and
+	// the engine decides dip-or-hold from the source kind, re-read every tick.
+	//
+	// EDGE-TRIGGERED. MVS-D-67 is "one duck per RAIL DRAIN, never per card" —
+	// a rail of two cards that dipped, lifted and dipped again between them was
+	// MEASURED before that ruling — so what is emitted is the CHANGE, and a
+	// second hazard arriving over an already-ducked bed emits nothing.
+	ducked bool
 
 	// asked and askedAt are the tune the Director has issued and not yet seen
 	// land (FR-9.3). A rotation that is told to move and does not is a station
@@ -85,7 +124,21 @@ func (d Director) onTuned(ev Tuned) (Director, []Effect) {
 	if d.bed.ref == ev.Ref && d.bed.live == ev.Live && !d.bed.since.IsZero() {
 		return d, nil // the same bed, still carrying: its turn is already running
 	}
-	d.bed = bed{ref: ev.Ref, live: ev.Live, since: d.now}
+	// ONLY WHAT WAS OBSERVED CHANGES. `carries` is the operator's decision and
+	// `ducked` the rail's; a Tuned reports where the bed went and says nothing
+	// about either. What it does answer is the tune in flight: a landing is
+	// what `asked` was waiting for, and a pending ask left standing here would
+	// be reported as a stall by the next tick past its bound (FR-9.3).
+	if ev.Ref == d.bed.asked {
+		d.bed.asked, d.bed.askedAt = "", time.Time{}
+	}
+	// A FALL-THROUGH TO SYNTH RELEASES THE CUT-OVER: `carries` is relay-only
+	// from birth (D-33), and the relay the operator chose is gone. Whether the
+	// station should re-tune instead is F-164, a HUM LEAD ruling.
+	if !ev.Live {
+		d.bed.carries = false
+	}
+	d.bed.ref, d.bed.live, d.bed.since = ev.Ref, ev.Live, d.now
 	return d, nil
 }
 
@@ -110,8 +163,8 @@ func (d Director) stalledRotation() (Director, []Effect) {
 	if d.bed.asked == "" || d.now.Sub(d.bed.askedAt) < tuneLands {
 		return d, nil
 	}
-	if !d.advances(MainTrack) {
-		d.bed.asked = "" // stopped while it was in flight: not a fault, and not pending either
+	if !d.advancesMonitor() {
+		d.bed.asked = "" // the air moved while it was in flight: not a fault, and not pending either
 		return d, nil
 	}
 	ref := d.bed.asked
@@ -201,8 +254,8 @@ func (d Director) onEnded(Ended) (Director, []Effect) {
 	if err := invariant.Check(d.bed.ref != "", "a cycle only ends on a bed that was carrying one"); err != nil {
 		return d, nil
 	}
-	if !d.advances(MainTrack) {
-		return d, nil // stopped: nothing follows a listener's stop
+	if !d.advancesMonitor() {
+		return d, nil // the air is not the monitor's: nothing follows
 	}
 	if d.settings.Dwell <= 0 {
 		return d, nil // not Watchlist: the rotation does not move on by itself
@@ -217,13 +270,12 @@ func (d Director) onEnded(Ended) (Director, []Effect) {
 
 // dwellElapsed reports whether the live relay on the bed has had its turn.
 func (d Director) dwellElapsed() bool {
-	// A STOPPED PROGRAMME DOES NOT ADVANCE. The listener pressed stop; the bed
-	// moving on afterwards would be the station starting itself again five
-	// minutes later. `advances` is the one carrier of that question and the
-	// alert rail is deliberately exempt from it — hazards still speak over a
-	// stopped programme — so this asks it for the MAIN TRACK, which is what the
-	// bed carries.
-	if !d.advances(MainTrack) {
+	// A MONITOR THAT DOES NOT HAVE THE AIR DOES NOT ADVANCE (D-74). It asked
+	// `advances(MainTrack)` — the STATION's gate — which is how one rotation
+	// came to be governed by the other programme's power, and how Observer's
+	// tune came to declare the station ON AIR. The rail is exempt from both,
+	// deliberately: hazards still speak over a stopped programme.
+	if !d.advancesMonitor() {
 		return false
 	}
 	if d.settings.Dwell <= 0 || !d.bed.live || d.bed.ref == "" {
@@ -259,4 +311,115 @@ func (d Director) nextInWatchlist() (string, bool) {
 		}
 	}
 	return q[0], true
+}
+
+// CutOver is the operator moving the programme between the lanes (D-11,
+// FR-4.2): to the bed, or back to the reads.
+//
+// AN EVENT, NOT A REQUEST, like every other member of the set. It says what the
+// operator did; whether the bed is re-tuned, whether a transition is owed and
+// what happens to a card mid-read are the Director's, and they are decided from
+// this plus the schedule it already holds.
+//
+// THE OPERATOR ONLY CARES ABOUT TWO THINGS (HUM LEAD): "switch to the reads" or
+// "switch to the relay bed". Everything between them is the Director's
+// discretion, deliberately.
+type CutOver struct {
+	isEvent
+	ToBed bool
+}
+
+// onCutOver moves the programme, and moves nothing else.
+//
+// A REPEATED COMMAND IS NOT A SECOND EVENT — the rule onPowered already states.
+// Without it a second press would re-tune a relay that is already playing,
+// which costs a resolve, a connect and a gap the listener hears.
+func (d Director) onCutOver(ev CutOver) (Director, []Effect) {
+	if d.bed.carries == ev.ToBed {
+		return d, nil
+	}
+	d.bed.carries = ev.ToBed
+	return d.settle()
+}
+
+// givingWay is the duck's ONE condition, and D-32 is that there is only one
+// (HUM LEAD 2026-09-09): *"only 1 [of main and bed] can be active at a time,
+// and the priority ducks the bed only."*
+//
+// TWO QUESTIONS, BOTH ANSWERABLE FROM STATE THE DIRECTOR ALREADY HOLDS — which
+// is the whole reason this decision belongs here rather than in the arbiter.
+// Three things could trigger a duck before this existed and only one of them
+// should: the rotation IS the programme, and ducking for it ducks the thing
+// being played.
+//
+// IT ASKS `carries`, NOT WHETHER AUDIO IS AUDIBLE. `Suppress` is inert when
+// nothing is playing and the engine re-reads the source kind every tick, so the
+// answer follows the audio by itself. Asking which medium is on at this instant
+// "fixed an answer the audio could outlive" (radio.go), and that design is not
+// repeated here.
+//
+// AND IT ASKS WHETHER THE RAIL HOLDS ANYTHING, not whether a card is on the
+// air: MVS-D-67 restores "only after the tail has played and the rail is
+// empty", so the bed stays down across a drain of several cards.
+func (d Director) givingWay() bool {
+	// WHAT THE RAIL CAN READ, NOT WHAT IT HOLDS (D-139). This asked the RAW
+	// TRACK where every other rail reader asks the PROJECTION, which drops
+	// out-of-fence cards precisely because "they are not READ".
+	//
+	// A RAIL OF CARDS THE FENCE EXCLUDES KEPT THIS TRUE FOR EVER: Duck was
+	// emitted and Restore never was, so the station broadcast the relay at duck
+	// gain indefinitely with nothing speaking over it. Measured by red team at
+	// BUILD exit — 200 minutes of ticks, still ducked, nothing on the rail that
+	// could ever speak.
+	//
+	// THE OTHER HALF OF THE RULE IS UNCHANGED, and it is why this asks whether
+	// the rail holds anything rather than whether a card is ON THE AIR:
+	// MVS-D-67 restores "only after the tail has played and the rail is empty",
+	// so the bed stays down across a drain of several cards.
+	if len(d.lineup.Projection(AlertRail)) == 0 {
+		return false
+	}
+	// WHAT IS UNDERNEATH IT — the bed carrying the programme, or a report
+	// reading on the main track (D-82).
+	//
+	// ONE CONDITION BECAME TWO ONLY BECAUSE THERE ARE NOW TWO THINGS THAT CAN BE
+	// UNDER a hazard. D-32 asked "what does the priority duck?" when the main
+	// track had no audio of its own and the answer could only be the bed; D-24
+	// answers the other half — the read PAUSES and resumes mid-sentence — and
+	// this is the two of them said once.
+	//
+	// IT DOES NOT DECIDE DIP-OR-HOLD, AND THAT IS WHY ONE PREDICATE SERVES BOTH.
+	// `engine.giveWayLocked` reads the SOURCE KIND every 50 ms: a relay dips,
+	// because a paused relay resumes into audio that is minutes stale; a
+	// rendered report holds, because dipping loses its words for good. The
+	// Director says only that the rail is speaking over the programme — asking
+	// which medium is on "fixed an answer the audio could outlive" (radio.go),
+	// and that design is not repeated here.
+	if d.bed.carries {
+		return true
+	}
+	_, reading := d.lineup.OnAir(MainTrack)
+	return reading
+}
+
+// giveOrTakeBack emits the change, and only the change.
+func (d Director) giveOrTakeBack() (Director, []Effect) {
+	want := d.givingWay()
+	if want == d.bed.ducked {
+		return d, nil
+	}
+	d.bed.ducked = want
+	if want {
+		return d, []Effect{Duck{}}
+	}
+	return d, []Effect{Restore{}}
+}
+
+// bedState is the bed as the console draws it (F-79).
+//
+// DERIVED, NEVER STORED. A second copy of these three fields would be a second
+// answer to what the bed is doing, and the whole reason D-62 put the bed in the
+// broadcast section is that the operator should have ONE place to look.
+func (d Director) bedState() BedState {
+	return BedState{Ref: d.bed.ref, Live: d.bed.live, Carrying: d.bed.carries}
 }

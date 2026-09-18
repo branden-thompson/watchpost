@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,25 +37,38 @@ func tornado() globalfeed.Event {
 // bench is one executor set over fakes: a scripted voice, a captured band, a
 // producer that knows exactly the alerts it was given, and a fault sink.
 type bench struct {
-	x           *executors
-	voice       *scriptVoice
-	nar         *director
-	mu          sync.Mutex
-	msgs        []tea.Msg
-	reports     []string
-	tuned       []string        // the beds the Director asked for (T3.2b)
-	escalations []string        // faults that reached a person (DR-21)
-	asked       map[string]bool // producer records the Reader resolved for a cue
-	holds       []time.Duration
-	known       map[string]globalfeed.Event
-	marked      []string // what the read recorded as spoken aloud
-	muted       bool
-	release     chan struct{} // lets a test hold a sequence on the air
+	x         *executors
+	voice     *scriptVoice
+	nar       *director
+	mu        sync.Mutex
+	msgs      []tea.Msg
+	reports   []string
+	tuned     []string        // the beds the Director asked for (T3.2b)
+	published []tea.Msg       // what the executors put on the console seam (LineupMsg, StationFaultMsg…)
+	readErr   error           // what the broadcast engine says when it could not perform (F-150)
+	asked     map[string]bool // producer records the Reader resolved for a cue
+	holds     []time.Duration
+	known     map[string]globalfeed.Event
+	marked    []string // what the read recorded as spoken aloud
+	muted     bool
+	release   chan struct{} // lets a test hold a sequence on the air
+	// reads are the MAIN-TRACK cards that reached the broadcast engine, and
+	// readOK is the verdict it gives them (F-91). The default is a read that
+	// ran to its end; a test that wants DR-24's early exit sets it false.
+	reads  []lineup.Speak
+	readOK bool
+}
+
+// readCalls is what the broadcast engine was asked to perform.
+func (b *bench) readCalls() []lineup.Speak {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return append([]lineup.Speak(nil), b.reads...)
 }
 
 func newBench(t *testing.T, v *scriptVoice) *bench {
 	t.Helper()
-	b := &bench{voice: v, known: map[string]globalfeed.Event{"a1": tornado()}, release: make(chan struct{})}
+	b := &bench{voice: v, known: map[string]globalfeed.Event{"a1": tornado()}, release: make(chan struct{}), readOK: true}
 	// ONE BAND. The arbiter's effector is what the executors write through, so
 	// the capture the test reads must be the one it was built with.
 	band := func(m tea.Msg) { b.mu.Lock(); b.msgs = append(b.msgs, m); b.mu.Unlock() }
@@ -102,8 +116,27 @@ func newBench(t *testing.T, v *scriptVoice) *bench {
 			b.reports = append(b.reports, lineup.Describe(f)+": "+why)
 			b.mu.Unlock()
 		},
-		cutTo:    func(ref string) { b.mu.Lock(); b.tuned = append(b.tuned, ref); b.mu.Unlock() },
-		escalate: func(why string) { b.mu.Lock(); b.escalations = append(b.escalations, why); b.mu.Unlock() },
+		cutTo: func(ref string) { b.mu.Lock(); b.tuned = append(b.tuned, ref); b.mu.Unlock() },
+		// THE BROADCAST ENGINE, AS A CAPTURE (F-91). The real one is the deck's
+		// synth.Source swap, which needs a voice and an audio device; what this
+		// bench is about is WHICH lane performs a card and what comes home.
+		read: func(_ context.Context, v lineup.Speak) error {
+			b.mu.Lock()
+			defer b.mu.Unlock()
+			b.reads = append(b.reads, v)
+			if b.readErr != nil {
+				return b.readErr
+			}
+			if !b.readOK {
+				return errReadStopped
+			}
+			return nil
+		},
+		publish: func(m tea.Msg) {
+			b.mu.Lock()
+			b.published = append(b.published, m)
+			b.mu.Unlock()
+		},
 	})
 	if b.x == nil {
 		t.Fatal("newExecutors refused a well-formed set")
@@ -165,9 +198,9 @@ func onlyFailed(t *testing.T, out []lineup.Event) lineup.Failed {
 //
 // THE TWO FORMS ARE THE CARD'S NOW, NOT THE PRODUCER'S (MVS-D-77, T3.10b). One
 // alert carries its own broadcast tail inside its line; several get a head, a
-// line each and a closing tail. The choice used to be a flag the producer set
-// beside each alert — which meant the producer decided the SHAPE of a burst it
-// did not schedule. It follows from how many records the card reads, which is
+// line each and a closing tail. A flag the producer set beside each alert would
+// let the producer decide the SHAPE of a burst it did not schedule. It follows
+// from how many records the card reads, which is
 // the one thing that cannot disagree with the burst the Director planned.
 func TestABreakingAlertIsBuiltFromTheProducersRecord(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
@@ -265,7 +298,7 @@ func TestSpeakReadsThroughTheNarratorAndComesHomeFinished(t *testing.T) {
 		t.Run(slot.String(), func(t *testing.T) {
 			v := &scriptVoice{dur: 2 * time.Second}
 			b := newBench(t, v)
-			out := b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: slot, Script: lineup.Say("a tornado warning is in effect")})
+			out := b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: slot, Track: lineup.AlertRail, Script: lineup.Say("a tornado warning is in effect")})
 			if len(out) != 1 {
 				t.Fatalf("got %v, want one Finished", out)
 			}
@@ -292,7 +325,7 @@ func TestSpeakReadsThroughTheNarratorAndComesHomeFinished(t *testing.T) {
 // the fixed time so the band's callout is readable — never blitted past.
 func TestSpeakWithNoVoiceStillHoldsSoTheCalloutCanBeRead(t *testing.T) {
 	b := newBench(t, nil)
-	out := b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("words")})
+	out := b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("words")})
 	if len(out) != 1 {
 		t.Fatalf("got %v, want one Finished", out)
 	}
@@ -313,7 +346,7 @@ func TestSpeakEndedByTheContextComesHomeFailedNotFinished(t *testing.T) {
 	b := newBench(t, &scriptVoice{dur: time.Second})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	out := b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("words")})
+	out := b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("words")})
 	failed := onlyFailed(t, out)
 	if failed.ID != "a1" {
 		t.Errorf("the failure names %q, want the card whose read was cut", failed.ID)
@@ -334,7 +367,7 @@ func TestSpeakEndedByTheContextComesHomeFailedNotFinished(t *testing.T) {
 func TestSpeakForACardWithNothingToSayIsFailedNotAired(t *testing.T) {
 	v := &scriptVoice{}
 	b := newBench(t, v)
-	failed := onlyFailed(t, b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert}))
+	failed := onlyFailed(t, b.x.run(context.Background(), lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail}))
 	if failed.ID != "a1" {
 		t.Errorf("failed %q, want a1", failed.ID)
 	}
@@ -349,7 +382,7 @@ func TestSpeakForACardWithNothingToSayIsFailedNotAired(t *testing.T) {
 // diagnostic, can read afterwards.
 func TestTheCueReachesTheBandAndIsRecorded(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
-	if out := b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning"}); len(out) != 0 {
+	if out := b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning", Track: lineup.AlertRail}); len(out) != 0 {
 		t.Errorf("a cue came home with %v; it is fire-and-trust", out)
 	}
 	msgs := b.sent()
@@ -368,7 +401,7 @@ func TestTheCueReachesTheBandAndIsRecorded(t *testing.T) {
 // TestTheReleaseReachesTheBandAndIsRecorded — the cue's other half (DR-24).
 func TestTheReleaseReachesTheBandAndIsRecorded(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
-	if out := b.x.run(context.Background(), lineup.ReleaseTicker{ID: "a1"}); len(out) != 0 {
+	if out := b.x.run(context.Background(), lineup.ReleaseTicker{ID: "a1", Track: lineup.AlertRail}); len(out) != 0 {
 		t.Errorf("a release came home with %v", out)
 	}
 	msgs := b.sent()
@@ -388,7 +421,7 @@ func TestTheReleaseReachesTheBandAndIsRecorded(t *testing.T) {
 // to take the card off the air.
 func TestACueTheProducerCannotAccountForIsReportedAndFailsNothing(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
-	if out := b.x.run(context.Background(), lineup.CueTicker{ID: "zz"}); len(out) != 0 {
+	if out := b.x.run(context.Background(), lineup.CueTicker{ID: "zz", Track: lineup.AlertRail}); len(out) != 0 {
 		t.Errorf("a cue that could not be built came home with %v; the read must go on", out)
 	}
 	if len(b.sent()) != 0 {
@@ -402,16 +435,19 @@ func TestACueTheProducerCannotAccountForIsReportedAndFailsNothing(t *testing.T) 
 	}
 }
 
-// TestAPublishIsCarriedAndDeclined — the effect is EMITTED and nobody reads it.
+// TestAPublishIsCarriedAndDeclined — the effect's POSITION, which is what the
+// ordering guarantee rests on.
 //
-// The seam it used to reach was `func(lineup.Lineup) {}`, a no-op behind a
-// nil-guard, dispatched once a second (red team 2026-09-05): that reads as a
-// wired feature and is not one. The Broadcaster surface that consumes a
-// published lineup is 0.15.0's.
+// IT IS NO LONGER "nobody reads it", AND THE COMMENT SAYS SO RATHER THAN
+// OUTLIVING THE FACT (the F-69 shape). The console reads it (0.16.0 P2) and the
+// producer answers it (P4, D-40) — a publish with a producer wired comes home
+// with an Offered, which `TestAPublishAsksTheProducerToTopTheLineUpOff` pins.
+// This bench has no producer, so it still comes home empty, and that is the
+// case being asserted here.
 //
-// THE EFFECT STAYS EMITTED, and this pins why: the "readers are told last"
-// ordering in settle depends on it existing, so it must be carried and declined
-// rather than dropped from the set.
+// WHAT HAS NOT CHANGED is that the publish is LAST: the "readers are told last"
+// ordering in settle depends on its position, so it is pinned here separately
+// from anything that reads it.
 func TestAPublishIsCarriedAndDeclined(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
 	d := lineup.New(lineup.Settings{Max: 10}, execNow)
@@ -446,10 +482,22 @@ func TestEffectsNotYetEmittedAreDeclinedNotHalfDone(t *testing.T) {
 		failed string // the card that must be failed, or empty
 		task   string // the task named in the reason
 	}{
-		{lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, "r1", "T3.2"},
-		{lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, "s1", "T3.2"},
-		{lineup.Speak{ID: "r1", Slot: lineup.LocationReport, Script: lineup.Say("the report")}, "r1", "T3.2"},
-		{lineup.Speak{ID: "t1", Slot: lineup.Transition, Script: lineup.Say("we now return")}, "t1", "T3.2"},
+		// THE MAIN TRACK ARRIVED (0.16.0 P3), so these three rows changed and
+		// this pin caught it — which is what it is for.
+		//
+		// A location-report BUILD is no longer declined by slot: it declines
+		// only because THIS bench wires no composer, and the reason says so.
+		// BOTH HALVES HAVE NOW ARRIVED (P3(a2) build, P3(a3) speak), and this
+		// pin fired at each one — which is exactly what a pin naming the task
+		// that will retire it is for.
+		//
+		// The SPEAK rows are GONE from this table. Both lanes perform now
+		// (F-91): the rail reads through the arbiter and the main track through
+		// the broadcast engine, so a row here would have to assert a decline
+		// that no longer happens. They are asserted positively in
+		// mainread_test.go, the transition by the LANE it bookends.
+		{lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, "r1", "no composer"},
+		{lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, "s1", "severe window"},
 		{lineup.BuildCard{ID: "h1", Slot: lineup.Transition, Subject: "h1"}, "h1", "proposal"},
 	} {
 		t.Run(lineup.Describe(tc.effect), func(t *testing.T) {
@@ -553,7 +601,7 @@ func TestAMutedReadIsDeclinedAndNothingIsConsumed(t *testing.T) {
 	script := lineup.Script{Tone: "warning", Parts: []lineup.Part{
 		{Kind: lineup.PartLine, Text: "a tornado warning is in effect", Ref: "a1"},
 	}}
-	speak := lineup.Speak{ID: card, Slot: lineup.BreakingAlert, Script: script}
+	speak := lineup.Speak{ID: card, Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: script}
 
 	b := newBench(t, &scriptVoice{})
 	b.muted = true
@@ -635,7 +683,6 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 			readAloud: func(string) bool { return false },
 			report:    func(lineup.Effect, string) {},
 			cutTo:     func(string) {},
-			escalate:  func(string) {},
 		}
 	}
 	if newExecutors(whole()) == nil {
@@ -665,11 +712,60 @@ func TestExecutorsRefuseToBeBuiltWithoutTheirSeams(t *testing.T) {
 		"readAloud": func(x *executors) { x.readAloud = nil },
 		"muted":     func(x *executors) { x.muted = nil },
 		"report":    func(x *executors) { x.report = nil },
-		"escalate":  func(x *executors) { x.escalate = nil },
 	}
 	optional := map[string]bool{
 		"scripts": true, // nil means the built-in script tree
 		"band":    true, // built by newExecutors itself, never passed in
+		// OPTIONAL ONLY UNTIL THE DIRECT PATH RETIRES (0.16.0 P3).
+		//
+		// nil means the main track cannot be built, which is exactly how every
+		// build behaved before this release and how every test that does not
+		// care behaves now. `build` declines rather than panicking.
+		//
+		// IT BECOMES REQUIRED AT P3(d). Once startSynth's direct path is
+		// deleted, a nil composer means location reports never reach the air
+		// at all — silence rather than a decline — so this row moves into
+		// `strippers` in the same change that removes the direct path. That is
+		// recorded here rather than remembered.
+		"compose": true,
+		// DELIBERATELY OPTIONAL (0.16.0 P2). nil means no surface is
+		// listening, which is every build before the console existed and
+		// every test that does not care. Refusing to build without it would
+		// make the schedule depend on a UI — the wrong direction entirely.
+		"publish": true,
+		// DELIBERATELY OPTIONAL (0.16.0 P4, D-40). nil is a station with no
+		// producer, which offers nothing — and the line-up is still filled by
+		// the rotation's own NeedsRead and by the operator's undo, so a station
+		// without one broadcasts, it just never tops itself off.
+		//
+		// REFUSING TO BUILD WITHOUT IT WOULD BE THE WRONG DIRECTION, the same
+		// one `publish` names: topping the line-up off is an ENRICHMENT of the
+		// schedule, not a precondition for having one.
+		"propose": true,
+		// DELIBERATELY OPTIONAL (F-79, D-78). nil is a station with no radio,
+		// where the bed is never tuned and there is nothing to name. The console
+		// already has its own words for an untuned bed, so a missing label reads
+		// as "nothing is tuned" rather than as a fault — and refusing to build
+		// without it would make the SCHEDULE depend on there being a UI to
+		// describe the bed to, which is `publish`'s wrong direction again.
+		"bedLabel": true,
+		// DELIBERATELY OPTIONAL, for `publish`'s reason (D-78). It exists so the
+		// relay SELECTOR and the Director agree about whether the bed is
+		// carrying; nil is a build with no console to disagree with.
+		"noteBed": true,
+		// DELIBERATELY OPTIONAL, and the OTHER half of that same agreement
+		// (F-98, D-90). nil is a build with no console to have chosen a relay on,
+		// and the row then names the Director's bed exactly as it did before —
+		// which is why the fallback in `describeBed` is not dead code and has a
+		// test of its own.
+		"selected": true,
+		// DELIBERATELY OPTIONAL (F-91). nil is a station with no broadcast
+		// engine — the pathless build and every bench that wires no deck. The
+		// executor declines the card BY NAME and the schedule re-plans around
+		// it (DR-21), which is the loud failure; refusing to build without it
+		// would make the schedule depend on there being audio, and the visuals
+		// run on a machine with no sound card.
+		"read": true,
 	}
 	v := reflect.ValueOf(whole())
 	for i := 0; i < v.NumField(); i++ {
@@ -748,7 +844,7 @@ func TestTheDuckAndItsRestoreReachTheEffector(t *testing.T) {
 // sending different things for the same event.
 func TestTheBandHasOneWriter(t *testing.T) {
 	b := newBench(t, &scriptVoice{})
-	b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning"})
+	b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning", Track: lineup.AlertRail})
 	msgs := b.sent()
 	if len(msgs) != 1 {
 		t.Fatalf("the band got %v, want one message", msgs)
@@ -786,8 +882,8 @@ func TestTheBedIsDippedOnceForAWholeDrain(t *testing.T) {
 		if bracketed {
 			b.x.run(ctx, lineup.Duck{})
 		}
-		b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("first")})
-		b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Script: lineup.Say("second")})
+		b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("first")})
+		b.x.run(ctx, lineup.Speak{ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: lineup.Say("second")})
 		if bracketed {
 			b.x.run(ctx, lineup.Restore{})
 		}
@@ -825,9 +921,9 @@ func TestTheHeldBedIsGivenBackEvenIfNothingElseSpeaks(t *testing.T) {
 // TestTheRailNeverLiftsTheBedOverALiveRead — the finding a fresh review found
 // and its mutant proved unpinned.
 //
-// Releasing the hold used to ask the arbiter whether it was idle and then act on
-// that answer, with the question answered outside the effector's lock: a job
-// admitted between the two had the bed restored out from under it, and the
+// Asking the arbiter whether it is idle and then acting on that answer puts the
+// question outside the effector's lock: a job admitted between the two has the
+// bed restored out from under it, and the
 // listener heard the broadcast surge to full volume over a read in progress —
 // the exact class the single-owner work exists to prevent.
 //
@@ -972,22 +1068,49 @@ func TestDR21ARoutedFaultNeverReachesAPerson(t *testing.T) {
 	} {
 		b.x.run(context.Background(), f)
 	}
-	b.mu.Lock()
-	got := append([]string(nil), b.escalations...)
-	b.mu.Unlock()
-	if len(got) != 0 {
+	if got := b.faults(); len(got) != 0 {
 		t.Errorf("routine effects must reach nobody, got %v", got)
 	}
 
 	// And the one effect that IS an escalation reaches a person, with the words
 	// the producer gave — the channel is wired, not merely quiet.
-	b.x.run(context.Background(), lineup.Escalate{ID: "c1", Reason: "no voice could read it"})
-	b.mu.Lock()
-	got = append([]string(nil), b.escalations...)
-	b.mu.Unlock()
-	if len(got) != 1 || !strings.Contains(got[0], "no voice") {
+	b.x.run(context.Background(), lineup.Escalate{ID: "c1", Run: 1, Reason: "no voice could read it"})
+	if got := b.faults(); len(got) != 1 || !strings.Contains(got[0].Reason, "no voice") {
 		t.Errorf("a stopped schedule reaches a person with the reason, got %v", got)
 	}
+}
+
+// faults is every fault-band message the executors published, in order — the
+// escalations (Run > 0, or a stopped schedule's Run 0 with a reason) and the
+// clears (the zero message).
+func (b *bench) faults() []tty.StationFaultMsg {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return faultsIn(b.published)
+}
+
+// faultsIn is every fault-band message among the published ones, in order:
+// the escalations and the clears alike. escalationsIn is the escalations
+// alone — the ONE definition of "an escalation reached the console" for every
+// harness in this package.
+func faultsIn(msgs []tea.Msg) []tty.StationFaultMsg {
+	var out []tty.StationFaultMsg
+	for _, m := range msgs { // bounded by what was published (P10-02)
+		if f, ok := m.(tty.StationFaultMsg); ok {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+func escalationsIn(msgs []tea.Msg) []tty.StationFaultMsg {
+	var out []tty.StationFaultMsg
+	for _, f := range faultsIn(msgs) { // bounded by what was published (P10-02)
+		if f != (tty.StationFaultMsg{}) { // the zero message is the clear
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 // THE DIRECTOR'S SPEAK READS THROUGH THE ONE READER (T3.8).
@@ -1007,7 +1130,7 @@ func TestTheDirectorsSpeakPerformsAScriptsParts(t *testing.T) {
 	b.nar.sleep = func(ctx context.Context, _ time.Duration) bool { return ctx.Err() == nil }
 
 	out := b.x.run(context.Background(), lineup.Speak{
-		ID: "a1", Slot: lineup.BreakingAlert,
+		ID: "a1", Slot: lineup.BreakingAlert, Track: lineup.AlertRail,
 		Script: lineup.Script{Parts: []lineup.Part{
 			{Kind: lineup.PartHead, Text: "the following alerts have been declared"},
 			{Kind: lineup.PartLine, Text: "a tornado warning is in effect", Ref: "a1"},
@@ -1122,5 +1245,258 @@ func TestTheDivertNoticeSaysTheCountAndTheDestination(t *testing.T) {
 				t.Errorf("the burst reads %d alert lines, want %d — the tail spent the budget", got, min(tc.arrive, tc.max))
 			}
 		})
+	}
+}
+
+// D-40: THE PRODUCER TOPS THE LINE-UP OFF, THROUGH THE SEAM THAT ALREADY
+// RETURNS EVENTS.
+//
+// The gap this closes was found by walking the operator's drop flow: only the
+// deck's NeedsRead and the operator's undo ever queued a main-track card, and
+// nothing read the track's DEPTH — so the schedule held about one card while the
+// console drew ten slots, and a dropped card left its slot empty for ever.
+//
+// NO NEW EFFECT. `run` already returns whatever an effect learned, and a publish
+// is the moment the schedule has settled — which is exactly when the producer
+// can see what the line-up still needs. That was the HUM LEAD's option 2.
+func TestAPublishAsksTheProducerToTopTheLineUpOff(t *testing.T) {
+	b := newBench(t, &scriptVoice{})
+	b.x.propose = func() []lineup.Proposal {
+		return []lineup.Proposal{
+			{Ref: "oceanside", Headline: "OCEANSIDE, CA", Slot: lineup.LocationReport},
+			{Ref: "carlsbad", Headline: "CARLSBAD, CA", Slot: lineup.LocationReport},
+		}
+	}
+
+	out := b.x.run(context.Background(), lineup.Publish{})
+
+	if len(out) != 1 {
+		t.Fatalf("a publish comes home with the producer's offer; got %d events", len(out))
+	}
+	offer, ok := out[0].(lineup.Offered)
+	if !ok {
+		t.Fatalf("want an Offered; got %T", out[0])
+	}
+	if len(offer.Proposals) != 2 {
+		t.Errorf("it carries everything the producer has, and the Director takes what it needs; got %d", len(offer.Proposals))
+	}
+}
+
+// A STATION WITH NO PRODUCER OFFERS NOTHING, and says so by returning no event
+// rather than an empty one — an empty offer would be a step the Director takes
+// for no reason, once per publish, for ever.
+func TestAPublishWithNothingToOfferComesHomeEmpty(t *testing.T) {
+	b := newBench(t, &scriptVoice{})
+	if out := b.x.run(context.Background(), lineup.Publish{}); len(out) != 0 {
+		t.Errorf("no producer, no offer; got %v", out)
+	}
+	b.x.propose = func() []lineup.Proposal { return nil }
+	if out := b.x.run(context.Background(), lineup.Publish{}); len(out) != 0 {
+		t.Errorf("a producer with nothing to offer offers nothing; got %v", out)
+	}
+}
+
+// THE LOOP TERMINATES, and that is the whole risk of feeding an event back from
+// the effect that publishes. Publish -> Offered -> the track fills -> settle
+// publishes -> Offered again -> nothing left to admit -> no publish, no event.
+//
+// IT IS SELF-LIMITING BY THE DEPTH, not by a counter: `onOffered` returns no
+// effects at all when it admitted nothing, so the chain has nowhere to go.
+func TestTheTopOffChainStopsOnceTheLineUpIsFull(t *testing.T) {
+	offer := lineup.Offered{Proposals: []lineup.Proposal{
+		{Ref: "oceanside", Headline: "OCEANSIDE, CA"},
+		{Ref: "carlsbad", Headline: "CARLSBAD, CA"},
+	}}
+	d := lineup.New(lineup.Settings{Max: 10, Depth: 2}, execNow)
+	d, _ = d.Step(lineup.Aired{To: lineup.AirProgramme}) // the console holds the air (D-74)
+	d, _ = d.Step(lineup.Powered{To: lineup.Running})
+
+	d, first := d.Step(offer)
+	if len(first) == 0 {
+		t.Fatal("the first offer must fill the track and publish")
+	}
+	d, again := d.Step(offer)
+
+	if len(again) != 0 {
+		t.Errorf("a full line-up takes nothing and publishes nothing, or the chain never ends; got %d effects", len(again))
+	}
+	if n := len(d.Lineup().Projection(lineup.MainTrack)); n != 2 {
+		t.Errorf("and it holds exactly its depth; got %d", n)
+	}
+}
+
+// A REPORT'S EXIT DOES NOT CLEAR THE HAZARD'S CALLOUT (F-71, closed at D-82).
+//
+// `clearBand` carried this defect in an eight-line comment for two releases,
+// with its trigger named exactly: the release is paired with the CUE and not
+// with the card, `wasOnAir` was the whole of the enforcement, and "a
+// LocationReport is now routinely on the air without a cue … so every rotation
+// turn issues a release for a cue that never happened." It was benign only
+// because ONE card held the air at a time.
+//
+// D-82 IS THAT TRIGGER. A hazard now reads over a report, and the report's exit
+// would wipe the callout for a tornado warning still being spoken — on the one
+// surface DR-24 exists to protect.
+func TestAReportsExitLeavesTheHazardsCalloutUp(t *testing.T) {
+	b := newBench(t, &scriptVoice{})
+	b.x.run(context.Background(), lineup.CueTicker{ID: "a1", Headline: "Tornado Warning", Track: lineup.AlertRail})
+	if len(b.sent()) != 1 {
+		t.Fatalf("the fixture needs the hazard's callout up; the band got %v", b.sent())
+	}
+
+	// The report underneath it finishes and leaves the air.
+	if out := b.x.run(context.Background(), lineup.ReleaseTicker{ID: "r1", Track: lineup.MainTrack}); len(out) != 0 {
+		t.Errorf("a release came home with %v", out)
+	}
+
+	if msgs := b.sent(); len(msgs) != 1 {
+		t.Fatalf("the band got %v; the report gave back a callout it never took, and the hazard's is gone", msgs)
+	}
+	// AND IT IS NOT IN THE RECORD EITHER. The band record answers "was this card
+	// cued, and released?" — a report that did neither must not read as having
+	// done both.
+	if b.x.band.has("release(r1)") {
+		t.Errorf("the record reads %v; the report claims a release it never made", b.x.band.recent())
+	}
+}
+
+// A LAPSED HAZARD IS SKIPPED AND ITS LIVE SIBLINGS ARE STILL READ (F-110).
+//
+// HUM LEAD, 2026-09-16: "expired hazards should never make it to the air … valid
+// alerts need to be read, expired alerts must never be." Both halves are here,
+// on one card, because a burst is ONE card carrying many hazards (MVS-D-77).
+//
+// IT DECLINED THE WHOLE BURST, and that failed in both directions at once. A
+// live tornado warning went unread because a flash flood warning beside it had
+// lapsed — and the card was re-offered and re-declined every cycle, held by the
+// Director and refused here, with `heldNotice` counting it the whole time.
+func TestALapsedAlertIsSkippedAndItsLiveSiblingsAreRead(t *testing.T) {
+	b := newBench(t, nil)
+	// ONE LIVE, ONE LAPSED — the flood warning expired a minute ago.
+	b.known["a2"] = globalfeed.Event{ID: "a2", Class: globalfeed.ClassSevereWx, Type: "Flash Flood Warning",
+		Location: "Fallbrook, CA", At: execNow.Add(-2 * time.Hour), Until: execNow.Add(-time.Minute), Source: "NWS"}
+
+	built := onlyBuilt(t, b.x.run(context.Background(), lineup.BuildCard{
+		ID: "burst:mixed", Slot: lineup.BreakingAlert, Subject: "a1", Refs: []string{"a1", "a2"}}))
+
+	lines := built.Script.Lines(lineup.PartLine)
+	if len(lines) != 1 {
+		t.Fatalf("the card composed %d lines; the live hazard is read and the lapsed one is not", len(lines))
+	}
+	if strings.Contains(built.Script.Text(), "Flash Flood") {
+		t.Errorf("a hazard that expired a minute ago reached the air:\n  %q", built.Script.Text())
+	}
+	if !strings.Contains(built.Script.Text(), "Tornado Warning") {
+		t.Errorf("the live hazard was silenced by its lapsed sibling:\n  %q", built.Script.Text())
+	}
+	// AND IT READS AS A LONE ALERT, because that is what is left of it: one
+	// hazard carries its own tail, so a head and a tail here would frame a
+	// burst the listener is not getting.
+	if n := len(built.Script.Lines(lineup.PartHead)) + len(built.Script.Lines(lineup.PartTail)); n != 0 {
+		t.Errorf("one live hazard composed %d structural parts; it carries its own tail", n)
+	}
+}
+
+// AND A CARD WITH NOTHING LIVE LEFT ON IT IS DECLINED.
+//
+// THE OTHER HALF OF THE SAME RULING. Skipping is not silence-by-default: when
+// every hazard has lapsed there are no words to make, and the Director's own
+// sweep (D-155) takes the card off the rail rather than leaving it to be
+// re-offered forever.
+func TestACardWhoseHazardsHaveAllLapsedIsDeclined(t *testing.T) {
+	b := newBench(t, nil)
+	gone := globalfeed.Event{ID: "dead", Class: globalfeed.ClassSevereWx, Type: "Flash Flood Warning",
+		Location: "Fallbrook, CA", At: execNow.Add(-3 * time.Hour), Until: execNow.Add(-time.Hour), Source: "NWS"}
+	b.known["dead"] = gone
+
+	fx := b.x.run(context.Background(), lineup.BuildCard{
+		ID: "burst:dead", Slot: lineup.BreakingAlert, Subject: "dead", Refs: []string{"dead"}})
+	for _, f := range fx {
+		if v, ok := f.(lineup.Built); ok {
+			t.Fatalf("a card with nothing in force was built anyway: %q", v.Script.Text())
+		}
+	}
+}
+
+// F-150 — A FAULT IS NOT A DECLINE. `escalation()` grades a failure by whether
+// it was DELIBERATE (Routed), and a decline was routed by definition — so a
+// compose error, a missing composer and an empty report all took the
+// deliberate-non-delivery exit and the operator saw nothing. The executors now
+// say which it was: a station that cannot do what it is wired to do FAULTS,
+// and DR-21's window is the cue when that stops the schedule.
+func TestAStationThatCannotComposeFaultsAndAListenerWhoDeclinedIsRouted(t *testing.T) {
+	script := lineup.Script{Tone: "warning", Parts: []lineup.Part{{Kind: lineup.PartLine, Text: "a warning", Ref: "a1"}}}
+	for _, tc := range []struct {
+		name   string
+		effect lineup.Effect
+		muted  bool
+		routed bool
+	}{
+		{"no composer is wired", lineup.BuildCard{ID: "r1", Slot: lineup.LocationReport, Subject: "33.2887,-117.2179"}, false, false},
+		{"the severe window reads its own card", lineup.BuildCard{ID: "s1", Slot: lineup.SevereRead, Subject: "s1"}, false, true},
+		{"a structural card has no builder", lineup.BuildCard{ID: "h1", Slot: lineup.Transition, Subject: "h1"}, false, true},
+		{"the listener is muted", lineup.Speak{ID: lineup.BurstID("a1"), Slot: lineup.BreakingAlert, Track: lineup.AlertRail, Script: script}, true, true},
+		{"a card took the air with nothing to say", lineup.Speak{ID: lineup.BurstID("a2"), Slot: lineup.BreakingAlert, Track: lineup.AlertRail}, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := newBench(t, &scriptVoice{})
+			b.muted = tc.muted
+			f := onlyFailed(t, b.x.run(context.Background(), tc.effect))
+			if f.Routed != tc.routed {
+				t.Errorf("Routed = %v, want %v — %s (%q)", f.Routed, tc.routed,
+					map[bool]string{true: "a deliberate non-delivery is not a fault", false: "a station that cannot perform has faulted, and the window is owed"}[tc.routed], f.Reason)
+			}
+		})
+	}
+}
+
+// F-150, REVIEW — A VOICE THAT COULD NOT RENDER IS A FAULT; a read something
+// deliberate stopped is routed. And an Escalate reaches the person with its
+// run and its reason, not the relay window's words.
+func TestAVoiceThatCannotRenderFaultsAndAStoppedReadIsRouted(t *testing.T) {
+	script := lineup.Script{Tone: "report", Parts: []lineup.Part{{Kind: lineup.PartLine, Text: "the forecast"}}}
+	speak := lineup.Speak{ID: lineup.ReadID("bonsall"), Slot: lineup.LocationReport, Track: lineup.MainTrack, Script: script}
+	for _, tc := range []struct {
+		name   string
+		err    error
+		routed bool
+	}{
+		{"the voice could not render", errors.New("piper: install failed"), false},
+		{"something deliberate stopped the read", errReadStopped, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			b := newBench(t, &scriptVoice{})
+			b.readErr = tc.err
+			f := onlyFailed(t, b.x.run(context.Background(), speak))
+			if f.Routed != tc.routed {
+				t.Errorf("Routed = %v, want %v (%q)", f.Routed, tc.routed, f.Reason)
+			}
+		})
+	}
+	// AND A READ THAT FINISHED CLEARS THE BAND, through the same seam (R2
+	// review F4): the clear is the zero message, and it is published, not
+	// assumed.
+	b := newBench(t, &scriptVoice{})
+	b.x.run(context.Background(), speak)
+	got := b.faults()
+	if len(got) != 1 || got[0] != (tty.StationFaultMsg{}) {
+		t.Errorf("a finished read published %v; want exactly the clear", got)
+	}
+}
+
+// R2 REVIEW F1 (2026-09-17) — THE ESCALATION TRAVELS THE CHANNEL THE CLEAR
+// TRAVELS. The band was SET through the deck and CLEARED through the console
+// seam, and a nil deck — a supported build — swallowed the one message this
+// remediation exists to deliver: ON AIR over dead air, nothing on the console.
+// One owner: the executor publishes both, and the deck is not asked.
+func TestAnEscalationIsPublishedToTheConsole(t *testing.T) {
+	b := newBench(t, nil) // no voice; the executors never ask a deck, so none is built
+	out := b.x.run(context.Background(), lineup.Escalate{ID: "read:a", Run: 3, Reason: "the report could not be composed: no key"})
+	if len(out) != 0 {
+		t.Fatalf("an escalation came home with events %v; it is a surfacing, not a step", out)
+	}
+	got := b.faults()
+	if len(got) != 1 || got[0].Run != 3 || !strings.Contains(got[0].Reason, "no key") {
+		t.Fatalf("the escalation did not reach the console through the publish seam; published: %v", got)
 	}
 }

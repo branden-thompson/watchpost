@@ -6,9 +6,14 @@ import (
 	"time"
 )
 
-// report is a proposal for a location report — the main track's ordinary card,
-// and the shape most of the broadcast has.
-func report(id string) Card {
+// locationCard is a proposal for a location report — the main track's ordinary
+// card, and the shape most of the broadcast has.
+//
+// RENAMED FROM `report` AT R4: `platform/report` is a package this package now
+// imports, and a helper sharing its name shadows it. The collision is invisible
+// until something in the package needs the import, which is why it surfaced two
+// batches after the package was written.
+func locationCard(id string) Card {
 	return Card{ID: id, Slot: LocationReport, Origin: FromObserver,
 		Subject: id, Headline: "Conditions for " + id}
 }
@@ -115,7 +120,7 @@ func TestATerminalStateIsTheEndOfTheCard(t *testing.T) {
 // TestAProposalCarriesItsShapeAndNoWords is DR-7's first half: a card is born
 // with its slot, subject and headline, and with the text still empty.
 func TestAProposalCarriesItsShapeAndNoWords(t *testing.T) {
-	c := proposed(t, report("Bonsall"))
+	c := proposed(t, locationCard("Bonsall"))
 	if c.State != Proposed {
 		t.Errorf("State = %v, want %v", c.State, Proposed)
 	}
@@ -145,7 +150,7 @@ func TestAMalformedProposalIsRefused(t *testing.T) {
 		{"a report's words, too early", func(c Card) Card { c.Script = Say("Conditions are fair."); return c }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := Propose(tc.edit(report("Bonsall"))); err == nil {
+			if _, err := Propose(tc.edit(locationCard("Bonsall"))); err == nil {
 				t.Fatal("Propose accepted it; want a refusal")
 			}
 		})
@@ -189,18 +194,18 @@ func TestOnlyAReportComposesItsTextAtStandby(t *testing.T) {
 
 // TestAReportsTextMaterialisesAtStandbyAndNowhereElse is DR-7's second half.
 func TestAReportsTextMaterialisesAtStandbyAndNowhereElse(t *testing.T) {
-	c := proposed(t, report("Bonsall"))
+	c := proposed(t, locationCard("Bonsall"))
 	for _, s := range []State{Proposed, Admitted} {
 		walked := c
 		if s == Admitted {
 			walked = at(t, c, Admitted)
 		}
-		if _, err := walked.WithScript(Say("Conditions are fair."), testBuiltAt); err == nil {
+		if _, err := walked.WithScript(Say("Conditions are fair."), nil, testBuiltAt); err == nil {
 			t.Errorf("WithText accepted at %v; a report's words arrive at standby", s)
 		}
 	}
 	standby := at(t, c, Admitted, Standby)
-	built, err := standby.WithScript(Say("Conditions are fair."), testBuiltAt)
+	built, err := standby.WithScript(Say("Conditions are fair."), nil, testBuiltAt)
 	if err != nil {
 		t.Fatalf("WithText at standby: %v", err)
 	}
@@ -223,7 +228,7 @@ func TestAStructuralCardCarriesItsWordsFromTheStart(t *testing.T) {
 		t.Fatal("the notice lost its words at proposal")
 	}
 	standby := at(t, c, Admitted, Standby)
-	if _, err := standby.WithScript(Say("something else"), testBuiltAt); err == nil {
+	if _, err := standby.WithScript(Say("something else"), nil, testBuiltAt); err == nil {
 		t.Error("WithText accepted on a structural card; its words are fixed when it is proposed")
 	}
 }
@@ -236,7 +241,7 @@ func TestACardTakesTheAirWithItsWordsAlreadyOnIt(t *testing.T) {
 	if _, err := standby.To(OnAir); err == nil {
 		t.Fatal("an empty card took the air")
 	}
-	spoken, err := standby.WithScript(Say("A severe thunderstorm warning is in effect."), testBuiltAt)
+	spoken, err := standby.WithScript(Say("A severe thunderstorm warning is in effect."), nil, testBuiltAt)
 	if err != nil {
 		t.Fatalf("WithText: %v", err)
 	}
@@ -249,7 +254,7 @@ func TestACardTakesTheAirWithItsWordsAlreadyOnIt(t *testing.T) {
 // display name, put on the card by the radio domain when it resolves the slot
 // against this machine's cast. Empty means unresolved.
 func TestTheVoiceIsResolvedBeforeTheAirAndNotAfter(t *testing.T) {
-	c := proposed(t, report("Bonsall"))
+	c := proposed(t, locationCard("Bonsall"))
 	if c.ReadBy != "" {
 		t.Fatalf("ReadBy = %q at proposal, want empty", c.ReadBy)
 	}
@@ -270,7 +275,7 @@ func TestTheVoiceIsResolvedBeforeTheAirAndNotAfter(t *testing.T) {
 // mustText fills a card's script so it can be walked to the air.
 func (c Card) mustText(t *testing.T) Card {
 	t.Helper()
-	out, err := c.WithScript(Say("the script"), testBuiltAt)
+	out, err := c.WithScript(Say("the script"), nil, testBuiltAt)
 	if err != nil {
 		t.Fatalf("%s: WithText: %v", c.ID, err)
 	}
@@ -282,7 +287,7 @@ func (c Card) mustText(t *testing.T) Card {
 // possible (PD-1's lesson applied to the card).
 func TestOnlyACardOnTheAirIsLocked(t *testing.T) {
 	for s := State(0); s < numStates; s++ {
-		c := report("Bonsall")
+		c := locationCard("Bonsall")
 		c.State = s
 		if got, want := c.Locked(), s == OnAir; got != want {
 			t.Errorf("a card at %v: Locked() = %v, want %v", s, got, want)

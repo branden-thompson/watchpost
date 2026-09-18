@@ -1,0 +1,614 @@
+package tty
+
+// broadcaster_rail_test.go — the left rail (D-60).
+//
+// The reference names each region of the running order down the left edge, one
+// letter per row: LIVE, UP NEXT, BED, SCHEDULED, LINE UP. It is what says WHICH
+// PART of the schedule a card is in — and it is why the card itself carries no
+// state strip: the rail already says it, and two carriers of one fact is the
+// shape this release keeps removing.
+
+import (
+	"fmt"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
+	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+	"testing"
+	"unicode/utf8"
+
+	"github.com/branden-thompson/watchpost/platform/lineup"
+	"github.com/branden-thompson/watchpost/platform/render"
+)
+
+func rail(label string, rows int) []string {
+	return railColumn(label, rows, render.Opts{ASCII: true}.Glyphs())
+}
+
+func TestTheRailSpellsItsSectionDownTheEdge(t *testing.T) {
+	got := rail("LIVE", 6)
+	if len(got) != 6 {
+		t.Fatalf("the rail is as tall as the section it names; got %d", len(got))
+	}
+	var letters []string
+	for _, r := range got {
+		if c := strings.TrimSpace(strings.Trim(r, "|")); c != "" {
+			letters = append(letters, c)
+		}
+	}
+	if strings.Join(letters, "") != "LIVE" {
+		t.Errorf("the rail spells the section; got %q", strings.Join(letters, ""))
+	}
+}
+
+// A SPACE IN THE LABEL IS A BLANK ROW, which is how the reference draws
+// "UP NEXT": U, P, blank, N, E, X, T.
+func TestASpaceInTheLabelIsABlankRow(t *testing.T) {
+	got := rail("UP NEXT", 7)
+	if len(got) != 7 {
+		t.Fatalf("want 7 rows; got %d", len(got))
+	}
+	if c := strings.TrimSpace(strings.Trim(got[2], "|")); c != "" {
+		t.Errorf("the third row is the label's space; got %q", c)
+	}
+}
+
+// EVERY ROW IS THE RAIL'S OWN WIDTH, so the cards beside it all start in the
+// same column. A ragged rail would step the whole running order in and out.
+func TestEveryRailRowIsTheSameWidth(t *testing.T) {
+	for _, n := range []int{1, 4, 9, 20} {
+		for i, r := range rail("SCHEDULED", n) {
+			if w := utf8.RuneCountInString(r); w != bcRailWidth {
+				t.Errorf("rows %d, row %d: the rail is %d cells, want %d\n%q", n, i, w, bcRailWidth, r)
+			}
+		}
+	}
+}
+
+// A LABEL LONGER THAN ITS SECTION IS CUT, NOT OVERFLOWED. A rail that grew rows
+// would push the card it names off the bottom of the frame.
+func TestALabelTallerThanItsSectionIsCut(t *testing.T) {
+	got := rail("SCHEDULED", 3)
+	if len(got) != 3 {
+		t.Fatalf("the section's height wins; got %d rows", len(got))
+	}
+}
+
+// THE RAIL IS WALLED ON BOTH SIDES, which is what makes it a rail rather than a
+// margin: the frame's own edge at the left, and the divider the cards begin
+// after at the right.
+func TestTheRailIsWalledOnBothSides(t *testing.T) {
+	for _, r := range rail("BED", 3) {
+		if !strings.HasPrefix(r, "|") || !strings.HasSuffix(r, "|") {
+			t.Errorf("the rail is walled both sides; got %q", r)
+		}
+	}
+}
+
+// THE PAIR LANDS ON THE REFERENCE'S COLUMNS (D-103).
+//
+// READ OFF THE MOCK, NOT COPIED OUT OF IT. The numbers live in
+// `mock-broadcaster-v3.txt` and this test finds them there, so the reference and
+// the console cannot drift apart without the drift being the failure.
+//
+// v3 SWAPPED THE SIDES. Under v2 the takeover was its own column to the LEFT of
+// the running order; the pair puts UP NEXT on the left and the takeover on the
+// right, level with it. The mock's row that carries both borders is the same row
+// — what it means changed, so this test says which box is which rather than
+// calling them "left" and "right".
+//
+// AND THE ALERT BOX IS TWO CELLS WIDER THAN THE MOCK'S, deliberately. The mock
+// insets its table by two; every card box on this console insets by three
+// (`bcCardInset`), and two sibling boxes on one row with different insets would
+// read as a rendering fault. What the reference actually FIXES is the TABLE — the
+// fifty-one cells the operator reads offsets off — so the box is sized to hold
+// that at this console's own inset, and the two cells come out of UP NEXT.
+func TestThePairLandsOnTheReferencesColumns(t *testing.T) {
+	upNext, alert := mockTrackColumns(t)
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+
+	// THE AIR BETWEEN THEM IS THE REFERENCE'S. Where each box STARTS is not a
+	// reference fact any more — the mock's row runs the full 148 cells and this
+	// frame is 144 after D-100's two margins, and UP NEXT absorbs the difference —
+	// but the gap is fixed, and it is what makes the pair read as two things.
+	if got, want := bcColumnGap, alert[0]-upNext[1]-1; got != want {
+		t.Errorf("the boxes are %d cells apart; the reference puts %d between them", got, want)
+	}
+	// THE TAKEOVER HOLDS ITS TABLE, which is the number the reference actually
+	// pins: `##.` and its cell, ALERT TYPE at twenty-five, LOCATION at twenty-two.
+	if got, want := b.priorityWidth()-2-2*len(bcCardInset), mockAlertTableCells; got != want {
+		t.Errorf("the takeover gives its table %d cells; the reference's table is %d", got, want)
+	}
+	// AND THE PAIR SPANS THE FRAME, so nothing is left over on the right.
+	if got, want := b.upNextWidth()+bcColumnGap+b.priorityWidth(), b.frameWidth(); got != want {
+		t.Errorf("the pair spans %d of the frame's %d cells", got, want)
+	}
+}
+
+// mockAlertTableCells is the reference's own table width: 4 + 25 + 22.
+const mockAlertTableCells = 51
+
+// mockTrackColumns is where the v3 reference puts each box's borders, read from
+// the row that carries both.
+func mockTrackColumns(t *testing.T) (upNext, alert [2]int) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "06_docs", "02_features",
+		"0.16.0-broadcaster-ui", "01-objectives", "mock-broadcaster-v3.txt"))
+	if err != nil {
+		t.Fatalf("the reference mock is the source of these numbers: %v", err)
+	}
+	for _, line := range strings.Split(string(raw), "\n") { // bounded by the file (P10-02)
+		if !strings.Contains(line, bcTakeoverTitle) {
+			continue
+		}
+		r := []rune(line)
+		var opens, closes []int
+		for i, c := range r { // bounded by the row (P10-02)
+			switch c {
+			case '┏':
+				opens = append(opens, i)
+			case '┓':
+				closes = append(closes, i)
+			}
+		}
+		if len(opens) == 2 && len(closes) == 2 {
+			return [2]int{opens[0], closes[0]}, [2]int{opens[1], closes[1]}
+		}
+	}
+	t.Fatal("the reference has no row carrying both boxes' borders")
+	return
+}
+
+// A SHORT SECTION GETS A SHORTER WORD, NOT A CUT ONE. A rail reading "SCHEDULE"
+// or "U P _ N" looks like rendering damage rather than like a short section —
+// and the first version of this did exactly that.
+func TestAShortSectionLaddersItsLabelRatherThanCuttingIt(t *testing.T) {
+	for _, c := range []struct {
+		label string
+		rows  int
+		want  string
+	}{
+		{"SCHEDULED", 9, "SCHEDULED"},
+		{"SCHEDULED", 8, "SCHED"},
+		{"SCHEDULED", 4, "SCH"}, // SCHED is five runes; four rows cannot hold it
+		{"SCHEDULED", 3, "SCH"},
+		{"UP NEXT", 7, "UP NEXT"},
+		{"UP NEXT", 4, "NEXT"},
+		{"UP NEXT", 2, "UP"},
+		{"LINE UP", 4, "LINE"},
+	} {
+		var letters []string
+		for _, r := range rail(c.label, c.rows) {
+			if x := strings.TrimSpace(strings.Trim(r, "|")); x != "" {
+				letters = append(letters, x)
+			}
+		}
+		if got := strings.Join(letters, ""); got != strings.ReplaceAll(c.want, " ", "") {
+			t.Errorf("%q in %d rows spells %q, want %q", c.label, c.rows, got, c.want)
+		}
+	}
+}
+
+// THE LABEL SITS IN THE MIDDLE OF ITS REGION, not at the top of it. A rail
+// pinned to the first row reads as naming that CARD; centred, it reads as naming
+// the whole region — which is what it is for, and why the card carries no state
+// of its own.
+func TestTheLabelIsCentredInItsSection(t *testing.T) {
+	rows := rail("LIVE", 10) // four letters, six blanks
+	first, last := -1, -1
+	for i, r := range rows {
+		if strings.TrimSpace(strings.Trim(r, "|")) != "" {
+			if first < 0 {
+				first = i
+			}
+			last = i
+		}
+	}
+	if first < 0 {
+		t.Fatal("the label must be drawn")
+	}
+	above, below := first, len(rows)-1-last
+	if above == 0 {
+		t.Errorf("the label is pinned to the top rather than centred: %d above, %d below", above, below)
+	}
+	if d := above - below; d > 1 || d < -1 {
+		t.Errorf("the label is not centred: %d rows above, %d below", above, below)
+	}
+}
+
+// NO DOUBLE BLANKS BETWEEN REGIONS. A section carries its own breathing row;
+// a second one appended by the frame made a double gap that reads as a
+// rendering fault rather than as spacing (HUM LEAD, UAT 2026-09-10).
+func TestTheFrameHasNoDoubleBlankRows(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+	// The frame is padded to the terminal, so trailing blanks below the content
+	// are expected; only gaps BETWEEN drawn rows are the concern.
+	last := 0
+	for i, r := range rows {
+		if strings.TrimSpace(r) != "" {
+			last = i
+		}
+	}
+	// FROM BELOW THE STATION BAND. The opening inset is two blank rows by design
+	// (D-68), and the band's own closing breathing row sits directly above the
+	// bare separator under it — both intended, and both render as whitespace
+	// only because a test draws without colour: the band is a PAINTED region
+	// (D-70), so that row is filled, not empty.
+	// FROM BELOW THE AIR BOX, which the station section now carries (D-107): the
+	// section closes with its own breathing row and the bare separator under it
+	// is the frame's, both intended and both whitespace only because a test draws
+	// without colour.
+	for i := bcInsetRows + 16; i <= last; i++ {
+		if strings.TrimSpace(rows[i]) == "" && strings.TrimSpace(rows[i-1]) == "" {
+			t.Errorf("rows %d and %d are both blank — a section's spacing has two owners", i-1, i)
+		}
+	}
+}
+
+// EVERY ROW OF THE RUNNING ORDER OPENS THE FRAME (D-87).
+//
+// IT DOES NOT CLOSE IT: the v2 reference has no right-hand edge — "Notice the
+// line on the far right is gone." What is on the right is three of air and the
+// scroll, so what a row of the running order owes is its LEFT wall —
+// the rail's own — and its full width.
+func TestEveryRowOfTheRunningOrderOpensTheFrame(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	b.power = lineup.Running
+	rows := strings.Split(stripANSITest(b.View().Content), "\n")
+
+	// FROM THE FIRST CARD DOWN. Above it are the masthead's own box, the painted
+	// station band (no walls by design, D-70) and the lane's bare caption (none
+	// either, D-71) — three regions that close themselves or deliberately do not.
+	first, last := -1, 0
+	for i, r := range rows {
+		if strings.TrimSpace(r) != "" {
+			last = i
+		}
+		// THE RUNNING ORDER BEGINS AT THE AIR BOX (D-97). The lane caption retired
+		// with the card regions it named, so the frame's walled half is anchored
+		// on the first thing that draws one.
+		if first < 0 && strings.Contains(r, "LIVE NOW") {
+			first = i
+		}
+	}
+	if first < 0 {
+		t.Fatal("the frame drew no air box, so there is nothing to check")
+	}
+	belowTheCards := false
+	for i := first; i <= last; i++ {
+		r := []rune(rows[i])
+		if len(r) != b.width {
+			t.Errorf("row %d is %d cells, want %d", i, len(r), b.width)
+			continue
+		}
+		// A ROW WITH NOTHING IN THE CARD COLUMN OWES NOTHING. A region break is
+		// completely blank, walls included (HUM LEAD, UAT 2026-09-10), and the
+		// scroll rail's caps deliberately sit ON those breaks — so the question
+		// is only ever asked of a row the running order actually drew.
+		// THE WALL BELONGS TO THE CARD REGION, AND THE TABLE HAS NONE (D-94).
+		// The reference draws the SCHEDULED LINE-UP wall-less, full width, under
+		// a heading of its own — so the question stops being asked at the
+		// heading, which is where the cards stop.
+		if belowTheCards {
+			break
+		}
+		// THE CARD REGION ENDS AT THE CONTROLS ROW (D-102), which is the first
+		// thing drawn below the pair. Anchoring on the HEADING let the controls
+		// row itself be scanned, and in the no-colour form it opens with `[l]` —
+		// so the test read a keycap as a table and reported the frame unopened.
+		if strings.Contains(rows[i], bcScheduledHeading) || strings.Contains(rows[i], "Lookup Location from Pool") {
+			belowTheCards = true
+			continue
+		}
+		main := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap
+		// THE CARD COLUMN ONLY, not everything right of it: the scroll rail's
+		// caps sit ON the region breaks by design (D-70), so a row carrying just
+		// a cap is still a break and still owes no wall.
+		if len(r) < main+b.cardBoxWidth() || strings.TrimSpace(string(r[main:main+b.cardBoxWidth()])) == "" {
+			continue
+		}
+		// AT THE INSET, NOT AT COLUMN ZERO (D-96): the frame carries Observer's
+		// three-column left margin now, so its own edge begins there.
+		// AN EDGE, NOT SPECIFICALLY A WALL (D-97). The air box and the UP NEXT /
+		// ALERT pair draw their OWN borders, and in the v3 layout those borders ARE
+		// the frame's left edge — the reference draws no outer wall around them. So
+		// the question is whether the row opens on the frame at all: a rail, or a
+		// corner or tee of a box that starts there.
+		// AND THE STATION SECTION'S OWN INSET IS AN EDGE TOO (D-107). The air box
+		// moved INSIDE that section, which keeps three columns of its own painted
+		// ground on each side — so those rows open at the section's inset, not at
+		// the frame's. Both are the region's edge; which one depends on whose
+		// region the row belongs to.
+		for _, at := range []int{len(bcLeftInset), len(bcLeftInset) + len(bcSectionInset)} {
+			if len(r) > at && (r[at] == '|' || r[at] == '+') {
+				goto opened
+			}
+		}
+		t.Errorf("row %d opens the frame at neither the frame's inset nor the section's\n%.60s",
+			i, rows[i])
+	opened:
+	}
+}
+
+// THE SCROLL GUTTER IS BLANK EXCEPT FOR THE THUMB. `RailGlyphsFor` draws a bar
+// on every row, which is right for a window that has no edge of its own — here
+// the inner wall is already beside it, and a bar there reads as a doubled
+// border rather than as a rail.
+func TestTheScrollGutterCarriesOnlyTheThumb(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	// THE GUTTER IS MEASURED FROM THE FRAME, NOT THE TERMINAL (D-96): `railed`
+	// builds at `frameWidth` and the margin is added afterwards, in `clamp`.
+	// A PLAIN BODY AT THE FRAME'S CONTENT WIDTH. This used `zipTracks` to build
+	// its fixture, and that function retired with the three-column layout (D-97):
+	// the rail is gone, and the alert box sits BESIDE the card rather than in a
+	// column zipped with it. What this test is about is the GUTTER, so the body
+	// only has to be the right width.
+	w := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap + b.cardBoxWidth()
+	row := strings.Repeat("-", w)
+	body := []string{row, row, row}
+	framed := b.framed(body, 10)
+
+	// THE RAIL IS COLUMN 148 (D-87), and it is the LAST thing on the row: the
+	// frame's outer wall on this side is gone, because the cards are boxes with
+	// their own borders and a wall around them was a second edge saying the same
+	// thing. Every row carries the bar; exactly one carries the thumb.
+	// ▲ OPENS IT AND ▼ CLOSES IT (D-70), which is `Railify`'s own contract —
+	// "callers draw ▲/▼ themselves" — and the HUM LEAD's UAT: "the vertical
+	// control should start and end where the mock says."
+	if got := []rune(framed[0])[railAt(b)-len(bcLeftInset)]; got != '^' {
+		t.Errorf("the rail opens on %q, want the up cap", string(got))
+	}
+	if got := []rune(framed[len(framed)-1])[railAt(b)-len(bcLeftInset)]; got != 'v' {
+		t.Errorf("the rail closes on %q, want the down cap", string(got))
+	}
+	thumbs := 0
+	for i, r := range framed[1 : len(framed)-1] {
+		switch c := []rune(r)[railAt(b)-len(bcLeftInset)]; c {
+		case '#':
+			thumbs++
+		case '|':
+		default:
+			t.Errorf("row %d draws %q in the rail column; a rail is a bar or the thumb:\n%.40s", i+1, string(c), r)
+		}
+	}
+	if thumbs != 1 {
+		t.Errorf("the rail carries exactly one thumb between its caps; it carries %d", thumbs)
+	}
+}
+
+// THE MARK COLUMN BELONGS TO THE SCROLL RAIL, AND ONLY TO IT (D-85, HUM LEAD
+// 2026-09-11): "We need to remove the extra lines on the right side of the UI
+// next to LIVE and UP NEXT."
+//
+// It was the wall on EVERY row, scrolling or not — a second vertical beside two
+// regions with nothing to scroll, which reads as a column that stopped rather
+// than as one that was never there.
+func TestTheReadRegionsDrawNoScrollRailBesideThem(t *testing.T) {
+	b := Broadcaster{width: 150}
+	g := b.opts().Glyphs()
+	body := []string{"a card row", "another"}
+
+	quiet := b.chrome(body, false, 0)
+	for i, r := range quiet {
+		// The frame's own right wall is the LAST cell; anything before it in the
+		// mark column is the rail that should not be there.
+		trimmed := strings.TrimSuffix(r, g.Rail)
+		if strings.Contains(strings.TrimRight(trimmed, " "), g.Rail) {
+			t.Errorf("row %d carries a rail beside a region that does not scroll: %q", i, r)
+		}
+	}
+
+	// AND THE SCROLLING REGION STILL HAS ONE, which is what makes the absence
+	// above mean something.
+	scrolled := b.chrome([]string{"a", "b", "c"}, true, 10)
+	if !strings.Contains(scrolled[0], render.RailGlyphsFor(false).Up) {
+		t.Errorf("the scrolling region lost its rail: %q", scrolled[0])
+	}
+}
+
+// THE LEFT RAIL NAMES ITS REGION IN COLOUR (D-86, HUM LEAD 2026-09-11): "Color
+// BKGs for the left RAIL: LIVE = RED, UP NEXT = ORANGE, SCHEDULED LINEUP =
+// BLUE."
+//
+// ASKED OF THE TOKENS, NOT OF A LITERAL. A test carrying the SGR values would
+// pass while a theme changed underneath it, which is the opposite of what
+// "themeable like Observer" means.
+func TestEachRegionsRailCarriesItsOwnGround(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+	g := render.Opts{}.Glyphs()
+
+	for _, tc := range []struct {
+		label string
+		tok   render.Token
+	}{
+		{"LIVE ON AIR", render.RailLiveBG},
+		{"UP NEXT", render.RailNextBG},
+		// ONE GROUND FOR THE WHOLE QUEUE, which D-87 made one region as well —
+		// SCHEDULED and LINE UP were one stack of cards the rail named twice.
+		{"SCHEDULED LINE UP", render.RailQueueBG},
+	} {
+		t.Run(tc.label, func(t *testing.T) {
+			rows := railColumn(tc.label, 6, g)
+			want := render.Tok(tc.tok)
+			if want == "" {
+				t.Fatalf("%s has no ground token value", tc.label)
+			}
+			for i, r := range rows {
+				if !strings.Contains(r, want) {
+					t.Fatalf("row %d of %s is %q; it does not carry %s", i, tc.label, r, tc.tok)
+				}
+			}
+		})
+	}
+
+	// AND THE REGIONS ARE TOLD APART. Three grounds that resolved to one colour
+	// would draw a rail that says nothing, and would still pass a per-region
+	// check.
+	live, next, queue := render.Tok(render.RailLiveBG), render.Tok(render.RailNextBG), render.Tok(render.RailQueueBG)
+	if live == next || next == queue || live == queue {
+		t.Errorf("the rail's three grounds are not distinct: %q / %q / %q", live, next, queue)
+	}
+
+	// THE PRIORITY RAIL IS NOT A REGION and carries no region's ground: it is
+	// the overlay's own, and it appears only while the rail has something.
+	for _, r := range railColumn("PRIORITY", 4, g) {
+		for _, tok := range []render.Token{render.RailLiveBG, render.RailNextBG, render.RailQueueBG} {
+			if strings.Contains(r, render.Tok(tok)) {
+				t.Errorf("the priority rail wears %s, which belongs to a region of the running order", tok)
+			}
+		}
+	}
+}
+
+// THE POINTER WALKS AND THE WINDOW FOLLOWS IT (D-101, HUM LEAD 2026-09-12: "the
+// pointer for the tables is missing — this is needed because it directs which row
+// <enter> works on").
+//
+// ONE PRESS MOVES THE POINTER, NOT THE WINDOW: ↑↓ move the POINTER, and the
+// window moves only when the focus would otherwise leave it — which is
+// Observer's behaviour and what the
+// reference's own footer says ("[↑↓] Navigate"). A window that scrolled under a
+// pointer that had not moved would take the operator's place away from them.
+func TestThePointerWalksAndTheWindowFollows(t *testing.T) {
+	base := NewBroadcaster()
+	// MEASURED: at 150x50 the running order has room for eight of its thirteen
+	// rows, so the window has somewhere to go.
+	base.width, base.height, base.ascii = 150, 50, true
+	base.power = lineup.Running
+
+	// ONE PRESS MOVES THE POINTER AND NOT THE WINDOW.
+	one := base.scrollQueue(1)
+	if one.selected != base.selected+1 {
+		t.Errorf("↓ did not move the pointer: %d then %d", base.selected, one.selected)
+	}
+	if slots(one)[0] != slots(base)[0] {
+		t.Errorf("↓ moved the window while the pointer was still inside it: %v then %v",
+			slots(base)[0], slots(one)[0])
+	}
+
+	// AND THE BOTTOM IS REACHABLE, which is the whole point: the last slot must be
+	// drawable or the operator cannot manage it.
+	end := base
+	for range 40 {
+		end = end.scrollQueue(1)
+	}
+	last := fmt.Sprintf("%02d", MainTrackSlots-1)
+	if got := slots(end); !slices.Contains(got, last) {
+		t.Errorf("the last slot (%s) is unreachable; the bottom of the queue shows %v", last, got)
+	}
+	// AND THE POINTER IS ON IT.
+	if end.lineupSelection() != MainTrackSlots-bcScheduledFrom-1 {
+		t.Errorf("the pointer stopped at %d, short of the last slot", end.lineupSelection())
+	}
+	// AND THE RUNNING ORDER CARRIES NO THUMB (D-106). It does not scroll — fifteen
+	// slots is the whole list — so the control belongs to the pool, and a thumb
+	// beside a list that does not move would say it does.
+	// `TestTheScrollControlIsThePoolsAlone` holds where the control actually is.
+	if thumb(end) >= 0 {
+		t.Errorf("row %d draws a thumb beside the running order", thumb(end))
+	}
+}
+
+// lineupRowNum matches a running-order row by its `##.` column — the address the
+// table draws, which since D-94 is where a slot's number lives.
+//
+// THE POINTER IS PART OF THE PREFIX. This matched leading WHITESPACE only, and so
+// silently dropped whichever row the pointer was on — which read as "the last slot
+// is unreachable" when the row was there all along and the helper could not see
+// it. A test helper that filters out exactly the row under test is worse than no
+// helper (D-101).
+var lineupRowNum = regexp.MustCompile(`^[\s>\x{203a}]+(\d\d)\.\s`)
+
+// railAt is the column the scroll rail sits in, on the FINISHED frame.
+//
+// THE FRAME'S LAST COLUMN, NOT THE TERMINAL'S. The tests said `b.width-2` and
+// were right until the frame gained a right margin (D-100) — an absolute column
+// is a measurement a margin invalidates, which is the same lesson the reference's
+// own track columns taught one ruling earlier. Written from the inset and the
+// frame's width, it cannot drift again.
+//
+// MINUS TWO, NOT ONE: `railed` pads a row to `frameWidth-2` and appends the mark,
+// so the mark IS the last cell of a row that is one short of the frame.
+// railAt is the terminal column the scroll control lives in: the LAST column of
+// the frame, with the two-column right margin outside it (D-104).
+func railAt(b Broadcaster) int { return len(bcLeftInset) + b.frameWidth() - 1 }
+
+// slots is the running order's rows, by the `##.` column that addresses them.
+func slots(b Broadcaster) []string {
+	var out []string
+	for _, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
+		if m := lineupRowNum.FindStringSubmatch(r); m != nil {
+			out = append(out, m[1])
+		}
+	}
+	return out
+}
+
+// thumb is the row the scroll rail's thumb sits on, or -1.
+func thumb(b Broadcaster) int {
+	for i, r := range strings.Split(stripANSITest(b.View().Content), "\n") {
+		rr := []rune(r)
+		if len(rr) > railAt(b) && rr[railAt(b)] == '#' {
+			return i
+		}
+	}
+	return -1
+}
+
+// TestTheThumbMovesWithTheWindow.
+//
+// THE RULE IS WRITTEN DOWN AND NEEDS A TEST. `chromeAt`'s own comment: "THE
+// THUMB TRACKS THE WINDOW, which is why the window's position is a parameter" —
+// a hard-coded `lo` of 0 to `Railify` draws a thumb that never moves. Nothing
+// pinned that until here — mutant mS4
+// puts the hard-coded zero back and SURVIVED the whole corpus sweep on
+// 2026-09-13.
+//
+// A CONTROL THAT SAYS THE SAME THING IN EVERY STATE IS WORSE THAN NO CONTROL:
+// it looks like it is reporting a position, so the operator reads it and is
+// told nothing. `TestTheScrollGutterCarriesOnlyTheThumb` asserts there is
+// exactly ONE thumb, which stays true when it never moves — the two tests are
+// different questions and only one of them was being asked.
+func TestTheThumbMovesWithTheWindow(t *testing.T) {
+	b := NewBroadcaster()
+	b.width, b.height, b.ascii = 150, 74, true
+	w := bcRailWidth + bcRailGap + b.priorityWidth() + bcColumnGap + b.cardBoxWidth()
+	row := strings.Repeat("-", w)
+	body := make([]string, 12) // bounded by the fixture (P10-02)
+	for i := range body {
+		body[i] = row
+	}
+
+	thumbAt := func(off int) int {
+		t.Helper()
+		framed := b.chromeAt(body, 0, off, 100)
+		for i, r := range framed {
+			if []rune(r)[railAt(b)-len(bcLeftInset)] == '#' {
+				return i
+			}
+		}
+		t.Fatalf("no thumb in the rail at offset %d", off)
+		return -1
+	}
+
+	// THE WINDOW WALKS THE LIST and the thumb has to follow it. Measured at the
+	// two ends and the middle rather than at one point, because a thumb pinned
+	// to the TOP and a thumb pinned to the BOTTOM are both "not moving" and only
+	// one of them is what the defect looked like.
+	top, mid, bottom := thumbAt(0), thumbAt(50), thumbAt(90)
+	if top == bottom {
+		t.Errorf("the thumb sits on row %d at both ends of the list; it is not tracking the window", top)
+	}
+	if top > mid || mid > bottom {
+		t.Errorf("the thumb runs %d → %d → %d as the window descends; it must not go backwards",
+			top, mid, bottom)
+	}
+}

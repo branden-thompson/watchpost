@@ -461,11 +461,11 @@ func TestAZoneOnlyAlertTheAppIsTrackingSurvivesTheRadius(t *testing.T) {
 
 // THE RADIUS BRANCH UNDER CONCURRENCY (red-team BUILD exit, CQ-1/SC-3).
 //
-// scope() used to re-read s.locs[0] outside s.mu while SetLocations wrote it —
-// three race sites on the alert path. The -race gate could not see it: every
-// test that set a radius called scope() DIRECTLY, single-goroutine, so the
-// branch was never entered concurrently. This test enters it the way the app
-// does, through publish, which is the only reason -race now covers it.
+// scope() must not re-read s.locs[0] outside s.mu while SetLocations writes it —
+// three race sites on the alert path. The -race gate cannot see that on its own:
+// a test that sets a radius and calls scope() DIRECTLY is single-goroutine, so
+// the branch is never entered concurrently. This test enters it the way the app
+// does, through publish, which is what puts the branch under -race at all.
 func TestScopeIsRaceFreeUnderConcurrentLocationUpdates(t *testing.T) {
 	d := newSevereDeck(func(tea.Msg) {})
 	d.radius = &atomic.Int64{}

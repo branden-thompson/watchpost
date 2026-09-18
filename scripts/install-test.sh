@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Installer smoke test (make install-test): serves dist/ over a local HTTP server
 # and runs scripts/install.sh against it — the same code path as the GitHub
 # release download, minus GitHub. Fails on any installer error, on a checksum

@@ -29,8 +29,17 @@ trap 'rm -f "$tmp" "$tmp.now"' EXIT
 # SHOULD track the newest advisories, and a linter that tracks its newest rules
 # would break this ratchet on somebody else's release schedule. A new rule is a
 # decision to take deliberately, by moving this line and re-recording.
+# THE EXIT CODE IS READ, NOT DISCARDED (F-118). 0 is clean and 1 is "issues
+# found", which the ratchet below judges; anything else (3 = a package failed
+# to load, 4 = timeout, 7 = bad config) means the run did not happen, and a run
+# that did not happen reports no findings — which used to read as clean.
 go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.1 \
-  run --output.json.path "$tmp" ./... >/dev/null 2>&1 || true
+  run --output.json.path "$tmp" ./... >/dev/null 2>&1
+lint_rc=$?
+if [ "$lint_rc" -ne 0 ] && [ "$lint_rc" -ne 1 ]; then
+  echo "lint: golangci-lint exited $lint_rc — the run did not complete, so there is nothing to judge" >&2
+  exit 1
+fi
 if [ ! -s "$tmp" ]; then
   echo "lint: golangci-lint produced nothing — the gate cannot report on a run that did not happen" >&2
   exit 1

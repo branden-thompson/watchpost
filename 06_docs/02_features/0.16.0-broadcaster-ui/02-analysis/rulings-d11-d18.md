@@ -1,0 +1,411 @@
+---
+title: "0.16.0 — HUM LEAD rulings D-11 through D-29 (DISCOVER and PLAN)"
+date: 2026-09-09
+phase: DISCOVER
+sev: SEV-0
+authority: HUM LEAD
+status: "D-11..D-29 ruled.  Nothing outstanding.  D-12 is AMENDED by D-20 — read them together.  D-29 CLOSES the provider-key question with arithmetic rather than a ruling."
+---
+
+# Rulings D-11 to D-29
+
+## D-11 (OQ-12) — THE MAIN TRACK **IS** THE ROTATION.  My framing was wrong.
+
+> *"The main track is the rotation - main track has 10 cards, there's a priority track for
+> take-overs/alerts which always drains first, and a bed where the relay stream reside.  The operator
+> can 'switch over' the main track to the bed - at which time the main track line-up 'pauses,' thought
+> the operator can still perform management actions on them.  Priority track can still take over when
+> the bed is playing and still drains first."*
+
+**RULED, and it dissolves the question rather than answering it.**  I presented "absorb the rotation
+into the main track" versus "build a producer beside it" as two options.  They were never two things:
+**the main track is the rotation.**  Option C — descoping ordinary reads — is therefore also withdrawn,
+because there is nothing to descope; the rotation is the stack.
+
+### The model, and it maps onto the code exactly
+
+| The operator's model | The code today |
+|---|---|
+| **Main track** — 10 cards, the rotation | `MainTrack` (`lineup.go:15`) — the rotation's queue |
+| **Priority track** — takeovers and alerts, **always drains first** | `AlertRail` (`lineup.go:16`); *"THE ALERT RAIL DRAINS FIRST (DR-3)"* (`lineup.go:171-188`) |
+| **The bed** — where the relay stream resides | Already modelled, and **deliberately not a track** |
+
+`Track`'s own comment is the confirmation, and it was written before this ruling
+(`platform/lineup/lineup.go:9-12`):
+
+> *"The bed — the live NOAA relays — is deliberately not here: it is a selectable resource the Director
+> may cut over to, not a queue of cards, and modelling it as a third track would invite something to be
+> scheduled onto it."*
+
+And `bed.go:2-3`: *"the live broadcast the programme rides on, and the one decision the Director makes
+about it."*
+
+**So the architecture already holds all three lanes, in the operator's own terms.**  What is missing is
+the wiring, exactly as with `Publish`, `Power`, `Fence`, `Origin.FromOperator` and `term.Breakpoint`.
+
+### What the ruling ADDS that was not in the code or the brief
+
+1. **A switch-over: the operator moves the main track to the bed.**  There is no operator-initiated
+   cut-over today — `Tune` is emitted automatically on dwell or on a cycle ending (`bed.go:178,215`),
+   and `cutTo` carries *"IT MUST NOT LIFT THE DUCK … nobody pressed anything"* (`executors.go:113-123`).
+   **An operator-initiated cut-over is a pressed thing**, so that comment's premise no longer covers
+   every caller, and the duck's behaviour on a deliberate switch-over is now a design question.
+2. **A PAUSED main track that still accepts management actions.**  This is a new state: the lineup
+   holds, no card advances, and yet promote, demote and drop remain live.  `Power.OffAir` holds
+   everything including the rail, so it is **not** the same state — pausing the main track while the
+   bed plays and the rail still drains is a fourth condition the `Power` enum does not yet express.
+3. **The priority track still takes over while the bed is playing, and still drains first.**  This is
+   the safety property, and it is already true in the model: `advances(AlertRail)` returns true for any
+   power except `OffAir` (`power.go:112-117`).
+
+**These three are the release's real design work**, and they replace the "two paths to speech" framing
+in `wave2-findings.md` §1, which is superseded by this ruling.
+
+## D-12 (OQ-11) — ⚠️ **AMENDED BY D-20 — DO NOT READ THIS SECTION ALONE**
+
+> **This ruling was recorded correctly but I MISREAD it as unification — one radius.  D-20, below,
+> carries the correction: there are TWO radii with different meanings.  Read D-20 before acting on
+> anything here.**  *(Flagged after the DISCOVER-exit red team found this section still reading as
+> current — RT-5.)*
+
+### The ruling as originally recorded — The service radius is the boundary, with a possible National exemption
+
+> *"Service radius is the boundary - with a *potential* exemption for anything that could be considered
+> 'National' - though in that situation I expect it would manifest as local alerts."*
+
+**RULED.**  One boundary, and it is the service radius.  `lineup.Fence` already is that mechanism —
+*"a HARD boundary on what reaches the lineup at all … not a sort key"* (`fence.go:95-97`) — so this is
+a naming and wiring question, not a new concept.
+
+**My reading, stated for correction:** Observer's alert-notification radius and Broadcaster's service
+radius are **one value**, not two that must be reconciled.  That resolves the one-Director conflict by
+unification rather than by precedence.  **If the intent was instead that Broadcaster's radius overrides
+Observer's while both exist, say so and D-12 is amended.**
+
+**The National exemption is recorded as a candidate, not a requirement.**  The HUM LEAD's own
+expectation is that a national-scope event manifests as local alerts anyway, so the exemption may never
+need to exist.  DISCOVER should check whether any product in the feed carries a national scope that
+would NOT appear locally; if none does, the exemption is dropped rather than built.
+
+## D-13 (OQ-9) — Adopt the platform breakpoint vocabulary
+
+> *"A is fins in conjunction with whatever our 'min size' floor is."*  (read as "A is fine")
+
+**RULED: option A** — adopt `platform/term`'s `Breakpoint` and redefine its boundaries, tied to the
+minimum-size floor from D-4.  It is uncalled today, so its boundaries are free to change now and
+expensive to migrate later.  **F-68 is thereby dispositioned**, and Observer's `radioBP` becomes the
+open question of whether it also migrates — which is NOT ruled here and should not be assumed.
+
+## D-14 (OQ-10) — The credits read is NOT a licence obligation
+
+> *"No, this is just something for us as a potential credit for watchpost card."*
+
+**RULED.**  The on-air credits card is a **Watchpost self-credit**, optional, and carries no legal
+weight.  The licence obligation that `credits.go:16-20` names is discharged by the **About window's**
+on-screen list and is unaffected.
+
+**Consequence:** the card needs no new `Slot` on obligation grounds.  If it ships it is a courtesy
+card, and it is the first thing to drop under time pressure rather than the last.
+
+## D-15 (R-8) — Approved
+
+> *"Approved."*
+
+**R-8 is a requirement of this release**, in the four parts drafted: the radius admits to the priority
+cadence; cadences stay bounded by source refresh and politeness limits; the cadence set keeps one
+owner; the operator can see effective freshness.  **It names no numbers, deliberately.**
+
+## D-16 (OQ-8) — A hard cap, plus population-ordered admission
+
+> *"A is fine - we can also plan for some kind of sort logic - prioritize areas of higher population
+> first, then smaller / less dense cities, town, areas, etc."*
+
+**RULED: a hard cap, with population-descending admission order.**  When the service radius admits more
+locations than the cap allows, the cap is filled by population, densest first.
+
+**This is buildable today.**  `geodata.City` already carries `Population` (`domains/locations/geodata/index.go:42`,
+parsed at `:186-187`), and the Open-Meteo geocoder returns a `population` field
+(`domains/locations/openmeteo/geocode.go:50`).  **No new data source is required.**
+
+**Recorded as a risk to carry:** population-first admission means a sparsely populated area inside the
+radius can be excluded by the cap while a denser one is admitted — which is defensible for a broadcast
+audience and worth stating plainly in the operator-facing copy, because the operator will notice a
+town missing and should not have to guess why.
+
+## D-17 (OQ-13) — Authorized to render the STANDBY wording variants
+
+> *"That's fine."*
+
+**Rendered** at exactly 150 cells in `02-analysis/standby-wording-variants.txt`, three variants,
+awaiting a pick.  Each resolves both problems at once: which half of the banner is the live state, and
+the bed row's third use of the word STANDBY.
+
+## D-18 — The settings table is presented; per-field rulings pending
+
+> *"Print out a table of all settings and I'll provide rules for each"*
+
+**52 persisted paths, presented at 25 natural ruling units** in `02-analysis/config-field-table.md`.
+Awaiting a ruling per row.
+
+## D-19 — Every settings recommendation approved
+
+> *"All recommendations approved."*
+
+**RULED.**  All 25 rows of `02-analysis/config-field-table.md` take their recommended value, and the
+five proposed Broadcaster settings in Table 2 are approved as proposed.
+
+**Three things this settles that were previously open:**
+
+1. **The five NEEDS-RULING fields are closed.**  The cast, the nine role voices and the root voice are
+   **SHARED** — one station, one sound — which D-11 made answerable by settling that Broadcaster drives
+   the same reads.  The tone mode and mute list are **SPLIT**, because a personal comfort mute must not
+   silence a tone the station is meant to transmit.  Provider keys are **SHARED**, with the rate budget
+   carried as a risk and D-16's cap as its mitigation.
+2. ~~**D-12's unification is confirmed by silence.**~~  **WITHDRAWN BY D-20.**  I inferred unification
+   from an uncorrected reading; the HUM LEAD then corrected it directly.  There are **two radii**:
+   Observer's bounds ALERTS over an unbounded location set, Broadcaster's bounds LOOKUPS.
+   `broadcaster.service_radius_mi` **stands**, and `ticker_radius_mi` is **not** renamed.
+   *(Struck rather than deleted: the wrong inference is part of the record, and the lesson is that
+   silence is not confirmation — see the disposition ledger, RT-5.)*
+3. **Gain is Broadcaster's own and persisted**, separate from Observer's unpersisted listening volume.
+
+**STILL OUTSTANDING, and deliberately not assumed:** the STANDBY wording pick (D-17).  Three variants
+are rendered at 150 cells; "all recommendations approved" does not choose among them, because what I
+recommended was the *principle* — the station keeps STANDBY and the bed row gets a different word —
+and all three variants satisfy it.  **A, B or C is still needed.**
+
+## D-20 — **D-12 AMENDED.**  Two radii, two different mechanisms.  My unification was wrong.
+
+> *"Row 27 should stand - Observer's filter is for alert radius, but is unbounded for location.
+> Broadcaster service radius is a HARD Fence for lookups, and may have different values.  Example,
+> someone may want to run a 'hyper-local' station with a service radius of 3mi.  In this case - the
+> reports and the alerts are constrained to that radius - which generally already includes
+> warnings/advisories for the county."*
+
+**RULED, and it corrects me.**  I read "service radius is the boundary" as unification — one value.
+It is not.  There are **two boundaries operating at two different levels**, and conflating them would
+have deleted the more important one.
+
+### The distinction, confirmed against the code
+
+| | Observer | Broadcaster |
+|---|---|---|
+| **What it bounds** | **ALERTS only** | **LOOKUPS** — the location set itself |
+| **Location set** | **Unbounded.**  The watchlist may hold anywhere | **Bounded by the radius** |
+| **Alerts** | Filtered by the alert radius | Constrained **transitively**, because every location is inside the radius |
+| **Level** | Filters arrivals into an unbounded world | Defines how big the world is |
+
+**The code confirms Observer's half exactly.**  `Fence.Admits(a Arrival)` (`fence.go:129`) takes an
+*arrival* — an alert — not a location.  Nothing in the fence bounds the watchlist.  So today's radius
+is an alert filter over an unbounded location set, which is precisely the HUM LEAD's description.
+
+**And the county nuance is already load-bearing in the code.**  A zone-only alert has no point to
+measure, and the fence admits it *"only by being one the app is already tracking at a watched
+location"* (`fence.go:136-141`).  **That is the mechanism that makes a 3-mile station viable**: it
+still receives the county and zone products for the location it tracks, so a hyper-local service
+radius does not starve the station of warnings.  The HUM LEAD's *"generally already includes
+warnings/advisories for the county"* is a property the tree already has.
+
+### What this changes
+
+1. **Row 27 STANDS.**  `broadcaster.service_radius_mi` is a real, separate setting.  Row 25 keeps its
+   own meaning as Observer's alert radius and **is not renamed after all** — D-19's rename is
+   withdrawn.
+2. **FR-8 is rewritten** with two boundaries rather than one.  The Broadcaster radius is a **lookup
+   boundary**, which is new work: nothing today bounds which locations may exist.
+3. **The one-Director question dissolves rather than resolving.**  The two radii were never competing
+   for the same fence.  Observer's feeds the alert fence; Broadcaster's bounds the location set that
+   feeds everything.
+4. **A hyper-local station is an explicit supported case.**  Three miles is a stated example, not an
+   edge, so the minimum radius must be small and the cap of D-16 must behave sensibly when the radius
+   admits very few locations — possibly one.
+
+## D-21 (D-17 closed) — Variant C, with a coloured background for state
+
+> *"Variant C accepted - we'll also color the background kind of like the ticker to make state
+> IMMEDIATELY obvious as well."*
+
+**RULED: Variant C.**  The station state is a labelled field with the transition in parentheses:
+
+```
+   STATION:  *** ON AIR · BROADCASTING ***                    ( SHIFT + ENTER  →  STANDBY )
+```
+
+and the bed row's third use of the word is replaced: `○ OFF BED  [ B ]`.
+
+**Plus a background-colour treatment**, in the manner of the ticker, so the station's state reads
+instantly rather than by reading words.  **The palette is the HUM LEAD's own pass**, per the standing
+rule that colour is directed rather than chosen here; what DISCOVER records is the *requirement* that
+state be legible without reading, and the constraint that whatever pair is chosen is measured by the
+contrast register like every other painted pair.
+
+**Two obligations this creates, both recorded now so they are not discovered late:**
+
+- **The colour is not the only carrier.**  A background alone fails the `--ascii` path and any
+  non-colour terminal, so the label carries the state in words as well — which Variant C already does.
+- **The new pair enters the AA register.**  The completeness gate crosses the token vocabulary against
+  the measured pairs, so a station-state background that is not registered fails the gate rather than
+  passing silently.
+
+## D-25 — Spike the merge before anything else
+
+> *"Spike the merge first - again we should have most of this infra built - the main thing is going to
+> be the operator controls."*
+
+**RULED.**  Chartered in `03-architecture-design/spike-the-merge.md`: one question, one session, its own
+worktree, three outputs, code deleted afterwards.  **It runs BEFORE P0.**
+
+**This also re-weights the release.**  The HUM LEAD's read is that the infrastructure is largely built
+and **the operator controls are the real work** — which moves P4 from "a batch behind the dangerous one"
+to the batch that carries the release's actual value.  The batch order is re-cut accordingly.
+
+## D-26 — Both confirm AND undo
+
+> *"We should provide both - you confirm AND we give you and option to undo it"*
+
+**RULED, and it is the stronger answer than either alone.**  My recommendation was undo only, on the
+grounds that a confirm costs a keystroke under pressure.  The HUM LEAD's ruling keeps the confirm as
+the guard against the accidental keypress AND the undo as the recovery from a considered-but-wrong
+decision — **two different failures, two different remedies.**
+
+**Design constraints this creates, recorded now:** the confirm must not steal focus in a way that
+delays a takeover, and **the undo must not carry a timer** — an expiring undo is a hidden clock, and
+under severe-weather pressure a hidden clock is a trap.  FR-3.7 is amended to require both.
+
+## D-27 — A card's origin never changes while it is alive
+
+> *"Cards origina should never change.  We can make *new* cards, or use a card to make a copy, and we
+> can remove / delete cards once they're done - but while it's alive its origin should not change."*
+
+**RULED: the invariant wins.**  `lineup.go:227` — *"a card keeps its slot and its origin for life"* —
+stands unrelaxed.  **My intent diagram was wrong** and has been corrected.
+
+**What this settles for P4:** a reorder moves a card and does **not** re-stamp it.  Operator provenance,
+if it is wanted at all, is either recorded outside the card or carried by a **new** card the operator's
+action creates.  The ruling explicitly permits creating new cards and copying from one — so the design
+space is intact and the invariant is not bent to fit it.
+
+## D-28 — Drop belongs to `Remove`, not to the placement event
+
+**The HUM LEAD asked what question 5 actually meant.**  It was badly framed; restated plainly:
+
+*When an operator drops a card, which existing piece of code owns that — the new placement event with a
+"dropped" placement, or the existing `Lineup.Remove`?*
+
+**It matters because `Remove`'s own comment already reserved the job:** *"it is not the Operator's DROP
+control, which arrives with the Broadcaster UI"* (`lineup.go:247-249`).  Two candidates for one job is
+the shape this codebase has removed twice.
+
+**RECOMMENDATION, and D-27 decides it:** **drop stays with `Remove`.**  A placement event that moves a
+card and a removal that ends one are different operations on different lifetimes — and since a card's
+origin is immutable while alive, "ending a card" is exactly the vocabulary D-27 uses.  `PlaceDropped`
+is withdrawn from the `Place` enum, which becomes placement only.
+
+## D-29 — The provider key: answered with arithmetic, not escalated again
+
+**The HUM LEAD asked the right question:** *"What specific provider key, and what it specifically
+owed?"*  I had carried "the provider key" as an open ruling across three checkpoints without ever
+saying which key or what the exposure actually was.  **That is the vaguest thing in the release, and it
+should have been measured the first time it was raised rather than re-escalated twice.**
+
+### The specifics
+
+**There is exactly ONE keyed provider: NASA FIRMS** (`cfg.Providers["firms"].Key`, `app/fire.go:21`).
+It supplies keyed near-real-time satellite fire detections — the upgrade over HMS, which carries the
+default unkeyed. **With no key the provider contributes nothing and says nothing.**
+
+**The quota is documented in the package itself** (`domains/fire/firms/firms.go:5-7`):
+
+> *"Quota 5,000 transactions per 10 minutes: one request per location per source, cached 10 minutes,
+> keeps a 60-location watchlist at ~120."*
+
+**Two sources** — `VIIRS_NOAA20_NRT` and `VIIRS_NOAA21_NRT` (`firms.go:33-34`), one request each.
+
+### The arithmetic
+
+| | |
+|---|---|
+| Quota | **5,000 per 10 minutes** |
+| Cost per location | **2** (one per source), cached 10 minutes |
+| Locations the quota supports | **~2,500 per window** |
+| Today's 60-location watchlist | **120 — 2.4% of quota** |
+| A 500-location Broadcaster **plus** that watchlist | **1,120 — 22% of quota** |
+
+### The conclusion
+
+**The shared-key concern does not survive its own numbers.**  The quota is not scarce at any station
+size this release contemplates, and D-16's population cap bounds the location count anyway.  **No
+ruling is owed on quota grounds, and I should not have asked for one a third time.**
+
+**What genuinely remains is much smaller:** a *revocation* or a rejected key takes fire detections from
+**both** surfaces at once rather than one.  The code already handles that gracefully — a rejected key
+*"say[s] so, once, and stop[s] hitting the quota"* (`firms.go:134`), and an unkeyed FIRMS degrades to
+HMS rather than failing.
+
+**DISPOSITION: the key stays SHARED (D-19 unchanged), and this question is CLOSED.**  The residual
+revocation case is a one-line note in P6, not a ruling.
+
+**The lesson, which is the reusable part:** the red team raised this as *"blast radius named but not
+sized or owned"*, and it was right that it was unsized.  **The correct response was to size it, not to
+forward it to the HUM LEAD.**  This is the second time this release that a concern evaporated once
+someone did the arithmetic — the first was a request budget read from a default the app overrides.
+**An unsized risk is a question for the person who can measure it, not for the person who has to rule.**
+
+## D-30 — The mock's layout is its own batch, after P4
+
+> *"after p4 is fine"*
+
+**RULED.**  A dedicated layout batch lands **after P4**, and it is where the HUM LEAD is heavily
+involved.
+
+**Why this was a gap worth surfacing rather than discovering.**  P1 built the console's STRUCTURE in
+the mock's vocabulary — the lane names, the slot handles, the badges — and said in the code that
+byte-exact fidelity was not claimed.  That was right for a shell batch, and it left the actual layout
+work with **no home in the eight batches**.
+
+**Why after P4 and not after P5.**  At P4 the schedule, the station state and the operator controls all
+have real data behind them, and only the bed row is still a stub — so there is something real to rule
+on while one element is provisional.  Waiting for P5 would give a complete picture but concentrate
+every layout ruling at the end, which is the shape that produced the separator rollback in an earlier
+release: ratified from a description, rejected on first sight.
+
+**The batch is bound by the standing rule** that a rendered change is ratified from an ACTUAL
+RENDERING at representative widths, never from prose.  It will present renderings, not descriptions.
+
+## D-31 — Card types get mocked in P4, and they are not one shape
+
+> *"we will need to mock out cards in P4 as well, as there are a couple of card type that likely have a
+> similar structure, but may have some minor differences."*
+
+**RULED.**  P4 mocks the card types, not one generic card.  **P4.5 then lays them out**, so the
+sequence is: real data (P3) → the card types drawn (P4) → the 150-column geometry (P4.5).
+
+### What the mock actually draws, against what the model holds
+
+| The mock's card | Slot | Note |
+|---|---|---|
+| `LOCATION REPORT · OCEANSIDE, CA 92057` | `LocationReport` | The rotation's ordinary read — the one P3 is wiring now |
+| `BURST (5 EVENTS)` · `WEATHER ALERT · BURST` | `BreakingAlert` | The mock draws it **twice**, at two sizes: once in the takeover panel and once in the deck |
+| `TAKE-OVER │ WEATHER ALERTS` | `BreakingAlert` | The **priority** presentation of the same slot — the `•PRIORITY•` badge and the `[ T ]` handle |
+| `TRANSITION CARD` | `Transition` | The Director's own additive act |
+| *(a severe read)* | `SevereRead` | Not drawn in this mock; it exists in the model |
+| `WATCHPOST CREDITS READ` | **NONE** | **D-14: a Watchpost self-credit, not a licence obligation.**  It maps to no slot, and is the first thing to drop under time pressure |
+
+### The finding this ruling lands on
+
+**DISCOVER already found that the mock exceeds the model**: four slots, and the credits card fits none
+of them.  D-14 settled the *obligation* question — it is a courtesy, not a legal duty — but **not
+whether it gets a representation.**  P4 is where that is decided, because that is where the card types
+are drawn.
+
+### What "minor differences" means concretely, for P4 to answer
+
+The same skeleton — a bordered box, a title, a badge, a handle — differs by:
+
+- **Which badge**: `•PRIORITY•` versus `•STANDARD•`, and whether a slot can ever be either.
+- **Which lane** it can sit in, and therefore which handle addresses it (`[ T ]` versus `[ 0 ]`-`[ 9 ]`).
+- **What the title line carries** — a location and a postcode, an event count, a bare name.
+- **How much body** it shows, which the takeover panel affords more of than a deck row.
+
+**Whether those are one component with parameters or several components is a P4 decision**, and it
+should be made from renderings rather than from this table.

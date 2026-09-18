@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Refresh the in-repo copy of go-studs (third_party/go-studs) from a local
 # checkout of the author's MIT-licensed terminal UI kit, then re-apply the
 # approved local patches (quality pass plan §0.6, ADR-04):

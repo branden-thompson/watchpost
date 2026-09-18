@@ -1,0 +1,369 @@
+package tty
+
+// broadcaster_rail.go — the left rail (D-60).
+//
+// The reference names each region of the running order down the left edge, one
+// letter per row: LIVE, UP NEXT, BED, SCHEDULED, LINE UP.
+//
+// IT IS WHY THE CARD CARRIES NO STATE OF ITS OWN. An earlier card mock had a
+// "state strip" saying whether a card was live or scheduled, and the HUM LEAD
+// cut it: the rail already says it. Two carriers of one fact is the shape this
+// release keeps removing, and here the second one would have been on every card
+// rather than once per section.
+
+import (
+	"github.com/branden-thompson/watchpost/platform/render"
+)
+
+// bcRailWidth is the rail's own columns, from the reference: the frame's edge,
+// a space, the letter, a space, the divider the cards begin after.
+//
+//	│ L │
+//	0 1 2 3 4
+const bcRailWidth = 5
+
+// railColumn is the rail beside a section of `rows` rows, spelling `label` down
+// it.
+//
+// THE LABEL IS CENTRED VERTICALLY, so a four-letter word beside a six-row
+// section sits in the middle of it rather than at the top — which is what makes
+// the rail read as naming the whole region instead of its first card.
+//
+// A SPACE IN THE LABEL IS A BLANK ROW. That is how the reference draws
+// "UP NEXT": U, P, blank, N, E, X, T — the label's own shape, not a second rule
+// about where to break it.
+//
+// A LABEL TALLER THAN ITS SECTION LADDERS DOWN rather than being cut: a rail
+// reading "SCHEDULE" or "U P _ N" looks like damage, not like a short section.
+// The rail can never GROW rows — it names a region, and a rail that grew would
+// push the card it names off the bottom of the frame — so the word gives way
+// instead, exactly as the masthead's title does.
+func railColumn(label string, rows int, g render.Glyphs) []string {
+	return railColumnToned(label, rows, g, railTone(label))
+}
+
+// railColumnToned is railColumn with the region's own ground painted behind its
+// letters (D-86, HUM LEAD 2026-09-11): "Color BKGs for the left RAIL: LIVE =
+// RED, UP NEXT = ORANGE, SCHEDULED LINEUP = BLUE."
+//
+// THE WALLS ARE LEFT UNPAINTED. They belong to the frame, which runs the whole
+// height of the console; painting them would make the region's colour bleed
+// into the structure around it and the band would read as a hole in the frame
+// rather than as a label on it.
+func railColumnToned(label string, rows int, g render.Glyphs, bg string) []string {
+	if rows <= 0 {
+		return nil
+	}
+	letters := []rune(bcRailLabel(label, rows))
+	top := (rows - len(letters)) / 2
+	out := make([]string, 0, rows)
+	for i := range rows { // bounded by the section (P10-02)
+		cell := " "
+		if i >= top && i-top < len(letters) {
+			cell = string(letters[i-top])
+		}
+		band := " " + cell + " "
+		if render.BGVisible(bg) {
+			band = render.TintRaw(band, render.Tok(render.GroupText)+";"+bg)
+		}
+		out = append(out, g.Rail+band+g.Rail)
+	}
+	return out
+}
+
+// railTone is a region's ground, by name.
+//
+// KEYED ON THE LABEL, which is what the rail already is: `section` is handed a
+// name and draws it, and the region table is the one place those names are
+// declared. A parallel table keyed on the region's INDEX would be a second list
+// to keep in step with `bcRegions`.
+//
+// SCHEDULED AND LINE UP SHARE ONE GROUND, because they are one stack of cards
+// the rail happens to name in two halves — the same reason no break is drawn
+// between them (HUM LEAD, UAT 2026-09-10: "this is one area they should be
+// continuous").
+//
+// ANYTHING ELSE IS UNPAINTED. PRIORITY is the overlay's own rail and carries the
+// takeover's colour, not a region's; the blank spacer has no region at all.
+func railTone(label string) string {
+	switch label {
+	case "LIVE ON AIR":
+		return render.Tok(render.RailLiveBG)
+	case "UP NEXT":
+		return render.Tok(render.RailNextBG)
+	case "SCHEDULED LINE UP":
+		return render.Tok(render.RailQueueBG)
+	}
+	return ""
+}
+
+const (
+	// bcRailGap is the air between the rail's divider and a card's border, from
+	// the reference: the divider sits at column 4 and the card begins at 9.
+	bcRailGap = 4
+
+	// bcRightChrome is the frame's own columns at the right: three of air and the
+	// scroll rail, and nothing after it (D-87).
+	//
+	//	… ┛   │
+	//	  144 148        (at the reference's 150)
+	//
+	// THE OUTER WALL IS GONE (HUM LEAD, 2026-09-11): "Notice the line on the far
+	// right is gone — so ONLY the vertical scroll on positions 2-9 is present on
+	// the right hand side." It carried an inner wall AND an outer one, which the
+	// running order never needed: the cards are boxes with their own borders, so
+	// a frame around them was a second edge saying the same thing.
+	bcRightChrome = 5
+
+	// bcPriorityWidth is the alert column's box, and it is DERIVED FROM WHAT IT
+	// MUST HOLD rather than from a share of the frame.
+	//
+	// WHAT IT MUST HOLD IS THE TABLE (D-103): `##.` and its cell, ALERT TYPE at
+	// twenty-five, and a place name at twenty-two — fifty-one cells, plus the
+	// card's own inset on both sides and the box's two rails. Fifty-nine.
+	//
+	// IT WAS FIFTY-FOUR, derived from `burstWhen`'s one long line back when the
+	// box drew prose. That line is gone and the number outlived it: the table it
+	// now holds is seven cells wider, so LOCATION was cut to seventeen and every
+	// place name past "Carlsbad, CA" came out as a stub.
+	bcPriorityWidth = 59
+
+	// bcColumnGap is the air between the two tracks' columns.
+	bcColumnGap = 3
+)
+
+// cardBoxWidth is how wide a card's BOX is once the frame has taken its own
+// columns — the ONE place that arithmetic lives (D-51's seam).
+//
+// At the reference's 150 columns this is 132, which puts the card's borders at
+// 9 and 140 exactly where the mock draws them.
+func (b Broadcaster) cardBoxWidth() int {
+	w := b.trackArea() - b.priorityWidth() - bcColumnGap
+	if w < 4 {
+		return 0
+	}
+	return w
+}
+
+// trackArea is everything the two tracks have to share: the frame, less the
+// rail on the left and the scroll on the right.
+func (b Broadcaster) trackArea() int {
+	w := b.frameWidth() - bcRailWidth - bcRailGap - bcRightChrome
+	if w < 0 {
+		return 0
+	}
+	return w
+}
+
+// priorityWidth is the alert column's box (D-87).
+//
+// THE TRACKS ARE SPLIT, NOT COMPOSITED (HUM LEAD, 2026-09-11): "We're gonna
+// split the PRIORITY and MAIN tracks visually — no more card occlusion, and this
+// works because of the data that we're ACTUALLY showing."
+//
+// SO THE COLUMN IS ALWAYS RESERVED, whether or not the rail holds anything. A
+// width that moved when a hazard arrived would shift every card in the running
+// order sideways at the moment the operator is reading one — which is the same
+// rule the LIVE slot's offset follows (D-84) and the same reason the read cards'
+// height is fixed.
+//
+// FIXED AT ITS CONTENT'S WIDTH UNTIL THERE IS NOT ROOM, and then it gives way
+// first: the main track is the thing the operator manages, so a frame too narrow
+// for both cuts the column that is empty most of the time. Below half the track
+// area the alert column takes half, which is the point where neither can be
+// drawn honestly and the breakpoint ruling (D-50) takes over.
+func (b Broadcaster) priorityWidth() int {
+	area := b.trackArea() - bcColumnGap
+	if area <= 0 {
+		return 0
+	}
+	if w := bcPriorityWidth; w <= area/2 {
+		return w
+	}
+	return area / 2
+}
+
+// bcRailLabel is the widest form of a section's name that fits its height.
+//
+// THE LADDER IS PER LABEL because the abbreviation is a word, not an algorithm:
+// "SCHEDULED" shortens to "SCHED", and no general rule produces that. The last
+// rung is always something — a region with a rail that said nothing would be
+// indistinguishable from the gap between two regions.
+func bcRailLabel(label string, rows int) string {
+	forms, ok := bcRailForms[label]
+	if !ok {
+		forms = []string{label}
+	}
+	for _, f := range forms { // widest first
+		if len([]rune(f)) <= rows {
+			return f
+		}
+	}
+	last := forms[len(forms)-1]
+	if r := []rune(last); len(r) > rows {
+		return string(r[:max(0, rows)])
+	}
+	return last
+}
+
+// bcRailForms is each section's name, widest first.
+var bcRailForms = map[string][]string{
+	"LIVE ON AIR":       {"LIVE ON AIR", "LIVE", "ON AIR", "AIR"},
+	"UP NEXT":           {"UP NEXT", "NEXT", "UP"},
+	"SCHEDULED LINE UP": {"SCHEDULED LINE UP", "SCHEDULED", "SCHED", "SCH"},
+	// THE SUPERSEDED REGION NAMES KEEP THEIR LADDERS. A ladder is a property of
+	// the WORD, not of the region that happens to use it, and a caller naming one
+	// should not fall through to being cut.
+	"SCHEDULED": {"SCHEDULED", "SCHED", "SCH"},
+	"LINE UP":   {"LINE UP", "LINE", "UP"},
+	"LIVE":      {"LIVE"},
+	"BED":       {"BED"},
+	// THE OVERLAY IS AS TALL AS THE TAKEOVER IT HOLDS, which for a single card
+	// is four rows — too few for eight letters. It sheds to a word rather than
+	// being cut: "PRIO" reads as damage, and this label appears exactly when
+	// something is interrupting the broadcast.
+	"PRIORITY": {"PRIORITY", "ALERT", "!"},
+}
+
+// framed adds the right-hand chrome to the assembled running order: the inner
+// wall, the scroll rail, and the frame's own edge.
+//
+// THE RAIL IS `render.Railify`, THE ONE OWNER (D-56). It already tracks a thumb
+// over a window and already pads with PadTo rather than PadBetween, "so a
+// full-width line must never push the rail right" — an off-by-one that surface
+// found and fixed once already.
+//
+// IT IS APPLIED TO THE WHOLE BODY, not per region, because the running order
+// scrolls as one thing. At the reference's 150 columns this puts the rail at
+// 144 and the frame's edge at 149.
+//
+// THE WALL AND THE RAIL ARE ONE COLUMN, WHICH IS WHAT THE REFERENCE DRAWS. This
+// built them as two — a wall at 144 and a thumb at 145 — so the console carried
+// a column the mock does not have and everything right of the cards sat a cell
+// off (HUM LEAD, UAT 2026-09-10: "right hand lanes are off"). Counted off the
+// mock: an ordinary row ends `╯   │    │` and the thumb row `█    │`, the thumb
+// standing exactly WHERE the bar was. One column, two glyphs.
+func (b Broadcaster) framed(body []string, total int) []string {
+	return b.chrome(body, true, total)
+}
+
+// chrome adds the right-hand columns, with or without the scroll rail.
+//
+// THE RAIL SPANS ONLY WHAT SCROLLS (D-68). The HUM LEAD, beside the SCHEDULED
+// region of his reference: "Notice the top of the scroll is here, and the left
+// rail is separated." The two cards the operator reads from are always the same
+// two — there is nothing to scroll past — so the gutter beside them is air, and
+// a thumb drawn there would say they move when they do not.
+
+// chromeAt is `chrome` for the SCROLLING region, told where its window sits.
+//
+// THE THUMB TRACKS THE WINDOW, which is why the window's position is a parameter
+// (D-87). A hard-coded `lo` of 0 to `Railify` draws a thumb that never moves
+// however far the operator scrolls — invisible while everything fits on one
+// screen, and a lie the moment the cards outgrow the terminal.
+func (b Broadcaster) chromeAt(body []string, from, off, total int) []string {
+	return b.railed(body, from, off, total)
+}
+
+func (b Broadcaster) chrome(body []string, rail bool, total int) []string {
+	from := -1
+	if rail {
+		from = 0
+	}
+	return b.railed(body, from, 0, total)
+}
+
+// railed adds the right-hand column: `from` is the row the scroll control STARTS
+// on, or -1 for a region that does not scroll.
+//
+// THE CONTROL BELONGS TO WHAT SCROLLS, AND ONLY THAT (D-106).
+//
+// HUM LEAD, UAT 2026-09-12: "Location Pool Scrolls, Line-up doesnt — if the
+// line-up table isnt going to scroll, then it needs to follow the Observer
+// pattern where the scroll is anchored only to the location pool table, and the
+// top of the vertical scroll aligns with the headers of the table (so they dont
+// disappear when I scroll down)."
+//
+// SO `from` IS THE POOL'S COLUMN-HEADER ROW, and everything above it — the
+// running order, the pool's own band — carries nothing. This is Observer's shape
+// exactly: `recentSection` puts ▲ on the band's bottom row, the track over the
+// data rows, and ▼ on the "Showing" line.
+// `shown` WAS A PARAMETER AND NOTHING READ IT (P10-07). The visible count is
+// DERIVED here — `track` is `len(body) - from - 2`, the body less its own caps —
+// and that is the number `Railify` is handed as its window. A second answer to
+// "how many rows are showing", passed by callers and silently ignored, is the
+// shape this file's own neighbours warn about: a value every caller computes and
+// nothing reads is a wrong answer with a type, and the day someone fixes a thumb
+// by correcting it, nothing changes and the real cause stays hidden.
+func (b Broadcaster) railed(body []string, from, lo, total int) []string {
+	g := b.opts().Glyphs()
+	glyphs := render.RailGlyphsFor(b.ascii)
+	// THE MARK IN COLUMN 144 FOR EACH ROW. Without a rail that is the wall, on
+	// every row; with one it is the rail's own ladder — ▲ at the top, ▼ at the
+	// bottom, the thumb somewhere between.
+	//
+	// THE CAPS ARE THE CALLER'S, WHICH IS `Railify`'S OWN CONTRACT: "callers
+	// draw ▲/▼ themselves … a caller that draws ▼ on its last visible row passes
+	// the rows above it". So Railify is asked only for the TRACK between them,
+	// and it stays the one owner of where the thumb lands (HUM LEAD, UAT
+	// 2026-09-10: "the vertical control should start and end where the mock
+	// says").
+	// THE MARK COLUMN BELONGS TO THE SCROLL RAIL, AND ONLY TO IT (D-85, HUM
+	// LEAD 2026-09-11): "We need to remove the extra lines on the right side of
+	// the UI next to LIVE and UP NEXT."
+	//
+	// It was the wall on every row, scrolling or not — a second vertical beside
+	// two regions that have nothing to scroll, which reads as a column that
+	// stopped rather than as one that was never there. The reference draws the
+	// read regions one vertical narrower than the ones below them.
+	marks := make([]string, len(body))
+	for i := range marks { // bounded by the body (P10-02)
+		marks[i] = " "
+		if from >= 0 && i >= from {
+			marks[i] = g.Rail
+		}
+	}
+	if from >= 0 && len(body)-from >= 3 {
+		marks[from], marks[len(body)-1] = glyphs.Up, glyphs.Down
+		// Width 1 over empty lines asks Railify for the GLYPHS and nothing else:
+		// `PadTo("", 0)` is empty, so each line it returns is the mark alone.
+		//
+		// THE CAPS ARE NOT PART OF THE WINDOW, and getting that wrong lost the
+		// thumb at the bottom of the list. `Railify` places the thumb at
+		// `lo*(window-1)/maxLo` and INDEXES ITS OWN `lines` with it, so its
+		// contract is that the window IS the track it was handed — pass a window
+		// two rows larger (the caps) and the last position falls off the end,
+		// silently drawing no thumb at all. Caught by a test that scrolled to the
+		// bottom and looked; invisible while everything fitted on one screen.
+		// THE TOTAL IS THE LIST'S, NOT THE BODY'S (D-106). The body's row count
+		// less the caps is right only while the rail spans the whole region, and
+		// wrong the moment it starts partway down.
+		track := len(body) - from - 2
+		for i, m := range render.Railify(make([]string, track), 1, lo,
+			max(total, 1), max(track, 1), glyphs) {
+			marks[from+1+i] = m
+		}
+	}
+	out := make([]string, len(body))
+	for i, r := range body { // bounded by the body (P10-02)
+		mark := marks[i]
+		// THE RAIL IS CONTINUOUS OVER WHAT IT SCROLLS (D-104), including the
+		// blank row between the running order and the pool — which the reference
+		// draws with a `│` in the rail column like every other row of the region.
+		//
+		// A BREAK DOES NOT BREAK THE RAIL (HUM LEAD, UAT 2026-09-10: "the blank
+		// row in between sections needs to be completely blank"). That ruling is
+		// about the CARD regions' walls, and the rail no longer runs beside them
+		// (D-95, D-97), so the only blank rows left
+		// under a rail are INSIDE one scrolling region — and a rail with a hole in
+		// it reads as two rails, which is the thing D-104 exists to stop being.
+		// A region with no rail carries no mark at all, one line above.
+		// ONE BLANK COLUMN AND THE SCROLL, AND NOTHING AFTER IT (D-104). The
+		// frame's outer wall on this side is gone: the cards are boxes with their
+		// own borders, so a wall around them was a second edge saying the same
+		// thing — and the blank is Observer's single cell (UAT 9.2), which comes
+		// from the table being `tableWidth` rather than from air added here.
+		out[i] = render.PadTo(r, b.frameWidth()-1) + mark
+	}
+	return out
+}

@@ -94,6 +94,22 @@ type Glyphs struct {
 	Seismic                      [3]string // the felt-band ramp: [0] below feeling, [1] felt, [2] significant (0.11.0)
 	OK, Fail, Note, Cursor, Fill string    // ✔ ✘ ♪ ▌ ░ and their ASCII forms (REVIEW R5-C-13: one owner for every mark)
 	Dash, Dot                    string    // — and · as separators
+	// Arrow is a rightward arrow in running TEXT — "( SHIFT + ENTER → STANDBY )".
+	// Not a keycap: KeyCap draws a KEY, and this is the direction between two
+	// states. One owner, so --ascii needs no special case at the call site.
+	Arrow string
+	// The CARD's own corners (0.16.0). Rounded, which is what the reference
+	// mock draws for a card — the app's WINDOWS use the heavy box `BoxTitled`
+	// owns, and a card is not a window. Through the glyph set so --ascii needs
+	// no special case at the call site.
+	// THE ROUNDED CORNERS RETIRED AT D-85. Their one user was the Broadcaster
+	// card, which draws the masthead's square heavy box now (render.HeavyBox);
+	// a glyph nothing draws is a glyph that can only ever be wrong.
+	// Idle and Live are a thing's own state where it is NAMED — the bed's
+	// ACTIVE / INACTIVE chip (0.16.0, D-62). Not the seismic ramp, which an
+	// early draft borrowed: that ramp means FELT INTENSITY and reusing it here
+	// would give one glyph two meanings.
+	Idle, Live string
 	// 0.14.0: the Setup window's marks. Down is a picker's dropdown arrow;
 	// Rail and RailCar draw the scroll rail; Ellipsis and Bullet are used where
 	// text is cut or listed. All go through the glyph set so --ascii needs no
@@ -110,15 +126,27 @@ type Glyphs struct {
 // Glyphs resolves the mark set for these options. Under --ascii the play
 // mark is its own form (`*`), never the pointer's `>` (HUM LEAD ruling
 // 2026-08-29, B-08b).
+// HeadlineJoin is how a hazard's TITLE and its PLACE are joined into the one
+// line the ticker has room for: `SEVERE THUNDERSTORM WARNING · HARPER, KS`.
+//
+// IT IS A LITERAL, NOT THE GLYPH SET'S BULLET, because the join happens where
+// the arrival is built and travels with it — through the card, the cue and the
+// spoken script — long before any surface knows whether it is drawing ASCII.
+//
+// ONE OWNER SO IT CAN BE UNDONE. The takeover's table has a LOCATION column of
+// its own and has to take the title back; a second copy of " · " on that side
+// would work until one of them changed.
+const HeadlineJoin = " · "
+
 func (o Opts) Glyphs() Glyphs {
 	if o.ASCII {
 		return Glyphs{Pointer: ">", Play: "*", Pause: "=", Repeat: "R", Fire: "*", Alert: "!", Seismic: [3]string{".", "o", "O"},
 			OK: "+", Fail: "x", Note: "~", Cursor: "_", Fill: ".", Dash: "-", Dot: "|",
-			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#", Rule: "-", Minus: "-", Heart: "<3"}
+			Up: "^", Down: "v", DropDown: "v", Rail: "|", RailCar: "#", Ellipsis: "...", Bullet: "*", Stop: "#", Rule: "-", Minus: "-", Heart: "<3", Arrow: "->", Idle: "o", Live: "*"}
 	}
 	return Glyphs{Pointer: "›", Play: "▶", Pause: "‖", Repeat: "∞", Fire: "◆", Alert: "⚠", Seismic: [3]string{"○", "●", "◉"},
 		OK: "✔", Fail: "✘", Note: "♪", Cursor: "▌", Fill: "░", Dash: "—", Dot: "·",
-		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■", Rule: "─", Minus: "−", Heart: "♥"}
+		Up: "▲", Down: "▼", DropDown: "▾", Rail: "│", RailCar: "█", Ellipsis: "…", Bullet: "•", Stop: "■", Rule: "─", Minus: "−", Heart: "♥", Arrow: "→", Idle: "○", Live: "●"}
 }
 
 // asciiKey names an arrow key in words for a chip under --ascii — the one
@@ -133,6 +161,13 @@ func asciiKey(key string) string {
 		return "left"
 	case "→":
 		return "right"
+	// SHIFTED ARROWS NAME THE MODIFIER TOO. The bed's relay selector lives on
+	// shift+←/shift+→ (D-111), and a chip that read "left" there would name a key
+	// that steps a different control.
+	case "⇧←":
+		return "shift+left"
+	case "⇧→":
+		return "shift+right"
 	case "↑":
 		return "up"
 	case "↓":
@@ -279,6 +314,20 @@ var asciiMarks = sync.OnceValue(func() *strings.Replacer {
 			for j := range u.Len() {
 				pairs = append(pairs, u.Index(j).String(), a.Index(j).String())
 			}
+			// A KIND THIS WALK DOES NOT KNOW IS THE FAILURE IT EXISTS TO PREVENT, and
+			// it is caught BEFORE this runs rather than by a `default` here.
+			//
+			// The whole point of deriving the pairing by reflection is that a glyph
+			// added to one set and forgotten in the other cannot slip through. A
+			// `Glyphs` field of any other kind — a nested struct, a map, a slice —
+			// would be SILENTLY SKIPPED, which is the forgotten glyph arriving by the
+			// one route the guard was bought to close.
+			//
+			// A `default` ARM WOULD HAVE TO PANIC, and this is a render path reached
+			// through `sync.OnceValue` with no error channel. `TestEveryGlyphFieldCanBePaired`
+			// asserts the same thing at BUILD time instead: the field kinds are fixed
+			// by the struct, so a test can see the whole set and nothing has to fail
+			// in front of a listener.
 		}
 	}
 	return strings.NewReplacer(pairs...)

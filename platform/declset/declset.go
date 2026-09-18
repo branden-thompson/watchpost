@@ -23,27 +23,53 @@ import (
 // "kind name" lines — methods as "func (Recv).Name", vars and consts one
 // line per name.
 func Set(dir string) ([]string, error) {
-	if err := invariant.Check(dir != "", "declset: a package directory is required"); err != nil {
-		return nil, err
-	}
-	entries, err := os.ReadDir(dir)
+	_, files, err := Files(dir)
 	if err != nil {
 		return nil, err
 	}
-	fset := token.NewFileSet()
 	var out []string
-	for _, e := range entries {
+	for _, f := range files { // bounded by the package's files (P10-02)
+		out = append(out, declsOf(f)...)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// Files parses every non-test Go file in dir, with the FileSet that positions
+// them. It is what any check that WALKS a package for a structural rule should
+// build on — "startSynth has exactly one caller", "the program's model is
+// always the router" — so those checks derive their subject list rather than
+// enumerating it (INST-1).
+//
+// NOT go/parser.ParseDir, WHICH IS DEPRECATED and was the shape three such
+// checks had copied between them. Its replacement, x/tools/go/packages, is a
+// dependency and a type-check for a job that is a directory listing; this is
+// that listing, once, where the package that already did it lives.
+//
+// TEST FILES ARE EXCLUDED, and every caller so far wants that: a rule about
+// production code must not be satisfied by a test that happens to mention the
+// right identifier.
+func Files(dir string) (*token.FileSet, []*ast.File, error) {
+	if err := invariant.Check(dir != "", "declset: a package directory is required"); err != nil {
+		return nil, nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, nil, err
+	}
+	fset := token.NewFileSet()
+	var files []*ast.File
+	for _, e := range entries { // bounded by the directory (P10-02)
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
 			continue
 		}
 		f, err := parser.ParseFile(fset, filepath.Join(dir, e.Name()), nil, 0)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		out = append(out, declsOf(f)...)
+		files = append(files, f)
 	}
-	sort.Strings(out)
-	return out, nil
+	return fset, files, nil
 }
 
 func declsOf(f *ast.File) []string {

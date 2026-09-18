@@ -42,34 +42,47 @@ func TestANewDirectorIsStopped(t *testing.T) {
 	}
 }
 
-// TestTheMainTrackDoesNotAdvanceWhileTheRadioIsStopped is PD-1, and the whole
-// reason a running state is built for Observer's own merits: the listener
+// TestTheMainTrackIsPreparedButNotReadWhileTheRadioIsStopped is PD-1, and the
+// whole reason a running state is built for Observer's own merits: the listener
 // stopped the radio, and the programme stays stopped.
 //
-// It is not built, either. A card built while stopped would spend 1.03 s of
-// network on a report that has no cutover to be ready for, and might be stale
-// by the time one comes.
-func TestTheMainTrackDoesNotAdvanceWhileTheRadioIsStopped(t *testing.T) {
+// IT IS BUILT, THOUGH, AND THAT IS D-84. The argument against — "a card built
+// while stopped would spend 1.03 s of network on a report that has no cutover to
+// be ready for" — is half right and the HUM LEAD overturned the half that
+// matters: the cutover IS the operator pressing a key, and the 1.03 s is exactly
+// what they must not hear. "when the operator does — the line **should be ready
+// to go** at that point."
+//
+// WHAT DID NOT CHANGE is the half PD-1 is actually about: nothing SPEAKS.
+func TestTheMainTrackIsPreparedButNotReadWhileTheRadioIsStopped(t *testing.T) {
 	d := programme(t, New(Settings{Max: 10}, planNow), "bonsall", "oceanside")
 
 	d, idle := run(d, Tick{Now: planNow.Add(time.Minute)})
 	for _, f := range idle {
-		if strings.HasPrefix(f, "build(") || strings.HasPrefix(f, "speak(") {
-			t.Errorf("a stopped radio produced %v", idle)
+		if strings.HasPrefix(f, "speak(") {
+			t.Errorf("a stopped radio spoke: %v", idle)
 		}
 	}
-	if _, on := d.Lineup().OnAir(); on {
+	if !has(idle, "build(bonsall)") {
+		t.Fatalf("a stopped radio produced %v; the Composer works on standby so the line is ready (D-84)", idle)
+	}
+	if _, on := onAirAnywhere(d.Lineup()); on {
 		t.Error("something took the air while the radio was stopped")
 	}
 
-	// And the moment the listener starts it, the programme picks up.
-	d, started := run(d, Powered{To: Running})
-	if !has(started, "build(bonsall)") {
-		t.Fatalf("starting the radio produced %v, want the report's build", started)
+	// Its words come home while it is still standing by (DR-7).
+	d, _ = d.Step(Built{ID: "bonsall", Script: Say("conditions are fair")})
+
+	// AND THE MOMENT THE OPERATOR GOES ON AIR, THE PREPARED CARD GOES STRAIGHT
+	// ON — with no build in between. That gap is the requirement, stated as a
+	// test rather than as an intention.
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
+	_, started := run(d, Powered{To: Running})
+	if !has(started, "speak(bonsall)") {
+		t.Fatalf("going on air produced %v, want the prepared card on the air", started)
 	}
-	_, air := run(d, Built{ID: "bonsall", Script: Say("conditions are fair")})
-	if !has(air, "speak(bonsall)") {
-		t.Errorf("effects %v do not put the report on the air", air)
+	if has(started, "build(bonsall)") {
+		t.Errorf("the operator waited on a build at the moment they went on air: %v", started)
 	}
 }
 
@@ -95,7 +108,7 @@ func TestAStoppedRadioStillReadsTheAlertRail(t *testing.T) {
 	if !has(air, "speak("+alert+")") {
 		t.Errorf("effects %v keep an alert off the air because the radio is stopped", air)
 	}
-	if on, _ := d.Lineup().OnAir(); on.ID != alert {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != alert {
 		t.Errorf("the air is held by %q, want the alert", on.ID)
 	}
 }
@@ -105,8 +118,10 @@ func TestAStoppedRadioStillReadsTheAlertRail(t *testing.T) {
 // not be left holding a callout for a read that has ended (DR-24).
 func TestStoppingTakesTheProgrammeOffTheAirAndReleasesTheBand(t *testing.T) {
 	d := programme(t, New(Settings{Max: 10}, planNow), "bonsall", "oceanside")
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running}, Built{ID: "bonsall", Script: Say("conditions are fair")})
-	if on, _ := d.Lineup().OnAir(); on.ID != "bonsall" {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != "bonsall" {
 		t.Fatalf("the air is held by %q; the stop under test is not being exercised", on.ID)
 	}
 
@@ -114,7 +129,7 @@ func TestStoppingTakesTheProgrammeOffTheAirAndReleasesTheBand(t *testing.T) {
 	if !has(fx, "release(bonsall)") {
 		t.Errorf("effects %v leave the band holding a callout for a read that stopped", fx)
 	}
-	if on, live := d.Lineup().OnAir(); live {
+	if on, live := onAirAnywhere(d.Lineup()); live {
 		t.Errorf("%q is still on the air after the listener stopped the radio", on.ID)
 	}
 	// WHAT WAS PROMISED IS STILL PROMISED. Stopping is not a discard: the rest of
@@ -133,8 +148,9 @@ func TestStoppingDoesNotCutAnAlertShort(t *testing.T) {
 	// and a burst is one card (MVS-D-77).
 	reading, behind := BurstID("a00"), BurstID("b00")
 	d, _ := rail(t, "a", "b")
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running}, Built{ID: reading, Script: Say("words")})
-	if on, _ := d.Lineup().OnAir(); on.ID != reading {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != reading {
 		t.Fatalf("the air is held by %q; the stop under test is not being exercised", on.ID)
 	}
 	d, fx := run(d, Powered{To: Stopped})
@@ -143,7 +159,7 @@ func TestStoppingDoesNotCutAnAlertShort(t *testing.T) {
 			t.Errorf("effects %v cut an alert short because the listener stopped the programme", fx)
 		}
 	}
-	if on, _ := d.Lineup().OnAir(); on.ID != reading {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != reading {
 		t.Errorf("the air is held by %q, want the alert still reading", on.ID)
 	}
 	// And the rail keeps draining while the radio is stopped.
@@ -169,14 +185,16 @@ func TestTheRunningStateIsTheOnlyCarrier(t *testing.T) {
 		{Stopped, AlertRail, true},
 	} {
 		d := New(Settings{Max: 10}, planNow)
-		d.power = tc.power
+		// THE STATION HOLDS THE AIR (D-74). This table is about the POWER, so
+		// the other half of the gate is set out of the way of what it measures.
+		d.power, d.air = tc.power, AirProgramme
 		if got := d.advances(tc.track); got != tc.want {
 			t.Errorf("%v %v: advances = %v, want %v", tc.power, tc.track, got, tc.want)
 		}
 	}
 	// An out-of-range track advances nothing: the safe direction is silence.
 	d := New(Settings{Max: 10}, planNow)
-	d.power = Running
+	d.power, d.air = Running, AirProgramme
 	if d.advances(numTracks) {
 		t.Error("a track outside the registry advances")
 	}
@@ -201,6 +219,7 @@ func TestTheRunningStateIsTheOnlyCarrier(t *testing.T) {
 // stopped radio, and a pump that batches can deliver the same command twice.
 func TestPoweringToWhatItAlreadyIsChangesNothing(t *testing.T) {
 	d := programme(t, New(Settings{Max: 10}, planNow), "bonsall")
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running}, Built{ID: "bonsall", Script: Say("conditions are fair")})
 	before := ids(d.Lineup().Cards(MainTrack))
 
@@ -208,11 +227,12 @@ func TestPoweringToWhatItAlreadyIsChangesNothing(t *testing.T) {
 	// no-op command that still published would re-notify every subscriber — the
 	// synth layer, the fetch layer, the ticker, the deck — about a lineup that
 	// did not change, on every idle keypress.
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, again := run(d, Powered{To: Running})
 	if len(again) != 0 {
 		t.Errorf("starting an already-running radio produced %v, want nothing", again)
 	}
-	if on, _ := d.Lineup().OnAir(); on.ID != "bonsall" {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != "bonsall" {
 		t.Errorf("the air is held by %q after a repeated start", on.ID)
 	}
 	if got := ids(d.Lineup().Cards(MainTrack)); !equal(got, before) {
@@ -224,7 +244,7 @@ func TestPoweringToWhatItAlreadyIsChangesNothing(t *testing.T) {
 	if len(fx) != 0 {
 		t.Errorf("stopping an already-stopped radio produced %v, want nothing", fx)
 	}
-	if _, on := twice.Lineup().OnAir(); on {
+	if _, on := onAirAnywhere(twice.Lineup()); on {
 		t.Error("something is on the air after two stops")
 	}
 }
@@ -234,6 +254,7 @@ func TestPoweringToWhatItAlreadyIsChangesNothing(t *testing.T) {
 // "running".
 func TestAnUnknownPowerIsRefused(t *testing.T) {
 	d := programme(t, New(Settings{Max: 10}, planNow), "bonsall")
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running})
 	after, _ := run(d, Powered{To: numPowers})
 	if after.Power() != Running {
@@ -273,6 +294,7 @@ func TestAStepPublishesOnceAndLast(t *testing.T) {
 		t.Fatalf("seeding the main track: %v", err)
 	}
 	d.lineup = l
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
 	d, _ = run(d, Powered{To: Running})
 	d, _ = run(d, Built{ID: "bonsall", Script: Say("conditions are fair")})
 
@@ -307,7 +329,10 @@ func TestMVSD78EachPowerLetsThroughWhatItShould(t *testing.T) {
 		t.Fatalf("the table covers %d powers, the registry declares %d — a power was added without a row", len(want), numPowers)
 	}
 	for p := Power(0); p < numPowers; p++ {
-		d := Director{power: p}
+		// THE STATION HOLDS THE AIR. This walks the POWER registry, so the
+		// air is held constant at the value that lets the power be measured
+		// at all (D-74).
+		d := Director{power: p, air: AirProgramme}
 		for tr := Track(0); tr < numTracks; tr++ {
 			if got := d.advances(tr); got != want[p][tr] {
 				t.Errorf("%v on %v advances=%v, want %v", p, tr, got, want[p][tr])

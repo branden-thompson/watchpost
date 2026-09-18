@@ -35,6 +35,7 @@ func (*Assembler).SetLocations
 func (*Assembler).Size
 func (*Assembler).Snapshot
 func (*Assembler).Warn
+func (*Assembler).mergeLocationLocked
 func (*Assembler).weatherAsOf
 func (*Marine).Clone
 func (Hotspot).FRPOrMissing
@@ -43,10 +44,13 @@ func (Incident).AcresOrMissing
 func BlameFor
 func DefaultOrigin
 func FetchEach
+func HasKey
 func KeepOr
 func Key
 func Keys
 func NewAssembler
+func Opaque
+func ReplaceKeys
 func Unreachable
 func WithFailure
 func answersTheRow
@@ -95,3 +99,4 @@ type Snapshot
 type SourceInfo
 type TideEvent
 type Warning
+var keyPattern

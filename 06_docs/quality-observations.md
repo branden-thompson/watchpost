@@ -1366,3 +1366,1744 @@ solved twenty lines away and not carried across.
   guard → compiles → red 25/25 → revert → green 25x. Now a standing mutant, `mK8`, so the guard
   cannot quietly lose its only cover again.
 
+## A negation in prose is invisible to a keyword parser (2026-09-09, SHIP)
+
+The 0.15.0 PR body said, deliberately and in as many words: *"Does **not** close #12 — the memo-key
+audit is partly done and stays open."* The sentence existed **only** to stop that issue being closed.
+On merge, GitHub closed it. Its linking parser matches `close … #12` and does not read the `not`.
+
+**The sentence written to keep the issue open is the sentence that closed it.**
+
+It is the release's own recurring shape arriving in a new medium. The others were assertions the code
+could not support — a row saying "loading" when it meant "never", a read stating an absence it had no
+evidence for, a README describing a cap nobody built. This one is an assertion the *tooling* could not
+read: correct English, correct intent, and a machine acting on four of its characters.
+
+**Two things that generalise:**
+- **Never name an issue you are not closing in text a robot parses.** If the PR must explain why an
+  issue stays open, write the number without a linking keyword anywhere before it, or say it in a
+  comment on the issue instead. The negation costs nothing to write and buys nothing at all.
+- **Verify the post-conditions of a publish, not just its exit code.** The merge succeeded, CI was
+  green, the tag was clean, and an issue was silently in the wrong state. It was found by checking
+  every issue the release touched against what the release *meant* to do with it — which is a step,
+  not a reflex, and it is now in the release checklist. The other three issues were all in the right
+  state, so the check would have looked like a waste right up until it was not.
+
+**How #13, #17 and #14 differed, because the mechanism matters.** #13 and #17 closed correctly, from
+the plain `Closes #13. Closes #17.` in the RELEASE COMMIT message — not from the PR body. #14 did not
+close from `Closes **#14**` in the body at all. So within one release the same intent expressed three
+ways produced three outcomes: closed correctly, not closed, and closed when the text said not to.
+**Put close directives in the release commit message, unadorned, and nowhere else.**
+
+
+---
+
+## 0.16.0 P3 — the audio merge: six shapes, and the cost each one paid
+
+**The most dangerous batch in the release, and the observations are worth more than the code.** Five
+gates in this batch were WRONG, every one of them found by an instrument rather than by reading, and
+four of them fall into shapes that have now recurred often enough to name.
+
+### 1. A gate that watches the STATE and not the WORK — three instances in one batch
+
+| Plant | What it deleted | Why nothing noticed |
+|---|---|---|
+| **m6** | the settle after queueing a card | the test held the effects and threw them away: `_ = fx` |
+| **p1b** | `toPrepare`'s rail-first precedence | every property watched what took the AIR; the defect was in what got COMPOSED, where nothing takes the air at all |
+| **d3** | the composed report's store write | the build test looked at the card's script; the speak test put the segments in itself.  **Nothing ran the two halves together** |
+
+**The tell is always the same: the test can see the result, and does not ask for the step.** A card
+that is queued and never composed leaves a full lineup and a silent station, and every assertion about
+the lineup stays green.
+
+**The check that generalises:** for any test that ends in "and the state is X", ask what WORK produced
+X, and whether deleting that work would change the assertion. If the work returns something — effects,
+events, a handle — and the test discards it, that discard is the hole.
+
+### 2. A pin on the CARRIER, not on the RULE, cannot see the carrier become wrong
+
+`Powered{Running}` rode on `setMode`'s transition edge. A pin existed, written the first time this
+broke, and it **drove `setMode` directly** — so when the merged station stopped changing the deck's
+mode, the pin passed and the station was permanently silent with a permanently empty lineup and no
+fault raised, because nothing failed and nothing was ever admitted.
+
+**Pin the thing the USER does, not the function that currently implements it.** The pin drives `tune`
+now, which is what the listener does; it survives the next rearrangement of the audio path.
+
+### 3. A rewrite that keeps the BODY can lose the GUARDS
+
+`startSynth` became `readReport` — same body, one caller instead of three — and **both** staleness
+guards vanished: the entry epoch check and the `tuneMu`-held pair whose own comment records the race it
+closed. Nothing failed, because guards have no visible behaviour to miss.
+
+**Diff a rewrite against what it replaced, specifically for the checks.** It is a step, not a reflex,
+and it is the only thing that found this.
+
+### 4. A rule that cannot be reached by a test is a rule with no gate
+
+The detail line is the only place a listener learns why the station is reading rather than relaying, and
+it lived inside a function that resolves a voice — on a machine without one, a 63 MB download inside a
+unit test. So it had no gate, and a plant deleting it survived.
+
+**Extracting the rule into its own seam is the fix, not writing a bigger fixture.** `announceReport` is
+one line and needs no audio device.
+
+### 5. A cosmetic rewrite of a test is a change to the INSTRUMENT
+
+Rewriting an identity test to satisfy a linter lost the ADJACENCY that made it work: comparing across
+two passes let a counter-based mutant through, because with three refs and a counter taken modulo three
+every ref got the same suffix both times. **The rewrite was correct-looking and measured less.**
+
+**Re-plant after touching a test, even when the change is cosmetic.**
+
+### 6. Position gates, and where they stop
+
+Three rules in this batch have no behavioural test **because the window is between two statements** and
+no fixture can stand in one: the power report must not be inside a branch, the epoch check and the
+engine start must be one locked step, and the wait must be outside that lock. All three are asserted as
+POSITIONS by an AST walk, and each caught a plant nothing else could.
+
+**And the limit is stated rather than papered over:** a walk can find a check; it cannot judge whether
+its condition is honest. `if false && !d.epoch(gen)` leaves the call exactly where the walk looks, and
+tightening the gate to reject that shape only moves the goalposts to `gen == gen`. **The gate stops
+there and says so** — which is the difference between this and the old code, which had the same window
+and the same untestability and no record of either.
+
+### And the running tally: P10 resolves by NAME, seventh collision this release
+
+`executors.readReport` (a seam) and `radioDeck.readReport` (a method) read as one node and reported as
+recursion; renaming the seam to `playReport` cleared it, which is also the proof it was a collision. A
+test walk then failed against `livePipelines.readReport`, an unrelated method in another file — **the
+receiver is part of the subject**, and both the tool and the test now say so.
+
+**This is worth an upstream fix rather than a seventh rename.**
+
+
+---
+
+## A synchronous `Send` on the startup path deadlocks the program (0.16.0 P4)
+
+**`TestRunWithoutArgsStartsTheDashboard` hung for the full ten-minute test timeout**, and the trace
+pointed at one line: a `p.Send` called from `startSchedule`, which runs BEFORE the program's event loop
+does.  Nothing reads the channel, because the reader is the loop the caller returns to start.
+
+**Three things about it are worth keeping.**
+
+**It was invisible to the way I had been testing.**  Every gate I ran during the batch was
+`./modes/tty/`, `./app/` and `./platform/lineup/` — the packages I had touched.  The hang is in
+`./cmd/watchpost/`, which nothing I edited appears in, and only `go test ./...` reaches it.  **The
+package you changed is not the package that breaks.**
+
+**A hang is the worst failure shape to leave for CI.**  It does not report a wrong answer; it reports
+nothing, for ten minutes, and then panics with a stack that has to be read. The corpus already carries
+the lesson one level up (F-64: a mutant gate whose limit was the clock "does not report on the code, and
+it fails at random").
+
+**And the fix was already the house pattern.**  `severeDeck` publishes from its own goroutine, for
+exactly this reason, and had done for releases.  The rule generalises: **anything that sends to the
+program during construction sends from its own goroutine**, because construction is by definition before
+the loop.
+
+
+---
+
+## A surviving mutant on a redundant guard is the rule written twice — and it recurred (0.16.0 P4)
+
+**The top-off's plant `t8` SURVIVED**: flipping `if need <= 0 { return }` to `if need < 0` changed no
+outcome.  It is not a coverage hole.  The walk below it already bounds itself with `took >= need`, so
+the early return could never decide anything — **two carriers of one rule, one of them strictly
+redundant.**
+
+**The codebase had already ruled on this exact shape**, in `card.go`'s `Propose`, about DR-7's guard:
+
+> *"Its mutant survived while it was: deleting a guard that another guard already enforces changes
+> nothing, which is the rule written twice rather than an invariant."*
+
+**So the remedy was precedent, not judgement**: delete the guard, leave the walk's bound as the single
+carrier, and say in the comment that a mutant is why.
+
+**The distinction worth keeping**, because two other plants also survived and were NOT this:
+
+| Plant | Verdict | Why |
+|---|---|---|
+| **t8** — the early `need <= 0` return | **redundant guard** → deleted | one rule, two carriers, one of which can never decide |
+| **t12** — bypassing `card.To(Admitted)` | **equivalent, kept** | `Queue` enforces a DIFFERENT rule ("the lineup holds admitted cards only") that happens to coincide here.  Defence in depth |
+| **t13** — the overshoot invariant | **equivalent, kept** | a postcondition TRIPWIRE, which is the house style — `Queue`, `clone`, `Remove` and `Reorder` all assert what they just did |
+
+**A guard that decides and an invariant that watches are not the same thing**, and only the first kind
+should be deleted when its mutant survives.  Deleting the second kind would strip the tripwires this
+package is built out of.
+
+
+---
+
+## Verifying "does the code account for this?" is where the defects are (0.16.0 P4)
+
+**The HUM LEAD asked a question they expected to be a note, not a fix**: *"I don't know if the code
+accounts for this, but it should be noted just in case we find out we have to build this later."*
+Answering it honestly — by reading the paths rather than reasoning about them — turned up a live defect
+in code committed an hour earlier.
+
+**`onRestored` spent the operator's undo before it could fail.**  The pile entry was lifted on the first
+line and `d.lineup` assigned immediately; every refusal below returned the Director that had already
+lost it.  So the pile shrank, nothing was queued, and no effect said so.
+
+**It was reachable the ORDINARY way, which is the part worth keeping.**  `ReadID` is a pure function of
+the ref, so a location dropped and then re-queued by the rotation holds the very identity the undo
+wants.  **The rotation doing its job is the trigger** — no adversarial input, no edge case.  The class:
+*a function that mutates its receiver before its last fallible step*, in a language where the receiver
+is a value and every early return ships that mutation.
+
+**And the ruling it came from was already true — by accident.**  D-42 says a transition is never the
+operator's card.  Nothing enforced it; the one path that could build one failed for an UNRELATED reason
+(the undo drops the words, and a wordless transition is refused a guard earlier).  **A rule held by a
+different rule** is the third instance of this shape in the package — the duck lifted by one spelling of
+tune and not the other, DR-7's structural half, and now this.  Each time the remedy is the same: state
+it where it can be seen to fail.
+
+**Cheapest instrument for the class:** ask of every fallible handler, *what has already been written to
+the receiver by the time the last `return d, nil` runs?*
+
+
+---
+
+## The redundant-guard shape recurred twice in one day, and the second one was mine again (0.16.0 P4)
+
+**Two plants survived for the same reason within hours of each other**, both in code written that
+morning, and neither was a coverage hole:
+
+| | The redundant guard | What already enforced it |
+|---|---|---|
+| `t8` | `if need <= 0 { return }` in the top-off | the walk's own `took >= need` bound |
+| `p3` | `to >= 0 && to < len(Projection(t))` in `Reorder` | `scheduleIndex`'s lookup, which refuses exactly the same set |
+
+**Both remedied the same way**, on `card.go`'s standing precedent — *"deleting a guard that another
+guard already enforces changes nothing, which is the rule written twice rather than an invariant"* —
+and in the second case the surviving carrier inherited the BETTER error message, because D-2 wants the
+failing input named and the lookup's own wording was vaguer than the guard's.
+
+**Worth naming as a habit, not a coincidence.**  The shape appears when a function validates an input
+and then calls something that validates it again more precisely.  The instinct that produces it is
+sound — fail early, fail with a good message — and the fix is to keep the message and drop the second
+check, not the reverse.
+
+**The cheap detector is the plant.**  Neither guard was reachable by any test, in either direction, and
+no amount of reading would have said so: both LOOK load-bearing. Only deleting them and watching nothing
+happen settles it.
+
+**A third instance landed the same day**, in `between` — a `prev.Slot.structural() || next.Slot.structural()`
+branch whose mutant survived because the function is only ever asked about the RUNNING ORDER, which
+excludes structural cards by construction.  **It was resolved the other way, and that is the point of
+recording it**: it is a genuine PRECONDITION, so deleting it would have thrown away a real fact about the
+function.  It became an `invariant.Check` — a tripwire that fires if a second caller ever asks the
+question about the schedule instead of the line-up.
+
+**So the rule has two halves, and the plant alone does not tell you which applies:**
+
+- the surviving branch **duplicates another decision** → delete it, keep the better message (`t8`, `p3`);
+- the surviving branch **states a precondition the caller happens to satisfy** → make it an invariant
+  (`j10`).
+
+The question that separates them: *could a DIFFERENT caller make this false?*  If no, it is duplication.
+If yes, it is a precondition and the tripwire is what stops the next caller being the one who finds out.
+
+
+---
+
+## The plants found that ALL of the production wiring was untested (0.16.0 P4)
+
+**Seven plants against the top-off's wiring; four survived, and every survivor was a PRODUCTION WIRE:**
+
+| | |
+|---|---|
+| `w4` | the Director's depth is never set — nothing tops off |
+| `w5` | the producer seam is never wired |
+| `w6` | proposals keyed by Label instead of `snapshot.Key` — **a location read twice** |
+| `w7` | the depth stops matching the console's window |
+
+**The unit tests set the seams THEMSELVES.**  They assigned `x.propose` by hand and passed
+`Settings{Depth: 2}` by hand, so deleting both production wirings changed no assertion anywhere.  That
+is **P-1's stubbed seam**, and it is the same shape that cost this release its P3 flip — *"every test
+drove a stubbed seam."*  The unit tests were not wrong; they were **not the whole of the claim.**
+
+**The fix is a test that drives `startSchedule` and watches what is PUBLISHED TO THE CONSOLE**, which is
+the only path an operator ever sees.  It uses the publish seam rather than reading the Director's state,
+which is also what makes it race-free.
+
+**THE GENERAL RULE THIS EARNS:** when a change has a PURE half and a WIRING half, the pure half's tests
+can never cover the wiring, and passing them says nothing about whether the feature is reachable.  **Ask
+of every seam: what deletes cleanly?**  If the answer is "the line that connects it to production", the
+wiring has no test.
+
+**A COST NOTE, because it was mine to price.**  The first plant run took ~11 minutes: seven plants ×
+`go test ./app` at ~95 s. Re-running them against the NEW tests with `-run TopsTheLineUpOff|ShareOneIdentity`
+took seconds. **Plants should target the tests that are supposed to catch them** — a full-package run
+per plant prices the technique out of the habit it needs to be.
+
+
+---
+
+## Re-examining a safeguard found the gap the NEW surface opened (0.16.0 P4)
+
+**The HUM LEAD proposed removing the production/diagnostic binary split**, on the grounds that every
+surface now labels a fabricated alert `**TEST EVENT**` and the audio says "this is only a test" four
+times over.  **The premise was true for every surface that existed when those safeguards were written —
+and false for the one this release added.**
+
+**`Card` had no `Test` field at all.**  `Arrival.Test` reached `selectBurst`'s ordering and nowhere
+else, so the console drew a fabricated takeover as an ordinary one.
+
+**THE SHAPE TO KEEP: a safeguard implemented PER SURFACE has to be re-audited every time a surface is
+added**, and nothing reminds you.  The band, the severe window and the audio each mark independently;
+adding a fourth reader of the same data added a fourth place the mark had to be, and no gate could see
+that it was missing because there was no data on the card to be missing.
+
+**The cheap detector is the question, not a tool:** when a rule is enforced at RENDER time on N
+surfaces, ask what happens on surface N+1 — and prefer carrying the FACT as data on the value everyone
+reads, so a new surface inherits the question instead of silently answering it wrong.
+
+
+---
+
+## UAT found what the tests could not, and the assertion is why (0.16.0 P4)
+
+**The HUM LEAD ran the diagnostic build and saw the diagnostics window and its confirmation SIDE BY
+SIDE, both pinned to the top rail.**  Every test was green.
+
+**Two defects, one root.**  `render.Overlay` centres on the TERMINAL width and positions against the
+BASE's height:
+
+```
+x := max(0, (termWidth-Width(modal))/2)
+y := max(0, (Height(base)-Height(modal))/2)
+```
+
+- the confirmation was composited onto the **bare 84-cell window** with `termWidth=150`, so it landed at
+  x=42 inside an 84-cell base and the pair rendered beside each other;
+- the Broadcaster's frame was **ragged and short** — truncated to the width, never padded to it — so the
+  composite had nothing full-size to centre against and clamped to y=0.
+
+**THE TEST ASSERTED THAT THE FRAME *CHANGED*.**  A window rendered off to the right satisfies that
+perfectly.  A second attempt asserted the composite was no wider than the frame — and the broken layout
+(about 107 cells) FIT INSIDE a 150-cell frame, so that passed too.
+
+**WIDTH WAS NEVER THE PROPERTY.  POSITION IS.**  The rule is that every layer centres on the TERMINAL, so
+the assertion is a column: the confirmation's centre must be within a few cells of `width/2`.  That
+fails at 20 cells off, which is exactly what was on screen.
+
+**The generalisable questions:**
+
+- for a COMPOSITED thing, assert WHERE it landed, not THAT something happened;
+- **a frame is a viewport in BOTH dimensions.**  A ragged frame is invisible in the alt-screen — the
+  rest is simply blank — and becomes a defect the moment anything is composited over it.  Nothing else
+  would ever have shown it.
+
+
+---
+
+## "The wiring is untested" has now happened THREE times in one release (0.16.0 P4)
+
+| | The pure half | The wiring the plants found untested |
+|---|---|---|
+| the top-off | `onOffered`, the choice rule, the depth | `propose: proposeFrom(watch)` and `Depth: tty.MainTrackSlots` |
+| the masthead | the title and stamp ladders | `b.version = o.cfg.Version` and `SnapshotMsg`'s fan-out |
+| the console's frame | `cardLane.render` | the lane the frame hands it |
+
+**EVERY TIME, THE UNIT TEST SET THE FIELD ITSELF.**  `x.propose = func(){…}`, `b.version = "0.16.0"`,
+`b.snap = …` — so deleting the line that connects it to production changed no assertion anywhere.  The
+unit tests were not wrong; **they were not the whole of the claim.**
+
+**THE DETECTOR IS ONE QUESTION, ASKED OF EVERY FIELD A TEST ASSIGNS:** *what sets this in production, and
+what would fail if I deleted that line?*  If the answer is "nothing", the wiring has no test — and the
+feature is unreachable in a way every green test agrees with.
+
+**The fix is always the same shape too**: drive the thing production drives — `startSchedule`, the
+`Router`, a MESSAGE rather than a field — and assert at the surface the operator actually sees.
+
+**Cheap and worth making routine:** for any batch with a pure half and a wiring half, plant the WIRING
+first.  It is one edit per wire, it takes seconds when the plants are scoped to the right tests, and it
+has caught something every single time it has been run in this release.
+
+## A comment is not a fix: the local detour around a known-wrong shared function
+
+**Found 2026-09-10, by the HUM LEAD's UAT, and it had been in the tree for a release.**
+
+`render.TruncateCells` counted an escape sequence's characters as display cells while
+`render.Width` — the other half of the same measure — had always stripped ANSI.  One call site
+noticed, diagnosed it CORRECTLY in a comment, and routed around it:
+
+> `splitCells`, not `TruncateCells`: the lines are STYLED, and `TruncateCells` counts an escape
+> sequence's bytes as content and will cut through the middle of one.
+
+Every later caller inherited the defect, and no warning reached them, because the warning lived in
+the caller that had already escaped.  The console then clamped every row of its frame through it and
+lost its title, its top border, its `Updated:` stamp, its API summary, half its gain control, its
+card chips and its right-hand geometry — **eight reported symptoms, one measure** — with colours that
+bled and moved as the terminal resized, because each cut landed inside a different escape.
+
+**The shape:** a developer who finds a shared function wrong, understands exactly why, and fixes
+their own call site.  It reads as caution.  It is the opposite: it converts a defect that would have
+been found by the next caller into one that is invisible to them.
+
+**The rule it earns:** when a shared function is wrong, the fix goes in the shared function.  If it
+genuinely cannot — a caller needs different behaviour — the DIFFERENCE gets a name and the shared
+one gets the warning, never the caller that escaped.  This is [[feedback-one-canonical-way]] read
+one level down: one canonical way is not only about not writing the second implementation, it is
+about not leaving the first one broken once you know.
+
+**The tell to search for:** a comment at a call site explaining why it does NOT use the obvious
+shared helper.  Every one of those is either a fix that was never made, or a difference that was
+never named.
+
+## "The chain is self-limiting" was true of the path that was tested
+
+**Found 2026-09-10, same UAT.**  The publish executor tops the line-up off, and its comment reasons
+the chain to a stop: publish → offered → the track fills → publish → offered → nothing left to admit
+→ no effects → the chain has nowhere to go.  Correct, for the path it describes.
+
+It is not self-limiting when a card LEAVES.  A routed failure discards the card, which creates the
+depth the next offer fills with the same card, which fails the same way — an unthrottled loop at
+pump speed, which the operator sees as the line-up flying through locations.
+
+**The shape:** a termination argument written about the success path, in a system where the failure
+path re-enters the same loop.  Both this and the entry above are the same family as the four
+"the unit test sets the field itself" findings in this release — a claim that holds over the states
+that were considered, and nothing saying which states those were.
+
+---
+
+## 2026-09-11 — D-81: the answer was in the required reading, and I was about to ask for it
+
+**The catch:** I had diagnosed F-91 correctly and written the HUM LEAD a message asking him to
+confirm the shape of the fix — *"that shape needs your confirmation before I build it."*  Then the
+session's own mandatory re-read (`00-REQUIRED-READING.md`) turned up **BD-9**, verbatim:
+
+> *"A report's `speak` is the engine Source adapter — which IS the main-track absorb."*
+
+The ruling I was asking for had been made on 2026-09-09 and was sitting in the one file the harness
+requires to be re-read at session start and after every compaction.
+
+**Cost if unasked:** one round trip, and — worse — a ruling re-litigated as though it were open,
+which is exactly the failure `00-REQUIRED-READING.md` was created on 2026-09-09 to prevent.  The
+file's own header says it: *"The record was complete; it was not read."*
+
+**The shape (new):** **"asking for a ruling that has already been made."**  It looks like diligence —
+SEV-0, HUM LEAD, check before building — and it is the same defect as building without asking,
+wearing the opposite costume.  The tell is that the question is about a SHAPE rather than a
+PREFERENCE: a shape has usually been decided once already and written down; a preference has not.
+
+**How to apply:** before putting a design question to the HUM LEAD, search the rulings for its
+subject.  If the question is "which of these two shapes", it is very likely answered.  If the
+question is "how many, how fast, in what order, what colour", it is his and it is genuinely open
+(`feedback-ux-rulings-are-not-mine`).
+
+---
+
+## 2026-09-11 — the same session: a comment that named a defect, three times over
+
+Three separate comments in the tree described defects the code did not prevent, and two of them
+turned out to be the thing I was about to fix:
+
+- `takeOffTheAir`: *"PAIRED WITH THE CUE, not with the card: releasing a band that was never cued
+  would clear whatever callout it is legitimately showing."*  The code checks `wasOnAir`, not
+  `wasCued`.  (Filed as F-71 — so this one was caught, by somebody, and written down.)
+- `clearBand`: an eight-line comment explaining that the release fires for cards that never cued, why
+  it is benign TODAY, and exactly which future change makes it live.
+- `onTheRail`: *"the main track's slots arrive with the absorb that reads them (T3.2), and this list
+  shrinks then."*  A comment describing work that had not happened, on the line that was the blocker.
+
+**This is the second release in which "a comment is not a fix" has been the shape behind a UAT
+defect** (the first: `TruncateCells` counting escapes as cells, diagnosed in a comment at
+`status_table.go` and worked around locally, costing eight UAT symptoms at once).
+
+**What is different this time, and it is worth keeping:** all three comments were RIGHT, and two of
+them correctly reasoned that the defect was not yet live.  `clearBand`'s names the exact trigger.
+That is not the failure mode — that is a comment doing its job.  The failure mode is the comment
+that describes a live defect and stops there.
+
+**How to apply:** when a comment explains why something is wrong-but-harmless, it must name the
+condition that makes it harmful, and that condition should be a FOLLOW-UP ROW, not a sentence.
+`clearBand` did both and F-71 is why it was a thirty-second check rather than a re-diagnosis.
+
+---
+
+## 2026-09-11 — a "wait" that did not wait, and cost nine polling turns
+
+**The catch:** I ran `make verify` in the background, then "waited" for it with
+`Bash({command: "sleep 590; check", run_in_background: true})` — and immediately ran the next
+command.  The sleep went to a background job; nothing waited.  I polled nine times over what I
+believed were fifty minutes and was in fact six.
+
+**Cost:** nine wasted turns, and a running commentary that implied the gate was much slower than it
+is.
+
+**The rule:** `run_in_background` means *"do not wait for this"*.  To actually block, the command
+must be the thing that ends when the condition is true —
+`until grep -q "EXIT=" log; do sleep 10; done` in the background gives ONE notification when it is
+genuinely done.  A `sleep` inside a background job is a timer nobody reads.
+
+**And the related one, learned the same session:** do not edit the tree while `make verify` is
+running.  `mutant-check` patches source files by exact-text anchor, so a concurrent edit reports as
+"the mutant no longer applies" — twelve false STALE verdicts, indistinguishable from real ones until
+re-run on a quiet tree.
+
+---
+
+## 2026-09-11 — D-82: I built a measuring instrument that mutated what it measured
+
+**The catch — and it is mine, found two steps too late.**  To find stale mutant anchors without
+paying for a 20-minute `mutant-check`, I wrote a probe that executes each mutant script with its
+write call neutered, and read back which ones no longer match the tip.
+
+The neutering was a **regex over the script's text**:
+
+```python
+src = re.sub(r'^p\.write_text\(s\.replace.*$', 'pass', src, flags=re.M)
+```
+
+Mutants written any other way — `p.write_text(s)` on its own line, after `s = s.replace(...)` above —
+did not match, and **actually applied**.  Nine production files were mutated behind my back, including
+`bed.go`, where `onEnded` was replaced wholesale by `return d, nil`.
+
+**How it was caught:** the probe reported seven mutants as stale that touch code I had never edited.
+That did not fit, so I checked one — and `git status` showed `domains/severe/severe.go` and
+`platform/category/category.go` modified.
+
+**Cost:** about twenty minutes of recovery, and it could have been far worse.  Three things limited
+it: mutants never write to `_test.go`, so the test work was safe; there was a committed tip to diff
+against; and the damage was auditable hunk by hunk, because every deletion in a file I HAD edited
+was either mine or obviously not.
+
+**Recovery, and it is the general shape:** revert the files with foreign deletions to the tip and
+RE-APPLY the intended edits from the scripts that made them, rather than un-picking mutations by
+hand.  Then prove it: `git diff | grep '^-'` per file, and account for every deleted line.
+
+**The fix to the probe is one line, and it is the lesson:**
+
+```python
+pathlib.Path.write_text = lambda self, *a, **k: None   # the TYPE's writer, not a text pattern
+```
+
+**The shape (new): "a measuring instrument with a side effect."**  This project already has
+`feedback-validate-the-instrument` — *prove a measurement can fail before quoting it*.  This is its
+mirror: **prove a measurement cannot WRITE before running it.**  A probe that intercepts behaviour by
+pattern-matching source is guessing; one that replaces the capability is not.  The general rule: when
+a tool must run untrusted code to observe it, **remove the capability, do not filter the syntax** —
+the same reason a sandbox is not a denylist.
+
+**And the process rule that would have made it cheap regardless:** run the probe against a scratch
+copy of the tree, or with the tree committed.  My tree had ~400 lines of uncommitted work at the time.
+A checkpoint commit before running any tool that executes repository scripts costs nothing.
+
+**Second-order:** I had already recorded, the same session, "do not edit the tree while `make verify`
+is running" for the mirror-image reason — `mutant-check` patches by exact-text anchor.  Both entries
+are the same fact from opposite ends: **the mutants are executable code that edits the tree, and
+anything that runs them owns that.**
+
+**ADDENDUM, same day — the fixed probe still is not the gate, and I over-trusted it again.**
+
+With `write_text` stubbed the probe is side-effect-free and correct about what it measures: does
+this mutant's anchor still MATCH. It says nothing about whether the result COMPILES. Two mutants
+(`mA3`, `m91`) matched cleanly and broke the build, because my own edits had removed the only OTHER
+use of a variable the mutation deletes — `card` in `silenceTheProgramme`, and `OnAir()`'s old
+signature in `settle`. The gate caught both and reported them the right way: *"makes the tree
+uncompilable, so its verdict is no evidence either way."*
+
+**The rule:** the probe is a CHEAP PRE-FILTER for stale anchors, not a substitute for `mutant-check`.
+Anchor-matches is a necessary condition, never a sufficient one. Compile-checking every mutant costs
+roughly what the gate costs, which is the point — there is no cheaper honest version, so do not claim
+one.
+
+**And the shape it reveals is worth its own line:** a mutation that DELETES a statement is coupled to
+every other use of the names in it. When a refactor removes one of those uses, the mutant stops
+compiling rather than stops being true — so a mutant that deletes should prefer `_ = x` over deletion
+where a name would be orphaned. `mA3` reads better for it: it now mutates whether the card leaves the
+air, rather than whether the line exists.
+
+---
+
+## 2026-09-11 — D-83: a follow-up row that was accurate when written and wrong when read
+
+**The catch:** F-84 said the LIVE card had no words because *"`Card` carries a `Subject` and a
+`Headline` and no words."*  That was true the day it was filed and stopped being true at T3.8, when
+`Card.Script` was added for a different reason.  The row was never revisited, and `readBody` carried
+a comment repeating it.  So a job filed as WIRING was a quarter of the size and purely RENDERING.
+
+**Cost:** none this time, because I checked the claim before recommending the work — but the row had
+been steering priority for two releases as something bigger than it was.
+
+**The shape (new): "a row that was accurate when written."**  This is the harder sibling of "a
+comment is not a fix", and the existing entries do not cover it: those are about a comment that
+DESCRIBES a live defect and stops there.  This one was *correct on the day it was committed* and was
+falsified by an unrelated change, which means re-reading it does not help — only re-checking it
+against the code does.
+
+**How to apply:** before scheduling a follow-up, verify its PREMISE, not just its conclusion.  One
+grep is usually enough (`Card.Script` here).  Rows that assert a structural absence — "X does not
+carry Y", "nothing produces Z" — are the ones that rot, because the absence is exactly what a later
+batch is likely to fill in for its own reasons.
+
+**A second instance in the same batch:** `clearBand`'s comment predicted F-71's trigger as "the
+moment P4 gives the band a second writer."  What actually made it live was a second CARD on the air
+(D-82).  The defect was real and the prediction was wrong, so a reader waiting for the named trigger
+would have kept waiting.  **A follow-up should say what BREAKS, not what it is waiting for.**
+
+---
+
+## 2026-09-11 — and the plant that survived said the same thing about my own tests
+
+`mN5` blanks `readBody`'s call to the script window.  Every test written for D-83 stayed green,
+because all of them call `scriptWindow` directly — the wiring between the two was covered by nothing.
+
+That is P-1, and it is **exactly the state F-84 described**: a window built to the right size with
+nothing putting words in it.  I had reproduced the defect's shape in the tests for its fix.
+
+**The tell, and it generalises:** when a batch adds a function AND a call to it, the tests will
+naturally be written against the function, because that is the thing with the interesting behaviour.
+The call is one line and feels too small to test.  It is the line that was missing for two releases.
+
+---
+
+## 2026-09-11 — D-84: I explained a mechanism instead of questioning it
+
+**The catch, and the HUM LEAD made it.**  He reported that nothing showed in the cards.  I traced it
+correctly to `onOffered`'s `advances(MainTrack)` gate, confirmed the binary was fine, found a
+genuine secondary defect (the shimmer promising cards on a station that had decided not to produce
+any), and told him to press SHIFT+ENTER.
+
+His answer: *"This is wrong, and it makes it impossible for the Human operator to preview and manage
+the lineup PRIOR to going on the air … otherwise the user might as well just use Observer."*
+
+**The shape (new): "explaining the mechanism instead of questioning it."**  Every fact in my answer
+was true.  The diagnosis was right, the code comment I quoted said exactly what the code did, and the
+reasoning in that comment (DR-3, admission is a promise to read) was sound on its own terms.  None of
+that is the same as the behaviour being CORRECT — and a correct trace reads as a verdict, which is
+what makes this expensive: it sounds like the question has been answered.
+
+**The tell:** I was explaining why the product does something the user did not expect, and my
+explanation was entirely internal — a gate, a predicate, a requirement ID.  **Not one sentence of it
+was about what the operator was trying to do.**  When the whole answer lives inside the machine, the
+question "is this what the surface is FOR?" has not been asked.
+
+**How to apply:** when tracing a "why does it do X" report to a deliberate mechanism, say what the
+mechanism costs the user before saying it is deliberate, and ask whether the ruling behind it was
+made with this case in view.  DR-3's gate was written when the console did not exist; it was never
+wrong, it was answering a question nobody had asked yet.
+
+---
+
+## 2026-09-11 — and the same session: the HUM LEAD's "seemed weird to me" was a real defect in my comment
+
+Fixing D-84 I wrote "PLANNING IS NOT PERFORMING … DR-3 inverted".  He flagged it:
+
+> *"Maybe not, I just say a 'admission is a premise to read' now is inverted - which seemed weird to
+> me."*
+
+He was right and it was not a wording quibble.  **DR-3 is not inverted** — nothing admitted is
+dropped unread, and the line-up built on standby is that promise being KEPT.  What was wrong was the
+INFERENCE, "therefore do not admit while stopped".  Left as written, a reader could have concluded
+admitted cards may be silently dropped, which breaks the requirement the comment cites.
+
+**The shape: a comment that overstates its own change.**  Removing a GUARD is not the same as
+overturning the RULE the guard was justified by, and describing it that way turns a narrow fix into a
+licence.  The honest form is usually one more clause: *"admission is a promise to read — it is not a
+promise to read RIGHT NOW."*
+
+**And the corollary I should have reached for first:** the correct framing was already in the tree.
+`reconcileJoins` had carried it since 0.14.0 — *"a stopped station still has a running order; it
+simply is not reading it."*  Third time this release that the answer was already written down.
+
+---
+
+## 2026-09-11 — F-95: the defect was in the one line no test drove
+
+**The catch, and the HUM LEAD made it twice.**  `StartSource` halts whatever it is replacing before
+arming the new source, and `halt` ends with `set(Status{State: Stopped})`.  `readCard` arms its
+session before that call — it has to, or a status lands with nothing listening — so every read was
+ended by the halt of the source it displaced, **one millisecond before its own audio started**.
+
+**How it was found: by RUNNING it (P-6).**  Two rounds of reasoning about the call chain produced
+four plausible hypotheses and no answer.  A twenty-line probe that drove the real reader over a real
+engine produced the answer in one line — `ok=false after 1ms`, on a `Stopped` whose `Name` was empty,
+which is a status for a source that was not this one.  **A chain traced in one direction is not a
+measurement**, and this is the second time this release that sentence has been the whole lesson.
+
+**Why it shipped — and this is the part worth keeping.**  Every test of the reader drove the bench's
+FAKE `read` seam.  Those tests are RIGHT for what they assert: which lane performs a card, what comes
+home, what a mute does.  None of them could see the real path, because the real path starts where the
+fake begins.  **P-1, third instance in one session** (`mN5`, the D-83 window; the D-84 vacuous
+running-station test; this).
+
+**The shape, stated for the skill:** *when a batch introduces a SEAM and the thing behind it, the
+tests will land on the seam.*  The seam is where the interesting decisions are and it is cheap to
+drive; the thing behind it needs a device, a network or a host capability, so testing it feels like
+integration work and gets deferred.  **The deferral is the defect.**  The three instances this
+session all have that shape and all three shipped something the unit tests could not see.
+
+**How to apply — and it is cheaper than it looks:** make the real path drivable by injecting the
+capability rather than the behaviour.  `voiceFor` is one field; with a silent voice and a draining
+output the real reader runs on any host in 50 ms and needs neither `say` nor a sound card.  Compare
+that to what the alternative cost: two UAT rounds and a HUM LEAD reporting the same symptom twice.
+
+**And a seam that answers half a question is not a seam.**  The first version of `voiceFor` covered
+the root voice only, and the cast RESOLVER overrode it the moment the Source asked who reads a role —
+the end-to-end test failed with "limited voice is not wired".  `NewSource`'s contract says the root
+voice reads every role UNTIL a resolver is installed, and `readCard` installs one unconditionally, so
+half the seam was moot by construction.  `readCast` now answers both halves in one place.
+
+---
+
+## 2026-09-11 — D-86: registering a contrast pair is a global change, and I found out from a golden
+
+**The catch.**  Adding two background tokens for the Broadcaster's cards, I registered `TextBase`
+against them in the AA table — which is what the completeness gate demands.  Four of Observer's
+goldens then drifted.
+
+**Why:** `withAA` lifts a foreground until it reads on EVERY ground it is registered against.
+Registering a pair does not merely MEASURE it; it changes the token, everywhere that token is
+painted.  The register's own comment says so — *"what the AA gate checks and what registration
+lifts"* — and I read it as one thing rather than two.
+
+**How it was found, and how it was sized:** the goldens said something moved; a twenty-line probe
+dumping every token per theme, with the registration and without, said exactly WHAT — two tokens in
+two themes, `TableMuted` 143→152 in Watchpost and `TextBase` 247→170 in Solarized Night.  Without
+that measurement the choice was between reverting the feature and updating four goldens on a hunch.
+
+**The rule:** a surface that introduces a background introduces a FOREGROUND TOKEN OF ITS OWN unless
+it can show the shared one does not move.  The console's cards carry `CardText`; the rail did not
+need one, and that was *measured*, not assumed — `GroupText` survived because the rail's grounds were
+derived from the Group bands' own family rather than picked.
+
+**The generalisation worth keeping:** *shared-token registries make local changes global.*  The AA
+register, the category registry, the glyph set and the effect set all have this property in this
+codebase — adding a member is cheap, but binding an EXISTING member to a new context changes it for
+every old one.  The tell is "I only added a row", and the check is to diff the resolved values before
+and after.
+
+**And a recorded lesson was applied rather than re-learned:** `mR4` failed to compile because it
+orphaned a variable — the exact shape `mA3` cost a gate run for, with the fix (`_ = x` over deletion)
+already written in this file.  That is the first time this session an entry here saved the cost
+instead of recording it.
+
+---
+
+## 2026-09-11 — D-87: two carriers of one fact, and the tests held the working one
+
+**The catch, and the HUM LEAD made it from a screenshot.**  The console's data stamp read
+`DATA PULLED: Friday September 11, 2026 @ 17:44:56` with no `(2 MIN AGO)` after it.  The age is the
+half that tells an operator whether to trust a report before putting it on the air.
+
+**The cause:** `Broadcaster` has BOTH a `now` field and a `clock()` method that falls back to
+`time.Now`.  Production sets the method's fallback and never the field.  I wrote the stamp against
+the FIELD — so it worked in every test, because every test injects a clock, and failed in the only
+place it mattered.
+
+**The shape (a sharper form of one already here):** *two carriers of one fact, where the tests
+naturally reach for the one that works.*  A test injects a clock because it must be deterministic;
+that injection is exactly what makes the field non-nil.  So the defect is invisible **by
+construction** to the tests, not by oversight — no amount of care in writing them would have caught
+it.  What catches it is asking "what does PRODUCTION pass here", and the answer was one grep away.
+
+**How to apply:** when a type offers both a raw dependency and an accessor over it, the accessor
+exists *because* the raw one can be absent.  Reading the field is then always a bug, and the accessor
+should be the only exported route — `clock()` was already that, and I simply did not look for it
+before adding a parameter.
+
+**The same batch, the same shape, caught by a gate instead:** the card's title lost its KIND because
+I asked the producer's headline for something the SLOT REGISTRY owns.  Two owners again — "what a
+card is about" and "what kind of card it is" — and the one I picked was the one that happened to be
+in hand.
+
+---
+
+## 2026-09-11 — and a test that could not fail, for the third time this session
+
+`mT3` tags EVERY segment of a report instead of the first, which would list one source nine times and
+push the others off the card.  It SURVIVED — because my fixture's product was short enough to produce
+a single segment, so "the first" and "every one" were the same thing.
+
+**Three instances in one session** (`TestARunningStationDoesNotRefresh…`, the D-83 window's `mN5`,
+this).  The pattern in all three: **the fixture was the smallest one that exercised the happy path**,
+and the rule under test only differs from its mutation on a LARGER input.  One card on a running
+station is read immediately; one segment is always the first.
+
+**The cheap defence, now applied:** make the test assert its own premise before asserting the rule —
+`if forecastSegs < 2 { t.Fatalf("with one, this test cannot fail") }`.  It costs two lines and it
+converts a silent false pass into a loud fixture failure.
+
+---
+
+## 2026-09-11 — D-88: joining an existing gate set found three defects in one minute
+
+**The decision:** the Broadcaster's card window is a **Dashboard** window, though the console owns
+every byte of its content.  The console builds; the Dashboard draws.
+
+**The reason is not tidiness, it is coverage.**  Five gates hang off `Dashboard`'s window enum — every
+one of them DERIVES its subjects from that enum rather than from a list somebody maintains.  A
+console-private window would have been outside all five on the day it shipped, and nothing would have
+said so.
+
+Registering it took one line.  Within one test run, three of the five reported a real defect:
+
+1. **`handleNav` routes arrows by a hand-written list of modals.**  A window missing from it does not
+   merely fail to scroll — its arrows fall through to the TABLE UNDERNEATH, which is the exact D-58
+   violation the reachability gate exists to catch.  Four lines unreachable at 80x24.
+2. **The margin survey** reported the window running into its right border by one column, because the
+   table was laid out at the manifest's 78 instead of the window's own `85 - 2 - 3 - 3 = 77`.
+3. **The `--ascii` parity gate** found a design flaw, not a typo (below).
+
+**The shape:** *a gate set is an asset, and the cost of a parallel one is invisible at the moment you
+create it.*  Every argument for a console-private window was about ownership — and ownership was
+already satisfied by the console owning the CONTENT.  What the shared set owns is the QUESTIONS.
+
+---
+
+## 2026-09-11 — a flaw that production cannot reach is still a flaw
+
+The card window's first design handed over a finished `[]string`, built with the **console's** glyph
+`Opts`.  The `--ascii` gate flips `cfg.ASCII` *after* building its fixture, and the window came back
+carrying `•` in its title and `↑↓` in its chips — neither with an ASCII form.
+
+**In production the two can never disagree.**  `NewRouter` copies `cfg.ASCII` into the console once,
+at construction, and nothing writes it again.  The failing case is unreachable by any sequence of
+user actions.
+
+The fix was still to remove it — the window now holds a **renderer**, `func(render.Opts) (string,
+[]string)`, asked at draw time — because "unreachable today" is a property of the current call graph
+and not of the design.  The same reasoning is already written down for `cfg.Version` in
+`nestedExcuse`, and the difference is instructive: there the excuse is RECORDED, with the argument,
+in the gate that would otherwise have flagged it.  An unreachable flaw either gets removed or gets
+written down where the next reader will find it.  What it must not get is silence.
+
+**The second-order win:** chasing the glyph forced the window's identity off the rendered title and
+onto `Card.ID`.  Matching an open window by its *appearance* would have lost the card the moment
+anything about that appearance changed — including the very `--ascii` switch that started this.
+
+---
+
+## 2026-09-11 — "a hand-written list" is now a recognised smell, and it has a fix
+
+Three separate hand-written lists have been touched this session, all of the same shape and all with
+the same failure mode — a member added to the world is not added to the list, and the omission is
+silent:
+
+- `modalLines`' default arm (fixed earlier: every window has a case, `modalNone`/`numModals` named,
+  no default);
+- `reachabilityBaseline` (already fixed: `closedset.EachMember` FAILS on a window with no row);
+- `handleNav`'s "the scrolling windows" (found today, by the gate, not by UAT).
+
+**The fix that works is the closed set**, and the gate that uses it proves it: `reachabilityBaseline`
+cannot go stale, because a window absent from it is a test failure by construction.  The two lists
+without that treatment are the two that were wrong.
+
+**How to apply:** a `switch` over an enum with a `default` arm, or a `map` keyed by an enum with no
+membership check, is a stale list waiting to happen.  Either name every member (and let the compiler
+or `closedset.EachMember` enforce it), or write down beside the list which omissions are deliberate
+and why — `handleNav` now does the latter, because `add` and `remove` are absent on purpose.
+
+---
+
+## 2026-09-11 — D-89: the zero value of an enum is a real value, and it gets drawn
+
+The LIVE slot's empty state was a blank box built from `lineup.Card{}`.  **A zero `lineup.Card` has a
+zero `Slot`, and the zero `Slot` IS `LocationReport`** — so the "empty" box rendered as:
+
+```
+┃   LOCATION REPORT                                           •STANDARD•  [0] ┃
+```
+
+A report that does not exist, graded, with a chip offering to open it.  `[0]` opened nothing, because
+`cardDetail` correctly refuses an undecided slot — which made this **F-97 in miniature, in the release
+that closed F-97**.
+
+**The shape:** *a zero-valued struct passed to a renderer is not "nothing", it is the first member of
+every enum in it.*  `Proposed`, `LocationReport` and `FromObserver` are all zero values chosen
+deliberately — each for a good reason, each documented — and every one of them becomes a visible claim
+the moment a blank struct reaches a drawer.
+
+**How to apply:** "empty" and "the zero value" are different things, and only one of them is safe to
+draw.  A renderer given a blank struct should be given a different CODE PATH, not a blank struct —
+which is what `standbyBox` is.  Where that is impractical, the drawer needs an explicit "is this
+real?" flag, which is exactly what `slotCard`'s `decided` already returns and what this path was
+throwing away.
+
+**It was found by RENDERING IT**, while implementing an unrelated ruling — not by a test, and not by
+UAT.  P-6.
+
+---
+
+## 2026-09-11 — the code you are replacing encodes decisions you have not read
+
+The first draft of the standby box gave the notice to **every read slot**, because the line it
+replaced (`if r.reads && b.power != lineup.Running`) did.  An existing test caught it: a station that
+had just opened reported *"NO REPORTS READ OR ACTIVE IN STANDBY MODE"* in the UP NEXT slot — **the
+slot the Composer is working on right now**.
+
+The old condition was not wrong for what it did (blank both boxes).  It became wrong the moment the
+blank turned into a SENTENCE, because a sentence makes a claim that a blank does not.
+
+**The shape:** *preserving a predicate while changing what it guards is not a safe refactor.*  The
+predicate was tuned to the old consequence.  Widening "draw nothing" to "say nothing is happening"
+changes what the condition has to be true OF.
+
+**How to apply:** when the body of a branch changes KIND — silence to speech, absence to assertion —
+re-derive the condition from the requirement rather than inheriting it.  Here the requirement was
+D-84's, and D-84 puts the Composer on UP NEXT precisely so the line is ready at `SHIFT+ENTER`.
+
+---
+
+## 2026-09-11 — a test that cannot see an escape cannot fail on one
+
+Asserting the standby box's grey initially failed against the rendered frame, because `TintKeeping`
+is gated on `rendering.ColorsEnabled()` and `go test` has no tty.  The first instinct was to drop the
+assertion and check the tone at its seam, the way the existing `cardTone` tests do.
+
+**That would have left the PAINT untested** — the seam would have proved the right colour was
+computed, and nothing would have proved it was applied.  `rendering.SetColorEnabledForTest(true)` has
+been in the package since 0.11.0 and three tests in `radio_panel_test.go` already use it for exactly
+this.
+
+**The shape:** *when an assertion goes quiet, the question is whether it went quiet because the claim
+is true or because the instrument is off.*  A passing test against colour-disabled output is the
+second one, and it looks identical to the first.
+
+---
+
+## 2026-09-11 — D-90: the frequent publisher wins, and it is usually the one that knows least
+
+The console's relay row had two publishers.  One fired on a keypress and knew what the operator had
+chosen.  The other fired **on every settle — every tick** — and published a different fact entirely
+(the Director's watchlist bed ref, where the console's selector walks the station's NWR fence by
+callsign).  So the operator's choice survived for about a second and then reverted, every time.
+
+**The shape:** *when two writers share one output, the outcome is decided by FREQUENCY, not by
+authority.*  The keypress publisher was the authoritative one and it lost every race, not because of a
+bug in either publisher but because there were two.
+
+**What makes this catchable:** the repo had already hit it **one struct field along**.  `noteBedCarrying`
+exists precisely because the selector and the Director both publish `Carrying`, and `bedrelay_test.go`
+has carried a test for that half since D-78 — *"a selector that GUESSED would flicker the row between
+them."*  The RELAY got no such agreement, in the same file, under the same comment.
+
+**How to apply:** the fix for a shared output is not precedence, it is **one owner asked by both**.
+`selectedRelay()` is that owner; `describeBed` asks it.  And when a fix like `noteBed` is written for
+one field of a message, the question to ask immediately is *which of the other fields has the same two
+writers* — the answer here was sitting twelve lines away.
+
+---
+
+## 2026-09-11 — an index cannot say "nothing yet"
+
+The obvious place to keep the operator's relay choice was `bedPick`, the index the selector already
+moves.  It cannot work: **`bedPick`'s zero value is a real relay**, so a station nobody had touched
+would report its nearest transmitter as though it had been selected — claiming a tune that never
+happened.
+
+This is the D-89 zero-value shape again, one day and one package apart: *the zero value of a type that
+indexes into real things is a claim about a real thing.*  The fix both times was to carry the ANSWER
+rather than a pointer to it — `bedRelay string`, empty until chosen — so "nothing yet" has a
+representation of its own.
+
+Kept as mutant `mY4`, because the wrong version is the version anyone would write first.
+
+---
+
+## 2026-09-11 — a fix that makes a second defect reachable should say so
+
+D-90 made the operator's relay choice stick.  It also made a **stale** row possible for the first time:
+Observer's watchlist dwell can re-tune the deck out from under the operator's selection, and the row
+now keeps showing what they picked.
+
+Before the fix the row was wrong all the time, so there was nothing to go stale.
+
+**The shape:** *correctness can promote a latent design conflict into a visible one.*  The two bed
+owners — the station's fence and the monitor's rotation — have never told each other anything; that was
+harmless while the row was simply broken.
+
+**How to apply:** the fix ships, and the newly-reachable conflict is filed as a RULING (F-99) with the
+options laid out and none of them chosen.  Which owner wins is a UX/authority decision, and the standing
+rule is that those are the HUM LEAD's — the job here is to make the fork visible, not to pick a side
+inside a bug fix.
+
+## A fixture that cannot tell apart the two things it relates (2026-09-13, D-122)
+
+**The catch.** `TestTheArrivalsKeyAndTheTieSetsKeyAreTheSameKey` was written to prove that an
+arrival's key and the tie set's key normalise the same way.  It passed.  It also passed against a
+build with the normalisation **deleted** — because the fixture used the bare OID on both sides, and
+`NormalizeID` returns a bare OID unchanged.  The test related two things that were already identical.
+
+**The shape.** *A test of a transformation whose fixture is a fixed point of that transformation.*
+It is a specific case of the recurring one: **an instrument that cannot see the thing it is for.**
+It looks like coverage, it names the right rule, and it discriminates nothing.
+
+**How it was caught.** By the standing rule — prove the measurement can fail before quoting it.  The
+mutation was applied on purpose, the test stayed green, and that green was the finding.
+
+**What fixed it.** The two forms one NWS alert actually takes: the feature URL on the ticker path,
+the bare OID on the location path.  Those are the inputs the normaliser exists for, and the test
+goes red without it.
+
+**The rule worth extracting.** When a test asserts that two paths agree about one value, the fixture
+must differ across those paths in exactly the way the code under test is supposed to reconcile.  If
+the same literal can be used on both sides, the test is pinned to nothing.
+
+## An instrument that mirrors the implementation (2026-09-13, mAA2)
+
+**The catch.**  `TestNoSettingsGroupIsDrawnEmpty` asserts that no settings heading is drawn over a
+group with no rows on this surface (D-92).  It reads a helper, `setupOffers` — and that helper looped
+the groups ITSELF and skipped the empty ones with the same `visibleRowOfGroup` call production makes.
+So the test filtered with the predicate it then asserted on, and never called the window's real
+assembly at all.  Deleting the guard from production changed nothing the test could see.
+
+**What was unprotected.**  Measured, not assumed: on the console `ALERTS - EVENTS` and `WATCHPOST
+RADIO - RELAY REPLAY` are both empty.  Without the guard the operator gets two headings announcing
+categories of settings and showing none of them — with every gate green.
+
+**How it was caught.**  Not by a gate.  `make mutant-anchors` says the mutant still finds its line;
+`make mutant-check` says it still compiles; **neither asks whether anything still FAILS when it is
+applied.**  Only re-running the whole corpus did.
+
+**The shape.**  *A test helper that re-derives production's answer cannot check it.*  The test was
+well written and named the right rule; the fixture underneath it was lying.  This is distinct from
+the other four instrument failures of the same day — those were fixable by writing the test more
+carefully, and this one was not.
+
+**And the second shape from the same re-run: a mutant whose RULE was superseded.**  `mAB1` guards
+D-104, one scroll control spanning both tables; D-106 retired that rule and deleted its detector.  The
+anchor still matches, the mutation still compiles, and it now defends a design the product
+deliberately abandoned.  **Nothing in the toolchain can tell a live rule from a dead one.**  A full
+corpus re-run is the only instrument that sees either shape, which is the argument for making it a
+dated obligation at BUILD exit rather than a thing someone thinks to do.
+
+## A defect that lives in the SET, which no single file shows (2026-09-13, D-125)
+
+**The catch.**  `BedMsg` had three publishers and exactly one of them set `Relays` — the count that
+decides whether the BED control is offered at all (D-117).  The console stores the whole message, so
+either of the other two zeroed the resolver's answer and disabled a bed that was carrying.
+
+**Every one of the three files reads correctly.**  The resolver knows the count and sends it.  The
+selector knows the line and whether it is carrying, and sends those.  The deck's state knows the same
+two.  No author was wrong about what they knew.  **The defect is a property of the set of writers, and
+no single file displays the set.**
+
+**How it was found.**  By a mechanical question asked of the whole tree — *"which messages have more
+than one writer?"* — and then reading the two answers.  Not by reading code for correctness, which
+would have passed all three files.
+
+**The rule worth extracting.**  When a message type has more than one publisher, every field must be
+known to every publisher, or the field belongs on a message of its own.  A field only one writer
+understands is a field the others silently retract.  **The cheap detector is the writer count**, and
+it is a grep.
+
+**And it generalises past messages.**  Two carriers of one fact is this release's most frequent shape
+— D-122's frozen tie, the fire threshold's restated default, the service radius' bounds, and now this.
+Three of the four were found by asking who WRITES a thing, rather than by reading what it does.
+
+## An assertion that is true for the wrong reason (2026-09-14)
+
+**SHAPE.** A test asserts a property that the defect does not violate, passes, and is reported as
+coverage.  It is not a weak test — it is a test of something else that reads like the right one.
+
+**THE CASE.** The caveat under a search field lost its colour on the second line of a wrap.  The
+guard asserted each caveat line `Contains("\x1b[")`.  The panel tints its own background on every
+line it draws, so that predicate is true of every line in the window — including the plain one in
+the screenshot, and including a blank one.  The guard passed against the exact build that was
+reported broken.  Asserting the **italic** instead — carried by the caveat and never by the frame —
+failed against that build and passed against the fix.
+
+**WHY IT KEEPS HAPPENING.** The cheap predicate is usually the first one that comes to hand, and it
+is usually *nearly* right.  Three instances in two days: the stored card ground rather than the
+painted one; `requestBody` pre-wrap rather than the rendered window; the handler rather than the key
+path.
+
+**THE COUNTER, WHICH ALREADY EXISTS AND WAS APPLIED ONE STEP LATE.**  Run the assertion against the
+BROKEN build before believing the green one.  A guard written after a fix has no failing state on
+record, and that is the only evidence that it measures the defect rather than its neighbourhood.
+
+**COST-PER-DEFECT.** One UAT round per occurrence, plus the credibility cost of reporting a fix that
+the HUM LEAD then has to disprove from a screenshot.
+
+## A gate that is only clean because a different gate ran (2026-09-15)
+
+**THE CATCH, and it was the HUM LEAD's:** *"This sounds like our hygiene process has failed, we
+should never get to a point where there's only 1.5gb free on the drive, as we should be deleting our
+cache and stray binaries once we've recorded our durable results, right?  We have documentation that
+should be prescribing this process."*
+
+**The process had not failed — it had a hole exactly where the largest producer is.**  `make
+mutant-verdicts` compiles the whole tree once per mutant across ~3 hours and called NEITHER
+`cache-clean` NOR `hygiene`.  `mutant-check` does the same volume of compiles and cleans up; the
+sweep beside it did not.  The 2026-09-06 incident that produced the protocol — 274 GB of Go build
+cache, 1.2 GiB free of 926 GiB — was exactly this shape of run.
+
+**WHY IT SURVIVED A WHOLE SESSION UNNOTICED.** The disk was healthy when the question was asked: 263
+GiB free, 2.8 MB of cache.  But that was **luck, not design** — seven `make verify` runs followed the
+sweep, and each one's `mutant-check → cache-clean` swept up after it.  *A gate that is only clean
+because a different gate ran is not clean*, and the measurement that looks like proof of health is
+the thing that hides the hole.
+
+**THE SHAPE, for the skill.** When a protocol is enforced by attaching it to a target, the question
+is never "does the protocol work" — it is **"name every path that produces the thing, and check each
+one is attached."**  Two of three were.  The third was the biggest, and the audit that would have
+caught it is a two-line grep: `grep -n cache-clean Makefile` against `grep -n "go test" Makefile`.
+
+**A SECOND GAP IN THE SAME TARGET, in the durable half.**  The protocol is *do the thing → collect the
+results → put them somewhere durable → VERIFY they are there → delete the build variants*.
+`mutant-verdicts` writes to `dist/`, and `hygiene` refuses a `RESULTS` inside `dist/` by design and
+empties everything there but `HYGIENE_KEEP`.  So the sweep satisfied neither half: it deleted nothing,
+and its record — including the `.timings` file the NEXT run's measured ETA reads — sat on a path the
+protocol exists to delete.
+
+**COST-PER-DEFECT.** Zero this time, paid by coincidence.  The full cost is the 2026-09-06 one: a
+contaminated 14.2 s measurement that had to be re-taken, three journey steps failing as data
+conditions, and a day's results thrown away.
+
+### The dry run that was not dry (2026-09-15, same session)
+
+**`make -n mutant-verdicts` RAN THE SWEEP SCRIPT.** GNU make executes a recipe line containing
+`$(MAKE)` even under `-n`, so that the sub-make can be traced — and the whole recipe was one shell
+command, joined by backslashes, with `$(MAKE) cache-clean` inside it.  The script opens its log with
+`: > "$out"` and **truncated the 3-hour sweep's record to three lines** while I was verifying the very
+change meant to make that record durable.
+
+**Recovered only by luck**, from the run's stdout still sitting in a harness task file.  Had the fix
+been in place an hour earlier, the promoted copy would have been the recovery path — which is the
+argument for the change, delivered by its own absence.
+
+**THE SHAPE:** *a dry run that mutates is worse than no dry run*, because it is trusted.  `-n`, `--just-print`
+and their kin are safe only for recipes with no sub-make; the moment one appears, the flag stops
+meaning what it says.  To see what a target does, READ it.
+
+---
+
+# For upstream: red-team and build skill candidates (2026-09-15, 0.16.0 BUILD exit)
+
+**HUM LEAD:** *"'catching consequences of my own remediation' — this is a very common pattern not just
+of this session, but of all agents I use.  This is why the red-team skillfamily exists in A2DH."*
+
+Everything below is from one release and every item names the catch that earned it.  They are written
+as **probes an agent can execute**, not as principles to agree with.
+
+## 0. THE FRAME: a fix is new code, and it arrives with less scrutiny than the code it replaces
+
+The code being fixed was reviewed, tested and shipped.  **The fix is written under time pressure, by
+the person who just proved they misunderstood this area, and is usually merged on the strength of
+"the test passes now."**  In this release the remediation of nine red-team findings introduced three
+new defects, each caught by an automated gate rather than by me:
+
+| The fix | What it introduced | What caught it |
+| --- | --- | --- |
+| Guarding a data race with a mutex | A structural duplicate of `mastercontrol.unhold` | `dupes` |
+| Collapsing that duplicate into `setUnder` | A corpus anchor pointing at a line that no longer existed | `mutant-anchors` |
+| Teaching `TruncateCells` about non-SGR escapes | The cutter and the measurer disagreeing — the exact class behind an earlier UAT defect | Reading the function's own stated contract |
+
+**RULE: remediation is a change, and takes the change's full gate set.**  Not "re-run the failing
+test."  In this session the third one was caught only because the contract was written down IN THE
+FUNCTION; had it been tribal knowledge, the "fix" would have shipped.
+
+## 1. THE DOMINANT FAILURE: a test that cannot fail
+
+**Seven instances in one release, five of them mine, three found only by blind red team.**
+
+- `blocker()` returned one string unconditionally; both its tests asserted that string.  Either would
+  have passed with the entire switch deleted.
+- A bed-ducking test passed because the fixture never set the bed carrying — so the function returned
+  false for a reason unrelated to the defect.
+- A wiring test exercised the SET the fix widened and never asked what the caller had been handed;
+  reverting the wiring left it green.
+- A bold-text test compared against `render.Bold(s)` as a literal, but painting rewrites inner
+  resets, so it failed against a correct build and would have passed against an unpainted one.
+- A centring test ran with colour OFF, where the renderer trims trailing spaces — every row looked
+  right-aligned and the measurement meant nothing.
+- A styling test asserted `Contains(line, "\x1b[")` on a surface that paints every line.
+- A width sweep asserted a contiguous substring across a CENTRED wrap, and reported a correct
+  frame as truncated.
+
+### The probe
+
+> **For every test added or changed in the diff, answer in one sentence: what would this catch?**
+> Then answer the harder one: **is the assertion true for a reason other than the behaviour it
+> names?**  Look specifically for
+> - an assertion satisfied by a CONSTANT (one expected value, asked once);
+> - a fixture that does not put the system in the state the defect needs;
+> - a comparison against a PRE-RENDERED value where the pipeline transforms it;
+> - a global that silences the property (colour off, animation off, clock frozen);
+> - a predicate true of every row/line/case, not only the one under test;
+> - byte offsets used where cells or runes are meant.
+
+### The counter, and it is cheap
+
+> **A test written after a fix has NO FAILING STATE ON RECORD.**  Re-apply the defect — revert the
+> hunk, or flip the predicate — and watch the new test fail.  If it does not, the test is measuring
+> its neighbourhood.  This costs one command and caught three of the seven above.
+
+**Cost-per-defect when skipped:** each of these shipped a defect the HUM LEAD then found in UAT, or
+that a blind agent found at the exit gate.
+
+## 2. A RULE TAUGHT TO ONE CALLER AND NOT ITS NEIGHBOURS
+
+**Both CRITICAL findings at this exit were one root:** a fence predicate was taught to the function
+that AIRS a card and to the one that DRAWS it, and not to the one that PREPARES it, the one that
+decides whether to duck the bed, or the one that counts what is being withheld.  Each of the three
+had a neighbour that was correct, and each said so in a comment describing the hazard it had already
+avoided.  One stalled the hazard rail permanently; one ducked the broadcast for ever.
+
+### The probe
+
+> **Take every predicate in the diff that expresses a POLICY** (a fence, a cap, an eligibility test,
+> a visibility filter).  `grep` for every site that asks a RELATED question about the same
+> collection.  For each, ask: *should this one ask the predicate too?*  A policy with two askers and
+> three non-askers is the shape.
+
+Secondary tell, and it is nearly diagnostic: **a comment on one call site explaining why the rule is
+needed there.**  That comment is evidence the author reasoned about it ONCE, at ONE site.
+
+## 3. A COMMENT THAT WAS TRUE WHEN IT WAS WRITTEN
+
+`app/executors.go` asserted *"Nothing in production constructs either effect … hold(), unhold() … are
+all inert,"* and it was correct at the review that produced it.  A later phase wired it, the comment
+was not revisited, and **a paragraph telling every reader the path could not run sat on that path
+while it ran** — over a critical section and a lock-order warning that had therefore never been
+reviewed as live.  The project's own wiring ledger already recorded the truth.
+
+### The probe
+
+> **Grep the tree for comments asserting ABSENCE** — "nothing calls", "never reached", "not emitted",
+> "no production caller", "inert", "dead". Each is a claim with an expiry date and no test.  Verify
+> every one against the call graph.  Where a ledger or gate already tracks it, the two disagreeing is
+> the finding.
+
+**This generalises past comments:** any documented claim of the form "X never happens" that no gate
+enforces is a candidate.  Prefer converting it into a test; where that is impossible, date it.
+
+## 4. INVALID IS NOT SURVIVED
+
+Two mutations reported SURVIVED and both were **build failures** — deleting the code orphaned an
+import.  A crude harness that counts failing tests reads "nothing failed" as "the rule is unmeasured"
+when the truth is "nothing ran."
+
+### The probe
+
+> **Three outcomes minimum, never a boolean: CAUGHT / SURVIVED / INVALID.**  Any verdict loop must
+> distinguish "the suite failed" from "the suite did not compile" from "the suite passed."  A
+> mutation that does not build is not evidence in either direction.
+
+Corollary, caught twice here: **when writing a mutation, keep the code's imports used** — replace a
+value rather than deleting a call.
+
+## 5. A GATE THAT IS ONLY CLEAN BECAUSE A DIFFERENT GATE RAN
+
+The corpus sweep — the largest producer of build artifacts in the repo — called no cleanup.  The disk
+looked healthy, and that apparent proof of health is what hid the hole: an unrelated gate's cleanup
+had been sweeping up after it.
+
+### The probe
+
+> When a protocol is enforced by attaching it to a target, the question is never *"does the protocol
+> work"* — it is **"name every path that produces the thing, and check each one is attached."**
+> `grep` the build file for every invocation of the producing command and diff against the list that
+> invokes the protocol.
+
+## 6. MEASURE THE PROPERTY, NOT THE ENCODING
+
+Four instances: a token's table value compared against its RENDERED expansion; a bold literal
+compared against painted output where resets are rewritten; a byte index used to measure a column in
+a string containing multi-byte box glyphs; a "does it have colour" check on a surface that paints
+every line.
+
+### The probe
+
+> **Ask what the operator would SEE, then assert that.**  If the assertion names an escape sequence,
+> a byte offset, or an internal representation, ask whether a correct build could fail it and an
+> incorrect one pass it.  Prefer *the last style opened before this text* over *does this string
+> contain that literal*.
+
+## 7. THE FIX THAT MAKES TWO OWNERS DISAGREE IS WORSE THAN THE BUG
+
+A truncator ignored a class of escape; the obvious fix taught it about them.  But its contract was
+*"it measures what `Width` measures,"* and `Width` knew only the other class — so the fix would have
+made the cutter and the measurer disagree, which is the class of defect behind an earlier shipped
+UAT failure.  The bug was real, unreachable, and correctly left alone with the reasoning recorded.
+
+### The probe
+
+> **Before fixing a shared primitive, find its partner** — the function whose answer it must agree
+> with.  If the fix moves one and not the other, it is not a fix.  Either move both in one change or
+> record it as a bounded, named limitation.
+
+**RULE: "unreachable + would break an invariant" is a legitimate DON'T FIX**, provided the reasoning
+is written where the next reader will meet it.
+
+## 8. A DRY RUN THAT MUTATES
+
+`make -n` executes recipe lines containing `$(MAKE)`, so a "dry run" of a sweep target ran the sweep
+script and truncated the record of the previous run.  Recovered only by luck.
+
+### The probe
+
+> `-n` / `--just-print` are safe only for recipes with no sub-make.  **To see what a target does,
+> READ it.**
+
+## 9. WHAT BLIND AGENTS FOUND THAT SELF-REVIEW DID NOT
+
+Two independent agents, given no context, on the axes *code-quality + safety-critical* and
+*docs-quality + project-hygiene*, found **2 critical and 7 important** findings in code that had
+passed 104 gates, a 355-mutant corpus and an all-green `verify`.
+
+**The gates were not wrong.**  Every one of those findings is outside what a gate can express: a rule
+absent from a neighbour, a comment that decayed, a test that cannot fail, a roster that rotted.
+
+**What made them productive, and is worth encoding in the skill:**
+1. **Blind.** No prior context, so no inherited assumption about what was already checked.
+2. **Axed.** Each had two named axes and was told the other agent covered the rest — no overlap, no
+   hedging.
+3. **Told to verify before asserting**, and told a clean report was a valid result.  Neither padded.
+4. **Pointed at the diff**, with the domain's stakes stated in one line (*"safety-critical means a
+   hazard missed, shown as taken, silently dropped, or misattributed"*).
+5. **Given the known failure shapes to hunt** — including "tests that cannot fail", which is how one
+   of them found `blocker()`.
+6. **Fenced off the expensive gates**, so they spent their budget reading rather than waiting.
+
+**And the honest counter-observation:** the docs/hygiene agent's single most valuable finding was
+that **the tree was uncommitted** — the release being judged was a working tree, and 88% of the
+build log existed only on disk.  No code-quality axis would have found that.  *The axes are not
+decoration; the second agent found the thing the first could not see.*
+
+---
+
+## Not a new rule: `AP-HIST-01` already existed, and two mechanisms that should have caught it did not
+
+**HUM LEAD, 2026-09-16:** *"Historical comments are an anti pattern."*  Then: *"I think something
+like this is already there - we should check and see."*  It was.
+
+**The rule is `AP-HIST-01`**, in `02_skills/implementation/common-anti-patterns/SKILL.md`: *"Write
+comments that describe what the code does and why NOW. Never narrate what it used to do."*  It is
+cited by `code-documentation`, by `semantic-code`, and by the red-team axes.  The thin install's own
+routing table points at it by name.  **Nothing needed to be added upstream.**  The observation worth
+recording is why it was violated 29 times anyway, in one remediation pass, across 20 files.
+
+### 1. The author-time skill was never loaded
+
+`AP-HIST-01` is an AUTHOR-TIME rule, and the harness routes to it on the phrase *"history in
+comments"* — which only helps an agent that already suspects the problem.  Nothing in the BUILD
+loop put the anti-pattern catalogue in front of the author BEFORE writing.  **The trigger that
+matters is not a topic, it is a moment:** rewriting a comment during remediation is when
+commit-message prose migrates into the source, because the correction is what is in the author's
+head.  A skill that loads on "I am fixing a comment a review flagged" would have caught all 29.
+
+### 2. The detector existed and was bypassed — by me, not by the tool
+
+`axes/code-quality.md` asks, in as many words: *"Do comments describe current state, not history
+(catalog `AP-HIST-01`)?"*  Two blind code-quality agents ran over this surface and neither reported
+it, because **I wrote their briefs by hand instead of using the axis files.**  The HUM LEAD's
+standing instruction for these rounds is *"Use the A2DH axes and personas (do not ad-lib)"*, and an
+ad-libbed brief is a brief with the catalogue silently removed from it.
+
+**The lesson is about the harness, not the rule:** a red-team axis is only as good as the prompt that
+carries it, and an agent that composes its own prompt will reliably reproduce its own blind spots —
+it cannot ask about a defect class it has forgotten exists.  *The axis files are the memory; writing
+a fresh brief throws it away.*  This is the second time in one release that hand-composing a
+supposedly-standard instrument removed something load-bearing from it.
+
+---
+
+## For upstream: a check is scoped to the artefact, never to the session
+
+**HUM LEAD, 2026-09-16**, on a lint narrowed from whole-file to added-lines-only after it reported
+110 violations:
+
+> *"We should not allow anti-patterns to exist simply because it pre-dates the session… It doesn't
+> matter WHO or WHEN - it becomes our responsibility as contributors / maintainers of the code to
+> leave the place in a better state than we found it. That should be a standing principle for all
+> skills and mechanical checks."*
+
+**The rule for the skill:** every lint, gate, red-team brief and trace asks *"does this artefact
+contain one"*, never *"did this change introduce one"*. Default to the whole tree; exclude only what
+is genuinely not ours to rewrite, and send that upstream instead.
+
+**The failure mode it closes, recorded because it is subtle and I walked straight into it.** A new
+check reports a large number. The author reframes the scope as a design flaw — *"it greps whole
+files, so it reports pre-existing lines as if they were mine"* — narrows it to added lines, and the
+count drops from 110 to 46. Nothing was fixed. The reframing arrives **dressed as good engineering**
+("report only what this change introduced", "keep the signal actionable"), which is precisely what
+makes it hard to notice: it is the same sentence a reasonable person would write for a good reason.
+
+**So the test for it is not the reasoning, it is the direction.** A scope change made *after* seeing
+a count, that *reduces* the count, is a defect until proven otherwise. The honest version of
+"actionable" is tranches with the check **already blocking**, never the check weakened until the
+backlog is gone. A "baseline of known violations" is the same move with a file attached: it converts
+a defect list into a permanent allowance.
+
+**And it generalises past lints.** The same instinct scopes a red-team brief to "the changes I made",
+a mutant corpus to "the rules I added", and a requirements trace to "the requirements this release
+touched" — each of which hides exactly the class of defect that predates the author and therefore has
+had the longest time to do damage.
+
+---
+
+## A blind reviewer finds what the brief asks about, and nothing else
+
+**The catch.** Two agents were dispatched at 0.16.0 BUILD exit with a brief composed from memory,
+and neither reported a single `AP-HIST-01` — an anti-pattern the red-team skill's own code-quality
+axis names in so many words. The tree held 194 of them. The reviewers were not wrong; they were not
+asked.
+
+**The gap upstream.** li-A2DH's red-team skill requires every dispatch prompt to "satisfy the
+Subagent Prompt Discipline" and ships no template that does. A requirement with nothing to point at
+is a requirement met from memory, and memory supplies whatever was most recently worked on — which
+is the one area a blind reviewer adds least to.
+
+**The fix, and the shape worth extracting.** `06_docs/red-team-brief.md` is the template, with the
+four axes reproduced rather than linked so a contributor without the harness can still run the review
+the project expects. Two rules in it earned their place here:
+
+- **Every axis question is answered by name, in order, including the ones that found nothing.** A
+  question silently skipped is indistinguishable in the report from a question that passed, and the
+  two are not the same result. This is the specific thing that would have caught the miss above.
+- **Where a rule is mechanically decided, say so in the brief.** `make lint-authoring` decides
+  `AP-HIST-01`, `AP-DEAD-01` and `SN-02`, so a reviewer reporting one is reporting that the lint is
+  off. Their attention belongs on the larger class the tool cannot see: a comment that is not
+  narration but is simply WRONG.
+
+**Cost per defect.** The template is one page and is reused every round. The ad-libbed brief cost two
+full agent dispatches that returned nothing on an axis with 194 findings sitting in it.
+
+---
+
+## A lock, because `pgrep` does not answer the question it was asked
+
+**The catch.** Four times this release, uncommitted work was destroyed by an edit landing inside a
+mutant sweep's edit-gate-revert cycle. The guard in place was a name-matched process search before
+touching the tree. It does not work: killing a sweep's parent leaves its `go test` child running,
+and a search for the parent's command line does not see the child — which then reverts the next
+edit with the mutant, and reports nothing, because reverting is what it is for.
+
+**Why a lock and not more discipline.** The operations genuinely cannot share a working tree:
+`verify` cleans the build cache and then measures, and a concurrent `go test` voids the run while
+still reporting exit 0. An advisory `flock` is held by a PROCESS, so an orphaned child still holds
+it, and the kernel releases it however the holder exits — so a crash cannot wedge the tree, which is
+the failure mode that makes people stop using lock files.
+
+**It refuses rather than queues.** Two overlapping gate runs are not slow, they are wrong, and a
+caller that waited would hide that from whoever started the second one.
+
+**The shape worth extracting: the self-test takes a lock of its own.** A lock that never locks
+passes every optimistic test — `acquire` still returns a file, the command still runs, every gate
+still goes green, while two sweeps edit one tree. So the assertion is a SECOND PROCESS being refused
+while the first holds, checked by actually starting one. And because the self-test points at a
+temporary path via an environment variable, it runs as a gate INSIDE a verify that is already
+holding the real lock. A self-test that could only run on an idle tree would be a self-test that
+never ran when it mattered.
+
+---
+
+## A gate that never ARRIVES is invisible to a rule about gates that LEAVE
+
+**The catch.** `make p10` was declared "must fail loud, never skip", was RED on a clean tip, and
+appeared in `verify`, `ci.yml` and `required-gates.txt` **zero times**. Two full `make verify` runs
+reported ALL GATES GREEN over it, and the check written expressly to stop a gate existing without
+running could not see it.
+
+**Why it could not.** `TestGateListsAgree` compares `verify` against CI. A gate on *neither* list is
+invisible to a comparison of the two. The junior reviewer who found it said it best: **"`required-gates.txt`
+makes a gate need three edits to LEAVE; it has no answer to one that never ARRIVES."**
+
+**The fix, and the shape worth extracting: ask the ARTEFACT, not the list.** `TestEveryGateShapedTargetIsListedOrExempt`
+reads the Makefile and asks which targets *run a check* — a script under `scripts/`, a `go test`, a
+tool self-test — then requires each to be listed or to carry a written reason. On its first run it
+found seven more gaps, including that `required-gates.txt` was itself missing three gates `verify`
+actually runs, and that `dupes-selftest` passed while nothing invoked it.
+
+**This is the same shape as the tracked-binary gate on the same day**, and that is why it is worth
+recording as a shape rather than two incidents: *a list of names cannot cover the case it was not
+written for, and the case it was not written for is the only one that ever asks it anything.* The
+durable form of a check is one that enumerates from the artefact — the git index, the Makefile, the
+AST — and treats the hand-written list as the exception table, not the source of truth.
+
+---
+
+## The denylist that narrated the incident, one tool before repeating it
+
+**The catch.** A 4.7 MB Mach-O binary was committed at the repo root — `go build ./tools/<x>/` drops
+its output in the working directory and `git add -A` sweeps it in. It was the largest file in HEAD and
+survived two full `verify` runs, because nothing looked at the index.
+
+**What makes it worth recording.** `.gitignore` already carried a six-name denylist and a paragraph
+narrating *the previous occurrence of this exact defect*, one tool earlier. The author who committed
+the second binary had read that paragraph. **Knowing about a failure mode, in the file where it is
+documented, at the moment of committing it, prevented nothing.**
+
+**So the lesson is not "be careful with `git add -A`".** It is that a denylist is a record of past
+incidents wearing the costume of a control. It cannot name a tool that does not exist yet, which is
+precisely when a new tool arrives and asks it. `TestNoTrackedBinaries` asks the index for executable
+magic instead, and found a second undeclared payload on its first run.
+
+**Cost per defect:** thirty lines of Go against a 4.7 MB blob in permanent history — which, had it
+been pushed, would have been unrewritable without a force-push nobody wanted.
+
+---
+
+## Three juniors are an instrument; one junior is an opinion
+
+**The method.** Three blind agents, same brief, same hypothetical ticket, no shared context; then each
+was given the other two's reports and asked how they would land the change *together*, with an explicit
+instruction not to converge for the sake of agreement.
+
+**What the independent phase bought.** Unanimity is evidence. All three reached the same package
+comment by grep after failing to find it through the documentation, all three lost time to the same
+stale doc opener, and all three named the same missing walkthrough. One reviewer reporting that is a
+data point; three reaching it separately is a measurement.
+
+**What the collaboration phase bought, and it was more.** The juniors corrected each other in ways no
+single reviewer could:
+
+- One proposed raising a ratified cap — the only change in the round that would have broken a written
+  ruling. Another caught it by reading four lines further into the same file, where the reason was
+  stated *and its test fixture was named for the exact hypothetical ticket*.
+- Two independently reached for the wrong registry to derive a hand-written list; the third knew why
+  it was wrong (the list holds cast rows, not report kinds).
+- One asserted a gate caught the empty-branch case; another read the tool's source and proved it did
+  not. **The disagreement is what produced the finding** — both reviewers had been confident, and the
+  one who checked was right.
+
+**The shape:** ask independently, then make them argue. Convergence across isolated reviewers measures
+the repository; disagreement between them measures what the repository fails to RULE. The second is
+the more actionable half, and a single reviewer cannot produce it at all.
+
+**And the brief is the instrument.** The question that produced the most was not "find defects" but
+**"which of your own mistakes would the tooling catch, and which would reach a reviewer?"** — asked of
+someone who had to plan a real change first. Every reviewer answered it concretely, and two of the
+three findings that closed this round came out of that question rather than out of reading the code.
+
+---
+
+## The defect lives inside its own guard
+
+**Five instances in one day**, every one found by a blind reviewer and none by a gate:
+
+1. The test whose purpose is stopping two lists from disagreeing carried a hardcoded second copy of
+   one of its own lists.
+2. The gate written to catch *"controls that exist and are not run"* did not check that a control runs.
+3. Its fix scoped which targets are read, and still counted a **commented-out** line as a control.
+4. The guard written to close the empty-branch hole **has** the empty-branch hole — a one-character
+   `:=` shadow passes it, and the whole package suite stays green.
+5. The reason-floor test, written to close the exemption tables' last hole, is itself a hand-written
+   enumeration whose own subject check cannot fire.
+
+**The mechanism, and it is not carelessness.** The author who has just understood a defect class well
+enough to build a detector for it is, at that moment, the person least able to see a member of that
+class in their own code. The understanding and the blindness come from the same place: the class has
+been compressed into a rule, and the rule is now being applied outward, not inward.
+
+**So the countermeasure is structural, not attentional.** Telling the author to look harder does not
+work — they did look, and they built a detector. What works is a different reader, and specifically
+one who is told to CONSTRUCT the defect rather than read for it. Every reviewer who built the attack
+found something; every finding that came from reading alone was weaker.
+
+**The corollary for gate code:** a gate is the one artefact where the author's blind spot and the
+artefact's subject are guaranteed to coincide. **Gate code should be adversarially reviewed by
+someone who did not write it, as a rule, not as a courtesy.**
+
+---
+
+## A remediation loop that is not converging should be stopped, not continued
+
+**The evidence.** Three consecutive rounds on one surface. Round 1 found gates that did not exist.
+Round 2 found gates that could not fail. Round 3 found that the fixes from round 2 could not fail —
+and one round-3 fix made things actively worse, adding a conjunct that narrowed a working scan and
+reinstated a hole the pre-fix version had caught.
+
+**The defect count per round did not drop.** That is the signal, and it is available early: not "are
+we finding defects" (always yes) but "is the rate falling". A fourth round would have found defects
+in the third round's fixes, and the honest read is that the layer needed consolidation and deletion
+rather than another layer.
+
+**Why it is hard to notice from inside.** Every individual round looks like progress — real defects
+found, real fixes made, each verified. The failure is only visible in the derivative, and the person
+writing the fixes is measuring the integral.
+
+**The related trap: "verified" means "verified against the spelling I thought of".** One finding was
+closed three times. Each time a real attack was constructed and really did fail the gate. Each time a
+cheaper spelling was never tried — and the third time, a junior reviewer found it in minutes by
+trying the key in a different position. Two documents still claimed both attacks were verified.
+**A verification is only as wide as the adversary's imagination, and the author is the worst
+available adversary.**
+
+---
+
+## Derived gates survive attack; listed gates do not
+
+Across a seven-reviewer adversarial round against a freshly built gate layer, the result split
+cleanly along one line:
+
+- **Every gate that enumerates from the artefact held** — the git index, the Makefile, the AST, the
+  registry's own const block. Reviewers attacked them and reported them sound.
+- **Every gate with a hand-written list was defeated**, usually in one line, usually by adding a row
+  rather than by attacking the logic.
+
+Eight exemption tables had accumulated across three files. Each was individually justified; together
+they were an attack surface, and they grew fastest in the rounds where gates were added quickest. The
+junior reviewer's formulation is the one to keep:
+
+> *"Every table is a one-line escape, and the only thing standing behind it is a reviewer noticing a
+> plausible sentence. The gates that would be hard to silence — the derived ones — are the ones with
+> no table."*
+
+**The rule to extract:** an exemption table is a cost, not a feature. If a check needs one, the reason
+string must be mandatory and machine-checked for staleness in BOTH directions, and the number of
+tables is itself a metric worth watching. A check that needs no table is worth more than a stricter
+check that needs one.
+
+---
+
+## Observe, don't guess — a semantic question is answered by executing the language
+
+Five blind adversarial rounds against one Makefile gate oracle, and every Critical in every round
+had the same shape: **a semantic question about a language — what runs, what can fail, what is
+reached — answered by pattern-matching the language's source.**
+
+| Round | What was parsed | What defeated it | What replaced it |
+|---|---|---|---|
+| 1 | recipe text, for "can this gate fail?" | `.IGNORE:`, `SHELL := true`, `include`, `ifeq`, `define` — six global constructs the fragment parser never read | run `make <gate>`; read the exit status |
+| 2 | — | red under green (a preflight only the scratch tree fails) read as "can fail" | the positive control: green first, or UNJUDGEABLE by name |
+| 3 | `.PHONY` by name | the recipe one hop along, on a node that was not phony | walk the database |
+| 4 | one status per stub | red-under-red: red when EVERYTHING is red, not because of its own check | paint one key at a time |
+| 5 | recipe text, for "what does this gate reach?" | `$(A2DH)`, `$$(…)`, `$(CURDIR)/`, `$(MAKE) -s`, a pattern rule, two `go run` calls as one key | **the stubs record what ran; the record is the reach** |
+
+Round five is round one again, in the one function execution had not replaced. Parsing was removed
+for "does it fail?" and quietly kept for "what does it reach?" — and the count went 6 → 4 → 3 → 6.
+**A count that rises is the signal to stop and look for one cause**, and there was one.
+
+**The rule to extract:** when a check must answer a semantic question about an artefact written in a
+language (a Makefile, a workflow, a shell script, a Go file), **execute the language and observe** —
+stub what it calls, run it, record what happened. A parser reaches the spellings its author
+imagined; an observer reaches whatever happened. The corollary is the test for whether a check is
+parsing: **can a new spelling of the same thing defeat it?** If yes, it is reading text.
+
+Two things happened on the first observed run of the shipped tree that no earlier round could
+produce: a safety-critical check (`p10`'s `a2dh`) was judged for the first time, because make
+expanded the variable the regex never matched; and a live discard (`A && B || C` on the checksum
+line) was found by the instrument rather than by a reviewer, because a tool that was not on any
+list was recorded anyway. **The mechanism found a defect in the tree it was built to guard, on the
+day it was built, without being told what to look for.** That is what "the rule an agent must
+remember is skipped in some session; the rule make enforces is enforced" looks like in practice.
+
+**Round six, the same day:** a sixth adversary ran twelve attacks and nine survived — every one
+because the scratch tree was EMPTY, so `git diff --quiet && exit 0` ran the checker in the oracle
+and skipped it in CI. Round two had closed "the scratch tree is not the real tree" in one direction
+(a preflight that fails in scratch) and not the other (a predicate that passes in scratch). The
+oracle now runs in a clone of the repository with the working tree over it and stubs by PATH alone;
+the scripts are answered through their `env` shebangs and not one byte of the tree is rewritten.
+**The corollary to "execute the language":** execute it WHERE it will run. A stub is a substitute
+for a command, never for the tree.
+
+**Round seven:** 2 Critical / 4 Important, and for the first time no single cause. The Criticals
+were the tree thesis one step further (the tree as CI has it: detached HEAD, no tags, no ignored
+files) and a count the coverage check had not made; the Importants were joints in the instrument —
+an encoding that was not injective, a key taken from the wrong argument, `\b` where `$` was meant.
+**When the findings stop sharing a cause, the method has held and the remaining work is the
+instrument's own engineering** — which is what the specimen table is for. The count fell 5 → 2.
+
+**Round eight — the count rose, and the look found the threat model.** 4 Critical after 2. The
+findings split into DRIFT (a spelling an author could write without meaning harm — `bash -ec`,
+`-o=`, a dot-named node) and EVASION (a recipe written knowing the oracle exists — a sourced
+script beside a live decoy, a hop through another makefile, a compensating invocation so counts
+agree). The rise was entirely evasion, and evasion is unbounded by construction. **The ruling that
+ended the arms race was a threat model, not a fix**: the mechanism enforces drift and declares
+evasion on every passing run; evasion is a review-lens question. **A rising count under a stable
+method means the adversary has changed class, and the answer is to name the class, not to build.**
+
+**The instrument was Go; its stubs had become shell.** Three rounds slipped ~70 lines of sh into
+string constants and the eighth adversary's Criticals were bugs in that shell. Standing rule
+(HUM LEAD, 2026-09-17): everything is Go unless absolutely necessary, and shell needs a STOP and an
+explanation. The stub is now a small Go program built at test time, every decision a unit-tested
+function, and the rule is a lint (`AP-SHELL-01`) plus a ledger — because, in the HUM LEAD's words,
+*"a memory an agent has to remember is a memory the agent will eventually skip over in some
+session."* The same session produced the second rule: **test and tooling code is a product** and
+gets shipped-code rigor; `tools/gateoracle/` with a `doc.go`, a package boundary and thin callers
+is what that looks like, and `make dupes` caught the first duplicate the move introduced.
+
+**Round nine, the first drift-briefed round:** 1 Critical, and it was a VERDICT the oracle had never
+asked for — a tool's absence. Red-alone proves a check is read; absent-alone proves a check is not
+skipped when its tool is missing. The instrument had three verdicts (green, red-alone, silenced)
+and needed four. **The list of verdicts an instrument gives is itself a subject for the adversary.**
+And a reviewer's Critical was half right: the shipped line it named is loud by accident of a line
+break, which the oracle said and the reviewer did not — the attack list records both.
+
+**The residue is one list** (the toolchain commands to stub), and it is declared with its blind spot
+rather than derived, because the alternative — a PATH with nothing real on it — makes every recipe
+that uses `cat` or `mkdir` UNJUDGEABLE. Every other list in the executed half is gone.
+
+**For li-A2DH:** an instrument-design rule beside INST-1..5 — *a check on a language executes the
+language*; and a review-lens question for any gate — *name a new spelling of the thing this gate
+catches; does the gate still catch it?* This project's `06_docs/gate-attack-list.md` is the worked
+example, and the attack-list-first discipline (write the attacks, commit them, then build) is what
+made the rounds converge once the cause was named.
+
+## A plant that the instrument is designed to ignore is not a plant
+
+REVIEW 2026-09-17, R6. The identity gate's blanket `testdata/` skip was replaced by per-file
+exemption rows, and the plant to prove it — a tracked fixture carrying an address — PASSED. The
+address was `someone@example.org`, and `reservedForDocs` allows RFC 2606 example domains on
+purpose. The second plant, `someone@realmail.net`, was CAUGHT. **The catch:** a plant has to be
+constructed OUTSIDE the instrument's allow-list, or it measures the allow-list and not the check.
+Read the allow-list before choosing the plant's value. The same round, `goimports` resolved a
+missing `tea` import to `github.com/charmbracelet/bubbletea` (the tree uses `charm.land/bubbletea/v2`)
+and wrote 26 lines into `go.mod`/`go.sum` — restored from the index before anything ran. **The
+catch:** an import fixer is a module editor; on a tree with a replaced or forked module path it
+must not be run unattended, and `git status go.mod go.sum` after any formatter is cheap.
+
+## The second owner of a message is where the message is lost
+
+REVIEW 2026-09-17, R2 round two. The fault band was SET through the deck (`deck.escalate`) and
+CLEARED through the executor's publish seam. Every path had a guard and every guard was
+individually right — and a build with no audio (nil deck) swallowed the set while keeping the
+clear, which is the exact defect the remediation existed to remove. A blind reviewer found it
+structurally in under twenty minutes; three rounds of the author's own plants had not, because each
+plant tested one owner. **The shape:** when a state has a SET and a CLEAR, they must travel the same
+seam; two owners is a finding on its own, before any sequence is constructed. The fix deleted the
+second channel outright (the seam, its invariant, its closure, the method and its test) rather than
+guarding it, and the first blind reviewer's remaining design point — carry the state on `Publish`,
+one source — is F-159.
+
+## A privacy claim is held at the writer, not at the caller
+
+REVIEW 2026-09-17, ruling 10. The README says the tower's position is never written to a debug dump.
+The first fix redacted the one diagnostic line a reviewer had named (`needs-read … ref=<lat,lon>`) and
+pinned it with a test of the pure line-builder. The blind reviewer of that commit put the tower on
+the main track, read the log from disk and found six more lines carrying the pair — the Director's
+trace describes every event, effect and card by its key, and a bed that cannot be tuned names its
+target the same way. One line of seven was fixed, and the gate could not see the other six because it
+never read the file. **The shape:** a claim about what a FILE carries is held at the one function
+that writes the file (every pair rewritten there, whatever a caller composed) and gated by a test
+that reads the file back with the sensitive value in play. A test of the builder proves the builder.
+Same round, the same commit shipped with two red tests in the package because only `-run <subset>`
+was run before committing; the reviewer's baseline caught it. **The rule already existed** — full
+gate set on a remediation — and it was skipped for a 110-second package run. Cost of the skip: one
+extra review round.
+
+## A pipeline's exit code is the last command's, and a chain that reads it commits red
+
+VALIDATE 2026-09-18, twice in one hour. (1) `go test ./modes/tty | tail -1 && git commit …` committed
+a red package: the pipeline's status is `tail`'s, and the FAIL line scrolled past. The fix-forward
+was one commit later; the catch was reading the output rather than trusting the chain. (2)
+`grep -c … && git commit … ; git checkout <file>` — `grep -c` exits 1 when a file has no match, the
+`&&` chain stopped before the commits, and the `;`-separated `git checkout` that was meant to undo a
+PLANT undid the uncommitted FIX instead. Nothing was lost except a re-apply, because the test that
+pinned the fix was still in the tree and went red at once. **The shapes:** a verdict is read from the
+test's own line, never from a pipeline's exit; a plant's revert never sits in the same command as an
+uncommitted change (plants only on committed trees was already the rule — the revert landing on a
+working tree that was not yet committed is the same rule, read from the other end).
+
+## A line doing two jobs, fixed for one of them
+
+VALIDATE 2026-09-18. `onTuned` replaced the whole `bed` struct on every `Tuned`; a reviewer found it
+wiping the operator's cut-over, and the fix assigned the three observed fields instead. The next blind
+reviewer found that the same line had been the ONLY place a landed tune cleared its pending ask — so
+the fix made every ordinary rotation raise a false stall thirty seconds after a successful tune. The
+suite could not see it: the landing test ticked at ten times the stall bound, past the dwell that
+issues a new tune and resets the clock, so it passed for the wrong reason (a trap the sibling test's
+own comment named). **The shape:** a wholesale write is a bundle of resets; narrowing it needs a
+reader of every field it used to reset, not only the one the finding was about. And a test that
+proves "not reported" must tick INSIDE the window where reporting would happen; the plant "do not
+clear the ask" SURVIVED the old test and CAUGHT the corrected one.

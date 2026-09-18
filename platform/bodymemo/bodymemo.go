@@ -26,6 +26,8 @@ package bodymemo
 import (
 	"crypto/sha256"
 	"math"
+
+	"github.com/branden-thompson/watchpost/platform/invariant"
 	"sync"
 )
 
@@ -46,8 +48,30 @@ type entry[V any] struct {
 }
 
 // New builds a memo holding at most max entries.
+//
+// A CAP BELOW ONE IS CLAMPED TO ONE AND NOT REPORTED. Returning nil would move a
+// construction-time mistake into a nil dereference at the first read, and a memo
+// is built at start-up where nothing is watching; there is no error channel here
+// to name it on. The bound that CAN break — that the memo never exceeds max — is
+// checked in `Parsed`, against the clamped value, which is the only value that
+// governs eviction.
 func New[K comparable, V any](max int) *Memo[K, V] {
 	if max < 1 {
+		// THE CLAMP IS ALL THERE IS, AND SAYING SO IS THE POINT. An earlier
+		// version called `invariant.Check(false, …)` here and discarded the
+		// error under a comment claiming the violation "appears in the invariant
+		// record". There is no invariant record: `platform/invariant` is
+		// SIDE-EFFECT-FREE — `Check` builds an error and the CALLER'S return is
+		// the recovery — and this function returns no error, so nothing
+		// happened. A check that satisfies a density metric and produces no
+		// observable effect is the proxy-gate pattern this codebase treats as a
+		// defect, and it was added the same day as a fix for that pattern.
+		//
+		// RETURNING AN ERROR INSTEAD WAS CONSIDERED AND NOT TAKEN: a memo is
+		// built at start-up where nothing is watching, and turning a sizing
+		// mistake into a nil dereference at the first read is worse than
+		// clamping. The bound that MATTERS — that the memo never exceeds max —
+		// is checked in `Parsed`, where it can actually break.
 		max = 1
 	}
 	return &Memo[K, V]{max: max, items: make(map[K]*entry[V], 64)}
@@ -78,11 +102,32 @@ func (m *Memo[K, V]) Parsed(k K, raw []byte, parse func([]byte) (V, error)) (V, 
 		m.evictLocked()
 	}
 	m.items[k] = &entry[V]{sum: sum, val: val, used: m.tick}
+	// THE BOUND IS THIS PACKAGE'S THIRD RULE, CHECKED WHERE IT CAN BREAK (P10-05).
+	// OQ-9 states it in the package doc — "It is bounded. At most max entries,
+	// least-recently-used out" — and nothing asserted it: the eviction is
+	// conditional on a miss, so the day that condition is wrong the memo grows
+	// without bound and every observable (a hit returns what a parse would,
+	// parses counts misses) goes on reading correct.
+	//
+	// ON THE MISS PATH ONLY, deliberately. Rule 2 is that a HIT does not parse,
+	// and the providers' allocation pins hold a hit at ZERO — so a check on the
+	// hit path would be measured by those pins rather than by this package.
+	// A miss has already parsed and allocated; this costs nothing it did not
+	// already spend.
+	if err := invariant.Check(len(m.items) <= m.max, "the memo holds at most max entries"); err != nil {
+		return val, err
+	}
 	return val, nil
 }
 
 // evictLocked drops the least-recently-used entry (caller holds mu).
 func (m *Memo[K, V]) evictLocked() {
+	// AN EVICTION WITH NOTHING TO EVICT DELETES THE ZERO KEY, which is silent:
+	// `delete` on an absent key is a no-op, so an empty memo would "evict"
+	// for ever and the caller's bound would never be reached.
+	if len(m.items) == 0 {
+		return
+	}
 	var victim K
 	oldest := uint64(math.MaxUint64)
 	for k, e := range m.items {

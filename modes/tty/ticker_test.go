@@ -183,9 +183,9 @@ func TestExpiredLaneDropsFromRotation(t *testing.T) {
 // THE TAPE REPAINTS THE MOMENT THE CLOCK CHANGES (HUM LEAD, UAT 2026-08-30:
 // "there's a delay").
 //
-// It used to arrive from the app already formatted, so the times on it were
-// written when the ticker last cycled — up to two minutes earlier. Changing
-// Show Time in did nothing until the next cycle, and the band sat there in the
+// Arriving from the app already formatted, its times would be written when the
+// ticker last cycled — up to two minutes earlier. Changing Show Time in would do
+// nothing until the next cycle, and the band would sit there in the
 // old format with no way to tell it had been heard.
 //
 // The item carries the FACTS now and the tape is composed every frame, so the
@@ -219,9 +219,9 @@ func TestTheTapeFollowsTheClockWithoutWaitingForACycle(t *testing.T) {
 // Disasters, Marine a lot").
 //
 // tickerCatIdx indexes the PRESENT lanes, and the present set changes on every
-// publish as alerts arrive and expire. setTicker used to keep the index valid
-// with `idx %= len(cats)`, which silently teleports it whenever the set shrinks
-// — and because Disasters and Marine come from the national feed they are
+// publish as alerts arrive and expire. Keeping the index valid with
+// `idx %= len(cats)` silently teleports it whenever the set shrinks — and
+// because Disasters and Marine come from the national feed they are
 // almost always present AND first in the rotation order, so every shrink
 // dragged the band back onto them.
 //
@@ -318,9 +318,9 @@ func TestEachTickerLaneNamesItselfWithoutColour(t *testing.T) {
 
 // THE BAND'S LANES COME FROM THE REGISTRY, AND EACH IS DRESSED.
 //
-// The rotation used to be a list kept by hand beside the category enum, and a
-// lane missing from it never reached the band however many alerts it held. It
-// is derived now (F-21) — this checks the ticker's view of it holds up: every
+// A rotation kept by hand beside the category enum lets a lane missing from it
+// never reach the band, however many alerts it holds. It is derived (F-21) —
+// this checks the ticker's view of it holds up: every
 // lane it rotates through has a name and a colour, and Forecasts is absent
 // because the marquee is for what is happening (MVS-D-59).
 func TestTheBandsLanesAreDressedAndExcludeForecasts(t *testing.T) {

@@ -97,7 +97,12 @@ func Root(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("cannot locate the module root: %v", err)
 	}
-	for {
+	// THE WALK IS BOUNDED BY THE PATH IT WALKS (P10-02). `for {}` terminated in
+	// FACT — `filepath.Dir` reaches a fixed point at the root and the guard below
+	// catches it — but not in SHAPE, and this is the one loop in the package a
+	// mistake in `filepath.Dir` would hang rather than fail. One separator is one
+	// possible step up, so the count of them is the ceiling.
+	for range strings.Count(dir, string(filepath.Separator)) + 2 {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir
 		}
@@ -107,4 +112,9 @@ func Root(t *testing.T) string {
 		}
 		dir = parent
 	}
+	// THE CEILING IS REACHED ONLY IF THE WALK NEVER TERMINATED, which the guard
+	// above should have caught. Falling out of a bounded loop is the failure the
+	// bound exists to make visible rather than to hide as a hang.
+	t.Fatal("cannot locate the module root: the walk did not reach the filesystem root")
+	return ""
 }

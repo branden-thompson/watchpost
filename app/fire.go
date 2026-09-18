@@ -40,10 +40,10 @@ func fireReportOf(fs snapshot.FireState, lat, lon float64, rules fire.Rules, fir
 		return synth.FireReport{}
 	}
 	return synth.FireReport{Known: true, State: fs, RadiusKm: rules.RadiusKm, IncidentRadiusKm: rules.IncidentRadiusKm,
-		// PER-FEED, not per-report: AsOf is set when ANY fire feed answered, so
-		// with HMS up and WFIGS down the report used to state "no named
-		// incidents" as a fact one sentence after crediting NIFC as a source
-		// (REVIEW red team, 2026-09-08).
+		// PER-FEED, not per-report: AsOf is set when ANY fire feed answered, so a
+		// single flag would have the report state "no named incidents" as a fact
+		// one sentence after crediting NIFC as a source, with HMS up and WFIGS
+		// down.
 		HotspotsKnown: !fs.HotspotsAsOf.IsZero(), IncidentsKnown: !fs.IncidentsAsOf.IsZero(),
 		Sources: fireSourceNames(firmsOK), Lat: lat, Lon: lon}
 }

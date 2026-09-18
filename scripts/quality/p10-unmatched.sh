@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # p10-unmatched.sh — ledger entries that matched no finding (plan §1 "0
 # unmatched ledger entries"; red-team R2-11, SC-1). An exemption that
 # matches nothing is dead ceremony at best and a silenced future finding

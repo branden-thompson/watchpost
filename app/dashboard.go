@@ -79,10 +79,9 @@ func RunDashboard(version string, opt Options) error {
 		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides}
 	lp.attachDiagnostics(ctx, start)
-	idx, idxErr := geodata.Load()                             // ONCE: the resolver and the seed list share it (Q3, L1-F21/L4-F5)
-	resolver, resolverErr := newResolver(client, idx, idxErr) // one resolver serves Resolve and Suggest
-	lp.unknownKeys = append([]string(nil), cfg.Unknown...)
+	idx, resolver, resolverErr := loadGeodata(client)
 	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
+	lp.giveItAStation(cfg, idx)
 	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, setRadius, uiHook(prefs.clock)))
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge
@@ -90,6 +89,12 @@ func RunDashboard(version string, opt Options) error {
 	p, deck, stopRadio := attachRadio(model, client, provider, cfg, tty.ParseRadioMode(cfg.Radio.Mode), lp.fireFor, lp.seismicFor, lp.marineFor) // B4 / UAT 97 / 114 / P4 / 0.14.0
 	defer stopRadio()
 	lp.attachDeck(ctx, p, deck, client, prefs, version, start)
+	// AND THE DECK LEARNS WHO HAS THE AIR (D-74). Wired HERE because the deck
+	// exists from here — and from the owner the Router already maintains, so the
+	// question has one answer and the deck keeps no flag of its own.
+	if deck != nil {
+		deck.air = func() bool { return lp.owner.get() != tty.SurfaceBroadcaster }
+	}
 
 	firstFullNanos := lp.startPipelines(ctx, p, refs, idx, cfg, client, prefs, start)
 	// Cancel BEFORE waiting (red-team 0.9.0 C-2): stopAll waits for every
@@ -97,22 +102,80 @@ func RunDashboard(version string, opt Options) error {
 	// would otherwise sit through pacing waits and retries.
 	defer func() { cancel(); lp.stopAll() }()
 
-	if _, err := p.Run(); err != nil {
-		// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team,
-		// 2026-09-08). Piping or redirecting stdin surfaced "bubbletea: error
-		// opening TTY: … open /dev/tty: device not configured", which names a
-		// dependency the listener did not choose and no step they can take.
-		// Watchpost is a full-screen program: without a terminal it has nothing
-		// to draw on, and the fix is to run it in one.
-		if strings.Contains(err.Error(), "TTY") || strings.Contains(err.Error(), "/dev/tty") {
-			return fmt.Errorf("watchpost needs a terminal to draw in, and this one has no TTY " +
-				"(stdin looks piped or redirected). Run `watchpost` directly in a terminal window; " +
-				"for a one-shot text report that needs no terminal, use `watchpost report`")
-		}
-		return fmt.Errorf("dashboard failed: %w", err)
+	if err := runProgram(p); err != nil {
+		return err
 	}
 	reportTiming(time.Duration(firstFullNanos.Load()))
 	return nil
+}
+
+// runProgram runs the terminal program and turns its failure into one the
+// listener can act on.
+//
+// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), and this file already
+// names the remedy: `tickerState` carries the comment "one owner so RunDashboard
+// stays within its statement budget". The budget drifted back over, so the same
+// answer is applied again rather than the rule exempted.
+//
+// THE TRANSLATION IS THE POINT, not the call. A terminal library's "open
+// /dev/tty: device not configured" names a dependency the listener did not
+// choose and no step they can take; the sentence below names the step.
+func runProgram(p *tea.Program) error {
+	_, err := p.Run()
+	if err == nil {
+		return nil
+	}
+	// AN ACTIONABLE ERROR, NOT THE TERMINAL LIBRARY'S (VALIDATE red team,
+	// 2026-09-08). Piping or redirecting stdin surfaced "bubbletea: error
+	// opening TTY: … open /dev/tty: device not configured", which names a
+	// dependency the listener did not choose and no step they can take.
+	// Watchpost is a full-screen program: without a terminal it has nothing
+	// to draw on, and the fix is to run it in one.
+	if strings.Contains(err.Error(), "TTY") || strings.Contains(err.Error(), "/dev/tty") {
+		return fmt.Errorf("watchpost needs a terminal to draw in, and this one has no TTY " +
+			"(stdin looks piped or redirected). Run `watchpost` directly in a terminal window; " +
+			"for a one-shot text report that needs no terminal, use `watchpost report`")
+	}
+	return fmt.Errorf("dashboard failed: %w", err)
+}
+
+// giveItAStation settles everything the console needs to exist BEFORE it is
+// built (D-72).
+//
+// EXTRACTED AT THE STATEMENT CEILING (P10-04, D-159), and it is a phase rather
+// than a grab-bag: every line here answers "where is this station, and what can
+// it reach", which is the one question `ttyConfig` reads out a moment later.
+//
+// IT CANNOT BE PUBLISHED INSTEAD. The console opens showing where the station
+// transmits from; the program's loop does not start until `p.Run()`, and a Send
+// before then blocks for ever. So it has to be TRUE by now, not announced later.
+func (lp *livePipelines) giveItAStation(cfg config.Config, idx *geodata.Index) {
+	lp.unknownKeys = append([]string(nil), cfg.Unknown...)
+	lp.idx = idx
+	lp.setStation(stationFrom(cfg))
+	// THE BED'S OWN FENCE AND ITS TABLE (D-77/D-78). The table is the embedded
+	// transmitter list; a failure to parse it is a station with no relays to
+	// choose between, which the selector says for itself.
+	if tbl, err := stream.LoadTable(); err == nil {
+		lp.relayTable = tbl
+	}
+	lp.bedRadiusMi = cfg.Broadcaster.BedRadius()
+}
+
+// loadGeodata loads the embedded location index ONCE and builds the resolver
+// that shares it.
+//
+// ONE CONCERN, AND IT ALREADY SAID SO (Q3, L1-F21/L4-F5): the resolver and the
+// seed list read the same index, and loading it twice would be two answers to
+// where a place is. Extracted at the statement ceiling (P10-04, D-159).
+//
+// A FAILED LOAD IS NOT A FAILED START. The index's error travels INTO the
+// resolver rather than out of here — the app runs without it, and the surfaces
+// that need a place say so themselves.
+func loadGeodata(client *httpx.Client) (*geodata.Index, *locations.Resolver, error) {
+	idx, idxErr := geodata.Load()
+	r, err := newResolver(client, idx, idxErr) // one resolver serves Resolve and Suggest
+	return idx, r, err
 }
 
 // tickerState builds the shared [M] mute flag and the alert-radius value, each
@@ -145,8 +208,8 @@ func uiHook(clock *atomic.Int32) func(tty.UIPrefs) error {
 // They travel together because they are one thing — a preference a running
 // pipeline must see change — and because threading a third atomic through two
 // signatures was one too many. The clock joined them at 0.14.0: the ticker
-// builds its tape in this package, so a tape that kept the launch-time clock
-// would be the one surface left writing times the old way.
+// builds its tape in this package, so a tape holding the launch-time clock would
+// be the one surface not following the listener's choice.
 type tickerPrefs struct {
 	muted  *atomic.Bool
 	radius *atomic.Int64
@@ -185,7 +248,13 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 		lp.severe.SetLocations(0, snap)
 	})
 	// UAT 48: 50 most-recent; UAT 96: the saved stack comes back on top, the seeds fill below.
-	lp.recent = startRecent(ctx, p, lp.providers(), restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
+	// THE STATION'S POOL RIDES THE RECENT PIPELINE (D-99). The console's pool table
+	// needs enough weather to decide on a location, and this is the machinery that
+	// already fetches a bounded set at a slow cadence — see withPool.
+	//
+	// `lp.poolRefs` DIRECTLY, not `currentPool()`: the lock is held here.
+	recentRefs := withPool(restoreRecent(refsFromConfig(cfg.Recent), refs, seedRecent(idx, refs, tty.RecentCap), tty.RecentCap), lp.poolRefs)
+	lp.recent = startRecent(ctx, p, lp.providers(), recentRefs, func(snap *snapshot.Snapshot) { lp.severe.SetLocations(1, snap) }) // the tty owns the caps (Q6, L3-F11)
 	lp.mu.Unlock()
 	lp.markFIRMS()                         // unkeyed FIRMS reads "off" in the API status, not "ok" (UAT 100)
 	lp.setWatch(refs)                      // seed the live watchlist the ticker ties events to
@@ -194,15 +263,47 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	if lp.deck != nil {
 		lp.deck.composer = synth.Composer{Scripts: lp.scripts} // the broadcast, the fire and seismic reports and the voice preview speak from the same tree
 	}
+	// AND THE BED LEARNS WHAT ACTUALLY STREAMS NEAR THE STATION (D-117). After
+	// the deck, because it is the deck that holds the resolver; on its own
+	// goroutine, because it is network work and the dashboard must not wait for
+	// it to open.
+	go lp.rebed(ctx)
 	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send) // a read ends with the app (A-08)
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
 	}
-	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.director, lp.scripts, lp.severe) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
+	lp.ticker = startTicker(ctx, p, client, idx, lp.currentWatch, prefs, lp.director, lp.scripts, lp.severe)
+	// AND THE RAIL LEARNS WHAT IT IS SCOPED TO (D-73). Wired after the deck so
+	// the closure can close over the deck's own radius — one function, asked by
+	// both the fence and the feed's filter.
+	// AND THE EFFECTOR LEARNS WHAT THE RAIL IS SCOPED TO (D-75), so the fence
+	// can travel with the air and the rail can be re-tested when it moves.
+	// Wired after the ticker, because the deck's `fence()` is where a scope
+	// becomes a fence — one translation, not two.
+	if mc := lp.masterControl(); mc != nil {
+		mc.mu.Lock()
+		mc.fence = lp.ticker.fence
+		// AND HOW TO SILENCE THE PROGRAMME (F-91). The deck owns the broadcast
+		// engine; MasterControl owns whether the station is broadcasting at all,
+		// and standby has to reach the words that are already going out.
+		if lp.deck != nil {
+			mc.silenceProgramme = lp.deck.stopRead
+		}
+		mc.mu.Unlock()
+	}
+	lp.ticker.setScope(func() airScope {
+		return scopeFor(&lp.owner, func() airScope { return listenerScope(prefs.radius, lp.currentWatch) }, lp.currentStation)
+	}) // 0.12.0: the ticker ties events to the LIVE watchlist (re-homed on every Commit); 0.13.0: and feeds the severe index
 	// The schedule runs from here, over the SAME arbiter and effector the ticker
 	// was just given. It drives the live alert rail since T3.10b — so a
 	// listener notices nothing; T3.2b is the first thing it owns.
-	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.currentWatch, lp.ticker)
+	// TWO LISTS, BECAUSE THERE ARE TWO PROGRAMMES (D-72, D-76). The
+	// STATION's pool is what its Producer offers and what its Composer resolves
+	// against; the LISTENER's watchlist is what the monitor's rotation moves
+	// through. D-72 moved all three seams to the pool and that was two-thirds
+	// right — the cut-over belongs to the monitor.
+	lp.schedule = startSchedule(ctx, lp.director, lp.scripts, lp.ticker.clock, lp.deck, lp.producer(), lp.resolvable, lp.currentWatch, lp.ticker, p.Send,
+		bedSeams{note: lp.noteBedCarrying, selected: lp.selectedRelay})
 	lp.wireDeckWarnings()
 	return firstFullNanos
 }
@@ -213,6 +314,44 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, cfg config.Config, keyOverrides term.KeyMap, resolver *locations.Resolver, resolverErr error, firmsProv *firms.Provider, setRadius func(int), setUI func(tty.UIPrefs) error) tty.Config {
 	return tty.Config{
 		Version: version, KeyOverrides: keyOverrides, ASCII: opt.ASCII,
+		// THE AIR FOLLOWS THE SURFACE (D-73). One rail, one fence, and this is
+		// what moves it between the listener's filter and the station's service
+		// area.
+		OnSurface: lp.takeTheAir,
+		// THE BED'S SELECTOR (D-78), walking the STATION's fence.
+		StepBedRelay: lp.stepBedRelay,
+		// WHERE THE STATION TRANSMITS FROM, AT LAUNCH (D-72). Changes arrive as
+		// a message; this is what the console opens with, because the program's
+		// loop is not running when the pool is first derived.
+		// AND AT LAUNCH, THE SAME PAIR (D-93). `publishArea` covers every later
+		// change; the program's loop is not running when the pool is first
+		// derived, so this is how the console opens with both.
+		// AND THE TWO SETTINGS THAT DERIVE IT (D-115, F-87). The console draws
+		// them and writes them; the app persists and RE-DERIVES, which is the half
+		// the HUM LEAD asked to be able to UAT.
+		// THE OPERATOR'S TWO ACTS ON A CARD (D-118). Told to the schedule as
+		// EVENTS, which is FR-3.3: "an action must never be shown as taken unless
+		// the schedule took it".
+		MoveCard: lp.moveCard,
+		DropCard: lp.dropCard,
+		// THE OPERATOR'S REQUEST, AND THE LOOKUP THAT VALIDATES IT (R4).
+		LocateInRadius:  lp.locateInRadius(resolver),
+		RequestCard:     lp.requestCard,
+		Transmitter:     transmitterOf(cfg),
+		SetTransmitter:  lp.setTransmitter,
+		ServiceRadiusMi: int(cfg.Broadcaster.ServiceRadius()),
+		// THE BOUNDS TRAVEL WITH THE VALUE THEY BOUND (D-124). `platform/config`
+		// owns these two numbers alone. Restating them in the window would put a
+		// test in this package between two copies, and a fact with one owner needs
+		// no such tie.
+		ServiceRadiusMinMi: config.MinServiceRadiusMi,
+		ServiceRadiusMaxMi: config.MaxServiceRadiusMi,
+		SetServiceRadius:   lp.setServiceRadius,
+		StationArea: tty.StationAreaMsg{
+			Transmitter: lp.currentStation().transmitter,
+			RadiusMi:    lp.currentStation().radiusMi,
+			Pool:        lp.currentPool(),
+		},
 		Stats:          lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
 		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
 		EndEventRead:   lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
@@ -288,6 +427,7 @@ func (lp *livePipelines) setWatch(refs []snapshot.LocationRef) {
 
 // tickerAlert is the ticker's breaking-news audio — the radio deck, or nil when
 // there is no audio (a nil deck: tests, no device).
+
 // scriptsDir is where the user's script overrides live: <config dir>/scripts
 // — the same directory as config.toml, a scripts/ folder beside it. "" when
 // the config dir cannot resolve (built-in scripts only).
@@ -342,12 +482,18 @@ func newCoops() (*coops.Provider, *httpx.Client, error) {
 
 // attachRadio wires the player (B4): the model needs the player and the
 // player needs the program to send status back, so the deck is attached
-// to the model first and given the program after. Returns the program,
+// to the model first and given the program after.
+//
+// THE MODEL IS THE ROUTER (P0, FR-1.1). Every sender in this package keeps
+// `p` or `p.Send` UNCHANGED and that is correct, not an oversight: a send
+// goes to the PROGRAM, and the program delivers to whichever model it holds.
+// The plan and its red-team audit both said ~9 senders would need rewiring;
+// measuring it found ZERO. `p.Send` was never model-scoped. Returns the program,
 // the deck (nil when it could not be built) and a stop func.
 func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provider, cfg config.Config, mode tty.RadioMode, fire func(snapshot.LocationRef) synth.FireReport, seismic func(snapshot.LocationRef) synth.SeismicReport, marine func(snapshot.LocationRef) synth.MarineReport) (*tea.Program, *radioDeck, func()) {
 	deck := newRadioDeck(nil, client, provider, render.UnitF)
 	if deck == nil {
-		return tea.NewProgram(model), nil, func() {}
+		return tea.NewProgram(tty.NewRouter(model)), nil, func() {}
 	}
 	deck.voiceID, deck.pref, deck.fire, deck.seismic, deck.marine = cfg.Voice, mode, fire, seismic, marine
 	// The whole cast, from the config: setCast validates it against this host
@@ -372,7 +518,7 @@ func attachRadio(model tty.Dashboard, client *httpx.Client, provider *nws.Provid
 		func(v tty.CastView) error { return saveCast(deck, v) },
 		func(t tty.ToneState) error { return saveTones(deck, toneFromView(t)) },
 		deck.Installed)
-	p := tea.NewProgram(model)
+	p := tea.NewProgram(tty.NewRouter(model))
 	deck.p = p
 	return p, deck, deck.Stop
 }
@@ -435,8 +581,6 @@ func saveRadioMode(mode tty.RadioMode) error {
 	return savePreference(func(cfg *config.Config) { cfg.Radio.Mode = mode.Key() })
 }
 
-// savePreference loads, edits and saves the config — the one path for a
-// persisted UI preference (voice, radio mode).
 // savePreference is the no-error convenience over config.Mutate, for the
 // preference writes that cannot fail. It is an ADAPTER now, not a second write
 // path: it once called itself "the one path" while five siblings bypassed it,
@@ -529,6 +673,57 @@ type livePipelines struct {
 	schedule *schedule       // 0.14.0 T3.2a: the Director, its executors and the pump — running, driving nothing yet
 
 	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit (0.12.0 follow-up)
+
+	// THE STATION'S OWN WORLD (D-72, pool.go). `watchRefs` is the LISTENER's;
+	// these are the Broadcaster's — where it transmits from, how far it reaches,
+	// and the locations its Producer may offer. The two were one list serving
+	// two surfaces, and the station could never schedule more than the listener
+	// happened to watch.
+	idx      *geodata.Index
+	station  stationArea
+	poolRefs []snapshot.LocationRef
+
+	// requestedRefs are the locations the OPERATOR asked for that the pool does
+	// not hold (D-140). The Composer resolves against pool + these; the
+	// Producer still offers the pool alone.
+	requestedRefs []snapshot.LocationRef
+
+	// THE STATION'S BED (D-78): the table its fence is measured against, how far
+	// that fence reaches, which relay the operator has selected, and whether the
+	// bed is carrying as the console last heard.
+	relayTable  *stream.Table
+	bedRadiusMi float64
+	bedPick     int
+	bedOn       bool
+
+	// bedStations is what actually STREAMS near the station (D-117): the
+	// resolver's answer, fenced to the bed's reach, refreshed when the area
+	// moves.
+	//
+	// THE TABLE ABOVE IS NOT THIS. It lists every NOAA transmitter in the
+	// country; being in it says a tower exists, not that anything relays it.
+	// The selector walked the table and the operator could pick a callsign
+	// nothing streams — which then tuned to silence.
+	bedStations []stream.Station
+
+	// bedRefresh is how the relays are re-resolved, and it exists so a test can
+	// see that a moved station DOES re-resolve (D-117). Nil is the real one.
+	bedRefresh func(context.Context)
+
+	// bedRelay is the relay the operator CHOSE, in the words the row shows, and
+	// "" until they choose one (F-98, D-90).
+	//
+	// REMEMBERED AND NOT MERELY PUBLISHED, which is the whole defect: the
+	// selector sent its relay to the console and kept nothing, so the SETTLE —
+	// which publishes the same row from the DIRECTOR's bed on every tick —
+	// overwrote it a second later and the choice reverted to "(no relay tuned)"
+	// whatever the operator picked. `bedPick` is an INDEX and cannot stand in for
+	// this: its zero value is a real relay, so it cannot say "nothing chosen yet".
+	bedRelay string
+
+	// owner is which surface the operator is looking at, and therefore what the
+	// alert rail is scoped to (D-73, airscope.go).
+	owner airOwner
 
 	// Diagnostics (quality pass Q0): the clients whose counters the [S]
 	// modal sums, the typed providers whose memos the dump gauges, the
@@ -643,6 +838,20 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 	if lp.weather != nil {
 		lp.weather.Retain(append(append([]snapshot.LocationRef(nil), watch...), recent...)) // the grid cache follows the location set (Q5, L4-F7)
 	}
+	// THE STATION'S POOL IS DERIVED BEFORE THE LOCK, not inside it: the scan
+	// reads only the embedded tables and its argument, and `lp.mu` is held for
+	// the rest of this function (D-72, pool.go).
+	nextStation, nextPool, restation := lp.reStation(watch)
+	// PUBLISHED AFTER THE LOCK IS RELEASED, which is what this defer buys:
+	// deferred first, it runs LAST, and `tea.Program.Send` must never be called
+	// while `lp.mu` is held — the program's own handlers reach back into these
+	// pipelines.
+	var told *tea.Program
+	defer func() {
+		if told != nil {
+			publishArea(told.Send, nextStation, nextPool)
+		}
+	}()
 	lp.mu.Lock()
 	defer lp.mu.Unlock()
 	if err := invariant.Check(len(watch) <= 10, "watchlist cap is 10 (R-4)"); err != nil {
@@ -664,10 +873,36 @@ func (lp *livePipelines) commit(watch, recent []snapshot.LocationRef) error {
 	if lp.priority != nil {
 		lp.priority.update(watch)
 	}
-	if lp.recent != nil {
-		lp.recent.update(recent)
-	}
 	lp.watchRefs = append([]snapshot.LocationRef(nil), watch...) // re-home the ticker's tie to the new watchlist (under lp.mu, already held)
+	// AND THE STATION FOLLOWS, BUT ONLY IF IT WAS BORROWING (D-72). A station
+	// with a transmitter of its own does not move because the listener changed
+	// what they are watching — that is the split.
+	//
+	// IT MOVES BEFORE THE PIPELINE IS RECONCILED (D-112), because the pipeline's
+	// list is the recent locations AND the pool: reconciling first would fetch the
+	// old station's candidates and then evict them a line later.
+	if restation {
+		lp.station, lp.poolRefs = nextStation, nextPool
+		// TOLD, NOT LEFT TO BE NOTICED. The console draws the transmitter and
+		// the radius and holds neither; a pool that moved without saying so
+		// would leave it naming the region the station just left.
+		told = lp.p // read under the lock; sent above, after it
+	}
+	// THE POOL IS PART OF THE LIST, ON EVERY COMMIT AND NOT JUST AT THE SEED
+	// (D-112). This called `update(recent)` with the LISTENER's list alone, so the
+	// first time anything committed — a lookup, a favourite, a watchlist edit —
+	// `SetLocations` saw twenty-five locations that were no longer wanted, stopped
+	// every one of their schedulers and dropped their data. The pool table went
+	// back to shimmering and stayed there, which is what the HUM LEAD was looking
+	// at when rows four and down read `.·.` on a station that had been up for
+	// minutes.
+	//
+	// AND A MOVED STATION FETCHES ITS NEW CANDIDATES. Before this the new pool was
+	// PUBLISHED to the console and never fetched, so the console named a region
+	// whose weather nothing was asking for.
+	if lp.recent != nil {
+		lp.recent.update(withPool(recent, lp.poolRefs))
+	}
 	return nil
 }
 
@@ -679,6 +914,7 @@ func (lp *livePipelines) hydrate(ref snapshot.LocationRef) { lp.recent.hydrateHo
 // the press, not at wiring: with no deck to speak through the press is inert
 // — no ▶ mark, no busy reader for a silent record (R5-B-04; VALIDATE
 // 2026-08-29 found the wiring-time check had muted the chip for everyone).
+
 // relayDwell is what the Settings window opens showing. Nil-safe: the deck is
 // not built in every mode, and a window that cannot show the setting is better
 // than one that cannot open.
@@ -769,6 +1005,14 @@ func (lp *livePipelines) endEventRead() func() {
 func (lp *livePipelines) narrateEvent() func(string) {
 	return func(key string) {
 		if lp.deck == nil {
+			return
+		}
+		// THE [w] WINDOW'S READ IS THE OPERATOR'S OWN LISTENING (D-91), and it
+		// ducks the broadcast to happen — so on the console it would duck the
+		// STATION. It is NOT the hazard rail, which D-74 exempts from air
+		// ownership deliberately: the rail reads in either mode, and this is a
+		// person pressing space on a row.
+		if !lp.monitorMayReachTheAir() {
 			return
 		}
 		lp.reader.Toggle(key)

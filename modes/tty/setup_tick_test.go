@@ -45,11 +45,16 @@ func TestSetupArrowsWrapAround(t *testing.T) {
 	if got := prevRow(first, all); got != last {
 		t.Errorf("up on the first row wraps to the last, got %v", got)
 	}
-	// And it still steps normally in the middle.
-	if got := nextRow(rowLocation, all); got != rowFIRMSKey {
+	// And it still steps normally in the middle. ADJACENCY IS DERIVED TOO, for
+	// the reason the ends are: naming two rows that happen to be neighbours today
+	// makes every row inserted between them fail this test for the one reason it
+	// does not care about — which D-115 did, by putting the station's two between
+	// the default location and the provider key.
+	mid := setupRowID(setupRowCount / 2)
+	if got := nextRow(mid, all); got != mid+1 {
 		t.Errorf("down steps one row, got %v", got)
 	}
-	if got := prevRow(rowFIRMSKey, all); got != rowLocation {
+	if got := prevRow(mid, all); got != mid-1 {
 		t.Errorf("up steps one row, got %v", got)
 	}
 	// enter's rule is about the KIND of row, not its position: a text field

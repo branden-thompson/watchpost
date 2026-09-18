@@ -320,6 +320,26 @@ const (
 // checkbox list, and what the screen says is what the ear must get — a listener
 // who chose "Mute" and ticked nothing asked for silence, not for a no-op.
 func Muted(c Class, t Tones) bool {
+	// LEAVE-NOW IS NEVER SILENT (D-143, #18). Emergency is excluded from
+	// `Classes()` so no Setup row can mute it — and that was only half the
+	// rule: "Mute:" with nothing ticked means EVERY class, and
+	// `Config.withToneCompat` migrates a pre-0.14.0 `ticker_muted = true`
+	// into exactly that state. An upgrading listener lost the attention tone
+	// silently, with no row to un-tick, because `toggleClass` materialises
+	// only the six LISTED keys.
+	//
+	// THE WORDS WERE NEVER AT RISK; the tone is. What goes missing is the
+	// three-repeat signal that tells someone who is NOT LOOKING to leave
+	// before any word is spoken, which is the whole reason this class is not
+	// in the list the listener may edit.
+	//
+	// ASKED HERE, NOT AT THE CALL SITES. `Classes()` already keeps it off the
+	// screen; this keeps it out of every OTHER path to the same answer — which
+	// is the P-9 shape this defect had: a member of a closed set inheriting a
+	// rule ratified before it existed.
+	if c == ClassEmergency {
+		return false
+	}
 	if t.Mode != ModeTonesMute {
 		return false
 	}

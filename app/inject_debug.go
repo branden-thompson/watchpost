@@ -44,9 +44,10 @@ type injectQueue struct {
 
 // Inject queues events and ASKS FOR A CYCLE AT ONCE. Safe from any goroutine.
 //
-// IT USED TO WAIT FOR THE WEATHER (UAT 2026-09-07). The queue is drained by the
-// fetch cycle, which runs every two minutes, so an operator who confirmed an
-// injection watched nothing happen for up to two minutes and reasonably
+// IT DOES NOT WAIT FOR THE WEATHER (UAT 2026-09-07). The queue is drained by the
+// fetch cycle, which runs every two minutes, so without the immediate ask an
+// operator who confirmed an injection watches nothing happen for up to two
+// minutes and reasonably
 // reported that it does not work. Worse than slow: a test event is effective
 // for two minutes — the same two minutes — so in the worst case Active drops it
 // in the very cycle that would have shown it, and the tool that exists to prove
@@ -266,9 +267,9 @@ func (lp *livePipelines) testLocation() snapshot.LocationRef {
 // injectedEvents is what a scenario key fabricates, as a pure function of the
 // key and the clock — so what the window offers can be checked without a deck.
 //
-// AN UNKNOWN KEY FABRICATES NOTHING. The arm that used to catch one produced a
-// Tornado Warning identical to the "emergency" scenario's, so the two could not
-// be told apart — which is precisely how the emergency scenario went five weeks
+// AN UNKNOWN KEY FABRICATES NOTHING. An arm catching one and producing a Tornado
+// Warning identical to the "emergency" scenario's makes the two impossible to
+// tell apart — which is precisely how the emergency scenario went five weeks
 // without exercising the emergency path.
 func injectedEvents(key string, now time.Time, here snapshot.LocationRef) []globalfeed.Event {
 	// A LISTENER WITH NO LOCATIONS CAN STILL PRESS ctrl+d, and a blank location

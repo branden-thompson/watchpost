@@ -471,9 +471,9 @@ func TestABurstSoundsOneToneNamesItsAgenciesOnceAndReadsTitles(t *testing.T) {
 
 // (1) ONE tone, by the most severe alert (MVS-D-12) — asked of the WHOLE burst.
 //
-// `breaking` used to classify the FIRST event, which was right only while the
-// burst was sorted by severity. T3.1's ladder orders by rung, so the first card
-// can be the milder hazard; `worstOf` is what the rule actually needs.
+// Classifying the FIRST event is right only while the burst is sorted by
+// severity. T3.1's ladder orders by rung, so the first card can be the milder
+// hazard; `worstOf` is what the rule actually needs.
 func TestTheBurstsToneComesFromItsWorstHazardNotItsFirst(t *testing.T) {
 	now := time.Now()
 	fresh := []globalfeed.Event{
@@ -488,7 +488,7 @@ func TestTheBurstsToneComesFromItsWorstHazardNotItsFirst(t *testing.T) {
 		t.Errorf("the burst's tone must not come from the least severe lane, got %v", got)
 	}
 	// A TIE GOES TO THE LOUDER TONE, NOT THE EARLIER CARD (MVS-D-73, which
-	// supersedes the positional rule this test used to assert).
+	// supersedes the positional rule).
 	//
 	// These two are the INAUDIBLE case, and it is the one worth pinning: a
 	// Tornado Warning and an Earthquake share the dual-tone preset, so a listener
@@ -524,9 +524,9 @@ func TestASingleEventHasNoBurstHead(t *testing.T) {
 // between alert tone, the ticker showing the centered takeover and the
 // readout").
 //
-// The centred takeover used to be sent from readBreaking — after the burst head
-// had been rendered AND spoken — so the band lagged the sound by a render and a
-// whole sentence. The tone is the cue; the frame that answers it must be the
+// Sent from readBreaking — after the burst head is rendered AND spoken — the
+// band would lag the sound by a render and a whole sentence. The tone is the
+// cue; the frame that answers it must be the
 // next thing that happens, before any words are rendered.
 func TestTheCentredTakeoverLandsWithTheToneNotAfterTheWords(t *testing.T) {
 	audio := &fakeBreakingAudio{dur: time.Millisecond, toneDur: time.Millisecond}
@@ -688,12 +688,12 @@ func TestEveryLiveAlertIsEventuallyReadAloud(t *testing.T) {
 // TestTheTickerCuesThroughTheOneOwnerNotItsOwnSend — D-1, pinned for the LIVE
 // takeover path.
 //
-// The band's takeover message used to be constructed here AND in
-// app/executors.go, so one rule had two carriers in two files and they could
-// drift into sending different things for one event. Asserting that a cue
-// "reaches the band" cannot see the difference, because both writers reach the
-// same band in production. So this deck's own send and its effector's band are
-// DIFFERENT captures, and the cue must land on the effector's.
+// The band's takeover message has ONE carrier, in app/executors.go. Constructed
+// here as well, one rule would have two carriers in two files, free to drift
+// into sending different things for one event. Asserting that a cue "reaches the
+// band" cannot see that difference, because both writers reach the same band in
+// production. So this deck's own send and its effector's band are DIFFERENT
+// captures, and the cue must land on the effector's.
 func TestTheTickerCuesThroughTheOneOwnerNotItsOwnSend(t *testing.T) {
 	var mu sync.Mutex
 	var direct, throughOwner []string
@@ -927,9 +927,10 @@ func TestMutingAToneClassDoesNotSilenceTheStationAtTheNextLaunch(t *testing.T) {
 
 // MVS-D-78 — STANDBY HOLDS A BURST; IT DOES NOT SPEND IT.
 //
-// [M] used to let the takeover run inaudibly: it cued the band, held, and
-// marked each alert READ. A tornado warning arriving while muted was consumed
-// in silence and never sounded, even on unmuting a minute later.
+// [M] must not let the takeover run inaudibly — cueing the band, holding, and
+// marking each alert READ. That spends the burst: a tornado warning arriving
+// while muted is consumed in silence and never sounds, even on unmuting a
+// minute later.
 //
 // The visual half is asserted alongside, because the whole ruling turns on it:
 // muting silences the AUDIO channel and leaves the visual one alone (the TV
@@ -1077,5 +1078,68 @@ func TestEveryFeedLaneSurvivesTheMarqueeMap(t *testing.T) {
 		if got := tickerCategory(e); got != lane {
 			t.Errorf("lane %v arrives at the band as %v", lane, got)
 		}
+	}
+}
+
+// TestAnAlreadyReadAlertIsNotOfferedAgain.
+//
+// "ALREADY READ ALOUD IS NOT NEW. The executors mark each alert as its line is
+// said, so this is what keeps a burst from being offered twice." The consequence
+// of losing it is a station that reads the same hazard over and over — the
+// listener hears a tornado warning announced on every cycle for as long as it is
+// active.
+//
+// MUTANT m25 REMOVED THE GUARD AND SURVIVED THE WHOLE 2026-09-13 CORPUS SWEEP.
+// The path is covered end to end by the wiring test in schedule_test.go, which
+// drives ONE event through and asserts it IS read; nothing drove an event that
+// had ALREADY been read. A test that proves the door opens says nothing about
+// whether it closes.
+func TestAnAlreadyReadAlertIsNotOfferedAgain(t *testing.T) {
+	ev := globalfeed.Event{ID: "twice1", Source: "NWS", Class: globalfeed.ClassSevereWx,
+		Type: "Tornado Warning", Location: "Bonsall, CA", Severity: globalfeed.SevRed,
+		At: time.Now().Add(-time.Minute), Until: time.Now().Add(time.Hour)}
+
+	deck := func() (*tickerDeck, *[]lineup.Event) {
+		var told []lineup.Event
+		d := &tickerDeck{
+			seen:  &seenStore{ids: map[string]time.Time{}, window: time.Hour},
+			muted: &atomic.Bool{}, // a POINTER on the deck; the takeover asks it first
+		}
+		// AN UNSET SCOPE IS "ALL", which is the rule `fence()` states for a deck
+		// built by hand — and it has to be SAID, because the fallback reads the
+		// listener's radius and watchlist hooks and this deck has neither.
+		d.scope = func() airScope { return airScope{} }
+		d.emit = func(e lineup.Event) { told = append(told, e) }
+		return d, &told
+	}
+
+	// THE CONTROL FIRST: an alert nobody has read IS offered. Without this the
+	// test below passes on a deck that offers nothing at all, which is the
+	// failure it is supposed to detect.
+	fresh, told := deck()
+	fresh.startTakeover([]globalfeed.Event{ev})
+	if len(*told) != 1 {
+		t.Fatalf("an unread hazard was offered %d times, want 1 — this fixture proves nothing", len(*told))
+	}
+
+	// AND NOW THE SAME ALERT, ALREADY SAID.
+	again, toldAgain := deck()
+	again.seen.mark([]globalfeed.Event{ev}, time.Now())
+	again.startTakeover([]globalfeed.Event{ev})
+	if len(*toldAgain) != 0 {
+		t.Errorf("a hazard already read aloud was offered again (%d times); the station would "+
+			"announce it on every cycle for as long as it is active", len(*toldAgain))
+	}
+
+	// AND A BURST THAT IS ONLY PARTLY READ still offers the part that is not.
+	// Dropping the whole burst would be the same defect in the other direction:
+	// a new hazard silenced because it arrived beside an old one.
+	other := ev
+	other.ID, other.Type = "twice2", "Severe Thunderstorm Warning"
+	mixed, toldMixed := deck()
+	mixed.seen.mark([]globalfeed.Event{ev}, time.Now())
+	mixed.startTakeover([]globalfeed.Event{ev, other})
+	if len(*toldMixed) != 1 {
+		t.Errorf("a burst with one unread hazard was offered %d times, want 1", len(*toldMixed))
 	}
 }

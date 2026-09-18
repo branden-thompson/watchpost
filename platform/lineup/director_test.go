@@ -162,7 +162,7 @@ func TestTheNextCardIsBuiltWhileThisOneReads(t *testing.T) {
 	if !has(fx, "build("+second+")") {
 		t.Errorf("effects %v do not start the next build while %s takes the air", fx, first)
 	}
-	if _, on := d.Lineup().OnAir(); !on {
+	if _, on := onAirAnywhere(d.Lineup()); !on {
 		t.Fatal("nothing took the air")
 	}
 	// And when the first finishes, the second's words are already there to
@@ -193,14 +193,14 @@ func TestEveryExitFromTheAirReleasesTheTicker(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			d, _ := burst(t, 2)
 			d, _ = run(d, Built{ID: lead, Script: Say("words")})
-			if _, on := d.Lineup().OnAir(); !on {
+			if _, on := onAirAnywhere(d.Lineup()); !on {
 				t.Fatalf("%s never took the air; the exit under test is not being exercised", lead)
 			}
 			after, fx := run(d, tc.exit)
 			if !has(fx, "release("+lead+")") {
 				t.Errorf("effects %v leave the band holding a stale callout", fx)
 			}
-			if id, on := after.Lineup().OnAir(); on {
+			if id, on := onAirAnywhere(after.Lineup()); on {
 				t.Errorf("%q is still on the air after it left it", id.ID)
 			}
 		})
@@ -291,11 +291,15 @@ func TestTheRailDrainsBeforeTheMainTrackThroughStep(t *testing.T) {
 	}
 	d.lineup = l
 
-	// The listener starts the radio, and the report's build begins (PD-1).
-	d, started := run(d, Powered{To: Running})
-	if !has(started, "build(bonsall)") {
-		t.Fatalf("starting the radio produced %v, want the report's build", started)
+	// The report's build begins as soon as the schedule settles — D-84: the
+	// Composer works on standby, so the line is ready before the operator asks
+	// for it. It no longer waits for the power.
+	d, seeded := run(d, Tick{Now: planNow})
+	if !has(seeded, "build(bonsall)") {
+		t.Fatalf("settling produced %v, want the report's build", seeded)
 	}
+	d, _ = d.Step(Aired{To: AirProgramme}) // the console holds the air (D-74)
+	d, _ = d.Step(Powered{To: Running})
 
 	// An alert arrives and goes to the head of the queue, so its build starts too.
 	alert := BurstID("a00")
@@ -310,13 +314,13 @@ func TestTheRailDrainsBeforeTheMainTrackThroughStep(t *testing.T) {
 	if has(ready, "speak(bonsall)") {
 		t.Errorf("effects %v read the report over a waiting alert", ready)
 	}
-	if _, on := d.Lineup().OnAir(); on {
+	if _, on := onAirAnywhere(d.Lineup()); on {
 		t.Error("a ready report took the air while an alert was still being built")
 	}
 
 	// The alert's words arrive, and it takes the air over the ready report.
 	d, air := run(d, Built{ID: alert, Script: Say("words")})
-	if on, _ := d.Lineup().OnAir(); on.ID != alert {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != alert {
 		t.Errorf("the air is held by %q, want the alert", on.ID)
 	}
 	if has(air, "speak(bonsall)") {
@@ -355,7 +359,7 @@ func TestABurstArrivingWhileTheRailDrainsAddsToIt(t *testing.T) {
 	reading := BurstID("a00")
 	d, _ := rail(t, "a", "b")
 	d, _ = run(d, Built{ID: reading, Script: Say("words")})
-	if on, _ := d.Lineup().OnAir(); on.ID != reading {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != reading {
 		t.Fatalf("the air is held by %q; the drain under test is not happening", on.ID)
 	}
 	before := ids(d.Lineup().Cards(AlertRail))
@@ -380,7 +384,7 @@ func TestABurstArrivingWhileTheRailDrainsAddsToIt(t *testing.T) {
 	if len(after) != len(before)+2 {
 		t.Errorf("the rail holds %v, want the %d already promised plus the two that arrived", after, len(before))
 	}
-	if on, _ := d.Lineup().OnAir(); on.ID != reading {
+	if on, _ := onAirAnywhere(d.Lineup()); on.ID != reading {
 		t.Errorf("the arriving burst took the air from %q mid-read", reading)
 	}
 }
@@ -473,7 +477,7 @@ func TestTheClockOnlyMovesForward(t *testing.T) {
 func TestTheEffectSetIsClosed(t *testing.T) {
 	want := []string{
 		"build(x)", "speak(x)", "cue(x)", "release(x)",
-		"duck()", "restore()", "tune(KEC62)", "escalate(x)", "publish(rail=[] main=[])",
+		"duck()", "restore()", "tune(KEC62)", "escalate(x run=0)", "publish(rail=[] main=[])",
 	}
 	got := []string{}
 	for _, f := range everyEffect() {
@@ -562,12 +566,12 @@ func onTheRail(t *testing.T, d Director, cards ...Card) Director {
 // moment they are proposed (DR-7): the divert notice's count is decided when
 // the burst is planned, so there is nothing to build for them.
 //
-// prepareNext used to REFUSE such a card — its invariant said a card waiting to
-// be built has no words yet — so the card never left ADMITTED. Next offers a
-// card at ADMITTED or STANDBY, and only a STANDBY card can take the air: the
-// card sat at the head of the queue for ever and EVERY CARD BEHIND IT WENT
+// prepareNext MUST NOT REFUSE such a card on an invariant that a card waiting to
+// be built has no words yet: refused, it never leaves ADMITTED. Next offers a
+// card at ADMITTED or STANDBY, and only a STANDBY card can take the air, so the
+// card sits at the head of the queue for ever and EVERY CARD BEHIND IT GOES
 // UNREAD. That is DR-3's guarantee failing from the other side, and no fixture
-// could see it, because the planner proposes only breaking alerts today.
+// can see it, because the planner proposes only breaking alerts today.
 func TestACardThatArrivesWithItsWordsTakesTheAirAndIsNeverBuilt(t *testing.T) {
 	d := New(Settings{Max: 10}, planNow)
 	d = onTheRail(t, d,
@@ -714,7 +718,45 @@ func TestPreparationNeverRunsAheadOfTheAir(t *testing.T) {
 	if waiting != 1 {
 		t.Errorf("%d cards are standing by while one reads; one ahead means one", waiting)
 	}
-	if on, ok := d.Lineup().OnAir(); !ok || on.ID != first {
+	if on, ok := onAirAnywhere(d.Lineup()); !ok || on.ID != first {
 		t.Errorf("the air holds %q, want %s", on.ID, first)
+	}
+}
+
+// P2: Publish carries the station's power alongside the schedule, so a reader
+// can never hold a torn pair — a new lineup beside a stale power.
+//
+// SWEPT ACROSS EVERY POWER, derived from where Power.String() ends, because a
+// version that carried a constant would pass a single-value check.
+func TestPublishCarriesThePowerWithTheLineup(t *testing.T) {
+	base := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	for p := Power(0); p.String() != ""; p++ {
+		d := New(Settings{Max: 5}, base)
+		// MAKE THE TRANSITION REAL. A Director starts STOPPED, so stepping to
+		// STOPPED changes nothing, settles nothing and publishes nothing — and
+		// the sweep would have asserted nothing for that value. The "no
+		// Publish" fatal below caught exactly that.
+		from := Running
+		if p == Running {
+			from = OffAir
+		}
+		d, _ = d.Step(Powered{To: from})
+		_, fx := d.Step(Powered{To: p})
+		found := false
+		for _, e := range fx {
+			pub, ok := e.(Publish)
+			if !ok {
+				continue
+			}
+			found = true
+			if pub.Power != p {
+				t.Errorf("Publish must carry the power the Director holds; got %v want %v", pub.Power, p)
+			}
+		}
+		// SILENCE IS A DISTINCT VERDICT (INST-2): no Publish means the check
+		// did not run, which is not the same as it passing.
+		if !found {
+			t.Fatalf("power=%v: no Publish was emitted, so this asserted nothing", p)
+		}
 	}
 }
