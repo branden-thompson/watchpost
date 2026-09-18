@@ -3,7 +3,7 @@ title: "0.16.0 Broadcaster UI — BUILD report"
 phase: "BUILD"
 status: "DRAFT — not yet presented.  Awaiting HUM LEAD approval for BUILD exit"
 sev: "SEV-0"
-gates: "verify: ALL GATES GREEN on 73bce2b (2026-09-18, dist/verify-review-73bce2b.log) · sweep on 73bce2b: 380 mutants — 376 CAUGHT, 4 SURVIVED by design, 0 NO EVIDENCE · P10 0 live / 0 unratified at f7fe5fa"
+gates: "verify: ALL GATES GREEN on 4d1cb84, the VALIDATE-exit commit (2026-09-18) · sweep on 4d1cb84: 380 mutants — 375 CAUGHT, 5 SURVIVED by design, 0 NO EVIDENCE · make quality PHASE-EXIT GATES GREEN, a2dh validate 100 %"
 rounds: "Three blind red-team rounds; round 3 closed 2026-09-16"
 ---
 
