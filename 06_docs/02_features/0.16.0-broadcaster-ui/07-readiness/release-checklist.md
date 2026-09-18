@@ -29,8 +29,14 @@ the remote, because only the squashed tree does.
   the squash. **Re-run both at tag time.**
 - [x] **`gh api user` = `branden-thompson`** under `GH_CONFIG_DIR=~/.config/gh-personal`, checked
   2026-09-18 before any outward action. Re-check at the push.
-- [ ] **Internal-name scrub — run by the HUM LEAD in their own shell**, as in 0.15.0 (not confirmed
-  to this record before the merge; run it against `origin/main` and note the result here):
+- [x] **Internal-name scrub — run by the HUM LEAD in their own shell against `origin/main` at
+  `237e2a5`, 2026-09-18, after the merge: 18 matching lines.** Seventeen are the framework's own
+  public name, cited where the documents credit the axes and skills they reproduce — the 0.14.0
+  checklist ruled that name "already public from earlier releases" (2026-09-06). One is the
+  employer's name, inside the 0.14.0 checklist's own sentence recording that its scrub returned
+  zero; that line is scrubbed on the dev trunk (this commit) and reaches `origin/main` with the
+  next release or a hotfix PR, the HUM LEAD's call. Two earlier attempts returned every line of the
+  tree (244,931) because the variables were empty in that shell — the guard, not a finding:
   `git grep -n -i -e "$A2DH_HOME_NAME" -e "$EMPLOYER_NAME" -- ':!third_party'` → must be empty.
 - [x] **`git worktree list` shows the main tree only** (2026-09-18).
 - [x] **README captures — five of the Broadcaster console** from the HUM LEAD's UAT build
