@@ -25,7 +25,7 @@ handoff exists, and it is more useful than the findings list.
 | Open findings | `06_docs/follow-ups.md`: F-156 (port the shell) is the standing backlog; F-157…F-163 are this REVIEW's rows; three HUM CALLS are open (rulings 10, 11, 12 below) |
 
 **The product reviewed clean.** Code Quality found zero unused parameters, zero dead functions and
-zero live P10 findings across 62,419 added lines. Business Quality probed FR-3.3's own surface and
+zero live P10 findings across the release diff (68,796 added lines `fd761ab..73bce2b`, 47,611 outside `06_docs/`). Business Quality probed FR-3.3's own surface and
 found no display field that can diverge from the schedule. One real product defect was found and
 fixed: FR-8.10, below.
 
@@ -34,7 +34,8 @@ fixed: FR-8.10, below.
 Three `authoring` tool binaries (14.1 MB) had been committed and merely untracked. On the HUM LEAD's
 ruling — *published* history is never rewritten, unpublished history is cleaned — `94b654b^..HEAD`
 was rewritten with `git filter-branch --index-filter` to drop them. Verified afterwards: **zero
-objects over 400 KB in the whole release range**, and `git diff pre-blob-rewrite HEAD` is empty, so
+objects over 400 KB in the range as rewritten** (the 15 MB blob at `6b1b621` came LATER, and the
+squash-merge ruling is what keeps it off the remote), and `git diff pre-blob-rewrite HEAD` is empty, so
 every tree is byte-identical.
 
 **Moot under the release ruling (2026-09-17):** the release is a squash-merge branch — one commit

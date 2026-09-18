@@ -59,7 +59,7 @@ defect it closed:
 ## Gate evidence, on the committed tree
 
 **The corpus sweep at REVIEW exit, 2026-09-18, on `73bce2b`: 380 mutants — 376 CAUGHT, 4 SURVIVED,
-0 NO EVIDENCE** (`07-readiness/mutant-verdicts.log`, which opens with the tree hash). Every survivor
+0 NO EVIDENCE** (`07-readiness/mutant-verdicts.log`, which opens with the commit hash). Every survivor
 is one the roster dispositions as surviving by design (`gates.md`, "Survivors that survive BY
 DESIGN"): `m16`, `m43`, `mBM1`, `mSC3`. `mBM2`, the fifth of that set at BUILD exit, is CAUGHT now
 (`TestOnlyMastercontrolWritesTheBand`, against `./...`). **Blind spot beside the number (INST-5):** a
@@ -75,7 +75,7 @@ this session had to learn twice (see *Honest assessment*).
 | --- | --- | --- |
 | `make verify` | **ALL GATES GREEN on `73bce2b`** — every gate `06_docs/required-gates.txt` names except the two CI-only ones and `p10`, which is a phase-exit gate under `make quality` (`dist/verify-review-73bce2b.log`, 2026-09-18) | `dist/verify-remediated3.log` (the log's verdict line carries no count; an earlier draft of this report published "104", which is the number of `ok <package>` lines in it, not a gate count) |
 | `mutant-check` | green across **380** mutants (658 s, inside the verify above) | same log |
-| **`mutant-verdicts`** | **380 — 376 CAUGHT, 4 SURVIVED (by design), 0 NO EVIDENCE**, on `73bce2b` | `07-readiness/mutant-verdicts.log`, promoted by the target, opening with the tree hash |
+| **`mutant-verdicts`** | **380 — 376 CAUGHT, 4 SURVIVED (by design), 0 NO EVIDENCE**, on `73bce2b` | `07-readiness/mutant-verdicts.log`, promoted by the target, opening with the commit hash |
 | `mutant-anchors` | 380, every anchor matches the tip | same |
 | `a2dh validate` | **100% (18/18)** | run at BUILD exit; it was 94.44% until `a2dh p10 check` cleared a stale run record, which is a hard gate on the exit sequence |
 | `-race` | green on `app` and `platform/lineup` | run directly after each hazard-path fix |
@@ -229,7 +229,7 @@ sentence — *"every finding is below"* — that nobody had measured.
 | --- | --- |
 | **The release was being judged on a WORKING TREE** — 88% of the P7 build log, a new platform package, 14 test files and 22 mutants existed only on disk | Committed as `2d7c21e`; every gate figure in this report is from a run against the committed tree |
 | `gates.md` cited **16 tests that no longer exist**, 14 with no retirement line — in a file whose own standard is that BUILD exit is judged on it | Reconciled: each names its successor, every successor verified to exist.  Round 2 then found **three successors that do not carry the property**, one of which hid a real hole (F-109) |
-| The filed corpus record was **22 mutants behind** the corpus it described | Re-run on the committed tree — 355 then, 380 at REVIEW exit — and promoted by the target itself, which now writes the tree hash first |
+| The filed corpus record was **22 mutants behind** the corpus it described | Re-run on the committed tree — 355 then, 380 at REVIEW exit — and promoted by the target itself, which now writes the commit hash first |
 | The release **shipped `exposure-scan.py` and never ran it on itself** | `07-readiness/exposure-statement.md` filed, re-derived rather than cited |
 | `05-debugging/` absent under SEV-0's "ALL folders" | Populated; round 2 then found `06-key_learnings/` also absent — now opened |
 

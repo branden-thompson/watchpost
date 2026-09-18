@@ -36,9 +36,9 @@ design, 0 no evidence; P10 0 live / 0 unratified; requirements 31 traced by ID, 
 
 | Gate | Result | Evidence |
 |---|---|---|
-| `make verify` | **ALL GATES GREEN** on `73bce2b` (code) and `35de36a` (records) | `dist/verify-review-73bce2b.log`, `dist/verify-review-35de36a.log` — read from the log, not the exit code |
+| `make verify` | **ALL GATES GREEN** on `73bce2b` (code) and `35de36a` (records) | `dist/verify-review-73bce2b.log`, `dist/verify-review-35de36a.log` — local artefacts (`dist/` is git-ignored), read from the log, not the exit code; the roster's sweep summary in `gates.md` is the tracked record |
 | `make quality` (P10, phase-exit) | 0 live, 0 unmatched, 0 unratified; 153 ratified rows | `dist/p10.json`, `06_docs/p10-ledger.md` |
-| Mutation sweep | **380 — 376 CAUGHT, 4 SURVIVED (by design: `m16`, `m43`, `mBM1`, `mSC3`), 0 NO EVIDENCE** on `73bce2b`, 4 h 48 min; `mBM2` caught now | `07-readiness/mutant-verdicts.log`, opening with the tree hash |
+| Mutation sweep | **380 — 376 CAUGHT, 4 SURVIVED (by design: `m16`, `m43`, `mBM1`, `mSC3`), 0 NO EVIDENCE** on `73bce2b`, 4 h 48 min; `mBM2` caught now | `07-readiness/mutant-verdicts.log`, opening with the commit hash |
 | Blind spot beside the number | a detector that needs `-race` reads as SURVIVED | `gates.md`, "The sweep's own blind spot" |
 | Exposure | re-derived at the tip; identity 137 files / 341, location 214 / 750, credential 2 distinct fixtures, path 4 / 5 placeholders | `07-readiness/exposure-statement.md` |
 

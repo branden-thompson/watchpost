@@ -12,7 +12,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45   # measured: the 0.15.0 release job took 16.1 min; this branch's ubuntu verify took 21.5 min; mutant-check alone is allowed 40 (Makefile)
     steps:
       # Actions pinned by commit (red-team 0.9.0 S-F9): the release job has
       # contents: write, so a moved tag must not be able to swap the code.

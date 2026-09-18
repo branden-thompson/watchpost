@@ -529,7 +529,7 @@ seven were triaged.**
 > all by design (below); `mBM2` is CAUGHT now (`TestOnlyMastercontrolWritesTheBand`, against `./...`).
 > **The number's blind spot, beside it (INST-5):** a detector that needs `-race` reads as SURVIVED under
 > this sweep ("The sweep's own blind spot", below). The record is `mutant-verdicts.log` beside this file,
-> which opens with the tree hash. The paragraph that follows is the BUILD-exit sweep, kept as history.
+> which opens with the commit hash. The paragraph that follows is the BUILD-exit sweep, kept as history.
 >
 > **BUILD exit, 2026-09-17, on the COMMITTED tree `e956747`: `make mutant-verdicts` over all 379 mutants —
 > 374 CAUGHT, 5 SURVIVED, 0 NO EVIDENCE**, 4 h 46 min wall clock. The five survivors are exactly the

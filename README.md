@@ -404,7 +404,7 @@ Go 1.25 is the floor (`go.mod`); CI and the releases build with 1.27. `make buil
 `./dist`, version stamped from `git describe`), `make verify` (fmt, vet, tidy, vulnerability, race,
 import-direction, watermark and control gates with positive controls), `make release-matrix` (all
 targets, CGO off), `make install-test` (installer end to end against a local server). `make verify` runs from a clean
-clone with nothing outside the tree. `make quality` is the phase-exit set — today the Power-of-Ten
+clone; it needs the Go toolchain, git, python3, GNU make 3.82 or newer (macOS ships 3.81 — `brew install make`), and network access the first time, to fetch the pinned golangci-lint and govulncheck. `make quality` is the phase-exit set — today the Power-of-Ten
 gate `p10`, which needs the out-of-tree `a2dh` CLI and fails loud without it rather than skipping;
 it is run at BUILD and REVIEW exit and its result is recorded in the release's gate roster. The soak and
 benchmark harness lives in `scripts/quality/` and `make quality-bench`. The terminal UI kit (`go-studs`,
