@@ -26,8 +26,9 @@ audited whole against the code by a blind reader: three Important findings, ever
 this week, every one fixed — the privacy sentence now says exactly where the tower's position goes.
 The HUM LEAD's UAT passed both surfaces, with one case carried.
 
-**Recommendation: exit VALIDATE.** `make verify` ALL GATES GREEN on the code commit; the sweep 380 —
-376 / 4 by design / 0; `make quality` and `a2dh validate` green at the exit commit (§1).
+**Recommendation: exit VALIDATE.** `make verify` ALL GATES GREEN and the sweep re-run on the final
+code commit `ab1f04d` (figures in §1); `make quality` PHASE-EXIT GATES GREEN and `a2dh validate`
+100 % (18/18) at the exit commit.
 
 ## 1. Exit gates
 
@@ -38,7 +39,8 @@ The HUM LEAD's UAT passed both surfaces, with one case carried.
 | `readme_content_audited` | Blind narrative audit of the whole README and the three linked docs (§3) |
 | `stakeholder_acceptance` | HUM LEAD UAT 2026-09-18 (§4) |
 | `critical_analysis_complete` | Two blind agents on the docs-quality and hygiene + safety axes, plus a fresh reviewer on the bed fix (§2) |
-| `a2dh validate` | 100 % at the exit commit (the P10 run record refreshed by `make quality` on that tree) |
+| `make quality` / `a2dh validate` | PHASE-EXIT GATES GREEN (P10 0 live, 0 unmatched, 0 unratified) and 100 % (18/18), run on the exit tree |
+| Sweep on the final code commit | *filled from the run on `ab1f04d`* |
 | `report_published` | This document |
 
 ## 2. Critical analysis
@@ -71,9 +73,21 @@ ratified P10 rows checked against the tree, all true. Two findings that mattered
   with no cue (ratified design, D-91). The `tools/authoring` P10 row's function count is stale (15 →
   39; the reason holds) — refresh at the next ratification.
 
-### 2a. The bed fix under review
+### 2a. The bed fix under review — two passes to LGTM
 
-*Pending the fresh reviewer's verdict; this section is completed when it lands.*
+**Pass one: NOT LGTM, one Critical.** The whole-struct write the fix narrowed had been doing two jobs:
+it was also the only place a landed tune cleared its pending ask. With it narrowed, every ordinary
+Watchlist rotation raised a false stall ("asked to move to b and did not") thirty seconds after a
+successful tune — and the suite could not see it, because the landing test ticked at ten times the
+stall bound, past the dwell that issues a new tune and resets the clock. The reviewer also
+constructed the `Tuned{Live:false}` case the first draft pinned and observed a station silent with the
+programme paused until the operator acts — a fork, not a fix (F-164). **Pass two (`ab1f04d`): LGTM.**
+A landing clears the ask; the landing test ticks inside the window and was watched red; the
+fall-through keeps its standing behaviour (release the cut-over, main track resumes), pinned, with the
+ruling recorded; three plants on the committed tree, each CAUGHT on its own FAIL line; the release cap
+derived from the Makefile's own bound. One Minor observation left as is: `onTuned` does not settle, so
+the console's bed row flips on the next tick — the shape it has always had. Reports verbatim in
+`red-team-validate.md`.
 
 ## 3. README content audit
 
