@@ -36,16 +36,17 @@ the remote, because only the squashed tree does.
   (`35de36a`), placed 2026-09-18. The banner's demo transmitter position appears in them as pixels;
   **ruled fine by the HUM LEAD (2026-09-18)**, with a recapture on the 0.16.0-stamped build if wanted,
   as 0.15.0 did. The Observer captures are unchanged by this release's Observer-side diffs.
-- [ ] **`CHANGELOG.md` — the 0.16.0 section is NOT written yet.** Written and dated on the day it
-  ships; the date re-checked at tag time (0.14.0 needed a second PR for exactly this).
+- [x] **`CHANGELOG.md` — the 0.16.0 section written and dated 2026-09-18** (`e8f98f9`); the date is
+  re-checked at tag time (0.14.0 needed a second PR for exactly this).
 - [x] **`THIRD_PARTY_LICENSES.md` current** — `go.mod` and the licence file were last changed in the
   same commit (`1abf27d`, 2026-09-07); no module changed in 0.16.0.
 - [x] **Exposure statement re-derived at the tip** (`exposure-statement.md`, 2026-09-18): identity
   137 / 341, location 214 / 750, credential 2 distinct fixtures, path 4 / 5 placeholders; `-trimpath`
   held by `TestEveryBuildTargetTrimsThePath`.
-- [ ] **`07-readiness/pr-body.md` written and `a2dh pr-template check` PASSES**, with the checker
-  controlled before its tick is trusted (a required section removed → CAUGHT; the metrics placeholder
-  row → CAUGHT), as 0.15.0 did.
+- [x] **`07-readiness/pr-body.md` written and `a2dh pr-template check` PASSES** (2026-09-18), with
+  the checker controlled before its tick was trusted: the Caveats section removed →
+  `R3-section-present` CAUGHT; the metrics table reduced to the placeholder row → `R3-metrics-row`
+  CAUGHT.
 - [ ] **Issue #10** (the brief is its body): the close directive goes in the RELEASE COMMIT MESSAGE,
   unadorned — `Closes #10.` — and nowhere else; every touched issue's final state is checked after
   the merge (0.15.0's #12 was closed by a sentence saying it should stay open).
