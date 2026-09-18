@@ -145,27 +145,45 @@ func TestARepeatedCutOverChangesNothing(t *testing.T) {
 	}
 }
 
-// VALIDATE 2026-09-18 (hygiene reviewer, F5) — THE OPERATOR'S CUT-OVER SURVIVES
-// THE BED MOVING. `carries` is the Director's decision that the bed holds the
-// programme; a Tuned — the operator stepping to the next relay, or the relay
-// falling through to synth — reports where the bed WENT and must not undo what
-// the operator decided about it. The first draft replaced the whole bed on
-// every Tuned, and the main track resumed over the relay the operator chose.
+// THE OPERATOR'S CUT-OVER SURVIVES THE BED STEPPING TO ANOTHER RELAY (FR-4.2).
+// `carries` is the Director's decision that the bed holds the programme; a
+// Tuned for the next relay reports where the bed WENT and says nothing about
+// that decision. A tune that lands is also no longer pending, so the stall
+// check does not report it.
 func TestACutOverSurvivesTheBedMoving(t *testing.T) {
-	for _, next := range []Tuned{{Ref: "r2", Live: true}, {Ref: "r1", Live: false}} { // bounded by the two ways a bed moves (P10-02)
-		d := running(t)
-		d, _ = d.Step(Tuned{Ref: "r1", Live: true})
-		d, _ = d.Step(CutOver{ToBed: true})
-		d = d.tuneAsked("r2")
-		d, _ = d.Step(next)
-		if !d.bed.carries {
-			t.Errorf("after %+v the cut-over was forgotten — the main track resumes over the bed the operator chose", next)
-		}
-		if d.advances(MainTrack) {
-			t.Errorf("after %+v the main track advances while the operator's cut-over stands", next)
-		}
-		if d.bed.ref != next.Ref || d.bed.live != next.Live {
-			t.Errorf("after %+v the bed did not record where it went: %+v", next, d.bed)
-		}
+	d := running(t)
+	d, _ = d.Step(Tuned{Ref: "r1", Live: true})
+	d, _ = d.Step(CutOver{ToBed: true})
+	d = d.tuneAsked("r2")
+	d, _ = d.Step(Tuned{Ref: "r2", Live: true})
+	if !d.bed.carries {
+		t.Error("the cut-over was forgotten — the main track resumes over the bed the operator chose")
+	}
+	if d.advances(MainTrack) {
+		t.Error("the main track advances while the operator's cut-over stands")
+	}
+	if d.bed.ref != "r2" || !d.bed.live {
+		t.Errorf("the bed did not record where it went: %+v", d.bed)
+	}
+	if d.bed.asked != "" {
+		t.Errorf("a tune that landed is still pending (%q); the stall check would report it", d.bed.asked)
+	}
+}
+
+// AND A RELAY THAT FALLS THROUGH TO SYNTH RELEASES THE CUT-OVER: `carries` is
+// relay-only from birth (D-33), and the relay the operator chose is gone. The
+// main track resumes rather than the station sitting silent on one synth cycle
+// with the programme paused. Whether the fall-through should instead re-tune,
+// or hold, is F-164 — a HUM LEAD ruling; this pins the standing behaviour.
+func TestAFallThroughToSynthReleasesTheCutOver(t *testing.T) {
+	d := running(t)
+	d, _ = d.Step(Tuned{Ref: "r1", Live: true})
+	d, _ = d.Step(CutOver{ToBed: true})
+	d, _ = d.Step(Tuned{Ref: "r1", Live: false})
+	if d.bed.carries {
+		t.Error("a synth bed carries the programme — the station would sit silent with the main track paused")
+	}
+	if !d.advances(MainTrack) {
+		t.Error("the main track did not resume after the relay fell through")
 	}
 }

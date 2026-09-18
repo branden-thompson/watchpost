@@ -124,9 +124,20 @@ func (d Director) onTuned(ev Tuned) (Director, []Effect) {
 	if d.bed.ref == ev.Ref && d.bed.live == ev.Live && !d.bed.since.IsZero() {
 		return d, nil // the same bed, still carrying: its turn is already running
 	}
-	// ONLY WHAT WAS OBSERVED CHANGES. `carries` is the operator's decision,
-	// `asked` a tune in flight, `ducked` the rail's — a Tuned reports where the
-	// bed went and nothing about any of them.
+	// ONLY WHAT WAS OBSERVED CHANGES. `carries` is the operator's decision and
+	// `ducked` the rail's; a Tuned reports where the bed went and says nothing
+	// about either. What it does answer is the tune in flight: a landing is
+	// what `asked` was waiting for, and a pending ask left standing here would
+	// be reported as a stall by the next tick past its bound (FR-9.3).
+	if ev.Ref == d.bed.asked {
+		d.bed.asked, d.bed.askedAt = "", time.Time{}
+	}
+	// A FALL-THROUGH TO SYNTH RELEASES THE CUT-OVER: `carries` is relay-only
+	// from birth (D-33), and the relay the operator chose is gone. Whether the
+	// station should re-tune instead is F-164, a HUM LEAD ruling.
+	if !ev.Live {
+		d.bed.carries = false
+	}
 	d.bed.ref, d.bed.live, d.bed.since = ev.Ref, ev.Live, d.now
 	return d, nil
 }

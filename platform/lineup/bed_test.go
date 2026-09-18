@@ -325,7 +325,11 @@ func TestATuneThatLandsIsNotReported(t *testing.T) {
 	d, _ = d.Step(Ended{})
 	d, _ = d.Step(Tuned{Ref: "b", Live: true}) // the station moved
 
-	_, fx := d.Step(Tick{Now: planNow.Add(10 * tuneLands)})
+	// TICKED INSIDE THE STALL WINDOW AND BEFORE THE DWELL. At 10 x the bound
+	// the dwell has elapsed and issued a NEW tune, resetting the clock, and a
+	// landing that was never recorded passes for the wrong reason — the trap
+	// the sibling above names. A tune that landed is cleared ON landing.
+	_, fx := d.Step(Tick{Now: planNow.Add(tuneLands + time.Second)})
 	if hasEscalate(fx) {
 		t.Errorf("a station that moved when asked was reported as stalled: %v", fx)
 	}
