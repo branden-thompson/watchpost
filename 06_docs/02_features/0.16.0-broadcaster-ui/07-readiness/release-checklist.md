@@ -34,8 +34,8 @@ the remote, because only the squashed tree does.
   public name, cited where the documents credit the axes and skills they reproduce — the 0.14.0
   checklist ruled that name "already public from earlier releases" (2026-09-06). One is the
   employer's name, inside the 0.14.0 checklist's own sentence recording that its scrub returned
-  zero; that line is scrubbed on the dev trunk (this commit) and reaches `origin/main` with the
-  next release or a hotfix PR, the HUM LEAD's call. Two earlier attempts returned every line of the
+  zero; that line is scrubbed on the dev trunk (`aaff6a0`) and reaches `origin/main` with the
+  next release — HUM LEAD 2026-09-18: "next release is fine". Two earlier attempts returned every line of the
   tree (244,931) because the variables were empty in that shell — the guard, not a finding:
   `git grep -n -i -e "$A2DH_HOME_NAME" -e "$EMPLOYER_NAME" -- ':!third_party'` → must be empty.
 - [x] **`git worktree list` shows the main tree only** (2026-09-18).
