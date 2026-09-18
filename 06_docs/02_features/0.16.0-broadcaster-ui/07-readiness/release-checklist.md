@@ -69,9 +69,17 @@ the remote, because only the squashed tree does.
   empty diff against the tip, `Closes #10.` alone in the message, zero attribution strings,
   `gh api user` = `branden-thompson` (2026-09-18).
 - [x] Pushed; **PR #20** opened against `main` with the checked body.
-- [ ] **CI green on the PR, every leg.** Budget for rounds: this branch's Linux leg has not run since
-  `66dc88d`; **expect Linux-only failures and treat each as a finding**, not as runner noise (0.15.0
-  took three rounds, every one a real finding).
+- [~] **CI round 1 (2026-09-18, `57875f1`): `policy` and both macOS legs GREEN; the pull-request
+  run's Linux leg RED at `make race`** — `TestEveryLineOfEveryWindowIsReachableAtTheFloor/status`:
+  one line "cannot be reached", `✔ nws NWS 2ND OK 619h 09m`. **A finding, not runner noise, and not
+  Linux's:** the Status window's FETCHED column is an age read off the real clock at minute
+  resolution, and a run that straddles a minute boundary between building the lines and rendering
+  them holds a text no frame ever draws. Forty local runs under `-race` never hit the window; a
+  clock that moves a minute per read turns the guard red every time. Fixed on the feature branch
+  (`ab5d62e`: the window fixtures pin the clock) and added to the release branch as a second commit
+  (`d3d7629`, same tree as the feature tip), as 0.15.0's rounds were — the PR squash-merges either
+  way. Budget for further rounds: **expect Linux-only failures and treat each as a finding.**
+- [ ] **CI round 2 (`d3d7629`): green on every leg.**
 - [ ] Squash-merged; CHANGELOG date re-checked against the merge day before tagging; the merged tree
   verified byte-identical to the feature tip.
 - [ ] `v0.16.0` annotated on the merged commit, pushed; the release workflow re-runs `make verify`
