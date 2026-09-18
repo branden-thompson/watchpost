@@ -87,13 +87,14 @@ the remote, because only the squashed tree does.
   and 11 m 40 s, Linux verify 26 m 38 s and 36 m 10 s. Observed Linux range on this branch across
   two green rounds: **26–38 min**, against a 90-minute release cap. Merge state CLEAN; `origin/main`
   unchanged at `fd761ab` throughout; the CHANGELOG's date (2026-09-18) matches the merge day.
-- [ ] Squash-merged; CHANGELOG date re-checked against the merge day before tagging; the merged tree
-  verified byte-identical to the feature tip.
-- [ ] `v0.16.0` annotated on the merged commit, pushed; the release workflow re-runs `make verify`
-  against the tag before publishing.
+- [x] **Squash-merged as `237e2a5`** (2026-09-18, HUM LEAD: "go"), parent `fd761ab`, message the
+  release commit's with `Closes #10.` alone; the CHANGELOG's date matched the merge day; the merged
+  tree verified equal to the release tip's and to the feature tree at `81a7b06`.
+- [x] **`v0.16.0` annotated on `237e2a5` and pushed**; the release workflow is running against the
+  tag (verify, release-matrix, install-test, publish) under the 90-minute cap.
 - [ ] **The PUBLISHED artifact verified, not just the build**: download one binary from the release,
   checksum against `checksums.txt`, run `--version`, count build-path strings (must be 0).
-- [ ] Local `main` fast-forwarded to the feature tip; `main-publish` to the merged commit.
+- [x] Local `main` at the feature tip (`ce54ddd`, the dev trunk); `main-publish` at `237e2a5`.
 - [ ] Deleted `origin/release/v0.16.0`, `origin/feature/0.16.0-broadcaster-ui` and both local branches.
   **`origin` then carries `main` alone.**
 - [ ] Issues reconciled against what the release MEANT to do with them (#10 closed; any other touched
