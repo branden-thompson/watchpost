@@ -318,10 +318,12 @@ muted = ["warning"]       # class keys; EMPTY under mute means every class
 
 ```toml
 [broadcaster]
-transmitter        = { }   # where the station broadcasts from — a location like the default one;
-                           # empty means "the default location", which is where every install starts
-service_radius_mi  = 25    # how far the line-up reaches, 2–100; the pool footer says how many places are in reach
-bed_radius_mi      = 100   # how far the bed looks for a relay, 25–150 — wider than the service area because relays are sparse
+service_radius_mi = 25    # how far the line-up reaches, 2–100; the pool footer says how many places are in reach
+bed_radius_mi     = 100   # how far the bed looks for a relay, 25–150 — wider than the service area because relays are sparse
+
+[broadcaster.transmitter]  # where the station broadcasts from; absent means "the default location"
+label = "Your town, ST"    # set it from the console's Settings rather than by hand — the same
+zip   = "00000"            # five fields the default location carries: label, zip, lat, lon, tz
 ```
 
 The transmitter and the default location are two settings because they are two jobs: the default
