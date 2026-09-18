@@ -307,6 +307,13 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 	t.Helper()
 	d := dash(t).(Dashboard)
 	d.width, d.height = 133, 44
+	// THE CLOCK IS PINNED. The Status window's FETCHED column is an age read
+	// off d.now at minute resolution; on the real clock a run that straddles a
+	// minute boundary between building the lines and rendering them holds a
+	// text no frame ever draws, and the reachability guard reports it as a
+	// line the keyboard cannot reach (CI, 2026-09-18, once in a Linux leg and
+	// never locally in forty runs). An hour after the fixture's observation.
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 2, 0, 0, 0, time.UTC) }
 	switch m {
 	case modalRelayFault:
 		return d.openRelayFault(RelaySilentMsg{Candidates: []RelayCandidate{

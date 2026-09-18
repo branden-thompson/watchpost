@@ -64,10 +64,11 @@ the remote, because only the squashed tree does.
 
 ## The release
 
-- [ ] `git branch release/v0.16.0 $(git commit-tree HEAD^{tree} -p main-publish -m "0.16.0: …")` —
-  verify before pushing that the candidate's tree is byte-identical to the feature tip, that
-  `main-publish` is its only parent, and that it has an empty diff against the tip.
-- [ ] Pushed; PR opened against `main` with the canonical template.
+- [x] `release/v0.16.0` = `57875f1`, `git commit-tree 9747ee8^{tree} -p main-publish` — verified
+  before pushing: same tree hash as the feature tip, `fd761ab` (= `origin/main`) its only parent,
+  empty diff against the tip, `Closes #10.` alone in the message, zero attribution strings,
+  `gh api user` = `branden-thompson` (2026-09-18).
+- [x] Pushed; **PR #20** opened against `main` with the checked body.
 - [ ] **CI green on the PR, every leg.** Budget for rounds: this branch's Linux leg has not run since
   `66dc88d`; **expect Linux-only failures and treat each as a finding**, not as runner noise (0.15.0
   took three rounds, every one a real finding).
