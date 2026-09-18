@@ -3081,3 +3081,16 @@ Same round, the same commit shipped with two red tests in the package because on
 was run before committing; the reviewer's baseline caught it. **The rule already existed** — full
 gate set on a remediation — and it was skipped for a 110-second package run. Cost of the skip: one
 extra review round.
+
+## A pipeline's exit code is the last command's, and a chain that reads it commits red
+
+VALIDATE 2026-09-18, twice in one hour. (1) `go test ./modes/tty | tail -1 && git commit …` committed
+a red package: the pipeline's status is `tail`'s, and the FAIL line scrolled past. The fix-forward
+was one commit later; the catch was reading the output rather than trusting the chain. (2)
+`grep -c … && git commit … ; git checkout <file>` — `grep -c` exits 1 when a file has no match, the
+`&&` chain stopped before the commits, and the `;`-separated `git checkout` that was meant to undo a
+PLANT undid the uncommitted FIX instead. Nothing was lost except a re-apply, because the test that
+pinned the fix was still in the tree and went red at once. **The shapes:** a verdict is read from the
+test's own line, never from a pipeline's exit; a plant's revert never sits in the same command as an
+uncommitted change (plants only on committed trees was already the rule — the revert landing on a
+working tree that was not yet committed is the same rule, read from the other end).
