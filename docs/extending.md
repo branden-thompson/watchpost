@@ -152,7 +152,7 @@ label shifts its neighbour rather than clipping. Ask before choosing one.
 
 - **`make verify` runs every gate in `06_docs/required-gates.txt` except three, and the three it
   skips matter.** `release-matrix` and `install-test` are CI-only — they build five platforms and
-  install what was built — and they are the **only callers of `scripts/lint-injector.sh`**, the check
+  install what was built — and they are the **only release-path callers of `scripts/lint-injector.sh`** (`build-diag` and the gate self-test call it too), the check
   standing between a debug-injector build and a release. `p10` is a phase-exit gate, run by
   `make quality` at BUILD and REVIEW exit rather than on every verify. A green local `verify` does
   not cover them; a green CI run and a green `quality` do. Read `required-gates.txt` rather than any

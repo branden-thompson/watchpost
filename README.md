@@ -132,6 +132,7 @@ tidal current.
 | `f` `c` | Fahrenheit / Celsius |
 | `t` | the colour theme — thirteen built in, **Watchpost Light** for a light terminal |
 | `s` `a` `S` `?` `q` | Settings · About and data credits · the status of every data source · help · quit (`ctrl+c` too) |
+| `ctrl+d` | Diagnostics |
 | `ctrl+b` / `B` · `ctrl+o` / `O` | the **Broadcaster** console for your station · back to the Observer (refused while the station is ON AIR — go to STANDBY first) |
 
 (`ctrl+s` also opens the severe window — unless your shell or tmux has it reserved for flow control,
@@ -178,14 +179,16 @@ is waiting.
 listened to as a place. You set a **transmitter** — where the station broadcasts from — and a **service
 radius**, and the console keeps a **line-up**: a main track of location reports for the places inside
 the radius, in rotation, and a priority track for alerts, which always drains first. The station is
-**STANDBY** or **ON AIR**, the state is written in words as well as colour, and ON AIR means the
+**STOPPED** until you start it, then **STANDBY** or **ON AIR**; the state is written in words as well as colour, and ON AIR means the
 programme is going to the audio out of this machine — Watchpost does not observe a real transmitter.
 Every card shows where its words came from and when its data last arrived; you can promote, demote and
 drop cards, cut the main track over to a live relay on the **bed**, and nothing is ever shown as taken
 unless the schedule took it. Your tower's position stays on this machine, in `config.toml`, and is
-never sent anywhere or written to a debug dump — the opt-in radio diagnostic names places by their
-labels, never by coordinate. `ctrl+o` (or `O`) returns to the Observer, and is refused while the
-station is ON AIR.
+never written to a debug dump — the opt-in radio diagnostic names places by their labels, never by
+coordinate — and goes to no one but the National Weather Service, in the same forecast request every
+place on your watchlist makes. A listener hears location reports in rotation, alerts taking over
+the moment they arrive, and the live relay underneath when the bed is on. `ctrl+o` (or `O`) returns
+to the Observer, and is refused while the station is ON AIR.
 
 ![The Broadcaster console on STANDBY: the station banner with the transmitter, its position, the service radius and the gain; LIVE NOW and RELAY BED rows both idle; the UP NEXT card for Oceanside with its read manifest — the NWS forecast, the marine report, the fire report — beside an empty ALERT TAKEOVER slot; the SCHEDULED LINE-UP of fourteen location reports by distance, and the LOCATION POOL beneath with each place's weather station, distance, population, today and tomorrow](docs/img/broadcaster.png)
 
@@ -200,7 +203,7 @@ station is ON AIR.
 | Key | Does |
 |-----|------|
 | `shift+enter` | **ON AIR / STANDBY** — the station toggle (ignored while a window is open) |
-| `↑` `↓` / `enter` | scroll the running order · open the slot: the card in full, and promote, demote, drop |
+| `↑` `↓` / `enter` | scroll the running order · open the slot: the card in full; inside it `P` moves the card to a position and `k` drops it from the line-up |
 | `0`-`9` / `A` | open a card by its handle (the first ten; the running order scrolls to the rest) / the takeover's card |
 | `r` | **Line-Up Request** — ask for a place inside the radius, by name |
 | `l` | look up any city or ZIP |
@@ -324,17 +327,18 @@ mode  = ""                # "" every class sounds | "mute" silence the classes b
 muted = ["warning"]       # class keys; EMPTY under mute means every class
 ```
 
-**The station's own keys** (`[broadcaster]`; every one is also a row in the console's Settings):
+**The station's own keys** (`[broadcaster]`; the transmitter and the service radius are rows in the console's Settings, the bed radius is config-only):
 
 ```toml
 [broadcaster]
 service_radius_mi = 25    # how far the line-up reaches, 2–100; the pool footer says how many places are in reach
 bed_radius_mi     = 100   # how far the bed looks for a relay, 25–150 — wider than the service area because relays are sparse
 
-[broadcaster.transmitter]  # where the station broadcasts from; absent means "the default location"
-label = "Your town, ST"    # set it from the console's Settings rather than by hand — the same
-zip   = "00000"            # five fields the default location carries: label, zip, lat, lon, tz
 ```
+
+`[broadcaster.transmitter]` is where the station broadcasts from, with the same fields as the default
+location — `label`, `tag`, `zip`, `lat`, `lon`, `tz`. Set it from the console's Settings rather than by
+hand: a table without `lat` and `lon` is ignored, and the station follows the default location.
 
 The transmitter and the default location are two settings because they are two jobs: the default
 location is where the listener lives, the transmitter is where the station broadcasts from. They may

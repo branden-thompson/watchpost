@@ -32,11 +32,10 @@ the remote, because only the squashed tree does.
 - [ ] **Internal-name scrub — run by the HUM LEAD in their own shell** at SHIP, as in 0.15.0:
   `git grep -n -i -e "$A2DH_HOME_NAME" -e "$EMPLOYER_NAME" -- ':!third_party'` → must be empty.
 - [x] **`git worktree list` shows the main tree only** (2026-09-18).
-- [ ] **README captures — check, not assume.** The Broadcaster console is a NEW surface with no
-  capture in `docs/img/`; the README's Broadcaster section is prose and a key table. Whether a
-  capture is owed for 0.16.0 is the HUM LEAD's (docs/img is their pass); the Observer captures are
-  unchanged by this release's Observer-side diffs (the Request window's non-ASCII fix and the mute
-  band draw nothing new on the Observer).
+- [x] **README captures — five of the Broadcaster console** from the HUM LEAD's UAT build
+  (`35de36a`), placed 2026-09-18. The banner's demo transmitter position appears in them as pixels;
+  **ruled fine by the HUM LEAD (2026-09-18)**, with a recapture on the 0.16.0-stamped build if wanted,
+  as 0.15.0 did. The Observer captures are unchanged by this release's Observer-side diffs.
 - [ ] **`CHANGELOG.md` — the 0.16.0 section is NOT written yet.** Written and dated on the day it
   ships; the date re-checked at tag time (0.14.0 needed a second PR for exactly this).
 - [x] **`THIRD_PARTY_LICENSES.md` current** — `go.mod` and the licence file were last changed in the

@@ -99,7 +99,7 @@ trigger that would re-open each. The sites carry `ACCEPTED COST` comments pointi
 | the Director | the pure state machine that owns the schedule: Events in, Effects out; the executors perform the Effects | `platform/lineup/director.go`, `app/executors.go` |
 | a card | one scheduled read, from proposed to on-air to done | `platform/lineup/card.go` |
 | the line-up | the schedule the Director publishes: the main track and the alert rail | `platform/lineup/lineup.go` |
-| the main track / the rail | the rotation of ordinary reads (fifteen slots) / the priority queue for severe-weather takeovers, which always drains first | `platform/lineup/lineup.go` |
+| the main track / the rail | the rotation of ordinary reads (sixteen cards: the one on the air, UP NEXT, and fourteen behind them) / the priority queue for severe-weather takeovers, which always drains first | `platform/lineup/lineup.go` |
 | the bed | the live relay stream the programme rides on — a resource the Director cuts over to, not a track | `platform/lineup/bed.go` |
 | the fence | the hard boundary on which alerts reach the schedule at all | `platform/lineup/fence.go` |
 

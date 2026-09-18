@@ -241,7 +241,7 @@ func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
 	// is a real person's antenna at metre precision; the operator is told once,
 	// here, what the application does with it — and a test holds the dump to it.
 	lines := []string{head, supportIndent + "Broadcasting location - Enter City, ST or Zip",
-		supportIndent + settingSupport("Your tower's position stays on this machine, in config.toml. It is never sent anywhere and never written to a debug dump or export.")}
+		supportIndent + settingSupport("Your tower's position stays on this machine, in config.toml. It goes only to the National Weather Service, as every place you watch does, and is never written to a debug dump or export.")}
 	if st.focus == rowTransmitter {
 		lines = append(lines, supportIndent+"Search: "+st.query+o.Glyphs().Cursor)
 		for i, h := range st.hints { // bounded by the suggestion list (P10-02)
