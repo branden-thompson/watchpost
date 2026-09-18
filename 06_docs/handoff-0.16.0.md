@@ -175,9 +175,11 @@ this list is what is left to do.
    **Done 2026-09-18 (HUM LEAD): the Observer pass — good; the Broadcaster pass — good, except the
    thirty-minute rotation (`p3-uat.md` case 10), which is not signed off and is carried into VALIDATE
    with its state to be ruled.** REVIEW APPROVED; GO 4 VALIDATE.
-4. **SHIP**: the squash-merge release branch (one commit onto `main`), the tag, the push, the feature
+4. **Before SHIP, two rulings**: `p3-uat.md` case 10 (not run, or not held), and F-164 (a
+   fall-through to synth under the operator's cut-over — release, hold, or re-tune; the code releases).
+5. **SHIP**: the squash-merge release branch (one commit onto `main`), the tag, the push, the feature
    branch deleted on origin — every step outward-facing and on the HUM LEAD's word.
-5. **0.16.5 (the dedicated quality pass)** opens with the rows tagged for it in `follow-ups.md`:
+6. **0.16.5 (the dedicated quality pass)** opens with the rows tagged for it in `follow-ups.md`:
    F-156 (shell → Go), F-157 (tier three), F-159 (carry the fault on `Publish`), F-160…F-162 (the
    open requirements), the tenth oracle round, and F-137's undetected history comments.
 

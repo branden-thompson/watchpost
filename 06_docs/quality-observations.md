@@ -3094,3 +3094,16 @@ pinned the fix was still in the tree and went red at once. **The shapes:** a ver
 test's own line, never from a pipeline's exit; a plant's revert never sits in the same command as an
 uncommitted change (plants only on committed trees was already the rule — the revert landing on a
 working tree that was not yet committed is the same rule, read from the other end).
+
+## A line doing two jobs, fixed for one of them
+
+VALIDATE 2026-09-18. `onTuned` replaced the whole `bed` struct on every `Tuned`; a reviewer found it
+wiping the operator's cut-over, and the fix assigned the three observed fields instead. The next blind
+reviewer found that the same line had been the ONLY place a landed tune cleared its pending ask — so
+the fix made every ordinary rotation raise a false stall thirty seconds after a successful tune. The
+suite could not see it: the landing test ticked at ten times the stall bound, past the dwell that
+issues a new tune and resets the clock, so it passed for the wrong reason (a trap the sibling test's
+own comment named). **The shape:** a wholesale write is a bundle of resets; narrowing it needs a
+reader of every field it used to reset, not only the one the finding was about. And a test that
+proves "not reported" must tick INSIDE the window where reporting would happen; the plant "do not
+clear the ask" SURVIVED the old test and CAUGHT the corrected one.

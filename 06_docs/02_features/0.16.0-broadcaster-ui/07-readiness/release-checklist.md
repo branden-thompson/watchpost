@@ -52,6 +52,15 @@ the remote, because only the squashed tree does.
 - [ ] **No attribution and no internal names** in the commit or the body, per the standing rule and
   `lint-watermark`.
 
+- [x] **The release job's cap is derived, not guessed.** `release.yml` allows 60 minutes: the
+  Makefile grants `mutant-check` 40, and the rest of the job (verify's other gates, `release-matrix`,
+  `install-test`, publish) measured ~16 on the 0.15.0 run (16.1 total; the trend across four
+  releases 13.0 → 13.6 → 13.7 → 16.1; this branch's last ubuntu verify 21.5). A 20-minute cap would
+  have produced a tag with no release (VALIDATE, hygiene reviewer). **Record the measured job time
+  here after the release run.**
+- [ ] **F-164 ruled or explicitly carried** — what a relay falling through to synth does to the
+  operator's cut-over ((a) release it, the code today; (b) hold; (c) re-tune).
+
 ## The release
 
 - [ ] `git branch release/v0.16.0 $(git commit-tree HEAD^{tree} -p main-publish -m "0.16.0: …")` —
