@@ -12,7 +12,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 60   # derived: the Makefile grants mutant-check 40 minutes, and the rest of the job (verify's other gates, release-matrix, install-test, publish) measured ~16 on the 0.15.0 run — the cap covers the tree's own bound, not a guess
+    timeout-minutes: 90   # derived, twice the measurement: the Linux CI job that runs these same gates (verify, release-matrix, install-test) took 38 min on the 0.16.0 release branch (2026-09-18, runs 35390965873 and 35391681475); publish adds a minute. A cap under the job leaves a tag with no release behind it.
     steps:
       # Actions pinned by commit (red-team 0.9.0 S-F9): the release job has
       # contents: write, so a moved tag must not be able to swap the code.

@@ -3107,3 +3107,16 @@ own comment named). **The shape:** a wholesale write is a bundle of resets; narr
 reader of every field it used to reset, not only the one the finding was about. And a test that
 proves "not reported" must tick INSIDE the window where reporting would happen; the plant "do not
 clear the ask" SURVIVED the old test and CAUGHT the corrected one.
+
+## A guard that reads the clock twice is a guard that fails once a minute
+
+SHIP 2026-09-18, CI round 1. The reachability guard builds a window's lines and then renders them,
+comparing the two texts; the Status window's FETCHED column is an age off the real clock at minute
+resolution. One Linux leg straddled a minute boundary between the two reads, and the guard reported
+the earlier text as a line the keyboard could not reach. Forty local runs never hit the window; the
+macOS legs of the same commit passed minutes apart. **The shape:** any fixture whose text depends on
+`time.Now()` is a flake with a period, and the flake's first appearance is in CI because CI is where
+the run count is. The fix is a pinned clock in the fixture, and the proof is a clock that moves a
+minute per read — which turns the guard red every time, so the mechanism is measured rather than
+argued. 0.15.0's three CI rounds were each a real finding too; the budget line in the checklist
+("expect Linux-only failures and treat each as a finding") earned its place a second time.

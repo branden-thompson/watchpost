@@ -53,12 +53,11 @@ the remote, because only the squashed tree does.
 - [ ] **No attribution and no internal names** in the commit or the body, per the standing rule and
   `lint-watermark`.
 
-- [x] **The release job's cap is derived, not guessed.** `release.yml` allows 60 minutes: the
-  Makefile grants `mutant-check` 40, and the rest of the job (verify's other gates, `release-matrix`,
-  `install-test`, publish) measured ~16 on the 0.15.0 run (16.1 total; the trend across four
-  releases 13.0 → 13.6 → 13.7 → 16.1; this branch's last ubuntu verify 21.5). A 20-minute cap would
-  have produced a tag with no release (VALIDATE, hygiene reviewer). **Record the measured job time
-  here after the release run.**
+- [x] **The release job's cap is derived, not guessed.** `release.yml` allows 90 minutes: twice the
+  Linux CI job that runs the same gates, measured at **38 min** on this release branch (CI round 2,
+  2026-09-18); earlier derivations were 60 (the Makefile's 40-minute mutant bound + ~16) and, before
+  VALIDATE, a 20-minute cap that would have produced a tag with no release. The trend across releases:
+  13.0 → 13.6 → 13.7 → 16.1 → 38. **Record the measured release-job time here after the run.**
 - [x] **F-164 ruled (a)** — a relay falling through to synth releases the operator's cut-over, as the
   code is today (HUM LEAD 2026-09-18; D-159).
 
@@ -69,9 +68,22 @@ the remote, because only the squashed tree does.
   empty diff against the tip, `Closes #10.` alone in the message, zero attribution strings,
   `gh api user` = `branden-thompson` (2026-09-18).
 - [x] Pushed; **PR #20** opened against `main` with the checked body.
-- [ ] **CI green on the PR, every leg.** Budget for rounds: this branch's Linux leg has not run since
-  `66dc88d`; **expect Linux-only failures and treat each as a finding**, not as runner noise (0.15.0
-  took three rounds, every one a real finding).
+- [~] **CI round 1 (2026-09-18, `57875f1`): `policy` and both macOS legs GREEN; the pull-request
+  run's Linux leg RED at `make race`** — `TestEveryLineOfEveryWindowIsReachableAtTheFloor/status`:
+  one line "cannot be reached", `✔ nws NWS 2ND OK 619h 09m`. **A finding, not runner noise, and not
+  Linux's:** the Status window's FETCHED column is an age read off the real clock at minute
+  resolution, and a run that straddles a minute boundary between building the lines and rendering
+  them holds a text no frame ever draws. Forty local runs under `-race` never hit the window; a
+  clock that moves a minute per read turns the guard red every time. Fixed on the feature branch
+  (`ab5d62e`: the window fixtures pin the clock) and added to the release branch as a second commit
+  (`d3d7629`, same tree as the feature tip), as 0.15.0's rounds were — the PR squash-merges either
+  way. Budget for further rounds: **expect Linux-only failures and treat each as a finding.**
+- [x] **CI round 2 (`d3d7629`): GREEN on every leg** — `policy` 5–8 s, macOS verify 9 m 09 s and
+  12 m 36 s, **Linux verify 37 m 43 s and 38 m 22 s**. That last figure moved a decision: the release
+  cap had been derived from a 21.5-minute Linux verify; the job is 38 now on this tree, and 60 left
+  22 minutes of headroom, under the two-times rule the VALIDATE reviewer named. **Raised to 90 (twice
+  the measurement) as round 3**, one YAML line, rather than ship on a margin that had just halved.
+- [ ] **CI round 3 (the cap): green on every leg.**
 - [ ] Squash-merged; CHANGELOG date re-checked against the merge day before tagging; the merged tree
   verified byte-identical to the feature tip.
 - [ ] `v0.16.0` annotated on the merged commit, pushed; the release workflow re-runs `make verify`
