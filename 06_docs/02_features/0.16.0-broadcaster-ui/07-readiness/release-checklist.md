@@ -29,7 +29,8 @@ the remote, because only the squashed tree does.
   the squash. **Re-run both at tag time.**
 - [x] **`gh api user` = `branden-thompson`** under `GH_CONFIG_DIR=~/.config/gh-personal`, checked
   2026-09-18 before any outward action. Re-check at the push.
-- [ ] **Internal-name scrub — run by the HUM LEAD in their own shell** at SHIP, as in 0.15.0:
+- [ ] **Internal-name scrub — run by the HUM LEAD in their own shell**, as in 0.15.0 (not confirmed
+  to this record before the merge; run it against `origin/main` and note the result here):
   `git grep -n -i -e "$A2DH_HOME_NAME" -e "$EMPLOYER_NAME" -- ':!third_party'` → must be empty.
 - [x] **`git worktree list` shows the main tree only** (2026-09-18).
 - [x] **README captures — five of the Broadcaster console** from the HUM LEAD's UAT build
@@ -90,15 +91,20 @@ the remote, because only the squashed tree does.
 - [x] **Squash-merged as `237e2a5`** (2026-09-18, HUM LEAD: "go"), parent `fd761ab`, message the
   release commit's with `Closes #10.` alone; the CHANGELOG's date matched the merge day; the merged
   tree verified equal to the release tip's and to the feature tree at `81a7b06`.
-- [x] **`v0.16.0` annotated on `237e2a5` and pushed**; the release workflow is running against the
-  tag (verify, release-matrix, install-test, publish) under the 90-minute cap.
-- [ ] **The PUBLISHED artifact verified, not just the build**: download one binary from the release,
-  checksum against `checksums.txt`, run `--version`, count build-path strings (must be 0).
-- [x] Local `main` at the feature tip (`ce54ddd`, the dev trunk); `main-publish` at `237e2a5`.
-- [ ] Deleted `origin/release/v0.16.0`, `origin/feature/0.16.0-broadcaster-ui` and both local branches.
-  **`origin` then carries `main` alone.**
-- [ ] Issues reconciled against what the release MEANT to do with them (#10 closed; any other touched
-  issue's state checked by hand).
+- [x] **`v0.16.0` annotated on `237e2a5` and pushed.** Release run `35398502049` GREEN — verify,
+  release matrix, installer smoke test, publish — **37 min 42 s** (21:47:23 → 22:25:05 UTC) under the
+  90-minute cap; 8 assets, both Linux binaries among them. The trend across releases is now
+  13.0 → 13.6 → 13.7 → 16.1 → **37.7**; the cap derivation (twice the measured job) holds with
+  52 minutes of headroom.
+- [x] **The PUBLISHED artifact verified, not just the build** — `watchpost-darwin-arm64` downloaded
+  from the release: checksum matches `checksums.txt` (`05642efe…9d73`, OK), it reports
+  `watchpost version 0.16.0`, and it carries **0** `/Users/`, `/home/` or scratch-path strings against
+  110,902 strings in all, so the zero is not a vacuous scan.
+- [x] Local `main` at the feature tip (the dev trunk); `main-publish` at `237e2a5`.
+- [x] Deleted `origin/release/v0.16.0`, `origin/feature/0.16.0-broadcaster-ui` and both local branches
+  (2026-09-18). **`origin` carries `main` alone.**
+- [x] **#10 CLOSED by the merge commit** at 21:47:17 UTC, checked by hand; no other issue was
+  touched by this release.
 
 ## After
 
