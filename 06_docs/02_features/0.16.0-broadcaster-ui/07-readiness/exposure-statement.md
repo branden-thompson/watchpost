@@ -1,6 +1,6 @@
 ---
 title: "0.16.0 exposure statement"
-status: "Re-derived at BUILD exit, 2026-09-15.  The delta is location and identity; credential remains clean."
+status: "Re-derived at REVIEW exit, 2026-09-18, at 73bce2b.  The delta is location and identity; credential remains clean."
 ---
 
 # Exposure statement — 0.16.0 Broadcaster UI
@@ -19,20 +19,24 @@ the P7 build log — so the numbers this document published were already stale w
 The document whose thesis is *"re-derive rather than cite"* had cited itself.  These are the figures
 from the tree as it now stands. **Re-derived again at BUILD exit, 2026-09-17** (red team F-145: the
 second table was already wrong against its own scanner): `python3 scripts/quality/exposure-scan.py` at
-`59c8b38`. The tags column reads 21 because two local safety-net tags exist; the published set is 19.
+`59c8b38`, **and again at REVIEW exit, 2026-09-18, at `73bce2b`** — the docs-quality reviewer found this
+statement's own `/Users/you/…` example inflating the identity count (the scanner harvests every
+`/Users/<x>` as an account name), so the example is spelled `~/…` now and the numbers below are the
+re-run after that edit. The tags column reads 21 because two local safety-net tags exist; the
+published set is 19.
 
 | Category | Tracked tree (files / occurrences) | 0.15.0 | Δ | Git history | Tags |
 | --- | --- | --- | --- | --- | --- |
-| **identity** | 137 / 339 | 23 / 133 | **+114 files** | 2,504 | 21/21 |
-| **location** | 212 / 746 | 139 / 464 | **+73 files** | 7,665 | 21/21 |
-| **host** | 12 / 28 | 11 / 23 | +1 file | 226 | 21/21 |
+| **identity** | 137 / 341 | 23 / 133 | **+114 files** | 7,070 | 21/21 |
+| **location** | 214 / 750 | 139 / 464 | **+75 files** | 7,836 | 21/21 |
+| **host** | 12 / 28 | 11 / 23 | +1 file | 240 | 21/21 |
 | **internal-url** | 0 / 0 | 0 | — | 0 | 0/21 |
 | **credential** | 7 files / 11 matches, **2 distinct, both fixtures** | 2 distinct | **no change** | 69 | 21/21 |
-| **path** | 4 / 5 | — | — | 137 | 21/21 |
+| **path** | 4 / 5 | — | — | 138 | 21/21 |
 
 ## What changed, and what it means
 
-**`location` grew by 64 files, and the growth is the release's own documentation.**  The Broadcaster
+**`location` grew by 75 files, and the growth is the release's own documentation.**  The Broadcaster
 is a geographic product: its rulings, its mocks and its build logs name Oceanside, Vista, Bonsall,
 Rainbow and the rest because those are what the fence, the pool and the hyper-local case are ABOUT.
 ~19 of the new occurrences are Go test files added on this branch (`app/airscope_test.go:31`,
@@ -43,7 +47,7 @@ Rainbow and the rest because those are what the fence, the pool and the hyper-lo
 *"keep as is for now"* on 2026-09-08 (0.15.0's statement).  **The digits added by 0.16.0 fall inside
 that standing ruling.**  What 0.16.0 owes is the count, and here it is.
 
-**`identity` grew by 93 files** — the release's documentation tree carries the author's name in
+**`identity` grew by 114 files** — the release's documentation tree carries the author's name in
 frontmatter and in quoted rulings throughout.  Deliberate, and the same disposition 0.15.0 recorded:
 this is a personal project published under its author's own name.
 
@@ -73,7 +77,7 @@ likely to be wrong and it is the one that did not move.
 
 ## Standing instruction, restated for 0.17.0
 
-**Re-derive rather than cite.**  These numbers are true on 2026-09-15 and will be wrong by the next
+**Re-derive rather than cite.**  These numbers are true on 2026-09-18 and will be wrong by the next
 release.  `python3 scripts/quality/exposure-scan.py`, and write the delta down — the release that
 built the scanner is the release that forgot to run it, which is exactly how a standing instruction
 decays.
@@ -87,8 +91,8 @@ files carried `/Users/<account>/…` and ten carried an agent-harness path, on b
 **Disposition.** Fixed forward, never rewritten: the dead artefacts were deleted, the records scrubbed of
 the account name with their findings kept, and `TestThePublishedTreeNamesNoPersonOrMachine` now asks
 the WHOLE index (it had been scoped to one file while the class was live in twenty-one others). The
-tracked tree stands at **4 files / 5 occurrences**, each a documentation example of the `/Users/you/…`
-kind, which the gate's `reservedForDocs` pattern admits by name. **History keeps its 137**, as every
+tracked tree stands at **4 files / 5 occurrences**, each a documentation example of a home directory
+with a placeholder account name, which the gate's `reservedForDocs` pattern admits by name. **History keeps its 137**, as every
 category does — `git rm` removes none of these, and published history is never rewritten. **Built
 artifacts** carry `path` in the hundreds per binary because Go embeds the build path; `dist/` is
 git-ignored, `release-matrix` builds with `-trimpath`, and `TestEveryBuildTargetTrimsThePath` holds it.

@@ -16,11 +16,11 @@ handoff exists, and it is more useful than the findings list.
 
 | | |
 |---|---|
-| Branch | `feature/0.16.0-broadcaster-ui`; the REVIEW tip at the time of writing is named in §4 |
+| Branch | `feature/0.16.0-broadcaster-ui`; the REVIEW-exit code commit is `73bce2b` (2026-09-18), followed only by records |
 | Pushed | `origin/main` @ `fd761ab` (0.15.0). The feature branch on origin is stale and will be deleted at SHIP; **the release is a squash-merge release branch** (HUM LEAD ruling, 2026-09-17), one commit onto `main`, so nothing in this branch's history — including the 15 MB blob at `6b1b621` — reaches the remote |
-| `make verify` | green on every REVIEW commit that changed code (see §4 for the final run); `p10` moved OUT of verify to `make quality` (phase-exit) at R1, because the release workflow runs verify and has no `a2dh` |
+| `make verify` | **ALL GATES GREEN on `73bce2b`** (`dist/verify-review-73bce2b.log`, 2026-09-18); `p10` moved OUT of verify to `make quality` (phase-exit) at R1, because the release workflow runs verify and has no `a2dh` |
 | `make quality` (P10) | 0 live, 0 unmatched, 0 unratified at `f7fe5fa` (153 ratified rows, `06_docs/p10-ledger.md`) |
-| Mutation sweep | the last full run is `e956747` (BUILD exit): 379 mutants, 374 CAUGHT, 5 SURVIVED by design, 0 NO EVIDENCE, 4 h 46 min. The corpus is 380 since R2 round two (mCL4). **The REVIEW-exit sweep is run on the final commit and its figure replaces this one** (§4) |
+| Mutation sweep | **REVIEW exit, on `73bce2b`: 380 mutants — 376 CAUGHT, 4 SURVIVED by design (`m16`, `m43`, `mBM1`, `mSC3`), 0 NO EVIDENCE**; `mBM2` is caught now. A first REVIEW sweep on `0963b36` was stopped at 183/380 when the last rulings arrived, because the figure has to come from the final commit. Blind spot: a `-race`-only detector reads as SURVIVED |
 | Requirements | 60 in `requirements.md`: 31 traced by ID, 13 by a named test without the ID, 4 OPEN with follow-up rows (FR-3.6 F-161, FR-8.3 F-157, FR-8.8 F-162, FR-9.2 F-160), the rest closed/partial/superseded in the red team's own rows — derived by roster test NAME scoped to this release (`build-report.md`, ruling 9) |
 | Open findings | `06_docs/follow-ups.md`: F-156 (port the shell) is the standing backlog; F-157…F-163 are this REVIEW's rows; three HUM CALLS are open (rulings 10, 11, 12 below) |
 

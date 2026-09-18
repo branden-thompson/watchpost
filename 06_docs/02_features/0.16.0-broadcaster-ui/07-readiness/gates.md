@@ -524,7 +524,14 @@ hole and is fixed; one guards a retired rule.**
 it stood mid-release and are kept because the reasoning around them is still the record of how those
 seven were triaged.**
 
-> **CURRENT, 2026-09-17, on the COMMITTED tree `e956747`: `make mutant-verdicts` over all 379 mutants —
+> **CURRENT, 2026-09-18, on the COMMITTED tree `73bce2b` (REVIEW exit): `make mutant-verdicts` over all
+> 380 mutants — 376 CAUGHT, 4 SURVIVED, 0 NO EVIDENCE.** The survivors are `m16`, `m43`, `mBM1`, `mSC3`,
+> all by design (below); `mBM2` is CAUGHT now (`TestOnlyMastercontrolWritesTheBand`, against `./...`).
+> **The number's blind spot, beside it (INST-5):** a detector that needs `-race` reads as SURVIVED under
+> this sweep ("The sweep's own blind spot", below). The record is `mutant-verdicts.log` beside this file,
+> which opens with the tree hash. The paragraph that follows is the BUILD-exit sweep, kept as history.
+>
+> **BUILD exit, 2026-09-17, on the COMMITTED tree `e956747`: `make mutant-verdicts` over all 379 mutants —
 > 374 CAUGHT, 5 SURVIVED, 0 NO EVIDENCE**, 4 h 46 min wall clock. The five survivors are exactly the
 > by-design set dispositioned at the end of this file — `m16`, `m43`, `mBM1`, `mBM2`, `mSC3` — and
 > none is new. The per-mutant record is `mutant-verdicts.log` beside this file (403 lines). **A first
@@ -655,7 +662,7 @@ log, and the difference is the whole verdict.
 |---|---|---|
 | `mSC3` | `routeKey` keeps its own Router when `keyAction` declines a key.  No fall-through path in that switch mutates, so taking the returned model instead is equivalent | The day a case mutates `r` *before* falling through, the surface below silently receives a Router already half-changed by a rule that declined to act |
 | `mBM1` | `bodymemo`'s bound invariant only fires when eviction is already wrong.  Three tests drive the bound itself and stay green under this mutation, correctly | The day the eviction condition is edited — `!ok && len(m.items) >= m.max` is one `&&` away from never evicting — the cache grows without limit with every observable still reading correct |
-| `mBM2` | `delete` on a key the map does not hold is a no-op in Go, and every real call site reaches `evictLocked` only when the map is occupied | The day `evictLocked` is called from a path that does not already know the map is non-empty |
+| `mBM2` | `delete` on a key the map does not hold is a no-op in Go, and every real call site reaches `evictLocked` only when the map is occupied | The day `evictLocked` is called from a path that does not already know the map is non-empty. **CAUGHT at the REVIEW-exit sweep (2026-09-18) by `TestOnlyMastercontrolWritesTheBand`, against `./...` — no longer a survivor; the row stays as the reasoning** |
 
 **`mGL1` is recorded here for the opposite reason: its FIRST version was a bad mutant and was
 replaced.**  It deleted the build-time guard that is itself a test — so it could not be caught *by*

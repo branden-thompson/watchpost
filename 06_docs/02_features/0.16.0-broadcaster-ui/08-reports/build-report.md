@@ -3,7 +3,7 @@ title: "0.16.0 Broadcaster UI — BUILD report"
 phase: "BUILD"
 status: "DRAFT — not yet presented.  Awaiting HUM LEAD approval for BUILD exit"
 sev: "SEV-0"
-gates: "verify: 16 required gates green on 2026-09-15 · mutant corpus 358 · re-run pending after round-3 remediation"
+gates: "verify: ALL GATES GREEN on 73bce2b (2026-09-18, dist/verify-review-73bce2b.log) · sweep on 73bce2b: 380 mutants — 376 CAUGHT, 4 SURVIVED by design, 0 NO EVIDENCE · P10 0 live / 0 unratified at f7fe5fa"
 rounds: "Three blind red-team rounds; round 3 closed 2026-09-16"
 ---
 
@@ -58,11 +58,14 @@ defect it closed:
 
 ## Gate evidence, on the committed tree
 
-**The corpus sweep, 2026-09-17, on `e956747`: 379 mutants — 374 CAUGHT, 5 SURVIVED, 0 NO EVIDENCE**
-(4 h 46 min). Every survivor is one the roster already dispositions as surviving by design (`gates.md`,
-"Survivors that survive BY DESIGN"): `m16`, `m43`, `mBM1`, `mBM2`, `mSC3`. The figure this section
-quoted before — 355 / 353 / 2 — is the 2026-09-15 sweep; the corpus gained 24 mutants and three were
-re-anchored at the fault/decline split on the day.
+**The corpus sweep at REVIEW exit, 2026-09-18, on `73bce2b`: 380 mutants — 376 CAUGHT, 4 SURVIVED,
+0 NO EVIDENCE** (`07-readiness/mutant-verdicts.log`, which opens with the tree hash). Every survivor
+is one the roster dispositions as surviving by design (`gates.md`, "Survivors that survive BY
+DESIGN"): `m16`, `m43`, `mBM1`, `mSC3`. `mBM2`, the fifth of that set at BUILD exit, is CAUGHT now
+(`TestOnlyMastercontrolWritesTheBand`, against `./...`). **Blind spot beside the number (INST-5):** a
+detector that needs `-race` reads as SURVIVED under this sweep, which runs without it (`gates.md`,
+"The sweep's own blind spot"). The BUILD-exit sweep on `e956747` was 379 — 374 / 5 / 0 (4 h 46 min);
+the one mutant added since is `mCL4`, a sibling written at R2 round two.
 
 
 Every figure below was read from the gate's own log, never from a task notification — a distinction
@@ -70,23 +73,24 @@ this session had to learn twice (see *Honest assessment*).
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| `make verify` | **ALL GATES GREEN** — the 16 gates `06_docs/required-gates.txt` names | `dist/verify-remediated3.log` (the log's verdict line carries no count; an earlier draft of this report published "104", which is the number of `ok <package>` lines in it, not a gate count) |
-| `mutant-check` | green across **355** mutants (491 s) | same log |
-| **`mutant-verdicts`** | **355 — 353 CAUGHT, 2 SURVIVED, 0 NO EVIDENCE** | `07-readiness/mutant-verdicts.log`, promoted by the target |
-| `mutant-anchors` | 355, every anchor matches the tip | same |
+| `make verify` | **ALL GATES GREEN on `73bce2b`** — every gate `06_docs/required-gates.txt` names except the two CI-only ones and `p10`, which is a phase-exit gate under `make quality` (`dist/verify-review-73bce2b.log`, 2026-09-18) | `dist/verify-remediated3.log` (the log's verdict line carries no count; an earlier draft of this report published "104", which is the number of `ok <package>` lines in it, not a gate count) |
+| `mutant-check` | green across **380** mutants (658 s, inside the verify above) | same log |
+| **`mutant-verdicts`** | **380 — 376 CAUGHT, 4 SURVIVED (by design), 0 NO EVIDENCE**, on `73bce2b` | `07-readiness/mutant-verdicts.log`, promoted by the target, opening with the tree hash |
+| `mutant-anchors` | 380, every anchor matches the tip | same |
 | `a2dh validate` | **100% (18/18)** | run at BUILD exit; it was 94.44% until `a2dh p10 check` cleared a stale run record, which is a hard gate on the exit sequence |
 | `-race` | green on `app` and `platform/lineup` | run directly after each hazard-path fix |
 | `dupes` | 3 groups, **3 ratified, 0 unratified** | after collapsing the one I introduced |
 | `wires` | 91 members, 2 ratified-unwired, **0 unexplained** | same |
 | `lint` | no new findings (**6 baselined**) | same — the baseline is pre-existing and unchanged by this release |
 | `lint-watermark` | OK — **zero AI attribution** across every commit on this branch and every tracked file | verified independently before staging, and again after the tip commit, which the cited gate run predates |
-| P10 | 66 findings, **24 with a recorded reason → 42 unratified** | `dist/p10.json`, re-run at BUILD exit.  An earlier draft quoted these figures while the artefact on disk was still the 2026-09-10 run — red team round 2 caught that the evidence did not exist.  Base is `merge-base:origin/main`, i.e. the whole release |
+| P10 (`make quality`, phase-exit) | **0 live, 0 unmatched, 0 unratified** — 153 ratified rows (`06_docs/p10-ledger.md`), at `f7fe5fa` | `dist/p10.json`, re-run at BUILD exit.  An earlier draft quoted these figures while the artefact on disk was still the 2026-09-10 run — red team round 2 caught that the evidence did not exist.  Base is `merge-base:origin/main`, i.e. the whole release |
 
-**The two survivors owe nothing.**  `m16_scopeevents_drops_ok` — the `ok` check is defence in depth on
+**The four survivors owe nothing.**  `m16_scopeevents_drops_ok` — the `ok` check is defence in depth on
 the hazard path, and both builders of the tracked set go through `alertKeysOf`, so no unusable key can
 be in the set to match.  `m43_marine_narrowed` — the Marine arm matches `Contains(product, "Marine")`
-and the live catalogue holds exactly one such product.  Both are equivalents, kept rather than
-retired, dispositioned at `gates.md`'s survivor dispositions (end of file).  **A retirement is RATIFIED, never self-issued**, which
+and the live catalogue holds exactly one such product.  `mBM1` (a memo cap that nothing observes past)
+and `mSC3` (the Router taking a model it did not handle) are dispositioned the same way.  All four are
+equivalents, kept rather than retired, at `gates.md`'s survivor dispositions (end of file).  **A retirement is RATIFIED, never self-issued**, which
 is why the sweep exits non-zero and that is correct.
 
 **Zero NO EVIDENCE is the figure worth reading twice.**  It means nothing in the corpus failed to
@@ -225,7 +229,7 @@ sentence — *"every finding is below"* — that nobody had measured.
 | --- | --- |
 | **The release was being judged on a WORKING TREE** — 88% of the P7 build log, a new platform package, 14 test files and 22 mutants existed only on disk | Committed as `2d7c21e`; every gate figure in this report is from a run against the committed tree |
 | `gates.md` cited **16 tests that no longer exist**, 14 with no retirement line — in a file whose own standard is that BUILD exit is judged on it | Reconciled: each names its successor, every successor verified to exist.  Round 2 then found **three successors that do not carry the property**, one of which hid a real hole (F-109) |
-| The filed corpus record was **22 mutants behind** the corpus it described | Re-run on the committed tree — 355 — and promoted by the target itself |
+| The filed corpus record was **22 mutants behind** the corpus it described | Re-run on the committed tree — 355 then, 380 at REVIEW exit — and promoted by the target itself, which now writes the tree hash first |
 | The release **shipped `exposure-scan.py` and never ran it on itself** | `07-readiness/exposure-statement.md` filed, re-derived rather than cited |
 | `05-debugging/` absent under SEV-0's "ALL folders" | Populated; round 2 then found `06-key_learnings/` also absent — now opened |
 
