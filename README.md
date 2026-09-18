@@ -187,6 +187,16 @@ never sent anywhere or written to a debug dump — the opt-in radio diagnostic n
 labels, never by coordinate. `ctrl+o` (or `O`) returns to the Observer, and is refused while the
 station is ON AIR.
 
+![The Broadcaster console on STANDBY: the station banner with the transmitter, its position, the service radius and the gain; LIVE NOW and RELAY BED rows both idle; the UP NEXT card for Oceanside with its read manifest — the NWS forecast, the marine report, the fire report — beside an empty ALERT TAKEOVER slot; the SCHEDULED LINE-UP of fourteen location reports by distance, and the LOCATION POOL beneath with each place's weather station, distance, population, today and tomorrow](docs/img/broadcaster.png)
+
+![ON AIR: the banner turns red and says in words that audio is leaving this program and that Watchpost cannot verify a transmitter is carrying it; LIVE NOW carries the Oceanside report, and the card window shows it READING with management locked while it can still be taken over by an alert — the full read below is the words going to air](docs/img/broadcaster-on-air.png)
+
+![The Line-Up Request window: a location, the reports to include — NWS forecast, marine, fire and hotspot, seismic — and where the card lands: PRIORITIZE to UP NEXT, or a numbered line-up slot](docs/img/broadcaster-request.png)
+
+![Managing a slot: the Carlsbad card's window with Change Position open — move it to any position from 2 to 15 and everything below shifts down — and the keys to close, scroll, change position or drop it from the line-up](docs/img/broadcaster-manage.png)
+
+![The console's own Settings: the transmitter (following the default location until you set one) with the sentence that its position never leaves this machine, the service radius from 2 to 100 miles, the NASA FIRMS key, the theme and units, and on the right the alert tones and the correspondents — every row the console shares with the Observer](docs/img/broadcaster-settings.png)
+
 | Key | Does |
 |-----|------|
 | `shift+enter` | **ON AIR / STANDBY** — the station toggle (ignored while a window is open) |
