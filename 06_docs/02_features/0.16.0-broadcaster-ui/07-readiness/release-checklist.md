@@ -53,12 +53,11 @@ the remote, because only the squashed tree does.
 - [ ] **No attribution and no internal names** in the commit or the body, per the standing rule and
   `lint-watermark`.
 
-- [x] **The release job's cap is derived, not guessed.** `release.yml` allows 60 minutes: the
-  Makefile grants `mutant-check` 40, and the rest of the job (verify's other gates, `release-matrix`,
-  `install-test`, publish) measured ~16 on the 0.15.0 run (16.1 total; the trend across four
-  releases 13.0 → 13.6 → 13.7 → 16.1; this branch's last ubuntu verify 21.5). A 20-minute cap would
-  have produced a tag with no release (VALIDATE, hygiene reviewer). **Record the measured job time
-  here after the release run.**
+- [x] **The release job's cap is derived, not guessed.** `release.yml` allows 90 minutes: twice the
+  Linux CI job that runs the same gates, measured at **38 min** on this release branch (CI round 2,
+  2026-09-18); earlier derivations were 60 (the Makefile's 40-minute mutant bound + ~16) and, before
+  VALIDATE, a 20-minute cap that would have produced a tag with no release. The trend across releases:
+  13.0 → 13.6 → 13.7 → 16.1 → 38. **Record the measured release-job time here after the run.**
 - [x] **F-164 ruled (a)** — a relay falling through to synth releases the operator's cut-over, as the
   code is today (HUM LEAD 2026-09-18; D-159).
 
@@ -79,7 +78,12 @@ the remote, because only the squashed tree does.
   (`ab5d62e`: the window fixtures pin the clock) and added to the release branch as a second commit
   (`d3d7629`, same tree as the feature tip), as 0.15.0's rounds were — the PR squash-merges either
   way. Budget for further rounds: **expect Linux-only failures and treat each as a finding.**
-- [ ] **CI round 2 (`d3d7629`): green on every leg.**
+- [x] **CI round 2 (`d3d7629`): GREEN on every leg** — `policy` 5–8 s, macOS verify 9 m 09 s and
+  12 m 36 s, **Linux verify 37 m 43 s and 38 m 22 s**. That last figure moved a decision: the release
+  cap had been derived from a 21.5-minute Linux verify; the job is 38 now on this tree, and 60 left
+  22 minutes of headroom, under the two-times rule the VALIDATE reviewer named. **Raised to 90 (twice
+  the measurement) as round 3**, one YAML line, rather than ship on a margin that had just halved.
+- [ ] **CI round 3 (the cap): green on every leg.**
 - [ ] Squash-merged; CHANGELOG date re-checked against the merge day before tagging; the merged tree
   verified byte-identical to the feature tip.
 - [ ] `v0.16.0` annotated on the merged commit, pushed; the release workflow re-runs `make verify`
