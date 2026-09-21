@@ -22,7 +22,7 @@ func TestMapAlertBoundsEveryFieldAndKeepsSender(t *testing.T) {
 		}{ID: "urn:oid:r" + strconv.Itoa(i)})
 	}
 	perKey := map[snapshot.LocationKey][]snapshot.Alert{}
-	mapAlert(pr, map[string][]snapshot.LocationKey{"Z1": {"k"}}, perKey)
+	mapAlert(pr, nil, map[string][]snapshot.LocationKey{"Z1": {"k"}}, perKey)
 	if len(perKey["k"]) != 1 {
 		t.Fatalf("expected one alert on k, got %d", len(perKey["k"]))
 	}
@@ -46,7 +46,7 @@ func TestMapAlertAttachesWhenTheZoneIsBeyondTheListCap(t *testing.T) {
 		pr.AffectedZones = append(pr.AffectedZones, "https://api.weather.gov/zones/forecast/Z"+strconv.Itoa(i))
 	}
 	perKey := map[snapshot.LocationKey][]snapshot.Alert{}
-	mapAlert(pr, map[string][]snapshot.LocationKey{"Z60": {"olathe"}}, perKey)
+	mapAlert(pr, nil, map[string][]snapshot.LocationKey{"Z60": {"olathe"}}, perKey)
 	if len(perKey["olathe"]) != 1 {
 		t.Fatalf("alert affecting the tracked zone (60th of 80) was dropped: %d attached", len(perKey["olathe"]))
 	}

@@ -1,5 +1,5 @@
 {
-  "$id": "https://raw.githubusercontent.com/branden-thompson/watchpost/main/pkg/schema/watchpost-report.v1.0.0-rc.schema.json",
+  "$id": "https://raw.githubusercontent.com/branden-thompson/watchpost/main/pkg/schema/watchpost-report.v1.1.0-rc.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "description": "Machine-readable weather report envelope. Harmonization never blends: NWS wins outright; secondaries fill nulls only (fill_from records provenance).",
@@ -19,6 +19,28 @@
                 "affected_zones": {
                   "items": {
                     "type": "string"
+                  },
+                  "type": "array"
+                },
+                "area": {
+                  "items": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "lat": {
+                          "type": "number"
+                        },
+                        "lon": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "lon",
+                        "lat"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
                   },
                   "type": "array"
                 },
@@ -1344,6 +1366,12 @@
                         "null"
                       ]
                     },
+                    "lat": {
+                      "type": "number"
+                    },
+                    "lon": {
+                      "type": "number"
+                    },
                     "mag": {
                       "type": "number"
                     },
@@ -1402,6 +1430,8 @@
                     "at",
                     "distance_km",
                     "bearing",
+                    "lat",
+                    "lon",
                     "tsunami",
                     "sig",
                     "source"

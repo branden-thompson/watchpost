@@ -316,6 +316,7 @@ func (p *Provider) stateFor(ref snapshot.LocationRef, feats []feature, asOf time
 		quakes = append(quakes, snapshot.Quake{
 			Mag: f.mag, MagType: f.magType, Place: f.place, DepthKm: f.depthKm,
 			At: f.at, DistanceKm: km, Bearing: bearing(geo.BearingDeg(ref.Lat, ref.Lon, f.lat, f.lon)),
+			Lat: f.lat, Lon: f.lon,
 			Tsunami: f.tsunami, Alert: f.alert, Felt: f.felt, Sig: f.sig,
 			Source: snapshot.SourceInfo{Provider: p.ID(), IssuedAt: f.at},
 		})
