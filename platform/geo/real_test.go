@@ -17,21 +17,23 @@ func TestTheReaderAgreesWithTheServiceItself(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 {
-		t.Errorf("Dallas has %d rings; the service sends one", len(got))
+	if len(got) != 1 || len(got[0]) != 1 {
+		t.Errorf("Dallas has %d areas of %d rings; the service sends one of one", len(got), got.Rings())
 	}
 	if got.Vertices() != 80 {
 		t.Errorf("Dallas has %d positions; counted independently there are 80", got.Vertices())
 	}
-	if !got[0].Closed() {
+	if !got[0][0].Closed() {
 		t.Error("the zone's ring is not closed")
 	}
 }
 
 // TestTheReaderHoldsTheWorstZoneMeasured is the tail, not the median. Glacier
-// Bay is a marine zone of thirty-two rings and twelve thousand positions - a
-// hundred and fifty times the size of a typical county - and it is the case any
-// store built on this has to survive. Counted independently at 12,004.
+// Bay is a marine zone of thirty-two separate areas and twelve thousand
+// positions - a hundred and fifty times the size of a typical county - and it
+// is the case any store built on this has to survive. Counted independently at
+// 12,004. That those areas stay separate is TestASeparateIslandIsNotAHole;
+// this is only that all of them arrive.
 func TestTheReaderHoldsTheWorstZoneMeasured(t *testing.T) {
 	raw, err := os.ReadFile("testdata/zone-glacier-bay.geojson")
 	if err != nil {
@@ -41,15 +43,17 @@ func TestTheReaderHoldsTheWorstZoneMeasured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 32 {
-		t.Errorf("Glacier Bay has %d rings; counted independently there are 32", len(got))
+	if got.Rings() != 32 {
+		t.Errorf("Glacier Bay has %d rings; counted independently there are 32", got.Rings())
 	}
 	if got.Vertices() != 12004 {
 		t.Errorf("Glacier Bay has %d positions; counted independently there are 12,004", got.Vertices())
 	}
-	for i, r := range got {
-		if !r.Closed() {
-			t.Errorf("ring %d of the zone is not closed", i)
+	for i, p := range got {
+		for j, r := range p {
+			if !r.Closed() {
+				t.Errorf("ring %d of area %d is not closed", j, i)
+			}
 		}
 	}
 	// It is well inside what one hazard may hold, which is why nothing here

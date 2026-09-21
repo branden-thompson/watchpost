@@ -8,15 +8,28 @@ import (
 	"io"
 )
 
-// MaxVertices bounds one hazard's shape. The largest forecast zone measured is
-// twelve thousand positions (Glacier Bay, thirty-two rings); a document
-// claiming far more than that is damage or an attack, and neither is drawn.
+// MaxVertices bounds one hazard's shape.
+//
+// **It is derived, not chosen** (RT-6). Eighty forecast zones were read from
+// the live service, weighted towards Alaska and the marine zones because that
+// is where the island chains and fjords are: median 252 positions, 95th
+// percentile 7,477, largest 15,194 (AKZ324, forty-one areas). This is a little
+// over three times that largest, which leaves room for a zone half again as
+// intricate as any measured while still refusing a document that is damage or
+// an attack.
+//
+// **Its blind spot, stated** (INST-5): eighty of roughly three thousand zones,
+// deliberately drawn from the worst-shaped end, so the median here is far above
+// the national one and the maximum is near the true one. That bias is the right
+// way round for a cap - it is derived from the tail it has to survive - but it
+// is not a census, and a redraw of the zone map could move it.
 const MaxVertices = 50_000
 
-// MaxRings bounds how many rings one shape may hold. **Counting positions was
-// not enough** (RT-1): a document of empty rings counted none of them and was
-// held without limit, which is the failure this reader exists to prevent
-// arriving by another door. The largest zone measured holds thirty-two.
+// MaxRings bounds how many rings one shape may hold, across all of its areas.
+// **Counting positions was not enough** (RT-1): a document of empty rings
+// counted none of them and was held without limit, which is the failure this
+// reader exists to prevent arriving by another door. The most rings measured in
+// one zone is 122 (AKZ735, an island chain), so this is room for thirty such.
 const MaxRings = 4_000
 
 // maxDepth bounds how deeply `coordinates` may nest. GeoJSON needs four
@@ -52,35 +65,56 @@ func ReadGeometry(raw []byte) (Shape, error) {
 	if len(bytes.TrimSpace(outer.Coordinates)) == 0 || string(bytes.TrimSpace(outer.Coordinates)) == "null" {
 		return nil, nil
 	}
-	// How deep the positions sit differs by type, and reading the wrong depth
-	// silently gives the wrong shape - so it is taken from the type, not guessed.
-	var want int
-	switch outer.Type {
-	case "Point":
-		want = 1
-	case "MultiPoint", "LineString":
-		want = 2
-	case "Polygon", "MultiLineString":
-		want = 3
-	case "MultiPolygon":
-		want = 4
-	default:
+	// Where each level sits differs by type, and reading the wrong depth
+	// silently gives the wrong shape - so it is taken from the type, not
+	// guessed. **Two types with identical nesting can still group
+	// differently**: a LineString's positions are one run, a MultiPoint's are
+	// unrelated places, and the JSON is the same shape either way (RT-7).
+	l, ok := layoutFor(outer.Type)
+	if !ok {
 		return nil, fmt.Errorf("%w: no geometry of type %q is drawn here", ErrGeometry, outer.Type)
 	}
-	return walk(outer.Coordinates, want)
+	return walk(outer.Coordinates, l)
+}
+
+// layout says at which bracket depth each of the three levels closes. A level
+// that shares a depth with the one inside it closes at the same bracket, which
+// is how a bare Point is one position, one ring and one area at once.
+type layout struct{ position, ring, area int }
+
+// layoutFor is the table of the six geometry types, as a function rather than
+// a map so that nothing package-level is mutable (P10-06).
+func layoutFor(kind string) (layout, bool) {
+	switch kind {
+	case "Point":
+		return layout{1, 1, 1}, true // one position, and it is the whole of it
+	case "MultiPoint":
+		return layout{2, 2, 2}, true // each place stands alone (RT-7)
+	case "LineString":
+		return layout{2, 1, 1}, true // one run of positions
+	case "MultiLineString":
+		return layout{3, 2, 2}, true // each line stands alone
+	case "Polygon":
+		return layout{3, 2, 1}, true // an outline and its holes, together
+	case "MultiPolygon":
+		return layout{4, 3, 2}, true // areas, each with its own outline and holes
+	}
+	return layout{}, false
 }
 
 // walk streams the coordinate array, gathering each innermost run of positions
 // into a ring. It never recurses: the depth is a counter, which is the whole
 // point of reading it this way.
-func walk(raw json.RawMessage, positionsAt int) (Shape, error) {
+func walk(raw json.RawMessage, l layout) (Shape, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	var (
 		out   Shape
+		area  Polygon
 		ring  Ring
 		nums  []float64
 		depth int
 		total int
+		rings int
 	)
 	for {
 		tok, err := dec.Token()
@@ -99,10 +133,13 @@ func walk(raw json.RawMessage, positionsAt int) (Shape, error) {
 					return nil, fmt.Errorf("%w: nested more than %d deep", ErrGeometry, maxDepth)
 				}
 			case ']':
+				// The three levels are closed innermost first, and a type
+				// whose levels share a depth closes them all at one bracket.
+				//
 				// Leaving a position: the two numbers gathered are one point.
 				// The `[` that opened it already counted, so inside a position
-				// the depth IS positionsAt.
-				if depth == positionsAt {
+				// the depth IS l.position.
+				if depth == l.position {
 					if len(nums) < 2 {
 						return nil, fmt.Errorf("%w: a position of %d numbers", ErrGeometry, len(nums))
 					}
@@ -120,16 +157,28 @@ func walk(raw json.RawMessage, positionsAt int) (Shape, error) {
 				// Leaving a ring: keep it, in the order it was read. **A ring
 				// with no positions is not geometry** and is refused rather
 				// than kept, so that emptiness cannot be used to fill memory
-				// while every other count stays at zero.
-				if depth == positionsAt-1 {
+				// while every other count stays at zero (RT-1).
+				if depth == l.ring {
 					if len(ring) == 0 {
 						return nil, fmt.Errorf("%w: a ring with no positions", ErrGeometry)
 					}
-					if len(out) >= MaxRings {
+					rings++
+					if rings > MaxRings {
 						return nil, fmt.Errorf("%w: more than %d rings", ErrGeometry, MaxRings)
 					}
-					out = append(out, ring)
+					area = append(area, ring)
 					ring = nil
+				}
+				// Leaving an area: its outline and its holes, kept together.
+				// **An area with no rings is the same emptiness one level up**
+				// and is refused for the same reason - a door RT-1's fix would
+				// not have covered, because this level did not exist then.
+				if depth == l.area {
+					if len(area) == 0 {
+						return nil, fmt.Errorf("%w: an area with no rings", ErrGeometry)
+					}
+					out = append(out, area)
+					area = nil
 				}
 				depth--
 			default:
@@ -143,10 +192,6 @@ func walk(raw json.RawMessage, positionsAt int) (Shape, error) {
 		default:
 			return nil, fmt.Errorf("%w: %T where a coordinate was expected", ErrGeometry, tok)
 		}
-	}
-	// A Point has no ring of its own; what was gathered is the whole of it.
-	if positionsAt == 1 && len(ring) > 0 {
-		out = append(out, ring)
 	}
 	if depth != 0 {
 		return nil, fmt.Errorf("%w: the coordinates end part-way through", ErrGeometry)

@@ -17,8 +17,9 @@ import (
 	"time"
 )
 
-// SchemaVersion is the published JSON contract version (v1.0-rc until B5
-// ratification — architecture §10.3).
+// SchemaVersion is the published JSON contract version. The -rc suffix says
+// it is not ratified (B5, architecture §10.3): a candidate may still change
+// shape, and 1.1.0-rc did when an alert's area gained its grouping level.
 const SchemaVersion = "1.1.0-rc"
 
 // Snapshot is the single source every renderer consumes. Immutable after

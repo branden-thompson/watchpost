@@ -20,10 +20,10 @@ import (
 // stripped before narration (UAT 81).
 func TestAnAlertsAreaIsNeverSpoken(t *testing.T) {
 	// Coordinates chosen so their digits appear nowhere else in the cycle.
-	area := geo.Shape{{
+	area := geo.Shape{{{
 		{Lon: -85.7431, Lat: 41.6829}, {Lon: -85.7432, Lat: 41.6830},
 		{Lon: -85.7433, Lat: 41.6831}, {Lon: -85.7431, Lat: 41.6829},
-	}}
+	}}}
 	loc := snapshot.Location{
 		Label: "Fort Wayne", Lat: 41.08, Lon: -85.14, TZ: "America/New_York",
 		Alerts: []snapshot.Alert{{

@@ -16,17 +16,17 @@ and the numbers changed the shape of it twice. Read those before this.
 
 ```mermaid
 flowchart TB
-    API[("api.weather.gov<br/>/alerts/active?zone=… · /zones/forecast/{id}")]
+    API[("api.weather.gov<br/>/alerts/active?zone=… · /zones/forecast/{id} · /zones/county/{id}")]
 
     subgraph DOM["domains/weather/nws — fetching, where domains belong"]
       direction TB
       AL["alerts.go<br/>gains the geometry it never modelled<br/>read with a bounded token walk, never unmarshal into any"]
-      ZN["<b>zones/</b> — new<br/>fetch a zone once · <b>simplify at ingest, 0.5 km</b> · cache on disk<br/>the raw shape is not kept (MG-6)"]
+      ZN["<b>zones/</b> — new<br/>fetch a zone once, kept whole at full detail<br/>the kind is read from the id: Z forecast, C county<br/>no cache and no simplifier — both belong elsewhere"]
     end
 
     subgraph PLAT["platform/ — what more than one thing must name"]
       direction TB
-      GEO["<b>geo</b><br/>gains Ring and Shape, and Douglas-Peucker<br/>it already holds haversine and bearing"]
+      GEO["<b>geo</b><br/>gains Ring, Polygon, Shape and Area<br/>an area is an outline then its holes; Area says if any part is unknown<br/>it already holds haversine and bearing"]
       SNAP["snapshot<br/>Quake gains Lat and Lon · Alert gains its polygon<br/><b>AffectedZones already carries the ids: zone shapes are NOT stored here</b> (MG-2)"]
     end
 

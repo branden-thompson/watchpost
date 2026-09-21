@@ -8,25 +8,32 @@ import (
 // TestReadGeometryReadsTheThreeShapesTheServiceSends. A hazard arrives as a
 // Point, a Polygon or a MultiPolygon, and absent altogether for the four alerts
 // in five that name zones instead.
+//
+// **Areas and rings are counted separately**, because the two numbers are what
+// tell a hole from an island: a polygon with a hole is ONE area of two rings,
+// and a multi-polygon of two outlines is TWO areas of one ring each. They hold
+// the same eight positions, and reading either as the other is RT-8.
 func TestReadGeometryReadsTheThreeShapesTheServiceSends(t *testing.T) {
 	for _, c := range []struct {
 		what  string
 		body  string
+		areas int
 		rings int
 		verts int
 	}{
-		{"a point", `{"type":"Point","coordinates":[-85.1,41.1]}`, 1, 1},
-		{"a polygon", `{"type":"Polygon","coordinates":[[[-85,41],[-84,41],[-84,42],[-85,41]]]}`, 1, 4},
-		{"a polygon with a hole", `{"type":"Polygon","coordinates":[[[-85,41],[-84,41],[-84,42],[-85,41]],[[-84.8,41.2],[-84.7,41.2],[-84.7,41.3],[-84.8,41.2]]]}`, 2, 8},
-		{"a multi-polygon", `{"type":"MultiPolygon","coordinates":[[[[-85,41],[-84,41],[-84,42],[-85,41]]],[[[-80,35],[-79,35],[-79,36],[-80,35]]]]}`, 2, 8},
+		{"a point", `{"type":"Point","coordinates":[-85.1,41.1]}`, 1, 1, 1},
+		{"a polygon", `{"type":"Polygon","coordinates":[[[-85,41],[-84,41],[-84,42],[-85,41]]]}`, 1, 1, 4},
+		{"a polygon with a hole", `{"type":"Polygon","coordinates":[[[-85,41],[-84,41],[-84,42],[-85,41]],[[-84.8,41.2],[-84.7,41.2],[-84.7,41.3],[-84.8,41.2]]]}`, 1, 2, 8},
+		{"a multi-polygon", `{"type":"MultiPolygon","coordinates":[[[[-85,41],[-84,41],[-84,42],[-85,41]]],[[[-80,35],[-79,35],[-79,36],[-80,35]]]]}`, 2, 2, 8},
 	} {
 		got, err := ReadGeometry([]byte(c.body))
 		if err != nil {
 			t.Errorf("%s: %v", c.what, err)
 			continue
 		}
-		if len(got) != c.rings || got.Vertices() != c.verts {
-			t.Errorf("%s: %d rings and %d vertices; want %d and %d", c.what, len(got), got.Vertices(), c.rings, c.verts)
+		if len(got) != c.areas || got.Rings() != c.rings || got.Vertices() != c.verts {
+			t.Errorf("%s: %d areas, %d rings, %d vertices; want %d, %d and %d",
+				c.what, len(got), got.Rings(), got.Vertices(), c.areas, c.rings, c.verts)
 		}
 	}
 }

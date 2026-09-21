@@ -9,10 +9,11 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// TestAQuakeKeepsWhereItHappened. The position arrives from the service, is
-// used to work out how far away and which way, and was then thrown away - so a
-// map could not draw the epicentre, and nothing could recover it from "134 km
-// north-north-west of somewhere" (MG-5).
+// TestAQuakeKeepsWhereItHappened. The position arrives from the service and is
+// kept, as well as being read to work out how far away and which way. Keeping
+// it is what lets a map draw the epicentre: "134 km north-north-west of
+// somewhere" is a bearing and a distance from one place, and no position can be
+// recovered from it (MG-5).
 func TestAQuakeKeepsWhereItHappened(t *testing.T) {
 	here := snapshot.LocationRef{Label: "Fort Wayne", Lat: 41.08, Lon: -85.14}
 	at := time.Date(2026, 9, 21, 3, 0, 0, 0, time.UTC)

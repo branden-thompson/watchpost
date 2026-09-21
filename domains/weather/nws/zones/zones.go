@@ -26,6 +26,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
+	"github.com/branden-thompson/watchpost/platform/plaintext"
 )
 
 // DefaultBase is the service the alerts themselves come from.
@@ -54,10 +55,26 @@ type Zone struct {
 // well over that, and for a watchlist's own zones many times over.
 const maxHeld = 2_000
 
+// maxAtOnce bounds how many distinct zones one resolve may ask for.
+//
+// **Nothing bounded the fan-out**, and one alerts response names the zones:
+// four thousand alerts of fifty zones each is two hundred thousand requests,
+// and the client paces every request the program makes at five a second, so
+// that is eleven hours in which no weather is fetched at all. Measured
+// nationally, 477 zones were in play at once across every active alert, so
+// this is room for that and more, and the refusal is reported rather than
+// silent.
+const maxAtOnce = 512
+
 // Store serves zone shapes by id. It is safe for concurrent use.
 type Store struct {
 	client *httpx.Client
 	base   string
+
+	// limit is maxHeld, except in this package's own tests, which lower it to
+	// drive the forgetting through Zone rather than calling forget by hand -
+	// the call site was what nothing exercised (RT-4).
+	limit int
 
 	mu   sync.RWMutex
 	held map[string]Zone
@@ -92,7 +109,7 @@ func New(client *httpx.Client, base string) *Store {
 	if base == "" {
 		base = DefaultBase
 	}
-	return &Store{client: client, base: strings.TrimRight(base, "/"), held: map[string]Zone{}}
+	return &Store{client: client, base: strings.TrimRight(base, "/"), held: map[string]Zone{}, limit: maxHeld}
 }
 
 // Zone is one zone's shape, fetched if it is not already held.
@@ -115,7 +132,7 @@ func (s *Store) Zone(ctx context.Context, id string) (Zone, error) {
 	}
 	s.mu.Lock()
 	s.held[id] = z
-	over := len(s.held) > maxHeld
+	over := len(s.held) > s.limit
 	s.mu.Unlock()
 	if over {
 		s.forget()
@@ -148,9 +165,29 @@ func (s *Store) Zones(ctx context.Context, ids []string) (map[string]Zone, []str
 		missing []string
 		g       errgroup.Group
 	)
+	// **Past the cap the rest are reported missing, not quietly dropped.** A
+	// caller that asked for more than the whole country has at once gets an
+	// answer saying so, and the ids it did not get.
+	if len(wanted) > maxAtOnce {
+		missing = append(missing, wanted[maxAtOnce:]...)
+		wanted = wanted[:maxAtOnce]
+	}
 	g.SetLimit(fetchAtOnce)
 	for _, id := range wanted {
-		g.Go(func() error {
+		g.Go(func() (err error) {
+			// **The guard has to be in the goroutine that panics.** A recover
+			// in the caller cannot catch this one: recover only works in its
+			// own goroutine, and these are children of it. The seeding path
+			// had exactly that mistake, so a nil client took the program down
+			// through a guard written to stop it.
+			defer func() {
+				if r := recover(); r != nil {
+					mu.Lock()
+					missing = append(missing, id)
+					mu.Unlock()
+					s.failed.Add(1)
+				}
+			}()
 			z, err := s.Zone(ctx, id)
 			mu.Lock()
 			defer mu.Unlock()
@@ -174,7 +211,7 @@ func (s *Store) forget() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for id := range s.held {
-		if len(s.held) <= maxHeld {
+		if len(s.held) <= s.limit {
 			return
 		}
 		delete(s.held, id)
@@ -215,8 +252,36 @@ type zonePayload struct {
 	Geometry json.RawMessage `json:"geometry"`
 }
 
+// pathFor is where a zone of this id lives.
+//
+// **A UGC id says its own kind in its third character** - `INZ027` is a
+// forecast zone, `INC003` a county - and the service keeps the two apart:
+// `/zones/forecast/INC003` is a 404 and `/zones/county/INC003` is the shape.
+// Asking for everything under one of them lost every alert that named the
+// other, which on the day this was written was 47 of 332 active alerts, 45 of
+// them Flood Warnings.
+//
+// The kind is read, never guessed: an id of neither kind is refused rather
+// than sent hopefully to one of them.
+func pathFor(id string) (string, error) {
+	if len(id) < 4 {
+		return "", fmt.Errorf("zones: %q is too short to be a zone id", id)
+	}
+	switch id[2] {
+	case 'Z':
+		return "/zones/forecast/", nil
+	case 'C':
+		return "/zones/county/", nil
+	}
+	return "", fmt.Errorf("zones: %q names neither a forecast zone nor a county", id)
+}
+
 func (s *Store) fetch(ctx context.Context, id string) (Zone, error) {
-	u := s.base + "/zones/forecast/" + url.PathEscape(id)
+	kind, err := pathFor(id)
+	if err != nil {
+		return Zone{}, err
+	}
+	u := s.base + kind + url.PathEscape(id)
 	var payload zonePayload
 	if _, err := s.client.GetJSON(ctx, u, &payload); err != nil {
 		return Zone{}, fmt.Errorf("zones: %s: %w", id, err)
@@ -225,6 +290,9 @@ func (s *Store) fetch(ctx context.Context, id string) (Zone, error) {
 	if err != nil {
 		return Zone{}, fmt.Errorf("zones: %s: %w", id, err)
 	}
-	name := payload.Properties.Name
+	// **Clamped like every other string from outside** (R5-C-05). It was the
+	// one that was not: a hostile 8 MB name was held whole, and the transport
+	// ceiling times the store's cap is tens of gigabytes.
+	name := plaintext.ClampField(payload.Properties.Name)
 	return Zone{ID: id, Name: name, Area: area}, nil
 }

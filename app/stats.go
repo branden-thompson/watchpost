@@ -181,6 +181,10 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 	if lp.dump != nil {
 		st.LastDump, st.DumpHint = lp.dump.note(), lp.dump.hint()
 	}
+	if lp.zoneShapes != nil {
+		z := lp.zoneShapes.Stats()
+		st.ZoneShapes = tty.ZoneShapeStats{Fetched: z.Fetched, Failed: z.Failed, Served: z.Served, Held: z.Held}
+	}
 	st.Endpoints = providerEndpoints()
 	st.Uptime = time.Since(lp.started)
 	if lp.release != nil {

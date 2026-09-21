@@ -24,7 +24,7 @@ func TestAnAlertKeepsItsOwnPolygon(t *testing.T) {
 	if got := alerts[0].Area.Vertices(); got != 4 {
 		t.Errorf("the alert with a polygon kept %d positions; the response has 4", got)
 	}
-	if !alerts[0].Area[0].Closed() {
+	if !alerts[0].Area[0][0].Closed() {
 		t.Error("the kept ring is not closed")
 	}
 	// **The ordinary case**: four alerts in five name zones and carry no shape

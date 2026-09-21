@@ -25,8 +25,8 @@ import (
 // an error here. Whether a partly-known area should be drawn at all is a
 // question for whatever has a view to answer it with, and this has none
 // (MG-10).
-func resolveAlertAreas(ctx context.Context, store *zones.Store, snap *snapshot.Snapshot) map[string]geo.Shape {
-	out := map[string]geo.Shape{}
+func resolveAlertAreas(ctx context.Context, store *zones.Store, snap *snapshot.Snapshot) map[string]geo.Area {
+	out := map[string]geo.Area{}
 	if snap == nil {
 		return out
 	}
@@ -42,8 +42,17 @@ func resolveAlertAreas(ctx context.Context, store *zones.Store, snap *snapshot.S
 		}
 	}
 	held := map[string]zones.Zone{}
+	gone := map[string]bool{}
 	if store != nil && len(wanted) > 0 {
-		held, _ = store.Zones(ctx, wanted)
+		var missing []string
+		held, missing = store.Zones(ctx, wanted)
+		// **The store reports what it could not get, and that is kept.** It
+		// was thrown away here, which made a shape built from two of nine
+		// parts indistinguishable from a whole one (MG-10 defers the DECISION
+		// to whatever draws; it never licensed dropping the evidence).
+		for _, id := range missing {
+			gone[id] = true
+		}
 	}
 	for _, loc := range snap.Locations {
 		for _, a := range loc.Alerts {
@@ -51,14 +60,27 @@ func resolveAlertAreas(ctx context.Context, store *zones.Store, snap *snapshot.S
 				continue // the same alert is attached to every location it covers
 			}
 			if !a.Area.Empty() {
-				out[a.ID] = a.Area
+				// It brought its own ground; nothing about it is unknown.
+				out[a.ID] = geo.Area{Shape: a.Area}
 				continue
 			}
-			var area geo.Shape
+			// **Each zone's areas are kept apart, not merged into one
+			// outline** (RT-8). What draws reads an area's first ring as its
+			// outline and the rest as holes, so pouring several zones' rings
+			// into one list would make the second zone a hole in the first,
+			// and two zones that overlap would leave the overlap - the part
+			// the alert is most certainly about - unfilled. Appending whole
+			// areas is what keeps them separate fills.
+			var area geo.Area
 			for _, id := range a.AffectedZones {
-				if z, ok := held[id]; ok {
-					area = append(area, z.Area...)
+				z, ok := held[id]
+				if !ok {
+					if gone[id] {
+						area.Missing = append(area.Missing, id)
+					}
+					continue
 				}
+				area.Shape = append(area.Shape, z.Area...)
 			}
 			out[a.ID] = area
 		}
