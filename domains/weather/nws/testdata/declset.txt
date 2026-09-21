@@ -6,6 +6,7 @@ const inlandTTL
 const maxGrids
 const maxIDRunes
 const maxProseRunes
+const maxZones
 const stationCandidates
 func (*MarineProvider).Domains
 func (*MarineProvider).Fetch
@@ -53,6 +54,7 @@ func lastSegment
 func mapAlert
 func positive
 func roundTenth
+func standInID
 func stationDistance
 func tempC
 func toSI

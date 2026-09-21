@@ -27,7 +27,7 @@ func TestMapAlertBoundsEveryFieldAndKeepsSender(t *testing.T) {
 		t.Fatalf("expected one alert on k, got %d", len(perKey["k"]))
 	}
 	a := perKey["k"][0]
-	if len([]rune(a.Event)) > plaintext.MaxFieldRunes || len([]rune(a.Description)) > maxProseRunes || len(a.AffectedZones) > plaintext.MaxListLen || len(a.References) > plaintext.MaxListLen {
+	if len([]rune(a.Event)) > plaintext.MaxFieldRunes || len([]rune(a.Description)) > maxProseRunes || len(a.AffectedZones) > maxZones || len(a.References) > plaintext.MaxListLen {
 		t.Fatalf("unbounded: event %d desc %d zones %d refs %d", len(a.Event), len(a.Description), len(a.AffectedZones), len(a.References))
 	}
 	if a.SenderName != "NWS Test" {
@@ -41,16 +41,23 @@ func TestMapAlertBoundsEveryFieldAndKeepsSender(t *testing.T) {
 // (0.13.0 red-team R3-A-01 — the earlier test used zone index 1 and passed
 // for the wrong reason).
 func TestMapAlertAttachesWhenTheZoneIsBeyondTheListCap(t *testing.T) {
+	// **The bound is maxZones, and it sits above every alert measured** - the
+	// largest live was forty-two zones, a Winter Storm Warning can name eighty.
+	// That matters because the zone ids are what an alert's ground is resolved
+	// from, so a bound inside the real range is a piece of the map missing. This
+	// drives deliberately past maxZones to show a bound still exists, and that
+	// the match finds a zone lying beyond it.
 	pr := alertProps{ID: "urn:oid:1", Event: "Winter Storm Warning"}
-	for i := 0; i < 80; i++ {
+	for i := 0; i < maxZones+40; i++ {
 		pr.AffectedZones = append(pr.AffectedZones, "https://api.weather.gov/zones/forecast/Z"+strconv.Itoa(i))
 	}
 	perKey := map[snapshot.LocationKey][]snapshot.Alert{}
-	mapAlert(pr, nil, map[string][]snapshot.LocationKey{"Z60": {"olathe"}}, perKey)
+	// The tracked zone is past the bound: the match must still find it.
+	mapAlert(pr, nil, map[string][]snapshot.LocationKey{"Z" + strconv.Itoa(maxZones+10): {"olathe"}}, perKey)
 	if len(perKey["olathe"]) != 1 {
-		t.Fatalf("alert affecting the tracked zone (60th of 80) was dropped: %d attached", len(perKey["olathe"]))
+		t.Fatalf("alert affecting the tracked zone (past the retained bound) was dropped: %d attached", len(perKey["olathe"]))
 	}
-	if got := len(perKey["olathe"][0].AffectedZones); got != plaintext.MaxListLen {
-		t.Fatalf("the retained zone list is bounded to %d, got %d", plaintext.MaxListLen, got)
+	if got := len(perKey["olathe"][0].AffectedZones); got != maxZones {
+		t.Fatalf("the retained zone list is bounded to %d, got %d", maxZones, got)
 	}
 }
