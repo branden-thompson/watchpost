@@ -509,6 +509,7 @@ func renderSlots
 func reportFetch
 func reportTiming
 func requestStats
+func resolveAlertAreas
 func resolveHook
 func resolveQuery
 func restoreRecent
