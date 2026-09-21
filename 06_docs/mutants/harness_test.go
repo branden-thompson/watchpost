@@ -174,6 +174,14 @@ func TestTheHarnessReportsEachVerdictWithItsExitCode(t *testing.T) {
 // "--- FAIL" and a harness that decides by grepping for that line reports
 // SURVIVED — understating coverage, which sends someone hunting for a test that
 // already exists. The exit code is the honest signal.
+//
+// **The probe must crash deterministically, and once it did not.** Signalling
+// completion from a `defer` runs that signal DURING the panic's unwinding, so
+// the waiting goroutine woke, the test returned and the binary could exit 0
+// before the panic landed — reporting SURVIVED. It failed on Linux roughly one
+// run in two while passing on macOS, which is the shape of a race rather than a
+// platform difference. So the probe closes its channel only on the path that
+// does not panic, and a mutated probe blocks until the crash.
 func TestACrashIsCaughtRatherThanSurvived(t *testing.T) {
 	t.Parallel()
 	dir := probeRepo(t)
@@ -185,10 +193,10 @@ import "testing"
 func TestAllowedRefusesNegatives(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
-		defer close(done)
 		if Allowed(-1) {
 			panic("a negative was allowed")
 		}
+		close(done) // NOT deferred: a panic must not signal completion
 	}()
 	<-done
 }

@@ -46,6 +46,12 @@ All notable changes to Watchpost CLI. The format follows Keep a Changelog; versi
   have spent hours fetching nothing else, including the weather.
 - A failure fetching one zone outline can no longer stop the program. The guard for that was written
   in the wrong place and had never once worked.
+- **The mutation harness could misread a crash as a survival.** Its own probe signalled completion
+  from a `defer`, which runs while a panic unwinds — so the waiting goroutine woke and the test
+  binary could exit cleanly before the crash landed, reporting a caught mutation as an escaped one.
+  It failed about one Linux run in two while passing on macOS. The error was in the safe direction —
+  it understated coverage and never the reverse — but a measuring instrument that answers
+  differently on the same input twice is not one to keep.
 - `make schema` wrote to a file whose name had the version typed into it, while the test that
   checks it derives that name from the version. The first bump would have written new content into
   the old name and then looked for a file that did not exist.
