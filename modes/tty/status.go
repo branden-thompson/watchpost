@@ -523,6 +523,12 @@ func (d Dashboard) pipelineLines(o render.Opts, st Stats, fillTo int) []string {
 		pipeRow("PRIORITY", o, d.snap, st.Pipelines[0], ""),
 		pipeRow("RECENT", o, d.recent, st.Pipelines[1], ""),
 		{"SEVERE INDEX", "-", "-", "-", "-", fmt.Sprintf("%d/%d", len(d.severe.Rows), SevereMaxRows)},
+		// The zone outlines an alert's area is built from (0.17.0). It earns a
+		// row because when an area is blank this is the only thing that says
+		// whether the shapes failed or were never asked for.
+		{"ZONE SHAPES", "-", "-", fmt.Sprintf("%d", st.ZoneShapes.Failed),
+			fmt.Sprintf("%d", st.ZoneShapes.Fetched+st.ZoneShapes.Served),
+			fmt.Sprintf("%d", st.ZoneShapes.Held)},
 	}
 	avail := statusAvail(o)
 	var cols []render.StatusColumn

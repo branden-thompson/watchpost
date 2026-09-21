@@ -545,6 +545,11 @@ clean:
 	rm -rf $(DIST)
 
 # Regenerate the checked-in JSON Schema (TestPublishedSchemaMatchesGenerator keeps it honest).
+# The published file is named for the version it carries, and the version is
+# read from the one place that defines it. It used to be written here by hand,
+# so a bump wrote new content into the old file's name and the test - which
+# derives the name - then looked for a file that did not exist (0.17.0).
+SCHEMA_VERSION := $(shell sed -n 's/.*SchemaVersion = "\(.*\)".*/\1/p' platform/snapshot/types.go)
 schema:
-	go run ./cmd/watchpost schema > pkg/schema/watchpost-report.v1.0.0-rc.schema.json
+	go run ./cmd/watchpost schema > pkg/schema/watchpost-report.v$(SCHEMA_VERSION).schema.json
 .PHONY: schema

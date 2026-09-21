@@ -2,6 +2,63 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.17.0] — unreleased
+
+### Added
+- **Weather data now carries where things are.** An alert's own polygon is kept instead of being
+  discarded as it arrives, an earthquake keeps its epicentre rather than only a distance and a
+  compass word, and the forecast zones an alert names can be resolved to their real outlines.
+  **Four alerts in five carry no polygon of their own** — watches and most flood warnings name
+  zones instead — so the zone outlines are what make a map of a hazard possible at all.
+- Zone outlines are fetched once and kept with their names, and the zones of the places you watch
+  are taken at start-up so an alert can be drawn the moment it arrives rather than after a wait.
+
+### Changed
+- **The report schema is now `1.1.0-rc`.** Every object refuses unknown fields, so a consumer
+  pinned to `1.0.0-rc` will **fail validation**, not merely notice: three fields it does not know
+  now arrive. The `1.0.0-rc` schema stays published beside the new one, because its address is one
+  somebody may already be validating against.
+- **An alert's `area` is a list of areas, not a flat list of outlines.** It gained a level: areas,
+  each holding its own outline and any holes in it. A county with a lake is one area of two rings;
+  a coast is one area per island. This finalises a release candidate rather than breaking a
+  published contract: `1.1.0-rc` has not shipped, and a candidate is allowed to change shape.
+
+### Fixed
+- **Alerts that name counties had no area at all.** A zone id says which kind it is, and counties
+  live somewhere different from forecast zones; everything was looked up in the one place, so every
+  county-based alert came back with nothing. On the day this was fixed that was 47 of 332 live
+  alerts — and 45 of those were **Flood Warnings**, which is the warning a map is most wanted for.
+- **A zone made of separate islands would have drawn as almost nothing.** Rings were read into one
+  flat list, which loses which rings belong to which island — and the thing that draws takes the
+  first ring as an outline and every ring after it as a *hole*. Measured on a real Alaskan marine
+  zone of thirty-two islands: twenty-eight would not have been drawn at all, three would have been
+  punched as holes into the first, and that first one is a 26-position islet covering about one per
+  cent of the zone. The same flattening joined unrelated places into one outline when a hazard
+  arrived as a MultiPoint.
+- A geometry whose areas contain no rings at all is refused, closing at the new level the same hole
+  that empty *rings* opened at the level below it.
+- **An alert whose area is only partly known now says so.** Some of the ground a warning covers can
+  fail to arrive; that used to be indistinguishable from a warning that covers less ground, which is
+  the difference between "the edge of this warning is your street" and "we could not fetch your
+  county".
+- A zone's name is bounded like every other piece of text from outside it, and the number of zone
+  outlines one update may ask for is bounded too — without it, a large enough alerts response could
+  have spent hours fetching nothing else, including the weather.
+- A failure fetching one zone outline can no longer stop the program. The guard for that was written
+  in the wrong place and had never once worked.
+- **The mutation harness could misread a crash as a survival.** Its own probe signalled completion
+  from a `defer`, which runs while a panic unwinds — so the waiting goroutine woke and the test
+  binary could exit cleanly before the crash landed, reporting a caught mutation as an escaped one.
+  It failed about one Linux run in two while passing on macOS. The error was in the safe direction —
+  it understated coverage and never the reverse — but a measuring instrument that answers
+  differently on the same input twice is not one to keep.
+- `make schema` wrote to a file whose name had the version typed into it, while the test that
+  checks it derives that name from the version. The first bump would have written new content into
+  the old name and then looked for a file that did not exist.
+
+### Note
+- **Nothing draws yet.** This release makes the data ready; the map itself is 0.18.0.
+
 ## [0.16.0] — 2026-09-18
 
 ### Added

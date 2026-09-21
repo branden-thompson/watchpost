@@ -29,7 +29,14 @@ the remote, because only the squashed tree does.
   the squash. **Re-run both at tag time.**
 - [x] **`gh api user` = `branden-thompson`** under `GH_CONFIG_DIR=~/.config/gh-personal`, checked
   2026-09-18 before any outward action. Re-check at the push.
-- [ ] **Internal-name scrub — run by the HUM LEAD in their own shell** at SHIP, as in 0.15.0:
+- [x] **Internal-name scrub — run by the HUM LEAD in their own shell against `origin/main` at
+  `237e2a5`, 2026-09-18, after the merge: 18 matching lines.** Seventeen are the framework's own
+  public name, cited where the documents credit the axes and skills they reproduce — the 0.14.0
+  checklist ruled that name "already public from earlier releases" (2026-09-06). One is the
+  employer's name, inside the 0.14.0 checklist's own sentence recording that its scrub returned
+  zero; that line is scrubbed on the dev trunk (`aaff6a0`) and reaches `origin/main` with the
+  next release — HUM LEAD 2026-09-18: "next release is fine". Two earlier attempts returned every line of the
+  tree (244,931) because the variables were empty in that shell — the guard, not a finding:
   `git grep -n -i -e "$A2DH_HOME_NAME" -e "$EMPLOYER_NAME" -- ':!third_party'` → must be empty.
 - [x] **`git worktree list` shows the main tree only** (2026-09-18).
 - [x] **README captures — five of the Broadcaster console** from the HUM LEAD's UAT build
@@ -83,18 +90,27 @@ the remote, because only the squashed tree does.
   cap had been derived from a 21.5-minute Linux verify; the job is 38 now on this tree, and 60 left
   22 minutes of headroom, under the two-times rule the VALIDATE reviewer named. **Raised to 90 (twice
   the measurement) as round 3**, one YAML line, rather than ship on a margin that had just halved.
-- [ ] **CI round 3 (the cap): green on every leg.**
-- [ ] Squash-merged; CHANGELOG date re-checked against the merge day before tagging; the merged tree
-  verified byte-identical to the feature tip.
-- [ ] `v0.16.0` annotated on the merged commit, pushed; the release workflow re-runs `make verify`
-  against the tag before publishing.
-- [ ] **The PUBLISHED artifact verified, not just the build**: download one binary from the release,
-  checksum against `checksums.txt`, run `--version`, count build-path strings (must be 0).
-- [ ] Local `main` fast-forwarded to the feature tip; `main-publish` to the merged commit.
-- [ ] Deleted `origin/release/v0.16.0`, `origin/feature/0.16.0-broadcaster-ui` and both local branches.
-  **`origin` then carries `main` alone.**
-- [ ] Issues reconciled against what the release MEANT to do with them (#10 closed; any other touched
-  issue's state checked by hand).
+- [x] **CI round 3 (`0d45077`, the cap): GREEN on every leg** — `policy` 6–7 s, macOS verify 10 m 47 s
+  and 11 m 40 s, Linux verify 26 m 38 s and 36 m 10 s. Observed Linux range on this branch across
+  two green rounds: **26–38 min**, against a 90-minute release cap. Merge state CLEAN; `origin/main`
+  unchanged at `fd761ab` throughout; the CHANGELOG's date (2026-09-18) matches the merge day.
+- [x] **Squash-merged as `237e2a5`** (2026-09-18, HUM LEAD: "go"), parent `fd761ab`, message the
+  release commit's with `Closes #10.` alone; the CHANGELOG's date matched the merge day; the merged
+  tree verified equal to the release tip's and to the feature tree at `81a7b06`.
+- [x] **`v0.16.0` annotated on `237e2a5` and pushed.** Release run `35398502049` GREEN — verify,
+  release matrix, installer smoke test, publish — **37 min 42 s** (21:47:23 → 22:25:05 UTC) under the
+  90-minute cap; 8 assets, both Linux binaries among them. The trend across releases is now
+  13.0 → 13.6 → 13.7 → 16.1 → **37.7**; the cap derivation (twice the measured job) holds with
+  52 minutes of headroom.
+- [x] **The PUBLISHED artifact verified, not just the build** — `watchpost-darwin-arm64` downloaded
+  from the release: checksum matches `checksums.txt` (`05642efe…9d73`, OK), it reports
+  `watchpost version 0.16.0`, and it carries **0** `/Users/`, `/home/` or scratch-path strings against
+  110,902 strings in all, so the zero is not a vacuous scan.
+- [x] Local `main` at the feature tip (the dev trunk); `main-publish` at `237e2a5`.
+- [x] Deleted `origin/release/v0.16.0`, `origin/feature/0.16.0-broadcaster-ui` and both local branches
+  (2026-09-18). **`origin` carries `main` alone.**
+- [x] **#10 CLOSED by the merge commit** at 21:47:17 UTC, checked by hand; no other issue was
+  touched by this release.
 
 ## After
 

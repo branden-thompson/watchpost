@@ -259,11 +259,26 @@ type Config struct {
 // Stats is what the app hands the [S] modal beyond the snapshots (quality
 // pass Q0, plan §2.1): request counters merged across the app's clients,
 // publish counters per pipeline, and the last diagnostic dump's outcome.
+// ZoneShapeStats is the zone-outline store's own tally, carried as numbers.
+type ZoneShapeStats struct {
+	Fetched int64 // asked of the service
+	Failed  int64 // asked and not got
+	Served  int64 // answered from what was already held
+	Held    int   // shapes in hand now
+}
+
 type Stats struct {
 	Requests  httpx.RequestStats
 	Pipelines [2]PipelineStats // [0] priority, [1] recent
-	LastDump  string           // "" before the first dump; else "<ts> ok <dir>" or "<ts> failed: <reason>"
-	DumpHint  string           // how to trigger a dump on this platform
+
+	// ZoneShapes is what the zone-outline store has done since launch
+	// (0.17.0). **A new path over the network with no counters is invisible**:
+	// when an alert draws no area there is otherwise nothing to say whether
+	// the shapes failed or were never asked for. Plain numbers, because this
+	// package may name no domain (`scripts/lint-imports.sh`).
+	ZoneShapes ZoneShapeStats
+	LastDump   string // "" before the first dump; else "<ts> ok <dir>" or "<ts> failed: <reason>"
+	DumpHint   string // how to trigger a dump on this platform
 
 	// The window's own header row (0.14.0): how long this run has been up, what
 	// it is, and whether there is a newer one. Latest is "" until the check has

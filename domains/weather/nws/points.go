@@ -36,6 +36,18 @@ type gridInfo struct {
 // the cache serves the request when the answer has not.
 const gridTTL = 24 * time.Hour
 
+// ZonesFor is the UGC zones a place falls in - its forecast zone and its
+// county. It is here so the composition root can take their shapes before an
+// alert needs them (MG-7); a place that cannot be resolved answers with none,
+// because seeding is an optimisation and never a reason to fail a start-up.
+func (p *Provider) ZonesFor(ctx context.Context, ref snapshot.LocationRef) []string {
+	g, err := p.resolve(ctx, ref)
+	if err != nil || g == nil {
+		return nil
+	}
+	return g.zones
+}
+
 func (p *Provider) resolve(ctx context.Context, ref snapshot.LocationRef) (*gridInfo, error) {
 	k := snapshot.Key(ref)
 	p.mu.Lock()

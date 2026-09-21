@@ -379,7 +379,7 @@ replaces that phrase alone. How the correspondent *pronounces* things is data to
 `KEY<TAB>spoken form` per line (a bare `KEY` for a set).
 
 **One-shot and scripting.** `watchpost report "El Cajon, CA"` prints the report as text; `--json` gives
-the same as JSON (schema `1.0.0-rc`, additive changes only — `watchpost schema` prints it; the checked-in
+the same as JSON (schema `1.1.0-rc`; a release candidate may still change shape — `watchpost schema` prints it; the checked-in
 copy is `pkg/schema/`). Exit codes: `0` ok · `1` no usable data or bad arguments · `2` a provider is
 degraded (an unkeyed `off` FIRMS does not count). `watchpost completion bash|zsh|fish|powershell`
 installs shell completion.

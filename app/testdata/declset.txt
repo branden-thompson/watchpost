@@ -155,6 +155,7 @@ func (*livePipelines).rememberRequested
 func (*livePipelines).requestCard
 func (*livePipelines).resolvable
 func (*livePipelines).restationTo
+func (*livePipelines).seedZoneShapes
 func (*livePipelines).seismicFor
 func (*livePipelines).selectedRelay
 func (*livePipelines).setBedStations
@@ -509,6 +510,7 @@ func renderSlots
 func reportFetch
 func reportTiming
 func requestStats
+func resolveAlertAreas
 func resolveHook
 func resolveQuery
 func restoreRecent

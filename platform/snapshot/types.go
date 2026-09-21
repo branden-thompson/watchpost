@@ -12,12 +12,15 @@ import (
 	"errors"
 	"math"
 	"strconv"
+
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"time"
 )
 
-// SchemaVersion is the published JSON contract version (v1.0-rc until B5
-// ratification — architecture §10.3).
-const SchemaVersion = "1.0.0-rc"
+// SchemaVersion is the published JSON contract version. The -rc suffix says
+// it is not ratified (B5, architecture §10.3): a candidate may still change
+// shape, and 1.1.0-rc did when an alert's area gained its grouping level.
+const SchemaVersion = "1.1.0-rc"
 
 // Snapshot is the single source every renderer consumes. Immutable after
 // publication.
@@ -189,12 +192,16 @@ type Alert struct {
 	Ends          *time.Time `json:"ends"`
 	References    []string   `json:"references"`
 	AffectedZones []string   `json:"affected_zones"`
-	AreaDesc      string     `json:"area_desc"`
-	Headline      string     `json:"headline"`
-	Description   string     `json:"description"`
-	Instruction   string     `json:"instruction"`
-	SenderName    string     `json:"sender_name"` // the issuing office ("NWS Wichita KS") — the superseded guard's key (0.13.0, NFR-12)
-	Source        SourceInfo `json:"source"`
+	// Area is the alert's own polygon, at the detail the service sent it.
+	// Four alerts in five have none and name zones instead, so an empty
+	// Area is the ordinary case and not a failure (MG-6).
+	Area        geo.Shape  `json:"area,omitempty"`
+	AreaDesc    string     `json:"area_desc"`
+	Headline    string     `json:"headline"`
+	Description string     `json:"description"`
+	Instruction string     `json:"instruction"`
+	SenderName  string     `json:"sender_name"` // the issuing office ("NWS Wichita KS") — the superseded guard's key (0.13.0, NFR-12)
+	Source      SourceInfo `json:"source"`
 }
 
 // FireState holds hotspots and incidents (B5).
@@ -262,18 +269,24 @@ type SeismicState struct {
 // Quake is one earthquake as it matters to a tracked location: the event
 // plus its distance and bearing FROM that location (USGS gives neither).
 type Quake struct {
-	Mag        float64    `json:"mag"`
-	MagType    string     `json:"mag_type"`        // ml, mww, md … (USGS magnitude scale)
-	Place      string     `json:"place"`           // "52 km SSW of Progreso, B.C., MX"
-	DepthKm    float64    `json:"depth_km"`        // hypocentre depth; a shallow quake is felt more
-	At         time.Time  `json:"at"`              // origin time
-	DistanceKm float64    `json:"distance_km"`     // from the tracked location (computed, not USGS)
-	Bearing    string     `json:"bearing"`         // compass point from the location (computed)
-	Tsunami    bool       `json:"tsunami"`         // a tsunami message was issued
-	Alert      string     `json:"alert,omitempty"` // USGS PAGER level: green|yellow|orange|red ("" = none)
-	Felt       *int       `json:"felt,omitempty"`  // Did-You-Feel-It report count (nil = none)
-	Sig        int        `json:"sig"`             // USGS significance 0..1000+
-	Source     SourceInfo `json:"source"`
+	Mag        float64   `json:"mag"`
+	MagType    string    `json:"mag_type"`    // ml, mww, md … (USGS magnitude scale)
+	Place      string    `json:"place"`       // "52 km SSW of Progreso, B.C., MX"
+	DepthKm    float64   `json:"depth_km"`    // hypocentre depth; a shallow quake is felt more
+	At         time.Time `json:"at"`          // origin time
+	DistanceKm float64   `json:"distance_km"` // from the tracked location (computed, not USGS)
+	Bearing    string    `json:"bearing"`     // compass point from the location (computed)
+	// Lat and Lon are the epicentre itself, as the service gave it. Distance
+	// and bearing are worked out FROM these and are relative to one location;
+	// a map needs the place it happened, and "134 km north-north-west of
+	// somewhere" cannot be turned back into one (MG-5).
+	Lat     float64    `json:"lat"`
+	Lon     float64    `json:"lon"`
+	Tsunami bool       `json:"tsunami"`         // a tsunami message was issued
+	Alert   string     `json:"alert,omitempty"` // USGS PAGER level: green|yellow|orange|red ("" = none)
+	Felt    *int       `json:"felt,omitempty"`  // Did-You-Feel-It report count (nil = none)
+	Sig     int        `json:"sig"`             // USGS significance 0..1000+
+	Source  SourceInfo `json:"source"`
 }
 
 // RadioState reports tuner availability (never live playback state — PD note).

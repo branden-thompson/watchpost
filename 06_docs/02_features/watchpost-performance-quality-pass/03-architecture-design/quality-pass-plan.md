@@ -89,7 +89,7 @@ flowchart LR
     AG --> S["[S] API Status modal<br/>plain report: --verbose line"]
     D["dump trigger<br/>SIGUSR1 (unix) · env hook (all)"] --> P["cache dir/profiles/&lt;ts&gt;/<br/>heap · allocs · goroutine · threadcreate<br/>counters.json (every bounded structure + post-GC MemStats)"]
   end
-  S -.-> R[(record: 04-development/infra-ledger.md)]
+  S -.-> R["(record: 04-development/infra-ledger.md)"]
   P -.-> R
   H["scripts/quality/soak.sh (macOS + Linux)<br/>5 min: ps · footprint · threads<br/>60 min: dump"] --> R
   B["bench_test.go in package<br/>frame×3 sizes · snapshot · hms · width"] --> R
@@ -185,16 +185,16 @@ already coalesced server-side; no cadence change (recorded at the Q5 gate with t
 ```mermaid
 sequenceDiagram
   participant T as sched tier
-  participant X as httpx (Config.MaxRetries=1 on dashboard clients; report keeps 3)
+  participant X as httpx (Config.MaxRetries=1 on dashboard clients · report keeps 3)
   participant H as host
   T->>X: fetch
   X->>H: attempt 1
   H-->>X: transport error / 5xx / 429
-  Note over X: memo ARMS only on transport errors,<br/>or 5xx after ≥3 consecutive failures on ≥2 distinct URLs;<br/>never on ctx.Err, never on 4xx
+  Note over X: memo ARMS only on transport errors,<br/>or 5xx after ≥3 consecutive failures on ≥2 distinct URLs ·<br/>never on ctx.Err, never on 4xx
   Note over X: memo is CONSULTED on the normal lane only —<br/>the priority lane always attempts (half-open probe) and clears the memo on 2xx
   X-->>T: frag.Err (unserved locations)
-  T->>T: rehydrate 10/20/40 s (unchanged); station chain continues on any error
-  Note over X,H: memo TTL ≤ 30 s (below the 2nd rehydrate), cleared on any 2xx,<br/>not refreshed by memoised fails, ≤ 16 hosts (refuse to arm on overflow);<br/>Retry-After parsed (int or date): clamped ≤ 5 min into the normal-lane memo,<br/>and ≤ 30 s pacing hold on every lane for that host — never a sleep in do()
+  T->>T: rehydrate 10/20/40 s (unchanged) · station chain continues on any error
+  Note over X,H: memo TTL ≤ 30 s (below the 2nd rehydrate), cleared on any 2xx,<br/>not refreshed by memoised fails, ≤ 16 hosts (refuse to arm on overflow) ·<br/>Retry-After parsed (int or date): clamped ≤ 5 min into the normal-lane memo,<br/>and ≤ 30 s pacing hold on every lane for that host — never a sleep in do()
 ```
 
 **Alternatives.** (A) drop httpx retries entirely for scheduler calls — loses the sub-second heal on a
@@ -223,14 +223,14 @@ client, in Q1 with the weatherUSA change.
 ```mermaid
 flowchart LR
   subgraph today["today (kept): 50 schedulers × 5 tiers = 250 goroutines, ~1 MB"]
-    S1[sched loc1] --> A[(assembler)]
+    S1[sched loc1] --> A["(assembler)"]
     S2[sched loc2] --> A
     S50[sched loc50] --> A
     A --> P["Q3: one publish per tier tick<br/>(coalesce restored — PF-9)"]
   end
   subgraph optionB["option B (only if Q0 counters after Q3+Q5 show attributable cost)"]
     Heap["per-tier phased due list<br/>entry = (loc, kind, due)"] --> W["per-kind lanes, N ≥ 16"]
-    W --> A2[(assembler)]
+    W --> A2["(assembler)"]
   end
 ```
 
