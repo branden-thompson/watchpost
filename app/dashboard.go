@@ -86,6 +86,7 @@ func RunDashboard(version string, opt Options) error {
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
 		zoneShapes: zoneShapes}
 	lp.attachDiagnostics(ctx, start)
+	lp.seedZoneShapes(ctx, refs)
 	idx, resolver, resolverErr := loadGeodata(client)
 	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
 	lp.giveItAStation(cfg, idx)

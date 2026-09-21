@@ -23,6 +23,7 @@ func (*Provider).GridDecodes
 func (*Provider).ID
 func (*Provider).Office
 func (*Provider).Retain
+func (*Provider).ZonesFor
 func (*Provider).fetchAlerts
 func (*Provider).fetchForecast
 func (*Provider).fetchHourly

@@ -70,6 +70,10 @@ flowchart LR
 | `platform/geo` gains Douglas-Peucker; shapes simplified at ingest to 0.5 km | **No simplification anywhere** | The map library rules that hosts pass full detail and it simplifies per zoom; 0.5 km is visible from zoom 10 and it draws to 18. Red-team round 1 (MG-6) |
 | The zone store keeps a disk cache, a freshness rule and a revalidation path | **It keeps only parsed shapes** | All three were already in `platform/httpx`. Found while building p3, not while reviewing |
 | An alert resolves whole or not at all | **It reports what it has** | Whole-or-nothing is a drawing decision and had been put in the data layer, where there is no view. It also cancelled the seeding ruling. Red-team round 2 (MG-10) |
+| Zones fetched concurrently off the pump | **Concurrent, six at a time - and the bound is not the ordering** | Written serially at first (RT-3). Fixed, but the measurement matters more than the fix: the client's own token bucket is five a second, so a forty-two-zone alert takes eight seconds however it is issued. **That is the argument for seeding**, not concurrency |
+| Seeding at start-up | **It is called now** | It was approved, built, tested - and nothing called it (RT-2). It passed every test it had and did nothing. The wiring now has a test of its own, because a test of the thing is not a test of the wiring |
+| *(not planned)* | **The store forgets** | Nothing bounded what it held; a program that runs for days would keep every zone it ever saw (RT-4) |
+| *(not planned)* | **The store counts what it does** | A new path over the network with no counters is invisible when a map is blank (RT-5) |
 
 ## What this release does NOT do
 
@@ -78,3 +82,29 @@ flowchart LR
   matching, unchanged.
 - It does not resolve a zone id to a *county* zone; `/zones/county/<id>` answers
   404 for a forecast-zone id, and county zones carry their own identifiers.
+
+## What the BUILD-exit red team found
+
+Ten findings, six fixed here. The two that mattered:
+
+**A denial of service in the parser, in the class it was written to prevent.**
+The cap counted *positions*; nothing counted *rings*, so a document of two
+million empty rings was accepted and held 117 MB while reporting zero vertices.
+Depth was bounded and size was bounded; **quantity was not**. Rings are capped
+now and a ring with no positions is refused outright - emptiness is not
+geometry.
+
+**An approved ruling that did nothing.** Seeding was measured, argued,
+approved, built and tested, and never called. The lesson is not "wire it up" -
+it is that **a test of a thing is not a test of its wiring**, and only the
+second kind would have caught it.
+
+Two smaller ones are worth keeping in view: a ring with no positions is now an
+error rather than a silent empty, and the seeding goroutine cannot take the
+program down - a panic there would have ended a weather station because a map
+shortcut failed.
+
+**Left open as follow-ups:** `MaxVertices` was chosen rather than derived
+(RT-6); a MultiPoint reads as one ring (RT-7, unused today); two *overlapping*
+zones would punch a phantom hole under the even-odd fill (RT-8); and there is
+no recorded pre-code READY verdict (RT-10).

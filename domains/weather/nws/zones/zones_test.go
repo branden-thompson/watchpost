@@ -138,3 +138,59 @@ func TestSeedingDoesNotFailWhenTheServiceIsUnreachable(t *testing.T) {
 		t.Errorf("%d zones were held from a service that never answered", s.Held())
 	}
 }
+
+// TestManyZonesAreFetchedTogether is RT-3: the tail is forty-two zones, and
+// fetched one after another at a sixth of a second each that is six seconds of
+// nothing. They are asked for together.
+func TestManyZonesAreFetchedTogether(t *testing.T) {
+	var hits atomic.Int64
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		time.Sleep(120 * time.Millisecond) // about what the service takes
+		w.Header().Set("Cache-Control", "public, max-age=426444")
+		w.Write([]byte(`{"properties":{"id":"z","name":"Z"},"geometry":{"type":"Polygon","coordinates":[[[-85,41],[-84,41],[-84,42],[-85,41]]]}}`))
+	}))
+	defer slow.Close()
+	// A client whose token bucket is not the thing under test. **In the real
+	// one the bucket is the bound, not the ordering**: five a second means a
+	// forty-two-zone alert takes eight seconds however it is issued, which is
+	// the whole reason the watched places' zones are seeded (MG-7, RT-2).
+	c, err := httpx.New(httpx.Config{UserAgent: "watchpost-test", RatePerSec: 200})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := New(c, slow.URL)
+
+	ids := make([]string, 12)
+	for i := range ids {
+		ids[i] = string(rune('A'+i)) + "Z001"
+	}
+	start := time.Now()
+	got, _ := s.Zones(context.Background(), ids)
+	took := time.Since(start)
+	if len(got) != len(ids) {
+		t.Fatalf("%d of %d zones came back", len(got), len(ids))
+	}
+	// Serially this is twelve times 120 ms. Together it is near one.
+	if took > 700*time.Millisecond {
+		t.Errorf("twelve zones took %v; fetched together they should take about one request's time", took.Round(time.Millisecond))
+	}
+}
+
+// TestTheStoreDoesNotGrowForEver is RT-4. A zone asked for once is worth
+// keeping; every zone ever asked for, on a program that runs for days, is not.
+func TestTheStoreDoesNotGrowForEver(t *testing.T) {
+	var hits atomic.Int64
+	srv := serveZones(t, &hits)
+	defer srv.Close()
+	s := newStore(t, srv.URL)
+	s.mu.Lock()
+	for i := range maxHeld + 50 {
+		s.held[string(rune('a'+i%26))+string(rune('a'+i/26))] = Zone{ID: "x"}
+	}
+	s.mu.Unlock()
+	s.forget()
+	if n := s.Held(); n > maxHeld {
+		t.Errorf("the store holds %d shapes; the cap is %d", n, maxHeld)
+	}
+}

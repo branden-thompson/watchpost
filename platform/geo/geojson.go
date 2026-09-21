@@ -13,6 +13,12 @@ import (
 // claiming far more than that is damage or an attack, and neither is drawn.
 const MaxVertices = 50_000
 
+// MaxRings bounds how many rings one shape may hold. **Counting positions was
+// not enough** (RT-1): a document of empty rings counted none of them and was
+// held without limit, which is the failure this reader exists to prevent
+// arriving by another door. The largest zone measured holds thirty-two.
+const MaxRings = 4_000
+
 // maxDepth bounds how deeply `coordinates` may nest. GeoJSON needs four
 // levels for a MultiPolygon - polygons, rings, positions, numbers - and a
 // little room above that is generous.
@@ -111,8 +117,17 @@ func walk(raw json.RawMessage, positionsAt int) (Shape, error) {
 					}
 					nums = nums[:0]
 				}
-				// Leaving a ring: keep it, in the order it was read.
+				// Leaving a ring: keep it, in the order it was read. **A ring
+				// with no positions is not geometry** and is refused rather
+				// than kept, so that emptiness cannot be used to fill memory
+				// while every other count stays at zero.
 				if depth == positionsAt-1 {
+					if len(ring) == 0 {
+						return nil, fmt.Errorf("%w: a ring with no positions", ErrGeometry)
+					}
+					if len(out) >= MaxRings {
+						return nil, fmt.Errorf("%w: more than %d rings", ErrGeometry, MaxRings)
+					}
 					out = append(out, ring)
 					ring = nil
 				}

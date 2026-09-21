@@ -65,3 +65,31 @@ func resolveAlertAreas(ctx context.Context, store *zones.Store, snap *snapshot.S
 	}
 	return out
 }
+
+// seedZoneShapes takes the outlines of the watched places' own zones, in the
+// background, before any alert needs them.
+//
+// **Fetching only on demand is coldest exactly when the map matters** - severe
+// weather activates many zones at once - and a place has about two zones, so
+// this is a second's work once (MG-7). It was approved, built, tested and then
+// not called at all, which the BUILD-exit red team found (RT-2): a ruling that
+// does not run is a ruling that was not kept.
+//
+// Nothing waits on it. A start-up with no network is an ordinary morning.
+func (lp *livePipelines) seedZoneShapes(ctx context.Context, refs []snapshot.LocationRef) {
+	if lp == nil || lp.zoneShapes == nil || lp.weather == nil || len(refs) == 0 {
+		return
+	}
+	go func() {
+		// **A background convenience must never take the program down.**
+		// Seeding runs off the start-up path, so a panic here would end a
+		// weather station because a map shortcut failed - found by a test
+		// that handed it a provider with no client.
+		defer func() { _ = recover() }()
+		var ids []string
+		for _, ref := range refs {
+			ids = append(ids, lp.weather.ZonesFor(ctx, ref)...)
+		}
+		lp.zoneShapes.Seed(ctx, ids)
+	}()
+}

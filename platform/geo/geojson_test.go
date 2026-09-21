@@ -90,3 +90,27 @@ func TestAHugeGeometryIsRefusedRatherThanHeld(t *testing.T) {
 		t.Errorf("a geometry of more than %d positions was accepted", MaxVertices)
 	}
 }
+
+// TestAGeometryOfEmptyRingsIsRefused is RT-1 from the BUILD-exit red team, and
+// it is the same failure this reader exists to prevent arriving by a different
+// door. The cap counted **positions**; nothing counted rings, so a document of
+// two million empty rings was accepted, held 117 MB, and reported zero
+// vertices. Depth was bounded and size was bounded; *quantity* was not.
+func TestAGeometryOfEmptyRingsIsRefused(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(`{"type":"Polygon","coordinates":[`)
+	for i := range MaxRings + 10 {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(`[[-85,41],[-84,41],[-84,42],[-85,41]]`)
+	}
+	b.WriteString("]}")
+	if _, err := ReadGeometry([]byte(b.String())); err == nil {
+		t.Errorf("a geometry of more than %d rings was accepted", MaxRings)
+	}
+	// And a ring with no positions in it is not geometry at all.
+	if _, err := ReadGeometry([]byte(`{"type":"Polygon","coordinates":[[],[],[]]}`)); err == nil {
+		t.Error("rings with no positions were accepted")
+	}
+}
