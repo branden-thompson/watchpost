@@ -1,0 +1,73 @@
+<title>Watchpost Architecture Atlas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F4F3EF; --sheet:#FCFCFA; --ink:#1A1916; --muted:#5F5B52; --rule:#DCD8CE;
+  --signal:#A8471C; --signal-soft:#F2E2DA; --chip:#E9E5DC;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141310; --sheet:#1C1A16; --ink:#EDE9E1; --muted:#9A948A; --rule:#312D26;
+    --signal:#E08B5E; --signal-soft:#2E1F16; --chip:#252118;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141310; --sheet:#1C1A16; --ink:#EDE9E1; --muted:#9A948A; --rule:#312D26;
+  --signal:#E08B5E; --signal-soft:#2E1F16; --chip:#252118;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;padding-inline:clamp(16px,3vw,40px);padding-block:28px 64px}
+a{color:inherit}
+a:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:2px}
+.wrap{max-width:1500px;margin-inline:auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px}
+.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 20px);align-self:start;display:flex;flex-direction:column;gap:22px}
+.brand{font-family:var(--cond);font-weight:600;font-size:26px;line-height:1.1;margin:0}
+.brand small{display:block;font-family:var(--sans);font-weight:400;font-size:13px;color:var(--muted);margin-top:8px;line-height:1.45}
+nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--rule)}
+nav a{display:flex;justify-content:space-between;gap:8px;padding:9px 2px;text-decoration:none;border-bottom:1px solid var(--rule);font-size:14px}
+nav a:hover{color:var(--signal)}
+.n{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.how{font-size:13px;color:var(--muted);margin:0}
+.how strong{color:var(--ink);font-weight:600}
+main{display:flex;flex-direction:column;gap:52px;min-width:0}
+.lvl{border-bottom:2px solid var(--ink);padding-bottom:8px}
+.lvl h2{font-family:var(--cond);font-weight:600;font-size:22px;margin:0;letter-spacing:.02em;text-transform:uppercase}
+.level{display:flex;flex-direction:column;gap:32px}
+.dia{display:flex;flex-direction:column;gap:14px;min-width:0}
+.meta{display:flex;flex-direction:column;gap:6px;max-width:74ch}
+.meta h3{font-size:18px;font-weight:600;margin:0;text-wrap:balance}
+.file{margin:0;font-size:12.5px;color:var(--muted)}
+code{font-family:var(--mono);font-size:.92em}
+.lead{margin:2px 0 0}
+.canvas{background:var(--sheet);border:1px solid var(--rule);border-radius:4px;padding:18px;overflow-x:auto}
+.canvas pre.mermaid{margin:0;min-width:min-content;font-family:var(--mono);font-size:12px;color:var(--muted);white-space:pre}
+.canvas svg{max-width:none;height:auto}
+@media (max-width:860px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:26px}
+  .side{position:static}
+  nav ul{flex-direction:row;flex-wrap:wrap;border-top:0;gap:6px}
+  nav li{flex:1 1 150px}
+  nav a{border:1px solid var(--rule);border-radius:4px;padding:8px 10px}
+}
+</style>
+<div class="wrap">
+  <aside class="side">
+    <h1 class="brand">Watchpost Architecture Atlas<small><!--COUNT--> diagrams, in reading order. What the program is, area by area.</small></h1>
+    <nav aria-label="Areas"><ul><!--NAV--></ul></nav>
+    <p class="how"><strong>This page is generated.</strong> The tracked documents are the source of truth; rebuild with <code>go run ./tools/atlas</code>. Only fenced mermaid blocks are read — <strong>a change written in the prose beside a diagram never reaches this page</strong>, so put the fact in the diagram.</p>
+  </aside>
+  <main><!--BODY--></main>
+</div>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+const dark = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light";
+mermaid.initialize({startOnLoad:false, theme: dark ? "dark" : "neutral", flowchart:{htmlLabels:true, useMaxWidth:false}});
+const nodes = [...document.querySelectorAll("pre.mermaid")];
+for (const [i, el] of nodes.entries()) {
+  try { const {svg} = await mermaid.render("atlas"+i, el.textContent); el.innerHTML = svg; }
+  catch (e) { el.setAttribute("data-error", e.message); }
+}
+</script>

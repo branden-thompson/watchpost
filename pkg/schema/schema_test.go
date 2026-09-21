@@ -77,7 +77,7 @@ func TestSchemaRejectsUnknownFields(t *testing.T) {
 
 func TestSchemaCarriesRCVersion(t *testing.T) {
 	raw, _ := Generate()
-	if !bytes.Contains(raw, []byte("1.0.0-rc")) {
+	if !bytes.Contains(raw, []byte(snapshot.SchemaVersion)) {
 		t.Fatal("schema $id must carry the -rc version until B5 ratifies (§10.3)")
 	}
 }

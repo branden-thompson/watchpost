@@ -6,6 +6,7 @@ const inlandTTL
 const maxGrids
 const maxIDRunes
 const maxProseRunes
+const maxZones
 const stationCandidates
 func (*MarineProvider).Domains
 func (*MarineProvider).Fetch
@@ -23,6 +24,7 @@ func (*Provider).GridDecodes
 func (*Provider).ID
 func (*Provider).Office
 func (*Provider).Retain
+func (*Provider).ZonesFor
 func (*Provider).fetchAlerts
 func (*Provider).fetchForecast
 func (*Provider).fetchHourly
@@ -40,7 +42,9 @@ func (gridSeries).extremeOn
 func (gridSeries).first
 func New
 func NewMarine
+func alertFrom
 func conditionCode
+func decodeAlerts
 func decodeGridDoc
 func far
 func fillNote
@@ -50,13 +54,16 @@ func lastSegment
 func mapAlert
 func positive
 func roundTenth
+func standInID
 func stationDistance
 func tempC
 func toSI
 func windFromText
 type MarineProvider
 type Provider
+type alertFeature
 type alertProps
+type alertsPayload
 type gridDoc
 type gridInfo
 type gridSeries
