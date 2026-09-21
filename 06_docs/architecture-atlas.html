@@ -155,17 +155,17 @@ code{font-family:var(--mono);font-size:.92em}
     F -- ok --&gt; USE
     F -- &#34;could not be got&#34; --&gt; NONE[&#34;The alert resolves to nothing.&lt;br/&gt;&lt;b&gt;Not an error here&lt;/b&gt;: whether to draw a&lt;br/&gt;partly-known area needs a view, and&lt;br/&gt;this layer has none (MG-10)&#34;]
 </pre></div></article><article class="dia" id="map-ready-geometry-2"><div class="meta"><h3>The shape, and why each piece is where it is</h3><p class="file"><code>06_docs/02_features/map-ready-geometry/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
-    API[(&#34;api.weather.gov&lt;br/&gt;/alerts/active?zone=… · /zones/forecast/{id}&#34;)]
+    API[(&#34;api.weather.gov&lt;br/&gt;/alerts/active?zone=… · /zones/forecast/{id} · /zones/county/{id}&#34;)]
 
     subgraph DOM[&#34;domains/weather/nws — fetching, where domains belong&#34;]
       direction TB
       AL[&#34;alerts.go&lt;br/&gt;gains the geometry it never modelled&lt;br/&gt;read with a bounded token walk, never unmarshal into any&#34;]
-      ZN[&#34;&lt;b&gt;zones/&lt;/b&gt; — new&lt;br/&gt;fetch a zone once · &lt;b&gt;simplify at ingest, 0.5 km&lt;/b&gt; · cache on disk&lt;br/&gt;the raw shape is not kept (MG-6)&#34;]
+      ZN[&#34;&lt;b&gt;zones/&lt;/b&gt; — new&lt;br/&gt;fetch a zone once, kept whole at full detail&lt;br/&gt;the kind is read from the id: Z forecast, C county&lt;br/&gt;no cache and no simplifier — both belong elsewhere&#34;]
     end
 
     subgraph PLAT[&#34;platform/ — what more than one thing must name&#34;]
       direction TB
-      GEO[&#34;&lt;b&gt;geo&lt;/b&gt;&lt;br/&gt;gains Ring and Shape, and Douglas-Peucker&lt;br/&gt;it already holds haversine and bearing&#34;]
+      GEO[&#34;&lt;b&gt;geo&lt;/b&gt;&lt;br/&gt;gains Ring, Polygon, Shape and Area&lt;br/&gt;an area is an outline then its holes; Area says if any part is unknown&lt;br/&gt;it already holds haversine and bearing&#34;]
       SNAP[&#34;snapshot&lt;br/&gt;Quake gains Lat and Lon · Alert gains its polygon&lt;br/&gt;&lt;b&gt;AffectedZones already carries the ids: zone shapes are NOT stored here&lt;/b&gt; (MG-2)&#34;]
     end
 
