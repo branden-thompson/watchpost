@@ -92,3 +92,63 @@ The reduction is lossy and irreversible. The ticker path keeps the epicentre
 - No struct-size pins (`Sizeof` has no hits in the tree).
 - No geometry field on any snapshot type.
 - **No documented decision to exclude alert geometry.** The omission is silent.
+
+## Measured against the live service, 2026-09-21
+
+The fixture above is a trimmed sixteen. These are the real numbers, from
+`api.weather.gov` with this application's own identifying user-agent.
+
+### Every active alert in the country, in one request
+
+1,516 KB in 511 ms, **337 active alerts**:
+
+| | |
+|---|---|
+| carrying no polygon | **274 - 81%** |
+| carrying a polygon | 63 |
+| polygon vertices | median **7**, max 21 |
+| zones named per alert | median **1**, 95th percentile **5**, max **42** |
+| distinct zones in play nationally | 477 |
+
+**MG-1 is now measured rather than argued.** Four alerts in five carry no
+polygon. Drawing only the fifth would leave a weather map blank during most of
+what it exists to show.
+
+**And the median alert names one zone.** The eighty-one of the fixture was an
+outlier; live, the 95th percentile is five. The tail is real but rare, and it is
+the tail a design has to survive, not the case it should be built around.
+
+### What a zone shape actually costs
+
+| zone | bytes | fetch | rings | vertices |
+|---|---|---|---|---|
+| INZ018 Allen, Indiana | 9 KB | 163 ms | 1 | 74 |
+| OHZ001 Williams, Ohio | 6 KB | 121 ms | 1 | 48 |
+| TXZ119 Dallas, Texas | 10 KB | 110 ms | 1 | 80 |
+| **AKZ320 Glacier Bay, Alaska** | **1,393 KB** | 224 ms | **32** | **12,004** |
+
+A typical inland zone is as cheap as an alert polygon. A coastal Alaskan zone is
+**a hundred and fifty times larger**. The tail is the design problem; the median
+is not.
+
+*(`/zones/county/<id>` answers 404 for a forecast-zone id - county zones carry
+their own identifiers. Worth knowing before a fetcher is written against both.)*
+
+### What simplification does to it
+
+Douglas-Peucker, at tolerances below what one braille dot can resolve:
+
+| zone | raw | 0.5 km | 1.0 km | 2.0 km | 5.0 km |
+|---|---|---|---|---|---|
+| Glacier Bay | 12,004 | **744** | 428 | 241 | 136 |
+| Dallas | 80 | **6** | 6 | 6 | 6 |
+
+**At half a kilometre the worst zone loses 94% of its vertices and the typical
+one loses 92%**, because the source carries collinear detail no terminal can
+draw. Simplifying at ingest is not an optimisation here; it is the difference
+between storing megabytes and storing kilobytes.
+
+A rough figure for the whole country, from these: the United States has on the
+order of 3,500 forecast zones; at fifty simplified vertices each that is a few
+megabytes in total. **Seeding the whole set is therefore possible**, which makes
+the cold-cache risk MG-R1 a choice rather than a constraint.

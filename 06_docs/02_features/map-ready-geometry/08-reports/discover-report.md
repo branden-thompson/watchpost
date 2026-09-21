@@ -45,6 +45,14 @@ Both were caught by measuring rather than by reading a call chain, which is P-6.
 | **MG-4** | **Named for the data, not for its first use** | `domains/maps` was offered and set aside: zone shapes are NWS data from the same endpoint family as the alerts beside them, and they may later serve description rather than only the map. `domains/maps` stays available for concerns that are genuinely map-only |
 | **MG-5** | **Earthquakes keep their epicentre** | The position already exists in the reader and is thrown away. This is a field, not a feature |
 
+## Decided in PLAN, after the measurements
+
+| | Decision | Why |
+|---|---|---|
+| **MG-6** | **Simplify at ingest, at 0.5 km, and keep only the simplified shape** | Half a kilometre is below what one braille dot resolves at any usable zoom, and it takes the worst zone measured from 12,004 vertices to 744 - the source carries collinear detail no terminal can draw. The cost is accepted: **the raw shape is gone**, so a later need for finer detail is a refetch. Zones are keyed by id, so that is a cache rebuild rather than a redesign |
+| **MG-7** | **Fetch a zone on demand; seeding the country stays available** | The median alert names one zone and the 95th names five, at ~150 ms each and cached for good. Seeding all ~3,500 zones would be a few megabytes simplified, and remains the answer if on-demand proves wrong |
+| **MG-8** | **The schema is bumped to 1.1.0-rc** | HUM LEAD's rule was additive where nothing is imposed on consumers, otherwise bump. `additionalProperties` is **false** on every object (`pkg/schema/schema.go:106`), so any new field fails a consumer validating new data against the old schema. That imposes, so it bumps - and at 0.x with an `-rc` suffix a bump is cheap |
+
 ## What is deliberately not decided yet
 
 - **How much a zone shape is simplified, and where.** The map library simplifies
