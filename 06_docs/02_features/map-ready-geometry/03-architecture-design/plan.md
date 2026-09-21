@@ -50,20 +50,63 @@ both (MG-3). Named for the data rather than its first use (MG-4).
 
 ## What is built, in order, each with the test that fails first
 
+**Revised after the first red-team.** Two approved rulings did not survive it, and the
+revision **deletes** work rather than adding it - see [the revision](#what-the-red-team-changed).
+
+### Phase 1 - the shape, and the reader (p1)
+
 | # | The change | The test written first |
 |---|---|---|
-| **1** | `platform/geo` gains `Ring` and `Shape`, and `Simplify` | a known square keeps its corners; a line of collinear points collapses to two; a ring stays closed; simplifying twice changes nothing |
-| **2** | `platform/geo.Simplify` holds the measured figures | Glacier Bay's 12,004 vertices become fewer than 1,000 at 0.5 km, and Dallas's 80 become fewer than 20 - from committed fixtures, not the network |
-| **3** | A bounded GeoJSON reader in `platform/geo` | a hostile deeply-nested `coordinates` is refused rather than recursed (red-team 0.12.0 P4 F2, the discipline `geoPoint` already follows); a Point, a Polygon and a MultiPolygon each read correctly; an absent geometry answers "none" |
-| **4** | `snapshot.Alert` gains its polygon; the per-location fetcher stops discarding it | an alert with a polygon carries it; a zone-only alert carries none and is not an error; the polygon is simplified before it is stored |
-| **5** | `snapshot.Quake` gains `Lat` and `Lon`; `stateFor` stops throwing the position away | a quake's position survives into the snapshot; distance and bearing are unchanged, computed from the same numbers |
-| **6** | The schema is regenerated and **bumped to 1.1.0-rc** | the published schema matches the generator; every new field has a JSON tag; a real envelope validates |
-| **7** | `domains/weather/nws/zones` fetches, simplifies and caches a zone | a zone is fetched once and served from the cache after; a 404 for a bad id is an error, not a panic; the cache survives a restart |
-| **8** | The zone store answers a set of ids at once | the median case (one zone) and the tail (forty-two) both answer; the network is asked once per distinct id; an id already held is not refetched |
-| **9** | `app/` wires the store | a snapshot's alerts can be resolved to shapes end to end, from fixtures |
+| **1.1** | `platform/geo` gains `Ring` and `Shape` - lon/lat pairs, nothing more | a ring stays closed; a shape of several rings keeps their order; the zero value is usable |
+| **1.2** | A **bounded** GeoJSON reader in `platform/geo` | a hostile deeply-nested `coordinates` is refused rather than recursed - the discipline `geoPoint` already follows (red-team 0.12.0 P4 F2); Point, Polygon and MultiPolygon each read; an absent geometry answers "none"; a truncated one is an error, not a panic |
 
-**Nothing draws in this release** (objectives). Task 9 ends at the seam the map
-window will use in 0.18.0.
+**Gate p1:** the reader survives a fuzz target over arbitrary bytes, and
+`lint-imports` still passes.
+
+### Phase 2 - the data that already exists and is thrown away (p2)
+
+| # | The change | The test written first |
+|---|---|---|
+| **2.1** | `snapshot.Alert` gains its polygon; the per-location fetcher stops discarding it | an alert with a polygon carries it at **full detail**; a zone-only alert carries none and is not an error |
+| **2.2** | `snapshot.Quake` gains `Lat` and `Lon`; `stateFor` stops throwing the position away | the position survives into the snapshot; distance and bearing are unchanged, computed from the same numbers |
+| **2.3** | The schema is regenerated and **bumped to 1.1.0-rc** | the published schema matches the generator; every new field has a JSON tag; a real envelope validates |
+| **2.4** | Coordinates stay out of speech | a polygon on an alert never reaches spoken text - the rule UAT 81 already holds for text, now held for the new field |
+
+**Gate p2:** `alloc-budget` measured before and after on the USGS memo path;
+`make schema` in the same commit; declset re-captured with its reason.
+
+### Phase 3 - the zone store (p3)
+
+| # | The change | The test written first |
+|---|---|---|
+| **3.1** | `domains/weather/nws/zones` fetches one zone and keeps it **whole, as numbers** (MG-12) | a zone is fetched once and served from the cache after; its **name is kept beside its shape** (MG-9); a 404 is an error, not a panic; the cache survives a restart |
+| **3.2** | The cache honours the service's own freshness | a zone older than its `Cache-Control` max-age is refetched; one inside it is not (MG-11); **a stale zone with no network still answers with what is held** (MG-13) |
+| **3.3** | The store answers a set of ids at once | the median case (one zone) and the tail (forty-two) both answer; the network is asked once per distinct id; **the answer says which ids are held and which are not** (MG-10), and the caller is left to decide |
+| **3.4** | The user's own zones are seeded at start-up | the zones of every watched location are fetched in the background before any alert needs them; a cold start with no network is not an error |
+
+**Gate p3:** a snapshot's alerts resolve to shapes end to end, from fixtures,
+with the network switched off.
+
+### Phase 4 - the seam (p4)
+
+| # | The change | The test written first |
+|---|---|---|
+| **4.1** | `app/` wires the store to whatever will draw | the wiring is exercised without a map: given a snapshot, the shapes for its alerts can be got |
+
+**Nothing draws in this release.** Phase 4 ends at the seam the map window uses
+in 0.18.0.
+
+## What the red-team changed
+
+| | Was | Now |
+|---|---|---|
+| **MG-6** | simplify at ingest, 0.5 km, keep only the simplified shape | **no simplification at all.** D-16 rules that hosts pass full detail and the library simplifies per zoom; 0.5 km was visible from zoom 10 up, and the map draws to 18. The library's cap is 2,000,000 vertices an overlay - the worst zone measured is 12,004, or 0.6% of it. **This deletes Douglas-Peucker from the plan** |
+| **MG-7** | fetch every zone on demand | **seed the user's own zones at start-up**, on demand for the rest. On-demand alone was coldest during severe weather - the one time the map matters |
+| **MG-9** | *new* | keep the zone's **name** with its shape. It arrives in the same response and is what a toponymic description will need |
+| **MG-10** | *new, then withdrawn in round 2* | **Deferred to 0.18.0.** Whole-or-nothing is a *drawing* decision and it was put in the data layer. A map draws a view, so zones outside it need no shape and "partial" is the ordinary case. It also cancelled MG-7: seeding the user's two zones bought nothing if a forty-two-zone alert drew nothing until all forty-two arrived. **The store reports which ids it holds and which it does not, and the caller decides** |
+| **MG-12** | *new, round 2* | Store **parsed coordinates, not the fetched text**. GeoJSON is a wire format: as text the worst zone is 1.4 MB and a country is tens of megabytes; as numbers it is ~192 KB and a few |
+| **MG-13** | *new, round 2* | Stale never means discard. A zone past its freshness is refetched **when the network is reachable**, and the held shape is used meanwhile. A weather application is used in bad conditions |
+| **MG-11** | *new* | honour the service's own `Cache-Control` - it declares zone geometry good for **4.9 days**, which sets the refresh rule and answers the rate-limit question |
 
 ## The gates this work must not break
 
