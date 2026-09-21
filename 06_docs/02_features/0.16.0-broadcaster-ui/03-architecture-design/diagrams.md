@@ -119,7 +119,7 @@ sequenceDiagram
   Note over DIR: ⚠ The first draft marked Origin = FromOperator HERE.<br/>lineup.go:227 forbids it — a card keeps its origin<br/>for life. OPEN RULING, not settled design.
   DIR-->>PUMP: Publish{Lineup}
   PUMP-->>BC: the console re-renders from what was PUBLISHED
-  Note over BC: The console never computes an index.<br/>It names an intent; the Director owns the order.
+  Note over BC: The console never computes an index.<br/>It names an intent · the Director owns the order.
 
   rect rgb(255,235,235)
     Note over OP,L: THE OPEN QUESTION (D-23)<br/>A takeover can arrive mid-edit.  The rail drains<br/>first regardless, and the card being moved may<br/>already be gone.  HUM LEAD ruling at BUILD entry.

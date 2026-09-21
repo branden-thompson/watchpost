@@ -2,6 +2,30 @@
 
 All notable changes to Watchpost CLI. The format follows Keep a Changelog; versions follow SemVer.
 
+## [0.17.0] — unreleased
+
+### Added
+- **Weather data now carries where things are.** An alert's own polygon is kept instead of being
+  discarded as it arrives, an earthquake keeps its epicentre rather than only a distance and a
+  compass word, and the forecast zones an alert names can be resolved to their real outlines.
+  **Four alerts in five carry no polygon of their own** — watches and most flood warnings name
+  zones instead — so the zone outlines are what make a map of a hazard possible at all.
+- Zone outlines are fetched once and kept with their names, and the zones of the places you watch
+  are taken at start-up so an alert can be drawn the moment it arrives rather than after a wait.
+
+### Changed
+- **The report schema is now `1.1.0-rc`.** Every object refuses unknown fields, so adding the two
+  positions above is a change a consumer pinned to `1.0.0-rc` would notice. Nothing that reads
+  `1.1.0-rc` needs to do anything differently.
+
+### Fixed
+- `make schema` wrote to a file whose name had the version typed into it, while the test that
+  checks it derives that name from the version. The first bump would have written new content into
+  the old name and then looked for a file that did not exist.
+
+### Note
+- **Nothing draws yet.** This release makes the data ready; the map itself is 0.18.0.
+
 ## [0.16.0] — 2026-09-18
 
 ### Added

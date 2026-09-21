@@ -1,0 +1,821 @@
+<title>Watchpost Architecture Atlas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F4F3EF; --sheet:#FCFCFA; --ink:#1A1916; --muted:#5F5B52; --rule:#DCD8CE;
+  --signal:#A8471C; --signal-soft:#F2E2DA; --chip:#E9E5DC;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141310; --sheet:#1C1A16; --ink:#EDE9E1; --muted:#9A948A; --rule:#312D26;
+    --signal:#E08B5E; --signal-soft:#2E1F16; --chip:#252118;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141310; --sheet:#1C1A16; --ink:#EDE9E1; --muted:#9A948A; --rule:#312D26;
+  --signal:#E08B5E; --signal-soft:#2E1F16; --chip:#252118;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55;padding-inline:clamp(16px,3vw,40px);padding-block:28px 64px}
+a{color:inherit}
+a:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:2px}
+.wrap{max-width:1500px;margin-inline:auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px}
+.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 20px);align-self:start;display:flex;flex-direction:column;gap:22px}
+.brand{font-family:var(--cond);font-weight:600;font-size:26px;line-height:1.1;margin:0}
+.brand small{display:block;font-family:var(--sans);font-weight:400;font-size:13px;color:var(--muted);margin-top:8px;line-height:1.45}
+nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px solid var(--rule)}
+nav a{display:flex;justify-content:space-between;gap:8px;padding:9px 2px;text-decoration:none;border-bottom:1px solid var(--rule);font-size:14px}
+nav a:hover{color:var(--signal)}
+.n{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.how{font-size:13px;color:var(--muted);margin:0}
+.how strong{color:var(--ink);font-weight:600}
+main{display:flex;flex-direction:column;gap:52px;min-width:0}
+.lvl{border-bottom:2px solid var(--ink);padding-bottom:8px}
+.lvl h2{font-family:var(--cond);font-weight:600;font-size:22px;margin:0;letter-spacing:.02em;text-transform:uppercase}
+.level{display:flex;flex-direction:column;gap:32px}
+.dia{display:flex;flex-direction:column;gap:14px;min-width:0}
+.meta{display:flex;flex-direction:column;gap:6px;max-width:74ch}
+.meta h3{font-size:18px;font-weight:600;margin:0;text-wrap:balance}
+.file{margin:0;font-size:12.5px;color:var(--muted)}
+code{font-family:var(--mono);font-size:.92em}
+.lead{margin:2px 0 0}
+.canvas{background:var(--sheet);border:1px solid var(--rule);border-radius:4px;padding:18px;overflow-x:auto}
+.canvas pre.mermaid{margin:0;min-width:min-content;font-family:var(--mono);font-size:12px;color:var(--muted);white-space:pre}
+.canvas svg{max-width:none;height:auto}
+@media (max-width:860px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:26px}
+  .side{position:static}
+  nav ul{flex-direction:row;flex-wrap:wrap;border-top:0;gap:6px}
+  nav li{flex:1 1 150px}
+  nav a{border:1px solid var(--rule);border-radius:4px;padding:8px 10px}
+}
+</style>
+<div class="wrap">
+  <aside class="side">
+    <h1 class="brand">Watchpost Architecture Atlas<small>49 diagrams, in reading order. What the program is, area by area.</small></h1>
+    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li></ul></nav>
+    <p class="how"><strong>This page is generated.</strong> The tracked documents are the source of truth; rebuild with <code>python3 scripts/atlas/build.py</code>. Only fenced mermaid blocks are read — <strong>a change written in the prose beside a diagram never reaches this page</strong>, so put the fact in the diagram.</p>
+  </aside>
+  <main><section class="level" id="watchpost-cli"><header class="lvl"><h2>The shape of the program</h2></header><article class="dia" id="watchpost-cli-0"><div class="meta"><h3>1. System overview</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">graph TB
+  subgraph external [External sources]
+    NWS[api.weather.gov&lt;br/&gt;obs · forecast · alerts · products]
+    OM[Open-Meteo&lt;br/&gt;global wx + geocode]
+    FIRE[HMS · WFIGS · FIRMS]
+    ICE[NWR Icecast relays]
+    TTS[OS TTS engines&lt;br/&gt;say · System.Speech · espeak-ng]
+  end
+  subgraph domains [domains/]
+    W[weather] ; A[alerts] ; F[fire] ; L[locations] ; R[radio&lt;br/&gt;stream + synth]
+  end
+  subgraph platform [platform/]
+    SCHED[sched&lt;br/&gt;tiered scheduler, 5 tiers + cache]
+    SNAP[(snapshot&lt;br/&gt;THE contract)]
+    HTTPX[httpx&lt;br/&gt;cache · lanes · failure memo] ; REND[render&lt;br/&gt;go-studs seam: table.go] ; TERM[term] ; CFG[config]
+  end
+  subgraph modes [modes/]
+    TTY[tty&lt;br/&gt;bubbletea v2 program]
+    REP[report&lt;br/&gt;--json · --report-only]
+  end
+  NWS &amp; OM &amp; FIRE --&gt; domains
+  ICE --&gt; R ; TTS --&gt; R
+  SCHED --&gt;|ticks| domains
+  domains --&gt;|publish immutable| SNAP
+  SNAP --&gt;|read only| TTY &amp; REP
+  R --&gt;|PCM| AUDIO
+  TTY --&gt; REND &amp; TERM ; REP --&gt; TERM
+  APP[app/ composition root] -.wires.-&gt; domains &amp; modes &amp; platform
+</pre></div></article><article class="dia" id="watchpost-cli-1"><div class="meta"><h3>3. Scheduler (platform/sched)</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">graph LR
+  T1[Tier 1 alerts&lt;br/&gt;20s batched zones] --&gt; BUCKET[token bucket ~5 req/s&lt;br/&gt;jittered backoff 429/5xx]
+  T2[Tier 2 obs&lt;br/&gt;60–120s per station] --&gt; BUCKET
+  T3[Tier 3 forecasts&lt;br/&gt;per Expires 30–60m] --&gt; BUCKET
+  T4[Tier 4 fire&lt;br/&gt;HMS/WFIGS/FIRMS 10m priority · 15m recent] --&gt; BUCKET
+  T5[Tier 5 synth products&lt;br/&gt;on issuanceTime change] --&gt; BUCKET
+  BUCKET --&gt; HTTPX[httpx: UA, redaction,&lt;br/&gt;last-good on 5xx, ETag-less caching]
+</pre></div></article><article class="dia" id="watchpost-cli-2"><div class="meta"><h3>5. Radio architecture (domains/radio — G-2, AI-13)</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; Resolve: tune-in
+  Resolve --&gt; Live: mount found (transmitter table → wxradio/weatherUSA)
+  Resolve --&gt; Synth: no mount / stream dead
+  Live --&gt; Synth: 15s silence / 403 / disconnect ×3
+  Synth --&gt; Live: mount recovers (periodic probe)
+  Live: [LIVE] Icecast→ICY strip→go-mp3→ring→oto
+  Synth: [SYNTH] products(RWR,ZFP,HWO,NOW,SPS,CAP)→normalizer→script→OS TTS→WAV→oto
+  Live --&gt; Alert: new warning
+  Synth --&gt; Alert: new warning
+  Alert: 1050Hz WAT tone + alert narration (synth) → resume
+</pre></div></article><article class="dia" id="watchpost-cli-3"><div class="meta"><h3>Option C — Domain-first with a thin platform (RECOMMENDED)</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/structure-proposal.md</code></p></div><div class="canvas"><pre class="mermaid">graph LR
+  domains --&gt;|write| snapshot[platform/snapshot]
+  snapshot --&gt;|read| modes
+  domains --&gt; platform
+  modes --&gt; platform
+  app --&gt; domains &amp; modes &amp; platform
+  modes -.-&gt;|NEVER| domains
+</pre></div></article></section><section class="level" id="map-ready-geometry"><header class="lvl"><h2>Map-ready geometry (0.17.0)</h2></header><article class="dia" id="map-ready-geometry-0"><div class="meta"><h3>The whole of it</h3><p class="file"><code>06_docs/02_features/map-ready-geometry/03-architecture-design/as-built.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
+    API[(&quot;api.weather.gov&quot;)]
+
+    subgraph DOM[&quot;domains/weather/nws&quot;]
+      direction TB
+      AL[&quot;&lt;b&gt;alerts.go&lt;/b&gt;&lt;br/&gt;alertsPayload now declares &lt;b&gt;geometry&lt;/b&gt;&lt;br/&gt;alertFrom reads it · mapAlert matches on the FULL zone list (R3-A-01)&quot;]
+      ZN[&quot;&lt;b&gt;zones/zones.go&lt;/b&gt;&lt;br/&gt;Zone · Zones · Seed&lt;br/&gt;one fetch per id, kept whole WITH its name&lt;br/&gt;&lt;i&gt;no cache of its own&lt;/i&gt;&quot;]
+    end
+
+    subgraph SEIS[&quot;domains/seismic/usgs&quot;]
+      US[&quot;&lt;b&gt;usgs.go:stateFor&lt;/b&gt;&lt;br/&gt;keeps Lat and Lon beside the distance&lt;br/&gt;and compass word computed from them&quot;]
+    end
+
+    subgraph PLAT[&quot;platform/&quot;]
+      direction TB
+      GEO[&quot;&lt;b&gt;geo&lt;/b&gt;&lt;br/&gt;Point · Ring · Shape&lt;br/&gt;&lt;b&gt;ReadGeometry&lt;/b&gt; — token-streamed, never recursed, depth-capped&quot;]
+      HTTP[&quot;&lt;b&gt;httpx&lt;/b&gt;&lt;br/&gt;the freshness the server declares · disk tier · conditional refresh&lt;br/&gt;&lt;i&gt;MG-11 and MG-13 were already here&lt;/i&gt;&quot;]
+      SNAP[&quot;&lt;b&gt;snapshot&lt;/b&gt;&lt;br/&gt;Alert.Area · Quake.Lat/Lon&lt;br/&gt;schema &lt;b&gt;1.1.0-rc&lt;/b&gt;&quot;]
+    end
+
+    APP[&quot;&lt;b&gt;app/mapgeometry.go:resolveAlertAreas&lt;/b&gt;&lt;br/&gt;its own polygon, or its zones&#x27; outlines — the same thing either way&lt;br/&gt;the only place that may name a domain AND what draws&quot;]
+    NEXT[&quot;platform/tuimap — &lt;b&gt;0.18.0&lt;/b&gt;, not in this release&quot;]
+
+    API --&gt; AL --&gt; SNAP
+    API --&gt; ZN
+    API --&gt; US --&gt; SNAP
+    AL -. &quot;reads with&quot; .-&gt; GEO
+    ZN -. &quot;reads with&quot; .-&gt; GEO
+    ZN -. &quot;fetches through&quot; .-&gt; HTTP
+    AL -. &quot;fetches through&quot; .-&gt; HTTP
+    SNAP --&gt; APP
+    ZN --&gt; APP
+    APP -. &quot;hands plain shapes to&quot; .-&gt; NEXT
+</pre></div></article><article class="dia" id="map-ready-geometry-1"><div class="meta"><h3>Where an alert&#x27;s area comes from</h3><p class="file"><code>06_docs/02_features/map-ready-geometry/03-architecture-design/as-built.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+    A[&quot;An alert&quot;] --&gt; Q{&quot;Does it carry&lt;br/&gt;its own polygon?&quot;}
+    Q -- &quot;yes — &lt;b&gt;one in five&lt;/b&gt;&quot; --&gt; OWN[&quot;Use it.&lt;br/&gt;Nothing is fetched&quot;]
+    Q -- &quot;no — &lt;b&gt;four in five&lt;/b&gt;&quot; --&gt; Z[&quot;The zones it names&quot;]
+    Z --&gt; S{&quot;Held already?&quot;}
+    S -- yes --&gt; USE[&quot;Use the outlines&quot;]
+    S -- &quot;no&quot; --&gt; F[&quot;Fetch once per distinct id&lt;br/&gt;(the same zone is named by many alerts)&quot;]
+    F -- ok --&gt; USE
+    F -- &quot;could not be got&quot; --&gt; NONE[&quot;The alert resolves to nothing.&lt;br/&gt;&lt;b&gt;Not an error here&lt;/b&gt;: whether to draw a&lt;br/&gt;partly-known area needs a view, and&lt;br/&gt;this layer has none (MG-10)&quot;]
+</pre></div></article><article class="dia" id="map-ready-geometry-2"><div class="meta"><h3>The shape, and why each piece is where it is</h3><p class="file"><code>06_docs/02_features/map-ready-geometry/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
+    API[(&quot;api.weather.gov&lt;br/&gt;/alerts/active?zone=… · /zones/forecast/{id}&quot;)]
+
+    subgraph DOM[&quot;domains/weather/nws — fetching, where domains belong&quot;]
+      direction TB
+      AL[&quot;alerts.go&lt;br/&gt;gains the geometry it never modelled&lt;br/&gt;read with a bounded token walk, never unmarshal into any&quot;]
+      ZN[&quot;&lt;b&gt;zones/&lt;/b&gt; — new&lt;br/&gt;fetch a zone once · &lt;b&gt;simplify at ingest, 0.5 km&lt;/b&gt; · cache on disk&lt;br/&gt;the raw shape is not kept (MG-6)&quot;]
+    end
+
+    subgraph PLAT[&quot;platform/ — what more than one thing must name&quot;]
+      direction TB
+      GEO[&quot;&lt;b&gt;geo&lt;/b&gt;&lt;br/&gt;gains Ring and Shape, and Douglas-Peucker&lt;br/&gt;it already holds haversine and bearing&quot;]
+      SNAP[&quot;snapshot&lt;br/&gt;Quake gains Lat and Lon · Alert gains its polygon&lt;br/&gt;&lt;b&gt;AffectedZones already carries the ids: zone shapes are NOT stored here&lt;/b&gt; (MG-2)&quot;]
+    end
+
+    APP[&quot;app/ — the only place that may name both&lt;br/&gt;wires the zone store to whatever draws&quot;]
+    TUI[&quot;platform/tuimap — 0.18.0&lt;br/&gt;resolves ids to shapes and hands them to the map&quot;]
+
+    API --&gt; AL --&gt; SNAP
+    API --&gt; ZN
+    AL -. &quot;uses&quot; .-&gt; GEO
+    ZN -. &quot;uses&quot; .-&gt; GEO
+    ZN --&gt; APP --&gt; TUI
+    SNAP --&gt; TUI
+    GEO -.-&gt; TUI
+</pre></div></article></section><section class="level" id="severe-alerts-modals"><header class="lvl"><h2>Severe weather</h2></header><article class="dia" id="severe-alerts-modals-0"><div class="meta"><h3>4.1 Architecture</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+    subgraph feeds [&quot;keyless feeds&quot;]
+        U[&quot;USGS significant_week&quot;]; N[&quot;NHC CurrentStorms&quot;]; W[&quot;NWS alerts/active (curated 8)&quot;]; Z[&quot;NWS alerts/active?zone= (tracked)&quot;]
+    end
+    subgraph domain [&quot;domains/*&quot;]
+        G[&quot;globalfeed parsers + QuakeDetail / TropicalDetail (bounded)&quot;]
+        M[&quot;parse memo (httpx not-modified)&quot;]
+        A[&quot;weather/nws mapAlert (bounded)&quot;]
+        S[&quot;severe: NormalizeID · Classify · Guard · Union · Sort · Cap · RecordOf&quot;]
+    end
+    subgraph app [&quot;app/&quot;]
+        T[&quot;tickerDeck.cycle: Active → Locate → SetFeed → Within → Merge(30)&quot;]
+        D[&quot;severeDeck: feed + last snapshots → publish on change&quot;]
+        P[&quot;priority / recent publishers (publisher.last)&quot;]
+    end
+    subgraph tty [&quot;modes/tty (UI types only)&quot;]
+        K[&quot;TickerMsg.Items (tape, unchanged)&quot;]
+        V[&quot;SevereMsg.Rows → severe modal (browse / detail) · modalMemo&quot;]
+    end
+    U --&gt; G; N --&gt; G; W --&gt; G; G --&gt; M --&gt; T; Z --&gt; A --&gt; P
+    T --&gt;|&quot;pre-radius events&quot;| D; P --&gt;|&quot;onPublish Trigger&quot;| D; D --&gt; S; S --&gt; D
+    T --&gt; K; D --&gt; V
+</pre></div></article><article class="dia" id="severe-alerts-modals-1"><div class="meta"><h3>4.2 Component relationships</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+    R[&quot;platform/render: EventCat* tokens · CategoryTone · bracketTitle · rowMarks · DataTable&quot;] --&gt; V[&quot;modes/tty/severe.go&quot;]
+    V --&gt; X[&quot;view.go modalView (memoised)&quot;]
+    V --&gt; H[&quot;help_about.go NAVIGATE&quot;]
+    V --&gt; NAV[&quot;nav.go handleSevereNav&quot;]
+    DB[&quot;dashboard.go: modalSevere · w/ctrl+s · severeDetail · tickNeeded&quot;] --&gt; V
+    S[&quot;domains/severe&quot;] --&gt; AP[&quot;app/severe.go severeDeck&quot;] --&gt; V
+    GF[&quot;domains/globalfeed (widened, name-aware Sentence)&quot;] --&gt; S
+    GF --&gt; TK[&quot;app/ticker.go narration (press w)&quot;]
+    SN[&quot;platform/snapshot.Alert (bounded)&quot;] --&gt; S
+</pre></div></article><article class="dia" id="severe-alerts-modals-2"><div class="meta"><h3>4.3 Data flow (one cycle + one alerts tier)</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+    participant TD as tickerDeck.cycle (2 min)
+    participant SD as severeDeck
+    participant PB as publisher (alerts tier 20 s)
+    participant UI as Dashboard (tea loop)
+    TD-&gt;&gt;TD: fetch (memo: skip decode if not-modified) · Active · Locate(all)
+    TD-&gt;&gt;SD: SetFeed(events)
+    SD-&gt;&gt;SD: Union(feed, lastSnapshots) · Sort · Cap(500)
+    SD--&gt;&gt;UI: SevereMsg (only if keys changed)
+    TD-&gt;&gt;UI: TickerMsg.Items (Within · Merge 30, unchanged)
+    PB-&gt;&gt;UI: SnapshotMsg
+    PB-&gt;&gt;SD: Trigger()
+    SD--&gt;&gt;UI: SevereMsg (only if keys changed)
+    UI-&gt;&gt;UI: modalView memo: key(severeGen, tab, row, detail, scroll, clockMinute…)
+</pre></div></article><article class="dia" id="severe-alerts-modals-3"><div class="meta"><h3>4.4 Modal states (AX-3 A)</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Dashboard
+    Dashboard --&gt; Browse: w / ctrl+s (tab = breaking&lt;10min ? its tab : Warnings; severeDetail=false)
+    Browse --&gt; Browse: left/right tab · up/down row · scroll
+    Browse --&gt; Detail: enter (severeDetail=true, scroll=0)
+    Detail --&gt; Detail: up/down scroll
+    Detail --&gt; Browse: esc (severeDetail=false)
+    Browse --&gt; Dashboard: esc (close)
+    Dashboard --&gt; Dashboard: w inert while Setup/Add/Remove/Theme/Voice capture keys
+</pre></div></article><article class="dia" id="severe-alerts-modals-4"><div class="meta"><h3>A.1 Modal lifecycle (proposed — PLAN decides bool vs enum; states are the same either way)</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/08-reports/discover-report.md</code></p></div><div class="canvas"><pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Dashboard
+    Dashboard --&gt; Browse: w / ctrl+s  (opening tab = breaking&lt;10min ? its category : Warnings)
+    Browse --&gt; Browse: ← → tab · ↑ ↓ row · scroll
+    Browse --&gt; Detail: enter (focused row)
+    Detail --&gt; Detail: ↑ ↓ scroll
+    Detail --&gt; Browse: esc
+    Browse --&gt; Dashboard: esc
+    Dashboard --&gt; Dashboard: w while Setup/Add/Remove/chooser captures keys (inert)
+</pre></div></article><article class="dia" id="severe-alerts-modals-5"><div class="meta"><h3>A.2 Data flow (proposed publish path vs today)</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/08-reports/discover-report.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+    subgraph today [app/ticker.go cycle today]
+        F[fetch USGS+NHC+NWS] --&gt; A[Active :155] --&gt; W[Within radius :161] --&gt; L[Locate :168] --&gt; M[Merge cap 30 :180] --&gt; T[TickerMsg.Items]
+    end
+    subgraph proposed [publish path 0.13.0]
+        F2[fetch same sources — no new fetches] --&gt; A2[Active] --&gt; L2[Locate on the PRE-radius set] --&gt; P[pre-cap set + per-class detail, cap 500]
+        P --&gt; W2[Within radius] --&gt; M2[Merge cap 30] --&gt; T2[TickerMsg.Items]
+        P --&gt; T3[TickerMsg.Events  new field]
+    end
+    T3 --&gt; U[TTY: union with d.snap Location.Alerts → normalise urn:oid → superseded guard → severeTabs → modal memo]
+</pre></div></article><article class="dia" id="severe-alerts-modals-6"><div class="meta"><h3>Diagram: Architecture</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/08-reports/por-report.md</code></p><p class="lead"><strong>Purpose:</strong> feeds → domain → app join → TTY. <strong>Tool:</strong> Mermaid. <strong>Status:</strong> Active.</p></div><div class="canvas"><pre class="mermaid">flowchart LR
+    subgraph feeds [&quot;keyless feeds&quot;]
+        U[&quot;USGS significant_week&quot;]; N[&quot;NHC CurrentStorms&quot;]; W[&quot;NWS alerts/active (curated 8)&quot;]; Z[&quot;NWS alerts/active?zone= (tracked)&quot;]
+    end
+    subgraph domain [&quot;domains/*&quot;]
+        G[&quot;globalfeed parsers + detail (bounded) + parse memo&quot;]
+        A[&quot;weather/nws mapAlert (bounded, SenderName)&quot;]
+        S[&quot;severe: NormalizeID · Classify · Guard · Union · Sort · Cap · RecordOf&quot;]
+    end
+    subgraph app [&quot;app/&quot;]
+        T[&quot;tickerDeck.cycle: Active → Locate(all) → SetFeed(events, health) → Within → Merge(30)&quot;]
+        D[&quot;severeDeck.publish (serialised): Union → Sort → key(rows, health, fetch-minute) → SevereMsg on change&quot;]
+        P[&quot;priority / recent publishers (publisher.last, onPublish → Trigger)&quot;]
+    end
+    subgraph tty [&quot;modes/tty (UI types only)&quot;]
+        K[&quot;TickerMsg.Items (tape, unchanged)&quot;]
+        V[&quot;SevereMsg → severe window (browse / detail) · modalMemo&quot;]
+    end
+    U --&gt; G; N --&gt; G; W --&gt; G; G --&gt; T; Z --&gt; A --&gt; P
+    T --&gt;|&quot;pre-radius events + health&quot;| D; P --&gt;|&quot;Trigger&quot;| D; D --&gt; S; S --&gt; D
+    T --&gt; K; D --&gt; V
+</pre></div></article><article class="dia" id="severe-alerts-modals-7"><div class="meta"><h3>Diagram: Component relationships</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/08-reports/por-report.md</code></p><p class="lead"><strong>Purpose:</strong> what touches what. <strong>Tool:</strong> Mermaid. <strong>Status:</strong> Active.</p></div><div class="canvas"><pre class="mermaid">flowchart LR
+    R[&quot;platform/render: EventCat* tokens · CategoryTone · SevereTable · Railify · bracketSpread&quot;] --&gt; V[&quot;modes/tty/severe.go&quot;]
+    V --&gt; X[&quot;view.go modalView (memoised) → renderModal&quot;]
+    V --&gt; H[&quot;help_about.go NAVIGATE&quot;]
+    V --&gt; NAV[&quot;nav.go handleSevereNav&quot;]
+    V --&gt; ST[&quot;status.go severe gauge&quot;]
+    DB[&quot;dashboard.go: modalSevere · w/ctrl+s · severeDetail · tickNeeded · applySevere (by key)&quot;] --&gt; V
+    S[&quot;domains/severe&quot;] --&gt; AP[&quot;app/severe.go severeDeck&quot;] --&gt; V
+    GF[&quot;domains/globalfeed (widened, name-aware Sentence, Supersedes, memo)&quot;] --&gt; S
+    GF --&gt; TK[&quot;app/ticker.go narration (press W)&quot;]
+    SN[&quot;platform/snapshot.Alert (bounded, SenderName)&quot;] --&gt; S
+</pre></div></article><article class="dia" id="severe-alerts-modals-8"><div class="meta"><h3>Diagram: Data flow — one cycle and one alerts tier</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/08-reports/por-report.md</code></p><p class="lead"><strong>Purpose:</strong> cadence and change gating. <strong>Tool:</strong> Mermaid. <strong>Status:</strong> Active.</p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+    participant TD as tickerDeck.cycle (2 min)
+    participant SD as severeDeck
+    participant PB as publisher (alerts tier 20 s)
+    participant UI as Dashboard (tea loop)
+    TD-&gt;&gt;TD: fetch (memo skips decode if unchanged) · Active · Locate(all)
+    TD-&gt;&gt;SD: SetFeed(events, health)
+    SD-&gt;&gt;SD: publishMu · Union(feed, lastSnapshots) · Sort · key
+    SD--&gt;&gt;UI: SevereMsg (only if key changed)
+    TD-&gt;&gt;UI: TickerMsg.Items (Within · Merge 30, unchanged)
+    PB-&gt;&gt;UI: SnapshotMsg
+    PB-&gt;&gt;SD: Trigger()
+    SD--&gt;&gt;UI: SevereMsg (only if key changed)
+    UI-&gt;&gt;UI: modalView memo: key(opts, severeGen, tab, row, detail, scroll, minute…)
+</pre></div></article><article class="dia" id="severe-alerts-modals-9"><div class="meta"><h3>Diagram: Modal states</h3><p class="file"><code>06_docs/02_features/severe-alerts-modals/08-reports/por-report.md</code></p><p class="lead"><strong>Purpose:</strong> the esc/esc rule. <strong>Tool:</strong> Mermaid. <strong>Status:</strong> Active.</p></div><div class="canvas"><pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Dashboard
+    Dashboard --&gt; Browse: w / ctrl+s (tab = breaking&lt;10min ? its tab : Warnings)
+    Browse --&gt; Browse: left/right tab (wraps) · up/down row
+    Browse --&gt; Detail: enter (a focused row)
+    Detail --&gt; Detail: up/down scroll
+    Detail --&gt; Browse: esc · or the event vanished on a republish
+    Browse --&gt; Dashboard: esc
+    Dashboard --&gt; Dashboard: w inert while Setup/Add/Remove/Theme/Voice capture keys
+</pre></div></article></section><section class="level" id="multi-voice-support"><header class="lvl"><h2>The Director and the voices</h2></header><article class="dia" id="multi-voice-support-0"><div class="meta"><h3>The problem, drawn</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/director-architecture.md</code></p><p class="lead">Today there are two paths to audio and they meet only at the volume. Neither is a schedule.</p></div><div class="canvas"><pre class="mermaid">flowchart TB
+    subgraph broadcast[&quot;Broadcast path&quot;]
+        deck[&quot;radioDeck&lt;br/&gt;tune · advanceQueue · armDwell&quot;]
+        eng1[&quot;engine.Start / StartSource&quot;]
+        deck --&gt; eng1
+    end
+    subgraph narration[&quot;Narration path&quot;]
+        dir[&quot;director&lt;br/&gt;onAir · suspended · waiting&quot;]
+        spk[&quot;speaker.line&quot;]
+        dir --&gt; spk
+    end
+    tick[&quot;tickerDeck.cycle&lt;br/&gt;capBurst · startTakeover&quot;] --&gt; dir
+    read[&quot;severe_read [space]&quot;] --&gt; dir
+    band[&quot;modes/tty ticker&lt;br/&gt;own 90s rotation&quot;]
+    tick -. &quot;TickerMsg (independent)&quot; .-&gt; band
+    eng1 --- vol([&quot;THE VOLUME&lt;br/&gt;Suppress / Restore&quot;])
+    spk --- vol
+    style vol fill:#c33,color:#fff
+</pre></div></article><article class="dia" id="multi-voice-support-1"><div class="meta"><h3>The target, drawn</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/director-architecture.md</code></p><p class="lead">The Lineup is a <strong>published read-model</strong>. The Director owns every write; everyone else reads what is coming and prepares their own half (L-4).</p></div><div class="canvas"><pre class="mermaid">flowchart TB
+    obs[&quot;Watchpost Observer&lt;br/&gt;fetch · normalise · classify&quot;] -- proposes --&gt; DIR
+    op[&quot;Human Operator&lt;br/&gt;settings · play/pause/stop&quot;] -- proposes --&gt; DIR
+    DIR[&quot;**STATION DIRECTOR**&lt;br/&gt;owns the Lineup&lt;br/&gt;pre-screens against settings&quot;]
+    DIR --&gt; LINEUP[(&quot;**THE LINEUP**&lt;br/&gt;alert rail · main track · bed&lt;br/&gt;*published, immutable snapshots*&quot;)]
+    LINEUP -. reads .-&gt; api[&quot;API layer&lt;br/&gt;*&#x27;92057 is next — refresh&#x27;*&quot;]
+    LINEUP -. reads .-&gt; synth[&quot;Synth layer&lt;br/&gt;*resolve the card&#x27;s voice*&quot;]
+    LINEUP -. reads .-&gt; mc[&quot;Master control&lt;br/&gt;*cue the ticker, take the air*&quot;]
+    LINEUP -. reads .-&gt; ui[&quot;Broadcaster UI&lt;br/&gt;*the flowing feed*&quot;]
+    style DIR fill:#2a4,color:#fff
+    style LINEUP fill:#248,color:#fff
+</pre></div></article><article class="dia" id="multi-voice-support-2"><div class="meta"><h3>The three tracks and their precedence</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/director-architecture.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+    subgraph rail[&quot;ALERT RAIL — priority, usually empty&quot;]
+        direction TB
+        r1[&quot;Emergency Orders&lt;br/&gt;*lead; may overrun Max*&quot;] --&gt; r2[&quot;Read order, up to Max&quot;] --&gt; r3[&quot;Divert notice&quot;]
+    end
+    subgraph main[&quot;MAIN TRACK — the reads&quot;]
+        direction TB
+        m1[&quot;Location report&quot;] --&gt; m2[&quot;Transition card&quot;] --&gt; m3[&quot;Location report&quot;]
+    end
+    bed[&quot;THE BED — live NOAA relays&lt;br/&gt;*selectable, cut over to on command*&quot;]
+    rail -- &quot;drains fully,&lt;br/&gt;nothing dropped unread&quot; --&gt; main
+    main -. &quot;when empty / on command&quot; .-&gt; bed
+    bed -. &quot;relay dies → Fault → re-route&quot; .-&gt; main
+</pre></div></article><article class="dia" id="multi-voice-support-3"><div class="meta"><h3>The card&#x27;s life</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/director-architecture.md</code></p></div><div class="canvas"><pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Proposed
+    Proposed --&gt; Admitted: passes the pre-screen&lt;br/&gt;(radius, prefs, Max)
+    Proposed --&gt; Refused: fails it
+    Admitted --&gt; Standby: nears the air&lt;br/&gt;**build: 1.03 s of network**
+    Standby --&gt; OnAir: takes the air
+    OnAir --&gt; Done: read in full
+    OnAir --&gt; Discarded: superseded · cancelled&lt;br/&gt;· context ended
+    Admitted --&gt; Discarded: superseded · operator DROP
+    Standby --&gt; Discarded: same — *preparation has no&lt;br/&gt;side effects that outlive it*
+    Refused --&gt; [*]
+    Discarded --&gt; [*]
+    Done --&gt; [*]
+    note right of Standby
+        Text materialises here (DR-7),
+        NOT at admission — a card
+        queued behind a long read
+        would otherwise speak stale data.
+    end note
+    note right of OnAir
+        BOTH exits are real (DR-24).
+        Every transition out of ON AIR
+        emits a release effect, so the
+        band is never left holding a
+        callout for a card that stopped.
+    end note
+</pre></div></article><article class="dia" id="multi-voice-support-4"><div class="meta"><h3>Approach A — Pure planner, decks execute</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/director-architecture.md</code></p><p class="lead">The ordering becomes a pure function. Everything else stays where it is.</p></div><div class="canvas"><pre class="mermaid">flowchart LR
+    in[&quot;arrivals + settings&lt;br/&gt;+ location + clock&quot;] --&gt; plan[&quot;lineup.Plan()&lt;br/&gt;**pure**&quot;]
+    plan --&gt; cards[&quot;[]Card&quot;]
+    cards --&gt; snap[(&quot;atomic snapshot&lt;br/&gt;for readers&quot;)]
+    tick[&quot;tickerDeck&quot;] --&gt; plan
+    deck[&quot;radioDeck&lt;br/&gt;keeps its timers&quot;] --&gt; plan
+</pre></div></article><article class="dia" id="multi-voice-support-5"><div class="meta"><h3>Approach B — Actor: a Director goroutine with a command channel</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/director-architecture.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
+    p[&quot;proposals&quot;] --&gt; ch
+    c[&quot;operator commands&quot;] --&gt; ch
+    f[&quot;faults&quot;] --&gt; ch
+    d[&quot;job completions&quot;] --&gt; ch
+    ch([&quot;cmdCh&quot;]) --&gt; loop[&quot;**Director goroutine**&lt;br/&gt;sole owner of the Lineup&quot;]
+    loop --&gt; snap[(&quot;published snapshot&quot;)]
+    loop -- &quot;async jobs&lt;br/&gt;(never blocks)&quot; --&gt; ex[&quot;executors&lt;br/&gt;build · speak · cue · tune&quot;]
+    ex -- completion --&gt; ch
+</pre></div></article><article class="dia" id="multi-voice-support-6"><div class="meta"><h3>Approach C — A step function and one pump *(recommended)*</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/director-architecture.md</code></p><p class="lead"><code>Step</code> is a <strong>pure function</strong>: it takes the Director and one event, and returns the next Director and a list of <strong>effects as data</strong>. It performs nothing. A tiny stateless pump runs the effects and feeds their results back as events.</p></div><div class="canvas"><pre class="mermaid">flowchart LR
+    ev[&quot;Event&lt;br/&gt;Tick · Arrived · Built · Finished&lt;br/&gt;Command · Fault&quot;] --&gt; step[&quot;**Director.Step(ev)**&lt;br/&gt;pure — no I/O, no clock,&lt;br/&gt;no goroutines&quot;]
+    step --&gt; next[&quot;Director&#x27;&quot;]
+    step --&gt; fx[&quot;[]Effect&lt;br/&gt;BuildCard · Speak · CueTicker&lt;br/&gt;Duck · Tune · Publish&quot;]
+    fx --&gt; pump[&quot;pump&lt;br/&gt;*stateless*&quot;]
+    pump -- &quot;results as events&quot; --&gt; ev
+    next -.-&gt; step
+</pre></div></article><article class="dia" id="multi-voice-support-7"><div class="meta"><h3>The cue, drawn</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/director-architecture.md</code></p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+    participant D as Director
+    participant M as mastercontrol
+    participant T as news ticker
+    participant V as voice
+    D-&gt;&gt;M: OnAir(card)
+    M-&gt;&gt;T: Cue(headline)
+    Note over T: shows the centred callout
+    M-&gt;&gt;V: render + play
+    Note over M,V: fire-and-trust —&lt;br/&gt;the voice NEVER waits on the band
+    T--&gt;&gt;M: complied (recorded)
+    Note over M: the record is the debug surface&lt;br/&gt;AND what the test asserts (DR-18)
+</pre></div></article><article class="dia" id="multi-voice-support-8"><div class="meta"><h3>3.1 Architecture</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph config[platform/config]
+    C[Radio.Cast · Voices pairs · Tones mute]
+  end
+  subgraph cast[domains/radio/cast]
+    R[Registry + inheritance]
+    RES[Resolve → Resolution]
+    CL[Classify → Class · ToneName · Muted]
+  end
+  subgraph synth[domains/radio/synth]
+    LIM[&quot;Limiter · Limited(Voice)&quot;]
+    SRC[Source: Segment.Role · voice-keyed cache · hand-over]
+    TON[Presets · AlertTone]
+    MAR[MarineSegments]
+    COMP[&quot;Compose(Reports{})&quot;]
+  end
+  subgraph app
+    DECK[radioDeck: Host facts · resolveVoice · ensureRoleVoices]
+    DIR[&quot;Station Director: Run(class, role) · duck&quot;]
+    TICK[tickerDeck breaking]
+    READ[eventReader]
+    MARF[marineFor]
+  end
+  subgraph tty[modes/tty]
+    SET[Setup: Correspondents group]
+    PANEL[Radio panel per breakpoint]
+    STATS[&quot;[S] cast table&quot;]
+  end
+  C --&gt; R --&gt; RES --&gt; DECK
+  CL --&gt; DIR
+  DECK --&gt; LIM --&gt; SRC
+  COMP --&gt; SRC
+  MAR --&gt; COMP
+  MARF --&gt; COMP
+  TON --&gt; DIR
+  TICK --&gt; DIR
+  READ --&gt; DIR
+  DIR --&gt; DECK
+  SET --&gt; C
+  SRC --&gt;|onSeg| PANEL
+  RES --&gt; STATS
+</pre></div></article><article class="dia" id="multi-voice-support-9"><div class="meta"><h3>3.2 Component relationships (who may import whom)</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TD
+  tty --&gt; app
+  app --&gt; cast
+  app --&gt; synth
+  app --&gt; config
+  synth --&gt; cast
+  synth --&gt; render[platform/render]
+  cast --&gt; nothing[&quot;(no imports below platform/invariant)&quot;]
+  config -. no edge: platform/ imports no domains/ .-&gt; cast
+</pre></div></article><article class="dia" id="multi-voice-support-10"><div class="meta"><h3>3.3 Data flow — one broadcast with two correspondents</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+  participant D as radioDeck
+  participant S as Source
+  participant Cst as cast.Resolve
+  participant V as Limited(Voice)
+  participant E as Engine
+  D-&gt;&gt;S: Compose(Reports{Fire, Seismic, Maritime}) → segments tagged by Role · SetResolver(resolveVoice)
+  S-&gt;&gt;Cst: resolve(Weather) → Samantha
+  S-&gt;&gt;V: Say(conditions) [ordinary slot]
+  V--&gt;&gt;S: pcm (cache key Samantha\0conditions)
+  S-&gt;&gt;E: write
+  S-&gt;&gt;Cst: resolve(Maritime) → Rishi
+  Note over S: voice differs from lastSpoken → hand-over
+  S-&gt;&gt;V: Say(&quot;This is Rishi, taking over for Samantha.&quot;) in Rishi (rendered ahead, cached per from → to)
+  S-&gt;&gt;V: Say(maritime head)
+  S-&gt;&gt;E: write · marquee &quot;{{voice}}&quot;=Rishi
+</pre></div></article><article class="dia" id="multi-voice-support-11"><div class="meta"><h3>3.4 Data flow — a breaking takeover under roles</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+  participant T as tickerDeck
+  participant Dir as Station Director
+  participant Cst as cast
+  participant Dk as radioDeck
+  participant L as Limiter
+  T-&gt;&gt;Dir: Run(narrateBreaking, Breaking, events)
+  Dir-&gt;&gt;Dir: admit → duck · suspend a read
+  Dir-&gt;&gt;Cst: Classify(highest-severity product) → warning · ToneName → dual-tone · Muted? no
+  Dir-&gt;&gt;Dk: tone(DualTone) [rate constant, no resolve]
+  Dir-&gt;&gt;Dk: render(ctx+priority, Breaking, line)
+  Dk-&gt;&gt;Cst: Resolve(Breaking) → Rishi (Link=group Alerts)
+  Dk-&gt;&gt;L: Say under the reserved slot
+  Dir-&gt;&gt;Dir: settle → resume the read
+</pre></div></article><article class="dia" id="multi-voice-support-12"><div class="meta"><h3>3.5 Setup state</h3><p class="file"><code>06_docs/02_features/multi-voice-support/03-architecture-design/plan.md</code></p></div><div class="canvas"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; Form
+  Form --&gt; Picker: focus on a voice row
+  Picker --&gt; Picker: ←/→ cycles the host&#x27;s voices
+  Picker --&gt; Previewing: p (Audition, ducked by the Station Director)
+  Previewing --&gt; Picker: done / esc
+  Picker --&gt; Installing: a Piper voice not on this host (the first p offers the download, the second proceeds; or Save)
+  Installing --&gt; Picker: progress line → done
+  Form --&gt; ToneRow: focus on All Tones On / Mute: / a class
+  ToneRow --&gt; ToneRow: space toggles
+  Form --&gt; [*]: enter on the last question (save → SetTones → SetCast → Commit)
+  Form --&gt; [*]: esc (cancel)
+</pre></div></article></section><section class="level" id="0.16.0-broadcaster-ui"><header class="lvl"><h2>The Broadcaster console</h2></header><article class="dia" id="0.16.0-broadcaster-ui-0"><div class="meta"><h3>The architecture as it stands</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/approach-options.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph feeds[Feeds]
+    NWS[NWS alerts] --&gt; PUMP
+    OBS[Observations, fire, seismic, marine] --&gt; PUMP
+  end
+
+  PUMP[pump · one goroutine · the only caller of Step] --&gt; DIR
+  DIR[lineup.Director · pure Step] --&gt;|effects| EXEC[executors]
+
+  DIR -.-&gt;|Publish · emitted, UNREAD| VOID((no consumer))
+
+  EXEC --&gt;|BuildCard · Speak| ARB[narrator arbiter]
+  EXEC --&gt;|Tune · MUST NOT lift the duck| DECK[radioDeck]
+
+  ARB --&gt; ENG[player.Engine · one audio owner]
+  DECK --&gt;|startSynth · composes per cycle| ENG
+
+  MC[mastercontrol · one owner of band + duck] --&gt; ENG
+  DASH[Dashboard · Observer · the tea model] --&gt; MC
+
+  classDef dead fill:#eee,stroke:#999,stroke-dasharray:4
+  class VOID dead
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-1"><div class="meta"><h3>1. One deck, one air</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p><p class="lead"><strong>Both surfaces run through the SAME deck, on purpose</strong> (HUM LEAD, 2026-09-12): both do synth reads and relay streams, so two decks would be duplicated code and two things that could play at once. The Director arbitrates the rotation in BOTH modes; MasterControl gates the deck from the air.</p></div><div class="canvas"><pre class="mermaid">flowchart TB
+  OBS[&quot;OBSERVER&lt;br/&gt;the operator&#x27;s own listening&quot;]
+  BC[&quot;BROADCASTER&lt;br/&gt;the station&#x27;s line-up&quot;]
+  RTR[&quot;Router&lt;br/&gt;routes keys, mirrors gain,&lt;br/&gt;owns the surface swap&quot;]
+
+  OBS --&gt; RTR
+  BC --&gt; RTR
+
+  RTR --&gt;|&quot;OnSurface → takeTheAir&quot;| MC
+  MC[&quot;MasterControl&lt;br/&gt;&lt;b&gt;declares the air&lt;/b&gt;&lt;br/&gt;silences the bed&lt;br/&gt;silences the programme&quot;]
+
+  MC --&gt;|&quot;Aired{To}&quot;| DIR
+  DIR[&quot;Director&lt;br/&gt;&lt;b&gt;arbitrates BOTH rotations&lt;/b&gt;&lt;br/&gt;holds the schedule + the dwell&quot;]
+
+  DIR --&gt;|effects| EXEC[&quot;executors&lt;br/&gt;the Reader&quot;]
+  EXEC --&gt; DECK
+  RTR -.-&gt;|&quot;tty.Radio + tty.Config&lt;br/&gt;(the guarded boundary)&quot;| DECK
+
+  DECK[&quot;radioDeck&lt;br/&gt;&lt;b&gt;ONE deck&lt;/b&gt;&lt;br/&gt;synth reads · relay streams&quot;]
+  DECK --&gt; ENG[&quot;player.Engine&lt;br/&gt;&lt;b&gt;ONE audio out&lt;/b&gt;&quot;]
+  ENG --&gt; OUT([&quot;a human patches this&lt;br/&gt;into a transmitter&quot;])
+
+  style MC fill:#7a4242,color:#fff
+  style DECK fill:#42607a,color:#fff
+  style ENG fill:#42607a,color:#fff
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-2"><div class="meta"><h3>2. Who may advance, and it is mutually exclusive by construction</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph state[&quot;what MasterControl holds&quot;]
+    P[&quot;power&lt;br/&gt;Stopped | Running | OffAir&lt;br/&gt;&lt;i&gt;the STATION&#x27;s&lt;/i&gt;&quot;]
+    M[&quot;monitor&lt;br/&gt;running or not&lt;br/&gt;&lt;i&gt;the OPERATOR&#x27;s&lt;/i&gt;&quot;]
+    A[&quot;air&lt;br/&gt;AirMonitor | AirProgramme&lt;br/&gt;&lt;i&gt;declared by the SURFACE&lt;/i&gt;&quot;]
+  end
+
+  P --&gt; SG
+  A --&gt; SG
+  A --&gt; MG
+  M --&gt; MG
+
+  SG[&quot;advances(MainTrack)&lt;br/&gt;power == Running&lt;br/&gt;AND air == AirProgramme&lt;br/&gt;AND !bed.carries&quot;]
+  MG[&quot;advancesMonitor()&lt;br/&gt;monitor&lt;br/&gt;AND air == AirMonitor&lt;br/&gt;AND !bed.carries&quot;]
+
+  SG --&gt;|true| PROG[&quot;the station&#x27;s line-up advances&quot;]
+  MG --&gt;|true| MON[&quot;the watchlist rotation advances&quot;]
+
+  RAIL[&quot;the ALERT RAIL&lt;br/&gt;&lt;b&gt;exempt from both&lt;/b&gt;&lt;br/&gt;hazards read in either mode&lt;br/&gt;(its FENCE follows the surface, D-73)&quot;]
+
+  style RAIL fill:#7a6b42,color:#fff
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-3"><div class="meta"><h3>3. The surface swap</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+  participant OP as operator
+  participant R as Router
+  participant LP as livePipelines
+  participant MC as MasterControl
+  participant D as Director
+  participant DK as radioDeck
+
+  OP-&gt;&gt;R: ctrl+b
+  R-&gt;&gt;LP: OnSurface(SurfaceBroadcaster)
+  LP-&gt;&gt;LP: owner.set(Broadcaster)
+  Note over LP: deck.air now reports false&lt;br/&gt;for the monitor
+  LP-&gt;&gt;MC: HandAir(AirProgramme)
+  MC-&gt;&gt;D: Aired{To: AirProgramme, Fence}
+  LP-&gt;&gt;MC: StopMonitor()
+  MC-&gt;&gt;D: Monitored{Running: false}
+  LP-&gt;&gt;LP: ticker.nudgeRescope()
+  LP--&gt;&gt;DK: stopMonitor()
+  Note over DK: NOT Stop() — that is guarded,&lt;br/&gt;and runs after the air moved (D-91)
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-4"><div class="meta"><h3>4. The guard boundary — D-91</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p><p class="lead"><strong>31 seams</strong> between a surface and <code>app</code>: 26 <code>tty.Config</code> func fields and 5 <code>tty.Radio</code> methods. The classification is a closed set, derived by reflection, ratcheting both ways (<code>app/air_boundary_test.go</code>).</p></div><div class="canvas"><pre class="mermaid">flowchart TB
+  SURF[&quot;a surface calls in&quot;] --&gt; CLS{&quot;what can it do&lt;br/&gt;to the air?&quot;}
+
+  CLS --&gt;|airNone · 14| NONE[&quot;settings, queries, lookups&lt;br/&gt;&lt;i&gt;no guard owed&lt;/i&gt;&quot;]
+  CLS --&gt;|airMonitor · 7| MON{&quot;monitorHasTheAir()&quot;}
+  CLS --&gt;|airProgramme · 2| PROG[&quot;StepBedRelay · TuneRelay&lt;br/&gt;&lt;i&gt;the console&#x27;s own&lt;/i&gt;&quot;]
+  CLS --&gt;|airShared · 2| SHR[&quot;SetVolume — one volume for the app&lt;br/&gt;InjectAlert — feeds the exempt RAIL&quot;]
+  CLS --&gt;|airGatedDownstream · 1| GD[&quot;ReadReport → needsRead&lt;br/&gt;&lt;i&gt;already asks&lt;/i&gt;&quot;]
+  CLS --&gt;|airDeclares · 1| DEC[&quot;OnSurface — it MOVES the air&quot;]
+
+  MON --&gt;|&quot;true — Observer has it&quot;| DO[&quot;reaches the engine&quot;]
+  MON --&gt;|&quot;false — the console has it&quot;| REF[&quot;&lt;b&gt;refused&lt;/b&gt;&lt;br/&gt;the SETTING still applies;&lt;br/&gt;only the disturbance stops&quot;]
+
+  style MON fill:#7a4242,color:#fff
+  style REF fill:#7a4242,color:#fff
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-5"><div class="meta"><h3>5. What a settings change does now</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/as-built-air-and-deck.md</code></p><p class="lead"><strong>The pattern is <code>setTones</code>&#x27;, already in the tree:</strong> <em>&quot;deliberately NOT a recast — <code>[M]</code> must be instant and must not disturb a broadcast in flight.&quot;</em></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  S[&quot;operator saves a setting&lt;br/&gt;from the console&quot;] --&gt; SAVE[&quot;the setting is recorded,&lt;br/&gt;validated, re-resolved&quot;]
+  SAVE --&gt; Q{&quot;does it disturb&lt;br/&gt;what is playing?&quot;}
+  Q --&gt;|no| DONE[&quot;applies at once&quot;]
+  Q --&gt;|&quot;yes — Loop / Recast&quot;| HELD[&quot;applies to the monitor&#x27;s&lt;br/&gt;NEXT source, not this one&quot;]
+  style HELD fill:#42607a,color:#fff
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-6"><div class="meta"><h3>1. Target architecture — what 0.16.0 wires</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/diagrams.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
+  subgraph tea[The Bubble Tea program]
+    ROUTER[Router · NEW · the model the program holds]
+    ROUTER --&gt; OBS[Dashboard · Observer · unchanged]
+    ROUTER --&gt; BC[Broadcaster · NEW]
+  end
+
+  PUMP[pump · one goroutine · the only caller of Step] --&gt; DIR
+  DIR[lineup.Director · pure Step]
+
+  DIR --&gt;|Publish · EXISTS, unread today| ROUTER
+  BC --&gt;|Moved · NEW event| PUMP
+
+  DIR --&gt;|effects| EXEC[executors]
+  EXEC --&gt;|BuildCard · Speak| ARB[narrator arbiter]
+  EXEC --&gt;|Tune| DECK[radioDeck]
+  EXEC --&gt;|CutOver · NEW effect| DECK
+
+  ARB --&gt; ENG[player.Engine · one audio owner]
+  DECK --&gt; ENG
+  MC[mastercontrol · one owner of band + duck] --&gt; ENG
+
+  DIR -.-&gt;|Power · EXISTS, unwired| BC
+  DIR --&gt;|Fence · ALREADY LIVE, not a seam| ADMIT[alert admission]
+
+  classDef new fill:#dfd,stroke:#2a2
+  classDef seam fill:#ffd,stroke:#aa2,stroke-dasharray:4
+  class ROUTER,BC new
+  class DIR,MC seam
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-7"><div class="meta"><h3>2. P0 — the router&#x27;s message fan-out</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/diagrams.md</code></p><p class="lead"><strong>The batch whose claim is &quot;nothing changes&quot;.</strong>  Three messages are program-scoped and must reach both surfaces; everything else is Observer-shaped data that goes to Observer.</p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph senders[The ~9 senders in app/ · each takes the ROUTER&#x27;s send]
+    S1[radioDeck]
+    S2[priority · recent pipelines]
+    S3[severeDeck · eventReader]
+    S4[mastercontrol · tickerDeck]
+  end
+
+  senders --&gt; R{Router.Update}
+
+  R --&gt;|WindowSizeMsg| BOTH[BOTH surfaces]
+  R --&gt;|BackgroundColorMsg| BOTH
+  R --&gt;|KeyPressMsg| GATE{a swap request?}
+
+  GATE --&gt;|yes| CAN{canSwap · the ONE gate&lt;br/&gt;Power == OffAir?}
+  GATE --&gt;|no| ACTIVE[the active surface]
+
+  CAN --&gt;|yes| SWAP[switch surface]
+  CAN --&gt;|no| TELL[refuse · tell the operator why]
+
+  R --&gt;|every other msg · Observer-shaped| OBS[Dashboard]
+
+  classDef risk fill:#fdd,stroke:#a22
+  class CAN risk
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-8"><div class="meta"><h3>3. P4 — the operator-intent path</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/diagrams.md</code></p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+  participant OP as Operator
+  participant BC as Broadcaster
+  participant PUMP as pump
+  participant DIR as Director
+  participant L as Lineup
+
+  OP-&gt;&gt;BC: selects slot [3], chooses PROMOTE
+  BC-&gt;&gt;PUMP: Moved{ID, Place: PlaceLead}
+  PUMP-&gt;&gt;DIR: Step(Moved)
+  DIR-&gt;&gt;L: Reorder(id, PlaceLead)
+  Note over L: NEW mutator.  Set REFUSES to reorder&lt;br/&gt;by design — routing through it&lt;br/&gt;would silently no-op (RS-1)
+  L--&gt;&gt;DIR: a new Lineup, order changed
+  Note over DIR: ⚠ The first draft marked Origin = FromOperator HERE.&lt;br/&gt;lineup.go:227 forbids it — a card keeps its origin&lt;br/&gt;for life. OPEN RULING, not settled design.
+  DIR--&gt;&gt;PUMP: Publish{Lineup}
+  PUMP--&gt;&gt;BC: the console re-renders from what was PUBLISHED
+  Note over BC: The console never computes an index.&lt;br/&gt;It names an intent · the Director owns the order.
+
+  rect rgb(255,235,235)
+    Note over OP,L: THE OPEN QUESTION (D-23)&lt;br/&gt;A takeover can arrive mid-edit.  The rail drains&lt;br/&gt;first regardless, and the card being moved may&lt;br/&gt;already be gone.  HUM LEAD ruling at BUILD entry.
+  end
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-9"><div class="meta"><h3>4. The three lanes, and what the operator can do to each</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/diagrams.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
+  subgraph LANES[The station]
+    RAIL[PRIORITY TRACK&lt;br/&gt;takeovers · ALWAYS drains first]
+    MAIN[MAIN TRACK&lt;br/&gt;the rotation · 10 cards]
+    BED[THE BED&lt;br/&gt;the live relay · not a track]
+  end
+
+  RAIL --&gt;|drains first, always| AIR((ON AIR))
+  MAIN --&gt;|when the rail is empty| AIR
+  BED --&gt;|when cut over to| AIR
+
+  OP[Operator] --&gt;|promote · demote · drop| MAIN
+  OP --&gt;|promote · demote · drop| RAIL
+  OP --&gt;|cut over| BED
+  OP --&gt;|ON AIR / STANDBY| AIR
+
+  BED -.-&gt;|while the bed plays&lt;br/&gt;the main track PAUSES&lt;br/&gt;but stays manageable| MAIN
+
+  classDef safety fill:#fdd,stroke:#a22
+  class RAIL safety
+</pre></div></article><article class="dia" id="0.16.0-broadcaster-ui-10"><div class="meta"><h3>The original section, as written, kept for the record</h3><p class="file"><code>06_docs/02_features/0.16.0-broadcaster-ui/03-architecture-design/implementation-plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TD
+  ALERT[Alert arrives on the rail] --&gt; Q{What is on the air?}
+  Q --&gt;|Bed · live relay| DIP[DIP to 0.15 · engine.go:531&lt;br/&gt;the stream cannot be paused,&lt;br/&gt;only on or off]
+  Q --&gt;|Main rotation · rendered| HOLD[HOLD the read · engine.go:533&lt;br/&gt;it has nowhere to be]
+  DIP --&gt; DRAIN[Rail drains · always first]
+  HOLD --&gt; DRAIN
+  DRAIN --&gt; T[Transition read&lt;br/&gt;programmeReturnLine · UNWIRED]
+  T --&gt;|InProgress = true| REJOIN[Rejoin the relay mid-sentence&lt;br/&gt;restore to full volume]
+  T --&gt;|InProgress = false| RESUME[Resume the held read&lt;br/&gt;at normal volume]
+</pre></div></article></section><section class="level" id="0.15.0-pre-broadcaster-ui-improvements"><header class="lvl"><h2>Before the console</h2></header><article class="dia" id="0.15.0-pre-broadcaster-ui-improvements-0"><div class="meta"><h3>The two families</h3><p class="file"><code>06_docs/02_features/0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md</code></p></div><div class="canvas"><pre class="mermaid">graph TB
+  subgraph FA[&quot;FAMILY A — MAPPING completeness&quot;]
+    direction TB
+    CS[&quot;platform/closedset&lt;br/&gt;&lt;i&gt;Check: every member is carried,&lt;br/&gt;or declared with a reason&lt;/i&gt;&quot;]
+    CS --&gt; A1[&quot;lane guard&lt;br/&gt;category.Lanes() × tickerCategory&lt;br/&gt;&lt;i&gt;the ONE existing instance&lt;/i&gt;&quot;]
+    CS --&gt; A2[&quot;#18 tone map&lt;br/&gt;category.Category × cast.Class&lt;br/&gt;&lt;i&gt;the second — written by hand in B1&lt;/i&gt;&quot;]
+    CS -.-&gt;|&quot;NOT a member —&lt;br/&gt;four classifiers, four return types&quot;| A3[&quot;FR-1.2 classifier coupling&lt;br/&gt;&lt;i&gt;a divergence pin, already shipping&lt;/i&gt;&quot;]
+  end
+  subgraph FB[&quot;FAMILY B — PROPERTY completeness&quot;]
+    direction TB
+    RL[&quot;THE RULING&lt;br/&gt;&lt;i&gt;an unfixtured member FAILS;&lt;br/&gt;exemptions are declared rows with reasons&lt;/i&gt;&quot;]
+    RL --&gt; FB1[&quot;FR-3.3 modalKey&lt;br/&gt;render differs ⇒ key differs&lt;br/&gt;&lt;i&gt;exists&lt;/i&gt;&quot;]
+    RL --&gt; FB2[&quot;FR-3.1 bodyKey&lt;br/&gt;same property, no guard today&quot;]
+    RL --&gt; FB3[&quot;FR-8.2 AA register + --ascii&lt;br/&gt;&lt;i&gt;CONTESTED — arguably a mapping&lt;br/&gt;over PAINTED PAIRS, not a property&lt;/i&gt;&quot;]
+  end
+  FA -.-&gt;|&quot;different assertion shape,&lt;br/&gt;same failure mode&quot;| FB
+</pre></div></article><article class="dia" id="0.15.0-pre-broadcaster-ui-improvements-1"><div class="meta"><h3>The hazard path, and where each requirement intervenes</h3><p class="file"><code>06_docs/02_features/0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md</code></p><p class="lead">The junior-dev lens asked for this diagram by name: FR-4&#x27;s correctness argument is currently one run-on sentence, and it is the claim a reader must believe to fund the requirement.</p></div><div class="canvas"><pre class="mermaid">graph LR
+  SRC[&quot;NWS · NHC · USGS · FIRMS&quot;] --&gt; FETCH[&quot;source fetch&quot;]
+  FETCH --&gt; INJ{{&quot;injection seam&lt;br/&gt;&lt;b&gt;FR-4&lt;/b&gt; enters HERE&quot;}}
+  INJ --&gt; ACT[&quot;globalfeed.Active&quot;]
+  ACT --&gt; SCOPE[&quot;active window · location tie&lt;br/&gt;severe index · radius · freshness&quot;]
+  SCOPE --&gt; CLS{&quot;classify&lt;br/&gt;&lt;b&gt;FR-1.2 · FR-2&lt;/b&gt;&quot;}
+  CLS --&gt; LANE[&quot;LaneOf → band&quot;]
+  CLS --&gt; TAB[&quot;severe.Classify → [w] window&quot;]
+  LANE --&gt; BAND[&quot;marquee&lt;br/&gt;&lt;i&gt;operator&lt;/i&gt;&quot;]
+  TAB --&gt; WIN[&quot;window&lt;br/&gt;&lt;i&gt;operator&lt;/i&gt;&quot;]
+  CLS --&gt; DIR[&quot;Director → plan&quot;]
+  DIR --&gt; COMP[&quot;Composer&lt;br/&gt;cast.Classify → tone &lt;b&gt;#18&lt;/b&gt;&quot;]
+  COMP --&gt; SPK[&quot;Reader → speak&lt;br/&gt;&lt;i&gt;listener&lt;/i&gt;&quot;]
+  SPK -.-&gt;|&quot;&lt;b&gt;FR-9&lt;/b&gt; bound:&lt;br/&gt;complete, fail, or fault&quot;| SPK
+  SRC -.-&gt;|&quot;&lt;b&gt;FR-10&lt;/b&gt;: what is NOT watched&quot;| BAND
+</pre></div></article><article class="dia" id="0.15.0-pre-broadcaster-ui-improvements-2"><div class="meta"><h3>BUILD sequence</h3><p class="file"><code>06_docs/02_features/0.15.0-pre-broadcaster-ui-improvements/08-reports/plan-report.md</code></p><p class="lead">Selected: <strong>mechanism → surfaces → rulings, with FR-10 in parallel.</strong></p></div><div class="canvas"><pre class="mermaid">graph TB
+  B1[&quot;&lt;b&gt;B1 · Mechanism&lt;/b&gt;&lt;br/&gt;closedset helper&lt;br/&gt;lane guard migrates&lt;br/&gt;FR-2.1 · FR-2.3&quot;] --&gt; B2
+  B2[&quot;&lt;b&gt;B2 · Population&lt;/b&gt;&lt;br/&gt;triage 27 sets · 50 defaults&lt;br/&gt;FR-1.2 coupling · #18 tone map&lt;br/&gt;FR-2.1a · FR-2.2&quot;] --&gt; B3
+  B3[&quot;&lt;b&gt;B3 · Operator surface&lt;/b&gt;&lt;br/&gt;ctrl+d usable at 24 rows&lt;br/&gt;then scenarios made honest&lt;br/&gt;FR-5 → FR-4&quot;] --&gt; CP{{&quot;CHECKPOINT&lt;br/&gt;&lt;i&gt;re-plan if B1–B3 overran&lt;/i&gt;&quot;}}
+  CP --&gt; B4[&quot;&lt;b&gt;B4 · Consumers&lt;/b&gt;&lt;br/&gt;bodyKey guard · fail-not-skip&lt;br/&gt;memo consolidation measured&lt;br/&gt;FR-3&quot;]
+  CP --&gt; B5[&quot;&lt;b&gt;B5 · Listener safety&lt;/b&gt;&lt;br/&gt;read bound · tone-without-words&lt;br/&gt;empty-cycle fault&lt;br/&gt;FR-9&quot;]
+  B4 --&gt; B6[&quot;&lt;b&gt;B6 · Gates&lt;/b&gt;&lt;br/&gt;make lint · AA + --ascii&lt;br/&gt;PTY precondition · watched failures&lt;br/&gt;FR-8&quot;]
+  B5 --&gt; B6
+  B6 --&gt; B7[&quot;&lt;b&gt;B7 · Defects &amp;amp; rulings&lt;/b&gt;&lt;br/&gt;FR-6 · FR-7&quot;]
+  FR10[&quot;&lt;b&gt;FR-10 · feed investigation&lt;/b&gt;&lt;br/&gt;runs alongside B1–B7&lt;br/&gt;&lt;i&gt;contends with nothing for code&lt;/i&gt;&quot;] -.-&gt; B7
+</pre></div></article></section><section class="level" id="watchpost-performance-quality-pass"><header class="lvl"><h2>The quality pass</h2></header><article class="dia" id="watchpost-performance-quality-pass-0"><div class="meta"><h3>2.1 Instrumentation (Q0)</h3><p class="file"><code>06_docs/02_features/watchpost-performance-quality-pass/03-architecture-design/quality-pass-plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph app
+    C[&quot;httpx RequestStats&lt;br/&gt;since launch · 8 host slots + other&lt;br/&gt;attempts · net · cache · neg · 304 · bytesNet · bytes304&lt;br/&gt;h2Count · tlsHandshakes (httptrace)&quot;] --&gt; AG[&quot;app.Stats() sums the 3 clients&lt;br/&gt;+ publishes per pipeline · last Snapshot bytes · coalesced triggers&quot;]
+    AG --&gt; S[&quot;[S] API Status modal&lt;br/&gt;plain report: --verbose line&quot;]
+    D[&quot;dump trigger&lt;br/&gt;SIGUSR1 (unix) · env hook (all)&quot;] --&gt; P[&quot;cache dir/profiles/&amp;lt;ts&amp;gt;/&lt;br/&gt;heap · allocs · goroutine · threadcreate&lt;br/&gt;counters.json (every bounded structure + post-GC MemStats)&quot;]
+  end
+  S -.-&gt; R[&quot;(record: 04-development/infra-ledger.md)&quot;]
+  P -.-&gt; R
+  H[&quot;scripts/quality/soak.sh (macOS + Linux)&lt;br/&gt;5 min: ps · footprint · threads&lt;br/&gt;60 min: dump&quot;] --&gt; R
+  B[&quot;bench_test.go in package&lt;br/&gt;frame×3 sizes · snapshot · hms · width&quot;] --&gt; R
+</pre></div></article><article class="dia" id="watchpost-performance-quality-pass-1"><div class="meta"><h3>2.2 Cache tiers (Q1, Q5)</h3><p class="file"><code>06_docs/02_features/watchpost-performance-quality-pass/03-architecture-design/quality-pass-plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TD
+  Q[GetJSON/GetText] --&gt; M{memory tier&lt;br/&gt;8 MB LRU · expired-with-validators kept ≤ 24 h}
+  M -- fresh --&gt; OK[body]
+  M -- stale/none --&gt; DR{disk read?&lt;br/&gt;only if no stale mem entry}
+  DR -- fresh --&gt; OK
+  DR -- stale/none --&gt; V{validators stored?}
+  V -- yes --&gt; CG[&quot;GET + If-Modified-Since (primary)&lt;br/&gt;If-None-Match (secondary)&quot;]
+  V -- no --&gt; G[GET]
+  CG -- 304 --&gt; RN[renew Expires in place&lt;br/&gt;no disk write]
+  CG -- 200 --&gt; ST
+  G -- 200 --&gt; ST[&quot;store: mem always;&lt;br/&gt;disk only if caller TTL &gt; 5 min&lt;br/&gt;or the caller passed Persist()&quot;]
+  W[writer goroutine] --&gt; SW[&quot;sweep (allow-list): orphans · max(Expires, mtime) + 24 h grace&lt;br/&gt;own *.tmp pattern &gt; 1 h · dir cap 256 MB by mtime&lt;br/&gt;at start and daily · ≤ 10k entries / ≤ 1k deletes per pass&quot;]
+</pre></div></article><article class="dia" id="watchpost-performance-quality-pass-2"><div class="meta"><h3>2.3 Retry layering (Q1 network half — hoisted from Q5: BQ-2, RT-6)</h3><p class="file"><code>06_docs/02_features/watchpost-performance-quality-pass/03-architecture-design/quality-pass-plan.md</code></p></div><div class="canvas"><pre class="mermaid">sequenceDiagram
+  participant T as sched tier
+  participant X as httpx (Config.MaxRetries=1 on dashboard clients · report keeps 3)
+  participant H as host
+  T-&gt;&gt;X: fetch
+  X-&gt;&gt;H: attempt 1
+  H--&gt;&gt;X: transport error / 5xx / 429
+  Note over X: memo ARMS only on transport errors,&lt;br/&gt;or 5xx after ≥3 consecutive failures on ≥2 distinct URLs ·&lt;br/&gt;never on ctx.Err, never on 4xx
+  Note over X: memo is CONSULTED on the normal lane only —&lt;br/&gt;the priority lane always attempts (half-open probe) and clears the memo on 2xx
+  X--&gt;&gt;T: frag.Err (unserved locations)
+  T-&gt;&gt;T: rehydrate 10/20/40 s (unchanged) · station chain continues on any error
+  Note over X,H: memo TTL ≤ 30 s (below the 2nd rehydrate), cleared on any 2xx,&lt;br/&gt;not refreshed by memoised fails, ≤ 16 hosts (refuse to arm on overflow) ·&lt;br/&gt;Retry-After parsed (int or date): clamped ≤ 5 min into the normal-lane memo,&lt;br/&gt;and ≤ 30 s pacing hold on every lane for that host — never a sleep in do()
+</pre></div></article><article class="dia" id="watchpost-performance-quality-pass-3"><div class="meta"><h3>2.4 RECENT scheduling (C3 — decided at PLAN: A)</h3><p class="file"><code>06_docs/02_features/watchpost-performance-quality-pass/03-architecture-design/quality-pass-plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph today[&quot;today (kept): 50 schedulers × 5 tiers = 250 goroutines, ~1 MB&quot;]
+    S1[sched loc1] --&gt; A[&quot;(assembler)&quot;]
+    S2[sched loc2] --&gt; A
+    S50[sched loc50] --&gt; A
+    A --&gt; P[&quot;Q3: one publish per tier tick&lt;br/&gt;(coalesce restored — PF-9)&quot;]
+  end
+  subgraph optionB[&quot;option B (only if Q0 counters after Q3+Q5 show attributable cost)&quot;]
+    Heap[&quot;per-tier phased due list&lt;br/&gt;entry = (loc, kind, due)&quot;] --&gt; W[&quot;per-kind lanes, N ≥ 16&quot;]
+    W --&gt; A2[&quot;(assembler)&quot;]
+  end
+</pre></div></article><article class="dia" id="watchpost-performance-quality-pass-4"><div class="meta"><h3>2.5 Render frame pipeline (Q3, Q4)</h3><p class="file"><code>06_docs/02_features/watchpost-performance-quality-pass/03-architecture-design/quality-pass-plan.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TD
+  U[Update] --&gt; V[View]
+  V --&gt; FL[&quot;d.layout() once per View and per key event&lt;br/&gt;opts · compact · radioLines · heights · controlRow · window&quot;]
+  FL --&gt; HDR[header] &amp; RP[radio panel] &amp; AA[alert area] &amp; TB[&quot;table bodies — memoised (single slot on the model)&lt;br/&gt;key: layout value struct · snap ptr · recent ptr · selected · recentOff&lt;br/&gt;units · radioKey · radioRepeat · radioPlaying · theme generation · fireBoldMW · loading frame&quot;]
+  TB --&gt; K[&quot;go-studs DataTable&lt;br/&gt;Q4a: lazy tty probe · NoAutoStyle · composite SGR&lt;br/&gt;Q4b (upstream-first): x/ansi width · Geometry · no-wrap · no chroma&quot;]
+  V --&gt; O{modal open?} -- yes --&gt; OV[Overlay compositor]
+  TK[&quot;tick 300 ms — armed while:&lt;br/&gt;anyLoading ∨ volFlash pending/just-expired ∨&lt;br/&gt;(playing ∧ detail≠&#x27;&#x27; ∧ ¬vizTicking) ∨ showStatus ∨ showDetails&quot;] -.-&gt; U
+  VZ[vizTick 50 ms] -. only while Viz on and playing .-&gt; U
+</pre></div></article></section></main>
+</div>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+const dark = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light";
+mermaid.initialize({startOnLoad:false, theme: dark ? "dark" : "neutral", flowchart:{htmlLabels:true, useMaxWidth:false}});
+const nodes = [...document.querySelectorAll("pre.mermaid")];
+for (const [i, el] of nodes.entries()) {
+  try { const {svg} = await mermaid.render("atlas"+i, el.textContent); el.innerHTML = svg; }
+  catch (e) { el.setAttribute("data-error", e.message); }
+}
+</script>

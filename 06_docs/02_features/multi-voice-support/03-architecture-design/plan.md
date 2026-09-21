@@ -244,15 +244,15 @@ flowchart LR
     CL[Classify → Class · ToneName · Muted]
   end
   subgraph synth[domains/radio/synth]
-    LIM[Limiter · Limited(Voice)]
+    LIM["Limiter · Limited(Voice)"]
     SRC[Source: Segment.Role · voice-keyed cache · hand-over]
     TON[Presets · AlertTone]
     MAR[MarineSegments]
-    COMP[Compose(Reports{})]
+    COMP["Compose(Reports{})"]
   end
   subgraph app
     DECK[radioDeck: Host facts · resolveVoice · ensureRoleVoices]
-    DIR[Station Director: Run(class, role) · duck]
+    DIR["Station Director: Run(class, role) · duck"]
     TICK[tickerDeck breaking]
     READ[eventReader]
     MARF[marineFor]
@@ -287,7 +287,7 @@ flowchart TD
   app --> config
   synth --> cast
   synth --> render[platform/render]
-  cast --> nothing[(no imports below platform/invariant)]
+  cast --> nothing["(no imports below platform/invariant)"]
   config -. no edge: platform/ imports no domains/ .-> cast
 ```
 
@@ -304,7 +304,7 @@ sequenceDiagram
   participant Cst as cast.Resolve
   participant V as Limited(Voice)
   participant E as Engine
-  D->>S: Compose(Reports{Fire, Seismic, Maritime}) → segments tagged by Role; SetResolver(resolveVoice)
+  D->>S: Compose(Reports{Fire, Seismic, Maritime}) → segments tagged by Role · SetResolver(resolveVoice)
   S->>Cst: resolve(Weather) → Samantha
   S->>V: Say(conditions) [ordinary slot]
   V-->>S: pcm (cache key Samantha\0conditions)
@@ -327,7 +327,7 @@ sequenceDiagram
   participant L as Limiter
   T->>Dir: Run(narrateBreaking, Breaking, events)
   Dir->>Dir: admit → duck · suspend a read
-  Dir->>Cst: Classify(highest-severity product) → warning; ToneName → dual-tone; Muted? no
+  Dir->>Cst: Classify(highest-severity product) → warning · ToneName → dual-tone · Muted? no
   Dir->>Dk: tone(DualTone) [rate constant, no resolve]
   Dir->>Dk: render(ctx+priority, Breaking, line)
   Dk->>Cst: Resolve(Breaking) → Rishi (Link=group Alerts)

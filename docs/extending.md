@@ -45,6 +45,13 @@ Goal: a new source that needs a user key. `domains/fire/firms` is the worked exa
 | 4 | Scheduler | Cadence is per-**kind**: an existing kind (weather, obs, marine) rides its tier for free; a **new** kind needs a `snapshot.FetchKind`, a tier line in `startPriority` and one in `newFor` (RECENT), and `Domains()` on the provider — B5 added `KindFire` at 10 / 15 minutes. |
 | 5 | Tests | A fixture-backed `Fetch` test (httptest, recorded body) that also asserts the request shape; a key test (stored trimmed, malformed refused without echo); and, for a new kind, the assembler merge test. |
 
+Geometry note: a hazard's shape lives in `platform/geo` (`Point`, `Ring`, `Shape`) because both a
+domain and whatever draws must name it, and neither `modes/` nor `platform/` may import a domain.
+Read a shape from the wire with `platform/geo.ReadGeometry` — **never** by decoding `coordinates`
+into an `any`, which recurses once per array level with no ceiling. Zone outlines come from
+`domains/weather/nws/zones`; it deliberately keeps no cache of its own, because `platform/httpx`
+already honours the lifetime a server declares and revalidates rather than discards.
+
 Schema note: `by_provider` is additive — a new provider id needs no schema version bump (schema
 v1.0-rc policy, architecture §10.3). A new top-level block (like `fire`) is a schema change and
 lands with its `modes/report` lines and parity fixtures.
