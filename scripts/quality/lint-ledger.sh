@@ -37,6 +37,15 @@ case "${1:-}" in
   -*) echo "lint-ledger: unknown argument '$1'" >&2; exit 2 ;;
 esac
 
+# The internal-tree class is defined once, in Go (tools/internaltrees), and read
+# here — a copy of its patterns in this file is what a workspace rename leaves
+# behind.
+TREES=$(cd "$(dirname "$0")/../.." && go run ./tools/internaltrees) || TREES=""
+if [ -z "$TREES" ]; then
+  echo "lint-ledger: tools/internaltrees produced no pattern — refusing to lint with a rule missing" >&2
+  exit 2
+fi
+
 fail=0
 report() {
   echo "lint-ledger: $MIRROR names $2"
@@ -52,7 +61,7 @@ scan() {
   grep -qE '/Users/|/home/|/Volumes/'          "$MIRROR" && report '/Users/|/home/|/Volumes/' "an absolute machine path"
   grep -qE '(^|[^A-Za-z0-9_])_a2dh/|\.a2dh'    "$MIRROR" && report '(^|[^A-Za-z0-9_])_a2dh/|\.a2dh' "a path to the local harness"
   grep -qE '[0-9][0-9]_skills/'                "$MIRROR" && report '[0-9][0-9]_skills/' "an A2DH skill path"
-  grep -qE 'LI_PROJECTS|DESIGN_FOUNDATIONS'    "$MIRROR" && report 'LI_PROJECTS|DESIGN_FOUNDATIONS' "an internal project tree"
+  grep -qE "$TREES"                            "$MIRROR" && report "$TREES" "an internal project tree"
   grep -qE '\bAGENTS\.md\b|\bCLAUDE\.md\b|copilot-instructions' "$MIRROR" && report '\bAGENTS\.md\b|\bCLAUDE\.md\b|copilot-instructions' "a git-ignored harness file"
   grep -qE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' "$MIRROR" && report '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' "an email address"
   return 0
@@ -71,6 +80,8 @@ if [ "${1:-}" = "--self-test" ]; then
     'a row naming _a2dh/CONFIGS_a2dh.yaml' \
     'a row naming 02_skills/implementation/x.md' \
     'a row naming LI_PROJECTS/somewhere' \
+    'a row naming 07__SOME_BUCKET/some-repo' \
+    'a row naming 09-ARCHIVE/somewhere' \
     'a row naming AGENTS.md' \
     'a row naming someone@example.com'
   do

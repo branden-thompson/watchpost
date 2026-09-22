@@ -26,6 +26,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/tools/internaltrees/trees"
 )
 
 // identityPatterns are the classes that must never reach a public tree.
@@ -45,7 +47,7 @@ var identityPatterns = []struct {
 		"it names one person's desktop layout, which tells a public reader nothing"},
 	{"an agent-harness scratchpad path", regexp.MustCompile(`/private/tmp/claude-[0-9]+/`),
 		"it names the tooling a human used and the session they used it in"},
-	{"an internal project tree", regexp.MustCompile(`LI_PROJECTS|DESIGN_FOUNDATIONS`),
+	{"an internal project tree", internalTrees,
 		"it says where internal tooling lives, which tells a public reader nothing"},
 	{"an email address", regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`),
 		"it is personal data"},
@@ -65,7 +67,8 @@ var identityExempt = exempt(&exemptionTable{
 	rows: map[string]string{
 		"cmd/watchpost/identity_test.go":                                       "this file — the patterns and their exemptions have to be written down somewhere",
 		"scripts/quality/lint-ledger.sh":                                       "the ledger linter's own rules and its self-test probes, which must contain what they refuse",
-		"scripts/quality/p10-ledger-mirror.py":                                 "the mirror generator's own refusal table — it names the classes it strips, so it must contain them",
+		"tools/internaltrees/trees/trees.go":                                   "the internal-tree rule itself — its retired names are the patterns it refuses",
+		"tools/internaltrees/trees/trees_test.go":                              "the internal-tree rule's controls, which must contain what they refuse",
 		"THIRD_PARTY_LICENSES.md":                                              "upstream authorship, reproduced because the licences require it; the addresses are the copyright holders' own",
 		"06_docs/02_features/severe-alerts-modals/04-development/p1-domain.md": "a public NOAA office contact, quoted as domain research — it is published by the agency and names no one here",
 		"domains/globalfeed/testdata/nws_active_unfiltered_trimmed.json":       "a captured NWS payload; the webmaster address in it is the agency's own, and rewriting a fixture forges it",
@@ -143,4 +146,37 @@ func isBinaryPath(p string) bool {
 		return true
 	}
 	return false
+}
+
+// internalTrees is the internal-project-tree class from package trees — the one
+// definition lint-ledger.sh and p10-ledger-mirror.py read too, through
+// tools/internaltrees. Its own controls live beside it in trees_test.go.
+//
+// A rule that cannot be built stops the package rather than scanning without it:
+// a gate missing one class still prints a pass.
+var internalTrees = func() *regexp.Regexp {
+	expr, err := trees.Expr(filepath.Join("..", ".."), os.Getenv("HOME"))
+	if err != nil {
+		panic("identity gate: cannot build the internal-tree rule: " + err.Error())
+	}
+	return regexp.MustCompile(expr)
+}()
+
+// ONE DEFINITION, OR THE NEXT RENAME FINDS A COPY. Every gate that is not Go must
+// ask tools/internaltrees; a private copy of the old two-name pattern in any of
+// them is the defect package trees was written to remove.
+func TestEveryIdentityGateReadsTheOneTreeRule(t *testing.T) {
+	oldCopy := "LI_PROJECTS" + "|" + "DESIGN_FOUNDATIONS"
+	for _, rel := range []string{"scripts/quality/lint-ledger.sh", "scripts/quality/p10-ledger-mirror.py"} { // bounded (P10-02)
+		body, err := os.ReadFile(filepath.Join("..", "..", rel))
+		if err != nil {
+			t.Fatalf("%s: %v", rel, err)
+		}
+		if !strings.Contains(string(body), "tools/internaltrees") {
+			t.Errorf("%s does not read the rule from tools/internaltrees", rel)
+		}
+		if strings.Contains(string(body), oldCopy) {
+			t.Errorf("%s still carries its own copy of the internal-tree pattern", rel)
+		}
+	}
 }
