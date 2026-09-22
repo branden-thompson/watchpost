@@ -10,7 +10,7 @@ directives: FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLA
 branch: feature/map-drawing
 paired_release: go-tuiMaps v0.2.0 (D-11)
 issue: "branden-thompson/watchpost#22 — this brief is its body (D-19)"
-status: "APPROVED by the HUM LEAD 2026-09-22 (D-17).  Problem statement LOCKED (D-6).  Metrics ADOPTED (D-18).  Rulings in 02-analysis/rulings.md."
+status: "APPROVED by the HUM LEAD 2026-09-22 (D-17); amended (R-9, R-2.2, R-5.1, principles) and approved (D-24).  Problem statement LOCKED (D-6).  Metrics ADOPTED (D-18).  Rulings in 02-analysis/rulings.md."
 ---
 
 # New Major System Feature | `Observer-Maps`
@@ -79,7 +79,8 @@ the maps work) are split in PLAN, not here (D-12).**
 
 - **R-2.1** Watchpost **never** shows a view wider than the United States, US-centred. No frame is
   ever drawn at global or continental scale — including after a resize, a fit, or a failure.
-- **R-2.2** The default view is regional, state or county scale around the selected location.
+- **R-2.2** The default scale — regional, state or county around the selected location — is a
+  **setting**; the US-national bound of R-2.1 is not (D-8 is a hard constraint, D-23 P-2).
 - **R-2.3** The bound is **enforced by a test that fails**, not by a convention (D-11).
 
 ### R-3 — The basemap
@@ -105,7 +106,7 @@ the maps work) are split in PLAN, not here (D-12).**
 ### R-5 — Radar and precipitation, as a loop
 
 - **R-5.1** Radar is drawn from **both** the Iowa Environmental Mesonet and NOAA/NCEP MRMS (D-9).
-  Which is primary is decided in PLAN.
+  Which source is shown is a **setting**; PLAN picks the default (D-23 P-2).
 - **R-5.2** Radar is a **loop** (D-10). A single frame is not the product.
 - **R-5.3** The age of the newest frame is visible; old radar never looks current.
 - **R-5.4** Colour-to-intensity tables live in go-tuiMaps, including MRMS's (D-9).
@@ -127,6 +128,18 @@ the maps work) are split in PLAN, not here (D-12).**
 - **R-8.1** A `make verify` gate refuses implementation code in plan documents (D-13, D-14).
 - **R-8.2** Every lesson this release learns is recorded as a test or gate that fails where
   possible, and as prose only where it cannot be.
+
+### R-9 — The listener chooses; the station says what it costs (D-21, D-23)
+
+- **R-9.1** Maps on/off is a Settings option (`s`), persisted, default on (D-21).
+- **R-9.2** Which layers are shown is the listener's setting: alert areas, radar, fire, quakes. So is
+  which alerts: the station's locations only, plus national severe events in view, or more. The
+  default is D-23's C.
+- **R-9.3** Where a choice costs a lot of network, the station says so in plain words, before or as it
+  happens. Where a hard limit binds (the 512-zone cap, a source's stated limit), it reports what was
+  left out (M4) and never drops anything silently.
+- **R-9.4** Defaults are chosen by the builders; the seams are built so a new layer, source or option
+  plugs in without rework (P-3).
 
 ## Host requirements on go-tuiMaps v0.2.0
 
@@ -232,6 +245,11 @@ surface (`07-readiness/public-surface.txt`) has none of them. The draw call is `
   renders `Answer` values to its platform's accessibility layer" (PL-AX-3, "a redirection, not a
   waiver"). So this release owes the accessibility test of `Describe` output, whichever macro phase
   PLAN puts `Describe` in.
+- **Standing principles (D-23), for every user-facing feature:** **P-1** the builders optimise for
+  performance and structure; **P-2** default to user choice and settings unless a hard constraint
+  forbids it; **P-3** never architect into a corner — maintainability and extensibility are
+  first-class, always. Interactive toggles live in Settings; a flag only on a one-shot CLI command —
+  `--no-map` is F-175, for spot reports (D-22).
 - **Standing rules carried:** rulings one at a time; silence is not consent; a gate is obeyed or
   ruled on; blind red-team; both CI platforms green before merge; no AI attribution; no code in
   PLAN (D-13).
@@ -248,7 +266,7 @@ PROJECT BRIEF — COMPLETENESS CHECK
   [✓] Directives          — LEVEL-1, SEV-0, eight phase directives (D-5)
   [✓] Summary / Intent    — What, why now, who benefits, cost of not building
   [✓] Problem statement   — LOCKED (D-6)
-  [✓] Requirements        — 8 families, R-1..R-8
+  [✓] Requirements        — 9 families, R-1..R-9 (R-9 by amendment D-24)
   [✓] Host requirements   — HR-1..HR-5 for go-tuiMaps v0.2.0
   [✓] Metrics of Success  — M1–M5 primary, M6 secondary (D-18); hardened at DISCOVER
   [✓] Tech Constraints    — 12, measured at 17e40d4 / 1cac1ce

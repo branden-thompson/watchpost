@@ -43,3 +43,8 @@ be passed over in a new session."*
 9. **No AI attribution** in commits, PRs or tracked files.
 10. **`make` must be GNU Make ≥ 3.82.** On macOS, `/opt/homebrew/opt/make/libexec/gnubin` first on
     PATH, or the gate oracle reports COULD NOT RUN.
+11. **The listener chooses; the builders make choice cheap (D-23).** Default to a Settings option unless
+    a hard constraint (a source's request limit) forbids it; warn when a choice costs a lot of network,
+    never silently cap. Optimise and structure the code so choice is cheap to add. **Never architect
+    into a corner** — extensibility is a first-class requirement. Interactive toggles live in Settings;
+    flags only on one-shot CLI commands (D-22).
