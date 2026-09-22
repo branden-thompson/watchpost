@@ -22,6 +22,7 @@
 package trees
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -51,6 +52,12 @@ const minNameLen = 3
 // under the home directory home. An empty or unrelated home yields the static
 // shapes alone.
 func Expr(repoRoot, home string) (string, error) {
+	// An empty root is a caller's bug, not a default: filepath.Abs("") is
+	// whatever directory the process happens to be in, so the rule would
+	// describe a workspace nobody asked about.
+	if repoRoot == "" {
+		return "", errors.New("trees: no repository root")
+	}
 	names, err := Derived(repoRoot, home)
 	if err != nil {
 		return "", err
@@ -77,6 +84,9 @@ func Expr(repoRoot, home string) (string, error) {
 // fires on "Library/" teaches authors to add exemptions. The checkout's own
 // name is left out too — the repository may name itself.
 func Derived(repoRoot, home string) ([]string, error) {
+	if repoRoot == "" {
+		return nil, errors.New("trees: no repository root")
+	}
 	if home == "" {
 		return nil, nil
 	}
@@ -128,6 +138,9 @@ func keep(names []string, repo string) []string {
 // resolve returns the absolute, symlink-free form of dir, so a home reached
 // through a link (macOS /var -> /private/var) still contains its checkouts.
 func resolve(dir string) (string, error) {
+	if dir == "" {
+		return "", errors.New("trees: empty path")
+	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
 		return "", err

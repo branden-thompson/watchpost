@@ -97,3 +97,27 @@ func TestNoWorkspaceDerivesNothing(t *testing.T) {
 		}
 	}
 }
+
+// TestAnEmptyPathIsRefusedRatherThanGuessed is the positive control for the
+// guards added with them: an empty root would otherwise resolve to whatever
+// directory the process is in, and the rule would describe a workspace nobody
+// asked about. Each case must FAIL.
+func TestAnEmptyPathIsRefusedRatherThanGuessed(t *testing.T) {
+	home := t.TempDir()
+
+	if _, err := Expr("", home); err == nil {
+		t.Error("Expr accepted an empty repository root")
+	}
+	if _, err := Derived("", home); err == nil {
+		t.Error("Derived accepted an empty repository root")
+	}
+	if _, err := resolve(""); err == nil {
+		t.Error("resolve accepted an empty path")
+	}
+
+	// The control the other way: a real root is still accepted, so the guards
+	// above cannot pass by refusing everything.
+	if _, err := Expr(".", home); err != nil {
+		t.Errorf("Expr refused a real root: %v", err)
+	}
+}
