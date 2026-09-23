@@ -20,7 +20,7 @@ be passed over in a new session."*
 | | |
 |---|---|
 | Branch | `feature/map-drawing` → squash-merged `release/v0.18.0` at SHIP (D-2) |
-| Phase | **DISCOVER CLOSED 2026-09-23** (gate approved, D-37). **PLAN is not open** — paused by the HUM LEAD, to resume in a fresh session. Update this row at every phase transition |
+| Phase | **PLAN OPEN** since 2026-09-23 (D-39), in parallel with go-tuiMaps v0.2.0's PLAN; the two cross-reference through go-tuiMaps' `radar-loops/03-architecture-design/integration-map.md`. DISCOVER closed (D-37). **No code in PLAN** (D-13). Update this row at every phase transition |
 | Brief | `01-objectives/project-brief.md` — APPROVED (D-17); it is the body of issue #22 (D-19) |
 | Problem & metrics | `01-objectives/problem-statement.md` — M1, M1b, M2–M5 primary, M6 secondary (D-18, D-36), anti-solution hardened |
 | Rulings | `02-analysis/rulings.md` — **every ruling lands here the moment it is made** |
