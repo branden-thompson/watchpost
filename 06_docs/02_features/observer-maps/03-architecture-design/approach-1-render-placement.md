@@ -4,7 +4,7 @@ date: 2026-09-23
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "PROPOSED — for a HUM LEAD ruling. Signatures and shape only (D-13)."
+status: "RULED — D-41: A, with four guards against an old frame. Signatures and shape only (D-13)."
 ---
 
 # Approach 1 — where the map is drawn
