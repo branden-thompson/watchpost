@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms vet-tags test-tags lint-identity install-test
+.PHONY: quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms vet-tags test-tags lint-identity install-test
 
 BINARY := watchpost
 DIST   := dist
@@ -298,6 +298,21 @@ verify:
 
 verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest lint-identity gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
+
+# THE DOCS LANE (go-tuiMaps v0.2.0 D-15; watchpost 0.18.0 D-38). A change that
+# is Markdown and nothing else runs what reads documents - every test, without
+# the cache, and the authoring and watermark lints - instead of the whole of
+# verify. tools/docslane decides from the change itself and refuses any other
+# file, tracked or not, so the rule is held here rather than remembered. It is
+# local only: CI and every other change run verify.
+verify-docs:
+	@go run ./tools/treelock -name verify-docs -- $(MAKE) --no-print-directory verify-docs-gates
+
+verify-docs-gates:
+	@go run ./tools/docslane
+	@go test -count=1 ./...
+	@$(MAKE) --no-print-directory lint-authoring lint-watermark
+	@echo "verify-docs: DOCS LANE GREEN - every other gate NOT RUN; a change with any file that is not Markdown needs make verify"
 
 # quality is the PHASE-EXIT set: gates a release runs at BUILD and REVIEW exit,
 # by the HUM LEAD, and records in the roster — not on every verify and not in

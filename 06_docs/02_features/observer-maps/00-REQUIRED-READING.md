@@ -67,3 +67,6 @@ decision; the three red-team rounds and their dispositions are in `08-reports/re
     never silently cap. Optimise and structure the code so choice is cheap to add. **Never architect
     into a corner** — extensibility is a first-class requirement. Interactive toggles live in Settings;
     flags only on one-shot CLI commands (D-22).
+15. **The docs lane (D-38).** A change that is Markdown alone runs `make verify-docs`, which covers
+    every test and the document lints. `tools/docslane` refuses any other file. Everything else,
+    and CI, runs `make verify`.
