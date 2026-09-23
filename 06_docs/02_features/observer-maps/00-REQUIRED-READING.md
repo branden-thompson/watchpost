@@ -20,13 +20,22 @@ be passed over in a new session."*
 | | |
 |---|---|
 | Branch | `feature/map-drawing` → squash-merged `release/v0.18.0` at SHIP (D-2) |
-| Phase | DISCOVER (RCC). Update this row at every phase transition |
+| Phase | **DISCOVER CLOSED 2026-09-23** (gate approved, D-37). **PLAN is not open** — paused by the HUM LEAD, to resume in a fresh session. Update this row at every phase transition |
 | Brief | `01-objectives/project-brief.md` — APPROVED (D-17); it is the body of issue #22 (D-19) |
 | Problem & metrics | `01-objectives/problem-statement.md` — M1–M6, anti-solution hardened |
 | Rulings | `02-analysis/rulings.md` — **every ruling lands here the moment it is made** |
 | Paired release | go-tuiMaps v0.2.0: loops, the MRMS table, a host view bound (HR-1..HR-5) |
 | Inherited | `06_docs/handoff-0.18.0.md` — its §6 step 3 is **wrong** about the reachability gate (C-1) |
 | Follow-ups | `06_docs/follow-ups.md` only. F-174 is the Broadcaster's map (0.19.0) |
+
+## Where to pick up
+
+**DISCOVER closed; PLAN not started.** Nothing is half-done: `make verify` and `a2dh validate` are
+green at the last commit, and every open question is written as a requirement, a risk or a follow-up
+row rather than left in someone's head. Read `08-reports/discover-report.md` first — its "What PLAN
+inherits" section is the six things PLAN opens with, and its recommendation carries the two cautions
+this phase earned. The rulings log (`02-analysis/rulings.md`, D-1..D-37) is the authority for every
+decision; the three red-team rounds and their dispositions are in `08-reports/red-team-discover.md`.
 
 ## The rules that cost something
 
