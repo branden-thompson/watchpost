@@ -99,7 +99,14 @@ if [ "${1:-}" = "--self-test" ]; then
     echo "lint-ledger self-test: FAILED — a clean mirror was rejected; the gate would train authors to delete reasons" >&2
     exit 1
   fi
-  echo "lint-ledger self-test: all $fired leak class(es) fired, and a clean mirror passed (OK)"
+  # THE COUNT IS OF PROBES, AND IT SAYS SO. It read "leak class(es)", which
+  # inflated when three probes were added for shapes of ONE class, and none of
+  # the probes exercises the DERIVED half of the internal-tree rule at all - a
+  # `trees.Derived` that silently returned nothing would still print OK here
+  # (red team, DISCOVER exit 2026-09-22). Naming what the number counts is the
+  # honest half of the fix; a fixture-workspace probe for the derived half is
+  # filed as F-177.
+  echo "lint-ledger self-test: all $fired static probe(s) fired (the derived half of the internal-tree rule is NOT probed — F-177), and a clean mirror passed (OK)"
   exit 0
 fi
 

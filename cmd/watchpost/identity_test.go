@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/branden-thompson/watchpost/tools/internaltrees/trees"
@@ -36,18 +37,21 @@ import (
 // teaches nobody why. These are the same expressions lint-ledger.sh applies to
 // the ledger mirror, plus the harness-scratchpad class it does not know about —
 // which was the larger of the two leaks.
-var identityPatterns = []struct {
+type identityPattern struct {
 	name string
 	re   *regexp.Regexp
 	why  string
-}{
+}
+
+var identityPatterns = []identityPattern{
 	{"an absolute home directory", regexp.MustCompile(`(^|[^A-Za-z0-9._-])/(Users|home)/[a-z][a-z0-9._-]{2,}`),
 		"it names a person's account and a layout nobody outside can use"},
 	{"a home-relative personal path", regexp.MustCompile("(^|[\\s\"'`(])~/Desktop/|~/[A-Za-z0-9._-]*PERSONAL"),
 		"it names one person's desktop layout, which tells a public reader nothing"},
 	{"an agent-harness scratchpad path", regexp.MustCompile(`/private/tmp/claude-[0-9]+/`),
 		"it names the tooling a human used and the session they used it in"},
-	{"an internal project tree", internalTrees,
+	// nil until the test that scans builds it: see internalTrees below.
+	{"an internal project tree", nil,
 		"it says where internal tooling lives, which tells a public reader nothing"},
 	{"an email address", regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}`),
 		"it is personal data"},
@@ -80,7 +84,7 @@ var identityExempt = exempt(&exemptionTable{
 		if err != nil {
 			return false
 		}
-		for _, pat := range identityPatterns { // bounded by the pattern list (P10-02)
+		for _, pat := range identityRules(t) { // bounded by the pattern list (P10-02)
 			if m := pat.re.FindString(string(body)); m != "" && !reservedForDocs.MatchString(m) {
 				return true
 			}
@@ -119,7 +123,7 @@ func TestThePublishedTreeNamesNoPersonOrMachine(t *testing.T) {
 			continue
 		}
 		scanned++
-		for _, pat := range identityPatterns { // bounded by the pattern list (P10-02)
+		for _, pat := range identityRules(t) { // bounded by the pattern list (P10-02)
 			m := pat.re.FindString(string(body))
 			if m == "" || reservedForDocs.MatchString(m) {
 				continue
@@ -152,31 +156,94 @@ func isBinaryPath(p string) bool {
 // definition lint-ledger.sh and p10-ledger-mirror.py read too, through
 // tools/internaltrees. Its own controls live beside it in trees_test.go.
 //
-// A rule that cannot be built stops the package rather than scanning without it:
-// a gate missing one class still prints a pass.
-var internalTrees = func() *regexp.Regexp {
+// A rule that cannot be built FAILS THE TEST THAT NEEDS IT rather than the
+// package: a gate missing one class still prints a pass, so it must not be
+// skipped - but it was built in a package-level initializer, where a plain
+// permissions error on the workspace took down every test in cmd/watchpost,
+// most of which have nothing to do with identity (red team, DISCOVER exit
+// 2026-09-22). Built once, on first use, by the test that reads it.
+var internalTrees = sync.OnceValues(func() (*regexp.Regexp, error) {
 	expr, err := trees.Expr(filepath.Join("..", ".."), os.Getenv("HOME"))
 	if err != nil {
-		panic("identity gate: cannot build the internal-tree rule: " + err.Error())
+		return nil, err
 	}
-	return regexp.MustCompile(expr)
-}()
+	re, err := regexp.Compile(expr)
+	if err != nil {
+		return nil, err
+	}
+	return re, nil
+})
+
+// identityRules is the pattern table with the internal-tree rule filled in. A
+// rule that cannot be built fails the caller, loudly, with the reason - never a
+// scan that quietly covers one class fewer.
+func identityRules(t *testing.T) []identityPattern {
+	t.Helper()
+	re, err := internalTrees()
+	if err != nil {
+		t.Fatalf("COULD NOT RUN — cannot build the internal-tree rule, so one class would go unscanned: %v", err)
+	}
+	out := make([]identityPattern, 0, len(identityPatterns))
+	for _, pat := range identityPatterns { // bounded by the pattern list (P10-02)
+		if pat.re == nil {
+			pat.re = re
+		}
+		out = append(out, pat)
+	}
+	return out
+}
 
 // ONE DEFINITION, OR THE NEXT RENAME FINDS A COPY. Every gate that is not Go must
 // ask tools/internaltrees; a private copy of the old two-name pattern in any of
 // them is the defect package trees was written to remove.
+// IT ASSERTS AN EXECUTION, NOT A MENTION. The first version of this test was
+// satisfied by the string `tools/internaltrees` appearing anywhere - including
+// in the comment that sits directly above the live call - so deleting the call
+// and keeping the comment left the test green with the rule gone (red team,
+// DISCOVER exit 2026-09-22). Comment lines are stripped before the check.
 func TestEveryIdentityGateReadsTheOneTreeRule(t *testing.T) {
-	oldCopy := "LI_PROJECTS" + "|" + "DESIGN_FOUNDATIONS"
+	// The literal is safe here: this file is its own exemption row.
+	oldCopy := "LI_PROJECTS|DESIGN_FOUNDATIONS"
 	for _, rel := range []string{"scripts/quality/lint-ledger.sh", "scripts/quality/p10-ledger-mirror.py"} { // bounded (P10-02)
 		body, err := os.ReadFile(filepath.Join("..", "..", rel))
 		if err != nil {
 			t.Fatalf("%s: %v", rel, err)
 		}
-		if !strings.Contains(string(body), "tools/internaltrees") {
-			t.Errorf("%s does not read the rule from tools/internaltrees", rel)
+		code := withoutComments(string(body))
+		if !strings.Contains(code, "./tools/internaltrees") {
+			t.Errorf("%s does not RUN the rule from tools/internaltrees (a mention in a comment is not a call)", rel)
 		}
-		if strings.Contains(string(body), oldCopy) {
+		if strings.Contains(code, oldCopy) {
 			t.Errorf("%s still carries its own copy of the internal-tree pattern", rel)
 		}
+	}
+}
+
+// withoutComments drops whole-line `#` comments, which both consumers use, so
+// a mention cannot stand in for a call. It is deliberately simple: a `#` inside
+// a string would be over-stripped, which can only make the check stricter.
+func withoutComments(body string) string {
+	out := make([]string, 0, 64)
+	for _, line := range strings.Split(body, "\n") { // bounded by the file (P10-02)
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
+// TestTheOneTreeRuleCheckSeesThroughAComment is the positive control for the test
+// above: the commented-out form must FAIL the check, and the live form must
+// pass it. Without this control, a `withoutComments` that stopped stripping
+// would leave the original hole open and nothing would say so.
+func TestTheOneTreeRuleCheckSeesThroughAComment(t *testing.T) {
+	commented := "# TREES=$(go run ./tools/internaltrees)\nexit 0\n"
+	if strings.Contains(withoutComments(commented), "./tools/internaltrees") {
+		t.Error("a commented-out call counted as a call")
+	}
+	live := "# reads the rule from ./tools/internaltrees\nTREES=$(go run ./tools/internaltrees)\n"
+	if !strings.Contains(withoutComments(live), "./tools/internaltrees") {
+		t.Error("a live call was stripped")
 	}
 }

@@ -94,9 +94,15 @@ func Derived(repoRoot, home string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	// AN UNREADABLE HOME IS AN ERROR, NOT AN EMPTY RULE. It returned nil here,
+	// so a gate ran with the static half alone and printed a pass - which is
+	// the fail-open shape this package exists to remove (red team, DISCOVER
+	// exit 2026-09-22). An empty HOME still means "derive nothing", above:
+	// that is a caller saying there is no workspace, not a disk refusing to
+	// answer.
 	base, err := resolve(home)
 	if err != nil {
-		return nil, nil // no readable home: nothing to derive, the static shapes still apply
+		return nil, err
 	}
 	rel, err := filepath.Rel(base, root)
 	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {

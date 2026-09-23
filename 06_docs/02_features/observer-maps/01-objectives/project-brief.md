@@ -152,29 +152,50 @@ What watchpost needs from the paired release. v0.2.0's own brief decides how.
 | **HR-3** | A way for the host to bound the view, or a guarantee the library never falls back to the whole world once the host has placed it | R-2.1 | `map.go:265`; `MinZoom` is a constant |
 | **HR-4** | The contract document matches the code | a host reads the contract | `contract.md:103,114` name calls that do not exist |
 | **HR-5** | The after-tag triage D-123 names, written down | nineteen items with no record | D-123; not found in the tree |
+| **HR-6** | A host-settable fetcher: export the request type and its options (User-Agent token, allowed hosts, timeout, roots) | the library opens its own HTTP client (`tiles.go:52`), bypassing watchpost's single door, so NFR-4's User-Agent is unachievable and a host cannot supply a fetcher without reflection | red team F2; W1-B side finding |
+| **HR-7** | An alert pattern that does not depend on colour depth, and Extreme/Severe distinguishable by more than hatch spacing | the hatch runs only at `NoColour` depth (`frame.go:513`), so a colour-on monochrome theme carries no second channel; Extreme and Severe share `╳` at stride 2 vs 3 | D-27; red team A-4 |
+
+## What leaves the machine (D-31)
+
+This is the first watchpost feature where a third party learns **where the listener is looking**,
+continuously. Stated here because the risk register carried nine rows and none of them were security
+or privacy (red team F1).
+
+| Source | Request | What it reveals | When |
+|---|---|---|---|
+| OpenFreeMap | `{z}/{x}/{y}` vector tiles | IP, plus a tile path that at county zoom is a few kilometres square; a sequence reconstructs a pan trail | Only after the listener opens a map (FR-3.2) |
+| IEM / NOAA MRMS | WMS `GetMap` with a `BBOX` | IP, plus **the exact rectangle on screen**, timestamped per frame | Only with radar on, after a map is opened |
+| NWS (existing) | zone GeoJSON, alerts | IP, plus which zones the listener's locations sit in — coarser, and already true today | Zone geometry is gated on the maps setting (D-25) |
+
+Not new ground: watchpost already fetches from NASA FIRMS, Open-Meteo geocoding and others, and the
+credential redaction those use is the precedent this extends (red team F9's correction).
 
 ## Metrics of Success — ADOPTED (D-18)
 
 M1–M5 primary, M6 secondary. Hardened against gaming in `01-objectives/problem-statement.md` at DISCOVER.
 
-- **M1 — Where is it.** From the map alone, a listener can say whether an active alert covers the
+- **M1 — Where is it** *(grader: HUM LEAD; recorded-scenario protocol in `problem-statement.md` §5 — D-29)*. From the map alone, a listener can say whether an active alert covers the
   selected location, stops short of it, or lies to one side.
 - **M2 — Never global.** Zero frames drawn wider than the US-national bound, measured by an
   instrument over the test suite and the scripted-PTY journeys.
 - **M3 — Radar honesty.** The newest frame's age is always on screen; no frame older than its
   source's cadence is drawn as current.
 - **M4 — Partial honesty.** Every alert that did not fully resolve is drawn with that fact stated.
-- **M5 — Time to picture.** The window's first full-detail frame within the library's NFR-5 targets
+- **M5 — Time to picture** *(target set at PLAN from wave-1 measurements — D-29)*. The window's first full-detail frame within the library's NFR-5 targets
   (1 s warm, 3 s cold).
 - **M6 — Loop smoothness** *(secondary, D-18)*. The radar loop holds its frame rate without stalling
   the rest of the Observer — the one way D-10 could fail that M1–M5 would not catch.
 
-**M1 is the one this release is most likely to fail**, because four alerts in five have no
-polygon of their own and depend on zones resolving.
+**M1 is the one this release is most likely to fail**, because most alerts have no polygon of their
+own and depend on zone resolution. The field comment says four in five; measured live on 2026-09-22
+it was **nine in ten**, inflated by marine advisories and weather-dependent (W1-C). Either way zone
+resolution is the ordinary path, not the fallback.
 
 ## Technical Constraints
 
-**Measured against the tree at `17e40d4` (watchpost) and `1cac1ce` (go-tuiMaps), not assumed.**
+**Measured against the tree at `17e40d4` (watchpost) and the `v0.1.0` tag `bbc039a` (go-tuiMaps), not
+assumed.** (`1cac1ce` was cited first: it exists only on go-tuiMaps' local `release/v0.1.0` and is
+not what a reader would check out — red team H4.)
 
 ### C-1 — `resolveAlertAreas` is unwired, and the guard named to catch that cannot see it
 It has no production caller (`app/mapgeometry.go:28`; called only from `mapgeometry_test.go`). It is
@@ -231,6 +252,10 @@ surface (`07-readiness/public-surface.txt`) has none of them. The draw call is `
 
 ## Other Considerations
 
+- **The map's look belongs to PLAN, ratified from rendered specimens (D-32).** This record carries no
+  mock on purpose: a hand-drawn mock of a braille picture is fiction, and the calibration requires a
+  visual choice to be ratified from an actual rendering. The window follows the existing modal
+  pattern, with control commands along the bottom.
 - **Macro phase 2 is an input to PLAN, not a commitment here (D-12):** a map from the Details
   window, pan and zoom keys, layers and legends, a spoken description (`Describe`), settings, size
   tiers.
@@ -253,8 +278,7 @@ surface (`07-readiness/public-surface.txt`) has none of them. The draw call is `
 - **Standing rules carried:** rulings one at a time; silence is not consent; a gate is obeyed or
   ruled on; blind red-team; both CI platforms green before merge; no AI attribution; no code in
   PLAN (D-13).
-- **Issue of record.** 0.16.0's brief became its GitHub issue's body. Whether this brief becomes a
-  new issue on `branden-thompson/watchpost` is a HUM LEAD call at approval.
+- **Issue of record.** This brief is the body of issue #22 (D-19); the release PR closes it.
 
 ## Completeness Check
 
@@ -272,7 +296,7 @@ PROJECT BRIEF — COMPLETENESS CHECK
   [✓] Tech Constraints    — 12, measured at 17e40d4 / 1cac1ce
   [✓] Considerations      — phase 2 inputs, F-174, spike, owed items, issue of record
 
-  [✓] Rulings             — D-1..D-16, verbatim, in 02-analysis/rulings.md
+  [✓] Rulings             — D-1..D-32, verbatim, in 02-analysis/rulings.md
   [✓] Approval            — APPROVED as presented (D-17)
   [✓] Issue of record     — #22 (D-19)
   [✓] Outstanding         — none.  INTAKE CLOSED.

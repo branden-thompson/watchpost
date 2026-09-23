@@ -4,7 +4,7 @@ date: 2026-09-22
 phase: DISCOVER (RCC)
 sev: SEV-0
 authority: HUM LEAD
-status: "LOCKED 2026-09-22 (D-6).  Metrics adopted (D-18), hardened here; DRAFT pending the DISCOVER-exit red team."
+status: "LOCKED 2026-09-22 (D-6).  Metrics adopted (D-18) and amended after the DISCOVER-exit red team (D-29): M1 has a named grader and a recorded protocol; M5's target is set at PLAN."
 ---
 
 # Problem statement — LOCKED
@@ -92,11 +92,11 @@ marked PLAN are set there from measurement**, not guessed here.
 
 | # | Name | Symbol | Type | Definition (with direction) | Measured in |
 |---|---|---|---|---|---|
-| M1 | Where is it | `WII` | Primary | Share of UAT prompts where the listener correctly says whether an active alert **covers** the selected location, **stops short** of it, or **lies to one side**, **from the picture alone** — the alert's text and zone list hidden. Higher is better; target 100%. | Listener UAT, scripted prompts over recorded and live alerts |
+| M1 | Where is it | `WII` | Primary | Share of UAT prompts where the listener correctly says whether an active alert **covers** the selected location, **stops short** of it, or **lies to one side**, **from the picture alone** — the alert's text and zone list hidden. Higher is better; target 100%. **Grader: the HUM LEAD** (D-29). | Listener UAT over the **recorded** scenario set below — repeatable, unlike live weather |
 | M2 | Never global | `NG` | Primary | Count of frames drawn with a view wider than the US-national bound (D-8). Lower is better; target 0. | Instrument over the test suite and the scripted-PTY journeys |
 | M3 | Radar honesty | `RH` | Primary | Count of frames where radar is drawn without its newest frame's age, or older than its source's cadence without a stale mark. Lower is better; target 0. | Automated, over a clock-driven fixture |
 | M4 | Partial honesty | `PH` | Primary | Count of alerts that did not fully resolve and are shown — or withheld — **without that fact stated**. Lower is better; target 0. | Automated, over `Area.Missing` fixtures |
-| M5 | Time to picture | `TTP` | Primary | Seconds from `g` to the first **complete** frame: ≤ 1 s warm, ≤ 3 s cold (go-tuiMaps NFR-5, D-30). Lower is better. | Instrument in the host; cold = empty disk cache, network reachable |
+| M5 | Time to picture | `TTP` | Primary | Seconds from `g` to the first **complete** frame. **Target PLAN (D-29):** the 1 s warm / 3 s cold figures are go-tuiMaps' own (its v0.1.0 D-30), never measured in this host, and wave 1's parts already sum against them — a 41-zone cold resolve ~2 s, TileJSON ~260 ms plus 50–100 ms a tile, twelve radar requests — with D-21 forbidding any warming. Re-derived at PLAN from those numbers. Lower is better. | Instrument in the host; cold = empty disk cache, network reachable |
 | M6 | Loop smoothness | `LS` | Secondary | The radar loop advances at its configured rate, and Observer input stays responsive while it runs. Frame-interval jitter and key-to-response latency; targets PLAN. Lower is better. | Instrument in the host, Observer fully live |
 
 **The anti-solutions each bound closes:**
@@ -110,9 +110,16 @@ marked PLAN are set there from measurement**, not guessed here.
 | M5 | Show a coarse frame instantly and stop the clock. So the clock stops at the library's `Complete` status, not at the first frame. |
 | M6 | Slow the loop to a frame every ten seconds and it is perfectly smooth. So the loop runs at its **configured** rate, and the Observer's own work (publishes, the ticker, key handling) is running during the measurement. |
 
-**M1 is the metric this release is most likely to fail**, because four alerts in five have no
-polygon of their own (C-9) and are drawn only as far as their zones resolve. M4 is M1's
-machine-checkable half.
+**M1's protocol (D-29).** The grader is the HUM LEAD. The scenarios are **recorded**, not live, so the
+same run can be repeated by anyone later: at minimum one alert whose area covers the location, one
+that stops short of it within a few cells, one partially resolved (`Area.Missing` non-empty), one in
+an adjacent county, and one marine — drawn from captured responses (FR-8.6). Each is presented with
+the alert text and zone list hidden, at both 69×12 and a comfortable size, and scored covers / stops
+short / lies to one side. **FR-7.4's description is scored the same way**, from the text alone.
+
+**M1 is the metric this release is most likely to fail**, because most alerts have no polygon of their
+own (C-9 says four in five; measured nine in ten on 2026-09-22, marine-inflated and weather-dependent
+— W1-C) and are drawn only as far as their zones resolve. M4 is M1's machine-checkable half.
 
 ## 6. Status
 

@@ -20,6 +20,7 @@ func TestRunRefusesWhatWouldPrintNothingUseful(t *testing.T) {
 	}{
 		{"a third argument is not ignored", []string{".", home, "extra"}, "at most two arguments"},
 		{"an empty root is refused", []string{""}, "empty repository root"},
+		{"an explicitly empty HOME is refused", []string{".", ""}, "empty HOME argument"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -36,12 +37,6 @@ func TestRunRefusesWhatWouldPrintNothingUseful(t *testing.T) {
 			}
 		})
 	}
-
-	t.Run("no destination is refused", func(t *testing.T) {
-		if err := run([]string{"."}, home, nil); err == nil {
-			t.Fatal("no error for a nil destination")
-		}
-	})
 
 	t.Run("a good run prints one rule", func(t *testing.T) {
 		var out bytes.Buffer

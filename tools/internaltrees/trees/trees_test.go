@@ -121,3 +121,25 @@ func TestAnEmptyPathIsRefusedRatherThanGuessed(t *testing.T) {
 		t.Errorf("Expr refused a real root: %v", err)
 	}
 }
+
+// TestAnUnreadableHomeIsAnErrorNotAnEmptyRule is the positive control for the
+// fail-open fix: a home that cannot be resolved must stop the caller, because
+// a gate handed the static half alone prints a pass while a whole class of
+// name goes unchecked (red team, DISCOVER exit 2026-09-22).
+func TestAnUnreadableHomeIsAnErrorNotAnEmptyRule(t *testing.T) {
+	gone := filepath.Join(t.TempDir(), "no-such-home")
+
+	if _, err := Derived(".", gone); err == nil {
+		t.Error("Derived treated an unresolvable home as nothing to derive")
+	}
+	if _, err := Expr(".", gone); err == nil {
+		t.Error("Expr returned a rule built from an unresolvable home")
+	}
+
+	// The control the other way: an EMPTY home is a caller saying there is no
+	// workspace, and that still derives nothing without failing.
+	names, err := Derived(".", "")
+	if err != nil || names != nil {
+		t.Errorf("an empty home should derive nothing without error; got %v, %v", names, err)
+	}
+}

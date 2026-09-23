@@ -537,4 +537,24 @@ func TestTheIdentityGateSelectsItsTest(t *testing.T) {
 	if matched == 0 {
 		t.Errorf("lint-identity's -run pattern %q selects no test: the gate would run zero tests and exit 0", pattern)
 	}
+
+	// AND IT MUST SELECT EVERY TEST THAT GUARDS THE CLASS, not just one. The
+	// recipe named a single test while identity_test.go had grown a second -
+	// the one-definition guard - so `make lint-identity` passed while the
+	// invariant it exists for ran only under the full race sweep (red team,
+	// DISCOVER exit 2026-09-22). The set is DISCOVERED from the file, never
+	// listed here: a third test would otherwise be missed the same way.
+	src, err := os.ReadFile("identity_test.go")
+	if err != nil {
+		t.Fatalf("COULD NOT RUN — identity_test.go: %v", err)
+	}
+	decls := regexp.MustCompile(`(?m)^func (Test[A-Za-z0-9_]+)\(`).FindAllStringSubmatch(string(src), -1)
+	if len(decls) == 0 {
+		t.Fatal("COULD NOT RUN — no tests found in identity_test.go")
+	}
+	for _, d := range decls { // bounded by the file's declarations (P10-02)
+		if !re.MatchString(d[1]) {
+			t.Errorf("lint-identity's -run pattern %q does not select %s, which guards the identity class", pattern, d[1])
+		}
+	}
 }

@@ -120,7 +120,7 @@ lint-watermark:
 # patterns in the P10 ledger mirror alone, and printed "no machine paths" while
 # the class was live in 21 other tracked files across two pushed branches.
 lint-identity:
-	@go test ./cmd/watchpost/ -run PublishedTreeNames -count=1
+	@go test ./cmd/watchpost/ -run 'PublishedTreeNames|OneTreeRule' -count=1
 
 # Positive controls: prove the custom gates still fire on known-bad input (calibration:
 # "Guard Tests Require Positive Controls"). Runs the linters against embedded bad fixtures.

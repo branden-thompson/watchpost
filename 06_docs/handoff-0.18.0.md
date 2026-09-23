@@ -1,5 +1,10 @@
 # 0.18.0 — handoff
 
+**Read this before touching anything** — and then read
+`06_docs/02_features/observer-maps/00-REQUIRED-READING.md`, which is 0.18.0's own required reading and
+supersedes this page wherever the two differ. This handoff was written before the release opened; its
+§6 step 3 is **wrong** about the reachability gate (see that record's C-1).
+
 **Read this before touching anything.** 0.17.0 made hazard data map-ready and deliberately drew
 nothing. 0.18.0 draws. Everything below is what a session starting cold needs and cannot derive
 from the code.

@@ -29,16 +29,17 @@ func main() {
 // failures below are errors a caller sees rather than an exit code, and so
 // they can be tested.
 //
-// THE GUARDS REFUSE SILENCE, NOT MALFORMED INPUT. Each one names a way this
-// command could otherwise print something a gate would accept: a third
-// argument quietly ignored, an empty root that resolves to whatever directory
-// the caller happened to be in, or an empty expression - which lint-ledger.sh
-// and p10-ledger-mirror.py both refuse to run without, and which they can only
-// refuse if it never reaches them as an empty line on standard output.
+// THE GUARDS REFUSE SILENCE, NOT MALFORMED INPUT: a third argument quietly
+// ignored, and an empty root that would resolve to whatever directory the
+// caller happened to be in.
+//
+// TWO MORE WERE DELETED RATHER THAN KEPT (red team, DISCOVER exit 2026-09-22):
+// a nil destination, which only a test ever passed, and an empty expression,
+// which `Expr` cannot return while it joins a non-empty static set. P10 Rule 5
+// says an assertion a static checker can prove never fails violates the rule,
+// and those two were written to satisfy its density count. The consumers'
+// own refusal of an empty rule is the real guard, and it lives in them.
 func run(args []string, home string, out io.Writer) error {
-	if out == nil {
-		return errors.New("no destination to write the rule to")
-	}
 	if len(args) > 2 {
 		return fmt.Errorf("at most two arguments (REPO_ROOT, HOME), got %d", len(args))
 	}
@@ -49,15 +50,20 @@ func run(args []string, home string, out io.Writer) error {
 	if root == "" {
 		return errors.New("empty repository root: pass a path, or none for the working directory")
 	}
+	// AN EXPLICITLY EMPTY HOME IS A CALLER'S MISTAKE. Empty means "derive
+	// nothing", so passing it as an argument asks for a rule with the derived
+	// half missing, and a gate handed a shortened rule still prints a pass. An
+	// unset HOME in the environment is different and stays allowed: that is a
+	// machine with no home directory, not a caller asking for less.
+	if len(args) > 1 && args[1] == "" {
+		return errors.New("empty HOME argument: omit it to use $HOME, which is what a caller almost always means")
+	}
 	if len(args) > 1 {
 		home = args[1]
 	}
 	expr, err := trees.Expr(root, home)
 	if err != nil {
 		return err
-	}
-	if expr == "" {
-		return errors.New("empty rule: the gates that read this refuse to run without one")
 	}
 	// THE WRITE IS CHECKED because a short write is the one way this command
 	// could still hand a gate half a rule and exit zero.
