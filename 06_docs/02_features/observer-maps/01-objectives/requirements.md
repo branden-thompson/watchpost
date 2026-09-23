@@ -77,7 +77,7 @@ that enforces it; a requirement without one is marked **NO INSTRUMENT YET** so t
 | FR-4.1 *(P1)* | Areas come from `resolveAlertAreas` through a `livePipelines` method, reachable from production | C-1 | `TestEveryLivePipelinesMethodIsReachedFromProductionCode` — **extended**, or a sibling, so a free function cannot escape |
 | FR-4.2 *(P1)* | One feature per area, first ring outline and the rest holes; severity → role 1:1; valid times and sender carried | R-4.2; handoff §3.1 | Round-trip test against the library's own reading of rings (read the consumer, handoff §4.2) |
 | FR-4.3 *(P1)* | Default scope: the station's locations' alerts plus the national severe events in view; scope is a setting | D-23 | Settings test; count of drawn alerts per scope |
-| FR-4.4 *(P1)* | A partial area is **never silently** drawn as whole or silently withheld; how it is shown is ruled with the drawing on screen | R-4.3, M4 | **M4 instrument** over `Area.Missing` fixtures |
+| FR-4.4 *(P1)* | A partial area is **never silently** drawn as whole or silently withheld: **it is drawn as found, its label says how much ("4 of 5 zones"), and a line below the map names the missing zone or zones and says whether the selected place lies in one** (D-42; go-tuiMaps specimen 31c) | R-4.3, M4, D-42 | **M4 instrument** over `Area.Missing` fixtures, including the selected place inside a missing zone |
 | FR-4.5 *(P1)* | A scope that would exceed the 512-zone cap is reported as missing, not dropped | D-23; W1-C (515 zones live) | Test at 513 zones |
 | FR-4.6 *(P1)* | Held zone shapes are refreshed on a stated rule, or the gap is ruled on | C-2, R-4.4 | NO INSTRUMENT YET — pending ruling in PLAN |
 
