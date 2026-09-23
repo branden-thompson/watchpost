@@ -72,18 +72,27 @@ def internal_trees():
 # The same patterns lint-ledger.sh enforces. Kept here so a bad row is refused
 # at WRITE time, not only at lint time — the earlier a leak is stopped the fewer
 # places it has been copied to.
-FORBIDDEN = [
-    (r"/Users/|/home/|/Volumes/", "an absolute machine path"),
-    (r"(^|[^A-Za-z0-9_])_a2dh/|\.a2dh[-.\w]*", "a path to the local harness"),
-    (r"\b\d\d_skills/", "an A2DH skill path (these ride in on the checker's own JSON)"),
-    (internal_trees(), "an internal project tree"),
-    (r"\bAGENTS\.md\b|\bCLAUDE\.md\b|copilot-instructions", "a git-ignored harness file"),
-    (r"[\w.+-]+@[\w-]+\.[\w.]+", "an email address"),
-]
+def forbidden():
+    """The classes a public mirror may not carry, with the reason for each.
+
+    IT IS A FUNCTION, NOT A LITERAL. One row asks the Go command for the
+    internal-tree rule, and a module-level call makes merely importing this file
+    run a subprocess and, on failure, exit the interpreter - which is a hazard
+    for anything that reads this file rather than runs it, and untestable
+    besides.
+    """
+    return [
+        (r"/Users/|/home/|/Volumes/", "an absolute machine path"),
+        (r"(^|[^A-Za-z0-9_])_a2dh/|\.a2dh[-.\w]*", "a path to the local harness"),
+        (r"\b\d\d_skills/", "an A2DH skill path (these ride in on the checker's own JSON)"),
+        (internal_trees(), "an internal project tree"),
+        (r"\bAGENTS\.md\b|\bCLAUDE\.md\b|copilot-instructions", "a git-ignored harness file"),
+        (r"[\w.+-]+@[\w-]+\.[\w.]+", "an email address"),
+    ]
 
 
-def offending(text):
-    for pat, why in FORBIDDEN:
+def offending(text, classes=None):
+    for pat, why in classes if classes is not None else forbidden():
         m = re.search(pat, text)
         if m:
             return f"{why} ({m.group(0)!r})"
@@ -99,10 +108,14 @@ def main():
         sys.exit(f"p10-ledger-mirror: {LEDGER} not found — run from the repository root")
     rows = yaml.safe_load(open(LEDGER))["exemptions"]
 
+    # Asked once: the internal-tree row shells out to the Go command that owns
+    # the rule, and a row-by-row call would run it hundreds of times.
+    classes = forbidden()
+
     bad = []
     for r in rows:
         blob = " ".join(str(v) for v in r.values())
-        why = offending(blob)
+        why = offending(blob, classes)
         if why:
             bad.append((r.get("file", "?"), r.get("rule_id", "?"), why))
         # A `file:` that is not in this repository is either a typo or a row

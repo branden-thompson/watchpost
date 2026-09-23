@@ -1,13 +1,13 @@
 ---
-title: "0.18.0 — DISCOVER exit red team, round 1"
+title: "0.18.0 — DISCOVER exit red team, rounds 1 and 2"
 date: 2026-09-22
 phase: DISCOVER (RCC) exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUND 1 COMPLETE — every finding dispositioned; round 2 decision pending (multi-round rule)"
+status: "ROUNDS 1 AND 2 COMPLETE — every finding dispositioned; round 3 pending the HUM LEAD (find-rate still material)"
 ---
 
-# DISCOVER exit — red team, round 1
+# DISCOVER exit — red team
 
 **Five reviewers, none with prior context, each dispatched verbatim from `06_docs/red-team-brief.md`
 in its own scratch directory.** The full axis set plus the DISCOVER lens plus the two personas the
@@ -27,7 +27,7 @@ calibration; the code axis ran solo, as it always does.
 Six of seven verdicts were negative. Every finding below was **re-checked against the code before
 remediation** (Verify-Before-Accept): two were downgraded on that check, and one was over-stated.
 
-## Disposition ledger
+## Round 1 — disposition ledger
 
 **Fixed in code.**
 
@@ -39,7 +39,7 @@ remediation** (Verify-Before-Accept): two were downgraded on that check, and one
 | Code 4 | Four of six guards added the same day cannot fire — `if expr == ""` is provably unreachable, which P10 Rule 5 forbids ("an assertion a static checking tool can prove can never fail violates this rule") | **Fixed by deletion (D-30).** Both unreachable guards and their tests removed; one **reachable** check added (an explicitly empty `HOME` argument) and P10 re-run: 0 findings. Recorded in the code comment as what it was — checks written to satisfy a density count |
 | Code, unlisted | `panic` in a package-level initializer took down every test in `cmd/watchpost` on a plain permissions error | **Fixed.** Built once on first use (`sync.OnceValues`); the test that needs it fails with the reason (`identity_test.go`) |
 | Code 3 | Two adjacent filesystem failures had opposite policies (one silent, one fatal) with no explanation | **Fixed** by the 9a fix: both are errors now |
-| Code 1 | `"LI_PROJECTS" + "|" + "DESIGN_FOUNDATIONS"` read as a scanner dodge and was pointless (the file is its own exemption row) | **Fixed.** Literal inlined with the reason |
+| Code 1 | The retired workspace names were written as two concatenated string halves — a dodge around the identity scanner, and a pointless one, since that file is its own exemption row | **Fixed.** The literal is written plainly, with the reason. *(This row states the names as placeholders: this report is tracked and public, and the gate refuses the real ones here — see F-179.)* |
 | Code 5 / Hygiene H3b | The self-test printed "8 leak class(es) fired" while counting probes, and probes only the static half | **Fixed (honest half).** It now says "8 static probe(s) … the derived half is NOT probed — F-177". The fixture probe is F-177 |
 
 **Fixed in the record.**
@@ -100,3 +100,74 @@ Criticals, and remediation added requirements (FR-1.8/1.9, FR-3.8/3.9, FR-5.7/5.
 FR-2.1/2.5) plus HR-6 and HR-7 that have had no adversarial pass. **A round 2 with fresh reviewers is
 recommended before the phase gate**, told the round-1 findings and fixes, asked to re-verify the fixes
 hold, to attack what remediation introduced, and to say what they verified clean.
+
+
+# Round 2
+
+**Five fresh reviewers, same lens set**, each given round 1's findings and dispositions and asked to
+(a) verify the fixes hold, (b) attack what remediation introduced, (c) re-test the declines, (d) find
+what round 1 missed. Each was told to say what it verified **clean**, because convergence is only
+readable if silence is distinguishable from not looking.
+
+| Reviewer | Verdict |
+|---|---|
+| Code Quality (solo) | *(pending at the time of writing)* |
+| Project Hygiene | **Do not ship** |
+| Docs Quality | **Do not ship as the DISCOVER record** |
+| Business Quality | **Do not proceed** |
+| DISCOVER lens | **Do not exit** |
+| InfoSec persona | **Do not proceed** |
+| Accessibility persona | **Do not proceed** |
+
+**The round-1 fixes were verified to hold**, individually, by the reviewers who re-checked them: the
+fail-open path, the gate recipe and its discovery-based guard, the execution-not-mention test, the
+deleted unreachable guards, the lazy rule build, the honest self-test count, and every record fix
+except those listed below. That is the part of convergence this round did establish.
+
+**What it also established: most of round 2's findings are in round 1's remediation.**
+
+## Round 2 — disposition ledger
+
+**Fixed.**
+
+| # | Finding | Disposition |
+|---|---|---|
+| Hygiene 1 | **HEAD was red.** The round-1 report quoted the internal-tree names verbatim in a tracked public file; `make lint-identity` — a required gate, in `verify` and CI — failed at HEAD. `make verify` had passed **before** the commit because the gate scans `git ls-files` and the file was untracked | **Fixed** (names stated as a description). The instrument gap is **F-179** |
+| Docs 2 / Business 1 / PM | The **brief was never fully amended**: it still stated the superseded bound in two places, claimed `--ascii` produces a readable map, ticked "HR-1..HR-5", cited the wrong commit in its completeness block, and defined M5 by the target D-29 disowned | **Fixed.** R-2.1 and the summary carry D-28's per-region bound; R-7.1 corrected and R-7.4/7.5/7.6 added; ticks and the tag corrected; M5 restated; the status line records the round-1/2 amendments |
+| PM "what round 1 missed" | **The phase boundary no longer matched the requirements**: D-12 put `Describe`, settings and layers in phase 2 while FR-7.4, FR-9.1, FR-5.8 and FR-1.9 committed them, and only two of ~40 requirements carried a phase | **D-33.** The boundary is re-ruled and **every** requirement is tagged; phase 2's surface is named and currently empty by design |
+| A11y F-1 | FR-7.4's acceptance ("from the description alone") is contradicted by M1's own anti-gaming clause ("the answer must come from the picture") — the release's only screen-reader requirement could be neither passed nor failed | **Fixed. M1b** added: same recorded scenarios, picture hidden, description shown, same grader |
+| A11y F-4 | FR-7.5 cited `CheckRamp(..., VisionSafe)`, which does not compile, and named no ground or depth | **Fixed.** Stated as a palette × theme-ground × colour-depth matrix against the real signature |
+| A11y F-5 / PM D1 | FR-5.8's "rate carried from NFR-21" cited a **flash** ceiling for a **loop** rate, and stated no number | **Fixed.** Split: FR-5.8 is the switch and the still form; **FR-5.9** is the rate, marked NO INSTRUMENT YET, with **HR-9** asking v0.2.0 for loop-rate control |
+| A11y F-6 | A Settings row labelled *motion* reaching only the map, while the Observer animates at 300 ms and 50 ms | **Fixed** in wording (the row is the map's) + **F-180** for an app-wide switch |
+| InfoSec F-1 | FR-3.8's "closed list" had no members and a negative-only instrument | **Fixed.** The list is enumerated as a table (source, scheme+host, what it feeds) with a **positive** instrument |
+| InfoSec F-3 | FR-5.7's "never cached over cap" cannot hold through `httpx`, which caches before returning and has no per-request cap | **Fixed.** The cap is enforced inside the client as it reads; the instrument asserts the **cache is empty** after an over-cap response |
+| InfoSec F-4 | FR-3.9's retention had no number, and the library's `CacheRoot` takes bytes only — no age, no purge | **Fixed.** Numbers stated (7 days map, 2 hours radar) + **FR-3.10** recording that the map half is unenforceable until **HR-8** lands |
+| InfoSec F-5 | NFR-4's exemption cited the wrong cause and was wider than the defect | **Fixed.** The cause is the internal type inside the exported alias; the exemption is scoped to basemap tiles; the interim user-agent is recorded |
+| Docs 3 / Hygiene 4 | M1's protocol depends on alert fixtures that FR-8.6 did not cover; the required-reading file still taught the superseded bound | **Fixed.** FR-8.6 widened to M1's scenario set; required reading rewritten for D-25, D-26, D-28, D-31, D-33 |
+| Docs 2 | `wave1-findings.md` still raised three questions as open that had been ruled | **Fixed**, each marked with its ruling |
+| Business 3 | D-20 superseded by D-26 with no supersession row; no user-facing disclosure of egress | **D-34** records the supersession; **FR-9.4** commits to telling the listener what a map open sends, and to whom |
+| Business 2 / PM 6 | RK-5 mitigated a single-source basemap with "the source is a setting", true only for radar | **Fixed.** Split: RK-5 is now the single-basemap risk, with a fallback named as PLAN's first network question |
+| PM 3 | RK-4 carried no drop-dead rule for a v0.2.0 slip | **Fixed.** A ship-without-radar criterion: alert areas + the description satisfy the locked problem; radar follows in 0.18.1 if v0.2.0 is not tagged in time |
+| Hygiene 5 | M1's protocol had gained a scenario D-29's verbatim ruling did not contain | **Fixed.** Extensions are marked as such, and the subject and count are stated with the honest limit — the grader authored the scenarios |
+
+**Deferred, with a row.** F-179 (the gate cannot see an about-to-be-committed file), F-180 (an
+app-wide motion switch).
+
+**Declined, with a reason.**
+
+| # | Finding | Why |
+|---|---|---|
+| A11y F-2 | A screen-reader listener still cannot reach the description in-session, because `--ascii` is a restart flag | **Accepted as a finding, not declined** — FR-9.1's Settings rows now include the description's mode. Recorded here because the reviewer offered it as a fork and it was taken |
+| A11y F-3 | The too-small notice should carry the description | **Accepted**, folded into FR-1.4/FR-1.9's wording |
+| A11y F-7 | The depth hint could override the library's own terminal detection over SSH | **Deferred to PLAN**, named in FR-7.1's instrument: the hint must not claim colour where the terminal cannot be asked. PLAN owns the detection order |
+| A11y F-8 | `Describe` returns nothing when no places are registered | **Deferred to PLAN** as a wiring condition, not a requirement: FR-7.4's instrument fails on an empty description where an alert is in view |
+| A11y F-9 | FR-7.4 names no owner for the description's wording | **Deferred to PLAN**, which owns composition — the requirement names the facts, not the sentence |
+| Business 4 | Radar remains the cheapest severable block | **Declined again**, on the same ratified ground (D-7, D-10), now with a stated drop-dead rule (RK-4) rather than an open-ended dependency |
+
+## Convergence
+
+Round 2's find-rate was **material**, and most of it landed on round 1's remediation rather than on
+the original record — which is the signal the multi-round calibration names: fixes create surface.
+Round 3 is therefore due on the same rule, scoped to what round 2's remediation introduced (M1b, the
+phase tags, the source table, FR-3.10, FR-5.9, FR-9.4, HR-8, HR-9, the brief's amendments) and to
+re-verifying round 2's fixes. **The exit condition remains a round that returns only polish.**

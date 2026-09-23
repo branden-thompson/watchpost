@@ -33,12 +33,12 @@ func main() {
 // ignored, and an empty root that would resolve to whatever directory the
 // caller happened to be in.
 //
-// TWO MORE WERE DELETED RATHER THAN KEPT (red team, DISCOVER exit 2026-09-22):
-// a nil destination, which only a test ever passed, and an empty expression,
-// which `Expr` cannot return while it joins a non-empty static set. P10 Rule 5
-// says an assertion a static checker can prove never fails violates the rule,
-// and those two were written to satisfy its density count. The consumers'
-// own refusal of an empty rule is the real guard, and it lives in them.
+// THE SET IS DELIBERATELY SMALL. A check a static reader can prove will never
+// fail is not a guard - P10 Rule 5 refuses it - so a nil destination and an
+// empty expression are not checked here: `Expr` cannot return an empty string
+// while it joins a non-empty static set, and the only nil writer is a test's.
+// The consumers' own refusal of an empty rule is the guard that matters, and
+// it lives in them.
 func run(args []string, home string, out io.Writer) error {
 	if len(args) > 2 {
 		return fmt.Errorf("at most two arguments (REPO_ROOT, HOME), got %d", len(args))

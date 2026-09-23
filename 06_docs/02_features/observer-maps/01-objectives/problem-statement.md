@@ -97,6 +97,7 @@ marked PLAN are set there from measurement**, not guessed here.
 | M3 | Radar honesty | `RH` | Primary | Count of frames where radar is drawn without its newest frame's age, or older than its source's cadence without a stale mark. Lower is better; target 0. | Automated, over a clock-driven fixture |
 | M4 | Partial honesty | `PH` | Primary | Count of alerts that did not fully resolve and are shown — or withheld — **without that fact stated**. Lower is better; target 0. | Automated, over `Area.Missing` fixtures |
 | M5 | Time to picture | `TTP` | Primary | Seconds from `g` to the first **complete** frame. **Target PLAN (D-29):** the 1 s warm / 3 s cold figures are go-tuiMaps' own (its v0.1.0 D-30), never measured in this host, and wave 1's parts already sum against them — a 41-zone cold resolve ~2 s, TileJSON ~260 ms plus 50–100 ms a tile, twelve radar requests — with D-21 forbidding any warming. Re-derived at PLAN from those numbers. Lower is better. | Instrument in the host; cold = empty disk cache, network reachable |
+| M1b | Where is it, **in words** | `WIW` | Primary | The same recorded scenarios as M1, **picture hidden and the description shown**, scored the same three ways. M1 hides the text to prove the picture works; M1b hides the picture to prove the description does — the same question asked of the other artifact, because FR-7.4 is the only path three classes of listener have | Listener UAT over the same recorded set (R2 A11y F-1) |
 | M6 | Loop smoothness | `LS` | Secondary | The radar loop advances at its configured rate, and Observer input stays responsive while it runs. Frame-interval jitter and key-to-response latency; targets PLAN. Lower is better. | Instrument in the host, Observer fully live |
 
 **The anti-solutions each bound closes:**
@@ -110,12 +111,26 @@ marked PLAN are set there from measurement**, not guessed here.
 | M5 | Show a coarse frame instantly and stop the clock. So the clock stops at the library's `Complete` status, not at the first frame. |
 | M6 | Slow the loop to a frame every ten seconds and it is perfectly smooth. So the loop runs at its **configured** rate, and the Observer's own work (publishes, the ticker, key handling) is running during the measurement. |
 
-**M1's protocol (D-29).** The grader is the HUM LEAD. The scenarios are **recorded**, not live, so the
-same run can be repeated by anyone later: at minimum one alert whose area covers the location, one
-that stops short of it within a few cells, one partially resolved (`Area.Missing` non-empty), one in
-an adjacent county, and one marine — drawn from captured responses (FR-8.6). Each is presented with
-the alert text and zone list hidden, at both 69×12 and a comfortable size, and scored covers / stops
-short / lies to one side. **FR-7.4's description is scored the same way**, from the text alone.
+**M1's protocol (D-29, extended at round-2 remediation — the extensions are marked).** The grader is
+the HUM LEAD. The scenarios are **recorded**, not live, so the same run can be repeated by anyone
+later: at minimum one alert whose area covers the location, one that stops short of it within a few
+cells, one partially resolved (`Area.Missing` non-empty), one in an adjacent county, and *(added at
+remediation)* one marine and one **failure** scenario — offline, a failed tile, or stale radar —
+because FR-3.4 and FR-7.4 promise honesty there and an all-happy-path protocol never tests it. All
+are drawn from captured responses (FR-8.6).
+
+Each is presented with the alert text and zone list hidden, at both 69×12 and a comfortable size, and
+scored covers / stops short / lies to one side.
+
+**The subject and the count** *(added at remediation; round 2 found the protocol named a grader but no
+subject)*: **at least eight scenarios**, scored in one sitting, by the HUM LEAD. The honest limit is
+recorded with it — the grader authored the scenarios and locked the problem, so this is a
+self-assessment against a fixed script, not a blind study; its value is repeatability and a stated
+bar, not independence.
+
+**FR-7.4's description is scored by M1b**, not by M1: M1's own hardening hides the text and demands
+the answer come from the picture, so scoring a text artefact under it would contradict the rule that
+makes it worth anything.
 
 **M1 is the metric this release is most likely to fail**, because most alerts have no polygon of their
 own (C-9 says four in five; measured nine in ten on 2026-09-22, marine-inflated and weather-dependent

@@ -156,7 +156,7 @@ slope; `TestAScheduleLeavesNoGoroutineBehind` (hand-rolled, no goleak); and
 4. **Convergence — HR-3 is real.** W1-B's 197° resize and the library's advertised −8 minimum make a
    host-only clamp a caller-discipline invariant at SEV-0. Watchpost clamps in v0.1.0; the library
    bound in v0.2.0 makes it structural.
-5. **Contradiction — `--ascii` against braille.** R-7.1 says `--ascii` produces a readable map; the
+5. **Contradiction — `--ascii` against braille.** *(RULED: D-20, then D-26/D-34 — `--ascii` gets the text description, never braille.)* R-7.1 says `--ascii` produces a readable map; the
    ASCII golden test forbids every braille cell. Either the map has a non-braille form under
    `--ascii`, or `--ascii` shows a notice in its place. **A HUM LEAD ruling** — see open questions.
 6. **Contradiction, resolved — "four in five".** The field comment says four alerts in five lack a
@@ -171,8 +171,9 @@ slope; `TestAScheduleLeavesNoGoroutineBehind` (hand-rolled, no goleak); and
 10. **Open questions answered.** HR-3: stays (4). Tile source address: `…/planet` (W1-B). Radar
     loops fetchable from both sources: yes (W1-A). Where caches live: `userCacheSubdir("map"|"radar")`
     (W1-C, F-49).
-11. **Open questions raised for the HUM LEAD:** `--ascii` (5); a real map off switch, since none
-    exists; the 512-zone cap for any national view.
+11. **Open questions raised for the HUM LEAD — all three since RULED:** `--ascii` → D-20 and D-26; a
+    map off switch → D-21 (a Settings row, not a flag) and D-22; the 512-zone cap → D-23 and FR-4.5
+    (a scope that would exceed it is reported, never silently dropped).
 12. **Implications for PLAN:** render-in-`Update` versus render-in-`View` under a lock is a genuine
     design choice with a performance cost either way (W1-C's counter-argument) — PLAN presents both;
     selection needs a message; the map needs a drawn state for no selection; a goroutine-join test for

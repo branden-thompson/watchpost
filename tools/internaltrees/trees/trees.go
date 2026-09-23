@@ -48,16 +48,24 @@ const segment = `(^|[^A-Za-z0-9._-])(%s)/`
 // minNameLen drops names too short to mean anything on their own.
 const minNameLen = 3
 
+// bucketShape is the shape a derived name must have: the workspace's own
+// convention of shouting names - capitals, digits, underscores and dashes.
+//
+// LENGTH ALONE IS NOT A FILTER. A workspace whose directories are named
+// `docs`, `domains` or `platform` - all real top-level directories of this
+// repository - would otherwise put those words in the rule, and the gate would
+// refuse hundreds of clean files on one developer's machine and none on
+// another's. The only remedy left would be exemption rows, which is what this
+// package exists to avoid. A name that does not shout is not a workspace
+// bucket, and the static half still covers the conventions that do.
+var bucketShape = regexp.MustCompile(`^[A-Z0-9][A-Z0-9_-]*$`)
+
 // Expr returns the one expression for the class, for a checkout at repoRoot
 // under the home directory home. An empty or unrelated home yields the static
 // shapes alone.
 func Expr(repoRoot, home string) (string, error) {
-	// An empty root is a caller's bug, not a default: filepath.Abs("") is
-	// whatever directory the process happens to be in, so the rule would
-	// describe a workspace nobody asked about.
-	if repoRoot == "" {
-		return "", errors.New("trees: no repository root")
-	}
+	// The empty-root refusal lives in Derived, which this calls on the next
+	// line: a second copy here is a check no test can make fail.
 	names, err := Derived(repoRoot, home)
 	if err != nil {
 		return "", err
@@ -68,10 +76,9 @@ func Expr(repoRoot, home string) (string, error) {
 		for _, n := range names { // bounded by the derived names
 			quoted = append(quoted, regexp.QuoteMeta(n))
 		}
+		// Replace, not Sprintf: a directory name may contain a per-cent sign,
+		// and Sprintf would read it as a verb.
 		expr += "|" + strings.Replace(segment, "%s", strings.Join(quoted, "|"), 1)
-	}
-	if _, err := regexp.Compile(expr); err != nil {
-		return "", err
 	}
 	return expr, nil
 }
@@ -94,12 +101,11 @@ func Derived(repoRoot, home string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	// AN UNREADABLE HOME IS AN ERROR, NOT AN EMPTY RULE. It returned nil here,
-	// so a gate ran with the static half alone and printed a pass - which is
-	// the fail-open shape this package exists to remove (red team, DISCOVER
-	// exit 2026-09-22). An empty HOME still means "derive nothing", above:
-	// that is a caller saying there is no workspace, not a disk refusing to
-	// answer.
+	// AN UNREADABLE HOME IS AN ERROR, NOT AN EMPTY RULE. A gate handed the
+	// static half alone scans with a whole class missing and still prints a
+	// pass, which is the fail-open shape this package exists to remove. An
+	// empty HOME is different and means "derive nothing", above: that is a
+	// caller saying there is no workspace, not a disk refusing to answer.
 	base, err := resolve(home)
 	if err != nil {
 		return nil, err
@@ -114,11 +120,13 @@ func Derived(repoRoot, home string) ([]string, error) {
 	}
 	repo := parts[len(parts)-1]
 	names := append([]string{}, parts[1:len(parts)-1]...)
-	siblings, err := os.ReadDir(filepath.Join(base, parts[0], parts[1]))
+	// The workspace root's own children - the trees that sit beside this
+	// checkout, which is what a leak would name.
+	children, err := os.ReadDir(filepath.Join(base, parts[0], parts[1]))
 	if err != nil {
 		return nil, err
 	}
-	for _, e := range siblings { // bounded by the workspace's entries
+	for _, e := range children { // bounded by the workspace's entries
 		if e.IsDir() {
 			names = append(names, e.Name())
 		}
@@ -131,7 +139,7 @@ func keep(names []string, repo string) []string {
 	seen := make(map[string]bool, len(names))
 	out := make([]string, 0, len(names))
 	for _, n := range names { // bounded by the derived names
-		if len(n) < minNameLen || n == repo || seen[n] {
+		if len(n) < minNameLen || n == repo || seen[n] || !bucketShape.MatchString(n) {
 			continue
 		}
 		seen[n] = true

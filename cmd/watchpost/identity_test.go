@@ -97,6 +97,7 @@ var identityExempt = exempt(&exemptionTable{
 // match on one of these is a fixture doing the right thing.
 var reservedForDocs = regexp.MustCompile(`(?i)@(example\.(com|org|net)|[a-z0-9.-]*\.(invalid|test|localhost|example))$|/(Users|home)/(user|you|someone|me|<[a-z]+>)\b`)
 
+// identity-gate: scans the index for every class.
 func TestThePublishedTreeNamesNoPersonOrMachine(t *testing.T) {
 	root := filepath.Join("..", "..")
 	out, err := exec.Command("git", "-C", root, "ls-files", "-z").Output()
@@ -108,6 +109,7 @@ func TestThePublishedTreeNamesNoPersonOrMachine(t *testing.T) {
 		t.Fatalf("the index holds %d files; this check has lost its subject", len(paths))
 	}
 
+	rules := identityRules(t) // once: the same table for every file
 	var scanned int
 	for _, p := range paths { // bounded by the index (P10-02)
 		// A FIXTURE IS EXEMPTED BY NAME, NOT BY DIRECTORY. A captured upstream
@@ -123,7 +125,7 @@ func TestThePublishedTreeNamesNoPersonOrMachine(t *testing.T) {
 			continue
 		}
 		scanned++
-		for _, pat := range identityRules(t) { // bounded by the pattern list (P10-02)
+		for _, pat := range rules { // bounded by the pattern list (P10-02)
 			m := pat.re.FindString(string(body))
 			if m == "" || reservedForDocs.MatchString(m) {
 				continue
@@ -184,11 +186,18 @@ func identityRules(t *testing.T) []identityPattern {
 		t.Fatalf("COULD NOT RUN — cannot build the internal-tree rule, so one class would go unscanned: %v", err)
 	}
 	out := make([]identityPattern, 0, len(identityPatterns))
+	var filled int
 	for _, pat := range identityPatterns { // bounded by the pattern list (P10-02)
 		if pat.re == nil {
-			pat.re = re
+			pat.re, filled = re, filled+1
 		}
 		out = append(out, pat)
+	}
+	// EXACTLY ONE ROW IS FILLED IN. A nil is a positional sentinel, and a
+	// second one - a typo, a row added without its expression - would silently
+	// be scanned with the tree rule and its own class would go unchecked.
+	if filled != 1 {
+		t.Fatalf("COULD NOT RUN — %d pattern rows have no expression; exactly one (the internal-tree row) may", filled)
 	}
 	return out
 }
@@ -201,6 +210,7 @@ func identityRules(t *testing.T) []identityPattern {
 // in the comment that sits directly above the live call - so deleting the call
 // and keeping the comment left the test green with the rule gone (red team,
 // DISCOVER exit 2026-09-22). Comment lines are stripped before the check.
+// identity-gate: every non-Go gate asks for the one rule.
 func TestEveryIdentityGateReadsTheOneTreeRule(t *testing.T) {
 	// The literal is safe here: this file is its own exemption row.
 	oldCopy := "LI_PROJECTS|DESIGN_FOUNDATIONS"
@@ -219,24 +229,39 @@ func TestEveryIdentityGateReadsTheOneTreeRule(t *testing.T) {
 	}
 }
 
-// withoutComments drops whole-line `#` comments, which both consumers use, so
-// a mention cannot stand in for a call. It is deliberately simple: a `#` inside
-// a string would be over-stripped, which can only make the check stricter.
+// withoutComments drops every form of comment the two consumers can carry, so
+// a mention cannot stand in for a call: a whole-line `#`, a `#` after code on
+// the same line, and the triple-quoted blocks the Python consumer documents
+// itself with.
+//
+// IT ERRS TOWARDS STRIPPING. A `#` inside a shell string is cut here too, so a
+// call that appears only inside such a string is not counted — the check gets
+// stricter, never looser, which is the safe direction for a guard asking
+// whether a rule is really read.
 func withoutComments(body string) string {
+	body = tripleQuoted.ReplaceAllString(body, "")
 	out := make([]string, 0, 64)
 	for _, line := range strings.Split(body, "\n") { // bounded by the file (P10-02)
-		if strings.HasPrefix(strings.TrimSpace(line), "#") {
-			continue
+		if i := strings.Index(line, "#"); i >= 0 {
+			line = line[:i]
 		}
 		out = append(out, line)
 	}
 	return strings.Join(out, "\n")
 }
 
+// tripleQuote is the docstring delimiter, built rather than written so this
+// file's own text carries no triple quote.
+var tripleQuote = strings.Repeat(`"`, 3)
+
+// tripleQuoted matches a Python docstring in either quote style.
+var tripleQuoted = regexp.MustCompile(`(?s)""".*?"""|'''.*?'''`)
+
 // TestTheOneTreeRuleCheckSeesThroughAComment is the positive control for the test
 // above: the commented-out form must FAIL the check, and the live form must
 // pass it. Without this control, a `withoutComments` that stopped stripping
 // would leave the original hole open and nothing would say so.
+// identity-gate: the control for the check above.
 func TestTheOneTreeRuleCheckSeesThroughAComment(t *testing.T) {
 	commented := "# TREES=$(go run ./tools/internaltrees)\nexit 0\n"
 	if strings.Contains(withoutComments(commented), "./tools/internaltrees") {
@@ -245,5 +270,13 @@ func TestTheOneTreeRuleCheckSeesThroughAComment(t *testing.T) {
 	live := "# reads the rule from ./tools/internaltrees\nTREES=$(go run ./tools/internaltrees)\n"
 	if !strings.Contains(withoutComments(live), "./tools/internaltrees") {
 		t.Error("a live call was stripped")
+	}
+	trailing := "exit 0  # see ./tools/internaltrees\n"
+	if strings.Contains(withoutComments(trailing), "./tools/internaltrees") {
+		t.Error("a mention after code on the same line counted as a call")
+	}
+	docstring := tripleQuote + "reads the rule from ./tools/internaltrees." + tripleQuote + "\nexit 0\n"
+	if strings.Contains(withoutComments(docstring), "./tools/internaltrees") {
+		t.Error("a mention inside a docstring counted as a call")
 	}
 }

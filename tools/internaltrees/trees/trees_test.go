@@ -54,6 +54,13 @@ func TestNamesAreReadFromTheDisk(t *testing.T) {
 		repo,
 		filepath.Join(home, "Desk", "WORKSPACE", "ACME-INTERNAL"),
 		filepath.Join(home, "Library"),
+		// ORDINARY DIRECTORY NAMES BESIDE THE CHECKOUT. These are real
+		// top-level directories of this repository, and a rule built from
+		// length alone would put them in the pattern and refuse hundreds of
+		// clean files on one developer's machine.
+		filepath.Join(home, "Desk", "WORKSPACE", "docs"),
+		filepath.Join(home, "Desk", "WORKSPACE", "domains"),
+		filepath.Join(home, "Desk", "WORKSPACE", "platform"),
 	} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)
@@ -70,7 +77,12 @@ func TestNamesAreReadFromTheDisk(t *testing.T) {
 			t.Errorf("the static rule fired on %q, so this control does not prove derivation", leak)
 		}
 	}
-	for _, clean := range []string{"demo-repo/cmd", "Library/Caches", "ACME-INTERNAL as a word"} { // bounded (P10-02)
+	for _, clean := range []string{ // bounded (P10-02)
+		"demo-repo/cmd", "Library/Caches", "ACME-INTERNAL as a word",
+		// The ordinary neighbours above: a name that does not shout is not a
+		// workspace bucket, whatever it sits beside.
+		"docs/p10-ledger.md", "domains/globalfeed/x.go", "platform/render/units.go",
+	} {
 		if re.MatchString(clean) {
 			t.Errorf("the derived rule fired on %q — the repository's own name, a first-level home folder, "+
 				"or a bare word is not a leak", clean)

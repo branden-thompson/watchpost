@@ -10,7 +10,7 @@ directives: FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLA
 branch: feature/map-drawing
 paired_release: go-tuiMaps v0.2.0 (D-11)
 issue: "branden-thompson/watchpost#22 — this brief is its body (D-19)"
-status: "APPROVED by the HUM LEAD 2026-09-22 (D-17); amended (R-9, R-2.2, R-5.1, principles) and approved (D-24).  Problem statement LOCKED (D-6).  Metrics ADOPTED (D-18).  Rulings in 02-analysis/rulings.md."
+status: "APPROVED by the HUM LEAD 2026-09-22 (D-17); amended and approved at D-24; amended again after the DISCOVER-exit red team rounds 1 and 2 (D-25..D-34) — the bound, the description, colour and motion, the phase boundary, the threat model.  Problem statement LOCKED (D-6).  Metrics ADOPTED (D-18).  Rulings in 02-analysis/rulings.md."
 ---
 
 # New Major System Feature | `Observer-Maps`
@@ -23,7 +23,8 @@ Watchpost can tell a listener that an alert applies to a place. It cannot show t
 
 0.18.0 puts a map in the **Observer**. Pressing `g` opens a window, centred on the location the
 listener has selected, that draws the alert areas over that place, the radar as a moving loop, and
-fire and quake points, at a regional, state or county scale and never wider than the United States.
+fire and quake points, at a regional, state or county scale and **never wider than the region that
+location sits in** — the contiguous US, Alaska, Hawaii, a territory or a marine area (D-28).
 
 **Why now.** The pieces exist and were built for this release by name. go-tuiMaps v0.1.0 is
 published and resolvable. 0.17.0 made alert geometry map-ready and deliberately drew nothing:
@@ -77,8 +78,10 @@ the maps work) are split in PLAN, not here (D-12).**
 
 ### R-2 — Scale bounds, owned by the host (D-8)
 
-- **R-2.1** Watchpost **never** shows a view wider than the United States, US-centred. No frame is
-  ever drawn at global or continental scale — including after a resize, a fit, or a failure.
+- **R-2.1** Watchpost **never** shows a view wider than the region holding the selected location —
+  every US region and territory its APIs cover, marine areas included (**D-28**, superseding the
+  single US-centred rectangle). No frame is ever drawn at global or continental scale, including
+  after a resize, a fit, or a failure.
 - **R-2.2** The default scale — regional, state or county around the selected location — is a
   **setting**; the US-national bound of R-2.1 is not (D-8 is a hard constraint, D-23 P-2).
 - **R-2.3** The bound is **enforced by a test that fails**, not by a convention (D-11).
@@ -118,8 +121,16 @@ the maps work) are split in PLAN, not here (D-12).**
 
 ### R-7 — Reading the map without colour
 
-- **R-7.1** Meaning never depends on colour alone (render rule R-12a): `NO_COLOR`, `--ascii`, and
-  the Monochrome and Light themes all produce a readable map.
+- **R-7.1** Meaning never depends on colour alone (render rule R-12a): `NO_COLOR` and the Monochrome
+  and Light themes all produce a readable map, with the colour-depth hint following the theme as well
+  as the environment (D-27). **`--ascii` draws no braille at all** (D-20): it gets the R-7.4
+  description instead, which is a path, not a lesser map.
+- **R-7.4** A **text description ships in this release** wherever the picture cannot be drawn or read —
+  `--ascii`, a font without braille, a screen reader — as an aggregate of the location's hazard and
+  forecast facts, speakable by the voice already in the app (**D-26**).
+- **R-7.5** Every palette watchpost hands the library passes its colour-vision check, per theme ground
+  and colour depth, in watchpost's own tests (**D-27**).
+- **R-7.6** Map colour tokens sit where the existing contrast register can see them.
 - **R-7.2** Colours come from theme tokens, never literals.
 - **R-7.3** Coordinates are never spoken (MG-R4).
 
@@ -154,6 +165,8 @@ What watchpost needs from the paired release. v0.2.0's own brief decides how.
 | **HR-5** | The after-tag triage D-123 names, written down | nineteen items with no record | D-123; not found in the tree |
 | **HR-6** | A host-settable fetcher: export the request type and its options (User-Agent token, allowed hosts, timeout, roots) | the library opens its own HTTP client (`tiles.go:52`), bypassing watchpost's single door, so NFR-4's User-Agent is unachievable and a host cannot supply a fetcher without reflection | red team F2; W1-B side finding |
 | **HR-7** | An alert pattern that does not depend on colour depth, and Extreme/Severe distinguishable by more than hatch spacing | the hatch runs only at `NoColour` depth (`frame.go:513`), so a colour-on monochrome theme carries no second channel; Extreme and Severe share `╳` at stride 2 vs 3 | D-27; red team A-4 |
+| **HR-8** | A host-settable **max age** and a **purge** call on the tile cache | `CacheRoot(dir, capBytes)` takes bytes only and the cache keeps tiles "without expiry", so FR-3.9's retention is unbuildable for the source that motivated it — and the file names are a record of where the listener looked | R2 InfoSec F-4 |
+| **HR-9** | **Loop-rate control**, and a stated meaning for `ReduceMotion` over frames | `ReduceMotion` is a boolean about markers and the clock; loops arrive with FR-37, and nothing yet says what "reduce motion" does to a twelve-frame loop, so FR-5.9's ceiling has no mechanism | R2 A11y F-5; R2 PM D1 |
 
 ## What leaves the machine (D-31)
 
@@ -181,8 +194,9 @@ M1–M5 primary, M6 secondary. Hardened against gaming in `01-objectives/problem
 - **M3 — Radar honesty.** The newest frame's age is always on screen; no frame older than its
   source's cadence is drawn as current.
 - **M4 — Partial honesty.** Every alert that did not fully resolve is drawn with that fact stated.
-- **M5 — Time to picture** *(target set at PLAN from wave-1 measurements — D-29)*. The window's first full-detail frame within the library's NFR-5 targets
-  (1 s warm, 3 s cold).
+- **M5 — Time to picture** *(target set at PLAN from wave-1 measurements — D-29)*. Seconds from `g`
+  to the first **complete** frame. The library's 1 s warm / 3 s cold is its own figure, never measured
+  in this host, and D-21 forbids warming, so every first open is cold.
 - **M6 — Loop smoothness** *(secondary, D-18)*. The radar loop holds its frame rate without stalling
   the rest of the Observer — the one way D-10 could fail that M1–M5 would not catch.
 
@@ -291,9 +305,9 @@ PROJECT BRIEF — COMPLETENESS CHECK
   [✓] Summary / Intent    — What, why now, who benefits, cost of not building
   [✓] Problem statement   — LOCKED (D-6)
   [✓] Requirements        — 9 families, R-1..R-9 (R-9 by amendment D-24)
-  [✓] Host requirements   — HR-1..HR-5 for go-tuiMaps v0.2.0
+  [✓] Host requirements   — HR-1..HR-9 for go-tuiMaps v0.2.0
   [✓] Metrics of Success  — M1–M5 primary, M6 secondary (D-18); hardened at DISCOVER
-  [✓] Tech Constraints    — 12, measured at 17e40d4 / 1cac1ce
+  [✓] Tech Constraints    — 12, measured at 17e40d4 / bbc039a (the v0.1.0 tag)
   [✓] Considerations      — phase 2 inputs, F-174, spike, owed items, issue of record
 
   [✓] Rulings             — D-1..D-32, verbatim, in 02-analysis/rulings.md

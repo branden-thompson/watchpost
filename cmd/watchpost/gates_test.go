@@ -538,23 +538,52 @@ func TestTheIdentityGateSelectsItsTest(t *testing.T) {
 		t.Errorf("lint-identity's -run pattern %q selects no test: the gate would run zero tests and exit 0", pattern)
 	}
 
-	// AND IT MUST SELECT EVERY TEST THAT GUARDS THE CLASS, not just one. The
-	// recipe named a single test while identity_test.go had grown a second -
-	// the one-definition guard - so `make lint-identity` passed while the
-	// invariant it exists for ran only under the full race sweep (red team,
-	// DISCOVER exit 2026-09-22). The set is DISCOVERED from the file, never
-	// listed here: a third test would otherwise be missed the same way.
-	src, err := os.ReadFile("identity_test.go")
-	if err != nil {
-		t.Fatalf("COULD NOT RUN — identity_test.go: %v", err)
+	// AND IT MUST SELECT EVERY TEST THAT GUARDS THE CLASS, not just one. A
+	// recipe naming a single test leaves any other guard running only under the
+	// full race sweep, which is not the gate anyone invokes.
+	//
+	// THE SET IS DISCOVERED BY A MARKER, NOT BY A FILE NAME. A guard lives
+	// wherever its author puts it, so a test marked `identity-gate:` in any test
+	// file of this package is part of the gate; keying on one file name is the
+	// same hardcoding one layer out.
+	marked := markedTests(t, ".", "identity-gate:")
+	if len(marked) == 0 {
+		t.Fatal("COULD NOT RUN — no test carries the identity-gate marker")
 	}
-	decls := regexp.MustCompile(`(?m)^func (Test[A-Za-z0-9_]+)\(`).FindAllStringSubmatch(string(src), -1)
-	if len(decls) == 0 {
-		t.Fatal("COULD NOT RUN — no tests found in identity_test.go")
-	}
-	for _, d := range decls { // bounded by the file's declarations (P10-02)
-		if !re.MatchString(d[1]) {
-			t.Errorf("lint-identity's -run pattern %q does not select %s, which guards the identity class", pattern, d[1])
+	for _, name := range marked { // bounded by the package's test declarations (P10-02)
+		if !re.MatchString(name) {
+			t.Errorf("lint-identity's -run pattern %q does not select %s, which is marked as guarding the identity class", pattern, name)
 		}
 	}
+}
+
+// markedTests returns the tests in dir whose doc comment carries marker, in
+// declaration order. A test is marked by putting the marker anywhere in the
+// comment block directly above it.
+func markedTests(t *testing.T, dir, marker string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("COULD NOT RUN — %s: %v", dir, err)
+	}
+	decl := regexp.MustCompile(`(?m)^func (Test[A-Za-z0-9_]+)\(`)
+	var out []string
+	for _, e := range entries { // bounded by the directory (P10-02)
+		if !strings.HasSuffix(e.Name(), "_test.go") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			t.Fatalf("COULD NOT RUN — %s: %v", e.Name(), err)
+		}
+		for _, block := range strings.Split(string(body), "\n\n") { // bounded by the file (P10-02)
+			if !strings.Contains(block, marker) {
+				continue
+			}
+			if m := decl.FindStringSubmatch(block); m != nil {
+				out = append(out, m[1])
+			}
+		}
+	}
+	return out
 }
