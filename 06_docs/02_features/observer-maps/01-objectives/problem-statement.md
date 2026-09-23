@@ -93,11 +93,11 @@ marked PLAN are set there from measurement**, not guessed here.
 | # | Name | Symbol | Type | Definition (with direction) | Measured in |
 |---|---|---|---|---|---|
 | M1 | Where is it | `WII` | Primary | Share of UAT prompts where the listener correctly says whether an active alert **covers** the selected location, **stops short** of it, or **lies to one side**, **from the picture alone** — the alert's text and zone list hidden. Higher is better; target 100%. **Grader: the HUM LEAD** (D-29). | Listener UAT over the **recorded** scenario set below — repeatable, unlike live weather |
-| M2 | Never global | `NG` | Primary | Count of frames drawn with a view wider than the US-national bound (D-8). Lower is better; target 0. | Instrument over the test suite and the scripted-PTY journeys |
+| M2 | Never global | `NG` | Primary | Count of frames drawn wider than the region holding the selected location (D-8, **D-28**). Lower is better; target 0. | Instrument over the test suite and the scripted-PTY journeys |
 | M3 | Radar honesty | `RH` | Primary | Count of frames where radar is drawn without its newest frame's age, or older than its source's cadence without a stale mark. Lower is better; target 0. | Automated, over a clock-driven fixture |
 | M4 | Partial honesty | `PH` | Primary | Count of alerts that did not fully resolve and are shown — or withheld — **without that fact stated**. Lower is better; target 0. | Automated, over `Area.Missing` fixtures |
 | M5 | Time to picture | `TTP` | Primary | Seconds from `g` to the first **complete** frame. **Target PLAN (D-29):** the 1 s warm / 3 s cold figures are go-tuiMaps' own (its v0.1.0 D-30), never measured in this host, and wave 1's parts already sum against them — a 41-zone cold resolve ~2 s, TileJSON ~260 ms plus 50–100 ms a tile, twelve radar requests — with D-21 forbidding any warming. Re-derived at PLAN from those numbers. Lower is better. | Instrument in the host; cold = empty disk cache, network reachable |
-| M1b | Where is it, **in words** | `WIW` | Primary | The same recorded scenarios as M1, **picture hidden and the description shown**, scored the same three ways. M1 hides the text to prove the picture works; M1b hides the picture to prove the description does — the same question asked of the other artifact, because FR-7.4 is the only path three classes of listener have | Listener UAT over the same recorded set (R2 A11y F-1) |
+| M1b | Where is it, **in words** *(adopted D-36)* | `WIW` | Primary | The same recorded scenarios as M1, **picture hidden and the description shown**, scored the same three ways. M1 hides the text to prove the picture works; M1b hides the picture to prove the description does — the same question asked of the other artifact, because FR-7.4 is the only path three classes of listener have | Listener UAT over the same recorded set (R2 A11y F-1) |
 | M6 | Loop smoothness | `LS` | Secondary | The radar loop advances at its configured rate, and Observer input stays responsive while it runs. Frame-interval jitter and key-to-response latency; targets PLAN. Lower is better. | Instrument in the host, Observer fully live |
 
 **The anti-solutions each bound closes:**
@@ -132,6 +132,12 @@ bar, not independence.
 the answer come from the picture, so scoring a text artefact under it would contradict the rule that
 makes it worth anything.
 
+**M1b is scored FIRST, or on a disjoint half of the set** — and the choice is recorded with the
+result. The grader is the same person, so a scenario whose picture has already been read is one whose
+answer is known: scoring the description second would measure memory, not the description. Taking the
+description pass first costs nothing, because M1's own answer comes from a picture the grader has not
+yet seen in that sitting.
+
 **M1 is the metric this release is most likely to fail**, because most alerts have no polygon of their
 own (C-9 says four in five; measured nine in ten on 2026-09-22, marine-inflated and weather-dependent
 — W1-C) and are drawn only as far as their zones resolve. M4 is M1's machine-checkable half.
@@ -139,5 +145,5 @@ own (C-9 says four in five; measured nine in ten on 2026-09-22, marine-inflated 
 ## 6. Status
 
 **LOCKED, 2026-09-22.** Section 4 is the anchor for every DISCOVER output, PLAN decision and scope
-argument in 0.18.0. The six measures in section 5 carry forward to the release PR's Metrics of
+argument in 0.18.0. The seven measures in section 5 carry forward to the release PR's Metrics of
 Success table and are subject to the DISCOVER-exit red team, which may tighten them.

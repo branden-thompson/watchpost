@@ -17,13 +17,17 @@ package main
 // a test.
 
 import (
-	"github.com/branden-thompson/watchpost/tools/gateoracle"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/branden-thompson/watchpost/tools/gateoracle"
 )
 
 // ---- the exemption tables --------------------------------------------------
@@ -543,9 +547,11 @@ func TestTheIdentityGateSelectsItsTest(t *testing.T) {
 	// full race sweep, which is not the gate anyone invokes.
 	//
 	// THE SET IS DISCOVERED BY A MARKER, NOT BY A FILE NAME. A guard lives
-	// wherever its author puts it, so a test marked `identity-gate:` in any test
-	// file of this package is part of the gate; keying on one file name is the
-	// same hardcoding one layer out.
+	// wherever its author puts it, so a test carrying the marker below, in any
+	// test file of this package, is part of the gate; keying on one file name is
+	// the same hardcoding one layer out. The marker is written once, as the
+	// argument — spelling it in prose here would count as a marker attached to
+	// nothing, which is exactly what markedTests refuses.
 	marked := markedTests(t, ".", "identity-gate:")
 	if len(marked) == 0 {
 		t.Fatal("COULD NOT RUN — no test carries the identity-gate marker")
@@ -557,31 +563,54 @@ func TestTheIdentityGateSelectsItsTest(t *testing.T) {
 	}
 }
 
-// markedTests returns the tests in dir whose doc comment carries marker, in
-// declaration order. A test is marked by putting the marker anywhere in the
-// comment block directly above it.
+// markedTests returns the tests in dir whose doc comment carries marker.
+//
+// IT READS THE SYNTAX TREE, NOT THE TEXT. Splitting a file on blank lines loses
+// a marker separated from its function by one, and misattributes a marker
+// sitting between two functions — both silently, which for a gate that decides
+// what the gate runs is the wrong failure. `fn.Doc` is exact.
 func markedTests(t *testing.T, dir, marker string) []string {
 	t.Helper()
+	fset := token.NewFileSet()
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("COULD NOT RUN — %s: %v", dir, err)
 	}
-	decl := regexp.MustCompile(`(?m)^func (Test[A-Za-z0-9_]+)\(`)
 	var out []string
 	for _, e := range entries { // bounded by the directory (P10-02)
 		if !strings.HasSuffix(e.Name(), "_test.go") {
 			continue
 		}
-		body, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		f, err := parser.ParseFile(fset, filepath.Join(dir, e.Name()), nil, parser.ParseComments)
 		if err != nil {
-			t.Fatalf("COULD NOT RUN — %s: %v", e.Name(), err)
+			t.Fatalf("COULD NOT RUN — parsing %s: %v", e.Name(), err)
 		}
-		for _, block := range strings.Split(string(body), "\n\n") { // bounded by the file (P10-02)
-			if !strings.Contains(block, marker) {
-				continue
+		{
+			var attached, written int
+			for _, d := range f.Decls { // bounded by the file's declarations (P10-02)
+				fn, ok := d.(*ast.FuncDecl)
+				if !ok || fn.Doc == nil || !strings.HasPrefix(fn.Name.Name, "Test") {
+					continue
+				}
+				if strings.Contains(fn.Doc.Text(), marker) {
+					out = append(out, fn.Name.Name)
+					attached++
+				}
 			}
-			if m := decl.FindStringSubmatch(block); m != nil {
-				out = append(out, m[1])
+			// EVERY MARKER WRITTEN MUST BE A MARKER ATTACHED. A blank line
+			// between the marker and its function detaches the doc comment, and
+			// the test then drops out of the gate with nobody told — which for
+			// the check that decides what the gate runs is the wrong silence.
+			// Markers in comments are counted; one written as a string, like
+			// the argument below, is code and is not one.
+			for _, g := range f.Comments { // bounded by the file's comments (P10-02)
+				if strings.Contains(g.Text(), marker) {
+					written++
+				}
+			}
+			if written != attached {
+				t.Errorf("%s: %d %q marker(s) written, %d attached to a test — a marker separated from its "+
+					"function by a blank line silently leaves the gate", fset.Position(f.Pos()).Filename, written, marker, attached)
 			}
 		}
 	}

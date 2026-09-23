@@ -158,12 +158,10 @@ func isBinaryPath(p string) bool {
 // definition lint-ledger.sh and p10-ledger-mirror.py read too, through
 // tools/internaltrees. Its own controls live beside it in trees_test.go.
 //
-// A rule that cannot be built FAILS THE TEST THAT NEEDS IT rather than the
-// package: a gate missing one class still prints a pass, so it must not be
-// skipped - but it was built in a package-level initializer, where a plain
-// permissions error on the workspace took down every test in cmd/watchpost,
-// most of which have nothing to do with identity (red team, DISCOVER exit
-// 2026-09-22). Built once, on first use, by the test that reads it.
+// A rule that cannot be built FAILS THE TEST THAT NEEDS IT, and only that one:
+// a gate missing a class still prints a pass, so it must never be skipped, and
+// a permissions error on the workspace must not take the rest of this package
+// down with it. Built once, on first use, by the test that reads it.
 var internalTrees = sync.OnceValues(func() (*regexp.Regexp, error) {
 	expr, err := trees.Expr(filepath.Join("..", ".."), os.Getenv("HOME"))
 	if err != nil {
@@ -205,11 +203,11 @@ func identityRules(t *testing.T) []identityPattern {
 // ONE DEFINITION, OR THE NEXT RENAME FINDS A COPY. Every gate that is not Go must
 // ask tools/internaltrees; a private copy of the old two-name pattern in any of
 // them is the defect package trees was written to remove.
-// IT ASSERTS AN EXECUTION, NOT A MENTION. The first version of this test was
-// satisfied by the string `tools/internaltrees` appearing anywhere - including
-// in the comment that sits directly above the live call - so deleting the call
-// and keeping the comment left the test green with the rule gone (red team,
-// DISCOVER exit 2026-09-22). Comment lines are stripped before the check.
+//
+// IT ASSERTS AN EXECUTION, NOT A MENTION. Every consumer names the rule in a
+// comment directly above its call, so a check for the string alone stays green
+// with the call deleted. Comments — whole-line, trailing and docstrings — are
+// stripped before that check.
 // identity-gate: every non-Go gate asks for the one rule.
 func TestEveryIdentityGateReadsTheOneTreeRule(t *testing.T) {
 	// The literal is safe here: this file is its own exemption row.
@@ -219,11 +217,15 @@ func TestEveryIdentityGateReadsTheOneTreeRule(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", rel, err)
 		}
-		code := withoutComments(string(body))
-		if !strings.Contains(code, "./tools/internaltrees") {
+		// THE TWO CHECKS READ DIFFERENT TEXT, and that is the point. Whether the
+		// rule is RUN is asked of the code with comments stripped, because a
+		// mention is not a call. Whether a private copy SURVIVES is asked of the
+		// file whole: a copy sitting in a comment is still a copy, and still
+		// what the next rename finds.
+		if !strings.Contains(withoutComments(string(body)), "./tools/internaltrees") {
 			t.Errorf("%s does not RUN the rule from tools/internaltrees (a mention in a comment is not a call)", rel)
 		}
-		if strings.Contains(code, oldCopy) {
+		if strings.Contains(string(body), oldCopy) {
 			t.Errorf("%s still carries its own copy of the internal-tree pattern", rel)
 		}
 	}
@@ -234,10 +236,11 @@ func TestEveryIdentityGateReadsTheOneTreeRule(t *testing.T) {
 // the same line, and the triple-quoted blocks the Python consumer documents
 // itself with.
 //
-// IT ERRS TOWARDS STRIPPING. A `#` inside a shell string is cut here too, so a
-// call that appears only inside such a string is not counted — the check gets
-// stricter, never looser, which is the safe direction for a guard asking
-// whether a rule is really read.
+// IT ERRS TOWARDS STRIPPING, which is the safe direction for the question it
+// serves: a `#` inside a shell string is cut here too, so a call appearing only
+// inside such a string does not count as a call. It is the WRONG direction for
+// asking whether a private copy survives — stripping could hide one — so that
+// question reads the file whole, in the caller above.
 func withoutComments(body string) string {
 	body = tripleQuoted.ReplaceAllString(body, "")
 	out := make([]string, 0, 64)
@@ -249,10 +252,6 @@ func withoutComments(body string) string {
 	}
 	return strings.Join(out, "\n")
 }
-
-// tripleQuote is the docstring delimiter, built rather than written so this
-// file's own text carries no triple quote.
-var tripleQuote = strings.Repeat(`"`, 3)
 
 // tripleQuoted matches a Python docstring in either quote style.
 var tripleQuoted = regexp.MustCompile(`(?s)""".*?"""|'''.*?'''`)
@@ -275,7 +274,7 @@ func TestTheOneTreeRuleCheckSeesThroughAComment(t *testing.T) {
 	if strings.Contains(withoutComments(trailing), "./tools/internaltrees") {
 		t.Error("a mention after code on the same line counted as a call")
 	}
-	docstring := tripleQuote + "reads the rule from ./tools/internaltrees." + tripleQuote + "\nexit 0\n"
+	docstring := `"""reads the rule from ./tools/internaltrees."""` + "\nexit 0\n"
 	if strings.Contains(withoutComments(docstring), "./tools/internaltrees") {
 		t.Error("a mention inside a docstring counted as a call")
 	}

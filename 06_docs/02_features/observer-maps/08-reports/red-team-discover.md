@@ -82,8 +82,8 @@ remediation** (Verify-Before-Accept): two were downgraded on that check, and one
 | Docs D3 "dangling D-30" *(the docs axis's fix-first item)* | **Over-stated, downgraded to Minor.** The citation reads "go-tuiMaps NFR-5, D-30" and D-30 **is** a go-tuiMaps ruling (`rulings-discover.md:26`, the time-to-placed-view numbers). The real defect is ambiguity — both repositories number rulings `D-n` — so cross-repo citations are now prefixed, as the v0.2.0 log already does. The record's "every ruling lands here" promise was never broken |
 | Business B4 | A bearing-and-distance sentence as a cheaper answer than a map | **Adopted in part, not instead.** FR-7.4 makes the text answer a committed part of the release and the fallback for every failure mode — but not a replacement: the locked problem is about *seeing* where an alert is, and D-3 ruled the Observer map first |
 | PM D3 | Radar traces to a preference ruling (D-7), not to the locked problem, and is separable | **Declined, with the rationale recorded.** The HUM LEAD ruled radar the most common map view (D-7) and required loops (D-10); the problem statement classes radar as context for the same question — where is it, relative to me. Recorded so the trace is explicit rather than assumed |
-| Code 4 (partial) | Delete `Expr`'s empty-root guard as duplicating `Derived`'s, and `resolve`'s | **Declined.** Both are public entry points reachable from outside the package; each self-checking is the P10 shape, and both guards can fire |
-| Code 4 (partial) | Delete the `regexp.Compile` check as unable to fail | **Declined.** `static` is a package `var`: an edit to it can produce an invalid pattern, so the check can fire |
+| Code 4 (partial) | Delete `Expr`'s empty-root guard as duplicating `Derived`'s, and `resolve`'s | **Declined at round 1 — REVERSED at round 2 (see the round-2 ledger).** A mutation test showed `Expr`'s guard is dead: `Derived`'s fires first and no test notices the deletion. `resolve`'s guard stands |
+| Code 4 (partial) | Delete the `regexp.Compile` check as unable to fail | **Declined at round 1 — REVERSED at round 2.** Also mutation-tested: every consumer compiles the expression anyway, and nothing notices its removal. Deleted in `e1cc972` |
 | Code 2 | The derived half differs per machine and is empty on CI, so the merge-blocking gate runs the weakest form | **Declined for now, stated instead.** That is the design (D-1's shape rule): CI has no workspace to derive from, and the static half is what holds there. Documented in the package header rather than changed |
 
 ## What the round changed, in one line
@@ -171,3 +171,77 @@ the original record — which is the signal the multi-round calibration names: f
 Round 3 is therefore due on the same rule, scoped to what round 2's remediation introduced (M1b, the
 phase tags, the source table, FR-3.10, FR-5.9, FR-9.4, HR-8, HR-9, the brief's amendments) and to
 re-verifying round 2's fixes. **The exit condition remains a round that returns only polish.**
+
+
+# Round 3 — the convergence round
+
+**Three reviewers** (code solo; hygiene + docs + business sectioned; accessibility + InfoSec
+sectioned), each told round 1 and round 2's findings and dispositions, each asked to attack what the
+remediations introduced — and each told explicitly that **saying "only polish" is the exit signal**,
+because a reviewer who does not know the exit condition cannot give it.
+
+| Reviewer | Verdict | On convergence |
+|---|---|---|
+| Code Quality (solo) | **Ship**, after one fix | "This round is convergence, with one exception" — 6 of 8 mutations killed |
+| Hygiene | Ship, after one fix | not yet |
+| Docs | Do not ship | not yet |
+| Business | Do not proceed | not yet |
+| Accessibility | Do not proceed | "not yet — but this is the last substantive round" |
+| InfoSec | Do not proceed | same |
+
+## Round 3 — disposition ledger
+
+**Fixed — the two that mattered.**
+
+| # | Finding | Disposition |
+|---|---|---|
+| InfoSec S1 | **`FR-9.4` did not exist.** The round-2 ledger claimed it. The edit matched a string that phase-tagging had already changed, and that one replacement carried no assertion while its siblings did | **Written**, with an instrument. The lesson is recorded in the method, not just the file: every scripted edit asserts its anchor, and a ledger claim is checked against the tree |
+| Code F-1 | **A live false negative.** The private-copy check read the *stripped* text, so a retired pattern hidden behind a `#` passed — reproduced by the reviewer | **Fixed and re-verified**: the "is it run" question reads stripped code, the "does a copy survive" question reads the file whole |
+
+**Fixed — the rest.**
+
+| # | Finding | Disposition |
+|---|---|---|
+| Code F-2 | Marker discovery split files on blank lines, so a detached marker left the gate silently | Parses the syntax tree, **and** requires every marker written in a comment to be attached to a test — which immediately caught an unattached one in the prose above it |
+| Code F-3 | An empty derived rule passed silently — the fail-open shape the package refuses | The command says so on stderr, distinguishing "a runner with no workspace" from "a workspace that does not match the convention" |
+| Code F-4..F-7 | Polish: a built-up string delimiter, an unused parameter, a stranded comment, comments explaining absent code | All removed |
+| Docs D-1 | M2 still defined by the superseded US-national bound in three places | Restated per-region at all three |
+| Docs D-2 | The brief still carried D-12's phase boundary and "whichever macro phase PLAN puts `Describe` in" | Replaced with D-33's boundary; the `Describe` debt is scheduled, not floating |
+| Docs D-3 | M1b existed in one file; the brief's metric list and tick omitted it | Added, with the count corrected |
+| Docs D-5, D-6, D-7 | Stale rulings tick, a malformed table, out-of-order rows | Fixed |
+| Hygiene H-1 | Two round-1 declines the tree now refutes, with no reversal row | **Reversal rows added above** — a decline that changes becomes a row, not an edit |
+| Hygiene H-3, H-4 | F-178(b) no longer true; a comment naming the pre-fix recipe | Closed and corrected |
+| A11y A-1 | FR-7.4's acceptance still cited M1, whose own rule forbids scoring text | Cites **M1b** |
+| A11y A-2 | M1b's protocol shares M1's grader and sitting, so it would measure recall | Order rule stated |
+| A11y A-3 | The spoken path was promised and never exercised | FR-7.3's speech guard extended over the description |
+| A11y A-4 | A description re-derived per frame is a talking surface that never stops | FR-5.8's still form freezes the description too |
+| A11y A-6 | The ship-without-radar path silently drops HR-7 and HR-3 | RK-4 states what that path costs beyond radar |
+| A11y A-7, A-8 | No degradation order at the small end; the vision check omitted two axes | Both stated |
+| InfoSec S2 | Retention numbers incoherent for radar; a third copy of the viewed-rectangle record unnamed | FR-3.10 widened to both halves and names the HTTP cache |
+| InfoSec S3 | The effective tile host comes from the TileJSON document, not the configured address | Stated, with **HR-10** asking the library to keep that confinement |
+| InfoSec S4 | A byte cap is not a decode cap | FR-5.7 bounds decoded dimensions too |
+| InfoSec S5 | Remote attribution text reaches the listener's chrome | FR-3.7 bounds and neutralises it |
+| InfoSec S6, S7 | The transport policy was asserted, not stated; the proxy is a fourth party | Stated in RK-11; the proxy noted |
+
+**Ruled rather than fixed.**
+
+| # | Finding | Disposition |
+|---|---|---|
+| A11y A-5 / Business B-1 | D-27's three-state motion row was narrowed to a boolean in place — self-issued, not ratified | **D-35.** The three states stand and **HR-9 widens**: the host supplies the frames, so the library exposes loop playback control (off / slow / normal) for every looped overlay. Watchpost does not throttle on its own side |
+| Business B-2 | M1b was added by a review, not a ruling | **D-36.** Adopted as a primary metric, with "for now" recorded |
+
+**Declined, with a reason.** Business B-4's suggestion — make `requirements.md` the one normative
+site and have the brief cite rather than restate the bound, the metrics and the phase boundary — is
+**accepted in principle and deferred**: it is the right cure for the drift class every round has
+found, and it is a restructuring of an approved artifact that belongs at PLAN entry, not in a
+remediation pass. Recorded here so it is not lost.
+
+## Convergence
+
+Round 3 found **two real defects** (a requirement claimed and never written; a live false negative)
+and a long tail of one-sentence record edits. The code axis called it convergence with one exception;
+the personas called it the last substantive round. Nothing reopened a class, no new excluded listener
+was named, and no new egress party appeared.
+
+**The exit condition is a verification-only pass** confined to what round 3 changed — not another
+whole-base round. If that pass returns only polish, DISCOVER exits.

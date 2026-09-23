@@ -64,8 +64,6 @@ var bucketShape = regexp.MustCompile(`^[A-Z0-9][A-Z0-9_-]*$`)
 // under the home directory home. An empty or unrelated home yields the static
 // shapes alone.
 func Expr(repoRoot, home string) (string, error) {
-	// The empty-root refusal lives in Derived, which this calls on the next
-	// line: a second copy here is a check no test can make fail.
 	names, err := Derived(repoRoot, home)
 	if err != nil {
 		return "", err

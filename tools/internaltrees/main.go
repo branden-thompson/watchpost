@@ -34,11 +34,9 @@ func main() {
 // caller happened to be in.
 //
 // THE SET IS DELIBERATELY SMALL. A check a static reader can prove will never
-// fail is not a guard - P10 Rule 5 refuses it - so a nil destination and an
-// empty expression are not checked here: `Expr` cannot return an empty string
-// while it joins a non-empty static set, and the only nil writer is a test's.
-// The consumers' own refusal of an empty rule is the guard that matters, and
-// it lives in them.
+// fail is not a guard — P10 Rule 5 refuses it — so each of these is one a
+// caller can really trip. The consumers' own refusal of an empty rule is the
+// guard that matters, and it lives in them.
 func run(args []string, home string, out io.Writer) error {
 	if len(args) > 2 {
 		return fmt.Errorf("at most two arguments (REPO_ROOT, HOME), got %d", len(args))
@@ -64,6 +62,20 @@ func run(args []string, home string, out io.Writer) error {
 	expr, err := trees.Expr(root, home)
 	if err != nil {
 		return err
+	}
+	// A SILENT STATIC-ONLY RULE IS THE SHAPE THIS COMMAND REFUSES ELSEWHERE.
+	// The derived half is empty on a machine with no workspace above the
+	// checkout — a CI runner, which is expected — and also on one whose
+	// workspace directories do not carry the shouting convention, which is not.
+	// Both print the static half and pass; only the note tells them apart.
+	names, err := trees.Derived(root, home)
+	if err != nil {
+		return err
+	}
+	if len(names) == 0 {
+		fmt.Fprintln(os.Stderr, "internaltrees: no workspace names derived — the static half applies alone "+
+			"(expected on a runner with no workspace above the checkout; on a development machine it means "+
+			"the workspace's directories do not match the convention, and the rule is weaker than it reads)")
 	}
 	// THE WRITE IS CHECKED because a short write is the one way this command
 	// could still hand a gate half a rule and exit zero.

@@ -91,8 +91,8 @@ def forbidden():
     ]
 
 
-def offending(text, classes=None):
-    for pat, why in classes if classes is not None else forbidden():
+def offending(text, classes):
+    for pat, why in classes:
         m = re.search(pat, text)
         if m:
             return f"{why} ({m.group(0)!r})"

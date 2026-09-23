@@ -59,8 +59,11 @@ the most common (D-7); fire and quake points as supporting context.
 
 ## Requirements
 
-Numbered so DISCOVER and PLAN can trace each one. **Macro phase 1 (drawing) and macro phase 2 (how
-the maps work) are split in PLAN, not here (D-12).**
+Numbered so DISCOVER and PLAN can trace each one. **The macro-phase boundary is ruled here, not in
+PLAN (D-33, superseding D-12 on this point):** phase 1 is the drawing path, the text description, the
+accessibility requirements, the Settings rows and the privacy requirements; phase 2 is pan and zoom,
+the map from the Details window, layers and legends UI, and size tiers. Every requirement in
+`requirements.md` carries its phase.
 
 ### R-1 — The map window
 
@@ -83,7 +86,7 @@ the maps work) are split in PLAN, not here (D-12).**
   single US-centred rectangle). No frame is ever drawn at global or continental scale, including
   after a resize, a fit, or a failure.
 - **R-2.2** The default scale — regional, state or county around the selected location — is a
-  **setting**; the US-national bound of R-2.1 is not (D-8 is a hard constraint, D-23 P-2).
+  **setting**; the regional bound of R-2.1 is not (D-8 and D-28 are hard constraints, D-23 P-2).
 - **R-2.3** The bound is **enforced by a test that fails**, not by a convention (D-11).
 
 ### R-3 — The basemap
@@ -166,7 +169,8 @@ What watchpost needs from the paired release. v0.2.0's own brief decides how.
 | **HR-6** | A host-settable fetcher: export the request type and its options (User-Agent token, allowed hosts, timeout, roots) | the library opens its own HTTP client (`tiles.go:52`), bypassing watchpost's single door, so NFR-4's User-Agent is unachievable and a host cannot supply a fetcher without reflection | red team F2; W1-B side finding |
 | **HR-7** | An alert pattern that does not depend on colour depth, and Extreme/Severe distinguishable by more than hatch spacing | the hatch runs only at `NoColour` depth (`frame.go:513`), so a colour-on monochrome theme carries no second channel; Extreme and Severe share `╳` at stride 2 vs 3 | D-27; red team A-4 |
 | **HR-8** | A host-settable **max age** and a **purge** call on the tile cache | `CacheRoot(dir, capBytes)` takes bytes only and the cache keeps tiles "without expiry", so FR-3.9's retention is unbuildable for the source that motivated it — and the file names are a record of where the listener looked | R2 InfoSec F-4 |
-| **HR-9** | **Loop-rate control**, and a stated meaning for `ReduceMotion` over frames | `ReduceMotion` is a boolean about markers and the clock; loops arrive with FR-37, and nothing yet says what "reduce motion" does to a twelve-frame loop, so FR-5.9's ceiling has no mechanism | R2 A11y F-5; R2 PM D1 |
+| **HR-9** | **Playback control over an overlay's loop** — at least off / slow / normal, settable by the host and through it by the listener, for every looped overlay and not only radar | the host supplies the data; the library turns it into frames and plays them, so the control belongs where the frames are (D-35). `ReduceMotion` is a boolean about markers and the clock, and nothing says what it means over a twelve-frame loop, so FR-5.8's three states and FR-5.9's ceiling have no mechanism without it | D-35; R2 A11y F-5; R2 PM D1 |
+| **HR-10** | The confinement of a source's tiles to that source's own host, stated as contract and kept | the effective tile host comes from the TileJSON document, not from the address watchpost configures, so FR-3.8's list is only as good as that confinement | R3 InfoSec S3 |
 
 ## What leaves the machine (D-31)
 
@@ -185,11 +189,11 @@ credential redaction those use is the precedent this extends (red team F9's corr
 
 ## Metrics of Success — ADOPTED (D-18)
 
-M1–M5 primary, M6 secondary. Hardened against gaming in `01-objectives/problem-statement.md` at DISCOVER.
+M1, **M1b**, M2–M5 primary; M6 secondary. Hardened against gaming in `01-objectives/problem-statement.md` at DISCOVER.
 
 - **M1 — Where is it** *(grader: HUM LEAD; recorded-scenario protocol in `problem-statement.md` §5 — D-29)*. From the map alone, a listener can say whether an active alert covers the
   selected location, stops short of it, or lies to one side.
-- **M2 — Never global.** Zero frames drawn wider than the US-national bound, measured by an
+- **M2 — Never global.** Zero frames drawn wider than the region holding the selected location (D-28), measured by an
   instrument over the test suite and the scripted-PTY journeys.
 - **M3 — Radar honesty.** The newest frame's age is always on screen; no frame older than its
   source's cadence is drawn as current.
@@ -270,9 +274,9 @@ surface (`07-readiness/public-surface.txt`) has none of them. The draw call is `
   mock on purpose: a hand-drawn mock of a braille picture is fiction, and the calibration requires a
   visual choice to be ratified from an actual rendering. The window follows the existing modal
   pattern, with control commands along the bottom.
-- **Macro phase 2 is an input to PLAN, not a commitment here (D-12):** a map from the Details
-  window, pan and zoom keys, layers and legends, a spoken description (`Describe`), settings, size
-  tiers.
+- **Macro phase 2 (D-33):** a map from the Details window, pan and zoom keys, layers and legends UI,
+  size tiers. The description, the Settings rows and the accessibility requirements are **phase 1** —
+  D-12 put them later, and D-26, D-27 and D-33 moved them.
 - **The Broadcaster's one map is F-174**, likely 0.19.0. R-7 of 0.16.0 already makes the tower's
   location a first-class value for it.
 - **The spike is evidence, not a base.** Reusable: the two-goroutine pump with a coalescing wake,
@@ -282,8 +286,8 @@ surface (`07-readiness/public-surface.txt`) has none of them. The draw call is `
 - **Owed to the HUM LEAD from v0.1.0, and both land here:** the first-host review (WP-14.19), and
   the screen-reader half of WP-14.17 — which go-tuiMaps D-122 **redirected to 14.19**, "where a host
   renders `Answer` values to its platform's accessibility layer" (PL-AX-3, "a redirection, not a
-  waiver"). So this release owes the accessibility test of `Describe` output, whichever macro phase
-  PLAN puts `Describe` in.
+  waiver"). So this release owes the accessibility test of `Describe` output, and
+  `Describe` is **phase 1** (D-26, D-33) — the debt is scheduled, not floating.
 - **Standing principles (D-23), for every user-facing feature:** **P-1** the builders optimise for
   performance and structure; **P-2** default to user choice and settings unless a hard constraint
   forbids it; **P-3** never architect into a corner — maintainability and extensibility are
@@ -305,12 +309,12 @@ PROJECT BRIEF — COMPLETENESS CHECK
   [✓] Summary / Intent    — What, why now, who benefits, cost of not building
   [✓] Problem statement   — LOCKED (D-6)
   [✓] Requirements        — 9 families, R-1..R-9 (R-9 by amendment D-24)
-  [✓] Host requirements   — HR-1..HR-9 for go-tuiMaps v0.2.0
-  [✓] Metrics of Success  — M1–M5 primary, M6 secondary (D-18); hardened at DISCOVER
+  [✓] Host requirements   — HR-1..HR-10 for go-tuiMaps v0.2.0
+  [✓] Metrics of Success  — M1, M1b, M2–M5 primary; M6 secondary (D-18, D-36); hardened at DISCOVER
   [✓] Tech Constraints    — 12, measured at 17e40d4 / bbc039a (the v0.1.0 tag)
   [✓] Considerations      — phase 2 inputs, F-174, spike, owed items, issue of record
 
-  [✓] Rulings             — D-1..D-32, verbatim, in 02-analysis/rulings.md
+  [✓] Rulings             — D-1..D-36, verbatim, in 02-analysis/rulings.md
   [✓] Approval            — APPROVED as presented (D-17)
   [✓] Issue of record     — #22 (D-19)
   [✓] Outstanding         — none.  INTAKE CLOSED.
