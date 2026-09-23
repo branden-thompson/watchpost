@@ -8,7 +8,7 @@ authority: HUM LEAD
 directives: FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLAN; FULL TDD; FULL INST
 branch: feature/map-drawing
 issue: "branden-thompson/watchpost#22"
-status: "PRESENTED for the phase gate"
+status: "APPROVED by the HUM LEAD 2026-09-23 (D-37) as presented; the DISCOVER phase artefact. PLAN not opened."
 ---
 
 # 0.18.0 — Observer maps — DISCOVERY REPORT
@@ -52,7 +52,7 @@ Locked at D-6, scored 4.5/5 with the half point recorded rather than polished aw
 | `01-objectives/problem-statement.md` | The locked statement, and seven measures hardened against the shortcut each invites |
 | `01-objectives/requirements.md` | 56 functional requirements, each with its phase tag and the instrument that holds it; 6 non-functional; 15 risks |
 | `02-analysis/wave1-findings.md` | Three surveys and a twelve-point cross-cutting synthesis |
-| `02-analysis/rulings.md` | D-1..D-36, verbatim, with the counter-argument each ruling was given |
+| `02-analysis/rulings.md` | D-1..D-37, verbatim, with the counter-argument each ruling was given (D-37 is this gate) |
 | `08-reports/red-team-discover.md` | Three rounds, every finding dispositioned — fixed, deferred with a row, or declined with a reason |
 
 ## Requirements, in one line each
@@ -133,10 +133,10 @@ QUALITY GATE REPORT | watchpost 0.18.0 | SEV-0 | DISCOVER exit
   [PASS] a2dh validate               : 100.00% (17/17)
   [PASS] make verify                 : ALL GATES GREEN at 9e65f10
   [PASS] p10                         : 0 live findings, all six analyzers running
-  [----] human_approval              : AWAITING
-  [----] report_published            : AWAITING (this document)
+  [PASS] human_approval              : D-37, 2026-09-23 — "Approved"
+  [PASS] report_published            : committed as e944b33
 -------------------------------------------------------------
-  OVERALL: PARTIAL PASS — the two open gates are the HUM LEAD's
+  OVERALL: ALL PASS — DISCOVER closed
 ```
 
 ## What PLAN inherits

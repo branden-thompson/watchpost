@@ -1,10 +1,10 @@
 ---
-title: "0.18.0 — DISCOVER exit red team, rounds 1 and 2"
+title: "0.18.0 — DISCOVER exit red team, rounds 1 to 3 and the verification pass"
 date: 2026-09-22
 phase: DISCOVER (RCC) exit
 sev: SEV-0
 authority: HUM LEAD
-status: "ROUNDS 1 AND 2 COMPLETE — every finding dispositioned; round 3 pending the HUM LEAD (find-rate still material)"
+status: "COMPLETE — three rounds and a verification pass, every finding dispositioned; the record CONVERGED, and the three code items the pass left open were fixed and mutation-killed (9e65f10). DISCOVER closed at D-37."
 ---
 
 # DISCOVER exit — red team

@@ -4,7 +4,7 @@ date: 2026-09-22
 phase: DISCOVER (RCC)
 sev: SEV-0
 authority: HUM LEAD
-status: "DRAFT — for the DISCOVER-exit red team and HUM LEAD approval"
+status: "APPROVED at the DISCOVER gate (D-37), after three red-team rounds and a verification pass. Every requirement carries its phase (D-33); PLAN refines, it does not silently rewrite."
 ---
 
 # Requirements
