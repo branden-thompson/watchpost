@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	if err := run(os.Args[1:], os.Getenv("HOME"), os.Stdout); err != nil {
+	if err := run(os.Args[1:], os.Getenv("HOME"), os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintln(os.Stderr, "internaltrees:", err)
 		os.Exit(1)
 	}
@@ -37,7 +37,7 @@ func main() {
 // fail is not a guard — P10 Rule 5 refuses it — so each of these is one a
 // caller can really trip. The consumers' own refusal of an empty rule is the
 // guard that matters, and it lives in them.
-func run(args []string, home string, out io.Writer) error {
+func run(args []string, home string, out, notes io.Writer) error {
 	if len(args) > 2 {
 		return fmt.Errorf("at most two arguments (REPO_ROOT, HOME), got %d", len(args))
 	}
@@ -73,7 +73,10 @@ func run(args []string, home string, out io.Writer) error {
 		return err
 	}
 	if len(names) == 0 {
-		fmt.Fprintln(os.Stderr, "internaltrees: no workspace names derived — the static half applies alone "+
+		// A NOTE THAT CANNOT BE WRITTEN IS NOT A FAILURE: the rule on standard
+		// output is the command's answer, and a caller who closed its error stream
+		// still gets it.
+		_, _ = fmt.Fprintln(notes, "internaltrees: no workspace names derived — the static half applies alone "+
 			"(expected on a runner with no workspace above the checkout; on a development machine it means "+
 			"the workspace's directories do not match the convention, and the rule is weaker than it reads)")
 	}

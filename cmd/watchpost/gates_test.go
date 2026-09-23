@@ -549,9 +549,9 @@ func TestTheIdentityGateSelectsItsTest(t *testing.T) {
 	// THE SET IS DISCOVERED BY A MARKER, NOT BY A FILE NAME. A guard lives
 	// wherever its author puts it, so a test carrying the marker below, in any
 	// test file of this package, is part of the gate; keying on one file name is
-	// the same hardcoding one layer out. The marker is written once, as the
-	// argument — spelling it in prose here would count as a marker attached to
-	// nothing, which is exactly what markedTests refuses.
+	// the same hardcoding one layer out. The marker is written once, in the call
+	// below — spelling it in prose would count as a marker attached to nothing,
+	// which is exactly what markedTests refuses.
 	marked := markedTests(t, ".", "identity-gate:")
 	if len(marked) == 0 {
 		t.Fatal("COULD NOT RUN — no test carries the identity-gate marker")

@@ -227,7 +227,7 @@ because a reviewer who does not know the exit condition cannot give it.
 
 | # | Finding | Disposition |
 |---|---|---|
-| A11y A-5 / Business B-1 | D-27's three-state motion row was narrowed to a boolean in place — self-issued, not ratified | **D-35.** The three states stand and **HR-9 widens**: the host supplies the frames, so the library exposes loop playback control (off / slow / normal) for every looped overlay. Watchpost does not throttle on its own side |
+| A11y A-5 / Business B-1 | D-27's three-state motion row was narrowed to a boolean in place — self-issued, not ratified | **D-35.** The three states stand and **HR-9 widens**: the host supplies the **data**, the library turns it into frames and plays them, so the library exposes playback control (off / slow / normal) for every looped overlay, to the host and through it to the listener. Watchpost does not re-implement playback by withholding data |
 | Business B-2 | M1b was added by a review, not a ruling | **D-36.** Adopted as a primary metric, with "for now" recorded |
 
 **Declined, with a reason.** Business B-4's suggestion — make `requirements.md` the one normative

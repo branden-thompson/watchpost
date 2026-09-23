@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"errors"
+	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -25,7 +27,7 @@ func TestRunRefusesWhatWouldPrintNothingUseful(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			var out bytes.Buffer
-			err := run(c.args, home, &out)
+			err := run(c.args, home, &out, io.Discard)
 			if err == nil {
 				t.Fatalf("no error; wrote %q", out.String())
 			}
@@ -40,7 +42,7 @@ func TestRunRefusesWhatWouldPrintNothingUseful(t *testing.T) {
 
 	t.Run("a good run prints one rule", func(t *testing.T) {
 		var out bytes.Buffer
-		if err := run([]string{"."}, home, &out); err != nil {
+		if err := run([]string{"."}, home, &out, io.Discard); err != nil {
 			t.Fatalf("run: %v", err)
 		}
 		got := strings.TrimSuffix(out.String(), "\n")
@@ -57,7 +59,7 @@ func TestRunRefusesWhatWouldPrintNothingUseful(t *testing.T) {
 // destination that always fails must produce an error, not a silent exit zero
 // that hands a gate half a rule.
 func TestAFailedWriteIsReported(t *testing.T) {
-	err := run([]string{"."}, t.TempDir(), brokenWriter{})
+	err := run([]string{"."}, t.TempDir(), brokenWriter{}, io.Discard)
 	if err == nil {
 		t.Fatal("a failing destination produced no error")
 	}
@@ -69,3 +71,34 @@ func TestAFailedWriteIsReported(t *testing.T) {
 type brokenWriter struct{}
 
 func (brokenWriter) Write([]byte) (int, error) { return 0, errors.New("broken destination") }
+
+// TestAStaticOnlyRuleSaysSo is the positive control for the note: a rule with
+// no derived half still passes, so the note is the only thing that tells a
+// runner with no workspace apart from a workspace that does not match the
+// convention.
+func TestAStaticOnlyRuleSaysSo(t *testing.T) {
+	var out, notes bytes.Buffer
+	if err := run([]string{"."}, t.TempDir(), &out, &notes); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out.Len() == 0 {
+		t.Fatal("no rule printed")
+	}
+	if !strings.Contains(notes.String(), "no workspace names derived") {
+		t.Errorf("a static-only rule printed no note; notes were %q", notes.String())
+	}
+
+	// The control the other way: a real workspace derives names and says
+	// nothing, so the note cannot pass by always firing.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skipf("no home directory to derive from: %v", err)
+	}
+	var out2, notes2 bytes.Buffer
+	if err := run([]string{".", home}, home, &out2, &notes2); err != nil {
+		t.Fatalf("run with a real home: %v", err)
+	}
+	if notes2.Len() != 0 && !strings.Contains(out2.String(), "|(") {
+		t.Errorf("a rule with no derived half on a real home is possible, but then the note must say so; got notes %q", notes2.String())
+	}
+}

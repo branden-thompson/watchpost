@@ -123,6 +123,13 @@ func TestAnEmptyPathIsRefusedRatherThanGuessed(t *testing.T) {
 	if _, err := Derived("", home); err == nil {
 		t.Error("Derived accepted an empty repository root")
 	}
+	// AND WITH AN EMPTY HOME TOO, which is the case only this guard catches: an
+	// empty home derives nothing before any path is resolved, so without the
+	// root check the pair answers nothing-and-no-error for what is plainly a
+	// caller's bug.
+	if _, err := Derived("", ""); err == nil {
+		t.Error("Derived accepted an empty repository root when the home was empty too")
+	}
 	if _, err := resolve(""); err == nil {
 		t.Error("resolve accepted an empty path")
 	}
@@ -137,7 +144,7 @@ func TestAnEmptyPathIsRefusedRatherThanGuessed(t *testing.T) {
 // TestAnUnreadableHomeIsAnErrorNotAnEmptyRule is the positive control for the
 // fail-open fix: a home that cannot be resolved must stop the caller, because
 // a gate handed the static half alone prints a pass while a whole class of
-// name goes unchecked (red team, DISCOVER exit 2026-09-22).
+// name goes unchecked.
 func TestAnUnreadableHomeIsAnErrorNotAnEmptyRule(t *testing.T) {
 	gone := filepath.Join(t.TempDir(), "no-such-home")
 

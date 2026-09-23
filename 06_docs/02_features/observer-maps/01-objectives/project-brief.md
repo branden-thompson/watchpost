@@ -10,7 +10,7 @@ directives: FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLA
 branch: feature/map-drawing
 paired_release: go-tuiMaps v0.2.0 (D-11)
 issue: "branden-thompson/watchpost#22 — this brief is its body (D-19)"
-status: "APPROVED by the HUM LEAD 2026-09-22 (D-17); amended and approved at D-24; amended again after the DISCOVER-exit red team rounds 1 and 2 (D-25..D-34) — the bound, the description, colour and motion, the phase boundary, the threat model.  Problem statement LOCKED (D-6).  Metrics ADOPTED (D-18).  Rulings in 02-analysis/rulings.md."
+status: "APPROVED by the HUM LEAD 2026-09-22 (D-17); amended and approved at D-24; amended again after the DISCOVER-exit red team, rounds 1 to 3 (D-25..D-36) — the bound, the description, colour and motion, the phase boundary, the threat model, and the two narrowings that needed rulings rather than edits.  Problem statement LOCKED (D-6).  Metrics ADOPTED (D-18).  Rulings in 02-analysis/rulings.md."
 ---
 
 # New Major System Feature | `Observer-Maps`
@@ -193,6 +193,9 @@ M1, **M1b**, M2–M5 primary; M6 secondary. Hardened against gaming in `01-objec
 
 - **M1 — Where is it** *(grader: HUM LEAD; recorded-scenario protocol in `problem-statement.md` §5 — D-29)*. From the map alone, a listener can say whether an active alert covers the
   selected location, stops short of it, or lies to one side.
+- **M1b — Where is it, in words** *(adopted D-36; protocol in `problem-statement.md` §5)*. The same
+  recorded scenarios as M1, with the picture hidden and the description shown, scored the same three
+  ways — the metric FR-7.4 is held to, because M1's own rule hides text and demands the picture.
 - **M2 — Never global.** Zero frames drawn wider than the region holding the selected location (D-28), measured by an
   instrument over the test suite and the scripted-PTY journeys.
 - **M3 — Radar honesty.** The newest frame's age is always on screen; no frame older than its
