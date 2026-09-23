@@ -85,7 +85,7 @@ wrong. A missing field in `mapKey` would show an old frame, the same class of de
 invisible memo key, now in a new place. The cure is that the guard must include `mapKey`, and that is a
 test PLAN writes first.
 
-## How it fits
+## PLAN 0.18.0 — how it fits (ruled D-41, not yet built)
 
 ```mermaid
 sequenceDiagram

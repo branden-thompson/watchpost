@@ -30,12 +30,13 @@ be passed over in a new session."*
 
 ## Where to pick up
 
-**DISCOVER closed; PLAN not started.** Nothing is half-done: `make verify` and `a2dh validate` are
-green at the last commit, and every open question is written as a requirement, a risk or a follow-up
-row rather than left in someone's head. Read `08-reports/discover-report.md` first — its "What PLAN
-inherits" section is the six things PLAN opens with, and its recommendation carries the two cautions
-this phase earned. The rulings log (`02-analysis/rulings.md`, D-1..D-37) is the authority for every
-decision; the three red-team rounds and their dispositions are in `08-reports/red-team-discover.md`.
+**PLAN open (D-39); every design ruled.** Approach 1 (where the map is drawn) is ruled D-41; the
+partial area D-42; the numbers D-43. The requirements are normative (D-40, `01-objectives/requirements.md`).
+The implementation plan (`04-development/implementation-plan.md`, W1–W9) is a DRAFT, cross-referenced
+with go-tuiMaps' integration map. Next: the internal plan check, one PLAN red-team round, the PLAN
+report, then the HUM LEAD's approval. BUILD only after. The rulings log (`02-analysis/rulings.md`,
+D-1..D-43) is the authority for every decision. Diagrams drawn in PLAN carry "PLAN" in their heading
+until built.
 
 ## The rules that cost something
 
