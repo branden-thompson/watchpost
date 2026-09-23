@@ -79,7 +79,7 @@ that enforces it; a requirement without one is marked **NO INSTRUMENT YET** so t
 | FR-4.3 *(P1)* | Default scope: the station's locations' alerts plus the national severe events in view; scope is a setting | D-23 | Settings test; count of drawn alerts per scope |
 | FR-4.4 *(P1)* | A partial area is **never silently** drawn as whole or silently withheld: **it is drawn as found, its label says how much ("4 of 5 zones"), and a line below the map names the missing zone or zones and says whether the selected place lies in one** (D-42; go-tuiMaps specimen 31c) | R-4.3, M4, D-42 | **M4 instrument** over `Area.Missing` fixtures, including the selected place inside a missing zone |
 | FR-4.5 *(P1)* | A scope that would exceed the 512-zone cap is reported as missing, not dropped | D-23; W1-C (515 zones live) | Test at 513 zones |
-| FR-4.6 *(P1)* | Held zone shapes are refreshed on a stated rule, or the gap is ruled on | C-2, R-4.4 | NO INSTRUMENT YET — pending ruling in PLAN |
+| FR-4.6 *(P1)* | Held zone shapes are fetched again on next use once **7 days** old (D-43) | C-2, R-4.4, D-43 | Test: a zone shape older than 7 days is fetched on its next use, a younger one is not |
 
 ## FR-5 — Radar (R-5)
 
@@ -93,7 +93,7 @@ that enforces it; a requirement without one is marked **NO INSTRUMENT YET** so t
 | FR-5.6 *(P1)* | Radar lands only against a tagged go-tuiMaps v0.2.0 | D-11 | `go.mod` requires a tagged version; no local replace |
 | FR-5.7 *(P1)* | A radar fetch carries an explicit body cap (≤ 1 MiB against measured 7.7–19.5 KB frames), **enforced inside the HTTP client as it reads** — `platform/httpx` caps bodies at a 32 MB package constant and writes to the cache before returning, so a caller-side check fires after the bytes are already held. An over-cap body is refused and **never cached**. A byte cap is not a decode cap: the same clause bounds the decoded image's dimensions, because a megabyte of PNG decodes to an arbitrarily large bitmap (R3 InfoSec S4) | D-31; red team F3; R2 InfoSec F-3 | Test asserting the cache is **empty** after an over-cap response, not merely that the caller errored |
 | FR-5.8 *(P1)* | **Map** motion is a Settings row of **off / slow / normal** (D-27, D-35), driven through the library's loop playback control (**HR-9**). Watchpost supplies the data and passes the listener's choice through; the library turns data into frames and plays them, so the rate is set there, not by withholding data from it. With a still form that keeps the newest frame and its age — **and freezes the description with it**, because a description re-derived on every frame advance is a talking surface that never stops (R3 A11y A-4). Switching it off never costs the listener the radar data. The row is labelled for the map, because the Observer animates elsewhere at 300 ms and 50 ms (`modes/tty/dashboard.go:835,897`) and this switch does not reach those — an app-wide motion setting is F-180 | D-27; red team A-7, R2 A11y F-5/F-6 | Settings test; a still-form golden |
-| FR-5.9 *(P1)* | A **maximum loop frame rate**, stated as a number, and what each of FR-5.8's three states means in frames a second. **NO INSTRUMENT YET** — set at PLAN once HR-9's control exists: go-tuiMaps' NFR-21 is a *flash* ceiling (2.5 per second), not a loop rate, and loops arrive with v0.2.0 | R2 A11y F-5, R2 PM D1 | NO INSTRUMENT YET |
+| FR-5.9 *(P1)* | Loop rates: **slow 1 frame a second, normal 2**; the newest frame held **2 s** before the loop wraps; all within go-tuiMaps' ceiling of 2.5 changes a second per map (D-43; go-tuiMaps D-25) | D-43 | Test over the library's frame schedule at each setting |
 
 ## FR-6 — Fire and quakes (R-6)
 
@@ -128,7 +128,7 @@ that enforces it; a requirement without one is marked **NO INSTRUMENT YET** so t
 | # | Requirement | Source | Instrument |
 |---|---|---|---|
 | FR-9.1 *(P1)* | Maps on/off, default scale, layers, alert scope, radar source, map motion **and the description's mode — with the picture, instead of it, or off** — are Settings options, persisted, with builder-chosen defaults. The description must be reachable **without restarting**: `--ascii` is a start-up flag, and a listener who needs words cannot be asked to relaunch (R2 A11y F-2) | D-21, D-23, D-24, D-26 | Settings round-trip; config migration test; a test that the description is reachable with no flag |
-| FR-9.2 *(P1)* | When the chosen layers and scope would cost a lot of network, the station says so in plain words | D-23, R-9.3 | NO INSTRUMENT YET — the threshold is PLAN's to set from W1 measurements |
+| FR-9.2 *(P1)* | When the chosen layers and scope would cost more than **2 MB or 40 requests** a refresh, the station says so in plain words (D-43) | D-23, R-9.3, D-43 | Test over the cost estimate at, below and above each threshold |
 | FR-9.4 *(P1)* | The listener is **told, in the app**, that opening a map sends the rectangle they are viewing to a third party, and which one — the brief's egress table is internal, and FR-9.2 already commits to telling them about network cost; this is the same duty about exposure | R2 Business 3; D-31 | Text test: the disclosure appears on first map open and in Settings beside the maps row, naming each source the session will contact |
 | FR-9.3 *(P1)* | A new layer, source or option plugs in without editing the others | P-3, R-9.4 | Architectural test in PLAN (e.g. a registry whose members are discovered, per "Discover Consumers, Don't Enumerate Them") |
 
@@ -175,7 +175,7 @@ M1, **M1b**, M2–M5 primary; M6 secondary. Hardened against gaming in `01-objec
 - **M3 — Radar honesty.** The newest frame's age is always on screen; no frame older than its
   source's cadence is drawn as current.
 - **M4 — Partial honesty.** Every alert that did not fully resolve is drawn with that fact stated.
-- **M5 — Time to picture** *(target set at PLAN from wave-1 measurements — D-29)*. Seconds from `g`
+- **M5 — Time to picture** *(target set at PLAN, D-43: first complete frame ≤ 2.0 s cold at 149×38, p90 of 20 opens over recorded responses; newest radar frame ≤ 3.0 s; whole loop ≤ 5.0 s; the first frame never waits for radar)*. Seconds from `g`
   to the first **complete** frame. The library's 1 s warm / 3 s cold is its own figure, never measured
   in this host, and D-21 forbids warming, so every first open is cold.
 - **M6 — Loop smoothness** *(secondary, D-18)*. The radar loop holds its frame rate without stalling
