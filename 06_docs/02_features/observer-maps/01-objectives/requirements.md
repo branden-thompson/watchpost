@@ -4,7 +4,7 @@ date: 2026-09-22
 phase: DISCOVER (RCC)
 sev: SEV-0
 authority: HUM LEAD
-status: "APPROVED at the DISCOVER gate (D-37), after three red-team rounds and a verification pass. Every requirement carries its phase (D-33); PLAN refines, it does not silently rewrite."
+status: "NORMATIVE (D-40): on any conflict with the brief or the problem statement, this file wins, and every change is a row in 02-analysis/rulings.md. APPROVED at the DISCOVER gate (D-37). Every requirement carries its phase (D-33); PLAN refines, it does not silently rewrite."
 ---
 
 # Requirements
@@ -160,3 +160,29 @@ that enforces it; a requirement without one is marked **NO INSTRUMENT YET** so t
 | RK-7 | The Bubble Tea loop stalls under a fast tile or radar pump | Medium | Medium | Render placement decided in PLAN with both options measured (W1 synthesis §12); M6 | Open — PLAN |
 | RK-8 | Cache footprint grows unnoticed (HTTP 256 MB + map 256 MB + radar) | Low | High | One stated total (FR-3.5) | Active |
 | RK-9 | Scope creep across two SEV-0 releases, and lost context between sessions | Medium | Medium | D-11 discipline: rulings written as made; required reading; learnings as tests | Active |
+
+## Metrics of success — ADOPTED (D-18), normative here (D-40)
+
+M1, **M1b**, M2–M5 primary; M6 secondary. Hardened against gaming in `01-objectives/problem-statement.md` at DISCOVER.
+
+- **M1 — Where is it** *(grader: HUM LEAD; recorded-scenario protocol in `problem-statement.md` §5 — D-29)*. From the map alone, a listener can say whether an active alert covers the
+  selected location, stops short of it, or lies to one side.
+- **M1b — Where is it, in words** *(adopted D-36; protocol in `problem-statement.md` §5)*. The same
+  recorded scenarios as M1, with the picture hidden and the description shown, scored the same three
+  ways — the metric FR-7.4 is held to, because M1's own rule hides text and demands the picture.
+- **M2 — Never global.** Zero frames drawn wider than the region holding the selected location (D-28), measured by an
+  instrument over the test suite and the scripted-PTY journeys.
+- **M3 — Radar honesty.** The newest frame's age is always on screen; no frame older than its
+  source's cadence is drawn as current.
+- **M4 — Partial honesty.** Every alert that did not fully resolve is drawn with that fact stated.
+- **M5 — Time to picture** *(target set at PLAN from wave-1 measurements — D-29)*. Seconds from `g`
+  to the first **complete** frame. The library's 1 s warm / 3 s cold is its own figure, never measured
+  in this host, and D-21 forbids warming, so every first open is cold.
+- **M6 — Loop smoothness** *(secondary, D-18)*. The radar loop holds its frame rate without stalling
+  the rest of the Observer — the one way D-10 could fail that M1–M5 would not catch.
+
+**M1 is the one this release is most likely to fail**, because most alerts have no polygon of their
+own and depend on zone resolution. The field comment says four in five; measured live on 2026-09-22
+it was **nine in ten**, inflated by marine advisories and weather-dependent (W1-C). Either way zone
+resolution is the ordinary path, not the fallback.
+

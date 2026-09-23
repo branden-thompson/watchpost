@@ -86,6 +86,9 @@ itself rather than for the warning.
 
 ## 5. Measurements of value, anti-solution hardened
 
+*The metrics' definitions are normative in `requirements.md` (D-40); this section keeps their
+anti-solution protocols, which is what it alone holds.*
+
 Each was tested with: *"Can I imagine a way to satisfy this metric that would NOT solve the stated
 problem?"* Where the answer was yes, the metric carries the bound that closes it. **Numeric targets
 marked PLAN are set there from measurement**, not guessed here.

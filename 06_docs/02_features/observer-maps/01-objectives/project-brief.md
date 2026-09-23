@@ -10,7 +10,7 @@ directives: FULL GIT; FULL DOCS; FULL REPORTS; FULL DIAGRAMS; FULL RCC; FULL PLA
 branch: feature/map-drawing
 paired_release: go-tuiMaps v0.2.0 (D-11)
 issue: "branden-thompson/watchpost#22 — this brief is its body (D-19)"
-status: "APPROVED by the HUM LEAD 2026-09-22 (D-17); amended and approved at D-24; amended again after the DISCOVER-exit red team, rounds 1 to 3 (D-25..D-36) — the bound, the description, colour and motion, the phase boundary, the threat model, and the two narrowings that needed rulings rather than edits.  Problem statement LOCKED (D-6).  Metrics ADOPTED (D-18).  Rulings in 02-analysis/rulings.md."
+status: "APPROVED by the HUM LEAD 2026-09-22 (D-17); amended and approved at D-24; amended again after the DISCOVER-exit red team, rounds 1 to 3 (D-25..D-36) — the bound, the description, colour and motion, the phase boundary, the threat model, and the two narrowings that needed rulings rather than edits.  Problem statement LOCKED (D-6).  Metrics ADOPTED (D-18).  Rulings in 02-analysis/rulings.md. CORRECTED at PLAN entry (D-40): the bound and the metrics are normative in requirements.md and cited here."
 ---
 
 # New Major System Feature | `Observer-Maps`
@@ -81,13 +81,9 @@ the map from the Details window, layers and legends UI, and size tiers. Every re
 
 ### R-2 — Scale bounds, owned by the host (D-8)
 
-- **R-2.1** Watchpost **never** shows a view wider than the region holding the selected location —
-  every US region and territory its APIs cover, marine areas included (**D-28**, superseding the
-  single US-centred rectangle). No frame is ever drawn at global or continental scale, including
-  after a resize, a fit, or a failure.
-- **R-2.2** The default scale — regional, state or county around the selected location — is a
-  **setting**; the regional bound of R-2.1 is not (D-8 and D-28 are hard constraints, D-23 P-2).
-- **R-2.3** The bound is **enforced by a test that fails**, not by a convention (D-11).
+- **R-2** Watchpost never shows a view wider than the region holding the selected location; the
+  default scale is a setting and the bound is not; a test enforces it. **The bound's normative text is
+  `requirements.md` FR-2** (D-28, D-40), not restated here.
 
 ### R-3 — The basemap
 
@@ -189,28 +185,9 @@ credential redaction those use is the precedent this extends (red team F9's corr
 
 ## Metrics of Success — ADOPTED (D-18)
 
-M1, **M1b**, M2–M5 primary; M6 secondary. Hardened against gaming in `01-objectives/problem-statement.md` at DISCOVER.
-
-- **M1 — Where is it** *(grader: HUM LEAD; recorded-scenario protocol in `problem-statement.md` §5 — D-29)*. From the map alone, a listener can say whether an active alert covers the
-  selected location, stops short of it, or lies to one side.
-- **M1b — Where is it, in words** *(adopted D-36; protocol in `problem-statement.md` §5)*. The same
-  recorded scenarios as M1, with the picture hidden and the description shown, scored the same three
-  ways — the metric FR-7.4 is held to, because M1's own rule hides text and demands the picture.
-- **M2 — Never global.** Zero frames drawn wider than the region holding the selected location (D-28), measured by an
-  instrument over the test suite and the scripted-PTY journeys.
-- **M3 — Radar honesty.** The newest frame's age is always on screen; no frame older than its
-  source's cadence is drawn as current.
-- **M4 — Partial honesty.** Every alert that did not fully resolve is drawn with that fact stated.
-- **M5 — Time to picture** *(target set at PLAN from wave-1 measurements — D-29)*. Seconds from `g`
-  to the first **complete** frame. The library's 1 s warm / 3 s cold is its own figure, never measured
-  in this host, and D-21 forbids warming, so every first open is cold.
-- **M6 — Loop smoothness** *(secondary, D-18)*. The radar loop holds its frame rate without stalling
-  the rest of the Observer — the one way D-10 could fail that M1–M5 would not catch.
-
-**M1 is the one this release is most likely to fail**, because most alerts have no polygon of their
-own and depend on zone resolution. The field comment says four in five; measured live on 2026-09-22
-it was **nine in ten**, inflated by marine advisories and weather-dependent (W1-C). Either way zone
-resolution is the ordinary path, not the fallback.
+**Normative in `requirements.md` (D-40)**: M1, M1b, M2–M5 primary; M6 secondary, each with its
+definition there, and its anti-solution protocol in `problem-statement.md` §5. They are not restated
+here, because three copies drifted in every red-team round.
 
 ## Technical Constraints
 
