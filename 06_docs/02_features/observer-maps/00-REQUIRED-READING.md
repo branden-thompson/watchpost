@@ -20,7 +20,7 @@ be passed over in a new session."*
 | | |
 |---|---|
 | Branch | `feature/map-drawing` → squash-merged `release/v0.18.0` at SHIP (D-2) |
-| Phase | **PLAN OPEN** since 2026-09-23 (D-39), in parallel with go-tuiMaps v0.2.0's PLAN; the two cross-reference through go-tuiMaps' `radar-loops/03-architecture-design/integration-map.md`. DISCOVER closed (D-37). **No code in PLAN** (D-13). Update this row at every phase transition |
+| Phase | **BUILD OPEN** since 2026-09-23 (D-56), in parallel with go-tuiMaps v0.2.0's BUILD; the two cross-reference through go-tuiMaps' `radar-loops/03-architecture-design/integration-map.md`. PLAN closed: `08-reports/plan-report.md` (APPROVED). P1-a (W0–W7) on go-tuiMaps v0.1.0 now; P1-b (W8–W9) on its release candidates. Update this row at every phase transition |
 | Brief | `01-objectives/project-brief.md` — APPROVED (D-17); it is the body of issue #22 (D-19) |
 | Problem & metrics | `01-objectives/problem-statement.md` — M1, M1b, M2–M5 primary, M6 secondary (D-18, D-36), anti-solution hardened |
 | Rulings | `02-analysis/rulings.md` — **every ruling lands here the moment it is made** |
@@ -30,13 +30,11 @@ be passed over in a new session."*
 
 ## Where to pick up
 
-**PLAN open (D-39); every design ruled.** Approach 1 (where the map is drawn) is ruled D-41; the
-partial area D-42; the numbers D-43. The requirements are normative (D-40, `01-objectives/requirements.md`).
-The implementation plan (`04-development/implementation-plan.md`, W1–W9) is a DRAFT, cross-referenced
-with go-tuiMaps' integration map. Next: the internal plan check, one PLAN red-team round, the PLAN
-report, then the HUM LEAD's approval. BUILD only after. The rulings log (`02-analysis/rulings.md`,
-D-1..D-43) is the authority for every decision. Diagrams drawn in PLAN carry "PLAN" in their heading
-until built.
+**BUILD open (D-56).** The plan is `04-development/implementation-plan.md`: W0 first (the library at
+v0.1.0, the fixtures, the plan-code gate), each task test-first, wired from the composition root and seen
+by the reachability gates. The rulings log (`02-analysis/rulings.md`, D-1..D-56) is the authority for
+every decision; the PLAN red team's record is in go-tuiMaps (`radar-loops/08-reports/red-team-plan.md`).
+Diagrams drawn in PLAN carry "PLAN" in their heading until built.
 
 ## The rules that cost something
 
