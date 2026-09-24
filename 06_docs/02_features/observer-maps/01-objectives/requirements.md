@@ -10,8 +10,9 @@ status: "NORMATIVE (D-40): on any conflict with the brief or the problem stateme
 # Requirements
 
 **Every requirement carries its macro phase (D-33).** *(P1)* is this release's drawing-and-access
-work; *(P2)* is the interaction work that follows — pan and zoom, the map from the Details window,
-layers and legends UI, size tiers. **Every requirement below is P1**: the P2 surface has no
+work; *(P2)* is the interaction work that follows — the map from the Details window,
+layers and legends UI, size tiers. **Pan and zoom moved into P1 (D-49)**, and one legend with them
+(D-44, phase awaiting confirmation). **Every requirement below is P1**: the P2 surface has no
 requirements yet, by design, and gains them when that phase opens.
 
 Each functional requirement traces to a brief requirement (R-n) and to the ruling or measurement
@@ -32,6 +33,8 @@ that enforces it; a requirement without one is marked **NO INSTRUMENT YET** so t
 | FR-1.7 *(P1)* | Under `--ascii` the window shows the FR-7.4 description in place of the picture; never a braille cell | D-20, D-26 | `TestASCIIFramesCarryNothingButASCII` extended to the window |
 | FR-1.8 *(P1)* | The window states, in text, that the picture is drawn with braille and names the remedy, because the terminal cannot be asked whether its font has it | red team A-3 | Golden of the window's chrome |
 | FR-1.9 *(P1)* | A stated **degradation order** — picture, then description, then the size notice — so the window always shows the most useful thing that fits, including below 20×10 where a notice and a description cannot both be drawn (R3 A11y A-7). A **legibility tier** between the floor and comfortable: at a size that passes 69×12 but cannot carry the scale it is asked to draw, the window says what is degraded rather than drawing a blank or stretched frame (a county view at 69×12 with embedded tiles rendered entirely blank in testing) | red team A-6; W1-B | Size sweep asserting a stated state, never an empty body |
+| FR-1.10 *(P1)* | **The listener pans and zooms the map**, and it rehydrates what the new view needs — tiles, alert areas, radar regions — with a **loading indicator** while the view cannot yet be drawn complete, especially on zoom out; the bound (FR-2) holds across every pan and zoom | D-48, D-49 | Scripted PTY: pan and zoom in each direction; the indicator shows then clears; M2 over every frame |
+| FR-1.11 *(P1)* | **Every map control is a keymap action, and the map's key controls are evaluated together** — scrub, play, stop, reset, pan, zoom, legend, open and close — against the Observer's keymap before any default binding is fixed | D-49 | A keymap test: no default binding collides with the Observer's; the evaluation recorded as a ruling |
 
 ## FR-2 — The bound (R-2)
 
@@ -175,7 +178,7 @@ M1, **M1b**, M2–M5 primary; M6 secondary. Hardened against gaming in `01-objec
 - **M3 — Radar honesty.** The newest frame's age is always on screen; no frame older than its
   source's cadence is drawn as current.
 - **M4 — Partial honesty.** Every alert that did not fully resolve is drawn with that fact stated.
-- **M5 — Time to picture** *(target set at PLAN, D-43: first complete frame ≤ 2.0 s cold at 149×38, p90 of 20 opens over recorded responses; newest radar frame ≤ 3.0 s; whole loop ≤ 5.0 s; the first frame never waits for radar)*. Seconds from `g`
+- **M5 — Time to picture** *(target set at PLAN, D-43, re-set by D-46: first complete frame — every alert's area and the basemap — ≤ 3.5 s cold at 149×38, p90 of 20 opens over recorded responses; newest radar frame ≤ 3.0 s; whole loop ≤ 5.0 s; the first frame never waits for radar)*. Seconds from `g`
   to the first **complete** frame. The library's 1 s warm / 3 s cold is its own figure, never measured
   in this host, and D-21 forbids warming, so every first open is cold.
 - **M6 — Loop smoothness** *(secondary, D-18)*. The radar loop holds its frame rate without stalling

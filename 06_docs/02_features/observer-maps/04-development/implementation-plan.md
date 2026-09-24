@@ -18,10 +18,10 @@ fixes.
 
 **Architecture.**
 - The map is drawn in `Update` by one owner goroutine, and `View` only prints (D-41).
-- Four guards keep an old frame from ever showing (D-41). On v0.1.0 guard 4 is weaker, and the plan
-  says so (W2.5, W9.6).
+- The map renders on every event it owns, and a tested property keeps an old frame from ever showing
+  (D-41, revised by D-45).
 - A partial area is drawn as found, labelled, and its missing zones are named (D-42).
-- The numbers are D-43's.
+- The numbers are D-43's, with M5 re-set by D-46.
 - Watchpost's structure holds: `domains/` are data sources, `platform/` is shared leaves, `modes/` are
   surfaces, and `app/` is the composition root, checked by `lint-imports`. **`app/` is also the only
   package that may name a domain and what draws** (0.17.0's `app/mapgeometry.go`), so turning alerts,
@@ -37,7 +37,7 @@ fixes.
    Markdown-only change).
 4. Mutation check: delete or disable the thing the test protects, watch the test fail, then restore.
    For a task that extends a guard, the mutation is the omission the guard exists to catch (for
-   example, a `mapKey` field that is not a Dashboard field).
+   example, a map pane field that is not a Dashboard field).
 5. **A task that wires something** also names the path from the composition root and shows the
    reachability gates see it: `make wires` (`tools/wires`) and
    `TestEveryLivePipelinesMethodIsReachedFromProductionCode` (required reading rule 8).
@@ -73,17 +73,17 @@ ruling for every change to it).
 |---|---|---|---|---|
 | W0 | Foundations: the library, the fixtures, the plan-code gate | FR-8.1, FR-8.6 (P1-a half) | — | go-tuiMaps v0.1.0 |
 | W1 | The window, its words, its Settings | FR-1, FR-7.4 (renderer), FR-9 | W0 | v0.1.0 |
-| W2 | Draw in `Update`; the four stale guards; workers; M5's first arm | D-41, FR-8.2–FR-8.5, FR-3.3, M5 | W1 | v0.1.0 |
+| W2 | Draw in `Update` on every event; the freshness guards; workers; M5's first arm | D-41, D-45, FR-8.2–FR-8.5, FR-3.3, M5 | W1 | v0.1.0 |
 | W3 | Basemap: source, the request gate, caches, credits, closed list, clear path | FR-3, NFR-3, NFR-4 | W2 | v0.1.0 |
 | W4 | The bound, held by the host | FR-2 | W2 | v0.1.0 |
 | W5 | Alert areas, scope, partial areas, zones | FR-4, D-42 | W2 | v0.1.0 |
 | W6 | Fire and quakes | FR-6 | W5 | v0.1.0 |
 | W7 | Without colour; the description scored | FR-7 | W5 | v0.1.0 |
 | W8 | Radar loops and the motion Setting | FR-5, FR-3.9 (radar), M3, M5, M6, NFR-2 | W2, **go-tuiMaps v0.2.0 tag** | v0.2.0 |
-| W9 | Move to v0.2.0: bound, `Report`, fetch options, retention and purge, guard 4, labels, pattern | FR-2.4, FR-3.9, FR-3.10, FR-7.1, FR-7.4, HR-3, HR-6, HR-7, HR-8, HR-10, D-42 | W4, W7, **v0.2.0 tag** | v0.2.0 |
+| W9 | Move to v0.2.0: bound, `Report`, fetch options, retention and purge, the frame's counters, labels, pattern | FR-2.4, FR-3.9, FR-3.10, FR-7.1, FR-7.4, HR-3, HR-6, HR-7, HR-8, HR-10, D-42 | W4, W7, **v0.2.0 tag** | v0.2.0 |
 
 W0–W7 are **P1-a**: they need nothing from v0.2.0 and start at once. On their own they are the
-ship-without-radar fallback (RK-4), with the weaker guard 4 recorded (W2.5). W8–W9 are **P1-b**, and
+ship-without-radar fallback (RK-4). W8–W9 are **P1-b**, and
 wait for the tag (FR-5.6). The integration map uses these numbers.
 
 ---
@@ -111,23 +111,25 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 | W1.9 | `--ascii` shows the description, never braille; the braille notice in the chrome (FR-1.7, FR-1.8) | `modes/tty/map_window.go` | — | `TestASCIIFramesCarryNothingButASCII` extended to the window; chrome golden |
 | W1.10 | Settings rows: maps on/off, and the description's mode (with the picture, instead of it, off), reachable without restart (FR-9.1) | `platform/config/`, `app/setup.go`, `modes/tty/setup_rows.go` | One row each, persisted | Settings round trip; a config migration test from 0.17.0's file; a PTY test reaches the description with no flag |
 | W1.11 | Settings rows: default scale, layers, alert scope (FR-9.1, FR-2.3, FR-4.3) | same | — | Settings round trip per row |
-| W1.12 | The exposure disclosure: on first map open **and** in Settings beside the maps row, naming each source the session will contact (FR-9.4) | `modes/tty/map_window.go`, `modes/tty/setup_rows.go` | — | Text test on both surfaces; the named sources equal FR-3.8's list for the layers switched on |
+| W1.12 | The exposure disclosure: on first map open **and** in Settings beside the maps row, naming each source the session will contact and what it is sent — for radar, a fixed region, not the view (FR-9.4, D-47) | `modes/tty/map_window.go`, `modes/tty/setup_rows.go` | — | Text test on both surfaces; the named sources equal FR-3.8's list for the layers switched on |
 | W1.13 | A registry for layers, sources and options (FR-9.3). Members register from `app/maps.go`; FR-3.8's closed list is checked against what registered | `app/maps.go` | Members register themselves and are discovered | An architectural test adds a fake layer without editing the others; `make wires` sees every registration reached |
 | W1.14 | The cost warning above 2 MB or 40 requests a refresh (FR-9.2, D-43) | `app/mapfeed.go`, `modes/tty/map_window.go` | `func refreshCost(layers, scope) (bytes int64, requests int)` from measured sizes | Estimates at, below and above each threshold; the warning's words golden |
+| W1.15 | **Pan and zoom** (FR-1.10, D-49): the window's keymap actions drive the library's intents; the view rehydrates; the loading indicator (W8.9b's, brought forward) shows while the frame is not complete; the host clamp (W4.4) wraps every call | `modes/tty/map_window.go`, `modes/tty/map_pane.go`, `platform/term/term.go` | Keymap actions `map.pan.*`, `map.zoom.in`, `map.zoom.out` | Scripted PTY: pan each way and zoom in and out; the indicator shows then clears; M2 over every frame |
+| W1.16 | **The map's key controls evaluated together** (FR-1.11, D-49): every map action listed with the Observer's keymap, collisions found, default bindings proposed as one ruling | `platform/term/term.go`, `06_docs/02_features/observer-maps/02-analysis/` | A table of actions and proposed keys | A keymap test fails on any collision; the HUM LEAD's ruling recorded |
 
 ## W2 — Drawing in `Update`, and never an old frame (D-41, FR-8)
 
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
-| W2.1 | The map pane and its key, as Dashboard fields (FR-8.4) | `modes/tty/dashboard.go`, `modes/tty/map_pane.go` | `type mapPane struct{ m *tuimaps.Map; lines []string; key mapKey }`; `mapKey{changed, ticks uint64; size tuimaps.Size; selection int; look lookKey}`. `ticks` stays zero on v0.1.0 | **The memo-completeness guard is extended to `mapKey` first**: a key field that isn't a Dashboard field fails |
-| W2.2 | Library calls only in `dispatch`; `Work` in a `tea.Cmd` (C-7, FR-3.3) | `modes/tty/dashboard.go`, `modes/tty/map_work.go` | `mapWorkedMsg{changed, ticks}`; `mapTickMsg{at}` scheduled with `tea.Tick` at `NextCall` | A race test: no library call off the Bubble Tea goroutine except `Work` |
-| W2.3 | **Guard 2:** every input the frame depends on causes a redraw. P1-a rows: data, size, selection, depth, theme, units, each map Setting. The frame-advance and playback rows land in W8.8 | `modes/tty/map_pane_test.go` | — | A table, one row per input → a redraw |
-| W2.4 | **Guard 3:** the printed lines always equal a fresh `Render` | `modes/tty/map_property_test.go` | — | Random message sequences, 10,000 runs |
-| W2.5 | **Guard 4, v0.1.0 form:** `Changed()` read before and after `Render`; the lines are stored only if it did not move. **Weaker than D-41's "the frame carries its own identity"**; W9.6 upgrades it. If 0.18.0 ships without radar, this is recorded in the SHIP report as three full guards and one partial | `modes/tty/map_pane.go` | — | A `Set` injected between `Render` and store: the stale lines are refused |
+| W2.1 | The map pane as Dashboard fields: the stored lines and the counters they were drawn at (FR-8.4, D-45) | `modes/tty/dashboard.go`, `modes/tty/map_pane.go` | `type mapPane struct{ m *tuimaps.Map; lines []string; changed, ticks uint64 }`. On v0.1.0 `ticks` stays zero and `changed` is read from `Changed()` after the render | The memo-completeness guard sees the pane's fields: a pane field that is not a Dashboard field fails |
+| W2.2 | Library calls only in `dispatch`; `Work` in a `tea.Cmd` (C-7, FR-3.3) | `modes/tty/dashboard.go`, `modes/tty/map_work.go` | `mapWorkedMsg{did bool}`; `mapTickMsg{at time.Time}` scheduled with `tea.Tick` at `NextCall`. Every library call goes through one wrapper that records the goroutine it ran on | A test drives messages and asserts, through the wrapper's record, that every call but `Work` ran on the Bubble Tea goroutine |
+| W2.3 | **Guard 2 (D-45):** every event that can change the frame triggers a render — each mutation, each `Work` that did something, each tick. P1-a rows: data, `Work` landing a tile, size, selection, depth, theme, units, each map Setting. The frame-advance and playback rows land in W8.10 | `modes/tty/map_pane_test.go` | Render on every event; no memo key | A table, one row per event → a render |
+| W2.4 | **Guard 3:** the printed lines equal a fresh render from a second map built from the same inputs (a fresh render on the same map would disturb what it checks) | `modes/tty/map_property_test.go` | — | Random message sequences, 10,000 runs |
+| W2.5 | **The freshness property (D-45):** after every event, the stored frame's counters equal the library's | `modes/tty/map_pane_test.go` | — | A handler that skips its render after a `Set` or a landed tile fails the property |
 | W2.6 | Every map worker joined on close (FR-8.2) | `modes/tty/map_work.go` | — | A goroutine-count test in the style of `TestAScheduleLeavesNoGoroutineBehind` |
 | W2.7 | An allocation pin on the frame; a memo hit does not re-render (FR-8.3) | `modes/tty/map_pane.go` | — | An `AllocBudget` test |
 | W2.8 | Every golden of the window carries width invariants at 80, 120 and 133 (FR-8.5) | the golden helper in `modes/tty` | — | The helper fails a golden whose line widths differ from the frame's |
-| W2.9 | **M5's first arm** (D-43): first complete frame ≤ 2.0 s cold at 149×38, p90 of 20 opens over recorded responses | `modes/tty/map_timing_test.go` | Replays W0.2's fixtures through a latency-shaped transport | The p90 over 20 opens is asserted; the first frame never waits for radar (checked again in W8.11) |
+| W2.9 | **M5's first arm** (D-43, D-46): first complete frame — every alert's area and the basemap — ≤ 3.5 s cold at 149×38, p90 of 20 opens over recorded responses | `modes/tty/map_timing_test.go` | Replays W0.2's fixtures through a latency-shaped transport | The p90 over 20 opens is asserted; the first frame never waits for radar (checked again in W8.11) |
 
 ## W3 — The basemap (FR-3)
 
@@ -141,7 +143,7 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 | W3.6 | Credits at every width; credit text bounded and neutralised (FR-3.7) | `modes/tty/map_window.go` | A length cap and the existing text cleaner | A hostile TileJSON credit (overlong, escape bytes, reading as a status line) is cut and cleaned, and never lands in the status row; golden at 69, 100 and 149 columns |
 | W3.7 | The closed source list (FR-3.8) | `app/maps.go`, `domains/radar/` | The list as a table in code | **Positive:** the registered set equals FR-3.8's table, member for member. **Negative:** no path accepts an arbitrary URL |
 | W3.8 | **The P1-a clear path and stated retention** (FR-3.9, FR-3.10): a Settings action "Clear map data" deletes the tile directory and the HTTP cache's entries for map hosts; the Settings text states the retention and, until HR-8, that it is a byte cap | `app/setup.go`, `modes/tty/setup_rows.go`, `platform/httpx/` | `func (c *Client) PurgeHost(host string) (removed int, err error)` | After a map session, the action leaves the tile directory absent and no `<sha256>.cache` entry for any map host |
-| W3.9 | Politeness for zone geometry (NFR-4): sequential, with watchpost's user-agent | `domains/weather/nws/zones/zones.go` | — | A test over the transport: at most one zone request in flight; the agent names watchpost |
+| W3.9 | Politeness for zone geometry (NFR-4, D-46): bounded at six in flight (`zones.go:37`), with watchpost's user-agent | `domains/weather/nws/zones/zones.go` | — | A test over the transport: never more than six zone requests in flight; the agent names watchpost |
 
 ## W4 — The bound, held by the host (FR-2)
 
@@ -185,17 +187,21 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 |---|---|---|---|---|
 | W8.1 | `go.mod` requires the tagged v0.2.0, with no local replace (FR-5.6) | `go.mod`, `go.sum`, `THIRD_PARTY_LICENSES.md` | — | W0.1's test, now pinned to v0.2.0 |
 | W8.2 | Radar fixtures committed before anything uses them (FR-8.6, radar half) | `domains/radar/testdata/` | Recorded time lists and frames: off-grid, expired, empty, the 2011 default | The manifest test from W0.2 |
-| W8.3 | IEM and MRMS as registered sources; the source is a Setting (FR-5.1). MRMS relies on the library's MRMS table (**WP-L6**) | `domains/radar/iem.go`, `domains/radar/mrms.go`, `app/maps.go`, `modes/tty/setup_rows.go` | `type Source interface{ Name() string; Times(ctx) ([]time.Time, error); Frame(ctx, t, box) ([]byte, error) }` | Registry test; Settings round trip; `make wires` |
+| W8.3 | IEM and MRMS as registered sources; the source is a Setting (FR-5.1). MRMS relies on the library's MRMS table (**WP-L6**). **A source is asked for a radar region, never a view** (D-47) | `domains/radar/iem.go`, `domains/radar/mrms.go`, `app/maps.go`, `modes/tty/setup_rows.go` | `type Source interface{ Name() string; Times(ctx) ([]time.Time, error); Frame(ctx, t time.Time, r Region) ([]byte, error) }` | Registry test; Settings round trip; `make wires`; a test that no request carries the view's box |
+| W8.3a | **The radar region table** (D-47): fixed state-regional boxes, each sized so a county or state-regional view sits inside one, fetched at a fixed size within the library's per-image cap; a view crossing an edge takes the neighbour too | `domains/radar/regions.go` | `type Region struct{ Name string; W, S, E, N float64; Cols, Rows int }`; `func RegionsFor(view Box) []Region` | Every station location's default view lies inside one or two regions; each region's image is within the cap; a selection change inside a region fetches nothing new |
 | W8.4 | A frame is valid only if its time is advertised and its image isn't empty (FR-5.3) | `domains/radar/valid.go` | — | The W8.2 responses |
 | W8.5 | **The body cap inside the HTTP client** (FR-5.7): refused as it reads, **never cached**; the decoded dimensions capped from the PNG header before anything decodes | `platform/httpx/`, `domains/radar/valid.go` | A per-request option `httpx.BodyCap(n int64)` checked inside the client's read, before its cache write; a header check against the library's per-image cap | After a 2 MiB response the cache is **empty** and the caller has an error; a small PNG declaring huge dimensions is refused undecoded |
 | W8.6 | One overlay per source, absolute times (FR-5.2) → `Image.Frames` (**WP-L2**) | `app/mapfeed.go` | — | A loop across a 5-minute rollover has no duplicate or skipped frame |
 | W8.7 | A refresh fetches only frames not held; no source polled faster than its cadence; requests sequential (FR-5.5, NFR-4) | `domains/radar/` | — | A request count over two refreshes; a clock test that the cadence is honoured |
 | W8.8 | The newest frame's age always visible; stale marked (FR-5.4, **WP-L4** `LoopState`) | `modes/tty/map_window.go` | Uses `LoopState.Newest` and the frame's time | **M3 instrument** |
-| W8.9 | The motion Setting (off / slow / normal) drives `SetPlayback` (FR-5.8, D-27, D-35, **WP-L4**). Rates slow 1 frame a second, normal 2, the newest held 2 s (FR-5.9, D-43). The still form keeps the newest frame and its age **and freezes the description** | `modes/tty/map_pane.go`, `platform/config/`, `modes/tty/setup_rows.go` | One `SetPlayback` call per Setting change | The library's frame schedule at each setting matches the rates; a still-form golden; the description does not change across frame advances while still |
-| W8.10 | Guard 2's frame-advance and playback rows (from W2.3) | `modes/tty/map_pane_test.go` | — | The two rows → a redraw |
+| W8.9 | The motion Setting (off / slow / normal) sets the rate; "off" disables play (FR-5.8, D-27, D-35, D-48, **WP-L4**). Rates slow 1 frame a second, normal 2, the last frame held 2 s (FR-5.9, D-43). The still form keeps the frame and its age **and freezes the description** | `modes/tty/map_pane.go`, `platform/config/`, `modes/tty/setup_rows.go` | One call per Setting change | The library's frame schedule at each setting matches the rates; a still-form golden; the description does not change across frame advances while stopped |
+| W8.9a | **The listener's playback controls** (D-48): the map opens stopped on "right now" (the newest observed frame); **play** runs from the oldest held frame through "right now" and on through forecast frames if any, labelled forecast; **stop** holds the frame on screen; **reset** returns to "right now"; **←/→** scrub one frame, stopping playback. Keymap actions `map.play`, `map.stop`, `map.reset`, `map.back`, `map.forward`, listed in Help, overridable in `[keys]`; default bindings from W1.16's evaluation | `modes/tty/map_window.go`, `platform/term/term.go`, `modes/tty/help_about.go` | Driven only through the library's playback API (**WP-L4**, go-tuiMaps D-67) | A scripted PTY journey: open → "right now"; play → the oldest frame first, then each in time order; stop → held; ← and → → one frame each; reset → "right now"; a refresh while stopped keeps the same moment |
+| W8.9b | A loading indicator while the map fetches for a view it cannot yet draw complete (D-48) | `modes/tty/map_window.go` | From the frame's status (`Sharpening`) and pending work | Golden: a cold open shows the indicator; it clears when the frame is complete |
+| W8.10 | Guard 2's frame-advance and playback rows (from W2.3); the freshness property over frame advances | `modes/tty/map_pane_test.go` | — | The two rows → a render; after an advance, the stored `FrameTicks` equals the library's |
 | W8.11 | Radar over alert areas: the blend, furniture never erased (**WP-L3**) | `app/mapfeed.go` | — | Goldens over specimen 29's scene at each depth; every outline, label and credit present |
 | W8.12 | **M5's radar arms** (D-43): newest frame ≤ 3.0 s, whole loop ≤ 5.0 s, the first frame never waits for radar; the library's ≤ 15 ms a frame advance consumed (**WP-L3**) | `modes/tty/map_timing_test.go` | — | p90 over 20 opens against W8.2's fixtures |
 | W8.13 | **M6 / NFR-2:** the loop holds its rate with the Observer live | `modes/tty/map_timing_test.go` | — | A run with the Observer's publishers replaying: the frame schedule's drift stays within one frame a minute |
+| W8.14a | `BBOX` redacted from `httpx` error text for radar hosts (D-47) | `platform/httpx/` | — | A radar error's text carries no box |
 | W8.14 | Radar retention (FR-3.9, radar half): radar requests are cached in memory only (a TTL under five minutes, so `httpx` never writes them to disk), and frames past 2 hours leave the loop | `domains/radar/`, `app/mapfeed.go` | — | After a radar session, no radar entry on disk; a frame older than 2 hours is dropped |
 | W8.15 | The cost estimate (W1.14) gains radar | `app/mapfeed.go` | — | The W1.14 table with radar on |
 
@@ -208,10 +214,11 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 | W9.3 | Fetch options: watchpost's user-agent (HR-6, NFR-4, **WP-L8**); tile-host confinement (HR-10) | `app/maps.go` | `SetFetchOptions(FetchOptions{UserAgent: "watchpost/<ver>"})` | The agent names watchpost; a TileJSON naming another host is refused |
 | W9.4 | Tile retention by the library (FR-3.9, HR-8, **WP-L9**) | `app/maps.go` | `MaxAge(7 * 24 * time.Hour)` | A tile older than 7 days is fetched again |
 | W9.5 | "Clear map data" moves to the library's `Purge` (FR-3.9, FR-3.10, **WP-L9**) | `app/setup.go` | `Purge` behind the Settings action from W3.8 | Purge empties every map cache; the FR-3.10 record is updated to "enforced" |
-| W9.6 | **Guard 4, full form:** the stored frame's `Frame.Changed` and `Frame.Ticks` equal the library's before the lines are stored (D-41, **WP-L3** L3.2, **WP-L4**) | `modes/tty/map_pane.go` | — | A frame drawn before a `Set` or a frame advance and stored after is refused |
+| W9.6 | The pane stores `Frame.Changed` and `Frame.FrameTicks` from the frame itself, and `Changed()` now counts inputs (go-tuiMaps D-66, **WP-L3** L3.2, **WP-L4**) | `modes/tty/map_pane.go` | — | The freshness property green before and after the move; a tile landed by `Work` raises `Changed()` without a render |
 | W9.7 | The motion description in the description's words (go-tuiMaps D-42, **WP-L5**) | `modes/tty/map_describe.go` | — | A two-frame fixture: where the heavier rain was, then is, and never a forecast |
 | W9.8 | The named place's label kept (D-42's second clause; go-tuiMaps D-60, L-8.9, **WP-L3**) | `modes/tty/map_pane_test.go` | — | Specimen 31's scene at 69×12 and 149×38: "Fort Davis" is on the frame |
 | W9.9 | The colour-independent pattern at colour-on depths (HR-7, FR-7.1, **WP-L3**) | `modes/tty/map_pane_test.go` | — | W7.1's invariant at every depth, now including colour-on |
+| W9.10 | **The legend window** (D-44): a picture-in-picture window over the map, `shift+L`, from a chip `[ L ] Legend` in the window's chrome; contextual — the severity digits (go-tuiMaps D-65) and whatever else the map shows now, read from the library's `Legend()` | `modes/tty/map_legend.go`, `platform/term/term.go`, `modes/tty/help_about.go` | A keymap action `map.legend` | Help lists it; a `[keys]` override rebinds it; with alerts on the map the legend lists the five digits and their words; it joins the closed-set window tests |
 
 ## The trace
 
@@ -224,7 +231,8 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 | FR-1.5 | W1.7 | | FR-5.5 | W8.7 |
 | FR-1.6 | W1.8 | | FR-5.6 | W0.1, W8.1 |
 | FR-1.7, FR-1.8 | W1.9 | | FR-5.7 | W8.5 |
-| FR-1.9 | W1.6 | | FR-5.8, FR-5.9 | W8.9 |
+| FR-1.9 | W1.6 | | FR-5.8, FR-5.9 | W8.9, W8.9a |
+| FR-1.10, FR-1.11 | W1.15, W1.16 | | | |
 | FR-2.1, FR-2.5 | W4.1 | | FR-6.1 | W6.1 |
 | FR-2.2 | W4.2 | | FR-7.1 | W7.1, W9.9 |
 | FR-2.3 | W1.11, W4.3 | | FR-7.2, FR-7.6 | W7.5 |
@@ -245,13 +253,14 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 | FR-4.4, M4, D-42 | W5.4, W9.8 | | NFR-2, M6 | W8.13 |
 | FR-4.5 | W5.5 | | NFR-4 | W3.9, W8.7, W9.3 |
 | FR-4.6 | W5.6 | | NFR-5, NFR-6 | every commit (`make verify`, `lint-watermark`) |
-| D-41 guards | W2.1–W2.5, W8.10, W9.6 | | M1 | the HUM LEAD, at BUILD exit (D-29) |
+| D-41, D-45 | W2.1–W2.5, W8.10, W9.6 | | M1 | the HUM LEAD, at BUILD exit (D-29) |
+| D-44 legend | W9.10 | | | |
 
 ## Deviations from DISCOVER, recorded
 
 - **The description ships on `Describe` in P1-a and moves to `Report` in P1-b.** DISCOVER assumed a
   single description source; go-tuiMaps D-57 added `Report`.
 - **FR-2.4's host clamp** is kept until W9.1, as DISCOVER foresaw.
-- **Guard 4 is partial on v0.1.0** (W2.5). A ship-without-radar release says so.
+- **D-41's guards 1 and 4 are withdrawn** and replaced by the freshness property (D-45).
 - **FR-3.9's map retention is a byte cap plus a directory delete until W9.4** (FR-3.10 records it).
-- **Pan-back** is phase 2 (D-33); W3.5 measures a repeat open instead.
+- **Pan and zoom came into 0.18.0** (D-49), which D-33 had put in phase 2.

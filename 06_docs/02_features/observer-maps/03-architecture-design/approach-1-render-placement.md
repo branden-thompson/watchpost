@@ -4,7 +4,7 @@ date: 2026-09-23
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "RULED — D-41: A, with four guards against an old frame. Signatures and shape only (D-13)."
+status: "RULED — D-41: A; its guards revised by D-45 (render on every event; a freshness property replaces the memo key and guard 4, because go-tuiMaps v0.1.0's `Changed()` moves only inside `Render`). The redraw rule below is superseded where D-45 says so. Signatures and shape only (D-13)."
 ---
 
 # Approach 1 — where the map is drawn
@@ -85,7 +85,7 @@ wrong. A missing field in `mapKey` would show an old frame, the same class of de
 invisible memo key, now in a new place. The cure is that the guard must include `mapKey`, and that is a
 test PLAN writes first.
 
-## PLAN 0.18.0 — how it fits (ruled D-41, not yet built)
+## PLAN 0.18.0 — how it fits (ruled D-41, revised D-45, not yet built)
 
 ```mermaid
 sequenceDiagram
@@ -98,9 +98,9 @@ sequenceDiagram
   BT->>L: Set / Recentre (one owner)
   BT->>W: run Work
   W->>L: Work(ctx)
-  W-->>BT: mapWorkedMsg{changed, ticks}
-  BT->>L: Render(size, now) if the key moved
-  BT->>BT: store lines + key (pointer slot)
+  W-->>BT: mapWorkedMsg{did}
+  BT->>L: Render(size, now) on every event (D-45)
+  BT->>BT: store lines + the frame's counters (pointer slot)
   BT->>BT: tea.Tick at NextCall → mapTickMsg
   V->>V: print stored lines (no library call)
 ```
