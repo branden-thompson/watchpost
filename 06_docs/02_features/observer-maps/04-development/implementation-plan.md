@@ -82,7 +82,7 @@ ruling for every change to it).
 | W8 | Radar loops and the motion Setting | FR-5, FR-3.9 (radar), M3, M5, M6, NFR-2 | W2, **go-tuiMaps v0.2.0 tag** | v0.2.0 |
 | W9 | Move to v0.2.0: bound, `Report`, fetch options, retention and purge, the frame's counters, labels, pattern | FR-2.4, FR-3.9, FR-3.10, FR-7.1, FR-7.4, HR-3, HR-6, HR-7, HR-8, HR-10, D-42 | W4, W7, **v0.2.0 tag** | v0.2.0 |
 
-W0–W7 are **P1-a**: they need nothing from v0.2.0 and start at once. On their own they are the
+W0–W7 are **P1-a**: they need nothing from v0.2.0 and start at once. W8–W9 build against go-tuiMaps release candidates as their packages land (D-51). On their own they are the
 ship-without-radar fallback (RK-4). W8–W9 are **P1-b**, and
 wait for the tag (FR-5.6). The integration map uses these numbers.
 
@@ -185,7 +185,7 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
-| W8.1 | `go.mod` requires the tagged v0.2.0, with no local replace (FR-5.6) | `go.mod`, `go.sum`, `THIRD_PARTY_LICENSES.md` | — | W0.1's test, now pinned to v0.2.0 |
+| W8.1 | `go.mod` requires the newest go-tuiMaps release candidate holding the packages the next task needs, then the final `v0.2.0` at SHIP; no local replace (FR-5.6, D-51) | `go.mod`, `go.sum`, `THIRD_PARTY_LICENSES.md` | — | W0.1's test: a tagged version, never a replace; a SHIP check refuses an `-rc` tag |
 | W8.2 | Radar fixtures committed before anything uses them (FR-8.6, radar half) | `domains/radar/testdata/` | Recorded time lists and frames: off-grid, expired, empty, the 2011 default | The manifest test from W0.2 |
 | W8.3 | IEM and MRMS as registered sources; the source is a Setting (FR-5.1). MRMS relies on the library's MRMS table (**WP-L6**). **A source is asked for a radar region, never a view** (D-47) | `domains/radar/iem.go`, `domains/radar/mrms.go`, `app/maps.go`, `modes/tty/setup_rows.go` | `type Source interface{ Name() string; Times(ctx) ([]time.Time, error); Frame(ctx, t time.Time, r Region) ([]byte, error) }` | Registry test; Settings round trip; `make wires`; a test that no request carries the view's box |
 | W8.3a | **The radar region table** (D-47): fixed state-regional boxes, each sized so a county or state-regional view sits inside one, fetched at a fixed size within the library's per-image cap; a view crossing an edge takes the neighbour too | `domains/radar/regions.go` | `type Region struct{ Name string; W, S, E, N float64; Cols, Rows int }`; `func RegionsFor(view Box) []Region` | Every station location's default view lies inside one or two regions; each region's image is within the cap; a selection change inside a region fetches nothing new |
