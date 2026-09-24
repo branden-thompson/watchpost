@@ -1,0 +1,35 @@
+{
+ "name": "03-two-alerts-harlan",
+ "place": {
+  "name": "Harlan, KY",
+  "lat": 36.8431,
+  "lon": -83.3219
+ },
+ "failure": null,
+ "withheld_zones": [],
+ "sizes": [
+  "69x12",
+  "149x38"
+ ],
+ "answer_key": {
+  "urn:oid:2.49.0.1.840.0.81cea689c4a6222834ed7f79ed2a940a30c1972f.001.1": {
+   "answer": "stops short",
+   "edge_km": 7.5,
+   "event": "Flash Flood Warning",
+   "area": "Harlan, KY"
+  },
+  "urn:oid:2.49.0.1.840.0.cd339b78eeb157829eeb9c142a3be9a600fb2f72.001.1": {
+   "answer": "covers",
+   "edge_km": 7.1,
+   "event": "Flash Flood Warning",
+   "area": "Harlan, KY"
+  },
+  "urn:oid:2.49.0.1.840.0.b4b6be0328452fa63d28e17347133b3feb627366.001.1": {
+   "answer": "stops short",
+   "edge_km": 7.3,
+   "event": "Flash Flood Warning",
+   "area": "Bell, KY; Harlan, KY; Leslie, KY"
+  }
+ },
+ "answer_rule": "covers: the place is inside the area; stops short: outside, the nearest edge within 15 km; lies to one side: farther. Computed from the recorded geometry; the HUM LEAD confirms it before scoring."
+}

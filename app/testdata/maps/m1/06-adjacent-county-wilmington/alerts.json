@@ -1,0 +1,103 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.b3808cf3e8e213b18f96ef36a5b0c48660898115.004.1",
+   "type": "Feature",
+   "geometry": null,
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.b3808cf3e8e213b18f96ef36a5b0c48660898115.004.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.b3808cf3e8e213b18f96ef36a5b0c48660898115.004.1",
+    "areaDesc": "Kent; Inland Sussex",
+    "geocode": {
+     "SAME": [
+      "010001",
+      "010005"
+     ],
+     "UGC": [
+      "DEZ002",
+      "DEZ003"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/forecast/DEZ002",
+     "https://api.weather.gov/zones/forecast/DEZ003"
+    ],
+    "references": [
+     {
+      "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.b955111bbcc888cb5ed99a8632224b4e9638e7b5.003.1",
+      "identifier": "urn:oid:2.49.0.1.840.0.b955111bbcc888cb5ed99a8632224b4e9638e7b5.003.1",
+      "sender": "sender@nws.invalid",
+      "sent": "2026-09-23T04:28:00-04:00"
+     },
+     {
+      "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.6c8bb919d8559e80ab6ffe726b80d5a586f44287.004.1",
+      "identifier": "urn:oid:2.49.0.1.840.0.6c8bb919d8559e80ab6ffe726b80d5a586f44287.004.1",
+      "sender": "sender@nws.invalid",
+      "sent": "2026-09-23T15:00:00-04:00"
+     }
+    ],
+    "sent": "2026-09-23T17:40:00-04:00",
+    "effective": "2026-09-23T17:40:00-04:00",
+    "onset": "2026-09-23T17:40:00-04:00",
+    "expires": "2026-09-24T06:00:00-04:00",
+    "ends": "2026-09-26T02:00:00-04:00",
+    "status": "Actual",
+    "messageType": "Update",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Likely",
+    "urgency": "Expected",
+    "event": "Coastal Flood Warning",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Mount Holly NJ",
+    "headline": "Coastal Flood Warning issued September 23 at 5:40PM EDT until September 26 at 2:00AM EDT by NWS Mount Holly NJ",
+    "description": "* WHAT...One to two feet of inundation above ground level in low-\nlying areas near shorelines and tidal waterways.\n\n* WHERE...Kent and Inland Sussex.\n\n* WHEN...Until 2 AM EDT Saturday.\n\n* IMPACTS...At this level, widespread roadway flooding occurs in\ncoastal and bayside communities and along inland tidal\nwaterways. Many roads become impassable. Some damage to\nvulnerable structures may begin to occur.\n\n* ADDITIONAL DETAILS...Moderate tidal flooding could continue\ninto the weekend. Cannot rule out major tidal flooding\nimpacts, especially around Rehoboth Bay and Indian River.",
+    "instruction": "A Coastal Flood Warning means that moderate or major tidal\nflooding is occurring or imminent. Be prepared for rising water\nlevels and take appropriate action to protect life and property.\nFollow the recommendations of local emergency management\nofficials.\n\nDo not drive your vehicle through flood waters. The water may be\ndeeper than you think it is. You will be putting yourself in\ndanger and your vehicle may be damaged, leading to costly\nrepairs.\n\nVisit the National Water Prediction Service at\nhttps://water.noaa.gov/wfo/phi for additional water level and\nflood impact information for your local tide gauge.",
+    "response": "Avoid",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "CFWPHI"
+     ],
+     "WMOidentifier": [
+      "WHUS41 KPHI 232140"
+     ],
+     "NWSheadline": [
+      "COASTAL FLOOD WARNING REMAINS IN EFFECT UNTIL 2 AM EDT SATURDAY"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.CON.KPHI.CF.W.0002.000000T0000Z-260926T0600Z/"
+     ],
+     "eventEndingTime": [
+      "2026-09-26T02:00:00-04:00"
+     ],
+     "expiredReferences": [
+      "sender@nws.invalid,urn:oid:2.49.0.1.840.0.41913522096e36d41c89ead922c8fd1f2567fdf9.004.2,2026-09-22T21:53:00-04:00 sender@nws.invalid,urn:oid:2.49.0.1.840.0.2d2e5df12b00ebec9375ca86aa0c42d7f277bef4.004.2,2026-09-22T16:14:00-04:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "CFW"
+     ],
+     "NationalWeatherService": [
+      "CFW"
+     ]
+    }
+   }
+  }
+ ]
+}

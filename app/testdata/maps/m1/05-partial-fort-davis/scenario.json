@@ -1,0 +1,25 @@
+{
+ "name": "05-partial-fort-davis",
+ "place": {
+  "name": "Fort Davis, TX",
+  "lat": 30.5882,
+  "lon": -103.8946
+ },
+ "failure": null,
+ "withheld_zones": [
+  "TXZ277"
+ ],
+ "sizes": [
+  "69x12",
+  "149x38"
+ ],
+ "answer_key": {
+  "urn:oid:2.49.0.1.840.0.96a20b84ffe7e6d5f3fafc279dab60e396ad91e8.001.1": {
+   "answer": "covers",
+   "edge_km": 7.5,
+   "event": "Flood Watch",
+   "area": "Chinati Mountains; Marfa Plateau; Davis Mountains; Davis Mountains Foothills; Presidio Valley"
+  }
+ },
+ "answer_rule": "covers: the place is inside the area; stops short: outside, the nearest edge within 15 km; lies to one side: farther. Computed from the recorded geometry; the HUM LEAD confirms it before scoring."
+}

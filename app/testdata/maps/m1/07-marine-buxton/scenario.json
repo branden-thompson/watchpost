@@ -1,0 +1,29 @@
+{
+ "name": "07-marine-buxton",
+ "place": {
+  "name": "Buxton, NC",
+  "lat": 35.2679,
+  "lon": -75.5424
+ },
+ "failure": null,
+ "withheld_zones": [],
+ "sizes": [
+  "69x12",
+  "149x38"
+ ],
+ "answer_key": {
+  "urn:oid:2.49.0.1.840.0.75f50c5d0e02845375244f41525c8e654c9e4758.001.2": {
+   "answer": "covers",
+   "edge_km": 0.2,
+   "event": "Coastal Flood Warning",
+   "area": "Hatteras Island"
+  },
+  "urn:oid:2.49.0.1.840.0.bf33c9676eeff7f6c81087bd8a3588e0604a8557.003.1": {
+   "answer": "stops short",
+   "edge_km": 4.0,
+   "event": "Gale Warning",
+   "area": "S of Cape Hatteras NC to Ocracoke Inlet NC out to 20 NM; Waters from Cape Hatteras to Ocracoke Inlet NC from 20 to 60 NM"
+  }
+ },
+ "answer_rule": "covers: the place is inside the area; stops short: outside, the nearest edge within 15 km; lies to one side: farther. Computed from the recorded geometry; the HUM LEAD confirms it before scoring."
+}

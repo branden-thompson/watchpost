@@ -1,0 +1,425 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.81cea689c4a6222834ed7f79ed2a940a30c1972f.001.1",
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -83.4,
+       36.67
+      ],
+      [
+       -83.41,
+       36.72
+      ],
+      [
+       -83.25,
+       36.8
+      ],
+      [
+       -83.21,
+       36.73
+      ],
+      [
+       -83.29,
+       36.71
+      ],
+      [
+       -83.31,
+       36.71
+      ],
+      [
+       -83.35,
+       36.7
+      ],
+      [
+       -83.36,
+       36.69
+      ],
+      [
+       -83.39,
+       36.69
+      ],
+      [
+       -83.4,
+       36.68
+      ],
+      [
+       -83.4,
+       36.67
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.81cea689c4a6222834ed7f79ed2a940a30c1972f.001.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.81cea689c4a6222834ed7f79ed2a940a30c1972f.001.1",
+    "areaDesc": "Harlan, KY",
+    "geocode": {
+     "SAME": [
+      "021095"
+     ],
+     "UGC": [
+      "KYC095"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/county/KYC095"
+    ],
+    "references": [],
+    "sent": "2026-09-23T22:01:00-04:00",
+    "effective": "2026-09-23T22:01:00-04:00",
+    "onset": "2026-09-23T22:01:00-04:00",
+    "expires": "2026-09-24T01:00:00-04:00",
+    "ends": "2026-09-24T01:00:00-04:00",
+    "status": "Actual",
+    "messageType": "Alert",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Likely",
+    "urgency": "Immediate",
+    "event": "Flash Flood Warning",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Jackson KY",
+    "headline": "Flash Flood Warning issued September 23 at 10:01PM EDT until September 24 at 1:00AM EDT by NWS Jackson KY",
+    "description": "FFWJKL\n\nThe National Weather Service in Jackson has issued a\n\n* Flash Flood Warning for...\nSouth Central Harlan County in southeastern Kentucky...\n\n* Until 100 AM EDT.\n\n* At 1001 PM EDT, Doppler radar indicated thunderstorms producing\nheavy rain across the warned area. Between 1 and 3 inches of rain\nhave fallen. Additional rainfall amounts up to 1 inch are possible\nin the warned area. Flash flooding is ongoing or expected to begin\nshortly.\n\nHAZARD...Flash flooding caused by thunderstorms.\n\nSOURCE...Radar indicated.\n\nIMPACT...Flash flooding of small creeks and streams, urban areas,\nhighways, streets and underpasses as well as other poor\ndrainage and low-lying areas.\n\n* Some locations that will experience flash flooding include...\nPeepace Store, Martins Fork, Liggett, Hensley Store, Smith, Martins\nFork Lake, Three Point and Bobs Creek.",
+    "instruction": "Turn around, don't drown when encountering flooded roads. Most flood\ndeaths occur in vehicles.\n\nBe especially cautious at night when it is harder to recognize the\ndangers of flooding.\n\nPlease report observed flooding to local emergency services or law\nenforcement and request they pass this information to the National\nWeather Service when you can do so safely.",
+    "response": "Avoid",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "FFWJKL"
+     ],
+     "WMOidentifier": [
+      "WGUS53 KJKL 240201"
+     ],
+     "flashFloodDetection": [
+      "RADAR INDICATED"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.NEW.KJKL.FF.W.0081.260924T0201Z-260924T0500Z/"
+     ],
+     "eventEndingTime": [
+      "2026-09-24T01:00:00-04:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "FFW"
+     ],
+     "NationalWeatherService": [
+      "FFW"
+     ]
+    }
+   }
+  },
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.cd339b78eeb157829eeb9c142a3be9a600fb2f72.001.1",
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -83.41,
+       36.74
+      ],
+      [
+       -83.41,
+       36.79
+      ],
+      [
+       -83.39,
+       36.92
+      ],
+      [
+       -83.32,
+       36.94
+      ],
+      [
+       -83.27,
+       36.96
+      ],
+      [
+       -83.18,
+       36.89
+      ],
+      [
+       -83.19,
+       36.83
+      ],
+      [
+       -83.31,
+       36.76
+      ],
+      [
+       -83.41,
+       36.72
+      ],
+      [
+       -83.41,
+       36.74
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.cd339b78eeb157829eeb9c142a3be9a600fb2f72.001.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.cd339b78eeb157829eeb9c142a3be9a600fb2f72.001.1",
+    "areaDesc": "Harlan, KY",
+    "geocode": {
+     "SAME": [
+      "021095"
+     ],
+     "UGC": [
+      "KYC095"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/county/KYC095"
+    ],
+    "references": [
+     {
+      "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.a585cb26a98344396efc5567c8db9ba27aedbac3.001.1",
+      "identifier": "urn:oid:2.49.0.1.840.0.a585cb26a98344396efc5567c8db9ba27aedbac3.001.1",
+      "sender": "sender@nws.invalid",
+      "sent": "2026-09-23T21:25:00-04:00"
+     }
+    ],
+    "sent": "2026-09-23T21:53:00-04:00",
+    "effective": "2026-09-23T21:53:00-04:00",
+    "onset": "2026-09-23T21:53:00-04:00",
+    "expires": "2026-09-23T23:15:00-04:00",
+    "ends": "2026-09-23T23:15:00-04:00",
+    "status": "Actual",
+    "messageType": "Update",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Likely",
+    "urgency": "Immediate",
+    "event": "Flash Flood Warning",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Jackson KY",
+    "headline": "Flash Flood Warning issued September 23 at 9:53PM EDT until September 23 at 11:15PM EDT by NWS Jackson KY",
+    "description": "At 953 PM EDT, Doppler radar indicated thunderstorms producing heavy\nrain across the warned area. Between 0.5 and 2.5 inches of rain have\nfallen. Additional rainfall amounts up to 0.5 inches are possible in\nthe warned area. Flash flooding is ongoing or expected to begin\nshortly.\n\nHAZARD...Flash flooding caused by thunderstorms.\n\nSOURCE...Radar indicated.\n\nIMPACT...Flash flooding of small creeks and streams, urban areas,\nhighways, streets and underpasses as well as other poor\ndrainage and low-lying areas.\n\nSome locations that will experience flash flooding include...\nHarlan, Loyall, Evarts, Harlan Gas, Clovertown, Kitts, Golden Ash,\nTway, Sunshine, Baxter, Elcomb, Rosspoint, Grays Knob, Coxton,\nChevrolet, Teetersville, Lenarve, Ages, White Star and Mary Alice.",
+    "instruction": "Turn around, don't drown when encountering flooded roads. Most flood\ndeaths occur in vehicles.\n\nBe especially cautious at night when it is harder to recognize the\ndangers of flooding.\n\nPlease report observed flooding to local emergency services or law\nenforcement and request they pass this information to the National\nWeather Service when you can do so safely.",
+    "response": "Avoid",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "FFSJKL"
+     ],
+     "WMOidentifier": [
+      "WGUS73 KJKL 240153"
+     ],
+     "NWSheadline": [
+      "FLASH FLOOD WARNING REMAINS IN EFFECT UNTIL 1115 PM EDT THIS EVENING FOR WESTERN HARLAN COUNTY"
+     ],
+     "flashFloodDetection": [
+      "RADAR INDICATED"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.CON.KJKL.FF.W.0080.000000T0000Z-260924T0315Z/"
+     ],
+     "eventEndingTime": [
+      "2026-09-23T23:15:00-04:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "FFS"
+     ],
+     "NationalWeatherService": [
+      "FFW"
+     ]
+    }
+   }
+  },
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.b4b6be0328452fa63d28e17347133b3feb627366.001.1",
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -83.57,
+       36.94
+      ],
+      [
+       -83.58,
+       36.94
+      ],
+      [
+       -83.59,
+       36.96
+      ],
+      [
+       -83.53,
+       36.94
+      ],
+      [
+       -83.39,
+       36.94
+      ],
+      [
+       -83.4,
+       36.89
+      ],
+      [
+       -83.41,
+       36.79
+      ],
+      [
+       -83.54,
+       36.83
+      ],
+      [
+       -83.57,
+       36.88
+      ],
+      [
+       -83.57,
+       36.91
+      ],
+      [
+       -83.58,
+       36.92
+      ],
+      [
+       -83.57,
+       36.93
+      ],
+      [
+       -83.57,
+       36.94
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.b4b6be0328452fa63d28e17347133b3feb627366.001.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.b4b6be0328452fa63d28e17347133b3feb627366.001.1",
+    "areaDesc": "Bell, KY; Harlan, KY; Leslie, KY",
+    "geocode": {
+     "SAME": [
+      "021013",
+      "021095",
+      "021131"
+     ],
+     "UGC": [
+      "KYC013",
+      "KYC095",
+      "KYC131"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/county/KYC013",
+     "https://api.weather.gov/zones/county/KYC095",
+     "https://api.weather.gov/zones/county/KYC131"
+    ],
+    "references": [
+     {
+      "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.06ccfc878657b699f5043355761833155a8a3645.001.1",
+      "identifier": "urn:oid:2.49.0.1.840.0.06ccfc878657b699f5043355761833155a8a3645.001.1",
+      "sender": "sender@nws.invalid",
+      "sent": "2026-09-23T20:22:00-04:00"
+     },
+     {
+      "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.9156bc8dc7a9005ac3c7c503b261129df7b9f197.001.1",
+      "identifier": "urn:oid:2.49.0.1.840.0.9156bc8dc7a9005ac3c7c503b261129df7b9f197.001.1",
+      "sender": "sender@nws.invalid",
+      "sent": "2026-09-23T21:48:00-04:00"
+     }
+    ],
+    "sent": "2026-09-23T21:48:00-04:00",
+    "effective": "2026-09-23T21:48:00-04:00",
+    "onset": "2026-09-23T21:48:00-04:00",
+    "expires": "2026-09-23T23:15:00-04:00",
+    "ends": "2026-09-23T23:15:00-04:00",
+    "status": "Actual",
+    "messageType": "Update",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Likely",
+    "urgency": "Immediate",
+    "event": "Flash Flood Warning",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Jackson KY",
+    "headline": "Flash Flood Warning issued September 23 at 9:48PM EDT until September 23 at 11:15PM EDT by NWS Jackson KY",
+    "description": "FFWJKL\n\nThe National Weather Service in Jackson has extended the\n\n* Flash Flood Warning for...\nNortheastern Bell County in southeastern Kentucky...\nWest Central Harlan County in southeastern Kentucky...\nSouthwestern Leslie County in southeastern Kentucky...\n\n* Until 1115 PM EDT.\n\n* At 948 PM EDT, Doppler radar indicated thunderstorms producing\nheavy rain across the warned area. Between 0.5 and 2.5 inches of\nrain have fallen. Flooding impacts will continue, but no additional\nrainfall is imminent. Flash flooding is ongoing or expected to\nbegin shortly.\n\nHAZARD...Flash flooding caused by thunderstorms.\n\nSOURCE...Radar indicated.\n\nIMPACT...Flash flooding of small creeks and streams, urban areas,\nhighways, streets and underpasses as well as other poor\ndrainage and low-lying areas.\n\n* Some locations that will experience flash flooding include...\nWallins Creek, Saylor, Tacky Town, Spruce Pine, Coldiron, Sandy\nFork, Stony Fork Junction and Beverly.",
+    "instruction": "Turn around, don't drown when encountering flooded roads. Most flood\ndeaths occur in vehicles.\n\nBe especially cautious at night when it is harder to recognize the\ndangers of flooding.\n\nPlease report observed flooding to local emergency services or law\nenforcement and request they pass this information to the National\nWeather Service when you can do so safely.",
+    "response": "Avoid",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "FFWJKL"
+     ],
+     "WMOidentifier": [
+      "WGUS53 KJKL 240148"
+     ],
+     "flashFloodDetection": [
+      "RADAR INDICATED"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.EXT.KJKL.FF.W.0079.000000T0000Z-260924T0315Z/"
+     ],
+     "eventEndingTime": [
+      "2026-09-23T23:15:00-04:00"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "FFW"
+     ],
+     "NationalWeatherService": [
+      "FFW"
+     ]
+    }
+   }
+  }
+ ]
+}

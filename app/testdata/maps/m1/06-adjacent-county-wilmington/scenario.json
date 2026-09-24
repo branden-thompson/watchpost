@@ -1,0 +1,23 @@
+{
+ "name": "06-adjacent-county-wilmington",
+ "place": {
+  "name": "Wilmington, DE",
+  "lat": 39.7391,
+  "lon": -75.5398
+ },
+ "failure": null,
+ "withheld_zones": [],
+ "sizes": [
+  "69x12",
+  "149x38"
+ ],
+ "answer_key": {
+  "urn:oid:2.49.0.1.840.0.b3808cf3e8e213b18f96ef36a5b0c48660898115.004.1": {
+   "answer": "lies to one side",
+   "edge_km": 41.6,
+   "event": "Coastal Flood Warning",
+   "area": "Kent; Inland Sussex"
+  }
+ },
+ "answer_rule": "covers: the place is inside the area; stops short: outside, the nearest edge within 15 km; lies to one side: farther. Computed from the recorded geometry; the HUM LEAD confirms it before scoring."
+}

@@ -1,0 +1,157 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.9a0ced30397152a87983a212c3eb87437d305097.007.1",
+   "type": "Feature",
+   "geometry": null,
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.9a0ced30397152a87983a212c3eb87437d305097.007.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.9a0ced30397152a87983a212c3eb87437d305097.007.1",
+    "areaDesc": "Big Island Interior",
+    "geocode": {
+     "SAME": [
+      "015001"
+     ],
+     "UGC": [
+      "HIZ027"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/forecast/HIZ027"
+    ],
+    "references": [],
+    "sent": "2026-09-23T11:01:00-10:00",
+    "effective": "2026-09-23T11:01:00-10:00",
+    "onset": "2026-09-23T11:01:00-10:00",
+    "expires": "2026-09-23T19:15:00-10:00",
+    "ends": null,
+    "status": "Actual",
+    "messageType": "Alert",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Possible",
+    "urgency": "Future",
+    "event": "Hurricane Watch",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Honolulu HI",
+    "headline": "Hurricane Watch issued September 23 at 11:01AM HST by NWS Honolulu HI",
+    "description": "A Hurricane Watch means hurricane-force winds are possible somewhere\nwithin this area within the next 48 hours\n\n* LOCATIONS AFFECTED\n- Bradshaw Army Airfield\n\n* WIND\n- LATEST LOCAL FORECAST: Equivalent Tropical Storm force wind\n- Peak Wind Forecast: 30-40 mph with gusts to 60 mph\n- Window for Tropical Storm force winds: Friday evening until\nSaturday afternoon\n\n- THREAT TO LIFE AND PROPERTY THAT INCLUDES TYPICAL FORECAST\nUNCERTAINTY IN TRACK, SIZE AND INTENSITY: Potential for wind 74\nto 110 mph\n- PLAN: Plan for life-threatening wind of equivalent CAT 1 or\n2 hurricane force.\n- PREPARE: Efforts to protect life and property should now be\nrigorously underway. Prepare for considerable wind damage.\n- ACT: Act now to complete preparations before the wind\nbecomes hazardous.\n\n- POTENTIAL IMPACTS: Extensive\n- Considerable roof damage to sturdy buildings, with some\nhaving window, door, and garage door failures leading to\nstructural damage. Mobile homes severely damaged, with some\ndestroyed. Damage accentuated by airborne projectiles.\nLocations may be uninhabitable for weeks.\n- Many large trees snapped or uprooted along with fences and\nroadway signs blown over.\n- Some roads impassable from large debris, and more within\nurban or heavily wooded places. Several bridges, causeways,\nand access routes impassable.\n- Large areas with power and communications outages.\n\n* FLOODING RAIN\n- LATEST LOCAL FORECAST: Flood Watch is in effect\n- Peak Rainfall Amounts: Additional 12-18 inches, with\nlocally higher amounts\n\n- THREAT TO LIFE AND PROPERTY THAT INCLUDES TYPICAL FORECAST\nUNCERTAINTY IN TRACK, SIZE AND INTENSITY: Potential for extreme\nflooding rain\n- PLAN: Emergency plans should include the potential for\nextreme flooding from heavy rain. Evacuations and rescues\nare likely.\n- PREPARE: Urgently consider protective actions from extreme\nand widespread rainfall flooding.\n- ACT: Heed any flood watches and warnings. Failure to take\naction will likely result in serious injury or loss of life.\n\n- POTENTIAL IMPACTS: Devastating to Catastrophic\n- Extreme rainfall flooding may prompt numerous evacuations\nand rescues.\n- Rivers and tributaries may overwhelmingly overflow their\nbanks in many places with deep moving water. Small streams,\ncreeks, canals, arroyos, and ditches may become raging\nrivers. In mountain areas, deadly runoff may rage down\nvalleys while increasing susceptibility to rockslides and\nmudslides. Flood control systems and barriers may become\nstressed.\n- Flood waters can enter numerous structures within multiple\ncommunities, some structures becoming uninhabitable or\nwashed away. Numerous places where flood waters may cover\nescape routes. Streets and parking lots become rivers of\nraging water with underpasses submerged. Driving conditions\nbecome very dangerous. Numerous road and bridge closures\nwith some weakened or washed out.\n\n* TORNADO\n- LATEST LOCAL FORECAST:\n- Situation is somewhat favorable for tornadoes\n\n- THREAT TO LIFE AND PROPERTY THAT INCLUDES TYPICAL FORECAST\nUNCERTAINTY IN TRACK, SIZE AND INTENSITY: Potential for a few\ntornadoes\n- PLAN: Emergency plans should include the potential for a\nfew tornadoes.\n- PREPARE: If your shelter is particularly vulnerable to\ntornadoes, prepare to relocate to safe shelter before\nhazardous weather arrives.\n- ACT: If a tornado warning is issued, be ready to shelter\nquickly.\n\n- POTENTIAL IMPACTS: Limited\n- The occurrence of isolated tornadoes can hinder the\nexecution of emergency plans during tropical events.\n- A few places may experience tornado damage, along with\npower and communications disruptions.\n- Locations could realize roofs peeled off buildings,\nchimneys toppled, mobile homes pushed off foundations or\noverturned, large tree tops and branches snapped off,\nshallow-rooted trees knocked over, moving vehicles blown\noff roads, and small boats pulled from moorings.\n\n* FOR MORE INFORMATION:\n- https://www.weather.gov/hfo",
+    "instruction": null,
+    "response": "Prepare",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "TCVHFO"
+     ],
+     "WMOidentifier": [
+      "WTHW80 PHFO 232101"
+     ],
+     "NWSheadline": [
+      "HURRICANE WATCH IN EFFECT"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.NEW.PHFO.HU.A.2015.260923T2101Z-000000T0000Z/"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "HUA"
+     ],
+     "NationalWeatherService": [
+      "HUA"
+     ]
+    }
+   }
+  },
+  {
+   "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.a33a4b1093ba762e32db98db42144a7bab008570.003.1",
+   "type": "Feature",
+   "geometry": null,
+   "properties": {
+    "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.a33a4b1093ba762e32db98db42144a7bab008570.003.1",
+    "@type": "wx:Alert",
+    "id": "urn:oid:2.49.0.1.840.0.a33a4b1093ba762e32db98db42144a7bab008570.003.1",
+    "areaDesc": "Big Island Windward Waters",
+    "geocode": {
+     "SAME": [
+      "059122"
+     ],
+     "UGC": [
+      "PHZ122"
+     ]
+    },
+    "affectedZones": [
+     "https://api.weather.gov/zones/forecast/PHZ122"
+    ],
+    "references": [],
+    "sent": "2026-09-23T11:03:00-10:00",
+    "effective": "2026-09-23T11:03:00-10:00",
+    "onset": "2026-09-23T11:03:00-10:00",
+    "expires": "2026-09-24T00:15:00-10:00",
+    "ends": null,
+    "status": "Actual",
+    "messageType": "Alert",
+    "category": "Met",
+    "severity": "Severe",
+    "certainty": "Possible",
+    "urgency": "Future",
+    "event": "Hurricane Watch",
+    "sender": "sender@nws.invalid",
+    "senderName": "NWS Honolulu HI",
+    "headline": "Hurricane Watch issued September 23 at 11:03AM HST by NWS Honolulu HI",
+    "description": "* WHAT...East winds 20 to 35 kt with gusts up to 45 kt and seas\n8 to 13 feet.\n\n* WHERE...Big Island Windward Waters.\n\n* WHEN...Starting 6 AM HST Friday.\n\n* IMPACTS...Extremely strong winds will cause hazardous seas which\nwill likely capsize or damage vessels and severely reduce\nvisibility.",
+    "instruction": "Mariners should remain in port, alter course, and/or secure the\nvessel for extreme conditions before conditions deteriorate\nfurther.",
+    "response": "Prepare",
+    "note": null,
+    "parameters": {
+     "AWIPSidentifier": [
+      "MWWHFO"
+     ],
+     "WMOidentifier": [
+      "WHHW70 PHFO 232103"
+     ],
+     "NWSheadline": [
+      "HURRICANE WATCH IN EFFECT"
+     ],
+     "BLOCKCHANNEL": [
+      "EAS",
+      "NWEM",
+      "CMAS"
+     ],
+     "EAS-ORG": [
+      "WXR"
+     ],
+     "VTEC": [
+      "/O.NEW.PHFO.HU.A.2015.260923T2103Z-000000T0000Z/"
+     ]
+    },
+    "scope": "Public",
+    "code": "IPAWSv1.0",
+    "language": "en-US",
+    "web": "http://www.weather.gov",
+    "eventCode": {
+     "SAME": [
+      "HUA"
+     ],
+     "NationalWeatherService": [
+      "HUA"
+     ]
+    }
+   }
+  }
+ ]
+}

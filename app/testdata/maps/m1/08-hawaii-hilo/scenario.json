@@ -1,0 +1,29 @@
+{
+ "name": "08-hawaii-hilo",
+ "place": {
+  "name": "Hilo, HI",
+  "lat": 19.7074,
+  "lon": -155.0885
+ },
+ "failure": null,
+ "withheld_zones": [],
+ "sizes": [
+  "69x12",
+  "149x38"
+ ],
+ "answer_key": {
+  "urn:oid:2.49.0.1.840.0.9a0ced30397152a87983a212c3eb87437d305097.007.1": {
+   "answer": "lies to one side",
+   "edge_km": 22.2,
+   "event": "Hurricane Watch",
+   "area": "Big Island Interior"
+  },
+  "urn:oid:2.49.0.1.840.0.a33a4b1093ba762e32db98db42144a7bab008570.003.1": {
+   "answer": "stops short",
+   "edge_km": 2.0,
+   "event": "Hurricane Watch",
+   "area": "Big Island Windward Waters"
+  }
+ },
+ "answer_rule": "covers: the place is inside the area; stops short: outside, the nearest edge within 15 km; lies to one side: farther. Computed from the recorded geometry; the HUM LEAD confirms it before scoring."
+}

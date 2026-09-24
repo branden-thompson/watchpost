@@ -1,0 +1,23 @@
+{
+ "name": "01-covers-oak-ridge",
+ "place": {
+  "name": "Oak Ridge, TN",
+  "lat": 36.0104,
+  "lon": -84.2696
+ },
+ "failure": null,
+ "withheld_zones": [],
+ "sizes": [
+  "69x12",
+  "149x38"
+ ],
+ "answer_key": {
+  "urn:oid:2.49.0.1.840.0.5f8924bd23db466a857bfb521399f10d809413e9.001.1": {
+   "answer": "covers",
+   "edge_km": 3.4,
+   "event": "Flash Flood Warning",
+   "area": "Anderson, TN; Knox, TN"
+  }
+ },
+ "answer_rule": "covers: the place is inside the area; stops short: outside, the nearest edge within 15 km; lies to one side: farther. Computed from the recorded geometry; the HUM LEAD confirms it before scoring."
+}

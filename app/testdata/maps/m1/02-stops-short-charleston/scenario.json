@@ -1,0 +1,23 @@
+{
+ "name": "02-stops-short-charleston",
+ "place": {
+  "name": "Charleston, WV",
+  "lat": 38.3498,
+  "lon": -81.6326
+ },
+ "failure": null,
+ "withheld_zones": [],
+ "sizes": [
+  "69x12",
+  "149x38"
+ ],
+ "answer_key": {
+  "urn:oid:2.49.0.1.840.0.68102c240774d89eb19e7f34f4aaa36cc0aaa02a.001.1": {
+   "answer": "stops short",
+   "edge_km": 9.9,
+   "event": "Flash Flood Warning",
+   "area": "Kanawha, WV"
+  }
+ },
+ "answer_rule": "covers: the place is inside the area; stops short: outside, the nearest edge within 15 km; lies to one side: farther. Computed from the recorded geometry; the HUM LEAD confirms it before scoring."
+}
