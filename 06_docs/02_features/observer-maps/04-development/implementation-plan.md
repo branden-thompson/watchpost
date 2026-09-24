@@ -64,7 +64,7 @@ ruling for every change to it).
 | `platform/httpx/` (existing) | A per-request body cap enforced as it reads; purge by host | The HTTP client every source uses |
 | `platform/config/` (existing) | The map Settings fields and their migration | Settings persistence |
 | `go.mod`, `THIRD_PARTY_LICENSES.md` | go-tuiMaps v0.1.0, then v0.2.0 | The dependency and its licence |
-| `scripts/lint-plan-code.sh` (new), `Makefile` | FR-8.1's gate | Beside the other `lint-*` gates |
+| `tools/plancode/` (new), `Makefile` | FR-8.1's gate | A parser, like `tools/authoring`, beside the other `lint-*` gates |
 | `<package>/testdata/maps/` | Recorded alert, zone, M1-scenario and radar responses | Beside each consumer, as `domains/alerts/testdata` does |
 
 ## Work packages
@@ -92,9 +92,9 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
-| W0.1 | Require go-tuiMaps at the `v0.1.0` tag, with no local replace; its licence recorded | `go.mod`, `go.sum`, `THIRD_PARTY_LICENSES.md` | — | The licence test fails on the new module until it is listed; a test reads `go.mod` and refuses a `replace` |
+| W0.1 | The module rules: every required module's licence is listed at its version, and `go.mod` has no `replace`. **go-tuiMaps `v0.1.0` is required by the first task that imports it** (W1.4, the description renderer), because `go mod tidy` drops a requirement nothing imports — a plan error found in BUILD | `cmd/watchpost/modules_test.go`, later `go.mod`, `go.sum`, `THIRD_PARTY_LICENSES.md` | — | Both tests fail on a planted unlisted module and a planted `replace` (mutation-checked) |
 | W0.2 | The P1-a fixtures committed before anything uses them: alert responses, zone shapes (specimen 31's West Texas Flood Watch included), the M1 scenario set (FR-8.6) | `app/testdata/maps/`, `domains/weather/nws/zones/testdata/` | Recorded responses and a manifest naming each | A test lists the manifest and fails on a missing file; no test in the map packages opens a socket |
-| W0.3 | A gate refuses implementation code in plan documents (FR-8.1, D-13, D-14) | `scripts/lint-plan-code.sh`, `Makefile` (`lint-plan-code` in `verify-gates` and `verify-docs`) | Flags a fenced Go block with a function body or statements in any `04-development/*plan*.md`; signatures, types and constants pass | Its self-test: a positive control (a body) is refused, a negative control (a signature) passes |
+| W0.3 | A gate refuses implementation code in plan documents (FR-8.1, D-13, D-14) | `tools/plancode/`, `Makefile` (`lint-plan-code` in `verify-gates` and `verify-docs`) | The Go parser judges each fenced Go block in every design and plan document (`03-architecture-design`, `04-development`): a function body, a function literal or a statement is refused; signatures, types and constants pass. Features shipped before D-13 are exempt by name, with their reasons | Its self-test: a positive control (a body) is refused, a negative control (a signature) passes |
 
 ## W1 — The window, its words, its Settings (FR-1, FR-7.4, FR-9)
 
@@ -268,3 +268,4 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 - **FR-3.9's map retention is a byte cap plus a directory delete until W9.4** (FR-3.10 records it).
 - **The description is text only in 0.18.0** (D-52); speaking it is F-181's voice pass.
 - **Pan and zoom came into 0.18.0** (D-49), which D-33 had put in phase 2.
+- **Found in BUILD:** go-tuiMaps is required by the first task that imports it, not by W0.1 (`go mod tidy` drops an unused requirement); W0.3 is a parser tool, not a shell script.

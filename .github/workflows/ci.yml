@@ -55,6 +55,7 @@ jobs:
       - run: make race
       - run: make lint-imports
       - run: make lint-watermark
+      - run: make lint-plan-code
       - run: make lint-authoring
       # No home directory, harness path, internal tree or email in a PUBLIC tree.
       - run: make lint-identity

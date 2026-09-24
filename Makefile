@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms vet-tags test-tags lint-identity install-test
+.PHONY: lint-plan-code quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget quality-bench p10 hygiene test-platforms vet-tags test-tags lint-identity install-test
 
 BINARY := watchpost
 DIST   := dist
@@ -111,6 +111,14 @@ lint-authoring:
 
 lint-watermark:
 	@./scripts/lint-watermark.sh
+
+# NO IMPLEMENTATION CODE IN A PLAN (observer-maps D-13, D-14, FR-8.1). A plan
+# names signatures, shapes and tests; a function body written into one is
+# neither compiled nor tested and quietly becomes the design. The parser decides
+# "has a body", and the self-test proves it can refuse one.
+lint-plan-code:
+	@go run ./tools/plancode -self-test
+	@go run ./tools/plancode
 
 # THE PUBLISHED TREE NAMES NO PERSON AND NO MACHINE. A home directory, an
 # agent-harness scratchpad path, an internal project tree or an email address
@@ -296,7 +304,7 @@ cache-clean:
 verify:
 	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
 
-verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-authoring treelock-selftest lint-identity gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
+verify-gates: fmt vet vet-tags test-tags tidy vuln race lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # THE DOCS LANE (go-tuiMaps v0.2.0 D-15; watchpost 0.18.0 D-38). A change that
@@ -311,7 +319,7 @@ verify-docs:
 verify-docs-gates:
 	@go run ./tools/docslane
 	@go test -count=1 ./...
-	@$(MAKE) --no-print-directory lint-authoring lint-watermark
+	@$(MAKE) --no-print-directory lint-authoring lint-watermark lint-plan-code
 	@echo "verify-docs: DOCS LANE GREEN - every other gate NOT RUN; a change with any file that is not Markdown needs make verify"
 
 # quality is the PHASE-EXIT set: gates a release runs at BUILD and REVIEW exit,
