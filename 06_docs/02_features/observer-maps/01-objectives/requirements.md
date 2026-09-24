@@ -135,6 +135,7 @@ that enforces it; a requirement without one is marked **NO INSTRUMENT YET** so t
 | FR-9.4 *(P1)* | The listener is **told, in the app**, that opening a map sends the rectangle they are viewing to a third party, and which one — the brief's egress table is internal, and FR-9.2 already commits to telling them about network cost; this is the same duty about exposure | R2 Business 3; D-31 | Text test: the disclosure appears on first map open and in Settings beside the maps row, naming each source the session will contact |
 | FR-9.3 *(P1)* | A new layer, source or option plugs in without editing the others | P-3, R-9.4 | Architectural test in PLAN (e.g. a registry whose members are discovered, per "Discover Consumers, Don't Enumerate Them") |
 | FR-9.5 *(P1)* | **The radar step is a Setting beside the map source**: 5 minutes by default for every source; the listener may opt into higher fidelity (a source's native cadence) or back off to a longer step; every choice passes FR-9.2's cost warning, and two hours of loop are kept (FR-3.9) | D-50 | Settings round trip; frames fetched match the step |
+| FR-9.6 *(P1)* | **The loop's playback speed is a Setting**: 200 ms to 1000 ms a frame, 500 ms by default (go-tuiMaps D-76). The choices below 400 ms lift the library's flash ceiling, and the row says so beside them; reduce motion still forces playback off | D-59 | Settings round trip; the step reaches the map; the fast choices carry the ceiling's note |
 
 # Non-functional requirements
 
