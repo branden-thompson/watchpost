@@ -47,6 +47,11 @@ func CheckIn(t *testing.T, root, what string, owners map[string]string, match fu
 	t.Helper()
 	var sites []string
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err == nil && info.IsDir() && info.Name() == ".git" {
+			// Not source, and git rewrites it during a walk: a lock file removed
+			// between the listing and the lstat would fail the gate.
+			return filepath.SkipDir
+		}
 		if err != nil || info.IsDir() || !strings.HasSuffix(path, ".go") {
 			return err
 		}
