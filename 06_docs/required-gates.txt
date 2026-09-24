@@ -18,6 +18,7 @@ test-tags
 tidy
 vuln
 race
+test-say
 lint
 lint-imports
 lint-watermark

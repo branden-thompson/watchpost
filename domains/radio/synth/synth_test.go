@@ -171,6 +171,13 @@ func TestSayVoiceOnDarwinNarratesHostileTextSafely(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("macOS built-in voice")
 	}
+	// IT RUNS ALONE, in `make test-say` (F-176, observer-maps D-58). Inside the
+	// parallel suite the real `say` process competes with every other package
+	// for the box and was killed at its bound while passing alone in seconds.
+	// Alone, it must pass with the listener's own watchpost open and speaking.
+	if os.Getenv("WATCHPOST_SAY_LEG") != "1" {
+		t.Skip("runs alone in `make test-say`, not in the parallel suite (F-176)")
+	}
 	if _, err := os.Stat("/usr/bin/say"); err != nil {
 		t.Skip("no say binary")
 	}

@@ -53,6 +53,7 @@ jobs:
       - run: make tidy
       - run: make vuln
       - run: make race
+      - run: make test-say # the speech safety test, alone (F-176)
       - run: make lint-imports
       - run: make lint-watermark
       - run: make lint-plan-code
