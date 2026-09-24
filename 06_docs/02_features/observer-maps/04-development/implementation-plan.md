@@ -189,6 +189,7 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 | W8.2 | Radar fixtures committed before anything uses them (FR-8.6, radar half) | `domains/radar/testdata/` | Recorded time lists and frames: off-grid, expired, empty, the 2011 default | The manifest test from W0.2 |
 | W8.3 | IEM and MRMS as registered sources; the source is a Setting (FR-5.1). MRMS relies on the library's MRMS table (**WP-L6**). **A source is asked for a radar region, never a view** (D-47) | `domains/radar/iem.go`, `domains/radar/mrms.go`, `app/maps.go`, `modes/tty/setup_rows.go` | `type Source interface{ Name() string; Times(ctx) ([]time.Time, error); Frame(ctx, t time.Time, r Region) ([]byte, error) }` | Registry test; Settings round trip; `make wires`; a test that no request carries the view's box |
 | W8.3a | **The radar region table** (D-47): fixed state-regional boxes, each sized so a county or state-regional view sits inside one, fetched at a fixed size within the library's per-image cap; a view crossing an edge takes the neighbour too | `domains/radar/regions.go` | `type Region struct{ Name string; W, S, E, N float64; Cols, Rows int }`; `func RegionsFor(view Box) []Region` | Every station location's default view lies inside one or two regions; each region's image is within the cap; a selection change inside a region fetches nothing new |
+| W8.3b | **The radar step is a Setting** beside the source (FR-9.5, D-50): 5 minutes by default for every source, MRMS included; the listener may opt into a source's native cadence or back off to a longer step; two hours kept (24 frames at 5 minutes); the image budget set to fit the choice (6 MiB by default, go-tuiMaps D-68) | `platform/config/`, `modes/tty/setup_rows.go`, `app/maps.go` | The choices and their values set in BUILD | Settings round trip; the frames fetched match the step; a costlier choice raises FR-9.2's warning; the budget handed to the library covers the chosen loop |
 | W8.4 | A frame is valid only if its time is advertised and its image isn't empty (FR-5.3) | `domains/radar/valid.go` | — | The W8.2 responses |
 | W8.5 | **The body cap inside the HTTP client** (FR-5.7): refused as it reads, **never cached**; the decoded dimensions capped from the PNG header before anything decodes | `platform/httpx/`, `domains/radar/valid.go` | A per-request option `httpx.BodyCap(n int64)` checked inside the client's read, before its cache write; a header check against the library's per-image cap | After a 2 MiB response the cache is **empty** and the caller has an error; a small PNG declaring huge dimensions is refused undecoded |
 | W8.6 | One overlay per source, absolute times (FR-5.2) → `Image.Frames` (**WP-L2**) | `app/mapfeed.go` | — | A loop across a 5-minute rollover has no duplicate or skipped frame |
@@ -224,7 +225,7 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 
 | Requirement | Task | | Requirement | Task |
 |---|---|---|---|---|
-| FR-1.1 | W1.1 | | FR-5.1 | W8.3 |
+| FR-1.1 | W1.1 | | FR-5.1, FR-9.5 | W8.3, W8.3b |
 | FR-1.2 | W1.2 | | FR-5.2 | W8.6 |
 | FR-1.3 | W1.3 | | FR-5.3 | W8.4 |
 | FR-1.4 | W1.5 | | FR-5.4, M3 | W8.8 |
