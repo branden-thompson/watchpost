@@ -4,7 +4,7 @@ date: 2026-09-23
 phase: PLAN
 sev: SEV-0
 authority: HUM LEAD
-status: "RULED — D-41: A; its guards revised by D-45 (render on every event; a freshness property replaces the memo key and guard 4, because go-tuiMaps v0.1.0's `Changed()` moves only inside `Render`). The redraw rule below is superseded where D-45 says so. Signatures and shape only (D-13)."
+status: "BUILT (batches 1–5, the tick owed) — RULED — D-41: A; its guards revised by D-45 (render on every event; a freshness property replaces the memo key and guard 4, because go-tuiMaps v0.1.0's `Changed()` moves only inside `Render`). The redraw rule below is superseded where D-45 says so. Signatures and shape only (D-13)."
 ---
 
 # Approach 1 — where the map is drawn
@@ -85,24 +85,35 @@ wrong. A missing field in `mapKey` would show an old frame, the same class of de
 invisible memo key, now in a new place. The cure is that the guard must include `mapKey`, and that is a
 test PLAN writes first.
 
-## PLAN 0.18.0 — how it fits (ruled D-41, revised D-45, not yet built)
+## AS BUILT 0.18.0 — how it fits (D-41, D-45; BUILD batches 1–5)
+
+Drawn from the code as of batch 5 (`modes/tty/map_pane.go`, `app/maps.go`, `app/mapfeed.go`).
+Every library call but `Work` is made in `Update`; `View` prints the stored lines. **Still
+owed:** the `NextCall` tick (`mapTickMsg`), W2.2's goroutine record, and W2.6's join on close.
 
 ```mermaid
 sequenceDiagram
-  participant P as Publisher (timer goroutine)
+  participant K as Listener (g, arrows, [ ])
   participant BT as Bubble Tea loop (Update)
+  participant A as app (maps.go, mapfeed.go)
+  participant F as tea.Cmd (feed)
   participant W as tea.Cmd (Work)
   participant L as go-tuiMaps Map
   participant V as View (pure)
-  P->>BT: SnapshotMsg (p.Send)
-  BT->>L: Set / Recentre (one owner)
-  BT->>W: run Work
+  K->>BT: g
+  BT->>A: NewMap(size) on the first g (seeds zone outlines once, FR-3.2)
+  A->>L: New, SetFetchOptions, CacheRoot, SetCacheMaxAge, Source
+  BT->>L: SetBound(region) · Recentre(place) · Render(size, now)
+  BT->>F: MapFeed(snap, place)
+  F->>A: resolveAlertAreas (zone store) → one overlay per alert, notes
+  F-->>BT: mapFeedMsg{gen} (an older gen is dropped)
+  BT->>L: Set each overlay · Remove the gone · Render
+  BT->>W: Work while Pending > 0
   W->>L: Work(ctx)
   W-->>BT: mapWorkedMsg{did}
-  BT->>L: Render(size, now) on every event (D-45)
-  BT->>BT: store lines + the frame's counters (pointer slot)
-  BT->>BT: tea.Tick at NextCall → mapTickMsg
-  V->>V: print stored lines (no library call)
+  BT->>L: Render on every event (key, size, data, landing)
+  BT->>BT: store lines, counters, draw generation (the memo keys on it)
+  V->>V: print stored lines + notes + status line (no library call)
 ```
 
 ## Cross-reference with go-tuiMaps v0.2.0

@@ -18,6 +18,7 @@ import (
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -55,15 +56,18 @@ type mapPane struct {
 	lines   []string
 	changed uint64
 	ticks   uint64
-	region  geo.Region     // the region the map is held inside (FR-2.1)
-	outside string         // the place that is in no region, when it is not (FR-2.5)
-	status  tuimaps.Status // the last frame's: whole, or still sharpening
-	pending bool           // work was waiting when it was drawn
-	offline bool           // a tile failed since the picture was last whole
-	gen     uint64         // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed  string         // why the map could not be built or drawn, said in the window
-	calls   *[]string      // tests only: the library calls made, by name, in order
-	views   *[]mapView     // tests only: every view drawn, for M2's instrument
+	region  geo.Region      // the region the map is held inside (FR-2.1)
+	outside string          // the place that is in no region, when it is not (FR-2.5)
+	status  tuimaps.Status  // the last frame's: whole, or still sharpening
+	pending bool            // work was waiting when it was drawn
+	offline bool            // a tile failed since the picture was last whole
+	gen     uint64          // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed  string          // why the map could not be built or drawn, said in the window
+	calls   *[]string       // tests only: the library calls made, by name, in order
+	views   *[]mapView      // tests only: every view drawn, for M2's instrument
+	shown   map[string]bool // the overlays the feed set, so a gone alert is taken off
+	notes   []string        // the feed's notes, printed under the map
+	feedGen uint64          // the feed last asked for; an older answer is dropped
 }
 
 // mapView is one drawn frame's view: where, how close, and how big.
@@ -71,6 +75,19 @@ type mapView struct {
 	centre tuimaps.LonLat
 	zoom   float64
 	size   tuimaps.Size
+}
+
+// MapFeed is what the map draws from the station's data (0.18.0 W5): an
+// overlay per alert, and the notes the window prints under the map.
+type MapFeed struct {
+	Overlays []tuimaps.Overlay
+	Notes    []string
+}
+
+// mapFeedMsg is the feed's answer, to the request it was asked in.
+type mapFeedMsg struct {
+	gen  uint64
+	feed MapFeed
 }
 
 // mapWorkedMsg is one Work command's outcome.
@@ -110,8 +127,8 @@ func (d Dashboard) toggleMap() Dashboard {
 		d.mapPane.m, d.mapPane.failed = m, ""
 		d.mapPane.call("Zoom", func() { _ = m.Zoom(mapDefaultZoom) })
 	}
-	d = d.followSelection().renderMap()
-	return d.withCmd(d.mapWorkCmd())
+	d = d.followSelection().requestFeed().renderMap()
+	return d.withCmd(tea.Batch(d.mapWorkCmd(), d.mapFeedCmd()))
 }
 
 // boundMap holds the map inside its region (W4, W9.1: the library's bound
@@ -148,7 +165,8 @@ func mercatorY(lat float64) float64 {
 // mapBodySize is the map's size in cells: the window's body, which the
 // window's frame and wrapping leave as they are.
 func (d Dashboard) mapBodySize() tuimaps.Size {
-	return tuimaps.Size{Cols: max(d.modalWidth()-8, 1), Rows: max(d.modalMax()-1, 1)} // three clear cells inside each border, as every window's body has; the last row is the status line
+	cols := max(d.modalWidth()-8, 1)                                                     // three clear cells inside each border, as every window's body has
+	return tuimaps.Size{Cols: cols, Rows: max(d.modalMax()-1-len(d.noteLines(cols)), 1)} // under it the notes, then the status line
 }
 
 // renderMap draws the map into the pane. It is called from Update only.
@@ -245,7 +263,20 @@ func (d Dashboard) mapBodyLines() []string {
 	case d.cfg.ASCII:
 		return []string{asciiMapText}
 	}
-	return append(append([]string(nil), d.mapPane.lines...), " "+d.mapStatusLine())
+	out := append([]string(nil), d.mapPane.lines...)
+	for _, l := range d.noteLines(max(d.modalWidth()-8, 1)) {
+		out = append(out, " "+l)
+	}
+	return append(out, " "+d.mapStatusLine())
+}
+
+// noteLines are the feed's notes, wrapped to the map's width.
+func (d Dashboard) noteLines(width int) []string {
+	var out []string
+	for _, n := range d.mapPane.notes {
+		out = append(out, render.WrapText(n, width)...)
+	}
+	return out
 }
 
 // mapStatusLine says what the picture is while it is not whole.
@@ -338,12 +369,12 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	case actMapZoomOut:
 		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(-1) })
 	case actMapPrev:
-		d = d.handleNav("nav-up").followSelection()
+		d = d.handleNav("nav-up").followSelection().requestFeed() // the notes speak of the place
 	case actMapNext:
-		d = d.handleNav("nav-down").followSelection()
+		d = d.handleNav("nav-down").followSelection().requestFeed()
 	}
 	d = d.renderMap()
-	return d, d.mapWorkCmd(), true
+	return d, tea.Batch(d.mapWorkCmd(), d.mapFeedCmd()), true
 }
 
 // followSelection puts the map on the selected location (FR-1.2), held
@@ -363,4 +394,54 @@ func (d Dashboard) followSelection() Dashboard {
 	d = d.boundMap()
 	d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}) })
 	return d
+}
+
+// requestFeed asks for the map's alerts again: on opening, on new data, and
+// when the place changes. Only the newest request's answer is drawn.
+func (d Dashboard) requestFeed() Dashboard {
+	d.mapPane.feedGen++
+	return d
+}
+
+// mapFeedCmd asks the app for the alerts the map draws, off the UI goroutine
+// (the zones they name may be fetched).
+func (d Dashboard) mapFeedCmd() tea.Cmd {
+	feed, loc := d.cfg.MapFeed, d.selectedLocation()
+	if feed == nil || d.mapPane.m == nil || d.modal != modalMap || loc == nil {
+		return nil
+	}
+	gen, snap, place := d.mapPane.feedGen, d.snap, *loc
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), mapWorkLimit)
+		defer cancel()
+		return mapFeedMsg{gen: gen, feed: feed(ctx, snap, &place)}
+	}
+}
+
+// applyMapFeed sets the feed's overlays, takes off the ones it no longer
+// has, keeps its notes, and draws.
+func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
+	m := d.mapPane.m
+	if m == nil || v.gen != d.mapPane.feedGen {
+		return d, nil // an older request's answer: a newer one is on its way
+	}
+	shown := map[string]bool{}
+	notes := append([]string(nil), v.feed.Notes...)
+	for _, o := range v.feed.Overlays {
+		var err error
+		d.mapPane.call("Set", func() { _, err = m.Set(o) })
+		if err != nil {
+			notes = append(notes, "An alert could not be drawn: "+err.Error())
+			continue
+		}
+		shown[o.ID] = true
+	}
+	for id := range d.mapPane.shown {
+		if !shown[id] {
+			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
+		}
+	}
+	d.mapPane.shown, d.mapPane.notes = shown, notes
+	d = d.renderMap()
+	return d, d.mapWorkCmd()
 }

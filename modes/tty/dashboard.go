@@ -11,6 +11,7 @@
 package tty
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"time"
@@ -70,8 +71,9 @@ const recentWindow = 3
 // pipelines with the new watch/recent ref sets (UAT 26).
 type Config struct {
 	Version      string
-	KeyOverrides term.KeyMap                                   // user [keys] table (validated at build)
-	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error) // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
+	KeyOverrides term.KeyMap                                                                          // user [keys] table (validated at build)
+	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error)                                        // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
+	MapFeed      func(ctx context.Context, snap *snapshot.Snapshot, place *snapshot.Location) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
 	Resolve      func(query string) (snapshot.LocationRef, error)
 	Commit       func(watch, recent []snapshot.LocationRef) error
 	SetTheme     func(name string) error // live theme switch + persist (UAT 53)
@@ -953,7 +955,12 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return d, nil
 	case SnapshotMsg:
-		return d.applySnapshot(v)
+		m, cmd := d.applySnapshot(v)
+		if next, ok := m.(Dashboard); ok && next.modal == modalMap {
+			next = next.requestFeed() // 0.18.0: new data, so the map's alerts are asked again (D-45's data row)
+			return next, tea.Batch(cmd, next.mapFeedCmd())
+		}
+		return m, cmd
 	case RecentSnapshotMsg:
 		return d.applyRecent(v), nil
 	case TickerMsg, TickerAdvanceMsg, TickerBreakingMsg, TickerBreakingDoneMsg:
@@ -979,6 +986,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.handleSettingsSaved(msg), nil // the Settings window's apply-on-close outcomes, one owner
 	case vizTickMsg:
 		return d.vizFrame()
+	case mapFeedMsg:
+		return d.applyMapFeed(v) // 0.18.0: the alerts, set and drawn in Update (D-41)
 	case mapWorkedMsg:
 		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
 	case tea.KeyPressMsg:

@@ -389,3 +389,32 @@ func TestAPanicFetchingOneZoneDoesNotEndTheProgram(t *testing.T) {
 		t.Error("nothing was counted as failed; a fetch that panics is a fetch that failed")
 	}
 }
+
+// TestAHeldZoneIsFetchedAgainOnceAWeekOld is 0.18.0 W5.6 (FR-4.6, D-43): a
+// shape held six days is served from hand; held eight, it is fetched again on
+// its next use - a zone redrawn by the service shows within a week.
+func TestAHeldZoneIsFetchedAgainOnceAWeekOld(t *testing.T) {
+	var hits atomic.Int64
+	srv := serveZones(t, &hits)
+	defer srv.Close()
+	s := newStore(t, srv.URL)
+	start := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	now := start
+	s.now = func() time.Time { return now }
+	if _, err := s.Zone(context.Background(), "TXZ119"); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		days  int
+		again bool
+	}{{6, false}, {8, true}, {9, false}} {
+		now = start.Add(time.Duration(c.days) * 24 * time.Hour)
+		before := s.Stats().Fetched
+		if _, err := s.Zone(context.Background(), "TXZ119"); err != nil {
+			t.Fatal(err)
+		}
+		if again := s.Stats().Fetched > before; again != c.again {
+			t.Errorf("day %d: fetched again %v, want %v", c.days, again, c.again)
+		}
+	}
+}

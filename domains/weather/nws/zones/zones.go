@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -66,6 +67,11 @@ const maxHeld = 2_000
 // silent.
 const maxAtOnce = 512
 
+// maxAge is how long a held shape is served before it is fetched again on its
+// next use (0.18.0 FR-4.6, D-43): the service redraws a zone a few times a
+// year, and a map drawing last year's line would be wrong without saying so.
+const maxAge = 7 * 24 * time.Hour
+
 // Store serves zone shapes by id. It is safe for concurrent use.
 type Store struct {
 	client *httpx.Client
@@ -78,6 +84,8 @@ type Store struct {
 
 	mu   sync.RWMutex
 	held map[string]Zone
+	at   map[string]time.Time // when each held shape was fetched
+	now  func() time.Time     // nil is the wall clock; the tests fix it
 
 	// What this has done, for the diagnostics window. **A new path over the
 	// network with no counters is invisible** (RT-5): when a map is blank
@@ -96,6 +104,14 @@ type Stats struct {
 	Held    int   `json:"held"`    // shapes in hand now
 }
 
+// clock is the store's time: the wall clock, unless a test fixed it.
+func (s *Store) clock() time.Time {
+	if s.now != nil {
+		return s.now()
+	}
+	return time.Now()
+}
+
 // Stats reports what this store has done.
 func (s *Store) Stats() Stats {
 	if s == nil {
@@ -109,7 +125,7 @@ func New(client *httpx.Client, base string) *Store {
 	if base == "" {
 		base = DefaultBase
 	}
-	return &Store{client: client, base: strings.TrimRight(base, "/"), held: map[string]Zone{}, limit: maxHeld}
+	return &Store{client: client, base: strings.TrimRight(base, "/"), held: map[string]Zone{}, at: map[string]time.Time{}, limit: maxHeld}
 }
 
 // Zone is one zone's shape, fetched if it is not already held.
@@ -119,8 +135,9 @@ func (s *Store) Zone(ctx context.Context, id string) (Zone, error) {
 	}
 	s.mu.RLock()
 	z, ok := s.held[id]
+	at := s.at[id]
 	s.mu.RUnlock()
-	if ok {
+	if ok && s.clock().Sub(at) < maxAge {
 		s.served.Add(1)
 		return z, nil
 	}
@@ -131,7 +148,7 @@ func (s *Store) Zone(ctx context.Context, id string) (Zone, error) {
 		return Zone{}, err
 	}
 	s.mu.Lock()
-	s.held[id] = z
+	s.held[id], s.at[id] = z, s.clock()
 	over := len(s.held) > s.limit
 	s.mu.Unlock()
 	if over {
@@ -215,6 +232,7 @@ func (s *Store) forget() {
 			return
 		}
 		delete(s.held, id)
+		delete(s.at, id)
 	}
 }
 

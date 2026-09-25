@@ -187,6 +187,7 @@ func typeOfMsg(t *testing.T, name string) reflect.Type {
 		"locatePauseMsg":   locatePauseMsg{},
 		"locateVerdictMsg": locateVerdictMsg{},
 		"mapWorkedMsg":     mapWorkedMsg{},
+		"mapFeedMsg":       mapFeedMsg{},
 	}
 	v, ok := known[name]
 	if !ok {

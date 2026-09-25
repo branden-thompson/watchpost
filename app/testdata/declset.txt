@@ -140,6 +140,8 @@ func (*livePipelines).injectHook
 func (*livePipelines).locateInRadius
 func (*livePipelines).lookInPool
 func (*livePipelines).lookupCtx
+func (*livePipelines).mapFeed
+func (*livePipelines).mapFeedWith
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
@@ -385,6 +387,7 @@ func RunDashboard
 func abbreviateHome
 func alertKeysOf
 func alertNarration
+func alertOverlay
 func alertTonePCM
 func allFabricated
 func allScenarioKeys
@@ -492,6 +495,7 @@ func onTheRail
 func pairOf
 func parseLatLon
 func parseSayVoices
+func partialNote
 func pcmDuration
 func piperInstallFor
 func piperVoiceNames
@@ -553,6 +557,7 @@ func setThemeHook
 func setUIHook
 func setUnder
 func settingsRoles
+func severityOf
 func sharesAnOutput
 func sleepCtx
 func snapshotBytes

@@ -155,3 +155,47 @@ antimeridian width (R3), resize keeping the old least zoom (R4), no bound (R5), 
 place drawn (R6), antimeridian containment (R7), longitudes not normalised (R8, which survived
 until two wrapped-longitude cases were added), a territory missing (R9), and the memo missing the
 out-of-region state (R10).
+
+## Batch 5 — alert areas (2026-09-25)
+
+**Tasks:** W5.1, W5.2, W5.4, W5.6, the station-locations half of W5.3; W5.5 found already held.
+**And the HUM LEAD's rule of this date:** every batch brings the diagrams and artifacts with it.
+
+**What landed.** `app/mapfeed.go`'s `mapFeed` (a `livePipelines` method, handed to the window as
+`Config.MapFeed`) resolves the station's locations' alerts through `resolveAlertAreas` and the zone
+store, and gives the window **one overlay per alert** (an alert on two places is drawn once), one
+feature per area, CAP's severity mapped one to one onto the library's severity and role, the
+alert's times carried and its id on every feature so `Report` joins back to it; the overlay is
+kept until the alert expires. **A partial area is drawn as found**, its label says how much
+("4 of 5 zones"), and a note under the map names the missing zones **in words**, taken from the
+alert's area description, and says whether the selected place lies in them — decided by the
+place's own zone and county codes, because a missing zone has no ground (FR-4.4, D-42). Where the
+names cannot be matched to the zones, the note counts them rather than print a code. The window
+asks for the feed off its goroutine on opening, on each snapshot and on each change of place; an
+older answer is dropped; a gone alert is removed. The zone store fetches a held shape again once
+it is seven days old (FR-4.6); offline, that zone is then missing and the alert a stated partial
+area, rather than last week's line served silently. W5.5's cap was already built and held by
+`TestAskingForMoreZonesThanExistIsBoundedAndSaysSo`.
+
+**Diagrams, from this batch on, move with the code.** Redrawn: `approach-1-render-placement.md`'s
+PLAN diagram, now AS BUILT; new `as-built-map.md` (the parts and who may name whom, and what the
+window's body is); the system overview (`watchpost-cli/.../architecture.md`) gains the map
+library, OpenFreeMap and the zone store. The atlas regenerated. `TestTheAsBuiltMapIsKeptInStep`
+fails when the build log reaches a batch the as-built page does not draw.
+
+**Process note.** The app tests were written first but run red after the code, as in batch 3; the
+mutation run stands in. The window's feed tests ran red first.
+
+**Mutation verdicts.** Caught: a severity mapped wrong (F2, after `TestEverySeverityHasItsRole`
+was added — the recorded scenario had no Moderate alert), the partial label (F3), zones named by
+code (F4), the place never in the missing zone (F5), a partial area withheld (F6), a stale feed
+applied (F7), a gone alert kept (F8), new data not fed (F9), zones never ageing (F11), the overlay
+kept past or short of its alert (F12, after the test learned to check it), duplicates (F1, after
+`TestAnAlertOnTwoPlacesIsOneOverlay`). **Equivalent:** the notes' memo key (F10) — notes change
+only through a feed, which always redraws and raises the generation the memo keys on; the key is a
+second guard.
+
+**What the gates found.** `vet-tags`: the test helper `scenario` clashed with a declaration in the
+`watchpost_debug` build's tests, which only the tagged vet sees; renamed `m1Fixture`.
+
+**Owed:** the national-severe half of W5.3 and its Setting (with W1.11).

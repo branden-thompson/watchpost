@@ -13,6 +13,7 @@ package tty
 import (
 	"crypto/sha256"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -282,6 +283,7 @@ type modalKey struct {
 	mapStatus  tuimaps.Status // and whether the picture is whole
 	mapPending bool           // and whether it is still loading
 	mapOutside string         // the place in no region, which the window states instead
+	mapNotes   string         // the feed's notes, printed under the map
 }
 
 // modalMemo is the single slot.
@@ -315,7 +317,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 	case modalMap:
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending
-		k.mapOutside = d.mapPane.outside
+		k.mapOutside, k.mapNotes = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n")
 	case modalRequest:
 		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was
 		// missing the moment the window existed — `field`, `query`, `outside`

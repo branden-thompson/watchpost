@@ -2,6 +2,10 @@ package app
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
 	"testing"
 	"time"
 
@@ -38,4 +42,36 @@ func TestTheAppHandsTheWindowItsMap(t *testing.T) {
 	if (&livePipelines{}).newMap() != nil {
 		t.Error("a station with no builder handed the window a constructor")
 	}
+}
+
+// TestTheAsBuiltMapIsKeptInStep holds the HUM LEAD's rule (2026-09-25): the
+// diagrams move with the code. The as-built page names the batches it draws,
+// and the build log names the batches that landed; a batch that lands without
+// its diagrams fails here.
+func TestTheAsBuiltMapIsKeptInStep(t *testing.T) {
+	dir := filepath.Join("..", "06_docs", "02_features", "observer-maps")
+	log, err := os.ReadFile(filepath.Join(dir, "04-development", "build-log.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := os.ReadFile(filepath.Join(dir, "03-architecture-design", "as-built-map.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	latest := 0
+	for _, m := range regexp.MustCompile(`(?m)^## Batch (\d+)`).FindAllStringSubmatch(string(log), -1) {
+		latest = max(latest, atoiOrZero(m[1]))
+	}
+	drawn := regexp.MustCompile(`Batches 1–(\d+)`).FindStringSubmatch(string(page))
+	if latest == 0 || drawn == nil {
+		t.Fatalf("the build log names batch %d and the as-built page %v: this measures nothing", latest, drawn)
+	}
+	if atoiOrZero(drawn[1]) != latest {
+		t.Errorf("the build log has reached batch %d and the as-built map draws batches 1–%s: redraw it with the batch", latest, drawn[1])
+	}
+}
+
+func atoiOrZero(s string) int {
+	n, _ := strconv.Atoi(s)
+	return n
 }
