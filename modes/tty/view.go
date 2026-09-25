@@ -97,6 +97,7 @@ func (d Dashboard) renderModal(o render.Opts) string {
 	case modalAbout:
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
 	case modalMap:
+		o.Width = d.modalWidth()                                               // the panel at the map window's own width, not the dashboard's (which reserves a rail)
 		return d.floatModal(o, d.modalWidth(), d.mapTitle(), d.mapBodyLines()) // 0.18.0: lines drawn in Update (D-41)
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
@@ -120,7 +121,12 @@ func (d Dashboard) renderModal(o render.Opts) string {
 
 // modalMax is the modal body height budget (UAT 10.4: expand to fit tall
 // terminals, window + rail on short ones).
-func (d Dashboard) modalMax() int { return max(5, d.height-12) }
+func (d Dashboard) modalMax() int {
+	if d.modal == modalMap {
+		return max(5, d.height-8) // 0.18.0: the map takes more of the screen, so a 69x12 map fits at 80x24 (FR-1.4)
+	}
+	return max(5, d.height-12)
+}
 
 // modalWidth is the open modal's width — ONE source for the render sites
 // and the scroll bounds.
@@ -144,7 +150,7 @@ func (d Dashboard) modalWidth() int {
 	case modalAbout:
 		return aboutWidth
 	case modalMap:
-		return d.opts().Width // the map takes the width the dashboard has
+		return max(d.width-2, 10) // 0.18.0: the terminal's width less the frame - the dashboard's content width reserves a rail the map window does not have, and left a 65-column map at 80, under D-16's 69 (FR-1.4)
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
 	case modalCard:
@@ -188,7 +194,7 @@ func (d Dashboard) modalLines() []string {
 	case modalAbout:
 		raw = d.aboutLines(o)
 	case modalMap:
-		raw = d.mapBodyLines()
+		raw, o.Width = d.mapBodyLines(), w // measured at the width the map window is drawn at, not the dashboard's
 	case modalSevere:
 		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
 	case modalCard:

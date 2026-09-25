@@ -258,6 +258,12 @@ type Config struct {
 	Units string `toml:"units,omitempty"` // "imperial" (default) | "metric"
 	Clock string `toml:"clock,omitempty"` // "12h" (default) | "24h" | "mil"
 
+	// The map's two Settings (0.18.0 W1.10, FR-9.1), written with the display
+	// preferences. Empty means the default: maps on, the description with the
+	// picture; an unrecognised word reads as the default too.
+	Maps           string `toml:"maps,omitempty"`            // "on" (default) | "off"
+	MapDescription string `toml:"map_description,omitempty"` // "with" (default) | "instead" | "off"
+
 	// UpdateCheck asks the app, once at startup, whether a newer release is
 	// published (0.15.0 FR-7.1; it polled hourly before). OPT-IN: the app makes no unattended outbound request the
 	// listener did not ask for, and the check is not needed to read weather.

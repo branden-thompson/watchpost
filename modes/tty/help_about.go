@@ -44,7 +44,18 @@ func (d Dashboard) helpBlocks(o render.Opts) []helpBlock {
 	keys := d.helpKeys()
 	for _, g := range helpGroups(d.surface) {
 		var rows []string
+		if g.name == "MAP" {
+			for _, pr := range mapHelpRows(keys) {
+				rows = append(rows, fmt.Sprintf("   %-12s - %s", pr.keys, o.Marks(pr.help)))
+			}
+			for _, act := range g.actions {
+				seen[act] = true
+			}
+		}
 		for _, act := range g.actions {
+			if g.name == "MAP" {
+				break // listed above, a pair to a row
+			}
 			if bind, ok := keys[act]; ok {
 				rows = append(rows, row(bind, act))
 				seen[act] = true

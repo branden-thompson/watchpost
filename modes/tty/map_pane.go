@@ -12,6 +12,7 @@ package tty
 import (
 	"context"
 	"math"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -114,8 +115,8 @@ func (d Dashboard) toggleMap() Dashboard {
 	}
 	d = d.open(modalMap)
 	loc := d.selectedLocation()
-	if loc == nil {
-		return d // FR-1.3: the window says so; nothing is built for it
+	if loc == nil || d.mapsOff {
+		return d // FR-1.3, FR-1.6: the window says so; nothing is built for it
 	}
 	if d.mapPane.m == nil {
 		if d.cfg.NewMap == nil {
@@ -168,8 +169,34 @@ func mercatorY(lat float64) float64 {
 // mapBodySize is the map's size in cells: the window's body, which the
 // window's frame and wrapping leave as they are.
 func (d Dashboard) mapBodySize() tuimaps.Size {
-	cols := max(d.modalWidth()-8, 1)                                                     // three clear cells inside each border, as every window's body has
-	return tuimaps.Size{Cols: cols, Rows: max(d.modalMax()-1-len(d.noteLines(cols)), 1)} // under it the notes, then the status line
+	cols := max(d.modalWidth()-8, 1)                   // three clear cells inside each border, as every window's body has
+	avail := d.modalMax() - 1 - len(d.noteLines(cols)) // under the map its notes, then the status line
+	if desc := d.descBlock(cols); len(desc) > 0 && avail-len(desc) >= mapMinBody.Rows {
+		avail -= len(desc) // the description above the map, when both fit; otherwise the body scrolls (D-55)
+	}
+	return tuimaps.Size{Cols: cols, Rows: max(min(avail, d.modalMax()), 1)}
+}
+
+// mapFits reports whether the map can be drawn at the floor (FR-1.4).
+func (d Dashboard) mapFits() bool {
+	s := d.mapBodySize()
+	return s.Cols >= mapMinBody.Cols && s.Rows >= mapMinBody.Rows
+}
+
+// descBlock is the description as the window lays it above the map: wrapped
+// to the body's width, and a blank line under it. Empty when its mode is off.
+func (d Dashboard) descBlock(width int) []string {
+	if d.mapDesc == mapDescOff && !d.cfg.ASCII {
+		return nil
+	}
+	var out []string
+	for _, l := range d.describeLines() {
+		out = append(out, render.WrapText(l, width)...)
+	}
+	if len(out) > 0 {
+		out = append(out, "")
+	}
+	return out
 }
 
 // renderMap draws the map into the pane. It is called from Update only.
@@ -182,6 +209,12 @@ func (d Dashboard) renderMap() Dashboard {
 	var err error
 	miles := d.units == render.UnitF
 	d.mapPane.call("Units", func() { m.Units(miles, miles) }) // the description's distances and temperatures in the station's units
+	d = d.reportPlace()                                       // first: the description's length decides the map's size
+	if !d.mapFits() {
+		d.mapPane.lines = nil
+		d.mapPane.gen++
+		return d // FR-1.4: nothing under the floor is drawn; the notice and the description say it
+	}
 	d.mapPane.call("Render", func() { frame, err = m.Render(d.mapBodySize(), d.now()) })
 	if err != nil {
 		d.mapPane.failed = "The map could not be drawn: " + err.Error()
@@ -193,16 +226,6 @@ func (d Dashboard) renderMap() Dashboard {
 		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize()})
 	}
 	d.mapPane.status = frame.Status
-	if loc := d.selectedLocation(); loc != nil {
-		var rep tuimaps.Report
-		d.mapPane.call("Report", func() {
-			rep, _ = m.Report([]tuimaps.Place{{ID: "selected", Name: loc.Label, At: tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}}})
-		})
-		d.mapPane.report = tuimaps.PlaceReport{}
-		if len(rep.Places) > 0 {
-			d.mapPane.report = rep.Places[0]
-		}
-	}
 	d.mapPane.call("Pending", func() { d.mapPane.pending = m.Pending() > 0 })
 	var warnings []tuimaps.Warning
 	d.mapPane.call("Warnings", func() { warnings = m.Warnings() })
@@ -271,18 +294,53 @@ func (d Dashboard) mapBodyLines() []string {
 	switch {
 	case d.selectedLocation() == nil:
 		return []string{noSelectionText}
+	case d.mapsOff:
+		return []string{mapsOffText}
 	case d.mapPane.outside != "":
 		return []string{d.mapPane.outside + " is outside every region the map covers - the contiguous United States, Alaska, Hawaii, Puerto Rico and the Virgin Islands, Guam and the Northern Marianas, and American Samoa - so no map is drawn for it."}
 	case d.mapPane.failed != "":
 		return []string{d.mapPane.failed}
-	case d.cfg.ASCII:
-		return append([]string{asciiMapText, ""}, d.describeLines()...) // FR-1.7: the description in place of the picture
 	}
-	out := append([]string(nil), d.mapPane.lines...)
-	for _, l := range d.noteLines(max(d.modalWidth()-8, 1)) {
+	width := max(d.modalWidth()-8, 1)
+	var out []string
+	switch {
+	case d.cfg.ASCII:
+		out = []string{asciiMapText, ""} // FR-1.7, FR-1.8: the description in place of the picture
+	case d.mapDesc != mapDescInstead && !d.mapFits():
+		out = append(render.WrapText(belowFloorText(d.mapBodySize()), width), "") // FR-1.4: the notice carries the description
+	}
+	for _, l := range d.descBlock(width) {
+		out = append(out, " "+l)
+	}
+	if d.cfg.ASCII || d.mapDesc == mapDescInstead || !d.mapFits() {
+		for _, l := range d.noteLines(width) {
+			out = append(out, " "+l)
+		}
+		return out
+	}
+	out = append(out, d.mapPane.lines...)
+	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
 	}
 	return append(out, " "+d.mapStatusLine())
+}
+
+// reportPlace keeps the library's answers for the selected place, which the
+// description reads. It needs no Work and no frame.
+func (d Dashboard) reportPlace() Dashboard {
+	m, loc := d.mapPane.m, d.selectedLocation()
+	d.mapPane.report = tuimaps.PlaceReport{}
+	if m == nil || loc == nil {
+		return d
+	}
+	var rep tuimaps.Report
+	d.mapPane.call("Report", func() {
+		rep, _ = m.Report([]tuimaps.Place{{ID: "selected", Name: loc.Label, At: tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}}})
+	})
+	if len(rep.Places) > 0 {
+		d.mapPane.report = rep.Places[0]
+	}
+	return d
 }
 
 // noteLines are the feed's notes, wrapped to the map's width.
@@ -320,30 +378,34 @@ func (d Dashboard) closeMap() {
 // legend, playback and description-scroll actions join with their tasks
 // (W1.17, W8.9a, W1.6), because a key bound to nothing yet is a dead key.
 const (
-	actMapPanUp    term.Action = "map.pan.up"
-	actMapPanDown  term.Action = "map.pan.down"
-	actMapPanLeft  term.Action = "map.pan.left"
-	actMapPanRight term.Action = "map.pan.right"
-	actMapPrev     term.Action = "map.location.prev"
-	actMapNext     term.Action = "map.location.next"
-	actMapZoomIn   term.Action = "map.zoom.in"
-	actMapZoomOut  term.Action = "map.zoom.out"
+	actMapPanUp      term.Action = "map.pan.up"
+	actMapPanDown    term.Action = "map.pan.down"
+	actMapPanLeft    term.Action = "map.pan.left"
+	actMapPanRight   term.Action = "map.pan.right"
+	actMapPrev       term.Action = "map.location.prev"
+	actMapNext       term.Action = "map.location.next"
+	actMapZoomIn     term.Action = "map.zoom.in"
+	actMapZoomOut    term.Action = "map.zoom.out"
+	actMapScrollUp   term.Action = "map.scroll.up"
+	actMapScrollDown term.Action = "map.scroll.down"
 )
 
 // mapActions is the map window's actions in the order Help lists them.
-var mapActions = []term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut}
+var mapActions = []term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown}
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
 func defaultMapKeyMap() term.KeyMap {
 	return term.KeyMap{
-		actMapPanUp:    {Keys: []string{"up"}, Help: "Pan North"},
-		actMapPanDown:  {Keys: []string{"down"}, Help: "Pan South"},
-		actMapPanLeft:  {Keys: []string{"left"}, Help: "Pan West"},
-		actMapPanRight: {Keys: []string{"right"}, Help: "Pan East"},
-		actMapPrev:     {Keys: []string{"["}, Help: "Previous Location"},
-		actMapNext:     {Keys: []string{"]"}, Help: "Next Location"},
-		actMapZoomIn:   {Keys: []string{"+", "="}, Help: "Zoom In"},
-		actMapZoomOut:  {Keys: []string{"-"}, Help: "Zoom Out"},
+		actMapPanUp:      {Keys: []string{"up"}, Help: "Pan North"},
+		actMapPanDown:    {Keys: []string{"down"}, Help: "Pan South"},
+		actMapPanLeft:    {Keys: []string{"left"}, Help: "Pan West"},
+		actMapPanRight:   {Keys: []string{"right"}, Help: "Pan East"},
+		actMapPrev:       {Keys: []string{"["}, Help: "Previous Location"},
+		actMapNext:       {Keys: []string{"]"}, Help: "Next Location"},
+		actMapZoomIn:     {Keys: []string{"+", "="}, Help: "Zoom In"},
+		actMapZoomOut:    {Keys: []string{"-"}, Help: "Zoom Out"},
+		actMapScrollUp:   {Keys: []string{"pgup"}, Help: "Scroll Up"},
+		actMapScrollDown: {Keys: []string{"pgdown"}, Help: "Scroll Down"},
 	}
 }
 
@@ -365,7 +427,18 @@ func mapKeysFrom(overrides term.KeyMap) (term.KeyMap, error) {
 // is the map's; any other key goes on to the Observer's handling.
 func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 	act, bound := d.mapKeys.Lookup(key.String())
-	if !bound || d.mapPane.m == nil {
+	if !bound {
+		return d, nil, false
+	}
+	switch act {
+	case actMapScrollUp: // D-61: PgUp and PgDn scroll the window's body, the description first
+		d.modalScroll = max(d.modalScroll-max(d.modalMax()-1, 1), 0)
+		return d, nil, true
+	case actMapScrollDown:
+		d.modalScroll = min(d.modalScroll+max(d.modalMax()-1, 1), max(len(d.modalLines())-d.modalMax(), 0))
+		return d, nil, true
+	}
+	if d.mapPane.m == nil {
 		return d, nil, false
 	}
 	size, m := d.mapBodySize(), d.mapPane.m
@@ -459,4 +532,26 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 	d.mapPane.shown, d.mapPane.notes, d.mapPane.inMissing = shown, notes, v.feed.InMissing
 	d = d.renderMap()
 	return d, d.mapWorkCmd()
+}
+
+// mapHelpRow is one row of Help's MAP group: several actions that are one
+// idea, listed on one line so the group fits (D-61's ten keys in four rows).
+type mapHelpRow struct{ keys, help string }
+
+// mapHelpRows are the MAP group's rows, read from the merged keys so a
+// [keys] rebind shows.
+func mapHelpRows(keys term.KeyMap) []mapHelpRow {
+	join := func(acts ...term.Action) string {
+		var all []string
+		for _, a := range acts {
+			all = append(all, keys[a].Keys...)
+		}
+		return strings.Join(all, ", ")
+	}
+	return []mapHelpRow{
+		{join(actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight), "Pan"},
+		{join(actMapPrev, actMapNext), "Previous / Next Location"},
+		{join(actMapZoomIn, actMapZoomOut), "Zoom In / Out"},
+		{join(actMapScrollUp, actMapScrollDown), "Scroll"},
+	}
 }

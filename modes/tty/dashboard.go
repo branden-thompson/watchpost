@@ -70,13 +70,15 @@ const recentWindow = 3
 // into a location ref; Commit persists the watchlist and rebuilds the live
 // pipelines with the new watch/recent ref sets (UAT 26).
 type Config struct {
-	Version      string
-	KeyOverrides term.KeyMap                                                                          // user [keys] table (validated at build)
-	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error)                                        // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
-	MapFeed      func(ctx context.Context, snap *snapshot.Snapshot, place *snapshot.Location) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
-	Resolve      func(query string) (snapshot.LocationRef, error)
-	Commit       func(watch, recent []snapshot.LocationRef) error
-	SetTheme     func(name string) error // live theme switch + persist (UAT 53)
+	Version        string
+	KeyOverrides   term.KeyMap                                                                          // user [keys] table (validated at build)
+	NewMap         func(size tuimaps.Size) (*tuimaps.Map, error)                                        // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
+	MapFeed        func(ctx context.Context, snap *snapshot.Snapshot, place *snapshot.Location) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
+	Maps           string                                                                               // 0.18.0: the file's words for the map's two Settings (UIPrefs')
+	MapDescription string
+	Resolve        func(query string) (snapshot.LocationRef, error)
+	Commit         func(watch, recent []snapshot.LocationRef) error
+	SetTheme       func(name string) error // live theme switch + persist (UAT 53)
 
 	// 0.14.0 — the WATCHPOST UI group's three display preferences, written
 	// together when Settings closes. One hook rather than three: they are one
@@ -312,9 +314,11 @@ type Stats struct {
 // render types, because this crosses the app seam and the app is what writes
 // them to the file.
 type UIPrefs struct {
-	Theme string
-	Units string
-	Clock string
+	Theme          string
+	Units          string
+	Clock          string
+	Maps           string // "on" (the default) or "off" (0.18.0)
+	MapDescription string // "with" (the default), "instead" or "off"
 }
 
 // PipelineStats counts one pipeline's publishes and the triggers its
@@ -512,6 +516,8 @@ type Dashboard struct {
 	liveOffset int
 
 	mapPane mapPane
+	mapsOff bool        // 0.18.0: the Setting; g says so and builds nothing (W1.8)
+	mapDesc mapDescMode // 0.18.0: the description with the picture, instead of it, or off (W1.10)
 	mapKeys term.KeyMap
 	modal   modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
@@ -781,7 +787,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}

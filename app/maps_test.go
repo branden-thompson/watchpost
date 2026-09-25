@@ -11,6 +11,7 @@ import (
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
 )
 
@@ -74,4 +75,32 @@ func TestTheAsBuiltMapIsKeptInStep(t *testing.T) {
 func atoiOrZero(s string) int {
 	n, _ := strconv.Atoi(s)
 	return n
+}
+
+// TestTheMapSettingsReachTheWindowAndTheFile is W1.10's wiring (FR-9.1): the
+// file's words reach the window, and the window's save writes them back.
+func TestTheMapSettingsReachTheWindowAndTheFile(t *testing.T) {
+	lp := &livePipelines{}
+	cfg := lp.ttyConfig("t", Options{}, false, config.Config{Maps: "off", MapDescription: "instead"}, nil, nil, nil, nil, nil, nil)
+	if cfg.Maps != "off" || cfg.MapDescription != "instead" {
+		t.Errorf("the window is handed %q %q", cfg.Maps, cfg.MapDescription)
+	}
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	if err := os.MkdirAll(filepath.Join(dir, "watchpost"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "watchpost", "config.toml"), []byte("units = \"imperial\"\n"), 0o600); err != nil {
+		t.Fatal(err) // Settings saves over a file the station already has; a first run's is refused by design
+	}
+	if err := setUIHook(tty.UIPrefs{Units: "metric", Clock: "24h", Maps: "off", MapDescription: "off"}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Maps != "off" || got.MapDescription != "off" {
+		t.Errorf("the save wrote %q %q", got.Maps, got.MapDescription)
+	}
 }

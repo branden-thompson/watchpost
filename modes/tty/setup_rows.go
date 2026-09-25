@@ -85,6 +85,9 @@ const (
 	rowClock12
 	rowClock24
 	rowClockMil
+	// THE MAP (0.18.0 W1.10, FR-9.1): on or off, and the description's mode.
+	rowMapsOn
+	rowMapDesc
 
 	// ALERTS - EVENTS
 	rowEventsAll
@@ -233,6 +236,11 @@ func setupTable() [setupRowCount]setupRow {
 		rowClock12:       {rowClock12, groupUI, scopeShared, rowRadio, false, "", ""},
 		rowClock24:       {rowClock24, groupUI, scopeShared, rowRadio, false, "", ""},
 		rowClockMil:      {rowClockMil, groupUI, scopeShared, rowRadio, false, "", ""},
+
+		// THE MAP IS THE LISTENER'S (0.18.0): Observer draws it, the console does not.
+		// ONE LINE EACH: the WATCHPOST UI group must still fit the window unscrolled.
+		rowMapsOn:  {rowMapsOn, groupUI, scopeObserver, rowToggle, false, "", ""},
+		rowMapDesc: {rowMapDesc, groupUI, scopeObserver, rowPicker, true, "", ""},
 
 		// OBSERVER'S ALERT RADIUS (D-18 row 25, per D-20): it bounds ARRIVALS over
 		// an unbounded location set. The station's service radius is a HARD bound

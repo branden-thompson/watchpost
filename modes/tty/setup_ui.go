@@ -55,6 +55,7 @@ func (d Dashboard) uiLines(o render.Opts) ([]string, int) {
 		lines = append(lines, "  "+setupMark(o, focus == id)+
 			radioMark(d.setup.clock == c, o.ASCII)+" "+settingLabel(c.Label(), focus == id))
 	}
+	lines, at = d.mapSettingLines(o, lines, at)
 	return lines, at
 }
 
@@ -135,7 +136,7 @@ func (d Dashboard) uiTouched() Dashboard {
 
 // uiForSave is what the window writes when it closes.
 func (d Dashboard) uiForSave() UIPrefs {
-	return UIPrefs{Theme: d.themeName(), Units: d.setup.units.Key(), Clock: d.setup.clock.Key()}
+	return UIPrefs{Theme: d.themeName(), Units: d.setup.units.Key(), Clock: d.setup.clock.Key(), Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key()}
 }
 
 // uiApplyCmd writes the display preferences — and nothing else, for the same
@@ -163,6 +164,7 @@ func (d Dashboard) applyUISaved(v uiSavedMsg) Dashboard {
 		return d.settled()
 	}
 	d.cfg.Units, d.cfg.Clock = v.prefs.Units, v.prefs.Clock
+	d.cfg.Maps, d.cfg.MapDescription = v.prefs.Maps, v.prefs.MapDescription
 	return d
 }
 

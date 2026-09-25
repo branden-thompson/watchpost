@@ -236,3 +236,45 @@ alert broken (D9).
 
 **Owed:** the description beside the picture, first in reading order when its mode is on, and
 scrolling (W1.6, W1.10); the "nearby" Setting (W1.11).
+
+## Batch 7 — the size floor, the description beside the picture, the map's Settings (2026-09-25)
+
+**Tasks:** W1.5, W1.6, W1.8, W1.10.
+
+**What landed.** Two rows in Settings' WATCHPOST UI group, Observer's only, written with the group
+on close (`config` `maps`, `map_description`; empty reads as the default, an unrecognised word too):
+**Maps** on or off (a toggle, like the tones), and **Map description** — with the picture (the
+builder's default, for UAT to judge), instead of it, or off (a ←→ picker; one line each so the
+group still fits unscrolled). With maps off, `g` says so in one line and no map is built (FR-1.6).
+With the description on, it comes **first in reading order**, above the braille (D-55); the body
+scrolls with PgUp and PgDn (D-61's keys, now bound) when it is longer than the window. **The size
+floor has one owner**, `mapMinBody` (69 × 12): under it no map is rendered, and the window names
+the size needed and the size present and carries the description (FR-1.4). Help's MAP group lists
+its ten keys in four rows.
+
+**Two layout decisions of mine, for UAT to judge.** (1) **The map window is 8 rows short of the
+terminal** rather than the windows' usual 12, and (2) **it takes the terminal's width less its
+frame** rather than the dashboard's content width, which reserves a rail the map window does not
+have. Measured: at the documented 80 × 24 floor, the usual budget gave an 11-row map and the
+dashboard's width a 65-column one — **the 69 × 12 floor (D-16) could never be met at 80 × 24**.
+Now it is 70 × 12 there. The window's panel and the reachability guard both measure at that width.
+
+**What the gates found.** The Settings goldens drifted, as they should: two new rows (updated,
+reviewed, both colour and `--ascii`). A first draft with a label and three radio rows made the
+group scroll, which the margin survey caught (a scroll rail trails at one cell). Help's MAP group
+of ten rows pushed Help's row-mark legend out of its window, which `TestTheLegendBelongsToItsSurface`
+caught. The memo-completeness guard caught both new settings missing from the window's key.
+
+The lint gate (staticcheck QF1003) asked for the chip line's row test to be a switch.
+
+**Process note.** RED was run after the code for most of this batch; the mutation run stands in.
+
+**Mutation verdicts** — 15 of 15 caught: maps off ignored (S1), the file's word ignored (S2), the
+settings not saved (S3), the description shown when off (S4), missing with the picture (S5), a map
+rendered under the floor only to be thrown away (S6, survived until the floor test counted
+`Render`), the floor not named (S7), the memo missing the settings (S8), not written to the file
+(S9), the old height budget (S11, survived until `TestTheMapDrawsAtTheDocumentedFloor`), wider than
+the terminal (S12), ← cycling forward (S13, survived until `TestTheDescriptionPickerGoesBothWays`),
+the dashboard's width again (S14), the panel clamped to it (S15).
+
+**Diagrams:** `as-built-map.md` (the body's new branches, the Settings, the scroll keys); atlas.

@@ -234,6 +234,8 @@ type modalKey struct {
 	setupGen uint64   // Setup's state, by generation while it is open
 	stats    [32]byte // the [S] stats, fingerprinted while it is open
 	darkBG   bool
+	mapsOff  bool // 0.18.0: the map's Settings, drawn by Settings and by the map window
+	mapDesc  mapDescMode
 	theme    uint64
 	minute   int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
 	second   int64 // [S] ages, while it is open
@@ -312,6 +314,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		surface:  d.surface,
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
+		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
 	}
 	switch d.modal {
 	case modalMap:

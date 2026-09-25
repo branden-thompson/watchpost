@@ -55,7 +55,11 @@ func unreachableAtTheFloor(d Dashboard) []string {
 		for _, l := range strings.Split(cur.renderModal(cur.opts()), "\n") {
 			seen[modalTextOf(l)] = true
 		}
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+		if cur.modal == modalMap {
+			model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyPgDown}) // D-61: the map owns down (it pans); PgDn scrolls its body
+		} else {
+			model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+		}
 	}
 	var out []string
 	for l := range want {

@@ -848,7 +848,8 @@ code{font-family:var(--mono);font-size:.92em}
   subgraph tty[&#34;modes/tty — the Observer&#34;]
     MW[&#34;map_pane.go · the map window\ng opens · owns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s&#34;]
     MD[&#34;map_describe.go · the description\nReport joined to watchpost&#39;s alerts by id\ncovers · stops short · lies to one side (M1&#39;s words)\nunits and directions in words; never &#39;you&#39;&#34;]
-    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place&#34;]
+    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll&#34;]
+    ST2[&#34;Settings, WATCHPOST UI\nMaps on/off · Map description: with / instead / off\nwritten with the group (config maps, map_description)&#34;]
   end
   subgraph plat[&#34;platform/&#34;]
     RG[&#34;geo · RegionOf\nsix regions with their waters&#34;]
@@ -862,6 +863,7 @@ code{font-family:var(--mono);font-size:.92em}
   MB -. &#34;first g&#34; .-&gt; ZS
   MW --&gt; RG
   MW --&gt; MK
+  ST2 --&gt; MW
   MW -- &#34;Report(place) at every draw&#34; --&gt; MD
   MW --&gt; L
   MB --&gt; L
@@ -869,11 +871,16 @@ code{font-family:var(--mono);font-size:.92em}
 </pre></div></article><article class="dia" id="observer-maps-2"><div class="meta"><h3>What the window&#39;s body is</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
   S{&#34;selected place?&#34;} -- &#34;none&#34; --&gt; N[&#34;stated: no location is selected (FR-1.3)&#34;]
   S -- &#34;in no region&#34; --&gt; O[&#34;stated: outside every region, nothing wider drawn (FR-2.5)&#34;]
-  S -- &#34;in a region&#34; --&gt; A{&#34;--ascii?&#34;}
-  A -- &#34;yes&#34; --&gt; T[&#34;stated: braille, and the remedy (FR-1.8)\nthen the description in place of the picture (FR-1.7)&#34;]
-  A -- &#34;no&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)&#34;]
+  S -- &#34;maps off in Settings&#34; --&gt; OFF[&#34;stated: maps are off, and where to turn them on (FR-1.6)&#34;]
+  S -- &#34;in a region&#34; --&gt; A{&#34;--ascii, or the description instead?&#34;}
+  A -- &#34;yes&#34; --&gt; T[&#34;the description in place of the picture (FR-1.7)\n(under --ascii, first: braille and the remedy, FR-1.8)&#34;]
+  A -- &#34;no&#34; --&gt; F{&#34;a 69x12 map fits? (mapMinBody, the one owner)&#34;}
+  F -- &#34;no&#34; --&gt; FL[&#34;stated: the size needed and the size present,\nthen the description (FR-1.4)&#34;]
+  F -- &#34;yes&#34; --&gt; DS{&#34;description with the picture?&#34;}
+  DS -- &#34;yes (the default)&#34; --&gt; D1[&#34;the description first in reading order (D-55)&#34;] --&gt; M
+  DS -- &#34;off&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)\nthe window 8 rows short of the terminal, full width less its frame&#34;]
   M --&gt; NT[&#34;the feed&#39;s notes: partial areas named in words (FR-4.4)&#34;]
-  NT --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)&#34;]
+  NT --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window&#34;]
 </pre></div></article></section></main>
 </div>
 <script type="module">

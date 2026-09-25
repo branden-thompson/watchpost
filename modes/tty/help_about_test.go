@@ -144,7 +144,7 @@ func TestHelpGroupsBindingsByFeature(t *testing.T) {
 		t.Fatalf("a rebound quit stays under NAVIGATE:\n%s", nav)
 	}
 	for _, bind := range m.keys { // every binding listed exactly once, by its rendered row prefix (up and down share a Help text; "-" is a key)
-		if row := helpRow(bind); strings.Count(text, row) != 1+sameRowIn(m.mapKeys, row) {
+		if row := helpRow(bind); strings.Count(text, row) != 1 {
 			t.Fatalf("%q listed %d times", row, strings.Count(text, row))
 		}
 	}
@@ -205,7 +205,7 @@ func TestHelpLaysOutOneOrTwoColumns(t *testing.T) {
 			t.Fatalf("%d cols: two columns = %v, want %v:\n%s", c.w, pairs > 0, c.twoCol, text)
 		}
 		for _, bind := range d.keys { // every binding once, whatever the layout
-			if row := helpRow(bind); strings.Count(text, row) != 1+sameRowIn(d.mapKeys, row) {
+			if row := helpRow(bind); strings.Count(text, row) != 1 {
 				t.Fatalf("%d cols: %q listed %d times", c.w, row, strings.Count(text, row))
 			}
 		}
@@ -230,17 +230,4 @@ func TestHelpLaysOutOneOrTwoColumns(t *testing.T) {
 // helpRow is a binding's row in the Help window, by its rendered key prefix.
 func helpRow(bind term.Binding) string {
 	return fmt.Sprintf("   %-12s - ", strings.Join(bind.Keys, ", "))
-}
-
-// sameRowIn counts the bindings of another scope that render the same keys: the
-// open map window owns keys the Observer also binds, by ruling (D-61), and Help
-// lists each scope's once.
-func sameRowIn(scope term.KeyMap, row string) int {
-	n := 0
-	for _, bind := range scope {
-		if helpRow(bind) == row {
-			n++
-		}
-	}
-	return n
 }

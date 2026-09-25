@@ -329,6 +329,13 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 		}
 		return d.setupSpace(), nil, true
 	case "left", "right":
+		if d.setup.focus == rowMapsOn {
+			d.mapsOff = !d.mapsOff // 0.18.0: two states, so either arrow is "the other one"
+			return d.uiTouched(), nil, true
+		}
+		if d.setup.focus == rowMapDesc {
+			return d.cycleMapDesc(key.String() == "right"), nil, true
+		}
 		if setupTable()[d.setup.focus].kind == rowToggle {
 			// A two-state control: ←→ and space all do the same thing, because
 			// there is nothing to cycle THROUGH — there are two states and
@@ -355,7 +362,7 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 			return d.settled(), nil, true
 		}
 	case "p":
-		if picker {
+		if picker && d.setup.focus != rowMapDesc { // the description's mode has nothing to preview
 			m, cmd := d.setupPreview()
 			return m, cmd, true
 		}
@@ -458,6 +465,11 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.setClock(render.Clock24)
 	case rowClockMil:
 		return d.setClock(render.ClockMil)
+	case rowMapsOn:
+		d.mapsOff = !d.mapsOff // live: g says so at once (W1.8)
+		return d.uiTouched()
+	case rowMapDesc:
+		return d.cycleMapDesc(true)
 	default:
 		switch setupTable()[id].kind {
 		case rowToggle:

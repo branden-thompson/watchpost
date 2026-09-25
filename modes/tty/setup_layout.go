@@ -431,9 +431,12 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 		// The THEME picker names no preview key, because ←→ already preview it:
 		// the whole app repaints as the picker moves. Offering `p Preview` there
 		// would name a key for something that has already happened.
-		if d.setup.focus == rowTheme {
+		switch d.setup.focus {
+		case rowTheme:
 			segs = append(segs, o.KeyCap("←→")+" Theme (live)")
-		} else {
+		case rowMapDesc:
+			segs = append(segs, o.KeyCap("←→")+" Description") // 0.18.0: nothing to preview
+		default:
 			segs = append(segs, o.KeyCap("←→")+" Voice", o.KeyCap("p")+" Preview")
 		}
 	}
