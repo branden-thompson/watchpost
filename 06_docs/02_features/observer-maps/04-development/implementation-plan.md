@@ -82,7 +82,7 @@ ruling for every change to it).
 | W8 | Radar loops and the motion Setting | FR-5, FR-3.9 (radar), M3, M5, M6, NFR-2 | W2, **go-tuiMaps v0.2.0 tag** | v0.2.0 |
 | W9 | Move to v0.2.0: bound, `Report`, fetch options, retention and purge, the frame's counters, labels, pattern | FR-2.4, FR-3.9, FR-3.10, FR-7.1, FR-7.4, HR-3, HR-6, HR-7, HR-8, HR-10, D-42 | W4, W7, **v0.2.0 tag** | v0.2.0 |
 
-W0–W7 are **P1-a**: they need nothing from v0.2.0 and start at once. W8–W9 build against go-tuiMaps release candidates as their packages land (D-51). On their own they are the
+**D-60 (2026-09-25): W1–W7 build on the newest go-tuiMaps release candidate, not v0.1.0, and W9's tasks fold into their P1-a counterparts (the W9 section says where each went).** W0–W7 are **P1-a**: they need nothing from v0.2.0 and start at once. W8–W9 build against go-tuiMaps release candidates as their packages land (D-51). On their own they are the
 ship-without-radar fallback (RK-4). W8–W9 are **P1-b**, and
 wait for the tag (FR-5.6). The integration map uses these numbers.
 
@@ -209,6 +209,8 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 | W8.15a | **MRMS's unverified heavy end, told to the listener** (D-55): while the library's legend marks the source unverified, the note line says so and IEM stays the default source | `modes/tty/map_notes.go`, `app/maps.go` | Reads `LegendEntry.Unverified` | With MRMS chosen and unverified, the note line says so; the default source is IEM |
 
 ## W9 — Moving to v0.2.0 · needs the tag
+
+**Folded by D-60.** Each row below is built with the P1-a task D-60 names (W9.1 → W4, W9.2 → W1.4, W9.3–W9.5 → W3, W9.6 → W2.1, W9.7 → W8, W9.8 → W5, W9.9 → W7, W9.10 → W1.17 and W8), and its test is that task's test. The rows stay here as the record of what each must do.
 
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
