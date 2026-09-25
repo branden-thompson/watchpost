@@ -150,10 +150,10 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
-| W4.1 | The region set and the check (FR-2.1, FR-2.5) | `platform/geo/regions.go` | `func RegionOf(loc Point) (Region, bool)` | Every region the APIs cover: the contiguous US, Alaska (across the antimeridian), Hawaii, the Caribbean and Pacific territories, **the marine areas**; an out-of-region point is a stated state |
-| W4.2 | The view placed before the first frame (FR-2.2) | `modes/tty/map_pane.go` | — | The first frame's span is within the bound |
+| W4.1 | The region set and the check (FR-2.1, FR-2.5) | `platform/geo/regions.go` | `func RegionOf(loc Point) (Region, bool)` | Every region the APIs cover: the contiguous US, Alaska (across the antimeridian), Hawaii, the Caribbean and Pacific territories, **the marine areas**; an out-of-region point is a stated state *As built (batch 4): `RegionOf(lat, lon)`; six boxed regions with their waters; `TestEveryCoveredPlaceHasARegion`, `TestAPlaceInNoRegionIsAStatedState`.* |
+| W4.2 | The view placed before the first frame (FR-2.2) | `modes/tty/map_pane.go` | — | The first frame's span is within the bound *As built: the bound is set before the first frame; M2 checks it from frame 0.* |
 | W4.3 | The default scale as a Setting; the bound is not (FR-2.3) | `platform/config/` | — | Settings round trip (row from W1.11) |
-| W4.4 | The host clamp at every view change until HR-3 (FR-2.4) | `modes/tty/map_bound.go` | Wraps every view call and every `Render` | **M2 instrument:** every rendered frame in the suite and the PTY journeys checked against the region |
+| W4.4 | The host clamp at every view change until HR-3 (FR-2.4) | `modes/tty/map_bound.go` | Wraps every view call and every `Render` | **M2 instrument:** every rendered frame in the suite and the PTY journeys checked against the region *As built with W9.1: no host clamp; the library's `SetBound` with a least zoom that fits the view inside the region on both axes, set again on resize. `TestNoFrameIsWiderThanTheRegion` checks every frame of a drive through every key and three sizes, for three regions. The PTY journeys join it when they exist.* |
 
 ## W5 — Alert areas (FR-4, D-42)
 

@@ -11,11 +11,13 @@ package tty
 
 import (
 	"context"
+	"math"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -53,12 +55,22 @@ type mapPane struct {
 	lines   []string
 	changed uint64
 	ticks   uint64
+	region  geo.Region     // the region the map is held inside (FR-2.1)
+	outside string         // the place that is in no region, when it is not (FR-2.5)
 	status  tuimaps.Status // the last frame's: whole, or still sharpening
 	pending bool           // work was waiting when it was drawn
 	offline bool           // a tile failed since the picture was last whole
 	gen     uint64         // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
 	failed  string         // why the map could not be built or drawn, said in the window
 	calls   *[]string      // tests only: the library calls made, by name, in order
+	views   *[]mapView     // tests only: every view drawn, for M2's instrument
+}
+
+// mapView is one drawn frame's view: where, how close, and how big.
+type mapView struct {
+	centre tuimaps.LonLat
+	zoom   float64
+	size   tuimaps.Size
 }
 
 // mapWorkedMsg is one Work command's outcome.
@@ -102,6 +114,37 @@ func (d Dashboard) toggleMap() Dashboard {
 	return d.withCmd(d.mapWorkCmd())
 }
 
+// boundMap holds the map inside its region (W4, W9.1: the library's bound
+// replaces a host clamp). The least zoom is the one at which the window's
+// view fits inside the region on both axes, so no frame is wider than the
+// region either way; it depends on the window's size, so every resize sets
+// it again. It is worked out in the library's published scale - 256-dot
+// tiles, a braille cell two dots wide and four high.
+func (d Dashboard) boundMap() Dashboard {
+	m, r := d.mapPane.m, d.mapPane.region
+	if m == nil || r.Name == "" {
+		return d
+	}
+	size := d.mapBodySize()
+	width := r.E - r.W
+	if width < 0 {
+		width += 360
+	}
+	fitX := math.Log2(float64(size.Cols*2) * 360 / (width * 256))
+	fitY := math.Log2(float64(size.Rows*4) / ((mercatorY(r.S) - mercatorY(r.N)) * 256))
+	least := min(max(fitX, fitY, 0), tuimaps.MaxZoom)
+	d.mapPane.call("SetBound", func() {
+		_ = m.SetBound(tuimaps.Bound{MinZoom: least, W: r.W, S: r.S, E: r.E, N: r.N})
+	})
+	return d
+}
+
+// mercatorY is a latitude's place down the world, from 0 at the top to 1.
+func mercatorY(lat float64) float64 {
+	rad := lat * math.Pi / 180
+	return (1 - math.Log(math.Tan(rad)+1/math.Cos(rad))/math.Pi) / 2
+}
+
 // mapBodySize is the map's size in cells: the window's body, which the
 // window's frame and wrapping leave as they are.
 func (d Dashboard) mapBodySize() tuimaps.Size {
@@ -111,8 +154,8 @@ func (d Dashboard) mapBodySize() tuimaps.Size {
 // renderMap draws the map into the pane. It is called from Update only.
 func (d Dashboard) renderMap() Dashboard {
 	m := d.mapPane.m
-	if m == nil {
-		return d
+	if m == nil || d.mapPane.outside != "" {
+		return d // FR-2.5: nothing wider is drawn in its place
 	}
 	var frame tuimaps.Frame
 	var err error
@@ -122,6 +165,10 @@ func (d Dashboard) renderMap() Dashboard {
 		return d
 	}
 	d.mapPane.lines, d.mapPane.failed = insetLines(frame.Lines), ""
+	if d.mapPane.views != nil {
+		c, z := m.Centre()
+		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize()})
+	}
 	d.mapPane.status = frame.Status
 	d.mapPane.call("Pending", func() { d.mapPane.pending = m.Pending() > 0 })
 	var warnings []tuimaps.Warning
@@ -191,6 +238,8 @@ func (d Dashboard) mapBodyLines() []string {
 	switch {
 	case d.selectedLocation() == nil:
 		return []string{noSelectionText}
+	case d.mapPane.outside != "":
+		return []string{d.mapPane.outside + " is outside every region the map covers - the contiguous United States, Alaska, Hawaii, Puerto Rico and the Virgin Islands, Guam and the Northern Marianas, and American Samoa - so no map is drawn for it."}
 	case d.mapPane.failed != "":
 		return []string{d.mapPane.failed}
 	case d.cfg.ASCII:
@@ -297,12 +346,21 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	return d, d.mapWorkCmd(), true
 }
 
-// followSelection puts the map on the selected location (FR-1.2).
+// followSelection puts the map on the selected location (FR-1.2), held
+// inside the region that location is in (FR-2.1). A location in no region
+// draws nothing wider in its place: the window says so (FR-2.5).
 func (d Dashboard) followSelection() Dashboard {
 	loc, m := d.selectedLocation(), d.mapPane.m
 	if loc == nil || m == nil {
 		return d
 	}
+	region, ok := geo.RegionOf(loc.Lat, loc.Lon)
+	if !ok {
+		d.mapPane.outside = loc.Label
+		return d
+	}
+	d.mapPane.outside, d.mapPane.region = "", region
+	d = d.boundMap()
 	d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}) })
 	return d
 }

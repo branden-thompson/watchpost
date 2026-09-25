@@ -126,3 +126,32 @@ offline note (B13) and the offline note never cleared (B14, which survived the f
 
 **Owed:** W3.8's clear path (with W9.5's `Purge`), W3.9's zone politeness, FR-3.2's full
 station-start instrument through a counting transport.
+
+## Batch 4 — the bound (2026-09-25)
+
+**Tasks:** W4.1, W4.2, W4.4 with W9.1 folded in (D-60: the library's `SetBound`, no host clamp).
+W4.3's default-scale Setting lands with W1.11's rows.
+
+**What landed.** `platform/geo/regions.go`: six regions, each boxed with its waters — the
+contiguous US (the Gulf, the Great Lakes, both coasts), Alaska across the antimeridian to Attu,
+Hawaii, Puerto Rico and the Virgin Islands, Guam and the Northern Marianas, American Samoa — and
+`RegionOf`, which normalises any longitude. The map window holds the map inside the selected
+place's region with the library's `SetBound`; its least zoom is the one at which the window's view
+fits **inside** the region on both axes (a fit that merely *holds* the box would leave the view
+wider than the region on one axis), set again on every resize and every change of place. A place
+in no region is stated and nothing wider is drawn (FR-2.5).
+
+**M2's instrument** (`TestNoFrameIsWiderThanTheRegion`): every frame the test draws — the first,
+then twelve zooms out, forty presses each way, three resizes — for Oceanside, Adak (across the
+antimeridian) and Hilo, each checked against its region.
+
+**A coupling to state plainly.** The least zoom and M2's frame box are both computed in the
+library's published scale (256-dot tiles, 2×4 dots a braille cell). If the library's scale moved,
+both would move together. **For the paired release:** an accessor for a view's ground box (or a
+bound mode that fits inside rather than holds) would let the host ask rather than recompute.
+
+**Mutation verdicts** — 10 of 10 caught: the height fit ignored (R1) and the width fit (R2), the
+antimeridian width (R3), resize keeping the old least zoom (R4), no bound (R5), an out-of-region
+place drawn (R6), antimeridian containment (R7), longitudes not normalised (R8, which survived
+until two wrapped-longitude cases were added), a territory missing (R9), and the memo missing the
+out-of-region state (R10).

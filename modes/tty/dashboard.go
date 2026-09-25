@@ -949,7 +949,7 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		d.width, d.height = v.Width, v.Height
 		if d.modal == modalMap {
-			d = d.renderMap() // the map is drawn at the window's new size, in Update (D-41, D-45's size row)
+			d = d.boundMap().renderMap() // the bound's least zoom depends on the size; the map is drawn at the window's new size, in Update (D-41, D-45's size row)
 		}
 		return d, nil
 	case SnapshotMsg:
