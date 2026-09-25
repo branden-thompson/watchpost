@@ -71,10 +71,10 @@ const recentWindow = 3
 // pipelines with the new watch/recent ref sets (UAT 26).
 type Config struct {
 	Version        string
-	KeyOverrides   term.KeyMap                                                                          // user [keys] table (validated at build)
-	NewMap         func(size tuimaps.Size) (*tuimaps.Map, error)                                        // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
-	MapFeed        func(ctx context.Context, snap *snapshot.Snapshot, place *snapshot.Location) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
-	Maps           string                                                                               // 0.18.0: the file's words for the map's two Settings (UIPrefs')
+	KeyOverrides   term.KeyMap                                   // user [keys] table (validated at build)
+	NewMap         func(size tuimaps.Size) (*tuimaps.Map, error) // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
+	MapFeed        func(ctx context.Context, ask MapAsk) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
+	Maps           string                                        // 0.18.0: the file's words for the map's two Settings (UIPrefs')
 	MapDescription string
 	ClearMapData   func() MapCleared // 0.18.0 W3.8: the app empties what the live map cannot reach
 	MapDisclosure  string            // 0.18.0 W1.12: what opening the map contacts and sends, in words (FR-9.4)
@@ -85,10 +85,11 @@ type Config struct {
 	MapLayers      []MapLayer        // 0.18.0 W1.13: the app's registry of layers, in its order
 	// MapCost is the app's estimate of one refresh with the layers as chosen
 	// (0.18.0 W1.14, FR-9.2). Arithmetic over the snapshot: it fetches nothing.
-	MapCost  func(snap *snapshot.Snapshot, on func(key string) bool) MapCost
-	Resolve  func(query string) (snapshot.LocationRef, error)
-	Commit   func(watch, recent []snapshot.LocationRef) error
-	SetTheme func(name string) error // live theme switch + persist (UAT 53)
+	MapCost       func(ask MapAsk, on func(key string) bool) MapCost
+	MapAlertScope string // 0.18.0 W5.3: the file's word for which alerts the map draws
+	Resolve       func(query string) (snapshot.LocationRef, error)
+	Commit        func(watch, recent []snapshot.LocationRef) error
+	SetTheme      func(name string) error // live theme switch + persist (UAT 53)
 
 	// 0.14.0 — the WATCHPOST UI group's three display preferences, written
 	// together when Settings closes. One hook rather than three: they are one
@@ -332,6 +333,7 @@ type UIPrefs struct {
 	MapScale       string // "state" (the default), "county" or "region"
 	MapNearbyKm    int
 	MapLayers      map[string]bool // the layers switched from their defaults
+	MapAlertScope  string          // "station" (the default) or "national"
 }
 
 // PipelineStats counts one pipeline's publishes and the triggers its
@@ -538,6 +540,7 @@ type Dashboard struct {
 	mapNearbyKm    int
 	mapLayerChoice string
 	mapCost        MapCost
+	mapScope       AlertScope // which alerts the map draws (W5.3)
 	mapKeys        term.KeyMap
 	modal          modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode        string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
@@ -807,7 +810,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapScope: alertScopeByKey(cfg.MapAlertScope), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}

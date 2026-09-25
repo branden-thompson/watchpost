@@ -2,6 +2,7 @@ package zones
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -435,5 +436,50 @@ func TestForgetDropsEveryHeldShape(t *testing.T) {
 	before := s.Stats().Fetched
 	if _, err := s.Zone(context.Background(), "TXZ119"); err != nil || s.Stats().Fetched != before+1 {
 		t.Error("a forgotten shape was served from hand")
+	}
+}
+
+// TestZoneFetchesArePolite is 0.18.0 W3.9 (NFR-4, D-46): however many zones
+// one resolve names, never more than six are asked for at once - and more
+// than one is, so the bound is the limit and not a queue - each carrying the
+// station's user-agent.
+func TestZoneFetchesArePolite(t *testing.T) {
+	var inFlight, most atomic.Int32
+	var agentsMu sync.Mutex
+	agents := map[string]bool{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := inFlight.Add(1)
+		defer inFlight.Add(-1)
+		for {
+			m := most.Load()
+			if n <= m || most.CompareAndSwap(m, n) {
+				break
+			}
+		}
+		agentsMu.Lock()
+		agents[r.UserAgent()] = true
+		agentsMu.Unlock()
+		time.Sleep(30 * time.Millisecond)
+		_, _ = w.Write([]byte(`{"properties":{"id":"z","name":"Z"},"geometry":{"type":"Polygon","coordinates":[[[-85,41],[-84,41],[-84,42],[-85,41]]]}}`))
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "watchpost-test", RatePerSec: 500})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := make([]string, 30)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("TXZ%03d", i)
+	}
+	got, _ := New(c, srv.URL).Zones(context.Background(), ids)
+	if len(got) != len(ids) {
+		t.Fatalf("%d of %d zones came back", len(got), len(ids))
+	}
+	const ruled = 6 // D-46: bounded at six, the number ruled - not the constant this guards
+	if m := most.Load(); m > ruled || m < 2 {
+		t.Errorf("at most %d zone requests were in flight at once; want between 2 and %d", m, ruled)
+	}
+	if len(agents) != 1 || !agents["watchpost-test"] {
+		t.Errorf("zone requests carried the agents %v, want the station's alone", agents)
 	}
 }

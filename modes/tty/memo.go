@@ -243,6 +243,7 @@ type modalKey struct {
 	mapNearby int
 	mapLayers string
 	mapCost   MapCost
+	mapScope  AlertScope
 	theme     uint64
 	minute    int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
 	second    int64 // [S] ages, while it is open
@@ -324,7 +325,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
-		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost,
+		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapScope: d.mapScope,
 		mapWords: d.cfg.MapDisclosure + "\x00" + d.cfg.MapRetention,
 	}
 	switch d.modal {

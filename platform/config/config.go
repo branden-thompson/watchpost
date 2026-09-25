@@ -270,6 +270,10 @@ type Config struct {
 	MapScale    string          `toml:"map_scale,omitempty"`     // "region" | "state" (default) | "county"
 	MapNearbyKm int             `toml:"map_nearby_km,omitempty"` // 5 | 10 | 15 (default) | 25 | 50
 	MapLayers   map[string]bool `toml:"map_layers,omitempty"`    // layer key -> on
+	// MapAlertScope is which alerts the map draws (0.18.0 W5.3, FR-4.3): the
+	// station's places' alone, or with the national severe events in the
+	// selected place's region.
+	MapAlertScope string `toml:"map_alert_scope,omitempty"` // "station" (default) | "national"
 
 	// UpdateCheck asks the app, once at startup, whether a newer release is
 	// published (0.15.0 FR-7.1; it polled hourly before). OPT-IN: the app makes no unattended outbound request the

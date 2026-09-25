@@ -189,8 +189,8 @@ func TestTheCostWarningsThresholds(t *testing.T) {
 	}{
 		{MapCost{Bytes: 1_000_000, Requests: 10}, ""},
 		{MapCost{Bytes: 2_000_000, Requests: 40}, ""},
-		{MapCost{Bytes: 2_000_001, Requests: 40}, "The map's layers would fetch about 2.0 MB in 40 requests a refresh, more than the 2 MB or 40 requests this station warns at. Switching a layer off costs less."},
-		{MapCost{Bytes: 500_000, Requests: 41}, "The map's layers would fetch about 0.5 MB in 41 requests a refresh, more than the 2 MB or 40 requests this station warns at. Switching a layer off costs less."},
+		{MapCost{Bytes: 2_000_001, Requests: 40}, "The map's layers would fetch about 2.0 MB in 40 requests a refresh, more than the 2 MB or 40 requests this station warns at. Switching a layer off, or drawing this station's alerts only, costs less."},
+		{MapCost{Bytes: 500_000, Requests: 41}, "The map's layers would fetch about 0.5 MB in 41 requests a refresh, more than the 2 MB or 40 requests this station warns at. Switching a layer off, or drawing this station's alerts only, costs less."},
 	} {
 		if got := costWarning(c.cost); got != c.want {
 			t.Errorf("%+v: got %q, want %q", c.cost, got, c.want)
@@ -203,7 +203,7 @@ func TestTheCostWarningsThresholds(t *testing.T) {
 // with the layers as chosen.
 func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 	asked := map[bool]int{}
-	cost := func(_ *snapshot.Snapshot, on func(string) bool) MapCost {
+	cost := func(_ MapAsk, on func(string) bool) MapCost {
 		asked[on("alert")]++
 		if on("alert") {
 			return MapCost{Bytes: 5_000_000, Requests: 515}
@@ -256,8 +256,8 @@ func TestThePickersGoBackToo(t *testing.T) {
 // TestTheAlertLayersNotesGoWithIt: with the alert areas off, the notes that
 // speak for them are not printed either.
 func TestTheAlertLayersNotesGoWithIt(t *testing.T) {
-	noted := func(ctx context.Context, s *snapshot.Snapshot, p *snapshot.Location) MapFeed {
-		f := boxFeed(-117.6, -117.1, true)(ctx, s, p)
+	noted := func(ctx context.Context, ask MapAsk) MapFeed {
+		f := boxFeed(-117.6, -117.1, true)(ctx, ask)
 		f.Notes = []string{"Wind Warning is drawn from 2 of its 3 zones."}
 		return f
 	}
@@ -272,8 +272,8 @@ func TestTheAlertLayersNotesGoWithIt(t *testing.T) {
 // TestTheEstimateIsAskedWhereItCanChange: opening Settings asks it, and so
 // does the map's new data.
 func TestTheEstimateIsAskedWhereItCanChange(t *testing.T) {
-	cost := func(s *snapshot.Snapshot, _ func(string) bool) MapCost {
-		n := 0
+	cost := func(ask MapAsk, _ func(string) bool) MapCost {
+		s, n := ask.Snap, 0
 		if s != nil && len(s.Locations) > 0 {
 			n = len(s.Locations[0].Alerts)
 		}
@@ -294,5 +294,67 @@ func TestTheEstimateIsAskedWhereItCanChange(t *testing.T) {
 	d = feedAndSettle(t, m.(Dashboard))
 	if d.mapCost.Requests == was {
 		t.Errorf("new data left the estimate at %d requests", was)
+	}
+}
+
+// TestTheAlertScopeRowSavesAndAsksTheFeed is W1.11's last row and W5.3
+// (FR-4.3): the scope is a picker on the Maps tab, written with the group;
+// the feed and the estimate are asked with it.
+func TestTheAlertScopeRowSavesAndAsksTheFeed(t *testing.T) {
+	d, got := uiDash(t, rowMapScope)
+	d.cfg.MapCost = func(ask MapAsk, _ func(string) bool) MapCost { return MapCost{Requests: int(ask.Scope) * 100} }
+	if d.mapScope != ScopeStation {
+		t.Fatalf("an empty file opens with scope %v, want the station's alerts", d.mapScope)
+	}
+	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	d = m.(Dashboard)
+	if d.mapScope != ScopeNational {
+		t.Errorf("→ went to %v, want national", d.mapScope)
+	}
+	if d.mapCost.Requests != 100 {
+		t.Errorf("the scope moved and the estimate stayed at %+v", d.mapCost)
+	}
+	body, _, _ := d.focusBody(d.opts())
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Alerts -") || !strings.Contains(text, ScopeNational.Label()) {
+		t.Errorf("the Maps tab does not show the scope:\n%s", text)
+	}
+	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
+	drain(t, m, cmd)
+	if got.MapAlertScope != "national" {
+		t.Errorf("esc wrote scope %q, want national", got.MapAlertScope)
+	}
+	var asked, costed []AlertScope
+	w := mapDash(t, Config{MapAlertScope: "national",
+		MapFeed: func(_ context.Context, ask MapAsk) MapFeed { asked = append(asked, ask.Scope); return MapFeed{} },
+		MapCost: func(ask MapAsk, _ func(string) bool) MapCost { costed = append(costed, ask.Scope); return MapCost{} }})
+	w, _ = pressKey(w, "g")
+	_ = feedAndSettle(t, w)
+	if len(asked) == 0 || asked[0] != ScopeNational || len(costed) == 0 || costed[0] != ScopeNational {
+		t.Errorf("the feed was asked with %v and the estimate with %v; want national", asked, costed)
+	}
+	if ScopeStation.Key() != "station" || alertScopeByKey("nonsense") != ScopeStation {
+		t.Error("the scope's words do not round-trip")
+	}
+}
+
+// TestANationalAlertIsDescribedInFull: an alert the station does not hold -
+// a national severe event (W5.3) - is described with its own name and the
+// time it ends, from the feed.
+func TestANationalAlertIsDescribedInFull(t *testing.T) {
+	feed := func(ctx context.Context, ask MapAsk) MapFeed {
+		f := boxFeed(-117.6, -117.1, false)(ctx, ask)
+		f.National = []snapshot.Alert{{ID: "w1", Event: "Tornado Warning", Severity: "Extreme", Expires: windExpires}}
+		return f
+	}
+	d := mapDash(t, Config{ASCII: true, MapFeed: feed})
+	s := placedSnap()
+	s.Locations[0].TZ = "America/Los_Angeles"
+	m, _ := d.Update(SnapshotMsg{Snap: s})
+	d = m.(Dashboard)
+	d, _ = pressKey(d, "g")
+	d = feedAndSettle(t, d)
+	out := stripANSITest(d.View().Content)
+	if !strings.Contains(out, "Tornado Warning, severe, covers Oceanside, CA") || !strings.Contains(out, "in effect until") {
+		t.Errorf("the national alert is not described in full:\n%s", out)
 	}
 }

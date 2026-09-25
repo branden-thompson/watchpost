@@ -12,14 +12,13 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
-
-	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // squareFeed is one alert over Oceanside and one note, and counts how often
 // it was asked.
-func squareFeed(asked *int, label string) func(context.Context, *snapshot.Snapshot, *snapshot.Location) MapFeed {
-	return func(_ context.Context, _ *snapshot.Snapshot, place *snapshot.Location) MapFeed {
+func squareFeed(asked *int, label string) func(context.Context, MapAsk) MapFeed {
+	return func(_ context.Context, ask MapAsk) MapFeed {
+		place := ask.Place
 		*asked++
 		ring := []tuimaps.LonLat{{Lon: -117.6, Lat: 33.0}, {Lon: -117.1, Lat: 33.0}, {Lon: -117.1, Lat: 33.4}, {Lon: -117.6, Lat: 33.4}, {Lon: -117.6, Lat: 33.0}}
 		return MapFeed{
@@ -66,8 +65,8 @@ func TestTheFeedFollowsTheData(t *testing.T) {
 	asked := 0
 	label := "Wind Warning"
 	d := mapDash(t, Config{})
-	d.cfg.MapFeed = func(ctx context.Context, s *snapshot.Snapshot, p *snapshot.Location) MapFeed {
-		return squareFeed(&asked, label)(ctx, s, p)
+	d.cfg.MapFeed = func(ctx context.Context, ask MapAsk) MapFeed {
+		return squareFeed(&asked, label)(ctx, ask)
 	}
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
@@ -89,8 +88,8 @@ func TestAStaleFeedIsDropped(t *testing.T) {
 	asked := 0
 	label := "Old Warning"
 	d := mapDash(t, Config{})
-	d.cfg.MapFeed = func(ctx context.Context, s *snapshot.Snapshot, p *snapshot.Location) MapFeed {
-		return squareFeed(&asked, label)(ctx, s, p)
+	d.cfg.MapFeed = func(ctx context.Context, ask MapAsk) MapFeed {
+		return squareFeed(&asked, label)(ctx, ask)
 	}
 	d, _ = pressKey(d, "g")
 	old := d.mapFeedCmd()

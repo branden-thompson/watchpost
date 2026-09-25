@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // MapLayer is one layer the listener can switch, as the app's registry names
@@ -49,7 +50,7 @@ func costWarning(c MapCost) string {
 	}
 	return "The map's layers would fetch about " + strconv.FormatFloat(float64(c.Bytes)/1e6, 'f', 1, 64) + " MB in " +
 		strconv.Itoa(c.Requests) + " requests a refresh, more than the " + strconv.Itoa(mapCostBytes/1_000_000) + " MB or " +
-		strconv.Itoa(mapCostRequests) + " requests this station warns at. Switching a layer off costs less."
+		strconv.Itoa(mapCostRequests) + " requests this station warns at. Switching a layer off, or drawing this station's alerts only, costs less."
 }
 
 // refreshMapCost asks the app's estimate again, with the layers as chosen:
@@ -59,7 +60,7 @@ func (d Dashboard) refreshMapCost() Dashboard {
 	if d.cfg.MapCost == nil {
 		return d
 	}
-	d.mapCost = d.cfg.MapCost(d.snap, d.layerOn)
+	d.mapCost = d.cfg.MapCost(d.mapAsk(), d.layerOn)
 	return d
 }
 
@@ -280,14 +281,14 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 		}
 	}
 	if d.layerOn(AlertLayer) {
-		out.Notes, out.InMissing = f.Notes, f.InMissing
+		out.Notes, out.InMissing, out.National = f.Notes, f.InMissing, f.National
 	}
 	return out
 }
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapScope
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -297,6 +298,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.cycleMapScale(forward), true
 	case rowMapNearby:
 		return d.cycleNearby(forward), true
+	case rowMapScope:
+		return d.cycleScope(), true
 	case rowMapLayers:
 		return d.stepLayer(forward), true
 	}
@@ -315,9 +318,65 @@ func (d Dashboard) mapPrefLines(o render.Opts, lines []string, at int) ([]string
 	}
 	row(rowMapScale, "Default scale -", pickerCellW(d.mapScale.Label(), chips, d.pickerFlashFor(rowMapScale), len("County")))
 	row(rowMapNearby, "Nearby -", pickerCellW(d.nearbyLabel(), chips, d.pickerFlashFor(rowMapNearby), len("31 miles (50 km)")))
+	row(rowMapScope, "Alerts -", pickerCellW(d.mapScope.Label(), chips, d.pickerFlashFor(rowMapScope), len(ScopeNational.Label())))
 	row(rowMapLayers, "Layers -", d.layersCell(o, focus == rowMapLayers))
 	for _, l := range render.WrapText(costWarning(d.mapCost), 56) {
 		lines = append(lines, "    "+settingSupport(l))
 	}
 	return lines, at
+}
+
+// AlertScope is which alerts the map draws (FR-4.3, D-23): the station's own
+// places' alerts, or those and the national severe events in the selected
+// place's region - never wider than the region (D-28).
+type AlertScope int
+
+const (
+	ScopeStation  AlertScope = iota // the default: the station's own places' alerts
+	ScopeNational                   // and the national severe events in the region
+)
+
+// Key is the word the file keeps.
+func (s AlertScope) Key() string {
+	if s == ScopeNational {
+		return "national"
+	}
+	return "station"
+}
+
+// Label is the picker's words.
+func (s AlertScope) Label() string {
+	if s == ScopeNational {
+		return "Plus national severe events"
+	}
+	return "This station's places"
+}
+
+// alertScopeByKey reads the file's word; anything else is the default.
+func alertScopeByKey(key string) AlertScope {
+	if key == "national" {
+		return ScopeNational
+	}
+	return ScopeStation
+}
+
+// cycleScope moves the scope's picker - two states, so either arrow is the
+// other one - and asks the estimate again: the scope is what it most depends on.
+func (d Dashboard) cycleScope() Dashboard {
+	d.mapScope = 1 - d.mapScope
+	return d.refreshMapCost().uiTouched()
+}
+
+// MapAsk is what the map's feed and its estimate are asked with (0.18.0): the
+// station's data, the selected place - whose region bounds the national
+// events drawn - and the scope.
+type MapAsk struct {
+	Snap  *snapshot.Snapshot
+	Place *snapshot.Location
+	Scope AlertScope
+}
+
+// mapAsk is the ask as the window stands.
+func (d Dashboard) mapAsk() MapAsk {
+	return MapAsk{Snap: d.snap, Place: d.selectedLocation(), Scope: d.mapScope}
 }

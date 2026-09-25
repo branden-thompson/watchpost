@@ -105,7 +105,7 @@ func feedFor(t *testing.T, name string, placeZones []string) (snapshot.Location,
 	loc, srv := m1Fixture(t, name)
 	lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL)}
 	snap := &snapshot.Snapshot{Locations: []snapshot.Location{loc}}
-	return loc, lp.mapFeedWith(context.Background(), snap, &loc, func(snapshot.Location) []string { return placeZones })
+	return loc, lp.mapFeedWith(context.Background(), mapInputs{snap: snap, place: &loc}, func(snapshot.Location) []string { return placeZones })
 }
 
 // TestEveryAlertIsOneOverlay is W5.2 (FR-4.2, D-55): one overlay per alert,
@@ -197,7 +197,7 @@ func TestAnAlertOnTwoPlacesIsOneOverlay(t *testing.T) {
 	twin := loc
 	twin.Label = "Knoxville, TN"
 	snap := &snapshot.Snapshot{Locations: []snapshot.Location{loc, twin}}
-	feed := lp.mapFeedWith(context.Background(), snap, &loc, func(snapshot.Location) []string { return nil })
+	feed := lp.mapFeedWith(context.Background(), mapInputs{snap: snap, place: &loc}, func(snapshot.Location) []string { return nil })
 	if len(feed.Overlays) != len(loc.Alerts) {
 		t.Errorf("%d overlays for %d alerts on two places", len(feed.Overlays), len(loc.Alerts))
 	}
@@ -255,7 +255,7 @@ func TestTheDescriptionAnswersTheM1Key(t *testing.T) {
 			loc, srv := m1Fixture(t, name)
 			lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL)}
 			snap := &snapshot.Snapshot{Locations: []snapshot.Location{loc}}
-			feed := lp.mapFeedWith(context.Background(), snap, &loc, func(snapshot.Location) []string { return placeZonesOf(name) })
+			feed := lp.mapFeedWith(context.Background(), mapInputs{snap: snap, place: &loc}, func(snapshot.Location) []string { return placeZonesOf(name) })
 			m, err := newMapBuilder("t", t.TempDir(), &recorded{offline: true}, nil).build(tuimaps.Size{Cols: 69, Rows: 12})
 			if err != nil {
 				t.Fatal(err)

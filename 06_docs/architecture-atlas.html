@@ -841,9 +841,10 @@ code{font-family:var(--mono);font-size:.92em}
     REG[&#34;maplayers.go · the registry (W1.13)\nlayers and sources register from their own files\nalert areas (mapfeed.go) · OpenFreeMap (maps.go)\nrefreshCost: each layer&#39;s own, summed&#34;]
     MF[&#34;mapfeed.go · mapFeed\none overlay per alert, severity → role\npartial areas labelled, notes in words\nwhich alerts&#39; missing zones hold the place&#34;]
     MG[&#34;mapgeometry.go · resolveAlertAreas&#34;]
+    MN[&#34;mapnational.go · nationalAlerts\nthe national scope: the ticker&#39;s severe events\nin the selected place&#39;s region, as alerts\n(by point, or by zone code)&#34;]
   end
   subgraph domains[&#34;domains/&#34;]
-    ZS[&#34;nws/zones · Store\n512 at once, reported past it\nshapes refetched after 7 days&#34;]
+    ZS[&#34;nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days&#34;]
     WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes&#34;]
   end
   subgraph tty[&#34;modes/tty — the Observer&#34;]
@@ -851,7 +852,7 @@ code{font-family:var(--mono);font-size:.92em}
     MD[&#34;map_describe.go · the description\nReport joined to watchpost&#39;s alerts by id\ncovers · stops short · lies to one side (M1&#39;s words)\nunits and directions in words; never &#39;you&#39;&#34;]
     MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll · L legend&#34;]
     LG[&#34;the legend (D-44)\na box over the map&#39;s corner, from Legend()\nonly the severities drawn, with their digits&#34;]
-    ST2[&#34;Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Layers (+ the cost warning)\nClear map data · the retention&#34;]
+    ST2[&#34;Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Alerts (scope) · Layers (+ the cost warning)\nClear map data · the retention&#34;]
   end
   subgraph plat[&#34;platform/&#34;]
     RG[&#34;geo · RegionOf\nsix regions with their waters&#34;]
@@ -859,8 +860,10 @@ code{font-family:var(--mono);font-size:.92em}
   end
   L[&#34;go-tuiMaps v0.2.0-rc.N\nSetBound · Source · Set/Remove · Work · Render · Warnings&#34;]
   MB -- &#34;Config.NewMap(size)&#34; --&gt; MW
-  MF -- &#34;Config.MapFeed(snap, place)&#34; --&gt; MW
+  MF -- &#34;Config.MapFeed(ask: snap, place, scope)&#34; --&gt; MW
   MF --&gt; MG --&gt; ZS
+  MF -- &#34;national scope&#34; --&gt; MN
+  SD[&#34;severe.go · severeDeck\nthe ticker&#39;s national feed (polygons kept)&#34;] -- &#34;nationalFeed()&#34; --&gt; MN
   MF --&gt; WS
   MB -. &#34;first g&#34; .-&gt; ZS
   MW --&gt; RG
@@ -895,7 +898,7 @@ code{font-family:var(--mono);font-size:.92em}
     G[&#34;General\nDATA · WATCHPOST UI · ALERTS - EVENTS&#34;]
     R[&#34;Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY&#34;]
     B[&#34;Broadcaster\nSTATION: transmitter · service radius&#34;]
-    M[&#34;Maps\nMAP: on/off · description · scale · nearby · layers · clear&#34;]
+    M[&#34;Maps\nMAP: on/off · description · scale · nearby · alerts · layers · clear&#34;]
   end
   O([&#34;Observer&#34;]) --&gt; G &amp; R &amp; M
   C([&#34;the console&#34;]) --&gt; G &amp; R &amp; B

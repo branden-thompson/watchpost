@@ -20,8 +20,8 @@ var windExpires = time.Date(2026, 8, 24, 7, 0, 0, 0, time.UTC)
 
 // boxFeed is one Severe alert over a box of longitudes around Oceanside's
 // latitude; the snapshot carries the same alert, as watchpost holds it.
-func boxFeed(west, east float64, inMissing bool) func(context.Context, *snapshot.Snapshot, *snapshot.Location) MapFeed {
-	return func(context.Context, *snapshot.Snapshot, *snapshot.Location) MapFeed {
+func boxFeed(west, east float64, inMissing bool) func(context.Context, MapAsk) MapFeed {
+	return func(context.Context, MapAsk) MapFeed {
 		ring := []tuimaps.LonLat{{Lon: west, Lat: 33.0}, {Lon: east, Lat: 33.0}, {Lon: east, Lat: 33.4}, {Lon: west, Lat: 33.4}, {Lon: west, Lat: 33.0}}
 		f := MapFeed{Overlays: []tuimaps.Overlay{{ID: "alert/w1", Valid: time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC), Keeps: 6 * time.Hour,
 			Features: []tuimaps.Feature{{Kind: tuimaps.Polygon, Rings: [][]tuimaps.LonLat{ring}, Role: tuimaps.AlertSevere,
@@ -35,13 +35,13 @@ func boxFeed(west, east float64, inMissing bool) func(context.Context, *snapshot
 
 // describedDash opens the map under --ascii on Oceanside with one alert, and
 // returns what the window says.
-func describedDash(t *testing.T, feed func(context.Context, *snapshot.Snapshot, *snapshot.Location) MapFeed) string {
+func describedDash(t *testing.T, feed func(context.Context, MapAsk) MapFeed) string {
 	t.Helper()
 	return describedIn(t, feed, render.UnitC)
 }
 
 // describedIn is describedDash in a unit system.
-func describedIn(t *testing.T, feed func(context.Context, *snapshot.Snapshot, *snapshot.Location) MapFeed, units render.Units) string {
+func describedIn(t *testing.T, feed func(context.Context, MapAsk) MapFeed, units render.Units) string {
 	t.Helper()
 	d := mapDash(t, Config{ASCII: true, MapFeed: feed})
 	d.units = units
@@ -99,7 +99,7 @@ func TestTheDescriptionSpeaksM1sWords(t *testing.T) {
 // TestNoAlertIsAStatedState is W1.4: with no alert on the map the description
 // says so, rather than saying nothing.
 func TestNoAlertIsAStatedState(t *testing.T) {
-	out := describedDash(t, func(context.Context, *snapshot.Snapshot, *snapshot.Location) MapFeed { return MapFeed{} })
+	out := describedDash(t, func(context.Context, MapAsk) MapFeed { return MapFeed{} })
 	if !strings.Contains(out, "No alert on the map covers or comes near Oceanside, CA.") {
 		t.Errorf("an empty map is not stated:\n%s", out)
 	}

@@ -29,17 +29,17 @@ func TestTheMapSettingsMigrateAdditively(t *testing.T) {
 func TestTheMapsTabRoundTrips(t *testing.T) {
 	withFixture(t, "0.15.0-full.toml")
 	cfg := mustLoad(t)
-	if cfg.MapScale != "" || cfg.MapNearbyKm != 0 || cfg.MapLayers != nil {
+	if cfg.MapScale != "" || cfg.MapNearbyKm != 0 || cfg.MapLayers != nil || cfg.MapAlertScope != "" {
 		t.Errorf("a 0.15.0 file gained %q %d %v", cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayers)
 	}
 	if err := Mutate(func(c *Config) error {
-		c.MapScale, c.MapNearbyKm, c.MapLayers = "county", 25, map[string]bool{"alert": false}
+		c.MapScale, c.MapNearbyKm, c.MapLayers, c.MapAlertScope = "county", 25, map[string]bool{"alert": false}, "national"
 		return nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 	again := mustLoad(t)
-	if again.MapScale != "county" || again.MapNearbyKm != 25 || len(again.MapLayers) != 1 || again.MapLayers["alert"] {
+	if again.MapScale != "county" || again.MapNearbyKm != 25 || len(again.MapLayers) != 1 || again.MapLayers["alert"] || again.MapAlertScope != "national" {
 		t.Errorf("the Maps tab did not round-trip: %q %d %v", again.MapScale, again.MapNearbyKm, again.MapLayers)
 	}
 }

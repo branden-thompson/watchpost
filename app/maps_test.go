@@ -86,14 +86,7 @@ func TestTheMapSettingsReachTheWindowAndTheFile(t *testing.T) {
 	if cfg.Maps != "off" || cfg.MapDescription != "instead" {
 		t.Errorf("the window is handed %q %q", cfg.Maps, cfg.MapDescription)
 	}
-	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	if err := os.MkdirAll(filepath.Join(dir, "watchpost"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "watchpost", "config.toml"), []byte("units = \"imperial\"\n"), 0o600); err != nil {
-		t.Fatal(err) // Settings saves over a file the station already has; a first run's is refused by design
-	}
+	withConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", Clock: "24h", Maps: "off", MapDescription: "off"}); err != nil {
 		t.Fatal(err)
 	}
@@ -195,14 +188,7 @@ func TestTheMapsTabReachesTheWindowAndTheFile(t *testing.T) {
 	if cfg.MapScale != "region" || cfg.MapNearbyKm != 5 || cfg.MapLayerChoice["alert"] {
 		t.Errorf("the window is handed %q %d %v", cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayerChoice)
 	}
-	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	if err := os.MkdirAll(filepath.Join(dir, "watchpost"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "watchpost", "config.toml"), []byte("units = \"imperial\"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	withConfigFile(t)
 	if err := setUIHook(tty.UIPrefs{Units: "metric", MapScale: "county", MapNearbyKm: 25, MapLayers: map[string]bool{"alert": false}}); err != nil {
 		t.Fatal(err)
 	}

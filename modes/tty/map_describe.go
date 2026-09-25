@@ -79,6 +79,9 @@ func (d Dashboard) placeFacts(loc snapshot.Location) string {
 // alertSentence is one alert against the place.
 func (d Dashboard) alertSentence(loc snapshot.Location, pa tuimaps.PlaceAlert) string {
 	own := alertByID(loc, pa.Feature)
+	if own == nil {
+		own = alertByID(snapshot.Location{Alerts: d.mapPane.national}, pa.Feature) // a national event (W5.3)
+	}
 	event := pa.Label
 	if own != nil && own.Event != "" {
 		event = own.Event

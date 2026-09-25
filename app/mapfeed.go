@@ -20,11 +20,12 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// mapFeed is the window's feed: every alert of the station's locations, as
+// mapFeed is the window's feed: every alert of the station's locations - and,
+// in the national scope, the region's national severe events (W5.3) - as
 // overlays, with the selected place's own zones asked of the weather service
 // so a note can say whether the place lies in a missing zone (FR-4.1, FR-4.4).
-func (lp *livePipelines) mapFeed(ctx context.Context, snap *snapshot.Snapshot, place *snapshot.Location) tty.MapFeed {
-	return lp.mapFeedWith(ctx, snap, place, func(loc snapshot.Location) []string {
+func (lp *livePipelines) mapFeed(ctx context.Context, ask tty.MapAsk) tty.MapFeed {
+	return lp.mapFeedWith(ctx, lp.mapInputs(ask), func(loc snapshot.Location) []string {
 		if lp.weather == nil {
 			return nil
 		}
@@ -33,10 +34,15 @@ func (lp *livePipelines) mapFeed(ctx context.Context, snap *snapshot.Snapshot, p
 }
 
 // mapFeedWith is mapFeed with the place's zones given, for the tests.
-func (lp *livePipelines) mapFeedWith(ctx context.Context, snap *snapshot.Snapshot, place *snapshot.Location, placeZones func(snapshot.Location) []string) tty.MapFeed {
+func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZones func(snapshot.Location) []string) tty.MapFeed {
 	var out tty.MapFeed
+	snap, place := in.withNational(), in.place
 	if snap == nil {
 		return out
+	}
+	national := map[string]bool{}
+	for _, a := range in.national {
+		national[a.ID] = true
 	}
 	areas := resolveAlertAreas(ctx, lp.zoneShapes, snap)
 	seen := map[string]bool{}
@@ -50,6 +56,9 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, snap *snapshot.Snapsho
 			area := areas[a.ID]
 			if o, ok := alertOverlay(a, area); ok {
 				out.Overlays = append(out.Overlays, o)
+				if national[a.ID] {
+					out.National = append(out.National, a) // the window names it in full (W5.3)
+				}
 			}
 			if area.Complete() || place == nil {
 				continue
@@ -89,9 +98,11 @@ func init() {
 }
 
 // alertLayerCost is what the alert areas fetch in a refresh, as if nothing
-// were held: every zone the alerts name, once; an alert with its own polygon
-// fetches nothing (FR-9.2).
-func alertLayerCost(snap *snapshot.Snapshot) (int64, int) {
+// were held: every zone the alerts name, once - the station's, and in the
+// national scope the region's national events' - and an alert with its own
+// polygon fetches nothing (FR-9.2).
+func alertLayerCost(in mapInputs) (int64, int) {
+	snap := in.withNational()
 	if snap == nil {
 		return 0, 0
 	}

@@ -127,6 +127,7 @@ const (
 	rowMapDesc
 	rowMapScale
 	rowMapNearby
+	rowMapScope
 	rowMapLayers
 	rowMapClear
 
@@ -252,6 +253,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapDesc:   {rowMapDesc, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapScale:  {rowMapScale, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapNearby: {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapScope:  {rowMapScope, groupMap, scopeObserver, rowPicker, true, "", ""},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one
 		// under the cursor; ←→ move it when there is more than one.
 		rowMapLayers: {rowMapLayers, groupMap, scopeObserver, rowCheck, false, "", ""},

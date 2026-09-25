@@ -246,6 +246,10 @@ func (s *severeDeck) SetLocations(slot int, snap *snapshot.Snapshot) {
 	s.publish()
 }
 
+// nationalFeed is the ticker's national feed as last set, a copy: the map's
+// national scope reads it (0.18.0 W5.3) and adds no request of its own.
+func (s *severeDeck) nationalFeed() []globalfeed.Event { return lockedCopy(&s.mu, &s.feed) }
+
 // SetFeed replaces the feed half with its own copy plus the sources' health,
 // and republishes.
 func (s *severeDeck) SetFeed(evs []globalfeed.Event, sources []SourceHealth) {
@@ -436,10 +440,13 @@ func (s *severeDeck) AlertKeysWithin(lat, lon, radiusMi float64) map[string]bool
 }
 
 // LaneRows is a copy of those rows, for the ticker's cycle.
-func (s *severeDeck) LaneRows() []severe.Row {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]severe.Row(nil), s.laneRows...)
+func (s *severeDeck) LaneRows() []severe.Row { return lockedCopy(&s.mu, &s.laneRows) }
+
+// lockedCopy is a copy of a slice the deck's lock guards, read under it.
+func lockedCopy[T any](mu *sync.Mutex, src *[]T) []T {
+	mu.Lock()
+	defer mu.Unlock()
+	return append([]T(nil), *src...)
 }
 
 // indexKey fingerprints the row set — each row's key, times, location, path

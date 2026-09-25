@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–9 (W1.1–W1.8, W1.10–W1.17 less alert scope, W2.1, W3.1–W3.8, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry and the cost warning)."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–10 (W1.1–W1.8, W1.10–W1.17, W2.1, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope)."
 ---
 
 # As built: where the map lives
@@ -25,9 +25,10 @@ flowchart LR
     REG["maplayers.go · the registry (W1.13)\nlayers and sources register from their own files\nalert areas (mapfeed.go) · OpenFreeMap (maps.go)\nrefreshCost: each layer's own, summed"]
     MF["mapfeed.go · mapFeed\none overlay per alert, severity → role\npartial areas labelled, notes in words\nwhich alerts' missing zones hold the place"]
     MG["mapgeometry.go · resolveAlertAreas"]
+    MN["mapnational.go · nationalAlerts\nthe national scope: the ticker's severe events\nin the selected place's region, as alerts\n(by point, or by zone code)"]
   end
   subgraph domains["domains/"]
-    ZS["nws/zones · Store\n512 at once, reported past it\nshapes refetched after 7 days"]
+    ZS["nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days"]
     WS["nws · Provider.ZonesFor\nthe place's own zone codes"]
   end
   subgraph tty["modes/tty — the Observer"]
@@ -35,7 +36,7 @@ flowchart LR
     MD["map_describe.go · the description\nReport joined to watchpost's alerts by id\ncovers · stops short · lies to one side (M1's words)\nunits and directions in words; never 'you'"]
     MK["map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll · L legend"]
     LG["the legend (D-44)\na box over the map's corner, from Legend()\nonly the severities drawn, with their digits"]
-    ST2["Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Layers (+ the cost warning)\nClear map data · the retention"]
+    ST2["Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Alerts (scope) · Layers (+ the cost warning)\nClear map data · the retention"]
   end
   subgraph plat["platform/"]
     RG["geo · RegionOf\nsix regions with their waters"]
@@ -43,8 +44,10 @@ flowchart LR
   end
   L["go-tuiMaps v0.2.0-rc.N\nSetBound · Source · Set/Remove · Work · Render · Warnings"]
   MB -- "Config.NewMap(size)" --> MW
-  MF -- "Config.MapFeed(snap, place)" --> MW
+  MF -- "Config.MapFeed(ask: snap, place, scope)" --> MW
   MF --> MG --> ZS
+  MF -- "national scope" --> MN
+  SD["severe.go · severeDeck\nthe ticker's national feed (polygons kept)"] -- "nationalFeed()" --> MN
   MF --> WS
   MB -. "first g" .-> ZS
   MW --> RG
@@ -89,7 +92,7 @@ flowchart LR
     G["General\nDATA · WATCHPOST UI · ALERTS - EVENTS"]
     R["Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY"]
     B["Broadcaster\nSTATION: transmitter · service radius"]
-    M["Maps\nMAP: on/off · description · scale · nearby · layers · clear"]
+    M["Maps\nMAP: on/off · description · scale · nearby · alerts · layers · clear"]
   end
   O(["Observer"]) --> G & R & M
   C(["the console"]) --> G & R & B
@@ -100,5 +103,5 @@ Each tab fits unscrolled at 133×44; the window is as wide as its widest tab on 
 
 ## Not built yet
 
-The `NextCall` tick; alert scope and the national scope (W1.11's last row, W5.3's second half); zone
-politeness (W3.9); radar (W8), which registers its sources and its layer.
+The `NextCall` tick and the rest of W2 (the goroutine record, the frame guards, join on close, the
+allocation pin, the width goldens); radar (W8), which registers its sources and its layer.

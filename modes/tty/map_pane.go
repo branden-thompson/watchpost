@@ -20,6 +20,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
 
@@ -65,6 +66,7 @@ type mapPane struct {
 	shown     map[string]bool       // the overlays the feed set, so a gone alert is taken off
 	notes     []string              // the feed's notes, printed under the map
 	inMissing map[string]bool       // the feed's alerts whose missing zones hold the place
+	national  []snapshot.Alert      // the feed's alerts the station does not hold, which the description names
 	report    tuimaps.PlaceReport   // the library's answers for the selected place, as last drawn
 	legend    []tuimaps.LegendEntry // what the map draws now, for the legend (W1.17)
 	legendOn  bool                  // the legend is open over the map (D-44)
@@ -86,6 +88,9 @@ type MapFeed struct {
 	Overlays  []tuimaps.Overlay
 	Notes     []string
 	InMissing map[string]bool // alerts whose missing zones hold the selected place, by alert id
+	// National are the alerts drawn that the station does not hold - the
+	// national scope's (W5.3) - so the description can name them in full.
+	National []snapshot.Alert
 }
 
 // mapFeedMsg is the feed's answer, to the request it was asked in.
@@ -519,11 +524,12 @@ func (d Dashboard) mapFeedCmd() tea.Cmd {
 	if feed == nil || d.mapPane.m == nil || d.modal != modalMap || loc == nil {
 		return nil
 	}
-	gen, snap, place := d.mapPane.feedGen, d.snap, *loc
+	gen, ask, place := d.mapPane.feedGen, d.mapAsk(), *loc
+	ask.Place = &place // the command's own copy: the model may move on while it runs
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), mapWorkLimit)
 		defer cancel()
-		return mapFeedMsg{gen: gen, feed: feed(ctx, snap, &place)}
+		return mapFeedMsg{gen: gen, feed: feed(ctx, ask)}
 	}
 }
 
@@ -552,7 +558,7 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
 		}
 	}
-	d.mapPane.shown, d.mapPane.notes, d.mapPane.inMissing = shown, notes, v.feed.InMissing
+	d.mapPane.shown, d.mapPane.notes, d.mapPane.inMissing, d.mapPane.national = shown, notes, v.feed.InMissing, v.feed.National
 	d.mapPane.drawnSev = map[string]bool{}
 	for _, o := range v.feed.Overlays {
 		for _, f := range o.Features {

@@ -140,11 +140,14 @@ func (*livePipelines).giveItAStation
 func (*livePipelines).hydrate
 func (*livePipelines).injectHook
 func (*livePipelines).injectHook
+func (*livePipelines).inputsWith
 func (*livePipelines).locateInRadius
 func (*livePipelines).lookInPool
 func (*livePipelines).lookupCtx
+func (*livePipelines).mapCost
 func (*livePipelines).mapFeed
 func (*livePipelines).mapFeedWith
+func (*livePipelines).mapInputs
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
@@ -345,6 +348,7 @@ func (*severeDeck).Row
 func (*severeDeck).SetFeed
 func (*severeDeck).SetLocations
 func (*severeDeck).currentRows
+func (*severeDeck).nationalFeed
 func (*severeDeck).publish
 func (*severeDeck).scope
 func (*severeDeck).setLaneRows
@@ -383,11 +387,13 @@ func (hostFacts).Installed
 func (hostFacts).Platform
 func (mainTrackStage).String
 func (mainTrackStage).reports
+func (mapInputs).withNational
 func RenderCast
 func ReportOnce
 func ReportOnceWithStats
 func RunDashboard
 func abbreviateHome
+func afterLastSlash
 func alertKeysOf
 func alertLayerCost
 func alertNarration
@@ -453,6 +459,7 @@ func gapAfter
 func halfFor
 func holdRest
 func hostOf
+func inRegion
 func indexKey
 func init
 func init
@@ -471,6 +478,7 @@ func live
 func loadGeodata
 func loadSeen
 func loadUserThemes
+func lockedCopy
 func macVoices
 func mainTrack
 func mapDisclosure
@@ -479,6 +487,7 @@ func marineReportOf
 func mastheadLine
 func matchesQuery
 func narrateDebug
+func nationalAlerts
 func nearestMetro
 func needsReadLine
 func newAlertStore
@@ -646,6 +655,7 @@ type livePipelines
 type liveSource
 type mainTrackStage
 type mapBuilder
+type mapInputs
 type mapLayer
 type mapSource
 type mastercontrol

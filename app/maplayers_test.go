@@ -26,7 +26,7 @@ func withLayer(t *testing.T, l mapLayer) {
 // the estimate, and nothing else was edited to let it in.
 func TestAFakeLayerPlugsInWithoutEditingTheOthers(t *testing.T) {
 	withLayer(t, mapLayer{key: "fake", label: "Fake layer", on: true,
-		cost: func(*snapshot.Snapshot) (int64, int) { return 1_500_000, 30 }})
+		cost: func(mapInputs) (int64, int) { return 1_500_000, 30 }})
 	cfg := (&livePipelines{}).ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
 	var keys []string
 	for _, l := range cfg.MapLayers {
@@ -36,11 +36,11 @@ func TestAFakeLayerPlugsInWithoutEditingTheOthers(t *testing.T) {
 		t.Fatalf("the window is handed layers %v, want alert then fake", keys)
 	}
 	all := func(string) bool { return true }
-	with := cfg.MapCost(&snapshot.Snapshot{}, all)
+	with := cfg.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, all)
 	if with.Bytes != 1_500_000 || with.Requests != 30 {
 		t.Errorf("the fake layer's cost is not in the estimate: %+v", with)
 	}
-	if off := cfg.MapCost(&snapshot.Snapshot{}, func(k string) bool { return k != "fake" }); off.Requests != 0 {
+	if off := cfg.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, func(k string) bool { return k != "fake" }); off.Requests != 0 {
 		t.Errorf("a layer switched off is still counted: %+v", off)
 	}
 }
@@ -99,11 +99,11 @@ func TestTheAlertLayersCostIsItsZones(t *testing.T) {
 		{Alerts: []snapshot.Alert{{ID: "a", AffectedZones: []string{"CAZ043", "CAZ048"}},
 			{ID: "c", AffectedZones: []string{"CAZ099"}, Area: geo.Shape{{{{Lon: -117, Lat: 33}, {Lon: -116, Lat: 33}, {Lon: -116, Lat: 34}, {Lon: -117, Lat: 33}}}}}}},
 	}}
-	bytes, requests := alertLayerCost(snap)
+	bytes, requests := alertLayerCost(mapInputs{snap: snap})
 	if requests != 3 || bytes != 3*zoneShapeBytes {
 		t.Errorf("the alert areas cost %d bytes in %d requests; want three zones", bytes, requests)
 	}
-	if b, r := alertLayerCost(nil); b != 0 || r != 0 {
+	if b, r := alertLayerCost(mapInputs{}); b != 0 || r != 0 {
 		t.Errorf("no snapshot costs %d, %d", b, r)
 	}
 }
@@ -115,7 +115,7 @@ func TestTheEstimateIsReachedFromProduction(t *testing.T) {
 	if cfg.MapCost == nil || len(cfg.MapLayers) == 0 {
 		t.Fatal("the window is handed no layers or no estimate")
 	}
-	if got := cfg.MapCost(nil, func(string) bool { return true }); got != (tty.MapCost{}) {
+	if got := cfg.MapCost(tty.MapAsk{}, func(string) bool { return true }); got != (tty.MapCost{}) {
 		t.Errorf("no snapshot is estimated at %+v", got)
 	}
 }

@@ -398,3 +398,59 @@ were added for survivors found before the run.
 (arithmetic, no audio). The declaration set re-captured. `staticcheck` QF1011 in a new test.
 
 **Diagrams:** `as-built-map.md` (the registry, the Maps tab's rows, the estimate); atlas regenerated.
+
+## Batch 10 — the alert scope, with the region's national severe events; zone politeness (2026-09-25)
+
+**Tasks:** W5.3's second half and its Setting (W1.11's last row, FR-4.3), W3.9 (NFR-4, D-46).
+
+**Test first.** `mapnational_test.go`, `nws_area_test.go`, `TestRegionOfZone` and the scope row's tests
+failed to compile before the code (RED). W3.9's bound was already in the store (`fetchAtOnce`, kept by
+D-46), so its test passed on the code as it stood; a mutant stands in for its RED - and the first
+mutant **survived**, because the test compared against `fetchAtOnce` itself and moved with it. It now
+pins D-46's six as a literal, and both mutants (seven, one) are caught.
+
+**The scope** is a picker on the Maps tab, **Alerts -**: "This station's places" (the default, and all
+the map drew before) or "Plus national severe events" (`map_alert_scope`). The national events are
+**the ticker's**: the national feed is already polled for the marquee and the severe window, and the
+map reads the severe deck's copy of it (`severeDeck.nationalFeed`) - **no new request**. Each event is
+turned into the alert the station's own reader would have made (`app/mapnational.go`), so it is
+resolved, drawn, noted and described by exactly the station's path; it is kept to **the selected
+place's region** (D-28) - by its point, or for a zone-only event by its first zone's code
+(`geo.RegionOfZone`: a state's or a marine area's prefix; AMZ7xx lie off Puerto Rico). Superseded
+events and other classes are left out; an alert the station holds too is drawn once. The station's
+scope does not read the national feed at all.
+
+**The national feed keeps each alert's polygon** (`SevereDetail.Area`), read by the same bounded
+`geo.ReadGeometry` the station's alerts use; an unreadable shape is no shape and the alert stands. Its
+point is still the first vertex of the geometry's **coordinates** (a bounding box that comes first is
+not a vertex - a test pins it).
+
+**The feed's and the estimate's inputs are one value** (`tty.MapAsk`: snapshot, place, scope; in the
+app, `mapInputs` with the region's national alerts), so a later layer's input (fire, radar's step) has
+room without another signature change. The estimate now counts the national zone-only events' zones in
+the national scope; a polygon costs nothing. The warning's words end "Switching a layer off, or drawing
+this station's alerts only, costs less."
+
+**The description names a national alert in full.** The library's answer carries no end time, and the
+description found an alert's name and end only among the selected place's own alerts; the feed now
+hands the window the national alerts it drew (`MapFeed.National`), and the description falls back to
+them.
+
+**W3.9:** `TestZoneFetchesArePolite` - thirty zones, never more than six in flight and more than one,
+each with the station's agent; the production store is built on the data client, whose agent names
+watchpost.
+
+**Mutation verdicts** (targeted, 19 plus 4 re-runs): caught - the region filter (by point, by zone), a
+superseded event drawn, the national scope in the inputs, the snapshot copy, the ids made bare, the
+national alerts handed to the window, the description's fallback, the notes filter carrying them, the
+scope in the ask, the scope moving the estimate (after a test was added), the polygon kept, the zone
+code's letter check (after a case was added), the bbox (after a case was added), the politeness bound
+(after the literal). **Equivalent:** the production inputs skipping the national read in the station's
+scope - the conversion is scope-gated too, so skipping it only saves a copy; kept, for the cost.
+
+**What the gates found.** `dupes`: `severeDeck.nationalFeed` was `LaneRows` over another field - both
+now read through one generic `lockedCopy`, collapsed rather than ratified. The declaration set
+re-captured.
+
+**Diagrams:** `as-built-map.md` (the scope, the national feed through the severe deck); atlas
+regenerated.

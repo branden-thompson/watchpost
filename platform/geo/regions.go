@@ -72,3 +72,53 @@ func (r Region) Centre() (lat, lon float64) {
 	lon = math.Mod(r.W+width/2+540, 360) - 180
 	return (r.S + r.N) / 2, lon
 }
+
+// zonePrefixRegions are the zone-code prefixes outside the contiguous United
+// States: the states and territories, and the marine areas off them. Every
+// other state's code, and the contiguous marine areas, are contiguous.
+var zonePrefixRegions = map[string]string{
+	"AK": RegionAlaska, "PK": RegionAlaska,
+	"HI": RegionHawaii, "PH": RegionHawaii,
+	"PR": RegionCaribbean, "VI": RegionCaribbean,
+	"GU": RegionMarianas, "MP": RegionMarianas, "PM": RegionMarianas,
+	"AS": RegionSamoa, "PS": RegionSamoa,
+}
+
+// contiguousZonePrefixes are the contiguous states' and waters' codes: the
+// fifty less Alaska and Hawaii, DC, and the marine areas of both coasts, the
+// Gulf and the Great Lakes.
+var contiguousZonePrefixes = map[string]bool{
+	"AL": true, "AZ": true, "AR": true, "CA": true, "CO": true, "CT": true, "DE": true, "DC": true, "FL": true, "GA": true,
+	"ID": true, "IL": true, "IN": true, "IA": true, "KS": true, "KY": true, "LA": true, "ME": true, "MD": true, "MA": true,
+	"MI": true, "MN": true, "MS": true, "MO": true, "MT": true, "NE": true, "NV": true, "NH": true, "NJ": true, "NM": true,
+	"NY": true, "NC": true, "ND": true, "OH": true, "OK": true, "OR": true, "PA": true, "RI": true, "SC": true, "SD": true,
+	"TN": true, "TX": true, "UT": true, "VT": true, "VA": true, "WA": true, "WV": true, "WI": true, "WY": true,
+	"PZ": true, "AN": true, "AM": true, "GM": true, "LM": true, "LE": true, "LH": true, "LO": true, "LS": true, "LC": true, "SL": true,
+}
+
+// RegionOfZone is the region an NWS zone code is in - "TXZ277", "PKZ120" -
+// for an alert that names zones and carries no point (0.18.0 W5.3). The
+// Atlantic marine areas numbered 7xx lie off Puerto Rico and the Virgin
+// Islands. A code of no known prefix is in no region.
+func RegionOfZone(code string) (Region, bool) {
+	if len(code) < 3 || (code[2] != 'Z' && code[2] != 'C') {
+		return Region{}, false
+	}
+	prefix, name := code[:2], ""
+	switch {
+	case prefix == "AM" && len(code) > 3 && code[3] == '7':
+		name = RegionCaribbean
+	case zonePrefixRegions[prefix] != "":
+		name = zonePrefixRegions[prefix]
+	case contiguousZonePrefixes[prefix]:
+		name = RegionContiguous
+	default:
+		return Region{}, false
+	}
+	for _, r := range regions {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	return Region{}, false
+}

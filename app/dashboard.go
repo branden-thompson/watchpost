@@ -394,7 +394,8 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapNearbyKm:    cfg.MapNearbyKm,               // 0.18.0 W1.11, W9.2
 		MapLayerChoice: cfg.MapLayers,                 // 0.18.0 W1.11
 		MapLayers:      windowLayers(),                // 0.18.0 W1.13: the registry's layers
-		MapCost:        refreshCost,                   // 0.18.0 W1.14: the registry's estimate
+		MapCost:        lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate
+		MapAlertScope:  cfg.MapAlertScope,             // 0.18.0 W5.3
 		Hydrate:        lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
 		Credits:        credits(),                     // data-source credits, licence obligations included (UAT 75)
 		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules

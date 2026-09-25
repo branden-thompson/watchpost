@@ -492,6 +492,8 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.cycleMapScale(true)
 	case rowMapNearby:
 		return d.cycleNearby(true)
+	case rowMapScope:
+		return d.cycleScope()
 	case rowMapLayers:
 		return d.toggleLayer()
 	default:
