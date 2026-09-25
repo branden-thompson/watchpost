@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–8 (W1.1–W1.8, W1.10, W1.12, W1.15–W1.17, W2.1, W3.1–W3.8, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62)."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–9 (W1.1–W1.8, W1.10–W1.17 less alert scope, W2.1, W3.1–W3.8, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry and the cost warning)."
 ---
 
 # As built: where the map lives
@@ -21,7 +21,8 @@ alone, and the window is handed functions.
 ```mermaid
 flowchart LR
   subgraph app["app/ — the composition root"]
-    MB["maps.go · mapBuilder\nthe closed list's basemap (OpenFreeMap)\nwatchpost/‹version›, 256 MiB, 7 days\n4 MiB shared memory cache · nearby 15 km (M1's rule)\nseeds zone outlines on the first map"]
+    MB["maps.go · mapBuilder\nthe registered basemap (OpenFreeMap)\nwatchpost/‹version›, 256 MiB, 7 days\n4 MiB shared memory cache\nseeds zone outlines on the first map"]
+    REG["maplayers.go · the registry (W1.13)\nlayers and sources register from their own files\nalert areas (mapfeed.go) · OpenFreeMap (maps.go)\nrefreshCost: each layer's own, summed"]
     MF["mapfeed.go · mapFeed\none overlay per alert, severity → role\npartial areas labelled, notes in words\nwhich alerts' missing zones hold the place"]
     MG["mapgeometry.go · resolveAlertAreas"]
   end
@@ -30,11 +31,11 @@ flowchart LR
     WS["nws · Provider.ZonesFor\nthe place's own zone codes"]
   end
   subgraph tty["modes/tty — the Observer"]
-    MW["map_pane.go · the map window\ng opens · owns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station's"]
+    MW["map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station's\na layer off: its overlays not set (key before the slash)"]
     MD["map_describe.go · the description\nReport joined to watchpost's alerts by id\ncovers · stops short · lies to one side (M1's words)\nunits and directions in words; never 'you'"]
     MK["map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll · L legend"]
     LG["the legend (D-44)\na box over the map's corner, from Legend()\nonly the severities drawn, with their digits"]
-    ST2["Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nClear map data · the retention"]
+    ST2["Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Layers (+ the cost warning)\nClear map data · the retention"]
   end
   subgraph plat["platform/"]
     RG["geo · RegionOf\nsix regions with their waters"]
@@ -55,6 +56,10 @@ flowchart LR
   MW --> L
   MB --> L
   MB --> HX
+  MF -. "registers alert areas" .-> REG
+  MB -. "registers OpenFreeMap" .-> REG
+  REG -- "Config.MapLayers · Config.MapCost" --> ST2
+  REG -- "Config.MapCost" --> MW
 ```
 
 ## What the window's body is
@@ -72,7 +77,8 @@ flowchart TB
   DS -- "yes (the default)" --> D1["the description first in reading order (D-55)"] --> M
   DS -- "off" --> M["the map, bound to the region (FR-2.1)\nthe window 8 rows short of the terminal, full width less its frame"]
   M --> NT["the feed's notes: partial areas named in words (FR-4.4)"]
-  NT --> ST["the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window"]
+  NT --> CW["the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)"]
+  CW --> ST["the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window"]
 ```
 
 ## Settings, in tabs (D-62)
@@ -83,7 +89,7 @@ flowchart LR
     G["General\nDATA · WATCHPOST UI · ALERTS - EVENTS"]
     R["Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY"]
     B["Broadcaster\nSTATION: transmitter · service radius"]
-    M["Maps\nMAP"]
+    M["Maps\nMAP: on/off · description · scale · nearby · layers · clear"]
   end
   O(["Observer"]) --> G & R & M
   C(["the console"]) --> G & R & B
@@ -94,6 +100,5 @@ Each tab fits unscrolled at 133×44; the window is as wide as its widest tab on 
 
 ## Not built yet
 
-The `NextCall` tick; the remaining Settings rows (W1.11: default scale, layers, alert scope, nearby); the registry and
-the cost warning (W1.13, W1.14); the national scope (W5.3's second half); zone politeness (W3.9);
-radar (W8).
+The `NextCall` tick; alert scope and the national scope (W1.11's last row, W5.3's second half); zone
+politeness (W3.9); radar (W8), which registers its sources and its layer.

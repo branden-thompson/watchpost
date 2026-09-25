@@ -120,10 +120,14 @@ const (
 	rowRelayDwell
 	rowRelayLang
 
-	// MAP (0.18.0 W1.8, W1.10, W1.12, W3.8): on or off, the description's
-	// mode, and the action that empties the map's data.
+	// MAP (0.18.0 W1.8, W1.10, W1.11, W1.12, W3.8): on or off, the
+	// description's mode, the scale it opens at, the nearby distance, the
+	// layers, and the action that empties the map's data.
 	rowMapsOn
 	rowMapDesc
+	rowMapScale
+	rowMapNearby
+	rowMapLayers
 	rowMapClear
 
 	setupRowCount
@@ -244,8 +248,13 @@ func setupTable() [setupRowCount]setupRow {
 
 		// THE MAP IS THE LISTENER'S (0.18.0): Observer draws it, the console does not.
 		// ONE LINE EACH: the WATCHPOST UI group must still fit the window unscrolled.
-		rowMapsOn:  {rowMapsOn, groupMap, scopeObserver, rowToggle, false, "", ""},
-		rowMapDesc: {rowMapDesc, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapsOn:    {rowMapsOn, groupMap, scopeObserver, rowToggle, false, "", ""},
+		rowMapDesc:   {rowMapDesc, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapScale:  {rowMapScale, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapNearby: {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
+		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one
+		// under the cursor; ←→ move it when there is more than one.
+		rowMapLayers: {rowMapLayers, groupMap, scopeObserver, rowCheck, false, "", ""},
 		// AN ACTION, operated by space: it empties the map's data (W3.8).
 		rowMapClear: {rowMapClear, groupMap, scopeObserver, rowCheck, false, "", ""},
 

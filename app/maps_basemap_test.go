@@ -95,8 +95,8 @@ func settleAt(t *testing.T, m *tuimaps.Map, size tuimaps.Size, now time.Time) tu
 // HR-6, HR-10): the map asks OpenFreeMap and nothing else, as watchpost, and
 // the list of sources is FR-3.8's, member for member.
 func TestTheBasemapIsTheClosedListsSource(t *testing.T) {
-	if len(basemapSources) != 1 || basemapSources[0].address != "https://tiles.openfreemap.org/planet" {
-		t.Fatalf("the basemap sources are %+v; FR-3.8 lists OpenFreeMap's planet alone", basemapSources)
+	if len(mapSources) != 1 || mapSources[0].address != "https://tiles.openfreemap.org/planet" {
+		t.Fatalf("the basemap sources are %+v; FR-3.8 lists OpenFreeMap's planet alone", mapSources)
 	}
 	tr := &recorded{}
 	m, err := testBuilder(t, tr).build(tuimaps.Size{Cols: 69, Rows: 12})

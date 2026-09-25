@@ -112,7 +112,7 @@ func TestTheMapSettingsReachTheWindowAndTheFile(t *testing.T) {
 // what the map contacts and keeps.
 func TestTheDisclosureNamesEverySourceAndTheRetention(t *testing.T) {
 	cfg := (&livePipelines{}).ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
-	for _, s := range basemapSources {
+	for _, s := range mapSources {
 		host := strings.TrimPrefix(s.address, "https://")
 		host = host[:strings.Index(host, "/")]
 		if !strings.Contains(cfg.MapDisclosure, s.name) || !strings.Contains(cfg.MapDisclosure, host) {
@@ -183,5 +183,34 @@ func TestClearingEmptiesWhatTheMapKept(t *testing.T) {
 	}
 	if len(tr.requests()) != asked {
 		t.Error("clearing reached the network")
+	}
+}
+
+// TestTheMapsTabReachesTheWindowAndTheFile is W1.11's wiring: the file's
+// scale, nearby distance and layers are handed to the window, and Settings'
+// answer is written back.
+func TestTheMapsTabReachesTheWindowAndTheFile(t *testing.T) {
+	lp := &livePipelines{}
+	cfg := lp.ttyConfig("t", Options{}, false, config.Config{MapScale: "region", MapNearbyKm: 5, MapLayers: map[string]bool{"alert": false}}, nil, nil, nil, nil, nil, nil)
+	if cfg.MapScale != "region" || cfg.MapNearbyKm != 5 || cfg.MapLayerChoice["alert"] {
+		t.Errorf("the window is handed %q %d %v", cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayerChoice)
+	}
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	if err := os.MkdirAll(filepath.Join(dir, "watchpost"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "watchpost", "config.toml"), []byte("units = \"imperial\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := setUIHook(tty.UIPrefs{Units: "metric", MapScale: "county", MapNearbyKm: 25, MapLayers: map[string]bool{"alert": false}}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.MapScale != "county" || got.MapNearbyKm != 25 || got.MapLayers["alert"] || len(got.MapLayers) != 1 {
+		t.Errorf("the save wrote %q %d %v", got.MapScale, got.MapNearbyKm, got.MapLayers)
 	}
 }

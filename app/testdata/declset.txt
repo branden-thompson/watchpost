@@ -1,6 +1,7 @@
 const SafetyNext
 const SafetyNote
 const UserAgent
+const alertLayerKey
 const bandRecordCap
 const bedFenceFarMi
 const breakingGap
@@ -26,7 +27,6 @@ const mainTrackOff
 const mapDiskBytes
 const mapMaxAge
 const mapMemoryBytes
-const mapNearbyKm
 const maxAlertRecords
 const maxDumpsPerRun
 const maxLaneRows
@@ -60,6 +60,7 @@ const testEventLife
 const tickerEvery
 const tickerRotate
 const tickerSeenWindow
+const zoneShapeBytes
 func (*airOwner).get
 func (*airOwner).set
 func (*alertStore).capOldest
@@ -388,6 +389,7 @@ func ReportOnceWithStats
 func RunDashboard
 func abbreviateHome
 func alertKeysOf
+func alertLayerCost
 func alertNarration
 func alertOverlay
 func alertTonePCM
@@ -452,6 +454,8 @@ func halfFor
 func holdRest
 func hostOf
 func indexKey
+func init
+func init
 func init
 func injectedEvents
 func isLookupFailure
@@ -521,7 +525,10 @@ func readerFor
 func recentTiers
 func reconcile
 func refFor
+func refreshCost
 func refsFromConfig
+func registerMapLayer
+func registerMapSource
 func relayLine
 func releaseNumbers
 func reloadCast
@@ -607,6 +614,7 @@ func unread
 func userCacheSubdir
 func vizFor
 func voiceDir
+func windowLayers
 func withPool
 func withinBedFence
 func worstOf
@@ -638,6 +646,7 @@ type livePipelines
 type liveSource
 type mainTrackStage
 type mapBuilder
+type mapLayer
 type mapSource
 type mastercontrol
 type memRecord
@@ -666,7 +675,8 @@ type tickerPrefs
 var _
 var _
 var _
-var basemapSources
 var errDumpTooSoon
 var errReadStopped
 var goosSeam
+var mapLayers
+var mapSources

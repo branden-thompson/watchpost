@@ -837,7 +837,8 @@ code{font-family:var(--mono);font-size:.92em}
   V-&gt;&gt;V: print stored lines + notes + status line (no library call)
 </pre></div></article><article class="dia" id="observer-maps-1"><div class="meta"><h3>The parts, and who may name whom</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p><p class="lead"><code>app/</code> is the only package that may name a domain and what draws (the import rule, <code>scripts/lint-imports.sh</code>), so the zone store and the weather service are reached from <code>app/</code> alone, and the window is handed functions.</p></div><div class="canvas"><pre class="mermaid">flowchart LR
   subgraph app[&#34;app/ — the composition root&#34;]
-    MB[&#34;maps.go · mapBuilder\nthe closed list&#39;s basemap (OpenFreeMap)\nwatchpost/‹version›, 256 MiB, 7 days\n4 MiB shared memory cache · nearby 15 km (M1&#39;s rule)\nseeds zone outlines on the first map&#34;]
+    MB[&#34;maps.go · mapBuilder\nthe registered basemap (OpenFreeMap)\nwatchpost/‹version›, 256 MiB, 7 days\n4 MiB shared memory cache\nseeds zone outlines on the first map&#34;]
+    REG[&#34;maplayers.go · the registry (W1.13)\nlayers and sources register from their own files\nalert areas (mapfeed.go) · OpenFreeMap (maps.go)\nrefreshCost: each layer&#39;s own, summed&#34;]
     MF[&#34;mapfeed.go · mapFeed\none overlay per alert, severity → role\npartial areas labelled, notes in words\nwhich alerts&#39; missing zones hold the place&#34;]
     MG[&#34;mapgeometry.go · resolveAlertAreas&#34;]
   end
@@ -846,11 +847,11 @@ code{font-family:var(--mono);font-size:.92em}
     WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes&#34;]
   end
   subgraph tty[&#34;modes/tty — the Observer&#34;]
-    MW[&#34;map_pane.go · the map window\ng opens · owns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s&#34;]
+    MW[&#34;map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s\na layer off: its overlays not set (key before the slash)&#34;]
     MD[&#34;map_describe.go · the description\nReport joined to watchpost&#39;s alerts by id\ncovers · stops short · lies to one side (M1&#39;s words)\nunits and directions in words; never &#39;you&#39;&#34;]
     MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll · L legend&#34;]
     LG[&#34;the legend (D-44)\na box over the map&#39;s corner, from Legend()\nonly the severities drawn, with their digits&#34;]
-    ST2[&#34;Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nClear map data · the retention&#34;]
+    ST2[&#34;Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Layers (+ the cost warning)\nClear map data · the retention&#34;]
   end
   subgraph plat[&#34;platform/&#34;]
     RG[&#34;geo · RegionOf\nsix regions with their waters&#34;]
@@ -871,6 +872,10 @@ code{font-family:var(--mono);font-size:.92em}
   MW --&gt; L
   MB --&gt; L
   MB --&gt; HX
+  MF -. &#34;registers alert areas&#34; .-&gt; REG
+  MB -. &#34;registers OpenFreeMap&#34; .-&gt; REG
+  REG -- &#34;Config.MapLayers · Config.MapCost&#34; --&gt; ST2
+  REG -- &#34;Config.MapCost&#34; --&gt; MW
 </pre></div></article><article class="dia" id="observer-maps-2"><div class="meta"><h3>What the window&#39;s body is</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart TB
   S{&#34;selected place?&#34;} -- &#34;none&#34; --&gt; N[&#34;stated: no location is selected (FR-1.3)&#34;]
   S -- &#34;in no region&#34; --&gt; O[&#34;stated: outside every region, nothing wider drawn (FR-2.5)&#34;]
@@ -883,13 +888,14 @@ code{font-family:var(--mono);font-size:.92em}
   DS -- &#34;yes (the default)&#34; --&gt; D1[&#34;the description first in reading order (D-55)&#34;] --&gt; M
   DS -- &#34;off&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)\nthe window 8 rows short of the terminal, full width less its frame&#34;]
   M --&gt; NT[&#34;the feed&#39;s notes: partial areas named in words (FR-4.4)&#34;]
-  NT --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window&#34;]
+  NT --&gt; CW[&#34;the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)&#34;]
+  CW --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window&#34;]
 </pre></div></article><article class="dia" id="observer-maps-3"><div class="meta"><h3>Settings, in tabs (D-62)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
   subgraph S[&#34;Settings: one window, the tab is the focused row&#39;s&#34;]
     G[&#34;General\nDATA · WATCHPOST UI · ALERTS - EVENTS&#34;]
     R[&#34;Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY&#34;]
     B[&#34;Broadcaster\nSTATION: transmitter · service radius&#34;]
-    M[&#34;Maps\nMAP&#34;]
+    M[&#34;Maps\nMAP: on/off · description · scale · nearby · layers · clear&#34;]
   end
   O([&#34;Observer&#34;]) --&gt; G &amp; R &amp; M
   C([&#34;the console&#34;]) --&gt; G &amp; R &amp; B

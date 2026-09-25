@@ -110,6 +110,9 @@ func (d Dashboard) stepTab(step int) setupRowID {
 // (a picker, a toggle), which then keeps them (D-62: "the one that just works").
 func (d Dashboard) rowTakesLeftRight() bool {
 	row := setupTable()[d.setup.focus]
+	if d.setup.focus == rowMapLayers {
+		return len(d.cfg.MapLayers) > 1 // one layer has nothing to walk to: the arrows switch tabs
+	}
 	return row.picker || row.kind == rowToggle || row.kind == rowPicker
 }
 

@@ -122,6 +122,9 @@ type setupState struct {
 	flash    pickerFlash
 	flashEnd time.Time
 
+	// layerAt is the layers row's cursor: which layer space switches (0.18.0).
+	layerAt int
+
 	// castDirty marks the cast or tone state changed and not yet written.
 	//
 	// Those two groups AUTO-SAVE: they are toggles
@@ -164,7 +167,7 @@ func (d Dashboard) openSetupAt(at setupRowID) Dashboard {
 // openSetup toggles the Setup window with fresh state (the alert preference
 // seeded from config), alone on top.
 func (d Dashboard) openSetup() Dashboard {
-	d = d.toggle(modalSetup)
+	d = d.toggle(modalSetup).refreshMapCost() // the Maps tab's warning reads the estimate
 	// Seeded from config, so the window opens showing what is in force — the
 	// cast and the tone state are copied so editing them cannot reach the
 	// stored config before a save.
@@ -348,6 +351,9 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 		if d.setup.focus == rowMapDesc {
 			return d.cycleMapDesc(key.String() == "right"), nil, true
 		}
+		if m, ok := d.mapPrefArrow(key.String() == "right"); ok {
+			return m, nil, true
+		}
 		if setupTable()[d.setup.focus].kind == rowToggle {
 			// A two-state control: ←→ and space all do the same thing, because
 			// there is nothing to cycle THROUGH — there are two states and
@@ -374,7 +380,7 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 			return d.settled(), nil, true
 		}
 	case "p":
-		if picker && d.setup.focus != rowMapDesc { // the description's mode has nothing to preview
+		if picker && !mapPickerRow(d.setup.focus) { // the map's pickers have nothing to preview
 			m, cmd := d.setupPreview()
 			return m, cmd, true
 		}
@@ -482,6 +488,12 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.uiTouched()
 	case rowMapDesc:
 		return d.cycleMapDesc(true)
+	case rowMapScale:
+		return d.cycleMapScale(true)
+	case rowMapNearby:
+		return d.cycleNearby(true)
+	case rowMapLayers:
+		return d.toggleLayer()
 	default:
 		switch setupTable()[id].kind {
 		case rowToggle:

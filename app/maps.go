@@ -26,16 +26,11 @@ import (
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
-// mapSource is one entry of FR-3.8's closed list: a name and the exact
-// address the library is pointed at. No path takes an address from anywhere
-// else.
-type mapSource struct {
-	name, address string
+// The closed list's basemap (FR-3.8), registered (W1.13). A custom source is
+// a later ruling with its own rules and credit (D-31).
+func init() {
+	registerMapSource(mapSource{name: "OpenFreeMap", address: "https://tiles.openfreemap.org/planet"})
 }
-
-// basemapSources is FR-3.8's basemap half. A custom source is a later ruling
-// with its own rules and credit (D-31).
-var basemapSources = []mapSource{{name: "OpenFreeMap", address: "https://tiles.openfreemap.org/planet"}}
 
 const (
 	// mapDiskBytes caps the tile cache on disk (FR-3.5).
@@ -46,10 +41,6 @@ const (
 	// mapMaxAge is the tiles' stated retention (FR-3.9), kept by the library
 	// on disk (HR-8, go-tuiMaps L9.2).
 	mapMaxAge = 7 * 24 * time.Hour
-	// mapNearbyKm is how close an alert's edge must be for the description to
-	// say it stops short of the place rather than lies to one side: M1's own
-	// rule (W0.2's answer key). The listener's Setting for it is W1.11's.
-	mapNearbyKm = 15
 	// httpCacheBytes is the existing HTTP cache's cap, which the stated total
 	// covers too.
 	httpCacheBytes = httpx.DiskCacheBytes
@@ -103,8 +94,7 @@ func (b *mapBuilder) build(size tuimaps.Size) (*tuimaps.Map, error) {
 		},
 		func() error { return m.CacheRoot(b.cacheDir, mapDiskBytes) },
 		func() error { return m.SetCacheMaxAge(mapMaxAge) },
-		func() error { return m.SetNearby(mapNearbyKm) },
-		func() error { return m.Source(basemapSources[0].address) },
+		func() error { return m.Source(mapSources[0].address) }, // the window sets nearby from its Setting (W1.11)
 	} {
 		if err := step(); err != nil {
 			m.Close()
@@ -165,7 +155,7 @@ func (lp *livePipelines) clearMapData() tty.MapCleared {
 // basemap's for the area shown, and the zone service's for the alert zones.
 func mapDisclosure() string {
 	var parts []string
-	for _, s := range basemapSources {
+	for _, s := range mapSources {
 		parts = append(parts, "the area shown to "+s.name+" ("+hostOf(s.address)+")")
 	}
 	return "Opening the map sends " + strings.Join(parts, " and ") +

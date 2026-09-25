@@ -42,10 +42,6 @@ const (
 // before the first snapshot, or with the selection out of range.
 const noSelectionText = "No location is selected. Choose one from the Watchlist or Recent, and the map opens on it."
 
-// mapDefaultZoom is the scale the map opens at: about a state, the region a
-// watchlist most often sits in (D-54). The Setting that chooses it is W4.3.
-const mapDefaultZoom = 6
-
 // mapWorkLimit bounds one Work command, so a stuck fetch cannot hold the
 // command's goroutine for good.
 const mapWorkLimit = 30 * time.Second
@@ -135,9 +131,11 @@ func (d Dashboard) toggleMap() Dashboard {
 		}
 		d.mapPane.m, d.mapPane.failed = m, ""
 		d.mapPane.disclose = true // the map is built once a session: its first open says what is sent (FR-9.4)
-		d.mapPane.call("Zoom", func() { _ = m.Zoom(mapDefaultZoom) })
 	}
-	d = d.followSelection().requestFeed().renderMap()
+	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
+	d.mapPane.call("Zoom", func() { _ = m.Zoom(scale) })        // every open is at the chosen scale (W4.3); the bound holds it
+	d.mapPane.call("SetNearby", func() { _ = m.SetNearby(km) }) // the description's "near" as chosen (W9.2)
+	d = d.refreshMapCost().followSelection().requestFeed().renderMap()
 	return d.withCmd(tea.Batch(d.mapWorkCmd(), d.mapFeedCmd()))
 }
 
@@ -362,6 +360,9 @@ func (d Dashboard) noteLines(width int) []string {
 	for _, n := range d.mapPane.notes {
 		out = append(out, render.WrapText(n, width)...)
 	}
+	if w := costWarning(d.mapCost); w != "" {
+		out = append(out, render.WrapText(w, width)...) // FR-9.2: said where the cost is seen
+	}
 	return out
 }
 
@@ -533,6 +534,8 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 	if m == nil || v.gen != d.mapPane.feedGen {
 		return d, nil // an older request's answer: a newer one is on its way
 	}
+	v.feed = d.feedForLayers(v.feed) // a layer switched off draws nothing (W1.11)
+	d = d.refreshMapCost()
 	shown := map[string]bool{}
 	notes := append([]string(nil), v.feed.Notes...)
 	for _, o := range v.feed.Overlays {

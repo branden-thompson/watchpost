@@ -331,3 +331,70 @@ Settings' tabs); atlas regenerated.
 `mutant-anchors`: mAA4 (tab landing where the surface hides - re-pointed at the tab step's surface
 check, `firstRowOfTab`) and mAI1 (the station's rows leaking - re-pointed at STATION); both applied
 and caught again.
+
+## Batch 9 — the Maps tab's scale, nearby and layers; the registry; the cost warning (2026-09-25)
+
+**Tasks:** W1.11 (less alert scope, which is W5.3's and batch 10's), W4.3, W1.13, W1.14, and W9.2's
+"nearby" Setting (folded by D-60).
+
+**Test first.** `map_prefs_test.go`, `maplayers_test.go`, the config round trip and the app wiring test
+were written before the code and failed to compile (RED); the code followed.
+
+**The Maps tab gains three rows**, in focus order after Map description: **Default scale** (Region /
+State / County; the file's `map_scale`, State by default), **Nearby** (5, 10, 15, 25 or 50 km;
+`map_nearby_km`, 15 by default, named in the station's units - "9 miles (15 km)"), and **Layers** (a
+box per layer the registry names; `map_layers`, keyed by layer, holding only the choices that differ
+from the builders' defaults). All three save with the group on close, like the rest of the tab.
+
+**Every open is at the chosen scale** (W4.3): State is zoom 6 (D-54's default), County 9, Region zoom 0,
+which the region's bound raises to the least zoom that keeps the view inside the region. The bound is
+not a Setting (FR-2.3). The open used to zoom only when the map was first built; it now zooms, and sets
+the nearby distance, on every open, so a Setting changed in the meantime is what the next `g` shows.
+
+**Nearby moved from the builder to the window.** `mapBuilder` no longer calls `SetNearby`; the window
+sets it from its Setting on every open. The app's twelve-kilometre test
+(`TestAnEdgeTwelveKilometresOffStopsShort`) moved with it: `TestTheNearbySettingReachesTheDescription`
+puts an edge about 12 km off Oceanside, which stops short at the default 15 km (where the library's own
+10 would say it lies to one side), and lies to one side at 5 km.
+
+**The registry (W1.13, FR-9.3)** is `app/maplayers.go`. Layers and sources **register themselves from
+their own files** in `init`: the alert areas from `mapfeed.go` (key `alert`, which `tty.AlertLayer`
+owns), and OpenFreeMap from `maps.go` (`basemapSources` is gone; `mapSources` is the closed list as
+registered). The window is handed the layers (`Config.MapLayers`) and the estimate (`Config.MapCost`),
+and switches overlays by **the key before the slash in the overlay's id**, so a layer needs no
+case anywhere else. **Options** are the Settings table's rows (D-62), which already take a new row
+without editing the others; the registry does not duplicate them. R-9.2's layers are alert areas,
+radar, fire and quakes - **the basemap is a source, not a layer**, so today the row has one box, and
+with one box ←→ switch tabs (D-62: a row with nothing to walk to does not keep the arrows).
+
+**The estimate and the warning (W1.14, FR-9.2, D-43).** Each layer carries its own cost; the estimate
+sums the layers switched on. **What "a refresh" is, as built:** what one refresh of the map's data would
+fetch if nothing were held - each layer's own requests. **The basemap is not counted**: it is fetched
+once per view and kept 7 days, so it is not a refresh's cost. The alert areas cost one request per
+distinct zone their alerts name (an alert with its own polygon costs nothing), at **10 KB a zone -
+measured today, a mean of 9.6 KB over 159 cached zone responses** (wave 1 measured no mean). Over 2 MB
+or 40 requests the station says, under the Layers row and under the map: "The map's layers would fetch
+about X MB in N requests a refresh, more than the 2 MB or 40 requests this station warns at. Switching a
+layer off costs less." At the station's own alerts this is rarely said; national scope (W5.3) and radar
+(W8.15) are where it will be. **For UAT:** whether the reading of "a refresh" above is the one meant.
+
+**With the alert areas off,** none is drawn, the partial-area notes go with them, and the description
+says "Alert areas are switched off in Settings (s), on the Maps tab, so none is drawn or described." -
+never that nothing is there.
+
+**Deviations from the plan's signatures.** `refreshCost(snap, on)`, not `(layers, scope, step)`: scope
+arrives with W5.3 and the step with radar (W8.15), each as a layer's own input. The warning is drawn by
+`map_prefs.go`, not a `map_window.go` (the window is `map_pane.go`).
+
+**Mutation verdicts** (targeted, 20 mutants, all caught): each threshold's comparison (three), a layer's
+default, an unregistered key's default, the overlay filter, the notes filter, the estimate on a switch,
+on new data and on opening Settings, the layers row keeping the arrows with one layer, the feed filter
+in `applyMapFeed`, `SetNearby` and `Zoom` on open, the "off" description, County's zoom, the layers
+cursor mark, the estimate skipping layers off, a polygon alert costing nothing, and a key registered
+twice. Tests for ← on each picker, the notes going with the alert areas, and the estimate's triggers
+were added for survivors found before the run.
+
+**What the guards found.** `TestEverySurfaceSeamIsClassifiedForTheAir`: `Config.MapCost` classified
+(arithmetic, no audio). The declaration set re-captured. `staticcheck` QF1011 in a new test.
+
+**Diagrams:** `as-built-map.md` (the registry, the Maps tab's rows, the estimate); atlas regenerated.

@@ -79,9 +79,16 @@ type Config struct {
 	ClearMapData   func() MapCleared // 0.18.0 W3.8: the app empties what the live map cannot reach
 	MapDisclosure  string            // 0.18.0 W1.12: what opening the map contacts and sends, in words (FR-9.4)
 	MapRetention   string            // 0.18.0 W3.8: how long the map's data is kept, and the one stated total (FR-3.5, FR-3.9)
-	Resolve        func(query string) (snapshot.LocationRef, error)
-	Commit         func(watch, recent []snapshot.LocationRef) error
-	SetTheme       func(name string) error // live theme switch + persist (UAT 53)
+	MapScale       string            // 0.18.0 W4.3: the file's word for the scale the map opens at
+	MapNearbyKm    int               // 0.18.0 W9.2: the file's nearby distance; 0 is the default
+	MapLayerChoice map[string]bool   // 0.18.0 W1.11: the layers switched from their defaults, by key
+	MapLayers      []MapLayer        // 0.18.0 W1.13: the app's registry of layers, in its order
+	// MapCost is the app's estimate of one refresh with the layers as chosen
+	// (0.18.0 W1.14, FR-9.2). Arithmetic over the snapshot: it fetches nothing.
+	MapCost  func(snap *snapshot.Snapshot, on func(key string) bool) MapCost
+	Resolve  func(query string) (snapshot.LocationRef, error)
+	Commit   func(watch, recent []snapshot.LocationRef) error
+	SetTheme func(name string) error // live theme switch + persist (UAT 53)
 
 	// 0.14.0 — the WATCHPOST UI group's three display preferences, written
 	// together when Settings closes. One hook rather than three: they are one
@@ -322,6 +329,9 @@ type UIPrefs struct {
 	Clock          string
 	Maps           string // "on" (the default) or "off" (0.18.0)
 	MapDescription string // "with" (the default), "instead" or "off"
+	MapScale       string // "state" (the default), "county" or "region"
+	MapNearbyKm    int
+	MapLayers      map[string]bool // the layers switched from their defaults
 }
 
 // PipelineStats counts one pipeline's publishes and the triggers its
@@ -521,9 +531,16 @@ type Dashboard struct {
 	mapPane mapPane
 	mapsOff bool        // 0.18.0: the Setting; g says so and builds nothing (W1.8)
 	mapDesc mapDescMode // 0.18.0: the description with the picture, instead of it, or off (W1.10)
-	mapKeys term.KeyMap
-	modal   modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	// The Maps tab's others (0.18.0 batch 9): the scale the map opens at, the
+	// nearby distance, the layer choices as one comparable word, and the last
+	// estimate of a refresh's cost, asked in Update and read by the frame.
+	mapScale       mapScaleMode
+	mapNearbyKm    int
+	mapLayerChoice string
+	mapCost        MapCost
+	mapKeys        term.KeyMap
+	modal          modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode        string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
 	// search box, kept only while the window is serving the CONSOLE (D-129,
 	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
@@ -790,7 +807,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}

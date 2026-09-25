@@ -106,6 +106,7 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	}
 	lines = append(lines, "  "+setupMark(o, focus == rowMapDesc)+settingLabel("Map description -", focus == rowMapDesc)+"  "+
 		pickerCellW(d.mapDesc.Label(), newArrowChips(o), d.pickerFlashFor(rowMapDesc), len("Instead of the picture")))
+	lines, at = d.mapPrefLines(o, lines, at)
 	lines, at = d.mapExtraLines(o, lines, at)
 	return lines, at
 }

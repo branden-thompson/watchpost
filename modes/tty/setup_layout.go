@@ -486,6 +486,10 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 			segs = append(segs, o.KeyCap("←→")+" Theme (live)")
 		case rowMapDesc:
 			segs = append(segs, o.KeyCap("←→")+" Description") // 0.18.0: nothing to preview
+		case rowMapScale:
+			segs = append(segs, o.KeyCap("←→")+" Scale")
+		case rowMapNearby:
+			segs = append(segs, o.KeyCap("←→")+" Distance")
 		default:
 			segs = append(segs, o.KeyCap("←→")+" Voice", o.KeyCap("p")+" Preview")
 		}

@@ -74,6 +74,41 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, snap *snapshot.Snapsho
 	return out
 }
 
+// alertLayerKey is the alert areas' key in the registry, and their overlays'
+// ids' first part (W1.13).
+const alertLayerKey = tty.AlertLayer
+
+// zoneShapeBytes is one zone's outline on the wire, measured: a mean of 9.6
+// KB over 159 cached land and marine zones (2026-09-25; marine zones run to
+// 640 KB, wave 1). The estimate's unit for the alert areas (W1.14).
+const zoneShapeBytes = 10_000
+
+// The alert areas, registered (W1.13, R-9.2): on by default.
+func init() {
+	registerMapLayer(mapLayer{key: alertLayerKey, label: "Alert areas", on: true, cost: alertLayerCost})
+}
+
+// alertLayerCost is what the alert areas fetch in a refresh, as if nothing
+// were held: every zone the alerts name, once; an alert with its own polygon
+// fetches nothing (FR-9.2).
+func alertLayerCost(snap *snapshot.Snapshot) (int64, int) {
+	if snap == nil {
+		return 0, 0
+	}
+	zones := map[string]bool{}
+	for _, loc := range snap.Locations {
+		for _, a := range loc.Alerts {
+			if !a.Area.Empty() {
+				continue
+			}
+			for _, z := range a.AffectedZones {
+				zones[z] = true
+			}
+		}
+	}
+	return int64(len(zones)) * zoneShapeBytes, len(zones)
+}
+
 // alertOverlay is one alert as the library draws it (FR-4.2, D-55): one
 // feature per area, the first ring the outline and the rest holes; the
 // severity as data and as the role; its times and its id, which Report
@@ -96,7 +131,7 @@ func alertOverlay(a snapshot.Alert, area geo.Area) (tuimaps.Overlay, bool) {
 	if d := a.Expires.Sub(valid); d > 0 {
 		keeps = d
 	}
-	o := tuimaps.Overlay{ID: "alert/" + a.ID, Valid: valid, Keeps: keeps}
+	o := tuimaps.Overlay{ID: alertLayerKey + "/" + a.ID, Valid: valid, Keeps: keeps}
 	for _, poly := range area.Shape {
 		o.Features = append(o.Features, tuimaps.Feature{Kind: tuimaps.Polygon, Rings: tuimaps.Rings(poly),
 			Role: role, Label: label, Severity: sev, Valid: valid, Expires: a.Expires, ID: a.ID})

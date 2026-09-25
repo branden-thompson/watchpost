@@ -237,10 +237,16 @@ type modalKey struct {
 	mapsOff  bool   // 0.18.0: the map's Settings, drawn by Settings and by the map window
 	mapWords string // the map's disclosure and retention words, drawn by Settings and the map window
 	mapDesc  mapDescMode
-	theme    uint64
-	minute   int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
-	second   int64 // [S] ages, while it is open
-	shimmer  int   // Details' LoadingDots while a row loads
+	// The Maps tab's others and the estimate (0.18.0 batch 9): Settings draws
+	// them, and the map window draws the warning.
+	mapScale  mapScaleMode
+	mapNearby int
+	mapLayers string
+	mapCost   MapCost
+	theme     uint64
+	minute    int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
+	second    int64 // [S] ages, while it is open
+	shimmer   int   // Details' LoadingDots while a row loads
 	// faultFocus and faultLeft are the relay-fault window's cursor and clock,
 	// BOTH OF WHICH THE FRAME SHOWS. Absent from this key the window rendered
 	// once and the memo replayed that frame for the life of the window: the
@@ -318,6 +324,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
+		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost,
 		mapWords: d.cfg.MapDisclosure + "\x00" + d.cfg.MapRetention,
 	}
 	switch d.modal {

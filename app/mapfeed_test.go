@@ -297,33 +297,3 @@ func placeZonesOf(name string) []string {
 	}
 	return nil
 }
-
-// TestAnEdgeTwelveKilometresOffStopsShort is W9.2's nearby distance: the
-// station's maps say "stops short" out to M1's 15 km, where the library's
-// own default would say "lies to one side" past 10.
-func TestAnEdgeTwelveKilometresOffStopsShort(t *testing.T) {
-	m, err := newMapBuilder("t", t.TempDir(), &recorded{offline: true}, nil).build(tuimaps.Size{Cols: 69, Rows: 12})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer m.Close()
-	// A place at 35 N, 100 W; the box's west edge 0.132 degrees of longitude
-	// east of it, about 12 km at that latitude.
-	west, east := -99.868, -99.5
-	ring := []tuimaps.LonLat{{Lon: west, Lat: 34.8}, {Lon: east, Lat: 34.8}, {Lon: east, Lat: 35.2}, {Lon: west, Lat: 35.2}, {Lon: west, Lat: 34.8}}
-	if _, err := m.Set(tuimaps.Overlay{ID: "a", Valid: mapNoon, Keeps: time.Hour, Features: []tuimaps.Feature{{Kind: tuimaps.Polygon,
-		Rings: [][]tuimaps.LonLat{ring}, Role: tuimaps.AlertSevere, Label: "Test", ID: "a"}}}); err != nil {
-		t.Fatal(err)
-	}
-	rep, err := m.Report([]tuimaps.Place{{Name: "Here", At: tuimaps.LonLat{Lon: -100, Lat: 35}}})
-	if err != nil || len(rep.Places) != 1 || len(rep.Places[0].Alerts) != 1 {
-		t.Fatalf("report %+v, %v", rep, err)
-	}
-	pa := rep.Places[0].Alerts[0]
-	if pa.Distance < 11 || pa.Distance > 13 {
-		t.Fatalf("the edge is %.1f km off, not about 12, so this proves nothing", pa.Distance)
-	}
-	if got := tty.Relation(pa, false); got != "stops short" {
-		t.Errorf("an edge %.1f km off: %q, want stops short", pa.Distance, got)
-	}
-}

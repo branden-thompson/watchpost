@@ -88,7 +88,8 @@ func setUIHook(p tty.UIPrefs) error {
 			cfg.Theme = p.Theme
 		}
 		cfg.Units, cfg.Clock = p.Units, p.Clock
-		cfg.Maps, cfg.MapDescription = p.Maps, p.MapDescription // 0.18.0: the map's two, written with the group
+		cfg.Maps, cfg.MapDescription = p.Maps, p.MapDescription // 0.18.0: the map's Settings, written with the group
+		cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayers = p.MapScale, p.MapNearbyKm, p.MapLayers
 		return nil
 	})
 }

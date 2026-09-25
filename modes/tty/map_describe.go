@@ -46,6 +46,9 @@ func (d Dashboard) describeLines() []string {
 		return nil
 	}
 	out := []string{d.placeFacts(*loc)}
+	if !d.layerOn(AlertLayer) {
+		return append(out, alertLayerOffText) // off is said, never "nothing is there"
+	}
 	alerts := d.mapPane.report.Alerts
 	if len(alerts) == 0 {
 		return append(out, "No alert on the map covers or comes near "+loc.Label+".")

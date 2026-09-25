@@ -263,6 +263,13 @@ type Config struct {
 	// picture; an unrecognised word reads as the default too.
 	Maps           string `toml:"maps,omitempty"`            // "on" (default) | "off"
 	MapDescription string `toml:"map_description,omitempty"` // "with" (default) | "instead" | "off"
+	// The Maps tab's others (0.18.0 W1.11, W4.3): the scale the map opens at,
+	// how close an alert's edge must be to be called near, and the layers
+	// switched from their defaults, by the registry's key. Empty means the
+	// default: the state scale, 15 km, every layer as its builders chose.
+	MapScale    string          `toml:"map_scale,omitempty"`     // "region" | "state" (default) | "county"
+	MapNearbyKm int             `toml:"map_nearby_km,omitempty"` // 5 | 10 | 15 (default) | 25 | 50
+	MapLayers   map[string]bool `toml:"map_layers,omitempty"`    // layer key -> on
 
 	// UpdateCheck asks the app, once at startup, whether a newer release is
 	// published (0.15.0 FR-7.1; it polled hourly before). OPT-IN: the app makes no unattended outbound request the
