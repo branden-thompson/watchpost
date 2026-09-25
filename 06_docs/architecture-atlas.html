@@ -850,7 +850,8 @@ code{font-family:var(--mono);font-size:.92em}
   subgraph tty[&#34;modes/tty — the Observer&#34;]
     MW[&#34;map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s\na layer off: its overlays not set (key before the slash)&#34;]
     MD[&#34;map_describe.go · the description\nReport joined to watchpost&#39;s alerts by id\ncovers · stops short · lies to one side (M1&#39;s words)\nunits and directions in words; never &#39;you&#39;&#34;]
-    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll · L legend&#34;]
+    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend&#34;]
+    BX[&#34;map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: weather layers + the map&#39;s detail (D-65, Map.Layers)\nthe title names the view by scale (D-64)&#34;]
     LG[&#34;the legend (D-44)\na box over the map&#39;s corner, from Legend()\nonly the severities drawn, with their digits&#34;]
     ST2[&#34;Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Alerts (scope) · Layers (+ the cost warning)\nClear map data · the retention&#34;]
   end
@@ -869,6 +870,8 @@ code{font-family:var(--mono);font-size:.92em}
   MW --&gt; RG
   MW --&gt; MK
   MW --&gt; LG
+  MW --&gt; BX
+  NM[&#34;mapnames.go · mapAreaNamer\nthe city index: a town · part of a state · the state · the region&#34;] -- &#34;Config.MapAreaName&#34; --&gt; BX
   ST2 --&gt; MW
   ST2 -- &#34;Config.ClearMapData&#34; --&gt; CL[&#34;app clearMapData\nPurge on a bare map (no source, no seed)\nzone store Forget + ForgetCached\n(httpx ForgetPrefix: zones only)&#34;]
   MW -- &#34;Report(place) at every draw&#34; --&gt; MD
@@ -888,9 +891,9 @@ code{font-family:var(--mono);font-size:.92em}
   A -- &#34;no&#34; --&gt; F{&#34;a 69x12 map fits? (mapMinBody, the one owner)&#34;}
   F -- &#34;no&#34; --&gt; FL[&#34;stated: the size needed and the size present,\nthen the description (FR-1.4)&#34;]
   F -- &#34;yes&#34; --&gt; DS{&#34;description with the picture?&#34;}
-  DS -- &#34;yes (the default)&#34; --&gt; D1[&#34;the description first in reading order (D-55)&#34;] --&gt; M
-  DS -- &#34;off&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)\nthe window 8 rows short of the terminal, full width less its frame&#34;]
-  M --&gt; NT[&#34;the feed&#39;s notes: partial areas named in words (FR-4.4)&#34;]
+  DS -- &#34;yes (the default)&#34; --&gt; D1[&#34;the description in the Area Alerts box on the first rows (D-55 as D-63 keeps it)&#34;] --&gt; M
+  DS -- &#34;off&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)\nthe window about 80% of the terminal each way (U1-13), never under what 69x12 needs&#34;]
+  M --&gt; BXS[&#34;the boxes over it: Area Alerts, the Overlays menu, the controls, the legend&#34;] --&gt; NT[&#34;the feed&#39;s notes: partial areas named in words (FR-4.4)&#34;]
   NT --&gt; CW[&#34;the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)&#34;]
   CW --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window&#34;]
 </pre></div></article><article class="dia" id="observer-maps-3"><div class="meta"><h3>The map&#39;s commands, its clock and its close (W2)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
@@ -907,7 +910,7 @@ code{font-family:var(--mono);font-size:.92em}
     G[&#34;General\nDATA · WATCHPOST UI · ALERTS - EVENTS&#34;]
     R[&#34;Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY&#34;]
     B[&#34;Broadcaster\nSTATION: transmitter · service radius&#34;]
-    M[&#34;Maps\nMAP: on/off · description · scale · nearby · alerts · layers · clear&#34;]
+    M[&#34;Maps\nMAP: on/off · description · scale · nearby · alerts · layers · map detail · clear&#34;]
   end
   O([&#34;Observer&#34;]) --&gt; G &amp; R &amp; M
   C([&#34;the console&#34;]) --&gt; G &amp; R &amp; B

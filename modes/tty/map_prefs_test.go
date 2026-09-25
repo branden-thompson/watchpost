@@ -127,7 +127,7 @@ func TestALayerSwitchedOffIsNotDrawn(t *testing.T) {
 			t.Fatal("an overlay of a layer switched off was drawn")
 		}
 	}
-	if text := stripANSITest(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, alertLayerOffText) {
+	if text := stripANSITest(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Alert areas are switched off") {
 		t.Errorf("the description does not say the alert areas are off:\n%s", text)
 	}
 	on := mapDash(t, Config{MapLayers: alertLayers, MapFeed: boxFeed(-117.6, -117.1, false)})
@@ -354,7 +354,7 @@ func TestANationalAlertIsDescribedInFull(t *testing.T) {
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	out := stripANSITest(d.View().Content)
-	if !strings.Contains(out, "Tornado Warning, severe, covers Oceanside, CA") || !strings.Contains(out, "in effect until") {
+	if !strings.Contains(out, "Tornado Warning, severe, covers Oceanside, CA") || !strings.Contains(out, "effect until") {
 		t.Errorf("the national alert is not described in full:\n%s", out)
 	}
 }

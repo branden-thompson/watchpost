@@ -184,6 +184,7 @@ var airBoundary = map[string]airMember{
 	"Stats":            {airNone, "the [S] counters"},
 	"MapFeed":          {airNone, "0.18.0: turns the snapshot's alerts into map overlays; it reaches the zone store and no audio"},
 	"ClearMapData":     {airNone, "0.18.0: empties the map's tile files and zone outlines; it reaches no audio"},
+	"MapAreaName":      {airNone, "UAT-1 D-64: names the map's view from the city index; it reaches no audio"},
 	"MapCost":          {airNone, "0.18.0: arithmetic over the snapshot's alerts and the layer registry; it fetches nothing and reaches no audio"},
 	"NewMap":           {airNone, "0.18.0: builds a map for the window to draw; it reaches no audio, and with no source named, nothing at all"},
 }

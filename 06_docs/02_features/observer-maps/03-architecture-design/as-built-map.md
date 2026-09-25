@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–11 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope) - P1-a complete, UAT-1 open."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–12 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope) - P1-a complete, UAT-1 open; batch 12 is its first findings (D-63, D-64, D-65)."
 ---
 
 # As built: where the map lives
@@ -34,7 +34,8 @@ flowchart LR
   subgraph tty["modes/tty — the Observer"]
     MW["map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station's\na layer off: its overlays not set (key before the slash)"]
     MD["map_describe.go · the description\nReport joined to watchpost's alerts by id\ncovers · stops short · lies to one side (M1's words)\nunits and directions in words; never 'you'"]
-    MK["map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll · L legend"]
+    MK["map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend"]
+    BX["map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: weather layers + the map's detail (D-65, Map.Layers)\nthe title names the view by scale (D-64)"]
     LG["the legend (D-44)\na box over the map's corner, from Legend()\nonly the severities drawn, with their digits"]
     ST2["Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Alerts (scope) · Layers (+ the cost warning)\nClear map data · the retention"]
   end
@@ -53,6 +54,8 @@ flowchart LR
   MW --> RG
   MW --> MK
   MW --> LG
+  MW --> BX
+  NM["mapnames.go · mapAreaNamer\nthe city index: a town · part of a state · the state · the region"] -- "Config.MapAreaName" --> BX
   ST2 --> MW
   ST2 -- "Config.ClearMapData" --> CL["app clearMapData\nPurge on a bare map (no source, no seed)\nzone store Forget + ForgetCached\n(httpx ForgetPrefix: zones only)"]
   MW -- "Report(place) at every draw" --> MD
@@ -77,9 +80,9 @@ flowchart TB
   A -- "no" --> F{"a 69x12 map fits? (mapMinBody, the one owner)"}
   F -- "no" --> FL["stated: the size needed and the size present,\nthen the description (FR-1.4)"]
   F -- "yes" --> DS{"description with the picture?"}
-  DS -- "yes (the default)" --> D1["the description first in reading order (D-55)"] --> M
-  DS -- "off" --> M["the map, bound to the region (FR-2.1)\nthe window 8 rows short of the terminal, full width less its frame"]
-  M --> NT["the feed's notes: partial areas named in words (FR-4.4)"]
+  DS -- "yes (the default)" --> D1["the description in the Area Alerts box on the first rows (D-55 as D-63 keeps it)"] --> M
+  DS -- "off" --> M["the map, bound to the region (FR-2.1)\nthe window about 80% of the terminal each way (U1-13), never under what 69x12 needs"]
+  M --> BXS["the boxes over it: Area Alerts, the Overlays menu, the controls, the legend"] --> NT["the feed's notes: partial areas named in words (FR-4.4)"]
   NT --> CW["the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)"]
   CW --> ST["the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window"]
 ```
@@ -106,7 +109,7 @@ flowchart LR
     G["General\nDATA · WATCHPOST UI · ALERTS - EVENTS"]
     R["Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY"]
     B["Broadcaster\nSTATION: transmitter · service radius"]
-    M["Maps\nMAP: on/off · description · scale · nearby · alerts · layers · clear"]
+    M["Maps\nMAP: on/off · description · scale · nearby · alerts · layers · map detail · clear"]
   end
   O(["Observer"]) --> G & R & M
   C(["the console"]) --> G & R & B

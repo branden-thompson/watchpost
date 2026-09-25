@@ -98,15 +98,15 @@ func padCells(line string, n int) string {
 }
 
 // TestMapWindowGoldens pins the window at each width the plan names, with
-// one alert on the map and every piece of work landed.
+// one alert on the map, every piece of work landed, and the boxes over it as
+// they open (UAT-1: Area Alerts, the controls).
 func TestMapWindowGoldens(t *testing.T) {
 	for _, size := range []struct{ w, h int }{{80, 24}, {120, 40}, {133, 44}} {
 		t.Run(strconv.Itoa(size.w), func(t *testing.T) {
 			d := goldenDash(t, false)
-			d.cfg.NewMap, d.cfg.MapFeed, d.cfg.MapDescription = embeddedMap, boxFeed(-117.6, -117.1, false), "off"
+			d.cfg.NewMap, d.cfg.MapFeed = embeddedMap, boxFeed(-117.6, -117.1, false)
 			m, _ := d.Update(tea.WindowSizeMsg{Width: size.w, Height: size.h})
 			d = m.(Dashboard)
-			d.mapDesc = mapDescOff
 			m, _ = d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 			d = feedAndSettle(t, m.(Dashboard))
 			d.mapPane.disclose = false

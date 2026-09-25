@@ -63,11 +63,12 @@ type ZipRow struct {
 
 // Index holds the decompressed data and its lookup structures.
 type Index struct {
-	cities     []byte  // backing TSV
-	cityOffs   []int32 // line offsets, sorted by lowercased ASCII name
-	zips       []byte
-	zipOffs    []int32 // line offsets, sorted by zip
-	zipByPlace map[string][]int32
+	extentsCache         // the states' extents, computed on first use (states.go)
+	cities       []byte  // backing TSV
+	cityOffs     []int32 // line offsets, sorted by lowercased ASCII name
+	zips         []byte
+	zipOffs      []int32 // line offsets, sorted by zip
+	zipByPlace   map[string][]int32
 }
 
 // Load decompresses and indexes the embedded data (call once at startup).

@@ -21,6 +21,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/platform/term"
 )
 
 // bodyKey is every input the two tables read. Adding an input to row(),
@@ -244,10 +245,17 @@ type modalKey struct {
 	mapLayers string
 	mapCost   MapCost
 	mapScope  AlertScope
-	theme     uint64
-	minute    int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
-	second    int64 // [S] ages, while it is open
-	shimmer   int   // Details' LoadingDots while a row loads
+	mapDetail string
+	// The boxes over the map (UAT-1): which are open, the menu's cursor and
+	// the key blinking in the controls.
+	mapAlerts, mapMenu bool
+	mapMenuAt          int
+	mapFlash           term.Action
+	mapTitle           string // what is in view, in the window's title (D-64)
+	theme              uint64
+	minute             int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
+	second             int64 // [S] ages, while it is open
+	shimmer            int   // Details' LoadingDots while a row loads
 	// faultFocus and faultLeft are the relay-fault window's cursor and clock,
 	// BOTH OF WHICH THE FRAME SHOWS. Absent from this key the window rendered
 	// once and the memo replayed that frame for the life of the window: the
@@ -325,7 +333,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
-		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapScope: d.mapScope,
+		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapScope: d.mapScope, mapDetail: d.mapDetailChoice,
 		mapWords: d.cfg.MapDisclosure + "\x00" + d.cfg.MapRetention,
 	}
 	switch d.modal {
@@ -334,6 +342,8 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending
 		k.mapOutside, k.mapNotes = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n")
 		k.mapLegend, k.mapDisclose = d.mapPane.legendOn, d.mapPane.disclose
+		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapPane.alertsOn, d.mapPane.menuOn, d.mapPane.menuAt, d.mapPane.flash
+		k.mapTitle = d.mapPane.title
 	case modalRequest:
 		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was
 		// missing the moment the window existed — `field`, `query`, `outside`

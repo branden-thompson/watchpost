@@ -87,9 +87,14 @@ type Config struct {
 	// (0.18.0 W1.14, FR-9.2). Arithmetic over the snapshot: it fetches nothing.
 	MapCost       func(ask MapAsk, on func(key string) bool) MapCost
 	MapAlertScope string // 0.18.0 W5.3: the file's word for which alerts the map draws
-	Resolve       func(query string) (snapshot.LocationRef, error)
-	Commit        func(watch, recent []snapshot.LocationRef) error
-	SetTheme      func(name string) error // live theme switch + persist (UAT 53)
+	// MapDetailChoice is the map's detail switched from Watchpost's defaults,
+	// by key (D-65); MapAreaName names what is in view from the view's centre
+	// and width, for the title (D-64). Nil draws the selected place's name.
+	MapDetailChoice map[string]bool
+	MapAreaName     func(centre tuimaps.LonLat, widthKm float64) string
+	Resolve         func(query string) (snapshot.LocationRef, error)
+	Commit          func(watch, recent []snapshot.LocationRef) error
+	SetTheme        func(name string) error // live theme switch + persist (UAT 53)
 
 	// 0.14.0 — the WATCHPOST UI group's three display preferences, written
 	// together when Settings closes. One hook rather than three: they are one
@@ -334,6 +339,7 @@ type UIPrefs struct {
 	MapNearbyKm    int
 	MapLayers      map[string]bool // the layers switched from their defaults
 	MapAlertScope  string          // "station" (the default) or "national"
+	MapDetail      map[string]bool // the map's detail switched from its defaults (D-65)
 }
 
 // PipelineStats counts one pipeline's publishes and the triggers its
@@ -536,14 +542,15 @@ type Dashboard struct {
 	// The Maps tab's others (0.18.0 batch 9): the scale the map opens at, the
 	// nearby distance, the layer choices as one comparable word, and the last
 	// estimate of a refresh's cost, asked in Update and read by the frame.
-	mapScale       mapScaleMode
-	mapNearbyKm    int
-	mapLayerChoice string
-	mapCost        MapCost
-	mapScope       AlertScope // which alerts the map draws (W5.3)
-	mapKeys        term.KeyMap
-	modal          modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
-	addMode        string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
+	mapScale        mapScaleMode
+	mapNearbyKm     int
+	mapLayerChoice  string
+	mapCost         MapCost
+	mapScope        AlertScope // which alerts the map draws (W5.3)
+	mapDetailChoice string     // the map's detail choices as one comparable word (D-65)
+	mapKeys         term.KeyMap
+	modal           modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
+	addMode         string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
 	// search box, kept only while the window is serving the CONSOLE (D-129,
 	// D-130). On Observer it stays zero: the listener's lookup reaches anywhere
@@ -810,7 +817,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapScope: alertScopeByKey(cfg.MapAlertScope), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapScope: alertScopeByKey(cfg.MapAlertScope), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -884,6 +891,8 @@ func tick() tea.Cmd { return tickEvery(300*time.Millisecond, tickMsg{}) }
 func (d Dashboard) tickNeeded() bool {
 	switch {
 	case d.volFlash != "": // pending or just expired — the tick after expiry clears it
+		return true
+	case d.mapPane.flash != "": // U1-11: the controls' blink, same rule
 		return true
 	case d.setup.flash != flashNone: // the picker's press blink, same rule
 		return true
@@ -1126,6 +1135,9 @@ func (d Dashboard) applyTick() Dashboard {
 	d.advanceTicker() // 0.12.0: the ticker scrolls on the wall clock
 	if d.volFlash != "" && !time.Now().Before(d.volFlashEnd) {
 		d.volFlash = "" // the blink clears on the first tick after it expires (UAT 41)
+	}
+	if d.mapPane.flash != "" && !time.Now().Before(d.mapPane.flashEnd) {
+		d.mapPane.flash = "" // U1-11: the controls' blink ends on the tick after it expires
 	}
 	if d.setup.flash != flashNone && !time.Now().Before(d.setup.flashEnd) {
 		// Without this the blink stayed lit until something ELSE happened to

@@ -274,6 +274,10 @@ type Config struct {
 	// station's places' alone, or with the national severe events in the
 	// selected place's region.
 	MapAlertScope string `toml:"map_alert_scope,omitempty"` // "station" (default) | "national"
+	// MapDetail is the map's own detail switched from Watchpost's
+	// weather-first defaults (UAT-1 D-65), by key: borders, water, rivers,
+	// names, roads, rail, parks.
+	MapDetail map[string]bool `toml:"map_detail,omitempty"`
 
 	// UpdateCheck asks the app, once at startup, whether a newer release is
 	// published (0.15.0 FR-7.1; it polled hourly before). OPT-IN: the app makes no unattended outbound request the

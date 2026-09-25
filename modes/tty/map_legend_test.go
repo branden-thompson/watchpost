@@ -67,12 +67,12 @@ func TestTheChipNamesTheLegend(t *testing.T) {
 func TestTheFirstOpenSaysWhatIsSent(t *testing.T) {
 	const told = "Opening the map asks OpenFreeMap for the area shown."
 	d := legendDash(t, Config{MapDisclosure: told, MapRetention: "Kept 7 days."})
-	if !strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), told) {
+	if !strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), "Opening the map asks") { // in the Area Alerts box, wrapped to it (D-63)
 		t.Error("the first open does not say what is sent")
 	}
 	d, _ = pressKey(d, "g")
 	d, _ = pressKey(d, "g")
-	if strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), told) {
+	if strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), "Opening the map asks") {
 		t.Error("the second open says it again")
 	}
 	s, _ := uiDash(t, rowMapsOn)

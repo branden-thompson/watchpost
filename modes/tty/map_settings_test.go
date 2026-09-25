@@ -68,10 +68,10 @@ func TestMapsOffSaysSoAndBuildsNothing(t *testing.T) {
 	}
 }
 
-// TestTheDescriptionComesFirstWithThePicture is W1.6 (D-55): with the
-// description's mode "with the picture", the description comes first in
-// reading order, above the braille; "instead" shows no braille; "off" shows
-// no description.
+// TestTheDescriptionComesFirstWithThePicture is W1.6 (D-55) as D-63 keeps
+// it: with the description's mode "with the picture", the description is in
+// the Area Alerts box on the window's first rows, the map around it;
+// "instead" shows no braille; "off" shows no description.
 func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 	for _, c := range []struct {
 		mode           string
@@ -88,8 +88,8 @@ func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 			if (words >= 0) != c.words || (braille >= 0) != c.braille {
 				t.Fatalf("words %v, braille %v; want %v, %v:\n%s", words >= 0, braille >= 0, c.words, c.braille, text)
 			}
-			if c.words && c.braille && words > braille {
-				t.Error("the description does not come first in reading order")
+			if row := strings.Count(text[:max(words, 0)], "\n"); c.words && c.braille && row > 2 {
+				t.Errorf("the description starts on row %d, not the window's first rows", row)
 			}
 		})
 	}

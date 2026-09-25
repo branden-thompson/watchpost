@@ -12,6 +12,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // squareFeed is one alert over Oceanside and one note, and counts how often
@@ -108,4 +110,42 @@ func TestAStaleFeedIsDropped(t *testing.T) {
 		t.Errorf("a stale feed was drawn over a newer one:\n%s", out)
 	}
 	_ = tea.KeyPressMsg{}
+}
+
+// TestARecentPlacesAlertsReachTheMap is U1-14: a place selected from RECENT /
+// SEARCHED holds its alerts in the recent snapshot, not the watchlist's; the
+// map is asked with them, so their areas are drawn.
+func TestARecentPlacesAlertsReachTheMap(t *testing.T) {
+	var asked MapAsk
+	d := mapDash(t, Config{MapFeed: func(_ context.Context, ask MapAsk) MapFeed { asked = ask; return MapFeed{} }})
+	ny := snapshot.Location{Label: "New York, NY", Lat: 40.71, Lon: -74.01,
+		Alerts: []snapshot.Alert{{ID: "ny1", Event: "Heat Advisory", Severity: "Moderate"}}}
+	m, _ := d.Update(RecentSnapshotMsg{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{ny}}})
+	d = m.(Dashboard)
+	d.selected = d.numPriority() // the first RECENT row
+	if loc := d.selectedLocation(); loc == nil || loc.Label != "New York, NY" {
+		t.Fatalf("the selection is %v, not the recent place", loc)
+	}
+	d, _ = pressKey(d, "g")
+	if cmd := d.mapFeedCmd(); cmd != nil {
+		cmd()
+	}
+	found := false
+	if asked.Snap != nil {
+		for _, l := range asked.Snap.Locations {
+			for _, a := range l.Alerts {
+				found = found || a.ID == "ny1"
+			}
+		}
+	}
+	if !found {
+		t.Error("the map was asked without the recent place's alerts, so none is drawn")
+	}
+	if n := len(placedSnap().Locations); asked.Snap == nil || len(asked.Snap.Locations) != n+1 {
+		got := -1
+		if asked.Snap != nil {
+			got = len(asked.Snap.Locations)
+		}
+		t.Errorf("the ask holds %d locations; want the watchlist's %d and the selected recent place", got, n)
+	}
 }

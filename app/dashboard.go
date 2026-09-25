@@ -369,45 +369,47 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 			RadiusMi:    lp.currentStation().radiusMi,
 			Pool:        lp.currentPool(),
 		},
-		Stats:          lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
-		NewMap:         lp.newMap(),        // 0.18.0: the map window builds it on the first g (FR-3.2)
-		MapFeed:        lp.mapFeed,         // 0.18.0: the alerts it draws (FR-4.1)
-		ClearMapData:   lp.clearMapData,    // 0.18.0 W3.8: Settings' Clear map data
-		MapDisclosure:  mapDisclosure(),    // 0.18.0 W1.12 (FR-9.4)
-		MapRetention:   mapRetention(),     // 0.18.0 W3.8 (FR-3.9)
-		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
-		EndEventRead:   lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
-		AlertRadiusMi:  cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference
-		SetAlertRadius: setRadius,
-		RelayDwell:     lp.relayDwell(),
-		SetRelayDwell:  lp.setRelayDwell(),
-		RelayLang:      lp.relayLang(),
-		TuneRelay:      lp.tuneRelay(),
-		ReadReport:     lp.readReport(),
-		InjectAlert:    lp.injectHook(),  // F-21b: nil in a release build
-		DebugScenarios: debugScenarios(), // and empty with it
-		SetRelayLang:   lp.setRelayLang(),
-		Resolve:        resolveHook(resolver, resolverErr),
-		Suggest:        suggestHook(resolver),
-		Setup:          lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
-		OpenSetup:      openSetup,
-		FIRMSKey:       firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
-		Commit:         lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
-		SetTheme:       setThemeHook,
-		SetUI:          setUI,
-		Units:          cfg.Units,
-		Clock:          cfg.Clock,
-		Maps:           cfg.Maps,                      // 0.18.0 W1.10
-		MapDescription: cfg.MapDescription,            // 0.18.0 W1.10
-		MapScale:       cfg.MapScale,                  // 0.18.0 W1.11, W4.3
-		MapNearbyKm:    cfg.MapNearbyKm,               // 0.18.0 W1.11, W9.2
-		MapLayerChoice: cfg.MapLayers,                 // 0.18.0 W1.11
-		MapLayers:      windowLayers(),                // 0.18.0 W1.13: the registry's layers
-		MapCost:        lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate
-		MapAlertScope:  cfg.MapAlertScope,             // 0.18.0 W5.3
-		Hydrate:        lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
-		Credits:        credits(),                     // data-source credits, licence obligations included (UAT 75)
-		FireBoldMW:     fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
+		Stats:           lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
+		NewMap:          lp.newMap(),        // 0.18.0: the map window builds it on the first g (FR-3.2)
+		MapFeed:         lp.mapFeed,         // 0.18.0: the alerts it draws (FR-4.1)
+		ClearMapData:    lp.clearMapData,    // 0.18.0 W3.8: Settings' Clear map data
+		MapDisclosure:   mapDisclosure(),    // 0.18.0 W1.12 (FR-9.4)
+		MapRetention:    mapRetention(),     // 0.18.0 W3.8 (FR-3.9)
+		NarrateEvent:    lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
+		EndEventRead:    lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
+		AlertRadiusMi:   cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference
+		SetAlertRadius:  setRadius,
+		RelayDwell:      lp.relayDwell(),
+		SetRelayDwell:   lp.setRelayDwell(),
+		RelayLang:       lp.relayLang(),
+		TuneRelay:       lp.tuneRelay(),
+		ReadReport:      lp.readReport(),
+		InjectAlert:     lp.injectHook(),  // F-21b: nil in a release build
+		DebugScenarios:  debugScenarios(), // and empty with it
+		SetRelayLang:    lp.setRelayLang(),
+		Resolve:         resolveHook(resolver, resolverErr),
+		Suggest:         suggestHook(resolver),
+		Setup:           lp.setup, // persist the default location + FIRMS key; key the live provider (UAT 100)
+		OpenSetup:       openSetup,
+		FIRMSKey:        firmsProv.KeyHint, // the Setup window shows a stored key is there (UAT 111)
+		Commit:          lp.commit,         // persist watchlist + reconcile both pipelines (UAT 26/69)
+		SetTheme:        setThemeHook,
+		SetUI:           setUI,
+		Units:           cfg.Units,
+		Clock:           cfg.Clock,
+		Maps:            cfg.Maps,                      // 0.18.0 W1.10
+		MapDescription:  cfg.MapDescription,            // 0.18.0 W1.10
+		MapScale:        cfg.MapScale,                  // 0.18.0 W1.11, W4.3
+		MapNearbyKm:     cfg.MapNearbyKm,               // 0.18.0 W1.11, W9.2
+		MapLayerChoice:  cfg.MapLayers,                 // 0.18.0 W1.11
+		MapLayers:       windowLayers(),                // 0.18.0 W1.13: the registry's layers
+		MapCost:         lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate
+		MapAlertScope:   cfg.MapAlertScope,             // 0.18.0 W5.3
+		MapDetailChoice: cfg.MapDetail,                 // UAT-1 D-65: the map's detail
+		MapAreaName:     mapAreaNamer(lp.idx),          // UAT-1 D-64: the title names what is in view
+		Hydrate:         lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
+		Credits:         credits(),                     // data-source credits, licence obligations included (UAT 75)
+		FireBoldMW:      fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
 		// THE SAME OWNER FOR THE TWO RINGS. The detail states each ring beside
 		// the list it admits, so the window and the spoken report cannot
 		// disagree about how far either looked.

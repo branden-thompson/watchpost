@@ -20,6 +20,7 @@ const dumpTimeLayout
 const holdStep
 const httpCacheBytes
 const installRetryAfter
+const kmPerMile
 const laneBacklog
 const liveDwell
 const mainTrackDark
@@ -60,6 +61,9 @@ const testEventLife
 const tickerEvery
 const tickerRotate
 const tickerSeenWindow
+const titlePartKm
+const titlePlaceKm
+const titleStateKm
 const zoneShapeBytes
 func (*airOwner).get
 func (*airOwner).set
@@ -482,6 +486,7 @@ func loadUserThemes
 func lockedCopy
 func macVoices
 func mainTrack
+func mapAreaNamer
 func mapDisclosure
 func mapRetention
 func marineReportOf
@@ -514,10 +519,12 @@ func onTheRail
 func pairOf
 func parseLatLon
 func parseSayVoices
+func partOfState
 func partialNote
 func pcmDuration
 func piperInstallFor
 func piperVoiceNames
+func placeInView
 func priorityTiers
 func profileNames
 func programmeReturnLine

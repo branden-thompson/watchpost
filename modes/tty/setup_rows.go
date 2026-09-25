@@ -129,6 +129,7 @@ const (
 	rowMapNearby
 	rowMapScope
 	rowMapLayers
+	rowMapDetail
 	rowMapClear
 
 	setupRowCount
@@ -257,6 +258,8 @@ func setupTable() [setupRowCount]setupRow {
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one
 		// under the cursor; ←→ move it when there is more than one.
 		rowMapLayers: {rowMapLayers, groupMap, scopeObserver, rowCheck, false, "", ""},
+		// THE MAP'S OWN DETAIL (D-65): the library's basemap layers, weather-first.
+		rowMapDetail: {rowMapDetail, groupMap, scopeObserver, rowCheck, false, "", ""},
 		// AN ACTION, operated by space: it empties the map's data (W3.8).
 		rowMapClear: {rowMapClear, groupMap, scopeObserver, rowCheck, false, "", ""},
 

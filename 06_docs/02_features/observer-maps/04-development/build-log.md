@@ -528,3 +528,74 @@ machine is a gate that passes on the other by not being asked". It is now in
 (routed to Observer's map window); the declaration set gained `closeOnExit`.
 
 **Diagrams:** `as-built-map.md` (the map's commands, clock and close); atlas regenerated.
+
+## Batch 12 — UAT-1's first findings (2026-09-25)
+
+**The HUM LEAD's first pass of UAT-1** (`07-readiness/uat-1-findings.md`, U1-6..U1-14): "This is pretty
+impressive for 1st run … This is very good." Three rulings were asked one at a time and recorded: **D-63**
+(the Area Alerts box opens by default), **D-64** (the title names the view by scale), **D-65** (the
+Overlays menu; weather-first detail).
+
+**Test first.** `map_uat1_test.go`, `TestARecentPlacesAlertsReachTheMap`, `mapnames_test.go` and
+`states_test.go` failed before the code (RED, the recent-place test with the defect's own symptom).
+
+**U1-14, a defect: a RECENT or SEARCHED place's alerts were never drawn.** The feed was asked with the
+watchlist's snapshot alone; a place selected from RECENT keeps its alerts in the recent snapshot. The
+ask now carries the selected place on a copy of the watchlist's snapshot (the shared one is never
+written). The HUM LEAD saw it at New York, NY.
+
+**U1-13, the window at about 80%.** The map window is 80% of the terminal each way, so the dashboard
+shows round it, and never less than a 69×12 map needs (FR-1.4): at 80×24 it is as it was.
+
+**U1-7 and D-63, the Area Alerts box.** The description is a box over the map's upper left - the legend
+has the upper right - open on every open when the description's mode is "with the picture", `A`
+closing and reopening it; with the mode off it waits for `A`. The session's first open says what the
+map sends inside it; with the box closed, above the map, as before (FR-9.4 said either way). Longer
+than two thirds of the map, it ends "… the rest: see Settings". "Instead of the picture" and `--ascii`
+are the full text, as before. The map is no longer shortened for the description: it is the box's
+ground. `TestTheDescriptionComesFirstWithThePicture` now holds D-55 as D-63 keeps it - the words on the
+window's first rows.
+
+**U1-11, the controls.** A box over the map's lower right shows the map's keys as chips; the one pressed
+is drawn inverted (the Settings pickers' acknowledgement) and its blink ends on the dashboard's tick
+after it expires. A map under 14 rows or 60 columns draws none (the keys are on the chip line and in
+Help).
+
+**U1-12 and D-64, the title.** The window names what is in view from the view's centre and width: under
+80 km the nearest town of 5,000 or more (else the nearest place); under 700 km the part of the state -
+where the centre sits in the state's extent, on the axis it is further out on, both only when far out
+on both ("Northwestern"), "Central" near the middle; under 1,500 km the state; wider, the region. The
+selected place is named with it while it is in view. The extents are each state's own cities', in one
+pass (`geodata.StateExtents`); the names are `geodata.StateName`. A point in open water names the
+region.
+
+**U1-9, U1-10 and D-65, the Overlays menu and the map's detail.** `O` opens a menu over the upper left -
+the registry's weather layers, then the map's detail (borders, water, rivers, place names, roads, rail,
+parks and reserves) - which owns ↑↓, space and esc while it is open (D-61, modal control priority). A
+switch reaches the library at once (`Map.Layers`, already in go-tuiMaps - **no library change was
+needed**) and is written at once, as the Settings window writes its own (`map_detail`). The detail
+opens weather-first: roads, rail and parks off. Settings' Maps tab has a **Map detail** row - one layer
+between the arrows and how many are on (seven boxes on one row made Settings wider on every tab).
+
+**U1-2, the status cut short, fixed with them.** Three chips beside the status cut it even at 133
+columns, so the status and the chips are now two lines, both reserved whatever the status says (the
+map's size must not depend on the last frame's status). At 80×24 the status now reads whole.
+
+**The pin, re-pinned:** the map window's frame is 3,541 allocations a memo hit and 4,011 a miss (2,508 /
+2,919 before): the boxes are more spans for the compositor. Recorded, not optimised (D-53).
+
+**What the tests found while building.** The memo guard named `mapPane.title` (a frame that changed and a
+key that did not); the first Map detail row widened Settings on every tab; with the description off the
+box still showed the words, and then the first open's disclosure went unsaid; the boxes were placed
+three cells in where the lines start at one; the controls' blink cannot be seen with colour off, so its
+test draws in colour. `staticcheck` QF1001 in a condition.
+
+**Mutation verdicts** (targeted, 26 and 3 re-runs), all caught: the recent place in the ask, the 80%
+width and height, the width's floor, the box open by mode, `A`, the disclosure's place, the blink's
+mark, its drawing, its end and its tick, the title's view test, its fallback, its drawing and its memo
+key, the detail's library call (after a picture test), the weather-first defaults, the menu owning its
+keys, the menu's save (after a save test), the status rows, the region name, the town preference (after
+a unit test), "Central", the state name, and the app's namer.
+
+**Diagrams:** `as-built-map.md` (what sits over the map, the title's namer, the detail); atlas
+regenerated.

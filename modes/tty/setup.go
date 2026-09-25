@@ -124,6 +124,8 @@ type setupState struct {
 
 	// layerAt is the layers row's cursor: which layer space switches (0.18.0).
 	layerAt int
+	// detailAt is the Map detail row's cursor (D-65).
+	detailAt int
 
 	// castDirty marks the cast or tone state changed and not yet written.
 	//
@@ -496,6 +498,8 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.cycleScope()
 	case rowMapLayers:
 		return d.toggleLayer()
+	case rowMapDetail:
+		return d.toggleDetailAt()
 	default:
 		switch setupTable()[id].kind {
 		case rowToggle:

@@ -123,7 +123,7 @@ func (d Dashboard) renderModal(o render.Opts) string {
 // terminals, window + rail on short ones).
 func (d Dashboard) modalMax() int {
 	if d.modal == modalMap {
-		return max(5, d.height-8) // 0.18.0: the map takes more of the screen, so a 69x12 map fits at 80x24 (FR-1.4)
+		return max(5, min(d.height-8, max(d.height*80/100-5, mapMinBody.Rows+1))) // U1-13: about 80% of the terminal, so the dashboard shows round it; never less than a 69x12 map needs (FR-1.4)
 	}
 	return max(5, d.height-12)
 }
@@ -150,7 +150,7 @@ func (d Dashboard) modalWidth() int {
 	case modalAbout:
 		return aboutWidth
 	case modalMap:
-		return max(d.width-2, 10) // 0.18.0: the terminal's width less the frame - the dashboard's content width reserves a rail the map window does not have, and left a 65-column map at 80, under D-16's 69 (FR-1.4)
+		return max(min(d.width-2, max(d.width*80/100, mapMinBody.Cols+8)), 10) // U1-13: about 80% of the terminal; at least a 69-column map and its inset (FR-1.4), never past the frame
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
 	case modalCard:

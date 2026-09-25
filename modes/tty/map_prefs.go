@@ -182,10 +182,8 @@ func (d Dashboard) nearbyLabel() string {
 // layerOn reports whether a layer is drawn: the listener's choice, or the
 // builders' default. A key the registry does not name is drawn.
 func (d Dashboard) layerOn(key string) bool {
-	for _, part := range strings.Split(d.mapLayerChoice, ",") {
-		if k, v, ok := strings.Cut(part, "="); ok && k == key {
-			return v == "on"
-		}
+	if on, ok := choiceOf(d.mapLayerChoice, key); ok {
+		return on
 	}
 	for _, l := range d.cfg.MapLayers {
 		if l.Key == key {
@@ -211,18 +209,7 @@ func layerChoiceKey(choice map[string]bool) string {
 }
 
 // layerChoices are the choices as the file keeps them.
-func (d Dashboard) layerChoices() map[string]bool {
-	if d.mapLayerChoice == "" {
-		return nil
-	}
-	out := map[string]bool{}
-	for _, part := range strings.Split(d.mapLayerChoice, ",") {
-		if k, v, ok := strings.Cut(part, "="); ok {
-			out[k] = v == "on"
-		}
-	}
-	return out
-}
+func (d Dashboard) layerChoices() map[string]bool { return choicesOf(d.mapLayerChoice) }
 
 // toggleLayer switches the layer under the row's cursor, and asks the
 // estimate again.
@@ -302,6 +289,10 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.cycleScope(), true
 	case rowMapLayers:
 		return d.stepLayer(forward), true
+	case rowMapDetail:
+		n := len(mapDetailLayers())
+		d.setup.detailAt = (d.setup.detailAt + map[bool]int{true: 1, false: n - 1}[forward]) % n
+		return d.settled(), true
 	}
 	return d, false
 }
@@ -320,6 +311,7 @@ func (d Dashboard) mapPrefLines(o render.Opts, lines []string, at int) ([]string
 	row(rowMapNearby, "Nearby -", pickerCellW(d.nearbyLabel(), chips, d.pickerFlashFor(rowMapNearby), len("31 miles (50 km)")))
 	row(rowMapScope, "Alerts -", pickerCellW(d.mapScope.Label(), chips, d.pickerFlashFor(rowMapScope), len(ScopeNational.Label())))
 	row(rowMapLayers, "Layers -", d.layersCell(o, focus == rowMapLayers))
+	row(rowMapDetail, "Map detail -", d.detailCell(o, focus == rowMapDetail))
 	for _, l := range render.WrapText(costWarning(d.mapCost), 56) {
 		lines = append(lines, "    "+settingSupport(l))
 	}
@@ -376,7 +368,48 @@ type MapAsk struct {
 	Scope AlertScope
 }
 
-// mapAsk is the ask as the window stands.
+// mapAsk is the ask as the window stands: the watchlist's places, and the
+// selected place when it is not one of them - a RECENT or SEARCHED place
+// holds its alerts in the recent snapshot, and without it they were never
+// drawn (UAT-1 U1-14). The watchlist's snapshot is shared, so the selected
+// place joins a copy.
 func (d Dashboard) mapAsk() MapAsk {
-	return MapAsk{Snap: d.snap, Place: d.selectedLocation(), Scope: d.mapScope}
+	place := d.selectedLocation()
+	snap := d.snap
+	if place != nil && d.selected >= d.numPriority() {
+		joined := snapshot.Snapshot{}
+		if snap != nil {
+			joined = *snap
+		}
+		joined.Locations = append(append([]snapshot.Location(nil), joined.Locations...), *place)
+		snap = &joined
+	}
+	return MapAsk{Snap: snap, Place: place, Scope: d.mapScope}
+}
+
+// detailCell is the Map detail row's value (D-65): one layer at a time
+// between the arrows - seven boxes on one row made Settings wider on every
+// tab - with how many are on.
+func (d Dashboard) detailCell(o render.Opts, focused bool) string {
+	layers := mapDetailLayers()
+	l := layers[d.setup.detailAt%len(layers)]
+	on := 0
+	for _, x := range layers {
+		if d.detailOn(x.key) {
+			on++
+		}
+	}
+	cell := checkMark(o, d.detailOn(l.key)) + " " + render.PadTo(l.label, len("Parks and reserves"))
+	flash := flashNone
+	if focused {
+		flash = d.pickerFlashFor(rowMapDetail)
+	}
+	left, right := newArrowChips(o).pick(flash)
+	return left + " " + cell + " " + right + "  " + settingSupport(strconv.Itoa(on)+" of "+strconv.Itoa(len(layers))+" on")
+}
+
+// toggleDetailAt switches the detail layer under the Map detail row's cursor.
+func (d Dashboard) toggleDetailAt() Dashboard {
+	l := mapDetailLayers()[d.setup.detailAt%len(mapDetailLayers())]
+	return d.setDetail(l.key, !d.detailOn(l.key)).uiTouched()
 }
