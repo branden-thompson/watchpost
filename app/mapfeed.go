@@ -61,6 +61,14 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, snap *snapshot.Snapsho
 				}
 			}
 			out.Notes = append(out.Notes, partialNote(a, area, place.Label, zonesOfPlace))
+			for _, id := range area.Missing {
+				if zonesOfPlace[id] {
+					if out.InMissing == nil {
+						out.InMissing = map[string]bool{}
+					}
+					out.InMissing[a.ID] = true // the description says it covers the place by that zone
+				}
+			}
 		}
 	}
 	return out

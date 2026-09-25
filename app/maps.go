@@ -41,6 +41,10 @@ const (
 	// mapMaxAge is the tiles' stated retention (FR-3.9), kept by the library
 	// on disk (HR-8, go-tuiMaps L9.2).
 	mapMaxAge = 7 * 24 * time.Hour
+	// mapNearbyKm is how close an alert's edge must be for the description to
+	// say it stops short of the place rather than lies to one side: M1's own
+	// rule (W0.2's answer key). The listener's Setting for it is W1.11's.
+	mapNearbyKm = 15
 	// httpCacheBytes is the existing HTTP cache's cap, which the stated total
 	// covers too.
 	httpCacheBytes = httpx.DiskCacheBytes
@@ -94,6 +98,7 @@ func (b *mapBuilder) build(size tuimaps.Size) (*tuimaps.Map, error) {
 		},
 		func() error { return m.CacheRoot(b.cacheDir, mapDiskBytes) },
 		func() error { return m.SetCacheMaxAge(mapMaxAge) },
+		func() error { return m.SetNearby(mapNearbyKm) },
 		func() error { return m.Source(basemapSources[0].address) },
 	} {
 		if err := step(); err != nil {

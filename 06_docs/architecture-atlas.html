@@ -837,8 +837,8 @@ code{font-family:var(--mono);font-size:.92em}
   V-&gt;&gt;V: print stored lines + notes + status line (no library call)
 </pre></div></article><article class="dia" id="observer-maps-1"><div class="meta"><h3>The parts, and who may name whom</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p><p class="lead"><code>app/</code> is the only package that may name a domain and what draws (the import rule, <code>scripts/lint-imports.sh</code>), so the zone store and the weather service are reached from <code>app/</code> alone, and the window is handed functions.</p></div><div class="canvas"><pre class="mermaid">flowchart LR
   subgraph app[&#34;app/ — the composition root&#34;]
-    MB[&#34;maps.go · mapBuilder\nthe closed list&#39;s basemap (OpenFreeMap)\nwatchpost/‹version›, 256 MiB, 7 days\n4 MiB shared memory cache\nseeds zone outlines on the first map&#34;]
-    MF[&#34;mapfeed.go · mapFeed\none overlay per alert, severity → role\npartial areas labelled, notes in words&#34;]
+    MB[&#34;maps.go · mapBuilder\nthe closed list&#39;s basemap (OpenFreeMap)\nwatchpost/‹version›, 256 MiB, 7 days\n4 MiB shared memory cache · nearby 15 km (M1&#39;s rule)\nseeds zone outlines on the first map&#34;]
+    MF[&#34;mapfeed.go · mapFeed\none overlay per alert, severity → role\npartial areas labelled, notes in words\nwhich alerts&#39; missing zones hold the place&#34;]
     MG[&#34;mapgeometry.go · resolveAlertAreas&#34;]
   end
   subgraph domains[&#34;domains/&#34;]
@@ -846,7 +846,8 @@ code{font-family:var(--mono);font-size:.92em}
     WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes&#34;]
   end
   subgraph tty[&#34;modes/tty — the Observer&#34;]
-    MW[&#34;map_pane.go · the map window\ng opens · owns its keys while open (D-61)\ndraws in Update, View prints (D-41)&#34;]
+    MW[&#34;map_pane.go · the map window\ng opens · owns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s&#34;]
+    MD[&#34;map_describe.go · the description\nReport joined to watchpost&#39;s alerts by id\ncovers · stops short · lies to one side (M1&#39;s words)\nunits and directions in words; never &#39;you&#39;&#34;]
     MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place&#34;]
   end
   subgraph plat[&#34;platform/&#34;]
@@ -861,6 +862,7 @@ code{font-family:var(--mono);font-size:.92em}
   MB -. &#34;first g&#34; .-&gt; ZS
   MW --&gt; RG
   MW --&gt; MK
+  MW -- &#34;Report(place) at every draw&#34; --&gt; MD
   MW --&gt; L
   MB --&gt; L
   MB --&gt; HX
@@ -868,7 +870,7 @@ code{font-family:var(--mono);font-size:.92em}
   S{&#34;selected place?&#34;} -- &#34;none&#34; --&gt; N[&#34;stated: no location is selected (FR-1.3)&#34;]
   S -- &#34;in no region&#34; --&gt; O[&#34;stated: outside every region, nothing wider drawn (FR-2.5)&#34;]
   S -- &#34;in a region&#34; --&gt; A{&#34;--ascii?&#34;}
-  A -- &#34;yes&#34; --&gt; T[&#34;stated: braille, and the remedy (FR-1.7, FR-1.8)&#34;]
+  A -- &#34;yes&#34; --&gt; T[&#34;stated: braille, and the remedy (FR-1.8)\nthen the description in place of the picture (FR-1.7)&#34;]
   A -- &#34;no&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)&#34;]
   M --&gt; NT[&#34;the feed&#39;s notes: partial areas named in words (FR-4.4)&#34;]
   NT --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)&#34;]

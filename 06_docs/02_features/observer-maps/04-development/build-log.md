@@ -199,3 +199,40 @@ second guard.
 `watchpost_debug` build's tests, which only the tagged vet sees; renamed `m1Fixture`.
 
 **Owed:** the national-severe half of W5.3 and its Setting (with W1.11).
+
+## Batch 6 — the description (2026-09-25)
+
+**Tasks:** W1.4 with W9.2 folded (D-60: on `Report`, the nearby distance set).
+
+**What landed.** `modes/tty/map_describe.go`: at every draw the window asks the library's
+`Report` for the selected place and keeps its answer; the description joins each alert's answer
+to watchpost's own alert by id and says, **in M1's words**, whether it covers the place, stops
+short of it or lies to one side, how far its nearest edge is and which way, how severe it is and
+until when; an alert whose missing zone holds the place "covers it by a zone that could not be
+drawn" (the feed now says which, `MapFeed.InMissing`). It opens with the place's conditions, and
+says so when no alert is near. Units and directions are words, and follow the station's units —
+the map is told them at every draw, and `f`/`c` with the map open redraws it (D-45's units row).
+Under `--ascii` the description stands in place of the picture (FR-1.7). The builder sets the
+nearby distance to 15 km, M1's own rule. `tty.Relation` is exported so the answer key can be
+checked through the real parts.
+
+**M1's answer key, through the real parts** (`TestTheDescriptionAnswersTheM1Key`): every recorded
+scenario but the offline one — feed, the station's map, `Report`, the description's word — matches
+the key. The key is computed from the recorded geometry; **the HUM LEAD's confirmation of it is
+still owed**, and M1b is scored by the HUM LEAD on the description that ships.
+
+**Found on the way.** The first render told the map nothing of the station's units, so a
+Fahrenheit station's description said kilometres. `f` and `c` did not redraw an open map.
+
+**Mutation verdicts** — 9 of 9 caught: "stops short" said as "lies to one side" (D1, by the
+answer key), the missing zone ignored (D2), units never set (D3), `c` not redrawn (D4), the
+default nearby (D5, which survived — no recorded edge lies between 10 and 15 km — until
+`TestAnEdgeTwelveKilometresOffStopsShort`), the in-missing set not handed over (D6, by the answer
+key), the empty map unstated (D7), no description under `--ascii` (D8), the join to watchpost's
+alert broken (D9).
+
+**Diagrams:** `as-built-map.md` redrawn (the description, the Report join, the nearby rule, the
+`--ascii` path); atlas regenerated.
+
+**Owed:** the description beside the picture, first in reading order when its mode is on, and
+scrolling (W1.6, W1.10); the "nearby" Setting (W1.11).

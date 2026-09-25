@@ -172,7 +172,7 @@ func TestTheMapIsDrawnInUpdate(t *testing.T) {
 		if c == "Work" {
 			continue
 		}
-		if !strings.HasPrefix(c, "Render") && c != "Pending" && c != "NextCall" && c != "Warnings" {
+		if !strings.HasPrefix(c, "Render") && c != "Pending" && c != "NextCall" && c != "Warnings" && c != "Report" && c != "Units" {
 			t.Errorf("an unexpected library call: %s", c)
 		}
 	}

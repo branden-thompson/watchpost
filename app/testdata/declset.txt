@@ -26,6 +26,7 @@ const mainTrackOff
 const mapDiskBytes
 const mapMaxAge
 const mapMemoryBytes
+const mapNearbyKm
 const maxAlertRecords
 const maxDumpsPerRun
 const maxLaneRows

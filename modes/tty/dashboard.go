@@ -1146,10 +1146,14 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch act {
 	case "quit":
 		return d, tea.Quit
-	case "units-f":
+	case "units-f", "units-c":
 		d.units = render.UnitF
-	case "units-c":
-		d.units = render.UnitC
+		if act == "units-c" {
+			d.units = render.UnitC
+		}
+		if d.modal == modalMap {
+			d = d.renderMap() // 0.18.0 D-45's units row: the description's distances follow the units
+		}
 	case "ticker-mute":
 		// [M] now OPENS Settings at the tone rows rather than toggling them
 		//. The six classes are separately mutable, and

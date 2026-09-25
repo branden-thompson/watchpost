@@ -52,22 +52,24 @@ const mapWorkLimit = 30 * time.Second
 // mapPane is what the Dashboard holds of the map: the library's map, the
 // lines last drawn, and the counters they were drawn at (FR-8.4, D-45).
 type mapPane struct {
-	m       *tuimaps.Map
-	lines   []string
-	changed uint64
-	ticks   uint64
-	region  geo.Region      // the region the map is held inside (FR-2.1)
-	outside string          // the place that is in no region, when it is not (FR-2.5)
-	status  tuimaps.Status  // the last frame's: whole, or still sharpening
-	pending bool            // work was waiting when it was drawn
-	offline bool            // a tile failed since the picture was last whole
-	gen     uint64          // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed  string          // why the map could not be built or drawn, said in the window
-	calls   *[]string       // tests only: the library calls made, by name, in order
-	views   *[]mapView      // tests only: every view drawn, for M2's instrument
-	shown   map[string]bool // the overlays the feed set, so a gone alert is taken off
-	notes   []string        // the feed's notes, printed under the map
-	feedGen uint64          // the feed last asked for; an older answer is dropped
+	m         *tuimaps.Map
+	lines     []string
+	changed   uint64
+	ticks     uint64
+	region    geo.Region          // the region the map is held inside (FR-2.1)
+	outside   string              // the place that is in no region, when it is not (FR-2.5)
+	status    tuimaps.Status      // the last frame's: whole, or still sharpening
+	pending   bool                // work was waiting when it was drawn
+	offline   bool                // a tile failed since the picture was last whole
+	gen       uint64              // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed    string              // why the map could not be built or drawn, said in the window
+	calls     *[]string           // tests only: the library calls made, by name, in order
+	views     *[]mapView          // tests only: every view drawn, for M2's instrument
+	shown     map[string]bool     // the overlays the feed set, so a gone alert is taken off
+	notes     []string            // the feed's notes, printed under the map
+	inMissing map[string]bool     // the feed's alerts whose missing zones hold the place
+	report    tuimaps.PlaceReport // the library's answers for the selected place, as last drawn
+	feedGen   uint64              // the feed last asked for; an older answer is dropped
 }
 
 // mapView is one drawn frame's view: where, how close, and how big.
@@ -80,8 +82,9 @@ type mapView struct {
 // MapFeed is what the map draws from the station's data (0.18.0 W5): an
 // overlay per alert, and the notes the window prints under the map.
 type MapFeed struct {
-	Overlays []tuimaps.Overlay
-	Notes    []string
+	Overlays  []tuimaps.Overlay
+	Notes     []string
+	InMissing map[string]bool // alerts whose missing zones hold the selected place, by alert id
 }
 
 // mapFeedMsg is the feed's answer, to the request it was asked in.
@@ -177,6 +180,8 @@ func (d Dashboard) renderMap() Dashboard {
 	}
 	var frame tuimaps.Frame
 	var err error
+	miles := d.units == render.UnitF
+	d.mapPane.call("Units", func() { m.Units(miles, miles) }) // the description's distances and temperatures in the station's units
 	d.mapPane.call("Render", func() { frame, err = m.Render(d.mapBodySize(), d.now()) })
 	if err != nil {
 		d.mapPane.failed = "The map could not be drawn: " + err.Error()
@@ -188,6 +193,16 @@ func (d Dashboard) renderMap() Dashboard {
 		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize()})
 	}
 	d.mapPane.status = frame.Status
+	if loc := d.selectedLocation(); loc != nil {
+		var rep tuimaps.Report
+		d.mapPane.call("Report", func() {
+			rep, _ = m.Report([]tuimaps.Place{{ID: "selected", Name: loc.Label, At: tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}}})
+		})
+		d.mapPane.report = tuimaps.PlaceReport{}
+		if len(rep.Places) > 0 {
+			d.mapPane.report = rep.Places[0]
+		}
+	}
 	d.mapPane.call("Pending", func() { d.mapPane.pending = m.Pending() > 0 })
 	var warnings []tuimaps.Warning
 	d.mapPane.call("Warnings", func() { warnings = m.Warnings() })
@@ -261,7 +276,7 @@ func (d Dashboard) mapBodyLines() []string {
 	case d.mapPane.failed != "":
 		return []string{d.mapPane.failed}
 	case d.cfg.ASCII:
-		return []string{asciiMapText}
+		return append([]string{asciiMapText, ""}, d.describeLines()...) // FR-1.7: the description in place of the picture
 	}
 	out := append([]string(nil), d.mapPane.lines...)
 	for _, l := range d.noteLines(max(d.modalWidth()-8, 1)) {
@@ -441,7 +456,7 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
 		}
 	}
-	d.mapPane.shown, d.mapPane.notes = shown, notes
+	d.mapPane.shown, d.mapPane.notes, d.mapPane.inMissing = shown, notes, v.feed.InMissing
 	d = d.renderMap()
 	return d, d.mapWorkCmd()
 }

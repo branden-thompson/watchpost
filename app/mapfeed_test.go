@@ -219,3 +219,111 @@ func TestEverySeverityHasItsRole(t *testing.T) {
 		}
 	}
 }
+
+// TestTheDescriptionAnswersTheM1Key is W1.4's acceptance through the real
+// parts (W9.2's answer-key test, D-53): for every recorded scenario the
+// feed's overlays, set on a map built as the station builds it, give the
+// library's Report, and the description's word for each alert - covers,
+// stops short, lies to one side - is the scenario's answer. The key is
+// computed from the recorded geometry; the HUM LEAD's confirmation of it is
+// owed, and M1b is scored on the description that ships.
+func TestTheDescriptionAnswersTheM1Key(t *testing.T) {
+	dirs, err := filepath.Glob(filepath.Join("testdata", "maps", "m1", "*", "scenario.json"))
+	if err != nil || len(dirs) < 8 {
+		t.Fatalf("%d scenarios found: %v", len(dirs), err)
+	}
+	scored := 0
+	for _, p := range dirs {
+		name := filepath.Base(filepath.Dir(p))
+		var sc struct {
+			Failure json.RawMessage `json:"failure"`
+			Key     map[string]struct {
+				Answer string `json:"answer"`
+			} `json:"answer_key"`
+			Place struct {
+				Zones []string `json:"zones"`
+			} `json:"place"`
+		}
+		b, _ := os.ReadFile(p)
+		if err := json.Unmarshal(b, &sc); err != nil {
+			t.Fatal(err)
+		}
+		if len(sc.Failure) > 0 && string(sc.Failure) != "null" {
+			continue // the failure scenario is the offline one: nothing to answer
+		}
+		t.Run(name, func(t *testing.T) {
+			loc, srv := m1Fixture(t, name)
+			lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL)}
+			snap := &snapshot.Snapshot{Locations: []snapshot.Location{loc}}
+			feed := lp.mapFeedWith(context.Background(), snap, &loc, func(snapshot.Location) []string { return placeZonesOf(name) })
+			m, err := newMapBuilder("t", t.TempDir(), &recorded{offline: true}, nil).build(tuimaps.Size{Cols: 69, Rows: 12})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer m.Close()
+			m.Units(false, false)
+			for _, o := range feed.Overlays {
+				if _, err := m.Set(o); err != nil {
+					t.Fatal(err)
+				}
+			}
+			rep, err := m.Report([]tuimaps.Place{{Name: loc.Label, At: tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}}})
+			if err != nil || len(rep.Places) != 1 {
+				t.Fatalf("report: %v", err)
+			}
+			got := map[string]string{}
+			for _, pa := range rep.Places[0].Alerts {
+				got[pa.Feature] = tty.Relation(pa, feed.InMissing[pa.Feature])
+			}
+			for id, want := range sc.Key {
+				if rel, ok := got[id]; !ok || !strings.HasPrefix(rel, want.Answer) {
+					t.Errorf("%s: the description says %q, the key says %q", id, rel, want.Answer)
+				}
+				scored++
+			}
+		})
+	}
+	if scored == 0 {
+		t.Fatal("no answer was scored, so this proves nothing")
+	}
+}
+
+// placeZonesOf is each scenario place's own zone codes, as the weather
+// service gives them: only the partial scenario needs them, to know its place
+// lies in the withheld zone.
+func placeZonesOf(name string) []string {
+	if name == "05-partial-fort-davis" {
+		return []string{"TXZ277", "TXC043"}
+	}
+	return nil
+}
+
+// TestAnEdgeTwelveKilometresOffStopsShort is W9.2's nearby distance: the
+// station's maps say "stops short" out to M1's 15 km, where the library's
+// own default would say "lies to one side" past 10.
+func TestAnEdgeTwelveKilometresOffStopsShort(t *testing.T) {
+	m, err := newMapBuilder("t", t.TempDir(), &recorded{offline: true}, nil).build(tuimaps.Size{Cols: 69, Rows: 12})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer m.Close()
+	// A place at 35 N, 100 W; the box's west edge 0.132 degrees of longitude
+	// east of it, about 12 km at that latitude.
+	west, east := -99.868, -99.5
+	ring := []tuimaps.LonLat{{Lon: west, Lat: 34.8}, {Lon: east, Lat: 34.8}, {Lon: east, Lat: 35.2}, {Lon: west, Lat: 35.2}, {Lon: west, Lat: 34.8}}
+	if _, err := m.Set(tuimaps.Overlay{ID: "a", Valid: mapNoon, Keeps: time.Hour, Features: []tuimaps.Feature{{Kind: tuimaps.Polygon,
+		Rings: [][]tuimaps.LonLat{ring}, Role: tuimaps.AlertSevere, Label: "Test", ID: "a"}}}); err != nil {
+		t.Fatal(err)
+	}
+	rep, err := m.Report([]tuimaps.Place{{Name: "Here", At: tuimaps.LonLat{Lon: -100, Lat: 35}}})
+	if err != nil || len(rep.Places) != 1 || len(rep.Places[0].Alerts) != 1 {
+		t.Fatalf("report %+v, %v", rep, err)
+	}
+	pa := rep.Places[0].Alerts[0]
+	if pa.Distance < 11 || pa.Distance > 13 {
+		t.Fatalf("the edge is %.1f km off, not about 12, so this proves nothing", pa.Distance)
+	}
+	if got := tty.Relation(pa, false); got != "stops short" {
+		t.Errorf("an edge %.1f km off: %q, want stops short", pa.Distance, got)
+	}
+}
