@@ -87,3 +87,42 @@ no MAP group in Help (K7), the rail not ASCII (K8, by the render test alone), a 
 
 **Owed:** W1.2's scripted PTY journey on the real binary; W1.15's loading indicator and M2 over
 every frame (with W4's bound).
+
+## Batch 3 — the basemap (2026-09-25)
+
+**Tasks:** W3.1, W3.2, W3.3, W3.4, W3.5, W3.6, W3.7, with W9.3 and W9.4 folded in (D-60).
+
+**What landed.** `app/maps.go`'s `mapBuilder` builds the window's maps. Each names the closed
+list's one basemap (`basemapSources`: OpenFreeMap's planet, FR-3.8), with the embedded tiles
+always passed (FR-3.1), fetched by the library as `watchpost/<version>` and confined by it to that
+host (HR-6, HR-10). Tiles are kept at `userCacheSubdir("map")` under a 256 MiB cap and a 7-day
+maximum age, held by the library on disk (HR-8, FR-3.9); the stated total is that cap plus the
+HTTP cache's (`httpx.DiskCacheBytes`, exported so the total reads it rather than a copy). The
+memory tile cache is a 4 MiB shared set, kept across the session's maps (FR-3.6). **The zone
+outlines are seeded by the first map the listener opens** and no longer at the station's start
+(FR-3.2, D-25); the builder's seed is the only caller. The window's last line says what the
+picture is while it is not whole: loading while work is pending, offline once a tile has failed
+(until the picture is whole again), and coarser when the tiles cannot sharpen the view and
+nothing is pending (FR-3.4, W1.15's indicator). Watchpost never prints the TileJSON's credit; the
+library draws its own (FR-3.7).
+
+**Found on the way.** The memo-completeness guard caught the status line's inputs missing from
+the window's key. The first draft said "loading" forever on a view the embedded tiles cannot
+sharpen: loading now means work is pending, and a third, stated case covers the rest. The
+no-socket check of batch 1 forbade importing `net/http` at all, which is stricter than "no
+socket" and blocked in-memory transports: it now forbids `net`, `net/http/httptest` and the
+default client and transport.
+
+**Process note.** The app tests of this batch were written before the builder but not run red
+before it was written. The mutation run below stands in for that step: each behaviour was
+removed and its test failed.
+
+**Mutation verdicts** — 14 of 14 caught: another source (B1), no user-agent (B2), no disk cache
+(B3), no maximum age (B4), the default memory cache (B5), zones seeded on every map (B6) and at
+start (B7), a total missing the HTTP cache (B8), the cache outside the OS cache directory (B9),
+offline never said (B10), loading never said (B11), coarse never said (B12), the memo missing the
+offline note (B13) and the offline note never cleared (B14, which survived the first run and got
+`TestTheOfflineNoteClearsWhenTheSourceReturns`).
+
+**Owed:** W3.8's clear path (with W9.5's `Purge`), W3.9's zone politeness, FR-3.2's full
+station-start instrument through a counting transport.

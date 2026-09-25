@@ -6,6 +6,7 @@ package tty
 import (
 	"go/parser"
 	"go/token"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -171,7 +172,7 @@ func TestTheMapIsDrawnInUpdate(t *testing.T) {
 		if c == "Work" {
 			continue
 		}
-		if !strings.HasPrefix(c, "Render") && c != "Pending" && c != "NextCall" {
+		if !strings.HasPrefix(c, "Render") && c != "Pending" && c != "NextCall" && c != "Warnings" {
 			t.Errorf("an unexpected library call: %s", c)
 		}
 	}
@@ -218,8 +219,9 @@ func TestTheMapReleasesOnClose(t *testing.T) {
 }
 
 // TestMapTestsReachNoSocket is W0.2's owed check, landing with the first map
-// package: no map test opens a listener or dials; they draw from the embedded
-// tiles and recorded fixtures only.
+// package: no map test opens a listener or dials. They draw from the embedded
+// tiles and answer requests in memory; net/http is allowed for the
+// RoundTripper type alone, never its default client or transport.
 func TestMapTestsReachNoSocket(t *testing.T) {
 	names, err := filepath.Glob("map_*_test.go")
 	if err != nil {
@@ -229,14 +231,23 @@ func TestMapTestsReachNoSocket(t *testing.T) {
 		t.Fatal("no map test files found, so this proves nothing")
 	}
 	for _, name := range names {
-		file, err := parser.ParseFile(token.NewFileSet(), name, nil, parser.ImportsOnly)
+		src, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		file, err := parser.ParseFile(token.NewFileSet(), name, src, parser.ImportsOnly)
 		if err != nil {
 			t.Fatal(err)
 		}
 		for _, spec := range file.Imports {
 			path, _ := strconv.Unquote(spec.Path.Value)
-			if path == "net" || path == "net/http/httptest" || path == "net/http" {
+			if path == "net" || path == "net/http/httptest" {
 				t.Errorf("%s imports %s: a map test reaches no socket", name, path)
+			}
+		}
+		for _, reach := range []string{"http." + "DefaultTransport", "http." + "DefaultClient", "http." + "Get(", "http." + "ListenAndServe"} {
+			if strings.Contains(string(src), reach) {
+				t.Errorf("%s uses %s: a map test reaches no socket", name, reach)
 			}
 		}
 	}

@@ -17,11 +17,15 @@ const dumpKeep
 const dumpMinInterval
 const dumpTimeLayout
 const holdStep
+const httpCacheBytes
 const installRetryAfter
 const laneBacklog
 const liveDwell
 const mainTrackDark
 const mainTrackOff
+const mapDiskBytes
+const mapMaxAge
+const mapMemoryBytes
 const maxAlertRecords
 const maxDumpsPerRun
 const maxLaneRows
@@ -49,6 +53,7 @@ const recentStartStagger
 const releaseAPI
 const requestedCap
 const scheduleTick
+const statedCacheBytes
 const systemVoice
 const testEventLife
 const tickerEvery
@@ -141,6 +146,7 @@ func (*livePipelines).masterControl
 func (*livePipelines).monitorMayReachTheAir
 func (*livePipelines).moveCard
 func (*livePipelines).narrateEvent
+func (*livePipelines).newMap
 func (*livePipelines).noteBedCarrying
 func (*livePipelines).poolFor
 func (*livePipelines).producer
@@ -155,6 +161,7 @@ func (*livePipelines).rememberRequested
 func (*livePipelines).requestCard
 func (*livePipelines).resolvable
 func (*livePipelines).restationTo
+func (*livePipelines).seedOnFirstMap
 func (*livePipelines).seedZoneShapes
 func (*livePipelines).seismicFor
 func (*livePipelines).selectedRelay
@@ -177,6 +184,7 @@ func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
 func (*livePipelines).wireDeckWarnings
+func (*mapBuilder).build
 func (*mastercontrol).CutBed
 func (*mastercontrol).DropCard
 func (*mastercontrol).GoOnAir
@@ -470,8 +478,9 @@ func newDumper
 func newEventReader
 func newExecutors
 func newHostFacts
-func newMap
+func newMapBuilder
 func newMastercontrol
+func newProductionMapBuilder
 func newPump
 func newRadioDeck
 func newReleaseWatch
@@ -618,6 +627,8 @@ type injectQueue
 type livePipelines
 type liveSource
 type mainTrackStage
+type mapBuilder
+type mapSource
 type mastercontrol
 type memRecord
 type narrationClass
@@ -645,6 +656,7 @@ type tickerPrefs
 var _
 var _
 var _
+var basemapSources
 var errDumpTooSoon
 var errReadStopped
 var goosSeam

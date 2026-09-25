@@ -15,7 +15,7 @@ import (
 // map window a constructor, and what it builds draws the basemap from the
 // embedded tiles, sized as asked, reaching nothing (FR-3.2).
 func TestTheAppHandsTheWindowItsMap(t *testing.T) {
-	lp := &livePipelines{}
+	lp := &livePipelines{maps: newMapBuilder("t", t.TempDir(), &recorded{offline: true}, nil)}
 	cfg := lp.ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
 	if cfg.NewMap == nil {
 		t.Fatal("the window is handed no map constructor, so g would open a window with no map")
@@ -32,7 +32,10 @@ func TestTheAppHandsTheWindowItsMap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(f.Lines) != 12 || f.Status != tuimaps.Complete {
-		t.Errorf("the embedded basemap drew %d lines, status %v; want 12 lines, complete", len(f.Lines), f.Status)
+	if len(f.Lines) != 12 {
+		t.Errorf("the map drew %d lines, want 12", len(f.Lines))
+	}
+	if (&livePipelines{}).newMap() != nil {
+		t.Error("a station with no builder handed the window a constructor")
 	}
 }

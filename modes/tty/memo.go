@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -275,8 +276,11 @@ type modalKey struct {
 	// THE MAP'S DRAW, by generation, and why it could not draw (0.18.0 W2.1).
 	// The lines are drawn in Update and raise the generation each time, so the
 	// key moves with every frame the library gave (F-30's rule, D-45).
-	mapGen    uint64
-	mapFailed string
+	mapGen     uint64
+	mapFailed  string
+	mapOffline bool           // the status line's offline note
+	mapStatus  tuimaps.Status // and whether the picture is whole
+	mapPending bool           // and whether it is still loading
 }
 
 // modalMemo is the single slot.
@@ -309,6 +313,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 	switch d.modal {
 	case modalMap:
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
+		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending
 	case modalRequest:
 		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was
 		// missing the moment the window existed — `field`, `query`, `outside`

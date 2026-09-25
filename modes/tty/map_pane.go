@@ -26,6 +26,14 @@ const actMap term.Action = "map.toggle"
 // the picture is braille, which --ascii never prints, and the remedy.
 const asciiMapText = "The map is drawn in braille, which --ascii mode does not print. Run Watchpost without --ascii to see it."
 
+// The window's last line says what the picture is while it is not whole
+// (FR-3.4, W1.15's loading indicator). A whole picture leaves it blank.
+const (
+	mapLoadingText = "Loading map detail…"
+	mapOfflineText = "Offline: the basemap could not be fetched, so this is the coarser picture the map already holds."
+	mapCoarseText  = "This is a coarser picture: the map has no finer tiles for this view."
+)
+
 // noSelectionText is what the window says when nothing is selected (FR-1.3):
 // before the first snapshot, or with the selection out of range.
 const noSelectionText = "No location is selected. Choose one from the Watchlist or Recent, and the map opens on it."
@@ -45,9 +53,12 @@ type mapPane struct {
 	lines   []string
 	changed uint64
 	ticks   uint64
-	gen     uint64    // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed  string    // why the map could not be built or drawn, said in the window
-	calls   *[]string // tests only: the library calls made, by name, in order
+	status  tuimaps.Status // the last frame's: whole, or still sharpening
+	pending bool           // work was waiting when it was drawn
+	offline bool           // a tile failed since the picture was last whole
+	gen     uint64         // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed  string         // why the map could not be built or drawn, said in the window
+	calls   *[]string      // tests only: the library calls made, by name, in order
 }
 
 // mapWorkedMsg is one Work command's outcome.
@@ -94,7 +105,7 @@ func (d Dashboard) toggleMap() Dashboard {
 // mapBodySize is the map's size in cells: the window's body, which the
 // window's frame and wrapping leave as they are.
 func (d Dashboard) mapBodySize() tuimaps.Size {
-	return tuimaps.Size{Cols: max(d.modalWidth()-8, 1), Rows: d.modalMax()} // three clear cells inside each border, as every window's body has
+	return tuimaps.Size{Cols: max(d.modalWidth()-8, 1), Rows: max(d.modalMax()-1, 1)} // three clear cells inside each border, as every window's body has; the last row is the status line
 }
 
 // renderMap draws the map into the pane. It is called from Update only.
@@ -111,6 +122,18 @@ func (d Dashboard) renderMap() Dashboard {
 		return d
 	}
 	d.mapPane.lines, d.mapPane.failed = insetLines(frame.Lines), ""
+	d.mapPane.status = frame.Status
+	d.mapPane.call("Pending", func() { d.mapPane.pending = m.Pending() > 0 })
+	var warnings []tuimaps.Warning
+	d.mapPane.call("Warnings", func() { warnings = m.Warnings() })
+	for _, w := range warnings {
+		if w.Kind == tuimaps.TileFailed {
+			d.mapPane.offline = true // held until the picture is whole again
+		}
+	}
+	if frame.Status == tuimaps.Complete {
+		d.mapPane.offline = false
+	}
 	d.mapPane.gen++
 	d.mapPane.changed, d.mapPane.ticks = frame.Changed, frame.FrameTicks
 	return d
@@ -173,7 +196,20 @@ func (d Dashboard) mapBodyLines() []string {
 	case d.cfg.ASCII:
 		return []string{asciiMapText}
 	}
-	return d.mapPane.lines
+	return append(append([]string(nil), d.mapPane.lines...), " "+d.mapStatusLine())
+}
+
+// mapStatusLine says what the picture is while it is not whole.
+func (d Dashboard) mapStatusLine() string {
+	switch {
+	case d.mapPane.offline:
+		return mapOfflineText
+	case d.mapPane.status == tuimaps.Complete:
+		return ""
+	case d.mapPane.pending:
+		return mapLoadingText
+	}
+	return mapCoarseText
 }
 
 // closeMap lets the library's map go. The app calls it when the station

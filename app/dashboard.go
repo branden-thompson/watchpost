@@ -86,7 +86,7 @@ func RunDashboard(version string, opt Options) error {
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
 		zoneShapes: zoneShapes}
 	lp.attachDiagnostics(ctx, start)
-	lp.seedZoneShapes(ctx, refs)
+	lp.maps = newProductionMapBuilder(version, lp.seedOnFirstMap(ctx)) // 0.18.0 FR-3.2: the zones are seeded by the first map, not here
 	idx, resolver, resolverErr := loadGeodata(client)
 	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
 	lp.giveItAStation(cfg, idx)
@@ -361,7 +361,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 			Pool:        lp.currentPool(),
 		},
 		Stats:          lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
-		NewMap:         newMap,             // 0.18.0: the map window builds it on the first g (FR-3.2)
+		NewMap:         lp.newMap(),        // 0.18.0: the map window builds it on the first g (FR-3.2)
 		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
 		EndEventRead:   lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
 		AlertRadiusMi:  cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference
@@ -666,6 +666,7 @@ type livePipelines struct {
 	unknownKeys []string
 
 	zoneShapes *zones.Store // the outlines an alert's zones name (0.17.0)
+	maps       *mapBuilder  // 0.18.0: builds the window's maps; nil builds none
 	p          *tea.Program
 	provider   snapshot.Provider
 	marine     []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)

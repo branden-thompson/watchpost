@@ -120,6 +120,10 @@ var (
 	tmpNameRe   = regexp.MustCompile(`^[0-9a-f]{64}\.cache\.[0-9]+\.tmp$`)
 )
 
+// DiskCacheBytes is the disk cache's cap, which the station's one stated cache
+// total covers (0.18.0 FR-3.5).
+const DiskCacheBytes = maxDiskBytes
+
 func newCache(dir string) *cache { return newCacheWithCap(dir, maxDiskBytes) }
 
 // newCacheWithCap is newCache with the directory cap chosen before the
