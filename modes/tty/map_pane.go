@@ -10,7 +10,6 @@ package tty
 // message it returns is where what it landed gets drawn.
 
 import (
-	"context"
 	"math"
 	"strings"
 	"time"
@@ -62,6 +61,9 @@ type mapPane struct {
 	gen       uint64                // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
 	failed    string                // why the map could not be built or drawn, said in the window
 	calls     *[]string             // tests only: the library calls made, by name, in order
+	where     *[]callSite           // tests only: each call and the goroutine it ran on (W2.2)
+	workers   *mapWorkers           // the commands running for this map, joined on close (W2.6)
+	tickAt    time.Time             // the tick outstanding, at the library's NextCall (W2.2)
 	views     *[]mapView            // tests only: every view drawn, for M2's instrument
 	shown     map[string]bool       // the overlays the feed set, so a gone alert is taken off
 	notes     []string              // the feed's notes, printed under the map
@@ -110,6 +112,9 @@ func (p mapPane) call(name string, f func()) {
 	if p.calls != nil {
 		*p.calls = append(*p.calls, name)
 	}
+	if p.where != nil {
+		*p.where = append(*p.where, callSite{name: name, goroutine: goroutineID()})
+	}
 	f()
 }
 
@@ -134,7 +139,7 @@ func (d Dashboard) toggleMap() Dashboard {
 			d.mapPane.failed = "The map could not be started: " + err.Error()
 			return d
 		}
-		d.mapPane.m, d.mapPane.failed = m, ""
+		d.mapPane.m, d.mapPane.failed, d.mapPane.workers = m, "", newMapWorkers()
 		d.mapPane.disclose = true // the map is built once a session: its first open says what is sent (FR-9.4)
 	}
 	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
@@ -266,8 +271,11 @@ func (d Dashboard) mapWorkCmd() tea.Cmd {
 	}
 	pane := d.mapPane
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), mapWorkLimit)
-		defer cancel()
+		ctx, done, ok := pane.workers.begin()
+		if !ok {
+			return mapWorkedMsg{} // the map closed: nothing is touched
+		}
+		defer done()
 		did := false
 		pane.call("Work", func() { did, _ = m.Work(ctx) }) // a failed tile is the library's to retry, and its warning says so
 		return mapWorkedMsg{did: did}
@@ -389,6 +397,7 @@ func (d Dashboard) mapStatusLine() string {
 // closeMap lets the library's map go. The app calls it when the station
 // stops; a closed pane builds a new map on the next open.
 func (d Dashboard) closeMap() {
+	d.mapPane.workers.close() // cancelled and joined first: nothing is inside the map when it closes (W2.6)
 	if m := d.mapPane.m; m != nil {
 		d.mapPane.call("Close", func() { m.Close() })
 	}
@@ -524,11 +533,14 @@ func (d Dashboard) mapFeedCmd() tea.Cmd {
 	if feed == nil || d.mapPane.m == nil || d.modal != modalMap || loc == nil {
 		return nil
 	}
-	gen, ask, place := d.mapPane.feedGen, d.mapAsk(), *loc
+	gen, ask, place, workers := d.mapPane.feedGen, d.mapAsk(), *loc, d.mapPane.workers
 	ask.Place = &place // the command's own copy: the model may move on while it runs
 	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), mapWorkLimit)
-		defer cancel()
+		ctx, done, ok := workers.begin()
+		if !ok {
+			return nil // the map closed: the app is not asked
+		}
+		defer done()
 		return mapFeedMsg{gen: gen, feed: feed(ctx, ask)}
 	}
 }

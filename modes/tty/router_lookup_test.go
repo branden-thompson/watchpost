@@ -187,6 +187,7 @@ func typeOfMsg(t *testing.T, name string) reflect.Type {
 		"locatePauseMsg":   locatePauseMsg{},
 		"locateVerdictMsg": locateVerdictMsg{},
 		"mapWorkedMsg":     mapWorkedMsg{},
+		"mapTickMsg":       mapTickMsg{}, // 0.18.0 W2.2: the map's clock is owed to its window, not a cadence
 		"mapFeedMsg":       mapFeedMsg{},
 		"mapClearedMsg":    mapClearedMsg{},
 	}

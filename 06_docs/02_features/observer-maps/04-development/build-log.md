@@ -454,3 +454,77 @@ re-captured.
 
 **Diagrams:** `as-built-map.md` (the scope, the national feed through the severe deck); atlas
 regenerated.
+
+## Batch 11 — the rest of W2: the clock, the join, the guards, the pins (2026-09-25)
+
+**Tasks:** W2.2's second half, W2.3, W2.4, W2.5, W2.6, W2.7, W2.8, W2.9's gate half. With this batch
+**P1-a's build is complete (W1–W5 with W9 folded, W2 whole), and UAT-1 opens.**
+
+**Test first where there was something to build.** `map_work_test.go` (the goroutine record, the tick,
+the join, the router's close) and `TestTheMapIsClosedWhenTheProgramEnds` failed to compile before the
+code. The guards - W2.3's table, W2.4's property, W2.5's freshness, W2.7's pin, W2.8's goldens, W2.9's
+count - hold behaviour already built, so each passed on arrival and **a mutant stands in for its RED**:
+a handler that skips its draw, a draw that keeps a stale counter, a frame that keeps its old lines -
+each caught.
+
+**The clock (W2.2).** One tick is kept outstanding at the library's `NextCall` (a marker's phase, a
+tile's retry, an overlay going stale), **armed after every `Update`** beside the dashboard's own tick,
+so no path that draws has to remember it. A tick for a time no longer wanted is dropped; a closed
+window keeps none; the delay has a 50 ms floor so a time still wanted after its draw cannot spin.
+`mapTickMsg` is routed to Observer's map window (the routing guard named it the moment it existed).
+**The goroutine record:** the call wrapper records each call's goroutine in tests; every call but
+`Work` runs on the goroutine driving `Update` (`NextCall` included), and `Work` on another.
+
+**The join (W2.6, FR-8.2).** The map's commands - `Work` and the feed - are admitted under a lock by
+`mapWorkers`: a close cancels them, waits for them (bounded at 2 s, reached only by a call that ignores
+its context), and a command that starts after the close touches nothing. The app closes the map with
+the model the program ends with (`closeOnExit` in `runProgram`, through `Router.CloseMap`).
+
+**Guard 2 and freshness (W2.3, W2.5):** one row per P1-a event - the feed landing, `Work` landing,
+size, selection, pan, zoom, units, the library's tick, a map Setting on the next open - each draws, and
+after each the stored `Changed`/`FrameTicks` are the library's. **Theme and colour depth are not rows
+yet:** the map does not take the theme's palette until W7 (FR-7.1, FR-7.2), so a theme change has
+nothing to redraw; the rows land with W7. Frame advance and playback land with W8.10.
+
+**Guard 3 (W2.4):** random sequences of pan, zoom, resize, units, new data and ticks, each settled,
+then the printed map compared with a second map built from the same inputs (bound, view, units,
+nearby, overlays) rendered in the window's own order - render, work, render what the work did. **Its
+first two versions were wrong, not the window:** the second map was rendered without the render that
+asks for its tiles, then stopped at the tile the embedded set lacks, which the window does not. Every
+`go test` runs 200 sequences (the race run and every mutant's included); **the 10,000 run under the
+`property` tag in `make property`, a step of its own in `verify-gates`** (about two minutes), and
+`vet-tags` vets the tagged file.
+
+**The pin (W2.7, FR-8.3):** the map window at 133×44 over the benchmark fixture - **2,508 allocations a
+memo hit and 2,919 a miss**, pinned at ×1.05; neither calls the library. The hit is above the severe
+window's 1,740: the braille lines carry their colour spans and the compositor walks each. **Measured and
+recorded, not optimised** (D-53).
+
+**The goldens (W2.8, FR-8.5):** the window at 80×24, 120×40 and 133×44, each carrying the width
+invariant: no line wider than the terminal, and the window's right border in one column from corner to
+corner, so a map line a cell too wide fails. (Lines are not padded to the terminal's width - the frame's
+convention, as every existing golden shows - so "exactly the width" was the wrong invariant, found on
+the first run.) A self-test proves the invariant refuses a sheared border.
+
+**M5's gate half (W2.9):** a cold open at 149×38 on Roswell, with its watch and warning, reaches its
+first complete frame in **one TileJSON, two tiles and five zones** - bounded at one, six (the most tiles
+a 278×116-dot view touches) and each zone once. "Never waits for radar" joins with radar (W8.12); the
+p90 timing is the SHIP report's.
+
+**What the 80-column golden shows, for UAT:** the library's footer runs the scale bar into the credit
+("50 kmOpenFreeMap"), and the status line is cut mid-sentence ("…the map has no finer tiles for"). Both
+are seeded in the UAT-1 findings log.
+
+**Mutation verdicts** (targeted, 16): caught - the close check, the wait, the cancel, the close's join,
+re-arming an outstanding tick, arming while closed, drawing a superseded tick, a tick that does not
+draw, the record's goroutine, the router's close, the arming step in `Update`, the tick's dispatch, the
+app's close, a skipped draw after `Work`, a stale counter, stale lines. **Not caught, recorded:** the
+50 ms floor (a tick's delay is not observable without waiting it out).
+
+**What the gates found.** `TestTheThreeGateListsAgree` and `TestEveryGateShapedTargetIsListedOrExempt`:
+`make property` ran in `verify` and not in CI, and was on no list - "a gate that only runs on one
+machine is a gate that passes on the other by not being asked". It is now in
+`06_docs/required-gates.txt` and a CI step beside `alloc-budget`. The routing guard named `mapTickMsg`
+(routed to Observer's map window); the declaration set gained `closeOnExit`.
+
+**Diagrams:** `as-built-map.md` (the map's commands, clock and close); atlas regenerated.

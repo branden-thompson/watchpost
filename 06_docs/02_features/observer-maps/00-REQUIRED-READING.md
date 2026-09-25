@@ -20,7 +20,7 @@ be passed over in a new session."*
 | | |
 |---|---|
 | Branch | `feature/map-drawing` → squash-merged `release/v0.18.0` at SHIP (D-2) |
-| Phase | **BUILD OPEN** since 2026-09-23 (D-56), in parallel with go-tuiMaps v0.2.0's BUILD; the two cross-reference through go-tuiMaps' `radar-loops/03-architecture-design/integration-map.md`. PLAN closed: `08-reports/plan-report.md` (APPROVED). **Both P1-a and P1-b build on go-tuiMaps' newest release candidate** (D-60, 2026-09-25; `v0.2.0-rc.8` at W1's first batch), and W9 folds into its P1-a counterparts; 0.18.0 ships only on the final `v0.2.0`. The HUM LEAD is told when UAT-1 (W1–W5) and UAT-2 (W8) are reached. Update this row at every phase transition |
+| Phase | **BUILD OPEN** since 2026-09-23 (D-56), in parallel with go-tuiMaps v0.2.0's BUILD; the two cross-reference through go-tuiMaps' `radar-loops/03-architecture-design/integration-map.md`. PLAN closed: `08-reports/plan-report.md` (APPROVED). **Both P1-a and P1-b build on go-tuiMaps' newest release candidate** (D-60, 2026-09-25; `v0.2.0-rc.8` at W1's first batch), and W9 folds into its P1-a counterparts; 0.18.0 ships only on the final `v0.2.0`. **UAT-1 (W1–W5) is OPEN since 2026-09-25** (batches 1–11; `07-readiness/uat-1-guide.md`, findings in `07-readiness/uat-1-findings.md`); UAT-2 (W8) follows radar. Update this row at every phase transition |
 | Brief | `01-objectives/project-brief.md` — APPROVED (D-17); it is the body of issue #22 (D-19) |
 | Problem & metrics | `01-objectives/problem-statement.md` — M1, M1b, M2–M5 primary, M6 secondary (D-18, D-36), anti-solution hardened |
 | Rulings | `02-analysis/rulings.md` — **every ruling lands here the moment it is made** |

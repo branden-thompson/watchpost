@@ -425,6 +425,7 @@ func castToConfig
 func castView
 func chooseNearest
 func clockFrom
+func closeOnExit
 func composeFor
 func composeTakeover
 func configLocations

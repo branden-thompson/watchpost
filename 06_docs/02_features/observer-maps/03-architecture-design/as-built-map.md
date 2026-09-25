@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–10 (W1.1–W1.8, W1.10–W1.17, W2.1, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope)."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–11 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope) - P1-a complete, UAT-1 open."
 ---
 
 # As built: where the map lives
@@ -84,6 +84,20 @@ flowchart TB
   CW --> ST["the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window"]
 ```
 
+## The map's commands, its clock and its close (W2)
+
+```mermaid
+flowchart LR
+  U["Update (the Bubble Tea goroutine)\nevery library call but Work"] -- "Pending > 0" --> W["Work command\nadmitted by mapWorkers"]
+  U -- "the feed asked" --> F["feed command\nadmitted by mapWorkers"]
+  W -- "mapWorkedMsg" --> U
+  F -- "mapFeedMsg" --> U
+  U -- "after every Update: NextCall" --> T["one tick outstanding\n(50 ms floor)"]
+  T -- "mapTickMsg at the time still wanted" --> U
+  Q["the program ends\ncloseOnExit → Router.CloseMap"] --> C["closeMap\ncancel · join (≤ 2 s) · Close"]
+  C -. "refuses what starts after" .-> W & F
+```
+
 ## Settings, in tabs (D-62)
 
 ```mermaid
@@ -103,5 +117,5 @@ Each tab fits unscrolled at 133×44; the window is as wide as its widest tab on 
 
 ## Not built yet
 
-The `NextCall` tick and the rest of W2 (the goroutine record, the frame guards, join on close, the
-allocation pin, the width goldens); radar (W8), which registers its sources and its layer.
+The theme's palette and the colour-depth hint (W7), which bring W2.3's theme and depth rows; radar (W8),
+which registers its sources and its layer and brings the frame-advance rows.

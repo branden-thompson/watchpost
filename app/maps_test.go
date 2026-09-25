@@ -1,6 +1,7 @@
 package app
 
 import (
+	tea "charm.land/bubbletea/v2"
 	"context"
 	"os"
 	"path/filepath"
@@ -200,3 +201,27 @@ func TestTheMapsTabReachesTheWindowAndTheFile(t *testing.T) {
 		t.Errorf("the save wrote %q %d %v", got.MapScale, got.MapNearbyKm, got.MapLayers)
 	}
 }
+
+// TestTheMapIsClosedWhenTheProgramEnds is W2.6's wiring: the model the
+// program ends with has Observer's map closed, its workers joined; any other
+// model is left alone.
+func TestTheMapIsClosedWhenTheProgramEnds(t *testing.T) {
+	closed := 0
+	closeOnExit(closerFunc(func() { closed++ }))
+	if closed != 1 {
+		t.Errorf("the router's map was closed %d times", closed)
+	}
+	closeOnExit(nil) // a program that ended with no model
+	var final tea.Model = tty.NewRouter(tty.Dashboard{})
+	if _, ok := final.(interface{ CloseMap() }); !ok {
+		t.Error("the model the program ends with cannot close the map")
+	}
+}
+
+// closerFunc is a model that records the close.
+type closerFunc func()
+
+func (f closerFunc) CloseMap()                         { f() }
+func (closerFunc) Init() tea.Cmd                       { return nil }
+func (closerFunc) Update(tea.Msg) (tea.Model, tea.Cmd) { return nil, nil }
+func (closerFunc) View() tea.View                      { return tea.NewView("") }

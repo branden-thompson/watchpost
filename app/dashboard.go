@@ -117,6 +117,14 @@ func RunDashboard(version string, opt Options) error {
 	return nil
 }
 
+// closeOnExit closes Observer's map in the model the program ended with
+// (0.18.0 W2.6, FR-8.2): its commands cancelled and joined, the map let go.
+func closeOnExit(final tea.Model) {
+	if c, ok := final.(interface{ CloseMap() }); ok {
+		c.CloseMap()
+	}
+}
+
 // runProgram runs the terminal program and turns its failure into one the
 // listener can act on.
 //
@@ -129,7 +137,8 @@ func RunDashboard(version string, opt Options) error {
 // /dev/tty: device not configured" names a dependency the listener did not
 // choose and no step they can take; the sentence below names the step.
 func runProgram(p *tea.Program) error {
-	_, err := p.Run()
+	final, err := p.Run()
+	closeOnExit(final) // 0.18.0 W2.6: the map's workers joined, the map let go
 	if err == nil {
 		return nil
 	}

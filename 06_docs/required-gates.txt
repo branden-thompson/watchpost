@@ -33,6 +33,7 @@ treelock-selftest
 p10
 gate-controls
 alloc-budget
+property
 dupes
 dupes-selftest
 wires

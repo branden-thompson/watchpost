@@ -949,7 +949,8 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if err := invariant.Check(ok, "dispatch must return the dashboard model"); err != nil {
 		return m, cmd
 	}
-	return next.armTick(cmd)
+	next, mapCmd := next.armMapTick() // 0.18.0 W2.2: the map's clock, armed after every Update
+	return next.armTick(tea.Batch(cmd, mapCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame
@@ -1021,6 +1022,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyMapFeed(v) // 0.18.0: the alerts, set and drawn in Update (D-41)
 	case mapWorkedMsg:
 		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
+	case mapTickMsg:
+		return d.applyMapTick(v), nil // 0.18.0 W2.2: the library asked to be drawn now
 	case tea.KeyPressMsg:
 		return d.handleKeyPress(v)
 	}

@@ -65,6 +65,7 @@ jobs:
       - run: make treelock-selftest
       - run: make gate-controls
       - run: make alloc-budget # malloc pins run outside the race detector (quality pass §0.1)
+      - run: make property # the map's guard 3 at its full 10,000 sequences, once, outside the race detector (0.18.0 W2.4)
       - run: make dupes # metric D: no duplicate operation without a RATIFIED reason
       - run: make wires # every closed-set member names a production writer and reader, or is RATIFIED as owed
       - run: make dupes-selftest # and the duplicate check itself can still fire: both positive controls
