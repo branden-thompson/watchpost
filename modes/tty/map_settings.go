@@ -6,6 +6,8 @@ package tty
 import (
 	"strconv"
 
+	tea "charm.land/bubbletea/v2"
+
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -92,16 +94,19 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	if d.mapsOff {
 		state = "Disabled"
 	}
-	lines = append(lines, "")
 	if focus == rowMapsOn {
 		at = len(lines)
 	}
 	lines = append(lines, "  "+setupMark(o, focus == rowMapsOn)+settingLabel("Maps -", focus == rowMapsOn)+"  "+toggleCell(state, newArrowChips(o), d.pickerFlashFor(rowMapsOn)))
+	for _, l := range render.WrapText(d.cfg.MapDisclosure, 56) { // FR-9.4: beside the maps row
+		lines = append(lines, "    "+l)
+	}
 	if focus == rowMapDesc {
 		at = len(lines)
 	}
 	lines = append(lines, "  "+setupMark(o, focus == rowMapDesc)+settingLabel("Map description -", focus == rowMapDesc)+"  "+
 		pickerCellW(d.mapDesc.Label(), newArrowChips(o), d.pickerFlashFor(rowMapDesc), len("Instead of the picture")))
+	lines, at = d.mapExtraLines(o, lines, at)
 	return lines, at
 }
 
@@ -109,4 +114,54 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 func belowFloorText(has tuimaps.Size) string {
 	return "The map needs " + strconv.Itoa(mapMinBody.Cols) + " × " + strconv.Itoa(mapMinBody.Rows) +
 		" cells and this window has " + strconv.Itoa(has.Cols) + " × " + strconv.Itoa(has.Rows) + ". What the map would show:"
+}
+
+// MapCleared is what "Clear map data" removed: tile files, and zone outlines
+// held or cached (0.18.0 W3.8).
+type MapCleared struct {
+	Files, Zones int
+	Err          error
+}
+
+// mapClearedMsg is the app's answer to "Clear map data".
+type mapClearedMsg struct{ r MapCleared }
+
+// clearMapData empties the window's live map through the library - its
+// memory and its disk cache - and asks the app for the rest, off the UI
+// goroutine: the tile files a map built later would read, the zone outlines
+// held and cached (0.18.0 W3.8, W9.5 folded).
+func (d Dashboard) clearMapData() (tea.Model, tea.Cmd) {
+	if m := d.mapPane.m; m != nil {
+		d.mapPane.call("Purge", func() { _, _ = m.Purge() })
+	}
+	d.setup.note, d.setup.noteRow = "Clearing map data…", rowMapClear
+	clear := d.cfg.ClearMapData
+	if clear == nil {
+		return d.settled(), nil
+	}
+	return d.settled(), func() tea.Msg { return mapClearedMsg{r: clear()} }
+}
+
+// applyMapCleared says, beside the row, what went.
+func (d Dashboard) applyMapCleared(v mapClearedMsg) Dashboard {
+	note := "Map data cleared: " + strconv.Itoa(v.r.Files) + " tile files and " + strconv.Itoa(v.r.Zones) + " zone outlines removed."
+	if v.r.Err != nil {
+		note = "Map data partly cleared - " + v.r.Err.Error()
+	}
+	d.setup.note, d.setup.noteRow = note, rowMapClear
+	return d.settled()
+}
+
+// mapExtraLines are the maps rows' words: what the map sends, how long it
+// keeps its data, and the action that empties it (FR-9.4, FR-3.9).
+func (d Dashboard) mapExtraLines(o render.Opts, lines []string, at int) ([]string, int) {
+	focus := d.setup.focus
+	if focus == rowMapClear {
+		at = len(lines)
+	}
+	lines = append(lines, "  "+setupMark(o, focus == rowMapClear)+settingLabel("Clear map data -", focus == rowMapClear)+"  "+o.KeyCap("space")+" clear now")
+	for _, l := range render.WrapText(d.cfg.MapRetention, 56) {
+		lines = append(lines, "    "+l)
+	}
+	return lines, at
 }

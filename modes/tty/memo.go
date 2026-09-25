@@ -234,7 +234,8 @@ type modalKey struct {
 	setupGen uint64   // Setup's state, by generation while it is open
 	stats    [32]byte // the [S] stats, fingerprinted while it is open
 	darkBG   bool
-	mapsOff  bool // 0.18.0: the map's Settings, drawn by Settings and by the map window
+	mapsOff  bool   // 0.18.0: the map's Settings, drawn by Settings and by the map window
+	mapWords string // the map's disclosure and retention words, drawn by Settings and the map window
 	mapDesc  mapDescMode
 	theme    uint64
 	minute   int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
@@ -279,13 +280,15 @@ type modalKey struct {
 	// THE MAP'S DRAW, by generation, and why it could not draw (0.18.0 W2.1).
 	// The lines are drawn in Update and raise the generation each time, so the
 	// key moves with every frame the library gave (F-30's rule, D-45).
-	mapGen     uint64
-	mapFailed  string
-	mapOffline bool           // the status line's offline note
-	mapStatus  tuimaps.Status // and whether the picture is whole
-	mapPending bool           // and whether it is still loading
-	mapOutside string         // the place in no region, which the window states instead
-	mapNotes   string         // the feed's notes, printed under the map
+	mapGen      uint64
+	mapFailed   string
+	mapOffline  bool           // the status line's offline note
+	mapStatus   tuimaps.Status // and whether the picture is whole
+	mapPending  bool           // and whether it is still loading
+	mapOutside  string         // the place in no region, which the window states instead
+	mapNotes    string         // the feed's notes, printed under the map
+	mapLegend   bool           // the legend over the map
+	mapDisclose bool           // the first open's words
 }
 
 // modalMemo is the single slot.
@@ -315,12 +318,14 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
+		mapWords: d.cfg.MapDisclosure + "\x00" + d.cfg.MapRetention,
 	}
 	switch d.modal {
 	case modalMap:
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending
 		k.mapOutside, k.mapNotes = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n")
+		k.mapLegend, k.mapDisclose = d.mapPane.legendOn, d.mapPane.disclose
 	case modalRequest:
 		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was
 		// missing the moment the window existed — `field`, `query`, `outside`

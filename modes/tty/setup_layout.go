@@ -14,6 +14,8 @@ package tty
 // form's rows — and the package already named its files after what they hold.
 
 import (
+	"strings"
+
 	"github.com/branden-thompson/watchpost/platform/render"
 )
 
@@ -34,7 +36,24 @@ func setupGroup(text string) string {
 // Setup needs its own width for the same reason Help does: its content decides
 // how wide it wants to be, and a fixed width would either waste a wide terminal
 // or force a stack on one that could hold both columns.
+//
+// ONE WIDTH FOR EVERY TAB (D-62): the widest tab's. A window that changed width
+// as the listener moved between tabs would be the layout not knowing its own
+// mind - the rule the correspondent notes were held to.
 func (d Dashboard) setupWidth() int {
+	w := 0
+	for _, t := range d.tabsShown() {
+		on := d
+		if id, ok := d.firstRowOfTab(t); ok && t != d.setupTab() {
+			on.setup.focus = id
+		}
+		w = max(w, on.tabWidth())
+	}
+	return w
+}
+
+// tabWidth is the width the open tab's groups want.
+func (d Dashboard) tabWidth() int {
 	o := d.opts()
 	blocks := d.setupBlocks(o)
 	if plan, ok := d.columnPlan(blocks, o); ok {
@@ -163,6 +182,21 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 	case groupTone:
 		b.lines = append(b.lines, d.toneLines(o)...)
 		b.at, b.end = at+toneLineOf(classRowOrder(), focus), len(b.lines)
+	case groupStation:
+		b.lines = append(b.lines, d.setupTransmitterLines(o, setupMark(o, focus == rowTransmitter))...)
+		if focus == rowTransmitter {
+			b.at, b.end = at, len(b.lines)
+		}
+		b.lines = append(b.lines, "")
+		svc := len(b.lines)
+		b.lines = append(b.lines, d.setupServiceLines(o, setupMark(o, focus == rowServiceRadius))...)
+		if focus == rowServiceRadius {
+			b.at, b.end = svc, len(b.lines)
+		}
+	case groupMap:
+		ml, mAt := d.mapSettingLines(o, nil, 0)
+		b.lines = append(b.lines, ml...)
+		b.at, b.end = at+mAt, len(b.lines)
 	case groupRelay:
 		b.lines = append(b.lines, d.relayLines(o)...)
 		// The focused ROW, not the whole group: the mark is on one of the two
@@ -301,6 +335,19 @@ func joinBlocks(blocks []setupBlock) (lines []string, at, end int) {
 // the one drawn would put the mark just off the edge — which reads as a dead
 // keyboard, since the listener sees nothing move.
 func (d Dashboard) setupBody(o render.Opts) (lines []string, focusAt, focusEnd int) {
+	lines, focusAt, focusEnd = d.setupPage(o)
+	// THE TAB ROW HEADS EVERY TAB (D-62), and the focus spans move down under it.
+	// It takes the place of the blank line the first group opens with, so the
+	// tabs cost the window no height (at 80x24 every line is below a fold).
+	if len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
+		return append([]string{d.setupTabRow(o, o.Width-4)}, lines[1:]...), focusAt, focusEnd
+	}
+	head := []string{d.setupTabRow(o, o.Width-4)}
+	return append(head, lines...), focusAt + len(head), focusEnd + len(head)
+}
+
+// setupPage is the open tab's groups, in one or two columns.
+func (d Dashboard) setupPage(o render.Opts) (lines []string, focusAt, focusEnd int) {
 	blocks := d.setupBlocks(o)
 	// NOT modalWidth: that asks this function how wide it wants to be.
 	if plan, ok := d.columnPlan(blocks, o); ok {
@@ -412,9 +459,12 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 		action = "Save"
 	}
 	segs := []string{
-		o.KeyCap("tab") + " Next question",
+		o.KeyCap("tab") + " Next tab",
 		o.KeyCap("enter") + " " + action,
 		o.KeyCap("↑↓") + " Move",
+	}
+	if !d.rowTakesLeftRight() {
+		segs = append(segs, o.KeyCap("←→")+" Tabs") // D-62: the arrows switch tabs where the row does not take them
 	}
 	// OP-4: with one keyboard rule, `space` operates most of the window's rows
 	// and the mock's chip row names it nowhere. It is named here, and only
@@ -447,7 +497,7 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 	// there; the typed DATA rows still need enter, and esc still discards them.
 	// A chip that said Cancel over an auto-saving group would be lying.
 	closeLabel := "Cancel"
-	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI {
+	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI || g == groupMap {
 		closeLabel = "Close"
 	}
 	segs = append(segs, o.KeyCap("esc")+" "+closeLabel)

@@ -278,3 +278,56 @@ the terminal (S12), ← cycling forward (S13, survived until `TestTheDescription
 the dashboard's width again (S14), the panel clamped to it (S15).
 
 **Diagrams:** `as-built-map.md` (the body's new branches, the Settings, the scroll keys); atlas.
+
+## Batch 8 — Settings in tabs (D-62), the legend, the disclosure, Clear map data (2026-09-25)
+
+**Tasks:** W1.12, W1.17, W3.8 with W9.5 folded; and **D-62**, which the HUM LEAD ruled mid-batch
+when the map's rows made Settings 35 lines against its 32-line budget at 133×44.
+
+**Settings is one window in tabs** (`setup_tabs.go`): General (DATA, WATCHPOST UI, ALERTS -
+EVENTS), Watchpost Radio (ALERTS - TONE, CORRESPONDENTS, RELAY REPLAY), Broadcaster (a new STATION
+group: the transmitter and service radius, out of DATA), Maps (MAP). Observer shows General, Watchpost
+Radio and Maps; the console General, Watchpost Radio and Broadcaster. **The tab is the focused row's**,
+not state of its own, so every path that moves the focus - a save sent back to the location, a deep
+link to the voices - lands on its tab unasked. ←→ switch tabs as in [w] unless the focused row is a
+picker or toggle ("just works"); tab and shift+tab switch tabs from any row (the builder's addition,
+recorded in D-62). The tab row takes the place of the blank line the first group opened with, so
+tabs cost no height. The window is as wide as its widest tab on every tab. `stepGroup` is gone with
+the "next question" it served.
+
+**The map's Settings (Maps tab):** Maps on/off; what opening the map sends, directly under it
+(FR-9.4), built from the closed list so it names exactly the hosts contacted; Map description;
+**Clear map data** (space), which purges the window's live map through the library and asks the app
+to empty the tile files through the library's `Purge` on a bare map (no source, no seed: clearing
+never fetches), the zone store's shapes and the HTTP cache's zone entries (`httpx.ForgetPrefix` -
+a prefix, not the plan's `PurgeHost`, so the station's forecasts stay cached); the retention and the
+one stated total (FR-3.9). The first open of a session shows the disclosure above the map.
+
+**The legend** (D-44, D-54): `L` lays a box over the map's top-right corner, keying only the
+severities the feed drew, each with its digit; `[L] Legend` sits on the status line, naming the key
+as bound; Help's MAP group gains its row.
+
+**What the tests found, and what changed with them.** The single-page tests were written for the
+page D-62 replaced; they were adapted, not deleted: `walkTo` reaches a row with ↓ where they pressed
+tab; the scope helper reads **every** tab from the full tab list (not the tabs production shows, which
+could not notice a tab wrongly hidden); the empty-heading check asks the surface, not the open tab;
+the station's rows are now asserted on the Broadcaster tab (D-62 superseding "under DATA"); the fit
+rule is per tab and per surface. New goldens pin the General and Maps tabs, which also restores the
+PTY journey's "Theme -" to the corpus. **Settings' 80×24 reachability improved** (2 unreachable
+lines to 1) and its baseline came down. **The setup hit budget was re-pinned** 2,630 → 2,817 (+7%):
+the one-width rule lays each tab out per frame; the miss went down.
+
+**Mutation verdicts** — caught: a page of every tab (T1), arrows never switching tabs (T2), every
+tab on every surface (T3, then directly by `TestEachSurfaceHasItsTabs`), width following the open
+tab (T4), the legend keying every severity (T5), the live map not purged (T7), every cached entry
+forgotten (T8), zones not forgotten (T9), no chip (T11), `L` doing nothing (T12), files not reported
+(T13), the clear path not wired (T14). **Equivalent, then removed:** a "disclosed" flag (T6) — the map
+is built once a session, so the first build is the first open.
+
+**Diagrams:** `as-built-map.md` (the legend, the clear path, the Maps tab, and a new diagram of
+Settings' tabs); atlas regenerated.
+
+**What the gates found.** `lint-authoring` (AP-DEAD-01): a `_ = loc` in a test; the variable is gone.
+`mutant-anchors`: mAA4 (tab landing where the surface hides - re-pointed at the tab step's surface
+check, `firstRowOfTab`) and mAI1 (the station's rows leaking - re-pointed at STATION); both applied
+and caught again.

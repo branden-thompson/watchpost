@@ -192,10 +192,20 @@ func TestSettingsColumnsBalanceThemselves(t *testing.T) {
 // The balance has to pay for itself: a window that fits its budget needs no
 // scroll rail, and that is what taking a dozen wasted rows out of it buys.
 func TestSettingsFitsWithoutScrollingAtTheMockWidth(t *testing.T) {
-	d := setupGolden(t, 133, 44, false, rowCastAlerts)
-	lines, _, _ := d.setupBody(d.opts())
-	if len(lines) > d.modalMax() {
-		t.Errorf("the balanced window fits its %d-line budget without a rail, got %d lines", d.modalMax(), len(lines))
+	// EVERY TAB, on both surfaces (D-62: the one-page rule became one per tab).
+	for _, surface := range []Surface{SurfaceObserver, SurfaceBroadcaster} {
+		base := setupGolden(t, 133, 44, false, rowCastAlerts)
+		base.surface = surface
+		for _, tab := range base.tabsShown() {
+			d := base
+			d.setup.focus, _ = base.firstRowOfTab(tab)
+			d.cfg.MapDisclosure = "Sends the area shown to OpenFreeMap and the alert zone codes to the Weather Service."
+			d.cfg.MapRetention = "Map tiles are kept 7 days; 512 MB in all with the web cache."
+			lines, _, _ := d.setupBody(d.opts())
+			if len(lines) > d.modalMax() {
+				t.Errorf("surface %v, tab %s: fits its %d-line budget without a rail, got %d lines", surface, tab.Label(), d.modalMax(), len(lines))
+			}
+		}
 	}
 }
 

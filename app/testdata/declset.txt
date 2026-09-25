@@ -127,6 +127,7 @@ func (*livePipelines).bedCarrying
 func (*livePipelines).bedFenceMi
 func (*livePipelines).bedRelays
 func (*livePipelines).buildDirector
+func (*livePipelines).clearMapData
 func (*livePipelines).commit
 func (*livePipelines).currentPool
 func (*livePipelines).currentStation
@@ -449,6 +450,7 @@ func fullyPopulated
 func gapAfter
 func halfFor
 func holdRest
+func hostOf
 func indexKey
 func init
 func injectedEvents
@@ -467,6 +469,8 @@ func loadSeen
 func loadUserThemes
 func macVoices
 func mainTrack
+func mapDisclosure
+func mapRetention
 func marineReportOf
 func mastheadLine
 func matchesQuery

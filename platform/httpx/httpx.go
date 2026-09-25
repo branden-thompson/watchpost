@@ -700,3 +700,8 @@ func redactErr(err error) error {
 
 // CacheStats reports the client's memory cache tier.
 func (c *Client) CacheStats() Stats { return c.cache.stats() }
+
+// ForgetPrefix drops every cached response whose URL starts with prefix,
+// in memory and on disk, and says how many (0.18.0 W3.8: "Clear map data"
+// forgets the zone outlines and nothing else the station has cached).
+func (c *Client) ForgetPrefix(prefix string) (int, error) { return c.cache.forgetPrefix(prefix) }

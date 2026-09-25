@@ -294,7 +294,11 @@ func TestSevereFrameAllocBudget(t *testing.T) {
 //
 // Measured against the same live-marquee fixture as the frame pins.
 var setupAllocBudget = map[string]float64{
-	"133x44-hit": 2_630 * 1.05, "133x44-miss": 3_808 * 1.05,
+	// 133x44-hit RE-PINNED at 0.18.0 D-62 (Settings in tabs): 2_630 -> 2_817
+	// (+7%). The window is as wide as its widest tab on every tab, so a frame
+	// lays each tab's groups out to measure it. The miss went DOWN (3_808 ->
+	// 3_799): a page draws a third of the groups it used to.
+	"133x44-hit": 2_817 * 1.05, "133x44-miss": 3_808 * 1.05,
 	// 80x24-miss re-measured at 0.14.0 T3.2b for the RELAY REPLAY group's
 	// second row: 2_678 -> 2_800 (+4.6%), the cost of drawing two more lines
 	// and a spacer at the width where the window still scrolls. The 133x44

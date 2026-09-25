@@ -68,10 +68,23 @@ func setupOffers(d Dashboard) string {
 	//
 	// A HELPER THAT RE-DERIVES PRODUCTION'S ANSWER CANNOT CHECK IT. Asking the
 	// real assembly is the whole of the fix.
+	//
+	// AND EVERY TAB (D-62), chosen from the full tab list and not from the tabs
+	// the surface shows: a tab wrongly hidden must show up as missing rows here,
+	// not be skipped by a helper that asked production which tabs to read.
 	var b strings.Builder
-	for _, blk := range d.setupBlocks(d.opts()) { // bounded by the group set (P10-02)
-		for _, l := range blk.lines {
-			b.WriteString(stripANSITest(l) + "\n")
+	for _, tab := range setupTabs() {
+		on := d
+		for id := setupRowID(0); id < setupRowCount; id++ {
+			if tabOfGroup(setupTable()[id].group) == tab {
+				on.setup.focus = id // the tab's first row, whatever this surface draws
+				break
+			}
+		}
+		for _, blk := range on.setupBlocks(on.opts()) { // bounded by the group set (P10-02)
+			for _, l := range blk.lines {
+				b.WriteString(stripANSITest(l) + "\n")
+			}
 		}
 	}
 	return b.String()
@@ -127,7 +140,7 @@ func TestNoSettingsGroupIsDrawnEmpty(t *testing.T) {
 		d, out := setupOn(t, s)
 		for _, g := range setupGroups() {
 			title := setupGroupTitle(g)
-			_, drawn := visibleRowOfGroup(g, d.rowVisible)
+			_, drawn := visibleRowOfGroup(g, d.shownOnSurface) // on any tab (D-62): the surface's rows, not the open tab's
 			if strings.Contains(out, title) && !drawn {
 				t.Errorf("surface %v draws the heading %q with no rows under it", s, title)
 			}

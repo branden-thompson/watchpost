@@ -55,8 +55,8 @@ code{font-family:var(--mono);font-size:.92em}
 </style>
 <div class="wrap">
   <aside class="side">
-    <h1 class="brand">Watchpost Architecture Atlas<small>52 diagrams, in reading order. What the program is, area by area.</small></h1>
-    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li><li><a href="#observer-maps">observer maps<span class="n">3</span></a></li></ul></nav>
+    <h1 class="brand">Watchpost Architecture Atlas<small>53 diagrams, in reading order. What the program is, area by area.</small></h1>
+    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li><li><a href="#observer-maps">observer maps<span class="n">4</span></a></li></ul></nav>
     <p class="how"><strong>This page is generated.</strong> The tracked documents are the source of truth; rebuild with <code>go run ./tools/atlas</code>. Only fenced mermaid blocks are read — <strong>a change written in the prose beside a diagram never reaches this page</strong>, so put the fact in the diagram.</p>
   </aside>
   <main><section class="level" id="watchpost-cli"><header class="lvl"><h2>The shape of the program</h2></header><article class="dia" id="watchpost-cli-0"><div class="meta"><h3>1. System overview</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">graph TB
@@ -848,8 +848,9 @@ code{font-family:var(--mono);font-size:.92em}
   subgraph tty[&#34;modes/tty — the Observer&#34;]
     MW[&#34;map_pane.go · the map window\ng opens · owns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s&#34;]
     MD[&#34;map_describe.go · the description\nReport joined to watchpost&#39;s alerts by id\ncovers · stops short · lies to one side (M1&#39;s words)\nunits and directions in words; never &#39;you&#39;&#34;]
-    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll&#34;]
-    ST2[&#34;Settings, WATCHPOST UI\nMaps on/off · Map description: with / instead / off\nwritten with the group (config maps, map_description)&#34;]
+    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll · L legend&#34;]
+    LG[&#34;the legend (D-44)\na box over the map&#39;s corner, from Legend()\nonly the severities drawn, with their digits&#34;]
+    ST2[&#34;Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nClear map data · the retention&#34;]
   end
   subgraph plat[&#34;platform/&#34;]
     RG[&#34;geo · RegionOf\nsix regions with their waters&#34;]
@@ -863,7 +864,9 @@ code{font-family:var(--mono);font-size:.92em}
   MB -. &#34;first g&#34; .-&gt; ZS
   MW --&gt; RG
   MW --&gt; MK
+  MW --&gt; LG
   ST2 --&gt; MW
+  ST2 -- &#34;Config.ClearMapData&#34; --&gt; CL[&#34;app clearMapData\nPurge on a bare map (no source, no seed)\nzone store Forget + ForgetCached\n(httpx ForgetPrefix: zones only)&#34;]
   MW -- &#34;Report(place) at every draw&#34; --&gt; MD
   MW --&gt; L
   MB --&gt; L
@@ -881,6 +884,16 @@ code{font-family:var(--mono);font-size:.92em}
   DS -- &#34;off&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)\nthe window 8 rows short of the terminal, full width less its frame&#34;]
   M --&gt; NT[&#34;the feed&#39;s notes: partial areas named in words (FR-4.4)&#34;]
   NT --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window&#34;]
+</pre></div></article><article class="dia" id="observer-maps-3"><div class="meta"><h3>Settings, in tabs (D-62)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+  subgraph S[&#34;Settings: one window, the tab is the focused row&#39;s&#34;]
+    G[&#34;General\nDATA · WATCHPOST UI · ALERTS - EVENTS&#34;]
+    R[&#34;Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY&#34;]
+    B[&#34;Broadcaster\nSTATION: transmitter · service radius&#34;]
+    M[&#34;Maps\nMAP&#34;]
+  end
+  O([&#34;Observer&#34;]) --&gt; G &amp; R &amp; M
+  C([&#34;the console&#34;]) --&gt; G &amp; R &amp; B
+  K[&#34;keys: ←→ switch tabs unless the focused row is a picker or toggle\ntab / shift+tab switch tabs from any row · ↑↓ walk a tab&#39;s rows&#34;] -.-&gt; S
 </pre></div></article></section></main>
 </div>
 <script type="module">

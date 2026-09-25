@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -102,5 +103,85 @@ func TestTheMapSettingsReachTheWindowAndTheFile(t *testing.T) {
 	}
 	if got.Maps != "off" || got.MapDescription != "off" {
 		t.Errorf("the save wrote %q %q", got.Maps, got.MapDescription)
+	}
+}
+
+// TestTheDisclosureNamesEverySourceAndTheRetention is W1.12 and W3.8's words
+// (FR-9.4, FR-3.5, FR-3.9): what the window and Settings tell the listener is
+// built from the closed list and the stated total, so it cannot drift from
+// what the map contacts and keeps.
+func TestTheDisclosureNamesEverySourceAndTheRetention(t *testing.T) {
+	cfg := (&livePipelines{}).ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
+	for _, s := range basemapSources {
+		host := strings.TrimPrefix(s.address, "https://")
+		host = host[:strings.Index(host, "/")]
+		if !strings.Contains(cfg.MapDisclosure, s.name) || !strings.Contains(cfg.MapDisclosure, host) {
+			t.Errorf("the disclosure does not name %s at %s: %q", s.name, host, cfg.MapDisclosure)
+		}
+	}
+	if !strings.Contains(cfg.MapDisclosure, "api.weather.gov") {
+		t.Errorf("the disclosure does not name the zone geometry's host: %q", cfg.MapDisclosure)
+	}
+	if !strings.Contains(cfg.MapRetention, "7 days") || !strings.Contains(cfg.MapRetention, strconv.Itoa(statedCacheBytes>>20)+" MB") {
+		t.Errorf("the retention does not state the age and the one total: %q", cfg.MapRetention)
+	}
+	if cfg.ClearMapData == nil {
+		t.Error("the window is handed no clear path")
+	}
+}
+
+// TestClearingEmptiesWhatTheMapKept is W3.8 with W9.5 (FR-3.9, FR-3.10): the
+// tile files go through the library's Purge, the zone outlines held and
+// cached go, and clearing reaches no network.
+func TestClearingEmptiesWhatTheMapKept(t *testing.T) {
+	_, srv := m1Fixture(t, "05-partial-fort-davis")
+	store := zoneStore(t, srv.URL)
+	if _, err := store.Zone(context.Background(), "TXZ275"); err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(t.TempDir(), "map")
+	tr := &recorded{}
+	b := newMapBuilder("t", dir, tr, nil)
+	m, err := b.build(tuimaps.Size{Cols: 69, Rows: 12})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Recentre(tuimaps.LonLat{Lon: -97, Lat: 38}); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.Zoom(6); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Render(tuimaps.Size{Cols: 69, Rows: 12}, mapNoon); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Settle(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	m.Close()
+	files := func() int {
+		n := 0
+		_ = filepath.Walk(dir, func(_ string, info os.FileInfo, err error) error {
+			if err == nil && info.Mode().IsRegular() {
+				n++
+			}
+			return nil
+		})
+		return n
+	}
+	if files() == 0 || store.Held() == 0 {
+		t.Fatal("nothing was kept, so this proves nothing")
+	}
+	asked := len(tr.requests())
+	lp := &livePipelines{maps: b, zoneShapes: store}
+	got := lp.clearMapData()
+	if got.Err != nil || got.Files == 0 || got.Zones == 0 {
+		t.Errorf("cleared %+v", got)
+	}
+	if files() != 0 || store.Held() != 0 {
+		t.Errorf("%d tile files and %d zones left", files(), store.Held())
+	}
+	if len(tr.requests()) != asked {
+		t.Error("clearing reached the network")
 	}
 }

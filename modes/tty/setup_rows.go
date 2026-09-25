@@ -28,6 +28,8 @@ const (
 	groupTone
 	groupCast
 	groupRelay
+	groupStation
+	groupMap
 )
 
 // setupRowKind is how a row is operated. It decides which keys do anything on
@@ -85,9 +87,6 @@ const (
 	rowClock12
 	rowClock24
 	rowClockMil
-	// THE MAP (0.18.0 W1.10, FR-9.1): on or off, and the description's mode.
-	rowMapsOn
-	rowMapDesc
 
 	// ALERTS - EVENTS
 	rowEventsAll
@@ -120,6 +119,12 @@ const (
 	// sixth correspondent so the next pacing setting has somewhere to land.
 	rowRelayDwell
 	rowRelayLang
+
+	// MAP (0.18.0 W1.8, W1.10, W1.12, W3.8): on or off, the description's
+	// mode, and the action that empties the map's data.
+	rowMapsOn
+	rowMapDesc
+	rowMapClear
 
 	setupRowCount
 )
@@ -224,8 +229,8 @@ func setupTable() [setupRowCount]setupRow {
 		// to "function like the Default location setting for Observer" and the
 		// radius "like the Service alerts radius filter option in Settings just
 		// without the 'all alerts' option (so no radio button)".
-		rowTransmitter:   {rowTransmitter, groupData, scopeBroadcaster, rowInput, false, "", ""},
-		rowServiceRadius: {rowServiceRadius, groupData, scopeBroadcaster, rowInput, false, "", ""},
+		rowTransmitter:   {rowTransmitter, groupStation, scopeBroadcaster, rowInput, false, "", ""},
+		rowServiceRadius: {rowServiceRadius, groupStation, scopeBroadcaster, rowInput, false, "", ""},
 
 		rowFIRMSKey: {rowFIRMSKey, groupData, scopeShared, rowInput, false, "", ""},
 
@@ -239,8 +244,10 @@ func setupTable() [setupRowCount]setupRow {
 
 		// THE MAP IS THE LISTENER'S (0.18.0): Observer draws it, the console does not.
 		// ONE LINE EACH: the WATCHPOST UI group must still fit the window unscrolled.
-		rowMapsOn:  {rowMapsOn, groupUI, scopeObserver, rowToggle, false, "", ""},
-		rowMapDesc: {rowMapDesc, groupUI, scopeObserver, rowPicker, true, "", ""},
+		rowMapsOn:  {rowMapsOn, groupMap, scopeObserver, rowToggle, false, "", ""},
+		rowMapDesc: {rowMapDesc, groupMap, scopeObserver, rowPicker, true, "", ""},
+		// AN ACTION, operated by space: it empties the map's data (W3.8).
+		rowMapClear: {rowMapClear, groupMap, scopeObserver, rowCheck, false, "", ""},
 
 		// OBSERVER'S ALERT RADIUS (D-18 row 25, per D-20): it bounds ARRIVALS over
 		// an unbounded location set. The station's service radius is a HARD bound
@@ -316,11 +323,16 @@ func setupGroupTitle(g setupGroupID) string {
 		return "WATCHPOST RADIO - CORRESPONDENTS"
 	case groupRelay:
 		return "WATCHPOST RADIO - RELAY REPLAY"
+	case groupMap:
+		return "MAP"
+	case groupStation:
+		return "STATION"
 	}
 	return ""
 }
 
-// firstOfGroup is the row tab lands on for each group — the five tab stops.
+// firstOfGroup is a group's first row: where a deep link into Settings (t, V, M)
+// lands, whatever tab that puts it on (D-62: the tab follows the focus).
 func firstOfGroup(g setupGroupID) setupRowID {
 	id, _ := visibleRowOfGroup(g, func(setupRowID) bool { return true })
 	return id
@@ -350,7 +362,7 @@ func visibleRowOfGroup(g setupGroupID, visible func(setupRowID) bool) (setupRowI
 
 // setupGroups is every group, in draw order.
 func setupGroups() []setupGroupID {
-	return []setupGroupID{groupData, groupUI, groupEvents, groupTone, groupCast, groupRelay}
+	return []setupGroupID{groupData, groupUI, groupEvents, groupTone, groupCast, groupRelay, groupStation, groupMap}
 }
 
 // nextRow is ↓ and prevRow is ↑. Both WRAP: ↓ on the last row returns to the
@@ -385,30 +397,6 @@ func stepRow(cur setupRowID, step int, visible func(setupRowID) bool) setupRowID
 	for i := 1; i <= n; i++ {
 		id := setupRowID(((int(cur)+step*i)%n + n) % n)
 		if visible(id) {
-			return id
-		}
-	}
-	return cur
-}
-
-// stepGroup walks to the next group that DRAWS something on this surface (D-92).
-//
-// COUNTER-BOUNDED, like stepRow and for the same reason: with every group hidden
-// an unbounded walk would spin rather than leave the focus alone.
-func stepGroup(cur setupRowID, step int, visible func(setupRowID) bool) setupRowID {
-	table := setupTable()
-	groups := setupGroups()
-	at := 0
-	for i, g := range groups {
-		if g == table[cur].group {
-			at = i
-			break
-		}
-	}
-	n := len(groups)
-	for i := 1; i <= n; i++ { // bounded by the group set (P10-02)
-		g := groups[((at+i*step)%n+n)%n]
-		if id, ok := visibleRowOfGroup(g, visible); ok {
 			return id
 		}
 	}

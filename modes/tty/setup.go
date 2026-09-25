@@ -240,11 +240,11 @@ func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		d = d.close()
 		d.setup = setupState{}
 		return d, apply
-	case "tab":
-		d.setup.focus, d.setup.err = stepGroup(d.setup.focus, 1, d.rowVisible), ""
+	case "tab": // D-62: tab and shift+tab switch tabs from any row
+		d.setup.focus, d.setup.err = d.stepTab(1), ""
 		return d.settled(), nil
 	case "shift+tab":
-		d.setup.focus, d.setup.err = stepGroup(d.setup.focus, -1, d.rowVisible), ""
+		d.setup.focus, d.setup.err = d.stepTab(-1), ""
 		return d.settled(), nil
 	}
 	// ONE KEYBOARD RULE for the whole window (the batch's constraint): ↑↓ walk
@@ -312,6 +312,10 @@ func (d Dashboard) setupRowText(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // particular row does with text" are two different questions.
 func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 	picker := setupTable()[d.setup.focus].picker
+	if d.setup.focus == rowMapClear && (key.String() == "space" || key.String() == "enter") {
+		m, cmd := d.clearMapData()
+		return m, cmd, true
+	}
 	switch key.String() {
 	case "up":
 		if !d.rowTakesArrows() {
@@ -329,6 +333,14 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 		}
 		return d.setupSpace(), nil, true
 	case "left", "right":
+		if !d.rowTakesLeftRight() { // D-62: the arrows switch tabs, unless the focused row operates with them
+			step := 1
+			if key.String() == "left" {
+				step = -1
+			}
+			d.setup.focus, d.setup.err = d.stepTab(step), ""
+			return d.settled(), nil, true
+		}
 		if d.setup.focus == rowMapsOn {
 			d.mapsOff = !d.mapsOff // 0.18.0: two states, so either arrow is "the other one"
 			return d.uiTouched(), nil, true
@@ -445,7 +457,7 @@ func (d Dashboard) rowVisible(id setupRowID) bool {
 	// D-18's RULING, ASKED HERE (D-92). `stepRow` already walks only visible
 	// rows and `setupBlock` already draws only visible rows — this seam was built
 	// for exactly this and returned `true` for everything until now.
-	return setupTable()[id].scope.shownOn(d.surface)
+	return setupTable()[id].scope.shownOn(d.surface) && d.onFocusedTab(id) // D-62: a tab draws and walks its own rows
 }
 
 // setupSpace operates the focused control: select a radio, toggle a checkbox.

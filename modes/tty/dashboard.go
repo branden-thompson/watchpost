@@ -76,6 +76,9 @@ type Config struct {
 	MapFeed        func(ctx context.Context, snap *snapshot.Snapshot, place *snapshot.Location) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
 	Maps           string                                                                               // 0.18.0: the file's words for the map's two Settings (UIPrefs')
 	MapDescription string
+	ClearMapData   func() MapCleared // 0.18.0 W3.8: the app empties what the live map cannot reach
+	MapDisclosure  string            // 0.18.0 W1.12: what opening the map contacts and sends, in words (FR-9.4)
+	MapRetention   string            // 0.18.0 W3.8: how long the map's data is kept, and the one stated total (FR-3.5, FR-3.9)
 	Resolve        func(query string) (snapshot.LocationRef, error)
 	Commit         func(watch, recent []snapshot.LocationRef) error
 	SetTheme       func(name string) error // live theme switch + persist (UAT 53)
@@ -992,6 +995,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.handleSettingsSaved(msg), nil // the Settings window's apply-on-close outcomes, one owner
 	case vizTickMsg:
 		return d.vizFrame()
+	case mapClearedMsg:
+		return d.applyMapCleared(v), nil // 0.18.0 W3.8: Settings says what went
 	case mapFeedMsg:
 		return d.applyMapFeed(v) // 0.18.0: the alerts, set and drawn in Update (D-41)
 	case mapWorkedMsg:

@@ -363,6 +363,9 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		Stats:          lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
 		NewMap:         lp.newMap(),        // 0.18.0: the map window builds it on the first g (FR-3.2)
 		MapFeed:        lp.mapFeed,         // 0.18.0: the alerts it draws (FR-4.1)
+		ClearMapData:   lp.clearMapData,    // 0.18.0 W3.8: Settings' Clear map data
+		MapDisclosure:  mapDisclosure(),    // 0.18.0 W1.12 (FR-9.4)
+		MapRetention:   mapRetention(),     // 0.18.0 W3.8 (FR-3.9)
 		NarrateEvent:   lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
 		EndEventRead:   lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
 		AlertRadiusMi:  cfg.TickerRadiusMi, // 0.12.0: the Setup window's Alert Notification Preference

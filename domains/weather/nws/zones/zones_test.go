@@ -418,3 +418,22 @@ func TestAHeldZoneIsFetchedAgainOnceAWeekOld(t *testing.T) {
 		}
 	}
 }
+
+// TestForgetDropsEveryHeldShape is 0.18.0 W3.8: "Clear map data" empties the
+// shapes the store holds, so the next use fetches them again.
+func TestForgetDropsEveryHeldShape(t *testing.T) {
+	var hits atomic.Int64
+	srv := serveZones(t, &hits)
+	defer srv.Close()
+	s := newStore(t, srv.URL)
+	if _, err := s.Zone(context.Background(), "TXZ119"); err != nil {
+		t.Fatal(err)
+	}
+	if n := s.Forget(); n != 1 || s.Held() != 0 {
+		t.Errorf("forgot %d, %d still held", n, s.Held())
+	}
+	before := s.Stats().Fetched
+	if _, err := s.Zone(context.Background(), "TXZ119"); err != nil || s.Stats().Fetched != before+1 {
+		t.Error("a forgotten shape was served from hand")
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -668,4 +669,55 @@ func (c *cache) flush() {
 	for i := 0; i < 5000 && c.handled.Load() < c.queued.Load(); i++ { // bounded wait (P10-02): ~5 s
 		time.Sleep(time.Millisecond)
 	}
+}
+
+// forgetPrefix drops every entry whose URL starts with prefix, from memory
+// and from disk, and says how many it removed (0.18.0 W3.8). Queued writes
+// land first, so none arrives after it.
+func (c *cache) forgetPrefix(prefix string) (int, error) {
+	c.flush()
+	removed := 0
+	c.mu.Lock()
+	for u, e := range c.mem {
+		if strings.HasPrefix(u, prefix) {
+			c.bytes -= len(e.Body)
+			delete(c.mem, u)
+			removed++
+		}
+	}
+	for u, e := range c.large {
+		if strings.HasPrefix(u, prefix) {
+			c.largeBytes -= len(e.Body)
+			delete(c.large, u)
+		}
+	}
+	for u := range c.neg {
+		if strings.HasPrefix(u, prefix) {
+			delete(c.neg, u)
+		}
+	}
+	c.mu.Unlock()
+	if c.dir == "" {
+		return removed, nil
+	}
+	files, err := filepath.Glob(filepath.Join(c.dir, "*.cache"))
+	if err != nil {
+		return removed, err
+	}
+	onDisk, failed := 0, 0
+	for _, f := range files {
+		e, ok := readEntry(f)
+		if !ok || !strings.HasPrefix(e.URL, RedactURL(prefix)) {
+			continue
+		}
+		if os.Remove(f) != nil {
+			failed++
+			continue
+		}
+		onDisk++
+	}
+	if failed > 0 {
+		return max(removed, onDisk), fmt.Errorf("httpx: %d cached entries could not be removed", failed)
+	}
+	return max(removed, onDisk), nil
 }

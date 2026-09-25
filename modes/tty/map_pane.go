@@ -57,20 +57,24 @@ type mapPane struct {
 	lines     []string
 	changed   uint64
 	ticks     uint64
-	region    geo.Region          // the region the map is held inside (FR-2.1)
-	outside   string              // the place that is in no region, when it is not (FR-2.5)
-	status    tuimaps.Status      // the last frame's: whole, or still sharpening
-	pending   bool                // work was waiting when it was drawn
-	offline   bool                // a tile failed since the picture was last whole
-	gen       uint64              // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed    string              // why the map could not be built or drawn, said in the window
-	calls     *[]string           // tests only: the library calls made, by name, in order
-	views     *[]mapView          // tests only: every view drawn, for M2's instrument
-	shown     map[string]bool     // the overlays the feed set, so a gone alert is taken off
-	notes     []string            // the feed's notes, printed under the map
-	inMissing map[string]bool     // the feed's alerts whose missing zones hold the place
-	report    tuimaps.PlaceReport // the library's answers for the selected place, as last drawn
-	feedGen   uint64              // the feed last asked for; an older answer is dropped
+	region    geo.Region            // the region the map is held inside (FR-2.1)
+	outside   string                // the place that is in no region, when it is not (FR-2.5)
+	status    tuimaps.Status        // the last frame's: whole, or still sharpening
+	pending   bool                  // work was waiting when it was drawn
+	offline   bool                  // a tile failed since the picture was last whole
+	gen       uint64                // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed    string                // why the map could not be built or drawn, said in the window
+	calls     *[]string             // tests only: the library calls made, by name, in order
+	views     *[]mapView            // tests only: every view drawn, for M2's instrument
+	shown     map[string]bool       // the overlays the feed set, so a gone alert is taken off
+	notes     []string              // the feed's notes, printed under the map
+	inMissing map[string]bool       // the feed's alerts whose missing zones hold the place
+	report    tuimaps.PlaceReport   // the library's answers for the selected place, as last drawn
+	legend    []tuimaps.LegendEntry // what the map draws now, for the legend (W1.17)
+	legendOn  bool                  // the legend is open over the map (D-44)
+	drawnSev  map[string]bool       // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
+	disclose  bool                  // this open is the session's first: say what the map sends (FR-9.4)
+	feedGen   uint64                // the feed last asked for; an older answer is dropped
 }
 
 // mapView is one drawn frame's view: where, how close, and how big.
@@ -111,6 +115,7 @@ func (p mapPane) call(name string, f func()) {
 // toggleMap opens the map window, or closes it when it is open.
 func (d Dashboard) toggleMap() Dashboard {
 	if d.modal == modalMap {
+		d.mapPane.disclose = false
 		return d.close()
 	}
 	d = d.open(modalMap)
@@ -129,6 +134,7 @@ func (d Dashboard) toggleMap() Dashboard {
 			return d
 		}
 		d.mapPane.m, d.mapPane.failed = m, ""
+		d.mapPane.disclose = true // the map is built once a session: its first open says what is sent (FR-9.4)
 		d.mapPane.call("Zoom", func() { _ = m.Zoom(mapDefaultZoom) })
 	}
 	d = d.followSelection().requestFeed().renderMap()
@@ -226,6 +232,7 @@ func (d Dashboard) renderMap() Dashboard {
 		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize()})
 	}
 	d.mapPane.status = frame.Status
+	d.mapPane.call("Legend", func() { d.mapPane.legend = m.Legend() })
 	d.mapPane.call("Pending", func() { d.mapPane.pending = m.Pending() > 0 })
 	var warnings []tuimaps.Warning
 	d.mapPane.call("Warnings", func() { warnings = m.Warnings() })
@@ -303,6 +310,12 @@ func (d Dashboard) mapBodyLines() []string {
 	}
 	width := max(d.modalWidth()-8, 1)
 	var out []string
+	if d.mapPane.disclose && d.cfg.MapDisclosure != "" {
+		for _, l := range render.WrapText(d.cfg.MapDisclosure, width) {
+			out = append(out, " "+l)
+		}
+		out = append(out, "")
+	}
 	switch {
 	case d.cfg.ASCII:
 		out = []string{asciiMapText, ""} // FR-1.7, FR-1.8: the description in place of the picture
@@ -318,7 +331,7 @@ func (d Dashboard) mapBodyLines() []string {
 		}
 		return out
 	}
-	out = append(out, d.mapPane.lines...)
+	out = append(out, d.withLegend(d.mapPane.lines)...)
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
 	}
@@ -354,15 +367,17 @@ func (d Dashboard) noteLines(width int) []string {
 
 // mapStatusLine says what the picture is while it is not whole.
 func (d Dashboard) mapStatusLine() string {
-	switch {
-	case d.mapPane.offline:
-		return mapOfflineText
-	case d.mapPane.status == tuimaps.Complete:
-		return ""
-	case d.mapPane.pending:
-		return mapLoadingText
+	status := d.mapStatusText()
+	chip := ""
+	if keys := d.mapKeys[actMapLegend].Keys; len(keys) > 0 {
+		chip = d.opts().KeyCap(keys[0]) + " Legend" // D-44: the [ L ] Legend chip, naming the key as bound
 	}
-	return mapCoarseText
+	width := max(d.modalWidth()-8, 1)
+	room := width - render.Width(chip) - 2
+	if render.Width(status) > room {
+		status = render.TruncateCells(status, max(room, 0))
+	}
+	return render.PadTo(status, room) + "  " + chip
 }
 
 // closeMap lets the library's map go. The app calls it when the station
@@ -388,10 +403,11 @@ const (
 	actMapZoomOut    term.Action = "map.zoom.out"
 	actMapScrollUp   term.Action = "map.scroll.up"
 	actMapScrollDown term.Action = "map.scroll.down"
+	actMapLegend     term.Action = "map.legend"
 )
 
 // mapActions is the map window's actions in the order Help lists them.
-var mapActions = []term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown}
+var mapActions = []term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapLegend}
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
 func defaultMapKeyMap() term.KeyMap {
@@ -406,6 +422,7 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapZoomOut:    {Keys: []string{"-"}, Help: "Zoom Out"},
 		actMapScrollUp:   {Keys: []string{"pgup"}, Help: "Scroll Up"},
 		actMapScrollDown: {Keys: []string{"pgdown"}, Help: "Scroll Down"},
+		actMapLegend:     {Keys: []string{"L"}, Help: "Legend"}, // D-44: shift+L, from the [ L ] Legend chip
 	}
 }
 
@@ -456,6 +473,9 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(1) })
 	case actMapZoomOut:
 		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(-1) })
+	case actMapLegend:
+		d.mapPane.legendOn = !d.mapPane.legendOn
+		return d, nil, true
 	case actMapPrev:
 		d = d.handleNav("nav-up").followSelection().requestFeed() // the notes speak of the place
 	case actMapNext:
@@ -530,6 +550,14 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	d.mapPane.shown, d.mapPane.notes, d.mapPane.inMissing = shown, notes, v.feed.InMissing
+	d.mapPane.drawnSev = map[string]bool{}
+	for _, o := range v.feed.Overlays {
+		for _, f := range o.Features {
+			if w := strings.ToLower(f.Severity.Word()); w != "" {
+				d.mapPane.drawnSev[w] = true
+			}
+		}
+	}
 	d = d.renderMap()
 	return d, d.mapWorkCmd()
 }
@@ -553,5 +581,75 @@ func mapHelpRows(keys term.KeyMap) []mapHelpRow {
 		{join(actMapPrev, actMapNext), "Previous / Next Location"},
 		{join(actMapZoomIn, actMapZoomOut), "Zoom In / Out"},
 		{join(actMapScrollUp, actMapScrollDown), "Scroll"},
+		{join(actMapLegend), "Legend"},
 	}
+}
+
+// legendWidth is the legend box's width in cells.
+const legendWidth = 26
+
+// withLegend lays the legend over the map's top right corner when it is open
+// (D-44: a picture-in-picture window over the map). The map's lines keep their
+// colours to the left of the box.
+func (d Dashboard) withLegend(lines []string) []string {
+	if !d.mapPane.legendOn || len(lines) == 0 {
+		return lines
+	}
+	box := d.legendBox()
+	out := append([]string(nil), lines...)
+	for i, b := range box {
+		if i >= len(out) {
+			break
+		}
+		keep := max(render.Width(out[i])-legendWidth, 0)
+		out[i] = render.TruncateCells(out[i], keep) + "\x1b[0m" + b
+	}
+	return out
+}
+
+// legendBox is the legend's lines: a key for everything on the map that needs
+// one (D-54) - in P1-a the alert severities drawn, each with the digit its
+// outline repeats.
+func (d Dashboard) legendBox() []string {
+	inner := legendWidth - 2
+	row := func(s string) string { return "│" + render.PadTo(render.TruncateCells(s, inner), inner) + "│" }
+	out := []string{"┌─ Legend " + strings.Repeat("─", max(inner-9, 0)) + "┐"}
+	rows := 0
+	seen := map[string]bool{}
+	for _, e := range d.mapPane.legend {
+		for _, c := range e.Classes {
+			if e.Preset == "alert" && !d.mapPane.drawnSev[c.Label] {
+				continue // only the severities on the map (D-54: contextual)
+			}
+			key := e.Preset + "/" + c.Label
+			if seen[key] {
+				continue // two alerts of one severity are one key
+			}
+			seen[key] = true
+			if e.Preset == "alert" {
+				out = append(out, row(" "+c.Mark+" "+strings.ToUpper(c.Label)))
+			} else {
+				out = append(out, row(" "+c.Label))
+			}
+			rows++
+		}
+	}
+	if rows == 0 {
+		out = append(out, row(" nothing keyed"))
+	}
+	return append(out, "└"+strings.Repeat("─", inner)+"┘")
+}
+
+// mapStatusText is what the status line says of the picture while it is not
+// whole: loading, offline or coarser; nothing when it is whole (FR-3.4).
+func (d Dashboard) mapStatusText() string {
+	switch {
+	case d.mapPane.offline:
+		return mapOfflineText
+	case d.mapPane.status == tuimaps.Complete:
+		return ""
+	case d.mapPane.pending:
+		return mapLoadingText
+	}
+	return mapCoarseText
 }

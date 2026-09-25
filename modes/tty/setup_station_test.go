@@ -74,17 +74,21 @@ func TestTheStationsSettingsAreTheConsolesAlone(t *testing.T) {
 			t.Errorf("%q leaked into OBSERVER, which has no station", want)
 		}
 	}
-	// AND THEY SIT IN DATA, where the HUM LEAD put them: "These options should be
-	// under the 'DATA' settings group in the modal."
-	data := setupOffers(stationSetup(t, rowTransmitter))
-	head := strings.Index(data, "DATA")
-	next := strings.Index(data, "WATCHPOST UI")
-	if head < 0 || next < 0 {
-		t.Fatalf("the window has no DATA group to put them in")
+	// AND THEY SIT ON THE BROADCASTER TAB (D-62, which moved them out of DATA,
+	// where the HUM LEAD had first put them): its one group, STATION.
+	st := stationSetup(t, rowTransmitter)
+	if st.setupTab() != tabBroadcaster {
+		t.Fatalf("the transmitter is on the %s tab, want Broadcaster", st.setupTab().Label())
 	}
-	for _, want := range []string{"Transmitter (epicenter):", "Service radius:"} {
-		if at := strings.Index(data, want); at < head || at > next {
-			t.Errorf("%q is at %d, outside DATA (%d..%d)", want, at, head, next)
+	var page strings.Builder
+	for _, blk := range st.setupBlocks(st.opts()) {
+		for _, l := range blk.lines {
+			page.WriteString(stripANSITest(l) + "\n")
+		}
+	}
+	for _, want := range []string{"STATION", "Transmitter (epicenter):", "Service radius:"} {
+		if !strings.Contains(page.String(), want) {
+			t.Errorf("the Broadcaster tab does not draw %q:\n%s", want, page.String())
 		}
 	}
 }

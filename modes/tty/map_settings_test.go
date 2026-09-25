@@ -179,3 +179,51 @@ func TestTheDescriptionPickerGoesBothWays(t *testing.T) {
 		t.Errorf("← from with the picture went to %v, want off", got)
 	}
 }
+
+// TestTheArrowsSwitchTabsUnlessTheRowTakesThem is D-62: on a row that does not
+// operate with the arrows, → and ← switch tabs (as in [w]); a focused picker
+// keeps them; tab and shift+tab switch tabs from any row.
+func TestTheArrowsSwitchTabsUnlessTheRowTakesThem(t *testing.T) {
+	d, _ := uiDash(t, rowUnitsImperial) // a radio row, on General
+	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	if got := m.(Dashboard).setupTab(); got != tabRadio {
+		t.Errorf("→ on a radio row went to %s, want Watchpost Radio", got.Label())
+	}
+	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if got := m.(Dashboard).setupTab(); got != tabMaps {
+		t.Errorf("← on General went to %s, want Maps (wrapping)", got.Label())
+	}
+	p, _ := uiDash(t, rowTheme) // a picker keeps the arrows
+	m, _, _ = p.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	if got := m.(Dashboard).setupTab(); got != tabGeneral {
+		t.Errorf("→ on the theme picker left for %s", got.Label())
+	}
+	m, _ = p.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyTab})
+	if got := m.(Dashboard).setupTab(); got != tabRadio {
+		t.Errorf("tab on the theme picker went to %s, want Watchpost Radio", got.Label())
+	}
+}
+
+// TestEachSurfaceHasItsTabs is D-62 exactly: Observer's Settings are General,
+// Watchpost Radio and Maps; the console's General, Watchpost Radio and
+// Broadcaster (D-18/D-92: a mode's own settings appear only in its mode).
+func TestEachSurfaceHasItsTabs(t *testing.T) {
+	for surface, want := range map[Surface][]setupTab{
+		SurfaceObserver:    {tabGeneral, tabRadio, tabMaps},
+		SurfaceBroadcaster: {tabGeneral, tabRadio, tabBroadcaster},
+	} {
+		d, _ := uiDash(t, rowTheme)
+		d.surface = surface
+		got := d.tabsShown()
+		if len(got) != len(want) {
+			t.Errorf("surface %v shows %v, want %v", surface, got, want)
+			continue
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("surface %v shows %v, want %v", surface, got, want)
+				break
+			}
+		}
+	}
+}

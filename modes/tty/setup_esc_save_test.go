@@ -36,8 +36,7 @@ func TestClosingSettingsLeavesTheModelAgreeingWithTheWrite(t *testing.T) {
 
 	toEvents := func(model tea.Model) tea.Model {
 		model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		model = walkTo(t, model, rowEventsAll) // D-62: tab switches tabs now; the events group is ↓ away on General
 		return model
 	}
 
@@ -45,8 +44,7 @@ func TestClosingSettingsLeavesTheModelAgreeingWithTheWrite(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model = typeText(model, "oce")
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	model = walkTo(t, model, rowEventsAll)
 	model = typeText(model, "20")
 
 	var cmd tea.Cmd
@@ -136,8 +134,7 @@ func TestTypingOverAStoredRadiusReplacesItRatherThanAppending(t *testing.T) {
 		model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 		model = typeText(model, "oce")
 		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		model = walkTo(t, model, rowEventsAll) // D-62: tab switches tabs now; the events group is ↓ away on General
 		return model
 	}
 

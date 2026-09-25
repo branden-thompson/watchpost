@@ -55,7 +55,6 @@ func (d Dashboard) uiLines(o render.Opts) ([]string, int) {
 		lines = append(lines, "  "+setupMark(o, focus == id)+
 			radioMark(d.setup.clock == c, o.ASCII)+" "+settingLabel(c.Label(), focus == id))
 	}
-	lines, at = d.mapSettingLines(o, lines, at)
 	return lines, at
 }
 

@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–7 (W1.1–W1.8, W1.10, W1.15, W1.16, W2.1, W3.1–W3.7, W4, W5 with W9.1–W9.4 folded)."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–8 (W1.1–W1.8, W1.10, W1.12, W1.15–W1.17, W2.1, W3.1–W3.8, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62)."
 ---
 
 # As built: where the map lives
@@ -32,8 +32,9 @@ flowchart LR
   subgraph tty["modes/tty — the Observer"]
     MW["map_pane.go · the map window\ng opens · owns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station's"]
     MD["map_describe.go · the description\nReport joined to watchpost's alerts by id\ncovers · stops short · lies to one side (M1's words)\nunits and directions in words; never 'you'"]
-    MK["map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll"]
-    ST2["Settings, WATCHPOST UI\nMaps on/off · Map description: with / instead / off\nwritten with the group (config maps, map_description)"]
+    MK["map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll · L legend"]
+    LG["the legend (D-44)\na box over the map's corner, from Legend()\nonly the severities drawn, with their digits"]
+    ST2["Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nClear map data · the retention"]
   end
   subgraph plat["platform/"]
     RG["geo · RegionOf\nsix regions with their waters"]
@@ -47,7 +48,9 @@ flowchart LR
   MB -. "first g" .-> ZS
   MW --> RG
   MW --> MK
+  MW --> LG
   ST2 --> MW
+  ST2 -- "Config.ClearMapData" --> CL["app clearMapData\nPurge on a bare map (no source, no seed)\nzone store Forget + ForgetCached\n(httpx ForgetPrefix: zones only)"]
   MW -- "Report(place) at every draw" --> MD
   MW --> L
   MB --> L
@@ -72,8 +75,25 @@ flowchart TB
   NT --> ST["the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window"]
 ```
 
+## Settings, in tabs (D-62)
+
+```mermaid
+flowchart LR
+  subgraph S["Settings: one window, the tab is the focused row's"]
+    G["General\nDATA · WATCHPOST UI · ALERTS - EVENTS"]
+    R["Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY"]
+    B["Broadcaster\nSTATION: transmitter · service radius"]
+    M["Maps\nMAP"]
+  end
+  O(["Observer"]) --> G & R & M
+  C(["the console"]) --> G & R & B
+  K["keys: ←→ switch tabs unless the focused row is a picker or toggle\ntab / shift+tab switch tabs from any row · ↑↓ walk a tab's rows"] -.-> S
+```
+
+Each tab fits unscrolled at 133×44; the window is as wide as its widest tab on every tab.
+
 ## Not built yet
 
-The `NextCall` tick; the remaining Settings rows (W1.11: default scale, layers, alert scope, nearby); the exposure
-disclosure, the registry and the cost warning (W1.12–W1.14); the legend (W1.17); the national
-scope (W5.3's second half); the clear path on the library's `Purge` (W3.8 with W9.5); radar (W8).
+The `NextCall` tick; the remaining Settings rows (W1.11: default scale, layers, alert scope, nearby); the registry and
+the cost warning (W1.13, W1.14); the national scope (W5.3's second half); zone politeness (W3.9);
+radar (W8).

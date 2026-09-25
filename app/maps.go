@@ -12,12 +12,17 @@ package app
 import (
 	"context"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 	"github.com/branden-thompson/go-tuimaps/assets"
 
+	"github.com/branden-thompson/watchpost/domains/weather/nws/zones"
+	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -122,4 +127,63 @@ func (lp *livePipelines) newMap() func(tuimaps.Size) (*tuimaps.Map, error) {
 // taken when the listener first opens a map and never before (FR-3.2, D-25).
 func (lp *livePipelines) seedOnFirstMap(ctx context.Context) func() {
 	return func() { lp.seedZoneShapes(ctx, lp.currentWatch()) }
+}
+
+// clearMapData empties everything the map keeps on this computer that the
+// window's live map cannot reach itself (0.18.0 W3.8 with W9.5 folded): the
+// tile cache on disk, through the library's own Purge on a map that names no
+// source and seeds nothing, so clearing never fetches; the zone outlines the
+// store holds; and the HTTP cache's copies of them. The window purges its
+// live map's memory itself.
+func (lp *livePipelines) clearMapData() tty.MapCleared {
+	var out tty.MapCleared
+	if lp.maps != nil {
+		m, err := tuimaps.New()
+		if err == nil {
+			if err = m.CacheRoot(lp.maps.cacheDir, mapDiskBytes); err == nil {
+				var rep tuimaps.PurgeReport
+				rep, err = m.Purge()
+				out.Files = rep.Removed
+			}
+			m.Close()
+		}
+		out.Err = err
+	}
+	if lp.zoneShapes != nil {
+		out.Zones = lp.zoneShapes.Forget()
+		n, err := lp.zoneShapes.ForgetCached()
+		out.Zones += n
+		if out.Err == nil {
+			out.Err = err
+		}
+	}
+	return out
+}
+
+// mapDisclosure is what opening the map sends, and to whom, built from the
+// closed list so it names exactly the hosts the map contacts (FR-9.4): the
+// basemap's for the area shown, and the zone service's for the alert zones.
+func mapDisclosure() string {
+	var parts []string
+	for _, s := range basemapSources {
+		parts = append(parts, "the area shown to "+s.name+" ("+hostOf(s.address)+")")
+	}
+	return "Opening the map sends " + strings.Join(parts, " and ") +
+		", and the codes of the alert zones on it to the National Weather Service (" + hostOf(zones.DefaultBase) + ")."
+}
+
+// mapRetention is how long the map's data is kept, and the one stated total
+// (FR-3.5, FR-3.9).
+func mapRetention() string {
+	return "Map tiles are kept " + strconv.Itoa(int(mapMaxAge.Hours()/24)) + " days; with the web cache, " +
+		strconv.Itoa(statedCacheBytes>>20) + " MB in all."
+}
+
+// hostOf is an address's host.
+func hostOf(address string) string {
+	u, err := url.Parse(address)
+	if err != nil {
+		return address
+	}
+	return u.Host
 }

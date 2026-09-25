@@ -288,3 +288,14 @@ func asciiSurfaces(t *testing.T) map[string]string {
 	}
 	return out
 }
+
+// TestSetupGoldenEveryTab pins the Settings tabs the other goldens do not open
+// on (D-62): General, where `t` lands at the theme row, and Maps.
+func TestSetupGoldenEveryTab(t *testing.T) {
+	general := setupGolden(t, 133, 44, false, rowTheme)
+	checkGolden(t, "setup-133x44-general.golden", general.View().Content)
+	maps := setupGolden(t, 133, 44, false, rowMapsOn)
+	maps.cfg.MapDisclosure = "Opening the map sends the area shown to OpenFreeMap (tiles.openfreemap.org), and the codes of the alert zones on it to the National Weather Service (api.weather.gov)."
+	maps.cfg.MapRetention = "Map tiles are kept 7 days; with the web cache, 512 MB in all."
+	checkGolden(t, "setup-133x44-maps.golden", maps.View().Content)
+}

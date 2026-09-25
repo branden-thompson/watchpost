@@ -314,3 +314,35 @@ func (s *Store) fetch(ctx context.Context, id string) (Zone, error) {
 	name := plaintext.ClampField(payload.Properties.Name)
 	return Zone{ID: id, Name: name, Area: area}, nil
 }
+
+// Forget drops every shape the store holds, and says how many (0.18.0 W3.8:
+// "Clear map data"). The next use fetches again.
+func (s *Store) Forget() int {
+	if s == nil {
+		return 0
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := len(s.held)
+	s.held, s.at = map[string]Zone{}, map[string]time.Time{}
+	return n
+}
+
+// Base is the service the store reads from, so a caller that clears the HTTP
+// cache's copies of its answers can name them.
+func (s *Store) Base() string {
+	if s == nil {
+		return ""
+	}
+	return s.base
+}
+
+// ForgetCached drops the HTTP cache's copies of the store's answers - every
+// zone outline, in memory and on disk - and nothing else it caches (0.18.0
+// W3.8, FR-3.10: the zone geometry is a record of where the map looked).
+func (s *Store) ForgetCached() (int, error) {
+	if s == nil || s.client == nil {
+		return 0, nil
+	}
+	return s.client.ForgetPrefix(s.base + "/zones/")
+}
