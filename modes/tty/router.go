@@ -393,7 +393,8 @@ func observerScoped(msg tea.Msg) bool {
 	// delivered to the console they would be dropped and the search box would
 	// never settle, which is D-128's defect with a timer in front of it.
 	case resolvedMsg, committedMsg, castSavedMsg, uiSavedMsg,
-		locatePauseMsg, locateVerdictMsg:
+		locatePauseMsg, locateVerdictMsg,
+		mapWorkedMsg: // 0.18.0: what the map's Work landed is owed to Observer's map window
 		return true
 	}
 	return false

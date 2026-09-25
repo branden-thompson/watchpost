@@ -470,6 +470,7 @@ func newDumper
 func newEventReader
 func newExecutors
 func newHostFacts
+func newMap
 func newMastercontrol
 func newPump
 func newRadioDeck

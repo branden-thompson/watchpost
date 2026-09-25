@@ -182,6 +182,7 @@ var airBoundary = map[string]airMember{
 	"Spectrum":         {airNone, "reads the visualiser tap"},
 	"FIRMSKey":         {airNone, "a key hint for the Settings window"},
 	"Stats":            {airNone, "the [S] counters"},
+	"NewMap":           {airNone, "0.18.0: builds a map for the window to draw; it reaches no audio, and with no source named, nothing at all"},
 }
 
 // TestEverySurfaceSeamIsClassifiedForTheAir is the completeness half, and it

@@ -6,14 +6,15 @@ import pathlib
 # and drops it. No result, no error, a window that looks like a dead key.
 #
 # Re-pointed 2026-09-14 (D-130): the debounce's two messages joined the case.
+# Re-pointed 2026-09-25 (0.18.0): the map's mapWorkedMsg joined it too.
 #
 # THE MUTATION KEEPS THE FUNCTION so the build still uses it: observerScoped
 # answers false for the search window's own reply, which is exactly the routing
 # that shipped the defect.
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
 old = """	case resolvedMsg, committedMsg, castSavedMsg, uiSavedMsg,
-		locatePauseMsg, locateVerdictMsg:"""
+		locatePauseMsg, locateVerdictMsg,"""
 new = """	case committedMsg, castSavedMsg, uiSavedMsg,
-		locatePauseMsg, locateVerdictMsg:"""
+		locatePauseMsg, locateVerdictMsg,"""
 assert old in s, "mCA1"
 p.write_text(s.replace(old, new, 1))

@@ -17,6 +17,7 @@ import (
 	"unicode"
 
 	tea "charm.land/bubbletea/v2"
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
@@ -69,7 +70,8 @@ const recentWindow = 3
 // pipelines with the new watch/recent ref sets (UAT 26).
 type Config struct {
 	Version      string
-	KeyOverrides term.KeyMap // user [keys] table (validated at build)
+	KeyOverrides term.KeyMap                                   // user [keys] table (validated at build)
+	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error) // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
 	Resolve      func(query string) (snapshot.LocationRef, error)
 	Commit       func(watch, recent []snapshot.LocationRef) error
 	SetTheme     func(name string) error // live theme switch + persist (UAT 53)
@@ -459,6 +461,7 @@ func defaultKeyMap() term.KeyMap {
 		"alert-prev":   {Keys: []string{"left"}, Help: "Previous Alert"},
 		"alert-next":   {Keys: []string{"right"}, Help: "Next Alert"},
 		"close":        {Keys: []string{"esc"}, Help: "Close"},
+		actMap:         {Keys: []string{"g"}, Help: "Map"}, // 0.18.0 FR-1.1; the map's other keys wait for W1.16's one ruling
 	}
 }
 
@@ -506,6 +509,7 @@ type Dashboard struct {
 	// was before D-156 and nothing would say so.
 	liveOffset int
 
+	mapPane mapPane
 	modal   modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
@@ -939,6 +943,9 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch v := msg.(type) {
 	case tea.WindowSizeMsg:
 		d.width, d.height = v.Width, v.Height
+		if d.modal == modalMap {
+			d = d.renderMap() // the map is drawn at the window's new size, in Update (D-41, D-45's size row)
+		}
 		return d, nil
 	case SnapshotMsg:
 		return d.applySnapshot(v)
@@ -967,6 +974,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.handleSettingsSaved(msg), nil // the Settings window's apply-on-close outcomes, one owner
 	case vizTickMsg:
 		return d.vizFrame()
+	case mapWorkedMsg:
+		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
 	case tea.KeyPressMsg:
 		return d.handleKeyPress(v)
 	}
@@ -1235,6 +1244,9 @@ const (
 	// outside all three.
 	modalRequest
 
+	// modalMap is the map window (0.18.0 W1.1).
+	modalMap
+
 	// numModals bounds the set; it is not itself a modal. It exists so the
 	// memo-completeness guard can DERIVE the list of windows rather than carry
 	// a hand-written one — a hand-written list of windows is the same shape as
@@ -1339,6 +1351,8 @@ func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 		return d.toggle(modalStatus), true // UAT 24.2
 	case "about":
 		return d.toggle(modalAbout), true // UAT 68
+	case actMap:
+		return d.toggleMap(), true // 0.18.0 FR-1.1
 	case "theme":
 		// The chooser it opened is retired: [t] now
 		// opens Settings at the theme picker, the same way [V] opens it at the

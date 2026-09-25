@@ -297,6 +297,8 @@ func modalName(m modal) string {
 		return "card"
 	case modalRequest:
 		return "request"
+	case modalMap:
+		return "map"
 	}
 	return "modal-" + strconv.Itoa(int(m))
 }
@@ -315,6 +317,16 @@ func fixtureFor(t *testing.T, m modal) Dashboard {
 	// never locally in forty runs). An hour after the fixture's observation.
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 2, 0, 0, 0, time.UTC) }
 	switch m {
+	case modalMap:
+		// A PLACED LOCATION AND A SETTLED MAP (0.18.0 W1.7). The shared fixture's
+		// location sits at 0,0, where the map is open sea and draws nothing that
+		// could show a key missing; Oceanside draws a coast, two cities, a scale
+		// and the credit.
+		d.cfg.NewMap = embeddedMap
+		next, _ := d.Update(SnapshotMsg{Snap: placedSnap()})
+		d = next.(Dashboard).toggleMap()
+		t.Cleanup(d.closeMap)
+		return settleMap(t, d)
 	case modalRelayFault:
 		return d.openRelayFault(RelaySilentMsg{Candidates: []RelayCandidate{
 			{Label: "KEC62 San Diego CA 162.400 MHz - 12 mi", Key: "a"},

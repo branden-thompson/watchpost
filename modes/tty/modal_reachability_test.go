@@ -77,6 +77,7 @@ var reachabilityBaseline = map[modal]int{
 	modalAlerts:     0,
 	modalStatus:     0,
 	modalAbout:      0,
+	modalMap:        0, // the map is drawn at the window's size, so every line is on screen by construction
 	modalSetup:      2,
 	modalRequest:    0,
 	modalSevere:     0,
@@ -120,7 +121,12 @@ func TestEveryLineOfEveryWindowIsReachableAtTheFloor(t *testing.T) {
 	for _, m := range modals {
 		t.Run(modalName(m), func(t *testing.T) {
 			d := fixtureFor(t, m)
-			d.width, d.height = 80, 24 // the documented floor
+			// THE DOCUMENTED FLOOR, REACHED THE WAY A TERMINAL REACHES IT: through
+			// the resize message, not by assigning the fields. For most windows
+			// the two are the same; the map window draws in Update, and only the
+			// message redraws it at the new size (0.18.0 W1.7, D-41).
+			resized, _ := d.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+			d = resized.(Dashboard)
 			if m == modalSevere {
 				// THE RECORD, NOT THE TABLE. severeDetailLines is the body that
 				// scrolls; the table windows itself and the keys that walk it are

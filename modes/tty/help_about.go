@@ -227,7 +227,7 @@ func helpGroups(surface Surface) []helpGroup {
 	}
 	return []helpGroup{ // NAVIGATE and RADIO first: the two tall groups make the left column of the two-column layout (UAT mock 2026-08-28)
 		surfaces,
-		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "severe", "alert-prev", "alert-next", "close", term.HelpAction, "quit"}},
+		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "severe", actMap, "alert-prev", "alert-next", "close", term.HelpAction, "quit"}},
 		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-vol-up", "radio-vol-dn"}},
 		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}},
 		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}},

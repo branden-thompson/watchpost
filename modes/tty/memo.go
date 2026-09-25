@@ -271,6 +271,12 @@ type modalKey struct {
 	reqState          uint8
 	reqAt             int
 	reqChosen         report.Set
+
+	// THE MAP'S DRAW, by generation, and why it could not draw (0.18.0 W2.1).
+	// The lines are drawn in Update and raise the generation each time, so the
+	// key moves with every frame the library gave (F-30's rule, D-45).
+	mapGen    uint64
+	mapFailed string
 }
 
 // modalMemo is the single slot.
@@ -301,6 +307,8 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 	}
 	switch d.modal {
+	case modalMap:
+		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 	case modalRequest:
 		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was
 		// missing the moment the window existed — `field`, `query`, `outside`

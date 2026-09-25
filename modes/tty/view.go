@@ -96,6 +96,8 @@ func (d Dashboard) renderModal(o render.Opts) string {
 		return d.floatModal(o, d.modalWidth(), "Watchpost Status", d.statusLines()) // UAT 24.2; the window covers more than the APIs now (0.14.0)
 	case modalAbout:
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
+	case modalMap:
+		return d.floatModal(o, d.modalWidth(), d.mapTitle(), d.mapBodyLines()) // 0.18.0: lines drawn in Update (D-41)
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
 	case modalCard:
@@ -141,6 +143,8 @@ func (d Dashboard) modalWidth() int {
 		return d.statusWidth() // providers beside requests when they fit, else the stretch
 	case modalAbout:
 		return aboutWidth
+	case modalMap:
+		return d.opts().Width // the map takes the width the dashboard has
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
 	case modalCard:
@@ -183,6 +187,8 @@ func (d Dashboard) modalLines() []string {
 		raw = d.statusLines()
 	case modalAbout:
 		raw = d.aboutLines(o)
+	case modalMap:
+		raw = d.mapBodyLines()
 	case modalSevere:
 		raw = d.severeDetailLines(o) // only the record scrolls; the table windows itself
 	case modalCard:
