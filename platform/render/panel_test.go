@@ -102,3 +102,23 @@ func TestPanelTitleIsBoldWhite(t *testing.T) {
 		t.Fatalf("colour off: plain, same width: %q", head)
 	}
 }
+
+// TestAScrollingPanelIsASCIIUnderASCII: the rail of a panel that scrolls is
+// drawn through the glyph set, so --ascii prints no ▲ █ │ ▼ (0.18.0: the second
+// copy of the rail had its glyphs written in, and no window scrolled at the
+// size the ASCII survey draws until Help grew a MAP group).
+func TestAScrollingPanelIsASCIIUnderASCII(t *testing.T) {
+	lines := make([]string, 30)
+	for i := range lines {
+		lines[i] = "row"
+	}
+	out := Opts{Width: 40, ASCII: true}.ScrollPanel("Title", lines, 3, 10)
+	for _, r := range out {
+		if r > 0x7f && !strings.ContainsRune("┌┐└┘─│├┤", r) {
+			t.Fatalf("an ASCII scrolling panel carries %q:\n%s", r, out)
+		}
+	}
+	if !strings.Contains(out, "^") || !strings.Contains(out, "v") || !strings.Contains(out, "#") {
+		t.Errorf("the rail is not drawn in its ASCII glyphs:\n%s", out)
+	}
+}

@@ -242,33 +242,11 @@ func (o Opts) scrollWindow(lines []string, scroll, maxLines int) []string {
 }
 
 func (o Opts) scrollBody(title string, lines []string, scroll, maxLines int) string {
-	if maxLines <= 0 {
-		maxLines = 1
-	}
-	if len(lines) <= maxLines {
-		return o.PanelColored(title, strings.Join(lines, "\n"), "")
-	}
-	maxScroll := len(lines) - maxLines
-	scroll = max(0, min(scroll, maxScroll))
-	win := make([]string, maxLines)
-	inner := o.Width - 7 // panel chrome (4) + rail col + gap
-	thumb := 1
-	if maxLines > 3 {
-		thumb = 1 + scroll*(maxLines-3)/max(1, maxScroll)
-	}
-	for i := range maxLines {
-		glyph := "│"
-		switch i {
-		case 0:
-			glyph = "▲"
-		case maxLines - 1:
-			glyph = "▼"
-		case thumb:
-			glyph = "█"
-		}
-		win[i] = PadTo(truncate(lines[scroll+i], inner), inner) + " " + glyph
-	}
-	return o.PanelColored(title, strings.Join(win, "\n"), "")
+	// ONE RAIL, THROUGH THE GLYPH SET. This was a second copy of scrollWindow
+	// with the rail's glyphs written in, so every scrolling window drew ▲ █ │ ▼
+	// under --ascii. No window scrolled at the size the ASCII survey draws,
+	// until 0.18.0's MAP group made Help one.
+	return o.PanelColored(title, strings.Join(o.scrollWindow(lines, scroll, max(maxLines, 1)), "\n"), "")
 }
 
 // Overlay floats modal centered over base via lipgloss v2 Canvas/Layer

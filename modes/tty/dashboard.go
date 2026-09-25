@@ -510,6 +510,7 @@ type Dashboard struct {
 	liveOffset int
 
 	mapPane mapPane
+	mapKeys term.KeyMap
 	modal   modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
 	// addLocate is the DEBOUNCED answer about what has been typed into the
@@ -774,7 +775,11 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, fmt.Errorf("console key bindings invalid: %w", err)
 	}
-	d := Dashboard{cfg: cfg, keys: keys, consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	mapKeys, err := mapKeysFrom(cfg.KeyOverrides)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -1120,6 +1125,10 @@ func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return d.handleRemoveKey(key)
 	case modalRequest:
 		return d.handleRequestKey(key)
+	case modalMap:
+		if m, cmd, ok := d.handleMapKey(key); ok {
+			return m, cmd // D-61: the open map owns the keys it binds
+		}
 	}
 	act, bound := d.keys.Lookup(key.String())
 	if !bound {

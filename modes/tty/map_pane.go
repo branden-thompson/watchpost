@@ -87,9 +87,7 @@ func (d Dashboard) toggleMap() Dashboard {
 		d.mapPane.m, d.mapPane.failed = m, ""
 		d.mapPane.call("Zoom", func() { _ = m.Zoom(mapDefaultZoom) })
 	}
-	m := d.mapPane.m
-	d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}) })
-	d = d.renderMap()
+	d = d.followSelection().renderMap()
 	return d.withCmd(d.mapWorkCmd())
 }
 
@@ -184,4 +182,91 @@ func (d Dashboard) closeMap() {
 	if m := d.mapPane.m; m != nil {
 		d.mapPane.call("Close", func() { m.Close() })
 	}
+}
+
+// The map window's own actions (D-61). While the window is open it owns the
+// keys these are bound to; every other key still reaches the Observer. The
+// legend, playback and description-scroll actions join with their tasks
+// (W1.17, W8.9a, W1.6), because a key bound to nothing yet is a dead key.
+const (
+	actMapPanUp    term.Action = "map.pan.up"
+	actMapPanDown  term.Action = "map.pan.down"
+	actMapPanLeft  term.Action = "map.pan.left"
+	actMapPanRight term.Action = "map.pan.right"
+	actMapPrev     term.Action = "map.location.prev"
+	actMapNext     term.Action = "map.location.next"
+	actMapZoomIn   term.Action = "map.zoom.in"
+	actMapZoomOut  term.Action = "map.zoom.out"
+)
+
+// mapActions is the map window's actions in the order Help lists them.
+var mapActions = []term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut}
+
+// defaultMapKeyMap is D-61's bindings for the open map window.
+func defaultMapKeyMap() term.KeyMap {
+	return term.KeyMap{
+		actMapPanUp:    {Keys: []string{"up"}, Help: "Pan North"},
+		actMapPanDown:  {Keys: []string{"down"}, Help: "Pan South"},
+		actMapPanLeft:  {Keys: []string{"left"}, Help: "Pan West"},
+		actMapPanRight: {Keys: []string{"right"}, Help: "Pan East"},
+		actMapPrev:     {Keys: []string{"["}, Help: "Previous Location"},
+		actMapNext:     {Keys: []string{"]"}, Help: "Next Location"},
+		actMapZoomIn:   {Keys: []string{"+", "="}, Help: "Zoom In"},
+		actMapZoomOut:  {Keys: []string{"-"}, Help: "Zoom Out"},
+	}
+}
+
+// mapKeysFrom merges the [keys] entries that name the map's actions into its
+// own scope, which is separate from the Observer's: its keys are the map's
+// only while the window is open.
+func mapKeysFrom(overrides term.KeyMap) (term.KeyMap, error) {
+	own := term.KeyMap{}
+	for act, b := range overrides {
+		if _, ok := defaultMapKeyMap()[act]; ok {
+			own[act] = b
+		}
+	}
+	keys, _, err := term.Merge(defaultMapKeyMap(), own)
+	return keys, err
+}
+
+// handleMapKey is the open map window's keyboard (D-61): a key the map binds
+// is the map's; any other key goes on to the Observer's handling.
+func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
+	act, bound := d.mapKeys.Lookup(key.String())
+	if !bound || d.mapPane.m == nil {
+		return d, nil, false
+	}
+	size, m := d.mapBodySize(), d.mapPane.m
+	stepX, stepY := max(size.Cols/4, 1), max(size.Rows/4, 1) // a quarter of the view a press
+	switch act {
+	case actMapPanUp:
+		d.mapPane.call("PanCells", func() { _ = m.PanCells(0, -stepY) })
+	case actMapPanDown:
+		d.mapPane.call("PanCells", func() { _ = m.PanCells(0, stepY) })
+	case actMapPanLeft:
+		d.mapPane.call("PanCells", func() { _ = m.PanCells(-stepX, 0) })
+	case actMapPanRight:
+		d.mapPane.call("PanCells", func() { _ = m.PanCells(stepX, 0) })
+	case actMapZoomIn:
+		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(1) })
+	case actMapZoomOut:
+		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(-1) })
+	case actMapPrev:
+		d = d.handleNav("nav-up").followSelection()
+	case actMapNext:
+		d = d.handleNav("nav-down").followSelection()
+	}
+	d = d.renderMap()
+	return d, d.mapWorkCmd(), true
+}
+
+// followSelection puts the map on the selected location (FR-1.2).
+func (d Dashboard) followSelection() Dashboard {
+	loc, m := d.selectedLocation(), d.mapPane.m
+	if loc == nil || m == nil {
+		return d
+	}
+	d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: loc.Lon, Lat: loc.Lat}) })
+	return d
 }

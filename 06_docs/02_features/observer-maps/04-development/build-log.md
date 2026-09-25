@@ -59,3 +59,31 @@ place a view given before the first size is a question for the paired release.
 
 **Owed from these tasks:** W2.2's goroutine record and the `NextCall` tick; W2.6's join on close
 (`closeMap` exists, the app does not call it yet).
+
+## Batch 2 — the map window's keys, as D-61 ruled them (2026-09-25)
+
+**Tasks:** W1.15 (pan and zoom), W1.16 (the keys evaluated and ruled: D-61), the rest of W1.2
+(the map follows the selection).
+
+**What landed.** While the map window is open it owns the keys it binds, from a keymap scope of its
+own (`defaultMapKeyMap`, merged with the `[keys]` entries that name map actions): ←↑→↓ pan a
+quarter of the view (`PanCells`), `+`/`=` and `-` zoom (`ZoomBy`), `[` and `]` step to the previous
+and next location and the map and its title follow. Every other key still reaches the Observer, so
+the window shadows only what it binds: today the radio's volume and the alert pager; `space`
+(play/pause) is shadowed when the loop's play key lands with W8, as D-61 ruled.
+Help lists the keys in a MAP group. The legend, playback and description-scroll keys join with their
+tasks (W1.17, W8.9a, W1.6): a key bound to nothing yet would be a dead key.
+
+**Found on the way.** `render.scrollBody` was a second copy of `scrollWindow` with the rail's
+glyphs written in, so **every scrolling window drew ▲ █ │ ▼ under `--ascii`**. No window scrolled
+at the size the ASCII survey draws until the MAP group made Help one. It now draws through
+`scrollWindow`, and `TestAScrollingPanelIsASCIIUnderASCII` holds it directly. Help's
+once-per-binding checks count per scope: the map's zoom keys render the same as the volume keys, by
+ruling.
+
+**Mutation verdicts** — all caught: keys not routed to the map (K1), east panning west (K2), zoom
+inverted (K3), `]` not following (K4), a key press not drawn (K5), `[keys]` overrides ignored (K6),
+no MAP group in Help (K7), the rail not ASCII (K8, by the render test alone), a pan of nothing (K9).
+
+**Owed:** W1.2's scripted PTY journey on the real binary; W1.15's loading indicator and M2 over
+every frame (with W4's bound).

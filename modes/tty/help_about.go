@@ -6,6 +6,7 @@ package tty
 
 import (
 	"fmt"
+	"maps"
 	"runtime"
 	"sort"
 	"strings"
@@ -233,6 +234,7 @@ func helpGroups(surface Surface) []helpGroup {
 		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}},
 		{"TICKER", []term.Action{"ticker-mute"}},
 		{"APP", []term.Action{"setup", "status", "about", "debug"}},
+		{"MAP", mapActions}, // 0.18.0 D-61: the open map window's own keys
 	}
 }
 
@@ -254,6 +256,7 @@ func (d Dashboard) helpKeys() term.KeyMap {
 	for act, bind := range d.keys {
 		out[act] = bind
 	}
+	maps.Copy(out, d.mapKeys) // the map window's own scope, listed in its own group (D-61)
 	bc := d.consoleKeyMap()
 	for _, act := range []term.Action{actSwapObserver, actSwapBroadcaster} {
 		if bind, ok := bc[act]; ok {
