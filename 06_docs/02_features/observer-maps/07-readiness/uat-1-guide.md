@@ -55,7 +55,7 @@ make build
 | Map window | `[` `]` | Previous, next location |
 | Map window | `PgUp` `PgDn` | Scroll the window's body when it is longer than the window |
 | Map window | `L` | The legend over the map's corner (D-44) |
-| Map window | `1` to `6` | Snap to a region: 1 the contiguous US, 2 Alaska, 3 Hawaii, 4 the Caribbean, 5 American Samoa, 6 Guam and the Northern Marianas (D-77); an arrow past a region's edge crosses to its neighbour |
+| Map window | `1` to `6` | Snap to a region: 1 the contiguous US, 2 Alaska, 3 Hawaii, 4 the Caribbean, 5 American Samoa, 6 Guam and the Northern Marianas (D-77); at a region's edge an arrow shows a chip naming the region beyond, and the same arrow again crosses to it (D-81) |
 | Map window | `c` | Units, as on the dashboard |
 | Settings | `s`, then `tab` / `shift+tab` or `←` `→` | The Maps tab (D-62); a focused picker keeps `←` `→` |
 

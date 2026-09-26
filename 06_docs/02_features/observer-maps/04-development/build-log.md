@@ -854,3 +854,24 @@ the index, and fails on a `zz_` test file or a `TestZZ` function. It is proven a
 **Diagrams:** `as-built-map.md` (the earthquakes layer, the categories in the alert overlays' ids, the level
 as a preset); atlas regenerated. The UAT guide gains S16 (categories and earthquakes) and S17 (detail as a
 preset).
+
+## Batch 18 — UAT-1's seventh pass: the edge's chip; the cost warning's words (2026-09-26)
+
+**U1-44 (D-81, amending D-77's edge).** A press the region's edge holds still no longer crosses. It shows a
+chip at that edge naming the region beyond ("US CARIBBEAN →", "← HAWAII", "↑ ALASKA", "↓ CONTINENTAL
+US"), and the next press the same way crosses. Any other key takes the chip away, and a different
+direction pans as normal. The chip sits mid-side for east and west, top-middle for north, and above the
+credit row for south, which is never covered (FR-14). The frame memo keys on the chip; the memo guard
+caught that it did not.
+
+**U1-45 (D-82).** The cost warning reads the HUM LEAD's words, the first sentence in bold: "Map may
+experience performance issues at this zoom level." then "Est. 2.2MB / 211 Requests | Switch off layers or
+zoom in for a better experience." It is the same under the map and beside the Layers row. The old words'
+"drawing this station's alerts only" went with D-76.
+
+**Diagrams:** `as-built-map.md` (the chip, the warning's words); atlas regenerated; the UAT guide's keys row.
+
+**Mutation verdicts** (targeted, 7), all caught in the end. Two first-round survivors were answered:
+- **A chip that crossed whichever way was pressed next.** `TestAChipCrossesOnlyTheWayItPoints` covers it:
+  Samoa's east chip, then its west edge shows Guam's chip rather than crossing.
+- **The warning's sentence not bold.** The thresholds test now turns styling on, so bold is visible to it.

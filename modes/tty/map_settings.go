@@ -151,7 +151,7 @@ func (d Dashboard) mapLayerLines(o render.Opts, lines []string, at int) ([]strin
 	}
 	focus := d.setup.focus
 	lines, at = d.mapRow(o, lines, at, rowMapLayers, "Layers -", d.layersCell(o, focus == rowMapLayers))
-	for _, l := range render.WrapText(costWarning(d.mapCost), mapNoteW) {
+	for _, l := range costWarningLines(d.mapCost, mapNoteW) {
 		lines = append(lines, "    "+settingSupport(l))
 	}
 	lines, at = d.mapRow(o, lines, at, rowMapDetailLevel, "Detail -", d.mapPickerW(o, rowMapDetailLevel, d.detailLevelShown(), mapDetailValueW))

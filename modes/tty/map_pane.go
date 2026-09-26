@@ -70,6 +70,8 @@ type mapPane struct {
 	menuOn    bool                       // the Overlays menu is open (D-65)
 	menuAt    int                        // the menu's cursor
 	flash     term.Action                // the map key last pressed, blinking in the controls (U1-11)
+	edge      geo.Direction              // the edge whose chip is showing (D-81)
+	edgeShown bool                       // a press held still at the edge: the next the same way crosses
 	flashEnd  time.Time                  // when its blink ends
 	title     string                     // what is in view, named at the last draw (D-64)
 	viewGen   uint64                     // raised by every move; the settle tick of the newest asks the feed (D-66)
@@ -360,7 +362,7 @@ func (d Dashboard) mapBodyLines() []string {
 		return out
 	}
 	size := d.mapBodySize()
-	out = append(out, d.withLegend(d.withControls(d.withOverlays(d.withAreaAlerts(d.mapPane.lines, size)), size))...)
+	out = append(out, d.withEdgeChip(d.withLegend(d.withControls(d.withOverlays(d.withAreaAlerts(d.mapPane.lines, size)), size)), size)...)
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
 	}
@@ -394,9 +396,7 @@ func (d Dashboard) noteLines(width int) []string {
 	for _, n := range d.mapPane.notes {
 		out = append(out, render.WrapText(n, width)...)
 	}
-	if w := costWarning(d.mapCost); w != "" {
-		out = append(out, render.WrapText(w, width)...) // FR-9.2: said where the cost is seen
-	}
+	out = append(out, costWarningLines(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words
 	return out
 }
 
@@ -539,15 +539,19 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	d = d.flashMapKey(act) // U1-11: the controls' chip blinks
 	size, m := d.mapBodySize(), d.mapPane.m
 	stepX, stepY := max(size.Cols/4, 1), max(size.Rows/4, 1) // a quarter of the view a press
+	// ANY KEY TAKES THE EDGE'S CHIP AWAY (D-81); a press the same way again
+	// is the one that crosses.
+	armed := d.mapPane.edgeShown
+	d.mapPane.edgeShown = false
 	switch act {
 	case actMapPanUp:
-		d = d.panOrCross(0, -stepY, geo.North)
+		d = d.panOrCross(0, -stepY, geo.North, armed)
 	case actMapPanDown:
-		d = d.panOrCross(0, stepY, geo.South)
+		d = d.panOrCross(0, stepY, geo.South, armed)
 	case actMapPanLeft:
-		d = d.panOrCross(-stepX, 0, geo.West)
+		d = d.panOrCross(-stepX, 0, geo.West, armed)
 	case actMapPanRight:
-		d = d.panOrCross(stepX, 0, geo.East)
+		d = d.panOrCross(stepX, 0, geo.East, armed)
 	case actMapZoomIn:
 		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(1) })
 	case actMapZoomOut:
@@ -571,10 +575,11 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	return d, tea.Batch(d.mapWorkCmd(), d.mapFeedCmd(), settle), true
 }
 
-// panOrCross pans by cells, and where the region's edge holds the map still,
-// moves on to the region beyond it (D-77): the press that would go past the
-// edge crosses it. An edge with nothing beyond it stays an edge.
-func (d Dashboard) panOrCross(dx, dy int, dir geo.Direction) Dashboard {
+// panOrCross pans by cells. Where the region's edge holds the map still, the
+// first press shows a chip naming the region beyond (D-81), and a second
+// press the same way while it shows moves on to it (D-77). An edge with
+// nothing beyond it stays an edge.
+func (d Dashboard) panOrCross(dx, dy int, dir geo.Direction, armed bool) Dashboard {
 	m := d.mapPane.m
 	before, _ := m.Centre()
 	d.mapPane.call("PanCells", func() { _ = m.PanCells(dx, dy) })
@@ -582,9 +587,14 @@ func (d Dashboard) panOrCross(dx, dy int, dir geo.Direction) Dashboard {
 	if math.Abs(after.Lat-before.Lat) > 1e-9 || math.Abs(after.Lon-before.Lon) > 1e-9 {
 		return d
 	}
-	if next, ok := geo.Neighbour(d.mapPane.region.Name, dir); ok {
+	if _, ok := geo.Neighbour(d.mapPane.region.Name, dir); !ok {
+		return d
+	}
+	if armed && d.mapPane.edge == dir {
+		next, _ := geo.Neighbour(d.mapPane.region.Name, dir)
 		return d.showRegion(next)
 	}
+	d.mapPane.edge, d.mapPane.edgeShown = dir, true
 	return d
 }
 

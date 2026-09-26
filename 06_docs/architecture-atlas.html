@@ -850,7 +850,7 @@ code{font-family:var(--mono);font-size:.92em}
     WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)&#34;]
   end
   subgraph tty[&#34;modes/tty — the Observer&#34;]
-    MW[&#34;map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\n1-6 snap to a region; a pan past an edge crosses to the neighbour (D-77)\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms)&#34;]
+    MW[&#34;map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\n1-6 snap to a region; at an edge a chip names the neighbour, the next press crosses (D-77, D-81)\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms)&#34;]
     MD[&#34;map_describe.go · the description follows the view (D-74, D-78)\nthe place - Currently: … only while the place is in view; else the view&#39;s name\n‹event› in effect for this area · for nearby ‹areas› · for ‹areas›, until ‹time›\nevery alert in view, most severe first; the box ends &#39;And N more in view.&#39;&#34;]
     MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · 1-6 region · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend&#34;]
     BX[&#34;map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: alert areas and [w]&#39;s categories, earthquakes, the map&#39;s detail (D-65, D-80)\ndetail: the level is a preset, the switches the truth; the library at Full (D-79)\nthe title names the view by scale (D-64)&#34;]
@@ -899,7 +899,7 @@ code{font-family:var(--mono);font-size:.92em}
   DS -- &#34;yes (the default)&#34; --&gt; D1[&#34;the description in the Area Alerts box on the first rows (D-55 as D-63 keeps it)&#34;] --&gt; M
   DS -- &#34;off&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)\nthe window about 80% of the terminal each way (U1-13), never under what 69x12 needs\nthe picture flush to the borders (U1-27)&#34;]
   M --&gt; BXS[&#34;the boxes over it: Area Alerts, the Overlays menu, the controls, the legend&#34;] --&gt; NT[&#34;the feed&#39;s notes: partial areas named in words (FR-4.4)&#34;]
-  NT --&gt; CW[&#34;the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)&#34;]
+  NT --&gt; CW[&#34;the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)\nin D-82&#39;s words: the first sentence in bold, then Est. MB / Requests&#34;]
   CW --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window&#34;]
 </pre></div></article><article class="dia" id="observer-maps-3"><div class="meta"><h3>The map&#39;s commands, its clock and its close (W2)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
   U[&#34;Update (the Bubble Tea goroutine)\nevery library call but Work&#34;] -- &#34;Pending &gt; 0&#34; --&gt; W[&#34;Work command\nadmitted by mapWorkers&#34;]

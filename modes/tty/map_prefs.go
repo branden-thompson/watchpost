@@ -83,14 +83,30 @@ const (
 	mapCostRequests = 40
 )
 
-// costWarning is the warning's words, or nothing at or under both thresholds.
-func costWarning(c MapCost) string {
+// costWarningParts is the warning in the HUM LEAD's words (D-82): the
+// sentence said in bold, and the estimate with what to do about it; nothing
+// at or under both thresholds.
+func costWarningParts(c MapCost) (head, detail string) {
 	if c.Bytes <= mapCostBytes && c.Requests <= mapCostRequests {
-		return ""
+		return "", ""
 	}
-	return "The map's layers would fetch about " + strconv.FormatFloat(float64(c.Bytes)/1e6, 'f', 1, 64) + " MB in " +
-		strconv.Itoa(c.Requests) + " requests a refresh, more than the " + strconv.Itoa(mapCostBytes/1_000_000) + " MB or " +
-		strconv.Itoa(mapCostRequests) + " requests this station warns at. Switching a layer off, or drawing this station's alerts only, costs less."
+	return "Map may experience performance issues at this zoom level.",
+		"Est. " + strconv.FormatFloat(float64(c.Bytes)/1e6, 'f', 1, 64) + "MB / " + strconv.Itoa(c.Requests) +
+			" Requests | Switch off layers or zoom in for a better experience."
+}
+
+// costWarningLines is the warning wrapped to a width, its first sentence in
+// bold (D-82).
+func costWarningLines(c MapCost, width int) []string {
+	head, detail := costWarningParts(c)
+	if head == "" {
+		return nil
+	}
+	var out []string
+	for _, l := range render.WrapText(head, width) {
+		out = append(out, render.Bold(l))
+	}
+	return append(out, render.WrapText(detail, width)...)
 }
 
 // refreshMapCost asks the app's estimate again, with the layers as chosen:

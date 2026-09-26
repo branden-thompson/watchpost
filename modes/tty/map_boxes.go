@@ -135,6 +135,49 @@ func (d Dashboard) withControls(lines []string, size tuimaps.Size) []string {
 	return spliceBox(lines, box, size.Rows-1-len(box), insetCols+size.Cols-(controlsInner+2))
 }
 
+// edgeChipText is the chip's words: the region beyond, with the arrow that
+// crosses to it on the side it points (D-81) - "US CARIBBEAN →", "← HAWAII".
+func (d Dashboard) edgeChipText() string {
+	next, ok := geo.Neighbour(d.mapPane.region.Name, d.mapPane.edge)
+	if !ok {
+		return ""
+	}
+	name := strings.ToUpper(mapRegionLabels[geo.NumberOf(next.Name)-1])
+	switch d.mapPane.edge {
+	case geo.West:
+		return "← " + name
+	case geo.North:
+		return "↑ " + name
+	case geo.South:
+		return "↓ " + name
+	}
+	return name + " →"
+}
+
+// withEdgeChip lays the chip at the edge it names while it shows: east and
+// west at the middle of that side, north at the top's middle, south above the
+// credit row (FR-14, never covered).
+func (d Dashboard) withEdgeChip(lines []string, size tuimaps.Size) []string {
+	text := d.edgeChipText()
+	if !d.mapPane.edgeShown || text == "" || len(lines) < size.Rows || size.Rows < 5 {
+		return lines
+	}
+	w := render.Width(text) + 2
+	chip := []string{"┌" + strings.Repeat("─", w) + "┐", "│ " + text + " │", "└" + strings.Repeat("─", w) + "┘"}
+	row, col := size.Rows/2-1, insetCols+(size.Cols-w-2)/2
+	switch d.mapPane.edge {
+	case geo.East:
+		col = insetCols + size.Cols - (w + 2)
+	case geo.West:
+		col = insetCols
+	case geo.North:
+		row = 0
+	case geo.South:
+		row = size.Rows - 1 - len(chip)
+	}
+	return spliceBox(lines, chip, row, col)
+}
+
 // flashMapKey marks a map key pressed, for the controls box to blink.
 func (d Dashboard) flashMapKey(act term.Action) Dashboard {
 	d.mapPane.flash, d.mapPane.flashEnd = act, time.Now().Add(pickerFlashDur)

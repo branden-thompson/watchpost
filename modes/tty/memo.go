@@ -18,6 +18,7 @@ import (
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/report"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -251,6 +252,8 @@ type modalKey struct {
 	mapAlerts, mapMenu bool
 	mapMenuAt          int
 	mapFlash           term.Action
+	mapEdge            geo.Direction // the edge's chip (D-81): which side, and whether it shows
+	mapEdgeOn          bool
 	mapTitle           string // what is in view, in the window's title (D-64)
 	theme              uint64
 	minute             int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
@@ -342,6 +345,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapOutside, k.mapNotes = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n")
 		k.mapLegend = d.mapPane.legendOn
 		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapPane.alertsOn, d.mapPane.menuOn, d.mapPane.menuAt, d.mapPane.flash
+		k.mapEdge, k.mapEdgeOn = d.mapPane.edge, d.mapPane.edgeShown
 		k.mapTitle = d.mapPane.title
 	case modalRequest:
 		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was

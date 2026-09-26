@@ -107,3 +107,81 @@ func TestTheRegionKeysAreShownWithTheControls(t *testing.T) {
 		t.Errorf("Help does not list the region keys:\n%s", text)
 	}
 }
+
+// TestTheEdgeShowsItsNeighbourBeforeCrossing is D-81 (UAT-1 U1-44): a press
+// the edge holds still does not cross - it shows a chip naming the region
+// beyond, at that edge - and the next press the same way crosses; a press
+// another way takes the chip away and pans as normal.
+func TestTheEdgeShowsItsNeighbourBeforeCrossing(t *testing.T) {
+	d := openMap(t, Config{MapDescription: "off"}, 133, 44)
+	d = pressCode(d, '1', "1")
+	right := tea.KeyPressMsg{Code: tea.KeyRight}
+	d = untilChip(t, d, tea.KeyRight)
+	if got, _ := regionShown(d); got != geo.RegionContiguous {
+		t.Fatalf("the first press at the edge crossed to %s", got)
+	}
+	if text := bodyText(d); !strings.Contains(text, "US CARIBBEAN →") {
+		t.Errorf("no chip names the region beyond:\n%s", text)
+	}
+	m, _ := d.Update(right)
+	if got, _ := regionShown(m.(Dashboard)); got != geo.RegionCaribbean {
+		t.Errorf("the second press went to %s, want the Caribbean", got)
+	}
+	m, _ = d.Update(tea.KeyPressMsg{Code: tea.KeyLeft}) // another way, from the chip
+	d = m.(Dashboard)
+	if strings.Contains(bodyText(d), "US CARIBBEAN") || d.mapPane.edgeShown {
+		t.Error("a press another way left the chip")
+	}
+	if got, _ := regionShown(d); got != geo.RegionContiguous {
+		t.Errorf("a press another way changed the region to %s", got)
+	}
+	d = untilChip(t, d, tea.KeyRight)
+	m, _ = d.Update(tea.KeyPressMsg{Code: '+', Text: "+"})
+	if got, _ := regionShown(m.(Dashboard)); got != geo.RegionContiguous || m.(Dashboard).mapPane.edgeShown {
+		t.Error("a key other than a pan left the chip standing, or crossed")
+	}
+	for _, c := range []struct {
+		n    rune
+		dir  rune
+		want string
+	}{{'3', tea.KeyLeft, "← AMERICAN SAMOA"}, {'1', tea.KeyUp, "↑ ALASKA"}, {'2', tea.KeyDown, "↓ CONTINENTAL US"}} {
+		d = untilChip(t, pressCode(d, c.n, string(c.n)), c.dir)
+		if text := bodyText(d); !strings.Contains(text, c.want) {
+			t.Errorf("region %c, %v: no %q chip", c.n, c.dir, c.want)
+		}
+	}
+}
+
+// untilChip presses a pan key until the edge's chip shows, the region
+// unchanged, up to a bound.
+func untilChip(t *testing.T, d Dashboard, code rune) Dashboard {
+	t.Helper()
+	was := d.mapPane.region.Name
+	for range 80 {
+		m, _ := d.Update(tea.KeyPressMsg{Code: code})
+		d = m.(Dashboard)
+		if d.mapPane.region.Name != was {
+			t.Fatalf("a press crossed from %s with no chip shown first", was)
+		}
+		if d.mapPane.edgeShown {
+			return d
+		}
+	}
+	t.Fatalf("eighty presses never reached the edge of %s", was)
+	return d
+}
+
+// TestAChipCrossesOnlyTheWayItPoints is D-81's second press: the chip shown
+// at one edge does not let a press at another held edge cross - that press
+// shows its own chip first.
+func TestAChipCrossesOnlyTheWayItPoints(t *testing.T) {
+	d := openMap(t, Config{MapDescription: "off"}, 133, 44)
+	d = untilChip(t, pressCode(d, '5', "5"), tea.KeyRight) // Samoa: Hawaii to the east
+	d = untilChip(t, d, tea.KeyLeft)                       // then its west edge: Guam
+	if got, _ := regionShown(d); got != geo.RegionSamoa {
+		t.Fatalf("a press west under the east chip crossed to %s", got)
+	}
+	if text := bodyText(d); !strings.Contains(text, "← GUAM") {
+		t.Errorf("the west edge's chip does not name Guam:\n%s", text)
+	}
+}

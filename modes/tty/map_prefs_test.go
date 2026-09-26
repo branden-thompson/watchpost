@@ -13,6 +13,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // alertLayers is the registry as the app hands it today: one layer.
@@ -181,7 +182,7 @@ func TestTheLayersRowKeepsTheArrowsOnlyWithAChoice(t *testing.T) {
 
 // TestTheCostWarningsThresholds is W1.14 (FR-9.2, D-43): at 2 MB and 40
 // requests nothing is said; one byte or one request more and the station
-// says so, in these words.
+// says so, in the HUM LEAD's words (D-82), the first sentence in bold.
 func TestTheCostWarningsThresholds(t *testing.T) {
 	for _, c := range []struct {
 		cost MapCost
@@ -189,12 +190,20 @@ func TestTheCostWarningsThresholds(t *testing.T) {
 	}{
 		{MapCost{Bytes: 1_000_000, Requests: 10}, ""},
 		{MapCost{Bytes: 2_000_000, Requests: 40}, ""},
-		{MapCost{Bytes: 2_000_001, Requests: 40}, "The map's layers would fetch about 2.0 MB in 40 requests a refresh, more than the 2 MB or 40 requests this station warns at. Switching a layer off, or drawing this station's alerts only, costs less."},
-		{MapCost{Bytes: 500_000, Requests: 41}, "The map's layers would fetch about 0.5 MB in 41 requests a refresh, more than the 2 MB or 40 requests this station warns at. Switching a layer off, or drawing this station's alerts only, costs less."},
+		{MapCost{Bytes: 2_000_001, Requests: 40}, "Map may experience performance issues at this zoom level. Est. 2.0MB / 40 Requests | Switch off layers or zoom in for a better experience."},
+		{MapCost{Bytes: 2_200_000, Requests: 211}, "Map may experience performance issues at this zoom level. Est. 2.2MB / 211 Requests | Switch off layers or zoom in for a better experience."},
 	} {
-		if got := costWarning(c.cost); got != c.want {
+		head, detail := costWarningParts(c.cost)
+		if got := strings.TrimSpace(head + " " + detail); got != c.want {
 			t.Errorf("%+v: got %q, want %q", c.cost, got, c.want)
 		}
+	}
+	t.Setenv("TERM", "xterm-256color") // bold shows only where styling does
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(rendering.ResetColorEnabledForTest)
+	lines := costWarningLines(MapCost{Bytes: 2_200_000, Requests: 211}, 200)
+	if len(lines) != 2 || lines[0] != render.Bold("Map may experience performance issues at this zoom level.") || lines[0] == stripANSITest(lines[0]) {
+		t.Errorf("the warning's lines are %q; want the first sentence in bold, then the estimate", lines)
 	}
 }
 
@@ -213,18 +222,18 @@ func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 	d := mapDash(t, Config{MapLayers: alertLayers, MapCost: cost, MapFeed: boxFeed(-117.6, -117.1, false)})
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	if text := stripANSITest(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "515 requests") {
+	if text := stripANSITest(strings.Join(d.mapBodyLines(), "\n")); !strings.Contains(text, "Est. 5.0MB / 515 Requests") {
 		t.Errorf("the map does not warn:\n%s", text)
 	}
 	d, _ = pressKey(d, "esc")
 	d = d.openSetupAt(rowMapLayers)
 	body, _, _ := d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "about 5.0 MB") {
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Est. 5.0MB") {
 		t.Errorf("Settings does not warn beside the layers:\n%s", text)
 	}
 	d = d.setupSpace()
 	body, _, _ = d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); strings.Contains(text, "about 5.0 MB") {
+	if text := stripANSITest(strings.Join(body, "\n")); strings.Contains(text, "Est. 5.0MB") {
 		t.Errorf("the warning stayed after the layer went off:\n%s", text)
 	}
 	if asked[false] == 0 {
