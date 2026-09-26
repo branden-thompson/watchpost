@@ -1,0 +1,18 @@
+{
+ "captured": "2026-09-26T15:51:00Z",
+ "source": "IEM's N0Q composite (json/radar.py, cgi-bin/wms/nexrad/n0q-t.cgi) and NOAA/NCEP MRMS (geoserver conus_bref_qcd), each frame of the box -126,23,-65,51 at 600x300",
+ "files": [
+  "iem-times.json",
+  "iem-frame.png",
+  "iem-offgrid.png",
+  "iem-no-time.png",
+  "mrms-capabilities.xml",
+  "mrms-frame.png",
+  "mrms-expired.png"
+ ],
+ "traps": {
+  "iem-offgrid.png": "an off-grid time (:41) answered 200 with an empty picture",
+  "iem-no-time.png": "no TIME sent: 200 with radar from 2011-02-21",
+  "mrms-expired.png": "a time past MRMS's retention answered 200 with an empty picture"
+ }
+}

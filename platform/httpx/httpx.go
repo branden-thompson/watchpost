@@ -30,6 +30,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/sync/singleflight"
@@ -44,6 +45,8 @@ func isSecretParam(name string) bool {
 	switch strings.ToLower(name) {
 	case "key", "appid", "access_key", "token", "apikey", "api_key", "map_key":
 		return true
+	case "bbox": // not a secret, but where the map is looking (0.18.0 W8.14a, D-47): never in an error's text
+		return true
 	}
 	return false
 }
@@ -56,6 +59,12 @@ type Config struct {
 	MaxRetries int           // retries beyond the first attempt; 0 = none (the zero value is the safe reading — PA-7); the dashboard uses 1, report 3
 	Timeout    time.Duration // per-request; default 30s
 	CacheDir   string        // on-disk cache tier; "" = memory only
+
+	// The radar client's hardening (0.18.0 W8.5, FR-5.7, RK-11, D-55); the
+	// zero values are every other client's behaviour.
+	MaxBodyBytes  int64 // refuse a body past this as it is read, never cached; 0 = the package's 32 MB
+	RefusePrivate bool  // refuse to dial a loopback, private, link-local or unspecified address, after resolution
+	HTTPSOnly     bool  // refuse any address that is not https
 }
 
 // Client is safe for concurrent use.
@@ -90,6 +99,29 @@ const (
 // client (the ICY stream reader, the voice-model downloader — Q5). Each
 // caller may tune the copy it receives.
 func NewTransport() *http.Transport { return newTransport() }
+
+// publicDialer is the shared dialer that refuses, after resolution, any
+// address that is not a public one: the check runs on the address actually
+// dialled, so a name that resolves to 127.0.0.1 is refused (RK-11, D-55).
+func publicDialer() *net.Dialer {
+	return &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second, Resolver: &net.Resolver{PreferGo: true},
+		Control: func(_, address string, _ syscall.RawConn) error { return refusePrivate(address) }}
+}
+
+// refusePrivate is the dial check: an error for a loopback, private,
+// link-local, multicast or unspecified address.
+func refusePrivate(address string) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return err
+	}
+	ip := net.ParseIP(host)
+	if ip == nil || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsInterfaceLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
+		return fmt.Errorf("refused to dial %s: not a public address", host)
+	}
+	return nil
+}
 
 // newTransport builds the shared transport with a pure-Go resolver.
 func newTransport() *http.Transport {
@@ -241,7 +273,11 @@ func New(cfg Config) (*Client, error) {
 	// Lazy token pacing: no background goroutine for pacing (B0 red-team
 	// F2). Each request reserves the next start slot under the mutex and
 	// sleeps outside it.
-	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: newTransport(), CheckRedirect: SameOriginRedirect}, cache: newCache(cfg.CacheDir), stats: newReqStats(), memo: newFailureMemo(),
+	transport := newTransport()
+	if cfg.RefusePrivate {
+		transport.DialContext = publicDialer().DialContext
+	}
+	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: transport, CheckRedirect: SameOriginRedirect}, cache: newCache(cfg.CacheDir), stats: newReqStats(), memo: newFailureMemo(),
 		inflight: [2]chan struct{}{make(chan struct{}, maxInflight), make(chan struct{}, maxInflightPriority)}}, nil
 }
 
@@ -486,6 +522,9 @@ func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byt
 		return nil, nil, err
 	}
 	req := request{rawURL: rawURL, safe: RedactURL(rawURL), host: statHost(rawURL), priority: lane(ctx) == 1, cond: cond}
+	if c.cfg.HTTPSOnly && !strings.HasPrefix(rawURL, "https://") {
+		return nil, nil, fmt.Errorf("refused %s: this client fetches over https only", req.safe)
+	}
 	// The memo is consulted on the normal lane only (plan §2.3, R2-3): the
 	// priority lane always attempts — it is the half-open probe that clears
 	// the memo on success — so alerts and the first view are never blackholed.
@@ -640,12 +679,19 @@ func (c *Client) doAttempt(ctx context.Context, r request) (attemptResult, error
 		res.retryAfter = parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
 		return res, nil
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes+1))
+	limit := int64(maxBodyBytes)
+	if c.cfg.MaxBodyBytes > 0 {
+		limit = c.cfg.MaxBodyBytes
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
 		return res, fmt.Errorf("bad response body from %s: %w", safe, redactErr(err))
 	}
-	if len(body) > maxBodyBytes {
-		return res, fmt.Errorf("response from %s exceeds %d MB — refused", safe, maxBodyBytes>>20)
+	if int64(len(body)) > limit {
+		// Refused AS IT READS, and final: the caller has an error and nothing
+		// reaches the cache, which is written only after a success (FR-5.7).
+		res.status = http.StatusRequestEntityTooLarge
+		return res, &StatusError{URL: safe, Status: http.StatusRequestEntityTooLarge}
 	}
 	res.body, res.hdr = body, resp.Header
 	return res, nil

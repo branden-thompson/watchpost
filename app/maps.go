@@ -93,7 +93,8 @@ func (b *mapBuilder) build(size tuimaps.Size) (*tuimaps.Map, error) {
 		},
 		func() error { return m.CacheRoot(b.cacheDir, mapDiskBytes) },
 		func() error { return m.SetCacheMaxAge(mapMaxAge) },
-		func() error { return m.Source(mapSources[0].address) }, // the window sets nearby from its Setting (W1.11)
+		func() error { return m.SetImageBudget(radarImageBudget) }, // W8.3b: the loop's frames, decoded
+		func() error { return m.Source(mapSources[0].address) },    // the window sets nearby from its Setting (W1.11)
 	} {
 		if err := step(); err != nil {
 			m.Close()
@@ -159,9 +160,15 @@ func mapSourceList() []tty.MapSource {
 	for _, s := range mapSources {
 		out = append(out, tty.MapSource{Name: s.name, Host: hostOf(s.address), Use: "the map's tiles, for the area shown"})
 	}
-	return append(out, tty.MapSource{Name: "National Weather Service", Host: hostOf(zones.DefaultBase),
+	out = append(out, tty.MapSource{Name: "National Weather Service", Host: hostOf(zones.DefaultBase),
 		Use: "the codes of the alert zones on the map, and of the states and marine areas in view (D-66)"})
+	return append(out, radarHosts()...) // W8: the radar's two sources
 }
+
+// radarImageBudget is the memory the library may hold the radar's pictures
+// in (W8.3b, go-tuiMaps D-68): 6 MiB, which holds a two-hour loop of the
+// boxes a view takes.
+const radarImageBudget = 6 << 20
 
 // mapRetention is how long the map's data is kept, and the one stated total
 // (FR-3.5, FR-3.9).

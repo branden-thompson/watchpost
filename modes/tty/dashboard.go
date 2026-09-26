@@ -70,11 +70,17 @@ const recentWindow = 3
 // into a location ref; Commit persists the watchlist and rebuilds the live
 // pipelines with the new watch/recent ref sets (UAT 26).
 type Config struct {
-	Version        string
-	KeyOverrides   term.KeyMap                                   // user [keys] table (validated at build)
-	NewMap         func(size tuimaps.Size) (*tuimaps.Map, error) // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
-	MapFeed        func(ctx context.Context, ask MapAsk) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
-	Maps           string                                        // 0.18.0: the file's words for the map's two Settings (UIPrefs')
+	Version      string
+	KeyOverrides term.KeyMap                                   // user [keys] table (validated at build)
+	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error) // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
+	MapFeed      func(ctx context.Context, ask MapAsk) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
+	// MapRadar is the radar the map draws (W8): the newest frame alone, or
+	// the whole loop, asked off the UI goroutine.
+	MapRadar func(ctx context.Context, ask MapAsk, newestOnly bool) MapRadar
+	// MapRadarSource is the file's word for the lower 48's radar: "iem", or
+	// MRMS, the default (D-83).
+	MapRadarSource string
+	Maps           string // 0.18.0: the file's words for the map's two Settings (UIPrefs')
 	MapDescription string
 	ClearMapData   func() MapCleared // 0.18.0 W3.8: the app empties what the live map cannot reach
 	MapSources     []MapSource       // 0.18.0 W1.12, D-75: what the map contacts and sends, for the Status window (FR-9.4)
@@ -337,6 +343,7 @@ type UIPrefs struct {
 	MapDescription string // "with" (the default), "instead" or "off"
 	MapScale       string // "state" (the default), "county" or "region"
 	MapNearbyKm    int
+	MapRadarSource string          // "iem", or MRMS by default (D-83)
 	MapLayers      map[string]bool // the layers switched from their defaults
 	MapDetail      map[string]bool // the map's detail switched from its defaults (D-65)
 	MapDetailLevel string          // "essential", "weather" (the default), "standard" or "full" (D-67)
@@ -548,6 +555,7 @@ type Dashboard struct {
 	mapCost         MapCost
 	mapDetailChoice string         // the map's detail choices as one comparable word (D-65)
 	mapDetailLevel  tuimaps.Detail // how much of the basemap is drawn (D-67, go-tuiMaps D-82)
+	mapRadarIEM     bool           // IEM for the lower 48's radar, else MRMS (D-83)
 	mapKeys         term.KeyMap
 	modal           modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode         string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
@@ -817,7 +825,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -997,8 +1005,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case SnapshotMsg:
 		m, cmd := d.applySnapshot(v)
 		if next, ok := m.(Dashboard); ok && next.modal == modalMap {
-			next = next.requestFeed() // 0.18.0: new data, so the map's alerts are asked again (D-45's data row)
-			return next, tea.Batch(cmd, next.mapFeedCmd())
+			next = next.requestFeed().requestRadar() // 0.18.0: new data, so the map's alerts and radar are asked again (D-45's data row)
+			return next, tea.Batch(cmd, next.mapFeedCmd(), next.mapRadarCmd(true))
 		}
 		return m, cmd
 	case RecentSnapshotMsg:
@@ -1030,6 +1038,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyMapCleared(v), nil // 0.18.0 W3.8: Settings says what went
 	case mapFeedMsg:
 		return d.applyMapFeed(v) // 0.18.0: the alerts, set and drawn in Update (D-41)
+	case mapRadarMsg:
+		return d.applyMapRadar(v) // W8: the radar, set and drawn in Update (D-41)
 	case mapWorkedMsg:
 		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
 	case mapTickMsg:

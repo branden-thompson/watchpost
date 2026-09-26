@@ -35,14 +35,19 @@ const maxLaneRows
 const maxSeenIDs
 const maxUnattendedInstalls
 const metroCapKm
+const mrmsNote
 const narrateBreaking
 const narrateRead
+const noRadarNote
 const numMainTrackStages
 const numNarrationClasses
 const publishCoalesce
 const pumpBacklog
 const quakeKeeps
 const quakeLayerKey
+const radarFrameBytes
+const radarImageBudget
+const radarStep
 const radioDebugEnv
 const radioDebugMax
 const radioDebugNameMax
@@ -157,6 +162,7 @@ func (*livePipelines).mapFeed
 func (*livePipelines).mapFeedWith
 func (*livePipelines).mapInputs
 func (*livePipelines).mapInputsFetching
+func (*livePipelines).mapRadar
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
@@ -243,6 +249,8 @@ func (*pump).runLane
 func (*pump).send
 func (*pump).stop
 func (*pump).work
+func (*radarSources).other
+func (*radarSources).sourceFor
 func (*radioDeck).Default
 func (*radioDeck).Discovered
 func (*radioDeck).Installed
@@ -457,6 +465,7 @@ func dropSuperseded
 func dumpHint
 func dumpHint
 func durationUnits
+func echoes
 func envWatchlistDwell
 func eventNarration
 func eventScript
@@ -477,6 +486,7 @@ func init
 func init
 func init
 func init
+func init
 func injectedEvents
 func isLookupFailure
 func itemsOf
@@ -492,6 +502,7 @@ func loadGeodata
 func loadSeen
 func loadUserThemes
 func lockedCopy
+func loopSlots
 func macVoices
 func mainTrack
 func mapAreaNamer
@@ -517,6 +528,7 @@ func newMapBuilder
 func newMastercontrol
 func newProductionMapBuilder
 func newPump
+func newRadarSources
 func newRadioDeck
 func newReleaseWatch
 func newResolver
@@ -543,6 +555,9 @@ func publishArea
 func quakeOverlays
 func quakeRadiusKm
 func quakesIn
+func radarHosts
+func radarLayerCost
+func radarLoop
 func radioDebugLog
 func radioDebugName
 func radioDebugOn
@@ -690,6 +705,7 @@ type pipeline
 type publishView
 type publisher
 type pump
+type radarSources
 type radioDeck
 type readHooks
 type readSession
@@ -701,6 +717,7 @@ type scenario
 type schedule
 type seenStore
 type severeDeck
+type slot
 type speaker
 type stationArea
 type tickerDeck

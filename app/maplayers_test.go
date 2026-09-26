@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/geo"
@@ -32,8 +33,8 @@ func TestAFakeLayerPlugsInWithoutEditingTheOthers(t *testing.T) {
 	for _, l := range cfg.MapLayers {
 		keys = append(keys, l.Key)
 	}
-	if strings.Join(keys, ",") != "alert,quake,fake" {
-		t.Fatalf("the window is handed layers %v, want alert, quake, then fake", keys)
+	if strings.Join(keys, ",") != "alert,quake,radar,fake" {
+		t.Fatalf("the window is handed layers %v, want alert, quake, radar, then fake", keys)
 	}
 	all := func(string) bool { return true }
 	with := cfg.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, all)
@@ -59,13 +60,18 @@ func TestALayerKeyIsRegisteredOnce(t *testing.T) {
 // TestEveryRegisteredSourceIsOnTheClosedList is FR-3.8 against the registry:
 // the sources that registered are exactly the closed list's hosts.
 func TestEveryRegisteredSourceIsOnTheClosedList(t *testing.T) {
-	closed := map[string]bool{"tiles.openfreemap.org": true} // FR-3.8; IEM and MRMS join with W8
+	closed := map[string]bool{"tiles.openfreemap.org": true, "mesonet.agron.iastate.edu": true, "opengeo.ncep.noaa.gov": true} // FR-3.8's table
 	if len(mapSources) == 0 {
 		t.Fatal("no source registered")
 	}
 	for _, s := range mapSources {
 		if !closed[hostOf(s.address)] {
 			t.Errorf("%s (%s) registered and is not on the closed list", s.name, s.address)
+		}
+	}
+	for name, base := range radar.Hosts() { // W8: the radar's sources, held to the same table
+		if !closed[hostOf(base)] || !strings.HasPrefix(base, "https://") {
+			t.Errorf("%s (%s) is not on the closed list, over https", name, base)
 		}
 	}
 }

@@ -294,6 +294,9 @@ func aaPairs() []aaPair {
 		// grounds sit in the Group bands' own family, which is the point of
 		// deriving them that way.
 		{GroupText, rails},
+		// THE MAP'S RADAR SOURCE CHIP (0.18.0 D-83): its own white, so no other
+		// surface's text is lifted to suit it.
+		{MapRadarChipFG, []Token{MapRadarMRMSBG, MapRadarIEMBG}},
 		// THE CONSOLE'S CARDS CARRY THEIR OWN TONE so this lift reaches nothing
 		// else: registering TextBase here moved it in two themes and took
 		// Observer's tables with it.

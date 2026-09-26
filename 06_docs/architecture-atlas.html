@@ -844,16 +844,18 @@ code{font-family:var(--mono);font-size:.92em}
     MV[&#34;mapinview.go · the alerts in view (D-66; no scope to choose, D-76)\nthe states and marine areas the view touches (a 5x5 sample)\none request, remembered 2 minutes; kept to the view\nthe estimate reads the memory, never fetches&#34;]
     MS[&#34;maps.go · mapSourceList (D-75)\neach host the map contacts, and what it is sent&#34;]
     MQ[&#34;mapquakes.go · the earthquakes (D-80)\nthe ticker&#39;s USGS significant quakes in view\ncircles sized by magnitude; fetches nothing&#34;]
+    MR[&#34;mapradar.go · the radar (W8)\nMRMS by default, IEM for the lower 48 if chosen (D-83); none in American Samoa\n24 five-minute slots over two hours, a missing one a stated gap\nnewest first; an all-empty loop checked against the other source (D-84)&#34;]
   end
   subgraph domains[&#34;domains/&#34;]
     ZS[&#34;nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days&#34;]
+    RD[&#34;radar · IEM, MRMS (W8.3)\nfixed boxes, never the view (D-47); only advertised times, always sent (D-84)\nits own client: memory only, 1 MiB cap, public addresses, https&#34;]
     WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)&#34;]
   end
   subgraph tty[&#34;modes/tty — the Observer&#34;]
     MW[&#34;map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\n1-6 snap to a region; at an edge a chip names the neighbour, the next press crosses (D-77, D-81)\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms)&#34;]
     MD[&#34;map_describe.go · the description follows the view (D-74, D-78)\nthe place - Currently: … only while the place is in view; else the view&#39;s name\n‹event› in effect for this area · for nearby ‹areas› · for ‹areas›, until ‹time›\nevery alert in view, most severe first; the box ends &#39;And N more in view.&#39;&#34;]
     MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · 1-6 region · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend&#34;]
-    BX[&#34;map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: alert areas and [w]&#39;s categories, earthquakes, the map&#39;s detail (D-65, D-80)\ndetail: the level is a preset, the switches the truth; the library at Full (D-79)\nthe title names the view by scale (D-64)&#34;]
+    BX[&#34;map_boxes.go · over the map (UAT-1)\nthe radar&#39;s source chip, row 2 right: MRMS green, IEM orange (D-83)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: alert areas and [w]&#39;s categories, earthquakes, the map&#39;s detail (D-65, D-80)\ndetail: the level is a preset, the switches the truth; the library at Full (D-79)\nthe title names the view by scale (D-64)&#34;]
     LG[&#34;the legend (D-44)\na box over the map&#39;s corner, from Legend()\nonly the severities drawn, with their digits&#34;]
     ST2[&#34;Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby (no alert scope, D-76)\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail (D-67)\na row per detail layer, ← Enabled → (U1-35); Lakes, never the sea (U1-39) · Map data: clear · the retention&#34;]
     SW[&#34;status.go · the Status window\nMAP - contacted only while a map is open (D-75)\neach source: its host and what it is sent&#34;]
@@ -867,6 +869,8 @@ code{font-family:var(--mono);font-size:.92em}
   MF -- &#34;Config.MapFeed(ask: snap, place, view)\nan unchanged overlay is not handed in again (U1-28)&#34; --&gt; MW
   MF --&gt; MG --&gt; ZS
   MF -- &#34;ask.View&#34; --&gt; MV --&gt; WS
+  MR --&gt; RD
+  MR -- &#34;Config.MapRadar(ask, newestOnly)\nits own command: the alerts never wait (W8.12)&#34; --&gt; MW
   SD[&#34;severe.go · severeDeck.feedCopy\nthe ticker&#39;s feed&#34;] --&gt; MQ --&gt; MF
   MF -- &#34;alert/‹category›/‹id›: [w]&#39;s Classify; forecasts not drawn (D-80)&#34; --&gt; MW
   MS -- &#34;Config.MapSources&#34; --&gt; SW

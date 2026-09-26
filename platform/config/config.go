@@ -267,9 +267,12 @@ type Config struct {
 	// how close an alert's edge must be to be called near, and the layers
 	// switched from their defaults, by the registry's key. Empty means the
 	// default: the state scale, 15 km, every layer as its builders chose.
-	MapScale    string          `toml:"map_scale,omitempty"`     // "region" | "state" (default) | "county"
-	MapNearbyKm int             `toml:"map_nearby_km,omitempty"` // 5 | 10 | 15 (default) | 25 | 50
-	MapLayers   map[string]bool `toml:"map_layers,omitempty"`    // layer key -> on
+	MapScale    string `toml:"map_scale,omitempty"`     // "region" | "state" (default) | "county"
+	MapNearbyKm int    `toml:"map_nearby_km,omitempty"` // 5 | 10 | 15 (default) | 25 | 50
+	// MapRadarSource is the lower 48's radar (0.18.0 D-83): "iem", or MRMS,
+	// the default, when empty. Outside the lower 48 MRMS is the only source.
+	MapRadarSource string          `toml:"map_radar_source,omitempty"`
+	MapLayers      map[string]bool `toml:"map_layers,omitempty"` // layer key -> on
 	// MapAlertScope is RETIRED (0.18.0 D-76): the map draws every alert in
 	// view, so there is no scope to choose. It is still read, so a file that
 	// has it is not reported as holding an unknown key, and it is written

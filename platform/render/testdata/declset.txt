@@ -52,6 +52,9 @@ const KeyChipMuted
 const LightThemeName
 const ListFocus
 const ListPointer
+const MapRadarChipFG
+const MapRadarIEMBG
+const MapRadarMRMSBG
 const ModalBGDark
 const ModalBGLight
 const ModalFG

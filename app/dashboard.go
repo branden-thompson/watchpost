@@ -85,6 +85,9 @@ func RunDashboard(version string, opt Options) error {
 		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
 		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas} // 0.18.0 D-66
+	if rs, err := newRadarSources(UserAgent); err == nil {
+		lp.radar = rs // W8: a radar client that cannot be built is no radar, and the map says none answered
+	}
 	lp.attachDiagnostics(ctx, start)
 	lp.maps = newProductionMapBuilder(version, lp.seedOnFirstMap(ctx)) // 0.18.0 FR-3.2: the zones are seeded by the first map, not here
 	idx, resolver, resolverErr := loadGeodata(client)
@@ -372,6 +375,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		Stats:           lp.ttyStats,        // [S] REQUESTS / DUMPS rows (quality pass Q0)
 		NewMap:          lp.newMap(),        // 0.18.0: the map window builds it on the first g (FR-3.2)
 		MapFeed:         lp.mapFeed,         // 0.18.0: the alerts it draws (FR-4.1)
+		MapRadar:        lp.mapRadar,        // 0.18.0 W8: the radar it draws
 		ClearMapData:    lp.clearMapData,    // 0.18.0 W3.8: Settings' Clear map data
 		MapSources:      mapSourceList(),    // 0.18.0 W1.12, D-75: what the map contacts, for the Status window (FR-9.4)
 		MapRetention:    mapRetention(),     // 0.18.0 W3.8 (FR-3.9)
@@ -401,6 +405,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapDescription:  cfg.MapDescription,            // 0.18.0 W1.10
 		MapScale:        cfg.MapScale,                  // 0.18.0 W1.11, W4.3
 		MapNearbyKm:     cfg.MapNearbyKm,               // 0.18.0 W1.11, W9.2
+		MapRadarSource:  cfg.MapRadarSource,            // D-83: the lower 48's radar
 		MapLayerChoice:  cfg.MapLayers,                 // 0.18.0 W1.11
 		MapLayers:       windowLayers(),                // 0.18.0 W1.13: the registry's layers
 		MapCost:         lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate
@@ -688,8 +693,9 @@ type livePipelines struct {
 	// this is only the reporting half, for [S].
 	unknownKeys []string
 
-	zoneShapes *zones.Store // the outlines an alert's zones name (0.17.0)
-	maps       *mapBuilder  // 0.18.0: builds the window's maps; nil builds none
+	zoneShapes *zones.Store  // the outlines an alert's zones name (0.17.0)
+	radar      *radarSources // 0.18.0 W8: the map's radar sources, over their own hardened client
+	maps       *mapBuilder   // 0.18.0: builds the window's maps; nil builds none
 	p          *tea.Program
 	provider   snapshot.Provider
 	marine     []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)

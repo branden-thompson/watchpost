@@ -90,7 +90,8 @@ func setUIHook(p tty.UIPrefs) error {
 		cfg.Units, cfg.Clock = p.Units, p.Clock
 		cfg.Maps, cfg.MapDescription = p.Maps, p.MapDescription // 0.18.0: the map's Settings, written with the group
 		cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayers = p.MapScale, p.MapNearbyKm, p.MapLayers
-		cfg.MapAlertScope = "" // retired (D-76): the next save lets the key go
+		cfg.MapRadarSource = p.MapRadarSource // D-83
+		cfg.MapAlertScope = ""                // retired (D-76): the next save lets the key go
 		cfg.MapDetail, cfg.MapDetailLevel = p.MapDetail, p.MapDetailLevel
 		return nil
 	})

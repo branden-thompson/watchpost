@@ -394,7 +394,7 @@ func observerScoped(msg tea.Msg) bool {
 	// never settle, which is D-128's defect with a timer in front of it.
 	case resolvedMsg, committedMsg, castSavedMsg, uiSavedMsg,
 		locatePauseMsg, locateVerdictMsg,
-		mapWorkedMsg, mapFeedMsg, mapClearedMsg, mapTickMsg, mapViewSettledMsg: // 0.18.0: what the map's Work landed, its clock and its settling are owed to Observer's map window
+		mapWorkedMsg, mapFeedMsg, mapRadarMsg, mapClearedMsg, mapTickMsg, mapViewSettledMsg: // 0.18.0: what the map's Work landed, its clock and its settling are owed to Observer's map window
 		return true
 	}
 	return false

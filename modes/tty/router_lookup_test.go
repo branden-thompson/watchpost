@@ -190,6 +190,7 @@ func typeOfMsg(t *testing.T, name string) reflect.Type {
 		"mapTickMsg":        mapTickMsg{},        // 0.18.0 W2.2: the map's clock is owed to its window, not a cadence
 		"mapViewSettledMsg": mapViewSettledMsg{}, // 0.18.0 D-66: the view's settling asks its window's alerts
 		"mapFeedMsg":        mapFeedMsg{},
+		"mapRadarMsg":       mapRadarMsg{},
 		"mapClearedMsg":     mapClearedMsg{},
 	}
 	v, ok := known[name]

@@ -133,8 +133,14 @@ const (
 	TickerAdvisoryBG  Token = "ticker.advisory.bg"  // Advisories — burnt orange, away from the Watch gold beside it
 	TickerEmergencyBG Token = "ticker.emergency.bg" // Emergency Orders — THE RED (MVS-D-62)
 	TickerStatementBG Token = "ticker.statement.bg" // Spec. Statements — teal, the one lane with no warm neighbour
-	TickerFG          Token = "ticker.fg"
-	TickerMutedFG     Token = "ticker.muted.fg"
+
+	// The map's radar source chip (0.18.0 D-83): the source's name in white
+	// bold on its own ground - MRMS green, IEM orange - in the map's upper right.
+	MapRadarChipFG Token = "map.radar.chip.fg"
+	MapRadarMRMSBG Token = "map.radar.mrms.bg"
+	MapRadarIEMBG  Token = "map.radar.iem.bg"
+	TickerFG       Token = "ticker.fg"
+	TickerMutedFG  Token = "ticker.muted.fg"
 
 	// The severe-events window's category tints (0.13.0, SAM-D-7): fixed,
 	// pre-darkened hues keyed to the ticker lanes — Red disasters, Orange
@@ -339,8 +345,11 @@ func defaultTheme() map[Token]string {
 		TickerWatchBG:    "48;2;150;125;20", // dark gold
 		TickerMarineBG:   "48;2;20;70;150",  // deep blue (Tropical Cyclones — HUM LEAD colour pass)
 
-		TickerAdvisoryBG:  "48;2;129;60;14",  // #813C0E
-		TickerStatementBG: "48;2;25;105;102", // #196966
+		TickerAdvisoryBG:  "48;2;129;60;14",     // #813C0E
+		TickerStatementBG: "48;2;25;105;102",    // #196966
+		MapRadarChipFG:    "1;38;2;255;255;255", // white, bold (D-83)
+		MapRadarMRMSBG:    "48;2;28;110;52",     // #1C6E34, green: 6.2:1 under white
+		MapRadarIEMBG:     "48;2;168;72;0",      // #A84800, orange: 5.9:1 under white
 		// PLACEHOLDER, pending the ruling: a new colour, or THE RED with every
 		// other lane shifted down. Magenta only so it is unmistakably not final.
 		TickerEmergencyBG: "48;2;150;20;20",     // #961414 — Emergency Orders: THE red

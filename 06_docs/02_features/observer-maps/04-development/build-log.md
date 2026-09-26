@@ -875,3 +875,63 @@ zoom in for a better experience." It is the same under the map and beside the La
 - **A chip that crossed whichever way was pressed next.** `TestAChipCrossesOnlyTheWayItPoints` covers it:
   Samoa's east chip, then its west edge shows Guam's chip rather than crossing.
 - **The warning's sentence not bold.** The thresholds test now turns styling on, so bold is visible to it.
+
+## Batch 19 — W8 opens: radar from IEM and MRMS (2026-09-26)
+
+**Rulings before code:** D-83 (MRMS by default, IEM for the lower 48 as an option, the source's chip)
+and D-84 (an empty frame at an advertised time is a clear sky, not a missing one; the traps are shut at
+the request; an all-empty loop is checked against the other source).
+
+**W8.2, the fixtures, recorded before anything used them** (`domains/radar/testdata/`, manifest). IEM's time
+list and a frame; an off-grid time (empty, 0 painted pixels); no time sent (2011's radar, 13,884 painted
+pixels); MRMS's capabilities and a frame; a time past retention (empty). Every wave-1 trap reproduced.
+
+**W8.3 and W8.3a, the sources and the boxes** (`domains/radar`).
+- IEM covers the lower 48 alone (its AK/HI/PR/GU composites list no scans).
+- MRMS covers the lower 48, Alaska, Hawaii, the Caribbean and Guam; neither source covers American Samoa.
+- A source is asked for fixed boxes, never the view (D-47): each region's one box when the view is wide,
+  and the lower 48's 4×2 grid boxes a closer view meets.
+- **Found live, not in any document:** the library refuses an image over 250,000 pixels (its image cap,
+  go-tuiMaps D-85/D-36; a host may lower it, never raise it). The boxes were first sized to the
+  1,048,576-pixel header limit and every frame was refused. The boxes are resized and the test holds the
+  true cap.
+
+**W8.4 (FR-5.3 as D-84 amends it).** `Frame` refuses a time the source did not advertise, before anything
+is sent; a time is always sent. `Check` reads the header first, refusing a picture past the cap undecoded,
+and reports whether a frame paints.
+
+**W8.5, W8.14, W8.14a, the radar client.** Its own `httpx` client: no cache directory, a 1 MiB body cap
+enforced as it reads and never cached, a dial check that refuses loopback, private, link-local and
+unspecified addresses after resolution, and https only. `bbox` is redacted from every error.
+**Deviation, recorded:** the plan named per-request options (`BodyCap`, `MemoryOnly`). A dedicated client
+is stronger, since no radar request can reach the disk tier at all, and simpler.
+
+**W8.6, W8.7, W8.15, W8.15a, the loop** (`app/mapradar.go`).
+- 24 five-minute slots over two hours: IEM's grid fills each exactly; MRMS's two-minute cadence fills each
+  with its newest time within the step. A slot with none is a stated gap.
+- Frames are fetched newest first; a failed or refused frame is a gap.
+- A refresh fetches only new frames: held ones are answered from the client's memory.
+- The estimate counts the boxes' frames; the Status window names both hosts.
+- MRMS's approximate-colours note shows under the map.
+
+**W8.8, W8.9a, W8.10, W8.12, the window** (`modes/tty/map_radar.go`).
+- Radar is its own command, asked newest-only then whole, so the alerts never wait for it.
+- The source's chip is on the second row's right. The library's time owns the first row (U1-26), so the
+  legend moves down a row while the chip shows.
+- The status line leads with the loop: the moment shown, the frame, stopped or playing, and the newest
+  frame's age, stale past ten minutes.
+- The playback keys are D-61's: space, `,` `.` and `n`, listed in Help. The map opens stopped on the
+  newest frame at the slow rate.
+- Switching radar off takes it away. The Maps tab has "Radar - MRMS / IEM (lower 48)".
+
+**Live, end to end:** MRMS over the lower 48, IEM over southern California and MRMS over Hawaii, each a
+24-frame loop, newest one to two minutes old, the whole loop in 6 to 8 seconds.
+
+**Not in this batch:** the motion Setting's off and normal (W8.9, slow is built); W8.11's goldens over
+specimen 29; M5's and M6's timings (W8.12, W8.13), measured at SHIP; the legend's radar classes (W9.10).
+
+**Mutation verdicts** (targeted, 27). 26 were caught in the end: three first-round survivors were answered
+with stronger tests (a close view in Alaska or Hawaii takes that region's box and never the grid; a
+southern view takes southern boxes alone; the source toggles back as well as forth). One is **equivalent**
+and says so here: dropping the frame fetch's error check in `radarLoop` changes nothing, because
+`radar.Check` refuses a missing picture on the next line.

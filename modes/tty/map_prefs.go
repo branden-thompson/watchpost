@@ -226,6 +226,29 @@ func (d Dashboard) cycleNearby(forward bool) Dashboard {
 	return d.uiTouched()
 }
 
+// toggleRadarSource switches the lower 48's radar between MRMS and IEM (D-83).
+func (d Dashboard) toggleRadarSource() Dashboard {
+	d.mapRadarIEM = !d.mapRadarIEM
+	return d.requestRadar().uiTouched()
+}
+
+// radarSourceKey is the file's word: "iem", or empty for MRMS, the default.
+func radarSourceKey(iem bool) string {
+	if iem {
+		return "iem"
+	}
+	return ""
+}
+
+// radarSourceLabel is the row's words: MRMS by default, or IEM, which covers
+// the lower 48 alone.
+func (d Dashboard) radarSourceLabel() string {
+	if d.mapRadarIEM {
+		return "IEM (lower 48)"
+	}
+	return "MRMS"
+}
+
 // nearbyLabel is the distance in the units the description speaks.
 func (d Dashboard) nearbyLabel() string {
 	km := strconv.Itoa(d.mapNearbyKm) + " km"
@@ -335,7 +358,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -345,6 +368,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.cycleMapScale(forward), true
 	case rowMapNearby:
 		return d.cycleNearby(forward), true
+	case rowMapRadarSource:
+		return d.toggleRadarSource(), true
 	case rowMapDetailLevel:
 		return d.cycleDetailLevel(forward).uiTouched(), true
 	case rowMapLayers:
@@ -360,6 +385,11 @@ type MapAsk struct {
 	Snap  *snapshot.Snapshot
 	Place *snapshot.Location
 	View  MapView // the map in view: its areas are asked for their alerts (D-66)
+	// Region is the map region the view is bound to (D-28), whose radar the
+	// radar is; RadarIEM is the listener's choice of IEM for the lower 48
+	// (D-83; MRMS otherwise).
+	Region   string
+	RadarIEM bool
 }
 
 // mapAsk is the ask as the window stands: the watchlist's places, and the
@@ -378,7 +408,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		joined.Locations = append(append([]snapshot.Location(nil), joined.Locations...), *place)
 		snap = &joined
 	}
-	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize())}
+	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

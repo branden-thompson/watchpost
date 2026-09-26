@@ -81,11 +81,17 @@ type mapPane struct {
 	notes     []string                   // the feed's notes, printed under the map
 	inMissing map[string]bool            // the feed's alerts whose missing zones hold the place
 	inView    []snapshot.Alert           // the feed's alerts the station does not hold, which the description names
-	report    tuimaps.PlaceReport        // the library's answers for the selected place, as last drawn
-	legend    []tuimaps.LegendEntry      // what the map draws now, for the legend (W1.17)
-	legendOn  bool                       // the legend is open over the map (D-44)
-	drawnSev  map[string]bool            // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
-	feedGen   uint64                     // the feed last asked for; an older answer is dropped
+
+	// The radar (W8): its request generation, the loops handed in by id, the
+	// source for the chip and its note, and the loop's line as last drawn.
+	radarGen                          uint64
+	radarGiven                        map[string]tuimaps.Overlay
+	radarSource, radarNote, radarLine string
+	report                            tuimaps.PlaceReport   // the library's answers for the selected place, as last drawn
+	legend                            []tuimaps.LegendEntry // what the map draws now, for the legend (W1.17)
+	legendOn                          bool                  // the legend is open over the map (D-44)
+	drawnSev                          map[string]bool       // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
+	feedGen                           uint64                // the feed last asked for; an older answer is dropped
 }
 
 // mapView is one drawn frame's view: where, how close, and how big.
@@ -156,8 +162,9 @@ func (d Dashboard) toggleMap() Dashboard {
 	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
 	d.mapPane.call("Zoom", func() { _ = m.Zoom(scale) })        // every open is at the chosen scale (W4.3); the bound holds it
 	d.mapPane.call("SetNearby", func() { _ = m.SetNearby(km) }) // the description's "near" as chosen (W9.2)
-	d = d.applyDetail().refreshMapCost().followSelection().requestFeed().renderMap()
-	return d.withCmd(tea.Batch(d.mapWorkCmd(), d.mapFeedCmd()))
+	d = d.applyDetail().applyPlayback().refreshMapCost().followSelection().requestFeed().renderMap()
+	d = d.requestRadar()
+	return d.withCmd(tea.Batch(d.mapWorkCmd(), d.mapFeedCmd(), d.mapRadarCmd(true)))
 }
 
 // boundMap holds the map inside its region (W4, W9.1: the library's bound
@@ -266,6 +273,7 @@ func (d Dashboard) renderMap() Dashboard {
 		d.mapPane.offline = false
 	}
 	d.mapPane.title = d.mapTitleAt(d.mapBodySize())
+	d.mapPane.radarLine = d.radarStatus() // read from the library here, in Update; the frame only prints it (D-41)
 	d.mapPane.gen++
 	d.mapPane.changed, d.mapPane.ticks = frame.Changed, frame.FrameTicks
 	return d
@@ -362,7 +370,7 @@ func (d Dashboard) mapBodyLines() []string {
 		return out
 	}
 	size := d.mapBodySize()
-	out = append(out, d.withEdgeChip(d.withLegend(d.withControls(d.withOverlays(d.withAreaAlerts(d.mapPane.lines, size)), size)), size)...)
+	out = append(out, d.withEdgeChip(d.withRadarChip(d.withLegend(d.withControls(d.withOverlays(d.withAreaAlerts(d.mapPane.lines, size)), size)), size), size)...)
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
 	}
@@ -396,6 +404,9 @@ func (d Dashboard) noteLines(width int) []string {
 	for _, n := range d.mapPane.notes {
 		out = append(out, render.WrapText(n, width)...)
 	}
+	if d.mapPane.radarSource != "" && d.mapPane.radarNote != "" && d.layerOn(RadarLayer) {
+		out = append(out, render.WrapText(d.mapPane.radarNote, width)...) // W8.15a: MRMS's approximate colours; D-84's missing data
+	}
 	out = append(out, costWarningLines(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words
 	return out
 }
@@ -404,6 +415,9 @@ func (d Dashboard) noteLines(width int) []string {
 // the window's boxes on a line of their own.
 func (d Dashboard) mapStatusLine() string {
 	status := d.mapStatusText()
+	if r := d.mapPane.radarLine; r != "" { // W8.8: the loop's moment and the newest frame's age, always in sight - so first
+		status = strings.TrimSuffix(r+" · "+status, " · ")
+	}
 	var chips []string
 	for _, c := range []struct {
 		act  term.Action
@@ -463,7 +477,8 @@ var mapRegionShort = []string{"US", "Alaska", "Hawaii", "Caribbean", "Samoa", "G
 var mapRegionLabels = []string{"Continental US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam & N. Marianas"}
 
 // mapActions is the map window's actions in the order Help lists them.
-var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapOverlays, actMapLegend}, mapRegionActs...)
+var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapOverlays, actMapLegend,
+	actMapPlay, actMapBack, actMapOn, actMapNewest}, mapRegionActs...)
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
 func defaultMapKeyMap() term.KeyMap {
@@ -478,9 +493,13 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapZoomOut:    {Keys: []string{"-"}, Help: "Zoom Out"},
 		actMapScrollUp:   {Keys: []string{"pgup"}, Help: "Scroll Up"},
 		actMapScrollDown: {Keys: []string{"pgdown"}, Help: "Scroll Down"},
-		actMapLegend:     {Keys: []string{"L"}, Help: "Legend"},      // D-44: shift+L, from the [ L ] Legend chip
-		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"}, // D-63: over the upper left, as the legend is the upper right
-		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},    // D-65: the weather layers and the map's detail
+		actMapLegend:     {Keys: []string{"L"}, Help: "Legend"},                // D-44: shift+L, from the [ L ] Legend chip
+		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"},           // D-63: over the upper left, as the legend is the upper right
+		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},              // D-65: the weather layers and the map's detail
+		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop Radar"}, // D-61: the playback keys
+		actMapBack:       {Keys: []string{","}, Help: "Radar Frame Back"},
+		actMapOn:         {Keys: []string{"."}, Help: "Radar Frame On"},
+		actMapNewest:     {Keys: []string{"n"}, Help: "Radar Now"},
 	}
 	for i, act := range mapRegionActs { // D-77: 1 to 6, a region each
 		km[act] = term.Binding{Keys: []string{string(rune('1' + i))}, Help: "Region " + string(rune('1'+i)) + ": " + mapRegionLabels[i]}
@@ -511,7 +530,8 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 			nd = nd.renderMap()
 			save := nd.uiApplyCmd()
 			nd.setup.uiDirty = false
-			return nd, tea.Batch(save, nd.mapWorkCmd(), nd.mapFeedCmd()), true
+			nd = nd.requestRadar()
+			return nd, tea.Batch(save, nd.mapWorkCmd(), nd.mapFeedCmd(), nd.mapRadarCmd(true)), true
 		}
 	}
 	if !bound {
@@ -537,6 +557,9 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		return d, nil, false
 	}
 	d = d.flashMapKey(act) // U1-11: the controls' chip blinks
+	if nd, ok := d.handlePlayback(act); ok {
+		return nd, nd.mapWorkCmd(), true
+	}
 	size, m := d.mapBodySize(), d.mapPane.m
 	stepX, stepY := max(size.Cols/4, 1), max(size.Rows/4, 1) // a quarter of the view a press
 	// ANY KEY TAKES THE EDGE'S CHIP AWAY (D-81); a press the same way again
@@ -724,6 +747,7 @@ func mapHelpRows(keys term.KeyMap) []mapHelpRow {
 		{join(actMapZoomIn, actMapZoomOut), "Zoom In / Out"},
 		{join(actMapScrollUp, actMapScrollDown), "Scroll"},
 		{join(actMapAlerts, actMapOverlays, actMapLegend), "Area Alerts / Overlays / Legend"},
+		{join(actMapPlay, actMapBack, actMapOn, actMapNewest), "Radar: Play / Back / On / Now"},
 	}
 	// D-77: the region keys in two rows of three, each number's region named
 	// in order - six rows pushed Help past its window.
@@ -750,7 +774,11 @@ func (d Dashboard) withLegend(lines []string) []string {
 	// SPLICED, ONE ROW DOWN: the library writes the stale word and the frame
 	// time along the top row's right end, and the splice keeps the map's
 	// colours on either side (UAT-1 U1-19).
-	return spliceBox(lines, d.legendBox(), 1, max(render.Width(lines[0])-legendWidth, 0))
+	row := 1
+	if d.radarChipText() != "" {
+		row = 2 // the radar's chip has the row under the library's time (D-83)
+	}
+	return spliceBox(lines, d.legendBox(), row, max(render.Width(lines[0])-legendWidth, 0))
 }
 
 // legendBox is the legend's lines: a key for everything on the map that needs
@@ -821,6 +849,6 @@ func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
 	if d.modal != modalMap || v.gen != d.mapPane.viewGen {
 		return d, nil
 	}
-	d = d.requestFeed()
-	return d, d.mapFeedCmd()
+	d = d.requestFeed().requestRadar()
+	return d, tea.Batch(d.mapFeedCmd(), d.mapRadarCmd(true)) // the view's alerts, and its radar (W8)
 }
