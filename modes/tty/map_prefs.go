@@ -286,17 +286,13 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 	case rowMapNearby:
 		return d.cycleNearby(forward), true
 	case rowMapScope:
-		return d.cycleScope(), true
+		return d.cycleScope(forward), true
 	case rowMapDetailLevel:
 		return d.cycleDetailLevel(forward).uiTouched(), true
 	case rowMapLayers:
 		return d.stepLayer(forward), true
-	case rowMapDetail:
-		n := len(mapDetailLayers())
-		d.setup.detailAt = (d.setup.detailAt + map[bool]int{true: 1, false: n - 1}[forward]) % n
-		return d.settled(), true
 	}
-	return d, false
+	return d.toggleDetailRow(d.setup.focus)
 }
 
 // AlertScope is which alerts the map draws (FR-4.3, D-23): the station's own
@@ -305,38 +301,61 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 type AlertScope int
 
 const (
-	ScopeStation  AlertScope = iota // the default: the station's own places' alerts
+	ScopeStation  AlertScope = iota // the station's own places' alerts
 	ScopeNational                   // and the national severe events in the region
+	ScopeInView                     // the default (D-66): every alert of the areas in view
 )
 
 // Key is the word the file keeps.
 func (s AlertScope) Key() string {
-	if s == ScopeNational {
+	switch s {
+	case ScopeNational:
 		return "national"
+	case ScopeStation:
+		return "station"
 	}
-	return "station"
+	return "view"
 }
 
 // Label is the picker's words.
 func (s AlertScope) Label() string {
-	if s == ScopeNational {
-		return "Plus national severe events"
+	switch s {
+	case ScopeNational:
+		return "Add regional severe"
+	case ScopeStation:
+		return "Station's places"
 	}
-	return "This station's places"
+	return "Alerts in view"
 }
 
-// alertScopeByKey reads the file's word; anything else is the default.
+// alertScopeByKey reads the file's word; anything else - an empty file
+// included - is alerts in view, the default (D-66).
 func alertScopeByKey(key string) AlertScope {
-	if key == "national" {
+	switch key {
+	case "national":
 		return ScopeNational
+	case "station":
+		return ScopeStation
 	}
-	return ScopeStation
+	return ScopeInView
 }
 
-// cycleScope moves the scope's picker - two states, so either arrow is the
-// other one - and asks the estimate again: the scope is what it most depends on.
-func (d Dashboard) cycleScope() Dashboard {
-	d.mapScope = 1 - d.mapScope
+// cycleScope moves the scope's picker round the three - alerts in view, the
+// station's places, national severe - and asks the estimate again: the scope
+// is what it most depends on.
+func (d Dashboard) cycleScope(forward bool) Dashboard {
+	order := []AlertScope{ScopeInView, ScopeStation, ScopeNational}
+	at := 0
+	for i, s := range order {
+		if s == d.mapScope {
+			at = i
+		}
+	}
+	step := 1
+	if !forward {
+		step = len(order) - 1
+	}
+	d.mapScope = order[(at+step)%len(order)]
 	return d.refreshMapCost().uiTouched()
 }
 
@@ -347,6 +366,7 @@ type MapAsk struct {
 	Snap  *snapshot.Snapshot
 	Place *snapshot.Location
 	Scope AlertScope
+	View  MapView // the map in view: "Alerts in view" asks for its areas (D-66)
 }
 
 // mapAsk is the ask as the window stands: the watchlist's places, and the
@@ -365,11 +385,24 @@ func (d Dashboard) mapAsk() MapAsk {
 		joined.Locations = append(append([]snapshot.Location(nil), joined.Locations...), *place)
 		snap = &joined
 	}
-	return MapAsk{Snap: snap, Place: place, Scope: d.mapScope}
+	return MapAsk{Snap: snap, Place: place, Scope: d.mapScope, View: d.viewBox(d.mapBodySize())}
 }
 
-// toggleDetailAt switches the detail layer under the Map detail row's cursor.
-func (d Dashboard) toggleDetailAt() Dashboard {
-	l := mapDetailLayers()[d.setup.detailAt%len(mapDetailLayers())]
-	return d.setDetail(l.key, !d.detailOn(l.key)).uiTouched()
+// detailRowLayer is the detail layer a Map detail row switches, and whether the
+// row is one (UAT-1 U1-35: a row each, in mapDetailLayers' order).
+func detailRowLayer(id setupRowID) (mapDetailLayer, bool) {
+	if id < rowMapDetailBorders || id > rowMapDetailParks {
+		return mapDetailLayer{}, false
+	}
+	return mapDetailLayers()[id-rowMapDetailBorders], true
+}
+
+// toggleDetailRow switches the focused detail row's layer: two states, so
+// space and either arrow are "the other one", as every on/off row is.
+func (d Dashboard) toggleDetailRow(id setupRowID) (Dashboard, bool) {
+	l, ok := detailRowLayer(id)
+	if !ok {
+		return d, false
+	}
+	return d.setDetail(l.key, !d.detailOn(l.key)).uiTouched(), true
 }

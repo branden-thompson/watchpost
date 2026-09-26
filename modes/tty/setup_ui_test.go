@@ -199,7 +199,6 @@ func TestSettingsFitsWithoutScrollingAtTheMockWidth(t *testing.T) {
 		for _, tab := range base.tabsShown() {
 			d := base
 			d.setup.focus, _ = base.firstRowOfTab(tab)
-			d.cfg.MapDisclosure = "Sends the area shown to OpenFreeMap and the alert zone codes to the Weather Service."
 			d.cfg.MapRetention = "Map tiles are kept 7 days; 512 MB in all with the web cache."
 			lines, _, _ := d.setupBody(d.opts())
 			if len(lines) > d.modalMax() {

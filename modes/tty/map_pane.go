@@ -71,6 +71,7 @@ type mapPane struct {
 	flash     term.Action                // the map key last pressed, blinking in the controls (U1-11)
 	flashEnd  time.Time                  // when its blink ends
 	title     string                     // what is in view, named at the last draw (D-64)
+	viewGen   uint64                     // raised by every move; the settle tick of the newest asks the feed (D-66)
 	views     *[]mapView                 // tests only: every view drawn, for M2's instrument
 	shown     map[string]bool            // the overlays the feed set, so a gone alert is taken off
 	given     map[string]tuimaps.Overlay // what was last handed to the map, by id: an unchanged overlay is not handed in again (U1-28)
@@ -538,7 +539,8 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		d = d.handleNav("nav-down").followSelection().requestFeed()
 	}
 	d = d.renderMap()
-	return d, tea.Batch(d.mapWorkCmd(), d.mapFeedCmd()), true
+	d, settle := d.viewMoved()
+	return d, tea.Batch(d.mapWorkCmd(), d.mapFeedCmd(), settle), true
 }
 
 // followSelection puts the map on the selected location (FR-1.2), held
@@ -716,4 +718,29 @@ func (d Dashboard) mapStatusText() string {
 		return mapLoadingText
 	}
 	return mapCoarseText
+}
+
+// mapSettleDelay is how long the view must stay still before "Alerts in view"
+// asks for the areas it now shows (D-66): never on every key.
+const mapSettleDelay = 600 * time.Millisecond
+
+// mapViewSettledMsg is a move's settle tick, to the move it followed.
+type mapViewSettledMsg struct{ gen uint64 }
+
+// viewMoved marks the view moved and schedules its settle tick; only the
+// newest move's tick asks anything.
+func (d Dashboard) viewMoved() (Dashboard, tea.Cmd) {
+	d.mapPane.viewGen++
+	gen := d.mapPane.viewGen
+	return d, tea.Tick(mapSettleDelay, func(time.Time) tea.Msg { return mapViewSettledMsg{gen: gen} })
+}
+
+// applyViewSettled asks the feed again once the view has stood still, when
+// the alerts drawn are the view's own (D-66); a superseded tick is dropped.
+func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
+	if d.modal != modalMap || v.gen != d.mapPane.viewGen || d.mapScope != ScopeInView {
+		return d, nil
+	}
+	d = d.requestFeed()
+	return d, d.mapFeedCmd()
 }

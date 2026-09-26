@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–14 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope) - P1-a complete, UAT-1 open; batches 12 and 13 are its first two passes (D-63 to D-71); go-tuiMaps v0.2.0-rc.9."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–15 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope) - P1-a complete, UAT-1 open; batches 12 to 15 are its passes (D-63 to D-75), batch 15 with Alerts in view (D-66); go-tuiMaps v0.2.0-rc.10."
 ---
 
 # As built: where the map lives
@@ -26,18 +26,21 @@ flowchart LR
     MF["mapfeed.go · mapFeed\none overlay per alert, severity → role\npartial areas labelled, notes in words\nwhich alerts' missing zones hold the place"]
     MG["mapgeometry.go · resolveAlertAreas"]
     MN["mapnational.go · nationalAlerts\nthe national scope: the ticker's severe events\nin the selected place's region, as alerts\n(by point, or by zone code)"]
+    MV["mapinview.go · Alerts in view (D-66, the default)\nthe states and marine areas the view touches (a 5x5 sample)\none request, remembered 2 minutes; kept to the view\nthe estimate reads the memory, never fetches"]
+    MS["maps.go · mapSourceList (D-75)\neach host the map contacts, and what it is sent"]
   end
   subgraph domains["domains/"]
     ZS["nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days"]
-    WS["nws · Provider.ZonesFor\nthe place's own zone codes"]
+    WS["nws · Provider.ZonesFor\nthe place's own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)"]
   end
   subgraph tty["modes/tty — the Observer"]
-    MW["map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station's\na layer off: its overlays not set (key before the slash)"]
-    MD["map_describe.go · the description\nReport joined to watchpost's alerts by id\ncovers · stops short · lies to one side (M1's words)\nunits and directions in words; never 'you'"]
+    MW["map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station's\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms, in-view scope)"]
+    MD["map_describe.go · the description (D-74)\nthe place - Currently: temperature, sky\n‹event› in effect for this area · for nearby ‹areas› · for ‹areas›, until ‹time›\n‹areas›: the alert's own first two; M1's relation underneath; never 'you'"]
     MK["map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend"]
     BX["map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: weather layers + the map's detail (D-65, Map.Layers)\nthe title names the view by scale (D-64)"]
     LG["the legend (D-44)\na box over the map's corner, from Legend()\nonly the severities drawn, with their digits"]
-    ST2["Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · what the map sends (D-69: said here alone) · Map description · Default scale · Nearby · Alerts\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail level (D-67) · the detail list · Clear map data · the retention"]
+    ST2["Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby · Alerts\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail (D-67)\na row per detail layer, ← Enabled → (U1-35) · Map data: clear · the retention"]
+    SW["status.go · the Status window\nMAP - contacted only while a map is open (D-75)\neach source: its host and what it is sent"]
   end
   subgraph plat["platform/"]
     RG["geo · RegionOf\nsix regions with their waters"]
@@ -48,6 +51,8 @@ flowchart LR
   MF -- "Config.MapFeed(ask: snap, place, scope)\nan unchanged overlay is not handed in again (U1-28)" --> MW
   MF --> MG --> ZS
   MF -- "national scope" --> MN
+  MF -- "in-view scope (ask.View)" --> MV --> WS
+  MS -- "Config.MapSources" --> SW
   SD["severe.go · severeDeck\nthe ticker's national feed (polygons kept)"] -- "nationalFeed()" --> MN
   MF --> WS
   MB -. "first g" .-> ZS
@@ -96,6 +101,8 @@ flowchart LR
   W -- "mapWorkedMsg" --> U
   F -- "mapFeedMsg" --> U
   U -- "after every Update: NextCall" --> T["one tick outstanding\n(50 ms floor)"]
+  U -- "pan, zoom, resize" --> VS["the settle tick, 600 ms\nby view generation (D-66)"]
+  VS -- "mapViewSettledMsg: the newest, in-view scope" --> U
   T -- "mapTickMsg at the time still wanted" --> U
   Q["the program ends\ncloseOnExit → Router.CloseMap"] --> C["closeMap\ncancel · join (≤ 2 s) · Close"]
   C -. "refuses what starts after" .-> W & F
@@ -118,8 +125,11 @@ flowchart LR
   K["keys: ←→ switch tabs unless the focused row is a picker or toggle\ntab / shift+tab switch tabs from any row · ↑↓ walk a tab's rows"] -.-> S
 ```
 
-Each tab fits unscrolled at 133×44; the window is as wide as its widest tab on every tab. Within a column the
-labels and the pickers' values are padded to one width, so the arrows line up (U1-24).
+Each tab fits unscrolled at 133×44; the window is as wide as its widest tab on every tab, and **no wider than
+80% of the terminal** (U1-36) - the one-column floor on a terminal too small for that - with the column plan
+fitted inside it, so the Maps tab's words are cut to keep its two columns side by side at 133. A blank row sets
+the tabs off the page where the height allows (U1-30). Within a column the labels and the pickers' values are
+padded to one width, so the arrows line up (U1-24).
 
 ## Not built yet
 

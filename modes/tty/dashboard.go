@@ -77,7 +77,7 @@ type Config struct {
 	Maps           string                                        // 0.18.0: the file's words for the map's two Settings (UIPrefs')
 	MapDescription string
 	ClearMapData   func() MapCleared // 0.18.0 W3.8: the app empties what the live map cannot reach
-	MapDisclosure  string            // 0.18.0 W1.12: what opening the map contacts and sends, in words (FR-9.4)
+	MapSources     []MapSource       // 0.18.0 W1.12, D-75: what the map contacts and sends, for the Status window (FR-9.4)
 	MapRetention   string            // 0.18.0 W3.8: how long the map's data is kept, and the one stated total (FR-3.5, FR-3.9)
 	MapScale       string            // 0.18.0 W4.3: the file's word for the scale the map opens at
 	MapNearbyKm    int               // 0.18.0 W9.2: the file's nearby distance; 0 is the default
@@ -994,6 +994,7 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		d.width, d.height = v.Width, v.Height
 		if d.modal == modalMap {
 			d = d.boundMap().renderMap() // the bound's least zoom depends on the size; the map is drawn at the window's new size, in Update (D-41, D-45's size row)
+			return d.viewMoved()         // a new size is a new view: its alerts are asked once it settles (D-66)
 		}
 		return d, nil
 	case SnapshotMsg:
@@ -1036,6 +1037,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
 	case mapTickMsg:
 		return d.applyMapTick(v), nil // 0.18.0 W2.2: the library asked to be drawn now
+	case mapViewSettledMsg:
+		return d.applyViewSettled(v) // 0.18.0 D-66: the view stood still - its alerts are asked
 	case tea.KeyPressMsg:
 		return d.handleKeyPress(v)
 	}

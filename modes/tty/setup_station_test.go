@@ -245,9 +245,17 @@ func TestABorrowedEpicentreSaysSo(t *testing.T) {
 func TestTheTransmitterQuestionStatesTheStorageBoundary(t *testing.T) {
 	o := render.Opts{ASCII: true}
 	got := stripANSITest(strings.Join(stationSetup(t, rowTransmitter).setupTransmitterLines(o, " "), "\n"))
-	for _, want := range []string{"stays on this machine", "National Weather Service", "debug dump"} { // bounded by the phrase list (P10-02)
+	for _, want := range []string{"Stored in config.toml", "only sent to the NWS as required"} { // bounded by the phrase list (P10-02); UAT-1 U1-32's words (D-75)
 		if !strings.Contains(got, want) {
 			t.Errorf("the transmitter question does not say %q; the operator is owed the storage boundary (FR-9.4):\n%s", want, got)
 		}
+	}
+	// UAT-1 U1-31: the sentence is ONE line, so no wrap can split its tint.
+	whole := false
+	for _, l := range strings.Split(got, "\n") {
+		whole = whole || strings.Contains(l, "Stored in config.toml; only sent to the NWS as required.")
+	}
+	if !whole {
+		t.Errorf("the storage sentence is split across lines:\n%s", got)
 	}
 }

@@ -12,6 +12,8 @@ package app
 // without editing the others.
 
 import (
+	"context"
+
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -24,13 +26,30 @@ type mapInputs struct {
 	snap     *snapshot.Snapshot
 	place    *snapshot.Location
 	scope    tty.AlertScope
-	national []snapshot.Alert
+	national []snapshot.Alert // the alerts the station does not hold: the national scope's, or the view's (D-66)
 }
 
 // mapInputs are the inputs for an ask, the national events read from the
 // ticker's feed through the severe deck, and only in the national scope: the
 // station's scope reads nothing more than it did.
 func (lp *livePipelines) mapInputs(ask tty.MapAsk) mapInputs {
+	return lp.inputsFor(context.Background(), ask, false)
+}
+
+// mapInputsFetching is mapInputs for the feed, off the UI goroutine: "Alerts
+// in view" may ask the service for the view's areas (D-66).
+func (lp *livePipelines) mapInputsFetching(ctx context.Context, ask tty.MapAsk) mapInputs {
+	return lp.inputsFor(ctx, ask, true)
+}
+
+// inputsFor is the inputs for an ask, fetching the view's areas only when
+// fetch is on.
+func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bool) mapInputs {
+	if ask.Scope == tty.ScopeInView && lp != nil {
+		in := mapInputs{snap: ask.Snap, place: ask.Place, scope: ask.Scope}
+		in.national = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
+		return in
+	}
 	var feed []globalfeed.Event
 	if ask.Scope == tty.ScopeNational && lp != nil && lp.severe != nil {
 		feed = lp.severe.nationalFeed()

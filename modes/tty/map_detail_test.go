@@ -22,7 +22,7 @@ func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 	}
 	body, _, _ := d.focusBody(d.opts())
 	text := stripANSITest(strings.Join(body, "\n"))
-	for _, want := range []string{"Detail level -", "Weather", "Minor roads (at Full)", "Rail (at Standard)"} {
+	for _, want := range []string{"Detail -", "Weather", "(at Full)", "(at Standard)"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the Maps tab does not show %q:\n%s", want, text)
 		}

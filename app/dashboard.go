@@ -84,7 +84,7 @@ func RunDashboard(version string, opt Options) error {
 		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
 		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
-		zoneShapes: zoneShapes}
+		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas} // 0.18.0 D-66
 	lp.attachDiagnostics(ctx, start)
 	lp.maps = newProductionMapBuilder(version, lp.seedOnFirstMap(ctx)) // 0.18.0 FR-3.2: the zones are seeded by the first map, not here
 	idx, resolver, resolverErr := loadGeodata(client)
@@ -373,7 +373,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		NewMap:          lp.newMap(),        // 0.18.0: the map window builds it on the first g (FR-3.2)
 		MapFeed:         lp.mapFeed,         // 0.18.0: the alerts it draws (FR-4.1)
 		ClearMapData:    lp.clearMapData,    // 0.18.0 W3.8: Settings' Clear map data
-		MapDisclosure:   mapDisclosure(),    // 0.18.0 W1.12 (FR-9.4)
+		MapSources:      mapSourceList(),    // 0.18.0 W1.12, D-75: what the map contacts, for the Status window (FR-9.4)
 		MapRetention:    mapRetention(),     // 0.18.0 W3.8 (FR-3.9)
 		NarrateEvent:    lp.narrateEvent(),  // 0.13.0: [space] in the severe window; nil without audio, so the chip mutes (R5-B-04)
 		EndEventRead:    lp.endEventRead(),  // 0.14.0 MVS-D-75: closing the window stops the read
@@ -765,9 +765,13 @@ type livePipelines struct {
 	// radio deck, and the dumper itself.
 	clients []*httpx.Client
 	weather *nws.Provider
-	tides   *coops.Provider
-	deck    *radioDeck
-	dump    *dumper
+	// areaAlerts asks the service for the alerts of areas by code, and
+	// areaMemo remembers its last answer (0.18.0 D-66, "Alerts in view").
+	areaAlerts func(ctx context.Context, areas []string) ([]snapshot.Alert, error)
+	areaMemo   areaMemo
+	tides      *coops.Provider
+	deck       *radioDeck
+	dump       *dumper
 }
 
 // fireFor is the radio deck's fire hook (UAT 114): the location's fire

@@ -47,12 +47,27 @@ func describedIn(t *testing.T, feed func(context.Context, MapAsk) MapFeed, units
 	d.units = units
 	s := placedSnap()
 	s.Locations[0].TZ = "America/Los_Angeles"
-	s.Locations[0].Alerts = []snapshot.Alert{{ID: "w1", Event: "Wind Warning", Severity: "Severe", Expires: windExpires}}
+	s.Locations[0].Alerts = []snapshot.Alert{{ID: "w1", Event: "Wind Warning", Severity: "Severe", Expires: windExpires,
+		AreaDesc: "San Diego County Coastal Areas; Orange County Coastal Areas; Los Angeles County Beaches"}}
 	m, _ := d.Update(SnapshotMsg{Snap: s})
 	d = m.(Dashboard)
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	return stripANSITest(d.View().Content)
+	return unwrapped(stripANSITest(d.View().Content))
+}
+
+// unwrapped is the window's words as one run: each line's text between the
+// window's borders, joined by spaces, so a test reads a sentence however it
+// wrapped.
+func unwrapped(frame string) string {
+	var words []string
+	for _, l := range strings.Split(frame, "\n") {
+		if i, j := strings.Index(l, "│"), strings.LastIndex(l, "│"); i >= 0 && j > i {
+			l = l[i+len("│") : j]
+		}
+		words = append(words, strings.Fields(l)...)
+	}
+	return strings.Join(words, " ")
 }
 
 // TestTheDescriptionSaysWhatCoversThePlace is W1.4 (FR-7.4, FR-1.7): under
@@ -61,7 +76,7 @@ func describedIn(t *testing.T, feed func(context.Context, MapAsk) MapFeed, units
 // coordinate, a glyph that does not speak, or "you" (FR-7.3, D-29).
 func TestTheDescriptionSaysWhatCoversThePlace(t *testing.T) {
 	out := describedDash(t, boxFeed(-117.6, -117.1, false))
-	for _, want := range []string{"Wind Warning, severe, covers Oceanside, CA", "kilometres to the", "effect until"} {
+	for _, want := range []string{"Oceanside, CA - Currently:", "Wind Warning in effect for this area until"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the description does not say %q:\n%s", want, out)
 		}
@@ -74,9 +89,10 @@ func TestTheDescriptionSaysWhatCoversThePlace(t *testing.T) {
 	}
 }
 
-// TestTheDescriptionSpeaksM1sWords is W1.4 against M1's rule: an alert whose
-// edge is within 15 km stops short; one farther lies to one side; one whose
-// missing zone holds the place covers it by its zone.
+// TestTheDescriptionSpeaksM1sWords is W1.4 against M1's rule in D-74's words:
+// an alert whose edge is within 15 km is in effect for nearby areas, named as
+// the Weather Service names them; one farther, for those areas; one whose
+// missing zone holds the place, for this area, its outline not drawn.
 func TestTheDescriptionSpeaksM1sWords(t *testing.T) {
 	for _, c := range []struct {
 		name       string
@@ -84,13 +100,17 @@ func TestTheDescriptionSpeaksM1sWords(t *testing.T) {
 		missing    bool
 		want       string
 	}{
-		{"an edge 7 km off", -117.30, -117.0, false, "stops short of Oceanside, CA"},
-		{"an edge 60 km off", -116.7, -116.4, false, "lies to one side of Oceanside, CA"},
-		{"the place in a missing zone", -116.7, -116.4, true, "covers Oceanside, CA by a zone that could not be drawn"},
+		{"an edge 7 km off", -117.30, -117.0, false, "in effect for nearby San Diego County coastal areas and Orange County coastal areas until"},
+		{"an edge 60 km off", -116.7, -116.4, false, "in effect for San Diego County coastal areas and Orange County coastal areas until"},
+		{"the place in a missing zone", -116.7, -116.4, true, "in effect for this area; its outline could not be drawn"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			if out := describedDash(t, boxFeed(c.west, c.east, c.missing)); !strings.Contains(out, c.want) {
+			out := describedDash(t, boxFeed(c.west, c.east, c.missing))
+			if !strings.Contains(out, c.want) {
 				t.Errorf("want %q:\n%s", c.want, out)
+			}
+			if strings.Contains(out, "kilometres") || strings.Contains(out, "miles to the") {
+				t.Errorf("the distance and bearing are still said (D-74):\n%s", out)
 			}
 		})
 	}
@@ -109,12 +129,10 @@ func TestNoAlertIsAStatedState(t *testing.T) {
 // listener in Fahrenheit hears miles and Fahrenheit, one in Celsius
 // kilometres and Celsius.
 func TestTheDescriptionFollowsTheUnits(t *testing.T) {
-	f := describedIn(t, boxFeed(-117.30, -117.0, false), render.UnitF)
-	if !strings.Contains(f, "miles to the") || !strings.Contains(f, "degrees Fahrenheit") {
+	if f := describedIn(t, boxFeed(-117.30, -117.0, false), render.UnitF); !strings.Contains(f, "°F") {
 		t.Errorf("in Fahrenheit the description says:\n%s", f)
 	}
-	c := describedIn(t, boxFeed(-117.30, -117.0, false), render.UnitC)
-	if !strings.Contains(c, "kilometres to the") || !strings.Contains(c, "degrees Celsius") {
+	if c := describedIn(t, boxFeed(-117.30, -117.0, false), render.UnitC); !strings.Contains(c, "°C") {
 		t.Errorf("in Celsius the description says:\n%s", c)
 	}
 }
@@ -131,7 +149,20 @@ func TestAUnitChangeRedrawsTheDescription(t *testing.T) {
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	d = pressCode(d, 'c', "c")
-	if out := stripANSITest(d.View().Content); !strings.Contains(out, "kilometres to the") {
+	if out := stripANSITest(d.View().Content); !strings.Contains(out, "°C") {
 		t.Errorf("after c the description still says:\n%s", out)
+	}
+}
+
+// TestTheAreasAreTheServicesOwnFirstTwo is D-74's name source: the alert's
+// own area description, its first two places joined by "and", the generic
+// words in lower case so they read inside a sentence.
+func TestTheAreasAreTheServicesOwnFirstTwo(t *testing.T) {
+	got := areasInWords("Orange County Coastal Areas; San Diego County Coastal Areas; San Diego County Valleys")
+	if want := "Orange County coastal areas and San Diego County coastal areas"; got != want {
+		t.Errorf("the areas read %q, want %q", got, want)
+	}
+	if got := areasInWords(" ; "); got != "" {
+		t.Errorf("an empty description reads %q", got)
 	}
 }

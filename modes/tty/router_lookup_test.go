@@ -180,16 +180,17 @@ func TestEveryWindowReplyIsRoutedBackToTheWindow(t *testing.T) {
 func typeOfMsg(t *testing.T, name string) reflect.Type {
 	t.Helper()
 	known := map[string]any{
-		"resolvedMsg":      resolvedMsg{},
-		"committedMsg":     committedMsg{},
-		"castSavedMsg":     castSavedMsg{},
-		"uiSavedMsg":       uiSavedMsg{},
-		"locatePauseMsg":   locatePauseMsg{},
-		"locateVerdictMsg": locateVerdictMsg{},
-		"mapWorkedMsg":     mapWorkedMsg{},
-		"mapTickMsg":       mapTickMsg{}, // 0.18.0 W2.2: the map's clock is owed to its window, not a cadence
-		"mapFeedMsg":       mapFeedMsg{},
-		"mapClearedMsg":    mapClearedMsg{},
+		"resolvedMsg":       resolvedMsg{},
+		"committedMsg":      committedMsg{},
+		"castSavedMsg":      castSavedMsg{},
+		"uiSavedMsg":        uiSavedMsg{},
+		"locatePauseMsg":    locatePauseMsg{},
+		"locateVerdictMsg":  locateVerdictMsg{},
+		"mapWorkedMsg":      mapWorkedMsg{},
+		"mapTickMsg":        mapTickMsg{},        // 0.18.0 W2.2: the map's clock is owed to its window, not a cadence
+		"mapViewSettledMsg": mapViewSettledMsg{}, // 0.18.0 D-66: the view's settling asks its window's alerts
+		"mapFeedMsg":        mapFeedMsg{},
+		"mapClearedMsg":     mapClearedMsg{},
 	}
 	v, ok := known[name]
 	if !ok {

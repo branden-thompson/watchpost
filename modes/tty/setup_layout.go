@@ -40,6 +40,10 @@ func setupGroup(text string) string {
 // ONE WIDTH FOR EVERY TAB (D-62): the widest tab's. A window that changed width
 // as the listener moved between tabs would be the layout not knowing its own
 // mind - the rule the correspondent notes were held to.
+//
+// AND NO WIDER THAN 80% OF THE TERMINAL (UAT-1 U1-36), as the map window is
+// (U1-13), so the dashboard stays in sight around it; a terminal too small for
+// that keeps the one-column floor, which the rows were written for.
 func (d Dashboard) setupWidth() int {
 	w := 0
 	for _, t := range d.tabsShown() {
@@ -49,7 +53,17 @@ func (d Dashboard) setupWidth() int {
 		}
 		w = max(w, on.tabWidth())
 	}
-	return w
+	return min(w, d.setupMaxWidth(d.opts()))
+}
+
+// setupMaxWidth is the widest the window may be: 80% of the terminal (U1-36),
+// or the one-column floor on a terminal too small for that. The column plan
+// fits against it, so two columns are laid only where they fit inside it.
+//
+// THE TERMINAL'S WIDTH, d.width: o.Width is the dashboard's, already less the
+// frame, and 80% of that is not the 80% the listener sees.
+func (d Dashboard) setupMaxWidth(o render.Opts) int {
+	return min(o.Width, max(setupOneColWidth, d.width*80/100))
 }
 
 // tabWidth is the width the open tab's groups want.
@@ -59,7 +73,7 @@ func (d Dashboard) tabWidth() int {
 	if plan, ok := d.columnPlan(blocks, o); ok {
 		return plan.width
 	}
-	return max(setupOneColWidth, min(o.Width, widestBlock(blocks)+panelFrame+panelRail+columnMargin))
+	return max(setupOneColWidth, min(d.setupMaxWidth(o), widestBlock(blocks)+panelFrame+panelRail+columnMargin))
 }
 
 // setupOneColWidth is the stacked layout's floor: today's window width, which
@@ -266,7 +280,7 @@ func (d Dashboard) columnPlan(blocks []setupBlock, o render.Opts) (columns, bool
 			continue // a worse balance than one that already fits
 		}
 		w := twoColumnsWidth(leftW, widestBlock(blocks[split:]), panelChromeFor(left+4, d.modalMax()))
-		if w > o.Width {
+		if w > d.setupMaxWidth(o) {
 			continue
 		}
 		best, bestImbalance, found = columns{split: split, leftW: leftW, width: w}, imbalance, true
@@ -341,14 +355,25 @@ func joinBlocks(blocks []setupBlock) (lines []string, at, end int) {
 func (d Dashboard) setupBody(o render.Opts) (lines []string, focusAt, focusEnd int) {
 	lines, focusAt, focusEnd = d.setupPage(o)
 	// THE TAB ROW HEADS EVERY TAB (D-62), and the focus spans move down under it.
-	// It takes the place of the blank line the first group opens with, so the
-	// tabs cost the window no height (at 80x24 every line is below a fold).
-	if len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
-		return append([]string{d.setupTabRow(o, o.Width-4)}, lines[1:]...), focusAt, focusEnd
-	}
+	// A BLANK LINE STANDS BETWEEN IT AND THE GROUPS (UAT-1 U1-30) wherever the
+	// tab still fits the window with it; on a window too short for that - 80x24,
+	// where every line is below a fold - the tab row takes the first group's
+	// opening blank, as it did before.
 	head := []string{d.setupTabRow(o, o.Width-4)}
+	opens := len(lines) > 0 && strings.TrimSpace(lines[0]) == ""
+	if opens && len(lines)+len(head) > d.modalMax()-setupChipRows {
+		return append(head, lines[1:]...), focusAt, focusEnd
+	}
+	if !opens {
+		head = append(head, "")
+	}
 	return append(head, lines...), focusAt + len(head), focusEnd + len(head)
 }
+
+// setupChipRows is the chip lines the footer takes at most (two, where they
+// wrap at 80 columns): what the blank under the tab row is measured against,
+// without drawing the chips to count them.
+const setupChipRows = 2
 
 // setupPage is the open tab's groups, in one or two columns.
 func (d Dashboard) setupPage(o render.Opts) (lines []string, focusAt, focusEnd int) {

@@ -301,7 +301,12 @@ var setupAllocBudget = map[string]float64{
 	// 133x44-miss RE-PINNED at 0.18.0 UAT-1 (D-70, D-71, U1-25, D-67): 3_808
 	// -> 4_127 (+8%): five tabs measured where three were, the Maps tab in two
 	// columns, and its detail list with the level row.
-	"133x44-hit": 2_817 * 1.05, "133x44-miss": 4_127 * 1.05,
+	// BOTH RE-PINNED at 0.18.0 UAT-1 U1-35/U1-36: hit 2_817 -> 3_046 (+8%),
+	// miss 4_127 -> 4_699 (+14%). The window is held to 80% of the terminal,
+	// 126 -> 106 cells, so more of the dashboard is drawn around it: forced back
+	// to 126 the same frame measures hit 2_605, miss 4_258. The dashboard in
+	// sight is what U1-36 asked for.
+	"133x44-hit": 3_046 * 1.05, "133x44-miss": 4_699 * 1.05,
 	// 80x24-miss re-measured at 0.14.0 T3.2b for the RELAY REPLAY group's
 	// second row: 2_678 -> 2_800 (+4.6%), the cost of drawing two more lines
 	// and a spacer at the width where the window still scrolls. The 133x44
@@ -311,7 +316,9 @@ var setupAllocBudget = map[string]float64{
 	// 80x24-miss re-measured at 0.18.0 UAT-1 (D-70, D-71): 2_800 -> 2_971
 	// (+6%). Every surface now shows every tab, and the window is as wide as
 	// the widest, so a frame measures five tabs where it measured three.
-	"80x24-hit": 1_604 * 1.05, "80x24-miss": 3_127 * 1.05, // and 2_971 -> 3_127 with the detail level row (D-67)
+	// 80x24-miss 3_127 -> 3_319 (+6%) at U1-35: the map's detail is eight
+	// picker rows, each with its two arrow chips, where it was one list.
+	"80x24-hit": 1_604 * 1.05, "80x24-miss": 3_319 * 1.05, // and 2_971 -> 3_127 with the detail level row (D-67)
 }
 
 // Re-measured after the columns were BALANCED automatically (HUM LEAD, UAT

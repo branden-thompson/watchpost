@@ -67,7 +67,7 @@ func TestTheScaleAndNearbyRowsSave(t *testing.T) {
 	}
 	body, _, _ := d.focusBody(d.opts())
 	text := stripANSITest(strings.Join(body, "\n"))
-	for _, want := range []string{"Default scale -", "County", "Nearby -"} {
+	for _, want := range []string{"Opens at -", "County", "Nearby -"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the Maps tab does not show %q:\n%s", want, text)
 		}
@@ -99,7 +99,7 @@ func TestTheNearbySettingReachesTheDescription(t *testing.T) {
 	for _, c := range []struct {
 		km   int
 		want string
-	}{{0, "stops short of Oceanside, CA"}, {5, "lies to one side of Oceanside, CA"}} {
+	}{{0, "Wind Warning in effect for nearby"}, {5, "Wind Warning in effect for the area it covers"}} {
 		d := mapDash(t, Config{ASCII: true, MapNearbyKm: c.km, MapFeed: boxFeed(-117.25, -117.0, false)})
 		s := placedSnap()
 		s.Locations[0].Alerts = []snapshot.Alert{{ID: "w1", Event: "Wind Warning", Severity: "Severe", Expires: windExpires}}
@@ -107,7 +107,7 @@ func TestTheNearbySettingReachesTheDescription(t *testing.T) {
 		d = m.(Dashboard)
 		d, _ = pressKey(d, "g")
 		d = feedAndSettle(t, d)
-		if out := stripANSITest(d.View().Content); !strings.Contains(out, c.want) {
+		if out := unwrapped(stripANSITest(d.View().Content)); !strings.Contains(out, c.want) {
 			t.Errorf("nearby %d km: want %q:\n%s", c.km, c.want, out)
 		}
 	}
@@ -303,16 +303,20 @@ func TestTheEstimateIsAskedWhereItCanChange(t *testing.T) {
 func TestTheAlertScopeRowSavesAndAsksTheFeed(t *testing.T) {
 	d, got := uiDash(t, rowMapScope)
 	d.cfg.MapCost = func(ask MapAsk, _ func(string) bool) MapCost { return MapCost{Requests: int(ask.Scope) * 100} }
-	if d.mapScope != ScopeStation {
-		t.Fatalf("an empty file opens with scope %v, want the station's alerts", d.mapScope)
+	if d.mapScope != ScopeInView {
+		t.Fatalf("an empty file opens with scope %v, want alerts in view (D-66)", d.mapScope)
 	}
-	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight}) // in view, then the station's places
+	m, _, _ = m.(Dashboard).setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m.(Dashboard)
 	if d.mapScope != ScopeNational {
-		t.Errorf("→ went to %v, want national", d.mapScope)
+		t.Errorf("→ → went to %v, want national", d.mapScope)
 	}
 	if d.mapCost.Requests != 100 {
 		t.Errorf("the scope moved and the estimate stayed at %+v", d.mapCost)
+	}
+	if m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft}); m.(Dashboard).mapScope != ScopeStation {
+		t.Errorf("← from national went to %v, want the station's places", m.(Dashboard).mapScope)
 	}
 	body, _, _ := d.focusBody(d.opts())
 	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Alerts -") || !strings.Contains(text, ScopeNational.Label()) {
@@ -332,7 +336,7 @@ func TestTheAlertScopeRowSavesAndAsksTheFeed(t *testing.T) {
 	if len(asked) == 0 || asked[0] != ScopeNational || len(costed) == 0 || costed[0] != ScopeNational {
 		t.Errorf("the feed was asked with %v and the estimate with %v; want national", asked, costed)
 	}
-	if ScopeStation.Key() != "station" || alertScopeByKey("nonsense") != ScopeStation {
+	if ScopeStation.Key() != "station" || alertScopeByKey("nonsense") != ScopeInView {
 		t.Error("the scope's words do not round-trip")
 	}
 }
@@ -353,8 +357,8 @@ func TestANationalAlertIsDescribedInFull(t *testing.T) {
 	d = m.(Dashboard)
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
-	out := stripANSITest(d.View().Content)
-	if !strings.Contains(out, "Tornado Warning, severe, covers Oceanside, CA") || !strings.Contains(out, "effect until") {
+	out := unwrapped(stripANSITest(d.View().Content))
+	if !strings.Contains(out, "Tornado Warning in effect for this area until") {
 		t.Errorf("the national alert is not described in full:\n%s", out)
 	}
 }

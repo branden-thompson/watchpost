@@ -25,7 +25,7 @@ import (
 // overlays, with the selected place's own zones asked of the weather service
 // so a note can say whether the place lies in a missing zone (FR-4.1, FR-4.4).
 func (lp *livePipelines) mapFeed(ctx context.Context, ask tty.MapAsk) tty.MapFeed {
-	return lp.mapFeedWith(ctx, lp.mapInputs(ask), func(loc snapshot.Location) []string {
+	return lp.mapFeedWith(ctx, lp.mapInputsFetching(ctx, ask), func(loc snapshot.Location) []string {
 		if lp.weather == nil {
 			return nil
 		}

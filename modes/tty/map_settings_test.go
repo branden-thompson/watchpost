@@ -34,7 +34,7 @@ func TestTheMapRowsSaveWithTheDisplayPreferences(t *testing.T) {
 	}
 	body, _, _ := d.focusBody(d.opts())
 	lines := strings.Join(body, "\n")
-	for _, want := range []string{"Maps -", "Disabled", "Map description -", "Instead of the picture"} {
+	for _, want := range []string{"Maps -", "Disabled", "Description -", "Instead of the map"} {
 		if !strings.Contains(lines, want) {
 			t.Errorf("the WATCHPOST UI group does not show %q", want)
 		}
@@ -83,7 +83,7 @@ func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 			d = feedAndSettle(t, d)
 			body := d.mapBodyLines()
 			text := stripANSITest(strings.Join(body, "\n"))
-			words := strings.Index(text, "Oceanside, CA:")
+			words := strings.Index(text, "Oceanside, CA - Currently:")
 			braille := strings.IndexFunc(text, func(r rune) bool { return r > 0x2800 && r <= 0x28ff })
 			if (words >= 0) != c.words || (braille >= 0) != c.braille {
 				t.Fatalf("words %v, braille %v; want %v, %v:\n%s", words >= 0, braille >= 0, c.words, c.braille, text)

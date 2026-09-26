@@ -120,9 +120,6 @@ func (d Dashboard) rowTakesLeftRight() bool {
 	if d.setup.focus == rowMapLayers {
 		return len(d.cfg.MapLayers) > 1 // one layer has nothing to walk to: the arrows switch tabs
 	}
-	if d.setup.focus == rowMapDetail {
-		return true // seven boxes to walk
-	}
 	return row.picker || row.kind == rowToggle || row.kind == rowPicker
 }
 

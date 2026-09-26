@@ -297,7 +297,6 @@ func TestSetupGoldenEveryTab(t *testing.T) {
 	data := setupGolden(t, 133, 44, false, rowFIRMSKey) // and the Data tab
 	checkGolden(t, "setup-133x44-data.golden", data.View().Content)
 	maps := setupGolden(t, 133, 44, false, rowMapsOn)
-	maps.cfg.MapDisclosure = "Opening the map sends the area shown to OpenFreeMap (tiles.openfreemap.org), and the codes of the alert zones on it to the National Weather Service (api.weather.gov)."
 	maps.cfg.MapRetention = "Map tiles are kept 7 days; with the web cache, 512 MB in all."
 	checkGolden(t, "setup-133x44-maps.golden", maps.View().Content)
 }

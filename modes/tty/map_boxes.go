@@ -18,6 +18,7 @@ import (
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/term"
 )
@@ -146,7 +147,7 @@ func mapDetailLayers() []mapDetailLayer {
 		{"roads", "Major roads", tuimaps.RoadLayer, true, tuimaps.DetailWeather},
 		{"minor-roads", "Minor roads", tuimaps.MinorRoadLayer, true, tuimaps.DetailFull},
 		{"rail", "Rail", tuimaps.RailLayer, true, tuimaps.DetailStandard},
-		{"parks", "Parks and reserves", tuimaps.ParkLayer, true, tuimaps.DetailStandard},
+		{"parks", "Parks", tuimaps.ParkLayer, true, tuimaps.DetailStandard},
 	}
 }
 
@@ -378,13 +379,11 @@ func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
 	if d.cfg.MapAreaName == nil || m == nil {
 		return loc.Label
 	}
-	centre, zoom := m.Centre()
-	world := 256 * math.Exp2(zoom)                                 // dots round the world at this zoom
-	lonSpan := float64(size.Cols*2) / world * 360                  // degrees across the view
-	ySpan := float64(size.Rows*4) / world                          // the view's height, in the world's Mercator units
-	widthKm := lonSpan * 111.32 * math.Cos(centre.Lat*math.Pi/180) // across the view at its centre
+	centre, _ := m.Centre()
+	v := d.viewBox(size)
+	widthKm := (v.E - v.W) * 111.32 * math.Cos(centre.Lat*math.Pi/180) // across the view at its centre
 	name := d.cfg.MapAreaName(centre, widthKm)
-	inView := math.Abs(loc.Lon-centre.Lon) <= lonSpan/2 && math.Abs(mercatorY(loc.Lat)-mercatorY(centre.Lat)) <= ySpan/2
+	inView := v.Contains(loc.Lat, loc.Lon)
 	switch {
 	case name == "":
 		return loc.Label
@@ -392,4 +391,30 @@ func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
 		return name
 	}
 	return name + " " + d.opts().Glyphs().Dot + " " + loc.Label
+}
+
+// MapView is the box of the map in view, in degrees (0.18.0 D-66): what
+// "Alerts in view" asks the app about, and what the title names.
+type MapView = geo.Box
+
+// viewBox is the map's view at a size, from the library's centre and zoom
+// and its published scale (256-dot tiles, a braille cell two dots wide and
+// four high); nothing when no map is built.
+func (d Dashboard) viewBox(size tuimaps.Size) MapView {
+	m := d.mapPane.m
+	if m == nil {
+		return MapView{}
+	}
+	centre, zoom := m.Centre()
+	world := 256 * math.Exp2(zoom)                // dots round the world at this zoom
+	lonSpan := float64(size.Cols*2) / world * 360 // degrees across the view
+	ySpan := float64(size.Rows*4) / world         // the view's height, in the world's Mercator units
+	yc := mercatorY(centre.Lat)
+	return MapView{W: centre.Lon - lonSpan/2, E: centre.Lon + lonSpan/2,
+		N: latOfMercator(yc - ySpan/2), S: latOfMercator(yc + ySpan/2)}
+}
+
+// latOfMercator is the latitude at a place down the world, mercatorY's inverse.
+func latOfMercator(y float64) float64 {
+	return math.Atan(math.Sinh(math.Pi*(1-2*y))) * 180 / math.Pi
 }

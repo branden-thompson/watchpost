@@ -112,7 +112,8 @@ func (d Dashboard) setupKeyLines(o render.Opts, mark string) []string {
 			"       Paste new key to replace "+o.Glyphs().Dash+" empty keeps")
 	} else {
 		lines = append(lines, "  "+mark+settingLabel("NASA FIRMS key: ", st.focus == rowFIRMSKey)+"none (optional)",
-			"       Free key: firms.modaps.eosdis.nasa.gov/api/map_key",
+			"       A free key, from:", // the address on a line of its own (U1-36)
+			"       firms.modaps.eosdis.nasa.gov/api/map_key",
 			"       Empty = the default data set, no key")
 	}
 	shown := strings.Repeat(o.Glyphs().Bullet, len([]rune(st.key)))
@@ -222,13 +223,18 @@ func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
 	// as long as we inform the user in some way". So the fact moves to where the
 	// VALUE is, which is the thing it is about: this place is not a choice the
 	// operator made, and it WILL move when they change their watchlist.
+	//
+	// ON A LINE OF ITS OWN, under the value (UAT-1 U1-36): a window held to 80%
+	// of the terminal wrapped it off the end of the value line, and the wrap
+	// began at the margin, under nothing.
+	var borrowed []string
 	switch cur := d.currentTransmitter(); {
 	case st.txRef != nil:
 		head += render.Plain(st.txRef.Label) + " (" + st.txRef.Zip + ")"
 	case cur != nil:
 		head += render.Plain(cur.Label) + " (" + cur.Zip + ")"
 		if d.cfg.Transmitter == nil {
-			head += "  " + settingSupport("(following your default location)")
+			borrowed = []string{supportIndent + settingSupport("(following your default location)")}
 		}
 	default:
 		head += "(not set)"
@@ -240,8 +246,8 @@ func (d Dashboard) setupTransmitterLines(o render.Opts, mark string) []string {
 	// THE STORAGE BOUNDARY, STATED WHERE THE TOWER IS SET (FR-9.4). A transmitter
 	// is a real person's antenna at metre precision; the operator is told once,
 	// here, what the application does with it — and a test holds the dump to it.
-	lines := []string{head, supportIndent + "Broadcasting location - Enter City, ST or Zip",
-		supportIndent + settingSupport("Your tower's position stays on this machine, in config.toml. It goes only to the National Weather Service, as every place you watch does, and is never written to a debug dump or export.")}
+	lines := append(append([]string{head}, borrowed...), supportIndent+"Broadcasting location - Enter City, ST or Zip",
+		supportIndent+settingSupport("Stored in config.toml; only sent to the NWS as required.")) // UAT-1 U1-32 (D-75): one line, so no wrap splits its tint (U1-31)
 	if st.focus == rowTransmitter {
 		lines = append(lines, supportIndent+"Search: "+st.query+o.Glyphs().Cursor)
 		for i, h := range st.hints { // bounded by the suggestion list (P10-02)

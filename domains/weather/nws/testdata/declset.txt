@@ -14,6 +14,7 @@ func (*MarineProvider).ID
 func (*MarineProvider).fetchMarine
 func (*MarineProvider).knownInland
 func (*MarineProvider).markInland
+func (*Provider).AlertsInAreas
 func (*Provider).CachedGrids
 func (*Provider).CountyUGC
 func (*Provider).Domains

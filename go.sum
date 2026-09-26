@@ -10,8 +10,8 @@ github.com/alecthomas/repr v0.5.1 h1:E3G4t2QbHTSNpPKBgMTln5KLkZHLOcU7r37J4pXBuIg
 github.com/alecthomas/repr v0.5.1/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
 github.com/aymanbagabas/go-udiff v0.4.1 h1:OEIrQ8maEeDBXQDoGCbbTTXYJMYRCRO1fnodZ12Gv5o=
 github.com/aymanbagabas/go-udiff v0.4.1/go.mod h1:0L9PGwj20lrtmEMeyw4WKJ/TMyDtvAoK9bf2u/mNo3w=
-github.com/branden-thompson/go-tuimaps v0.2.0-rc.9 h1:6BV6ee1RLlzn76jswEySQ+IrC94EDn4fRRbrvbyw2Kk=
-github.com/branden-thompson/go-tuimaps v0.2.0-rc.9/go.mod h1:LuJ09iGV98F8mKM1z7QPxO80tgYRBiB177bLKHJCkHE=
+github.com/branden-thompson/go-tuimaps v0.2.0-rc.10 h1:Ua9uxzwGMBmhnB15R5H+n77jIcYtkwoIu0c72owGZno=
+github.com/branden-thompson/go-tuimaps v0.2.0-rc.10/go.mod h1:LuJ09iGV98F8mKM1z7QPxO80tgYRBiB177bLKHJCkHE=
 github.com/charmbracelet/colorprofile v0.4.3 h1:QPa1IWkYI+AOB+fE+mg/5/4HRMZcaXex9t5KX76i20Q=
 github.com/charmbracelet/colorprofile v0.4.3/go.mod h1:/zT4BhpD5aGFpqQQqw7a+VtHCzu+zrQtt1zhMt9mR4Q=
 github.com/charmbracelet/ultraviolet v0.0.0-20260812204455-68fa937c71be h1:qEvkJy1sjJXP+yf8IH2o13NV+Rh4nIUHjaLNJ+pWxpI=

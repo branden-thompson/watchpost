@@ -32,7 +32,11 @@ func (d Dashboard) statusLines() []string {
 	// unfilled — and the modal memo means a frame does this once, not per tick.
 	blocks := d.statusBlocks(d.statusInner())
 	lines := []string{d.statusHeadline(o), ""} // the window's own row, then air
-	lines = append(lines, stacked(blocks.providers, blocks.pipelines, blocks.issues, blocks.dumps)...)
+	sections := [][]string{blocks.providers}
+	if len(blocks.maps) > 0 { // a build with no map has no MAP block, and no gap for one
+		sections = append(sections, blocks.maps)
+	}
+	lines = append(lines, stacked(append(sections, blocks.pipelines, blocks.issues, blocks.dumps)...)...)
 	return append(lines, "", " "+o.Controls("   ", render.Ctl("esc", "Close"), render.Ctl("↑↓", "Scroll")))
 }
 
@@ -47,7 +51,7 @@ func (d Dashboard) statusLines() []string {
 // destroys it.
 func (d Dashboard) statusWidth() int {
 	b := d.statusBlocks(0) // natural: what the content wants before any stretch
-	want := widest(b.providers, b.pipelines, b.issues, b.dumps) + panelFrame + panelRail + columnMargin
+	want := widest(b.providers, b.maps, b.pipelines, b.issues, b.dumps) + panelFrame + panelRail + columnMargin
 	return min(d.opts().Width, max(max(68, d.width*60/100), want))
 }
 
@@ -130,7 +134,7 @@ func statusHeader(name string) string { return " " + render.Tint(name, render.To
 // the same story, one of which could not change it. They live in [s] Settings,
 // which is the window that owns them.
 type statusSections struct {
-	providers, pipelines, issues, dumps []string
+	providers, maps, pipelines, issues, dumps []string
 }
 
 // statusBlocks composes the sections (headers inset 1, rows inset 3 — with
@@ -146,6 +150,7 @@ func (d Dashboard) statusBlocks(fillTo int) statusSections {
 		b.dumps = dumpLines(st)
 	}
 	b.providers = d.providerLines(o, st, fillTo)
+	b.maps = d.mapSourceLines() // 0.18.0 D-75: what the map contacts
 	b.pipelines = d.pipelineLines(o, st, fillTo)
 	b.issues = append([]string{statusHeader("ISSUES")}, d.issueLines(o, fillTo, d.snap, d.recent)...)
 	return b
@@ -853,4 +858,22 @@ func providersOf(sn *snapshot.Snapshot) []snapshot.ProviderStatus {
 		return nil
 	}
 	return sn.Providers
+}
+
+// MapSource is one service the map contacts, its host, and what it is sent
+// (0.18.0 D-75: the Status window lists them, where FR-9.4's words were).
+type MapSource struct{ Name, Host, Use string }
+
+// mapSourceLines is the MAP block: each service the map contacts, only while a
+// map is open, and what it is sent (FR-9.4 as D-75 amends it).
+func (d Dashboard) mapSourceLines() []string {
+	if len(d.cfg.MapSources) == 0 {
+		return nil
+	}
+	out := []string{statusHeader("MAP - contacted only while a map is open")}
+	for _, s := range d.cfg.MapSources {
+		out = append(out, "  "+s.Name+"  "+render.Tint(s.Host, render.Tok(render.TableMuted)))
+		out = append(out, "    "+s.Use)
+	}
+	return out
 }

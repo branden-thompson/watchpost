@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -150,16 +149,18 @@ func (lp *livePipelines) clearMapData() tty.MapCleared {
 	return out
 }
 
-// mapDisclosure is what opening the map sends, and to whom, built from the
-// closed list so it names exactly the hosts the map contacts (FR-9.4): the
-// basemap's for the area shown, and the zone service's for the alert zones.
-func mapDisclosure() string {
-	var parts []string
+// mapSourceList is every service the map contacts, its host and what it is
+// sent, built from the closed list so it names exactly the hosts contacted
+// (FR-9.4 as D-75 amends it: the Status window lists them): each basemap
+// source for the area shown, and the Weather Service for the alert zones and
+// the areas in view.
+func mapSourceList() []tty.MapSource {
+	var out []tty.MapSource
 	for _, s := range mapSources {
-		parts = append(parts, "the area shown to "+s.name+" ("+hostOf(s.address)+")")
+		out = append(out, tty.MapSource{Name: s.name, Host: hostOf(s.address), Use: "the map's tiles, for the area shown"})
 	}
-	return "Opening the map sends " + strings.Join(parts, " and ") +
-		", and the codes of the alert zones on it to the National Weather Service (" + hostOf(zones.DefaultBase) + ")."
+	return append(out, tty.MapSource{Name: "National Weather Service", Host: hostOf(zones.DefaultBase),
+		Use: "the codes of the alert zones on the map, and of the states and marine areas in view (D-66)"})
 }
 
 // mapRetention is how long the map's data is kept, and the one stated total

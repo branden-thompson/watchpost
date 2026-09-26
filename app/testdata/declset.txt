@@ -2,6 +2,7 @@ const SafetyNext
 const SafetyNote
 const UserAgent
 const alertLayerKey
+const areaMemoAge
 const bandRecordCap
 const bedFenceFarMi
 const breakingGap
@@ -64,6 +65,7 @@ const tickerSeenWindow
 const titlePartKm
 const titlePlaceKm
 const titleStateKm
+const viewSamples
 const zoneShapeBytes
 func (*airOwner).get
 func (*airOwner).set
@@ -144,6 +146,7 @@ func (*livePipelines).giveItAStation
 func (*livePipelines).hydrate
 func (*livePipelines).injectHook
 func (*livePipelines).injectHook
+func (*livePipelines).inputsFor
 func (*livePipelines).inputsWith
 func (*livePipelines).locateInRadius
 func (*livePipelines).lookInPool
@@ -152,6 +155,7 @@ func (*livePipelines).mapCost
 func (*livePipelines).mapFeed
 func (*livePipelines).mapFeedWith
 func (*livePipelines).mapInputs
+func (*livePipelines).mapInputsFetching
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
@@ -195,6 +199,7 @@ func (*livePipelines).testLocation
 func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
+func (*livePipelines).viewAlerts
 func (*livePipelines).wireDeckWarnings
 func (*mapBuilder).build
 func (*mastercontrol).CutBed
@@ -465,6 +470,7 @@ func halfFor
 func holdRest
 func hostOf
 func inRegion
+func inViewOnly
 func indexKey
 func init
 func init
@@ -487,8 +493,9 @@ func lockedCopy
 func macVoices
 func mainTrack
 func mapAreaNamer
-func mapDisclosure
 func mapRetention
+func mapSourceList
+func marineArea
 func marineReportOf
 func mastheadLine
 func matchesQuery
@@ -587,6 +594,7 @@ func setUIHook
 func setUnder
 func settingsRoles
 func severityOf
+func shapeMeets
 func sharesAnOutput
 func sleepCtx
 func snapshotBytes
@@ -602,6 +610,7 @@ func startPriority
 func startRecent
 func startSchedule
 func startTicker
+func stateNear
 func stationFrom
 func subjectOf
 func suggestHook
@@ -629,6 +638,7 @@ func tuneTo
 func uiHook
 func unread
 func userCacheSubdir
+func viewAreas
 func vizFor
 func voiceDir
 func windowLayers
@@ -645,6 +655,7 @@ type SourceHealth
 type airOwner
 type airScope
 type alertStore
+type areaMemo
 type bandRecord
 type bedReach
 type bedSeams

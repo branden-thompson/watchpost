@@ -12,6 +12,7 @@ package tty
 // will read it (FR-7.3).
 
 import (
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -62,62 +63,106 @@ func (d Dashboard) describeLines() []string {
 // placeFacts is the place's own weather, in words.
 func (d Dashboard) placeFacts(loc snapshot.Location) string {
 	h := loc.Harmonized
-	facts := loc.Label
+	var now []string
 	if h.Temp != nil {
-		temp, unit := *h.Temp, "Celsius"
+		temp, unit := *h.Temp, "°C"
 		if d.units == render.UnitF {
-			temp, unit = temp*9/5+32, "Fahrenheit"
+			temp, unit = temp*9/5+32, "°F"
 		}
-		facts += ": " + strconv.Itoa(int(temp+0.5)) + " degrees " + unit
-		if h.Condition != "" {
-			facts += " and " + strings.ToLower(h.Condition)
-		}
+		now = append(now, strconv.Itoa(int(math.Round(temp)))+unit)
 	}
-	return facts + "."
+	if h.Condition != "" {
+		now = append(now, strings.ReplaceAll(strings.ToLower(h.Condition), "_", " "))
+	}
+	if len(now) == 0 {
+		return loc.Label + "."
+	}
+	return loc.Label + " - Currently: " + strings.Join(now, ", ") + "." // D-74: the place, then how it is now
 }
 
 // alertSentence is one alert against the place.
 func (d Dashboard) alertSentence(loc snapshot.Location, pa tuimaps.PlaceAlert) string {
-	own := alertByID(loc, pa.Feature)
-	if own == nil {
-		own = alertByID(snapshot.Location{Alerts: d.mapPane.national}, pa.Feature) // a national event (W5.3)
-	}
+	own := d.alertOnRecord(loc, pa.Feature)
 	event := pa.Label
 	if own != nil && own.Event != "" {
 		event = own.Event
 	}
-	s := event
-	if word := strings.ToLower(pa.Severity.Word()); word != "" && word != "unknown" {
-		s += ", " + word
+	var areas string
+	if own != nil {
+		areas = areasInWords(own.AreaDesc)
 	}
+	// D-74: WHERE IT IS IN EFFECT, IN THE WORDS A LISTENER KNOWS - this area,
+	// or the Weather Service's own names for the areas, nearby or not - and
+	// never a distance and a bearing. The relation underneath is M1's.
+	var s string
 	switch Relation(pa, d.mapPane.inMissing[pa.Feature]) {
 	case "covers-missing":
-		s += ", covers " + loc.Label + " by a zone that could not be drawn."
+		s = event + " in effect for this area; its outline could not be drawn"
 	case "covers":
-		s += ", covers " + loc.Label + "; its nearest edge is " + distanceWords(pa) + "."
+		s = event + " in effect for this area"
 	case "stops short":
-		s += ", stops short of " + loc.Label + "; its nearest edge is " + distanceWords(pa) + "."
+		if areas == "" {
+			areas = "areas"
+		}
+		s = event + " in effect for nearby " + areas
 	default:
-		s += ", lies to one side of " + loc.Label + "; its nearest edge is " + distanceWords(pa) + "."
+		if areas == "" {
+			areas = "the area it covers"
+		}
+		s = event + " in effect for " + areas
 	}
 	if own != nil && !own.Expires.IsZero() {
-		s += " It is in effect until " + d.untilWords(loc, own.Expires) + "."
+		s += " until " + d.untilWords(loc, own.Expires)
 	}
-	return s
+	return s + "."
 }
 
-// distanceWords is how far and which way, in words: "7 kilometres to the
-// north-east", with one decimal under ten.
-func distanceWords(pa tuimaps.PlaceAlert) string {
-	n := strconv.FormatFloat(pa.Distance, 'f', 0, 64)
-	if pa.Distance < 10 {
-		n = strconv.FormatFloat(pa.Distance, 'f', 1, 64)
+// alertOnRecord is the alert as watchpost holds it, by id: among the selected
+// place's, the station's other places', or the national and in-view ones the
+// feed drew - its name, its areas and its end time.
+func (d Dashboard) alertOnRecord(loc snapshot.Location, id string) *snapshot.Alert {
+	if a := alertByID(loc, id); a != nil {
+		return a
 	}
-	s := n + " " + pa.Unit
-	if pa.Compass != "" {
-		s += " to the " + pa.Compass
+	if d.snap != nil {
+		for _, l := range d.snap.Locations {
+			if a := alertByID(l, id); a != nil {
+				return a
+			}
+		}
 	}
-	return s
+	return alertByID(snapshot.Location{Alerts: d.mapPane.national}, id)
+}
+
+// areaWords are the generic words of the Weather Service's area names, said
+// in lower case: "San Diego County Coastal Areas" reads "San Diego County
+// coastal areas".
+var areaWords = map[string]bool{"Coastal": true, "Areas": true, "Area": true, "Beaches": true, "Waters": true,
+	"Valleys": true, "Valley": true, "Mountains": true, "Inland": true, "Foothills": true, "Deserts": true, "Including": true}
+
+// areasInWords is an alert's area description as the description says it
+// (D-74): its first two places, joined by "and", their generic words in
+// lower case.
+func areasInWords(desc string) string {
+	var places []string
+	for _, p := range strings.Split(desc, ";") {
+		if p = strings.TrimSpace(p); p != "" {
+			places = append(places, p)
+		}
+		if len(places) == 2 {
+			break
+		}
+	}
+	for i, p := range places {
+		words := strings.Fields(p)
+		for j, w := range words {
+			if areaWords[w] {
+				words[j] = strings.ToLower(w)
+			}
+		}
+		places[i] = strings.Join(words, " ")
+	}
+	return strings.Join(places, " and ")
 }
 
 // untilWords is a time as the place keeps it, with its day.

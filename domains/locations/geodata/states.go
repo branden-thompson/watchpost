@@ -7,15 +7,12 @@ package geodata
 import (
 	"strconv"
 	"sync"
+
+	"github.com/branden-thompson/watchpost/platform/geo"
 )
 
 // Extent is a state's box in degrees, from its cities.
-type Extent struct{ W, S, E, N float64 }
-
-// Contains reports whether a place is inside the box.
-func (e Extent) Contains(lat, lon float64) bool {
-	return lat >= e.S && lat <= e.N && lon >= e.W && lon <= e.E
-}
+type Extent = geo.Box
 
 // StateExtents is each US state's (and territory's) box over its cities,
 // computed once, in one pass.

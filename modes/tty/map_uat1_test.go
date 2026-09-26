@@ -59,7 +59,7 @@ func TestTheAreaAlertsBoxOpensWithTheMap(t *testing.T) {
 	}
 	first := -1
 	for i, l := range lines {
-		if strings.Contains(l, "Oceanside, CA:") {
+		if strings.Contains(l, "Oceanside, CA - Currently:") {
 			first = i
 			break
 		}
@@ -74,7 +74,7 @@ func TestTheAreaAlertsBoxOpensWithTheMap(t *testing.T) {
 		t.Error("the status line has no Area Alerts chip")
 	}
 	d = pressCode(d, 'A', "A")
-	if strings.Contains(bodyText(d), "Oceanside, CA:") {
+	if strings.Contains(bodyText(d), "Oceanside, CA - Currently:") {
 		t.Error("A did not close the box")
 	}
 	d, _ = pressKey(d, "g")
@@ -83,7 +83,7 @@ func TestTheAreaAlertsBoxOpensWithTheMap(t *testing.T) {
 		t.Error("the next open did not open the box again (D-63: on every open)")
 	}
 	instead := openMap(t, Config{MapDescription: "instead"}, 133, 44)
-	if strings.Contains(bodyText(instead), "Area Alerts") || !strings.Contains(bodyText(instead), "Oceanside, CA:") {
+	if strings.Contains(bodyText(instead), "Area Alerts") || !strings.Contains(bodyText(instead), "Oceanside, CA - Currently:") {
 		t.Error("instead of the picture, the words are not the full text")
 	}
 }
@@ -171,7 +171,7 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 	}
 	d = pressCode(d, 'O', "O")
 	text := bodyText(d)
-	for _, want := range []string{"Overlays", "Alert areas", "Detail: Weather", "Major roads", "Minor roads (at Full)", "Parks and reserves (at Standard)", "Place names"} {
+	for _, want := range []string{"Overlays", "Alert areas", "Detail: Weather", "Major roads", "Minor roads (at Full)", "Parks (at Standard)", "Place names"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the menu does not list %q", want)
 		}
@@ -198,7 +198,7 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 		t.Errorf("the choice is not written with the map's Settings: %v", d.uiForSave().MapDetail)
 	}
 	d = pressCode(d, 'O', "O")
-	if strings.Contains(bodyText(d), "Parks and reserves") {
+	if strings.Contains(bodyText(d), "Parks (at Standard)") {
 		t.Error("O did not close the menu")
 	}
 }

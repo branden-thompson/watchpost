@@ -60,18 +60,15 @@ func TestTheChipNamesTheLegend(t *testing.T) {
 	}
 }
 
-// TestSettingsSaysWhatIsSent is W1.12 (FR-9.4) as D-69 amends it: Settings
-// says, beside the maps row, what opening the map sends and to whom, with the
-// retention (FR-3.9). The map window says nothing of it
-// (TestTheMapSaysNothingAboutWhatItSends).
-func TestSettingsSaysWhatIsSent(t *testing.T) {
-	const told = "Opening the map asks OpenFreeMap for the area shown."
-	s, _ := uiDash(t, rowMapsOn)
-	s.cfg.MapDisclosure, s.cfg.MapRetention = told, "Kept 7 days."
+// TestSettingsStatesTheRetention is W3.8 (FR-3.9): beside Clear map data,
+// Settings says how long the map's data is kept. What the map sends is the
+// Status window's (D-75, TestWhatTheMapContactsIsInTheStatusWindow).
+func TestSettingsStatesTheRetention(t *testing.T) {
+	s, _ := uiDash(t, rowMapClear)
+	s.cfg.MapRetention = "Kept 7 days."
 	body, _, _ := s.focusBody(s.opts())
-	text := stripANSITest(strings.Join(body, "\n"))
-	if !strings.Contains(text, "OpenFreeMap") || !strings.Contains(text, "Kept 7 days.") {
-		t.Errorf("Settings does not say what the map sends and keeps:\n%s", text)
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Kept 7 days.") {
+		t.Errorf("Settings does not say how long the map keeps its data:\n%s", text)
 	}
 }
 

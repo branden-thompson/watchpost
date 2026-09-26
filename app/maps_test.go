@@ -100,21 +100,28 @@ func TestTheMapSettingsReachTheWindowAndTheFile(t *testing.T) {
 	}
 }
 
-// TestTheDisclosureNamesEverySourceAndTheRetention is W1.12 and W3.8's words
-// (FR-9.4, FR-3.5, FR-3.9): what the window and Settings tell the listener is
-// built from the closed list and the stated total, so it cannot drift from
-// what the map contacts and keeps.
-func TestTheDisclosureNamesEverySourceAndTheRetention(t *testing.T) {
+// TestTheMapsSourcesAndRetentionAreNamed is W1.12 and W3.8 (FR-9.4 as D-75
+// amends it, FR-3.5, FR-3.9): the sources the map contacts - built from the
+// closed list, so they cannot drift from what it contacts - are handed to the
+// Status window, with what each is sent; the retention to Settings.
+func TestTheMapsSourcesAndRetentionAreNamed(t *testing.T) {
 	cfg := (&livePipelines{}).ttyConfig("t", Options{}, false, config.Config{}, nil, nil, nil, nil, nil, nil)
+	named := func(name, host string) (tty.MapSource, bool) {
+		for _, s := range cfg.MapSources {
+			if s.Name == name && s.Host == host {
+				return s, true
+			}
+		}
+		return tty.MapSource{}, false
+	}
 	for _, s := range mapSources {
-		host := strings.TrimPrefix(s.address, "https://")
-		host = host[:strings.Index(host, "/")]
-		if !strings.Contains(cfg.MapDisclosure, s.name) || !strings.Contains(cfg.MapDisclosure, host) {
-			t.Errorf("the disclosure does not name %s at %s: %q", s.name, host, cfg.MapDisclosure)
+		if _, ok := named(s.name, hostOf(s.address)); !ok {
+			t.Errorf("the Status window is not handed %s at %s: %+v", s.name, hostOf(s.address), cfg.MapSources)
 		}
 	}
-	if !strings.Contains(cfg.MapDisclosure, "api.weather.gov") {
-		t.Errorf("the disclosure does not name the zone geometry's host: %q", cfg.MapDisclosure)
+	nws, ok := named("National Weather Service", "api.weather.gov")
+	if !ok || !strings.Contains(nws.Use, "states and marine areas in view") {
+		t.Errorf("the Weather Service's use is not said (D-66's areas among it): %+v", cfg.MapSources)
 	}
 	if !strings.Contains(cfg.MapRetention, "7 days") || !strings.Contains(cfg.MapRetention, strconv.Itoa(statedCacheBytes>>20)+" MB") {
 		t.Errorf("the retention does not state the age and the one total: %q", cfg.MapRetention)

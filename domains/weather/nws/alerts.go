@@ -214,3 +214,32 @@ func alertFrom(pr alertProps, geom json.RawMessage) snapshot.Alert {
 	a.AffectedZones = zones
 	return a
 }
+
+// AlertsInAreas is every active alert of the areas named - state and marine
+// area codes - in one request (0.18.0 D-66: the map's "Alerts in view"). Only
+// the codes are sent, never a place or a rectangle (D-47). No areas asks
+// nothing.
+func (p *Provider) AlertsInAreas(ctx context.Context, areas []string) ([]snapshot.Alert, error) {
+	codes := make([]string, 0, len(areas))
+	seen := map[string]bool{}
+	for _, a := range areas { // bounded by the caller's list (P10-02)
+		if a != "" && !seen[a] {
+			seen[a] = true
+			codes = append(codes, a)
+		}
+	}
+	if len(codes) == 0 {
+		return nil, nil
+	}
+	sort.Strings(codes)
+	var payload alertsPayload
+	u := fmt.Sprintf("%s/alerts/active?status=actual&area=%s", p.base, strings.Join(codes, ","))
+	if _, err := p.client.GetJSON(ctx, u, &payload); err != nil {
+		return nil, fmt.Errorf("alerts in view: %w", err)
+	}
+	out := make([]snapshot.Alert, 0, len(payload.Features))
+	for _, f := range payload.Features {
+		out = append(out, alertFrom(f.Properties, f.Geometry))
+	}
+	return out, nil
+}

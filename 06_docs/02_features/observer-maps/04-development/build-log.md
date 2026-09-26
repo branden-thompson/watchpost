@@ -697,3 +697,69 @@ the map window's flush option, the flush wrap, the words' one-cell margin, the 8
 **What the gates found.** `lint-authoring` (AP-DEAD-01): a `_ = m` in a new test; the dead value is gone.
 
 **Diagrams:** `as-built-map.md` (the flush window, the feed's hand-in); atlas regenerated.
+
+## Batch 15 — UAT-1's fourth pass; Alerts in view (2026-09-25)
+
+**The HUM LEAD's fourth pass** (U1-29 to U1-36, D-74, D-75) **and "Alerts in view"** (U1-15, D-66), for
+UAT together. watchpost moves to go-tuiMaps `v0.2.0-rc.10`, which brings L11.5: a replaced overlay is drawn
+as it was until its replacement is prepared, the library half of U1-28.
+
+**Alerts in view (D-66), the default scope.** The window's ask carries the view (`MapAsk.View`, from the
+map's centre and zoom). The app reads the states and marine areas the view touches (a 5×5 sample: the
+nearest town's state within forty miles, else the coarse NWS marine area), asks the Weather Service once
+for all of them (`Provider.AlertsInAreas`, `/alerts/active?area=`), remembers the answer for two minutes,
+and keeps to the view the polygons whose box meets it and every zone-only alert. The estimate, which runs
+on the UI goroutine, reads the memory and never fetches. The window asks the feed again 600 ms after the
+view stops moving, by generation, so a pan asks once, and only with the in-view scope. The scope picker
+runs In view → the station's places → plus regional severe.
+
+**U1-29 (D-74): the description's words.** "Oceanside, CA - Currently: 72°F, cloudy." then, per alert,
+"‹event› in effect for this area / for nearby ‹areas› / for ‹areas› until ‹time on day›." The areas are the
+alert's own area description, its first two places, generic words lowered. M1's relation is unchanged
+underneath, so its answer key stands.
+
+**Settings (U1-30 to U1-36).**
+- A blank row under the tabs, where the height allows (U1-30).
+- The transmitter's support line is the HUM LEAD's sentence on one line, so no wrap splits its tint (U1-31, U1-32).
+- The borrowed-location note moves to a line of its own; a narrower window had wrapped it to the margin.
+- The helper text under Maps is gone. The Status window gains a MAP block: each source the map contacts,
+  its host and what it is sent (U1-33, U1-34, D-75).
+- The map's detail is a row per layer in the "← Enabled →" pattern, toggled by ←, → or space (U1-35).
+- The window is no wider than 80% of the terminal, or the one-column floor on a smaller one, and the
+  column plan fits inside that (U1-36).
+- To keep the Maps tab's two columns side by side at 133, its words are cut:
+  - "Description" and "Opens at";
+  - "Detail", as the Overlays menu says it;
+  - "Parks";
+  - "Add regional severe" and "Station's places";
+  - "With the map" and "Instead of the map".
+- The FIRMS address moves to its own line so the Data tab fits too.
+
+**Pins.** `TestSetupAllocBudget` re-pinned, the measurement recorded beside it: the 133×44 hit is
+2,817 → 3,046 and the miss 4,127 → 4,699, because the narrower window shows more of the dashboard. Forced back
+to 126 cells, the same frame measures 2,605 / 4,258. The 80×24 miss is 3,127 → 3,319, from eight picker
+rows where one list was.
+
+**Mutation verdicts** (targeted, 25 over two rounds), all caught in the end. Seven first-round survivors
+were answered in two ways:
+- **Stronger tests** for:
+  - the estimate fetching with nothing remembered;
+  - the latitude half of the view's box;
+  - the forty-mile reach offshore;
+  - a detail row that could only switch off;
+  - the first-two-places limit and the lowered words (`TestTheAreasAreTheServicesOwnFirstTwo`).
+- **A correct filter**: the settle tick's generation and scope guards survived only because the round's
+  `-run` filter skipped `TestTheFeedIsAskedOnceThePanningStops`; the whole package kills both.
+
+One survivor was dead code: the detail rows' `mapPickerRow` entry. The rows are toggles, which that
+check never reads, so it is removed.
+
+**What the gates found.** `lint` (unused): `distanceWords`, which D-74 left behind when the words dropped
+distance and bearing; removed.
+`dupes`: `tty.MapView.Contains` repeated `geodata.Extent.Contains`. They collapse into one `platform/geo.Box`,
+of which both are aliases.
+`mutant-anchors`: mAI6 ("a borrowed epicentre looks chosen") drifted when the borrowed note moved to its own
+line. The rule is unchanged, so it is re-pointed at the new line (not retired), and the tty tests still kill it.
+
+**Diagrams:** `as-built-map.md` (Alerts in view and its settle tick, D-74's words, the Status window's
+MAP block, the Maps tab's rows, the 80% rule); atlas regenerated.

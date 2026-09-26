@@ -5,6 +5,7 @@ package tty
 
 import (
 	"strconv"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -69,11 +70,11 @@ func (d Dashboard) cycleMapDesc(forward bool) Dashboard {
 func (m mapDescMode) Label() string {
 	switch m {
 	case mapDescInstead:
-		return "Instead of the picture"
+		return "Instead of the map"
 	case mapDescOff:
 		return "Off"
 	}
-	return "With the picture"
+	return "With the map"
 }
 
 func mapsKey(off bool) string {
@@ -85,14 +86,21 @@ func mapsKey(off bool) string {
 
 // The Maps tab's two columns line up (UAT-1 U1-24): every label padded to
 // the widest, every picker's value to the longest, so the arrows stand in two
-// columns as the other tabs' do.
+// columns as the other tabs' do. THE WORDS ARE CUT TO FIT (U1-36): the two
+// columns sit side by side inside 80% of a 133-column terminal, so a label is
+// at most "Description -" and a value at most "Add regional severe".
 var (
-	mapLabelW = len("Map description -")
-	mapValueW = len("Plus national severe events")
+	mapLabelW = len("Description -")
+	mapValueW = len("Add regional severe")
 )
 
+// mapDetailValueW is the second column's value width: its longest value,
+// "Essential" or "Disabled", so its arrows line up among themselves (U1-24)
+// and the column stays narrow enough to sit beside the first (U1-25).
+var mapDetailValueW = len("Essential")
+
 // mapNoteW is how wide a note under a row wraps in its column.
-const mapNoteW = 46
+const mapNoteW = 44
 
 // mapRow is one row of the Maps tab, its label padded to the tab's width.
 func (d Dashboard) mapRow(o render.Opts, lines []string, at int, id setupRowID, label, cell string) ([]string, int) {
@@ -126,12 +134,9 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	if d.mapsOff {
 		state = "Disabled"
 	}
-	lines, at = d.mapRow(o, lines, at, rowMapsOn, "Maps -", d.mapPicker(o, rowMapsOn, state))
-	for _, l := range render.WrapText(d.cfg.MapDisclosure, mapNoteW) { // FR-9.4 as D-69 amends it: said here alone
-		lines = append(lines, "    "+settingSupport(l))
-	}
-	lines, at = d.mapRow(o, lines, at, rowMapDesc, "Map description -", d.mapPicker(o, rowMapDesc, d.mapDesc.Label()))
-	lines, at = d.mapRow(o, lines, at, rowMapScale, "Default scale -", d.mapPicker(o, rowMapScale, d.mapScale.Label()))
+	lines, at = d.mapRow(o, lines, at, rowMapsOn, "Maps -", d.mapPicker(o, rowMapsOn, state)) // what it contacts is the Status window's (D-75)
+	lines, at = d.mapRow(o, lines, at, rowMapDesc, "Description -", d.mapPicker(o, rowMapDesc, d.mapDesc.Label()))
+	lines, at = d.mapRow(o, lines, at, rowMapScale, "Opens at -", d.mapPicker(o, rowMapScale, d.mapScale.Label()))
 	lines, at = d.mapRow(o, lines, at, rowMapNearby, "Nearby -", d.mapPicker(o, rowMapNearby, d.nearbyLabel()))
 	return d.mapRow(o, lines, at, rowMapScope, "Alerts -", d.mapPicker(o, rowMapScope, d.mapScope.Label()))
 }
@@ -148,18 +153,14 @@ func (d Dashboard) mapLayerLines(o render.Opts, lines []string, at int) ([]strin
 	for _, l := range render.WrapText(costWarning(d.mapCost), mapNoteW) {
 		lines = append(lines, "    "+settingSupport(l))
 	}
-	on := 0
-	for _, l := range mapDetailLayers() {
+	lines, at = d.mapRow(o, lines, at, rowMapDetailLevel, "Detail -", d.mapPickerW(o, rowMapDetailLevel, detailLevelLabel(d.mapDetailLevel), mapDetailValueW))
+	for i, l := range mapDetailLayers() { // A ROW EACH, "← Enabled →" (U1-35)
+		state := "Disabled"
 		if d.detailOn(l.key) {
-			on++
+			state = "Enabled"
 		}
-	}
-	lines, at = d.mapRow(o, lines, at, rowMapDetailLevel, "Detail level -", d.mapPickerW(o, rowMapDetailLevel, detailLevelLabel(d.mapDetailLevel), len("Essential")))
-	lines, at = d.mapRow(o, lines, at, rowMapDetail, "Map detail -",
-		settingSupport(strconv.Itoa(on)+" of "+strconv.Itoa(len(mapDetailLayers()))+" on"))
-	for i, l := range mapDetailLayers() { // THE WHOLE LIST: the column has the room (U1-25)
-		cursor := focus == rowMapDetail && i == d.setup.detailAt%len(mapDetailLayers())
-		lines = append(lines, "      "+setupMark(o, cursor)+checkMark(o, d.detailOn(l.key))+" "+l.label+settingSupport(d.beyondLevel(l)))
+		lines, at = d.mapRow(o, lines, at, rowMapDetailBorders+setupRowID(i), l.label+" -",
+			d.mapPickerW(o, rowMapDetailBorders+setupRowID(i), state, mapDetailValueW)+settingSupport(strings.TrimPrefix(d.beyondLevel(l), " ")))
 	}
 	return d.mapExtraLines(o, lines, at)
 }
@@ -213,7 +214,7 @@ func (d Dashboard) mapExtraLines(o render.Opts, lines []string, at int) ([]strin
 	if focus == rowMapClear {
 		at = len(lines)
 	}
-	lines = append(lines, "  "+setupMark(o, focus == rowMapClear)+settingLabel(render.PadTo("Clear map data -", mapLabelW), focus == rowMapClear)+"  "+o.KeyCap("space")+" clear now")
+	lines = append(lines, "  "+setupMark(o, focus == rowMapClear)+settingLabel(render.PadTo("Map data -", mapLabelW), focus == rowMapClear)+"  "+o.KeyCap("space")+" clear now")
 	for _, l := range render.WrapText(d.cfg.MapRetention, mapNoteW) {
 		lines = append(lines, "    "+settingSupport(l))
 	}

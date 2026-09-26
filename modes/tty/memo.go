@@ -334,7 +334,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
 		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapScope: d.mapScope, mapDetail: d.mapDetailChoice, mapLevel: d.mapDetailLevel.String(),
-		mapWords: d.cfg.MapDisclosure + "\x00" + d.cfg.MapRetention,
+		mapWords: d.cfg.MapRetention, // the map's sources are the Status window's, which keys on its own inputs
 	}
 	switch d.modal {
 	case modalMap:

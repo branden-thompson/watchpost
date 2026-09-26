@@ -10,21 +10,30 @@ import (
 	"testing"
 )
 
-// TestTheMapSaysNothingAboutWhatItSends is D-69: the first open, box open or
-// closed, carries no disclosure; Settings still says it.
-func TestTheMapSaysNothingAboutWhatItSends(t *testing.T) {
-	const told = "Opening the map asks OpenFreeMap for the area shown."
+// TestWhatTheMapContactsIsInTheStatusWindow is D-69 and D-75: neither the
+// map nor Settings carries words about what the map sends; the Status window
+// lists each source the map contacts, its host and what it is sent.
+func TestWhatTheMapContactsIsInTheStatusWindow(t *testing.T) {
+	sources := []MapSource{{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Use: "the map's tiles, for the area shown"},
+		{Name: "National Weather Service", Host: "api.weather.gov", Use: "alert zone outlines; alerts of the states and marine areas in view"}}
 	for _, mode := range []string{"with", "off", "instead"} {
-		d := openMap(t, Config{MapDisclosure: told, MapDescription: mode}, 133, 44)
-		if strings.Contains(bodyText(d), "Opening the map") {
+		d := openMap(t, Config{MapSources: sources, MapDescription: mode}, 133, 44)
+		if strings.Contains(bodyText(d), "tiles.openfreemap.org") {
 			t.Errorf("description %s: the map says what it sends", mode)
 		}
 	}
 	s, _ := uiDash(t, rowMapsOn)
-	s.cfg.MapDisclosure = told
+	s.cfg.MapSources = sources
 	body, _, _ := s.focusBody(s.opts())
-	if !strings.Contains(stripANSITest(strings.Join(body, "\n")), "OpenFreeMap") {
-		t.Error("Settings no longer says what the map sends")
+	if strings.Contains(stripANSITest(strings.Join(body, "\n")), "tiles.openfreemap.org") {
+		t.Error("Settings still carries what the map sends (U1-33)")
+	}
+	s.cfg.MapSources = sources
+	status := stripANSITest(strings.Join(s.statusLines(), "\n"))
+	for _, want := range []string{"MAP", "OpenFreeMap", "tiles.openfreemap.org", "api.weather.gov", "states and marine areas in view"} {
+		if !strings.Contains(status, want) {
+			t.Errorf("the Status window does not name %q:\n%s", want, status)
+		}
 	}
 }
 
