@@ -74,9 +74,9 @@ type Config struct {
 	KeyOverrides term.KeyMap                                   // user [keys] table (validated at build)
 	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error) // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
 	MapFeed      func(ctx context.Context, ask MapAsk) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
-	// MapRadar is the radar the map draws (W8): the newest frame alone, or
-	// the whole loop, asked off the UI goroutine.
-	MapRadar func(ctx context.Context, ask MapAsk, newestOnly bool) MapRadar
+	// MapRadar is the radar the map draws (W8): the whole loop, asked off the
+	// UI goroutine, shown once it is in (D-85).
+	MapRadar func(ctx context.Context, ask MapAsk) MapRadar
 	// MapRadarSource is the file's word for the lower 48's radar: "iem", or
 	// MRMS, the default (D-83).
 	MapRadarSource string
@@ -1005,8 +1005,9 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case SnapshotMsg:
 		m, cmd := d.applySnapshot(v)
 		if next, ok := m.(Dashboard); ok && next.modal == modalMap {
-			next = next.requestFeed().requestRadar() // 0.18.0: new data, so the map's alerts and radar are asked again (D-45's data row)
-			return next, tea.Batch(cmd, next.mapFeedCmd(), next.mapRadarCmd(true))
+			next = next.requestFeed()          // 0.18.0: new data, so the map's alerts are asked again (D-45's data row)
+			next, radar := next.refreshRadar() // and the radar, once its loop has stood two minutes (D-85)
+			return next, tea.Batch(cmd, next.mapFeedCmd(), radar)
 		}
 		return m, cmd
 	case RecentSnapshotMsg:

@@ -256,6 +256,7 @@ type modalKey struct {
 	mapEdgeOn          bool
 	mapRadarSource     string // the radar's chip and its line (W8, D-83)
 	mapRadarLine       string
+	mapRadarTimeline   string
 	mapTitle           string // what is in view, in the window's title (D-64)
 	theme              uint64
 	minute             int64 // Details\' "N min ago" labels, projected while Details is open (a label may lag its rollover ≤ 59 s)
@@ -349,6 +350,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapPane.alertsOn, d.mapPane.menuOn, d.mapPane.menuAt, d.mapPane.flash
 		k.mapEdge, k.mapEdgeOn = d.mapPane.edge, d.mapPane.edgeShown
 		k.mapRadarSource, k.mapRadarLine = d.mapPane.radarSource, d.mapPane.radarLine
+		k.mapRadarTimeline = strings.Join(d.mapPane.radarTimeline, "\n")
 		k.mapTitle = d.mapPane.title
 	case modalRequest:
 		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was

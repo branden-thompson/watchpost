@@ -5,8 +5,8 @@ package tty
 // map's upper right (D-83), and the listener's playback keys (D-61).
 //
 // RADAR NEVER HOLDS UP THE ALERTS (W8.12): it is its own command, apart from
-// the feed, and asked in two steps - the newest frame first, so the picture
-// is current at once, then the whole loop.
+// the feed. IT IS SHOWN WHOLE (D-85): the loop is loaded before it is drawn,
+// one request at a time, so it never blinks or stands on a single frame.
 
 import (
 	"reflect"
@@ -34,52 +34,66 @@ type MapRadar struct {
 	Note     string
 }
 
-// mapRadarMsg is a radar answer, for the request it was asked with.
+// mapRadarMsg is a radar answer.
 type mapRadarMsg struct {
-	gen        uint64
-	radar      MapRadar
-	newestOnly bool
+	radar MapRadar
 }
 
-// requestRadar asks for the radar again: on opening, when the view settles,
-// on new data, and when a layer or the source changes.
-func (d Dashboard) requestRadar() Dashboard {
-	d.mapPane.radarGen++
-	return d
-}
+// radarRefresh is how long a loaded loop stands before new data asks again:
+// the newest frame is five minutes apart at most (D-85).
+const radarRefresh = 2 * time.Minute
 
-// mapRadarCmd asks the app for the radar off the UI goroutine: the newest
-// frame alone, or the whole loop.
-func (d Dashboard) mapRadarCmd(newestOnly bool) tea.Cmd {
+// askRadar asks the app for the whole loop, off the UI goroutine - ONE
+// REQUEST AT A TIME (D-85). A later ask made while one runs is kept and asked
+// when the answer lands, never in its place: every later ask superseding the
+// last is how a six-second loop was never drawn at all.
+func (d Dashboard) askRadar() (Dashboard, tea.Cmd) {
 	radar := d.cfg.MapRadar
 	if radar == nil || d.mapPane.m == nil || d.modal != modalMap {
-		return nil
+		return d, nil
 	}
-	gen, ask, workers := d.mapPane.radarGen, d.mapAsk(), d.mapPane.workers
+	if d.mapPane.radarBusy {
+		d.mapPane.radarAgain = true
+		return d, nil
+	}
+	d.mapPane.radarBusy, d.mapPane.radarAt = true, d.now()
 	if !d.layerOn(RadarLayer) {
-		return func() tea.Msg { return mapRadarMsg{gen: gen} } // off: an empty answer takes the loops away, and the app is not asked
+		return d, func() tea.Msg { return mapRadarMsg{} } // off: an empty answer takes the loops away, and the app is not asked
 	}
-	return func() tea.Msg {
+	ask, workers := d.mapAsk(), d.mapPane.workers
+	return d, func() tea.Msg {
 		ctx, done, ok := workers.begin()
 		if !ok {
 			return nil // the map closed: the app is not asked
 		}
 		defer done()
-		return mapRadarMsg{gen: gen, radar: radar(ctx, ask, newestOnly), newestOnly: newestOnly}
+		return mapRadarMsg{radar: radar(ctx, ask)}
 	}
 }
 
-// applyMapRadar sets the radar's loops, takes off the boxes it no longer has,
-// and, after the newest frame alone, asks for the whole loop.
+// refreshRadar asks again on new data only once the loop has stood for
+// radarRefresh.
+func (d Dashboard) refreshRadar() (Dashboard, tea.Cmd) {
+	if d.now().Sub(d.mapPane.radarAt) < radarRefresh {
+		return d, nil
+	}
+	return d.askRadar()
+}
+
+// applyMapRadar sets the radar's loops and takes off the boxes it no longer
+// has. A loop handed in is drawn once the library has prepared it - the
+// work's answer draws it - so the map is not redrawn in between, where the
+// radar would blink out (D-85). A want kept while this ran is asked now.
 func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
+	d.mapPane.radarBusy = false
 	m := d.mapPane.m
-	if m == nil || v.gen != d.mapPane.radarGen {
-		return d, nil // an older request's answer
+	if m == nil || d.modal != modalMap {
+		return d, nil
 	}
 	if !d.layerOn(RadarLayer) {
 		v.radar = MapRadar{}
 	}
-	given := map[string]tuimaps.Overlay{}
+	given, set := map[string]tuimaps.Overlay{}, false
 	for _, o := range v.radar.Overlays {
 		if prev, ok := d.mapPane.radarGiven[o.ID]; ok && reflect.DeepEqual(prev, o) {
 			given[o.ID] = o // unchanged: handing it in again would drop what was prepared (U1-28)
@@ -88,20 +102,26 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		var err error
 		d.mapPane.call("Set", func() { _, err = m.Set(o) })
 		if err == nil {
-			given[o.ID] = o
+			given[o.ID], set = o, true
 		}
 	}
+	removed := false
 	for id := range d.mapPane.radarGiven {
 		if _, ok := given[id]; !ok {
 			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
+			removed = true
 		}
 	}
 	d.mapPane.radarGiven, d.mapPane.radarSource, d.mapPane.radarNote = given, v.radar.Source, v.radar.Note
-	d = d.renderMap()
+	if removed || !set || m.Pending() == 0 {
+		d = d.renderMap() // nothing left to prepare: draw now; else the work's answer draws it, whole
+	}
 	cmds := []tea.Cmd{d.mapWorkCmd()}
-	if v.newestOnly && len(v.radar.Overlays) > 0 {
-		d = d.requestRadar()
-		cmds = append(cmds, d.mapRadarCmd(false)) // the newest is up: now the whole loop
+	if d.mapPane.radarAgain {
+		d.mapPane.radarAgain = false
+		var again tea.Cmd
+		d, again = d.askRadar()
+		cmds = append(cmds, again)
 	}
 	return d, tea.Batch(cmds...)
 }
@@ -189,14 +209,19 @@ const radarStale = 10 * time.Minute
 func (d Dashboard) radarStatus() string {
 	m := d.mapPane.m
 	if m == nil || d.mapPane.radarSource == "" || !d.layerOn(RadarLayer) {
-		if d.mapPane.radarNote != "" && d.layerOn(RadarLayer) {
+		switch {
+		case !d.layerOn(RadarLayer) || d.cfg.MapRadar == nil:
+			return ""
+		case d.mapPane.radarNote != "":
 			return d.mapPane.radarNote
+		case d.mapPane.radarBusy:
+			return "Radar loading…" // preloaded: shown when the whole loop is in (D-85)
 		}
 		return ""
 	}
 	st := m.Loop()
 	if st.Count == 0 {
-		return "Radar (" + d.mapPane.radarSource + "): loading"
+		return "Radar (" + d.mapPane.radarSource + ") loading…"
 	}
 	age := d.now().Sub(st.Newest)
 	ago := strconv.Itoa(int(age.Minutes())) + " min ago"
@@ -215,3 +240,100 @@ func (d Dashboard) radarStatus() string {
 	}
 	return strings.Join(parts, " · ")
 }
+
+// radarRows is the timeline's rows under the map (D-86), held whenever the
+// radar layer is on so the map's size never waits on the loop.
+const radarRows = 3
+
+// radarTimelineOn reports whether the timeline's rows are held.
+func (d Dashboard) radarTimelineOn() bool { return d.cfg.MapRadar != nil && d.layerOn(RadarLayer) }
+
+// radarTimeline is the loop as the listener sees it (D-86): the shown frame's
+// time above its mark; the bar from the oldest frame to the last, the step
+// keys at its ends, a tick at now; beneath, the end times, OBSERVED before
+// now and FORECAST after it. Read from the library's loop in Update; the
+// window keeps no playback state of its own (go-tuiMaps L-1.13).
+func (d Dashboard) radarTimeline(width int) []string {
+	m := d.mapPane.m
+	if m == nil || !d.radarTimelineOn() {
+		return nil
+	}
+	st := m.Loop()
+	if d.mapPane.radarSource == "" || st.Count == 0 {
+		return []string{"", "", ""}
+	}
+	o := d.opts()
+	arrow := strings.NewReplacer("shift+left", "shift+←", "shift+right", "shift+→") // the sketch's faces (D-86)
+	if o.ASCII {
+		arrow = strings.NewReplacer()
+	}
+	back, on := o.KeyCap(arrow.Replace(d.firstKey(actMapBack))), o.KeyCap(arrow.Replace(d.firstKey(actMapOn)))
+	lead := render.Width(back) + 1
+	bar := width - lead - render.Width(on) - 1 - 2 // the two end marks
+	if bar < 10 {
+		return []string{"", "", ""}
+	}
+	at := func(frac float64) int { return min(max(int(frac*float64(bar-1)+0.5), 0), bar-1) }
+	cur := 0
+	if st.Count > 1 {
+		cur = at(float64(st.Index) / float64(st.Count-1))
+	}
+	now := bar - 1
+	if span := st.Newest.Sub(st.Oldest); span > 0 && st.Now.Before(st.Newest) {
+		now = at(float64(st.Now.Sub(st.Oldest)) / float64(span))
+	}
+	cells := []rune(strings.Repeat("─", bar))
+	if now < bar-1 {
+		cells[now] = '┼'
+	}
+	cells[cur] = '█'
+	clock := func(t time.Time) string { return d.clockFmt.Time(t.In(d.now().Location())) }
+	above := newPlacer(width)
+	above.centre(clock(st.At), lead+1+cur)
+	below := newPlacer(width)
+	below.left(clock(st.Oldest), lead)
+	if now < bar-1 {
+		below.right(clock(st.Newest), lead+bar+1)
+		below.centre("NOW", lead+1+now)
+	} else {
+		below.right("NOW · "+clock(st.Newest), lead+bar+1) // no forecast: the loop ends at now
+	}
+	below.centre("OBSERVED", lead+1+now/2)
+	if now < bar-1 {
+		below.centre("FORECAST", lead+1+(now+bar)/2)
+	}
+	return []string{above.String(), back + " ├" + string(cells) + "┤ " + on, below.String()}
+}
+
+// firstKey is an action's first bound key, as the listener's [keys] set it.
+func (d Dashboard) firstKey(act term.Action) string {
+	if keys := d.mapKeys[act].Keys; len(keys) > 0 {
+		return keys[0]
+	}
+	return ""
+}
+
+// placer lays words on a line at columns, never over one another: a word that
+// would overlap one already placed is left out.
+type placer struct{ cells []rune }
+
+func newPlacer(width int) *placer { return &placer{cells: []rune(strings.Repeat(" ", max(width, 0)))} }
+
+func (p *placer) put(s string, from int) {
+	r := []rune(s)
+	if from < 0 || from+len(r) > len(p.cells) {
+		return
+	}
+	for i := from - 1; i <= from+len(r); i++ { // a space either side
+		if i >= 0 && i < len(p.cells) && p.cells[i] != ' ' {
+			return
+		}
+	}
+	copy(p.cells[from:], r)
+}
+
+func (p *placer) left(s string, col int)   { p.put(s, col) }
+func (p *placer) right(s string, col int)  { p.put(s, col-len([]rune(s))+1) }
+func (p *placer) centre(s string, col int) { p.put(s, col-len([]rune(s))/2) }
+
+func (p *placer) String() string { return strings.TrimRight(string(p.cells), " ") }

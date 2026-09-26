@@ -68,10 +68,10 @@ func TestMapsOffSaysSoAndBuildsNothing(t *testing.T) {
 	}
 }
 
-// TestTheDescriptionComesFirstWithThePicture is W1.6 (D-55) as D-63 keeps
-// it: with the description's mode "with the picture", the description is in
-// the Area Alerts box on the window's first rows, the map around it;
-// "instead" shows no braille; "off" shows no description.
+// TestTheDescriptionComesFirstWithThePicture is W1.6 (D-55) as D-63 and D-87
+// keep it: with the description's mode "with the picture", the description
+// is in the Area Alerts box on the window's first rows once A opens it, the
+// map around it; "instead" shows no braille; "off" shows no description.
 func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 	for _, c := range []struct {
 		mode           string
@@ -81,6 +81,9 @@ func TestTheDescriptionComesFirstWithThePicture(t *testing.T) {
 			d := mapDash(t, Config{MapDescription: c.mode, MapFeed: boxFeed(-117.6, -117.1, false)})
 			d, _ = pressKey(d, "g")
 			d = feedAndSettle(t, d)
+			if c.mode == "" {
+				d = pressCode(d, 'A', "A") // D-87: the box waits for A
+			}
 			body := d.mapBodyLines()
 			text := stripANSITest(strings.Join(body, "\n"))
 			words := strings.Index(text, "Oceanside, CA - Currently:")

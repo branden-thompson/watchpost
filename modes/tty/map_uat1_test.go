@@ -48,11 +48,16 @@ func TestTheMapWindowLeavesTheDashboardInSight(t *testing.T) {
 	}
 }
 
-// TestTheAreaAlertsBoxOpensWithTheMap is U1-7 and D-63: the description is a
-// box over the map's upper left, open on every open, its words in the
-// window's first rows; A closes and reopens it; the map around it is drawn.
-func TestTheAreaAlertsBoxOpensWithTheMap(t *testing.T) {
+// TestTheAreaAlertsBoxWaitsForA is U1-7 and D-63 as D-87 amends it (UAT-2
+// U2-4): the box is closed when the map opens; A opens it, a box over the
+// map's upper left with its words in the window's first rows and the map
+// around it; A closes it; the next open is closed again.
+func TestTheAreaAlertsBoxWaitsForA(t *testing.T) {
 	d := openMap(t, Config{}, 133, 44)
+	if strings.Contains(bodyText(d), "Oceanside, CA - Currently:") {
+		t.Fatal("the box is open on opening (D-87: it waits for A)")
+	}
+	d = pressCode(d, 'A', "A")
 	lines := strings.Split(bodyText(d), "\n")
 	if !strings.Contains(lines[0], "Area Alerts") {
 		t.Fatalf("the first row is %q, not the Area Alerts box", lines[0])
@@ -77,10 +82,11 @@ func TestTheAreaAlertsBoxOpensWithTheMap(t *testing.T) {
 	if strings.Contains(bodyText(d), "Oceanside, CA - Currently:") {
 		t.Error("A did not close the box")
 	}
+	d = pressCode(d, 'A', "A")
 	d, _ = pressKey(d, "g")
 	d, _ = pressKey(d, "g")
-	if !strings.Contains(bodyText(d), "Area Alerts") {
-		t.Error("the next open did not open the box again (D-63: on every open)")
+	if strings.Contains(bodyText(d), "Oceanside, CA - Currently:") {
+		t.Error("the next open opened the box (D-87: closed on every open)")
 	}
 	instead := openMap(t, Config{MapDescription: "instead"}, 133, 44)
 	if strings.Contains(bodyText(instead), "Area Alerts") || !strings.Contains(bodyText(instead), "Oceanside, CA - Currently:") {

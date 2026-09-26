@@ -935,3 +935,37 @@ with stronger tests (a close view in Alaska or Hawaii takes that region's box an
 southern view takes southern boxes alone; the source toggles back as well as forth). One is **equivalent**
 and says so here: dropping the frame fetch's error check in `radarLoop` changes nothing, because
 `radar.Check` refuses a missing picture on the next line.
+
+## Batch 20 — UAT-2's first pass: the loop preloaded; its timeline; Area Alerts closed on open (2026-09-26)
+
+**U2-1, U2-2 (D-85).** Diagnosed live before any change: the library held the 24-frame loop, and the window
+was at fault. Every later ask (each refresh, each settle) superseded the whole-loop ask before its 6-8 s
+answer landed, so only the newest frame was drawn, each ask replacing it: the blink.
+- One radar request at a time. A later want is kept and asked when the answer lands, and every answer is
+  applied.
+- The newest-only phase is gone. The loop is shown once it is in, with "Radar loading…" until then.
+- New data asks again only after two minutes.
+- A loop handed in is drawn once the library has prepared it, or at once when nothing is left to prepare.
+  The map is not redrawn in between.
+
+**U2-3 (D-86).** A timeline under the map while radar is on, its three rows held so the map's size never
+waits on the loop:
+- the frame's time above its mark;
+- `[shift+←] ├──…█…┤ [shift+→]`;
+- beneath, the oldest time, OBSERVED, and NOW with the newest time. With forecast frames, NOW is a tick
+  and FORECAST follows it.
+
+shift+← and shift+→ now step (D-61's `,` and `.` gave way to them). Help writes them ⇧← ⇧→, or S-left
+and S-right under `--ascii`.
+
+**U2-4 (D-87).** The Area Alerts box is closed when the map opens; A opens it.
+
+**What the tests found.** A test helper had run the Work command and thrown its answer away, so the library
+ran ahead of the drawn frame. The helper now sends every answer through `Update`. The window was right.
+
+**Mutation verdicts** (targeted, 12), all caught in the end. One first-round survivor, the timeline's rows
+not held in the map's height, is answered by `TestTheTimelineNeverMakesTheWindowScroll`: with radar on, the
+window fits whole at 133×44, 100×30 and 80×24.
+
+**Diagrams:** `as-built-map.md` (the one whole-loop ask, the keys and the timeline, the box closed on open);
+atlas regenerated; the UAT guide's S18.

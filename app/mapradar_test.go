@@ -98,7 +98,7 @@ func TestTheSourceIsMRMSUnlessIEMIsChosenForTheLower48(t *testing.T) {
 		fail: map[time.Time]bool{times[len(times)-2]: true}}
 	lp := &livePipelines{radar: &radarSources{iem: iem, mrms: mrms}}
 	socal := tty.MapView{W: -119.6, S: 32.1, E: -115.0, N: 34.2}
-	got := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionContiguous, View: socal}, false)
+	got := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionContiguous, View: socal})
 	if got.Source != "MRMS" || !strings.Contains(got.Note, "approximate") || len(got.Overlays) == 0 {
 		t.Fatalf("the default is %+v", got)
 	}
@@ -113,19 +113,19 @@ func TestTheSourceIsMRMSUnlessIEMIsChosenForTheLower48(t *testing.T) {
 			t.Error("the newest frame is missing")
 		}
 	}
-	if got := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionContiguous, View: socal, RadarIEM: true}, false); got.Source != "IEM" || got.Note != "" {
+	if got := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionContiguous, View: socal, RadarIEM: true}); got.Source != "IEM" || got.Note != "" {
 		t.Errorf("IEM chosen for the lower 48 gives %s (%q)", got.Source, got.Note)
 	}
-	if got := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionHawaii, View: socal, RadarIEM: true}, false); got.Source != "MRMS" {
+	if got := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionHawaii, View: socal, RadarIEM: true}); got.Source != "MRMS" {
 		t.Errorf("Hawaii with IEM chosen gives %q; IEM does not cover it", got.Source)
 	}
-	if got := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionSamoa, View: socal}, false); got.Source != "" || got.Note != "No radar covers American Samoa." || len(got.Overlays) != 0 {
+	if got := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionSamoa, View: socal}); got.Source != "" || got.Note != "No radar covers American Samoa." || len(got.Overlays) != 0 {
 		t.Errorf("American Samoa gives %+v", got)
 	}
 	was := iem.asks
-	newest := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionContiguous, View: socal, RadarIEM: true}, true)
-	if iem.asks-was != len(newest.Overlays) || len(newest.Overlays) == 0 || len(newest.Overlays[0].Image.Frames) != 1 {
-		t.Errorf("the newest-only ask fetched %d frames for %d boxes", iem.asks-was, len(newest.Overlays))
+	whole := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionContiguous, View: socal, RadarIEM: true})
+	if iem.asks-was != 24*len(whole.Overlays) || len(whole.Overlays) == 0 || len(whole.Overlays[0].Image.Frames) != 24 {
+		t.Errorf("the whole loop fetched %d frames for %d boxes; want 24 a box (D-85)", iem.asks-was, len(whole.Overlays))
 	}
 }
 
@@ -165,11 +165,11 @@ func TestALoopShowingNothingIsCheckedAgainstTheOtherSource(t *testing.T) {
 	iem := &fakeRadar{name: "IEM", regions: []string{geo.RegionContiguous}, times: times, png: clear}
 	mrms := &fakeRadar{name: "MRMS", regions: []string{geo.RegionContiguous}, times: times, png: echo}
 	lp := &livePipelines{radar: &radarSources{iem: iem, mrms: mrms}}
-	if got := lp.mapRadar(context.Background(), socal, false); !strings.Contains(got.Note, "IEM shows no echo where MRMS does") {
+	if got := lp.mapRadar(context.Background(), socal); !strings.Contains(got.Note, "IEM shows no echo where MRMS does") {
 		t.Errorf("an empty loop beside the other source's echo says %q", got.Note)
 	}
 	mrms.png = clear
-	if got := lp.mapRadar(context.Background(), socal, false); got.Note != "" || len(got.Overlays) == 0 {
+	if got := lp.mapRadar(context.Background(), socal); got.Note != "" || len(got.Overlays) == 0 {
 		t.Errorf("a clear sky both agree on says %q with %d loops", got.Note, len(got.Overlays))
 	}
 }

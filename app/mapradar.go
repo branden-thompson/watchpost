@@ -64,8 +64,9 @@ const (
 	noRadarNote = "No radar covers "
 )
 
-// mapRadar is the window's radar: the newest frame alone, or the loop.
-func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk, newestOnly bool) tty.MapRadar {
+// mapRadar is the window's radar: the whole loop, which the window shows once
+// it is in (D-85).
+func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRadar {
 	if lp.radar == nil || ask.Region == "" {
 		return tty.MapRadar{}
 	}
@@ -83,9 +84,6 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk, newestOnl
 		return out
 	}
 	slots := loopSlots(times, radarStep, radar.Window)
-	if newestOnly {
-		slots = slots[len(slots)-1:]
-	}
 	allEmpty := true
 	boxes := radar.BoxesFor(ask.Region, ask.View)
 	for _, b := range boxes {
@@ -95,7 +93,7 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk, newestOnl
 		}
 		allEmpty = allEmpty && painted == 0
 	}
-	if allEmpty && !newestOnly && len(out.Overlays) > 0 {
+	if allEmpty && len(out.Overlays) > 0 {
 		if other := lp.radar.other(src, ask.Region); other != nil && echoes(ctx, other, ask.Region, boxes) {
 			out.Note = src.Name() + " shows no echo where " + other.Name() + " does: its data may be missing." // D-84's check
 		}

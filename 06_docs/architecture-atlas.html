@@ -854,7 +854,7 @@ code{font-family:var(--mono);font-size:.92em}
   subgraph tty[&#34;modes/tty — the Observer&#34;]
     MW[&#34;map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\n1-6 snap to a region; at an edge a chip names the neighbour, the next press crosses (D-77, D-81)\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms)&#34;]
     MD[&#34;map_describe.go · the description follows the view (D-74, D-78)\nthe place - Currently: … only while the place is in view; else the view&#39;s name\n‹event› in effect for this area · for nearby ‹areas› · for ‹areas›, until ‹time›\nevery alert in view, most severe first; the box ends &#39;And N more in view.&#39;&#34;]
-    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · 1-6 region · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend&#34;]
+    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · 1-6 region · PgUp/PgDn scroll\nA Area Alerts (closed on open, D-87) · O Overlays · L legend\nradar: space play · shift+← shift+→ step · n now (D-86)\nthe loop&#39;s timeline under the map&#34;]
     BX[&#34;map_boxes.go · over the map (UAT-1)\nthe radar&#39;s source chip, row 2 right: MRMS green, IEM orange (D-83)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: alert areas and [w]&#39;s categories, earthquakes, the map&#39;s detail (D-65, D-80)\ndetail: the level is a preset, the switches the truth; the library at Full (D-79)\nthe title names the view by scale (D-64)&#34;]
     LG[&#34;the legend (D-44)\na box over the map&#39;s corner, from Legend()\nonly the severities drawn, with their digits&#34;]
     ST2[&#34;Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby (no alert scope, D-76)\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail (D-67)\na row per detail layer, ← Enabled → (U1-35); Lakes, never the sea (U1-39) · Map data: clear · the retention&#34;]
@@ -870,7 +870,7 @@ code{font-family:var(--mono);font-size:.92em}
   MF --&gt; MG --&gt; ZS
   MF -- &#34;ask.View&#34; --&gt; MV --&gt; WS
   MR --&gt; RD
-  MR -- &#34;Config.MapRadar(ask, newestOnly)\nits own command: the alerts never wait (W8.12)&#34; --&gt; MW
+  MR -- &#34;Config.MapRadar(ask): the whole loop\none request at a time; shown once in (D-85)\nits own command: the alerts never wait (W8.12)&#34; --&gt; MW
   SD[&#34;severe.go · severeDeck.feedCopy\nthe ticker&#39;s feed&#34;] --&gt; MQ --&gt; MF
   MF -- &#34;alert/‹category›/‹id›: [w]&#39;s Classify; forecasts not drawn (D-80)&#34; --&gt; MW
   MS -- &#34;Config.MapSources&#34; --&gt; SW

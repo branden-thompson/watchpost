@@ -100,7 +100,7 @@ func TestTheRegionKeysAreShownWithTheControls(t *testing.T) {
 		}
 	}
 	var help []string
-	for _, r := range mapHelpRows(defaultMapKeyMap()) {
+	for _, r := range mapHelpRows(defaultMapKeyMap(), false) {
 		help = append(help, r.keys+" "+r.help)
 	}
 	if text := strings.Join(help, "\n"); !strings.Contains(text, "1, 2, 3 Region: US, Alaska, Hawaii") || !strings.Contains(text, "4, 5, 6 Region: Caribbean, Samoa, Guam") {

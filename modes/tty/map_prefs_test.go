@@ -123,6 +123,7 @@ func TestALayerSwitchedOffIsNotDrawn(t *testing.T) {
 	d.mapPane.calls = calls
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
+	d = pressCode(d, 'A', "A") // the Area Alerts box, closed on open (D-87)
 	for _, c := range *calls {
 		if c == "Set" {
 			t.Fatal("an overlay of a layer switched off was drawn")

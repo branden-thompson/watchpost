@@ -229,7 +229,7 @@ func (d Dashboard) cycleNearby(forward bool) Dashboard {
 // toggleRadarSource switches the lower 48's radar between MRMS and IEM (D-83).
 func (d Dashboard) toggleRadarSource() Dashboard {
 	d.mapRadarIEM = !d.mapRadarIEM
-	return d.requestRadar().uiTouched()
+	return d.uiTouched() // the next open asks for the source chosen
 }
 
 // radarSourceKey is the file's word: "iem", or empty for MRMS, the default.
