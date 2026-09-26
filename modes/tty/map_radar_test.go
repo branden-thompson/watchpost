@@ -455,3 +455,44 @@ func TestALoopStillPreparingSaysLoadingWithItsSource(t *testing.T) {
 		t.Errorf("a loop not yet prepared reads %q", got)
 	}
 }
+
+// TestTheRadarBadgeIsThreeRows is D-92 (UAT-2 U2-10): at the map's upper
+// right while radar is drawn - RADAR DATA; the source's chip in the badge's
+// colours; the frame's time in the listener's clock, STALE before it when the
+// newest frame is old. The library's stamp is handed to it (go-tuiMaps D-87),
+// and the legend opens under it.
+func TestTheRadarBadgeIsThreeRows(t *testing.T) {
+	t.Setenv("TERM", "xterm-256color")
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(rendering.ResetColorEnabledForTest)
+	var asked []string
+	calls := &[]string{}
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked),
+		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	d.mapPane.calls = calls
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
+	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+	if !strings.Contains(strings.Join(*calls, " "), "ShowStamp:false") {
+		t.Error("the library's stamp was not handed to the badge")
+	}
+	lines := d.mapBodyLines()
+	for i, want := range []string{"RADAR DATA", "MRMS", "12:55 AM"} {
+		plain := stripANSITest(lines[i])
+		if !strings.HasSuffix(strings.TrimRight(plain, " "), want) && !strings.Contains(plain[max(len(plain)-radarBadgeW-4, 0):], want) {
+			t.Errorf("row %d's right end is %q, not %q", i, plain, want)
+		}
+	}
+	if !strings.Contains(lines[1], render.Tok(render.MapRadarMRMSBG)) {
+		t.Error("the badge's chip is not in the source's colours")
+	}
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 30, 0, 0, time.UTC) }
+	d = d.renderMap()
+	if !strings.Contains(stripANSITest(d.mapBodyLines()[2]), "STALE") {
+		t.Errorf("an old loop's badge reads %q", stripANSITest(d.mapBodyLines()[2]))
+	}
+	d.mapPane.legendOn = true
+	if top := d.withLegend(d.mapPane.lines); strings.Contains(stripANSITest(top[1]), "Legend") || strings.Contains(stripANSITest(top[2]), "Legend") {
+		t.Error("the legend opens over the badge")
+	}
+}

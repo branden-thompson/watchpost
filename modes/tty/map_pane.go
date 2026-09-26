@@ -89,6 +89,7 @@ type mapPane struct {
 	radarGiven                        map[string]tuimaps.Overlay
 	radarSource, radarNote, radarLine string
 	radarTimeline                     []string              // the loop's timeline (D-86), drawn in Update
+	radarBadgeTime                    string                // the badge's time row (D-92), drawn in Update
 	report                            tuimaps.PlaceReport   // the library's answers for the selected place, as last drawn
 	legend                            []tuimaps.LegendEntry // what the map draws now, for the legend (W1.17)
 	legendOn                          bool                  // the legend is open over the map (D-44)
@@ -280,6 +281,7 @@ func (d Dashboard) renderMap() Dashboard {
 	d.mapPane.title = d.mapTitleAt(d.mapBodySize())
 	d.mapPane.radarLine = d.radarStatus() // read from the library here, in Update; the frame only prints it (D-41)
 	d.mapPane.radarTimeline = d.radarTimeline(d.mapTextW())
+	d.mapPane.radarBadgeTime = d.radarBadgeTimeNow()
 	d.mapPane.gen++
 	d.mapPane.changed, d.mapPane.ticks = frame.Changed, frame.FrameTicks
 	return d
@@ -820,7 +822,7 @@ func (d Dashboard) withLegend(lines []string) []string {
 	// colours on either side (UAT-1 U1-19).
 	row := 1
 	if d.radarChipText() != "" {
-		row = 2 // the radar's chip has the row under the library's time (D-83)
+		row = 3 // under the radar's badge (D-92)
 	}
 	return spliceBox(lines, d.legendBox(), row, max(render.Width(lines[0])-legendWidth, 0))
 }

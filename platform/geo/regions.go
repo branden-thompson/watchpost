@@ -29,10 +29,10 @@ type Region struct {
 
 // regions is the set, each with its coastal and marine waters.
 var regions = []Region{
-	{Name: RegionContiguous, W: -130, S: 23, E: -64, N: 50},    // the Gulf, the Great Lakes and both coasts' waters
-	{Name: RegionAlaska, W: 170, S: 50, E: -129, N: 73},        // across the antimeridian to Attu; the Arctic coast
-	{Name: RegionHawaii, W: -162.5, S: 17.5, E: -153.5, N: 23}, // every inhabited island and its channels
-	{Name: RegionCaribbean, W: -68.5, S: 17, E: -64, N: 19},
+	{Name: RegionContiguous, W: -130, S: 23, E: -64, N: 50}, // the Gulf, the Great Lakes and both coasts' waters
+	{Name: RegionAlaska, W: 170, S: 50, E: -129, N: 73},     // across the antimeridian to Attu; the Arctic coast
+	{Name: RegionHawaii, W: -172, S: 10, E: -144, N: 28},    // the islands and the weather around them: two levels wider (D-91, UAT-2 U2-8)
+	{Name: RegionCaribbean, W: -78, S: 11, E: -58, N: 23},   // Puerto Rico, the Virgin Islands and the sea around them (D-91, U2-9); north stops short of the lower 48's box
 	{Name: RegionMarianas, W: 144, S: 12.5, E: 146.5, N: 21},
 	{Name: RegionSamoa, W: -171.5, S: -15, E: -168, N: -10.5},
 }

@@ -350,7 +350,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapPane.alertsOn, d.mapPane.menuOn, d.mapPane.menuAt, d.mapPane.flash
 		k.mapEdge, k.mapEdgeOn = d.mapPane.edge, d.mapPane.edgeShown
 		k.mapRadarSource, k.mapRadarLine = d.mapPane.radarSource, d.mapPane.radarLine
-		k.mapRadarTimeline = strings.Join(d.mapPane.radarTimeline, "\n")
+		k.mapRadarTimeline = strings.Join(d.mapPane.radarTimeline, "\n") + "\n" + d.mapPane.radarBadgeTime
 		k.mapTitle = d.mapPane.title
 	case modalRequest:
 		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was

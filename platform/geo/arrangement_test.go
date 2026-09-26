@@ -55,3 +55,31 @@ func TestTheRegionsStandInTheirArrangement(t *testing.T) {
 		t.Error("region 7 exists")
 	}
 }
+
+// TestHawaiiAndTheCaribbeanHoldTheirWeather is D-91 (UAT-2 U2-8, U2-9): the
+// two regions reach the sea around them - south of the Big Island, where the
+// hurricane was; the Caribbean Sea south of Puerto Rico - and no lower-48
+// place falls into either.
+func TestHawaiiAndTheCaribbeanHoldTheirWeather(t *testing.T) {
+	for _, c := range []struct {
+		lat, lon float64
+		want     string
+	}{
+		{15, -155, RegionHawaii}, {21.3, -157.8, RegionHawaii}, {14, -66, RegionCaribbean}, {18.4, -66.1, RegionCaribbean},
+		{25.8, -80.2, RegionContiguous}, {24.6, -81.8, RegionContiguous}, // Miami and Key West stay in the lower 48
+	} {
+		if r, ok := RegionOf(c.lat, c.lon); !ok || r.Name != c.want {
+			t.Errorf("%v,%v is in %q, want %s", c.lat, c.lon, r.Name, c.want)
+		}
+	}
+	us, _ := regionNamed(RegionContiguous)
+	if pr, _ := regionNamed(RegionCaribbean); pr.N > us.S {
+		t.Errorf("the Caribbean's box reaches %.0f°N, into the lower 48's (from %.0f°N): a view there would be bound to the wrong region", pr.N, us.S)
+	}
+	for _, name := range []string{RegionHawaii, RegionCaribbean} {
+		r, _ := regionNamed(name)
+		if r.E-r.W < 18 || r.N-r.S < 11 {
+			t.Errorf("%s is %.0f° by %.0f°: too small to see the weather around it", name, r.E-r.W, r.N-r.S)
+		}
+	}
+}

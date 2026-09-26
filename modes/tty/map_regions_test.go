@@ -123,11 +123,9 @@ func TestTheEdgeShowsItsNeighbourBeforeCrossing(t *testing.T) {
 	if text := bodyText(d); !strings.Contains(text, "US CARIBBEAN →") {
 		t.Errorf("no chip names the region beyond:\n%s", text)
 	}
-	m, _ := d.Update(right)
-	if got, _ := regionShown(m.(Dashboard)); got != geo.RegionCaribbean {
-		t.Errorf("the second press went to %s, want the Caribbean", got)
-	}
-	m, _ = d.Update(tea.KeyPressMsg{Code: tea.KeyLeft}) // another way, from the chip
+	// ONE LINE OF PRESSES: a copied Dashboard shares the library's map, so a
+	// press on one copy moves the map under every other.
+	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyLeft}) // another way, from the chip
 	d = m.(Dashboard)
 	if strings.Contains(bodyText(d), "US CARIBBEAN") || d.mapPane.edgeShown {
 		t.Error("a press another way left the chip")
@@ -136,6 +134,11 @@ func TestTheEdgeShowsItsNeighbourBeforeCrossing(t *testing.T) {
 		t.Errorf("a press another way changed the region to %s", got)
 	}
 	d = untilChip(t, d, tea.KeyRight)
+	m, _ = d.Update(right)
+	if got, _ := regionShown(m.(Dashboard)); got != geo.RegionCaribbean {
+		t.Errorf("the second press went to %s, want the Caribbean", got)
+	}
+	d = untilChip(t, pressCode(m.(Dashboard), '1', "1"), tea.KeyRight)
 	m, _ = d.Update(tea.KeyPressMsg{Code: '+', Text: "+"})
 	if got, _ := regionShown(m.(Dashboard)); got != geo.RegionContiguous || m.(Dashboard).mapPane.edgeShown {
 		t.Error("a key other than a pan left the chip standing, or crossed")

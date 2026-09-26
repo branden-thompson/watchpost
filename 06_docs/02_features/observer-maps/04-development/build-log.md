@@ -1014,3 +1014,33 @@ chip, is answered by `TestALoopStillPreparingSaysLoadingWithItsSource`.
 
 **What the gates found.** `lint` (QF1001) flagged a negated conjunction in a new test; it is written with
 De Morgan's law.
+
+## Batch 23 — UAT-2's fourth pass: maps that fill; room around Hawaii and the Caribbean; the badge (2026-09-26)
+
+**U2-7 (D-90), in go-tuiMaps `v0.2.0-rc.12` (its L11.7, D-86).** The library drew nothing past 180°, as
+its upstream did not, so Alaska at a wide window showed open sea where Chukotka is. The world now
+repeats across the antimeridian:
+- tiles are drawn per copy of the world;
+- every overlay, marker and name is drawn once in each copy the view reaches, each whole;
+- a first cut that chose each point's nearest copy tore lines across the frame, and the library's
+  run-index test caught it.
+
+No reference frame moved. watchpost at 190×50 over Alaska now draws Chukotka's coast.
+
+**U2-8, U2-9 (D-91).** Hawaii is 172°W to 144°W by 10°N to 28°N, and the US Caribbean 78°W to 58°W by 11°N
+to 23°N: about two levels wider each, so the weather around them is inside the region. Miami and Key West
+stay in the lower 48.
+
+**U2-10 (D-92).** The radar badge is three rows at the upper right: RADAR DATA, the source's chip, and the
+frame's time in the listener's clock, STALE before it when old. It takes the library's top-row stamp
+over (go-tuiMaps L11.8, `ShowStamp`, D-87), and the legend opens under it.
+
+**What the tests found.** An edge test pressed keys on two copies of one Dashboard. The copies share the
+library's map, so one copy's crossing moved the map under the other. It passed before only because the
+Caribbean's old box was small. The test now presses in one line and says why.
+
+**The go-tuiMaps bump:** `go get`, `go mod tidy`, the licence list regenerated.
+
+**Mutation verdicts** (targeted, 6, and the library's 5 at L11.7 and L11.8), all caught in the end. The
+Caribbean's box pushed north into the lower 48's survived at first: `RegionOf` looks in the lower 48 first,
+so nothing it reports changed. The test now holds what D-91 promises: the two boxes do not overlap.

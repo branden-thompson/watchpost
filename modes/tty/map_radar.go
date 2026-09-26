@@ -140,16 +140,46 @@ func (d Dashboard) radarChipText() string {
 	return " " + d.mapPane.radarSource + " "
 }
 
-// withRadarChip lays the source's chip in the map's upper right while radar
-// is drawn (D-83): MRMS on green, IEM on orange, the name in bold. On the
-// second row: the first is the library's, and its time is never covered
-// (UAT-1 U1-26).
+// radarBadgeW is the badge's width: "RADAR DATA" and a space either side.
+const radarBadgeW = 12
+
+// radarBadge is the radar's badge (D-92), three rows: RADAR DATA; the
+// source's chip in the badge's colours; the frame's time in the listener's
+// clock, STALE before it when the newest frame is old. It takes the
+// library's top-row stamp over (go-tuiMaps D-87).
+func (d Dashboard) radarBadge() []string {
+	if d.radarChipText() == "" {
+		return nil
+	}
+	pad := func(s string) string { return render.PadTo(s, radarBadgeW) }
+	source := d.mapPane.radarSource
+	chip := render.PadTo(" ", (radarBadgeW-len(source)-6)/2) + "[" + render.TintRaw("  "+source+"  ", d.radarChipTones()) + "]"
+	when := d.mapPane.radarBadgeTime
+	return []string{
+		pad(" " + render.Tint("RADAR DATA", render.Tok(render.ModalTitle))),
+		pad(chip),
+		render.PadTo(" ", max(radarBadgeW-render.Width(when)-1, 0)) + when + " ",
+	}
+}
+
+// radarChipTones are the chip's colours: MRMS green, IEM orange (D-83).
+func (d Dashboard) radarChipTones() string {
+	ground := render.MapRadarMRMSBG
+	if d.mapPane.radarSource == "IEM" {
+		ground = render.MapRadarIEMBG
+	}
+	return render.Tok(ground) + ";" + render.Tok(render.MapRadarChipFG)
+}
+
+// withRadarChip lays the badge flush in the map's upper right while radar is
+// drawn (D-92), on the top rows - the library draws no stamp there while it
+// does (go-tuiMaps D-87).
 func (d Dashboard) withRadarChip(lines []string, size tuimaps.Size) []string {
-	text := d.radarChipText()
-	if text == "" || len(lines) == 0 {
+	badge := d.radarBadge()
+	if badge == nil || len(lines) < len(badge) {
 		return lines
 	}
-	return spliceBox(lines, []string{d.radarChip()}, 1, insetCols+size.Cols-render.Width(text))
+	return spliceBox(lines, badge, 0, insetCols+size.Cols-radarBadgeW)
 }
 
 // The playback keys (D-61): space plays and stops, "," and "." step a frame
@@ -196,6 +226,7 @@ func (d Dashboard) applyPlayback() Dashboard {
 		return d
 	}
 	d.mapPane.call("SetPlayback", func() { _ = m.SetPlayback(tuimaps.PlaybackOn) })
+	d.mapPane.call("ShowStamp:false", func() { m.ShowStamp(false) }) // the badge and the timeline say the moment and its age (D-92)
 	d.mapPane.call("SetPlaybackStep", func() { _ = m.SetPlaybackStep(radarFrameEvery) })
 	return d
 }
@@ -279,13 +310,27 @@ func (d Dashboard) radarLegendRow(width int) string {
 }
 
 // radarChip is the source in the badge's colours (D-83), for the status line
-// (D-89) as for the map's corner.
+// (D-89).
 func (d Dashboard) radarChip() string {
-	ground := render.MapRadarMRMSBG
-	if d.mapPane.radarSource == "IEM" {
-		ground = render.MapRadarIEMBG
+	return render.TintRaw(" "+d.mapPane.radarSource+" ", d.radarChipTones())
+}
+
+// radarBadgeTimeNow is the badge's time row: the moment shown in the
+// listener's clock, STALE before it past radarStale (FR-5.4: never hidden).
+func (d Dashboard) radarBadgeTimeNow() string {
+	m := d.mapPane.m
+	if m == nil || d.radarChipText() == "" {
+		return ""
 	}
-	return render.TintRaw(" "+d.mapPane.radarSource+" ", render.Tok(ground)+";"+render.Tok(render.MapRadarChipFG))
+	st := m.Loop()
+	if st.Count == 0 {
+		return ""
+	}
+	when := d.clockFmt.Time(st.At.In(d.now().Location()))
+	if d.now().Sub(st.Newest) > radarStale {
+		when = "STALE " + when
+	}
+	return when
 }
 
 // radarTimelineOn reports whether the timeline's rows are held.
