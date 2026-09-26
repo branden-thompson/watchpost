@@ -237,3 +237,41 @@ func TestTruncateCellsAgreesWithWidthAboutEscapes(t *testing.T) {
 		t.Errorf("a row that fits was altered: %q", got)
 	}
 }
+
+// TestSpliceCellsRestoresTheToneAfterThePatch is 0.18.0 UAT-1 U1-19: a row
+// that sets its colour once, before the span, keeps it after the patch. The
+// patch ends on a reset, so the row's own tone must be put back, or every
+// cell after the box drew in the terminal's default (the map's background
+// lost beside the Area Alerts box).
+func TestSpliceCellsRestoresTheToneAfterThePatch(t *testing.T) {
+	blue := "\x1b[48;5;17m"
+	row := blue + "abcdefgh" + "\x1b[0m"
+	got := SpliceCells(row, "XY", 2)
+	i := strings.Index(got, "XY")
+	if i < 0 {
+		t.Fatalf("the patch is not in the row: %q", got)
+	}
+	after := got[i+2:]
+	j := strings.Index(after, "e")
+	if j < 0 || !strings.Contains(after[:j], blue) {
+		t.Errorf("after the patch the row's tone is not restored before its next cell: %q", after)
+	}
+	if Width(got) != Width(row) {
+		t.Errorf("the row changed width: %d, was %d", Width(got), Width(row))
+	}
+	plainRow := "abcdefgh"
+	if got := SpliceCells(plainRow, "XY", 2); got != "ab\x1b[0mXY\x1b[0mefgh" {
+		t.Errorf("a row with no tone gained one: %q", got)
+	}
+}
+
+// TestSpliceCellsDoesNotRestoreAToneTheRowEnded: a reset before the span
+// ends the row's tone; the patch does not bring it back.
+func TestSpliceCellsDoesNotRestoreAToneTheRowEnded(t *testing.T) {
+	row := "\x1b[44mab\x1b[0mcdefgh"
+	got := SpliceCells(row, "XY", 3)
+	after := got[strings.Index(got, "XY")+2:]
+	if strings.Contains(after, "\x1b[44m") {
+		t.Errorf("a tone the row ended came back after the patch: %q", after)
+	}
+}

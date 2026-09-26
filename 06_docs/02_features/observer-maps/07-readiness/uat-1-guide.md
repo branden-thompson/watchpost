@@ -26,7 +26,7 @@ a finding until the HUM LEAD sees it.
 | The map in the theme's colours; the colour-depth hint; the colour-vision matrix | W7 |
 | Fire hotspots, incidents and quakes as layers | W6 (the registry takes them without editing the others) |
 | The map from the Details window | phase 2 (D-33) |
-| go-tuiMaps' final `v0.2.0` tag | after UAT (the station builds on `v0.2.0-rc.8`) |
+| go-tuiMaps' final `v0.2.0` tag | after UAT (the station builds on the newest release candidate, `v0.2.0-rc.9` since batch 13) |
 
 ## Build and run
 

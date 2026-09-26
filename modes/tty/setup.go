@@ -465,7 +465,7 @@ func (d Dashboard) rowVisible(id setupRowID) bool {
 	// D-18's RULING, ASKED HERE (D-92). `stepRow` already walks only visible
 	// rows and `setupBlock` already draws only visible rows — this seam was built
 	// for exactly this and returned `true` for everything until now.
-	return setupTable()[id].scope.shownOn(d.surface) && d.onFocusedTab(id) // D-62: a tab draws and walks its own rows
+	return d.onFocusedTab(id) // D-62: a tab draws and walks its own rows; D-70: on every surface
 }
 
 // setupSpace operates the focused control: select a radio, toggle a checkbox.
@@ -496,6 +496,8 @@ func (d Dashboard) setupSpace() Dashboard {
 		return d.cycleNearby(true)
 	case rowMapScope:
 		return d.cycleScope()
+	case rowMapDetailLevel:
+		return d.cycleDetailLevel(true).uiTouched()
 	case rowMapLayers:
 		return d.toggleLayer()
 	case rowMapDetail:

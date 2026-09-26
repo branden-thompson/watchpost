@@ -355,16 +355,21 @@ func SpliceCells(s, patch string, col int) string {
 	if w > room {
 		patch, w = TruncateCells(patch, room), room
 	}
-	var b strings.Builder
+	var b, esc, tone strings.Builder
 	cells, inEscape, written := 0, false, false
 	for _, r := range s { // one pass over the runes, like splitCells
 		switch {
 		case inEscape:
 			b.WriteRune(r)
-			inEscape = r != 'm'
+			esc.WriteRune(r)
+			if inEscape = r != 'm'; !inEscape {
+				keepTone(&tone, esc.String())
+				esc.Reset()
+			}
 			continue
 		case r == 0x1b:
 			b.WriteRune(r)
+			esc.WriteRune(r)
 			inEscape = true
 			continue
 		}
@@ -374,13 +379,26 @@ func SpliceCells(s, patch string, col int) string {
 			b.WriteRune(r)
 		case !written:
 			// THE PATCH ARRIVES ON A CLEAN SLATE and leaves one, so the tone the
-			// row was carrying cannot bleed into it or out of it.
-			b.WriteString(sgrReset + patch + sgrReset)
+			// row was carrying cannot bleed into it or out of it - AND THEN THE
+			// ROW'S TONE IS PUT BACK (0.18.0 UAT-1 U1-19). A row that set its
+			// colour once, before the span, drew every cell after the patch in
+			// the terminal's default: the map's background lost beside a box.
+			b.WriteString(sgrReset + patch + sgrReset + tone.String())
 			written = true
 		}
 		cells += cw
 	}
 	return b.String()
+}
+
+// keepTone follows a row's tone through one escape: a reset clears it,
+// anything else adds to it.
+func keepTone(tone *strings.Builder, esc string) {
+	if esc == sgrReset || esc == "\x1b[m" {
+		tone.Reset()
+		return
+	}
+	tone.WriteString(esc)
 }
 
 // RuneCells is one rune's display width (a wide rune is two) — the per-rune

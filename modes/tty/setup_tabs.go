@@ -17,14 +17,15 @@ import (
 type setupTab int
 
 const (
-	tabGeneral setupTab = iota
+	tabData setupTab = iota // D-71: General split into Data and Watchpost UI
+	tabUI
 	tabRadio
 	tabBroadcaster
 	tabMaps
 )
 
 // setupTabs is every tab, in the order the tab row draws them.
-func setupTabs() []setupTab { return []setupTab{tabGeneral, tabRadio, tabBroadcaster, tabMaps} }
+func setupTabs() []setupTab { return []setupTab{tabData, tabUI, tabRadio, tabBroadcaster, tabMaps} }
 
 // Label is the tab's name on the tab row.
 func (t setupTab) Label() string {
@@ -35,8 +36,10 @@ func (t setupTab) Label() string {
 		return "Broadcaster"
 	case tabMaps:
 		return "Maps"
+	case tabUI:
+		return "Watchpost UI"
 	}
-	return "General"
+	return "Data"
 }
 
 // tabOfGroup is where a group lives (D-62).
@@ -46,10 +49,12 @@ func tabOfGroup(g setupGroupID) setupTab {
 		return tabRadio
 	case groupStation:
 		return tabBroadcaster
-	case groupMap:
+	case groupMap, groupMapLayers:
 		return tabMaps
+	case groupUI:
+		return tabUI
 	}
-	return tabGeneral
+	return tabData // DATA and ALERTS - EVENTS: what arrives (D-71)
 }
 
 // setupTab is the tab the window shows: the focused row's.
@@ -60,9 +65,11 @@ func (d Dashboard) onFocusedTab(id setupRowID) bool {
 	return tabOfGroup(setupTable()[id].group) == d.setupTab()
 }
 
-// shownOnSurface is a row the surface draws on some tab (D-18, D-92).
+// shownOnSurface is a row the surface draws on some tab: every row, on every
+// surface (D-70, superseding D-92's visibility - each row still writes only
+// what it wrote).
 func (d Dashboard) shownOnSurface(id setupRowID) bool {
-	return id >= 0 && id < setupRowCount && setupTable()[id].scope.shownOn(d.surface)
+	return id >= 0 && id < setupRowCount
 }
 
 // tabsShown are the tabs this surface has: a tab with no row the surface

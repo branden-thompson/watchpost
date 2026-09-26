@@ -312,6 +312,7 @@ func hazardShort
 func hexRGB
 func init
 func isCategoryTint
+func keepTone
 func kmOf
 func layoutFor
 func liftAll

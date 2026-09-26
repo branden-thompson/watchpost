@@ -109,7 +109,6 @@ func TestMapWindowGoldens(t *testing.T) {
 			d = m.(Dashboard)
 			m, _ = d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 			d = feedAndSettle(t, m.(Dashboard))
-			d.mapPane.disclose = false
 			frame := stripANSITest(d.View().Content)
 			if strings.IndexFunc(frame, func(r rune) bool { return r > 0x2800 && r <= 0x28ff }) < 0 {
 				t.Fatal("no map in the frame: this pins nothing")

@@ -6,7 +6,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.3
 	charm.land/lipgloss/v2 v2.0.2
 	github.com/alecthomas/chroma/v2 v2.20.0
-	github.com/branden-thompson/go-tuimaps v0.2.0-rc.8
+	github.com/branden-thompson/go-tuimaps v0.2.0-rc.9
 	github.com/ebitengine/oto/v3 v3.5.0-alpha.11
 	github.com/hajimehoshi/go-mp3 v0.3.4
 	github.com/mattn/go-runewidth v0.0.24

@@ -82,7 +82,7 @@ var reachabilityBaseline = map[modal]int{
 	modalStatus:     0,
 	modalAbout:      0,
 	modalMap:        0, // the map is drawn at the window's size, so every line is on screen by construction
-	modalSetup:      1,
+	modalSetup:      0, // UAT-1 D-71: WATCHPOST UI has a tab of its own, so its header is the tab's first line
 	modalRequest:    0,
 	modalSevere:     0,
 	modalRelayFault: 1,
@@ -105,7 +105,6 @@ var reachabilityBaseline = map[modal]int{
 // chrome the way the footer is pinned, add a key that scrolls the body free of
 // the focus, or accept it at the floor. FR-5 follow-up.
 var reachabilityNote = map[modal]string{
-	modalSetup:      "the WATCHPOST UI group header, on the General tab; the CORRESPONDENTS header left with the Watchpost Radio tab (D-62)",
 	modalRelayFault: "*** ERROR ***, the window's own head; its three ways out are reachable and its own test proves it",
 }
 

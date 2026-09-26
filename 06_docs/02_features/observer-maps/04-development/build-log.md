@@ -599,3 +599,71 @@ a unit test), "Central", the state name, and the app's namer.
 
 **Diagrams:** `as-built-map.md` (what sits over the map, the title's namer, the detail); atlas
 regenerated.
+
+## Batch 13 — UAT-1's second pass; the detail level on go-tuiMaps rc.9 (2026-09-25)
+
+**The HUM LEAD's second pass** (U1-17..U1-25), and U1-26, found in U1-19's screenshot. Rulings: **D-69**
+(the map says nothing of what it sends; FR-9.4 amended to Settings alone), **D-70** (Settings shows every
+tab and row on every surface, superseding D-92's visibility), **D-71** (General split into Data and
+Watchpost UI), and go-tuiMaps **D-84** (ten reference frames rewritten on the footer row). **U1-21 is
+not a defect: radar is W8, P1-b, reviewed at UAT-2.**
+
+**Built on go-tuiMaps `v0.2.0-rc.9`** (WP-L11: `SetDetail`, major and minor roads apart, the footer's
+scale mark and credit never touching - U1-1 fixed in the library).
+
+**U1-19, a defect: the colour lost beside the Area Alerts box.** `render.SpliceCells` wraps a patch in
+resets - and a row that set its colour once, before the span, drew every cell after the patch in the
+terminal's default. The splice now remembers the row's tone (every escape since its last reset) and puts
+it back after the patch; a tone the row ended stays ended. RED first: `TestSpliceCellsRestoresTheToneAfterThePatch`.
+The legend now splices too (it truncated and appended, the same loss), one row down: the library writes
+the stale word and the frame time along the top row.
+
+**U1-17 and D-69: no disclosure on the map**, in any mode; Settings says it beside the maps row.
+`TestTheFirstOpenSaysWhatIsSent` is now `TestSettingsSaysWhatIsSent`.
+
+**U1-18 and U1-20: the picture's window never scrolls.** The disclosure above the map was what pushed
+the status and the chips out of the window when the box was closed; with it gone, the body is the map,
+its notes and the two status rows, exactly the window - `TestThePicturesWindowNeverScrolls` at four
+sizes, box open and closed.
+
+**U1-26, a defect: the controls covered the credit** (the attribution, FR-14). They stand above the
+library's last row now.
+
+**U1-22 and D-71:** Data (DATA, ALERTS - EVENTS - a filter on what arrives, the agent's placement) and
+Watchpost UI (WATCHPOST UI) replace General. **U1-23 and D-70:** every surface shows every tab; each row
+still writes what it wrote. The tests that held D-92's visibility were rewritten to D-70
+(`TestEverySurfaceOffersEverySetting`, `TestTheStationsSettingsAreOnEverySurface`,
+`TestEachSurfaceHasItsTabs`); the reachability baseline for Settings fell to 0 (WATCHPOST UI's header is
+now its tab's first line).
+
+**U1-24 and U1-25: the Maps tab in two aligned columns.** MAP (maps on or off with what it sends, the
+description, the scale, nearby, the alerts) and MAP - LAYERS AND DETAIL (the layers and the cost warning,
+the detail level, the whole detail list, clear map data) - two groups, which the window's existing
+column plan lays side by side. Within a column the labels and the pickers' values are padded to one
+width. The detail level's picker is as wide as its own longest value, not the first column's: at the
+first column's width the two columns stopped fitting and the tab stacked and scrolled - seen in the
+golden, fixed before commit.
+
+**D-67 on rc.9: the detail level.** Weather by default (`map_detail_level`); a Settings row and a row
+of the Overlays menu (space steps it); the map is told on every open and every change. The detail list is
+borders, water, rivers, place names, major roads, minor roads, rail, parks and reserves - every switch on
+by default, the level doing the thinning - and a layer the level does not draw says the level that would
+("Minor roads (at Full)"). The Overlays menu is 40 cells wide for those words.
+
+**Pins re-pinned, and why:** Settings' memo miss at 133×44 3,808 → 4,127 and at 80×24 2,800 → 3,127
+(five tabs measured where three were, the two-column Maps tab, the detail list).
+
+**Mutation verdicts** (targeted, 14 and 2 re-runs), all caught: the tone put back, a reset ending it
+(after a test was added), the controls' row, the legend's row, the Watchpost UI tab, every row on every
+surface (twice), the level reaching the library (after a picture test was added), Weather the default,
+the "(at …)" hint, the menu's step, the Settings row writing, the save carrying the level, the level's row.
+
+**Diagrams:** `as-built-map.md` (the tabs on every surface, the Maps tab's columns, the level); atlas
+regenerated.
+
+**What the gates found (batch 13).** `TestTheRosterCitesTestsThatExist`: 0.16.0's gates.md still named
+the test D-70 replaced; mAA1's row is retired (**D-72, the HUM LEAD's**: its guarded behaviour is now
+intended) and mAA2's names its catchers today. `TestThePublishedTreeNamesNoPersonOrMachine`: the
+findings log quoted the screenshots' desktop paths; they read as placeholders now, the meaning kept.
+`mutant-anchors` then found mAA5 drifted: it mutated the very line D-70 removed, to the behaviour D-70
+requires. **Retired by the HUM LEAD (D-73)**; 0.16.0's M4 is owed a new definition and instrument.

@@ -79,7 +79,6 @@ type mapPane struct {
 	legend    []tuimaps.LegendEntry // what the map draws now, for the legend (W1.17)
 	legendOn  bool                  // the legend is open over the map (D-44)
 	drawnSev  map[string]bool       // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
-	disclose  bool                  // this open is the session's first: say what the map sends (FR-9.4)
 	feedGen   uint64                // the feed last asked for; an older answer is dropped
 }
 
@@ -127,7 +126,6 @@ func (p mapPane) call(name string, f func()) {
 // toggleMap opens the map window, or closes it when it is open.
 func (d Dashboard) toggleMap() Dashboard {
 	if d.modal == modalMap {
-		d.mapPane.disclose = false
 		return d.close()
 	}
 	d = d.open(modalMap)
@@ -146,7 +144,6 @@ func (d Dashboard) toggleMap() Dashboard {
 			return d
 		}
 		d.mapPane.m, d.mapPane.failed, d.mapPane.workers = m, "", newMapWorkers()
-		d.mapPane.disclose = true // the map is built once a session: its first open says what is sent (FR-9.4)
 	}
 	d.mapPane.alertsOn, d.mapPane.menuOn = d.mapDesc == mapDescWith, false // D-63: the Area Alerts box opens with the map; with the description off it waits for A
 	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
@@ -329,13 +326,7 @@ func (d Dashboard) mapBodyLines() []string {
 	}
 	width := max(d.modalWidth()-8, 1)
 	picture := !d.cfg.ASCII && d.mapDesc != mapDescInstead && d.mapFits()
-	var out []string
-	if d.mapPane.disclose && d.cfg.MapDisclosure != "" && (!picture || !d.mapPane.alertsOn) { // with the box open, the box says it (D-63); FR-9.4 is said either way
-		for _, l := range render.WrapText(d.cfg.MapDisclosure, width) {
-			out = append(out, " "+l)
-		}
-		out = append(out, "")
-	}
+	var out []string // D-69: the map says nothing of what it sends; Settings does, beside the maps row
 	switch {
 	case d.cfg.ASCII:
 		out = []string{asciiMapText, ""} // FR-1.7, FR-1.8: the description in place of the picture
@@ -659,16 +650,10 @@ func (d Dashboard) withLegend(lines []string) []string {
 	if !d.mapPane.legendOn || len(lines) == 0 {
 		return lines
 	}
-	box := d.legendBox()
-	out := append([]string(nil), lines...)
-	for i, b := range box {
-		if i >= len(out) {
-			break
-		}
-		keep := max(render.Width(out[i])-legendWidth, 0)
-		out[i] = render.TruncateCells(out[i], keep) + "\x1b[0m" + b
-	}
-	return out
+	// SPLICED, ONE ROW DOWN: the library writes the stale word and the frame
+	// time along the top row's right end, and the splice keeps the map's
+	// colours on either side (UAT-1 U1-19).
+	return spliceBox(lines, d.legendBox(), 1, max(render.Width(lines[0])-legendWidth, 0))
 }
 
 // legendBox is the legend's lines: a key for everything on the map that needs

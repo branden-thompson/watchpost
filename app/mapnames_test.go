@@ -69,19 +69,19 @@ func TestTheDetailAndTheNamerReachTheWindow(t *testing.T) {
 		t.Fatal(err)
 	}
 	lp := &livePipelines{idx: idx}
-	cfg := lp.ttyConfig("t", Options{}, false, config.Config{MapDetail: map[string]bool{"roads": true}}, nil, nil, nil, nil, nil, nil)
-	if !cfg.MapDetailChoice["roads"] {
-		t.Errorf("the window is handed detail %v", cfg.MapDetailChoice)
+	cfg := lp.ttyConfig("t", Options{}, false, config.Config{MapDetail: map[string]bool{"roads": true}, MapDetailLevel: "standard"}, nil, nil, nil, nil, nil, nil)
+	if !cfg.MapDetailChoice["roads"] || cfg.MapDetailLevel != "standard" {
+		t.Errorf("the window is handed detail %v at %q", cfg.MapDetailChoice, cfg.MapDetailLevel)
 	}
 	if cfg.MapAreaName == nil || cfg.MapAreaName(tuimaps.LonLat{Lon: -117.38, Lat: 33.2}, 400) != "Southern California" {
 		t.Error("the window is not handed the station's namer")
 	}
 	withConfigFile(t)
-	if err := setUIHook(tty.UIPrefs{Units: "metric", MapDetail: map[string]bool{"parks": true}}); err != nil {
+	if err := setUIHook(tty.UIPrefs{Units: "metric", MapDetail: map[string]bool{"parks": true}, MapDetailLevel: "full"}); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := config.Load(); err != nil || !got.MapDetail["parks"] {
-		t.Errorf("the save wrote %v (%v)", got.MapDetail, err)
+	if got, err := config.Load(); err != nil || !got.MapDetail["parks"] || got.MapDetailLevel != "full" {
+		t.Errorf("the save wrote %v at %q (%v)", got.MapDetail, got.MapDetailLevel, err)
 	}
 }
 

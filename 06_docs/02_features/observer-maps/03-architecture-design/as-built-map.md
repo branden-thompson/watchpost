@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–12 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope) - P1-a complete, UAT-1 open; batch 12 is its first findings (D-63, D-64, D-65)."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–13 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope) - P1-a complete, UAT-1 open; batches 12 and 13 are its first two passes (D-63 to D-71); go-tuiMaps v0.2.0-rc.9."
 ---
 
 # As built: where the map lives
@@ -37,7 +37,7 @@ flowchart LR
     MK["map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend"]
     BX["map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: weather layers + the map's detail (D-65, Map.Layers)\nthe title names the view by scale (D-64)"]
     LG["the legend (D-44)\na box over the map's corner, from Legend()\nonly the severities drawn, with their digits"]
-    ST2["Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Alerts (scope) · Layers (+ the cost warning)\nClear map data · the retention"]
+    ST2["Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · what the map sends (D-69: said here alone) · Map description · Default scale · Nearby · Alerts\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail level (D-67) · the detail list · Clear map data · the retention"]
   end
   subgraph plat["platform/"]
     RG["geo · RegionOf\nsix regions with their waters"]
@@ -106,17 +106,20 @@ flowchart LR
 ```mermaid
 flowchart LR
   subgraph S["Settings: one window, the tab is the focused row's"]
-    G["General\nDATA · WATCHPOST UI · ALERTS - EVENTS"]
+    DA["Data (D-71)\nDATA · ALERTS - EVENTS"]
+    UI["Watchpost UI (D-71)\nWATCHPOST UI"]
     R["Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY"]
     B["Broadcaster\nSTATION: transmitter · service radius"]
-    M["Maps\nMAP: on/off · description · scale · nearby · alerts · layers · map detail · clear"]
+    M["Maps\nMAP | MAP - LAYERS AND DETAIL, side by side"]
   end
-  O(["Observer"]) --> G & R & M
-  C(["the console"]) --> G & R & B
+  O(["Observer"]) --> DA & UI & R & B & M
+  C(["the console"]) --> DA & UI & R & B & M
+  N["D-70: every surface shows every tab and row;\neach row still writes only its own values"] -.-> O & C
   K["keys: ←→ switch tabs unless the focused row is a picker or toggle\ntab / shift+tab switch tabs from any row · ↑↓ walk a tab's rows"] -.-> S
 ```
 
-Each tab fits unscrolled at 133×44; the window is as wide as its widest tab on every tab.
+Each tab fits unscrolled at 133×44; the window is as wide as its widest tab on every tab. Within a column the
+labels and the pickers' values are padded to one width, so the arrows line up (U1-24).
 
 ## Not built yet
 

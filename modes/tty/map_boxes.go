@@ -54,15 +54,11 @@ func boxed(title string, content []string, inner int) []string {
 // about two fifths of it, never under 26 cells or over 46.
 func areaAlertsInner(cols int) int { return min(max(cols*2/5, 26), 46, max(cols-4, 1)) }
 
-// areaAlertsBox is the description in a box (D-63): the disclosure on the
-// session's first open, then the words. Longer than two thirds of the map,
+// areaAlertsBox is the description in a box (D-63). Longer than two thirds of the map,
 // it ends with a line saying where the whole text is.
 func (d Dashboard) areaAlertsBox(size tuimaps.Size) []string {
 	inner := areaAlertsInner(size.Cols)
 	var content []string
-	if d.mapPane.disclose && d.cfg.MapDisclosure != "" {
-		content = append(render.WrapText(d.cfg.MapDisclosure, inner-2), "")
-	}
 	for _, l := range d.describeLines() {
 		content = append(content, render.WrapText(l, inner-2)...)
 	}
@@ -115,7 +111,10 @@ func (d Dashboard) withControls(lines []string, size tuimaps.Size) []string {
 		return lines
 	}
 	box := d.controlsBox()
-	return spliceBox(lines, box, size.Rows-len(box), insetCols+size.Cols-(controlsInner+2))
+	// ABOVE THE LAST ROW: the library writes the scale and the credit there,
+	// and the credit is the attribution, which is never covered (FR-14,
+	// UAT-1 U1-26).
+	return spliceBox(lines, box, size.Rows-1-len(box), insetCols+size.Cols-(controlsInner+2))
 }
 
 // flashMapKey marks a map key pressed, for the controls box to blink.
@@ -131,20 +130,74 @@ type mapDetailLayer struct {
 	key, label string
 	layer      tuimaps.Layer
 	on         bool
+	level      tuimaps.Detail // the least detail level that draws it (go-tuiMaps D-82)
 }
 
-// mapDetailLayers is the map's own detail, in the menu's order (D-65: roads,
-// rail and parks and reserves off by default).
+// mapDetailLayers is the map's own detail, in the menu's order. Every switch
+// is on by default: the detail level does the thinning (D-67, weather first),
+// and a switch takes off one kind of line the level would draw. "roads" is
+// the major roads (go-tuiMaps D-82: motorways, trunks, primaries).
 func mapDetailLayers() []mapDetailLayer {
 	return []mapDetailLayer{
-		{"borders", "Borders", tuimaps.BorderLayer, true},
-		{"water", "Water", tuimaps.WaterLayer, true},
-		{"rivers", "Rivers", tuimaps.RiverLayer, true},
-		{"names", "Place names", tuimaps.LabelLayer, true},
-		{"roads", "Roads", tuimaps.RoadLayer, false},
-		{"rail", "Rail", tuimaps.RailLayer, false},
-		{"parks", "Parks and reserves", tuimaps.ParkLayer, false},
+		{"borders", "Borders", tuimaps.BorderLayer, true, tuimaps.DetailEssential},
+		{"water", "Water", tuimaps.WaterLayer, true, tuimaps.DetailEssential},
+		{"rivers", "Rivers", tuimaps.RiverLayer, true, tuimaps.DetailWeather},
+		{"names", "Place names", tuimaps.LabelLayer, true, tuimaps.DetailWeather},
+		{"roads", "Major roads", tuimaps.RoadLayer, true, tuimaps.DetailWeather},
+		{"minor-roads", "Minor roads", tuimaps.MinorRoadLayer, true, tuimaps.DetailFull},
+		{"rail", "Rail", tuimaps.RailLayer, true, tuimaps.DetailStandard},
+		{"parks", "Parks and reserves", tuimaps.ParkLayer, true, tuimaps.DetailStandard},
 	}
+}
+
+// mapDetailLevels are the levels in the picker's order (D-67).
+func mapDetailLevels() []tuimaps.Detail {
+	return []tuimaps.Detail{tuimaps.DetailEssential, tuimaps.DetailWeather, tuimaps.DetailStandard, tuimaps.DetailFull}
+}
+
+// detailLevelByKey reads the file's word; anything else is Weather, the
+// default (D-67).
+func detailLevelByKey(key string) tuimaps.Detail {
+	for _, l := range mapDetailLevels() {
+		if l.String() == key {
+			return l
+		}
+	}
+	return tuimaps.DetailWeather
+}
+
+// detailLevelLabel is a level's words.
+func detailLevelLabel(l tuimaps.Detail) string {
+	s := l.String()
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// cycleDetailLevel moves the level round the four.
+func (d Dashboard) cycleDetailLevel(forward bool) Dashboard {
+	levels := mapDetailLevels()
+	at := 0
+	for i, l := range levels {
+		if l == d.mapDetailLevel {
+			at = i
+		}
+	}
+	step := 1
+	if !forward {
+		step = len(levels) - 1
+	}
+	d.mapDetailLevel = levels[(at+step)%len(levels)]
+	return d.applyDetail()
+}
+
+// beyondLevel is what a layer the level does not draw says beside its box.
+func (d Dashboard) beyondLevel(l mapDetailLayer) string {
+	if l.level <= d.mapDetailLevel {
+		return ""
+	}
+	return " (at " + detailLevelLabel(l.level) + ")"
 }
 
 // detailOn reports whether a detail layer is drawn: the listener's choice,
@@ -192,6 +245,8 @@ func (d Dashboard) applyDetail() Dashboard {
 	if m == nil {
 		return d
 	}
+	level := d.mapDetailLevel
+	d.mapPane.call("SetDetail:"+level.String(), func() { _ = m.SetDetail(level) })
 	for _, l := range mapDetailLayers() {
 		on, layer := d.detailOn(l.key), l.layer
 		word := "off"
@@ -227,11 +282,15 @@ func (d Dashboard) overlayRows() []overlayRow {
 	for _, l := range d.cfg.MapLayers {
 		out = append(out, overlayRow{key: l.Key, label: l.Label, weather: true})
 	}
+	out = append(out, overlayRow{key: detailLevelKey, label: "Detail level"})
 	for _, l := range mapDetailLayers() {
 		out = append(out, overlayRow{key: l.key, label: l.label})
 	}
 	return out
 }
+
+// detailLevelKey is the Overlays menu's detail-level row.
+const detailLevelKey = "level"
 
 // overlaysBox is the menu (D-65), the row under the cursor marked.
 func (d Dashboard) overlaysBox() []string {
@@ -247,10 +306,20 @@ func (d Dashboard) overlaysBox() []string {
 		if group != heading {
 			content, heading = append(content, " "+group), group
 		}
-		content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label)
+		if r.key == detailLevelKey && !r.weather {
+			content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+"Detail: "+detailLevelLabel(d.mapDetailLevel)+"  (space: next)")
+			continue
+		}
+		hint := ""
+		for _, l := range mapDetailLayers() {
+			if !r.weather && l.key == r.key {
+				hint = d.beyondLevel(l)
+			}
+		}
+		content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label+hint)
 	}
 	content = append(content, " "+o.KeyCap("↑↓")+" move "+o.KeyCap("space")+" switch")
-	return boxed("Overlays", content, 30)
+	return boxed("Overlays", content, 40) // room for "Parks and reserves (at Standard)"
 }
 
 // withOverlays lays the menu over the map's upper left while it is open.
@@ -283,6 +352,8 @@ func (d Dashboard) handleOverlaysKey(key string) (Dashboard, bool) {
 			choice[r.key] = !d.layerOn(r.key)
 			d.mapLayerChoice = layerChoiceKey(choice)
 			d = d.refreshMapCost().requestFeed()
+		} else if r.key == detailLevelKey {
+			d = d.cycleDetailLevel(true)
 		} else {
 			d = d.setDetail(r.key, !d.detailOn(r.key))
 		}

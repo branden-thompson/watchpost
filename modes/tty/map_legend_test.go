@@ -60,21 +60,12 @@ func TestTheChipNamesTheLegend(t *testing.T) {
 	}
 }
 
-// TestTheFirstOpenSaysWhatIsSent is W1.12 (FR-9.4): the first time the map
-// opens in a session it names each source it contacts and what it sends; it
-// does not repeat it on the next open; Settings says it beside the maps row,
-// with the retention (FR-3.9).
-func TestTheFirstOpenSaysWhatIsSent(t *testing.T) {
+// TestSettingsSaysWhatIsSent is W1.12 (FR-9.4) as D-69 amends it: Settings
+// says, beside the maps row, what opening the map sends and to whom, with the
+// retention (FR-3.9). The map window says nothing of it
+// (TestTheMapSaysNothingAboutWhatItSends).
+func TestSettingsSaysWhatIsSent(t *testing.T) {
 	const told = "Opening the map asks OpenFreeMap for the area shown."
-	d := legendDash(t, Config{MapDisclosure: told, MapRetention: "Kept 7 days."})
-	if !strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), "Opening the map asks") { // in the Area Alerts box, wrapped to it (D-63)
-		t.Error("the first open does not say what is sent")
-	}
-	d, _ = pressKey(d, "g")
-	d, _ = pressKey(d, "g")
-	if strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), "Opening the map asks") {
-		t.Error("the second open says it again")
-	}
 	s, _ := uiDash(t, rowMapsOn)
 	s.cfg.MapDisclosure, s.cfg.MapRetention = told, "Kept 7 days."
 	body, _, _ := s.focusBody(s.opts())

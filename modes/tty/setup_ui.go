@@ -136,7 +136,7 @@ func (d Dashboard) uiTouched() Dashboard {
 // uiForSave is what the window writes when it closes.
 func (d Dashboard) uiForSave() UIPrefs {
 	return UIPrefs{Theme: d.themeName(), Units: d.setup.units.Key(), Clock: d.setup.clock.Key(), Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
-		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapLayers: d.layerChoices(), MapAlertScope: d.mapScope.Key(), MapDetail: choicesOf(d.mapDetailChoice)}
+		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapLayers: d.layerChoices(), MapAlertScope: d.mapScope.Key(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
 }
 
 // uiApplyCmd writes the display preferences — and nothing else, for the same
@@ -166,7 +166,7 @@ func (d Dashboard) applyUISaved(v uiSavedMsg) Dashboard {
 	d.cfg.Units, d.cfg.Clock = v.prefs.Units, v.prefs.Clock
 	d.cfg.Maps, d.cfg.MapDescription = v.prefs.Maps, v.prefs.MapDescription
 	d.cfg.MapScale, d.cfg.MapNearbyKm, d.cfg.MapLayerChoice = v.prefs.MapScale, v.prefs.MapNearbyKm, v.prefs.MapLayers
-	d.cfg.MapAlertScope, d.cfg.MapDetailChoice = v.prefs.MapAlertScope, v.prefs.MapDetail
+	d.cfg.MapAlertScope, d.cfg.MapDetailChoice, d.cfg.MapDetailLevel = v.prefs.MapAlertScope, v.prefs.MapDetail, v.prefs.MapDetailLevel
 	return d
 }
 

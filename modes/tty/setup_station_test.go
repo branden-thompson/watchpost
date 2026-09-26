@@ -57,12 +57,12 @@ func TestAWindowWithNoBoundsRefusesEveryRadius(t *testing.T) {
 	}
 }
 
-// THEY ARE THE CONSOLE'S AND ONLY THE CONSOLE'S (D-72, D-18's M4 metric).
-//
-// A listener has no transmitter and no service area; Observer's own default
-// location is the row these two sit beside. A leak in either direction is the
-// failure the scope table exists to count.
-func TestTheStationsSettingsAreTheConsolesAlone(t *testing.T) {
+// THEY ARE THE STATION'S, AND EVERY SURFACE SHOWS THEM (0.18.0 D-70, which
+// supersedes D-92's visibility: "settings show now be the same across ALL UI
+// modes"). D-72 and D-18's M4 counted a station row SHOWN in Observer as a
+// leak; since D-70 a leak is a row writing another mode's values, which the
+// scope in the table still rules. The rows sit on the Broadcaster tab.
+func TestTheStationsSettingsAreOnEverySurface(t *testing.T) {
 	console := setupOffers(stationSetup(t, rowFIRMSKey))
 	observer := setupOffers(setupGolden(t, 133, 44, false, rowFIRMSKey))
 
@@ -70,8 +70,8 @@ func TestTheStationsSettingsAreTheConsolesAlone(t *testing.T) {
 		if !strings.Contains(console, want) {
 			t.Errorf("the console's Settings window does not offer %q", want)
 		}
-		if strings.Contains(observer, want) {
-			t.Errorf("%q leaked into OBSERVER, which has no station", want)
+		if !strings.Contains(observer, want) {
+			t.Errorf("Observer's Settings window does not offer %q (D-70)", want)
 		}
 	}
 	// AND THEY SIT ON THE BROADCASTER TAB (D-62, which moved them out of DATA,

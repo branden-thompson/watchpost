@@ -278,6 +278,9 @@ type Config struct {
 	// weather-first defaults (UAT-1 D-65), by key: borders, water, rivers,
 	// names, roads, rail, parks.
 	MapDetail map[string]bool `toml:"map_detail,omitempty"`
+	// MapDetailLevel is how much of the basemap is drawn (D-67, go-tuiMaps
+	// D-82): "essential", "weather" (the default), "standard" or "full".
+	MapDetailLevel string `toml:"map_detail_level,omitempty"`
 
 	// UpdateCheck asks the app, once at startup, whether a newer release is
 	// published (0.15.0 FR-7.1; it polled hourly before). OPT-IN: the app makes no unattended outbound request the

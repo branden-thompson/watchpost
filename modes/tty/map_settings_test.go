@@ -184,18 +184,23 @@ func TestTheDescriptionPickerGoesBothWays(t *testing.T) {
 // operate with the arrows, → and ← switch tabs (as in [w]); a focused picker
 // keeps them; tab and shift+tab switch tabs from any row.
 func TestTheArrowsSwitchTabsUnlessTheRowTakesThem(t *testing.T) {
-	d, _ := uiDash(t, rowUnitsImperial) // a radio row, on General
+	d, _ := uiDash(t, rowUnitsImperial) // a radio row, on Watchpost UI (D-71)
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	if got := m.(Dashboard).setupTab(); got != tabRadio {
 		t.Errorf("→ on a radio row went to %s, want Watchpost Radio", got.Label())
 	}
 	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
-	if got := m.(Dashboard).setupTab(); got != tabMaps {
-		t.Errorf("← on General went to %s, want Maps (wrapping)", got.Label())
+	if got := m.(Dashboard).setupTab(); got != tabData {
+		t.Errorf("← on Watchpost UI went to %s, want Data", got.Label())
+	}
+	d.setup.focus = firstOfGroup(groupData)
+	m, _, _ = d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft})
+	if got := m.(Dashboard).setupTab(); got != tabMaps && d.rowTakesLeftRight() == false {
+		t.Errorf("← on Data went to %s, want Maps (wrapping)", got.Label())
 	}
 	p, _ := uiDash(t, rowTheme) // a picker keeps the arrows
 	m, _, _ = p.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	if got := m.(Dashboard).setupTab(); got != tabGeneral {
+	if got := m.(Dashboard).setupTab(); got != tabUI {
 		t.Errorf("→ on the theme picker left for %s", got.Label())
 	}
 	m, _ = p.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyTab})
@@ -204,14 +209,12 @@ func TestTheArrowsSwitchTabsUnlessTheRowTakesThem(t *testing.T) {
 	}
 }
 
-// TestEachSurfaceHasItsTabs is D-62 exactly: Observer's Settings are General,
-// Watchpost Radio and Maps; the console's General, Watchpost Radio and
-// Broadcaster (D-18/D-92: a mode's own settings appear only in its mode).
+// TestEachSurfaceHasItsTabs is D-62 as D-70 and D-71 amend it: every
+// surface shows every tab - Data, Watchpost UI, Watchpost Radio, Broadcaster,
+// Maps - "the same across ALL UI modes".
 func TestEachSurfaceHasItsTabs(t *testing.T) {
-	for surface, want := range map[Surface][]setupTab{
-		SurfaceObserver:    {tabGeneral, tabRadio, tabMaps},
-		SurfaceBroadcaster: {tabGeneral, tabRadio, tabBroadcaster},
-	} {
+	all := []setupTab{tabData, tabUI, tabRadio, tabBroadcaster, tabMaps}
+	for surface, want := range map[Surface][]setupTab{SurfaceObserver: all, SurfaceBroadcaster: all} {
 		d, _ := uiDash(t, rowTheme)
 		d.surface = surface
 		got := d.tabsShown()

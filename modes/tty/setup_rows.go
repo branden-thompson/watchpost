@@ -30,6 +30,7 @@ const (
 	groupRelay
 	groupStation
 	groupMap
+	groupMapLayers // UAT-1 U1-25: the map's second column
 )
 
 // setupRowKind is how a row is operated. It decides which keys do anything on
@@ -129,6 +130,7 @@ const (
 	rowMapNearby
 	rowMapScope
 	rowMapLayers
+	rowMapDetailLevel
 	rowMapDetail
 	rowMapClear
 
@@ -179,23 +181,6 @@ const (
 // bought is a range check on values that can only come from the table below;
 // what the completeness check actually needs is `scopeUnruled`, and
 // TestEverySettingsRowIsRuledForItsSurface asks for that directly.
-
-// shownOn reports whether a row of this scope is drawn on a surface.
-func (sc setupScope) shownOn(s Surface) bool {
-	switch sc {
-	case scopeObserver:
-		return s != SurfaceBroadcaster
-	case scopeBroadcaster:
-		return s == SurfaceBroadcaster
-	case scopeUnruled:
-		// SHOWN, AND THE GATE FAILS ON IT. A settings row that vanishes silently
-		// is worse than one that appears where it should not: the first is
-		// invisible and the second is reportable.
-		return true
-	}
-	// scopeShared and scopeSplit: both surfaces draw them.
-	return true
-}
 
 // setupRow describes one focusable row.
 type setupRow struct {
@@ -257,11 +242,12 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapScope:  {rowMapScope, groupMap, scopeObserver, rowPicker, true, "", ""},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one
 		// under the cursor; ←→ move it when there is more than one.
-		rowMapLayers: {rowMapLayers, groupMap, scopeObserver, rowCheck, false, "", ""},
+		rowMapLayers: {rowMapLayers, groupMapLayers, scopeObserver, rowCheck, false, "", ""},
 		// THE MAP'S OWN DETAIL (D-65): the library's basemap layers, weather-first.
-		rowMapDetail: {rowMapDetail, groupMap, scopeObserver, rowCheck, false, "", ""},
+		rowMapDetailLevel: {rowMapDetailLevel, groupMapLayers, scopeObserver, rowPicker, true, "", ""}, // go-tuiMaps D-82, D-67
+		rowMapDetail:      {rowMapDetail, groupMapLayers, scopeObserver, rowCheck, false, "", ""},
 		// AN ACTION, operated by space: it empties the map's data (W3.8).
-		rowMapClear: {rowMapClear, groupMap, scopeObserver, rowCheck, false, "", ""},
+		rowMapClear: {rowMapClear, groupMapLayers, scopeObserver, rowCheck, false, "", ""},
 
 		// OBSERVER'S ALERT RADIUS (D-18 row 25, per D-20): it bounds ARRIVALS over
 		// an unbounded location set. The station's service radius is a HARD bound
@@ -339,6 +325,8 @@ func setupGroupTitle(g setupGroupID) string {
 		return "WATCHPOST RADIO - RELAY REPLAY"
 	case groupMap:
 		return "MAP"
+	case groupMapLayers:
+		return "MAP - LAYERS AND DETAIL"
 	case groupStation:
 		return "STATION"
 	}
@@ -376,7 +364,7 @@ func visibleRowOfGroup(g setupGroupID, visible func(setupRowID) bool) (setupRowI
 
 // setupGroups is every group, in draw order.
 func setupGroups() []setupGroupID {
-	return []setupGroupID{groupData, groupUI, groupEvents, groupTone, groupCast, groupRelay, groupStation, groupMap}
+	return []setupGroupID{groupData, groupUI, groupEvents, groupTone, groupCast, groupRelay, groupStation, groupMap, groupMapLayers}
 }
 
 // nextRow is ↓ and prevRow is ↑. Both WRAP: ↓ on the last row returns to the

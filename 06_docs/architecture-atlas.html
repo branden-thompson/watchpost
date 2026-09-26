@@ -853,7 +853,7 @@ code{font-family:var(--mono);font-size:.92em}
     MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend&#34;]
     BX[&#34;map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: weather layers + the map&#39;s detail (D-65, Map.Layers)\nthe title names the view by scale (D-64)&#34;]
     LG[&#34;the legend (D-44)\na box over the map&#39;s corner, from Legend()\nonly the severities drawn, with their digits&#34;]
-    ST2[&#34;Settings, the Maps tab (D-62)\nMaps on/off · what the map sends · Map description\nDefault scale · Nearby · Alerts (scope) · Layers (+ the cost warning)\nClear map data · the retention&#34;]
+    ST2[&#34;Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · what the map sends (D-69: said here alone) · Map description · Default scale · Nearby · Alerts\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail level (D-67) · the detail list · Clear map data · the retention&#34;]
   end
   subgraph plat[&#34;platform/&#34;]
     RG[&#34;geo · RegionOf\nsix regions with their waters&#34;]
@@ -907,13 +907,15 @@ code{font-family:var(--mono);font-size:.92em}
   C -. &#34;refuses what starts after&#34; .-&gt; W &amp; F
 </pre></div></article><article class="dia" id="observer-maps-4"><div class="meta"><h3>Settings, in tabs (D-62)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
   subgraph S[&#34;Settings: one window, the tab is the focused row&#39;s&#34;]
-    G[&#34;General\nDATA · WATCHPOST UI · ALERTS - EVENTS&#34;]
+    DA[&#34;Data (D-71)\nDATA · ALERTS - EVENTS&#34;]
+    UI[&#34;Watchpost UI (D-71)\nWATCHPOST UI&#34;]
     R[&#34;Watchpost Radio\nALERTS - TONE · CORRESPONDENTS · RELAY REPLAY&#34;]
     B[&#34;Broadcaster\nSTATION: transmitter · service radius&#34;]
-    M[&#34;Maps\nMAP: on/off · description · scale · nearby · alerts · layers · map detail · clear&#34;]
+    M[&#34;Maps\nMAP | MAP - LAYERS AND DETAIL, side by side&#34;]
   end
-  O([&#34;Observer&#34;]) --&gt; G &amp; R &amp; M
-  C([&#34;the console&#34;]) --&gt; G &amp; R &amp; B
+  O([&#34;Observer&#34;]) --&gt; DA &amp; UI &amp; R &amp; B &amp; M
+  C([&#34;the console&#34;]) --&gt; DA &amp; UI &amp; R &amp; B &amp; M
+  N[&#34;D-70: every surface shows every tab and row;\neach row still writes only its own values&#34;] -.-&gt; O &amp; C
   K[&#34;keys: ←→ switch tabs unless the focused row is a picker or toggle\ntab / shift+tab switch tabs from any row · ↑↓ walk a tab&#39;s rows&#34;] -.-&gt; S
 </pre></div></article></section></main>
 </div>

@@ -298,14 +298,20 @@ var setupAllocBudget = map[string]float64{
 	// (+7%). The window is as wide as its widest tab on every tab, so a frame
 	// lays each tab's groups out to measure it. The miss went DOWN (3_808 ->
 	// 3_799): a page draws a third of the groups it used to.
-	"133x44-hit": 2_817 * 1.05, "133x44-miss": 3_808 * 1.05,
+	// 133x44-miss RE-PINNED at 0.18.0 UAT-1 (D-70, D-71, U1-25, D-67): 3_808
+	// -> 4_127 (+8%): five tabs measured where three were, the Maps tab in two
+	// columns, and its detail list with the level row.
+	"133x44-hit": 2_817 * 1.05, "133x44-miss": 4_127 * 1.05,
 	// 80x24-miss re-measured at 0.14.0 T3.2b for the RELAY REPLAY group's
 	// second row: 2_678 -> 2_800 (+4.6%), the cost of drawing two more lines
 	// and a spacer at the width where the window still scrolls. The 133x44
 	// numbers went DOWN over the same change (2_545 against a 2_762 budget),
 	// because sizing the pickers' cells to their own values took cells out of
 	// every row that has one.
-	"80x24-hit": 1_604 * 1.05, "80x24-miss": 2_800 * 1.05,
+	// 80x24-miss re-measured at 0.18.0 UAT-1 (D-70, D-71): 2_800 -> 2_971
+	// (+6%). Every surface now shows every tab, and the window is as wide as
+	// the widest, so a frame measures five tabs where it measured three.
+	"80x24-hit": 1_604 * 1.05, "80x24-miss": 3_127 * 1.05, // and 2_971 -> 3_127 with the detail level row (D-67)
 }
 
 // Re-measured after the columns were BALANCED automatically (HUM LEAD, UAT

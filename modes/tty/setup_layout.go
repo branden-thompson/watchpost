@@ -197,6 +197,10 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 		ml, mAt := d.mapSettingLines(o, nil, 0)
 		b.lines = append(b.lines, ml...)
 		b.at, b.end = at+mAt, len(b.lines)
+	case groupMapLayers:
+		ml, mAt := d.mapLayerLines(o, nil, 0)
+		b.lines = append(b.lines, ml...)
+		b.at, b.end = at+mAt, len(b.lines)
 	case groupRelay:
 		b.lines = append(b.lines, d.relayLines(o)...)
 		// The focused ROW, not the whole group: the mark is on one of the two
@@ -492,6 +496,8 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 			segs = append(segs, o.KeyCap("←→")+" Distance")
 		case rowMapScope:
 			segs = append(segs, o.KeyCap("←→")+" Alerts")
+		case rowMapDetailLevel:
+			segs = append(segs, o.KeyCap("←→")+" Detail")
 		default:
 			segs = append(segs, o.KeyCap("←→")+" Voice", o.KeyCap("p")+" Preview")
 		}
@@ -503,7 +509,7 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 	// there; the typed DATA rows still need enter, and esc still discards them.
 	// A chip that said Cancel over an auto-saving group would be lying.
 	closeLabel := "Cancel"
-	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI || g == groupMap {
+	if g := setupTable()[d.setup.focus].group; g == groupCast || g == groupTone || g == groupUI || g == groupMap || g == groupMapLayers {
 		closeLabel = "Close"
 	}
 	segs = append(segs, o.KeyCap("esc")+" "+closeLabel)

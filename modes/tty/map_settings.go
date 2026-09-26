@@ -83,32 +83,85 @@ func mapsKey(off bool) string {
 	return "on"
 }
 
-// mapSettingLines are the WATCHPOST UI group's map rows, drawn on the
-// surfaces that show them (the Observer's).
+// The Maps tab's two columns line up (UAT-1 U1-24): every label padded to
+// the widest, every picker's value to the longest, so the arrows stand in two
+// columns as the other tabs' do.
+var (
+	mapLabelW = len("Map description -")
+	mapValueW = len("Plus national severe events")
+)
+
+// mapNoteW is how wide a note under a row wraps in its column.
+const mapNoteW = 46
+
+// mapRow is one row of the Maps tab, its label padded to the tab's width.
+func (d Dashboard) mapRow(o render.Opts, lines []string, at int, id setupRowID, label, cell string) ([]string, int) {
+	focus := d.setup.focus
+	if focus == id {
+		at = len(lines)
+	}
+	return append(lines, "  "+setupMark(o, focus == id)+settingLabel(render.PadTo(label, mapLabelW), focus == id)+"  "+cell), at
+}
+
+// mapPicker is a picker's cell at the tab's value width.
+func (d Dashboard) mapPicker(o render.Opts, id setupRowID, value string) string {
+	return d.mapPickerW(o, id, value, mapValueW)
+}
+
+// mapPickerW is a picker's cell at a column's own value width: each column
+// lines its arrows up within itself, and the second is no wider than its
+// longest value, or the two columns stop fitting side by side (U1-25).
+func (d Dashboard) mapPickerW(o render.Opts, id setupRowID, value string, w int) string {
+	return pickerCellW(value, newArrowChips(o), d.pickerFlashFor(id), w)
+}
+
+// mapSettingLines are the MAP group's rows (UAT-1 U1-25: the first of the
+// Maps tab's two columns): maps on or off and what the map sends, the
+// description's mode, the scale it opens at, the nearby distance, the alerts.
 func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]string, int) {
 	if !d.rowVisible(rowMapsOn) {
 		return lines, at
 	}
-	focus := d.setup.focus
 	state := "Enabled"
 	if d.mapsOff {
 		state = "Disabled"
 	}
-	if focus == rowMapsOn {
-		at = len(lines)
+	lines, at = d.mapRow(o, lines, at, rowMapsOn, "Maps -", d.mapPicker(o, rowMapsOn, state))
+	for _, l := range render.WrapText(d.cfg.MapDisclosure, mapNoteW) { // FR-9.4 as D-69 amends it: said here alone
+		lines = append(lines, "    "+settingSupport(l))
 	}
-	lines = append(lines, "  "+setupMark(o, focus == rowMapsOn)+settingLabel("Maps -", focus == rowMapsOn)+"  "+toggleCell(state, newArrowChips(o), d.pickerFlashFor(rowMapsOn)))
-	for _, l := range render.WrapText(d.cfg.MapDisclosure, 56) { // FR-9.4: beside the maps row
-		lines = append(lines, "    "+l)
+	lines, at = d.mapRow(o, lines, at, rowMapDesc, "Map description -", d.mapPicker(o, rowMapDesc, d.mapDesc.Label()))
+	lines, at = d.mapRow(o, lines, at, rowMapScale, "Default scale -", d.mapPicker(o, rowMapScale, d.mapScale.Label()))
+	lines, at = d.mapRow(o, lines, at, rowMapNearby, "Nearby -", d.mapPicker(o, rowMapNearby, d.nearbyLabel()))
+	return d.mapRow(o, lines, at, rowMapScope, "Alerts -", d.mapPicker(o, rowMapScope, d.mapScope.Label()))
+}
+
+// mapLayerLines are the MAP - LAYERS AND DETAIL group's rows (the second
+// column): the weather layers and what they would cost, the map's own detail
+// as a list, and the action that empties the map's data.
+func (d Dashboard) mapLayerLines(o render.Opts, lines []string, at int) ([]string, int) {
+	if !d.rowVisible(rowMapLayers) {
+		return lines, at
 	}
-	if focus == rowMapDesc {
-		at = len(lines)
+	focus := d.setup.focus
+	lines, at = d.mapRow(o, lines, at, rowMapLayers, "Layers -", d.layersCell(o, focus == rowMapLayers))
+	for _, l := range render.WrapText(costWarning(d.mapCost), mapNoteW) {
+		lines = append(lines, "    "+settingSupport(l))
 	}
-	lines = append(lines, "  "+setupMark(o, focus == rowMapDesc)+settingLabel("Map description -", focus == rowMapDesc)+"  "+
-		pickerCellW(d.mapDesc.Label(), newArrowChips(o), d.pickerFlashFor(rowMapDesc), len("Instead of the picture")))
-	lines, at = d.mapPrefLines(o, lines, at)
-	lines, at = d.mapExtraLines(o, lines, at)
-	return lines, at
+	on := 0
+	for _, l := range mapDetailLayers() {
+		if d.detailOn(l.key) {
+			on++
+		}
+	}
+	lines, at = d.mapRow(o, lines, at, rowMapDetailLevel, "Detail level -", d.mapPickerW(o, rowMapDetailLevel, detailLevelLabel(d.mapDetailLevel), len("Essential")))
+	lines, at = d.mapRow(o, lines, at, rowMapDetail, "Map detail -",
+		settingSupport(strconv.Itoa(on)+" of "+strconv.Itoa(len(mapDetailLayers()))+" on"))
+	for i, l := range mapDetailLayers() { // THE WHOLE LIST: the column has the room (U1-25)
+		cursor := focus == rowMapDetail && i == d.setup.detailAt%len(mapDetailLayers())
+		lines = append(lines, "      "+setupMark(o, cursor)+checkMark(o, d.detailOn(l.key))+" "+l.label+settingSupport(d.beyondLevel(l)))
+	}
+	return d.mapExtraLines(o, lines, at)
 }
 
 // belowFloorText names the size the map needs and the size it has (FR-1.4).
@@ -160,9 +213,9 @@ func (d Dashboard) mapExtraLines(o render.Opts, lines []string, at int) ([]strin
 	if focus == rowMapClear {
 		at = len(lines)
 	}
-	lines = append(lines, "  "+setupMark(o, focus == rowMapClear)+settingLabel("Clear map data -", focus == rowMapClear)+"  "+o.KeyCap("space")+" clear now")
-	for _, l := range render.WrapText(d.cfg.MapRetention, 56) {
-		lines = append(lines, "    "+l)
+	lines = append(lines, "  "+setupMark(o, focus == rowMapClear)+settingLabel(render.PadTo("Clear map data -", mapLabelW), focus == rowMapClear)+"  "+o.KeyCap("space")+" clear now")
+	for _, l := range render.WrapText(d.cfg.MapRetention, mapNoteW) {
+		lines = append(lines, "    "+settingSupport(l))
 	}
 	return lines, at
 }

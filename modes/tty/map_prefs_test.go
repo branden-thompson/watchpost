@@ -219,12 +219,12 @@ func TestTheCostWarningShowsBesideTheLayersAndOnTheMap(t *testing.T) {
 	d, _ = pressKey(d, "esc")
 	d = d.openSetupAt(rowMapLayers)
 	body, _, _ := d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "5.0 MB in 515") {
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "about 5.0 MB") {
 		t.Errorf("Settings does not warn beside the layers:\n%s", text)
 	}
 	d = d.setupSpace()
 	body, _, _ = d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); strings.Contains(text, "5.0 MB in 515") {
+	if text := stripANSITest(strings.Join(body, "\n")); strings.Contains(text, "about 5.0 MB") {
 		t.Errorf("the warning stayed after the layer went off:\n%s", text)
 	}
 	if asked[false] == 0 {

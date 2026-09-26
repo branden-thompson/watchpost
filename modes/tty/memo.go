@@ -246,6 +246,7 @@ type modalKey struct {
 	mapCost   MapCost
 	mapScope  AlertScope
 	mapDetail string
+	mapLevel  string // the detail level (D-67)
 	// The boxes over the map (UAT-1): which are open, the menu's cursor and
 	// the key blinking in the controls.
 	mapAlerts, mapMenu bool
@@ -295,15 +296,14 @@ type modalKey struct {
 	// THE MAP'S DRAW, by generation, and why it could not draw (0.18.0 W2.1).
 	// The lines are drawn in Update and raise the generation each time, so the
 	// key moves with every frame the library gave (F-30's rule, D-45).
-	mapGen      uint64
-	mapFailed   string
-	mapOffline  bool           // the status line's offline note
-	mapStatus   tuimaps.Status // and whether the picture is whole
-	mapPending  bool           // and whether it is still loading
-	mapOutside  string         // the place in no region, which the window states instead
-	mapNotes    string         // the feed's notes, printed under the map
-	mapLegend   bool           // the legend over the map
-	mapDisclose bool           // the first open's words
+	mapGen     uint64
+	mapFailed  string
+	mapOffline bool           // the status line's offline note
+	mapStatus  tuimaps.Status // and whether the picture is whole
+	mapPending bool           // and whether it is still loading
+	mapOutside string         // the place in no region, which the window states instead
+	mapNotes   string         // the feed's notes, printed under the map
+	mapLegend  bool           // the legend over the map
 }
 
 // modalMemo is the single slot.
@@ -333,7 +333,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
-		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapScope: d.mapScope, mapDetail: d.mapDetailChoice,
+		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapScope: d.mapScope, mapDetail: d.mapDetailChoice, mapLevel: d.mapDetailLevel.String(),
 		mapWords: d.cfg.MapDisclosure + "\x00" + d.cfg.MapRetention,
 	}
 	switch d.modal {
@@ -341,7 +341,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending
 		k.mapOutside, k.mapNotes = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n")
-		k.mapLegend, k.mapDisclose = d.mapPane.legendOn, d.mapPane.disclose
+		k.mapLegend = d.mapPane.legendOn
 		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapPane.alertsOn, d.mapPane.menuOn, d.mapPane.menuAt, d.mapPane.flash
 		k.mapTitle = d.mapPane.title
 	case modalRequest:

@@ -164,14 +164,14 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	joined := strings.Join(*calls, " ")
-	for _, want := range []string{"Layers:roads:off", "Layers:rail:off", "Layers:parks:off", "Layers:borders:on", "Layers:names:on"} {
+	for _, want := range []string{"SetDetail:weather", "Layers:roads:on", "Layers:minor-roads:on", "Layers:borders:on", "Layers:names:on"} {
 		if !strings.Contains(joined, want) {
-			t.Errorf("the map was not built weather-first: no %s in %v", want, *calls)
+			t.Errorf("the map was not built weather-first (D-67): no %s in %v", want, *calls)
 		}
 	}
 	d = pressCode(d, 'O', "O")
 	text := bodyText(d)
-	for _, want := range []string{"Overlays", "Alert areas", "Roads", "Parks and reserves", "Place names"} {
+	for _, want := range []string{"Overlays", "Alert areas", "Detail: Weather", "Major roads", "Minor roads (at Full)", "Parks and reserves (at Standard)", "Place names"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the menu does not list %q", want)
 		}
@@ -191,10 +191,10 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 	*calls = nil
 	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = m.(Dashboard)
-	if !strings.Contains(strings.Join(*calls, " "), "Layers:roads:on") {
-		t.Errorf("space on Roads did not reach the library: %v", *calls)
+	if !strings.Contains(strings.Join(*calls, " "), "Layers:roads:off") {
+		t.Errorf("space on Major roads did not reach the library: %v", *calls)
 	}
-	if d.uiForSave().MapDetail["roads"] != true {
+	if on, ok := d.uiForSave().MapDetail["roads"]; !ok || on {
 		t.Errorf("the choice is not written with the map's Settings: %v", d.uiForSave().MapDetail)
 	}
 	d = pressCode(d, 'O', "O")

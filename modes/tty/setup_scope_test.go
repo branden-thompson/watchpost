@@ -90,46 +90,23 @@ func setupOffers(d Dashboard) string {
 	return b.String()
 }
 
-// THE LISTENER'S SETTINGS DO NOT REACH THE OPERATOR OF A STATION, and the
-// SHARED ones still do — the metric counts failures in BOTH directions (M4).
-func TestTheConsoleDrawsOnlyTheSettingsThatApplyToIt(t *testing.T) {
+// TestEverySurfaceOffersEverySetting is D-70 (HUM LEAD, UAT-1, 2026-09-25):
+// "settings show now be the same across ALL UI modes". It replaces D-92's
+// test that the console drew only its own: the console and Observer now offer
+// the same groups and the same rows. Each row still writes what it wrote -
+// the scope in the table says whose values - so nothing leaks into a mode.
+func TestEverySurfaceOffersEverySetting(t *testing.T) {
 	_, console := setupOn(t, SurfaceBroadcaster)
 	_, observer := setupOn(t, SurfaceObserver)
-
-	// D-18 row 1 (the listener's default location) and the monitor's own
-	// rotation pacing, which cannot even advance while the console holds the air.
-	for _, gone := range []string{"ALERTS - EVENTS", "WATCHPOST RADIO - RELAY REPLAY"} {
-		if strings.Contains(console, gone) {
-			t.Errorf("the console's Settings window still offers %q", gone)
+	for _, want := range []string{"DATA", "ALERTS - EVENTS", "WATCHPOST UI", "ALERTS - TONE",
+		"WATCHPOST RADIO - CORRESPONDENTS", "WATCHPOST RADIO - RELAY REPLAY", "STATION", "MAP", "MAP - LAYERS AND DETAIL",
+		"Default location:", "NASA FIRMS key"} {
+		if !strings.Contains(console, want) {
+			t.Errorf("the console's Settings window does not offer %q", want)
 		}
-		if !strings.Contains(observer, gone) {
-			t.Errorf("%q vanished from OBSERVER too: the scope hid a row from the surface that owns it", gone)
+		if !strings.Contains(observer, want) {
+			t.Errorf("Observer's Settings window does not offer %q", want)
 		}
-	}
-	// D-18 rows 3, 19, 21, 22, 6, 7 — shared, and shared means BOTH.
-	for _, kept := range []string{"DATA", "WATCHPOST UI", "ALERTS - TONE", "WATCHPOST RADIO - CORRESPONDENTS"} {
-		if !strings.Contains(console, kept) {
-			t.Errorf("the console's Settings window lost %q, which D-18 rules SHARED", kept)
-		}
-	}
-	// DATA IS THE ONE MIXED GROUP: the provider key is shared, the default
-	// location is not, so the group is half-drawn rather than skipped.
-	//
-	// "Default location:" WITH A LOWER-CASE L IS THE ROW. "Default Location" is
-	// the EVENTS row's own wording ("Within [ ] mi of Default Location"), and
-	// asserting that instead let a mutant through: the case is the only thing
-	// telling the two apart.
-	for _, gone := range []string{"Default location:", `City Name, "City, ST", or Zip`} {
-		if strings.Contains(console, gone) {
-			t.Errorf("the console still draws the LISTENER's default location row: %q", gone)
-		}
-		if !strings.Contains(observer, gone) {
-			t.Errorf("%q vanished from OBSERVER too", gone)
-		}
-	}
-	if !strings.Contains(console, "NASA FIRMS key") {
-		t.Errorf("the console lost the provider key, which D-18 row 3 rules SHARED — DATA is a MIXED " +
-			"group and must be half-drawn, not skipped")
 	}
 }
 

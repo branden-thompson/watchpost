@@ -91,6 +91,7 @@ type Config struct {
 	// by key (D-65); MapAreaName names what is in view from the view's centre
 	// and width, for the title (D-64). Nil draws the selected place's name.
 	MapDetailChoice map[string]bool
+	MapDetailLevel  string // D-67: the file's word for the detail level; Weather by default
 	MapAreaName     func(centre tuimaps.LonLat, widthKm float64) string
 	Resolve         func(query string) (snapshot.LocationRef, error)
 	Commit          func(watch, recent []snapshot.LocationRef) error
@@ -340,6 +341,7 @@ type UIPrefs struct {
 	MapLayers      map[string]bool // the layers switched from their defaults
 	MapAlertScope  string          // "station" (the default) or "national"
 	MapDetail      map[string]bool // the map's detail switched from its defaults (D-65)
+	MapDetailLevel string          // "essential", "weather" (the default), "standard" or "full" (D-67)
 }
 
 // PipelineStats counts one pipeline's publishes and the triggers its
@@ -546,8 +548,9 @@ type Dashboard struct {
 	mapNearbyKm     int
 	mapLayerChoice  string
 	mapCost         MapCost
-	mapScope        AlertScope // which alerts the map draws (W5.3)
-	mapDetailChoice string     // the map's detail choices as one comparable word (D-65)
+	mapScope        AlertScope     // which alerts the map draws (W5.3)
+	mapDetailChoice string         // the map's detail choices as one comparable word (D-65)
+	mapDetailLevel  tuimaps.Detail // how much of the basemap is drawn (D-67, go-tuiMaps D-82)
 	mapKeys         term.KeyMap
 	modal           modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode         string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
@@ -817,7 +820,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapScope: alertScopeByKey(cfg.MapAlertScope), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapScope: alertScopeByKey(cfg.MapAlertScope), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}

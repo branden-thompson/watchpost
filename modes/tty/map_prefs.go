@@ -275,7 +275,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapScope
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapScope || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -287,6 +287,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.cycleNearby(forward), true
 	case rowMapScope:
 		return d.cycleScope(), true
+	case rowMapDetailLevel:
+		return d.cycleDetailLevel(forward).uiTouched(), true
 	case rowMapLayers:
 		return d.stepLayer(forward), true
 	case rowMapDetail:
@@ -295,27 +297,6 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.settled(), true
 	}
 	return d, false
-}
-
-// mapPrefLines are the scale, nearby and layers rows, with the cost warning
-// under the layers when the estimate is over (FR-9.2).
-func (d Dashboard) mapPrefLines(o render.Opts, lines []string, at int) ([]string, int) {
-	focus, chips := d.setup.focus, newArrowChips(o)
-	row := func(id setupRowID, label, cell string) {
-		if focus == id {
-			at = len(lines)
-		}
-		lines = append(lines, "  "+setupMark(o, focus == id)+settingLabel(label, focus == id)+"  "+cell)
-	}
-	row(rowMapScale, "Default scale -", pickerCellW(d.mapScale.Label(), chips, d.pickerFlashFor(rowMapScale), len("County")))
-	row(rowMapNearby, "Nearby -", pickerCellW(d.nearbyLabel(), chips, d.pickerFlashFor(rowMapNearby), len("31 miles (50 km)")))
-	row(rowMapScope, "Alerts -", pickerCellW(d.mapScope.Label(), chips, d.pickerFlashFor(rowMapScope), len(ScopeNational.Label())))
-	row(rowMapLayers, "Layers -", d.layersCell(o, focus == rowMapLayers))
-	row(rowMapDetail, "Map detail -", d.detailCell(o, focus == rowMapDetail))
-	for _, l := range render.WrapText(costWarning(d.mapCost), 56) {
-		lines = append(lines, "    "+settingSupport(l))
-	}
-	return lines, at
 }
 
 // AlertScope is which alerts the map draws (FR-4.3, D-23): the station's own
@@ -385,27 +366,6 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, Scope: d.mapScope}
-}
-
-// detailCell is the Map detail row's value (D-65): one layer at a time
-// between the arrows - seven boxes on one row made Settings wider on every
-// tab - with how many are on.
-func (d Dashboard) detailCell(o render.Opts, focused bool) string {
-	layers := mapDetailLayers()
-	l := layers[d.setup.detailAt%len(layers)]
-	on := 0
-	for _, x := range layers {
-		if d.detailOn(x.key) {
-			on++
-		}
-	}
-	cell := checkMark(o, d.detailOn(l.key)) + " " + render.PadTo(l.label, len("Parks and reserves"))
-	flash := flashNone
-	if focused {
-		flash = d.pickerFlashFor(rowMapDetail)
-	}
-	left, right := newArrowChips(o).pick(flash)
-	return left + " " + cell + " " + right + "  " + settingSupport(strconv.Itoa(on)+" of "+strconv.Itoa(len(layers))+" on")
 }
 
 // toggleDetailAt switches the detail layer under the Map detail row's cursor.
