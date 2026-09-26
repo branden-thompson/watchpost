@@ -246,10 +246,6 @@ func (s *severeDeck) SetLocations(slot int, snap *snapshot.Snapshot) {
 	s.publish()
 }
 
-// nationalFeed is the ticker's national feed as last set, a copy: the map's
-// national scope reads it (0.18.0 W5.3) and adds no request of its own.
-func (s *severeDeck) nationalFeed() []globalfeed.Event { return lockedCopy(&s.mu, &s.feed) }
-
 // SetFeed replaces the feed half with its own copy plus the sources' health,
 // and republishes.
 func (s *severeDeck) SetFeed(evs []globalfeed.Event, sources []SourceHealth) {

@@ -188,7 +188,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-## github.com/branden-thompson/go-tuimaps v0.2.0-rc.10
+## github.com/branden-thompson/go-tuimaps v0.2.0-rc.11
 
 ```
 MIT License

@@ -20,8 +20,8 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// mapFeed is the window's feed: every alert of the station's locations - and,
-// in the national scope, the region's national severe events (W5.3) - as
+// mapFeed is the window's feed: every alert in view, and the station's
+// locations' (D-66, D-76), as
 // overlays, with the selected place's own zones asked of the weather service
 // so a note can say whether the place lies in a missing zone (FR-4.1, FR-4.4).
 func (lp *livePipelines) mapFeed(ctx context.Context, ask tty.MapAsk) tty.MapFeed {
@@ -36,13 +36,17 @@ func (lp *livePipelines) mapFeed(ctx context.Context, ask tty.MapAsk) tty.MapFee
 // mapFeedWith is mapFeed with the place's zones given, for the tests.
 func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZones func(snapshot.Location) []string) tty.MapFeed {
 	var out tty.MapFeed
-	snap, place := in.withNational(), in.place
+	snap, place := in.withInView(), in.place
 	if snap == nil {
 		return out
 	}
-	national := map[string]bool{}
-	for _, a := range in.national {
-		national[a.ID] = true
+	held := map[string]bool{} // the station holds these; the window has the rest from the feed
+	if in.snap != nil {
+		for _, loc := range in.snap.Locations {
+			for _, a := range loc.Alerts {
+				held[a.ID] = true
+			}
+		}
 	}
 	areas := resolveAlertAreas(ctx, lp.zoneShapes, snap)
 	seen := map[string]bool{}
@@ -56,8 +60,8 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 			area := areas[a.ID]
 			if o, ok := alertOverlay(a, area); ok {
 				out.Overlays = append(out.Overlays, o)
-				if national[a.ID] {
-					out.National = append(out.National, a) // the window names it in full (W5.3)
+				if !held[a.ID] {
+					out.InView = append(out.InView, a) // the window names it in full
 				}
 			}
 			if area.Complete() || place == nil {
@@ -98,11 +102,11 @@ func init() {
 }
 
 // alertLayerCost is what the alert areas fetch in a refresh, as if nothing
-// were held: every zone the alerts name, once - the station's, and in the
-// national scope the region's national events' - and an alert with its own
+// were held: every zone the alerts name, once - the station's and the
+// view's - and an alert with its own
 // polygon fetches nothing (FR-9.2).
 func alertLayerCost(in mapInputs) (int64, int) {
-	snap := in.withNational()
+	snap := in.withInView()
 	if snap == nil {
 		return 0, 0
 	}

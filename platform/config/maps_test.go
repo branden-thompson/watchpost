@@ -33,13 +33,13 @@ func TestTheMapsTabRoundTrips(t *testing.T) {
 		t.Errorf("a 0.15.0 file gained %q %d %v", cfg.MapScale, cfg.MapNearbyKm, cfg.MapLayers)
 	}
 	if err := Mutate(func(c *Config) error {
-		c.MapScale, c.MapNearbyKm, c.MapLayers, c.MapAlertScope = "county", 25, map[string]bool{"alert": false}, "national"
+		c.MapScale, c.MapNearbyKm, c.MapLayers = "county", 25, map[string]bool{"alert": false}
 		return nil
 	}); err != nil {
 		t.Fatal(err)
 	}
 	again := mustLoad(t)
-	if again.MapScale != "county" || again.MapNearbyKm != 25 || len(again.MapLayers) != 1 || again.MapLayers["alert"] || again.MapAlertScope != "national" {
+	if again.MapScale != "county" || again.MapNearbyKm != 25 || len(again.MapLayers) != 1 || again.MapLayers["alert"] {
 		t.Errorf("the Maps tab did not round-trip: %q %d %v", again.MapScale, again.MapNearbyKm, again.MapLayers)
 	}
 }

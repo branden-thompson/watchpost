@@ -2,7 +2,7 @@ package app
 
 // mapinview_test.go — 0.18.0 D-66 (UAT-1 U1-15): "Alerts in view". The
 // areas the view touches, asked once, remembered for two minutes; the alerts
-// kept to the view; nothing fetched for the estimate or another scope.
+// kept to the view; nothing fetched for the estimate.
 
 import (
 	"context"
@@ -70,13 +70,13 @@ func TestAlertsInViewAreAskedOnceAndKeptToTheView(t *testing.T) {
 		return viewTestAlerts(), nil
 	}}
 	here := snapshot.Location{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.38}
-	ask := tty.MapAsk{Place: &here, Scope: tty.ScopeInView, View: tty.MapView{W: -118.6, S: 32.5, E: -116.4, N: 34.1}}
-	if got := lp.mapInputs(ask); len(got.national) != 0 || asked != 0 {
-		t.Fatalf("the estimate, with nothing remembered, fetched (%d) or drew %d", asked, len(got.national))
+	ask := tty.MapAsk{Place: &here, View: tty.MapView{W: -118.6, S: 32.5, E: -116.4, N: 34.1}}
+	if got := lp.mapInputs(ask); len(got.inView) != 0 || asked != 0 {
+		t.Fatalf("the estimate, with nothing remembered, fetched (%d) or drew %d", asked, len(got.inView))
 	}
 	in := lp.mapInputsFetching(context.Background(), ask)
 	var ids []string
-	for _, a := range in.national {
+	for _, a := range in.inView {
 		ids = append(ids, a.ID)
 	}
 	if asked != 1 || !slices.Equal(ids, []string{"zones", "near"}) {
@@ -91,11 +91,32 @@ func TestAlertsInViewAreAskedOnceAndKeptToTheView(t *testing.T) {
 	if asked != 2 {
 		t.Errorf("after two minutes the areas were not asked again (%d)", asked)
 	}
-	if got := lp.mapInputs(ask); len(got.national) != 2 || asked != 2 {
-		t.Errorf("the estimate's inputs fetched (%d) or lost the remembered answer (%d)", asked, len(got.national))
+	if got := lp.mapInputs(ask); len(got.inView) != 2 || asked != 2 {
+		t.Errorf("the estimate's inputs fetched (%d) or lost the remembered answer (%d)", asked, len(got.inView))
 	}
-	ask.Scope = tty.ScopeStation
-	if in := lp.mapInputsFetching(context.Background(), ask); in.national != nil || asked != 2 {
-		t.Error("the station's scope asked for the view's areas")
+}
+
+// TestTheFeedDrawsTheViewsAlertsAndNamesThemOnce is D-66 and D-76 at the
+// feed: an alert only the view holds is drawn and handed to the window to
+// name in full; one the station also holds is drawn once and left to the
+// station's record.
+func TestTheFeedDrawsTheViewsAlertsAndNamesThemOnce(t *testing.T) {
+	square := func(lon, lat float64) geo.Shape {
+		return geo.Shape{{{{Lon: lon, Lat: lat}, {Lon: lon + 0.2, Lat: lat}, {Lon: lon + 0.2, Lat: lat + 0.2}, {Lon: lon, Lat: lat}}}}
+	}
+	held := snapshot.Alert{ID: "held", Event: "Wind Warning", Severity: "Severe", Area: square(-117.5, 33.0)}
+	seen := snapshot.Alert{ID: "view", Event: "Gale Warning", Severity: "Moderate", Area: square(-119.0, 33.5)}
+	here := snapshot.Location{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.38, Alerts: []snapshot.Alert{held}}
+	in := mapInputs{snap: &snapshot.Snapshot{Locations: []snapshot.Location{here}}, place: &here, inView: []snapshot.Alert{held, seen}}
+	out := (&livePipelines{}).mapFeedWith(context.Background(), in, func(snapshot.Location) []string { return nil })
+	var ids []string
+	for _, o := range out.Overlays {
+		ids = append(ids, o.ID)
+	}
+	if len(ids) != 2 || !slices.Contains(ids, tty.AlertLayer+"/held") || !slices.Contains(ids, tty.AlertLayer+"/view") {
+		t.Errorf("the feed drew %v; want the held alert once and the view's", ids)
+	}
+	if len(out.InView) != 1 || out.InView[0].ID != "view" {
+		t.Errorf("the window is handed %v to name; want only the view's own", out.InView)
 	}
 }

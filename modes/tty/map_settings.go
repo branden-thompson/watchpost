@@ -88,10 +88,10 @@ func mapsKey(off bool) string {
 // the widest, every picker's value to the longest, so the arrows stand in two
 // columns as the other tabs' do. THE WORDS ARE CUT TO FIT (U1-36): the two
 // columns sit side by side inside 80% of a 133-column terminal, so a label is
-// at most "Description -" and a value at most "Add regional severe".
+// at most "Description -" and a value at most "Instead of the map".
 var (
 	mapLabelW = len("Description -")
-	mapValueW = len("Add regional severe")
+	mapValueW = len("Instead of the map")
 )
 
 // mapDetailValueW is the second column's value width: its longest value,
@@ -137,8 +137,9 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	lines, at = d.mapRow(o, lines, at, rowMapsOn, "Maps -", d.mapPicker(o, rowMapsOn, state)) // what it contacts is the Status window's (D-75)
 	lines, at = d.mapRow(o, lines, at, rowMapDesc, "Description -", d.mapPicker(o, rowMapDesc, d.mapDesc.Label()))
 	lines, at = d.mapRow(o, lines, at, rowMapScale, "Opens at -", d.mapPicker(o, rowMapScale, d.mapScale.Label()))
-	lines, at = d.mapRow(o, lines, at, rowMapNearby, "Nearby -", d.mapPicker(o, rowMapNearby, d.nearbyLabel()))
-	return d.mapRow(o, lines, at, rowMapScope, "Alerts -", d.mapPicker(o, rowMapScope, d.mapScope.Label()))
+	// NO ALERTS SCOPE (D-76): the map draws every alert in view, and what it
+	// draws is switched at the map, in the Overlays menu.
+	return d.mapRow(o, lines, at, rowMapNearby, "Nearby -", d.mapPicker(o, rowMapNearby, d.nearbyLabel()))
 }
 
 // mapLayerLines are the MAP - LAYERS AND DETAIL group's rows (the second

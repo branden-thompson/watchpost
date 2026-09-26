@@ -29,7 +29,7 @@ const AlertLayer = "alert"
 
 // alertLayerOffText is what the description says with the alert areas off:
 // that they are off, never that nothing is there.
-const alertLayerOffText = "Alert areas are switched off in Settings (s), on the Maps tab, so none is drawn or described."
+const alertLayerOffText = "Alert areas are switched off in the Overlays menu (O), so none is drawn or described." // D-76: switched at the map
 
 // MapCost is what one refresh of the map's data would fetch (FR-9.2).
 type MapCost struct {
@@ -268,14 +268,14 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 		}
 	}
 	if d.layerOn(AlertLayer) {
-		out.Notes, out.InMissing, out.National = f.Notes, f.InMissing, f.National
+		out.Notes, out.InMissing, out.InView = f.Notes, f.InMissing, f.InView
 	}
 	return out
 }
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapScope || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -285,8 +285,6 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.cycleMapScale(forward), true
 	case rowMapNearby:
 		return d.cycleNearby(forward), true
-	case rowMapScope:
-		return d.cycleScope(forward), true
 	case rowMapDetailLevel:
 		return d.cycleDetailLevel(forward).uiTouched(), true
 	case rowMapLayers:
@@ -295,78 +293,13 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 	return d.toggleDetailRow(d.setup.focus)
 }
 
-// AlertScope is which alerts the map draws (FR-4.3, D-23): the station's own
-// places' alerts, or those and the national severe events in the selected
-// place's region - never wider than the region (D-28).
-type AlertScope int
-
-const (
-	ScopeStation  AlertScope = iota // the station's own places' alerts
-	ScopeNational                   // and the national severe events in the region
-	ScopeInView                     // the default (D-66): every alert of the areas in view
-)
-
-// Key is the word the file keeps.
-func (s AlertScope) Key() string {
-	switch s {
-	case ScopeNational:
-		return "national"
-	case ScopeStation:
-		return "station"
-	}
-	return "view"
-}
-
-// Label is the picker's words.
-func (s AlertScope) Label() string {
-	switch s {
-	case ScopeNational:
-		return "Add regional severe"
-	case ScopeStation:
-		return "Station's places"
-	}
-	return "Alerts in view"
-}
-
-// alertScopeByKey reads the file's word; anything else - an empty file
-// included - is alerts in view, the default (D-66).
-func alertScopeByKey(key string) AlertScope {
-	switch key {
-	case "national":
-		return ScopeNational
-	case "station":
-		return ScopeStation
-	}
-	return ScopeInView
-}
-
-// cycleScope moves the scope's picker round the three - alerts in view, the
-// station's places, national severe - and asks the estimate again: the scope
-// is what it most depends on.
-func (d Dashboard) cycleScope(forward bool) Dashboard {
-	order := []AlertScope{ScopeInView, ScopeStation, ScopeNational}
-	at := 0
-	for i, s := range order {
-		if s == d.mapScope {
-			at = i
-		}
-	}
-	step := 1
-	if !forward {
-		step = len(order) - 1
-	}
-	d.mapScope = order[(at+step)%len(order)]
-	return d.refreshMapCost().uiTouched()
-}
-
 // MapAsk is what the map's feed and its estimate are asked with (0.18.0): the
-// station's data, the selected place - whose region bounds the national
-// events drawn - and the scope.
+// station's data, the selected place, and the view - the map draws every
+// alert in it (D-66, D-76).
 type MapAsk struct {
 	Snap  *snapshot.Snapshot
 	Place *snapshot.Location
-	Scope AlertScope
-	View  MapView // the map in view: "Alerts in view" asks for its areas (D-66)
+	View  MapView // the map in view: its areas are asked for their alerts (D-66)
 }
 
 // mapAsk is the ask as the window stands: the watchlist's places, and the
@@ -385,7 +318,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		joined.Locations = append(append([]snapshot.Location(nil), joined.Locations...), *place)
 		snap = &joined
 	}
-	return MapAsk{Snap: snap, Place: place, Scope: d.mapScope, View: d.viewBox(d.mapBodySize())}
+	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize())}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

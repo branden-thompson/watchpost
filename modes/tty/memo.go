@@ -244,7 +244,6 @@ type modalKey struct {
 	mapNearby int
 	mapLayers string
 	mapCost   MapCost
-	mapScope  AlertScope
 	mapDetail string
 	mapLevel  string // the detail level (D-67)
 	// The boxes over the map (UAT-1): which are open, the menu's cursor and
@@ -333,7 +332,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		voiceIdx: d.voiceIdx, nvoices: len(d.voiceList),
 		darkBG: d.darkBG, theme: render.ThemeGeneration(),
 		mapsOff: d.mapsOff, mapDesc: d.mapDesc,
-		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapScope: d.mapScope, mapDetail: d.mapDetailChoice, mapLevel: d.mapDetailLevel.String(),
+		mapScale: d.mapScale, mapNearby: d.mapNearbyKm, mapLayers: d.mapLayerChoice, mapCost: d.mapCost, mapDetail: d.mapDetailChoice, mapLevel: d.mapDetailLevel.String(),
 		mapWords: d.cfg.MapRetention, // the map's sources are the Status window's, which keys on its own inputs
 	}
 	switch d.modal {

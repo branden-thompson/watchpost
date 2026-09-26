@@ -14,70 +14,53 @@ package app
 import (
 	"context"
 
-	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // mapInputs is what the feed and each layer's cost read: the station's data,
-// the selected place, the scope, and - in the national scope - the national
-// severe events in the place's region, as alerts.
+// the selected place, and the alerts of the view (D-66, D-76).
 type mapInputs struct {
-	snap     *snapshot.Snapshot
-	place    *snapshot.Location
-	scope    tty.AlertScope
-	national []snapshot.Alert // the alerts the station does not hold: the national scope's, or the view's (D-66)
+	snap   *snapshot.Snapshot
+	place  *snapshot.Location
+	inView []snapshot.Alert // the view's alerts, which the map draws whoever holds them
 }
 
-// mapInputs are the inputs for an ask, the national events read from the
-// ticker's feed through the severe deck, and only in the national scope: the
-// station's scope reads nothing more than it did.
+// mapInputs are the inputs for the estimate, on the UI goroutine: the view's
+// alerts as remembered, never fetched.
 func (lp *livePipelines) mapInputs(ask tty.MapAsk) mapInputs {
 	return lp.inputsFor(context.Background(), ask, false)
 }
 
-// mapInputsFetching is mapInputs for the feed, off the UI goroutine: "Alerts
-// in view" may ask the service for the view's areas (D-66).
+// mapInputsFetching is mapInputs for the feed, off the UI goroutine: it may
+// ask the service for the view's areas (D-66).
 func (lp *livePipelines) mapInputsFetching(ctx context.Context, ask tty.MapAsk) mapInputs {
 	return lp.inputsFor(ctx, ask, true)
 }
 
 // inputsFor is the inputs for an ask, fetching the view's areas only when
-// fetch is on.
+// fetch is on. THE MAP DRAWS WHAT IS REAL IN VIEW (D-76): there is no scope
+// to choose.
 func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bool) mapInputs {
-	if ask.Scope == tty.ScopeInView && lp != nil {
-		in := mapInputs{snap: ask.Snap, place: ask.Place, scope: ask.Scope}
-		in.national = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
-		return in
-	}
-	var feed []globalfeed.Event
-	if ask.Scope == tty.ScopeNational && lp != nil && lp.severe != nil {
-		feed = lp.severe.nationalFeed()
-	}
-	return lp.inputsWith(ask, feed)
-}
-
-// inputsWith is mapInputs with the national feed given, for the tests.
-func (lp *livePipelines) inputsWith(ask tty.MapAsk, feed []globalfeed.Event) mapInputs {
-	in := mapInputs{snap: ask.Snap, place: ask.Place, scope: ask.Scope}
-	if ask.Scope == tty.ScopeNational {
-		in.national = nationalAlerts(feed, ask.Place)
+	in := mapInputs{snap: ask.Snap, place: ask.Place}
+	if lp != nil {
+		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
 	}
 	return in
 }
 
-// withNational is the snapshot the feed and the estimate walk: the station's,
-// and the national alerts as one more location's, on a copy - the station's
+// withInView is the snapshot the feed and the estimate walk: the station's,
+// and the view's alerts as one more location's, on a copy - the station's
 // snapshot is shared and never written.
-func (in mapInputs) withNational() *snapshot.Snapshot {
-	if len(in.national) == 0 {
+func (in mapInputs) withInView() *snapshot.Snapshot {
+	if len(in.inView) == 0 {
 		return in.snap
 	}
 	out := snapshot.Snapshot{}
 	if in.snap != nil {
 		out = *in.snap
 	}
-	out.Locations = append(append([]snapshot.Location(nil), out.Locations...), snapshot.Location{Label: "national severe events", Alerts: in.national})
+	out.Locations = append(append([]snapshot.Location(nil), out.Locations...), snapshot.Location{Label: "alerts in view", Alerts: in.inView})
 	return &out
 }
 

@@ -74,8 +74,10 @@ func driveEverywhere(d Dashboard) Dashboard {
 
 // TestNoFrameIsWiderThanTheRegion is W4.2, W4.4 and W9.1 (FR-2.1, FR-2.2,
 // FR-2.4 as HR-3): from the first frame on, through every pan, zoom and
-// resize, no frame is wider than the selected place's region - the
-// contiguous US for Oceanside, and Alaska across the antimeridian for Adak.
+// resize, no frame is wider than the region it is bound to - the first the
+// selected place's, the contiguous US for Oceanside and Alaska across the
+// antimeridian for Adak, and after a pan across an edge the neighbour's
+// (D-77): one region at a time (D-28).
 func TestNoFrameIsWiderThanTheRegion(t *testing.T) {
 	for _, c := range []struct {
 		name     string
@@ -99,10 +101,13 @@ func TestNoFrameIsWiderThanTheRegion(t *testing.T) {
 			if len(*views) < 100 {
 				t.Fatalf("%d frames drawn, so this proves little", len(*views))
 			}
+			if (*views)[0].region.Name != r.Name {
+				t.Fatalf("the first frame is bound to %q, not the place's %s", (*views)[0].region.Name, r.Name)
+			}
 			for i, v := range *views {
-				if !inside(v, r) {
+				if v.region.Name == "" || !inside(v, v.region) {
 					w, s, e, n := frameBox(v)
-					t.Fatalf("frame %d (%+v) covers %.2f,%.2f to %.2f,%.2f: wider than %s", i, v, w, s, e, n, r.Name)
+					t.Fatalf("frame %d (%+v) covers %.2f,%.2f to %.2f,%.2f: wider than %s", i, v, w, s, e, n, v.region.Name)
 				}
 			}
 		})

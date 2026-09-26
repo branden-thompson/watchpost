@@ -1,23 +1,28 @@
 package tty
 
-// map_inview_test.go — 0.18.0 D-66 (UAT-1 U1-15): "Alerts in view", the
-// default scope. The ask carries the view's box; the feed is asked again once
-// panning stops - 600 ms after the last move - never on every key.
+// map_inview_test.go — 0.18.0 D-66 (UAT-1 U1-15) and D-76: the map draws
+// every alert in view, and there is no scope to choose. The ask carries the
+// view's box; the feed is asked again once panning stops - 600 ms after the
+// last move - never on every key.
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 )
 
-func TestAlertsInViewIsTheDefaultScope(t *testing.T) {
-	d := mapDash(t, Config{})
-	if d.mapScope != ScopeInView || alertScopeByKey("") != ScopeInView || ScopeInView.Key() != "view" {
-		t.Errorf("an empty file opens with scope %v; want alerts in view (D-66)", d.mapScope)
-	}
-	if alertScopeByKey("station") != ScopeStation || alertScopeByKey("national") != ScopeNational {
-		t.Error("the other scopes' words do not read back")
+// TestTheMapsTabHasNoAlertScope is D-76 (UAT-1 U1-37): what the map draws is
+// what is real in view, switched at the map; Settings offers no scope.
+func TestTheMapsTabHasNoAlertScope(t *testing.T) {
+	d, _ := uiDash(t, rowMapsOn)
+	body, _, _ := d.focusBody(d.opts())
+	text := stripANSITest(strings.Join(body, "\n"))
+	for _, never := range []string{"Alerts -", "Alerts in view", "Station's places", "regional severe"} {
+		if strings.Contains(text, never) {
+			t.Errorf("the Maps tab still offers a scope (%q):\n%s", never, text)
+		}
 	}
 }
 
@@ -60,10 +65,10 @@ func TestTheFeedIsAskedOnceThePanningStops(t *testing.T) {
 	if asked <= before {
 		t.Error("the feed was not asked once the panning stopped")
 	}
-	station := openMap(t, Config{MapFeed: feed, MapAlertScope: "station"}, 133, 44)
-	gen := station.mapPane.feedGen
-	m, _ = station.Update(mapViewSettledMsg{gen: station.mapPane.viewGen})
+	closed, _ := pressKey(d, "g")
+	gen := closed.mapPane.feedGen
+	m, _ = closed.Update(mapViewSettledMsg{gen: closed.mapPane.viewGen})
 	if m.(Dashboard).mapPane.feedGen != gen {
-		t.Error("with the station's scope a settled view asked the feed again")
+		t.Error("a settling that lands after the map closed asked the feed")
 	}
 }

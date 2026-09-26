@@ -404,7 +404,6 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapLayerChoice:  cfg.MapLayers,                 // 0.18.0 W1.11
 		MapLayers:       windowLayers(),                // 0.18.0 W1.13: the registry's layers
 		MapCost:         lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate
-		MapAlertScope:   cfg.MapAlertScope,             // 0.18.0 W5.3
 		MapDetailChoice: cfg.MapDetail,                 // UAT-1 D-65: the map's detail
 		MapDetailLevel:  cfg.MapDetailLevel,            // UAT-1 D-67: its level
 		MapAreaName:     mapAreaNamer(lp.idx),          // UAT-1 D-64: the title names what is in view

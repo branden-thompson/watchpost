@@ -13,6 +13,7 @@ package tty
 
 import (
 	"math"
+	"slices"
 	"strings"
 	"time"
 
@@ -55,12 +56,17 @@ func boxed(title string, content []string, inner int) []string {
 // about two fifths of it, never under 26 cells or over 46.
 func areaAlertsInner(cols int) int { return min(max(cols*2/5, 26), 46, max(cols-4, 1)) }
 
+// boxAlerts is how many alerts the box says at a map's height: about two
+// lines each in two thirds of the map, the place's line and the frame aside;
+// the last says how many more there are (D-78).
+func boxAlerts(size tuimaps.Size) int { return max((size.Rows*2/3-4)/2, 2) }
+
 // areaAlertsBox is the description in a box (D-63). Longer than two thirds of the map,
 // it ends with a line saying where the whole text is.
 func (d Dashboard) areaAlertsBox(size tuimaps.Size) []string {
 	inner := areaAlertsInner(size.Cols)
 	var content []string
-	for _, l := range d.describeLines() {
+	for _, l := range d.describeUpTo(boxAlerts(size)) {
 		content = append(content, render.WrapText(l, inner-2)...)
 	}
 	for i := range content {
@@ -101,7 +107,18 @@ func (d Dashboard) controlsBox() []string {
 		"    " + cap(actMapPanUp, "↑") + "     " + cap(actMapZoomIn, "+"),
 		" " + cap(actMapPanLeft, "←") + cap(actMapPanDown, "↓") + cap(actMapPanRight, "→") + "  " + cap(actMapZoomOut, "-"),
 		" " + cap(actMapPrev, "[") + cap(actMapNext, "]") + " place",
+		" " + regionCaps(o, slices.Contains(mapRegionActs, d.mapPane.flash) && time.Now().Before(d.mapPane.flashEnd)) + " region", // D-77: the region keys, prominently
 	}, controlsInner)
+}
+
+// regionCaps is the region keys' chips, "1-6", both inverted while any
+// region key blinks.
+func regionCaps(o render.Opts, blink bool) string {
+	face := o.KeyCap
+	if blink {
+		face = o.KeyCapInverted
+	}
+	return face("1") + "-" + face("6")
 }
 
 // withControls lays the controls over the map's lower right, where there is
@@ -141,7 +158,7 @@ type mapDetailLayer struct {
 func mapDetailLayers() []mapDetailLayer {
 	return []mapDetailLayer{
 		{"borders", "Borders", tuimaps.BorderLayer, true, tuimaps.DetailEssential},
-		{"water", "Water", tuimaps.WaterLayer, true, tuimaps.DetailEssential},
+		{"water", "Lakes", tuimaps.WaterLayer, true, tuimaps.DetailEssential}, // inland water: the sea and its coast are never switched (U1-39, go-tuiMaps D-85)
 		{"rivers", "Rivers", tuimaps.RiverLayer, true, tuimaps.DetailWeather},
 		{"names", "Place names", tuimaps.LabelLayer, true, tuimaps.DetailWeather},
 		{"roads", "Major roads", tuimaps.RoadLayer, true, tuimaps.DetailWeather},
@@ -376,19 +393,21 @@ func (d Dashboard) mapTitleAt(size tuimaps.Size) string {
 	if loc == nil {
 		return ""
 	}
-	if d.cfg.MapAreaName == nil || m == nil {
+	if m == nil {
 		return loc.Label
 	}
-	centre, _ := m.Centre()
 	v := d.viewBox(size)
-	widthKm := (v.E - v.W) * 111.32 * math.Cos(centre.Lat*math.Pi/180) // across the view at its centre
-	name := d.cfg.MapAreaName(centre, widthKm)
-	inView := v.Contains(loc.Lat, loc.Lon)
-	switch {
-	case name == "":
+	if !v.Contains(loc.Lat, loc.Lon) {
+		return d.viewName() // D-78: away from the place, never its name
+	}
+	var name string
+	if d.cfg.MapAreaName != nil {
+		centre, _ := m.Centre()
+		widthKm := (v.E - v.W) * 111.32 * math.Cos(centre.Lat*math.Pi/180) // across the view at its centre
+		name = d.cfg.MapAreaName(centre, widthKm)
+	}
+	if name == "" || name == loc.Label {
 		return loc.Label
-	case !inView, name == loc.Label:
-		return name
 	}
 	return name + " " + d.opts().Glyphs().Dot + " " + loc.Label
 }

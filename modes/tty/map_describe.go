@@ -13,6 +13,7 @@ package tty
 
 import (
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -39,25 +40,152 @@ func Relation(pa tuimaps.PlaceAlert, inMissing bool) string {
 	return "lies to one side"
 }
 
-// describeLines is the description of the selected place: its conditions,
-// then each alert on the map, joined to watchpost's own alert for its times.
-func (d Dashboard) describeLines() []string {
+// describeLinesAll is the whole description: every alert in view. It is what
+// the window shows in place of the picture, and what a screen reader reads.
+func (d Dashboard) describeLinesAll() []string { return d.describeUpTo(0) }
+
+// describeUpTo is the description of what is in view (D-78): while the
+// selected place is in view, its conditions and the alerts that cover it or
+// come near it, in M1's words; away from it, the view's name and nothing of
+// the place - no information is better than information that does not match
+// the map. Then every other alert in view, most severe first. With most over
+// zero, at most that many alerts are said, and the last line says how many
+// more there are.
+func (d Dashboard) describeUpTo(most int) []string {
 	loc := d.selectedLocation()
 	if loc == nil {
 		return nil
 	}
-	out := []string{d.placeFacts(*loc)}
+	v := d.viewBox(d.mapBodySize())
+	here := d.mapPane.m == nil || v.Contains(loc.Lat, loc.Lon)
+	out := []string{d.viewHeading(*loc, here)}
 	if !d.layerOn(AlertLayer) {
 		return append(out, alertLayerOffText) // off is said, never "nothing is there"
 	}
-	alerts := d.mapPane.report.Alerts
-	if len(alerts) == 0 {
-		return append(out, "No alert on the map covers or comes near "+loc.Label+".")
+	var said []string
+	told := map[string]bool{}
+	if here {
+		for _, pa := range d.mapPane.report.Alerts {
+			if Relation(pa, d.mapPane.inMissing[pa.Feature]) == "lies to one side" {
+				continue // said below with the view's others, if it is in view
+			}
+			said, told[pa.Feature] = append(said, d.alertSentence(*loc, pa)), true
+		}
+		if len(said) == 0 {
+			said = append(said, "No alert on the map covers or comes near "+loc.Label+".")
+		}
 	}
-	for _, pa := range alerts {
-		out = append(out, d.alertSentence(*loc, pa))
+	for _, a := range d.alertsInView(v) {
+		if !told[a.id] {
+			said = append(said, d.viewAlertSentence(*loc, a))
+		}
 	}
+	if len(said) == 0 {
+		said = append(said, "No alerts in view.")
+	}
+	if most > 0 && len(said) > most {
+		said = append(said[:most-1], "And "+strconv.Itoa(len(said)-most+1)+" more in view.")
+	}
+	return append(out, said...)
+}
+
+// viewHeading is the description's first line: the place and how it is now
+// while it is in view, and the view's name when it is not.
+func (d Dashboard) viewHeading(loc snapshot.Location, here bool) string {
+	if here {
+		return d.placeFacts(loc)
+	}
+	name := d.viewName()
+	return strings.ToUpper(name[:1]) + name[1:] + "."
+}
+
+// viewName is what the view is called: the namer's name for its centre and
+// width, or the region it is in.
+func (d Dashboard) viewName() string {
+	size := d.mapBodySize()
+	if d.cfg.MapAreaName != nil && d.mapPane.m != nil {
+		centre, _ := d.mapPane.m.Centre()
+		v := d.viewBox(size)
+		widthKm := (v.E - v.W) * 111.32 * math.Cos(centre.Lat*math.Pi/180)
+		if name := d.cfg.MapAreaName(centre, widthKm); name != "" {
+			return name
+		}
+	}
+	if d.mapPane.region.Name != "" {
+		return d.mapPane.region.Name
+	}
+	return "the map"
+}
+
+// viewAlert is an alert drawn in view: its id, its name and severity as the
+// map has them, and its end.
+type viewAlert struct {
+	id, label string
+	sev       tuimaps.Severity
+	expires   time.Time
+}
+
+// alertsInView is every alert area drawn that meets the view, once each,
+// the most severe first.
+func (d Dashboard) alertsInView(v MapView) []viewAlert {
+	seen := map[string]bool{}
+	var out []viewAlert
+	for id, o := range d.mapPane.given {
+		if !strings.HasPrefix(id, AlertLayer+"/") {
+			continue
+		}
+		for _, f := range o.Features {
+			if f.ID == "" || seen[f.ID] || !featureMeets(f, v) {
+				continue
+			}
+			seen[f.ID] = true
+			out = append(out, viewAlert{id: f.ID, label: f.Label, sev: f.Severity, expires: f.Expires})
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].sev != out[j].sev {
+			return out[i].sev > out[j].sev
+		}
+		if out[i].label != out[j].label {
+			return out[i].label < out[j].label
+		}
+		return out[i].id < out[j].id
+	})
 	return out
+}
+
+// featureMeets reports whether a feature's outline's box meets the view.
+func featureMeets(f tuimaps.Feature, v MapView) bool {
+	w, s, e, n := 180.0, 90.0, -180.0, -90.0
+	for _, ring := range f.Rings {
+		for _, p := range ring {
+			w, s, e, n = min(w, p.Lon), min(s, p.Lat), max(e, p.Lon), max(n, p.Lat)
+		}
+	}
+	return w <= v.E && e >= v.W && s <= v.N && n >= v.S
+}
+
+// viewAlertSentence is an alert in view that neither covers the place nor
+// comes near it: "<event> in effect for <areas> until <time>." (D-74).
+func (d Dashboard) viewAlertSentence(loc snapshot.Location, a viewAlert) string {
+	event, areas, until := a.label, "", a.expires
+	if own := d.alertOnRecord(loc, a.id); own != nil {
+		if own.Event != "" {
+			event = own.Event
+		}
+		areas = areasInWords(own.AreaDesc)
+		if !own.Expires.IsZero() {
+			until = own.Expires
+		}
+	}
+	if areas == "" {
+		areas = "the area it covers"
+	}
+	s := event + " in effect for " + areas
+	if !until.IsZero() {
+		s += " until " + d.untilWords(loc, until)
+	}
+	return s + "."
 }
 
 // placeFacts is the place's own weather, in words.
@@ -118,8 +246,7 @@ func (d Dashboard) alertSentence(loc snapshot.Location, pa tuimaps.PlaceAlert) s
 }
 
 // alertOnRecord is the alert as watchpost holds it, by id: among the selected
-// place's, the station's other places', or the national and in-view ones the
-// feed drew - its name, its areas and its end time.
+// place's, the station's other places', or the in-view ones the feed drew - its name, its areas and its end time.
 func (d Dashboard) alertOnRecord(loc snapshot.Location, id string) *snapshot.Alert {
 	if a := alertByID(loc, id); a != nil {
 		return a
@@ -131,7 +258,7 @@ func (d Dashboard) alertOnRecord(loc snapshot.Location, id string) *snapshot.Ale
 			}
 		}
 	}
-	return alertByID(snapshot.Location{Alerts: d.mapPane.national}, id)
+	return alertByID(snapshot.Location{Alerts: d.mapPane.inView}, id)
 }
 
 // areaWords are the generic words of the Weather Service's area names, said

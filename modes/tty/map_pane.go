@@ -12,6 +12,7 @@ package tty
 import (
 	"math"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -77,7 +78,7 @@ type mapPane struct {
 	given     map[string]tuimaps.Overlay // what was last handed to the map, by id: an unchanged overlay is not handed in again (U1-28)
 	notes     []string                   // the feed's notes, printed under the map
 	inMissing map[string]bool            // the feed's alerts whose missing zones hold the place
-	national  []snapshot.Alert           // the feed's alerts the station does not hold, which the description names
+	inView    []snapshot.Alert           // the feed's alerts the station does not hold, which the description names
 	report    tuimaps.PlaceReport        // the library's answers for the selected place, as last drawn
 	legend    []tuimaps.LegendEntry      // what the map draws now, for the legend (W1.17)
 	legendOn  bool                       // the legend is open over the map (D-44)
@@ -90,6 +91,7 @@ type mapView struct {
 	centre tuimaps.LonLat
 	zoom   float64
 	size   tuimaps.Size
+	region geo.Region // the region the frame was bound to (D-28, D-77)
 }
 
 // MapFeed is what the map draws from the station's data (0.18.0 W5): an
@@ -98,9 +100,9 @@ type MapFeed struct {
 	Overlays  []tuimaps.Overlay
 	Notes     []string
 	InMissing map[string]bool // alerts whose missing zones hold the selected place, by alert id
-	// National are the alerts drawn that the station does not hold - the
-	// national scope's (W5.3) - so the description can name them in full.
-	National []snapshot.Alert
+	// InView are the alerts drawn that the station does not hold - the
+	// view's (D-66) - so the description can name them in full.
+	InView []snapshot.Alert
 }
 
 // mapFeedMsg is the feed's answer, to the request it was asked in.
@@ -167,18 +169,23 @@ func (d Dashboard) boundMap() Dashboard {
 	if m == nil || r.Name == "" {
 		return d
 	}
-	size := d.mapBodySize()
+	least := regionFitZoom(r, d.mapBodySize())
+	d.mapPane.call("SetBound", func() {
+		_ = m.SetBound(tuimaps.Bound{MinZoom: least, W: r.W, S: r.S, E: r.E, N: r.N})
+	})
+	return d
+}
+
+// regionFitZoom is the least zoom a region is held at: the zoom at which it
+// fills the map one way or the other.
+func regionFitZoom(r geo.Region, size tuimaps.Size) float64 {
 	width := r.E - r.W
 	if width < 0 {
 		width += 360
 	}
 	fitX := math.Log2(float64(size.Cols*2) * 360 / (width * 256))
 	fitY := math.Log2(float64(size.Rows*4) / ((mercatorY(r.S) - mercatorY(r.N)) * 256))
-	least := min(max(fitX, fitY, 0), tuimaps.MaxZoom)
-	d.mapPane.call("SetBound", func() {
-		_ = m.SetBound(tuimaps.Bound{MinZoom: least, W: r.W, S: r.S, E: r.E, N: r.N})
-	})
-	return d
+	return min(max(fitX, fitY, 0), tuimaps.MaxZoom)
 }
 
 // mercatorY is a latitude's place down the world, from 0 at the top to 1.
@@ -208,7 +215,7 @@ func (d Dashboard) descBlock(width int) []string {
 		return nil
 	}
 	var out []string
-	for _, l := range d.describeLines() {
+	for _, l := range d.describeLinesAll() {
 		out = append(out, render.WrapText(l, width)...)
 	}
 	if len(out) > 0 {
@@ -241,7 +248,7 @@ func (d Dashboard) renderMap() Dashboard {
 	d.mapPane.lines, d.mapPane.failed = insetLines(frame.Lines), ""
 	if d.mapPane.views != nil {
 		c, z := m.Centre()
-		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize()})
+		*d.mapPane.views = append(*d.mapPane.views, mapView{centre: c, zoom: z, size: d.mapBodySize(), region: d.mapPane.region})
 	}
 	d.mapPane.status = frame.Status
 	d.mapPane.call("Legend", func() { d.mapPane.legend = m.Legend() })
@@ -444,12 +451,23 @@ const (
 	actMapLegend     term.Action = "map.legend"
 )
 
+// mapRegionActs are the region keys, 1 to 6 (D-77): each snaps the map to
+// its region, in geo's numbering.
+var mapRegionActs = []term.Action{"map.region.1", "map.region.2", "map.region.3", "map.region.4", "map.region.5", "map.region.6"}
+
+// mapRegionShort are the names Help lists the region keys by.
+var mapRegionShort = []string{"US", "Alaska", "Hawaii", "Caribbean", "Samoa", "Guam"}
+
+// mapRegionLabels are the regions' names, for each key's own help, in the
+// same order.
+var mapRegionLabels = []string{"Continental US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam & N. Marianas"}
+
 // mapActions is the map window's actions in the order Help lists them.
-var mapActions = []term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapOverlays, actMapLegend}
+var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapOverlays, actMapLegend}, mapRegionActs...)
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
 func defaultMapKeyMap() term.KeyMap {
-	return term.KeyMap{
+	km := term.KeyMap{
 		actMapPanUp:      {Keys: []string{"up"}, Help: "Pan North"},
 		actMapPanDown:    {Keys: []string{"down"}, Help: "Pan South"},
 		actMapPanLeft:    {Keys: []string{"left"}, Help: "Pan West"},
@@ -464,6 +482,10 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"}, // D-63: over the upper left, as the legend is the upper right
 		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},    // D-65: the weather layers and the map's detail
 	}
+	for i, act := range mapRegionActs { // D-77: 1 to 6, a region each
+		km[act] = term.Binding{Keys: []string{string(rune('1' + i))}, Help: "Region " + string(rune('1'+i)) + ": " + mapRegionLabels[i]}
+	}
+	return km
 }
 
 // mapKeysFrom merges the [keys] entries that name the map's actions into its
@@ -519,13 +541,13 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	stepX, stepY := max(size.Cols/4, 1), max(size.Rows/4, 1) // a quarter of the view a press
 	switch act {
 	case actMapPanUp:
-		d.mapPane.call("PanCells", func() { _ = m.PanCells(0, -stepY) })
+		d = d.panOrCross(0, -stepY, geo.North)
 	case actMapPanDown:
-		d.mapPane.call("PanCells", func() { _ = m.PanCells(0, stepY) })
+		d = d.panOrCross(0, stepY, geo.South)
 	case actMapPanLeft:
-		d.mapPane.call("PanCells", func() { _ = m.PanCells(-stepX, 0) })
+		d = d.panOrCross(-stepX, 0, geo.West)
 	case actMapPanRight:
-		d.mapPane.call("PanCells", func() { _ = m.PanCells(stepX, 0) })
+		d = d.panOrCross(stepX, 0, geo.East)
 	case actMapZoomIn:
 		d.mapPane.call("ZoomBy", func() { _ = m.ZoomBy(1) })
 	case actMapZoomOut:
@@ -537,10 +559,47 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		d = d.handleNav("nav-up").followSelection().requestFeed() // the notes speak of the place
 	case actMapNext:
 		d = d.handleNav("nav-down").followSelection().requestFeed()
+	default:
+		if n := slices.Index(mapRegionActs, act); n >= 0 {
+			if r, ok := geo.RegionNumbered(n + 1); ok {
+				d = d.showRegion(r)
+			}
+		}
 	}
 	d = d.renderMap()
 	d, settle := d.viewMoved()
 	return d, tea.Batch(d.mapWorkCmd(), d.mapFeedCmd(), settle), true
+}
+
+// panOrCross pans by cells, and where the region's edge holds the map still,
+// moves on to the region beyond it (D-77): the press that would go past the
+// edge crosses it. An edge with nothing beyond it stays an edge.
+func (d Dashboard) panOrCross(dx, dy int, dir geo.Direction) Dashboard {
+	m := d.mapPane.m
+	before, _ := m.Centre()
+	d.mapPane.call("PanCells", func() { _ = m.PanCells(dx, dy) })
+	after, _ := m.Centre()
+	if math.Abs(after.Lat-before.Lat) > 1e-9 || math.Abs(after.Lon-before.Lon) > 1e-9 {
+		return d
+	}
+	if next, ok := geo.Neighbour(d.mapPane.region.Name, dir); ok {
+		return d.showRegion(next)
+	}
+	return d
+}
+
+// showRegion binds the map to a region and shows the whole of it (D-77): the
+// listener's way to every region the station's APIs cover, one at a time
+// (D-28). The selected place is unchanged.
+func (d Dashboard) showRegion(r geo.Region) Dashboard {
+	m := d.mapPane.m
+	d.mapPane.outside, d.mapPane.region = "", r
+	d = d.boundMap()
+	lat, lon := r.Centre()
+	least := regionFitZoom(r, d.mapBodySize())
+	d.mapPane.call("Zoom", func() { _ = m.Zoom(least) })
+	d.mapPane.call("Recentre", func() { _ = m.Recentre(tuimaps.LonLat{Lon: lon, Lat: lat}) })
+	return d
 }
 
 // followSelection puts the map on the selected location (FR-1.2), held
@@ -621,7 +680,7 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
 		}
 	}
-	d.mapPane.shown, d.mapPane.given, d.mapPane.notes, d.mapPane.inMissing, d.mapPane.national = shown, given, notes, v.feed.InMissing, v.feed.National
+	d.mapPane.shown, d.mapPane.given, d.mapPane.notes, d.mapPane.inMissing, d.mapPane.inView = shown, given, notes, v.feed.InMissing, v.feed.InView
 	d.mapPane.drawnSev = map[string]bool{}
 	for _, o := range v.feed.Overlays {
 		for _, f := range o.Features {
@@ -641,6 +700,7 @@ type mapHelpRow struct{ keys, help string }
 // mapHelpRows are the MAP group's rows, read from the merged keys so a
 // [keys] rebind shows.
 func mapHelpRows(keys term.KeyMap) []mapHelpRow {
+	keys0 := func(act term.Action) []string { return keys[act].Keys }
 	join := func(acts ...term.Action) string {
 		var all []string
 		for _, a := range acts {
@@ -648,13 +708,23 @@ func mapHelpRows(keys term.KeyMap) []mapHelpRow {
 		}
 		return strings.Join(all, ", ")
 	}
-	return []mapHelpRow{
+	rows := []mapHelpRow{
 		{join(actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight), "Pan"},
 		{join(actMapPrev, actMapNext), "Previous / Next Location"},
 		{join(actMapZoomIn, actMapZoomOut), "Zoom In / Out"},
 		{join(actMapScrollUp, actMapScrollDown), "Scroll"},
 		{join(actMapAlerts, actMapOverlays, actMapLegend), "Area Alerts / Overlays / Legend"},
 	}
+	// D-77: the region keys in two rows of three, each number's region named
+	// in order - six rows pushed Help past its window.
+	for _, half := range [][]int{{0, 1, 2}, {3, 4, 5}} {
+		var keys, names []string
+		for _, i := range half {
+			keys, names = append(keys, keys0(mapRegionActs[i])...), append(names, mapRegionShort[i])
+		}
+		rows = append(rows, mapHelpRow{strings.Join(keys, ", "), "Region: " + strings.Join(names, ", ")})
+	}
+	return rows
 }
 
 // legendWidth is the legend box's width in cells.
@@ -735,10 +805,10 @@ func (d Dashboard) viewMoved() (Dashboard, tea.Cmd) {
 	return d, tea.Tick(mapSettleDelay, func(time.Time) tea.Msg { return mapViewSettledMsg{gen: gen} })
 }
 
-// applyViewSettled asks the feed again once the view has stood still, when
-// the alerts drawn are the view's own (D-66); a superseded tick is dropped.
+// applyViewSettled asks the feed again once the view has stood still: the map
+// draws every alert in view (D-66, D-76). A superseded tick is dropped.
 func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
-	if d.modal != modalMap || v.gen != d.mapPane.viewGen || d.mapScope != ScopeInView {
+	if d.modal != modalMap || v.gen != d.mapPane.viewGen {
 		return d, nil
 	}
 	d = d.requestFeed()

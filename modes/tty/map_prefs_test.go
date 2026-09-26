@@ -297,57 +297,13 @@ func TestTheEstimateIsAskedWhereItCanChange(t *testing.T) {
 	}
 }
 
-// TestTheAlertScopeRowSavesAndAsksTheFeed is W1.11's last row and W5.3
-// (FR-4.3): the scope is a picker on the Maps tab, written with the group;
-// the feed and the estimate are asked with it.
-func TestTheAlertScopeRowSavesAndAsksTheFeed(t *testing.T) {
-	d, got := uiDash(t, rowMapScope)
-	d.cfg.MapCost = func(ask MapAsk, _ func(string) bool) MapCost { return MapCost{Requests: int(ask.Scope) * 100} }
-	if d.mapScope != ScopeInView {
-		t.Fatalf("an empty file opens with scope %v, want alerts in view (D-66)", d.mapScope)
-	}
-	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight}) // in view, then the station's places
-	m, _, _ = m.(Dashboard).setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
-	d = m.(Dashboard)
-	if d.mapScope != ScopeNational {
-		t.Errorf("→ → went to %v, want national", d.mapScope)
-	}
-	if d.mapCost.Requests != 100 {
-		t.Errorf("the scope moved and the estimate stayed at %+v", d.mapCost)
-	}
-	if m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyLeft}); m.(Dashboard).mapScope != ScopeStation {
-		t.Errorf("← from national went to %v, want the station's places", m.(Dashboard).mapScope)
-	}
-	body, _, _ := d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Alerts -") || !strings.Contains(text, ScopeNational.Label()) {
-		t.Errorf("the Maps tab does not show the scope:\n%s", text)
-	}
-	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
-	drain(t, m, cmd)
-	if got.MapAlertScope != "national" {
-		t.Errorf("esc wrote scope %q, want national", got.MapAlertScope)
-	}
-	var asked, costed []AlertScope
-	w := mapDash(t, Config{MapAlertScope: "national",
-		MapFeed: func(_ context.Context, ask MapAsk) MapFeed { asked = append(asked, ask.Scope); return MapFeed{} },
-		MapCost: func(ask MapAsk, _ func(string) bool) MapCost { costed = append(costed, ask.Scope); return MapCost{} }})
-	w, _ = pressKey(w, "g")
-	_ = feedAndSettle(t, w)
-	if len(asked) == 0 || asked[0] != ScopeNational || len(costed) == 0 || costed[0] != ScopeNational {
-		t.Errorf("the feed was asked with %v and the estimate with %v; want national", asked, costed)
-	}
-	if ScopeStation.Key() != "station" || alertScopeByKey("nonsense") != ScopeInView {
-		t.Error("the scope's words do not round-trip")
-	}
-}
-
-// TestANationalAlertIsDescribedInFull: an alert the station does not hold -
-// a national severe event (W5.3) - is described with its own name and the
-// time it ends, from the feed.
-func TestANationalAlertIsDescribedInFull(t *testing.T) {
+// TestAnAlertInViewIsDescribedInFull: an alert the station does not hold -
+// one of the view's (D-66) - is described with its own name and the time it
+// ends, from the feed.
+func TestAnAlertInViewIsDescribedInFull(t *testing.T) {
 	feed := func(ctx context.Context, ask MapAsk) MapFeed {
 		f := boxFeed(-117.6, -117.1, false)(ctx, ask)
-		f.National = []snapshot.Alert{{ID: "w1", Event: "Tornado Warning", Severity: "Extreme", Expires: windExpires}}
+		f.InView = []snapshot.Alert{{ID: "w1", Event: "Tornado Warning", Severity: "Extreme", Expires: windExpires}}
 		return f
 	}
 	d := mapDash(t, Config{ASCII: true, MapFeed: feed})
@@ -359,6 +315,6 @@ func TestANationalAlertIsDescribedInFull(t *testing.T) {
 	d = feedAndSettle(t, d)
 	out := unwrapped(stripANSITest(d.View().Content))
 	if !strings.Contains(out, "Tornado Warning in effect for this area until") {
-		t.Errorf("the national alert is not described in full:\n%s", out)
+		t.Errorf("the alert in view is not described in full:\n%s", out)
 	}
 }

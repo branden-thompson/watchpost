@@ -147,7 +147,6 @@ func (*livePipelines).hydrate
 func (*livePipelines).injectHook
 func (*livePipelines).injectHook
 func (*livePipelines).inputsFor
-func (*livePipelines).inputsWith
 func (*livePipelines).locateInRadius
 func (*livePipelines).lookInPool
 func (*livePipelines).lookupCtx
@@ -357,7 +356,6 @@ func (*severeDeck).Row
 func (*severeDeck).SetFeed
 func (*severeDeck).SetLocations
 func (*severeDeck).currentRows
-func (*severeDeck).nationalFeed
 func (*severeDeck).publish
 func (*severeDeck).scope
 func (*severeDeck).setLaneRows
@@ -396,13 +394,12 @@ func (hostFacts).Installed
 func (hostFacts).Platform
 func (mainTrackStage).String
 func (mainTrackStage).reports
-func (mapInputs).withNational
+func (mapInputs).withInView
 func RenderCast
 func ReportOnce
 func ReportOnceWithStats
 func RunDashboard
 func abbreviateHome
-func afterLastSlash
 func alertKeysOf
 func alertLayerCost
 func alertNarration
@@ -469,7 +466,6 @@ func gapAfter
 func halfFor
 func holdRest
 func hostOf
-func inRegion
 func inViewOnly
 func indexKey
 func init
@@ -500,7 +496,6 @@ func marineReportOf
 func mastheadLine
 func matchesQuery
 func narrateDebug
-func nationalAlerts
 func nearestMetro
 func needsReadLine
 func newAlertStore

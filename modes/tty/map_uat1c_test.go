@@ -97,3 +97,17 @@ func TestSettingsIsNoWiderThanFourFifths(t *testing.T) {
 		}
 	}
 }
+
+// TestTheWaterSwitchIsTheLakes is UAT-1 U1-39 (go-tuiMaps D-85): the switch
+// takes the lakes and inland water, and says so; the sea and its coast are
+// the library's to keep, so no row offers them.
+func TestTheWaterSwitchIsTheLakes(t *testing.T) {
+	for _, l := range mapDetailLayers() {
+		if l.key == "water" && l.label != "Lakes" {
+			t.Errorf("the water switch is labelled %q; it takes the lakes, never the sea", l.label)
+		}
+		if strings.Contains(strings.ToLower(l.label), "ocean") || strings.Contains(strings.ToLower(l.label), "sea") {
+			t.Errorf("a detail row offers the sea: %q", l.label)
+		}
+	}
+}

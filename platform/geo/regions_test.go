@@ -51,27 +51,3 @@ func TestEveryCoveredPlaceHasARegion(t *testing.T) {
 		}
 	}
 }
-
-// TestRegionOfZone is 0.18.0 W5.3: a zone-only national alert has no point,
-// so its region is read from its zone code - a state's, or a marine area's -
-// and a code this station does not know is in no region.
-func TestRegionOfZone(t *testing.T) {
-	for code, want := range map[string]string{
-		"TXZ277": RegionContiguous, "OKC109": RegionContiguous, "PZZ530": RegionContiguous, "GMZ850": RegionContiguous,
-		"LMZ740": RegionContiguous, "AMZ154": RegionContiguous, "ANZ335": RegionContiguous,
-		"AKZ101": RegionAlaska, "PKZ120": RegionAlaska,
-		"HIZ027": RegionHawaii, "PHZ122": RegionHawaii,
-		"PRZ001": RegionCaribbean, "VIZ001": RegionCaribbean, "AMZ710": RegionCaribbean,
-		"GUZ001": RegionMarianas, "MPZ001": RegionMarianas, "PMZ151": RegionMarianas,
-		"ASZ001": RegionSamoa, "PSZ150": RegionSamoa,
-	} {
-		if r, ok := RegionOfZone(code); !ok || r.Name != want {
-			t.Errorf("%s is in %q (%v), want %q", code, r.Name, ok, want)
-		}
-	}
-	for _, code := range []string{"", "TX", "QQZ001", "txz277", "TXA001"} {
-		if r, ok := RegionOfZone(code); ok {
-			t.Errorf("%q is in %q, want no region", code, r.Name)
-		}
-	}
-}

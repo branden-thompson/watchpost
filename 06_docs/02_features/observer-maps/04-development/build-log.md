@@ -763,3 +763,53 @@ line. The rule is unchanged, so it is re-pointed at the new line (not retired), 
 
 **Diagrams:** `as-built-map.md` (Alerts in view and its settle tick, D-74's words, the Status window's
 MAP block, the Maps tab's rows, the 80% rule); atlas regenerated.
+
+## Batch 16 — UAT-1's fifth pass: what is real in view; every region (2026-09-25)
+
+**The HUM LEAD's fifth pass** (U1-37 to U1-41) and three rulings (D-76, D-77, D-78). watchpost moves to
+go-tuiMaps `v0.2.0-rc.11`, which brings L11.6.
+
+**U1-37 and U1-38: only the watched places' alerts drew.** This was diagnosed before any change. The
+listener's file held `map_alert_scope = 'station'`: every Settings save writes every row, so an earlier
+default was pinned. Run live against the same view, the app's in-view feed returned 38 alerts and 36
+overlays. **D-76: the map shows what is real in view, switched at the map ([O] Overlays), and the scope
+setting is removed.**
+- The ask carries no scope, and the app always reads the view's areas.
+- The national scope is removed: `app/mapnational.go`, `severeDeck.nationalFeed` and
+  `geo.RegionOfZone`, whose only reader it was.
+- The window's and the app's "national" alerts are renamed "in view".
+- `map_alert_scope` is read and ignored, so a file that has it reports no unknown key, and it is written
+  empty, so the next save drops it (`TestTheRetiredAlertScopeLeavesTheFile`).
+- The "alert areas are off" words now point at the Overlays menu.
+
+**U1-39: water off took the sea** (go-tuiMaps D-85, L11.6). The library's `WaterLayer` is now lakes and
+inland water; the sea and its coast are never switched. The Maps tab row is "Lakes".
+
+**U1-40 (D-77): every region, two ways, on the HUM LEAD's arrangement.**
+- `platform/geo/arrangement.go` holds the layout: `Neighbour` and `RegionNumbered`.
+- `1` to `6` snap the map to a region, shown whole.
+- A pan the region's edge holds still crosses to the neighbour.
+- The Controls box shows "1-6 region", and Help names the six in two rows; six rows pushed Help past its
+  window at 133×44.
+- The region-bound test (M2) now holds each frame to the region it was bound to, not only the place's.
+
+**U1-41 (D-78): the box follows the view.**
+- While the selected place is in view: its conditions, then its own alerts in M1's words.
+- Away from it: the view's name, from the namer or the region, and nothing of the place.
+- Either way, every other alert whose outline meets the view, most severe first. The box ends "And N more
+  in view." when full; the text-only description lists them all.
+- The title no longer names the place when the view has left it, namer or not.
+
+**Mutation verdicts** (targeted, 19), all caught in the end. Three first-round survivors were answered
+with tests:
+- the view box's latitude half: a flood warning due north, at the view's longitudes;
+- the feed's in-view merge and its held/not-held split: `TestTheFeedDrawsTheViewsAlertsAndNamesThemOnce`,
+  covering what the deleted national-scope tests used to.
+
+**What the gates found.** `tidy`: go.sum still listed rc.10 beside rc.11; tidied. The licence list was
+regenerated for rc.11 (`TestEveryRequiredModuleHasItsLicenceListed`). Both steps belong to every go-tuiMaps
+bump.
+
+**Diagrams:** `as-built-map.md` (the national scope gone; the view's alerts unconditional; the region keys,
+the arrangement and the description following the view); atlas regenerated. The UAT guide's keys and S4,
+S8, S10 to S12 now describe the region keys and alerts in view.

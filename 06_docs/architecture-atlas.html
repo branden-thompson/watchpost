@@ -841,8 +841,7 @@ code{font-family:var(--mono);font-size:.92em}
     REG[&#34;maplayers.go · the registry (W1.13)\nlayers and sources register from their own files\nalert areas (mapfeed.go) · OpenFreeMap (maps.go)\nrefreshCost: each layer&#39;s own, summed&#34;]
     MF[&#34;mapfeed.go · mapFeed\none overlay per alert, severity → role\npartial areas labelled, notes in words\nwhich alerts&#39; missing zones hold the place&#34;]
     MG[&#34;mapgeometry.go · resolveAlertAreas&#34;]
-    MN[&#34;mapnational.go · nationalAlerts\nthe national scope: the ticker&#39;s severe events\nin the selected place&#39;s region, as alerts\n(by point, or by zone code)&#34;]
-    MV[&#34;mapinview.go · Alerts in view (D-66, the default)\nthe states and marine areas the view touches (a 5x5 sample)\none request, remembered 2 minutes; kept to the view\nthe estimate reads the memory, never fetches&#34;]
+    MV[&#34;mapinview.go · the alerts in view (D-66; no scope to choose, D-76)\nthe states and marine areas the view touches (a 5x5 sample)\none request, remembered 2 minutes; kept to the view\nthe estimate reads the memory, never fetches&#34;]
     MS[&#34;maps.go · mapSourceList (D-75)\neach host the map contacts, and what it is sent&#34;]
   end
   subgraph domains[&#34;domains/&#34;]
@@ -850,26 +849,24 @@ code{font-family:var(--mono);font-size:.92em}
     WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)&#34;]
   end
   subgraph tty[&#34;modes/tty — the Observer&#34;]
-    MW[&#34;map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms, in-view scope)&#34;]
-    MD[&#34;map_describe.go · the description (D-74)\nthe place - Currently: temperature, sky\n‹event› in effect for this area · for nearby ‹areas› · for ‹areas›, until ‹time›\n‹areas›: the alert&#39;s own first two; M1&#39;s relation underneath; never &#39;you&#39;&#34;]
-    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend&#34;]
+    MW[&#34;map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\n1-6 snap to a region; a pan past an edge crosses to the neighbour (D-77)\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station&#39;s\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms)&#34;]
+    MD[&#34;map_describe.go · the description follows the view (D-74, D-78)\nthe place - Currently: … only while the place is in view; else the view&#39;s name\n‹event› in effect for this area · for nearby ‹areas› · for ‹areas›, until ‹time›\nevery alert in view, most severe first; the box ends &#39;And N more in view.&#39;&#34;]
+    MK[&#34;map keymap scope\narrows pan · + − zoom · [ ] place · 1-6 region · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend&#34;]
     BX[&#34;map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: weather layers + the map&#39;s detail (D-65, Map.Layers)\nthe title names the view by scale (D-64)&#34;]
     LG[&#34;the legend (D-44)\na box over the map&#39;s corner, from Legend()\nonly the severities drawn, with their digits&#34;]
-    ST2[&#34;Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby · Alerts\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail (D-67)\na row per detail layer, ← Enabled → (U1-35) · Map data: clear · the retention&#34;]
+    ST2[&#34;Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby (no alert scope, D-76)\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail (D-67)\na row per detail layer, ← Enabled → (U1-35); Lakes, never the sea (U1-39) · Map data: clear · the retention&#34;]
     SW[&#34;status.go · the Status window\nMAP - contacted only while a map is open (D-75)\neach source: its host and what it is sent&#34;]
   end
   subgraph plat[&#34;platform/&#34;]
-    RG[&#34;geo · RegionOf\nsix regions with their waters&#34;]
+    RG[&#34;geo · RegionOf\nsix regions with their waters\narrangement.go: Neighbour, RegionNumbered (D-77)&#34;]
     HX[&#34;httpx · DiskCacheBytes\nin the one stated total&#34;]
   end
   L[&#34;go-tuiMaps v0.2.0-rc.N\nSetBound · Source · Set/Remove · Work · Render · Warnings&#34;]
   MB -- &#34;Config.NewMap(size)&#34; --&gt; MW
-  MF -- &#34;Config.MapFeed(ask: snap, place, scope)\nan unchanged overlay is not handed in again (U1-28)&#34; --&gt; MW
+  MF -- &#34;Config.MapFeed(ask: snap, place, view)\nan unchanged overlay is not handed in again (U1-28)&#34; --&gt; MW
   MF --&gt; MG --&gt; ZS
-  MF -- &#34;national scope&#34; --&gt; MN
-  MF -- &#34;in-view scope (ask.View)&#34; --&gt; MV --&gt; WS
+  MF -- &#34;ask.View&#34; --&gt; MV --&gt; WS
   MS -- &#34;Config.MapSources&#34; --&gt; SW
-  SD[&#34;severe.go · severeDeck\nthe ticker&#39;s national feed (polygons kept)&#34;] -- &#34;nationalFeed()&#34; --&gt; MN
   MF --&gt; WS
   MB -. &#34;first g&#34; .-&gt; ZS
   MW --&gt; RG
@@ -908,7 +905,7 @@ code{font-family:var(--mono);font-size:.92em}
   F -- &#34;mapFeedMsg&#34; --&gt; U
   U -- &#34;after every Update: NextCall&#34; --&gt; T[&#34;one tick outstanding\n(50 ms floor)&#34;]
   U -- &#34;pan, zoom, resize&#34; --&gt; VS[&#34;the settle tick, 600 ms\nby view generation (D-66)&#34;]
-  VS -- &#34;mapViewSettledMsg: the newest, in-view scope&#34; --&gt; U
+  VS -- &#34;mapViewSettledMsg: the newest&#34; --&gt; U
   T -- &#34;mapTickMsg at the time still wanted&#34; --&gt; U
   Q[&#34;the program ends\ncloseOnExit → Router.CloseMap&#34;] --&gt; C[&#34;closeMap\ncancel · join (≤ 2 s) · Close&#34;]
   C -. &#34;refuses what starts after&#34; .-&gt; W &amp; F
