@@ -98,6 +98,7 @@ func (d Dashboard) renderModal(o render.Opts) string {
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
 	case modalMap:
 		o.Width = d.modalWidth()                                               // the panel at the map window's own width, not the dashboard's (which reserves a rail)
+		o.Flush = true                                                         // UAT-1 U1-27: a picture runs border to border
 		return d.floatModal(o, d.modalWidth(), d.mapTitle(), d.mapBodyLines()) // 0.18.0: lines drawn in Update (D-41)
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
@@ -150,7 +151,7 @@ func (d Dashboard) modalWidth() int {
 	case modalAbout:
 		return aboutWidth
 	case modalMap:
-		return max(min(d.width-2, max(d.width*80/100, mapMinBody.Cols+8)), 10) // U1-13: about 80% of the terminal; at least a 69-column map and its inset (FR-1.4), never past the frame
+		return max(min(d.width-2, max(d.width*80/100, mapMinBody.Cols+2)), 10) // U1-13: about 80% of the terminal; at least a 69-column map and its borders (FR-1.4, U1-27), never past the frame
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
 	case modalCard:
@@ -226,10 +227,14 @@ func (d Dashboard) wrapModal(lines []string, w int) []string {
 // scroll has to count in the coordinates the panel draws in (FR-5), and asking
 // twice costs a second wrap of the whole body on the memo-miss frame.
 func (d Dashboard) wrapModalAt(lines []string, w int) ([]string, int) {
-	if full := render.WrapLines(lines, w-4); len(full) <= d.modalMax() {
-		return full, w - 4
+	used := 4 // the two borders and the panel's inset
+	if d.modal == modalMap {
+		used = 2 // the map window is flush: its borders alone (UAT-1 U1-27)
 	}
-	return render.WrapLines(lines, w-7), w - 7
+	if full := render.WrapLines(lines, w-used); len(full) <= d.modalMax() {
+		return full, w - used
+	}
+	return render.WrapLines(lines, w-used-3), w - used - 3
 }
 
 // footerModalScrollMax is how far a pinned-footer window scrolls: its wrapped

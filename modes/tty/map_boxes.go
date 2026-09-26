@@ -79,9 +79,9 @@ func (d Dashboard) withAreaAlerts(lines []string, size tuimaps.Size) []string {
 	return spliceBox(lines, d.areaAlertsBox(size), 0, insetCols)
 }
 
-// insetCols is the blank cell each drawn line starts with (insetLines); the
-// window's own padding is outside the lines.
-const insetCols = 1
+// insetCols is where the map's first cell is in a drawn line: the first
+// column, since the map runs border to border (UAT-1 U1-27).
+const insetCols = 0
 
 // controlsInner is the controls box's inner width.
 const controlsInner = 17

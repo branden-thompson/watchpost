@@ -85,9 +85,13 @@ func (o Opts) PanelColored(title, content, fg string) string {
 		pad := max(0, w-displayWidth(tl+hz+hz+" "+title+" ")-1)
 		b.WriteString(tint(tl+hz+hz+" ") + title + tint(" "+strings.Repeat(hz, pad)+tr) + "\n")
 	}
+	inset, used := "  ", 4 // the two borders and a two-cell inset
+	if o.Flush {
+		inset, used = "", 2 // the borders alone (U1-27)
+	}
 	for _, line := range strings.Split(content, "\n") {
-		line = truncate(line, w-4)
-		b.WriteString(tint(vt) + "  " + line + strings.Repeat(" ", max(0, w-4-displayWidth(line))) + tint(vt) + "\n")
+		line = truncate(line, w-used)
+		b.WriteString(tint(vt) + inset + line + strings.Repeat(" ", max(0, w-used-displayWidth(line))) + tint(vt) + "\n")
 	}
 	b.WriteString(tint(bl + strings.Repeat(hz, max(0, w-2)) + br))
 	return b.String()
@@ -216,6 +220,9 @@ func (o Opts) scrollWindow(lines []string, scroll, maxLines int) []string {
 		return lines
 	}
 	inner := o.Width - 7
+	if o.Flush {
+		inner = o.Width - 5 // no inset to leave room for (U1-27)
+	}
 	maxScroll := len(lines) - maxLines
 	scroll = max(0, min(scroll, maxScroll))
 	thumb := 1

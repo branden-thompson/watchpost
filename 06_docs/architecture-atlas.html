@@ -861,7 +861,7 @@ code{font-family:var(--mono);font-size:.92em}
   end
   L[&#34;go-tuiMaps v0.2.0-rc.N\nSetBound · Source · Set/Remove · Work · Render · Warnings&#34;]
   MB -- &#34;Config.NewMap(size)&#34; --&gt; MW
-  MF -- &#34;Config.MapFeed(ask: snap, place, scope)&#34; --&gt; MW
+  MF -- &#34;Config.MapFeed(ask: snap, place, scope)\nan unchanged overlay is not handed in again (U1-28)&#34; --&gt; MW
   MF --&gt; MG --&gt; ZS
   MF -- &#34;national scope&#34; --&gt; MN
   SD[&#34;severe.go · severeDeck\nthe ticker&#39;s national feed (polygons kept)&#34;] -- &#34;nationalFeed()&#34; --&gt; MN
@@ -892,7 +892,7 @@ code{font-family:var(--mono);font-size:.92em}
   F -- &#34;no&#34; --&gt; FL[&#34;stated: the size needed and the size present,\nthen the description (FR-1.4)&#34;]
   F -- &#34;yes&#34; --&gt; DS{&#34;description with the picture?&#34;}
   DS -- &#34;yes (the default)&#34; --&gt; D1[&#34;the description in the Area Alerts box on the first rows (D-55 as D-63 keeps it)&#34;] --&gt; M
-  DS -- &#34;off&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)\nthe window about 80% of the terminal each way (U1-13), never under what 69x12 needs&#34;]
+  DS -- &#34;off&#34; --&gt; M[&#34;the map, bound to the region (FR-2.1)\nthe window about 80% of the terminal each way (U1-13), never under what 69x12 needs\nthe picture flush to the borders (U1-27)&#34;]
   M --&gt; BXS[&#34;the boxes over it: Area Alerts, the Overlays menu, the controls, the legend&#34;] --&gt; NT[&#34;the feed&#39;s notes: partial areas named in words (FR-4.4)&#34;]
   NT --&gt; CW[&#34;the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)&#34;]
   CW --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window&#34;]

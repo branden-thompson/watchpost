@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–13 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope) - P1-a complete, UAT-1 open; batches 12 and 13 are its first two passes (D-63 to D-71); go-tuiMaps v0.2.0-rc.9."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–14 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning, the alert scope) - P1-a complete, UAT-1 open; batches 12 and 13 are its first two passes (D-63 to D-71); go-tuiMaps v0.2.0-rc.9."
 ---
 
 # As built: where the map lives
@@ -45,7 +45,7 @@ flowchart LR
   end
   L["go-tuiMaps v0.2.0-rc.N\nSetBound · Source · Set/Remove · Work · Render · Warnings"]
   MB -- "Config.NewMap(size)" --> MW
-  MF -- "Config.MapFeed(ask: snap, place, scope)" --> MW
+  MF -- "Config.MapFeed(ask: snap, place, scope)\nan unchanged overlay is not handed in again (U1-28)" --> MW
   MF --> MG --> ZS
   MF -- "national scope" --> MN
   SD["severe.go · severeDeck\nthe ticker's national feed (polygons kept)"] -- "nationalFeed()" --> MN
@@ -81,7 +81,7 @@ flowchart TB
   F -- "no" --> FL["stated: the size needed and the size present,\nthen the description (FR-1.4)"]
   F -- "yes" --> DS{"description with the picture?"}
   DS -- "yes (the default)" --> D1["the description in the Area Alerts box on the first rows (D-55 as D-63 keeps it)"] --> M
-  DS -- "off" --> M["the map, bound to the region (FR-2.1)\nthe window about 80% of the terminal each way (U1-13), never under what 69x12 needs"]
+  DS -- "off" --> M["the map, bound to the region (FR-2.1)\nthe window about 80% of the terminal each way (U1-13), never under what 69x12 needs\nthe picture flush to the borders (U1-27)"]
   M --> BXS["the boxes over it: Area Alerts, the Overlays menu, the controls, the legend"] --> NT["the feed's notes: partial areas named in words (FR-4.4)"]
   NT --> CW["the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)"]
   CW --> ST["the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window"]

@@ -72,6 +72,10 @@ type Opts struct {
 	// "so they breathe") back to one: the layout's last resort on a terminal
 	// too short for the table's floor.
 	ThinBands bool
+	// Flush runs a panel's body rows from border to border, with none of its
+	// inset (0.18.0 UAT-1 U1-27): the map window is a picture, not a table,
+	// and every other window keeps the inset.
+	Flush bool
 }
 
 // BandHeight is the height of a band under these options.

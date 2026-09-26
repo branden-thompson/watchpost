@@ -667,3 +667,33 @@ intended) and mAA2's names its catchers today. `TestThePublishedTreeNamesNoPerso
 findings log quoted the screenshots' desktop paths; they read as placeholders now, the meaning kept.
 `mutant-anchors` then found mAA5 drifted: it mutated the very line D-70 removed, to the behaviour D-70
 requires. **Retired by the HUM LEAD (D-73)**; 0.16.0's M4 is owed a new definition and instrument.
+
+## Batch 14 — the map flush to its borders; the flicker (2026-09-25)
+
+**The HUM LEAD's third pass, first two findings** (U1-27, U1-28); "Alerts in view" (D-66) follows as its
+own batch while the next pass runs.
+
+**U1-28, a defect: an alert's area "periodically flickers".** Reproduced before any fix
+(`TestTheSameAlertAgainNeverDropsFromTheFrame`, RED on the first refresh): every new snapshot asks the
+feed again, the same alert comes back, and `applyMapFeed` handed it to the library again. **A `Set`
+replaces what the library prepared for that overlay, and until a `Work` prepares it again the area is not
+drawn** - the frame drawn as the answer landed had no area, and the next `Work` brought it back. The
+window now keeps what it last handed in, by id, and does not hand in an unchanged overlay; a changed one
+is still set (`TestAChangedAlertIsHandedInAgain`). **The library half is owed to go-tuiMaps v0.2.0
+(D-68):** a replaced overlay should be drawn as it was until its replacement is prepared, so an alert
+that does change never blinks either - WP-L11's L11.5, with the next batch.
+
+**U1-27: the map window runs border to border.** The panel gains a flush form (`render.Opts.Flush`),
+which the map window alone uses; every other window keeps its inset (`TestAFlushPanelRunsItsRowsBorderToBorder`,
+`TestTheMapRunsBorderToBorder`). The map is the window's width less its two borders; the words (the
+description instead of the picture, the notes, the status, the chips) keep one space and wrap one cell
+inside it, so none is cut at the border. The modal's wrap learned the flush width too - at the inset
+width every map row split in two and the window scrolled. **`TestEveryWindowClearsItsMargins` exempts the
+map window by ruling and holds it flush** (an inset creeping back fails).
+
+**Mutation verdicts** (targeted, 7), all caught: the unchanged-overlay skip both ways, the flush panel,
+the map window's flush option, the flush wrap, the words' one-cell margin, the 80% width's floor.
+
+**What the gates found.** `lint-authoring` (AP-DEAD-01): a `_ = m` in a new test; the dead value is gone.
+
+**Diagrams:** `as-built-map.md` (the flush window, the feed's hand-in); atlas regenerated.

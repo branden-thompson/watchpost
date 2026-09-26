@@ -441,6 +441,16 @@ func TestEveryWindowClearsItsMargins(t *testing.T) {
 			if lead == 99 {
 				t.Fatalf("%s drew no content lines; this measures nothing", modalName(m))
 			}
+			// THE MAP WINDOW IS FLUSH, BY RULING (UAT-1 U1-27, HUM LEAD: "since
+			// this is a map, not a table, we dont need that global padding for
+			// this view"): its picture runs from border to border, and it is held
+			// to that - an inset creeping back fails here too.
+			if m == modalMap {
+				if lead != 0 {
+					t.Errorf("the map window is flush (U1-27) and its content now leads at %d", lead)
+				}
+				return
+			}
 			ok := lead >= modalInset && trail >= modalInset
 			if why, listed := known[m]; listed {
 				if ok {

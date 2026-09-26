@@ -275,3 +275,18 @@ func TestSpliceCellsDoesNotRestoreAToneTheRowEnded(t *testing.T) {
 		t.Errorf("a tone the row ended came back after the patch: %q", after)
 	}
 }
+
+// TestAFlushPanelRunsItsRowsBorderToBorder is 0.18.0 UAT-1 U1-27: the map
+// window's rows run from border to border, with none of the panel's inset;
+// every other window keeps it.
+func TestAFlushPanelRunsItsRowsBorderToBorder(t *testing.T) {
+	inset := Opts{Width: 20}.PanelColored("T", "abc", "")
+	flush := Opts{Width: 20, Flush: true}.PanelColored("T", "abc", "")
+	if row := strings.Split(inset, "\n")[1]; !strings.HasPrefix(row, "│  abc") {
+		t.Errorf("a panel lost its inset: %q", row)
+	}
+	row := strings.Split(flush, "\n")[1]
+	if !strings.HasPrefix(row, "│abc") || Width(row) != 20 || !strings.HasSuffix(row, "│") {
+		t.Errorf("a flush panel's row is %q (%d wide), want border, the row, border at 20", row, Width(row))
+	}
+}

@@ -72,3 +72,23 @@ func TestTheBoxesLeaveTheFurnitureRowsAlone(t *testing.T) {
 		t.Errorf("the legend covers the top row: %q", stripANSITest(legend[0]))
 	}
 }
+
+// TestTheMapRunsBorderToBorder is U1-27: the map window has no inset - the
+// map's cells begin at the left border and end at the right one, and the map
+// is as wide as the window less its borders.
+func TestTheMapRunsBorderToBorder(t *testing.T) {
+	d := openMap(t, Config{MapDescription: "off"}, 133, 44)
+	if got, want := d.mapBodySize().Cols, d.modalWidth()-2; got != want {
+		t.Errorf("the map is %d wide in a window of %d; want %d", got, d.modalWidth(), want)
+	}
+	braille := func(r rune) bool { return r >= 0x2800 && r <= 0x28ff }
+	for _, row := range strings.Split(stripANSITest(d.renderModal(d.opts())), "\n") {
+		cells := []rune(strings.TrimSpace(row))
+		// A row of picture at both borders (the top row ends in the library's
+		// own furniture, the stale word and the time, which is fine).
+		if len(cells) > 3 && cells[0] == '│' && braille(cells[1]) && braille(cells[len(cells)-2]) {
+			return
+		}
+	}
+	t.Fatal("no map row runs from the left border to the right one")
+}

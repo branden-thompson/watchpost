@@ -11,6 +11,7 @@ package tty
 
 import (
 	"math"
+	"reflect"
 	"strings"
 	"time"
 
@@ -53,33 +54,34 @@ type mapPane struct {
 	lines     []string
 	changed   uint64
 	ticks     uint64
-	region    geo.Region            // the region the map is held inside (FR-2.1)
-	outside   string                // the place that is in no region, when it is not (FR-2.5)
-	status    tuimaps.Status        // the last frame's: whole, or still sharpening
-	pending   bool                  // work was waiting when it was drawn
-	offline   bool                  // a tile failed since the picture was last whole
-	gen       uint64                // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed    string                // why the map could not be built or drawn, said in the window
-	calls     *[]string             // tests only: the library calls made, by name, in order
-	where     *[]callSite           // tests only: each call and the goroutine it ran on (W2.2)
-	workers   *mapWorkers           // the commands running for this map, joined on close (W2.6)
-	tickAt    time.Time             // the tick outstanding, at the library's NextCall (W2.2)
-	alertsOn  bool                  // the Area Alerts box is open; every open opens it (D-63)
-	menuOn    bool                  // the Overlays menu is open (D-65)
-	menuAt    int                   // the menu's cursor
-	flash     term.Action           // the map key last pressed, blinking in the controls (U1-11)
-	flashEnd  time.Time             // when its blink ends
-	title     string                // what is in view, named at the last draw (D-64)
-	views     *[]mapView            // tests only: every view drawn, for M2's instrument
-	shown     map[string]bool       // the overlays the feed set, so a gone alert is taken off
-	notes     []string              // the feed's notes, printed under the map
-	inMissing map[string]bool       // the feed's alerts whose missing zones hold the place
-	national  []snapshot.Alert      // the feed's alerts the station does not hold, which the description names
-	report    tuimaps.PlaceReport   // the library's answers for the selected place, as last drawn
-	legend    []tuimaps.LegendEntry // what the map draws now, for the legend (W1.17)
-	legendOn  bool                  // the legend is open over the map (D-44)
-	drawnSev  map[string]bool       // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
-	feedGen   uint64                // the feed last asked for; an older answer is dropped
+	region    geo.Region                 // the region the map is held inside (FR-2.1)
+	outside   string                     // the place that is in no region, when it is not (FR-2.5)
+	status    tuimaps.Status             // the last frame's: whole, or still sharpening
+	pending   bool                       // work was waiting when it was drawn
+	offline   bool                       // a tile failed since the picture was last whole
+	gen       uint64                     // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed    string                     // why the map could not be built or drawn, said in the window
+	calls     *[]string                  // tests only: the library calls made, by name, in order
+	where     *[]callSite                // tests only: each call and the goroutine it ran on (W2.2)
+	workers   *mapWorkers                // the commands running for this map, joined on close (W2.6)
+	tickAt    time.Time                  // the tick outstanding, at the library's NextCall (W2.2)
+	alertsOn  bool                       // the Area Alerts box is open; every open opens it (D-63)
+	menuOn    bool                       // the Overlays menu is open (D-65)
+	menuAt    int                        // the menu's cursor
+	flash     term.Action                // the map key last pressed, blinking in the controls (U1-11)
+	flashEnd  time.Time                  // when its blink ends
+	title     string                     // what is in view, named at the last draw (D-64)
+	views     *[]mapView                 // tests only: every view drawn, for M2's instrument
+	shown     map[string]bool            // the overlays the feed set, so a gone alert is taken off
+	given     map[string]tuimaps.Overlay // what was last handed to the map, by id: an unchanged overlay is not handed in again (U1-28)
+	notes     []string                   // the feed's notes, printed under the map
+	inMissing map[string]bool            // the feed's alerts whose missing zones hold the place
+	national  []snapshot.Alert           // the feed's alerts the station does not hold, which the description names
+	report    tuimaps.PlaceReport        // the library's answers for the selected place, as last drawn
+	legend    []tuimaps.LegendEntry      // what the map draws now, for the legend (W1.17)
+	legendOn  bool                       // the legend is open over the map (D-44)
+	drawnSev  map[string]bool            // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
+	feedGen   uint64                     // the feed last asked for; an older answer is dropped
 }
 
 // mapView is one drawn frame's view: where, how close, and how big.
@@ -187,8 +189,8 @@ func mercatorY(lat float64) float64 {
 // mapBodySize is the map's size in cells: the window's body, which the
 // window's frame and wrapping leave as they are.
 func (d Dashboard) mapBodySize() tuimaps.Size {
-	cols := max(d.modalWidth()-8, 1)                               // three clear cells inside each border, as every window's body has
-	avail := d.modalMax() - mapStatusRows - len(d.noteLines(cols)) // under the map its notes, then the status and the chips; the description is a box over it (D-63)
+	cols := d.mapCols()                                                    // border to border (U1-27)
+	avail := d.modalMax() - mapStatusRows - len(d.noteLines(d.mapTextW())) // under the map its notes, then the status and the chips; the description is a box over it (D-63)
 	return tuimaps.Size{Cols: cols, Rows: max(min(avail, d.modalMax()), 1)}
 }
 
@@ -294,12 +296,17 @@ func (d Dashboard) applyMapWorked(v mapWorkedMsg) (tea.Model, tea.Cmd) {
 
 // insetLines indents each drawn line by one cell, as every window's body is.
 func insetLines(lines []string) []string {
-	out := make([]string, len(lines))
-	for i, l := range lines {
-		out[i] = " " + l
-	}
-	return out
+	return append([]string(nil), lines...) // flush: the map runs border to border (UAT-1 U1-27)
 }
+
+// mapCols is the map window's width inside its two borders: the map runs
+// border to border (UAT-1 U1-27), where every other window insets its body.
+func (d Dashboard) mapCols() int { return max(d.modalWidth()-2, 1) }
+
+// mapTextW is how wide the window's words wrap: one cell inside the map's
+// width, for the space every line of words starts with, so none is cut at
+// the border.
+func (d Dashboard) mapTextW() int { return max(d.mapCols()-1, 1) }
 
 // mapTitle names the place the map is on.
 func (d Dashboard) mapTitle() string {
@@ -324,7 +331,7 @@ func (d Dashboard) mapBodyLines() []string {
 	case d.mapPane.failed != "":
 		return []string{d.mapPane.failed}
 	}
-	width := max(d.modalWidth()-8, 1)
+	width := d.mapTextW()
 	picture := !d.cfg.ASCII && d.mapDesc != mapDescInstead && d.mapFits()
 	var out []string // D-69: the map says nothing of what it sends; Settings does, beside the maps row
 	switch {
@@ -398,7 +405,7 @@ func (d Dashboard) mapStatusLine() string {
 			chips = append(chips, d.opts().KeyCap(keys[0])+" "+c.name)
 		}
 	}
-	width := max(d.modalWidth()-8, 1)
+	width := d.mapTextW()
 	// TWO LINES, ALWAYS: the status, then the chips (UAT-1 U1-2 - three chips
 	// beside the status cut it even at 133 columns). Both are reserved whether
 	// or not the status says anything, so the map's size never depends on the
@@ -588,23 +595,31 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 	}
 	v.feed = d.feedForLayers(v.feed) // a layer switched off draws nothing (W1.11)
 	d = d.refreshMapCost()
-	shown := map[string]bool{}
+	shown, given := map[string]bool{}, map[string]tuimaps.Overlay{}
 	notes := append([]string(nil), v.feed.Notes...)
 	for _, o := range v.feed.Overlays {
+		// AN UNCHANGED OVERLAY IS NOT HANDED IN AGAIN (UAT-1 U1-28). A Set
+		// replaces what the library prepared, and until a Work prepares it
+		// again the area is not drawn: every new snapshot re-sent the same
+		// alerts, and the area blinked out between frames.
+		if prev, ok := d.mapPane.given[o.ID]; ok && reflect.DeepEqual(prev, o) {
+			shown[o.ID], given[o.ID] = true, o
+			continue
+		}
 		var err error
 		d.mapPane.call("Set", func() { _, err = m.Set(o) })
 		if err != nil {
 			notes = append(notes, "An alert could not be drawn: "+err.Error())
 			continue
 		}
-		shown[o.ID] = true
+		shown[o.ID], given[o.ID] = true, o
 	}
 	for id := range d.mapPane.shown {
 		if !shown[id] {
 			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
 		}
 	}
-	d.mapPane.shown, d.mapPane.notes, d.mapPane.inMissing, d.mapPane.national = shown, notes, v.feed.InMissing, v.feed.National
+	d.mapPane.shown, d.mapPane.given, d.mapPane.notes, d.mapPane.inMissing, d.mapPane.national = shown, given, notes, v.feed.InMissing, v.feed.National
 	d.mapPane.drawnSev = map[string]bool{}
 	for _, o := range v.feed.Overlays {
 		for _, f := range o.Features {

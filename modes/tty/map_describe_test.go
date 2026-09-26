@@ -61,7 +61,7 @@ func describedIn(t *testing.T, feed func(context.Context, MapAsk) MapFeed, units
 // coordinate, a glyph that does not speak, or "you" (FR-7.3, D-29).
 func TestTheDescriptionSaysWhatCoversThePlace(t *testing.T) {
 	out := describedDash(t, boxFeed(-117.6, -117.1, false))
-	for _, want := range []string{"Wind Warning, severe, covers Oceanside, CA", "kilometres to the", "in effect until"} {
+	for _, want := range []string{"Wind Warning, severe, covers Oceanside, CA", "kilometres to the", "effect until"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the description does not say %q:\n%s", want, out)
 		}
