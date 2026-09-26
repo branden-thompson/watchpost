@@ -339,3 +339,21 @@ func TestTheTimelineNeverMakesTheWindowScroll(t *testing.T) {
 		}
 	}
 }
+
+// TestARefusedLoopIsSaidNotLoading is UAT-2 U2-5: a loop the library refuses
+// is said as refused - no chip, the reason on the line - and never read as
+// "loading" for ever.
+func TestARefusedLoopIsSaidNotLoading(t *testing.T) {
+	var asked []string
+	d := openRadarMap(t, "MRMS", &asked)
+	d.mapPane.call("SetImageBudget", func() { _ = d.mapPane.m.SetImageBudget(1000) })
+	r := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk())
+	r.Overlays[0].ID = RadarLayer + "/us-b" // a new box: it must fit the budget whole
+	d.mapPane.radarGiven = nil
+	m, cmd := d.applyMapRadar(mapRadarMsg{radar: r})
+	d = settleRadar(t, m.(Dashboard), cmd)
+	line := stripANSITest(d.mapStatusLine())
+	if strings.Contains(line, "loading") || !strings.Contains(line, "could not be drawn") || d.radarChipText() != "" {
+		t.Errorf("a refused loop reads %q with the chip %q", line, d.radarChipText())
+	}
+}

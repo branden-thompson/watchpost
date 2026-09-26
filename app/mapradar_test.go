@@ -5,12 +5,17 @@ package app
 // gap, the estimate (W8.15) and the hosts named (FR-3.8, D-75).
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"image"
+	"image/png"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -171,5 +176,58 @@ func TestALoopShowingNothingIsCheckedAgainstTheOtherSource(t *testing.T) {
 	mrms.png = clear
 	if got := lp.mapRadar(context.Background(), socal); got.Note != "" || len(got.Overlays) == 0 {
 		t.Errorf("a clear sky both agree on says %q with %d loops", got.Note, len(got.Overlays))
+	}
+}
+
+// TestTheLoopFitsTheBudget is D-88 and W8.6: a loop over the budget as
+// fetched is trimmed of its oldest frames, never refused whole.
+func TestTheLoopFitsTheBudget(t *testing.T) {
+	png, err := os.ReadFile("testdata/radar-frame.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	per := int64(len(png)) + pixelsOf(png)
+	count := int(radarBudgetShare/per) + 10 // ten frames past what the budget holds
+	var frames []tuimaps.LoopFrame
+	for i := range count {
+		frames = append(frames, tuimaps.LoopFrame{Valid: time.Unix(int64(i)*300, 0), PNG: png})
+	}
+	loops := trimToBudget([]tuimaps.Overlay{{ID: "radar/x", Image: &tuimaps.Image{Frames: frames}}})
+	kept := loops[0].Image.Frames
+	if int64(len(kept))*per > radarBudgetShare || len(kept) < count-11 {
+		t.Errorf("%d of %d frames kept at %d bytes each against %d", len(kept), count, per, radarBudgetShare)
+	}
+	if !kept[len(kept)-1].Valid.Equal(frames[len(frames)-1].Valid) {
+		t.Error("the trim dropped the newest frame, not the oldest")
+	}
+}
+
+// TestTheRadarAsksForAndKeepsWhatFits is D-88's wiring: a view across four
+// boxes whose frames outgrow the budget is trimmed as fetched, so what is
+// handed in fits it.
+func TestTheRadarAsksForAndKeepsWhatFits(t *testing.T) {
+	var big bytes.Buffer
+	if err := png.Encode(&big, image.NewAlpha(image.Rect(0, 0, 499, 499))); err != nil {
+		t.Fatal(err)
+	}
+	times := grid5(30, time.Date(2026, 9, 26, 13, 30, 0, 0, time.UTC))
+	src := &fakeRadar{name: "MRMS", regions: []string{geo.RegionContiguous}, times: times, png: big.Bytes()}
+	lp := &livePipelines{radar: &radarSources{iem: &fakeRadar{name: "IEM"}, mrms: src}}
+	corners := tty.MapAsk{Region: geo.RegionContiguous, View: tty.MapView{W: -97, S: 35, E: -94, N: 39}}
+	boxes := radar.BoxesFor(corners.Region, corners.View)
+	got := lp.mapRadar(context.Background(), corners)
+	if len(boxes) != 4 || len(got.Overlays) != 4 {
+		t.Fatalf("a view across four boxes gave %d loops of %d boxes", len(got.Overlays), len(boxes))
+	}
+	total := int64(0)
+	for _, o := range got.Overlays {
+		for _, f := range o.Image.Frames {
+			if !f.Gap {
+				total += int64(len(f.PNG)) + pixelsOf(f.PNG)
+			}
+		}
+	}
+	if total > radarBudgetShare || len(got.Overlays[0].Image.Frames) >= 24 {
+		t.Errorf("handed in %d bytes against %d, %d frames a loop", total, radarBudgetShare, len(got.Overlays[0].Image.Frames))
 	}
 }

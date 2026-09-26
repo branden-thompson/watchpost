@@ -844,7 +844,7 @@ code{font-family:var(--mono);font-size:.92em}
     MV[&#34;mapinview.go · the alerts in view (D-66; no scope to choose, D-76)\nthe states and marine areas the view touches (a 5x5 sample)\none request, remembered 2 minutes; kept to the view\nthe estimate reads the memory, never fetches&#34;]
     MS[&#34;maps.go · mapSourceList (D-75)\neach host the map contacts, and what it is sent&#34;]
     MQ[&#34;mapquakes.go · the earthquakes (D-80)\nthe ticker&#39;s USGS significant quakes in view\ncircles sized by magnitude; fetches nothing&#34;]
-    MR[&#34;mapradar.go · the radar (W8)\nMRMS by default, IEM for the lower 48 if chosen (D-83); none in American Samoa\n24 five-minute slots over two hours, a missing one a stated gap\nnewest first; an all-empty loop checked against the other source (D-84)&#34;]
+    MR[&#34;mapradar.go · the radar (W8)\nMRMS by default, IEM for the lower 48 if chosen (D-83); none in American Samoa\n24 five-minute slots over two hours, a missing one a stated gap\nnewest first; an all-empty loop checked against the other source (D-84)\ntrimmed of its oldest frames to fit the 24 MiB image budget (D-88)&#34;]
   end
   subgraph domains[&#34;domains/&#34;]
     ZS[&#34;nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days&#34;]

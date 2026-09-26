@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–20 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87); batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.11."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–21 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87), batch 21 its second (D-88); batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.11."
 ---
 
 # As built: where the map lives
@@ -28,7 +28,7 @@ flowchart LR
     MV["mapinview.go · the alerts in view (D-66; no scope to choose, D-76)\nthe states and marine areas the view touches (a 5x5 sample)\none request, remembered 2 minutes; kept to the view\nthe estimate reads the memory, never fetches"]
     MS["maps.go · mapSourceList (D-75)\neach host the map contacts, and what it is sent"]
     MQ["mapquakes.go · the earthquakes (D-80)\nthe ticker's USGS significant quakes in view\ncircles sized by magnitude; fetches nothing"]
-    MR["mapradar.go · the radar (W8)\nMRMS by default, IEM for the lower 48 if chosen (D-83); none in American Samoa\n24 five-minute slots over two hours, a missing one a stated gap\nnewest first; an all-empty loop checked against the other source (D-84)"]
+    MR["mapradar.go · the radar (W8)\nMRMS by default, IEM for the lower 48 if chosen (D-83); none in American Samoa\n24 five-minute slots over two hours, a missing one a stated gap\nnewest first; an all-empty loop checked against the other source (D-84)\ntrimmed of its oldest frames to fit the 24 MiB image budget (D-88)"]
   end
   subgraph domains["domains/"]
     ZS["nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days"]

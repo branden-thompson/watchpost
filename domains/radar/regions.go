@@ -23,11 +23,11 @@ const maxPixels = 250_000
 // stops at the antimeridian: a plain-degrees request cannot cross it, and the
 // Aleutians west of 180° are left out.
 var wholeBoxes = map[string]Box{
-	geo.RegionContiguous: {Name: "us", W: -126, S: 23, E: -65, N: 51, Cols: 700, Rows: 321},
-	geo.RegionAlaska:     {Name: "ak", W: -180, S: 50, E: -129, N: 73, Cols: 700, Rows: 316},
-	geo.RegionHawaii:     {Name: "hi", W: -162.5, S: 17.5, E: -153.5, N: 23, Cols: 600, Rows: 367},
-	geo.RegionCaribbean:  {Name: "pr", W: -68.5, S: 17, E: -64, N: 19, Cols: 700, Rows: 311},
-	geo.RegionMarianas:   {Name: "gu", W: 144, S: 12.5, E: 146.5, N: 21, Cols: 150, Rows: 510},
+	geo.RegionContiguous: {Name: "us", W: -126, S: 23, E: -65, N: 51, Cols: 600, Rows: 275},
+	geo.RegionAlaska:     {Name: "ak", W: -180, S: 50, E: -129, N: 73, Cols: 600, Rows: 271},
+	geo.RegionHawaii:     {Name: "hi", W: -162.5, S: 17.5, E: -153.5, N: 23, Cols: 500, Rows: 306},
+	geo.RegionCaribbean:  {Name: "pr", W: -68.5, S: 17, E: -64, N: 19, Cols: 600, Rows: 267},
+	geo.RegionMarianas:   {Name: "gu", W: 144, S: 12.5, E: 146.5, N: 21, Cols: 130, Rows: 440},
 }
 
 // gridCols and gridRows split the lower 48 into its closer boxes.
@@ -60,8 +60,10 @@ func BoxesFor(region string, view geo.Box) []Box {
 	return out
 }
 
-// grid is the lower 48's closer boxes, each near the cap in pixels so a close
-// view is sharp.
+// grid is the lower 48's closer boxes. SIZED TO THE LOOP, NOT THE CAP (UAT-2
+// U2-5): a box's two-hour loop must fit the map's image budget, which
+// charges a frame its PNG and a byte a pixel - boxes near the cap were
+// refused whole. At 400x373 a county view still has twice a terminal's dots.
 func grid(whole Box) []Box {
 	w, h := (whole.E-whole.W)/gridCols, (whole.N-whole.S)/gridRows
 	var out []Box
@@ -69,7 +71,7 @@ func grid(whole Box) []Box {
 		for c := range gridCols {
 			out = append(out, Box{Name: "us-" + string(rune('a'+r*gridCols+c)),
 				W: whole.W + float64(c)*w, E: whole.W + float64(c+1)*w, S: whole.S + float64(r)*h, N: whole.S + float64(r+1)*h,
-				Cols: 480, Rows: 448})
+				Cols: 400, Rows: 373})
 		}
 	}
 	return out

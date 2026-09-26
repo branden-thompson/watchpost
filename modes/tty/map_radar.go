@@ -94,6 +94,7 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		v.radar = MapRadar{}
 	}
 	given, set := map[string]tuimaps.Overlay{}, false
+	var refused error
 	for _, o := range v.radar.Overlays {
 		if prev, ok := d.mapPane.radarGiven[o.ID]; ok && reflect.DeepEqual(prev, o) {
 			given[o.ID] = o // unchanged: handing it in again would drop what was prepared (U1-28)
@@ -101,9 +102,14 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		}
 		var err error
 		d.mapPane.call("Set", func() { _, err = m.Set(o) })
-		if err == nil {
-			given[o.ID], set = o, true
+		if err != nil {
+			refused = err // SAID, never swallowed: a refused loop read as "loading" for ever (UAT-2 U2-5)
+			continue
 		}
+		given[o.ID], set = o, true
+	}
+	if refused != nil && len(given) == 0 {
+		v.radar.Source, v.radar.Note = "", "Radar could not be drawn: "+refused.Error()
 	}
 	removed := false
 	for id := range d.mapPane.radarGiven {

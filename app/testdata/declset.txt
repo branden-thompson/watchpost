@@ -45,6 +45,7 @@ const publishCoalesce
 const pumpBacklog
 const quakeKeeps
 const quakeLayerKey
+const radarBudgetShare
 const radarFrameBytes
 const radarImageBudget
 const radarStep
@@ -544,6 +545,7 @@ func partialNote
 func pcmDuration
 func piperInstallFor
 func piperVoiceNames
+func pixelsOf
 func placeInView
 func priorityTiers
 func profileNames
@@ -652,6 +654,7 @@ func toneView
 func trace
 func trackedKey
 func transmitterOf
+func trimToBudget
 func tuneList
 func tuneTo
 func uiHook

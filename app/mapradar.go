@@ -7,7 +7,9 @@ package app
 // window as one image loop per box (FR-5.2).
 
 import (
+	"bytes"
 	"context"
+	pngpkg "image/png"
 	"sort"
 	"time"
 
@@ -84,8 +86,8 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 		return out
 	}
 	slots := loopSlots(times, radarStep, radar.Window)
-	allEmpty := true
 	boxes := radar.BoxesFor(ask.Region, ask.View)
+	allEmpty := true
 	for _, b := range boxes {
 		o, painted, ok := radarLoop(ctx, src, ask.Region, times, slots, b)
 		if ok {
@@ -93,6 +95,7 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 		}
 		allEmpty = allEmpty && painted == 0
 	}
+	out.Overlays = trimToBudget(out.Overlays)
 	if allEmpty && len(out.Overlays) > 0 {
 		if other := lp.radar.other(src, ask.Region); other != nil && echoes(ctx, other, ask.Region, boxes) {
 			out.Note = src.Name() + " shows no echo where " + other.Name() + " does: its data may be missing." // D-84's check
@@ -129,6 +132,56 @@ func echoes(ctx context.Context, src radar.Source, region string, boxes []radar.
 		}
 	}
 	return false
+}
+
+// radarBudgetShare is how much of the map's image budget the loops may take:
+// four fifths, the rest the library's shared readings and a replaced loop's
+// spare frames.
+const radarBudgetShare = radarImageBudget * 4 / 5
+
+// trimToBudget drops the oldest frames, the same number from every loop,
+// until the loops as fetched fit the budget share: the estimate is only an
+// estimate, and a loop over the budget is refused whole (UAT-2 U2-5).
+func trimToBudget(loops []tuimaps.Overlay) []tuimaps.Overlay {
+	charge := func(drop int) int64 {
+		total := int64(0)
+		for _, o := range loops {
+			for _, f := range o.Image.Frames[min(drop, len(o.Image.Frames)):] {
+				if !f.Gap {
+					total += int64(len(f.PNG)) + pixelsOf(f.PNG)
+				}
+			}
+		}
+		return total
+	}
+	longest := 0
+	for _, o := range loops {
+		longest = max(longest, len(o.Image.Frames))
+	}
+	drop := 0
+	for drop < longest-1 && charge(drop) > radarBudgetShare {
+		drop++
+	}
+	if drop == 0 {
+		return loops
+	}
+	out := make([]tuimaps.Overlay, 0, len(loops))
+	for _, o := range loops {
+		img := *o.Image
+		img.Frames = img.Frames[min(drop, len(img.Frames)-1):]
+		o.Image = &img
+		out = append(out, o)
+	}
+	return out
+}
+
+// pixelsOf is a PNG's pixels from its header, nothing decoded.
+func pixelsOf(png []byte) int64 {
+	cfg, err := pngpkg.DecodeConfig(bytes.NewReader(png))
+	if err != nil {
+		return 0
+	}
+	return int64(cfg.Width) * int64(cfg.Height)
 }
 
 // slot is one moment of the loop and the advertised time that fills it, zero

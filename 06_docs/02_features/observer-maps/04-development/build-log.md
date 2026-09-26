@@ -969,3 +969,26 @@ window fits whole at 133×44, 100×30 and 80×24.
 
 **Diagrams:** `as-built-map.md` (the one whole-loop ask, the keys and the timeline, the box closed on open);
 atlas regenerated; the UAT guide's S18.
+
+## Batch 21 — UAT-2's second pass: radar that loads (2026-09-26)
+
+**U2-5, diagnosed live before any change.** Over Chicago and New York the radar stood at "loading" for good.
+The library refused each loop: it charges a frame its PNG plus a byte a pixel, and a close box's two-hour
+loop came to 6.8 and 7.1 MB against the 6 MiB budget. The whole-lower-48 test of batch 19 happened to fit.
+The window ignored `Set`'s error, so a refusal read as loading.
+
+**D-88.**
+- The image budget is 24 MiB, the worst case of four boxes.
+- A refused loop is said ("Radar could not be drawn: …"), with no chip.
+- A loop as fetched is trimmed of its oldest frames, the same number from each box, until it fits four
+  fifths of the budget.
+- The boxes are smaller (the grid 400×373, the whole regions about 600 wide): each box's loop is lighter,
+  and a county view still has twice a terminal's dots.
+- Live: Chicago, New York and the whole lower 48 each load a 24-frame loop in about 6 s; a view across
+  four boxes takes 18 s, the frames fetched one at a time. Speed and memory are F-183.
+
+**Mutation verdicts** (targeted, 8). All caught but one, removed: an estimate that fetched only the frames
+the budget would hold could never bind at 24 MiB, so it was dead code. The trim as fetched is the
+safeguard, and its removal is caught.
+
+**Diagrams:** `as-built-map.md`; atlas regenerated.
