@@ -992,3 +992,25 @@ the budget would hold could never bind at 24 MiB, so it was dead code. The trim 
 safeguard, and its removal is caught.
 
 **Diagrams:** `as-built-map.md`; atlas regenerated.
+
+## Batch 22 — UAT-2's third pass: the rows under the map, as the HUM LEAD drew them (2026-09-26)
+
+**U2-6 (D-89).** While radar is on, under the picture, in order:
+- the radar's colour row, "RADAR LEGEND │ LIGHTER … HEAVIER", a swatch a class in the class's own colour
+  from the library's legend (`render.Swatch`: the colour is the datum, not a theme's), its words where
+  colour is off;
+- the warning on one line, "Map may experience performance issues at this zoom level." in the list
+  pointer's bold yellow (already AA-checked on the window's ground in every theme), then the advice;
+- a blank, the timeline, and the status line: "Radar", the source's chip in the badge's colours, the loop,
+  and "/ Est. MB / Requests" before anything the picture's status says;
+- a blank, then the chips.
+
+The legend box no longer lists the radar's values. Settings' Layers row keeps the full warning, estimate
+included, since it has no status line. The rows are held while radar is on, so the window still never
+scrolls (`TestTheRowsUnderTheMapAreTheMocks` checks the order, the blanks, the colours and the fit).
+
+**Mutation verdicts** (targeted, 8), all caught in the end; one first-round survivor, the "loading" line's
+chip, is answered by `TestALoopStillPreparingSaysLoadingWithItsSource`.
+
+**What the gates found.** `lint` (QF1001) flagged a negated conjunction in a new test; it is written with
+De Morgan's law.

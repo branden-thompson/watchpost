@@ -149,12 +149,7 @@ func (d Dashboard) withRadarChip(lines []string, size tuimaps.Size) []string {
 	if text == "" || len(lines) == 0 {
 		return lines
 	}
-	ground := render.MapRadarMRMSBG
-	if d.mapPane.radarSource == "IEM" {
-		ground = render.MapRadarIEMBG
-	}
-	chip := render.TintRaw(text, render.Tok(ground)+";"+render.Tok(render.MapRadarChipFG))
-	return spliceBox(lines, []string{chip}, 1, insetCols+size.Cols-render.Width(text))
+	return spliceBox(lines, []string{d.radarChip()}, 1, insetCols+size.Cols-render.Width(text))
 }
 
 // The playback keys (D-61): space plays and stops, "," and "." step a frame
@@ -227,7 +222,7 @@ func (d Dashboard) radarStatus() string {
 	}
 	st := m.Loop()
 	if st.Count == 0 {
-		return "Radar (" + d.mapPane.radarSource + ") loading…"
+		return "Radar " + d.radarChip() + " loading…"
 	}
 	age := d.now().Sub(st.Newest)
 	ago := strconv.Itoa(int(age.Minutes())) + " min ago"
@@ -239,7 +234,7 @@ func (d Dashboard) radarStatus() string {
 		state = "playing"
 	}
 	shown := d.clockFmt.Time(st.At.In(d.now().Location()))
-	parts := []string{"Radar (" + d.mapPane.radarSource + ") " + shown, "frame " + strconv.Itoa(st.Index+1) + " of " + strconv.Itoa(st.Count),
+	parts := []string{"Radar " + d.radarChip() + " " + shown, "frame " + strconv.Itoa(st.Index+1) + " of " + strconv.Itoa(st.Count),
 		state, "newest " + ago}
 	if st.Forecast {
 		parts = append(parts, "forecast")
@@ -250,6 +245,48 @@ func (d Dashboard) radarStatus() string {
 // radarRows is the timeline's rows under the map (D-86), held whenever the
 // radar layer is on so the map's size never waits on the loop.
 const radarRows = 3
+
+// radarExtraRows are D-89's other held rows while radar is on: the colour
+// row, the blank before the timeline and the blank before the chips.
+const radarExtraRows = 3
+
+// radarLegendRow is the radar's colours under the map (D-89), lightest to
+// heaviest, from the library's legend: a swatch a class, painted in the
+// class's own colour, or its words where colour is off.
+func (d Dashboard) radarLegendRow(width int) string {
+	var classes []tuimaps.Class
+	for _, e := range d.mapPane.legend {
+		if e.Preset == "radar" {
+			classes = e.Classes
+			break
+		}
+	}
+	head, lighter, heavier := "RADAR LEGEND │ ", "LIGHTER ", " HEAVIER"
+	room := width - render.Width(head+lighter+heavier)
+	if len(classes) == 0 || room < len(classes)*3 {
+		return ""
+	}
+	each := room / len(classes)
+	var row strings.Builder
+	for _, c := range classes {
+		label := strings.Repeat(" ", each-1)
+		if !render.ColorOn() || !c.Drawn {
+			label = render.PadTo(render.TruncateCells(c.Label, each-1), each-1)
+		}
+		row.WriteString(render.Swatch(label, c.Colour.R, c.Colour.G, c.Colour.B) + " ")
+	}
+	return head + lighter + strings.TrimRight(row.String(), " ") + heavier
+}
+
+// radarChip is the source in the badge's colours (D-83), for the status line
+// (D-89) as for the map's corner.
+func (d Dashboard) radarChip() string {
+	ground := render.MapRadarMRMSBG
+	if d.mapPane.radarSource == "IEM" {
+		ground = render.MapRadarIEMBG
+	}
+	return render.TintRaw(" "+d.mapPane.radarSource+" ", render.Tok(ground)+";"+render.Tok(render.MapRadarChipFG))
+}
 
 // radarTimelineOn reports whether the timeline's rows are held.
 func (d Dashboard) radarTimelineOn() bool { return d.cfg.MapRadar != nil && d.layerOn(RadarLayer) }

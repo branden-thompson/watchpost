@@ -89,7 +89,7 @@ func TestTheRadarIsShownWhole(t *testing.T) {
 	if st := d.mapPane.m.Loop(); st.Count != 12 || st.Playing {
 		t.Errorf("the map opens on %+v; want the loop, stopped on the newest", st)
 	}
-	if !strings.Contains(stripANSITest(d.mapStatusLine()), "Radar (MRMS)") {
+	if !strings.Contains(stripANSITest(d.mapStatusLine()), "Radar  MRMS ") {
 		t.Errorf("the status line does not say the loop: %q", stripANSITest(d.mapStatusLine()))
 	}
 }
@@ -355,5 +355,103 @@ func TestARefusedLoopIsSaidNotLoading(t *testing.T) {
 	line := stripANSITest(d.mapStatusLine())
 	if strings.Contains(line, "loading") || !strings.Contains(line, "could not be drawn") || d.radarChipText() != "" {
 		t.Errorf("a refused loop reads %q with the chip %q", line, d.radarChipText())
+	}
+}
+
+// TestTheRowsUnderTheMapAreTheMocks is D-89 (UAT-2 U2-6): while radar is on,
+// under the picture - the radar's colour row, LIGHTER to HEAVIER; the
+// warning on one line, its first sentence in the list pointer's bold yellow;
+// a blank; the timeline; the status line leading with Radar and the source's
+// chip in the badge's colours, the estimate after a slash; a blank; the
+// chips. The legend box lists no radar values.
+func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
+	t.Setenv("TERM", "xterm-256color")
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(rendering.ResetColorEnabledForTest)
+	var asked []string
+	cost := func(MapAsk, func(string) bool) MapCost { return MapCost{Bytes: 2_300_000, Requests: 197} }
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapCost: cost,
+		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
+	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+	lines := d.mapBodyLines()
+	plain := make([]string, len(lines))
+	for i, l := range lines {
+		plain[i] = stripANSITest(l)
+	}
+	at := func(want string) int {
+		for i, l := range plain {
+			if strings.Contains(l, want) {
+				return i
+			}
+		}
+		t.Fatalf("no row says %q:\n%s", want, strings.Join(plain, "\n"))
+		return -1
+	}
+	legend, warn, bar, status, chips := at("RADAR LEGEND"), at("Map may experience"), at("shift+"), at("Radar  MRMS "), at("Area Alerts")
+	if legend >= warn || warn >= bar || bar >= status || status >= chips {
+		t.Errorf("the rows are out of the mock's order: legend %d, warning %d, bar %d, status %d, chips %d", legend, warn, bar, status, chips)
+	}
+	if strings.TrimSpace(plain[bar-2]) != "" || strings.TrimSpace(plain[status+1]) != "" {
+		t.Error("no blank before the timeline, or before the chips")
+	}
+	if !strings.Contains(plain[legend], "LIGHTER") || !strings.Contains(plain[legend], "HEAVIER") || !strings.Contains(lines[legend], "48;2;") {
+		t.Errorf("the colour row is %q", plain[legend])
+	}
+	if !strings.Contains(plain[warn], "Switch off layers") || strings.Contains(plain[warn], "Est.") || !strings.Contains(lines[warn], strings.Split(render.Tint("§", render.Tok(render.ListPointer)), "§")[0]) {
+		t.Errorf("the warning is %q: one line, in the pointer's yellow, the estimate elsewhere", plain[warn])
+	}
+	if !strings.Contains(plain[status], "/ Est. 2.3MB / 197 Requests") || !strings.Contains(lines[status], render.Tok(render.MapRadarMRMSBG)) {
+		t.Errorf("the status is %q, without the estimate or the badge's colours", plain[status])
+	}
+	d.mapPane.legendOn = true
+	for _, e := range d.mapPane.legend {
+		if e.Preset != "radar" {
+			continue
+		}
+		for _, c := range e.Classes {
+			if strings.Contains(strings.Join(d.legendBox(), "\n"), c.Label) {
+				t.Errorf("the legend box still lists the radar's %q", c.Label)
+			}
+		}
+	}
+	if n, most := len(d.modalLines()), d.modalMax(); n > most {
+		t.Errorf("the window's body is %d lines against %d: it scrolls", n, most)
+	}
+}
+
+// TestTheColourRowSaysItsClassesWithoutColour: where colour is off, each
+// swatch carries its class's words, so the row still means something.
+func TestTheColourRowSaysItsClassesWithoutColour(t *testing.T) {
+	var asked []string
+	d := openRadarMap(t, "MRMS", &asked)
+	row := d.radarLegendRow(120)
+	if row == "" || !strings.Contains(row, "LIGHTER") || strings.Contains(row, "\x1b[") {
+		t.Fatalf("without colour the row is %q", row)
+	}
+	var first string
+	for _, e := range d.mapPane.legend {
+		if e.Preset == "radar" && len(e.Classes) > 0 {
+			first = e.Classes[0].Label
+		}
+	}
+	if first == "" || !strings.Contains(row, first[:min(3, len(first))]) {
+		t.Errorf("the row %q does not say its first class %q", row, first)
+	}
+}
+
+// TestALoopStillPreparingSaysLoadingWithItsSource: the answer is in and the
+// library has not prepared the loop yet - the line says loading, beside the
+// source's chip (D-89), and never a frame count.
+func TestALoopStillPreparingSaysLoadingWithItsSource(t *testing.T) {
+	t.Setenv("TERM", "xterm-256color")
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(rendering.ResetColorEnabledForTest)
+	d := openMap(t, Config{MapRadar: radarFeed(t, "IEM", &[]string{}), MapLayers: []MapLayer{{Key: RadarLayer, Label: "Radar", On: true}}}, 133, 44)
+	d.mapPane.radarSource = "IEM"
+	got := d.radarStatus()
+	if !strings.Contains(stripANSITest(got), "Radar  IEM  loading") || !strings.Contains(got, render.Tok(render.MapRadarIEMBG)) {
+		t.Errorf("a loop not yet prepared reads %q", got)
 	}
 }

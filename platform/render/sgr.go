@@ -151,6 +151,13 @@ func TintKeeping(s, params string) string {
 // the same color switch. Theme tokens with truecolor values ride this.
 func TintRaw(text, params string) string { return sgrRaw(text, params) }
 
+// Swatch paints text on a colour the data names - a radar class's, from the
+// map library's legend (0.18.0 D-89) - not a theme's: the colour IS the
+// datum. Plain text when colour is off.
+func Swatch(text string, r, g, b uint8) string {
+	return sgrRaw(text, "48;2;"+strconv.Itoa(int(r))+";"+strconv.Itoa(int(g))+";"+strconv.Itoa(int(b)))
+}
+
 // Tint wraps text in a fg code (bare 256 or basic SGR; "1;"-prefixed for
 // bold) through the go-studs gate - plain text when color is off.
 func Tint(text, code string) string {

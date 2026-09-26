@@ -211,7 +211,7 @@ func (d Dashboard) mapBodySize() tuimaps.Size {
 	cols := d.mapCols()                                                    // border to border (U1-27)
 	avail := d.modalMax() - mapStatusRows - len(d.noteLines(d.mapTextW())) // under the map its notes, then the status and the chips; the description is a box over it (D-63)
 	if d.radarTimelineOn() {
-		avail -= radarRows // the loop's timeline, held while radar is on (D-86)
+		avail -= radarRows + radarExtraRows // the colour row, the timeline and its blanks, held while radar is on (D-86, D-89)
 	}
 	return tuimaps.Size{Cols: cols, Rows: max(min(avail, d.modalMax()), 1)}
 }
@@ -377,20 +377,33 @@ func (d Dashboard) mapBodyLines() []string {
 	}
 	size := d.mapBodySize()
 	out = append(out, d.withEdgeChip(d.withRadarChip(d.withLegend(d.withControls(d.withOverlays(d.withAreaAlerts(d.mapPane.lines, size)), size)), size), size)...)
-	if d.radarTimelineOn() { // D-86: the loop, right under the picture; its rows held while radar is on
-		tl := d.mapPane.radarTimeline
-		for i := range radarRows {
-			l := ""
-			if i < len(tl) {
-				l = tl[i]
-			}
+	if !d.radarTimelineOn() {
+		for _, l := range d.noteLines(width) {
 			out = append(out, " "+l)
 		}
+		for _, l := range strings.Split(d.mapStatusLine(), "\n") {
+			out = append(out, " "+l)
+		}
+		return out
 	}
+	// WHILE RADAR IS ON (D-89): its colour row; the notes and the warning; a
+	// blank; the timeline (D-86); the status; a blank; the chips.
+	out = append(out, " "+d.radarLegendRow(width))
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
 	}
-	for _, l := range strings.Split(d.mapStatusLine(), "\n") {
+	out = append(out, "")
+	tl := d.mapPane.radarTimeline
+	for i := range radarRows {
+		l := ""
+		if i < len(tl) {
+			l = tl[i]
+		}
+		out = append(out, " "+l)
+	}
+	status := strings.Split(d.mapStatusLine(), "\n")
+	out = append(out, " "+status[0], "")
+	for _, l := range status[1:] {
 		out = append(out, " "+l)
 	}
 	return out
@@ -423,16 +436,22 @@ func (d Dashboard) noteLines(width int) []string {
 	if d.mapPane.radarSource != "" && d.mapPane.radarNote != "" && d.layerOn(RadarLayer) {
 		out = append(out, render.WrapText(d.mapPane.radarNote, width)...) // W8.15a: MRMS's approximate colours; D-84's missing data
 	}
-	out = append(out, costWarningLines(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words
+	out = append(out, mapCostLine(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words laid out as D-89
 	return out
 }
 
 // mapStatusLine says what the picture is while it is not whole, and names
 // the window's boxes on a line of their own.
 func (d Dashboard) mapStatusLine() string {
+	// D-89's order: the radar's line, the estimate after a slash, then what
+	// the picture's status says - W8.8's loop and its age always first.
+	lead := d.mapPane.radarLine
+	if est := costEstimate(d.mapCost); est != "" {
+		lead = strings.TrimPrefix(lead+" / "+est, " / ")
+	}
 	status := d.mapStatusText()
-	if r := d.mapPane.radarLine; r != "" { // W8.8: the loop's moment and the newest frame's age, always in sight - so first
-		status = strings.TrimSuffix(r+" · "+status, " · ")
+	if lead != "" {
+		status = strings.TrimSuffix(lead+" · "+status, " · ")
 	}
 	var chips []string
 	for _, c := range []struct {
@@ -816,6 +835,9 @@ func (d Dashboard) legendBox() []string {
 	rows := 0
 	seen := map[string]bool{}
 	for _, e := range d.mapPane.legend {
+		if e.Preset == "radar" {
+			continue // the radar's colours are the row under the map (D-89)
+		}
 		for _, c := range e.Classes {
 			if e.Preset == "alert" && !d.mapPane.drawnSev[c.Label] {
 				continue // only the severities on the map (D-54: contextual)

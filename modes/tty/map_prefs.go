@@ -95,6 +95,30 @@ func costWarningParts(c MapCost) (head, detail string) {
 			" Requests | Switch off layers or zoom in for a better experience."
 }
 
+// costAdvice is the warning's second sentence, said beside the first under
+// the map (D-89).
+const costAdvice = "Switch off layers or zoom in for a better experience."
+
+// costEstimate is the estimate alone, which the status line carries after the
+// radar's (D-89); nothing at or under both thresholds.
+func costEstimate(c MapCost) string {
+	if head, _ := costWarningParts(c); head == "" {
+		return ""
+	}
+	return "Est. " + strconv.FormatFloat(float64(c.Bytes)/1e6, 'f', 1, 64) + "MB / " + strconv.Itoa(c.Requests) + " Requests"
+}
+
+// mapCostLine is the warning under the map, on one line (D-89): its first
+// sentence in bold yellow - the list pointer's, AA-checked on the window's
+// ground in every theme - then the advice.
+func mapCostLine(c MapCost, width int) []string {
+	head, _ := costWarningParts(c)
+	if head == "" {
+		return nil
+	}
+	return render.WrapLines([]string{render.Tint(head, render.Tok(render.ListPointer)) + "  " + costAdvice}, width)
+}
+
 // costWarningLines is the warning wrapped to a width, its first sentence in
 // bold (D-82).
 func costWarningLines(c MapCost, width int) []string {

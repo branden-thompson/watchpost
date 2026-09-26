@@ -253,6 +253,7 @@ func Spectrum
 func SpliceCells
 func StatusNaturalWidth
 func StripSGRForTest
+func Swatch
 func TableHeaderTone
 func ThemeGeneration
 func ThemeName
