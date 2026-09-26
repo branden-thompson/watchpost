@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–16 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 16 are its passes (D-63 to D-78), batch 15 with Alerts in view (D-66), batch 16 with regions (D-77); go-tuiMaps v0.2.0-rc.11."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–17 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 17 are its passes (D-63 to D-80), batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.11."
 ---
 
 # As built: where the map lives
@@ -27,6 +27,7 @@ flowchart LR
     MG["mapgeometry.go · resolveAlertAreas"]
     MV["mapinview.go · the alerts in view (D-66; no scope to choose, D-76)\nthe states and marine areas the view touches (a 5x5 sample)\none request, remembered 2 minutes; kept to the view\nthe estimate reads the memory, never fetches"]
     MS["maps.go · mapSourceList (D-75)\neach host the map contacts, and what it is sent"]
+    MQ["mapquakes.go · the earthquakes (D-80)\nthe ticker's USGS significant quakes in view\ncircles sized by magnitude; fetches nothing"]
   end
   subgraph domains["domains/"]
     ZS["nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days"]
@@ -36,7 +37,7 @@ flowchart LR
     MW["map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\n1-6 snap to a region; a pan past an edge crosses to the neighbour (D-77)\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station's\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms)"]
     MD["map_describe.go · the description follows the view (D-74, D-78)\nthe place - Currently: … only while the place is in view; else the view's name\n‹event› in effect for this area · for nearby ‹areas› · for ‹areas›, until ‹time›\nevery alert in view, most severe first; the box ends 'And N more in view.'"]
     MK["map keymap scope\narrows pan · + − zoom · [ ] place · 1-6 region · PgUp/PgDn scroll\nA Area Alerts · O Overlays · L legend"]
-    BX["map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: weather layers + the map's detail (D-65, Map.Layers)\nthe title names the view by scale (D-64)"]
+    BX["map_boxes.go · over the map (UAT-1)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: alert areas and [w]'s categories, earthquakes, the map's detail (D-65, D-80)\ndetail: the level is a preset, the switches the truth; the library at Full (D-79)\nthe title names the view by scale (D-64)"]
     LG["the legend (D-44)\na box over the map's corner, from Legend()\nonly the severities drawn, with their digits"]
     ST2["Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby (no alert scope, D-76)\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail (D-67)\na row per detail layer, ← Enabled → (U1-35); Lakes, never the sea (U1-39) · Map data: clear · the retention"]
     SW["status.go · the Status window\nMAP - contacted only while a map is open (D-75)\neach source: its host and what it is sent"]
@@ -50,6 +51,8 @@ flowchart LR
   MF -- "Config.MapFeed(ask: snap, place, view)\nan unchanged overlay is not handed in again (U1-28)" --> MW
   MF --> MG --> ZS
   MF -- "ask.View" --> MV --> WS
+  SD["severe.go · severeDeck.feedCopy\nthe ticker's feed"] --> MQ --> MF
+  MF -- "alert/‹category›/‹id›: [w]'s Classify; forecasts not drawn (D-80)" --> MW
   MS -- "Config.MapSources" --> SW
   MF --> WS
   MB -. "first g" .-> ZS

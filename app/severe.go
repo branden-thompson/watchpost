@@ -438,6 +438,10 @@ func (s *severeDeck) AlertKeysWithin(lat, lon, radiusMi float64) map[string]bool
 // LaneRows is a copy of those rows, for the ticker's cycle.
 func (s *severeDeck) LaneRows() []severe.Row { return lockedCopy(&s.mu, &s.laneRows) }
 
+// feedCopy is the ticker's feed as last set, a copy: the map draws its
+// earthquakes (0.18.0 D-80) and adds no request of its own.
+func (s *severeDeck) feedCopy() []globalfeed.Event { return lockedCopy(&s.mu, &s.feed) }
+
 // lockedCopy is a copy of a slice the deck's lock guards, read under it.
 func lockedCopy[T any](mu *sync.Mutex, src *[]T) []T {
 	mu.Lock()

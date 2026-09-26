@@ -154,14 +154,14 @@ func (d Dashboard) mapLayerLines(o render.Opts, lines []string, at int) ([]strin
 	for _, l := range render.WrapText(costWarning(d.mapCost), mapNoteW) {
 		lines = append(lines, "    "+settingSupport(l))
 	}
-	lines, at = d.mapRow(o, lines, at, rowMapDetailLevel, "Detail -", d.mapPickerW(o, rowMapDetailLevel, detailLevelLabel(d.mapDetailLevel), mapDetailValueW))
+	lines, at = d.mapRow(o, lines, at, rowMapDetailLevel, "Detail -", d.mapPickerW(o, rowMapDetailLevel, d.detailLevelShown(), mapDetailValueW))
 	for i, l := range mapDetailLayers() { // A ROW EACH, "← Enabled →" (U1-35)
 		state := "Disabled"
 		if d.detailOn(l.key) {
 			state = "Enabled"
 		}
 		lines, at = d.mapRow(o, lines, at, rowMapDetailBorders+setupRowID(i), l.label+" -",
-			d.mapPickerW(o, rowMapDetailBorders+setupRowID(i), state, mapDetailValueW)+settingSupport(strings.TrimPrefix(d.beyondLevel(l), " ")))
+			d.mapPickerW(o, rowMapDetailBorders+setupRowID(i), state, mapDetailValueW)+settingSupport(strings.TrimPrefix(detailShows(l), " ")))
 	}
 	return d.mapExtraLines(o, lines, at)
 }

@@ -164,14 +164,14 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 	d, _ = pressKey(d, "g")
 	d = feedAndSettle(t, d)
 	joined := strings.Join(*calls, " ")
-	for _, want := range []string{"SetDetail:weather", "Layers:roads:on", "Layers:minor-roads:on", "Layers:borders:on", "Layers:names:on"} {
+	for _, want := range []string{"SetDetail:full", "Layers:roads:on", "Layers:minor-roads:off", "Layers:borders:on", "Layers:names:on", "Layers:rail:off"} {
 		if !strings.Contains(joined, want) {
-			t.Errorf("the map was not built weather-first (D-67): no %s in %v", want, *calls)
+			t.Errorf("the map was not built weather-first (D-67, D-79): no %s in %v", want, *calls)
 		}
 	}
 	d = pressCode(d, 'O', "O")
 	text := bodyText(d)
-	for _, want := range []string{"Overlays", "Alert areas", "Detail: Weather", "Major roads", "Minor roads (at Full)", "Parks (at Standard)", "Place names"} {
+	for _, want := range []string{"Overlays", "Alert areas", "Warnings", "Spec. Statements", "Detail: Weather", "Major roads", "Rail (county zoom)", "Parks (state zoom)", "Place names"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the menu does not list %q", want)
 		}
@@ -198,7 +198,7 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 		t.Errorf("the choice is not written with the map's Settings: %v", d.uiForSave().MapDetail)
 	}
 	d = pressCode(d, 'O', "O")
-	if strings.Contains(bodyText(d), "Parks (at Standard)") {
+	if strings.Contains(bodyText(d), "Parks (state zoom)") {
 		t.Error("O did not close the menu")
 	}
 }

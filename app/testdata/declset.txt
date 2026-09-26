@@ -41,6 +41,8 @@ const numMainTrackStages
 const numNarrationClasses
 const publishCoalesce
 const pumpBacklog
+const quakeKeeps
+const quakeLayerKey
 const radioDebugEnv
 const radioDebugMax
 const radioDebugNameMax
@@ -356,6 +358,7 @@ func (*severeDeck).Row
 func (*severeDeck).SetFeed
 func (*severeDeck).SetLocations
 func (*severeDeck).currentRows
+func (*severeDeck).feedCopy
 func (*severeDeck).publish
 func (*severeDeck).scope
 func (*severeDeck).setLaneRows
@@ -394,12 +397,14 @@ func (hostFacts).Installed
 func (hostFacts).Platform
 func (mainTrackStage).String
 func (mainTrackStage).reports
+func (mapInputs).drawable
 func (mapInputs).withInView
 func RenderCast
 func ReportOnce
 func ReportOnceWithStats
 func RunDashboard
 func abbreviateHome
+func alertCategory
 func alertKeysOf
 func alertLayerCost
 func alertNarration
@@ -471,6 +476,7 @@ func indexKey
 func init
 func init
 func init
+func init
 func injectedEvents
 func isLookupFailure
 func itemsOf
@@ -534,6 +540,9 @@ func proposeFrom
 func providerEndpoints
 func pruneDumps
 func publishArea
+func quakeOverlays
+func quakeRadiusKm
+func quakesIn
 func radioDebugLog
 func radioDebugName
 func radioDebugOn

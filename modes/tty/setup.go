@@ -497,7 +497,7 @@ func (d Dashboard) setupSpace() Dashboard {
 	case rowMapLayers:
 		return d.toggleLayer()
 	case rowMapDetailBorders, rowMapDetailWater, rowMapDetailRivers, rowMapDetailNames,
-		rowMapDetailRoads, rowMapDetailMinorRoads, rowMapDetailRail, rowMapDetailParks:
+		rowMapDetailRoads, rowMapDetailRail, rowMapDetailParks:
 		nd, _ := d.toggleDetailRow(id)
 		return nd
 	default:

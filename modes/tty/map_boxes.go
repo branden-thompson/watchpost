@@ -142,29 +142,30 @@ func (d Dashboard) flashMapKey(act term.Action) Dashboard {
 }
 
 // mapDetailLayer is one of the library's basemap layers the listener can
-// switch (D-65): its key in the file, its words, the library's layer, and
-// Watchpost's default - weather first.
+// switch (D-65): its key in the file, its words, the library's layer, the
+// least detail level whose preset turns it on, and when it first shows.
 type mapDetailLayer struct {
 	key, label string
 	layer      tuimaps.Layer
-	on         bool
-	level      tuimaps.Detail // the least detail level that draws it (go-tuiMaps D-82)
+	level      tuimaps.Detail // the least level whose preset switches it on (D-79)
+	shows      string         // when the style first draws it, said beside it: "" when it always does
 }
 
-// mapDetailLayers is the map's own detail, in the menu's order. Every switch
-// is on by default: the detail level does the thinning (D-67, weather first),
-// and a switch takes off one kind of line the level would draw. "roads" is
-// the major roads (go-tuiMaps D-82: motorways, trunks, primaries).
+// mapDetailLayers is the map's own detail, in the menu's order. THE SWITCHES
+// ARE THE TRUTH (D-79): the detail level is a preset that sets them, and a
+// switch that is on is drawn whatever the level. "roads" is the major roads
+// (go-tuiMaps D-82). MINOR ROADS ARE NOT OFFERED: the style draws them only
+// at city zoom, which this map is not for, and a switch that seems to do
+// nothing reads as broken (UAT-1 U1-42).
 func mapDetailLayers() []mapDetailLayer {
 	return []mapDetailLayer{
-		{"borders", "Borders", tuimaps.BorderLayer, true, tuimaps.DetailEssential},
-		{"water", "Lakes", tuimaps.WaterLayer, true, tuimaps.DetailEssential}, // inland water: the sea and its coast are never switched (U1-39, go-tuiMaps D-85)
-		{"rivers", "Rivers", tuimaps.RiverLayer, true, tuimaps.DetailWeather},
-		{"names", "Place names", tuimaps.LabelLayer, true, tuimaps.DetailWeather},
-		{"roads", "Major roads", tuimaps.RoadLayer, true, tuimaps.DetailWeather},
-		{"minor-roads", "Minor roads", tuimaps.MinorRoadLayer, true, tuimaps.DetailFull},
-		{"rail", "Rail", tuimaps.RailLayer, true, tuimaps.DetailStandard},
-		{"parks", "Parks", tuimaps.ParkLayer, true, tuimaps.DetailStandard},
+		{"borders", "Borders", tuimaps.BorderLayer, tuimaps.DetailEssential, ""},
+		{"water", "Lakes", tuimaps.WaterLayer, tuimaps.DetailEssential, ""}, // inland water: the sea and its coast are never switched (U1-39, go-tuiMaps D-85)
+		{"rivers", "Rivers", tuimaps.RiverLayer, tuimaps.DetailWeather, ""},
+		{"names", "Place names", tuimaps.LabelLayer, tuimaps.DetailWeather, ""},
+		{"roads", "Major roads", tuimaps.RoadLayer, tuimaps.DetailWeather, ""},
+		{"rail", "Rail", tuimaps.RailLayer, tuimaps.DetailStandard, "county zoom"},  // the style's zoom 8; the county scale is 9
+		{"parks", "Parks", tuimaps.ParkLayer, tuimaps.DetailStandard, "state zoom"}, // the style's zoom 6, the state scale
 	}
 }
 
@@ -193,7 +194,8 @@ func detailLevelLabel(l tuimaps.Detail) string {
 	return strings.ToUpper(s[:1]) + s[1:]
 }
 
-// cycleDetailLevel moves the level round the four.
+// cycleDetailLevel moves the level round the four and sets every switch to
+// its preset (D-79).
 func (d Dashboard) cycleDetailLevel(forward bool) Dashboard {
 	levels := mapDetailLevels()
 	at := 0
@@ -207,26 +209,39 @@ func (d Dashboard) cycleDetailLevel(forward bool) Dashboard {
 		step = len(levels) - 1
 	}
 	d.mapDetailLevel = levels[(at+step)%len(levels)]
+	d.mapDetailChoice = "" // the preset: every switch as the level sets it
 	return d.applyDetail()
 }
 
-// beyondLevel is what a layer the level does not draw says beside its box.
-func (d Dashboard) beyondLevel(l mapDetailLayer) string {
-	if l.level <= d.mapDetailLevel {
+// detailShows is what a layer says beside its switch: when the style first
+// draws it, so a switch that is on but not yet seen does not read as broken.
+func detailShows(l mapDetailLayer) string {
+	if l.shows == "" {
 		return ""
 	}
-	return " (at " + detailLevelLabel(l.level) + ")"
+	return " (" + l.shows + ")"
 }
 
-// detailOn reports whether a detail layer is drawn: the listener's choice,
-// or Watchpost's default.
+// detailLevelShown is the level's words, or "Custom" once a switch differs
+// from the level's preset (D-79).
+func (d Dashboard) detailLevelShown() string {
+	for _, l := range mapDetailLayers() {
+		if d.detailOn(l.key) != (l.level <= d.mapDetailLevel) {
+			return "Custom"
+		}
+	}
+	return detailLevelLabel(d.mapDetailLevel)
+}
+
+// detailOn reports whether a detail layer is drawn: the listener's switch,
+// or the level's preset (D-79).
 func (d Dashboard) detailOn(key string) bool {
 	if on, ok := choiceOf(d.mapDetailChoice, key); ok {
 		return on
 	}
 	for _, l := range mapDetailLayers() {
 		if l.key == key {
-			return l.on
+			return l.level <= d.mapDetailLevel
 		}
 	}
 	return true
@@ -263,8 +278,11 @@ func (d Dashboard) applyDetail() Dashboard {
 	if m == nil {
 		return d
 	}
-	level := d.mapDetailLevel
-	d.mapPane.call("SetDetail:"+level.String(), func() { _ = m.SetDetail(level) })
+	// THE LIBRARY DRAWS ALL IT HAS; THE SWITCHES THIN IT (D-79). Its own level
+	// would override a switch the listener turned on.
+	all := tuimaps.DetailFull // the record names what is passed, so a test reads the level the library was given
+	d.mapPane.call("SetDetail:"+all.String(), func() { _ = m.SetDetail(all) })
+	d.mapPane.call("Layers:minor-roads:off", func() { m.Layers(tuimaps.MinorRoadLayer, false) }) // city zoom only: not offered (U1-42)
 	for _, l := range mapDetailLayers() {
 		on, layer := d.detailOn(l.key), l.layer
 		word := "off"
@@ -299,6 +317,11 @@ func (d Dashboard) overlayRows() []overlayRow {
 	var out []overlayRow
 	for _, l := range d.cfg.MapLayers {
 		out = append(out, overlayRow{key: l.Key, label: l.Label, weather: true})
+		if l.Key == AlertLayer {
+			for _, c := range AlertCategories() { // D-80: [w]'s categories, under the alert areas
+				out = append(out, overlayRow{key: categoryChoice(c.Key), label: "  " + c.Label, weather: true})
+			}
+		}
 	}
 	out = append(out, overlayRow{key: detailLevelKey, label: "Detail level"})
 	for _, l := range mapDetailLayers() {
@@ -325,19 +348,19 @@ func (d Dashboard) overlaysBox() []string {
 			content, heading = append(content, " "+group), group
 		}
 		if r.key == detailLevelKey && !r.weather {
-			content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+"Detail: "+detailLevelLabel(d.mapDetailLevel)+"  (space: next)")
+			content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+"Detail: "+d.detailLevelShown()+"  (space: next)")
 			continue
 		}
 		hint := ""
 		for _, l := range mapDetailLayers() {
 			if !r.weather && l.key == r.key {
-				hint = d.beyondLevel(l)
+				hint = detailShows(l)
 			}
 		}
 		content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label+hint)
 	}
 	content = append(content, " "+o.KeyCap("↑↓")+" move "+o.KeyCap("space")+" switch")
-	return boxed("Overlays", content, 40) // room for "Parks and reserves (at Standard)"
+	return boxed("Overlays", content, 40)
 }
 
 // withOverlays lays the menu over the map's upper left while it is open.

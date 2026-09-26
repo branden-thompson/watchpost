@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -26,6 +27,45 @@ type MapLayer struct {
 // AlertLayer is the alert areas' key: the app registers the layer under it,
 // and the window's description and notes speak for it.
 const AlertLayer = "alert"
+
+// AlertCategory is one of the [w] window's categories the map's alerts are
+// switched by (D-80): its key, which an alert overlay's id carries after the
+// layer's ("alert/warnings/<id>"), and [w]'s own words and category.
+type AlertCategory struct {
+	Key, Label string
+	Cat        category.Category
+}
+
+// AlertCategories are the map's alert categories, in [w]'s order: every tab
+// but Disasters - earthquakes are their own layer - and Forecasts, which
+// belong to the forecast overlays to come (D-80, F-182).
+func AlertCategories() []AlertCategory {
+	keys := map[category.Category]string{category.Emergency: "emergency", category.Warnings: "warnings", category.Watches: "watches",
+		category.Advisories: "advisories", category.Statements: "statements", category.Marine: "marine"}
+	var out []AlertCategory
+	for _, c := range category.All() {
+		if key, ok := keys[c]; ok {
+			out = append(out, AlertCategory{Key: key, Label: category.Of(c).TabLabel, Cat: c})
+		}
+	}
+	return out
+}
+
+// AlertCategoryKey is a category's key, and false for one the map does not
+// draw.
+func AlertCategoryKey(c category.Category) (string, bool) {
+	for _, ac := range AlertCategories() {
+		if ac.Cat == c {
+			return ac.Key, true
+		}
+	}
+	return "", false
+}
+
+// categoryChoice is a category's key among the layer choices - "alert-warnings"
+// - so the switches are saved with the layers', and a hyphen keeps the file's
+// table flat.
+func categoryChoice(key string) string { return AlertLayer + "-" + key }
 
 // alertLayerOffText is what the description says with the alert areas off:
 // that they are off, never that nothing is there.
@@ -257,15 +297,19 @@ func (d Dashboard) layersCell(o render.Opts, focused bool) string {
 }
 
 // feedForLayers is the feed with the layers switched off taken out: their
-// overlays, and - with the alert areas off - the notes and the missing zones
-// that speak for them.
+// overlays, an alert category's when it is off, and - with the alert areas
+// off - the notes and the missing zones that speak for them.
 func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 	var out MapFeed
 	for _, o := range f.Overlays {
-		key, _, _ := strings.Cut(o.ID, "/")
-		if d.layerOn(key) {
-			out.Overlays = append(out.Overlays, o)
+		key, rest, _ := strings.Cut(o.ID, "/")
+		if !d.layerOn(key) {
+			continue
 		}
+		if cat, _, ok := strings.Cut(rest, "/"); ok && key == AlertLayer && !d.layerOn(categoryChoice(cat)) {
+			continue // its category is switched off (D-80)
+		}
+		out.Overlays = append(out.Overlays, o)
 	}
 	if d.layerOn(AlertLayer) {
 		out.Notes, out.InMissing, out.InView = f.Notes, f.InMissing, f.InView

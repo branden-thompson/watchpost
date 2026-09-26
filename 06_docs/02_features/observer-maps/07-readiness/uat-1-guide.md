@@ -78,6 +78,8 @@ wrong, looks wrong or feels wrong is a finding.
 | S10 | Settings - Maps tab | Every row: maps on/off, description, opens at, nearby, layers, detail, clear | Each change shows on the next `g`; each is still set after a restart; `←` `→` and `tab` behave as D-62 ruled |
 | S11 | Alerts in view | Zoom out over a busy area; pan and zoom around the country (D-66, D-76) | Every alert in view is drawn, wherever the view is; the Area Alerts box lists them, most severe first, and "And N more in view" when full (D-78) |
 | S12 | The cost warning | Switch layers on over a busy view | When it appears, what it says, whether it helps a choice |
+| S16 | Alert categories and earthquakes | `O`: switch Advisories, Marine and the rest off and on over Hawaii; Earthquakes (D-80) | Each category takes only its own alerts; the choice is kept after a restart; significant quakes in view drawn as circles sized by magnitude; zooming out with categories off is quicker |
+| S17 | Detail as a preset | Settings → Maps → Detail, then each switch; the same in `O` (D-79) | A level sets every switch; a switch on is drawn at any level (rail from county zoom, parks from state zoom, as they say); a switch changed reads "Custom" |
 | S13 | The legend | `L` with one, then several severities drawn | It keys only what is drawn, sits over the map, `L` closes it |
 | S14 | Clear map data | Settings → Maps → Clear map data, then `g` | What it says it removed; the next open is cold again |
 | S15 | Long running | Leave the map open through an alert's expiry and a new one's arrival | The expired area goes; the new one arrives without a key press; nothing stale remains |

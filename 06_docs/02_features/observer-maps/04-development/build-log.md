@@ -813,3 +813,44 @@ bump.
 **Diagrams:** `as-built-map.md` (the national scope gone; the view's alerts unconditional; the region keys,
 the arrangement and the description following the view); atlas regenerated. The UAT guide's keys and S4,
 S8, S10 to S12 now describe the region keys and alerts in view.
+
+## Batch 17 — UAT-1's sixth pass: switches that switch; alert categories and earthquakes (2026-09-26)
+
+**The HUM LEAD's sixth pass** (U1-42, U1-43) and two rulings (D-79, D-80).
+
+**U1-42: Rail, Parks and Minor roads did nothing.** Diagnosed before any change:
+- The listener's Detail level was Weather, whose library level draws neither rail nor parks (Standard) nor
+  minor roads (Full), whatever their switches said.
+- The style draws parks only from zoom 6, rail from 8 and minor roads from 10, which is city scale.
+
+**D-79: the level is a preset; the switches are the truth.**
+- The library is set to Full, and the switches alone thin it.
+- Choosing a level sets every switch to its preset. A switch changed afterwards makes the level read
+  "Custom".
+- Minor roads are no longer offered and the library is told to draw none.
+- Rail and Parks say when they first show: "county zoom" and "state zoom".
+
+**U1-43 (D-80): alert categories and earthquakes.**
+- Each alert overlay carries its category in its ID (`alert/<category>/<id>`), from the [w] window's
+  own `severe.Classify`.
+- The Overlays menu lists [w]'s categories under the alert areas: Emergency, Warnings, Watches,
+  Advisories, Spec. Statements, Marine. Each is switched and saved with the layers (`alert-<category>`),
+  and the window takes a switched-off category's overlays out.
+- Forecasts, and products [w] does not show, are not drawn, and their zones are not fetched or costed.
+- A new `quake` layer draws the significant quakes the ticker already holds, when they are in view. Each
+  is a circle, 10 km at magnitude 4, doubling with each magnitude up to 400 km, labelled "M 6.2". It is
+  drawn in the track's colour with no severity, so the library never reports it as an alert over a place.
+- The forecast overlays the HUM LEAD described are filed as F-182.
+
+**The scratch test, codified.** `TestNoScratchTestIsInTheTree` (cmd/watchpost) walks the files on disk, not
+the index, and fails on a `zz_` test file or a `TestZZ` function. It is proven against a probe file.
+
+**Mutation verdicts** (targeted, 15), all caught in the end. Two first-round survivors were answered:
+- **The library given the listener's level instead of Full.** The tests read only the call's label, so the
+  label is now built from the value passed; the mutant changes it, and the tests catch that.
+- **The quakes not read from the deck.** `TestTheQuakesComeFromTheTickersFeed` builds the inputs from a
+  severe deck holding one quake in view and one out.
+
+**Diagrams:** `as-built-map.md` (the earthquakes layer, the categories in the alert overlays' ids, the level
+as a preset); atlas regenerated. The UAT guide gains S16 (categories and earthquakes) and S17 (detail as a
+preset).

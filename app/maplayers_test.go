@@ -32,8 +32,8 @@ func TestAFakeLayerPlugsInWithoutEditingTheOthers(t *testing.T) {
 	for _, l := range cfg.MapLayers {
 		keys = append(keys, l.Key)
 	}
-	if strings.Join(keys, ",") != "alert,fake" {
-		t.Fatalf("the window is handed layers %v, want alert then fake", keys)
+	if strings.Join(keys, ",") != "alert,quake,fake" {
+		t.Fatalf("the window is handed layers %v, want alert, quake, then fake", keys)
 	}
 	all := func(string) bool { return true }
 	with := cfg.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, all)
@@ -95,9 +95,10 @@ func TestEveryOverlayBelongsToARegisteredLayer(t *testing.T) {
 // brought its own polygon costs nothing - at the measured size of a zone.
 func TestTheAlertLayersCostIsItsZones(t *testing.T) {
 	snap := &snapshot.Snapshot{Locations: []snapshot.Location{
-		{Alerts: []snapshot.Alert{{ID: "a", AffectedZones: []string{"CAZ043", "CAZ048"}}, {ID: "b", AffectedZones: []string{"CAZ048", "CAZ050"}}}},
-		{Alerts: []snapshot.Alert{{ID: "a", AffectedZones: []string{"CAZ043", "CAZ048"}},
-			{ID: "c", AffectedZones: []string{"CAZ099"}, Area: geo.Shape{{{{Lon: -117, Lat: 33}, {Lon: -116, Lat: 33}, {Lon: -116, Lat: 34}, {Lon: -117, Lat: 33}}}}}}},
+		{Alerts: []snapshot.Alert{{ID: "a", Event: "Wind Warning", AffectedZones: []string{"CAZ043", "CAZ048"}}, {ID: "b", Event: "Wind Advisory", AffectedZones: []string{"CAZ048", "CAZ050"}},
+			{ID: "f", Event: "Hydrologic Outlook", AffectedZones: []string{"CAZ777", "CAZ778"}}}}, // a forecast: not drawn, so not fetched (D-80)
+		{Alerts: []snapshot.Alert{{ID: "a", Event: "Wind Warning", AffectedZones: []string{"CAZ043", "CAZ048"}},
+			{ID: "c", Event: "Flood Warning", AffectedZones: []string{"CAZ099"}, Area: geo.Shape{{{{Lon: -117, Lat: 33}, {Lon: -116, Lat: 33}, {Lon: -116, Lat: 34}, {Lon: -117, Lat: 33}}}}}}},
 	}}
 	bytes, requests := alertLayerCost(mapInputs{snap: snap})
 	if requests != 3 || bytes != 3*zoneShapeBytes {

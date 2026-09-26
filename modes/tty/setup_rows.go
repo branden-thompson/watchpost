@@ -137,7 +137,6 @@ const (
 	rowMapDetailRivers
 	rowMapDetailNames
 	rowMapDetailRoads
-	rowMapDetailMinorRoads
 	rowMapDetailRail
 	rowMapDetailParks
 	rowMapClear
@@ -251,15 +250,14 @@ func setupTable() [setupRowCount]setupRow {
 		// under the cursor; ←→ move it when there is more than one.
 		rowMapLayers: {rowMapLayers, groupMapLayers, scopeObserver, rowCheck, false, "", ""},
 		// THE MAP'S OWN DETAIL (D-65): the library's basemap layers, weather-first.
-		rowMapDetailLevel:      {rowMapDetailLevel, groupMapLayers, scopeObserver, rowPicker, true, "", ""}, // go-tuiMaps D-82, D-67
-		rowMapDetailBorders:    {rowMapDetailBorders, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailWater:      {rowMapDetailWater, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailRivers:     {rowMapDetailRivers, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailNames:      {rowMapDetailNames, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailRoads:      {rowMapDetailRoads, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailMinorRoads: {rowMapDetailMinorRoads, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailRail:       {rowMapDetailRail, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
-		rowMapDetailParks:      {rowMapDetailParks, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailLevel:   {rowMapDetailLevel, groupMapLayers, scopeObserver, rowPicker, true, "", ""}, // go-tuiMaps D-82, D-67
+		rowMapDetailBorders: {rowMapDetailBorders, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailWater:   {rowMapDetailWater, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailRivers:  {rowMapDetailRivers, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailNames:   {rowMapDetailNames, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailRoads:   {rowMapDetailRoads, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailRail:    {rowMapDetailRail, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
+		rowMapDetailParks:   {rowMapDetailParks, groupMapLayers, scopeObserver, rowToggle, false, "", ""},
 		// AN ACTION, operated by space: it empties the map's data (W3.8).
 		rowMapClear: {rowMapClear, groupMapLayers, scopeObserver, rowCheck, false, "", ""},
 

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 )
 
 // TestTheDetailLevelIsASettingAndReachesTheMap: Weather by default; → on the
@@ -22,7 +23,7 @@ func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 	}
 	body, _, _ := d.focusBody(d.opts())
 	text := stripANSITest(strings.Join(body, "\n"))
-	for _, want := range []string{"Detail -", "Weather", "(at Full)", "(at Standard)"} {
+	for _, want := range []string{"Detail -", "Weather", "(county zoom)", "(state zoom)"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the Maps tab does not show %q:\n%s", want, text)
 		}
@@ -61,8 +62,50 @@ func TestTheMenusDetailRowStepsTheLevel(t *testing.T) {
 	if !ok || m.(Dashboard).mapDetailLevel.String() != "standard" {
 		t.Fatalf("space on the level row: handled %v, level %v", ok, m.(Dashboard).mapDetailLevel)
 	}
-	if !strings.Contains(strings.Join(*calls, " "), "SetDetail:standard") {
-		t.Errorf("the library was not told: %v", *calls)
+	if !strings.Contains(strings.Join(*calls, " "), "Layers:rail:on") || !strings.Contains(strings.Join(*calls, " "), "Layers:parks:on") {
+		t.Errorf("the level's preset did not reach the library's switches (D-79): %v", *calls)
+	}
+}
+
+// TestTheLevelIsAPresetAndTheSwitchesAreTheTruth is D-79 (UAT-1 U1-42): the
+// library draws all it has and the switches thin it, so a switch on is drawn
+// whatever the level; a level sets every switch to its preset; a switch
+// changed from the preset makes the level read "Custom"; the minor roads are
+// never drawn and never offered.
+func TestTheLevelIsAPresetAndTheSwitchesAreTheTruth(t *testing.T) {
+	calls := &[]string{}
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false)})
+	d.mapPane.calls = calls
+	d, _ = pressKey(d, "g")
+	joined := strings.Join(*calls, " ")
+	for _, want := range []string{"SetDetail:full", "Layers:minor-roads:off", "Layers:rail:off", "Layers:parks:off", "Layers:roads:on"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("the Weather preset was not applied as switches: no %s in %v", want, *calls)
+		}
+	}
+	if d.detailLevelShown() != "Weather" {
+		t.Errorf("an untouched preset reads %q", d.detailLevelShown())
+	}
+	*calls = nil
+	d = d.setDetail("rail", true)
+	if !strings.Contains(strings.Join(*calls, " "), "Layers:rail:on") || strings.Contains(strings.Join(*calls, " "), "SetDetail:weather") {
+		t.Errorf("rail switched on at Weather did not reach the library as on: %v", *calls)
+	}
+	if d.detailLevelShown() != "Custom" {
+		t.Errorf("a switch off its preset reads %q, want Custom", d.detailLevelShown())
+	}
+	d = d.cycleDetailLevel(true) // Standard: rail and parks on by the preset
+	if !d.detailOn("rail") || !d.detailOn("parks") || d.detailLevelShown() != "Standard" {
+		t.Errorf("Standard's preset: rail %v, parks %v, reads %q", d.detailOn("rail"), d.detailOn("parks"), d.detailLevelShown())
+	}
+	d = d.cycleDetailLevel(false) // back to Weather: the preset again, not the old switch
+	if d.detailOn("rail") || d.detailLevelShown() != "Weather" {
+		t.Errorf("Weather again left rail %v and reads %q", d.detailOn("rail"), d.detailLevelShown())
+	}
+	for _, l := range mapDetailLayers() {
+		if l.layer == tuimaps.MinorRoadLayer || strings.Contains(l.label, "Minor") {
+			t.Errorf("the minor roads are still offered: %+v", l)
+		}
 	}
 }
 

@@ -15,6 +15,8 @@ import (
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/domains/globalfeed"
+	"github.com/branden-thompson/watchpost/domains/severe"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -36,7 +38,7 @@ func (lp *livePipelines) mapFeed(ctx context.Context, ask tty.MapAsk) tty.MapFee
 // mapFeedWith is mapFeed with the place's zones given, for the tests.
 func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZones func(snapshot.Location) []string) tty.MapFeed {
 	var out tty.MapFeed
-	snap, place := in.withInView(), in.place
+	snap, place := in.drawable(), in.place
 	if snap == nil {
 		return out
 	}
@@ -84,6 +86,7 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 			}
 		}
 	}
+	out.Overlays = append(out.Overlays, quakeOverlays(in.quakes)...) // D-80: the ticker's quakes in view
 	return out
 }
 
@@ -106,7 +109,7 @@ func init() {
 // view's - and an alert with its own
 // polygon fetches nothing (FR-9.2).
 func alertLayerCost(in mapInputs) (int64, int) {
-	snap := in.withInView()
+	snap := in.drawable()
 	if snap == nil {
 		return 0, 0
 	}
@@ -146,12 +149,50 @@ func alertOverlay(a snapshot.Alert, area geo.Area) (tuimaps.Overlay, bool) {
 	if d := a.Expires.Sub(valid); d > 0 {
 		keeps = d
 	}
-	o := tuimaps.Overlay{ID: alertLayerKey + "/" + a.ID, Valid: valid, Keeps: keeps}
+	cat, ok := alertCategory(a)
+	if !ok {
+		return tuimaps.Overlay{}, false // a forecast, or a product [w] does not show (D-80)
+	}
+	o := tuimaps.Overlay{ID: alertLayerKey + "/" + cat + "/" + a.ID, Valid: valid, Keeps: keeps} // the category switches it (D-80)
 	for _, poly := range area.Shape {
 		o.Features = append(o.Features, tuimaps.Feature{Kind: tuimaps.Polygon, Rings: tuimaps.Rings(poly),
 			Role: role, Label: label, Severity: sev, Valid: valid, Expires: a.Expires, ID: a.ID})
 	}
 	return o, true
+}
+
+// alertCategory is the alert's category as the [w] window files it - the
+// same Classify - by the key the window switches it with, and false for a
+// forecast or a product [w] does not show: the map does not draw those (D-80).
+func alertCategory(a snapshot.Alert) (string, bool) {
+	tab, ok := severe.Classify(globalfeed.ClassSevereWx, a.Event)
+	if !ok {
+		return "", false
+	}
+	return tty.AlertCategoryKey(tab)
+}
+
+// drawable is the snapshot the feed and the estimate walk: withInView's, with
+// only the alerts the map draws, so no zone is fetched for a forecast (D-80).
+// A copy: the station's snapshot is shared.
+func (in mapInputs) drawable() *snapshot.Snapshot {
+	all := in.withInView()
+	if all == nil {
+		return nil
+	}
+	out := *all
+	out.Locations = make([]snapshot.Location, len(all.Locations))
+	for i, loc := range all.Locations {
+		kept := make([]snapshot.Alert, 0, len(loc.Alerts))
+		for _, a := range loc.Alerts {
+			if _, ok := alertCategory(a); ok {
+				kept = append(kept, a)
+			}
+		}
+		loc.Alerts = kept
+		out.Locations[i] = loc
+	}
+	return &out
 }
 
 // severityOf is CAP's severity as the library's, and the role it is drawn in:

@@ -6,10 +6,12 @@ package tty
 // terminal with its two columns still side by side (U1-36).
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 )
 
 // TestABlankRowSetsTheTabsOffThePage is U1-30: where the window has the room,
@@ -39,29 +41,31 @@ func TestEachDetailLayerIsAnEnabledRow(t *testing.T) {
 				row = s
 			}
 		}
-		if !strings.Contains(row, "←") || !strings.Contains(row, "Enabled") || !strings.Contains(row, "→") {
-			t.Fatalf("%s: the row is %q, not the picker", l.key, row)
+		was := d.detailOn(l.key) // the Weather preset's (D-79)
+		words := map[bool]string{true: "Enabled", false: "Disabled"}
+		if !strings.Contains(row, "←") || !strings.Contains(row, words[was]) || !strings.Contains(row, "→") {
+			t.Fatalf("%s: the row is %q, not the picker at %s", l.key, row, words[was])
 		}
 		for _, key := range []tea.KeyPressMsg{{Code: tea.KeyRight}, {Code: tea.KeyLeft}} {
 			m, _, _ := d.setupRowKey(key)
-			if m.(Dashboard).detailOn(l.key) {
-				t.Errorf("%s: %s left it on", l.key, key.String())
+			if m.(Dashboard).detailOn(l.key) == was {
+				t.Errorf("%s: %s left it as it was", l.key, key.String())
 			}
 		}
 		d = d.setupSpace()
-		if d.detailOn(l.key) {
-			t.Errorf("%s: space left it on", l.key)
+		if d.detailOn(l.key) == was {
+			t.Errorf("%s: space left it as it was", l.key)
 		}
 		body, _, _ = d.focusBody(d.opts())
-		if !strings.Contains(stripANSITest(strings.Join(body, "\n")), "Disabled") {
-			t.Errorf("%s: switched off, the row does not say Disabled", l.key)
+		if !strings.Contains(stripANSITest(strings.Join(body, "\n")), words[!was]) {
+			t.Errorf("%s: switched, the row does not say %s", l.key, words[!was])
 		}
-		if m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight}); !m.(Dashboard).detailOn(l.key) {
-			t.Errorf("%s: → did not switch it back on", l.key)
+		if m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight}); m.(Dashboard).detailOn(l.key) != was {
+			t.Errorf("%s: → did not switch it back", l.key)
 		}
 		m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 		drain(t, m, cmd)
-		if on, ok := got.MapDetail[l.key]; !ok || on {
+		if on, ok := got.MapDetail[l.key]; !ok || on == was {
 			t.Errorf("%s: esc wrote %v", l.key, got.MapDetail)
 		}
 	}
@@ -110,4 +114,58 @@ func TestTheWaterSwitchIsTheLakes(t *testing.T) {
 			t.Errorf("a detail row offers the sea: %q", l.label)
 		}
 	}
+}
+
+// TestTheAlertCategoriesSwitchTheirAlerts is D-80 (UAT-1 U1-43): the Overlays
+// menu lists [w]'s categories under the alert areas - not Disasters, not
+// Forecasts - and a category switched off takes its alerts off the map, and
+// only its alerts; the choice is written with the map's settings.
+func TestTheAlertCategoriesSwitchTheirAlerts(t *testing.T) {
+	var labels []string
+	for _, c := range AlertCategories() {
+		labels = append(labels, c.Label)
+	}
+	if got := strings.Join(labels, ", "); got != "Emergency, Warnings, Watches, Advisories, Spec. Statements, Marine" {
+		t.Errorf("the categories are %s", got)
+	}
+	feed := func(ctx context.Context, ask MapAsk) MapFeed {
+		f := MapFeed{}
+		for _, o := range []tuimaps.Overlay{alertAt("w", "Wind Warning", -117.5, 33.1, tuimaps.SeveritySevere), alertAt("a", "Small Craft Advisory", -117.9, 33.0, tuimaps.SeverityMinor)} {
+			cat := map[string]string{"alert/w": "warnings", "alert/a": "advisories"}[o.ID]
+			o.ID = AlertLayer + "/" + cat + "/" + strings.TrimPrefix(o.ID, "alert/")
+			f.Overlays = append(f.Overlays, o)
+		}
+		return f
+	}
+	var saved UIPrefs
+	d := mapDash(t, Config{MapLayers: alertLayers, MapFeed: feed})
+	d.cfg.SetUI = func(p UIPrefs) error { saved = p; return nil }
+	d, _ = pressKey(d, "g")
+	d = feedAndSettle(t, d)
+	if len(d.mapPane.given) != 2 {
+		t.Fatalf("both categories on, %d overlays drawn", len(d.mapPane.given))
+	}
+	d = pressCode(d, 'O', "O")
+	var keys []string
+	for _, r := range d.overlayRows() {
+		keys = append(keys, r.key)
+	}
+	d.mapPane.menuAt = indexOf(keys, categoryChoice("advisories"))
+	if d.mapPane.menuAt < 0 {
+		t.Fatalf("the menu has no Advisories row: %v", keys)
+	}
+	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+	d = feedAndSettle(t, m.(Dashboard))
+	if _, ok := d.mapPane.given["alert/advisories/a"]; ok {
+		t.Error("the advisory is still drawn with Advisories off")
+	}
+	if _, ok := d.mapPane.given["alert/warnings/w"]; !ok {
+		t.Error("switching Advisories off took the warning too")
+	}
+	for _, msg := range msgsOf(cmd) {
+		if _, ok := msg.(uiSavedMsg); ok && saved.MapLayers != nil && !saved.MapLayers[categoryChoice("advisories")] {
+			return
+		}
+	}
+	t.Errorf("the switch was not written: %+v", saved.MapLayers)
 }

@@ -113,7 +113,7 @@ func TestTheFeedDrawsTheViewsAlertsAndNamesThemOnce(t *testing.T) {
 	for _, o := range out.Overlays {
 		ids = append(ids, o.ID)
 	}
-	if len(ids) != 2 || !slices.Contains(ids, tty.AlertLayer+"/held") || !slices.Contains(ids, tty.AlertLayer+"/view") {
+	if len(ids) != 2 || !slices.Contains(ids, tty.AlertLayer+"/warnings/held") || !slices.Contains(ids, tty.AlertLayer+"/warnings/view") {
 		t.Errorf("the feed drew %v; want the held alert once and the view's", ids)
 	}
 	if len(out.InView) != 1 || out.InView[0].ID != "view" {

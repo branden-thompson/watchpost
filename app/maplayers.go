@@ -14,6 +14,7 @@ package app
 import (
 	"context"
 
+	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -23,7 +24,8 @@ import (
 type mapInputs struct {
 	snap   *snapshot.Snapshot
 	place  *snapshot.Location
-	inView []snapshot.Alert // the view's alerts, which the map draws whoever holds them
+	inView []snapshot.Alert   // the view's alerts, which the map draws whoever holds them
+	quakes []globalfeed.Event // the ticker's earthquakes in view (D-80), fetched by the ticker, never here
 }
 
 // mapInputs are the inputs for the estimate, on the UI goroutine: the view's
@@ -45,6 +47,9 @@ func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bo
 	in := mapInputs{snap: ask.Snap, place: ask.Place}
 	if lp != nil {
 		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
+		if lp.severe != nil {
+			in.quakes = quakesIn(lp.severe.feedCopy(), ask.View)
+		}
 	}
 	return in
 }
