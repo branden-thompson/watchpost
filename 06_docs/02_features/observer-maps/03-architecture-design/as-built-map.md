@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–28 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87), batch 21 its second (D-88), batch 22 its third (D-89), batch 23 its fourth (D-90 to D-92), batch 24 its fifth; batch 25 opens W10, temperature and the map's two modes (D-93 to D-98), batch 26 its first UAT pass (D-99, D-100), batch 27 its second (D-101, D-102), batch 28 its third (D-103 to D-105: the rows under the map, the legend retired, the parts shared); batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.15."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–29 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87), batch 21 its second (D-88), batch 22 its third (D-89), batch 23 its fourth (D-90 to D-92), batch 24 its fifth; batch 25 opens W10, temperature and the map's two modes (D-93 to D-98), batch 26 its first UAT pass (D-99, D-100), batch 27 its second (D-101, D-102), batch 28 its third (D-103 to D-105: the rows under the map, the legend retired, the parts shared), batch 29 the window stack (D-106, D-107); batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.15."
 ---
 
 # As built: where the map lives
@@ -101,6 +101,29 @@ flowchart TB
   M --> BXS["the boxes over it: Area Alerts, the Overlays menu, the controls, the legend"] --> NT["the feed's notes: partial areas named in words (FR-4.4)"]
   NT --> CW["the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)\nD-89: one line, the first sentence bold yellow; the estimate on the status line"]
   CW --> ST["the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window"]
+```
+
+## The windows, a stack (D-106, D-107)
+
+`Dashboard.modal` is the window shown, and `under` the windows beneath it. Every open and close
+goes through `open` and `close`, so the forty-three places that ask which window is shown read the
+top of the stack and nothing else changed. Key capture is still each window's own; F-184 moves it
+into the stack.
+
+```mermaid
+flowchart TB
+  O["open(m)"] --> Q{"m?"}
+  Q -- "none" --> CLR["the stack emptied: nothing shown"]
+  Q -- "the one shown" --> SAME["no change"]
+  Q -- "already under" --> BACK["returned to: the windows over it left behind\nits scroll as it was; resumed"]
+  Q -- "a new one" --> T{"the one shown is a search or a confirmation?\n(Add, Remove)"}
+  T -- "yes" --> REP["replaced: it is done, never returned to"]
+  T -- "no" --> PUSH["pushed under, with its scroll; m shown over it"]
+  C["close() - esc, or the key that opened it"] --> E{"a window under?"}
+  E -- "yes" --> POP["the one below shown again, its scroll restored; resumed"]
+  E -- "no" --> NONE["nothing shown: the dashboard"]
+  POP --> R["resume, at the end of the Update: the map drawn again,\nits work, its radar and temperature asked as they have stood"]
+  BACK --> R
 ```
 
 ## The map's commands, its clock and its close (W2)

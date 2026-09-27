@@ -1157,3 +1157,23 @@ Now:
 **Mutation verdicts** (targeted, 10), all caught. Two survived at first:
 - Forecast mode's second visit never re-showed its chip. The test now enters Forecast mode twice.
 - The controls box drawn on the map as well: the test read the raw picture, not the window. It now reads the window.
+
+## Batch 29 — the window stack; g Maps (2026-09-27)
+
+**D-106, D-107.** From the map, the HUM LEAD opened a place's details with enter, and esc landed on the dashboard: `modal` was one value, and opening a window closed the one shown. The same gap had left D-37's discard-pile window unbuilt (F-108).
+
+The windows are now a stack:
+- A window opened from another opens over it, and esc, or the key that opened it, returns to the one below. That window resumes at the end of the Update, whoever closed what was over it: the map is drawn again and asks for its work, radar and temperature.
+- A window already in the stack is returned to, never doubled.
+- A search or confirmation window is replaced by what it opens, never returned to.
+- Each window's scroll is kept while it is under.
+
+Evaluated before building:
+- `modal` is assigned only in `open`, so the forty-three reads of the window shown read the top of the stack unchanged.
+- Nothing else in the tree changed; the only golden that moved is the controls row.
+
+Key capture stays each window's own; F-184, next, moves it into the stack.
+
+**D-106's first item:** the controls row above the table gains g Maps, left of ↑↓ Navigate.
+
+**Mutation verdicts** (targeted, 7), all caught.

@@ -581,10 +581,12 @@ type Dashboard struct {
 	request     requestState
 	debug       debugState
 	voiceIdx    int
-	voiceList   []string // snapshot of the hook's list, taken when the chooser opens (UAT 85: never from View)
-	radioVoice  string   // the chosen correspondent (chip label)
-	addQuery    string   // add-location search buffer
-	modalScroll int      // shared scroll for floating modals (UAT 10.4)
+	voiceList   []string        // snapshot of the hook's list, taken when the chooser opens (UAT 85: never from View)
+	radioVoice  string          // the chosen correspondent (chip label)
+	addQuery    string          // add-location search buffer
+	modalScroll int             // shared scroll for floating modals (UAT 10.4)
+	under       []stackedWindow // the windows under the one shown, nearest last (D-107)
+	resumed     modal           // the window returned to, whose resume runs at the end of this Update (D-107)
 
 	// surface is which surface the operator is looking at, mirrored by the
 	// Router (D-92).
@@ -974,8 +976,9 @@ func (d Dashboard) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if err := invariant.Check(ok, "dispatch must return the dashboard model"); err != nil {
 		return m, cmd
 	}
+	next, resumeCmd := next.resume()  // D-107: a window returned to picks up where it was
 	next, mapCmd := next.armMapTick() // 0.18.0 W2.2: the map's clock, armed after every Update
-	return next.armTick(tea.Batch(cmd, mapCmd))
+	return next.armTick(tea.Batch(cmd, resumeCmd, mapCmd))
 }
 
 // handleTicker applies one global-event-ticker message and re-arms the frame
@@ -1351,13 +1354,50 @@ const (
 )
 
 // open shows m alone, scrolled to the top.
+//
+// THE WINDOWS ARE A STACK (D-106, D-107). A window opened from another opens
+// over it, and closing it returns to the one below - Details opened from the
+// map goes back to the map. A window already in the stack is returned to,
+// never doubled. A search or confirmation window is replaced by what it
+// opens: it is done, and never returned to.
 func (d Dashboard) open(m modal) Dashboard {
 	if m != modalDetails {
 		d.lookupRef = nil // only Details waits for a lookup (R5-B-09)
 	}
+	switch at := d.stackIndex(m); {
+	case m == modalNone:
+		d.under = nil
+	case m == d.modal:
+	case at >= 0:
+		d.modal, d.modalScroll, d.resumed = m, d.under[at].scroll, m
+		d.under = d.under[:at:at] // the windows over it are left behind
+		return d
+	case d.modal != modalNone && !transient(d.modal):
+		d.under = append(append(make([]stackedWindow, 0, len(d.under)+1), d.under...), stackedWindow{d.modal, d.modalScroll}) // a copy: Dashboards are values
+	}
 	d.modal, d.modalScroll = m, 0
 	return d
 }
+
+// stackedWindow is a window under the one shown, and where its scroll was left.
+type stackedWindow struct {
+	modal  modal
+	scroll int
+}
+
+// stackIndex is where a window is in the stack under the one shown, or -1.
+func (d Dashboard) stackIndex(m modal) int {
+	for i, s := range d.under {
+		if s.modal == m {
+			return i
+		}
+	}
+	return -1
+}
+
+// transient reports whether a window is done once it opens another - a
+// search or a confirmation - and so is replaced, never returned to (D-107).
+func transient(m modal) bool { return m == modalAdd || m == modalRemove }
 
 // close dismisses whatever is open.
 //
@@ -1369,9 +1409,31 @@ func (d Dashboard) close() Dashboard {
 	if d.modal == modalSevere && d.severeReading != "" && d.cfg.EndEventRead != nil {
 		d.cfg.EndEventRead()
 	}
-	d.lookupRef = nil      // a closed Details modal no longer waits for a lookup
-	d.severeDetail = false // a closed window forgets its record view (REVIEW R5-A-04)
+	d.lookupRef = nil             // a closed Details modal no longer waits for a lookup
+	d.severeDetail = false        // a closed window forgets its record view (REVIEW R5-A-04)
+	if n := len(d.under); n > 0 { // back to the window below (D-107), which resumes
+		below := d.under[n-1]
+		d.under = d.under[: n-1 : n-1]
+		d.modal, d.modalScroll, d.resumed = below.modal, below.scroll, below.modal
+		return d
+	}
 	return d.open(modalNone)
+}
+
+// resume runs a window's return (D-107) at the end of the Update that
+// returned to it, whoever closed what was over it: the map is drawn again,
+// its work asked for, and what has stood - its radar, its temperature - asked
+// again. Nothing else keeps state that goes stale under another window.
+func (d Dashboard) resume() (Dashboard, tea.Cmd) {
+	m := d.resumed
+	d.resumed = modalNone
+	if m != modalMap || d.modal != modalMap || d.mapPane.m == nil {
+		return d, nil
+	}
+	d = d.renderMap()
+	d, radar := d.refreshRadar()
+	d, temp := d.refreshTemp()
+	return d, tea.Batch(d.mapWorkCmd(), radar, temp)
 }
 
 // handleRadio owns the messages the radio sends the dashboard: the deck's
@@ -1430,7 +1492,8 @@ func (d Dashboard) toggle(m modal) Dashboard {
 }
 
 // toggleModal owns the open/close actions for every floating window (split
-// from handleKey, P10-04). Opening one closes the others.
+// from handleKey, P10-04). Opening one opens it over the one shown, and
+// closing it returns there (D-107).
 func (d Dashboard) toggleModal(act term.Action) (Dashboard, bool) {
 	if d, ok := d.toggleSevere(act); ok {
 		return d, true // 0.13.0: the severe window's open / drill-in / back-out

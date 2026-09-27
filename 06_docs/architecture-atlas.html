@@ -55,8 +55,8 @@ code{font-family:var(--mono);font-size:.92em}
 </style>
 <div class="wrap">
   <aside class="side">
-    <h1 class="brand">Watchpost Architecture Atlas<small>54 diagrams, in reading order. What the program is, area by area.</small></h1>
-    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li><li><a href="#observer-maps">observer maps<span class="n">5</span></a></li></ul></nav>
+    <h1 class="brand">Watchpost Architecture Atlas<small>55 diagrams, in reading order. What the program is, area by area.</small></h1>
+    <nav aria-label="Areas"><ul><li><a href="#watchpost-cli">The shape of the program<span class="n">4</span></a></li><li><a href="#map-ready-geometry">Map-ready geometry (0.17.0)<span class="n">3</span></a></li><li><a href="#severe-alerts-modals">Severe weather<span class="n">10</span></a></li><li><a href="#multi-voice-support">The Director and the voices<span class="n">13</span></a></li><li><a href="#0.16.0-broadcaster-ui">The Broadcaster console<span class="n">11</span></a></li><li><a href="#0.15.0-pre-broadcaster-ui-improvements">Before the console<span class="n">3</span></a></li><li><a href="#watchpost-performance-quality-pass">The quality pass<span class="n">5</span></a></li><li><a href="#observer-maps">observer maps<span class="n">6</span></a></li></ul></nav>
     <p class="how"><strong>This page is generated.</strong> The tracked documents are the source of truth; rebuild with <code>go run ./tools/atlas</code>. Only fenced mermaid blocks are read — <strong>a change written in the prose beside a diagram never reaches this page</strong>, so put the fact in the diagram.</p>
   </aside>
   <main><section class="level" id="watchpost-cli"><header class="lvl"><h2>The shape of the program</h2></header><article class="dia" id="watchpost-cli-0"><div class="meta"><h3>1. System overview</h3><p class="file"><code>06_docs/02_features/watchpost-cli/03-architecture-design/architecture.md</code></p></div><div class="canvas"><pre class="mermaid">graph TB
@@ -912,7 +912,20 @@ code{font-family:var(--mono);font-size:.92em}
   M --&gt; BXS[&#34;the boxes over it: Area Alerts, the Overlays menu, the controls, the legend&#34;] --&gt; NT[&#34;the feed&#39;s notes: partial areas named in words (FR-4.4)&#34;]
   NT --&gt; CW[&#34;the cost warning, when the layers on would cost more than 2 MB or 40 requests a refresh (FR-9.2)\nD-89: one line, the first sentence bold yellow; the estimate on the status line&#34;]
   CW --&gt; ST[&#34;the status line: loading · offline · coarser · blank when whole (FR-3.4)\nPgUp and PgDn scroll the body when it is longer than the window&#34;]
-</pre></div></article><article class="dia" id="observer-maps-3"><div class="meta"><h3>The map&#39;s commands, its clock and its close (W2)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+</pre></div></article><article class="dia" id="observer-maps-3"><div class="meta"><h3>The windows, a stack (D-106, D-107)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p><p class="lead"><code>Dashboard.modal</code> is the window shown, and <code>under</code> the windows beneath it. Every open and close goes through <code>open</code> and <code>close</code>, so the forty-three places that ask which window is shown read the top of the stack and nothing else changed. Key capture is still each window&#39;s own; F-184 moves it into the stack.</p></div><div class="canvas"><pre class="mermaid">flowchart TB
+  O[&#34;open(m)&#34;] --&gt; Q{&#34;m?&#34;}
+  Q -- &#34;none&#34; --&gt; CLR[&#34;the stack emptied: nothing shown&#34;]
+  Q -- &#34;the one shown&#34; --&gt; SAME[&#34;no change&#34;]
+  Q -- &#34;already under&#34; --&gt; BACK[&#34;returned to: the windows over it left behind\nits scroll as it was; resumed&#34;]
+  Q -- &#34;a new one&#34; --&gt; T{&#34;the one shown is a search or a confirmation?\n(Add, Remove)&#34;}
+  T -- &#34;yes&#34; --&gt; REP[&#34;replaced: it is done, never returned to&#34;]
+  T -- &#34;no&#34; --&gt; PUSH[&#34;pushed under, with its scroll; m shown over it&#34;]
+  C[&#34;close() - esc, or the key that opened it&#34;] --&gt; E{&#34;a window under?&#34;}
+  E -- &#34;yes&#34; --&gt; POP[&#34;the one below shown again, its scroll restored; resumed&#34;]
+  E -- &#34;no&#34; --&gt; NONE[&#34;nothing shown: the dashboard&#34;]
+  POP --&gt; R[&#34;resume, at the end of the Update: the map drawn again,\nits work, its radar and temperature asked as they have stood&#34;]
+  BACK --&gt; R
+</pre></div></article><article class="dia" id="observer-maps-4"><div class="meta"><h3>The map&#39;s commands, its clock and its close (W2)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
   U[&#34;Update (the Bubble Tea goroutine)\nevery library call but Work&#34;] -- &#34;Pending &gt; 0&#34; --&gt; W[&#34;Work command\nadmitted by mapWorkers&#34;]
   U -- &#34;the feed asked&#34; --&gt; F[&#34;feed command\nadmitted by mapWorkers&#34;]
   W -- &#34;mapWorkedMsg&#34; --&gt; U
@@ -923,7 +936,7 @@ code{font-family:var(--mono);font-size:.92em}
   T -- &#34;mapTickMsg at the time still wanted&#34; --&gt; U
   Q[&#34;the program ends\ncloseOnExit → Router.CloseMap&#34;] --&gt; C[&#34;closeMap\ncancel · join (≤ 2 s) · Close&#34;]
   C -. &#34;refuses what starts after&#34; .-&gt; W &amp; F
-</pre></div></article><article class="dia" id="observer-maps-4"><div class="meta"><h3>Settings, in tabs (D-62)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
+</pre></div></article><article class="dia" id="observer-maps-5"><div class="meta"><h3>Settings, in tabs (D-62)</h3><p class="file"><code>06_docs/02_features/observer-maps/03-architecture-design/as-built-map.md</code></p></div><div class="canvas"><pre class="mermaid">flowchart LR
   subgraph S[&#34;Settings: one window, the tab is the focused row&#39;s&#34;]
     DA[&#34;Data (D-71)\nDATA · ALERTS - EVENTS&#34;]
     UI[&#34;Watchpost UI (D-71)\nWATCHPOST UI&#34;]

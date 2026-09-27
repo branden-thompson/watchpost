@@ -211,6 +211,9 @@ func (d Dashboard) controlRow(o render.Opts) string {
 		o.KeyCapIf("shift+del", d.canRemoveFocused()) + " Unfavorite",
 	}
 	nav := o.KeyCap("↑↓") + " Navigate"
+	if keys := d.keys[actMap].Keys; len(keys) > 0 {
+		nav = o.KeyCap(keys[0]) + " Maps   " + nav // D-106: the map, left of Navigate
+	}
 	line := strings.Join(segs, "   ")
 	if render.Width(line)+render.Width(nav)+2 <= o.Width {
 		return render.PadBetween(line, nav, o.Width)
