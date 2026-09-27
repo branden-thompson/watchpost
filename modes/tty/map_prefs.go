@@ -237,24 +237,61 @@ func mapNearbyByKm(km int) int {
 
 // cycleNearby moves the nearby picker through the choices, and round again.
 func (d Dashboard) cycleNearby(forward bool) Dashboard {
+	d.mapNearbyKm = nextChoice(mapNearbyChoices, d.mapNearbyKm, forward)
+	return d.uiTouched()
+}
+
+// nextChoice is the choice after, or before, the one held, and round again:
+// a picker's step through its numbers.
+func nextChoice(choices []int, held int, forward bool) int {
 	at := 0
-	for i, c := range mapNearbyChoices {
-		if c == d.mapNearbyKm {
+	for i, c := range choices {
+		if c == held {
 			at = i
 		}
 	}
 	step := 1
 	if !forward {
-		step = len(mapNearbyChoices) - 1
+		step = len(choices) - 1
 	}
-	d.mapNearbyKm = mapNearbyChoices[(at+step)%len(mapNearbyChoices)]
-	return d.uiTouched()
+	return choices[(at+step)%len(choices)]
 }
 
 // toggleRadarSource switches the lower 48's radar between MRMS and IEM (D-83).
 func (d Dashboard) toggleRadarSource() Dashboard {
 	d.mapRadarIEM = !d.mapRadarIEM
 	return d.uiTouched() // the next open asks for the source chosen
+}
+
+// radarAheadChoices are the radar loop's hours ahead offered (D-114).
+var radarAheadChoices = []int{1, 3, 6, 12}
+
+// radarAheadDefault is three hours (D-114).
+const radarAheadDefault = 3
+
+// radarAheadByHours reads the file's number; anything not offered is the
+// default.
+func radarAheadByHours(h int) int {
+	for _, c := range radarAheadChoices {
+		if c == h {
+			return h
+		}
+	}
+	return radarAheadDefault
+}
+
+// radarAheadLabel is the row's words.
+func radarAheadLabel(h int) string {
+	if h == 1 {
+		return "1 hour"
+	}
+	return strconv.Itoa(h) + " hours"
+}
+
+// cycleRadarAhead moves the hours-ahead picker, and round again.
+func (d Dashboard) cycleRadarAhead(forward bool) Dashboard {
+	d.mapRadarAhead = nextChoice(radarAheadChoices, d.mapRadarAhead, forward)
+	return d.uiTouched()
 }
 
 // radarSourceKey is the file's word: "iem", or empty for MRMS, the default.
@@ -386,7 +423,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRadarAhead || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -400,6 +437,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.toggleRadarSource(), true
 	case rowMapTempSource:
 		return d.toggleTempSource(), true
+	case rowMapRadarAhead:
+		return d.cycleRadarAhead(forward), true
 	case rowMapDetailLevel:
 		return d.cycleDetailLevel(forward).uiTouched(), true
 	case rowMapLayers:
@@ -424,7 +463,9 @@ type MapAsk struct {
 	// (D-93, D-101: Open-Meteo is the default); the listener's unit; and the start of the listener's hour, which
 	// Forecast mode's steps are counted from.
 	Forecast, TempNDFD, Fahrenheit bool
-	Anchor                         time.Time
+	// RadarAhead is the loop's hours ahead (D-114).
+	RadarAhead int
+	Anchor     time.Time
 }
 
 // mapAsk is the ask as the window stands: the watchlist's places, and the
@@ -444,7 +485,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

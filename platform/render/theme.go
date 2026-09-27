@@ -139,8 +139,11 @@ const (
 	MapRadarChipFG Token = "map.radar.chip.fg"
 	MapRadarMRMSBG Token = "map.radar.mrms.bg"
 	MapRadarIEMBG  Token = "map.radar.iem.bg"
-	TickerFG       Token = "ticker.fg"
-	TickerMutedFG  Token = "ticker.muted.fg"
+	// MapRadarModelBG is the chip of the loop's forecast frames (D-113): a
+	// model, never radar, so a colour of its own.
+	MapRadarModelBG Token = "map.radar.model.bg"
+	TickerFG        Token = "ticker.fg"
+	TickerMutedFG   Token = "ticker.muted.fg"
 
 	// The severe-events window's category tints (0.13.0, SAM-D-7): fixed,
 	// pre-darkened hues keyed to the ticker lanes — Red disasters, Orange
@@ -350,6 +353,7 @@ func defaultTheme() map[Token]string {
 		MapRadarChipFG:    "1;38;2;255;255;255", // white, bold (D-83)
 		MapRadarMRMSBG:    "48;2;28;110;52",     // #1C6E34, green: 6.2:1 under white
 		MapRadarIEMBG:     "48;2;168;72;0",      // #A84800, orange: 5.9:1 under white
+		MapRadarModelBG:   "48;2;106;63;160",    // #6A3FA0, purple: a model's frames (D-113), 7.5:1 under white
 		// PLACEHOLDER, pending the ruling: a new colour, or THE RED with every
 		// other lane shifted down. Magenta only so it is unmistakably not final.
 		TickerEmergencyBG: "48;2;150;20;20",     // #961414 — Emergency Orders: THE red

@@ -8,7 +8,9 @@
   "iem-no-time.png",
   "mrms-capabilities.xml",
   "mrms-frame.png",
-  "mrms-expired.png"
+  "mrms-expired.png",
+  "hrrr-run.json",
+  "hrrr-frame.png"
  ],
  "traps": {
   "iem-offgrid.png": "an off-grid time (:41) answered 200 with an empty picture",

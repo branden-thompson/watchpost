@@ -11,6 +11,7 @@ import (
 	"context"
 	pngpkg "image/png"
 	"sort"
+	"strings"
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
@@ -37,11 +38,12 @@ const radarFrameBytes = 25_000
 // client.
 type radarSources struct {
 	iem, mrms radar.Source
+	hrrr      *radar.HRRR // the hours ahead (D-113): the lower 48's
 }
 
 // radarSourcesOver is both sources over one radar client (overClient).
 func radarSourcesOver(c *httpx.Client) *radarSources {
-	return &radarSources{iem: radar.NewIEM(c, ""), mrms: radar.NewMRMS(c, "")}
+	return &radarSources{iem: radar.NewIEM(c, ""), mrms: radar.NewMRMS(c, ""), hrrr: radar.NewHRRR(c, "")}
 }
 
 // overClient builds a layer's sources over one hardened client of their own:
@@ -104,12 +106,106 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 		allEmpty = allEmpty && painted == 0
 	}
 	out.Overlays = trimToBudget(out.Overlays)
+	if ask.RadarAhead > 0 && lp.radar.hrrr != nil && lp.radar.hrrr.Covers(ask.Region) && len(out.Overlays) > 0 {
+		out = withForecast(ctx, out, lp.radar.hrrr, boxes, slots[len(slots)-1].at, time.Now().Add(time.Duration(ask.RadarAhead)*time.Hour))
+	}
 	if allEmpty && len(out.Overlays) > 0 {
 		if other := lp.radar.other(src, ask.Region); other != nil && echoes(ctx, other, ask.Region, boxes) {
 			out.Note = src.Name() + " shows no echo where " + other.Name() + " does: its data may be missing." // D-84's check
 		}
 	}
 	return out
+}
+
+// withForecast adds the loop's hours ahead (D-113): a forecast loop a box of
+// HRRR's quarter-hours after the newest observed frame and up to the horizon,
+// every frame marked forecast. The observed loops are drawn until their
+// newest frame and the forecast loops from their first (go-tuiMaps L-15.1),
+// so no moment shows both. The forecast frames fit what the observed loops
+// leave of the image budget, the farthest dropped first.
+func withForecast(ctx context.Context, out tty.MapRadar, h *radar.HRRR, boxes []radar.Box, newest, until time.Time) tty.MapRadar {
+	run, err := h.Run(ctx)
+	if err != nil {
+		out.Note = strings.TrimPrefix(out.Note+" The radar's hours ahead are unavailable: HRRR did not answer.", " ")
+		return out
+	}
+	minutes := radar.Minutes(run, newest, until)
+	if len(minutes) == 0 {
+		return out
+	}
+	var loops []tuimaps.Overlay
+	for _, b := range boxes {
+		frames := make([]tuimaps.LoopFrame, len(minutes))
+		held := 0
+		for i, m := range minutes {
+			at := run.Add(time.Duration(m) * time.Minute)
+			frames[i] = tuimaps.LoopFrame{Valid: at, Gap: true, Forecast: true}
+			if ctx.Err() != nil {
+				continue
+			}
+			png, err := h.Frame(ctx, m, b)
+			if err != nil {
+				continue
+			}
+			if _, err := radar.Check(png); err != nil {
+				continue // refused undecoded (W8.5)
+			}
+			frames[i] = tuimaps.LoopFrame{Valid: at, PNG: png, Forecast: true}
+			held++
+		}
+		if held == 0 {
+			continue
+		}
+		o := tuimaps.RadarImage(tty.RadarLayer+"/fc-"+b.Name, tuimaps.Image{Frames: frames, Provider: tuimaps.ProviderIEM,
+			West: b.W, South: b.S, East: b.E, North: b.N, Projection: tuimaps.PlateCarree}, run)
+		o.Keeps = until.Sub(run) + time.Hour // a run's frames are current until the horizon has passed
+		o.During = tuimaps.Span{From: frames[0].Valid}
+		loops = append(loops, o)
+	}
+	if len(loops) == 0 {
+		return out
+	}
+	for i := range out.Overlays {
+		out.Overlays[i].During = tuimaps.Span{Until: newest}
+	}
+	out.Overlays = append(out.Overlays, trimForecast(loops, radarImageBudget-chargeOf(out.Overlays))...)
+	out.Ahead = h.Name()
+	return out
+}
+
+// chargeOf is what loops cost the image budget as fetched: each frame's PNG
+// and a byte a pixel.
+func chargeOf(loops []tuimaps.Overlay) int64 {
+	total := int64(0)
+	for _, o := range loops {
+		for _, f := range o.Image.Frames {
+			if !f.Gap {
+				total += int64(len(f.PNG)) + pixelsOf(f.PNG)
+			}
+		}
+	}
+	return total
+}
+
+// trimForecast drops the farthest forecast frames, the same number from every
+// loop, until the loops fit the room left: the nearest hours matter most.
+func trimForecast(loops []tuimaps.Overlay, room int64) []tuimaps.Overlay {
+	for chargeOf(loops) > room {
+		longest := 0
+		for _, o := range loops {
+			longest = max(longest, len(o.Image.Frames))
+		}
+		if longest <= 1 {
+			return nil
+		}
+		for i, o := range loops {
+			img := *o.Image
+			img.Frames = img.Frames[:max(len(img.Frames)-1, 1)]
+			o.Image = &img
+			loops[i] = o
+		}
+	}
+	return loops
 }
 
 // other is the region's other source, when it has one: the check on a loop
@@ -274,7 +370,8 @@ func radarLayerCost(in mapInputs) (int64, int) {
 		return 0, 0
 	}
 	frames := int(radar.Window / radarStep)
-	return int64(boxes*frames) * radarFrameBytes, boxes*frames + 1
+	ahead := in.ahead * int(time.Hour/radar.HRRRStep) // the hours ahead's frames, a quarter of a radar frame's size (D-114)
+	return int64(boxes*frames)*radarFrameBytes + int64(boxes*ahead)*radarFrameBytes/4, boxes*(frames+ahead) + 1
 }
 
 // radarHosts are the radar's entries for the Status window's MAP block.

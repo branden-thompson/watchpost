@@ -521,6 +521,8 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 			segs = append(segs, o.KeyCap("←→")+" Distance")
 		case rowMapRadarSource, rowMapTempSource:
 			segs = append(segs, o.KeyCap("←→")+" Source")
+		case rowMapRadarAhead:
+			segs = append(segs, o.KeyCap("←→")+" Hours")
 		case rowMapDetailLevel:
 			segs = append(segs, o.KeyCap("←→")+" Detail")
 		default:

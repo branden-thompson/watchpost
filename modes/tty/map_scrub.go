@@ -163,7 +163,11 @@ func (d Dashboard) loopRow(width int) string {
 	if age > radarStale {
 		newest = render.Tint(newest+", STALE", render.Tok(render.ListPointer)) // FR-5.4: never hidden, marked
 	}
-	return spread([]placed{item("RADAR " + d.radarChip()), item("FRAME " + strconv.Itoa(st.Index+1) + " / " + strconv.Itoa(st.Count)),
+	lead := item("RADAR " + d.radarChip())
+	if st.Forecast && d.mapPane.radarAhead != "" { // the hours ahead: a model's, said so (D-113)
+		lead = item("FORECAST " + render.TintRaw(" "+d.mapPane.radarAhead+" ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)))
+	}
+	return spread([]placed{lead, item("FRAME " + strconv.Itoa(st.Index+1) + " / " + strconv.Itoa(st.Count)),
 		item(newest), state(st.Playing)}, from, to)
 }
 

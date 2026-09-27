@@ -1231,3 +1231,26 @@ The HUM LEAD: "all of our regions should have some kind of data because we say w
 Temperature and wind now have fixed boxes of their own (`fieldBoxes`). The lower 48 keeps the radar's boxes. Elsewhere each box is the whole map region, still fixed and never the view (D-47). Alaska is split at the antimeridian, which a grid cannot cross: two boxes, one more request there. Hawaii's points are coarser, about 2.6 degrees apart where they were 1.4. The map's view never leaves its region, so a region's box always covers it.
 
 **Mutation verdicts** (targeted, 2), both caught.
+
+## Batch 33 — the loop's hours ahead (W12.1, D-112 to D-116, 2026-09-27)
+
+**D-112** set the order of the overlays to come. **D-113 to D-116** ruled rain and snow ahead:
+- both modes;
+- three hours ahead by default, a Setting;
+- Open-Meteo's model rain outside the lower 48;
+- Forecast mode's days in radar's colours with totals.
+
+This batch builds the part that changes the controls, UAT'd first as the HUM LEAD asked.
+
+**Probed live.** IEM, on the closed list, publishes NCEP HRRR forecast reflectivity with each run's start beside it. Its images read clean with IEM's existing colour table: the library raised no unmatched-colour warning. No new host and no new table.
+
+**The loop.** A forecast loop a box, of HRRR's quarter-hours after the newest observed frame and up to the horizon:
+- The observed loop is drawn until its newest frame and the forecast from its first (go-tuiMaps L-15.1), so no moment shows both.
+- The forecast frames fit what the observed loops leave of the image budget; the farthest are dropped first.
+- At a forecast frame the badge reads RADAR FCST with HRRR's chip, purple, a colour of its own because a model is not radar, and the loop's row leads FORECAST.
+
+**A deviation from D-114's words.** The frames are fetched at half the radar box's size, about 8 km, not "at HRRR's resolution": a radar box is drawn at about 4 km, and twelve frames at full size would crowd the budget the observed loop needs.
+
+**A library defect found by the first test, go-tuiMaps L11.16.** "Right now" became the far end of the forecast. Each loop offered its own newest frame, and a loop of forecast frames alone offered a forecast. Right now is now the newest observed frame of every loop, as L-1.10d says.
+
+**Mutation verdicts** (targeted, 9), all caught.

@@ -80,6 +80,8 @@ type Config struct {
 	// MapRadarSource is the file's word for the lower 48's radar: "iem", or
 	// MRMS, the default (D-83).
 	MapRadarSource string
+	// MapRadarAhead is the file's hours ahead for the radar loop (D-114).
+	MapRadarAhead int
 	// MapTempSource is the file's word for Forecast mode's temperature:
 	// "ndfd", or Open-Meteo, the default (D-93, D-101).
 	MapTempSource string
@@ -351,6 +353,7 @@ type UIPrefs struct {
 	MapNearbyKm    int
 	MapRadarSource string          // "iem", or MRMS by default (D-83)
 	MapTempSource  string          // "ndfd", or Open-Meteo by default (D-101)
+	MapRadarAhead  int             // the radar loop's hours ahead (D-114)
 	MapLayers      map[string]bool // the layers switched from their defaults
 	MapDetail      map[string]bool // the map's detail switched from its defaults (D-65)
 	MapDetailLevel string          // "essential", "weather" (the default), "standard" or "full" (D-67)
@@ -564,6 +567,7 @@ type Dashboard struct {
 	mapDetailLevel  tuimaps.Detail // how much of the basemap is drawn (D-67, go-tuiMaps D-82)
 	mapRadarIEM     bool           // IEM for the lower 48's radar, else MRMS (D-83)
 	mapTempNDFD     bool           // NDFD for Forecast mode's temperature, else Open-Meteo (D-93, D-101)
+	mapRadarAhead   int            // the radar loop's hours ahead: 1, 3, 6 or 12 (D-114)
 	mapKeys         term.KeyMap
 	modal           modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode         string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
@@ -835,7 +839,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource == tempSourceNDFD, mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempNDFD: cfg.MapTempSource == tempSourceNDFD, mapRadarAhead: radarAheadByHours(cfg.MapRadarAhead), mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}

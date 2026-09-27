@@ -450,6 +450,7 @@ func castLoaded
 func castReport
 func castToConfig
 func castView
+func chargeOf
 func chooseNearest
 func clockFrom
 func closeOnExit
@@ -673,6 +674,7 @@ func toneView
 func trace
 func trackedKey
 func transmitterOf
+func trimForecast
 func trimToBudget
 func tuneList
 func tuneTo
@@ -686,6 +688,7 @@ func windForecastGrids
 func windGrid
 func windHourGrids
 func windowLayers
+func withForecast
 func withPool
 func withinBedFence
 func worstOf

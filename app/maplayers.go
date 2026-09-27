@@ -28,6 +28,7 @@ type mapInputs struct {
 	quakes []globalfeed.Event // the ticker's earthquakes in view (D-80), fetched by the ticker, never here
 	region string             // the region the view is bound to, and the view: the radar's estimate reads both (W8.15)
 	view   tty.MapView
+	ahead  int // the radar's hours ahead (D-114), which its estimate counts
 }
 
 // mapInputs are the inputs for the estimate, on the UI goroutine: the view's
@@ -46,7 +47,7 @@ func (lp *livePipelines) mapInputsFetching(ctx context.Context, ask tty.MapAsk) 
 // fetch is on. THE MAP DRAWS WHAT IS REAL IN VIEW (D-76): there is no scope
 // to choose.
 func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bool) mapInputs {
-	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View}
+	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead}
 	if lp != nil {
 		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
 		if lp.severe != nil {

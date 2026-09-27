@@ -32,6 +32,9 @@ type MapRadar struct {
 	Overlays []tuimaps.Overlay
 	Source   string // "MRMS", "IEM", or "" where none covers
 	Note     string
+	// Ahead is the source of the loop's hours ahead (D-113): "HRRR", or ""
+	// where the loop ends at now.
+	Ahead string
 }
 
 // mapRadarMsg is a radar answer.
@@ -124,7 +127,7 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 			removed = true
 		}
 	}
-	d.mapPane.radarGiven, d.mapPane.radarSource, d.mapPane.radarNote = given, v.radar.Source, v.radar.Note
+	d.mapPane.radarGiven, d.mapPane.radarSource, d.mapPane.radarNote, d.mapPane.radarAhead = given, v.radar.Source, v.radar.Note, v.radar.Ahead
 	d = d.showStep().retime() // the newest frame is Radar mode's now: the alerts' spans move with it (D-98)
 	if removed || !set || m.Pending() == 0 {
 		d = d.renderMap() // nothing left to prepare: draw now; else the work's answer draws it, whole
@@ -158,8 +161,18 @@ func (d Dashboard) radarBadge() []string {
 	if d.radarChipText() == "" {
 		return nil
 	}
+	if d.atForecast() { // the loop's hours ahead: a model's frames, said so (D-113)
+		chip := "[" + render.TintRaw("  "+d.mapPane.radarAhead+"  ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)) + "]"
+		return mapBadge(render.Tint("RADAR FCST", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
+	}
 	chip := "[" + render.TintRaw("  "+d.mapPane.radarSource+"  ", d.radarChipTones()) + "]"
 	return mapBadge(render.Tint("RADAR DATA", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
+}
+
+// atForecast reports whether the loop's moment shown is one of its hours
+// ahead (D-113).
+func (d Dashboard) atForecast() bool {
+	return d.mapPane.m != nil && d.mapPane.radarAhead != "" && d.mapPane.m.Loop().Forecast
 }
 
 // radarChipTones are the chip's colours: MRMS green, IEM orange (D-83).

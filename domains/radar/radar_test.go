@@ -49,7 +49,7 @@ func TestEveryRecordedRadarFixtureIsPresent(t *testing.T) {
 		Captured string   `json:"captured"`
 		Files    []string `json:"files"`
 	}
-	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) < 7 {
+	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) < 9 {
 		t.Fatalf("the manifest is %+v (%v)", m, err)
 	}
 	for _, f := range m.Files {
@@ -245,5 +245,45 @@ func TestEachBoxIsItsProductsWholeExtent(t *testing.T) {
 	hi := wholeBoxes[geo.RegionHawaii]
 	if !(hi.S < 16 && hi.W < -155 && hi.E > -155) {
 		t.Error("the sea south of the Big Island is outside Hawaii's radar")
+	}
+}
+
+// TestHRRRReadsItsRunAndItsQuarterHours is D-113 and D-114: the run's start
+// as IEM states it, and the forecast frames after the newest observed one and
+// up to the horizon, on HRRR's quarter-hours.
+func TestHRRRReadsItsRunAndItsQuarterHours(t *testing.T) {
+	get := &fakeGet{body: fixture(t, "hrrr-run.json")}
+	run, err := NewHRRR(get, "").Run(context.Background())
+	if err != nil || !run.Equal(time.Date(2026, 9, 27, 17, 0, 0, 0, time.UTC)) {
+		t.Fatalf("the run is %v (%v); want 17:00Z", run, err)
+	}
+	if !strings.HasPrefix(get.asks[0], "https://mesonet.agron.iastate.edu/") {
+		t.Errorf("asked %s: not IEM's host", get.asks[0])
+	}
+	newest := time.Date(2026, 9, 27, 19, 40, 0, 0, time.UTC)
+	got := Minutes(run, newest, newest.Add(time.Hour))
+	if len(got) != 4 || got[0] != 165 || got[3] != 210 {
+		t.Errorf("the minutes after 19:40Z for an hour are %v; want 165, 180, 195, 210", got)
+	}
+}
+
+// TestAnHRRRFrameIsAskedAtARunMinuteOnly: a frame is asked at one of the run's
+// quarter-hours, by its layer, at half the radar box's size.
+func TestAnHRRRFrameIsAskedAtARunMinuteOnly(t *testing.T) {
+	get := &fakeGet{body: fixture(t, "hrrr-frame.png")}
+	s := NewHRRR(get, "")
+	b := Box{Name: "us", W: -126, S: 23, E: -65, N: 51, Cols: 600, Rows: 276}
+	if _, err := s.Frame(context.Background(), 20, b); err == nil {
+		t.Error("minute 20 is no quarter-hour, and was asked")
+	}
+	if _, err := s.Frame(context.Background(), 180, b); err != nil {
+		t.Fatal(err)
+	}
+	u, _ := url.Parse(get.asks[len(get.asks)-1])
+	if q := u.Query(); q.Get("LAYERS") != "refd_0180" || q.Get("WIDTH") != "300" || q.Get("HEIGHT") != "138" || u.Host != "mesonet.agron.iastate.edu" {
+		t.Errorf("the frame was asked as %s", get.asks[len(get.asks)-1])
+	}
+	if !NewHRRR(nil, "").Covers(geo.RegionContiguous) || NewHRRR(nil, "").Covers(geo.RegionHawaii) {
+		t.Error("HRRR covers the lower 48 alone")
 	}
 }

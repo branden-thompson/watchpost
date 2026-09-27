@@ -130,6 +130,7 @@ const (
 	rowMapNearby
 	rowMapRadarSource // the lower 48's radar: MRMS or IEM (D-83)
 	rowMapTempSource  // Forecast mode's temperature: NDFD or Open-Meteo (D-93)
+	rowMapRadarAhead  // the radar loop's hours ahead (D-114)
 	rowMapLayers
 	rowMapDetailLevel
 	// THE MAP'S DETAIL, A ROW EACH (UAT-1 U1-35): the "← Enabled →" pattern
@@ -250,6 +251,7 @@ func setupTable() [setupRowCount]setupRow {
 		rowMapNearby:      {rowMapNearby, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapRadarSource: {rowMapRadarSource, groupMap, scopeObserver, rowPicker, true, "", ""},
 		rowMapTempSource:  {rowMapTempSource, groupMap, scopeObserver, rowPicker, true, "", ""},
+		rowMapRadarAhead:  {rowMapRadarAhead, groupMap, scopeObserver, rowPicker, true, "", ""},
 		// A BOX PER LAYER THE REGISTRY NAMES (W1.13): space switches the one
 		// under the cursor; ←→ move it when there is more than one.
 		rowMapLayers: {rowMapLayers, groupMapLayers, scopeObserver, rowCheck, false, "", ""},

@@ -140,8 +140,9 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	// NO ALERTS SCOPE (D-76): the map draws every alert in view, and what it
 	// draws is switched at the map, in the Overlays menu.
 	lines, at = d.mapRow(o, lines, at, rowMapNearby, "Nearby -", d.mapPicker(o, rowMapNearby, d.nearbyLabel()))
-	lines, at = d.mapRow(o, lines, at, rowMapRadarSource, "Radar -", d.mapPicker(o, rowMapRadarSource, d.radarSourceLabel())) // D-83
-	return d.mapRow(o, lines, at, rowMapTempSource, "Temperature -", d.mapPicker(o, rowMapTempSource, d.tempSourceLabel()))   // D-93
+	lines, at = d.mapRow(o, lines, at, rowMapRadarSource, "Radar -", d.mapPicker(o, rowMapRadarSource, d.radarSourceLabel()))                 // D-83
+	lines, at = d.mapRow(o, lines, at, rowMapRadarAhead, "Radar ahead -", d.mapPicker(o, rowMapRadarAhead, radarAheadLabel(d.mapRadarAhead))) // D-114
+	return d.mapRow(o, lines, at, rowMapTempSource, "Temperature -", d.mapPicker(o, rowMapTempSource, d.tempSourceLabel()))                   // D-93
 }
 
 // mapLayerLines are the MAP - LAYERS AND DETAIL group's rows (the second

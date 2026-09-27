@@ -88,6 +88,7 @@ type mapPane struct {
 	radarAt                           time.Time
 	radarGiven                        map[string]tuimaps.Overlay
 	radarSource, radarNote, radarLine string
+	radarAhead                        string                // the source of the loop's hours ahead, "HRRR" (D-113), or none
 	radarTimeline                     []string              // the loop's timeline (D-86), drawn in Update
 	radarBadgeTime                    string                // the badge's time row (D-92), drawn in Update
 	fcTimeline                        []string              // Forecast mode's steps (D-94), drawn in Update

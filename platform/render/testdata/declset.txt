@@ -55,6 +55,7 @@ const ListPointer
 const MapRadarChipFG
 const MapRadarIEMBG
 const MapRadarMRMSBG
+const MapRadarModelBG
 const ModalBGDark
 const ModalBGLight
 const ModalFG

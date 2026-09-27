@@ -413,6 +413,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapNearbyKm:     cfg.MapNearbyKm,               // 0.18.0 W1.11, W9.2
 		MapRadarSource:  cfg.MapRadarSource,            // D-83: the lower 48's radar
 		MapTempSource:   cfg.MapTemperatureSource,      // D-93: Forecast mode's temperature
+		MapRadarAhead:   cfg.MapRadarAheadHours,        // D-114: the radar loop's hours ahead
 		MapLayerChoice:  cfg.MapLayers,                 // 0.18.0 W1.11
 		MapLayers:       windowLayers(),                // 0.18.0 W1.13: the registry's layers
 		MapCost:         lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate

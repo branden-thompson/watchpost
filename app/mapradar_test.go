@@ -20,6 +20,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
 // fakeRadar is a source with its times and a frame for every one, failing
@@ -229,5 +230,75 @@ func TestTheRadarAsksForAndKeepsWhatFits(t *testing.T) {
 	}
 	if total > radarBudgetShare || len(got.Overlays[0].Image.Frames) >= 24 {
 		t.Errorf("handed in %d bytes against %d, %d frames a loop", total, radarBudgetShare, len(got.Overlays[0].Image.Frames))
+	}
+}
+
+// hrrrGet answers HRRR's run and its frames from the fixtures, and counts
+// the frames.
+type hrrrGet struct {
+	t      *testing.T
+	frames int
+}
+
+func (h *hrrrGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
+	if strings.HasSuffix(rawURL, ".json") {
+		return os.ReadFile("../domains/radar/testdata/hrrr-run.json")
+	}
+	h.frames++
+	return os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
+}
+
+// TestTheLoopRunsOnPastNow is D-113 and D-114: after the observed loop, a
+// forecast loop a box of HRRR's quarter-hours after the newest observed frame
+// and up to the horizon, every frame marked forecast; the observed loops drawn
+// until their newest frame and the forecast from its first, so no moment
+// shows both; HRRR named.
+func TestTheLoopRunsOnPastNow(t *testing.T) {
+	get := &hrrrGet{t: t}
+	h := radar.NewHRRR(get, "")
+	box := radar.Box{Name: "us", W: -126, S: 23, E: -65, N: 51, Cols: 600, Rows: 276}
+	newest := time.Date(2026, 9, 27, 19, 40, 0, 0, time.UTC)
+	observed := tuimaps.RadarImage(tty.RadarLayer+"/us", tuimaps.Image{Frames: []tuimaps.LoopFrame{{Valid: newest, Gap: true}}, Provider: tuimaps.ProviderIEM,
+		West: box.W, South: box.S, East: box.E, North: box.N, Projection: tuimaps.PlateCarree}, newest)
+	out := withForecast(context.Background(), tty.MapRadar{Overlays: []tuimaps.Overlay{observed}, Source: "MRMS"}, h, []radar.Box{box}, newest, newest.Add(3*time.Hour))
+	if out.Ahead != "HRRR" || len(out.Overlays) != 2 {
+		t.Fatalf("ahead %q, %d loops; want HRRR and a forecast loop beside the observed", out.Ahead, len(out.Overlays))
+	}
+	if out.Overlays[0].During.Until != newest {
+		t.Errorf("the observed loop is drawn during %v; want until its newest frame", out.Overlays[0].During)
+	}
+	fc := out.Overlays[1]
+	if !strings.HasPrefix(fc.ID, tty.RadarLayer+"/fc-") || fc.During.From != fc.Image.Frames[0].Valid {
+		t.Errorf("the forecast loop %s is drawn during %v", fc.ID, fc.During)
+	}
+	if n := len(fc.Image.Frames); n != 12 || get.frames != 12 {
+		t.Errorf("%d forecast frames (%d asked); want three hours of quarter-hours, 12", n, get.frames)
+	}
+	for _, f := range fc.Image.Frames {
+		if !f.Forecast || !f.Valid.After(newest) || f.Valid.After(newest.Add(3*time.Hour)) {
+			t.Fatalf("a forecast frame at %v (forecast %v) is outside the hours ahead", f.Valid, f.Forecast)
+		}
+	}
+}
+
+// TestTheHoursAheadFitWhatTheLoopLeaves is D-114: the forecast frames fit the
+// budget the observed loops leave, the farthest dropped first.
+func TestTheHoursAheadFitWhatTheLoopLeaves(t *testing.T) {
+	png, _ := os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
+	frames := func() []tuimaps.LoopFrame {
+		var out []tuimaps.LoopFrame
+		for i := range 8 {
+			out = append(out, tuimaps.LoopFrame{Valid: time.Date(2026, 9, 27, 20, 15*i, 0, 0, time.UTC), PNG: png, Forecast: true})
+		}
+		return out
+	}
+	loops := []tuimaps.Overlay{{ID: "radar/fc-a", Image: &tuimaps.Image{Frames: frames()}}}
+	one := chargeOf(loops) / 8
+	kept := trimForecast(loops, one*5)
+	if n := len(kept[0].Image.Frames); n != 5 {
+		t.Fatalf("%d frames kept in room for 5", n)
+	}
+	if !kept[0].Image.Frames[4].Valid.Equal(time.Date(2026, 9, 27, 21, 0, 0, 0, time.UTC)) {
+		t.Errorf("the frames kept end at %v; want the nearest five, the farthest dropped", kept[0].Image.Frames[4].Valid)
 	}
 }

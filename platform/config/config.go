@@ -275,8 +275,11 @@ type Config struct {
 	// MapTemperatureSource is Forecast mode's temperature (0.18.0 D-93):
 	// "ndfd", or Open-Meteo, the default, otherwise (D-101). Radar mode's is
 	// always Open-Meteo, the one source with past hours (D-96).
-	MapTemperatureSource string          `toml:"map_temperature_source,omitempty"`
-	MapLayers            map[string]bool `toml:"map_layers,omitempty"` // layer key -> on
+	MapTemperatureSource string `toml:"map_temperature_source,omitempty"`
+	// MapRadarAheadHours is how far past now the radar loop runs (0.18.0
+	// D-114): 1, 3 (the default, when empty), 6 or 12.
+	MapRadarAheadHours int             `toml:"map_radar_ahead_hours,omitempty"`
+	MapLayers          map[string]bool `toml:"map_layers,omitempty"` // layer key -> on
 	// MapAlertScope is RETIRED (0.18.0 D-76): the map draws every alert in
 	// view, so there is no scope to choose. It is still read, so a file that
 	// has it is not reported as holding an unknown key, and it is written

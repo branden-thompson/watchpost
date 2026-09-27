@@ -503,3 +503,83 @@ func TestTheRadarBadgeIsThreeRows(t *testing.T) {
 		t.Errorf("an old loop's badge reads %q", stripANSITest(d.mapBodyLines()[2]))
 	}
 }
+
+// aheadFeed is radarFeed with an hour ahead: four HRRR quarter-hours after
+// the newest observed frame, a loop of their own, marked forecast.
+func aheadFeed(t *testing.T) func(context.Context, MapAsk) MapRadar {
+	t.Helper()
+	observed := radarFeed(t, "MRMS", new([]string))
+	png, err := os.ReadFile("testdata/radar-frame.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return func(ctx context.Context, ask MapAsk) MapRadar {
+		out := observed(ctx, ask)
+		newest := time.Date(2026, 8, 24, 0, 55, 0, 0, time.UTC)
+		var frames []tuimaps.LoopFrame
+		for i := 1; i <= 4; i++ {
+			frames = append(frames, tuimaps.LoopFrame{Valid: newest.Add(time.Duration(i) * 15 * time.Minute), PNG: png, Forecast: true})
+		}
+		fc := tuimaps.RadarImage(RadarLayer+"/fc-us-a", tuimaps.Image{Frames: frames, Provider: tuimaps.ProviderIEM,
+			West: -126, South: 23, East: -65, North: 51, Projection: tuimaps.PlateCarree}, newest)
+		fc.Keeps, fc.During = 6*time.Hour, tuimaps.Span{From: frames[0].Valid}
+		out.Overlays[0].During = tuimaps.Span{Until: newest}
+		out.Overlays, out.Ahead = append(out.Overlays, fc), "HRRR"
+		return out
+	}
+}
+
+// TestTheLoopSaysWhenItIsAhead is D-113: stepped past now into the hours
+// ahead, the badge reads RADAR FCST with HRRR's chip, and the loop's row
+// leads FORECAST; back at now, the radar again.
+func TestTheLoopSaysWhenItIsAhead(t *testing.T) {
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t),
+		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
+	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+	if st := d.mapPane.m.Loop(); st.Count != 16 || st.Forecast {
+		t.Fatalf("the loop is %d frames, at a forecast %v; want 12 observed and 4 ahead, opened at now", st.Count, st.Forecast)
+	}
+	badge := func() string { return stripANSITest(strings.Join(d.radarBadge(), "|")) }
+	if !strings.Contains(badge(), "RADAR DATA") || !strings.Contains(badge(), "MRMS") {
+		t.Errorf("at now the badge is %q", badge())
+	}
+	d = shiftKey(d, tea.KeyRight)
+	if !d.mapPane.m.Loop().Forecast {
+		t.Fatal("⇧→ from now did not step into the hours ahead")
+	}
+	if !strings.Contains(badge(), "RADAR FCST") || !strings.Contains(badge(), "HRRR") {
+		t.Errorf("ahead of now the badge is %q; want RADAR FCST and HRRR", badge())
+	}
+	if row := stripANSITest(d.loopRow(d.scrubW())); !strings.Contains(row, "FORECAST  HRRR") {
+		t.Errorf("ahead of now the loop's row is %q; want it to lead FORECAST HRRR", row)
+	}
+	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'n', Text: "n"})
+	if d = m.(Dashboard); d.mapPane.m.Loop().Forecast || !strings.Contains(badge(), "RADAR DATA") {
+		t.Error("n did not return to now")
+	}
+}
+
+// TestTheHoursAheadAreASetting is D-114: 3 hours by default; → steps 6, 12,
+// 1; the file's number opens as chosen; the ask carries it.
+func TestTheHoursAheadAreASetting(t *testing.T) {
+	d, got := uiDash(t, rowMapRadarAhead)
+	body, _, _ := d.focusBody(d.opts())
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Radar ahead -") || !strings.Contains(text, "3 hours") {
+		t.Fatalf("the Maps tab has no hours-ahead row at 3 hours:\n%s", text)
+	}
+	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	d = m.(Dashboard)
+	if d.mapRadarAhead != 6 || d.mapAsk().RadarAhead != 6 {
+		t.Errorf("→ gave %d; want 6, in the ask", d.mapRadarAhead)
+	}
+	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
+	drain(t, m, cmd)
+	if got.MapRadarAhead != 6 {
+		t.Errorf("esc wrote %d, want 6", got.MapRadarAhead)
+	}
+	if mapDash(t, Config{MapRadarAhead: 12}).mapRadarAhead != 12 || mapDash(t, Config{}).mapRadarAhead != 3 || mapDash(t, Config{MapRadarAhead: 5}).mapRadarAhead != 3 {
+		t.Error("the file's number does not open as chosen, or a number not offered is not the default")
+	}
+}

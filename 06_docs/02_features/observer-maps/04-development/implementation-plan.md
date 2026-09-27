@@ -253,6 +253,14 @@ Wind rides temperature's lattice and requests (W10): the same boxes, sources and
 | W11.3 | The layer, off by default and held with temperature (D-99, D-110); D-103 counts it | `app/maptemp.go`, `modes/tty/map_temp.go` | `WindLayer` | Off drawn nothing, held; on draws at once; Forecast mode with wind on turns nothing else on |
 | W11.4 | **Vector grids and arrows** (go-tuiMaps FR-8, D-109): braille arrows on an even spacing, pointing where the wind blows to, length and colour by speed, every other labelled | go-tuiMaps `overlays.go`, `internal/overlay/`, `internal/render/` | `WindGrid(id, grid, unit, validAt)` from speed and meteorological from-direction | Arrows point downwind; a missing value draws none; speed labels; the ramp passes the checker on both grounds |
 
+## W12 — Rain and snow ahead (D-112 to D-116) · UAT-2
+
+| # | Task | Files | Shape | Test first (RED) |
+|---|---|---|---|---|
+| W12.1 | **The loop runs on past now** (D-113, D-114): HRRR's quarter-hours from IEM, after the newest observed frame and up to the horizon, a forecast loop a box beside the observed; each drawn only in its own half (go-tuiMaps L-15.1); the frames fit what the observed loops leave of the budget, the farthest dropped first; the hours ahead a Setting (1/3/6/12, 3 by default) | `domains/radar/hrrr.go`, `app/mapradar.go`, `modes/tty/` | `radar.HRRR`, `radar.Minutes`; `MapRadar.Ahead`; `map_radar_ahead_hours` | The minutes; the spans; the trim; the badge and the loop's row at a forecast moment; the Setting |
+| W12.2 | **Outside the lower 48** (D-115): Open-Meteo's hourly precipitation in radar's scale and colours, labelled model | `app/`, `domains/temperature/` | | *Batch 34* |
+| W12.3 | **Forecast mode's days** (D-116): each day's heaviest rate in radar's colours, and its rain and snow totals | `app/`, go-tuiMaps | | *Batch 34* |
+
 ## The trace
 
 | Requirement | Task | | Requirement | Task |
