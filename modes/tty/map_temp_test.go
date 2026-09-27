@@ -27,19 +27,28 @@ func tempAnswer(asks *[]MapAsk) func(context.Context, MapAsk) MapTemperature {
 		o.Keeps, o.During = 72*time.Hour, sp
 		return o
 	}
+	wind := func(id string, sp tuimaps.Span) tuimaps.Overlay {
+		g := tuimaps.Grid{West: -126, South: 23, East: -65, North: 51, Cols: 2, Rows: 2, Values: []float64{15, 15, 15, 15}}
+		o := tuimaps.WindGrid(WindLayer+"/us/"+id, g, []float64{270, 270, 270, 270}, tuimaps.MilesPerHour, sp.From)
+		o.Keeps, o.During = 72*time.Hour, sp
+		return o
+	}
 	return func(_ context.Context, ask MapAsk) MapTemperature {
 		*asks = append(*asks, ask)
 		if !ask.Forecast {
 			h := ask.Anchor
 			return MapTemperature{Source: "Open-Meteo", Notes: []string{"Temperature: Open-Meteo.com (CC BY 4.0), interpolated."},
 				Overlays: []tuimaps.Overlay{grid("h0", tuimaps.Span{From: h.Add(-time.Hour), Until: h.Add(-time.Nanosecond)}, 60),
-					grid("h1", tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}, 62)}}
+					grid("h1", tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}, 62)},
+				Wind: []tuimaps.Overlay{wind("h1", tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)})}}
 		}
 		steps := ForecastSteps(ask.Anchor)
-		out := MapTemperature{Source: "NDFD", Overlays: []tuimaps.Overlay{grid("now", steps[0].Span, 61)}}
+		out := MapTemperature{Source: "NDFD", Overlays: []tuimaps.Overlay{grid("now", steps[0].Span, 61)},
+			Wind: []tuimaps.Overlay{wind("now", steps[0].Span)}}
 		for k, s := range steps[1:] {
 			out.High = append(out.High, grid("d"+string(rune('0'+k))+"/high", s.Span, 80))
 			out.Low = append(out.Low, grid("d"+string(rune('0'+k))+"/low", s.Span, 50))
+			out.WindDays = append(out.WindDays, wind("d"+string(rune('0'+k)), s.Span))
 		}
 		return out
 	}
@@ -55,10 +64,16 @@ func openTempMap(t *testing.T, radarOn bool, asks *[]MapAsk) Dashboard {
 // openTempMapWith is openTempMap with temperature on or off.
 func openTempMapWith(t *testing.T, radarOn, tempOn bool, asks *[]MapAsk) Dashboard {
 	t.Helper()
+	return openFieldsMap(t, radarOn, tempOn, false, asks)
+}
+
+// openFieldsMap is openTempMap with temperature and wind each on or off.
+func openFieldsMap(t *testing.T, radarOn, tempOn, windOn bool, asks *[]MapAsk) Dashboard {
+	t.Helper()
 	var asked []string
 	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(asks),
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: radarOn},
-			{Key: TemperatureLayer, Label: "Temperature", On: tempOn}}}
+			{Key: TemperatureLayer, Label: "Temperature", On: tempOn}, {Key: WindLayer, Label: "Wind", On: windOn}}}
 	d := mapDash(t, cfg)
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
@@ -556,5 +571,53 @@ func TestTheLoopRowInForecastMode(t *testing.T) {
 	}
 	if green := strings.Split(render.Tint("§", render.Tok(render.ProviderOK)), "§")[0]; !strings.Contains(row, green+"PLAYING") {
 		t.Errorf("PLAYING is not green: %q", row)
+	}
+}
+
+// TestWindSharesTheMapWithTemperature is D-110: wind and temperature switch
+// apart and show together; wind alone draws only its own.
+func TestWindSharesTheMapWithTemperature(t *testing.T) {
+	var asks []MapAsk
+	count := func(d Dashboard) (temp, wind int) {
+		for id := range d.mapPane.tempGiven {
+			switch {
+			case strings.HasPrefix(id, WindLayer+"/"):
+				wind++
+			case strings.HasPrefix(id, TemperatureLayer+"/"):
+				temp++
+			}
+		}
+		return temp, wind
+	}
+	if temp, wind := count(openFieldsMap(t, true, true, true, &asks)); temp == 0 || wind == 0 {
+		t.Errorf("both on drew %d temperature and %d wind grids; want both", temp, wind)
+	}
+	if temp, wind := count(openFieldsMap(t, true, false, true, &asks)); temp != 0 || wind == 0 {
+		t.Errorf("wind alone drew %d temperature and %d wind grids", temp, wind)
+	}
+	if _, wind := count(openFieldsMap(t, true, true, false, &asks)); wind != 0 {
+		t.Errorf("wind off drew %d wind grids (D-110: off by default, held)", wind)
+	}
+}
+
+// TestWindIsForecastModesMainOverlayToo is D-110 with D-103: in Forecast mode
+// with wind on, temperature is not turned on for it; the badge says the day's
+// peak, and the row under the map keys the wind.
+func TestWindIsForecastModesMainOverlayToo(t *testing.T) {
+	var asks []MapAsk
+	d := openFieldsMap(t, true, false, true, &asks)
+	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
+	d = settleRadar(t, m.(Dashboard), cmd)
+	if d.mapPane.tempAuto || d.mapPane.modeChip || d.layerOn(TemperatureLayer) {
+		t.Error("wind was on, and Forecast mode turned temperature on as if nothing were")
+	}
+	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
+	d = m.(Dashboard)
+	if got := d.badgeStep(); got != "TODAY PEAK" {
+		t.Errorf("the badge's step is %q; want TODAY PEAK, the day's peak wind (D-108)", got)
+	}
+	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "wind", Classes: []tuimaps.Class{{Label: "under 5", Colour: tuimaps.RGB{R: 188, G: 57, B: 130}, Drawn: true}}}}
+	if row := stripANSITest(d.tempLegendRow(80)); !strings.Contains(row, "WIND") || !strings.Contains(row, "STRONGER") {
+		t.Errorf("the row under the map is %q; want the wind's colours", row)
 	}
 }

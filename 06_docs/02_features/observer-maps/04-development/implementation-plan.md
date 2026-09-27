@@ -242,6 +242,17 @@ The map has two modes (D-94): **Radar** (R on), where everything drawn matches t
 | W10.9 | **The look over radar** (D-95), go-tuiMaps v0.2.0: isotherms at any depth when an image shares the map, the bands a faint fill only where there is no echo | go-tuiMaps `internal/render/field.go` | — | Library goldens at each depth; the echo keeps its full colour |
 | W10.10 | Temperature's key as a swatch row in the controls, like radar's; the Legend's probation judged at UAT (D-94) | `modes/tty/map_pane.go` | — | The row's swatches are the preset's |
 
+## W11 — Wind (F-182, D-108 to D-110) · UAT-2
+
+Wind rides temperature's lattice and requests (W10): the same boxes, sources and spans, and no new host.
+
+| # | Task | Files | Shape | Test first (RED) |
+|---|---|---|---|---|
+| W11.1 | Wind in the series: hourly speed and direction, each day's peak and dominant direction; NDFD's days worked out from its hours | `domains/temperature/` | `Series.WindSpeed`, `Series.WindFrom` by hour; `Series.PeakSpeed`, `Series.PeakFrom` by day | Both fixtures re-recorded with wind; a nil point missing, never calm |
+| W11.2 | Wind grids with their spans, beside temperature's: every hour (Radar mode), Now and each day's peak (Forecast mode) | `app/maptemp.go` | the library's vector grid, speed in the listener's unit | The grids and spans per mode; mph or km/h as chosen |
+| W11.3 | The layer, off by default and held with temperature (D-99, D-110); D-103 counts it | `app/maptemp.go`, `modes/tty/map_temp.go` | `WindLayer` | Off drawn nothing, held; on draws at once; Forecast mode with wind on turns nothing else on |
+| W11.4 | **Vector grids and arrows** (go-tuiMaps FR-8, D-109): braille arrows on an even spacing, pointing where the wind blows to, length and colour by speed, every other labelled | go-tuiMaps `overlays.go`, `internal/overlay/`, `internal/render/` | `WindGrid(id, grid, unit, validAt)` from speed and meteorological from-direction | Arrows point downwind; a missing value draws none; speed labels; the ramp passes the checker on both grounds |
+
 ## The trace
 
 | Requirement | Task | | Requirement | Task |

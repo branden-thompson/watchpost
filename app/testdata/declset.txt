@@ -681,6 +681,9 @@ func userCacheSubdir
 func viewAreas
 func vizFor
 func voiceDir
+func windForecastGrids
+func windGrid
+func windHourGrids
 func windowLayers
 func withPool
 func withinBedFence

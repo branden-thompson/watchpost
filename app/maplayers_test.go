@@ -34,8 +34,8 @@ func TestAFakeLayerPlugsInWithoutEditingTheOthers(t *testing.T) {
 	for _, l := range cfg.MapLayers {
 		keys = append(keys, l.Key)
 	}
-	if strings.Join(keys, ",") != "alert,quake,radar,temperature,fake" {
-		t.Fatalf("the window is handed layers %v, want alert, quake, radar, temperature, then fake", keys)
+	if strings.Join(keys, ",") != "alert,quake,radar,temperature,wind,fake" {
+		t.Fatalf("the window is handed layers %v, want alert, quake, radar, temperature, wind, then fake", keys)
 	}
 	all := func(string) bool { return true }
 	with := cfg.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, all)

@@ -65,7 +65,7 @@ func TestEveryRecordedTemperatureFixtureIsPresent(t *testing.T) {
 		Captured string   `json:"captured"`
 		Files    []string `json:"files"`
 	}
-	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 3 {
+	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 5 {
 		t.Fatalf("the manifest is %+v (%v)", m, err)
 	}
 	for _, f := range m.Files {
@@ -124,6 +124,9 @@ func TestNDFDSendsTheHourWithItsZone(t *testing.T) {
 	u, _ := url.Parse(get.asks[1])
 	if b := u.Query().Get("begin"); b != "2026-09-27T01:00:00Z" {
 		t.Errorf("begin is %q; without its Z NDFD reads it as each point's local time", b)
+	}
+	if q := u.Query(); q.Get("wspd") == "" || q.Get("wdir") == "" {
+		t.Error("the current hour's request asks no wind: the days' answer starts at the next hour, and Now would have none (W11)")
 	}
 }
 
@@ -262,5 +265,76 @@ func TestTheSourcesAreTheClosedList(t *testing.T) {
 	}
 	if NewNDFD(nil, "").Covers(geo.RegionSamoa) || !NewOpenMeteo(nil, "").Covers(geo.RegionSamoa) {
 		t.Error("NDFD has no American Samoa; Open-Meteo has everywhere")
+	}
+}
+
+// windGet answers with the wind fixtures.
+type windGet struct{ t *testing.T }
+
+func (w windGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
+	if strings.Contains(rawURL, "/v1/forecast") {
+		return fixture(w.t, "openmeteo-wind.json"), nil
+	}
+	return fixture(w.t, "ndfd-days-wind.xml"), nil
+}
+
+// windCaptured is when the wind fixtures were recorded: 10:39 in San Diego.
+var windCaptured = time.Date(2026, 9, 27, 17, 39, 0, 0, time.UTC)
+
+// TestOpenMeteoReadsTheWind is W11.1 (D-108): each hour's speed and where it
+// blows from, and each day's peak and dominant direction, in km/h.
+func TestOpenMeteoReadsTheWind(t *testing.T) {
+	s, err := NewOpenMeteo(windGet{t}, "").Fetch(context.Background(), fixtureLattice, windCaptured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	speed, from, at, ok := s.WindAt(windCaptured)
+	if !ok || !at.Equal(time.Date(2026, 9, 27, 17, 0, 0, 0, time.UTC)) || !near(speed[escondido], 8.6) || !near(from[escondido], 182) {
+		t.Errorf("the wind now is %v from %v at %v (%v); want 8.6 km/h from 182 at 17:00Z", speed, from, at, ok)
+	}
+	if !near(s.PeakSpeed[0][escondido], 14.8) || !near(s.PeakFrom[0][escondido], 198) || !near(s.PeakSpeed[1][escondido], 19.5) {
+		t.Errorf("the peaks are %v from %v, then %v; want 14.8 from 198, then 19.5", s.PeakSpeed[0][escondido], s.PeakFrom[0][escondido], s.PeakSpeed[1][escondido])
+	}
+}
+
+// TestNDFDWorksOutEachDaysPeakWind is W11.1: NDFD has no daily wind; each
+// day's peak is its strongest hour, in km/h from knots, and the direction then.
+func TestNDFDWorksOutEachDaysPeakWind(t *testing.T) {
+	s, err := NewNDFD(windGet{t}, "").Fetch(context.Background(), fixtureLattice, windCaptured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for k, want := range map[int][2]float64{0: {7, 220}, 1: {10, 250}, 6: {4, 260}} {
+		if !near(s.PeakSpeed[k][escondido], want[0]*1.852) || !near(s.PeakFrom[k][escondido], want[1]) {
+			t.Errorf("day %d's peak is %v from %v; want %v kt (%v km/h) from %v", k, s.PeakSpeed[k][escondido], s.PeakFrom[k][escondido], want[0], want[0]*1.852, want[1])
+		}
+	}
+	missing := 0 // NDFD answers a few of the sea's hours nil: missing, never calm
+	for _, h := range s.WindSpeed {
+		if math.IsNaN(h[0]) {
+			missing++
+		}
+	}
+	if missing == 0 {
+		t.Error("none of the sea's nil hours is missing: a nil read as calm")
+	}
+}
+
+// TestWindIsInterpolatedAsAVector is W11.1: between a wind from 350 degrees
+// and one from 10, the wind is from the north - averaged as numbers, the two
+// would meet at 180, the wind turned round.
+func TestWindIsInterpolatedAsAVector(t *testing.T) {
+	l := Lattice{Box: geo.Box{W: 0, S: 0, E: 1, N: 1}, Cols: 2, Rows: 2}
+	f, dirs := l.InterpolateWind([]float64{20, 20, 20, 20}, []float64{350, 10, 350, 10})
+	mid := f.Cols / 2
+	if d := dirs[mid]; !(d > 355 || d < 5) || math.IsNaN(d) {
+		t.Errorf("between 350 and 10 degrees the wind is from %v; want the north", d)
+	}
+	if !near(f.Values[mid], 20) {
+		t.Errorf("the speed is %v; want 20", f.Values[mid])
+	}
+	_, dirs = l.InterpolateWind([]float64{20, math.NaN(), 20, 20}, []float64{350, 10, 350, 10})
+	if !math.IsNaN(dirs[f.Cols-1]) {
+		t.Error("a cell nearest a point with no wind has a direction")
 	}
 }

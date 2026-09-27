@@ -25,9 +25,11 @@ import (
 
 // The temperature, registered: OFF BY DEFAULT (D-99), and loaded in the
 // background while the map is open so switching it on in the Overlays menu
-// draws at once.
+// draws at once. The wind rides the same requests, off by default too (D-110);
+// its cost is temperature's, so it registers none of its own.
 func init() {
 	registerMapLayer(mapLayer{key: tty.TemperatureLayer, label: "Temperature", on: false, cost: tempLayerCost})
+	registerMapLayer(mapLayer{key: tty.WindLayer, label: "Wind", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }})
 }
 
 // tempSources is the temperature the app holds: both sources over one
@@ -109,12 +111,14 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 		}
 		if !ask.Forecast {
 			out.Overlays = append(out.Overlays, hourGrids(s, b.Name, anchor, unit)...)
+			out.Wind = append(out.Wind, windHourGrids(s, b.Name, anchor, ask.Fahrenheit)...)
 			continue
 		}
 		if fill != nil && fillDays(ctx, &s, fill, lat, now, &out) {
 			credit = true
 		}
 		forecastGrids(&out, s, b.Name, anchor, unit, missing)
+		windForecastGrids(&out, s, b.Name, anchor, ask.Fahrenheit)
 	}
 	if fellBack == len(boxes) {
 		out.Source = fill.Name() // every box is Open-Meteo's: the chip names it
@@ -146,7 +150,8 @@ func fillDays(ctx context.Context, s *temperature.Series, fill temperature.Sourc
 			vals *[]float64
 			from func(*temperature.Series) []float64
 		}{{"high", &s.High[k], func(f *temperature.Series) []float64 { return f.High[k] }},
-			{"low", &s.Low[k], func(f *temperature.Series) []float64 { return f.Low[k] }}} {
+			{"low", &s.Low[k], func(f *temperature.Series) []float64 { return f.Low[k] }},
+			{"wind", &s.PeakSpeed[k], func(f *temperature.Series) []float64 { return f.PeakSpeed[k] }}} {
 			if !allMissing(*side.vals) {
 				continue
 			}
@@ -161,6 +166,9 @@ func fillDays(ctx context.Context, s *temperature.Series, fill temperature.Sourc
 				continue
 			}
 			*side.vals = side.from(got)
+			if side.name == "wind" {
+				s.PeakFrom[k] = got.PeakFrom[k] // the direction with the speed it came with
+			}
 			if out.Filled == nil {
 				out.Filled = map[string]bool{}
 			}
@@ -227,6 +235,63 @@ func forecastGrids(out *tty.MapTemperature, s temperature.Series, box string, an
 			*side.into = append(*side.into, o)
 		}
 	}
+}
+
+// windHourGrids are Radar mode's wind grids: every hour up to the current
+// one, each drawn during its hour (D-108), as temperature's are.
+func windHourGrids(s temperature.Series, box string, anchor time.Time, mph bool) []tuimaps.Overlay {
+	var out []tuimaps.Overlay
+	for i, h := range s.Hours {
+		if h.After(anchor) || i >= len(s.WindSpeed) {
+			continue
+		}
+		if o, ok := windGrid(tty.WindLayer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), s.Lattice, s.WindSpeed[i], s.WindFrom[i], mph, h, anchor); ok {
+			o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+// windForecastGrids are Forecast mode's wind grids: Now's wind, and each
+// day's peak with its dominant direction, each during its step (D-108).
+func windForecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, mph bool) {
+	steps := tty.ForecastSteps(anchor)
+	if speed, from, _, ok := s.WindAt(anchor); ok {
+		if o, ok := windGrid(tty.WindLayer+"/"+box+"/now", s.Lattice, speed, from, mph, anchor, anchor); ok {
+			o.During = steps[0].Span
+			out.Wind = append(out.Wind, o)
+		}
+	}
+	for k := range temperature.Days {
+		if k+1 >= len(steps) {
+			break
+		}
+		if o, ok := windGrid(tty.WindLayer+"/"+box+"/d"+strconv.Itoa(k), s.Lattice, s.PeakSpeed[k], s.PeakFrom[k], mph, anchor, anchor); ok {
+			o.During = steps[k+1].Span
+			out.WindDays = append(out.WindDays, o)
+		}
+	}
+}
+
+// windGrid is one lattice's wind as the library's vector grid, in mph or
+// km/h as the listener's units are; false when no point has any.
+func windGrid(id string, l temperature.Lattice, speed, from []float64, mph bool, valid, anchor time.Time) (tuimaps.Overlay, bool) {
+	f, dirs := l.InterpolateWind(speed, from)
+	if allMissing(f.Values) {
+		return tuimaps.Overlay{}, false
+	}
+	unit := tuimaps.KilometresPerHour
+	if mph {
+		unit = tuimaps.MilesPerHour
+		for i, v := range f.Values {
+			f.Values[i] = v / 1.609344 // a missing value stays missing
+		}
+	}
+	o := tuimaps.WindGrid(id, tuimaps.Grid{West: f.Box.W, South: f.Box.S, East: f.Box.E, North: f.Box.N,
+		Cols: f.Cols, Rows: f.Rows, Values: f.Values}, dirs, unit, valid)
+	o.Keeps = anchor.Sub(valid) + 3*time.Hour // as temperature's: an hour past is that hour's, not stale
+	return o, true
 }
 
 // tempGrid is one lattice's values as a grid the library draws, in the

@@ -81,14 +81,19 @@ func round2(f float64) float64 { return math.Round(f*100) / 100 }
 // Today, Tomorrow and Day 3 to Day 7 (D-94).
 const Days = 7
 
-// Series is what a source answered for a lattice, in Celsius. Hourly is by
-// hour then point; High and Low by day from today, then point. Missing is NaN.
+// Series is what a source answered for a lattice: temperatures in Celsius,
+// wind in km/h and the degrees it blows from (W11, D-108). Hourly, WindSpeed
+// and WindFrom are by hour then point; High, Low, PeakSpeed and PeakFrom by
+// day from today, then point - a day's peak sustained wind and its dominant
+// direction. Missing is NaN.
 type Series struct {
-	Lattice Lattice
-	Hours   []time.Time // on the hour, UTC, oldest first
-	Hourly  [][]float64
-	High    [Days][]float64
-	Low     [Days][]float64
+	Lattice             Lattice
+	Hours               []time.Time // on the hour, UTC, oldest first
+	Hourly              [][]float64
+	WindSpeed, WindFrom [][]float64
+	High                [Days][]float64
+	Low                 [Days][]float64
+	PeakSpeed, PeakFrom [Days][]float64
 }
 
 // newSeries is a series with every value missing.
@@ -96,7 +101,7 @@ func newSeries(l Lattice) Series {
 	n := l.Cols * l.Rows
 	s := Series{Lattice: l}
 	for k := range Days {
-		s.High[k], s.Low[k] = missing(n), missing(n)
+		s.High[k], s.Low[k], s.PeakSpeed[k], s.PeakFrom[k] = missing(n), missing(n), missing(n), missing(n)
 	}
 	return s
 }
@@ -121,8 +126,12 @@ func (s *Series) hourIndex(t time.Time) int {
 	for at < len(s.Hours) && s.Hours[at].Before(t) {
 		at++
 	}
+	n := s.Lattice.Cols * s.Lattice.Rows
+	insert := func(rows [][]float64) [][]float64 {
+		return append(rows[:at], append([][]float64{missing(n)}, rows[at:]...)...)
+	}
 	s.Hours = append(s.Hours[:at], append([]time.Time{t}, s.Hours[at:]...)...)
-	s.Hourly = append(s.Hourly[:at], append([][]float64{missing(s.Lattice.Cols * s.Lattice.Rows)}, s.Hourly[at:]...)...)
+	s.Hourly, s.WindSpeed, s.WindFrom = insert(s.Hourly), insert(s.WindSpeed), insert(s.WindFrom)
 	return at
 }
 
@@ -139,6 +148,22 @@ func (s Series) HourAt(t time.Time) ([]float64, time.Time, bool) {
 	}
 	return nil, time.Time{}, false
 }
+
+// WindAt is the wind of the newest hour at or before t - speeds and the
+// directions they blow from - under HourAt's rule: never an hour t is not in.
+func (s Series) WindAt(t time.Time) (speed, from []float64, hour time.Time, ok bool) {
+	if _, at, ok := s.HourAt(t); ok {
+		for i, h := range s.Hours {
+			if h.Equal(at) {
+				return s.WindSpeed[i], s.WindFrom[i], at, true
+			}
+		}
+	}
+	return nil, nil, time.Time{}, false
+}
+
+// knotsToKmh converts.
+func knotsToKmh(kt float64) float64 { return kt * 1.852 }
 
 // dayOffset is a local date's day from the local today, where both are read
 // in the same zone.

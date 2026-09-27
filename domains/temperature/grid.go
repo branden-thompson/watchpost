@@ -62,3 +62,34 @@ func (l Lattice) Interpolate(values []float64) Field {
 	}
 	return out
 }
+
+// InterpolateWind is a lattice's wind spread over the box as Interpolate
+// spreads its temperatures: speed and the direction it blows from. THE
+// DIRECTION IS INTERPOLATED AS A VECTOR, by its east and north parts - as a
+// number, 359 degrees and 1 would meet at 180, the wind turned round.
+func (l Lattice) InterpolateWind(speed, from []float64) (Field, []float64) {
+	n := len(speed)
+	if len(from) != n {
+		return Field{}, nil
+	}
+	east, north := make([]float64, n), make([]float64, n)
+	for i := range speed {
+		if math.IsNaN(speed[i]) || math.IsNaN(from[i]) {
+			east[i], north[i] = math.NaN(), math.NaN()
+			continue
+		}
+		rad := from[i] * math.Pi / 180
+		east[i], north[i] = speed[i]*math.Sin(rad), speed[i]*math.Cos(rad) // the from-vector: its angle is the direction's
+	}
+	e, no := l.Interpolate(east), l.Interpolate(north)
+	sp := l.Interpolate(speed) // the speed interpolated itself: averaging vectors would slow a wind that turns
+	dirs := make([]float64, len(sp.Values))
+	for i := range dirs {
+		if math.IsNaN(e.Values[i]) || math.IsNaN(no.Values[i]) || math.IsNaN(sp.Values[i]) {
+			dirs[i], sp.Values[i] = math.NaN(), math.NaN()
+			continue
+		}
+		dirs[i] = math.Mod(math.Atan2(e.Values[i], no.Values[i])*180/math.Pi+360, 360)
+	}
+	return sp, dirs
+}

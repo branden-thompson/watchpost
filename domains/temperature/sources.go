@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -64,6 +65,8 @@ func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, err
 	days := cloneValues(q)
 	days.Set("maxt", "maxt")
 	days.Set("mint", "mint")
+	days.Set("wspd", "wspd") // the wind (W11): hourly for about two and a half days, whose peaks are worked out here
+	days.Set("wdir", "wdir")
 	out := newSeries(l)
 	body, err := s.get.GetText(ctx, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+days.Encode(), ttl)
 	if err != nil {
@@ -75,6 +78,8 @@ func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, err
 	hour := now.UTC().Truncate(time.Hour)
 	hours := cloneValues(q)
 	hours.Set("temp", "temp")
+	hours.Set("wspd", "wspd") // the current hour's wind: the days' answer starts at the next (W11)
+	hours.Set("wdir", "wdir")
 	hours.Set("begin", hour.Format("2006-01-02T15:04:05Z"))
 	hours.Set("end", hour.Add(time.Hour).Format("2006-01-02T15:04:05Z"))
 	body, err = s.get.GetText(ctx, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+hours.Encode(), ttl)
@@ -112,7 +117,9 @@ type dwml struct {
 			Ends   []string `xml:"end-valid-time"`
 		} `xml:"time-layout"`
 		Parameters []struct {
-			Location     string `xml:"applicable-location,attr"`
+			Location     string       `xml:"applicable-location,attr"`
+			Winds        []dwmlSeries `xml:"wind-speed"`
+			Dirs         []dwmlSeries `xml:"direction"`
 			Temperatures []struct {
 				Type   string `xml:"type,attr"`
 				Units  string `xml:"units,attr"`
@@ -124,6 +131,18 @@ type dwml struct {
 			} `xml:"temperature"`
 		} `xml:"parameters"`
 	} `xml:"data"`
+}
+
+// dwmlSeries is one of an NDFD point's element series: its kind and unit,
+// its time layout, and its values.
+type dwmlSeries struct {
+	Type   string `xml:"type,attr"`
+	Units  string `xml:"units,attr"`
+	Layout string `xml:"time-layout,attr"`
+	Values []struct {
+		Nil  string `xml:"nil,attr"`
+		Text string `xml:",chardata"`
+	} `xml:"value"`
 }
 
 // parseDWML adds an NDFD answer to a series. A day's high is its date's; a
@@ -164,10 +183,29 @@ func parseDWML(body []byte, now time.Time, out *Series) error {
 		}
 		layouts[l.Key] = lay
 	}
+	dayOf := map[time.Time]int{} // each wind hour's local day, for the day's peak
 	for _, p := range doc.Data.Parameters {
 		at, ok := index[p.Location]
 		if !ok {
 			continue
+		}
+		for _, w := range p.Winds {
+			if w.Type != "sustained" {
+				continue
+			}
+			eachValue(w, layouts[w.Layout].starts, func(t time.Time, v float64) {
+				if w.Units == "knots" {
+					v = knotsToKmh(v)
+				}
+				out.WindSpeed[out.hourIndex(t)][at] = v
+				dayOf[t.UTC().Truncate(time.Hour)] = dayOffset(t, now)
+			})
+		}
+		for _, w := range p.Dirs {
+			if w.Type != "wind" {
+				continue
+			}
+			eachValue(w, layouts[w.Layout].starts, func(t time.Time, v float64) { out.WindFrom[out.hourIndex(t)][at] = v })
 		}
 		for _, temp := range p.Temperatures {
 			lay := layouts[temp.Layout]
@@ -199,7 +237,40 @@ func parseDWML(body []byte, now time.Time, out *Series) error {
 			}
 		}
 	}
+	windPeaks(out, dayOf)
 	return nil
+}
+
+// eachValue calls f with each of a series' values that is a number, at its
+// layout's time.
+func eachValue(s dwmlSeries, starts []time.Time, f func(time.Time, float64)) {
+	for i, v := range s.Values {
+		if v.Nil == "true" || i >= len(starts) || starts[i].IsZero() {
+			continue
+		}
+		if x, err := strconv.ParseFloat(strings.TrimSpace(v.Text), 64); err == nil {
+			f(starts[i], x)
+		}
+	}
+}
+
+// windPeaks works out each day's peak sustained wind and the direction it
+// blew from then, from the hours NDFD gave (W11): NDFD has no daily wind.
+func windPeaks(out *Series, dayOf map[time.Time]int) {
+	for i, h := range out.Hours {
+		k, ok := dayOf[h]
+		if !ok || k < 0 || k >= Days {
+			continue
+		}
+		for p, v := range out.WindSpeed[i] {
+			if math.IsNaN(v) || math.IsNaN(out.WindFrom[i][p]) {
+				continue
+			}
+			if cur := out.PeakSpeed[k][p]; math.IsNaN(cur) || v > cur {
+				out.PeakSpeed[k][p], out.PeakFrom[k][p] = v, out.WindFrom[i][p]
+			}
+		}
+	}
 }
 
 // OpenMeteo is Open-Meteo's forecast API: everywhere, over water too, with
@@ -229,8 +300,8 @@ func (s *OpenMeteo) Fetch(ctx context.Context, l Lattice, now time.Time) (Series
 		lats, lons = append(lats, ftoa(p.Lat)), append(lons, ftoa(p.Lon))
 	}
 	q := url.Values{"latitude": {strings.Join(lats, ",")}, "longitude": {strings.Join(lons, ",")},
-		"hourly": {"temperature_2m"}, "past_hours": {"3"}, "forecast_hours": {"2"},
-		"daily": {"temperature_2m_max,temperature_2m_min"}, "forecast_days": {strconv.Itoa(Days)}, "timezone": {"auto"}}
+		"hourly": {"temperature_2m,wind_speed_10m,wind_direction_10m"}, "past_hours": {"3"}, "forecast_hours": {"2"},
+		"daily": {"temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_direction_10m_dominant"}, "forecast_days": {strconv.Itoa(Days)}, "timezone": {"auto"}}
 	body, err := s.get.GetText(ctx, s.base+"/v1/forecast?"+q.Encode(), httpx.TTL(untilNextHour(now)))
 	if err != nil {
 		return Series{}, fmt.Errorf("Open-Meteo: %w", err)
@@ -246,13 +317,17 @@ func (s *OpenMeteo) Fetch(ctx context.Context, l Lattice, now time.Time) (Series
 type openMeteoPoint struct {
 	Offset int `json:"utc_offset_seconds"`
 	Hourly struct {
-		Time []string   `json:"time"`
-		Temp []*float64 `json:"temperature_2m"`
+		Time      []string   `json:"time"`
+		Temp      []*float64 `json:"temperature_2m"`
+		WindSpeed []*float64 `json:"wind_speed_10m"`
+		WindFrom  []*float64 `json:"wind_direction_10m"`
 	} `json:"hourly"`
 	Daily struct {
-		Time []string   `json:"time"`
-		Max  []*float64 `json:"temperature_2m_max"`
-		Min  []*float64 `json:"temperature_2m_min"`
+		Time     []string   `json:"time"`
+		Max      []*float64 `json:"temperature_2m_max"`
+		Min      []*float64 `json:"temperature_2m_min"`
+		WindMax  []*float64 `json:"wind_speed_10m_max"`
+		WindFrom []*float64 `json:"wind_direction_10m_dominant"`
 	} `json:"daily"`
 }
 
@@ -274,21 +349,29 @@ func parseOpenMeteo(body []byte, out *Series) error {
 		zone := time.FixedZone("", p.Offset)
 		for i, ts := range p.Hourly.Time {
 			t, err := time.ParseInLocation("2006-01-02T15:04", ts, zone)
-			if err != nil || i >= len(p.Hourly.Temp) || p.Hourly.Temp[i] == nil {
+			if err != nil {
 				continue
 			}
-			out.Hourly[out.hourIndex(t)][at] = *p.Hourly.Temp[i]
+			h := out.hourIndex(t)
+			set(out.Hourly[h], at, p.Hourly.Temp, i)
+			set(out.WindSpeed[h], at, p.Hourly.WindSpeed, i)
+			set(out.WindFrom[h], at, p.Hourly.WindFrom, i)
 		}
 		for k := range min(len(p.Daily.Time), Days) {
-			if k < len(p.Daily.Max) && p.Daily.Max[k] != nil {
-				out.High[k][at] = *p.Daily.Max[k]
-			}
-			if k < len(p.Daily.Min) && p.Daily.Min[k] != nil {
-				out.Low[k][at] = *p.Daily.Min[k]
-			}
+			set(out.High[k], at, p.Daily.Max, k)
+			set(out.Low[k], at, p.Daily.Min, k)
+			set(out.PeakSpeed[k], at, p.Daily.WindMax, k)
+			set(out.PeakFrom[k], at, p.Daily.WindFrom, k)
 		}
 	}
 	return nil
+}
+
+// set puts one answered value in place; a value not answered stays missing.
+func set(row []float64, at int, vals []*float64, i int) {
+	if i < len(vals) && vals[i] != nil {
+		row[at] = *vals[i]
+	}
 }
 
 func ftoa(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }

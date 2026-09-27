@@ -4,11 +4,15 @@
  "files": [
   "ndfd-days.xml",
   "ndfd-hour.xml",
-  "openmeteo.json"
+  "openmeteo.json",
+  "ndfd-days-wind.xml",
+  "openmeteo-wind.json"
  ],
  "traps": {
   "ndfd-days.xml": "offshore points (121W, 119W) answer nil; after 20:00 local the first maximum is tomorrow's",
   "ndfd-hour.xml": "begin sent with its Z; without it NDFD reads the hour as each point's local time",
+  "ndfd-days-wind.xml": "captured 2026-09-27T17:39Z with wspd and wdir: hourly sustained wind in knots, its first hour the next hour",
+  "openmeteo-wind.json": "captured 2026-09-27T17:39Z with wind: hourly km/h and degrees, each day's peak and dominant direction",
   "openmeteo.json": "every point answered, the sea included; hours in each point's local time with its offset"
  }
 }

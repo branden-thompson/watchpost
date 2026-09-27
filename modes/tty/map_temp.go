@@ -32,6 +32,9 @@ import (
 // it, and its overlays' ids begin with it.
 const TemperatureLayer = "temperature"
 
+// WindLayer is the wind's (W11, D-110).
+const WindLayer = "wind"
+
 // tempSourceNDFD is the file's word for NDFD; anything else is Open-Meteo,
 // the default (D-101).
 const tempSourceNDFD = "ndfd"
@@ -43,8 +46,11 @@ const tempSourceNDFD = "ndfd"
 type MapTemperature struct {
 	Overlays  []tuimaps.Overlay
 	High, Low []tuimaps.Overlay
-	Source    string
-	Notes     []string
+	// Wind and WindDays are the wind's (W11, D-108): Radar mode's every hour,
+	// or Forecast mode's Now; Forecast mode's each day's peak.
+	Wind, WindDays []tuimaps.Overlay
+	Source         string
+	Notes          []string
 	// Filled are the days Open-Meteo filled where the source had nothing
 	// (D-100), as "‹day›/high" or "‹day›/low", the day counted from today.
 	Filled map[string]bool
@@ -189,18 +195,25 @@ func (d Dashboard) applyMapTemp(v mapTempMsg) (tea.Model, tea.Cmd) {
 // tempOverlays are the grids the mode draws: Radar mode's hours; Forecast
 // mode's Now and each day's high, or low (D-97).
 func (d Dashboard) tempOverlays() []tuimaps.Overlay {
-	if !d.layerOn(TemperatureLayer) {
-		return nil // held, not drawn (D-99)
-	}
 	t := d.mapPane.temp
-	out := append([]tuimaps.Overlay(nil), t.Overlays...)
-	if d.radarMode() {
-		return out
+	var out []tuimaps.Overlay
+	if d.layerOn(TemperatureLayer) { // held, not drawn, while off (D-99)
+		out = append(out, t.Overlays...)
+		switch {
+		case d.radarMode():
+		case d.mapPane.fcLow:
+			out = append(out, t.Low...)
+		default:
+			out = append(out, t.High...)
+		}
 	}
-	if d.mapPane.fcLow {
-		return append(out, t.Low...)
+	if d.layerOn(WindLayer) { // the wind's, beside it or alone (D-110)
+		out = append(out, t.Wind...)
+		if !d.radarMode() {
+			out = append(out, t.WindDays...)
+		}
 	}
-	return append(out, t.High...)
+	return out
 }
 
 // setTemp hands in the grids the mode draws and takes off the rest; an
@@ -278,8 +291,8 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 // draw no main overlay (D-103) - a blank map reads as broken - and shows the
 // chip that says so. It is Forecast mode's alone, never saved (D-104).
 func (d Dashboard) ensureMainOverlay() Dashboard {
-	if d.radarMode() || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) {
-		return d
+	if d.radarMode() || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) {
+		return d // a main overlay is on already: temperature or wind (D-110)
 	}
 	d.mapPane.tempAuto, d.mapPane.modeChip = true, true
 	d.mapPane.gen++
@@ -446,6 +459,9 @@ func (d Dashboard) badgeStep() string {
 	if d.mapPane.fcStep == 1 {
 		day = "TODAY"
 	}
+	if !d.layerOn(TemperatureLayer) && d.layerOn(WindLayer) {
+		return day + " PEAK" // the day's peak wind (D-108)
+	}
 	if d.mapPane.fcLow {
 		return day + " LOWS"
 	}
@@ -457,7 +473,10 @@ func (d Dashboard) badgeStep() string {
 func (d Dashboard) stepSource() string {
 	if at := d.mapPane.fcStep; at > 0 && !d.radarMode() {
 		side := "high"
-		if d.mapPane.fcLow {
+		switch {
+		case !d.layerOn(TemperatureLayer) && d.layerOn(WindLayer):
+			side = "wind"
+		case d.mapPane.fcLow:
 			side = "low"
 		}
 		if d.mapPane.temp.Filled[strconv.Itoa(at-1)+"/"+side] {
@@ -538,14 +557,22 @@ func (d Dashboard) forecastTimeline(width int) []string {
 // as the radar's row is (W10.10): a swatch a band, coldest to warmest, each
 // band's lower bound written where colour is off.
 func (d Dashboard) tempLegendRow(width int) string {
+	if !d.layerOn(TemperatureLayer) && d.layerOn(WindLayer) {
+		return d.presetRow("wind", "WIND │ ", "CALMER ", " STRONGER", width) // the wind's colours, where temperature's are not shown (D-109)
+	}
+	return d.presetRow("temperature", "TEMPERATURE │ ", "COLDER ", " WARMER", width)
+}
+
+// presetRow is a preset's colours as a row of swatches, low to high, each
+// class's words on it in black or white, whichever reads (U2-18).
+func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) string {
 	var classes []tuimaps.Class
 	for _, e := range d.mapPane.legend {
-		if e.Preset == "temperature" {
+		if e.Preset == preset {
 			classes = e.Classes
 			break
 		}
 	}
-	head, colder, warmer := "TEMPERATURE │ ", "COLDER ", " WARMER"
 	room := width - render.Width(head+colder+warmer)
 	if len(classes) == 0 || room < len(classes)*2 {
 		return ""

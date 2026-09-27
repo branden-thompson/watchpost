@@ -1199,3 +1199,25 @@ Each window now declares, once, how much of the keyboard it claims (`window_keys
 **Mutation verdicts** (targeted, 7). One survived at first: Setup declared as claiming no keys passed every guard that read the declarations. `TestAFormTakesEveryKey` names the form windows as policy and holds them by behaviour; it catches it.
 
 **The mutant sweep's anchor gate caught a drift.** mW4, "the arrows reach past the card window", was anchored to the hand-written list this batch replaced. It is re-pointed at the card window's declaration, and both FR-5's reachability test and the new guard catch it.
+
+## Batch 31 — W11: wind (2026-09-27)
+
+**D-108 to D-110.** Wind works as temperature does:
+- Radar mode draws each frame's own hour.
+- Forecast mode draws Now's wind and each day's peak with its dominant direction.
+
+Wind is braille arrows with speeds and no fill, drawn over radar and temperature's faint bands alike. It is off by default, loaded with temperature, and counted by D-103 as a main overlay.
+
+**The data rides temperature's requests.** Open-Meteo adds four variables; its free-limit cost is unchanged. NDFD adds wind speed and direction to both requests. Its day answer starts at the next hour, so the current hour's request carries wind too, and a test now watches for it. NDFD has no daily wind, so each day's peak is its strongest hour, with the direction then.
+
+**Direction is interpolated as a vector**, by its east and north parts: as a number, 350 and 10 degrees would meet at 180, the wind turned round.
+
+**go-tuiMaps `v0.2.0-rc.16`** (its D-90, L-16; FR-8, deferred since v0.1.0):
+- `Grid.From` makes a vector grid; `WindGrid` builds one in a call. It is drawn as arrows pointing downwind, length and colour by class, every other labelled.
+- Six wind classes, round in each unit. Six tokens, `wind.1` to `wind.6`, come after every other, so none moves.
+- The ramps were searched for against the library's checker as line work, on both grounds and at both depths.
+- A place's answer gives the speed and the compass word it blows from, for M1's wind scenario.
+
+**Mutation verdicts** (targeted): 10 in watchpost and 9 in the library, all caught. Two survived at first:
+- The wind unit's breaks: the legend test now reads the calmest class's words.
+- NDFD's current-hour wind: the request test now reads the query.

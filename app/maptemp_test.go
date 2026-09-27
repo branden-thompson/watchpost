@@ -50,9 +50,11 @@ func (f *fakeTemp) Fetch(_ context.Context, l temperature.Lattice, _ time.Time) 
 	for h := -3; h <= 1; h++ {
 		s.Hours = append(s.Hours, f.now.Truncate(time.Hour).Add(time.Duration(h)*time.Hour))
 		s.Hourly = append(s.Hourly, fill(10))
+		s.WindSpeed, s.WindFrom = append(s.WindSpeed, fill(16.09344)), append(s.WindFrom, fill(270)) // 10 mph from the west
 	}
 	for k := range temperature.Days {
 		s.High[k], s.Low[k] = fill(20), fill(5)
+		s.PeakSpeed[k], s.PeakFrom[k] = fill(32.18688), fill(225) // 20 mph from the south-west
 	}
 	s.High[0] = fill(math.NaN())
 	return s, nil
@@ -294,5 +296,52 @@ func TestEveryTemperatureGridIsLined(t *testing.T) {
 				t.Errorf("forecast %v: %s is not lined", forecast, o.ID)
 			}
 		}
+	}
+}
+
+// TestWindGridsFollowTheModes is W11.2 (D-108): Radar mode's every hour and
+// Forecast mode's Now and each day's peak, each with its span, in the
+// listener's unit, each a vector grid.
+func TestWindGridsFollowTheModes(t *testing.T) {
+	src := &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}
+	radarMode := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow)
+	if len(radarMode.Wind) != 4 || len(radarMode.WindDays) != 0 {
+		t.Fatalf("Radar mode's wind is %d hours and %d days; want the four hours up to now", len(radarMode.Wind), len(radarMode.WindDays))
+	}
+	for _, o := range radarMode.Wind {
+		if o.Grid.From == nil || o.Grid.Type.Unit != "mph" || math.Abs(o.Grid.Values[0]-10) > 1e-6 || o.Grid.From[0] != 270 {
+			t.Errorf("%s: %v mph from %v (%q); want a vector grid of 10 mph from 270", o.ID, o.Grid.Values[0], o.Grid.From, o.Grid.Type.Unit)
+		}
+		if o.During.Until.Sub(o.During.From) != time.Hour-time.Nanosecond || !strings.HasPrefix(o.ID, tty.WindLayer+"/") {
+			t.Errorf("%s spans %v", o.ID, o.During)
+		}
+	}
+	ask := tempAsk(true)
+	fc := buildTemperature(context.Background(), src, nil, ask, tempNow)
+	steps := tty.ForecastSteps(ask.Anchor)
+	if len(fc.Wind) == 0 || fc.Wind[0].During != steps[0].Span {
+		t.Fatalf("Forecast mode's Now wind is %d grids", len(fc.Wind))
+	}
+	if len(fc.WindDays) != temperature.Days || fc.WindDays[1].During != steps[2].Span || math.Abs(fc.WindDays[1].Grid.Values[0]-20) > 1e-6 {
+		t.Errorf("the days' wind is %d grids; want every day's peak, 20 mph, during its step", len(fc.WindDays))
+	}
+	ask.Fahrenheit = false
+	if kmh := buildTemperature(context.Background(), src, nil, ask, tempNow); kmh.Wind[0].Grid.Type.Unit != "km/h" {
+		t.Errorf("the metric listener's wind is in %q", kmh.Wind[0].Grid.Type.Unit)
+	}
+}
+
+func TestWindIsOffByDefault(t *testing.T) {
+	found := false
+	for _, l := range mapLayers {
+		if l.key == tty.WindLayer {
+			found = true
+			if l.on {
+				t.Error("wind is on by default; D-110 has it off")
+			}
+		}
+	}
+	if !found {
+		t.Error("no wind layer is registered")
 	}
 }
