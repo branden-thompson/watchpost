@@ -35,6 +35,10 @@ const TemperatureLayer = "temperature"
 // WindLayer is the wind's (W11, D-110).
 const WindLayer = "wind"
 
+// RainLayer is Forecast mode's rain and snow (W12.3, D-117): on by default,
+// drawn in Forecast mode alone - Radar mode's rain is the radar.
+const RainLayer = "rain"
+
 // tempSourceNDFD is the file's word for NDFD; anything else is Open-Meteo,
 // the default (D-101).
 const tempSourceNDFD = "ndfd"
@@ -49,8 +53,13 @@ type MapTemperature struct {
 	// Wind and WindDays are the wind's (W11, D-108): Radar mode's every hour,
 	// or Forecast mode's Now; Forecast mode's each day's peak.
 	Wind, WindDays []tuimaps.Overlay
-	Source         string
-	Notes          []string
+	// Rain is Forecast mode's rain and snow (W12.3, D-116): Now's hour and
+	// each day's heaviest in radar's scale, each day's totals marked on it;
+	// RainNotes its credit, or that it did not answer.
+	Rain      []tuimaps.Overlay
+	RainNotes []string
+	Source    string
+	Notes     []string
 	// Filled are the days Open-Meteo filled where the source had nothing
 	// (D-100), as "‹day›/high" or "‹day›/low", the day counted from today.
 	Filled map[string]bool
@@ -213,7 +222,27 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 			out = append(out, t.WindDays...)
 		}
 	}
+	if d.layerOn(RainLayer) && !d.radarMode() { // Forecast mode's rain and snow (D-117)
+		out = append(out, t.Rain...)
+	}
 	return out
+}
+
+// rainRowHead is the colour row's head while Forecast mode draws its rain:
+// it looks like radar, and it is not (D-117).
+const rainRowHead = "MODEL RAIN · NOT RADAR │ "
+
+// rainOn reports whether Forecast mode draws its rain and snow now.
+func (d Dashboard) rainOn() bool {
+	if d.radarMode() || !d.layerOn(RainLayer) {
+		return false
+	}
+	for id := range d.mapPane.tempGiven {
+		if strings.HasPrefix(id, RainLayer+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // setTemp hands in the grids the mode draws and takes off the rest; an
@@ -462,6 +491,9 @@ func (d Dashboard) badgeStep() string {
 	if !d.layerOn(TemperatureLayer) && d.layerOn(WindLayer) {
 		return day + " PEAK" // the day's peak wind (D-108)
 	}
+	if !d.layerOn(TemperatureLayer) && d.rainOn() {
+		return day + " RAIN" // the day's rain and snow alone (D-116)
+	}
 	if d.mapPane.fcLow {
 		return day + " LOWS"
 	}
@@ -590,7 +622,7 @@ func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) str
 // shows, as one word for the window's memo (F-30).
 func (d Dashboard) tempMemoKey() string {
 	p := d.mapPane
-	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), p.tempRefused,
+	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), strings.Join(p.temp.RainNotes, "\n"), strconv.FormatBool(d.rainOn()), p.tempRefused,
 		strconv.Itoa(p.fcStep), strconv.FormatBool(p.fcLow), strconv.FormatBool(p.fcPlaying),
 		strconv.Itoa(len(p.tempGiven)), strings.Join(p.fcTimeline, "\n"), d.stepSource()}, "|")
 }
@@ -598,12 +630,15 @@ func (d Dashboard) tempMemoKey() string {
 // tempNotes are the words temperature says under the map: its notes (the
 // credit), and in Radar mode that each frame draws its own hour.
 func (d Dashboard) tempNotes() []string {
-	if !d.layerOn(TemperatureLayer) {
-		return nil
+	var out []string
+	if d.layerOn(TemperatureLayer) {
+		out = append(out, d.mapPane.temp.Notes...)
+		if d.mapPane.tempRefused != "" {
+			out = append(out, d.mapPane.tempRefused)
+		}
 	}
-	out := append([]string(nil), d.mapPane.temp.Notes...)
-	if d.mapPane.tempRefused != "" {
-		out = append(out, d.mapPane.tempRefused)
+	if !d.radarMode() && d.layerOn(RainLayer) {
+		out = append(out, d.mapPane.temp.RainNotes...) // the credit, or that it did not answer
 	}
 	return out
 }

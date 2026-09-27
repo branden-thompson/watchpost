@@ -1,0 +1,256 @@
+package app
+
+// maprain.go — the map's rain and snow ahead (0.18.0 W12.2, W12.3; D-115 to
+// D-118), all Open-Meteo's: outside the lower 48 the radar loop's hours ahead,
+// its hourly rain painted in radar's scale; and Forecast mode's days, each
+// day's heaviest hour in radar's colours with its totals marked on it.
+
+import (
+	"bytes"
+	"context"
+	"image"
+	"image/color"
+	"image/png"
+	"math"
+	"strconv"
+	"strings"
+	"time"
+
+	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/domains/radar"
+	"github.com/branden-thompson/watchpost/domains/temperature"
+	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/geo"
+)
+
+// Forecast mode's rain and snow, registered: ON BY DEFAULT (D-117), so
+// Forecast mode mirrors Radar mode - the rain in radar's colours, the
+// temperature and the rest the tints under it.
+func init() {
+	registerMapLayer(mapLayer{key: tty.RainLayer, label: "Rain & snow", on: true, cost: rainLayerCost})
+}
+
+// modelRainNote is what the loop says of hours ahead that are Open-Meteo's
+// (D-115).
+const modelRainNote = "The hours ahead are Open-Meteo's model rain, not radar."
+
+// withModelRain adds the loop's hours ahead where HRRR is not (D-115): a
+// forecast loop a field box of Open-Meteo's hourly rain, a frame an hour
+// after the newest observed frame and up to the horizon, painted in radar's
+// scale. Each hour's value is the rain of the hour before it, so a frame on
+// the hour shows the hour it closes.
+func withModelRain(ctx context.Context, out tty.MapRadar, om *temperature.OpenMeteo, region string, view geo.Box, newest, until time.Time) tty.MapRadar {
+	hours := int(math.Ceil(until.Sub(newest).Hours()))
+	var loops []tuimaps.Overlay
+	failed := false
+	for _, b := range fieldBoxes(region, view) {
+		lat := temperature.LatticeFor(b.Name, b.Box)
+		r, err := om.Rain(ctx, lat, newest, hours)
+		if err != nil {
+			failed = true
+			continue
+		}
+		var frames []tuimaps.LoopFrame
+		for i, h := range r.Hours {
+			if !h.After(newest) || h.After(until) {
+				continue
+			}
+			frames = append(frames, tuimaps.LoopFrame{Valid: h, PNG: ratePNG(lat.Interpolate(r.Hourly[i])), Forecast: true})
+		}
+		if len(frames) == 0 {
+			continue
+		}
+		o := tuimaps.RadarImage(tty.RadarLayer+"/fc-"+b.Name, tuimaps.Image{Frames: frames, Table: rateTable, Exact: true,
+			West: b.W, South: b.S, East: b.E, North: b.N, Projection: tuimaps.PlateCarree}, frames[0].Valid)
+		o.Keeps = until.Sub(frames[0].Valid) + time.Hour // current until the horizon has passed
+		o.During = tuimaps.Span{From: frames[0].Valid}
+		loops = append(loops, o)
+	}
+	if failed && len(loops) == 0 {
+		out.Note = strings.TrimPrefix(out.Note+" The radar's hours ahead are unavailable: Open-Meteo did not answer.", " ")
+		return out
+	}
+	if len(loops) == 0 {
+		return out
+	}
+	out = joinAhead(out, loops, newest, "Open-Meteo")
+	out.Note = strings.TrimPrefix(out.Note+" "+modelRainNote, " ")
+	return out
+}
+
+// joinAhead puts forecast loops beside the observed ones (D-113): the
+// observed drawn until their newest frame and the forecast from their first
+// (go-tuiMaps L-15.1), so no moment shows both; the forecast fitting what the
+// observed leave of the image budget, the farthest dropped first.
+func joinAhead(out tty.MapRadar, loops []tuimaps.Overlay, newest time.Time, source string) tty.MapRadar {
+	for i := range out.Overlays {
+		out.Overlays[i].During = tuimaps.Span{Until: newest}
+	}
+	out.Overlays = append(out.Overlays, trimForecast(loops, radarImageBudget-chargeOf(out.Overlays))...)
+	out.Ahead = source
+	return out
+}
+
+// rateTable is the table the model's frames are painted with: a colour an
+// index, each half a dBZ from 0; the library reads the classes from it and
+// draws them in its own radar colours (go-tuiMaps D-45).
+var rateTable = func() []tuimaps.TableEntry {
+	out := make([]tuimaps.TableEntry, 0, 255)
+	for k := 1; k <= 255; k++ {
+		out = append(out, tuimaps.TableEntry{Colour: rateColour(k), Value: float64(k-1) / 2})
+	}
+	return out
+}()
+
+// rateColour is index k's colour: distinct for every k, opaque.
+func rateColour(k int) tuimaps.RGB {
+	return tuimaps.RGB{R: uint8(k), G: uint8(255 - k), B: 128}
+}
+
+// ratePNG paints a field of rain rates, mm an hour, in radar's scale: a dry
+// or unknown cell transparent - no echo, never radar's lightest class.
+func ratePNG(f temperature.Field) []byte {
+	pal := color.Palette{color.RGBA{}}
+	for k := 1; k <= 255; k++ {
+		c := rateColour(k)
+		pal = append(pal, color.RGBA{R: c.R, G: c.G, B: c.B, A: 255})
+	}
+	pic := image.NewPaletted(image.Rect(0, 0, max(f.Cols, 1), max(f.Rows, 1)), pal)
+	for i, v := range f.Values {
+		dbz := radar.DBZOfRate(v)
+		if math.IsNaN(dbz) || dbz < 0 {
+			continue
+		}
+		pic.SetColorIndex(i%f.Cols, i/f.Cols, uint8(min(int(math.Round(dbz*2))+1, 255)))
+	}
+	var buf bytes.Buffer
+	_ = png.Encode(&buf, pic) // a paletted image in memory: it cannot fail
+	return buf.Bytes()
+}
+
+// withRainDays adds Forecast mode's rain and snow (W12.3, D-116 to D-118):
+// for each field box, Now's hour and each day's heaviest in radar's scale,
+// each during its step, each day's total marked on it.
+func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, ask tty.MapAsk, now time.Time) tty.MapTemperature {
+	anchor := ask.Anchor
+	if anchor.IsZero() {
+		anchor = now.Truncate(time.Hour)
+	}
+	steps := tty.ForecastSteps(anchor)
+	failed := false
+	for _, b := range fieldBoxes(ask.Region, ask.View) {
+		lat := temperature.LatticeFor(b.Name, b.Box)
+		r, err := om.Rain(ctx, lat, now, 0)
+		if err != nil {
+			failed = true
+			continue
+		}
+		for i, h := range r.Hours {
+			if h.Equal(anchor) {
+				if o, ok := rainGrid(tty.RainLayer+"/"+b.Name+"/now", lat, r.Hourly[i], nil, nil, ask.Fahrenheit, anchor); ok {
+					o.During = steps[0].Span
+					t.Rain = append(t.Rain, o)
+				}
+			}
+		}
+		for k := range temperature.Days {
+			if k+1 >= len(steps) {
+				break
+			}
+			if o, ok := rainGrid(tty.RainLayer+"/"+b.Name+"/d"+strconv.Itoa(k), lat, r.Peak[k], r.RainSum[k], r.SnowSum[k], ask.Fahrenheit, anchor); ok {
+				o.During = steps[k+1].Span
+				t.Rain = append(t.Rain, o)
+			}
+		}
+	}
+	switch {
+	case len(t.Rain) > 0:
+		t.RainNotes = []string{temperature.OpenMeteoRainCredit + "."}
+	case failed:
+		t.RainNotes = []string{"Rain and snow are unavailable: Open-Meteo did not answer."}
+	}
+	return t
+}
+
+// rainGrid is a lattice's rain rates, mm an hour, as a grid in radar's
+// scale, each day's totals marked on it when given; false when no point has
+// any. Its currency counts from the hour's start (U2-13).
+func rainGrid(id string, l temperature.Lattice, rates, rainMM, snowCM []float64, imperial bool, anchor time.Time) (tuimaps.Overlay, bool) {
+	f := l.Interpolate(rates)
+	if allMissing(f.Values) {
+		return tuimaps.Overlay{}, false
+	}
+	for i, v := range f.Values {
+		f.Values[i] = radar.DBZOfRate(v)
+	}
+	g := tuimaps.Grid{West: f.Box.W, South: f.Box.S, East: f.Box.E, North: f.Box.N, Cols: f.Cols, Rows: f.Rows, Values: f.Values,
+		Type: tuimaps.Type{Preset: "radar", Unit: "dBZ"}} // drawn as rain is (go-tuiMaps L-17.1)
+	if rainMM != nil {
+		rf, sf := l.Interpolate(rainMM), l.Interpolate(snowCM)
+		g.Marks = make([]string, len(f.Values))
+		for i := range g.Marks {
+			g.Marks[i] = totalMark(rf.Values[i], sf.Values[i], imperial)
+		}
+	}
+	return tuimaps.Overlay{ID: id, Valid: anchor, Keeps: 3 * time.Hour, Grid: &g}, true
+}
+
+// The least a total marks (D-116): a hundredth of an inch of rain, or a
+// quarter of a mm; a tenth of an inch of snow, or a quarter of a cm. Less is
+// a trace, and says nothing.
+const (
+	traceRainIn, traceRainMM = 0.01, 0.25
+	traceSnowIn, traceSnowCM = 0.1, 0.25
+)
+
+// totalMark is a day's total as the map marks it (D-116): snow, marked
+// apart with a * before it, where the day has any, else rain; in inches, or
+// mm of rain and cm of snow. At most seven cells.
+func totalMark(rainMM, snowCM float64, imperial bool) string {
+	number := func(v float64, unit string) string {
+		s := strconv.FormatFloat(v, 'f', 1, 64)
+		switch {
+		case v >= 9.95:
+			s = strconv.FormatFloat(v, 'f', 0, 64)
+		case imperial && unit == "in" && v < 0.995:
+			s = strings.TrimPrefix(strconv.FormatFloat(v, 'f', 2, 64), "0")
+		}
+		return s + unit
+	}
+	if imperial {
+		if in := snowCM / 2.54; in >= traceSnowIn {
+			return "*" + number(in, "in")
+		}
+		if in := rainMM / 25.4; in >= traceRainIn {
+			return number(in, "in")
+		}
+		return ""
+	}
+	if snowCM >= traceSnowCM {
+		return "*" + number(snowCM, "cm")
+	}
+	if rainMM >= traceRainMM {
+		return number(rainMM, "mm")
+	}
+	return ""
+}
+
+// rainDaysBytes is a box's week of rain on the wire: 28 KB for 6 points
+// measured, 4.7 KB a point, so about 375 KB for 80 (2026-09-27).
+const rainDaysBytes = 375_000
+
+// rainHoursBytes is a box's hours ahead: 2.4 KB for 6 points measured, so
+// about 32 KB for 80.
+const rainHoursBytes = 32_000
+
+// rainLayerCost is what Forecast mode's rain would fetch in a refresh: a
+// week a field box. In Radar mode the row is not drawn and costs nothing;
+// the hours ahead are the radar's own cost.
+func rainLayerCost(in mapInputs) (int64, int) {
+	if in.region == "" || !in.forecast {
+		return 0, 0
+	}
+	boxes := len(fieldBoxes(in.region, in.view))
+	return int64(boxes) * rainDaysBytes, boxes
+}

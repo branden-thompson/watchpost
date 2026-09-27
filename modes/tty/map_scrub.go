@@ -37,9 +37,12 @@ const scrubBoxRows = 1 + radarRows + 1
 // scrubRows are the rows under the map while the timeline is held (D-103).
 func (d Dashboard) scrubRows(width int) []string {
 	var out []string
-	if d.radarMode() {
+	switch {
+	case d.radarMode():
 		out = append(out, " "+d.radarLegendRow(width))
-	} else {
+	case d.rainOn():
+		out = append(out, " "+d.rainRow(rainRowHead, width)) // D-117: radar's colours, said to be a model's
+	default:
 		out = append(out, " "+d.tempLegendRow(width)) // W10.10: the bands' colours, as radar's are
 	}
 	for _, l := range d.noteLines(width) {
@@ -158,14 +161,14 @@ func (d Dashboard) loopRow(width int) string {
 		return render.PadTo("", from) + render.TruncateCells(d.mapPane.radarLine, max(width-from, 1))
 	}
 	st := m.Loop()
-	age := d.now().Sub(st.Newest)
+	age := d.now().Sub(newestObserved(st))
 	newest := "NEWEST " + strconv.Itoa(int(age.Minutes())) + " MIN AGO"
 	if age > radarStale {
 		newest = render.Tint(newest+", STALE", render.Tok(render.ListPointer)) // FR-5.4: never hidden, marked
 	}
 	lead := item("RADAR " + d.radarChip())
 	if st.Forecast && d.mapPane.radarAhead != "" { // the hours ahead: a model's, said so (D-113)
-		lead = item("FORECAST " + render.TintRaw(" "+d.mapPane.radarAhead+" ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)))
+		lead = item("FORECAST " + render.TintRaw(" "+d.aheadName()+" ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)))
 	}
 	return spread([]placed{lead, item("FRAME " + strconv.Itoa(st.Index+1) + " / " + strconv.Itoa(st.Count)),
 		item(newest), state(st.Playing)}, from, to)

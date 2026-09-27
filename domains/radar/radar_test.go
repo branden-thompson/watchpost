@@ -10,6 +10,7 @@ import (
 	"errors"
 	"image"
 	"image/png"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -285,5 +286,21 @@ func TestAnHRRRFrameIsAskedAtARunMinuteOnly(t *testing.T) {
 	}
 	if !NewHRRR(nil, "").Covers(geo.RegionContiguous) || NewHRRR(nil, "").Covers(geo.RegionHawaii) {
 		t.Error("HRRR covers the lower 48 alone")
+	}
+}
+
+// TestARateIsReadInRadarsScale is D-115's conversion, Marshall-Palmer: Z =
+// 200 R^1.6, in dBZ. A dry hour is no echo; a rate not known stays unknown.
+func TestARateIsReadInRadarsScale(t *testing.T) {
+	for _, c := range []struct{ rate, dbz float64 }{{1, 23.01}, {10, 39.01}, {50, 50.19}} {
+		if got := DBZOfRate(c.rate); math.Abs(got-c.dbz) > 0.01 {
+			t.Errorf("%v mm/h is %.2f dBZ; want %.2f", c.rate, got, c.dbz)
+		}
+	}
+	if DBZOfRate(0) != NoEcho || DBZOfRate(-1) != NoEcho {
+		t.Error("a dry hour is not radar's no echo")
+	}
+	if !math.IsNaN(DBZOfRate(math.NaN())) {
+		t.Error("a rate not known became a number")
 	}
 }

@@ -18,6 +18,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -106,8 +107,14 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 		allEmpty = allEmpty && painted == 0
 	}
 	out.Overlays = trimToBudget(out.Overlays)
-	if ask.RadarAhead > 0 && lp.radar.hrrr != nil && lp.radar.hrrr.Covers(ask.Region) && len(out.Overlays) > 0 {
-		out = withForecast(ctx, out, lp.radar.hrrr, boxes, slots[len(slots)-1].at, time.Now().Add(time.Duration(ask.RadarAhead)*time.Hour))
+	if ask.RadarAhead > 0 && len(out.Overlays) > 0 {
+		newest, until := slots[len(slots)-1].at, time.Now().Add(time.Duration(ask.RadarAhead)*time.Hour)
+		switch {
+		case lp.radar.hrrr != nil && lp.radar.hrrr.Covers(ask.Region):
+			out = withForecast(ctx, out, lp.radar.hrrr, boxes, newest, until)
+		case lp.temp != nil && lp.temp.rain != nil: // where HRRR is not, a model's rain (D-115)
+			out = withModelRain(ctx, out, lp.temp.rain, ask.Region, ask.View, newest, until)
+		}
 	}
 	if allEmpty && len(out.Overlays) > 0 {
 		if other := lp.radar.other(src, ask.Region); other != nil && echoes(ctx, other, ask.Region, boxes) {
@@ -119,10 +126,7 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 
 // withForecast adds the loop's hours ahead (D-113): a forecast loop a box of
 // HRRR's quarter-hours after the newest observed frame and up to the horizon,
-// every frame marked forecast. The observed loops are drawn until their
-// newest frame and the forecast loops from their first (go-tuiMaps L-15.1),
-// so no moment shows both. The forecast frames fit what the observed loops
-// leave of the image budget, the farthest dropped first.
+// every frame marked forecast, joined beside the observed (joinAhead).
 func withForecast(ctx context.Context, out tty.MapRadar, h *radar.HRRR, boxes []radar.Box, newest, until time.Time) tty.MapRadar {
 	run, err := h.Run(ctx)
 	if err != nil {
@@ -165,12 +169,7 @@ func withForecast(ctx context.Context, out tty.MapRadar, h *radar.HRRR, boxes []
 	if len(loops) == 0 {
 		return out
 	}
-	for i := range out.Overlays {
-		out.Overlays[i].During = tuimaps.Span{Until: newest}
-	}
-	out.Overlays = append(out.Overlays, trimForecast(loops, radarImageBudget-chargeOf(out.Overlays))...)
-	out.Ahead = h.Name()
-	return out
+	return joinAhead(out, loops, newest, h.Name())
 }
 
 // chargeOf is what loops cost the image budget as fetched: each frame's PNG
@@ -370,8 +369,17 @@ func radarLayerCost(in mapInputs) (int64, int) {
 		return 0, 0
 	}
 	frames := int(radar.Window / radarStep)
-	ahead := in.ahead * int(time.Hour/radar.HRRRStep) // the hours ahead's frames, a quarter of a radar frame's size (D-114)
-	return int64(boxes*frames)*radarFrameBytes + int64(boxes*ahead)*radarFrameBytes/4, boxes*(frames+ahead) + 1
+	bytes, requests := int64(boxes*frames)*radarFrameBytes, boxes*frames+1
+	switch {
+	case in.ahead == 0:
+	case in.region == geo.RegionContiguous: // HRRR's quarter-hours, a quarter of a radar frame's size (D-114)
+		ahead := in.ahead * int(time.Hour/radar.HRRRStep)
+		bytes, requests = bytes+int64(boxes*ahead)*radarFrameBytes/4, requests+boxes*ahead
+	default: // Open-Meteo's hours, a request a field box (D-115)
+		fields := len(fieldBoxes(in.region, in.view))
+		bytes, requests = bytes+int64(fields)*rainHoursBytes, requests+fields
+	}
+	return bytes, requests
 }
 
 // radarHosts are the radar's entries for the Status window's MAP block.

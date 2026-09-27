@@ -35,6 +35,7 @@ const maxLaneRows
 const maxSeenIDs
 const maxUnattendedInstalls
 const metroCapKm
+const modelRainNote
 const mrmsNote
 const narrateBreaking
 const narrateRead
@@ -53,6 +54,8 @@ const radioDebugEnv
 const radioDebugMax
 const radioDebugNameMax
 const radiusLookupBudget
+const rainDaysBytes
+const rainHoursBytes
 const readingHoldMax
 const readingHoldPerRune
 const recentAlertsEvery
@@ -75,6 +78,10 @@ const tickerSeenWindow
 const titlePartKm
 const titlePlaceKm
 const titleStateKm
+const traceRainIn
+const traceRainMM
+const traceSnowCM
+const traceSnowIn
 const viewSamples
 const zoneShapeBytes
 func (*airOwner).get
@@ -502,10 +509,12 @@ func init
 func init
 func init
 func init
+func init
 func injectedEvents
 func isLookupFailure
 func itemsOf
 func itoaN
+func joinAhead
 func laneForKey
 func laneItems
 func laneRowsPerTab
@@ -579,6 +588,10 @@ func radioDebugLog
 func radioDebugName
 func radioDebugOn
 func radioDebugPath
+func rainGrid
+func rainLayerCost
+func rateColour
+func ratePNG
 func reachMiOf
 func readScript
 func readerFor
@@ -671,6 +684,7 @@ func toneClassOfEvent
 func toneClasses
 func toneFromView
 func toneView
+func totalMark
 func trace
 func trackedKey
 func transmitterOf
@@ -689,7 +703,9 @@ func windGrid
 func windHourGrids
 func windowLayers
 func withForecast
+func withModelRain
 func withPool
+func withRainDays
 func withinBedFence
 func worstOf
 func writeProfile
@@ -760,3 +776,4 @@ var errReadStopped
 var goosSeam
 var mapLayers
 var mapSources
+var rateTable

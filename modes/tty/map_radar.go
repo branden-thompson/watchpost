@@ -162,11 +162,30 @@ func (d Dashboard) radarBadge() []string {
 		return nil
 	}
 	if d.atForecast() { // the loop's hours ahead: a model's frames, said so (D-113)
-		chip := "[" + render.TintRaw("  "+d.mapPane.radarAhead+"  ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)) + "]"
+		chip := "[" + render.TintRaw("  "+d.aheadName()+"  ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)) + "]"
 		return mapBadge(render.Tint("RADAR FCST", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
 	}
 	chip := "[" + render.TintRaw("  "+d.mapPane.radarSource+"  ", d.radarChipTones()) + "]"
 	return mapBadge(render.Tint("RADAR DATA", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
+}
+
+// aheadName is the hours ahead's source as its chip says it: HRRR, or
+// O-METEO where they are Open-Meteo's (D-115), as temperature's chip says it.
+func (d Dashboard) aheadName() string {
+	if d.mapPane.radarAhead == "Open-Meteo" {
+		return "O-METEO"
+	}
+	return d.mapPane.radarAhead
+}
+
+// newestObserved is the loop's newest observed frame, "right now" - never
+// the far end of its hours ahead (W12.1's defect): the newest's age, and
+// STALE, read it (FR-5.4).
+func newestObserved(st tuimaps.LoopState) time.Time {
+	if st.Now.IsZero() {
+		return st.Newest
+	}
+	return st.Now
 }
 
 // atForecast reports whether the loop's moment shown is one of its hours
@@ -271,7 +290,7 @@ func (d Dashboard) radarStatus() string {
 	if st.Count == 0 {
 		return "Radar " + d.radarChip() + " loading…"
 	}
-	age := d.now().Sub(st.Newest)
+	age := d.now().Sub(newestObserved(st))
 	ago := strconv.Itoa(int(age.Minutes())) + " min ago"
 	if age > radarStale {
 		ago += ", stale"
@@ -302,6 +321,11 @@ const radarExtraRows = 6
 // heaviest, from the library's legend: a swatch a class, painted in the
 // class's own colour, or its words where colour is off.
 func (d Dashboard) radarLegendRow(width int) string {
+	return d.rainRow("RADAR LEGEND │ ", width)
+}
+
+// rainRow is radar's colours as a row under a head of its own.
+func (d Dashboard) rainRow(head string, width int) string {
 	var classes []tuimaps.Class
 	for _, e := range d.mapPane.legend {
 		if e.Preset == "radar" {
@@ -309,7 +333,7 @@ func (d Dashboard) radarLegendRow(width int) string {
 			break
 		}
 	}
-	head, lighter, heavier := "RADAR LEGEND │ ", "LIGHTER ", " HEAVIER"
+	lighter, heavier := "LIGHTER ", " HEAVIER"
 	room := width - render.Width(head+lighter+heavier)
 	if len(classes) == 0 || room < len(classes)*3 {
 		return ""
@@ -344,7 +368,7 @@ func (d Dashboard) radarBadgeTimeNow() string {
 		return ""
 	}
 	when := d.clockFmt.Time(st.At.In(d.now().Location()))
-	if d.now().Sub(st.Newest) > radarStale {
+	if d.now().Sub(newestObserved(st)) > radarStale {
 		when = "STALE " + when
 	}
 	return when

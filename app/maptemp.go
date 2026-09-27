@@ -37,11 +37,13 @@ func init() {
 // hardened client.
 type tempSources struct {
 	ndfd, om temperature.Source
+	rain     *temperature.OpenMeteo // the rain and snow, Open-Meteo's always (D-118)
 }
 
 // tempSourcesOver is both sources over one temperature client (overClient).
 func tempSourcesOver(c *httpx.Client) *tempSources {
-	return &tempSources{ndfd: temperature.NewNDFD(c, ""), om: temperature.NewOpenMeteo(c, "")}
+	om := temperature.NewOpenMeteo(c, "")
+	return &tempSources{ndfd: temperature.NewNDFD(c, ""), om: om, rain: om}
 }
 
 // sourceFor is the mode's source: Open-Meteo in Radar mode, the one with the
@@ -69,7 +71,12 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	if src != lp.temp.om {
 		fill = lp.temp.om
 	}
-	return buildTemperature(ctx, src, fill, ask, time.Now())
+	now := time.Now()
+	t := buildTemperature(ctx, src, fill, ask, now)
+	if ask.Forecast && lp.temp.rain != nil { // Forecast mode's rain and snow (W12.3): held, whether or not its row is on (D-99)
+		t = withRainDays(ctx, t, lp.temp.rain, ask, now)
+	}
+	return t
 }
 
 // buildTemperature fetches each box's lattice and makes its grids. EVERY

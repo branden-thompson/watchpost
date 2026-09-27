@@ -29,6 +29,9 @@ type mapInputs struct {
 	region string             // the region the view is bound to, and the view: the radar's estimate reads both (W8.15)
 	view   tty.MapView
 	ahead  int // the radar's hours ahead (D-114), which its estimate counts
+	// forecast is Forecast mode (D-94): its rain and snow cost a request a
+	// box, which Radar mode never makes (D-117).
+	forecast bool
 }
 
 // mapInputs are the inputs for the estimate, on the UI goroutine: the view's
@@ -47,7 +50,7 @@ func (lp *livePipelines) mapInputsFetching(ctx context.Context, ask tty.MapAsk) 
 // fetch is on. THE MAP DRAWS WHAT IS REAL IN VIEW (D-76): there is no scope
 // to choose.
 func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bool) mapInputs {
-	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead}
+	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead, forecast: ask.Forecast}
 	if lp != nil {
 		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
 		if lp.severe != nil {

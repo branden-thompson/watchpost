@@ -1254,3 +1254,41 @@ This batch builds the part that changes the controls, UAT'd first as the HUM LEA
 **A library defect found by the first test, go-tuiMaps L11.16.** "Right now" became the far end of the forecast. Each loop offered its own newest frame, and a loop of forecast frames alone offered a forecast. Right now is now the newest observed frame of every loop, as L-1.10d says.
 
 **Mutation verdicts** (targeted, 9), all caught.
+
+## Batch 34 — rain and snow ahead beyond the lower 48, and Forecast mode's days (W12.2 to W12.4, D-115 to D-118, 2026-09-27)
+
+**D-117 and D-118** were ruled at the start:
+- **D-117:** Forecast mode's rain and snow is an Overlays row, on by default, so Forecast mode mirrors Radar mode. Temperature and the rest are the tints under it, and the map says in words that it is a model's rain, not radar.
+- **D-118:** the rain and snow is Open-Meteo's everywhere and on every day, whatever the temperature's source.
+
+**Beyond the lower 48 (W12.2, D-115).** The loop's hours ahead are Open-Meteo's hourly precipitation, a frame an hour:
+- Each frame follows the newest observed frame, up to the horizon.
+- Marshall and Palmer's relation (Z = 200 R^1.6) converts each rate to radar's scale.
+- Each frame is painted as a PNG with an exact table of the app's own, a colour for each half dBZ. The library reads the classes from it and draws them in its own radar colours (go-tuiMaps D-45).
+- A dry hour is transparent: no echo, never radar's lightest class.
+- The frames join the observed loop as HRRR's do (`joinAhead`, shared).
+- The chip reads O-METEO, and a note says the hours ahead are a model's rain, not radar.
+- The request is a field box's lattice for the hours ahead, about 32 KB. The radar's cost line counts it in place of HRRR's frames.
+
+**Forecast mode's days (W12.3, D-116).** A request a field box, seven days hourly with each day's rain, showers and snowfall, gives:
+- Now's hour and each day's heaviest hour, each on the point's own local date, as grids in radar's scale, drawn as rain (go-tuiMaps L-17).
+- Each day's total marked at the arrows' spacing. A day with snow marks its snow, apart with a `*`; otherwise its rain. Inches, or mm of rain and cm of snow. A trace marks nothing.
+- The Overlays row appears in Forecast mode alone, on by default. D-104's temperature still turns on under it as the tint.
+- The colour row under the map is radar's colours, headed MODEL RAIN · NOT RADAR (D-117's words on the map). The credit is under the map.
+- With temperature off, the badge's step reads e.g. TODAY RAIN.
+
+**The fixtures.** Open-Meteo was recorded over south-east Alaska, a lattice across the border with British Columbia. Its points answer in two zones an hour apart, and the test holds each day's heaviest hour to the point's own date.
+
+**D-118's measure, corrected.** The ruling said about 250 KB a box. Measured with the request as built, it is 4.7 KB a point, about 375 KB for a lattice of 80, and the cost line counts that.
+
+**A library change, go-tuiMaps L-17 (its D-91), rc.18.**
+- **Rain grids:** a grid in radar's scale is drawn as rain: full colour, over the sea, over any field, never lined. A field beside it takes its lines.
+- **Marks:** `Grid.Marks` carries the day's totals, written a cell apart before any value a field writes. Where a total is, it takes the place of a wind speed beside it.
+- **A legend defect found building it (L11.18):** the legend had keyed radar's classes one colour off from the frame, the heaviest in a temperature colour past the ramp's end. That was true of every radar legend, images' too.
+
+**W12.1's defect, found building W12.2 (W12.4).** With the hours ahead in the loop, the newest frame's age read the forecast's far end. The loop row said "NEWEST -55 MIN AGO" and could never say STALE (FR-5.4). The row, the status line and the badge now read the newest observed frame, the library's `LoopState.Now`.
+
+**Mutation verdicts** (targeted, 20 in watchpost and 9 in go-tuiMaps), all caught. Three survived at first, and each was a real gap the tests closed:
+- **Library, rain beside temperature:** a temperature field beside rain kept its full bands, because the whole-frame rain hid them. Rain over the sea alone now shows the land's temperature lined.
+- **A newest frame on the hour:** a forecast frame at that same hour would have shown the moment twice. The test now puts the newest observed frame on the hour.
+- **Back into Radar mode:** Forecast mode's held rain stayed drawn over the radar until the next answer. The test now checks at the switch.

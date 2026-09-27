@@ -583,3 +583,29 @@ func TestTheHoursAheadAreASetting(t *testing.T) {
 		t.Error("the file's number does not open as chosen, or a number not offered is not the default")
 	}
 }
+
+// TestTheNewestIsTheNewestObservedFrame is W12.1's defect, found building
+// W12.2: with the hours ahead in the loop, its newest frame is the
+// forecast's far end, and the loop's row said "NEWEST -55 MIN AGO" - and
+// could never say STALE (FR-5.4). The newest is the newest observed frame,
+// in the row, the status line and the badge.
+func TestTheNewestIsTheNewestObservedFrame(t *testing.T) {
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t),
+		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
+	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	d = shiftKey(settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd), tea.KeyRight)
+	if row := stripANSITest(d.loopRow(d.scrubW())); !strings.Contains(row, "NEWEST 5 MIN AGO") {
+		t.Errorf("ahead of now the loop's row is %q; want the newest observed frame's age, 5 minutes", row)
+	}
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 30, 0, 0, time.UTC) } // the newest observed 35 minutes old; the forecast's end still ahead
+	if row := stripANSITest(d.loopRow(d.scrubW())); !strings.Contains(row, "STALE") {
+		t.Errorf("35 minutes on, the loop's row is %q; want STALE", row)
+	}
+	if line := d.radarStatus(); !strings.Contains(line, "35 min ago, stale") {
+		t.Errorf("35 minutes on, the status line is %q; want stale", line)
+	}
+	if badge := stripANSITest(d.radarBadgeTimeNow()); !strings.Contains(badge, "STALE") {
+		t.Errorf("35 minutes on, the badge is %q; want STALE", badge)
+	}
+}

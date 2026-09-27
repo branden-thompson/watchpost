@@ -382,6 +382,9 @@ func (d Dashboard) overlayRows() []overlayRow {
 		if l.Key == RadarLayer {
 			continue // R switches it: it is the mode, not an overlay (D-94)
 		}
+		if l.Key == RainLayer && d.radarMode() {
+			continue // Forecast mode's alone: Radar mode's rain is the radar (D-117)
+		}
 		out = append(out, overlayRow{key: l.Key, label: l.Label, weather: true})
 		if l.Key == AlertLayer {
 			for _, c := range AlertCategories() { // D-80: [w]'s categories, under the alert areas
