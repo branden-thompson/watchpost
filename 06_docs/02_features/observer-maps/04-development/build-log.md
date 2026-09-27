@@ -1044,3 +1044,24 @@ Caribbean's old box was small. The test now presses in one line and says why.
 **Mutation verdicts** (targeted, 6, and the library's 5 at L11.7 and L11.8), all caught in the end. The
 Caribbean's box pushed north into the lower 48's survived at first: `RegionOf` looks in the lower 48 first,
 so nothing it reports changed. The test now holds what D-91 promises: the two boxes do not overlap.
+
+## Batch 24 — UAT-2's fifth pass: land past the antimeridian; Hawaii's radar reaches its hurricane (2026-09-26)
+
+**U2-11, in go-tuiMaps `v0.2.0-rc.13` (L11.9).** Past 180° the coast drew but the land was painted sea.
+The library's `World` painted ocean either side of the one world, and L11.7 had not moved it. L11.7's own
+test counted line dots, not land. Beyond the world is now only above and below the poles; east and west
+of it is the next copy. The upstream-parity test P-22 was brought to D-86, and it catches the old
+painting.
+
+**U2-12.** The radar's Hawaii box was cut to the old region, 17.5°N to 23°N, so the radar stopped in a
+straight line south of the Big Island, where the hurricane is. Outside the lower 48 each box is now its
+MRMS product's whole extent, from the services' capabilities:
+- Hawaii 164°W to 151°W by 15°N to 26°N;
+- the Caribbean 90°W to 60°W by 10°N to 25°N;
+- Alaska 176°W to 126°W by 50°N to 72°N;
+- Guam 140°E to 150°E by 9°N to 18°N.
+
+Live: the newest Hawaii frame paints 4,141 pixels south of 17.5°N and 1,953 north of it.
+
+**Mutation verdicts:** the library's `World` fix is caught by P-22; the boxes by
+`TestEachBoxIsItsProductsWholeExtent`.

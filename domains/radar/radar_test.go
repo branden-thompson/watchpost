@@ -227,3 +227,23 @@ func TestARefreshFetchesOnlyTheNewFrames(t *testing.T) {
 		t.Errorf("five asks over two frames fetched %d times; want each frame once", hits.Load())
 	}
 }
+
+// TestEachBoxIsItsProductsWholeExtent is UAT-2 U2-12: outside the lower 48 a
+// box is its MRMS product's whole extent, as the services' capabilities give
+// it - the radar reaches the sea south of the Big Island, where the old box
+// stopped at 17.5°N.
+func TestEachBoxIsItsProductsWholeExtent(t *testing.T) {
+	for region, want := range map[string]geo.Box{
+		geo.RegionHawaii: {W: -164, S: 15, E: -151, N: 26}, geo.RegionCaribbean: {W: -90, S: 10, E: -60, N: 25},
+		geo.RegionAlaska: {W: -176, S: 50, E: -126, N: 72}, geo.RegionMarianas: {W: 140, S: 9, E: 150, N: 18},
+	} {
+		b := wholeBoxes[region]
+		if b.W != want.W || b.S != want.S || b.E != want.E || b.N != want.N {
+			t.Errorf("%s's box is %v,%v to %v,%v; MRMS's product is %+v", region, b.W, b.S, b.E, b.N, want)
+		}
+	}
+	hi := wholeBoxes[geo.RegionHawaii]
+	if !(hi.S < 16 && hi.W < -155 && hi.E > -155) {
+		t.Error("the sea south of the Big Island is outside Hawaii's radar")
+	}
+}

@@ -24,10 +24,13 @@ const maxPixels = 250_000
 // Aleutians west of 180° are left out.
 var wholeBoxes = map[string]Box{
 	geo.RegionContiguous: {Name: "us", W: -126, S: 23, E: -65, N: 51, Cols: 600, Rows: 275},
-	geo.RegionAlaska:     {Name: "ak", W: -180, S: 50, E: -129, N: 73, Cols: 600, Rows: 271},
-	geo.RegionHawaii:     {Name: "hi", W: -162.5, S: 17.5, E: -153.5, N: 23, Cols: 500, Rows: 306},
-	geo.RegionCaribbean:  {Name: "pr", W: -68.5, S: 17, E: -64, N: 19, Cols: 600, Rows: 267},
-	geo.RegionMarianas:   {Name: "gu", W: 144, S: 12.5, E: 146.5, N: 21, Cols: 130, Rows: 440},
+	// OUTSIDE THE LOWER 48, EACH BOX IS ITS MRMS PRODUCT'S WHOLE EXTENT, from
+	// the services' capabilities (UAT-2 U2-12): a box cut to the old region
+	// cut the radar off south of the Big Island, where the hurricane was.
+	geo.RegionAlaska:    {Name: "ak", W: -176, S: 50, E: -126, N: 72, Cols: 600, Rows: 264},
+	geo.RegionHawaii:    {Name: "hi", W: -164, S: 15, E: -151, N: 26, Cols: 480, Rows: 406},
+	geo.RegionCaribbean: {Name: "pr", W: -90, S: 10, E: -60, N: 25, Cols: 600, Rows: 300},
+	geo.RegionMarianas:  {Name: "gu", W: 140, S: 9, E: 150, N: 18, Cols: 400, Rows: 360},
 }
 
 // gridCols and gridRows split the lower 48 into its closer boxes.

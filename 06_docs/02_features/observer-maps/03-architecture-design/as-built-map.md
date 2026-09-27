@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–23 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87), batch 21 its second (D-88), batch 22 its third (D-89), batch 23 its fourth (D-90 to D-92); batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.12."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–24 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87), batch 21 its second (D-88), batch 22 its third (D-89), batch 23 its fourth (D-90 to D-92), batch 24 its fifth; batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.13."
 ---
 
 # As built: where the map lives
@@ -32,7 +32,7 @@ flowchart LR
   end
   subgraph domains["domains/"]
     ZS["nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days"]
-    RD["radar · IEM, MRMS (W8.3)\nfixed boxes, never the view (D-47); only advertised times, always sent (D-84)\nits own client: memory only, 1 MiB cap, public addresses, https"]
+    RD["radar · IEM, MRMS (W8.3)\nfixed boxes, never the view (D-47); outside the lower 48 each MRMS product's whole extent; only advertised times, always sent (D-84)\nits own client: memory only, 1 MiB cap, public addresses, https"]
     WS["nws · Provider.ZonesFor\nthe place's own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)"]
   end
   subgraph tty["modes/tty — the Observer"]
