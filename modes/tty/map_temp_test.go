@@ -13,6 +13,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
+
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // tempAnswer is a MapTemperature with one grid a step: Radar mode's hours,
@@ -108,7 +110,7 @@ func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 	if !strings.Contains(status, "R] Radar Off") || !strings.Contains(status, "Forecast · Now") {
 		t.Errorf("Forecast mode's lines are %q", status)
 	}
-	if badge := stripANSITest(strings.Join(d.forecastBadge(), "|")); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "NDFD") || !strings.Contains(badge, "Now") {
+	if badge := stripANSITest(strings.Join(d.forecastBadge(), "|")); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "NDFD") || !strings.Contains(badge, "NOW") {
 		t.Errorf("Forecast mode's badge is %q; want FORECAST, the source and the step", badge)
 	}
 	if last := asks[len(asks)-1]; !last.Forecast {
@@ -358,20 +360,20 @@ func TestARefusedLoopKeepsTheOneDrawn(t *testing.T) {
 func TestTheTemperatureSourceIsASetting(t *testing.T) {
 	d, got := uiDash(t, rowMapTempSource)
 	body, _, _ := d.focusBody(d.opts())
-	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Temperature -") || !strings.Contains(text, "NDFD (NWS)") {
-		t.Fatalf("the Maps tab has no temperature row at NDFD:\n%s", text)
+	if text := stripANSITest(strings.Join(body, "\n")); !strings.Contains(text, "Temperature -") || !strings.Contains(text, "Open-Meteo") {
+		t.Fatalf("the Maps tab has no temperature row at Open-Meteo, the default (D-101):\n%s", text)
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m.(Dashboard)
-	if !d.mapTempOM || d.tempSourceLabel() != "Open-Meteo" || !d.mapAsk().TempOpenMeteo {
-		t.Errorf("→ gave %q; want Open-Meteo, in the ask", d.tempSourceLabel())
+	if !d.mapTempNDFD || d.tempSourceLabel() != "NDFD (NWS)" || !d.mapAsk().TempNDFD {
+		t.Errorf("→ gave %q; want NDFD, in the ask", d.tempSourceLabel())
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	drain(t, m, cmd)
-	if got.MapTempSource != "open-meteo" {
-		t.Errorf("esc wrote %q, want open-meteo", got.MapTempSource)
+	if got.MapTempSource != "ndfd" {
+		t.Errorf("esc wrote %q, want ndfd", got.MapTempSource)
 	}
-	if !mapDash(t, Config{MapTempSource: "open-meteo"}).mapTempOM || mapDash(t, Config{}).mapTempOM {
+	if !mapDash(t, Config{MapTempSource: "ndfd"}).mapTempNDFD || mapDash(t, Config{}).mapTempNDFD || mapDash(t, Config{MapTempSource: "open-meteo"}).mapTempNDFD {
 		t.Error("the file's word does not open the window as chosen")
 	}
 }
@@ -395,5 +397,59 @@ func TestAFilledStepNamesOpenMeteo(t *testing.T) {
 	m, _, _ = m.(Dashboard).handleMapKey(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
 	if d = m.(Dashboard); !strings.Contains(badge(), "NDFD") {
 		t.Errorf("Today's low, NDFD's own, has the badge %q", badge())
+	}
+}
+
+// TestTheForecastBadgeIsTheHUMLEADsLayout is UAT-2 U2-19: three rows flush
+// right - FORECAST; the source's chip, [O-METEO] or [ NDFD ]; the step in
+// capitals, FRI HIGHS.
+func TestTheForecastBadgeIsTheHUMLEADsLayout(t *testing.T) {
+	var asks []MapAsk
+	d := openTempMap(t, false, &asks)
+	rows := func() []string {
+		var out []string
+		for _, r := range d.forecastBadge() {
+			out = append(out, stripANSITest(r))
+		}
+		return out
+	}
+	want := func(w ...string) {
+		t.Helper()
+		got := rows()
+		for i := range w {
+			if i >= len(got) || got[i] != w[i] {
+				t.Errorf("the badge is %q; want %q", got, w)
+				return
+			}
+		}
+	}
+	want("   FORECAST ", "   [ NDFD ] ", "        NOW ")
+	m0, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
+	d = m0.(Dashboard)
+	want("   FORECAST ", "   [ NDFD ] ", "TODAY HIGHS ")
+	for range forecastDays - 1 {
+		m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
+		d = m.(Dashboard)
+	}
+	day := strings.ToUpper(d.forecastSteps()[forecastDays].Span.From.Format("Mon"))
+	want("   FORECAST ", "   [ NDFD ] ", "  "+day+" HIGHS ")
+	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: '>', Text: ">"})
+	d = m.(Dashboard)
+	d.mapPane.temp.Source = "Open-Meteo"
+	want("   FORECAST ", "  [O-METEO] ", "   "+day+" LOWS ")
+}
+
+// TestTheTemperatureKeyReads is UAT-2 U2-18: each band's value is written in
+// black or white, whichever reads on the band.
+func TestTheTemperatureKeyReads(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+	var d Dashboard
+	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "temperature", Classes: []tuimaps.Class{
+		{Label: "59 to 68", Colour: tuimaps.RGB{R: 240, G: 232, B: 144}, Drawn: true},
+		{Label: "under -22", Colour: tuimaps.RGB{R: 34, B: 68}, Drawn: true}}}}
+	row := d.tempLegendRow(80)
+	if !strings.Contains(row, "38;2;0;0;0;48;2;240;232;144") || !strings.Contains(row, "38;2;255;255;255;48;2;34;0;68") {
+		t.Errorf("the key's words are not set to read on each band: %q", row)
 	}
 }

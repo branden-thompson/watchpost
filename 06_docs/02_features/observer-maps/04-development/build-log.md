@@ -1119,3 +1119,21 @@ Now:
 **D-99: temperature is off by default.** While the map is open it is fetched for the mode shown and held, so switching it on in the Overlays menu draws at once. Nothing is fetched with no map open.
 
 **Mutation verdicts** (targeted, 12), all caught. One survived at first: a day Open-Meteo also lacked was still marked filled, so the badge would have named it on an empty step. The test now holds that case.
+
+## Batch 27 — UAT-2's seventh pass: one temperature look; Open-Meteo by default (2026-09-26)
+
+**U2-17 and U2-20 had one cause: NDFD covers the US and its immediate waters, and the map shows more than that.**
+- In the lower 48, a lattice cell with no US point around it stayed empty while its neighbours extrapolated. That left the square patches over Mexico and Canada; it was not the tiles.
+- In Hawaii, NDFD refuses a whole request (HTTP 404) whose points straddle its grid's edge. One point inside plus one outside is refused; a lone outside point is answered, empty.
+
+**D-101:** Forecast mode defaults to Open-Meteo, the same source as Radar mode. NDFD stays a Setting, and is drawn only where a cell's nearest point has a value. A box NDFD refuses is Open-Meteo's, said and credited; when every box is, the chip names it.
+
+**D-102: one look in both modes.** Temperature is labelled isotherms over faint bands. go-tuiMaps `v0.2.0-rc.15` (L11.13, its D-89) lets a grid ask for that look (`Grid.Lines`), and the legend keys it as drawn. The frame and the legend read one faint strength, `colour.FaintField`.
+
+**U2-18:** the key row's words are black or white, whichever reads on the band: `render.SwatchText`, never under 4.5:1.
+
+**U2-19:** the badge is the HUM LEAD's layout. The test caught an 11-character step ("TODAY HIGHS") that overflowed the badge by a cell: `PadTo` of zero width is still one space.
+
+**The library gate's fuzzer found a fourth disagreement with the proven decoder** (L11.14), again not this batch's. A feature carrying both `name_en` and `name:en` kept whichever tag came last. Upstream's order is `name_<lang>` first, and it now is here too. The input is kept in the oracle's corpus.
+
+**Mutation verdicts** (targeted): 10 in watchpost and 3 in the library, all caught. One survived at first, the Today step's words; the badge test now walks Today.

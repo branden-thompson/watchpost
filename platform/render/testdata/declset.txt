@@ -254,6 +254,7 @@ func SpliceCells
 func StatusNaturalWidth
 func StripSGRForTest
 func Swatch
+func SwatchText
 func TableHeaderTone
 func ThemeGeneration
 func ThemeName

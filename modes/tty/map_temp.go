@@ -32,8 +32,9 @@ import (
 // it, and its overlays' ids begin with it.
 const TemperatureLayer = "temperature"
 
-// tempSourceOpenMeteo is the file's word for Open-Meteo; empty is NDFD.
-const tempSourceOpenMeteo = "open-meteo"
+// tempSourceNDFD is the file's word for NDFD; anything else is Open-Meteo,
+// the default (D-101).
+const tempSourceNDFD = "ndfd"
 
 // MapTemperature is the temperature the map draws (W10): Radar mode's every
 // hour, or Forecast mode's Now, each grid with its span; Forecast mode's
@@ -102,17 +103,17 @@ func (d Dashboard) tempAnchor() time.Time {
 // forecastSteps are the steps as the window stands.
 func (d Dashboard) forecastSteps() []ForecastStep { return ForecastSteps(d.tempAnchor()) }
 
-// toggleTempSource switches Forecast mode's temperature between NDFD and
-// Open-Meteo (D-93).
+// toggleTempSource switches Forecast mode's temperature between Open-Meteo
+// and NDFD (D-93, D-101).
 func (d Dashboard) toggleTempSource() Dashboard {
-	d.mapTempOM = !d.mapTempOM
+	d.mapTempNDFD = !d.mapTempNDFD
 	return d.uiTouched() // the next ask is for the source chosen
 }
 
-// tempSourceKey is the file's word: "open-meteo", or empty for NDFD.
-func tempSourceKey(om bool) string {
-	if om {
-		return tempSourceOpenMeteo
+// tempSourceKey is the file's word: "ndfd", or empty for Open-Meteo.
+func tempSourceKey(ndfd bool) string {
+	if ndfd {
+		return tempSourceNDFD
 	}
 	return ""
 }
@@ -120,10 +121,10 @@ func tempSourceKey(om bool) string {
 // tempSourceLabel is the row's words, which say Radar mode's is Open-Meteo
 // whatever is chosen here (D-96).
 func (d Dashboard) tempSourceLabel() string {
-	if d.mapTempOM {
-		return "Open-Meteo"
+	if d.mapTempNDFD {
+		return "NDFD (NWS)"
 	}
-	return "NDFD (NWS)"
+	return "Open-Meteo"
 }
 
 // tempRefresh is how long a temperature answer stands before new data asks
@@ -402,25 +403,41 @@ func (d Dashboard) retime() Dashboard {
 	return d.setFeed(*d.mapPane.feed)
 }
 
-// forecastBadge is Forecast mode's badge in the radar badge's place (D-92):
-// FORECAST; the temperature's source when it is drawn; the step, and high
-// or low.
+// forecastBadge is Forecast mode's badge in the radar badge's place (D-92),
+// the HUM LEAD's layout (UAT-2 U2-19), three rows flush right: FORECAST; the
+// temperature's source as a chip, [O-METEO] or [ NDFD ], when it is drawn;
+// the step in capitals, NOW or FRI HIGHS.
 func (d Dashboard) forecastBadge() []string {
-	pad := func(s string) string { return render.PadTo(s, forecastBadgeW) }
-	chip := pad("")
+	right := func(s string) string {
+		return strings.Repeat(" ", max(forecastBadgeW-render.Width(s)-1, 0)) + s + " "
+	}
+	chip := render.PadTo("", forecastBadgeW)
 	if d.tempOn() {
-		source := d.stepSource()
-		face := strings.ToUpper(source)
-		if source == "Open-Meteo" {
+		face := " " + strings.ToUpper(d.stepSource()) + " "
+		if d.stepSource() == "Open-Meteo" {
 			face = "O-METEO"
 		}
-		chip = pad(render.PadTo(" ", max((forecastBadgeW-len(face)-4)/2, 0)) + "[" + render.TintRaw(" "+face+" ", d.tempChipTones()) + "]")
+		chip = right("[" + render.TintRaw(face, d.tempChipTones()) + "]")
 	}
-	return []string{
-		pad(" " + render.Tint(forecastLabel, render.Tok(render.ModalTitle))),
-		chip,
-		render.PadTo(" ", max(forecastBadgeW-render.Width(d.stepWords())-1, 0)) + d.stepWords() + " ",
+	return []string{right(render.Tint(forecastLabel, render.Tok(render.ModalTitle))), chip, right(d.badgeStep())}
+}
+
+// badgeStep is the step as the badge says it: NOW, or the day and HIGHS or
+// LOWS - TODAY HIGHS, FRI LOWS.
+func (d Dashboard) badgeStep() string {
+	if d.mapPane.fcStep == 0 {
+		return "NOW"
 	}
+	steps := d.forecastSteps()
+	s := steps[min(d.mapPane.fcStep, len(steps)-1)]
+	day := strings.ToUpper(s.Span.From.Format("Mon"))
+	if d.mapPane.fcStep == 1 {
+		day = "TODAY"
+	}
+	if d.mapPane.fcLow {
+		return day + " LOWS"
+	}
+	return day + " HIGHS"
 }
 
 // stepSource is the source of the step shown: Open-Meteo on a day it filled
@@ -542,7 +559,7 @@ func (d Dashboard) tempLegendRow(width int) string {
 	var row strings.Builder
 	for _, c := range classes {
 		label := render.PadTo(render.TruncateCells(c.Label, each-1), each-1)
-		row.WriteString(render.Swatch(label, c.Colour.R, c.Colour.G, c.Colour.B) + " ")
+		row.WriteString(render.SwatchText(label, c.Colour.R, c.Colour.G, c.Colour.B) + " ") // words that read on the band (U2-18)
 	}
 	return head + colder + strings.TrimRight(row.String(), " ") + warmer
 }

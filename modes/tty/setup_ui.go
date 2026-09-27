@@ -136,7 +136,7 @@ func (d Dashboard) uiTouched() Dashboard {
 // uiForSave is what the window writes when it closes.
 func (d Dashboard) uiForSave() UIPrefs {
 	return UIPrefs{Theme: d.themeName(), Units: d.setup.units.Key(), Clock: d.setup.clock.Key(), Maps: mapsKey(d.mapsOff), MapDescription: d.mapDesc.Key(),
-		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempOM), MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
+		MapScale: d.mapScale.Key(), MapNearbyKm: d.mapNearbyKm, MapRadarSource: radarSourceKey(d.mapRadarIEM), MapTempSource: tempSourceKey(d.mapTempNDFD), MapLayers: d.layerChoices(), MapDetail: choicesOf(d.mapDetailChoice), MapDetailLevel: d.mapDetailLevel.String()}
 }
 
 // uiApplyCmd writes the display preferences — and nothing else, for the same

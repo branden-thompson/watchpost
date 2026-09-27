@@ -20,10 +20,11 @@ type Field struct {
 }
 
 // Interpolate is the lattice's values spread over the box: each cell's value
-// bilinear from the four points around its centre. A point with no value is
-// left out and the others weighed up to one, so the land between an inland
-// point and a missing offshore one keeps its temperature; a cell with no
-// point around it at all is missing, never filled from farther away.
+// bilinear from the four points around its centre. A SOURCE IS DRAWN ONLY AS
+// FAR AS ITS OWN POINTS REACH (D-101): a cell whose nearest point has no value
+// is missing - extrapolating from a farther one left square patches past
+// NDFD's grid (UAT-2 U2-17) - and otherwise a point with no value is left out
+// and the others weighed up to one.
 func (l Lattice) Interpolate(values []float64) Field {
 	if l.Cols < 2 || l.Rows < 2 || len(values) != l.Cols*l.Rows {
 		return Field{}
@@ -38,6 +39,11 @@ func (l Lattice) Interpolate(values []float64) Field {
 			x := (float64(c) + 0.5) / Fine
 			c0 := min(int(x), l.Cols-2)
 			fx := x - float64(c0)
+			out.Values[r*cols+c] = math.NaN()
+			nr, nc := r0+int(math.Round(fy)), c0+int(math.Round(fx))
+			if math.IsNaN(values[nr*l.Cols+nc]) {
+				continue // its nearest point has nothing: past the source's reach
+			}
 			sum, weight := 0.0, 0.0
 			for _, k := range [4]struct {
 				dr, dc int
@@ -49,7 +55,6 @@ func (l Lattice) Interpolate(values []float64) Field {
 				}
 				sum, weight = sum+v*k.w, weight+k.w
 			}
-			out.Values[r*cols+c] = math.NaN()
 			if weight > 0 {
 				out.Values[r*cols+c] = sum / weight
 			}

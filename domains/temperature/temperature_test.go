@@ -211,13 +211,24 @@ func TestInterpolationIsExactOnAPlane(t *testing.T) {
 	}
 }
 
+// TestAMissingPointIsLeftOutNotZero is D-101: a source is drawn only as far
+// as its own points reach. A cell whose nearest point has no value is
+// missing - no square extrapolated past NDFD's grid (UAT-2 U2-17) - and a
+// cell whose nearest point has one is weighed from the points that do.
 func TestAMissingPointIsLeftOutNotZero(t *testing.T) {
 	l := Lattice{Box: geo.Box{W: 0, S: 0, E: 1, N: 1}, Cols: 2, Rows: 2}
 	nan := math.NaN()
-	f := l.Interpolate([]float64{10, nan, 10, 10})
-	for i, v := range f.Values {
-		if !near(v, 10) {
-			t.Fatalf("cell %d is %v; the three points left all say 10", i, v)
+	f := l.Interpolate([]float64{10, nan, 10, 10}) // the north-east point missing
+	for r := range f.Rows {
+		for c := range f.Cols {
+			v := f.Values[r*f.Cols+c]
+			nearNE := r < f.Rows/2 && c >= f.Cols/2
+			switch {
+			case nearNE && !math.IsNaN(v):
+				t.Fatalf("cell %d,%d, nearest the missing point, is %v; want missing", r, c, v)
+			case !nearNE && !near(v, 10):
+				t.Fatalf("cell %d,%d is %v; the three points left all say 10", r, c, v)
+			}
 		}
 	}
 	f = l.Interpolate([]float64{nan, nan, nan, nan})

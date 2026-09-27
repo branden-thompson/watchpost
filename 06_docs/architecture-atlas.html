@@ -845,12 +845,12 @@ code{font-family:var(--mono);font-size:.92em}
     MS[&#34;maps.go · mapSourceList (D-75)\neach host the map contacts, and what it is sent&#34;]
     MQ[&#34;mapquakes.go · the earthquakes (D-80)\nthe ticker&#39;s USGS significant quakes in view\ncircles sized by magnitude; fetches nothing&#34;]
     MR[&#34;mapradar.go · the radar (W8)\nMRMS by default, IEM for the lower 48 if chosen (D-83); none in American Samoa\n24 five-minute slots over two hours, a missing one a stated gap\nnewest first; an all-empty loop checked against the other source (D-84)\ntrimmed of its oldest frames to fit the 24 MiB image budget (D-88)&#34;]
-    MT[&#34;maptemp.go · the temperature (W10)\nRadar mode: Open-Meteo, every hour up to now, each grid during its hour (D-96)\nForecast mode: NDFD by default, Open-Meteo if chosen (D-93)\nNow and each day&#39;s high and low, each during its step (D-94, D-97)\na lattice a radar box, interpolated; a day the source lacks filled from Open-Meteo (D-100), else said\noff by default, fetched and held while the map is open (D-99)\nan answer the same all hour: nothing handed in again (U2-13)&#34;]
+    MT[&#34;maptemp.go · the temperature (W10)\nRadar mode: Open-Meteo, every hour up to now, each grid during its hour (D-96)\nForecast mode: Open-Meteo by default, NDFD if chosen (D-101); a box NDFD refuses is Open-Meteo&#39;s\none look in both modes: labelled isotherms over faint bands (D-102, Grid.Lines)\nNow and each day&#39;s high and low, each during its step (D-94, D-97)\na lattice a radar box, interpolated; a day the source lacks filled from Open-Meteo (D-100), else said\noff by default, fetched and held while the map is open (D-99)\nan answer the same all hour: nothing handed in again (U2-13)&#34;]
   end
   subgraph domains[&#34;domains/&#34;]
     ZS[&#34;nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days&#34;]
     RD[&#34;radar · IEM, MRMS (W8.3)\nfixed boxes, never the view (D-47); outside the lower 48 each MRMS product&#39;s whole extent; only advertised times, always sent (D-84)\nits own client: memory only, 1 MiB cap, public addresses, https&#34;]
-    TD[&#34;temperature · NDFD, Open-Meteo (W10.2)\na lattice of at most 80 points a box, never the view (D-47)\nNDFD: the hour sent with its zone; offshore missing, never zero\nits own client: memory only, 2 MiB cap, public addresses, https&#34;]
+    TD[&#34;temperature · NDFD, Open-Meteo (W10.2)\na lattice of at most 80 points a box, never the view (D-47)\nNDFD: the hour sent with its zone; offshore missing, never zero\na cell drawn only where its nearest point has a value (D-101)\nits own client: memory only, 2 MiB cap, public addresses, https&#34;]
     WS[&#34;nws · Provider.ZonesFor\nthe place&#39;s own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)&#34;]
   end
   subgraph tty[&#34;modes/tty — the Observer&#34;]

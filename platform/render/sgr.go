@@ -158,6 +158,18 @@ func Swatch(text string, r, g, b uint8) string {
 	return sgrRaw(text, "48;2;"+strconv.Itoa(int(r))+";"+strconv.Itoa(int(g))+";"+strconv.Itoa(int(b)))
 }
 
+// SwatchText is Swatch with words that read on it: black or white, whichever
+// stands out more on the colour - never under 4.5:1 (UAT-2 U2-18: the
+// temperature key's pale middle bands under white words).
+func SwatchText(text string, r, g, b uint8) string {
+	bg := luminance(int(r), int(g), int(b))
+	fg := "38;2;255;255;255"
+	if contrastRatio(luminance(0, 0, 0), bg) > contrastRatio(luminance(255, 255, 255), bg) {
+		fg = "38;2;0;0;0"
+	}
+	return sgrRaw(text, fg+";48;2;"+strconv.Itoa(int(r))+";"+strconv.Itoa(int(g))+";"+strconv.Itoa(int(b)))
+}
+
 // Tint wraps text in a fg code (bare 256 or basic SGR; "1;"-prefixed for
 // bold) through the go-studs gate - plain text when color is off.
 func Tint(text, code string) string {

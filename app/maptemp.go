@@ -45,7 +45,7 @@ func tempSourcesOver(c *httpx.Client) *tempSources {
 // past hours (D-96); in Forecast mode the listener's choice where it covers,
 // Open-Meteo otherwise.
 func (ts *tempSources) sourceFor(ask tty.MapAsk) temperature.Source {
-	if ask.Forecast && !ask.TempOpenMeteo && ts.ndfd.Covers(ask.Region) {
+	if ask.Forecast && ask.TempNDFD && ts.ndfd.Covers(ask.Region) {
 		return ts.ndfd
 	}
 	return ts.om
@@ -90,9 +90,19 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 	}
 	missing := map[string]bool{}
 	credit := src.Name() == "Open-Meteo"
+	fellBack := 0
 	for _, b := range boxes {
 		lat := temperature.LatticeFor(b.Name, geo.Box{W: b.W, S: b.S, E: b.E, N: b.N})
 		s, err := src.Fetch(ctx, lat, now)
+		if err != nil && fill != nil {
+			// A BOX THE SOURCE REFUSES IS OPEN-METEO'S (D-101): NDFD refuses
+			// Hawaii's whole lattice, which straddles its grid's edge.
+			if s, err = fill.Fetch(ctx, lat, now); err == nil {
+				fellBack++
+				credit = true
+				missing[src.Name()+" did not answer for part of the map; Open-Meteo is drawn there."] = true
+			}
+		}
 		if err != nil {
 			missing["Temperature is unavailable: "+src.Name()+" did not answer."] = true
 			continue
@@ -105,6 +115,9 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 			credit = true
 		}
 		forecastGrids(&out, s, b.Name, anchor, unit, missing)
+	}
+	if fellBack == len(boxes) {
+		out.Source = fill.Name() // every box is Open-Meteo's: the chip names it
 	}
 	if credit {
 		out.Notes = append(out.Notes, temperature.OpenMeteoCredit+".")
@@ -230,7 +243,7 @@ func tempGrid(id string, l temperature.Lattice, values []float64, unit tuimaps.U
 		}
 	}
 	o := tuimaps.TemperatureGrid(id, tuimaps.Grid{West: f.Box.W, South: f.Box.S, East: f.Box.E, North: f.Box.N,
-		Cols: f.Cols, Rows: f.Rows, Values: f.Values}, unit, valid)
+		Cols: f.Cols, Rows: f.Rows, Values: f.Values, Lines: true}, unit, valid) // one look in both modes (D-102, go-tuiMaps L-15.4)
 	o.Keeps = anchor.Sub(valid) + 3*time.Hour // current past the next refresh: an hour past is that hour's, not stale
 	return o, true
 }

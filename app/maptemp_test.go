@@ -134,16 +134,16 @@ func TestTheModeChoosesTheSource(t *testing.T) {
 	if got := ts.sourceFor(ask).Name(); got != "Open-Meteo" {
 		t.Errorf("Radar mode asks %s; want Open-Meteo, the one with past hours (D-96)", got)
 	}
-	ask.Forecast, ask.TempOpenMeteo = true, false
+	ask.Forecast, ask.TempNDFD = true, false
 	ts.ndfd = temperature.NewNDFD(nil, "")
-	if got := ts.sourceFor(ask).Name(); got != "NDFD" {
-		t.Errorf("Forecast mode asks %s; want NDFD by default (D-93)", got)
-	}
-	ask.TempOpenMeteo = true
 	if got := ts.sourceFor(ask).Name(); got != "Open-Meteo" {
-		t.Errorf("Forecast mode with Open-Meteo chosen asks %s", got)
+		t.Errorf("Forecast mode asks %s; want Open-Meteo by default (D-101)", got)
 	}
-	ask.TempOpenMeteo, ask.Region = false, geo.RegionSamoa
+	ask.TempNDFD = true
+	if got := ts.sourceFor(ask).Name(); got != "NDFD" {
+		t.Errorf("Forecast mode with NDFD chosen asks %s", got)
+	}
+	ask.Region = geo.RegionSamoa
 	if got := ts.sourceFor(ask).Name(); got != "Open-Meteo" {
 		t.Errorf("NDFD has no American Samoa, and %s was asked", got)
 	}
@@ -264,6 +264,35 @@ func TestTemperatureIsOffByDefault(t *testing.T) {
 	for _, l := range mapLayers {
 		if l.key == tty.TemperatureLayer && l.on {
 			t.Error("temperature is on by default; D-99 has it off, loaded in the background")
+		}
+	}
+}
+
+// TestABoxNDFDRefusesFallsBackToOpenMeteo is D-101 (UAT-2 U2-17): NDFD
+// refuses Hawaii's whole lattice, which straddles its grid's edge. That box
+// is Open-Meteo's, said and credited; every box so, the chip names it.
+func TestABoxNDFDRefusesFallsBackToOpenMeteo(t *testing.T) {
+	ask := tempAsk(true)
+	ask.Region, ask.View = geo.RegionHawaii, geo.Box{W: -160, S: 19, E: -155, N: 22}
+	got := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", failed: true}, &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, ask, tempNow)
+	if len(got.High) == 0 || got.Source != "Open-Meteo" {
+		t.Fatalf("%d highs from %q; want Hawaii from Open-Meteo, named", len(got.High), got.Source)
+	}
+	notes := strings.Join(got.Notes, " ")
+	if !strings.Contains(notes, "NDFD did not answer") || !strings.Contains(notes, "Open-Meteo") || !strings.Contains(notes, "CC BY 4.0") {
+		t.Errorf("the fallback was not said and credited: %q", notes)
+	}
+}
+
+// TestEveryTemperatureGridIsLined is D-102: one look in both modes -
+// labelled isotherms over faint bands - asked of the library on every grid.
+func TestEveryTemperatureGridIsLined(t *testing.T) {
+	for _, forecast := range []bool{false, true} {
+		got := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, tempAsk(forecast), tempNow)
+		for _, o := range append(append(got.Overlays, got.High...), got.Low...) {
+			if !o.Grid.Lines {
+				t.Errorf("forecast %v: %s is not lined", forecast, o.ID)
+			}
 		}
 	}
 }

@@ -273,8 +273,8 @@ type Config struct {
 	// the default, when empty. Outside the lower 48 MRMS is the only source.
 	MapRadarSource string `toml:"map_radar_source,omitempty"`
 	// MapTemperatureSource is Forecast mode's temperature (0.18.0 D-93):
-	// "open-meteo", or the NWS's NDFD, the default, when empty. Radar mode's
-	// is always Open-Meteo, the one source with past hours (D-96).
+	// "ndfd", or Open-Meteo, the default, otherwise (D-101). Radar mode's is
+	// always Open-Meteo, the one source with past hours (D-96).
 	MapTemperatureSource string          `toml:"map_temperature_source,omitempty"`
 	MapLayers            map[string]bool `toml:"map_layers,omitempty"` // layer key -> on
 	// MapAlertScope is RETIRED (0.18.0 D-76): the map draws every alert in
