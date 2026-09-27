@@ -44,6 +44,9 @@ type MapTemperature struct {
 	High, Low []tuimaps.Overlay
 	Source    string
 	Notes     []string
+	// Filled are the days Open-Meteo filled where the source had nothing
+	// (D-100), as "‹day›/high" or "‹day›/low", the day counted from today.
+	Filled map[string]bool
 }
 
 // mapTempMsg is a temperature answer, to the ask it was made in.
@@ -128,8 +131,8 @@ func (d Dashboard) tempSourceLabel() string {
 const tempRefresh = 20 * time.Minute
 
 // askTemp asks the app for the temperature, off the UI goroutine, one
-// request at a time as the radar is (D-85). Off, an empty answer takes the
-// grids away and the app is not asked.
+// request at a time as the radar is (D-85). ASKED EVEN WITH THE LAYER OFF
+// while the map is open (D-99): held, so switching it on draws at once.
 func (d Dashboard) askTemp() (Dashboard, tea.Cmd) {
 	temp := d.cfg.MapTemperature
 	if temp == nil || d.mapPane.m == nil || d.modal != modalMap {
@@ -141,9 +144,6 @@ func (d Dashboard) askTemp() (Dashboard, tea.Cmd) {
 	}
 	anchor := d.tempAnchor()
 	d.mapPane.tempBusy, d.mapPane.tempAt = true, d.now()
-	if !d.layerOn(TemperatureLayer) {
-		return d, func() tea.Msg { return mapTempMsg{anchor: anchor} }
-	}
 	ask, workers := d.mapAsk(), d.mapPane.workers
 	return d, func() tea.Msg {
 		ctx, done, ok := workers.begin()
@@ -170,10 +170,7 @@ func (d Dashboard) applyMapTemp(v mapTempMsg) (tea.Model, tea.Cmd) {
 	if d.mapPane.m == nil || d.modal != modalMap {
 		return d, nil
 	}
-	if !d.layerOn(TemperatureLayer) {
-		v.temp = MapTemperature{}
-	}
-	d.mapPane.temp, d.mapPane.tempAnchor = v.temp, v.anchor
+	d.mapPane.temp, d.mapPane.tempAnchor = v.temp, v.anchor // held whether or not it is drawn (D-99)
 	d, set := d.setTemp()
 	if !set || d.mapPane.m.Pending() == 0 {
 		d = d.renderMap() // else the work's answer draws it, whole (D-85)
@@ -191,6 +188,9 @@ func (d Dashboard) applyMapTemp(v mapTempMsg) (tea.Model, tea.Cmd) {
 // tempOverlays are the grids the mode draws: Radar mode's hours; Forecast
 // mode's Now and each day's high, or low (D-97).
 func (d Dashboard) tempOverlays() []tuimaps.Overlay {
+	if !d.layerOn(TemperatureLayer) {
+		return nil // held, not drawn (D-99)
+	}
 	t := d.mapPane.temp
 	out := append([]tuimaps.Overlay(nil), t.Overlays...)
 	if d.radarMode() {
@@ -216,6 +216,9 @@ func (d Dashboard) setTemp() (Dashboard, bool) {
 		d.mapPane.call("Set", func() { _, err = m.Set(o) })
 		if err != nil {
 			d.mapPane.tempRefused = "Temperature could not be drawn: " + err.Error() // said, never swallowed (U2-5)
+			if prev, ok := d.mapPane.tempGiven[o.ID]; ok {
+				given[o.ID] = prev // the grid drawn stays (U2-14)
+			}
 			continue
 		}
 		given[o.ID], set = o, true
@@ -406,7 +409,7 @@ func (d Dashboard) forecastBadge() []string {
 	pad := func(s string) string { return render.PadTo(s, forecastBadgeW) }
 	chip := pad("")
 	if d.tempOn() {
-		source := d.mapPane.temp.Source
+		source := d.stepSource()
 		face := strings.ToUpper(source)
 		if source == "Open-Meteo" {
 			face = "O-METEO"
@@ -420,11 +423,26 @@ func (d Dashboard) forecastBadge() []string {
 	}
 }
 
+// stepSource is the source of the step shown: Open-Meteo on a day it filled
+// (D-100), else the source asked.
+func (d Dashboard) stepSource() string {
+	if at := d.mapPane.fcStep; at > 0 && !d.radarMode() {
+		side := "high"
+		if d.mapPane.fcLow {
+			side = "low"
+		}
+		if d.mapPane.temp.Filled[strconv.Itoa(at-1)+"/"+side] {
+			return "Open-Meteo"
+		}
+	}
+	return d.mapPane.temp.Source
+}
+
 // tempChipTones are the temperature source's chip colours: NDFD the NWS's
 // green, Open-Meteo orange - the radar chip's two grounds.
 func (d Dashboard) tempChipTones() string {
 	ground := render.MapRadarMRMSBG
-	if d.mapPane.temp.Source == "Open-Meteo" {
+	if d.stepSource() == "Open-Meteo" {
 		ground = render.MapRadarIEMBG
 	}
 	return render.Tok(ground) + ";" + render.Tok(render.MapRadarChipFG)
@@ -535,7 +553,7 @@ func (d Dashboard) tempMemoKey() string {
 	p := d.mapPane
 	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), p.tempRefused,
 		strconv.Itoa(p.fcStep), strconv.FormatBool(p.fcLow), strconv.FormatBool(p.fcPlaying),
-		strconv.Itoa(len(p.tempGiven)), strings.Join(p.fcTimeline, "\n")}, "|")
+		strconv.Itoa(len(p.tempGiven)), strings.Join(p.fcTimeline, "\n"), d.stepSource()}, "|")
 }
 
 // tempNotes are the words temperature says under the map: its notes (the

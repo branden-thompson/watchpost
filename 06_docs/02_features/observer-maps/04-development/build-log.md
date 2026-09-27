@@ -1102,3 +1102,20 @@ Every hour's and every day's grid is therefore handed in at once, and a step or 
 - the frame reuse after a span change (a day's field swapped for another);
 - `Changed` on `ShowMoment`;
 - the contours, whose number the loop's stamp had supplied.
+
+## Batch 26 — UAT-2's sixth pass: temperature's first (2026-09-26)
+
+**U2-13, U2-14: every arrow in the Overlays menu asked the radar and the temperature again.**
+- The temperature's grids stated their currency from the clock, so no two answers compared equal. Every press handed every grid in again, and each blanked until Work prepared it: U1-28's blink.
+- A re-sent radar loop that the library refused took the loop already drawn off the map with it. Only a burst of presses could make that happen.
+
+Now:
+- An arrow moves the cursor and makes no library call. Only a switch touches the map, and the menu no longer asks the radar at all (R owns it, D-94).
+- An answer within one hour is the same answer: currency counts from the hour's start.
+- A refused refresh keeps the loop or grid drawn, and says so.
+
+**U2-15, D-100: Today was blank because NDFD has nothing for today after its daytime** (live: none of 72 points at 20:06 PDT). Open-Meteo is asked only when a day is empty, and fills it. The badge's chip names Open-Meteo on that step and its credit is said. A day neither source has is still said.
+
+**D-99: temperature is off by default.** While the map is open it is fetched for the mode shown and held, so switching it on in the Overlays menu draws at once. Nothing is fetched with no map open.
+
+**Mutation verdicts** (targeted, 12), all caught. One survived at first: a day Open-Meteo also lacked was still marked filled, so the badge would have named it on an empty step. The test now holds that case.

@@ -104,12 +104,18 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		d.mapPane.call("Set", func() { _, err = m.Set(o) })
 		if err != nil {
 			refused = err // SAID, never swallowed: a refused loop read as "loading" for ever (UAT-2 U2-5)
+			if prev, ok := d.mapPane.radarGiven[o.ID]; ok {
+				given[o.ID] = prev // THE LOOP DRAWN STAYS (U2-14): a refused refresh took it off the map
+			}
 			continue
 		}
 		given[o.ID], set = o, true
 	}
-	if refused != nil && len(given) == 0 {
+	switch {
+	case refused != nil && len(given) == 0:
 		v.radar.Source, v.radar.Note = "", "Radar could not be drawn: "+refused.Error()
+	case refused != nil:
+		v.radar.Note = "Radar could not be updated, so the loop shown is the last one drawn: " + refused.Error()
 	}
 	removed := false
 	for id := range d.mapPane.radarGiven {

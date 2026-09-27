@@ -425,6 +425,7 @@ func alertOverlay
 func alertTimes
 func alertTonePCM
 func allFabricated
+func allMissing
 func allScenarioKeys
 func applySetup
 func applyThemes
@@ -477,6 +478,7 @@ func envWatchlistDwell
 func eventNarration
 func eventScript
 func everyTick
+func fillDays
 func fireProviders
 func fireReportOf
 func fireRules

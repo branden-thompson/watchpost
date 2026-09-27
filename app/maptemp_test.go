@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -66,7 +67,7 @@ func tempAsk(forecast bool) tty.MapAsk {
 
 func TestRadarModeDrawsEachHourDuringItself(t *testing.T) {
 	src := &fakeTemp{name: "Open-Meteo", now: tempNow}
-	got := buildTemperature(context.Background(), src, tempAsk(false), tempNow)
+	got := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow)
 	if len(got.High) != 0 || len(got.Low) != 0 {
 		t.Error("Radar mode was given days")
 	}
@@ -98,7 +99,7 @@ func TestRadarModeDrawsEachHourDuringItself(t *testing.T) {
 func TestForecastModeDrawsEachDayDuringItsStep(t *testing.T) {
 	src := &fakeTemp{name: "NDFD", now: tempNow}
 	ask := tempAsk(true)
-	got := buildTemperature(context.Background(), src, ask, tempNow)
+	got := buildTemperature(context.Background(), src, nil, ask, tempNow)
 	steps := tty.ForecastSteps(ask.Anchor)
 	nows := 0
 	for _, o := range got.Overlays {
@@ -150,7 +151,7 @@ func TestTheModeChoosesTheSource(t *testing.T) {
 
 func TestATemperatureThatDidNotAnswerIsSaid(t *testing.T) {
 	src := &fakeTemp{name: "NDFD", now: tempNow, failed: true}
-	got := buildTemperature(context.Background(), src, tempAsk(true), tempNow)
+	got := buildTemperature(context.Background(), src, nil, tempAsk(true), tempNow)
 	if len(got.Overlays)+len(got.High)+len(got.Low) != 0 || !strings.Contains(strings.Join(got.Notes, " "), "NDFD did not answer") {
 		t.Errorf("a failed source gave %d grids and the notes %v", len(got.Overlays)+len(got.High), got.Notes)
 	}
@@ -159,7 +160,7 @@ func TestATemperatureThatDidNotAnswerIsSaid(t *testing.T) {
 func TestTemperatureIsAskedForTheRadarsBoxesNeverTheView(t *testing.T) {
 	src := &fakeTemp{name: "Open-Meteo", now: tempNow}
 	ask := tempAsk(false)
-	got := buildTemperature(context.Background(), src, ask, tempNow)
+	got := buildTemperature(context.Background(), src, nil, ask, tempNow)
 	for _, o := range got.Overlays {
 		g := o.Grid
 		if g.West == ask.View.W || g.East == ask.View.E {
@@ -200,5 +201,69 @@ func TestAnAlertIsTimedByItsHazardNotItsProduct(t *testing.T) {
 	a.Onset = nil
 	if got := alertTimes(a); !got.From.Equal(a.Sent) {
 		t.Errorf("with no effective time: from %v; want when it was sent", got.From)
+	}
+}
+
+// TestAnAnswerRepeatsWithinTheHour is UAT-2 U2-13: two answers inside one
+// hour are the same overlays, so the window hands nothing in again - an
+// overlay's currency worked out from the clock made every answer new, and
+// every grid blinked.
+func TestAnAnswerRepeatsWithinTheHour(t *testing.T) {
+	for _, forecast := range []bool{false, true} {
+		src := &fakeTemp{name: "Open-Meteo", now: tempNow}
+		a := buildTemperature(context.Background(), src, nil, tempAsk(forecast), tempNow)
+		b := buildTemperature(context.Background(), src, nil, tempAsk(forecast), tempNow.Add(20*time.Minute))
+		if !reflect.DeepEqual(a, b) {
+			t.Errorf("forecast %v: two answers twenty minutes apart differ", forecast)
+		}
+	}
+}
+
+// TestADayTheSourceLacksIsFilledFromOpenMeteo is D-100: NDFD has no high for
+// today after its daytime; Open-Meteo's fills it, said so and credited.
+func TestADayTheSourceLacksIsFilledFromOpenMeteo(t *testing.T) {
+	ndfd, om := &fakeTemp{name: "NDFD", now: tempNow}, &fakeTemp{name: "Open-Meteo", now: tempNow}
+	ask := tempAsk(true)
+	got := buildTemperature(context.Background(), ndfd, &noGap{om}, ask, tempNow)
+	if len(got.High) != temperature.Days {
+		t.Fatalf("%d highs; want every day's, today's from Open-Meteo", len(got.High))
+	}
+	if !got.Filled["0/high"] || got.Filled["1/high"] || got.Filled["0/low"] {
+		t.Errorf("filled %v; want today's high alone", got.Filled)
+	}
+	notes := strings.Join(got.Notes, " ")
+	if !strings.Contains(notes, "CC BY 4.0") || strings.Contains(notes, "No high for Today") {
+		t.Errorf("the notes are %q; want Open-Meteo's credit and no gap said", notes)
+	}
+	if om.asked == 0 {
+		t.Error("Open-Meteo was never asked")
+	}
+	// Neither has it: nothing is marked filled, and the gap is said.
+	both := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", now: tempNow}, &fakeTemp{name: "Open-Meteo", now: tempNow}, ask, tempNow)
+	if both.Filled["0/high"] || !strings.Contains(strings.Join(both.Notes, " "), "No high for Today") {
+		t.Errorf("with neither source holding today's high: filled %v, notes %v", both.Filled, both.Notes)
+	}
+	full := &fakeTemp{name: "NDFD", now: tempNow}
+	om2 := &fakeTemp{name: "Open-Meteo", now: tempNow}
+	_ = buildTemperature(context.Background(), &noGap{full}, om2, ask, tempNow)
+	if om2.asked != 0 {
+		t.Error("Open-Meteo was asked although the chosen source had every day")
+	}
+}
+
+// noGap is a source with every day's values.
+type noGap struct{ *fakeTemp }
+
+func (n *noGap) Fetch(ctx context.Context, l temperature.Lattice, now time.Time) (temperature.Series, error) {
+	s, err := n.fakeTemp.Fetch(ctx, l, now)
+	s.High[0] = s.High[1]
+	return s, err
+}
+
+func TestTemperatureIsOffByDefault(t *testing.T) {
+	for _, l := range mapLayers {
+		if l.key == tty.TemperatureLayer && l.on {
+			t.Error("temperature is on by default; D-99 has it off, loaded in the background")
+		}
 	}
 }

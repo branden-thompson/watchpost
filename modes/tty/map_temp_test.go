@@ -46,10 +46,16 @@ func tempAnswer(asks *[]MapAsk) func(context.Context, MapAsk) MapTemperature {
 // Monday, the loop's newest frame five minutes before.
 func openTempMap(t *testing.T, radarOn bool, asks *[]MapAsk) Dashboard {
 	t.Helper()
+	return openTempMapWith(t, radarOn, true, asks)
+}
+
+// openTempMapWith is openTempMap with temperature on or off.
+func openTempMapWith(t *testing.T, radarOn, tempOn bool, asks *[]MapAsk) Dashboard {
+	t.Helper()
 	var asked []string
 	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(asks),
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: radarOn},
-			{Key: TemperatureLayer, Label: "Temperature", On: true}}}
+			{Key: TemperatureLayer, Label: "Temperature", On: tempOn}}}
 	d := mapDash(t, cfg)
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
@@ -259,13 +265,30 @@ func TestAnAlertInEffectIsAlwaysOnNowsFrame(t *testing.T) {
 	}
 }
 
-func TestTemperatureIsAskedOnlyWhileItIsOn(t *testing.T) {
+// TestTemperatureOffIsHeldNotDrawn is D-99: off by default, the map's
+// temperature is still asked while the map is open, and held; switched on,
+// it is drawn at once from what is held; off again, its grids go.
+func TestTemperatureOffIsHeldNotDrawn(t *testing.T) {
 	var asks []MapAsk
-	d := openTempMap(t, true, &asks)
+	d := openTempMapWith(t, true, false, &asks)
 	if len(asks) == 0 {
-		t.Fatal("temperature on, and never asked")
+		t.Fatal("with the map open and temperature off, it was never asked (D-99: loaded in the background)")
 	}
-	n := len(asks)
+	if len(d.mapPane.tempGiven) != 0 {
+		t.Fatalf("temperature off drew %d grids", len(d.mapPane.tempGiven))
+	}
+	d = switchTemp(t, d)
+	if len(d.mapPane.tempGiven) == 0 {
+		t.Fatal("switched on, the held temperature was not drawn")
+	}
+	if d = switchTemp(t, d); len(d.mapPane.tempGiven) != 0 {
+		t.Errorf("switched off, %d grids stayed", len(d.mapPane.tempGiven))
+	}
+}
+
+// switchTemp switches temperature in the Overlays menu, and settles.
+func switchTemp(t *testing.T, d Dashboard) Dashboard {
+	t.Helper()
 	d = pressCode(d, 'O', "O")
 	for i, r := range d.overlayRows() {
 		if r.key == TemperatureLayer {
@@ -274,11 +297,61 @@ func TestTemperatureIsAskedOnlyWhileItIsOn(t *testing.T) {
 	}
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
 	d = settleRadar(t, m.(Dashboard), cmd)
-	if len(asks) != n {
-		t.Errorf("switched off, the temperature was asked %d more times (D-25)", len(asks)-n)
+	return pressCode(d, 'O', "O")
+}
+
+// TestMovingThroughTheMenuAsksNothing is UAT-2 U2-13 and U2-14: an arrow in
+// the Overlays menu moves its cursor and nothing else - every press asked the
+// radar and the temperature again, and the grids handed in again blinked.
+func TestMovingThroughTheMenuAsksNothing(t *testing.T) {
+	var asks []MapAsk
+	var radarAsks []string
+	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &radarAsks), MapTemperature: tempAnswer(&asks),
+		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true},
+			{Key: TemperatureLayer, Label: "Temperature", On: true}}}
+	d := mapDash(t, cfg)
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
+	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+	d = pressCode(d, 'O', "O")
+	calls := []string{}
+	d.mapPane.calls = &calls
+	temps, radars := len(asks), len(radarAsks)
+	for range 40 {
+		m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyDown})
+		d = settleRadar(t, m.(Dashboard), cmd)
 	}
-	if len(d.mapPane.tempGiven) != 0 {
-		t.Errorf("switched off, %d grids stayed", len(d.mapPane.tempGiven))
+	if len(asks) != temps || len(radarAsks) != radars {
+		t.Errorf("40 arrows asked the temperature %d times and the radar %d", len(asks)-temps, len(radarAsks)-radars)
+	}
+	for _, c := range calls {
+		if c == "Set" || c == "Remove" || c == "Render" {
+			t.Fatalf("an arrow in the menu made a %s call: only a switch touches the map", c)
+		}
+	}
+}
+
+// TestARefusedLoopKeepsTheOneDrawn is U2-14: a loop handed in again that the
+// library refuses leaves the loop already drawn on the map, and says so.
+func TestARefusedLoopKeepsTheOneDrawn(t *testing.T) {
+	var asked []string
+	d := openRadarMap(t, "MRMS", &asked)
+	held := len(d.mapPane.radarGiven)
+	if held == 0 {
+		t.Fatal("no loop to keep")
+	}
+	var bad MapRadar
+	for id := range d.mapPane.radarGiven {
+		bad.Overlays = append(bad.Overlays, tuimaps.Overlay{ID: id}) // no valid time, no picture: refused
+	}
+	bad.Source = "MRMS"
+	m, _ := d.applyMapRadar(mapRadarMsg{radar: bad})
+	d = m.(Dashboard)
+	if len(d.mapPane.radarGiven) != held || len(d.mapPane.m.Overlays()) == 0 {
+		t.Errorf("a refused loop took the drawn one away: %d held", len(d.mapPane.radarGiven))
+	}
+	if !strings.Contains(d.mapPane.radarNote, "could not be updated") {
+		t.Errorf("the refusal was not said: %q", d.mapPane.radarNote)
 	}
 }
 
@@ -300,5 +373,27 @@ func TestTheTemperatureSourceIsASetting(t *testing.T) {
 	}
 	if !mapDash(t, Config{MapTempSource: "open-meteo"}).mapTempOM || mapDash(t, Config{}).mapTempOM {
 		t.Error("the file's word does not open the window as chosen")
+	}
+}
+
+// TestAFilledStepNamesOpenMeteo is D-100: on a day Open-Meteo filled, the
+// badge's chip names it; on the chosen source's own days, that source.
+func TestAFilledStepNamesOpenMeteo(t *testing.T) {
+	var asks []MapAsk
+	d := openTempMap(t, false, &asks)
+	d.mapPane.temp.Filled = map[string]bool{"0/high": true}
+	badge := func() string { return stripANSITest(strings.Join(d.forecastBadge(), "|")) }
+	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
+	if d = m.(Dashboard); !strings.Contains(badge(), "O-METEO") {
+		t.Errorf("Today, filled from Open-Meteo, has the badge %q", badge())
+	}
+	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
+	if d = m.(Dashboard); !strings.Contains(badge(), "NDFD") {
+		t.Errorf("Tomorrow, NDFD's own, has the badge %q", badge())
+	}
+	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: '<', Text: "<"})
+	m, _, _ = m.(Dashboard).handleMapKey(tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift})
+	if d = m.(Dashboard); !strings.Contains(badge(), "NDFD") {
+		t.Errorf("Today's low, NDFD's own, has the badge %q", badge())
 	}
 }

@@ -600,12 +600,17 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	act, bound := d.mapKeys.Lookup(key.String())
 	if d.mapPane.menuOn && act != actMapOverlays { // D-65: the open menu owns its keys
 		if nd, ok := d.handleOverlaysKey(key.String()); ok {
+			// AN ARROW MOVES THE CURSOR AND NOTHING ELSE (UAT-2 U2-13, U2-14):
+			// every press asked the radar and the temperature again, and the
+			// grids handed in again blinked. Only a switch touches the map.
+			if nd.mapLayerChoice == d.mapLayerChoice && nd.mapDetailChoice == d.mapDetailChoice && nd.mapDetailLevel == d.mapDetailLevel {
+				return nd, nil, true
+			}
+			nd, _ = nd.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
 			nd = nd.renderMap()
 			save := nd.uiApplyCmd()
 			nd.setup.uiDirty = false
-			nd, radar := nd.askRadar()
-			nd, temp := nd.askTemp()
-			return nd, tea.Batch(save, nd.mapWorkCmd(), nd.mapFeedCmd(), radar, temp), true
+			return nd, tea.Batch(save, nd.mapWorkCmd(), nd.mapFeedCmd()), true // radar is R's, not the menu's (D-94)
 		}
 	}
 	if !bound {
