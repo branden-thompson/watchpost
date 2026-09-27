@@ -1177,3 +1177,25 @@ Key capture stays each window's own; F-184, next, moves it into the stack.
 **D-106's first item:** the controls row above the table gains g Maps, left of ↑↓ Navigate.
 
 **Mutation verdicts** (targeted, 7), all caught.
+
+## Batch 30 — the stack routes the keys (F-184, 2026-09-27)
+
+**Key capture was in three places:**
+- `handleKey`'s switch named the windows that take every key, and the map, which takes the keys it binds.
+- `handleNav`'s hand-written list named the windows whose own scroll the arrows walk. A window once missing from it let its arrows reach past it to the table underneath.
+- Help named the map's group by its title.
+
+Each window now declares, once, how much of the keyboard it claims (`window_keys.go`). The routing, the windows' nav and Help read the declaration; only the window shown is asked. The change is a consolidation: behaviour is unchanged, and every existing test passed unaltered.
+
+**The guards** (`window_keys_test.go`) derive the windows from the constants and hold every one to its declaration:
+- declared, and what takes its keys named;
+- its arrows its own, never the table's;
+- left by esc (D-62);
+- no key bound twice;
+- its Help group listed;
+- the window shown takes its keys before the Observer's;
+- a form - the four D-107 names - taking every key: a stray g, q or ? never leaves it.
+
+**Mutation verdicts** (targeted, 7). One survived at first: Setup declared as claiming no keys passed every guard that read the declarations. `TestAFormTakesEveryKey` names the form windows as policy and holds them by behaviour; it catches it.
+
+**The mutant sweep's anchor gate caught a drift.** mW4, "the arrows reach past the card window", was anchored to the hand-written list this batch replaced. It is re-pointed at the card window's declaration, and both FR-5's reachability test and the new guard catch it.

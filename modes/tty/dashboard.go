@@ -1201,19 +1201,8 @@ func (d Dashboard) applySnapshot(v SnapshotMsg) (tea.Model, tea.Cmd) {
 
 // handleKey routes through the merged KeyMap (D-15: keys are data).
 func (d Dashboard) handleKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch d.modal { // windows that own the keyboard while open
-	case modalSetup:
-		return d.handleSetupKey(key)
-	case modalAdd:
-		return d.handleAddKey(key)
-	case modalRemove:
-		return d.handleRemoveKey(key)
-	case modalRequest:
-		return d.handleRequestKey(key)
-	case modalMap:
-		if m, cmd, ok := d.handleMapKey(key); ok {
-			return m, cmd // D-61: the open map owns the keys it binds
-		}
+	if m, cmd, ok := d.routeWindowKey(key); ok {
+		return m, cmd // F-184: the window shown takes what it declares it owns
 	}
 	act, bound := d.keys.Lookup(key.String())
 	if !bound {

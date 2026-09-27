@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–29 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87), batch 21 its second (D-88), batch 22 its third (D-89), batch 23 its fourth (D-90 to D-92), batch 24 its fifth; batch 25 opens W10, temperature and the map's two modes (D-93 to D-98), batch 26 its first UAT pass (D-99, D-100), batch 27 its second (D-101, D-102), batch 28 its third (D-103 to D-105: the rows under the map, the legend retired, the parts shared), batch 29 the window stack (D-106, D-107); batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.15."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–30 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87), batch 21 its second (D-88), batch 22 its third (D-89), batch 23 its fourth (D-90 to D-92), batch 24 its fifth; batch 25 opens W10, temperature and the map's two modes (D-93 to D-98), batch 26 its first UAT pass (D-99, D-100), batch 27 its second (D-101, D-102), batch 28 its third (D-103 to D-105: the rows under the map, the legend retired, the parts shared), batch 29 the window stack (D-106, D-107), batch 30 its key routing (F-184); batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.15."
 ---
 
 # As built: where the map lives
@@ -107,8 +107,27 @@ flowchart TB
 
 `Dashboard.modal` is the window shown, and `under` the windows beneath it. Every open and close
 goes through `open` and `close`, so the forty-three places that ask which window is shown read the
-top of the stack and nothing else changed. Key capture is still each window's own; F-184 moves it
-into the stack.
+top of the stack and nothing else changed.
+
+**The keys (F-184).** Each window declares, once, in `window_keys.go`, how much of the keyboard it
+claims: every key (a form or a search: Setup, Add, Remove, Request), the keys it binds (the map), or
+none (the Observer's bindings reach it, and its own nav walks its scroll or rows). Only the window
+shown is asked; the windows under it never see a key. Help's groups for a window's own keys come from
+the same declaration. `window_keys_test.go` derives the windows from the constants and holds every one
+to it: declared, its arrows its own, left by esc, no key bound twice, forms taking every key. The
+Router, above the stack, keeps the surface's keys - the swap and the console's windows.
+
+```mermaid
+flowchart LR
+  K["a key"] --> RT["Router: the swap, the console's keys"]
+  RT --> W{"the window shown claims..."}
+  W -- "every key (Setup, Add, Remove, Request)" --> ALL["its handler: nothing reaches the Observer"]
+  W -- "the keys it binds (the map)" --> B{"bound?"}
+  B -- "yes" --> MAPK["the window's"]
+  B -- "no" --> OBS["the Observer's bindings"]
+  W -- "none" --> OBS
+  OBS --> NAV["a nav action: the shown window's own nav,\nelse the table"]
+```
 
 ```mermaid
 flowchart TB

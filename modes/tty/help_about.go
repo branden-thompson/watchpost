@@ -44,8 +44,8 @@ func (d Dashboard) helpBlocks(o render.Opts) []helpBlock {
 	keys := d.helpKeys()
 	for _, g := range helpGroups(d.surface) {
 		var rows []string
-		if g.name == "MAP" {
-			for _, pr := range mapHelpRows(keys, o.ASCII) {
+		if g.rows != nil { // a window's own group, from its declaration (F-184)
+			for _, pr := range g.rows(keys, o.ASCII) {
 				rows = append(rows, fmt.Sprintf("   %-12s - %s", pr.keys, o.Marks(pr.help)))
 			}
 			for _, act := range g.actions {
@@ -53,7 +53,7 @@ func (d Dashboard) helpBlocks(o render.Opts) []helpBlock {
 			}
 		}
 		for _, act := range g.actions {
-			if g.name == "MAP" {
+			if g.rows != nil {
 				break // listed above, a pair to a row
 			}
 			if bind, ok := keys[act]; ok {
@@ -209,6 +209,9 @@ func abs(n int) int {
 type helpGroup struct {
 	name    string
 	actions []term.Action
+	// rows lists the group a row an idea, where a window declares its own
+	// (window_keys.go): several actions that are one idea on one line.
+	rows func(keys term.KeyMap, ascii bool) []mapHelpRow
 }
 
 // helpGroups is the one owner of the grouping; a binding's group is its
@@ -225,28 +228,27 @@ func helpGroups(surface Surface) []helpGroup {
 	// the operator stuck. The swap is live on EITHER surface — the Router looks
 	// it up before either one sees the key — and it was documented on NEITHER:
 	// "it doesnt show the user how to swap between Observer and Broadcaster."
-	surfaces := helpGroup{"SURFACES", []term.Action{actSwapObserver, actSwapBroadcaster}}
+	surfaces := helpGroup{"SURFACES", []term.Action{actSwapObserver, actSwapBroadcaster}, nil}
 	if surface == SurfaceBroadcaster {
 		return []helpGroup{
 			surfaces,
 			// THE CONSOLE'S OWN SECTIONS, in the order the operator meets them:
 			// put the station on the air, order the line-up, choose the bed.
-			{"STATION", []term.Action{actStationToggle, actGainUp, actGainDown}},
-			{"LINE UP", []term.Action{actQueuePrev, actQueueNext, actQueueOpen, actRequest}},
-			{"BED", []term.Action{actBedCut, actBedPrev, actBedNext}},
-			{"APP", []term.Action{actLookup, actSettings, actStatus, actAbout, term.HelpAction, actDiagnostics, actQuit}},
+			{"STATION", []term.Action{actStationToggle, actGainUp, actGainDown}, nil},
+			{"LINE UP", []term.Action{actQueuePrev, actQueueNext, actQueueOpen, actRequest}, nil},
+			{"BED", []term.Action{actBedCut, actBedPrev, actBedNext}, nil},
+			{"APP", []term.Action{actLookup, actSettings, actStatus, actAbout, term.HelpAction, actDiagnostics, actQuit}, nil},
 		}
 	}
-	return []helpGroup{ // NAVIGATE and RADIO first: the two tall groups make the left column of the two-column layout (UAT mock 2026-08-28)
+	return append([]helpGroup{ // NAVIGATE and RADIO first: the two tall groups make the left column of the two-column layout (UAT mock 2026-08-28)
 		surfaces,
-		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "severe", actMap, "alert-prev", "alert-next", "close", term.HelpAction, "quit"}},
-		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-vol-up", "radio-vol-dn"}},
-		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}},
-		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}},
-		{"TICKER", []term.Action{"ticker-mute"}},
-		{"APP", []term.Action{"setup", "status", "about", "debug"}},
-		{"MAP", mapActions}, // 0.18.0 D-61: the open map window's own keys
-	}
+		{"NAVIGATE", []term.Action{"nav-up", "nav-down", "details", "alert-details", "severe", actMap, "alert-prev", "alert-next", "close", term.HelpAction, "quit"}, nil},
+		{"RADIO", []term.Action{"radio-play", "radio-repeat", "radio-mode", "radio-viz", "voice", "radio-vol-up", "radio-vol-dn"}, nil},
+		{"WATCHLIST", []term.Action{"add-location", "remove", "lookup"}, nil},
+		{"DISPLAY", []term.Action{"units-f", "units-c", "theme"}, nil},
+		{"TICKER", []term.Action{"ticker-mute"}, nil},
+		{"APP", []term.Action{"setup", "status", "about", "debug"}, nil},
+	}, windowHelpGroups()...) // the windows' own keys, as each declares them (F-184): the map's (D-61)
 }
 
 // helpKeys is the map the window documents: the ACTIVE surface's.
