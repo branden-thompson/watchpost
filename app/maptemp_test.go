@@ -345,3 +345,41 @@ func TestWindIsOffByDefault(t *testing.T) {
 		t.Error("no wind layer is registered")
 	}
 }
+
+// TestEveryRegionHasItsFieldsWhole is D-111 (UAT-2 U2-26): temperature and
+// wind are asked for boxes of their own; outside the lower 48 they cover the
+// whole region - Hawaii's wind stopped at MRMS's box inside the map - split at
+// the antimeridian, which a grid cannot cross. Every region draws, American
+// Samoa among them.
+func TestEveryRegionHasItsFieldsWhole(t *testing.T) {
+	for _, r := range geo.Regions() {
+		view := geo.Box{W: r.W, S: r.S, E: r.E, N: r.N}
+		boxes := fieldBoxes(r.Name, view)
+		if len(boxes) == 0 {
+			t.Errorf("%s has no field box: it draws no temperature or wind", r.Name)
+			continue
+		}
+		if r.Name == geo.RegionContiguous {
+			continue // the radar's boxes, as they were
+		}
+		width := 0.0
+		for _, b := range boxes {
+			if !(b.W >= -180 && b.E <= 180 && b.W < b.E && b.S == r.S && b.N == r.N) {
+				t.Errorf("%s: a box %+v is not a grid inside the region's latitudes", r.Name, b)
+			}
+			width += b.E - b.W
+		}
+		want := r.E - r.W
+		if want < 0 {
+			want += 360
+		}
+		if math.Abs(width-want) > 1e-9 {
+			t.Errorf("%s: the boxes span %v degrees of the region's %v", r.Name, width, want)
+		}
+	}
+	ask := tempAsk(true)
+	ask.Region = geo.RegionSamoa
+	if got := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, ask, tempNow); len(got.High) == 0 || len(got.WindDays) == 0 {
+		t.Errorf("American Samoa drew %d highs and %d wind days; want both", len(got.High), len(got.WindDays))
+	}
+}

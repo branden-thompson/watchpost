@@ -478,6 +478,7 @@ func envWatchlistDwell
 func eventNarration
 func eventScript
 func everyTick
+func fieldBoxes
 func fillDays
 func fireProviders
 func fireReportOf
@@ -710,6 +711,7 @@ type dumpRecord
 type dumper
 type eventReader
 type executors
+type fieldBox
 type hostFacts
 type injectQueue
 type injectQueue

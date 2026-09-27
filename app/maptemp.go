@@ -12,6 +12,7 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
@@ -77,7 +78,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 // nothing in again and nothing blinks.
 func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty.MapAsk, now time.Time) tty.MapTemperature {
 	out := tty.MapTemperature{Source: src.Name()}
-	boxes := radar.BoxesFor(ask.Region, ask.View)
+	boxes := fieldBoxes(ask.Region, ask.View)
 	if len(boxes) == 0 {
 		out.Notes = []string{"No temperature is drawn for " + ask.Region + "."}
 		return out
@@ -94,7 +95,7 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 	credit := src.Name() == "Open-Meteo"
 	fellBack := 0
 	for _, b := range boxes {
-		lat := temperature.LatticeFor(b.Name, geo.Box{W: b.W, S: b.S, E: b.E, N: b.N})
+		lat := temperature.LatticeFor(b.Name, b.Box)
 		s, err := src.Fetch(ctx, lat, now)
 		if err != nil && fill != nil {
 			// A BOX THE SOURCE REFUSES IS OPEN-METEO'S (D-101): NDFD refuses
@@ -186,6 +187,38 @@ func allMissing(vals []float64) bool {
 		}
 	}
 	return true
+}
+
+// fieldBox is a fixed box temperature and wind are asked for.
+type fieldBox struct {
+	Name string
+	geo.Box
+}
+
+// fieldBoxes are the fixed boxes a view's temperature and wind are asked for
+// (D-111) - never the view itself (D-47). In the lower 48 the radar's boxes;
+// outside it the whole map region, so no part of a region the map shows goes
+// without (Hawaii's wind stopped at MRMS's box, inside the map), split at the
+// antimeridian, which a grid cannot cross (Alaska).
+func fieldBoxes(region string, view geo.Box) []fieldBox {
+	if region == geo.RegionContiguous {
+		var out []fieldBox
+		for _, b := range radar.BoxesFor(region, view) {
+			out = append(out, fieldBox{Name: b.Name, Box: geo.Box{W: b.W, S: b.S, E: b.E, N: b.N}})
+		}
+		return out
+	}
+	for _, r := range geo.Regions() {
+		if r.Name != region {
+			continue
+		}
+		name := strings.ToLower(strings.Fields(r.Name)[0])
+		if r.W > r.E { // across the antimeridian: two boxes
+			return []fieldBox{{name + "-w", geo.Box{W: r.W, S: r.S, E: 180, N: r.N}}, {name + "-e", geo.Box{W: -180, S: r.S, E: r.E, N: r.N}}}
+		}
+		return []fieldBox{{name, geo.Box{W: r.W, S: r.S, E: r.E, N: r.N}}}
+	}
+	return nil
 }
 
 // hourGrids are Radar mode's grids: every hour up to the current one, each
@@ -323,7 +356,7 @@ func tempLayerCost(in mapInputs) (int64, int) {
 	if in.region == "" {
 		return 0, 0
 	}
-	boxes := len(radar.BoxesFor(in.region, in.view))
+	boxes := len(fieldBoxes(in.region, in.view))
 	return int64(boxes) * tempRequestBytes, boxes
 }
 

@@ -1221,3 +1221,13 @@ Wind is braille arrows with speeds and no fill, drawn over radar and temperature
 **Mutation verdicts** (targeted): 10 in watchpost and 9 in the library, all caught. Two survived at first:
 - The wind unit's breaks: the legend test now reads the calmest class's words.
 - NDFD's current-hour wind: the request test now reads the query.
+
+## Batch 32 — every region draws its fields whole (D-111, 2026-09-27)
+
+**U2-26.** In Hawaii the wind stopped at a rectangle inside the map. Temperature and wind had been asked for the radar's fixed boxes, and Hawaii's radar box is MRMS's extent, narrower than the region D-91 widened. The Caribbean and Guam had the same mismatch in smaller measure. American Samoa, with no radar box, drew neither.
+
+The HUM LEAD: "all of our regions should have some kind of data because we say watchpost's pre 1.0 release is for US (and territories) users."
+
+Temperature and wind now have fixed boxes of their own (`fieldBoxes`). The lower 48 keeps the radar's boxes. Elsewhere each box is the whole map region, still fixed and never the view (D-47). Alaska is split at the antimeridian, which a grid cannot cross: two boxes, one more request there. Hawaii's points are coarser, about 2.6 degrees apart where they were 1.4. The map's view never leaves its region, so a region's box always covers it.
+
+**Mutation verdicts** (targeted, 2), both caught.
