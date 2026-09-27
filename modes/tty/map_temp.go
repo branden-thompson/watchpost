@@ -264,11 +264,26 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 	d.setup.uiDirty = false
 	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false
 	d.mapPane.fcGen++
+	d.mapPane.tempAuto = false // Forecast mode's alone (D-104)
+	d = d.ensureMainOverlay()
+	d, _ = d.setTemp() // what is held, drawn or taken off at once (D-99)
 	d = d.refreshMapCost().showStep().retime()
 	d = d.renderMap()
 	d, radar := d.askRadar()
 	d, temp := d.askTemp()
 	return d, tea.Batch(save, radar, temp, d.mapWorkCmd())
+}
+
+// ensureMainOverlay turns temperature on when Forecast mode would otherwise
+// draw no main overlay (D-103) - a blank map reads as broken - and shows the
+// chip that says so. It is Forecast mode's alone, never saved (D-104).
+func (d Dashboard) ensureMainOverlay() Dashboard {
+	if d.radarMode() || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) {
+		return d
+	}
+	d.mapPane.tempAuto, d.mapPane.modeChip = true, true
+	d.mapPane.gen++
+	return d
 }
 
 // showStep sets the library's moment for the mode: Forecast mode's step, or
@@ -408,18 +423,15 @@ func (d Dashboard) retime() Dashboard {
 // temperature's source as a chip, [O-METEO] or [ NDFD ], when it is drawn;
 // the step in capitals, NOW or FRI HIGHS.
 func (d Dashboard) forecastBadge() []string {
-	right := func(s string) string {
-		return strings.Repeat(" ", max(forecastBadgeW-render.Width(s)-1, 0)) + s + " "
-	}
-	chip := render.PadTo("", forecastBadgeW)
+	chip := ""
 	if d.tempOn() {
 		face := " " + strings.ToUpper(d.stepSource()) + " "
 		if d.stepSource() == "Open-Meteo" {
 			face = "O-METEO"
 		}
-		chip = right("[" + render.TintRaw(face, d.tempChipTones()) + "]")
+		chip = "[" + render.TintRaw(face, d.tempChipTones()) + "]"
 	}
-	return []string{right(render.Tint(forecastLabel, render.Tok(render.ModalTitle))), chip, right(d.badgeStep())}
+	return mapBadge(render.Tint(forecastLabel, render.Tok(render.ModalTitle)), chip, d.badgeStep())
 }
 
 // badgeStep is the step as the badge says it: NOW, or the day and HIGHS or
@@ -505,38 +517,21 @@ func (d Dashboard) forecastStatus() string {
 // high/low keys.
 func (d Dashboard) forecastTimeline(width int) []string {
 	steps := d.forecastSteps()
-	o := d.opts()
-	arrow := strings.NewReplacer("shift+left", "shift+←", "shift+right", "shift+→")
-	if o.ASCII {
-		arrow = strings.NewReplacer()
+	n := float64(len(steps) - 1)
+	cur := min(d.mapPane.fcStep, len(steps)-1)
+	s := scrubber{cursor: float64(cur) / n, above: steps[cur].Label}
+	for i, st := range steps {
+		name := st.Label
+		if i > 1 {
+			name = st.Span.From.Format("Mon")
+		}
+		s.ticks = append(s.ticks, float64(i)/n)
+		s.below = append(s.below, scrubLabel{name, float64(i) / n, alignCentre})
 	}
-	back, on := o.KeyCap(arrow.Replace(d.firstKey(actMapBack))), o.KeyCap(arrow.Replace(d.firstKey(actMapOn)))
-	lead := render.Width(back) + 1
-	bar := width - lead - render.Width(on) - 1 - 2
-	if bar < 2*len(steps) {
+	if width < 2*len(steps)+20 {
 		return []string{"", "", ""}
 	}
-	pos := func(i int) int { return min(i*(bar-1)/(len(steps)-1), bar-1) }
-	cells := []rune(strings.Repeat("─", bar))
-	for i := range steps {
-		cells[pos(i)] = '┼'
-	}
-	cur := min(d.mapPane.fcStep, len(steps)-1)
-	cells[pos(cur)] = '█'
-	above := newPlacer(width)
-	above.centre(steps[cur].Label, lead+1+pos(cur))
-	below := newPlacer(width)
-	for i, s := range steps {
-		name := s.Label
-		if i > 1 {
-			name = s.Span.From.Format("Mon")
-		}
-		if i == 1 && len(steps) > 1 {
-			name = "Today"
-		}
-		below.centre(name, lead+1+pos(i))
-	}
-	return []string{above.String(), back + " ├" + string(cells) + "┤ " + on, below.String()}
+	return d.draw(s, width)
 }
 
 // tempLegendRow is the temperature's colours under the map in Forecast mode,

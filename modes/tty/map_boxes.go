@@ -97,18 +97,23 @@ const controlsInner = 17
 // until its blink ends - the same acknowledgement the Settings pickers give.
 func (d Dashboard) controlsBox() []string {
 	o := d.opts()
-	cap := func(act term.Action, face string) string {
-		if d.mapPane.flash == act && time.Now().Before(d.mapPane.flashEnd) {
-			return o.KeyCapInverted(face)
-		}
-		return o.KeyCap(face)
-	}
+	cap := d.controlCap
 	return boxed("Controls", []string{
 		"    " + cap(actMapPanUp, "↑") + "     " + cap(actMapZoomIn, "+"),
 		" " + cap(actMapPanLeft, "←") + cap(actMapPanDown, "↓") + cap(actMapPanRight, "→") + "  " + cap(actMapZoomOut, "-"),
 		" " + cap(actMapPrev, "[") + cap(actMapNext, "]") + " place",
 		" " + regionCaps(o, slices.Contains(mapRegionActs, d.mapPane.flash) && time.Now().Before(d.mapPane.flashEnd)) + " region", // D-77: the region keys, prominently
 	}, controlsInner)
+}
+
+// controlCap is a key's chip, inverted while it blinks (U1-11); a region
+// key blinks all six chips' - the one pressed among them.
+func (d Dashboard) controlCap(act term.Action, face string) string {
+	o := d.opts()
+	if d.mapPane.flash == act && time.Now().Before(d.mapPane.flashEnd) {
+		return o.KeyCapInverted(face)
+	}
+	return o.KeyCap(face)
 }
 
 // regionCaps is the region keys' chips, "1-6", both inverted while any
@@ -125,7 +130,7 @@ func regionCaps(o render.Opts, blink bool) string {
 // room for them beside the legend: a map under 14 rows or 60 columns draws
 // none (its keys are in Help and on the status line).
 func (d Dashboard) withControls(lines []string, size tuimaps.Size) []string {
-	if size.Rows < 14 || size.Cols < 60 || len(lines) < size.Rows {
+	if d.radarTimelineOn() || size.Rows < 14 || size.Cols < 60 || len(lines) < size.Rows {
 		return lines
 	}
 	box := d.controlsBox()
@@ -162,8 +167,8 @@ func (d Dashboard) withEdgeChip(lines []string, size tuimaps.Size) []string {
 	if !d.mapPane.edgeShown || text == "" || len(lines) < size.Rows || size.Rows < 5 {
 		return lines
 	}
+	chip := chipBox(text)
 	w := render.Width(text) + 2
-	chip := []string{"┌" + strings.Repeat("─", w) + "┐", "│ " + text + " │", "└" + strings.Repeat("─", w) + "┘"}
 	row, col := size.Rows/2-1, insetCols+(size.Cols-w-2)/2
 	switch d.mapPane.edge {
 	case geo.East:
@@ -176,6 +181,21 @@ func (d Dashboard) withEdgeChip(lines []string, size tuimaps.Size) []string {
 		row = size.Rows - 1 - len(chip)
 	}
 	return spliceBox(lines, chip, row, col)
+}
+
+// modeChipText is the chip D-103 shows when Forecast mode turned a main
+// overlay on for the listener: which one.
+const modeChipText = "FORECAST MODE: TEMP ENABLED"
+
+// withModeChip lays the mode's chip at the map's top centre while it shows
+// (D-103): Forecast mode turned temperature on, so the map is not blank. Any
+// key takes it away, as the edge chip's (D-81).
+func (d Dashboard) withModeChip(lines []string, size tuimaps.Size) []string {
+	if !d.mapPane.modeChip || len(lines) < 3 {
+		return lines
+	}
+	chip := chipBox(modeChipText)
+	return spliceBox(lines, chip, 0, insetCols+(size.Cols-render.Width(chip[0]))/2)
 }
 
 // flashMapKey marks a map key pressed, for the controls box to blink.
@@ -384,6 +404,7 @@ func (d Dashboard) overlaysBox() []string {
 	o := d.opts()
 	var content []string
 	heading := ""
+	head := func(s string) string { return render.Tint(s, render.Tok(render.ModalTitle)) } // as Settings' groups (D-103)
 	for i, r := range d.overlayRows() {
 		group := "MAP DETAIL"
 		on := d.detailOn(r.key)
@@ -391,7 +412,10 @@ func (d Dashboard) overlaysBox() []string {
 			group, on = "WEATHER", d.layerOn(r.key)
 		}
 		if group != heading {
-			content, heading = append(content, " "+group), group
+			if heading != "" {
+				content = append(content, "") // a blank row between groups (D-103)
+			}
+			content, heading = append(content, " "+head(group)), group
 		}
 		if r.key == detailLevelKey && !r.weather {
 			content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+"Detail: "+d.detailLevelShown()+"  (space: next)")
@@ -405,8 +429,8 @@ func (d Dashboard) overlaysBox() []string {
 		}
 		content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label+hint)
 	}
-	content = append(content, " "+o.KeyCap("↑↓")+" move "+o.KeyCap("space")+" switch")
-	return boxed("Overlays", content, 40)
+	content = append(content, "", " "+o.KeyCap("↑↓")+" move "+o.KeyCap("space")+" switch")
+	return boxed(render.Tint("MAP DETAILS / OVERLAYS", render.Tok(render.ModalTitle)), content, 40)
 }
 
 // withOverlays lays the menu over the map's upper left while it is open.
@@ -436,7 +460,11 @@ func (d Dashboard) handleOverlaysKey(key string) (Dashboard, bool) {
 			if choice == nil {
 				choice = map[string]bool{}
 			}
-			choice[r.key] = !d.layerOn(r.key)
+			on := d.layerOn(r.key)
+			if r.key == TemperatureLayer {
+				d.mapPane.tempAuto = false // the listener's switch from here on (D-104)
+			}
+			choice[r.key] = !on
 			d.mapLayerChoice = layerChoiceKey(choice)
 			d = d.refreshMapCost().requestFeed()
 		} else if r.key == detailLevelKey {

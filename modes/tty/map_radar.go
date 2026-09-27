@@ -147,8 +147,8 @@ func (d Dashboard) radarChipText() string {
 	return " " + d.mapPane.radarSource + " "
 }
 
-// radarBadgeW is the badge's width: "RADAR DATA" and a space either side.
-const radarBadgeW = 12
+// radarBadgeW is the badge's width (map_parts.go's mapBadge).
+const radarBadgeW = badgeW
 
 // radarBadge is the radar's badge (D-92), three rows: RADAR DATA; the
 // source's chip in the badge's colours; the frame's time in the listener's
@@ -158,15 +158,8 @@ func (d Dashboard) radarBadge() []string {
 	if d.radarChipText() == "" {
 		return nil
 	}
-	pad := func(s string) string { return render.PadTo(s, radarBadgeW) }
-	source := d.mapPane.radarSource
-	chip := render.PadTo(" ", (radarBadgeW-len(source)-6)/2) + "[" + render.TintRaw("  "+source+"  ", d.radarChipTones()) + "]"
-	when := d.mapPane.radarBadgeTime
-	return []string{
-		pad(" " + render.Tint("RADAR DATA", render.Tok(render.ModalTitle))),
-		pad(chip),
-		render.PadTo(" ", max(radarBadgeW-render.Width(when)-1, 0)) + when + " ",
-	}
+	chip := "[" + render.TintRaw("  "+d.mapPane.radarSource+"  ", d.radarChipTones()) + "]"
+	return mapBadge(render.Tint("RADAR DATA", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
 }
 
 // radarChipTones are the chip's colours: MRMS green, IEM orange (D-83).
@@ -287,9 +280,10 @@ func (d Dashboard) radarStatus() string {
 // radar layer is on so the map's size never waits on the loop.
 const radarRows = 3
 
-// radarExtraRows are D-89's other held rows while radar is on: the colour
-// row, the blank before the timeline and the blank before the chips.
-const radarExtraRows = 3
+// radarExtraRows are the other held rows under the map (D-103): the colour
+// row, the picture's status, the box's bottom edge beside the timeline, and
+// the blanks round the region row.
+const radarExtraRows = 6
 
 // radarLegendRow is the radar's colours under the map (D-89), lightest to
 // heaviest, from the library's legend: a swatch a class, painted in the
@@ -370,48 +364,30 @@ func (d Dashboard) radarTimeline(width int) []string {
 	if d.mapPane.radarSource == "" || st.Count == 0 {
 		return []string{"", "", ""}
 	}
-	o := d.opts()
-	arrow := strings.NewReplacer("shift+left", "shift+←", "shift+right", "shift+→") // the sketch's faces (D-86)
-	if o.ASCII {
-		arrow = strings.NewReplacer()
-	}
-	back, on := o.KeyCap(arrow.Replace(d.firstKey(actMapBack))), o.KeyCap(arrow.Replace(d.firstKey(actMapOn)))
-	lead := render.Width(back) + 1
-	bar := width - lead - render.Width(on) - 1 - 2 // the two end marks
-	if bar < 10 {
-		return []string{"", "", ""}
-	}
-	at := func(frac float64) int { return min(max(int(frac*float64(bar-1)+0.5), 0), bar-1) }
-	cur := 0
+	s := scrubber{above: d.clockAt(st.At)}
 	if st.Count > 1 {
-		cur = at(float64(st.Index) / float64(st.Count-1))
+		s.cursor = float64(st.Index) / float64(st.Count-1)
 	}
-	now := bar - 1
+	now := 1.0
 	if span := st.Newest.Sub(st.Oldest); span > 0 && st.Now.Before(st.Newest) {
-		now = at(float64(st.Now.Sub(st.Oldest)) / float64(span))
+		now = float64(st.Now.Sub(st.Oldest)) / float64(span)
 	}
-	cells := []rune(strings.Repeat("─", bar))
-	if now < bar-1 {
-		cells[now] = '┼'
-	}
-	cells[cur] = '█'
-	clock := func(t time.Time) string { return d.clockFmt.Time(t.In(d.now().Location())) }
-	above := newPlacer(width)
-	above.centre(clock(st.At), lead+1+cur)
-	below := newPlacer(width)
-	below.left(clock(st.Oldest), lead)
-	if now < bar-1 {
-		below.right(clock(st.Newest), lead+bar+1)
-		below.centre("NOW", lead+1+now)
+	s.below = []scrubLabel{{d.clockAt(st.Oldest), 0, alignLeft}}
+	if now < 1 {
+		s.ticks = []float64{now}
+		s.below = append(s.below, scrubLabel{d.clockAt(st.Newest), 1, alignRight}, scrubLabel{"NOW", now, alignCentre})
 	} else {
-		below.right("NOW · "+clock(st.Newest), lead+bar+1) // no forecast: the loop ends at now
+		s.below = append(s.below, scrubLabel{"NOW · " + d.clockAt(st.Newest), 1, alignRight}) // no forecast: the loop ends at now
 	}
-	below.centre("OBSERVED", lead+1+now/2)
-	if now < bar-1 {
-		below.centre("FORECAST", lead+1+(now+bar)/2)
+	s.below = append(s.below, scrubLabel{"OBSERVED", now / 2, alignCentre})
+	if now < 1 {
+		s.below = append(s.below, scrubLabel{"FORECAST", (now + 1) / 2, alignCentre})
 	}
-	return []string{above.String(), back + " ├" + string(cells) + "┤ " + on, below.String()}
+	return d.draw(s, width)
 }
+
+// clockAt is a moment in the listener's clock and zone.
+func (d Dashboard) clockAt(t time.Time) string { return d.clockFmt.Time(t.In(d.now().Location())) }
 
 // firstKey is an action's first bound key, as the listener's [keys] set it.
 func (d Dashboard) firstKey(act term.Action) string {

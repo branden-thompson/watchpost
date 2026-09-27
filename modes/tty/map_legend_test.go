@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/branden-thompson/watchpost/platform/render"
 )
 
 func legendDash(t *testing.T, cfg Config) Dashboard {
@@ -21,42 +19,21 @@ func legendDash(t *testing.T, cfg Config) Dashboard {
 	return feedAndSettle(t, d)
 }
 
-// TestTheLegendOpensOverTheMap is W1.17 (D-44): L opens a legend over the
-// map, contextual - the severities drawn, with their digits - and L closes it;
-// the map stays drawn around it.
-func TestTheLegendOpensOverTheMap(t *testing.T) {
-	d := legendDash(t, Config{})
-	if strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), "┌─ Legend") {
-		t.Fatal("the legend shows before it is opened")
+// TestTheLegendBoxIsRetired is D-103: the map says everything the legend
+// box did - the colour rows under it, the severity digits on the outlines -
+// so the box is gone and L is free: no binding, no chip, no Help row.
+func TestTheLegendBoxIsRetired(t *testing.T) {
+	d := openMap(t, Config{}, 133, 44)
+	if _, bound := d.mapKeys.Lookup("L"); bound {
+		t.Error("L is still bound in the map window")
 	}
-	d = pressCode(d, 'L', "L")
-	body := stripANSITest(strings.Join(d.mapBodyLines(), "\n"))
-	if !strings.Contains(body, "Legend") || !strings.Contains(body, "3 SEVERE") {
-		t.Errorf("the legend does not key the severity drawn:\n%s", body)
+	if strings.Contains(stripANSITest(d.mapStatusLine()), "Legend") {
+		t.Error("the chips still offer the legend")
 	}
-	if strings.Contains(body, "4 EXTREME") || strings.Contains(body, "1 MINOR") {
-		t.Errorf("the legend keys severities that are not on the map:\n%s", body)
-	}
-	if strings.IndexFunc(body, func(r rune) bool { return r > 0x2800 && r <= 0x28ff }) < 0 {
-		t.Error("the legend replaced the map instead of sitting over it")
-	}
-	for _, l := range d.mapBodyLines() {
-		if render.Width(l) > d.mapBodySize().Cols+1 {
-			t.Fatalf("a line with the legend over it is %d wide, the body %d", render.Width(l), d.mapBodySize().Cols+1)
+	for _, r := range mapHelpRows(d.mapKeys, false) {
+		if strings.Contains(r.help, "Legend") {
+			t.Errorf("Help still lists %q", r.help)
 		}
-	}
-	d = pressCode(d, 'L', "L")
-	if strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), "┌─ Legend") {
-		t.Error("L did not close the legend")
-	}
-}
-
-// TestTheChipNamesTheLegend is W1.17 (D-44): the window's chrome carries the
-// legend's chip, "[ L ] Legend", naming the key as rebound.
-func TestTheChipNamesTheLegend(t *testing.T) {
-	d := legendDash(t, Config{})
-	if s := stripANSITest(d.mapStatusLine()); !strings.Contains(s, "L") || !strings.Contains(s, "Legend") {
-		t.Errorf("the status line carries no legend chip: %q", s)
 	}
 }
 

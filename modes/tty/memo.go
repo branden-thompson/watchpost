@@ -347,7 +347,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapGen, k.mapFailed = d.mapPane.gen, d.mapPane.failed
 		k.mapOffline, k.mapStatus, k.mapPending = d.mapPane.offline, d.mapPane.status, d.mapPane.pending
 		k.mapOutside, k.mapNotes = d.mapPane.outside, strings.Join(d.mapPane.notes, "\n")
-		k.mapLegend = d.mapPane.legendOn
+		k.mapLegend = d.mapPane.modeChip
 		k.mapAlerts, k.mapMenu, k.mapMenuAt, k.mapFlash = d.mapPane.alertsOn, d.mapPane.menuOn, d.mapPane.menuAt, d.mapPane.flash
 		k.mapEdge, k.mapEdgeOn = d.mapPane.edge, d.mapPane.edgeShown
 		k.mapRadarSource, k.mapRadarLine = d.mapPane.radarSource, d.mapPane.radarLine

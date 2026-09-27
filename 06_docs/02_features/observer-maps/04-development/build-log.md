@@ -1137,3 +1137,23 @@ Now:
 **The library gate's fuzzer found a fourth disagreement with the proven decoder** (L11.14), again not this batch's. A feature carrying both `name_en` and `name:en` kept whichever tag came last. Upstream's order is `name_<lang>` first, and it now is here too. The input is kept in the oracle's corpus.
 
 **Mutation verdicts** (targeted): 10 in watchpost and 3 in the library, all caught. One survived at first, the Today step's words; the badge test now walks Today.
+
+## Batch 28 — UAT-2's eighth pass: the rows under the map; the parts shared (2026-09-27)
+
+**D-103, D-104, D-105**, with the HUM LEAD's mock.
+- **Blank Forecast mode:** entering Forecast mode with no main overlay on turns temperature on for Forecast mode alone. A chip at the map's top centre says so until a key. Back in Radar mode it is off; nothing is saved.
+- **Overlays box:** it reads MAP DETAILS / OVERLAYS, in Settings' heading style, with a blank row between groups and before its keys.
+- **Legend:** the box is retired and L is unbound.
+- **Controls:** the box leaves the map for the rows under it, beside the timeline. The region keys are a row of their own, MAPS:.
+- **Loop row:** RADAR [source] · FRAME · NEWEST (FR-5.4) · STOPPED in yellow or PLAYING in green. Forecast mode's reads FORECAST · STEP · state. The picture's own status and the estimate have a row that is blank when whole, so the map's size never moves with it.
+
+**The parts, consolidated** (the HUM LEAD: "consolidated into re-usable components (like the scrub control) ... future layout changes might be less complicated/painful"). `map_parts.go` holds one of each, and the modes hand them their words:
+- `chipBox`: the edge chip and the mode's chip;
+- `mapBadge`: radar's badge and forecast's;
+- `scrubber`: radar's loop and Forecast mode's steps.
+
+`map_scrub.go` lays the rows under the map from them, the same in both modes. Radar's and Forecast mode's timelines were two copies of the same drawing; each is now a `scrubber` value.
+
+**Mutation verdicts** (targeted, 10), all caught. Two survived at first:
+- Forecast mode's second visit never re-showed its chip. The test now enters Forecast mode twice.
+- The controls box drawn on the map as well: the test read the raw picture, not the window. It now reads the window.

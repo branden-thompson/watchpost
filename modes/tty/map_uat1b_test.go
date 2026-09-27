@@ -55,7 +55,7 @@ func TestThePicturesWindowNeverScrolls(t *testing.T) {
 			if len(lines) > d.modalMax() {
 				t.Errorf("%dx%d box %v: %d lines in a %d-line window - it scrolls", size.w, size.h, open, len(lines), d.modalMax())
 			}
-			if last := stripANSITest(lines[len(lines)-1]); !strings.Contains(last, "Legend") {
+			if last := stripANSITest(lines[len(lines)-1]); !strings.Contains(last, "Overlays") {
 				t.Errorf("%dx%d box %v: the last line is %q, not the chips", size.w, size.h, open, last)
 			}
 		}
@@ -74,11 +74,6 @@ func TestTheBoxesLeaveTheFurnitureRowsAlone(t *testing.T) {
 	}
 	if got, want := stripANSITest(lines[size.Rows-1]), stripANSITest(d.mapPane.lines[size.Rows-1]); got != want {
 		t.Errorf("the credit row changed under the controls:\n got %q\nwant %q", got, want)
-	}
-	d = pressCode(d, 'L', "L")
-	legend := d.withLegend(d.mapPane.lines)
-	if stripANSITest(legend[0]) != stripANSITest(d.mapPane.lines[0]) {
-		t.Errorf("the legend covers the top row: %q", stripANSITest(legend[0]))
 	}
 }
 

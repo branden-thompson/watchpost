@@ -64,10 +64,10 @@ func offlineMap(size tuimaps.Size) (*tuimaps.Map, error) {
 func statusLine(d Dashboard) string {
 	lines := d.mapBodyLines()
 	last := stripANSITest(lines[len(lines)-1])
-	if !strings.HasSuffix(strings.TrimRight(last, " "), "Legend") {
+	if !strings.HasSuffix(strings.TrimRight(last, " "), "Overlays") {
 		return last // not the map's status line: a stated state
 	}
-	return d.mapStatusText() // the words, without the legend's chip
+	return d.mapStatusText() // the words, without the chips
 }
 
 // TestTheWindowSaysWhatThePictureIs is W3.3 (FR-3.4) with W1.15's indicator:

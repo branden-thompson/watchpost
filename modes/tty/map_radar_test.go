@@ -352,12 +352,12 @@ func TestARefusedLoopIsSaidNotLoading(t *testing.T) {
 	}
 }
 
-// TestTheRowsUnderTheMapAreTheMocks is D-89 (UAT-2 U2-6): while radar is on,
-// under the picture - the radar's colour row, LIGHTER to HEAVIER; the
-// warning on one line, its first sentence in the list pointer's bold yellow;
-// a blank; the timeline; the status line leading with Radar and the source's
-// chip in the badge's colours, the estimate after a slash; a blank; the
-// chips. The legend box lists no radar values.
+// TestTheRowsUnderTheMapAreTheMocks is D-103 and D-105 (D-89 before them):
+// under the picture - the colour row; the warning, one line in the list
+// pointer's bold yellow; the picture's status with the estimate; the loop's
+// row, RADAR [source] · FRAME · NEWEST · STOPPED in yellow, over the timeline,
+// the controls beside them; a blank; MAPS: and the region keys; a blank; the
+// chips, with no Legend.
 func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 	t.Setenv("TERM", "xterm-256color")
 	rendering.SetColorEnabledForTest(true)
@@ -383,31 +383,48 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 		t.Fatalf("no row says %q:\n%s", want, strings.Join(plain, "\n"))
 		return -1
 	}
-	legend, warn, bar, status, chips := at("RADAR LEGEND"), at("Map may experience"), at("shift+"), at("Radar  MRMS "), at("Area Alerts")
-	if legend >= warn || warn >= bar || bar >= status || status >= chips {
-		t.Errorf("the rows are out of the mock's order: legend %d, warning %d, bar %d, status %d, chips %d", legend, warn, bar, status, chips)
+	legend, warn, est, loop, bar, maps, chips := at("RADAR LEGEND"), at("Map may experience"), at("Est. 2.3MB / 197 Requests"), at("FRAME"), at("shift+"), at("MAPS:"), at("Area Alerts")
+	order := []int{legend, warn, est, loop, bar, maps, chips}
+	for i := 1; i < len(order); i++ {
+		if order[i] <= order[i-1] {
+			t.Errorf("the rows are out of the mock's order: legend, warning, estimate, loop, bar, maps, chips at %v", order)
+			break
+		}
 	}
-	if strings.TrimSpace(plain[bar-2]) != "" || strings.TrimSpace(plain[status+1]) != "" {
-		t.Error("no blank before the timeline, or before the chips")
+	if strings.TrimSpace(plain[maps-1]) != "" || strings.TrimSpace(plain[chips-1]) != "" {
+		t.Error("no blank before the region row, or before the chips")
+	}
+	row := plain[loop]
+	words := []string{"RADAR  MRMS ", "FRAME 12 / 12", "NEWEST 5 MIN AGO", "STOPPED"}
+	last := -1
+	for _, w := range words {
+		i := strings.Index(row, w)
+		if i <= last {
+			t.Fatalf("the loop's row is %q; want %v in that order (D-105)", row, words)
+		}
+		last = i
+	}
+	if !strings.Contains(lines[loop], render.Tok(render.MapRadarMRMSBG)) || !strings.Contains(lines[loop], strings.Split(render.Tint("§", render.Tok(render.ListPointer)), "§")[0]+"STOPPED") {
+		t.Errorf("the loop's row lacks the source's colours or a yellow STOPPED: %q", lines[loop])
+	}
+	if !strings.Contains(plain[loop], "Controls") || !strings.Contains(plain[bar+1], "place") {
+		t.Error("the controls are not beside the timeline")
+	}
+	if !strings.Contains(plain[maps], "Alaska") || !strings.Contains(plain[maps], "Guam") { // the full names, or the short ones where they do not fit
+		t.Errorf("the region row is %q", plain[maps])
+	}
+	if strings.Contains(plain[chips], "Legend") {
+		t.Error("the chips still offer the legend (D-103)")
 	}
 	if !strings.Contains(plain[legend], "LIGHTER") || !strings.Contains(plain[legend], "HEAVIER") || !strings.Contains(lines[legend], "48;2;") {
 		t.Errorf("the colour row is %q", plain[legend])
 	}
-	if !strings.Contains(plain[warn], "Switch off layers") || strings.Contains(plain[warn], "Est.") || !strings.Contains(lines[warn], strings.Split(render.Tint("§", render.Tok(render.ListPointer)), "§")[0]) {
-		t.Errorf("the warning is %q: one line, in the pointer's yellow, the estimate elsewhere", plain[warn])
+	if !strings.Contains(plain[warn], "Switch off layers") || strings.Contains(plain[warn], "Est.") {
+		t.Errorf("the warning is %q: one line, the estimate on its own row", plain[warn])
 	}
-	if !strings.Contains(plain[status], "/ Est. 2.3MB / 197 Requests") || !strings.Contains(lines[status], render.Tok(render.MapRadarMRMSBG)) {
-		t.Errorf("the status is %q, without the estimate or the badge's colours", plain[status])
-	}
-	d.mapPane.legendOn = true
-	for _, e := range d.mapPane.legend {
-		if e.Preset != "radar" {
-			continue
-		}
-		for _, c := range e.Classes {
-			if strings.Contains(strings.Join(d.legendBox(), "\n"), c.Label) {
-				t.Errorf("the legend box still lists the radar's %q", c.Label)
-			}
+	for i := 0; i < d.mapBodySize().Rows && i < len(plain); i++ {
+		if strings.Contains(plain[i], "Controls") {
+			t.Fatal("the controls box is still on the map")
 		}
 	}
 	if n, most := len(d.modalLines()), d.modalMax(); n > most {
@@ -484,9 +501,5 @@ func TestTheRadarBadgeIsThreeRows(t *testing.T) {
 	d = d.renderMap()
 	if !strings.Contains(stripANSITest(d.mapBodyLines()[2]), "STALE") {
 		t.Errorf("an old loop's badge reads %q", stripANSITest(d.mapBodyLines()[2]))
-	}
-	d.mapPane.legendOn = true
-	if top := d.withLegend(d.mapPane.lines); strings.Contains(stripANSITest(top[1]), "Legend") || strings.Contains(stripANSITest(top[2]), "Legend") {
-		t.Error("the legend opens over the badge")
 	}
 }

@@ -14,6 +14,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -451,5 +452,109 @@ func TestTheTemperatureKeyReads(t *testing.T) {
 	row := d.tempLegendRow(80)
 	if !strings.Contains(row, "38;2;0;0;0;48;2;240;232;144") || !strings.Contains(row, "38;2;255;255;255;48;2;34;0;68") {
 		t.Errorf("the key's words are not set to read on each band: %q", row)
+	}
+}
+
+// TestForecastModeTurnsTemperatureOnForItself is D-103 and D-104: R into
+// Forecast mode with temperature off turns it on - a blank map reads as
+// broken - and a chip at the top centre says so until a key. It is Forecast
+// mode's alone: nothing saved, off again in Radar mode.
+func TestForecastModeTurnsTemperatureOnForItself(t *testing.T) {
+	var asks []MapAsk
+	d := openTempMapWith(t, true, false, &asks)
+	saved := d.mapLayerChoice
+	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
+	d = settleRadar(t, m.(Dashboard), cmd)
+	if !d.layerOn(TemperatureLayer) || len(d.mapPane.tempGiven) == 0 {
+		t.Fatal("Forecast mode with temperature off drew no temperature: a blank map")
+	}
+	if _, ok := choiceOf(d.mapLayerChoice, TemperatureLayer); ok {
+		t.Errorf("the temperature Forecast mode turned on was saved: %q (D-104)", d.mapLayerChoice)
+	}
+	top := strings.Join(d.withModeChip(d.mapPane.lines, d.mapBodySize()), "\n")
+	if !strings.Contains(stripANSITest(top), "FORECAST MODE: TEMP ENABLED") {
+		t.Error("no chip says temperature was turned on")
+	}
+	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
+	if d = m.(Dashboard); d.mapPane.modeChip {
+		t.Error("a key left the chip up")
+	}
+	m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
+	d = settleRadar(t, m.(Dashboard), cmd)
+	if d.layerOn(TemperatureLayer) || len(d.mapPane.tempGiven) != 0 {
+		t.Error("back in Radar mode, the temperature Forecast mode turned on stayed on")
+	}
+	if d.mapLayerChoice != saved && strings.Contains(d.mapLayerChoice, TemperatureLayer) {
+		t.Errorf("the choice changed: %q", d.mapLayerChoice)
+	}
+	m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
+	if d = settleRadar(t, m.(Dashboard), cmd); !d.mapPane.modeChip {
+		t.Error("into Forecast mode again, the chip did not say it turned temperature on")
+	}
+}
+
+// TestSwitchingTheAutoTemperatureOffIsTheListeners is D-104: the menu's
+// switch on a temperature Forecast mode turned on turns it off, as it reads.
+func TestSwitchingTheAutoTemperatureOffIsTheListeners(t *testing.T) {
+	var asks []MapAsk
+	d := openTempMapWith(t, false, false, &asks)
+	if !d.mapPane.tempAuto || !d.layerOn(TemperatureLayer) {
+		t.Fatal("a map opened in Forecast mode with temperature off was blank (D-103)")
+	}
+	if d = switchTemp(t, d); d.layerOn(TemperatureLayer) || d.mapPane.tempAuto {
+		t.Error("the switch on an auto temperature, which read on, did not turn it off")
+	}
+}
+
+// TestTheOverlaysBoxIsStyledAsSettings is D-103: the title MAP DETAILS /
+// OVERLAYS and the group headers in Settings' heading style, a blank row
+// between groups and before the keys.
+func TestTheOverlaysBoxIsStyledAsSettings(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+	var asks []MapAsk
+	d := openTempMap(t, true, &asks)
+	box := d.overlaysBox()
+	head := strings.Split(render.Tint("§", render.Tok(render.ModalTitle)), "§")[0]
+	if !strings.Contains(box[0], head+"MAP DETAILS / OVERLAYS") {
+		t.Errorf("the title is %q", box[0])
+	}
+	var blanks, heads int
+	for i, l := range box {
+		p := strings.TrimSpace(strings.Trim(stripANSITest(l), "│"))
+		switch p {
+		case "WEATHER", "MAP DETAIL":
+			heads++
+			if !strings.Contains(l, head+p) {
+				t.Errorf("the header %q is not in the heading style", p)
+			}
+		case "":
+			blanks++
+		}
+		if strings.Contains(p, "move") && strings.TrimSpace(strings.Trim(stripANSITest(box[i-1]), "│")) != "" {
+			t.Error("no blank row before the keys")
+		}
+	}
+	if heads != 2 || blanks < 2 {
+		t.Errorf("%d headers, %d blank rows", heads, blanks)
+	}
+}
+
+// TestTheLoopRowInForecastMode is D-105 in Forecast mode: FORECAST and the
+// source, the step, and the state - PLAYING in green.
+func TestTheLoopRowInForecastMode(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(func() { rendering.SetColorEnabledForTest(false) })
+	var asks []MapAsk
+	d := openTempMap(t, false, &asks)
+	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+	d = m.(Dashboard)
+	row := d.loopRow(d.scrubW())
+	plain := stripANSITest(row)
+	if !strings.Contains(plain, "FORECAST") || !strings.Contains(plain, "STEP 1 / 8") || !strings.Contains(plain, "PLAYING") {
+		t.Errorf("the row is %q", plain)
+	}
+	if green := strings.Split(render.Tint("§", render.Tok(render.ProviderOK)), "§")[0]; !strings.Contains(row, green+"PLAYING") {
+		t.Errorf("PLAYING is not green: %q", row)
 	}
 }
