@@ -1,0 +1,14 @@
+{
+ "captured": "2026-09-27T01:09:00Z",
+ "source": "NWS NDFD (graphical.weather.gov ndfdXMLclient.php, time-series) and Open-Meteo (api.open-meteo.com/v1/forecast), a 3x2 lattice over 121W-117W, 31N-33N: San Diego's coast and the sea west of it",
+ "files": [
+  "ndfd-days.xml",
+  "ndfd-hour.xml",
+  "openmeteo.json"
+ ],
+ "traps": {
+  "ndfd-days.xml": "offshore points (121W, 119W) answer nil; after 20:00 local the first maximum is tomorrow's",
+  "ndfd-hour.xml": "begin sent with its Z; without it NDFD reads the hour as each point's local time",
+  "openmeteo.json": "every point answered, the sea included; hours in each point's local time with its offset"
+ }
+}

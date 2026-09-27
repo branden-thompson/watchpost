@@ -68,6 +68,8 @@ that enforces it; a requirement without one is marked **NO INSTRUMENT YET** so t
 | OpenFreeMap | `https://tiles.openfreemap.org` | basemap tiles, and the TileJSON document that names them |
 | Iowa Environmental Mesonet | `https://mesonet.agron.iastate.edu` | radar frames |
 | NOAA / NCEP | `https://opengeo.ncep.noaa.gov` | radar frames |
+| NWS NDFD *(D-93)* | `https://graphical.weather.gov` | temperature, Forecast mode (the default) |
+| Open-Meteo *(D-93, D-96)* | `https://api.open-meteo.com` | temperature: Radar mode always, Forecast mode when chosen; credited CC BY 4.0 |
 | NWS (existing) | `https://api.weather.gov` | alerts and zone geometry |
 
 | FR-3.9 *(P1)* | Caches state a **retention as a number** — map tiles 7 days, radar frames 2 hours (radar's own retention at source) — and can be cleared by the listener. The stated total covers map, radar and the existing 256 MB HTTP cache (FR-3.5 owns the byte total; this row owns age and clearing) | D-31; red team F4/F7/F8; R2 InfoSec F-4 | Test: the radar cache drops frames past its age; a clear path exists and empties both |

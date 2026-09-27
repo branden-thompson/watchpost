@@ -255,6 +255,7 @@ type modalKey struct {
 	mapEdge            geo.Direction // the edge's chip (D-81): which side, and whether it shows
 	mapEdgeOn          bool
 	mapRadarSource     string // the radar's chip and its line (W8, D-83)
+	mapTemp            string // the temperature and Forecast mode: the source, notes, refusal, step, high or low, playback and timeline (W10)
 	mapRadarLine       string
 	mapRadarTimeline   string
 	mapTitle           string // what is in view, in the window's title (D-64)
@@ -352,6 +353,7 @@ func (d Dashboard) modalKeyFor(o render.Opts) modalKey {
 		k.mapRadarSource, k.mapRadarLine = d.mapPane.radarSource, d.mapPane.radarLine
 		k.mapRadarTimeline = strings.Join(d.mapPane.radarTimeline, "\n") + "\n" + d.mapPane.radarBadgeTime
 		k.mapTitle = d.mapPane.title
+		k.mapTemp = d.tempMemoKey()
 	case modalRequest:
 		// EVERY FIELD THE WINDOW DRAWS. F-30's guard named all four it was
 		// missing the moment the window existed — `field`, `query`, `outside`

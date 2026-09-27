@@ -1065,3 +1065,40 @@ Live: the newest Hawaii frame paints 4,141 pixels south of 17.5°N and 1,953 nor
 
 **Mutation verdicts:** the library's `World` fix is caught by P-22; the boxes by
 `TestEachBoxIsItsProductsWholeExtent`.
+
+## Batch 25 — W10: temperature, and the map's two modes (2026-09-26)
+
+**Rulings D-93 to D-98**, asked one at a time after live probes of the candidate sources:
+- **D-93:** two sources join FR-3.8's closed list. NDFD (`graphical.weather.gov`) is the default, and Open-Meteo (`api.open-meteo.com`) is a Settings choice.
+- **D-94:** the map has two modes. Radar mode is R on: everything drawn matches the frame's time. Forecast mode is R off: Now, Today, Tomorrow and Day 3 to Day 7, stepped. The chips gain R, and the Legend is on probation.
+- **D-95:** over radar, temperature is isotherms plus a faint fill.
+- **D-96:** Radar mode's temperature is always Open-Meteo, because NDFD has no past hours.
+- **D-97:** a day draws its high, and `<` or `>` flips it to its low.
+- **D-98:** alerts are drawn by their time.
+
+**The probes that set the numbers.**
+- NDFD answers only the first 100 points of a request, silently.
+- NDFD reads an hour sent without its zone as each point's local time; it answered seven hours ahead.
+- NDFD has no hour before the current one.
+- Open-Meteo's free tier counts every point as a call, 10,000 a day. A lattice is therefore at most 80 points, which keeps four boxes refreshed hourly all day under the limit.
+
+**go-tuiMaps `v0.2.0-rc.14`** (its D-88, L-15):
+- **`Overlay.During`:** an overlay with a span is drawn only while the map's moment meets it, and stays prepared meanwhile.
+- **`Map.ShowMoment`:** the host's moment while no loop is held.
+- **The look:** a field that shares the map with an image is its labelled contours over faint bands.
+
+Every hour's and every day's grid is therefore handed in at once, and a step or a frame moves only the moment. A grid swapped in at the step would blank until Work prepared it: U1-28's blink, once a step.
+
+**The library gate's fuzzer found a third disagreement with the proven decoder** (L11.12, D-126's kind). This decoder read a point's second MoveTo command as more points. It is now refused (D-75), and the input is kept in the oracle's corpus.
+
+**What the guards caught.**
+- The Router carried neither new message back to Observer. With the console active, the temperature and Forecast mode's playback would have gone to the console and been lost.
+- The frame's memo key did not cover the temperature or the step.
+- Help's MAP group took two more rows and pushed Observer's row-mark legend out of its window. It now takes one: R and `<` `>` share a row.
+
+**Every alert in effect is on now's frame.** An alert's span begins at its onset. An alert already in effect when it was issued after the newest radar frame, or inside the listener's hour, begins at the mode's now. Otherwise the map would hide a warning in effect until the next frame.
+
+**Mutation verdicts** (targeted): 22 in watchpost and 10 in the library. One watchpost mutant survived, and it showed dead code: a loop trimming the lattice to 80 points could never run, since the rows are 80 divided by the columns. The loop is gone; the columns are capped instead, so a box very wide for its height still keeps two rows. Three library mutants survived the first tests and were caught by new ones:
+- the frame reuse after a span change (a day's field swapped for another);
+- `Changed` on `ShowMoment`;
+- the contours, whose number the loop's stamp had supplied.

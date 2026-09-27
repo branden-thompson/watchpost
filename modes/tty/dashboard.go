@@ -80,6 +80,12 @@ type Config struct {
 	// MapRadarSource is the file's word for the lower 48's radar: "iem", or
 	// MRMS, the default (D-83).
 	MapRadarSource string
+	// MapTempSource is the file's word for Forecast mode's temperature:
+	// "open-meteo", or NDFD, the default (D-93).
+	MapTempSource string
+	// MapTemperature is the temperature the map draws (W10): every hour's or
+	// step's grids, each with its span, asked off the UI goroutine.
+	MapTemperature func(ctx context.Context, ask MapAsk) MapTemperature
 	Maps           string // 0.18.0: the file's words for the map's two Settings (UIPrefs')
 	MapDescription string
 	ClearMapData   func() MapCleared // 0.18.0 W3.8: the app empties what the live map cannot reach
@@ -344,6 +350,7 @@ type UIPrefs struct {
 	MapScale       string // "state" (the default), "county" or "region"
 	MapNearbyKm    int
 	MapRadarSource string          // "iem", or MRMS by default (D-83)
+	MapTempSource  string          // "open-meteo", or NDFD by default (D-93)
 	MapLayers      map[string]bool // the layers switched from their defaults
 	MapDetail      map[string]bool // the map's detail switched from its defaults (D-65)
 	MapDetailLevel string          // "essential", "weather" (the default), "standard" or "full" (D-67)
@@ -556,6 +563,7 @@ type Dashboard struct {
 	mapDetailChoice string         // the map's detail choices as one comparable word (D-65)
 	mapDetailLevel  tuimaps.Detail // how much of the basemap is drawn (D-67, go-tuiMaps D-82)
 	mapRadarIEM     bool           // IEM for the lower 48's radar, else MRMS (D-83)
+	mapTempOM       bool           // Open-Meteo for Forecast mode's temperature, else NDFD (D-93)
 	mapKeys         term.KeyMap
 	modal           modal  // the ONE open window (quality pass Q6, L3-F15): exclusivity by construction, not by ten reset sites
 	addMode         string // "add" | "lookup" (shared search modal, UAT 26.3/26.4)
@@ -825,7 +833,7 @@ func NewDashboard(cfg Config) (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
-	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
+	d := Dashboard{cfg: cfg, keys: keys, mapKeys: mapKeys, mapsOff: cfg.Maps == "off", mapDesc: mapDescByKey(cfg.MapDescription), mapRadarIEM: cfg.MapRadarSource == "iem", mapTempOM: cfg.MapTempSource == tempSourceOpenMeteo, mapScale: mapScaleByKey(cfg.MapScale), mapNearbyKm: mapNearbyByKm(cfg.MapNearbyKm), mapLayerChoice: layerChoiceKey(cfg.MapLayerChoice), mapDetailChoice: layerChoiceKey(cfg.MapDetailChoice), mapDetailLevel: detailLevelByKey(cfg.MapDetailLevel), consoleKeys: console, keysWithheld: withheld, units: render.UnitsByKey(cfg.Units), clockFmt: render.ClockByKey(cfg.Clock), width: 80, height: 24, darkBG: true, radioVolume: 55, radioVoice: cfg.Voice, memo: &bodyMemo{}, mmemo: &modalMemo{}, tickerScrolls: map[TickerCategory]int{}, now: time.Now}
 	if cfg.OpenSetup {
 		d = d.openSetup() // first run: the questions come to the dashboard, not the other way round (UAT 100)
 	}
@@ -1007,7 +1015,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if next, ok := m.(Dashboard); ok && next.modal == modalMap {
 			next = next.requestFeed()          // 0.18.0: new data, so the map's alerts are asked again (D-45's data row)
 			next, radar := next.refreshRadar() // and the radar, once its loop has stood two minutes (D-85)
-			return next, tea.Batch(cmd, next.mapFeedCmd(), radar)
+			next, temp := next.refreshTemp()   // and the temperature, as it stands or the hour turns (W10)
+			return next, tea.Batch(cmd, next.mapFeedCmd(), radar, temp)
 		}
 		return m, cmd
 	case RecentSnapshotMsg:
@@ -1041,6 +1050,10 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.applyMapFeed(v) // 0.18.0: the alerts, set and drawn in Update (D-41)
 	case mapRadarMsg:
 		return d.applyMapRadar(v) // W8: the radar, set and drawn in Update (D-41)
+	case mapTempMsg:
+		return d.applyMapTemp(v) // W10: the temperature, set and drawn in Update (D-41)
+	case forecastTickMsg:
+		return d.applyForecastTick(v) // D-94: Forecast mode's playback
 	case mapWorkedMsg:
 		return d.applyMapWorked(v) // 0.18.0: what a Work command landed is drawn here, in Update (D-41)
 	case mapTickMsg:

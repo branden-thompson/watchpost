@@ -119,6 +119,7 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	d.mapPane.radarGiven, d.mapPane.radarSource, d.mapPane.radarNote = given, v.radar.Source, v.radar.Note
+	d = d.showStep().retime() // the newest frame is Radar mode's now: the alerts' spans move with it (D-98)
 	if removed || !set || m.Pending() == 0 {
 		d = d.renderMap() // nothing left to prepare: draw now; else the work's answer draws it, whole
 	}
@@ -176,6 +177,9 @@ func (d Dashboard) radarChipTones() string {
 // does (go-tuiMaps D-87).
 func (d Dashboard) withRadarChip(lines []string, size tuimaps.Size) []string {
 	badge := d.radarBadge()
+	if !d.radarMode() && d.cfg.MapRadar != nil {
+		badge = d.forecastBadge() // D-94: Forecast mode's badge in its place
+	}
 	if badge == nil || len(lines) < len(badge) {
 		return lines
 	}
@@ -333,8 +337,18 @@ func (d Dashboard) radarBadgeTimeNow() string {
 	return when
 }
 
-// radarTimelineOn reports whether the timeline's rows are held.
-func (d Dashboard) radarTimelineOn() bool { return d.cfg.MapRadar != nil && d.layerOn(RadarLayer) }
+// radarTimelineOn reports whether the timeline's rows are held: in both
+// modes (D-94) - Radar mode's loop, or Forecast mode's steps - so the map's
+// size never depends on the mode.
+func (d Dashboard) radarTimelineOn() bool { return d.cfg.MapRadar != nil }
+
+// radarChipWords are the R chip's words: the mode the key switches (D-94).
+func (d Dashboard) radarChipWords() string {
+	if d.radarMode() {
+		return "Radar On"
+	}
+	return "Radar Off"
+}
 
 // radarTimeline is the loop as the listener sees it (D-86): the shown frame's
 // time above its mark; the bar from the oldest frame to the last, the step

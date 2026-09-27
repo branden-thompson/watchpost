@@ -66,6 +66,8 @@ const requestedCap
 const scheduleTick
 const statedCacheBytes
 const systemVoice
+const tempFrameNote
+const tempRequestBytes
 const testEventLife
 const tickerEvery
 const tickerRotate
@@ -164,6 +166,7 @@ func (*livePipelines).mapFeedWith
 func (*livePipelines).mapInputs
 func (*livePipelines).mapInputsFetching
 func (*livePipelines).mapRadar
+func (*livePipelines).mapTemperature
 func (*livePipelines).marineFor
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
@@ -380,6 +383,7 @@ func (*speaker).line
 func (*speaker).live
 func (*speaker).prepare
 func (*speaker).role
+func (*tempSources).sourceFor
 func (*tickerDeck).Inject
 func (*tickerDeck).clock
 func (*tickerDeck).currentScope
@@ -418,6 +422,7 @@ func alertKeysOf
 func alertLayerCost
 func alertNarration
 func alertOverlay
+func alertTimes
 func alertTonePCM
 func allFabricated
 func allScenarioKeys
@@ -431,6 +436,7 @@ func bedLabelOf
 func bedReachFor
 func breakingItem
 func breakingLine
+func buildTemperature
 func burstAgencies
 func burstClosingLine
 func burstHead
@@ -476,13 +482,17 @@ func fireReportOf
 func fireRules
 func fireSourceNames
 func firstLineIndex
+func forecastGrids
 func fullyPopulated
 func gapAfter
 func halfFor
 func holdRest
 func hostOf
+func hostsFor
+func hourGrids
 func inViewOnly
 func indexKey
+func init
 func init
 func init
 func init
@@ -529,7 +539,6 @@ func newMapBuilder
 func newMastercontrol
 func newProductionMapBuilder
 func newPump
-func newRadarSources
 func newRadioDeck
 func newReleaseWatch
 func newResolver
@@ -537,6 +546,7 @@ func newSevereDeck
 func notNew
 func noteRead
 func onTheRail
+func overClient
 func pairOf
 func parseLatLon
 func parseSayVoices
@@ -560,6 +570,7 @@ func quakesIn
 func radarHosts
 func radarLayerCost
 func radarLoop
+func radarSourcesOver
 func radioDebugLog
 func radioDebugName
 func radioDebugOn
@@ -637,6 +648,10 @@ func subjectOf
 func suggestHook
 func tapeHead
 func tellUnder
+func tempGrid
+func tempHosts
+func tempLayerCost
+func tempSourcesOver
 func testCard
 func testHead
 func testLine
@@ -645,6 +660,7 @@ func tickerMuteState
 func tickerRadiusState
 func tickerState
 func timeRender
+func timed
 func toKeyMap
 func toSevereRow
 func toneClassOfEvent
@@ -723,6 +739,7 @@ type severeDeck
 type slot
 type speaker
 type stationArea
+type tempSources
 type tickerDeck
 type tickerPrefs
 var _

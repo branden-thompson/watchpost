@@ -17,6 +17,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
 // The radar, registered: on by default - the map shows what is real (D-76).
@@ -38,13 +39,20 @@ type radarSources struct {
 	iem, mrms radar.Source
 }
 
-// newRadarSources builds both over one radar client.
-func newRadarSources(userAgent string) (*radarSources, error) {
-	c, err := radar.NewClient(userAgent)
+// radarSourcesOver is both sources over one radar client (overClient).
+func radarSourcesOver(c *httpx.Client) *radarSources {
+	return &radarSources{iem: radar.NewIEM(c, ""), mrms: radar.NewMRMS(c, "")}
+}
+
+// overClient builds a layer's sources over one hardened client of their own:
+// the radar's and the temperature's (W8.5, W10.2).
+func overClient[T any](newClient func(string) (*httpx.Client, error), userAgent string, build func(*httpx.Client) T) (T, error) {
+	c, err := newClient(userAgent)
 	if err != nil {
-		return nil, err
+		var none T
+		return none, err
 	}
-	return &radarSources{iem: radar.NewIEM(c, ""), mrms: radar.NewMRMS(c, "")}, nil
+	return build(c), nil
 }
 
 // sourceFor is the source for a region: IEM where the listener chose it and
@@ -271,9 +279,15 @@ func radarLayerCost(in mapInputs) (int64, int) {
 
 // radarHosts are the radar's entries for the Status window's MAP block.
 func radarHosts() []tty.MapSource {
+	return hostsFor(radar.Hosts(), "radar frames of fixed boxes around the region shown (never the view itself)")
+}
+
+// hostsFor is a layer's hosts as the Status window's entries, by name, each
+// with what it is sent.
+func hostsFor(hosts map[string]string, use string) []tty.MapSource {
 	var out []tty.MapSource
-	for name, base := range radar.Hosts() {
-		out = append(out, tty.MapSource{Name: name, Host: hostOf(base), Use: "radar frames of fixed boxes around the region shown (never the view itself)"})
+	for name, base := range hosts {
+		out = append(out, tty.MapSource{Name: name, Host: hostOf(base), Use: use})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out

@@ -519,7 +519,7 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 			segs = append(segs, o.KeyCap("←→")+" Scale")
 		case rowMapNearby:
 			segs = append(segs, o.KeyCap("←→")+" Distance")
-		case rowMapRadarSource:
+		case rowMapRadarSource, rowMapTempSource:
 			segs = append(segs, o.KeyCap("←→")+" Source")
 		case rowMapDetailLevel:
 			segs = append(segs, o.KeyCap("←→")+" Detail")

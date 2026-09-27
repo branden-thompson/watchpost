@@ -162,7 +162,8 @@ func mapSourceList() []tty.MapSource {
 	}
 	out = append(out, tty.MapSource{Name: "National Weather Service", Host: hostOf(zones.DefaultBase),
 		Use: "the codes of the alert zones on the map, and of the states and marine areas in view (D-66)"})
-	return append(out, radarHosts()...) // W8: the radar's two sources
+	out = append(out, radarHosts()...) // W8: the radar's two sources
+	return append(out, tempHosts()...) // W10: the temperature's two
 }
 
 // radarImageBudget is the memory the library may hold the radar's pictures

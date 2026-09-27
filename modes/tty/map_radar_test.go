@@ -56,7 +56,7 @@ func settleRadar(t *testing.T, d Dashboard, cmd tea.Cmd) Dashboard {
 		var next []tea.Cmd
 		for _, msg := range msgsOf(cmd) {
 			switch msg.(type) {
-			case mapRadarMsg, mapWorkedMsg: // every answer goes back through Update, the work's too
+			case mapRadarMsg, mapTempMsg, mapWorkedMsg: // every answer goes back through Update, the work's too
 				m, c := d.Update(msg)
 				d, next = m.(Dashboard), append(next, c)
 			}
@@ -119,13 +119,7 @@ func TestTheSourcesChipIsInTheUpperRight(t *testing.T) {
 func TestSwitchingRadarOffTakesItAway(t *testing.T) {
 	var asked []string
 	d := openRadarMap(t, "MRMS", &asked)
-	d = pressCode(d, 'O', "O")
-	var keys []string
-	for _, r := range d.overlayRows() {
-		keys = append(keys, r.key)
-	}
-	d.mapPane.menuAt = indexOf(keys, RadarLayer)
-	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"}) // D-94: R is the mode; the Overlays menu no longer lists radar
 	d = settleRadar(t, m.(Dashboard), cmd)
 	if len(d.mapPane.radarGiven) != 0 || d.radarChipText() != "" {
 		t.Errorf("radar off left %v and the chip %q", d.mapPane.radarGiven, d.radarChipText())
@@ -160,7 +154,7 @@ func TestThePlaybackKeysDriveTheLoop(t *testing.T) {
 	for _, r := range mapHelpRows(defaultMapKeyMap(), false) {
 		help = append(help, r.keys+" "+r.help)
 	}
-	if !strings.Contains(strings.Join(help, "\n"), "space, ⇧←, ⇧→, n Radar") {
+	if !strings.Contains(strings.Join(help, "\n"), "space, ⇧←, ⇧→, n Play") {
 		t.Errorf("Help does not list the playback keys:\n%s", strings.Join(help, "\n"))
 	}
 }

@@ -4,7 +4,7 @@ date: 2026-09-25
 phase: BUILD
 sev: SEV-0
 authority: HUM LEAD
-status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–24 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87), batch 21 its second (D-88), batch 22 its third (D-89), batch 23 its fourth (D-90 to D-92), batch 24 its fifth; batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.13."
+status: "LIVE — redrawn with every BUILD batch that moves a part. Batches 1–25 (W1.1–W1.8, W1.10–W1.17, W2, W3.1–W3.9, W4, W5 with W9.1–W9.5 folded; Settings in tabs, D-62; the layer registry, the cost warning; the alert scope, retired by D-76) - P1-a complete, UAT-1 open; batches 12 to 18 are its passes (D-63 to D-82); batch 19 opens W8, radar (D-83, D-84); batch 20 is UAT-2's first pass (D-85 to D-87), batch 21 its second (D-88), batch 22 its third (D-89), batch 23 its fourth (D-90 to D-92), batch 24 its fifth; batch 25 opens W10, temperature and the map's two modes (D-93 to D-98); batch 15 with Alerts in view (D-66), batch 16 with regions (D-77), batch 17 with alert categories and earthquakes (D-80); go-tuiMaps v0.2.0-rc.14."
 ---
 
 # As built: where the map lives
@@ -29,19 +29,22 @@ flowchart LR
     MS["maps.go · mapSourceList (D-75)\neach host the map contacts, and what it is sent"]
     MQ["mapquakes.go · the earthquakes (D-80)\nthe ticker's USGS significant quakes in view\ncircles sized by magnitude; fetches nothing"]
     MR["mapradar.go · the radar (W8)\nMRMS by default, IEM for the lower 48 if chosen (D-83); none in American Samoa\n24 five-minute slots over two hours, a missing one a stated gap\nnewest first; an all-empty loop checked against the other source (D-84)\ntrimmed of its oldest frames to fit the 24 MiB image budget (D-88)"]
+    MT["maptemp.go · the temperature (W10)\nRadar mode: Open-Meteo, every hour up to now, each grid during its hour (D-96)\nForecast mode: NDFD by default, Open-Meteo if chosen (D-93)\nNow and each day's high and low, each during its step (D-94, D-97)\na lattice a radar box, interpolated; a day a source lacks, said"]
   end
   subgraph domains["domains/"]
     ZS["nws/zones · Store\n512 at once, reported past it; six in flight (W3.9)\nshapes refetched after 7 days"]
     RD["radar · IEM, MRMS (W8.3)\nfixed boxes, never the view (D-47); outside the lower 48 each MRMS product's whole extent; only advertised times, always sent (D-84)\nits own client: memory only, 1 MiB cap, public addresses, https"]
+    TD["temperature · NDFD, Open-Meteo (W10.2)\na lattice of at most 80 points a box, never the view (D-47)\nNDFD: the hour sent with its zone; offshore missing, never zero\nits own client: memory only, 2 MiB cap, public addresses, https"]
     WS["nws · Provider.ZonesFor\nthe place's own zone codes\nProvider.AlertsInAreas: /alerts/active?area= (D-66)"]
   end
   subgraph tty["modes/tty — the Observer"]
     MW["map_pane.go · the map window\ng opens at the chosen scale, nearby as chosen\n1-6 snap to a region; at an edge a chip names the neighbour, the next press crosses (D-77, D-81)\nowns its keys while open (D-61)\ndraws in Update, View prints (D-41)\nunits follow the station's\na layer off: its overlays not set (key before the slash)\nthe view moved: the feed asked again once it settles (600 ms)"]
     MD["map_describe.go · the description follows the view (D-74, D-78)\nthe place - Currently: … only while the place is in view; else the view's name\n‹event› in effect for this area · for nearby ‹areas› · for ‹areas›, until ‹time›\nevery alert in view, most severe first; the box ends 'And N more in view.'"]
-    MK["map keymap scope\narrows pan · + − zoom · [ ] place · 1-6 region · PgUp/PgDn scroll\nA Area Alerts (closed on open, D-87) · O Overlays · L legend\nradar: space play · shift+← shift+→ step · n now (D-86)\nunder the map (D-89): the radar's colour row, the warning, a blank,\nthe timeline, Radar [chip] loop / Est., a blank, the chips"]
-    BX["map_boxes.go · over the map (UAT-1)\nthe radar's badge, upper right: RADAR DATA, the source's chip, the frame's time (D-92)\nthe library's stamp handed to it (ShowStamp, go-tuiMaps D-87)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: alert areas and [w]'s categories, earthquakes, the map's detail (D-65, D-80)\ndetail: the level is a preset, the switches the truth; the library at Full (D-79)\nthe title names the view by scale (D-64)"]
+    MK["map keymap scope\narrows pan · + − zoom · [ ] place · 1-6 region · PgUp/PgDn scroll\nA Area Alerts (closed on open, D-87) · R Radar mode on/off (D-94) · O Overlays · L legend\nspace play · shift+← shift+→ step · n now (D-86): the loop in Radar mode, the days in Forecast mode\n< > the days' high or low (D-97)\nunder the map (D-89): the radar's or the temperature's colour row, the warning, a blank,\nthe timeline or the steps, the loop's line or Forecast · step, a blank, the chips"]
+    MTW["map_temp.go · the two modes (D-94)\nevery grid handed in up front with its span; a step moves the moment, never a Set (L-15.1, L-15.2)\nan alert from its onset, and every alert in effect on now's frame (D-98)\nForecast mode: the host steps and plays, the last day held"]
+    BX["map_boxes.go · over the map (UAT-1)\nthe radar's badge, upper right: RADAR DATA, the source's chip, the frame's time (D-92)\nin Forecast mode: FORECAST, the temperature's source, the step\nthe library's stamp handed to it (ShowStamp, go-tuiMaps D-87)\nArea Alerts, upper left (D-63) · Controls, lower right, the pressed chip blinks\nOverlays menu: alert areas and [w]'s categories, earthquakes, temperature, the map's detail (D-65, D-80); radar is R's (D-94)\ndetail: the level is a preset, the switches the truth; the library at Full (D-79)\nthe title names the view by scale (D-64)"]
     LG["the legend (D-44)\na box over the map's corner, from Legend()\nonly the severities drawn, with their digits"]
-    ST2["Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby (no alert scope, D-76)\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail (D-67)\na row per detail layer, ← Enabled → (U1-35); Lakes, never the sea (U1-39) · Map data: clear · the retention"]
+    ST2["Settings, the Maps tab (D-62), two columns (U1-25)\nMAP: Maps on/off · Description · Opens at · Nearby (no alert scope, D-76) · Radar · Temperature (D-93)\nMAP - LAYERS AND DETAIL: Layers (+ the cost warning) · Detail (D-67)\na row per detail layer, ← Enabled → (U1-35); Lakes, never the sea (U1-39) · Map data: clear · the retention"]
     SW["status.go · the Status window\nMAP - contacted only while a map is open (D-75)\neach source: its host and what it is sent"]
   end
   subgraph plat["platform/"]
@@ -54,9 +57,13 @@ flowchart LR
   MF --> MG --> ZS
   MF -- "ask.View" --> MV --> WS
   MR --> RD
+  MT --> TD
+  MT --> RD
+  MT -- "Config.MapTemperature(ask: mode, source, unit, the hour's start)\none request at a time; asked only while on (D-25)" --> MW
+  MW --> MTW
   MR -- "Config.MapRadar(ask): the whole loop\none request at a time; shown once in (D-85)\nits own command: the alerts never wait (W8.12)" --> MW
   SD["severe.go · severeDeck.feedCopy\nthe ticker's feed"] --> MQ --> MF
-  MF -- "alert/‹category›/‹id›: [w]'s Classify; forecasts not drawn (D-80)" --> MW
+  MF -- "alert/‹category›/‹id›: [w]'s Classify; forecasts not drawn (D-80)\nTimes: each overlay's onset and end (D-98)" --> MW
   MS -- "Config.MapSources" --> SW
   MF --> WS
   MB -. "first g" .-> ZS
@@ -137,5 +144,6 @@ padded to one width, so the arrows line up (U1-24).
 
 ## Not built yet
 
-The theme's palette and the colour-depth hint (W7), which bring W2.3's theme and depth rows; radar (W8),
-which registers its sources and its layer and brings the frame-advance rows.
+The theme's palette and the colour-depth hint (W7), which bring W2.3's theme and depth rows. Radar's
+motion Setting's off and normal (W8.9; slow is built) and its goldens over alert areas (W8.11). The wind
+overlay (F-182), which joins the Forecast mode's steps.

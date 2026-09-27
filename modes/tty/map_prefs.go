@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/branden-thompson/watchpost/platform/category"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -382,7 +383,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -394,6 +395,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.cycleNearby(forward), true
 	case rowMapRadarSource:
 		return d.toggleRadarSource(), true
+	case rowMapTempSource:
+		return d.toggleTempSource(), true
 	case rowMapDetailLevel:
 		return d.cycleDetailLevel(forward).uiTouched(), true
 	case rowMapLayers:
@@ -414,6 +417,11 @@ type MapAsk struct {
 	// (D-83; MRMS otherwise).
 	Region   string
 	RadarIEM bool
+	// The temperature's (W10): Forecast mode (D-94); Open-Meteo chosen for it
+	// (D-93); the listener's unit; and the start of the listener's hour, which
+	// Forecast mode's steps are counted from.
+	Forecast, TempOpenMeteo, Fahrenheit bool
+	Anchor                              time.Time
 }
 
 // mapAsk is the ask as the window stands: the watchlist's places, and the
@@ -432,7 +440,8 @@ func (d Dashboard) mapAsk() MapAsk {
 		joined.Locations = append(append([]snapshot.Location(nil), joined.Locations...), *place)
 		snap = &joined
 	}
-	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM}
+	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
+		Forecast: !d.radarMode(), TempOpenMeteo: d.mapTempOM, Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

@@ -225,6 +225,23 @@ wait for the tag (FR-5.6). The integration map uses these numbers.
 | W9.9 | The colour-independent pattern at colour-on depths (HR-7, FR-7.1, **WP-L3**) | `modes/tty/map_pane_test.go` | — | W7.1's invariant at every depth, now including colour-on |
 | W9.10 | The legend gains P1-b's keys (D-54): the severity digits (go-tuiMaps D-65), the radar classes, and any value scale the map shows | `modes/tty/map_legend.go` | — | With radar and alerts on the map the legend lists the five digits and their words and the radar classes |
 
+## W10 — Temperature, and the map's two modes (F-182, D-93..D-98) · UAT-2
+
+The map has two modes (D-94): **Radar** (R on), where everything drawn matches the radar frame's time, and **Forecast** (R off), which steps Now / Today / Tomorrow / Day 3-7. Temperature is asked for a radar box, never a view (D-47), as a coarse lattice the host interpolates into the grid the library draws (the library samples the nearest cell).
+
+| # | Task | Files | Shape | Test first (RED) |
+|---|---|---|---|---|
+| W10.1 | Temperature fixtures committed before anything uses them | `domains/temperature/testdata/` | A recorded NDFD DWML answer (with offshore nils) and an Open-Meteo answer (with past hours) for one lattice | The manifest test |
+| W10.2 | **Two sources on the closed list** (D-93, FR-3.8): NDFD and Open-Meteo, each through the hardened client (https only, public addresses, a body cap), one request per box, sequential | `domains/temperature/` | `type Source interface{ Name() string; Fetch(ctx, box Box, pts Lattice) (Series, error) }`; `Series` holds, per lattice point, hourly values (past hours where the source has them) and each day's high and low | FR-3.8's positive test gains both hosts; a parser test per fixture; a nil point stays missing, never zero; a private-address answer and plain http refused |
+| W10.3 | The lattice and its interpolation: a fixed lattice per radar box, bilinear into a fine grid; a missing point is left out and the points around it weighed up to one, so coastal land keeps its temperature; a cell with no point around it stays missing *(as built, batch 25: the first wording left the coast blank wherever NDFD's offshore points are nil)* | `domains/temperature/grid.go` | `func Lattice(box Box) Lattice`; `func (s Series) Grid(at Step) (Grid, bool)` | A lattice of known values interpolates exactly at its points and linearly between them; a nil corner leaves its cells missing |
+| W10.4 | **The source is a Setting** (D-93): NDFD by default; Radar mode always asks Open-Meteo (D-96); the credit line names what is drawn (Open-Meteo's CC BY 4.0, "interpolated") | `platform/config/`, `modes/tty/setup_rows.go`, `app/maptemp.go` | `map_temperature_source` | Settings round trip; Radar mode asks Open-Meteo whatever the Setting; the credit line |
+| W10.5 | **Fetched only when shown** (D-25), refreshed on the hour, never faster; the cost line counts Open-Meteo's calls against its free limit (P-2) | `app/maptemp.go` | — | Nothing fetched with temperature off; a request count across an hour; the cost line |
+| W10.6 | **The two modes** (D-94): R switches Radar/Forecast and the scrubber with it; the chips read A Area Alerts, R Radar On/Off, O Overlays, L Legend; the Overlays menu lists only what the mode draws | `modes/tty/map_pane.go`, `modes/tty/map_prefs.go` | — | Chips per mode; the Overlays menu per mode; R round trip keeps the other layers |
+| W10.7 | **Radar mode sync** (D-96, D-98): after a frame advance crosses an hour, the temperature grid for that hour is set and the frame redrawn in the same Update; an alert draws on a frame only once begun | `modes/tty/map_radar.go` | Reads `Loop().At` | No frame pairs radar with another hour's temperature; an alert issued mid-loop is absent from earlier frames |
+| W10.8 | **Forecast mode** (D-94, D-97, D-98): Now / Today / Tomorrow / Day 3-7 stepped by the host with radar's keys and a scrubber; `<` `>` flip High/Low; each step draws the alerts in effect during it, quakes on Now only; the badge says the step | `modes/tty/map_forecast.go` | Keymap actions `map.high`, `map.low` | A step journey; the alert set per step; High/Low flip; Now ignores it |
+| W10.9 | **The look over radar** (D-95), go-tuiMaps v0.2.0: isotherms at any depth when an image shares the map, the bands a faint fill only where there is no echo | go-tuiMaps `internal/render/field.go` | — | Library goldens at each depth; the echo keeps its full colour |
+| W10.10 | Temperature's key as a swatch row in the controls, like radar's; the Legend's probation judged at UAT (D-94) | `modes/tty/map_pane.go` | — | The row's swatches are the preset's |
+
 ## The trace
 
 | Requirement | Task | | Requirement | Task |

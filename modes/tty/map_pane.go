@@ -90,11 +90,25 @@ type mapPane struct {
 	radarSource, radarNote, radarLine string
 	radarTimeline                     []string              // the loop's timeline (D-86), drawn in Update
 	radarBadgeTime                    string                // the badge's time row (D-92), drawn in Update
+	fcTimeline                        []string              // Forecast mode's steps (D-94), drawn in Update
 	report                            tuimaps.PlaceReport   // the library's answers for the selected place, as last drawn
 	legend                            []tuimaps.LegendEntry // what the map draws now, for the legend (W1.17)
 	legendOn                          bool                  // the legend is open over the map (D-44)
 	drawnSev                          map[string]bool       // the severities the feed drew, by word: the legend keys these (D-54, "as drawn")
 	feedGen                           uint64                // the feed last asked for; an older answer is dropped
+	feed                              *MapFeed              // the feed as last answered, layers applied: set again with each mode's spans (D-98)
+
+	// The temperature (W10): one request at a time as the radar's, the answer
+	// held, the grids handed in by id, and the anchor it was built at.
+	tempBusy, tempAgain bool
+	tempAt, tempAnchor  time.Time
+	temp                MapTemperature
+	tempGiven           map[string]tuimaps.Overlay
+	tempRefused         string
+	// Forecast mode (D-94): the step shown, high or low, and its playback.
+	fcStep, fcHeld   int
+	fcLow, fcPlaying bool
+	fcGen            uint64
 }
 
 // mapView is one drawn frame's view: where, how close, and how big.
@@ -114,6 +128,9 @@ type MapFeed struct {
 	// InView are the alerts drawn that the station does not hold - the
 	// view's (D-66) - so the description can name them in full.
 	InView []snapshot.Alert
+	// Times are when each overlay is, by id: the window draws each only while
+	// the mode's moment meets it (D-98).
+	Times map[string]TimedOverlay
 }
 
 // mapFeedMsg is the feed's answer, to the request it was asked in.
@@ -165,9 +182,12 @@ func (d Dashboard) toggleMap() Dashboard {
 	m, scale, km := d.mapPane.m, d.mapScale.zoom(), float64(d.mapNearbyKm)
 	d.mapPane.call("Zoom", func() { _ = m.Zoom(scale) })        // every open is at the chosen scale (W4.3); the bound holds it
 	d.mapPane.call("SetNearby", func() { _ = m.SetNearby(km) }) // the description's "near" as chosen (W9.2)
-	d = d.applyDetail().applyPlayback().refreshMapCost().followSelection().requestFeed().renderMap()
+	d.mapPane.fcStep, d.mapPane.fcPlaying = 0, false            // Forecast mode opens on Now, stopped (D-94)
+	d.mapPane.fcGen++
+	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().requestFeed().renderMap()
 	d, radar := d.askRadar()
-	return d.withCmd(tea.Batch(d.mapWorkCmd(), d.mapFeedCmd(), radar))
+	d, temp := d.askTemp()
+	return d.withCmd(tea.Batch(d.mapWorkCmd(), d.mapFeedCmd(), radar, temp))
 }
 
 // boundMap holds the map inside its region (W4, W9.1: the library's bound
@@ -281,6 +301,7 @@ func (d Dashboard) renderMap() Dashboard {
 	d.mapPane.title = d.mapTitleAt(d.mapBodySize())
 	d.mapPane.radarLine = d.radarStatus() // read from the library here, in Update; the frame only prints it (D-41)
 	d.mapPane.radarTimeline = d.radarTimeline(d.mapTextW())
+	d.mapPane.fcTimeline = d.forecastTimeline(d.mapTextW())
 	d.mapPane.radarBadgeTime = d.radarBadgeTimeNow()
 	d.mapPane.gen++
 	d.mapPane.changed, d.mapPane.ticks = frame.Changed, frame.FrameTicks
@@ -390,12 +411,19 @@ func (d Dashboard) mapBodyLines() []string {
 	}
 	// WHILE RADAR IS ON (D-89): its colour row; the notes and the warning; a
 	// blank; the timeline (D-86); the status; a blank; the chips.
-	out = append(out, " "+d.radarLegendRow(width))
+	if d.radarMode() {
+		out = append(out, " "+d.radarLegendRow(width))
+	} else {
+		out = append(out, " "+d.tempLegendRow(width)) // W10.10: the bands' colours, as radar's are
+	}
 	for _, l := range d.noteLines(width) {
 		out = append(out, " "+l)
 	}
 	out = append(out, "")
 	tl := d.mapPane.radarTimeline
+	if !d.radarMode() {
+		tl = d.mapPane.fcTimeline // D-94: Forecast mode's steps
+	}
 	for i := range radarRows {
 		l := ""
 		if i < len(tl) {
@@ -438,6 +466,9 @@ func (d Dashboard) noteLines(width int) []string {
 	if d.mapPane.radarSource != "" && d.mapPane.radarNote != "" && d.layerOn(RadarLayer) {
 		out = append(out, render.WrapText(d.mapPane.radarNote, width)...) // W8.15a: MRMS's approximate colours; D-84's missing data
 	}
+	for _, n := range d.tempNotes() { // W10: the credit, and what a source lacks
+		out = append(out, render.WrapText(n, width)...)
+	}
 	out = append(out, mapCostLine(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words laid out as D-89
 	return out
 }
@@ -448,6 +479,9 @@ func (d Dashboard) mapStatusLine() string {
 	// D-89's order: the radar's line, the estimate after a slash, then what
 	// the picture's status says - W8.8's loop and its age always first.
 	lead := d.mapPane.radarLine
+	if !d.radarMode() && d.cfg.MapRadar != nil {
+		lead = d.forecastStatus() // D-94: Forecast mode's line in the radar's place
+	}
 	if est := costEstimate(d.mapCost); est != "" {
 		lead = strings.TrimPrefix(lead+" / "+est, " / ")
 	}
@@ -459,7 +493,7 @@ func (d Dashboard) mapStatusLine() string {
 	for _, c := range []struct {
 		act  term.Action
 		name string
-	}{{actMapAlerts, "Area Alerts"}, {actMapOverlays, "Overlays"}, {actMapLegend, "Legend"}} { // D-44, D-63, D-65: each names its key as bound
+	}{{actMapAlerts, "Area Alerts"}, {actMapRadar, d.radarChipWords()}, {actMapOverlays, "Overlays"}, {actMapLegend, "Legend"}} { // D-44, D-63, D-65, D-94: each names its key as bound
 		if keys := d.mapKeys[c.act].Keys; len(keys) > 0 {
 			chips = append(chips, d.opts().KeyCap(keys[0])+" "+c.name)
 		}
@@ -514,8 +548,8 @@ var mapRegionShort = []string{"US", "Alaska", "Hawaii", "Caribbean", "Samoa", "G
 var mapRegionLabels = []string{"Continental US", "Alaska", "Hawaii", "US Caribbean", "American Samoa", "Guam & N. Marianas"}
 
 // mapActions is the map window's actions in the order Help lists them.
-var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapOverlays, actMapLegend,
-	actMapPlay, actMapBack, actMapOn, actMapNewest}, mapRegionActs...)
+var mapActions = append([]term.Action{actMapPanUp, actMapPanDown, actMapPanLeft, actMapPanRight, actMapPrev, actMapNext, actMapZoomIn, actMapZoomOut, actMapScrollUp, actMapScrollDown, actMapAlerts, actMapRadar, actMapOverlays, actMapLegend,
+	actMapPlay, actMapBack, actMapOn, actMapNewest, actMapHighLow}, mapRegionActs...)
 
 // defaultMapKeyMap is D-61's bindings for the open map window.
 func defaultMapKeyMap() term.KeyMap {
@@ -530,13 +564,15 @@ func defaultMapKeyMap() term.KeyMap {
 		actMapZoomOut:    {Keys: []string{"-"}, Help: "Zoom Out"},
 		actMapScrollUp:   {Keys: []string{"pgup"}, Help: "Scroll Up"},
 		actMapScrollDown: {Keys: []string{"pgdown"}, Help: "Scroll Down"},
-		actMapLegend:     {Keys: []string{"L"}, Help: "Legend"},                    // D-44: shift+L, from the [ L ] Legend chip
-		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"},               // D-63: over the upper left, as the legend is the upper right
-		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},                  // D-65: the weather layers and the map's detail
-		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop Radar"},     // D-61: the playback keys
-		actMapBack:       {Keys: []string{"shift+left"}, Help: "Radar Frame Back"}, // D-86: at the timeline's ends
-		actMapOn:         {Keys: []string{"shift+right"}, Help: "Radar Frame On"},
-		actMapNewest:     {Keys: []string{"n"}, Help: "Radar Now"},
+		actMapLegend:     {Keys: []string{"L"}, Help: "Legend"},             // D-44: shift+L, from the [ L ] Legend chip
+		actMapAlerts:     {Keys: []string{"A"}, Help: "Area Alerts"},        // D-63: over the upper left, as the legend is the upper right
+		actMapOverlays:   {Keys: []string{"O"}, Help: "Overlays"},           // D-65: the weather layers and the map's detail
+		actMapRadar:      {Keys: []string{"R"}, Help: "Radar On / Off"},     // D-94: Radar mode, else Forecast mode
+		actMapPlay:       {Keys: []string{"space"}, Help: "Play / Stop"},    // D-61: the playback keys, radar's or the forecast's
+		actMapBack:       {Keys: []string{"shift+left"}, Help: "Step Back"}, // D-86: at the timeline's ends
+		actMapOn:         {Keys: []string{"shift+right"}, Help: "Step On"},
+		actMapNewest:     {Keys: []string{"n"}, Help: "Now"},
+		actMapHighLow:    {Keys: []string{"<", ">"}, Help: "High / Low"}, // D-97: Forecast mode's days
 	}
 	for i, act := range mapRegionActs { // D-77: 1 to 6, a region each
 		km[act] = term.Binding{Keys: []string{string(rune('1' + i))}, Help: "Region " + string(rune('1'+i)) + ": " + mapRegionLabels[i]}
@@ -568,7 +604,8 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 			save := nd.uiApplyCmd()
 			nd.setup.uiDirty = false
 			nd, radar := nd.askRadar()
-			return nd, tea.Batch(save, nd.mapWorkCmd(), nd.mapFeedCmd(), radar), true
+			nd, temp := nd.askTemp()
+			return nd, tea.Batch(save, nd.mapWorkCmd(), nd.mapFeedCmd(), radar, temp), true
 		}
 	}
 	if !bound {
@@ -583,6 +620,17 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		d.mapPane.menuOn, d.mapPane.menuAt = !d.mapPane.menuOn, 0
 		d.mapPane.gen++
 		return d, nil, true
+	case actMapRadar: // D-94: Radar mode on and off
+		if d.mapPane.m == nil {
+			return d, nil, false
+		}
+		nd, cmd := d.flashMapKey(act).switchMode()
+		return nd, cmd, true
+	case actMapHighLow: // D-97: the days' high or low
+		if d.mapPane.m == nil {
+			return d, nil, false
+		}
+		return d.flashMapKey(act).flipHighLow(), d.mapWorkCmd(), true
 	case actMapScrollUp: // D-61: PgUp and PgDn scroll the window's body, the description first
 		d.modalScroll = max(d.modalScroll-max(d.modalMax()-1, 1), 0)
 		return d, nil, true
@@ -594,7 +642,11 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 		return d, nil, false
 	}
 	d = d.flashMapKey(act) // U1-11: the controls' chip blinks
-	if nd, ok := d.handlePlayback(act); ok {
+	if !d.radarMode() {    // Forecast mode: the host steps (D-94)
+		if nd, cmd, ok := d.handleForecastPlayback(act); ok {
+			return nd, tea.Batch(cmd, nd.mapWorkCmd()), true
+		}
+	} else if nd, ok := d.handlePlayback(act); ok {
 		return nd, nd.mapWorkCmd(), true
 	}
 	size, m := d.mapBodySize(), d.mapPane.m
@@ -726,9 +778,21 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 	}
 	v.feed = d.feedForLayers(v.feed) // a layer switched off draws nothing (W1.11)
 	d = d.refreshMapCost()
+	d.mapPane.feed = &v.feed
+	d = d.setFeed(v.feed)
+	return d, d.mapWorkCmd()
+}
+
+// setFeed sets the feed's overlays, each with its span in the mode (D-98),
+// takes off the ones it no longer has, keeps its notes, and draws.
+func (d Dashboard) setFeed(feed MapFeed) Dashboard {
+	m := d.mapPane.m
 	shown, given := map[string]bool{}, map[string]tuimaps.Overlay{}
-	notes := append([]string(nil), v.feed.Notes...)
-	for _, o := range v.feed.Overlays {
+	notes := append([]string(nil), feed.Notes...)
+	for _, o := range feed.Overlays {
+		if t, ok := feed.Times[o.ID]; ok {
+			o.During = d.spanFor(t)
+		}
 		// AN UNCHANGED OVERLAY IS NOT HANDED IN AGAIN (UAT-1 U1-28). A Set
 		// replaces what the library prepared, and until a Work prepares it
 		// again the area is not drawn: every new snapshot re-sent the same
@@ -750,17 +814,16 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
 		}
 	}
-	d.mapPane.shown, d.mapPane.given, d.mapPane.notes, d.mapPane.inMissing, d.mapPane.inView = shown, given, notes, v.feed.InMissing, v.feed.InView
+	d.mapPane.shown, d.mapPane.given, d.mapPane.notes, d.mapPane.inMissing, d.mapPane.inView = shown, given, notes, feed.InMissing, feed.InView
 	d.mapPane.drawnSev = map[string]bool{}
-	for _, o := range v.feed.Overlays {
+	for _, o := range feed.Overlays {
 		for _, f := range o.Features {
 			if w := strings.ToLower(f.Severity.Word()); w != "" {
 				d.mapPane.drawnSev[w] = true
 			}
 		}
 	}
-	d = d.renderMap()
-	return d, d.mapWorkCmd()
+	return d.renderMap()
 }
 
 // mapHelpRow is one row of Help's MAP group: several actions that are one
@@ -793,7 +856,8 @@ func mapHelpRows(keys term.KeyMap, ascii bool) []mapHelpRow {
 		{join(actMapZoomIn, actMapZoomOut), "Zoom In / Out"},
 		{join(actMapScrollUp, actMapScrollDown), "Scroll"},
 		{join(actMapAlerts, actMapOverlays, actMapLegend), "Area Alerts / Overlays / Legend"},
-		{shiftArrows(join(actMapPlay, actMapBack, actMapOn, actMapNewest), ascii), "Radar: Play / Back / On / Now"},
+		{shiftArrows(join(actMapPlay, actMapBack, actMapOn, actMapNewest), ascii), "Play / Back / On / Now"},
+		{join(actMapRadar, actMapHighLow), "Radar Mode / Forecast Hi-Lo"}, // D-94, D-97
 	}
 	// D-77: the region keys in two rows of three, each number's region named
 	// in order - six rows pushed Help past its window.
@@ -821,7 +885,7 @@ func (d Dashboard) withLegend(lines []string) []string {
 	// time along the top row's right end, and the splice keeps the map's
 	// colours on either side (UAT-1 U1-19).
 	row := 1
-	if d.radarChipText() != "" {
+	if d.radarChipText() != "" || (!d.radarMode() && d.cfg.MapRadar != nil) {
 		row = 3 // under the radar's badge (D-92)
 	}
 	return spliceBox(lines, d.legendBox(), row, max(render.Width(lines[0])-legendWidth, 0))
@@ -837,8 +901,8 @@ func (d Dashboard) legendBox() []string {
 	rows := 0
 	seen := map[string]bool{}
 	for _, e := range d.mapPane.legend {
-		if e.Preset == "radar" {
-			continue // the radar's colours are the row under the map (D-89)
+		if e.Preset == "radar" || e.Preset == "temperature" {
+			continue // the radar's and the temperature's colours are the row under the map (D-89, W10.10)
 		}
 		for _, c := range e.Classes {
 			if e.Preset == "alert" && !d.mapPane.drawnSev[c.Label] {
@@ -900,5 +964,6 @@ func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
 	}
 	d = d.requestFeed()
 	d, radar := d.askRadar()
-	return d, tea.Batch(d.mapFeedCmd(), radar) // the view's alerts, and its radar (W8)
+	d, temp := d.askTemp()
+	return d, tea.Batch(d.mapFeedCmd(), radar, temp) // the view's alerts, its radar (W8) and its temperature (W10)
 }

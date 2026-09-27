@@ -62,6 +62,7 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 			area := areas[a.ID]
 			if o, ok := alertOverlay(a, area); ok {
 				out.Overlays = append(out.Overlays, o)
+				out.Times = timed(out.Times, o.ID, alertTimes(a)) // D-98: drawn while the mode's moment meets it
 				if !held[a.ID] {
 					out.InView = append(out.InView, a) // the window names it in full
 				}
@@ -86,8 +87,37 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 			}
 		}
 	}
-	out.Overlays = append(out.Overlays, quakeOverlays(in.quakes)...) // D-80: the ticker's quakes in view
+	for _, o := range quakeOverlays(in.quakes) { // D-80: the ticker's quakes in view
+		out.Overlays = append(out.Overlays, o)
+		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{From: o.Valid, Happened: true}) // D-98: Now alone, in Forecast mode
+	}
 	return out
+}
+
+// alertTimes is when an alert is (D-98): from its onset - or, with none
+// given, when it took effect - to when it ends, or with no end given, when
+// it expires.
+func alertTimes(a snapshot.Alert) tty.TimedOverlay {
+	t := tty.TimedOverlay{From: a.Effective, Until: a.Expires}
+	if t.From.IsZero() {
+		t.From = a.Sent
+	}
+	if a.Onset != nil && !a.Onset.IsZero() {
+		t.From = *a.Onset
+	}
+	if a.Ends != nil && !a.Ends.IsZero() {
+		t.Until = *a.Ends
+	}
+	return t
+}
+
+// timed adds one overlay's times.
+func timed(times map[string]tty.TimedOverlay, id string, t tty.TimedOverlay) map[string]tty.TimedOverlay {
+	if times == nil {
+		times = map[string]tty.TimedOverlay{}
+	}
+	times[id] = t
+	return times
 }
 
 // alertLayerKey is the alert areas' key in the registry, and their overlays'
