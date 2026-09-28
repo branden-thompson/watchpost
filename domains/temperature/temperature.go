@@ -77,6 +77,12 @@ func (l Lattice) Points() []Point {
 
 func round2(f float64) float64 { return math.Round(f*100) / 100 }
 
+// hoursAhead is how many hours from the current one Open-Meteo is asked
+// for: the radar loop's longest horizon, twelve hours (D-114), and the hour
+// it ends in - Radar mode's fields are drawn through the loop's hours ahead
+// (UAT-2 U2-32).
+const hoursAhead = 13
+
 // Days is how many days a series holds: today and the six after it, the map's
 // Today, Tomorrow and Day 3 to Day 7 (D-94).
 const Days = 7

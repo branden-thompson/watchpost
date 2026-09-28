@@ -605,6 +605,7 @@ func quakeLayerCost
 func quakeOverlays
 func quakeRingDots
 func quakesIn
+func radarHorizon
 func radarHosts
 func radarLayerCost
 func radarLoop
@@ -625,6 +626,7 @@ func reconcile
 func refFor
 func refreshCost
 func refsFromConfig
+func regionBox
 func registerMapLayer
 func registerMapSource
 func relayLine
@@ -677,6 +679,7 @@ func spokenWhen
 func spokenWindow
 func stageNames
 func staleWarnings
+func stampOf
 func startDebugProfiles
 func startDumpTrigger
 func startDumpTrigger

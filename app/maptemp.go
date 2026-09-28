@@ -127,9 +127,10 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 			continue
 		}
 		if !ask.Forecast {
-			out.Overlays = append(out.Overlays, hourGrids(tty.TemperatureLayer, s.Hours, s.Hourly, s.Lattice, b.Name, anchor, unit)...)
-			out.Feels = append(out.Feels, hourGrids(tty.FeelsLayer, s.Hours, s.Feels, s.Lattice, b.Name, anchor, unit)...)
-			out.Wind = append(out.Wind, windHourGrids(s, b.Name, anchor, ask.Fahrenheit)...)
+			horizon := radarHorizon(ask, anchor)
+			out.Overlays = append(out.Overlays, hourGrids(tty.TemperatureLayer, s.Hours, s.Hourly, s.Lattice, b.Name, anchor, horizon, unit)...)
+			out.Feels = append(out.Feels, hourGrids(tty.FeelsLayer, s.Hours, s.Feels, s.Lattice, b.Name, anchor, horizon, unit)...)
+			out.Wind = append(out.Wind, windHourGrids(s, b.Name, anchor, horizon, ask.Fahrenheit)...)
 			continue
 		}
 		if fill != nil && fillDays(ctx, &s, fill, lat, now, &out) {
@@ -248,9 +249,29 @@ type fieldBox struct {
 // antimeridian, which a grid cannot cross (Alaska).
 func fieldBoxes(region string, view geo.Box) []fieldBox {
 	if region == geo.RegionContiguous {
+		// THE RADAR'S BOXES, THE OUTER ONES GROWN TO THE REGION'S EDGES (UAT-2
+		// U2-30): the radar stops at 126W and 65W and the region reaches 130W
+		// and 64W - the waves stopped at a line in the Pacific.
+		reach, whole := geo.Box{W: 180, S: 90, E: -180, N: -90}, regionBox(region)
+		for _, b := range radar.BoxesFor(region, geo.Box{W: -180, S: -90, E: 180, N: 90}) {
+			reach = geo.Box{W: min(reach.W, b.W), S: min(reach.S, b.S), E: max(reach.E, b.E), N: max(reach.N, b.N)}
+		}
 		var out []fieldBox
 		for _, b := range radar.BoxesFor(region, view) {
-			out = append(out, fieldBox{Name: b.Name, Box: geo.Box{W: b.W, S: b.S, E: b.E, N: b.N}})
+			fb := fieldBox{Name: b.Name, Box: geo.Box{W: b.W, S: b.S, E: b.E, N: b.N}}
+			if b.W == reach.W {
+				fb.W = min(fb.W, whole.W)
+			}
+			if b.E == reach.E {
+				fb.E = max(fb.E, whole.E)
+			}
+			if b.S == reach.S {
+				fb.S = min(fb.S, whole.S)
+			}
+			if b.N == reach.N {
+				fb.N = max(fb.N, whole.N)
+			}
+			out = append(out, fb)
 		}
 		return out
 	}
@@ -267,16 +288,26 @@ func fieldBoxes(region string, view geo.Box) []fieldBox {
 	return nil
 }
 
+// regionBox is a region's box, the zero box for a region not known.
+func regionBox(name string) geo.Box {
+	for _, r := range geo.Regions() {
+		if r.Name == name {
+			return geo.Box{W: r.W, S: r.S, E: r.E, N: r.N}
+		}
+	}
+	return geo.Box{}
+}
+
 // hourGrids are Radar mode's grids of a layer - temperature's, or
 // feels-like's (D-119): every hour up to the current one, each drawn during
 // its hour (D-96).
-func hourGrids(layer string, hours []time.Time, values [][]float64, l temperature.Lattice, box string, anchor time.Time, unit tuimaps.Unit) []tuimaps.Overlay {
+func hourGrids(layer string, hours []time.Time, values [][]float64, l temperature.Lattice, box string, anchor, horizon time.Time, unit tuimaps.Unit) []tuimaps.Overlay {
 	var out []tuimaps.Overlay
 	for i, h := range hours {
-		if h.After(anchor) || i >= len(values) {
-			continue // a forecast hour: no radar frame is in it
+		if h.After(horizon) || i >= len(values) {
+			continue // past the loop's hours ahead: no radar frame is in it
 		}
-		o, ok := tempGrid(layer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), l, values[i], unit, h, anchor)
+		o, ok := tempGrid(layer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), l, values[i], unit, stampOf(h, anchor), anchor)
 		if !ok {
 			continue
 		}
@@ -284,6 +315,24 @@ func hourGrids(layer string, hours []time.Time, values [][]float64, l temperatur
 		out = append(out, o)
 	}
 	return out
+}
+
+// radarHorizon is the last hour Radar mode's hourly fields draw: the loop's
+// hours ahead past the current one (D-113). Stopping at the current hour,
+// the fields came and went as the loop played into the forecast (UAT-2
+// U2-32).
+func radarHorizon(ask tty.MapAsk, anchor time.Time) time.Time {
+	return anchor.Add(time.Duration(ask.RadarAhead) * time.Hour)
+}
+
+// stampOf is when an hour's grid says its data was valid: the hour, or for
+// an hour ahead the current one - the forecast was made now, and a time
+// ahead would leave it no currency (the library's refusal, U2-29's kind).
+func stampOf(h, anchor time.Time) time.Time {
+	if h.After(anchor) {
+		return anchor
+	}
+	return h
 }
 
 // forecastGrids are Forecast mode's grids: Now, and each day's high and low,
@@ -347,13 +396,13 @@ func feelsForecastGrids(out *tty.MapTemperature, s temperature.Series, box strin
 
 // windHourGrids are Radar mode's wind grids: every hour up to the current
 // one, each drawn during its hour (D-108), as temperature's are.
-func windHourGrids(s temperature.Series, box string, anchor time.Time, mph bool) []tuimaps.Overlay {
+func windHourGrids(s temperature.Series, box string, anchor, horizon time.Time, mph bool) []tuimaps.Overlay {
 	var out []tuimaps.Overlay
 	for i, h := range s.Hours {
-		if h.After(anchor) || i >= len(s.WindSpeed) {
+		if h.After(horizon) || i >= len(s.WindSpeed) {
 			continue
 		}
-		if o, ok := windGrid(tty.WindLayer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), s.Lattice, s.WindSpeed[i], s.WindFrom[i], mph, h, anchor); ok {
+		if o, ok := windGrid(tty.WindLayer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), s.Lattice, s.WindSpeed[i], s.WindFrom[i], mph, stampOf(h, anchor), anchor); ok {
 			o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
 			out = append(out, o)
 		}
@@ -421,9 +470,11 @@ func tempGrid(id string, l temperature.Lattice, values []float64, unit tuimaps.U
 	return o, true
 }
 
-// tempRequestBytes is one lattice's answer on the wire, measured: 63 KB for
-// 96 points from Open-Meteo, 110 KB for 100 from NDFD (2026-09-26).
-const tempRequestBytes = 80_000
+// tempRequestBytes is one lattice's answer on the wire, measured: 139 KB for
+// 80 points from Open-Meteo, asked for feels-like and the loop's thirteen
+// hours ahead (2026-09-28; 106 KB at two hours); 110 KB for 100 from NDFD
+// (2026-09-26).
+const tempRequestBytes = 140_000
 
 // tempLayerCost is what the temperature would fetch in a refresh as if
 // nothing were held: a request a box.

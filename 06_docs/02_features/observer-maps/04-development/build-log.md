@@ -1428,3 +1428,20 @@ This batch builds the part that changes the controls, UAT'd first as the HUM LEA
 Each is now caught.
 
 **The dupes gate** found the waves' `hourIndex` repeating the rain's. Both now call one `hourRow`.
+
+## Batch 40 — wave height's UAT pass (W13.7, U2-30 to U2-32, 2026-09-28)
+
+**U2-30, the waves stopping at a straight line in the Pacific.** The lower 48's field boxes were the radar's, 126°W to 65°W, but its region reaches 130°W to 64°W. So temperature and wind stopped there too, unseen because they don't draw over the sea; waves made the strip visible. The outer boxes now reach the region's edges at any view. D-111's test had waved the lower 48 through ("the radar's boxes, as they were") and now holds it to the edges too.
+
+**U2-31, bands short of the coast.** A sea cell whose nearest lattice point lay ashore was left blank. That is D-101's rule, right for a source's reach but wrong for waves, which the library already keeps to the sea. `Lattice.InterpolateOut` first gives a point without a value the mean of its neighbours, round after round, so the cells by the coast carry the sea's value. This also removes the blocks the blanks made.
+
+**U2-32, the bands coming and going as the loop played.** Radar mode's hourly fields (temperature, wind, feels-like, waves) stopped at the current hour. Since D-113 the loop plays on into the hours ahead, so every frame past the hour had none.
+- The fields are now drawn to the loop's horizon.
+- Open-Meteo is asked for thirteen hours ahead, not two: the longest horizon, twelve, and the hour it ends in.
+- An hour ahead is stamped with the current hour, as the forecast days are. Stamped with its own hour, a grid twelve hours ahead would have had no currency left, the library's refusal of U2-29's kind. A test hands every hour to the horizon to a real map.
+
+**The cost line** was re-measured with the thirteen hours:
+- Open-Meteo's temperature request: 139 KB for 80 points. It had been counted at 80 KB since before feels-like was added, so the old figure was already short.
+- The marine request: 72 KB.
+
+**Mutation verdicts** (targeted, 7), all caught. Three survived at first, and tests now catch each: the waves not filled, an hour ahead stamped with its own hour, and the thirteen hours not asked.

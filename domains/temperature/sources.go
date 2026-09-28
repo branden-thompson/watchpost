@@ -353,7 +353,7 @@ func (s *OpenMeteo) Fetch(ctx context.Context, l Lattice, now time.Time) (Series
 		lats, lons = append(lats, ftoa(p.Lat)), append(lons, ftoa(p.Lon))
 	}
 	q := url.Values{"latitude": {strings.Join(lats, ",")}, "longitude": {strings.Join(lons, ",")},
-		"hourly": {"temperature_2m,wind_speed_10m,wind_direction_10m,apparent_temperature"}, "past_hours": {"3"}, "forecast_hours": {"2"},
+		"hourly": {"temperature_2m,wind_speed_10m,wind_direction_10m,apparent_temperature"}, "past_hours": {"3"}, "forecast_hours": {strconv.Itoa(hoursAhead)},
 		"daily": {"temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_direction_10m_dominant,apparent_temperature_max,apparent_temperature_min"}, "forecast_days": {strconv.Itoa(Days)}, "timezone": {"auto"}}
 	body, err := s.get.GetText(ctx, s.base+"/v1/forecast?"+q.Encode(), httpx.TTL(untilNextHour(now)))
 	if err != nil {

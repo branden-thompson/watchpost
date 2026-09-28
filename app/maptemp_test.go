@@ -368,7 +368,21 @@ func TestEveryRegionHasItsFieldsWhole(t *testing.T) {
 			continue
 		}
 		if r.Name == geo.RegionContiguous {
-			continue // the radar's boxes, as they were
+			// THE RADAR'S BOXES, GROWN TO THE REGION'S EDGES (UAT-2 U2-30): they
+			// stop at 126W and 65W, and the region reaches 130W and 64W - the
+			// waves stopped at a line in the Pacific. At any view, the boxes
+			// that meet an edge of the radar's reach reach the region's.
+			for _, v := range []geo.Box{view, {W: -129, S: 40, E: -121, N: 46}, {W: -70, S: 38, E: -64, N: 44}} {
+				bs := fieldBoxes(r.Name, v)
+				w, e, s, n := 180.0, -180.0, 90.0, -90.0
+				for _, b := range bs {
+					w, e, s, n = math.Min(w, b.W), math.Max(e, b.E), math.Min(s, b.S), math.Max(n, b.N)
+				}
+				if v.W <= r.W+1 && w > r.W || v.E >= r.E-1 && e < r.E || v.S <= r.S+1 && s > r.S || v.N >= r.N-1 && n < r.N {
+					t.Errorf("the lower 48 at %+v: its boxes span %v to %v, %v to %v; want the region's edges, %v to %v", v, w, e, s, n, r.W, r.E)
+				}
+			}
+			continue
 		}
 		width := 0.0
 		for _, b := range boxes {

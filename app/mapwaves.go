@@ -59,10 +59,10 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd, om waveSource, a
 		}
 		if !ask.Forecast {
 			for i, h := range w.Hours {
-				if h.After(anchor) {
-					continue // a forecast hour: no radar frame is in it
+				if h.After(radarHorizon(ask, anchor)) {
+					continue // past the loop's hours ahead (U2-32)
 				}
-				if o, ok := waveGrid(tty.WaveLayer+"/"+b.Name+"/"+h.UTC().Format("2006-01-02T15"), lat, w.Hourly[i], unit, h, anchor); ok {
+				if o, ok := waveGrid(tty.WaveLayer+"/"+b.Name+"/"+h.UTC().Format("2006-01-02T15"), lat, w.Hourly[i], unit, stampOf(h, anchor), anchor); ok {
 					o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
 					t.Waves = append(t.Waves, o)
 				}
@@ -95,7 +95,7 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd, om waveSource, a
 // the listener's unit, lined - labelled contours over faint bands, as the
 // temperature's are (D-126); false when no point has any.
 func waveGrid(id string, l temperature.Lattice, metres []float64, unit tuimaps.WaveUnit, valid, anchor time.Time) (tuimaps.Overlay, bool) {
-	f := l.Interpolate(metres)
+	f := l.InterpolateOut(metres) // to the coast: the library draws it over the sea alone (U2-31)
 	if allMissing(f.Values) {
 		return tuimaps.Overlay{}, false
 	}
@@ -110,10 +110,10 @@ func waveGrid(id string, l temperature.Lattice, metres []float64, unit tuimaps.W
 	return o, true
 }
 
-// waveBytes are a field box's two wave requests on the wire, measured for 6
-// points (2026-09-28): NDFD's 18 KB, Open-Meteo's 3.8 KB - for 80, about
-// 245 KB and 50 KB.
-const waveBytes = 295_000
+// waveBytes are a field box's two wave requests on the wire: NDFD's 18 KB
+// for 6 points, about 245 KB for 80; Open-Meteo's 72 KB for 80, asked for
+// the loop's thirteen hours ahead (2026-09-28).
+const waveBytes = 320_000
 
 // waveLayerCost is two requests a field box, NDFD's and Open-Meteo's.
 func waveLayerCost(in mapInputs) (int64, int) {

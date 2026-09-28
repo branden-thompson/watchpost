@@ -141,7 +141,7 @@ func (s *OpenMeteo) Waves(ctx context.Context, l Lattice, now time.Time) (Waves,
 		lats, lons = append(lats, ftoa(p.Lat)), append(lons, ftoa(p.Lon))
 	}
 	q := url.Values{"latitude": {strings.Join(lats, ",")}, "longitude": {strings.Join(lons, ",")},
-		"hourly": {"wave_height"}, "past_hours": {"3"}, "forecast_hours": {"2"},
+		"hourly": {"wave_height"}, "past_hours": {"3"}, "forecast_hours": {strconv.Itoa(hoursAhead)},
 		"daily": {"wave_height_max"}, "forecast_days": {strconv.Itoa(Days)}, "timezone": {"auto"}}
 	body, err := s.get.GetText(ctx, s.marine+"/v1/marine?"+q.Encode(), httpx.TTL(untilNextHour(now)))
 	if err != nil {

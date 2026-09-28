@@ -89,3 +89,38 @@ func TestNDFDsWavesAreFilledFromOpenMeteo(t *testing.T) {
 		t.Errorf("at 06Z, an hour both sources answer, 121W is %v; want NDFD's 7 ft", both)
 	}
 }
+
+// TestWavesReachTheCoast is UAT-2 U2-31: a sea cell whose nearest lattice
+// point was ashore was left blank - the rule that keeps a source to its reach
+// (D-101) - so the bands stopped short of the coast, in blocks. Waves are
+// carried out to every cell from the sea's own points; the map draws them
+// over the sea alone.
+func TestWavesReachTheCoast(t *testing.T) {
+	l := Lattice{Cols: 3, Rows: 2}
+	l.Box.W, l.Box.S, l.Box.E, l.Box.N = -121, 31, -117, 33
+	nan := math.NaN()
+	f := l.InterpolateOut([]float64{2, 1.5, nan, 2.2, 2, 1.8}) // Escondido, ashore, has none
+	for i, v := range f.Values {
+		if math.IsNaN(v) {
+			t.Fatalf("cell %d is blank; a cell by the coast takes the sea's values", i)
+		}
+	}
+	if all := l.InterpolateOut([]float64{nan, nan, nan, nan, nan, nan}); !math.IsNaN(all.Values[0]) {
+		t.Error("with no value anywhere a cell was given one")
+	}
+}
+
+// TestOpenMeteoIsAskedForTheLoopsHoursAhead is U2-32: the fields are drawn to
+// the radar loop's longest horizon, twelve hours past the current one, so
+// both of Open-Meteo's requests ask for that many.
+func TestOpenMeteoIsAskedForTheLoopsHoursAhead(t *testing.T) {
+	g := &wavesGet{t: t}
+	_, _ = NewOpenMeteo(g, "").Waves(context.Background(), fixtureLattice, wavesCaptured)
+	f := &feelsGet{t: t}
+	_, _ = NewOpenMeteo(f, "").Fetch(context.Background(), fixtureLattice, feelsCaptured)
+	for _, a := range append(g.asks, f.asks...) {
+		if !strings.Contains(a, "forecast_hours=13") {
+			t.Errorf("%s does not ask for the loop's thirteen hours", a)
+		}
+	}
+}

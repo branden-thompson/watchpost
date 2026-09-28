@@ -63,6 +63,42 @@ func (l Lattice) Interpolate(values []float64) Field {
 	return out
 }
 
+// InterpolateOut is Interpolate for a field its drawing keeps to its own
+// ground - the waves, which the map draws over the sea alone (UAT-2 U2-31):
+// a point with no value first takes the mean of its neighbours that have
+// one, round after round, so every cell by the coast has the sea's value
+// and none is blank because its nearest point was ashore. Nothing anywhere
+// stays nothing.
+func (l Lattice) InterpolateOut(values []float64) Field {
+	if l.Cols < 2 || l.Rows < 2 || len(values) != l.Cols*l.Rows {
+		return Field{}
+	}
+	v := append([]float64(nil), values...)
+	for changed := true; changed; {
+		changed = false
+		next := append([]float64(nil), v...)
+		for r := range l.Rows {
+			for c := range l.Cols {
+				if !math.IsNaN(v[r*l.Cols+c]) {
+					continue
+				}
+				sum, n := 0.0, 0
+				for _, d := range [4][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}} {
+					rr, cc := r+d[0], c+d[1]
+					if rr >= 0 && rr < l.Rows && cc >= 0 && cc < l.Cols && !math.IsNaN(v[rr*l.Cols+cc]) {
+						sum, n = sum+v[rr*l.Cols+cc], n+1
+					}
+				}
+				if n > 0 {
+					next[r*l.Cols+c], changed = sum/float64(n), true
+				}
+			}
+		}
+		v = next
+	}
+	return l.Interpolate(v)
+}
+
 // InterpolateWind is a lattice's wind spread over the box as Interpolate
 // spreads its temperatures: speed and the direction it blows from. THE
 // DIRECTION IS INTERPOLATED AS A VECTOR, by its east and north parts - as a
