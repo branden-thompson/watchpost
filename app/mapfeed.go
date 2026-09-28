@@ -87,6 +87,10 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 			}
 		}
 	}
+	for _, o := range fireOverlays(in.fire, in.view, lp.fireRules()) { // D-121: the fire in view
+		out.Overlays = append(out.Overlays, o)
+		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
+	}
 	for _, o := range quakeOverlays(in.quakes) { // D-80: the ticker's quakes in view
 		out.Overlays = append(out.Overlays, o)
 		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{From: o.Valid, Happened: true}) // D-98: Now alone, in Forecast mode

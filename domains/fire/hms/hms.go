@@ -96,10 +96,13 @@ func (p *Provider) MemoPoints() int {
 // per event).
 func (p *Provider) MemoStats() (points, parses int) { return p.MemoPoints(), p.memo.Parses() }
 
+// DefaultURL is the production archive.
+const DefaultURL = "https://www.ospo.noaa.gov/data/spl/kmlfiles/fire/fireAllSats.kmz"
+
 // New builds the provider; url "" means the production archive.
 func New(client *httpx.Client, url string, rules fire.Rules) *Provider {
 	if url == "" {
-		url = "https://www.ospo.noaa.gov/data/spl/kmlfiles/fire/fireAllSats.kmz"
+		url = DefaultURL
 	}
 	return &Provider{client: client, url: url, rules: rules, now: time.Now}
 }
@@ -187,6 +190,17 @@ func (p *Provider) points(ctx context.Context) ([]Point, error) {
 	p.cached, p.cachedErr, p.cachedAt = pts, truncErr(perr), p.now()
 	p.mu.Unlock()
 	return pts, perr // nil, or ErrTruncated (soft)
+}
+
+// Points are every detection in the archive, for the map (0.18.0 D-121):
+// the places' own coalesced read, none of their radius. A truncated archive
+// is served as read.
+func (p *Provider) Points(ctx context.Context) ([]Point, error) {
+	pts, err := p.points(ctx)
+	if errors.Is(err, ErrTruncated) {
+		err = nil
+	}
+	return pts, err
 }
 
 // truncErr keeps only ErrTruncated as the cached parse's carried error.

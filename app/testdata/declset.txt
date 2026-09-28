@@ -18,6 +18,8 @@ const discoverTimeout
 const dumpKeep
 const dumpMinInterval
 const dumpTimeLayout
+const fireKeeps
+const hmsCredit
 const holdStep
 const httpCacheBytes
 const installRetryAfter
@@ -42,6 +44,7 @@ const narrateRead
 const noRadarNote
 const numMainTrackStages
 const numNarrationClasses
+const perimeterBytes
 const publishCoalesce
 const pumpBacklog
 const quakeKeeps
@@ -159,6 +162,8 @@ func (*livePipelines).currentWatch
 func (*livePipelines).dropCard
 func (*livePipelines).endEventRead
 func (*livePipelines).fireFor
+func (*livePipelines).fireIn
+func (*livePipelines).fireRules
 func (*livePipelines).giveItAStation
 func (*livePipelines).hydrate
 func (*livePipelines).injectHook
@@ -436,6 +441,7 @@ func allMissing
 func allScenarioKeys
 func applySetup
 func applyThemes
+func areaMeets
 func arrivalsOf
 func assemblerGauges
 func attachRadio
@@ -490,6 +496,9 @@ func feelsForecastGrids
 func fieldBoxes
 func fillDays
 func fillFeelsNow
+func fireHosts
+func fireLayerCost
+func fireOverlays
 func fireProviders
 func fireReportOf
 func fireRules
@@ -504,7 +513,9 @@ func hostOf
 func hostsFor
 func hourGrids
 func inViewOnly
+func incidentLabel
 func indexKey
+func init
 func init
 func init
 func init
@@ -568,6 +579,7 @@ func parseSayVoices
 func partOfState
 func partialNote
 func pcmDuration
+func perimeterKey
 func piperInstallFor
 func piperVoiceNames
 func pixelsOf
@@ -733,6 +745,7 @@ type dumper
 type eventReader
 type executors
 type fieldBox
+type fireInView
 type hostFacts
 type injectQueue
 type injectQueue

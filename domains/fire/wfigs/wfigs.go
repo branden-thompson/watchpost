@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/fire"
@@ -35,10 +37,11 @@ const maxIncidents = 5
 // asks on its own tick, and the 208 KB layer decoded ~200 times an hour
 // (~57 MB/h of garbage) for the same bytes; now once per change.
 type Provider struct {
-	client *httpx.Client
-	base   string
-	rules  fire.Rules
-	memo   fire.Memo[[]incident]
+	client     *httpx.Client
+	base       string
+	perimeters string // the interagency perimeters' layer, on the same host (0.18.0 D-121)
+	rules      fire.Rules
+	memo       fire.Memo[[]incident]
 }
 
 // MemoIncidents reports how many decoded incidents the layer memo holds
@@ -67,7 +70,8 @@ func New(client *httpx.Client, base string, rules fire.Rules) *Provider {
 	if base == "" {
 		base = "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Incident_Locations_Current/FeatureServer/0/query"
 	}
-	return &Provider{client: client, base: base, rules: rules}
+	return &Provider{client: client, base: base, rules: rules,
+		perimeters: strings.Replace(base, "WFIGS_Incident_Locations_Current", "WFIGS_Interagency_Perimeters_Current", 1)}
 }
 
 // ID implements snapshot.Provider.
@@ -104,22 +108,9 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 	if err := p.rules.Valid(); err != nil {
 		return frag, err
 	}
-	q := url.Values{}
-	q.Set("where", "IncidentTypeCategory='WF'")
-	q.Set("outFields", "IncidentName,FireDiscoveryDateTime,PercentContained,IncidentSize,FinalAcres,DiscoveryAcres,InitialResponseAcres,POOState,IncidentTypeCategory")
-	q.Set("outSR", "4326")
-	q.Set("resultRecordCount", "2000")
-	q.Set("f", "geojson")
-	u := p.base + "?" + q.Encode()
-	raw, err := p.client.GetText(ctx, u, httpx.TTL(layerTTL)) // read-only (httpx.GetText contract)
+	layer, err := p.layer(ctx)
 	if err != nil {
-		frag.Err = fmt.Errorf("wfigs: %w", err)
-		return frag, nil
-	}
-	layer, err := p.memo.Get(raw, decodeLayer)
-	if err != nil {
-		p.client.Forget(u) // a body that does not decode must not be served for the rest of its TTL
-		frag.Err = fmt.Errorf("wfigs: %w", err)
+		frag.Err = err
 		return frag, nil
 	}
 	for _, ref := range req.Locations {
@@ -140,6 +131,117 @@ func (p *Provider) Fetch(ctx context.Context, req snapshot.FetchReq) (snapshot.F
 		frag.PerLocation[snapshot.Key(ref)] = snapshot.PartialData{Fire: &snapshot.FireState{AsOf: frag.FetchedAt, IncidentsAsOf: frag.FetchedAt, Incidents: ins}}
 	}
 	return frag, nil
+}
+
+// layer is every active wildfire in the country: one query, its decode
+// memoised by body.
+func (p *Provider) layer(ctx context.Context) ([]incident, error) {
+	q := url.Values{}
+	q.Set("where", "IncidentTypeCategory='WF'")
+	q.Set("outFields", "IncidentName,FireDiscoveryDateTime,PercentContained,IncidentSize,FinalAcres,DiscoveryAcres,InitialResponseAcres,POOState,IncidentTypeCategory")
+	q.Set("outSR", "4326")
+	q.Set("resultRecordCount", "2000")
+	q.Set("f", "geojson")
+	u := p.base + "?" + q.Encode()
+	raw, err := p.client.GetText(ctx, u, httpx.TTL(layerTTL)) // read-only (httpx.GetText contract)
+	if err != nil {
+		return nil, fmt.Errorf("wfigs: %w", err)
+	}
+	layer, err := p.memo.Get(raw, decodeLayer)
+	if err != nil {
+		p.client.Forget(u) // a body that does not decode must not be served for the rest of its TTL
+		return nil, fmt.Errorf("wfigs: %w", err)
+	}
+	return layer, nil
+}
+
+// Incidents are every active wildfire in the country, for the map (0.18.0
+// D-121): the places' own query and memo, none of the places' radius.
+func (p *Provider) Incidents(ctx context.Context) ([]snapshot.Incident, error) {
+	layer, err := p.layer(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]snapshot.Incident, 0, len(layer))
+	for _, f := range layer {
+		out = append(out, snapshot.Incident{Name: f.name, Lat: f.lat, Lon: f.lon, PercentContained: f.contained, Acres: f.acres, State: f.state, Discovered: f.discovered,
+			Source: snapshot.SourceInfo{Provider: p.ID()}})
+	}
+	return out, nil
+}
+
+// PerimetersBase is the perimeters' layer: its host is on the Status
+// window's list (FR-9.4).
+func (p *Provider) PerimetersBase() string { return p.perimeters }
+
+// Perimeter is one active fire's perimeter (0.18.0 D-121): its name, acres
+// and containment, and its areas - each an outline, then its holes - as
+// longitude, latitude.
+type Perimeter struct {
+	Name             string
+	Acres, Contained *float64
+	Areas            [][][][2]float64
+}
+
+// Perimeters are the active perimeters meeting a box, generalised to about
+// a thousandth of its width - never finer than a thousandth of a degree nor
+// coarser than a hundredth: the whole country's ungeneralised is 14.6 MB,
+// the lower 48's box at a hundredth 378 KB (2026-09-27).
+func (p *Provider) Perimeters(ctx context.Context, w, s, e, n float64) ([]Perimeter, error) {
+	q := url.Values{}
+	q.Set("where", "1=1")
+	q.Set("outFields", "poly_IncidentName,poly_GISAcres,attr_PercentContained")
+	q.Set("geometry", fmt.Sprintf("%g,%g,%g,%g", w, s, e, n))
+	q.Set("geometryType", "esriGeometryEnvelope")
+	q.Set("inSR", "4326")
+	q.Set("outSR", "4326")
+	q.Set("spatialRel", "esriSpatialRelIntersects")
+	q.Set("maxAllowableOffset", strconv.FormatFloat(min(max((e-w)/5000, 0.001), 0.01), 'f', -1, 64))
+	q.Set("geometryPrecision", "3")
+	q.Set("f", "geojson")
+	u := p.perimeters + "?" + q.Encode()
+	raw, err := p.client.GetText(ctx, u, httpx.TTL(layerTTL))
+	if err != nil {
+		return nil, fmt.Errorf("wfigs perimeters: %w", err)
+	}
+	var fc struct {
+		Features []struct {
+			Geometry *struct {
+				Type        string          `json:"type"`
+				Coordinates json.RawMessage `json:"coordinates"`
+			} `json:"geometry"`
+			Properties struct {
+				Name      string   `json:"poly_IncidentName"`
+				Acres     *float64 `json:"poly_GISAcres"`
+				Contained *float64 `json:"attr_PercentContained"`
+			} `json:"properties"`
+		} `json:"features"`
+	}
+	if err := json.Unmarshal(raw, &fc); err != nil {
+		p.client.Forget(u)
+		return nil, fmt.Errorf("wfigs perimeters: bad response body: %w", err)
+	}
+	out := make([]Perimeter, 0, len(fc.Features))
+	for _, f := range fc.Features {
+		if f.Geometry == nil {
+			continue
+		}
+		var areas [][][][2]float64
+		switch f.Geometry.Type {
+		case "Polygon":
+			var one [][][2]float64
+			if json.Unmarshal(f.Geometry.Coordinates, &one) == nil {
+				areas = [][][][2]float64{one}
+			}
+		case "MultiPolygon":
+			_ = json.Unmarshal(f.Geometry.Coordinates, &areas)
+		}
+		if len(areas) == 0 {
+			continue
+		}
+		out = append(out, Perimeter{Name: f.Properties.Name, Acres: f.Properties.Acres, Contained: f.Properties.Contained, Areas: areas})
+	}
+	return out, nil
 }
 
 // decodeLayer decodes the GeoJSON layer into the compact incident list:

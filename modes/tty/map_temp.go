@@ -35,6 +35,10 @@ const TemperatureLayer = "temperature"
 // WindLayer is the wind's (W11, D-110).
 const WindLayer = "wind"
 
+// FireLayer is fire's (D-121): the perimeters, the named incidents and the
+// satellite hotspots, one row, on by default.
+const FireLayer = "fire"
+
 // FeelsLayer is feels-like temperature's (D-119): its own row, off by
 // default, never on with temperature - the two share one tint.
 const FeelsLayer = "feels"

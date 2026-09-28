@@ -32,6 +32,7 @@ type mapInputs struct {
 	// forecast is Forecast mode (D-94): its rain and snow cost a request a
 	// box, which Radar mode never makes (D-117).
 	forecast bool
+	fire     fireInView // the fire in view (D-121), fetched for the feed alone
 }
 
 // mapInputs are the inputs for the estimate, on the UI goroutine: the view's
@@ -55,6 +56,9 @@ func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bo
 		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
 		if lp.severe != nil {
 			in.quakes = quakesIn(lp.severe.feedCopy(), ask.View)
+		}
+		if fetch {
+			in.fire = lp.fireIn(ctx, ask)
 		}
 	}
 	return in

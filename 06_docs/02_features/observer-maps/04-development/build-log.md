@@ -1321,3 +1321,28 @@ This batch builds the part that changes the controls, UAT'd first as the HUM LEA
 **Test-first, broken once and repaired.** The domain's code was written before its test. The tests were written next against recorded answers, and each change was then mutated away to see it caught.
 
 **Mutation verdicts** (targeted, 24): 23 caught. The one survivor is equivalent: the line that gives a feels-like hour its local day. NDFD sends feels-like and wind in one time layout, and wind's line already sets every hour. It stays, because it matters where feels-like is asked without wind.
+
+## Batch 36 — fire (W13.3, D-121, 2026-09-27)
+
+**D-121** ruled "All three, on": the active perimeters, the named incidents and the satellite hotspots, one Fire row, on by default as alerts and quakes are (D-76).
+
+**What it reads.**
+- **Incidents:** WFIGS's national layer, the query and memo the places' fire already makes, now exported to the map (`wfigs.Incidents`).
+- **Hotspots:** HMS's archive, the places' own coalesced read (`hms.Points`). A truncated archive is served as read.
+- **Perimeters:** the one new request, WFIGS's interagency perimeters on the same host. It is asked for each field box the view is in, generalised to about a thousandth of the box's width. A perimeter in two boxes' answers, as in Alaska across the antimeridian, is drawn once.
+- **The Status window:** its MAP block names NIFC WFIGS and NOAA HMS.
+- **FIRMS:** it is keyed and asked by box for the places. It is not on the map yet; HMS stands for the satellites.
+
+**At the map.**
+- Perimeters are outlines with their holes, unlabelled.
+- Each incident in view is a marker labelled with its name, acres and containment.
+- Hotspots are dots, filtered by the places' rules: the strong (the rules' bold, 50 MW) bright, the rest fainter.
+- All of it is timed as a thing so now: through the loop, and on Now alone in Forecast mode.
+- The perimeters' cost is each box's share of the lower 48's measured 378 KB.
+
+**A library change, go-tuiMaps L-18 (its D-92), rc.19.** The library's feature roles were the alerts' (a severity, reported over a place), the track's (the earthquakes' yellow in watchpost), and three field roles that resolve to nothing on their own. Fire has two roles of its own: `fire` (red-orange) and `fire.faint` (fainter), placed after every other token so none moves. A feature in them is never an alert.
+
+**Mutation verdicts** (targeted, 16 in watchpost and 4 in go-tuiMaps), all caught. Three survived at first, and each was closed with a test:
+- a missing default colour for a fire token;
+- a truncated HMS archive served with its error;
+- perimeters left un-de-duplicated across boxes.
