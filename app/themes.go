@@ -93,6 +93,7 @@ func setUIHook(p tty.UIPrefs) error {
 		cfg.MapRadarSource = p.MapRadarSource      // D-83
 		cfg.MapTemperatureSource = p.MapTempSource // D-93
 		cfg.MapRadarAheadHours = p.MapRadarAhead   // D-114
+		cfg.MapQuakeFeed = p.MapQuakeFeed          // D-122
 		cfg.MapAlertScope = ""                     // retired (D-76): the next save lets the key go
 		cfg.MapDetail, cfg.MapDetailLevel = p.MapDetail, p.MapDetailLevel
 		return nil

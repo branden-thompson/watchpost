@@ -162,9 +162,11 @@ func mapSourceList() []tty.MapSource {
 	}
 	out = append(out, tty.MapSource{Name: "National Weather Service", Host: hostOf(zones.DefaultBase),
 		Use: "the codes of the alert zones on the map, and of the states and marine areas in view (D-66)"})
-	out = append(out, radarHosts()...) // W8: the radar's two sources
-	out = append(out, tempHosts()...)  // W10: the temperature's two
-	return append(out, fireHosts()...) // D-121: the fire's two
+	out = append(out, radarHosts()...)                                          // W8: the radar's two sources
+	out = append(out, tempHosts()...)                                           // W10: the temperature's two
+	out = append(out, fireHosts()...)                                           // D-121: the fire's two
+	return append(out, tty.MapSource{Name: "USGS", Host: hostOf(quakeFeedBase), // D-122
+		Use: "the earthquakes chosen in Settings (M2.5+ or M1.0+, the past week or day), every one; drawn where in view"})
 }
 
 // radarImageBudget is the memory the library may hold the radar's pictures

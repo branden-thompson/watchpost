@@ -278,8 +278,12 @@ type Config struct {
 	MapTemperatureSource string `toml:"map_temperature_source,omitempty"`
 	// MapRadarAheadHours is how far past now the radar loop runs (0.18.0
 	// D-114): 1, 3 (the default, when empty), 6 or 12.
-	MapRadarAheadHours int             `toml:"map_radar_ahead_hours,omitempty"`
-	MapLayers          map[string]bool `toml:"map_layers,omitempty"` // layer key -> on
+	MapRadarAheadHours int `toml:"map_radar_ahead_hours,omitempty"`
+	// MapQuakeFeed is the quakes the map draws (0.18.0 D-122): USGS's
+	// summary feed by its name - 2.5_week (the default, when empty),
+	// 2.5_day, 1.0_week or 1.0_day.
+	MapQuakeFeed string          `toml:"map_quake_feed,omitempty"`
+	MapLayers    map[string]bool `toml:"map_layers,omitempty"` // layer key -> on
 	// MapAlertScope is RETIRED (0.18.0 D-76): the map draws every alert in
 	// view, so there is no scope to choose. It is still read, so a file that
 	// has it is not reported as holding an unknown key, and it is written

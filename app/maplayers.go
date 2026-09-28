@@ -16,6 +16,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -33,6 +34,10 @@ type mapInputs struct {
 	// box, which Radar mode never makes (D-117).
 	forecast bool
 	fire     fireInView // the fire in view (D-121), fetched for the feed alone
+	// quakeFeed is the quakes chosen (D-122), which their estimate counts;
+	// clock the listener's, for their times (D-123).
+	quakeFeed string
+	clock     render.Clock
 }
 
 // mapInputs are the inputs for the estimate, on the UI goroutine: the view's
@@ -51,14 +56,13 @@ func (lp *livePipelines) mapInputsFetching(ctx context.Context, ask tty.MapAsk) 
 // fetch is on. THE MAP DRAWS WHAT IS REAL IN VIEW (D-76): there is no scope
 // to choose.
 func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bool) mapInputs {
-	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead, forecast: ask.Forecast}
+	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead, forecast: ask.Forecast,
+		quakeFeed: ask.QuakeFeed, clock: ask.Clock}
 	if lp != nil {
 		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
-		if lp.severe != nil {
-			in.quakes = quakesIn(lp.severe.feedCopy(), ask.View)
-		}
 		if fetch {
 			in.fire = lp.fireIn(ctx, ask)
+			in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View) // D-122: the feed chosen, not the ticker's
 		}
 	}
 	return in

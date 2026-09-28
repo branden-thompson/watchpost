@@ -243,7 +243,7 @@ func (d Dashboard) cycleNearby(forward bool) Dashboard {
 
 // nextChoice is the choice after, or before, the one held, and round again:
 // a picker's step through its numbers.
-func nextChoice(choices []int, held int, forward bool) int {
+func nextChoice[T comparable](choices []T, held T, forward bool) T {
 	at := 0
 	for i, c := range choices {
 		if c == held {
@@ -286,6 +286,36 @@ func radarAheadLabel(h int) string {
 		return "1 hour"
 	}
 	return strconv.Itoa(h) + " hours"
+}
+
+// quakeFeeds are the quakes the map draws (D-122), USGS's summary feeds by
+// their own names, the default first: M2.5+ the past week or the past day,
+// M1.0+ the same.
+var quakeFeeds = []string{"2.5_week", "2.5_day", "1.0_week", "1.0_day"}
+
+// quakeFeedDefault is M2.5+ over the past week (D-122).
+const quakeFeedDefault = "2.5_week"
+
+// quakeFeedByKey reads the file's word; anything not offered is the default.
+func quakeFeedByKey(k string) string {
+	for _, f := range quakeFeeds {
+		if f == k {
+			return k
+		}
+	}
+	return quakeFeedDefault
+}
+
+// quakeFeedLabel is the row's words: "M2.5+, past week".
+func quakeFeedLabel(k string) string {
+	mag, span, _ := strings.Cut(quakeFeedByKey(k), "_")
+	return "M" + mag + "+, past " + span
+}
+
+// cycleQuakeFeed moves the quakes picker, and round again.
+func (d Dashboard) cycleQuakeFeed(forward bool) Dashboard {
+	d.mapQuakeFeed = nextChoice(quakeFeeds, d.mapQuakeFeed, forward)
+	return d.uiTouched()
 }
 
 // cycleRadarAhead moves the hours-ahead picker, and round again.
@@ -423,7 +453,7 @@ func (d Dashboard) feedForLayers(f MapFeed) MapFeed {
 
 // mapPickerRow reports the map's pickers, which have nothing to preview.
 func mapPickerRow(id setupRowID) bool {
-	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRadarAhead || id == rowMapDetailLevel
+	return id == rowMapDesc || id == rowMapScale || id == rowMapNearby || id == rowMapRadarSource || id == rowMapTempSource || id == rowMapRadarAhead || id == rowMapQuakes || id == rowMapDetailLevel
 }
 
 // mapPrefArrow is ←→ on the scale, the nearby distance and the layers.
@@ -439,6 +469,8 @@ func (d Dashboard) mapPrefArrow(forward bool) (Dashboard, bool) {
 		return d.toggleTempSource(), true
 	case rowMapRadarAhead:
 		return d.cycleRadarAhead(forward), true
+	case rowMapQuakes:
+		return d.cycleQuakeFeed(forward), true
 	case rowMapDetailLevel:
 		return d.cycleDetailLevel(forward).uiTouched(), true
 	case rowMapLayers:
@@ -465,7 +497,11 @@ type MapAsk struct {
 	Forecast, TempNDFD, Fahrenheit bool
 	// RadarAhead is the loop's hours ahead (D-114).
 	RadarAhead int
-	Anchor     time.Time
+	// QuakeFeed is the quakes the map draws, USGS's feed by its name
+	// (D-122); Clock the listener's, for their times (D-123).
+	QuakeFeed string
+	Clock     render.Clock
+	Anchor    time.Time
 }
 
 // mapAsk is the ask as the window stands: the watchlist's places, and the
@@ -485,7 +521,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

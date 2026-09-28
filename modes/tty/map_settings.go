@@ -142,6 +142,7 @@ func (d Dashboard) mapSettingLines(o render.Opts, lines []string, at int) ([]str
 	lines, at = d.mapRow(o, lines, at, rowMapNearby, "Nearby -", d.mapPicker(o, rowMapNearby, d.nearbyLabel()))
 	lines, at = d.mapRow(o, lines, at, rowMapRadarSource, "Radar -", d.mapPicker(o, rowMapRadarSource, d.radarSourceLabel()))                 // D-83
 	lines, at = d.mapRow(o, lines, at, rowMapRadarAhead, "Radar ahead -", d.mapPicker(o, rowMapRadarAhead, radarAheadLabel(d.mapRadarAhead))) // D-114
+	lines, at = d.mapRow(o, lines, at, rowMapQuakes, "Quakes -", d.mapPicker(o, rowMapQuakes, quakeFeedLabel(d.mapQuakeFeed)))                // D-122
 	return d.mapRow(o, lines, at, rowMapTempSource, "Temperature -", d.mapPicker(o, rowMapTempSource, d.tempSourceLabel()))                   // D-93
 }
 

@@ -86,7 +86,8 @@ func RunDashboard(version string, opt Options) error {
 		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
 		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
-		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas} // 0.18.0 D-66
+		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
+		mapQuakes: newMapQuakes(client, "")} // 0.18.0 D-122: the map's own quake feeds
 	if rs, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
 		lp.radar = rs // W8: a radar client that cannot be built is no radar, and the map says none answered
 	}
@@ -414,6 +415,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapRadarSource:  cfg.MapRadarSource,            // D-83: the lower 48's radar
 		MapTempSource:   cfg.MapTemperatureSource,      // D-93: Forecast mode's temperature
 		MapRadarAhead:   cfg.MapRadarAheadHours,        // D-114: the radar loop's hours ahead
+		MapQuakeFeed:    cfg.MapQuakeFeed,              // D-122: the quakes the map draws
 		MapLayerChoice:  cfg.MapLayers,                 // 0.18.0 W1.11
 		MapLayers:       windowLayers(),                // 0.18.0 W1.13: the registry's layers
 		MapCost:         lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate
@@ -716,6 +718,7 @@ type livePipelines struct {
 	recent     *recentPipeline
 	ticker     *tickerDeck     // 0.12.0: waited at shutdown so its cache writes settle before teardown
 	severe     *severeDeck     // 0.13.0: the severe-events index the window lists
+	mapQuakes  *mapQuakes      // 0.18.0 D-122: the map's quake feeds, the listener's choice
 	director   *director       // 0.13.0: the voice arbiter (app/director.go)
 	scripts    *script.Library // 0.13.0: the spoken lines (domains/radio/script)
 	reader     *eventReader    // 0.13.0: [space] in the window

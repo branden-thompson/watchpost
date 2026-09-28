@@ -47,6 +47,8 @@ const numNarrationClasses
 const perimeterBytes
 const publishCoalesce
 const pumpBacklog
+const quakeFeedBase
+const quakeFeedDefault
 const quakeKeeps
 const quakeLayerKey
 const radarBudgetShare
@@ -225,6 +227,7 @@ func (*livePipelines).tuneRelay
 func (*livePipelines).viewAlerts
 func (*livePipelines).wireDeckWarnings
 func (*mapBuilder).build
+func (*mapQuakes).fetch
 func (*mastercontrol).CutBed
 func (*mastercontrol).DropCard
 func (*mastercontrol).GoOnAir
@@ -382,7 +385,6 @@ func (*severeDeck).Row
 func (*severeDeck).SetFeed
 func (*severeDeck).SetLocations
 func (*severeDeck).currentRows
-func (*severeDeck).feedCopy
 func (*severeDeck).publish
 func (*severeDeck).scope
 func (*severeDeck).setLaneRows
@@ -562,6 +564,7 @@ func newEventReader
 func newExecutors
 func newHostFacts
 func newMapBuilder
+func newMapQuakes
 func newMastercontrol
 func newProductionMapBuilder
 func newPump
@@ -591,8 +594,11 @@ func proposeFrom
 func providerEndpoints
 func pruneDumps
 func publishArea
+func quakeAgeRole
+func quakeLabel
+func quakeLayerCost
 func quakeOverlays
-func quakeRadiusKm
+func quakeRingDots
 func quakesIn
 func radarHosts
 func radarLayerCost
@@ -755,6 +761,7 @@ type mainTrackStage
 type mapBuilder
 type mapInputs
 type mapLayer
+type mapQuakes
 type mapSource
 type mastercontrol
 type memRecord
@@ -791,4 +798,5 @@ var errReadStopped
 var goosSeam
 var mapLayers
 var mapSources
+var quakeFeedBytes
 var rateTable

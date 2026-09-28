@@ -1346,3 +1346,26 @@ This batch builds the part that changes the controls, UAT'd first as the HUM LEA
 - a missing default colour for a fire token;
 - a truncated HMS archive served with its error;
 - perimeters left un-de-duplicated across boxes.
+
+## Batch 37 — quakes as USGS draws them (W13.4, U2-27, U2-28, D-122, D-123, 2026-09-27)
+
+**UAT on fire (U2-27).** The fire works, and there is a lot of it: at national zoom it crowds the radar and runs the drawing over budget. It is carried to D-112's fourth stage as sub-filters and a cap on what the map draws, not patched here.
+
+**Quakes (U2-28).** The map drew the ticker's "significant this week" feed, which held one quake worldwide and none in the US when asked.
+- **D-122:** the map reads a USGS summary feed of its own. The past week is the HUM LEAD's default, with the past day a Setting. Magnitude is M2.5+ by default (the HUM LEAD's "M2.5"), with M1.0+ a Setting. One row, "Quakes -", offers the four. Its file word is the feed's own name, e.g. `2.5_week`, and the cost line counts the feed measured: 33 KB to 918 KB.
+- **D-123:** each quake is drawn as USGS draws it:
+  - a braille ring round the epicentre, the same size on the screen at every zoom, half again larger with each magnitude (3 dots at M2.5, 8 at M5, 17 at M7, capped at 48);
+  - coloured by age: the past hour, the past day, older;
+  - labelled with its magnitude and local time in the listener's clock, e.g. "M3.1 2:14 PM", and the weekday when not today.
+- **The Status window:** its MAP block names USGS, which the map now asks itself.
+
+**Library, go-tuiMaps L-19 (its D-93), rc.20.**
+- A circle may be sized on the screen (`RadiusDots`, 1 to 48), drawn by the markers' own circle, with its label beginning beside it.
+- Three quake roles by age.
+
+**The library's gate had a defect of its own (L11.21).** A gate run stopped with TERM was logged "green" after five seconds, a line M6 would count as clean. The false row was taken out by hand, and the gate now traps INT, TERM and HUP: a stopped run exits non-zero and is logged INTERRUPTED. Its test reproduced the defect first.
+
+**Mutation verdicts** (targeted, 14 in watchpost and 6 in go-tuiMaps), all caught. Three survived at first, and tests now catch each:
+- a ring drawn as a dot;
+- a ring's label drawn over it;
+- the ring's cap, untested below M9.55.
