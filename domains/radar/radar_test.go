@@ -202,6 +202,15 @@ func TestTheRadarClientKeepsNothingOnDisk(t *testing.T) {
 	}
 }
 
+// TestTheRadarClientPacesSixAtOnce is D-130: the client's pace leaves room
+// for six frames in flight at a round trip of 200 ms, where the default five
+// a second fetched a frame every 200 ms however many were asked at once.
+func TestTheRadarClientPacesSixAtOnce(t *testing.T) {
+	if c := ClientConfig("watchpost/test"); c.RatePerSec < 6*5 {
+		t.Errorf("the radar client paces %d a second; six at once at 200 ms need 30", c.RatePerSec)
+	}
+}
+
 // TestARefreshFetchesOnlyTheNewFrames is W8.7 (FR-5.5): with a frame held, the
 // same frame asked again is not fetched again; a new time is.
 func TestARefreshFetchesOnlyTheNewFrames(t *testing.T) {

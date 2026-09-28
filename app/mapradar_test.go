@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,14 +25,20 @@ import (
 )
 
 // fakeRadar is a source with its times and a frame for every one, failing
-// the times listed in fail; asks counts the frames fetched.
+// the times listed in fail; asks counts the frames fetched, peak the most in
+// flight at once. A frame takes delay, and first waits for gate if set.
 type fakeRadar struct {
 	name    string
 	regions []string
 	times   []time.Time
 	fail    map[time.Time]bool
 	png     []byte
+	delay   time.Duration
+	gate    chan struct{}
+	mu      sync.Mutex
 	asks    int
+	flying  int
+	peak    int
 }
 
 func (f *fakeRadar) Name() string { return f.name }
@@ -45,7 +52,20 @@ func (f *fakeRadar) Covers(r string) bool {
 }
 func (f *fakeRadar) Times(context.Context, string) ([]time.Time, error) { return f.times, nil }
 func (f *fakeRadar) Frame(_ context.Context, _ string, at time.Time, _ []time.Time, _ radar.Box) ([]byte, error) {
+	f.mu.Lock()
 	f.asks++
+	f.flying++
+	f.peak = max(f.peak, f.flying)
+	f.mu.Unlock()
+	defer func() { f.mu.Lock(); f.flying--; f.mu.Unlock() }()
+	if f.gate != nil {
+		select {
+		case <-f.gate:
+		case <-time.After(time.Second):
+			return nil, errors.New("waited a second for the hours ahead to be asked")
+		}
+	}
+	time.Sleep(f.delay)
 	if f.fail[at] {
 		return nil, errors.New("refused")
 	}
@@ -237,13 +257,25 @@ func TestTheRadarAsksForAndKeepsWhatFits(t *testing.T) {
 // the frames.
 type hrrrGet struct {
 	t      *testing.T
+	mu     sync.Mutex
 	frames int
+	run    []byte        // the run's answer, when not the fixture's
+	asked  chan struct{} // closed at the first frame asked, when set
+	once   sync.Once
 }
 
 func (h *hrrrGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
 	if strings.HasSuffix(rawURL, ".json") {
+		if h.run != nil {
+			return h.run, nil
+		}
 		return os.ReadFile("../domains/radar/testdata/hrrr-run.json")
 	}
+	if h.asked != nil {
+		h.once.Do(func() { close(h.asked) })
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.frames++
 	return os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
 }
@@ -300,5 +332,45 @@ func TestTheHoursAheadFitWhatTheLoopLeaves(t *testing.T) {
 	}
 	if !kept[0].Image.Frames[4].Valid.Equal(time.Date(2026, 9, 27, 21, 0, 0, 0, time.UTC)) {
 		t.Errorf("the frames kept end at %v; want the nearest five, the farthest dropped", kept[0].Image.Frames[4].Valid)
+	}
+}
+
+// TestTheLoopsFramesAreFetchedSixAtATime is D-130 (UAT-2 U2-35): the frames
+// were fetched one after another, a frame every 200 ms at the client's pace,
+// the lower 48's loop 4.8 s cold. Six at a time, as the zones are (D-46), each
+// in its place in the loop.
+func TestTheLoopsFramesAreFetchedSixAtATime(t *testing.T) {
+	png, _ := os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
+	times := grid5(24, time.Date(2026, 9, 28, 14, 0, 0, 0, time.UTC))
+	src := &fakeRadar{name: "MRMS", times: times, png: png, delay: 20 * time.Millisecond}
+	o, _, ok := radarLoop(context.Background(), src, geo.RegionContiguous, times, loopSlots(times, radarStep, radar.Window), radar.Box{Name: "us", W: -126, S: 23, E: -65, N: 51})
+	if !ok {
+		t.Fatal("no loop")
+	}
+	if src.peak != 6 || src.asks != len(o.Image.Frames) { // six, as D-130 ruled
+		t.Errorf("%d frames fetched, at most %d at once; want every frame, six at once", src.asks, src.peak)
+	}
+	for i, f := range o.Image.Frames {
+		if f.Gap || (i > 0 && !f.Valid.After(o.Image.Frames[i-1].Valid)) {
+			t.Fatalf("frame %d is %+v: out of its place, or missing", i, f.Valid)
+		}
+	}
+}
+
+// TestTheHoursAheadAreFetchedAlongsideTheLoop is D-130: HRRR's hours ahead
+// were asked only once the observed loop was whole - 2.7 s after its 4.8.
+// They are asked alongside: here the observed frames wait for HRRR's first
+// ask, and a loop fetched first would give up waiting.
+func TestTheHoursAheadAreFetchedAlongsideTheLoop(t *testing.T) {
+	png, _ := os.ReadFile("../domains/radar/testdata/hrrr-frame.png")
+	now := time.Now().UTC()
+	times := grid5(24, now.Truncate(5*time.Minute).Add(-115*time.Minute))
+	get := &hrrrGet{t: t, asked: make(chan struct{}),
+		run: []byte(`{"model_init_utc": "` + now.Truncate(time.Hour).Add(-time.Hour).Format(time.RFC3339) + `"}`)}
+	src := &fakeRadar{name: "MRMS", regions: []string{geo.RegionContiguous}, times: times, png: png, gate: get.asked}
+	lp := &livePipelines{radar: &radarSources{iem: &fakeRadar{name: "IEM"}, mrms: src, hrrr: radar.NewHRRR(get, "")}}
+	out := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionContiguous, View: tty.MapView{W: -125, S: 24, E: -66, N: 50}, RadarAhead: 3})
+	if out.Ahead != "HRRR" || len(out.Overlays) < 2 {
+		t.Errorf("ahead %q, %d loops (problems %v); want the observed loop and HRRR's beside it", out.Ahead, len(out.Overlays), out.Problems)
 	}
 }

@@ -1516,3 +1516,34 @@ with its readings ten minutes old.
 first - the drop of a view no longer shown - and gained `TestAViewNoLongerShownGoesFirst`. The
 wiring test `TestEveryLayerOfManyThingsIsOneOverlay` was run against batch 42's code and failed
 there, 1,200 overlays for five.
+
+## Batch 44 — the radar in 1.5 s cold (W13.11, U2-35, D-130, 2026-09-28)
+
+**The finding.** After batch 43 the radar was still the last thing drawn, "at about 15s" (U2-35).
+
+**Measured, live, the lower 48 cold.**
+- The observed loop took 4.8 s: 24 frames one after another, and the radar client at the default
+  pace of five requests a second - a frame every 200 ms. The time was the client's own pacing,
+  not the network.
+- HRRR's hours ahead took 2.7 s more, and were begun only once the observed loop was whole.
+- The library prepared all 36 frames in 0.1 s: not the cause.
+- `1` pressed while another region's loop was in flight waited for it (one ask at a time, D-85),
+  then fetched the new region's: two cold loops, about 15 s.
+
+**D-130, "Fix both now".**
+- The frames are fetched six at a time, as the zones are (D-46, NFR-4), each in its place in the
+  loop; the radar client's pace is 30 a second, so six can run.
+- HRRR's hours ahead are fetched alongside the observed loop, and joined to it once it is whole: the
+  join still needs the room the observed loop leaves (D-114).
+- A change of region cancels the loop in flight for the region left; its answer, if it lands, is not
+  handed to the map, and the new region's loop is asked at once. A pan or zoom within a region still
+  waits for the loop in flight (D-85).
+- Measured again, live: 1.26 s without the hours ahead, 1.45 s with three - all 36 frames. D-46's
+  loop arm is ≤ 5.0 s.
+
+**Not changed.** Beyond the lower 48 the hours ahead are Open-Meteo's model rain (D-115), a request
+or two a field box, still asked after the observed loop. W14 measures it with the rest.
+
+**Mutation verdicts** (targeted, 6), all caught. One survived at first - six in flight changed to
+one - because the test compared the peak with the constant it was changing; it now holds the six
+D-130 ruled.

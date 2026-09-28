@@ -217,7 +217,7 @@ func TestEveryPlaybackEventDrawsTheFrame(t *testing.T) {
 		"the radar lands": func(d Dashboard) Dashboard {
 			r := radarFeed(t, "IEM", &asked)(context.Background(), d.mapAsk())
 			r.Overlays[0].Image.Frames = r.Overlays[0].Image.Frames[1:] // a refresh: the loop changed
-			m, cmd := d.applyMapRadar(mapRadarMsg{radar: r})
+			m, cmd := d.applyMapRadar(mapRadarMsg{radar: r, region: d.mapPane.region.Name})
 			return settleRadar(t, m.(Dashboard), cmd)
 		},
 	} {
@@ -343,7 +343,7 @@ func TestARefusedLoopIsSaidNotLoading(t *testing.T) {
 	r := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk())
 	r.Overlays[0].ID = RadarLayer + "/us-b" // a new box: it must fit the budget whole
 	d.mapPane.radarGiven = nil
-	m, cmd := d.applyMapRadar(mapRadarMsg{radar: r})
+	m, cmd := d.applyMapRadar(mapRadarMsg{radar: r, region: d.mapPane.region.Name})
 	d = settleRadar(t, m.(Dashboard), cmd)
 	line := stripANSITest(d.mapStatusLine())
 	if strings.Contains(line, "loading") || strings.Contains(line, "could not") || d.radarChipText() != "" {
@@ -673,5 +673,58 @@ func TestTheScrubbersNowIsWhereNowIs(t *testing.T) {
 	d = shiftKey(d, tea.KeyRight)
 	if s, _ := d.radarScrubber(); s.cursor <= s.ticks[0] {
 		t.Errorf("a forecast frame is at %.3f, NOW at %.3f; want it past NOW", s.cursor, s.ticks[0])
+	}
+}
+
+// TestARegionLeftCancelsItsLoop is D-130 (UAT-2 U2-35): `1` pressed while
+// another region's loop was being fetched waited for it, then fetched again -
+// two cold loops, about fifteen seconds. Leaving a region cancels its loop,
+// whose answer could not be drawn; the answer that lands is not handed to the
+// map, and the new region's loop is asked at once.
+func TestARegionLeftCancelsItsLoop(t *testing.T) {
+	var asked []string
+	loop := radarFeed(t, "MRMS", &asked)
+	cancelled := make(chan string, 4)
+	radar := func(ctx context.Context, ask MapAsk) MapRadar {
+		if ask.Region == geo.RegionContiguous {
+			select {
+			case <-ctx.Done():
+				cancelled <- ask.Region
+			case <-time.After(5 * time.Second):
+				cancelled <- "never"
+			}
+		}
+		return loop(ctx, ask)
+	}
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radar, MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	m, _ := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	d = feedAndSettle(t, m.(Dashboard))
+	d = pressCode(d, '1', "1")
+	d.mapPane.radarBusy = false // the lower 48's loop, asked afresh and left running
+	d, first := d.askRadar()
+	if first == nil || d.mapPane.region.Name != geo.RegionContiguous {
+		t.Fatalf("no loop asked for the lower 48 (region %s)", d.mapPane.region.Name)
+	}
+	landed := make(chan tea.Msg, 1)
+	go func() { landed <- first() }()
+	time.Sleep(50 * time.Millisecond) // the fetch is under way
+	d = pressCode(d, '2', "2")
+	d, _ = d.askRadar() // what the region's settle asks
+	select {
+	case r := <-cancelled:
+		if r != geo.RegionContiguous {
+			t.Fatalf("the lower 48's loop ran on to its end after the map left for Alaska")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the fetch never ended")
+	}
+	msg := (<-landed).(mapRadarMsg)
+	m, next := d.applyMapRadar(msg)
+	d = m.(Dashboard)
+	if len(d.mapPane.radarGiven) != 0 {
+		t.Errorf("the left region's answer was handed to the map: %v", d.mapPane.radarGiven)
+	}
+	if next == nil || !d.mapPane.radarBusy {
+		t.Error("Alaska's loop was not asked when the left region's answer landed")
 	}
 }

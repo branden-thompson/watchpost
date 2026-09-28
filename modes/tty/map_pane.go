@@ -10,6 +10,7 @@ package tty
 // message it returns is where what it landed gets drawn.
 
 import (
+	"context"
 	"math"
 	"reflect"
 	"slices"
@@ -85,7 +86,11 @@ type mapPane struct {
 
 	// The radar (W8): its request generation, the loops handed in by id, the
 	// source for the chip and its note, and the loop's line as last drawn.
-	radarBusy, radarAgain             bool // one request at a time, a later want kept (D-85)
+	radarBusy, radarAgain bool // one request at a time, a later want kept (D-85)
+	// radarRegion is the region of the loop being fetched, and radarStop
+	// cancels it: leaving the region leaves its answer nowhere to draw (D-130).
+	radarRegion                       string
+	radarStop                         context.CancelFunc
 	radarAt                           time.Time
 	radarGiven                        map[string]tuimaps.Overlay
 	radarSource, radarNote, radarLine string

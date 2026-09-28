@@ -11,6 +11,7 @@ import (
 	"context"
 	pngpkg "image/png"
 	"sort"
+	"sync"
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
@@ -29,6 +30,10 @@ func init() {
 // radarStep is the loop's step: five minutes (W8.3b's default), 24 frames
 // over the two hours.
 const radarStep = 5 * time.Minute
+
+// radarParallel is the most frames fetched at once: six, as the zones are
+// (D-46, NFR-4; D-130).
+const radarParallel = 6
 
 // radarFrameBytes is a frame on the wire, measured: 12 to 30 KB at the
 // boxes' sizes (wave 1, and the fixtures of 2026-09-26); the estimate's unit.
@@ -102,6 +107,14 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 	}
 	slots := loopSlots(times, radarStep, radar.Window)
 	boxes := radar.BoxesFor(ask.Region, ask.View)
+	var ahead chan hoursAhead // HRRR's hours ahead, fetched alongside the observed loop (D-130)
+	aheadCtx, stopAhead := context.WithCancel(ctx)
+	defer stopAhead()
+	newest, until := slots[len(slots)-1].at, time.Now().Add(time.Duration(ask.RadarAhead)*time.Hour)
+	if ask.RadarAhead > 0 && lp.radar.hrrr != nil && lp.radar.hrrr.Covers(ask.Region) {
+		ahead = make(chan hoursAhead, 1)
+		go func() { ahead <- fetchForecast(aheadCtx, lp.radar.hrrr, boxes, newest, until) }()
+	}
 	allEmpty := true
 	for _, b := range boxes {
 		o, painted, ok := radarLoop(ctx, src, ask.Region, times, slots, b)
@@ -112,10 +125,9 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 	}
 	out.Overlays = trimToBudget(out.Overlays)
 	if ask.RadarAhead > 0 && len(out.Overlays) > 0 {
-		newest, until := slots[len(slots)-1].at, time.Now().Add(time.Duration(ask.RadarAhead)*time.Hour)
 		switch {
-		case lp.radar.hrrr != nil && lp.radar.hrrr.Covers(ask.Region):
-			out = withForecast(ctx, out, lp.radar.hrrr, boxes, newest, until)
+		case ahead != nil:
+			out = joinForecast(out, <-ahead, newest)
 		case lp.temp != nil && lp.temp.rain != nil: // where HRRR is not, a model's rain (D-115)
 			out = withModelRain(ctx, out, lp.temp.rain, ask.Region, ask.View, newest, until)
 		}
@@ -132,34 +144,62 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 // HRRR's quarter-hours after the newest observed frame and up to the horizon,
 // every frame marked forecast, joined beside the observed (joinAhead).
 func withForecast(ctx context.Context, out tty.MapRadar, h *radar.HRRR, boxes []radar.Box, newest, until time.Time) tty.MapRadar {
+	return joinForecast(out, fetchForecast(ctx, h, boxes, newest, until), newest)
+}
+
+// hoursAhead is HRRR's loops as fetched, or why there are none, and whose.
+type hoursAhead struct {
+	loops   []tuimaps.Overlay
+	problem string
+	name    string
+}
+
+// joinForecast joins the hours ahead to the observed loops, or says why not.
+func joinForecast(out tty.MapRadar, fc hoursAhead, newest time.Time) tty.MapRadar {
+	if fc.problem != "" {
+		out.Problems = append(out.Problems, fc.problem) // D-124
+		return out
+	}
+	if len(fc.loops) == 0 {
+		return out
+	}
+	return joinAhead(out, fc.loops, newest, fc.name)
+}
+
+// fetchForecast is HRRR's loops a box, their frames fetched radarParallel
+// at a time (D-130).
+func fetchForecast(ctx context.Context, h *radar.HRRR, boxes []radar.Box, newest, until time.Time) hoursAhead {
 	run, err := h.Run(ctx)
 	if err != nil {
-		out.Problems = append(out.Problems, "Radar ahead: HRRR did not answer - "+err.Error()) // D-124
-		return out
+		return hoursAhead{problem: "Radar ahead: HRRR did not answer - " + err.Error()}
 	}
 	minutes := radar.Minutes(run, newest, until)
+	fc := hoursAhead{name: h.Name()}
 	if len(minutes) == 0 {
-		return out
+		return fc
 	}
-	var loops []tuimaps.Overlay
 	for _, b := range boxes {
 		frames := make([]tuimaps.LoopFrame, len(minutes))
-		held := 0
-		for i, m := range minutes {
-			at := run.Add(time.Duration(m) * time.Minute)
+		atOnce(len(minutes), func(i int) {
+			at := run.Add(time.Duration(minutes[i]) * time.Minute)
 			frames[i] = tuimaps.LoopFrame{Valid: at, Gap: true, Forecast: true}
 			if ctx.Err() != nil {
-				continue
+				return
 			}
-			png, err := h.Frame(ctx, m, b)
+			png, err := h.Frame(ctx, minutes[i], b)
 			if err != nil {
-				continue
+				return
 			}
 			if _, err := radar.Check(png); err != nil {
-				continue // refused undecoded (W8.5)
+				return // refused undecoded (W8.5)
 			}
 			frames[i] = tuimaps.LoopFrame{Valid: at, PNG: png, Forecast: true}
-			held++
+		})
+		held := 0
+		for _, f := range frames {
+			if !f.Gap {
+				held++
+			}
 		}
 		if held == 0 {
 			continue
@@ -168,12 +208,9 @@ func withForecast(ctx context.Context, out tty.MapRadar, h *radar.HRRR, boxes []
 			West: b.W, South: b.S, East: b.E, North: b.N, Projection: tuimaps.PlateCarree}, run)
 		o.Keeps = until.Sub(run) + time.Hour // a run's frames are current until the horizon has passed
 		o.During = tuimaps.Span{From: frames[0].Valid}
-		loops = append(loops, o)
+		fc.loops = append(fc.loops, o)
 	}
-	if len(loops) == 0 {
-		return out
-	}
-	return joinAhead(out, loops, newest, h.Name())
+	return fc
 }
 
 // chargeOf is what loops cost the image budget as fetched: each frame's PNG
@@ -329,25 +366,31 @@ func loopSlots(times []time.Time, step, window time.Duration) []slot {
 // (D-84).
 func radarLoop(ctx context.Context, src radar.Source, region string, advertised []time.Time, slots []slot, b radar.Box) (o tuimaps.Overlay, painted int, ok bool) {
 	frames := make([]tuimaps.LoopFrame, len(slots))
-	held := 0
-	for i := len(slots) - 1; i >= 0; i-- {
+	blank := make([]bool, len(slots))
+	atOnce(len(slots), func(j int) {
+		i := len(slots) - 1 - j // the newest first
 		s := slots[i]
 		frames[i] = tuimaps.LoopFrame{Valid: s.at, Gap: true}
 		if s.time.IsZero() || ctx.Err() != nil {
-			continue
+			return
 		}
 		png, err := src.Frame(ctx, region, s.time, advertised, b)
 		if err != nil {
-			continue
+			return
 		}
 		empty, err := radar.Check(png)
 		if err != nil {
-			continue // too large, or no picture at all: refused undecoded (W8.5)
+			return // too large, or no picture at all: refused undecoded (W8.5)
 		}
-		frames[i] = tuimaps.LoopFrame{Valid: s.at, PNG: png}
-		held++
-		if !empty {
-			painted++
+		frames[i], blank[i] = tuimaps.LoopFrame{Valid: s.at, PNG: png}, empty
+	})
+	held := 0
+	for i, f := range frames {
+		if !f.Gap {
+			held++
+			if !blank[i] {
+				painted++
+			}
 		}
 	}
 	if held == 0 {
@@ -360,6 +403,22 @@ func radarLoop(ctx context.Context, src radar.Source, region string, advertised 
 	newest := slots[len(slots)-1].at
 	return tuimaps.RadarImage(tty.RadarLayer+"/"+b.Name, tuimaps.Image{Frames: frames, Provider: provider,
 		West: b.W, South: b.S, East: b.E, North: b.N, Projection: tuimaps.PlateCarree}, newest), painted, true
+}
+
+// atOnce runs do for each of n, radarParallel at a time, and returns when
+// every one has (D-130).
+func atOnce(n int, do func(i int)) {
+	room := make(chan struct{}, radarParallel)
+	var wg sync.WaitGroup
+	for i := range n {
+		room <- struct{}{}
+		wg.Add(1)
+		go func() {
+			defer func() { <-room; wg.Done() }()
+			do(i)
+		}()
+	}
+	wg.Wait()
 }
 
 // radarLayerCost is what the radar would fetch in a refresh as if nothing

@@ -83,7 +83,7 @@ func TestTheAppsProblemsReachTheDiagnostics(t *testing.T) {
 	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
 	m, _ := d.applyMapTemp(mapTempMsg{temp: MapTemperature{Problems: []string{"Temperature: Open-Meteo did not answer"}}, anchor: d.tempAnchor()})
 	d = m.(Dashboard)
-	m, _ = d.applyMapRadar(mapRadarMsg{radar: MapRadar{Problems: []string{"Radar ahead: HRRR did not answer"}}})
+	m, _ = d.applyMapRadar(mapRadarMsg{radar: MapRadar{Problems: []string{"Radar ahead: HRRR did not answer"}}, region: d.mapPane.region.Name})
 	d = m.(Dashboard)
 	if strings.Join(problems, "|") != "Temperature: Open-Meteo did not answer|Radar ahead: HRRR did not answer" {
 		t.Errorf("the diagnostics were told %q", problems)

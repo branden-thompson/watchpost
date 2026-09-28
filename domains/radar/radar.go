@@ -63,8 +63,13 @@ func NewClient(userAgent string) (*httpx.Client, error) {
 	return httpx.New(ClientConfig(userAgent))
 }
 
+// Rate is the radar client's pace, requests a second: room for six frames at
+// once (0.18.0 D-130). At the default five, a frame came every 200 ms and
+// the lower 48's loop took 4.8 s cold, however many were asked at once.
+const Rate = 30
+
 // ClientConfig is the radar client's configuration, named so a test holds it.
 func ClientConfig(userAgent string) httpx.Config {
-	return httpx.Config{UserAgent: userAgent, MaxRetries: 1, CacheDir: "",
+	return httpx.Config{UserAgent: userAgent, MaxRetries: 1, CacheDir: "", RatePerSec: Rate,
 		MaxBodyBytes: frameBodyCap, RefusePrivate: true, HTTPSOnly: true}
 }

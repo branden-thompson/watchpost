@@ -387,7 +387,7 @@ func TestARefusedLoopKeepsTheOneDrawn(t *testing.T) {
 		bad.Overlays = append(bad.Overlays, tuimaps.Overlay{ID: id}) // no valid time, no picture: refused
 	}
 	bad.Source = "MRMS"
-	m, _ := d.applyMapRadar(mapRadarMsg{radar: bad})
+	m, _ := d.applyMapRadar(mapRadarMsg{radar: bad, region: d.mapPane.region.Name})
 	d = m.(Dashboard)
 	if len(d.mapPane.radarGiven) != held || len(d.mapPane.m.Overlays()) == 0 {
 		t.Errorf("a refused loop took the drawn one away: %d held", len(d.mapPane.radarGiven))

@@ -58,6 +58,7 @@ const quakeLayerKey
 const radarBudgetShare
 const radarFrameBytes
 const radarImageBudget
+const radarParallel
 const radarStep
 const radioDebugEnv
 const radioDebugMax
@@ -458,6 +459,7 @@ func applyThemes
 func areaMeets
 func arrivalsOf
 func assemblerGauges
+func atOnce
 func attachRadio
 func bedAdvice
 func bedLabelOf
@@ -510,6 +512,7 @@ func eventNarration
 func eventScript
 func everyTick
 func feelsForecastGrids
+func fetchForecast
 func fieldBoxes
 func fillDays
 func fillFeelsNow
@@ -547,6 +550,7 @@ func isLookupFailure
 func itemsOf
 func itoaN
 func joinAhead
+func joinForecast
 func laneForKey
 func laneItems
 func laneRowsPerTab
@@ -780,6 +784,7 @@ type executors
 type fieldBox
 type fireInView
 type hostFacts
+type hoursAhead
 type injectQueue
 type injectQueue
 type livePipelines

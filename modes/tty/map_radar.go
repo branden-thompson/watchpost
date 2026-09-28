@@ -9,6 +9,7 @@ package tty
 // one request at a time, so it never blinks or stands on a single frame.
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 	"strings"
@@ -42,7 +43,8 @@ type MapRadar struct {
 
 // mapRadarMsg is a radar answer.
 type mapRadarMsg struct {
-	radar MapRadar
+	radar  MapRadar
+	region string // the region it was asked for (D-130)
 }
 
 // radarRefresh is how long a loaded loop stands before new data asks again:
@@ -52,20 +54,28 @@ const radarRefresh = 2 * time.Minute
 // askRadar asks the app for the whole loop, off the UI goroutine - ONE
 // REQUEST AT A TIME (D-85). A later ask made while one runs is kept and asked
 // when the answer lands, never in its place: every later ask superseding the
-// last is how a six-second loop was never drawn at all.
+// last is how a six-second loop was never drawn at all. BUT A REGION LEFT IS
+// CANCELLED (D-130): its answer could not be drawn, and waiting for it made
+// `1` two cold loops, about fifteen seconds (UAT-2 U2-35).
 func (d Dashboard) askRadar() (Dashboard, tea.Cmd) {
 	radar := d.cfg.MapRadar
 	if radar == nil || d.mapPane.m == nil || d.modal != modalMap {
 		return d, nil
 	}
+	region := d.mapPane.region.Name
 	if d.mapPane.radarBusy {
 		d.mapPane.radarAgain = true
+		if d.mapPane.radarRegion != region && d.mapPane.radarStop != nil {
+			d.mapPane.radarStop()
+		}
 		return d, nil
 	}
-	d.mapPane.radarBusy, d.mapPane.radarAt = true, d.now()
+	d.mapPane.radarBusy, d.mapPane.radarAt, d.mapPane.radarRegion = true, d.now(), region
 	if !d.layerOn(RadarLayer) {
-		return d, func() tea.Msg { return mapRadarMsg{} } // off: an empty answer takes the loops away, and the app is not asked
+		return d, func() tea.Msg { return mapRadarMsg{region: region} } // off: an empty answer takes the loops away, and the app is not asked
 	}
+	stopped, stop := context.WithCancel(context.Background())
+	d.mapPane.radarStop = stop
 	ask, workers := d.mapAsk(), d.mapPane.workers
 	return d, func() tea.Msg {
 		ctx, done, ok := workers.begin()
@@ -73,7 +83,10 @@ func (d Dashboard) askRadar() (Dashboard, tea.Cmd) {
 			return nil // the map closed: the app is not asked
 		}
 		defer done()
-		return mapRadarMsg{radar: radar(ctx, ask)}
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		defer context.AfterFunc(stopped, cancel)()
+		return mapRadarMsg{radar: radar(ctx, ask), region: region}
 	}
 }
 
@@ -92,9 +105,18 @@ func (d Dashboard) refreshRadar() (Dashboard, tea.Cmd) {
 // radar would blink out (D-85). A want kept while this ran is asked now.
 func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 	d.mapPane.radarBusy = false
+	if d.mapPane.radarStop != nil {
+		d.mapPane.radarStop() // its context let go
+		d.mapPane.radarStop = nil
+	}
 	m := d.mapPane.m
 	if m == nil || d.modal != modalMap {
 		return d, nil
+	}
+	if v.region != d.mapPane.region.Name { // a region left (D-130): nothing of it is drawn; the kept ask goes now
+		d.mapPane.radarAgain = false
+		d, again := d.askRadar()
+		return d, again
 	}
 	if !d.layerOn(RadarLayer) {
 		v.radar = MapRadar{}
