@@ -30,6 +30,7 @@ import (
 // its cost is temperature's, so it registers none of its own.
 func init() {
 	registerMapLayer(mapLayer{key: tty.TemperatureLayer, label: "Temperature", on: false, cost: tempLayerCost})
+	registerMapLayer(mapLayer{key: tty.FeelsLayer, label: "Feels like", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }}) // D-119: in temperature's requests
 	registerMapLayer(mapLayer{key: tty.WindLayer, label: "Wind", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }})
 }
 
@@ -118,14 +119,19 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 			continue
 		}
 		if !ask.Forecast {
-			out.Overlays = append(out.Overlays, hourGrids(s, b.Name, anchor, unit)...)
+			out.Overlays = append(out.Overlays, hourGrids(tty.TemperatureLayer, s.Hours, s.Hourly, s.Lattice, b.Name, anchor, unit)...)
+			out.Feels = append(out.Feels, hourGrids(tty.FeelsLayer, s.Hours, s.Feels, s.Lattice, b.Name, anchor, unit)...)
 			out.Wind = append(out.Wind, windHourGrids(s, b.Name, anchor, ask.Fahrenheit)...)
 			continue
 		}
 		if fill != nil && fillDays(ctx, &s, fill, lat, now, &out) {
 			credit = true
 		}
+		if fill != nil && fillFeelsNow(ctx, &s, fill, lat, anchor, now, &out) {
+			credit = true
+		}
 		forecastGrids(&out, s, b.Name, anchor, unit, missing)
+		feelsForecastGrids(&out, s, b.Name, anchor, unit)
 		windForecastGrids(&out, s, b.Name, anchor, ask.Fahrenheit)
 	}
 	if fellBack == len(boxes) {
@@ -159,7 +165,9 @@ func fillDays(ctx context.Context, s *temperature.Series, fill temperature.Sourc
 			from func(*temperature.Series) []float64
 		}{{"high", &s.High[k], func(f *temperature.Series) []float64 { return f.High[k] }},
 			{"low", &s.Low[k], func(f *temperature.Series) []float64 { return f.Low[k] }},
-			{"wind", &s.PeakSpeed[k], func(f *temperature.Series) []float64 { return f.PeakSpeed[k] }}} {
+			{"wind", &s.PeakSpeed[k], func(f *temperature.Series) []float64 { return f.PeakSpeed[k] }},
+			{"feelshigh", &s.FeelsHigh[k], func(f *temperature.Series) []float64 { return f.FeelsHigh[k] }},
+			{"feelslow", &s.FeelsLow[k], func(f *temperature.Series) []float64 { return f.FeelsLow[k] }}} {
 			if !allMissing(*side.vals) {
 				continue
 			}
@@ -184,6 +192,29 @@ func fillDays(ctx context.Context, s *temperature.Series, fill temperature.Sourc
 		}
 	}
 	return filled
+}
+
+// fillFeelsNow puts Open-Meteo's feels-like in the current hour where the
+// source has none (D-119): NDFD answers it from the next hour. True when it
+// did.
+func fillFeelsNow(ctx context.Context, s *temperature.Series, fill temperature.Source, lat temperature.Lattice, anchor, now time.Time, out *tty.MapTemperature) bool {
+	if vals, ok := s.FeelsAt(anchor); ok && !allMissing(vals) {
+		return false
+	}
+	f, err := fill.Fetch(ctx, lat, now)
+	if err != nil {
+		return false
+	}
+	vals, ok := f.FeelsAt(anchor)
+	if !ok || allMissing(vals) {
+		return false
+	}
+	s.Feels[s.HourIndex(anchor)] = vals
+	if out.Filled == nil {
+		out.Filled = map[string]bool{}
+	}
+	out.Filled["now/feels"] = true
+	return true
 }
 
 // allMissing reports whether a source had nothing at any point.
@@ -228,15 +259,16 @@ func fieldBoxes(region string, view geo.Box) []fieldBox {
 	return nil
 }
 
-// hourGrids are Radar mode's grids: every hour up to the current one, each
-// drawn during its hour (D-96).
-func hourGrids(s temperature.Series, box string, anchor time.Time, unit tuimaps.Unit) []tuimaps.Overlay {
+// hourGrids are Radar mode's grids of a layer - temperature's, or
+// feels-like's (D-119): every hour up to the current one, each drawn during
+// its hour (D-96).
+func hourGrids(layer string, hours []time.Time, values [][]float64, l temperature.Lattice, box string, anchor time.Time, unit tuimaps.Unit) []tuimaps.Overlay {
 	var out []tuimaps.Overlay
-	for i, h := range s.Hours {
-		if h.After(anchor) {
+	for i, h := range hours {
+		if h.After(anchor) || i >= len(values) {
 			continue // a forecast hour: no radar frame is in it
 		}
-		o, ok := tempGrid(tty.TemperatureLayer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), s.Lattice, s.Hourly[i], unit, h, anchor)
+		o, ok := tempGrid(layer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), l, values[i], unit, h, anchor)
 		if !ok {
 			continue
 		}
@@ -273,6 +305,34 @@ func forecastGrids(out *tty.MapTemperature, s temperature.Series, box string, an
 			}
 			o.During = steps[k+1].Span
 			*side.into = append(*side.into, o)
+		}
+	}
+}
+
+// feelsForecastGrids are Forecast mode's feels-like (D-119): Now, and each
+// day's high and low, each during its step, as temperature's are. A day
+// without is simply not drawn: temperature's grids say what is missing.
+func feelsForecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, unit tuimaps.Unit) {
+	steps := tty.ForecastSteps(anchor)
+	if vals, ok := s.FeelsAt(anchor); ok {
+		if o, ok := tempGrid(tty.FeelsLayer+"/"+box+"/now", s.Lattice, vals, unit, anchor, anchor); ok {
+			o.During = steps[0].Span
+			out.Feels = append(out.Feels, o)
+		}
+	}
+	for k := range temperature.Days {
+		if k+1 >= len(steps) {
+			break
+		}
+		for _, side := range []struct {
+			name string
+			vals []float64
+			into *[]tuimaps.Overlay
+		}{{"high", s.FeelsHigh[k], &out.FeelsHigh}, {"low", s.FeelsLow[k], &out.FeelsLow}} {
+			if o, ok := tempGrid(tty.FeelsLayer+"/"+box+"/d"+strconv.Itoa(k)+"/"+side.name, s.Lattice, side.vals, unit, anchor, anchor); ok {
+				o.During = steps[k+1].Span
+				*side.into = append(*side.into, o)
+			}
 		}
 	}
 }

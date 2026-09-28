@@ -486,8 +486,10 @@ func envWatchlistDwell
 func eventNarration
 func eventScript
 func everyTick
+func feelsForecastGrids
 func fieldBoxes
 func fillDays
+func fillFeelsNow
 func fireProviders
 func fireReportOf
 func fireRules

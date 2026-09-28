@@ -35,6 +35,10 @@ const TemperatureLayer = "temperature"
 // WindLayer is the wind's (W11, D-110).
 const WindLayer = "wind"
 
+// FeelsLayer is feels-like temperature's (D-119): its own row, off by
+// default, never on with temperature - the two share one tint.
+const FeelsLayer = "feels"
+
 // RainLayer is Forecast mode's rain and snow (W12.3, D-117): on by default,
 // drawn in Forecast mode alone - Radar mode's rain is the radar.
 const RainLayer = "rain"
@@ -58,8 +62,11 @@ type MapTemperature struct {
 	// RainNotes its credit, or that it did not answer.
 	Rain      []tuimaps.Overlay
 	RainNotes []string
-	Source    string
-	Notes     []string
+	// Feels, FeelsHigh and FeelsLow are feels-like's (D-119), as Overlays,
+	// High and Low are temperature's.
+	Feels, FeelsHigh, FeelsLow []tuimaps.Overlay
+	Source                     string
+	Notes                      []string
 	// Filled are the days Open-Meteo filled where the source had nothing
 	// (D-100), as "‹day›/high" or "‹day›/low", the day counted from today.
 	Filled map[string]bool
@@ -216,6 +223,16 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 			out = append(out, t.High...)
 		}
 	}
+	if d.layerOn(FeelsLayer) { // feels-like, as temperature (D-119)
+		out = append(out, t.Feels...)
+		switch {
+		case d.radarMode():
+		case d.mapPane.fcLow:
+			out = append(out, t.FeelsLow...)
+		default:
+			out = append(out, t.FeelsHigh...)
+		}
+	}
 	if d.layerOn(WindLayer) { // the wind's, beside it or alone (D-110)
 		out = append(out, t.Wind...)
 		if !d.radarMode() {
@@ -278,16 +295,21 @@ func (d Dashboard) setTemp() (Dashboard, bool) {
 	return d, set
 }
 
-// tempOn reports whether temperature is drawn now.
-func (d Dashboard) tempOn() bool { return d.layerOn(TemperatureLayer) && len(d.mapPane.tempGiven) > 0 }
+// tempOn reports whether temperature - or feels-like, its other measure
+// (D-119) - is drawn now.
+func (d Dashboard) tempOn() bool {
+	return (d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer)) && len(d.mapPane.tempGiven) > 0
+}
+
+// feelsOn reports whether feels-like is the tint drawn (D-119).
+func (d Dashboard) feelsOn() bool { return d.layerOn(FeelsLayer) && !d.layerOn(TemperatureLayer) }
 
 // The mode's keys: R switches Radar mode on and off (D-94); < and > flip
 // Forecast mode's days between high and low (D-97).
 const (
-	actMapRadar    term.Action = "map.radar"
-	actMapHighLow  term.Action = "map.highlow"
-	forecastLabel              = "FORECAST"
-	forecastBadgeW             = radarBadgeW
+	actMapRadar   term.Action = "map.radar"
+	actMapHighLow term.Action = "map.highlow"
+	forecastLabel             = "FORECAST"
 )
 
 // switchMode turns Radar mode on or off (D-94): the radar layer's switch,
@@ -320,8 +342,8 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 // draw no main overlay (D-103) - a blank map reads as broken - and shows the
 // chip that says so. It is Forecast mode's alone, never saved (D-104).
 func (d Dashboard) ensureMainOverlay() Dashboard {
-	if d.radarMode() || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) {
-		return d // a main overlay is on already: temperature or wind (D-110)
+	if d.radarMode() || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) {
+		return d // a main overlay is on already: temperature, feels-like or wind (D-110, D-119)
 	}
 	d.mapPane.tempAuto, d.mapPane.modeChip = true, true
 	d.mapPane.gen++
@@ -464,7 +486,7 @@ func (d Dashboard) retime() Dashboard {
 // the HUM LEAD's layout (UAT-2 U2-19), three rows flush right: FORECAST; the
 // temperature's source as a chip, [O-METEO] or [ NDFD ], when it is drawn;
 // the step in capitals, NOW or FRI HIGHS.
-func (d Dashboard) forecastBadge() []string {
+func (d Dashboard) forecastBadge() string {
 	chip := ""
 	if d.tempOn() {
 		face := " " + strings.ToUpper(d.stepSource()) + " "
@@ -480,6 +502,9 @@ func (d Dashboard) forecastBadge() []string {
 // LOWS - TODAY HIGHS, FRI LOWS.
 func (d Dashboard) badgeStep() string {
 	if d.mapPane.fcStep == 0 {
+		if d.feelsOn() {
+			return "NOW FEELS LIKE" // D-119
+		}
 		return "NOW"
 	}
 	steps := d.forecastSteps()
@@ -488,10 +513,14 @@ func (d Dashboard) badgeStep() string {
 	if d.mapPane.fcStep == 1 {
 		day = "TODAY"
 	}
-	if !d.layerOn(TemperatureLayer) && d.layerOn(WindLayer) {
+	if d.feelsOn() {
+		day += " FEELS" // D-119: room on D-120's one line
+	}
+	tint := d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer)
+	if !tint && d.layerOn(WindLayer) {
 		return day + " PEAK" // the day's peak wind (D-108)
 	}
-	if !d.layerOn(TemperatureLayer) && d.rainOn() {
+	if !tint && d.rainOn() {
 		return day + " RAIN" // the day's rain and snow alone (D-116)
 	}
 	if d.mapPane.fcLow {
@@ -506,10 +535,13 @@ func (d Dashboard) stepSource() string {
 	if at := d.mapPane.fcStep; at > 0 && !d.radarMode() {
 		side := "high"
 		switch {
-		case !d.layerOn(TemperatureLayer) && d.layerOn(WindLayer):
+		case !d.layerOn(TemperatureLayer) && !d.layerOn(FeelsLayer) && d.layerOn(WindLayer):
 			side = "wind"
 		case d.mapPane.fcLow:
 			side = "low"
+		}
+		if d.feelsOn() && side != "wind" {
+			side = "feels" + side // D-119: filled as temperature's are
 		}
 		if d.mapPane.temp.Filled[strconv.Itoa(at-1)+"/"+side] {
 			return "Open-Meteo"
@@ -589,6 +621,9 @@ func (d Dashboard) forecastTimeline(width int) []string {
 // as the radar's row is (W10.10): a swatch a band, coldest to warmest, each
 // band's lower bound written where colour is off.
 func (d Dashboard) tempLegendRow(width int) string {
+	if d.feelsOn() {
+		return d.presetRow("temperature", "FEELS LIKE │ ", "COLDER ", " WARMER", width) // D-119
+	}
 	if !d.layerOn(TemperatureLayer) && d.layerOn(WindLayer) {
 		return d.presetRow("wind", "WIND │ ", "CALMER ", " STRONGER", width) // the wind's colours, where temperature's are not shown (D-109)
 	}
@@ -631,7 +666,7 @@ func (d Dashboard) tempMemoKey() string {
 // credit), and in Radar mode that each frame draws its own hour.
 func (d Dashboard) tempNotes() []string {
 	var out []string
-	if d.layerOn(TemperatureLayer) {
+	if d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer) {
 		out = append(out, d.mapPane.temp.Notes...)
 		if d.mapPane.tempRefused != "" {
 			out = append(out, d.mapPane.tempRefused)

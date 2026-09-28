@@ -23,7 +23,7 @@ func openRainMap(t *testing.T, radarOn bool) Dashboard {
 	var asked []string
 	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(&asks),
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: radarOn},
-			{Key: RainLayer, Label: "Rain & snow", On: true}, {Key: TemperatureLayer, Label: "Temperature"}, {Key: WindLayer, Label: "Wind"}}}
+			{Key: RainLayer, Label: "Rain & snow", On: true}, {Key: TemperatureLayer, Label: "Temperature"}, {Key: FeelsLayer, Label: "Feels like"}, {Key: WindLayer, Label: "Wind"}}}
 	d := mapDash(t, cfg)
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
@@ -134,7 +134,7 @@ func TestTheHoursAheadNameOpenMeteo(t *testing.T) {
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
 	d = shiftKey(settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd), tea.KeyRight)
-	if badge := stripANSITest(strings.Join(d.radarBadge(), "|")); !strings.Contains(badge, "RADAR FCST") || !strings.Contains(badge, "O-METEO") {
+	if badge := stripANSITest(d.radarBadge()); !strings.Contains(badge, "RADAR FCST") || !strings.Contains(badge, "O-METEO") {
 		t.Errorf("ahead of now the badge is %q; want RADAR FCST and O-METEO", badge)
 	}
 	if row := stripANSITest(d.loopRow(d.scrubW())); !strings.Contains(row, "FORECAST  O-METEO") {

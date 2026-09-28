@@ -2,8 +2,8 @@ package tty
 
 // map_parts.go — the map window's parts, each drawn one way whatever the
 // mode (0.18.0 D-103, the HUM LEAD's "consolidated into re-usable
-// components"): the chip box over the map, the badge in its upper right, and
-// the scrubber under it. The modes hand them their words; nothing here knows
+// components"): the chip box over the map, the badge a tab on its frame's
+// upper right (D-120), and the scrubber under it. The modes hand them their words; nothing here knows
 // radar from forecast.
 
 import (
@@ -19,19 +19,49 @@ func chipBox(text string) []string {
 	return []string{"┌" + strings.Repeat("─", w) + "┐", "│ " + text + " │", "└" + strings.Repeat("─", w) + "┘"}
 }
 
-// badgeW is the badge's width in cells: "RADAR DATA" and a space either side.
-const badgeW = 12
-
-// mapBadge is the badge in the map's upper right, in either mode (D-92,
-// U2-19): a title, a source chip and a moment, three rows flush right.
-func mapBadge(title, chip, moment string) []string {
-	right := func(s string) string {
-		if s == "" {
-			return strings.Repeat(" ", badgeW)
+// mapBadge is the badge's words, in either mode (D-92, U2-19), on one line
+// (D-120): a title, a source chip and a moment, each where there is one.
+func mapBadge(title, chip, moment string) string {
+	var parts []string
+	for _, p := range []string{title, chip, moment} {
+		if p != "" {
+			parts = append(parts, p)
 		}
-		return strings.Repeat(" ", max(badgeW-render.Width(s)-1, 0)) + s + " "
 	}
-	return []string{right(title), right(chip), right(moment)}
+	return " " + strings.Join(parts, "  ") + " "
+}
+
+// tabMinLeft is the least of the frame's top edge a tab leaves to the
+// window's title.
+const tabMinLeft = 12
+
+// titleChrome is the top edge around a window's title up to the tab: the
+// corner and its rule before the title, a space and a rule after it.
+const titleChrome = 6
+
+// tabCol is the column a badge's tab opens at on a window's frame.
+func tabCol(rows []string, words string) int {
+	if len(rows) == 0 {
+		return 0
+	}
+	return render.Width(rows[0]) - render.Width(words) - 2
+}
+
+// withTab joins a badge to a window's frame as a tab on its top right
+// (D-120): the frame's top edge opens into it, its words on the first row
+// against the frame's right side, and its bottom edge closes into that side.
+// As wide as its words; where the window is too narrow to leave its title
+// room, the frame is left as it is.
+func withTab(rows []string, words string, g render.BoxGlyphs) []string {
+	w := render.Width(words)
+	if len(rows) < 3 || w == 0 {
+		return rows
+	}
+	col := tabCol(rows, words)
+	if col < tabMinLeft {
+		return rows
+	}
+	return spliceBox(rows, []string{g.T, g.Rail + words, g.BL + strings.Repeat(g.Rule, w) + g.R}, 0, col)
 }
 
 // scrubAlign is where a label under the scrubber sits against its point.

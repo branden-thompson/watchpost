@@ -1292,3 +1292,32 @@ This batch builds the part that changes the controls, UAT'd first as the HUM LEA
 - **Library, rain beside temperature:** a temperature field beside rain kept its full bands, because the whole-frame rain hid them. Rain over the sea alone now shows the land's temperature lined.
 - **A newest frame on the hour:** a forecast frame at that same hour would have shown the moment twice. The test now puts the newest observed frame on the hour.
 - **Back into Radar mode:** Forecast mode's held rain stayed drawn over the radar until the next answer. The test now checks at the switch.
+
+## Batch 35 — feels like, and the badge a tab (W13.1, W13.2, D-119, D-120, 2026-09-27)
+
+**D-112's second stage opens.** D-119 ruled on feels-like: its own row of the Overlays menu, "exclusive". Switching it on turns Temperature off, and the reverse, because the two share one tint.
+
+**Probed live.**
+- **Open-Meteo:** gives apparent temperature hourly and each day's high and low.
+- **NDFD:** gives it (`appt`) hourly, then every few hours to seven days, with no daily value. Each day's high and low are worked out from its hours on the local date, as wind's peaks are.
+- **Both:** it rides the requests temperature already makes, and it costs nothing of its own.
+
+**NDFD ignores the hour asked for feels-like.** Its answer begins at the next hour, a trap recorded in the fixture. Forecast mode's Now is filled from Open-Meteo, credited, as D-100 fills a missing day. A day the source lacks is filled the same way.
+
+**At the window.**
+- Feels-like is drawn as temperature is: isotherms over faint bands.
+- In Radar mode, each frame draws its own hour. In Forecast mode, Now and each day's high, or its low with `<`.
+- With feels-like on, Forecast mode does not turn temperature on (D-104).
+- The colour row reads FEELS LIKE, and the badge's step e.g. TODAY FEELS HIGHS, or NOW FEELS LIKE.
+- The badge's step no longer says PEAK when wind is on beside feels-like.
+
+**The badge is a tab (W13.2, D-120).** Feels-like's step would not fit the three-row badge's 12 cells, and the HUM LEAD redrew it: "stay on 1 line and widen/shrink as needed".
+- The badge is one line, e.g. `RADAR DATA  [  MRMS  ]  12:55 AM` or `FORECAST  [ NDFD ]  TODAY HIGHS`: the mode, the source's chip as it was, and the moment, STALE before it when stale.
+- It's a tab joined to the frame's top right. The top edge opens into it (┬), and its bottom edge closes into the frame's right side (└…┤).
+- The window is built as a panel, the tab is spliced into its frame rows, and then the window's tones are laid.
+- The three-row splice over the map's body is gone.
+- In a narrow window the title gives way, never the tab: the title is shortened with an ellipsis to end before it, because the tab carries the moment and STALE (FR-5.4).
+
+**Test-first, broken once and repaired.** The domain's code was written before its test. The tests were written next against recorded answers, and each change was then mutated away to see it caught.
+
+**Mutation verdicts** (targeted, 24): 23 caught. The one survivor is equivalent: the line that gives a feels-like hour its local day. NDFD sends feels-like and wind in one time layout, and wind's line already sets every hour. It stays, because it matters where feels-like is asked without wind.

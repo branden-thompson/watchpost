@@ -150,16 +150,13 @@ func (d Dashboard) radarChipText() string {
 	return " " + d.mapPane.radarSource + " "
 }
 
-// radarBadgeW is the badge's width (map_parts.go's mapBadge).
-const radarBadgeW = badgeW
-
 // radarBadge is the radar's badge (D-92), three rows: RADAR DATA; the
 // source's chip in the badge's colours; the frame's time in the listener's
 // clock, STALE before it when the newest frame is old. It takes the
 // library's top-row stamp over (go-tuiMaps D-87).
-func (d Dashboard) radarBadge() []string {
+func (d Dashboard) radarBadge() string {
 	if d.radarChipText() == "" {
-		return nil
+		return ""
 	}
 	if d.atForecast() { // the loop's hours ahead: a model's frames, said so (D-113)
 		chip := "[" + render.TintRaw("  "+d.aheadName()+"  ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)) + "]"
@@ -203,18 +200,14 @@ func (d Dashboard) radarChipTones() string {
 	return render.Tok(ground) + ";" + render.Tok(render.MapRadarChipFG)
 }
 
-// withRadarChip lays the badge flush in the map's upper right while radar is
-// drawn (D-92), on the top rows - the library draws no stamp there while it
-// does (go-tuiMaps D-87).
-func (d Dashboard) withRadarChip(lines []string, size tuimaps.Size) []string {
-	badge := d.radarBadge()
+// mapBadgeWords are the badge's words for the mode (D-92, D-94): radar's, or
+// Forecast mode's in its place. The library draws no stamp while the badge
+// says the moment (go-tuiMaps D-87).
+func (d Dashboard) mapBadgeWords() string {
 	if !d.radarMode() && d.cfg.MapRadar != nil {
-		badge = d.forecastBadge() // D-94: Forecast mode's badge in its place
+		return d.forecastBadge()
 	}
-	if badge == nil || len(lines) < len(badge) {
-		return lines
-	}
-	return spliceBox(lines, badge, 0, insetCols+size.Cols-radarBadgeW)
+	return d.radarBadge()
 }
 
 // The playback keys (D-61): space plays and stops, "," and "." step a frame

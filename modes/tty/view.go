@@ -97,9 +97,7 @@ func (d Dashboard) renderModal(o render.Opts) string {
 	case modalAbout:
 		return d.floatModal(o, d.modalWidth(), "", d.aboutLines(o)) // UAT 68
 	case modalMap:
-		o.Width = d.modalWidth()                                               // the panel at the map window's own width, not the dashboard's (which reserves a rail)
-		o.Flush = true                                                         // UAT-1 U1-27: a picture runs border to border
-		return d.floatModal(o, d.modalWidth(), d.mapTitle(), d.mapBodyLines()) // 0.18.0: lines drawn in Update (D-41)
+		return d.mapWindow(o)
 	case modalSevere:
 		return d.severeModal(o) // 0.13.0
 	case modalCard:
@@ -359,6 +357,26 @@ func (d Dashboard) floatModalFooter(o render.Opts) string {
 	scroll := focusScroll(len(wrapped), at, end, max(1, d.modalMax()-len(foot)), d.modalScroll)
 	panel := o.ScrollPanelFooter(title, wrapped, foot, scroll, d.modalMax())
 	return o.Block(panel, fg, bg)
+}
+
+// mapWindow is the map's window: its panel, drawn at the window's own width
+// border to border (UAT-1 U1-27), the lines drawn in Update (D-41), with the
+// badge a tab on its frame's upper right (D-120).
+func (d Dashboard) mapWindow(o render.Opts) string {
+	o.Width = d.modalWidth() // the panel at the map window's own width, not the dashboard's (which reserves a rail)
+	o.Flush = true
+	fg, bg := render.ModalTone(d.darkBG)
+	body, title, words := d.wrapModal(d.mapBodyLines(), o.Width), d.mapTitle(), d.mapBadgeWords()
+	panel := o.ScrollPanel(title, body, d.modalScroll, d.modalMax())
+	rows := strings.Split(panel, "\n")
+	if room := tabCol(rows, words) - titleChrome; words != "" && render.Width(title) > room && room > 0 {
+		// THE TITLE GIVES WAY, NEVER THE TAB: the tab says the moment and
+		// STALE, which are never hidden (FR-5.4).
+		dots := o.Glyphs().Ellipsis
+		short := strings.TrimRight(render.TruncateCells(title, max(room-render.Width(dots), 1)), " ") + dots
+		rows = strings.Split(o.ScrollPanel(short, body, d.modalScroll, d.modalMax()), "\n")
+	}
+	return o.Block(strings.Join(withTab(rows, words, render.LightBox(o.ASCII)), "\n"), fg, bg)
 }
 
 func (d Dashboard) floatModalToned(o render.Opts, width int, title string, lines []string, fg, bg string) string {

@@ -262,6 +262,13 @@ Wind rides temperature's lattice and requests (W10): the same boxes, sources and
 | W12.3 | **Forecast mode's days** (D-116 to D-118): each day's heaviest rate in radar's colours, and its rain and snow totals; an Overlays row on by default, Forecast mode's alone, said to be a model's rain | `domains/temperature/rain.go`, `app/maprain.go`, `app/maptemp.go`, `modes/tty/`, go-tuiMaps L-17 | `withRainDays`, `rainGrid`, `totalMark`, `rainLayerCost`; `tty.RainLayer`, `MapTemperature.Rain`, `.RainNotes`; `rainOn`, `rainRow` | Each day's heaviest on the point's own date; Now and seven days a box, each during its step; the marks in the listener's units, snow apart; the row in Forecast mode alone; MODEL RAIN · NOT RADAR; TODAY RAIN alone |
 | W12.4 | **W12.1's defect, found building W12.2**: with the hours ahead in the loop, the newest's age read the forecast's far end - "NEWEST -55 MIN AGO", and never STALE (FR-5.4) | `modes/tty/map_radar.go`, `map_scrub.go` | `newestObserved`: the library's `LoopState.Now` | `TestTheNewestIsTheNewestObservedFrame` |
 
+## W13 — The location report's data on the map (D-112's second stage) · UAT-2
+
+| # | Task | Files | Shape | Test first (RED) |
+|---|---|---|---|---|
+| W13.2 | **The badge a tab** (D-120): one line on the map frame's top right, as wide as its words; the title gives way in a narrow window | `modes/tty/map_parts.go`, `view.go`, `map_radar.go`, `map_temp.go` | `mapBadge` one string; `withTab`, `tabCol`; `mapWindow`, `mapBadgeWords` | The tab's ┬, words and └…┤; the chip in its colours; STALE; the long title shortened, the tab whole |
+| W13.1 | **Feels like** (D-119): its own Overlays row, off by default, never on with temperature; drawn as temperature is, in temperature's requests from its source, Open-Meteo filling Now and a day the source lacks | `domains/temperature/`, `app/maptemp.go`, `modes/tty/` | `Series.Feels`, `.FeelsHigh`, `.FeelsLow`, `FeelsAt`, `HourIndex`; `feelsDays`; `feelsForecastGrids`, `fillFeelsNow`; `tty.FeelsLayer`, `MapTemperature.Feels`, `.FeelsHigh`, `.FeelsLow`; `oneTint`, `feelsOn` | Both sources read; NDFD's days worked out on the local date; Now filled; the two rows exclusive; Forecast mode's days and the high/low flip; FEELS LIKE on the badge and the colour row |
+
 ## The trace
 
 | Requirement | Task | | Requirement | Task |

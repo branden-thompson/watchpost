@@ -23,12 +23,14 @@ import (
 
 // fakeTemp answers every lattice with fixed values: 10 C every hour from
 // three hours back to one on, each day's high 20 C and low 5 C - but no high
-// today, as NDFD after its daytime.
+// today, as NDFD after its daytime; feels-like 12 C each hour, each day 22 C
+// to 3 C, or no feels-like hour at all, as NDFD's hours begin at the next.
 type fakeTemp struct {
-	name   string
-	now    time.Time
-	failed bool
-	asked  int
+	name        string
+	now         time.Time
+	failed      bool
+	noFeelsHour bool
+	asked       int
 }
 
 func (f *fakeTemp) Name() string       { return f.name }
@@ -51,9 +53,15 @@ func (f *fakeTemp) Fetch(_ context.Context, l temperature.Lattice, _ time.Time) 
 		s.Hours = append(s.Hours, f.now.Truncate(time.Hour).Add(time.Duration(h)*time.Hour))
 		s.Hourly = append(s.Hourly, fill(10))
 		s.WindSpeed, s.WindFrom = append(s.WindSpeed, fill(16.09344)), append(s.WindFrom, fill(270)) // 10 mph from the west
+		feels := fill(12)
+		if f.noFeelsHour {
+			feels = fill(math.NaN())
+		}
+		s.Feels = append(s.Feels, feels)
 	}
 	for k := range temperature.Days {
 		s.High[k], s.Low[k] = fill(20), fill(5)
+		s.FeelsHigh[k], s.FeelsLow[k] = fill(22), fill(3)
 		s.PeakSpeed[k], s.PeakFrom[k] = fill(32.18688), fill(225) // 20 mph from the south-west
 	}
 	s.High[0] = fill(math.NaN())

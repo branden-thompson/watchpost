@@ -21,12 +21,16 @@ import (
 // tempAnswer is a MapTemperature with one grid a step: Radar mode's hours,
 // or Forecast mode's Now and each day's high and low, spans as the app gives.
 func tempAnswer(asks *[]MapAsk) func(context.Context, MapAsk) MapTemperature {
-	grid := func(id string, sp tuimaps.Span, v float64) tuimaps.Overlay {
+	layerGrid := func(layer, id string, sp tuimaps.Span, v float64) tuimaps.Overlay {
 		g := tuimaps.Grid{West: -126, South: 23, East: -65, North: 51, Cols: 2, Rows: 2, Values: []float64{v, v, v, v}}
-		o := tuimaps.TemperatureGrid(TemperatureLayer+"/us/"+id, g, tuimaps.Fahrenheit, sp.From)
+		o := tuimaps.TemperatureGrid(layer+"/us/"+id, g, tuimaps.Fahrenheit, sp.From)
 		o.Keeps, o.During = 72*time.Hour, sp
 		return o
 	}
+	grid := func(id string, sp tuimaps.Span, v float64) tuimaps.Overlay {
+		return layerGrid(TemperatureLayer, id, sp, v)
+	}
+	feels := func(id string, sp tuimaps.Span, v float64) tuimaps.Overlay { return layerGrid(FeelsLayer, id, sp, v) }
 	wind := func(id string, sp tuimaps.Span) tuimaps.Overlay {
 		g := tuimaps.Grid{West: -126, South: 23, East: -65, North: 51, Cols: 2, Rows: 2, Values: []float64{15, 15, 15, 15}}
 		o := tuimaps.WindGrid(WindLayer+"/us/"+id, g, []float64{270, 270, 270, 270}, tuimaps.MilesPerHour, sp.From)
@@ -45,17 +49,21 @@ func tempAnswer(asks *[]MapAsk) func(context.Context, MapAsk) MapTemperature {
 			return MapTemperature{Source: "Open-Meteo", Notes: []string{"Temperature: Open-Meteo.com (CC BY 4.0), interpolated."},
 				Overlays: []tuimaps.Overlay{grid("h0", tuimaps.Span{From: h.Add(-time.Hour), Until: h.Add(-time.Nanosecond)}, 60),
 					grid("h1", tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}, 62)},
-				Wind: []tuimaps.Overlay{wind("h1", tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)})}}
+				Wind:  []tuimaps.Overlay{wind("h1", tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)})},
+				Feels: []tuimaps.Overlay{feels("h1", tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}, 65)}}
 		}
 		steps := ForecastSteps(ask.Anchor)
 		out := MapTemperature{Source: "NDFD", Overlays: []tuimaps.Overlay{grid("now", steps[0].Span, 61)},
 			Wind: []tuimaps.Overlay{wind("now", steps[0].Span)}, Rain: []tuimaps.Overlay{rain("now", steps[0].Span)},
+			Feels:     []tuimaps.Overlay{feels("now", steps[0].Span, 64)},
 			RainNotes: []string{"Rain and snow: Open-Meteo.com (CC BY 4.0), a model's forecast, interpolated."}}
 		for k, s := range steps[1:] {
 			out.High = append(out.High, grid("d"+string(rune('0'+k))+"/high", s.Span, 80))
 			out.Low = append(out.Low, grid("d"+string(rune('0'+k))+"/low", s.Span, 50))
 			out.WindDays = append(out.WindDays, wind("d"+string(rune('0'+k)), s.Span))
 			out.Rain = append(out.Rain, rain("d"+string(rune('0'+k)), s.Span))
+			out.FeelsHigh = append(out.FeelsHigh, feels("d"+string(rune('0'+k))+"/high", s.Span, 85))
+			out.FeelsLow = append(out.FeelsLow, feels("d"+string(rune('0'+k))+"/low", s.Span, 45))
 		}
 		return out
 	}
@@ -81,7 +89,7 @@ func openFieldsMap(t *testing.T, radarOn, tempOn, windOn bool, asks *[]MapAsk) D
 	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(asks),
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: radarOn},
 			{Key: TemperatureLayer, Label: "Temperature", On: tempOn}, {Key: WindLayer, Label: "Wind", On: windOn},
-			{Key: RainLayer, Label: "Rain & snow"}}} // off: these are temperature's and wind's tests (map_rain_test.go has the rain's)
+			{Key: RainLayer, Label: "Rain & snow"}, {Key: FeelsLayer, Label: "Feels like"}}} // off: these are temperature's and wind's tests
 	d := mapDash(t, cfg)
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
@@ -134,7 +142,7 @@ func TestRSwitchesBetweenRadarAndForecastModes(t *testing.T) {
 	if !strings.Contains(status, "R] Radar Off") || !strings.Contains(status, "Forecast · Now") {
 		t.Errorf("Forecast mode's lines are %q", status)
 	}
-	if badge := stripANSITest(strings.Join(d.forecastBadge(), "|")); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "NDFD") || !strings.Contains(badge, "NOW") {
+	if badge := stripANSITest(d.forecastBadge()); !strings.Contains(badge, "FORECAST") || !strings.Contains(badge, "NDFD") || !strings.Contains(badge, "NOW") {
 		t.Errorf("Forecast mode's badge is %q; want FORECAST, the source and the step", badge)
 	}
 	if last := asks[len(asks)-1]; !last.Forecast {
@@ -408,7 +416,7 @@ func TestAFilledStepNamesOpenMeteo(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
 	d.mapPane.temp.Filled = map[string]bool{"0/high": true}
-	badge := func() string { return stripANSITest(strings.Join(d.forecastBadge(), "|")) }
+	badge := func() string { return stripANSITest(d.forecastBadge()) }
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	if d = m.(Dashboard); !strings.Contains(badge(), "O-METEO") {
 		t.Errorf("Today, filled from Open-Meteo, has the badge %q", badge())
@@ -424,43 +432,32 @@ func TestAFilledStepNamesOpenMeteo(t *testing.T) {
 	}
 }
 
-// TestTheForecastBadgeIsTheHUMLEADsLayout is UAT-2 U2-19: three rows flush
-// right - FORECAST; the source's chip, [O-METEO] or [ NDFD ]; the step in
-// capitals, FRI HIGHS.
+// TestTheForecastBadgeIsTheHUMLEADsLayout is UAT-2 U2-19 as D-120 redraws
+// it, one line: FORECAST; the source's chip, [O-METEO] or [ NDFD ]; the step
+// in capitals, FRI HIGHS.
 func TestTheForecastBadgeIsTheHUMLEADsLayout(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, false, &asks)
-	rows := func() []string {
-		var out []string
-		for _, r := range d.forecastBadge() {
-			out = append(out, stripANSITest(r))
-		}
-		return out
-	}
-	want := func(w ...string) {
+	want := func(w string) {
 		t.Helper()
-		got := rows()
-		for i := range w {
-			if i >= len(got) || got[i] != w[i] {
-				t.Errorf("the badge is %q; want %q", got, w)
-				return
-			}
+		if got := stripANSITest(d.forecastBadge()); got != w {
+			t.Errorf("the badge is %q; want %q", got, w)
 		}
 	}
-	want("   FORECAST ", "   [ NDFD ] ", "        NOW ")
+	want(" FORECAST  [ NDFD ]  NOW ")
 	m0, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	d = m0.(Dashboard)
-	want("   FORECAST ", "   [ NDFD ] ", "TODAY HIGHS ")
+	want(" FORECAST  [ NDFD ]  TODAY HIGHS ")
 	for range forecastDays - 1 {
 		m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 		d = m.(Dashboard)
 	}
 	day := strings.ToUpper(d.forecastSteps()[forecastDays].Span.From.Format("Mon"))
-	want("   FORECAST ", "   [ NDFD ] ", "  "+day+" HIGHS ")
+	want(" FORECAST  [ NDFD ]  " + day + " HIGHS ")
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: '>', Text: ">"})
 	d = m.(Dashboard)
 	d.mapPane.temp.Source = "Open-Meteo"
-	want("   FORECAST ", "  [O-METEO] ", "   "+day+" LOWS ")
+	want(" FORECAST  [O-METEO]  " + day + " LOWS ")
 }
 
 // TestTheTemperatureKeyReads is UAT-2 U2-18: each band's value is written in

@@ -85,15 +85,18 @@ const Days = 7
 // wind in km/h and the degrees it blows from (W11, D-108). Hourly, WindSpeed
 // and WindFrom are by hour then point; High, Low, PeakSpeed and PeakFrom by
 // day from today, then point - a day's peak sustained wind and its dominant
-// direction. Missing is NaN.
+// direction. Feels, FeelsHigh and FeelsLow are the apparent temperature
+// (D-119), as Hourly, High and Low are the air's. Missing is NaN.
 type Series struct {
 	Lattice             Lattice
 	Hours               []time.Time // on the hour, UTC, oldest first
 	Hourly              [][]float64
 	WindSpeed, WindFrom [][]float64
+	Feels               [][]float64
 	High                [Days][]float64
 	Low                 [Days][]float64
 	PeakSpeed, PeakFrom [Days][]float64
+	FeelsHigh, FeelsLow [Days][]float64
 }
 
 // newSeries is a series with every value missing.
@@ -102,6 +105,7 @@ func newSeries(l Lattice) Series {
 	s := Series{Lattice: l}
 	for k := range Days {
 		s.High[k], s.Low[k], s.PeakSpeed[k], s.PeakFrom[k] = missing(n), missing(n), missing(n), missing(n)
+		s.FeelsHigh[k], s.FeelsLow[k] = missing(n), missing(n)
 	}
 	return s
 }
@@ -113,6 +117,10 @@ func missing(n int) []float64 {
 	}
 	return out
 }
+
+// HourIndex is the index of an hour in the series, added in order when it is
+// not there: where a filled hour goes (D-119).
+func (s *Series) HourIndex(t time.Time) int { return s.hourIndex(t) }
 
 // hourIndex is the index of an hour in the series, adding it in order.
 func (s *Series) hourIndex(t time.Time) int {
@@ -131,7 +139,7 @@ func (s *Series) hourIndex(t time.Time) int {
 		return append(rows[:at], append([][]float64{missing(n)}, rows[at:]...)...)
 	}
 	s.Hours = append(s.Hours[:at], append([]time.Time{t}, s.Hours[at:]...)...)
-	s.Hourly, s.WindSpeed, s.WindFrom = insert(s.Hourly), insert(s.WindSpeed), insert(s.WindFrom)
+	s.Hourly, s.WindSpeed, s.WindFrom, s.Feels = insert(s.Hourly), insert(s.WindSpeed), insert(s.WindFrom), insert(s.Feels)
 	return at
 }
 
@@ -147,6 +155,19 @@ func (s Series) HourAt(t time.Time) ([]float64, time.Time, bool) {
 		}
 	}
 	return nil, time.Time{}, false
+}
+
+// FeelsAt is the apparent temperature of the newest hour at or before t,
+// under HourAt's rule (D-119).
+func (s Series) FeelsAt(t time.Time) ([]float64, bool) {
+	if _, at, ok := s.HourAt(t); ok {
+		for i, h := range s.Hours {
+			if h.Equal(at) {
+				return s.Feels[i], true
+			}
+		}
+	}
+	return nil, false
 }
 
 // WindAt is the wind of the newest hour at or before t - speeds and the

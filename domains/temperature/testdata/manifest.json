@@ -8,7 +8,10 @@
   "ndfd-days-wind.xml",
   "openmeteo-wind.json",
   "openmeteo-rain-days.json",
-  "openmeteo-rain-hours.json"
+  "openmeteo-rain-hours.json",
+  "openmeteo-feels.json",
+  "ndfd-days-feels.xml",
+  "ndfd-hour-feels.xml"
  ],
  "traps": {
   "ndfd-days.xml": "offshore points (121W, 119W) answer nil; after 20:00 local the first maximum is tomorrow's",
@@ -17,6 +20,9 @@
   "openmeteo-wind.json": "captured 2026-09-27T17:39Z with wind: hourly km/h and degrees, each day's peak and dominant direction",
   "openmeteo.json": "every point answered, the sea included; hours in each point's local time with its offset",
   "openmeteo-rain-days.json": "captured 2026-09-27T21:35Z over south-east Alaska (135W-131W, 57N-59N): its points in two zones, Alaska's and British Columbia's an hour apart, so each day's heaviest hour is read on the point's own date; rain and showers apart, snowfall in cm",
-  "openmeteo-rain-hours.json": "captured 2026-09-27T21:35Z, forecast_hours=4: the current hour first, in each point's zone"
+  "openmeteo-rain-hours.json": "captured 2026-09-27T21:35Z, forecast_hours=4: the current hour first, in each point's zone",
+  "openmeteo-feels.json": "captured 2026-09-27T23:51Z with apparent_temperature hourly and each day's max and min (D-119)",
+  "ndfd-days-feels.xml": "captured 2026-09-27T23:51Z with appt: hourly apparent temperature from the next hour, every few hours later; no daily value",
+  "ndfd-hour-feels.xml": "captured 2026-09-27T23:51Z with appt and begin: NDFD ignores begin for appt and answers from the next hour, so Now's feels-like is not in it"
  }
 }

@@ -101,17 +101,13 @@ func TestTheSourcesChipIsInTheUpperRight(t *testing.T) {
 	var asked []string
 	for source, ground := range map[string]render.Token{"MRMS": render.MapRadarMRMSBG, "IEM": render.MapRadarIEMBG} {
 		d := openRadarMap(t, source, &asked)
-		lines := d.mapBodyLines()
-		row := lines[1]
+		row := strings.Split(d.mapWindow(d.opts()), "\n")[1] // the tab's row (D-120)
 		plain := stripANSITest(row)
-		if !strings.HasSuffix(strings.TrimRight(plain, " │"), source) && !strings.Contains(plain, " "+source+" ") {
-			t.Errorf("%s: the second row is %q, no chip at its right", source, plain)
+		if !strings.Contains(plain, "[  "+source+"  ]  ") || !strings.HasSuffix(strings.TrimRight(plain, " "), "│") {
+			t.Errorf("%s: the tab's row is %q, no chip at its right", source, plain)
 		}
 		if !strings.Contains(row, render.Tok(ground)) {
 			t.Errorf("%s: the chip is not on its own ground", source)
-		}
-		if strings.Contains(stripANSITest(lines[0]), " "+source+" ") {
-			t.Errorf("%s: the chip covers the library's top row", source)
 		}
 	}
 }
@@ -467,12 +463,13 @@ func TestALoopStillPreparingSaysLoadingWithItsSource(t *testing.T) {
 	}
 }
 
-// TestTheRadarBadgeIsThreeRows is D-92 (UAT-2 U2-10): at the map's upper
-// right while radar is drawn - RADAR DATA; the source's chip in the badge's
-// colours; the frame's time in the listener's clock, STALE before it when the
-// newest frame is old. The library's stamp is handed to it (go-tuiMaps D-87),
-// and the legend opens under it.
-func TestTheRadarBadgeIsThreeRows(t *testing.T) {
+// TestTheRadarBadgeIsATab is D-92 as D-120 redraws it: one line, a tab
+// joined to the map frame's top right - the frame's top edge opens into it,
+// its bottom edge closes into the frame's right side - reading RADAR DATA,
+// the source's chip in its colours, and the frame's time in the listener's
+// clock, STALE before it when the newest frame is old. The library's stamp is
+// handed to it (go-tuiMaps D-87).
+func TestTheRadarBadgeIsATab(t *testing.T) {
 	t.Setenv("TERM", "xterm-256color")
 	rendering.SetColorEnabledForTest(true)
 	t.Cleanup(rendering.ResetColorEnabledForTest)
@@ -487,20 +484,29 @@ func TestTheRadarBadgeIsThreeRows(t *testing.T) {
 	if !strings.Contains(strings.Join(*calls, " "), "ShowStamp:false") {
 		t.Error("the library's stamp was not handed to the badge")
 	}
-	lines := d.mapBodyLines()
-	for i, want := range []string{"RADAR DATA", "MRMS", "12:55 AM"} {
-		plain := stripANSITest(lines[i])
-		if !strings.HasSuffix(strings.TrimRight(plain, " "), want) && !strings.Contains(plain[max(len(plain)-radarBadgeW-4, 0):], want) {
-			t.Errorf("row %d's right end is %q, not %q", i, plain, want)
-		}
+	rows := strings.Split(d.mapWindow(d.opts()), "\n")
+	plain := func(i int) string { return strings.TrimRight(stripANSITest(rows[i]), " ") }
+	words := " RADAR DATA  [  MRMS  ]  12:55 AM "
+	top, tab, foot := plain(0), plain(1), plain(2)
+	at := strings.Index(tab, "│"+words+"│")
+	if at < 0 || !strings.HasSuffix(tab, "│"+words+"│") {
+		t.Fatalf("the tab's row is %q; want it to end │%s│", tab, words)
 	}
-	if !strings.Contains(lines[1], render.Tok(render.MapRadarMRMSBG)) {
+	cells := []rune(top)
+	col := len([]rune(tab[:at]))
+	if col >= len(cells) || string(cells[col]) != "┬" || !strings.HasSuffix(top, "┐") {
+		t.Errorf("the frame's top edge is %q; want it to open into the tab with ┬ above its left side", top)
+	}
+	if !strings.HasSuffix(foot, "└"+strings.Repeat("─", len([]rune(words)))+"┤") {
+		t.Errorf("the tab's bottom is %q; want it to close into the frame's right side with ┤", foot)
+	}
+	if !strings.Contains(rows[1], render.Tok(render.MapRadarMRMSBG)) {
 		t.Error("the badge's chip is not in the source's colours")
 	}
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 30, 0, 0, time.UTC) }
 	d = d.renderMap()
-	if !strings.Contains(stripANSITest(d.mapBodyLines()[2]), "STALE") {
-		t.Errorf("an old loop's badge reads %q", stripANSITest(d.mapBodyLines()[2]))
+	if tab := stripANSITest(strings.Split(d.mapWindow(d.opts()), "\n")[1]); !strings.Contains(tab, "STALE 12:55 AM") {
+		t.Errorf("an old loop's tab reads %q", tab)
 	}
 }
 
@@ -541,7 +547,7 @@ func TestTheLoopSaysWhenItIsAhead(t *testing.T) {
 	if st := d.mapPane.m.Loop(); st.Count != 16 || st.Forecast {
 		t.Fatalf("the loop is %d frames, at a forecast %v; want 12 observed and 4 ahead, opened at now", st.Count, st.Forecast)
 	}
-	badge := func() string { return stripANSITest(strings.Join(d.radarBadge(), "|")) }
+	badge := func() string { return stripANSITest(d.radarBadge()) }
 	if !strings.Contains(badge(), "RADAR DATA") || !strings.Contains(badge(), "MRMS") {
 		t.Errorf("at now the badge is %q", badge())
 	}
@@ -607,5 +613,28 @@ func TestTheNewestIsTheNewestObservedFrame(t *testing.T) {
 	}
 	if badge := stripANSITest(d.radarBadgeTimeNow()); !strings.Contains(badge, "STALE") {
 		t.Errorf("35 minutes on, the badge is %q; want STALE", badge)
+	}
+}
+
+// TestALongTitleGivesWayToTheTab is D-120 in a narrow window: the tab keeps
+// its words - the moment and STALE are never hidden (FR-5.4) - and the
+// window's title, shortened if it must be, ends before the tab begins.
+func TestALongTitleGivesWayToTheTab(t *testing.T) {
+	var asked []string
+	d := openRadarMap(t, "MRMS", &asked)
+	d.width, d.height = 80, 24
+	d.mapPane.title = "the contiguous United States " + d.opts().Glyphs().Dot + " Oceanside, California, far too long a name"
+	rows := strings.Split(stripANSITest(d.mapWindow(d.opts())), "\n")
+	top := []rune(strings.TrimRight(rows[0], " "))
+	tee := strings.LastIndex(string(top), "┬")
+	if tee < 0 || !strings.Contains(rows[1], "[  MRMS  ]") {
+		t.Fatalf("at 80 columns the tab is gone:\n%s\n%s", rows[0], rows[1])
+	}
+	before := strings.TrimRight(string(top)[:tee], "─")
+	if !strings.HasPrefix(string(top), "┌── Map") || !strings.HasSuffix(string(top)[:tee], "─") || strings.HasSuffix(before, "┬") {
+		t.Errorf("the title runs into the tab: %q", string(top))
+	}
+	if !strings.Contains(before, "…") {
+		t.Errorf("the shortened title %q does not say it was shortened", before)
 	}
 }
