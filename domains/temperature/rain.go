@@ -138,15 +138,22 @@ func parseRain(body []byte, out *Rain) error {
 
 // hourIndex is the index of an hour, adding it in order.
 func (r *Rain) hourIndex(t time.Time) int {
+	return hourRow(&r.Hours, &r.Hourly, r.Lattice.Cols*r.Lattice.Rows, t)
+}
+
+// hourRow is the index of an hour among hours kept in order, a row of n
+// values beside each: the hour and a row of missing values are added in
+// their place when it is not there.
+func hourRow(hours *[]time.Time, rows *[][]float64, n int, t time.Time) int {
 	t = t.UTC().Truncate(time.Hour)
 	at := 0
-	for at < len(r.Hours) && r.Hours[at].Before(t) {
+	for at < len(*hours) && (*hours)[at].Before(t) {
 		at++
 	}
-	if at < len(r.Hours) && r.Hours[at].Equal(t) {
+	if at < len(*hours) && (*hours)[at].Equal(t) {
 		return at
 	}
-	r.Hours = append(r.Hours[:at], append([]time.Time{t}, r.Hours[at:]...)...)
-	r.Hourly = append(r.Hourly[:at], append([][]float64{missing(r.Lattice.Cols * r.Lattice.Rows)}, r.Hourly[at:]...)...)
+	*hours = append((*hours)[:at], append([]time.Time{t}, (*hours)[at:]...)...)
+	*rows = append((*rows)[:at], append([][]float64{missing(n)}, (*rows)[at:]...)...)
 	return at
 }

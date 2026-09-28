@@ -1395,3 +1395,36 @@ This batch builds the part that changes the controls, UAT'd first as the HUM LEA
 **Mutation verdicts** (targeted, 12), all caught. One survived at first: the window dropping the app's problems. A test now catches it.
 
 **The dupes gate** found `mapProblems.last` repeating `bandRecord.recent`, a lock and a copy. Both now use the app's `lockedCopy`. `bandRecord`'s bound, mutant mC5's anchor, is untouched.
+
+## Batch 39 — wave height (W13.6, D-125, D-126, 2026-09-28)
+
+**Rulings.**
+- **D-125, the source:** "NDFD, Open-Meteo beyond". The NWS's own coastal numbers where NDFD reaches, which is where boaters are. Open-Meteo Marine fills beyond, on its own host, marine-api.open-meteo.com, which joins the closed list.
+- **D-126, the look:** "Sea bands, row off". The waves are the sea's alone, in a wave scale of their own with labelled contours, as temperature's are.
+
+**Probed and recorded.**
+- **NDFD** answers `waveh` in feet, hourly from the next hour to six days, offshore to 121°W, and nil ashore. The current hour is therefore Open-Meteo's, as feels-like's is.
+- **Open-Meteo Marine** answers in metres and puts its sea points in a fixed UTC−8 zone, not California's daylight time. That trap is recorded in the fixture.
+
+**The merge** works point by point, hour by hour and day by day: NDFD's value where it has one, Open-Meteo's where not. NDFD's point matching and time layouts came out of `parseDWML` so the wave reader shares them.
+
+**At the map.**
+- A Waves row, off by default, loaded in the background like the rest (D-99).
+- Radar mode draws each hour; Forecast mode draws Now and each day's highest. Values are in feet or metres by the listener's units, and the credit names both sources.
+- A failure goes to the diagnostics (D-124): no Setting offers another source.
+- The cost line counts two requests a field box, about 295 KB for 80 points.
+
+**Library, go-tuiMaps L-20 (its D-94), rc.21.**
+- A `waves` preset in feet or metres, with six classes set round in each unit and tokens `wave.1` to `wave.6`.
+- The colour scale was searched for against the library's checker on each ground's water, at both depths. Higher waves are lighter on the dark ground and darker on the light.
+- A wave grid is drawn over the sea alone, the inverse of every other field's shore.
+
+**A gap in the record, closed.** FR-3.8's closed list had not been brought up to date for fire (D-121) or quakes (D-122). The table now lists NIFC WFIGS, NOAA HMS, USGS and Open-Meteo Marine. The closed-list test also holds every host the Status window names to it, so the map cannot contact a host the list lacks.
+
+**Mutation verdicts** (targeted, 11 in watchpost and 5 in go-tuiMaps), all caught. Two survived at first:
+- waves painted over land, because the test's land box lay outside the test's view;
+- Open-Meteo overwriting NDFD in an hour both answer.
+
+Each is now caught.
+
+**The dupes gate** found the waves' `hourIndex` repeating the rain's. Both now call one `hourRow`.

@@ -31,6 +31,12 @@ func tempAnswer(asks *[]MapAsk) func(context.Context, MapAsk) MapTemperature {
 		return layerGrid(TemperatureLayer, id, sp, v)
 	}
 	feels := func(id string, sp tuimaps.Span, v float64) tuimaps.Overlay { return layerGrid(FeelsLayer, id, sp, v) }
+	waves := func(id string, sp tuimaps.Span) tuimaps.Overlay {
+		g := tuimaps.Grid{West: -126, South: 23, East: -65, North: 51, Cols: 2, Rows: 2, Values: []float64{5, 5, 5, 5}, Lines: true}
+		o := tuimaps.WaveGrid(WaveLayer+"/us/"+id, g, tuimaps.Feet, sp.From)
+		o.Keeps, o.During = 72*time.Hour, sp
+		return o
+	}
 	wind := func(id string, sp tuimaps.Span) tuimaps.Overlay {
 		g := tuimaps.Grid{West: -126, South: 23, East: -65, North: 51, Cols: 2, Rows: 2, Values: []float64{15, 15, 15, 15}}
 		o := tuimaps.WindGrid(WindLayer+"/us/"+id, g, []float64{270, 270, 270, 270}, tuimaps.MilesPerHour, sp.From)
@@ -55,7 +61,8 @@ func tempAnswer(asks *[]MapAsk) func(context.Context, MapAsk) MapTemperature {
 		steps := ForecastSteps(ask.Anchor)
 		out := MapTemperature{Source: "NDFD", Overlays: []tuimaps.Overlay{grid("now", steps[0].Span, 61)},
 			Wind: []tuimaps.Overlay{wind("now", steps[0].Span)}, Rain: []tuimaps.Overlay{rain("now", steps[0].Span)},
-			Feels:     []tuimaps.Overlay{feels("now", steps[0].Span, 64)},
+			Feels: []tuimaps.Overlay{feels("now", steps[0].Span, 64)}, Waves: []tuimaps.Overlay{waves("now", steps[0].Span)},
+			WaveNotes: []string{"Waves: NWS NDFD near shore, Open-Meteo.com (CC BY 4.0) beyond, interpolated."},
 			RainNotes: []string{"Rain and snow: Open-Meteo.com (CC BY 4.0), a model's forecast, interpolated."}}
 		for k, s := range steps[1:] {
 			out.High = append(out.High, grid("d"+string(rune('0'+k))+"/high", s.Span, 80))
@@ -64,6 +71,7 @@ func tempAnswer(asks *[]MapAsk) func(context.Context, MapAsk) MapTemperature {
 			out.Rain = append(out.Rain, rain("d"+string(rune('0'+k)), s.Span))
 			out.FeelsHigh = append(out.FeelsHigh, feels("d"+string(rune('0'+k))+"/high", s.Span, 85))
 			out.FeelsLow = append(out.FeelsLow, feels("d"+string(rune('0'+k))+"/low", s.Span, 45))
+			out.WaveDays = append(out.WaveDays, waves("d"+string(rune('0'+k)), s.Span))
 		}
 		return out
 	}
@@ -89,7 +97,7 @@ func openFieldsMap(t *testing.T, radarOn, tempOn, windOn bool, asks *[]MapAsk) D
 	cfg := Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: radarFeed(t, "MRMS", &asked), MapTemperature: tempAnswer(asks),
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: radarOn},
 			{Key: TemperatureLayer, Label: "Temperature", On: tempOn}, {Key: WindLayer, Label: "Wind", On: windOn},
-			{Key: RainLayer, Label: "Rain & snow"}, {Key: FeelsLayer, Label: "Feels like"}}} // off: these are temperature's and wind's tests
+			{Key: RainLayer, Label: "Rain & snow"}, {Key: FeelsLayer, Label: "Feels like"}, {Key: WaveLayer, Label: "Waves"}}} // off: these are temperature's and wind's tests
 	d := mapDash(t, cfg)
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})

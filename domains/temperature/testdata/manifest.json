@@ -11,7 +11,9 @@
   "openmeteo-rain-hours.json",
   "openmeteo-feels.json",
   "ndfd-days-feels.xml",
-  "ndfd-hour-feels.xml"
+  "ndfd-hour-feels.xml",
+  "openmeteo-waves.json",
+  "ndfd-waves.xml"
  ],
  "traps": {
   "ndfd-days.xml": "offshore points (121W, 119W) answer nil; after 20:00 local the first maximum is tomorrow's",
@@ -23,6 +25,8 @@
   "openmeteo-rain-hours.json": "captured 2026-09-27T21:35Z, forecast_hours=4: the current hour first, in each point's zone",
   "openmeteo-feels.json": "captured 2026-09-27T23:51Z with apparent_temperature hourly and each day's max and min (D-119)",
   "ndfd-days-feels.xml": "captured 2026-09-27T23:51Z with appt: hourly apparent temperature from the next hour, every few hours later; no daily value",
-  "ndfd-hour-feels.xml": "captured 2026-09-27T23:51Z with appt and begin: NDFD ignores begin for appt and answers from the next hour, so Now's feels-like is not in it"
+  "ndfd-hour-feels.xml": "captured 2026-09-27T23:51Z with appt and begin: NDFD ignores begin for appt and answers from the next hour, so Now's feels-like is not in it",
+  "openmeteo-waves.json": "captured 2026-09-28T05:35Z from the marine API (D-125): the sea's points in a fixed UTC-8 zone, not California's daylight time; Escondido ashore answers nothing",
+  "ndfd-waves.xml": "captured 2026-09-28T05:35Z with waveh: significant wave height in feet, hourly from the next hour to six days; offshore to 121W; nil ashore"
  }
 }

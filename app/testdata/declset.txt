@@ -89,6 +89,7 @@ const traceRainMM
 const traceSnowCM
 const traceSnowIn
 const viewSamples
+const waveBytes
 const zoneShapeBytes
 func (*airOwner).get
 func (*airOwner).set
@@ -528,6 +529,7 @@ func init
 func init
 func init
 func init
+func init
 func injectedEvents
 func isLookupFailure
 func itemsOf
@@ -721,6 +723,8 @@ func userCacheSubdir
 func viewAreas
 func vizFor
 func voiceDir
+func waveGrid
+func waveLayerCost
 func windForecastGrids
 func windGrid
 func windHourGrids
@@ -729,6 +733,7 @@ func withForecast
 func withModelRain
 func withPool
 func withRainDays
+func withWaves
 func withinBedFence
 func worstOf
 func writeProfile
@@ -794,6 +799,7 @@ type stationArea
 type tempSources
 type tickerDeck
 type tickerPrefs
+type waveSource
 var _
 var _
 var _

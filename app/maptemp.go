@@ -38,13 +38,14 @@ func init() {
 // hardened client.
 type tempSources struct {
 	ndfd, om temperature.Source
-	rain     *temperature.OpenMeteo // the rain and snow, Open-Meteo's always (D-118)
+	rain     *temperature.OpenMeteo // the rain and snow, Open-Meteo's always (D-118); the waves beyond NDFD (D-125)
+	waves    *temperature.NDFD      // the waves where NDFD reaches (D-125)
 }
 
 // tempSourcesOver is both sources over one temperature client (overClient).
 func tempSourcesOver(c *httpx.Client) *tempSources {
-	om := temperature.NewOpenMeteo(c, "")
-	return &tempSources{ndfd: temperature.NewNDFD(c, ""), om: om, rain: om}
+	om, ndfd := temperature.NewOpenMeteo(c, ""), temperature.NewNDFD(c, "")
+	return &tempSources{ndfd: ndfd, om: om, rain: om, waves: ndfd}
 }
 
 // sourceFor is the mode's source: Open-Meteo in Radar mode, the one with the
@@ -76,6 +77,9 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	t := buildTemperature(ctx, src, fill, ask, now)
 	if ask.Forecast && lp.temp.rain != nil { // Forecast mode's rain and snow (W12.3): held, whether or not its row is on (D-99)
 		t = withRainDays(ctx, t, lp.temp.rain, ask, now)
+	}
+	if lp.temp.waves != nil && lp.temp.rain != nil && ask.Region != geo.RegionSamoa { // the waves (D-125): held as the rest is (D-99); NDFD has no Samoa
+		t = withWaves(ctx, t, lp.temp.waves, lp.temp.rain, ask, now)
 	}
 	return t
 }

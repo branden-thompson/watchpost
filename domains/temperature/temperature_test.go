@@ -65,7 +65,7 @@ func TestEveryRecordedTemperatureFixtureIsPresent(t *testing.T) {
 		Captured string   `json:"captured"`
 		Files    []string `json:"files"`
 	}
-	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 10 {
+	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 12 {
 		t.Fatalf("the manifest is %+v (%v)", m, err)
 	}
 	for _, f := range m.Files {
@@ -253,7 +253,7 @@ func TestTheClientIsHardened(t *testing.T) {
 }
 
 func TestTheSourcesAreTheClosedList(t *testing.T) {
-	want := map[string]string{"NWS NDFD": "https://graphical.weather.gov", "Open-Meteo": "https://api.open-meteo.com"}
+	want := map[string]string{"NWS NDFD": "https://graphical.weather.gov", "Open-Meteo": "https://api.open-meteo.com", "Open-Meteo Marine": "https://marine-api.open-meteo.com"} // D-125
 	got := Hosts()
 	if len(got) != len(want) {
 		t.Fatalf("the hosts are %v; want %v (FR-3.8, D-93)", got, want)

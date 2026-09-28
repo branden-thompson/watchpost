@@ -82,3 +82,24 @@ func TestFeelsLikeInForecastModeIsSaid(t *testing.T) {
 		t.Errorf("the colour row is %q; want FEELS LIKE's", row)
 	}
 }
+
+// TestWavesAreTheirOwnRow is D-126 at the window: off by default, drawn
+// when switched on - Forecast mode's Now and each day's highest - with the
+// credit under the map; taken off again when switched off.
+func TestWavesAreTheirOwnRow(t *testing.T) {
+	var asks []MapAsk
+	d := openTempMap(t, false, &asks)
+	if !menuHas(d, WaveLayer) || d.layerOn(WaveLayer) || givenOf(d, WaveLayer) != 0 {
+		t.Fatalf("the waves are on %v with %d grids; want a row, off", d.layerOn(WaveLayer), givenOf(d, WaveLayer))
+	}
+	d = switchLayer(t, d, WaveLayer)
+	if n := givenOf(d, WaveLayer); n != 1+forecastDays {
+		t.Errorf("Forecast mode drew %d wave grids; want Now and every day's highest", n)
+	}
+	if notes := strings.Join(d.tempNotes(), " "); !strings.Contains(notes, "Waves:") {
+		t.Errorf("the notes are %q; want the waves' credit", notes)
+	}
+	if d = switchLayer(t, d, WaveLayer); givenOf(d, WaveLayer) != 0 {
+		t.Error("switched off, the waves stayed")
+	}
+}

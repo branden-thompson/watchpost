@@ -15,16 +15,17 @@ import (
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
-// The two sources' hosts, FR-3.8's closed list (D-93).
+// The sources' hosts, FR-3.8's closed list (D-93, D-125).
 const (
 	ndfdBase      = "https://graphical.weather.gov"
 	openMeteoBase = "https://api.open-meteo.com"
+	marineBase    = "https://marine-api.open-meteo.com" // Open-Meteo's waves (D-125)
 )
 
 // Hosts are the sources' addresses, FR-3.8's closed list: the app names them
 // in the Status window and a test holds them to the table.
 func Hosts() map[string]string {
-	return map[string]string{"NWS NDFD": ndfdBase, "Open-Meteo": openMeteoBase}
+	return map[string]string{"NWS NDFD": ndfdBase, "Open-Meteo": openMeteoBase, "Open-Meteo Marine": marineBase}
 }
 
 // OpenMeteoCredit is Open-Meteo's credit line: its data is CC BY 4.0, which
@@ -119,9 +120,13 @@ type dwml struct {
 			Ends   []string `xml:"end-valid-time"`
 		} `xml:"time-layout"`
 		Parameters []struct {
-			Location     string       `xml:"applicable-location,attr"`
-			Winds        []dwmlSeries `xml:"wind-speed"`
-			Dirs         []dwmlSeries `xml:"direction"`
+			Location   string       `xml:"applicable-location,attr"`
+			Winds      []dwmlSeries `xml:"wind-speed"`
+			Dirs       []dwmlSeries `xml:"direction"`
+			WaterState []struct {
+				Layout string       `xml:"time-layout,attr"`
+				Waves  []dwmlSeries `xml:"waves"`
+			} `xml:"water-state"` // significant wave height (D-125)
 			Temperatures []struct {
 				Type   string `xml:"type,attr"`
 				Units  string `xml:"units,attr"`
@@ -157,34 +162,7 @@ func parseDWML(body []byte, now time.Time, out *Series) error {
 	if len(doc.Data.Locations) == 0 {
 		return fmt.Errorf("the answer names no point")
 	}
-	index := map[string]int{}
-	pts := out.Lattice.Points()
-	for _, loc := range doc.Data.Locations {
-		lat, err1 := strconv.ParseFloat(loc.Point.Lat, 64)
-		lon, err2 := strconv.ParseFloat(loc.Point.Lon, 64)
-		if err1 != nil || err2 != nil {
-			continue
-		}
-		for i, p := range pts {
-			if p.Lat == round2(lat) && p.Lon == round2(lon) {
-				index[loc.Key] = i
-			}
-		}
-	}
-	type layout struct{ starts, ends []time.Time }
-	layouts := map[string]layout{}
-	for _, l := range doc.Data.Layouts {
-		var lay layout
-		for _, s := range l.Starts {
-			t, _ := time.Parse(time.RFC3339, strings.TrimSpace(s))
-			lay.starts = append(lay.starts, t)
-		}
-		for _, e := range l.Ends {
-			t, _ := time.Parse(time.RFC3339, strings.TrimSpace(e))
-			lay.ends = append(lay.ends, t)
-		}
-		layouts[l.Key] = lay
-	}
+	index, layouts := doc.pointIndex(out.Lattice), doc.layouts()
 	dayOf := map[time.Time]int{} // each wind hour's local day, for the day's peak
 	for _, p := range doc.Data.Parameters {
 		at, ok := index[p.Location]
@@ -270,6 +248,48 @@ func feelsDays(out *Series, dayOf map[time.Time]int) {
 	}
 }
 
+// layout is one of an answer's time layouts: when each value starts, and
+// ends where it says.
+type layout struct{ starts, ends []time.Time }
+
+// pointIndex is each of the answer's points by its key, as the lattice's
+// point it is - matched on the rounded coordinates that were sent.
+func (doc *dwml) pointIndex(l Lattice) map[string]int {
+	index := map[string]int{}
+	pts := l.Points()
+	for _, loc := range doc.Data.Locations {
+		lat, err1 := strconv.ParseFloat(loc.Point.Lat, 64)
+		lon, err2 := strconv.ParseFloat(loc.Point.Lon, 64)
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		for i, p := range pts {
+			if p.Lat == round2(lat) && p.Lon == round2(lon) {
+				index[loc.Key] = i
+			}
+		}
+	}
+	return index
+}
+
+// layouts are the answer's time layouts by key.
+func (doc *dwml) layouts() map[string]layout {
+	out := map[string]layout{}
+	for _, l := range doc.Data.Layouts {
+		var lay layout
+		for _, s := range l.Starts {
+			t, _ := time.Parse(time.RFC3339, strings.TrimSpace(s))
+			lay.starts = append(lay.starts, t)
+		}
+		for _, e := range l.Ends {
+			t, _ := time.Parse(time.RFC3339, strings.TrimSpace(e))
+			lay.ends = append(lay.ends, t)
+		}
+		out[l.Key] = lay
+	}
+	return out
+}
+
 // eachValue calls f with each of a series' values that is a number, at its
 // layout's time.
 func eachValue(s dwmlSeries, starts []time.Time, f func(time.Time, float64)) {
@@ -305,16 +325,20 @@ func windPeaks(out *Series, dayOf map[time.Time]int) {
 // OpenMeteo is Open-Meteo's forecast API: everywhere, over water too, with
 // the past hours NDFD lacks - Radar mode's source always (D-96).
 type OpenMeteo struct {
-	get  Getter
-	base string
+	get    Getter
+	base   string
+	marine string // the marine API's host, for the waves (D-125)
 }
 
 // NewOpenMeteo builds the source; base "" is the production host.
 func NewOpenMeteo(get Getter, base string) *OpenMeteo {
+	marine := marineBase
 	if base == "" {
 		base = openMeteoBase
+	} else {
+		marine = base // a test's one server answers both
 	}
-	return &OpenMeteo{get: get, base: base}
+	return &OpenMeteo{get: get, base: base, marine: marine}
 }
 
 func (s *OpenMeteo) Name() string { return "Open-Meteo" }

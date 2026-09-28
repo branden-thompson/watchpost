@@ -34,8 +34,8 @@ func TestAFakeLayerPlugsInWithoutEditingTheOthers(t *testing.T) {
 	for _, l := range cfg.MapLayers {
 		keys = append(keys, l.Key)
 	}
-	if strings.Join(keys, ",") != "alert,fire,quake,radar,rain,temperature,feels,wind,fake" {
-		t.Fatalf("the window is handed layers %v, want alert, fire, quake, radar, rain, temperature, feels, wind, then fake", keys)
+	if strings.Join(keys, ",") != "alert,fire,quake,radar,rain,temperature,feels,wind,waves,fake" {
+		t.Fatalf("the window is handed layers %v, want alert, fire, quake, radar, rain, temperature, feels, wind, waves, then fake", keys)
 	}
 	all := func(string) bool { return true }
 	with := cfg.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, all)
@@ -62,7 +62,11 @@ func TestALayerKeyIsRegisteredOnce(t *testing.T) {
 // the sources that registered are exactly the closed list's hosts.
 func TestEveryRegisteredSourceIsOnTheClosedList(t *testing.T) {
 	closed := map[string]bool{"tiles.openfreemap.org": true, "mesonet.agron.iastate.edu": true, "opengeo.ncep.noaa.gov": true, // FR-3.8's table
-		"graphical.weather.gov": true, "api.open-meteo.com": true} // D-93: the temperature's two
+		"graphical.weather.gov": true, "api.open-meteo.com": true, // D-93: the temperature's two
+		"marine-api.open-meteo.com": true,                            // D-125: the waves beyond NDFD
+		"services3.arcgis.com":      true, "www.ospo.noaa.gov": true, // D-121: fire
+		"earthquake.usgs.gov": true, // D-122: quakes
+		"api.weather.gov":     true} // the alerts and zones, already the app's
 	if len(mapSources) == 0 {
 		t.Fatal("no source registered")
 	}
@@ -79,6 +83,11 @@ func TestEveryRegisteredSourceIsOnTheClosedList(t *testing.T) {
 	for name, base := range temperature.Hosts() { // W10: the temperature's, held to it too
 		if !closed[hostOf(base)] || !strings.HasPrefix(base, "https://") {
 			t.Errorf("%s (%s) is not on the closed list, over https", name, base)
+		}
+	}
+	for _, s := range mapSourceList() { // every host the Status window names: a new one joins the list first
+		if !closed[s.Host] {
+			t.Errorf("the map contacts %s (%s), which is not on the closed list", s.Host, s.Name)
 		}
 	}
 }

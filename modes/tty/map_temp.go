@@ -35,6 +35,10 @@ const TemperatureLayer = "temperature"
 // WindLayer is the wind's (W11, D-110).
 const WindLayer = "wind"
 
+// WaveLayer is wave height's (D-126): its own row, off by default, drawn
+// over the sea alone.
+const WaveLayer = "waves"
+
 // FireLayer is fire's (D-121): the perimeters, the named incidents and the
 // satellite hotspots, one row, on by default.
 const FireLayer = "fire"
@@ -69,6 +73,11 @@ type MapTemperature struct {
 	// Feels, FeelsHigh and FeelsLow are feels-like's (D-119), as Overlays,
 	// High and Low are temperature's.
 	Feels, FeelsHigh, FeelsLow []tuimaps.Overlay
+	// Waves are wave height's (D-126): Radar mode's every hour, or Forecast
+	// mode's Now; WaveDays Forecast mode's each day's highest; WaveNotes the
+	// credit.
+	Waves, WaveDays []tuimaps.Overlay
+	WaveNotes       []string
 	// Problems are what went wrong that the listener cannot act on: the
 	// diagnostics', never said to them (D-124).
 	Problems []string
@@ -247,6 +256,12 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 		out = append(out, t.Wind...)
 		if !d.radarMode() {
 			out = append(out, t.WindDays...)
+		}
+	}
+	if d.layerOn(WaveLayer) { // the waves, over the sea alone (D-126)
+		out = append(out, t.Waves...)
+		if !d.radarMode() {
+			out = append(out, t.WaveDays...)
 		}
 	}
 	if d.layerOn(RainLayer) && !d.radarMode() { // Forecast mode's rain and snow (D-117)
@@ -660,7 +675,7 @@ func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) str
 // shows, as one word for the window's memo (F-30).
 func (d Dashboard) tempMemoKey() string {
 	p := d.mapPane
-	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), strings.Join(p.temp.RainNotes, "\n"), strconv.FormatBool(d.rainOn()),
+	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), strings.Join(p.temp.RainNotes, "\n"), strings.Join(p.temp.WaveNotes, "\n"), strconv.FormatBool(d.rainOn()),
 		strconv.Itoa(p.fcStep), strconv.FormatBool(p.fcLow), strconv.FormatBool(p.fcPlaying),
 		strconv.Itoa(len(p.tempGiven)), strings.Join(p.fcTimeline, "\n"), d.stepSource()}, "|")
 }
@@ -671,6 +686,9 @@ func (d Dashboard) tempNotes() []string {
 	var out []string
 	if d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer) {
 		out = append(out, d.mapPane.temp.Notes...)
+	}
+	if d.layerOn(WaveLayer) {
+		out = append(out, d.mapPane.temp.WaveNotes...) // the waves' credit (D-125)
 	}
 	if !d.radarMode() && d.layerOn(RainLayer) {
 		out = append(out, d.mapPane.temp.RainNotes...) // the credit, or that it did not answer
