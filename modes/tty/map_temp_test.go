@@ -384,8 +384,8 @@ func TestARefusedLoopKeepsTheOneDrawn(t *testing.T) {
 	if len(d.mapPane.radarGiven) != held || len(d.mapPane.m.Overlays()) == 0 {
 		t.Errorf("a refused loop took the drawn one away: %d held", len(d.mapPane.radarGiven))
 	}
-	if !strings.Contains(d.mapPane.radarNote, "could not be updated") {
-		t.Errorf("the refusal was not said: %q", d.mapPane.radarNote)
+	if strings.Contains(d.mapPane.radarNote, "could not") {
+		t.Errorf("a refusal the listener cannot act on was said to them: %q (D-124)", d.mapPane.radarNote)
 	}
 }
 

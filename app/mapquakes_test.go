@@ -124,3 +124,27 @@ func TestTheStatusWindowNamesTheQuakesHost(t *testing.T) {
 	}
 	t.Error("the Status window's map list does not name earthquake.usgs.gov")
 }
+
+// TestEveryQuakeIsAcceptedByTheLibrary is UAT-2 U2-29: a quake of the past
+// week handed in as current for eight days was refused - the library keeps
+// a thing current for at most seven - and the week's feed flooded the map
+// with refusals. Every quake the feeds can hold, a minute old to a full
+// week, is handed to a real map and accepted.
+func TestEveryQuakeIsAcceptedByTheLibrary(t *testing.T) {
+	m, err := tuimaps.New(tuimaps.WithSize(69, 12))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = m.Close() }()
+	now := time.Now()
+	mag := 3.1
+	var feed []globalfeed.Event
+	for i, age := range []time.Duration{time.Minute, 5 * time.Hour, 3 * 24 * time.Hour, 7*24*time.Hour - time.Minute} {
+		feed = append(feed, globalfeed.Event{ID: string(rune('a' + i)), Class: globalfeed.ClassQuake, Lat: 33.5, Lon: -117, HasPoint: true, At: now.Add(-age), Quake: &globalfeed.QuakeDetail{Mag: &mag}})
+	}
+	for _, o := range quakeOverlays(feed, now, render.ClockByKey("12h")) {
+		if _, err := m.Set(o); err != nil {
+			t.Errorf("%s was refused: %v", o.ID, err)
+		}
+	}
+}

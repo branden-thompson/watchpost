@@ -68,7 +68,7 @@ func withModelRain(ctx context.Context, out tty.MapRadar, om *temperature.OpenMe
 		loops = append(loops, o)
 	}
 	if failed && len(loops) == 0 {
-		out.Note = strings.TrimPrefix(out.Note+" The radar's hours ahead are unavailable: Open-Meteo did not answer.", " ")
+		out.Problems = append(out.Problems, "Radar ahead: Open-Meteo did not answer") // D-124
 		return out
 	}
 	if len(loops) == 0 {
@@ -168,7 +168,7 @@ func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.Ope
 	case len(t.Rain) > 0:
 		t.RainNotes = []string{temperature.OpenMeteoRainCredit + "."}
 	case failed:
-		t.RainNotes = []string{"Rain and snow are unavailable: Open-Meteo did not answer."}
+		t.Problems = append(t.Problems, "Rain and snow: Open-Meteo did not answer") // D-124
 	}
 	return t
 }

@@ -162,7 +162,7 @@ func TestTheModeChoosesTheSource(t *testing.T) {
 func TestATemperatureThatDidNotAnswerIsSaid(t *testing.T) {
 	src := &fakeTemp{name: "NDFD", now: tempNow, failed: true}
 	got := buildTemperature(context.Background(), src, nil, tempAsk(true), tempNow)
-	if len(got.Overlays)+len(got.High)+len(got.Low) != 0 || !strings.Contains(strings.Join(got.Notes, " "), "NDFD did not answer") {
+	if len(got.Overlays)+len(got.High)+len(got.Low) != 0 || !strings.Contains(strings.Join(got.Notes, " "), "NDFD did not answer") { // with its path (D-124)
 		t.Errorf("a failed source gave %d grids and the notes %v", len(got.Overlays)+len(got.High), got.Notes)
 	}
 }

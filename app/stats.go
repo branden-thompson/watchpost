@@ -186,6 +186,7 @@ func (lp *livePipelines) ttyStats() tty.Stats {
 		st.ZoneShapes = tty.ZoneShapeStats{Fetched: z.Fetched, Failed: z.Failed, Served: z.Served, Held: z.Held}
 	}
 	st.Endpoints = providerEndpoints()
+	st.MapProblems = lp.problems.last()
 	st.Uptime = time.Since(lp.started)
 	if lp.release != nil {
 		st.Version, st.Latest, st.Behind = lp.release.Status()

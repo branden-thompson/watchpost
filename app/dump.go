@@ -75,6 +75,9 @@ type dumpRecord struct {
 	Requests   httpx.RequestStats     `json:"requests"`
 	Pipelines  map[string]publishView `json:"pipelines"`
 	Gauges     []Gauge                `json:"gauges"`
+	// MapProblems are the map's last problems the listener cannot act on
+	// (0.18.0 D-124): here, and never on the screen.
+	MapProblems []string `json:"map_problems,omitempty"`
 }
 
 // memRecord is the MemStats subset the soak statistic reads (plan §1:
@@ -210,8 +213,9 @@ func (d *dumper) record(now time.Time) dumpRecord {
 		At: now.UTC(), UptimeS: now.Sub(d.started).Seconds(),
 		Mem:        memRecord{HeapAlloc: ms.HeapAlloc, HeapInuse: ms.HeapInuse, HeapObjects: ms.HeapObjects, HeapSys: ms.HeapSys, StackInuse: ms.StackInuse, Sys: ms.Sys, NumGC: ms.NumGC, TotalAlloc: ms.TotalAlloc, Mallocs: ms.Mallocs},
 		Goroutines: g, Threads: t, FDs: fds,
-		Requests:  st.Requests,
-		Pipelines: map[string]publishView{},
+		Requests:    st.Requests,
+		Pipelines:   map[string]publishView{},
+		MapProblems: st.MapProblems,
 	}
 	src := d.sources()
 	rec.Gauges = src.gauges()

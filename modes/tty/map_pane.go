@@ -13,6 +13,7 @@ import (
 	"math"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -104,7 +105,6 @@ type mapPane struct {
 	tempAt, tempAnchor  time.Time
 	temp                MapTemperature
 	tempGiven           map[string]tuimaps.Overlay
-	tempRefused         string
 	// Forecast mode (D-94): the step shown, high or low, and its playback.
 	fcStep, fcHeld   int
 	fcLow, fcPlaying bool
@@ -176,7 +176,8 @@ func (d Dashboard) toggleMap() Dashboard {
 		}
 		m, err := d.cfg.NewMap(d.mapBodySize())
 		if err != nil {
-			d.mapPane.failed = "The map could not be started: " + err.Error()
+			d.mapPane.failed = mapFailedText // D-124: a path, and the detail to the diagnostics
+			d.problem("Map: not started - " + err.Error())
 			return d
 		}
 		d.mapPane.m, d.mapPane.failed, d.mapPane.workers = m, "", newMapWorkers()
@@ -282,7 +283,8 @@ func (d Dashboard) renderMap() Dashboard {
 	}
 	d.mapPane.call("Render", func() { frame, err = m.Render(d.mapBodySize(), d.now()) })
 	if err != nil {
-		d.mapPane.failed = "The map could not be drawn: " + err.Error()
+		d.mapPane.failed = mapFailedText
+		d.problem("Map: not drawn - " + err.Error())
 		return d
 	}
 	d.mapPane.lines, d.mapPane.failed = insetLines(frame.Lines), ""
@@ -779,6 +781,9 @@ func (d Dashboard) setFeed(feed MapFeed) Dashboard {
 	m := d.mapPane.m
 	shown, given := map[string]bool{}, map[string]tuimaps.Overlay{}
 	notes := append([]string(nil), feed.Notes...)
+	refused := map[string]int{} // a layer's refusals, said once (U2-29)
+	firstErr := map[string]string{}
+	var order []string
 	for _, o := range feed.Overlays {
 		if t, ok := feed.Times[o.ID]; ok {
 			o.During = d.spanFor(t)
@@ -794,10 +799,17 @@ func (d Dashboard) setFeed(feed MapFeed) Dashboard {
 		var err error
 		d.mapPane.call("Set", func() { _, err = m.Set(o) })
 		if err != nil {
-			notes = append(notes, "An alert could not be drawn: "+err.Error())
+			key, _, _ := strings.Cut(o.ID, "/")
+			if refused[key] == 0 {
+				order, firstErr[key] = append(order, key), err.Error()
+			}
+			refused[key]++
 			continue
 		}
 		shown[o.ID], given[o.ID] = true, o
+	}
+	for _, key := range order { // ours to fix, never the listener's: the diagnostics', once a layer (U2-29, D-124)
+		d.problem(d.layerLabel(key) + ": " + strconv.Itoa(refused[key]) + " not drawn - " + firstErr[key])
 	}
 	for id := range d.mapPane.shown {
 		if !shown[id] {
@@ -814,6 +826,28 @@ func (d Dashboard) setFeed(feed MapFeed) Dashboard {
 		}
 	}
 	return d.renderMap()
+}
+
+// mapFailedText is what the window says when the map cannot be drawn at
+// all: that, and the way to try again (D-124).
+const mapFailedText = "The map could not be drawn. Close it with esc and press g to open it again."
+
+// problem hands the diagnostics something that went wrong that the listener
+// cannot act on (D-124): never said to them.
+func (d Dashboard) problem(p string) {
+	if d.cfg.MapProblem != nil {
+		d.cfg.MapProblem(p)
+	}
+}
+
+// layerLabel is a layer's name as the Overlays menu says it, or its key.
+func (d Dashboard) layerLabel(key string) string {
+	for _, l := range d.cfg.MapLayers {
+		if l.Key == key {
+			return l.Label
+		}
+	}
+	return key
 }
 
 // mapHelpRow is one row of Help's MAP group: several actions that are one

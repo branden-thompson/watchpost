@@ -69,8 +69,11 @@ type MapTemperature struct {
 	// Feels, FeelsHigh and FeelsLow are feels-like's (D-119), as Overlays,
 	// High and Low are temperature's.
 	Feels, FeelsHigh, FeelsLow []tuimaps.Overlay
-	Source                     string
-	Notes                      []string
+	// Problems are what went wrong that the listener cannot act on: the
+	// diagnostics', never said to them (D-124).
+	Problems []string
+	Source   string
+	Notes    []string
 	// Filled are the days Open-Meteo filled where the source had nothing
 	// (D-100), as "‹day›/high" or "‹day›/low", the day counted from today.
 	Filled map[string]bool
@@ -198,6 +201,9 @@ func (d Dashboard) applyMapTemp(v mapTempMsg) (tea.Model, tea.Cmd) {
 		return d, nil
 	}
 	d.mapPane.temp, d.mapPane.tempAnchor = v.temp, v.anchor // held whether or not it is drawn (D-99)
+	for _, p := range v.temp.Problems {
+		d.problem(p) // D-124: the diagnostics', never the listener's
+	}
 	d, set := d.setTemp()
 	if !set || d.mapPane.m.Pending() == 0 {
 		d = d.renderMap() // else the work's answer draws it, whole (D-85)
@@ -279,7 +285,7 @@ func (d Dashboard) setTemp() (Dashboard, bool) {
 		var err error
 		d.mapPane.call("Set", func() { _, err = m.Set(o) })
 		if err != nil {
-			d.mapPane.tempRefused = "Temperature could not be drawn: " + err.Error() // said, never swallowed (U2-5)
+			d.problem("Temperature: " + o.ID + " not drawn - " + err.Error()) // never swallowed (U2-5), never the listener's to act on (D-124)
 			if prev, ok := d.mapPane.tempGiven[o.ID]; ok {
 				given[o.ID] = prev // the grid drawn stays (U2-14)
 			}
@@ -291,9 +297,6 @@ func (d Dashboard) setTemp() (Dashboard, bool) {
 		if _, ok := given[id]; !ok {
 			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
 		}
-	}
-	if len(given) > 0 {
-		d.mapPane.tempRefused = ""
 	}
 	d.mapPane.tempGiven = given
 	return d, set
@@ -591,11 +594,7 @@ func (d Dashboard) forecastStatus() string {
 	if at > 0 && d.tempOn() {
 		words += " (" + d.stepWords() + ")"
 	}
-	parts := []string{words, "step " + strconv.Itoa(at+1) + " of " + strconv.Itoa(len(steps)), state}
-	if d.mapPane.tempRefused != "" {
-		parts = append(parts, d.mapPane.tempRefused)
-	}
-	return strings.Join(parts, " · ")
+	return strings.Join([]string{words, "step " + strconv.Itoa(at+1) + " of " + strconv.Itoa(len(steps)), state}, " · ")
 }
 
 // forecastTimeline is Forecast mode's three rows in the radar timeline's
@@ -661,7 +660,7 @@ func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) str
 // shows, as one word for the window's memo (F-30).
 func (d Dashboard) tempMemoKey() string {
 	p := d.mapPane
-	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), strings.Join(p.temp.RainNotes, "\n"), strconv.FormatBool(d.rainOn()), p.tempRefused,
+	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), strings.Join(p.temp.RainNotes, "\n"), strconv.FormatBool(d.rainOn()),
 		strconv.Itoa(p.fcStep), strconv.FormatBool(p.fcLow), strconv.FormatBool(p.fcPlaying),
 		strconv.Itoa(len(p.tempGiven)), strings.Join(p.fcTimeline, "\n"), d.stepSource()}, "|")
 }
@@ -672,9 +671,6 @@ func (d Dashboard) tempNotes() []string {
 	var out []string
 	if d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer) {
 		out = append(out, d.mapPane.temp.Notes...)
-		if d.mapPane.tempRefused != "" {
-			out = append(out, d.mapPane.tempRefused)
-		}
 	}
 	if !d.radarMode() && d.layerOn(RainLayer) {
 		out = append(out, d.mapPane.temp.RainNotes...) // the credit, or that it did not answer

@@ -35,6 +35,9 @@ type MapRadar struct {
 	// Ahead is the source of the loop's hours ahead (D-113): "HRRR", or ""
 	// where the loop ends at now.
 	Ahead string
+	// Problems are what went wrong that the listener cannot act on: the
+	// diagnostics', never said to them (D-124).
+	Problems []string
 }
 
 // mapRadarMsg is a radar answer.
@@ -114,11 +117,15 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		}
 		given[o.ID], set = o, true
 	}
-	switch {
+	switch { // a refusal is ours, never the listener's to act on: the diagnostics' (D-124)
 	case refused != nil && len(given) == 0:
-		v.radar.Source, v.radar.Note = "", "Radar could not be drawn: "+refused.Error()
+		v.radar.Source, v.radar.Note = "", ""
+		d.problem("Radar: not drawn - " + refused.Error())
 	case refused != nil:
-		v.radar.Note = "Radar could not be updated, so the loop shown is the last one drawn: " + refused.Error()
+		d.problem("Radar: not updated, the last loop kept - " + refused.Error())
+	}
+	for _, p := range v.radar.Problems {
+		d.problem(p)
 	}
 	removed := false
 	for id := range d.mapPane.radarGiven {

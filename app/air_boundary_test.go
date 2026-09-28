@@ -185,6 +185,7 @@ var airBoundary = map[string]airMember{
 	"MapFeed":          {airNone, "0.18.0: turns the snapshot's alerts into map overlays; it reaches the zone store and no audio"},
 	"MapRadar":         {airNone, "0.18.0 W8: fetches radar frames for the map through the radar client; it reaches no audio"},
 	"MapTemperature":   {airNone, "0.18.0 W10: fetches temperatures for the map through the temperature client; it reaches no audio"},
+	"MapProblem":       {airNone, "0.18.0 D-124: keeps the map's problems for the diagnostic dump; it reaches no audio"},
 	"ClearMapData":     {airNone, "0.18.0: empties the map's tile files and zone outlines; it reaches no audio"},
 	"MapAreaName":      {airNone, "UAT-1 D-64: names the map's view from the city index; it reaches no audio"},
 	"MapCost":          {airNone, "0.18.0: arithmetic over the snapshot's alerts and the layer registry; it fetches nothing and reaches no audio"},

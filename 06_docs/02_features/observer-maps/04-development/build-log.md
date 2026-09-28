@@ -1369,3 +1369,29 @@ This batch builds the part that changes the controls, UAT'd first as the HUM LEA
 - a ring drawn as a dot;
 - a ring's label drawn over it;
 - the ring's cap, untested below M9.55.
+
+## Batch 38 — errors with a path, or to the diagnostics (W13.5, U2-29, D-124, 2026-09-27)
+
+**UAT-2 U2-29.** With quakes on, the map filled with "An alert could not be drawn: tuimaps: bad-currency ..." until it was pushed off the window.
+- **The cause:** every quake was handed in current for eight days, and the library keeps a thing current for at most seven. The old significant feed was nearly always empty, so this never showed.
+- **Made worse:** the window wrote a note for every refusal, each called "an alert".
+- **The test:** every quake a feed can hold, from a minute to a full week old, is now handed to a real map and accepted. It reproduced the refusal first.
+
+**D-124, the HUM LEAD's rule:** "We should never show error messages to the end user unless we give them a path to resolve it." "Diagnostics only" for the rest. The map's messages were audited against it:
+
+- **Refusals, which are ours to fix:** the diagnostics alone, once a layer. That covers the feed's overlays, the radar's loop and the temperature's grids; `tempRefused` is gone.
+- **The map failing to start or draw:** one sentence with its way back, "Close it with esc and press g to open it again", and the detail to the diagnostics.
+- **A source that did not answer, where a Setting offers another:** said with that Setting. This is NDFD's temperature, and the lower 48's radar (IEM or MRMS).
+- **A source that did not answer, with nothing to change:** the diagnostics alone. That is radar outside the lower 48, the hours ahead (HRRR or Open-Meteo), rain and snow, and Open-Meteo's temperature.
+- **Kept, because they say what is drawn and are not errors:**
+  - an alert's missing zones (FR-4.4);
+  - NDFD's gap filled from Open-Meteo, credited;
+  - the offline basemap;
+  - MRMS's approximate colours;
+  - the description's missing outline.
+
+**The diagnostics.** The window hands such problems to `Config.MapProblem`. The app keeps the last fifty, time-stamped, in `mapProblems`, and the diagnostic dump writes them as `map_problems` in `counters.json`.
+
+**Mutation verdicts** (targeted, 12), all caught. One survived at first: the window dropping the app's problems. A test now catches it.
+
+**The dupes gate** found `mapProblems.last` repeating `bandRecord.recent`, a lock and a copy. Both now use the app's `lockedCopy`. `bandRecord`'s bound, mutant mC5's anchor, is untouched.

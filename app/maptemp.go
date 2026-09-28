@@ -115,7 +115,11 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 			}
 		}
 		if err != nil {
-			missing["Temperature is unavailable: "+src.Name()+" did not answer."] = true
+			if src.Name() == "NDFD" { // a Setting draws another (D-124)
+				missing["Temperature is unavailable: NDFD did not answer. Settings → Maps → Temperature: Open-Meteo draws it instead."] = true
+			} else {
+				out.Problems = append(out.Problems, "Temperature: "+src.Name()+" did not answer for "+b.Name+" - "+err.Error())
+			}
 			continue
 		}
 		if !ask.Forecast {

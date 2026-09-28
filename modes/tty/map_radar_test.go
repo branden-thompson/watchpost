@@ -330,12 +330,14 @@ func TestTheTimelineNeverMakesTheWindowScroll(t *testing.T) {
 	}
 }
 
-// TestARefusedLoopIsSaidNotLoading is UAT-2 U2-5: a loop the library refuses
-// is said as refused - no chip, the reason on the line - and never read as
-// "loading" for ever.
+// TestARefusedLoopIsSaidNotLoading is UAT-2 U2-5 as D-124 amends it: a loop
+// the library refuses is never read as "loading" for ever; the refusal is
+// ours, not the listener's to act on, so it goes to the diagnostics, never
+// the line.
 func TestARefusedLoopIsSaidNotLoading(t *testing.T) {
-	var asked []string
+	var asked, problems []string
 	d := openRadarMap(t, "MRMS", &asked)
+	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
 	d.mapPane.call("SetImageBudget", func() { _ = d.mapPane.m.SetImageBudget(1000) })
 	r := radarFeed(t, "MRMS", &asked)(context.Background(), d.mapAsk())
 	r.Overlays[0].ID = RadarLayer + "/us-b" // a new box: it must fit the budget whole
@@ -343,8 +345,11 @@ func TestARefusedLoopIsSaidNotLoading(t *testing.T) {
 	m, cmd := d.applyMapRadar(mapRadarMsg{radar: r})
 	d = settleRadar(t, m.(Dashboard), cmd)
 	line := stripANSITest(d.mapStatusLine())
-	if strings.Contains(line, "loading") || !strings.Contains(line, "could not be drawn") || d.radarChipText() != "" {
+	if strings.Contains(line, "loading") || strings.Contains(line, "could not") || d.radarChipText() != "" {
 		t.Errorf("a refused loop reads %q with the chip %q", line, d.radarChipText())
+	}
+	if len(problems) != 1 || !strings.HasPrefix(problems[0], "Radar") {
+		t.Errorf("the diagnostics were told %q; want the radar's refusal", problems)
 	}
 }
 

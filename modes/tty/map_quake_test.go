@@ -7,8 +7,10 @@ package tty
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/platform/render"
 )
@@ -43,5 +45,52 @@ func TestTheQuakesAreASetting(t *testing.T) {
 	d.clockFmt = render.ClockByKey("24h")
 	if d.mapAsk().Clock != render.ClockByKey("24h") {
 		t.Error("the ask does not carry the listener's clock")
+	}
+}
+
+// TestRefusalsGoToTheDiagnostics is UAT-2 U2-29 and D-124: overlays the
+// library refuses are ours to fix, not the listener's - a note each ran the
+// notes past the map and hid it. None is said under the map; the
+// diagnostics are told once a layer, by its name.
+func TestRefusalsGoToTheDiagnostics(t *testing.T) {
+	var problems []string
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapProblem: func(p string) { problems = append(problems, p) },
+		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: "quake", Label: "Earthquakes", On: true}}})
+	d, _ = pressKey(d, "g")
+	var bad []tuimaps.Overlay
+	for _, id := range []string{"a", "b", "c", "d", "e"} {
+		bad = append(bad, tuimaps.Overlay{ID: "quake/" + id, Valid: time.Now(), Keeps: 8 * 24 * time.Hour,
+			Features: []tuimaps.Feature{{Kind: tuimaps.Circle, Centre: tuimaps.LonLat{Lon: -117.3, Lat: 33.3}, RadiusDots: 4, Role: tuimaps.QuakeDay}}})
+	}
+	d = d.setFeed(MapFeed{Overlays: bad})
+	for _, n := range d.mapPane.notes {
+		if strings.Contains(n, "could not") || strings.Contains(n, "tuimaps") {
+			t.Errorf("a refusal was said under the map: %q", n)
+		}
+	}
+	if len(problems) != 1 || !strings.HasPrefix(problems[0], "Earthquakes: 5 not drawn") {
+		t.Errorf("the diagnostics were told %q; want one line, Earthquakes: 5 not drawn", problems)
+	}
+}
+
+// TestTheAppsProblemsReachTheDiagnostics is D-124: what the app could not
+// fetch and no Setting fixes arrives as a problem, and the window hands it
+// on to the diagnostics, never under the map.
+func TestTheAppsProblemsReachTheDiagnostics(t *testing.T) {
+	var asks []MapAsk
+	var problems []string
+	d := openTempMap(t, true, &asks)
+	d.cfg.MapProblem = func(p string) { problems = append(problems, p) }
+	m, _ := d.applyMapTemp(mapTempMsg{temp: MapTemperature{Problems: []string{"Temperature: Open-Meteo did not answer"}}, anchor: d.tempAnchor()})
+	d = m.(Dashboard)
+	m, _ = d.applyMapRadar(mapRadarMsg{radar: MapRadar{Problems: []string{"Radar ahead: HRRR did not answer"}}})
+	d = m.(Dashboard)
+	if strings.Join(problems, "|") != "Temperature: Open-Meteo did not answer|Radar ahead: HRRR did not answer" {
+		t.Errorf("the diagnostics were told %q", problems)
+	}
+	for _, n := range d.tempNotes() {
+		if strings.Contains(n, "did not answer") {
+			t.Errorf("a problem was said under the map: %q", n)
+		}
 	}
 }

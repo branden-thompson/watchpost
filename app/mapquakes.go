@@ -95,8 +95,10 @@ func quakeLayerCost(in mapInputs) (int64, int) {
 }
 
 // quakeKeeps is how long a quake is drawn as current: the feeds are at most
-// a week's, and the feed dropping it is what takes it off the map.
-const quakeKeeps = 8 * 24 * time.Hour
+// a week's, and the feed dropping it is what takes it off the map. SEVEN
+// DAYS IS THE MOST THE LIBRARY KEEPS ANYTHING CURRENT: eight were refused,
+// every quake of the week's feed a note of its own (UAT-2 U2-29).
+const quakeKeeps = 7 * 24 * time.Hour
 
 // quakesIn is the feed's earthquakes with a point inside the view.
 func quakesIn(feed []globalfeed.Event, v tty.MapView) []globalfeed.Event {

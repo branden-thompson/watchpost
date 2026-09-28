@@ -85,6 +85,9 @@ type Config struct {
 	// MapQuakeFeed is the file's word for the quakes drawn (D-122): USGS's
 	// feed by its name, M2.5+ over the past week by default.
 	MapQuakeFeed string
+	// MapProblem takes what went wrong with the map that the listener cannot
+	// act on (D-124): the diagnostics', never shown. Nil drops it.
+	MapProblem func(string)
 	// MapTempSource is the file's word for Forecast mode's temperature:
 	// "ndfd", or Open-Meteo, the default (D-93, D-101).
 	MapTempSource string
@@ -309,6 +312,9 @@ type ZoneShapeStats struct {
 type Stats struct {
 	Requests  httpx.RequestStats
 	Pipelines [2]PipelineStats // [0] priority, [1] recent
+	// MapProblems are the map's last problems the listener cannot act on
+	// (D-124): the diagnostics' alone.
+	MapProblems []string
 
 	// ZoneShapes is what the zone-outline store has done since launch
 	// (0.17.0). **A new path over the network with no counters is invisible**:

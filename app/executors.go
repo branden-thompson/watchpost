@@ -713,11 +713,7 @@ func (b *bandRecord) has(line string) bool {
 }
 
 // recent is the record, oldest first, as a copy.
-func (b *bandRecord) recent() []string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	return append([]string(nil), b.lines...)
-}
+func (b *bandRecord) recent() []string { return lockedCopy(&b.mu, &b.lines) }
 
 // cueFor puts the band's callout up for the producer's record behind a part.
 // The record is asked for, never constructed here: the band has ONE owner and

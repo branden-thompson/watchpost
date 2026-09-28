@@ -31,6 +31,7 @@ const mainTrackOff
 const mapDiskBytes
 const mapMaxAge
 const mapMemoryBytes
+const mapProblemsKept
 const maxAlertRecords
 const maxDumpsPerRun
 const maxLaneRows
@@ -227,6 +228,8 @@ func (*livePipelines).tuneRelay
 func (*livePipelines).viewAlerts
 func (*livePipelines).wireDeckWarnings
 func (*mapBuilder).build
+func (*mapProblems).last
+func (*mapProblems).note
 func (*mapQuakes).fetch
 func (*mastercontrol).CutBed
 func (*mastercontrol).DropCard
@@ -761,6 +764,7 @@ type mainTrackStage
 type mapBuilder
 type mapInputs
 type mapLayer
+type mapProblems
 type mapQuakes
 type mapSource
 type mastercontrol

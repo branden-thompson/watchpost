@@ -11,7 +11,6 @@ import (
 	"context"
 	pngpkg "image/png"
 	"sort"
-	"strings"
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
@@ -93,7 +92,12 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 	}
 	times, err := src.Times(ctx, ask.Region)
 	if err != nil || len(times) == 0 {
-		out.Note = "Radar is unavailable: " + src.Name() + " did not answer."
+		if other := lp.radar.other(src, ask.Region); other != nil { // a Setting draws another (D-124)
+			out.Note = "Radar is unavailable: " + src.Name() + " did not answer. Settings → Maps → Radar: " + other.Name() + " draws it instead."
+		} else {
+			out.Note = "" // nothing the listener can do: the diagnostics' (D-124)
+			out.Problems = append(out.Problems, "Radar: "+src.Name()+" did not answer for "+ask.Region)
+		}
 		return out
 	}
 	slots := loopSlots(times, radarStep, radar.Window)
@@ -130,7 +134,7 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 func withForecast(ctx context.Context, out tty.MapRadar, h *radar.HRRR, boxes []radar.Box, newest, until time.Time) tty.MapRadar {
 	run, err := h.Run(ctx)
 	if err != nil {
-		out.Note = strings.TrimPrefix(out.Note+" The radar's hours ahead are unavailable: HRRR did not answer.", " ")
+		out.Problems = append(out.Problems, "Radar ahead: HRRR did not answer - "+err.Error()) // D-124
 		return out
 	}
 	minutes := radar.Minutes(run, newest, until)

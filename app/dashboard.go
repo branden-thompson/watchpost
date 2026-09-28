@@ -416,6 +416,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapTempSource:   cfg.MapTemperatureSource,      // D-93: Forecast mode's temperature
 		MapRadarAhead:   cfg.MapRadarAheadHours,        // D-114: the radar loop's hours ahead
 		MapQuakeFeed:    cfg.MapQuakeFeed,              // D-122: the quakes the map draws
+		MapProblem:      lp.problems.note,              // D-124: the diagnostics', never the listener's
 		MapLayerChoice:  cfg.MapLayers,                 // 0.18.0 W1.11
 		MapLayers:       windowLayers(),                // 0.18.0 W1.13: the registry's layers
 		MapCost:         lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate
@@ -719,6 +720,7 @@ type livePipelines struct {
 	ticker     *tickerDeck     // 0.12.0: waited at shutdown so its cache writes settle before teardown
 	severe     *severeDeck     // 0.13.0: the severe-events index the window lists
 	mapQuakes  *mapQuakes      // 0.18.0 D-122: the map's quake feeds, the listener's choice
+	problems   mapProblems     // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
 	director   *director       // 0.13.0: the voice arbiter (app/director.go)
 	scripts    *script.Library // 0.13.0: the spoken lines (domains/radio/script)
 	reader     *eventReader    // 0.13.0: [space] in the window
