@@ -1480,3 +1480,39 @@ The test reproduced it first: the cursor at 0.733, NOW at 0.478.
 - The cost line counts NDBC's one file, and a request for each tide station in view while twenty or fewer are.
 
 **Mutation verdicts** (targeted, 11 in watchpost and 1 in go-tuiMaps), all caught.
+
+## Batch 43 — the basemap always shows (W13.10, U2-34, D-129, 2026-09-28)
+
+**The finding.** With Buoys and Tides on, `1` for the lower 48 drew markers over an empty frame
+(U2-34). Each station was an overlay of its own, hundreds at a national view. The library's queue
+holds 256 jobs; full, it dropped its oldest - the view's tiles - and ran the overlays in the order
+asked. The frame's notice, meanwhile, told the listener to "call Settle, or run Work".
+
+**In the library, go-tuiMaps L-22 (its D-96), rc.23.**
+- Past the cap the queue drops a job of a view no map shows first, then the oldest that is no tile,
+  a tile last; within a view it runs the tiles first. The basemap cannot be starved by overlays,
+  however many a host hands in.
+- While the tiles load the frame says "Loading the map…" and names no call (D-124): the host learns
+  it from the `NoTiles` status.
+
+**In watchpost, D-129 ("whichever option gives us better performance").**
+- Every layer of many things is one overlay: the quakes, the buoys, the tide stations, fire's
+  perimeters and its incidents. The same view that handed the map over 1,200 overlays at batch 42
+  hands it five.
+- A quake no longer comes in on its own frame of the loop; one within the loop's two hours past is
+  labelled NEW ("NEW M3.1 2:14 PM"), beside USGS's age colour (D-123).
+- Alerts stay one an alert: each has its own times (D-98).
+
+**U2-35, the radar slower to load**, is most likely the same flood - hundreds of overlay jobs ahead
+of the radar's - and is re-checked in UAT (S31). The performance, structure and quality pass the HUM
+LEAD required before SHIP is plan W14, for both repositories.
+
+**A time bomb from batch 42, found on the way.** `TestTheSeasStationsAreAskedOnlyWhileOn` served
+NDBC's recorded file as it was recorded; two hours later every reading was past D-127's two hours and
+no buoy was drawn, so the test failed on the clock alone - as CI would have. The file is now served
+with its readings ten minutes old.
+
+**Mutation verdicts** (targeted; 5 in go-tuiMaps, 2 in watchpost), all caught. One survived at
+first - the drop of a view no longer shown - and gained `TestAViewNoLongerShownGoesFirst`. The
+wiring test `TestEveryLayerOfManyThingsIsOneOverlay` was run against batch 42's code and failed
+there, 1,200 overlays for five.

@@ -43,12 +43,15 @@ func TestBuoysAreDrawnWithTheirReadings(t *testing.T) {
 	}
 	labels := func(imperial bool) map[string]string {
 		out := map[string]string{}
-		for _, o := range buoyOverlays(obs, marineView, now, imperial) {
-			f := o.Features[0]
-			if f.Role != tuimaps.Buoy || !strings.HasPrefix(o.ID, tty.BuoyLayer+"/") {
-				t.Errorf("%s is drawn in %v; want the buoy's role", o.ID, f.Role)
+		o, _ := buoyOverlay(obs, marineView, now, imperial)
+		if !strings.HasPrefix(o.ID, tty.BuoyLayer+"/") {
+			t.Errorf("the buoys are in overlay %q; want the Buoys row's", o.ID)
+		}
+		for _, f := range o.Features {
+			if f.Role != tuimaps.Buoy {
+				t.Errorf("%s is drawn in %v; want the buoy's role", f.ID, f.Role)
 			}
-			out[o.ID[len(tty.BuoyLayer)+1:]] = f.Label
+			out[f.ID] = f.Label
 		}
 		return out
 	}
@@ -73,8 +76,9 @@ func TestTideStationsAreLabelledWhenFewAreInView(t *testing.T) {
 		return snapshot.TideEvent{Type: "H", Height: 1.193, Time: time.Date(2026, 8, 24, 16, 1, 0, 0, time.UTC)}, true
 	}
 	few := []coops.Station{{ID: "a", Name: "La Jolla", Lat: 32.87, Lon: -117.26}, {ID: "far", Lat: 45, Lon: -124}}
-	marks := tideOverlays(few, marineView, now, true, render.ClockByKey("12h"), time.UTC, next)
-	if len(marks) != 1 || marks[0].Features[0].Label != "H 3.9ft 4:01 PM" || marks[0].Features[0].Role != tuimaps.Tide || asked != 1 {
+	o, _ := tideOverlay(few, marineView, now, true, render.ClockByKey("12h"), time.UTC, next)
+	marks := o.Features
+	if len(marks) != 1 || marks[0].Label != "H 3.9ft 4:01 PM" || marks[0].Role != tuimaps.Tide || asked != 1 {
 		t.Fatalf("the few in view are %+v (%d asked); want La Jolla, H 3.9ft 4:01 PM", marks, asked)
 	}
 	var many []coops.Station
@@ -82,9 +86,10 @@ func TestTideStationsAreLabelledWhenFewAreInView(t *testing.T) {
 		many = append(many, coops.Station{ID: string(rune('a' + i)), Lat: 33, Lon: -118 + float64(i)*0.01})
 	}
 	asked = 0
-	marks = tideOverlays(many, marineView, now, true, render.ClockByKey("12h"), time.UTC, next)
-	if len(marks) != tideLabelMost+1 || marks[0].Features[0].Label != "" || asked != 0 {
-		t.Errorf("%d in view: %d markers, the first labelled %q, %d asked; want markers alone, none asked", tideLabelMost+1, len(marks), marks[0].Features[0].Label, asked)
+	o, _ = tideOverlay(many, marineView, now, true, render.ClockByKey("12h"), time.UTC, next)
+	marks = o.Features
+	if len(marks) != tideLabelMost+1 || marks[0].Label != "" || asked != 0 {
+		t.Errorf("%d in view: %d markers, the first labelled %q, %d asked; want markers alone, none asked", tideLabelMost+1, len(marks), marks[0].Label, asked)
 	}
 }
 
@@ -98,7 +103,7 @@ func TestTheSeasStationsAreAskedOnlyWhileOn(t *testing.T) {
 		switch {
 		case strings.HasSuffix(r.URL.Path, "latest_obs.txt"):
 			b, _ := os.ReadFile("../domains/marine/ndbc/testdata/latest_obs.txt")
-			_, _ = w.Write(b)
+			_, _ = w.Write(freshObs(b, time.Now()))
 		case strings.HasSuffix(r.URL.Path, "stations.json"):
 			b, _ := os.ReadFile("../domains/marine/coops/testdata/stations_" + r.URL.Query().Get("type") + ".json")
 			_, _ = w.Write(b)
@@ -159,4 +164,21 @@ func TestTheSeasStationsAreCostedAndNamed(t *testing.T) {
 	if !hosts["www.ndbc.noaa.gov"] || !hosts["api.tidesandcurrents.noaa.gov"] {
 		t.Errorf("the Status window's map list lacks NDBC or CO-OPS: %v", hosts)
 	}
+}
+
+// freshObs is NDBC's file read ten minutes ago: the recorded file's readings
+// were hours old two hours after it was recorded, and a buoy past two hours
+// is not drawn (D-127) - the wiring test failed on the clock alone.
+func freshObs(raw []byte, now time.Time) []byte {
+	at := strings.Fields(now.UTC().Add(-10 * time.Minute).Format("2006 01 02 15 04"))
+	lines := strings.Split(string(raw), "\n")
+	for i, line := range lines {
+		f := strings.Fields(line)
+		if strings.HasPrefix(line, "#") || len(f) < 8 {
+			continue
+		}
+		copy(f[3:8], at)
+		lines[i] = strings.Join(f, " ")
+	}
+	return []byte(strings.Join(lines, "\n"))
 }

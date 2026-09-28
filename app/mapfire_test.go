@@ -60,7 +60,7 @@ func TestFireIsDrawnFromItsThreeSources(t *testing.T) {
 			switch {
 			case f.Kind == tuimaps.Polygon:
 				perimeter = append(perimeter, f)
-			case strings.Contains(o.ID, "/incident/"):
+			case strings.HasSuffix(o.ID, "/incidents"):
 				incidents = append(incidents, f)
 			default:
 				hotspots = append(hotspots, f)
@@ -127,14 +127,14 @@ func TestTheFeedCarriesTheFire(t *testing.T) {
 	n := 0
 	for _, o := range feed.Overlays {
 		if strings.HasPrefix(o.ID, tty.FireLayer+"/") {
-			n++
+			n += len(o.Features)
 			if tm := feed.Times[o.ID]; !tm.Happened || !tm.From.IsZero() {
 				t.Errorf("%s is timed %+v; want a thing so now, from always", o.ID, tm)
 			}
 		}
 	}
 	if n < 5 {
-		t.Errorf("the feed carries %d fire overlays; want the fixture's four perimeters and its incident", n)
+		t.Errorf("the feed carries %d fire features; want the fixture's four perimeters and its incident", n)
 	}
 }
 

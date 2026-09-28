@@ -467,7 +467,7 @@ func breakingLine
 func buildTemperature
 func buoyLabel
 func buoyLayerCost
-func buoyOverlays
+func buoyOverlay
 func burstAgencies
 func burstClosingLine
 func burstHead
@@ -615,7 +615,7 @@ func publishArea
 func quakeAgeRole
 func quakeLabel
 func quakeLayerCost
-func quakeOverlays
+func quakeOverlay
 func quakeRingDots
 func quakesIn
 func radarHorizon
@@ -719,7 +719,7 @@ func tickerRadiusState
 func tickerState
 func tideLabel
 func tideLayerCost
-func tideOverlays
+func tideOverlay
 func timeRender
 func timed
 func toKeyMap

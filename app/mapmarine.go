@@ -99,11 +99,12 @@ func (lp *livePipelines) tidesIn(ctx context.Context, ask tty.MapAsk, now time.T
 	return out
 }
 
-// buoyOverlays are the buoys in view that read in the last two hours, each
-// a marker in the buoy's role labelled with its waves and water, or its wind
-// where it has no waves (D-127).
-func buoyOverlays(obs []ndbc.Obs, view tty.MapView, now time.Time, imperial bool) []tuimaps.Overlay {
-	var out []tuimaps.Overlay
+// buoyOverlay is the buoys in view that read in the last two hours, each a
+// marker in the buoy's role labelled with its waves and water, or its wind
+// where it has no waves (D-127) - one overlay for them all (D-129: an
+// overlay a station starved the basemap, UAT-2 U2-34).
+func buoyOverlay(obs []ndbc.Obs, view tty.MapView, now time.Time, imperial bool) (tuimaps.Overlay, bool) {
+	var feats []tuimaps.Feature
 	for _, o := range obs {
 		if !view.Contains(o.Lat, o.Lon) || now.Sub(o.At) > buoyAge {
 			continue
@@ -112,10 +113,12 @@ func buoyOverlays(obs []ndbc.Obs, view tty.MapView, now time.Time, imperial bool
 		if label == "" {
 			continue // nothing read: nothing to say
 		}
-		out = append(out, tuimaps.Overlay{ID: tty.BuoyLayer + "/" + o.ID, Valid: o.At, Keeps: marineKeeps, Credit: ndbc.Attribution,
-			Features: []tuimaps.Feature{{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: o.Lon, Lat: o.Lat}}}, Role: tuimaps.Buoy, Label: label, ID: o.ID}}})
+		feats = append(feats, tuimaps.Feature{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: o.Lon, Lat: o.Lat}}}, Role: tuimaps.Buoy, Label: label, ID: o.ID})
 	}
-	return out
+	if len(feats) == 0 {
+		return tuimaps.Overlay{}, false
+	}
+	return tuimaps.Overlay{ID: tty.BuoyLayer + "/buoys", Valid: now, Keeps: marineKeeps, Credit: ndbc.Attribution, Features: feats}, true
 }
 
 // buoyLabel is a buoy's words: "4ft 73°", "1.2m 23°", or "12kt" where it
@@ -141,17 +144,20 @@ func buoyLabel(o ndbc.Obs, imperial bool) string {
 	return label
 }
 
-// tideOverlays are the tide stations in view, each a marker in the tide's
+// tideOverlay is the tide stations in view, each a marker in the tide's
 // role, labelled with its next high or low while twenty or fewer are in view
-// (D-128) - asked, through next, only then.
-func tideOverlays(stations []coops.Station, view tty.MapView, now time.Time, imperial bool, clock render.Clock, zone *time.Location, next func(id string) (snapshot.TideEvent, bool)) []tuimaps.Overlay {
+// (D-128) - asked, through next, only then; one overlay for them all (D-129).
+func tideOverlay(stations []coops.Station, view tty.MapView, now time.Time, imperial bool, clock render.Clock, zone *time.Location, next func(id string) (snapshot.TideEvent, bool)) (tuimaps.Overlay, bool) {
 	var in []coops.Station
 	for _, s := range stations {
 		if view.Contains(s.Lat, s.Lon) {
 			in = append(in, s)
 		}
 	}
-	out := make([]tuimaps.Overlay, 0, len(in))
+	if len(in) == 0 {
+		return tuimaps.Overlay{}, false
+	}
+	feats := make([]tuimaps.Feature, 0, len(in))
 	for _, s := range in {
 		label := ""
 		if len(in) <= tideLabelMost {
@@ -159,10 +165,9 @@ func tideOverlays(stations []coops.Station, view tty.MapView, now time.Time, imp
 				label = tideLabel(e, imperial, clock, zone)
 			}
 		}
-		out = append(out, tuimaps.Overlay{ID: tty.TideLayer + "/" + s.ID, Valid: now, Keeps: marineKeeps, Credit: "NOAA CO-OPS tide predictions",
-			Features: []tuimaps.Feature{{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: s.Lon, Lat: s.Lat}}}, Role: tuimaps.Tide, Label: label, ID: s.ID}}})
+		feats = append(feats, tuimaps.Feature{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: s.Lon, Lat: s.Lat}}}, Role: tuimaps.Tide, Label: label, ID: s.ID})
 	}
-	return out
+	return tuimaps.Overlay{ID: tty.TideLayer + "/tides", Valid: now, Keeps: marineKeeps, Credit: "NOAA CO-OPS tide predictions", Features: feats}, true
 }
 
 // tideLabel is a next tide's words: "H 3.9ft 4:01 PM", or in metres.

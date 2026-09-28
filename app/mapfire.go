@@ -98,8 +98,8 @@ func perimeterKey(p wfigs.Perimeter) string {
 func fireOverlays(f fireInView, view tty.MapView, rules fire.Rules) []tuimaps.Overlay {
 	now := time.Now()
 	var out []tuimaps.Overlay
+	var perims []tuimaps.Feature // one overlay a kind, never a fire (D-129, UAT-2 U2-34)
 	for _, p := range f.perimeters {
-		var feats []tuimaps.Feature
 		for _, area := range p.Areas {
 			if !areaMeets(area, view) {
 				continue
@@ -112,20 +112,22 @@ func fireOverlays(f fireInView, view tty.MapView, rules fire.Rules) []tuimaps.Ov
 				}
 				rings = append(rings, ring)
 			}
-			feats = append(feats, tuimaps.Feature{Kind: tuimaps.Polygon, Rings: rings, Role: tuimaps.Fire})
-		}
-		if len(feats) > 0 {
-			out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/perimeter/" + perimeterKey(p), Valid: now, Keeps: fireKeeps,
-				Credit: wfigs.Attribution, Features: feats})
+			perims = append(perims, tuimaps.Feature{Kind: tuimaps.Polygon, Rings: rings, Role: tuimaps.Fire, ID: perimeterKey(p)})
 		}
 	}
+	if len(perims) > 0 {
+		out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/perimeters", Valid: now, Keeps: fireKeeps, Credit: wfigs.Attribution, Features: perims})
+	}
+	var incidents []tuimaps.Feature
 	for _, in := range f.incidents {
 		if !view.Contains(in.Lat, in.Lon) {
 			continue
 		}
-		out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/incident/" + in.Name + "@" + strconv.FormatFloat(in.Lat, 'f', 3, 64), Valid: now, Keeps: fireKeeps,
-			Credit: wfigs.Attribution, Features: []tuimaps.Feature{{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: in.Lon, Lat: in.Lat}}},
-				Role: tuimaps.Fire, Label: incidentLabel(in)}}})
+		incidents = append(incidents, tuimaps.Feature{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: in.Lon, Lat: in.Lat}}},
+			Role: tuimaps.Fire, Label: incidentLabel(in), ID: in.Name + "@" + strconv.FormatFloat(in.Lat, 'f', 3, 64)})
+	}
+	if len(incidents) > 0 {
+		out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/incidents", Valid: now, Keeps: fireKeeps, Credit: wfigs.Attribution, Features: incidents})
 	}
 	var dots []tuimaps.Feature
 	for _, h := range f.hotspots {

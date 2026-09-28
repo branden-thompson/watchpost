@@ -49,7 +49,8 @@ func TestTheAlertsAreFiledAsTheSevereWindowFilesThem(t *testing.T) {
 // TestQuakesAreRingsSizedByMagnitudeColouredByAge is D-123: each quake in
 // view a ring fixed on the screen, larger with each magnitude as USGS's; its
 // colour its age - the past hour, the past day, older; labelled with its
-// magnitude and local time, and the day when not today; never an alert.
+// magnitude and local time, and the day when not today - NEW within the
+// radar loop's hours past (D-129); never an alert.
 func TestQuakesAreRingsSizedByMagnitudeColouredByAge(t *testing.T) {
 	now := time.Date(2026, 9, 29, 21, 0, 0, 0, time.UTC) // a Tuesday
 	mag := func(m float64) *globalfeed.QuakeDetail { return &globalfeed.QuakeDetail{Mag: &m} }
@@ -66,13 +67,14 @@ func TestQuakesAreRingsSizedByMagnitudeColouredByAge(t *testing.T) {
 		t.Fatalf("the quakes in view are %d, want three", len(in))
 	}
 	got := map[string]tuimaps.Feature{}
-	for _, o := range quakeOverlays(in, now, render.ClockByKey("12h")) {
-		got[o.ID[len(quakeLayerKey)+1:]] = o.Features[0]
+	o, _ := quakeOverlay(in, now, render.ClockByKey("12h"))
+	for _, f := range o.Features {
+		got[f.ID] = f
 	}
 	for id, want := range map[string]struct {
 		role  tuimaps.Token
 		label string
-	}{"hour": {tuimaps.QuakeHour, "M4.1 8:40 PM"}, "day": {tuimaps.QuakeDay, "M2.5 4:00 PM"}, "older": {tuimaps.QuakeOlder, "M6.2 Sun 7:00 PM"}} {
+	}{"hour": {tuimaps.QuakeHour, "NEW M4.1 8:40 PM"}, "day": {tuimaps.QuakeDay, "M2.5 4:00 PM"}, "older": {tuimaps.QuakeOlder, "M6.2 Sun 7:00 PM"}} {
 		f := got[id]
 		if f.Kind != tuimaps.Circle || f.RadiusKm != 0 || f.RadiusDots == 0 || f.Role != want.role || f.Label != want.label || f.Severity != 0 {
 			t.Errorf("%s is drawn %+v; want a ring on the screen in %v, labelled %q, no severity", id, f, want.role, want.label)
@@ -142,9 +144,8 @@ func TestEveryQuakeIsAcceptedByTheLibrary(t *testing.T) {
 	for i, age := range []time.Duration{time.Minute, 5 * time.Hour, 3 * 24 * time.Hour, 7*24*time.Hour - time.Minute} {
 		feed = append(feed, globalfeed.Event{ID: string(rune('a' + i)), Class: globalfeed.ClassQuake, Lat: 33.5, Lon: -117, HasPoint: true, At: now.Add(-age), Quake: &globalfeed.QuakeDetail{Mag: &mag}})
 	}
-	for _, o := range quakeOverlays(feed, now, render.ClockByKey("12h")) {
-		if _, err := m.Set(o); err != nil {
-			t.Errorf("%s was refused: %v", o.ID, err)
-		}
+	o, _ := quakeOverlay(feed, now, render.ClockByKey("12h"))
+	if _, err := m.Set(o); err != nil {
+		t.Errorf("%s was refused: %v", o.ID, err)
 	}
 }

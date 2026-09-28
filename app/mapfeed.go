@@ -93,23 +93,28 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
 	}
 	now := time.Now()
-	marine := buoyOverlays(in.buoys, in.view, now, in.imperial) // D-127, D-128: the sea's stations
+	var marine []tuimaps.Overlay // D-127, D-128: the sea's stations
+	if o, ok := buoyOverlay(in.buoys, in.view, now, in.imperial); ok {
+		marine = append(marine, o)
+	}
 	var stations []coops.Station
 	nexts := map[string]tideMark{}
 	for _, m := range in.tides {
 		stations, nexts[m.station.ID] = append(stations, m.station), m
 	}
-	marine = append(marine, tideOverlays(stations, in.view, now, in.imperial, in.clock, now.Location(), func(id string) (snapshot.TideEvent, bool) {
+	if o, ok := tideOverlay(stations, in.view, now, in.imperial, in.clock, now.Location(), func(id string) (snapshot.TideEvent, bool) {
 		m := nexts[id]
 		return m.next, m.known
-	})...)
+	}); ok {
+		marine = append(marine, o)
+	}
 	for _, o := range marine {
 		out.Overlays = append(out.Overlays, o)
 		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
 	}
-	for _, o := range quakeOverlays(in.quakes, now, in.clock) { // D-80, D-122, D-123: the quakes chosen, in view
+	if o, ok := quakeOverlay(in.quakes, now, in.clock); ok { // D-80, D-122, D-123, D-129: the quakes chosen, in view
 		out.Overlays = append(out.Overlays, o)
-		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{From: o.Valid, Happened: true}) // D-98: Now alone, in Forecast mode
+		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
 	}
 	return out
 }

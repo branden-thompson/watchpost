@@ -17,6 +17,7 @@ import (
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
+	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -111,22 +112,27 @@ func quakesIn(feed []globalfeed.Event, v tty.MapView) []globalfeed.Event {
 	return out
 }
 
-// quakeOverlays is each quake as USGS draws it (D-123): a ring around its
-// epicentre fixed on the screen by its magnitude, in its age's colour,
+// quakeOverlay is the quakes as USGS draws them (D-123): each a ring around
+// its epicentre fixed on the screen by its magnitude, in its age's colour,
 // labelled with its magnitude and its local time. No severity: the library
-// never reports a quake as an alert over a place.
-func quakeOverlays(quakes []globalfeed.Event, now time.Time, clock render.Clock) []tuimaps.Overlay {
-	var out []tuimaps.Overlay
+// never reports a quake as an alert over a place. ONE OVERLAY FOR THEM ALL
+// (D-129): an overlay each was hundreds at a national view, and the flood
+// starved the basemap (UAT-2 U2-34); so a quake no longer comes in on its
+// own frame of the loop, and one within the loop's hours is labelled NEW.
+func quakeOverlay(quakes []globalfeed.Event, now time.Time, clock render.Clock) (tuimaps.Overlay, bool) {
+	if len(quakes) == 0 {
+		return tuimaps.Overlay{}, false
+	}
+	feats := make([]tuimaps.Feature, 0, len(quakes))
 	for _, e := range quakes {
 		mag := 0.0
 		if e.Quake != nil && e.Quake.Mag != nil {
 			mag = *e.Quake.Mag
 		}
-		out = append(out, tuimaps.Overlay{ID: quakeLayerKey + "/" + e.ID, Valid: e.At, Keeps: quakeKeeps,
-			Features: []tuimaps.Feature{{Kind: tuimaps.Circle, Centre: tuimaps.LonLat{Lon: e.Lon, Lat: e.Lat},
-				RadiusDots: quakeRingDots(mag), Role: quakeAgeRole(now.Sub(e.At)), Label: quakeLabel(mag, e.At, now, clock), ID: e.ID}}})
+		feats = append(feats, tuimaps.Feature{Kind: tuimaps.Circle, Centre: tuimaps.LonLat{Lon: e.Lon, Lat: e.Lat},
+			RadiusDots: quakeRingDots(mag), Role: quakeAgeRole(now.Sub(e.At)), Label: quakeLabel(mag, e.At, now, clock), ID: e.ID})
 	}
-	return out
+	return tuimaps.Overlay{ID: quakeLayerKey + "/quakes", Valid: now, Keeps: quakeKeeps, Features: feats}, true
 }
 
 // quakeRingDots is a ring's radius on the screen: half again with each
@@ -156,5 +162,9 @@ func quakeLabel(mag float64, at, now time.Time, clock render.Clock) string {
 	if local.Format("2006-01-02") != now.Format("2006-01-02") {
 		when = local.Format("Mon") + " " + when
 	}
-	return "M" + strconv.FormatFloat(mag, 'f', 1, 64) + " " + when
+	label := "M" + strconv.FormatFloat(mag, 'f', 1, 64) + " " + when
+	if age := now.Sub(at); age >= 0 && age <= radar.Window {
+		label = "NEW " + label // within the loop's hours past (D-129)
+	}
+	return label
 }
