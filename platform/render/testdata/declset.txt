@@ -52,7 +52,14 @@ const KeyChipMuted
 const LightThemeName
 const ListFocus
 const ListPointer
-const MapRadarChipFG
+const MapChipCOOPSBG
+const MapChipHMSBG
+const MapChipNDBCBG
+const MapChipNDFDBG
+const MapChipNIFCBG
+const MapChipNWSBG
+const MapChipOMeteoBG
+const MapChipUSGSBG
 const MapRadarIEMBG
 const MapRadarMRMSBG
 const MapRadarModelBG
@@ -112,6 +119,8 @@ const alertLocMin
 const alertNumW
 const boxInset
 const categoryBlend
+const chipBlack
+const chipWhite
 const clockKey12
 const clockKey24
 const clockKeyMil
@@ -215,6 +224,8 @@ func Band
 func Bold
 func BoxHeight
 func CategoryTone
+func ChipGrounds
+func ChipTones
 func ClockByKey
 func ClockOrder
 func ColorOn

@@ -1578,3 +1578,30 @@ warning and the estimate (U2-36). The HUM LEAD drew one badge row in their place
 
 **Mutation verdicts** (targeted, 10), all caught. The three app tests were first run with the app's
 new fields in place, so each was held RED by a mutant instead.
+
+## Batch 46 — a chip a source (W13.13, U2-37, D-134, 2026-09-28)
+
+**The finding.** Batch 45's chips were three kinds:
+- MRMS, IEM and HRRR had grounds of their own, in white;
+- O-METEO and NDFD borrowed IEM's orange and MRMS's green;
+- the rest were plain.
+
+They were also padded one space or two, depending on where they were drawn. The HUM LEAD: one
+format, "  NAME  ", bold, a ground each, black or white words by contrast (D-134).
+
+**As built.**
+- `tty.chipFace` draws every chip, in the badge tab, the loop's row, the status line and the badge
+  row.
+- `render.ChipTones` reads the theme's ground and picks bold black or bold white, whichever has the
+  higher contrast, so a yellow chip is never white-on-yellow. It replaces the one fixed white.
+- Eight new grounds:
+  - the default theme: saturated, a hue a source round the wheel;
+  - the light theme: pale, as its test requires;
+  - the no-colour theme: eleven greys, each its own.
+- `TestEveryChipIsItsOwnAndReadsInEveryTheme` measures every chip in every theme, for uniqueness and
+  AA. The AA register excuses the grounds by name, because its fixed-foreground model cannot hold a
+  chosen one, and points to that test.
+- The app's test holds every source it names to a chip of its own, so a new source cannot be drawn
+  plain.
+
+**Mutation verdicts** (targeted, 5), all caught.

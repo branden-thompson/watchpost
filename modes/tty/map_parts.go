@@ -19,6 +19,33 @@ func chipBox(text string) []string {
 	return []string{"┌" + strings.Repeat("─", w) + "┐", "│ " + text + " │", "└" + strings.Repeat("─", w) + "┘"}
 }
 
+// chipGrounds are the sources' chips' grounds, by the name a chip shows
+// (D-83, D-134): every source its own.
+var chipGrounds = map[string]render.Token{
+	"MRMS": render.MapRadarMRMSBG, "IEM": render.MapRadarIEMBG, "HRRR": render.MapRadarModelBG,
+	"NWS": render.MapChipNWSBG, "NDFD": render.MapChipNDFDBG, "O-METEO": render.MapChipOMeteoBG,
+	"USGS": render.MapChipUSGSBG, "NIFC": render.MapChipNIFCBG, "HMS": render.MapChipHMSBG,
+	"NDBC": render.MapChipNDBCBG, "CO-OPS": render.MapChipCOOPSBG,
+}
+
+// ChipKnown reports whether a source has a chip of its own, so the app can
+// hold every source it names to one (D-134).
+func ChipKnown(name string) bool {
+	_, ok := chipGrounds[name]
+	return ok
+}
+
+// chipFace is a source's chip, one way everywhere (D-134, the HUM LEAD's
+// "<space><space><label><space><space>"): its name, bold, black or white as
+// reads the more, on the source's own ground. MRMS≈ is MRMS's (D-132).
+func chipFace(face string) string {
+	ground, ok := chipGrounds[strings.TrimRight(face, "≈~")]
+	if !ok {
+		return "  " + face + "  "
+	}
+	return render.TintRaw("  "+face+"  ", render.ChipTones(ground))
+}
+
 // mapBadge is the badge's words, in either mode (D-92, U2-19), on one line
 // (D-120): a title, a source chip and a moment, each where there is one.
 func mapBadge(title, chip, moment string) string {

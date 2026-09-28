@@ -96,7 +96,7 @@ func TestWavesAreTheirOwnRow(t *testing.T) {
 	if n := givenOf(d, WaveLayer); n != 1+forecastDays {
 		t.Errorf("Forecast mode drew %d wave grids; want Now and every day's highest", n)
 	}
-	if b := stripANSITest(strings.Join(d.badges(), " ")); !strings.Contains(b, "WAVES [NDFD]/[O-METEO]") {
+	if b := stripANSITest(strings.Join(d.badges(), " ")); !strings.Contains(b, "WAVES [  NDFD  ]/[  O-METEO  ]") {
 		t.Errorf("the badges are %q; want the waves' sources (D-133)", b)
 	}
 	if d = switchLayer(t, d, WaveLayer); givenOf(d, WaveLayer) != 0 {

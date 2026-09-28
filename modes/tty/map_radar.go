@@ -200,10 +200,10 @@ func (d Dashboard) radarBadge() string {
 		return ""
 	}
 	if d.atForecast() { // the loop's hours ahead: a model's frames, said so (D-113)
-		chip := "[" + render.TintRaw("  "+d.aheadName()+"  ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)) + "]"
+		chip := "[" + chipFace(d.aheadName()) + "]"
 		return mapBadge(render.Tint("RADAR FCST", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
 	}
-	chip := "[" + render.TintRaw("  "+d.radarFace()+"  ", d.radarChipTones()) + "]"
+	chip := "[" + chipFace(d.radarFace()) + "]"
 	return mapBadge(render.Tint("RADAR DATA", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
 }
 
@@ -230,15 +230,6 @@ func newestObserved(st tuimaps.LoopState) time.Time {
 // ahead (D-113).
 func (d Dashboard) atForecast() bool {
 	return d.mapPane.m != nil && d.mapPane.radarAhead != "" && d.mapPane.m.Loop().Forecast
-}
-
-// radarChipTones are the chip's colours: MRMS green, IEM orange (D-83).
-func (d Dashboard) radarChipTones() string {
-	ground := render.MapRadarMRMSBG
-	if d.mapPane.radarSource == "IEM" {
-		ground = render.MapRadarIEMBG
-	}
-	return render.Tok(ground) + ";" + render.Tok(render.MapRadarChipFG)
 }
 
 // mapBadgeWords are the badge's words for the mode (D-92, D-94): radar's, or
@@ -387,7 +378,7 @@ func (d Dashboard) rainRow(head string, width int) string {
 // radarChip is the source in the badge's colours (D-83), for the status line
 // (D-89).
 func (d Dashboard) radarChip() string {
-	return render.TintRaw(" "+d.radarFace()+" ", d.radarChipTones())
+	return chipFace(d.radarFace())
 }
 
 // radarBadgeTimeNow is the badge's time row: the moment shown in the

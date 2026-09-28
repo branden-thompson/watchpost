@@ -64,6 +64,20 @@ var unmeasurable = map[Token]string{
 	SpectrumLow:  "decorative bars, redundant with the play mark and the volume; threshold is a HUM LEAD ruling (F-57)",
 	SpectrumMid:  "decorative bars (F-57)",
 	SpectrumHigh: "decorative bars (F-57)",
+	// THE MAP'S SOURCE CHIPS carry no one foreground: ChipTones picks bold
+	// black or white for each ground, so the register's fg x [bg] cannot hold
+	// them. They are MEASURED, every chip in every theme, by their own test.
+	MapRadarMRMSBG:  "a chip ground: its words, black or white, are chosen for it by ChipTones and measured by TestEveryChipIsItsOwnAndReadsInEveryTheme (0.18.0 D-134)",
+	MapRadarIEMBG:   "a chip ground (D-134)",
+	MapRadarModelBG: "a chip ground (D-134)",
+	MapChipNWSBG:    "a chip ground (D-134)",
+	MapChipNDFDBG:   "a chip ground (D-134)",
+	MapChipOMeteoBG: "a chip ground (D-134)",
+	MapChipUSGSBG:   "a chip ground (D-134)",
+	MapChipNIFCBG:   "a chip ground (D-134)",
+	MapChipHMSBG:    "a chip ground (D-134)",
+	MapChipNDBCBG:   "a chip ground (D-134)",
+	MapChipCOOPSBG:  "a chip ground (D-134)",
 }
 
 func TestEveryTokenIsMeasuredOrExcused(t *testing.T) {

@@ -130,3 +130,31 @@ func TestTheLightThemePaintsNoDarkGround(t *testing.T) {
 		t.Fatalf("the light theme is second in the picker: %v", names)
 	}
 }
+
+// TestEveryChipIsItsOwnAndReadsInEveryTheme is 0.18.0 D-134: every source's
+// chip has a ground no other chip shares, in every theme, and its words -
+// bold, black or white as ChipTones chooses - read at AA on it.
+func TestEveryChipIsItsOwnAndReadsInEveryTheme(t *testing.T) {
+	t.Cleanup(func() { SetTheme(DefaultThemeName) })
+	for _, name := range ThemeNames() {
+		if !SetTheme(name) {
+			t.Fatal(name)
+		}
+		seen := map[string]Token{}
+		for _, g := range ChipGrounds() {
+			ground := Tok(g)
+			if other, ok := seen[ground]; ok {
+				t.Errorf("%s: %s and %s share the ground %q", name, g, other, ground)
+			}
+			seen[ground] = g
+			tones := ChipTones(g)
+			fg := strings.TrimPrefix(tones, ground+";")
+			if !strings.HasPrefix(fg, "1;") {
+				t.Errorf("%s: %s's words %q are not bold", name, g, fg)
+			}
+			if c := Contrast(fg, ground); c < AAContrast {
+				t.Errorf("%s: %s's words read %.2f:1 on %q", name, g, c, ground)
+			}
+		}
+	}
+}

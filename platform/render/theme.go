@@ -134,14 +134,23 @@ const (
 	TickerEmergencyBG Token = "ticker.emergency.bg" // Emergency Orders — THE RED (MVS-D-62)
 	TickerStatementBG Token = "ticker.statement.bg" // Spec. Statements — teal, the one lane with no warm neighbour
 
-	// The map's radar source chip (0.18.0 D-83): the source's name in white
-	// bold on its own ground - MRMS green, IEM orange - in the map's upper right.
-	MapRadarChipFG Token = "map.radar.chip.fg"
+	// The map's source chips (0.18.0 D-83, D-134): each source's name, bold,
+	// on a ground of its own - MRMS green, IEM orange - its words black or
+	// white, whichever reads the more there (ChipTones).
 	MapRadarMRMSBG Token = "map.radar.mrms.bg"
 	MapRadarIEMBG  Token = "map.radar.iem.bg"
 	// MapRadarModelBG is the chip of the loop's forecast frames (D-113): a
-	// model, never radar, so a colour of its own.
+	// model, never radar, so a colour of its own - HRRR's.
 	MapRadarModelBG Token = "map.radar.model.bg"
+	// The other sources' chips (D-134): every source the map credits its own.
+	MapChipNWSBG    Token = "map.chip.nws.bg"
+	MapChipNDFDBG   Token = "map.chip.ndfd.bg"
+	MapChipOMeteoBG Token = "map.chip.ometeo.bg"
+	MapChipUSGSBG   Token = "map.chip.usgs.bg"
+	MapChipNIFCBG   Token = "map.chip.nifc.bg"
+	MapChipHMSBG    Token = "map.chip.hms.bg"
+	MapChipNDBCBG   Token = "map.chip.ndbc.bg"
+	MapChipCOOPSBG  Token = "map.chip.coops.bg"
 	TickerFG        Token = "ticker.fg"
 	TickerMutedFG   Token = "ticker.muted.fg"
 
@@ -348,12 +357,20 @@ func defaultTheme() map[Token]string {
 		TickerWatchBG:    "48;2;150;125;20", // dark gold
 		TickerMarineBG:   "48;2;20;70;150",  // deep blue (Tropical Cyclones — HUM LEAD colour pass)
 
-		TickerAdvisoryBG:  "48;2;129;60;14",     // #813C0E
-		TickerStatementBG: "48;2;25;105;102",    // #196966
-		MapRadarChipFG:    "1;38;2;255;255;255", // white, bold (D-83)
-		MapRadarMRMSBG:    "48;2;28;110;52",     // #1C6E34, green: 6.2:1 under white
-		MapRadarIEMBG:     "48;2;168;72;0",      // #A84800, orange: 5.9:1 under white
-		MapRadarModelBG:   "48;2;106;63;160",    // #6A3FA0, purple: a model's frames (D-113), 7.5:1 under white
+		TickerAdvisoryBG:  "48;2;129;60;14",  // #813C0E
+		TickerStatementBG: "48;2;25;105;102", // #196966
+		MapRadarMRMSBG:    "48;2;28;110;52",  // #1C6E34, green: 6.2:1 under white
+		MapRadarIEMBG:     "48;2;168;72;0",   // #A84800, orange: 5.9:1 under white
+		MapRadarModelBG:   "48;2;106;63;160", // #6A3FA0, purple: a model's frames (D-113), 7.5:1 under white
+		// D-134: a hue a source, round the wheel from the three above.
+		MapChipNWSBG:    "48;2;29;78;216",  // #1D4ED8, blue
+		MapChipNDFDBG:   "48;2;15;118;110", // #0F766E, teal
+		MapChipOMeteoBG: "48;2;250;204;21", // #FACC15, yellow
+		MapChipUSGSBG:   "48;2;71;85;105",  // #475569, slate
+		MapChipNIFCBG:   "48;2;220;38;38",  // #DC2626, red
+		MapChipHMSBG:    "48;2;190;24;93",  // #BE185D, magenta
+		MapChipNDBCBG:   "48;2;56;189;248", // #38BDF8, sky
+		MapChipCOOPSBG:  "48;2;132;204;22", // #84CC16, lime
 		// PLACEHOLDER, pending the ruling: a new colour, or THE RED with every
 		// other lane shifted down. Magenta only so it is unmistakably not final.
 		TickerEmergencyBG: "48;2;150;20;20",     // #961414 — Emergency Orders: THE red

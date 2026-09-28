@@ -10,6 +10,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // badgeMap is the map in Radar mode with alerts, fire, temperature and
@@ -45,7 +47,7 @@ func underTheMap(d Dashboard) []string {
 func TestTheBadgeRowCreditsEachLayerDrawn(t *testing.T) {
 	d := badgeMap(t, MapCost{})
 	rows := underTheMap(d)
-	want := "ALERTS [NWS]    FIRE [NIFC]/[HMS]    TEMP [O-METEO]    WAVES [NDFD]/[O-METEO]"
+	want := "ALERTS [  NWS  ]    FIRE [  NIFC  ]/[  HMS  ]    TEMP [  O-METEO  ]    WAVES [  NDFD  ]/[  O-METEO  ]" // each chip "  NAME  " (D-134)
 	found := false
 	for _, r := range rows {
 		if strings.TrimSpace(r) == want {
@@ -132,5 +134,36 @@ func TestTheStatusWindowCarriesTheFullCredits(t *testing.T) {
 		Notes: []string{"Temperature: Open-Meteo.com (CC BY 4.0), interpolated."}}}})
 	if s := stripANSITest(strings.Join(d.mapSourceLines(), "\n")); !strings.Contains(s, "Temperature: Open-Meteo.com (CC BY 4.0), interpolated.") {
 		t.Errorf("the MAP block:\n%s", s)
+	}
+}
+
+// TestEveryChipIsOneFormatOnItsOwnGround is D-134: every source's chip is
+// "  NAME  " - two spaces either side - bold, on a ground no other source's
+// chip has; the words black or white as read the more there.
+func TestEveryChipIsOneFormatOnItsOwnGround(t *testing.T) {
+	t.Setenv("TERM", "xterm-256color")
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(rendering.ResetColorEnabledForTest)
+	grounds := map[string]string{}
+	for _, name := range []string{"MRMS", "IEM", "HRRR", "NWS", "NDFD", "O-METEO", "USGS", "NIFC", "HMS", "NDBC", "CO-OPS"} {
+		if !ChipKnown(name) {
+			t.Fatalf("%s has no chip of its own", name)
+		}
+		c := chipFace(name)
+		if stripANSITest(c) != "  "+name+"  " {
+			t.Errorf("%s's chip reads %q; want two spaces either side", name, stripANSITest(c))
+		}
+		sgr := strings.TrimPrefix(strings.SplitN(c, "m", 2)[0], "\x1b[")
+		ground := strings.SplitN(sgr, ";1;38;2;", 2)[0]
+		if !strings.Contains(sgr, ";1;38;2;") || !strings.HasPrefix(ground, "48;2;") {
+			t.Errorf("%s's chip is %q; want its own ground and bold words", name, sgr)
+		}
+		if other, ok := grounds[ground]; ok {
+			t.Errorf("%s and %s share the ground %s", name, other, ground)
+		}
+		grounds[ground] = name
+	}
+	if stripANSITest(chipFace("MRMS≈")) != "  MRMS≈  " || chipFace("MRMS≈") == "  MRMS≈  " {
+		t.Error("MRMS≈ is not drawn on MRMS's ground")
 	}
 }

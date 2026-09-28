@@ -518,11 +518,7 @@ func (d Dashboard) retime() Dashboard {
 func (d Dashboard) forecastBadge() string {
 	chip := ""
 	if d.tempOn() {
-		face := " " + strings.ToUpper(d.stepSource()) + " "
-		if d.stepSource() == "Open-Meteo" {
-			face = "O-METEO"
-		}
-		chip = "[" + render.TintRaw(face, d.tempChipTones()) + "]"
+		chip = "[" + chipFace(d.tempFace()) + "]"
 	}
 	return mapBadge(render.Tint(forecastLabel, render.Tok(render.ModalTitle)), chip, d.badgeStep())
 }
@@ -579,14 +575,12 @@ func (d Dashboard) stepSource() string {
 	return d.mapPane.temp.Source
 }
 
-// tempChipTones are the temperature source's chip colours: NDFD the NWS's
-// green, Open-Meteo orange - the radar chip's two grounds.
-func (d Dashboard) tempChipTones() string {
-	ground := render.MapRadarMRMSBG
+// tempFace is the temperature source as its chip says it: O-METEO or NDFD.
+func (d Dashboard) tempFace() string {
 	if d.stepSource() == "Open-Meteo" {
-		ground = render.MapRadarIEMBG
+		return "O-METEO"
 	}
-	return render.Tok(ground) + ";" + render.Tok(render.MapRadarChipFG)
+	return strings.ToUpper(d.stepSource())
 }
 
 // stepWords are the step shown, short: "Now", "Sun high", "Tmrw low".

@@ -121,7 +121,7 @@ func (d Dashboard) badges() []string {
 		}
 		faces := make([]string, len(chips))
 		for i, c := range chips {
-			faces[i] = "[" + sourceChip(c) + "]"
+			faces[i] = "[" + chipFace(c) + "]"
 		}
 		out = append(out, badgeLabel(l)+" "+strings.Join(faces, "/"))
 	}
@@ -143,19 +143,6 @@ func badgeLabel(l MapLayer) string {
 		return "QUAKES"
 	}
 	return strings.ToUpper(l.Label)
-}
-
-// sourceChip is a source's chip in the colours its chips already have:
-// Open-Meteo's orange and NDFD's green, as temperature's (D-83, D-120); every
-// other plain.
-func sourceChip(name string) string {
-	switch name {
-	case "O-METEO":
-		return render.TintRaw(name, render.Tok(render.MapRadarIEMBG)+";"+render.Tok(render.MapRadarChipFG))
-	case "NDFD":
-		return render.TintRaw(name, render.Tok(render.MapRadarMRMSBG)+";"+render.Tok(render.MapRadarChipFG))
-	}
-	return name
 }
 
 // pictureStatus is the picture's own state and the refresh's estimate, on a
@@ -230,7 +217,7 @@ func (d Dashboard) loopRow(width int) string {
 		at := min(d.mapPane.fcStep, len(steps)-1)
 		lead := "FORECAST"
 		if d.tempOn() {
-			lead += " " + render.TintRaw(" "+strings.ToUpper(d.stepSource())+" ", d.tempChipTones())
+			lead += " " + chipFace(d.tempFace())
 		}
 		return spread([]placed{item(lead), item("STEP " + strconv.Itoa(at+1) + " / " + strconv.Itoa(len(steps))), state(d.mapPane.fcPlaying)}, from, to)
 	}
@@ -246,7 +233,7 @@ func (d Dashboard) loopRow(width int) string {
 	}
 	lead := item("RADAR " + d.radarChip())
 	if st.Forecast && d.mapPane.radarAhead != "" { // the hours ahead: a model's, said so (D-113)
-		lead = item("FORECAST " + render.TintRaw(" "+d.aheadName()+" ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)))
+		lead = item("FORECAST " + chipFace(d.aheadName()))
 	}
 	return spread([]placed{lead, item("FRAME " + strconv.Itoa(st.Index+1) + " / " + strconv.Itoa(st.Count)),
 		item(newest), state(st.Playing)}, from, to)

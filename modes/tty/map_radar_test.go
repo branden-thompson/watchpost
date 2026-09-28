@@ -90,7 +90,7 @@ func TestTheRadarIsShownWhole(t *testing.T) {
 	if st := d.mapPane.m.Loop(); st.Count != 12 || st.Playing {
 		t.Errorf("the map opens on %+v; want the loop, stopped on the newest", st)
 	}
-	if !strings.Contains(stripANSITest(d.mapStatusLine()), "Radar  MRMS≈ ") {
+	if !strings.Contains(stripANSITest(d.mapStatusLine()), "Radar   MRMS≈  ") {
 		t.Errorf("the status line does not say the loop: %q", stripANSITest(d.mapStatusLine()))
 	}
 }
@@ -398,7 +398,7 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 		t.Error("no blank before the region row, or before the chips")
 	}
 	row := plain[loop]
-	words := []string{"RADAR  MRMS≈ ", "FRAME 12 / 12", "NEWEST 5 MIN AGO", "STOPPED"}
+	words := []string{"RADAR   MRMS≈  ", "FRAME 12 / 12", "NEWEST 5 MIN AGO", "STOPPED"}
 	last := -1
 	for _, w := range words {
 		i := strings.Index(row, w)
@@ -465,7 +465,7 @@ func TestALoopStillPreparingSaysLoadingWithItsSource(t *testing.T) {
 	d := openMap(t, Config{MapRadar: radarFeed(t, "IEM", &[]string{}), MapLayers: []MapLayer{{Key: RadarLayer, Label: "Radar", On: true}}}, 133, 44)
 	d.mapPane.radarSource = "IEM"
 	got := d.radarStatus()
-	if !strings.Contains(stripANSITest(got), "Radar  IEM  loading") || !strings.Contains(got, render.Tok(render.MapRadarIEMBG)) {
+	if !strings.Contains(stripANSITest(got), "Radar   IEM   loading") || !strings.Contains(got, render.Tok(render.MapRadarIEMBG)) {
 		t.Errorf("a loop not yet prepared reads %q", got)
 	}
 }
@@ -565,7 +565,7 @@ func TestTheLoopSaysWhenItIsAhead(t *testing.T) {
 	if !strings.Contains(badge(), "RADAR FCST") || !strings.Contains(badge(), "HRRR") {
 		t.Errorf("ahead of now the badge is %q; want RADAR FCST and HRRR", badge())
 	}
-	if row := stripANSITest(d.loopRow(d.scrubW())); !strings.Contains(row, "FORECAST  HRRR") {
+	if row := stripANSITest(d.loopRow(d.scrubW())); !strings.Contains(row, "FORECAST   HRRR  ") {
 		t.Errorf("ahead of now the loop's row is %q; want it to lead FORECAST HRRR", row)
 	}
 	m, _, _ = d.handleMapKey(tea.KeyPressMsg{Code: 'n', Text: "n"})

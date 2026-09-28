@@ -453,20 +453,20 @@ func TestTheForecastBadgeIsTheHUMLEADsLayout(t *testing.T) {
 			t.Errorf("the badge is %q; want %q", got, w)
 		}
 	}
-	want(" FORECAST  [ NDFD ]  NOW ")
+	want(" FORECAST  [  NDFD  ]  NOW ")
 	m0, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 	d = m0.(Dashboard)
-	want(" FORECAST  [ NDFD ]  TODAY HIGHS ")
+	want(" FORECAST  [  NDFD  ]  TODAY HIGHS ")
 	for range forecastDays - 1 {
 		m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift})
 		d = m.(Dashboard)
 	}
 	day := strings.ToUpper(d.forecastSteps()[forecastDays].Span.From.Format("Mon"))
-	want(" FORECAST  [ NDFD ]  " + day + " HIGHS ")
+	want(" FORECAST  [  NDFD  ]  " + day + " HIGHS ")
 	m, _, _ := d.handleMapKey(tea.KeyPressMsg{Code: '>', Text: ">"})
 	d = m.(Dashboard)
 	d.mapPane.temp.Source = "Open-Meteo"
-	want(" FORECAST  [O-METEO]  " + day + " LOWS ")
+	want(" FORECAST  [  O-METEO  ]  " + day + " LOWS ")
 }
 
 // TestTheTemperatureKeyReads is UAT-2 U2-18: each band's value is written in

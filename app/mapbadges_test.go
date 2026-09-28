@@ -74,3 +74,26 @@ func TestTheStatusWindowHoldsTheFullCredits(t *testing.T) {
 		}
 	}
 }
+
+// TestEverySourceNamedHasAChipOfItsOwn is D-134: every source a layer names,
+// fixed or as drawn, has its own chip in the window - none drawn plain.
+func TestEverySourceNamedHasAChipOfItsOwn(t *testing.T) {
+	names := map[string]bool{"O-METEO": true, "NDFD": true, "MRMS": true, "IEM": true, "HRRR": true} // the temperature's, waves', rain's and radar's as drawn
+	for _, l := range windowLayers() {
+		for _, c := range l.Chips {
+			names[c] = true
+		}
+	}
+	for _, source := range []string{"Open-Meteo", "NDFD"} {
+		for _, chips := range tempChips(source, true) {
+			for _, c := range chips {
+				names[c] = true
+			}
+		}
+	}
+	for n := range names {
+		if !tty.ChipKnown(n) {
+			t.Errorf("%s has no chip of its own", n)
+		}
+	}
+}

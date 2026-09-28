@@ -294,9 +294,6 @@ func aaPairs() []aaPair {
 		// grounds sit in the Group bands' own family, which is the point of
 		// deriving them that way.
 		{GroupText, rails},
-		// THE MAP'S RADAR SOURCE CHIP (0.18.0 D-83): its own white, so no other
-		// surface's text is lifted to suit it.
-		{MapRadarChipFG, []Token{MapRadarMRMSBG, MapRadarIEMBG, MapRadarModelBG}},
 		// THE CONSOLE'S CARDS CARRY THEIR OWN TONE so this lift reaches nothing
 		// else: registering TextBase here moved it in two themes and took
 		// Observer's tables with it.
@@ -350,4 +347,28 @@ func isCategoryTint(bg Token) bool {
 func categoryTints() []Token {
 	return []Token{EventCatDisasterBG, EventCatWarningBG, EventCatAdvisoryBG, EventCatWatchBG,
 		EventCatStmtBG, EventCatMarineBG, EventCatForecastBG, EventCatEmergencyBG}
+}
+
+// chipBlack and chipWhite are a chip's words: bold, black or white.
+const (
+	chipBlack = "1;38;2;0;0;0"
+	chipWhite = "1;38;2;255;255;255"
+)
+
+// ChipGrounds are the map's source chips' grounds (0.18.0 D-83, D-134).
+func ChipGrounds() []Token {
+	return []Token{MapRadarMRMSBG, MapRadarIEMBG, MapRadarModelBG, MapChipNWSBG, MapChipNDFDBG, MapChipOMeteoBG,
+		MapChipUSGSBG, MapChipNIFCBG, MapChipHMSBG, MapChipNDBCBG, MapChipCOOPSBG}
+}
+
+// ChipTones is a chip's ground and its words in the theme in use: bold
+// black or bold white, whichever reads the more on that ground (D-134) - so
+// a yellow chip is never white on yellow, nor a blue one black on blue.
+func ChipTones(bg Token) string {
+	ground := Tok(bg)
+	fg := chipWhite
+	if Contrast(chipBlack, ground) > Contrast(chipWhite, ground) {
+		fg = chipBlack
+	}
+	return ground + ";" + fg
 }
