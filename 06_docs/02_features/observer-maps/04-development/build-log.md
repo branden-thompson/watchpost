@@ -1605,3 +1605,28 @@ format, "  NAME  ", bold, a ground each, black or white words by contrast (D-134
   plain.
 
 **Mutation verdicts** (targeted, 5), all caught.
+
+## Batch 47 — place names before the data (W13.14, U2-38, D-135, 2026-09-28)
+
+**The finding.** With every layer on, the place names were lost (U2-38). The library placed its
+words in an order set when the only overlay words were an alert's: every overlay's label - now a
+buoy's reading, a tide, a quake's magnitude and time, a fire's name - and every contour's value
+claimed the map's cells before the basemap's names, which found none left.
+
+**D-135, "Names before data"; go-tuiMaps L-23 (its D-97), rc.24.** The order is now:
+1. the host's places;
+2. an alert's words, and a marker's;
+3. the alerts' digits;
+4. the basemap's names, within their budget;
+5. every other overlay's words;
+6. the contours' values.
+
+A reading or value with no room left goes unlabelled; its marker or line still draws. This
+overturns the library's D-124, which put a field's values before the names.
+
+**The test** was run against rc.23's code first, and reproduced the finding: Minnesota, Iowa,
+Washington, California, Idaho and Michigan, all drawn with the field alone, were lost under its
+values and three hundred stations.
+
+**Mutation verdicts** (targeted, 5 in go-tuiMaps), all caught. Watchpost's change is the library's
+version.
