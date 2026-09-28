@@ -13,6 +13,8 @@ package app
 
 import (
 	"context"
+	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
+	"time"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/modes/tty"
@@ -38,6 +40,11 @@ type mapInputs struct {
 	// clock the listener's, for their times (D-123).
 	quakeFeed string
 	clock     render.Clock
+	// buoys and tides are the sea's stations in view (D-127, D-128), asked
+	// only while their rows are on.
+	buoys    []ndbc.Obs
+	tides    []tideMark
+	imperial bool
 }
 
 // mapInputs are the inputs for the estimate, on the UI goroutine: the view's
@@ -57,12 +64,13 @@ func (lp *livePipelines) mapInputsFetching(ctx context.Context, ask tty.MapAsk) 
 // to choose.
 func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bool) mapInputs {
 	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead, forecast: ask.Forecast,
-		quakeFeed: ask.QuakeFeed, clock: ask.Clock}
+		quakeFeed: ask.QuakeFeed, clock: ask.Clock, imperial: ask.Fahrenheit}
 	if lp != nil {
 		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
 		if fetch {
 			in.fire = lp.fireIn(ctx, ask)
-			in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View) // D-122: the feed chosen, not the ticker's
+			in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View)      // D-122: the feed chosen, not the ticker's
+			in.buoys, in.tides = lp.buoysIn(ctx, ask), lp.tidesIn(ctx, ask, time.Now()) // D-127, D-128: while their rows are on
 		}
 	}
 	return in

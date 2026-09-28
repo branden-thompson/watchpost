@@ -35,6 +35,13 @@ const TemperatureLayer = "temperature"
 // WindLayer is the wind's (W11, D-110).
 const WindLayer = "wind"
 
+// BuoyLayer and TideLayer are the sea's stations (D-127, D-128): each its
+// own row, off by default, asked only while on.
+const (
+	BuoyLayer = "buoys"
+	TideLayer = "tides"
+)
+
 // WaveLayer is wave height's (D-126): its own row, off by default, drawn
 // over the sea alone.
 const WaveLayer = "waves"

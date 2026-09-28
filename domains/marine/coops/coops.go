@@ -267,6 +267,42 @@ func (p *Provider) loadStations(ctx context.Context) error {
 	return nil
 }
 
+// Station is a tide station as the map draws it (0.18.0 D-128).
+type Station struct {
+	ID, Name string
+	Lat, Lon float64
+}
+
+// TideStations are every tide-prediction station, from the list the
+// places' tides read daily.
+func (p *Provider) TideStations(ctx context.Context) ([]Station, error) {
+	if err := p.loadStations(ctx); err != nil {
+		return nil, err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]Station, len(p.tide))
+	for i, s := range p.tide {
+		out[i] = Station{ID: s.ID, Name: s.Name, Lat: s.Lat, Lon: s.Lng}
+	}
+	return out, nil
+}
+
+// NextTide is a station's next high or low after a moment, from its
+// predictions - the places' own request, cached as theirs is.
+func (p *Provider) NextTide(ctx context.Context, id string, after time.Time) (snapshot.TideEvent, error) {
+	tides, err := p.fetchTides(ctx, id)
+	if err != nil {
+		return snapshot.TideEvent{}, err
+	}
+	for _, e := range tides {
+		if e.Time.After(after) {
+			return e, nil
+		}
+	}
+	return snapshot.TideEvent{}, fmt.Errorf("coops: no tide after %s at %s", after.Format(time.RFC3339), id)
+}
+
 // nearest returns the closest station within radiusKM.
 func nearest(list []station, lat, lon, radiusKM float64) (station, float64, bool) {
 	if c := nearestN(list, lat, lon, radiusKM, 1); len(c) > 0 {

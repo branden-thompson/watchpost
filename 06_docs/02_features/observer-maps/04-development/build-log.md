@@ -1459,3 +1459,24 @@ The test reproduced it first: the cursor at 0.733, NOW at 0.478.
 **The fix.** One axis, time. The cursor is where the frame shown lies in time along the loop, as NOW and the clock times at the bar's ends already were. At now the cursor sits on NOW; a forecast frame lies past it; stepping into the hours ahead moves the cursor in longer strides, as the frames are farther apart.
 
 **Mutation verdict.** The cursor by frame number again is what the test caught first.
+
+## Batch 42 — the sea's stations (W13.9, D-127, D-128, 2026-09-28)
+
+**Rulings.**
+- **D-127, "Row off, waves+water":** a station that read in the last two hours is a marker labelled with its wave height and water temperature, "4ft 73°", or its wind in knots, "12kt", where it reads no waves.
+- **D-128, "Next tide, zoomed":** every tide station in view is a marker; when twenty or fewer are in view, each is labelled with its next high or low, "H 3.9ft 4:01 PM"; a wider view shows the markers alone.
+
+**What they read.**
+- **Buoys:** NDBC's one national file of latest observations, 103 KB every ten minutes, about 870 stations; its "MM" reads as nothing.
+- **Tides:** CO-OPS's tide-station list, the one the places' tides read daily. Each station's next tide comes from its predictions, the places' own request and cache.
+
+**Asked only while on.** The tides are a request a station, so both rows fetch only while switched on: the ask says whether each is on, and switching a row asks the feed again. Waves and temperature, which cost one request a box, are still loaded in the background (D-99). This is a deliberate difference.
+
+**A deviation from D-128's words.** The ruling said an answer kept "six hours". The predictions are cached as the places' are: to midnight UTC, at most an hour at a time. That still asks each station at most once an hour.
+
+**At the map.**
+- Their own roles, go-tuiMaps L-21 (its D-95), rc.22: `buoy` in pink and `tide` in green, apart from every other feature role and the waves' scale, and never an alert.
+- The Status window names NOAA NDBC and CO-OPS, and both join FR-3.8's closed list.
+- The cost line counts NDBC's one file, and a request for each tide station in view while twenty or fewer are.
+
+**Mutation verdicts** (targeted, 11 in watchpost and 1 in go-tuiMaps), all caught.

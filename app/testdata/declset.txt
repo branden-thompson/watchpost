@@ -7,6 +7,8 @@ const bandRecordCap
 const bedFenceFarMi
 const breakingGap
 const breakingHold
+const buoyAge
+const buoyBytes
 const burstHeadGap
 const burstKey
 const burstTailGap
@@ -32,6 +34,7 @@ const mapDiskBytes
 const mapMaxAge
 const mapMemoryBytes
 const mapProblemsKept
+const marineKeeps
 const maxAlertRecords
 const maxDumpsPerRun
 const maxLaneRows
@@ -81,6 +84,8 @@ const testEventLife
 const tickerEvery
 const tickerRotate
 const tickerSeenWindow
+const tideBytes
+const tideLabelMost
 const titlePartKm
 const titlePlaceKm
 const titleStateKm
@@ -158,6 +163,7 @@ func (*livePipelines).bedCarrying
 func (*livePipelines).bedFenceMi
 func (*livePipelines).bedRelays
 func (*livePipelines).buildDirector
+func (*livePipelines).buoysIn
 func (*livePipelines).clearMapData
 func (*livePipelines).commit
 func (*livePipelines).currentPool
@@ -184,6 +190,7 @@ func (*livePipelines).mapInputsFetching
 func (*livePipelines).mapRadar
 func (*livePipelines).mapTemperature
 func (*livePipelines).marineFor
+func (*livePipelines).marineProviders
 func (*livePipelines).markFIRMS
 func (*livePipelines).masterControl
 func (*livePipelines).monitorMayReachTheAir
@@ -223,6 +230,7 @@ func (*livePipelines).stepBedRelay
 func (*livePipelines).stopAll
 func (*livePipelines).takeTheAir
 func (*livePipelines).testLocation
+func (*livePipelines).tidesIn
 func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
 func (*livePipelines).tuneRelay
@@ -457,6 +465,9 @@ func bedReachFor
 func breakingItem
 func breakingLine
 func buildTemperature
+func buoyLabel
+func buoyLayerCost
+func buoyOverlays
 func burstAgencies
 func burstClosingLine
 func burstHead
@@ -530,6 +541,7 @@ func init
 func init
 func init
 func init
+func init
 func injectedEvents
 func isLookupFailure
 func itemsOf
@@ -553,6 +565,7 @@ func mapAreaNamer
 func mapRetention
 func mapSourceList
 func marineArea
+func marineHosts
 func marineReportOf
 func mastheadLine
 func matchesQuery
@@ -704,6 +717,9 @@ func tickerCategory
 func tickerMuteState
 func tickerRadiusState
 func tickerState
+func tideLabel
+func tideLayerCost
+func tideOverlays
 func timeRender
 func timed
 func toKeyMap
@@ -802,6 +818,7 @@ type stationArea
 type tempSources
 type tickerDeck
 type tickerPrefs
+type tideMark
 type waveSource
 var _
 var _

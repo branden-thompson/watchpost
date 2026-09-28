@@ -74,6 +74,8 @@ that enforces it; a requirement without one is marked **NO INSTRUMENT YET** so t
 | NIFC WFIGS *(D-121)* | `https://services3.arcgis.com` | active fire perimeters and named incidents |
 | NOAA HMS *(D-121)* | `https://www.ospo.noaa.gov` | satellite fire detections, the places' own read |
 | USGS *(D-122)* | `https://earthquake.usgs.gov` | earthquakes, the feed chosen in Settings |
+| NOAA NDBC *(D-127)* | `https://www.ndbc.noaa.gov` | every buoy's latest reading, while Buoys is on |
+| NOAA CO-OPS *(D-128)* | `https://api.tidesandcurrents.noaa.gov` | tide stations, and the next tide of each in view while twenty or fewer are |
 | NWS (existing) | `https://api.weather.gov` | alerts and zone geometry |
 
 | FR-3.9 *(P1)* | Caches state a **retention as a number** — map tiles 7 days, radar frames 2 hours (radar's own retention at source) — and can be cleared by the listener. The stated total covers map, radar and the existing 256 MB HTTP cache (FR-3.5 owns the byte total; this row owns age and clearing) | D-31; red team F4/F7/F8; R2 InfoSec F-4 | Test: the radar cache drops frames past its age; a clear path exists and empties both |

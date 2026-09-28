@@ -34,6 +34,8 @@ func server(t *testing.T) (*httptest.Server, *atomic.Int32) {
 		switch {
 		case r.URL.Path == "/activestations.xml":
 			_, _ = w.Write(fixture(t, "activestations.xml"))
+		case r.URL.Path == "/data/latest_obs/latest_obs.txt":
+			_, _ = w.Write(fixture(t, "latest_obs.txt")) // captured 2026-09-28T14Z, off Southern California (D-127)
 		case strings.HasSuffix(r.URL.Path, "/46224_5day.txt"):
 			_, _ = w.Write(fixture(t, "46224.txt"))
 		case strings.HasSuffix(r.URL.Path, "/LJPC1_5day.txt"):

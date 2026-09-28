@@ -103,3 +103,19 @@ func TestWavesAreTheirOwnRow(t *testing.T) {
 		t.Error("switched off, the waves stayed")
 	}
 }
+
+// TestTheAskSaysWhetherTheSeasStationsAreOn is D-127 and D-128: their rows
+// are off by default and the ask says so - the app asks for them only while
+// on; switched on, the ask says that.
+func TestTheAskSaysWhetherTheSeasStationsAreOn(t *testing.T) {
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false),
+		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: BuoyLayer, Label: "Buoys"}, {Key: TideLayer, Label: "Tides"}}})
+	d, _ = pressKey(d, "g")
+	if a := d.mapAsk(); a.Buoys || a.Tides {
+		t.Fatalf("with both rows off the ask says buoys %v, tides %v", a.Buoys, a.Tides)
+	}
+	d = switchLayer(t, switchLayer(t, d, BuoyLayer), TideLayer)
+	if a := d.mapAsk(); !a.Buoys || !a.Tides {
+		t.Errorf("with both rows on the ask says buoys %v, tides %v", a.Buoys, a.Tides)
+	}
+}

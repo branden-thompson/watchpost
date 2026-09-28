@@ -9,6 +9,7 @@ package app
 
 import (
 	"context"
+	"github.com/branden-thompson/watchpost/domains/marine/coops"
 	"strconv"
 	"strings"
 	"time"
@@ -91,7 +92,22 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 		out.Overlays = append(out.Overlays, o)
 		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
 	}
-	for _, o := range quakeOverlays(in.quakes, time.Now(), in.clock) { // D-80, D-122, D-123: the quakes chosen, in view
+	now := time.Now()
+	marine := buoyOverlays(in.buoys, in.view, now, in.imperial) // D-127, D-128: the sea's stations
+	var stations []coops.Station
+	nexts := map[string]tideMark{}
+	for _, m := range in.tides {
+		stations, nexts[m.station.ID] = append(stations, m.station), m
+	}
+	marine = append(marine, tideOverlays(stations, in.view, now, in.imperial, in.clock, now.Location(), func(id string) (snapshot.TideEvent, bool) {
+		m := nexts[id]
+		return m.next, m.known
+	})...)
+	for _, o := range marine {
+		out.Overlays = append(out.Overlays, o)
+		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
+	}
+	for _, o := range quakeOverlays(in.quakes, now, in.clock) { // D-80, D-122, D-123: the quakes chosen, in view
 		out.Overlays = append(out.Overlays, o)
 		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{From: o.Valid, Happened: true}) // D-98: Now alone, in Forecast mode
 	}
