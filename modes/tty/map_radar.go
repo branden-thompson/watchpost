@@ -393,17 +393,34 @@ func (d Dashboard) radarChipWords() string {
 // now and FORECAST after it. Read from the library's loop in Update; the
 // window keeps no playback state of its own (go-tuiMaps L-1.13).
 func (d Dashboard) radarTimeline(width int) []string {
-	m := d.mapPane.m
-	if m == nil || !d.radarTimelineOn() {
+	if d.mapPane.m == nil || !d.radarTimelineOn() {
 		return nil
 	}
-	st := m.Loop()
-	if d.mapPane.radarSource == "" || st.Count == 0 {
+	s, ok := d.radarScrubber()
+	if !ok {
 		return []string{"", "", ""}
 	}
+	return d.draw(s, width)
+}
+
+// radarScrubber is the loop's scrubber: where the frame shown is, where NOW
+// is, and the words under them, all by time along the loop; false with no
+// loop to draw.
+func (d Dashboard) radarScrubber() (scrubber, bool) {
+	m := d.mapPane.m
+	if m == nil || d.mapPane.radarSource == "" {
+		return scrubber{}, false
+	}
+	st := m.Loop()
+	if st.Count == 0 {
+		return scrubber{}, false
+	}
 	s := scrubber{above: d.clockAt(st.At)}
-	if st.Count > 1 {
-		s.cursor = float64(st.Index) / float64(st.Count-1)
+	// ONE AXIS, TIME (UAT-2 U2-33): the cursor was placed by frame number
+	// and NOW by time, and the frames are five minutes apart observed and
+	// fifteen ahead - the newest observed frame drew in the FORECAST half.
+	if span := st.Newest.Sub(st.Oldest); span > 0 {
+		s.cursor = min(max(float64(st.At.Sub(st.Oldest))/float64(span), 0), 1)
 	}
 	now := 1.0
 	if span := st.Newest.Sub(st.Oldest); span > 0 && st.Now.Before(st.Newest) {
@@ -420,7 +437,7 @@ func (d Dashboard) radarTimeline(width int) []string {
 	if now < 1 {
 		s.below = append(s.below, scrubLabel{"FORECAST", (now + 1) / 2, alignCentre})
 	}
-	return d.draw(s, width)
+	return s, true
 }
 
 // clockAt is a moment in the listener's clock and zone.

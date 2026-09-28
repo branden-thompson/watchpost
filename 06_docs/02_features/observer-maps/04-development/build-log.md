@@ -1445,3 +1445,17 @@ Each is now caught.
 - The marine request: 72 KB.
 
 **Mutation verdicts** (targeted, 7), all caught. Three survived at first, and tests now catch each: the waves not filled, an hour ahead stamped with its own hour, and the thirteen hours not asked.
+
+## Batch 41 — the scrubber on one axis (W13.8, U2-33, 2026-09-28)
+
+**UAT-2 U2-33.** "The 'NOW' hatch deosnt seem to properly align with the correct 'now' frame ... when the map first loaded in, it looked like the first frame rendered was in the forecast zone. This one is important to get right because the scrub controls also provide 'legend like' functionality."
+
+**The cause, a defect of W12.1's making.** The scrubber drew its NOW mark, its clock times and its OBSERVED and FORECAST halves by time, but its cursor by frame number. Before the hours ahead, every frame was five minutes apart and the two agreed. Since D-113 the frames are five minutes apart observed and fifteen ahead: 24 frames over two hours, then 12 over three.
+- The newest observed frame is two-thirds along the frames but two-fifths along the time. The map opened on it, correctly, and drew it in the FORECAST half.
+- The frame under the NOW mark was about an hour old.
+
+The test reproduced it first: the cursor at 0.733, NOW at 0.478.
+
+**The fix.** One axis, time. The cursor is where the frame shown lies in time along the loop, as NOW and the clock times at the bar's ends already were. At now the cursor sits on NOW; a forecast frame lies past it; stepping into the hours ahead moves the cursor in longer strides, as the frames are farther apart.
+
+**Mutation verdict.** The cursor by frame number again is what the test caught first.

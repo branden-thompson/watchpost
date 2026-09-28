@@ -9,6 +9,7 @@ package tty
 
 import (
 	"context"
+	"math"
 	"os"
 	"strings"
 	"testing"
@@ -641,5 +642,36 @@ func TestALongTitleGivesWayToTheTab(t *testing.T) {
 	}
 	if !strings.Contains(before, "…") {
 		t.Errorf("the shortened title %q does not say it was shortened", before)
+	}
+}
+
+// TestTheScrubbersNowIsWhereNowIs is UAT-2 U2-33: the cursor was placed by
+// frame number and NOW by time, and the loop's frames are five minutes apart
+// observed and fifteen ahead - so the newest observed frame drew two-thirds
+// along, in the FORECAST half, and the frame under the NOW mark was an hour
+// old. The scrubber is one axis, time: at now the cursor is on NOW, a
+// forecast frame lies past it, the oldest at the start and the newest at
+// the end.
+func TestTheScrubbersNowIsWhereNowIs(t *testing.T) {
+	d := mapDash(t, Config{MapFeed: boxFeed(-117.6, -117.1, false), MapRadar: aheadFeed(t),
+		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true}, {Key: RadarLayer, Label: "Radar", On: true}}})
+	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
+	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})
+	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+	s, ok := d.radarScrubber()
+	if !ok || len(s.ticks) != 1 {
+		t.Fatalf("the scrubber is %+v (%v); want NOW's tick", s, ok)
+	}
+	if math.Abs(s.cursor-s.ticks[0]) > 1e-9 {
+		t.Errorf("at now the cursor is at %.3f and NOW at %.3f; want them one", s.cursor, s.ticks[0])
+	}
+	st := d.mapPane.m.Loop()
+	want := float64(st.Now.Sub(st.Oldest)) / float64(st.Newest.Sub(st.Oldest))
+	if math.Abs(s.ticks[0]-want) > 1e-9 {
+		t.Errorf("NOW is at %.3f; want %.3f, its time along the loop's", s.ticks[0], want)
+	}
+	d = shiftKey(d, tea.KeyRight)
+	if s, _ := d.radarScrubber(); s.cursor <= s.ticks[0] {
+		t.Errorf("a forecast frame is at %.3f, NOW at %.3f; want it past NOW", s.cursor, s.ticks[0])
 	}
 }
