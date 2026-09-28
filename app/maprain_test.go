@@ -190,8 +190,8 @@ func TestForecastModeDrawsEachDaysRainWithItsTotals(t *testing.T) {
 	if !marks["d0 1.0in"] || !marks["d1 *2.0in"] {
 		t.Errorf("the totals marked are %v; want an inch of rain on day 1 and two of snow, marked apart, on day 2", marks)
 	}
-	if len(out.RainNotes) == 0 || !strings.Contains(out.RainNotes[0], "Open-Meteo") {
-		t.Errorf("the rain's notes are %v; want Open-Meteo credited", out.RainNotes)
+	if got := strings.Join(out.Chips[tty.RainLayer], "/"); got != "O-METEO" {
+		t.Errorf("the rain's badge names %q; want Open-Meteo (D-133)", got)
 	}
 }
 

@@ -6,6 +6,7 @@ package app
 import (
 	"context"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 
@@ -48,8 +49,8 @@ func TestFeelsLikeNowIsFilledFromOpenMeteo(t *testing.T) {
 	if len(got.Feels) == 0 || !got.Filled["now/feels"] {
 		t.Fatalf("Now's feels-like is %d grids, filled %v; want Open-Meteo's", len(got.Feels), got.Filled)
 	}
-	if !strings.Contains(strings.Join(got.Notes, " "), "CC BY 4.0") {
-		t.Errorf("the notes %v do not credit Open-Meteo", got.Notes)
+	if !slices.Contains(got.Chips[tty.FeelsLayer], "O-METEO") {
+		t.Errorf("the badge names %v; want Open-Meteo credited (D-133)", got.Chips[tty.FeelsLayer])
 	}
 }
 

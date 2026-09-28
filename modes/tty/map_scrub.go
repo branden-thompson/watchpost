@@ -61,7 +61,8 @@ func (d Dashboard) scrubRows(width int) []string {
 		}
 		block = append(block, l)
 	}
-	block = append(block, "")
+	est := costEstimate(d.mapCost) // under the timeline's right end, as the HUM LEAD drew it (D-133)
+	block = append(block, strings.Repeat(" ", max(d.scrubW()-render.Width(est), 0))+est)
 	if d.scrubBoxFits() {
 		box := d.scrubControls()
 		for i := range block {
@@ -77,6 +78,86 @@ func (d Dashboard) scrubRows(width int) []string {
 	return append(out, "", " "+d.regionsRow(width), "", " "+d.chipsRow(width))
 }
 
+// badgeGap is the space between two badges, as the HUM LEAD drew it.
+const badgeGap = "    "
+
+// badgeRows are the layers drawn, a badge each, "FIRE [NIFC]/[HMS]", in the
+// Overlays menu's order (D-133): the one place under the map their sources
+// are named, in full in the Status window (D-131). A layer off, one with
+// nothing drawn yet, and the radar - its chip is where it was - have none. A
+// second row only when one cannot hold them; a badge is never cut.
+func (d Dashboard) badgeRows(width int) []string {
+	var rows []string
+	row := ""
+	for _, b := range d.badges() {
+		switch {
+		case row == "":
+			row = b
+		case render.Width(row)+len(badgeGap)+render.Width(b) <= width:
+			row += badgeGap + b
+		default:
+			rows, row = append(rows, row), b
+		}
+	}
+	if row != "" {
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+// badges are the layers drawn, each its label and its sources' chips.
+func (d Dashboard) badges() []string {
+	var out []string
+	for _, l := range d.cfg.MapLayers {
+		if l.Key == RadarLayer || (l.Key == RainLayer && d.radarMode()) || !d.layerOn(l.Key) {
+			continue
+		}
+		chips := l.Chips
+		if len(chips) == 0 {
+			chips = d.mapPane.temp.Chips[l.Key] // a source that varies: as the answer drew it
+		}
+		if len(chips) == 0 {
+			continue
+		}
+		faces := make([]string, len(chips))
+		for i, c := range chips {
+			faces[i] = "[" + sourceChip(c) + "]"
+		}
+		out = append(out, badgeLabel(l)+" "+strings.Join(faces, "/"))
+	}
+	return out
+}
+
+// badgeLabel is a layer's word on its badge, as the HUM LEAD wrote them.
+func badgeLabel(l MapLayer) string {
+	switch l.Key {
+	case AlertLayer:
+		return "ALERTS"
+	case TemperatureLayer:
+		return "TEMP"
+	case FeelsLayer:
+		return "FEELS"
+	case RainLayer:
+		return "RAIN"
+	case "quake":
+		return "QUAKES"
+	}
+	return strings.ToUpper(l.Label)
+}
+
+// sourceChip is a source's chip in the colours its chips already have:
+// Open-Meteo's orange and NDFD's green, as temperature's (D-83, D-120); every
+// other plain.
+func sourceChip(name string) string {
+	switch name {
+	case "O-METEO":
+		return render.TintRaw(name, render.Tok(render.MapRadarIEMBG)+";"+render.Tok(render.MapRadarChipFG))
+	case "NDFD":
+		return render.TintRaw(name, render.Tok(render.MapRadarMRMSBG)+";"+render.Tok(render.MapRadarChipFG))
+	}
+	return name
+}
+
 // pictureStatus is the picture's own state and the refresh's estimate, on a
 // row of their own (D-105): loading, offline or coarser; nothing when whole.
 func (d Dashboard) pictureStatus() string {
@@ -84,10 +165,7 @@ func (d Dashboard) pictureStatus() string {
 	if s := d.mapStatusText(); s != "" {
 		parts = append(parts, s)
 	}
-	if est := costEstimate(d.mapCost); est != "" {
-		parts = append(parts, est)
-	}
-	return strings.Join(parts, " · ")
+	return strings.Join(parts, " · ") // the estimate is under the timeline (D-133)
 }
 
 // scrubLead is where the timeline's bar starts: past its back key's chip.

@@ -166,7 +166,7 @@ func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.Ope
 	}
 	switch {
 	case len(t.Rain) > 0:
-		t.RainNotes = []string{temperature.OpenMeteoRainCredit + "."}
+		t.Chips = withChips(t.Chips, tty.RainLayer, "O-METEO") // D-133; the credit in full is the Status window's
 	case failed:
 		t.Problems = append(t.Problems, "Rain and snow: Open-Meteo did not answer") // D-124
 	}

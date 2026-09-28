@@ -92,9 +92,6 @@ func (lp *livePipelines) mapRadar(ctx context.Context, ask tty.MapAsk) tty.MapRa
 		return tty.MapRadar{Note: noRadarNote + ask.Region + "."}
 	}
 	out := tty.MapRadar{Source: src.Name()}
-	if src.Name() == "MRMS" {
-		out.Note = mrmsNote
-	}
 	times, err := src.Times(ctx, ask.Region)
 	if err != nil || len(times) == 0 {
 		if other := lp.radar.other(src, ask.Region); other != nil { // a Setting draws another (D-124)
@@ -447,7 +444,22 @@ func radarLayerCost(in mapInputs) (int64, int) {
 
 // radarHosts are the radar's entries for the Status window's MAP block.
 func radarHosts() []tty.MapSource {
-	return hostsFor(radar.Hosts(), "radar frames of fixed boxes around the region shown (never the view itself)")
+	out := hostsFor(radar.Hosts(), "radar frames of fixed boxes around the region shown (never the view itself)")
+	for i := range out {
+		if out[i].Name == "NOAA / NCEP (MRMS)" {
+			out[i].Notes = []string{mrmsNote} // what never changes about it, off the map (D-132); its chip reads MRMS≈
+		}
+	}
+	return out
+}
+
+// withChips is chips with a layer's set, made if there were none.
+func withChips(chips map[string][]string, layer string, names ...string) map[string][]string {
+	if chips == nil {
+		chips = map[string][]string{}
+	}
+	chips[layer] = names
+	return chips
 }
 
 // hostsFor is a layer's hosts as the Status window's entries, by name, each

@@ -16,6 +16,7 @@ package tty
 // prepared it: U1-28's blink, once a step.
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -74,17 +75,16 @@ type MapTemperature struct {
 	Wind, WindDays []tuimaps.Overlay
 	// Rain is Forecast mode's rain and snow (W12.3, D-116): Now's hour and
 	// each day's heaviest in radar's scale, each day's totals marked on it;
-	// RainNotes its credit, or that it did not answer.
-	Rain      []tuimaps.Overlay
-	RainNotes []string
+	Rain []tuimaps.Overlay
 	// Feels, FeelsHigh and FeelsLow are feels-like's (D-119), as Overlays,
 	// High and Low are temperature's.
 	Feels, FeelsHigh, FeelsLow []tuimaps.Overlay
 	// Waves are wave height's (D-126): Radar mode's every hour, or Forecast
-	// mode's Now; WaveDays Forecast mode's each day's highest; WaveNotes the
-	// credit.
+	// mode's Now; WaveDays Forecast mode's each day's highest.
 	Waves, WaveDays []tuimaps.Overlay
-	WaveNotes       []string
+	// Chips are the sources each of these layers is drawn from, by the
+	// layer's key, as its badge names them (D-133): [O-METEO], [NDFD].
+	Chips map[string][]string
 	// Problems are what went wrong that the listener cannot act on: the
 	// diagnostics', never said to them (D-124).
 	Problems []string
@@ -682,23 +682,17 @@ func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) str
 // shows, as one word for the window's memo (F-30).
 func (d Dashboard) tempMemoKey() string {
 	p := d.mapPane
-	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), strings.Join(p.temp.RainNotes, "\n"), strings.Join(p.temp.WaveNotes, "\n"), strconv.FormatBool(d.rainOn()),
+	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), fmt.Sprint(p.temp.Chips), strconv.FormatBool(d.rainOn()),
 		strconv.Itoa(p.fcStep), strconv.FormatBool(p.fcLow), strconv.FormatBool(p.fcPlaying),
 		strconv.Itoa(len(p.tempGiven)), strings.Join(p.fcTimeline, "\n"), d.stepSource()}, "|")
 }
 
-// tempNotes are the words temperature says under the map: its notes (the
-// credit), and in Radar mode that each frame draws its own hour.
+// tempNotes are the words temperature says under the map: what its source
+// lacks, while it does. Its credit is its badge's, in full the Status
+// window's (D-131, D-132).
 func (d Dashboard) tempNotes() []string {
-	var out []string
 	if d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer) {
-		out = append(out, d.mapPane.temp.Notes...)
+		return d.mapPane.temp.Notes
 	}
-	if d.layerOn(WaveLayer) {
-		out = append(out, d.mapPane.temp.WaveNotes...) // the waves' credit (D-125)
-	}
-	if !d.radarMode() && d.layerOn(RainLayer) {
-		out = append(out, d.mapPane.temp.RainNotes...) // the credit, or that it did not answer
-	}
-	return out
+	return nil
 }

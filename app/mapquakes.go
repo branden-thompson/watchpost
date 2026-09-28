@@ -29,7 +29,7 @@ const quakeLayerKey = "quake"
 
 // The earthquakes, registered: on by default (D-80).
 func init() {
-	registerMapLayer(mapLayer{key: quakeLayerKey, label: "Earthquakes", on: true, cost: quakeLayerCost})
+	registerMapLayer(mapLayer{key: quakeLayerKey, label: "Earthquakes", on: true, cost: quakeLayerCost, chips: []string{"USGS"}})
 }
 
 // quakeFeedBase is USGS's summary feeds' folder: each feed is its name and

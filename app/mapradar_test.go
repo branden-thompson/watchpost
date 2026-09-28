@@ -125,7 +125,7 @@ func TestTheSourceIsMRMSUnlessIEMIsChosenForTheLower48(t *testing.T) {
 	lp := &livePipelines{radar: &radarSources{iem: iem, mrms: mrms}}
 	socal := tty.MapView{W: -119.6, S: 32.1, E: -115.0, N: 34.2}
 	got := lp.mapRadar(context.Background(), tty.MapAsk{Region: geo.RegionContiguous, View: socal})
-	if got.Source != "MRMS" || !strings.Contains(got.Note, "approximate") || len(got.Overlays) == 0 {
+	if got.Source != "MRMS" || got.Note != "" || len(got.Overlays) == 0 { // its colours approximate: the Status window's and the chip's MRMS≈ (D-132)
 		t.Fatalf("the default is %+v", got)
 	}
 	for _, o := range got.Overlays {

@@ -442,16 +442,18 @@ func (d Dashboard) reportPlace() Dashboard {
 	return d
 }
 
-// noteLines are the feed's notes, wrapped to the map's width.
+// noteLines are the rows under the map before its status: the badges
+// (D-133), then the notes that come and go, each only while it applies
+// (D-132), then the cost warning; wrapped to the map's width.
 func (d Dashboard) noteLines(width int) []string {
-	var out []string
+	out := d.badgeRows(width)
 	for _, n := range d.mapPane.notes {
 		out = append(out, render.WrapText(n, width)...)
 	}
 	if d.mapPane.radarSource != "" && d.mapPane.radarNote != "" && d.layerOn(RadarLayer) {
-		out = append(out, render.WrapText(d.mapPane.radarNote, width)...) // W8.15a: MRMS's approximate colours; D-84's missing data
+		out = append(out, render.WrapText(d.mapPane.radarNote, width)...) // D-84's missing data; a source that did not answer, with its Setting
 	}
-	for _, n := range d.tempNotes() { // W10: the credit, and what a source lacks
+	for _, n := range d.tempNotes() { // W10: what a source lacks
 		out = append(out, render.WrapText(n, width)...)
 	}
 	out = append(out, mapCostLine(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words laid out as D-89

@@ -58,6 +58,20 @@ func (ts *tempSources) sourceFor(ask tty.MapAsk) temperature.Source {
 	return ts.om
 }
 
+// tempChips are the chips temperature, feels-like and wind - one request -
+// are credited by on their badges (D-133): Open-Meteo's alone, NDFD's with
+// Open-Meteo's where it filled what NDFD lacked, or NDFD's alone.
+func tempChips(source string, filled bool) map[string][]string {
+	chips := []string{"NDFD"}
+	switch {
+	case source == "Open-Meteo":
+		chips = []string{"O-METEO"}
+	case filled:
+		chips = []string{"NDFD", "O-METEO"}
+	}
+	return map[string][]string{tty.TemperatureLayer: chips, tty.FeelsLayer: chips, tty.WindLayer: chips}
+}
+
 // tempFrameNote is what Radar mode says of its temperature (D-96).
 const tempFrameNote = "Each radar frame draws its own hour's temperature."
 
@@ -146,12 +160,7 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 	if fellBack == len(boxes) {
 		out.Source = fill.Name() // every box is Open-Meteo's: the chip names it
 	}
-	if credit {
-		out.Notes = append(out.Notes, temperature.OpenMeteoCredit+".")
-	}
-	if !ask.Forecast {
-		out.Notes = append(out.Notes, tempFrameNote)
-	}
+	out.Chips = tempChips(out.Source, credit) // the credit is the badge's, in full the Status window's (D-131)
 	var said []string
 	for n := range missing {
 		said = append(said, n)
@@ -488,5 +497,14 @@ func tempLayerCost(in mapInputs) (int64, int) {
 
 // tempHosts are the temperature's entries for the Status window's MAP block.
 func tempHosts() []tty.MapSource {
-	return hostsFor(temperature.Hosts(), "temperatures at points across fixed boxes around the region shown (never the view itself)")
+	out := hostsFor(temperature.Hosts(), "temperatures at points across fixed boxes around the region shown (never the view itself)")
+	for i := range out {
+		switch out[i].Name { // the full credits, and what never changes (D-131, D-132)
+		case "Open-Meteo":
+			out[i].Notes = []string{temperature.OpenMeteoCredit + ".", temperature.OpenMeteoRainCredit + ".", tempFrameNote}
+		case "Open-Meteo Marine":
+			out[i].Notes = []string{temperature.OpenMeteoWavesCredit + "."}
+		}
+	}
+	return out
 }

@@ -90,7 +90,7 @@ func TestTheRadarIsShownWhole(t *testing.T) {
 	if st := d.mapPane.m.Loop(); st.Count != 12 || st.Playing {
 		t.Errorf("the map opens on %+v; want the loop, stopped on the newest", st)
 	}
-	if !strings.Contains(stripANSITest(d.mapStatusLine()), "Radar  MRMS ") {
+	if !strings.Contains(stripANSITest(d.mapStatusLine()), "Radar  MRMS≈ ") {
 		t.Errorf("the status line does not say the loop: %q", stripANSITest(d.mapStatusLine()))
 	}
 }
@@ -104,7 +104,8 @@ func TestTheSourcesChipIsInTheUpperRight(t *testing.T) {
 		d := openRadarMap(t, source, &asked)
 		row := strings.Split(d.mapWindow(d.opts()), "\n")[1] // the tab's row (D-120)
 		plain := stripANSITest(row)
-		if !strings.Contains(plain, "[  "+source+"  ]  ") || !strings.HasSuffix(strings.TrimRight(plain, " "), "│") {
+		face := map[string]string{"MRMS": "MRMS≈", "IEM": "IEM"}[source] // MRMS's colours approximate (D-132)
+		if !strings.Contains(plain, "[  "+face+"  ]  ") || !strings.HasSuffix(strings.TrimRight(plain, " "), "│") {
 			t.Errorf("%s: the tab's row is %q, no chip at its right", source, plain)
 		}
 		if !strings.Contains(row, render.Tok(ground)) {
@@ -386,10 +387,10 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 		return -1
 	}
 	legend, warn, est, loop, bar, maps, chips := at("RADAR LEGEND"), at("Map may experience"), at("Est. 2.3MB / 197 Requests"), at("FRAME"), at("shift+"), at("MAPS:"), at("Area Alerts")
-	order := []int{legend, warn, est, loop, bar, maps, chips}
+	order := []int{legend, warn, loop, bar, est, maps, chips} // the estimate under the timeline (D-133)
 	for i := 1; i < len(order); i++ {
 		if order[i] <= order[i-1] {
-			t.Errorf("the rows are out of the mock's order: legend, warning, estimate, loop, bar, maps, chips at %v", order)
+			t.Errorf("the rows are out of the mock's order: legend, warning, loop, bar, estimate, maps, chips at %v", order)
 			break
 		}
 	}
@@ -397,7 +398,7 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 		t.Error("no blank before the region row, or before the chips")
 	}
 	row := plain[loop]
-	words := []string{"RADAR  MRMS ", "FRAME 12 / 12", "NEWEST 5 MIN AGO", "STOPPED"}
+	words := []string{"RADAR  MRMS≈ ", "FRAME 12 / 12", "NEWEST 5 MIN AGO", "STOPPED"}
 	last := -1
 	for _, w := range words {
 		i := strings.Index(row, w)
@@ -421,7 +422,7 @@ func TestTheRowsUnderTheMapAreTheMocks(t *testing.T) {
 	if !strings.Contains(plain[legend], "LIGHTER") || !strings.Contains(plain[legend], "HEAVIER") || !strings.Contains(lines[legend], "48;2;") {
 		t.Errorf("the colour row is %q", plain[legend])
 	}
-	if !strings.Contains(plain[warn], "Switch off layers") || strings.Contains(plain[warn], "Est.") {
+	if !strings.Contains(plain[warn], "Adjust layers/zoom to improve experience.") || strings.Contains(plain[warn], "Est.") {
 		t.Errorf("the warning is %q: one line, the estimate on its own row", plain[warn])
 	}
 	for i := 0; i < d.mapBodySize().Rows && i < len(plain); i++ {
@@ -492,7 +493,7 @@ func TestTheRadarBadgeIsATab(t *testing.T) {
 	}
 	rows := strings.Split(d.mapWindow(d.opts()), "\n")
 	plain := func(i int) string { return strings.TrimRight(stripANSITest(rows[i]), " ") }
-	words := " RADAR DATA  [  MRMS  ]  12:55 AM "
+	words := " RADAR DATA  [  MRMS≈  ]  12:55 AM "
 	top, tab, foot := plain(0), plain(1), plain(2)
 	at := strings.Index(tab, "│"+words+"│")
 	if at < 0 || !strings.HasSuffix(tab, "│"+words+"│") {
@@ -633,7 +634,7 @@ func TestALongTitleGivesWayToTheTab(t *testing.T) {
 	rows := strings.Split(stripANSITest(d.mapWindow(d.opts())), "\n")
 	top := []rune(strings.TrimRight(rows[0], " "))
 	tee := strings.LastIndex(string(top), "┬")
-	if tee < 0 || !strings.Contains(rows[1], "[  MRMS  ]") {
+	if tee < 0 || !strings.Contains(rows[1], "[  MRMS≈  ]") {
 		t.Fatalf("at 80 columns the tab is gone:\n%s\n%s", rows[0], rows[1])
 	}
 	before := strings.TrimRight(string(top)[:tee], "─")

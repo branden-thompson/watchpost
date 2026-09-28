@@ -62,7 +62,7 @@ func TestWhatNoSettingFixesGoesToTheDiagnostics(t *testing.T) {
 	for name, c := range map[string]struct {
 		said     string
 		problems []string
-	}{"HRRR": {hrrr.Note, hrrr.Problems}, "Open-Meteo ahead": {model.Note, model.Problems}, "rain": {strings.Join(rain.RainNotes, " "), rain.Problems}} {
+	}{"HRRR": {hrrr.Note, hrrr.Problems}, "Open-Meteo ahead": {model.Note, model.Problems}, "rain": {strings.Join(rain.Chips[tty.RainLayer], " "), rain.Problems}} {
 		if c.said != "" || len(c.problems) == 0 {
 			t.Errorf("%s not answering is said %q, told the diagnostics %v", name, c.said, c.problems)
 		}

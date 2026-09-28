@@ -9,6 +9,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -101,8 +102,8 @@ func TestRadarModeDrawsEachHourDuringItself(t *testing.T) {
 	if len(hours) != 4 {
 		t.Errorf("%d hours drawn; want the three past and the current one", len(hours))
 	}
-	if !strings.Contains(strings.Join(got.Notes, " "), "CC BY 4.0") {
-		t.Errorf("Open-Meteo drawn without its credit: %v", got.Notes)
+	if !slices.Contains(got.Chips[tty.TemperatureLayer], "O-METEO") {
+		t.Errorf("Open-Meteo drawn without its chip: %v (D-133)", got.Chips)
 	}
 }
 
@@ -242,8 +243,8 @@ func TestADayTheSourceLacksIsFilledFromOpenMeteo(t *testing.T) {
 		t.Errorf("filled %v; want today's high alone", got.Filled)
 	}
 	notes := strings.Join(got.Notes, " ")
-	if !strings.Contains(notes, "CC BY 4.0") || strings.Contains(notes, "No high for Today") {
-		t.Errorf("the notes are %q; want Open-Meteo's credit and no gap said", notes)
+	if !slices.Contains(got.Chips[tty.TemperatureLayer], "O-METEO") || strings.Contains(notes, "No high for Today") {
+		t.Errorf("the notes are %q, the chips %v; want Open-Meteo's chip and no gap said", notes, got.Chips)
 	}
 	if om.asked == 0 {
 		t.Error("Open-Meteo was never asked")
@@ -289,8 +290,8 @@ func TestABoxNDFDRefusesFallsBackToOpenMeteo(t *testing.T) {
 		t.Fatalf("%d highs from %q; want Hawaii from Open-Meteo, named", len(got.High), got.Source)
 	}
 	notes := strings.Join(got.Notes, " ")
-	if !strings.Contains(notes, "NDFD did not answer") || !strings.Contains(notes, "Open-Meteo") || !strings.Contains(notes, "CC BY 4.0") {
-		t.Errorf("the fallback was not said and credited: %q", notes)
+	if !strings.Contains(notes, "NDFD did not answer") || !strings.Contains(notes, "Open-Meteo") || !slices.Contains(got.Chips[tty.TemperatureLayer], "O-METEO") {
+		t.Errorf("the fallback was not said and credited: %q, chips %v", notes, got.Chips)
 	}
 }
 

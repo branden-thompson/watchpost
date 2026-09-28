@@ -176,7 +176,19 @@ func (d Dashboard) radarChipText() string {
 	if d.mapPane.radarSource == "" || !d.layerOn(RadarLayer) {
 		return ""
 	}
-	return " " + d.mapPane.radarSource + " "
+	return " " + d.radarFace() + " "
+}
+
+// radarFace is the radar's source as its chips say it: MRMS≈, its colours
+// read from its legend and so approximate (D-132), or IEM.
+func (d Dashboard) radarFace() string {
+	if d.mapPane.radarSource != "MRMS" {
+		return d.mapPane.radarSource
+	}
+	if d.cfg.ASCII {
+		return "MRMS~"
+	}
+	return "MRMS≈"
 }
 
 // radarBadge is the radar's badge (D-92), three rows: RADAR DATA; the
@@ -191,7 +203,7 @@ func (d Dashboard) radarBadge() string {
 		chip := "[" + render.TintRaw("  "+d.aheadName()+"  ", render.Tok(render.MapRadarModelBG)+";"+render.Tok(render.MapRadarChipFG)) + "]"
 		return mapBadge(render.Tint("RADAR FCST", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
 	}
-	chip := "[" + render.TintRaw("  "+d.mapPane.radarSource+"  ", d.radarChipTones()) + "]"
+	chip := "[" + render.TintRaw("  "+d.radarFace()+"  ", d.radarChipTones()) + "]"
 	return mapBadge(render.Tint("RADAR DATA", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
 }
 
@@ -375,7 +387,7 @@ func (d Dashboard) rainRow(head string, width int) string {
 // radarChip is the source in the badge's colours (D-83), for the status line
 // (D-89).
 func (d Dashboard) radarChip() string {
-	return render.TintRaw(" "+d.mapPane.radarSource+" ", d.radarChipTones())
+	return render.TintRaw(" "+d.radarFace()+" ", d.radarChipTones())
 }
 
 // radarBadgeTimeNow is the badge's time row: the moment shown in the

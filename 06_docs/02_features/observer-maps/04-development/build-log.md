@@ -1547,3 +1547,34 @@ or two a field box, still asked after the observed loop. W14 measures it with th
 **Mutation verdicts** (targeted, 6), all caught. One survived at first - six in flight changed to
 one - because the test compared the peak with the constant it was changing; it now holds the six
 D-130 ruled.
+
+## Batch 45 — the badge row (W13.12, U2-36, D-131 to D-133, 2026-09-28)
+
+**The finding.** With every layer on, the notes under the map ran to six lines: MRMS's approximate
+colours, three credit sentences, that each radar frame draws its hour's temperature, the cost
+warning and the estimate (U2-36). The HUM LEAD drew one badge row in their place.
+
+**Rulings.**
+- **D-131, "Chips + full in Status":** the badge row credits in short chips; the full credit lines
+  are in the Status window's MAP block. CC BY 4.0 allows credit "in any reasonable manner based on
+  the medium", including pointing to where the details are.
+- **D-132, "Fixed ones move":** the two notes that never change go to the Status window; MRMS's
+  chip reads MRMS≈ (MRMS~ in `--ascii`). Notes that come and go keep a row, only while one applies.
+- **D-133, "True sources":** FIRE [NIFC]/[HMS], not the mock's [FIRMS], which the map's fire does
+  not read.
+
+**As built.**
+- One badge row under the colour row, in the Overlays menu's order: a layer off, one not yet drawn,
+  and the radar have none. A second row only when the window cannot hold one; no badge is cut.
+- Layers whose sources never change say them as they register (`MapLayer.Chips`). Temperature,
+  feels-like and wind say theirs as drawn - [O-METEO], [NDFD], or [NDFD]/[O-METEO] where Open-Meteo
+  filled what NDFD lacked - and waves and rain beside them (`MapTemperature.Chips`).
+- The Open-Meteo, Open-Meteo Marine and MRMS entries in the Status window carry the full lines
+  (`MapSource.Notes`).
+- The cost warning is one line in the HUM LEAD's words; the estimate sits under the timeline's
+  right end, off the status row.
+
+**U2-35 re-checked by the HUM LEAD:** "much better - radar showed up in < 3s".
+
+**Mutation verdicts** (targeted, 10), all caught. The three app tests were first run with the app's
+new fields in place, so each was held RED by a mutant instead.

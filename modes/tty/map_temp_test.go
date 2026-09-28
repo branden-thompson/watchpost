@@ -52,7 +52,8 @@ func tempAnswer(asks *[]MapAsk) func(context.Context, MapAsk) MapTemperature {
 		*asks = append(*asks, ask)
 		if !ask.Forecast {
 			h := ask.Anchor
-			return MapTemperature{Source: "Open-Meteo", Notes: []string{"Temperature: Open-Meteo.com (CC BY 4.0), interpolated."},
+			om := []string{"O-METEO"}
+			return MapTemperature{Source: "Open-Meteo", Chips: map[string][]string{TemperatureLayer: om, FeelsLayer: om, WindLayer: om, WaveLayer: {"NDFD", "O-METEO"}},
 				Overlays: []tuimaps.Overlay{grid("h0", tuimaps.Span{From: h.Add(-time.Hour), Until: h.Add(-time.Nanosecond)}, 60),
 					grid("h1", tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}, 62)},
 				Wind:  []tuimaps.Overlay{wind("h1", tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)})},
@@ -62,8 +63,8 @@ func tempAnswer(asks *[]MapAsk) func(context.Context, MapAsk) MapTemperature {
 		out := MapTemperature{Source: "NDFD", Overlays: []tuimaps.Overlay{grid("now", steps[0].Span, 61)},
 			Wind: []tuimaps.Overlay{wind("now", steps[0].Span)}, Rain: []tuimaps.Overlay{rain("now", steps[0].Span)},
 			Feels: []tuimaps.Overlay{feels("now", steps[0].Span, 64)}, Waves: []tuimaps.Overlay{waves("now", steps[0].Span)},
-			WaveNotes: []string{"Waves: NWS NDFD near shore, Open-Meteo.com (CC BY 4.0) beyond, interpolated."},
-			RainNotes: []string{"Rain and snow: Open-Meteo.com (CC BY 4.0), a model's forecast, interpolated."}}
+			Chips: map[string][]string{TemperatureLayer: {"NDFD"}, FeelsLayer: {"NDFD"}, WindLayer: {"NDFD"},
+				WaveLayer: {"NDFD", "O-METEO"}, RainLayer: {"O-METEO"}}}
 		for k, s := range steps[1:] {
 			out.High = append(out.High, grid("d"+string(rune('0'+k))+"/high", s.Span, 80))
 			out.Low = append(out.Low, grid("d"+string(rune('0'+k))+"/low", s.Span, 50))

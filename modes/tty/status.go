@@ -862,7 +862,12 @@ func providersOf(sn *snapshot.Snapshot) []snapshot.ProviderStatus {
 
 // MapSource is one service the map contacts, its host, and what it is sent
 // (0.18.0 D-75: the Status window lists them, where FR-9.4's words were).
-type MapSource struct{ Name, Host, Use string }
+type MapSource struct {
+	Name, Host, Use string
+	// Notes are said under the source: its full credit, and what never
+	// changes about it (D-131, D-132).
+	Notes []string
+}
 
 // mapSourceLines is the MAP block: each service the map contacts, only while a
 // map is open, and what it is sent (FR-9.4 as D-75 amends it).
@@ -874,6 +879,9 @@ func (d Dashboard) mapSourceLines() []string {
 	for _, s := range d.cfg.MapSources {
 		out = append(out, "  "+s.Name+"  "+render.Tint(s.Host, render.Tok(render.TableMuted)))
 		out = append(out, "    "+s.Use)
+		for _, n := range s.Notes {
+			out = append(out, "    "+render.Tint(n, render.Tok(render.TableMuted))) // D-131, D-132: the full credit
+		}
 	}
 	return out
 }

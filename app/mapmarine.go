@@ -23,8 +23,8 @@ import (
 
 // The sea's stations, registered: off by default (D-127, D-128).
 func init() {
-	registerMapLayer(mapLayer{key: tty.BuoyLayer, label: "Buoys", on: false, cost: buoyLayerCost})
-	registerMapLayer(mapLayer{key: tty.TideLayer, label: "Tides", on: false, cost: tideLayerCost})
+	registerMapLayer(mapLayer{key: tty.BuoyLayer, label: "Buoys", on: false, cost: buoyLayerCost, chips: []string{"NDBC"}})
+	registerMapLayer(mapLayer{key: tty.TideLayer, label: "Tides", on: false, cost: tideLayerCost, chips: []string{"CO-OPS"}})
 }
 
 // buoyAge is the oldest reading drawn: two hours (D-127).

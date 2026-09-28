@@ -102,6 +102,7 @@ type mapLayer struct {
 	key, label string
 	on         bool
 	cost       func(in mapInputs) (bytes int64, requests int)
+	chips      []string // the sources its badge names, where they never change (D-133)
 }
 
 // mapSource is one entry of FR-3.8's closed list: a name and the exact
@@ -137,7 +138,7 @@ func registerMapSource(s mapSource) { mapSources = append(mapSources, s) }
 func windowLayers() []tty.MapLayer {
 	out := make([]tty.MapLayer, 0, len(mapLayers))
 	for _, l := range mapLayers {
-		out = append(out, tty.MapLayer{Key: l.key, Label: l.label, On: l.on})
+		out = append(out, tty.MapLayer{Key: l.key, Label: l.label, On: l.on, Chips: l.chips})
 	}
 	return out
 }

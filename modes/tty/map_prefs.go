@@ -23,6 +23,10 @@ import (
 type MapLayer struct {
 	Key, Label string
 	On         bool
+	// Chips are the sources the layer's badge names when they never change
+	// (D-133): FIRE [NIFC]/[HMS]. A layer whose sources vary has none; its
+	// answer names them.
+	Chips []string
 }
 
 // AlertLayer is the alert areas' key: the app registers the layer under it,
@@ -93,12 +97,12 @@ func costWarningParts(c MapCost) (head, detail string) {
 	}
 	return "Map may experience performance issues at this zoom level.",
 		"Est. " + strconv.FormatFloat(float64(c.Bytes)/1e6, 'f', 1, 64) + "MB / " + strconv.Itoa(c.Requests) +
-			" Requests | Switch off layers or zoom in for a better experience."
+			" Requests | " + costAdvice
 }
 
 // costAdvice is the warning's second sentence, said beside the first under
-// the map (D-89).
-const costAdvice = "Switch off layers or zoom in for a better experience."
+// the map, in the HUM LEAD's words (D-133).
+const costAdvice = "Adjust layers/zoom to improve experience."
 
 // costEstimate is the estimate alone, which the status line carries after the
 // radar's (D-89); nothing at or under both thresholds.
@@ -117,7 +121,7 @@ func mapCostLine(c MapCost, width int) []string {
 	if head == "" {
 		return nil
 	}
-	return render.WrapLines([]string{render.Tint(head, render.Tok(render.ListPointer)) + "  " + costAdvice}, width)
+	return render.WrapLines([]string{render.Tint(head, render.Tok(render.ListPointer)) + " " + costAdvice}, width)
 }
 
 // costWarningLines is the warning wrapped to a width, its first sentence in

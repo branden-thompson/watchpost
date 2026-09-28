@@ -24,7 +24,7 @@ import (
 
 // Fire, registered: on by default, as alerts and quakes are (D-76, D-121).
 func init() {
-	registerMapLayer(mapLayer{key: tty.FireLayer, label: "Fire", on: true, cost: fireLayerCost})
+	registerMapLayer(mapLayer{key: tty.FireLayer, label: "Fire", on: true, cost: fireLayerCost, chips: []string{"NIFC", "HMS"}})
 }
 
 // fireInView is the fire the feed draws: the perimeters of the view's field

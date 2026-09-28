@@ -156,7 +156,7 @@ const zoneShapeBytes = 10_000
 
 // The alert areas, registered (W1.13, R-9.2): on by default.
 func init() {
-	registerMapLayer(mapLayer{key: alertLayerKey, label: "Alert areas", on: true, cost: alertLayerCost})
+	registerMapLayer(mapLayer{key: alertLayerKey, label: "Alert areas", on: true, cost: alertLayerCost, chips: []string{"NWS"}})
 }
 
 // alertLayerCost is what the alert areas fetch in a refresh, as if nothing

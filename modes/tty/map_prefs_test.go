@@ -191,8 +191,8 @@ func TestTheCostWarningsThresholds(t *testing.T) {
 	}{
 		{MapCost{Bytes: 1_000_000, Requests: 10}, ""},
 		{MapCost{Bytes: 2_000_000, Requests: 40}, ""},
-		{MapCost{Bytes: 2_000_001, Requests: 40}, "Map may experience performance issues at this zoom level. Est. 2.0MB / 40 Requests | Switch off layers or zoom in for a better experience."},
-		{MapCost{Bytes: 2_200_000, Requests: 211}, "Map may experience performance issues at this zoom level. Est. 2.2MB / 211 Requests | Switch off layers or zoom in for a better experience."},
+		{MapCost{Bytes: 2_000_001, Requests: 40}, "Map may experience performance issues at this zoom level. Est. 2.0MB / 40 Requests | Adjust layers/zoom to improve experience."},
+		{MapCost{Bytes: 2_200_000, Requests: 211}, "Map may experience performance issues at this zoom level. Est. 2.2MB / 211 Requests | Adjust layers/zoom to improve experience."},
 	} {
 		head, detail := costWarningParts(c.cost)
 		if got := strings.TrimSpace(head + " " + detail); got != c.want {

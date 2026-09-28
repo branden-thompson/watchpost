@@ -710,6 +710,7 @@ func subjectOf
 func suggestHook
 func tapeHead
 func tellUnder
+func tempChips
 func tempGrid
 func tempHosts
 func tempLayerCost
@@ -752,6 +753,7 @@ func windForecastGrids
 func windGrid
 func windHourGrids
 func windowLayers
+func withChips
 func withForecast
 func withModelRain
 func withPool

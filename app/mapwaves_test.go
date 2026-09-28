@@ -84,8 +84,8 @@ func TestWavesFollowTheModes(t *testing.T) {
 	if d := fc.WaveDays[2]; d.During != steps[3].Span || d.Grid.Type.Unit != "m" || math.Abs(d.Grid.Values[0]-2) > 1e-6 {
 		t.Errorf("day 3's waves are %v %s during %v; want Open-Meteo's 2 m where NDFD has no day", d.Grid.Values[0], d.Grid.Type.Unit, d.During)
 	}
-	if !strings.Contains(strings.Join(fc.WaveNotes, " "), "Open-Meteo") {
-		t.Errorf("the waves' notes are %v; want the credit", fc.WaveNotes)
+	if got := strings.Join(fc.Chips[tty.WaveLayer], "/"); got != "NDFD/O-METEO" {
+		t.Errorf("the waves' badge names %q; want NDFD and Open-Meteo (D-133)", got)
 	}
 }
 
@@ -93,8 +93,8 @@ func TestWavesFollowTheModes(t *testing.T) {
 // Setting offers another source, so a failure is the diagnostics' alone.
 func TestWavesThatDidNotAnswerGoToTheDiagnostics(t *testing.T) {
 	got := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{failed: true}, fakeWaves{failed: true}, tempAsk(false), tempNow)
-	if len(got.Waves) != 0 || len(got.WaveNotes) != 0 || len(got.Problems) == 0 {
-		t.Errorf("failed waves: %d grids, notes %v, problems %v; want the diagnostics told alone", len(got.Waves), got.WaveNotes, got.Problems)
+	if len(got.Waves) != 0 || len(got.Chips[tty.WaveLayer]) != 0 || len(got.Problems) == 0 {
+		t.Errorf("failed waves: %d grids, chips %v, problems %v; want the diagnostics told alone", len(got.Waves), got.Chips, got.Problems)
 	}
 }
 

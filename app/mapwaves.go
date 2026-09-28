@@ -86,7 +86,7 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd, om waveSource, a
 		}
 	}
 	if len(t.Waves)+len(t.WaveDays) > 0 {
-		t.WaveNotes = []string{temperature.OpenMeteoWavesCredit + "."}
+		t.Chips = withChips(t.Chips, tty.WaveLayer, "NDFD", "O-METEO") // D-133; the credit in full is the Status window's
 	}
 	return t
 }
