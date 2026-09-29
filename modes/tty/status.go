@@ -864,8 +864,8 @@ func providersOf(sn *snapshot.Snapshot) []snapshot.ProviderStatus {
 // (0.18.0 D-75: the Status window lists them, where FR-9.4's words were).
 type MapSource struct {
 	Name, Host, Use string
-	// Notes are said under the source: its full credit, and what never
-	// changes about it (D-131, D-132).
+	// Notes are said under the source: what never changes about its data
+	// (D-132). Its credit is the About window's (D-148).
 	Notes []string
 }
 
@@ -880,7 +880,7 @@ func (d Dashboard) mapSourceLines() []string {
 		out = append(out, "  "+s.Name+"  "+render.Tint(s.Host, render.Tok(render.TableMuted)))
 		out = append(out, "    "+s.Use)
 		for _, n := range s.Notes {
-			out = append(out, "    "+render.Tint(n, render.Tok(render.TableMuted))) // D-131, D-132: the full credit
+			out = append(out, "    "+render.Tint(n, render.Tok(render.TableMuted))) // D-132: about the data, never a credit (D-148)
 		}
 	}
 	return out

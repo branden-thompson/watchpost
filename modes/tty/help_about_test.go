@@ -45,10 +45,12 @@ func TestHelpFloatsOverDashboard(t *testing.T) {
 }
 
 func TestAboutWindowMatchesMock(t *testing.T) {
-	// UAT 68/70/75: [a] floats the About window (60 cols): centred title +
+	// UAT 68/70/75, 0.18.0 D-148: [a] floats the About window (78 cols): centred title +
 	// version, the app-owned credits list + licence notice and the build
 	// stack inset 3 from the frame, maker lines centred; esc closes.
-	m, err := NewDashboard(Config{Version: "0.1.0-test", Credits: []string{"NOAA National Weather Service (api.weather.gov)", "GeoNames.org cities & postal codes (CC BY 4.0)"}})
+	m, err := NewDashboard(Config{Version: "0.1.0-test", Credits: []string{"NOAA National Weather Service (api.weather.gov)", "GeoNames.org cities & postal codes (CC BY 4.0)"},
+		MapCredits: []string{"Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors (ODbL)", strings.Repeat("a long credit ", 7) + "wraps."},
+		AboutNotes: []string{"Not a substitute for official warnings."}}) // D-148: every credit here, the map's too
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,21 +71,28 @@ func TestAboutWindowMatchesMock(t *testing.T) {
 	}
 	body := strings.Join(frame, "\n")
 	for _, want := range []string{
-		"│                    WATCHPOST Observer                    │",
-		"│                       v 0.1.0-test                       │", // 12 chars centred on the 58-cell interior (the mock's {v 0.0.0-dev} is 13)
-		"│   Data Provided by:                                      │",
-		"│   NOAA National Weather Service (api.weather.gov)        │",
-		"│   GeoNames.org cities & postal codes (CC BY 4.0)         │", // the app's list renders as given (UAT 75)
-		"│   All sources free to use with attribution.              │",
-		"│   Built with:                                            │",
-		"│   STUDS - Stylized Terminal UI Design System             │",
-		"│            Made with ♥ by Branden R. Thompson            │",
-		"│                 github: branden-thompson                 │",
-		"│             Make CLIs Great for Humans Again             │",
+		"│                             WATCHPOST Observer                             │",
+		"│                                v 0.1.0-test                                │",
+		"│   Data Provided by:                                                        │",
+		"│   NOAA National Weather Service (api.weather.gov)                          │",
+		"│   GeoNames.org cities & postal codes (CC BY 4.0)                           │",
+		"│   Maps:                                                                    │",
+		"│   Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors       │",
+		"│     (ODbL)                                                                 │", // wrapped under its start
+		"│   Not a substitute for official warnings.                                  │",
+		"│   All sources free to use with attribution.                                │",
+		"│   Built with:                                                              │",
+		"│   STUDS - Stylized Terminal UI Design System                               │",
+		"│                     Made with ♥ by Branden R. Thompson                     │",
+		"│                          github: branden-thompson                          │",
+		"│                      Make CLIs Great for Humans Again                      │",
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("About window missing %q:\n%s", want, body)
 		}
+	}
+	if !strings.Contains(body, "│     credit a long credit") || strings.Index(body, "Maps:") > strings.Index(body, "Not a substitute") || strings.Index(body, "Data Provided by:") > strings.Index(body, "Maps:") {
+		t.Errorf("a long credit does not wrap under its start, or the sections are out of order - the station's, the map's, then the notes:\n%s", body)
 	}
 	if !strings.Contains(body, "│   GO "+strings.TrimPrefix(runtime.Version(), "go")+" | BubbleTea | LipGloss |") {
 		t.Fatalf("build line must carry the running Go version:\n%s", body)

@@ -286,13 +286,13 @@ func orDefault(s, alt string) string {
 	return s
 }
 
-// About window (UAT 68/70 mock, 60 cols): title + version centred, the
-// data providers and the build stack inset 3, the maker lines centred. Lines
-// are composed on the mock's 58-cell interior and handed to the panel
-// minus the two cells its chrome already draws, so every offset matches
-// the mock exactly. Providers come from the live provider registry so a
-// new data source lists itself.
-const aboutWidth = 60
+// About window (UAT 68/70 mock): title + version centred, the data providers
+// and the build stack inset 3, the maker lines centred. Lines are composed on
+// the interior and handed to the panel minus the two cells its chrome
+// already draws. Providers come from the live provider registry so a new
+// data source lists itself. WIDENED TO 78 (0.18.0 D-148): every credit is
+// here now, the map's too, and a long one wraps under its own start.
+const aboutWidth = 78
 
 func (d Dashboard) aboutLines(o render.Opts) []string {
 	interior := aboutWidth - 2
@@ -308,8 +308,28 @@ func (d Dashboard) aboutLines(o render.Opts) []string {
 		inset("Data Provided by:"),
 		"",
 	}
+	credit := func(p string) { // a long credit wraps, its lines under its own start
+		for i, l := range render.WrapText(p, interior-2*modalInset-2) {
+			if i > 0 {
+				l = "  " + l
+			}
+			lines = append(lines, inset(l))
+		}
+	}
 	for _, p := range d.cfg.Credits {
-		lines = append(lines, inset(p))
+		credit(p)
+	}
+	if len(d.cfg.MapCredits) > 0 { // D-148: the map's credits, here and nowhere else in full
+		lines = append(lines, "", inset("Maps:"), "")
+		for _, p := range d.cfg.MapCredits {
+			credit(p)
+		}
+	}
+	if len(d.cfg.AboutNotes) > 0 { // after every credit: conditions of use, then the safety framing (UAT 103, R-13)
+		lines = append(lines, "")
+		for _, p := range d.cfg.AboutNotes {
+			credit(p)
+		}
 	}
 	lines = append(lines,
 		"",
@@ -331,6 +351,6 @@ func (d Dashboard) aboutLines(o render.Opts) []string {
 }
 
 // creditsNotice states the terms every listed source shares: NOAA data is
-// public domain, GeoNames and Open-Meteo are CC BY 4.0 — all free to use
-// with attribution (UAT 75).
+// public domain, GeoNames and Open-Meteo are CC BY 4.0, OpenStreetMap's is
+// ODbL — all free to use with attribution (UAT 75, D-148).
 const creditsNotice = "All sources free to use with attribution."

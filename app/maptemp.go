@@ -530,16 +530,6 @@ func tempLayerCost(in mapInputs) (int64, int) {
 
 // tempHosts are the temperature's entries for the Status window's MAP block.
 func tempHosts() []tty.MapSource {
-	out := hostsFor(temperature.Hosts(), "temperatures at points across fixed boxes around the region shown (never the view itself)")
-	for i := range out {
-		switch out[i].Name { // the full credits, and what never changes (D-131, D-132)
-		case "Open-Meteo":
-			out[i].Notes = []string{temperature.OpenMeteoCredit + ".", temperature.OpenMeteoRainCredit + ".", tempFrameNote}
-		case "Open-Meteo Marine":
-			out[i].Notes = []string{temperature.OpenMeteoWavesCredit + "."}
-		case "Open-Meteo Air Quality":
-			out[i].Notes = []string{temperature.OpenMeteoAirCredit + "."}
-		}
-	}
-	return out
+	return hostsFor(temperature.Hosts(), "temperatures at points across fixed boxes around the region shown (never the view itself)",
+		map[string][]string{"Open-Meteo": {tempFrameNote}}) // what never changes about its data (D-132); its credit is About's (D-148)
 }

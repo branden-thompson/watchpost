@@ -1760,3 +1760,31 @@ picker but did not act like it: the picker blinks the chip pressed, as every oth
 built from the app's own control components, their behaviour as well as their look.
 
 **Mutation verdicts** (targeted, 3), all caught.
+
+## Batch 52 — every credit in About (U2-40, D-148, 2026-09-29)
+
+**The finding.** Credits were said in two windows: About's "Data Provided by", the station's
+sources; and since D-131, the Status window's MAP block, the map's. The HUM LEAD: one place,
+About; Status about the sources' state.
+
+**As built.**
+- **About**, widened from 60 to 78, reads in this order:
+  - "Data Provided by", the station's sources, from `credits()`;
+  - "Maps", every source the map draws from, from `mapCredits()`: the basemap under the ODbL, the
+    radar and HRRR, NDFD, each Open-Meteo product under CC BY 4.0, AirNow, fire, quakes, buoys and
+    tides;
+  - the relays' condition of use and the safety framing, from `aboutNotes()`, split out of
+    `credits()` so they stay last;
+  - the licence line.
+  A long credit wraps under its own start.
+- **Status's MAP block** keeps each host, what it is sent, and D-132's two notes about the data.
+  It says no credit, and a test holds it to that.
+- **The map keeps its short credits:** the badge row's chips, and the basemap's line on its frame,
+  which the ODbL asks for where the map is shown.
+- Open-Meteo's credit names what it now covers: temperature, feels-like, wind and UV.
+
+**The dupes gate** found the Status window's two host lists - the radar's and the temperature's -
+had become the same function once their credits were gone. `hostsFor` now takes each host's notes,
+and the two are one.
+
+**Mutation verdicts** (targeted, 4), all caught.

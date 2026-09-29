@@ -7,6 +7,7 @@ const airnowBytes
 const alertLayerKey
 const areaMemoAge
 const bandRecordCap
+const basemapAttribution
 const bedFenceFarMi
 const breakingGap
 const breakingHold
@@ -449,6 +450,7 @@ func ReportOnce
 func ReportOnceWithStats
 func RunDashboard
 func abbreviateHome
+func aboutNotes
 func airHosts
 func airLayerCost
 func airnowOverlays
@@ -576,6 +578,7 @@ func loopSlots
 func macVoices
 func mainTrack
 func mapAreaNamer
+func mapCredits
 func mapRetention
 func mapSourceList
 func marineArea

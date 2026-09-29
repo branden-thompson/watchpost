@@ -427,6 +427,8 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapAreaName:     mapAreaNamer(lp.idx),          // UAT-1 D-64: the title names what is in view
 		Hydrate:         lp.hydrate,                    // hourly forecast on demand for RECENT rows (UAT 72)
 		Credits:         credits(),                     // data-source credits, licence obligations included (UAT 75)
+		MapCredits:      mapCredits(),                  // 0.18.0 D-148: the map's, in About with the rest
+		AboutNotes:      aboutNotes(),                  // the relays' condition of use and the safety framing, after every credit
 		FireBoldMW:      fireRules(cfg.Fire).BoldFRPMW, // B5: one owner for the emphasis threshold — the [fire] rules
 		// THE SAME OWNER FOR THE TWO RINGS. The detail states each ring beside
 		// the list it admits, so the window and the spoken report cannot

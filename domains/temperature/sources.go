@@ -31,7 +31,7 @@ func Hosts() map[string]string {
 
 // OpenMeteoCredit is Open-Meteo's credit line: its data is CC BY 4.0, which
 // asks that a change be said - the map interpolates between its points.
-const OpenMeteoCredit = "Temperature: Open-Meteo.com (CC BY 4.0), interpolated"
+const OpenMeteoCredit = "Temperature, feels-like, wind and UV: Open-Meteo.com (CC BY 4.0), interpolated"
 
 // NDFD is the NWS's National Digital Forecast Database, through its XML
 // service: the lower 48, Alaska, Hawaii, Puerto Rico and Guam; nothing

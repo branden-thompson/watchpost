@@ -171,6 +171,8 @@ type Config struct {
 
 	Hydrate    func(ref snapshot.LocationRef) // on-demand hourly forecast for a RECENT row (UAT 72)
 	Credits    []string                       // About "Data Provided by" lines — the app owns the list (UAT 75)
+	MapCredits []string                       // About "Maps" lines (0.18.0 D-148): every credit in one window
+	AboutNotes []string                       // About's closing lines after every credit: conditions of use, the safety framing
 	Radio      Radio                          // NOAA Weather Radio playback (B4); nil = controls stay inert
 	Spectrum   func() []float64               // the visualizer feed: the latest band levels 0..1 (UAT 92); nil = rows stay blank
 	FireBoldMW float64                        // B5: FRP at which a hotspot reads emphasized (the app passes the configured rule; 0 = 50)

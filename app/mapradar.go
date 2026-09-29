@@ -444,13 +444,8 @@ func radarLayerCost(in mapInputs) (int64, int) {
 
 // radarHosts are the radar's entries for the Status window's MAP block.
 func radarHosts() []tty.MapSource {
-	out := hostsFor(radar.Hosts(), "radar frames of fixed boxes around the region shown (never the view itself)")
-	for i := range out {
-		if out[i].Name == "NOAA / NCEP (MRMS)" {
-			out[i].Notes = []string{mrmsNote} // what never changes about it, off the map (D-132); its chip reads MRMS≈
-		}
-	}
-	return out
+	return hostsFor(radar.Hosts(), "radar frames of fixed boxes around the region shown (never the view itself)",
+		map[string][]string{"NOAA / NCEP (MRMS)": {mrmsNote}}) // what never changes about it, off the map (D-132); its chip reads MRMS≈
 }
 
 // withChips is chips with a layer's set, made if there were none.
@@ -463,11 +458,11 @@ func withChips(chips map[string][]string, layer string, names ...string) map[str
 }
 
 // hostsFor is a layer's hosts as the Status window's entries, by name, each
-// with what it is sent.
-func hostsFor(hosts map[string]string, use string) []tty.MapSource {
+// with what it is sent and what never changes about its data (D-132).
+func hostsFor(hosts map[string]string, use string, notes map[string][]string) []tty.MapSource {
 	var out []tty.MapSource
 	for name, base := range hosts {
-		out = append(out, tty.MapSource{Name: name, Host: hostOf(base), Use: use})
+		out = append(out, tty.MapSource{Name: name, Host: hostOf(base), Use: use, Notes: notes[name]})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out

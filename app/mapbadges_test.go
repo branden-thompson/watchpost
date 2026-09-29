@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/modes/tty"
 )
 
@@ -54,17 +53,17 @@ func TestTheTemperaturesChipsAreItsSources(t *testing.T) {
 	}
 }
 
-// TestTheStatusWindowHoldsTheFullCredits is D-131 and D-132: under
-// Open-Meteo its three credits and that each radar frame draws its own
-// hour; under MRMS that its colours are approximate.
+// TestTheStatusWindowHoldsTheFullCredits is D-132 as D-148 leaves it: the
+// Status window says what never changes about a source's data - under
+// Open-Meteo that each radar frame draws its own hour, under MRMS that its
+// colours are approximate - and the credits are About's.
 func TestTheStatusWindowHoldsTheFullCredits(t *testing.T) {
 	notes := map[string][]string{}
 	for _, s := range mapSourceList() {
 		notes[s.Name] = append(notes[s.Name], s.Notes...)
 	}
 	for name, want := range map[string][]string{
-		"Open-Meteo":         {temperature.OpenMeteoCredit + ".", temperature.OpenMeteoRainCredit + ".", tempFrameNote},
-		"Open-Meteo Marine":  {temperature.OpenMeteoWavesCredit + "."},
+		"Open-Meteo":         {tempFrameNote}, // what never changes about the data; the credits are About's (D-148)
 		"NOAA / NCEP (MRMS)": {mrmsNote},
 	} {
 		for _, w := range want {
