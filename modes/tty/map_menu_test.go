@@ -6,8 +6,11 @@ package tty
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
 // menuMap is the map with every group's layers registered, in Forecast mode.
@@ -67,7 +70,7 @@ func TestTheMenuIsTheHUMLEADsLayout(t *testing.T) {
 	if strings.Contains(quiet, "performance") || !strings.Contains(loud, "! You may experience performance") {
 		t.Errorf("the warning at the menu's top (D-146):\n%s", loud)
 	}
-	for _, w := range []string{"● Temperature", "<-  Actual  ->", "○ UV Index", "Data Points", "<-  Enabled  ->", "Hazards", "Quakes", "<-  All  ->", "Alert Areas", "Preset:", "<-  Standard  ->"} {
+	for _, w := range []string{"● Temperature", "[←] Actual", "○ UV Index", "Data Points", "[←] Enabled", "Hazards", "Quakes", "[←] All", "Alert Areas", "Preset:", "[←] Standard"} {
 		if !strings.Contains(loud, w) {
 			t.Errorf("the menu lacks %q:\n%s", w, loud)
 		}
@@ -100,7 +103,7 @@ func TestADisabledGroupHidesAndRemembers(t *testing.T) {
 	if d.layerOn(WindLayer) || !d.ticked(WindLayer) || d.mapAsk().Tides {
 		t.Fatalf("Data Points off: wind drawn %v, ticked %v", d.layerOn(WindLayer), d.ticked(WindLayer))
 	}
-	if box := stripANSITest(strings.Join(d.overlaysBox(), "\n")); !strings.Contains(box, "<-  Disabled  ->") || !strings.Contains(box, "[✔] Wind") {
+	if box := stripANSITest(strings.Join(d.overlaysBox(), "\n")); !strings.Contains(box, "[←] Disabled") || !strings.Contains(box, "[✔] Wind") {
 		t.Errorf("the disabled group:\n%s", box)
 	}
 	d = menuKey(t, d, "space") // Enabled again
@@ -149,5 +152,38 @@ func TestSettingsKeepsOneTintToo(t *testing.T) {
 	d = d.toggleLayer()
 	if !d.ticked(UVLayer) || d.ticked(TemperatureLayer) || d.ticked(FeelsLayer) {
 		t.Errorf("Settings: UV %v, temperature %v; want UV alone", d.ticked(UVLayer), d.ticked(TemperatureLayer))
+	}
+}
+
+// TestTheMenusPickersAreTheAppsPickers is D-147: a choice row is Settings'
+// picker, [←] value [→]; the chip pressed blinks on that row alone, as
+// Settings' do, and the tick after its window ends the blink.
+func TestTheMenusPickersAreTheAppsPickers(t *testing.T) {
+	t.Setenv("TERM", "xterm-256color")
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(rendering.ResetColorEnabledForTest)
+	d := at(t, menuMap(t), FireLayer)
+	d = menuKey(t, d, "right")
+	o := d.opts()
+	lit := o.KeyCapInverted("→")
+	fire, box := "", d.overlaysBox()
+	for _, l := range box {
+		if strings.Contains(stripANSITest(l), "Fire") {
+			fire = l
+		}
+	}
+	if !strings.Contains(fire, lit) || strings.Count(strings.Join(box, "\n"), lit) != 1 {
+		t.Errorf("→ on Fire: its row is %q; want its → chip lit, and no other", fire)
+	}
+	if plain := stripANSITest(fire); !strings.Contains(plain, "←") || !strings.Contains(plain, "Named") || !strings.Contains(plain, "→") {
+		t.Errorf("the Fire row is %q; want the picker, Named", stripANSITest(fire))
+	}
+	d.mapPane.menuFlashEnd = d.mapPane.menuFlashEnd.Add(-time.Hour)
+	if got := d.applyTick(); got.mapPane.menuFlash != flashNone || strings.Contains(strings.Join(got.overlaysBox(), ""), lit) {
+		t.Error("the tick after the blink's window did not end it")
+	}
+	d = at(t, d, WindLayer)
+	if d = menuKey(t, d, "right"); d.mapPane.menuFlash != flashNone && d.mapPane.menuFlashAt == d.mapPane.menuAt {
+		t.Error("→ on a box with no picker blinked a chip")
 	}
 }

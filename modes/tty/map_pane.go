@@ -57,32 +57,37 @@ type mapPane struct {
 	lines     []string
 	changed   uint64
 	ticks     uint64
-	region    geo.Region                 // the region the map is held inside (FR-2.1)
-	outside   string                     // the place that is in no region, when it is not (FR-2.5)
-	status    tuimaps.Status             // the last frame's: whole, or still sharpening
-	pending   bool                       // work was waiting when it was drawn
-	offline   bool                       // a tile failed since the picture was last whole
-	gen       uint64                     // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
-	failed    string                     // why the map could not be built or drawn, said in the window
-	calls     *[]string                  // tests only: the library calls made, by name, in order
-	where     *[]callSite                // tests only: each call and the goroutine it ran on (W2.2)
-	workers   *mapWorkers                // the commands running for this map, joined on close (W2.6)
-	tickAt    time.Time                  // the tick outstanding, at the library's NextCall (W2.2)
-	alertsOn  bool                       // the Area Alerts box is open; every open opens it (D-63)
-	menuOn    bool                       // the Overlays menu is open (D-65)
-	menuAt    int                        // the menu's cursor
-	flash     term.Action                // the map key last pressed, blinking in the controls (U1-11)
-	edge      geo.Direction              // the edge whose chip is showing (D-81)
-	edgeShown bool                       // a press held still at the edge: the next the same way crosses
-	flashEnd  time.Time                  // when its blink ends
-	title     string                     // what is in view, named at the last draw (D-64)
-	viewGen   uint64                     // raised by every move; the settle tick of the newest asks the feed (D-66)
-	views     *[]mapView                 // tests only: every view drawn, for M2's instrument
-	shown     map[string]bool            // the overlays the feed set, so a gone alert is taken off
-	given     map[string]tuimaps.Overlay // what was last handed to the map, by id: an unchanged overlay is not handed in again (U1-28)
-	notes     []string                   // the feed's notes, printed under the map
-	inMissing map[string]bool            // the feed's alerts whose missing zones hold the place
-	inView    []snapshot.Alert           // the feed's alerts the station does not hold, which the description names
+	region    geo.Region     // the region the map is held inside (FR-2.1)
+	outside   string         // the place that is in no region, when it is not (FR-2.5)
+	status    tuimaps.Status // the last frame's: whole, or still sharpening
+	pending   bool           // work was waiting when it was drawn
+	offline   bool           // a tile failed since the picture was last whole
+	gen       uint64         // raised by every draw: the window's memo keys on it, so a frame drawn after a landing is never replayed over (F-30)
+	failed    string         // why the map could not be built or drawn, said in the window
+	calls     *[]string      // tests only: the library calls made, by name, in order
+	where     *[]callSite    // tests only: each call and the goroutine it ran on (W2.2)
+	workers   *mapWorkers    // the commands running for this map, joined on close (W2.6)
+	tickAt    time.Time      // the tick outstanding, at the library's NextCall (W2.2)
+	alertsOn  bool           // the Area Alerts box is open; every open opens it (D-63)
+	menuOn    bool           // the Overlays menu is open (D-65)
+	menuAt    int            // the menu's cursor
+	flash     term.Action    // the map key last pressed, blinking in the controls (U1-11)
+	edge      geo.Direction  // the edge whose chip is showing (D-81)
+	edgeShown bool           // a press held still at the edge: the next the same way crosses
+	flashEnd  time.Time      // when its blink ends
+	// menuFlash is the Overlays menu's picker chip blinking at row
+	// menuFlashAt until menuFlashEnd: Settings' pickers' feedback (D-147).
+	menuFlash    pickerFlash
+	menuFlashAt  int
+	menuFlashEnd time.Time
+	title        string                     // what is in view, named at the last draw (D-64)
+	viewGen      uint64                     // raised by every move; the settle tick of the newest asks the feed (D-66)
+	views        *[]mapView                 // tests only: every view drawn, for M2's instrument
+	shown        map[string]bool            // the overlays the feed set, so a gone alert is taken off
+	given        map[string]tuimaps.Overlay // what was last handed to the map, by id: an unchanged overlay is not handed in again (U1-28)
+	notes        []string                   // the feed's notes, printed under the map
+	inMissing    map[string]bool            // the feed's alerts whose missing zones hold the place
+	inView       []snapshot.Alert           // the feed's alerts the station does not hold, which the description names
 
 	// The radar (W8): its request generation, the loops handed in by id, the
 	// source for the chip and its note, and the loop's line as last drawn.

@@ -1743,3 +1743,20 @@ and reads the tick.
 **The Settings golden** changed by one word: Detail reads Standard where it read Weather (D-144).
 
 **Mutation verdicts** (targeted, 12), all caught.
+
+## Batch 51 — the menu's pickers are the app's (D-147, 2026-09-29)
+
+**The HUM LEAD:** batch 50's choices were hand-typed "<- value ->". They looked like the app's
+picker but did not act like it: the picker blinks the chip pressed, as every other modal does.
+
+**Now:**
+- Every choice row - Temperature's measure, the three groups, Fire, the preset - is Settings'
+  `pickerCellW` over the shared `arrowChips`.
+- The pressed chip blinks for `pickerFlashDur`, 350 ms, on that row alone. The tick after the
+  window ends it and redraws the menu, as Settings' does.
+- A blank line parts the detail switches from their zoom note, for scanning.
+
+**The standing rule** (D-147, and memory): wherever possible, every part of the application is
+built from the app's own control components, their behaviour as well as their look.
+
+**Mutation verdicts** (targeted, 3), all caught.

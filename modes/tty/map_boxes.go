@@ -496,7 +496,11 @@ func (d Dashboard) overlaysBox() []string {
 	}
 	rows := d.overlayRows()
 	cellW := (overlayMenuW - 4) / 2
-	choice := func(s string) string { return "<-  " + s + "  ->" }
+	chips := newArrowChips(o)
+	at := -1                          // the row whose picker is being drawn
+	choice := func(s string) string { // THE APP'S PICKER, [←] value [→], blinking as pressed (D-147)
+		return pickerCellW(s, chips, d.menuFlashFor(at), menuChoiceW)
+	}
 	line := func(left, right string) string {
 		return render.PadTo(left, overlayMenuW-2-render.Width(right)) + right
 	}
@@ -514,6 +518,7 @@ func (d Dashboard) overlaysBox() []string {
 			content, heading = append(content, " "+head(section)), section
 		}
 		mark := o.ListMark(i == d.mapPane.menuAt)
+		at = i
 		switch r.kind {
 		case menuRadio:
 			face := r.label
@@ -563,6 +568,7 @@ func (d Dashboard) overlaysBox() []string {
 		}
 	}
 	if len(shows) > 0 {
+		content = append(content, "") // apart from the switches, for scanning (D-147)
 		for _, l := range render.WrapText(strings.Join(shows, ", ")+".", overlayMenuW-4) {
 			content = append(content, "   "+render.Tint(l, render.Tok(render.TableMuted)))
 		}
@@ -609,6 +615,23 @@ func (d Dashboard) pickFeels() bool {
 	return on
 }
 
+// menuChoiceW is the menu's pickers' value width: its longest, "Feels like".
+const menuChoiceW = 10
+
+// menuFlashFor is the blink of a menu row's picker: only the row pressed,
+// only while its window is open - Settings' pickers' rule (D-147).
+func (d Dashboard) menuFlashFor(row int) pickerFlash {
+	if row != d.mapPane.menuFlashAt || d.mapPane.menuFlash == flashNone || !time.Now().Before(d.mapPane.menuFlashEnd) {
+		return flashNone
+	}
+	return d.mapPane.menuFlash
+}
+
+// hasChoice reports whether a row has a picker: ←→ step it.
+func hasChoice(r overlayRow) bool {
+	return r.kind == menuGroup || r.kind == menuFire || r.kind == menuPreset || (r.kind == menuRadio && r.key == TemperatureLayer)
+}
+
 // pickFeelsKey keeps Temperature's measure while no tint is chosen.
 const pickFeelsKey = "pick:feels"
 
@@ -635,6 +658,12 @@ func (d Dashboard) handleOverlaysKey(key string) (Dashboard, bool) {
 	case "down":
 		d.mapPane.menuAt = (d.mapPane.menuAt + 1) % len(rows)
 	case "left", "right":
+		if hasChoice(r) { // the chip pressed blinks, as Settings' pickers do (D-147)
+			d.mapPane.menuFlash, d.mapPane.menuFlashAt, d.mapPane.menuFlashEnd = flashLeft, d.mapPane.menuAt, time.Now().Add(pickerFlashDur)
+			if key == "right" {
+				d.mapPane.menuFlash = flashRight
+			}
+		}
 		d = d.chooseOnRow(r, key == "right")
 	case "space", "enter":
 		d = d.switchRow(r)

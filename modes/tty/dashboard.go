@@ -1184,6 +1184,10 @@ func (d Dashboard) applyTick() Dashboard {
 	if d.mapPane.flash != "" && !time.Now().Before(d.mapPane.flashEnd) {
 		d.mapPane.flash = "" // U1-11: the controls' blink ends on the tick after it expires
 	}
+	if d.mapPane.menuFlash != flashNone && !time.Now().Before(d.mapPane.menuFlashEnd) {
+		d.mapPane.menuFlash = flashNone // the menu's picker blink ends as Settings' does (D-147)
+		d.mapPane.gen++
+	}
 	if d.setup.flash != flashNone && !time.Now().Before(d.setup.flashEnd) {
 		// Without this the blink stayed lit until something ELSE happened to
 		// redraw the window — which is exactly what "it stays green for an
