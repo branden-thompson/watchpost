@@ -312,8 +312,12 @@ type ZoneShapeStats struct {
 }
 
 type Stats struct {
-	Requests  httpx.RequestStats
-	Pipelines [2]PipelineStats // [0] priority, [1] recent
+	Requests httpx.RequestStats
+	// MapRequests are the map's own clients' counters (0.18.0 D-150): the
+	// radar's, the temperature's, the basemap's tiles'. The map's other
+	// hosts share the station's client, and Requests holds them.
+	MapRequests httpx.RequestStats
+	Pipelines   [2]PipelineStats // [0] priority, [1] recent
 	// MapProblems are the map's last problems the listener cannot act on
 	// (D-124): the diagnostics' alone.
 	MapProblems []string

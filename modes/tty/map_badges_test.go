@@ -11,6 +11,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/third_party/go-studs/rendering"
 )
 
@@ -126,14 +127,48 @@ func TestTheMRMSChipIsMarkedApproximate(t *testing.T) {
 	}
 }
 
-// TestTheStatusWindowCarriesTheFullCredits is D-131 and D-132: a source's
-// notes - its full credit, what never changes about it - are said under it
-// in the MAP block.
-func TestTheStatusWindowCarriesTheFullCredits(t *testing.T) {
-	d := mapDash(t, Config{MapSources: []MapSource{{Name: "Open-Meteo", Host: "api.open-meteo.com", Use: "temperature",
-		Notes: []string{"Temperature: Open-Meteo.com (CC BY 4.0), interpolated."}}}})
-	if s := stripANSITest(strings.Join(d.mapSourceLines(), "\n")); !strings.Contains(s, "Temperature: Open-Meteo.com (CC BY 4.0), interpolated.") {
-		t.Errorf("the MAP block:\n%s", s)
+// TestMapStatusSaysWhetherTheMapWorks is D-150 and D-151: MAP STATUS is a
+// row a host - its layers, OK while its last answer is its latest word, FAIL
+// while a failure is, IDLE before it is asked, its counters - under it the
+// notes about the data (D-132) and one line of what the map sends.
+func TestMapStatusSaysWhetherTheMapWorks(t *testing.T) {
+	now := time.Now()
+	stats := Stats{MapRequests: httpx.RequestStats{Hosts: []httpx.HostStats{
+		{Host: "tiles.openfreemap.org", Attempts: 212, Net: 180, BytesNet: 24 << 20, LastOK: now.Add(-12 * time.Second)},
+		{Host: "mesonet.agron.iastate.edu", Attempts: 12, Net: 2, LastOK: now.Add(-10 * time.Minute), LastFail: now.Add(-6 * time.Minute)}}}}
+	d := mapDash(t, Config{Stats: func() Stats { return stats }, MapSources: []MapSource{
+		{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Layers: "basemap"},
+		{Name: "IEM", Host: "mesonet.agron.iastate.edu", Layers: "radar"},
+		{Name: "IEM again", Host: "mesonet.agron.iastate.edu", Layers: "radar ahead"},
+		{Name: "AirNow", Host: "files.airnowtech.org", Layers: "air"},
+		{Name: "MRMS", Host: "mrms.ncep.noaa.gov", Layers: "radar", Notes: []string{"MRMS radar's colours are approximate."}}}})
+	d.width = 140
+	block := stripANSITest(strings.Join(d.mapSourceLines(), "\n"))
+	row := func(host string) string {
+		for _, l := range strings.Split(block, "\n") {
+			if strings.Contains(l, host) {
+				return l
+			}
+		}
+		t.Fatalf("no row for %s:\n%s", host, block)
+		return ""
+	}
+	if r := row("tiles.openfreemap.org"); !strings.Contains(r, "basemap") || !strings.Contains(r, "OK") || !strings.Contains(r, "212") {
+		t.Errorf("the tiles' row: %q", r)
+	}
+	if r := row("mesonet.agron.iastate.edu"); !strings.Contains(r, "FAIL") || !strings.Contains(r, "radar, radar ahead") {
+		t.Errorf("a host failing since its last answer: %q; want FAIL, its layers joined", r)
+	}
+	if r := row("files.airnowtech.org"); !strings.Contains(r, "IDLE") {
+		t.Errorf("a host not asked: %q; want IDLE", r)
+	}
+	for _, w := range []string{"MAP STATUS", "LAYERS", "MRMS radar's colours are approximate.", "Opening the map sends the tile host the tiles in view"} {
+		if !strings.Contains(block, w) {
+			t.Errorf("MAP STATUS lacks %q:\n%s", w, block)
+		}
+	}
+	if strings.Count(block, "mesonet.agron.iastate.edu") != 1 {
+		t.Errorf("a host is a row once:\n%s", block)
 	}
 }
 

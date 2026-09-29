@@ -175,9 +175,8 @@ func incidentLabel(in snapshot.Incident) string {
 // fireHosts are fire's entries for the Status window's MAP block.
 func fireHosts() []tty.MapSource {
 	return []tty.MapSource{
-		{Name: "NIFC WFIGS", Host: hostOf(wfigs.New(nil, "", fire.DefaultRules()).PerimetersBase()),
-			Use: "the active fire perimeters of fixed boxes around the region shown (never the view itself), and every active incident"},
-		{Name: "NOAA HMS", Host: hostOf(hms.DefaultURL), Use: "every satellite fire detection, the places' own read"},
+		{Name: "NIFC WFIGS", Host: hostOf(wfigs.New(nil, "", fire.DefaultRules()).PerimetersBase()), Layers: "fire"},
+		{Name: "NOAA HMS", Host: hostOf(hms.DefaultURL), Layers: "fire"},
 	}
 }
 

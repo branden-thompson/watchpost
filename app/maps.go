@@ -66,8 +66,8 @@ func newMapBuilder(version, cacheDir string, transport http.RoundTripper, seed f
 
 // newProductionMapBuilder is the builder the station runs: the OS cache
 // directory and the library's own transport.
-func newProductionMapBuilder(version string, seed func()) *mapBuilder {
-	return newMapBuilder(version, userCacheSubdir("map"), nil, seed)
+func newProductionMapBuilder(version string, tiles *tileCounter, seed func()) *mapBuilder {
+	return newMapBuilder(version, userCacheSubdir("map"), tiles.transport(libraryTransport()), seed)
 }
 
 // build makes a map at the window's size: the library moves only a map that
@@ -150,25 +150,22 @@ func (lp *livePipelines) clearMapData() tty.MapCleared {
 	return out
 }
 
-// mapSourceList is every service the map contacts, its host and what it is
-// sent, built from the closed list so it names exactly the hosts contacted
-// (FR-9.4 as D-75 amends it: the Status window lists them): each basemap
-// source for the area shown, and the Weather Service for the alert zones and
-// the areas in view.
+// mapSourceList is every service the map contacts, its host and the layers
+// it serves - the Status window's MAP STATUS rows (D-150) - built from the
+// closed list so it names exactly the hosts contacted (FR-9.4 as D-75 and
+// D-151 amend it: what each is sent is one line under them).
 func mapSourceList() []tty.MapSource {
 	var out []tty.MapSource
 	for _, s := range mapSources {
-		out = append(out, tty.MapSource{Name: s.name, Host: hostOf(s.address), Use: "the map's tiles, for the area shown"})
+		out = append(out, tty.MapSource{Name: s.name, Host: hostOf(s.address), Layers: "basemap"})
 	}
-	out = append(out, tty.MapSource{Name: "National Weather Service", Host: hostOf(zones.DefaultBase),
-		Use: "the codes of the alert zones on the map, and of the states and marine areas in view (D-66)"})
-	out = append(out, radarHosts()...)                                          // W8: the radar's two sources
-	out = append(out, tempHosts()...)                                           // W10: the temperature's two
-	out = append(out, fireHosts()...)                                           // D-121: the fire's two
-	out = append(out, marineHosts()...)                                         // D-127, D-128: the sea's stations
-	out = append(out, airHosts()...)                                            // D-138: AirNow
-	return append(out, tty.MapSource{Name: "USGS", Host: hostOf(quakeFeedBase), // D-122
-		Use: "the earthquakes chosen in Settings (M2.5+ or M1.0+, the past week or day), every one; drawn where in view"})
+	out = append(out, tty.MapSource{Name: "National Weather Service", Host: hostOf(zones.DefaultBase), Layers: "alert areas"})
+	out = append(out, radarHosts()...)                                                             // W8: the radar's two sources
+	out = append(out, tempHosts()...)                                                              // W10: the temperature's two
+	out = append(out, fireHosts()...)                                                              // D-121: the fire's two
+	out = append(out, marineHosts()...)                                                            // D-127, D-128: the sea's stations
+	out = append(out, airHosts()...)                                                               // D-138: AirNow
+	return append(out, tty.MapSource{Name: "USGS", Host: hostOf(quakeFeedBase), Layers: "quakes"}) // D-122
 }
 
 // radarImageBudget is the memory the library may hold the radar's pictures

@@ -90,14 +90,15 @@ func RunDashboard(version string, opt Options) error {
 		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
 		mapQuakes: newMapQuakes(client, ""),   // 0.18.0 D-122: the map's own quake feeds
 		airnow:    airquality.New(client, "")} // 0.18.0 D-138: AirNow's one national file
-	if rs, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
-		lp.radar = rs // W8: a radar client that cannot be built is no radar, and the map says none answered
+	if rs, rc, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
+		lp.radar, lp.mapClients = rs, append(lp.mapClients, rc) // W8: a radar client that cannot be built is no radar, and the map says none answered
 	}
-	if ts, err := overClient(temperature.NewClient, UserAgent, tempSourcesOver); err == nil {
-		lp.temp = ts // W10: the same for the temperature
+	if ts, tc, err := overClient(temperature.NewClient, UserAgent, tempSourcesOver); err == nil {
+		lp.temp, lp.mapClients = ts, append(lp.mapClients, tc) // W10: the same for the temperature
 	}
 	lp.attachDiagnostics(ctx, start)
-	lp.maps = newProductionMapBuilder(version, lp.seedOnFirstMap(ctx)) // 0.18.0 FR-3.2: the zones are seeded by the first map, not here
+	lp.tiles = &tileCounter{}
+	lp.maps = newProductionMapBuilder(version, lp.tiles, lp.seedOnFirstMap(ctx)) // 0.18.0 FR-3.2: the zones are seeded by the first map, not here
 	idx, resolver, resolverErr := loadGeodata(client)
 	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
 	lp.giveItAStation(cfg, idx)
@@ -725,6 +726,8 @@ type livePipelines struct {
 	severe     *severeDeck          // 0.13.0: the severe-events index the window lists
 	mapQuakes  *mapQuakes           // 0.18.0 D-122: the map's quake feeds, the listener's choice
 	airnow     *airquality.Provider // 0.18.0 D-138: AirNow's reporting areas, for the map's air quality
+	mapClients []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
+	tiles      *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
 	problems   mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
 	director   *director            // 0.13.0: the voice arbiter (app/director.go)
 	scripts    *script.Library      // 0.13.0: the spoken lines (domains/radio/script)

@@ -1788,3 +1788,37 @@ had become the same function once their credits were gone. `hostsFor` now takes 
 and the two are one.
 
 **Mutation verdicts** (targeted, 4), all caught.
+
+## Batch 53 — a warning that means it; MAP STATUS (U2-41, U2-42, D-149 to D-151, 2026-09-29)
+
+**U2-41, the warning with no overlay on.** Measured: the estimate counted radar, the mode, at 37
+requests a refresh against D-43's 40, and every alert's zones whatever categories were checked, so
+it spoke with nothing chosen. D-149, "Chosen overlays, 3 MB / 25 req":
+- The estimate counts the overlays switched on, and the alerts by their checked categories.
+- Radar and the basemap are never counted.
+- It warns past 3 MB or 25 requests. The defaults never warn; everything on at a national view
+  does.
+
+**U2-42, a Status section that read as credits.** D-150 made it MAP STATUS: the API STATUS table's
+own component, the go-studs data table through `providerTable`, whose second column now takes its
+heading. A row per map host:
+- the layers it serves, joined where one host serves several;
+- OK while its last answer is its latest word, FAIL while a failure is, IDLE (dimmed) before it is
+  asked;
+- when it last answered, and its tries, answers, cache and bytes.
+The tiles held are on its header, and the notes about the data under it.
+
+**What made it possible.**
+- **The tiles:** the library fetches its own, so watchpost now hands it the library's own
+  transport, rebuilt, wrapped to count them. Its private-address-refusing dialer (L-10.3), proxy,
+  TLS floor and timeouts are unchanged.
+- **The radar's and temperature's clients** were in no counter. They join the Status window's.
+- **`httpx`** keeps each host's last answer and last failure. Its named host slots went from 8 to
+  16: the station's client serves the map's hosts too, and eight would have folded some into
+  "other".
+
+**D-151, the disclosure.** The per-host text D-150 replaced was also FR-9.4's disclosure of what
+the map sends, which D-75 put in this section. It is now one line under the table, in exact words
+rather than the proposed "never your location": the tiles in view surround the place chosen.
+
+**Mutation verdicts** (targeted, 7), all caught.

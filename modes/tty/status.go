@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
@@ -190,11 +191,11 @@ func (d Dashboard) providerLines(o render.Opts, st Stats, fillTo int) []string {
 	// comes back with every column collapsed to one space. A table that will not
 	// fit has to lose columns, not alignment.
 	for form := range statusForms {
-		if out, ok := providerTable(o, rows, form, statusAvail(o), fillTo); ok {
+		if out, ok := providerTable(o, rows, "PROVIDERS", form, statusAvail(o), fillTo); ok {
 			return append(lines, out...)
 		}
 	}
-	out, _ := providerTable(o, rows, statusForms-1, 0, fillTo) // the narrowest, whatever the room
+	out, _ := providerTable(o, rows, "PROVIDERS", statusForms-1, 0, fillTo) // the narrowest, whatever the room
 	return append(lines, out...)
 }
 
@@ -257,8 +258,8 @@ func statusAvail(o render.Opts) int { return o.Width - panelFrame - panelRail - 
 // it, and it is truncatable, so a host longer than the room is cut rather than
 // pushing the measurements out of line. Everything else is a fixed width — a
 // number and its heading must not drift apart.
-func providerTable(o render.Opts, rows []endpointRow, form, avail, fillTo int) ([]string, bool) {
-	provW, stateW := len("PROVIDERS"), len("STATUS")
+func providerTable(o render.Opts, rows []endpointRow, who string, form, avail, fillTo int) ([]string, bool) {
+	provW, stateW := len(who), len("STATUS")
 	epMin := len("ENDPOINT")
 	for _, r := range rows {
 		provW, stateW = max(provW, render.Width(r.providers)), max(stateW, render.Width(r.state))
@@ -280,7 +281,7 @@ func providerTable(o render.Opts, rows []endpointRow, form, avail, fillTo int) (
 			MinWidth: len(statusInset) + statusMarkW + epMin, Truncatable: true},
 	}
 	if form < 3 {
-		cols = append(cols, render.StatusColumn{Header: "PROVIDERS", Width: provW, Truncatable: true, MinWidth: len("PROVIDERS")})
+		cols = append(cols, render.StatusColumn{Header: who, Width: provW, Truncatable: true, MinWidth: len(who)}) // PROVIDERS, or MAP STATUS's LAYERS (D-150)
 	}
 	cols = append(cols,
 		render.StatusColumn{Header: "STATUS", Width: stateW},
@@ -863,25 +864,104 @@ func providersOf(sn *snapshot.Snapshot) []snapshot.ProviderStatus {
 // MapSource is one service the map contacts, its host, and what it is sent
 // (0.18.0 D-75: the Status window lists them, where FR-9.4's words were).
 type MapSource struct {
-	Name, Host, Use string
+	// Layers are the layers the host serves, MAP STATUS's LAYERS (D-150).
+	Name, Host, Layers string
 	// Notes are said under the source: what never changes about its data
 	// (D-132). Its credit is the About window's (D-148).
 	Notes []string
 }
 
-// mapSourceLines is the MAP block: each service the map contacts, only while a
-// map is open, and what it is sent (FR-9.4 as D-75 amends it).
+// mapDisclosure is FR-9.4's disclosure, one line under MAP STATUS (D-151):
+// what opening the map sends, the hosts being the table's rows.
+const mapDisclosure = "Opening the map sends the tile host the tiles in view, the NWS the states, marine areas and alert zones in view, and CO-OPS the tide stations in view; every other host is asked for fixed regions or national files, never the view."
+
+// mapSourceLines is MAP STATUS (D-150): the API STATUS table's own
+// component - the go-studs data table through providerTable - a row a host
+// the map can contact, whether it is answering, when it last did, what it
+// has fetched. A host not asked this run is IDLE, dimmed: not broken, not in
+// use. Then the notes about the data (D-132) and what the map sends (D-151).
 func (d Dashboard) mapSourceLines() []string {
 	if len(d.cfg.MapSources) == 0 {
 		return nil
 	}
-	out := []string{statusHeader("MAP - contacted only while a map is open")}
-	for _, s := range d.cfg.MapSources {
-		out = append(out, "  "+s.Name+"  "+render.Tint(s.Host, render.Tok(render.TableMuted)))
-		out = append(out, "    "+s.Use)
-		for _, n := range s.Notes {
-			out = append(out, "    "+render.Tint(n, render.Tok(render.TableMuted))) // D-132: about the data, never a credit (D-148)
+	o := d.opts()
+	var st Stats
+	if d.cfg.Stats != nil {
+		st = d.cfg.Stats()
+	}
+	head := "MAP STATUS"
+	if m := d.mapPane.m; m != nil {
+		if disk := m.CacheUse().Disk; disk.Limit > 0 {
+			head += "  (tiles held " + render.HumanBytes(disk.Held) + " of " + render.HumanBytes(disk.Limit) + ")"
 		}
 	}
+	rows := mapHostRows(d.cfg.MapSources, st, d.now())
+	var table []string
+	for form := range statusForms {
+		if out, ok := providerTable(o, rows, "LAYERS", form, statusAvail(o), 0); ok {
+			table = out
+			break
+		}
+	}
+	if table == nil {
+		table, _ = providerTable(o, rows, "LAYERS", statusForms-1, 0, 0)
+	}
+	out := append([]string{statusHeader(head)}, table...)
+	muted := render.Tok(render.TableMuted)
+	for _, s := range d.cfg.MapSources {
+		for _, n := range s.Notes {
+			out = append(out, statusInset+render.Tint(n, muted)) // D-132: about the data, never a credit (D-148)
+		}
+	}
+	for _, l := range render.WrapText(mapDisclosure, max(statusAvail(o)-len(statusInset), 20)) {
+		out = append(out, statusInset+render.Tint(l, muted))
+	}
 	return out
+}
+
+// mapHostRows are the map's hosts as the table's rows, one a host - its
+// layers joined - with its counters from the map's clients or the station's:
+// OK while its last answer is its latest word, FAIL while a failure is,
+// IDLE before it is asked.
+func mapHostRows(sources []MapSource, st Stats, now time.Time) []endpointRow {
+	at := map[string]int{}
+	var rows []endpointRow
+	for _, s := range sources {
+		if i, ok := at[s.Host]; ok {
+			if s.Layers != "" && !strings.Contains(rows[i].providers, s.Layers) {
+				rows[i].providers += ", " + s.Layers
+			}
+			continue
+		}
+		at[s.Host] = len(rows)
+		r := endpointRow{endpoint: s.Host, providers: s.Layers, state: "IDLE", status: snapshot.ProviderOff}
+		h, ok := hostIn(st.MapRequests, s.Host)
+		if !ok {
+			h, ok = hostIn(st.Requests, s.Host)
+		}
+		if ok && h.Attempts+h.Cache+h.Neg > 0 {
+			r.seen, r.claimed = true, true
+			r.tries, r.net, r.cache, r.neg, r.bytes = h.Attempts, h.Net, h.Cache, h.Neg, h.BytesNet
+			r.fetchedAt = h.LastOK
+			r.state, r.status = "OK", snapshot.ProviderOK
+			if h.LastFail.After(h.LastOK) {
+				r.state, r.status = "FAIL", snapshot.ProviderDegraded
+			}
+			if !r.fetchedAt.IsZero() {
+				r.age = now.Sub(r.fetchedAt)
+			}
+		}
+		rows = append(rows, r)
+	}
+	return rows
+}
+
+// hostIn is one host's counters in a view, if it has any.
+func hostIn(rs httpx.RequestStats, host string) (httpx.HostStats, bool) {
+	for _, h := range rs.Hosts {
+		if h.Host == host {
+			return h, true
+		}
+	}
+	return httpx.HostStats{}, false
 }

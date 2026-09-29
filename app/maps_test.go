@@ -120,9 +120,9 @@ func TestTheMapsSourcesAndRetentionAreNamed(t *testing.T) {
 		}
 	}
 	nws, ok := named("National Weather Service", "api.weather.gov")
-	if !ok || !strings.Contains(nws.Use, "states and marine areas in view") {
-		t.Errorf("the Weather Service's use is not said (D-66's areas among it): %+v", cfg.MapSources)
-	}
+	if !ok || nws.Layers != "alert areas" {
+		t.Errorf("the Weather Service's row does not name its layer: %+v", cfg.MapSources)
+	} // what it is sent is MAP STATUS's one line (D-151), held in the window's test
 	if !strings.Contains(cfg.MapRetention, "7 days") || !strings.Contains(cfg.MapRetention, strconv.Itoa(statedCacheBytes>>20)+" MB") {
 		t.Errorf("the retention does not state the age and the one total: %q", cfg.MapRetention)
 	}

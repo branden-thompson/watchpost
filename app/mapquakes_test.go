@@ -120,7 +120,7 @@ func TestTheMapAsksTheQuakesChosen(t *testing.T) {
 // USGS itself now, and the Status window says so.
 func TestTheStatusWindowNamesTheQuakesHost(t *testing.T) {
 	for _, s := range mapSourceList() {
-		if s.Host == "earthquake.usgs.gov" && s.Use != "" {
+		if s.Host == "earthquake.usgs.gov" && s.Layers == "quakes" { // a MAP STATUS row (D-150)
 			return
 		}
 	}

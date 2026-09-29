@@ -529,7 +529,7 @@ func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byt
 	// priority lane always attempts — it is the half-open probe that clears
 	// the memo on success — so alerts and the first view are never blackholed.
 	if err := c.memoRefusal(req); err != nil {
-		c.stats.add(req.host, func(h *HostStats) { h.FastFail++ })
+		c.stats.add(req.host, func(h *HostStats) { h.FastFail++; h.LastFail = time.Now() })
 		return nil, nil, err
 	}
 	release, err := c.acquire(ctx)
@@ -608,18 +608,25 @@ func (c *Client) attemptOnce(ctx context.Context, req request, attempt int) outc
 	res, err := c.doAttempt(ctx, req)
 	switch {
 	case err == nil && res.status == http.StatusNotModified:
-		c.stats.add(req.host, func(h *HostStats) { h.NotModified++; h.H2 += b2i(res.h2) })
+		c.stats.add(req.host, func(h *HostStats) { h.NotModified++; h.H2 += b2i(res.h2); h.LastOK = time.Now() })
 		c.memo.clear(req.host)
 		out.hdr, out.final = res.hdr, true // no body: the caller renews its stored one
 	case err == nil && res.status == http.StatusOK:
-		c.stats.add(req.host, func(h *HostStats) { h.Net++; h.BytesNet += int64(len(res.body)); h.H2 += b2i(res.h2) })
+		c.stats.add(req.host, func(h *HostStats) {
+			h.Net++
+			h.BytesNet += int64(len(res.body))
+			h.H2 += b2i(res.h2)
+			h.LastOK = time.Now()
+		})
 		c.memo.clear(req.host)
 		out.body, out.hdr, out.final = res.body, res.hdr, true
 	case err != nil && res.status != 0:
+		c.stats.add(req.host, func(h *HostStats) { h.LastFail = time.Now() })
 		out.err, out.final = err, true // non-retryable failure (4xx), already actionable + redacted; never arms the memo
 	case errors.Is(err, errRedirectRefused):
 		out.err, out.final = redactErr(err), true // our own policy, not the host's fault: no retry, no memo
 	default:
+		c.stats.add(req.host, func(h *HostStats) { h.LastFail = time.Now() }) // how it is doing now (D-150)
 		c.noteFailure(req.host, req.rawURL, res, err)
 		out.err, out.status = err, res.status
 	}

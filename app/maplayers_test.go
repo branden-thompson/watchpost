@@ -4,6 +4,7 @@ package app
 // layers and sources, and W1.14's estimate (FR-9.2) read from it.
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -142,5 +143,24 @@ func TestTheEstimateIsReachedFromProduction(t *testing.T) {
 	}
 	if got := cfg.MapCost(tty.MapAsk{}, func(string) bool { return true }); got != (tty.MapCost{}) {
 		t.Errorf("no snapshot is estimated at %+v", got)
+	}
+}
+
+// TestTheEstimateCountsTheOverlaysChosen is D-149: radar, the mode, is not
+// counted; an alert's zones are counted only while its category is checked.
+func TestTheEstimateCountsTheOverlaysChosen(t *testing.T) {
+	warning := snapshot.Alert{ID: "w", Event: "Tornado Warning", AffectedZones: []string{"CAZ001", "CAZ002"}}
+	in := mapInputs{snap: &snapshot.Snapshot{Locations: []snapshot.Location{{Alerts: []snapshot.Alert{warning}}}},
+		region: geo.RegionContiguous, view: tty.MapView{W: -125, S: 24, E: -66, N: 50}}
+	only := func(keys ...string) func(string) bool {
+		return func(k string) bool { return slices.Contains(keys, k) }
+	}
+	if c := refreshCost(in, only(tty.RadarLayer)); c.Requests != 0 || c.Bytes != 0 {
+		t.Errorf("radar alone is estimated %+v; the mode is not an overlay chosen", c)
+	}
+	on := refreshCost(in, only(alertLayerKey, tty.AlertCategorySwitch("warnings")))
+	off := refreshCost(in, only(alertLayerKey))
+	if on.Requests != 2 || off.Requests != 0 {
+		t.Errorf("the warning's two zones: %d requests with Warnings checked, %d without; want 2, then 0", on.Requests, off.Requests)
 	}
 }

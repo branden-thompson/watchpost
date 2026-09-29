@@ -173,6 +173,7 @@ func runtimeCounts() (goroutines, threads, fds int) {
 func (lp *livePipelines) ttyStats() tty.Stats {
 	src := lp.sources()
 	st := tty.Stats{Requests: requestStats(src.clients)}
+	st.MapRequests = httpx.MergeRequestStats(requestStats(lp.mapClients), lp.tiles.stats()) // D-150: the radar's, the temperature's and the tiles'
 	for i, pub := range [...]*publisher{src.priorityPub, src.recentPub} {
 		if pub != nil {
 			st.Pipelines[i] = pub.stats()

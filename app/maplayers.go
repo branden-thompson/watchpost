@@ -51,7 +51,10 @@ type mapInputs struct {
 	anchor time.Time
 	// fireMode is the Fire row's choice (D-145).
 	fireMode string
-	imperial bool
+	// switchedOn is the window's switches, for an estimate that counts only
+	// what is on - an alert category among them (D-149); nil counts all.
+	switchedOn func(key string) bool
+	imperial   bool
 }
 
 // mapInputs are the inputs for the estimate, on the UI goroutine: the view's
@@ -157,9 +160,10 @@ func windowLayers() []tty.MapLayer {
 // kept for its retention.
 func refreshCost(in mapInputs, on func(key string) bool) tty.MapCost {
 	var out tty.MapCost
+	in.switchedOn = on // the alerts' categories, each its own switch (D-149)
 	for _, l := range mapLayers {
-		if l.cost == nil || !on(l.key) {
-			continue
+		if l.cost == nil || l.key == tty.RadarLayer || !on(l.key) {
+			continue // radar is the mode, not an overlay chosen: the warning is the listener's choices (D-149)
 		}
 		b, r := l.cost(in)
 		out.Bytes += b

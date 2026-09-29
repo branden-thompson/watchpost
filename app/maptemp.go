@@ -530,6 +530,7 @@ func tempLayerCost(in mapInputs) (int64, int) {
 
 // tempHosts are the temperature's entries for the Status window's MAP block.
 func tempHosts() []tty.MapSource {
-	return hostsFor(temperature.Hosts(), "temperatures at points across fixed boxes around the region shown (never the view itself)",
+	return hostsFor(temperature.Hosts(), map[string]string{"NWS NDFD": "temperature, waves", "Open-Meteo": "temperature, UV, rain",
+		"Open-Meteo Marine": "waves", "Open-Meteo Air Quality": "air"},
 		map[string][]string{"Open-Meteo": {tempFrameNote}}) // what never changes about its data (D-132); its credit is About's (D-148)
 }

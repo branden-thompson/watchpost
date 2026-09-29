@@ -151,3 +151,39 @@ func TestRequestStatsSeeHTTP2AndTLSHandshakes(t *testing.T) {
 		t.Fatalf("one h2 response over one TLS handshake expected, got %+v", h)
 	}
 }
+
+// TestAHostSaysWhenItLastAnsweredAndFailed is 0.18.0 D-150: each host keeps
+// when it last answered and when it last failed - a failure after the answer
+// is how it is doing now - and a merge keeps the later of each.
+func TestAHostSaysWhenItLastAnsweredAndFailed(t *testing.T) {
+	var fail atomic.Bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if fail.Load() {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+	c, err := New(Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, RetryBase: 1, MaxRetries: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.GetJSON(context.Background(), srv.URL+"/ok", nil); err != nil {
+		t.Fatal(err)
+	}
+	ok := hostStats(t, c.RequestStats(), "127.0.0.1")
+	if ok.LastOK.IsZero() || !ok.LastFail.IsZero() {
+		t.Fatalf("after an answer: %+v", ok)
+	}
+	fail.Store(true)
+	_, _ = c.GetJSON(context.Background(), srv.URL+"/down", nil)
+	down := hostStats(t, c.RequestStats(), "127.0.0.1")
+	if down.LastFail.IsZero() || !down.LastFail.After(down.LastOK) || !down.LastOK.Equal(ok.LastOK) {
+		t.Fatalf("after a failure: %+v; want it failing now, its last answer kept", down)
+	}
+	merged := MergeRequestStats(RequestStats{Hosts: []HostStats{{Host: "h", LastOK: ok.LastOK}}}, RequestStats{Hosts: []HostStats{{Host: "h", LastFail: down.LastFail}}})
+	if m := merged.Hosts[0]; !m.LastOK.Equal(ok.LastOK) || !m.LastFail.Equal(down.LastFail) {
+		t.Errorf("merged: %+v; want the later of each", m)
+	}
+}

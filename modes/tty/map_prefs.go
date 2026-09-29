@@ -73,6 +73,10 @@ func AlertCategoryKey(c category.Category) (string, bool) {
 // table flat.
 func categoryChoice(key string) string { return AlertLayer + "-" + key }
 
+// AlertCategorySwitch is an alert category's switch, as the app asks it
+// (D-149): the key its checkbox is kept under.
+func AlertCategorySwitch(key string) string { return categoryChoice(key) }
+
 // alertLayerOffText is what the description says with the alert areas off:
 // that they are off, never that nothing is there.
 const alertLayerOffText = "Alert areas are switched off in the Overlays menu (O), so none is drawn or described." // D-76: switched at the map
@@ -84,9 +88,13 @@ type MapCost struct {
 }
 
 // The cost warning's thresholds (FR-9.2, D-43): more than either is said.
+// RAISED BY D-149 AND COUNTED OVER THE OVERLAYS CHOSEN ALONE: at D-43's
+// 2 MB and 40 over everything, radar - the mode, 37 requests - and the
+// alerts' zones, whatever their categories, warned with no overlay on, and
+// a warning that always speaks is one that is ignored.
 const (
-	mapCostBytes    = 2_000_000
-	mapCostRequests = 40
+	mapCostBytes    = 3_000_000
+	mapCostRequests = 25
 )
 
 // costWarningParts is the warning in the HUM LEAD's words (D-82): the

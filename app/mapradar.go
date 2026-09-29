@@ -53,13 +53,13 @@ func radarSourcesOver(c *httpx.Client) *radarSources {
 
 // overClient builds a layer's sources over one hardened client of their own:
 // the radar's and the temperature's (W8.5, W10.2).
-func overClient[T any](newClient func(string) (*httpx.Client, error), userAgent string, build func(*httpx.Client) T) (T, error) {
+func overClient[T any](newClient func(string) (*httpx.Client, error), userAgent string, build func(*httpx.Client) T) (T, *httpx.Client, error) {
 	c, err := newClient(userAgent)
 	if err != nil {
 		var none T
-		return none, err
+		return none, nil, err
 	}
-	return build(c), nil
+	return build(c), c, nil // the client too: its counters are the Status window's MAP STATUS (D-150)
 }
 
 // sourceFor is the source for a region: IEM where the listener chose it and
@@ -444,7 +444,7 @@ func radarLayerCost(in mapInputs) (int64, int) {
 
 // radarHosts are the radar's entries for the Status window's MAP block.
 func radarHosts() []tty.MapSource {
-	return hostsFor(radar.Hosts(), "radar frames of fixed boxes around the region shown (never the view itself)",
+	return hostsFor(radar.Hosts(), map[string]string{"NOAA / NCEP (MRMS)": "radar", "Iowa Environmental Mesonet": "radar, radar ahead"},
 		map[string][]string{"NOAA / NCEP (MRMS)": {mrmsNote}}) // what never changes about it, off the map (D-132); its chip reads MRMS≈
 }
 
@@ -458,11 +458,11 @@ func withChips(chips map[string][]string, layer string, names ...string) map[str
 }
 
 // hostsFor is a layer's hosts as the Status window's entries, by name, each
-// with what it is sent and what never changes about its data (D-132).
-func hostsFor(hosts map[string]string, use string, notes map[string][]string) []tty.MapSource {
+// with the layers it serves and what never changes about its data (D-132).
+func hostsFor(hosts, layers map[string]string, notes map[string][]string) []tty.MapSource {
 	var out []tty.MapSource
 	for name, base := range hosts {
-		out = append(out, tty.MapSource{Name: name, Host: hostOf(base), Use: use, Notes: notes[name]})
+		out = append(out, tty.MapSource{Name: name, Host: hostOf(base), Layers: layers[name], Notes: notes[name]})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out

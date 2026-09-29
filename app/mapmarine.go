@@ -208,7 +208,7 @@ func tideLayerCost(in mapInputs) (int64, int) {
 // block.
 func marineHosts() []tty.MapSource {
 	return []tty.MapSource{
-		{Name: "NOAA NDBC", Host: "www.ndbc.noaa.gov", Use: "every buoy's latest reading, one national file, while Buoys is on"},
-		{Name: "NOAA CO-OPS", Host: "api.tidesandcurrents.noaa.gov", Use: "the next tide of each station in view, while Tides is on and twenty or fewer are in view"},
+		{Name: "NOAA NDBC", Host: "www.ndbc.noaa.gov", Layers: "buoys"},
+		{Name: "NOAA CO-OPS", Host: "api.tidesandcurrents.noaa.gov", Layers: "tides"},
 	}
 }

@@ -10,12 +10,13 @@ import (
 	"testing"
 )
 
-// TestWhatTheMapContactsIsInTheStatusWindow is D-69 and D-75: neither the
-// map nor Settings carries words about what the map sends; the Status window
-// lists each source the map contacts, its host and what it is sent.
+// TestWhatTheMapContactsIsInTheStatusWindow is D-69, D-75 and D-151: neither
+// the map nor Settings carries words about what the map sends; the Status
+// window's MAP STATUS names each host the map contacts, and one line says
+// what it is sent.
 func TestWhatTheMapContactsIsInTheStatusWindow(t *testing.T) {
-	sources := []MapSource{{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Use: "the map's tiles, for the area shown"},
-		{Name: "National Weather Service", Host: "api.weather.gov", Use: "alert zone outlines; alerts of the states and marine areas in view"}}
+	sources := []MapSource{{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Layers: "basemap"},
+		{Name: "National Weather Service", Host: "api.weather.gov", Layers: "alert areas"}}
 	for _, mode := range []string{"with", "off", "instead"} {
 		d := openMap(t, Config{MapSources: sources, MapDescription: mode}, 133, 44)
 		if strings.Contains(bodyText(d), "tiles.openfreemap.org") {
@@ -30,7 +31,7 @@ func TestWhatTheMapContactsIsInTheStatusWindow(t *testing.T) {
 	}
 	s.cfg.MapSources = sources
 	status := stripANSITest(strings.Join(s.statusLines(), "\n"))
-	for _, want := range []string{"MAP", "OpenFreeMap", "tiles.openfreemap.org", "api.weather.gov", "states and marine areas in view"} {
+	for _, want := range []string{"MAP STATUS", "tiles.openfreemap.org", "api.weather.gov", "states, marine areas and alert zones in view"} {
 		if !strings.Contains(status, want) {
 			t.Errorf("the Status window does not name %q:\n%s", want, status)
 		}

@@ -217,5 +217,5 @@ func airLayerCost(in mapInputs) (int64, int) {
 // airHosts are air quality's entries for the Status window's MAP block, with
 // their credits (D-131).
 func airHosts() []tty.MapSource {
-	return []tty.MapSource{{Name: "EPA AirNow", Host: airquality.Host(), Use: "every reporting area's measured US AQI and its forecast, one national file, while Air quality is on"}} // its credit is About's (D-148)
+	return []tty.MapSource{{Name: "EPA AirNow", Host: airquality.Host(), Layers: "air"}} // its credit is About's (D-148)
 }

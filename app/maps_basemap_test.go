@@ -198,7 +198,7 @@ func TestTheMapCachesAreStated(t *testing.T) {
 	if want := mapDiskBytes + httpCacheBytes; statedCacheBytes != want {
 		t.Errorf("the stated total is %d; the configured caps sum to %d", statedCacheBytes, want)
 	}
-	if prod := newProductionMapBuilder("t", nil); prod.cacheDir != userCacheSubdir("map") {
+	if prod := newProductionMapBuilder("t", &tileCounter{}, nil); prod.cacheDir != userCacheSubdir("map") || prod.transport == nil {
 		t.Errorf("the tile cache is at %q, want the OS cache directory's map folder", prod.cacheDir)
 	}
 	tr := &recorded{}

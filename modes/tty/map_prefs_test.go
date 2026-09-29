@@ -190,8 +190,8 @@ func TestTheCostWarningsThresholds(t *testing.T) {
 		want string
 	}{
 		{MapCost{Bytes: 1_000_000, Requests: 10}, ""},
-		{MapCost{Bytes: 2_000_000, Requests: 40}, ""},
-		{MapCost{Bytes: 2_000_001, Requests: 40}, "Map may experience performance issues at this zoom level. Est. 2.0MB / 40 Requests | Adjust layers/zoom to improve experience."},
+		{MapCost{Bytes: 3_000_000, Requests: 25}, ""}, // D-149's floor
+		{MapCost{Bytes: 3_000_001, Requests: 25}, "Map may experience performance issues at this zoom level. Est. 3.0MB / 25 Requests | Adjust layers/zoom to improve experience."},
 		{MapCost{Bytes: 2_200_000, Requests: 211}, "Map may experience performance issues at this zoom level. Est. 2.2MB / 211 Requests | Adjust layers/zoom to improve experience."},
 	} {
 		head, detail := costWarningParts(c.cost)
@@ -326,5 +326,16 @@ func TestAnAlertInViewIsDescribedInFull(t *testing.T) {
 	out := unwrapped(stripANSITest(d.View().Content))
 	if !strings.Contains(out, "Tornado Warning in effect for this area until") {
 		t.Errorf("the alert in view is not described in full:\n%s", out)
+	}
+}
+
+// TestTheWarningWaitsForTheOverlaysChosen is D-149's floor: 3 MB or 25
+// requests of the overlays chosen, and not before.
+func TestTheWarningWaitsForTheOverlaysChosen(t *testing.T) {
+	for c, want := range map[MapCost]bool{{Bytes: 2_900_000, Requests: 24}: false, {Bytes: 3_000_000, Requests: 25}: false,
+		{Bytes: 3_000_001, Requests: 1}: true, {Bytes: 100, Requests: 26}: true} {
+		if head, _ := costWarningParts(c); (head != "") != want {
+			t.Errorf("%+v warns %v; want %v", c, head != "", want)
+		}
 	}
 }

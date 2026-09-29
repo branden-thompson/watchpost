@@ -16,9 +16,10 @@ import (
 )
 
 // MaxStatHosts is the number of distinct hosts counted individually; every
-// further host folds into the OtherHost row. The app talks to seven hosts
-// today (NWS, CO-OPS, NDBC, HMS, WFIGS, FIRMS, Open-Meteo); one spare.
-const MaxStatHosts = 8
+// further host folds into the OtherHost row. RAISED FROM 8 (0.18.0 D-150):
+// the station's client now talks to the map's hosts too - USGS's feeds,
+// AirNow, the zones - and the Status window's MAP STATUS reads them by name.
+const MaxStatHosts = 16
 
 // OtherHost is the overflow row's name.
 const OtherHost = "other"
@@ -36,6 +37,10 @@ type HostStats struct {
 	Bytes304      int64 // body bytes a 304 saved (Q5)
 	H2            int64 // responses that arrived over HTTP/2
 	TLSHandshakes int64 // full TLS handshakes (a resumed session does not count)
+	// LastOK and LastFail are when the host last answered, and last failed
+	// - an error, a refusal, a fast-fail (0.18.0 D-150): whichever is later
+	// says how it is doing now.
+	LastOK, LastFail time.Time
 }
 
 // RequestStats is a point-in-time copy of every host row, busiest first,
@@ -141,4 +146,10 @@ func addHostStats(dst *HostStats, src HostStats) {
 	dst.Bytes304 += src.Bytes304
 	dst.H2 += src.H2
 	dst.TLSHandshakes += src.TLSHandshakes
+	if src.LastOK.After(dst.LastOK) {
+		dst.LastOK = src.LastOK
+	}
+	if src.LastFail.After(dst.LastFail) {
+		dst.LastFail = src.LastFail
+	}
 }
