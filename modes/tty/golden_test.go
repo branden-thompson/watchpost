@@ -23,9 +23,6 @@ var updateGolden = flag.Bool("update-golden", false, "re-capture testdata/frame-
 // the header's stamp is the same on every machine.
 func goldenDash(t *testing.T, ascii bool) Dashboard {
 	t.Helper()
-	local := time.Local
-	time.Local = time.UTC
-	t.Cleanup(func() { time.Local = local })
 	d := benchDash(t, 133, 44).(Dashboard)
 	rendering.SetColorEnabledForTest(false)
 	d.cfg.ASCII = ascii
@@ -90,9 +87,6 @@ func TestFrameHonoursNoColorUnderColorTerm(t *testing.T) {
 // TERM=xterm-256color — the fidelity golden the go-studs patches must keep
 // byte for byte (quality pass Q4a, CQ-4: captured BEFORE patch 004).
 func TestFrameGoldenColourOn(t *testing.T) {
-	local := time.Local
-	time.Local = time.UTC
-	t.Cleanup(func() { time.Local = local })
 	d := benchDash(t, 133, 44).(Dashboard) // TERM set, colour forced on
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 2, 0, 0, time.UTC) }
 	checkGolden(t, "frame-133x44-colour.golden", d.View().Content)
@@ -108,9 +102,6 @@ func TestFrameGoldenColourOn(t *testing.T) {
 // golden would then pin a window no listener will ever see.
 func setupGolden(t *testing.T, w, h int, ascii bool, at setupRowID) Dashboard {
 	t.Helper()
-	local := time.Local
-	time.Local = time.UTC
-	t.Cleanup(func() { time.Local = local })
 	rendering.SetColorEnabledForTest(false)
 	d := benchDash(t, w, h).(Dashboard)
 	d.cfg.ASCII = ascii

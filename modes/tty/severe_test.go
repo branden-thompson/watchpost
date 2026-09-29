@@ -328,9 +328,6 @@ func TestStatusModalGaugesTheSevereIndex(t *testing.T) {
 // each with the width invariant beside the byte pin (a pin alone can freeze
 // a defect — calibration "Byte Pins Ride With Invariant Assertions").
 func TestSevereGoldens(t *testing.T) {
-	local := time.Local
-	time.Local = time.UTC
-	t.Cleanup(func() { time.Local = local })
 	cases := []struct {
 		name  string
 		w     int

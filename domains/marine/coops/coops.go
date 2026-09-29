@@ -288,6 +288,22 @@ func (p *Provider) TideStations(ctx context.Context) ([]Station, error) {
 	return out, nil
 }
 
+// HeldTideStations is the tide stations already held, asking nothing: nil
+// until TideStations or the station's own tides have loaded the list. The
+// map's cost estimate reads it (0.18.0 W14, C-2) - an estimate never fetches.
+func (p *Provider) HeldTideStations() []Station {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.tide) == 0 {
+		return nil
+	}
+	out := make([]Station, len(p.tide))
+	for i, s := range p.tide {
+		out[i] = Station{ID: s.ID, Name: s.Name, Lat: s.Lat, Lon: s.Lng}
+	}
+	return out
+}
+
 // NextTide is a station's next high or low after a moment, from its
 // predictions - the places' own request, cached as theirs is.
 func (p *Provider) NextTide(ctx context.Context, id string, after time.Time) (snapshot.TideEvent, error) {

@@ -187,3 +187,20 @@ func TestTheMenusPickersAreTheAppsPickers(t *testing.T) {
 		t.Error("→ on a box with no picker blinked a chip")
 	}
 }
+
+// TestTheMenuBlinkKeepsATickUntilItEnds is W14's C-3: the Overlays menu's
+// picker blink is cleared by the tick (applyTick), so a tick must be armed
+// while it shows - as Settings' picker blink keeps one. Nothing else here
+// needs a tick, which the control asserts, so the blink alone must.
+func TestTheMenuBlinkKeepsATickUntilItEnds(t *testing.T) {
+	d := mapDash(t, Config{})
+	d, _ = pressKey(d, "g")
+	d.ticker = nil
+	if d.tickNeeded() {
+		t.Fatal("control: something else keeps a tick armed here, so this test proves nothing")
+	}
+	d.mapPane.menuFlash, d.mapPane.menuFlashEnd = flashRight, time.Now().Add(time.Second)
+	if !d.tickNeeded() {
+		t.Error("the menu's blink shows with no tick armed: nothing will clear it")
+	}
+}

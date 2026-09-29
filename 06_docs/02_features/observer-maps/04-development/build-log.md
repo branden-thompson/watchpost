@@ -1924,3 +1924,47 @@ corrected while it was built, each by a measurement:
 (16-19 s). The baseline (n ≥ 5) comes next, then the audit.
 
 **Mutation verdicts** (targeted, 7 on the instrument), all caught.
+
+## Batch 58 — W14's verified low-risk fixes (D-155 step 1, 2026-09-29)
+
+**The baseline and the audit** are `02-analysis/w14-findings.md` (commit `cb4a6cbb`). D-155 put
+the verified low-risk fixes first.
+
+**The instrument's two flaws**, both found reading the baseline and both RED first:
+- `handleMapKey` (and the window's resize) drew the map, then marked the view moved, so `settled`
+  was said before the move's settle tick had asked for its view. The view is now marked first -
+  `viewGen` is read by the settle tick and the instrument alone, so nothing else moves.
+- A trigger that outlived its ask (space, for the loop) timed every later refresh from the key
+  press. An answer is now timed once a kind per ask, and an ask stops listening once settled.
+
+**P10: 61 live findings to 31.**
+- S-1: the `scrolls` closure in `windowKeysOf` is a method expression. The analyzer read the
+  closure's body as a call made there, and that one edge closed a 32-function "recursion" through
+  the layout code - 29 findings. Two auditors found it independently.
+- S-3: the one real cycle, `layerOn` → `radarMode` → `layerOn`: the choice is read through
+  `chosen`, the tick inside its group, which both use.
+- `tools/perfsum`'s own loops are bounded, and its invariants mean something - phases in time
+  order, cumulative CPU never falling in a phase - each with a test that fails without it. Its
+  density (1.64) is left to the HUM LEAD as a dev-tooling exemption, as `tools/slope`'s was.
+
+**C-2, the Tides estimate was always 0.** The estimate is built without fetching and only
+fetching filled the stations. It now counts the stations the CO-OPS provider already holds in
+view (`HeldTideStations`), asking nothing - one request each, as the feed makes. The test's view
+holds some fixture stations and not others; the first form held them all and a mutant survived it.
+
+**C-3, the Overlays menu's picker blink had no tick.** `tickNeeded` has its arm, as Settings'
+picker has; a control asserts nothing else keeps a tick armed in the test.
+
+**P-8, a zoneinfo read an alert sentence** on the description's path - through `platform/tz`'s memo
+now, the rule B3 UAT 74 set.
+
+**Found running the batch: a race in `modes/tty`'s tests.** Four helpers set `time.Local` and
+restored it, while timers left sleeping by earlier tests (a `tea.Tick`'s command, which `msgsOf`
+does not wait out) called `time.Now` on their own goroutines. `-race` reported it one run in three,
+in `TestAVoiceNoteFromTheDeckIsDrawnUnderTheRowThatAskedForIt`. Every one wanted UTC: the package's
+`TestMain` now pins it once, before any goroutine, and `TestNoTestSetsTheZoneMidRun` refuses a
+mid-run write.
+
+**Mutation verdicts** (targeted, 12): 10 caught at first; 2 survived and their tests were
+strengthened until caught. The two structural changes are behaviour-identical by design; their
+guard is the P10 checker, re-run: 61 → 31 live.

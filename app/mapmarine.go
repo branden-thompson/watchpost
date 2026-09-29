@@ -82,12 +82,7 @@ func (lp *livePipelines) tidesIn(ctx context.Context, ask tty.MapAsk, now time.T
 	if err != nil {
 		return nil
 	}
-	var in []coops.Station
-	for _, s := range stations {
-		if ask.View.Contains(s.Lat, s.Lon) {
-			in = append(in, s)
-		}
-	}
+	in := stationsIn(stations, ask.View)
 	out := make([]tideMark, len(in))
 	for i, s := range in {
 		out[i].station = s
@@ -97,6 +92,32 @@ func (lp *livePipelines) tidesIn(ctx context.Context, ask tty.MapAsk, now time.T
 		}
 	}
 	return out
+}
+
+// tidesHeld is the tide stations in view that the provider already holds,
+// unlabelled and asking nothing: what the estimate counts (W14, C-2).
+func (lp *livePipelines) tidesHeld(ask tty.MapAsk) []tideMark {
+	_, c := lp.marineProviders()
+	if !ask.Tides || c == nil {
+		return nil
+	}
+	in := stationsIn(c.HeldTideStations(), ask.View)
+	out := make([]tideMark, len(in))
+	for i, s := range in {
+		out[i].station = s
+	}
+	return out
+}
+
+// stationsIn is the stations inside the view.
+func stationsIn(stations []coops.Station, view tty.MapView) []coops.Station {
+	var in []coops.Station
+	for _, s := range stations {
+		if view.Contains(s.Lat, s.Lon) {
+			in = append(in, s)
+		}
+	}
+	return in
 }
 
 // buoyOverlay is the buoys in view that read in the last two hours, each a

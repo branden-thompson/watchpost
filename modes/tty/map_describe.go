@@ -22,6 +22,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	zones "github.com/branden-thompson/watchpost/platform/tz"
 )
 
 // Relation is M1's word for an alert against a place: it covers the place,
@@ -294,8 +295,10 @@ func areasInWords(desc string) string {
 
 // untilWords is a time as the place keeps it, with its day.
 func (d Dashboard) untilWords(loc snapshot.Location, t time.Time) string {
-	if zone, err := time.LoadLocation(loc.TZ); err == nil && loc.TZ != "" {
-		t = t.In(zone)
+	if loc.TZ != "" { // no zone: the time as given
+		if zone, err := zones.Location(loc.TZ); err == nil { // the memo, not a zoneinfo read a sentence (W14, P-8)
+			t = t.In(zone)
+		}
 	}
 	return d.clockFmt.Time(t) + " on " + t.Weekday().String()
 }

@@ -236,6 +236,7 @@ func (*livePipelines).stepBedRelay
 func (*livePipelines).stopAll
 func (*livePipelines).takeTheAir
 func (*livePipelines).testLocation
+func (*livePipelines).tidesHeld
 func (*livePipelines).tidesIn
 func (*livePipelines).ttyConfig
 func (*livePipelines).ttyStats
@@ -728,6 +729,7 @@ func startSchedule
 func startTicker
 func stateNear
 func stationFrom
+func stationsIn
 func subjectOf
 func suggestHook
 func tapeHead

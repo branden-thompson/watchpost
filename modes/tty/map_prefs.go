@@ -369,6 +369,14 @@ func (d Dashboard) layerOn(key string) bool {
 	if key == TemperatureLayer && d.mapPane.tempAuto && !d.radarMode() {
 		return true // Forecast mode turned it on (D-103), its alone (D-104)
 	}
+	return d.chosen(key)
+}
+
+// chosen is a layer as the listener chose it: its tick, inside its group.
+// radarMode reads the radar through it rather than through layerOn, which
+// would ask radarMode again - a cycle P10 forbids (W14, S-3); the radar is
+// never Forecast mode's own, so the answer is the same.
+func (d Dashboard) chosen(key string) bool {
 	if g, ok := layerGroup[key]; ok && !d.groupOn(g) {
 		return false // its group disabled: drawn nowhere, its tick kept (D-143)
 	}

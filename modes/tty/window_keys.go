@@ -61,7 +61,10 @@ type windowKeys struct {
 // windowKeysOf is a window's declaration, and false for one without - which
 // window_keys_test.go refuses for every window there is.
 func windowKeysOf(m modal) (windowKeys, bool) {
-	scrolls := func(d Dashboard, act term.Action) Dashboard { return d.handleModalNav(act) }
+	// A METHOD EXPRESSION, NOT A CLOSURE (W14, S-1): P10's call graph reads a
+	// closure's body as a call made here, and that one false edge closed a
+	// 32-function "recursion" through the layout code; nothing here calls it.
+	scrolls := Dashboard.handleModalNav
 	switch m {
 	case modalNone:
 		return windowKeys{claim: claimActions}, true // the dashboard: its bindings, its table

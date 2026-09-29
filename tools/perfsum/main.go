@@ -34,7 +34,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/branden-thompson/watchpost/platform/invariant"
 )
+
+// maxRows bounds every input read (P10-02): a run is hours of 20 s samples
+// and a few hundred phases or counter reads - far below this. A file past it
+// is not a run's, and is refused rather than read without end.
+const maxRows = 1 << 20
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -130,7 +137,10 @@ func readPhases(path string) ([]phase, error) {
 	defer func() { _ = f.Close() }() // read-only: nothing to lose on close
 	var out []phase
 	sc := bufio.NewScanner(f)
-	for sc.Scan() {
+	for range maxRows {
+		if !sc.Scan() {
+			return out, sc.Err()
+		}
 		ts, name, ok := strings.Cut(sc.Text(), " ")
 		if !ok {
 			continue
@@ -140,11 +150,16 @@ func readPhases(path string) ([]phase, error) {
 			return nil, fmt.Errorf("phases.log: %q: %w", sc.Text(), err)
 		}
 		if n := len(out); n > 0 {
+			// A LOG OUT OF TIME ORDER IS NOT A RUN'S: every phase would get a
+			// negative span and every sample the wrong phase.
+			if err := invariant.Check(!at.Before(out[n-1].from), "phases.log: phases out of time order"); err != nil {
+				return nil, err
+			}
 			out[n-1].to = at
 		}
 		out = append(out, phase{name: name, from: at, to: at})
 	}
-	return out, sc.Err()
+	return nil, fmt.Errorf("phases.log: more than %d lines", maxRows)
 }
 
 // sample is one soak.sh row, the columns perfsum reads.
@@ -175,7 +190,7 @@ func readSamples(path string) ([]sample, error) {
 		}
 	}
 	var out []sample
-	for {
+	for range maxRows {
 		rec, err := r.Read()
 		if err == io.EOF {
 			return out, nil
@@ -194,6 +209,7 @@ func readSamples(path string) ([]sample, error) {
 		num := func(k string) float64 { v, _ := strconv.ParseFloat(rec[col[k]], 64); return v }
 		out = append(out, sample{at: at, cpuS: cpu, footKB: num("footprint_kb"), heap: num("heap_alloc"), gor: num("goroutines"), thr: num("threads")})
 	}
+	return nil, fmt.Errorf("samples.csv: more than %d rows", maxRows)
 }
 
 // cpuSeconds reads ps's cumulative CPU time: [[dd-]hh:]mm:ss[.ff].
@@ -238,6 +254,11 @@ func resourcesIn(samples []sample, from, to time.Time) (resources, bool) {
 		foot, heap, gor, thr = append(foot, s.footKB/1024), append(heap, s.heap/(1<<20)), append(gor, s.gor), append(thr, s.thr)
 	}
 	span := last.at.Sub(first.at).Seconds()
+	// CUMULATIVE CPU NEVER FALLS within one process: a fall is two processes'
+	// samples mixed, and the phase's CPU would come out negative.
+	if invariant.Check(last.cpuS >= first.cpuS, "samples.csv: cumulative CPU time fell inside a phase") != nil {
+		return resources{}, false
+	}
 	r := resources{samples: len(in), footMedMB: quantile(foot, 0.5), footMaxMB: maxOf(foot), heapMedMB: quantile(heap, 0.5), goroutinesMed: quantile(gor, 0.5), threadsMax: maxOf(thr)}
 	if span > 0 {
 		r.cpuPct = (last.cpuS - first.cpuS) / span * 100
@@ -268,7 +289,10 @@ func readTimings(dir string) ([]timing, error) {
 	}
 	if raw, err := os.ReadFile(filepath.Join(dir, "counters.jsonl")); err == nil {
 		dec := json.NewDecoder(strings.NewReader(string(raw)))
-		for dec.More() {
+		for i := 0; dec.More(); i++ {
+			if i == maxRows {
+				return nil, fmt.Errorf("counters.jsonl: more than %d records", maxRows)
+			}
 			var r record
 			if err := dec.Decode(&r); err != nil {
 				return nil, fmt.Errorf("counters.jsonl: %w", err)
@@ -340,7 +364,7 @@ func timingRows(phases []phase, ts []timing) []string {
 // quantile is the nearest-rank quantile: an observed value, never an
 // interpolation between two runs that did not happen.
 func quantile(v []float64, q float64) float64 {
-	if len(v) == 0 {
+	if len(v) == 0 || invariant.Check(q >= 0 && q <= 1, "quantile outside [0, 1]") != nil {
 		return math.NaN()
 	}
 	s := append([]float64(nil), v...)

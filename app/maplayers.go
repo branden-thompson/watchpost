@@ -82,6 +82,8 @@ func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bo
 			in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View)      // D-122: the feed chosen, not the ticker's
 			in.buoys, in.tides = lp.buoysIn(ctx, ask), lp.tidesIn(ctx, ask, time.Now()) // D-127, D-128: while their rows are on
 			in.airnow = lp.airnowIn(ctx, ask)                                           // D-138: while Air quality is on
+		} else {
+			in.tides = lp.tidesHeld(ask) // the estimate counts the stations held in view, asking nothing (W14, C-2)
 		}
 	}
 	return in

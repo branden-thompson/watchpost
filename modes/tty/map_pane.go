@@ -700,8 +700,8 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 			}
 		}
 	}
+	d, settle := d.viewMoved() // marked moved before it is drawn: its view is not in until its settle tick asks (W14's instrument)
 	d = d.renderMap()
-	d, settle := d.viewMoved()
 	return d, tea.Batch(d.mapWorkCmd(), d.mapFeedCmd(), settle), true
 }
 
@@ -796,7 +796,7 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 	}
 	v.feed = d.feedForLayers(v.feed) // a layer switched off draws nothing (W1.11)
 	d.mapPane.feedApplied = v.gen
-	d.timed("answered:feed")
+	d = d.timed("answered:feed")
 	d = d.refreshMapCost()
 	d.mapPane.feed = &v.feed
 	d = d.setFeed(v.feed)

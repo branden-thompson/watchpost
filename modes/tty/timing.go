@@ -38,7 +38,13 @@ const (
 	seenComplete uint8 = 1 << iota
 	seenM5
 	seenSettled
+	seenFeed
+	seenRadar
+	seenTemp
 )
+
+// answerSeen is each answer's bit: an answer is timed once a kind per ask.
+var answerSeen = map[string]uint8{"answered:feed": seenFeed, "answered:radar": seenRadar, "answered:temp": seenTemp}
 
 // timeFrom starts the map's clock at an ask: g, a map key, a switch.
 func (d Dashboard) timeFrom(what string) Dashboard {
@@ -49,13 +55,23 @@ func (d Dashboard) timeFrom(what string) Dashboard {
 	return d
 }
 
-// timed says an event against the running clock.
-func (d Dashboard) timed(event string) {
-	c := d.mapPane.clock
-	if d.cfg.Timed == nil || c.from.IsZero() {
-		return
+// timed says an event against the running clock. AN ASK STOPS LISTENING
+// ONCE SETTLED, and an answer is timed once a kind: a trigger that outlives
+// its ask (space, for the loop) otherwise timed every later refresh from the
+// key press - the baseline's 300 s "answers" (W14).
+func (d Dashboard) timed(event string) Dashboard {
+	c := &d.mapPane.clock
+	if d.cfg.Timed == nil || c.from.IsZero() || c.seen&seenSettled != 0 {
+		return d
+	}
+	if bit, ok := answerSeen[event]; ok {
+		if c.seen&bit != 0 {
+			return d
+		}
+		c.seen |= bit
 	}
 	d.cfg.Timed(Timing{Trigger: c.what, Event: event, After: d.now().Sub(c.from)})
+	return d
 }
 
 // timeDraw says, once each per ask:
@@ -72,7 +88,8 @@ func (d Dashboard) timeDraw() Dashboard {
 	p := &d.mapPane
 	complete := p.status == tuimaps.Complete
 	if complete && p.clock.seen&seenComplete == 0 {
-		d.timed("complete")
+		d = d.timed("complete")
+		p = &d.mapPane
 		p.clock.seen |= seenComplete
 	}
 	// A move asks for its view only once it has stood still (D-66): until its
@@ -80,11 +97,13 @@ func (d Dashboard) timeDraw() Dashboard {
 	still := p.viewAsked == p.viewGen
 	feedIn := p.feedApplied == p.feedGen
 	if complete && still && !p.pending && feedIn && p.feedApplied > p.clock.feedAt && p.clock.seen&seenM5 == 0 {
-		d.timed("m5")
+		d = d.timed("m5")
+		p = &d.mapPane
 		p.clock.seen |= seenM5
 	}
 	if complete && still && !p.pending && !p.radarBusy && !p.tempBusy && feedIn && p.clock.seen&seenSettled == 0 {
-		d.timed("settled")
+		d = d.timed("settled")
+		p = &d.mapPane
 		p.clock.seen |= seenSettled
 	}
 	return d

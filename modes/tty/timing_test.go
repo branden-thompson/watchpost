@@ -158,3 +158,49 @@ func TestTheInstrumentChangesNothingItMeasures(t *testing.T) {
 		t.Error("the instrument changed the frame it measured")
 	}
 }
+
+// TestAMoveIsNotSettledBeforeItsViewIsAsked is the baseline's first flaw in
+// the instrument (W14): a pan drew the map before marking the view moved, so
+// "settled" was said at once - before the pan's own alerts were asked, which
+// its settle tick does 600 ms later (D-66).
+func TestAMoveIsNotSettledBeforeItsViewIsAsked(t *testing.T) {
+	tm := &timings{}
+	d := openTimedMap(t, tm)
+	m, cmd := d.Update(tea.KeyPressMsg{Code: tea.KeyRight})
+	d = settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+	if n := countOf(tm.events("map.pan.right"), "settled"); n != 0 {
+		t.Fatalf("a pan was settled %d times before its settle tick asked for its view", n)
+	}
+	m, cmd = d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen})
+	settleRadar(t, feedAndSettle(t, m.(Dashboard)), cmd)
+	if n := countOf(tm.events("map.pan.right"), "settled"); n != 1 {
+		t.Errorf("once its view is asked and in, the pan is settled once; said %d", n)
+	}
+}
+
+// TestAnAskStopsListeningOnceSettled is the second flaw: a trigger that
+// outlived its ask (space, for the loop) timed every later refresh from the
+// key press - 300 s "answers". An answer is timed once a kind, and nothing
+// after the ask is settled.
+func TestAnAskStopsListeningOnceSettled(t *testing.T) {
+	tm := &timings{}
+	d := openTimedMap(t, tm)
+	settledAt := len(tm.got)
+	for range 3 { // three refreshes, as new snapshots bring
+		d = d.requestFeed()
+		d = feedAndSettle(t, d)
+	}
+	_ = d.timed("answered:temp") // a kind not yet seen, landing after the ask settled
+	for _, e := range tm.got[settledAt:] {
+		if e.Trigger == "map.region.1" {
+			t.Errorf("after settled, a later refresh was timed against the ask: %+v", e)
+		}
+	}
+	for _, trigger := range []string{"open", "map.region.1"} {
+		for _, kind := range []string{"answered:feed", "answered:radar"} {
+			if n := countOf(tm.events(trigger), kind); n > 1 {
+				t.Errorf("%s timed %s %d times; an answer is timed once a kind", trigger, kind, n)
+			}
+		}
+	}
+}

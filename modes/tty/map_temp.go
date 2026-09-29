@@ -149,7 +149,7 @@ const forecastDays = 7
 
 // radarMode reports whether the map is in Radar mode: the radar layer is on
 // (D-94). Off, it is in Forecast mode.
-func (d Dashboard) radarMode() bool { return d.layerOn(RadarLayer) }
+func (d Dashboard) radarMode() bool { return d.chosen(RadarLayer) }
 
 // tempAnchor is the start of the listener's hour: Forecast mode's Now, and
 // what its days are counted from.
@@ -229,7 +229,7 @@ func (d Dashboard) applyMapTemp(v mapTempMsg) (tea.Model, tea.Cmd) {
 	if d.mapPane.m == nil || d.modal != modalMap {
 		return d, nil
 	}
-	d.timed("answered:temp")
+	d = d.timed("answered:temp")
 	d.mapPane.temp, d.mapPane.tempAnchor = v.temp, v.anchor // held whether or not it is drawn (D-99)
 	for _, p := range v.temp.Problems {
 		d.problem(p) // D-124: the diagnostics', never the listener's

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestCPUIsTheChangeInCumulativeTime: every ps time shape, and a phase's CPU
@@ -88,5 +89,24 @@ func TestColdRunsAreTheirOwnProcesses(t *testing.T) {
 	run([]string{"-in", dir}, &out, &bytes.Buffer{})
 	if !strings.Contains(out.String(), "| open | m5 | 3 | 2000 | 3000 | 3000 |") {
 		t.Errorf("three cold runs are three samples:\n%s", out.String())
+	}
+}
+
+// TestARunThatIsNotOneIsRefused: phases out of time order, or cumulative CPU
+// falling inside a phase (two processes' samples mixed), are not a run - the
+// first is refused, the second leaves the phase unreported rather than
+// reporting a negative CPU.
+func TestARunThatIsNotOneIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "phases.log"), []byte("2026-09-29T10:10:00Z B\n2026-09-29T10:00:00Z A\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var errOut bytes.Buffer
+	if code := run([]string{"-in", dir}, &bytes.Buffer{}, &errOut); code == 0 || !strings.Contains(errOut.String(), "out of time order") {
+		t.Errorf("phases out of order were read as a run (exit %d): %s", code, errOut.String())
+	}
+	s := []sample{{at: time.Date(2026, 9, 29, 10, 0, 0, 0, time.UTC), cpuS: 50}, {at: time.Date(2026, 9, 29, 10, 5, 0, 0, time.UTC), cpuS: 10}}
+	if _, ok := resourcesIn(s, s[0].at, s[1].at.Add(time.Second)); ok {
+		t.Error("a phase whose cumulative CPU fell was reported")
 	}
 }

@@ -182,3 +182,52 @@ func freshObs(raw []byte, now time.Time) []byte {
 	}
 	return []byte(strings.Join(lines, "\n"))
 }
+
+// TestTheTidesEstimateCountsTheStationsInView is W14's C-2: the estimate is
+// built without fetching, and only fetching filled the tide stations, so Tides
+// always cost nothing in the warning. It counts the stations the provider
+// already holds in view - a request each, as the feed makes - and asks for
+// nothing itself; before the list is held, there is nothing to count.
+func TestTheTidesEstimateCountsTheStationsInView(t *testing.T) {
+	var asked int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked++
+		b, _ := os.ReadFile("../domains/marine/coops/testdata/stations_" + r.URL.Query().Get("type") + ".json")
+		_, _ = w.Write(b)
+	}))
+	defer srv.Close()
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
+	tides := coops.New(c, srv.URL)
+	lp := &livePipelines{marine: []snapshot.Provider{tides}}
+	// A view that holds some of the fixture's stations and not others, so a
+	// count of every station held cannot pass for the count in view.
+	view := tty.MapView{W: -117.5, S: 32, E: -117, N: 34.5}
+	ask := tty.MapAsk{Snap: &snapshot.Snapshot{}, Region: geo.RegionContiguous, View: view, Tides: true}
+	tidesOnly := func(k string) bool { return k == tty.TideLayer }
+	if got := lp.mapCost(ask, tidesOnly); got.Requests != 0 || asked != 0 {
+		t.Fatalf("with no stations held the estimate is %+v and asked %d times", got, asked)
+	}
+	stations, err := tides.TideStations(context.Background()) // the station's own tides load the list
+	if err != nil {
+		t.Fatal(err)
+	}
+	inView := 0
+	for _, s := range stations {
+		if view.Contains(s.Lat, s.Lon) {
+			inView++
+		}
+	}
+	if inView == len(stations) {
+		t.Fatal("control: every fixture station is in the view, so in-view and held cannot be told apart")
+	}
+	if inView == 0 || inView > tideLabelMost {
+		t.Fatalf("the fixture view holds %d stations; the test needs 1..%d", inView, tideLabelMost)
+	}
+	before := asked
+	if got := lp.mapCost(ask, tidesOnly); got.Requests != inView {
+		t.Errorf("the estimate counts %d requests for %d tide stations in view", got.Requests, inView)
+	}
+	if asked != before {
+		t.Errorf("the estimate asked the network %d times; it must ask nothing", asked-before)
+	}
+}

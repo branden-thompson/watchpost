@@ -55,8 +55,8 @@ hold is listed at the end.
 | # | Finding | Evidence | Status |
 |---|---|---|---|
 | C-1 | **Under the heavy workload the map never finishes.** Every priority snapshot re-asks the whole feed (`dashboard.go` `SnapshotMsg`), a newer generation drops the older answer (`applyMapFeed`), and the older ask is never cancelled — it runs to its 30 s limit | Baseline: 0 of 10 heavy opens reached M5; goroutines 484 → 550 | Verified |
-| C-2 | **The Tides estimate is always 0**: the estimate is built without fetching, and only fetching fills `in.tides` (`mapmarine.go` `tideLayerCost`, `maplayers.go` `inputsFor`) | Code | Verified |
-| C-3 | **The Overlays menu's picker blink has no tick of its own**: `tickNeeded` has no arm for `menuFlash` (Settings' has one) | Code; whether it shows depends on another tick being armed | Verified in code |
+| C-2 | **Fixed, batch 58.** **The Tides estimate is always 0**: the estimate is built without fetching, and only fetching fills `in.tides` (`mapmarine.go` `tideLayerCost`, `maplayers.go` `inputsFor`) | Code | Verified |
+| C-3 | **Fixed, batch 58.** **The Overlays menu's picker blink has no tick of its own**: `tickNeeded` has no arm for `menuFlash` (Settings' has one) | Code; whether it shows depends on another tick being armed | Verified in code |
 | C-4 | **~76 MB stays after the map closes** (heap 34 → 86 MB) | Baseline, both variants | Measured; cause not traced |
 | C-5 | Two disk-cached providers (USGS near-field, NDBC) never `Forget` a body that failed to parse, so it is served again until its TTL | Auditor | Reported |
 | C-6 | A nil-pointer panic reachable only if the embedded index fails and no recent list is saved (`markFIRMS`, `fireFor`, … on `rp.asm`) | Auditor | Reported |
@@ -72,7 +72,7 @@ hold is listed at the end.
 | P-5 | The feed's inputs are fetched one after another — view alerts, fire (perimeters box by box), quakes, buoys, up to 20 serial tide predictions, AirNow — then the zones | Auditor, two independently | Reported |
 | P-6 | **Seven overlays are stamped `Valid: now`** (fire ×3, AirNow, buoys, tides, quakes), so no answer compares unchanged and each is handed in again | Code | Verified |
 | P-7 | Big bodies re-parsed on every ask though cached (AirNow 1.9 MB, perimeters, NDBC) | Auditor | Reported |
-| P-8 | `time.LoadLocation` (a zoneinfo read) per alert sentence in the map's description; `platform/tz` exists for this | Code | Verified |
+| P-8 | **Fixed, batch 58.** `time.LoadLocation` (a zoneinfo read) per alert sentence in the map's description; `platform/tz` exists for this | Code | Verified |
 | P-9 | Double renders: `retime` → `setFeed` → `renderMap`, then the caller's own — every forecast step and playback tick | Auditor | Reported |
 | P-10 | The library repaints fully when the blink phase flips, though watchpost places no blinking marker | Code (`frame.go` compares the phase unconditionally; watchpost sets no `Blink`) | Verified mechanism; cost unmeasured |
 | P-11 | The library's report memo is cleared by the wall clock every frame, and `Legend()` rebuilt every Update | Auditor | Reported |
@@ -83,9 +83,9 @@ hold is listed at the end.
 
 | # | Finding | Evidence | Status |
 |---|---|---|---|
-| S-1 | **61 live P10 findings, not 100** (39 exempted). 29 of them are one false edge: the `scrolls` closure in `windowKeysOf` (`window_keys.go`), which the analyzer reads as a call; a method expression, as the neighbouring rows use, dissolves the 32-function "cycle" | Two auditors independently; the closure read | Verified |
+| S-1 | **Fixed, batch 58 (61 → 31 live).** **61 live P10 findings, not 100** (39 exempted). 29 of them are one false edge: the `scrolls` closure in `windowKeysOf` (`window_keys.go`), which the analyzer reads as a call; a method expression, as the neighbouring rows use, dissolves the 32-function "cycle" | Two auditors independently; the closure read | Verified |
 | S-2 | **The P10 checker now keys methods `Recv.Name`**; ledger rows keyed by a bare method name stopped matching — 9 live now (Router's, `Dashboard.View`, `Engine.watchClip`), more as their code is touched | Auditor, from the harness source | Reported — a ledger edit, the HUM LEAD's |
-| S-3 | One real 2-cycle: `layerOn` ↔ `radarMode`, bounded at depth 2 | Two auditors | Reported |
+| S-3 | **Fixed, batch 58.** One real 2-cycle: `layerOn` ↔ `radarMode`, bounded at depth 2 | Two auditors | Reported |
 | S-4 | Six loops bounded in fact, in a form the checker cannot see | Auditor | Reported |
 | S-5 | The map's Forecast-mode step loop written 6×, its hourly loop 4×, grid building 3×, the radar loop fetch 2×; the tty's overlay reconcile 3×, its worker-command wrapper 4× | Auditor | Reported |
 | S-6 | Unit conversions (°C/°F, km/mi, m/s) in ~20 places across three layers; the km/mile constant 6×; two spoken wordings already disagree ("kilometres" / "kilometers") | Auditor | Reported |

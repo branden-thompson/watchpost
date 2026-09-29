@@ -938,6 +938,8 @@ func (d Dashboard) tickNeeded() bool {
 		return true
 	case d.setup.flash != flashNone: // the picker's press blink, same rule
 		return true
+	case d.mapPane.menuFlash != flashNone: // the Overlays menu's picker blink (D-147), same rule (W14, C-3)
+		return true
 	case d.modal == modalStatus || d.modal == modalDetails: // [S] ages; Details "N min ago" labels and LoadingDots
 		return true
 	// ITS CLOCK RUNS DOWN ON ITS OWN AND ACTS AT ZERO (MVS-D-76). Without this
@@ -1033,8 +1035,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		d.width, d.height = v.Width, v.Height
 		if d.modal == modalMap {
-			d = d.boundMap().renderMap() // the bound's least zoom depends on the size; the map is drawn at the window's new size, in Update (D-41, D-45's size row)
-			return d.viewMoved()         // a new size is a new view: its alerts are asked once it settles (D-66)
+			d, settle := d.boundMap().viewMoved() // a new size is a new view: its alerts are asked once it settles (D-66); marked before it is drawn
+			return d.renderMap(), settle          // the bound's least zoom depends on the size; drawn at the window's new size, in Update (D-41, D-45's size row)
 		}
 		return d, nil
 	case SnapshotMsg:

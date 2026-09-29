@@ -14,6 +14,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	zones "github.com/branden-thompson/watchpost/platform/tz"
 )
 
 var windExpires = time.Date(2026, 8, 24, 7, 0, 0, 0, time.UTC)
@@ -164,5 +165,25 @@ func TestTheAreasAreTheServicesOwnFirstTwo(t *testing.T) {
 	}
 	if got := areasInWords(" ; "); got != "" {
 		t.Errorf("an empty description reads %q", got)
+	}
+}
+
+// TestAPlacesTimeIsReadThroughTheZoneCache is W14's P-8: the description
+// names an alert's end in the place's own time, once an alert sentence, and
+// on the View path - through platform/tz's memo, never a zoneinfo read each
+// time (B3 UAT 74's rule). A zone nothing else uses must land in the memo.
+func TestAPlacesTimeIsReadThroughTheZoneCache(t *testing.T) {
+	d := mapDash(t, Config{})
+	before := zones.Cached()
+	at := time.Date(2026, 8, 24, 20, 0, 0, 0, time.UTC)
+	got := d.untilWords(snapshot.Location{TZ: "Pacific/Chatham"}, at)
+	if zones.Cached() != before+1 {
+		t.Errorf("the place's zone was not read through the memo (held %d, then %d)", before, zones.Cached())
+	}
+	if !strings.Contains(got, "on Tuesday") {
+		t.Errorf("8 pm UTC on a Monday is Tuesday morning in Chatham; said %q", got)
+	}
+	if got := d.untilWords(snapshot.Location{}, at); !strings.Contains(got, "on Monday") {
+		t.Errorf("a place with no zone keeps the time as given; said %q", got)
 	}
 }

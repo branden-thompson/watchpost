@@ -117,7 +117,7 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 		d, again := d.askRadar()
 		return d, again
 	}
-	d.timed("answered:radar")
+	d = d.timed("answered:radar")
 	if !d.layerOn(RadarLayer) {
 		v.radar = MapRadar{}
 	}
