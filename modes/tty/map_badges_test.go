@@ -24,7 +24,7 @@ func badgeMap(t *testing.T, cost MapCost) Dashboard {
 		MapCost: func(MapAsk, func(string) bool) MapCost { return cost },
 		MapLayers: []MapLayer{{Key: AlertLayer, Label: "Alert areas", On: true, Chips: []string{"NWS"}}, {Key: RadarLayer, Label: "Radar", On: true},
 			{Key: FireLayer, Label: "Fire", On: true, Chips: []string{"NIFC", "HMS"}}, {Key: TemperatureLayer, Label: "Temperature", On: true},
-			{Key: WaveLayer, Label: "Waves", On: true}, {Key: BuoyLayer, Label: "Buoys", Chips: []string{"NDBC"}}}}
+			{Key: WaveLayer, Label: "Waves", On: true}, {Key: BuoyLayer, Label: "Buoys", Chips: []string{"NDBC"}}, {Key: UVLayer, Label: "UV"}, {Key: AirLayer, Label: "Air quality"}}}
 	d := mapDash(t, cfg)
 	d.now = func() time.Time { return time.Date(2026, 8, 24, 1, 0, 0, 0, time.UTC) }
 	m, cmd := d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"})

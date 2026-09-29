@@ -32,6 +32,10 @@ func init() {
 	registerMapLayer(mapLayer{key: tty.TemperatureLayer, label: "Temperature", on: false, cost: tempLayerCost})
 	registerMapLayer(mapLayer{key: tty.FeelsLayer, label: "Feels like", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }}) // D-119: in temperature's requests
 	registerMapLayer(mapLayer{key: tty.WindLayer, label: "Wind", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }})
+	// UV and Air quality ride temperature's source (D-137, D-139): off by
+	// default, after wind in the Overlays menu.
+	registerMapLayer(mapLayer{key: tty.UVLayer, label: "UV", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }, chips: []string{"O-METEO"}})
+	registerMapLayer(mapLayer{key: tty.AirLayer, label: "Air quality", on: false, cost: airLayerCost, chips: []string{"O-METEO", "AIRNOW"}})
 }
 
 // tempSources is the temperature the app holds: both sources over one
@@ -94,6 +98,10 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	}
 	if lp.temp.waves != nil && lp.temp.rain != nil && ask.Region != geo.RegionSamoa { // the waves (D-125): held as the rest is (D-99); NDFD has no Samoa
 		t = withWaves(ctx, t, lp.temp.waves, lp.temp.rain, ask, now)
+	}
+	if lp.temp.rain != nil { // Open-Meteo: the UV and the model's US AQI (D-137, D-139)
+		t = withUV(ctx, t, lp.temp.rain, src.Name() == "Open-Meteo", ask, now)
+		t = withAir(ctx, t, lp.temp.rain, ask, now)
 	}
 	return t
 }
@@ -529,6 +537,8 @@ func tempHosts() []tty.MapSource {
 			out[i].Notes = []string{temperature.OpenMeteoCredit + ".", temperature.OpenMeteoRainCredit + ".", tempFrameNote}
 		case "Open-Meteo Marine":
 			out[i].Notes = []string{temperature.OpenMeteoWavesCredit + "."}
+		case "Open-Meteo Air Quality":
+			out[i].Notes = []string{temperature.OpenMeteoAirCredit + "."}
 		}
 	}
 	return out

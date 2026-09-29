@@ -151,6 +151,7 @@ const (
 	MapChipHMSBG    Token = "map.chip.hms.bg"
 	MapChipNDBCBG   Token = "map.chip.ndbc.bg"
 	MapChipCOOPSBG  Token = "map.chip.coops.bg"
+	MapChipAirNowBG Token = "map.chip.airnow.bg" // D-138
 	TickerFG        Token = "ticker.fg"
 	TickerMutedFG   Token = "ticker.muted.fg"
 
@@ -371,6 +372,7 @@ func defaultTheme() map[Token]string {
 		MapChipHMSBG:    "48;2;190;24;93",  // #BE185D, magenta
 		MapChipNDBCBG:   "48;2;56;189;248", // #38BDF8, sky
 		MapChipCOOPSBG:  "48;2;132;204;22", // #84CC16, lime
+		MapChipAirNowBG: "48;2;146;64;14",  // #92400E, brown
 		// PLACEHOLDER, pending the ruling: a new colour, or THE RED with every
 		// other lane shifted down. Magenta only so it is unmistakably not final.
 		TickerEmergencyBG: "48;2;150;20;20",     // #961414 — Emergency Orders: THE red

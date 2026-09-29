@@ -52,6 +52,7 @@ const KeyChipMuted
 const LightThemeName
 const ListFocus
 const ListPointer
+const MapChipAirNowBG
 const MapChipCOOPSBG
 const MapChipHMSBG
 const MapChipNDBCBG

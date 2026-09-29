@@ -1663,3 +1663,48 @@ places the window hands overlays in.
 **Mutation verdicts** (targeted; 14 in watchpost, 4 in go-tuiMaps), all caught. One survived at
 first: dropping `wgust` from the current hour's request, since the fake answered whatever was
 asked. The test now reads each request.
+
+## Batch 49 — UV and air quality (W15, D-137 to D-140, 2026-09-29)
+
+**Rulings.**
+- **D-137, "Own row, UV scale tint":** UV in its own row, as a faint tint with labelled contours.
+- **D-138, "Both":** the model's US AQI for the picture, and AirNow's measured AQI over it.
+- **D-139, "One row, both":** one Air quality row draws both.
+- **D-140, colours:** the official colours failed the library's checker. Red-green colour vision
+  could not tell UV's Low from its Very High. So the HUM LEAD asked for "a color band that's close
+  but fits our standards", with a legend to read it by, and every scale's colours kept as tokens.
+
+**What it reads.** None of it needs a key.
+- **UV:** Open-Meteo's `uv_index` and `uv_index_max`, in the temperature request already made -
+  free where Open-Meteo is temperature's source, asked only while UV is on where NDFD is.
+- **Air, the model:** Open-Meteo's air-quality API, `us_aqi` hourly for five days, a request a
+  field box. It has no daily value, so each day's worst hour is worked out on the point's own date.
+- **Air, measured:** AirNow's `reportingarea.dat`, the whole nation in one 1.9 MB file. An area's
+  AQI is its primary pollutant's.
+- **A trap in AirNow's file:** a forecast's day offset counts from its issue, so yesterday's
+  "tomorrow" is today, and both issues are in the file. Each forecast is placed by its valid date
+  against the area's own today, and the latest issue is kept. Most forecasts give a category alone,
+  drawn in that category's colour.
+
+**At the map.**
+- UV and Air quality are in the one-tint group with Temperature and Feels like.
+- Switching either on asks again, since each is asked only while on.
+- AirNow's areas are one overlay of dots in their category's colour. Their words are drawn in the
+  markers' ink, so a pale class still reads on the light ground. They are labelled while thirty or
+  fewer are in view.
+- In Forecast mode, today's and tomorrow's steps show AirNow's own forecast.
+
+**The library, go-tuiMaps L-25 (its D-99), rc.26.**
+- The `uv` and `aqi` presets, their scales searched to pass the checker on both grounds.
+- `UVGrid`, `AirQualityGrid`, and `AirQualityRole`.
+
+**Also.**
+- The waves' answer became a general `Measure`, shared with the air's.
+- AIRNOW has a chip of its own (D-134).
+- Status names EPA AirNow and Open-Meteo Air Quality, with their credits.
+
+**Mutation verdicts** (targeted; 12 in watchpost, 5 in go-tuiMaps), all caught. Two survived at
+first, both gaps in the fixtures:
+- Anchorage, the monitor the test read, has no AirNow forecast, so the forecast steps' timing went
+  unchecked. It is now checked over California.
+- No area in the fixture had two issues disagreeing for one day. A case of its own now does.

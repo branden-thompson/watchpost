@@ -22,20 +22,25 @@ import (
 // OpenMeteoWavesCredit is the waves' credit line where Open-Meteo drew them.
 const OpenMeteoWavesCredit = "Waves: NWS NDFD near shore, Open-Meteo.com (CC BY 4.0) beyond, interpolated"
 
-// Waves is what a source answered of a lattice's wave height, in metres:
-// Hourly by hour then point; Max each day's highest, by day from today then
-// point, on the point's local date. Missing is NaN - ashore, or past a
-// source's reach.
-type Waves struct {
+// Measure is what a source answered of one measure over a lattice: Hourly by
+// hour then point; Max each day's highest, by day from today then point, on
+// the point's local date. Missing is NaN - ashore, or past a source's reach.
+type Measure struct {
 	Lattice Lattice
 	Hours   []time.Time // on the hour, UTC, oldest first
 	Hourly  [][]float64
 	Max     [Days][]float64
 }
 
+// Waves is the wave height, in metres (D-125).
+type Waves = Measure
+
+// Air is the US AQI (D-138): a model's, Open-Meteo's.
+type Air = Measure
+
 // newWaves is an answer with every value missing.
-func newWaves(l Lattice) Waves {
-	w := Waves{Lattice: l}
+func newWaves(l Lattice) Measure {
+	w := Measure{Lattice: l}
 	for k := range Days {
 		w.Max[k] = missing(l.Cols * l.Rows)
 	}
@@ -43,13 +48,13 @@ func newWaves(l Lattice) Waves {
 }
 
 // hourIndex is the index of an hour, adding it in order.
-func (w *Waves) hourIndex(t time.Time) int {
+func (w *Measure) hourIndex(t time.Time) int {
 	return hourRow(&w.Hours, &w.Hourly, w.Lattice.Cols*w.Lattice.Rows, t)
 }
 
 // At is the values of the newest hour at or before t, within an hour of it:
 // a frame never shows an hour it is not in.
-func (w Waves) At(t time.Time) ([]float64, bool) {
+func (w Measure) At(t time.Time) ([]float64, bool) {
 	for i := len(w.Hours) - 1; i >= 0; i-- {
 		if !w.Hours[i].After(t) {
 			if t.Sub(w.Hours[i]) >= time.Hour {
@@ -64,7 +69,7 @@ func (w Waves) At(t time.Time) ([]float64, bool) {
 // FilledFrom is the waves with every missing value, hour by hour and day by
 // day, taken from another source's (D-125): NDFD where it reaches,
 // Open-Meteo beyond.
-func (w Waves) FilledFrom(fill Waves) Waves {
+func (w Measure) FilledFrom(fill Measure) Measure {
 	out := newWaves(w.Lattice)
 	for i, h := range w.Hours {
 		copy(out.Hourly[out.hourIndex(h)], w.Hourly[i])

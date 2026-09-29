@@ -34,8 +34,8 @@ func TestAFakeLayerPlugsInWithoutEditingTheOthers(t *testing.T) {
 	for _, l := range cfg.MapLayers {
 		keys = append(keys, l.Key)
 	}
-	if strings.Join(keys, ",") != "alert,fire,buoys,tides,quake,radar,rain,temperature,feels,wind,waves,fake" {
-		t.Fatalf("the window is handed layers %v, want alert, fire, buoys, tides, quake, radar, rain, temperature, feels, wind, waves, then fake", keys)
+	if strings.Join(keys, ",") != "alert,fire,buoys,tides,quake,radar,rain,temperature,feels,wind,uv,air,waves,fake" {
+		t.Fatalf("the window is handed layers %v, want alert, fire, buoys, tides, quake, radar, rain, temperature, feels, wind, uv, air, waves, then fake", keys)
 	}
 	all := func(string) bool { return true }
 	with := cfg.MapCost(tty.MapAsk{Snap: &snapshot.Snapshot{}}, all)
@@ -67,6 +67,7 @@ func TestEveryRegisteredSourceIsOnTheClosedList(t *testing.T) {
 		"services3.arcgis.com":      true, "www.ospo.noaa.gov": true, // D-121: fire
 		"earthquake.usgs.gov": true,                                        // D-122: quakes
 		"www.ndbc.noaa.gov":   true, "api.tidesandcurrents.noaa.gov": true, // D-127, D-128: the sea's stations
+		"air-quality-api.open-meteo.com": true, "files.airnowtech.org": true, // D-138: air quality
 		"api.weather.gov": true} // the alerts and zones, already the app's
 	if len(mapSources) == 0 {
 		t.Fatal("no source registered")

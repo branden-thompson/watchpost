@@ -358,7 +358,7 @@ const (
 // ChipGrounds are the map's source chips' grounds (0.18.0 D-83, D-134).
 func ChipGrounds() []Token {
 	return []Token{MapRadarMRMSBG, MapRadarIEMBG, MapRadarModelBG, MapChipNWSBG, MapChipNDFDBG, MapChipOMeteoBG,
-		MapChipUSGSBG, MapChipNIFCBG, MapChipHMSBG, MapChipNDBCBG, MapChipCOOPSBG}
+		MapChipUSGSBG, MapChipNIFCBG, MapChipHMSBG, MapChipNDBCBG, MapChipCOOPSBG, MapChipAirNowBG}
 }
 
 // ChipTones is a chip's ground and its words in the theme in use: bold

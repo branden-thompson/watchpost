@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +66,7 @@ func TestEveryRecordedTemperatureFixtureIsPresent(t *testing.T) {
 		Captured string   `json:"captured"`
 		Files    []string `json:"files"`
 	}
-	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 15 { // D-136 recorded three more
+	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 17 { // D-136 recorded three more, D-137 and D-138 two
 		t.Fatalf("the manifest is %+v (%v)", m, err)
 	}
 	for _, f := range m.Files {
@@ -253,7 +254,7 @@ func TestTheClientIsHardened(t *testing.T) {
 }
 
 func TestTheSourcesAreTheClosedList(t *testing.T) {
-	want := map[string]string{"NWS NDFD": "https://graphical.weather.gov", "Open-Meteo": "https://api.open-meteo.com", "Open-Meteo Marine": "https://marine-api.open-meteo.com"} // D-125
+	want := map[string]string{"NWS NDFD": "https://graphical.weather.gov", "Open-Meteo": "https://api.open-meteo.com", "Open-Meteo Marine": "https://marine-api.open-meteo.com", "Open-Meteo Air Quality": "https://air-quality-api.open-meteo.com"} // D-125
 	got := Hosts()
 	if len(got) != len(want) {
 		t.Fatalf("the hosts are %v; want %v (FR-3.8, D-93)", got, want)
@@ -400,5 +401,64 @@ func TestOpenMeteoReadsTheGusts(t *testing.T) {
 	}
 	if !near(s.PeakGust[0][escondido], 20.2) || !near(s.PeakGust[1][escondido], 34.2) {
 		t.Errorf("the days' strongest gusts are %v, %v; want 20.2, then 34.2", s.PeakGust[0][escondido], s.PeakGust[1][escondido])
+	}
+}
+
+// fixedGet answers every request with one fixture, and keeps each address.
+type fixedGet struct {
+	t     *testing.T
+	name  string
+	asked *[]string
+}
+
+func (g fixedGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
+	*g.asked = append(*g.asked, rawURL)
+	return fixture(g.t, g.name), nil
+}
+
+// uvCaptured is when the UV and air-quality fixtures were recorded: 17:51 in
+// San Diego.
+var uvCaptured = time.Date(2026, 9, 29, 0, 51, 5, 0, time.UTC)
+
+// TestOpenMeteoReadsTheUV is D-137: the UV index of each hour and each day's
+// highest, in the request temperature already makes.
+func TestOpenMeteoReadsTheUV(t *testing.T) {
+	var asked []string
+	s, err := NewOpenMeteo(fixedGet{t, "openmeteo-uv.json", &asked}, "").Fetch(context.Background(), fixtureLattice, uvCaptured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(asked) != 1 {
+		t.Fatalf("asked %v; want one request", asked)
+	}
+	u, _ := url.Parse(asked[0])
+	if !slices.Contains(strings.Split(u.Query().Get("hourly"), ","), "uv_index") || !slices.Contains(strings.Split(u.Query().Get("daily"), ","), "uv_index_max") {
+		t.Errorf("the request does not ask for each hour's UV and each day's highest: %s", asked[0])
+	}
+	if uv, ok := s.UVAt(uvCaptured); !ok || !near(uv[escondido], 2.45) {
+		t.Errorf("the UV now is %v (%v); want 2.45 at 17:00 local", uv, ok)
+	}
+	if !near(s.UVMax[0][escondido], 6.9) || !near(s.UVMax[1][escondido], 6.8) {
+		t.Errorf("the days' highest UV are %v, %v; want 6.9, then 6.8", s.UVMax[0][escondido], s.UVMax[1][escondido])
+	}
+}
+
+// TestOpenMeteoReadsTheAirQuality is D-138: the model's US AQI of each hour,
+// from the air-quality API's host, and each day's worst hour on the point's
+// own date - the API gives no daily value.
+func TestOpenMeteoReadsTheAirQuality(t *testing.T) {
+	var asked []string
+	a, err := NewOpenMeteo(fixedGet{t, "openmeteo-air.json", &asked}, "").AirQuality(context.Background(), fixtureLattice, uvCaptured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(asked) != 1 || !strings.HasPrefix(asked[0], "https://air-quality-api.open-meteo.com/v1/air-quality?") || !strings.Contains(asked[0], "us_aqi") {
+		t.Errorf("asked %v; want the air-quality API's US AQI", asked)
+	}
+	if v, ok := a.At(uvCaptured); !ok || !near(v[escondido], 45) {
+		t.Errorf("the AQI now is %v (%v); want 45 at 17:00 local", v, ok)
+	}
+	if !near(a.Max[0][escondido], 47) || !near(a.Max[1][escondido], 81) {
+		t.Errorf("the days' worst are %v, %v; want 47 today, then 81", a.Max[0][escondido], a.Max[1][escondido])
 	}
 }

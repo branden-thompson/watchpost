@@ -13,6 +13,7 @@ package app
 
 import (
 	"context"
+	"github.com/branden-thompson/watchpost/domains/airquality"
 	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
 	"time"
 
@@ -42,8 +43,12 @@ type mapInputs struct {
 	clock     render.Clock
 	// buoys and tides are the sea's stations in view (D-127, D-128), asked
 	// only while their rows are on.
-	buoys    []ndbc.Obs
-	tides    []tideMark
+	buoys []ndbc.Obs
+	tides []tideMark
+	// airnow is AirNow's reporting areas (D-138), asked while Air quality is
+	// on; anchor the hour Forecast mode's steps count from.
+	airnow   []airquality.Area
+	anchor   time.Time
 	imperial bool
 }
 
@@ -64,13 +69,14 @@ func (lp *livePipelines) mapInputsFetching(ctx context.Context, ask tty.MapAsk) 
 // to choose.
 func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bool) mapInputs {
 	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead, forecast: ask.Forecast,
-		quakeFeed: ask.QuakeFeed, clock: ask.Clock, imperial: ask.Fahrenheit}
+		quakeFeed: ask.QuakeFeed, clock: ask.Clock, imperial: ask.Fahrenheit, anchor: ask.Anchor}
 	if lp != nil {
 		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
 		if fetch {
 			in.fire = lp.fireIn(ctx, ask)
 			in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View)      // D-122: the feed chosen, not the ticker's
 			in.buoys, in.tides = lp.buoysIn(ctx, ask), lp.tidesIn(ctx, ask, time.Now()) // D-127, D-128: while their rows are on
+			in.airnow = lp.airnowIn(ctx, ask)                                           // D-138: while Air quality is on
 		}
 	}
 	return in

@@ -78,7 +78,7 @@ func builtinOverrides() map[string]map[Token]string {
 			TickerAdvisoryBG: "48;2;42;42;42", TickerStatementBG: "48;2;30;30;30", EventCatEmergencyBG: "48;2;70;70;70",
 			MapRadarMRMSBG: "48;2;90;90;90", MapRadarIEMBG: "48;2;50;50;50", MapRadarModelBG: "48;2;70;70;70", // D-83's chips without colour: greys, the name says which
 			MapChipNWSBG: "48;2;30;30;30", MapChipUSGSBG: "48;2;40;40;40", MapChipNIFCBG: "48;2;60;60;60", MapChipHMSBG: "48;2;80;80;80", // D-134: a grey each
-			MapChipNDBCBG: "48;2;100;100;100", MapChipNDFDBG: "48;2;110;110;110", MapChipCOOPSBG: "48;2;120;120;120", MapChipOMeteoBG: "48;2;130;130;130",
+			MapChipNDBCBG: "48;2;100;100;100", MapChipNDFDBG: "48;2;110;110;110", MapChipCOOPSBG: "48;2;120;120;120", MapChipOMeteoBG: "48;2;130;130;130", MapChipAirNowBG: "48;2;20;20;20",
 			// The tint ramp, evened in L* like the lane ramp above and running one
 			// rung darker throughout: 70 64 58 52 46 40, in the same severity
 			// order. Category by shade on monochrome; the tab glyph carries
@@ -293,7 +293,7 @@ func lightOverrides() map[Token]string {
 		MapRadarMRMSBG: "48;2;190;235;195", MapRadarIEMBG: "48;2;255;205;160", MapRadarModelBG: "48;2;220;200;245",
 		// D-134's on the light ground: pale, a hue a source, the name black.
 		MapChipNWSBG: "48;2;147;197;253", MapChipNDBCBG: "48;2;103;232;249", MapChipNDFDBG: "48;2;110;231;183", MapChipOMeteoBG: "48;2;253;224;71",
-		MapChipUSGSBG: "48;2;203;213;225", MapChipNIFCBG: "48;2;252;165;165", MapChipHMSBG: "48;2;249;168;212", MapChipCOOPSBG: "48;2;190;242;100",
+		MapChipUSGSBG: "48;2;203;213;225", MapChipNIFCBG: "48;2;252;165;165", MapChipHMSBG: "48;2;249;168;212", MapChipCOOPSBG: "48;2;190;242;100", MapChipAirNowBG: "48;2;214;188;160",
 		GroupText: "1;38;2;20;20;20", GroupLocationBG: "48;2;200;200;200", GroupTodayBG: "48;2;169;196;224",
 		GroupTomorrowBG: "48;2;169;224;224", GroupExtendedBG: "48;2;196;196;224", GroupSectionBG: "48;2;221;221;221",
 		// THE LIGHT THEME INVERTS THE RELATIONSHIP, NOT THE HUE. A band on a

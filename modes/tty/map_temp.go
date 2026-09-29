@@ -17,6 +17,7 @@ package tty
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -45,6 +46,14 @@ const (
 // WaveLayer is wave height's (D-126): its own row, off by default, drawn
 // over the sea alone.
 const WaveLayer = "waves"
+
+// UVLayer is the UV index's (D-137) and AirLayer air quality's (D-139): each
+// its own row, off by default, one tint with temperature and feels-like;
+// asked only while on.
+const (
+	UVLayer  = "uv"
+	AirLayer = "air"
+)
 
 // FireLayer is fire's (D-121): the perimeters, the named incidents and the
 // satellite hotspots, one row, on by default.
@@ -81,6 +90,11 @@ type MapTemperature struct {
 	// Waves are wave height's (D-126): Radar mode's every hour, or Forecast
 	// mode's Now; WaveDays Forecast mode's each day's highest.
 	Waves, WaveDays []tuimaps.Overlay
+	// UV and UVDays are the UV index's (D-137), Air and AirDays the model's
+	// US AQI (D-139): Radar mode's every hour, or Forecast mode's Now; each
+	// day's highest, or worst.
+	UV, UVDays   []tuimaps.Overlay
+	Air, AirDays []tuimaps.Overlay
 	// Chips are the sources each of these layers is drawn from, by the
 	// layer's key, as its badge names them (D-133): [O-METEO], [NDFD].
 	Chips map[string][]string
@@ -273,6 +287,17 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 	if d.layerOn(RainLayer) && !d.radarMode() { // Forecast mode's rain and snow (D-117)
 		out = append(out, t.Rain...)
 	}
+	for _, m := range []struct {
+		layer      string
+		hours, day []tuimaps.Overlay
+	}{{UVLayer, t.UV, t.UVDays}, {AirLayer, t.Air, t.AirDays}} { // D-137, D-139
+		if d.layerOn(m.layer) {
+			out = append(out, m.hours...)
+			if !d.radarMode() {
+				out = append(out, m.day...)
+			}
+		}
+	}
 	return out
 }
 
@@ -370,8 +395,8 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 // draw no main overlay (D-103) - a blank map reads as broken - and shows the
 // chip that says so. It is Forecast mode's alone, never saved (D-104).
 func (d Dashboard) ensureMainOverlay() Dashboard {
-	if d.radarMode() || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) {
-		return d // a main overlay is on already: temperature, feels-like or wind (D-110, D-119)
+	if d.radarMode() || d.cfg.MapTemperature == nil || d.layerOn(TemperatureLayer) || d.layerOn(WindLayer) || d.layerOn(FeelsLayer) || d.layerOn(UVLayer) || d.layerOn(AirLayer) {
+		return d // a main overlay is on already: temperature, feels-like, wind, UV or air quality (D-110, D-119, D-137, D-139)
 	}
 	d.mapPane.tempAuto, d.mapPane.modeChip = true, true
 	d.mapPane.gen++
@@ -526,7 +551,12 @@ func (d Dashboard) forecastBadge() string {
 // LOWS - TODAY HIGHS, FRI LOWS.
 func (d Dashboard) badgeStep() string {
 	if d.mapPane.fcStep == 0 {
-		if d.feelsOn() {
+		switch {
+		case d.layerOn(UVLayer):
+			return "NOW UV" // D-137
+		case d.layerOn(AirLayer):
+			return "NOW AIR" // D-139
+		case d.feelsOn():
 			return "NOW FEELS LIKE" // D-119
 		}
 		return "NOW"
@@ -539,6 +569,12 @@ func (d Dashboard) badgeStep() string {
 	}
 	if d.feelsOn() {
 		day += " FEELS" // D-119: room on D-120's one line
+	}
+	switch {
+	case d.layerOn(UVLayer):
+		return day + " UV" // the day's highest (D-137)
+	case d.layerOn(AirLayer):
+		return day + " AIR" // the day's worst (D-139)
 	}
 	tint := d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer)
 	if !tint && d.layerOn(WindLayer) {
@@ -639,6 +675,12 @@ func (d Dashboard) forecastTimeline(width int) []string {
 // as the radar's row is (W10.10): a swatch a band, coldest to warmest, each
 // band's lower bound written where colour is off.
 func (d Dashboard) tempLegendRow(width int) string {
+	switch { // the key of what is drawn: its scale is in the map's legend
+	case d.layerOn(UVLayer) && d.legendHas("uv"):
+		return d.presetRow("uv", "UV │ ", "LOW ", " EXTREME", width) // D-137, D-140: the key the bands are read by
+	case d.layerOn(AirLayer) && d.legendHas("aqi"):
+		return d.presetRow("aqi", "AIR QUALITY │ ", "GOOD ", " HAZARDOUS", width) // D-139, D-140
+	}
 	if d.feelsOn() {
 		return d.presetRow("temperature", "FEELS LIKE │ ", "COLDER ", " WARMER", width) // D-119
 	}
@@ -646,6 +688,11 @@ func (d Dashboard) tempLegendRow(width int) string {
 		return d.presetRow("wind", "WIND │ ", "CALMER ", " STRONGER", width) // the wind's colours, where temperature's are not shown (D-109)
 	}
 	return d.presetRow("temperature", "TEMPERATURE │ ", "COLDER ", " WARMER", width)
+}
+
+// legendHas reports whether a preset is in the map's legend: drawn.
+func (d Dashboard) legendHas(preset string) bool {
+	return slices.ContainsFunc(d.mapPane.legend, func(e tuimaps.LegendEntry) bool { return e.Preset == preset })
 }
 
 // presetRow is a preset's colours as a row of swatches, low to high, each

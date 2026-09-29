@@ -16,6 +16,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/branden-thompson/watchpost/domains/airquality"
 	"github.com/branden-thompson/watchpost/domains/fire"
 	"github.com/branden-thompson/watchpost/domains/fire/firms"
 	"github.com/branden-thompson/watchpost/domains/fire/hms"
@@ -87,7 +88,8 @@ func RunDashboard(version string, opt Options) error {
 		seismic: seismicProviders(client, cfg),
 		clients: []*httpx.Client{client, tidesClient}, weather: provider, tides: tides,
 		zoneShapes: zoneShapes, areaAlerts: provider.AlertsInAreas, // 0.18.0 D-66
-		mapQuakes: newMapQuakes(client, "")} // 0.18.0 D-122: the map's own quake feeds
+		mapQuakes: newMapQuakes(client, ""),   // 0.18.0 D-122: the map's own quake feeds
+		airnow:    airquality.New(client, "")} // 0.18.0 D-138: AirNow's one national file
 	if rs, err := overClient(radar.NewClient, UserAgent, radarSourcesOver); err == nil {
 		lp.radar = rs // W8: a radar client that cannot be built is no radar, and the map says none answered
 	}
@@ -717,14 +719,15 @@ type livePipelines struct {
 	rules      fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
 	priority   *pipeline
 	recent     *recentPipeline
-	ticker     *tickerDeck     // 0.12.0: waited at shutdown so its cache writes settle before teardown
-	severe     *severeDeck     // 0.13.0: the severe-events index the window lists
-	mapQuakes  *mapQuakes      // 0.18.0 D-122: the map's quake feeds, the listener's choice
-	problems   mapProblems     // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
-	director   *director       // 0.13.0: the voice arbiter (app/director.go)
-	scripts    *script.Library // 0.13.0: the spoken lines (domains/radio/script)
-	reader     *eventReader    // 0.13.0: [space] in the window
-	schedule   *schedule       // 0.14.0 T3.2a: the Director, its executors and the pump — running, driving nothing yet
+	ticker     *tickerDeck          // 0.12.0: waited at shutdown so its cache writes settle before teardown
+	severe     *severeDeck          // 0.13.0: the severe-events index the window lists
+	mapQuakes  *mapQuakes           // 0.18.0 D-122: the map's quake feeds, the listener's choice
+	airnow     *airquality.Provider // 0.18.0 D-138: AirNow's reporting areas, for the map's air quality
+	problems   mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
+	director   *director            // 0.13.0: the voice arbiter (app/director.go)
+	scripts    *script.Library      // 0.13.0: the spoken lines (domains/radio/script)
+	reader     *eventReader         // 0.13.0: [space] in the window
+	schedule   *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump — running, driving nothing yet
 
 	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit (0.12.0 follow-up)
 

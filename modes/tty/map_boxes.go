@@ -374,9 +374,9 @@ type overlayRow struct {
 	weather    bool // a registry layer; otherwise the map's own detail
 }
 
-// oneTint pairs the layers that share one tint: switching one on switches
-// the other off (D-119).
-var oneTint = map[string]string{TemperatureLayer: FeelsLayer, FeelsLayer: TemperatureLayer}
+// oneTint are the layers that share one tint: switching one on switches the
+// others off (D-119; UV and air quality, D-137, D-139).
+var oneTint = []string{TemperatureLayer, FeelsLayer, UVLayer, AirLayer}
 
 // overlayRows are the menu's rows: the weather layers the app registered,
 // then the map's detail.
@@ -468,12 +468,16 @@ func (d Dashboard) handleOverlaysKey(key string) (Dashboard, bool) {
 				choice = map[string]bool{}
 			}
 			on := d.layerOn(r.key)
-			if r.key == TemperatureLayer || r.key == FeelsLayer {
+			if slices.Contains(oneTint, r.key) {
 				d.mapPane.tempAuto = false // the listener's switch from here on (D-104)
 			}
 			choice[r.key] = !on
-			if other, ok := oneTint[r.key]; ok && !on {
-				choice[other] = false // temperature or feels-like, never both: one tint (D-119)
+			if slices.Contains(oneTint, r.key) && !on {
+				for _, other := range oneTint {
+					if other != r.key {
+						choice[other] = false // one tint at a time (D-119, D-137, D-139)
+					}
+				}
 			}
 			d.mapLayerChoice = layerChoiceKey(choice)
 			d = d.refreshMapCost().requestFeed()

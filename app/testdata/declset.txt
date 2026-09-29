@@ -1,6 +1,9 @@
 const SafetyNext
 const SafetyNote
 const UserAgent
+const airBytes
+const airLabelMost
+const airnowBytes
 const alertLayerKey
 const areaMemoAge
 const bandRecordCap
@@ -159,6 +162,7 @@ func (*injectQueue).take
 func (*injectQueue).take
 func (*injectQueue).wake
 func (*injectQueue).wake
+func (*livePipelines).airnowIn
 func (*livePipelines).attachDeck
 func (*livePipelines).attachDiagnostics
 func (*livePipelines).bedCarrying
@@ -445,6 +449,9 @@ func ReportOnce
 func ReportOnceWithStats
 func RunDashboard
 func abbreviateHome
+func airHosts
+func airLayerCost
+func airnowOverlays
 func alertCategory
 func alertKeysOf
 func alertLayerCost
@@ -515,6 +522,7 @@ func everyTick
 func feelsForecastGrids
 func fetchForecast
 func fieldBoxes
+func fieldGrid
 func fillDays
 func fillFeelsNow
 func fireHosts
@@ -536,6 +544,7 @@ func hourGrids
 func inViewOnly
 func incidentLabel
 func indexKey
+func init
 func init
 func init
 func init
@@ -574,6 +583,7 @@ func marineHosts
 func marineReportOf
 func mastheadLine
 func matchesQuery
+func measureGrids
 func narrateDebug
 func nearestMetro
 func needsReadLine
@@ -639,6 +649,7 @@ func ratePNG
 func reachMiOf
 func readScript
 func readerFor
+func readingWord
 func recentTiers
 func reconcile
 func refFor
@@ -754,11 +765,13 @@ func windForecastGrids
 func windGrid
 func windHourGrids
 func windowLayers
+func withAir
 func withChips
 func withForecast
 func withModelRain
 func withPool
 func withRainDays
+func withUV
 func withWaves
 func withinBedFence
 func worstOf

@@ -25,7 +25,7 @@ var chipGrounds = map[string]render.Token{
 	"MRMS": render.MapRadarMRMSBG, "IEM": render.MapRadarIEMBG, "HRRR": render.MapRadarModelBG,
 	"NWS": render.MapChipNWSBG, "NDFD": render.MapChipNDFDBG, "O-METEO": render.MapChipOMeteoBG,
 	"USGS": render.MapChipUSGSBG, "NIFC": render.MapChipNIFCBG, "HMS": render.MapChipHMSBG,
-	"NDBC": render.MapChipNDBCBG, "CO-OPS": render.MapChipCOOPSBG,
+	"NDBC": render.MapChipNDBCBG, "CO-OPS": render.MapChipCOOPSBG, "AIRNOW": render.MapChipAirNowBG,
 }
 
 // ChipKnown reports whether a source has a chip of its own, so the app can

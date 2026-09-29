@@ -102,6 +102,10 @@ type Series struct {
 	WindSpeed, WindFrom [][]float64
 	WindGust            [][]float64
 	PeakGust            [Days][]float64
+	// UV and UVMax are the UV index, each hour's and each day's highest
+	// (D-137): Open-Meteo's alone; NDFD has none.
+	UV                  [][]float64
+	UVMax               [Days][]float64
 	Feels               [][]float64
 	High                [Days][]float64
 	Low                 [Days][]float64
@@ -115,7 +119,7 @@ func newSeries(l Lattice) Series {
 	s := Series{Lattice: l}
 	for k := range Days {
 		s.High[k], s.Low[k], s.PeakSpeed[k], s.PeakFrom[k] = missing(n), missing(n), missing(n), missing(n)
-		s.FeelsHigh[k], s.FeelsLow[k], s.PeakGust[k] = missing(n), missing(n), missing(n)
+		s.FeelsHigh[k], s.FeelsLow[k], s.PeakGust[k], s.UVMax[k] = missing(n), missing(n), missing(n), missing(n)
 	}
 	return s
 }
@@ -150,7 +154,7 @@ func (s *Series) hourIndex(t time.Time) int {
 	}
 	s.Hours = append(s.Hours[:at], append([]time.Time{t}, s.Hours[at:]...)...)
 	s.Hourly, s.WindSpeed, s.WindFrom, s.Feels = insert(s.Hourly), insert(s.WindSpeed), insert(s.WindFrom), insert(s.Feels)
-	s.WindGust = insert(s.WindGust)
+	s.WindGust, s.UV = insert(s.WindGust), insert(s.UV)
 	return at
 }
 
@@ -195,11 +199,17 @@ func (s Series) WindAt(t time.Time) (speed, from []float64, hour time.Time, ok b
 }
 
 // GustAt is the gusts of the hour WindAt reads (D-136).
-func (s Series) GustAt(t time.Time) ([]float64, bool) {
+func (s Series) GustAt(t time.Time) ([]float64, bool) { return s.rowAt(s.WindGust, t) }
+
+// UVAt is the UV index of the hour HourAt reads (D-137).
+func (s Series) UVAt(t time.Time) ([]float64, bool) { return s.rowAt(s.UV, t) }
+
+// rowAt is one hourly measure's row for the hour HourAt reads.
+func (s Series) rowAt(rows [][]float64, t time.Time) ([]float64, bool) {
 	if _, at, ok := s.HourAt(t); ok {
 		for i, h := range s.Hours {
-			if h.Equal(at) && i < len(s.WindGust) {
-				return s.WindGust[i], true
+			if h.Equal(at) && i < len(rows) {
+				return rows[i], true
 			}
 		}
 	}

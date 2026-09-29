@@ -604,10 +604,14 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 				return nd, nil, true
 			}
 			nd, _ = nd.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
+			var temp tea.Cmd
+			if (nd.layerOn(UVLayer) && !d.layerOn(UVLayer)) || (nd.layerOn(AirLayer) && !d.layerOn(AirLayer)) {
+				nd, temp = nd.askTemp() // UV and air quality are asked only while on (D-137, D-139)
+			}
 			nd = nd.renderMap()
 			save := nd.uiApplyCmd()
 			nd.setup.uiDirty = false
-			return nd, tea.Batch(save, nd.mapWorkCmd(), nd.mapFeedCmd()), true // radar is R's, not the menu's (D-94)
+			return nd, tea.Batch(save, nd.mapWorkCmd(), nd.mapFeedCmd(), temp), true // radar is R's, not the menu's (D-94)
 		}
 	}
 	if !bound {

@@ -19,13 +19,14 @@ import (
 const (
 	ndfdBase      = "https://graphical.weather.gov"
 	openMeteoBase = "https://api.open-meteo.com"
-	marineBase    = "https://marine-api.open-meteo.com" // Open-Meteo's waves (D-125)
+	marineBase    = "https://marine-api.open-meteo.com"      // Open-Meteo's waves (D-125)
+	airBase       = "https://air-quality-api.open-meteo.com" // Open-Meteo's US AQI (D-138)
 )
 
 // Hosts are the sources' addresses, FR-3.8's closed list: the app names them
 // in the Status window and a test holds them to the table.
 func Hosts() map[string]string {
-	return map[string]string{"NWS NDFD": ndfdBase, "Open-Meteo": openMeteoBase, "Open-Meteo Marine": marineBase}
+	return map[string]string{"NWS NDFD": ndfdBase, "Open-Meteo": openMeteoBase, "Open-Meteo Marine": marineBase, "Open-Meteo Air Quality": airBase}
 }
 
 // OpenMeteoCredit is Open-Meteo's credit line: its data is CC BY 4.0, which
@@ -339,17 +340,18 @@ type OpenMeteo struct {
 	get    Getter
 	base   string
 	marine string // the marine API's host, for the waves (D-125)
+	air    string // the air-quality API's, for the US AQI (D-138)
 }
 
 // NewOpenMeteo builds the source; base "" is the production host.
 func NewOpenMeteo(get Getter, base string) *OpenMeteo {
-	marine := marineBase
+	marine, air := marineBase, airBase
 	if base == "" {
 		base = openMeteoBase
 	} else {
-		marine = base // a test's one server answers both
+		marine, air = base, base // a test's one server answers all three
 	}
-	return &OpenMeteo{get: get, base: base, marine: marine}
+	return &OpenMeteo{get: get, base: base, marine: marine, air: air}
 }
 
 func (s *OpenMeteo) Name() string { return "Open-Meteo" }
@@ -364,8 +366,8 @@ func (s *OpenMeteo) Fetch(ctx context.Context, l Lattice, now time.Time) (Series
 		lats, lons = append(lats, ftoa(p.Lat)), append(lons, ftoa(p.Lon))
 	}
 	q := url.Values{"latitude": {strings.Join(lats, ",")}, "longitude": {strings.Join(lons, ",")},
-		"hourly": {"temperature_2m,wind_speed_10m,wind_direction_10m,apparent_temperature,wind_gusts_10m"}, "past_hours": {"3"}, "forecast_hours": {strconv.Itoa(hoursAhead)},
-		"daily": {"temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_direction_10m_dominant,apparent_temperature_max,apparent_temperature_min,wind_gusts_10m_max"}, "forecast_days": {strconv.Itoa(Days)}, "timezone": {"auto"}}
+		"hourly": {"temperature_2m,wind_speed_10m,wind_direction_10m,apparent_temperature,wind_gusts_10m,uv_index"}, "past_hours": {"3"}, "forecast_hours": {strconv.Itoa(hoursAhead)},
+		"daily": {"temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_direction_10m_dominant,apparent_temperature_max,apparent_temperature_min,wind_gusts_10m_max,uv_index_max"}, "forecast_days": {strconv.Itoa(Days)}, "timezone": {"auto"}}
 	body, err := s.get.GetText(ctx, s.base+"/v1/forecast?"+q.Encode(), httpx.TTL(untilNextHour(now)))
 	if err != nil {
 		return Series{}, fmt.Errorf("Open-Meteo: %w", err)
@@ -387,6 +389,7 @@ type openMeteoPoint struct {
 		WindFrom  []*float64 `json:"wind_direction_10m"`
 		Feels     []*float64 `json:"apparent_temperature"`
 		Gust      []*float64 `json:"wind_gusts_10m"`
+		UV        []*float64 `json:"uv_index"`
 	} `json:"hourly"`
 	Daily struct {
 		Time     []string   `json:"time"`
@@ -397,6 +400,7 @@ type openMeteoPoint struct {
 		FeelsMax []*float64 `json:"apparent_temperature_max"`
 		FeelsMin []*float64 `json:"apparent_temperature_min"`
 		GustMax  []*float64 `json:"wind_gusts_10m_max"`
+		UVMax    []*float64 `json:"uv_index_max"`
 	} `json:"daily"`
 }
 
@@ -427,6 +431,7 @@ func parseOpenMeteo(body []byte, out *Series) error {
 			set(out.WindFrom[h], at, p.Hourly.WindFrom, i)
 			set(out.Feels[h], at, p.Hourly.Feels, i)
 			set(out.WindGust[h], at, p.Hourly.Gust, i)
+			set(out.UV[h], at, p.Hourly.UV, i)
 		}
 		for k := range min(len(p.Daily.Time), Days) {
 			set(out.High[k], at, p.Daily.Max, k)
@@ -436,6 +441,7 @@ func parseOpenMeteo(body []byte, out *Series) error {
 			set(out.FeelsHigh[k], at, p.Daily.FeelsMax, k)
 			set(out.FeelsLow[k], at, p.Daily.FeelsMin, k)
 			set(out.PeakGust[k], at, p.Daily.GustMax, k)
+			set(out.UVMax[k], at, p.Daily.UVMax, k)
 		}
 	}
 	return nil

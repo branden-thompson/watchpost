@@ -508,7 +508,10 @@ type MapAsk struct {
 	// Buoys and Tides say their rows are on: they are asked only then
 	// (D-127, D-128) - the tides are a request a station.
 	Buoys, Tides bool
-	Anchor       time.Time
+	// UV and Air say those rows are on (D-137, D-139): each asked only then,
+	// UV where temperature's source is not Open-Meteo's already.
+	UV, Air bool
+	Anchor  time.Time
 }
 
 // mapAsk is the ask as the window stands: the watchlist's places, and the
@@ -528,7 +531,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

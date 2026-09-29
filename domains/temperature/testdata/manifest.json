@@ -16,7 +16,9 @@
   "ndfd-waves.xml",
   "ndfd-days-gust.xml",
   "ndfd-hour-gust.xml",
-  "openmeteo-gust.json"
+  "openmeteo-gust.json",
+  "openmeteo-uv.json",
+  "openmeteo-air.json"
  ],
  "traps": {
   "ndfd-days.xml": "offshore points (121W, 119W) answer nil; after 20:00 local the first maximum is tomorrow's",
@@ -33,6 +35,8 @@
   "ndfd-waves.xml": "captured 2026-09-28T05:35Z with waveh: significant wave height in feet, hourly from the next hour to six days; offshore to 121W; nil ashore",
   "ndfd-days-gust.xml": "captured 2026-09-28T23:09Z with wspd, wdir and wgust (D-136): hourly gusts in knots beside the sustained wind; every point of the lattice answered this time, the sea included",
   "ndfd-hour-gust.xml": "captured 2026-09-28T23:09Z with begin and wgust: the current hour's gust",
-  "openmeteo-gust.json": "captured 2026-09-28T23:09Z with wind_gusts_10m hourly and wind_gusts_10m_max daily (D-136), km/h"
+  "openmeteo-gust.json": "captured 2026-09-28T23:09Z with wind_gusts_10m hourly and wind_gusts_10m_max daily (D-136), km/h",
+  "openmeteo-uv.json": "captured 2026-09-29T00:51Z with uv_index hourly and uv_index_max daily (D-137): the UV falls to 0 after sunset",
+  "openmeteo-air.json": "captured 2026-09-29T00:51Z from the air-quality API (D-138): us_aqi hourly, five days, no daily value - each day's worst worked out on the point's own date"
  }
 }
