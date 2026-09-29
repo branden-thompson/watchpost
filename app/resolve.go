@@ -27,8 +27,6 @@ func newResolver(client *httpx.Client, idx *geodata.Index, loadErr error) (*loca
 	return r, nil
 }
 
-// resolveHook turns a typed query into a ref; a resolver that failed to
-// build answers every query with that reason (actionable, never a panic).
 // lookupContext is a lookup's: five seconds, on the interactive lane. The
 // launch burst held the geocoder's request behind it on the normal lane, so
 // a lookup in the first seconds could spend its whole limit queued (D-156).
@@ -36,6 +34,8 @@ func lookupContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(httpx.WithInteractive(context.Background()), 5*time.Second)
 }
 
+// resolveHook turns a typed query into a ref; a resolver that failed to
+// build answers every query with that reason (actionable, never a panic).
 func resolveHook(r *locations.Resolver, buildErr error) func(string) (snapshot.LocationRef, error) {
 	if buildErr != nil {
 		return func(string) (snapshot.LocationRef, error) { return snapshot.LocationRef{}, buildErr }
