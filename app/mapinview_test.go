@@ -13,6 +13,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -118,5 +119,33 @@ func TestTheFeedDrawsTheViewsAlertsAndNamesThemOnce(t *testing.T) {
 	}
 	if len(out.InView) != 1 || out.InView[0].ID != "view" {
 		t.Errorf("the window is handed %v to name; want only the view's own", out.InView)
+	}
+}
+
+// TestTheMapAndTheLookupAskOnTheListenersLane is D-156's wiring: the feed's
+// requests and a lookup's go out on the interactive lane, never queued behind
+// the station's launch burst - checked on the context that reaches the fetch.
+func TestTheMapAndTheLookupAskOnTheListenersLane(t *testing.T) {
+	idx, err := geodata.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var interactive, asked bool
+	lp := &livePipelines{idx: idx, areaAlerts: func(ctx context.Context, _ []string) ([]snapshot.Alert, error) {
+		asked, interactive = true, httpx.Interactive(ctx)
+		return nil, nil
+	}}
+	here := snapshot.Location{Label: "Oceanside, CA", Lat: 33.2, Lon: -117.38}
+	lp.mapFeed(context.Background(), tty.MapAsk{Snap: &snapshot.Snapshot{}, Place: &here, View: tty.MapView{W: -118.6, S: 32.5, E: -116.4, N: 34.1}})
+	if !asked || !interactive {
+		t.Errorf("the feed asked for the view's alerts (%v) on the interactive lane (%v)", asked, interactive)
+	}
+	ctx, done := lookupContext()
+	defer done()
+	if !httpx.Interactive(ctx) {
+		t.Error("a lookup's resolve is not on the interactive lane")
+	}
+	if _, ok := ctx.Deadline(); !ok {
+		t.Error("a lookup keeps its time limit")
 	}
 }

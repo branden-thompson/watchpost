@@ -122,7 +122,13 @@ func (d Dashboard) renderModal(o render.Opts) string {
 // terminals, window + rail on short ones).
 func (d Dashboard) modalMax() int {
 	if d.modal == modalMap {
-		return max(5, min(d.height-8, max(d.height*80/100-5, mapMinBody.Rows+1))) // U1-13: about 80% of the terminal, so the dashboard shows round it; never less than a 69x12 map needs (FR-1.4)
+		// U1-13: about 80% of the terminal, so the dashboard shows round it.
+		// D-159: never less than the map needs to keep its 69x12 floor under
+		// its own status, notes and radar timeline - the promise this line
+		// made and did not keep - up to the terminal's height minus 8.
+		base := max(d.height*80/100-5, mapMinBody.Rows+1)
+		need := mapMinBody.Rows + d.mapChromeRows(len(d.noteLines(d.mapTextW())))
+		return max(5, min(d.height-8, max(base, need)))
 	}
 	return max(5, d.height-12)
 }
@@ -149,7 +155,7 @@ func (d Dashboard) modalWidth() int {
 	case modalAbout:
 		return aboutWidth
 	case modalMap:
-		return max(min(d.width-2, max(d.width*80/100, mapMinBody.Cols+2)), 10) // U1-13: about 80% of the terminal; at least a 69-column map and its borders (FR-1.4, U1-27), never past the frame
+		return d.mapWindowCols()
 	case modalHelp:
 		return d.helpWidth(d.opts(), d.opts().Width) // two columns when they fit, else the single column
 	case modalCard:
@@ -162,6 +168,15 @@ func (d Dashboard) modalWidth() int {
 		return 130 // every column at 133 cols (the DETECTION column joined at UAT, 2026-08-28); the ladder below
 	}
 	return 56 // help, add/lookup, remove, theme
+}
+
+// mapWindowCols is the map window's width: U1-13's about 80% of the terminal,
+// at least a 69-column map and its borders (FR-1.4, U1-27), never past the
+// frame. Its own function, so the map's sizing reads it without the switch
+// above - whose Help arm leads back to the window's height, a cycle P10
+// forbids (W14, D-159).
+func (d Dashboard) mapWindowCols() int {
+	return max(min(d.width-2, max(d.width*80/100, mapMinBody.Cols+2)), 10)
 }
 
 // modalLines is the open modal's full body, wrapped exactly as the

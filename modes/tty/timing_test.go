@@ -204,3 +204,35 @@ func TestAnAskStopsListeningOnceSettled(t *testing.T) {
 		}
 	}
 }
+
+// TestM5IsReachedUnderAStreamOfData is D-157 in the instrument: with new data
+// landing while the feed's ask runs, the answer drawn is one data generation
+// behind the newest - and it still holds the alerts asked since the trigger,
+// so it is M5. Settled waits for the re-ask the new data wanted.
+func TestM5IsReachedUnderAStreamOfData(t *testing.T) {
+	tm := &timings{}
+	d := openTimedMap(t, tm) // the lower 48: the view the embedded tiles draw whole
+	d = d.timeFrom("probe")
+	d, ask := d.requestFeed().askFeed()
+	m, _ := d.Update(SnapshotMsg{Snap: placedSnap()}) // new data while the ask runs
+	d = m.(Dashboard)
+	if !d.mapPane.feedAgain {
+		t.Fatal("control: the new data did not mark the feed wanted again")
+	}
+	answers := feedAsks(t, ask)
+	if len(answers) != 1 {
+		t.Fatalf("the ask answered %d times", len(answers))
+	}
+	m, _ = d.Update(answers[0])
+	settleMap(t, m.(Dashboard))
+	got := tm.events("probe")
+	if countOf(got, "complete") != 1 {
+		t.Fatalf("control: the frame never completed, so this proves nothing: %v", got)
+	}
+	if countOf(got, "m5") != 1 {
+		t.Errorf("the complete frame holding the alerts asked since the trigger was not M5: %v", got)
+	}
+	if countOf(got, "settled") != 0 {
+		t.Errorf("settled with a re-ask still wanted: %v", got)
+	}
+}

@@ -927,7 +927,8 @@ func (d Dashboard) mapSourceLines(o render.Opts, rows []endpointRow, shape table
 	for _, s := range d.cfg.MapSources {
 		words = append(words, s.Notes...) // D-132: about the data, never a credit (D-148)
 	}
-	words = append(words, mapDisclosure) // D-151
+	words = append(words, d.mapNotesNow()...) // D-159: the map's notes as they stand, where its window points when they yield
+	words = append(words, mapDisclosure)      // D-151
 	for _, w := range words {
 		for _, l := range render.WrapText(w, wrapAt) {
 			out = append(out, statusInset+render.Tint(l, muted))

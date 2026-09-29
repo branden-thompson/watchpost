@@ -110,3 +110,26 @@ func TestARunThatIsNotOneIsRefused(t *testing.T) {
 		t.Error("a phase whose cumulative CPU fell was reported")
 	}
 }
+
+// TestARunThatLostItsMapFails is the workload's render check (W14): a map
+// draw that fell under its floor is named by phase, and the summary exits
+// non-zero - a run that did not render passes for nothing.
+func TestARunThatLostItsMapFails(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, body string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("phases.log", "2026-09-29T10:00:00Z C map open\n2026-09-29T10:10:00Z quit ok\n")
+	write("cold-1.json", `{"timings":[{"seq":1,"at":"2026-09-29T10:01:00Z","trigger":"open","event":"m5","ms":900}]}`)
+	var out bytes.Buffer
+	if code := run([]string{"-in", dir}, &out, &bytes.Buffer{}); code != 0 || !strings.Contains(out.String(), "the map was drawn in every phase") {
+		t.Fatalf("a run that drew its map: exit %d\n%s", code, out.String())
+	}
+	write("cold-1.json", `{"timings":[{"seq":1,"at":"2026-09-29T10:01:00Z","trigger":"render","event":"below-floor","ms":0},{"seq":2,"at":"2026-09-29T10:02:00Z","trigger":"render","event":"below-floor","ms":0}]}`)
+	out.Reset()
+	if code := run([]string{"-in", dir}, &out, &bytes.Buffer{}); code == 0 || !strings.Contains(out.String(), "| C map open | 2 |") {
+		t.Errorf("a run that lost its map twice in C: exit %d\n%s", code, out.String())
+	}
+}

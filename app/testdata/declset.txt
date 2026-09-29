@@ -581,6 +581,7 @@ func loadGeodata
 func loadSeen
 func loadUserThemes
 func lockedCopy
+func lookupContext
 func loopSlots
 func macVoices
 func mainTrack

@@ -77,8 +77,8 @@ func (d Dashboard) timed(event string) Dashboard {
 // timeDraw says, once each per ask:
 //   - complete: the library's first Complete frame - the basemap whole;
 //   - m5: M5 as D-46 defines it - the first complete frame holding every
-//     alert's area: complete, no work waiting, and the alerts asked since the
-//     ask drawn (an ask that asks no alerts has no m5);
+//     alert's area: complete, the view still, no work waiting, and an answer
+//     asked since the ask drawn (an ask that asks no alerts has no m5);
 //   - settled: nothing left to come - the view still, no work, radar,
 //     temperature or alerts in flight.
 func (d Dashboard) timeDraw() Dashboard {
@@ -95,8 +95,12 @@ func (d Dashboard) timeDraw() Dashboard {
 	// A move asks for its view only once it has stood still (D-66): until its
 	// settle tick has asked, nothing about the new view is in.
 	still := p.viewAsked == p.viewGen
-	feedIn := p.feedApplied == p.feedGen
-	if complete && still && !p.pending && feedIn && p.feedApplied > p.clock.feedAt && p.clock.seen&seenM5 == 0 {
+	// M5 is the alerts asked since the ask, drawn - not the newest data: with
+	// new data landing while the feed runs, the answer drawn is one generation
+	// behind, and holds what was asked (D-157). Settled is nothing in flight
+	// and nothing wanted again.
+	feedIn := !p.feedBusy && !p.feedAgain
+	if complete && still && !p.pending && p.feedApplied > p.clock.feedAt && p.clock.seen&seenM5 == 0 {
 		d = d.timed("m5")
 		p = &d.mapPane
 		p.clock.seen |= seenM5
@@ -107,6 +111,15 @@ func (d Dashboard) timeDraw() Dashboard {
 		p.clock.seen |= seenSettled
 	}
 	return d
+}
+
+// timeBelowFloor says a draw fell under the map's floor and showed the notice
+// in its place: the render check a workload run reads (W14 - "everything
+// that's supposed to render, ACTUALLY renders"). It carries no interval.
+func (d Dashboard) timeBelowFloor() {
+	if d.cfg.Timed != nil {
+		d.cfg.Timed(Timing{Trigger: "render", Event: "below-floor"})
+	}
 }
 
 // timeTick says how late the map's clock landed against the moment the

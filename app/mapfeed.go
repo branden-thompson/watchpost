@@ -20,6 +20,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/severe"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
@@ -28,6 +29,7 @@ import (
 // overlays, with the selected place's own zones asked of the weather service
 // so a note can say whether the place lies in a missing zone (FR-4.1, FR-4.4).
 func (lp *livePipelines) mapFeed(ctx context.Context, ask tty.MapAsk) tty.MapFeed {
+	ctx = httpx.WithInteractive(ctx) // the listener is waiting: never behind the station's launch burst (D-156)
 	return lp.mapFeedWith(ctx, lp.mapInputsFetching(ctx, ask), func(loc snapshot.Location) []string {
 		if lp.weather == nil {
 			return nil

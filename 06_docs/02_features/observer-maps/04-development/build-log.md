@@ -1968,3 +1968,52 @@ mid-run write.
 **Mutation verdicts** (targeted, 12): 10 caught at first; 2 survived and their tests were
 strengthened until caught. The two structural changes are behaviour-identical by design; their
 guard is the P10 checker, re-run: 61 → 31 live.
+
+## Batch 59 — the feed, and the map kept at its floor (D-155 step 2a; D-156, D-157, D-159; 2026-09-29)
+
+**D-156, the listener's lane.** The shared HTTP client has a third lane, interactive, for what the
+listener has just asked for: the map's feed and the place lookup. Its own pacing and in-flight cap;
+unlike the priority lane it keeps the per-host failure memo, proven through the client's own
+request path. Found on the way: the lookup's resolve ran on the normal lane with a 5 s limit, so a
+lookup in the launch's first seconds could spend its whole limit queued.
+
+**D-157, one feed ask in flight.** New data while an ask runs marks the feed wanted again, and one
+fresh ask follows its answer. A move or a change of place makes the ask stale: its settle tick
+cancels it and asks for the new view, and a cancelled ask's answer (it carries an older number) is
+never drawn. P-2: a move no longer asks the feed on its key - the settle tick asks, once (D-66).
+
+**The first re-measure found a regression of this batch's own**, and it was fixed before anything
+else: an answer was keyed on the view's box, which follows the map's size - and the size shrinks as
+the notes and the description fill in, with no move at all. The answer was dropped and nothing
+asked again: 2 of 5 cold `default` opens drew no alerts in 45 s. The view is now the listener's (a
+move or a resize, `viewGen`); `TestAnAnswerIsDrawnWhenOnlyTheMapsSizeChanged` reproduced it first.
+
+**D-159, the map kept at its floor.** Also found by re-measuring: at 149×38 with every overlay on,
+the window's status, notes and radar timeline left the map 11 rows, under FR-1.4's floor, so the
+notice showed in its place. A probe of the checkpoint's own binary showed it pre-existing - there
+the map dropped out intermittently, even under `default` (117×7) - and 59a's reliable answers had
+made it steady: by the HUM LEAD's rule, a regression. The window now grows, as far as the floor
+needs and no further than the terminal's height minus 8, before the map yields; where even that
+cannot hold it, the notes collapse to one line pointing to the Status window - which now carries
+the map's notes (MAP STATUS), so the pointer is true. The map's width got its own function
+(`mapWindowCols`): read through `modalWidth`'s switch, the new sizing closed a P10 cycle through
+Help's width, and P10 had gone from 31 to 40 live; back to 31.
+
+**The render check.** A draw under the floor tells the instrument (`below-floor`), and `perfsum`
+names the phase and exits non-zero: a run that lost its map cannot pass (the HUM LEAD: "everything
+that's supposed to render, ACTUALLY renders").
+
+**Measured, cold opens at first data, n = 5 each** (`06_docs/perf/workload-v1/after-batch-59/`):
+
+| | checkpoint | batch 59 |
+|---|---|---|
+| `default` M5 | 23.2 s | **7.6 s** (6.9-7.8) |
+| `heavy` M5 | never, 0 of 5 | **10.1 s** (10.0-10.7), 5 of 5 |
+| alerts answered, `default` · `heavy` | 20.4 s · 28-43 s | 5.3 s · 7.4 s |
+| render check | not checked | PASS, both |
+
+Still above D-46's 3.5 s: batch 59b takes the feed's inputs (serial, and fetched for layers off).
+
+**Mutation verdicts** (targeted, 23): all caught, four only after their tests were strengthened -
+the memo read through the real request path, an answer for a view left, the ceiling, and notes
+shown in full where the window can grow.

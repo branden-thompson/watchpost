@@ -72,13 +72,13 @@ type Client struct {
 	cfg      Config
 	http     *http.Client
 	cache    *cache
-	stats    *reqStats          // per-host counters since launch (quality pass Q0)
-	memo     *failureMemo       // per-host failure memo, normal lane only (quality pass Q1, plan §2.3)
-	sf       singleflight.Group // one in-flight request per URL
-	inflight [2]chan struct{}   // per-lane cap on requests in flight (UAT 73)
+	stats    *reqStats            // per-host counters since launch (quality pass Q0)
+	memo     *failureMemo         // per-host failure memo, normal lane only (quality pass Q1, plan §2.3)
+	sf       singleflight.Group   // one in-flight request per URL
+	inflight [lanes]chan struct{} // per-lane cap on requests in flight (UAT 73)
 
 	mu   sync.Mutex
-	next [2]time.Time // earliest start per lane (lazy token pacing): [normal, priority]
+	next [lanes]time.Time // earliest start per lane (lazy token pacing): normal, priority, interactive
 }
 
 // Resource ceilings (B3 UAT 73 — the adversarial perf pass). The launch
@@ -89,6 +89,7 @@ type Client struct {
 const (
 	maxInflight         = 16 // normal lane
 	maxInflightPriority = 8  // favourites' lane
+	maxInflightInteract = 8  // the listener's lane (D-156): a map ask's fetches, a lookup
 	maxConnsPerHost     = 8
 	idleConnTimeout     = 11 * time.Minute // keeps a warm connection across the 10-minute tiers (Q5, L4-F13): the counters showed a TLS handshake per tick per host at 90 s
 )
@@ -235,18 +236,42 @@ func (e *ReachError) Endpoint() string { return hostOf(e.URL) }
 // Requests whose context carries WithPriority pace on their own lane at the
 // same rate — the momentary ceiling is 2x RatePerSec, still polite — so a
 // two-location batch lands in seconds instead of minutes.
+//
+// Interactive lane (0.18.0 D-156): what the listener has just asked for — the
+// map's data, a lookup — queued behind that same burst, and a cold map waited
+// ~20 s for its alerts. It paces on a third lane (a momentary ceiling of 3x
+// RatePerSec across all three) and, unlike the priority lane, keeps the
+// failure memo: a host that is down is not hammered by every pan.
 type laneKey struct{}
+
+// The lanes, each with its own pacing and in-flight cap.
+const (
+	laneNormal = iota
+	lanePriority
+	laneInteractive
+	lanes
+)
 
 // WithPriority marks every request made under ctx for the priority lane.
 func WithPriority(ctx context.Context) context.Context {
-	return context.WithValue(ctx, laneKey{}, true)
+	return context.WithValue(ctx, laneKey{}, lanePriority)
 }
 
+// WithInteractive marks every request made under ctx for the interactive
+// lane: the listener is waiting on it (D-156).
+func WithInteractive(ctx context.Context) context.Context {
+	return context.WithValue(ctx, laneKey{}, laneInteractive)
+}
+
+// Interactive reports whether requests under ctx go on the interactive lane:
+// what a composition root's wiring test reads (D-156).
+func Interactive(ctx context.Context) bool { return lane(ctx) == laneInteractive }
+
 func lane(ctx context.Context) int {
-	if v, _ := ctx.Value(laneKey{}).(bool); v {
-		return 1
+	if v, ok := ctx.Value(laneKey{}).(int); ok && v >= 0 && v < lanes {
+		return v
 	}
-	return 0
+	return laneNormal
 }
 
 // New builds a Client. An empty UserAgent is refused: it would produce silent
@@ -278,7 +303,7 @@ func New(cfg Config) (*Client, error) {
 		transport.DialContext = publicDialer().DialContext
 	}
 	return &Client{cfg: cfg, http: &http.Client{Timeout: cfg.Timeout, Transport: transport, CheckRedirect: SameOriginRedirect}, cache: newCache(cfg.CacheDir), stats: newReqStats(), memo: newFailureMemo(),
-		inflight: [2]chan struct{}{make(chan struct{}, maxInflight), make(chan struct{}, maxInflightPriority)}}, nil
+		inflight: [lanes]chan struct{}{make(chan struct{}, maxInflight), make(chan struct{}, maxInflightPriority), make(chan struct{}, maxInflightInteract)}}, nil
 }
 
 // acquire takes an in-flight slot on the request's lane (or fails on ctx).
@@ -521,7 +546,7 @@ func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byt
 	if err := invariant.Check(c.cfg.MaxRetries >= 0, "retry budget must be non-negative"); err != nil {
 		return nil, nil, err
 	}
-	req := request{rawURL: rawURL, safe: RedactURL(rawURL), host: statHost(rawURL), priority: lane(ctx) == 1, cond: cond}
+	req := request{rawURL: rawURL, safe: RedactURL(rawURL), host: statHost(rawURL), priority: lane(ctx) == lanePriority, cond: cond}
 	if c.cfg.HTTPSOnly && !strings.HasPrefix(rawURL, "https://") {
 		return nil, nil, fmt.Errorf("refused %s: this client fetches over https only", req.safe)
 	}

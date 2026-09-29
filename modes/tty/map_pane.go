@@ -95,6 +95,13 @@ type mapPane struct {
 	// feedApplied is the newest feed answer drawn: equal to feedGen, the
 	// alerts asked for are in (the timing instrument's "settled").
 	feedApplied uint64
+	// The feed's one ask in flight (D-157): what it is for, its number, and
+	// its cancel; wanted again when new data lands while it runs.
+	feedBusy, feedAgain bool
+	feedSeq             uint64
+	feedFor             feedKey
+	feedCtx             context.Context
+	feedStop            context.CancelFunc
 	// viewAsked is the newest move whose settle tick has asked for its view:
 	// below viewGen, a move is still waiting to ask (the instrument's "still").
 	viewAsked uint64
@@ -155,8 +162,21 @@ type MapFeed struct {
 
 // mapFeedMsg is the feed's answer, to the request it was asked in.
 type mapFeedMsg struct {
-	gen  uint64
+	gen  uint64 // the data asked for (requestFeed's generation)
+	seq  uint64 // the ask's number: a cancelled ask's answer carries an older one (D-157)
 	feed MapFeed
+}
+
+// feedKey is what an alerts answer is for: a place and a view. An answer for
+// another is not drawn, and an ask in flight for another is stale (D-157).
+//
+// THE VIEW IS THE LISTENER'S - a move or a resize, viewGen - NOT ITS BOX. The
+// box follows the map's size, which shrinks as notes and the description fill
+// in with no move at all; keyed on it, answers were dropped with nothing left
+// to ask again, and 2 of 5 cold opens drew no alerts (W14's re-measure).
+type feedKey struct {
+	place snapshot.LocationKey
+	view  uint64
 }
 
 // mapWorkedMsg is one Work command's outcome.
@@ -208,9 +228,10 @@ func (d Dashboard) toggleMap() Dashboard {
 	d.mapPane.tempAuto, d.mapPane.modeChip = false, false
 	d = d.ensureMainOverlay() // D-103: a map opened in Forecast mode is never blank
 	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().requestFeed().renderMap()
+	d, feed := d.askFeed()
 	d, radar := d.askRadar()
 	d, temp := d.askTemp()
-	return d.withCmd(tea.Batch(d.mapWorkCmd(), d.mapFeedCmd(), radar, temp))
+	return d.withCmd(tea.Batch(d.mapWorkCmd(), feed, radar, temp))
 }
 
 // boundMap holds the map inside its region (W4, W9.1: the library's bound
@@ -252,11 +273,8 @@ func mercatorY(lat float64) float64 {
 // mapBodySize is the map's size in cells: the window's body, which the
 // window's frame and wrapping leave as they are.
 func (d Dashboard) mapBodySize() tuimaps.Size {
-	cols := d.mapCols()                                                    // border to border (U1-27)
-	avail := d.modalMax() - mapStatusRows - len(d.noteLines(d.mapTextW())) // under the map its notes, then the status and the chips; the description is a box over it (D-63)
-	if d.radarTimelineOn() {
-		avail -= radarRows + radarExtraRows // the colour row, the timeline and its blanks, held while radar is on (D-86, D-89)
-	}
+	cols := d.mapCols()                                                     // border to border (U1-27)
+	avail := d.modalMax() - d.mapChromeRows(len(d.noteLines(d.mapTextW()))) // under the map its notes, the status and the chips, and the radar's held rows (D-86, D-89); the description is a box over it (D-63)
 	return tuimaps.Size{Cols: cols, Rows: max(min(avail, d.modalMax()), 1)}
 }
 
@@ -296,7 +314,8 @@ func (d Dashboard) renderMap() Dashboard {
 	if !d.mapFits() {
 		d.mapPane.lines = nil
 		d.mapPane.gen++
-		return d // FR-1.4: nothing under the floor is drawn; the notice and the description say it
+		d.timeBelowFloor() // the workload's render check: a map not drawn is never a quiet pass (W14)
+		return d           // FR-1.4: nothing under the floor is drawn; the notice and the description say it
 	}
 	d.mapPane.call("Render", func() { frame, err = m.Render(d.mapBodySize(), d.now()) })
 	if err != nil {
@@ -373,7 +392,7 @@ func insetLines(lines []string) []string {
 
 // mapCols is the map window's width inside its two borders: the map runs
 // border to border (UAT-1 U1-27), where every other window insets its body.
-func (d Dashboard) mapCols() int { return max(d.modalWidth()-2, 1) }
+func (d Dashboard) mapCols() int { return max(d.mapWindowCols()-2, 1) }
 
 // mapTextW is how wide the window's words wrap: one cell inside the map's
 // width, for the space every line of words starts with, so none is cut at
@@ -460,17 +479,62 @@ func (d Dashboard) reportPlace() Dashboard {
 // (D-132), then the cost warning; wrapped to the map's width.
 func (d Dashboard) noteLines(width int) []string {
 	out := d.badgeRows(width)
-	for _, n := range d.mapPane.notes {
-		out = append(out, render.WrapText(n, width)...)
-	}
-	if d.mapPane.radarSource != "" && d.mapPane.radarNote != "" && d.layerOn(RadarLayer) {
-		out = append(out, render.WrapText(d.mapPane.radarNote, width)...) // D-84's missing data; a source that did not answer, with its Setting
-	}
-	for _, n := range d.tempNotes() { // W10: what a source lacks
-		out = append(out, render.WrapText(n, width)...)
+	if d.notesYield(width) {
+		out = append(out, render.WrapText(notesYieldLine(len(d.mapNotesNow())), width)...) // D-159: the map keeps its floor
+	} else {
+		for _, n := range d.mapNotesNow() {
+			out = append(out, render.WrapText(n, width)...)
+		}
 	}
 	out = append(out, mapCostLine(d.mapCost, width)...) // FR-9.2: said where the cost is seen, in D-82's words laid out as D-89
 	return out
+}
+
+// mapNotesNow is the map's notes as they stand: the feed's, the radar's
+// missing data, what a temperature source lacks. The one list the window
+// and the Status window's MAP STATUS both read (D-159), so they cannot
+// disagree.
+func (d Dashboard) mapNotesNow() []string {
+	out := append([]string(nil), d.mapPane.notes...)
+	if d.mapPane.radarSource != "" && d.mapPane.radarNote != "" && d.layerOn(RadarLayer) {
+		out = append(out, d.mapPane.radarNote) // D-84's missing data; a source that did not answer, with its Setting
+	}
+	return append(out, d.tempNotes()...) // W10: what a source lacks
+}
+
+// notesYieldLine is the notes collapsed to one line (D-159).
+func notesYieldLine(n int) string {
+	if n == 1 {
+		return "1 map note is in the Status window (S)."
+	}
+	return strconv.Itoa(n) + " map notes are in the Status window (S)."
+}
+
+// mapChromeRows are the rows under the map for notes of n lines: the status
+// and chips, the notes, and the radar timeline while it is held.
+func (d Dashboard) mapChromeRows(noteRows int) int {
+	rows := mapStatusRows + noteRows
+	if d.radarTimelineOn() {
+		rows += radarRows + radarExtraRows
+	}
+	return rows
+}
+
+// notesYield reports whether the notes must collapse to one line (D-159):
+// only where even the window's ceiling - the terminal's height minus 8 -
+// cannot hold the map at its floor with every note line shown, and one line
+// would. Growing the window comes first.
+func (d Dashboard) notesYield(width int) bool {
+	notes := d.mapNotesNow()
+	if len(notes) < 2 {
+		return false
+	}
+	full := len(d.badgeRows(width)) + len(mapCostLine(d.mapCost, width))
+	for _, n := range notes {
+		full += len(render.WrapText(n, width))
+	}
+	ceiling := d.height - 8
+	return mapMinBody.Rows+d.mapChromeRows(full) > ceiling
 }
 
 // mapStatusLine says what the picture is while it is not whole, and names
@@ -625,7 +689,8 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 			nd = nd.renderMap()
 			save := nd.uiApplyCmd()
 			nd.setup.uiDirty = false
-			return nd, tea.Batch(save, nd.mapWorkCmd(), nd.mapFeedCmd(), temp), true // radar is R's, not the menu's (D-94)
+			nd, feed := nd.askFeed()
+			return nd, tea.Batch(save, nd.mapWorkCmd(), feed, temp), true // radar is R's, not the menu's (D-94)
 		}
 	}
 	if !bound {
@@ -702,7 +767,7 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	}
 	d, settle := d.viewMoved() // marked moved before it is drawn: its view is not in until its settle tick asks (W14's instrument)
 	d = d.renderMap()
-	return d, tea.Batch(d.mapWorkCmd(), d.mapFeedCmd(), settle), true
+	return d, tea.Batch(d.mapWorkCmd(), settle), true // the alerts are the settle tick's to ask: never on every key (D-66, W14's P-2)
 }
 
 // panOrCross pans by cells. Where the region's edge holds the map still, the
@@ -761,21 +826,58 @@ func (d Dashboard) followSelection() Dashboard {
 	return d
 }
 
-// requestFeed asks for the map's alerts again: on opening, on new data, and
-// when the place changes. Only the newest request's answer is drawn.
+// requestFeed marks newer data wanted: on opening, on new data, when the
+// view or the place changes. askFeed asks for it.
 func (d Dashboard) requestFeed() Dashboard {
 	d.mapPane.feedGen++
 	return d
 }
 
-// mapFeedCmd asks the app for the alerts the map draws, off the UI goroutine
-// (the zones they name may be fetched).
+// feedKey is the place and view an ask made now would be for.
+func (d Dashboard) feedKey() feedKey {
+	k := feedKey{view: d.mapPane.viewGen}
+	if loc := d.selectedLocation(); loc != nil {
+		k.place = snapshot.Key(refOf(*loc))
+	}
+	return k
+}
+
+// askFeed asks the app for the map's alerts - ONE ASK IN FLIGHT (D-157).
+// While one runs for this place and view, new data marks the feed wanted
+// again, and one fresh ask follows its answer. One made stale - the place or
+// the view has changed - is cancelled, and the new one asked at once. Before,
+// every snapshot asked anew and dropped the answer it had been waiting for, so
+// a feed slower than the snapshots was never drawn (W14's C-1).
+func (d Dashboard) askFeed() (Dashboard, tea.Cmd) {
+	if d.cfg.MapFeed == nil || d.mapPane.m == nil || d.modal != modalMap || d.selectedLocation() == nil {
+		return d, nil
+	}
+	key, p := d.feedKey(), &d.mapPane
+	if p.feedBusy && key == p.feedFor {
+		p.feedAgain = true
+		return d, nil
+	}
+	if p.feedStop != nil {
+		p.feedStop() // stale: its place or view has gone
+	}
+	p.feedSeq++
+	p.feedCtx, p.feedStop = context.WithCancel(context.Background())
+	p.feedBusy, p.feedAgain, p.feedFor = true, false, key
+	return d, d.mapFeedCmd()
+}
+
+// mapFeedCmd is the ask in flight's command, off the UI goroutine (the zones
+// the alerts name may be fetched), cancelled with it.
 func (d Dashboard) mapFeedCmd() tea.Cmd {
 	feed, loc := d.cfg.MapFeed, d.selectedLocation()
 	if feed == nil || d.mapPane.m == nil || d.modal != modalMap || loc == nil {
 		return nil
 	}
-	gen, ask, place, workers := d.mapPane.feedGen, d.mapAsk(), *loc, d.mapPane.workers
+	gen, seq, ask, place, workers := d.mapPane.feedGen, d.mapPane.feedSeq, d.mapAsk(), *loc, d.mapPane.workers
+	asked := d.mapPane.feedCtx
+	if asked == nil {
+		asked = context.Background()
+	}
 	ask.Place = &place // the command's own copy: the model may move on while it runs
 	return func() tea.Msg {
 		ctx, done, ok := workers.begin()
@@ -783,7 +885,10 @@ func (d Dashboard) mapFeedCmd() tea.Cmd {
 			return nil // the map closed: the app is not asked
 		}
 		defer done()
-		return mapFeedMsg{gen: gen, feed: feed(ctx, ask)}
+		ctx, stop := context.WithCancel(ctx)
+		defer stop()
+		defer context.AfterFunc(asked, stop)() // a stale ask stops here too
+		return mapFeedMsg{gen: gen, seq: seq, feed: feed(ctx, ask)}
 	}
 }
 
@@ -791,8 +896,17 @@ func (d Dashboard) mapFeedCmd() tea.Cmd {
 // has, keeps its notes, and draws.
 func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 	m := d.mapPane.m
-	if m == nil || v.gen != d.mapPane.feedGen {
-		return d, nil // an older request's answer: a newer one is on its way
+	p := &d.mapPane
+	if m == nil || v.seq != p.feedSeq {
+		return d, nil // a cancelled ask's answer: the ask in flight is newer
+	}
+	p.feedBusy = false
+	if p.feedStop != nil {
+		p.feedStop() // its context let go
+		p.feedStop, p.feedCtx = nil, nil
+	}
+	if d.feedKey() != p.feedFor { // the view moved since it was asked: its settle tick asks for the new one
+		return d.feedAgainCmd(nil)
 	}
 	v.feed = d.feedForLayers(v.feed) // a layer switched off draws nothing (W1.11)
 	d.mapPane.feedApplied = v.gen
@@ -800,7 +914,17 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 	d = d.refreshMapCost()
 	d.mapPane.feed = &v.feed
 	d = d.setFeed(v.feed)
-	return d, d.mapWorkCmd()
+	return d.feedAgainCmd(d.mapWorkCmd())
+}
+
+// feedAgainCmd is after an answer: the one fresh ask new data wanted while
+// it ran, if any (D-157), beside cmd.
+func (d Dashboard) feedAgainCmd(cmd tea.Cmd) (tea.Model, tea.Cmd) {
+	if !d.mapPane.feedAgain {
+		return d, cmd
+	}
+	d, again := d.askFeed()
+	return d, tea.Batch(cmd, again)
 }
 
 // setFeed sets the feed's overlays, each with its span in the mode (D-98),
@@ -959,10 +1083,10 @@ func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
 		return d, nil
 	}
 	d.mapPane.viewAsked = v.gen
-	d = d.requestFeed()
+	d, feed := d.requestFeed().askFeed()
 	d, radar := d.askRadar()
 	d, temp := d.askTemp()
-	return d, tea.Batch(d.mapFeedCmd(), radar, temp) // the view's alerts, its radar (W8) and its temperature (W10)
+	return d, tea.Batch(feed, radar, temp) // the view's alerts, its radar (W8) and its temperature (W10)
 }
 
 // SameOverlay reports whether an overlay is the one already handed in, so it

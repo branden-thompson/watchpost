@@ -58,13 +58,16 @@ func run(args []string, out, errOut io.Writer) int {
 		_, _ = fmt.Fprintln(errOut, "perfsum: -in is required")
 		return 2
 	}
-	s, err := summarise(*in)
+	s, lost, err := summarise(*in)
 	if err != nil {
 		_, _ = fmt.Fprintln(errOut, "perfsum:", err)
 		return 2
 	}
 	if _, err := fmt.Fprint(out, s); err != nil {
 		return 2
+	}
+	if lost > 0 {
+		return 1 // the render check failed: a run that lost its map passes for nothing
 	}
 	return 0
 }
@@ -94,21 +97,21 @@ type timing struct {
 	MS      float64   `json:"ms"`
 }
 
-func summarise(dir string) (string, error) {
+func summarise(dir string) (string, int, error) {
 	phases, err := readPhases(filepath.Join(dir, "phases.log"))
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	if samples, err := readSamples(filepath.Join(dir, "samples.csv")); err == nil {
 		for i := range phases {
 			phases[i].resource, phases[i].hasSamples = resourcesIn(samples, phases[i].from, phases[i].to)
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return "", err
+		return "", 0, err
 	}
 	timings, err := readTimings(dir)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	var b strings.Builder
 	head, _ := os.ReadFile(filepath.Join(dir, "run.txt"))
@@ -121,11 +124,50 @@ func summarise(dir string) (string, error) {
 		r := p.resource
 		fmt.Fprintf(&b, "| %s | %.1f | %d | %.1f | %.1f / %.1f | %.1f | %.0f | %.0f |\n", p.name, p.to.Sub(p.from).Minutes(), r.samples, r.cpuPct, r.footMedMB, r.footMaxMB, r.heapMedMB, r.goroutinesMed, r.threadsMax)
 	}
+	lost := renderCheck(&b, phases, timings)
 	b.WriteString("\n## Timings (ms)\n\n| Phase | Trigger | Event | n | Median | p90 | Max |\n|---|---|---|---|---|---|---|\n")
 	for _, row := range timingRows(phases, timings) {
-		b.WriteString(row)
+		if !strings.Contains(row, "| render | below-floor |") {
+			b.WriteString(row)
+		}
 	}
-	return b.String(), nil
+	return b.String(), lost, nil
+}
+
+// renderCheck writes the render check - every draw that fell under the map's
+// floor, by phase (the instrument's "below-floor") - and returns how many.
+// The HUM LEAD's rule for W14: everything that is supposed to render,
+// actually renders.
+func renderCheck(b *strings.Builder, phases []phase, ts []timing) int {
+	byPhase, lost := map[string]int{}, 0
+	var order []string
+	for _, t := range ts {
+		if t.Trigger != "render" || t.Event != "below-floor" {
+			continue
+		}
+		name := "(before the first phase)"
+		for i := len(phases) - 1; i >= 0; i-- {
+			if !t.At.Before(phases[i].from) {
+				name = phases[i].name
+				break
+			}
+		}
+		if byPhase[name] == 0 {
+			order = append(order, name)
+		}
+		byPhase[name]++
+		lost++
+	}
+	b.WriteString("\n## Render check\n\n")
+	if lost == 0 {
+		b.WriteString("PASS: the map was drawn in every phase - no draw fell under its floor.\n")
+		return 0
+	}
+	b.WriteString("**FAIL: the map was not drawn** - a draw fell under its floor and showed the notice in its place.\n\n| Phase | Draws not drawn |\n|---|---|\n")
+	for _, name := range order {
+		fmt.Fprintf(b, "| %s | %d |\n", name, byPhase[name])
+	}
+	return lost
 }
 
 // readPhases reads "<RFC3339> <name...>" lines; each phase runs to the next.

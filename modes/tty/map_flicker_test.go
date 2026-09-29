@@ -26,7 +26,7 @@ func TestTheSameAlertAgainNeverDropsFromTheFrame(t *testing.T) {
 	for i := range 20 {
 		m, _ := d.Update(SnapshotMsg{Snap: placedSnap()})
 		d = m.(Dashboard)
-		m, _ = d.Update(mapFeedMsg{gen: d.mapPane.feedGen, feed: feed(context.Background(), d.mapAsk())})
+		m, _ = d.Update(mapFeedMsg{gen: d.mapPane.feedGen, seq: d.mapPane.feedSeq, feed: feed(context.Background(), d.mapAsk())})
 		d = m.(Dashboard)
 		if !hasArea(d) {
 			t.Fatalf("refresh %d: the frame drawn as the same alert came back does not show it", i)
@@ -55,13 +55,13 @@ func TestAChangedAlertIsHandedInAgain(t *testing.T) {
 	calls := &[]string{}
 	d.mapPane.calls = calls
 	same := boxFeed(-117.6, -117.1, false)(context.Background(), d.mapAsk())
-	m, _ := d.Update(mapFeedMsg{gen: d.mapPane.feedGen, feed: same})
+	m, _ := d.Update(mapFeedMsg{gen: d.mapPane.feedGen, seq: d.mapPane.feedSeq, feed: same})
 	d = m.(Dashboard)
 	if strings.Contains(strings.Join(*calls, " "), "Set") {
 		t.Fatalf("an unchanged alert was handed in again: %v", *calls)
 	}
 	moved := boxFeed(-117.7, -117.2, false)(context.Background(), d.mapAsk())
-	d.Update(mapFeedMsg{gen: d.mapPane.feedGen, feed: moved})
+	d.Update(mapFeedMsg{gen: d.mapPane.feedGen, seq: d.mapPane.feedSeq, feed: moved})
 	if !strings.Contains(strings.Join(*calls, " "), "Set") {
 		t.Errorf("an alert whose area moved was not handed in: %v", *calls)
 	}

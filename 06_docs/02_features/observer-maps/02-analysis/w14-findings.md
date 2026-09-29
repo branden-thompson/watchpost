@@ -54,7 +54,7 @@ hold is listed at the end.
 
 | # | Finding | Evidence | Status |
 |---|---|---|---|
-| C-1 | **Under the heavy workload the map never finishes.** Every priority snapshot re-asks the whole feed (`dashboard.go` `SnapshotMsg`), a newer generation drops the older answer (`applyMapFeed`), and the older ask is never cancelled — it runs to its 30 s limit | Baseline: 0 of 10 heavy opens reached M5; goroutines 484 → 550 | Verified |
+| C-1 | **Fixed, batch 59 (D-157).** **Under the heavy workload the map never finishes.** Every priority snapshot re-asks the whole feed (`dashboard.go` `SnapshotMsg`), a newer generation drops the older answer (`applyMapFeed`), and the older ask is never cancelled — it runs to its 30 s limit | Baseline: 0 of 10 heavy opens reached M5; goroutines 484 → 550 | Verified |
 | C-2 | **Fixed, batch 58.** **The Tides estimate is always 0**: the estimate is built without fetching, and only fetching fills `in.tides` (`mapmarine.go` `tideLayerCost`, `maplayers.go` `inputsFor`) | Code | Verified |
 | C-3 | **Fixed, batch 58.** **The Overlays menu's picker blink has no tick of its own**: `tickNeeded` has no arm for `menuFlash` (Settings' has one) | Code; whether it shows depends on another tick being armed | Verified in code |
 | C-4 | **~76 MB stays after the map closes** (heap 34 → 86 MB) | Baseline, both variants | Measured; cause not traced |
@@ -65,8 +65,8 @@ hold is listed at the end.
 
 | # | Finding | Evidence | Status |
 |---|---|---|---|
-| P-1 | **The map's requests wait behind the station's launch burst.** The map's work contexts are `context.Background()` (`map_work.go`), so alerts in view, zone shapes, fire, quakes, AirNow go on the data client's normal lane — the RECENT pipeline's launch burst's lane (~375–600 requests at 30/s, FIFO). Only favourites use `WithPriority` | The ±0.4 s spread of cold M5 | Verified (lane); burst size estimated from code |
-| P-2 | **Every move key asks the whole feed at once, and again 600 ms later.** `handleMapKey` batches `mapFeedCmd` on every pan, zoom and region key; D-66's settle tick then asks again. The per-key ask predates D-66 (batch 5) and survived it (batch 15) | History; code | Verified |
+| P-1 | **Fixed, batch 59 (D-156).** **The map's requests wait behind the station's launch burst.** The map's work contexts are `context.Background()` (`map_work.go`), so alerts in view, zone shapes, fire, quakes, AirNow go on the data client's normal lane — the RECENT pipeline's launch burst's lane (~375–600 requests at 30/s, FIFO). Only favourites use `WithPriority` | The ±0.4 s spread of cold M5 | Verified (lane); burst size estimated from code |
+| P-2 | **Fixed, batch 59.** **Every move key asks the whole feed at once, and again 600 ms later.** `handleMapKey` batches `mapFeedCmd` on every pan, zoom and region key; D-66's settle tick then asks again. The per-key ask predates D-66 (batch 5) and survived it (batch 15) | History; code | Verified |
 | P-3 | **Fire and quakes are fetched on every feed ask whatever their switches** (`inputsFor` → `fireIn`, `mapQuakes.fetch`); buoys, tides and air check theirs | Code | Verified |
 | P-4 | Zone shapes resolved for alert categories switched off (the estimate skips them, D-149; the feed does not) | Auditor | Reported |
 | P-5 | The feed's inputs are fetched one after another — view alerts, fire (perimeters box by box), quakes, buoys, up to 20 serial tide predictions, AirNow — then the zones | Auditor, two independently | Reported |
@@ -92,6 +92,13 @@ hold is listed at the end.
 | S-7 | Control components hand-built where the app's exist (the Request window's checkbox — D-147); `cycleIn` bypassed 4× | Auditor | Reported |
 | S-8 | Code no production path reaches: F-24's on-air masthead, `castProblems`, `ellipsize`, `colorEnabled`, `bedReachFor`, `withForecast` | Auditor | Reported — F-24 is a HUM LEAD question (wire or delete) |
 | S-9 | Functions past ~60 lines: `handleMapKey` 102, `overlaysBox` 96, `mapFeedWith` 86, `geojson.walk` 77, `ttyConfig` 74, `parseDWML` 72 | Auditor | Reported |
+
+### Found by re-measuring
+
+| # | Finding | Evidence | Status |
+|---|---|---|---|
+| C-7 | **The map drops under its floor at mid-size terminals**: at 149×38 the window's status, notes and radar timeline left the map 11 rows, so the notice showed in its place. Pre-existing and intermittent at the checkpoint (probed on its own binary, even `default`); steady once answers landed reliably | Render probe, checkpoint vs batch 59 | **Fixed, batch 59 (D-159)** |
+| S-10 | The station identification on going ON AIR (F-24's `mastheadLine`) is built and tested but wired to nothing | Code | **Ruled D-158**: removed, a seam left — the structure batch |
 
 ### Claimed, and did not hold
 

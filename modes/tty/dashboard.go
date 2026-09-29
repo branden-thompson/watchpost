@@ -1042,10 +1042,10 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case SnapshotMsg:
 		m, cmd := d.applySnapshot(v)
 		if next, ok := m.(Dashboard); ok && next.modal == modalMap {
-			next = next.requestFeed()          // 0.18.0: new data, so the map's alerts are asked again (D-45's data row)
-			next, radar := next.refreshRadar() // and the radar, once its loop has stood two minutes (D-85)
-			next, temp := next.refreshTemp()   // and the temperature, as it stands or the hour turns (W10)
-			return next, tea.Batch(cmd, next.mapFeedCmd(), radar, temp)
+			next, feed := next.requestFeed().askFeed() // 0.18.0: new data, so the map's alerts are asked again (D-45's data row) - one ask in flight (D-157)
+			next, radar := next.refreshRadar()         // and the radar, once its loop has stood two minutes (D-85)
+			next, temp := next.refreshTemp()           // and the temperature, as it stands or the hour turns (W10)
+			return next, tea.Batch(cmd, feed, radar, temp)
 		}
 		return m, cmd
 	case RecentSnapshotMsg:
