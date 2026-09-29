@@ -93,6 +93,7 @@ const tickerSeenWindow
 const tideBytes
 const tideLabelMost
 const tileFirstByte
+const timingsKept
 const titlePartKm
 const titlePlaceKm
 const titleStateKm
@@ -161,8 +162,6 @@ func (*executors).runTune
 func (*executors).speak
 func (*injectQueue).readyLocked
 func (*injectQueue).take
-func (*injectQueue).take
-func (*injectQueue).wake
 func (*injectQueue).wake
 func (*livePipelines).airnowIn
 func (*livePipelines).attachDeck
@@ -184,7 +183,6 @@ func (*livePipelines).fireIn
 func (*livePipelines).fireRules
 func (*livePipelines).giveItAStation
 func (*livePipelines).hydrate
-func (*livePipelines).injectHook
 func (*livePipelines).injectHook
 func (*livePipelines).inputsFor
 func (*livePipelines).locateInRadius
@@ -430,13 +428,15 @@ func (*tickerDeck).setScope
 func (*tickerDeck).startTakeover
 func (*tickerDeck).stop
 func (*tickerDeck).takeInjected
-func (*tickerDeck).takeInjected
 func (*tickerDeck).tapeItems
 func (*tickerDeck).tell
 func (*tickerDeck).tiesWithin
 func (*tileCounter).add
 func (*tileCounter).stats
 func (*tileCounter).transport
+func (*timingLog).hook
+func (*timingLog).last
+func (*timingLog).note
 func (CastReport).ToneSummary
 func (airScope).hasOrigin
 func (bedReach).Line
@@ -510,7 +510,6 @@ func coveragePhrase
 func credits
 func debugAddr
 func debugMux
-func debugScenarios
 func debugScenarios
 func defaultLocation
 func defaultVoiceFor
@@ -615,6 +614,7 @@ func newRadioDeck
 func newReleaseWatch
 func newResolver
 func newSevereDeck
+func newTimingLog
 func notNew
 func noteRead
 func onTheRail
@@ -814,7 +814,6 @@ type fireInView
 type hostFacts
 type hoursAhead
 type injectQueue
-type injectQueue
 type livePipelines
 type liveSource
 type mainTrackStage
@@ -853,6 +852,8 @@ type tickerDeck
 type tickerPrefs
 type tideMark
 type tileCounter
+type timingLog
+type timingRecord
 type waveSource
 var _
 var _

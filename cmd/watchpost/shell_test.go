@@ -42,6 +42,8 @@ var shellScripts = exempt(&exemptionTable{
 		"scripts/quality/soak-phases.expect":        "drives the TUI under expect; expect has no Go equivalent in the tree yet, F-156",
 		"scripts/quality/soak.sh":                   "the soak harness around the expect scripts; ports with them, F-156",
 		"scripts/quality/validate-journey.expect":   "drives the TUI under expect; expect has no Go equivalent in the tree yet, F-156",
+		"scripts/quality/workload.expect":           "drives the TUI under expect for W14's standard workload (D-154); expect has no Go equivalent in the tree yet, F-156",
+		"scripts/quality/workload.sh":               "runs the standard workload beside soak.sh under a scratch HOME (W14, D-154); port candidate F-156",
 		"06_docs/mutants/run.sh":                    "runs the mutant corpus by hand outside make; port candidate F-156",
 		"tools/geotrim/refresh.sh":                  "refreshes geotrim's fixture data; port candidate F-156",
 	},

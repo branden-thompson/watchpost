@@ -229,6 +229,7 @@ func (d Dashboard) applyMapTemp(v mapTempMsg) (tea.Model, tea.Cmd) {
 	if d.mapPane.m == nil || d.modal != modalMap {
 		return d, nil
 	}
+	d.timed("answered:temp")
 	d.mapPane.temp, d.mapPane.tempAnchor = v.temp, v.anchor // held whether or not it is drawn (D-99)
 	for _, p := range v.temp.Problems {
 		d.problem(p) // D-124: the diagnostics', never the listener's

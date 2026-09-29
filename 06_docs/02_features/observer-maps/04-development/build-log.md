@@ -1887,3 +1887,40 @@ unmarked. It is marked now.
 **Mutation verdicts** (targeted, 6), all caught - one, the read speaking a real alert's line for a
 test event, by the existing `test_event_test.go` rather than the new guard (an all-test card reads
 its own script; that branch is a mixed card's).
+
+## Batch 57 — W14 step 0: measure first (D-154, 2026-09-29)
+
+**The checkpoint.** `checkpoint/pre-w14`, pushed on both repositories: watchpost `0e940ef2` (verify
+green; CI green on macOS and Ubuntu, run 36588478972), go-tuimaps `1c0ca83` (`v0.2.0-rc.26`, its
+gate green). Either can be restored exactly.
+
+**The CI flake, measured before it was fixed.** CI's macOS `race` failed once on
+`TestTheLoopSaysWhenItIsAhead` ("the loop is 0 frames"). The test helper `msgsOf` gave every
+command 200 ms and dropped a late answer silently.
+- Not reproduced locally in 80 runs, even with six cores busy.
+- The only command that does not return is a `tea.Tick`; the radar's decode takes ~612 ms under
+  `-race`.
+- A window of 5 ms still passed: the decode dropped is redone by `settleMap`. A window no answer
+  can meet reproduced CI's exact failure, 3 of 3: **a late radar answer, dropped**.
+- Now a timer keeps the 200 ms; every other command runs to its end, and one past 30 s fails the
+  test by name. It also ends a quieter race: ~20 map tests asserted while an abandoned decode was
+  still writing the map. The honest wait costs `modes/tty`'s `race` +24 s (71.5 → 95.8 s),
+  measured per test.
+
+**The instrument** (`modes/tty/timing.go`, `app/timing.go`). Off unless `WATCHPOST_DEBUG_TIMING=1`;
+`TestTheInstrumentChangesNothingItMeasures` holds the frame the same either way. Two definitions
+corrected while it was built, each by a measurement:
+- the library's `Complete` is the basemap whole; M5 (D-46) also needs every alert's area - hence
+  `m5` apart from `complete`;
+- a moved view is not in until its settle tick has asked for it (D-66): `settled` had fired 600 ms
+  before a pan's own alerts were asked.
+
+**The standard workload v1** - configs, driver, runner, `tools/perfsum` - recorded as the method in
+`06_docs/perf-measurement.md`. **Found while building it:** the soak drivers waited for `º`
+(U+00BA) where the app draws `°` (U+00B0); every earlier soak began on a silent timeout.
+
+**First signal, n = 1, not yet a finding.** A cold open at first data: `default` reached M5 at
+**19.0 s** against D-46's 3.5 s; `heavy` not in 45 s. In both the alerts feed is the late answer
+(16-19 s). The baseline (n ≥ 5) comes next, then the audit.
+
+**Mutation verdicts** (targeted, 7 on the instrument), all caught.

@@ -7,6 +7,8 @@ package tty
 // D-65).
 
 import (
+	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -218,11 +220,24 @@ func indexOf(xs []string, x string) int {
 	return -1
 }
 
-// msgsOf runs a command, and a batch's commands, each for up to a moment -
-// a tick's command waits, and is not what these tests look for.
-func msgsOf(cmd tea.Cmd) []tea.Msg {
+// msgsOf runs a command, and a batch's commands, and returns what they say.
+//
+// A TIMER IS NOT WAITED OUT, AND NOTHING ELSE IS ABANDONED. A tea.Tick's
+// command sleeps its interval, and these tests do not look for it past a
+// moment. Every other command runs to its end: the old form gave EVERY command
+// 200 ms and dropped the late ones silently - and under -race the radar's
+// decode takes ~600 ms, so its answer was dropped while its goroutine kept
+// writing the map the test then read. CI's macOS race failed on exactly that
+// (TestTheLoopSaysWhenItIsAhead, 2026-09-29). A command that does not end
+// within cmdLimit fails the test, loudly.
+func msgsOf(t *testing.T, cmd tea.Cmd) []tea.Msg {
+	t.Helper()
 	if cmd == nil {
 		return nil
+	}
+	limit := cmdLimit
+	if isTimer(cmd) {
+		limit = 200 * time.Millisecond
 	}
 	out := make(chan tea.Msg, 1)
 	go func() { out <- cmd() }()
@@ -231,14 +246,35 @@ func msgsOf(cmd tea.Cmd) []tea.Msg {
 		if batch, ok := msg.(tea.BatchMsg); ok {
 			var all []tea.Msg
 			for _, c := range batch {
-				all = append(all, msgsOf(c)...)
+				all = append(all, msgsOf(t, c)...)
 			}
 			return all
 		}
 		return []tea.Msg{msg}
-	case <-time.After(200 * time.Millisecond):
+	case <-time.After(limit):
+		if limit != cmdLimit {
+			return nil // a timer, not waited out
+		}
+		t.Fatalf("a command did not end within %v: %s", cmdLimit, cmdName(cmd))
 		return nil
 	}
+}
+
+// cmdLimit is how long msgsOf waits for a command that is not a timer: far
+// past any honest one, so reaching it is a hang, not a slow machine.
+const cmdLimit = 30 * time.Second
+
+// isTimer: the command is bubbletea's Tick or Every, which sleep by design.
+func isTimer(cmd tea.Cmd) bool {
+	n := cmdName(cmd)
+	return strings.HasPrefix(n, "charm.land/bubbletea/v2.Tick.") || strings.HasPrefix(n, "charm.land/bubbletea/v2.Every.")
+}
+
+func cmdName(cmd tea.Cmd) string {
+	if f := runtime.FuncForPC(reflect.ValueOf(cmd).Pointer()); f != nil {
+		return f.Name()
+	}
+	return "?"
 }
 
 // TestADetailSwitchChangesThePictureAndIsSaved: switching a detail layer in
@@ -265,7 +301,7 @@ func TestADetailSwitchChangesThePictureAndIsSaved(t *testing.T) {
 	if strings.Join(d.mapPane.lines, "\n") == before {
 		t.Error("switching the borders off left the picture as it was")
 	}
-	for _, msg := range msgsOf(cmd) {
+	for _, msg := range msgsOf(t, cmd) {
 		if _, ok := msg.(uiSavedMsg); ok && saved.MapDetail != nil && !saved.MapDetail["borders"] {
 			return
 		}

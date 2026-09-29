@@ -281,6 +281,9 @@ type Router struct {
 	// relays steps the bed's selection through what the station's fence reaches
 	// (D-78). Nil where there is no radio.
 	relays func(by int) tea.Cmd
+
+	// keyTime is the timing instrument's key clock (timing.go, M6).
+	keyTime *keyClock
 }
 
 // NewRouter wraps Observer. The second surface arrives in P1.
@@ -303,7 +306,7 @@ func NewRouter(o Dashboard) Router {
 	// arrive as a message; this is the value it opens with.
 	b.area, b.areaGen = o.cfg.StationArea, b.areaGen+1
 	return Router{observer: o, broadcaster: b, active: SurfaceObserver,
-		keys: o.consoleKeyMap(), onSurface: o.cfg.OnSurface, relays: o.cfg.StepBedRelay}
+		keys: o.consoleKeyMap(), onSurface: o.cfg.OnSurface, relays: o.cfg.StepBedRelay, keyTime: &keyClock{}}
 }
 
 // Init delegates to the active surface. Observer asks for the terminal's
@@ -431,6 +434,9 @@ func (r Router) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// drives the Router rather than calling `requestSchedule`, which is what makes
 	// the ordering observable.
 	r.observer.liveOffset = r.broadcaster.liveOffset()
+	if _, ok := msg.(tea.KeyPressMsg); ok {
+		r.keyArrived() // M6: a key's time to its frame (timing.go)
+	}
 	m, cmd := r.update(msg)
 	// THE LEVEL IS MIRRORED, NEVER OWNED TWICE (D-56). The Dashboard holds it —
 	// it has the engine call, the step and the chip flash — and the console
@@ -513,6 +519,7 @@ func (r Router) View() tea.View {
 	if r.active == SurfaceBroadcaster && r.observer.ModalOpen() {
 		v.Content = r.observer.OverlayWindow(v.Content, r.broadcaster.width)
 	}
+	r.frameDrawn()
 	return v
 }
 

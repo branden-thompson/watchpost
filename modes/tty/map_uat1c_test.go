@@ -162,7 +162,7 @@ func TestTheAlertCategoriesSwitchTheirAlerts(t *testing.T) {
 	if _, ok := d.mapPane.given["alert/warnings/w"]; !ok {
 		t.Error("switching Advisories off took the warning too")
 	}
-	for _, msg := range msgsOf(cmd) {
+	for _, msg := range msgsOf(t, cmd) {
 		if _, ok := msg.(uiSavedMsg); ok && saved.MapLayers != nil && !saved.MapLayers[categoryChoice("advisories")] {
 			return
 		}

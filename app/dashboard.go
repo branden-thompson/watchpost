@@ -82,7 +82,7 @@ func RunDashboard(version string, opt Options) error {
 		return err
 	}
 	fireProvs, firmsProv := fireProviders(client, cfg) // B5
-	lp := &livePipelines{ctx: ctx, provider: provider,
+	lp := &livePipelines{ctx: ctx, provider: provider, timings: newTimingLog(),
 		marine: []snapshot.Provider{nws.NewMarine(provider), ndbc.New(client, ""), tides, coops.NewObs(tides)}, // UAT 29 / 61 / 72
 		fire:   fireProvs, firms: firmsProv, rules: fireRules(cfg.Fire),
 		seismic: seismicProviders(client, cfg),
@@ -420,6 +420,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapRadarAhead:   cfg.MapRadarAheadHours,        // D-114: the radar loop's hours ahead
 		MapQuakeFeed:    cfg.MapQuakeFeed,              // D-122: the quakes the map draws
 		MapProblem:      lp.problems.note,              // D-124: the diagnostics', never the listener's
+		Timed:           lp.timings.hook(),             // W14's instrument: nil unless WATCHPOST_DEBUG_TIMING=1
 		MapLayerChoice:  cfg.MapLayers,                 // 0.18.0 W1.11
 		MapLayers:       windowLayers(),                // 0.18.0 W1.13: the registry's layers
 		MapCost:         lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate
@@ -729,6 +730,7 @@ type livePipelines struct {
 	mapClients []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
 	tiles      *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
 	problems   mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
+	timings    *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
 	director   *director            // 0.13.0: the voice arbiter (app/director.go)
 	scripts    *script.Library      // 0.13.0: the spoken lines (domains/radio/script)
 	reader     *eventReader         // 0.13.0: [space] in the window

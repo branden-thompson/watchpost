@@ -70,7 +70,10 @@ const recentWindow = 3
 // into a location ref; Commit persists the watchlist and rebuilds the live
 // pipelines with the new watch/recent ref sets (UAT 26).
 type Config struct {
-	Version      string
+	Version string
+	// Timed is the timing instrument's ear (W14, D-154): nil, and nothing is
+	// measured; the app sets it only under WATCHPOST_DEBUG_TIMING=1.
+	Timed        func(Timing)
 	KeyOverrides term.KeyMap                                   // user [keys] table (validated at build)
 	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error) // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
 	MapFeed      func(ctx context.Context, ask MapAsk) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine

@@ -107,6 +107,7 @@ func (d Dashboard) applyMapTick(v mapTickMsg) Dashboard {
 		return d
 	}
 	d.mapPane.tickAt = time.Time{}
+	d.timeTick(v.at) // M6: how late the library's asked-for moment was drawn
 	return d.renderMap()
 }
 

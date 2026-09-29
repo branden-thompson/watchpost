@@ -55,7 +55,7 @@ func settleRadar(t *testing.T, d Dashboard, cmd tea.Cmd) Dashboard {
 	t.Helper()
 	for range 6 {
 		var next []tea.Cmd
-		for _, msg := range msgsOf(cmd) {
+		for _, msg := range msgsOf(t, cmd) {
 			switch msg.(type) {
 			case mapRadarMsg, mapTempMsg, mapWorkedMsg: // every answer goes back through Update, the work's too
 				m, c := d.Update(msg)
@@ -254,7 +254,7 @@ func TestALaterAskWaitsForTheLoop(t *testing.T) {
 		t.Fatal("a second ask started while the first was running")
 	}
 	var answer mapRadarMsg
-	for _, msg := range msgsOf(cmd) {
+	for _, msg := range msgsOf(t, cmd) {
 		if r, ok := msg.(mapRadarMsg); ok {
 			answer = r
 		}

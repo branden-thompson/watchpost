@@ -92,6 +92,13 @@ type mapPane struct {
 	// The radar (W8): its request generation, the loops handed in by id, the
 	// source for the chip and its note, and the loop's line as last drawn.
 	radarBusy, radarAgain bool // one request at a time, a later want kept (D-85)
+	// feedApplied is the newest feed answer drawn: equal to feedGen, the
+	// alerts asked for are in (the timing instrument's "settled").
+	feedApplied uint64
+	// viewAsked is the newest move whose settle tick has asked for its view:
+	// below viewGen, a move is still waiting to ask (the instrument's "still").
+	viewAsked uint64
+	clock     mapClock // the timing instrument's clock (timing.go)
 	// radarRegion is the region of the loop being fetched, and radarStop
 	// cancels it: leaving the region leaves its answer nowhere to draw (D-130).
 	radarRegion                       string
@@ -174,7 +181,7 @@ func (d Dashboard) toggleMap() Dashboard {
 	if d.modal == modalMap {
 		return d.close()
 	}
-	d = d.open(modalMap)
+	d = d.open(modalMap).timeFrom("open")
 	loc := d.selectedLocation()
 	if loc == nil || d.mapsOff {
 		return d // FR-1.3, FR-1.6: the window says so; nothing is built for it
@@ -322,6 +329,7 @@ func (d Dashboard) renderMap() Dashboard {
 	d.mapPane.radarBadgeTime = d.radarBadgeTimeNow()
 	d.mapPane.gen++
 	d.mapPane.changed, d.mapPane.ticks = frame.Changed, frame.FrameTicks
+	d = d.timeDraw()
 	return d
 }
 
@@ -608,6 +616,7 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 			if nd.mapLayerChoice == d.mapLayerChoice && nd.mapDetailChoice == d.mapDetailChoice && nd.mapDetailLevel == d.mapDetailLevel {
 				return nd, nil, true
 			}
+			nd = nd.timeFrom("overlay")
 			nd, _ = nd.setTemp() // temperature switched: drawn at once from what is held (D-99), or taken off
 			var temp tea.Cmd
 			if (nd.layerOn(UVLayer) && !d.layerOn(UVLayer)) || (nd.layerOn(AirLayer) && !d.layerOn(AirLayer)) {
@@ -622,6 +631,7 @@ func (d Dashboard) handleMapKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) 
 	if !bound {
 		return d, nil, false
 	}
+	d = d.timeFrom(string(act))
 	switch act {
 	case actMapAlerts: // D-63
 		d.mapPane.alertsOn = !d.mapPane.alertsOn
@@ -785,6 +795,8 @@ func (d Dashboard) applyMapFeed(v mapFeedMsg) (tea.Model, tea.Cmd) {
 		return d, nil // an older request's answer: a newer one is on its way
 	}
 	v.feed = d.feedForLayers(v.feed) // a layer switched off draws nothing (W1.11)
+	d.mapPane.feedApplied = v.gen
+	d.timed("answered:feed")
 	d = d.refreshMapCost()
 	d.mapPane.feed = &v.feed
 	d = d.setFeed(v.feed)
@@ -946,6 +958,7 @@ func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
 	if d.modal != modalMap || v.gen != d.mapPane.viewGen {
 		return d, nil
 	}
+	d.mapPane.viewAsked = v.gen
 	d = d.requestFeed()
 	d, radar := d.askRadar()
 	d, temp := d.askTemp()

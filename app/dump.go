@@ -78,6 +78,9 @@ type dumpRecord struct {
 	// MapProblems are the map's last problems the listener cannot act on
 	// (0.18.0 D-124): here, and never on the screen.
 	MapProblems []string `json:"map_problems,omitempty"`
+	// Timings are the timing instrument's newest intervals (W14, D-154),
+	// under WATCHPOST_DEBUG_TIMING=1 alone.
+	Timings []timingRecord `json:"timings,omitempty"`
 }
 
 // memRecord is the MemStats subset the soak statistic reads (plan §1:
@@ -219,6 +222,7 @@ func (d *dumper) record(now time.Time) dumpRecord {
 	}
 	src := d.sources()
 	rec.Gauges = src.gauges()
+	rec.Timings = src.timings.last()
 	for i, pub := range [...]*publisher{src.priorityPub, src.recentPub} {
 		name := [...]string{"priority", "recent"}[i]
 		var last *snapshot.Snapshot
