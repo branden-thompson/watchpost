@@ -143,7 +143,7 @@ func TestMapStatusSaysWhetherTheMapWorks(t *testing.T) {
 		{Name: "AirNow", Host: "files.airnowtech.org", Layers: "air"},
 		{Name: "MRMS", Host: "mrms.ncep.noaa.gov", Layers: "radar", Notes: []string{"MRMS radar's colours are approximate."}}}})
 	d.width = 140
-	block := stripANSITest(strings.Join(d.mapSourceLines(), "\n"))
+	block := stripANSITest(strings.Join(d.statusBlocks(0).maps, "\n"))
 	row := func(host string) string {
 		for _, l := range strings.Split(block, "\n") {
 			if strings.Contains(l, host) {

@@ -234,7 +234,7 @@ func TestAnUnmeasuredHostReadsNeutralNotFailed(t *testing.T) {
 	d := mm.(Dashboard)
 
 	var row string
-	for _, l := range d.providerLines(d.opts(), d.cfg.Stats(), 0) {
+	for _, l := range d.statusBlocks(0).providers {
 		if strings.Contains(l, "www.nhc.noaa.gov") {
 			row = stripANSITest(l)
 		}
@@ -439,5 +439,83 @@ func TestUnreportedHostsReadMutedAtEveryWidth(t *testing.T) {
 	reported := endpointRow{endpoint: "api.weather.gov", providers: "NWS", state: "REF OK", claimed: true}
 	if got := endpointCells(render.Opts{Width: 133}, reported, 0)[1].tone; got == muted {
 		t.Errorf("a reported host must not read muted, got %q", got)
+	}
+}
+
+// statusWithMap is the Status window over a snapshot with API rows and the
+// map's hosts, at a terminal width.
+func statusWithMap(t *testing.T, width int, sources []MapSource) Dashboard {
+	t.Helper()
+	m, err := NewDashboard(Config{Version: "t", MapSources: sources, Stats: func() Stats {
+		return Stats{
+			Requests: httpx.RequestStats{Uptime: time.Hour, Hosts: []httpx.HostStats{
+				{Host: "api.weather.gov", Attempts: 10, Net: 8, LastOK: time.Now()},
+				{Host: "www.nhc.noaa.gov", Attempts: 3, Net: 1}}},
+			MapRequests: httpx.RequestStats{Hosts: []httpx.HostStats{{Host: "tiles.openfreemap.org", Attempts: 212, Net: 180, BytesNet: 24 << 20, LastOK: time.Now()}}},
+			Endpoints:   map[string][]string{"nws": {"api.weather.gov"}},
+		}
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mm tea.Model = m
+	mm, _ = mm.Update(tea.WindowSizeMsg{Width: width, Height: 44})
+	mm, _ = mm.Update(SnapshotMsg{Snap: snap()})
+	return mm.(Dashboard)
+}
+
+// mapSources is a map host list with a long note, as the app's.
+var mapSources = []MapSource{{Name: "OpenFreeMap", Host: "tiles.openfreemap.org", Layers: "basemap"},
+	{Name: "National Weather Service", Host: "api.weather.gov", Layers: "alert areas"},
+	{Name: "Open-Meteo", Host: "api.open-meteo.com", Layers: "temperature, UV, rain", Notes: []string{"Each radar frame draws its own hour's temperature."}}}
+
+// TestTheEndpointTablesAreOneShape is D-150 as the HUM LEAD asked it: API
+// STATUS and MAP STATUS share their columns - ENDPOINT filling, every other
+// column at the same place in both - filled to the same width.
+func TestTheEndpointTablesAreOneShape(t *testing.T) {
+	d := statusWithMap(t, 200, mapSources)
+	b := d.statusBlocks(d.statusInner())
+	header := func(lines []string) string {
+		for _, l := range lines {
+			if p := stripANSITest(l); strings.Contains(p, "ENDPOINT") {
+				return p
+			}
+		}
+		t.Fatal("no header row")
+		return ""
+	}
+	api, maps := header(b.providers), header(b.maps)
+	for _, col := range []string{"STATUS", "FETCHED", "TRIES", "NET", "CACHE", "BYTES"} {
+		if strings.Index(api, col) != strings.Index(maps, col) {
+			t.Errorf("%s is at column %d in API STATUS and %d in MAP STATUS:\n%s\n%s", col, strings.Index(api, col), strings.Index(maps, col), api, maps)
+		}
+	}
+	if render.Width(api) != render.Width(maps) || render.Width(api) < d.statusInner()-2 {
+		t.Errorf("the tables fill %d and %d of %d", render.Width(api), render.Width(maps), d.statusInner())
+	}
+}
+
+// TestTheMapsWordsNeverWidenTheWindow is D-151 as the HUM LEAD's screenshot
+// found it: the disclosure wrapped at the terminal's width and set the
+// window's; it wraps to the table, and the window is the width it is
+// without the map's hosts.
+func TestTheMapsWordsNeverWidenTheWindow(t *testing.T) {
+	with, without := statusWithMap(t, 200, mapSources), statusWithMap(t, 200, nil)
+	if w, wo := with.statusWidth(), without.statusWidth(); w > max(wo, 200*60/100) {
+		t.Errorf("the map's hosts widen the Status window to %d; without them %d, the rule %d", w, wo, 200*60/100)
+	}
+	b := with.statusBlocks(with.statusInner())
+	table := 0
+	for _, l := range b.maps {
+		if p := stripANSITest(l); strings.Contains(p, "ENDPOINT") {
+			table = render.Width(p)
+		}
+	}
+	for _, l := range b.maps {
+		if p := stripANSITest(l); strings.Contains(p, "Opening") || strings.Contains(p, "every other host") {
+			if render.Width(p) > table {
+				t.Errorf("the disclosure's line %q is wider than the table (%d)", p, table)
+			}
+		}
 	}
 }

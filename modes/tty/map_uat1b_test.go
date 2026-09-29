@@ -30,7 +30,7 @@ func TestWhatTheMapContactsIsInTheStatusWindow(t *testing.T) {
 		t.Error("Settings still carries what the map sends (U1-33)")
 	}
 	s.cfg.MapSources = sources
-	status := stripANSITest(strings.Join(s.statusLines(), "\n"))
+	status := strings.Join(strings.Fields(stripANSITest(strings.Join(s.statusLines(), "\n"))), " ") // wrapped to the table (D-151): read as one text
 	for _, want := range []string{"MAP STATUS", "tiles.openfreemap.org", "api.weather.gov", "states, marine areas and alert zones in view"} {
 		if !strings.Contains(status, want) {
 			t.Errorf("the Status window does not name %q:\n%s", want, status)

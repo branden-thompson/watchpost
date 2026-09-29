@@ -1822,3 +1822,22 @@ the map sends, which D-75 put in this section. It is now one line under the tabl
 rather than the proposed "never your location": the tiles in view surround the place chosen.
 
 **Mutation verdicts** (targeted, 7), all caught.
+
+## Batch 54 — the endpoint tables are one shape (U2-43, 2026-09-29)
+
+**The finding** (the HUM LEAD's screenshot):
+- MAP STATUS's ENDPOINT did not fill, and its columns sat apart from API STATUS's above.
+- The disclosure, wrapped at the terminal's width, stretched the Status window to 193 columns,
+  where every content window's rule gives 120.
+
+**Now.**
+- The two tables share one shape (`endpointShape`): the columns' widths are taken over both
+  tables' rows, and one width form is chosen that both fit.
+- Both are filled to the same width, so ENDPOINT fills in each and every other column lines up
+  down the window.
+- The words under MAP STATUS - the data notes and the disclosure - wrap to the table's width and
+  never widen the window.
+- Both tests were run against batch 53's code first and failed there, the second at exactly the
+  screenshot's 193.
+
+**Mutation verdicts** (targeted, 2), all caught.
