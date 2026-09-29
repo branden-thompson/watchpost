@@ -1708,3 +1708,38 @@ first, both gaps in the fixtures:
 - Anchorage, the monitor the test read, has no AirNow forecast, so the forecast steps' timing went
   unchecked. It is now checked over California.
 - No area in the fixture had two issues disagreeing for one day. A case of its own now does.
+
+## Batch 50 — the consolidated menu (W16, U2-39, D-141 to D-146, 2026-09-29)
+
+**The design** is the HUM LEAD's own (U2-39). Six rulings filled what the mock left open:
+- **D-141:** a Hazards group for Fire and Quakes; Tides and Rain & snow join Data Points.
+- **D-142:** space on the chosen tint clears it.
+- **D-143:** a disabled group hides its layers and keeps their ticks.
+- **D-144:** the presets are Minimal, Standard and All. Standard and Full drew the same offered
+  switches, so they are one.
+- **D-145:** Fire gets a choice of All, Named or Hotspots, which closes U2-27. No overlay cap:
+  D-129 keeps fire to three overlays at any zoom.
+- **D-146:** the warning is said in the menu and stays under the map.
+
+**As built.**
+- **The rows:** radio, group, box, Fire, preset, detail switch, in the order ↑↓ moves. Boxes are
+  laid two to a line.
+- **The keys:** the menu owns ←→ while open; they change a row's choice and never pan the map.
+- **The groups:** `layerOn` is a layer's tick gated by its group. Everything that draws, asks or
+  costs reads `layerOn`; the menu's boxes read the tick.
+- **Alert Areas** is the alert layer's own switch, as the mock implies.
+- **Pluggability:** a registered layer no group names falls into Data Points, so a new layer
+  still plugs in without edits (W1.13).
+- **Saved state:** the Fire choice, the groups and Temperature's measure ride the saved layer
+  choices, so no setting changed shape. A saved "standard" level reads as All.
+- **The zoom hints** "(county zoom)" and "(state zoom)" no longer fit two to a line. They became
+  one dimmed line under the detail switches, so a switch on but not yet seen still says why
+  (U1-42).
+
+**Found on the way.** The Settings window's Layers row switched a layer on beside another tint,
+bypassing D-119's one tint since feels-like, and read the group-gated state. It now keeps one tint
+and reads the tick.
+
+**The Settings golden** changed by one word: Detail reads Standard where it read Weather (D-144).
+
+**Mutation verdicts** (targeted, 12), all caught.

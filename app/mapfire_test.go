@@ -178,3 +178,29 @@ func TestAPerimeterInTwoBoxesIsDrawnOnce(t *testing.T) {
 		t.Errorf("%d perimeters from two boxes' answers; want the four fires once each", len(got.perimeters))
 	}
 }
+
+// TestTheFireRowChoosesWhatTheFeedCarries is D-145: the ask's choice reaches
+// the feed's inputs, and the fire kept is the choice's - all of it, the named
+// fires alone, or the hotspots alone.
+func TestTheFireRowChoosesWhatTheFeedCarries(t *testing.T) {
+	all := fireOverlays(someFire(), fireView, fire.DefaultRules())
+	ids := func(os []tuimaps.Overlay) string {
+		var out []string
+		for _, o := range os {
+			out = append(out, o.ID)
+		}
+		return strings.Join(out, " ")
+	}
+	for mode, want := range map[string]string{
+		tty.FireAll:      "fire/perimeters fire/incidents fire/hotspots",
+		tty.FireNamed:    "fire/perimeters fire/incidents",
+		tty.FireHotspots: "fire/hotspots",
+	} {
+		if got := ids(fireChosen(all, mode)); got != want {
+			t.Errorf("%s keeps %q; want %q", mode, got, want)
+		}
+	}
+	if in := (&livePipelines{}).inputsFor(context.Background(), tty.MapAsk{FireMode: tty.FireNamed}, false); in.fireMode != tty.FireNamed {
+		t.Errorf("the ask's choice reached the inputs as %q", in.fireMode)
+	}
+}

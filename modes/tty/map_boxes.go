@@ -234,12 +234,15 @@ func mapDetailLayers() []mapDetailLayer {
 
 // mapDetailLevels are the levels in the picker's order (D-67).
 func mapDetailLevels() []tuimaps.Detail {
-	return []tuimaps.Detail{tuimaps.DetailEssential, tuimaps.DetailWeather, tuimaps.DetailStandard, tuimaps.DetailFull}
+	return []tuimaps.Detail{tuimaps.DetailEssential, tuimaps.DetailWeather, tuimaps.DetailFull} // D-144: Standard and Full drew the same offered switches
 }
 
-// detailLevelByKey reads the file's word; anything else is Weather, the
-// default (D-67).
+// detailLevelByKey reads the file's word; a saved "standard" is All now
+// (D-144), and anything else Weather's, the default (D-67).
 func detailLevelByKey(key string) tuimaps.Detail {
+	if key == tuimaps.DetailStandard.String() {
+		return tuimaps.DetailFull
+	}
 	for _, l := range mapDetailLevels() {
 		if l.String() == key {
 			return l
@@ -248,13 +251,15 @@ func detailLevelByKey(key string) tuimaps.Detail {
 	return tuimaps.DetailWeather
 }
 
-// detailLevelLabel is a level's words.
+// detailLevelLabel is a preset's words (D-144): Minimal, Standard or All.
 func detailLevelLabel(l tuimaps.Detail) string {
-	s := l.String()
-	if s == "" {
-		return s
+	switch l {
+	case tuimaps.DetailEssential:
+		return "Minimal"
+	case tuimaps.DetailWeather:
+		return "Standard"
 	}
-	return strings.ToUpper(s[:1]) + s[1:]
+	return "All"
 }
 
 // cycleDetailLevel moves the level round the four and sets every switch to
@@ -368,77 +373,244 @@ func (d Dashboard) setDetail(key string, on bool) Dashboard {
 	return d.applyDetail()
 }
 
-// overlayRow is one row of the Overlays menu.
+// rowKind is what a row of the Overlays menu is (U2-39, D-141 to D-146).
+type rowKind uint8
+
+const (
+	menuRadio  rowKind = iota + 1 // a tint: one at a time, space on the chosen clears it (D-142)
+	menuGroup                     // a group's switch, ← Enabled → (D-143)
+	menuCheck                     // a layer or an alert category, two to a line
+	menuFire                      // Fire: a checkbox and its choice, ← All → (D-145)
+	menuPreset                    // the detail preset, ← Standard → (D-144)
+	menuDetail                    // a detail switch, two to a line
+)
+
+// overlayRow is one row of the Overlays menu, in the order ↑↓ moves through
+// it; checkboxes are laid two to a line, but each is a row of its own.
 type overlayRow struct {
+	kind       rowKind
 	key, label string
-	weather    bool // a registry layer; otherwise the map's own detail
+	group      string // the group a checkbox belongs to, whose switch dims it
+	weather    bool   // a registry layer or its group; otherwise the map's own detail
 }
 
 // oneTint are the layers that share one tint: switching one on switches the
 // others off (D-119; UV and air quality, D-137, D-139).
 var oneTint = []string{TemperatureLayer, FeelsLayer, UVLayer, AirLayer}
 
-// overlayRows are the menu's rows: the weather layers the app registered,
-// then the map's detail.
+// The menu's groups, in its order (D-141): the tints; the data points; the
+// hazards; the alert areas, the alert layer's own switch.
+var (
+	pointLayers  = []string{WindLayer, WaveLayer, BuoyLayer, TideLayer, RainLayer}
+	hazardLayers = []string{QuakeLayer, FireLayer}
+)
+
+// overlayRows are the menu's rows: OVERLAYS - the tints, then Data Points,
+// Hazards and Alert Areas, each its switch over its boxes - and MAP DETAIL -
+// the preset over its switches. A layer the app registered that no group
+// names is a data point, so a new layer plugs in without edits (W1.13).
 func (d Dashboard) overlayRows() []overlayRow {
-	var out []overlayRow
+	registered := map[string]string{}
+	var order []string
 	for _, l := range d.cfg.MapLayers {
-		if l.Key == RadarLayer {
-			continue // R switches it: it is the mode, not an overlay (D-94)
-		}
-		if l.Key == RainLayer && d.radarMode() {
-			continue // Forecast mode's alone: Radar mode's rain is the radar (D-117)
-		}
-		out = append(out, overlayRow{key: l.Key, label: l.Label, weather: true})
-		if l.Key == AlertLayer {
-			for _, c := range AlertCategories() { // D-80: [w]'s categories, under the alert areas
-				out = append(out, overlayRow{key: categoryChoice(c.Key), label: "  " + c.Label, weather: true})
-			}
+		registered[l.Key] = l.Label
+		order = append(order, l.Key)
+	}
+	var out []overlayRow
+	for _, r := range []struct{ key, label string }{{TemperatureLayer, "Temperature"}, {UVLayer, "UV Index"}, {AirLayer, "Air Quality"}} {
+		if _, ok := registered[r.key]; ok {
+			out = append(out, overlayRow{kind: menuRadio, key: r.key, label: r.label, weather: true})
 		}
 	}
-	out = append(out, overlayRow{key: detailLevelKey, label: "Detail level"})
+	placed := map[string]bool{RadarLayer: true, TemperatureLayer: true, FeelsLayer: true, UVLayer: true, AirLayer: true, AlertLayer: true}
+	group := func(key, label string, layers []string, fill bool) {
+		var members []overlayRow
+		for _, k := range layers {
+			if _, ok := registered[k]; !ok || (k == RainLayer && d.radarMode()) {
+				placed[k] = true // Rain & snow is Forecast mode's alone: Radar mode's rain is the radar (D-117)
+				continue
+			}
+			kind := menuCheck
+			if k == FireLayer {
+				kind = menuFire
+			}
+			label := registered[k]
+			if k == QuakeLayer {
+				label = "Quakes" // as the HUM LEAD wrote it (U2-39)
+			}
+			members, placed[k] = append(members, overlayRow{kind: kind, key: k, label: label, group: key, weather: true}), true
+		}
+		if fill {
+			for _, k := range order {
+				if !placed[k] && !slices.Contains(hazardLayers, k) {
+					members, placed[k] = append(members, overlayRow{kind: menuCheck, key: k, label: registered[k], group: key, weather: true}), true
+				}
+			}
+		}
+		if len(members) > 0 {
+			out = append(append(out, overlayRow{kind: menuGroup, key: key, label: label, weather: true}), members...)
+		}
+	}
+	group(groupPoints, "Data Points", pointLayers, true)
+	group(groupHazards, "Hazards", hazardLayers, false)
+	if _, ok := registered[AlertLayer]; ok {
+		out = append(out, overlayRow{kind: menuGroup, key: AlertLayer, label: "Alert Areas", weather: true})
+		for _, c := range AlertCategories() { // D-80: [w]'s categories
+			out = append(out, overlayRow{kind: menuCheck, key: categoryChoice(c.Key), label: strings.ToUpper(c.Key[:1]) + c.Key[1:], group: AlertLayer, weather: true}) // short, to fit two to a line
+		}
+	}
+	out = append(out, overlayRow{kind: menuPreset, key: detailLevelKey, label: "Preset"})
 	for _, l := range mapDetailLayers() {
-		out = append(out, overlayRow{key: l.key, label: l.label})
+		out = append(out, overlayRow{kind: menuDetail, key: l.key, label: l.label})
 	}
 	return out
 }
 
-// detailLevelKey is the Overlays menu's detail-level row.
+// detailLevelKey is the Overlays menu's detail-preset row.
 const detailLevelKey = "level"
 
-// overlaysBox is the menu (D-65), the row under the cursor marked.
+// overlayMenuW is the menu's inner width, as the HUM LEAD drew it.
+const overlayMenuW = 40
+
+// menuWarning is the menu's performance warning, in the HUM LEAD's words
+// (D-146).
+const menuWarning = "You may experience performance issues with this many overlays and details enabled."
+
+// overlaysBox is the menu (U2-39): the warning when the layers on would cost
+// past the thresholds; OVERLAYS - the tints as radio rows, each group's
+// switch over its boxes two to a line, a disabled group's boxes dimmed and
+// keeping their ticks; MAP DETAIL - the preset over its switches.
 func (d Dashboard) overlaysBox() []string {
 	o := d.opts()
-	var content []string
-	heading := ""
 	head := func(s string) string { return render.Tint(s, render.Tok(render.ModalTitle)) } // as Settings' groups (D-103)
-	for i, r := range d.overlayRows() {
-		group := "MAP DETAIL"
-		on := d.detailOn(r.key)
-		if r.weather {
-			group, on = "WEATHER", d.layerOn(r.key)
-		}
-		if group != heading {
-			if heading != "" {
-				content = append(content, "") // a blank row between groups (D-103)
+	var content []string
+	if h, _ := costWarningParts(d.mapCost); h != "" {
+		for i, l := range render.WrapText(menuWarning, overlayMenuW-6) {
+			lead := "   "
+			if i == 0 {
+				lead = " " + render.Tint("!", render.Tok(render.ListPointer)) + " "
 			}
-			content, heading = append(content, " "+head(group)), group
+			content = append(content, " "+lead+l)
 		}
-		if r.key == detailLevelKey && !r.weather {
-			content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+"Detail: "+d.detailLevelShown()+"  (space: next)")
-			continue
-		}
-		hint := ""
-		for _, l := range mapDetailLayers() {
-			if !r.weather && l.key == r.key {
-				hint = detailShows(l)
-			}
-		}
-		content = append(content, " "+o.ListMark(i == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label+hint)
+		content = append(content, "")
 	}
-	content = append(content, "", " "+o.KeyCap("↑↓")+" move "+o.KeyCap("space")+" switch")
-	return boxed(render.Tint("MAP DETAILS / OVERLAYS", render.Tok(render.ModalTitle)), content, 40)
+	rows := d.overlayRows()
+	cellW := (overlayMenuW - 4) / 2
+	choice := func(s string) string { return "<-  " + s + "  ->" }
+	line := func(left, right string) string {
+		return render.PadTo(left, overlayMenuW-2-render.Width(right)) + right
+	}
+	heading := ""
+	for i := 0; i < len(rows); i++ {
+		r := rows[i]
+		section := "MAP DETAIL"
+		if r.weather {
+			section = "OVERLAYS"
+		}
+		if section != heading {
+			if heading != "" {
+				content = append(content, "")
+			}
+			content, heading = append(content, " "+head(section)), section
+		}
+		mark := o.ListMark(i == d.mapPane.menuAt)
+		switch r.kind {
+		case menuRadio:
+			face := r.label
+			if r.key == TemperatureLayer {
+				pick := "Actual"
+				if d.pickFeels() {
+					pick = "Feels like"
+				}
+				content = append(content, line(" "+mark+radioMark(d.tintChosen(r.key), o.ASCII)+" "+face, choice(pick)))
+				continue
+			}
+			content = append(content, " "+mark+radioMark(d.tintChosen(r.key), o.ASCII)+" "+face)
+		case menuGroup:
+			if i > 0 && rows[i-1].kind != menuGroup {
+				content = append(content, "")
+			}
+			state := "Enabled"
+			if !d.rowGroupOn(r.key) {
+				state = "Disabled"
+			}
+			content = append(content, line(" "+mark+r.label, choice(state)))
+		case menuFire:
+			mode := strings.ToUpper(d.fireMode()[:1]) + d.fireMode()[1:]
+			content = append(content, d.dimmed(r, line(" "+mark+checkMark(o, d.ticked(r.key))+" "+r.label, choice(mode))))
+		case menuPreset:
+			content = append(content, line(" "+mark+"Preset:", choice(d.detailLevelShown())))
+		default: // two to a line
+			cell := func(r overlayRow, at int) string {
+				on := d.detailOn(r.key)
+				if r.weather {
+					on = d.ticked(r.key)
+				}
+				return d.dimmed(r, render.PadTo(o.ListMark(at == d.mapPane.menuAt)+checkMark(o, on)+" "+r.label, cellW))
+			}
+			row := " " + cell(r, i)
+			if i+1 < len(rows) && rows[i+1].kind == r.kind && rows[i+1].group == r.group {
+				row += " " + cell(rows[i+1], i+1)
+				i++
+			}
+			content = append(content, row)
+		}
+	}
+	var shows []string // what a switch says of when the style first draws it, so a switch on but not yet seen does not read as broken (U1-42)
+	for _, l := range mapDetailLayers() {
+		if l.shows != "" {
+			shows = append(shows, l.label+" from "+strings.TrimSuffix(l.shows, " zoom")+" zoom")
+		}
+	}
+	if len(shows) > 0 {
+		for _, l := range render.WrapText(strings.Join(shows, ", ")+".", overlayMenuW-4) {
+			content = append(content, "   "+render.Tint(l, render.Tok(render.TableMuted)))
+		}
+	}
+	content = append(content, "", " "+o.KeyCap("↑↓")+" move "+o.KeyCap("←→")+" choose "+o.KeyCap("space")+" switch")
+	return boxed(render.Tint("MAP DETAILS / OVERLAYS", render.Tok(render.ModalTitle)), content, overlayMenuW)
 }
+
+// dimmed is a box of a disabled group, dimmed: its tick kept (D-143).
+func (d Dashboard) dimmed(r overlayRow, s string) string {
+	if r.group == "" || d.rowGroupOn(r.group) {
+		return s
+	}
+	return render.Tint(render.Plain(s), render.Tok(render.TableMuted))
+}
+
+// rowGroupOn is a group's switch: the alert layer's own for Alert Areas.
+func (d Dashboard) rowGroupOn(group string) bool {
+	if group == AlertLayer {
+		return d.ticked(AlertLayer)
+	}
+	return d.groupOn(group)
+}
+
+// tintChosen reports whether a radio row is the tint chosen: Temperature's
+// is either of its measures (D-119).
+func (d Dashboard) tintChosen(key string) bool {
+	if key == TemperatureLayer {
+		return d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer)
+	}
+	return d.layerOn(key)
+}
+
+// pickFeels reports whether Temperature's row reads Feels like: the measure
+// drawn, or the one last picked while none is.
+func (d Dashboard) pickFeels() bool {
+	switch {
+	case d.layerOn(FeelsLayer):
+		return true
+	case d.layerOn(TemperatureLayer):
+		return false
+	}
+	on, _ := choiceOf(d.mapLayerChoice, pickFeelsKey)
+	return on
+}
+
+// pickFeelsKey keeps Temperature's measure while no tint is chosen.
+const pickFeelsKey = "pick:feels"
 
 // withOverlays lays the menu over the map's upper left while it is open.
 func (d Dashboard) withOverlays(lines []string) []string {
@@ -448,45 +620,24 @@ func (d Dashboard) withOverlays(lines []string) []string {
 	return spliceBox(lines, d.overlaysBox(), 0, insetCols)
 }
 
-// handleOverlaysKey is the menu's keys while it is open: it owns ↑↓, space,
-// esc and its own key (modal control priority, D-61).
+// handleOverlaysKey is the menu's keys while it is open: it owns ↑↓, ←→,
+// space, esc and its own key (modal control priority, D-61). ←→ change a
+// row's choice; space switches a row.
 func (d Dashboard) handleOverlaysKey(key string) (Dashboard, bool) {
 	rows := d.overlayRows()
+	if len(rows) == 0 {
+		return d, key == "esc"
+	}
+	r := rows[d.mapPane.menuAt%len(rows)]
 	switch key {
 	case "up":
-		d.mapPane.menuAt = (d.mapPane.menuAt + len(rows) - 1) % max(len(rows), 1)
+		d.mapPane.menuAt = (d.mapPane.menuAt + len(rows) - 1) % len(rows)
 	case "down":
-		d.mapPane.menuAt = (d.mapPane.menuAt + 1) % max(len(rows), 1)
+		d.mapPane.menuAt = (d.mapPane.menuAt + 1) % len(rows)
+	case "left", "right":
+		d = d.chooseOnRow(r, key == "right")
 	case "space", "enter":
-		if len(rows) == 0 {
-			return d, true
-		}
-		r := rows[d.mapPane.menuAt%len(rows)]
-		if r.weather {
-			choice := choicesOf(d.mapLayerChoice)
-			if choice == nil {
-				choice = map[string]bool{}
-			}
-			on := d.layerOn(r.key)
-			if slices.Contains(oneTint, r.key) {
-				d.mapPane.tempAuto = false // the listener's switch from here on (D-104)
-			}
-			choice[r.key] = !on
-			if slices.Contains(oneTint, r.key) && !on {
-				for _, other := range oneTint {
-					if other != r.key {
-						choice[other] = false // one tint at a time (D-119, D-137, D-139)
-					}
-				}
-			}
-			d.mapLayerChoice = layerChoiceKey(choice)
-			d = d.refreshMapCost().requestFeed()
-		} else if r.key == detailLevelKey {
-			d = d.cycleDetailLevel(true)
-		} else {
-			d = d.setDetail(r.key, !d.detailOn(r.key))
-		}
-		d.setup.uiDirty = true // written as Settings writes it (uiApplyCmd)
+		d = d.switchRow(r)
 	case "esc":
 		d.mapPane.menuOn = false
 	default:
@@ -494,6 +645,86 @@ func (d Dashboard) handleOverlaysKey(key string) (Dashboard, bool) {
 	}
 	d.mapPane.gen++ // the menu is drawn with the window: a switch or a move redraws it
 	return d, true
+}
+
+// withChoice is the layer choices with one set, as their word.
+func (d Dashboard) withChoice(set func(choice map[string]bool)) Dashboard {
+	choice := choicesOf(d.mapLayerChoice)
+	if choice == nil {
+		choice = map[string]bool{}
+	}
+	set(choice)
+	d.mapLayerChoice = layerChoiceKey(choice)
+	d.setup.uiDirty = true // written as Settings writes it (uiApplyCmd)
+	return d.refreshMapCost().requestFeed()
+}
+
+// switchRow is space on a row.
+func (d Dashboard) switchRow(r overlayRow) Dashboard {
+	switch r.kind {
+	case menuRadio:
+		key := r.key
+		if key == TemperatureLayer && d.pickFeels() {
+			key = FeelsLayer
+		}
+		chosen := d.tintChosen(r.key)
+		d.mapPane.tempAuto = false // the listener's switch from here on (D-104)
+		return d.withChoice(func(c map[string]bool) {
+			for _, t := range oneTint {
+				c[t] = false // one tint at a time (D-119, D-137, D-139); space on the chosen clears it (D-142)
+			}
+			if !chosen {
+				c[key] = true
+			}
+		})
+	case menuGroup:
+		on := d.rowGroupOn(r.key)
+		return d.withChoice(func(c map[string]bool) { c[r.key] = !on })
+	case menuCheck, menuFire:
+		on := d.ticked(r.key)
+		return d.withChoice(func(c map[string]bool) { c[r.key] = !on })
+	case menuPreset:
+		d.setup.uiDirty = true
+		return d.cycleDetailLevel(true)
+	}
+	d.setup.uiDirty = true
+	return d.setDetail(r.key, !d.detailOn(r.key))
+}
+
+// chooseOnRow is ←→ on a row with a choice; on any other row, nothing - the
+// open menu owns the keys.
+func (d Dashboard) chooseOnRow(r overlayRow, forward bool) Dashboard {
+	switch r.kind {
+	case menuRadio:
+		if r.key != TemperatureLayer {
+			return d
+		}
+		feels, chosen := !d.pickFeels(), d.tintChosen(TemperatureLayer) // Actual and Feels like: two, either way is the other
+		return d.withChoice(func(c map[string]bool) {
+			c[pickFeelsKey] = feels
+			if chosen {
+				c[TemperatureLayer], c[FeelsLayer] = !feels, feels // the tint drawn follows the measure (D-119)
+			}
+		})
+	case menuGroup:
+		return d.switchRow(r)
+	case menuFire:
+		at := slices.Index(fireModes, d.fireMode())
+		step := 1
+		if !forward {
+			step = len(fireModes) - 1
+		}
+		next := fireModes[(at+step)%len(fireModes)]
+		return d.withChoice(func(c map[string]bool) {
+			for _, m := range fireModes[1:] {
+				c["fire:"+m] = m == next
+			}
+		})
+	case menuPreset:
+		d.setup.uiDirty = true
+		return d.cycleDetailLevel(forward)
+	}
+	return d
 }
 
 // mapTitleAt names what is in view (D-64): the app's namer for the view's

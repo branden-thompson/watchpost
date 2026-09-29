@@ -7,6 +7,7 @@ package tty
 
 import (
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -360,6 +361,57 @@ func (d Dashboard) layerOn(key string) bool {
 	if key == TemperatureLayer && d.mapPane.tempAuto && !d.radarMode() {
 		return true // Forecast mode turned it on (D-103), its alone (D-104)
 	}
+	if g, ok := layerGroup[key]; ok && !d.groupOn(g) {
+		return false // its group disabled: drawn nowhere, its tick kept (D-143)
+	}
+	return d.ticked(key)
+}
+
+// The menu's checkbox groups (D-141, D-143): each a switch of its own, which
+// hides its members without touching their ticks. Alert Areas is the alert
+// layer's own switch.
+const (
+	groupPoints  = "group:points"
+	groupHazards = "group:hazards"
+)
+
+// QuakeLayer is the earthquakes' key, as the app registers it (D-80).
+const QuakeLayer = "quake"
+
+// layerGroup is each grouped layer's group.
+var layerGroup = map[string]string{WindLayer: groupPoints, WaveLayer: groupPoints, BuoyLayer: groupPoints, TideLayer: groupPoints,
+	RainLayer: groupPoints, FireLayer: groupHazards, QuakeLayer: groupHazards}
+
+// groupOn reports whether a group is enabled: on until switched off.
+func (d Dashboard) groupOn(group string) bool {
+	on, ok := choiceOf(d.mapLayerChoice, group)
+	return on || !ok
+}
+
+// The fire's choices (D-145): everything, the named fires alone - their
+// perimeters and incidents - or the satellite hotspots alone.
+const (
+	FireAll      = "all"
+	FireNamed    = "named"
+	FireHotspots = "hotspots"
+)
+
+// fireModes are the Fire row's choices in order.
+var fireModes = []string{FireAll, FireNamed, FireHotspots}
+
+// fireMode is the Fire row's choice, All until another is chosen.
+func (d Dashboard) fireMode() string {
+	for _, m := range fireModes[1:] {
+		if on, _ := choiceOf(d.mapLayerChoice, "fire:"+m); on {
+			return m
+		}
+	}
+	return FireAll
+}
+
+// ticked is a layer's own switch, its group aside: the listener's choice, or
+// the layer's default.
+func (d Dashboard) ticked(key string) bool {
 	if on, ok := choiceOf(d.mapLayerChoice, key); ok {
 		return on
 	}
@@ -401,7 +453,15 @@ func (d Dashboard) toggleLayer() Dashboard {
 	if choice == nil {
 		choice = map[string]bool{}
 	}
-	choice[key] = !d.layerOn(key)
+	on := !d.ticked(key) // its own switch, whatever its group's (D-143)
+	choice[key] = on
+	if on && slices.Contains(oneTint, key) {
+		for _, other := range oneTint {
+			if other != key {
+				choice[other] = false // one tint at a time, here as in the menu (D-119, D-137, D-139)
+			}
+		}
+	}
 	d.mapLayerChoice = layerChoiceKey(choice)
 	return d.refreshMapCost().uiTouched()
 }
@@ -511,7 +571,10 @@ type MapAsk struct {
 	// UV and Air say those rows are on (D-137, D-139): each asked only then,
 	// UV where temperature's source is not Open-Meteo's already.
 	UV, Air bool
-	Anchor  time.Time
+	// FireMode is the Fire row's choice (D-145): FireAll, FireNamed or
+	// FireHotspots.
+	FireMode string
+	Anchor   time.Time
 }
 
 // mapAsk is the ask as the window stands: the watchlist's places, and the
@@ -531,7 +594,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

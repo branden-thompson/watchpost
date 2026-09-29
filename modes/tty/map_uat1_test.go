@@ -177,7 +177,7 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 	}
 	d = pressCode(d, 'O', "O")
 	text := bodyText(d)
-	for _, want := range []string{"Overlays", "Alert areas", "Warnings", "Spec. Statements", "Detail: Weather", "Major roads", "Rail (county zoom)", "Parks (state zoom)", "Place names"} {
+	for _, want := range []string{"OVERLAYS", "Alert Areas", "Warnings", "Statements", "Preset:", "Standard", "Major roads", "Rail from county zoom", "Parks from", "Place names"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the menu does not list %q", want)
 		}
@@ -204,7 +204,7 @@ func TestTheOverlaysMenuSwitchesLayersAndDetail(t *testing.T) {
 		t.Errorf("the choice is not written with the map's Settings: %v", d.uiForSave().MapDetail)
 	}
 	d = pressCode(d, 'O', "O")
-	if strings.Contains(bodyText(d), "Parks (state zoom)") {
+	if strings.Contains(bodyText(d), "Parks from") {
 		t.Error("O did not close the menu")
 	}
 }

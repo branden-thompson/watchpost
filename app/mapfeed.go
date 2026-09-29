@@ -88,7 +88,7 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 			}
 		}
 	}
-	for _, o := range fireOverlays(in.fire, in.view, lp.fireRules()) { // D-121: the fire in view
+	for _, o := range fireChosen(fireOverlays(in.fire, in.view, lp.fireRules()), in.fireMode) { // D-121, D-145: the fire in view, as chosen
 		out.Overlays = append(out.Overlays, o)
 		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
 	}

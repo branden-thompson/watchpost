@@ -25,7 +25,7 @@ import (
 
 // quakeLayerKey is the earthquakes' key in the registry, and their overlays'
 // ids' first part.
-const quakeLayerKey = "quake"
+const quakeLayerKey = tty.QuakeLayer
 
 // The earthquakes, registered: on by default (D-80).
 func init() {

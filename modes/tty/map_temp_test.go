@@ -567,7 +567,7 @@ func TestTheOverlaysBoxIsStyledAsSettings(t *testing.T) {
 	for i, l := range box {
 		p := strings.TrimSpace(strings.Trim(stripANSITest(l), "│"))
 		switch p {
-		case "WEATHER", "MAP DETAIL":
+		case "OVERLAYS", "MAP DETAIL": // U2-39
 			heads++
 			if !strings.Contains(l, head+p) {
 				t.Errorf("the header %q is not in the heading style", p)

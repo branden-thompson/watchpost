@@ -23,22 +23,42 @@ func givenOf(d Dashboard, layer string) int {
 	return n
 }
 
-// TestFeelsLikeAndTemperatureAreNeverBothOn is D-119: switching feels-like on
-// turns temperature off, and the reverse; only the one on is drawn.
+// chooseFeels is → on the Temperature row, Feels like, and space on it
+// while it is not the tint chosen (U2-39, D-142).
+func chooseFeels(t *testing.T, d Dashboard) Dashboard {
+	t.Helper()
+	d = pressCode(d, 'O', "O")
+	for i, r := range d.overlayRows() {
+		if r.key == TemperatureLayer {
+			d.mapPane.menuAt = i
+		}
+	}
+	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	d = settleRadar(t, m.(Dashboard), cmd)
+	if !d.tintChosen(TemperatureLayer) {
+		m, cmd, _ = d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
+		d = settleRadar(t, m.(Dashboard), cmd)
+	}
+	return pressCode(d, 'O', "O")
+}
+
+// TestFeelsLikeAndTemperatureAreNeverBothOn is D-119 as U2-39 lays it out:
+// the Temperature row's → picks Feels like, turning temperature off, and ←
+// Actual again; only the one on is drawn.
 func TestFeelsLikeAndTemperatureAreNeverBothOn(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
-	if !menuHas(d, FeelsLayer) || d.layerOn(FeelsLayer) {
-		t.Fatal("the Overlays menu has no feels-like row, off")
+	if menuHas(d, FeelsLayer) || d.layerOn(FeelsLayer) || d.pickFeels() {
+		t.Fatal("feels-like has a row of its own, or is on; want it the Temperature row's choice, Actual")
 	}
-	d = switchLayer(t, d, FeelsLayer)
+	d = chooseFeels(t, d)
 	if !d.layerOn(FeelsLayer) || d.layerOn(TemperatureLayer) {
 		t.Fatalf("feels-like on: feels %v, temperature %v; want feels-like alone", d.layerOn(FeelsLayer), d.layerOn(TemperatureLayer))
 	}
 	if givenOf(d, FeelsLayer) == 0 || givenOf(d, TemperatureLayer) != 0 {
 		t.Errorf("feels-like on drew %d feels-like and %d temperature grids", givenOf(d, FeelsLayer), givenOf(d, TemperatureLayer))
 	}
-	d = switchLayer(t, d, TemperatureLayer)
+	d = chooseFeels(t, d) // → again: Actual
 	if d.layerOn(FeelsLayer) || !d.layerOn(TemperatureLayer) || givenOf(d, FeelsLayer) != 0 {
 		t.Errorf("temperature on again: feels %v, temperature %v, %d feels-like grids", d.layerOn(FeelsLayer), d.layerOn(TemperatureLayer), givenOf(d, FeelsLayer))
 	}
@@ -49,7 +69,7 @@ func TestFeelsLikeAndTemperatureAreNeverBothOn(t *testing.T) {
 // high and low; the badge and the colour row say feels like.
 func TestFeelsLikeInForecastModeIsSaid(t *testing.T) {
 	var asks []MapAsk
-	d := switchLayer(t, openTempMapWith(t, true, false, &asks), FeelsLayer)
+	d := chooseFeels(t, openTempMapWith(t, true, false, &asks))
 	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
 	d = settleRadar(t, m.(Dashboard), cmd)
 	if d.mapPane.tempAuto || d.layerOn(TemperatureLayer) {

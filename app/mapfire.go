@@ -200,3 +200,19 @@ func fireLayerCost(in mapInputs) (int64, int) {
 	}
 	return total, len(boxes)
 }
+
+// fireChosen is the fire as the Fire row chooses (D-145): all of it; the
+// named fires alone - perimeters and incidents; or the satellite hotspots
+// alone.
+func fireChosen(overlays []tuimaps.Overlay, mode string) []tuimaps.Overlay {
+	if mode != tty.FireNamed && mode != tty.FireHotspots {
+		return overlays
+	}
+	var out []tuimaps.Overlay
+	for _, o := range overlays {
+		if (o.ID == tty.FireLayer+"/hotspots") == (mode == tty.FireHotspots) {
+			out = append(out, o)
+		}
+	}
+	return out
+}

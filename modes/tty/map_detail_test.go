@@ -13,9 +13,9 @@ import (
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 )
 
-// TestTheDetailLevelIsASettingAndReachesTheMap: Weather by default; → on the
-// row moves it to Standard, which reaches the library and is written; the
-// list marks what the level leaves out.
+// TestTheDetailLevelIsASettingAndReachesTheMap: Weather's preset - Standard
+// (D-144) - by default; → on the row moves it to All, which reaches the
+// library and is written; the list marks what the level leaves out.
 func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 	d, got := uiDash(t, rowMapDetailLevel)
 	if d.mapDetailLevel.String() != "weather" {
@@ -23,20 +23,23 @@ func TestTheDetailLevelIsASettingAndReachesTheMap(t *testing.T) {
 	}
 	body, _, _ := d.focusBody(d.opts())
 	text := stripANSITest(strings.Join(body, "\n"))
-	for _, want := range []string{"Detail -", "Weather", "(county zoom)", "(state zoom)"} {
+	for _, want := range []string{"Detail -", "Standard", "(county zoom)", "(state zoom)"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("the Maps tab does not show %q:\n%s", want, text)
 		}
 	}
 	m, _, _ := d.setupRowKey(tea.KeyPressMsg{Code: tea.KeyRight})
 	d = m.(Dashboard)
-	if d.mapDetailLevel.String() != "standard" {
-		t.Errorf("→ went to %v, want standard", d.mapDetailLevel)
+	if d.mapDetailLevel.String() != "full" {
+		t.Errorf("→ went to %v, want full - All (D-144)", d.mapDetailLevel)
 	}
 	m, cmd := d.handleSetupKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	drain(t, m, cmd)
-	if got.MapDetailLevel != "standard" {
-		t.Errorf("esc wrote %q, want standard", got.MapDetailLevel)
+	if got.MapDetailLevel != "full" {
+		t.Errorf("esc wrote %q, want full", got.MapDetailLevel)
+	}
+	if detailLevelByKey("standard").String() != "full" {
+		t.Error("a saved Standard - the old level between Weather and Full - is not All (D-144)")
 	}
 	if detailLevelByKey("nonsense").String() != "weather" {
 		t.Error("an unknown word is not the default")
@@ -59,7 +62,7 @@ func TestTheMenusDetailRowStepsTheLevel(t *testing.T) {
 	d.mapPane.menuAt = indexOf(keys, detailLevelKey)
 	*calls = nil
 	m, _, ok := d.handleMapKey(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
-	if !ok || m.(Dashboard).mapDetailLevel.String() != "standard" {
+	if !ok || m.(Dashboard).mapDetailLevel.String() != "full" {
 		t.Fatalf("space on the level row: handled %v, level %v", ok, m.(Dashboard).mapDetailLevel)
 	}
 	if !strings.Contains(strings.Join(*calls, " "), "Layers:rail:on") || !strings.Contains(strings.Join(*calls, " "), "Layers:parks:on") {
@@ -83,8 +86,8 @@ func TestTheLevelIsAPresetAndTheSwitchesAreTheTruth(t *testing.T) {
 			t.Errorf("the Weather preset was not applied as switches: no %s in %v", want, *calls)
 		}
 	}
-	if d.detailLevelShown() != "Weather" {
-		t.Errorf("an untouched preset reads %q", d.detailLevelShown())
+	if d.detailLevelShown() != "Standard" {
+		t.Errorf("an untouched preset reads %q; want Standard (D-144)", d.detailLevelShown())
 	}
 	*calls = nil
 	d = d.setDetail("rail", true)
@@ -94,13 +97,13 @@ func TestTheLevelIsAPresetAndTheSwitchesAreTheTruth(t *testing.T) {
 	if d.detailLevelShown() != "Custom" {
 		t.Errorf("a switch off its preset reads %q, want Custom", d.detailLevelShown())
 	}
-	d = d.cycleDetailLevel(true) // Standard: rail and parks on by the preset
-	if !d.detailOn("rail") || !d.detailOn("parks") || d.detailLevelShown() != "Standard" {
-		t.Errorf("Standard's preset: rail %v, parks %v, reads %q", d.detailOn("rail"), d.detailOn("parks"), d.detailLevelShown())
+	d = d.cycleDetailLevel(true) // All: rail and parks on by the preset
+	if !d.detailOn("rail") || !d.detailOn("parks") || d.detailLevelShown() != "All" {
+		t.Errorf("All's preset: rail %v, parks %v, reads %q", d.detailOn("rail"), d.detailOn("parks"), d.detailLevelShown())
 	}
-	d = d.cycleDetailLevel(false) // back to Weather: the preset again, not the old switch
-	if d.detailOn("rail") || d.detailLevelShown() != "Weather" {
-		t.Errorf("Weather again left rail %v and reads %q", d.detailOn("rail"), d.detailLevelShown())
+	d = d.cycleDetailLevel(false) // back to Standard: the preset again, not the old switch
+	if d.detailOn("rail") || d.detailLevelShown() != "Standard" {
+		t.Errorf("Standard again left rail %v and reads %q", d.detailOn("rail"), d.detailLevelShown())
 	}
 	for _, l := range mapDetailLayers() {
 		if l.layer == tuimaps.MinorRoadLayer || strings.Contains(l.label, "Minor") {

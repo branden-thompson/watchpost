@@ -47,8 +47,10 @@ type mapInputs struct {
 	tides []tideMark
 	// airnow is AirNow's reporting areas (D-138), asked while Air quality is
 	// on; anchor the hour Forecast mode's steps count from.
-	airnow   []airquality.Area
-	anchor   time.Time
+	airnow []airquality.Area
+	anchor time.Time
+	// fireMode is the Fire row's choice (D-145).
+	fireMode string
 	imperial bool
 }
 
@@ -69,7 +71,7 @@ func (lp *livePipelines) mapInputsFetching(ctx context.Context, ask tty.MapAsk) 
 // to choose.
 func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bool) mapInputs {
 	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead, forecast: ask.Forecast,
-		quakeFeed: ask.QuakeFeed, clock: ask.Clock, imperial: ask.Fahrenheit, anchor: ask.Anchor}
+		quakeFeed: ask.QuakeFeed, clock: ask.Clock, imperial: ask.Fahrenheit, anchor: ask.Anchor, fireMode: ask.FireMode}
 	if lp != nil {
 		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
 		if fetch {
