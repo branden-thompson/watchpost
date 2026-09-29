@@ -76,7 +76,6 @@ var unlisted = exempt(&exemptionTable{
 		"test-platforms":    "it re-runs the app suite under WATCHPOST_TEST_GOOS for two other platforms; release-matrix is the cross-platform gate and this is the manual probe behind it",
 		"mutant-verdicts":   "the corpus SWEEP — hours, and its verdicts are promoted into the release record by hand; mutant-anchors and mutant-check are the per-push halves",
 		"tree-free":         "it ASKS whether a gate run is in flight and reports; it asserts nothing about the code",
-		"build-diag":        "it builds the diagnostics binary and asserts the injector is IN it — a build with a check, run by hand before a diagnostics session; release-matrix is the gated form and runs lint-injector against every shipped artifact",
 		"lint-update":       "it REWRITES the golangci baseline; it is the opposite of a gate, and running it on a gate path would erase the ratchet",
 		"verify-docs-gates": "the docs lane (go-tuiMaps v0.2.0 D-15, watchpost 0.18.0 D-38): a local SUBSET of verify for a change that is Markdown alone, refused by tools/docslane for any other file; CI and every other change run verify, which runs every gate this does",
 	},

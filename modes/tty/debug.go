@@ -10,14 +10,14 @@ package tty
 //     an upstream service was failing while APPEARING healthy — HTTP 200,
 //     audio/mpeg, correct ICY headers, well-formed MP3, and total silence. Every
 //     signal the app checks was green and the listener heard nothing.
-//   - INJECTION fabricates an alert to exercise the takeover on demand, and must
-//     NEVER ship: a screenshot of a fabricated tornado warning is
-//     indistinguishable from a real one.
+//   - INJECTION fabricates an alert to exercise the takeover on demand, and
+//     ships too (0.18.0 D-152): a station operator tests their alerts as a
+//     radio station does. It is safe to ship because it cannot be mistaken -
+//     the ARE YOU SURE confirmation below, TEST EVENT on every surface, "This
+//     is a test" read before and after, two minutes' life.
 //
-// The window is the same surface; the SECTIONS differ. Injection renders only
-// when the app supplied a hook, and a release build never does — the capability
-// is absent from the binary (app/inject_release.go), so this cannot offer what
-// does not exist.
+// Injection renders only when the app supplied a hook. The app always does;
+// a window built without one says so rather than offer rows wired to nothing.
 
 import (
 	"strings"
@@ -51,9 +51,8 @@ type debugState struct {
 	confirm bool
 }
 
-// debugScenarios is what this build offers. Empty in a release build, because
-// the app supplies no injector there and a window offering nothing offers
-// nothing rather than a disabled row.
+// debugScenarios is what the window offers. Empty without an injector: a
+// window offering nothing offers nothing rather than a disabled row.
 func (d Dashboard) debugScenarios() []DebugScenario {
 	if d.cfg.InjectAlert == nil {
 		return nil
@@ -106,15 +105,13 @@ func (d Dashboard) debugLines(o render.Opts) (out []string, focusAt, focusEnd in
 
 	sc := d.debugScenarios()
 	if len(sc) == 0 {
-		// -1: NOTHING TO FOCUS, SO THE BODY SCROLLS (FR-5). This is the window a
-		// release build ships. It returned 0 — "hold the top" — and 0 is a
-		// focused row, so the scroll never moved: at 80x24 every line of what
-		// this window exists to say sat below the fold with no key that reached
-		// it, in the build that ships.
+		// -1: NOTHING TO FOCUS, SO THE BODY SCROLLS (FR-5). It returned 0 —
+		// "hold the top" — and 0 is a focused row, so the scroll never moved: at
+		// 80x24 every line of what this window exists to say sat below the fold
+		// with no key that reached it.
 		return append(out, insetModalLines([]string{
-			"INJECTION IS NOT AVAILABLE IN THIS BUILD.", "",
-			"It is compiled out rather than switched off, so a fabricated alert cannot be produced " +
-				"here by any means. Build the diagnostics binary with `make build-diag` to enable it."},
+			"INJECTION IS NOT AVAILABLE.", "",
+			"No injector is connected to this window, so no test alert can be sent from here."},
 			debugProseWidth(o, debugWidth))...), -1, -1
 	}
 	out = append(out, insetModalLines([]string{

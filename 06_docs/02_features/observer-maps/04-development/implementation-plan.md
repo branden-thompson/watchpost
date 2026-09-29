@@ -310,7 +310,7 @@ diagnostics in the normal build ... #12 - probably can be part of our performanc
 | # | Task | Files | Shape | Test first (RED) |
 |---|---|---|---|---|
 | W17.1 | **A place without a ZIP is its own place** (#23, U2-44): "same place" is `snapshot.PlaceID` - the ZIP when there is one, else the location key - in ctrl+a's check, the RECENT list and the launch's restore; no list compares ZIPs itself | `platform/snapshot/types.go`, `modes/tty/dashboard.go`, `modes/tty/modal_location.go`, `app/refs.go` | `snapshot.PlaceID` | `TestAPlaceWithoutAZipCanBeFavorited`, `TestRecentKeepsEveryPlaceWithoutAZip`, `TestRestoreKeepsPlacesWithoutAZip`, `TestPlaceIDIsNotAnEmptyZip`, `TestNoListComparesZips` |
-| W17.2 | **The diagnostics in the release build** (#9): ctrl+d's window, its test events behind their confirmation and announced as tests; its scope ruled when it opens | — | — | — |
+| W17.2 | **The diagnostics in every build** (#9, U2-45, D-152, D-153): the injector untagged, behind ctrl+d's ARE YOU SURE; NFR-2 restated - no fabricated hazard unmarked, held on every surface a real alert reaches; `test-tags`, `lint-injector` and `build-diag` retired; the tape's lane items carry the Test mark | `app/inject.go`, `app/ticker.go`, `modes/tty/debug.go`, `Makefile`, `.github/workflows/ci.yml`, `06_docs/required-gates.txt` | `injectHook`, `debugScenarios` in every build; `laneItems` | `TestTheInjectorIsInEveryBuild`, `TestATestEventIsMarkedOnEverySurface` |
 
 ## W14 — Before SHIP: performance, structure and quality (U2-35) · SHIP precondition
 

@@ -1,16 +1,14 @@
-//go:build watchpost_debug
-
 package app
 
-// inject_debug.go — the injection seam (F-21b), PRESENT ONLY IN A DEBUG BUILD.
+// inject.go — the injection seam (F-21b), IN EVERY BUILD (0.18.0 D-152).
 //
-// IT IS BUILD-TAGGED RATHER THAN RUNTIME-GATED, and that is the safety
-// decision. A screenshot of a fabricated tornado warning is indistinguishable
-// from a real one, so the capability must be ABSENT from a release binary — a
-// runtime gate is one config mistake away from being reachable, a build tag is
-// not in the file the linker reads.
-//
-//	go build -tags watchpost_debug ./cmd/watchpost
+// A station operator tests their alerts as a radio station does (HUM LEAD,
+// #9), so the capability ships. What makes that safe is not its absence - it
+// was build-tagged out while a screenshot of a fabricated tornado warning was
+// indistinguishable from a real one - but that a test event can no longer be
+// mistaken: ctrl+d asks ARE YOU SURE, every surface it reaches says TEST EVENT,
+// the read opens and closes with "This is a test", and it lives two minutes.
+// The rule is NFR-2 restated: nothing shipped fabricates an UNMARKED hazard.
 //
 // IT ENTERS WHERE A REAL ALERT ENTERS. The events go in immediately after the
 // source fetch and before globalfeed.Active, so an injected alert crosses every
@@ -32,10 +30,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// injectQueue holds what is waiting for the next cycle. It is a TYPE rather
-// than two fields on the deck so that the release build can define it as an
-// empty struct — otherwise those fields are dead weight there, which P10 reports
-// and AP-DEAD-01 forbids.
+// injectQueue holds what is waiting for the next cycle.
 type injectQueue struct {
 	mu    sync.Mutex
 	evs   []globalfeed.Event
@@ -67,9 +62,7 @@ func (t *tickerDeck) Inject(evs ...globalfeed.Event) {
 	radioDebugLog("inject:queued:" + itoaN(len(evs)))
 }
 
-// wake is the deck's "cycle now" signal. NIL IN A RELEASE BUILD, where a select
-// arm on a nil channel blocks forever and costs nothing — the capability is
-// absent there rather than switched off, like everything else in this file.
+// wake is the deck's "cycle now" signal, made on first use.
 func (q *injectQueue) wake() <-chan struct{} {
 	q.mu.Lock()
 	defer q.mu.Unlock()

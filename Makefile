@@ -1,5 +1,5 @@
 # watchpost — build & quality gates (architecture.md §7/§10; C-4: binaries to ./dist)
-.PHONY: lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build build-diag lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags test-tags lint-identity install-test
+.PHONY: lint-plan-code test-say quality promote-verdicts wires wires-selftest dupes dupes-selftest mutant-anchors mutant-verdicts cache-clean build lint lint-update mutant-policy test race verify verify-gates verify-docs verify-docs-gates treelock-selftest tree-free fmt vet tidy vuln lint-imports lint-watermark lint-authoring gate-controls mutant-check release-matrix clean alloc-budget property quality-bench p10 hygiene test-platforms vet-tags lint-identity install-test
 
 BINARY := watchpost
 DIST   := dist
@@ -20,26 +20,6 @@ build:
 	@mkdir -p $(DIST)
 	go build $(TRIMPATH) -ldflags '$(LDFLAGS)' -o $(DIST)/$(BINARY) ./cmd/watchpost
 
-# build-diag is the UAT build for the ctrl+d window's injection half (F-21b).
-#
-# IT STAMPS ITS OWN VERSION, and that is the point of the target existing. Built
-# by hand with a bare `go build`, the two artifacts differ only in a name: one
-# says 0.14.2-44-g00c48ce and the other 0.0.0-dev, and the operator reasonably
-# runs the one whose version matches the commit under test — then reports that
-# ctrl+d offers no injection, which is exactly what a clean build is supposed to
-# say. The +debug suffix travels into the About window and `--version`, so the
-# binary answers "which build is this" wherever the question is asked.
-#
-# NEVER SHIPPED: release-matrix builds the clean matrix and lint-injector fails
-# any artifact carrying the injector.
-build-diag:
-	@mkdir -p $(DIST)
-	go build $(TRIMPATH) -tags watchpost_debug -ldflags '-s -w -X main.version=$(VERSION)+debug' \
-	  -o $(DIST)/$(BINARY)-diag ./cmd/watchpost
-	@scripts/lint-injector.sh $(DIST)/$(BINARY)-diag >/dev/null 2>&1 \
-	  && { echo "build-diag: the injector is MISSING from the diagnostics build"; exit 1; } \
-	  || echo "build-diag: $(DIST)/$(BINARY)-diag carries the injector, as it must"
-
 test:
 	go test ./...
 
@@ -59,31 +39,13 @@ fmt:
 vet:
 	go vet ./...
 
-# THE BUILD-TAGGED SOURCE IS SOURCE, and nothing was compiling it. The injector
-# lives behind `watchpost_debug` (P10-08) so it cannot ship, which also means
-# `go vet ./...` never sees it: app/inject_seam_test.go — the test the whole
-# injector stands on — stopped compiling at T3.10b and stayed dark until the
-# BUILD-exit red team found it by hand (I-3). A tag with no gate is a tag that
-# rots. `mutants` is excluded deliberately: mutant-check owns it, and it costs
-# ~140s.
+# THE BUILD-TAGGED SOURCE IS SOURCE, and `go vet ./...` never sees it. The
+# property tests live behind `property`; a tag with no gate is a tag that rots
+# (the injector's tagged seam test stayed dark once, found by hand at a red
+# team, I-3). The injector itself is untagged since 0.18.0 D-152, and its tests
+# run with every other.
 vet-tags:
-	go vet -tags watchpost_debug ./...
 	go vet -tags property ./modes/tty
-
-# AND RUN THEM. vet-tags proves the tagged tree COMPILES; it does not run a
-# single assertion in it. app/inject_seam_test.go — "the test the whole injector
-# stands on" — is behind the tag, so until now no gate in this repository had
-# ever executed it. It stayed dark once already, through a compile break that
-# vet alone would not have caught either, and was found by hand at a red team.
-#
-# The injector is the one capability that must never ship, and B3 makes its
-# surface user-facing. Asserting things about code no gate runs is how a
-# capability gets a green check and no measurement.
-#
-# ./app ONLY: it is the sole package with tagged tests, and the whole tree under
-# the tag costs a second full suite for nothing.
-test-tags:
-	go test -tags watchpost_debug -count=1 ./app
 
 # Dependency hygiene (quality pass Q0, red-team PH-1/IS-9): go.mod must be tidy,
 # the module cache must match go.sum, and no known vulnerability may be reachable.
@@ -149,13 +111,6 @@ gate-controls:
 	@./scripts/quality/lint-ledger.sh --self-test
 	@go run ./tools/dupes -self-test
 	@./scripts/quality/mutant-anchors.sh --self-test
-# THE INJECTOR CONTROL BELONGS HERE AND WAS NOT HERE. lint-injector is the only
-# thing standing between a build that can fabricate hazards and a release, and
-# its control — which proves the check can tell a stripped debug binary from a
-# stripped clean one — was invoked by nothing: the two real callers pass
-# artefacts, not `--self-test`. A control that exists and does not run is the
-# same as no control, with the paperwork of one.
-	@./scripts/lint-injector.sh --self-test
 
 # THE CHEAP HALF OF `mutant-check`, RUNNABLE BEFORE A COMMIT. It asks only
 # whether every mutant still FINDS its line — three tenths of a second against
@@ -312,7 +267,7 @@ cache-clean:
 verify:
 	@go run ./tools/treelock -name verify -- $(MAKE) --no-print-directory verify-gates
 
-verify-gates: fmt vet vet-tags test-tags tidy vuln race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
+verify-gates: fmt vet vet-tags tidy vuln race test-say lint lint-imports lint-watermark lint-plan-code lint-authoring treelock-selftest lint-identity gate-controls alloc-budget property dupes dupes-selftest wires wires-selftest mutant-anchors mutant-check
 	@echo "verify: ALL GATES GREEN"
 
 # THE DOCS LANE (go-tuiMaps v0.2.0 D-15; watchpost 0.18.0 D-38). A change that
@@ -568,10 +523,6 @@ release-matrix:
 # shasum, which succeeded, and the failure was gone. The oracle painted
 # sha256sum red alone and release-matrix stayed green.
 	@cd $(DIST) && if command -v sha256sum >/dev/null; then sha256sum $(BINARY)-* > checksums.txt; else shasum -a 256 $(BINARY)-* > checksums.txt; fi
-# NFR-2, AND IT RUNS HERE RATHER THAN IN verify FOR A REASON. verify runs before
-# the published artifacts exist, so a check living there inspects a binary nobody
-# ships. These are the files the release workflow uploads.
-	@./scripts/lint-injector.sh $(DIST)/$(BINARY)-*
 	@echo "release-matrix: OK ($(VERSION))"
 
 # Installer smoke test: serve the release matrix locally and run scripts/install.sh

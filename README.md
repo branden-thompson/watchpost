@@ -134,7 +134,7 @@ tidal current.
 | `f` `c` | Fahrenheit / Celsius |
 | `t` | the colour theme — thirteen built in, **Watchpost Light** for a light terminal |
 | `s` `a` `S` `?` `q` | Settings · About and data credits · the status of every data source · help · quit (`ctrl+c` too) |
-| `ctrl+d` | Diagnostics |
+| `ctrl+d` | Diagnostics — including a test alert, marked as one everywhere (see the Broadcaster's keys) |
 | `ctrl+b` / `B` · `ctrl+o` / `O` | the **Broadcaster** console for your station · back to the Observer (refused while the station is ON AIR — go to STANDBY first) |
 
 (`ctrl+s` also opens the severe window — unless your shell or tmux has it reserved for flow control,
@@ -211,7 +211,7 @@ to the Observer, and is refused while the station is ON AIR.
 | `l` | look up any city or ZIP |
 | `b` / `shift+←` `shift+→` | cut the main track over to the **bed** (the live relay) / previous and next relay |
 | `+` `=` `-` | gain up and down — one level, mirrored with the Observer's volume |
-| `ctrl+d` | Diagnostics |
+| `ctrl+d` | Diagnostics — **send a test alert** to check your station's alerting end to end, as a radio station tests its own: it asks ARE YOU SURE?, reads "This is a test of the Watchpost alert events system" before and after, is marked TEST EVENT on the ticker and in the severe window, and is gone in two minutes |
 | `s` `a` `S` `?` `q` | Settings · About · the status of every data source · help · quit |
 | `ctrl+o` / `O` | back to the Observer (refused while the station is ON AIR — go to STANDBY first) |
 

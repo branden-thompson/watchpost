@@ -705,6 +705,7 @@ func laneItems(rows []severe.Row) []tty.TickerItem {
 			At:       r.At,
 			Until:    r.Until,
 			Severity: tty.TickerSeverity(r.Severity),
+			Test:     r.Test, // an injected emergency says so here too (D-152)
 		})
 	}
 	return out

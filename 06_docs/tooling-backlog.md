@@ -71,7 +71,6 @@ The project moved from shell to Go after defects in the shell. The reviewer's sp
 
 **Keep as shell** — right size, controls fire:
 - `scripts/lint-imports.sh` (a grep is the right tool)
-- `scripts/lint-injector.sh` (`strings` over a stripped binary is a shell job)
 - `scripts/quality/mutant-anchors.sh` (executing the corpus with the corpus's own parser is correct)
 
 ## Cost — what to stop paying for

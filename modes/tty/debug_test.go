@@ -7,10 +7,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// THE WINDOW CANNOT OFFER WHAT THE BUILD DOES NOT HAVE (F-21).
+// THE WINDOW CANNOT OFFER WHAT IT WAS NOT GIVEN (F-21).
 //
-// A release build compiles the injector out, so the app supplies no hook and no
-// scenarios. The window must then say so plainly rather than render a row that
+// The app always supplies the injector (0.18.0 D-152, TestTheInjectorIsInEveryBuild);
+// a window built without one must say so plainly rather than render a row that
 // does nothing — a disabled control is a control someone will try, and this one
 // fabricates tornado warnings.
 func TestTheDebugWindowOffersNoInjectionWithoutAHook(t *testing.T) {
@@ -19,7 +19,7 @@ func TestTheDebugWindowOffersNoInjectionWithoutAHook(t *testing.T) {
 	d = d.open(modalDebug)
 
 	got := stripANSITest(strings.Join(firstOf(d.debugLines(d.opts())), "\n"))
-	if !strings.Contains(got, "NOT AVAILABLE IN THIS BUILD") {
+	if !strings.Contains(got, "INJECTION IS NOT AVAILABLE") {
 		t.Errorf("a build with no injector says so:\n%s", got)
 	}
 	if strings.Contains(got, "INJECT AN ALERT") {
@@ -212,7 +212,7 @@ func TestTheShippedDiagnosticsWindowIsReadableAtTheFloor(t *testing.T) {
 }
 
 // debugAtTheFloor is the ctrl+d window at 80x24 — the app's documented floor —
-// with the scenarios a debug build offers (app/inject_debug.go).
+// with the scenarios the app offers (app/inject.go).
 func debugAtTheFloor(t *testing.T) Dashboard {
 	t.Helper()
 	d := dash(t).(Dashboard)

@@ -325,8 +325,8 @@ func (c command) controls() []string {
 	return out
 }
 
-// goBuild is the build VERB — `go build` or `$(GO) build` — and not the word
-// inside `build-diag` in an echo. Any output form counts: `-o path`, `-o=path`,
+// goBuild is the build VERB — `go build` or `$(GO) build` — and not a target
+// named `build-…` in an echo. Any output form counts: `-o path`, `-o=path`,
 // or none at all, which drops the binary in the working directory (A12–A14).
 var goBuild = regexp.MustCompile(`(?:^|\s)(?:go|\$\(GO\))\s+build\b`)
 

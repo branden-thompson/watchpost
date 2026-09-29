@@ -1861,3 +1861,29 @@ the location key. `sameLocation`, ctrl+a's check, RECENT and the restore all rea
 the same line proves it non-empty (`setup.go`'s, which does); it failed on the five old sites.
 
 **Mutation verdicts** (targeted, 5), all caught.
+
+## Batch 56 — the diagnostics in every build (#9, U2-45, D-152, D-153, 2026-09-29)
+
+**The ruling.** ctrl+d's test alert ships in every build, behind its ARE YOU SURE (D-152). The
+build tag was ruled before the confirmation and the test scripts existed; a station operator has
+to test their alerts as a radio station does. NFR-2 now reads: nothing shipped may fabricate an
+UNMARKED hazard.
+
+**Now.**
+- `app/inject.go` (was `inject_debug.go`) has no tag; `inject_release.go`, its empty stand-in, is
+  gone, and so is its P10-08 ledger row (the mirror regenerated, 152 rows).
+- The tagged tests run with every other. `test-tags`, `lint-injector` (and its self-test) and
+  `build-diag` retired from the Makefile, CI and `required-gates.txt` (D-153); `vet-tags` keeps
+  the `property` tag. F-101, `test-tags`' unexplained failure, closed by retirement.
+- The ctrl+d window, the README's key tables and the code's comments say what ships.
+
+**Found by the new guard.** `TestATestEventIsMarkedOnEverySurface` sends each scenario through the
+window's own hook and one real cycle, and asks every consumer for the mark: the tape's items, the
+band's, [w]'s rows, and the read's first and last lines. On its first run the Emergency scenario
+failed: `laneItems`, which builds the tape's Emergency, Statement and Advisory items from [w]'s
+rows, never copied the row's Test flag, so an injected evacuation order scrolled on the tape
+unmarked. It is marked now.
+
+**Mutation verdicts** (targeted, 6), all caught - one, the read speaking a real alert's line for a
+test event, by the existing `test_event_test.go` rather than the new guard (an all-test card reads
+its own script; that branch is a mixed card's).

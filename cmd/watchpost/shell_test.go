@@ -23,7 +23,6 @@ var shellScripts = exempt(&exemptionTable{
 		"scripts/install-test.sh":                   "installs and runs a built artifact on a clean CI runner; port candidate F-156",
 		"scripts/install.sh":                        "the published curl-to-sh installer; a user-facing contract, port candidate F-156",
 		"scripts/lint-imports.sh":                   "grep over import paths; port candidate F-156 (tools/authoring already walks every file)",
-		"scripts/lint-injector.sh":                  "strings over a built binary; port candidate F-156",
 		"scripts/lint-watermark.sh":                 "grep for attribution lines; port candidate F-156 (tools/authoring already walks every file)",
 		"scripts/lint.sh":                           "wraps golangci-lint with a baseline ratchet; F-118 names its fail-open defect, port candidate F-156",
 		"scripts/sync-go-studs.sh":                  "the go-studs patch stack; port candidate F-156",
