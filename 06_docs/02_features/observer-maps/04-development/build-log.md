@@ -1841,3 +1841,23 @@ rather than the proposed "never your location": the tiles in view surround the p
   screenshot's 193.
 
 **Mutation verdicts** (targeted, 2), all caught.
+
+## Batch 55 — a place without a ZIP is its own place (#23, U2-44, 2026-09-29)
+
+**The issue.** Lake Henshaw, CA looked up; ctrl+a (+ Watchlist) disabled. Places with a ZIP were
+unaffected.
+
+**The cause.** ctrl+a's check asked whether any watched place had the looked-up place's ZIP. The
+watchlist held Guajome Park, which has none, so `"" == ""` made every place without a ZIP "already
+watched". The code dates from 0.9.0; it showed once the first place without a ZIP was favourited,
+not with 0.16.0. The same comparison was in two more lists:
+- **RECENT** (`prependRef`): a second lookup without a ZIP dropped the first.
+- **The launch's restore** (`restoreRecent`): with a watched place without a ZIP, every saved
+  one was dropped at each start.
+
+**Now.** `snapshot.PlaceID` is the one definition of "same place": the ZIP when there is one, else
+the location key. `sameLocation`, ctrl+a's check, RECENT and the restore all read it.
+`TestNoListComparesZips` fails on any ZIP compared or used as a key in `app` or `modes/tty`, unless
+the same line proves it non-empty (`setup.go`'s, which does); it failed on the five old sites.
+
+**Mutation verdicts** (targeted, 5), all caught.

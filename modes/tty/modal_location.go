@@ -259,20 +259,17 @@ func withoutRef(refs []snapshot.LocationRef, ref snapshot.LocationRef) []snapsho
 	return out
 }
 
-// sameLocation: by zip when either side has one (the identity the lists
-// dedupe on), else by location key.
+// sameLocation: the identity the lists dedupe on, snapshot.PlaceID's.
 func sameLocation(a, b snapshot.LocationRef) bool {
-	if a.Zip != "" || b.Zip != "" {
-		return a.Zip == b.Zip
-	}
-	return snapshot.Key(a) == snapshot.Key(b)
+	return snapshot.PlaceID(a) == snapshot.PlaceID(b)
 }
 
-// prependRef puts ref at the head, deduped by zip, capped at RecentCap.
+// prependRef puts ref at the head, deduped by sameLocation (#23: an empty
+// ZIP is no identity), capped at RecentCap.
 func prependRef(refs []snapshot.LocationRef, ref snapshot.LocationRef) []snapshot.LocationRef {
 	out := []snapshot.LocationRef{ref}
 	for _, r := range refs {
-		if r.Zip == ref.Zip || len(out) == RecentCap {
+		if sameLocation(r, ref) || len(out) == RecentCap {
 			continue
 		}
 		out = append(out, r)

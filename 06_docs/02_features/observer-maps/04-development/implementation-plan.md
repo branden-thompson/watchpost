@@ -300,6 +300,18 @@ Wind rides temperature's lattice and requests (W10): the same boxes, sources and
 | W16.3 | **One place for credits** (U2-40, D-148): every credit in About, widened to 78 - the station's, then the map's, then the conditions of use and the safety framing; Status the sources' state and data notes alone | `app/credits.go`, `app/maptemp.go`, `app/mapairuv.go`, `modes/tty/help_about.go`, `modes/tty/status.go` | `mapCredits`, `aboutNotes`; `Config.MapCredits`, `Config.AboutNotes` | `TestAboutWindowMatchesMock`, `TestCreditsCoverEverySource`, `TestTheStatusWindowSaysNoCredit` |
 | W16.2 | **Fire's filter** (U2-27, D-145): Fire ← All / Named / Hotspots →, carried in the ask, the feed keeping what is chosen | `modes/tty/map_prefs.go`, `app/mapfire.go`, `app/mapfeed.go`, `app/maplayers.go` | `MapAsk.FireMode`, `fireChosen` | `TestTheFireRowChoosesWhatIsDrawn`, `TestTheFireRowChoosesWhatTheFeedCarries` |
 
+## W17 — GitHub issues carried into 0.18.0 (HUM LEAD, 2026-09-29)
+
+**HUM LEAD, 2026-09-29: "before we do our performance review, there's a couple bugs that I logged in
+github that need to be fixed: #23- First priority to fix ... #9 - We need to expose the <ctrl+d>
+diagnostics in the normal build ... #12 - probably can be part of our performance/quality pass."**
+#12 is W14.4.
+
+| # | Task | Files | Shape | Test first (RED) |
+|---|---|---|---|---|
+| W17.1 | **A place without a ZIP is its own place** (#23, U2-44): "same place" is `snapshot.PlaceID` - the ZIP when there is one, else the location key - in ctrl+a's check, the RECENT list and the launch's restore; no list compares ZIPs itself | `platform/snapshot/types.go`, `modes/tty/dashboard.go`, `modes/tty/modal_location.go`, `app/refs.go` | `snapshot.PlaceID` | `TestAPlaceWithoutAZipCanBeFavorited`, `TestRecentKeepsEveryPlaceWithoutAZip`, `TestRestoreKeepsPlacesWithoutAZip`, `TestPlaceIDIsNotAnEmptyZip`, `TestNoListComparesZips` |
+| W17.2 | **The diagnostics in the release build** (#9): ctrl+d's window, its test events behind their confirmation and announced as tests; its scope ruled when it opens | — | — | — |
+
 ## W14 — Before SHIP: performance, structure and quality (U2-35) · SHIP precondition
 
 **HUM LEAD, 2026-09-28 (U2-35): "a dedicated performance / code structure / overall quality pass MUST
@@ -311,6 +323,7 @@ without it. Its scope is ruled when it opens.
 | W14.1 | **Performance**: the time from opening the map, and from a layer switched on, to the radar's first frame, measured with every layer on at a national view and at a zoomed one; the fetches the feed makes in line, the jobs it hands the library, the frames it redraws | both repositories | — | A benchmark each, with its budget recorded |
 | W14.2 | **Structure**: the map's `app/map*.go` files and the library's hot paths read as one design - duplication, files past their size, names that drifted | both repositories | — | The dupes and lint gates, and a reviewer's report |
 | W14.3 | **Quality**: a blind red team over the whole of both releases, from `06_docs/red-team-brief.md` | both repositories | — | Its findings ruled or fixed |
+| W14.4 | **Memo keys carry identity** (#12, HUM LEAD 2026-09-29: "probably can be part of our performance/quality pass"): the data-cache half #12 stays open for - six caches, their treatment resting on FR-3.2's ruling; the frame path's half is closed and guarded since 0.15.0 | watchpost | — | A guard that fails when a cache's key misses what it reads |
 
 ## The trace
 

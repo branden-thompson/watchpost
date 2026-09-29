@@ -445,6 +445,18 @@ type LocationRef struct {
 // LocationKey is the normalized identity: "lat,lon" at 4 decimal places.
 type LocationKey string
 
+// PlaceID is which place a ref names, for the lists that dedupe what the
+// listener chose - the watchlist and RECENT: its ZIP when it has one, else its
+// Key. An empty ZIP is no identity (#23): a park and a lake without one are two
+// places, and keyed by ZIP alone every such place was "already watched" once
+// one was. The one definition; the lists never compare ZIPs themselves.
+func PlaceID(ref LocationRef) string {
+	if ref.Zip != "" {
+		return ref.Zip
+	}
+	return string(Key(ref))
+}
+
 // Key normalizes a LocationRef to its LocationKey.
 func Key(ref LocationRef) LocationKey {
 	// strconv, not Sprintf: the row path asks per location per frame while

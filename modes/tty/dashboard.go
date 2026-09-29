@@ -1288,8 +1288,9 @@ func (d Dashboard) canAddFocused() bool {
 	if loc == nil || d.watchlistFull() {
 		return false
 	}
+	ref := refOf(*loc)
 	for _, r := range refsOf(d.snap) {
-		if r.Zip == loc.Zip {
+		if sameLocation(r, ref) { // #23: by ZIP only when there is one - a park or a lake has none
 			return false
 		}
 	}

@@ -34,18 +34,18 @@ func configLocations(refs []snapshot.LocationRef) []config.Location {
 
 // restoreRecent rebuilds the RECENT / SEARCHED stack at launch (UAT 96):
 // the saved stack first (newest first, as saved; anything now a favourite
-// drops out), then the seeds fill the room below, deduped by zip, capped.
+// drops out), then the seeds fill the room below, deduped by place (#23), capped.
 func restoreRecent(saved, watch, seeds []snapshot.LocationRef, n int) []snapshot.LocationRef {
 	used := make(map[string]bool, len(watch))
 	for _, r := range watch {
-		used[r.Zip] = true
+		used[snapshot.PlaceID(r)] = true
 	}
 	out := make([]snapshot.LocationRef, 0, n)
 	for _, r := range append(append([]snapshot.LocationRef(nil), saved...), seeds...) {
-		if used[r.Zip] || len(out) == n {
+		if used[snapshot.PlaceID(r)] || len(out) == n {
 			continue
 		}
-		used[r.Zip] = true
+		used[snapshot.PlaceID(r)] = true
 		out = append(out, r)
 	}
 	return out
@@ -53,18 +53,18 @@ func restoreRecent(saved, watch, seeds []snapshot.LocationRef, n int) []snapshot
 
 // seedRecent builds the top-N major-city refs for the RECENT/SEARCHED table
 // (UAT session 2A: prepopulate so the table is judgeable before real search
-// history exists), skipping zips already configured as priority locations.
+// history exists), skipping places already configured as priority locations.
 func seedRecent(idx *geodata.Index, priority []snapshot.LocationRef, n int) []snapshot.LocationRef {
 	if idx == nil {
 		return nil // the seed list is a nicety; the dashboard renders without it
 	}
 	used := make(map[string]bool, len(priority))
 	for _, r := range priority {
-		used[r.Zip] = true
+		used[snapshot.PlaceID(r)] = true
 	}
 	out := make([]snapshot.LocationRef, 0, n)
 	for _, ref := range locations.Seeds(idx, n+len(priority)) {
-		if used[ref.Zip] || len(out) == n {
+		if used[snapshot.PlaceID(ref)] || len(out) == n {
 			continue
 		}
 		ref.Tag = deriveTag(ref.Label)
