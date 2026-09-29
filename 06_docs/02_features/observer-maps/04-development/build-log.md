@@ -1630,3 +1630,36 @@ values and three hundred stations.
 
 **Mutation verdicts** (targeted, 5 in go-tuiMaps), all caught. Watchpost's change is the library's
 version.
+
+## Batch 48 — wind gusts (W13.15, D-136, 2026-09-28)
+
+**D-136, "On the wind arrows".** Gusts are the Wind layer's. An arrow's label reads "15G30" -
+sustained, G, gust, in the listener's unit - where the gust beats the sustained wind by 10 mph
+(16 km/h), the METAR rule, and "15" elsewhere. Radar mode has each hour's; Forecast mode has Now's,
+and each day's peak sustained with its peak gust.
+
+**What it reads.** No new request - the gusts ride the requests already made for temperature and
+wind (D-108):
+- **NDFD:** `wgust`, hourly in knots, asked with the days and with the current hour; each day's
+  strongest worked out, as its peak wind is.
+- **Open-Meteo:** `wind_gusts_10m` hourly and `wind_gusts_10m_max` daily.
+- **The fixtures:** recorded live through the sources' own requests (2026-09-28T23:09Z), and the
+  tests hold every request to asking for the gusts.
+
+**The library, go-tuiMaps L-24 (its D-98), rc.25.**
+- A wind grid may carry `Gusts`, one a value, NaN where none is said, and the arrow reads "15G30".
+- The library applies no rule. Watchpost decides which gusts are worth saying.
+
+**Filled days.** A day whose wind NDFD lacks takes Open-Meteo's peak (D-100), and its gust comes
+with it.
+
+**A missing value made every answer new.** U2-13's test caught it on the way: the window hands in
+only an overlay that changed, and judged "changed" by `reflect.DeepEqual`. A gust not worth saying
+is NaN, and NaN is never equal to itself, so every wind grid would have been handed in again at
+every answer, and blinked - as would any grid with a value missing, which the uniform fixtures had
+never had. `tty.SameOverlay` now judges it, a missing value matching a missing one, at all three
+places the window hands overlays in.
+
+**Mutation verdicts** (targeted; 14 in watchpost, 4 in go-tuiMaps), all caught. One survived at
+first: dropping `wgust` from the current hour's request, since the fake answered whatever was
+asked. The test now reads each request.

@@ -201,7 +201,7 @@ func fillDays(ctx context.Context, s *temperature.Series, fill temperature.Sourc
 			}
 			*side.vals = side.from(got)
 			if side.name == "wind" {
-				s.PeakFrom[k] = got.PeakFrom[k] // the direction with the speed it came with
+				s.PeakFrom[k], s.PeakGust[k] = got.PeakFrom[k], got.PeakGust[k] // the direction and the gust with the speed they came with (D-136)
 			}
 			if out.Filled == nil {
 				out.Filled = map[string]bool{}
@@ -411,7 +411,11 @@ func windHourGrids(s temperature.Series, box string, anchor, horizon time.Time, 
 		if h.After(horizon) || i >= len(s.WindSpeed) {
 			continue
 		}
-		if o, ok := windGrid(tty.WindLayer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), s.Lattice, s.WindSpeed[i], s.WindFrom[i], mph, stampOf(h, anchor), anchor); ok {
+		var gust []float64
+		if i < len(s.WindGust) {
+			gust = s.WindGust[i]
+		}
+		if o, ok := windGrid(tty.WindLayer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), s.Lattice, s.WindSpeed[i], s.WindFrom[i], gust, mph, stampOf(h, anchor), anchor); ok {
 			o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
 			out = append(out, o)
 		}
@@ -424,7 +428,8 @@ func windHourGrids(s temperature.Series, box string, anchor, horizon time.Time, 
 func windForecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, mph bool) {
 	steps := tty.ForecastSteps(anchor)
 	if speed, from, _, ok := s.WindAt(anchor); ok {
-		if o, ok := windGrid(tty.WindLayer+"/"+box+"/now", s.Lattice, speed, from, mph, anchor, anchor); ok {
+		gust, _ := s.GustAt(anchor)
+		if o, ok := windGrid(tty.WindLayer+"/"+box+"/now", s.Lattice, speed, from, gust, mph, anchor, anchor); ok {
 			o.During = steps[0].Span
 			out.Wind = append(out.Wind, o)
 		}
@@ -433,19 +438,36 @@ func windForecastGrids(out *tty.MapTemperature, s temperature.Series, box string
 		if k+1 >= len(steps) {
 			break
 		}
-		if o, ok := windGrid(tty.WindLayer+"/"+box+"/d"+strconv.Itoa(k), s.Lattice, s.PeakSpeed[k], s.PeakFrom[k], mph, anchor, anchor); ok {
+		if o, ok := windGrid(tty.WindLayer+"/"+box+"/d"+strconv.Itoa(k), s.Lattice, s.PeakSpeed[k], s.PeakFrom[k], s.PeakGust[k], mph, anchor, anchor); ok {
 			o.During = steps[k+1].Span
 			out.WindDays = append(out.WindDays, o)
 		}
 	}
 }
 
+// gustMargin is how far a gust must beat the sustained wind to be said:
+// 10 mph, the METAR rule (D-136), in km/h.
+const gustMargin = 16.09344
+
 // windGrid is one lattice's wind as the library's vector grid, in mph or
-// km/h as the listener's units are; false when no point has any.
-func windGrid(id string, l temperature.Lattice, speed, from []float64, mph bool, valid, anchor time.Time) (tuimaps.Overlay, bool) {
+// km/h as the listener's units are, its gusts said where they beat the
+// sustained wind by gustMargin (D-136); false when no point has any.
+func windGrid(id string, l temperature.Lattice, speed, from, gust []float64, mph bool, valid, anchor time.Time) (tuimaps.Overlay, bool) {
 	f, dirs := l.InterpolateWind(speed, from)
 	if allMissing(f.Values) {
 		return tuimaps.Overlay{}, false
+	}
+	var gusts []float64
+	if len(gust) == len(speed) && !allMissing(gust) {
+		gusts = l.Interpolate(gust).Values
+		if len(gusts) != len(f.Values) {
+			gusts = nil // never a grid the library would refuse
+		}
+		for i, g := range gusts {
+			if !(g-f.Values[i] >= gustMargin) {
+				gusts[i] = math.NaN() // no gust worth saying: the speed alone
+			}
+		}
 	}
 	unit := tuimaps.KilometresPerHour
 	if mph {
@@ -453,9 +475,12 @@ func windGrid(id string, l temperature.Lattice, speed, from []float64, mph bool,
 		for i, v := range f.Values {
 			f.Values[i] = v / 1.609344 // a missing value stays missing
 		}
+		for i, g := range gusts {
+			gusts[i] = g / 1.609344
+		}
 	}
 	o := tuimaps.WindGrid(id, tuimaps.Grid{West: f.Box.W, South: f.Box.S, East: f.Box.E, North: f.Box.N,
-		Cols: f.Cols, Rows: f.Rows, Values: f.Values}, dirs, unit, valid)
+		Cols: f.Cols, Rows: f.Rows, Values: f.Values, Gusts: gusts}, dirs, unit, valid)
 	o.Keeps = anchor.Sub(valid) + 3*time.Hour // as temperature's: an hour past is that hour's, not stale
 	return o, true
 }

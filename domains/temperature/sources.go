@@ -68,7 +68,8 @@ func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, err
 	days.Set("mint", "mint")
 	days.Set("wspd", "wspd") // the wind (W11): hourly for about two and a half days, whose peaks are worked out here
 	days.Set("wdir", "wdir")
-	days.Set("appt", "appt") // feels-like (D-119): hourly, then every few hours; its days worked out here
+	days.Set("wgust", "wgust") // the gusts (D-136): hourly as the wind is, each day's strongest worked out here
+	days.Set("appt", "appt")   // feels-like (D-119): hourly, then every few hours; its days worked out here
 	out := newSeries(l)
 	body, err := s.get.GetText(ctx, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+days.Encode(), ttl)
 	if err != nil {
@@ -82,6 +83,7 @@ func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, err
 	hours.Set("temp", "temp")
 	hours.Set("wspd", "wspd") // the current hour's wind: the days' answer starts at the next (W11)
 	hours.Set("wdir", "wdir")
+	hours.Set("wgust", "wgust")
 	hours.Set("appt", "appt")
 	hours.Set("begin", hour.Format("2006-01-02T15:04:05Z"))
 	hours.Set("end", hour.Add(time.Hour).Format("2006-01-02T15:04:05Z"))
@@ -170,12 +172,16 @@ func parseDWML(body []byte, now time.Time, out *Series) error {
 			continue
 		}
 		for _, w := range p.Winds {
-			if w.Type != "sustained" {
+			if w.Type != "sustained" && w.Type != "gust" {
 				continue
 			}
 			eachValue(w, layouts[w.Layout].starts, func(t time.Time, v float64) {
 				if w.Units == "knots" {
 					v = knotsToKmh(v)
+				}
+				if w.Type == "gust" {
+					out.WindGust[out.hourIndex(t)][at] = v // D-136
+					return
 				}
 				out.WindSpeed[out.hourIndex(t)][at] = v
 				dayOf[t.UTC().Truncate(time.Hour)] = dayOffset(t, now)
@@ -319,6 +325,11 @@ func windPeaks(out *Series, dayOf map[time.Time]int) {
 				out.PeakSpeed[k][p], out.PeakFrom[k][p] = v, out.WindFrom[i][p]
 			}
 		}
+		for p, v := range out.WindGust[i] { // each day's strongest gust (D-136)
+			if cur := out.PeakGust[k][p]; !math.IsNaN(v) && (math.IsNaN(cur) || v > cur) {
+				out.PeakGust[k][p] = v
+			}
+		}
 	}
 }
 
@@ -353,8 +364,8 @@ func (s *OpenMeteo) Fetch(ctx context.Context, l Lattice, now time.Time) (Series
 		lats, lons = append(lats, ftoa(p.Lat)), append(lons, ftoa(p.Lon))
 	}
 	q := url.Values{"latitude": {strings.Join(lats, ",")}, "longitude": {strings.Join(lons, ",")},
-		"hourly": {"temperature_2m,wind_speed_10m,wind_direction_10m,apparent_temperature"}, "past_hours": {"3"}, "forecast_hours": {strconv.Itoa(hoursAhead)},
-		"daily": {"temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_direction_10m_dominant,apparent_temperature_max,apparent_temperature_min"}, "forecast_days": {strconv.Itoa(Days)}, "timezone": {"auto"}}
+		"hourly": {"temperature_2m,wind_speed_10m,wind_direction_10m,apparent_temperature,wind_gusts_10m"}, "past_hours": {"3"}, "forecast_hours": {strconv.Itoa(hoursAhead)},
+		"daily": {"temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_direction_10m_dominant,apparent_temperature_max,apparent_temperature_min,wind_gusts_10m_max"}, "forecast_days": {strconv.Itoa(Days)}, "timezone": {"auto"}}
 	body, err := s.get.GetText(ctx, s.base+"/v1/forecast?"+q.Encode(), httpx.TTL(untilNextHour(now)))
 	if err != nil {
 		return Series{}, fmt.Errorf("Open-Meteo: %w", err)
@@ -375,6 +386,7 @@ type openMeteoPoint struct {
 		WindSpeed []*float64 `json:"wind_speed_10m"`
 		WindFrom  []*float64 `json:"wind_direction_10m"`
 		Feels     []*float64 `json:"apparent_temperature"`
+		Gust      []*float64 `json:"wind_gusts_10m"`
 	} `json:"hourly"`
 	Daily struct {
 		Time     []string   `json:"time"`
@@ -384,6 +396,7 @@ type openMeteoPoint struct {
 		WindFrom []*float64 `json:"wind_direction_10m_dominant"`
 		FeelsMax []*float64 `json:"apparent_temperature_max"`
 		FeelsMin []*float64 `json:"apparent_temperature_min"`
+		GustMax  []*float64 `json:"wind_gusts_10m_max"`
 	} `json:"daily"`
 }
 
@@ -413,6 +426,7 @@ func parseOpenMeteo(body []byte, out *Series) error {
 			set(out.WindSpeed[h], at, p.Hourly.WindSpeed, i)
 			set(out.WindFrom[h], at, p.Hourly.WindFrom, i)
 			set(out.Feels[h], at, p.Hourly.Feels, i)
+			set(out.WindGust[h], at, p.Hourly.Gust, i)
 		}
 		for k := range min(len(p.Daily.Time), Days) {
 			set(out.High[k], at, p.Daily.Max, k)
@@ -421,6 +435,7 @@ func parseOpenMeteo(body []byte, out *Series) error {
 			set(out.PeakFrom[k], at, p.Daily.WindFrom, k)
 			set(out.FeelsHigh[k], at, p.Daily.FeelsMax, k)
 			set(out.FeelsLow[k], at, p.Daily.FeelsMin, k)
+			set(out.PeakGust[k], at, p.Daily.GustMax, k)
 		}
 	}
 	return nil

@@ -799,7 +799,7 @@ func (d Dashboard) setFeed(feed MapFeed) Dashboard {
 		// replaces what the library prepared, and until a Work prepares it
 		// again the area is not drawn: every new snapshot re-sent the same
 		// alerts, and the area blinked out between frames.
-		if prev, ok := d.mapPane.given[o.ID]; ok && reflect.DeepEqual(prev, o) {
+		if prev, ok := d.mapPane.given[o.ID]; ok && SameOverlay(prev, o) {
 			shown[o.ID], given[o.ID] = true, o
 			continue
 		}
@@ -941,4 +941,38 @@ func (d Dashboard) applyViewSettled(v mapViewSettledMsg) (tea.Model, tea.Cmd) {
 	d, radar := d.askRadar()
 	d, temp := d.askTemp()
 	return d, tea.Batch(d.mapFeedCmd(), radar, temp) // the view's alerts, its radar (W8) and its temperature (W10)
+}
+
+// SameOverlay reports whether an overlay is the one already handed in, so it
+// is not handed in again (UAT-1 U1-28, UAT-2 U2-13). A MISSING VALUE IS NaN,
+// AND NaN IS NEVER EQUAL TO ITSELF: compared as it is, a grid with any value
+// missing - a wind grid's gusts said nowhere (D-136) - was new at every
+// answer, and blinked. Two missing values here are the same.
+func SameOverlay(a, b tuimaps.Overlay) bool {
+	if (a.Grid == nil) != (b.Grid == nil) {
+		return false
+	}
+	if a.Grid != nil {
+		ga, gb := *a.Grid, *b.Grid
+		if !sameFloats(ga.Values, gb.Values) || !sameFloats(ga.From, gb.From) || !sameFloats(ga.Gusts, gb.Gusts) {
+			return false
+		}
+		ga.Values, gb.Values, ga.From, gb.From, ga.Gusts, gb.Gusts = nil, nil, nil, nil, nil, nil
+		a.Grid, b.Grid = &ga, &gb
+	}
+	return reflect.DeepEqual(a, b)
+}
+
+// sameFloats reports whether two lists hold the same values, a missing one
+// matching a missing one.
+func sameFloats(a, b []float64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] && !(math.IsNaN(a[i]) && math.IsNaN(b[i])) {
+			return false
+		}
+	}
+	return true
 }

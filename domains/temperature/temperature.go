@@ -92,12 +92,16 @@ const Days = 7
 // and WindFrom are by hour then point; High, Low, PeakSpeed and PeakFrom by
 // day from today, then point - a day's peak sustained wind and its dominant
 // direction. Feels, FeelsHigh and FeelsLow are the apparent temperature
-// (D-119), as Hourly, High and Low are the air's. Missing is NaN.
+// (D-119), as Hourly, High and Low are the air's. WindGust and PeakGust are
+// the gusts, in km/h: each hour's, each day's strongest (D-136). Missing is
+// NaN.
 type Series struct {
 	Lattice             Lattice
 	Hours               []time.Time // on the hour, UTC, oldest first
 	Hourly              [][]float64
 	WindSpeed, WindFrom [][]float64
+	WindGust            [][]float64
+	PeakGust            [Days][]float64
 	Feels               [][]float64
 	High                [Days][]float64
 	Low                 [Days][]float64
@@ -111,7 +115,7 @@ func newSeries(l Lattice) Series {
 	s := Series{Lattice: l}
 	for k := range Days {
 		s.High[k], s.Low[k], s.PeakSpeed[k], s.PeakFrom[k] = missing(n), missing(n), missing(n), missing(n)
-		s.FeelsHigh[k], s.FeelsLow[k] = missing(n), missing(n)
+		s.FeelsHigh[k], s.FeelsLow[k], s.PeakGust[k] = missing(n), missing(n), missing(n)
 	}
 	return s
 }
@@ -146,6 +150,7 @@ func (s *Series) hourIndex(t time.Time) int {
 	}
 	s.Hours = append(s.Hours[:at], append([]time.Time{t}, s.Hours[at:]...)...)
 	s.Hourly, s.WindSpeed, s.WindFrom, s.Feels = insert(s.Hourly), insert(s.WindSpeed), insert(s.WindFrom), insert(s.Feels)
+	s.WindGust = insert(s.WindGust)
 	return at
 }
 
@@ -187,6 +192,18 @@ func (s Series) WindAt(t time.Time) (speed, from []float64, hour time.Time, ok b
 		}
 	}
 	return nil, nil, time.Time{}, false
+}
+
+// GustAt is the gusts of the hour WindAt reads (D-136).
+func (s Series) GustAt(t time.Time) ([]float64, bool) {
+	if _, at, ok := s.HourAt(t); ok {
+		for i, h := range s.Hours {
+			if h.Equal(at) && i < len(s.WindGust) {
+				return s.WindGust[i], true
+			}
+		}
+	}
+	return nil, false
 }
 
 // knotsToKmh converts.

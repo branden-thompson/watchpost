@@ -31,6 +31,7 @@ type fakeTemp struct {
 	now         time.Time
 	failed      bool
 	noFeelsHour bool
+	noWindDay   bool // day 1 without its wind or gust, for Open-Meteo to fill (D-100, D-136)
 	asked       int
 }
 
@@ -54,6 +55,7 @@ func (f *fakeTemp) Fetch(_ context.Context, l temperature.Lattice, _ time.Time) 
 		s.Hours = append(s.Hours, f.now.Truncate(time.Hour).Add(time.Duration(h)*time.Hour))
 		s.Hourly = append(s.Hourly, fill(10))
 		s.WindSpeed, s.WindFrom = append(s.WindSpeed, fill(16.09344)), append(s.WindFrom, fill(270)) // 10 mph from the west
+		s.WindGust = append(s.WindGust, fill(48.28032))                                              // gusting 30: 20 over, said (D-136)
 		feels := fill(12)
 		if f.noFeelsHour {
 			feels = fill(math.NaN())
@@ -64,8 +66,13 @@ func (f *fakeTemp) Fetch(_ context.Context, l temperature.Lattice, _ time.Time) 
 		s.High[k], s.Low[k] = fill(20), fill(5)
 		s.FeelsHigh[k], s.FeelsLow[k] = fill(22), fill(3)
 		s.PeakSpeed[k], s.PeakFrom[k] = fill(32.18688), fill(225) // 20 mph from the south-west
+		s.PeakGust[k] = fill(40.2336)                             // gusting 25: 5 over, not said (D-136)
 	}
 	s.High[0] = fill(math.NaN())
+	s.PeakGust[1] = fill(64.37376) // day 1 gusting 40: 20 over its peak, said (D-136)
+	if f.noWindDay {
+		s.PeakSpeed[1], s.PeakFrom[1], s.PeakGust[1] = fill(math.NaN()), fill(math.NaN()), fill(math.NaN())
+	}
 	return s, nil
 }
 
@@ -224,7 +231,7 @@ func TestAnAnswerRepeatsWithinTheHour(t *testing.T) {
 		src := &fakeTemp{name: "Open-Meteo", now: tempNow}
 		a := buildTemperature(context.Background(), src, nil, tempAsk(forecast), tempNow)
 		b := buildTemperature(context.Background(), src, nil, tempAsk(forecast), tempNow.Add(20*time.Minute))
-		if !reflect.DeepEqual(a, b) {
+		if !sameAnswer(a, b) {
 			t.Errorf("forecast %v: two answers twenty minutes apart differ", forecast)
 		}
 	}
@@ -405,4 +412,72 @@ func TestEveryRegionHasItsFieldsWhole(t *testing.T) {
 	if got := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, ask, tempNow); len(got.High) == 0 || len(got.WindDays) == 0 {
 		t.Errorf("American Samoa drew %d highs and %d wind days; want both", len(got.High), len(got.WindDays))
 	}
+}
+
+// TestTheWindSaysItsGustsAsAviationDoes is D-136: a gust is handed in beside
+// the speed, in the listener's unit, where it beats the sustained wind by 10
+// mph - 30 on a 10 mph wind - and NaN where it does not - 25 on a 20 mph
+// day's peak; so the arrows read "10G30" and "20".
+func TestTheWindSaysItsGustsAsAviationDoes(t *testing.T) {
+	src := &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}
+	radarMode := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow)
+	for _, o := range radarMode.Wind {
+		if len(o.Grid.Gusts) != len(o.Grid.Values) || math.Abs(o.Grid.Gusts[0]-30) > 1e-6 {
+			t.Errorf("%s gusts %v; want 30 mph beside 10", o.ID, o.Grid.Gusts)
+		}
+	}
+	fc := buildTemperature(context.Background(), src, nil, tempAsk(true), tempNow)
+	if len(fc.Wind) == 0 || len(fc.Wind[0].Grid.Gusts) == 0 || math.Abs(fc.Wind[0].Grid.Gusts[0]-30) > 1e-6 {
+		t.Errorf("Forecast mode's Now does not say its gust: %v", fc.Wind)
+	}
+	for k, o := range fc.WindDays {
+		if k == 1 {
+			if len(o.Grid.Gusts) == 0 || math.Abs(o.Grid.Gusts[0]-40) > 1e-6 {
+				t.Errorf("day 1 gusts %v; want 40 mph over its 20 mph peak", o.Grid.Gusts)
+			}
+			continue
+		}
+		for _, g := range o.Grid.Gusts {
+			if !math.IsNaN(g) {
+				t.Fatalf("%s says a gust of %v, 5 mph over its peak; want none said", o.ID, g)
+			}
+		}
+	}
+	ask := tempAsk(false)
+	ask.Fahrenheit = false
+	if kmh := buildTemperature(context.Background(), src, nil, ask, tempNow); math.Abs(kmh.Wind[0].Grid.Gusts[0]-48.28032) > 1e-6 {
+		t.Errorf("the metric listener's gust is %v; want 48.3 km/h", kmh.Wind[0].Grid.Gusts[0])
+	}
+}
+
+// TestAFilledDayKeepsItsGust is D-100 with D-136: a day whose wind the source
+// lacks takes Open-Meteo's peak, and its gust comes with it.
+func TestAFilledDayKeepsItsGust(t *testing.T) {
+	ndfd, om := &fakeTemp{name: "NDFD", now: tempNow, noWindDay: true}, &fakeTemp{name: "Open-Meteo", now: tempNow}
+	got := buildTemperature(context.Background(), ndfd, &noGap{om}, tempAsk(true), tempNow)
+	if !got.Filled["1/wind"] || len(got.WindDays) < 2 || len(got.WindDays[1].Grid.Gusts) == 0 || math.Abs(got.WindDays[1].Grid.Gusts[0]-40) > 1e-6 {
+		t.Errorf("filled %v; day 1's gusts %v; want Open-Meteo's wind and its 40 mph gust", got.Filled, got.WindDays)
+	}
+}
+
+// sameAnswer is whether two answers are the same as the window reads them:
+// every overlay the one it already holds (tty.SameOverlay - a missing value
+// matching a missing one, D-136), and all else equal.
+func sameAnswer(a, b tty.MapTemperature) bool {
+	lists := func(t *tty.MapTemperature) []*[]tuimaps.Overlay {
+		return []*[]tuimaps.Overlay{&t.Overlays, &t.High, &t.Low, &t.Wind, &t.WindDays, &t.Rain, &t.Feels, &t.FeelsHigh, &t.FeelsLow, &t.Waves, &t.WaveDays}
+	}
+	la, lb := lists(&a), lists(&b)
+	for i := range la {
+		if len(*la[i]) != len(*lb[i]) {
+			return false
+		}
+		for j := range *la[i] {
+			if !tty.SameOverlay((*la[i])[j], (*lb[i])[j]) {
+				return false
+			}
+		}
+		*la[i], *lb[i] = nil, nil
+	}
+	return reflect.DeepEqual(a, b)
 }

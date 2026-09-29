@@ -10,7 +10,6 @@ package tty
 
 import (
 	"context"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -124,7 +123,7 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 	given, set := map[string]tuimaps.Overlay{}, false
 	var refused error
 	for _, o := range v.radar.Overlays {
-		if prev, ok := d.mapPane.radarGiven[o.ID]; ok && reflect.DeepEqual(prev, o) {
+		if prev, ok := d.mapPane.radarGiven[o.ID]; ok && SameOverlay(prev, o) {
 			given[o.ID] = o // unchanged: handing it in again would drop what was prepared (U1-28)
 			continue
 		}

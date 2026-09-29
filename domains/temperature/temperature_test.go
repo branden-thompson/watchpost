@@ -65,7 +65,7 @@ func TestEveryRecordedTemperatureFixtureIsPresent(t *testing.T) {
 		Captured string   `json:"captured"`
 		Files    []string `json:"files"`
 	}
-	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 12 {
+	if err := json.Unmarshal(fixture(t, "manifest.json"), &m); err != nil || m.Captured == "" || len(m.Files) != 15 { // D-136 recorded three more
 		t.Fatalf("the manifest is %+v (%v)", m, err)
 	}
 	for _, f := range m.Files {
@@ -336,5 +336,69 @@ func TestWindIsInterpolatedAsAVector(t *testing.T) {
 	_, dirs = l.InterpolateWind([]float64{20, math.NaN(), 20, 20}, []float64{350, 10, 350, 10})
 	if !math.IsNaN(dirs[f.Cols-1]) {
 		t.Error("a cell nearest a point with no wind has a direction")
+	}
+}
+
+// gustGet answers from the gust fixtures (D-136): NDFD's days and hour,
+// Open-Meteo's forecast; asked keeps each address.
+type gustGet struct {
+	t     *testing.T
+	asked *[]string
+}
+
+func (g gustGet) GetText(_ context.Context, rawURL string, _ ...httpx.Option) ([]byte, error) {
+	if g.asked != nil {
+		*g.asked = append(*g.asked, rawURL)
+	}
+	switch {
+	case strings.Contains(rawURL, "/v1/forecast"):
+		return fixture(g.t, "openmeteo-gust.json"), nil
+	case strings.Contains(rawURL, "begin="):
+		return fixture(g.t, "ndfd-hour-gust.xml"), nil
+	}
+	return fixture(g.t, "ndfd-days-gust.xml"), nil
+}
+
+// gustCaptured is when the gust fixtures were recorded: 16:09 in San Diego.
+var gustCaptured = time.Date(2026, 9, 28, 23, 9, 49, 0, time.UTC)
+
+// TestNDFDReadsTheGusts is D-136: NDFD's wgust, hourly in knots, read as
+// km/h beside the sustained wind, and each day's strongest worked out.
+func TestNDFDReadsTheGusts(t *testing.T) {
+	var asked []string
+	s, err := NewNDFD(gustGet{t, &asked}, "").Fetch(context.Background(), fixtureLattice, gustCaptured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range asked { // the days and the current hour both ask for it
+		if !strings.Contains(u, "wgust=wgust") {
+			t.Errorf("an NDFD request does not ask for the gusts: %s", u)
+		}
+	}
+	gust, ok := s.GustAt(gustCaptured)
+	if !ok || !near(gust[escondido], 16*1.852) {
+		t.Errorf("the gust now is %v (%v); want 16 kt, %v km/h", gust, ok, 16*1.852)
+	}
+	if !near(s.PeakGust[0][escondido], 16*1.852) || !near(s.PeakGust[1][escondido], 15*1.852) {
+		t.Errorf("the days' strongest gusts are %v, %v; want 16 kt, then 15", s.PeakGust[0][escondido], s.PeakGust[1][escondido])
+	}
+}
+
+// TestOpenMeteoReadsTheGusts is D-136: Open-Meteo's hourly gusts and each
+// day's strongest, in km/h.
+func TestOpenMeteoReadsTheGusts(t *testing.T) {
+	var asked []string
+	s, err := NewOpenMeteo(gustGet{t, &asked}, "").Fetch(context.Background(), fixtureLattice, gustCaptured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(asked) != 1 || !strings.Contains(asked[0], "wind_gusts_10m%2C") && !strings.Contains(asked[0], "wind_gusts_10m&") || !strings.Contains(asked[0], "wind_gusts_10m_max") {
+		t.Errorf("Open-Meteo is not asked for the hours' and the days' gusts: %v", asked)
+	}
+	if gust, ok := s.GustAt(gustCaptured); !ok || !near(gust[escondido], 16.9) {
+		t.Errorf("the gust now is %v (%v); want 16.9 km/h", gust, ok)
+	}
+	if !near(s.PeakGust[0][escondido], 20.2) || !near(s.PeakGust[1][escondido], 34.2) {
+		t.Errorf("the days' strongest gusts are %v, %v; want 20.2, then 34.2", s.PeakGust[0][escondido], s.PeakGust[1][escondido])
 	}
 }

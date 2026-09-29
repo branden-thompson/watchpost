@@ -21,6 +21,7 @@ const dumpKeep
 const dumpMinInterval
 const dumpTimeLayout
 const fireKeeps
+const gustMargin
 const hmsCredit
 const holdStep
 const httpCacheBytes

@@ -17,7 +17,6 @@ package tty
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -300,7 +299,7 @@ func (d Dashboard) setTemp() (Dashboard, bool) {
 	m := d.mapPane.m
 	given, set := map[string]tuimaps.Overlay{}, false
 	for _, o := range d.tempOverlays() {
-		if prev, ok := d.mapPane.tempGiven[o.ID]; ok && reflect.DeepEqual(prev, o) {
+		if prev, ok := d.mapPane.tempGiven[o.ID]; ok && SameOverlay(prev, o) {
 			given[o.ID] = o
 			continue
 		}
