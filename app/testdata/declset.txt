@@ -479,6 +479,7 @@ func applySetup
 func applyThemes
 func areaMeets
 func arrivalsOf
+func askAnchor
 func assemblerGauges
 func atOnce
 func attachRadio
@@ -545,6 +546,7 @@ func fireReportOf
 func fireRules
 func fireSourceNames
 func firstLineIndex
+func forecastDays
 func forecastGrids
 func fullyPopulated
 func gapAfter
@@ -578,6 +580,7 @@ func laneRowsPerTab
 func laneScenarios
 func lastLineIndex
 func libraryTransport
+func linedGrid
 func listenerScope
 func live
 func loadGeodata

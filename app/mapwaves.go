@@ -32,15 +32,12 @@ type waveSource interface {
 // hour up to now, Forecast mode's Now and each day's highest, each during
 // its step. What no source answered is the diagnostics' (D-124).
 func withWaves(ctx context.Context, t tty.MapTemperature, ndfd, om waveSource, ask tty.MapAsk, now time.Time) tty.MapTemperature {
-	anchor := ask.Anchor
-	if anchor.IsZero() {
-		anchor = now.Truncate(time.Hour)
-	}
+	anchor := askAnchor(ask, now)
 	unit := tuimaps.Metres
 	if ask.Fahrenheit {
 		unit = tuimaps.Feet
 	}
-	steps := tty.ForecastSteps(anchor)
+	nowStep, days := forecastDays(anchor)
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
 		lat := temperature.LatticeFor(b.Name, b.Box)
 		near, nerr := ndfd.Waves(ctx, lat, now)
@@ -58,29 +55,20 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd, om waveSource, a
 			continue
 		}
 		if !ask.Forecast {
-			for i, h := range w.Hours {
-				if h.After(radarHorizon(ask, anchor)) {
-					continue // past the loop's hours ahead (U2-32)
-				}
-				if o, ok := waveGrid(tty.WaveLayer+"/"+b.Name+"/"+h.UTC().Format("2006-01-02T15"), lat, w.Hourly[i], unit, stampOf(h, anchor), anchor); ok {
-					o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
-					t.Waves = append(t.Waves, o)
-				}
-			}
+			t.Waves = append(t.Waves, hourGrids(tty.WaveLayer, b.Name, w.Hours, len(w.Hourly), anchor, radarHorizon(ask, anchor), func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
+				return waveGrid(id, lat, w.Hourly[i], unit, valid, anchor)
+			})...)
 			continue
 		}
 		if vals, ok := w.At(anchor); ok {
 			if o, ok := waveGrid(tty.WaveLayer+"/"+b.Name+"/now", lat, vals, unit, anchor, anchor); ok {
-				o.During = steps[0].Span
+				o.During = nowStep.Span
 				t.Waves = append(t.Waves, o)
 			}
 		}
-		for k := range temperature.Days {
-			if k+1 >= len(steps) {
-				break
-			}
+		for k, step := range days {
 			if o, ok := waveGrid(tty.WaveLayer+"/"+b.Name+"/d"+strconv.Itoa(k), lat, w.Max[k], unit, anchor, anchor); ok {
-				o.During = steps[k+1].Span
+				o.During = step.Span
 				t.WaveDays = append(t.WaveDays, o)
 			}
 		}
@@ -95,19 +83,14 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd, om waveSource, a
 // the listener's unit, lined - labelled contours over faint bands, as the
 // temperature's are (D-126); false when no point has any.
 func waveGrid(id string, l temperature.Lattice, metres []float64, unit tuimaps.WaveUnit, valid, anchor time.Time) (tuimaps.Overlay, bool) {
-	f := l.InterpolateOut(metres) // to the coast: the library draws it over the sea alone (U2-31)
-	if allMissing(f.Values) {
-		return tuimaps.Overlay{}, false
-	}
+	var toFeet func(float64) float64
 	if unit == tuimaps.Feet {
-		for i, v := range f.Values {
-			f.Values[i] = v / 0.3048 // a missing value stays missing
-		}
+		toFeet = func(m float64) float64 { return m / 0.3048 }
 	}
-	o := tuimaps.WaveGrid(id, tuimaps.Grid{West: f.Box.W, South: f.Box.S, East: f.Box.E, North: f.Box.N,
-		Cols: f.Cols, Rows: f.Rows, Values: f.Values, Lines: true}, unit, valid)
-	o.Keeps = anchor.Sub(valid) + 3*time.Hour // as temperature's: an hour past is that hour's, not stale
-	return o, true
+	// To the coast: the library draws it over the sea alone (U2-31).
+	return linedGrid(id, l.InterpolateOut(metres), toFeet, valid, anchor, func(id string, g tuimaps.Grid, valid time.Time) tuimaps.Overlay {
+		return tuimaps.WaveGrid(id, g, unit, valid)
+	})
 }
 
 // waveBytes are a field box's two wave requests on the wire: NDFD's 18 KB

@@ -2237,3 +2237,26 @@ programming", from `transition/resume.txt`) and `Announcement` in its `Settings`
 production line-up (`app/schedule.go`) sets neither - so the Director arranges no transition and
 the listener hears none. `programmeReturnLine` composes the words and nothing calls it. Queued as a
 ruling: wire it, or remove it with a seam as D-158.
+
+## Batch 69 — the map's grids built one way (D-155 step 5, S-5 app half; 2026-09-30)
+
+**The duplication, located and read** (a read-only survey, then each copy read): the Radar-mode
+hour loop 4 times (temperature and feels-like, wind, UV and air, waves), the Forecast-mode step
+loop 6 times (temperature, feels-like, wind, UV and air, waves, rain), the lined grid 3 times
+near-identical (UV and air, temperature, waves; wind's and rain's differ materially and stay
+theirs), and the anchor's fallback 4 times.
+
+**Now, three helpers and one:** `hourGrids` is the hour loop - the horizon, the id, the stamp, the
+hour's span - taking a grid function (waves' copy gains the length guard the other three had);
+`forecastDays` is Now's step and the days as far as both the steps and the sources reach, so the
+six loops lose their `k+1 >= len(steps)` bookkeeping; `linedGrid` is interpolate, all-missing,
+convert, lined grid, currency - `fieldGrid`, `tempGrid` and `waveGrid` are each a line over it;
+`askAnchor` is the anchor. 99 lines in, 125 out; each copy's real difference (the high/low pairs,
+the missing-day notes, the gusts, the rain's totals) stays at its call.
+
+**A gap the extraction showed.** Two mutants of the shared code survived at first - the currency
+counted from the grid's valid time instead of the anchor, and an unanchored ask left at the
+minute - because neither rule was held by any test before either. `TestAGridIsCurrentThroughItsHourAndTheAnchorIsTheHour` holds both.
+
+**Mutation verdicts** (targeted, 6): the horizon ignored, the hour's span, a day fewer, no unit
+conversion, the currency, the anchor's hour - all caught.

@@ -133,11 +133,8 @@ func ratePNG(f temperature.Field) []byte {
 // for each field box, Now's hour and each day's heaviest in radar's scale,
 // each during its step, each day's total marked on it.
 func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, ask tty.MapAsk, now time.Time) tty.MapTemperature {
-	anchor := ask.Anchor
-	if anchor.IsZero() {
-		anchor = now.Truncate(time.Hour)
-	}
-	steps := tty.ForecastSteps(anchor)
+	anchor := askAnchor(ask, now)
+	nowStep, days := forecastDays(anchor)
 	failed := false
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
 		lat := temperature.LatticeFor(b.Name, b.Box)
@@ -149,17 +146,14 @@ func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.Ope
 		for i, h := range r.Hours {
 			if h.Equal(anchor) {
 				if o, ok := rainGrid(tty.RainLayer+"/"+b.Name+"/now", lat, r.Hourly[i], nil, nil, ask.Fahrenheit, anchor); ok {
-					o.During = steps[0].Span
+					o.During = nowStep.Span
 					t.Rain = append(t.Rain, o)
 				}
 			}
 		}
-		for k := range temperature.Days {
-			if k+1 >= len(steps) {
-				break
-			}
+		for k, step := range days {
 			if o, ok := rainGrid(tty.RainLayer+"/"+b.Name+"/d"+strconv.Itoa(k), lat, r.Peak[k], r.RainSum[k], r.SnowSum[k], ask.Fahrenheit, anchor); ok {
-				o.During = steps[k+1].Span
+				o.During = step.Span
 				t.Rain = append(t.Rain, o)
 			}
 		}

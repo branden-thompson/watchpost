@@ -117,10 +117,7 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 		out.Notes = []string{"No temperature is drawn for " + ask.Region + "."}
 		return out
 	}
-	anchor := ask.Anchor
-	if anchor.IsZero() {
-		anchor = now.Truncate(time.Hour)
-	}
+	anchor := askAnchor(ask, now)
 	unit := tuimaps.Celsius
 	if ask.Fahrenheit {
 		unit = tuimaps.Fahrenheit
@@ -150,8 +147,13 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 		}
 		if !ask.Forecast {
 			horizon := radarHorizon(ask, anchor)
-			out.Overlays = append(out.Overlays, hourGrids(tty.TemperatureLayer, s.Hours, s.Hourly, s.Lattice, b.Name, anchor, horizon, unit)...)
-			out.Feels = append(out.Feels, hourGrids(tty.FeelsLayer, s.Hours, s.Feels, s.Lattice, b.Name, anchor, horizon, unit)...)
+			temp := func(values [][]float64) func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
+				return func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
+					return tempGrid(id, s.Lattice, values[i], unit, valid, anchor)
+				}
+			}
+			out.Overlays = append(out.Overlays, hourGrids(tty.TemperatureLayer, b.Name, s.Hours, len(s.Hourly), anchor, horizon, temp(s.Hourly))...)
+			out.Feels = append(out.Feels, hourGrids(tty.FeelsLayer, b.Name, s.Hours, len(s.Feels), anchor, horizon, temp(s.Feels))...)
 			out.Wind = append(out.Wind, windHourGrids(s, b.Name, anchor, horizon, ask.Fahrenheit)...)
 			continue
 		}
@@ -315,23 +317,38 @@ func regionBox(name string) geo.Box {
 	return geo.Box{}
 }
 
-// hourGrids are Radar mode's grids of a layer - temperature's, or
-// feels-like's (D-119): every hour up to the current one, each drawn during
-// its hour (D-96).
-func hourGrids(layer string, hours []time.Time, values [][]float64, l temperature.Lattice, box string, anchor, horizon time.Time, unit tuimaps.Unit) []tuimaps.Overlay {
+// askAnchor is the hour an ask is drawn from: the listener's, or with none
+// given, the current hour.
+func askAnchor(ask tty.MapAsk, now time.Time) time.Time {
+	if ask.Anchor.IsZero() {
+		return now.Truncate(time.Hour)
+	}
+	return ask.Anchor
+}
+
+// hourGrids are a layer's Radar-mode grids - temperature's, feels-like's
+// (D-119), wind's, UV's and air's, waves' - every hour to the loop's
+// horizon, each drawn during its hour (D-96). n is how many hours have
+// values; grid builds hour i's, under its id and valid time.
+func hourGrids(layer, box string, hours []time.Time, n int, anchor, horizon time.Time, grid func(i int, id string, valid time.Time) (tuimaps.Overlay, bool)) []tuimaps.Overlay {
 	var out []tuimaps.Overlay
 	for i, h := range hours {
-		if h.After(horizon) || i >= len(values) {
-			continue // past the loop's hours ahead: no radar frame is in it
+		if h.After(horizon) || i >= n {
+			continue // past the loop's hours ahead: no radar frame is in it (U2-32)
 		}
-		o, ok := tempGrid(layer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), l, values[i], unit, stampOf(h, anchor), anchor)
-		if !ok {
-			continue
+		if o, ok := grid(i, layer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), stampOf(h, anchor)); ok {
+			o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
+			out = append(out, o)
 		}
-		o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
-		out = append(out, o)
 	}
 	return out
+}
+
+// forecastDays are Forecast mode's steps from an anchor: Now's, and each
+// day's as far as both the steps and the sources' days reach (D-94).
+func forecastDays(anchor time.Time) (now tty.ForecastStep, days []tty.ForecastStep) {
+	steps := tty.ForecastSteps(anchor)
+	return steps[0], steps[1:min(len(steps), 1+temperature.Days)]
 }
 
 // radarHorizon is the last hour Radar mode's hourly fields draw: the loop's
@@ -356,17 +373,14 @@ func stampOf(h, anchor time.Time) time.Time {
 // each drawn during its step (D-94, D-97). A day no source has anything for
 // is said, not drawn empty.
 func forecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, unit tuimaps.Unit, missing map[string]bool) {
-	steps := tty.ForecastSteps(anchor)
+	nowStep, days := forecastDays(anchor)
 	if vals, _, ok := s.HourAt(anchor); ok {
 		if o, ok := tempGrid(tty.TemperatureLayer+"/"+box+"/now", s.Lattice, vals, unit, anchor, anchor); ok {
-			o.During = steps[0].Span
+			o.During = nowStep.Span
 			out.Overlays = append(out.Overlays, o)
 		}
 	}
-	for k := range temperature.Days {
-		if k+1 >= len(steps) {
-			break
-		}
+	for k, step := range days {
 		for _, side := range []struct {
 			name string
 			vals []float64
@@ -374,10 +388,10 @@ func forecastGrids(out *tty.MapTemperature, s temperature.Series, box string, an
 		}{{"high", s.High[k], &out.High}, {"low", s.Low[k], &out.Low}} {
 			o, ok := tempGrid(tty.TemperatureLayer+"/"+box+"/d"+strconv.Itoa(k)+"/"+side.name, s.Lattice, side.vals, unit, anchor, anchor)
 			if !ok {
-				missing["No "+side.name+" for "+steps[k+1].Label+" from this source: it has passed, or is past the source's reach."] = true
+				missing["No "+side.name+" for "+step.Label+" from this source: it has passed, or is past the source's reach."] = true
 				continue
 			}
-			o.During = steps[k+1].Span
+			o.During = step.Span
 			*side.into = append(*side.into, o)
 		}
 	}
@@ -387,24 +401,21 @@ func forecastGrids(out *tty.MapTemperature, s temperature.Series, box string, an
 // day's high and low, each during its step, as temperature's are. A day
 // without is simply not drawn: temperature's grids say what is missing.
 func feelsForecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, unit tuimaps.Unit) {
-	steps := tty.ForecastSteps(anchor)
+	nowStep, days := forecastDays(anchor)
 	if vals, ok := s.FeelsAt(anchor); ok {
 		if o, ok := tempGrid(tty.FeelsLayer+"/"+box+"/now", s.Lattice, vals, unit, anchor, anchor); ok {
-			o.During = steps[0].Span
+			o.During = nowStep.Span
 			out.Feels = append(out.Feels, o)
 		}
 	}
-	for k := range temperature.Days {
-		if k+1 >= len(steps) {
-			break
-		}
+	for k, step := range days {
 		for _, side := range []struct {
 			name string
 			vals []float64
 			into *[]tuimaps.Overlay
 		}{{"high", s.FeelsHigh[k], &out.FeelsHigh}, {"low", s.FeelsLow[k], &out.FeelsLow}} {
 			if o, ok := tempGrid(tty.FeelsLayer+"/"+box+"/d"+strconv.Itoa(k)+"/"+side.name, s.Lattice, side.vals, unit, anchor, anchor); ok {
-				o.During = steps[k+1].Span
+				o.During = step.Span
 				*side.into = append(*side.into, o)
 			}
 		}
@@ -414,40 +425,29 @@ func feelsForecastGrids(out *tty.MapTemperature, s temperature.Series, box strin
 // windHourGrids are Radar mode's wind grids: every hour up to the current
 // one, each drawn during its hour (D-108), as temperature's are.
 func windHourGrids(s temperature.Series, box string, anchor, horizon time.Time, mph bool) []tuimaps.Overlay {
-	var out []tuimaps.Overlay
-	for i, h := range s.Hours {
-		if h.After(horizon) || i >= len(s.WindSpeed) {
-			continue
-		}
+	return hourGrids(tty.WindLayer, box, s.Hours, len(s.WindSpeed), anchor, horizon, func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
 		var gust []float64
 		if i < len(s.WindGust) {
 			gust = s.WindGust[i]
 		}
-		if o, ok := windGrid(tty.WindLayer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), s.Lattice, s.WindSpeed[i], s.WindFrom[i], gust, mph, stampOf(h, anchor), anchor); ok {
-			o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
-			out = append(out, o)
-		}
-	}
-	return out
+		return windGrid(id, s.Lattice, s.WindSpeed[i], s.WindFrom[i], gust, mph, valid, anchor)
+	})
 }
 
 // windForecastGrids are Forecast mode's wind grids: Now's wind, and each
 // day's peak with its dominant direction, each during its step (D-108).
 func windForecastGrids(out *tty.MapTemperature, s temperature.Series, box string, anchor time.Time, mph bool) {
-	steps := tty.ForecastSteps(anchor)
+	nowStep, days := forecastDays(anchor)
 	if speed, from, _, ok := s.WindAt(anchor); ok {
 		gust, _ := s.GustAt(anchor)
 		if o, ok := windGrid(tty.WindLayer+"/"+box+"/now", s.Lattice, speed, from, gust, mph, anchor, anchor); ok {
-			o.During = steps[0].Span
+			o.During = nowStep.Span
 			out.Wind = append(out.Wind, o)
 		}
 	}
-	for k := range temperature.Days {
-		if k+1 >= len(steps) {
-			break
-		}
+	for k, step := range days {
 		if o, ok := windGrid(tty.WindLayer+"/"+box+"/d"+strconv.Itoa(k), s.Lattice, s.PeakSpeed[k], s.PeakFrom[k], s.PeakGust[k], mph, anchor, anchor); ok {
-			o.During = steps[k+1].Span
+			o.During = step.Span
 			out.WindDays = append(out.WindDays, o)
 		}
 	}
@@ -497,18 +497,32 @@ func windGrid(id string, l temperature.Lattice, speed, from, gust []float64, mph
 // listener's unit; false when every value is missing. Its currency counts
 // from the hour's start (U2-13).
 func tempGrid(id string, l temperature.Lattice, values []float64, unit tuimaps.Unit, valid, anchor time.Time) (tuimaps.Overlay, bool) {
-	f := l.Interpolate(values)
+	var toF func(float64) float64
+	if unit == tuimaps.Fahrenheit {
+		toF = func(c float64) float64 { return c*9/5 + 32 }
+	}
+	return linedGrid(id, l.Interpolate(values), toF, valid, anchor, func(id string, g tuimaps.Grid, valid time.Time) tuimaps.Overlay {
+		return tuimaps.TemperatureGrid(id, g, unit, valid) // one look in both modes (D-102, go-tuiMaps L-15.4)
+	})
+}
+
+// linedGrid is an interpolated field as a preset's grid, lined - labelled
+// contours over faint bands (D-102) - each value converted first where
+// convert is given (a missing value stays missing); false when no point has
+// any. Its currency counts from the hour's start: an hour past is that
+// hour's, not stale (U2-13).
+func linedGrid(id string, f temperature.Field, convert func(float64) float64, valid, anchor time.Time, preset func(string, tuimaps.Grid, time.Time) tuimaps.Overlay) (tuimaps.Overlay, bool) {
 	if allMissing(f.Values) {
 		return tuimaps.Overlay{}, false
 	}
-	if unit == tuimaps.Fahrenheit {
+	if convert != nil {
 		for i, v := range f.Values {
-			f.Values[i] = v*9/5 + 32 // a missing value stays missing
+			f.Values[i] = convert(v)
 		}
 	}
-	o := tuimaps.TemperatureGrid(id, tuimaps.Grid{West: f.Box.W, South: f.Box.S, East: f.Box.E, North: f.Box.N,
-		Cols: f.Cols, Rows: f.Rows, Values: f.Values, Lines: true}, unit, valid) // one look in both modes (D-102, go-tuiMaps L-15.4)
-	o.Keeps = anchor.Sub(valid) + 3*time.Hour // current past the next refresh: an hour past is that hour's, not stale
+	o := preset(id, tuimaps.Grid{West: f.Box.W, South: f.Box.S, East: f.Box.E, North: f.Box.N,
+		Cols: f.Cols, Rows: f.Rows, Values: f.Values, Lines: true}, valid)
+	o.Keeps = anchor.Sub(valid) + 3*time.Hour
 	return o, true
 }
 

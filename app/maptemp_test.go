@@ -481,3 +481,38 @@ func sameAnswer(a, b tty.MapTemperature) bool {
 	}
 	return reflect.DeepEqual(a, b)
 }
+
+// A GRID IS CURRENT THROUGH ITS HOUR, AND AN ASK WITH NO ANCHOR IS THE
+// CURRENT HOUR'S (W14: held once the grids share linedGrid and askAnchor). An
+// hour past keeps three hours from the anchor, so a loop's earlier hours are
+// never drawn stale; an ask the window made before it knew its hour builds
+// what one anchored at the start of the hour builds.
+func TestAGridIsCurrentThroughItsHourAndTheAnchorIsTheHour(t *testing.T) {
+	src := &fakeTemp{name: "Open-Meteo", now: tempNow}
+	anchor := tempNow.Truncate(time.Hour)
+	got := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow)
+	if len(got.Overlays) == 0 {
+		t.Fatal("no hourly grid was built")
+	}
+	for _, o := range append(got.Overlays, got.Wind...) {
+		if want := anchor.Sub(o.Valid) + 3*time.Hour; o.Keeps != want {
+			t.Errorf("%s keeps %v; want %v, three hours past the anchor", o.ID, o.Keeps, want)
+		}
+	}
+	anchored, unanchored := tempAsk(true), tempAsk(true)
+	unanchored.Anchor = time.Time{}
+	a := buildTemperature(context.Background(), src, nil, anchored, tempNow)
+	b := buildTemperature(context.Background(), src, nil, unanchored, tempNow)
+	spans := func(os ...[]tuimaps.Overlay) []string {
+		var out []string
+		for _, list := range os {
+			for _, o := range list {
+				out = append(out, o.ID+" "+o.During.From.String()+" "+o.During.Until.String())
+			}
+		}
+		return out
+	}
+	if x, y := spans(a.Overlays, a.High, a.Low), spans(b.Overlays, b.High, b.Low); !slices.Equal(x, y) || len(x) == 0 {
+		t.Errorf("an ask with no anchor built\n%v\nwhere the hour's anchor built\n%v", y, x)
+	}
+}

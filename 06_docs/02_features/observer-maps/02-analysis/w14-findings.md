@@ -87,7 +87,7 @@ hold is listed at the end.
 | S-2 | **The P10 checker now keys methods `Recv.Name`**; ledger rows keyed by a bare method name stopped matching — 9 live now (Router's, `Dashboard.View`, `Engine.watchClip`), more as their code is touched | Auditor, from the harness source | Reported — a ledger edit, the HUM LEAD's |
 | S-3 | **Fixed, batch 58.** One real 2-cycle: `layerOn` ↔ `radarMode`, bounded at depth 2 | Two auditors | Reported |
 | S-4 | Six loops bounded in fact, in a form the checker cannot see | Auditor | Reported |
-| S-5 | The map's Forecast-mode step loop written 6×, its hourly loop 4×, grid building 3×, the radar loop fetch 2×; the tty's overlay reconcile 3×, its worker-command wrapper 4× | Auditor | Reported |
+| S-5 | **App half fixed, batch 69** (`hourGrids`, `forecastDays`, `linedGrid`, `askAnchor`). The map's Forecast-mode step loop written 6×, its hourly loop 4×, grid building 3×, the radar loop fetch 2×; the tty's overlay reconcile 3×, its worker-command wrapper 4× | Auditor | Reported |
 | S-6 | Unit conversions (°C/°F, km/mi, m/s) in ~20 places across three layers; the km/mile constant 6×; two spoken wordings already disagree ("kilometres" / "kilometers") | Auditor | Reported |
 | S-7 | Control components hand-built where the app's exist (the Request window's checkbox — D-147); `cycleIn` bypassed 4× | Auditor | Reported |
 | S-8 | Code no production path reaches: F-24's on-air masthead, `castProblems`, `ellipsize`, `colorEnabled`, `bedReachFor`, `withForecast` | Auditor | Reported — F-24 is a HUM LEAD question (wire or delete) |

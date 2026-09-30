@@ -67,35 +67,25 @@ func withAir(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMete
 // mode's Now and each day's value, each during its step.
 func measureGrids(m temperature.Measure, layer, box string, ask tty.MapAsk, now time.Time,
 	grid func(id string, vals []float64, valid, anchor time.Time) (tuimaps.Overlay, bool)) (hours, days []tuimaps.Overlay) {
-	anchor := ask.Anchor
-	if anchor.IsZero() {
-		anchor = now.Truncate(time.Hour)
-	}
+	anchor := askAnchor(ask, now)
 	if !ask.Forecast {
-		for i, h := range m.Hours {
-			if h.After(radarHorizon(ask, anchor)) || i >= len(m.Hourly) {
-				continue // past the loop's hours ahead (U2-32)
-			}
-			if o, ok := grid(layer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), m.Hourly[i], stampOf(h, anchor), anchor); ok {
-				o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
-				hours = append(hours, o)
-			}
-		}
-		return hours, nil
+		return hourGrids(layer, box, m.Hours, len(m.Hourly), anchor, radarHorizon(ask, anchor), func(i int, id string, valid time.Time) (tuimaps.Overlay, bool) {
+			return grid(id, m.Hourly[i], valid, anchor)
+		}), nil
 	}
-	steps := tty.ForecastSteps(anchor)
+	nowStep, steps := forecastDays(anchor)
 	if vals, ok := m.At(anchor); ok {
 		if o, ok := grid(layer+"/"+box+"/now", vals, anchor, anchor); ok {
-			o.During = steps[0].Span
+			o.During = nowStep.Span
 			hours = append(hours, o)
 		}
 	}
-	for k := range temperature.Days {
-		if k+1 >= len(steps) || m.Max[k] == nil {
+	for k, step := range steps {
+		if m.Max[k] == nil {
 			break
 		}
 		if o, ok := grid(layer+"/"+box+"/d"+strconv.Itoa(k), m.Max[k], anchor, anchor); ok {
-			o.During = steps[k+1].Span
+			o.During = step.Span
 			days = append(days, o)
 		}
 	}
@@ -106,14 +96,7 @@ func measureGrids(m temperature.Measure, layer, box string, ask tty.MapAsk, now 
 // contours over faint bands, as temperature's (D-102); false when no point
 // has any.
 func fieldGrid(id string, l temperature.Lattice, vals []float64, valid, anchor time.Time, preset func(string, tuimaps.Grid, time.Time) tuimaps.Overlay) (tuimaps.Overlay, bool) {
-	f := l.Interpolate(vals)
-	if allMissing(f.Values) {
-		return tuimaps.Overlay{}, false
-	}
-	o := preset(id, tuimaps.Grid{West: f.Box.W, South: f.Box.S, East: f.Box.E, North: f.Box.N,
-		Cols: f.Cols, Rows: f.Rows, Values: f.Values, Lines: true}, valid)
-	o.Keeps = anchor.Sub(valid) + 3*time.Hour // as temperature's: an hour past is that hour's, not stale
-	return o, true
+	return linedGrid(id, l.Interpolate(vals), nil, valid, anchor, preset)
 }
 
 // airnowIn is AirNow's reporting areas, asked only while Air quality is on.
