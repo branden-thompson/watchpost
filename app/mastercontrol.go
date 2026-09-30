@@ -125,6 +125,12 @@ func newMastercontrol(v narrationVoice, send func(tea.Msg)) *mastercontrol {
 // "in practice" is an invariant maintained somewhere else, and an operator who
 // presses ON AIR is owed a station that can actually broadcast. `onAired`
 // no-ops when nothing changed, so the usual case costs one refused event.
+//
+// THE SEAM FOR A STATION ID (D-158). Going ON AIR from standby is where a
+// station identification would be read - F-24's, built and never wired, was
+// removed. Its words are `transition/masthead.txt` (the place, the coverage,
+// the providers, the limitation), rendered by scriptText; reading them here,
+// before the power is declared, is the one change that adds it back.
 func (m *mastercontrol) GoOnAir() {
 	m.HandAir(lineup.AirProgramme)
 	m.declare(lineup.Running)

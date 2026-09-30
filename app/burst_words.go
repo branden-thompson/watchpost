@@ -49,10 +49,6 @@ func burstAgencies(evs []globalfeed.Event) string {
 	return plaintext.SpokenList(names)
 }
 
-// spokenList joins names the way a person says a list: "A", "A and B",
-// "A, B, and C". Extracted at the second caller (the masthead's provider list,
-// F-24) rather than written twice.
-
 // burstHead is the one opening of a multi-event burst: who declared what is
 // about to be read. "" when no source could be named, in which case the burst
 // simply starts with its first alert — a head that named nobody would be worse

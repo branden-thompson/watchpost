@@ -42,52 +42,19 @@ func TestTheResumeTransitionDiffersOnlyByWhetherTheProgrammeKeptRunning(t *testi
 	}
 }
 
-// TestTheMastheadNamesWhereWhatAndTheLimits — F-24.
-//
-// It covers the resumption gap, so it must be long enough to be worth reading —
-// but every part of it is load-bearing: where the station broadcasts from, what
-// area it covers, whose data it is, and the limitation a weather service is
-// obliged to state.
-func TestTheMastheadNamesWhereWhatAndTheLimits(t *testing.T) {
-	at := snapshot.DefaultOrigin()
-	got := mastheadLine(nil, at, 50, []string{"the National Weather Service", "the United States Geological Survey", "NASA FIRMS"})
-	for _, want := range []string{
-		"This is Watchpost Weather Radio",
-		at.Label,
-		"a 50 mile radius",
-		"the National Weather Service, the United States Geological Survey, and NASA FIRMS",
-		"not intended for life safety use",
-	} {
+// TestTheStationIDsWordsAreKept is D-158's seam: the station identification
+// on going ON AIR (F-24) was never wired and is removed, and its words stay in
+// the script library for the day a use case needs it - where the station
+// broadcasts from, what it covers, whose data it is, and the limitation a
+// weather service is obliged to state. A seam whose words had rotted would
+// not be one small change to add back.
+func TestTheStationIDsWordsAreKept(t *testing.T) {
+	got := scriptText(nil, "transition", "masthead", map[string]any{
+		"Location": snapshot.DefaultOrigin().Label, "Coverage": "a 50 mile radius", "Providers": "the National Weather Service",
+	})
+	for _, want := range []string{"This is Watchpost Weather Radio", snapshot.DefaultOrigin().Label, "a 50 mile radius", "the National Weather Service", "not intended for life safety use"} {
 		if !strings.Contains(got, want) {
-			t.Errorf("the masthead does not say %q:\n%s", want, got)
+			t.Errorf("the station ID's words do not say %q:\n%s", want, got)
 		}
-	}
-	// ALL LOCATIONS, NOT A NOUGHT-MILE RADIUS. `0` is the ALERTS - EVENTS
-	// setting's "All", and this is the one place that value is SPOKEN — a
-	// station announcing a 0 mile radius states the opposite of what it covers.
-	all := mastheadLine(nil, at, 0, []string{"the National Weather Service"})
-	if strings.Contains(all, "0 mile") {
-		t.Errorf("an unfenced station announces %q", all)
-	}
-	if !strings.Contains(all, "all locations") {
-		t.Errorf("an unfenced station must say it covers all locations, got:\n%s", all)
-	}
-	// ONE PROVIDER IS NOT A LIST — asserted on the PROVIDER CLAUSE alone. The
-	// masthead's own fixed wording contains ", and seismic reports", so a naive
-	// search over the whole line matches the sentence rather than the list.
-	one := mastheadLine(nil, at, 25, []string{"the National Weather Service"})
-	clause := func(line string) string {
-		_, rest, ok := strings.Cut(line, "compiled from ")
-		if !ok {
-			t.Fatalf("the masthead names no providers: %q", line)
-		}
-		got, _, _ := strings.Cut(rest, ". ")
-		return got
-	}
-	if got := clause(one); got != "the National Weather Service" {
-		t.Errorf("a single provider reads as %q, want it alone", got)
-	}
-	if got := clause(got); !strings.Contains(got, ", and NASA FIRMS") {
-		t.Errorf("three providers read as %q, want a spoken list", got)
 	}
 }

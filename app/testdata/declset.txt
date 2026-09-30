@@ -511,7 +511,6 @@ func composeFor
 func composeTakeover
 func configLocations
 func contentsFromSegments
-func coveragePhrase
 func credits
 func debugAddr
 func debugMux
@@ -596,7 +595,6 @@ func mapSourceList
 func marineArea
 func marineHosts
 func marineReportOf
-func mastheadLine
 func matchesQuery
 func measureGrids
 func narrateDebug

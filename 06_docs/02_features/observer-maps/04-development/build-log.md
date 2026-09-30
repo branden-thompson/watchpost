@@ -2219,3 +2219,21 @@ by design, and that is not this batch's to change.
 `Render` once, with the feed in and before any has landed (RED: twice with the feed in).
 
 **Mutation verdicts** (targeted, 1): the no-feed draw dropped - caught (a step drew nothing).
+
+## Batch 68 — the unwired station identification removed, its seam left (D-155 step 5, S-10, D-158; 2026-09-30; not the map's)
+
+**D-158, as ruled.** `mastheadLine` and `coveragePhrase` (`app/transition.go`) - F-24's spoken
+station identification on going ON AIR from standby, built and tested and called by nothing in
+production - are removed with their test. **The seam:** `mastercontrol.GoOnAir`'s comment says
+where a station ID is read and from what (`transition/masthead.txt`, rendered by `scriptText`,
+before the power is declared), and the words stay in the script library, held by
+`TestTheStationIDsWordsAreKept` so the seam cannot rot (a changed limitation sentence was caught).
+A stray doc comment for a `spokenList` that no longer exists (`app/burst_words.go`), which named the
+masthead as its second caller, went with it. Nothing a listener hears changes: it was never read.
+
+**Found beside it (S-11), for the HUM LEAD.** F-27's spoken transitions have the same shape: the
+line-up takes `ProgrammeReturn` ("Watchpost Radio now returns to its regularly scheduled
+programming", from `transition/resume.txt`) and `Announcement` in its `Settings`, and the
+production line-up (`app/schedule.go`) sets neither - so the Director arranges no transition and
+the listener hears none. `programmeReturnLine` composes the words and nothing calls it. Queued as a
+ruling: wire it, or remove it with a seam as D-158.
