@@ -2120,3 +2120,30 @@ so that half proved nothing. It and this batch's test now use a fixture drawn fr
 with a control that zones are asked when on; D-160's mutants were re-run and caught.
 
 **Mutation verdicts** (targeted, 6): all caught.
+
+## Batch 64 — the city scan parsed once (D-155 step 4, C-8; 2026-09-30)
+
+**Measured first.** The map window's cost with nothing moving, a probe of 90 s each side (the
+`default` workload, 149×38, ps cumulative CPU): the dashboard redraws about 10 frames a second
+whether the map is open or not (a new `frame/frames100` instrument event, the time a hundred frames
+take) - so the map pays no animation of its own - and the map open costs 2.2 % of a core against
+0.5 % closed. The macOS sampler had named the city scan (`geodata.Index.Near`) on the UI goroutine:
+the estimate (`refreshMapCost` → `mapCost` → `viewAlerts` → `viewAreas`) reads the state under 25
+points of the view, one full scan of the 34k-row city table each, on every open, feed landing,
+Settings open and layer switch - and every scan parsed each row's coordinates again.
+`viewAreas` measured **31 ms, 1.02 M allocations and 3.9 MB a call**.
+
+**Now.** The index parses the US cities' coordinates once, on first use (`placesCache`,
+`usCities`), and every scan reads them: `viewAreas` **2.0 ms, 300 allocations, 6.6 KB** (15×).
+The scan is still a full one, in the table's order, so every answer is the same one;
+`StateExtents` walks the same parsed rows instead of a second copy of the filter and the parse.
+Held, the coordinates cost about 0.8 MB. The map's area namer and the Producer's line-up read the
+same scan and are faster by the same token.
+
+**Tests.** `TestAScanDoesNotParseTheTable` pins a scan's allocations (40,940 before; 20 now,
+pinned); `TestAScanAnswersAsTheTableDoes` answers a grid over the country and its waters at three
+fences against the table parsed row by row - same cities, same order. `TestTheFrameRateIsMeasured`
+for the instrument.
+
+**Mutation verdicts** (targeted, 3): the cache rebuilt every scan, the US filter dropped, the
+coordinates swapped - all caught.

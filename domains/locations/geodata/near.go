@@ -21,11 +21,14 @@ package geodata
 //
 // A FULL SCAN, DELIBERATELY. It is 34k haversines at startup and on a settings
 // change, which measures in tens of milliseconds; a bounding-box prefilter would
-// be an optimisation against a product that is not finished (D-53).
+// be an optimisation against a product that is not finished (D-53). The map's
+// estimate scans too, on its UI goroutine, so the coordinates are parsed once
+// and held (W14): 2 ms a view where it was 31.
 
 import (
 	"sort"
 	"strconv"
+	"sync"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
 )
@@ -50,20 +53,50 @@ const milesPerKM = 0.621371
 // no fence set is not asking for a region, and the safe reading of an unset
 // number is "nothing" rather than "everywhere".
 func (i *Index) Near(lat, lon, radiusMi float64, limit int) []City {
-	offs := i.nearOffsets(lat, lon, radiusMi, limit, len(i.cityOffs), func(n int) (int32, float64, float64, bool) {
-		off := i.cityOffs[n]
-		if field(i.cities, off, 3) != "US" {
-			return 0, 0, 0, false
-		}
-		la, err1 := strconv.ParseFloat(field(i.cities, off, 4), 64)
-		lo, err2 := strconv.ParseFloat(field(i.cities, off, 5), 64)
-		return off, la, lo, err1 == nil && err2 == nil
+	us := i.usCities()
+	offs := i.nearOffsets(lat, lon, radiusMi, limit, len(us), func(n int) (int32, float64, float64, bool) {
+		return us[n].off, us[n].lat, us[n].lon, true
 	})
 	out := make([]City, 0, len(offs))
 	for _, o := range offs { // bounded by the limit (P10-02)
 		out = append(out, i.parseCity(o))
 	}
 	return out
+}
+
+// placed is a US city row and its coordinates, parsed.
+type placed struct {
+	off      int32
+	lat, lon float64
+}
+
+// placesCache is the US city rows with their coordinates, parsed once.
+//
+// PARSED ONCE, BECAUSE THE MAP SCANS ON ITS UI GOROUTINE (W14). The line-up
+// scans on a settings change; the map's estimate reads the state under
+// twenty-five points of the view on every open, feed landing and switch, and
+// parsing the table each time cost 31 ms and a million allocations a view.
+// Held, the coordinates cost about 0.8 MB; the scan is still a full one.
+type placesCache struct {
+	placesOnce sync.Once
+	places     []placed
+}
+
+// usCities is every US city row whose coordinates parse, in the table's order.
+func (i *Index) usCities() []placed {
+	i.placesOnce.Do(func() {
+		for _, off := range i.cityOffs { // bounded by the index (P10-02)
+			if field(i.cities, off, 3) != "US" {
+				continue
+			}
+			lat, err1 := strconv.ParseFloat(field(i.cities, off, 4), 64)
+			lon, err2 := strconv.ParseFloat(field(i.cities, off, 5), 64)
+			if err1 == nil && err2 == nil {
+				i.places = append(i.places, placed{off, lat, lon})
+			}
+		}
+	})
+	return i.places
 }
 
 // NearZips is the zip centroids inside the same fence, nearest first.

@@ -5,7 +5,6 @@ package geodata
 // the state's extent, and the extent is its own cities'.
 
 import (
-	"strconv"
 	"sync"
 
 	"github.com/branden-thompson/watchpost/platform/geo"
@@ -19,14 +18,9 @@ type Extent = geo.Box
 func (i *Index) StateExtents() map[string]Extent {
 	i.extentsOnce.Do(func() {
 		out := map[string]Extent{}
-		for _, off := range i.cityOffs { // bounded by the index (P10-02)
-			if field(i.cities, off, 3) != "US" {
-				continue
-			}
-			st := field(i.cities, off, 2)
-			lat, err1 := strconv.ParseFloat(field(i.cities, off, 4), 64)
-			lon, err2 := strconv.ParseFloat(field(i.cities, off, 5), 64)
-			if st == "" || err1 != nil || err2 != nil {
+		for _, p := range i.usCities() { // bounded by the index (P10-02); the scan's own parsed rows
+			st, lat, lon := field(i.cities, p.off, 2), p.lat, p.lon
+			if st == "" {
 				continue
 			}
 			e, ok := out[st]

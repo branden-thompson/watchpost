@@ -64,6 +64,7 @@ type ZipRow struct {
 // Index holds the decompressed data and its lookup structures.
 type Index struct {
 	extentsCache         // the states' extents, computed on first use (states.go)
+	placesCache          // the US cities' coordinates, parsed on first use (near.go)
 	cities       []byte  // backing TSV
 	cityOffs     []int32 // line offsets, sorted by lowercased ASCII name
 	zips         []byte

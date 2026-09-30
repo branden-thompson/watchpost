@@ -1,6 +1,7 @@
 package geodata
 
 import (
+	"sort"
 	"testing"
 )
 
@@ -119,4 +120,80 @@ func loadForTest(t *testing.T) *Index {
 		t.Fatal(err)
 	}
 	return idx
+}
+
+// THE MAP ASKS THIS ON ITS UI GOROUTINE (W14): the estimate reads the state
+// under twenty-five points of the view, one scan each, on every open, feed
+// landing and switch. Parsing each row's coordinates on every scan cost 31 ms
+// and a million allocations a view (measured 2026-09-30); a scan now reads
+// coordinates parsed once. The allocations are gated; the time is not (D-53).
+const nearAllocs = 20 // measured 2026-09-30 (W14): pinned, lowered only
+
+func TestAScanDoesNotParseTheTable(t *testing.T) {
+	idx := loadForTest(t)
+	idx.Near(bonsallLat, bonsallLon, 40, 1) // the coordinates are parsed once, here
+	allocs := testing.AllocsPerRun(20, func() { idx.Near(bonsallLat, bonsallLon, 40, 1) })
+	if allocs > nearAllocs {
+		t.Errorf("a scan cost %.0f allocations; its budget is %d", allocs, nearAllocs)
+	}
+}
+
+// AND THE ANSWERS ARE THE SAME ONES: every point of a grid across the country
+// and its waters, at the map's radius and the Producer's, is answered as a scan
+// of the table parsed row by row answers it - same cities, same order.
+func TestAScanAnswersAsTheTableDoes(t *testing.T) {
+	idx := loadForTest(t)
+	table := parsedTable(idx)
+	for lat := 18.0; lat <= 64; lat += 2.3 {
+		for lon := -165.0; lon <= -66; lon += 3.1 {
+			for _, fence := range []struct {
+				mi    float64
+				limit int
+			}{{40, 1}, {20, 50}, {75, 20}} {
+				got, want := idx.Near(lat, lon, fence.mi, fence.limit), referenceNear(table, lat, lon, fence.mi, fence.limit)
+				if len(got) != len(want) {
+					t.Fatalf("(%.1f, %.1f) within %.0f mi: %d cities, the table's scan finds %d", lat, lon, fence.mi, len(got), len(want))
+				}
+				for n := range got {
+					if got[n] != want[n] {
+						t.Fatalf("(%.1f, %.1f) within %.0f mi, row %d: %s, the table's scan says %s", lat, lon, fence.mi, n, got[n].Label(), want[n].Label())
+					}
+				}
+			}
+		}
+	}
+}
+
+// parsedTable is every row of the city table, parsed, in the table's order.
+func parsedTable(idx *Index) []City {
+	out := make([]City, 0, len(idx.cityOffs))
+	for _, off := range idx.cityOffs {
+		out = append(out, idx.parseCity(off))
+	}
+	return out
+}
+
+// referenceNear is the scan as it was first written, over the parsed table:
+// the US rows inside the fence kept, stably sorted by distance, cut to the
+// limit.
+func referenceNear(table []City, lat, lon, radiusMi float64, limit int) []City {
+	type hit struct {
+		c  City
+		mi float64
+	}
+	var hits []hit
+	for _, c := range table {
+		if c.Country != "US" {
+			continue
+		}
+		if mi := MilesBetween(lat, lon, c.Lat, c.Lon); mi <= radiusMi {
+			hits = append(hits, hit{c, mi})
+		}
+	}
+	sort.SliceStable(hits, func(a, b int) bool { return hits[a].mi < hits[b].mi })
+	out := []City{}
+	for n := 0; n < len(hits) && n < limit; n++ {
+		out = append(out, hits[n].c)
+	}
+	return out
 }

@@ -258,3 +258,31 @@ func TestAWarmReopenReachesM5(t *testing.T) {
 		t.Error("the reopened map asked for its view, but it is not counted still - M5 can never be said")
 	}
 }
+
+// TestTheFrameRateIsMeasured is W14's next measure: with the map open the
+// station costs ~7-8 % of a core (the sampler's cumulative CPU; the Go profiler
+// undercounted it ~15x on this machine), and redrawing the frame - the
+// terminal's width and grapheme work on every line - was the largest part a
+// native sampler saw. How often the frame is drawn is the number that
+// decides it: every hundredth frame says how long the hundred took.
+func TestTheFrameRateIsMeasured(t *testing.T) {
+	tm := &timings{}
+	d := goldenDash(t, false)
+	d.cfg.Timed = tm.record
+	r := NewRouter(d)
+	for range 250 {
+		_ = r.View()
+	}
+	n := 0
+	for _, e := range tm.got {
+		if e.Event == "frames100" {
+			n++
+			if e.After <= 0 {
+				t.Errorf("a hundred frames took %v", e.After)
+			}
+		}
+	}
+	if n != 2 {
+		t.Errorf("250 frames said %d hundreds, want 2", n)
+	}
+}
