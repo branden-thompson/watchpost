@@ -26,6 +26,7 @@ const dumpMinInterval
 const dumpTimeLayout
 const fireKeeps
 const gustMargin
+const historyEvery
 const hmsCredit
 const holdStep
 const httpCacheBytes
@@ -161,6 +162,8 @@ func (*executors).runCue
 func (*executors).runRelease
 func (*executors).runTune
 func (*executors).speak
+func (*historian).pass
+func (*historian).record
 func (*injectQueue).readyLocked
 func (*injectQueue).take
 func (*injectQueue).wake
@@ -184,6 +187,7 @@ func (*livePipelines).fireFor
 func (*livePipelines).fireIn
 func (*livePipelines).fireRules
 func (*livePipelines).giveItAStation
+func (*livePipelines).historyRegions
 func (*livePipelines).hydrate
 func (*livePipelines).injectHook
 func (*livePipelines).inputsFor
@@ -234,6 +238,7 @@ func (*livePipelines).setWatch
 func (*livePipelines).setup
 func (*livePipelines).silenceMonitor
 func (*livePipelines).sources
+func (*livePipelines).startHistory
 func (*livePipelines).startPipelines
 func (*livePipelines).stepBedRelay
 func (*livePipelines).stopAll
@@ -602,6 +607,7 @@ func marineReportOf
 func matchesQuery
 func measureGrids
 func narrateDebug
+func ndfdRecord
 func nearestMetro
 func needsReadLine
 func newAlertStore
@@ -670,6 +676,7 @@ func readerFor
 func readingWord
 func recentTiers
 func reconcile
+func recordedBoxes
 func refFor
 func refreshCost
 func refsFromConfig
@@ -822,6 +829,7 @@ type eventReader
 type executors
 type fieldBox
 type fireInView
+type historian
 type hostFacts
 type hoursAhead
 type injectQueue
@@ -874,5 +882,6 @@ var errReadStopped
 var goosSeam
 var mapLayers
 var mapSources
+var ndfdHourly
 var quakeFeedBytes
 var rateTable

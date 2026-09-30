@@ -79,6 +79,29 @@ func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, err
 	if err := parseDWML(body, now, &out); err != nil {
 		return Series{}, fmt.Errorf("NDFD days: %w", err)
 	}
+	if err := s.readHour(ctx, q, now, &out); err != nil {
+		return Series{}, err
+	}
+	return out, nil
+}
+
+// Hour is NDFD's current hour alone - temperature, feels-like and the wind -
+// for the history's recorder (W18.3b, D-166): Fetch's second ask, the very
+// address, so the two share the HTTP cache.
+func (s *NDFD) Hour(ctx context.Context, l Lattice, now time.Time) (Series, error) {
+	var list []string
+	for _, p := range l.Points() { // the lattice's points (P10-02)
+		list = append(list, ftoa(p.Lat)+","+ftoa(p.Lon))
+	}
+	out := newSeries(l)
+	if err := s.readHour(ctx, url.Values{"listLatLon": {strings.Join(list, " ")}, "product": {"time-series"}}, now, &out); err != nil {
+		return Series{}, err
+	}
+	return out, nil
+}
+
+// readHour asks for the current hour, with its zone, and reads it into out.
+func (s *NDFD) readHour(ctx context.Context, q url.Values, now time.Time, out *Series) error {
 	hour := now.UTC().Truncate(time.Hour)
 	hours := cloneValues(q)
 	hours.Set("temp", "temp")
@@ -88,14 +111,14 @@ func (s *NDFD) Fetch(ctx context.Context, l Lattice, now time.Time) (Series, err
 	hours.Set("appt", "appt")
 	hours.Set("begin", hour.Format("2006-01-02T15:04:05Z"))
 	hours.Set("end", hour.Add(time.Hour).Format("2006-01-02T15:04:05Z"))
-	body, err = s.get.GetText(ctx, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+hours.Encode(), ttl)
+	body, err := s.get.GetText(ctx, s.base+"/xml/sample_products/browser_interface/ndfdXMLclient.php?"+hours.Encode(), httpx.TTL(untilNextHour(now)))
 	if err != nil {
-		return Series{}, fmt.Errorf("NDFD hours: %w", err)
+		return fmt.Errorf("NDFD hours: %w", err)
 	}
-	if err := parseDWML(body, now, &out); err != nil {
-		return Series{}, fmt.Errorf("NDFD hours: %w", err)
+	if err := parseDWML(body, now, out); err != nil {
+		return fmt.Errorf("NDFD hours: %w", err)
 	}
-	return out, nil
+	return nil
 }
 
 func cloneValues(v url.Values) url.Values {

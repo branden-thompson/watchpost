@@ -2384,3 +2384,23 @@ also cleared the one duplicate `dupes` reported).
 exclusive, a day expired without its roll-up, buckets unread, values unrounded, keys unchecked,
 claims never stale, years never pruned, the catalog only of registered datasets, values over no
 shape, a step unbounded below, a version mismatch read - all caught.
+
+## Batch 75 — the history recorded (W18.3b, part 1; D-166, D-172, D-176; 2026-09-30)
+
+**Now.** Whenever watchpost runs, in any mode (D-172), a recorder looks every five minutes - from a
+random start in the first two, so instances seldom meet - for an hour to record: NDFD's current hour
+(`NDFD.Hour`, Fetch's own second ask, so an hour the map fetched costs nothing) over every field box
+of the station's region and of the region the map last drew. The dataset `ndfd-hourly` (v1:
+temperature, feels-like, wind, gusts, wind direction) keeps 72 hours and rolls up into a month of
+days for trends (D-176). One instance fetches each hour (the store's claim); an hour NDFD did not
+answer is tried again once its claim goes stale; the store prunes once an hour.
+
+**A box the map can draw is a box recorded.** The lower 48 draws its whole-region box at a wide
+view and its eight grid boxes closer in; recording the whole region's alone would have left nothing
+to replay at state zoom. `recordedBoxes` is all nine, each as `fieldBoxes` shapes it (the outer ones
+grown to the region's edges), with `radar.GridBoxes` naming the grid.
+
+**Not yet drawn.** Replay - a loop's past hours from the record, and the RECORDED chip - is part 2.
+
+**Mutation verdicts** (targeted, 5): no claim, nothing put, the grid not recorded, a region
+recorded twice, feels-like dropped - all caught.

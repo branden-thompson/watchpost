@@ -104,6 +104,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	if lp.temp == nil || ask.Region == "" {
 		return tty.MapTemperature{}
 	}
+	lp.lastMapRegion.Store(ask.Region) // the history records the map's region too (D-172)
 	src := lp.temp.sourceFor(ask)
 	var fill temperature.Source
 	if src != lp.temp.om {

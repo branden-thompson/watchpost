@@ -63,6 +63,17 @@ func BoxesFor(region string, view geo.Box) []Box {
 	return out
 }
 
+// GridBoxes are a region's closer boxes, which a narrower view draws in
+// place of the whole region's: the lower 48's grid, or none. The history
+// records each (W18.3b), so any view can replay.
+func GridBoxes(region string) []Box {
+	whole, ok := wholeBoxes[region]
+	if !ok || region != geo.RegionContiguous {
+		return nil
+	}
+	return grid(whole)
+}
+
 // grid is the lower 48's closer boxes. SIZED TO THE LOOP, NOT THE CAP (UAT-2
 // U2-5): a box's two-hour loop must fit the map's image budget, which
 // charges a frame its PNG and a byte a pixel - boxes near the cap were

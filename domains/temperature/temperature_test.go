@@ -462,3 +462,24 @@ func TestOpenMeteoReadsTheAirQuality(t *testing.T) {
 		t.Errorf("the days' worst are %v, %v; want 47 today, then 81", a.Max[0][escondido], a.Max[1][escondido])
 	}
 }
+
+// THE CURRENT HOUR ALONE, FOR THE HISTORY (W18.3b, D-166): one ask - the very
+// address Fetch's second ask is, so the two share the HTTP cache and an hour
+// the map already fetched costs the recorder nothing - read as Fetch reads it.
+func TestNDFDsCurrentHourIsFetchsOwnAsk(t *testing.T) {
+	hourGet, fetchGet := &fakeGet{t: t}, &fakeGet{t: t}
+	s, err := NewNDFD(hourGet, "").Hour(context.Background(), fixtureLattice, captured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewNDFD(fetchGet, "").Fetch(context.Background(), fixtureLattice, captured); err != nil {
+		t.Fatal(err)
+	}
+	if len(hourGet.asks) != 1 || hourGet.asks[0] != fetchGet.asks[1] {
+		t.Fatalf("the hour asked %v; want Fetch's own second ask, %s", hourGet.asks, fetchGet.asks[1])
+	}
+	hour, at, ok := s.HourAt(captured)
+	if !ok || !at.Equal(captured.Truncate(time.Hour)) || !near(hour[escondido], cOf(80)) {
+		t.Errorf("the current hour is %v at %v (%v); want 80F at 01:00Z", hour, at, ok)
+	}
+}

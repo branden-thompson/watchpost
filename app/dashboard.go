@@ -35,6 +35,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/weather/nws/zones"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/config"
+	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -297,6 +298,7 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// goroutine, because it is network work and the dashboard must not wait for
 	// it to open.
 	go lp.rebed(ctx)
+	lp.startHistory(ctx)                                                            // W18.3b: recorded whenever watchpost runs, in any mode (D-172)
 	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send) // a read ends with the app (A-08)
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
@@ -711,31 +713,35 @@ type livePipelines struct {
 	// this is only the reporting half, for [S].
 	unknownKeys []string
 
-	zoneShapes *zones.Store  // the outlines an alert's zones name (0.17.0)
-	radar      *radarSources // 0.18.0 W8: the map's radar sources, over their own hardened client
-	temp       *tempSources  // 0.18.0 W10: the map's temperature sources, over theirs
-	maps       *mapBuilder   // 0.18.0: builds the window's maps; nil builds none
-	p          *tea.Program
-	provider   snapshot.Provider
-	marine     []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)
-	fire       []snapshot.Provider // hms + wfigs + firms (B5)
-	firms      *firms.Provider     // the keyed one, so the Setup window can turn it on without a relaunch (UAT 100)
-	seismic    []snapshot.Provider // usgs (0.11.0)
-	rules      fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
-	priority   *pipeline
-	recent     *recentPipeline
-	ticker     *tickerDeck          // 0.12.0: waited at shutdown so its cache writes settle before teardown
-	severe     *severeDeck          // 0.13.0: the severe-events index the window lists
-	mapQuakes  *mapQuakes           // 0.18.0 D-122: the map's quake feeds, the listener's choice
-	airnow     *airquality.Provider // 0.18.0 D-138: AirNow's reporting areas, for the map's air quality
-	mapClients []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
-	tiles      *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
-	problems   mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
-	timings    *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
-	director   *director            // 0.13.0: the voice arbiter (app/director.go)
-	scripts    *script.Library      // 0.13.0: the spoken lines (domains/radio/script)
-	reader     *eventReader         // 0.13.0: [space] in the window
-	schedule   *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump — running, driving nothing yet
+	zoneShapes *zones.Store   // the outlines an alert's zones name (0.17.0)
+	radar      *radarSources  // 0.18.0 W8: the map's radar sources, over their own hardened client
+	temp       *tempSources   // 0.18.0 W10: the map's temperature sources, over theirs
+	history    *history.Store // W18.3b: what the sources said, recorded (D-166)
+	// lastMapRegion is the region the map last asked temperature for: the
+	// history records it beside the station's (D-172).
+	lastMapRegion atomic.Value
+	maps          *mapBuilder // 0.18.0: builds the window's maps; nil builds none
+	p             *tea.Program
+	provider      snapshot.Provider
+	marine        []snapshot.Provider // nws-marine + ndbc + coops (UAT 29 / 61)
+	fire          []snapshot.Provider // hms + wfigs + firms (B5)
+	firms         *firms.Provider     // the keyed one, so the Setup window can turn it on without a relaunch (UAT 100)
+	seismic       []snapshot.Provider // usgs (0.11.0)
+	rules         fire.Rules          // the [fire] rings, for the broadcast's fire report (UAT 114)
+	priority      *pipeline
+	recent        *recentPipeline
+	ticker        *tickerDeck          // 0.12.0: waited at shutdown so its cache writes settle before teardown
+	severe        *severeDeck          // 0.13.0: the severe-events index the window lists
+	mapQuakes     *mapQuakes           // 0.18.0 D-122: the map's quake feeds, the listener's choice
+	airnow        *airquality.Provider // 0.18.0 D-138: AirNow's reporting areas, for the map's air quality
+	mapClients    []*httpx.Client      // 0.18.0 D-150: the radar's and the temperature's, counted for MAP STATUS
+	tiles         *tileCounter         // 0.18.0 D-150: the basemap's tile fetches, counted
+	problems      mapProblems          // 0.18.0 D-124: what went wrong with the map that the listener cannot act on
+	timings       *timingLog           // W14's timing instrument (D-154): nil unless WATCHPOST_DEBUG_TIMING=1
+	director      *director            // 0.13.0: the voice arbiter (app/director.go)
+	scripts       *script.Library      // 0.13.0: the spoken lines (domains/radio/script)
+	reader        *eventReader         // 0.13.0: [space] in the window
+	schedule      *schedule            // 0.14.0 T3.2a: the Director, its executors and the pump — running, driving nothing yet
 
 	watchRefs []snapshot.LocationRef // the live watchlist the ticker ties events to; updated on Commit (0.12.0 follow-up)
 
