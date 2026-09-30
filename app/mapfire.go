@@ -95,8 +95,7 @@ func perimeterKey(p wfigs.Perimeter) string {
 // - its incident carries the words; each incident a marker labelled with its
 // name, acres and containment; the hotspots the rules keep, one overlay of
 // dots, the strong in fire's role and the rest fainter.
-func fireOverlays(f fireInView, view tty.MapView, rules fire.Rules) []tuimaps.Overlay {
-	now := time.Now()
+func fireOverlays(f fireInView, view tty.MapView, rules fire.Rules, now time.Time) []tuimaps.Overlay {
 	var out []tuimaps.Overlay
 	var perims []tuimaps.Feature // one overlay a kind, never a fire (D-129, UAT-2 U2-34)
 	for _, p := range f.perimeters {
@@ -116,7 +115,7 @@ func fireOverlays(f fireInView, view tty.MapView, rules fire.Rules) []tuimaps.Ov
 		}
 	}
 	if len(perims) > 0 {
-		out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/perimeters", Valid: now, Keeps: fireKeeps, Credit: wfigs.Attribution, Features: perims})
+		out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/perimeters", Valid: overlayStamp(now), Keeps: fireKeeps, Credit: wfigs.Attribution, Features: perims})
 	}
 	var incidents []tuimaps.Feature
 	for _, in := range f.incidents {
@@ -127,7 +126,7 @@ func fireOverlays(f fireInView, view tty.MapView, rules fire.Rules) []tuimaps.Ov
 			Role: tuimaps.Fire, Label: incidentLabel(in), ID: in.Name + "@" + strconv.FormatFloat(in.Lat, 'f', 3, 64)})
 	}
 	if len(incidents) > 0 {
-		out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/incidents", Valid: now, Keeps: fireKeeps, Credit: wfigs.Attribution, Features: incidents})
+		out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/incidents", Valid: overlayStamp(now), Keeps: fireKeeps, Credit: wfigs.Attribution, Features: incidents})
 	}
 	var dots []tuimaps.Feature
 	for _, h := range f.hotspots {
@@ -141,7 +140,7 @@ func fireOverlays(f fireInView, view tty.MapView, rules fire.Rules) []tuimaps.Ov
 		dots = append(dots, tuimaps.Feature{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: h.Lon, Lat: h.Lat}}}, Role: role})
 	}
 	if len(dots) > 0 {
-		out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/hotspots", Valid: now, Keeps: fireKeeps, Credit: hmsCredit, Features: dots})
+		out = append(out, tuimaps.Overlay{ID: tty.FireLayer + "/hotspots", Valid: overlayStamp(now), Keeps: fireKeeps, Credit: hmsCredit, Features: dots})
 	}
 	return out
 }

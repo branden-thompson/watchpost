@@ -85,3 +85,39 @@ func TestTheMapReadsEveryIncident(t *testing.T) {
 		t.Errorf("the map asked %v; want the places' own query", qs[0])
 	}
 }
+
+// TestABoxsPerimetersAreDecodedOnce is W14's P-7: a box's perimeters (up to
+// ~378 KB) are served from the cache on every map ask, and were decoded
+// again each time. The same box's same body is decoded once.
+func TestABoxsPerimetersAreDecodedOnce(t *testing.T) {
+	body, err := os.ReadFile("testdata/perimeters.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var qs []url.Values
+	p := serve(t, body, &qs)
+	for range 3 {
+		if ps, err := p.Perimeters(context.Background(), -125, 42, -116, 49); err != nil || len(ps) != 4 {
+			t.Fatalf("%d perimeters, %v", len(ps), err)
+		}
+	}
+	if n := p.PerimeterParses(); n != 1 {
+		t.Errorf("three asks of one box decoded it %d times; want once", n)
+	}
+}
+
+// TestABadPerimetersBodyIsNotServedAgain: a body that does not decode is
+// forgotten by the cache, so the next ask fetches afresh rather than being
+// handed the same bad bytes for the rest of their cache life.
+func TestABadPerimetersBodyIsNotServedAgain(t *testing.T) {
+	var qs []url.Values
+	p := serve(t, []byte("<html>not GeoJSON</html>"), &qs)
+	for range 2 {
+		if _, err := p.Perimeters(context.Background(), -125, 42, -116, 49); err == nil {
+			t.Fatal("a body that does not decode was read as perimeters")
+		}
+	}
+	if len(qs) != 2 {
+		t.Errorf("two asks after a bad body reached the host %d times; the bad body was served from the cache", len(qs))
+	}
+}

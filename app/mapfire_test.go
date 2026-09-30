@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
@@ -47,7 +48,7 @@ func someFire() fireInView {
 // rules keep as dots, the strong in fire's role and the rest fainter; each
 // credited; none an alert.
 func TestFireIsDrawnFromItsThreeSources(t *testing.T) {
-	got := fireOverlays(someFire(), fireView, fire.DefaultRules())
+	got := fireOverlays(someFire(), fireView, fire.DefaultRules(), time.Now())
 	var perimeter, incidents, hotspots []tuimaps.Feature
 	for _, o := range got {
 		if !strings.HasPrefix(o.ID, tty.FireLayer+"/") || o.Credit == "" {
@@ -122,7 +123,7 @@ func TestTheFeedCarriesTheFire(t *testing.T) {
 	defer srv.Close()
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	lp := &livePipelines{fire: []snapshot.Provider{wfigs.New(c, srv.URL+"/query", fire.DefaultRules())}, rules: fire.DefaultRules()}
-	ask := tty.MapAsk{Snap: &snapshot.Snapshot{}, Region: geo.RegionContiguous, View: tty.MapView{W: -125, S: 42, E: -116, N: 49}}
+	ask := tty.MapAsk{Snap: &snapshot.Snapshot{}, Region: geo.RegionContiguous, View: tty.MapView{W: -125, S: 42, E: -116, N: 49}, Fire: true}
 	feed := lp.mapFeedWith(context.Background(), lp.mapInputsFetching(context.Background(), ask), func(snapshot.Location) []string { return nil })
 	n := 0
 	for _, o := range feed.Overlays {
@@ -183,7 +184,7 @@ func TestAPerimeterInTwoBoxesIsDrawnOnce(t *testing.T) {
 // the feed's inputs, and the fire kept is the choice's - all of it, the named
 // fires alone, or the hotspots alone.
 func TestTheFireRowChoosesWhatTheFeedCarries(t *testing.T) {
-	all := fireOverlays(someFire(), fireView, fire.DefaultRules())
+	all := fireOverlays(someFire(), fireView, fire.DefaultRules(), time.Now())
 	ids := func(os []tuimaps.Overlay) string {
 		var out []string
 		for _, o := range os {

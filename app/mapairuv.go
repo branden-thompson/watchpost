@@ -137,7 +137,7 @@ const airLabelMost = 30
 // in Forecast mode AirNow's own forecast for today and tomorrow, each during
 // its step. Labelled "Name 42", or "Name Good" where AirNow forecasts a
 // category alone, while few enough are in view.
-func airnowOverlays(areas []airquality.Area, view tty.MapView, anchor time.Time) ([]tuimaps.Overlay, map[string]tty.TimedOverlay) {
+func airnowOverlays(areas []airquality.Area, view tty.MapView, anchor, at time.Time) ([]tuimaps.Overlay, map[string]tty.TimedOverlay) {
 	var in []airquality.Area
 	for _, a := range areas {
 		if view.Contains(a.Lat, a.Lon) {
@@ -164,7 +164,7 @@ func airnowOverlays(areas []airquality.Area, view tty.MapView, anchor time.Time)
 		}
 	}
 	if len(now) > 0 {
-		o := tuimaps.Overlay{ID: tty.AirLayer + "/airnow", Valid: time.Now(), Keeps: time.Hour, Credit: airquality.Attribution, Features: now}
+		o := tuimaps.Overlay{ID: tty.AirLayer + "/airnow", Valid: overlayStamp(at), Keeps: time.Hour, Credit: airquality.Attribution, Features: now}
 		out, times[o.ID] = append(out, o), tty.TimedOverlay{Happened: true} // so now: through the loop, and on Now alone in Forecast mode
 	}
 	if anchor.IsZero() {

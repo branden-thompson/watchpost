@@ -139,7 +139,7 @@ func buoyOverlay(obs []ndbc.Obs, view tty.MapView, now time.Time, imperial bool)
 	if len(feats) == 0 {
 		return tuimaps.Overlay{}, false
 	}
-	return tuimaps.Overlay{ID: tty.BuoyLayer + "/buoys", Valid: now, Keeps: marineKeeps, Credit: ndbc.Attribution, Features: feats}, true
+	return tuimaps.Overlay{ID: tty.BuoyLayer + "/buoys", Valid: overlayStamp(now), Keeps: marineKeeps, Credit: ndbc.Attribution, Features: feats}, true
 }
 
 // buoyLabel is a buoy's words: "4ft 73°", "1.2m 23°", or "12kt" where it
@@ -188,7 +188,7 @@ func tideOverlay(stations []coops.Station, view tty.MapView, now time.Time, impe
 		}
 		feats = append(feats, tuimaps.Feature{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: s.Lon, Lat: s.Lat}}}, Role: tuimaps.Tide, Label: label, ID: s.ID})
 	}
-	return tuimaps.Overlay{ID: tty.TideLayer + "/tides", Valid: now, Keeps: marineKeeps, Credit: "NOAA CO-OPS tide predictions", Features: feats}, true
+	return tuimaps.Overlay{ID: tty.TideLayer + "/tides", Valid: overlayStamp(now), Keeps: marineKeeps, Credit: "NOAA CO-OPS tide predictions", Features: feats}, true
 }
 
 // tideLabel is a next tide's words: "H 3.9ft 4:01 PM", or in metres.

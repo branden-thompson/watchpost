@@ -236,3 +236,25 @@ func TestM5IsReachedUnderAStreamOfData(t *testing.T) {
 		t.Errorf("settled with a re-ask still wanted: %v", got)
 	}
 }
+
+// TestAWarmReopenReachesM5 is the sessions' warm opens (W14): a pan whose
+// settle tick lands while the map is closed is dropped, so the reopened map
+// was never "still" and M5 never said - though opening the map asks for its
+// view afresh. The open is the view's ask.
+func TestAWarmReopenReachesM5(t *testing.T) {
+	tm := &timings{}
+	d := openTimedMap(t, tm)
+	m, _ := d.Update(tea.KeyPressMsg{Code: tea.KeyRight}) // a pan...
+	d = m.(Dashboard)
+	d, _ = pressKey(d, "g")                                    // ...and the map closed before it settles
+	m, _ = d.Update(mapViewSettledMsg{gen: d.mapPane.viewGen}) // its tick, dropped: the map is closed
+	d = m.(Dashboard)
+	if d.mapPane.viewAsked == d.mapPane.viewGen {
+		t.Fatal("control: the dropped tick left nothing unasked, so this proves nothing")
+	}
+	m, _ = d.Update(tea.KeyPressMsg{Code: 'g', Text: "g"}) // reopened: the open asks for its view
+	d = m.(Dashboard)
+	if d.mapPane.viewAsked != d.mapPane.viewGen {
+		t.Error("the reopened map asked for its view, but it is not counted still - M5 can never be said")
+	}
+}

@@ -73,6 +73,18 @@ func AlertCategoryKey(c category.Category) (string, bool) {
 // table flat.
 func categoryChoice(key string) string { return AlertLayer + "-" + key }
 
+// alertCategoriesOff are the alert categories unchecked in the Overlays
+// menu, as the feed's ask says them (D-160).
+func (d Dashboard) alertCategoriesOff() []string {
+	var off []string
+	for _, c := range AlertCategories() {
+		if !d.layerOn(categoryChoice(c.Key)) {
+			off = append(off, c.Key)
+		}
+	}
+	return off
+}
+
 // AlertCategorySwitch is an alert category's switch, as the app asks it
 // (D-149): the key its checkbox is kept under.
 func AlertCategorySwitch(key string) string { return categoryChoice(key) }
@@ -584,6 +596,15 @@ type MapAsk struct {
 	// Buoys and Tides say their rows are on: they are asked only then
 	// (D-127, D-128) - the tides are a request a station.
 	Buoys, Tides bool
+	// Fire and Quakes say those rows are on (W14, P-3): each fetched only
+	// then - D-149's "nothing of it is fetched" for what is off.
+	Fire, Quakes bool
+	// AlertsOff says the Alert areas layer is off, and AlertCategoriesOff
+	// the categories unchecked (D-80): their alerts are gone from the map -
+	// not drawn, described, noted nor fetched (D-160). Said as what is OFF,
+	// so an ask that says nothing asks for every alert.
+	AlertsOff          bool
+	AlertCategoriesOff []string
 	// UV and Air say those rows are on (D-137, D-139): each asked only then,
 	// UV where temperature's source is not Open-Meteo's already.
 	UV, Air bool
@@ -610,7 +631,7 @@ func (d Dashboard) mapAsk() MapAsk {
 		snap = &joined
 	}
 	return MapAsk{Snap: snap, Place: place, View: d.viewBox(d.mapBodySize()), Region: d.mapPane.region.Name, RadarIEM: d.mapRadarIEM,
-		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
+		Forecast: !d.radarMode(), TempNDFD: d.mapTempNDFD, RadarAhead: d.mapRadarAhead, QuakeFeed: d.mapQuakeFeed, Clock: d.clockFmt, Buoys: d.layerOn(BuoyLayer), Tides: d.layerOn(TideLayer), Fire: d.layerOn(FireLayer), Quakes: d.layerOn(QuakeLayer), AlertsOff: !d.layerOn(AlertLayer), AlertCategoriesOff: d.alertCategoriesOff(), UV: d.layerOn(UVLayer), Air: d.layerOn(AirLayer), FireMode: d.fireMode(), Fahrenheit: d.units == render.UnitF, Anchor: d.tempAnchor()}
 }
 
 // detailRowLayer is the detail layer a Map detail row switches, and whether the

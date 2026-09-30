@@ -67,11 +67,11 @@ hold is listed at the end.
 |---|---|---|---|
 | P-1 | **Fixed, batch 59 (D-156).** **The map's requests wait behind the station's launch burst.** The map's work contexts are `context.Background()` (`map_work.go`), so alerts in view, zone shapes, fire, quakes, AirNow go on the data client's normal lane — the RECENT pipeline's launch burst's lane (~375–600 requests at 30/s, FIFO). Only favourites use `WithPriority` | The ±0.4 s spread of cold M5 | Verified (lane); burst size estimated from code |
 | P-2 | **Fixed, batch 59.** **Every move key asks the whole feed at once, and again 600 ms later.** `handleMapKey` batches `mapFeedCmd` on every pan, zoom and region key; D-66's settle tick then asks again. The per-key ask predates D-66 (batch 5) and survived it (batch 15) | History; code | Verified |
-| P-3 | **Fire and quakes are fetched on every feed ask whatever their switches** (`inputsFor` → `fireIn`, `mapQuakes.fetch`); buoys, tides and air check theirs | Code | Verified |
-| P-4 | Zone shapes resolved for alert categories switched off (the estimate skips them, D-149; the feed does not) | Auditor | Reported |
+| P-3 | **Fixed, batch 60.** **Fire and quakes are fetched on every feed ask whatever their switches** (`inputsFor` → `fireIn`, `mapQuakes.fetch`); buoys, tides and air check theirs | Code | Verified |
+| P-4 | **Fixed, batch 60 (D-160).** Zone shapes resolved for alert categories switched off (the estimate skips them, D-149; the feed does not) | Auditor | Reported |
 | P-5 | The feed's inputs are fetched one after another — view alerts, fire (perimeters box by box), quakes, buoys, up to 20 serial tide predictions, AirNow — then the zones | Auditor, two independently | Reported |
-| P-6 | **Seven overlays are stamped `Valid: now`** (fire ×3, AirNow, buoys, tides, quakes), so no answer compares unchanged and each is handed in again | Code | Verified |
-| P-7 | Big bodies re-parsed on every ask though cached (AirNow 1.9 MB, perimeters, NDBC) | Auditor | Reported |
+| P-6 | **Fixed, batch 60.** **Seven overlays are stamped `Valid: now`** (fire ×3, AirNow, buoys, tides, quakes), so no answer compares unchanged and each is handed in again | Code | Verified |
+| P-7 | **Fixed, batch 60 (AirNow, perimeters; NDBC left).** Big bodies re-parsed on every ask though cached (AirNow 1.9 MB, perimeters, NDBC) | Auditor | Reported |
 | P-8 | **Fixed, batch 58.** `time.LoadLocation` (a zoneinfo read) per alert sentence in the map's description; `platform/tz` exists for this | Code | Verified |
 | P-9 | Double renders: `retime` → `setFeed` → `renderMap`, then the caller's own — every forecast step and playback tick | Auditor | Reported |
 | P-10 | The library repaints fully when the blink phase flips, though watchpost places no blinking marker | Code (`frame.go` compares the phase unconditionally; watchpost sets no `Blink`) | Verified mechanism; cost unmeasured |
@@ -98,6 +98,8 @@ hold is listed at the end.
 | # | Finding | Evidence | Status |
 |---|---|---|---|
 | C-7 | **The map drops under its floor at mid-size terminals**: at 149×38 the window's status, notes and radar timeline left the map 11 rows, so the notice showed in its place. Pre-existing and intermittent at the checkpoint (probed on its own binary, even `default`); steady once answers landed reliably | Render probe, checkpoint vs batch 59 | **Fixed, batch 59 (D-159)** |
+| R-1 | An occasional ~0.6 s pan freeze under the full session (1 of 42 pans in `default`, 2 of 42 in `heavy`: the pan's own frame, `complete` at the same moment); the baseline's worst was 112 ms | Session runs after batch 59. **Not batch 59's**: a pan A/B, batch 58 against 59, 82 pans each on one workload, gave median 37 / 36 ms, p90 59 / 58, max 61 / 60, none over 300 ms | Open: watched in the next sessions, a CPU profile route added so one can be caught |
+| CPU-1 | One burst of ~60 CPU-seconds in ~44 s at +60 min of the `default` session (a warm reopen); absent in `heavy` at its own +60 | A targeted reproduction (the same sequence, 10 min closed, then reopen) did not trigger it: a normal 2-4 s at ~70 % of a core | Open, cause unknown: watched, with the profile route |
 | S-10 | The station identification on going ON AIR (F-24's `mastheadLine`) is built and tested but wired to nothing | Code | **Ruled D-158**: removed, a seam left — the structure batch |
 
 ### Claimed, and did not hold

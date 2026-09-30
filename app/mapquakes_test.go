@@ -14,12 +14,15 @@ import (
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
+	"github.com/branden-thompson/watchpost/domains/fire"
+	"github.com/branden-thompson/watchpost/domains/fire/wfigs"
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
+	"strings"
 )
 
 func TestTheAlertsAreFiledAsTheSevereWindowFilesThem(t *testing.T) {
@@ -101,11 +104,11 @@ func TestTheMapAsksTheQuakesChosen(t *testing.T) {
 	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
 	lp := &livePipelines{mapQuakes: newMapQuakes(c, srv.URL+"/")}
 	view := tty.MapView{W: -118.6, S: 32.5, E: -116.4, N: 34.1}
-	in := lp.mapInputsFetching(context.Background(), tty.MapAsk{View: view})
+	in := lp.mapInputsFetching(context.Background(), tty.MapAsk{View: view, Quakes: true})
 	if len(in.quakes) != 1 || in.quakes[0].ID != "q1" || len(asked) != 1 || asked[0] != "/2.5_week.geojson" {
 		t.Fatalf("the inputs hold %v, asked %v; want q1 alone, from M2.5+ past week", in.quakes, asked)
 	}
-	_ = lp.mapInputsFetching(context.Background(), tty.MapAsk{View: view, QuakeFeed: "1.0_day"})
+	_ = lp.mapInputsFetching(context.Background(), tty.MapAsk{View: view, Quakes: true, QuakeFeed: "1.0_day"})
 	if asked[len(asked)-1] != "/1.0_day.geojson" {
 		t.Errorf("M1.0+ past day asked %v", asked)
 	}
@@ -147,5 +150,34 @@ func TestEveryQuakeIsAcceptedByTheLibrary(t *testing.T) {
 	o, _ := quakeOverlay(feed, now, render.ClockByKey("12h"))
 	if _, err := m.Set(o); err != nil {
 		t.Errorf("%s was refused: %v", o.ID, err)
+	}
+}
+
+// TestFireAndQuakesAreAskedOnlyWhileOn is W14's P-3, D-149's rule for what
+// is off - "nothing of it is fetched": fire and quakes were fetched on every
+// feed ask whatever their switches, and dropped after. Off, neither is asked;
+// on, each is.
+func TestFireAndQuakesAreAskedOnlyWhileOn(t *testing.T) {
+	var asked []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked = append(asked, r.URL.Path)
+		_, _ = w.Write([]byte(`{"features":[]}`))
+	}))
+	defer srv.Close()
+	c, _ := httpx.New(httpx.Config{UserAgent: "t (t@example.com)", RatePerSec: 1000, MaxRetries: 0})
+	lp := &livePipelines{mapQuakes: newMapQuakes(c, srv.URL+"/"), fire: []snapshot.Provider{wfigs.New(c, srv.URL+"/query", fire.DefaultRules())}, rules: fire.DefaultRules()}
+	view := tty.MapView{W: -118.6, S: 32.5, E: -116.4, N: 34.1}
+	_ = lp.mapInputsFetching(context.Background(), tty.MapAsk{View: view})
+	if len(asked) != 0 {
+		t.Fatalf("with Fire and Quakes off the feed asked %v", asked)
+	}
+	_ = lp.mapInputsFetching(context.Background(), tty.MapAsk{View: view, Fire: true, Quakes: true})
+	var quake, fires bool
+	for _, p := range asked {
+		quake = quake || strings.HasSuffix(p, ".geojson")
+		fires = fires || strings.HasPrefix(p, "/query")
+	}
+	if !quake || !fires {
+		t.Errorf("with both on the feed asked %v; want the quakes and the fire", asked)
 	}
 }

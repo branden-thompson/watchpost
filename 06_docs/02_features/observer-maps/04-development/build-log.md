@@ -2017,3 +2017,41 @@ Still above D-46's 3.5 s: batch 59b takes the feed's inputs (serial, and fetched
 **Mutation verdicts** (targeted, 23): all caught, four only after their tests were strengthened -
 the memo read through the real request path, an answer for a view left, the ceiling, and notes
 shown in full where the window can grow.
+
+## Batch 60 — what the feed asks for (D-155 step 2b; D-160; 2026-09-30)
+
+**P-3.** Fire and Quakes were fetched on every feed ask whatever their switches, and dropped after.
+The ask carries both rows, and each is fetched only while on - D-149's "nothing of it is fetched".
+
+**P-4, D-160 ("unchecked = gone").** An unchecked alert category was not drawn, but its zones were
+still resolved, and the window kept its notes and its "alerts in view", so the description could
+name an alert of a category the listener had unchecked. The ask says what is switched OFF (an ask
+that says nothing asks for everything), and the feed drops those alerts before their zones are
+asked; with the layer off, it drops them all. The description's sentences already read only what
+is drawn.
+
+**P-6.** Fire, buoys, tides, quakes and AirNow were stamped `Valid` with the moment of each ask, so
+the same data a minute later was a new overlay - handed to the library again, and prepared again,
+on every answer. Stamped to a 10-minute step (`overlayStamp`), unchanged data compares the same;
+currency moves at most a step early, well inside every `Keeps` (an hour at least). Ages - a buoy's
+reading, a quake's NEW - still read the moment.
+
+**P-7.** AirNow's national file (~1.9 MB) and a box's perimeters (up to ~378 KB) were parsed again
+on every ask though served from the cache. Now through `platform/bodymemo`: AirNow keyed by the UTC
+hour (its parse reads the moment only to the hour), perimeters by the box's URL; a bad perimeters
+body is still forgotten - a test now holds it, which none did before.
+
+**The instrument.** A warm reopen is its view's ask, so the view counts as still; a pan's settle
+tick dropped while the map was closed had left warm opens never "still", and M5 unsaid. The debug
+server takes a CPU profile (`/debug/pprof/profile`), so CPU-1's kind of burst can be caught.
+
+**P10 held at 31.** Calling `bodymemo.New` inside a provider's own `New` reads, to the name-matching
+call graph, as `New` calling itself; the constructor is referenced as a value instead.
+
+**Measured, cold opens at first data, n = 5 each** (`06_docs/perf/workload-v1/after-batch-60/`):
+`default` M5 7.3 s (7.1-9.7), `heavy` 9.6 s (9.4-9.9) - within batch 59's (7.6, 10.1): this batch
+saves repeated asks and switched-off layers, which a cold open with the defaults has neither of.
+Render check PASS both. The first answer's ~5.4 s is the serial inputs, the next batch's (P-5).
+
+**Mutation verdicts** (targeted, 14): all caught, two after their tests were strengthened (the
+switches read through `inputsFor`; a bad perimeters body).

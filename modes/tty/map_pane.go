@@ -227,7 +227,9 @@ func (d Dashboard) toggleMap() Dashboard {
 	d.mapPane.fcGen++
 	d.mapPane.tempAuto, d.mapPane.modeChip = false, false
 	d = d.ensureMainOverlay() // D-103: a map opened in Forecast mode is never blank
-	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().requestFeed().renderMap()
+	d = d.applyDetail().applyPlayback().showStep().refreshMapCost().followSelection().requestFeed()
+	d.mapPane.viewAsked = d.mapPane.viewGen // the open asks for its view: a move's tick dropped while closed is answered here (W14)
+	d = d.renderMap()
 	d, feed := d.askFeed()
 	d, radar := d.askRadar()
 	d, temp := d.askTemp()

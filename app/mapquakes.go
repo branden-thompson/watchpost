@@ -132,7 +132,7 @@ func quakeOverlay(quakes []globalfeed.Event, now time.Time, clock render.Clock) 
 		feats = append(feats, tuimaps.Feature{Kind: tuimaps.Circle, Centre: tuimaps.LonLat{Lon: e.Lon, Lat: e.Lat},
 			RadiusDots: quakeRingDots(mag), Role: quakeAgeRole(now.Sub(e.At)), Label: quakeLabel(mag, e.At, now, clock), ID: e.ID})
 	}
-	return tuimaps.Overlay{ID: quakeLayerKey + "/quakes", Valid: now, Keeps: quakeKeeps, Features: feats}, true
+	return tuimaps.Overlay{ID: quakeLayerKey + "/quakes", Valid: overlayStamp(now), Keeps: quakeKeeps, Features: feats}, true
 }
 
 // quakeRingDots is a ring's radius on the screen: half again with each

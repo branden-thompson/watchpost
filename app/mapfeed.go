@@ -90,11 +90,11 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 			}
 		}
 	}
-	for _, o := range fireChosen(fireOverlays(in.fire, in.view, lp.fireRules()), in.fireMode) { // D-121, D-145: the fire in view, as chosen
+	now := time.Now()
+	for _, o := range fireChosen(fireOverlays(in.fire, in.view, lp.fireRules(), now), in.fireMode) { // D-121, D-145: the fire in view, as chosen
 		out.Overlays = append(out.Overlays, o)
 		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
 	}
-	now := time.Now()
 	var marine []tuimaps.Overlay // D-127, D-128: the sea's stations
 	if o, ok := buoyOverlay(in.buoys, in.view, now, in.imperial); ok {
 		marine = append(marine, o)
@@ -114,7 +114,7 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 		out.Overlays = append(out.Overlays, o)
 		out.Times = timed(out.Times, o.ID, tty.TimedOverlay{Happened: true}) // so now: through the loop, and on Now alone in Forecast mode
 	}
-	airnow, airTimes := airnowOverlays(in.airnow, in.view, in.anchor) // D-139: AirNow's monitors
+	airnow, airTimes := airnowOverlays(in.airnow, in.view, in.anchor, now) // D-139: AirNow's monitors
 	for _, o := range airnow {
 		out.Overlays = append(out.Overlays, o)
 		out.Times = timed(out.Times, o.ID, airTimes[o.ID])
@@ -237,20 +237,37 @@ func alertCategory(a snapshot.Alert) (string, bool) {
 	return tty.AlertCategoryKey(tab)
 }
 
+// overlayStep is the step a point overlay's Valid is stamped to (W14, P-6).
+// Stamped with the moment of each ask, the same data a minute later was a new
+// overlay - handed to the library, and prepared, again on every answer. To
+// the step, unchanged data compares the same across asks; its currency moves
+// at most a step early, well inside every Keeps (an hour at the least), and
+// the next ask stamps it anew. Ages - a buoy's reading, a quake's NEW - still
+// read the moment itself.
+const overlayStep = 10 * time.Minute
+
+// overlayStamp is the Valid a point overlay built now carries.
+func overlayStamp(now time.Time) time.Time { return now.Truncate(overlayStep) }
+
 // drawable is the snapshot the feed and the estimate walk: withInView's, with
-// only the alerts the map draws, so no zone is fetched for a forecast (D-80).
-// A copy: the station's snapshot is shared.
+// only the alerts the map draws - never a forecast (D-80), nor an alert of a
+// category unchecked or with the layer off (D-160) - so no zone is fetched for
+// one. A copy: the station's snapshot is shared.
 func (in mapInputs) drawable() *snapshot.Snapshot {
 	all := in.withInView()
 	if all == nil {
 		return nil
+	}
+	off := map[string]bool{}
+	for _, c := range in.alertCategoriesOff {
+		off[c] = true
 	}
 	out := *all
 	out.Locations = make([]snapshot.Location, len(all.Locations))
 	for i, loc := range all.Locations {
 		kept := make([]snapshot.Alert, 0, len(loc.Alerts))
 		for _, a := range loc.Alerts {
-			if _, ok := alertCategory(a); ok {
+			if cat, ok := alertCategory(a); ok && !in.alertsOff && !off[cat] {
 				kept = append(kept, a)
 			}
 		}

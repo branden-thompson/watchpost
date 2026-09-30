@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/fire"
+	"github.com/branden-thompson/watchpost/platform/bodymemo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 	"github.com/branden-thompson/watchpost/platform/invariant"
 	"github.com/branden-thompson/watchpost/platform/render"
@@ -42,6 +43,24 @@ type Provider struct {
 	perimeters string // the interagency perimeters' layer, on the same host (0.18.0 D-121)
 	rules      fire.Rules
 	memo       fire.Memo[[]incident]
+	// perimeterMemo is each box's perimeters by its URL (W14, P-7): served
+	// from the cache on every map ask, a box's body (up to ~378 KB) was
+	// decoded again each time. A few boxes a view; eight kept.
+	perimeterMemo *bodymemo.Memo[string, []Perimeter]
+}
+
+// newPerimeterMemo is the memo's constructor as a value: P10's call graph
+// matches a call by its bare name, and bodymemo.New called inside this
+// package's New reads as New calling itself (W14).
+var newPerimeterMemo = bodymemo.New[string, []Perimeter]
+
+// PerimeterParses is how many perimeter bodies have been decoded.
+func (p *Provider) PerimeterParses() int {
+	if p.perimeterMemo == nil {
+		return 0
+	}
+	_, n := p.perimeterMemo.Stats()
+	return n
 }
 
 // MemoIncidents reports how many decoded incidents the layer memo holds
@@ -70,7 +89,7 @@ func New(client *httpx.Client, base string, rules fire.Rules) *Provider {
 	if base == "" {
 		base = "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/WFIGS_Incident_Locations_Current/FeatureServer/0/query"
 	}
-	return &Provider{client: client, base: base, rules: rules,
+	return &Provider{client: client, base: base, rules: rules, perimeterMemo: newPerimeterMemo(8),
 		perimeters: strings.Replace(base, "WFIGS_Incident_Locations_Current", "WFIGS_Interagency_Perimeters_Current", 1)}
 }
 
@@ -204,44 +223,14 @@ func (p *Provider) Perimeters(ctx context.Context, w, s, e, n float64) ([]Perime
 	if err != nil {
 		return nil, fmt.Errorf("wfigs perimeters: %w", err)
 	}
-	var fc struct {
-		Features []struct {
-			Geometry *struct {
-				Type        string          `json:"type"`
-				Coordinates json.RawMessage `json:"coordinates"`
-			} `json:"geometry"`
-			Properties struct {
-				Name      string   `json:"poly_IncidentName"`
-				Acres     *float64 `json:"poly_GISAcres"`
-				Contained *float64 `json:"attr_PercentContained"`
-			} `json:"properties"`
-		} `json:"features"`
+	if p.perimeterMemo == nil {
+		return decodePerimeters(raw)
 	}
-	if err := json.Unmarshal(raw, &fc); err != nil {
-		p.client.Forget(u)
-		return nil, fmt.Errorf("wfigs perimeters: bad response body: %w", err)
+	out, err := p.perimeterMemo.Parsed(u, raw, decodePerimeters) // read-only to its callers: shared by the box's asks
+	if err != nil {
+		p.client.Forget(u) // a bad body is not served again
 	}
-	out := make([]Perimeter, 0, len(fc.Features))
-	for _, f := range fc.Features {
-		if f.Geometry == nil {
-			continue
-		}
-		var areas [][][][2]float64
-		switch f.Geometry.Type {
-		case "Polygon":
-			var one [][][2]float64
-			if json.Unmarshal(f.Geometry.Coordinates, &one) == nil {
-				areas = [][][][2]float64{one}
-			}
-		case "MultiPolygon":
-			_ = json.Unmarshal(f.Geometry.Coordinates, &areas)
-		}
-		if len(areas) == 0 {
-			continue
-		}
-		out = append(out, Perimeter{Name: f.Properties.Name, Acres: f.Properties.Acres, Contained: f.Properties.Contained, Areas: areas})
-	}
-	return out, nil
+	return out, err
 }
 
 // decodeLayer decodes the GeoJSON layer into the compact incident list:
@@ -267,3 +256,45 @@ func decodeLayer(raw []byte) ([]incident, error) {
 }
 
 // firstOf is the first reported acreage, nil when none is.
+
+// decodePerimeters is a perimeters body's decode: each active fire's name,
+// acres, containment and areas. Top-level, so the memo's hits allocate nothing.
+func decodePerimeters(raw []byte) ([]Perimeter, error) {
+	var fc struct {
+		Features []struct {
+			Geometry *struct {
+				Type        string          `json:"type"`
+				Coordinates json.RawMessage `json:"coordinates"`
+			} `json:"geometry"`
+			Properties struct {
+				Name      string   `json:"poly_IncidentName"`
+				Acres     *float64 `json:"poly_GISAcres"`
+				Contained *float64 `json:"attr_PercentContained"`
+			} `json:"properties"`
+		} `json:"features"`
+	}
+	if err := json.Unmarshal(raw, &fc); err != nil {
+		return nil, fmt.Errorf("wfigs perimeters: bad response body: %w", err)
+	}
+	out := make([]Perimeter, 0, len(fc.Features))
+	for _, f := range fc.Features {
+		if f.Geometry == nil {
+			continue
+		}
+		var areas [][][][2]float64
+		switch f.Geometry.Type {
+		case "Polygon":
+			var one [][][2]float64
+			if json.Unmarshal(f.Geometry.Coordinates, &one) == nil {
+				areas = [][][][2]float64{one}
+			}
+		case "MultiPolygon":
+			_ = json.Unmarshal(f.Geometry.Coordinates, &areas)
+		}
+		if len(areas) == 0 {
+			continue
+		}
+		out = append(out, Perimeter{Name: f.Properties.Name, Acres: f.Properties.Acres, Contained: f.Properties.Contained, Areas: areas})
+	}
+	return out, nil
+}

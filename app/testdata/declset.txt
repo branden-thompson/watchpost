@@ -53,6 +53,7 @@ const narrateRead
 const noRadarNote
 const numMainTrackStages
 const numNarrationClasses
+const overlayStep
 const perimeterBytes
 const publishCoalesce
 const pumpBacklog
@@ -621,6 +622,7 @@ func notNew
 func noteRead
 func onTheRail
 func overClient
+func overlayStamp
 func pairOf
 func parseLatLon
 func parseSayVoices

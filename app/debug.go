@@ -34,6 +34,7 @@ func startDebugProfiles(d *dumper) {
 func debugMux(d *dumper) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile) // a CPU profile: not a named profile, so Index cannot serve it (W14, CPU-1)
 	mux.HandleFunc("/debug/counters", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(d.record(time.Now()))

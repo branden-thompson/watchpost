@@ -198,3 +198,23 @@ func TestAnAnswerIsDrawnWhenOnlyTheMapsSizeChanged(t *testing.T) {
 		t.Error("an answer was dropped because the map's size changed, with no move")
 	}
 }
+
+// TestTheAskSaysWhatIsSwitchedOff is the dashboard's half of W14's P-3 and
+// D-160: the feed's ask carries the Fire and Quakes rows and the alert
+// switches as the listener set them, so what is off is never fetched.
+func TestTheAskSaysWhatIsSwitchedOff(t *testing.T) {
+	d := mapDash(t, Config{MapLayers: []MapLayer{{Key: AlertLayer, On: true}, {Key: FireLayer, On: true}, {Key: QuakeLayer, On: true}}})
+	if a := d.mapAsk(); !a.Fire || !a.Quakes || a.AlertsOff || len(a.AlertCategoriesOff) != 0 {
+		t.Fatalf("with everything on the ask says %+v", a)
+	}
+	off := AlertCategories()[0].Key
+	d.mapLayerChoice = layerChoiceKey(map[string]bool{FireLayer: false, QuakeLayer: false, categoryChoice(off): false})
+	a := d.mapAsk()
+	if a.Fire || a.Quakes || len(a.AlertCategoriesOff) != 1 || a.AlertCategoriesOff[0] != off {
+		t.Errorf("with Fire, Quakes and %s off the ask says Fire %v Quakes %v categories off %v", off, a.Fire, a.Quakes, a.AlertCategoriesOff)
+	}
+	d.mapLayerChoice = layerChoiceKey(map[string]bool{AlertLayer: false})
+	if !d.mapAsk().AlertsOff {
+		t.Error("with the Alert areas layer off the ask does not say so")
+	}
+}

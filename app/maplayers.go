@@ -51,6 +51,10 @@ type mapInputs struct {
 	anchor time.Time
 	// fireMode is the Fire row's choice (D-145).
 	fireMode string
+	// alertsOff and alertCategoriesOff are what the listener switched off:
+	// their alerts gone from the map, their zones never asked (D-160).
+	alertsOff          bool
+	alertCategoriesOff []string
 	// switchedOn is the window's switches, for an estimate that counts only
 	// what is on - an alert category among them (D-149); nil counts all.
 	switchedOn func(key string) bool
@@ -74,12 +78,17 @@ func (lp *livePipelines) mapInputsFetching(ctx context.Context, ask tty.MapAsk) 
 // to choose.
 func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bool) mapInputs {
 	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead, forecast: ask.Forecast,
-		quakeFeed: ask.QuakeFeed, clock: ask.Clock, imperial: ask.Fahrenheit, anchor: ask.Anchor, fireMode: ask.FireMode}
+		quakeFeed: ask.QuakeFeed, clock: ask.Clock, imperial: ask.Fahrenheit, anchor: ask.Anchor, fireMode: ask.FireMode,
+		alertsOff: ask.AlertsOff, alertCategoriesOff: ask.AlertCategoriesOff}
 	if lp != nil {
 		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
 		if fetch {
-			in.fire = lp.fireIn(ctx, ask)
-			in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View)      // D-122: the feed chosen, not the ticker's
+			if ask.Fire { // fetched only while on (W14, P-3; D-149)
+				in.fire = lp.fireIn(ctx, ask)
+			}
+			if ask.Quakes {
+				in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View) // D-122: the feed chosen, not the ticker's
+			}
 			in.buoys, in.tides = lp.buoysIn(ctx, ask), lp.tidesIn(ctx, ask, time.Now()) // D-127, D-128: while their rows are on
 			in.airnow = lp.airnowIn(ctx, ask)                                           // D-138: while Air quality is on
 		} else {

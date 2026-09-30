@@ -50,3 +50,15 @@ func TestTheCountersRouteStillAnswersAGet(t *testing.T) {
 		t.Errorf("GET /debug/counters answered %d: it reads counters and changes nothing", w.Code)
 	}
 }
+
+// TestTheDebugServerTakesACPUProfile is W14's CPU-1: a burst seen once in a
+// session could not be profiled - the mux served the named profiles alone, and
+// a CPU profile is not one. Under WATCHPOST_DEBUG_PPROF it now answers.
+func TestTheDebugServerTakesACPUProfile(t *testing.T) {
+	mux := debugMux(testDumper(t, t.TempDir(), time.Now()))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/debug/pprof/profile?seconds=1", nil))
+	if w.Code != http.StatusOK || w.Body.Len() < 64 {
+		t.Errorf("GET /debug/pprof/profile answered %d with %d bytes: no CPU profile", w.Code, w.Body.Len())
+	}
+}

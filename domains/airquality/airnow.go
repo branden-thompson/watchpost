@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/branden-thompson/watchpost/platform/bodymemo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
 )
 
@@ -35,6 +36,26 @@ const fileAge = 20 * time.Minute
 type Provider struct {
 	get  Getter
 	base string
+	// memo is the file's parse by the UTC hour it was read in (W14, P-7):
+	// served from the cache on every map ask, the ~1.9 MB file was parsed
+	// again each time. The parse reads the moment only to the hour - each
+	// area's today, a whole-hour offset - so an hour's parse is its own.
+	// Two entries: the hour, and the one before it at the turn.
+	memo *bodymemo.Memo[int64, []Area]
+}
+
+// newAreaMemo is the memo's constructor as a value: P10's call graph matches a
+// call by its bare name, and bodymemo.New called inside this package's New
+// reads as New calling itself (W14).
+var newAreaMemo = bodymemo.New[int64, []Area]
+
+// Parses is how many times the file has been parsed: once an hour a body.
+func (p *Provider) Parses() int {
+	if p.memo == nil {
+		return 0
+	}
+	_, n := p.memo.Stats()
+	return n
 }
 
 // New builds the provider; base "" is AirNow's host.
@@ -42,7 +63,7 @@ func New(get Getter, base string) *Provider {
 	if base == "" {
 		base = defaultBase
 	}
-	return &Provider{get: get, base: base}
+	return &Provider{get: get, base: base, memo: newAreaMemo(2)}
 }
 
 // Reading is an area's AQI: the number where AirNow gives one, NaN where it
@@ -82,7 +103,11 @@ func (p *Provider) Areas(ctx context.Context, now time.Time) ([]Area, error) {
 	if err != nil {
 		return nil, fmt.Errorf("AirNow: %w", err)
 	}
-	return parse(string(body), now), nil
+	parseAt := func(b []byte) ([]Area, error) { return parse(string(b), now), nil }
+	if p.memo == nil {
+		return parseAt(body)
+	}
+	return p.memo.Parsed(now.UTC().Truncate(time.Hour).Unix(), body, parseAt) // read-only to its callers: shared by the hour's asks
 }
 
 // zoneHours are the file's zone words as hours from UTC: an area's today is

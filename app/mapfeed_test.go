@@ -297,3 +297,43 @@ func placeZonesOf(name string) []string {
 	}
 	return nil
 }
+
+// TestAnUncheckedCategoryIsGoneFromTheMap is D-160 ("unchecked = gone"): an
+// alert whose category is unchecked is neither drawn, noted, named in view
+// nor fetched - its zones are not asked; with the whole layer off, no alert
+// is. Before, the feed resolved them all and the window dropped the drawing
+// only, keeping the notes and the names.
+func TestAnUncheckedCategoryIsGoneFromTheMap(t *testing.T) {
+	loc, srv := m1Fixture(t, "01-covers-oak-ridge")
+	snap := &snapshot.Snapshot{Locations: []snapshot.Location{loc}}
+	var off []string
+	for _, a := range loc.Alerts {
+		if cat, ok := alertCategory(a); ok {
+			off = append(off, cat)
+		}
+	}
+	if len(off) == 0 {
+		t.Fatal("control: the fixture has no alert the map draws")
+	}
+	for name, in := range map[string]mapInputs{
+		"every category unchecked": {snap: snap, place: &loc, alertCategoriesOff: off},
+		"the layer off":            {snap: snap, place: &loc, alertsOff: true},
+	} {
+		lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL)}
+		feed := lp.mapFeedWith(context.Background(), in, func(snapshot.Location) []string { return nil })
+		if len(feed.Overlays) != 0 || len(feed.Notes) != 0 || len(feed.InView) != 0 {
+			t.Errorf("%s: %d overlays, %d notes, %d named in view; want none", name, len(feed.Overlays), len(feed.Notes), len(feed.InView))
+		}
+		if got := lp.zoneShapes.Stats().Fetched; got != 0 {
+			t.Errorf("%s: %d zones fetched for alerts the map will not draw", name, got)
+		}
+	}
+	// Through the ask, as the dashboard sends it: the switches reach the inputs.
+	if in := (&livePipelines{}).inputsFor(context.Background(), tty.MapAsk{AlertsOff: true, AlertCategoriesOff: off}, false); !in.alertsOff || len(in.alertCategoriesOff) != len(off) {
+		t.Errorf("the ask's switches did not reach the inputs: layer off %v, categories off %v", in.alertsOff, in.alertCategoriesOff)
+	}
+	lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL)} // control: all on, the same fixture draws
+	if feed := lp.mapFeedWith(context.Background(), mapInputs{snap: snap, place: &loc}, func(snapshot.Location) []string { return nil }); len(feed.Overlays) == 0 {
+		t.Error("control: with every category on the fixture draws nothing, so this proves nothing")
+	}
+}

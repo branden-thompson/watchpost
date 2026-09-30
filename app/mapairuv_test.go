@@ -109,7 +109,7 @@ func TestAirNowsMonitorsAreMarkersInTheirCategory(t *testing.T) {
 	ask.Air = true
 	areas := lp.airnowIn(context.Background(), ask)
 	anchor := time.Date(2026, 9, 28, 20, 0, 0, 0, time.UTC)
-	overlays, times := airnowOverlays(areas, ask.View, anchor)
+	overlays, times := airnowOverlays(areas, ask.View, anchor, time.Now())
 	if len(overlays) == 0 || overlays[0].ID != tty.AirLayer+"/airnow" || !times[overlays[0].ID].Happened {
 		t.Fatalf("the monitors are %+v; want the measured, drawn now", overlays)
 	}
@@ -117,7 +117,7 @@ func TestAirNowsMonitorsAreMarkersInTheirCategory(t *testing.T) {
 	if f.Label != "Anchorage 11" || f.Role != tuimaps.AirQualityRole(11) || overlays[0].Credit == "" {
 		t.Errorf("Anchorage is %q in %v, credit %q; want \"Anchorage 11\" in Good's colour, credited", f.Label, f.Role, overlays[0].Credit)
 	}
-	california, caTimes := airnowOverlays(areas, tty.MapView{W: -125, S: 32, E: -114, N: 42}, anchor)
+	california, caTimes := airnowOverlays(areas, tty.MapView{W: -125, S: 32, E: -114, N: 42}, anchor, time.Now())
 	for _, f := range california[0].Features {
 		if f.Label != "" {
 			t.Fatalf("over all of California's areas, more than %d, %q is labelled; want markers alone", airLabelMost, f.Label)

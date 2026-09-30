@@ -91,3 +91,22 @@ func TestTheLatestIssueIsKept(t *testing.T) {
 		t.Errorf("tomorrow is %+v; want the later issue's 70", areas)
 	}
 }
+
+// TestTheFileIsParsedOncePerHour is W14's P-7: the national file (~1.9 MB)
+// is served from the cache on every map ask, and was parsed again each time.
+// Its parse reads the moment only to the UTC hour (each area's today, a
+// whole-hour offset), so within an hour the same body is parsed once; a new
+// hour parses again, and so does a new body.
+func TestTheFileIsParsedOncePerHour(t *testing.T) {
+	var asked []string
+	p := New(fileGet{t, &asked}, "")
+	at := captured.UTC().Truncate(time.Hour).Add(10 * time.Minute)
+	first, _ := p.Areas(context.Background(), at)
+	again, _ := p.Areas(context.Background(), at.Add(20*time.Minute))
+	if p.Parses() != 1 || len(first) == 0 || len(again) != len(first) {
+		t.Fatalf("two asks in one hour: %d parses, %d then %d areas; want one parse, the same areas", p.Parses(), len(first), len(again))
+	}
+	if _, _ = p.Areas(context.Background(), at.Add(time.Hour)); p.Parses() != 2 {
+		t.Errorf("a new hour must parse again (its today may have turned): %d parses", p.Parses())
+	}
+}
