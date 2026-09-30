@@ -105,7 +105,7 @@ func TestTheSourcesChipIsInTheUpperRight(t *testing.T) {
 		row := strings.Split(d.mapWindow(d.opts()), "\n")[1] // the tab's row (D-120)
 		plain := stripANSITest(row)
 		face := map[string]string{"MRMS": "MRMS≈", "IEM": "IEM"}[source] // MRMS's colours approximate (D-132)
-		if !strings.Contains(plain, "[  "+face+"  ]  ") || !strings.HasSuffix(strings.TrimRight(plain, " "), "│") {
+		if !strings.Contains(plain, "  "+face+"    ") || !strings.HasSuffix(strings.TrimRight(plain, " "), "│") {
 			t.Errorf("%s: the tab's row is %q, no chip at its right", source, plain)
 		}
 		if !strings.Contains(row, render.Tok(ground)) {
@@ -493,7 +493,7 @@ func TestTheRadarBadgeIsATab(t *testing.T) {
 	}
 	rows := strings.Split(d.mapWindow(d.opts()), "\n")
 	plain := func(i int) string { return strings.TrimRight(stripANSITest(rows[i]), " ") }
-	words := " RADAR DATA  [  MRMS≈  ]  12:55 AM "
+	words := " RADAR DATA    MRMS≈    12:55 AM "
 	top, tab, foot := plain(0), plain(1), plain(2)
 	at := strings.Index(tab, "│"+words+"│")
 	if at < 0 || !strings.HasSuffix(tab, "│"+words+"│") {
@@ -634,7 +634,7 @@ func TestALongTitleGivesWayToTheTab(t *testing.T) {
 	rows := strings.Split(stripANSITest(d.mapWindow(d.opts())), "\n")
 	top := []rune(strings.TrimRight(rows[0], " "))
 	tee := strings.LastIndex(string(top), "┬")
-	if tee < 0 || !strings.Contains(rows[1], "[  MRMS≈  ]") {
+	if tee < 0 || !strings.Contains(rows[1], "  MRMS≈  ") {
 		t.Fatalf("at 80 columns the tab is gone:\n%s\n%s", rows[0], rows[1])
 	}
 	before := strings.TrimRight(string(top)[:tee], "─")

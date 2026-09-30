@@ -121,9 +121,9 @@ func (d Dashboard) badges() []string {
 		}
 		faces := make([]string, len(chips))
 		for i, c := range chips {
-			faces[i] = "[" + chipFace(c) + "]"
+			faces[i] = chipFace(c)
 		}
-		out = append(out, badgeLabel(l)+" "+strings.Join(faces, "/"))
+		out = append(out, badgeLabel(l)+" "+strings.Join(faces, "")) // each chip its ground alone, side by side: no brackets (D-174)
 	}
 	return out
 }

@@ -567,12 +567,12 @@ func (d Dashboard) retimeDrawn() Dashboard {
 
 // forecastBadge is Forecast mode's badge in the radar badge's place (D-92),
 // the HUM LEAD's layout (UAT-2 U2-19), three rows flush right: FORECAST; the
-// temperature's source as a chip, [O-METEO] or [ NDFD ], when it is drawn;
+// temperature's source as a chip, O-METEO or NDFD on its ground, when it is drawn;
 // the step in capitals, NOW or FRI HIGHS.
 func (d Dashboard) forecastBadge() string {
 	chip := ""
 	if d.tempOn() {
-		chip = "[" + chipFace(d.tempFace()) + "]"
+		chip = chipFace(d.tempFace()) // no brackets (D-174)
 	}
 	return mapBadge(render.Tint(forecastLabel, render.Tok(render.ModalTitle)), chip, d.badgeStep())
 }

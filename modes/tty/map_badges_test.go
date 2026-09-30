@@ -48,10 +48,10 @@ func underTheMap(d Dashboard) []string {
 func TestTheBadgeRowCreditsEachLayerDrawn(t *testing.T) {
 	d := badgeMap(t, MapCost{})
 	rows := underTheMap(d)
-	want := "ALERTS [  NWS  ]    FIRE [  NIFC  ]/[  HMS  ]    TEMP [  O-METEO  ]    WAVES [  NDFD  ]/[  O-METEO  ]" // each chip "  NAME  " (D-134)
+	want := "ALERTS   NWS      FIRE   NIFC    HMS      TEMP   O-METEO      WAVES   NDFD    O-METEO  " // each chip "  NAME  " on its ground, no brackets, side by side (D-134, D-174)
 	found := false
 	for _, r := range rows {
-		if strings.TrimSpace(r) == want {
+		if strings.TrimSpace(r) == strings.TrimSpace(want) { // the last chip's padding ends the row
 			found = true
 		}
 	}

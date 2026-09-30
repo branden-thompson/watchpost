@@ -2340,3 +2340,13 @@ production line-up's construction in `app/schedule.go`: both fields left empty o
 one line that would hand them in; the line-up's own transition machinery, tested, is unchanged, and
 its two comments that said the app composes the words now say that none are handed in (D-163).
 Nothing a listener hears changes.
+
+## Batch 73 — map chips without brackets (D-174; 2026-09-30)
+
+**The HUM LEAD's nit:** "badges in maps don't need the [ ] around them, just the bg color with
+<space><space><label><space><space>" - "this also goes for the upper right chips as well". Four
+places wrapped `chipFace` in brackets: the radar's badge and its hours-ahead badge (the tab's upper
+right), Forecast mode's badge, and the badge rows, whose several chips were joined with `/`. Each is
+the chip alone now; several chips sit side by side, their grounds dividing them (D-173's example put
+them edge to edge), the padding dividing them where colour is off. Five tests held the old form and
+hold the new (RED first); the history store's design draws its RECORDED chip the same way.

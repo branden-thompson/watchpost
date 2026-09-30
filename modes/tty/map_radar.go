@@ -171,10 +171,10 @@ func (d Dashboard) radarBadge() string {
 		return ""
 	}
 	if d.atForecast() { // the loop's hours ahead: a model's frames, said so (D-113)
-		chip := "[" + chipFace(d.aheadName()) + "]"
+		chip := chipFace(d.aheadName()) // its ground and label alone, no brackets (D-174)
 		return mapBadge(render.Tint("RADAR FCST", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
 	}
-	chip := "[" + chipFace(d.radarFace()) + "]"
+	chip := chipFace(d.radarFace())
 	return mapBadge(render.Tint("RADAR DATA", render.Tok(render.ModalTitle)), chip, d.mapPane.radarBadgeTime)
 }
 

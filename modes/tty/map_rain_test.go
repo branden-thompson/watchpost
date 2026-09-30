@@ -102,7 +102,7 @@ func TestForecastModesRainSaysItIsNotRadar(t *testing.T) {
 	if !strings.Contains(row, "MODEL RAIN") || !strings.Contains(row, "NOT RADAR") {
 		t.Errorf("with rain drawn, the colour row is %q; want radar's colours said to be a model's, not radar", row)
 	}
-	if b := stripANSITest(strings.Join(d.badges(), " ")); !strings.Contains(b, "RAIN [  O-METEO  ]") {
+	if b := stripANSITest(strings.Join(d.badges(), " ")); !strings.Contains(b, "RAIN   O-METEO  ") {
 		t.Errorf("the badges are %q; want the rain's source (D-133)", b)
 	}
 	d = switchLayer(t, d, RainLayer)

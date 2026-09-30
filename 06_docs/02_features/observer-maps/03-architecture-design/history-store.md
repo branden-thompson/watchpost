@@ -188,7 +188,7 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 
 **Drawing.** A replayed grid is drawn exactly as a live one would be. Where there is nothing to replay, that box is not drawn.
 
-**Said by one chip (D-173).** While a layer draws anything from the history, one `[ RECORDED ]` chip is appended after its source's chip - `RADAR [  O-METEO  ][  RECORDED  ]` - one style for every source, no per-source logic.
+**Said by one chip (D-173, D-174).** While a layer draws anything from the history, one RECORDED chip - `  RECORDED  ` on its own ground, no brackets, as every map chip - is appended after its source's chip: `RADAR  O-METEO  RECORDED ` drawn as two grounds side by side. One style for every source, no per-source logic.
 
 ## 9. Tests
 
@@ -229,6 +229,6 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 2. **Retention:** 72 hours for the fallback, 30 days for trends, by default; longer opted into on a [ Data ] Settings tab; the store shaped for fidelity and speed (D-171).
 3. **Budget:** follows the retention chosen; its size shown on the Data tab (D-171).
 4. **Recording:** always, whenever any instance runs (D-172).
-5. **Replay:** one appended [ RECORDED ] chip (D-173).
+5. **Replay:** one appended RECORDED chip, drawn as every map chip - its ground and label, no brackets (D-173, D-174).
 
 **A place's own series** - the watchlist, recent places - is a target use. Its readings could be sampled from the region's recorded lattices (no requests, but interpolated) or fetched per place (faithful, up to one request a place an hour); the feature that uses it chooses.
