@@ -212,12 +212,17 @@ func TestTheDataTabsChoicesReachTheStore(t *testing.T) {
 	}
 	now := time.Date(2026, 9, 30, 15, 0, 0, 0, time.UTC)
 	root := t.TempDir()
-	lp := &livePipelines{history: history.Open(root, func() time.Time { return now }, ndfdHourly)}
+	lp := &livePipelines{history: history.Open(root, func() time.Time { return now }, historyDatasets...)}
 	lp.applyHistory(tty.HistoryRetention{Hours: "7d", Trends: "1y"})
+	kept := 0
 	for _, d := range lp.history.Catalog() {
-		if d.Name == ndfdHourly.Name && (d.Hours != 7*24*time.Hour || d.Days != 365*24*time.Hour) {
-			t.Errorf("the store keeps %v and %v; want the chosen 7 days and 1 year", d.Hours, d.Days)
+		if d.Hours != 7*24*time.Hour || d.Days != 365*24*time.Hour {
+			t.Errorf("%s keeps %v and %v; want the chosen 7 days and 1 year - every dataset alike", d.Name, d.Hours, d.Days)
 		}
+		kept++
+	}
+	if kept != len(historyDatasets) {
+		t.Errorf("%d datasets in the catalog; want %d", kept, len(historyDatasets))
 	}
 	f := &fakeHour{}
 	s, _ := f.hour(context.Background(), temperature.LatticeFor("us-a", geo.Box{W: -120, S: 32, E: -115, N: 36}), now)

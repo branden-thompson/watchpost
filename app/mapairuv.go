@@ -16,30 +16,47 @@ import (
 	"github.com/branden-thompson/watchpost/domains/airquality"
 	"github.com/branden-thompson/watchpost/domains/temperature"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/history"
 )
 
 // withUV adds the UV index for the mode (D-137), from Open-Meteo's answer:
 // the one temperature asked for where it is the source - the client's cache
 // answers it again - or its own, asked only while UV is on.
-func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, free bool, ask tty.MapAsk, now time.Time) tty.MapTemperature {
+//
+// VALID UV IS RECORDED AND REPLAYED (W18.4, D-167): each hour Open-Meteo
+// answered, up to the current one, goes into the history; where it does not
+// answer, Radar mode draws the hours recorded, and the chip says RECORDED.
+func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, free bool, ask tty.MapAsk, now time.Time, store *history.Store) tty.MapTemperature {
 	if !free && !ask.UV {
 		return t
 	}
+	live, replayed := 0, 0
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
 		lat := temperature.LatticeFor(b.Name, b.Box)
 		s, err := om.Fetch(ctx, lat, now)
 		if err != nil {
 			t.Problems = append(t.Problems, "UV: Open-Meteo did not answer for "+b.Name) // D-124
+			if !ask.Forecast {
+				past := replayUV(store, b.Name, lat, askAnchor(ask, now))
+				t.UV, replayed = append(t.UV, past...), replayed+len(past)
+			}
 			continue
 		}
+		live++
+		recordUV(store, b.Name, s, askAnchor(ask, now))
 		m := temperature.Measure{Lattice: lat, Hours: s.Hours, Hourly: s.UV, Max: s.UVMax}
 		hours, days := measureGrids(m, tty.UVLayer, b.Name, ask, now, func(id string, vals []float64, valid, anchor time.Time) (tuimaps.Overlay, bool) {
 			return fieldGrid(id, lat, vals, valid, anchor, tuimaps.UVGrid)
 		})
 		t.UV, t.UVDays = append(t.UV, hours...), append(t.UVDays, days...)
 	}
-	if len(t.UV)+len(t.UVDays) > 0 {
-		t.Chips = withChips(t.Chips, tty.UVLayer, "O-METEO") // named while it draws (D-183)
+	switch { // named while it draws (D-183), and from what (D-173)
+	case live > 0 && replayed > 0:
+		t.Chips = withChips(t.Chips, tty.UVLayer, "O-METEO", recordedChip)
+	case replayed > 0:
+		t.Chips = withChips(t.Chips, tty.UVLayer, recordedChip)
+	case len(t.UV)+len(t.UVDays) > 0:
+		t.Chips = withChips(t.Chips, tty.UVLayer, "O-METEO")
 	}
 	return t
 }

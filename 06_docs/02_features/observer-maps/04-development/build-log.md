@@ -2512,3 +2512,19 @@ its three seams be classified (none reaches the audio); mCA1 was re-pointed to t
 **Mutation verdicts** (targeted, 7, and mCA1 re-pointed and caught): no ARE YOU SURE, the question
 not owning the keys, not written on close, the arrows reversed, trends ignored, not applied, Clear
 doing nothing - all caught.
+
+## Batch 80 — UV kept, and replayed when Open-Meteo refuses (W18.4, part 1; D-167; 2026-09-30)
+
+**Now.** A second dataset, `openmeteo-uv` (v1: the UV index over each field box): whenever
+Open-Meteo answers the UV, each hour it gave up to the current one is recorded - issued at its own
+hour, so asking again rewrites nothing, and an hour ahead is never kept. Where Open-Meteo does not
+answer, Radar mode draws the recorded UV for the current hour and the three before it, each in its
+own hour; the UV badge says **RECORDED** alone (its source answered nothing), and the quota's notice
+reads "Falling back to recorded data". The Data tab's retention is every dataset's alike (D-175).
+
+**Still to come for UV (D-167):** the cold start - EPA's UV index for the cities in view as markers,
+with its callout - a new source, its chip and credit, and a marker style the library may need.
+
+**Mutation verdicts** (targeted, 5): hours ahead recorded, nothing recorded, nothing replayed, the
+replay named O-METEO, UV keeping its own retention (caught once the Data tab's test held every
+dataset) - all caught.

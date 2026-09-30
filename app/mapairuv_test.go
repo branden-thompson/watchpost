@@ -5,8 +5,11 @@ package app
 
 import (
 	"context"
+	"errors"
+	"github.com/branden-thompson/watchpost/platform/history"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -50,11 +53,11 @@ func TestUVIsItsGridsInEachMode(t *testing.T) {
 	get := &omGet{}
 	om := temperature.NewOpenMeteo(get, "")
 	ask := tempAsk(false)
-	if got := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow); len(got.UV) != 0 || len(get.asked) != 0 {
+	if got := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow, nil); len(got.UV) != 0 || len(get.asked) != 0 {
 		t.Fatalf("with UV off and NDFD the source, %d UV grids and %d requests; want none", len(got.UV), len(get.asked))
 	}
 	ask.UV = true
-	radar := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow)
+	radar := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow, nil)
 	if len(radar.UV) == 0 || radar.UV[0].Grid.Type.Preset != "uv" || radar.UV[0].Grid.Values[0] != 5 || len(radar.UVDays) != 0 {
 		t.Fatalf("Radar mode's UV is %d hours, %d days", len(radar.UV), len(radar.UVDays))
 	}
@@ -62,12 +65,12 @@ func TestUVIsItsGridsInEachMode(t *testing.T) {
 		t.Errorf("drawn, UV's chips are %v; want Open-Meteo's (D-183)", got)
 	}
 	ask.UV = false
-	if got := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow).Chips[tty.UVLayer]; len(got) != 0 {
+	if got := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow, nil).Chips[tty.UVLayer]; len(got) != 0 {
 		t.Errorf("drawing nothing, UV names %v (D-183)", got)
 	}
 	ask.UV = true
 	ask = tempAsk(true)
-	fc := withUV(context.Background(), tty.MapTemperature{}, om, true, ask, tempNow) // Open-Meteo the source: free, whatever the row
+	fc := withUV(context.Background(), tty.MapTemperature{}, om, true, ask, tempNow, nil) // Open-Meteo the source: free, whatever the row
 	if len(fc.UV) != len(fieldBoxes(ask.Region, ask.View)) || len(fc.UVDays) == 0 || fc.UVDays[0].Grid.Values[0] != 8 {
 		t.Errorf("Forecast mode's UV is %d Now grids and %d days; want Now a box and each day's highest, 8", len(fc.UV), len(fc.UVDays))
 	}
@@ -149,5 +152,53 @@ func TestAirQualityCostsItsRequests(t *testing.T) {
 	b, r := airLayerCost(in)
 	if boxes := len(fieldBoxes(in.region, in.view)); r != boxes+1 || b < airnowBytes {
 		t.Errorf("air quality costs %d bytes in %d requests; want a request a box (%d) and AirNow's file", b, r, boxes)
+	}
+}
+
+// refusingGet is Open-Meteo refusing: every ask a spent quota.
+type refusingGet struct{}
+
+func (refusingGet) GetText(context.Context, string, ...httpx.Option) ([]byte, error) {
+	return nil, errors.New("Daily API request limit exceeded")
+}
+
+// VALID UV GOES INTO THE HISTORY, AND IS REPLAYED WHEN OPEN-METEO REFUSES
+// (W18.4, D-167): each hour Open-Meteo answered, up to the current one,
+// recorded once; refused, Radar mode draws the hours recorded - the three
+// before the current one and the current one - each in its own hour, and the
+// UV badge says RECORDED alone (its source did not answer).
+func TestUVIsRecordedAndReplayed(t *testing.T) {
+	store := history.Open(t.TempDir(), func() time.Time { return tempNow }, omUVHourly)
+	anchor := tempNow.Truncate(time.Hour)
+	ask := tempAsk(false)
+	ask.UV = true
+	box := fieldBoxes(ask.Region, ask.View)[0]
+	withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(&omGet{}, ""), false, ask, tempNow, store)
+	for back := 0; back <= pastHours; back++ {
+		rec, ok := store.Get(omUVHourly.Name, history.Key{Source: "openmeteo", Place: box.Name}, anchor.Add(-time.Duration(back)*time.Hour))
+		if !ok || rec.Values["uv"][0] != 5 {
+			t.Errorf("the UV %d hours before was not recorded: %v %v", back, ok, rec.Values)
+		}
+	}
+	if _, ok := store.Get(omUVHourly.Name, history.Key{Source: "openmeteo", Place: box.Name}, anchor.Add(time.Hour)); ok {
+		t.Error("an hour ahead was recorded: only what was valid is kept")
+	}
+	got := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), false, ask, tempNow, store)
+	hours := map[time.Time]bool{}
+	for _, o := range got.UV {
+		if strings.Contains(o.ID, "/"+box.Name+"/") {
+			hours[o.During.From] = true
+		}
+	}
+	for back := 0; back <= pastHours; back++ {
+		if !hours[anchor.Add(-time.Duration(back)*time.Hour)] {
+			t.Errorf("the recorded UV %d hours before was not replayed: %v", back, hours)
+		}
+	}
+	if chips := got.Chips[tty.UVLayer]; !slices.Equal(chips, []string{"RECORDED"}) {
+		t.Errorf("UV replayed says %v; want RECORDED alone", chips)
+	}
+	if none := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), false, ask, tempNow, nil); len(none.UV) != 0 || len(none.Chips[tty.UVLayer]) != 0 {
+		t.Error("with no history, a refused UV drew something")
 	}
 }

@@ -130,7 +130,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 		t = withWaves(ctx, t, lp.temp.waves, lp.temp.rain, ask, now)
 	}
 	if lp.temp.rain != nil { // Open-Meteo: the UV and the model's US AQI (D-137, D-139)
-		t = withUV(ctx, t, lp.temp.rain, src.Name() == "Open-Meteo", ask, now)
+		t = withUV(ctx, t, lp.temp.rain, src.Name() == "Open-Meteo", ask, now, lp.historyStore()) // valid UV kept, and replayed when refused (D-167)
 		t = withAir(ctx, t, lp.temp.rain, ask, now)
 	}
 	t.Quota = lp.temp.quotaSpent() // the map says it (D-165)

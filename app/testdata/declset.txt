@@ -685,6 +685,7 @@ func readerFor
 func readingWord
 func recentTiers
 func reconcile
+func recordUV
 func recordedBoxes
 func recordedHour
 func refFor
@@ -697,6 +698,7 @@ func relayLine
 func releaseNumbers
 func reloadCast
 func renderSlots
+func replayUV
 func reportFetch
 func reportTiming
 func requestStats
@@ -893,9 +895,11 @@ var _
 var errDumpTooSoon
 var errReadStopped
 var goosSeam
+var historyDatasets
 var historyKeeps
 var mapLayers
 var mapSources
 var ndfdHourly
+var omUVHourly
 var quakeFeedBytes
 var rateTable

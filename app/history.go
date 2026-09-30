@@ -18,6 +18,7 @@ package app
 
 import (
 	"context"
+	tuimaps "github.com/branden-thompson/go-tuimaps"
 	"math"
 	"math/rand/v2"
 	"os"
@@ -52,6 +53,21 @@ var ndfdHourly = history.Dataset{
 	Days:  30 * 24 * time.Hour,
 }
 
+// omUVHourly is Open-Meteo's UV index over each field box, each hour it
+// answered, up to the current one: replayed when it does not (D-167).
+var omUVHourly = history.Dataset{
+	Name: "openmeteo-uv", Version: 1, Step: time.Hour,
+	Title:       "Open-Meteo, the UV index",
+	Description: "Open-Meteo's UV index over each field box of a region, each hour it answered.",
+	Fields:      []history.Field{{Name: "uv", Label: "UV index", Unit: "index", Decimals: 1}},
+	Hours:       72 * time.Hour,
+	Days:        30 * 24 * time.Hour,
+}
+
+// historyDatasets are every dataset the history holds: the Data tab's
+// retention is theirs alike (D-175).
+var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly}
+
 // historyEvery is how often the recorder looks for an hour to record.
 const historyEvery = 5 * time.Minute
 
@@ -74,7 +90,7 @@ func (lp *livePipelines) startHistory(ctx context.Context, keep tty.HistoryReten
 	if !ok || ndfd == nil {
 		return
 	}
-	h := &historian{store: history.Open(history.DefaultRoot(), time.Now, ndfdHourly), hour: ndfd.Hour, regions: lp.historyRegions}
+	h := &historian{store: history.Open(history.DefaultRoot(), time.Now, historyDatasets...), hour: ndfd.Hour, regions: lp.historyRegions}
 	lp.mu.Lock()
 	lp.history = h.store
 	lp.mu.Unlock()
@@ -294,7 +310,9 @@ func (lp *livePipelines) applyHistory(r tty.HistoryRetention) {
 		return
 	}
 	hours, days := historyDurations(r)
-	store.Retain(ndfdHourly.Name, hours, days)
+	for _, d := range historyDatasets { // two (P10-02)
+		store.Retain(d.Name, hours, days)
+	}
 }
 
 // setHistory writes the Data tab's choice and applies it at once.
@@ -338,4 +356,43 @@ func sizeWords(b int64) string {
 		return strconv.FormatInt((b+1023)/1024, 10) + " KB"
 	}
 	return strconv.FormatFloat(float64(b)/(1<<20), 'f', 1, 64) + " MB"
+}
+
+// recordUV keeps each hour of a series' UV that Open-Meteo gave, up to the
+// current one: issued at its own hour, so asking again rewrites nothing.
+func recordUV(store *history.Store, box string, s temperature.Series, anchor time.Time) {
+	if store == nil || len(s.UV) == 0 {
+		return
+	}
+	shape := history.Shape{Box: s.Lattice.Box, Cols: s.Lattice.Cols, Rows: s.Lattice.Rows}
+	for i, h := range s.Hours { // a series' hours (P10-02)
+		if h.After(anchor) || i >= len(s.UV) || allMissing(s.UV[i]) {
+			continue
+		}
+		store.Put(omUVHourly.Name, history.Record{Key: history.Key{Source: "openmeteo", Place: box}, At: h, IssuedAt: h, Shape: shape, Values: map[string][]float64{"uv": s.UV[i]}})
+	}
+}
+
+// replayUV is a box's UV recorded for the current hour and the pastHours
+// before it, each drawn during its own hour; none where nothing matches.
+func replayUV(store *history.Store, box string, lat temperature.Lattice, anchor time.Time) []tuimaps.Overlay {
+	if store == nil {
+		return nil
+	}
+	shape := history.Shape{Box: lat.Box, Cols: lat.Cols, Rows: lat.Rows}
+	var out []tuimaps.Overlay
+	for back := pastHours; back >= 0; back-- { // four (P10-02)
+		h := anchor.Add(-time.Duration(back) * time.Hour)
+		rec, ok := store.Get(omUVHourly.Name, history.Key{Source: "openmeteo", Place: box}, h)
+		if !ok || rec.Shape != shape {
+			continue
+		}
+		o, ok := fieldGrid(tty.UVLayer+"/"+box+"/"+h.UTC().Format("2006-01-02T15"), lat, rec.Values["uv"], h, anchor, tuimaps.UVGrid)
+		if !ok {
+			continue
+		}
+		o.During = tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}
+		out = append(out, o)
+	}
+	return out
 }
