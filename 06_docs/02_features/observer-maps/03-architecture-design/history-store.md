@@ -1,6 +1,6 @@
 # The local history store: design (W18.3; D-166 to D-169)
 
-Status: **DESIGN, ruled (D-170 to D-173), for the HUM LEAD's review before it is built.** This page gives API shape only.
+Status: **GO given (HUM LEAD, 2026-09-30); ruled D-166 to D-180. The store's core is built (batch 74, `platform/history`); the recorder, the replay, the [ Data ] tab and the shared quota come after.** API shape only here.
 
 ## Why
 
@@ -24,50 +24,45 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 
 ## 2. Data model
 
-**`Dataset{Name string; Version int; Cadence Cadence; Fields []Field; Retain time.Duration}`**
+**Every kind of source (D-179).** The store is not the weather's alone: a dataset is whatever a source says, by time.
 
-- A dataset is registered when the store opens.
-- `Cadence` is `Hourly` (a UTC hour) or `Daily` (a UTC date).
+**`Dataset{Name, Title, Description string; Version int; Step time.Duration; Fields []Field; Hours, Days time.Duration}`**
 
-**`Field{Name, Unit string; Decimals int}`**, for example `temp` in °C with 1 decimal, or `wind_from` in degrees with 0.
+- `Step` is the width of one record's bucket: a minute to a day, an hour by default - NDFD's hour, an ionosonde's MUF every 5 or 15 minutes, a tide gauge's 6.
+- `Hours` is how long its records are kept; `Days` how long its days, rolled up, are kept past that (zero: none).
+- `Title` and `Description` are for a reader that did not register it (D-180).
 
-**`Key{Source, Place string}`**, for example `{ndfd, us-a}`, or `{station, KSEA}` for a later trend.
+**`Field{Name, Label, Unit string; Decimals int}`** - `temp`, "Temperature", °C, 1; `muf`, "Maximum usable frequency", MHz, 2. Decimals 0 to 9.
 
-- Each segment matches `[a-z0-9._-]` and is at most 64 bytes.
-- A key outside that is refused.
+**`Key{Source, Place string}`** - `{ndfd, us-a}`, `{giro, pa836}`, `{station, ksea}`: each 1-64 bytes of `[a-z0-9._-]`, never `.` or `..`; any other key is refused.
 
-**`Shape{Box geo.Box; Cols, Rows int}`**
+**`Shape{Box geo.Box; Cols, Rows int}`** - a lattice, or with one of each a point.
 
-- A lattice has many columns and rows.
-- A point has one of each: `Cols` and `Rows` are both 1, and `Box` is the point.
+**`Record{Key; At, IssuedAt time.Time; Shape; Values map[string][]float64; Doc json.RawMessage}`** - one bucket, in either or both of two payloads:
 
-**`Record{Dataset string; Version int; Key Key; Bucket, IssuedAt time.Time; Shape Shape; Values map[string][]float64}`**
+- `Values`: each numeric field over the shape, rows from the north, west to east within a row; NaN for missing, `null` on disk, never zero. Values need a shape.
+- `Doc`: a JSON document of at most 1 MiB whose form is the dataset's own, versioned with it - for what is not a number over a shape: alerts, quakes, fire perimeters.
+- Pictures are not recorded: the HTTP cache and the map library keep those (a later payload kind would carry its own budget).
 
-- Each field's values run in rows from the north, west to east within a row, as `Lattice` orders them.
-- A missing value is NaN in memory and `null` on disk, never zero.
-- A record whose shape differs from the reader's expected shape reads as absent. That keeps old records from being drawn after the geometry of `fieldBoxes` or `LatticeFor` changes.
+**`Day{Key; Date; Shape; Hours int; Min, Max, Mean map[string][]float64}`** - a day rolled up: each numeric field's minimum, maximum and mean at each point, over its recorded buckets. Documents are kept, not rolled up.
 
 ## 3. On disk
 
-**Root (D-170).** `$XDG_DATA_HOME/watchpost/weather/history`, by default `~/.local/share/watchpost/weather/history`.
+**Root (D-170).** `$XDG_DATA_HOME/watchpost/weather/history`, by default `~/.local/share/watchpost/weather/history`; a relative `XDG_DATA_HOME` is refused. `DefaultRoot()` is `""` with no home directory, and the store then does nothing.
 
-- A relative `XDG_DATA_HOME` is refused, as `config.Path` refuses one.
-- `DefaultRoot()` returns `""` when there is no home directory, and the store then does nothing.
+**A series' files** (`<root>/<dataset>/v<version>/<source>/<place>/`):
 
-**A file a day per series, compressed (D-171: fidelity and speed together).**
+| File | Holds | Written |
+|---|---|---|
+| `manifest.json.gz` (per dataset version) | the dataset's description (D-180) | at open, when absent or changed |
+| `<YYYY-MM>/<DD>/<HHMM>.json.gz` | one bucket's record | by `Put`, a file of its own |
+| `<YYYY-MM>/<DD>.json.gz` | a finished day's records, compacted | by the prune pass, once the day is done |
+| `rollup/<YYYY>.json.gz` | a year's days rolled up | by the prune pass, past the hours' retention |
 
-- Hourly datasets: `<root>/<dataset>/v<version>/<source>/<place>/<YYYY-MM>/<DD>.json.gz` - the day's hourly records in one versioned JSON document, rewritten whole (temp file and rename) each hour it gains one.
-- Daily roll-ups: `.../rollup/<YYYY>.json.gz`, a year's days in one file.
-- A year of a series is 365 files, not 8,760, and a trend's range read opens one file a day.
-- `zcat` still shows any of it, `null` carries NaN, and there is no new dependency.
-
-**Two tiers.**
-
-- Within the hourly retention, every hour is kept.
-- Beyond it, each day is rolled up - each field's minimum, maximum and mean at each point - and the day's hourly file is removed.
-- Fallback datasets keep hours only; trend datasets roll up.
-
-**Sizes - per region, not per place (D-171).** The lower 48's nine boxes, each an 80-point lattice, cover every place inside them.
+- A year of a series is 365 day files once compacted, not thousands; a trend's range read opens one file a day. Every read merges a day's file with its buckets not yet compacted, the newer issue where both hold a bucket.
+- Compressed JSON, versioned: `zcat` shows any of it; `null` carries NaN; no new dependency.
+- **Two tiers.** Within the hourly retention every bucket is kept; beyond it each day is rolled up and its records removed. Fallback datasets keep records only; trend datasets roll up (D-176: NDFD's hours roll up into trends).
+- **Sizes - per region, not per place (D-171).** The lower 48's nine boxes, each an 80-point lattice, cover every place inside them:
 
 | Lower 48, all nine boxes | Compressed |
 |---|---|
@@ -76,31 +71,20 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 | A year of hours (opted into) | about 39 MB |
 | A year of daily roll-ups | about 5 MB |
 
-**A place's own series** - a point, five fields, 24 hours a day - is about 70 KB a year. The watchlist and recent places, 60 or so, come to about 4 MB a year: a target use the design holds to (D-171).
-
-**Permissions.** Directories 0700, files 0600.
+- **A place's own series** - a point, five fields, 24 hours a day - is about 70 KB a year; the watchlist and recent places, 60 or so, about 4 MB a year (a target use, D-171).
+- Directories 0700, files 0600.
 
 ## 4. Several instances, one store
 
-**Writes.**
+**No writer reads, merges and replaces a record file.** The first draft did - a day's hours in one file, each writer adding its hour - and under contention it lost records: twelve instances writing twelve hours of one day kept three. So:
 
-- A write goes to a `.tmp-` file created in the target directory.
-- The file is fsynced, closed and chmodded, then renamed over the target. This is `httpx.cache.writeEntry`'s pattern.
-- A reader therefore sees a whole old record or a whole new one, never part of either.
-
-**Two writers on one record.** The last rename wins.
-
-- A writer that finds a record with an equal or newer `IssuedAt` skips its own write.
-- The race between two writers is harmless, because either record is correct data.
-- **A day file is read, merged and replaced**, so two instances adding *different* hours of one series at once could each drop the other's (the last rename wins). A writer re-reads the file after its rename and, if an hour it merged is missing, merges and writes again - at most three times, then counted in `Stats` and left to the next hour. Instances record on the same clock, so this is rare, and the loss is bounded to one hour of one series.
-
-**Readers** skip any name beginning with `.`.
-
-**Pruning.** `ENOENT` is success everywhere, because another instance may prune at the same time.
-
-**No lock files.** Rename is atomic, and every other operation can be repeated safely.
-
-**Crashed writers.** Temp files older than 10 minutes are swept by the prune.
+- **Each bucket is its own file.** `Put` writes it by temp file (in its own directory), fsync and rename; no writer of another bucket touches it. Two writers of one bucket write the same data; a newer issue replaces an older, never the other way.
+- **A finished day is compacted under a claim.** The day's `.compact-<DD>` claim is created exclusively; the holder writes the day's file from everything it reads, reads it back, and removes each bucket file the day's file holds at an issue at least as new - a bucket written meanwhile is left for the next pass.
+- **A year's roll-up is written under the series' roll-up claim** (`rollup/.claim-<YYYY>`), the one file still read, merged and replaced - one writer at a time; a day's records go only once the year is read back holding it.
+- **A bucket is fetched by one instance.** `Claim` creates `.claim-<DD>T<HHMM>` exclusively; a bucket already recorded is claimed by none.
+- **A claim holds its time**, on the store's clock. One older than 10 minutes with nothing recorded is stale - its claimant crashed or closed - and is taken over.
+- **Readers** skip every name beginning with `.`; every removal tolerates what another instance removed first; temp files older than 10 minutes are swept.
+- **No lock files, no waiting.** Tested: two stores on one directory; twelve concurrent writers of one day; two concurrent compactions with a late bucket written during them (ten runs under the race detector, none lost).
 
 ## 4b. Several instances, beyond the store
 
@@ -139,13 +123,27 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 
 ## 6. API
 
-- **`Open(root string, sets ...Dataset) *Store`** never fails. A root that cannot be used gives a store that does nothing.
-- **`(*Store) Put(r Record) bool`** records one bucket.
-- **`(*Store) Get(dataset string, k Key, bucket time.Time) (Record, bool)`** reads one bucket.
-- **`(*Store) Range(dataset string, k Key, from, to time.Time, max int) []Record`** reads a span, oldest first, at most `max` records. This is what a trend reads.
-- **`(*Store) Latest(dataset string, k Key, at time.Time, maxAge time.Duration) (Record, bool)`** returns the newest record at or before `at`, no older than `maxAge`. It looks back at most `maxAge` divided by the cadence. This is what replay reads.
-- **`(*Store) Keys(dataset string, max int) []Key`** lists what has been recorded.
-- **`(*Store) Stats() Stats`** returns `Stats{Puts, PutFailures, Skipped, Corrupt, VersionMismatch, Pruned, Bytes}`.
+**Writing**
+
+- `Open(root string, now func() time.Time, sets ...Dataset) *Store` - never fails; an unusable root is a store whose writes fail and reads find nothing. Writes each dataset's manifest.
+- `(*Store) Put(dataset string, r Record) bool` - records one bucket.
+- `(*Store) Claim(dataset string, k Key, at time.Time) bool` - this instance's to fetch.
+- `(*Store) RollUpAndPrune()` - compacts finished days, rolls up and removes what is past retention, sweeps; bounded (256 directories visited, 64 files removed a pass); any instance may run it.
+
+**Reading**
+
+- `(*Store) Get(dataset string, k Key, at time.Time) (Record, bool)` - one bucket.
+- `(*Store) Range(dataset string, k Key, from, to time.Time, max int) []Record` - a span, oldest first.
+- `(*Store) Latest(dataset string, k Key, at time.Time, maxAge time.Duration) (Record, bool)` - the newest at or before `at` (replay).
+- `(*Store) Days(dataset string, k Key, from, to time.Time, max int) []Day` - rolled-up days (trends).
+
+**Browsing - for a reader that did not write it (D-180, the Analyst mode to come)**
+
+- `(*Store) Catalog() []Dataset` - every dataset version on disk, from the manifests, whoever wrote them.
+- `(*Store) Series(dataset string, max int) []Key` - a dataset's series.
+- `(*Store) Extent(dataset string, k Key) (first, last time.Time, ok bool)` - a series' first and last day.
+
+**The diagnostics** - `(*Store) Stats() Stats`: puts, failures, skipped, corrupt, version mismatches, pruned, rolled up (D-124).
 
 ## 7. The first datasets
 
@@ -229,6 +227,9 @@ Several watchpost instances on one machine - a Broadcaster and an Observer, say 
 2. **Retention:** 72 hours for the fallback, 30 days for trends, by default; longer opted into on a [ Data ] Settings tab; the store shaped for fidelity and speed (D-171).
 3. **Budget:** follows the retention chosen; its size shown on the Data tab (D-171).
 4. **Recording:** always, whenever any instance runs (D-172).
-5. **Replay:** one appended RECORDED chip, drawn as every map chip - its ground and label, no brackets (D-173, D-174).
+5. **Replay:** one appended RECORDED chip, drawn as every map chip - its ground and label, no brackets (D-173, D-174) - on a muted violet no source uses (D-178).
+6. **The [ Data ] tab:** presets - hourly 72 h / 7 d / 30 d / 1 y; trends 30 d / 90 d / 1 y / 5 y - and the store's size (D-175); Clear history behind ARE YOU SURE (D-177).
+7. **Trends from the fallback:** NDFD's hours roll up past 72 h and are kept for the trend retention (D-176).
+8. **Every source, any step, numbers or documents (D-179); readable by a reader that did not write it - the Analyst mode to come (D-180).**
 
 **A place's own series** - the watchlist, recent places - is a target use. Its readings could be sampled from the region's recorded lattices (no requests, but interpolated) or fetched per place (faithful, up to one request a place an hour); the feature that uses it chooses.

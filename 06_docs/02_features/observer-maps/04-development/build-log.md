@@ -2350,3 +2350,37 @@ right), Forecast mode's badge, and the badge rows, whose several chips were join
 the chip alone now; several chips sit side by side, their grounds dividing them (D-173's example put
 them edge to edge), the padding dividing them where colour is off. Five tests held the old form and
 hold the new (RED first); the history store's design draws its RECORDED chip the same way.
+
+## Batch 74 — the history store's core (W18.3a; D-166, D-169 to D-180; 2026-09-30)
+
+**The HUM LEAD's GO**, and four answers taken while the gate ran (D-175 to D-178), and two scope
+directions while it was drafted: every API the app has or may have - an ionosonde's MUF the example
+(D-179) - and a third UI mode later, an Analyst, reading what the store holds (D-180).
+
+**Built: `platform/history`**, standard library, `platform/geo` and `platform/invariant` alone - it
+knows nothing of weather. Datasets with their own step (a minute to a day), numeric fields over a
+lattice or a point, and a bounded JSON document per record; bucket files compacted into a day's file
+once the day is done, and rolled up into the year's past the hours' retention; claims for fetching a
+bucket, compacting a day and rolling up a year; a manifest per dataset version, with Catalog, Series
+and Extent for a reader that did not write it; bounded pruning. Not wired into the app yet: nothing
+records or replays until W18.3b.
+
+**Its first draft lost records, and the tests found it.** A day's hours in one file, each writer
+reading, merging and replacing it: twelve concurrent writers kept three. A claim judged stale by the
+file's real modification time against the store's clock; a year parsed from `2026.json.gz` with one
+extension stripped. Rebuilt: a bucket per file, compaction and roll-up under exclusive claims, a
+claim holding its own time. `TestADayIsCompactedWithoutLosingARecord` - two compactions at once and a
+late bucket written during them - ten runs under the race detector, none lost.
+
+**P10 at 31, met honestly.** The first cut raised it to 36: an unbounded loop (`trimExt`), three
+recursions read by name (`os.Open` beside the store's own `Open`; `readDoc` now reads with
+`os.ReadFile`), and invariant density 0.49 against 2.0. Density was met by structure, not padding: a
+failure is one guard (`if bad { return s.note(tally, false) }`), each function's real preconditions
+guarded (a nil store, an empty root, a bound not positive, shapes and lengths), trivial helpers
+folded (four path functions into `filesAt`; `readDay` and `readYear` into one generic `readAs`, which
+also cleared the one duplicate `dupes` reported).
+
+**Mutation verdicts** (targeted, 14): buckets removed unheld, an older issue overwriting, a claim not
+exclusive, a day expired without its roll-up, buckets unread, values unrounded, keys unchecked,
+claims never stale, years never pruned, the catalog only of registered datasets, values over no
+shape, a step unbounded below, a version mismatch read - all caught.
