@@ -2055,3 +2055,18 @@ Render check PASS both. The first answer's ~5.4 s is the serial inputs, the next
 
 **Mutation verdicts** (targeted, 14): all caught, two after their tests were strengthened (the
 switches read through `inputsFor`; a bad perimeters body).
+
+## Batch 61 — the feed's inputs asked together (D-155 step 2c, P-5, 2026-09-30)
+
+**P-5.** The view's alerts, the fire, the quakes, the buoys, the tide stations and AirNow do not
+depend on one another, and the feed asked them one after another - six inputs of 300 ms took
+2.45 s in the RED test. `fetchInputs` asks them together and joins them before the feed reads any:
+six goroutines at most, one an input and never one a thing, each writing its own field; every
+request still goes through its lane's pacing, so no host is asked faster. Clean under `-race`.
+
+**Measured, cold, n = 5 each:** `default` M5 7.0 s (6.9-7.2), `heavy` 9.4 s (7.3-10.1) - a small
+gain on batch 60 (7.3, 9.6). The alerts' answer still takes ~5.3 s: the other inputs were not what
+held it. The chain left is the alerts in view, then their zones, then the overlays - measured stage
+by stage next, rather than guessed at.
+
+**Mutation verdicts** (targeted, 3): all caught - the feed not waiting for its inputs among them.

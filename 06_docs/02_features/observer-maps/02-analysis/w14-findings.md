@@ -69,7 +69,7 @@ hold is listed at the end.
 | P-2 | **Fixed, batch 59.** **Every move key asks the whole feed at once, and again 600 ms later.** `handleMapKey` batches `mapFeedCmd` on every pan, zoom and region key; D-66's settle tick then asks again. The per-key ask predates D-66 (batch 5) and survived it (batch 15) | History; code | Verified |
 | P-3 | **Fixed, batch 60.** **Fire and quakes are fetched on every feed ask whatever their switches** (`inputsFor` → `fireIn`, `mapQuakes.fetch`); buoys, tides and air check theirs | Code | Verified |
 | P-4 | **Fixed, batch 60 (D-160).** Zone shapes resolved for alert categories switched off (the estimate skips them, D-149; the feed does not) | Auditor | Reported |
-| P-5 | The feed's inputs are fetched one after another — view alerts, fire (perimeters box by box), quakes, buoys, up to 20 serial tide predictions, AirNow — then the zones | Auditor, two independently | Reported |
+| P-5 | **Fixed, batch 61.** The feed's inputs are fetched one after another — view alerts, fire (perimeters box by box), quakes, buoys, up to 20 serial tide predictions, AirNow — then the zones | Auditor, two independently | Reported |
 | P-6 | **Fixed, batch 60.** **Seven overlays are stamped `Valid: now`** (fire ×3, AirNow, buoys, tides, quakes), so no answer compares unchanged and each is handed in again | Code | Verified |
 | P-7 | **Fixed, batch 60 (AirNow, perimeters; NDBC left).** Big bodies re-parsed on every ask though cached (AirNow 1.9 MB, perimeters, NDBC) | Auditor | Reported |
 | P-8 | **Fixed, batch 58.** `time.LoadLocation` (a zoneinfo read) per alert sentence in the map's description; `platform/tz` exists for this | Code | Verified |

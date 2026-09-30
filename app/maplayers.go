@@ -15,6 +15,7 @@ import (
 	"context"
 	"github.com/branden-thompson/watchpost/domains/airquality"
 	"github.com/branden-thompson/watchpost/domains/marine/ndbc"
+	"sync"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/globalfeed"
@@ -80,22 +81,44 @@ func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bo
 	in := mapInputs{snap: ask.Snap, place: ask.Place, region: ask.Region, view: ask.View, ahead: ask.RadarAhead, forecast: ask.Forecast,
 		quakeFeed: ask.QuakeFeed, clock: ask.Clock, imperial: ask.Fahrenheit, anchor: ask.Anchor, fireMode: ask.FireMode,
 		alertsOff: ask.AlertsOff, alertCategoriesOff: ask.AlertCategoriesOff}
-	if lp != nil {
-		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, fetch), ask.View)
-		if fetch {
-			if ask.Fire { // fetched only while on (W14, P-3; D-149)
-				in.fire = lp.fireIn(ctx, ask)
-			}
-			if ask.Quakes {
-				in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View) // D-122: the feed chosen, not the ticker's
-			}
-			in.buoys, in.tides = lp.buoysIn(ctx, ask), lp.tidesIn(ctx, ask, time.Now()) // D-127, D-128: while their rows are on
-			in.airnow = lp.airnowIn(ctx, ask)                                           // D-138: while Air quality is on
-		} else {
-			in.tides = lp.tidesHeld(ask) // the estimate counts the stations held in view, asking nothing (W14, C-2)
-		}
+	if lp == nil {
+		return in
 	}
+	if !fetch {
+		in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, false), ask.View)
+		in.tides = lp.tidesHeld(ask) // the estimate counts the stations held in view, asking nothing (W14, C-2)
+		return in
+	}
+	lp.fetchInputs(ctx, ask, &in)
 	return in
+}
+
+// fetchInputs asks for the feed's inputs TOGETHER (W14, P-5): the view's
+// alerts, the fire, the quakes, the buoys, the tide stations and AirNow do not
+// depend on one another, and one after another the feed waited out their sum.
+// Each goroutine writes its own field alone, and all are joined before the
+// feed reads any; each request still goes through its lane's pacing, so no
+// host is asked faster. Six at most, one an input - never one a thing.
+func (lp *livePipelines) fetchInputs(ctx context.Context, ask tty.MapAsk, in *mapInputs) {
+	var wg sync.WaitGroup
+	run := func(f func()) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			f()
+		}()
+	}
+	run(func() { in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, true), ask.View) })
+	if ask.Fire { // fetched only while on (W14, P-3; D-149)
+		run(func() { in.fire = lp.fireIn(ctx, ask) })
+	}
+	if ask.Quakes {
+		run(func() { in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View) }) // D-122: the feed chosen, not the ticker's
+	}
+	run(func() { in.buoys = lp.buoysIn(ctx, ask) })             // D-127: while its row is on
+	run(func() { in.tides = lp.tidesIn(ctx, ask, time.Now()) }) // D-128: while its row is on
+	run(func() { in.airnow = lp.airnowIn(ctx, ask) })           // D-138: while Air quality is on
+	wg.Wait()
 }
 
 // withInView is the snapshot the feed and the estimate walk: the station's,

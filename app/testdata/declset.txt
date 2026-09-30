@@ -179,6 +179,7 @@ func (*livePipelines).currentStation
 func (*livePipelines).currentWatch
 func (*livePipelines).dropCard
 func (*livePipelines).endEventRead
+func (*livePipelines).fetchInputs
 func (*livePipelines).fireFor
 func (*livePipelines).fireIn
 func (*livePipelines).fireRules
