@@ -102,6 +102,30 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 
 **Crashed writers.** Temp files older than 10 minutes are swept by the prune.
 
+## 4b. Several instances, beyond the store
+
+Several watchpost instances on one machine - a Broadcaster and an Observer, say - share more than the store's files. Each of these is settled so N instances cost what one does, and none depends on another staying up.
+
+**The Open-Meteo quota is the machine's, not a process's.** The quota gate (batch 71) holds a spent host in memory, so each instance finds the refusal for itself - one refused request each - and probes on its own clock. Instead:
+
+- The gate keeps its hold in a small shared file, `$XDG_STATE_HOME/watchpost/quota.json` (by default `~/.local/state/watchpost/quota.json`): each spent host, its period, its reset and its next probe - written by temp file and rename, read before each ask (memoised for a few seconds).
+- Any instance that is refused writes it; every instance honours it, so one refusal holds them all.
+- **One probe for all:** the instance whose probe is due takes it by moving the next probe time forward in the file first (write, re-read, proceed only if its own write stands); an answered probe clears the host for everyone.
+- The file unreadable or absent: each instance falls back to its own memory - as batch 71 is now.
+
+**The recorder records each hour once.** At :05 every running instance would fetch the same hour.
+
+- An instance claims a series' hour by creating `.claim-<HH>` beside its day file with `O_CREATE|O_EXCL` - atomic on every local filesystem - and only the claimant fetches and writes.
+- A claim older than 10 minutes with no record written is stale: another instance may remove it and claim again (the claimant crashed or was closed).
+- Instances start the recorder at a random offset in the first minutes of the hour, so claims rarely contend.
+- The fetch itself still goes through the shared HTTP cache: an hour the map already fetched costs nothing.
+
+**Pruning and roll-ups** run in whichever instance's hourly pass comes first; both are idempotent, bounded, and tolerate files removed under them (section 4). A roll-up is written before the hours it summarises are removed, so a reader never finds a day in neither tier.
+
+**Settings.** The retention and the [ Data ] tab's choices live in `config.toml`, which every instance reads; a change made in one reaches the others at their next config read, and pruning always uses the retention read at that pass, never a remembered one. An instance never prunes past a longer retention another has just chosen.
+
+**Tests.** Two gates on one state file: a refusal in one holds the other, one probe between them, an answer frees both. Two recorders on one store: each hour fetched once; a stale claim taken over. A roll-up racing a reader: the day read whole from one tier or the other.
+
 ## 5. Retention
 
 **Per dataset (D-171).** The fallback datasets keep 72 hours (the 48 needed, and margin). Trend datasets keep 30 days of hours by default, rolled up beyond that.
