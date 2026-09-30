@@ -2260,3 +2260,31 @@ minute - because neither rule was held by any test before either. `TestAGridIsCu
 
 **Mutation verdicts** (targeted, 6): the horizon ignored, the hour's span, a day fewer, no unit
 conversion, the currency, the anchor's hour - all caught.
+
+## Batch 70 — the map window's commands and reconciles one way (D-155 step 5, S-5 tty half; 2026-09-30)
+
+**Now.** `mapWorkers.cmd(stop, closed, f)` is the one shape of the map's Work, feed, radar and
+temperature commands - admitted or refused once the map closes, `done` deferred, cancelled too when
+`stop` ends (`context.Background` where nothing stops it). `reconcile` is the radar's loops' and the
+temperature's grids' hand-in: the unchanged kept (U1-28), the changed set, a refused one keeping the
+form drawn before it (U2-14) and said, the gone taken off. The feed's `setFeed` stays its own: it
+drops a refused overlay rather than keeping the old, groups refusals by layer, and times each first.
+57 lines in, 68 out. Lint caught one thing on the way: a nil `context.Context` passed for "no stop"
+(SA1012) - `context.Background` now, tested by `Done() != nil`.
+
+**Gaps the extraction showed.** Of six mutants of the shared code, four survived the map tests at
+first: the radar's and temperature's "unchanged, not handed in again" was held only for the feed;
+now `TestTheRadarAndTemperatureAreReconciled` holds it for both, with a control. Two stay, and are
+equivalent: a closed map's Work command returning nothing rather than an empty `mapWorkedMsg`
+(which draws nothing and asks nothing), and the radar landing's "a loop taken off draws at once" -
+see C-10.
+
+**Found (C-10): D-85's guard cannot fire.** The radar landing draws only "once nothing is left to
+prepare" (`removed || !set || m.Pending() == 0`), so a loop handed in is not drawn half-ready. But
+the library counts a job as pending only once a `Render` has planned it: straight after `Set`,
+`Pending()` is 0, so the landing always draws. Existing behaviour, untouched here; queued to
+investigate with the library (whether D-85's blink can recur, and whether the guard should ask the
+library differently).
+
+**Mutation verdicts** (targeted, 6): stop ignored, unchanged handed in again, refused dropping the
+drawn form, nothing taken off - caught; the closed message and the removal's draw - equivalent.

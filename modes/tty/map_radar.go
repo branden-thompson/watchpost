@@ -76,17 +76,9 @@ func (d Dashboard) askRadar() (Dashboard, tea.Cmd) {
 	stopped, stop := context.WithCancel(context.Background())
 	d.mapPane.radarStop = stop
 	ask, workers := d.mapAsk(), d.mapPane.workers
-	return d, func() tea.Msg {
-		ctx, done, ok := workers.begin()
-		if !ok {
-			return nil // the map closed: the app is not asked
-		}
-		defer done()
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		defer context.AfterFunc(stopped, cancel)()
+	return d, workers.cmd(stopped, nil, func(ctx context.Context) tea.Msg {
 		return mapRadarMsg{radar: radar(ctx, ask), region: region}
-	}
+	})
 }
 
 // refreshRadar asks again on new data only once the loop has stood for
@@ -121,24 +113,10 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 	if !d.layerOn(RadarLayer) {
 		v.radar = MapRadar{}
 	}
-	given, set := map[string]tuimaps.Overlay{}, false
 	var refused error
-	for _, o := range v.radar.Overlays {
-		if prev, ok := d.mapPane.radarGiven[o.ID]; ok && SameOverlay(prev, o) {
-			given[o.ID] = o // unchanged: handing it in again would drop what was prepared (U1-28)
-			continue
-		}
-		var err error
-		d.mapPane.call("Set", func() { _, err = m.Set(o) })
-		if err != nil {
-			refused = err // SAID, never swallowed: a refused loop read as "loading" for ever (UAT-2 U2-5)
-			if prev, ok := d.mapPane.radarGiven[o.ID]; ok {
-				given[o.ID] = prev // THE LOOP DRAWN STAYS (U2-14): a refused refresh took it off the map
-			}
-			continue
-		}
-		given[o.ID], set = o, true
-	}
+	given, set, removed := d.reconcile(d.mapPane.radarGiven, v.radar.Overlays, func(_ tuimaps.Overlay, err error) {
+		refused = err // SAID, never swallowed: a refused loop read as "loading" for ever (UAT-2 U2-5)
+	})
 	switch { // a refusal is ours, never the listener's to act on: the diagnostics' (D-124)
 	case refused != nil && len(given) == 0:
 		v.radar.Source, v.radar.Note = "", ""
@@ -148,13 +126,6 @@ func (d Dashboard) applyMapRadar(v mapRadarMsg) (tea.Model, tea.Cmd) {
 	}
 	for _, p := range v.radar.Problems {
 		d.problem(p)
-	}
-	removed := false
-	for id := range d.mapPane.radarGiven {
-		if _, ok := given[id]; !ok {
-			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
-			removed = true
-		}
 	}
 	d.mapPane.radarGiven, d.mapPane.radarSource, d.mapPane.radarNote, d.mapPane.radarAhead = given, v.radar.Source, v.radar.Note, v.radar.Ahead
 	d = d.showStep().retime() // the newest frame is Radar mode's now: the alerts' spans move with it (D-98)

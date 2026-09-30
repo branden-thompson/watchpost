@@ -61,6 +61,28 @@ func (w *mapWorkers) begin() (context.Context, context.CancelFunc, bool) {
 	return ctx, func() { cancel(); w.wg.Done() }, true
 }
 
+// cmd is a command run under the map's workers: closed is its message once
+// the map has closed, when f is never asked; while it runs, stop ending (a
+// newer ask, a region left) cancels its context too - context.Background,
+// which never ends, where nothing stops it. The one shape of the
+// map's Work, feed, radar and temperature commands (W14, S-5).
+func (w *mapWorkers) cmd(stop context.Context, closed tea.Msg, f func(ctx context.Context) tea.Msg) tea.Cmd {
+	return func() tea.Msg {
+		ctx, done, ok := w.begin()
+		if !ok {
+			return closed // the map closed: nothing is asked or touched
+		}
+		defer done()
+		if stop.Done() != nil {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithCancel(ctx)
+			defer cancel()
+			defer context.AfterFunc(stop, cancel)()
+		}
+		return f(ctx)
+	}
+}
+
 // close cancels every command and waits for them, up to mapJoinLimit.
 func (w *mapWorkers) close() {
 	if w == nil {

@@ -16,6 +16,7 @@ package tty
 // prepared it: U1-28's blink, once a step.
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strconv"
@@ -204,14 +205,9 @@ func (d Dashboard) askTemp() (Dashboard, tea.Cmd) {
 	anchor := d.tempAnchor()
 	d.mapPane.tempBusy, d.mapPane.tempAt = true, d.now()
 	ask, workers := d.mapAsk(), d.mapPane.workers
-	return d, func() tea.Msg {
-		ctx, done, ok := workers.begin()
-		if !ok {
-			return nil // the map closed: the app is not asked
-		}
-		defer done()
+	return d, workers.cmd(context.Background(), nil, func(ctx context.Context) tea.Msg {
 		return mapTempMsg{temp: temp(ctx, ask), anchor: anchor}
-	}
+	})
 }
 
 // refreshTemp asks again once the answer has stood, or at once when the
@@ -322,31 +318,45 @@ func (d Dashboard) rainOn() bool {
 // setTemp hands in the grids the mode draws and takes off the rest; an
 // unchanged grid is not handed in again (U1-28).
 func (d Dashboard) setTemp() (Dashboard, bool) {
+	given, set, _ := d.reconcile(d.mapPane.tempGiven, d.tempOverlays(), func(o tuimaps.Overlay, err error) {
+		d.problem("Temperature: " + o.ID + " not drawn - " + err.Error()) // never swallowed (U2-5), never the listener's to act on (D-124)
+	})
+	d.mapPane.tempGiven = given
+	return d, set
+}
+
+// reconcile hands the library the overlays wanted that changed, and takes
+// off the ones no longer wanted: radar's loops and the temperature's grids
+// (W14, S-5). An unchanged overlay is not handed in again - that would drop
+// what was prepared (U1-28); one refused keeps the form drawn before it (U2-14),
+// and refused is told. It returns what is given now, whether anything was
+// set, and whether anything was taken off.
+func (d Dashboard) reconcile(had map[string]tuimaps.Overlay, want []tuimaps.Overlay, refused func(tuimaps.Overlay, error)) (given map[string]tuimaps.Overlay, set, removed bool) {
 	m := d.mapPane.m
-	given, set := map[string]tuimaps.Overlay{}, false
-	for _, o := range d.tempOverlays() {
-		if prev, ok := d.mapPane.tempGiven[o.ID]; ok && SameOverlay(prev, o) {
+	given = map[string]tuimaps.Overlay{}
+	for _, o := range want {
+		if prev, ok := had[o.ID]; ok && SameOverlay(prev, o) {
 			given[o.ID] = o
 			continue
 		}
 		var err error
 		d.mapPane.call("Set", func() { _, err = m.Set(o) })
 		if err != nil {
-			d.problem("Temperature: " + o.ID + " not drawn - " + err.Error()) // never swallowed (U2-5), never the listener's to act on (D-124)
-			if prev, ok := d.mapPane.tempGiven[o.ID]; ok {
-				given[o.ID] = prev // the grid drawn stays (U2-14)
+			refused(o, err)
+			if prev, ok := had[o.ID]; ok {
+				given[o.ID] = prev
 			}
 			continue
 		}
 		given[o.ID], set = o, true
 	}
-	for id := range d.mapPane.tempGiven {
+	for id := range had {
 		if _, ok := given[id]; !ok {
 			d.mapPane.call("Remove", func() { _, _ = m.Remove(id) })
+			removed = true
 		}
 	}
-	d.mapPane.tempGiven = given
-	return d, set
+	return given, set, removed
 }
 
 // tempOn reports whether temperature - or feels-like, its other measure

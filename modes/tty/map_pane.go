@@ -367,16 +367,11 @@ func (d Dashboard) mapWorkCmd() tea.Cmd {
 		return nil
 	}
 	pane := d.mapPane
-	return func() tea.Msg {
-		ctx, done, ok := pane.workers.begin()
-		if !ok {
-			return mapWorkedMsg{} // the map closed: nothing is touched
-		}
-		defer done()
+	return pane.workers.cmd(context.Background(), mapWorkedMsg{}, func(ctx context.Context) tea.Msg {
 		did := false
 		pane.call("Work", func() { did, _ = m.Work(ctx) }) // a failed tile is the library's to retry, and its warning says so
 		return mapWorkedMsg{did: did}
-	}
+	})
 }
 
 // applyMapWorked draws what a Work command landed, and asks for the next.
@@ -880,18 +875,10 @@ func (d Dashboard) mapFeedCmd() tea.Cmd {
 	if asked == nil {
 		asked = context.Background()
 	}
-	ask.Place = &place // the command's own copy: the model may move on while it runs
-	return func() tea.Msg {
-		ctx, done, ok := workers.begin()
-		if !ok {
-			return nil // the map closed: the app is not asked
-		}
-		defer done()
-		ctx, stop := context.WithCancel(ctx)
-		defer stop()
-		defer context.AfterFunc(asked, stop)() // a stale ask stops here too
+	ask.Place = &place                                                 // the command's own copy: the model may move on while it runs
+	return workers.cmd(asked, nil, func(ctx context.Context) tea.Msg { // a stale ask stops it too
 		return mapFeedMsg{gen: gen, seq: seq, feed: feed(ctx, ask)}
-	}
+	})
 }
 
 // applyMapFeed sets the feed's overlays, takes off the ones it no longer

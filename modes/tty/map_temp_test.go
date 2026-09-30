@@ -7,6 +7,7 @@ package tty
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -691,5 +692,57 @@ func TestAForecastStepIsDrawnOnce(t *testing.T) {
 			t.Errorf("a playback tick (feed in: %v) drew %d times; want once", fed, n)
 		}
 		d.mapPane.fcPlaying = false
+	}
+}
+
+// THE RADAR'S LOOPS AND THE TEMPERATURE'S GRIDS ARE RECONCILED AS THE FEED'S
+// ARE (W14, S-5 - one reconcile now): an unchanged loop or grid is not handed
+// in again, which would drop what was prepared and blink (U1-28); and a
+// landing that takes a loop off draws at once, though the loop handed in
+// beside it is still preparing - the old one is not left on screen.
+func TestTheRadarAndTemperatureAreReconciled(t *testing.T) {
+	var asked []string
+	d := openRadarMap(t, "MRMS", &asked)
+	if len(d.mapPane.radarGiven) == 0 {
+		t.Fatal("no loop to reconcile")
+	}
+	calls := &[]string{}
+	d.mapPane.calls = calls
+	var same, moved MapRadar
+	for _, o := range d.mapPane.radarGiven {
+		same.Overlays = append(same.Overlays, o)
+		o.ID += "/moved"
+		img := *o.Image
+		img.West-- // another box: a picture the library has not prepared
+		o.Image = &img
+		moved.Overlays = append(moved.Overlays, o)
+	}
+	same.Source, moved.Source = d.mapPane.radarSource, d.mapPane.radarSource
+	m, _ := d.applyMapRadar(mapRadarMsg{radar: same, region: d.mapPane.region.Name})
+	d = m.(Dashboard)
+	if slices.Contains(*calls, "Set") {
+		t.Errorf("an unchanged loop was handed in again: %v", *calls)
+	}
+	*calls = nil
+	d.mapPane.feed = nil // no feed yet: retime draws nothing, so the landing's own rule is what draws
+	m, _ = d.applyMapRadar(mapRadarMsg{radar: moved, region: d.mapPane.region.Name})
+	d = m.(Dashboard)
+	if !slices.Contains(*calls, "Set") || !slices.Contains(*calls, "Remove") {
+		t.Fatalf("a moved loop was not handed in and the old taken off: %v", *calls)
+	}
+	if !slices.Contains(*calls, "Render") {
+		t.Errorf("a landing that took a loop off did not draw at once: %v", *calls)
+	}
+
+	var asks []MapAsk
+	d = openTempMap(t, true, &asks)
+	if len(d.mapPane.tempGiven) == 0 {
+		t.Fatal("no grid to reconcile")
+	}
+	calls = &[]string{}
+	d.mapPane.calls = calls
+	d, _ = d.setTemp()
+	if slices.Contains(*calls, "Set") || slices.Contains(*calls, "Remove") {
+		t.Errorf("unchanged grids were handed in again or taken off: %v", *calls)
 	}
 }
