@@ -16,9 +16,13 @@ package temperature
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -97,6 +101,44 @@ type QuotaGate struct {
 	now   func() time.Time
 	mu    sync.Mutex
 	spent map[string]heldHost
+	state string    // the shared state file, "" for none (NewSharedQuotaGate)
+	read  time.Time // when the state was last read
+	token string    // this gate's name in the state, to know its own probe's claim
+}
+
+// quotaStateEvery is how long a gate trusts its read of the shared state.
+const quotaStateEvery = 5 * time.Second
+
+// sharedHold is a host's hold as the shared state keeps it.
+type sharedHold struct {
+	Period        string
+	Resets, Probe time.Time
+	Prober        string
+}
+
+// NewSharedQuotaGate is a gate whose holds are shared through a state file
+// with every other gate on it - one per watchpost instance (design 4b): a
+// refusal met by one holds them all, one of them probes, an answer frees
+// them all. The file unreadable, the gate holds by its own memory.
+func NewSharedQuotaGate(get Getter, now func() time.Time, state string) *QuotaGate {
+	g := NewQuotaGate(get, now)
+	g.state, g.token = state, strconv.FormatInt(time.Now().UnixNano(), 36)+"-"+strconv.Itoa(os.Getpid())
+	return g
+}
+
+// DefaultQuotaState is $XDG_STATE_HOME/watchpost/quota.json, by default
+// ~/.local/state/...; "" where neither resolves.
+func DefaultQuotaState() string {
+	base := os.Getenv("XDG_STATE_HOME")
+	abs := filepath.IsAbs(base)
+	if abs {
+		return filepath.Join(base, "watchpost", "quota.json")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".local", "state", "watchpost", "quota.json")
 }
 
 // heldHost is a spent host's quota and when it is next asked.
@@ -116,20 +158,118 @@ func NewQuotaGate(get Getter, now func() time.Time) *QuotaGate {
 func (g *QuotaGate) GetText(ctx context.Context, rawURL string, opts ...httpx.Option) ([]byte, error) {
 	host, now := hostOf(rawURL), g.now()
 	g.mu.Lock()
+	g.syncLocked(now)
 	h, held := g.spent[host]
+	probing := held && !now.Before(h.probe) && g.claimProbeLocked(host, now)
 	g.mu.Unlock()
-	if held && now.Before(h.probe) {
-		return nil, &QuotaHeldError{Quota: h.quota}
+	if held && !probing {
+		return nil, &QuotaHeldError{Quota: h.quota} // held, or another instance probes
 	}
 	body, err := g.ask(ctx, rawURL, opts...)
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if q, ok := QuotaOf(err, now); ok {
 		g.spent[host] = heldHost{quota: q, probe: minTime(q.Resets, now.Add(quotaProbeEvery))}
-	} else if err == nil {
+		g.saveLocked()
+	} else if err == nil && held {
 		delete(g.spent, host)
+		g.saveLocked()
 	}
 	return body, err
+}
+
+// syncLocked takes the shared state's holds as the gate's, at most once in
+// quotaStateEvery: the state is the machine's word. Unreadable, the gate's
+// own memory stands.
+func (g *QuotaGate) syncLocked(now time.Time) {
+	if g.state == "" || now.Sub(g.read) < quotaStateEvery {
+		return
+	}
+	g.read = now
+	holds, ok := readQuotaState(g.state)
+	if !ok {
+		return
+	}
+	g.spent = map[string]heldHost{}
+	for host, h := range holds { // a host each (P10-02)
+		g.spent[host] = heldHost{quota: Quota{Host: host, Period: h.Period, Resets: h.Resets}, probe: h.Probe}
+	}
+}
+
+// claimProbeLocked takes a due probe for this instance: it moves the probe
+// forward in the shared state under its own name and reads it back - true
+// only when its name stands. With no state, the probe is its own.
+func (g *QuotaGate) claimProbeLocked(host string, now time.Time) bool {
+	h := g.spent[host]
+	h.probe = now.Add(quotaProbeEvery)
+	g.spent[host] = h
+	if g.state == "" {
+		return true
+	}
+	holds, _ := readQuotaState(g.state)
+	if s, ok := holds[host]; ok && now.Before(s.Probe) {
+		return false // another instance has moved it: its probe
+	}
+	if !g.writeState(host, g.token) {
+		return true // the state cannot be written: probe by the gate's own memory
+	}
+	holds, _ = readQuotaState(g.state)
+	return holds[host].Prober == g.token
+}
+
+// saveLocked writes the gate's holds to the shared state.
+func (g *QuotaGate) saveLocked() {
+	if g.state == "" {
+		return
+	}
+	g.writeState("", "")
+}
+
+// writeState writes the gate's holds, naming prober as host's probe's
+// claimant where host is given; by temp file and rename, so a reader sees a
+// whole state.
+func (g *QuotaGate) writeState(host, prober string) bool {
+	holds := map[string]sharedHold{}
+	for h, held := range g.spent { // a host each (P10-02)
+		holds[h] = sharedHold{Period: held.quota.Period, Resets: held.quota.Resets, Probe: held.probe}
+	}
+	if s, ok := holds[host]; ok {
+		s.Prober = prober
+		holds[host] = s
+	}
+	body, err := json.Marshal(holds)
+	if err != nil {
+		return false
+	}
+	if err := os.MkdirAll(filepath.Dir(g.state), 0o700); err != nil {
+		return false
+	}
+	f, err := os.CreateTemp(filepath.Dir(g.state), ".quota-*")
+	if err != nil {
+		return false
+	}
+	tmp := f.Name()
+	_, werr := f.Write(body)
+	cerr := f.Close()
+	if werr != nil || cerr != nil || os.Rename(tmp, g.state) != nil {
+		_ = os.Remove(tmp)
+		return false
+	}
+	g.read = g.now()
+	return true
+}
+
+// readQuotaState is the shared state's holds; false where it cannot be read.
+func readQuotaState(path string) (map[string]sharedHold, bool) {
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return nil, false
+	}
+	var holds map[string]sharedHold
+	if json.Unmarshal(body, &holds) != nil {
+		return nil, false
+	}
+	return holds, true
 }
 
 // Refused is the spent quota the map says, if any: the one whose period is
@@ -137,6 +277,7 @@ func (g *QuotaGate) GetText(ctx context.Context, rawURL string, opts ...httpx.Op
 func (g *QuotaGate) Refused() (Quota, bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.syncLocked(g.now()) // the machine's word: another instance's answer frees this one too
 	var out Quota
 	found := false
 	for _, h := range g.spent { // a host each: a handful (P10-02)

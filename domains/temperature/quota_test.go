@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -99,5 +100,83 @@ func TestTheGateHoldsASpentHostUntilItsProbe(t *testing.T) {
 	}
 	if _, ok := g.Refused(); ok {
 		t.Error("an answered probe left the quota said spent")
+	}
+}
+
+// THE QUOTA IS THE MACHINE'S, NOT A PROCESS'S (W18.3, design 4b): gates
+// sharing one state file - one per watchpost instance - hold together. A
+// refusal met by one holds the other without its asking; when the probe is
+// due, one of them asks; an answer frees both.
+func TestInstancesShareTheQuotasHold(t *testing.T) {
+	now := quotaNow
+	clock := func() time.Time { return now }
+	state := filepath.Join(t.TempDir(), "quota.json")
+	refuse := true
+	answer := func(string) ([]byte, error) {
+		if refuse {
+			return nil, spent("Daily")
+		}
+		return []byte("ok"), nil
+	}
+	ua, ub := &gateGetter{answer: answer}, &gateGetter{answer: answer}
+	a, b := NewSharedQuotaGate(ua, clock, state), NewSharedQuotaGate(ub, clock, state)
+	forecast := "https://api.open-meteo.com/v1/forecast"
+	if _, err := a.GetText(context.Background(), forecast); err == nil {
+		t.Fatal("the refusal was not passed on")
+	}
+	now = now.Add(quotaStateEvery) // past b's read of the state
+	if _, err := b.GetText(context.Background(), forecast); err == nil || len(ub.asked) != 0 {
+		t.Fatalf("the other instance asked a host the first found spent: %v, %v", err, ub.asked)
+	}
+	if q, ok := b.Refused(); !ok || q.Period != "Daily" {
+		t.Errorf("the other instance does not say the quota is spent: %+v", q)
+	}
+	now = now.Add(quotaProbeEvery) // the probe is due - and refused again
+	_, _ = a.GetText(context.Background(), forecast)
+	_, _ = b.GetText(context.Background(), forecast)
+	if probes := len(ua.asked) + len(ub.asked) - 1; probes != 1 {
+		t.Errorf("%d instances probed the host; want one", probes)
+	}
+	now = now.Add(quotaProbeEvery) // due again; answered this time
+	refuse = false
+	if _, err := b.GetText(context.Background(), forecast); err != nil {
+		t.Fatalf("the due probe was not asked: %v", err)
+	}
+	now = now.Add(quotaStateEvery) // not a's own probe: the other's answer frees it
+	if _, ok := a.Refused(); ok {
+		t.Error("after the other instance's answered probe, this one still says the quota is spent")
+	}
+	if _, err := a.GetText(context.Background(), forecast); err != nil {
+		t.Errorf("after the other instance's answered probe, this one is still held: %v", err)
+	}
+}
+
+// A PROBE ANOTHER INSTANCE HAS CLAIMED IS NOT ASKED AGAIN, even by one whose
+// own reading says it is due: before claiming, a gate reads the state, and a
+// probe already moved forward is another's.
+func TestAClaimedProbeIsNotAskedTwice(t *testing.T) {
+	now := quotaNow
+	clock := func() time.Time { return now }
+	state := filepath.Join(t.TempDir(), "quota.json")
+	forecast := "https://api.open-meteo.com/v1/forecast"
+	var b *QuotaGate
+	var bErr error
+	ub := &gateGetter{answer: func(string) ([]byte, error) { return nil, spent("Daily") }}
+	ua := &gateGetter{}
+	ua.answer = func(string) ([]byte, error) {
+		if len(ua.asked) > 1 { // a's probe, in flight: b tries now
+			_, bErr = b.GetText(context.Background(), forecast)
+		}
+		return nil, spent("Daily")
+	}
+	a := NewSharedQuotaGate(ua, clock, state)
+	b = NewSharedQuotaGate(ub, clock, state)
+	_, _ = a.GetText(context.Background(), forecast) // refused: held in the state
+	now = now.Add(quotaProbeEvery - time.Second)
+	_, _ = b.GetText(context.Background(), forecast) // b reads the hold, a second before its probe
+	now = now.Add(time.Second)                       // due, by both gates' readings
+	_, _ = a.GetText(context.Background(), forecast) // a claims the probe, and b tries during it
+	if len(ub.asked) != 0 {
+		t.Errorf("b asked a probe a had claimed (%v)", bErr)
 	}
 }

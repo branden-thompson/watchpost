@@ -2459,3 +2459,27 @@ reads as unrecorded (tested).
 
 **Mutation verdicts** (targeted, 6): no replay, the stretch over a replayed hour, no RECORDED chip,
 any shape replayed, RECORDED counted a source, the chip without its ground - all caught.
+
+## Batch 78 — the quota's hold shared by every instance (W18.3, design 4b; 2026-09-30)
+
+**Why.** Open-Meteo's quota is the machine's, not a process's; batch 71's gate held a spent host in
+its own memory, so each instance met the refusal for itself and probed on its own clock.
+
+**Now.** The gate keeps its holds in `$XDG_STATE_HOME/watchpost/quota.json` (default
+`~/.local/state/watchpost/quota.json`; `DefaultQuotaState`), written by temp file and rename. Every
+gate takes the state as the machine's word, read at most every five seconds; a refusal met by one
+instance holds them all; an answered probe frees them all - and `Refused`, which the notice reads,
+reads the state too. **One probe for all:** an instance whose probe is due first reads the state -
+a probe already moved forward is another's - then moves it forward under its own name and reads it
+back, and asks only if its name stands. Where the state cannot be read or written, a gate holds by
+its own memory, as before.
+
+**Two tests the first draft of the test needed.** Mutants showed the shared test passing without the
+sharing: after the other instance's answered probe, this one's own probe was also due, so it freed
+itself; and a claimed probe was never tried by a second instance whose own reading said it was due.
+`TestInstancesShareTheQuotasHold` now looks before its own probe; `TestAClaimedProbeIsNotAskedTwice`
+has the second instance try during the first's probe.
+
+**Mutation verdicts** (targeted, 5): the state never re-read, a refusal not shared, an answer not
+shared, no check before claiming - caught; the claim's read-back never lost - equivalent in any
+sequential test (it guards two writes landing between one read and one write), left to the design.

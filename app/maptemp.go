@@ -48,12 +48,16 @@ type tempSources struct {
 }
 
 // tempSourcesOver is both sources over one temperature client (overClient).
-func tempSourcesOver(c *httpx.Client) *tempSources { return tempSourcesAt(c, "", "") }
+func tempSourcesOver(c *httpx.Client) *tempSources {
+	return tempSourcesAt(c, "", "", temperature.DefaultQuotaState())
+}
 
 // tempSourcesAt is both sources over one getter, at the hosts given ("" the
-// production ones): Open-Meteo's asks go through the quota gate, NDFD's not.
-func tempSourcesAt(c temperature.Getter, omBase, ndfdBase string) *tempSources {
-	gate := temperature.NewQuotaGate(c, time.Now)
+// production ones): Open-Meteo's asks go through the quota gate - its holds
+// shared with every instance through state ("" for none, design 4b) - NDFD's
+// not.
+func tempSourcesAt(c temperature.Getter, omBase, ndfdBase, state string) *tempSources {
+	gate := temperature.NewSharedQuotaGate(c, time.Now, state)
 	om, ndfd := temperature.NewOpenMeteo(gate, omBase), temperature.NewNDFD(c, ndfdBase)
 	return &tempSources{ndfd: ndfd, om: om, gate: gate, rain: om, waves: ndfd}
 }

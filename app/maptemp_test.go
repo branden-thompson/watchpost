@@ -539,7 +539,7 @@ func TestOpenMeteosSpentQuotaReachesTheMap(t *testing.T) {
 	}
 	ndfd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) }))
 	defer ndfd.Close()
-	lp := &livePipelines{temp: tempSourcesAt(c, srv.URL, ndfd.URL)} // NDFD apart: only Open-Meteo's asks are counted
+	lp := &livePipelines{temp: tempSourcesAt(c, srv.URL, ndfd.URL, "")} // NDFD apart: only Open-Meteo's asks are counted
 	got := lp.mapTemperature(context.Background(), tempAsk(false))
 	if got.Quota == nil || got.Quota.Period != "Daily" || got.Quota.Source != "Open-Meteo" {
 		t.Fatalf("the answer does not say Open-Meteo's daily quota is spent: %+v", got.Quota)
