@@ -63,6 +63,16 @@ func (l *timingLog) note(t tty.Timing) {
 	}
 }
 
+// stage keeps how long one stage of a feed ask took, from since to now
+// (W14): the inputs, each input, the zones, the overlays, the whole. Nothing
+// without a keeper - the feed pays one nil check a stage.
+func (l *timingLog) stage(what string, since time.Time) {
+	if l == nil {
+		return
+	}
+	l.note(tty.Timing{Trigger: "feed", Event: what, After: time.Since(since)})
+}
+
 // last is a copy of the intervals held; nil without a keeper.
 func (l *timingLog) last() []timingRecord {
 	if l == nil {

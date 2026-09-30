@@ -23,6 +23,7 @@ import (
 	"github.com/branden-thompson/watchpost/platform/render"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 	"strings"
+	"sync"
 )
 
 func TestTheAlertsAreFiledAsTheSevereWindowFilesThem(t *testing.T) {
@@ -159,7 +160,10 @@ func TestEveryQuakeIsAcceptedByTheLibrary(t *testing.T) {
 // on, each is.
 func TestFireAndQuakesAreAskedOnlyWhileOn(t *testing.T) {
 	var asked []string
+	var mu sync.Mutex // fire and quakes are asked together: the handler runs on several goroutines at once
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
 		asked = append(asked, r.URL.Path)
 		_, _ = w.Write([]byte(`{"features":[]}`))
 	}))

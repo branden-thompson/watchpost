@@ -440,6 +440,7 @@ func (*tileCounter).transport
 func (*timingLog).hook
 func (*timingLog).last
 func (*timingLog).note
+func (*timingLog).stage
 func (CastReport).ToneSummary
 func (airScope).hasOrigin
 func (bedReach).Line

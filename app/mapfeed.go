@@ -30,7 +30,11 @@ import (
 // so a note can say whether the place lies in a missing zone (FR-4.1, FR-4.4).
 func (lp *livePipelines) mapFeed(ctx context.Context, ask tty.MapAsk) tty.MapFeed {
 	ctx = httpx.WithInteractive(ctx) // the listener is waiting: never behind the station's launch burst (D-156)
-	return lp.mapFeedWith(ctx, lp.mapInputsFetching(ctx, ask), func(loc snapshot.Location) []string {
+	start := time.Now()
+	defer lp.timings.stage("whole", start)
+	in := lp.mapInputsFetching(ctx, ask)
+	lp.timings.stage("inputs", start)
+	return lp.mapFeedWith(ctx, in, func(loc snapshot.Location) []string {
 		if lp.weather == nil {
 			return nil
 		}
@@ -53,7 +57,10 @@ func (lp *livePipelines) mapFeedWith(ctx context.Context, in mapInputs, placeZon
 			}
 		}
 	}
+	zonesAt := time.Now()
 	areas := resolveAlertAreas(ctx, lp.zoneShapes, snap)
+	lp.timings.stage("zones", zonesAt)
+	defer lp.timings.stage("overlays", time.Now())
 	seen := map[string]bool{}
 	var zonesOfPlace map[string]bool
 	for _, loc := range snap.Locations {

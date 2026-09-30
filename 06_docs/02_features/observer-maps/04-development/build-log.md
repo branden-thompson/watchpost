@@ -2070,3 +2070,28 @@ held it. The chain left is the alerts in view, then their zones, then the overla
 by stage next, rather than guessed at.
 
 **Mutation verdicts** (targeted, 3): all caught - the feed not waiting for its inputs among them.
+
+## Batch 62 — the feed timed stage by stage (2026-09-30)
+
+**Why.** After batch 61 the alerts' answer still took ~5.3 s cold, and which stage held it was
+being inferred. With the instrument on, a feed ask now keeps each input's time, the zones', the
+overlays' and the whole's (`timingLog.stage`; one nil check a stage when off).
+
+**Measured, first ask of a cold open, 3 runs each:**
+
+| | inputs (together) | zones | overlays | whole |
+|---|---|---|---|---|
+| `default` | 0.26-0.59 s | **4.0-4.9 s** | ~0 | 4.6-5.2 s |
+| `heavy` | 1.7-2.0 s (tides: up to 20 lookups at CO-OPS's 5 a second) | **3.0-4.1 s** | ~0 | 5.0-5.8 s |
+
+**And relaunched with the cache kept** (the same HOME, `default`): zones 0.02 s - api.weather.gov
+allows ~25 days and the disk tier keeps them - the alerts answered in 0.9-1.5 s, **M5 2.8-3.6 s**
+against D-46's 3.5 s (23.2 s at the checkpoint). The first-ever zone fetch is left as it is
+(D-161); the ~2 s from the answer to a complete frame is the library's (D-155 step 4).
+
+**Found by this batch's gate: a race batch 61 left in two tests.** Asking the feed's inputs
+together means a test's fake server is hit on several goroutines at once, and two tests' handlers
+appended to a shared slice unlocked - `TestTheSeasStationsAreAskedOnlyWhileOn` (buoys and tides)
+and `TestFireAndQuakesAreAskedOnlyWhileOn` (fire and quakes). Batch 61's gate passed by the luck of
+timing; this one's `race` caught it, and it is the likeliest cause of T-1. The product's code was
+not in either report. Both handlers lock; 30 runs of each under `-race` clean.

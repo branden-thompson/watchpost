@@ -1,10 +1,12 @@
 package app
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
 // TestTheTimingLogIsOnlyThereWhenAskedFor is W14's instrument (D-154): under
@@ -46,5 +48,33 @@ func TestTheTimingsReachTheCounters(t *testing.T) {
 	d.sources = func() diagSources { s := src(); s.timings = l; return s }
 	if rec := d.record(time.Now()); len(rec.Timings) != timingsKept {
 		t.Errorf("the counters record carries %d timings, want %d", len(rec.Timings), timingsKept)
+	}
+}
+
+// TestTheFeedTimesItsStages is W14's next measure: the alerts' answer still
+// takes ~5.3 s cold after the inputs were asked together, and which stage
+// holds it was being guessed. With the instrument on, a feed ask says how
+// long each stage took - each input, the zones, the overlays - so the next
+// change is aimed at a measured stage.
+func TestTheFeedTimesItsStages(t *testing.T) {
+	t.Setenv("WATCHPOST_DEBUG_TIMING", "1")
+	loc, srv := m1Fixture(t, "01-covers-oak-ridge")
+	lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL), timings: newTimingLog()}
+	lp.mapFeed(context.Background(), tty.MapAsk{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{loc}}, Place: &loc})
+	got := map[string]bool{}
+	for _, r := range lp.timings.last() {
+		if r.Trigger == "feed" {
+			got[r.Event] = true
+		}
+	}
+	for _, want := range []string{"inputs", "input:alerts", "zones", "overlays", "whole"} {
+		if !got[want] {
+			t.Errorf("the feed did not time %q: %v", want, got)
+		}
+	}
+	quiet := &livePipelines{zoneShapes: zoneStore(t, srv.URL)} // the instrument off: nothing kept, nothing asked of it
+	quiet.mapFeed(context.Background(), tty.MapAsk{Snap: &snapshot.Snapshot{Locations: []snapshot.Location{loc}}, Place: &loc})
+	if quiet.timings.last() != nil {
+		t.Error("with the instrument off the feed kept timings")
 	}
 }

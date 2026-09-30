@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -98,8 +99,11 @@ func TestTideStationsAreLabelledWhenFewAreInView(t *testing.T) {
 // otherwise - the tides are a request a station.
 func TestTheSeasStationsAreAskedOnlyWhileOn(t *testing.T) {
 	var paths []string
+	var mu sync.Mutex // the feed asks its inputs together (batch 61): the handler runs on several goroutines at once
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
 		paths = append(paths, r.URL.Path+"?"+r.URL.Query().Get("type")+r.URL.Query().Get("product"))
+		mu.Unlock()
 		switch {
 		case strings.HasSuffix(r.URL.Path, "latest_obs.txt"):
 			b, _ := os.ReadFile("../domains/marine/ndbc/testdata/latest_obs.txt")

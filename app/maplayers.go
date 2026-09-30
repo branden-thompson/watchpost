@@ -101,23 +101,24 @@ func (lp *livePipelines) inputsFor(ctx context.Context, ask tty.MapAsk, fetch bo
 // host is asked faster. Six at most, one an input - never one a thing.
 func (lp *livePipelines) fetchInputs(ctx context.Context, ask tty.MapAsk, in *mapInputs) {
 	var wg sync.WaitGroup
-	run := func(f func()) {
+	run := func(name string, f func()) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer lp.timings.stage("input:"+name, time.Now()) // each input's own time (W14)
 			f()
 		}()
 	}
-	run(func() { in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, true), ask.View) })
+	run("alerts", func() { in.inView = inViewOnly(lp.viewAlerts(ctx, ask.View, true), ask.View) })
 	if ask.Fire { // fetched only while on (W14, P-3; D-149)
-		run(func() { in.fire = lp.fireIn(ctx, ask) })
+		run("fire", func() { in.fire = lp.fireIn(ctx, ask) })
 	}
 	if ask.Quakes {
-		run(func() { in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View) }) // D-122: the feed chosen, not the ticker's
+		run("quakes", func() { in.quakes = quakesIn(lp.mapQuakes.fetch(ctx, ask.QuakeFeed), ask.View) }) // D-122: the feed chosen, not the ticker's
 	}
-	run(func() { in.buoys = lp.buoysIn(ctx, ask) })             // D-127: while its row is on
-	run(func() { in.tides = lp.tidesIn(ctx, ask, time.Now()) }) // D-128: while its row is on
-	run(func() { in.airnow = lp.airnowIn(ctx, ask) })           // D-138: while Air quality is on
+	run("buoys", func() { in.buoys = lp.buoysIn(ctx, ask) })             // D-127: while its row is on
+	run("tides", func() { in.tides = lp.tidesIn(ctx, ask, time.Now()) }) // D-128: while its row is on
+	run("airnow", func() { in.airnow = lp.airnowIn(ctx, ask) })          // D-138: while Air quality is on
 	wg.Wait()
 }
 
