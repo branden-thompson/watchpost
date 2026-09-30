@@ -641,7 +641,6 @@ func pixelsOf
 func placeInView
 func priorityTiers
 func profileNames
-func programmeReturnLine
 func proposeFrom
 func providerEndpoints
 func pruneDumps

@@ -256,7 +256,8 @@ type Settings struct {
 	// ONE owner and the Director never invents one.
 	//
 	// EMPTY MEANS SAY NOTHING, and that is the degradation: a station that
-	// speaks a line nobody wrote is worse than one that simply moves on.
+	// speaks a line nobody wrote is worse than one that simply moves on. Both
+	// are empty in production today (D-163); app/schedule.go is the seam.
 	ProgrammeReturn string
 	Announcement    string
 }

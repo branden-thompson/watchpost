@@ -38,7 +38,9 @@ package lineup
 // through Settings, composed by the app from `transition/resume.txt` — so there
 // is ONE owner of the sentence and the Director never invents one. With no words
 // it arranges nothing, which is the same degradation shape as D-48's cadence
-// term: better to move on than to speak a line nobody wrote.
+// term: better to move on than to speak a line nobody wrote. NO WORDS ARE
+// HANDED IN TODAY (D-163): the production line-up sets neither, so nothing is
+// arranged; app/schedule.go is where they would be.
 //
 // RE-DERIVING IS FREE. `slots()` gives Transition `textAtStandby: false`, so a
 // transition's words are fixed at proposal — no composer, no network, nothing to

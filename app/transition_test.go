@@ -7,14 +7,21 @@ import (
 	"github.com/branden-thompson/watchpost/platform/snapshot"
 )
 
-// TestTheResumeTransitionDiffersOnlyByWhetherTheProgrammeKeptRunning — F-27.
+// TestTheProgrammeReturnsWordsAreKept is D-163's seam, as D-158's: F-27's
+// spoken transition back to the programme was never wired - the line-up's
+// ProgrammeReturn is set nowhere in production - and its composer is removed;
+// its words stay in the script library, held here, for the day it is wired
+// (app/schedule.go says where).
 //
 // The HUM LEAD's ruling: ONE script for both modes. A live relay kept playing
 // underneath the read, so the listener is rejoined to something already under
 // way; a synth programme did not. Everything else about the sentence is the
 // same, which is why it is one file and not two.
-func TestTheResumeTransitionDiffersOnlyByWhetherTheProgrammeKeptRunning(t *testing.T) {
-	synth, relay := programmeReturnLine(nil, false), programmeReturnLine(nil, true)
+func TestTheProgrammeReturnsWordsAreKept(t *testing.T) {
+	say := func(live bool) string {
+		return scriptText(nil, "transition", "resume", map[string]any{"InProgress": live})
+	}
+	synth, relay := say(false), say(true)
 	if synth == "" || relay == "" {
 		t.Fatal("the resume transition rendered nothing; the listener gets a hard cut")
 	}

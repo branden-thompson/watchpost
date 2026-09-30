@@ -175,6 +175,15 @@ func startSchedule(ctx context.Context, nar *director, scripts *script.Library, 
 	// constant here would agree with it today and drift silently: the station
 	// would hold cards the operator cannot address, or leave slots empty for
 	// ever, and neither reads as a bug from either side.
+	//
+	// THE SEAM FOR THE SPOKEN TRANSITIONS (D-163). ProgrammeReturn and
+	// Announcement are left empty, so the Director arranges no transition:
+	// F-27's "Watchpost Radio now returns to its regularly scheduled
+	// programming" was built and never wired, and its composer is removed. The
+	// transitions are the Director's only additive act - it alone knows two
+	// adjacent cards came from different places - and the line-up's machinery
+	// for them is tested. To add them back, set ProgrammeReturn here to
+	// transition/resume.txt, rendered by scriptText with its InProgress.
 	p := newPump(lineup.New(lineup.Settings{Max: defaultBurstMax, Depth: tty.MainTrackSlots}, time.Now()), x.run,
 		func(f lineup.Effect, v any) { radioDebugLog("schedule:fault:" + lineup.Describe(f)) })
 	if p == nil {

@@ -2326,3 +2326,17 @@ back an hour, and the two ahead.
 **Mutation verdicts** (targeted, 10): the hold, the freeing answer, the 429 check, the daily reset,
 the rescue, the stretch, the quota carried, the notice drawn, the reason's sanitising, the reason
 read - all caught.
+
+## Batch 72 — F-27's unwired transition removed, its seam left (S-11, D-163; 2026-09-30; not the map's)
+
+**Verified unused first:** the line-up's `ProgrammeReturn` and `Announcement` are set by no
+production code - the one `lineup.Settings` built outside tests (`app/schedule.go`) sets `Max`
+and `Depth` alone - and `programmeReturnLine` was called by nothing but its test.
+
+**Now, as D-158.** `app/transition.go` - `programmeReturnLine` alone after D-158 - is removed. Its
+words stay in `transition/resume.txt`, held by `TestTheProgrammeReturnsWordsAreKept` (the one
+clause between the modes, the ratified opening; a changed clause was caught). **The seam** is the
+production line-up's construction in `app/schedule.go`: both fields left empty on purpose, and the
+one line that would hand them in; the line-up's own transition machinery, tested, is unchanged, and
+its two comments that said the app composes the words now say that none are handed in (D-163).
+Nothing a listener hears changes.
