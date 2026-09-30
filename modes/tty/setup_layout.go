@@ -215,6 +215,10 @@ func (d Dashboard) setupBlock(o render.Opts, g setupGroupID) setupBlock {
 		ml, mAt := d.mapLayerLines(o, nil, 0)
 		b.lines = append(b.lines, ml...)
 		b.at, b.end = at+mAt, len(b.lines)
+	case groupHistory:
+		hl, hAt := d.historyLines(o)
+		b.lines = append(b.lines, hl...)
+		b.at, b.end = at+hAt, len(b.lines)
 	case groupRelay:
 		b.lines = append(b.lines, d.relayLines(o)...)
 		// The focused ROW, not the whole group: the mark is on one of the two
@@ -525,6 +529,8 @@ func (d Dashboard) setupChips(o render.Opts) []string {
 			segs = append(segs, o.KeyCap("←→")+" Hours")
 		case rowMapQuakes:
 			segs = append(segs, o.KeyCap("←→")+" Quakes")
+		case rowHistoryHours, rowHistoryTrends:
+			segs = append(segs, o.KeyCap("←→")+" Keep")
 		case rowMapDetailLevel:
 			segs = append(segs, o.KeyCap("←→")+" Detail")
 		default:

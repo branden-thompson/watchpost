@@ -258,7 +258,7 @@ func (s *Store) Catalog() []Dataset {
 
 // Series is a dataset's recorded series, at most max.
 func (s *Store) Series(dataset string, max int) []Key {
-	d, ok := s.sets[dataset]
+	d, ok := s.dataset(dataset)
 	if !ok || max <= 0 {
 		return nil
 	}
@@ -340,7 +340,7 @@ func trimExt(name string) string {
 // seriesDir is a series' directory, or false for a dataset not held or a
 // key that is not a path segment.
 func (s *Store) seriesDir(dataset string, k Key) (string, Dataset, bool) {
-	d, ok := s.sets[dataset]
+	d, ok := s.dataset(dataset)
 	if !ok {
 		return "", Dataset{}, false
 	}
@@ -891,7 +891,7 @@ func (s *Store) RollUpAndPrune() {
 	}
 	now := s.now().UTC()
 	visits, removals := 0, 0
-	for _, d := range s.sets { // a handful (P10-02)
+	for _, d := range s.datasets() { // a handful (P10-02)
 		vdir := filepath.Join(s.root, d.Name, "v"+strconv.Itoa(d.Version))
 		for _, series := range listSeries(vdir, &visits) { // bounded by maxPruneVisits
 			removals += s.pruneSeries(d, series, now, &visits, maxPruneRemovals-removals)
@@ -1249,4 +1249,105 @@ func hasDay(days []dayEntry, date string) bool {
 		}
 	}
 	return false
+}
+
+// dataset is a held dataset, as its retention stands now.
+func (s *Store) dataset(name string) (Dataset, bool) {
+	if s == nil || name == "" {
+		return Dataset{}, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	d, ok := s.sets[name]
+	return d, ok
+}
+
+// datasets are the held datasets, a copy.
+func (s *Store) datasets() []Dataset {
+	if s == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.sets) == 0 {
+		return nil
+	}
+	out := make([]Dataset, 0, len(s.sets))
+	for _, d := range s.sets { // a handful (P10-02)
+		out = append(out, d)
+	}
+	return out
+}
+
+// Retain sets a held dataset's retention - its records' hours and its
+// rolled-up days - while the store runs (D-175: the [ Data ] tab), its
+// manifest rewritten to say so. False for a dataset not held.
+func (s *Store) Retain(name string, hours, days time.Duration) bool {
+	if s == nil || hours <= 0 || days < 0 {
+		return false
+	}
+	s.mu.Lock()
+	d, ok := s.sets[name]
+	if ok {
+		d.Hours, d.Days = hours, days
+		s.sets[name] = d
+	}
+	s.mu.Unlock()
+	if !ok {
+		return false
+	}
+	s.writeManifest(d)
+	return true
+}
+
+// maxSizeVisits bounds Bytes' walk: far past any store the retention allows.
+const maxSizeVisits = 200_000
+
+// Bytes is what the store holds on disk: its files' sizes, walked at most
+// maxSizeVisits deep (D-175: the [ Data ] tab says it).
+func (s *Store) Bytes() int64 {
+	if s == nil || s.root == "" {
+		return 0
+	}
+	var total int64
+	visits := 0
+	_ = filepath.WalkDir(s.root, func(_ string, e fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // gone under us, or unreadable: counted as nothing
+		}
+		visits++
+		if visits > maxSizeVisits {
+			return fs.SkipAll
+		}
+		if info, ierr := e.Info(); ierr == nil && info.Mode().IsRegular() {
+			total += info.Size()
+		}
+		return nil
+	})
+	return total
+}
+
+// Clear removes every record, roll-up, claim and manifest the store holds -
+// each entry of its root, never the root itself nor anything beside it (D-177:
+// Clear history, behind the app's confirmation) - and writes the manifests
+// again, so recording goes on.
+func (s *Store) Clear() error {
+	if s == nil || s.root == "" {
+		return nil
+	}
+	entries, err := os.ReadDir(s.root)
+	if err != nil {
+		return err
+	}
+	if len(entries) == 0 {
+		return nil // nothing recorded yet
+	}
+	var errs []error
+	for _, e := range entries { // the datasets (P10-02)
+		errs = append(errs, os.RemoveAll(filepath.Join(s.root, e.Name())))
+	}
+	for _, d := range s.datasets() { // P10-02
+		s.writeManifest(d)
+	}
+	return errors.Join(errs...)
 }

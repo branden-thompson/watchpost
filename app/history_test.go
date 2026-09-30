@@ -191,3 +191,48 @@ func TestAPastHourIsReplayedFromTheHistory(t *testing.T) {
 		t.Error("with nothing recorded the current hour is not stretched (the cold start)")
 	}
 }
+
+// THE DATA TAB'S CHOICES REACH THE RUNNING STORE (D-175, D-177): each preset
+// is its duration - the default where the file holds none - applied to the
+// store at once; Clear empties it; the usage says its size and place.
+func TestTheDataTabsChoicesReachTheStore(t *testing.T) {
+	for _, tc := range []struct {
+		r            tty.HistoryRetention
+		hours, trend time.Duration
+	}{
+		{tty.HistoryRetention{}, 72 * time.Hour, 30 * 24 * time.Hour},
+		{tty.HistoryRetention{Hours: "7d", Trends: "90d"}, 7 * 24 * time.Hour, 90 * 24 * time.Hour},
+		{tty.HistoryRetention{Hours: "30d", Trends: "1y"}, 30 * 24 * time.Hour, 365 * 24 * time.Hour},
+		{tty.HistoryRetention{Hours: "1y", Trends: "5y"}, 365 * 24 * time.Hour, 5 * 365 * 24 * time.Hour},
+		{tty.HistoryRetention{Hours: "junk", Trends: "junk"}, 72 * time.Hour, 30 * 24 * time.Hour},
+	} {
+		if h, d := historyDurations(tc.r); h != tc.hours || d != tc.trend {
+			t.Errorf("%+v keeps %v and %v; want %v and %v", tc.r, h, d, tc.hours, tc.trend)
+		}
+	}
+	now := time.Date(2026, 9, 30, 15, 0, 0, 0, time.UTC)
+	root := t.TempDir()
+	lp := &livePipelines{history: history.Open(root, func() time.Time { return now }, ndfdHourly)}
+	lp.applyHistory(tty.HistoryRetention{Hours: "7d", Trends: "1y"})
+	for _, d := range lp.history.Catalog() {
+		if d.Name == ndfdHourly.Name && (d.Hours != 7*24*time.Hour || d.Days != 365*24*time.Hour) {
+			t.Errorf("the store keeps %v and %v; want the chosen 7 days and 1 year", d.Hours, d.Days)
+		}
+	}
+	f := &fakeHour{}
+	s, _ := f.hour(context.Background(), temperature.LatticeFor("us-a", geo.Box{W: -120, S: 32, E: -115, N: 36}), now)
+	rec, _ := ndfdRecord(s, history.Key{Source: "ndfd", Place: "us-a"}, now)
+	lp.history.Put(ndfdHourly.Name, rec)
+	if usage := lp.historyUsage(); !strings.Contains(usage, "KB") && !strings.Contains(usage, "MB") {
+		t.Errorf("the usage says %q; want its size", usage)
+	}
+	if err := lp.clearHistory(); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := lp.history.Get(ndfdHourly.Name, history.Key{Source: "ndfd", Place: "us-a"}, now); ok {
+		t.Error("a record survived Clear history")
+	}
+	if err := (&livePipelines{}).clearHistory(); err != nil {
+		t.Errorf("with no store, Clear history failed: %v", err)
+	}
+}

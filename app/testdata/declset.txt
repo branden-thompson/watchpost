@@ -170,6 +170,7 @@ func (*injectQueue).readyLocked
 func (*injectQueue).take
 func (*injectQueue).wake
 func (*livePipelines).airnowIn
+func (*livePipelines).applyHistory
 func (*livePipelines).attachDeck
 func (*livePipelines).attachDiagnostics
 func (*livePipelines).bedCarrying
@@ -177,6 +178,7 @@ func (*livePipelines).bedFenceMi
 func (*livePipelines).bedRelays
 func (*livePipelines).buildDirector
 func (*livePipelines).buoysIn
+func (*livePipelines).clearHistory
 func (*livePipelines).clearMapData
 func (*livePipelines).commit
 func (*livePipelines).currentPool
@@ -190,6 +192,8 @@ func (*livePipelines).fireIn
 func (*livePipelines).fireRules
 func (*livePipelines).giveItAStation
 func (*livePipelines).historyRegions
+func (*livePipelines).historyStore
+func (*livePipelines).historyUsage
 func (*livePipelines).hydrate
 func (*livePipelines).injectHook
 func (*livePipelines).inputsFor
@@ -231,6 +235,7 @@ func (*livePipelines).seedZoneShapes
 func (*livePipelines).seismicFor
 func (*livePipelines).selectedRelay
 func (*livePipelines).setBedStations
+func (*livePipelines).setHistory
 func (*livePipelines).setRelayDwell
 func (*livePipelines).setRelayLang
 func (*livePipelines).setServiceRadius
@@ -559,6 +564,7 @@ func forecastGrids
 func fullyPopulated
 func gapAfter
 func halfFor
+func historyDurations
 func holdRest
 func hostOf
 func hostsFor
@@ -730,6 +736,7 @@ func settingsRoles
 func severityOf
 func shapeMeets
 func sharesAnOutput
+func sizeWords
 func sleepCtx
 func snapshotBytes
 func spokenName
@@ -886,6 +893,7 @@ var _
 var errDumpTooSoon
 var errReadStopped
 var goosSeam
+var historyKeeps
 var mapLayers
 var mapSources
 var ndfdHourly

@@ -67,6 +67,9 @@ func (d Dashboard) confirmOverlay(o render.Opts) string {
 		}
 		return ""
 	}
+	if d.modal == modalSetup && d.setup.confirmClear { // Clear history's (D-177)
+		return d.floatModalToned(o, debugConfirmWidth, "", d.historyConfirmLines(o), fg, render.Tok(render.ConfirmBG))
+	}
 	if d.modal != modalDebug || !d.debug.confirm {
 		return ""
 	}

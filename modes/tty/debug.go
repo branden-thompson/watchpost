@@ -165,9 +165,7 @@ const debugConfirmWidth = 65
 // and a fabricated alert on their own broadcast is a question they have to
 // answer, on the colour this app uses for exactly one thing.
 func (d Dashboard) debugConfirmLines(o render.Opts) []string {
-	centre := func(s string) string {
-		return strings.Repeat(" ", max((debugConfirmWidth-2-2*modalInset-render.Width(s))/2+modalInset-panelSide, 0)) + s
-	}
+	centre := func(s string) string { return confirmCentre(s, debugConfirmWidth) }
 	out := []string{"", centre("ARE YOU SURE?"), centre("*** ONCE CONFIRMED, YOU CANNOT STOP THIS ACTION ***"), ""}
 	out = append(out, insetModalLines([]string{
 		"Watchpost has taken every reasonable measure to ensure an injected alert is clearly " +
@@ -178,6 +176,12 @@ func (d Dashboard) debugConfirmLines(o render.Opts) []string {
 		""}, debugProseWidth(o, debugConfirmWidth))...)
 	return append(out, strings.Repeat(" ", modalInset)+o.KeyCap("esc")+"  Cancel   "+
 		o.KeyCap("enter")+" CONFIRM: I UNDERSTAND", "")
+}
+
+// confirmCentre centres a line in an ARE YOU SURE of width w: ctrl+d's and
+// Clear history's, one shape (D-152, D-177).
+func confirmCentre(s string, w int) string {
+	return strings.Repeat(" ", max((w-2-2*modalInset-render.Width(s))/2+modalInset-panelSide, 0)) + s
 }
 
 // handleDebugNav walks the window: the questions with tab, the focused

@@ -31,6 +31,7 @@ const (
 	groupStation
 	groupMap
 	groupMapLayers // UAT-1 U1-25: the map's second column
+	groupHistory   // W18: the local history (D-171, D-175, D-177)
 )
 
 // setupRowKind is how a row is operated. It decides which keys do anything on
@@ -92,6 +93,13 @@ const (
 	// ALERTS - EVENTS
 	rowEventsAll
 	rowEventsWithin
+
+	// HISTORY (W18; D-171, D-175, D-177): how long the local history keeps its
+	// hours and its trends, and clearing it. Recorded in any mode (D-172), so
+	// every surface shows it.
+	rowHistoryHours
+	rowHistoryTrends
+	rowHistoryClear
 
 	// ALERTS - TONE. No mode radio: each class carries its own state, so the
 	// row says whether that class will sound rather than leaving a listener to
@@ -272,8 +280,11 @@ func setupTable() [setupRowCount]setupRow {
 		// OBSERVER'S ALERT RADIUS (D-18 row 25, per D-20): it bounds ARRIVALS over
 		// an unbounded location set. The station's service radius is a HARD bound
 		// on LOOKUPS and a separate setting — two radii, not one.
-		rowEventsAll:    {rowEventsAll, groupEvents, scopeObserver, rowRadio, false, "", ""},
-		rowEventsWithin: {rowEventsWithin, groupEvents, scopeObserver, rowRadio, false, "", ""},
+		rowEventsAll:     {rowEventsAll, groupEvents, scopeObserver, rowRadio, false, "", ""},
+		rowHistoryHours:  {rowHistoryHours, groupHistory, scopeShared, rowPicker, true, "", ""},
+		rowHistoryTrends: {rowHistoryTrends, groupHistory, scopeShared, rowPicker, true, "", ""},
+		rowHistoryClear:  {rowHistoryClear, groupHistory, scopeShared, rowCheck, false, "", ""}, // an action, as Map data's (space)
+		rowEventsWithin:  {rowEventsWithin, groupEvents, scopeObserver, rowRadio, false, "", ""},
 
 		// TONES ARE SPLIT (D-18 rows 8, 9): both surfaces have them, with
 		// INDEPENDENT values. They render on both today; the separate storage is
@@ -349,6 +360,8 @@ func setupGroupTitle(g setupGroupID) string {
 		return "MAP - LAYERS AND DETAIL"
 	case groupStation:
 		return "STATION"
+	case groupHistory:
+		return "HISTORY"
 	}
 	return ""
 }
@@ -384,7 +397,7 @@ func visibleRowOfGroup(g setupGroupID, visible func(setupRowID) bool) (setupRowI
 
 // setupGroups is every group, in draw order.
 func setupGroups() []setupGroupID {
-	return []setupGroupID{groupData, groupUI, groupEvents, groupTone, groupCast, groupRelay, groupStation, groupMap, groupMapLayers}
+	return []setupGroupID{groupData, groupUI, groupEvents, groupHistory, groupTone, groupCast, groupRelay, groupStation, groupMap, groupMapLayers}
 }
 
 // nextRow is ↓ and prevRow is ↑. Both WRAP: ↓ on the last row returns to the

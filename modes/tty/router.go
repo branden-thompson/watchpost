@@ -395,7 +395,7 @@ func observerScoped(msg tea.Msg) bool {
 	// answers a LOCATION FIELD is waiting for, and the field is Observer's —
 	// delivered to the console they would be dropped and the search box would
 	// never settle, which is D-128's defect with a timer in front of it.
-	case resolvedMsg, committedMsg, castSavedMsg, uiSavedMsg,
+	case resolvedMsg, committedMsg, castSavedMsg, uiSavedMsg, historyClearedMsg, // W18: Clear history's answer is the Settings window's (D-177)
 		locatePauseMsg, locateVerdictMsg,
 		mapWorkedMsg, mapFeedMsg, mapRadarMsg, mapClearedMsg, mapTickMsg, mapViewSettledMsg, // 0.18.0: what the map's Work landed, its clock and its settling are owed to Observer's map window
 		mapTempMsg, forecastTickMsg: // W10: the temperature, and Forecast mode's playback, are the map window's too

@@ -7,14 +7,16 @@ import pathlib
 #
 # Re-pointed 2026-09-14 (D-130): the debounce's two messages joined the case.
 # Re-pointed 2026-09-25 (0.18.0): the map's mapWorkedMsg joined it too.
+# Re-pointed 2026-09-30 (W18, D-177): Clear history's historyClearedMsg joined
+# the first line.
 #
 # THE MUTATION KEEPS THE FUNCTION so the build still uses it: observerScoped
 # answers false for the search window's own reply, which is exactly the routing
 # that shipped the defect.
 p = pathlib.Path("modes/tty/router.go"); s = p.read_text()
-old = """	case resolvedMsg, committedMsg, castSavedMsg, uiSavedMsg,
+old = """	case resolvedMsg, committedMsg, castSavedMsg, uiSavedMsg, historyClearedMsg, // W18: Clear history's answer is the Settings window's (D-177)
 		locatePauseMsg, locateVerdictMsg,"""
-new = """	case committedMsg, castSavedMsg, uiSavedMsg,
+new = """	case committedMsg, castSavedMsg, uiSavedMsg, historyClearedMsg, // W18: Clear history's answer is the Settings window's (D-177)
 		locatePauseMsg, locateVerdictMsg,"""
 assert old in s, "mCA1"
 p.write_text(s.replace(old, new, 1))

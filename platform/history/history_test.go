@@ -312,3 +312,61 @@ func TestAStepIsHeldAndValuesNeedAShape(t *testing.T) {
 		}
 	}
 }
+
+// RETENTION CHANGES WHILE THE STORE RUNS (D-175): a longer hourly retention
+// chosen on the Data tab keeps a day the default would have rolled up; the
+// manifest says the new retention to any reader.
+func TestRetentionChangesWhileRunning(t *testing.T) {
+	dir, now := t.TempDir(), t0
+	s := open(t, dir, &now)
+	day := t0.Truncate(24 * time.Hour)
+	s.Put(grid.Name, rec(day.Add(time.Hour), 0, 1, 1, 1, 1))
+	if !s.Retain(grid.Name, 7*24*time.Hour, 90*24*time.Hour) {
+		t.Fatal("the retention was not taken")
+	}
+	now = day.Add(4 * 24 * time.Hour) // past 72 hours, within seven days
+	s.RollUpAndPrune()
+	if _, ok := s.Get(grid.Name, ndfd, day.Add(time.Hour)); !ok {
+		t.Error("an hour within the chosen seven days was pruned by the default's 72 hours")
+	}
+	for _, d := range Open(dir, func() time.Time { return now }).Catalog() {
+		if d.Name == grid.Name && d.Hours != 7*24*time.Hour {
+			t.Errorf("the manifest says %v; want the chosen seven days", d.Hours)
+		}
+	}
+	if s.Retain("nothing", time.Hour, 0) {
+		t.Error("a dataset not held took a retention")
+	}
+}
+
+// THE STORE'S SIZE AND ITS CLEARING (D-175, D-177): the Data tab shows what
+// it holds on disk; Clear history removes every record and roll-up - the
+// store's own, nothing beside it - and recording goes on after.
+func TestTheStoreIsSizedAndCleared(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "history")
+	beside := filepath.Join(filepath.Dir(root), "keep.txt")
+	if err := os.WriteFile(beside, []byte("not the store's"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	now := t0
+	s := Open(root, func() time.Time { return now }, grid)
+	if s.Bytes() != 0 && s.Bytes() > 4096 {
+		t.Errorf("an empty store holds %d bytes", s.Bytes())
+	}
+	s.Put(grid.Name, rec(t0, 0, 1, 1, 1, 1))
+	if s.Bytes() <= 0 {
+		t.Error("a store with a record says it holds nothing")
+	}
+	if err := s.Clear(); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := s.Get(grid.Name, ndfd, t0); ok {
+		t.Error("a record survived Clear")
+	}
+	if _, err := os.Stat(beside); err != nil {
+		t.Errorf("Clear removed what lay beside the store: %v", err)
+	}
+	if !s.Put(grid.Name, rec(t0.Add(time.Hour), 0, 2, 2, 2, 2)) {
+		t.Error("the store does not record after Clear")
+	}
+}

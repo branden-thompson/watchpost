@@ -2483,3 +2483,32 @@ has the second instance try during the first's probe.
 **Mutation verdicts** (targeted, 5): the state never re-read, a refusal not shared, an answer not
 shared, no check before claiming - caught; the claim's read-back never lost - equivalent in any
 sequential test (it guards two writes landing between one read and one write), left to the design.
+
+## Batch 79 — the Data tab's HISTORY group (W18; D-171, D-175, D-177; 2026-09-30)
+
+**Where.** Settings already had a Data tab (`tabData`: DATA and ALERTS - EVENTS) - the HUM LEAD's
+"[ Data ] Tab" is that one, so the history is a group on it, **HISTORY**, on every surface
+(recorded in any mode, D-172).
+
+**Now.** Built from the app's own parts (D-147):
+
+- **Hourly detail** - a picker: 72 hours (default) / 7 days / 30 days / 1 year; **Trends** - 30 days
+  (default) / 90 days / 1 year / 5 years (D-175). Written on close with every other setting
+  (`applyIfChanged`, `history_hours`/`history_trends` in config.toml) and applied to the running
+  store at once (`Store.Retain`, its manifest rewritten).
+- **What it holds** - under the rows: "Holds 3.2 MB, in ~/.local/share/watchpost/weather/history"
+  (`Store.Bytes`).
+- **Clear history** - space opens the ARE YOU SURE on the red confirm tile, as ctrl+d's (its centring
+  now one `confirmCentre` for both); while open it owns the keys; esc cancels; enter clears off the UI
+  goroutine (`Store.Clear` - every entry of its root, nothing beside it) and the row says so (D-177).
+
+**The goldens.** The Data tab's golden draws HISTORY under ALERTS - EVENTS in its right column. In
+ASCII the arrows are `[left]`/`[right]`, and a picker as wide as the map's pushed the Data tab past
+two columns; the history pickers are as narrow as their values (`historyValueW`), and ASCII's window
+is 2 columns wider (99 to 101: every tab takes the widest's). The routing guard asked that Clear
+history's answer be carried to the Settings window (`observerScoped`); the air boundary asked that
+its three seams be classified (none reaches the audio); mCA1 was re-pointed to the router's line.
+
+**Mutation verdicts** (targeted, 7, and mCA1 re-pointed and caught): no ARE YOU SURE, the question
+not owning the keys, not written on close, the arrows reversed, trends ignored, not applied, Clear
+doing nothing - all caught.

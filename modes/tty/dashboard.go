@@ -284,6 +284,14 @@ type Config struct {
 	// one NWR cycle); nil in tests.
 	RelayDwell    time.Duration
 	SetRelayDwell func(time.Duration)
+	// History is the history's retention as the file holds it; SetHistory
+	// writes a new one and applies it to the running store; ClearHistory
+	// empties the store; HistoryUsage says what it holds and where (W18;
+	// D-175, D-177).
+	History      HistoryRetention
+	SetHistory   func(HistoryRetention)
+	ClearHistory func() error
+	HistoryUsage func() string
 	// RelayLang is which language wins when two relays share a transmitter
 	// site, and SetRelayLang persists a change. "" means the default
 	// (English). The listener's call, not the table's (HUM LEAD, UAT
@@ -1077,6 +1085,8 @@ func (d Dashboard) dispatch(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return d.handleSettingsSaved(msg), nil // the Settings window's apply-on-close outcomes, one owner
 	case vizTickMsg:
 		return d.vizFrame()
+	case historyClearedMsg:
+		return d.applyHistoryCleared(v), nil
 	case mapClearedMsg:
 		return d.applyMapCleared(v), nil // 0.18.0 W3.8: Settings says what went
 	case mapFeedMsg:

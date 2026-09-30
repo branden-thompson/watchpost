@@ -194,6 +194,7 @@ func typeOfMsg(t *testing.T, name string) reflect.Type {
 		"mapTempMsg":        mapTempMsg{},      // W10
 		"forecastTickMsg":   forecastTickMsg{}, // D-94: Forecast mode's playback is owed to the map window
 		"mapClearedMsg":     mapClearedMsg{},
+		"historyClearedMsg": historyClearedMsg{},
 	}
 	v, ok := known[name]
 	if !ok {

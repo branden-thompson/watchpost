@@ -20,11 +20,16 @@ import (
 	"context"
 	"math"
 	"math/rand/v2"
+	"os"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/domains/temperature"
+	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/config"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/invariant"
@@ -59,8 +64,9 @@ type historian struct {
 	pruned  atomic.Int64 // the hour last pruned, Unix
 }
 
-// startHistory opens the store and records while ctx lives (D-172).
-func (lp *livePipelines) startHistory(ctx context.Context) {
+// startHistory opens the store at the retention chosen and records while ctx
+// lives (D-172, D-175).
+func (lp *livePipelines) startHistory(ctx context.Context, keep tty.HistoryRetention) {
 	if lp.temp == nil {
 		return
 	}
@@ -72,6 +78,7 @@ func (lp *livePipelines) startHistory(ctx context.Context) {
 	lp.mu.Lock()
 	lp.history = h.store
 	lp.mu.Unlock()
+	lp.applyHistory(keep)
 	go func() {
 		start := time.Duration(rand.Int64N(int64(2 * time.Minute)))
 		select {
@@ -250,4 +257,85 @@ func missingRow(n int) []float64 {
 		out[i] = math.NaN()
 	}
 	return out
+}
+
+// historyKeeps are the Data tab's presets as durations (D-175): the hours'
+// and the trends'. A key not among them is the default.
+var historyKeeps = map[string]time.Duration{
+	"72h": 72 * time.Hour, "7d": 7 * 24 * time.Hour, "30d": 30 * 24 * time.Hour, "90d": 90 * 24 * time.Hour,
+	"1y": 365 * 24 * time.Hour, "5y": 5 * 365 * 24 * time.Hour,
+}
+
+// historyDurations is a retention as the store keeps it: the hours, and the
+// rolled-up days past them - the defaults, 72 hours and 30 days, for a key
+// not a preset.
+func historyDurations(r tty.HistoryRetention) (hours, days time.Duration) {
+	hours, days = ndfdHourly.Hours, ndfdHourly.Days
+	if d, ok := historyKeeps[r.Hours]; ok {
+		hours = d
+	}
+	if d, ok := historyKeeps[r.Trends]; ok {
+		days = d
+	}
+	return hours, days
+}
+
+// historyStore is the store, or nil before it opens.
+func (lp *livePipelines) historyStore() *history.Store {
+	lp.mu.Lock()
+	defer lp.mu.Unlock()
+	return lp.history
+}
+
+// applyHistory sets the running store's retention (D-175).
+func (lp *livePipelines) applyHistory(r tty.HistoryRetention) {
+	store := lp.historyStore()
+	if store == nil {
+		return
+	}
+	hours, days := historyDurations(r)
+	store.Retain(ndfdHourly.Name, hours, days)
+}
+
+// setHistory writes the Data tab's choice and applies it at once.
+func (lp *livePipelines) setHistory(r tty.HistoryRetention) {
+	if err := config.Mutate(func(cfg *config.Config) error {
+		cfg.HistoryHours, cfg.HistoryTrends = r.Hours, r.Trends
+		return nil
+	}); err != nil {
+		return
+	}
+	lp.applyHistory(r)
+}
+
+// clearHistory empties the store: Clear history, after the Data tab's ARE
+// YOU SURE (D-177). Nothing to clear is no failure.
+func (lp *livePipelines) clearHistory() error {
+	store := lp.historyStore()
+	if store == nil {
+		return nil
+	}
+	return store.Clear()
+}
+
+// historyUsage is what the store holds and where, as the Data tab says it.
+func (lp *livePipelines) historyUsage() string {
+	store := lp.historyStore()
+	root := history.DefaultRoot()
+	if store == nil || root == "" {
+		return "No history is kept: there is no home directory to keep it in."
+	}
+	if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(root, home) {
+		root = "~" + strings.TrimPrefix(root, home)
+	}
+	return "Holds " + sizeWords(store.Bytes()) + ", in " + root
+}
+
+// sizeWords is a byte count as a person reads it: KB under a megabyte, MB with
+// one decimal above.
+func sizeWords(b int64) string {
+	if b < 1<<20 {
+		return strconv.FormatInt((b+1023)/1024, 10) + " KB"
+	}
+	return strconv.FormatFloat(float64(b)/(1<<20), 'f', 1, 64) + " MB"
 }

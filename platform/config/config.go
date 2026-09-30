@@ -276,6 +276,12 @@ type Config struct {
 	// "ndfd", or Open-Meteo, the default, otherwise (D-101). Radar mode's is
 	// always Open-Meteo, the one source with past hours (D-96).
 	MapTemperatureSource string `toml:"map_temperature_source,omitempty"`
+
+	// HistoryHours and HistoryTrends are the local history's retention, the
+	// Data tab's presets (W18, D-175): "72h", "7d", "30d", "1y" and "30d",
+	// "90d", "1y", "5y"; empty is the default, 72 hours and 30 days.
+	HistoryHours  string `toml:"history_hours,omitempty"`
+	HistoryTrends string `toml:"history_trends,omitempty"`
 	// MapRadarAheadHours is how far past now the radar loop runs (0.18.0
 	// D-114): 1, 3 (the default, when empty), 6 or 12.
 	MapRadarAheadHours int `toml:"map_radar_ahead_hours,omitempty"`

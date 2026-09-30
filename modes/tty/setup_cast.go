@@ -175,6 +175,14 @@ func (d Dashboard) cyclePicker(id setupRowID, forward bool) Dashboard {
 		d.setup.relayDwell = cycleRelayDwell(d.setup.relayDwell, forward)
 		return d
 	}
+	if id == rowHistoryHours { // D-175's presets
+		d.setup.history.Hours = cycleHistory(historyHourChoices, d.setup.history.Hours, forward)
+		return d
+	}
+	if id == rowHistoryTrends {
+		d.setup.history.Trends = cycleHistory(historyTrendChoices, d.setup.history.Trends, forward)
+		return d
+	}
 	list := d.pickerList(id)
 	if len(list) == 0 {
 		return d

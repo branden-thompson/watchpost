@@ -298,8 +298,8 @@ func (lp *livePipelines) startPipelines(ctx context.Context, p *tea.Program, ref
 	// goroutine, because it is network work and the dashboard must not wait for
 	// it to open.
 	go lp.rebed(ctx)
-	lp.startHistory(ctx)                                                            // W18.3b: recorded whenever watchpost runs, in any mode (D-172)
-	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send) // a read ends with the app (A-08)
+	lp.startHistory(ctx, tty.HistoryRetention{Hours: cfg.HistoryHours, Trends: cfg.HistoryTrends}) // W18.3b: recorded whenever watchpost runs, in any mode (D-172), kept as the Data tab chose (D-175)
+	lp.reader = newEventReader(ctx, lp.director, lp.scripts, lp.severe.Row, p.Send)                // a read ends with the app (A-08)
 	if lp.deck != nil {
 		lp.reader.status, lp.reader.restore = lp.deck.overlay, lp.deck.pushStatus
 	}
@@ -397,6 +397,10 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		SetAlertRadius:  setRadius,
 		RelayDwell:      lp.relayDwell(),
 		SetRelayDwell:   lp.setRelayDwell(),
+		History:         tty.HistoryRetention{Hours: cfg.HistoryHours, Trends: cfg.HistoryTrends}, // W18: the Data tab's HISTORY (D-175, D-177)
+		SetHistory:      lp.setHistory,
+		ClearHistory:    lp.clearHistory,
+		HistoryUsage:    lp.historyUsage,
 		RelayLang:       lp.relayLang(),
 		TuneRelay:       lp.tuneRelay(),
 		ReadReport:      lp.readReport(),

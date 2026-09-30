@@ -50,6 +50,10 @@ import (
 type setupState struct {
 	focus setupRowID
 
+	// HISTORY (D-175, D-177): the retention chosen, and the ARE YOU SURE open.
+	history      HistoryRetention
+	confirmClear bool
+
 	// DATA
 	query  string
 	hints  []snapshot.LocationRef
@@ -201,6 +205,7 @@ func (d Dashboard) openSetup() Dashboard {
 	// so it is resolved once on open rather than left to the renderer's
 	// fallback.
 	d.setup.relayDwell = d.cfg.RelayDwell
+	d.setup.history = d.cfg.History
 	d.setup.relayLang = d.cfg.RelayLang
 	if d.setup.relayLang == "" {
 		d.setup.relayLang = defaultRelayLang()
@@ -227,6 +232,9 @@ func (d Dashboard) openSetup() Dashboard {
 // tab / shift+tab move between the questions; enter accepts the focused
 // one (and saves on the last); esc closes without saving.
 func (d Dashboard) handleSetupKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	if d.setup.confirmClear {
+		return d.confirmClearHistory(key) // the ARE YOU SURE owns the keys (D-61)
+	}
 	switch key.String() {
 	case "esc":
 		// Closing APPLIES what was recorded. esc is not a cancel for the cast
@@ -317,6 +325,10 @@ func (d Dashboard) setupRowKey(key tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 	picker := setupTable()[d.setup.focus].picker
 	if d.setup.focus == rowMapClear && (key.String() == "space" || key.String() == "enter") {
 		m, cmd := d.clearMapData()
+		return m, cmd, true
+	}
+	if d.setup.focus == rowHistoryClear && (key.String() == "space" || key.String() == "enter") {
+		m, cmd := d.askClearHistory()
 		return m, cmd, true
 	}
 	switch key.String() {
@@ -544,7 +556,7 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 	// then discarded the fifth with the window state.
 	cmd := sequenceWrites(d.setupFinishCmd(strings.TrimSpace(d.setup.key)),
 		d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd(),
-		d.transmitterApplyCmd(), d.serviceRadiusApplyCmd())
+		d.transmitterApplyCmd(), d.serviceRadiusApplyCmd(), d.historyApplyCmd())
 	return d.commitToModel(), cmd
 }
 
@@ -572,6 +584,9 @@ func (d Dashboard) setupSave() (tea.Model, tea.Cmd) {
 func (d Dashboard) commitToModel() Dashboard {
 	if d.cfg.SetAlertRadius != nil {
 		d.cfg.AlertRadiusMi = d.setup.alertRadiusChoice()
+	}
+	if d.cfg.SetHistory != nil {
+		d.cfg.History = d.setup.history // the next open shows what was written (D-175)
 	}
 	if d.cfg.SetRelayDwell != nil && d.setup.relayDwell > 0 {
 		d.cfg.RelayDwell = d.setup.relayDwell
@@ -688,7 +703,7 @@ func (d Dashboard) relayLangApplyCmd() tea.Cmd {
 // applyOnCloseCmds is THE list of what closing the window writes. Both exits
 // use it, so adding a setting to the window means adding it here once.
 func (d Dashboard) applyOnCloseCmds() tea.Cmd {
-	return sequenceWrites(d.castApplyCmd(), d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd())
+	return sequenceWrites(d.castApplyCmd(), d.uiApplyCmd(), d.radiusApplyCmd(), d.relayApplyCmd(), d.relayLangApplyCmd(), d.historyApplyCmd())
 }
 
 func sequenceWrites(cmds ...tea.Cmd) tea.Cmd {
