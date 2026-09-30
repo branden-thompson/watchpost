@@ -440,7 +440,7 @@ func (d Dashboard) mapBodyLines() []string {
 		return out
 	}
 	size := d.mapBodySize()
-	out = append(out, d.withQuotaNotice(d.withModeChip(d.withEdgeChip(d.withControls(d.withOverlays(d.withAreaAlerts(d.mapPane.lines, size)), size), size), size), size)...)
+	out = append(out, d.withModeChip(d.withEdgeChip(d.withControls(d.withQuotaNotice(d.withOverlays(d.withAreaAlerts(d.mapPane.lines, size)), size), size), size), size)...) // the notice under every control (D-181)
 	if !d.radarTimelineOn() {
 		for _, l := range d.noteLines(width) {
 			out = append(out, " "+l)

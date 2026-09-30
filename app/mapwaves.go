@@ -38,6 +38,7 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd, om waveSource, a
 		unit = tuimaps.Feet
 	}
 	nowStep, days := forecastDays(anchor)
+	fromNDFD, fromOM := false, false // the sources that answered: the chips name those (D-183)
 	for _, b := range fieldBoxes(ask.Region, ask.View) {
 		lat := temperature.LatticeFor(b.Name, b.Box)
 		near, nerr := ndfd.Waves(ctx, lat, now)
@@ -45,11 +46,11 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd, om waveSource, a
 		var w temperature.Waves
 		switch {
 		case nerr == nil && ferr == nil:
-			w = near.FilledFrom(far)
+			w, fromNDFD, fromOM = near.FilledFrom(far), true, true
 		case nerr == nil:
-			w = near
+			w, fromNDFD = near, true
 		case ferr == nil:
-			w = far
+			w, fromOM = far, true
 		default:
 			t.Problems = append(t.Problems, "Waves: neither NDFD nor Open-Meteo answered for "+b.Name)
 			continue
@@ -74,7 +75,14 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd, om waveSource, a
 		}
 	}
 	if len(t.Waves)+len(t.WaveDays) > 0 {
-		t.Chips = withChips(t.Chips, tty.WaveLayer, "NDFD", "O-METEO") // D-133; the credit in full is the Status window's
+		var chips []string // D-133; the credit in full is the Status window's
+		if fromNDFD {
+			chips = append(chips, "NDFD")
+		}
+		if fromOM {
+			chips = append(chips, "O-METEO")
+		}
+		t.Chips = withChips(t.Chips, tty.WaveLayer, chips...) // what drew, never what might have (D-183)
 	}
 	return t
 }

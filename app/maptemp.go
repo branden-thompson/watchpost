@@ -34,7 +34,7 @@ func init() {
 	registerMapLayer(mapLayer{key: tty.WindLayer, label: "Wind", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }})
 	// UV and Air quality ride temperature's source (D-137, D-139): off by
 	// default, after wind in the Overlays menu.
-	registerMapLayer(mapLayer{key: tty.UVLayer, label: "UV", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }, chips: []string{"O-METEO"}})
+	registerMapLayer(mapLayer{key: tty.UVLayer, label: "UV", on: false, cost: func(mapInputs) (int64, int) { return 0, 0 }}) // its chip is the answer's, while it draws (D-183)
 	registerMapLayer(mapLayer{key: tty.AirLayer, label: "Air quality", on: false, cost: airLayerCost, chips: []string{"O-METEO", "AIRNOW"}})
 }
 
@@ -216,7 +216,12 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 	case rescued > 0:
 		out.Source, credit = rescue.Name(), true // NDFD's boxes and Open-Meteo's: both chips
 	}
-	out.Chips = tempChips(out.Source, credit) // the credit is the badge's, in full the Status window's (D-131)
+	out.Chips = tempChips(out.Source, credit)                                                                                                                                                                                                  // the credit is the badge's, in full the Status window's (D-131)
+	for key, drew := range map[string]int{tty.TemperatureLayer: len(out.Overlays) + len(out.High) + len(out.Low), tty.FeelsLayer: len(out.Feels) + len(out.FeelsHigh) + len(out.FeelsLow), tty.WindLayer: len(out.Wind) + len(out.WindDays)} { // three (P10-02)
+		if drew == 0 {
+			delete(out.Chips, key) // a layer drawing nothing names no source (D-183)
+		}
+	}
 	var said []string
 	for n := range missing {
 		said = append(said, n)

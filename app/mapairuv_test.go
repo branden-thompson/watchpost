@@ -58,6 +58,14 @@ func TestUVIsItsGridsInEachMode(t *testing.T) {
 	if len(radar.UV) == 0 || radar.UV[0].Grid.Type.Preset != "uv" || radar.UV[0].Grid.Values[0] != 5 || len(radar.UVDays) != 0 {
 		t.Fatalf("Radar mode's UV is %d hours, %d days", len(radar.UV), len(radar.UVDays))
 	}
+	if got := radar.Chips[tty.UVLayer]; len(got) != 1 || got[0] != "O-METEO" {
+		t.Errorf("drawn, UV's chips are %v; want Open-Meteo's (D-183)", got)
+	}
+	ask.UV = false
+	if got := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow).Chips[tty.UVLayer]; len(got) != 0 {
+		t.Errorf("drawing nothing, UV names %v (D-183)", got)
+	}
+	ask.UV = true
 	ask = tempAsk(true)
 	fc := withUV(context.Background(), tty.MapTemperature{}, om, true, ask, tempNow) // Open-Meteo the source: free, whatever the row
 	if len(fc.UV) != len(fieldBoxes(ask.Region, ask.View)) || len(fc.UVDays) == 0 || fc.UVDays[0].Grid.Values[0] != 8 {

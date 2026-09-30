@@ -38,6 +38,9 @@ func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo
 		})
 		t.UV, t.UVDays = append(t.UV, hours...), append(t.UVDays, days...)
 	}
+	if len(t.UV)+len(t.UVDays) > 0 {
+		t.Chips = withChips(t.Chips, tty.UVLayer, "O-METEO") // named while it draws (D-183)
+	}
 	return t
 }
 

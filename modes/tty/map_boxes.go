@@ -14,6 +14,7 @@ package tty
 import (
 	"math"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -130,14 +131,27 @@ func regionCaps(o render.Opts, blink bool) string {
 // room for them beside the legend: a map under 14 rows or 60 columns draws
 // none (its keys are in Help and on the status line).
 func (d Dashboard) withControls(lines []string, size tuimaps.Size) []string {
-	if d.radarTimelineOn() || size.Rows < 14 || size.Cols < 60 || len(lines) < size.Rows {
+	return spliceAt(lines, size, d.controlsPlace)
+}
+
+// spliceAt lays the box a placement names over the map, while it shows.
+func spliceAt(lines []string, size tuimaps.Size, place func(tuimaps.Size) ([]string, int, int, bool)) []string {
+	box, row, col, ok := place(size)
+	if !ok || len(lines) < size.Rows {
 		return lines
 	}
-	box := d.controlsBox()
-	// ABOVE THE LAST ROW: the library writes the scale and the credit there,
-	// and the credit is the attribution, which is never covered (FR-14,
-	// UAT-1 U1-26).
-	return spliceBox(lines, box, size.Rows-1-len(box), insetCols+size.Cols-(controlsInner+2))
+	return spliceBox(lines, box, row, col)
+}
+
+// controlsPlace is the controls box and where it lies, while it shows. ABOVE
+// THE LAST ROW: the library writes the scale and the credit there, and the
+// credit is the attribution, which is never covered (FR-14, UAT-1 U1-26).
+func (d Dashboard) controlsPlace(size tuimaps.Size) (box []string, row, col int, ok bool) {
+	if d.radarTimelineOn() || size.Rows < 14 || size.Cols < 60 {
+		return nil, 0, 0, false
+	}
+	box = d.controlsBox()
+	return box, size.Rows - 1 - len(box), insetCols + size.Cols - (controlsInner + 2), true
 }
 
 // edgeChipText is the chip's words: the region beyond, with the arrow that
@@ -163,13 +177,18 @@ func (d Dashboard) edgeChipText() string {
 // west at the middle of that side, north at the top's middle, south above the
 // credit row (FR-14, never covered).
 func (d Dashboard) withEdgeChip(lines []string, size tuimaps.Size) []string {
+	return spliceAt(lines, size, d.edgeChipPlace)
+}
+
+// edgeChipPlace is the edge chip and where it lies, while it shows.
+func (d Dashboard) edgeChipPlace(size tuimaps.Size) (chip []string, row, col int, ok bool) {
 	text := d.edgeChipText()
-	if !d.mapPane.edgeShown || text == "" || len(lines) < size.Rows || size.Rows < 5 {
-		return lines
+	if !d.mapPane.edgeShown || text == "" || size.Rows < 5 {
+		return nil, 0, 0, false
 	}
-	chip := chipBox(text)
+	chip = chipBox(text)
 	w := render.Width(text) + 2
-	row, col := size.Rows/2-1, insetCols+(size.Cols-w-2)/2
+	row, col = size.Rows/2-1, insetCols+(size.Cols-w-2)/2
 	switch d.mapPane.edge {
 	case geo.East:
 		col = insetCols + size.Cols - (w + 2)
@@ -180,7 +199,7 @@ func (d Dashboard) withEdgeChip(lines []string, size tuimaps.Size) []string {
 	case geo.South:
 		row = size.Rows - 1 - len(chip)
 	}
-	return spliceBox(lines, chip, row, col)
+	return chip, row, col, true
 }
 
 // modeChipText is the chip D-103 shows when Forecast mode turned a main
@@ -195,20 +214,31 @@ func (d Dashboard) withModeChip(lines []string, size tuimaps.Size) []string {
 		return lines
 	}
 	chip := chipBox(modeChipText)
-	row := 0
-	if d.mapPane.temp.Quota != nil {
-		row = 3 // under the quota's notice, which holds the top (D-165)
-	}
-	return spliceBox(lines, chip, row, insetCols+(size.Cols-render.Width(chip[0]))/2)
+	return spliceBox(lines, chip, 0, insetCols+(size.Cols-render.Width(chip[0]))/2)
 }
 
-// quotaNoticeText is the map's notice of a spent quota (W18.1, D-165), in
-// the HUM LEAD's words: the period's limit, whose, and when it resets in the
-// listener's clock - with the day where that is not today.
+// openMeteoLayers are the overlays drawn from Open-Meteo's forecast and
+// marine services, whose quota the notice speaks of (D-181); Air quality's
+// service has a quota of its own.
+var openMeteoLayers = []string{TemperatureLayer, FeelsLayer, WindLayer, UVLayer, RainLayer, WaveLayer}
+
+// quotaNoticeText is the map's notice of Open-Meteo's spent quota, in the HUM
+// LEAD's words (D-182, D-183), while an overlay it would draw is on: every
+// such overlay drawn from a fallback, "Falling back to ‹source›"; none,
+// "Resets ‹time›" (the listener's clock, with the day where not today); both,
+// "Resets ‹time› // ‹n› Fall-back(s) active". "" when there is nothing to say.
 func (d Dashboard) quotaNoticeText() string {
 	q := d.mapPane.temp.Quota
 	if q == nil {
 		return ""
+	}
+	fallbacks, missing, sources := d.quotaLayers()
+	if fallbacks == 0 && missing == 0 {
+		return ""
+	}
+	head := "! OPEN-METEO: Quota Exceeded; "
+	if missing == 0 {
+		return head + "Falling back to " + strings.Join(sources, " & ")
 	}
 	now := d.now()
 	at := q.Resets.In(now.Location())
@@ -216,22 +246,68 @@ func (d Dashboard) quotaNoticeText() string {
 	if y, m, dd := at.Date(); y != now.Year() || m != now.Month() || dd != now.Day() {
 		when = d.clockFmt.WeekdayDateTime(at)
 	}
-	return "! " + q.Period + " " + q.Source + " API Usage Exceeded. Resets " + when
+	if fallbacks == 0 {
+		return head + "Resets " + when
+	}
+	plural := "s"
+	if fallbacks == 1 {
+		plural = ""
+	}
+	return head + "Resets " + when + " // " + strconv.Itoa(fallbacks) + " Fall-back" + plural + " active"
 }
 
-// withQuotaNotice lays the spent quota's notice at the map's top centre,
-// on its dark-orange ground (D-165), while the answer says a quota is spent.
+// quotaLayers counts the Open-Meteo overlays on by their state, from the
+// sources they are drawn from (D-183): drawn from another source, a
+// fallback; drawing nothing, missing; drawn from Open-Meteo still - its
+// last answer, held - neither. sources are the fallbacks' own, once each.
+func (d Dashboard) quotaLayers() (fallbacks, missing int, sources []string) {
+	for _, key := range openMeteoLayers { // six (P10-02)
+		if !d.layerOn(key) || (key == RainLayer && d.radarMode()) {
+			continue
+		}
+		chips := d.mapPane.temp.Chips[key]
+		switch {
+		case len(chips) == 0:
+			missing++
+		case slices.Contains(chips, "O-METEO"):
+		default:
+			fallbacks++
+			for _, c := range chips { // a layer's few (P10-02)
+				if !slices.Contains(sources, c) {
+					sources = append(sources, c)
+				}
+			}
+		}
+	}
+	return fallbacks, missing, sources
+}
+
+// withQuotaNotice lays the quota's notice at the map's lower right, on the
+// row above the credit row, on its dark-orange ground (D-182) - giving way to
+// a control (D-181): above the controls box while it shows, and above an
+// edge chip it would meet. A map too short to hold it above them draws none.
 func (d Dashboard) withQuotaNotice(lines []string, size tuimaps.Size) []string {
 	text := d.quotaNoticeText()
-	if text == "" || len(lines) < 3 {
+	if text == "" || len(lines) < size.Rows {
 		return lines
 	}
 	box := chipBox(text)
+	w := render.Width(box[0])
+	row, col := size.Rows-1-len(box), insetCols+size.Cols-w
+	if _, top, _, ok := d.controlsPlace(size); ok {
+		row = top - len(box)
+	}
+	if chip, top, left, ok := d.edgeChipPlace(size); ok && top < row+len(box) && top+len(chip) > row && left < col+w && left+render.Width(chip[0]) > col {
+		row = top - len(box)
+	}
+	if row < 0 {
+		return lines
+	}
 	tones := render.ChipTones(render.MapNoticeQuotaBG)
 	for i, l := range box {
 		box[i] = render.TintRaw(l, tones)
 	}
-	return spliceBox(lines, box, 0, insetCols+(size.Cols-render.Width(box[0]))/2)
+	return spliceBox(lines, box, row, col)
 }
 
 // flashMapKey marks a map key pressed, for the controls box to blink.

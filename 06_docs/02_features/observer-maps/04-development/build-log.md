@@ -2404,3 +2404,37 @@ grown to the region's edges), with `radar.GridBoxes` naming the grid.
 
 **Mutation verdicts** (targeted, 5): no claim, nothing put, the grid not recorded, a region
 recorded twice, feels-like dropped - all caught.
+
+## Batch 76 — the quota's notice where it belongs, and chips that say the truth (D-181 to D-183; 2026-09-30)
+
+**The HUM LEAD's UAT nits, ruled in three steps.** The notice hid the north edge chip (a control);
+it showed with no Open-Meteo overlay on; a layer with a fallback deserved its own words; the badges
+should name what each overlay is drawn from now.
+
+**Now.** The notice sits at the map's **lower right, on the row above the OpenFreeMap credit row**,
+and gives way to every control: directly above the controls box while it shows, above an edge chip
+it would meet; drawn beneath them all, and not at all on a map too short to hold it above them. The
+Forecast mode chip is back at the top. It shows **only while an overlay drawing from Open-Meteo's
+forecast or marine service is on** - temperature, feels-like, wind, UV, rain and snow in Forecast
+mode, waves; never for Air quality, whose service has its own quota. Its words, the HUM LEAD's:
+
+| The Open-Meteo overlays on | The notice |
+|---|---|
+| every one drawn from a fallback | `! OPEN-METEO: Quota Exceeded; Falling back to NDFD` |
+| none drawn at all | `! OPEN-METEO: Quota Exceeded; Resets 5:00 PM` |
+| some of each | `! OPEN-METEO: Quota Exceeded; Resets 5:00 PM // 2 Fall-backs active` |
+| drawn from Open-Meteo still (its last answer, held) | nothing |
+
+**The chips say what drew.** Waves name NDFD alone while Open-Meteo refuses (Open-Meteo alone where
+NDFD does; both when both); UV's chip is the answer's, named only while it draws; temperature's,
+feels-like's and wind's are dropped for a layer that drew nothing. The notice reads those same
+chips, so the two cannot disagree.
+
+**On the way.** Placing the notice around the controls and the edge chip drew their placements out
+(`controlsPlace`, `edgeChipPlace`); `dupes` then found `withControls` and `withEdgeChip` one shape -
+one `spliceAt` now. A measuring slip in the test (the splice's reset escape counted as cells) was
+the test's, not the placement's.
+
+**Mutation verdicts** (targeted, 9): the layers ignored, Open-Meteo's own chip counted a fallback,
+the plural, the controls and the edge chip not given way to, the edge chip never drawn, the waves
+always naming Open-Meteo, UV's chip missing, an empty layer keeping its chips - all caught.

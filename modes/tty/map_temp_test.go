@@ -7,6 +7,7 @@ package tty
 
 import (
 	"context"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"slices"
 	"strings"
 	"testing"
@@ -747,55 +748,92 @@ func TestTheRadarAndTemperatureAreReconciled(t *testing.T) {
 	}
 }
 
-// A SPENT QUOTA IS SAID ON THE MAP (W18.1, D-165): the HUM LEAD's PIP, top
-// centre, on a dark-orange ground - "! Daily Open-Meteo API Usage Exceeded.
-// Resets <time>", the time in the listener's clock - while the answer says
-// the quota is spent, and gone once an answer does not.
-func TestASpentQuotaIsSaidOnTheMap(t *testing.T) {
+// A SPENT QUOTA IS SAID ON THE MAP, ONLY WHILE IT MATTERS (W18.1, D-165,
+// D-181 to D-183): while an overlay that draws from Open-Meteo is on - never
+// for Air quality alone, whose service has its own quota - in the HUM LEAD's
+// words: every such overlay on a fallback, "Falling back to ‹source›"; none,
+// "Resets ‹time›"; both, "Resets ‹time› // ‹n› Fall-back(s) active".
+func TestASpentQuotaIsSaidOnlyWhileItMatters(t *testing.T) {
 	var asks []MapAsk
 	d := openTempMap(t, true, &asks)
 	now := d.now()
-	resets := time.Date(now.Year(), now.Month(), now.Day(), 23, 0, 0, 0, now.Location()) // later today: the time alone
-	temp := d.mapPane.temp
-	temp.Quota = &MapQuota{Source: "Open-Meteo", Period: "Daily", Resets: resets}
-	m, _ := d.applyMapTemp(mapTempMsg{temp: temp, anchor: d.tempAnchor()})
-	d = m.(Dashboard)
-	lines := d.mapBodyLines()
-	want := "! Daily Open-Meteo API Usage Exceeded. Resets " + d.clockFmt.Time(resets.In(d.now().Location()))
-	row := -1
-	for i, l := range lines {
-		if strings.Contains(stripANSITest(l), want) {
-			row = i
-			break
+	resets := time.Date(now.Year(), now.Month(), now.Day(), 23, 0, 0, 0, now.Location())
+	at := d.clockFmt.Time(resets)
+	quota := &MapQuota{Source: "Open-Meteo", Period: "Daily", Resets: resets}
+	for _, tc := range []struct {
+		name  string
+		on    map[string]bool
+		chips map[string][]string
+		want  string
+	}{
+		{"Air quality alone", map[string]bool{TemperatureLayer: false, AirLayer: true}, nil, ""},
+		{"nothing on", map[string]bool{TemperatureLayer: false}, nil, ""},
+		{"temperature from NDFD", map[string]bool{TemperatureLayer: true}, map[string][]string{TemperatureLayer: {"NDFD"}}, "! OPEN-METEO: Quota Exceeded; Falling back to NDFD"},
+		{"UV with nothing", map[string]bool{TemperatureLayer: false, UVLayer: true}, nil, "! OPEN-METEO: Quota Exceeded; Resets " + at},
+		{"one of each", map[string]bool{TemperatureLayer: true, UVLayer: true}, map[string][]string{TemperatureLayer: {"NDFD"}}, "! OPEN-METEO: Quota Exceeded; Resets " + at + " // 1 Fall-back active"},
+		{"two falling back", map[string]bool{TemperatureLayer: true, WaveLayer: true, UVLayer: true}, map[string][]string{TemperatureLayer: {"NDFD"}, WaveLayer: {"NDFD"}}, "! OPEN-METEO: Quota Exceeded; Resets " + at + " // 2 Fall-backs active"},
+		{"Open-Meteo answering", map[string]bool{TemperatureLayer: true}, map[string][]string{TemperatureLayer: {"O-METEO"}}, ""},
+	} {
+		d.mapLayerChoice = layerChoiceKey(tc.on)
+		d.mapPane.temp.Quota, d.mapPane.temp.Chips = quota, tc.chips
+		if got := d.quotaNoticeText(); got != tc.want {
+			t.Errorf("%s: the notice reads %q; want %q", tc.name, got, tc.want)
 		}
 	}
-	if row < 0 {
-		t.Fatalf("the notice %q is not on the map:\n%s", want, stripANSITest(strings.Join(lines, "\n")))
+	d.mapPane.temp.Quota = nil
+	d.mapLayerChoice = layerChoiceKey(map[string]bool{TemperatureLayer: true})
+	if got := d.quotaNoticeText(); got != "" {
+		t.Errorf("with no quota spent the notice reads %q", got)
 	}
-	if row > 3 {
-		t.Errorf("the notice is on row %d; want it at the map's top", row)
+}
+
+// THE NOTICE SITS AT THE LOWER RIGHT AND GIVES WAY TO A CONTROL (D-181,
+// D-182): on the row above the credit row, right-aligned; above the controls
+// box while it shows, and above the south edge chip where they would meet.
+func TestTheQuotaNoticeSitsLowerRightAndGivesWay(t *testing.T) {
+	var asks []MapAsk
+	d := openTempMap(t, true, &asks)
+	d.mapLayerChoice = layerChoiceKey(map[string]bool{TemperatureLayer: true})
+	d.mapPane.temp.Quota = &MapQuota{Source: "Open-Meteo", Period: "Daily", Resets: d.now().Add(time.Hour)}
+	d.mapPane.temp.Chips = map[string][]string{TemperatureLayer: {"NDFD"}}
+	size := d.mapBodySize()
+	blank := make([]string, size.Rows)
+	for i := range blank {
+		blank[i] = strings.Repeat(" ", size.Cols+2*insetCols)
 	}
-	plain := stripANSITest(lines[row])
-	at := len([]rune(plain[:strings.Index(plain, want)]))
-	if left, right := at, len([]rune(plain))-at-len([]rune(want)); left < 4 || right < 4 || abs(left-right) > 6 {
-		t.Errorf("the notice is not centred: %d cells left, %d right", left, right)
+	rowOf := func(lines []string) (int, int) {
+		for i, l := range lines {
+			plain := stripANSITest(l) // measured in cells, not the escapes around them
+			if at := strings.Index(plain, "! OPEN-METEO"); at >= 0 {
+				return i, len([]rune(plain[:at]))
+			}
+		}
+		return -1, -1
 	}
-	rendering.SetColorEnabledForTest(true)
-	coloured := d.mapBodyLines()[row]
-	rendering.SetColorEnabledForTest(false)
-	if !strings.Contains(coloured, render.Tok(render.MapNoticeQuotaBG)) {
-		t.Errorf("the notice is not on its ground %q", render.Tok(render.MapNoticeQuotaBG))
+	row, col := rowOf(d.withQuotaNotice(blank, size))
+	text := d.quotaNoticeText()
+	if row != size.Rows-3 || col+len([]rune(text))+2 != insetCols+size.Cols {
+		t.Errorf("the notice is at row %d, column %d; want its words on row %d (its box above the credit row), ending at the right edge", row, col, size.Rows-3)
 	}
-	tomorrow := resets.Add(24 * time.Hour) // another day: the day is said too
-	temp.Quota = &MapQuota{Source: "Open-Meteo", Period: "Daily", Resets: tomorrow}
-	m, _ = d.applyMapTemp(mapTempMsg{temp: temp, anchor: d.tempAnchor()})
-	d = m.(Dashboard)
-	if day := "Resets " + d.clockFmt.WeekdayDateTime(tomorrow); !strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), day) {
-		t.Errorf("a reset on another day does not say the day: want %q", day)
+	withRadar := d.cfg.MapRadar
+	d.cfg.MapRadar = nil // no radar timeline: the controls box shows
+	box, top, _, ok := d.controlsPlace(size)
+	if !ok {
+		t.Fatal("no controls box to give way to")
 	}
-	temp.Quota = nil
-	m, _ = d.applyMapTemp(mapTempMsg{temp: temp, anchor: d.tempAnchor()})
-	if strings.Contains(stripANSITest(strings.Join(m.(Dashboard).mapBodyLines(), "\n")), "API Usage Exceeded") {
-		t.Error("the notice stayed after an answer that was not refused")
+	if row, _ = rowOf(d.withQuotaNotice(blank, size)); row != top-2 {
+		t.Errorf("with the controls box (rows %d-%d) the notice's words are on row %d; want %d, directly above it", top, top+len(box)-1, row, top-2)
+	}
+	d.cfg.MapRadar = withRadar
+	alaska, _ := geo.Neighbour(geo.RegionContiguous, geo.North) // a region with one to its south
+	d.mapPane.region, d.mapPane.edge, d.mapPane.edgeShown = alaska, geo.South, true
+	chip, edgeRow, edgeCol, ok := d.edgeChipPlace(size)
+	if !ok {
+		t.Fatal("no south edge chip to give way to")
+	}
+	row, _ = rowOf(d.withQuotaNotice(blank, size))
+	meets := edgeCol+len([]rune(chip[0])) > col
+	if meets && row+1 >= edgeRow {
+		t.Errorf("the notice (row %d) meets the south edge chip (rows %d-%d) and did not give way", row, edgeRow, edgeRow+len(chip)-1)
 	}
 }

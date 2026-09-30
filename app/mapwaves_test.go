@@ -161,3 +161,33 @@ func TestEveryHourAheadIsAcceptedByTheLibrary(t *testing.T) {
 		}
 	}
 }
+
+// A LAYER'S CHIPS NAME WHAT IT IS DRAWN FROM NOW (D-183): the waves NDFD's
+// alone while Open-Meteo refuses, Open-Meteo's alone where NDFD does; UV's
+// chip only while UV draws; temperature's, feels-like's and wind's only for
+// what drew - an overlay drawing nothing names no source.
+func TestAnOverlaysChipsNameWhatItIsDrawnFrom(t *testing.T) {
+	ndfd, om := fakeWaves{metres: 2 * 0.3048, max: 3 * 0.3048}, fakeWaves{metres: 1, max: 2}
+	refused := fakeWaves{failed: true}
+	for _, tc := range []struct {
+		name      string
+		near, far waveSource
+		want      string
+	}{
+		{"both answer", ndfd, om, "NDFD/O-METEO"},
+		{"Open-Meteo refuses", ndfd, refused, "NDFD"},
+		{"NDFD refuses", refused, om, "O-METEO"},
+		{"neither", refused, refused, ""},
+	} {
+		got := withWaves(context.Background(), tty.MapTemperature{}, tc.near, tc.far, tempAsk(true), tempNow)
+		if chips := strings.Join(got.Chips[tty.WaveLayer], "/"); chips != tc.want {
+			t.Errorf("%s: the waves' chips are %q; want %q", tc.name, chips, tc.want)
+		}
+	}
+	nothing := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow, failed: true}, nil, tempAsk(false), tempNow, nil)
+	for _, key := range []string{tty.TemperatureLayer, tty.FeelsLayer, tty.WindLayer} {
+		if chips := nothing.Chips[key]; len(chips) != 0 {
+			t.Errorf("%s drew nothing and names %v", key, chips)
+		}
+	}
+}
