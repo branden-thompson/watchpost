@@ -2147,3 +2147,27 @@ for the instrument.
 
 **Mutation verdicts** (targeted, 3): the cache rebuilt every scan, the US filter dropped, the
 coordinates swapped - all caught.
+
+## Batch 65 — the library's report kept while only the clock moves (D-155 step 4, P-11; go-tuiMaps rc.27; 2026-09-30)
+
+**Measured first.** Watchpost asks the library for its report on every `renderMap` (the selected
+place's answers, which the description reads) and passes its clock to every `Render`. The
+library kept its last report keyed on that clock, so every map redraw worked it out again: in
+the library's own benchmark, a redraw and a report with only the clock moved cost **9.8 ms and
+11 MB**, against 0.02 ms for the redraw alone - all of it the radar loop's observed motion
+(`describe.Track` over every frame), which the clock does not touch.
+
+**Now** (go-tuiMaps L11.28, `v0.2.0-rc.27`): the report is kept by which overlays are stale -
+the clock's one part in an answer - not by the clock: **0.02 ms and 5.6 KB**. Tested both ways
+in the library: a later clock with nothing gone stale keeps the report; one overlay going stale
+while another already is works it out again (a key on "anything stale" would miss it; the
+mutant was caught). The library's idle `Render` is pinned too (63 allocations, 3.9 µs).
+
+**What it changes at rest, measured:** nothing a probe can separate. A/B, batch 64 against this
+build, the idle probe run alternately: map open 2.2 / 1.9 % against 1.6 / 1.8 %, closed 0.5 / 0.4
+against 0.6 / 0.4 - within the runs' own spread (one earlier run of this build read 2.7 %). An
+idle map redraws seldom; the saving is on each redraw - loop playback, Forecast steps, pans,
+data landing. No regression either way.
+
+**Batch 64's measure, corrected.** The title's per-frame area name was a quarter of the open
+map's cost (2.2 → 1.8 %), not most of it as first read.
