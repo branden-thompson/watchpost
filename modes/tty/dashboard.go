@@ -73,7 +73,11 @@ type Config struct {
 	Version string
 	// Timed is the timing instrument's ear (W14, D-154): nil, and nothing is
 	// measured; the app sets it only under WATCHPOST_DEBUG_TIMING=1.
-	Timed        func(Timing)
+	Timed func(Timing)
+	// MapClosed is told when the map window closes - really closes, not a
+	// window opened over it (D-106): the app lets the zone store's memory go,
+	// the disk tier serving it back on reopen (D-162).
+	MapClosed    func()
 	KeyOverrides term.KeyMap                                   // user [keys] table (validated at build)
 	NewMap       func(size tuimaps.Size) (*tuimaps.Map, error) // 0.18.0: builds the map at its window's size (the library moves only a sized map); nil = maps off
 	MapFeed      func(ctx context.Context, ask MapAsk) MapFeed // 0.18.0: the alerts the map draws, asked off the UI goroutine
@@ -1381,6 +1385,14 @@ const (
 // never doubled. A search or confirmation window is replaced by what it
 // opens: it is done, and never returned to.
 func (d Dashboard) open(m modal) Dashboard {
+	was := d.mapShown()
+	d = d.openWindow(m)
+	d.tellMapClosed(was)
+	return d
+}
+
+// openWindow is open's work: the window shown, and the stack under it.
+func (d Dashboard) openWindow(m modal) Dashboard {
 	if m != modalDetails {
 		d.lookupRef = nil // only Details waits for a lookup (R5-B-09)
 	}
@@ -1426,6 +1438,26 @@ func transient(m modal) bool { return m == modalAdd || m == modalRemove }
 // no longer see — and a read cut short is NOT marked as read, because it was
 // not heard.
 func (d Dashboard) close() Dashboard {
+	was := d.mapShown()
+	d = d.closeWindow()
+	d.tellMapClosed(was)
+	return d
+}
+
+// mapShown reports whether the map window is open: shown, or in the stack
+// under the window shown (D-106), which returns to it.
+func (d Dashboard) mapShown() bool { return d.modal == modalMap || d.stackIndex(modalMap) >= 0 }
+
+// tellMapClosed tells the app the map has closed, when it was shown and now
+// is not anywhere (D-162).
+func (d Dashboard) tellMapClosed(was bool) {
+	if was && !d.mapShown() && d.cfg.MapClosed != nil {
+		d.cfg.MapClosed()
+	}
+}
+
+// closeWindow is close's work: back to the window under it, or to none.
+func (d Dashboard) closeWindow() Dashboard {
 	if d.modal == modalSevere && d.severeReading != "" && d.cfg.EndEventRead != nil {
 		d.cfg.EndEventRead()
 	}
@@ -1437,7 +1469,7 @@ func (d Dashboard) close() Dashboard {
 		d.modal, d.modalScroll, d.resumed = below.modal, below.scroll, below.modal
 		return d
 	}
-	return d.open(modalNone)
+	return d.openWindow(modalNone) // close tells the app, once
 }
 
 // resume runs a window's return (D-107) at the end of the Update that

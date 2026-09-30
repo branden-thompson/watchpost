@@ -2095,3 +2095,28 @@ appended to a shared slice unlocked - `TestTheSeasStationsAreAskedOnlyWhileOn` (
 and `TestFireAndQuakesAreAskedOnlyWhileOn` (fire and quakes). Batch 61's gate passed by the luck of
 timing; this one's `race` caught it, and it is the likeliest cause of T-1. The product's code was
 not in either report. Both handlers lock; 30 runs of each under `-race` clean.
+
+## Batch 63 — the map's memory held once (D-155 step 3; C-4, D-162; 2026-09-30)
+
+**The trace** (heap profiles after GC, `pprof -base`): idle 36.7 MB; the map used and closed a
+minute, 98.5 MB; closed ten minutes, 97.3 MB - bounded, no leak. Zone geometry was held three
+ways - the raw bodies in the HTTP client's memory tier (capped), the zone store's parsed shapes,
+the converted outlines - beside the warm-reopen outlines, radar frames (inside D-88's 24 MiB) and
+grids. D-162: step 1 only - geometry held once, everything a warm reopen draws from kept.
+
+**Now.** Closing the map window - really closing it: `mapShown` counts the map in D-106's stack,
+so a window opened over it is not its closing - tells the app (`Config.MapClosed`), which lets the
+zone store's memory go (`Forget`, the disk untouched). The next ask reads the zones back from the
+disk tier (~0.02 s, batch 62's measure). `open` and `close` are thin wrappers now that compare
+before and after; `close`'s fall-through calls `openWindow`, so a close tells the app once.
+
+**Measured, the same probe:** closed a minute 84.5 MB (was 98.5), ten minutes 86.8 (was 97.3) -
+the map's hold +50 MB where it was +62; the parsed zone shapes (`geo.walk`, 7.6 MB) gone from the
+profile. Live alerts differ between the runs, so part of the difference is theirs.
+
+**A test made to mean what it says.** Batch 60's D-160 test checked "no zones fetched when off" on
+a fixture whose alerts carry their own polygons - it fetches no zones even when everything is on,
+so that half proved nothing. It and this batch's test now use a fixture drawn from its zones, each
+with a control that zones are asked when on; D-160's mutants were re-run and caught.
+
+**Mutation verdicts** (targeted, 6): all caught.

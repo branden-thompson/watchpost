@@ -218,3 +218,29 @@ func TestTheAskSaysWhatIsSwitchedOff(t *testing.T) {
 		t.Error("with the Alert areas layer off the ask does not say so")
 	}
 }
+
+// TestClosingTheMapTellsTheApp is D-162's signal: the app lets the zone
+// store's memory go when the map is closed - really closed, not under a
+// window opened over it (D-106's stack), which returns to it.
+func TestClosingTheMapTellsTheApp(t *testing.T) {
+	closed := 0
+	d := mapDash(t, Config{MapClosed: func() { closed++ }})
+	d, _ = pressKey(d, "g")
+	d, _ = pressKey(d, "?") // Help over the map: the map is under it, not closed
+	if closed != 0 {
+		t.Fatalf("a window opened over the map was taken for its closing (%d)", closed)
+	}
+	d, _ = pressKey(d, "esc") // back to the map
+	if closed != 0 || d.modal != modalMap {
+		t.Fatalf("returning to the map closed it (%d times, modal %s)", closed, modalName(d.modal))
+	}
+	d, _ = pressKey(d, "esc") // the map closed
+	if closed != 1 {
+		t.Errorf("the map closed and the app was told %d times, want once", closed)
+	}
+	d, _ = pressKey(d, "g")
+	_, _ = pressKey(d, "g") // g closes it too
+	if closed != 2 {
+		t.Errorf("g closed the map and the app was told %d times in all, want 2", closed)
+	}
+}

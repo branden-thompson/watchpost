@@ -421,6 +421,7 @@ func (lp *livePipelines) ttyConfig(version string, opt Options, openSetup bool, 
 		MapQuakeFeed:    cfg.MapQuakeFeed,              // D-122: the quakes the map draws
 		MapProblem:      lp.problems.note,              // D-124: the diagnostics', never the listener's
 		Timed:           lp.timings.hook(),             // W14's instrument: nil unless WATCHPOST_DEBUG_TIMING=1
+		MapClosed:       lp.mapClosed,                  // D-162: the zone store's memory goes when the map closes
 		MapLayerChoice:  cfg.MapLayers,                 // 0.18.0 W1.11
 		MapLayers:       windowLayers(),                // 0.18.0 W1.13: the registry's layers
 		MapCost:         lp.mapCost,                    // 0.18.0 W1.14: the registry's estimate

@@ -190,6 +190,7 @@ func (*livePipelines).inputsFor
 func (*livePipelines).locateInRadius
 func (*livePipelines).lookInPool
 func (*livePipelines).lookupCtx
+func (*livePipelines).mapClosed
 func (*livePipelines).mapCost
 func (*livePipelines).mapFeed
 func (*livePipelines).mapFeedWith

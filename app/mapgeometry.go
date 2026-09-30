@@ -115,3 +115,12 @@ func (lp *livePipelines) seedZoneShapes(ctx context.Context, refs []snapshot.Loc
 		lp.zoneShapes.Seed(ctx, ids)
 	}()
 }
+
+// mapClosed is told when the map window closes (D-162): zone geometry is held
+// once - the map's outlines keep a warm reopen instant - so the zone store's
+// parsed copy goes, and the HTTP cache's copy serves it back on reopen.
+func (lp *livePipelines) mapClosed() {
+	if lp != nil && lp.zoneShapes != nil {
+		lp.zoneShapes.Forget()
+	}
+}

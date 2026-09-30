@@ -304,7 +304,7 @@ func placeZonesOf(name string) []string {
 // is. Before, the feed resolved them all and the window dropped the drawing
 // only, keeping the notes and the names.
 func TestAnUncheckedCategoryIsGoneFromTheMap(t *testing.T) {
-	loc, srv := m1Fixture(t, "01-covers-oak-ridge")
+	loc, srv := m1Fixture(t, "04-watch-and-warning-roswell")
 	snap := &snapshot.Snapshot{Locations: []snapshot.Location{loc}}
 	var off []string
 	for _, a := range loc.Alerts {
@@ -332,8 +332,30 @@ func TestAnUncheckedCategoryIsGoneFromTheMap(t *testing.T) {
 	if in := (&livePipelines{}).inputsFor(context.Background(), tty.MapAsk{AlertsOff: true, AlertCategoriesOff: off}, false); !in.alertsOff || len(in.alertCategoriesOff) != len(off) {
 		t.Errorf("the ask's switches did not reach the inputs: layer off %v, categories off %v", in.alertsOff, in.alertCategoriesOff)
 	}
-	lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL)} // control: all on, the same fixture draws
-	if feed := lp.mapFeedWith(context.Background(), mapInputs{snap: snap, place: &loc}, func(snapshot.Location) []string { return nil }); len(feed.Overlays) == 0 {
-		t.Error("control: with every category on the fixture draws nothing, so this proves nothing")
+	lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL)} // control: all on, the same fixture draws - by its zones
+	if feed := lp.mapFeedWith(context.Background(), mapInputs{snap: snap, place: &loc}, func(snapshot.Location) []string { return nil }); len(feed.Overlays) == 0 || lp.zoneShapes.Stats().Fetched == 0 {
+		t.Error("control: with every category on the fixture draws nothing, or asks no zones, so this proves nothing")
+	}
+}
+
+// TestAClosedMapLetsItsZonesGo is D-162: zone geometry is held once. The
+// map's own outlines keep a warm reopen instant; the zone store's parsed copy
+// is let go when the map closes - and the next ask still gets its zones, from
+// the HTTP cache's copy, not from nothing.
+func TestAClosedMapLetsItsZonesGo(t *testing.T) {
+	loc, srv := m1Fixture(t, "04-watch-and-warning-roswell")
+	lp := &livePipelines{zoneShapes: zoneStore(t, srv.URL)}
+	in := mapInputs{snap: &snapshot.Snapshot{Locations: []snapshot.Location{loc}}, place: &loc}
+	first := lp.mapFeedWith(context.Background(), in, func(snapshot.Location) []string { return nil })
+	if lp.zoneShapes.Stats().Held == 0 || len(first.Overlays) == 0 {
+		t.Fatal("control: the feed held no zones, so there is nothing to let go")
+	}
+	lp.mapClosed()
+	if held := lp.zoneShapes.Stats().Held; held != 0 {
+		t.Errorf("the map closed and the zone store still holds %d shapes", held)
+	}
+	again := lp.mapFeedWith(context.Background(), in, func(snapshot.Location) []string { return nil })
+	if len(again.Overlays) != len(first.Overlays) {
+		t.Errorf("reopened, the feed drew %d alerts where it drew %d: the zones did not come back", len(again.Overlays), len(first.Overlays))
 	}
 }
