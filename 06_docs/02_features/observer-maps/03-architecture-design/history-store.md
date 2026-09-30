@@ -1,6 +1,6 @@
 # The local history store: design (W18.3; D-166 to D-169)
 
-Status: **DESIGN, for the HUM LEAD.** It is not built until the open questions (section 10) are ruled. This page gives API shape only.
+Status: **DESIGN, ruled (D-170 to D-173), for the HUM LEAD's review before it is built.** This page gives API shape only.
 
 ## Why
 
@@ -49,29 +49,36 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 
 ## 3. On disk
 
-**Root.** `$XDG_DATA_HOME/watchpost/weather/history`, by default `~/.local/share/watchpost/weather/history`.
+**Root (D-170).** `$XDG_DATA_HOME/watchpost/weather/history`, by default `~/.local/share/watchpost/weather/history`.
 
 - A relative `XDG_DATA_HOME` is refused, as `config.Path` refuses one.
 - `DefaultRoot()` returns `""` when there is no home directory, and the store then does nothing.
 
-**Paths.**
+**A file a day per series, compressed (D-171: fidelity and speed together).**
 
-- Hourly datasets: `<root>/<dataset>/v<version>/<source>/<place>/<YYYY-MM-DD>/<HH>.json`.
-- Daily datasets: `.../<YYYY>/<MM-DD>.json`.
-- One directory per day means pruning a day is removing a directory.
+- Hourly datasets: `<root>/<dataset>/v<version>/<source>/<place>/<YYYY-MM>/<DD>.json.gz` - the day's hourly records in one versioned JSON document, rewritten whole (temp file and rename) each hour it gains one.
+- Daily roll-ups: `.../rollup/<YYYY>.json.gz`, a year's days in one file.
+- A year of a series is 365 files, not 8,760, and a trend's range read opens one file a day.
+- `zcat` still shows any of it, `null` carries NaN, and there is no new dependency.
 
-**Format.** One versioned JSON object per record, with a header followed by the fields.
+**Two tiers.**
 
-- It can be inspected by hand.
-- `null` carries NaN.
-- The schema check is explicit.
-- It needs no new dependency.
+- Within the hourly retention, every hour is kept.
+- Beyond it, each day is rolled up - each field's minimum, maximum and mean at each point - and the day's hourly file is removed.
+- Fallback datasets keep hours only; trend datasets roll up.
 
-**Size.** About 2.5 KB a record, uncompressed.
+**Sizes - per region, not per place (D-171).** The lower 48's nine boxes, each an 80-point lattice, cover every place inside them.
 
-- The lower 48 has 9 boxes, so a day of hourly records is about 23 KB an hour, 48 hours about 1.1 MB, and 30 days about 16 MB.
+| Lower 48, all nine boxes | Compressed |
+|---|---|
+| An hour, one box | about 0.5 KB |
+| 30 days of hours | about 3.2 MB |
+| A year of hours (opted into) | about 39 MB |
+| A year of daily roll-ups | about 5 MB |
 
-**Permissions.** Directories are 0700 and files 0600.
+**A place's own series** - a point, five fields, 24 hours a day - is about 70 KB a year. The watchlist and recent places, 60 or so, come to about 4 MB a year: a target use the design holds to (D-171).
+
+**Permissions.** Directories 0700, files 0600.
 
 ## 4. Several instances, one store
 
@@ -85,6 +92,7 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 
 - A writer that finds a record with an equal or newer `IssuedAt` skips its own write.
 - The race between two writers is harmless, because either record is correct data.
+- **A day file is read, merged and replaced**, so two instances adding *different* hours of one series at once could each drop the other's (the last rename wins). A writer re-reads the file after its rename and, if an hour it merged is missing, merges and writes again - at most three times, then counted in `Stats` and left to the next hour. Instances record on the same clock, so this is rare, and the loss is bounded to one hour of one series.
 
 **Readers** skip any name beginning with `.`.
 
@@ -96,18 +104,14 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 
 ## 5. Retention
 
-**Per dataset.** Each dataset sets its own `Retain`.
+**Per dataset (D-171).** The fallback datasets keep 72 hours (the 48 needed, and margin). Trend datasets keep 30 days of hours by default, rolled up beyond that.
 
-- The fallback datasets keep 72 hours: the 48 hours needed, plus margin.
-- A trend dataset chooses its own.
+**The [ Data ] Settings tab** lets the listener opt into longer hourly and trend retention, and shows the store's size. The byte budget follows what is chosen, not a fixed cap.
 
-**Global budget.** 64 MB by default. Past the budget, the oldest day directories go first, across all datasets.
+**When pruning runs.** `Prune(now)` runs when the store opens and hourly from the recorder; any instance may run it.
 
-**When pruning runs.** `Prune(now)` runs when the store opens and hourly from the recorder, and any instance may run it.
-
-- Each pass is bounded: at most 256 directories visited and 64 removed.
-- Whatever is left waits for the next pass.
-- A version directory that is no longer registered ages out and is never read.
+- Each pass is bounded: at most 256 directories visited and 64 removed; whatever is left waits for the next pass.
+- A version directory no longer registered ages out and is never read.
 
 ## 6. API
 
@@ -124,7 +128,7 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 **`ndfd-hourly` v1**
 
 - Fields: `temp` and `feels` in °C, `wind` and `gust` in km/h, `wind_from` in degrees.
-- The recorder runs hourly at about minute 5, on the app's `everyTick`, even while the map is closed.
+- The recorder runs hourly at about minute 5, on the app's `everyTick`, **whenever any watchpost instance runs, in any mode - Broadcaster alone, the map never opened (D-172)**.
 - It covers every field box of the station's region, and the region the map last asked for. In the lower 48 that is all 9 boxes, so any view can replay.
 - A box another instance has already recorded this hour is skipped.
 - Cost: at most 9 NDFD requests an hour for the lower 48, about 216 a day, and nothing extra when the map already fetched the same hour. NDFD needs no key and has no quota.
@@ -160,6 +164,8 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 
 **Drawing.** A replayed grid is drawn exactly as a live one would be. Where there is nothing to replay, that box is not drawn.
 
+**Said by one chip (D-173).** While a layer draws anything from the history, one `[ RECORDED ]` chip is appended after its source's chip - `RADAR [  O-METEO  ][  RECORDED  ]` - one style for every source, no per-source logic.
+
 ## 9. Tests
 
 **Store behaviour.**
@@ -193,10 +199,12 @@ On 2026-09-30, Open-Meteo refused watchpost for the rest of the day (HTTP 429). 
 - `invariant.Check` guards shape lengths and keys.
 - The recorder is the one unbounded loop, and it runs through `everyTick`.
 
-## 10. Open questions for the HUM LEAD
+## 10. Ruled
 
-1. **Directory.** Should the store be in the XDG data directory, as above, or in `./watchpost/data/weather/history` as the ruling suggested, or should it be a Setting?
-2. **Trends.** How long should trend datasets keep by default? 30 days, for example?
-3. **Budget.** Is 64 MB right?
-4. **Broadcaster alone.** Is the station's region recorded when only Broadcaster is running? That costs up to 9 NDFD requests an hour.
-5. **Labelling.** Does a replayed grid say it is recorded, for example "recorded 14:00" in its note or credit?
+1. **Directory:** the XDG data directory (D-170).
+2. **Retention:** 72 hours for the fallback, 30 days for trends, by default; longer opted into on a [ Data ] Settings tab; the store shaped for fidelity and speed (D-171).
+3. **Budget:** follows the retention chosen; its size shown on the Data tab (D-171).
+4. **Recording:** always, whenever any instance runs (D-172).
+5. **Replay:** one appended [ RECORDED ] chip (D-173).
+
+**A place's own series** - the watchlist, recent places - is a target use. Its readings could be sampled from the region's recorded lattices (no requests, but interpolated) or fetched per place (faithful, up to one request a place an hour); the feature that uses it chooses.
