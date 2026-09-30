@@ -18,6 +18,7 @@ package app
 
 import (
 	"context"
+	"math"
 	"math/rand/v2"
 	"sync/atomic"
 	"time"
@@ -173,4 +174,80 @@ func ndfdRecord(s temperature.Series, key history.Key, now time.Time) (history.R
 	}
 	return history.Record{Key: key, At: at, IssuedAt: now, Values: values,
 		Shape: history.Shape{Box: s.Lattice.Box, Cols: s.Lattice.Cols, Rows: s.Lattice.Rows}}, true
+}
+
+// recordedChip is the one chip a layer drawing anything from the history
+// appends after its source's (D-173): its ground the muted violet D-178 gave.
+const recordedChip = "RECORDED"
+
+// pastHours is how many hours before the current one a replay reaches: as
+// many as Open-Meteo gives (past_hours=3), so a loop looks as it does live.
+const pastHours = 3
+
+// fallback is what draws a box Open-Meteo did not answer: NDFD's hours, and
+// the hours before the current one from the history (W18.2, W18.3b).
+type fallback struct {
+	src  temperature.Source
+	past func(box string, hour time.Time) (history.Record, bool)
+}
+
+// recordedHour reads a box's recorded NDFD hour from store; nil without one.
+func recordedHour(store *history.Store) func(string, time.Time) (history.Record, bool) {
+	if store == nil {
+		return nil
+	}
+	return func(box string, hour time.Time) (history.Record, bool) {
+		return store.Get(ndfdHourly.Name, history.Key{Source: "ndfd", Place: box}, hour)
+	}
+}
+
+// withRecorded is a series with the recorded hours before anchor - as many
+// as were recorded of pastHours - set before its own, each field in its
+// place, a field not recorded missing; and how many were. A record of
+// another shape than the series' lattice is not drawn.
+func withRecorded(s temperature.Series, past func(string, time.Time) (history.Record, bool), box string, anchor time.Time) (temperature.Series, int) {
+	if past == nil {
+		return s, 0
+	}
+	shape := history.Shape{Box: s.Lattice.Box, Cols: s.Lattice.Cols, Rows: s.Lattice.Rows}
+	n := shape.Cols * shape.Rows
+	if n <= 0 {
+		return s, 0
+	}
+	var out temperature.Series
+	out.Lattice = s.Lattice
+	count := 0
+	for back := pastHours; back >= 1; back-- { // three (P10-02)
+		hour := anchor.Add(-time.Duration(back) * time.Hour)
+		rec, ok := past(box, hour)
+		if !ok || rec.Shape != shape || len(rec.Values["temp"]) != n {
+			continue
+		}
+		field := func(name string) []float64 {
+			if v := rec.Values[name]; len(v) == n {
+				return v
+			}
+			return missingRow(n)
+		}
+		out.Hours = append(out.Hours, hour)
+		out.Hourly, out.Feels = append(out.Hourly, field("temp")), append(out.Feels, field("feels"))
+		out.WindSpeed, out.WindFrom, out.WindGust = append(out.WindSpeed, field("wind")), append(out.WindFrom, field("wind_from")), append(out.WindGust, field("gust"))
+		count++
+	}
+	if count == 0 {
+		return s, 0
+	}
+	s.Hours = append(out.Hours, s.Hours...)
+	s.Hourly, s.Feels = append(out.Hourly, s.Hourly...), append(out.Feels, s.Feels...)
+	s.WindSpeed, s.WindFrom, s.WindGust = append(out.WindSpeed, s.WindSpeed...), append(out.WindFrom, s.WindFrom...), append(out.WindGust, s.WindGust...)
+	return s, count
+}
+
+// missingRow is n values, each missing.
+func missingRow(n int) []float64 {
+	out := make([]float64, n)
+	for i := range out { // P10-02
+		out[i] = math.NaN()
+	}
+	return out
 }

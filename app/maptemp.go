@@ -110,9 +110,12 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	if src != lp.temp.om {
 		fill = lp.temp.om
 	}
-	var rescue temperature.Source
+	var rescue *fallback
 	if src == lp.temp.om && lp.temp.ndfd != nil && lp.temp.ndfd.Covers(ask.Region) {
-		rescue = lp.temp.ndfd // Open-Meteo refused: NDFD draws what it can (W18.2, D-165)
+		lp.mu.Lock()
+		store := lp.history
+		lp.mu.Unlock()
+		rescue = &fallback{src: lp.temp.ndfd, past: recordedHour(store)} // Open-Meteo refused: NDFD draws what it can, the history the hours before (W18.2, W18.3b)
 	}
 	now := time.Now()
 	t := buildTemperature(ctx, src, fill, ask, now, rescue)
@@ -139,7 +142,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 // D-165): a spent quota refuses every box. NDFD has no hour before the
 // current one, so in Radar mode its current hour is drawn under the loop's
 // earlier frames too (D-166's cold start) - the chips say NDFD.
-func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty.MapAsk, now time.Time, rescue temperature.Source) tty.MapTemperature {
+func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty.MapAsk, now time.Time, rescue *fallback) tty.MapTemperature {
 	out := tty.MapTemperature{Source: src.Name()}
 	boxes := fieldBoxes(ask.Region, ask.View)
 	if len(boxes) == 0 {
@@ -153,7 +156,7 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 	}
 	missing := map[string]bool{}
 	credit := src.Name() == "Open-Meteo"
-	fellBack, rescued := 0, 0
+	fellBack, rescued, replayed := 0, 0, 0
 	for _, b := range boxes {
 		lat := temperature.LatticeFor(b.Name, b.Box)
 		s, err := src.Fetch(ctx, lat, now)
@@ -167,8 +170,8 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 			}
 		}
 		byRescue := false
-		if err != nil && rescue != nil {
-			if s, err = rescue.Fetch(ctx, lat, now); err == nil {
+		if err != nil && rescue != nil && rescue.src != nil {
+			if s, err = rescue.src.Fetch(ctx, lat, now); err == nil {
 				rescued, byRescue = rescued+1, true
 			}
 		}
@@ -187,9 +190,14 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 					return tempGrid(id, s.Lattice, values[i], unit, valid, anchor)
 				}
 			}
+			past := 0
+			if byRescue {
+				s, past = withRecorded(s, rescue.past, b.Name, anchor) // the hours before, from the history (D-166)
+				replayed += past
+			}
 			hours, feels, wind := hourGrids(tty.TemperatureLayer, b.Name, s.Hours, len(s.Hourly), anchor, horizon, temp(s.Hourly)),
 				hourGrids(tty.FeelsLayer, b.Name, s.Hours, len(s.Feels), anchor, horizon, temp(s.Feels)), windHourGrids(s, b.Name, anchor, horizon, ask.Fahrenheit)
-			if byRescue {
+			if byRescue && past == 0 { // nothing recorded: the cold start
 				stretchNow(hours, anchor)
 				stretchNow(feels, anchor)
 				stretchNow(wind, anchor)
@@ -212,14 +220,16 @@ func buildTemperature(ctx context.Context, src, fill temperature.Source, ask tty
 	}
 	switch { // NDFD drew where Open-Meteo did not (W18.2): the chips say so
 	case rescued > 0 && rescued == len(boxes):
-		out.Source, credit = rescue.Name(), false // every box NDFD's: its chip alone
+		out.Source, credit = rescue.src.Name(), false // every box NDFD's: its chip alone
 	case rescued > 0:
-		out.Source, credit = rescue.Name(), true // NDFD's boxes and Open-Meteo's: both chips
+		out.Source, credit = rescue.src.Name(), true // NDFD's boxes and Open-Meteo's: both chips
 	}
 	out.Chips = tempChips(out.Source, credit)                                                                                                                                                                                                  // the credit is the badge's, in full the Status window's (D-131)
 	for key, drew := range map[string]int{tty.TemperatureLayer: len(out.Overlays) + len(out.High) + len(out.Low), tty.FeelsLayer: len(out.Feels) + len(out.FeelsHigh) + len(out.FeelsLow), tty.WindLayer: len(out.Wind) + len(out.WindDays)} { // three (P10-02)
 		if drew == 0 {
 			delete(out.Chips, key) // a layer drawing nothing names no source (D-183)
+		} else if replayed > 0 {
+			out.Chips[key] = append(append([]string(nil), out.Chips[key]...), recordedChip) // some of it from the history (D-173)
 		}
 	}
 	var said []string

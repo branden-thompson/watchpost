@@ -5,6 +5,7 @@ package tty
 // layers drawn; the full credits are the Status window's.
 
 import (
+	"github.com/branden-thompson/watchpost/platform/render"
 	"strings"
 	"testing"
 	"time"
@@ -200,5 +201,20 @@ func TestEveryChipIsOneFormatOnItsOwnGround(t *testing.T) {
 	}
 	if stripANSITest(chipFace("MRMS≈")) != "  MRMS≈  " || chipFace("MRMS≈") == "  MRMS≈  " {
 		t.Error("MRMS≈ is not drawn on MRMS's ground")
+	}
+}
+
+// THE RECORDED CHIP IS ONE CHIP ON ITS OWN GROUND (D-173, D-174, D-178):
+// appended after a layer's source, `  RECORDED  ` on the muted violet no
+// source uses.
+func TestTheRecordedChipIsItsOwn(t *testing.T) {
+	rendering.SetColorEnabledForTest(true)
+	t.Cleanup(rendering.ResetColorEnabledForTest)
+	face := chipFace("RECORDED")
+	if !strings.Contains(face, render.Tok(render.MapChipRecordedBG)) || stripANSITest(face) != "  RECORDED  " {
+		t.Errorf("the RECORDED chip is %q; want \"  RECORDED  \" on its own ground", face)
+	}
+	if !ChipKnown("RECORDED") {
+		t.Error("RECORDED has no chip of its own")
 	}
 }

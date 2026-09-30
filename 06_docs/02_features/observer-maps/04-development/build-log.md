@@ -2438,3 +2438,24 @@ the test's, not the placement's.
 **Mutation verdicts** (targeted, 9): the layers ignored, Open-Meteo's own chip counted a fallback,
 the plural, the controls and the edge chip not given way to, the edge chip never drawn, the waves
 always naming Open-Meteo, UV's chip missing, an empty layer keeping its chips - all caught.
+
+## Batch 77 — a loop's past hours replayed from the history (W18.3b, part 2; D-166, D-173, D-178; 2026-09-30)
+
+**Now.** Where Open-Meteo does not answer a box in Radar mode, NDFD draws its current hour and the
+hours ahead (batch 71), and **the hours before the current one come from the history**: as many as
+were recorded of the three Open-Meteo itself gives (`past_hours=3`), set into NDFD's series ahead of
+its own hour (`withRecorded`), so they are drawn by the same path as a live hour - the same ids, each
+during its own hour, handed in and kept as any other. **The stretch is now the cold start alone**:
+the current hour lies under the loop's earlier frames only where nothing was recorded (D-166).
+
+**Said by one chip.** A layer drawing anything replayed appends **`  RECORDED  `** after its source's
+chip - one chip, one style, on its own ground (D-173, D-174): `MapChipRecordedBG`, the muted violet
+D-178 chose - #5B4B8A in the dark themes, #DDD6FE in Light (the words black), a grey of its own in
+mono - measured with every chip in every theme. The quota's notice does not count it a source:
+"Falling back to NDFD", and with the history alone "Falling back to recorded data".
+
+**A record of another shape is not drawn** - a box whose geometry changed since it was recorded
+reads as unrecorded (tested).
+
+**Mutation verdicts** (targeted, 6): no replay, the stretch over a replayed hour, no RECORDED chip,
+any shape replayed, RECORDED counted a source, the chip without its ground - all caught.

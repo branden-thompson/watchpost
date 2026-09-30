@@ -3,11 +3,14 @@ package app
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/branden-thompson/watchpost/domains/temperature"
+	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
 	"github.com/branden-thompson/watchpost/platform/snapshot"
@@ -115,5 +118,76 @@ func TestTheHistoryRecordsTheStationsRegionAndTheMaps(t *testing.T) {
 	lp.lastMapRegion.Store(geo.RegionHawaii)
 	if got := lp.historyRegions(); len(got) != 2 || got[1] != geo.RegionHawaii {
 		t.Errorf("the map elsewhere records %v; want the station's and Hawaii", got)
+	}
+}
+
+// nowOnly is NDFD as it is: the current hour alone, no hour before it.
+type nowOnly struct{ f fakeHour }
+
+func (n *nowOnly) Name() string       { return "NDFD" }
+func (n *nowOnly) Covers(string) bool { return true }
+func (n *nowOnly) Fetch(ctx context.Context, l temperature.Lattice, now time.Time) (temperature.Series, error) {
+	return n.f.hour(ctx, l, now)
+}
+
+// OPEN-METEO REFUSED, A LOOP'S PAST HOURS ARE DRAWN FROM THE HISTORY (W18.3b,
+// D-166, D-173): the hours before the current one that were recorded are
+// drawn in their own hours - not the current hour stretched under them - and
+// the layers say so with a RECORDED chip after their source's. With nothing
+// recorded, the current hour is stretched as before (the cold start).
+func TestAPastHourIsReplayedFromTheHistory(t *testing.T) {
+	now := tempNow
+	anchor := now.Truncate(time.Hour)
+	store := history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly)
+	box := fieldBoxes(tempAsk(false).Region, tempAsk(false).View)[0]
+	lat := temperature.LatticeFor(box.Name, box.Box)
+	f := &fakeHour{}
+	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
+		s, _ := f.hour(context.Background(), lat, anchor.Add(-back))
+		s.Hourly[0][0] = 10 + float64(back/time.Hour) // each hour its own value
+		rec, ok := ndfdRecord(s, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-back))
+		if !ok || !store.Put(ndfdHourly.Name, rec) {
+			t.Fatal("could not seed the history")
+		}
+	}
+	fb := &fallback{src: &nowOnly{}, past: recordedHour(store)}
+	got := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: now, failed: true}, nil, tempAsk(false), now, fb)
+	spans := map[time.Time]float64{}
+	for _, o := range got.Overlays {
+		if strings.Contains(o.ID, "/"+box.Name+"/") {
+			spans[o.During.From] = o.Grid.Values[0]
+		}
+	}
+	for _, back := range []time.Duration{2 * time.Hour, time.Hour} {
+		if _, ok := spans[anchor.Add(-back)]; !ok {
+			t.Errorf("the hour %v before was not replayed: drawn from %v", back, spans)
+		}
+	}
+	if _, stretched := spans[anchor.Add(-time.Hour)]; stretched && len(spans) < 3 {
+		t.Error("the current hour was stretched over a recorded hour")
+	}
+	if chips := got.Chips[tty.TemperatureLayer]; !slices.Equal(chips, []string{"NDFD", "RECORDED"}) {
+		t.Errorf("the temperature's chips are %v; want NDFD then RECORDED (D-173)", chips)
+	}
+	// A RECORD OF ANOTHER SHAPE IS NOT DRAWN: the box's geometry changed since.
+	odd := history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly)
+	other := temperature.Lattice{Name: box.Name, Box: lat.Box, Cols: lat.Cols + 1, Rows: lat.Rows}
+	oddSeries, _ := f.hour(context.Background(), other, anchor.Add(-time.Hour))
+	if rec, ok := ndfdRecord(oddSeries, history.Key{Source: "ndfd", Place: box.Name}, anchor.Add(-time.Hour)); !ok || !odd.Put(ndfdHourly.Name, rec) {
+		t.Fatal("could not seed the odd record")
+	}
+	if _, n := withRecorded(temperature.Series{Lattice: lat}, recordedHour(odd), box.Name, anchor); n != 0 {
+		t.Errorf("a record of another shape was replayed (%d)", n)
+	}
+	cold := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: now, failed: true}, nil, tempAsk(false), now, &fallback{src: &nowOnly{}, past: recordedHour(history.Open(t.TempDir(), func() time.Time { return now }, ndfdHourly))})
+	if slices.Contains(cold.Chips[tty.TemperatureLayer], "RECORDED") {
+		t.Error("nothing recorded, yet the chips say RECORDED")
+	}
+	stretched := false
+	for _, o := range cold.Overlays {
+		stretched = stretched || o.During.From.Equal(anchor.Add(-time.Hour)) && o.During.Until.After(anchor)
+	}
+	if !stretched {
+		t.Error("with nothing recorded the current hour is not stretched (the cold start)")
 	}
 }

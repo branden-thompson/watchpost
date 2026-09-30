@@ -773,6 +773,7 @@ func TestASpentQuotaIsSaidOnlyWhileItMatters(t *testing.T) {
 		{"one of each", map[string]bool{TemperatureLayer: true, UVLayer: true}, map[string][]string{TemperatureLayer: {"NDFD"}}, "! OPEN-METEO: Quota Exceeded; Resets " + at + " // 1 Fall-back active"},
 		{"two falling back", map[string]bool{TemperatureLayer: true, WaveLayer: true, UVLayer: true}, map[string][]string{TemperatureLayer: {"NDFD"}, WaveLayer: {"NDFD"}}, "! OPEN-METEO: Quota Exceeded; Resets " + at + " // 2 Fall-backs active"},
 		{"Open-Meteo answering", map[string]bool{TemperatureLayer: true}, map[string][]string{TemperatureLayer: {"O-METEO"}}, ""},
+		{"NDFD and the history", map[string]bool{TemperatureLayer: true}, map[string][]string{TemperatureLayer: {"NDFD", "RECORDED"}}, "! OPEN-METEO: Quota Exceeded; Falling back to NDFD"},
 	} {
 		d.mapLayerChoice = layerChoiceKey(tc.on)
 		d.mapPane.temp.Quota, d.mapPane.temp.Chips = quota, tc.chips

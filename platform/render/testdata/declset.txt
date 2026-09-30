@@ -60,6 +60,7 @@ const MapChipNDFDBG
 const MapChipNIFCBG
 const MapChipNWSBG
 const MapChipOMeteoBG
+const MapChipRecordedBG
 const MapChipUSGSBG
 const MapNoticeQuotaBG
 const MapRadarIEMBG

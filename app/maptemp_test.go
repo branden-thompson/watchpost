@@ -560,7 +560,7 @@ func TestNDFDDrawsWhereOpenMeteoRefused(t *testing.T) {
 	anchor := tempNow.Truncate(time.Hour)
 	for _, forecast := range []bool{false, true} {
 		ndfd := &fakeTemp{name: "NDFD", now: tempNow}
-		got := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow, failed: true}, nil, tempAsk(forecast), tempNow, ndfd)
+		got := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow, failed: true}, nil, tempAsk(forecast), tempNow, &fallback{src: ndfd})
 		if len(got.Overlays) == 0 || len(got.Feels) == 0 || len(got.Wind) == 0 {
 			t.Fatalf("forecast %v: NDFD drew %d temperature, %d feels-like, %d wind grids", forecast, len(got.Overlays), len(got.Feels), len(got.Wind))
 		}
@@ -582,7 +582,7 @@ func TestNDFDDrawsWhereOpenMeteoRefused(t *testing.T) {
 			t.Errorf("%d current-hour grids reach under the loop's earlier frames; want temperature's, feels-like's and wind's", stretched)
 		}
 	}
-	answered := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow}, nil, tempAsk(false), tempNow, &fakeTemp{name: "NDFD", now: tempNow, failed: true})
+	answered := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow}, nil, tempAsk(false), tempNow, &fallback{src: &fakeTemp{name: "NDFD", now: tempNow, failed: true}})
 	for _, o := range answered.Overlays {
 		if o.During.From.Before(o.During.Until.Add(-time.Hour)) {
 			t.Errorf("%s is stretched though Open-Meteo answered", o.ID)

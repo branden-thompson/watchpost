@@ -237,8 +237,11 @@ func (d Dashboard) quotaNoticeText() string {
 		return ""
 	}
 	head := "! OPEN-METEO: Quota Exceeded; "
-	if missing == 0 {
+	if missing == 0 && len(sources) > 0 {
 		return head + "Falling back to " + strings.Join(sources, " & ")
+	}
+	if missing == 0 {
+		return head + "Falling back to recorded data" // the history alone (D-166)
 	}
 	now := d.now()
 	at := q.Resets.In(now.Location())
@@ -273,7 +276,7 @@ func (d Dashboard) quotaLayers() (fallbacks, missing int, sources []string) {
 		default:
 			fallbacks++
 			for _, c := range chips { // a layer's few (P10-02)
-				if !slices.Contains(sources, c) {
+				if c != "RECORDED" && !slices.Contains(sources, c) { // the history is not a source (D-173)
 					sources = append(sources, c)
 				}
 			}
