@@ -67,18 +67,19 @@ var unmeasurable = map[Token]string{
 	// THE MAP'S SOURCE CHIPS carry no one foreground: ChipTones picks bold
 	// black or white for each ground, so the register's fg x [bg] cannot hold
 	// them. They are MEASURED, every chip in every theme, by their own test.
-	MapRadarMRMSBG:  "a chip ground: its words, black or white, are chosen for it by ChipTones and measured by TestEveryChipIsItsOwnAndReadsInEveryTheme (0.18.0 D-134)",
-	MapRadarIEMBG:   "a chip ground (D-134)",
-	MapRadarModelBG: "a chip ground (D-134)",
-	MapChipNWSBG:    "a chip ground (D-134)",
-	MapChipNDFDBG:   "a chip ground (D-134)",
-	MapChipOMeteoBG: "a chip ground (D-134)",
-	MapChipUSGSBG:   "a chip ground (D-134)",
-	MapChipNIFCBG:   "a chip ground (D-134)",
-	MapChipHMSBG:    "a chip ground (D-134)",
-	MapChipNDBCBG:   "a chip ground (D-134)",
-	MapChipCOOPSBG:  "a chip ground (D-134)",
-	MapChipAirNowBG: "a chip ground (D-134)",
+	MapRadarMRMSBG:   "a chip ground: its words, black or white, are chosen for it by ChipTones and measured by TestEveryChipIsItsOwnAndReadsInEveryTheme (0.18.0 D-134)",
+	MapRadarIEMBG:    "a chip ground (D-134)",
+	MapRadarModelBG:  "a chip ground (D-134)",
+	MapChipNWSBG:     "a chip ground (D-134)",
+	MapChipNDFDBG:    "a chip ground (D-134)",
+	MapChipOMeteoBG:  "a chip ground (D-134)",
+	MapChipUSGSBG:    "a chip ground (D-134)",
+	MapChipNIFCBG:    "a chip ground (D-134)",
+	MapChipHMSBG:     "a chip ground (D-134)",
+	MapChipNDBCBG:    "a chip ground (D-134)",
+	MapChipCOOPSBG:   "a chip ground (D-134)",
+	MapNoticeQuotaBG: "a notice ground: its words chosen by ChipTones and measured with the chips (W18.1, D-165)",
+	MapChipAirNowBG:  "a chip ground (D-134)",
 }
 
 func TestEveryTokenIsMeasuredOrExcused(t *testing.T) {

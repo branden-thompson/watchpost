@@ -120,7 +120,7 @@ func TestTheFieldsRunOnIntoTheHoursAhead(t *testing.T) {
 	ask := tempAsk(false)
 	ask.RadarAhead = 1
 	waves := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{metres: 1, max: 2, gapDays: true}, fakeWaves{metres: 1, max: 2}, ask, tempNow)
-	temp := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, ask, tempNow)
+	temp := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, ask, tempNow, nil)
 	next := ask.Anchor.Add(time.Hour)
 	for name, grids := range map[string][]tuimaps.Overlay{"waves": waves.Waves, "temperature": temp.Overlays, "wind": temp.Wind, "feels": temp.Feels} {
 		found := false

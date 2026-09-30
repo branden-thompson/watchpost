@@ -195,7 +195,43 @@ func (d Dashboard) withModeChip(lines []string, size tuimaps.Size) []string {
 		return lines
 	}
 	chip := chipBox(modeChipText)
-	return spliceBox(lines, chip, 0, insetCols+(size.Cols-render.Width(chip[0]))/2)
+	row := 0
+	if d.mapPane.temp.Quota != nil {
+		row = 3 // under the quota's notice, which holds the top (D-165)
+	}
+	return spliceBox(lines, chip, row, insetCols+(size.Cols-render.Width(chip[0]))/2)
+}
+
+// quotaNoticeText is the map's notice of a spent quota (W18.1, D-165), in
+// the HUM LEAD's words: the period's limit, whose, and when it resets in the
+// listener's clock - with the day where that is not today.
+func (d Dashboard) quotaNoticeText() string {
+	q := d.mapPane.temp.Quota
+	if q == nil {
+		return ""
+	}
+	now := d.now()
+	at := q.Resets.In(now.Location())
+	when := d.clockFmt.Time(at)
+	if y, m, dd := at.Date(); y != now.Year() || m != now.Month() || dd != now.Day() {
+		when = d.clockFmt.WeekdayDateTime(at)
+	}
+	return "! " + q.Period + " " + q.Source + " API Usage Exceeded. Resets " + when
+}
+
+// withQuotaNotice lays the spent quota's notice at the map's top centre,
+// on its dark-orange ground (D-165), while the answer says a quota is spent.
+func (d Dashboard) withQuotaNotice(lines []string, size tuimaps.Size) []string {
+	text := d.quotaNoticeText()
+	if text == "" || len(lines) < 3 {
+		return lines
+	}
+	box := chipBox(text)
+	tones := render.ChipTones(render.MapNoticeQuotaBG)
+	for i, l := range box {
+		box[i] = render.TintRaw(l, tones)
+	}
+	return spliceBox(lines, box, 0, insetCols+(size.Cols-render.Width(box[0]))/2)
 }
 
 // flashMapKey marks a map key pressed, for the controls box to blink.

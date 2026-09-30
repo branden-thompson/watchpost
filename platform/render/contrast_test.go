@@ -141,7 +141,7 @@ func TestEveryChipIsItsOwnAndReadsInEveryTheme(t *testing.T) {
 			t.Fatal(name)
 		}
 		seen := map[string]Token{}
-		for _, g := range ChipGrounds() {
+		for _, g := range append(ChipGrounds(), NoticeGrounds()...) {
 			ground := Tok(g)
 			if other, ok := seen[ground]; ok {
 				t.Errorf("%s: %s and %s share the ground %q", name, g, other, ground)

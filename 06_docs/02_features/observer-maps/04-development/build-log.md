@@ -2288,3 +2288,41 @@ library differently).
 
 **Mutation verdicts** (targeted, 6): stop ignored, unchanged handed in again, refused dropping the
 drawn form, nothing taken off - caught; the closed message and the removal's draw - equivalent.
+
+## Batch 71 — a spent quota said, and NDFD drawing where Open-Meteo refused (W18.1, W18.2; D-165, D-166; 2026-09-30)
+
+**Found in UAT.** In Radar mode temperature, feels-like, wind and UV drew nothing under their
+badges; air quality's bands came after its reporting areas. Not a regression of W14's batches:
+Open-Meteo answered **HTTP 429, "Daily API request limit exceeded. Please try again tomorrow."**
+Its free tier is 600 calls a minute, 5,000 an hour, 10,000 a day, and each 80-point lattice counts
+as many; W14's own measurement runs from this machine (about 20 instrumented launches with the map
+open) spent most of it. Its marine API shares the quota (429 too); its air-quality API does not (it
+answered - hence air's bands, not its areas, came late: they ride the temperature ask). Open-Meteo
+publishes no reset time and sends no Retry-After. Rulings D-163 to D-169 recorded; the history
+store's design (W18.3, D-169) written to `03-architecture-design/history-store.md` for the HUM LEAD.
+
+**Now (W18.1).** The HTTP client keeps a failure's reason - a bounded, sanitised line of its body,
+`StatusError.Reason`, never put in the error's words; `temperature.QuotaOf` names a spent quota by
+its period and its reset (the period's end); a `QuotaGate` wraps Open-Meteo's client - a spent host
+is refused at once without being asked, probed once an hour (an answer frees it), another host
+never held for it. The answer carries `MapQuota`, and the map says it top centre on its own ground,
+`MapNoticeQuotaBG` - dark orange (#C2410C) in the dark themes, a grey of its own in mono, and in
+Watchpost Light the lightest orange its no-dark-ground rule allows (#FB923C, words black):
+"! Daily Open-Meteo API Usage Exceeded. Resets 5:00 PM" - the reset in the listener's clock, with
+the day when it is not today. The Forecast mode chip moves below it while both show.
+
+**Now (W18.2).** A box Open-Meteo does not answer is asked of NDFD, wherever NDFD covers the region:
+temperature, feels-like and wind draw, the chips say NDFD (both chips where only some boxes fell
+back). NDFD has no hour before the current one, so in Radar mode its current hour lies under the
+loop's earlier frames too (D-166's cold start), until the history store holds those hours. UV and
+Forecast mode's rain have no fallback yet (W18.4, W18.5): the notice says why they are empty.
+**Verified live**, Open-Meteo refusing: the answer said the daily quota (reset 00:00 UTC), drawn
+from NDFD with its chip, three temperature, feels-like and wind grids - the current hour stretched
+back an hour, and the two ahead.
+
+**P10.** One new finding and it was false: the gate's `GetText` calling the wrapped getter's
+`GetText` read as recursion by name; the wrapped call is a method value now. Held at 31.
+
+**Mutation verdicts** (targeted, 10): the hold, the freeing answer, the 429 check, the daily reset,
+the rescue, the stretch, the quota carried, the notice drawn, the reason's sanitising, the reason
+read - all caught.

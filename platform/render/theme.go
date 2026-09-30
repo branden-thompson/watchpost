@@ -152,8 +152,11 @@ const (
 	MapChipNDBCBG   Token = "map.chip.ndbc.bg"
 	MapChipCOOPSBG  Token = "map.chip.coops.bg"
 	MapChipAirNowBG Token = "map.chip.airnow.bg" // D-138
-	TickerFG        Token = "ticker.fg"
-	TickerMutedFG   Token = "ticker.muted.fg"
+	// MapNoticeQuotaBG is the ground of the map's notice that a source's
+	// quota is spent (W18.1, D-165): dark orange, its words ChipTones'.
+	MapNoticeQuotaBG Token = "map.notice.quota.bg"
+	TickerFG         Token = "ticker.fg"
+	TickerMutedFG    Token = "ticker.muted.fg"
 
 	// The severe-events window's category tints (0.13.0, SAM-D-7): fixed,
 	// pre-darkened hues keyed to the ticker lanes — Red disasters, Orange
@@ -364,15 +367,16 @@ func defaultTheme() map[Token]string {
 		MapRadarIEMBG:     "48;2;168;72;0",   // #A84800, orange: 5.9:1 under white
 		MapRadarModelBG:   "48;2;106;63;160", // #6A3FA0, purple: a model's frames (D-113), 7.5:1 under white
 		// D-134: a hue a source, round the wheel from the three above.
-		MapChipNWSBG:    "48;2;29;78;216",  // #1D4ED8, blue
-		MapChipNDFDBG:   "48;2;15;118;110", // #0F766E, teal
-		MapChipOMeteoBG: "48;2;250;204;21", // #FACC15, yellow
-		MapChipUSGSBG:   "48;2;71;85;105",  // #475569, slate
-		MapChipNIFCBG:   "48;2;220;38;38",  // #DC2626, red
-		MapChipHMSBG:    "48;2;190;24;93",  // #BE185D, magenta
-		MapChipNDBCBG:   "48;2;56;189;248", // #38BDF8, sky
-		MapChipCOOPSBG:  "48;2;132;204;22", // #84CC16, lime
-		MapChipAirNowBG: "48;2;146;64;14",  // #92400E, brown
+		MapChipNWSBG:     "48;2;29;78;216",  // #1D4ED8, blue
+		MapChipNDFDBG:    "48;2;15;118;110", // #0F766E, teal
+		MapChipOMeteoBG:  "48;2;250;204;21", // #FACC15, yellow
+		MapChipUSGSBG:    "48;2;71;85;105",  // #475569, slate
+		MapChipNIFCBG:    "48;2;220;38;38",  // #DC2626, red
+		MapChipHMSBG:     "48;2;190;24;93",  // #BE185D, magenta
+		MapChipNDBCBG:    "48;2;56;189;248", // #38BDF8, sky
+		MapChipCOOPSBG:   "48;2;132;204;22", // #84CC16, lime
+		MapChipAirNowBG:  "48;2;146;64;14",  // #92400E, brown
+		MapNoticeQuotaBG: "48;2;194;65;12",  // #C2410C, dark orange (D-165)
 		// PLACEHOLDER, pending the ruling: a new colour, or THE RED with every
 		// other lane shifted down. Magenta only so it is unmistakably not final.
 		TickerEmergencyBG: "48;2;150;20;20",     // #961414 — Emergency Orders: THE red

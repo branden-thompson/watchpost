@@ -3,6 +3,7 @@ package httpx
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -484,5 +485,47 @@ func TestTheInteractiveLaneAnswersTheListenerFirst(t *testing.T) {
 	}
 	if _, err := c.GetText(WithInteractive(ctx), srv.URL+"/x"); err == nil || hits.Load() != 0 {
 		t.Errorf("the interactive lane skipped the failure memo (err %v, asked %d): a host that is down would take every pan", err, hits.Load())
+	}
+}
+
+// A FAILURE KEEPS ITS REASON (W18.1, D-165). Open-Meteo answers a spent
+// quota with HTTP 429 and a body that says which limit - "Daily API request
+// limit exceeded" - where a minute's limit passes in a minute and a day's
+// does not; the status alone cannot tell them apart. The reason is a bounded
+// piece of the body, one printable line, for a source to read: never put in
+// the error's words, which reach the diagnostics as they always did.
+func TestAFailureKeepsItsReason(t *testing.T) {
+	var body atomic.Value
+	var status atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(int(status.Load()))
+		_, _ = w.Write([]byte(body.Load().(string)))
+	}))
+	defer srv.Close()
+	c := mustNew(t, Config{UserAgent: "t", RatePerSec: 100, RetryBase: time.Millisecond, MaxRetries: 1})
+	for _, tc := range []struct {
+		status     int
+		body, want string
+	}{
+		{http.StatusTooManyRequests, `{"error":true,"reason":"Daily API request limit exceeded. Please try again tomorrow."}`, "Daily API request limit exceeded"},
+		{http.StatusNotFound, "no such\x00 grid\n\tpoint", "no such grid point"},
+		{http.StatusTooManyRequests, strings.Repeat("x", 4096), strings.Repeat("x", maxReasonBytes)},
+	} {
+		status.Store(int32(tc.status))
+		body.Store(tc.body)
+		_, err := c.GetJSON(context.Background(), srv.URL+"/q"+fmt.Sprint(tc.status)+fmt.Sprint(len(tc.body)), nil)
+		var se *StatusError
+		if !errors.As(err, &se) {
+			t.Fatalf("HTTP %d: %v is not a StatusError", tc.status, err)
+		}
+		if !strings.Contains(se.Reason, tc.want) || len(se.Reason) > maxReasonBytes {
+			t.Errorf("HTTP %d: reason %q; want it to hold %q, within %d bytes", tc.status, se.Reason, tc.want, maxReasonBytes)
+		}
+		if strings.ContainsAny(se.Reason, "\x00\n\t") {
+			t.Errorf("HTTP %d: reason %q is not one printable line", tc.status, se.Reason)
+		}
+		if strings.Contains(err.Error(), "reason") || strings.Contains(err.Error(), "no such") {
+			t.Errorf("HTTP %d: the reason reached the error's words: %v", tc.status, err)
+		}
 	}
 }

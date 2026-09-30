@@ -419,6 +419,7 @@ func (*speaker).line
 func (*speaker).live
 func (*speaker).prepare
 func (*speaker).role
+func (*tempSources).quotaSpent
 func (*tempSources).sourceFor
 func (*tickerDeck).Inject
 func (*tickerDeck).clock
@@ -737,6 +738,7 @@ func startTicker
 func stateNear
 func stationFrom
 func stationsIn
+func stretchNow
 func subjectOf
 func suggestHook
 func tapeHead
@@ -745,6 +747,7 @@ func tempChips
 func tempGrid
 func tempHosts
 func tempLayerCost
+func tempSourcesAt
 func tempSourcesOver
 func testCard
 func testHead

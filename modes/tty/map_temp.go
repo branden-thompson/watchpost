@@ -104,9 +104,19 @@ type MapTemperature struct {
 	Problems []string
 	Source   string
 	Notes    []string
+	// Quota is a source's spent quota, while one is (W18.1, D-165): the map
+	// says it in its notice. Nil when nothing is refused.
+	Quota *MapQuota
 	// Filled are the days Open-Meteo filled where the source had nothing
 	// (D-100), as "‹day›/high" or "‹day›/low", the day counted from today.
 	Filled map[string]bool
+}
+
+// MapQuota is a source's spent quota (W18.1, D-165): whose, which period's
+// limit - Daily, Hourly - and when it resets.
+type MapQuota struct {
+	Source, Period string
+	Resets         time.Time
 }
 
 // mapTempMsg is a temperature answer, to the ask it was made in.

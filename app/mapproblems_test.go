@@ -23,11 +23,11 @@ import (
 // said only where a Setting offers another, with the Setting; where none
 // does, it goes to the diagnostics.
 func TestASourceThatDidNotAnswerGivesItsPath(t *testing.T) {
-	ndfd := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", now: tempNow, failed: true}, nil, tempAsk(true), tempNow)
+	ndfd := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", now: tempNow, failed: true}, nil, tempAsk(true), tempNow, nil)
 	if notes := strings.Join(ndfd.Notes, " "); !strings.Contains(notes, "Settings → Maps → Temperature") {
 		t.Errorf("NDFD not answering is said %q; want the Setting that draws Open-Meteo instead", notes)
 	}
-	om := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow, failed: true}, nil, tempAsk(false), tempNow)
+	om := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow, failed: true}, nil, tempAsk(false), tempNow, nil)
 	if strings.Contains(strings.Join(om.Notes, " "), "did not answer") || len(om.Problems) == 0 {
 		t.Errorf("Open-Meteo not answering is said %v, told the diagnostics %v; no Setting offers another", om.Notes, om.Problems)
 	}

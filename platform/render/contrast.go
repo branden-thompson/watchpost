@@ -361,6 +361,10 @@ func ChipGrounds() []Token {
 		MapChipUSGSBG, MapChipNIFCBG, MapChipHMSBG, MapChipNDBCBG, MapChipCOOPSBG, MapChipAirNowBG}
 }
 
+// NoticeGrounds are the map's notices' grounds (W18.1, D-165): measured as
+// the chips' are, their words ChipTones'.
+func NoticeGrounds() []Token { return []Token{MapNoticeQuotaBG} }
+
 // ChipTones is a chip's ground and its words in the theme in use: bold
 // black or bold white, whichever reads the more on that ground (D-134) - so
 // a yellow chip is never white on yellow, nor a blue one black on blue.

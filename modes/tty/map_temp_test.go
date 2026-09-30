@@ -746,3 +746,56 @@ func TestTheRadarAndTemperatureAreReconciled(t *testing.T) {
 		t.Errorf("unchanged grids were handed in again or taken off: %v", *calls)
 	}
 }
+
+// A SPENT QUOTA IS SAID ON THE MAP (W18.1, D-165): the HUM LEAD's PIP, top
+// centre, on a dark-orange ground - "! Daily Open-Meteo API Usage Exceeded.
+// Resets <time>", the time in the listener's clock - while the answer says
+// the quota is spent, and gone once an answer does not.
+func TestASpentQuotaIsSaidOnTheMap(t *testing.T) {
+	var asks []MapAsk
+	d := openTempMap(t, true, &asks)
+	now := d.now()
+	resets := time.Date(now.Year(), now.Month(), now.Day(), 23, 0, 0, 0, now.Location()) // later today: the time alone
+	temp := d.mapPane.temp
+	temp.Quota = &MapQuota{Source: "Open-Meteo", Period: "Daily", Resets: resets}
+	m, _ := d.applyMapTemp(mapTempMsg{temp: temp, anchor: d.tempAnchor()})
+	d = m.(Dashboard)
+	lines := d.mapBodyLines()
+	want := "! Daily Open-Meteo API Usage Exceeded. Resets " + d.clockFmt.Time(resets.In(d.now().Location()))
+	row := -1
+	for i, l := range lines {
+		if strings.Contains(stripANSITest(l), want) {
+			row = i
+			break
+		}
+	}
+	if row < 0 {
+		t.Fatalf("the notice %q is not on the map:\n%s", want, stripANSITest(strings.Join(lines, "\n")))
+	}
+	if row > 3 {
+		t.Errorf("the notice is on row %d; want it at the map's top", row)
+	}
+	plain := stripANSITest(lines[row])
+	at := len([]rune(plain[:strings.Index(plain, want)]))
+	if left, right := at, len([]rune(plain))-at-len([]rune(want)); left < 4 || right < 4 || abs(left-right) > 6 {
+		t.Errorf("the notice is not centred: %d cells left, %d right", left, right)
+	}
+	rendering.SetColorEnabledForTest(true)
+	coloured := d.mapBodyLines()[row]
+	rendering.SetColorEnabledForTest(false)
+	if !strings.Contains(coloured, render.Tok(render.MapNoticeQuotaBG)) {
+		t.Errorf("the notice is not on its ground %q", render.Tok(render.MapNoticeQuotaBG))
+	}
+	tomorrow := resets.Add(24 * time.Hour) // another day: the day is said too
+	temp.Quota = &MapQuota{Source: "Open-Meteo", Period: "Daily", Resets: tomorrow}
+	m, _ = d.applyMapTemp(mapTempMsg{temp: temp, anchor: d.tempAnchor()})
+	d = m.(Dashboard)
+	if day := "Resets " + d.clockFmt.WeekdayDateTime(tomorrow); !strings.Contains(stripANSITest(strings.Join(d.mapBodyLines(), "\n")), day) {
+		t.Errorf("a reset on another day does not say the day: want %q", day)
+	}
+	temp.Quota = nil
+	m, _ = d.applyMapTemp(mapTempMsg{temp: temp, anchor: d.tempAnchor()})
+	if strings.Contains(stripANSITest(strings.Join(m.(Dashboard).mapBodyLines(), "\n")), "API Usage Exceeded") {
+		t.Error("the notice stayed after an answer that was not refused")
+	}
+}

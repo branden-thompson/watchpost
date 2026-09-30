@@ -5,8 +5,13 @@ package app
 // what a source lacks said, the credit, and every feed overlay timed.
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
+
 	"context"
 	"errors"
+	"github.com/branden-thompson/watchpost/platform/httpx"
 	"math"
 	"reflect"
 	"slices"
@@ -85,7 +90,7 @@ func tempAsk(forecast bool) tty.MapAsk {
 
 func TestRadarModeDrawsEachHourDuringItself(t *testing.T) {
 	src := &fakeTemp{name: "Open-Meteo", now: tempNow}
-	got := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow)
+	got := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow, nil)
 	if len(got.High) != 0 || len(got.Low) != 0 {
 		t.Error("Radar mode was given days")
 	}
@@ -117,7 +122,7 @@ func TestRadarModeDrawsEachHourDuringItself(t *testing.T) {
 func TestForecastModeDrawsEachDayDuringItsStep(t *testing.T) {
 	src := &fakeTemp{name: "NDFD", now: tempNow}
 	ask := tempAsk(true)
-	got := buildTemperature(context.Background(), src, nil, ask, tempNow)
+	got := buildTemperature(context.Background(), src, nil, ask, tempNow, nil)
 	steps := tty.ForecastSteps(ask.Anchor)
 	nows := 0
 	for _, o := range got.Overlays {
@@ -169,7 +174,7 @@ func TestTheModeChoosesTheSource(t *testing.T) {
 
 func TestATemperatureThatDidNotAnswerIsSaid(t *testing.T) {
 	src := &fakeTemp{name: "NDFD", now: tempNow, failed: true}
-	got := buildTemperature(context.Background(), src, nil, tempAsk(true), tempNow)
+	got := buildTemperature(context.Background(), src, nil, tempAsk(true), tempNow, nil)
 	if len(got.Overlays)+len(got.High)+len(got.Low) != 0 || !strings.Contains(strings.Join(got.Notes, " "), "NDFD did not answer") { // with its path (D-124)
 		t.Errorf("a failed source gave %d grids and the notes %v", len(got.Overlays)+len(got.High), got.Notes)
 	}
@@ -178,7 +183,7 @@ func TestATemperatureThatDidNotAnswerIsSaid(t *testing.T) {
 func TestTemperatureIsAskedForTheRadarsBoxesNeverTheView(t *testing.T) {
 	src := &fakeTemp{name: "Open-Meteo", now: tempNow}
 	ask := tempAsk(false)
-	got := buildTemperature(context.Background(), src, nil, ask, tempNow)
+	got := buildTemperature(context.Background(), src, nil, ask, tempNow, nil)
 	for _, o := range got.Overlays {
 		g := o.Grid
 		if g.West == ask.View.W || g.East == ask.View.E {
@@ -229,8 +234,8 @@ func TestAnAlertIsTimedByItsHazardNotItsProduct(t *testing.T) {
 func TestAnAnswerRepeatsWithinTheHour(t *testing.T) {
 	for _, forecast := range []bool{false, true} {
 		src := &fakeTemp{name: "Open-Meteo", now: tempNow}
-		a := buildTemperature(context.Background(), src, nil, tempAsk(forecast), tempNow)
-		b := buildTemperature(context.Background(), src, nil, tempAsk(forecast), tempNow.Add(20*time.Minute))
+		a := buildTemperature(context.Background(), src, nil, tempAsk(forecast), tempNow, nil)
+		b := buildTemperature(context.Background(), src, nil, tempAsk(forecast), tempNow.Add(20*time.Minute), nil)
 		if !sameAnswer(a, b) {
 			t.Errorf("forecast %v: two answers twenty minutes apart differ", forecast)
 		}
@@ -242,7 +247,7 @@ func TestAnAnswerRepeatsWithinTheHour(t *testing.T) {
 func TestADayTheSourceLacksIsFilledFromOpenMeteo(t *testing.T) {
 	ndfd, om := &fakeTemp{name: "NDFD", now: tempNow}, &fakeTemp{name: "Open-Meteo", now: tempNow}
 	ask := tempAsk(true)
-	got := buildTemperature(context.Background(), ndfd, &noGap{om}, ask, tempNow)
+	got := buildTemperature(context.Background(), ndfd, &noGap{om}, ask, tempNow, nil)
 	if len(got.High) != temperature.Days {
 		t.Fatalf("%d highs; want every day's, today's from Open-Meteo", len(got.High))
 	}
@@ -257,13 +262,13 @@ func TestADayTheSourceLacksIsFilledFromOpenMeteo(t *testing.T) {
 		t.Error("Open-Meteo was never asked")
 	}
 	// Neither has it: nothing is marked filled, and the gap is said.
-	both := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", now: tempNow}, &fakeTemp{name: "Open-Meteo", now: tempNow}, ask, tempNow)
+	both := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", now: tempNow}, &fakeTemp{name: "Open-Meteo", now: tempNow}, ask, tempNow, nil)
 	if both.Filled["0/high"] || !strings.Contains(strings.Join(both.Notes, " "), "No high for Today") {
 		t.Errorf("with neither source holding today's high: filled %v, notes %v", both.Filled, both.Notes)
 	}
 	full := &fakeTemp{name: "NDFD", now: tempNow}
 	om2 := &fakeTemp{name: "Open-Meteo", now: tempNow}
-	_ = buildTemperature(context.Background(), &noGap{full}, om2, ask, tempNow)
+	_ = buildTemperature(context.Background(), &noGap{full}, om2, ask, tempNow, nil)
 	if om2.asked != 0 {
 		t.Error("Open-Meteo was asked although the chosen source had every day")
 	}
@@ -292,7 +297,7 @@ func TestTemperatureIsOffByDefault(t *testing.T) {
 func TestABoxNDFDRefusesFallsBackToOpenMeteo(t *testing.T) {
 	ask := tempAsk(true)
 	ask.Region, ask.View = geo.RegionHawaii, geo.Box{W: -160, S: 19, E: -155, N: 22}
-	got := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", failed: true}, &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, ask, tempNow)
+	got := buildTemperature(context.Background(), &fakeTemp{name: "NDFD", failed: true}, &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, ask, tempNow, nil)
 	if len(got.High) == 0 || got.Source != "Open-Meteo" {
 		t.Fatalf("%d highs from %q; want Hawaii from Open-Meteo, named", len(got.High), got.Source)
 	}
@@ -306,7 +311,7 @@ func TestABoxNDFDRefusesFallsBackToOpenMeteo(t *testing.T) {
 // labelled isotherms over faint bands - asked of the library on every grid.
 func TestEveryTemperatureGridIsLined(t *testing.T) {
 	for _, forecast := range []bool{false, true} {
-		got := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, tempAsk(forecast), tempNow)
+		got := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, tempAsk(forecast), tempNow, nil)
 		for _, o := range append(append(got.Overlays, got.High...), got.Low...) {
 			if !o.Grid.Lines {
 				t.Errorf("forecast %v: %s is not lined", forecast, o.ID)
@@ -320,7 +325,7 @@ func TestEveryTemperatureGridIsLined(t *testing.T) {
 // listener's unit, each a vector grid.
 func TestWindGridsFollowTheModes(t *testing.T) {
 	src := &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}
-	radarMode := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow)
+	radarMode := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow, nil)
 	if len(radarMode.Wind) != 4 || len(radarMode.WindDays) != 0 {
 		t.Fatalf("Radar mode's wind is %d hours and %d days; want the four hours up to now", len(radarMode.Wind), len(radarMode.WindDays))
 	}
@@ -333,7 +338,7 @@ func TestWindGridsFollowTheModes(t *testing.T) {
 		}
 	}
 	ask := tempAsk(true)
-	fc := buildTemperature(context.Background(), src, nil, ask, tempNow)
+	fc := buildTemperature(context.Background(), src, nil, ask, tempNow, nil)
 	steps := tty.ForecastSteps(ask.Anchor)
 	if len(fc.Wind) == 0 || fc.Wind[0].During != steps[0].Span {
 		t.Fatalf("Forecast mode's Now wind is %d grids", len(fc.Wind))
@@ -342,7 +347,7 @@ func TestWindGridsFollowTheModes(t *testing.T) {
 		t.Errorf("the days' wind is %d grids; want every day's peak, 20 mph, during its step", len(fc.WindDays))
 	}
 	ask.Fahrenheit = false
-	if kmh := buildTemperature(context.Background(), src, nil, ask, tempNow); kmh.Wind[0].Grid.Type.Unit != "km/h" {
+	if kmh := buildTemperature(context.Background(), src, nil, ask, tempNow, nil); kmh.Wind[0].Grid.Type.Unit != "km/h" {
 		t.Errorf("the metric listener's wind is in %q", kmh.Wind[0].Grid.Type.Unit)
 	}
 }
@@ -409,7 +414,7 @@ func TestEveryRegionHasItsFieldsWhole(t *testing.T) {
 	}
 	ask := tempAsk(true)
 	ask.Region = geo.RegionSamoa
-	if got := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, ask, tempNow); len(got.High) == 0 || len(got.WindDays) == 0 {
+	if got := buildTemperature(context.Background(), &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}, nil, ask, tempNow, nil); len(got.High) == 0 || len(got.WindDays) == 0 {
 		t.Errorf("American Samoa drew %d highs and %d wind days; want both", len(got.High), len(got.WindDays))
 	}
 }
@@ -420,13 +425,13 @@ func TestEveryRegionHasItsFieldsWhole(t *testing.T) {
 // day's peak; so the arrows read "10G30" and "20".
 func TestTheWindSaysItsGustsAsAviationDoes(t *testing.T) {
 	src := &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}
-	radarMode := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow)
+	radarMode := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow, nil)
 	for _, o := range radarMode.Wind {
 		if len(o.Grid.Gusts) != len(o.Grid.Values) || math.Abs(o.Grid.Gusts[0]-30) > 1e-6 {
 			t.Errorf("%s gusts %v; want 30 mph beside 10", o.ID, o.Grid.Gusts)
 		}
 	}
-	fc := buildTemperature(context.Background(), src, nil, tempAsk(true), tempNow)
+	fc := buildTemperature(context.Background(), src, nil, tempAsk(true), tempNow, nil)
 	if len(fc.Wind) == 0 || len(fc.Wind[0].Grid.Gusts) == 0 || math.Abs(fc.Wind[0].Grid.Gusts[0]-30) > 1e-6 {
 		t.Errorf("Forecast mode's Now does not say its gust: %v", fc.Wind)
 	}
@@ -445,7 +450,7 @@ func TestTheWindSaysItsGustsAsAviationDoes(t *testing.T) {
 	}
 	ask := tempAsk(false)
 	ask.Fahrenheit = false
-	if kmh := buildTemperature(context.Background(), src, nil, ask, tempNow); math.Abs(kmh.Wind[0].Grid.Gusts[0]-48.28032) > 1e-6 {
+	if kmh := buildTemperature(context.Background(), src, nil, ask, tempNow, nil); math.Abs(kmh.Wind[0].Grid.Gusts[0]-48.28032) > 1e-6 {
 		t.Errorf("the metric listener's gust is %v; want 48.3 km/h", kmh.Wind[0].Grid.Gusts[0])
 	}
 }
@@ -454,7 +459,7 @@ func TestTheWindSaysItsGustsAsAviationDoes(t *testing.T) {
 // lacks takes Open-Meteo's peak, and its gust comes with it.
 func TestAFilledDayKeepsItsGust(t *testing.T) {
 	ndfd, om := &fakeTemp{name: "NDFD", now: tempNow, noWindDay: true}, &fakeTemp{name: "Open-Meteo", now: tempNow}
-	got := buildTemperature(context.Background(), ndfd, &noGap{om}, tempAsk(true), tempNow)
+	got := buildTemperature(context.Background(), ndfd, &noGap{om}, tempAsk(true), tempNow, nil)
 	if !got.Filled["1/wind"] || len(got.WindDays) < 2 || len(got.WindDays[1].Grid.Gusts) == 0 || math.Abs(got.WindDays[1].Grid.Gusts[0]-40) > 1e-6 {
 		t.Errorf("filled %v; day 1's gusts %v; want Open-Meteo's wind and its 40 mph gust", got.Filled, got.WindDays)
 	}
@@ -490,7 +495,7 @@ func sameAnswer(a, b tty.MapTemperature) bool {
 func TestAGridIsCurrentThroughItsHourAndTheAnchorIsTheHour(t *testing.T) {
 	src := &fakeTemp{name: "Open-Meteo", now: tempNow}
 	anchor := tempNow.Truncate(time.Hour)
-	got := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow)
+	got := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow, nil)
 	if len(got.Overlays) == 0 {
 		t.Fatal("no hourly grid was built")
 	}
@@ -501,8 +506,8 @@ func TestAGridIsCurrentThroughItsHourAndTheAnchorIsTheHour(t *testing.T) {
 	}
 	anchored, unanchored := tempAsk(true), tempAsk(true)
 	unanchored.Anchor = time.Time{}
-	a := buildTemperature(context.Background(), src, nil, anchored, tempNow)
-	b := buildTemperature(context.Background(), src, nil, unanchored, tempNow)
+	a := buildTemperature(context.Background(), src, nil, anchored, tempNow, nil)
+	b := buildTemperature(context.Background(), src, nil, unanchored, tempNow, nil)
 	spans := func(os ...[]tuimaps.Overlay) []string {
 		var out []string
 		for _, list := range os {
@@ -514,5 +519,76 @@ func TestAGridIsCurrentThroughItsHourAndTheAnchorIsTheHour(t *testing.T) {
 	}
 	if x, y := spans(a.Overlays, a.High, a.Low), spans(b.Overlays, b.High, b.Low); !slices.Equal(x, y) || len(x) == 0 {
 		t.Errorf("an ask with no anchor built\n%v\nwhere the hour's anchor built\n%v", y, x)
+	}
+}
+
+// OPEN-METEO'S SPENT QUOTA REACHES THE MAP, AND IS NOT ASKED AGAIN (W18.1,
+// D-165): the answer carries the quota the gate holds, so the window can say
+// it; and the next ask does not go out to be refused again.
+func TestOpenMeteosSpentQuotaReachesTheMap(t *testing.T) {
+	var asked atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked.Add(1)
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte(`{"error":true,"reason":"Daily API request limit exceeded. Please try again tomorrow."}`))
+	}))
+	defer srv.Close()
+	c, err := httpx.New(httpx.Config{UserAgent: "t", RatePerSec: 100, RetryBase: time.Millisecond, MaxRetries: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ndfd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusNotFound) }))
+	defer ndfd.Close()
+	lp := &livePipelines{temp: tempSourcesAt(c, srv.URL, ndfd.URL)} // NDFD apart: only Open-Meteo's asks are counted
+	got := lp.mapTemperature(context.Background(), tempAsk(false))
+	if got.Quota == nil || got.Quota.Period != "Daily" || got.Quota.Source != "Open-Meteo" {
+		t.Fatalf("the answer does not say Open-Meteo's daily quota is spent: %+v", got.Quota)
+	}
+	before := asked.Load()
+	lp.mapTemperature(context.Background(), tempAsk(false))
+	if n := asked.Load() - before; n != 0 {
+		t.Errorf("a spent quota was asked again %d times", n)
+	}
+}
+
+// OPEN-METEO REFUSED, NDFD DRAWS (W18.2, D-165, D-166): every box Open-Meteo
+// does not answer is asked of NDFD; the chips say NDFD; and in Radar mode
+// NDFD's current hour lies under the loop's earlier frames too - it has no
+// hour before it (D-166's cold start). With Open-Meteo answering, nothing is
+// stretched and NDFD is not asked.
+func TestNDFDDrawsWhereOpenMeteoRefused(t *testing.T) {
+	anchor := tempNow.Truncate(time.Hour)
+	for _, forecast := range []bool{false, true} {
+		ndfd := &fakeTemp{name: "NDFD", now: tempNow}
+		got := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow, failed: true}, nil, tempAsk(forecast), tempNow, ndfd)
+		if len(got.Overlays) == 0 || len(got.Feels) == 0 || len(got.Wind) == 0 {
+			t.Fatalf("forecast %v: NDFD drew %d temperature, %d feels-like, %d wind grids", forecast, len(got.Overlays), len(got.Feels), len(got.Wind))
+		}
+		if got.Source != "NDFD" || !slices.Equal(got.Chips[tty.TemperatureLayer], []string{"NDFD"}) {
+			t.Errorf("forecast %v: drawn as %q, chips %v; want NDFD's", forecast, got.Source, got.Chips[tty.TemperatureLayer])
+		}
+		if forecast {
+			continue
+		}
+		stretched := 0
+		for _, list := range [][]tuimaps.Overlay{got.Overlays, got.Feels, got.Wind} {
+			for _, o := range list {
+				if o.During.From.Equal(anchor.Add(-time.Hour)) && o.During.Until.Equal(anchor.Add(time.Hour-time.Nanosecond)) {
+					stretched++
+				}
+			}
+		}
+		if stretched != 3 {
+			t.Errorf("%d current-hour grids reach under the loop's earlier frames; want temperature's, feels-like's and wind's", stretched)
+		}
+	}
+	answered := buildTemperature(context.Background(), &fakeTemp{name: "Open-Meteo", now: tempNow}, nil, tempAsk(false), tempNow, &fakeTemp{name: "NDFD", now: tempNow, failed: true})
+	for _, o := range answered.Overlays {
+		if o.During.From.Before(o.During.Until.Add(-time.Hour)) {
+			t.Errorf("%s is stretched though Open-Meteo answered", o.ID)
+		}
+	}
+	if answered.Source != "Open-Meteo" {
+		t.Errorf("with Open-Meteo answering, drawn as %q", answered.Source)
 	}
 }

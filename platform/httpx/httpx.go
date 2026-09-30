@@ -32,6 +32,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/sync/singleflight"
 
@@ -183,6 +185,11 @@ type StatusError struct {
 	Status   int
 	Attempts int  // 0 for a non-retryable failure — it was never retried
 	Degraded bool // true when the retries ran out and last-good data is being served
+	// Reason is the start of the failure's body, one printable line of at
+	// most maxReasonBytes, for a source to read - Open-Meteo says there which
+	// of its limits was spent (W18.1, D-165). It is never put in Error()'s
+	// words, and never shown: a host may echo a request back.
+	Reason string
 }
 
 func (e *StatusError) Error() string {
@@ -589,7 +596,7 @@ func (c *Client) do(ctx context.Context, rawURL string, cond conditional) ([]byt
 		// Transport-level cause survives, redacted (B0 red-team F1).
 		return nil, nil, &ReachError{URL: req.safe, Attempts: last.attempts, Err: redactErr(last.err)}
 	}
-	return nil, nil, &StatusError{URL: req.safe, Status: last.status, Attempts: last.attempts, Degraded: true}
+	return nil, nil, &StatusError{URL: req.safe, Status: last.status, Attempts: last.attempts, Degraded: true, Reason: last.reason}
 }
 
 // request is one GET's identity for the retry loop.
@@ -607,6 +614,7 @@ type outcome struct {
 	hdr      http.Header
 	err      error
 	status   int
+	reason   string // a failure's reason, as StatusError.Reason
 	attempts int
 	final    bool
 }
@@ -653,7 +661,7 @@ func (c *Client) attemptOnce(ctx context.Context, req request, attempt int) outc
 	default:
 		c.stats.add(req.host, func(h *HostStats) { h.LastFail = time.Now() }) // how it is doing now (D-150)
 		c.noteFailure(req.host, req.rawURL, res, err)
-		out.err, out.status = err, res.status
+		out.err, out.status, out.reason = err, res.status, res.reason
 	}
 	return out
 }
@@ -665,6 +673,7 @@ type attemptResult struct {
 	hdr        http.Header
 	status     int
 	h2         bool          // the response arrived over HTTP/2 (RequestStats)
+	reason     string        // a failure's reason (StatusError.Reason)
 	retryAfter time.Duration // a 429/503 Retry-After, clamped (0 = none)
 }
 
@@ -704,9 +713,10 @@ func (c *Client) doAttempt(ctx context.Context, r request) (attemptResult, error
 		return res, nil
 	}
 	if resp.StatusCode != http.StatusOK {
+		res.reason = reasonOf(resp.Body)
 		_, _ = io.Copy(io.Discard, resp.Body)
 		if !retryable(resp.StatusCode) {
-			return res, &StatusError{URL: safe, Status: resp.StatusCode}
+			return res, &StatusError{URL: safe, Status: resp.StatusCode, Reason: res.reason}
 		}
 		res.retryAfter = parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
 		return res, nil
@@ -760,6 +770,32 @@ func (c *Client) sleepBackoff(ctx context.Context, attempt int, safe string) err
 	case <-time.After(back):
 		return nil
 	}
+}
+
+// maxReasonBytes bounds a failure's kept reason: enough for a sentence.
+const maxReasonBytes = 256
+
+// reasonOf is the start of a failure's body as one printable line: control
+// characters are spaces, runs of space are one, at most maxReasonBytes.
+func reasonOf(r io.Reader) string {
+	raw, _ := io.ReadAll(io.LimitReader(r, 4*maxReasonBytes)) // a failed read keeps what came: a reason is best effort
+	var b strings.Builder
+	space := false
+	for _, ch := range string(raw) { // bounded by the read (P10-02)
+		if !unicode.IsPrint(ch) || unicode.IsSpace(ch) {
+			space = b.Len() > 0
+			continue
+		}
+		if space {
+			b.WriteByte(' ')
+			space = false
+		}
+		if b.Len()+utf8.RuneLen(ch) > maxReasonBytes {
+			break
+		}
+		b.WriteRune(ch)
+	}
+	return b.String()
 }
 
 func retryable(status int) bool {

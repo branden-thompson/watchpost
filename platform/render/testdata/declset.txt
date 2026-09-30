@@ -61,6 +61,7 @@ const MapChipNIFCBG
 const MapChipNWSBG
 const MapChipOMeteoBG
 const MapChipUSGSBG
+const MapNoticeQuotaBG
 const MapRadarIEMBG
 const MapRadarMRMSBG
 const MapRadarModelBG
@@ -246,6 +247,7 @@ func LightBox
 func ListLabel
 func ModalTone
 func NextTide
+func NoticeGrounds
 func Overlay
 func PadBetween
 func PadTo

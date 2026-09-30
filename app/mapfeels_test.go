@@ -20,7 +20,7 @@ import (
 // listener's unit, drawn with temperature's look.
 func TestFeelsLikeFollowsTheModes(t *testing.T) {
 	src := &noGap{&fakeTemp{name: "Open-Meteo", now: tempNow}}
-	radarMode := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow)
+	radarMode := buildTemperature(context.Background(), src, nil, tempAsk(false), tempNow, nil)
 	if len(radarMode.Feels) != 4 {
 		t.Fatalf("Radar mode's feels-like is %d hours; want the four up to now", len(radarMode.Feels))
 	}
@@ -30,7 +30,7 @@ func TestFeelsLikeFollowsTheModes(t *testing.T) {
 		}
 	}
 	ask := tempAsk(true)
-	fc := buildTemperature(context.Background(), src, nil, ask, tempNow)
+	fc := buildTemperature(context.Background(), src, nil, ask, tempNow, nil)
 	steps := tty.ForecastSteps(ask.Anchor)
 	if len(fc.Feels) != 1 || fc.Feels[0].During != steps[0].Span {
 		t.Fatalf("Forecast mode's Now feels-like is %d grids", len(fc.Feels))
@@ -45,7 +45,7 @@ func TestFeelsLikeFollowsTheModes(t *testing.T) {
 // next hour, so Forecast mode's Now is Open-Meteo's, credited (D-100's fill).
 func TestFeelsLikeNowIsFilledFromOpenMeteo(t *testing.T) {
 	ndfd := &noGap{&fakeTemp{name: "NDFD", now: tempNow, noFeelsHour: true}}
-	got := buildTemperature(context.Background(), ndfd, &fakeTemp{name: "Open-Meteo", now: tempNow}, tempAsk(true), tempNow)
+	got := buildTemperature(context.Background(), ndfd, &fakeTemp{name: "Open-Meteo", now: tempNow}, tempAsk(true), tempNow, nil)
 	if len(got.Feels) == 0 || !got.Filled["now/feels"] {
 		t.Fatalf("Now's feels-like is %d grids, filled %v; want Open-Meteo's", len(got.Feels), got.Filled)
 	}
