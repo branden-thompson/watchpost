@@ -81,6 +81,7 @@ var unmeasurable = map[Token]string{
 	MapNoticeQuotaBG:  "a notice ground: its words chosen by ChipTones and measured with the chips (W18.1, D-165)",
 	MapChipRecordedBG: "a chip ground (D-178)",
 	MapChipAirNowBG:   "a chip ground (D-134)",
+	MapChipEPABG:      "a chip ground (D-167)",
 }
 
 func TestEveryTokenIsMeasuredOrExcused(t *testing.T) {

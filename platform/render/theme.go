@@ -152,6 +152,7 @@ const (
 	MapChipNDBCBG   Token = "map.chip.ndbc.bg"
 	MapChipCOOPSBG  Token = "map.chip.coops.bg"
 	MapChipAirNowBG Token = "map.chip.airnow.bg" // D-138
+	MapChipEPABG    Token = "map.chip.epa.bg"    // D-167: UV's cold start
 	// MapNoticeQuotaBG is the ground of the map's notice that a source's
 	// quota is spent (W18.1, D-165): dark orange, its words ChipTones'.
 	MapNoticeQuotaBG Token = "map.notice.quota.bg"
@@ -379,6 +380,7 @@ func defaultTheme() map[Token]string {
 		MapChipNDBCBG:     "48;2;56;189;248", // #38BDF8, sky
 		MapChipCOOPSBG:    "48;2;132;204;22", // #84CC16, lime
 		MapChipAirNowBG:   "48;2;146;64;14",  // #92400E, brown
+		MapChipEPABG:      "48;2;22;101;52",  // #166534, forest green (D-167)
 		MapNoticeQuotaBG:  "48;2;194;65;12",  // #C2410C, dark orange (D-165)
 		MapChipRecordedBG: "48;2;91;75;138",  // #5B4B8A, muted violet (D-178)
 		// PLACEHOLDER, pending the ruling: a new colour, or THE RED with every

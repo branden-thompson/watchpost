@@ -54,6 +54,7 @@ const ListFocus
 const ListPointer
 const MapChipAirNowBG
 const MapChipCOOPSBG
+const MapChipEPABG
 const MapChipHMSBG
 const MapChipNDBCBG
 const MapChipNDFDBG

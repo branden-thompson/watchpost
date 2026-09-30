@@ -81,6 +81,7 @@ func builtinOverrides() map[string]map[Token]string {
 			MapChipNDBCBG: "48;2;100;100;100", MapChipNDFDBG: "48;2;110;110;110", MapChipCOOPSBG: "48;2;120;120;120", MapChipOMeteoBG: "48;2;130;130;130", MapChipAirNowBG: "48;2;20;20;20",
 			MapNoticeQuotaBG:  "48;2;140;140;140", // D-165's notice: a grey of its own
 			MapChipRecordedBG: "48;2;150;150;150", // D-178's RECORDED chip: a grey of its own
+			MapChipEPABG:      "48;2;160;160;160", // D-167's EPA chip: a grey of its own
 			// The tint ramp, evened in L* like the lane ramp above and running one
 			// rung darker throughout: 70 64 58 52 46 40, in the same severity
 			// order. Category by shade on monochrome; the tab glyph carries
@@ -300,6 +301,7 @@ func lightOverrides() map[Token]string {
 		// no-dark-ground rule allows, its words black.
 		MapNoticeQuotaBG:  "48;2;251;146;60",
 		MapChipRecordedBG: "48;2;221;214;254", // D-178's muted violet, pale: the words black
+		MapChipEPABG:      "48;2;187;247;208", // D-167's forest green, pale: the words black
 		GroupText:         "1;38;2;20;20;20", GroupLocationBG: "48;2;200;200;200", GroupTodayBG: "48;2;169;196;224",
 		GroupTomorrowBG: "48;2;169;224;224", GroupExtendedBG: "48;2;196;196;224", GroupSectionBG: "48;2;221;221;221",
 		// THE LIGHT THEME INVERTS THE RELATIONSHIP, NOT THE HUE. A band on a

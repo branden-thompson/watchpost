@@ -9,14 +9,19 @@ package app
 import (
 	"context"
 	"strconv"
+	"sync"
 	"time"
 
 	tuimaps "github.com/branden-thompson/go-tuimaps"
 
 	"github.com/branden-thompson/watchpost/domains/airquality"
+	"github.com/branden-thompson/watchpost/domains/locations/geodata"
 	"github.com/branden-thompson/watchpost/domains/temperature"
+	"github.com/branden-thompson/watchpost/domains/uv"
 	"github.com/branden-thompson/watchpost/modes/tty"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
+	"github.com/branden-thompson/watchpost/platform/tz"
 )
 
 // withUV adds the UV index for the mode (D-137), from Open-Meteo's answer:
@@ -26,7 +31,7 @@ import (
 // VALID UV IS RECORDED AND REPLAYED (W18.4, D-167): each hour Open-Meteo
 // answered, up to the current one, goes into the history; where it does not
 // answer, Radar mode draws the hours recorded, and the chip says RECORDED.
-func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, free bool, ask tty.MapAsk, now time.Time, store *history.Store) tty.MapTemperature {
+func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo, free bool, ask tty.MapAsk, now time.Time, store *history.Store, cold *uvCold) tty.MapTemperature {
 	if !free && !ask.UV {
 		return t
 	}
@@ -49,6 +54,14 @@ func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo
 			return fieldGrid(id, lat, vals, valid, anchor, tuimaps.UVGrid)
 		})
 		t.UV, t.UVDays = append(t.UV, hours...), append(t.UVDays, days...)
+	}
+	if live == 0 && replayed == 0 && cold != nil { // nothing answered, nothing recorded: the cold start (D-167)
+		if marks := cold.markers(ctx, ask.View, askAnchor(ask, now)); len(marks) > 0 {
+			t.UV = append(t.UV, marks...)
+			t.Chips = withChips(t.Chips, tty.UVLayer, "EPA")
+			t.Notes = append(t.Notes, "UV: EPA's forecast for the largest cities in view, while Open-Meteo does not answer.")
+			return t
+		}
 	}
 	switch { // named while it draws (D-183), and from what (D-173)
 	case live > 0 && replayed > 0:
@@ -220,5 +233,93 @@ func airLayerCost(in mapInputs) (int64, int) {
 // airHosts are air quality's entries for the Status window's MAP block, with
 // their credits (D-131).
 func airHosts() []tty.MapSource {
-	return []tty.MapSource{{Name: "EPA AirNow", Host: airquality.Host(), Layers: "air"}} // its credit is About's (D-148)
+	return []tty.MapSource{{Name: "EPA AirNow", Host: airquality.Host(), Layers: "air"}, // its credit is About's (D-148)
+		{Name: "EPA Envirofacts", Host: uv.Host, Layers: "UV, cold start"}} // D-167
+}
+
+// uvCold is UV's cold start (D-167): EPA's UV index, hour by hour for today,
+// for the largest cities in view - the one UV source that is not a lattice,
+// drawn as markers while Open-Meteo does not answer and nothing is recorded.
+type uvCold struct {
+	epa    *uv.EPA
+	cities func(view geo.Box) []geodata.City // the largest in view, at most maxUVCities
+}
+
+// maxUVCities bounds the cold start's asks: one a city, EPA's shape.
+const maxUVCities = 8
+
+// markers are the cities' UV as points in their bands' colours, each
+// labelled with its city and value: the current hour and the pastHours
+// before it, each drawn during its own hour, as the history's replay is.
+// None where no city answered.
+func (c *uvCold) markers(ctx context.Context, view geo.Box, anchor time.Time) []tuimaps.Overlay {
+	if c == nil || c.epa == nil || c.cities == nil {
+		return nil
+	}
+	type answered struct {
+		city     geodata.City
+		readings []uv.Reading
+	}
+	var got []answered
+	for _, city := range c.cities(view) { // at most maxUVCities (P10-02)
+		loc, err := tz.Location(city.TZ)
+		if err != nil {
+			continue
+		}
+		readings, err := c.epa.Hourly(ctx, city.Name, city.State, loc)
+		if err != nil {
+			continue // D-124: counted as nothing, never said
+		}
+		got = append(got, answered{city, readings})
+	}
+	var out []tuimaps.Overlay
+	for back := pastHours; back >= 0; back-- { // four (P10-02)
+		h := anchor.Add(-time.Duration(back) * time.Hour)
+		var feats []tuimaps.Feature
+		for _, a := range got {
+			if v, ok := uv.At(a.readings, h); ok {
+				feats = append(feats, tuimaps.Feature{Kind: tuimaps.Point, Rings: [][]tuimaps.LonLat{{{Lon: a.city.Lon, Lat: a.city.Lat}}},
+					Role: tuimaps.UVRole(v), Label: a.city.Name + " " + strconv.FormatFloat(v, 'f', -1, 64)})
+			}
+		}
+		if len(feats) > 0 {
+			out = append(out, tuimaps.Overlay{ID: tty.UVLayer + "/epa/" + h.UTC().Format("2006-01-02T15"), Valid: h, Keeps: time.Hour, Credit: uv.Attribution,
+				Features: feats, During: tuimaps.Span{From: h, Until: h.Add(time.Hour - time.Nanosecond)}})
+		}
+	}
+	return out
+}
+
+// uvRanked is how many of the largest US cities the cold start looks among:
+// every one past some 50,000 people, so a state's view holds a few.
+const uvRanked = 1000
+
+// largestInView is a view's cities from a ranked list, the ranking's order
+// kept, at most maxUVCities: EPA's forecast is by city.
+func largestInView(ranked []geodata.City, view geo.Box) []geodata.City {
+	var out []geodata.City
+	for _, c := range ranked { // at most uvRanked (P10-02)
+		if len(out) == maxUVCities {
+			break
+		}
+		if view.Contains(c.Lat, c.Lon) && c.TZ != "" {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// citiesFrom is the cold start's cities over the index: its largest ranked
+// once, on the first ask - off the UI goroutine, where the fetch runs.
+func citiesFrom(idx func() *geodata.Index) func(geo.Box) []geodata.City {
+	var once sync.Once
+	var ranked []geodata.City
+	return func(view geo.Box) []geodata.City {
+		once.Do(func() {
+			if i := idx(); i != nil {
+				ranked = i.TopUS(uvRanked)
+			}
+		})
+		return largestInView(ranked, view)
+	}
 }

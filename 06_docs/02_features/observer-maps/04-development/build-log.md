@@ -2528,3 +2528,32 @@ with its callout - a new source, its chip and credit, and a marker style the lib
 **Mutation verdicts** (targeted, 5): hours ahead recorded, nothing recorded, nothing replayed, the
 replay named O-METEO, UV keeping its own retention (caught once the Data tab's test held every
 dataset) - all caught.
+
+## Batch 81 — UV's cold start: EPA's index for the cities in view (W18.4, part 2; D-167; 2026-09-30)
+
+**Now.** Where Open-Meteo gives no UV and nothing is recorded, the UV layer draws the U.S. EPA's
+hourly UV forecast (Envirofacts, no key) for the largest cities in view - at most eight, from the
+thousand largest US cities, ranked once - as markers in their UV band's colour, labelled with the
+city and the value ("Vista 7"). Like the history's replay, each of the current hour and the three
+before it is drawn during its own hour. The UV badge says **EPA**, on a forest-green ground of its
+own, and a note under the map says the UV is EPA's forecast for the largest cities in view. Anything
+recorded is drawn first: the cold start is the last tier before the notice alone.
+
+**A new source, registered as every source is:** `domains/uv` (its hours read in each city's zone,
+which the answer does not say); the credit in About's Maps list; `data.epa.gov` on the closed host
+list; "EPA Envirofacts" in MAP STATUS; `MapChipEPABG` in all three themes (mono a grey of its own).
+**go-tuiMaps rc.29** gives `UVRole`, the UV band a value falls in, for the markers (L11.30).
+
+**EPA's answer, as it is:** its evening hours are dated the day before (a Sep/30 forecast runs
+04 AM..04 PM Sep/30, then 05 PM..11 PM Sep/29). They are left unmatched, not guessed at - their index
+is 0 or 1. What is refused is an index below 0 or past 50, or an hour a day or more from the first.
+A strict ordering check was tried first and refused the recorded answer: the fixture caught it.
+
+**P10:** `domains/uv` first read at density 1.25; `Host` became a constant and the answer gained the
+two checks above - 31 live, unchanged.
+
+**Mutation verdicts** (targeted, 15): the replay drawn first, the cap of eight, a city with no zone,
+a city outside the view, the band, the badge, the hour read, the span's end (survived once - the test
+took a zero end; tightened), the past hours; EPA's negative and too-high index, an hour a day before
+and a day after, the hour's end, the zone the hours are read in - all caught.
+

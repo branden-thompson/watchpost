@@ -26,6 +26,7 @@ var chipGrounds = map[string]render.Token{
 	"NWS": render.MapChipNWSBG, "NDFD": render.MapChipNDFDBG, "O-METEO": render.MapChipOMeteoBG,
 	"USGS": render.MapChipUSGSBG, "NIFC": render.MapChipNIFCBG, "HMS": render.MapChipHMSBG,
 	"NDBC": render.MapChipNDBCBG, "CO-OPS": render.MapChipCOOPSBG, "AIRNOW": render.MapChipAirNowBG,
+	"EPA":      render.MapChipEPABG,      // UV's cold start (D-167)
 	"RECORDED": render.MapChipRecordedBG, // not a source: the history, appended after one (D-173, D-178)
 }
 

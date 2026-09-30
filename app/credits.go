@@ -12,6 +12,7 @@ import (
 	"github.com/branden-thompson/watchpost/domains/radio/stream"
 	"github.com/branden-thompson/watchpost/domains/seismic/usgs"
 	"github.com/branden-thompson/watchpost/domains/temperature"
+	"github.com/branden-thompson/watchpost/domains/uv"
 	"github.com/branden-thompson/watchpost/domains/weather/nws"
 )
 
@@ -59,6 +60,7 @@ func mapCredits() []string {
 		temperature.OpenMeteoWavesCredit,
 		temperature.OpenMeteoAirCredit,
 		airquality.Attribution,
+		uv.Attribution, // UV's cold start (D-167)
 		"Fire: NIFC WFIGS perimeters and incidents; NOAA HMS satellite hotspots",
 		usgs.Attribution,
 		ndbc.Attribution,

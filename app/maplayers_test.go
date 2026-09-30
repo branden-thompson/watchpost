@@ -69,6 +69,7 @@ func TestEveryRegisteredSourceIsOnTheClosedList(t *testing.T) {
 		"earthquake.usgs.gov": true,                                        // D-122: quakes
 		"www.ndbc.noaa.gov":   true, "api.tidesandcurrents.noaa.gov": true, // D-127, D-128: the sea's stations
 		"air-quality-api.open-meteo.com": true, "files.airnowtech.org": true, // D-138: air quality
+		"data.epa.gov":    true, // D-167: UV's cold start
 		"api.weather.gov": true} // the alerts and zones, already the app's
 	if len(mapSources) == 0 {
 		t.Fatal("no source registered")

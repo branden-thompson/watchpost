@@ -19,6 +19,7 @@ import (
 
 	"github.com/branden-thompson/watchpost/domains/radar"
 	"github.com/branden-thompson/watchpost/domains/temperature"
+	"github.com/branden-thompson/watchpost/domains/uv"
 	"github.com/branden-thompson/watchpost/modes/tty"
 	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/httpx"
@@ -43,6 +44,7 @@ func init() {
 type tempSources struct {
 	ndfd, om temperature.Source
 	gate     *temperature.QuotaGate // Open-Meteo's asks, held while a quota is spent (W18.1, D-165)
+	uvCold   *uvCold                // UV's cold start: EPA's index for the cities in view (W18.4, D-167)
 	rain     *temperature.OpenMeteo // the rain and snow, Open-Meteo's always (D-118); the waves beyond NDFD (D-125)
 	waves    *temperature.NDFD      // the waves where NDFD reaches (D-125)
 }
@@ -59,7 +61,7 @@ func tempSourcesOver(c *httpx.Client) *tempSources {
 func tempSourcesAt(c temperature.Getter, omBase, ndfdBase, state string) *tempSources {
 	gate := temperature.NewSharedQuotaGate(c, time.Now, state)
 	om, ndfd := temperature.NewOpenMeteo(gate, omBase), temperature.NewNDFD(c, ndfdBase)
-	return &tempSources{ndfd: ndfd, om: om, gate: gate, rain: om, waves: ndfd}
+	return &tempSources{ndfd: ndfd, om: om, gate: gate, rain: om, waves: ndfd, uvCold: &uvCold{epa: uv.NewEPA(c, "")}}
 }
 
 // quotaSpent is Open-Meteo's spent quota as the map says it, or nil.
@@ -130,7 +132,7 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 		t = withWaves(ctx, t, lp.temp.waves, lp.temp.rain, ask, now)
 	}
 	if lp.temp.rain != nil { // Open-Meteo: the UV and the model's US AQI (D-137, D-139)
-		t = withUV(ctx, t, lp.temp.rain, src.Name() == "Open-Meteo", ask, now, lp.historyStore()) // valid UV kept, and replayed when refused (D-167)
+		t = withUV(ctx, t, lp.temp.rain, src.Name() == "Open-Meteo", ask, now, lp.historyStore(), lp.temp.uvCold) // valid UV kept, and replayed when refused; EPA's on a cold start (D-167)
 		t = withAir(ctx, t, lp.temp.rain, ask, now)
 	}
 	t.Quota = lp.temp.quotaSpent() // the map says it (D-165)

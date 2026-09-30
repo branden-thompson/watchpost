@@ -103,6 +103,9 @@ func RunDashboard(version string, opt Options) error {
 	idx, resolver, resolverErr := loadGeodata(client)
 	prefs, setRadius := tickerState(cfg) // 0.12.0: the shared mute + alert-radius state and the radius persist hook
 	lp.giveItAStation(cfg, idx)
+	if lp.temp != nil && lp.temp.uvCold != nil {
+		lp.temp.uvCold.cities = citiesFrom(func() *geodata.Index { return lp.idx }) // UV's cold start, by the largest cities in view (D-167)
+	}
 	model, err := tty.NewDashboard(lp.ttyConfig(version, opt, openSetup, cfg, keyOverrides, resolver, resolverErr, firmsProv, setRadius, uiHook(prefs.clock)))
 	if err != nil {
 		return err // e.g. a '?' rebind in [keys] — actionable from term.Merge

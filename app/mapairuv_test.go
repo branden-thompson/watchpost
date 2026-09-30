@@ -6,10 +6,15 @@ package app
 import (
 	"context"
 	"errors"
+	"github.com/branden-thompson/watchpost/domains/locations/geodata"
+	"github.com/branden-thompson/watchpost/domains/uv"
+	"github.com/branden-thompson/watchpost/platform/geo"
 	"github.com/branden-thompson/watchpost/platform/history"
 	"net/url"
 	"os"
+	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -53,11 +58,11 @@ func TestUVIsItsGridsInEachMode(t *testing.T) {
 	get := &omGet{}
 	om := temperature.NewOpenMeteo(get, "")
 	ask := tempAsk(false)
-	if got := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow, nil); len(got.UV) != 0 || len(get.asked) != 0 {
+	if got := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow, nil, nil); len(got.UV) != 0 || len(get.asked) != 0 {
 		t.Fatalf("with UV off and NDFD the source, %d UV grids and %d requests; want none", len(got.UV), len(get.asked))
 	}
 	ask.UV = true
-	radar := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow, nil)
+	radar := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow, nil, nil)
 	if len(radar.UV) == 0 || radar.UV[0].Grid.Type.Preset != "uv" || radar.UV[0].Grid.Values[0] != 5 || len(radar.UVDays) != 0 {
 		t.Fatalf("Radar mode's UV is %d hours, %d days", len(radar.UV), len(radar.UVDays))
 	}
@@ -65,12 +70,12 @@ func TestUVIsItsGridsInEachMode(t *testing.T) {
 		t.Errorf("drawn, UV's chips are %v; want Open-Meteo's (D-183)", got)
 	}
 	ask.UV = false
-	if got := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow, nil).Chips[tty.UVLayer]; len(got) != 0 {
+	if got := withUV(context.Background(), tty.MapTemperature{}, om, false, ask, tempNow, nil, nil).Chips[tty.UVLayer]; len(got) != 0 {
 		t.Errorf("drawing nothing, UV names %v (D-183)", got)
 	}
 	ask.UV = true
 	ask = tempAsk(true)
-	fc := withUV(context.Background(), tty.MapTemperature{}, om, true, ask, tempNow, nil) // Open-Meteo the source: free, whatever the row
+	fc := withUV(context.Background(), tty.MapTemperature{}, om, true, ask, tempNow, nil, nil) // Open-Meteo the source: free, whatever the row
 	if len(fc.UV) != len(fieldBoxes(ask.Region, ask.View)) || len(fc.UVDays) == 0 || fc.UVDays[0].Grid.Values[0] != 8 {
 		t.Errorf("Forecast mode's UV is %d Now grids and %d days; want Now a box and each day's highest, 8", len(fc.UV), len(fc.UVDays))
 	}
@@ -173,7 +178,7 @@ func TestUVIsRecordedAndReplayed(t *testing.T) {
 	ask := tempAsk(false)
 	ask.UV = true
 	box := fieldBoxes(ask.Region, ask.View)[0]
-	withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(&omGet{}, ""), false, ask, tempNow, store)
+	withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(&omGet{}, ""), false, ask, tempNow, store, nil)
 	for back := 0; back <= pastHours; back++ {
 		rec, ok := store.Get(omUVHourly.Name, history.Key{Source: "openmeteo", Place: box.Name}, anchor.Add(-time.Duration(back)*time.Hour))
 		if !ok || rec.Values["uv"][0] != 5 {
@@ -183,7 +188,7 @@ func TestUVIsRecordedAndReplayed(t *testing.T) {
 	if _, ok := store.Get(omUVHourly.Name, history.Key{Source: "openmeteo", Place: box.Name}, anchor.Add(time.Hour)); ok {
 		t.Error("an hour ahead was recorded: only what was valid is kept")
 	}
-	got := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), false, ask, tempNow, store)
+	got := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), false, ask, tempNow, store, nil)
 	hours := map[time.Time]bool{}
 	for _, o := range got.UV {
 		if strings.Contains(o.ID, "/"+box.Name+"/") {
@@ -198,7 +203,99 @@ func TestUVIsRecordedAndReplayed(t *testing.T) {
 	if chips := got.Chips[tty.UVLayer]; !slices.Equal(chips, []string{"RECORDED"}) {
 		t.Errorf("UV replayed says %v; want RECORDED alone", chips)
 	}
-	if none := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), false, ask, tempNow, nil); len(none.UV) != 0 || len(none.Chips[tty.UVLayer]) != 0 {
+	if none := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), false, ask, tempNow, nil, nil); len(none.UV) != 0 || len(none.Chips[tty.UVLayer]) != 0 {
 		t.Error("with no history, a refused UV drew something")
+	}
+}
+
+// epaFixture answers every EPA ask with the recorded Vista forecast.
+type epaFixture struct{ asked int }
+
+func (e *epaFixture) GetText(context.Context, string, ...httpx.Option) ([]byte, error) {
+	e.asked++
+	return os.ReadFile(filepath.Join("..", "domains", "uv", "testdata", "epa-vista.json"))
+}
+
+// A COLD START'S UV IS EPA'S, FOR THE CITIES IN VIEW (W18.4, D-167): Open-
+// Meteo refusing and nothing recorded, the UV layer draws EPA's index for the
+// largest cities in view as markers in their bands' colours, labelled with
+// the city and the value; the badge says EPA and a note says whose it is.
+// Anything recorded is drawn instead: the cold start is the last tier before
+// the notice alone.
+func TestAColdStartsUVIsEPAsForTheCitiesInView(t *testing.T) {
+	la, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		t.Skip("no zone data")
+	}
+	now := time.Date(2026, 9, 30, 12, 20, 0, 0, la) // the fixture's day: UV 7 at noon
+	ask := tempAsk(false)
+	ask.UV, ask.Anchor = true, now.Truncate(time.Hour)
+	get := &epaFixture{}
+	cold := &uvCold{epa: uv.NewEPA(get, ""), cities: func(geo.Box) []geodata.City {
+		return []geodata.City{{Name: "Vista", State: "CA", Country: "US", Lat: 33.2, Lon: -117.24, Population: 100000, TZ: "America/Los_Angeles"}}
+	}}
+	store := history.Open(t.TempDir(), func() time.Time { return now }, omUVHourly)
+	got := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), false, ask, now, store, cold)
+	var marker *tuimaps.Feature
+	during := map[string]tuimaps.Span{}
+	for _, o := range got.UV {
+		for i := range o.Features {
+			during[o.Features[i].Label] = o.During
+			if o.Features[i].Label == "Vista 7" {
+				marker = &o.Features[i]
+			}
+		}
+	}
+	if marker == nil {
+		t.Fatalf("no marker for Vista's UV 7: %d UV overlays", len(got.UV))
+	}
+	for label, from := range map[string]time.Time{"Vista 7": ask.Anchor, "Vista 5": ask.Anchor.Add(-time.Hour), "Vista 1": ask.Anchor.Add(-3 * time.Hour)} {
+		if sp := during[label]; !sp.From.Equal(from) || !sp.Until.Before(from.Add(time.Hour)) || sp.Until.Before(from.Add(time.Hour-time.Second)) {
+			t.Errorf("%s is drawn during %v; want its own hour from %v, as the replay is", label, sp, from)
+		}
+	}
+	if marker.Kind != tuimaps.Point || marker.Role != tuimaps.UVRole(7) {
+		t.Errorf("Vista is drawn as %v in %v; want a point in UV band %v", marker.Kind, marker.Role, tuimaps.UVRole(7))
+	}
+	if chips := got.Chips[tty.UVLayer]; !slices.Equal(chips, []string{"EPA"}) {
+		t.Errorf("the UV badge says %v; want EPA", chips)
+	}
+	if !slices.ContainsFunc(got.Notes, func(n string) bool { return strings.Contains(n, "EPA") }) {
+		t.Errorf("no note says the UV is EPA's: %v", got.Notes)
+	}
+	recorded := history.Open(t.TempDir(), func() time.Time { return tempNow }, omUVHourly) // at Open-Meteo's fixture's hour
+	was := tempAsk(false)
+	was.UV = true
+	withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(&omGet{}, ""), false, was, tempNow, recorded, nil)
+	asked := get.asked
+	replay := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), false, was, tempNow, recorded, cold)
+	if len(replay.UV) == 0 || get.asked != asked || slices.Contains(replay.Chips[tty.UVLayer], "EPA") {
+		t.Error("with UV recorded, EPA was asked: the history is drawn first (D-167)")
+	}
+	if none := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(refusingGet{}, ""), false, ask, now, store, nil); len(none.UV) != 0 {
+		t.Error("with no EPA source, a refused UV drew something")
+	}
+}
+
+// THE COLD START ASKS FOR THE LARGEST CITIES IN VIEW, AT MOST maxUVCities
+// (D-167): from the ranking, its order kept; a city outside the view, or with
+// no zone to read EPA's hours in, is passed over.
+func TestTheColdStartAsksTheLargestCitiesInView(t *testing.T) {
+	view := geo.Box{W: -120, S: 30, E: -110, N: 40}
+	ranked := []geodata.City{{Name: "Out", Lat: 45, Lon: -100, TZ: "America/Chicago"}, {Name: "NoZone", Lat: 35, Lon: -115}}
+	for i := range maxUVCities + 2 {
+		ranked = append(ranked, geodata.City{Name: "C" + strconv.Itoa(i), Lat: 35, Lon: -115, TZ: "America/Los_Angeles"})
+	}
+	got := largestInView(ranked, view)
+	if len(got) != maxUVCities {
+		t.Fatalf("%d cities asked for; want %d", len(got), maxUVCities)
+	}
+	for i, c := range got {
+		if c.Name != "C"+strconv.Itoa(i) {
+			t.Errorf("city %d is %s; want the ranking's C%d (none outside the view, none without a zone)", i, c.Name, i)
+		}
+	}
+	if largestInView(nil, view) != nil {
+		t.Error("no ranking asked for cities")
 	}
 }

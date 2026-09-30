@@ -45,6 +45,7 @@ const maxAlertRecords
 const maxDumpsPerRun
 const maxLaneRows
 const maxSeenIDs
+const maxUVCities
 const maxUnattendedInstalls
 const metroCapKm
 const modelRainNote
@@ -105,6 +106,7 @@ const traceRainIn
 const traceRainMM
 const traceSnowCM
 const traceSnowIn
+const uvRanked
 const viewSamples
 const waveBytes
 const zoneShapeBytes
@@ -455,6 +457,7 @@ func (*timingLog).hook
 func (*timingLog).last
 func (*timingLog).note
 func (*timingLog).stage
+func (*uvCold).markers
 func (CastReport).ToneSummary
 func (airScope).hasOrigin
 func (bedReach).Line
@@ -519,6 +522,7 @@ func castToConfig
 func castView
 func chargeOf
 func chooseNearest
+func citiesFrom
 func clockFrom
 func closeOnExit
 func composeFor
@@ -592,6 +596,7 @@ func laneForKey
 func laneItems
 func laneRowsPerTab
 func laneScenarios
+func largestInView
 func lastLineIndex
 func libraryTransport
 func linedGrid
@@ -888,6 +893,7 @@ type tideMark
 type tileCounter
 type timingLog
 type timingRecord
+type uvCold
 type waveSource
 var _
 var _
