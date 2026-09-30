@@ -2171,3 +2171,33 @@ data landing. No regression either way.
 
 **Batch 64's measure, corrected.** The title's per-frame area name was a quarter of the open
 map's cost (2.2 → 1.8 %), not most of it as first read.
+
+## Batch 66 — an alert's distance measured once; radar frames read from their pixels (D-155 step 4, P-12; go-tuiMaps rc.28; 2026-09-30)
+
+**Measured first.** A new `warm` mode in the workload runner (`workload.sh warm`: one HOME kept,
+run 1 fills the caches, runs 2 onward are a returning listener's) put a warm open's M5 at
+1.18-1.27 s - batch 62 had 2.8-3.6 s - with a steady ~0.65 s from the alerts' answer to M5.
+Batch 62's "~2 s, the library's" had mostly gone with batches 63-65. A scratch instrument (built,
+read, removed) showed the rest: after the feed, the library had ~24 jobs; each Work took ~2 ms and
+each landing's `renderMap` ~31 ms, **28 ms of it the library's `Report`** - worked out again at
+every landing (its key holds the work landed) and every pan, and nearly all of that the nearest
+edge of every alert's areas from the selected place, great circle by great circle.
+
+**Now** (go-tuiMaps L11.29, `v0.2.0-rc.28`): a place's measure against an alert is kept per
+overlay, alert and place while the overlays and the units stand; the view, the clock and the
+work landing no longer pay it. **Warm opens, answer to M5: 0.01-0.25 s** (rc.27 back to back:
+0.67-0.72 s); M5 0.45-1.26 s, the rest the network's answer. The same cost left every pan's
+redraw: a candidate for R-1's occasional freeze, to be watched in the next session run.
+
+**And P-12's decode half.** A radar PNG read through `image.Image` allocated for every pixel - a
+600x275 frame 165,049 allocations, 2.7 ms. NRGBA and paletted pictures are now read from their
+pixels: 50 allocations and 1.3 ms (paletted 288 and 0.97 ms), every other layout as before, each
+tested against the general reading. The loop step's other cost - the basemap repainted on every
+advance, 43 % of its 6.4 ms - is recorded, not changed: the loop plays only on space, at one frame
+a second, about 0.3 % of a core, and the change would be to the renderer's core (P-12).
+
+**Settled's spread is the temperature source's.** Settled equals `answered:temp` in every warm
+run, 2.2-7.7 s across both builds; nothing in this batch touches it.
+
+**Mutation verdicts** (library, targeted, 7): the overlay check, the units check, the place's
+position in the key, the memo itself; the NRGBA path, its channels, the palette's index - all caught.

@@ -6,6 +6,7 @@
 #
 #   scripts/quality/workload.sh session <default|heavy> <outdir> [phase_minutes=10]
 #   scripts/quality/workload.sh cold    <default|heavy> <outdir> [runs=5]
+#   scripts/quality/workload.sh warm    <default|heavy> <outdir> [runs=4]
 #
 # Runs ./dist/watchpost (make build first) under a SCRATCH HOME holding
 # 06_docs/perf/workload-v1/config-<variant>.toml, so the listener's own config
@@ -15,7 +16,7 @@
 # beside the driver by soak.sh every 20 s. Live network: the run records when
 # and where it ran, and a comparison is between runs of the same workload.
 set -eu
-mode=${1:?session|cold}; variant=${2:?default|heavy}; out=${3:?outdir}; arg=${4:-}
+mode=${1:?session|cold|warm}; variant=${2:?default|heavy}; out=${3:?outdir}; arg=${4:-}
 root=$(git rev-parse --show-toplevel)
 cfg=$root/06_docs/perf/workload-v1/config-$variant.toml
 bin=$root/dist/watchpost
@@ -50,6 +51,17 @@ cold)
     rm -rf "$h"
     i=$((i + 1))
   done ;;
+warm)
+  # One HOME kept across the runs (W14): the first open fills the caches -
+  # the zones' disk tier above all (D-161) - and every later one is a
+  # returning listener's. Run 1 is the cold one; read runs 2 onward.
+  n=${arg:-4}; i=1
+  h=$(fresh_home)
+  while [ "$i" -le "$n" ]; do
+    drive "$h" cold "$i"
+    i=$((i + 1))
+  done
+  rm -rf "$h" ;;
 session)
   mins=${arg:-10}
   h=$(fresh_home)
