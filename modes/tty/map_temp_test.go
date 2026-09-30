@@ -650,3 +650,46 @@ func TestWindIsForecastModesMainOverlayToo(t *testing.T) {
 		t.Errorf("the row under the map is %q; want the wind's colours", row)
 	}
 }
+
+// A STEP IS DRAWN ONCE (W14, P-9). Forecast mode's step, its playback tick
+// and the mode's switch each timed the feed again - which draws - and then
+// drew again, the same frame twice. Each now draws once, with the feed in and
+// before any has landed.
+func TestAForecastStepIsDrawnOnce(t *testing.T) {
+	var asks []MapAsk
+	d := openTempMap(t, true, &asks)
+	renders := func(calls []string) int {
+		n := 0
+		for _, c := range calls {
+			if c == "Render" {
+				n++
+			}
+		}
+		return n
+	}
+	calls := &[]string{}
+	d.mapPane.calls = calls
+	m, cmd, _ := d.handleMapKey(tea.KeyPressMsg{Code: 'R', Text: "R"})
+	if n := renders(*calls); n != 1 {
+		t.Errorf("the switch to Forecast mode drew %d times; want once", n)
+	}
+	d = settleRadar(t, m.(Dashboard), cmd)
+	for _, fed := range []bool{true, false} {
+		if !fed {
+			d.mapPane.feed = nil // no feed landed yet: the step must still be drawn
+		}
+		*calls = nil
+		d, _, _ = d.handleForecastPlayback(actMapOn)
+		if n := renders(*calls); n != 1 {
+			t.Errorf("a step (feed in: %v) drew %d times; want once", fed, n)
+		}
+		d.mapPane.fcPlaying = true
+		*calls = nil
+		next, _ := d.applyForecastTick(forecastTickMsg{gen: d.mapPane.fcGen})
+		d = next.(Dashboard)
+		if n := renders(*calls); n != 1 {
+			t.Errorf("a playback tick (feed in: %v) drew %d times; want once", fed, n)
+		}
+		d.mapPane.fcPlaying = false
+	}
+}

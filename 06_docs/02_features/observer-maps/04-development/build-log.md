@@ -2201,3 +2201,21 @@ run, 2.2-7.7 s across both builds; nothing in this batch touches it.
 
 **Mutation verdicts** (library, targeted, 7): the overlay check, the units check, the place's
 position in the key, the memo itself; the NRGBA path, its channels, the palette's index - all caught.
+
+## Batch 67 — a Forecast step drawn once (D-155 step 4, P-9; 2026-09-30)
+
+**Measured first.** With the library's report kept (batches 65, 66), a `renderMap` without it costs
+~3.3 ms (batch 66's instrument: `Render` 1.1 ms, the title 0.2 ms, the rest). Forecast mode's
+step and playback tick, and the mode's switch, drew it twice - `retime` sets the feed's overlays
+again, which draws, and each caller drew once more: ~3 ms a second while Forecast mode plays.
+Small; the change is also the simpler code.
+
+**Now.** `retimeDrawn` is retime drawn once: the feed set again (which draws), or with no feed yet
+the frame drawn alone - the case the second draw had covered. The step, the tick and the switch
+use it. Radar's landing keeps `retime` as it was: it draws only once nothing is left to prepare,
+by design, and that is not this batch's to change.
+
+**Tests.** `TestAForecastStepIsDrawnOnce`: the switch, a step and a tick each call the library's
+`Render` once, with the feed in and before any has landed (RED: twice with the feed in).
+
+**Mutation verdicts** (targeted, 1): the no-feed draw dropped - caught (a step drew nothing).

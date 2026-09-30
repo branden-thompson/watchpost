@@ -385,8 +385,7 @@ func (d Dashboard) switchMode() (Dashboard, tea.Cmd) {
 	d.mapPane.tempAuto = false // Forecast mode's alone (D-104)
 	d = d.ensureMainOverlay()
 	d, _ = d.setTemp() // what is held, drawn or taken off at once (D-99)
-	d = d.refreshMapCost().showStep().retime()
-	d = d.renderMap()
+	d = d.refreshMapCost().showStep().retimeDrawn()
 	d, radar := d.askRadar()
 	d, temp := d.askTemp()
 	return d, tea.Batch(save, radar, temp, d.mapWorkCmd())
@@ -465,7 +464,7 @@ func (d Dashboard) handleForecastPlayback(act term.Action) (Dashboard, tea.Cmd, 
 	default:
 		return d, nil, false
 	}
-	return d.showStep().retime().renderMap(), cmd, true
+	return d.showStep().retimeDrawn(), cmd, true
 }
 
 // applyForecastTick advances a playing forecast one step, holding the last.
@@ -483,7 +482,7 @@ func (d Dashboard) applyForecastTick(v forecastTickMsg) (tea.Model, tea.Cmd) {
 	default:
 		d.mapPane.fcStep, d.mapPane.fcHeld = 0, 0
 	}
-	return d.showStep().retime().renderMap(), d.forecastTick()
+	return d.showStep().retimeDrawn(), d.forecastTick()
 }
 
 // TimedOverlay is when an overlay of the feed is: its onset and its end, and
@@ -534,6 +533,16 @@ func (d Dashboard) retime() Dashboard {
 		return d
 	}
 	return d.setFeed(*d.mapPane.feed)
+}
+
+// retimeDrawn is retime, drawn once: the feed's overlays set again with the
+// mode's spans, which draws, or with no feed yet, the frame drawn alone - a
+// step, a tick and the mode's switch drew the same frame twice (W14, P-9).
+func (d Dashboard) retimeDrawn() Dashboard {
+	if d.mapPane.feed == nil {
+		return d.renderMap()
+	}
+	return d.retime()
 }
 
 // forecastBadge is Forecast mode's badge in the radar badge's place (D-92),
