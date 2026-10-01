@@ -2811,3 +2811,21 @@ address. The app package's race run went from ~222 s to 126 s.
 the cold start's stretch, the empty day, its note, the recorder, the next hour, `WavesAt`'s scatter,
 `SetHour` over the source's own (survived once - untested; now tested) - all caught.
 
+## Batch 90 — two W14 defects: a cached garble, an absent assembler (C-5, C-6; 2026-10-01)
+
+**Now.** W19 done, W14's structure and quality work resumes with its two real defects.
+
+- **C-5:** NDBC's station list and buoy files, and USGS's every query, now **forget a body that does
+  not parse**, so the next ask goes to the source rather than failing on the same garbage for the
+  cache's lifetime - as HMS, WFIGS, FIRMS and NWS already did. Each tested against a server whose
+  first answer is garbled.
+- **C-6:** an empty RECENT list starts the recent pipeline with no assembler, and four readers -
+  the radio's fire, quakes and sea, and the FIRMS status - dereferenced it. They now walk
+  `livePipelines.assemblers()`, the assemblers that exist, favourites first: four copies of the walk
+  made one, and none can reach a nil.
+
+**R-2** waits for UAT (D-196, the docs commit before this batch).
+
+**Mutation verdicts** (4): the station list's forget, the buoy file's, USGS's (the test fails without
+it), the nil assembler listed - all caught.
+

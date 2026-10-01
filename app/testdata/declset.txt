@@ -180,6 +180,7 @@ func (*landPoints).is
 func (*landPoints).learn
 func (*livePipelines).airnowIn
 func (*livePipelines).applyHistory
+func (*livePipelines).assemblers
 func (*livePipelines).attachDeck
 func (*livePipelines).attachDiagnostics
 func (*livePipelines).bedCarrying

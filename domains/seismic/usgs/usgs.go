@@ -276,6 +276,7 @@ func (p *Provider) gather(ctx context.Context, ref snapshot.LocationRef, now tim
 		}
 		parsed, perr := p.memo.features(q.url, raw)
 		if perr != nil {
+			p.client.Forget(q.url) // a body that does not parse is not served again (C-5)
 			ok, err = false, perr
 			continue
 		}

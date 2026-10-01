@@ -58,8 +58,8 @@ hold is listed at the end.
 | C-2 | **Fixed, batch 58.** **The Tides estimate is always 0**: the estimate is built without fetching, and only fetching fills `in.tides` (`mapmarine.go` `tideLayerCost`, `maplayers.go` `inputsFor`) | Code | Verified |
 | C-3 | **Fixed, batch 58.** **The Overlays menu's picker blink has no tick of its own**: `tickNeeded` has no arm for `menuFlash` (Settings' has one) | Code; whether it shows depends on another tick being armed | Verified in code |
 | C-4 | **Traced, batch 63 (D-162: zone geometry held once; −12 MB).** **~76 MB stays after the map closes** (heap 34 → 86 MB) | Baseline, both variants | Measured; cause not traced |
-| C-5 | Two disk-cached providers (USGS near-field, NDBC) never `Forget` a body that failed to parse, so it is served again until its TTL | Auditor | Reported |
-| C-6 | A nil-pointer panic reachable only if the embedded index fails and no recent list is saved (`markFIRMS`, `fireFor`, … on `rp.asm`) | Auditor | Reported |
+| C-5 | Two disk-cached providers (USGS near-field, NDBC) never `Forget` a body that failed to parse, so it is served again until its TTL | Auditor | **Fixed, batch 90**: both forget it - NDBC's station list and buoy files, USGS's every query - as HMS, WFIGS, FIRMS and NWS did; tested against a server that garbles its first answer |
+| C-6 | A nil-pointer panic reachable only if the embedded index fails and no recent list is saved (`markFIRMS`, `fireFor`, … on `rp.asm`) | Auditor | **Fixed, batch 90**: `livePipelines.assemblers()`, the assemblers that exist, read by `fireFor`, `seismicFor`, `marineFor` and `markFIRMS` - four copies of the walk made one |
 
 ### Performance — the map's responsiveness and data fetching
 

@@ -137,3 +137,44 @@ func TestFallsThroughToNearestReportingBuoy(t *testing.T) {
 		t.Fatalf("nearby locations must share cached station products within obsTTL via the client cache (%d -> %d requests)", before, got)
 	}
 }
+
+// A BODY THAT DOES NOT PARSE IS NOT SERVED AGAIN (W14, C-5): a station list
+// or a buoy's file that came back garbled is forgotten by the cache, so the
+// next ask goes to NDBC again rather than reading the same garbage until its
+// lifetime runs out.
+func TestABodyThatDoesNotParseIsNotServedAgain(t *testing.T) {
+	var lists, files atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/activestations.xml":
+			if lists.Add(1) == 1 {
+				_, _ = w.Write([]byte("<stations><station"))
+				return
+			}
+			_, _ = w.Write(fixture(t, "activestations.xml"))
+		case strings.HasSuffix(r.URL.Path, "/46999_5day.txt"):
+			if files.Add(1) == 1 {
+				_, _ = w.Write([]byte("not a product"))
+				return
+			}
+			_, _ = w.Write([]byte(wavesOnly))
+		default:
+			w.WriteHeader(404)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	client, _ := httpx.New(httpx.Config{UserAgent: "test", MaxRetries: 0, RatePerSec: 1000})
+	p := New(client, srv.URL)
+	coastal := snapshot.LocationRef{Label: "Oceanside, CA", Zip: "92057", Lat: 33.2, Lon: -117.38}
+	req := snapshot.FetchReq{Kind: snapshot.KindMarineObs, Locations: []snapshot.LocationRef{coastal}}
+	for range 3 {
+		_, _ = p.Fetch(context.Background(), req)
+	}
+	frag, err := p.Fetch(context.Background(), req)
+	if err != nil || frag.Err != nil || frag.PerLocation[snapshot.Key(coastal)].Marine == nil {
+		t.Fatalf("after a garbled list and file, the fetch is %v / %v", err, frag.Err)
+	}
+	if lists.Load() < 2 || files.Load() < 2 {
+		t.Errorf("NDBC asked %d times for the list and %d for the file: a garbled body was served from the cache", lists.Load(), files.Load())
+	}
+}

@@ -822,14 +822,7 @@ type livePipelines struct {
 // state from whichever pipeline carries it (favourites first), with the
 // rings and the contributing feeds. Not Known → the report is skipped.
 func (lp *livePipelines) fireFor(ref snapshot.LocationRef) synth.FireReport {
-	var asms []*snapshot.Assembler
-	if lp.priority != nil {
-		asms = append(asms, lp.priority.asm)
-	}
-	if lp.recent != nil {
-		asms = append(asms, lp.recent.asm)
-	}
-	for _, asm := range asms {
+	for _, asm := range lp.assemblers() {
 		if fs, lat, lon, ok := asm.FireFor(ref); ok { // the narrow read: no snapshot clone per cycle (REVIEW C2)
 			return fireReportOf(fs, lat, lon, lp.rules, asm.ProviderStatus(lp.firms.ID()) == snapshot.ProviderOK)
 		}
@@ -841,14 +834,7 @@ func (lp *livePipelines) fireFor(ref snapshot.LocationRef) synth.FireReport {
 // quakes from whichever pipeline carries it (favourites first). No state → the
 // report is skipped.
 func (lp *livePipelines) seismicFor(ref snapshot.LocationRef) synth.SeismicReport {
-	var asms []*snapshot.Assembler
-	if lp.priority != nil {
-		asms = append(asms, lp.priority.asm)
-	}
-	if lp.recent != nil {
-		asms = append(asms, lp.recent.asm)
-	}
-	for _, asm := range asms {
+	for _, asm := range lp.assemblers() {
 		if ss, lat, lon, ok := asm.SeismicFor(ref); ok { // the narrow read: no snapshot clone per cycle (REVIEW C2)
 			return seismicReportOf(ss, lat, lon)
 		}
@@ -862,12 +848,22 @@ func (lp *livePipelines) markFIRMS() {
 		return
 	}
 	off := !lp.firms.Enabled()
-	if lp.priority != nil {
-		_ = lp.priority.asm.SetInactive(lp.firms.ID(), off)
+	for _, asm := range lp.assemblers() {
+		_ = asm.SetInactive(lp.firms.ID(), off)
 	}
-	if lp.recent != nil {
-		_ = lp.recent.asm.SetInactive(lp.firms.ID(), off)
+}
+
+// assemblers are the pipelines' assemblers that exist, favourites first: an
+// empty RECENT list starts a pipeline with none (W14, C-6).
+func (lp *livePipelines) assemblers() []*snapshot.Assembler {
+	var out []*snapshot.Assembler
+	if lp.priority != nil && lp.priority.asm != nil {
+		out = append(out, lp.priority.asm)
 	}
+	if lp.recent != nil && lp.recent.asm != nil {
+		out = append(out, lp.recent.asm)
+	}
+	return out
 }
 
 // setup is the Setup window's finish (UAT 100): persist, then key the live

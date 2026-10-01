@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -494,4 +495,33 @@ func envMinutes(key string, def int) time.Duration {
 		}
 	}
 	return time.Duration(def) * time.Minute
+}
+
+// A BODY THAT DOES NOT PARSE IS NOT SERVED AGAIN (W14, C-5): a garbled
+// answer is forgotten by the cache, so the next fetch asks USGS again and
+// draws its quakes, rather than failing on the same garbage for the cache's
+// lifetime.
+func TestAGarbledBodyIsNotServedAgain(t *testing.T) {
+	f := &fakeUSGS{catalog: []quake{{id: "near", mag: 3.0, lat: oceanside.Lat + degNorth(10), lon: oceanside.Lon, depth: 3, ago: time.Hour, typ: "earthquake"}}}
+	var once atomic.Bool
+	garbled := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if once.CompareAndSwap(false, true) {
+			_, _ = w.Write([]byte(`{"type":"FeatureCollection","features":[`))
+			return
+		}
+		f.handler(w, r)
+	}))
+	t.Cleanup(garbled.Close)
+	p := New(client(t), garbled.URL, seismic.DefaultRules())
+	req := snapshot.FetchReq{Kind: snapshot.KindSeismic, Locations: []snapshot.LocationRef{oceanside}}
+	if frag, err := p.Fetch(context.Background(), req); err == nil && frag.Err == nil {
+		t.Fatal("a garbled body read as an answer")
+	}
+	frag, err := p.Fetch(context.Background(), req)
+	if err != nil || frag.Err != nil {
+		t.Fatalf("the fetch after a garbled body failed again: %v %v - the garbage was served from the cache", err, frag.Err)
+	}
+	if st := frag.PerLocation[snapshot.Key(oceanside)].Seismic; st == nil || len(st.Quakes) != 1 {
+		t.Errorf("after the garbled body, the quake is not drawn: %+v", st)
+	}
 }
