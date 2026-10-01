@@ -169,8 +169,7 @@ func withWaves(ctx context.Context, t tty.MapTemperature, ndfd waveSource, om ma
 		said = append(said, note)
 	}
 	sort.Strings(said)
-	t.Notes = append(t.Notes, said...)
-	return t
+	return withNote(t, tty.WaveLayer, said...)
 }
 
 // anEmptyDay reports whether NDFD gave a box's waves nothing for one of the

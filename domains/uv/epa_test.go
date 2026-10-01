@@ -84,3 +84,20 @@ type bodyGet struct{ body string }
 func (b *bodyGet) GetText(context.Context, string, ...httpx.Option) ([]byte, error) {
 	return []byte(b.body), nil
 }
+
+// NEW YORK CITY IS ASKED AS EPA NAMES IT (UAT-2 U2-51): GeoNames calls it
+// "New York City", and EPA answers that name with an error, so the largest
+// city in the lower 48 drew no UV. EPA's name for it is "New York".
+func TestNewYorkCityIsAskedAsEPANamesIt(t *testing.T) {
+	ny, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Skip("no zone data")
+	}
+	get := &fileGet{t: t, name: "epa-vista.json"}
+	if _, err := NewEPA(get, "").Hourly(context.Background(), "New York City", "NY", ny); err != nil {
+		t.Fatal(err)
+	}
+	if len(get.asked) != 1 || !strings.Contains(get.asked[0], "/CITY/NEW%20YORK/STATE/NY/") {
+		t.Errorf("asked %v; want EPA's name, NEW YORK", get.asked)
+	}
+}

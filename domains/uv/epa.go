@@ -72,7 +72,11 @@ func (e *EPA) Hourly(ctx context.Context, city, state string, loc *time.Location
 	if city == "" || len(state) != 2 || loc == nil {
 		return nil, fmt.Errorf("uv: a city, a state and a zone are needed, not %q, %q", city, state)
 	}
-	u := e.base + "/efservice/getEnvirofactsUVHOURLY/CITY/" + url.PathEscape(strings.ToUpper(city)) + "/STATE/" + strings.ToUpper(state) + "/JSON"
+	name := city
+	if city == "New York City" {
+		name = "New York" // EPA's name for it: asked as GeoNames names it, EPA answers an error (UAT-2 U2-51)
+	}
+	u := e.base + "/efservice/getEnvirofactsUVHOURLY/CITY/" + url.PathEscape(strings.ToUpper(name)) + "/STATE/" + strings.ToUpper(state) + "/JSON"
 	body, err := e.get.GetText(ctx, u, httpx.TTL(forecastAge))
 	if err != nil {
 		return nil, fmt.Errorf("uv: EPA: %w", err)

@@ -317,8 +317,8 @@ func TestNDFDsTotalsDrawTheRainWhenOpenMeteoRefuses(t *testing.T) {
 	if got := strings.Join(out.Chips[tty.RainLayer], "/"); got != "NDFD" {
 		t.Errorf("the rain's badge names %q; want NDFD", got)
 	}
-	if !slices.ContainsFunc(out.Notes, func(n string) bool { return strings.Contains(n, "NDFD") }) {
-		t.Errorf("no note says the totals are NDFD's: %v", out.Notes)
+	if !slices.ContainsFunc(out.LayerNotes[tty.RainLayer], func(n string) bool { return strings.Contains(n, "NDFD") }) {
+		t.Errorf("no rain note says the totals are NDFD's: %v", out.LayerNotes)
 	}
 }
 

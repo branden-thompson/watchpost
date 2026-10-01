@@ -62,7 +62,7 @@ func withUV(ctx context.Context, t tty.MapTemperature, om *temperature.OpenMeteo
 	if ask.UV && cities != nil {
 		if marks := cities.markers(ctx, ask.View, askAnchor(ask, now), ask.Forecast); len(marks) > 0 {
 			t.UV, chips = append(t.UV, marks...), append(chips, "EPA")
-			t.Notes = append(t.Notes, "UV: EPA's forecast for the largest cities in view.")
+			t = withNote(t, tty.UVLayer, "UV: EPA's forecast for the largest cities in view.")
 		}
 	}
 	if live > 0 {
@@ -105,6 +105,27 @@ func withAir(ctx context.Context, t tty.MapTemperature, airnow *airquality.Provi
 		}
 		t.Air = append(t.Air, o)
 	}
+	// WHY THE FORECAST DAYS ARE NOT FILLED IS SAID (U2-52, D-203): AirNow's
+	// contours are the hour's; its forecasts are by area, two days of them.
+	if len(t.Air) > 0 && ask.Forecast {
+		t = withNote(t, tty.AirLayer, "Air quality: the fill is AirNow's current hour; Today and Tomorrow are its forecasts by area, as markers; none is published past Tomorrow.")
+	} else if len(t.Air) > 0 {
+		t = withNote(t, tty.AirLayer, "Air quality: the fill is AirNow's current hour, drawn through the loop.")
+	}
+	return t
+}
+
+// withNote adds a note of a layer's own, said while that layer is on (D-203).
+func withNote(t tty.MapTemperature, layer string, notes ...string) tty.MapTemperature {
+	if len(notes) == 0 {
+		return t
+	}
+	by := make(map[string][]string, len(t.LayerNotes)+1) // a copy: t is passed by value and its map is shared
+	for k, v := range t.LayerNotes {
+		by[k] = v
+	}
+	by[layer] = append(append([]string(nil), by[layer]...), notes...)
+	t.LayerNotes = by
 	return t
 }
 

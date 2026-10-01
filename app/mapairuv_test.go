@@ -134,13 +134,27 @@ func TestTheAirIsAirNowsContours(t *testing.T) {
 			t.Errorf("asked %s: Open-Meteo's air is not asked (D-193)", u)
 		}
 	}
+	if notes := got.LayerNotes[tty.AirLayer]; len(notes) != 1 || !strings.Contains(notes[0], "current hour") {
+		t.Errorf("Radar mode's air note is %v; want one saying the fill is the current hour's (D-203)", notes)
+	}
 	fc := ask
 	fc.Forecast = true
 	steps := tty.ForecastSteps(askAnchor(fc, now))
-	for _, o := range withAir(context.Background(), tty.MapTemperature{}, airnow, fc, now).Air {
+	fcGot := withAir(context.Background(), tty.MapTemperature{}, airnow, fc, now)
+	for _, o := range fcGot.Air {
 		if o.During != steps[0].Span {
 			t.Errorf("Forecast mode's contours are drawn during %v; want Now's step alone", o.During)
 		}
+	}
+	// THE FORECAST DAYS SAY WHY THEY ARE NOT FILLED (U2-52, D-203).
+	note := strings.Join(fcGot.LayerNotes[tty.AirLayer], " ")
+	for _, want := range []string{"current hour", "Today and Tomorrow", "past Tomorrow"} {
+		if !strings.Contains(note, want) {
+			t.Errorf("Forecast mode's air note %q does not say %q", note, want)
+		}
+	}
+	if len(fcGot.Notes) != 0 {
+		t.Errorf("the air's note is among temperature's, which it turns off: %v", fcGot.Notes)
 	}
 }
 
@@ -300,8 +314,8 @@ func TestUVIsEPAsForTheCitiesInViewFirst(t *testing.T) {
 	if chips := got.Chips[tty.UVLayer]; !slices.Equal(chips, []string{"EPA"}) || len(om.asked) != 0 {
 		t.Errorf("the UV badge says %v, Open-Meteo asked %d times; want EPA alone, Open-Meteo not asked (D-191)", chips, len(om.asked))
 	}
-	if !slices.ContainsFunc(got.Notes, func(n string) bool { return strings.Contains(n, "EPA") }) {
-		t.Errorf("no note says the UV is EPA's: %v", got.Notes)
+	if !slices.ContainsFunc(got.LayerNotes[tty.UVLayer], func(n string) bool { return strings.Contains(n, "EPA") }) {
+		t.Errorf("no UV note says the UV is EPA's: %v", got.LayerNotes)
 	}
 	both := withUV(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(&omGet{}, ""), everyBox, ask, now, nil, cities)
 	if chips := both.Chips[tty.UVLayer]; !slices.Equal(chips, []string{"EPA", "O-METEO"}) {

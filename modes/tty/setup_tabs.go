@@ -124,21 +124,32 @@ func (d Dashboard) rowTakesLeftRight() bool {
 }
 
 // setupTabRow is the tab row, [w]'s shape: the open tab marked with the
-// pointer, in the widest form that fits.
+// pointer and in the focus colour (U2-49), in the widest form that fits.
 func (d Dashboard) setupTabRow(o render.Opts, width int) string {
-	ptr := o.Glyphs().Pointer
-	var wide, narrow []string
-	for _, t := range d.tabsShown() {
-		if t == d.setupTab() {
-			wide = append(wide, "[ "+ptr+" "+t.Label()+" ]")
-			narrow = append(narrow, "["+ptr+t.Label()+"]")
-			continue
-		}
-		wide = append(wide, "[ "+t.Label()+" ]")
-		narrow = append(narrow, "["+t.Label()+"]")
-	}
-	if row := "  " + strings.Join(wide, "  "); render.Width(row) <= width {
+	if row := d.tabRowAt(o, " ", "  "); render.Width(row) <= width {
 		return row
 	}
-	return render.TruncateCells("  "+strings.Join(narrow, " "), width)
+	return render.TruncateCells(d.tabRowAt(o, "", " "), width) // the narrow form, built only when wanted
+}
+
+// tabRowAt is the tab row with pad inside each tab's brackets and gap between
+// tabs. THE TAB SHOWN IS IN THE FOCUS COLOUR (UAT-2 U2-49) - its pointer, name
+// and brackets the yellow a focused row's are - tinted in one piece, the row
+// built once: it is drawn on every Settings frame (U2-48's budget).
+func (d Dashboard) tabRowAt(o render.Opts, pad, gap string) string {
+	shown := d.setupTab()
+	var b strings.Builder
+	b.Grow(128)
+	b.WriteString("  ")
+	for i, t := range d.tabsShown() {
+		if i > 0 {
+			b.WriteString(gap)
+		}
+		if t == shown {
+			b.WriteString(render.ListLabel("["+pad+o.Glyphs().Pointer+pad+t.Label()+pad+"]", true))
+			continue
+		}
+		b.WriteString("[" + pad + t.Label() + pad + "]")
+	}
+	return b.String()
 }

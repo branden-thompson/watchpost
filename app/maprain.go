@@ -182,7 +182,7 @@ func withRainDays(ctx context.Context, t tty.MapTemperature, om *temperature.Ope
 	}
 	if totals > 0 {
 		chips = append(chips, "NDFD")
-		t.Notes = append(t.Notes, "Rain and snow: NDFD's totals for today and three days on - amounts, not the heaviest hour.")
+		t = withNote(t, tty.RainLayer, "Rain and snow: NDFD's totals for today and three days on - amounts, not the heaviest hour.")
 	}
 	if replayed > 0 {
 		chips = append(chips, recordedChip)

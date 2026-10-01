@@ -316,7 +316,7 @@ func TestAWaveDayPastNDFDsReachIsOpenMeteos(t *testing.T) {
 		t.Errorf("%d wave days drawn; want each day, Open-Meteo's where NDFD has none", len(got.WaveDays))
 	}
 	none := withWaves(context.Background(), tty.MapTemperature{}, fakeWaves{metres: 1, max: 2, gapDays: true}, fakeWaves{failed: true}, ask, tempNow, waveKeep{land: &landPoints{}})
-	if !slices.ContainsFunc(none.Notes, func(n string) bool { return strings.Contains(n, "past NDFD's reach") }) {
-		t.Errorf("Open-Meteo refusing too, no note says why the days are empty: %v", none.Notes)
+	if !slices.ContainsFunc(none.LayerNotes[tty.WaveLayer], func(n string) bool { return strings.Contains(n, "past NDFD's reach") }) {
+		t.Errorf("Open-Meteo refusing too, no wave note says why the days are empty: %v", none.LayerNotes)
 	}
 }

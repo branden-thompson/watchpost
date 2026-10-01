@@ -103,7 +103,11 @@ type MapTemperature struct {
 	// diagnostics', never said to them (D-124).
 	Problems []string
 	Source   string
-	Notes    []string
+	Notes    []string // temperature's, feels like's and wind's
+	// LayerNotes are another layer's notes, by its key: shown while that
+	// layer is on (U2-52, D-203). Each of these turns temperature off, so
+	// under Notes they were never seen.
+	LayerNotes map[string][]string
 	// Quota is a source's spent quota, while one is (W18.1, D-165): the map
 	// says it in its notice. Nil when nothing is refused.
 	Quota *MapQuota
@@ -805,7 +809,7 @@ func (d Dashboard) presetRow(preset, head, colder, warmer string, width int) str
 // shows, as one word for the window's memo (F-30).
 func (d Dashboard) tempMemoKey() string {
 	p := d.mapPane
-	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), fmt.Sprint(p.temp.Chips), strconv.FormatBool(d.rainOn()),
+	return strings.Join([]string{p.temp.Source, strings.Join(p.temp.Notes, "\n"), fmt.Sprint(p.temp.LayerNotes), fmt.Sprint(p.temp.Chips), strconv.FormatBool(d.rainOn()),
 		strconv.Itoa(p.fcStep), strconv.FormatBool(p.fcLow), strconv.FormatBool(p.fcPlaying),
 		strconv.Itoa(len(p.tempGiven)), strings.Join(p.fcTimeline, "\n"), d.stepSource()}, "|")
 }
@@ -814,8 +818,17 @@ func (d Dashboard) tempMemoKey() string {
 // lacks, while it does. Its credit is its badge's, in full the Status
 // window's (D-131, D-132).
 func (d Dashboard) tempNotes() []string {
+	var out []string
 	if d.layerOn(TemperatureLayer) || d.layerOn(FeelsLayer) {
-		return d.mapPane.temp.Notes
+		out = append(out, d.mapPane.temp.Notes...)
 	}
-	return nil
+	for _, key := range notedLayers { // in one order, not the map's (D-203)
+		if d.layerOn(key) {
+			out = append(out, d.mapPane.temp.LayerNotes[key]...)
+		}
+	}
+	return out
 }
+
+// notedLayers are the layers with notes of their own, in the order said.
+var notedLayers = [...]string{RainLayer, WaveLayer, UVLayer, AirLayer}

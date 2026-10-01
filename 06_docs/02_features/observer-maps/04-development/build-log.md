@@ -2907,3 +2907,31 @@ alerts' words that collide may still trade places frame to frame.
 always an alert's, already skipped there) - removed. Here: the bump alone; the wiring of an alert's span
 (D-98) is unchanged.
 
+## Batch 95 — the tab shown, each layer's notes, EPA's New York (U2-49, U2-51, U2-52; D-201 to D-203; 2026-10-01)
+
+**UAT notes, four** (U2-49 to U2-52), traced by three read-only investigations in parallel, then ruled one at a
+time: D-201 (NDFD's gaps: weight the valid corners, a denser NDFD lattice), D-202 (UV cities spread over
+the view, the count a Setting), D-203 (air: AirNow's forecasts stay markers, a clear note). This batch is
+what needed no ruling and D-203; D-202 and D-201 are their own batches.
+
+- **U2-49.** The tab shown is drawn as a focused row is: the list's pointer and the focus yellow,
+  brackets included (`setupTabRow`, through `render.ListLabel` and `ListMark` - the app's own, D-147).
+- **The notes nobody saw (U2-52).** The map's notes were shown only while Temperature or Feels like was
+  on - and Air, UV, Rain and Waves each turn those off, so their notes never showed. `MapTemperature`
+  gains `LayerNotes` by layer; `tempNotes` says each while its layer is on, in one order. UV's, rain's
+  and waves' notes moved there; Air says D-203's note - Radar mode "the current hour, drawn through the
+  loop", Forecast mode "the current hour; Today and Tomorrow are its forecasts by area, as markers; none
+  is published past Tomorrow".
+- **U2-51's bug.** EPA answers "NEW YORK CITY" with an error, so the largest city in view drew nothing;
+  asked as EPA names it, "New York" (`epaName`).
+
+**Mutation verdicts** (7): the tab's label and pointer, a layer's note gated by its layer, Air among the
+noted layers, the memo key seeing the notes, the note by mode, EPA's name - all caught.
+
+**Goldens updated** (five Settings goldens, `-update-golden`): the tab row alone, its words unchanged -
+the tab shown now carries the focus colour (U2-49). **The first gate failed on U2-48's pin**
+(`TestSetupAllocBudget`, memo miss +2 at 133x44, +13 at 80x24: the tab tinted in four pieces, both
+forms built every frame). Not raised: the tab is tinted in one piece and the narrow form built only
+when the wide does not fit - now 4881 and 3459, under the pin (4934, 3485) with room. **P10** went to 32 with a one-line `epaName`
+(`epa.go`'s density); the alias moved inside `Hourly`, back to 31.
+

@@ -848,6 +848,7 @@ func windowLayers
 func withAir
 func withChips
 func withModelRain
+func withNote
 func withPool
 func withRainDays
 func withRecorded
