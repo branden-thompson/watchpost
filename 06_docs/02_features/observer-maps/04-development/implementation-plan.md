@@ -333,7 +333,21 @@ was drawn, so a loop's past hours replay when a source fails. API shape only; no
 | W18.4a | **UV kept and replayed** (D-167): Open-Meteo's valid UV hours recorded (`openmeteo-uv`); refused, Radar mode draws the current hour and the three before from the history, the chip RECORDED | `app/mapairuv.go`, `app/history.go` | `omUVHourly`, `historyDatasets`, `recordUV`, `replayUV` | `TestUVIsRecordedAndReplayed`, `TestTheDataTabsChoicesReachTheStore` |
 | W18.4b | **UV's cold start** (D-167, batch 81): Open-Meteo refusing and nothing recorded, EPA's hourly UV for the largest cities in view (at most eight) as markers in their bands, the current hour and the three before each in its own hour; the badge EPA, a note; the source's credit, host and chip | `domains/uv/` (EPA Envirofacts), `app/mapairuv.go`; go-tuiMaps rc.29 `UVRole` | `uv.EPA.Hourly`, `uv.At`, `uvCold`, `largestInView`, `citiesFrom` | `TestAColdStartsUVIsEPAsForTheCitiesInView`, `TestTheColdStartAsksTheLargestCitiesInView`, `TestEPAsHoursAreReadInTheCitysZone`, `TestABadAnswerIsRefused` |
 | W18.5 | **Rain and snow's fallback** (D-168, D-184, batch 82): Open-Meteo's rain days recorded (`openmeteo-rain-days`); refused, a box draws its recorded days as they were, then NDFD's daily totals - six-hour qpf and snow summed on each period's local date, today and three days on - in go-tuiMaps rc.30's `qpf` scale (WPC's breaks), marked as the days are; the badge NDFD and/or RECORDED, a note, the colour row "NDFD TOTALS · NOT RADAR" | `domains/temperature/totals.go`, `app/maprain.go`, `app/history.go`, `modes/tty/map_temp.go`; go-tuiMaps L11.31 | `NDFD.Totals`, `rainRescue`, `totalsGrid`, `omRainDays`, `rainKey` | `TestNDFDsTotalsAreEachDaysSum`, `TestNDFDsTotalsDrawTheRainWhenOpenMeteoRefuses`, `TestOpenMeteosRainDaysAreRecordedAndReplayed`, `TestNDFDsTotalsAreKeyedInTheirOwnScale` |
-| W18.6 | **What a day of the map costs Open-Meteo**, measured: calls per hour and per day at rest and in use, against the free tier's 600/min, 5,000/h and 10,000/day | `06_docs/perf/` | - | the measure recorded |
+| W18.6 | **What the map costs Open-Meteo**, measured without spending it (D-185): every Open-Meteo ask the map makes, through its own fetch paths against a counting stand-in, weighed as Open-Meteo bills it - points x variables x days - by mode, layer and region; the lower 48's weight a refresh pinned under a stated budget as a test, so a change that spends more fails | `domains/temperature/` (`CallWeight`), `app/` (the measure), `06_docs/perf/` | `temperature.CallWeight` | the weights recorded; the budget test |
+
+## W19 — Keyless official sources first (D-185 to D-187) · UAT
+
+Open-Meteo bills every point (Q-1). Each layer moves to its keyless official source where one
+covers, Open-Meteo filling only what it cannot - and only the points it must - its quota kept for
+the feeds with no alternative. Measured before and after by W18.6's instrument.
+
+| # | Task | Where | Surface | Test |
+|---|---|---|---|---|
+| W19.1 | **Temperature, feels-like and wind from NDFD first** in both modes (overturns D-96, D-101): Forecast mode's days NDFD's; Radar mode's hours NDFD's hourly ahead and the history's NDFD hours behind; Open-Meteo asked only for the points NDFD leaves empty (a sparse ask), and for Samoa | `app/maptemp.go`, `domains/temperature/` | `sourceFor`, a sparse fill | the weight a refresh falls; NDFD drawn first |
+| W19.2 | **UV from EPA's city markers first** (D-186); Open-Meteo's grid a supplement | `app/mapairuv.go` | `uvCold` becomes the primary | EPA drawn while Open-Meteo answers |
+| W19.3 | **Rain and snow from NDFD's totals for today and three days** (D-185, D-187); Open-Meteo for days 4 to 7 and the heaviest hour, its asks streamlined | `app/maprain.go` | | the weight falls; days 4-7 still drawn |
+| W19.4 | **Air quality from AirNow first**; Open-Meteo's model tint supplemental (AirNow's gridded products researched first) | `app/mapairuv.go`, `domains/airquality/` | | AirNow drawn first |
+| W19.5 | **One Open-Meteo ask a box** where it is still asked: its variables merged into one request (D-185 point 2) | `domains/temperature/` | | one request a box |
 
 ## W14 — Before SHIP: performance, structure and quality (U2-35) · SHIP precondition
 
