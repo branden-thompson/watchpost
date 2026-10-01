@@ -111,6 +111,23 @@ func TestForecastModesRainSaysItIsNotRadar(t *testing.T) {
 	}
 }
 
+// NDFD'S TOTALS ARE KEYED IN THEIR OWN SCALE (W18.5, D-184): where the rain
+// drawn is NDFD's totals alone, the colour row keys the totals' classes,
+// said to be NDFD's totals - not a model's rain in radar's colours.
+func TestNDFDsTotalsAreKeyedInTheirOwnScale(t *testing.T) {
+	d := openRainMap(t, false)
+	d.mapPane.legend = []tuimaps.LegendEntry{{Preset: "qpf", Classes: []tuimaps.Class{{Label: "under 0.25"}, {Label: "0.25 to 2.5", Colour: tuimaps.RGB{R: 133, G: 248, B: 24}, Drawn: true}}},
+		{Preset: "temperature", Classes: []tuimaps.Class{{Label: "50 to 60", Colour: tuimaps.RGB{R: 240, G: 232, B: 144}, Drawn: true}}}}
+	row := stripANSITest(d.scrubRows(100)[0])
+	if !strings.Contains(row, "NDFD TOTALS") || strings.Contains(row, "MODEL RAIN") || !strings.Contains(row, "under 0.25") {
+		t.Errorf("with NDFD's totals drawn, the colour row is %q; want the totals' classes, said to be NDFD's", row)
+	}
+	d.mapPane.legend = append(d.mapPane.legend, tuimaps.LegendEntry{Preset: "radar", Classes: []tuimaps.Class{{Label: "10 to 20", Colour: tuimaps.RGB{R: 34, G: 119, B: 136}, Drawn: true}}})
+	if row := stripANSITest(d.scrubRows(100)[0]); !strings.Contains(row, "MODEL RAIN") {
+		t.Errorf("with a model's rain drawn too, the row is %q; want radar's colours, said to be a model's", row)
+	}
+}
+
 // TestTheBadgeSaysRainWhenItIsAlone: with temperature and wind off, the
 // badge's step names the day's rain, not its highs.
 func TestTheBadgeSaysRainWhenItIsAlone(t *testing.T) {

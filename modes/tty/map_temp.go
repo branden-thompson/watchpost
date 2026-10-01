@@ -312,6 +312,26 @@ func (d Dashboard) tempOverlays() []tuimaps.Overlay {
 // it looks like radar, and it is not (D-117).
 const rainRowHead = "MODEL RAIN · NOT RADAR │ "
 
+// totalsRowHead is the colour row's head while the rain drawn is NDFD's
+// daily totals alone (D-168, D-184): amounts in their own scale.
+const totalsRowHead = "NDFD TOTALS · NOT RADAR │ "
+
+// rainKey is the colour row's head and the scale it keys: a model's rain in
+// radar's colours wherever any is drawn, else NDFD's totals in theirs.
+func (d Dashboard) rainKey() (head, preset string) {
+	for _, e := range d.mapPane.legend {
+		if e.Preset == "radar" {
+			return rainRowHead, "radar"
+		}
+	}
+	for _, e := range d.mapPane.legend {
+		if e.Preset == "qpf" {
+			return totalsRowHead, "qpf"
+		}
+	}
+	return rainRowHead, "radar"
+}
+
 // rainOn reports whether Forecast mode draws its rain and snow now.
 func (d Dashboard) rainOn() bool {
 	if d.radarMode() || !d.layerOn(RainLayer) {

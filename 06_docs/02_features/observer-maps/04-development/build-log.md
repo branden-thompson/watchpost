@@ -2557,3 +2557,33 @@ a city outside the view, the band, the badge, the hour read, the span's end (sur
 took a zero end; tightened), the past hours; EPA's negative and too-high index, an hour a day before
 and a day after, the hour's end, the zone the hours are read in - all caught.
 
+
+## Batch 82 — rain and snow from the history and NDFD's totals (W18.5; D-168, D-184; 2026-09-30)
+
+**Now.** Forecast mode's rain and snow no longer vanish when Open-Meteo refuses. While it answers,
+each day it gave - its heaviest hour, its rain and its snowfall - is recorded (`openmeteo-rain-days`,
+keyed at the day's local start, so a day in Guam is its own). Refused, a box draws its recorded days
+as they were drawn, and for the days not recorded NDFD's daily totals: its six-hour amounts, the
+rain liquid-equivalent (qpf) and the snowfall, summed on the local date each period starts - today
+and three days on, NDFD's reach. NDFD is asked once a box, and only when a day is not recorded. Now
+stays blank in a fallback: NDFD has amounts, not a rate.
+
+**The totals' own scale (D-184):** go-tuiMaps **rc.30** (L11.31) adds a `qpf` preset in mm, the NWS
+WPC's breaks at 0.01, 0.1, 0.25, 0.5, 1, 2 and 4 inches, nothing drawn under a trace (radar's rule,
+shared as `FloorsFirst`), WPC's hues lightness-searched to pass the checker. Each day's total is
+marked on it as Open-Meteo's are, snow apart ("*2.0in"). The colour row under the map reads
+**NDFD TOTALS · NOT RADAR** and keys the totals' classes; wherever a model's rain draws too, it keys
+radar's. The badge names what drew - O-METEO, NDFD, RECORDED - and a note says the totals are
+NDFD's. The library's legend now writes a break with a second decimal where one would misstate it
+(0.25, not 0.2).
+
+**The fixture:** `ndfd-totals.xml`, a live NDFD answer over the Alaska Range on 2026-09-30, the
+lower 48 holding no snow that day - rain and snow at five points of six, 3.19 inches of snow in one
+period. The app's tests answer NDFD for whatever points they ask, as Open-Meteo's do.
+
+**Mutation verdicts** (targeted, 13, plus the library's 6): inches to mm, snow summed as rain, a day
+summed as its last period, NDFD asked every day, the history passed over, a day's record skipped, the
+totals in radar's scale, snow unmarked, the NDFD chip, the RECORDED chip, a day's span, the colour
+row's head - all caught. **Equivalent:** NDFD's days capped at four (its answer reaches no further).
+The library's: `FloorsFirst` radar's alone, the class ink, the unit, the label's second decimal, the
+legend's trace, the floors - all caught.

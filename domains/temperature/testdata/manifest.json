@@ -18,7 +18,8 @@
   "ndfd-hour-gust.xml",
   "openmeteo-gust.json",
   "openmeteo-uv.json",
-  "openmeteo-air.json"
+  "openmeteo-air.json",
+  "ndfd-totals.xml"
  ],
  "traps": {
   "ndfd-days.xml": "offshore points (121W, 119W) answer nil; after 20:00 local the first maximum is tomorrow's",
@@ -37,6 +38,7 @@
   "ndfd-hour-gust.xml": "captured 2026-09-28T23:09Z with begin and wgust: the current hour's gust",
   "openmeteo-gust.json": "captured 2026-09-28T23:09Z with wind_gusts_10m hourly and wind_gusts_10m_max daily (D-136), km/h",
   "openmeteo-uv.json": "captured 2026-09-29T00:51Z with uv_index hourly and uv_index_max daily (D-137): the UV falls to 0 after sunset",
-  "openmeteo-air.json": "captured 2026-09-29T00:51Z from the air-quality API (D-138): us_aqi hourly, five days, no daily value - each day's worst worked out on the point's own date"
+  "openmeteo-air.json": "captured 2026-09-29T00:51Z from the air-quality API (D-138): us_aqi hourly, five days, no daily value - each day's worst worked out on the point's own date",
+  "ndfd-totals.xml": "captured 2026-09-30T23:34Z over the Alaska Range (150W-146W, 63N-63.5N) with qpf and snow (D-168): six-hour periods in inches, liquid-equivalent and snowfall, the first the one the capture falls in (10:00 AKDT), thirteen of them - three days and a part; every point answered; snow where it falls, none at 63N 150W"
  }
 }

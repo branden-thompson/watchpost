@@ -58,7 +58,7 @@ func TestWhatNoSettingFixesGoesToTheDiagnostics(t *testing.T) {
 	newest := time.Date(2026, 9, 27, 20, 40, 0, 0, time.UTC)
 	hrrr := withForecast(context.Background(), tty.MapRadar{Note: ""}, radar.NewHRRR(failGet{}, ""), nil, newest, newest.Add(3*time.Hour))
 	model := withModelRain(context.Background(), tty.MapRadar{}, temperature.NewOpenMeteo(failGet{}, ""), geo.RegionHawaii, geo.Box{}, newest, newest.Add(3*time.Hour))
-	rain := withRainDays(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(failGet{}, ""), tempAsk(true), tempNow)
+	rain := withRainDays(context.Background(), tty.MapTemperature{}, temperature.NewOpenMeteo(failGet{}, ""), tempAsk(true), tempNow, nil)
 	for name, c := range map[string]struct {
 		said     string
 		problems []string

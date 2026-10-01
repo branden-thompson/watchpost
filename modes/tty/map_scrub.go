@@ -41,7 +41,8 @@ func (d Dashboard) scrubRows(width int) []string {
 	case d.radarMode():
 		out = append(out, " "+d.radarLegendRow(width))
 	case d.rainOn():
-		out = append(out, " "+d.rainRow(rainRowHead, width)) // D-117: radar's colours, said to be a model's
+		head, preset := d.rainKey()
+		out = append(out, " "+d.rainRow(head, preset, width)) // D-117: radar's colours, said to be a model's; D-184: NDFD's totals in their own
 	default:
 		out = append(out, " "+d.tempLegendRow(width)) // W10.10: the bands' colours, as radar's are
 	}

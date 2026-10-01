@@ -64,9 +64,25 @@ var omUVHourly = history.Dataset{
 	Days:        30 * 24 * time.Hour,
 }
 
+// omRainDays is Open-Meteo's rain and snow over each field box, each day it
+// answered - today and the days ahead - keyed at the day's start: replayed in
+// Forecast mode when it does not answer (D-168).
+var omRainDays = history.Dataset{
+	Name: "openmeteo-rain-days", Version: 1, Step: time.Hour,
+	Title:       "Open-Meteo, rain and snow by day",
+	Description: "Open-Meteo's forecast rain and snow over each field box of a region, each day it answered: the heaviest hour, the rain and the snowfall.",
+	Fields: []history.Field{
+		{Name: "peak", Label: "Heaviest hour", Unit: "mm/h", Decimals: 1},
+		{Name: "rain", Label: "Rain", Unit: "mm", Decimals: 1},
+		{Name: "snow", Label: "Snow", Unit: "cm", Decimals: 1},
+	},
+	Hours: 72 * time.Hour,
+	Days:  30 * 24 * time.Hour,
+}
+
 // historyDatasets are every dataset the history holds: the Data tab's
 // retention is theirs alike (D-175).
-var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly}
+var historyDatasets = []history.Dataset{ndfdHourly, omUVHourly, omRainDays}
 
 // historyEvery is how often the recorder looks for an hour to record.
 const historyEvery = 5 * time.Minute

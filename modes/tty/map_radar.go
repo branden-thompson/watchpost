@@ -317,14 +317,14 @@ const radarExtraRows = 6
 // heaviest, from the library's legend: a swatch a class, painted in the
 // class's own colour, or its words where colour is off.
 func (d Dashboard) radarLegendRow(width int) string {
-	return d.rainRow("RADAR LEGEND │ ", width)
+	return d.rainRow("RADAR LEGEND │ ", "radar", width)
 }
 
 // rainRow is radar's colours as a row under a head of its own.
-func (d Dashboard) rainRow(head string, width int) string {
+func (d Dashboard) rainRow(head, preset string, width int) string {
 	var classes []tuimaps.Class
 	for _, e := range d.mapPane.legend {
-		if e.Preset == "radar" {
+		if e.Preset == preset {
 			classes = e.Classes
 			break
 		}

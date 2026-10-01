@@ -391,6 +391,9 @@ func (*radioDeck).voice
 func (*radioDeck).voiceNote
 func (*radioDeck).watchlistDwell
 func (*radioDeck).watchlistLang
+func (*rainRescue).days
+func (*rainRescue).record
+func (*rainRescue).recorded
 func (*readSession).begin
 func (*readSession).begun
 func (*readSession).finish
@@ -530,6 +533,7 @@ func composeTakeover
 func configLocations
 func contentsFromSegments
 func credits
+func dayStart
 func debugAddr
 func debugMux
 func debugScenarios
@@ -792,6 +796,7 @@ func toneClasses
 func toneFromView
 func toneView
 func totalMark
+func totalsGrid
 func trace
 func trackedKey
 func transmitterOf
@@ -873,6 +878,7 @@ type publisher
 type pump
 type radarSources
 type radioDeck
+type rainRescue
 type readHooks
 type readSession
 type reader
@@ -906,6 +912,7 @@ var historyKeeps
 var mapLayers
 var mapSources
 var ndfdHourly
+var omRainDays
 var omUVHourly
 var quakeFeedBytes
 var rateTable

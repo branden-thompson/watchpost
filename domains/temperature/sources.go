@@ -149,6 +149,7 @@ type dwml struct {
 			Location   string       `xml:"applicable-location,attr"`
 			Winds      []dwmlSeries `xml:"wind-speed"`
 			Dirs       []dwmlSeries `xml:"direction"`
+			Precip     []dwmlSeries `xml:"precipitation"` // six-hour rain and snow (D-168)
 			WaterState []struct {
 				Layout string       `xml:"time-layout,attr"`
 				Waves  []dwmlSeries `xml:"waves"`

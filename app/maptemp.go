@@ -126,7 +126,11 @@ func (lp *livePipelines) mapTemperature(ctx context.Context, ask tty.MapAsk) tty
 	now := time.Now()
 	t := buildTemperature(ctx, src, fill, ask, now, rescue)
 	if ask.Forecast && lp.temp.rain != nil { // Forecast mode's rain and snow (W12.3): held, whether or not its row is on (D-99)
-		t = withRainDays(ctx, t, lp.temp.rain, ask, now)
+		rescue := &rainRescue{store: lp.historyStore()} // recorded days, then NDFD's totals where it reaches (D-168)
+		if lp.temp.waves != nil && lp.temp.waves.Covers(ask.Region) {
+			rescue.ndfd = lp.temp.waves // NDFD's client
+		}
+		t = withRainDays(ctx, t, lp.temp.rain, ask, now, rescue)
 	}
 	if lp.temp.waves != nil && lp.temp.rain != nil && ask.Region != geo.RegionSamoa { // the waves (D-125): held as the rest is (D-99); NDFD has no Samoa
 		t = withWaves(ctx, t, lp.temp.waves, lp.temp.rain, ask, now)
